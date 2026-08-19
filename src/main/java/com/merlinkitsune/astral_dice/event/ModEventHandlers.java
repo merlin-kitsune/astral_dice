@@ -253,6 +253,9 @@ public class ModEventHandlers {
             }
             // 大当家立牌:触发骰神赐福 → 养精蓄锐 -1 层并记录触发时刻;"战斗爽·扩散"待命则本次赐福启用
             com.merlinkitsune.astral_dice.item.sign.FenSignItem.onBlessingTriggered(player);
+            // 治愈体系:触发骰神赐福 → 医疗箱加点(先)+ 按当前治愈点×2 回血(后)。
+            // 置于触发块末尾,确保晚于本事件内所有影响治愈点数量的效果(立牌受击钩子/缓冲盾牌在前部已执行)
+            com.merlinkitsune.astral_dice.item.HealingManager.onBlessingTriggered(player);
         }
 
         // Dice combat mechanics require the Dice Blessing effect
@@ -946,9 +949,9 @@ public class ModEventHandlers {
         }
     }
 
-    // 秒数 → 立牌 tooltip 时间格式(蓝):§9MM:SS§r(如 60 → §91:00§r)
+    // 秒数 → 立牌 tooltip 时间格式(蓝):§9MM:SS§7(如 60 → §91:00§7)
     private static String formatSignTime(int seconds) {
-        return String.format("§9%d:%02d§r", seconds / 60, seconds % 60);
+        return String.format("§9%d:%02d§7", seconds / 60, seconds % 60);
     }
 
     // 立牌主动技能按键显示名(客户端取实际映射,服务端/异常回退 "J")
@@ -1027,7 +1030,7 @@ public class ModEventHandlers {
                         .withStyle(ChatFormatting.GREEN));
                 for (AppliedStone stone : stones) {
                     if ("shadow_strike".equals(stone.type())) {
-                        tooltip.add(Component.literal(" §7- §5暗影突袭 §a+3 §7固定 §7| §8黑暗§90:03§r §7[剩余:" + stone.uses() + "]")
+                        tooltip.add(Component.literal(" §7- §5暗影突袭 §a+3 §7固定 §7| §8黑暗§90:03§7 §7[剩余:" + stone.uses() + "]")
                                 .withStyle(ChatFormatting.GRAY));
                         continue;
                     }
@@ -1081,8 +1084,8 @@ public class ModEventHandlers {
 
         if (stack.is(ModItems.ATTACK_CARD_MEDIUM.get())) {
             tooltip.add(Component.empty());
-            // 费用:黄色 ⨀(每 1 费一个符号),置于 tooltip 最上方
-            tooltip.add(Component.literal("⨀".repeat(
+            // 费用:黄色 "Cost: " + ⨀(每 1 费一个符号),置于 tooltip 最上方
+            tooltip.add(Component.literal("Cost: " + "⨀".repeat(
                             com.merlinkitsune.astral_dice.combat.CardRegistry.cost("medium", player)))
                     .withStyle(ChatFormatting.YELLOW));
             int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), 0);
@@ -1091,7 +1094,7 @@ public class ModEventHandlers {
         }
         if (stack.is(ModItems.ATTACK_CARD_LARGE.get())) {
             tooltip.add(Component.empty());
-            tooltip.add(Component.literal("⨀".repeat(
+            tooltip.add(Component.literal("Cost: " + "⨀".repeat(
                             com.merlinkitsune.astral_dice.combat.CardRegistry.cost("large", player)))
                     .withStyle(ChatFormatting.YELLOW));
             int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), 0);
@@ -1100,7 +1103,7 @@ public class ModEventHandlers {
         }
         if (stack.is(ModItems.ATTACK_CARD_EPIC.get())) {
             tooltip.add(Component.empty());
-            tooltip.add(Component.literal("⨀".repeat(
+            tooltip.add(Component.literal("Cost: " + "⨀".repeat(
                             com.merlinkitsune.astral_dice.combat.CardRegistry.cost("epic", player)))
                     .withStyle(ChatFormatting.YELLOW));
             int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), 0);
@@ -1109,7 +1112,7 @@ public class ModEventHandlers {
         }
         if (stack.is(ModItems.ATTACK_CARD_SHADOW_STRIKE.get())) {
             tooltip.add(Component.empty());
-            tooltip.add(Component.literal("⨀".repeat(
+            tooltip.add(Component.literal("Cost: " + "⨀".repeat(
                             com.merlinkitsune.astral_dice.combat.CardRegistry.cost("shadow_strike", player)))
                     .withStyle(ChatFormatting.YELLOW));
             int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), 0);
@@ -1118,7 +1121,7 @@ public class ModEventHandlers {
         }
         if (stack.is(ModItems.ATTACK_CARD_MEITO.get())) {
             tooltip.add(Component.empty());
-            tooltip.add(Component.literal("⨀".repeat(
+            tooltip.add(Component.literal("Cost: " + "⨀".repeat(
                             com.merlinkitsune.astral_dice.combat.CardRegistry.cost("meito", player)))
                     .withStyle(ChatFormatting.YELLOW));
             int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), 0);
@@ -1127,7 +1130,7 @@ public class ModEventHandlers {
         }
         if (stack.is(ModItems.ATTACK_CARD_CHARGE.get())) {
             tooltip.add(Component.empty());
-            tooltip.add(Component.literal("⨀".repeat(
+            tooltip.add(Component.literal("Cost: " + "⨀".repeat(
                             com.merlinkitsune.astral_dice.combat.CardRegistry.cost("charge", player)))
                     .withStyle(ChatFormatting.YELLOW));
             int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), 0);
@@ -1136,7 +1139,7 @@ public class ModEventHandlers {
         }
         if (stack.is(ModItems.ATTACK_CARD_FULL_POWER.get())) {
             tooltip.add(Component.empty());
-            tooltip.add(Component.literal("⨀".repeat(
+            tooltip.add(Component.literal("Cost: " + "⨀".repeat(
                             com.merlinkitsune.astral_dice.combat.CardRegistry.cost("full_power", player)))
                     .withStyle(ChatFormatting.YELLOW));
             int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), 0);
@@ -1145,7 +1148,7 @@ public class ModEventHandlers {
         }
         if (stack.is(ModItems.DEFENSE_CARD_MEDIUM.get())) {
             tooltip.add(Component.empty());
-            tooltip.add(Component.literal("⨀".repeat(
+            tooltip.add(Component.literal("Cost: " + "⨀".repeat(
                             com.merlinkitsune.astral_dice.combat.CardRegistry.cost("defense_medium", player)))
                     .withStyle(ChatFormatting.YELLOW));
             int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), 0);
@@ -1154,7 +1157,7 @@ public class ModEventHandlers {
         }
         if (stack.is(ModItems.DEFENSE_CARD_LARGE.get())) {
             tooltip.add(Component.empty());
-            tooltip.add(Component.literal("⨀".repeat(
+            tooltip.add(Component.literal("Cost: " + "⨀".repeat(
                             com.merlinkitsune.astral_dice.combat.CardRegistry.cost("defense_large", player)))
                     .withStyle(ChatFormatting.YELLOW));
             int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), 0);
@@ -1163,7 +1166,7 @@ public class ModEventHandlers {
         }
         if (stack.is(ModItems.DEFENSE_CARD_EPIC.get())) {
             tooltip.add(Component.empty());
-            tooltip.add(Component.literal("⨀".repeat(
+            tooltip.add(Component.literal("Cost: " + "⨀".repeat(
                             com.merlinkitsune.astral_dice.combat.CardRegistry.cost("defense_epic", player)))
                     .withStyle(ChatFormatting.YELLOW));
             int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), 0);
@@ -1190,6 +1193,11 @@ public class ModEventHandlers {
         if (stack.is(ModItems.BLANK_SIGN.get())) {
             tooltip.add(Component.empty());
             tooltip.add(Component.translatable("tooltip.astral_dice.card.blank_sign")
+                    .withStyle(ChatFormatting.GRAY));
+        }
+        if (stack.is(ModItems.BLANK_CHIP.get())) {
+            tooltip.add(Component.empty());
+            tooltip.add(Component.translatable("tooltip.astral_dice.card.blank_chip")
                     .withStyle(ChatFormatting.GRAY));
         }
         if (stack.is(ModItems.PARUNAN_SIGN.get())) {
@@ -1244,7 +1252,8 @@ public class ModEventHandlers {
         if (stack.is(ModItems.LULU_SIGN.get())) {
             tooltip.add(Component.empty());
             addSignActiveTitle(tooltip);
-            addSignLines(tooltip, "tooltip.astral_dice.card.lulu_active", GameplayConstants.LULU_ACTIVE_RANGE);
+            addSignLines(tooltip, "tooltip.astral_dice.card.lulu_active",
+                    GameplayConstants.LULU_ACTIVE_RANGE, GameplayConstants.LULU_ACTIVE_RANGE);
             addSignPassiveTitle(tooltip);
             addSignLines(tooltip, "tooltip.astral_dice.card.lulu_passive");
             if (event.getEntity() instanceof Player p) {
@@ -1476,12 +1485,13 @@ public class ModEventHandlers {
             if (event.getEntity() instanceof Player p) {
                 // 活体书页伤害 = 基础 2 + 调查员(rin)已使用数量 + 忍者立牌效果牌伤害增益
                 int pages = Math.min(ModAttachments.getRinPages(p), GameplayConstants.LIVING_BOOK_PAGE_BONUS_CAP);
+                // 组件基础色为灰(普通文本);行内颜色码:数值=黄 §e、时间=蓝 §9
                 tooltip.add(Component.translatable("tooltip.astral_dice.card.living_book_page",
                                 2 + pages + ModAttachments.getKomachiDamageBonus(p))
-                        .withStyle(ChatFormatting.BLUE));
+                        .withStyle(ChatFormatting.GRAY));
             } else {
                 tooltip.add(Component.translatable("tooltip.astral_dice.card.living_book_page", "?")
-                        .withStyle(ChatFormatting.BLUE));
+                        .withStyle(ChatFormatting.GRAY));
             }
             tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown",
                             GameplayConstants.EFFECT_CARD_COOLDOWN_SECONDS)
@@ -1501,8 +1511,9 @@ public class ModEventHandlers {
                     : stack.is(ModItems.ORBITAL_STRIKE_CARD.get()) ? 8 : 5;
             int ninjaBonus = event.getEntity() instanceof Player p ? ModAttachments.getKomachiDamageBonus(p) : 0;
             tooltip.add(Component.empty());
+            // 组件基础色为灰(普通文本);行内颜色码:数值=黄 §e、时间=蓝 §9
             tooltip.add(Component.translatable(tooltipKey, baseDamage + ninjaBonus)
-                    .withStyle(ChatFormatting.BLUE));
+                    .withStyle(ChatFormatting.GRAY));
             tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown",
                             GameplayConstants.EFFECT_CARD_COOLDOWN_SECONDS)
                     .withStyle(ChatFormatting.RED));
@@ -1780,17 +1791,17 @@ public class ModEventHandlers {
         if (!(event.getEntity() instanceof Player player)) return;
         if (player.level().isClientSide()) return;
         player.removeEffect(ModEffects.DICE_BLESSING);
-        // 重连后医疗箱基础点实时生效;若因此"从无治愈变为有治愈"或倒计时未启用,由管理器补启动
-        HealingManager.onBasePointsChanged(player);
+        // 重连后刷新治愈体系(上限收缩/效果显示;赐福边沿 prev 标记初始 false,不会误触发减半)
+        HealingManager.tick(player);
     }
 
-    // 死亡重生:医疗箱基础点实时生效;若有治愈点但倒计时未启用(死亡清空后重生),由管理器补启动
+    // 死亡重生:刷新治愈体系(上限收缩/效果显示)
     @SubscribeEvent
     public static void onPlayerRespawnMedkit(
             net.neoforged.neoforge.event.entity.player.PlayerEvent.PlayerRespawnEvent event) {
         if (!(event.getEntity() instanceof Player player)) return;
         if (player.level().isClientSide()) return;
-        HealingManager.onBasePointsChanged(player);
+        HealingManager.tick(player);
     }
 
     // 骰战最终伤害跳数字(红色)
