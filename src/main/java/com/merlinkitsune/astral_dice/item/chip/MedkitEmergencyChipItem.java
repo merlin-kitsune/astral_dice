@@ -6,9 +6,9 @@ import top.theillusivec4.curios.api.SlotContext;
 import com.merlinkitsune.astral_dice.item.HealingManager;
 
 /**
- * 医疗箱-紧急治疗筹码:提供 1 点治愈基础点(下限)。基础点由 {@link HealingManager#getBasePoints}
- * 实时计算,装备期间生效、卸下立即移除;装备时若玩家从"无治愈"变为"有治愈",由
- * {@link HealingManager#onBasePointsChanged} 触发立即回血并启动倒计时。
+ * 医疗箱-紧急治疗筹码:装备时立即恢复 2 点生命(1 治愈单位 = 2 点血量);
+ * 触发骰神赐福时增加 1 点治愈(由 {@link HealingManager#onBlessingTriggered} 统一结算)。
+ * 卸下无副作用(治愈点已是玩家资源,不随装备移除)。
  */
 public class MedkitEmergencyChipItem extends BaseChipItem {
     public MedkitEmergencyChipItem(Properties properties) {
@@ -20,11 +20,11 @@ public class MedkitEmergencyChipItem extends BaseChipItem {
         if (!(slotContext.entity() instanceof Player player)) return;
         if (player.level().isClientSide()) return;
         if (!prevStack.isEmpty()) return;
-        HealingManager.onBasePointsChanged(player);
+        HealingManager.onMedkitEquipped(player, HealingManager.MEDKIT_EMERGENCY_HEAL);
     }
 
     @Override
     protected void onChipUnequip(Player player, ItemStack stack) {
-        HealingManager.onBasePointsChanged(player);
+        // 卸下无副作用:不扣治愈点
     }
 }

@@ -8,7 +8,7 @@ import net.neoforged.neoforge.common.ModConfigSpec;
  */
 public final class ModCommonConfig {
         // 当前配置版本:新增配置选项时必须 +1
-        public static final int CONFIG_VERSION = 9;
+        public static final int CONFIG_VERSION = 10;
 
         public static final ModConfigSpec SPEC;
 
@@ -35,7 +35,6 @@ public final class ModCommonConfig {
         public static final ModConfigSpec.IntValue KOMACHI_DAMAGE_BONUS_MAX;
         public static final ModConfigSpec.IntValue ACTIONBAR_DURATION_TICKS;
         public static final ModConfigSpec.IntValue ACTIONBAR_FADE_TICKS;
-        public static final ModConfigSpec.IntValue HEALING_CYCLE_SECONDS;
         public static final ModConfigSpec.IntValue DICE_BLESSING_DURATION_SECONDS;
 
         static {
@@ -97,11 +96,6 @@ public final class ModCommonConfig {
                                 .defineInRange("actionbar_duration_ticks", 60, 20, 200);
                 ACTIONBAR_FADE_TICKS = builder.comment("actionbar 消息最后淡出时长(单位: tick,默认：1 秒)")
                                 .defineInRange("actionbar_fade_ticks", 20, 1, 60);
-                builder.pop();
-
-                builder.push("healing").comment("=== 治愈 ===");
-                HEALING_CYCLE_SECONDS = builder.comment("治愈点数结算周期(单位：秒,默认：30)")
-                                .defineInRange("healing_cycle_seconds", 30, 5, 120);
                 builder.pop();
 
                 builder.push("dice").comment("=== 骰子 ===");

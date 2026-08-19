@@ -60,11 +60,6 @@ public final class GameplayConstants {
     // actionbar 消息最后淡出时长(单位: tick,默认 1 秒)
     public static int ACTIONBAR_FADE_TICKS = 20;
 
-    // 治愈点数结算周期(单位:秒,默认 30)
-    public static int HEALING_CYCLE_SECONDS = 30;
-    // 治愈点数结算周期(单位:tick,派生值)
-    public static int HEALING_CYCLE_TICKS = HEALING_CYCLE_SECONDS * 20;
-
     // 骰神赐福持续时长(单位:秒,默认 60)
     public static int DICE_BLESSING_DURATION_SECONDS = 60;
     // 骰神赐福持续时长(单位:tick,派生值)
@@ -101,9 +96,6 @@ public final class GameplayConstants {
 
         ACTIONBAR_DURATION_TICKS = ModCommonConfig.ACTIONBAR_DURATION_TICKS.get();
         ACTIONBAR_FADE_TICKS = ModCommonConfig.ACTIONBAR_FADE_TICKS.get();
-
-        HEALING_CYCLE_SECONDS = ModCommonConfig.HEALING_CYCLE_SECONDS.get();
-        HEALING_CYCLE_TICKS = HEALING_CYCLE_SECONDS * 20;
 
         DICE_BLESSING_DURATION_SECONDS = ModCommonConfig.DICE_BLESSING_DURATION_SECONDS.get();
         DICE_BLESSING_DURATION_TICKS = DICE_BLESSING_DURATION_SECONDS * 20;

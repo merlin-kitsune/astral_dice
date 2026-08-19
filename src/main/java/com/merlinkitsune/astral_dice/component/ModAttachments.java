@@ -86,9 +86,9 @@ public class ModAttachments {
         player.setData(LULU_LAST_HURT_TICK.get(), value);
     }
 
-    // 治愈结算点(玩家级共享资源的动态部分):由史莱姆立牌被动/主动、医疗箱结算等获取;
-    // 基础点(下限)由装备的医疗箱实时计算(见 HealingManager.getBasePoints),总治愈点 = 基础点 + 结算点;
-    // 独立于任何饰品,由 HealingManager 统一管理。注意:该值语义为"结算点",总点需叠加基础点。
+    // 治愈点数(玩家级共享资源的单一数值池):由医疗箱(赐福触发时加点)/史莱姆立牌被动/主动/
+    // 缓冲盾牌等获取,由 HealingManager 统一管理。治愈体系已无独立计时器:
+    // 触发骰神赐福时按当前治愈点×2 回血,赐福结束时治愈点减半(向下取整)。
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> HEALING_POINTS =
             ATTACHMENTS.register("healing_points", () -> AttachmentType.builder(() -> 0)
                     .serialize(Codec.INT)
@@ -99,42 +99,23 @@ public class ModAttachments {
         return player.getData(HEALING_POINTS.get());
     }
 
-    /**
-     * 结算点(动态部分,存储于附件,恒 ≥ 0)。
-     * 按总点数消耗治愈时,超出结算点的部分消耗基础点,由 HEALING_BASE_CONSUMED 记录。
-     */
     public static void setHealingPoints(net.minecraft.world.entity.player.Player player, int value) {
         player.setData(HEALING_POINTS.get(), Math.max(0, value));
     }
 
-    // 治愈:已消耗的基础点(按总点扣减时,超出结算点的部分从此扣除;上限 = 当前基础点;
-    // 每个治愈周期结算时清零,即"下一轮治愈触发时再次增加基础点")
-    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> HEALING_BASE_CONSUMED =
-            ATTACHMENTS.register("healing_base_consumed", () -> AttachmentType.builder(() -> 0)
-                    .serialize(Codec.INT)
-                    .sync(ByteBufCodecs.INT)
+    // 治愈:上一检测周期玩家是否处于"骰神赐福"(服务端边沿检测用,判断赐福结束时刻以执行治愈减半;
+    // 仅服务端使用,无需同步)
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Boolean>> HEALING_PREV_BLESSING =
+            ATTACHMENTS.register("healing_prev_blessing", () -> AttachmentType.builder(() -> false)
+                    .serialize(Codec.BOOL)
                     .build());
 
-    public static int getHealingBaseConsumed(net.minecraft.world.entity.player.Player player) {
-        return player.getData(HEALING_BASE_CONSUMED.get());
+    public static boolean isHealingPrevBlessing(net.minecraft.world.entity.player.Player player) {
+        return player.getData(HEALING_PREV_BLESSING.get());
     }
 
-    public static void setHealingBaseConsumed(net.minecraft.world.entity.player.Player player, int value) {
-        player.setData(HEALING_BASE_CONSUMED.get(), Math.max(0, value));
-    }
-
-    // 治愈倒计时结束时刻(gameTime tick;0 = 未启用/无治愈点)
-    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> HEALING_COUNTDOWN_END =
-            ATTACHMENTS.register("healing_countdown_end", () -> AttachmentType.builder(() -> 0L)
-                    .serialize(Codec.LONG)
-                    .build());
-
-    public static long getHealingCountdownEnd(net.minecraft.world.entity.player.Player player) {
-        return player.getData(HEALING_COUNTDOWN_END.get());
-    }
-
-    public static void setHealingCountdownEnd(net.minecraft.world.entity.player.Player player, long value) {
-        player.setData(HEALING_COUNTDOWN_END.get(), value);
+    public static void setHealingPrevBlessing(net.minecraft.world.entity.player.Player player, boolean value) {
+        player.setData(HEALING_PREV_BLESSING.get(), value);
     }
 
     // 魔法秘典筹码:效果牌使用计数(每使用 3 张复制最后一张)

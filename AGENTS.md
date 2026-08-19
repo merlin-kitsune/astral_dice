@@ -57,7 +57,7 @@ When extending this workspace:
 
 - 效果注册 id：`misaki_burst`（爆发）、`papara_bite`（嘬一口）、`jasmine_sweep`（清扫）、`komachi_count`（忍者出牌计数）
 - 数据组件注册 id：`misaki_sign_charge`/`misaki_sign_stacks`、`komachi_sign_charge`、`jasmine_atk_bonus`/`jasmine_def_bonus`/`jasmine_armor_penalty_end`、`card_uses`（战斗牌剩余次数）
-- 玩家附件注册 id：`komachi_use_count`/`komachi_last_card`、`komachi_extra_play_active`（忍者主动临时出牌数+1，仅当前效果牌周期）、`healing_points`（治愈结算点）/`healing_countdown_end`（治愈倒计时）、`rin_pages`
+- 玩家附件注册 id：`komachi_use_count`/`komachi_last_card`、`komachi_extra_play_active`（忍者主动临时出牌数+1，仅当前效果牌周期）、`healing_points`（治愈点数，单一数值池）/`healing_prev_blessing`（赐福结束边沿检测标记，服务端）、`rin_pages`
 - 纹理：`textures/mob_effect/misaki_burst.png`、`jasmine_sweep.png`、`papara_bite.png`、`komachi_count.png`
 - 立牌主动技能冷却为**玩家级**（`sign_active_cooldown_end`），等待类技能状态类型：占星师=1、秘密侦探=2
 - **立牌主动技能不再掷骰**：经商/扫地机/护法/大侦探等主动效果均为"随机获得以下任一效果"（代码内 ThreadLocalRandom 直接随机选，不再有 1d10 掷骰/骰点显示）。`roll_result`/`roll_cooldown` 数据组件已删除。
@@ -112,29 +112,33 @@ When extending this workspace:
 ## 治愈流派规范（Healing System）— 必须遵守
 
 治愈点数由 `HealingManager` 统一管理(玩家级共享资源,与具体饰品解耦)。
+**治愈体系无独立计时器**,完全遵循"骰神赐福"效果的生命周期。
 
 ### 点数构成
-- **总治愈点 = 基础点 - 已消耗基础点 + 结算点**;治愈点为 0 时不运行计数器。
-- **总治愈点上限 = max(10, 玩家最大生命值 ÷ 2)**(即 MC 中 ♥ 的数量;20 HP → 10 点;下限固定 10,避免神秘遗物+ 七咒之戒死亡丢失生命值上限时点数过低),由 `HealingManager.getCap` 提供。
-- **基础点**:由装备的医疗箱筹码提供(紧急治疗 +1、完备治疗 +3,可叠加),卸下立即移除;
-  由 `HealingManager.getBasePoints` 实时查询 curios,不存储。
-- **结算点(动态)**:存储于附件 `healing_points`(恒 ≥ 0),由史莱姆立牌被动/主动等获取。
-- **消耗(spend)按总点数扣除**:优先扣结算点(同步收缩,下限 0),不足部分消耗基础点,
-  由附件 `healing_base_consumed` 记录(上限 = 当前基础点;总点恒 ≥ 0)。
-- **周期结算**:结算点减半(向下取整)、已消耗基础点清零("下一轮治愈触发时再次增加基础点")。
-- **卸下增加固定治愈点的筹码**:其增加的点数立即扣除——基础点实时回落使总点同步减少;已消耗基础点收缩至不超过新基础点。
+- **治愈点为单一数值池**(存储于附件 `healing_points`,恒 ≥ 0,上限由 `HealingManager.getCap` 提供):
+  上限 = max(10, 玩家最大生命值 ÷ 2)(即 MC 中 ♥ 的数量;20 HP → 10 点;下限固定 10,
+  避免神秘遗物+ 七咒之戒死亡丢失生命值上限时点数过低)。
+- 来源:史莱姆立牌被动(受击 +1)/主动(+3)、缓冲盾牌(受击 +2)、医疗箱(触发赐福时,见下)。
 
-### 周期流程
-1. 从 0 获得治愈点 → **立即回血(总点 × 2,对应 MC 1♥/层)** 并启用倒计时;
-2. 已有治愈点再获得 → 增加点数并**重置倒计时**;
-3. 倒计时结束(周期结算)→ 回血(总点 × 2),结算点**减半(向下取整)**,
-   新总点 = 基础点 + 减半后剩余;仍 > 0 则进入下一周期,否则结束。
+### 运行规则(跟随骰神赐福)
+1. **触发骰神赐福时**(`ModEventHandlers` 赐福触发块末尾调用 `HealingManager.onBlessingTriggered`):
+   1. 先增加装备的医疗箱筹码治愈点(紧急 +1、完备 +3,可叠加,受上限);
+   2. 再获得 **当前治愈点 × 2** 的治疗量(回血,不扣点;对应 MC 1♥/层)。
+2. **骰神赐福结束时**(由 `HealingManager.tick` 边沿检测驱动,附件 `healing_prev_blessing` 记录上一周期状态):
+   治愈点**减半(向下取整)**。边沿检测而非 Expired 事件,避免登录/死亡强制移除效果时误减半。
+3. **执行优先级最后**:触发赐福时的回血结算置于赐福触发块末尾,晚于同事件内所有影响治愈点数量的效果
+   (史莱姆受击/缓冲盾牌钩子在伤害事件更早处执行;医疗箱加点在回血前完成)。
+
+### 医疗箱筹码
+- **装备时**:立即恢复生命(1 治愈单位 = 2 点血量;紧急 +2、完备 +6),经 `HealingManager.onMedkitEquipped`。
+- **触发骰神赐福时**:增加治愈点(紧急 +1、完备 +3),由 `onBlessingTriggered` 统一结算。
+- **卸下无副作用**:不扣治愈点(治愈点是玩家资源,与装备状态解耦)。
 
 ### 关键实现
-- 倒计时:附件 `healing_countdown_end`(long,结束时刻;0 = 未启用),周期由配置 `healing_cycle_seconds` 控制(默认 30)。
-- 效果显示:等级 = 当前总治愈点,时长 = 距倒计时结束剩余 tick;归 0 自动移除。
-- 医疗箱:装备/卸下调用 `HealingManager.onBasePointsChanged` 处理边界(从无到有立即回血+启动 / 归 0 结束)。
-- 死亡:清空结算点与倒计时。
+- `tick`(onPlayerTick 驱动):上限收缩(最大生命降低时收缩点数)+ 赐福结束边沿检测 + 效果刷新。
+- `add`/`spend`/`clear`(死亡清零):纯点数增减,不触发回血。
+- 效果显示:等级 = 当前治愈点;时长 = 骰神赐福剩余 tick(赐福中)/固定常显时长(无赐福,持续刷新);归 0 自动移除。
+- 死亡:清空治愈点与边沿标记(`HealingManager.clear`)。
 
 ## 星光流派规范（Starlight System）— 必须遵守
 

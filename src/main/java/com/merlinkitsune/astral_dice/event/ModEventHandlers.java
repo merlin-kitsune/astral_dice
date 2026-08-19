@@ -253,6 +253,9 @@ public class ModEventHandlers {
             }
             // 大当家立牌:触发骰神赐福 → 养精蓄锐 -1 层并记录触发时刻;"战斗爽·扩散"待命则本次赐福启用
             com.merlinkitsune.astral_dice.item.sign.FenSignItem.onBlessingTriggered(player);
+            // 治愈体系:触发骰神赐福 → 医疗箱加点(先)+ 按当前治愈点×2 回血(后)。
+            // 置于触发块末尾,确保晚于本事件内所有影响治愈点数量的效果(立牌受击钩子/缓冲盾牌在前部已执行)
+            com.merlinkitsune.astral_dice.item.HealingManager.onBlessingTriggered(player);
         }
 
         // Dice combat mechanics require the Dice Blessing effect
@@ -1780,17 +1783,17 @@ public class ModEventHandlers {
         if (!(event.getEntity() instanceof Player player)) return;
         if (player.level().isClientSide()) return;
         player.removeEffect(ModEffects.DICE_BLESSING);
-        // 重连后医疗箱基础点实时生效;若因此"从无治愈变为有治愈"或倒计时未启用,由管理器补启动
-        HealingManager.onBasePointsChanged(player);
+        // 重连后刷新治愈体系(上限收缩/效果显示;赐福边沿 prev 标记初始 false,不会误触发减半)
+        HealingManager.tick(player);
     }
 
-    // 死亡重生:医疗箱基础点实时生效;若有治愈点但倒计时未启用(死亡清空后重生),由管理器补启动
+    // 死亡重生:刷新治愈体系(上限收缩/效果显示)
     @SubscribeEvent
     public static void onPlayerRespawnMedkit(
             net.neoforged.neoforge.event.entity.player.PlayerEvent.PlayerRespawnEvent event) {
         if (!(event.getEntity() instanceof Player player)) return;
         if (player.level().isClientSide()) return;
-        HealingManager.onBasePointsChanged(player);
+        HealingManager.tick(player);
     }
 
     // 骰战最终伤害跳数字(红色)
