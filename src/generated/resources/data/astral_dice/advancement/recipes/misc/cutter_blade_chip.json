@@ -1,0 +1,32 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_cutter_chip": {
+      "conditions": {
+        "items": [
+          {
+            "items": "astral_dice:cutter_chip"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "has_the_recipe": {
+      "conditions": {
+        "recipe": "astral_dice:cutter_blade_chip"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    }
+  },
+  "requirements": [
+    [
+      "has_the_recipe",
+      "has_cutter_chip"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "astral_dice:cutter_blade_chip"
+    ]
+  }
+}

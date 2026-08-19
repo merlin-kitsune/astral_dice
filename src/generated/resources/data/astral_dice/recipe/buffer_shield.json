@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "E": {
+      "item": "astral_dice:blank_chip"
+    },
+    "H": {
+      "item": "minecraft:shield"
+    },
+    "I": {
+      "item": "minecraft:iron_ingot"
+    },
+    "S": {
+      "item": "astral_dice:star_coin"
+    }
+  },
+  "pattern": [
+    " I ",
+    "SES",
+    "HIH"
+  ],
+  "result": {
+    "count": 1,
+    "id": "astral_dice:buffer_shield"
+  }
+}

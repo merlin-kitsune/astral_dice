@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": {
+      "item": "astral_dice:blank_chip"
+    },
+    "G": {
+      "item": "minecraft:golden_apple"
+    },
+    "I": {
+      "item": "minecraft:iron_sword"
+    },
+    "P": {
+      "item": "astral_dice:star_plate"
+    }
+  },
+  "pattern": [
+    " G ",
+    "IBI",
+    " P "
+  ],
+  "result": {
+    "count": 1,
+    "id": "astral_dice:cutter_chip"
+  }
+}

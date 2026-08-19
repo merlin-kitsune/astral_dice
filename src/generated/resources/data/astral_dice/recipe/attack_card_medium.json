@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "minecraft:iron_sword"
+    },
+    {
+      "item": "astral_dice:dice"
+    }
+  ],
+  "result": {
+    "count": 1,
+    "id": "astral_dice:attack_card_medium"
+  }
+}

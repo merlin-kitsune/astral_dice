@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": {
+      "item": "minecraft:bamboo_block"
+    },
+    "C": {
+      "item": "astral_dice:blank_chip"
+    },
+    "T": {
+      "item": "minecraft:target"
+    }
+  },
+  "pattern": [
+    "TBT",
+    "BCB",
+    "TBT"
+  ],
+  "result": {
+    "count": 1,
+    "id": "astral_dice:target_chip"
+  }
+}

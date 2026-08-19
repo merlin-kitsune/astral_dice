@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": {
+      "item": "minecraft:cake"
+    },
+    "E": {
+      "item": "astral_dice:sandwich_low"
+    },
+    "S": {
+      "item": "astral_dice:star_coin"
+    }
+  },
+  "pattern": [
+    " C ",
+    "SES",
+    "C C"
+  ],
+  "result": {
+    "count": 1,
+    "id": "astral_dice:sandwich_medium"
+  }
+}

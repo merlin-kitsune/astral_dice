@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "D": {
+      "item": "minecraft:diamond"
+    },
+    "E": {
+      "item": "astral_dice:moto_helmet_medium"
+    },
+    "S": {
+      "item": "astral_dice:star_coin"
+    }
+  },
+  "pattern": [
+    "D D",
+    "SES",
+    " D "
+  ],
+  "result": {
+    "count": 1,
+    "id": "astral_dice:moto_helmet_high"
+  }
+}

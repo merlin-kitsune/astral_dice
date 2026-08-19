@@ -1,0 +1,17 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "computer-control": {
+      "type": "local",
+      "command": [
+        "C:\\Users\\xmace\\.local\\bin\\computer-control-mcp.exe",
+        "server"
+      ],
+      "enabled": true,
+      "environment": {
+        "COMPUTER_CONTROL_MCP_WGC_PATTERNS": "minecraft",
+        "COMPUTER_CONTROL_MCP_SCREENSHOT_DIR": "C:\\Users\\xmace\\AppData\\Local\\Temp\\opencode\\mcp-screenshots"
+      }
+    }
+  }
+}

@@ -1,0 +1,569 @@
+package com.merlinkitsune.astral_dice.item;
+
+import com.merlinkitsune.astral_dice.AstralDiceMod;
+import com.merlinkitsune.astral_dice.component.AppliedStone;
+import com.merlinkitsune.astral_dice.component.ModDataComponents;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Rarity;
+import net.neoforged.neoforge.registries.DeferredItem;
+import net.neoforged.neoforge.registries.DeferredRegister;
+
+import java.util.function.Supplier;
+import com.merlinkitsune.astral_dice.item.chip.StarCoinHammerChipItem;
+import com.merlinkitsune.astral_dice.item.chip.EagleScopeChipItem;
+import com.merlinkitsune.astral_dice.item.chip.MagicTomeChipItem;
+import com.merlinkitsune.astral_dice.item.chip.BufferShieldChipItem;
+import com.merlinkitsune.astral_dice.item.chip.EightSidedDiceChipItem;
+import com.merlinkitsune.astral_dice.item.card.UnwaveringCardItem;
+import com.merlinkitsune.astral_dice.item.dice.DiceCurioItem;
+import com.merlinkitsune.astral_dice.item.sign.FannySignItem;
+import com.merlinkitsune.astral_dice.item.card.DirectionalBlastCardItem;
+import com.merlinkitsune.astral_dice.item.card.BerserkCardItem;
+import com.merlinkitsune.astral_dice.item.chip.MarkerSprayerChipItem;
+import com.merlinkitsune.astral_dice.item.chip.CutterBladeChipItem;
+import com.merlinkitsune.astral_dice.item.chip.FanBigChipItem;
+import com.merlinkitsune.astral_dice.item.card.LivingBookPageItem;
+import com.merlinkitsune.astral_dice.item.sign.LuluSignItem;
+import com.merlinkitsune.astral_dice.item.chip.MedkitCompleteChipItem;
+import com.merlinkitsune.astral_dice.item.sign.FenSignItem;
+import com.merlinkitsune.astral_dice.item.chip.MagicQuiverChipItem;
+import com.merlinkitsune.astral_dice.item.card.ChocolateCakeCardItem;
+import com.merlinkitsune.astral_dice.item.chip.BigBackpackChipItem;
+import com.merlinkitsune.astral_dice.item.sign.HaiqingSignItem;
+import com.merlinkitsune.astral_dice.item.card.ExpressDeliveryCardItem;
+import com.merlinkitsune.astral_dice.item.sign.PaparaSignItem;
+import com.merlinkitsune.astral_dice.item.card.LuxuryFeastCardItem;
+import com.merlinkitsune.astral_dice.item.chip.AtmChipItem;
+import com.merlinkitsune.astral_dice.item.chip.BankCardChipItem;
+import com.merlinkitsune.astral_dice.item.sign.RinSignItem;
+import com.merlinkitsune.astral_dice.item.dice.DiceTierRegistry;
+import com.merlinkitsune.astral_dice.item.card.HamburgerCardItem;
+import com.merlinkitsune.astral_dice.item.chip.TargetChipItem;
+import com.merlinkitsune.astral_dice.item.chip.ScopeChipItem;
+import com.merlinkitsune.astral_dice.item.chip.SandwichChipItem;
+import com.merlinkitsune.astral_dice.item.sign.JasmineSignItem;
+import com.merlinkitsune.astral_dice.item.chip.SpeedSkatesChipItem;
+import com.merlinkitsune.astral_dice.item.sign.KomachiSignItem;
+import com.merlinkitsune.astral_dice.item.sign.MimiSignItem;
+import com.merlinkitsune.astral_dice.item.card.MonsterBrickCardItem;
+import com.merlinkitsune.astral_dice.item.dice.DiceTier;
+import com.merlinkitsune.astral_dice.item.card.YouHaveIHaveCardItem;
+import com.merlinkitsune.astral_dice.item.card.OrbitalStrikeCardItem;
+import com.merlinkitsune.astral_dice.item.card.EffectCardItem;
+import com.merlinkitsune.astral_dice.item.card.CardItem;
+import com.merlinkitsune.astral_dice.item.chip.MotoHelmetChipItem;
+import com.merlinkitsune.astral_dice.item.chip.BoxingGlovesChipItem;
+import com.merlinkitsune.astral_dice.item.sign.BonnieSignItem;
+import com.merlinkitsune.astral_dice.item.sign.ParunanSignItem;
+import com.merlinkitsune.astral_dice.item.sign.MisakiSignItem;
+import com.merlinkitsune.astral_dice.item.card.MonsterLaserCardItem;
+import com.merlinkitsune.astral_dice.item.chip.BankCardUnlimitedChipItem;
+import com.merlinkitsune.astral_dice.item.card.FateGuidanceCardItem;
+import com.merlinkitsune.astral_dice.item.chip.MedkitEmergencyChipItem;
+import com.merlinkitsune.astral_dice.item.sign.PadmanSignItem;
+import com.merlinkitsune.astral_dice.item.chip.CutterChipItem;
+import com.merlinkitsune.astral_dice.item.chip.NinjaStarChipItem;
+import com.merlinkitsune.astral_dice.item.chip.FlashlightChipItem;
+
+public class ModItems {
+    public static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(AstralDiceMod.MODID);
+
+    public static final DeferredItem<Item> DICE = registerItem("dice",
+            () -> new DiceCurioItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.COMMON)));
+
+    // 黄金骰子:由基础骰子 + 8金锭升级而来,卡牌放置栏为攻防各 3 个(共 6)
+    public static final DeferredItem<Item> GOLDEN_DICE = registerItem("golden_dice",
+            () -> new DiceCurioItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.RARE), 6));
+
+    // 钻石骰子:由黄金骰子 + 8钻石升级而来,卡牌放置栏为攻防各 4 个(共 8)
+    public static final DeferredItem<Item> DIAMOND_DICE = registerItem("diamond_dice",
+            () -> new DiceCurioItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.UNCOMMON), 8));
+
+    // 合金骰子:由钻石骰子在锻造台用锻造模板+下界合金锭锻造升级而来,卡牌放置栏为攻防各 6 个(共 12)
+    public static final DeferredItem<Item> NETHERITE_DICE = registerItem("netherite_dice",
+            () -> new DiceCurioItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.EPIC), 12));
+
+    // === 骰子阶层注册表(槽位规则集中管理:新增骰子在此注册即可,无需修改 DiceCurioItem) ===
+    // 立牌栏:固定 1(stand.json size=1,所有骰子一致);筹码栏:必须佩戴骰子才有(chip.json size=0)
+    // 重要:item 参数必须传 Supplier 延迟解析(() -> X.get()),禁止在静态初始化阶段调用
+    //      DeferredHolder.get()——注册表未加载完成时会抛 IllegalStateException。
+    static {
+        // 基础骰子:卡牌栏 4(2+2);筹码栏 1(0★/1★)/2(2★)/3(3★)
+        DiceTierRegistry.register(new DiceTier("dice", () -> DICE.get(), 4,
+                s -> s >= 2 ? s : 1));
+        // 金骰子:卡牌栏 6(3+3);筹码栏同基础骰子
+        DiceTierRegistry.register(new DiceTier("golden_dice", () -> GOLDEN_DICE.get(), 6,
+                s -> s >= 2 ? s : 1));
+        // 钻石骰子:卡牌栏 8(4+4);筹码栏 1+星(0★1/1★2/2★3/3★4)
+        DiceTierRegistry.register(new DiceTier("diamond_dice", () -> DIAMOND_DICE.get(), 8,
+                s -> 1 + s));
+        // 合金骰子:卡牌栏 12(6+6);筹码栏 2+星(0★2/1★3/2★4/3★5)
+        DiceTierRegistry.register(new DiceTier("netherite_dice", () -> NETHERITE_DICE.get(), 12,
+                s -> 2 + s));
+    }
+
+    public static final DeferredItem<Item> ATTACK_CARD_MEDIUM = registerItem("attack_card_medium",
+            () -> new CardItem(new Item.Properties()
+                    .stacksTo(64)
+                    .component(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("medium")), "medium"));
+
+    public static final DeferredItem<Item> ATTACK_CARD_LARGE = registerItem("attack_card_large",
+            () -> new CardItem(new Item.Properties()
+                    .stacksTo(64)
+                    .rarity(Rarity.RARE)
+                    .component(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("large")), "large"));
+
+    public static final DeferredItem<Item> ATTACK_CARD_EPIC = registerItem("attack_card_epic",
+            () -> new CardItem(new Item.Properties()
+                    .stacksTo(64)
+                    .rarity(Rarity.UNCOMMON)
+                    .component(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("epic")), "epic"));
+
+    public static final DeferredItem<Item> ATTACK_CARD_SHADOW_STRIKE = registerItem("attack_card_shadow_strike",
+            () -> new CardItem(new Item.Properties()
+                    .stacksTo(64)
+                    .rarity(Rarity.RARE)
+                    .component(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("shadow_strike")), "shadow_strike"));
+
+    public static final DeferredItem<Item> ATTACK_CARD_MEITO = registerItem("attack_card_meito",
+            () -> new CardItem(new Item.Properties()
+                    .stacksTo(64)
+                    .rarity(Rarity.EPIC)
+                    .component(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("meito")), "meito"));
+
+    public static final DeferredItem<Item> ATTACK_CARD_CHARGE = registerItem("attack_card_charge",
+            () -> new CardItem(new Item.Properties()
+                    .stacksTo(64)
+                    .rarity(Rarity.EPIC)
+                    .component(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("charge")), "charge"));
+
+    public static final DeferredItem<Item> ATTACK_CARD_FULL_POWER = registerItem("attack_card_full_power",
+            () -> new CardItem(new Item.Properties()
+                    .stacksTo(64)
+                    .rarity(Rarity.EPIC)
+                    .component(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("full_power")), "full_power"));
+
+    public static final DeferredItem<Item> DEFENSE_CARD_MEDIUM = registerItem("defense_card_medium",
+            () -> new CardItem(new Item.Properties()
+                    .stacksTo(64)
+                    .component(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("defense_medium")), "defense_medium"));
+
+    public static final DeferredItem<Item> DEFENSE_CARD_LARGE = registerItem("defense_card_large",
+            () -> new CardItem(new Item.Properties()
+                    .stacksTo(64)
+                    .rarity(Rarity.RARE)
+                    .component(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("defense_large")), "defense_large"));
+
+    public static final DeferredItem<Item> DEFENSE_CARD_EPIC = registerItem("defense_card_epic",
+            () -> new CardItem(new Item.Properties()
+                    .stacksTo(64)
+                    .rarity(Rarity.UNCOMMON)
+                    .component(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("defense_epic")), "defense_epic"));
+
+    public static final DeferredItem<Item> EFFECT_CARD_KING_POWER = registerItem("effect_card_king_power",
+            () -> new EffectCardItem(new Item.Properties()
+                    .stacksTo(64)
+                    .rarity(Rarity.UNCOMMON)));
+
+    public static final DeferredItem<Item> EFFECT_CARD_BERSERK = registerItem("effect_card_berserk",
+            () -> new BerserkCardItem(new Item.Properties()
+                    .stacksTo(64)
+                    .rarity(Rarity.UNCOMMON)));
+
+    public static final DeferredItem<Item> EFFECT_CARD_UNWAVERING = registerItem("effect_card_unwavering",
+            () -> new UnwaveringCardItem(new Item.Properties()
+                    .stacksTo(64)
+                    .rarity(Rarity.UNCOMMON)));
+
+    // 对怪激光(伤害效果牌):远程和魔法伤害 +4
+    public static final DeferredItem<Item> MONSTER_LASER_CARD = registerItem("monster_laser",
+            () -> new MonsterLaserCardItem(new Item.Properties()
+                    .stacksTo(64)
+                    .rarity(Rarity.UNCOMMON)));
+
+    // 对怪板砖(伤害效果牌):远程和魔法伤害 +6
+    public static final DeferredItem<Item> MONSTER_BRICK_CARD = registerItem("monster_brick",
+            () -> new MonsterBrickCardItem(new Item.Properties()
+                    .stacksTo(64)
+                    .rarity(Rarity.UNCOMMON)));
+
+    // 轨道炮(伤害效果牌):远程和魔法伤害 +8
+    public static final DeferredItem<Item> ORBITAL_STRIKE_CARD = registerItem("orbital_strike",
+            () -> new OrbitalStrikeCardItem(new Item.Properties()
+                    .stacksTo(64)
+                    .rarity(Rarity.RARE)));
+
+    // 定向爆破(伤害效果牌):远程和魔法伤害 +5,并对目标周围 6 格敌对目标造成同样伤害
+    public static final DeferredItem<Item> DIRECTIONAL_BLAST_CARD = registerItem("directional_blast",
+            () -> new DirectionalBlastCardItem(new Item.Properties()
+                    .stacksTo(64)
+                    .rarity(Rarity.RARE)));
+
+    public static final DeferredItem<Item> STAR_COIN = registerItem("star_coin",
+            () -> new Item(new Item.Properties()
+                    .stacksTo(64)
+                    .rarity(Rarity.RARE)));
+
+    // 袋装星币:9 枚星币打包(可逆),便于批量携带
+    public static final DeferredItem<Item> STAR_COIN_BAG = registerItem("star_coin_bag",
+            () -> new Item(new Item.Properties()
+                    .stacksTo(64)
+                    .rarity(Rarity.RARE)));
+
+    public static final DeferredItem<Item> BLANK_SIGN = registerItem("blank_sign",
+            () -> new Item(new Item.Properties()
+                    .stacksTo(64)));
+
+    public static final DeferredItem<Item> PARUNAN_SIGN = registerItem("parunan_sign",
+            () -> new ParunanSignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.RARE)));
+
+    public static final DeferredItem<Item> JASMINE_SIGN = registerItem("jasmine_sign",
+            () -> new JasmineSignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.RARE)));
+
+    public static final DeferredItem<Item> MISAKI_SIGN = registerItem("misaki_sign",
+            () -> new MisakiSignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.RARE)));
+
+    public static final DeferredItem<Item> MIMI_SIGN = registerItem("mimi_sign",
+            () -> new MimiSignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.RARE)));
+
+    public static final DeferredItem<Item> LULU_SIGN = registerItem("lulu_sign",
+            () -> new LuluSignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.RARE)));
+
+    public static final DeferredItem<Item> KOMACHI_SIGN = registerItem("komachi_sign",
+            () -> new KomachiSignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.RARE)));
+
+    public static final DeferredItem<Item> FLASHLIGHT_CHIP = registerItem("flashlight_chip",
+            () -> new FlashlightChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.UNCOMMON)));
+
+    public static final DeferredItem<Item> CUTTER_CHIP = registerItem("cutter_chip",
+            () -> new CutterChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.UNCOMMON)));
+
+    // 美工刀-锋利:与美工刀-初级功能一致,基础攻击提高至 4 点;可与美工刀-初级同时装备
+    public static final DeferredItem<Item> CUTTER_BLADE_CHIP = registerItem("cutter_blade_chip",
+            () -> new CutterBladeChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.RARE)));
+
+    public static final DeferredItem<Item> BLANK_CHIP = registerItem("blank_chip",
+            () -> new Item(new Item.Properties()
+                    .stacksTo(64)));
+
+    public static final DeferredItem<Item> SCOPE_CHIP = registerItem("scope_chip",
+            () -> new ScopeChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.UNCOMMON)));
+
+    public static final DeferredItem<Item> EAGLE_SCOPE_CHIP = registerItem("eagle_scope_chip",
+            () -> new EagleScopeChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.EPIC)));
+
+    public static final DeferredItem<Item> MEDKIT_EMERGENCY_CHIP = registerItem("medkit_emergency_chip",
+            () -> new MedkitEmergencyChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.RARE)));
+
+    public static final DeferredItem<Item> MEDKIT_COMPLETE_CHIP = registerItem("medkit_complete_chip",
+            () -> new MedkitCompleteChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.EPIC)));
+
+    public static final DeferredItem<Item> TARGET_CHIP = registerItem("target_chip",
+            () -> new TargetChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.RARE)));
+
+    // 标记喷灌:对目标造成远程或魔法伤害后,使目标获得一层"标记"
+    public static final DeferredItem<Item> MARKER_SPRAYER_CHIP = registerItem("marker_sprayer",
+            () -> new MarkerSprayerChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.RARE)));
+
+    // 魔法秘典:每使用 3 张效果牌,复制最后一张使用的效果牌并返回物品栏
+    public static final DeferredItem<Item> MAGIC_TOME_CHIP = registerItem("magic_tome",
+            () -> new MagicTomeChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.RARE)));
+
+    // 大背包:效果牌出牌数 +1(装备后生效)
+    public static final DeferredItem<Item> BIG_BACKPACK_CHIP = registerItem("big_backpack",
+            () -> new BigBackpackChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.UNCOMMON)));
+
+    // 忍术飞镖:效果牌出牌数+1;伤害效果牌生效期间远程/魔法伤害获得目标标记层数加成
+    public static final DeferredItem<Item> NINJA_STAR_CHIP = registerItem("ninja_star",
+            () -> new NinjaStarChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.RARE)));
+
+    // 手持风扇-大:使用主动技能后获得一张随机效果牌(不含专属),并对周围范围内敌对目标施加标记
+    public static final DeferredItem<Item> HAND_FAN_BIG_CHIP = registerItem("hand_fan_big",
+            () -> new FanBigChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.RARE)));
+
+    public static final DeferredItem<Item> STAR_PLATE = registerItem("star_plate",
+            () -> new Item(new Item.Properties()
+                    .stacksTo(64)
+                    .rarity(Rarity.EPIC)));
+
+    public static final DeferredItem<Item> GOLDEN_STAR_PLATE = registerItem("golden_star_plate",
+            () -> new Item(new Item.Properties()
+                    .stacksTo(64)
+                    .rarity(Rarity.UNCOMMON)));
+
+    public static final DeferredItem<Item> EIGHT_SIDED_DICE = registerItem("eight_sided_dice",
+            () -> new EightSidedDiceChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.RARE)));
+
+    // === 新筹码(ATM机/银行卡/拳击手套/速度轮滑/摩托头盔/夹心饼干/魔法箭袋/缓冲盾牌/星币锤) ===
+    // ATM机:装备时星光 +1;星光兑换星币时额外增加 40% 的星光用于兑换
+    public static final DeferredItem<Item> ATM = registerItem("atm",
+            () -> new AtmChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.RARE)));
+
+    // 银行卡-余额少:装备期间星光基础值 +4(下限)
+    public static final DeferredItem<Item> BANK_CARD_LOW = registerItem("bank_card_low",
+            () -> new BankCardChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.UNCOMMON), BankCardChipItem.BASE_LOW));
+
+    // 银行卡-余额多:装备期间星光基础值 +7(下限)
+    public static final DeferredItem<Item> BANK_CARD_HIGH = registerItem("bank_card_high",
+            () -> new BankCardChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.RARE), BankCardChipItem.BASE_HIGH));
+
+    // 银行卡-用不完:装备时星光 +3;每次骰神赐福结束后,自身及团队所有成员获得 3 星币
+    public static final DeferredItem<Item> BANK_CARD_UNLIMITED = registerItem("bank_card_unlimited",
+            () -> new BankCardUnlimitedChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.EPIC)));
+
+    // 拳击手套-初级:骰神赐福攻击力 +1
+    public static final DeferredItem<Item> BOXING_GLOVES_LOW = registerItem("boxing_gloves_low",
+            () -> new BoxingGlovesChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.UNCOMMON)));
+
+    // 拳击手套-中级:骰神赐福攻击力 +3
+    public static final DeferredItem<Item> BOXING_GLOVES_MEDIUM = registerItem("boxing_gloves_medium",
+            () -> new BoxingGlovesChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.RARE)));
+
+    // 拳击手套-高级:骰神赐福攻击力 +5
+    public static final DeferredItem<Item> BOXING_GLOVES_HIGH = registerItem("boxing_gloves_high",
+            () -> new BoxingGlovesChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.EPIC)));
+
+    // 速度轮滑-初级:移动速度 +5%
+    public static final DeferredItem<Item> SPEED_SKATES_LOW = registerItem("speed_skates_low",
+            () -> new SpeedSkatesChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.UNCOMMON), SpeedSkatesChipItem.SPEED_LOW));
+
+    // 速度轮滑-中级:移动速度 +10%
+    public static final DeferredItem<Item> SPEED_SKATES_MEDIUM = registerItem("speed_skates_medium",
+            () -> new SpeedSkatesChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.RARE), SpeedSkatesChipItem.SPEED_MEDIUM));
+
+    // 速度轮滑-高级:移动速度 +20%
+    public static final DeferredItem<Item> SPEED_SKATES_HIGH = registerItem("speed_skates_high",
+            () -> new SpeedSkatesChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.EPIC), SpeedSkatesChipItem.SPEED_HIGH));
+
+    // 摩托头盔-一般:护甲值 +2(无盔甲韧性)
+    public static final DeferredItem<Item> MOTO_HELMET_LOW = registerItem("moto_helmet_low",
+            () -> new MotoHelmetChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.UNCOMMON), MotoHelmetChipItem.ARMOR_LOW, 0));
+
+    // 摩托头盔-中级:护甲值 +4(无盔甲韧性)
+    public static final DeferredItem<Item> MOTO_HELMET_MEDIUM = registerItem("moto_helmet_medium",
+            () -> new MotoHelmetChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.RARE), MotoHelmetChipItem.ARMOR_MEDIUM, 0));
+
+    // 摩托头盔-高级:护甲值 +8,盔甲韧性 +2(仅高级拥有韧性)
+    public static final DeferredItem<Item> MOTO_HELMET_HIGH = registerItem("moto_helmet_high",
+            () -> new MotoHelmetChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.EPIC), MotoHelmetChipItem.ARMOR_HIGH, MotoHelmetChipItem.TOUGHNESS_BONUS));
+
+    // 夹心饼干-一般:最大生命值 +2
+    public static final DeferredItem<Item> SANDWICH_LOW = registerItem("sandwich_low",
+            () -> new SandwichChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.UNCOMMON), SandwichChipItem.HEALTH_LOW));
+
+    // 夹心饼干-可口:最大生命值 +4
+    public static final DeferredItem<Item> SANDWICH_MEDIUM = registerItem("sandwich_medium",
+            () -> new SandwichChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.RARE), SandwichChipItem.HEALTH_MEDIUM));
+
+    // 夹心饼干-美味:最大生命值 +8
+    public static final DeferredItem<Item> SANDWICH_HIGH = registerItem("sandwich_high",
+            () -> new SandwichChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.EPIC), SandwichChipItem.HEALTH_HIGH));
+
+    // 魔法箭袋:使用过效果牌并对带标记目标造成法伤 → 施加标记并返还第一张使用的效果牌(每分钟一次)
+    public static final DeferredItem<Item> MAGIC_QUIVER = registerItem("magic_quiver",
+            () -> new MagicQuiverChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.RARE)));
+
+    // 缓冲盾牌:受到攻击时增加 2 点治愈与 3 星币(每分钟一次)
+    public static final DeferredItem<Item> BUFFER_SHIELD = registerItem("buffer_shield",
+            () -> new BufferShieldChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.RARE)));
+
+    // 星币锤:装备时星光 +5;持有星币超过 20 枚时,每次进入骰神赐福消耗 3 星币并按持有总数 30% 提升攻击力
+    public static final DeferredItem<Item> STAR_COIN_HAMMER = registerItem("star_coin_hammer",
+            () -> new StarCoinHammerChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.EPIC)));
+
+    public static final DeferredItem<Item> PADMAN_SIGN = registerItem("padman_sign",
+            () -> new PadmanSignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.RARE)));
+
+    public static final DeferredItem<Item> FANNY_SIGN = registerItem("fanny_sign",
+            () -> new FannySignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.RARE)));
+
+    public static final DeferredItem<Item> RIN_SIGN = registerItem("rin_sign",
+            () -> new RinSignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.RARE)));
+
+    public static final DeferredItem<Item> LIVING_BOOK_PAGE = registerItem("living_book_page",
+            () -> new LivingBookPageItem(new Item.Properties()
+                    .stacksTo(64)
+                    .rarity(Rarity.UNCOMMON)));
+
+    // 占星师立牌(命名:haiqing)
+    public static final DeferredItem<Item> HAIQING_SIGN = registerItem("haiqing_sign",
+            () -> new HaiqingSignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.RARE)));
+
+    // 命运的指引(专属功能效果牌,击杀带虚弱印记的目标获取)
+    public static final DeferredItem<Item> FATE_GUIDANCE_CARD = registerItem("fate_guidance_card",
+            () -> new FateGuidanceCardItem(new Item.Properties()
+                    .stacksTo(64)
+                    .rarity(Rarity.EPIC)));
+
+    // 吸血鬼立牌(命名:papara)
+    public static final DeferredItem<Item> PAPARA_SIGN = registerItem("papara_sign",
+            () -> new PaparaSignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.RARE)));
+
+    // 秘密侦探立牌(命名:bonnie)
+    public static final DeferredItem<Item> BONNIE_SIGN = registerItem("bonnie_sign",
+            () -> new BonnieSignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.RARE)));
+
+    // === 新效果牌(治疗/互动) ===
+    // 巧克力蛋糕:使用后恢复 4 点生命值
+    public static final DeferredItem<Item> CHOCOLATE_CAKE = registerItem("chocolate_cake",
+            () -> new ChocolateCakeCardItem(new Item.Properties()
+                    .stacksTo(64)
+                    .rarity(Rarity.UNCOMMON)));
+
+    // 汉堡:使用后恢复 8 点生命值
+    public static final DeferredItem<Item> HAMBURGER = registerItem("hamburger",
+            () -> new HamburgerCardItem(new Item.Properties()
+                    .stacksTo(64)
+                    .rarity(Rarity.RARE)));
+
+    // 奢华大餐:治疗目标及周围 6 格内所有玩家 6 点生命值(可对自己/他人使用)
+    public static final DeferredItem<Item> LUXURY_FEAST = registerItem("luxury_feast",
+            () -> new LuxuryFeastCardItem(new Item.Properties()
+                    .stacksTo(64)
+                    .rarity(Rarity.RARE)));
+
+    // 你有我有:仅能对其他玩家使用,自身与目标玩家各获得一张随机卡牌
+    public static final DeferredItem<Item> YOU_HAVE_I_HAVE = registerItem("you_have_i_have",
+            () -> new YouHaveIHaveCardItem(new Item.Properties()
+                    .stacksTo(64)
+                    .rarity(Rarity.EPIC)));
+
+    // 加急加快:使目标获得 迅捷 II 1:00(可对自己/他人使用)
+    public static final DeferredItem<Item> EXPRESS_DELIVERY = registerItem("express_delivery",
+            () -> new ExpressDeliveryCardItem(new Item.Properties()
+                    .stacksTo(64)
+                    .rarity(Rarity.RARE)));
+
+    // 大当家立牌(命名:fen):养精蓄锐计数器 + 战斗爽主动
+    public static final DeferredItem<Item> FEN_SIGN = registerItem("fen_sign",
+            () -> new FenSignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.RARE)));
+
+    public static <T extends Item> DeferredItem<T> registerItem(String name, Supplier<T> itemSupplier) {
+        return ITEMS.register(name, itemSupplier);
+    }
+
+    // 判断物品栈是否为任一筹码物品
+    public static boolean isChipItem(ItemStack stack) {
+        return stack.is(FLASHLIGHT_CHIP.get()) || stack.is(CUTTER_CHIP.get())
+                || stack.is(CUTTER_BLADE_CHIP.get())
+                || stack.is(SCOPE_CHIP.get()) || stack.is(EAGLE_SCOPE_CHIP.get())
+                || stack.is(MEDKIT_EMERGENCY_CHIP.get()) || stack.is(MEDKIT_COMPLETE_CHIP.get())
+                || stack.is(TARGET_CHIP.get()) || stack.is(MARKER_SPRAYER_CHIP.get())
+                || stack.is(MAGIC_TOME_CHIP.get()) || stack.is(BIG_BACKPACK_CHIP.get())
+                || stack.is(NINJA_STAR_CHIP.get()) || stack.is(HAND_FAN_BIG_CHIP.get())
+                || stack.is(EIGHT_SIDED_DICE.get())
+                || stack.is(ATM.get()) || stack.is(BANK_CARD_LOW.get())
+                || stack.is(BANK_CARD_HIGH.get()) || stack.is(BANK_CARD_UNLIMITED.get())
+                || stack.is(BOXING_GLOVES_LOW.get()) || stack.is(BOXING_GLOVES_MEDIUM.get())
+                || stack.is(BOXING_GLOVES_HIGH.get())
+                || stack.is(SPEED_SKATES_LOW.get()) || stack.is(SPEED_SKATES_MEDIUM.get())
+                || stack.is(SPEED_SKATES_HIGH.get())
+                || stack.is(MOTO_HELMET_LOW.get()) || stack.is(MOTO_HELMET_MEDIUM.get())
+                || stack.is(MOTO_HELMET_HIGH.get())
+                || stack.is(SANDWICH_LOW.get()) || stack.is(SANDWICH_MEDIUM.get())
+                || stack.is(SANDWICH_HIGH.get())
+                || stack.is(MAGIC_QUIVER.get()) || stack.is(BUFFER_SHIELD.get())
+                || stack.is(STAR_COIN_HAMMER.get());
+    }
+}

@@ -1,0 +1,21 @@
+{
+  "type": "astral_dice:dice_upgrade",
+  "category": "equipment",
+  "key": {
+    "D": {
+      "item": "astral_dice:golden_dice"
+    },
+    "G": {
+      "item": "minecraft:diamond"
+    }
+  },
+  "pattern": [
+    "GGG",
+    "GDG",
+    "GGG"
+  ],
+  "result": {
+    "count": 1,
+    "id": "astral_dice:diamond_dice"
+  }
+}

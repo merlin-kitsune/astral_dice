@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "A": {
+      "item": "minecraft:arrow"
+    },
+    "E": {
+      "item": "astral_dice:blank_chip"
+    },
+    "F": {
+      "item": "minecraft:feather"
+    },
+    "S": {
+      "item": "astral_dice:star_coin"
+    }
+  },
+  "pattern": [
+    "FAF",
+    "SES",
+    "AFA"
+  ],
+  "result": {
+    "count": 1,
+    "id": "astral_dice:magic_quiver"
+  }
+}

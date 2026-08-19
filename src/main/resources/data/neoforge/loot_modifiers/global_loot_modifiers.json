@@ -1,0 +1,23 @@
+{
+  "replace": false,
+  "entries": [
+    "astral_dice:star_plate_zombie",
+    "astral_dice:star_plate_skeleton",
+    "astral_dice:star_plate_creeper",
+    "astral_dice:star_plate_spider",
+    "astral_dice:star_plate_enderman",
+    "astral_dice:star_plate_witch",
+    "astral_dice:star_plate_ravager",
+    "astral_dice:star_plate_evoker",
+    "astral_dice:star_plate_vindicator",
+    "astral_dice:star_plate_drowned",
+    "astral_dice:star_plate_wither",
+    "astral_dice:star_plate_ender_dragon",
+    "astral_dice:star_plate_simple_dungeon",
+    "astral_dice:star_plate_abandoned_mineshaft",
+    "astral_dice:star_plate_desert_pyramid",
+    "astral_dice:star_plate_jungle_temple",
+    "astral_dice:star_plate_village_temple",
+    "astral_dice:star_plate_ancient_city"
+  ]
+}

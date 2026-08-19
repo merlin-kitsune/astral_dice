@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "E": {
+      "item": "astral_dice:star_coin"
+    },
+    "G": {
+      "item": "minecraft:gold_ingot"
+    },
+    "M": {
+      "item": "minecraft:emerald"
+    }
+  },
+  "pattern": [
+    "GMG",
+    "MEM",
+    "GMG"
+  ],
+  "result": {
+    "count": 1,
+    "id": "astral_dice:you_have_i_have"
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": {
+      "item": "astral_dice:blank_chip"
+    },
+    "D": {
+      "item": "minecraft:oxeye_daisy"
+    },
+    "G": {
+      "item": "minecraft:golden_apple"
+    },
+    "I": {
+      "item": "minecraft:iron_ingot"
+    }
+  },
+  "pattern": [
+    "III",
+    "IBI",
+    "D G"
+  ],
+  "result": {
+    "count": 1,
+    "id": "astral_dice:medkit_emergency_chip"
+  }
+}

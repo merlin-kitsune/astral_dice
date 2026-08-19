@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "G": {
+      "item": "minecraft:gold_ingot"
+    },
+    "P": {
+      "item": "astral_dice:golden_star_plate"
+    },
+    "S": {
+      "item": "astral_dice:scope_chip"
+    },
+    "T": {
+      "item": "minecraft:tinted_glass"
+    }
+  },
+  "pattern": [
+    "GPG",
+    "GTG",
+    "GSG"
+  ],
+  "result": {
+    "count": 1,
+    "id": "astral_dice:eagle_scope_chip"
+  }
+}

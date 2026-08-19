@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "minecraft:iron_ingot"
+    },
+    {
+      "item": "astral_dice:dice"
+    }
+  ],
+  "result": {
+    "count": 1,
+    "id": "astral_dice:defense_card_medium"
+  }
+}

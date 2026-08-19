@@ -1,0 +1,32 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_dice": {
+      "conditions": {
+        "items": [
+          {
+            "items": "astral_dice:dice"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "has_the_recipe": {
+      "conditions": {
+        "recipe": "astral_dice:attack_card_medium"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    }
+  },
+  "requirements": [
+    [
+      "has_the_recipe",
+      "has_dice"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "astral_dice:attack_card_medium"
+    ]
+  }
+}
