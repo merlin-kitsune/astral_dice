@@ -12,6 +12,20 @@
         "COMPUTER_CONTROL_MCP_WGC_PATTERNS": "minecraft",
         "COMPUTER_CONTROL_MCP_SCREENSHOT_DIR": "C:\\Users\\xmace\\AppData\\Local\\Temp\\opencode\\mcp-screenshots"
       }
+    },
+    "vllm-local": {
+      "type": "local",
+      "command": [
+        "wsl.exe",
+        "-e",
+        "/opt/vllm-venv/bin/python",
+        "/mnt/f/.vllm/mcp/vllm_mcp_server.py"
+      ],
+      "enabled": true,
+      "environment": {
+        "VLLM_URL": "http://localhost:8000",
+        "VLLM_MODEL": "qwen3.8-27b"
+      }
     }
   }
 }

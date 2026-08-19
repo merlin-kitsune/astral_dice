@@ -223,6 +223,36 @@ public class ModAttachments {
                     .serialize(Codec.INT)
                     .build());
 
+    // 调查员立牌(rin):最近一次获得活体书页的事件签名(触发者 UUID + "|" + 事件 ID)。
+    // 用于同一事件在极短窗口(2 tick)内被重复分发时去重(如多立牌槽重复调用 onKill),
+    // 保证"同一玩家发出的同一 ID 事件"只给一次牌。
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<String>> RIN_GIFT_SIGNATURE =
+            ATTACHMENTS.register("rin_gift_signature", () -> AttachmentType.builder(() -> "")
+                    .serialize(Codec.STRING)
+                    .build());
+
+    public static String getRinGiftSignature(net.minecraft.world.entity.player.Player player) {
+        return player.getData(RIN_GIFT_SIGNATURE.get());
+    }
+
+    public static void setRinGiftSignature(net.minecraft.world.entity.player.Player player, String value) {
+        player.setData(RIN_GIFT_SIGNATURE.get(), value);
+    }
+
+    // 调查员立牌(rin):记录 RIN_GIFT_SIGNATURE 对应的游戏时刻(去重窗口判定用)
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> RIN_GIFT_TICK =
+            ATTACHMENTS.register("rin_gift_tick", () -> AttachmentType.builder(() -> 0L)
+                    .serialize(Codec.LONG)
+                    .build());
+
+    public static long getRinGiftTick(net.minecraft.world.entity.player.Player player) {
+        return player.getData(RIN_GIFT_TICK.get());
+    }
+
+    public static void setRinGiftTick(net.minecraft.world.entity.player.Player player, long value) {
+        player.setData(RIN_GIFT_TICK.get(), value);
+    }
+
     // 虚弱印记来源:施加该印记的玩家 UUID(仅该玩家获得击杀后奖励,印记结束/目标死亡后清除)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Optional<UUID>>> WEAK_MARK_SOURCE =
             ATTACHMENTS.register("weak_mark_source", () -> AttachmentType.<Optional<UUID>>builder(Optional::empty)

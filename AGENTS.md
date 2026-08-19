@@ -62,6 +62,7 @@ When extending this workspace:
 - 立牌主动技能冷却为**玩家级**（`sign_active_cooldown_end`），等待类技能状态类型：占星师=1、秘密侦探=2
 - **立牌主动技能不再掷骰**：经商/扫地机/护法/大侦探等主动效果均为"随机获得以下任一效果"（代码内 ThreadLocalRandom 直接随机选，不再有 1d10 掷骰/骰点显示）。`roll_result`/`roll_cooldown` 数据组件已删除。
 - **立牌联动规则**：大侦探(fanny)与秘密侦探(bonnie)之间**无主动技能联动**（fanny 不再因附近有 bonnie 而能抽取"调查阶段"事件）；但 fanny/bonnie 触发事件时均会触发调查员(rin)立牌被动（`AstralEventSystem.applyRinSignPassive`，佩戴 rin 的玩家获活体书页）。"调查阶段"事件仅由 bonnie 击杀"隐匿调查"目标触发。
+- **调查员给牌去重**：`applyRinSignPassive(triggerer, eventId)` 按"触发者 UUID + 事件 ID"签名去重——同一事件在 2 tick 窗口内被重复分发（如多立牌槽导致 onKill 多次调用）时每个 rin 玩家只获得一张活体书页。触发入口必须携带独立事件 ID：调查阶段=`"investigation"`、大侦探主动=`"fanny_active"`、通用事件=`type.id().getPath()`；去重附件 `rin_gift_signature`/`rin_gift_tick`。
 
 ### 新增立牌时的要求
 
@@ -174,10 +175,14 @@ When extending this workspace:
 - 列表:普通项无符号、无缩进;子项带 `- ` 前缀(以 lang 中两个空格开头的行识别);**无前导空格缩进**。
 - 备注区:浅紫(§d)、无标题、无列表符号。
 - 颜色约定:标题=金(§6)、时间=蓝(§9)、数值=黄(§e)、效果=青(§b)、负面/冷却中=红(§c)、普通=灰(§7)、备注=浅紫(§d)。
-- 时间格式:持续时间统一 `§9MM:SS§r`(蓝),不加外括号;速率/数值保持原样。
-- 战斗牌 tooltip:费用置于**最上方**、黄色,用 `⨀` 符号按费用重复(1费=⨀、2费=⨀⨀),费用由 `CardRegistry.cost(type, player)` 动态提供(含护法名刀折扣);下方为描述行(`点数 | 剩余次数: X`)。
+- 时间格式:持续时间统一 `§9MM:SS§7`(蓝,尾部 §7 恢复灰),不加外括号;速率/数值保持原样。
+- **彩色代码后统一用 `§7` 恢复普通灰,禁止使用 `§r`**:`§r`(RESET)会把后续文本重置为纯白 #FFFFFF(亮白),与 tooltip 普通灰不一致;`§7` 只恢复灰色,后续若再有彩色代码会被其覆盖,安全无害。
+- 战斗牌 tooltip:费用置于**最上方**、黄色,格式 `Cost: ⨀⨀`——`Cost: ` 前缀 + 用 `⨀` 符号按费用重复(1费=⨀、2费=⨀⨀),费用由 `CardRegistry.cost(type, player)` 动态提供(含护法名刀折扣);下方为描述行(`点数 | 剩余次数: X`)。
 
 ## 骰子槽位与配置规范（Dice Slots & Config）— 必须遵守
+
+- **稀有度标准(仅代码层表示,映射 MC 标准 Rarity)**:白=普通 → `Rarity.COMMON`、蓝=稀有 → `Rarity.RARE`、紫=史诗 → `Rarity.EPIC`、金=传奇 → `Rarity.UNCOMMON`(MC 无金色枚举,以黄色 UNCOMMON 表示传奇)。MC 1.21.1 的 Rarity 为枚举,无法自定义新实例。新增物品的 `.rarity(...)` 按此标准选择,并尽量与图标边框颜色一致;骰子按合成配方升级链配色:基础=白(普通)、黄金=蓝(稀有)、钻石=紫(史诗)、合金=金(传奇,**不参与赏金板**,已从 astral 池移除)。
+- **立牌品质由合成配方决定**(骰子 + 星盘):含 **黄金骰子+星盘 → 史诗(EPIC)**(大侦探 fanny、吸血鬼 papara);含 **钻石骰子+星盘 / 下界合金骰子 → 传奇(UNCOMMON)**(调查员 rin、护法 misaki、秘密侦探 bonnie、大当家 fen);**其余(无星盘或仅基础/黄金骰子)→ 稀有(RARE)**(史莱姆/经商/扫地机/看板/忍者/占星师/上班族)。
 
 - **立牌栏固定 1**(`stand.json size=1`),所有骰子一致,不随骰子/星级变化——`DiceTier` 无立牌加成字段,`DiceCurioItem` 不做立牌槽位动态调整。
 - **立牌无独立升星**:铁砧立牌升星与 `SIGN_STAR_LEVEL` 数据组件已移除;护法立牌(misaki)爆发/名刀的星级加成一律取**玩家装备骰子的星级**(`WeaponEnhancement.starLevel`,经 `DiceCombatContext.misakiStar` 传递),未装备骰子或 0 星骰子则无星级加成。
@@ -186,6 +191,18 @@ When extending this workspace:
 - 骰神赐福持续时长由配置 `dice_blessing_duration_seconds` 控制(默认 60),代码经 `GameplayConstants.DICE_BLESSING_DURATION_TICKS` 引用,禁止硬编码。
 - 新增骰子:在 `ModItems` 静态块注册 `DiceTier` 即可(item 参数必须传 `Supplier` 延迟解析,禁止静态初始化调用 `.get()`)。
 - 新增筹码:在 `ModItems` 注册 + `ModCreativeTabs` + `datagen/ModItemModelProvider` + `datagen/ModRecipeProvider` + `curios/tags/item/chip.json` + lang(名称/tooltip),并加入 `ModItems.isChipItem`;属性类筹码(速度轮滑/摩托头盔/夹心饼干)覆写 `ICurioItem.getAttributeModifiers(SlotContext, ResourceLocation, ItemStack)`,修饰器 id 用 `BaseChipItem.attributeModifierId` 按物品派生(同属性不同筹码不得共用 id,否则后装覆盖先装)。
+
+## Bountiful 赏金联动规范(可选前置)— 必须遵守
+
+- 联动为纯数据驱动(无 Java 依赖),文件位于 `src/main/resources/data/bountiful/`:
+  - `bounty_pools/bountiful/astral_objs.json`:需求材料池(骰子/星币/星盘/黄金星盘);
+  - `bounty_pools/bountiful/astral_rews.json`:可兑换奖励池(骰子/星币/星盘 + 卡牌 + 筹码 + 立牌);
+  - `bounty_decrees/bountiful/astral.json`:悬赏令(objectives=`astral_objs`, rewards=`astral_rews`)。
+- **稀有度双层映射**:本 mod 品质(白=普通/蓝=稀有/紫=史诗/金=传奇)在 Bountiful 数据层写 `"rarity"`:`COMMON`/`RARE`/`EPIC`/**`LEGENDARY`(金=传奇,金色,权重最低 6,声望门槛最高 30)**——注意与 MC 物品层不同,金品在赏金数据中必须是 `LEGENDARY` 而非 `UNCOMMON`。
+- **传奇品质(金)的筹码与立牌禁止进入 `astral_rews`**(奖励池);新增金品筹码/立牌时必须同步从 `astral_rews` 排除。
+- 品质越高:该条目的 `unitWorth`(价值)越高(条件更苛刻)、Bountiful rarity 权重越低(出现概率更低)。
+- 新增物品(骰子/星币/星盘/卡牌/筹码/立牌)时,除常规注册外,需同步维护 `astral_objs`/`astral_rews` 对应条目(若属于可兑换类)。
+- 整合包自定义方式见 `docs/bountiful-integration.md`(config pack 增补/替换/排除、概率/声望调整、故障排查)。
 
 ## 新筹码一览（Chips）
 

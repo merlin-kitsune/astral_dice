@@ -68,14 +68,14 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .unlockedBy("has_star_coin", has(ModItems.STAR_COIN.get()))
                 .save(output);
 
-        // 蓄力:1 红石块 + 4 星币(有序,十字排布,红石块置中)
+        // 蓄力:1 红石块 + 4 星盘(有序,十字排布,红石块置中)
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.ATTACK_CARD_CHARGE.get())
                 .pattern(" S ")
                 .pattern("SRS")
                 .pattern(" S ")
-                .define('S', ModItems.STAR_COIN.get())
+                .define('S', ModItems.STAR_PLATE.get())
                 .define('R', Items.REDSTONE_BLOCK)
-                .unlockedBy("has_star_coin", has(ModItems.STAR_COIN.get()))
+                .unlockedBy("has_star_plate", has(ModItems.STAR_PLATE.get()))
                 .save(output);
 
         // 岿然不动:1 金锭 + 2 星币

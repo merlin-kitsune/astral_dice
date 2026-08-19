@@ -34,7 +34,8 @@ public class FannySignItem extends BaseSignItem {
         int roll = ThreadLocalRandom.current().nextInt(1, 12);
         applyEvent(player, roll);
         // 保持与调查员立牌联动:触发事件后,佩戴调查员立牌的玩家获得一张"活体书页"
-        com.merlinkitsune.astral_dice.event.AstralEventSystem.applyRinSignPassive(player);
+        // (带独立事件 ID,避免与调查阶段事件在同 tick 触发时互相串扰去重)
+        com.merlinkitsune.astral_dice.event.AstralEventSystem.applyRinSignPassive(player, "fanny_active");
         return InteractionResultHolder.success(stack);
     }
 

@@ -31,7 +31,7 @@ public final class AstralEventSystem {
         type.trigger(context);
         notifyEventTriggered(player, type.id());
         applySignBuffs(player);
-        applyRinSignPassive(player);
+        applyRinSignPassive(player, type.id().getPath());
     }
 
     // 自定义 actionbar(5s+1s淡出):xxx玩家触发了:xxx事件
@@ -58,7 +58,7 @@ public final class AstralEventSystem {
     public static void triggerInvestigationEvent(Player triggerer) {
         if (triggerer.level().isClientSide()) return;
         applySignBuffs(triggerer);
-        applyRinSignPassive(triggerer);
+        applyRinSignPassive(triggerer, "investigation");
     }
 
     // 立牌增益挂钩:触发事件后,持有特定立牌的玩家获得特定增益。
@@ -74,8 +74,22 @@ public final class AstralEventSystem {
     // (大侦探触发事件影响到调查员 / 周围 32 格或团队内有人触发"调查阶段")后,
     // 佩戴调查员立牌的玩家获得一张"活体书页"。
     // 影响范围 32 格与团队判定为硬编码(不再走配置常量)。
+    // 兼容入口:未指定事件 ID 时按默认签名去重(供外部直接调用)。
     public static void applyRinSignPassive(Player triggerer) {
+        applyRinSignPassive(triggerer, "sign_effect");
+    }
+
+    /**
+     * 带事件 ID 的被动触发。
+     *
+     * <p>去重规则:同一玩家(触发者)发出的同一事件 ID,在 2 tick 窗口内被重复分发时
+     * (如多立牌槽导致 onKill 多次调用),每个佩戴调查员立牌的玩家只获得一次"活体书页",
+     * 避免"1 次事件导致重复给牌"。不同事件 ID / 不同触发者 / 超过窗口的真实重复不受影响。
+     */
+    public static void applyRinSignPassive(Player triggerer, String eventId) {
         if (!(triggerer.level() instanceof ServerLevel serverLevel)) return;
+        long now = serverLevel.getGameTime();
+        String signature = triggerer.getUUID() + "|" + eventId;
         for (ServerPlayer sp : serverLevel.players()) {
             if (!holdsSign(sp, ModItems.RIN_SIGN.get())) continue;
             // 范围 32 格(硬编码)
@@ -83,6 +97,13 @@ public final class AstralEventSystem {
             // 团队判定(硬编码:计入同队)
             boolean team = sp.getTeam() != null && sp.getTeam() == triggerer.getTeam();
             if (sp == triggerer || inRange || team) {
+                // 同一事件 2 tick 窗口内已给过 → 跳过(防多槽重复分发)
+                if (signature.equals(com.merlinkitsune.astral_dice.component.ModAttachments.getRinGiftSignature(sp))
+                        && now - com.merlinkitsune.astral_dice.component.ModAttachments.getRinGiftTick(sp) <= 2) {
+                    continue;
+                }
+                com.merlinkitsune.astral_dice.component.ModAttachments.setRinGiftSignature(sp, signature);
+                com.merlinkitsune.astral_dice.component.ModAttachments.setRinGiftTick(sp, now);
                 // 活体书页为专属牌,绑定获得者
                 ItemStack page = new ItemStack(ModItems.LIVING_BOOK_PAGE.get());
                 ExclusiveCardUtil.setOwner(page, sp);
