@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": {
+      "item": "minecraft:cocoa_beans"
+    },
+    "E": {
+      "item": "astral_dice:star_coin"
+    },
+    "S": {
+      "item": "minecraft:sugar"
+    }
+  },
+  "pattern": [
+    "CSC",
+    "SES",
+    "CSC"
+  ],
+  "result": {
+    "count": 1,
+    "id": "astral_dice:effect_card_chocolate_cake"
+  }
+}

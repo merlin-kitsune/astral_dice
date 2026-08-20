@@ -17,8 +17,9 @@ import net.minecraft.world.item.crafting.ShapedRecipe;
 import net.minecraft.world.item.crafting.ShapedRecipePattern;
 
 /**
- * 骰子升级有序合成配方:基础骰子被 8 金锭包围合成出黄金骰子,
- * 黄金骰子被 8 钻石包围合成出钻石骰子。
+ * 骰子升级有序合成配方:基础骰子/黄金骰子/钻石骰子按各自配方
+ * (见 data/astral_dice/recipe/{golden_dice,diamond_dice,netherite_dice}.json)
+ * 由骰子 + 材料(星币/星盘/黄金星盘/原版金属)合成出更高阶骰子。
  * 合成产物会完整继承输入骰子的 WeaponEnhancement(星级 + 已装配攻防牌配置 + cost)。
  */
 public class DiceUpgradeShapedRecipe extends ShapedRecipe {

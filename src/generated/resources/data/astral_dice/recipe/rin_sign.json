@@ -3,7 +3,7 @@
   "category": "misc",
   "key": {
     "B": {
-      "item": "minecraft:book"
+      "item": "minecraft:writable_book"
     },
     "C": {
       "item": "minecraft:clock"
@@ -15,7 +15,7 @@
       "item": "astral_dice:blank_sign"
     },
     "P": {
-      "item": "astral_dice:star_plate"
+      "item": "astral_dice:golden_star_plate"
     },
     "S": {
       "item": "astral_dice:star_coin"

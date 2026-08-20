@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": {
+      "item": "astral_dice:blank_chip"
+    },
+    "C": {
+      "item": "astral_dice:star_coin"
+    },
+    "E": {
+      "item": "minecraft:experience_bottle"
+    },
+    "Q": {
+      "item": "minecraft:writable_book"
+    }
+  },
+  "pattern": [
+    "QQQ",
+    "EBE",
+    "CCC"
+  ],
+  "result": {
+    "count": 1,
+    "id": "astral_dice:magic_tome_chip"
+  }
+}

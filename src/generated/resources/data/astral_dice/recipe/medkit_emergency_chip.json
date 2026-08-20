@@ -5,20 +5,17 @@
     "B": {
       "item": "astral_dice:blank_chip"
     },
-    "D": {
-      "item": "minecraft:oxeye_daisy"
+    "C": {
+      "item": "astral_dice:star_coin"
     },
-    "G": {
-      "item": "minecraft:golden_apple"
-    },
-    "I": {
-      "item": "minecraft:iron_ingot"
+    "S": {
+      "item": "minecraft:slime_ball"
     }
   },
   "pattern": [
-    "III",
-    "IBI",
-    "D G"
+    "SSS",
+    "SBS",
+    "CCC"
   ],
   "result": {
     "count": 1,

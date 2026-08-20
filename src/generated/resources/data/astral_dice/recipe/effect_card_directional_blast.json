@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "G": {
+      "item": "astral_dice:golden_star_plate"
+    },
+    "Q": {
+      "item": "minecraft:spyglass"
+    },
+    "S": {
+      "item": "astral_dice:star_coin"
+    },
+    "T": {
+      "item": "minecraft:tnt"
+    }
+  },
+  "pattern": [
+    " Q ",
+    "TST",
+    " G "
+  ],
+  "result": {
+    "count": 1,
+    "id": "astral_dice:effect_card_directional_blast"
+  }
+}

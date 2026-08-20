@@ -17,6 +17,21 @@ When extending this workspace:
 - Reuse the existing NeoForge MDK-style structure instead of scaffolding a different mod layout.
 - When new source/resources are added, keep the mod metadata generation task and resource declaration intact.
 
+
+## 近期关键改动（Recipe / Loot / Tag / ID）— 已合并
+
+- **物品 ID 统一**：效果牌统一 `effect_card_*`（如 `effect_card_monster_laser`）；筹码统一 `*_chip`（如 `ninja_star_chip`）；活体书页 = `effect_card_living_page`。
+- **物品 Tag**（`data/astral_dice/tags/item/`）：`dices`、`combat_cards`、`effect_cards`、`is_exclusive`、`signs`、`chips`、`materials`。
+- **骰子配方**：基础骰子=红石+石英块；金/钻/合金骰子均用 `astral_dice:dice_upgrade` 有序升级；下界合金骰子**不再使用锻造台**。
+- **卡牌配方**：攻击/防御/效果牌多数为无序；巧克力蛋糕/汉堡/奢华大餐/你有我有/加急加快等效果牌使用有序对称配方。
+- **战利品**：星盘可从所有原版宝箱开出；黄金星盘可从 `minecraft:chests/trial_chambers/reward_ominous`（不祥宝库）开出。
+- **创造栏顺序**：材料最前；效果牌顺序为 狂暴→王之力→岿然不动→治疗/互动牌→命运指引→伤害牌；活体书页在定向爆破后。
+- **立牌配方**：全部有序对称，空白立牌居中，骰子固定中下且仅 1 个；调查员立牌使用书与笔。
+- **筹码配方**：基础筹码=空白筹码居中、星币/星盘最下一排；品质升级通用模板：
+  - 蓝→紫：`LGL/GTG/PPP`（L=青金石、G=金锭、T=原筹码、P=星盘）
+  - 紫→金：`RDR/DTD/GGG`（R=红石、D=钻石、T=原筹码、G=黄金星盘）
+- **效果牌配方关键变更**：王之力=2钻石剑+2星币；岿然不动=1金锭+1盾牌+2星币；轨道炮=纸+望远镜+黄金星盘；定向爆破=` Q /TST/ G `（Q=望远镜、T=TNT、S=星币、G=黄金星盘）。
+
 ## 包结构规范（Package Layout）— 必须遵守
 
 `item` 包按物品类别拆分子包，新增物品类必须放入对应子包；**公共/共享类保留 `item` 根包**：
@@ -72,20 +87,20 @@ When extending this workspace:
 4. 纹理图标文件名与效果注册 id 一致（`textures/mob_effect/xxx_*.png`）。
 5. lang 中物品/效果/tooltip key 使用该 id。
 6. 在 `ModItems` 注册、`ModCreativeTabs` 加入创造栏、`datagen/ModItemModelProvider` 加入模型、`datagen/ModRecipeProvider` 加入配方、`curios/tags/item/stand.json` 加入标签。
-   - **配方统一使用 shape(`ShapedRecipeBuilder`)**:空白立牌/空白筹码(升级配方为上一级物品)始终在 3×3 **中央**,mod 物品(星币/星盘/骰子等)在**中轴**(中间行/列),原版材料在四角;空槽用空格,禁止用 `_`。
+   - **配方统一使用 shape(`ShapedRecipeBuilder`)**:空白立牌/空白筹码(升级配方为上一级物品)始终在 3×3 **中央**;立牌骰子固定**中下**且只能 1 个;筹码基础配方中星币/星盘固定**最下一排**;原版材料对称填充;空槽用空格,禁止用 `_`。
 7. **禁止**将中文名直译为英文标识符（如把"护法"写成 guardian、"扫地机"写成 sweeper）——一律使用约定 id。
 8. 若立牌有专属卡牌/事件等联动，专属卡注册到 `RandomCardHandler.registerExclusiveCard`，事件类型注册到 `AstralEvents`。
 
 ### 注意：非立牌物品不受此规范约束
 
-筹码（chip，如忍术飞镖 `ninja_star`、魔法秘典 `magic_tome`）、卡牌、骰子等物品的英文名按其自身命名约定，与立牌 id 无关（例如 `NinjaStarChipItem` 是筹码而非立牌，保留 ninja 词根是正确行为）。
+筹码（chip，如忍术飞镖 `ninja_star_chip`、魔法秘典 `magic_tome_chip`）、卡牌、骰子等物品的英文名按其自身命名约定，与立牌 id 无关（例如 `NinjaStarChipItem` 是筹码而非立牌，保留 ninja 词根是正确行为）。
 
 ## 效果牌命名与结构规范（Effect Card Convention）— 必须遵守
 
 效果牌**不再区分"功能效果牌/伤害效果牌"**,全部统一继承 `BaseEffectCardItem`(item.card 包),共用同一套使用流程(专属校验→出牌锁→施加效果→出牌登记→复制计数→消耗)。
 
 ### 结构要求
-1. 类名 `XxxCardItem extends BaseEffectCardItem`,物品注册名 `xxx`(如 `monster_laser`),在 `ModItems` 注册。
+1. 类名 `XxxCardItem extends BaseEffectCardItem`,物品注册名统一 `effect_card_xxx`(如 `effect_card_monster_laser`),在 `ModItems` 注册。
 2. 效果实现二选一:
    - **简单状态牌**:覆写 `getEffect()` 返回效果引用(基类自动施加 `getEffectDuration()` 默认 60 秒);
    - **复杂逻辑牌**:覆写 `applyEffect(Level, Player, LivingEntity, ItemStack)`(施加实际效果)。
@@ -208,16 +223,16 @@ When extending this workspace:
 
 | 中文名 | 注册 id | 效果 |
 |---|---|---|
-| ATM机 | `atm` | 装备时星光+1;使用星光兑换星币时兑换量(星币产出)+40%(`ResourceConversion.starlightToStarCoins`) |
-| 银行卡-余额少/余额多 | `bank_card_low`/`bank_card_high` | 装备期间星光基础值 +4/+7(下限,`StarLightManager.getBasePoints` 实时计算,卸下回落;装备时 `set` 自动补回) |
-| 银行卡-用不完 | `bank_card_unlimited` | 装备时星光+3;每次骰神赐福结束后,自身及团队(MC 同队)成员获得 3 星币(`BankCardUnlimitedChipItem.onBlessingEnd`,死亡清场不发放) |
-| 拳击手套-初/中/高级 | `boxing_gloves_low/medium/high` | 骰神赐福攻击力 +1/+3/+5(`DiceCombatModifiers` 攻击修饰器) |
-| 速度轮滑-初/中/高级 | `speed_skates_low/medium/high` | 移动速度 +5%/+10%/+20%(属性修饰器) |
-| 摩托头盔-一般/中级/高级 | `moto_helmet_low/medium/high` | 护甲值 +2/+4/+8;盔甲韧性 +2 仅高级(属性修饰器) |
-| 夹心饼干-一般/可口/美味 | `sandwich_low/medium/high` | 最大生命值 +2/+4/+8(属性修饰器) |
-| 魔法箭袋 | `magic_quiver` | 使用效果牌后对带标记目标造成法伤 → 施加一层标记并返还第一张使用的效果牌(每分钟一次;追踪附件 `magic_quiver_tracking`/`magic_quiver_first_card`,冷却 `magic_quiver_cooldown_end`) |
-| 缓冲盾牌 | `buffer_shield` | 受到攻击时 +2 治愈 +3 星币(每分钟一次,冷却附件 `buffer_shield_cooldown_end`) |
-| 星币锤 | `star_coin_hammer` | 装备时星光+5;持有星币超过 20 枚时,每次进入骰神赐福消耗 3 星币并按持有总数 30% 提升攻击力(星币袋按 9 算;加成附件 `star_coin_hammer_bonus`,赐福结束清除) |
+| ATM机 | `atm_chip` | 装备时星光+1;使用星光兑换星币时兑换量(星币产出)+40%(`ResourceConversion.starlightToStarCoins`) |
+| 银行卡-余额少/余额多 | `bank_card_low_chip`/`bank_card_high_chip` | 装备期间星光基础值 +4/+7(下限,`StarLightManager.getBasePoints` 实时计算,卸下回落;装备时 `set` 自动补回) |
+| 银行卡-用不完 | `bank_card_unlimited_chip` | 装备时星光+3;每次骰神赐福结束后,自身及团队(MC 同队)成员获得 3 星币(`BankCardUnlimitedChipItem.onBlessingEnd`,死亡清场不发放) |
+| 拳击手套-初/中/高级 | `boxing_gloves_low_chip/medium_chip/high_chip` | 骰神赐福攻击力 +1/+3/+5(`DiceCombatModifiers` 攻击修饰器) |
+| 速度轮滑-初/中/高级 | `speed_skates_low_chip/medium_chip/high_chip` | 移动速度 +5%/+10%/+20%(属性修饰器) |
+| 摩托头盔-一般/中级/高级 | `moto_helmet_low_chip/medium_chip/high_chip` | 护甲值 +2/+4/+8;盔甲韧性 +2 仅高级(属性修饰器) |
+| 夹心饼干-一般/可口/美味 | `sandwich_low_chip/medium_chip/high_chip` | 最大生命值 +2/+4/+8(属性修饰器) |
+| 魔法箭袋 | `magic_quiver_chip` | 使用效果牌后对带标记目标造成法伤 → 施加一层标记并返还第一张使用的效果牌(每分钟一次;追踪附件 `magic_quiver_tracking`/`magic_quiver_first_card`,冷却 `magic_quiver_cooldown_end`) |
+| 缓冲盾牌 | `buffer_shield_chip` | 受到攻击时 +2 治愈 +3 星币(每分钟一次,冷却附件 `buffer_shield_cooldown_end`) |
+| 星币锤 | `star_coin_hammer_chip` | 装备时星光+5;持有星币超过 20 枚时,每次进入骰神赐福消耗 3 星币并按持有总数 30% 提升攻击力(星币袋按 9 算;加成附件 `star_coin_hammer_bonus`,赐福结束清除) |
 
 注意事项:
 - 属性类筹码(速度轮滑/摩托头盔/夹心饼干)通过 Curios 属性修饰器即时生效,不进入骰战修饰器注册表。
@@ -228,11 +243,11 @@ When extending this workspace:
 
 - **全力攻击不在随机卡牌池**(`RandomCardHandler.attackCards`/`ALL` 已移除):仅能通过骰子内"蓄力"在骰神赐福结束时返还获得(`ModEventHandlers.onDiceBlessingExpired`)。
 - **新效果牌**(均继承 `BaseEffectCardItem`):
-  - 巧克力蛋糕 `chocolate_cake`:恢复 4 点生命值(治疗类);
-  - 汉堡 `hamburger`:恢复 8 点生命值(治疗类);
-  - 奢华大餐 `luxury_feast`:可对自身/他人(下蹲右键),治疗目标及周围 6 格内所有玩家 6 点(治疗类);
-  - 你有我有 `you_have_i_have`:仅能对其他玩家右键使用(覆写 `use()` 禁止对己、`interactLivingEntity` 仅响应玩家),自身与目标各获得一张随机卡牌(`RandomCardHandler.giveCardTo(ALL)`);
-  - 加急加快 `express_delivery`:可对自身/他人(下蹲右键),目标获得 迅捷 II 1:00。
+  - 巧克力蛋糕 `effect_card_chocolate_cake`:恢复 4 点生命值(治疗类);
+  - 汉堡 `effect_card_hamburger`:恢复 8 点生命值(治疗类);
+  - 奢华大餐 `effect_card_luxury_feast`:可对自身/他人(下蹲右键),治疗目标及周围 6 格内所有玩家 6 点(治疗类);
+  - 你有我有 `effect_card_you_have_i_have`:仅能对其他玩家右键使用(覆写 `use()` 禁止对己、`interactLivingEntity` 仅响应玩家),自身与目标各获得一张随机卡牌(`RandomCardHandler.giveCardTo(ALL)`);
+  - 加急加快 `effect_card_express_delivery`:可对自身/他人(下蹲右键),目标获得 迅捷 II 1:00。
   - **治疗类效果牌**通过 `BaseEffectCardItem.isHealingCard()` 标识(默认 false),使用后触发大当家被动 `FenSignItem.onHealingCardUsed`;治疗牌不参与复制计数(countsForCopy=false)。
 - **大当家立牌**(`fen_sign`/`FenSignItem`):
   - 计数器**养精蓄锐**(玩家级附件 `fen_recharge`,上限 5):1 分钟未触发赐福 +1(附件 `fen_last_blessing_tick`,`FenSignItem.tick` 驱动);触发赐福 -1(`onBlessingTriggered`);使用治疗类效果牌 +1。
@@ -247,8 +262,8 @@ When extending this workspace:
   闪避代码**保留供未来使用**——对骰与闪避失败结算仍在 `targetDiceResult.isEmpty()` 分支内,改回 `true` 即可恢复。
   - **闪避失败伤害 = 基础伤害值 + 攻击方骰点 + 卡牌加成**;基础伤害值 = 属性攻击 + 立牌/筹码/效果攻击修饰器;
     攻击方骰点/卡牌加成均取本次实际掷出的值(非最大值);全力攻击倍率在最终伤害处适用。
-- **怪物(含无护甲)**:不闪避,始终防御——每次受击掷 1d6 防御骰计入防御力,最终伤害 = 攻击力 - 防御力(按双方骰点计算)。
-- 其余目标(佩戴骰子的玩家)维持原防御结算:防御 = 2 + 护甲 + 1.8×韧性 + 防御骰(赐福中) + 防御卡/修饰器。
+- **怪物(含无护甲)**:不闪避,始终防御——每次受击掷 1d6 防御骰计入防御力,最终伤害 = 攻击力 - 防御力(按双方骰点计算)。怪物防御 = 2 + 护甲÷4 + 1.4×韧性 + 防御骰 + 防御卡/修饰器。
+- 其余目标(佩戴骰子的玩家)维持防御结算:防御 = 2 + 护甲÷2 + 1.4×韧性 + 防御骰(赐福中) + 防御卡/修饰器。
 
 ## 编译产物上传规则（Build Deploy Rule）— 必须遵守
 

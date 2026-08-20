@@ -3,7 +3,7 @@
   "category": "misc",
   "key": {
     "C": {
-      "item": "minecraft:clock"
+      "item": "minecraft:spyglass"
     },
     "D": {
       "item": "astral_dice:golden_dice"
@@ -15,7 +15,7 @@
       "item": "minecraft:gold_ingot"
     },
     "L": {
-      "item": "minecraft:lapis_lazuli"
+      "item": "minecraft:lapis_block"
     }
   },
   "pattern": [

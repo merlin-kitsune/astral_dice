@@ -6,7 +6,7 @@
       "item": "minecraft:golden_apple"
     },
     "C": {
-      "item": "minecraft:compass"
+      "item": "minecraft:beacon"
     },
     "D": {
       "item": "astral_dice:netherite_dice"
@@ -15,7 +15,7 @@
       "item": "astral_dice:blank_sign"
     },
     "P": {
-      "item": "astral_dice:star_plate"
+      "item": "astral_dice:golden_star_plate"
     },
     "T": {
       "item": "minecraft:spyglass"

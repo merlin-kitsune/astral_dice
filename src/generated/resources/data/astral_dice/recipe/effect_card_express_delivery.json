@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "E": {
+      "item": "astral_dice:star_coin"
+    },
+    "R": {
+      "item": "minecraft:quartz"
+    },
+    "U": {
+      "item": "minecraft:glowstone_dust"
+    }
+  },
+  "pattern": [
+    "URU",
+    "RER",
+    "URU"
+  ],
+  "result": {
+    "count": 1,
+    "id": "astral_dice:effect_card_express_delivery"
+  }
+}

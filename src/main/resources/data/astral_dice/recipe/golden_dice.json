@@ -5,14 +5,17 @@
     "D": {
       "item": "astral_dice:dice"
     },
+    "S": {
+      "item": "astral_dice:star_coin"
+    },
     "G": {
       "item": "minecraft:gold_ingot"
     }
   },
   "pattern": [
-    "GGG",
-    "GDG",
-    "GGG"
+    "G S G",
+    "S D S",
+    "G S G"
   ],
   "result": {
     "count": 1,

@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "A": {
+      "item": "minecraft:bamboo"
+    },
+    "E": {
+      "item": "astral_dice:blank_chip"
+    },
+    "F": {
+      "item": "minecraft:feather"
+    },
+    "P": {
+      "item": "astral_dice:star_plate"
+    }
+  },
+  "pattern": [
+    "FFF",
+    "AEA",
+    "PPP"
+  ],
+  "result": {
+    "count": 1,
+    "id": "astral_dice:hand_fan_big_chip"
+  }
+}

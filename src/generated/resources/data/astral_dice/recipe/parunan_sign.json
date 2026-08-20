@@ -5,20 +5,20 @@
     "C": {
       "item": "astral_dice:blank_sign"
     },
+    "D": {
+      "item": "astral_dice:dice"
+    },
     "E": {
       "item": "minecraft:emerald"
-    },
-    "G": {
-      "item": "minecraft:gold_ingot"
     },
     "S": {
       "item": "astral_dice:star_coin"
     }
   },
   "pattern": [
-    "SGS",
+    "SES",
     "ECE",
-    "SGS"
+    "SDS"
   ],
   "result": {
     "count": 1,

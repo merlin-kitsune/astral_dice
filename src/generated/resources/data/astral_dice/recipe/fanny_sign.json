@@ -14,15 +14,15 @@
     "P": {
       "item": "astral_dice:star_plate"
     },
+    "R": {
+      "item": "minecraft:redstone"
+    },
     "S": {
       "item": "astral_dice:star_coin"
-    },
-    "T": {
-      "item": "minecraft:spyglass"
     }
   },
   "pattern": [
-    "STS",
+    "SRS",
     "GEG",
     "PDP"
   ],

@@ -113,7 +113,7 @@ public class KomachiSignItem extends BaseSignItem {
         return switch (cardType) {
             case "berserk" -> new ItemStack(ModItems.EFFECT_CARD_BERSERK.get());
             case "unwavering" -> new ItemStack(ModItems.EFFECT_CARD_UNWAVERING.get());
-            case "living_book_page" -> new ItemStack(ModItems.LIVING_BOOK_PAGE.get());
+            case "living_page" -> new ItemStack(ModItems.LIVING_BOOK_PAGE.get());
             default -> new ItemStack(ModItems.EFFECT_CARD_KING_POWER.get());
         };
     }

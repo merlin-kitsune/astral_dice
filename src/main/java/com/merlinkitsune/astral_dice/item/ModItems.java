@@ -89,19 +89,19 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(Rarity.COMMON)));
 
-    // 黄金骰子:由基础骰子 + 8金锭升级而来,卡牌放置栏为攻防各 3 个(共 6)
+    // 黄金骰子:由基础骰子 + 4 星币 + 4 金锭升级而来,卡牌放置栏为攻防各 3 个(共 6)
     public static final DeferredItem<Item> GOLDEN_DICE = registerItem("golden_dice",
             () -> new DiceCurioItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(Rarity.RARE), 6));
 
-    // 钻石骰子:由黄金骰子 + 8钻石升级而来,卡牌放置栏为攻防各 4 个(共 8)
+    // 钻石骰子:由黄金骰子 + 4 星盘 + 4 钻石升级而来,卡牌放置栏为攻防各 4 个(共 8)
     public static final DeferredItem<Item> DIAMOND_DICE = registerItem("diamond_dice",
             () -> new DiceCurioItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(Rarity.EPIC), 8));
 
-    // 合金骰子:由钻石骰子在锻造台用锻造模板+下界合金锭锻造升级而来,卡牌放置栏为攻防各 6 个(共 12)
+    // 合金骰子:由钻石骰子 + 4 黄金星盘 + 4 下界合金锭升级而来,卡牌放置栏为攻防各 6 个(共 12)
     public static final DeferredItem<Item> NETHERITE_DICE = registerItem("netherite_dice",
             () -> new DiceCurioItem(new Item.Properties()
                     .stacksTo(1)
@@ -200,25 +200,25 @@ public class ModItems {
                     .rarity(Rarity.EPIC)));
 
     // 对怪激光(伤害效果牌):远程和魔法伤害 +4。品质:青(蓝)
-    public static final DeferredItem<Item> MONSTER_LASER_CARD = registerItem("monster_laser",
+    public static final DeferredItem<Item> MONSTER_LASER_CARD = registerItem("effect_card_monster_laser",
             () -> new MonsterLaserCardItem(new Item.Properties()
                     .stacksTo(64)
                     .rarity(Rarity.RARE)));
 
     // 对怪板砖(伤害效果牌):远程和魔法伤害 +6
-    public static final DeferredItem<Item> MONSTER_BRICK_CARD = registerItem("monster_brick",
+    public static final DeferredItem<Item> MONSTER_BRICK_CARD = registerItem("effect_card_monster_brick",
             () -> new MonsterBrickCardItem(new Item.Properties()
                     .stacksTo(64)
                     .rarity(Rarity.EPIC)));
 
     // 轨道炮(伤害效果牌):远程和魔法伤害 +8。品质:黄(金)
-    public static final DeferredItem<Item> ORBITAL_STRIKE_CARD = registerItem("orbital_strike",
+    public static final DeferredItem<Item> ORBITAL_STRIKE_CARD = registerItem("effect_card_orbital_strike",
             () -> new OrbitalStrikeCardItem(new Item.Properties()
                     .stacksTo(64)
                     .rarity(Rarity.UNCOMMON)));
 
     // 定向爆破(伤害效果牌):远程和魔法伤害 +5,并对目标周围 6 格敌对目标造成同样伤害。品质:黄(金)
-    public static final DeferredItem<Item> DIRECTIONAL_BLAST_CARD = registerItem("directional_blast",
+    public static final DeferredItem<Item> DIRECTIONAL_BLAST_CARD = registerItem("effect_card_directional_blast",
             () -> new DirectionalBlastCardItem(new Item.Properties()
                     .stacksTo(64)
                     .rarity(Rarity.UNCOMMON)));
@@ -314,31 +314,31 @@ public class ModItems {
                     .rarity(Rarity.RARE)));
 
     // 标记喷灌:对目标造成远程或魔法伤害后,使目标获得一层"标记"
-    public static final DeferredItem<Item> MARKER_SPRAYER_CHIP = registerItem("marker_sprayer",
+    public static final DeferredItem<Item> MARKER_SPRAYER_CHIP = registerItem("marker_sprayer_chip",
             () -> new MarkerSprayerChipItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(Rarity.RARE)));
 
     // 魔法秘典:每使用 3 张效果牌,复制最后一张使用的效果牌并返回物品栏
-    public static final DeferredItem<Item> MAGIC_TOME_CHIP = registerItem("magic_tome",
+    public static final DeferredItem<Item> MAGIC_TOME_CHIP = registerItem("magic_tome_chip",
             () -> new MagicTomeChipItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(Rarity.EPIC)));
 
     // 大背包:效果牌出牌数 +1(装备后生效)
-    public static final DeferredItem<Item> BIG_BACKPACK_CHIP = registerItem("big_backpack",
+    public static final DeferredItem<Item> BIG_BACKPACK_CHIP = registerItem("big_backpack_chip",
             () -> new BigBackpackChipItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(Rarity.EPIC)));
 
     // 忍术飞镖:效果牌出牌数+1;伤害效果牌生效期间远程/魔法伤害获得目标标记层数加成
-    public static final DeferredItem<Item> NINJA_STAR_CHIP = registerItem("ninja_star",
+    public static final DeferredItem<Item> NINJA_STAR_CHIP = registerItem("ninja_star_chip",
             () -> new NinjaStarChipItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(Rarity.UNCOMMON)));
 
     // 手持风扇-大:使用主动技能后获得一张随机效果牌(不含专属),并对周围范围内敌对目标施加标记
-    public static final DeferredItem<Item> HAND_FAN_BIG_CHIP = registerItem("hand_fan_big",
+    public static final DeferredItem<Item> HAND_FAN_BIG_CHIP = registerItem("hand_fan_big_chip",
             () -> new FanBigChipItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(Rarity.EPIC)));
@@ -353,122 +353,122 @@ public class ModItems {
                     .stacksTo(64)
                     .rarity(Rarity.UNCOMMON)));
 
-    public static final DeferredItem<Item> EIGHT_SIDED_DICE = registerItem("eight_sided_dice",
+    public static final DeferredItem<Item> EIGHT_SIDED_DICE = registerItem("eight_sided_dice_chip",
             () -> new EightSidedDiceChipItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(Rarity.RARE)));
 
     // === 新筹码(ATM机/银行卡/拳击手套/速度轮滑/摩托头盔/夹心饼干/魔法箭袋/缓冲盾牌/星币锤) ===
     // ATM机:装备时星光 +1;星光兑换星币时额外增加 40% 的星光用于兑换
-    public static final DeferredItem<Item> ATM = registerItem("atm",
+    public static final DeferredItem<Item> ATM = registerItem("atm_chip",
             () -> new AtmChipItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(Rarity.RARE)));
 
     // 银行卡-余额少:装备期间星光基础值 +4(下限)
-    public static final DeferredItem<Item> BANK_CARD_LOW = registerItem("bank_card_low",
+    public static final DeferredItem<Item> BANK_CARD_LOW = registerItem("bank_card_low_chip",
             () -> new BankCardChipItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(Rarity.RARE), BankCardChipItem.BASE_LOW));
 
     // 银行卡-余额多:装备期间星光基础值 +7(下限)
-    public static final DeferredItem<Item> BANK_CARD_HIGH = registerItem("bank_card_high",
+    public static final DeferredItem<Item> BANK_CARD_HIGH = registerItem("bank_card_high_chip",
             () -> new BankCardChipItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(Rarity.EPIC), BankCardChipItem.BASE_HIGH));
 
     // 银行卡-用不完:装备时星光 +3;每次骰神赐福结束后,自身及团队所有成员获得 3 星币
-    public static final DeferredItem<Item> BANK_CARD_UNLIMITED = registerItem("bank_card_unlimited",
+    public static final DeferredItem<Item> BANK_CARD_UNLIMITED = registerItem("bank_card_unlimited_chip",
             () -> new BankCardUnlimitedChipItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(Rarity.UNCOMMON)));
 
     // 拳击手套-初级:骰神赐福攻击力 +1
-    public static final DeferredItem<Item> BOXING_GLOVES_LOW = registerItem("boxing_gloves_low",
+    public static final DeferredItem<Item> BOXING_GLOVES_LOW = registerItem("boxing_gloves_low_chip",
             () -> new BoxingGlovesChipItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(Rarity.RARE)));
 
     // 拳击手套-中级:骰神赐福攻击力 +3
-    public static final DeferredItem<Item> BOXING_GLOVES_MEDIUM = registerItem("boxing_gloves_medium",
+    public static final DeferredItem<Item> BOXING_GLOVES_MEDIUM = registerItem("boxing_gloves_medium_chip",
             () -> new BoxingGlovesChipItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(Rarity.EPIC)));
 
     // 拳击手套-高级:骰神赐福攻击力 +5
-    public static final DeferredItem<Item> BOXING_GLOVES_HIGH = registerItem("boxing_gloves_high",
+    public static final DeferredItem<Item> BOXING_GLOVES_HIGH = registerItem("boxing_gloves_high_chip",
             () -> new BoxingGlovesChipItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(Rarity.UNCOMMON)));
 
     // 速度轮滑-初级:移动速度 +5%
-    public static final DeferredItem<Item> SPEED_SKATES_LOW = registerItem("speed_skates_low",
+    public static final DeferredItem<Item> SPEED_SKATES_LOW = registerItem("speed_skates_low_chip",
             () -> new SpeedSkatesChipItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(Rarity.RARE), SpeedSkatesChipItem.SPEED_LOW));
 
     // 速度轮滑-中级:移动速度 +10%
-    public static final DeferredItem<Item> SPEED_SKATES_MEDIUM = registerItem("speed_skates_medium",
+    public static final DeferredItem<Item> SPEED_SKATES_MEDIUM = registerItem("speed_skates_medium_chip",
             () -> new SpeedSkatesChipItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(Rarity.EPIC), SpeedSkatesChipItem.SPEED_MEDIUM));
 
     // 速度轮滑-高级:移动速度 +20%
-    public static final DeferredItem<Item> SPEED_SKATES_HIGH = registerItem("speed_skates_high",
+    public static final DeferredItem<Item> SPEED_SKATES_HIGH = registerItem("speed_skates_high_chip",
             () -> new SpeedSkatesChipItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(Rarity.UNCOMMON), SpeedSkatesChipItem.SPEED_HIGH));
 
     // 摩托头盔-一般:护甲值 +2(无盔甲韧性)
-    public static final DeferredItem<Item> MOTO_HELMET_LOW = registerItem("moto_helmet_low",
+    public static final DeferredItem<Item> MOTO_HELMET_LOW = registerItem("moto_helmet_low_chip",
             () -> new MotoHelmetChipItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(Rarity.RARE), MotoHelmetChipItem.ARMOR_LOW, 0));
 
     // 摩托头盔-中级:护甲值 +4(无盔甲韧性)
-    public static final DeferredItem<Item> MOTO_HELMET_MEDIUM = registerItem("moto_helmet_medium",
+    public static final DeferredItem<Item> MOTO_HELMET_MEDIUM = registerItem("moto_helmet_medium_chip",
             () -> new MotoHelmetChipItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(Rarity.EPIC), MotoHelmetChipItem.ARMOR_MEDIUM, 0));
 
     // 摩托头盔-高级:护甲值 +8,盔甲韧性 +2(仅高级拥有韧性)
-    public static final DeferredItem<Item> MOTO_HELMET_HIGH = registerItem("moto_helmet_high",
+    public static final DeferredItem<Item> MOTO_HELMET_HIGH = registerItem("moto_helmet_high_chip",
             () -> new MotoHelmetChipItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(Rarity.UNCOMMON), MotoHelmetChipItem.ARMOR_HIGH, MotoHelmetChipItem.TOUGHNESS_BONUS));
 
     // 夹心饼干-一般:最大生命值 +2
-    public static final DeferredItem<Item> SANDWICH_LOW = registerItem("sandwich_low",
+    public static final DeferredItem<Item> SANDWICH_LOW = registerItem("sandwich_low_chip",
             () -> new SandwichChipItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(Rarity.RARE), SandwichChipItem.HEALTH_LOW));
 
     // 夹心饼干-可口:最大生命值 +4
-    public static final DeferredItem<Item> SANDWICH_MEDIUM = registerItem("sandwich_medium",
+    public static final DeferredItem<Item> SANDWICH_MEDIUM = registerItem("sandwich_medium_chip",
             () -> new SandwichChipItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(Rarity.EPIC), SandwichChipItem.HEALTH_MEDIUM));
 
     // 夹心饼干-美味:最大生命值 +8
-    public static final DeferredItem<Item> SANDWICH_HIGH = registerItem("sandwich_high",
+    public static final DeferredItem<Item> SANDWICH_HIGH = registerItem("sandwich_high_chip",
             () -> new SandwichChipItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(Rarity.UNCOMMON), SandwichChipItem.HEALTH_HIGH));
 
     // 魔法箭袋:使用过效果牌并对带标记目标造成法伤 → 施加标记并返还第一张使用的效果牌(每分钟一次)
-    public static final DeferredItem<Item> MAGIC_QUIVER = registerItem("magic_quiver",
+    public static final DeferredItem<Item> MAGIC_QUIVER = registerItem("magic_quiver_chip",
             () -> new MagicQuiverChipItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(Rarity.EPIC)));
 
     // 缓冲盾牌:受到攻击时增加 2 点治愈与 3 星币(每分钟一次)
-    public static final DeferredItem<Item> BUFFER_SHIELD = registerItem("buffer_shield",
+    public static final DeferredItem<Item> BUFFER_SHIELD = registerItem("buffer_shield_chip",
             () -> new BufferShieldChipItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(Rarity.RARE)));
 
     // 星币锤:装备时星光 +5;持有星币超过 20 枚时,每次进入骰神赐福消耗 3 星币并按持有总数 30% 提升攻击力
-    public static final DeferredItem<Item> STAR_COIN_HAMMER = registerItem("star_coin_hammer",
+    public static final DeferredItem<Item> STAR_COIN_HAMMER = registerItem("star_coin_hammer_chip",
             () -> new StarCoinHammerChipItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(Rarity.UNCOMMON)));
@@ -488,7 +488,7 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(Rarity.UNCOMMON)));
 
-    public static final DeferredItem<Item> LIVING_BOOK_PAGE = registerItem("living_book_page",
+    public static final DeferredItem<Item> LIVING_BOOK_PAGE = registerItem("effect_card_living_page",
             () -> new LivingBookPageItem(new Item.Properties()
                     .stacksTo(64)
                     .rarity(Rarity.EPIC)));
@@ -500,7 +500,7 @@ public class ModItems {
                     .rarity(Rarity.RARE)));
 
     // 命运的指引(专属功能效果牌,击杀带虚弱印记的目标获取)
-    public static final DeferredItem<Item> FATE_GUIDANCE_CARD = registerItem("fate_guidance_card",
+    public static final DeferredItem<Item> FATE_GUIDANCE_CARD = registerItem("effect_card_fate_guidance",
             () -> new FateGuidanceCardItem(new Item.Properties()
                     .stacksTo(64)
                     .rarity(Rarity.EPIC)));
@@ -519,31 +519,31 @@ public class ModItems {
 
     // === 新效果牌(治疗/互动) ===
     // 巧克力蛋糕:使用后恢复 4 点生命值。品质:青(蓝)
-    public static final DeferredItem<Item> CHOCOLATE_CAKE = registerItem("chocolate_cake",
+    public static final DeferredItem<Item> CHOCOLATE_CAKE = registerItem("effect_card_chocolate_cake",
             () -> new ChocolateCakeCardItem(new Item.Properties()
                     .stacksTo(64)
                     .rarity(Rarity.RARE)));
 
     // 汉堡:使用后恢复 8 点生命值
-    public static final DeferredItem<Item> HAMBURGER = registerItem("hamburger",
+    public static final DeferredItem<Item> HAMBURGER = registerItem("effect_card_hamburger",
             () -> new HamburgerCardItem(new Item.Properties()
                     .stacksTo(64)
                     .rarity(Rarity.EPIC)));
 
     // 奢华大餐:治疗目标及周围 6 格内所有玩家 6 点生命值(可对自己/他人使用)
-    public static final DeferredItem<Item> LUXURY_FEAST = registerItem("luxury_feast",
+    public static final DeferredItem<Item> LUXURY_FEAST = registerItem("effect_card_luxury_feast",
             () -> new LuxuryFeastCardItem(new Item.Properties()
                     .stacksTo(64)
                     .rarity(Rarity.EPIC)));
 
     // 你有我有:仅能对其他玩家使用,自身与目标玩家各获得一张随机卡牌
-    public static final DeferredItem<Item> YOU_HAVE_I_HAVE = registerItem("you_have_i_have",
+    public static final DeferredItem<Item> YOU_HAVE_I_HAVE = registerItem("effect_card_you_have_i_have",
             () -> new YouHaveIHaveCardItem(new Item.Properties()
                     .stacksTo(64)
                     .rarity(Rarity.EPIC)));
 
     // 加急加快:使目标获得 迅捷 II 1:00(可对自己/他人使用)
-    public static final DeferredItem<Item> EXPRESS_DELIVERY = registerItem("express_delivery",
+    public static final DeferredItem<Item> EXPRESS_DELIVERY = registerItem("effect_card_express_delivery",
             () -> new ExpressDeliveryCardItem(new Item.Properties()
                     .stacksTo(64)
                     .rarity(Rarity.EPIC)));

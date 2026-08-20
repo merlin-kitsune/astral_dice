@@ -188,110 +188,110 @@
 			},
 			"unitWorth": 3500
 		},
-		"monster_laser": {
+		"effect_card_monster_laser": {
 			"type": "item",
 			"rarity": "RARE",
-			"content": "astral_dice:monster_laser",
+			"content": "astral_dice:effect_card_monster_laser",
 			"amount": {
 				"min": 1,
 				"max": 1
 			},
 			"unitWorth": 1800
 		},
-		"monster_brick": {
+		"effect_card_monster_brick": {
 			"type": "item",
 			"rarity": "EPIC",
-			"content": "astral_dice:monster_brick",
+			"content": "astral_dice:effect_card_monster_brick",
 			"amount": {
 				"min": 1,
 				"max": 1
 			},
 			"unitWorth": 3000
 		},
-		"orbital_strike": {
+		"effect_card_orbital_strike": {
 			"type": "item",
 			"rarity": "LEGENDARY",
-			"content": "astral_dice:orbital_strike",
+			"content": "astral_dice:effect_card_orbital_strike",
 			"amount": {
 				"min": 1,
 				"max": 1
 			},
 			"unitWorth": 6500
 		},
-		"directional_blast": {
+		"effect_card_directional_blast": {
 			"type": "item",
 			"rarity": "LEGENDARY",
-			"content": "astral_dice:directional_blast",
+			"content": "astral_dice:effect_card_directional_blast",
 			"amount": {
 				"min": 1,
 				"max": 1
 			},
 			"unitWorth": 6500
 		},
-		"chocolate_cake": {
+		"effect_card_chocolate_cake": {
 			"type": "item",
 			"rarity": "RARE",
-			"content": "astral_dice:chocolate_cake",
+			"content": "astral_dice:effect_card_chocolate_cake",
 			"amount": {
 				"min": 1,
 				"max": 2
 			},
 			"unitWorth": 600
 		},
-		"hamburger": {
+		"effect_card_hamburger": {
 			"type": "item",
 			"rarity": "EPIC",
-			"content": "astral_dice:hamburger",
+			"content": "astral_dice:effect_card_hamburger",
 			"amount": {
 				"min": 1,
 				"max": 2
 			},
 			"unitWorth": 1500
 		},
-		"luxury_feast": {
+		"effect_card_luxury_feast": {
 			"type": "item",
 			"rarity": "EPIC",
-			"content": "astral_dice:luxury_feast",
+			"content": "astral_dice:effect_card_luxury_feast",
 			"amount": {
 				"min": 1,
 				"max": 1
 			},
 			"unitWorth": 2200
 		},
-		"you_have_i_have": {
+		"effect_card_you_have_i_have": {
 			"type": "item",
 			"rarity": "EPIC",
-			"content": "astral_dice:you_have_i_have",
+			"content": "astral_dice:effect_card_you_have_i_have",
 			"amount": {
 				"min": 1,
 				"max": 1
 			},
 			"unitWorth": 2500
 		},
-		"express_delivery": {
+		"effect_card_express_delivery": {
 			"type": "item",
 			"rarity": "EPIC",
-			"content": "astral_dice:express_delivery",
+			"content": "astral_dice:effect_card_express_delivery",
 			"amount": {
 				"min": 1,
 				"max": 1
 			},
 			"unitWorth": 1800
 		},
-		"living_book_page": {
+		"effect_card_living_page": {
 			"type": "item",
 			"rarity": "EPIC",
-			"content": "astral_dice:living_book_page",
+			"content": "astral_dice:effect_card_living_page",
 			"amount": {
 				"min": 1,
 				"max": 1
 			},
 			"unitWorth": 2800
 		},
-		"fate_guidance_card": {
+		"effect_card_fate_guidance": {
 			"type": "item",
 			"rarity": "EPIC",
-			"content": "astral_dice:fate_guidance_card",
+			"content": "astral_dice:effect_card_fate_guidance",
 			"amount": {
 				"min": 1,
 				"max": 1
@@ -438,180 +438,180 @@
 			},
 			"unitWorth": 1000
 		},
-		"marker_sprayer": {
+		"marker_sprayer_chip": {
 			"type": "item",
 			"rarity": "RARE",
-			"content": "astral_dice:marker_sprayer",
+			"content": "astral_dice:marker_sprayer_chip",
 			"amount": {
 				"min": 1,
 				"max": 1
 			},
 			"unitWorth": 1100
 		},
-		"magic_tome": {
+		"magic_tome_chip": {
 			"type": "item",
 			"rarity": "EPIC",
-			"content": "astral_dice:magic_tome",
+			"content": "astral_dice:magic_tome_chip",
 			"amount": {
 				"min": 1,
 				"max": 1
 			},
 			"unitWorth": 3200
 		},
-		"big_backpack": {
+		"big_backpack_chip": {
 			"type": "item",
 			"rarity": "EPIC",
-			"content": "astral_dice:big_backpack",
+			"content": "astral_dice:big_backpack_chip",
 			"amount": {
 				"min": 1,
 				"max": 1
 			},
 			"unitWorth": 3000
 		},
-		"hand_fan_big": {
+		"hand_fan_big_chip": {
 			"type": "item",
 			"rarity": "EPIC",
-			"content": "astral_dice:hand_fan_big",
+			"content": "astral_dice:hand_fan_big_chip",
 			"amount": {
 				"min": 1,
 				"max": 1
 			},
 			"unitWorth": 2600
 		},
-		"eight_sided_dice": {
+		"eight_sided_dice_chip": {
 			"type": "item",
 			"rarity": "RARE",
-			"content": "astral_dice:eight_sided_dice",
+			"content": "astral_dice:eight_sided_dice_chip",
 			"amount": {
 				"min": 1,
 				"max": 1
 			},
 			"unitWorth": 1200
 		},
-		"atm": {
+		"atm_chip": {
 			"type": "item",
 			"rarity": "RARE",
-			"content": "astral_dice:atm",
+			"content": "astral_dice:atm_chip",
 			"amount": {
 				"min": 1,
 				"max": 1
 			},
 			"unitWorth": 1000
 		},
-		"bank_card_low": {
+		"bank_card_low_chip": {
 			"type": "item",
 			"rarity": "RARE",
-			"content": "astral_dice:bank_card_low",
+			"content": "astral_dice:bank_card_low_chip",
 			"amount": {
 				"min": 1,
 				"max": 1
 			},
 			"unitWorth": 1000
 		},
-		"bank_card_high": {
+		"bank_card_high_chip": {
 			"type": "item",
 			"rarity": "EPIC",
-			"content": "astral_dice:bank_card_high",
+			"content": "astral_dice:bank_card_high_chip",
 			"amount": {
 				"min": 1,
 				"max": 1
 			},
 			"unitWorth": 2800
 		},
-		"boxing_gloves_low": {
+		"boxing_gloves_low_chip": {
 			"type": "item",
 			"rarity": "RARE",
-			"content": "astral_dice:boxing_gloves_low",
+			"content": "astral_dice:boxing_gloves_low_chip",
 			"amount": {
 				"min": 1,
 				"max": 1
 			},
 			"unitWorth": 900
 		},
-		"boxing_gloves_medium": {
+		"boxing_gloves_medium_chip": {
 			"type": "item",
 			"rarity": "EPIC",
-			"content": "astral_dice:boxing_gloves_medium",
+			"content": "astral_dice:boxing_gloves_medium_chip",
 			"amount": {
 				"min": 1,
 				"max": 1
 			},
 			"unitWorth": 2400
 		},
-		"speed_skates_low": {
+		"speed_skates_low_chip": {
 			"type": "item",
 			"rarity": "RARE",
-			"content": "astral_dice:speed_skates_low",
+			"content": "astral_dice:speed_skates_low_chip",
 			"amount": {
 				"min": 1,
 				"max": 1
 			},
 			"unitWorth": 900
 		},
-		"speed_skates_medium": {
+		"speed_skates_medium_chip": {
 			"type": "item",
 			"rarity": "EPIC",
-			"content": "astral_dice:speed_skates_medium",
+			"content": "astral_dice:speed_skates_medium_chip",
 			"amount": {
 				"min": 1,
 				"max": 1
 			},
 			"unitWorth": 2400
 		},
-		"moto_helmet_low": {
+		"moto_helmet_low_chip": {
 			"type": "item",
 			"rarity": "RARE",
-			"content": "astral_dice:moto_helmet_low",
+			"content": "astral_dice:moto_helmet_low_chip",
 			"amount": {
 				"min": 1,
 				"max": 1
 			},
 			"unitWorth": 900
 		},
-		"moto_helmet_medium": {
+		"moto_helmet_medium_chip": {
 			"type": "item",
 			"rarity": "EPIC",
-			"content": "astral_dice:moto_helmet_medium",
+			"content": "astral_dice:moto_helmet_medium_chip",
 			"amount": {
 				"min": 1,
 				"max": 1
 			},
 			"unitWorth": 2400
 		},
-		"sandwich_low": {
+		"sandwich_low_chip": {
 			"type": "item",
 			"rarity": "RARE",
-			"content": "astral_dice:sandwich_low",
+			"content": "astral_dice:sandwich_low_chip",
 			"amount": {
 				"min": 1,
 				"max": 1
 			},
 			"unitWorth": 900
 		},
-		"sandwich_medium": {
+		"sandwich_medium_chip": {
 			"type": "item",
 			"rarity": "EPIC",
-			"content": "astral_dice:sandwich_medium",
+			"content": "astral_dice:sandwich_medium_chip",
 			"amount": {
 				"min": 1,
 				"max": 1
 			},
 			"unitWorth": 2400
 		},
-		"magic_quiver": {
+		"magic_quiver_chip": {
 			"type": "item",
 			"rarity": "EPIC",
-			"content": "astral_dice:magic_quiver",
+			"content": "astral_dice:magic_quiver_chip",
 			"amount": {
 				"min": 1,
 				"max": 1
 			},
 			"unitWorth": 3400
 		},
-		"buffer_shield": {
+		"buffer_shield_chip": {
 			"type": "item",
 			"rarity": "RARE",
-			"content": "astral_dice:buffer_shield",
+			"content": "astral_dice:buffer_shield_chip",
 			"amount": {
 				"min": 1,
 				"max": 1

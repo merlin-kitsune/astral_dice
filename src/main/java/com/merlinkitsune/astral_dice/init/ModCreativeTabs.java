@@ -21,6 +21,13 @@ public class ModCreativeTabs {
             .withTabsBefore(CreativeModeTabs.COMBAT)
             .icon(() -> ModItems.DICE.get().getDefaultInstance())
             .displayItems((params, output) -> {
+                // 材料（最前端）
+                output.accept(ModItems.STAR_COIN.get());
+                output.accept(ModItems.STAR_COIN_BAG.get());
+                output.accept(ModItems.STAR_PLATE.get());
+                output.accept(ModItems.GOLDEN_STAR_PLATE.get());
+                output.accept(ModItems.BLANK_SIGN.get());
+                output.accept(ModItems.BLANK_CHIP.get());
                 // 骰子
                 output.accept(ModItems.DICE.get());
                 output.accept(ModItems.GOLDEN_DICE.get());
@@ -38,25 +45,23 @@ public class ModCreativeTabs {
                 output.accept(ModItems.DEFENSE_CARD_MEDIUM.get());
                 output.accept(ModItems.DEFENSE_CARD_LARGE.get());
                 output.accept(ModItems.DEFENSE_CARD_EPIC.get());
-                // 功能效果牌
-                output.accept(ModItems.EFFECT_CARD_KING_POWER.get());
+                // 功能效果牌（狂暴在王之力前）
                 output.accept(ModItems.EFFECT_CARD_BERSERK.get());
+                output.accept(ModItems.EFFECT_CARD_KING_POWER.get());
                 output.accept(ModItems.EFFECT_CARD_UNWAVERING.get());
+                // 新效果牌（在岿然不动之后）
+                output.accept(ModItems.CHOCOLATE_CAKE.get());
+                output.accept(ModItems.HAMBURGER.get());
+                output.accept(ModItems.LUXURY_FEAST.get());
+                output.accept(ModItems.YOU_HAVE_I_HAVE.get());
+                output.accept(ModItems.EXPRESS_DELIVERY.get());
                 output.accept(ModItems.FATE_GUIDANCE_CARD.get());
-                // 伤害效果牌
-                output.accept(ModItems.LIVING_BOOK_PAGE.get());
+                // 伤害效果牌（活体书页在定向爆破之后）
                 output.accept(ModItems.MONSTER_LASER_CARD.get());
                 output.accept(ModItems.MONSTER_BRICK_CARD.get());
                 output.accept(ModItems.ORBITAL_STRIKE_CARD.get());
                 output.accept(ModItems.DIRECTIONAL_BLAST_CARD.get());
-                // 星币与材料
-                output.accept(ModItems.STAR_COIN.get());
-                output.accept(ModItems.STAR_COIN_BAG.get());
-                output.accept(ModItems.STAR_PLATE.get());
-                output.accept(ModItems.GOLDEN_STAR_PLATE.get());
-                // 空白材料
-                output.accept(ModItems.BLANK_SIGN.get());
-                output.accept(ModItems.BLANK_CHIP.get());
+                output.accept(ModItems.LIVING_BOOK_PAGE.get());
                 // 立牌
                 output.accept(ModItems.PARUNAN_SIGN.get());
                 output.accept(ModItems.JASMINE_SIGN.get());
@@ -71,12 +76,6 @@ public class ModCreativeTabs {
                 output.accept(ModItems.PAPARA_SIGN.get());
                 output.accept(ModItems.BONNIE_SIGN.get());
                 output.accept(ModItems.FEN_SIGN.get());
-                // 新效果牌
-                output.accept(ModItems.CHOCOLATE_CAKE.get());
-                output.accept(ModItems.HAMBURGER.get());
-                output.accept(ModItems.LUXURY_FEAST.get());
-                output.accept(ModItems.YOU_HAVE_I_HAVE.get());
-                output.accept(ModItems.EXPRESS_DELIVERY.get());
                 // 筹码
                 output.accept(ModItems.FLASHLIGHT_CHIP.get());
                 output.accept(ModItems.CUTTER_CHIP.get());

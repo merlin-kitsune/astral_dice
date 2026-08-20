@@ -11,15 +11,15 @@ import net.minecraft.world.item.ItemStack;
 import top.theillusivec4.curios.api.SlotContext;
 
 /**
- * 夹心饼干筹码(一般/可口/美味):最大生命值 +2/+4/+8(属性修饰器,装备期间生效)。
+ * 夹心饼干筹码(一般/可口/美味):最大生命值 +4/+8/+12(属性修饰器,装备期间生效)。
  */
 public class SandwichChipItem extends BaseChipItem {
     /** 夹心饼干-一般最大生命加成 */
-    public static final int HEALTH_LOW = 2;
+    public static final int HEALTH_LOW = 4;
     /** 夹心饼干-可口最大生命加成 */
-    public static final int HEALTH_MEDIUM = 4;
+    public static final int HEALTH_MEDIUM = 8;
     /** 夹心饼干-美味最大生命加成 */
-    public static final int HEALTH_HIGH = 8;
+    public static final int HEALTH_HIGH = 12;
 
     private final int healthBonus;
 

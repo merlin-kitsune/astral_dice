@@ -14,12 +14,15 @@
     "F": {
       "item": "minecraft:feather"
     },
+    "I": {
+      "item": "minecraft:iron_ingot"
+    },
     "L": {
       "item": "minecraft:dispenser"
     }
   },
   "pattern": [
-    "FFF",
+    "FIF",
     "BEB",
     "LDL"
   ],

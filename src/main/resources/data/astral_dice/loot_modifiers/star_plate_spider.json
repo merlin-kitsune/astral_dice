@@ -6,5 +6,5 @@
       "loot_table_id": "minecraft:entities/spider"
     }
   ],
-  "loot_table": "astral_dice:entities/star_plate"
+  "table": "astral_dice:entities/star_plate"
 }

@@ -2,17 +2,17 @@
   "type": "minecraft:crafting_shaped",
   "category": "equipment",
   "key": {
-    "C": {
-      "item": "astral_dice:star_coin"
+    "Q": {
+      "item": "minecraft:quartz_block"
     },
-    "I": {
-      "item": "minecraft:iron_ingot"
+    "R": {
+      "item": "minecraft:redstone"
     }
   },
   "pattern": [
-    " I ",
-    "ICI",
-    " I "
+    "RRR",
+    "RQR",
+    "RRR"
   ],
   "result": {
     "count": 1,

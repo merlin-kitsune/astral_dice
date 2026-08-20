@@ -6,5 +6,5 @@
       "loot_table_id": "minecraft:entities/wither"
     }
   ],
-  "loot_table": "astral_dice:entities/star_plate_boss"
+  "table": "astral_dice:entities/star_plate_boss"
 }

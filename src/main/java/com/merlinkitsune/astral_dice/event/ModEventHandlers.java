@@ -452,7 +452,8 @@ public class ModEventHandlers {
             } else {
                 defensePower = 2
                         + Math.min(target.getArmorValue(), 20)
-                        + 1.8 * target.getAttributeValue(Attributes.ARMOR_TOUGHNESS)
+                                / (target instanceof Player ? 2.0 : 4.0)
+                        + 1.4 * target.getAttributeValue(Attributes.ARMOR_TOUGHNESS)
                         + defenseBaseDice;
 
                 // 效果类防御加成(岿然不动/抗性)、防御卡掷骰与立牌/筹码防御加成:由注册表防御修饰器执行
@@ -978,6 +979,39 @@ public class ModEventHandlers {
         return "H";
     }
 
+    // 效果牌 tooltip:当前出牌周期出牌数(current/max)
+    private static void addEffectCardPlayCountTooltip(List<Component> tooltip, Player p) {
+        if (p == null) {
+            tooltip.add(Component.translatable("tooltip.astral_dice.card.play_count", "?", "?")
+                    .withStyle(ChatFormatting.GRAY));
+        } else {
+            tooltip.add(Component.translatable("tooltip.astral_dice.card.play_count",
+                            EffectCardPeriod.getPlayCount(p), EffectCardPeriod.getMaxAllowed(p))
+                    .withStyle(ChatFormatting.GRAY));
+        }
+    }
+
+    // 效果牌 tooltip:当前周期已激活伤害效果牌的总伤害加成
+    private static void addActiveDamageBonusTooltip(List<Component> tooltip, Player p) {
+        if (p == null) {
+            tooltip.add(Component.translatable("tooltip.astral_dice.card.active_damage_bonus", "?")
+                    .withStyle(ChatFormatting.GRAY));
+            return;
+        }
+        int bonus = 0;
+        int komachi = ModAttachments.getKomachiDamageBonus(p);
+        if (p.hasEffect(ModEffects.MONSTER_LASER)) bonus += 4 + komachi;
+        if (p.hasEffect(ModEffects.MONSTER_BRICK)) bonus += 6 + komachi;
+        if (p.hasEffect(ModEffects.ORBITAL_STRIKE)) bonus += 8 + komachi;
+        if (p.hasEffect(ModEffects.DIRECTIONAL_BLAST)) bonus += 5 + komachi;
+        if (p.hasEffect(ModEffects.LIVING_BOOK_PAGE)) {
+            int pages = Math.min(ModAttachments.getRinPages(p), GameplayConstants.LIVING_BOOK_PAGE_BONUS_CAP);
+            bonus += 2 + pages + komachi;
+        }
+        tooltip.add(Component.translatable("tooltip.astral_dice.card.active_damage_bonus", bonus)
+                .withStyle(ChatFormatting.GRAY));
+    }
+
     @SubscribeEvent
     public static void onItemTooltip(ItemTooltipEvent event) {
         ItemStack stack = event.getItemStack();
@@ -1176,18 +1210,21 @@ public class ModEventHandlers {
         if (stack.is(ModItems.EFFECT_CARD_KING_POWER.get())) {
             tooltip.add(Component.empty());
             tooltip.add(Component.translatable("tooltip.astral_dice.card.king_power").withStyle(ChatFormatting.GRAY));
+            addEffectCardPlayCountTooltip(tooltip, player);
             tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown", GameplayConstants.EFFECT_CARD_COOLDOWN_SECONDS).withStyle(ChatFormatting.RED));
         }
         if (stack.is(ModItems.EFFECT_CARD_BERSERK.get())) {
             tooltip.add(Component.empty());
             tooltip.add(Component.translatable("effect.astral_dice.berserk.description")
                     .withStyle(ChatFormatting.GRAY));
+            addEffectCardPlayCountTooltip(tooltip, player);
             tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown", GameplayConstants.EFFECT_CARD_COOLDOWN_SECONDS).withStyle(ChatFormatting.RED));
         }
         if (stack.is(ModItems.EFFECT_CARD_UNWAVERING.get())) {
             tooltip.add(Component.empty());
             tooltip.add(Component.translatable("effect.astral_dice.unwavering.description")
                     .withStyle(ChatFormatting.GRAY));
+            addEffectCardPlayCountTooltip(tooltip, player);
             tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown", GameplayConstants.EFFECT_CARD_COOLDOWN_SECONDS).withStyle(ChatFormatting.RED));
         }
         if (stack.is(ModItems.BLANK_SIGN.get())) {
@@ -1493,6 +1530,8 @@ public class ModEventHandlers {
                 tooltip.add(Component.translatable("tooltip.astral_dice.card.living_book_page", "?")
                         .withStyle(ChatFormatting.GRAY));
             }
+            addEffectCardPlayCountTooltip(tooltip, player);
+            addActiveDamageBonusTooltip(tooltip, player);
             tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown",
                             GameplayConstants.EFFECT_CARD_COOLDOWN_SECONDS)
                     .withStyle(ChatFormatting.RED));
@@ -1514,6 +1553,8 @@ public class ModEventHandlers {
             // 组件基础色为灰(普通文本);行内颜色码:数值=黄 §e、时间=蓝 §9
             tooltip.add(Component.translatable(tooltipKey, baseDamage + ninjaBonus)
                     .withStyle(ChatFormatting.GRAY));
+            addEffectCardPlayCountTooltip(tooltip, player);
+            addActiveDamageBonusTooltip(tooltip, player);
             tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown",
                             GameplayConstants.EFFECT_CARD_COOLDOWN_SECONDS)
                     .withStyle(ChatFormatting.RED));
@@ -1523,6 +1564,7 @@ public class ModEventHandlers {
             tooltip.add(Component.empty());
             tooltip.add(Component.translatable("tooltip.astral_dice.card.chocolate_cake")
                     .withStyle(ChatFormatting.GRAY));
+            addEffectCardPlayCountTooltip(tooltip, player);
             tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown",
                             GameplayConstants.EFFECT_CARD_COOLDOWN_SECONDS)
                     .withStyle(ChatFormatting.RED));
@@ -1531,6 +1573,7 @@ public class ModEventHandlers {
             tooltip.add(Component.empty());
             tooltip.add(Component.translatable("tooltip.astral_dice.card.hamburger")
                     .withStyle(ChatFormatting.GRAY));
+            addEffectCardPlayCountTooltip(tooltip, player);
             tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown",
                             GameplayConstants.EFFECT_CARD_COOLDOWN_SECONDS)
                     .withStyle(ChatFormatting.RED));
@@ -1539,6 +1582,7 @@ public class ModEventHandlers {
             tooltip.add(Component.empty());
             tooltip.add(Component.translatable("tooltip.astral_dice.card.luxury_feast")
                     .withStyle(ChatFormatting.GRAY));
+            addEffectCardPlayCountTooltip(tooltip, player);
             tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown",
                             GameplayConstants.EFFECT_CARD_COOLDOWN_SECONDS)
                     .withStyle(ChatFormatting.RED));
@@ -1547,6 +1591,7 @@ public class ModEventHandlers {
             tooltip.add(Component.empty());
             tooltip.add(Component.translatable("tooltip.astral_dice.card.you_have_i_have")
                     .withStyle(ChatFormatting.GRAY));
+            addEffectCardPlayCountTooltip(tooltip, player);
             tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown",
                             GameplayConstants.EFFECT_CARD_COOLDOWN_SECONDS)
                     .withStyle(ChatFormatting.RED));
@@ -1555,6 +1600,7 @@ public class ModEventHandlers {
             tooltip.add(Component.empty());
             tooltip.add(Component.translatable("tooltip.astral_dice.card.express_delivery")
                     .withStyle(ChatFormatting.GRAY));
+            addEffectCardPlayCountTooltip(tooltip, player);
             tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown",
                             GameplayConstants.EFFECT_CARD_COOLDOWN_SECONDS)
                     .withStyle(ChatFormatting.RED));
@@ -1582,6 +1628,7 @@ public class ModEventHandlers {
                 tooltip.add(Component.translatable("tooltip.astral_dice.card.fate_spell_mana")
                         .withStyle(ChatFormatting.LIGHT_PURPLE));
             }
+            addEffectCardPlayCountTooltip(tooltip, player);
             tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown",
                             GameplayConstants.EFFECT_CARD_COOLDOWN_SECONDS)
                     .withStyle(ChatFormatting.RED));

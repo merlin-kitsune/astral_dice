@@ -1,0 +1,30 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": {
+      "item": "astral_dice:blank_chip"
+    },
+    "G": {
+      "item": "astral_dice:golden_star_plate"
+    },
+    "M": {
+      "item": "minecraft:mace"
+    },
+    "N": {
+      "item": "minecraft:netherite_ingot"
+    },
+    "S": {
+      "item": "astral_dice:star_coin_bag"
+    }
+  },
+  "pattern": [
+    "SMS",
+    "NBN",
+    "GGG"
+  ],
+  "result": {
+    "count": 1,
+    "id": "astral_dice:star_coin_hammer_chip"
+  }
+}

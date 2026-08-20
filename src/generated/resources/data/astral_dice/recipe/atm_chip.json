@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": {
+      "item": "astral_dice:blank_chip"
+    },
+    "C": {
+      "item": "astral_dice:star_coin"
+    },
+    "G": {
+      "item": "minecraft:gold_ingot"
+    }
+  },
+  "pattern": [
+    "GGG",
+    "GBG",
+    "CCC"
+  ],
+  "result": {
+    "count": 1,
+    "id": "astral_dice:atm_chip"
+  }
+}

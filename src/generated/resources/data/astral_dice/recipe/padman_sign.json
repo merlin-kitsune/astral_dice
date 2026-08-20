@@ -13,11 +13,14 @@
     },
     "W": {
       "item": "minecraft:wither_skeleton_skull"
+    },
+    "Y": {
+      "item": "minecraft:yellow_dye"
     }
   },
   "pattern": [
-    "TTT",
-    "WEW",
+    "WYW",
+    "TET",
     "TDT"
   ],
   "result": {

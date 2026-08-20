@@ -11,15 +11,15 @@ import net.minecraft.world.item.ItemStack;
 import top.theillusivec4.curios.api.SlotContext;
 
 /**
- * 速度轮滑筹码(初级/中级/高级):移动速度 +5%/+10%/+20%(属性修饰器,装备期间生效)。
+ * 速度轮滑筹码(初级/中级/高级):移动速度 +5%/+15%/+25%(属性修饰器,装备期间生效)。
  */
 public class SpeedSkatesChipItem extends BaseChipItem {
     /** 速度轮滑-初级移动速度加成 */
     public static final double SPEED_LOW = 0.05;
     /** 速度轮滑-中级移动速度加成 */
-    public static final double SPEED_MEDIUM = 0.10;
+    public static final double SPEED_MEDIUM = 0.15;
     /** 速度轮滑-高级移动速度加成 */
-    public static final double SPEED_HIGH = 0.20;
+    public static final double SPEED_HIGH = 0.25;
 
     private final double speedBonus;
 

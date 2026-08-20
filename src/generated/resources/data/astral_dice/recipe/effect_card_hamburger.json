@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": {
+      "item": "minecraft:cooked_beef"
+    },
+    "D": {
+      "item": "minecraft:bread"
+    },
+    "E": {
+      "item": "astral_dice:star_plate"
+    },
+    "S": {
+      "item": "astral_dice:star_coin"
+    }
+  },
+  "pattern": [
+    "BDB",
+    "SES",
+    "BDB"
+  ],
+  "result": {
+    "count": 1,
+    "id": "astral_dice:effect_card_hamburger"
+  }
+}

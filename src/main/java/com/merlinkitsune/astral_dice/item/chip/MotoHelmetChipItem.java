@@ -11,7 +11,7 @@ import net.minecraft.world.item.ItemStack;
 import top.theillusivec4.curios.api.SlotContext;
 
 /**
- * 摩托头盔筹码(一般/中级/高级):护甲值 +2/+4/+8;盔甲韧性 +2 仅高级拥有(属性修饰器,装备期间生效)。
+ * 摩托头盔筹码(一般/中级/高级):防御力 +2/+4/+6;盔甲韧性 +2 仅高级拥有(属性修饰器,装备期间生效)。
  */
 public class MotoHelmetChipItem extends BaseChipItem {
     /** 摩托头盔-一般护甲加成 */
@@ -19,7 +19,7 @@ public class MotoHelmetChipItem extends BaseChipItem {
     /** 摩托头盔-中级护甲加成 */
     public static final int ARMOR_MEDIUM = 4;
     /** 摩托头盔-高级护甲加成 */
-    public static final int ARMOR_HIGH = 8;
+    public static final int ARMOR_HIGH = 6;
     /** 摩托头盔-高级盔甲韧性加成(一般/中级无韧性加成) */
     public static final int TOUGHNESS_BONUS = 2;
 

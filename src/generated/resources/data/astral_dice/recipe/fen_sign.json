@@ -9,10 +9,10 @@
       "item": "astral_dice:blank_sign"
     },
     "G": {
-      "item": "minecraft:gold_ingot"
+      "item": "astral_dice:golden_star_plate"
     },
     "P": {
-      "item": "astral_dice:star_plate"
+      "item": "minecraft:gold_block"
     },
     "R": {
       "item": "minecraft:redstone_block"

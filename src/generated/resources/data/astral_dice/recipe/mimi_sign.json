@@ -2,8 +2,8 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
-    "C": {
-      "item": "minecraft:golden_carrot"
+    "B": {
+      "item": "minecraft:blue_dye"
     },
     "D": {
       "item": "astral_dice:dice"
@@ -13,12 +13,15 @@
     },
     "S": {
       "item": "astral_dice:star_coin"
+    },
+    "W": {
+      "item": "minecraft:white_dye"
     }
   },
   "pattern": [
-    "CCC",
+    "WWW",
     "SES",
-    "CDC"
+    "BDB"
   ],
   "result": {
     "count": 1,

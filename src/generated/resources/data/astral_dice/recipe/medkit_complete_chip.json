@@ -2,29 +2,23 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
-    "E": {
-      "item": "minecraft:enchanted_golden_apple"
+    "D": {
+      "item": "minecraft:diamond"
     },
-    "H": {
-      "item": "minecraft:honey_bottle"
-    },
-    "I": {
-      "item": "minecraft:iron_ingot"
-    },
-    "M": {
-      "item": "astral_dice:medkit_emergency_chip"
-    },
-    "P": {
+    "G": {
       "item": "astral_dice:golden_star_plate"
     },
-    "S": {
-      "item": "astral_dice:star_coin"
+    "R": {
+      "item": "minecraft:redstone"
+    },
+    "T": {
+      "item": "astral_dice:medkit_emergency_chip"
     }
   },
   "pattern": [
-    "HPH",
-    "IEI",
-    "SMS"
+    "RDR",
+    "DTD",
+    "GGG"
   ],
   "result": {
     "count": 1,

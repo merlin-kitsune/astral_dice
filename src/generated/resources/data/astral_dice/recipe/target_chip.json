@@ -3,19 +3,19 @@
   "category": "misc",
   "key": {
     "B": {
-      "item": "minecraft:bamboo_block"
+      "item": "astral_dice:blank_chip"
     },
     "C": {
-      "item": "astral_dice:blank_chip"
+      "item": "astral_dice:star_coin"
     },
     "T": {
       "item": "minecraft:target"
     }
   },
   "pattern": [
+    "TTT",
     "TBT",
-    "BCB",
-    "TBT"
+    "CCC"
   ],
   "result": {
     "count": 1,

@@ -13,10 +13,13 @@
     },
     "P": {
       "item": "astral_dice:star_plate"
+    },
+    "Y": {
+      "item": "minecraft:yellow_stained_glass"
     }
   },
   "pattern": [
-    "L L",
+    "LYL",
     " B ",
     "IPI"
   ],
