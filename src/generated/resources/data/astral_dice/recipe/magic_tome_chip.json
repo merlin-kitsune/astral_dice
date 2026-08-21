@@ -11,12 +11,15 @@
     "E": {
       "item": "minecraft:experience_bottle"
     },
+    "R": {
+      "item": "minecraft:echo_shard"
+    },
     "Q": {
       "item": "minecraft:writable_book"
     }
   },
   "pattern": [
-    "QQQ",
+    "QRQ",
     "EBE",
     "CCC"
   ],

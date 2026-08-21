@@ -13,9 +13,9 @@
     }
   },
   "pattern": [
-    "G S G",
-    "S D S",
-    "G S G"
+    "GSG",
+    "SDS",
+    "GSG"
   ],
   "result": {
     "count": 1,

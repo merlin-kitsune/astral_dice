@@ -13,9 +13,9 @@
     }
   },
   "pattern": [
-    "D P D",
-    "P H P",
-    "D P D"
+    "DPD",
+    "PHP",
+    "DPD"
   ],
   "result": {
     "count": 1,

@@ -3,6 +3,8 @@ package com.merlinkitsune.astral_dice.combat;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.component.AppliedStone;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
+import com.merlinkitsune.astral_dice.component.ModDataComponents;
+import com.merlinkitsune.astral_dice.component.WeaponEnhancement;
 import com.merlinkitsune.astral_dice.item.HealingManager;
 import com.merlinkitsune.astral_dice.item.chip.BoxingGlovesChipItem;
 import com.merlinkitsune.astral_dice.item.sign.FenSignItem;
@@ -16,6 +18,7 @@ import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import top.theillusivec4.curios.api.CuriosApi;
 
 import java.util.ArrayList;
@@ -150,12 +153,12 @@ public final class DiceCombatModifiers {
             if (ctx.attacker.level().isClientSide()) return ap;
             if (hasCurio(ctx.attacker, ModItems.SCOPE_CHIP.get())) {
                 ap += 2;
-                MarkManager.apply(ctx.target);
+                if (ctx.event != null) MarkManager.apply(ctx.target);
             }
             if (hasCurio(ctx.attacker, ModItems.EAGLE_SCOPE_CHIP.get())) {
                 int markLevel = MarkManager.getLevel(ctx.target);
                 ap += markLevel * 2;
-                MarkManager.apply(ctx.target);
+                if (ctx.event != null) MarkManager.apply(ctx.target);
             }
             return ap;
         });
@@ -357,4 +360,102 @@ public final class DiceCombatModifiers {
             return dp;
         });
     }
+
+    // === GUI 显示用:计算当前攻击力/防御力(不包含随机骰点与卡牌掷骰,仅基础值+修饰器) ===
+    public static int getDisplayAttackPower(Player player, ItemStack diceStack, WeaponEnhancement enhancement) {
+        if (player == null) return 0;
+        if (enhancement == null) enhancement = WeaponEnhancement.EMPTY;
+        int misakiStar = enhancement.starLevel();
+        int misakiStacks = 0;
+        boolean misakiBurst = player.hasEffect(ModEffects.MISAKI_BURST);
+        var curios = CuriosApi.getCuriosInventory(player);
+        if (curios.isPresent()) {
+            var r = curios.get().findFirstCurio(s -> s.is(ModItems.MISAKI_SIGN.get()));
+            if (r.isPresent()) {
+                misakiStacks = r.get().stack().getOrDefault(ModDataComponents.MISAKI_SIGN_STACKS.get(), 0);
+            }
+        }
+        DiceCombatContext ctx = new DiceCombatContext(
+                player, player, null, 0, diceStack, enhancement, false,
+                misakiBurst, misakiStar, misakiStacks);
+        double ap = player.getAttributeValue(Attributes.ATTACK_DAMAGE);
+        for (AttackPowerModifier modifier : attackModifiers()) {
+            ap = modifier.apply(ctx, ap);
+        }
+        return (int) Math.floor(ap);
+    }
+
+    public static int getDisplayDefensePower(Player player) {
+        if (player == null) return 0;
+        DiceCombatContext ctx = new DiceCombatContext(
+                player, player, null, 0, ItemStack.EMPTY, WeaponEnhancement.EMPTY, false,
+                false, 0, 0);
+        double dp = 2
+                + Math.min(player.getArmorValue(), 20) / 2.0
+                + 1.4 * player.getAttributeValue(Attributes.ARMOR_TOUGHNESS);
+        for (DefensePowerModifier modifier : defenseModifiers()) {
+            dp = modifier.apply(ctx, dp);
+        }
+        return (int) Math.floor(dp);
+    }
+
+    public record PowerRange(int min, int max) {
+    }
+
+    // === GUI 显示用:攻击/防御范围(基础值+修饰器+卡牌下限/上限) ===
+    public static PowerRange getDisplayAttackRange(Player player, ItemStack diceStack, WeaponEnhancement enhancement) {
+        if (player == null) return new PowerRange(0, 0);
+        if (enhancement == null) enhancement = WeaponEnhancement.EMPTY;
+        int misakiStar = enhancement.starLevel();
+        int misakiStacks = 0;
+        boolean misakiBurst = player.hasEffect(ModEffects.MISAKI_BURST);
+        var curios = CuriosApi.getCuriosInventory(player);
+        if (curios.isPresent()) {
+            var r = curios.get().findFirstCurio(s -> s.is(ModItems.MISAKI_SIGN.get()));
+            if (r.isPresent()) {
+                misakiStacks = r.get().stack().getOrDefault(ModDataComponents.MISAKI_SIGN_STACKS.get(), 0);
+            }
+        }
+        DiceCombatContext ctx = new DiceCombatContext(
+                player, player, null, 0, diceStack, enhancement, false,
+                misakiBurst, misakiStar, misakiStacks);
+        double ap = player.getAttributeValue(Attributes.ATTACK_DAMAGE);
+        for (AttackPowerModifier modifier : attackModifiers()) {
+            ap = modifier.apply(ctx, ap);
+        }
+        int base = (int) Math.floor(ap);
+        int min = base;
+        int max = base;
+        for (AppliedStone stone : enhancement.appliedStones()) {
+            if (CardRegistry.isDefense(stone.type())) continue;
+            min += CardRegistry.minRoll(stone.type());
+            max += CardRegistry.maxRoll(stone.type());
+        }
+        return new PowerRange(min, max);
+    }
+
+    public static PowerRange getDisplayDefenseRange(Player player, WeaponEnhancement enhancement) {
+        if (player == null) return new PowerRange(0, 0);
+        if (enhancement == null) enhancement = WeaponEnhancement.EMPTY;
+        DiceCombatContext ctx = new DiceCombatContext(
+                player, player, null, 0, ItemStack.EMPTY, enhancement, false,
+                false, 0, 0);
+        double dp = 2
+                + Math.min(player.getArmorValue(), 20) / 2.0
+                + 1.4 * player.getAttributeValue(Attributes.ARMOR_TOUGHNESS);
+        for (DefensePowerModifier modifier : defenseModifiers()) {
+            dp = modifier.apply(ctx, dp);
+        }
+        int base = (int) Math.floor(dp);
+        int min = base;
+        int max = base;
+        for (AppliedStone stone : enhancement.appliedStones()) {
+            if (!CardRegistry.isDefense(stone.type())) continue;
+            min += CardRegistry.minRoll(stone.type());
+            max += CardRegistry.maxRoll(stone.type());
+        }
+        return new PowerRange(min, max);
+    }
+
+
 }

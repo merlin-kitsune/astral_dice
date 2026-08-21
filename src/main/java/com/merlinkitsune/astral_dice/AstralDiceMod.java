@@ -64,9 +64,11 @@ public class AstralDiceMod {
     private static void backupOldConfigIfNeeded(String fileName, int currentVersion) {
         try {
             java.nio.file.Path configPath = net.neoforged.fml.loading.FMLPaths.CONFIGDIR.get().resolve(fileName);
-            if (!java.nio.file.Files.exists(configPath)) return;
+            if (!java.nio.file.Files.exists(configPath))
+                return;
             int fileVersion = readConfigVersion(configPath);
-            if (fileVersion >= currentVersion) return;
+            if (fileVersion >= currentVersion)
+                return;
             java.nio.file.Path backup = configPath.resolveSibling(fileName + ".bak");
             java.nio.file.Files.copy(configPath, backup, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
             LOGGER.info("[Astral Dice] 配置 {} 版本过旧(v{} < v{}),已备份至 {}", fileName, fileVersion, currentVersion, backup);

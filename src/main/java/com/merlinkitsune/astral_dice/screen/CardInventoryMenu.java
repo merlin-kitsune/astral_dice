@@ -1,7 +1,9 @@
 package com.merlinkitsune.astral_dice.screen;
 
 import com.merlinkitsune.astral_dice.combat.CardRegistry;
+import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
 import com.merlinkitsune.astral_dice.component.AppliedStone;
+import com.merlinkitsune.astral_dice.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
 import com.merlinkitsune.astral_dice.component.WeaponEnhancement;
 import com.merlinkitsune.astral_dice.item.dice.DiceCurioItem;
@@ -19,47 +21,56 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class CardInventoryMenu extends AbstractContainerMenu {
-    private static final int ATTACK_X_START = 32;
-    private static final int ATTACK_Y_START = 18;
-    private static final int DEFENSE_X_START = 32;
-    private static final int DEFENSE_Y_START = 40;
+    private static final int HIDDEN_X = -10000;
+    private static final int HIDDEN_Y = -10000;
+    private static final int CARD_SLOT_X_START = 26;
+    private static final int CARD_SLOT_SPACING = 18;
+    private static final int CARD_SLOT_ATTACK_Y = 3;
+    private static final int CARD_SLOT_DEFENSE_Y = 21;
+    public static final int SELECTOR_VISIBLE_ROWS = 3;
+    private static final int SELECTOR_LEFT_X = 8;
+    private static final int SELECTOR_RIGHT_X = 90;
+    private static final int SELECTOR_ROW_Y = 56;
+    private static final int SELECTOR_ROW_SPACING = 18;
 
     final Player player;
     final Inventory playerInventory;
     final SimpleContainer cardContainer;
-    // 攻防卡牌放置栏数量由当前佩戴的骰子决定(基础骰子 2+2=4,黄金骰子 3+3=6)
+    private final List<Slot> inventorySlots = new ArrayList<>();
     private final int cardSlots;
     private final int attackSlots;
     private final int defenseSlots;
     private final ItemStack equippedDice;
-    private int maxAttackCost = 3;
-    private int maxDefenseCost = 3;
+    private int maxAttackCost = GameplayConstants.MAX_CARD_COST;
+    private int maxDefenseCost = GameplayConstants.MAX_CARD_COST;
     private int starLevel = 0;
+    private int selectorScrollOffset = 0;
+    private int displayAttackMin;
+    private int displayAttackMax;
+    private int displayDefenseMin;
+    private int displayDefenseMax;
 
     public CardInventoryMenu(int containerId, Inventory playerInventory) {
         super(ModMenuTypes.CARD_INVENTORY.get(), containerId);
         this.player = playerInventory.player;
         this.playerInventory = playerInventory;
         this.equippedDice = findEquippedDice();
-        this.cardSlots = DiceCurioItem.getCardSlots(equippedDice);
-        this.attackSlots = cardSlots / 2;
-        this.defenseSlots = cardSlots - attackSlots;
+        initMaxCostFromDice();
+        this.cardSlots = GameplayConstants.CARD_SLOTS_TOTAL;
+        this.attackSlots = GameplayConstants.CARD_SLOTS_PER_SIDE;
+        this.defenseSlots = GameplayConstants.CARD_SLOTS_PER_SIDE;
         this.cardContainer = new SimpleContainer(cardSlots);
 
         for (int i = 0; i < attackSlots; i++) {
-            addSlot(new AttackCardSlot(i, ATTACK_X_START + i * 20, ATTACK_Y_START));
+            addSlot(new AttackCardSlot(i, CARD_SLOT_X_START + i * CARD_SLOT_SPACING, CARD_SLOT_ATTACK_Y));
         }
         for (int i = 0; i < defenseSlots; i++) {
-            addSlot(new DefenseCardSlot(attackSlots + i, DEFENSE_X_START + i * 20, DEFENSE_Y_START));
+            addSlot(new DefenseCardSlot(attackSlots + i, CARD_SLOT_X_START + i * CARD_SLOT_SPACING, CARD_SLOT_DEFENSE_Y));
         }
 
-        for (int row = 0; row < 3; row++) {
-            for (int col = 0; col < 9; col++) {
-                addSlot(new Slot(playerInventory, col + row * 9 + 9, 8 + col * 18, 70 + row * 18));
-            }
-        }
-        for (int col = 0; col < 9; col++) {
-            addSlot(new Slot(playerInventory, col, 8 + col * 18, 128));
+        for (int i = 0; i < playerInventory.items.size(); i++) {
+            Slot slot = new Slot(playerInventory, i, HIDDEN_X, HIDDEN_Y);
+            addSlot(slot);
         }
 
         addDataSlot(new DataSlot() {
@@ -74,12 +85,148 @@ public class CardInventoryMenu extends AbstractContainerMenu {
             @Override
             public void set(int value) { maxDefenseCost = value; }
         });
+        addDataSlot(new DataSlot() {
+            @Override
+            public int get() { return displayAttackMin; }
+            @Override
+            public void set(int value) { displayAttackMin = value; }
+        });
+        addDataSlot(new DataSlot() {
+            @Override
+            public int get() { return displayAttackMax; }
+            @Override
+            public void set(int value) { displayAttackMax = value; }
+        });
+        addDataSlot(new DataSlot() {
+            @Override
+            public int get() { return displayDefenseMin; }
+            @Override
+            public void set(int value) { displayDefenseMin = value; }
+        });
+        addDataSlot(new DataSlot() {
+            @Override
+            public int get() { return displayDefenseMax; }
+            @Override
+            public void set(int value) { displayDefenseMax = value; }
+        });
+
 
         if (!player.level().isClientSide()) {
             loadFromDice();
+            refreshDisplayStats();
         }
     }
 
+    // === 卡牌选择器:返回物品栏战斗牌对应的隐藏 Slot(按物品栏顺序) ===
+    public List<Slot> getAttackSelectorSlots() {
+        return getSelectorSlots(false);
+    }
+
+    public List<Slot> getDefenseSelectorSlots() {
+        return getSelectorSlots(true);
+    }
+
+    public int getDisplayAttackMin() {
+        return displayAttackMin;
+    }
+
+    public int getDisplayAttackMax() {
+        return displayAttackMax;
+    }
+
+    public int getDisplayDefenseMin() {
+        return displayDefenseMin;
+    }
+
+    public int getDisplayDefenseMax() {
+        return displayDefenseMax;
+    }
+
+    public Slot getFirstEmptyInventorySlot() {
+        for (int i = cardSlots; i < this.slots.size(); i++) {
+            Slot slot = this.slots.get(i);
+            if (!slot.hasItem()) return slot;
+        }
+        return null;
+    }
+
+    @Override
+    public void broadcastChanges() {
+        if (!player.level().isClientSide()) {
+            refreshDisplayStats();
+        }
+        super.broadcastChanges();
+    }
+
+    private void refreshDisplayStats() {
+        if (player.level().isClientSide()) return;
+        WeaponEnhancement enh = buildEnhancementFromContainer();
+        DiceCombatModifiers.PowerRange atk = DiceCombatModifiers.getDisplayAttackRange(player, equippedDice, enh);
+        DiceCombatModifiers.PowerRange def = DiceCombatModifiers.getDisplayDefenseRange(player, enh);
+        this.displayAttackMin = atk.min();
+        this.displayAttackMax = atk.max();
+        this.displayDefenseMin = def.min();
+        this.displayDefenseMax = def.max();
+    }
+
+    // 根据当前卡牌栏实时构建临时强化数据,确保放入/移除卡牌后数值立即刷新
+    private WeaponEnhancement buildEnhancementFromContainer() {
+        List<AppliedStone> stones = new ArrayList<>();
+        int totalAttackCost = 0;
+        int totalDefenseCost = 0;
+        for (int i = 0; i < cardSlots; i++) {
+            ItemStack stack = cardContainer.getItem(i);
+            if (!stack.isEmpty()) {
+                String type = itemToStoneType(stack);
+                if (type != null) {
+                    int cost = stoneCost(type);
+                    int uses = stack.getMaxDamage() - stack.getDamageValue();
+                    stones.add(new AppliedStone(type, uses));
+                    if (isDefenseType(type)) {
+                        totalDefenseCost += cost;
+                    } else {
+                        totalAttackCost += cost;
+                    }
+                }
+            }
+        }
+        return new WeaponEnhancement(totalAttackCost, maxAttackCost, totalDefenseCost, maxDefenseCost, starLevel, stones);
+    }
+
+
+    public int getSelectorScrollOffset() {
+        return selectorScrollOffset;
+    }
+
+    public int getMaxSelectorScrollOffset() {
+        int attack = getAttackSelectorSlots().size();
+        int defense = getDefenseSelectorSlots().size();
+        return Math.max(0, Math.max(attack, defense) - SELECTOR_VISIBLE_ROWS);
+    }
+
+    public void scrollSelector(int amount) {
+        this.selectorScrollOffset = Math.max(0, Math.min(getMaxSelectorScrollOffset(), selectorScrollOffset + amount));
+    }
+
+    private List<Slot> getSelectorSlots(boolean defense) {
+        List<Slot> result = new ArrayList<>();
+        for (int i = 0; i < playerInventory.items.size(); i++) {
+            ItemStack stack = playerInventory.items.get(i);
+            String type = CardRegistry.itemToType(stack);
+            if (type == null) continue;
+            if (CardRegistry.isDefense(type) == defense) {
+                result.add(this.slots.get(cardSlots + i));
+            }
+        }
+        return result;
+    }
+    private void initMaxCostFromDice() {
+        if (equippedDice.isEmpty()) return;
+        WeaponEnhancement enh = equippedDice.getOrDefault(ModDataComponents.WEAPON_ENHANCEMENT.get(), WeaponEnhancement.EMPTY);
+        this.starLevel = enh.starLevel();
+        this.maxAttackCost = GameplayConstants.cardCostForStar(starLevel);
+        this.maxDefenseCost = GameplayConstants.cardCostForStar(starLevel);
+    }
     private ItemStack findEquippedDice() {
         var curios = CuriosApi.getCuriosInventory(player);
         if (curios.isEmpty()) return ItemStack.EMPTY;
@@ -91,9 +238,9 @@ public class CardInventoryMenu extends AbstractContainerMenu {
         if (player.level().isClientSide()) return;
         if (equippedDice.isEmpty()) return;
         WeaponEnhancement enh = equippedDice.getOrDefault(ModDataComponents.WEAPON_ENHANCEMENT.get(), WeaponEnhancement.EMPTY);
-        this.maxAttackCost = enh.maxCost();
-        this.maxDefenseCost = enh.maxDefenseCost();
         this.starLevel = enh.starLevel();
+        this.maxAttackCost = GameplayConstants.cardCostForStar(starLevel);
+        this.maxDefenseCost = GameplayConstants.cardCostForStar(starLevel);
         List<AppliedStone> stones = enh.appliedStones();
         int attIdx = 0;
         int defIdx = attackSlots;
@@ -101,14 +248,14 @@ public class CardInventoryMenu extends AbstractContainerMenu {
             if (isDefenseType(stone.type())) {
                 if (defIdx < cardSlots) {
                     ItemStack itemStack = stoneToItem(stone);
-                    itemStack.set(ModDataComponents.CARD_USES.get(), stone.uses());
+                    itemStack.setDamageValue(Math.max(0, itemStack.getMaxDamage() - stone.uses()));
                     cardContainer.setItem(defIdx, itemStack);
                     defIdx++;
                 }
             } else {
                 if (attIdx < attackSlots) {
                     ItemStack itemStack = stoneToItem(stone);
-                    itemStack.set(ModDataComponents.CARD_USES.get(), stone.uses());
+                    itemStack.setDamageValue(Math.max(0, itemStack.getMaxDamage() - stone.uses()));
                     cardContainer.setItem(attIdx, itemStack);
                     attIdx++;
                 }
@@ -130,7 +277,7 @@ public class CardInventoryMenu extends AbstractContainerMenu {
                 String type = itemToStoneType(stack);
                 if (type != null) {
                     int cost = stoneCost(type);
-                    int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses(type));
+                    int uses = stack.getMaxDamage() - stack.getDamageValue();
                     stones.add(new AppliedStone(type, uses));
                     if (isDefenseType(type)) {
                         totalDefenseCost += cost;
@@ -144,6 +291,9 @@ public class CardInventoryMenu extends AbstractContainerMenu {
                 new WeaponEnhancement(totalAttackCost, maxAttackCost, totalDefenseCost, maxDefenseCost, starLevel, stones));
     }
 
+    public ItemStack getCardItem(int slotIndex) {
+        return cardContainer.getItem(slotIndex);
+    }
     public int getMaxAttackCost() {
         return maxAttackCost;
     }

@@ -18,11 +18,11 @@ public class DiceCurioItem extends Item implements ICurioItem {
     // 未佩戴骰子时的筹码栏位数量(对应 curios/slots/chip.json 的 size:0,需求:必须佩戴骰子才有筹码栏)
     private static final int CHIP_NO_DICE_SLOTS = 0;
 
-    // 该骰子的卡牌放置栏总槽位数(攻防各一半;默认基础骰子 2+2=4)
+    // 该骰子的卡牌放置栏总槽位数(固定攻防各 6,共 12)
     private final int cardSlots;
 
     public DiceCurioItem(Properties properties) {
-        this(properties, 4);
+        this(properties, 12);
     }
 
     public DiceCurioItem(Properties properties, int cardSlots) {
@@ -42,7 +42,7 @@ public class DiceCurioItem extends Item implements ICurioItem {
     // 返回某物品栈对应的卡牌放置栏总槽位数(优先查注册表,未注册回退基础骰子数量 4)
     public static int getCardSlots(ItemStack stack) {
         DiceTier tier = DiceTierRegistry.get(stack);
-        return tier != null ? tier.cardSlots() : 4;
+        return tier != null ? tier.cardSlots() : 12;
     }
 
     @Override

@@ -13,9 +13,9 @@
     }
   },
   "pattern": [
-    "N H N",
-    "H D H",
-    "N H N"
+    "NHN",
+    "HDH",
+    "NHN"
   ],
   "result": {
     "count": 1,

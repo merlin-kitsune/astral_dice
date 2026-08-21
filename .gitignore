@@ -39,8 +39,18 @@ run/
 repo/
 !**/src/**/repo/
 
-### 临时/智能体工作/游戏测试目录 — 仅推送代码与资源 ###
 temp/
 "temp/
 .opencode/
 scripts/test/
+
+### 项目级排除(用户要求) ###
+agents/
+build/
+docs/
+run/
+scripts/
+temp/
+AGENTS.md
+deploy.ps1
+opencode.json

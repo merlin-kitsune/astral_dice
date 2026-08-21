@@ -98,6 +98,20 @@ public final class CardRegistry {
         };
     }
 
+    /** 卡牌点数下限(固定伤害牌返回其固定值,随机骰牌返回 1) */
+    public static int minRoll(String typeId) {
+        return switch (typeId) {
+            case "shadow_strike" -> 3;
+            case "charge" -> 5;
+            case "full_power" -> 6;
+            default -> 1;
+        };
+    }
+
+    /** 卡牌点数范围文本,格式:最低/最高 */
+    public static String rangeText(String typeId) {
+        return minRoll(typeId) + "/" + maxRoll(typeId);
+    }
     /** 物品 → 类型 id;非战斗牌返回 null */
     public static String itemToType(ItemStack stack) {
         for (CardType t : BY_ID.values()) {

@@ -146,14 +146,14 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
                 .save(output);
 
-        // T2 中:忍者立牌(黄金骰子 + 羽毛×2 + 铁锭×1 + 黑色染料×2 + 发射器×2,有序,空白立牌置中,骰子置中下)
+        // T2 中:忍者立牌(黄金骰子 + 羽毛×2 + 回响碎片×1 + 黑色染料×2 + 发射器×2,有序,空白立牌置中,骰子置中下)
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.KOMACHI_SIGN.get())
                 .pattern("FIF")
                 .pattern("BEB")
                 .pattern("LDL")
                 .define('E', ModItems.BLANK_SIGN.get())
                 .define('F', Items.FEATHER)
-                .define('I', Items.IRON_INGOT)
+                .define('I', Items.ECHO_SHARD)
                 .define('B', Items.BLACK_DYE)
                 .define('L', Items.DISPENSER)
                 .define('D', ModItems.GOLDEN_DICE.get())
@@ -188,14 +188,14 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
                 .save(output);
 
-        // T3 强:占星师立牌(黄金骰子 + 青金石块×2 + 望远镜 + 金锭×4,有序,空白立牌置中,骰子置中下)
+        // T3 强:占星师立牌(黄金骰子 + 海晶砂砾×2 + 望远镜 + 金锭×4,有序,空白立牌置中,骰子置中下)
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.HAIQING_SIGN.get())
                 .pattern("GCG")
                 .pattern("LEL")
                 .pattern("GDG")
                 .define('E', ModItems.BLANK_SIGN.get())
                 .define('C', Items.SPYGLASS)
-                .define('L', Items.LAPIS_BLOCK)
+                .define('L', Items.PRISMARINE_CRYSTALS)
                 .define('G', Items.GOLD_INGOT)
                 .define('D', ModItems.GOLDEN_DICE.get())
                 .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
@@ -495,12 +495,13 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
                 .save(output);
 
-        // 魔法秘典:3 书与笔 + 2 附魔瓶 + 3 星币,空白筹码居中
+        // 魔法秘典:2 书与笔 + 1 回响碎片 + 2 附魔瓶 + 3 星币,空白筹码居中
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.MAGIC_TOME_CHIP.get())
-                .pattern("QQQ")
+                .pattern("QRQ")
                 .pattern("EBE")
                 .pattern("CCC")
                 .define('Q', Items.WRITABLE_BOOK)
+                .define('R', Items.ECHO_SHARD)
                 .define('E', Items.EXPERIENCE_BOTTLE)
                 .define('B', ModItems.BLANK_CHIP.get())
                 .define('C', ModItems.STAR_COIN.get())
@@ -519,13 +520,13 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
                 .save(output);
 
-        // 忍术飞镖:1 星盘 + 2 黄金星盘 + 1 磁石 + 2 下界合金锭 + 2 发光箭,空白筹码居中
+        // 忍术飞镖:1 星盘 + 2 黄金星盘 + 1 红石块 + 2 下界合金锭 + 2 发光箭,空白筹码居中
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.NINJA_STAR_CHIP.get())
                 .pattern("NLN")
                 .pattern("ABA")
                 .pattern("GPG")
                 .define('N', Items.NETHERITE_INGOT)
-                .define('L', Items.LODESTONE)
+                .define('L', Items.REDSTONE_BLOCK)
                 .define('A', Items.SPECTRAL_ARROW)
                 .define('B', ModItems.BLANK_CHIP.get())
                 .define('G', ModItems.GOLDEN_STAR_PLATE.get())
@@ -747,12 +748,13 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .save(output);
 
         // 魔法箭袋:中央空白筹码 + 中轴星币 + 羽毛/箭四角
-        // 魔法箭袋:3 星盘 + 3 发光箭 + 2 书与笔,空白筹码居中
+        // 魔法箭袋:3 星盘 + 2 发光箭 + 1 回响碎片 + 2 书与笔,空白筹码居中
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.MAGIC_QUIVER.get())
-                .pattern("AAA")
+                .pattern("ARA")
                 .pattern("QBQ")
                 .pattern("PPP")
                 .define('A', Items.SPECTRAL_ARROW)
+                .define('R', Items.ECHO_SHARD)
                 .define('Q', Items.WRITABLE_BOOK)
                 .define('B', ModItems.BLANK_CHIP.get())
                 .define('P', ModItems.STAR_PLATE.get())

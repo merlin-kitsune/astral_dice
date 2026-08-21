@@ -4,6 +4,10 @@ import com.merlinkitsune.astral_dice.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.core.Holder;
+import net.minecraft.world.effect.MobEffect;
+import net.minecraft.world.effect.MobEffectInstance;
+
 
 import java.util.ArrayList;
 import java.util.List;
@@ -138,6 +142,33 @@ public final class EffectCardPeriod {
         }
         return false;
     }
+
+    // 剩余被锁 tick:取“全局冷却结束时间”与“所有效果牌效果中最长的结束时间”的较大值
+    public static long getRemainingBlockTicks(Player player) {
+        long now = player.level().getGameTime();
+        long maxEnd = ModAttachments.getEffectCardCooldownEnd(player);
+        maxEnd = Math.max(maxEnd, now + remainingEffectTicks(player, ModEffects.LIVING_BOOK_PAGE));
+        maxEnd = Math.max(maxEnd, now + remainingEffectTicks(player, ModEffects.MONSTER_LASER));
+        maxEnd = Math.max(maxEnd, now + remainingEffectTicks(player, ModEffects.MONSTER_BRICK));
+        maxEnd = Math.max(maxEnd, now + remainingEffectTicks(player, ModEffects.ORBITAL_STRIKE));
+        maxEnd = Math.max(maxEnd, now + remainingEffectTicks(player, ModEffects.DIRECTIONAL_BLAST));
+        maxEnd = Math.max(maxEnd, now + remainingEffectTicks(player, ModEffects.FATE_GUIDANCE));
+        maxEnd = Math.max(maxEnd, now + remainingEffectTicks(player, ModEffects.KING_POWER));
+        maxEnd = Math.max(maxEnd, now + remainingEffectTicks(player, ModEffects.BERSERK));
+        maxEnd = Math.max(maxEnd, now + remainingEffectTicks(player, ModEffects.UNWAVERING));
+        return Math.max(0, maxEnd - now);
+    }
+
+    // 剩余被锁秒数(向上取整)
+    public static int getRemainingBlockSeconds(Player player) {
+        return (int) Math.ceil(getRemainingBlockTicks(player) / 20.0);
+    }
+
+    private static int remainingEffectTicks(Player player, Holder<MobEffect> effect) {
+        MobEffectInstance instance = player.getEffect(effect);
+        return instance != null ? instance.getDuration() : 0;
+    }
+
 
     /**
      * 出牌锁判定:

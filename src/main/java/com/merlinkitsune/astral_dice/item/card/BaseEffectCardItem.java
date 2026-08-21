@@ -1,6 +1,8 @@
 package com.merlinkitsune.astral_dice.item.card;
 
 import net.minecraft.core.Holder;
+import net.minecraft.network.chat.Component;
+
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.InteractionResultHolder;
@@ -160,8 +162,15 @@ public abstract class BaseEffectCardItem extends Item {
     // 客户端预检:与服务端 tryUseCard 的判定保持一致(专属校验 + 出牌锁)。
     // 出牌数/冷却/忍者临时出牌附件均已 .sync() 到客户端,客户端可实时判定。
     private boolean isBlockedOnClient(Player player, ItemStack stack) {
-        return (isExclusive() && !ExclusiveCardUtil.canUse(player, stack))
-                || EffectCardPeriod.isBlocked(player);
+        boolean exclusiveBlocked = isExclusive() && !ExclusiveCardUtil.canUse(player, stack);
+        if (exclusiveBlocked) return true;
+        if (EffectCardPeriod.isBurstFull(player)) {
+            int seconds = EffectCardPeriod.getRemainingBlockSeconds(player);
+            player.displayClientMessage(
+                    Component.translatable("msg.astral_dice.effect_card_burst_full", seconds), true);
+            return true;
+        }
+        return EffectCardPeriod.isBlocked(player);
     }
 
     /**

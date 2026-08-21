@@ -469,6 +469,21 @@ public class ModEventHandlers {
             }
 
             finalDmg = Math.max(1, attackPower - defensePower);
+
+        // 防御牌耐久消耗:玩家佩戴骰子且处于骰神赐福中,受到伤害时消耗防御卡耐久
+        if (!player.level().isClientSide() && target instanceof Player targetDefender && targetDefender.hasEffect(ModEffects.DICE_BLESSING)) {
+            var targetCurios = CuriosApi.getCuriosInventory(targetDefender);
+            if (targetCurios.isPresent()) {
+                var targetDiceResult = targetCurios.get().findFirstCurio(DiceCurioItem::isDiceItem);
+                if (targetDiceResult.isPresent()) {
+                    ItemStack targetDice = targetDiceResult.get().stack();
+                    WeaponEnhancement targetEnh = targetDice.get(ModDataComponents.WEAPON_ENHANCEMENT.get());
+                    if (targetEnh != null) {
+                        consumeDefenseCardDurability(targetDefender, targetDice, targetEnh);
+                    }
+                }
+            }
+        }
         }
 
         if (MarkManager.getLevel(target) > 0) {
@@ -568,6 +583,40 @@ public class ModEventHandlers {
             }
         }
     }
+
+    // 防御牌耐久消耗:玩家处于骰神赐福中受到伤害时,消耗所有防御卡 1 点耐久
+    private static void consumeDefenseCardDurability(Player defender, ItemStack diceStack, WeaponEnhancement enh) {
+        if (diceStack.isEmpty() || enh == null) return;
+        List<AppliedStone> newStones = new ArrayList<>();
+        int defenseCostFreed = 0;
+        boolean dirty = false;
+        for (AppliedStone stone : enh.appliedStones()) {
+            if (!stone.type().startsWith("defense_")) {
+                newStones.add(stone);
+                continue;
+            }
+            int newUses = stone.uses() - 1;
+            if (newUses <= 0) {
+                defenseCostFreed += MisakiSignItem.effectiveCost(defender, stone.type());
+                dirty = true;
+            } else {
+                newStones.add(new AppliedStone(stone.type(), newUses));
+                dirty = true;
+            }
+        }
+        if (dirty) {
+            diceStack.set(ModDataComponents.WEAPON_ENHANCEMENT.get(),
+                    new WeaponEnhancement(
+                            enh.usedCost(),
+                            enh.maxCost(),
+                            enh.usedDefenseCost() - defenseCostFreed,
+                            enh.maxDefenseCost(),
+                            enh.starLevel(),
+                            newStones
+                    ));
+        }
+    }
+
 
     @SubscribeEvent
     public static void onLivingChangeTarget(LivingChangeTargetEvent event) {
@@ -866,9 +915,9 @@ public class ModEventHandlers {
             output.set(ModDataComponents.WEAPON_ENHANCEMENT.get(),
                     new WeaponEnhancement(
                             enhancement.usedCost(),
-                            enhancement.maxCost() + 1,
+                            GameplayConstants.cardCostForStar(enhancement.starLevel() + 1),
                             enhancement.usedDefenseCost(),
-                            enhancement.maxDefenseCost() + 1,
+                            GameplayConstants.cardCostForStar(enhancement.starLevel() + 1),
                             enhancement.starLevel() + 1,
                             enhancement.appliedStones()
                     ));
@@ -1029,10 +1078,10 @@ public class ModEventHandlers {
             int usedDefenseCost = 0;
             if (enhancement != null) {
                 starLevel = enhancement.starLevel();
-                maxCost = enhancement.maxCost();
+                maxCost = GameplayConstants.cardCostForStar(enhancement.starLevel());
                 stones = enhancement.appliedStones();
                 usedCost = enhancement.usedCost();
-                maxDefenseCost = enhancement.maxDefenseCost();
+                maxDefenseCost = GameplayConstants.cardCostForStar(enhancement.starLevel());
                 usedDefenseCost = enhancement.usedDefenseCost();
             }
             tooltip.add(Component.empty());
@@ -1064,12 +1113,12 @@ public class ModEventHandlers {
                         .withStyle(ChatFormatting.GREEN));
                 for (AppliedStone stone : stones) {
                     if ("shadow_strike".equals(stone.type())) {
-                        tooltip.add(Component.literal(" §7- §5暗影突袭 §a+3 §7固定 §7| §8黑暗§90:03§7 §7[剩余:" + stone.uses() + "]")
+                        tooltip.add(Component.literal(" §7- §5暗影突袭 §a+3 §7固定 §7| §8黑暗§90:03§7")
                                 .withStyle(ChatFormatting.GRAY));
                         continue;
                     }
                     if ("meito".equals(stone.type())) {
-                        tooltip.add(Component.literal(" §7- §d名刀·噶呜切 §a+1~20 §7骰子 §7[剩余:" + stone.uses() + "]")
+                        tooltip.add(Component.literal(" §7- §d名刀·噶呜切 §a+1~20 §7骰子")
                                 .withStyle(ChatFormatting.GRAY));
                         continue;
                     }
@@ -1079,22 +1128,22 @@ public class ModEventHandlers {
                         continue;
                     }
                     if ("full_power".equals(stone.type())) {
-                        tooltip.add(Component.literal(" §7- §c全力攻击 §a+6 §7固定 §e最终+50% §7[剩余:" + stone.uses() + "]")
+                        tooltip.add(Component.literal(" §7- §c全力攻击 §a+6 §7固定 §e最终+50%")
                                 .withStyle(ChatFormatting.GRAY));
                         continue;
                     }
                     if ("defense_medium".equals(stone.type())) {
-                        tooltip.add(Component.literal(" §7- §b中 §a1~3 §7防御 §7[剩余:" + stone.uses() + "]")
+                        tooltip.add(Component.literal(" §7- §b中 §a1~3 §7防御")
                                 .withStyle(ChatFormatting.GRAY));
                         continue;
                     }
                     if ("defense_large".equals(stone.type())) {
-                        tooltip.add(Component.literal(" §7- §d大 §a1~6 §7防御 §7[剩余:" + stone.uses() + "]")
+                        tooltip.add(Component.literal(" §7- §d大 §a1~6 §7防御")
                                 .withStyle(ChatFormatting.GRAY));
                         continue;
                     }
                     if ("defense_epic".equals(stone.type())) {
-                        tooltip.add(Component.literal(" §7- §6特大 §a1~10 §7防御 §7[剩余:" + stone.uses() + "]")
+                        tooltip.add(Component.literal(" §7- §6特大 §a1~10 §7防御")
                                 .withStyle(ChatFormatting.GRAY));
                         continue;
                     }
@@ -1110,7 +1159,7 @@ public class ModEventHandlers {
                         case "epic" -> "1~10";
                         default -> "?";
                     };
-                    tooltip.add(Component.literal(" §7- " + stoneName + " §a+" + range + " §7骰子 §7[剩余:" + stone.uses() + "]")
+                    tooltip.add(Component.literal(" §7- " + stoneName + " §a+" + range + " §7骰子")
                             .withStyle(ChatFormatting.GRAY));
                 }
             }
@@ -1122,8 +1171,7 @@ public class ModEventHandlers {
             tooltip.add(Component.literal("Cost: " + "⨀".repeat(
                             com.merlinkitsune.astral_dice.combat.CardRegistry.cost("medium", player)))
                     .withStyle(ChatFormatting.YELLOW));
-            int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), 0);
-            tooltip.add(Component.translatable("tooltip.astral_dice.card.attack_medium", uses)
+            tooltip.add(Component.translatable("tooltip.astral_dice.card.attack_medium")
                     .withStyle(ChatFormatting.GRAY));
         }
         if (stack.is(ModItems.ATTACK_CARD_LARGE.get())) {
@@ -1131,8 +1179,7 @@ public class ModEventHandlers {
             tooltip.add(Component.literal("Cost: " + "⨀".repeat(
                             com.merlinkitsune.astral_dice.combat.CardRegistry.cost("large", player)))
                     .withStyle(ChatFormatting.YELLOW));
-            int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), 0);
-            tooltip.add(Component.translatable("tooltip.astral_dice.card.attack_large", uses)
+            tooltip.add(Component.translatable("tooltip.astral_dice.card.attack_large")
                     .withStyle(ChatFormatting.GRAY));
         }
         if (stack.is(ModItems.ATTACK_CARD_EPIC.get())) {
@@ -1140,8 +1187,7 @@ public class ModEventHandlers {
             tooltip.add(Component.literal("Cost: " + "⨀".repeat(
                             com.merlinkitsune.astral_dice.combat.CardRegistry.cost("epic", player)))
                     .withStyle(ChatFormatting.YELLOW));
-            int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), 0);
-            tooltip.add(Component.translatable("tooltip.astral_dice.card.attack_epic", uses)
+            tooltip.add(Component.translatable("tooltip.astral_dice.card.attack_epic")
                     .withStyle(ChatFormatting.GRAY));
         }
         if (stack.is(ModItems.ATTACK_CARD_SHADOW_STRIKE.get())) {
@@ -1149,8 +1195,7 @@ public class ModEventHandlers {
             tooltip.add(Component.literal("Cost: " + "⨀".repeat(
                             com.merlinkitsune.astral_dice.combat.CardRegistry.cost("shadow_strike", player)))
                     .withStyle(ChatFormatting.YELLOW));
-            int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), 0);
-            tooltip.add(Component.translatable("tooltip.astral_dice.card.shadow_strike", uses)
+            tooltip.add(Component.translatable("tooltip.astral_dice.card.shadow_strike")
                     .withStyle(ChatFormatting.GRAY));
         }
         if (stack.is(ModItems.ATTACK_CARD_MEITO.get())) {
@@ -1158,8 +1203,7 @@ public class ModEventHandlers {
             tooltip.add(Component.literal("Cost: " + "⨀".repeat(
                             com.merlinkitsune.astral_dice.combat.CardRegistry.cost("meito", player)))
                     .withStyle(ChatFormatting.YELLOW));
-            int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), 0);
-            tooltip.add(Component.translatable("tooltip.astral_dice.card.meito", uses)
+            tooltip.add(Component.translatable("tooltip.astral_dice.card.meito")
                     .withStyle(ChatFormatting.GRAY));
         }
         if (stack.is(ModItems.ATTACK_CARD_CHARGE.get())) {
@@ -1167,8 +1211,7 @@ public class ModEventHandlers {
             tooltip.add(Component.literal("Cost: " + "⨀".repeat(
                             com.merlinkitsune.astral_dice.combat.CardRegistry.cost("charge", player)))
                     .withStyle(ChatFormatting.YELLOW));
-            int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), 0);
-            tooltip.add(Component.translatable("tooltip.astral_dice.card.charge", uses)
+            tooltip.add(Component.translatable("tooltip.astral_dice.card.charge")
                     .withStyle(ChatFormatting.GRAY));
         }
         if (stack.is(ModItems.ATTACK_CARD_FULL_POWER.get())) {
@@ -1176,8 +1219,7 @@ public class ModEventHandlers {
             tooltip.add(Component.literal("Cost: " + "⨀".repeat(
                             com.merlinkitsune.astral_dice.combat.CardRegistry.cost("full_power", player)))
                     .withStyle(ChatFormatting.YELLOW));
-            int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), 0);
-            tooltip.add(Component.translatable("tooltip.astral_dice.card.full_power", uses)
+            tooltip.add(Component.translatable("tooltip.astral_dice.card.full_power")
                     .withStyle(ChatFormatting.GRAY));
         }
         if (stack.is(ModItems.DEFENSE_CARD_MEDIUM.get())) {
@@ -1185,8 +1227,7 @@ public class ModEventHandlers {
             tooltip.add(Component.literal("Cost: " + "⨀".repeat(
                             com.merlinkitsune.astral_dice.combat.CardRegistry.cost("defense_medium", player)))
                     .withStyle(ChatFormatting.YELLOW));
-            int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), 0);
-            tooltip.add(Component.translatable("tooltip.astral_dice.card.defense_medium", uses)
+            tooltip.add(Component.translatable("tooltip.astral_dice.card.defense_medium")
                     .withStyle(ChatFormatting.GRAY));
         }
         if (stack.is(ModItems.DEFENSE_CARD_LARGE.get())) {
@@ -1194,8 +1235,7 @@ public class ModEventHandlers {
             tooltip.add(Component.literal("Cost: " + "⨀".repeat(
                             com.merlinkitsune.astral_dice.combat.CardRegistry.cost("defense_large", player)))
                     .withStyle(ChatFormatting.YELLOW));
-            int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), 0);
-            tooltip.add(Component.translatable("tooltip.astral_dice.card.defense_large", uses)
+            tooltip.add(Component.translatable("tooltip.astral_dice.card.defense_large")
                     .withStyle(ChatFormatting.GRAY));
         }
         if (stack.is(ModItems.DEFENSE_CARD_EPIC.get())) {
@@ -1203,8 +1243,7 @@ public class ModEventHandlers {
             tooltip.add(Component.literal("Cost: " + "⨀".repeat(
                             com.merlinkitsune.astral_dice.combat.CardRegistry.cost("defense_epic", player)))
                     .withStyle(ChatFormatting.YELLOW));
-            int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), 0);
-            tooltip.add(Component.translatable("tooltip.astral_dice.card.defense_epic", uses)
+            tooltip.add(Component.translatable("tooltip.astral_dice.card.defense_epic")
                     .withStyle(ChatFormatting.GRAY));
         }
         if (stack.is(ModItems.EFFECT_CARD_KING_POWER.get())) {

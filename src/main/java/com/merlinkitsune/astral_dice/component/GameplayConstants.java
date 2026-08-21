@@ -65,6 +65,20 @@ public final class GameplayConstants {
     // 骰神赐福持续时长(单位:tick,派生值)
     public static int DICE_BLESSING_DURATION_TICKS = DICE_BLESSING_DURATION_SECONDS * 20;
 
+    // 卡牌槽位/费用点数固定规则(所有骰子统一)
+    public static final int CARD_SLOTS_PER_SIDE = 6;
+    public static final int CARD_SLOTS_TOTAL = CARD_SLOTS_PER_SIDE * 2;
+    public static final int MAX_CARD_COST = 6;
+
+    // 战斗伤害/法伤计算间隔(单位:tick,默认 20t,不写入配置文件)
+    public static final int COMBAT_DAMAGE_CALC_INTERVAL_TICKS = 20;
+    public static final int SPELL_DAMAGE_CALC_INTERVAL_TICKS = 20;
+
+
+    // 骰子星级对应的最大费用点数:0星3、1星4、2星5、3星6
+    public static int cardCostForStar(int starLevel) {
+        return Math.min(MAX_CARD_COST, 3 + Math.max(0, starLevel));
+    }
     private GameplayConstants() {
     }
 
