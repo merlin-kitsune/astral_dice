@@ -180,7 +180,7 @@ public class CardInventoryMenu extends AbstractContainerMenu {
                 String type = itemToStoneType(stack);
                 if (type != null) {
                     int cost = stoneCost(type);
-                    int uses = stack.getMaxDamage() - stack.getDamageValue();
+                    int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses(type));
                     stones.add(new AppliedStone(type, uses));
                     if (isDefenseType(type)) {
                         totalDefenseCost += cost;
@@ -248,14 +248,14 @@ public class CardInventoryMenu extends AbstractContainerMenu {
             if (isDefenseType(stone.type())) {
                 if (defIdx < cardSlots) {
                     ItemStack itemStack = stoneToItem(stone);
-                    itemStack.setDamageValue(Math.max(0, itemStack.getMaxDamage() - stone.uses()));
+                    itemStack.set(ModDataComponents.CARD_USES.get(), stone.uses());
                     cardContainer.setItem(defIdx, itemStack);
                     defIdx++;
                 }
             } else {
                 if (attIdx < attackSlots) {
                     ItemStack itemStack = stoneToItem(stone);
-                    itemStack.setDamageValue(Math.max(0, itemStack.getMaxDamage() - stone.uses()));
+                    itemStack.set(ModDataComponents.CARD_USES.get(), stone.uses());
                     cardContainer.setItem(attIdx, itemStack);
                     attIdx++;
                 }
@@ -277,7 +277,7 @@ public class CardInventoryMenu extends AbstractContainerMenu {
                 String type = itemToStoneType(stack);
                 if (type != null) {
                     int cost = stoneCost(type);
-                    int uses = stack.getMaxDamage() - stack.getDamageValue();
+                    int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses(type));
                     stones.add(new AppliedStone(type, uses));
                     if (isDefenseType(type)) {
                         totalDefenseCost += cost;

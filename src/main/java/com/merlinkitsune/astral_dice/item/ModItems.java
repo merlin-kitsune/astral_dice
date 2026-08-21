@@ -2,6 +2,8 @@ package com.merlinkitsune.astral_dice.item;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.component.AppliedStone;
+import com.merlinkitsune.astral_dice.component.ModDataComponents;
+
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Rarity;
@@ -127,61 +129,61 @@ public class ModItems {
 
     public static final DeferredItem<Item> ATTACK_CARD_MEDIUM = registerItem("attack_card_medium",
             () -> new CardItem(new Item.Properties()
-                    .stacksTo(64),
-                    "medium"));
+                    .stacksTo(64)
+                    .component(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("medium")), "medium"));
 
     public static final DeferredItem<Item> ATTACK_CARD_LARGE = registerItem("attack_card_large",
             () -> new CardItem(new Item.Properties()
                     .stacksTo(64)
-                    .rarity(Rarity.RARE),
-                    "large"));
+                    .rarity(Rarity.RARE)
+                    .component(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("large")), "large"));
 
     public static final DeferredItem<Item> ATTACK_CARD_EPIC = registerItem("attack_card_epic",
             () -> new CardItem(new Item.Properties()
                     .stacksTo(64)
-                    .rarity(Rarity.EPIC),
-                    "epic"));
+                    .rarity(Rarity.EPIC)
+                    .component(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("epic")), "epic"));
 
     public static final DeferredItem<Item> ATTACK_CARD_SHADOW_STRIKE = registerItem("attack_card_shadow_strike",
             () -> new CardItem(new Item.Properties()
                     .stacksTo(64)
-                    .rarity(Rarity.RARE),
-                    "shadow_strike"));
+                    .rarity(Rarity.RARE)
+                    .component(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("shadow_strike")), "shadow_strike"));
 
     public static final DeferredItem<Item> ATTACK_CARD_MEITO = registerItem("attack_card_meito",
             () -> new CardItem(new Item.Properties()
                     .stacksTo(64)
-                    .rarity(Rarity.EPIC),
-                    "meito"));
+                    .rarity(Rarity.EPIC)
+                    .component(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("meito")), "meito"));
 
     public static final DeferredItem<Item> ATTACK_CARD_CHARGE = registerItem("attack_card_charge",
             () -> new CardItem(new Item.Properties()
                     .stacksTo(64)
-                    .rarity(Rarity.UNCOMMON),
-                    "charge"));
+                    .rarity(Rarity.UNCOMMON)
+                    .component(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("charge")), "charge"));
 
     public static final DeferredItem<Item> ATTACK_CARD_FULL_POWER = registerItem("attack_card_full_power",
             () -> new CardItem(new Item.Properties()
                     .stacksTo(64)
-                    .rarity(Rarity.UNCOMMON),
-                    "full_power"));
+                    .rarity(Rarity.UNCOMMON)
+                    .component(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("full_power")), "full_power"));
 
     public static final DeferredItem<Item> DEFENSE_CARD_MEDIUM = registerItem("defense_card_medium",
             () -> new CardItem(new Item.Properties()
-                    .stacksTo(64),
-                    "defense_medium"));
+                    .stacksTo(64)
+                    .component(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("defense_medium")), "defense_medium"));
 
     public static final DeferredItem<Item> DEFENSE_CARD_LARGE = registerItem("defense_card_large",
             () -> new CardItem(new Item.Properties()
                     .stacksTo(64)
-                    .rarity(Rarity.RARE),
-                    "defense_large"));
+                    .rarity(Rarity.RARE)
+                    .component(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("defense_large")), "defense_large"));
 
     public static final DeferredItem<Item> DEFENSE_CARD_EPIC = registerItem("defense_card_epic",
             () -> new CardItem(new Item.Properties()
                     .stacksTo(64)
-                    .rarity(Rarity.EPIC),
-                    "defense_epic"));
+                    .rarity(Rarity.EPIC)
+                    .component(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("defense_epic")), "defense_epic"));
 
     public static final DeferredItem<Item> EFFECT_CARD_KING_POWER = registerItem("effect_card_king_power",
             () -> new EffectCardItem(new Item.Properties()
