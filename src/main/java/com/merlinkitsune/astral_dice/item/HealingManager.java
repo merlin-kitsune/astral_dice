@@ -1,6 +1,8 @@
 package com.merlinkitsune.astral_dice.item;
 
 import com.merlinkitsune.astral_dice.component.ModAttachments;
+import com.merlinkitsune.astral_dice.component.GameplayConstants;
+
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.player.Player;
@@ -116,49 +118,69 @@ public final class HealingManager {
         if (player.level().isClientSide()) return;
         ModAttachments.setHealingPoints(player, 0);
         ModAttachments.setHealingPrevBlessing(player, false);
+        ModAttachments.setHealingTimerEnd(player, 0);
         player.removeEffect(ModEffects.HEALING);
     }
 
-    // ── 骰神赐福生命周期结算 ──────────────────────────────────────────────────
+    // ── 治愈计时器/骰神赐福结算 ──────────────────────────────────────────────
 
     /**
-     * 触发骰神赐福时调用(ModEventHandlers 赐福触发块末尾,晚于同事件内所有
-     * 影响治愈点数量的效果):
-     * 1. 先增加装备的医疗箱筹码治愈点(紧急 +1、完备 +3,受上限);
-     * 2. 再获得 当前治愈点×2 的治疗量(回血,不扣点);
-     * 3. 记录"上一周期有赐福"(供结束边沿检测),刷新效果。
+     * 触发骰神赐福时调用:
+     * 1. 先追加所有筹码提供的初始治愈点;
+     * 2. 再按当前治愈点×2 回血;
+     * 3. 启动/重置 30 秒治愈计时器。
      */
     public static void onBlessingTriggered(Player player) {
         if (player.level().isClientSide()) return;
-        // 医疗箱加点(先于回血结算,使本次回血包含本次新增治愈点)
-        addMedkitPoints(player);
-        // 治愈回血:当前治愈点 × 2(对应 MC 1♥/层)
-        int total = getPoints(player);
-        if (total > 0) {
-            player.heal(total * 2);
-        }
+        addChipPoints(player);
+        triggerHealing(player);
         ModAttachments.setHealingPrevBlessing(player, true);
         updateEffect(player);
     }
 
     /**
-     * 骰神赐福结束时调用(由 {@link #tick} 边沿检测驱动,避免登录/死亡强制移除效果时误触发):
-     * 治愈点减半(向下取整)。
+     * 骰神赐福结束时调用:仅清除赐福周期标记。
+     * 治愈点减半统一由独立计时器到期处理。
      */
     public static void onBlessingEnded(Player player) {
         if (player.level().isClientSide()) return;
         ModAttachments.setHealingPrevBlessing(player, false);
-        int total = getPoints(player);
-        if (total > 0) {
-            ModAttachments.setHealingPoints(player, total / 2);
-        }
         updateEffect(player);
     }
 
     /**
-     * 医疗箱装备时调用:立即恢复指定生命值(1 治愈单位 = 2 点血量)。
-     * 卸下医疗箱无副作用(不扣治愈点——治愈点已是玩家资源,与装备状态解耦)。
+     * 治愈计时器到期:
+     * 1. 治愈点减半;
+     * 2. 若仍处于骰神赐福且治愈点 > 0,再次回血并重置计时器;
+     * 3. 否则保留减半后的治愈点,等待下次触发。
      */
+    public static void onTimerEnded(Player player) {
+        if (player.level().isClientSide()) return;
+        int total = getPoints(player);
+        int half = total / 2;
+        ModAttachments.setHealingPoints(player, half);
+        if (player.hasEffect(ModEffects.DICE_BLESSING) && half > 0) {
+            triggerHealing(player);
+        } else {
+            ModAttachments.setHealingTimerEnd(player, 0);
+        }
+        updateEffect(player);
+    }
+
+    /** 按当前治愈点×2 回血,并启动/重置 30 秒治愈计时器 */
+    private static void triggerHealing(Player player) {
+        int total = getPoints(player);
+        if (total > 0) {
+            player.heal(total * 2);
+        }
+        ModAttachments.setHealingTimerEnd(player,
+                player.level().getGameTime() + GameplayConstants.HEALING_TIMER_TICKS);
+    }
+
+    /** 追加所有筹码提供的初始治愈点(仅在触发治愈效果条件时调用) */
+    private static void addChipPoints(Player player) {
+        addMedkitPoints(player);
+    }
     public static void onMedkitEquipped(Player player, int heal) {
         if (player.level().isClientSide()) return;
         if (heal > 0) {
@@ -205,13 +227,17 @@ public final class HealingManager {
             total = cap;
         }
 
-        // 赐福结束边沿检测(粒度 = 本方法调用频率,≤1 秒)
+        // 治愈独立计时器到期处理
+        long timerEnd = ModAttachments.getHealingTimerEnd(player);
+        if (timerEnd > 0 && player.level().getGameTime() >= timerEnd) {
+            onTimerEnded(player);
+        }
+
+        // 赐福结束标记清理(不再减半,减半由计时器处理)
         boolean hasBlessing = player.hasEffect(ModEffects.DICE_BLESSING);
         if (ModAttachments.isHealingPrevBlessing(player) && !hasBlessing) {
             onBlessingEnded(player);
-            return;
-        }
-        if (hasBlessing) {
+        } else if (hasBlessing) {
             ModAttachments.setHealingPrevBlessing(player, true);
         }
         updateEffect(player);

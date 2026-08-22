@@ -135,7 +135,7 @@ public final class DiceCombatModifiers {
         // === 内置:美工刀/美工刀-锋利(满血时按当前治愈点数增伤) ===
         registerAttackModifier((ctx, ap) -> {
             if (ctx.attacker.level().isClientSide()) return ap;
-            boolean fullHp = ctx.attacker.getHealth() >= ctx.attacker.getMaxHealth();
+            boolean fullHp = ctx.attacker.getHealth() >= ctx.attacker.getMaxHealth() * 0.6f || ctx.attacker.hasEffect(ModEffects.PAPARA_BITE);
             if (fullHp) {
                 int healing = HealingManager.getPoints(ctx.attacker);
                 if (hasCurio(ctx.attacker, ModItems.CUTTER_CHIP.get())) {

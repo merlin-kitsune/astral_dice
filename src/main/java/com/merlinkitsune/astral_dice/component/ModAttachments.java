@@ -118,6 +118,21 @@ public class ModAttachments {
         player.setData(HEALING_PREV_BLESSING.get(), value);
     }
 
+    // 治愈:独立 30 秒计时器结束 tick(服务端使用;0 表示无计时器)
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> HEALING_TIMER_END =
+            ATTACHMENTS.register("healing_timer_end", () -> AttachmentType.builder(() -> 0L)
+                    .serialize(Codec.LONG)
+                    .build());
+
+    public static long getHealingTimerEnd(net.minecraft.world.entity.player.Player player) {
+        return player.getData(HEALING_TIMER_END.get());
+    }
+
+    public static void setHealingTimerEnd(net.minecraft.world.entity.player.Player player, long value) {
+        player.setData(HEALING_TIMER_END.get(), Math.max(0, value));
+    }
+
+
     // 魔法秘典筹码:效果牌使用计数(每使用 3 张复制最后一张)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> MAGIC_TOME_USE_COUNT =
             ATTACHMENTS.register("magic_tome_use_count", () -> AttachmentType.builder(() -> 0)

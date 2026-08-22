@@ -74,6 +74,10 @@ public final class GameplayConstants {
     public static final int COMBAT_DAMAGE_CALC_INTERVAL_TICKS = 20;
     public static final int SPELL_DAMAGE_CALC_INTERVAL_TICKS = 20;
 
+    // 治愈效果计时器(单位:tick,默认 30 秒,不写入配置文件)
+    public static final int HEALING_TIMER_TICKS = 30 * 20;
+
+
 
     // 骰子星级对应的最大费用点数:0星3、1星4、2星5、3星6
     public static int cardCostForStar(int starLevel) {

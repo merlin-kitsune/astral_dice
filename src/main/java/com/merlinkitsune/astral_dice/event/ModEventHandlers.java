@@ -863,7 +863,7 @@ public class ModEventHandlers {
         com.merlinkitsune.astral_dice.item.sign.FenSignItem.tick(player);
     }
 
-    // 美工刀-初级/锋利状态效果:佩戴对应筹码且生命值已满时显示效果图标(持续刷新),否则移除
+    // 美工刀-初级/锋利状态效果:佩戴对应筹码且生命值 ≥60% 或处于"嘬一口"状态时显示效果图标,否则移除
     private static void updateCutterEffect(Player player) {
         var curios = CuriosApi.getCuriosInventory(player);
         boolean hasCutter = false;
@@ -872,7 +872,7 @@ public class ModEventHandlers {
             hasCutter = curios.get().findFirstCurio(s -> s.is(ModItems.CUTTER_CHIP.get())).isPresent();
             hasBlade = curios.get().findFirstCurio(s -> s.is(ModItems.CUTTER_BLADE_CHIP.get())).isPresent();
         }
-        boolean fullHp = player.getHealth() >= player.getMaxHealth();
+        boolean fullHp = player.getHealth() >= player.getMaxHealth() * 0.6f || player.hasEffect(ModEffects.PAPARA_BITE);
         if (hasCutter && fullHp) {
             player.addEffect(new MobEffectInstance(ModEffects.CUTTER_READY, 100, 0, false, true, true));
         } else {
