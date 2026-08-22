@@ -1,5 +1,41 @@
 # Changelog
 
+## 1.0.1-rc1
+
+### 界面与显示 / UI & Display
+- 替换卡牌选择界面背景贴图。 / Replaced the card selection background texture.
+- 恢复战斗牌 Tooltip 剩余次数显示。 / Restored remaining uses text in battle card tooltips.
+- 修复攻击-特大/防御-特大等战斗牌耐久条显示问题。 / Fixed durability bar display for Epic battle cards and others.
+- 调整战斗牌耐久值：中/大/特大=10，暗影突袭=10，名刀=5，蓄力=1，全力攻击=2。 / Adjusted card durability values.
+
+### 战斗与触发 / Combat & Triggers
+- 修复骰子/筹码/立牌下蹲右键装备不生效。 / Fixed sneak-right-click auto-equip for dice/chips/signs.
+- 骰神赐福仅限近战武器触发。 / Dice Blessing now only triggers with melee weapons.
+- 攻击友好/被动/未激怒中立生物不再触发骰神赐福。 / Friendly, passive, and non-angered neutral mobs no longer trigger Dice Blessing.
+- 蓄力在赐福结束后返还全力攻击，并增加兜底检测与 ActionBar 提示。 / Charge now refunds Full Power after blessing, with fallback check and ActionBar message.
+
+### 治愈体系 / Healing System
+- 重构治愈机制：独立 30 秒计时器，触发时按治愈点×2 回血，计时结束减半。 / Reworked healing with an independent 30s timer.
+- 治愈效果不再产生药水粒子。 / Healing effect no longer shows potion particles.
+- 美工刀触发条件改为生命值≥60%。 / Cutter chips now trigger at 60% HP or above.
+- 吸血鬼“嘬一口”期间视为满血与半血状态。 / During Vampire Bite, player counts as both full HP and half HP.
+- 巧克力蛋糕/汉堡改为恢复最大生命值 20%/40%。 / Chocolate Cake and Hamburger now heal 20%/40% of max HP.
+- 奢华大餐改为恢复自身最大生命值 30%，并治疗同队/无队伍玩家。 / Luxury Feast heals 30% of user max HP to teammates and teamless players.
+
+### 平衡性 / Balance
+- 秘密侦探立牌返还战斗牌仅限 20 血以上敌对目标。 / Bonnie sign battle card reward now only for hostile targets above 20 HP.
+- 治愈盾牌触发间隔改为 15 秒。 / Buffer Shield trigger cooldown changed to 15 seconds.
+- 护法立牌“爆发”攻击力 +4，持续 2:00。 / Misaki Burst attack bonus increased to +4 and duration to 2:00.
+
+### 提示与反馈 / Feedback
+- 新增多类 ActionBar 提示：虚弱印记奖励、随机事件、调查事件、全力攻击返还、立牌待命、未佩戴骰子等。 / Added ActionBar messages for Weak Mark rewards, random events, investigation events, Full Power refunds, sign ready states, and missing dice.
+- 大侦探随机事件提示会显示具体事件名称。 / Fanny random event messages now show the triggered event name.
+
+### 工程 / Project
+- 修复 GitHub Actions 中 `gradlew` 无执行权限问题，并增加构建产物上传。 / Fixed gradlew permission in CI and added artifact upload.
+- 更新 README 模组介绍。 / Updated README with mod introduction.
+- 版本号更新为 `1.0.1-rc1`。 / Version updated to `1.0.1-rc1`.
+
 ## 1.0-rc1
 
 ### 卡牌选择界面重写
