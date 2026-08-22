@@ -1842,10 +1842,12 @@ public class ModEventHandlers {
         }
         if (target instanceof Enemy) return true;
         if (target instanceof Mob mob) {
+            // Boss 允许触发;其余生物仅在被激怒/正在攻击玩家时允许
+            if (com.merlinkitsune.astral_dice.item.BossEntityUtil.isBossEntity(target)) return true;
             return mob.getTarget() == player || mob.isAggressive();
         }
-        // 兜底:除被动动物外(如史莱姆/守卫者/测试假人等自定义实体)均允许,避免漏触发
-        return !(target instanceof Animal);
+        // 被动/友好/未激怒的中立生物不允许触发骰神赐福
+        return false;
     }
 
     // dummmmmmy 训练人偶识别:实体注册 id 命名空间为 dummmmmmy,或类名包含 dummy(兼容不同版本/命名)
