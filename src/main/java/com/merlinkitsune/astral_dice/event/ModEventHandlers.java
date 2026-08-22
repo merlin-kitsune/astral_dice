@@ -108,6 +108,9 @@ public class ModEventHandlers {
      * {@code onLivingDamagePre} 的 targetDiceResult.isEmpty() 分支内。
      */
     private static final boolean PLAYER_DODGE_ENABLED = false;
+    // 大当家立牌“战斗爽·扩散”递归保护:防止群体伤害再次触发扩散造成无限递归
+    private static boolean cleaveProcessing = false;
+
 
     // 检测玩家是否佩戴了七咒之戒(按物品 ID 识别,未安装该模组时返回 false)
     private static boolean hasEnigmaticCurse(Player player) {
@@ -510,19 +513,25 @@ public class ModEventHandlers {
         sendDamageNumber(event.getEntity(), (int) finalDmg);
 
         // 大当家立牌(战斗爽·扩散):本次赐福期间,每次攻击将总伤害的 80% 施加给目标 6 格内其他敌对目标
-        if (!player.level().isClientSide() && com.merlinkitsune.astral_dice.item.sign.FenSignItem.isCleaveActive(player)) {
-            double cleaveDmg = finalDmg * com.merlinkitsune.astral_dice.item.sign.FenSignItem.CLEAVE_RATIO;
-            if (cleaveDmg > 0) {
-                net.minecraft.world.phys.AABB cleaveBox =
-                        target.getBoundingBox().inflate(com.merlinkitsune.astral_dice.item.sign.FenSignItem.CLEAVE_RANGE);
-                var nearby = target.level().getEntitiesOfClass(
-                        net.minecraft.world.entity.LivingEntity.class, cleaveBox,
-                        e -> e != target && e instanceof net.minecraft.world.entity.monster.Enemy && e.isAlive());
-                var cleaveSource = com.merlinkitsune.astral_dice.damage.ModDamageTypes
-                        .diceDamage(target.level(), player);
-                for (var e : nearby) {
-                    e.hurt(cleaveSource, (float) cleaveDmg);
+        // 使用递归保护:扩散造成的伤害不会再触发二次扩散,避免多目标互炸导致栈溢出
+        if (!player.level().isClientSide() && !cleaveProcessing && com.merlinkitsune.astral_dice.item.sign.FenSignItem.isCleaveActive(player)) {
+            cleaveProcessing = true;
+            try {
+                double cleaveDmg = finalDmg * com.merlinkitsune.astral_dice.item.sign.FenSignItem.CLEAVE_RATIO;
+                if (cleaveDmg > 0) {
+                    net.minecraft.world.phys.AABB cleaveBox =
+                            target.getBoundingBox().inflate(com.merlinkitsune.astral_dice.item.sign.FenSignItem.CLEAVE_RANGE);
+                    var nearby = target.level().getEntitiesOfClass(
+                            net.minecraft.world.entity.LivingEntity.class, cleaveBox,
+                            e -> e != target && e instanceof net.minecraft.world.entity.monster.Enemy && e.isAlive());
+                    var cleaveSource = com.merlinkitsune.astral_dice.damage.ModDamageTypes
+                            .diceDamage(target.level(), player);
+                    for (var e : nearby) {
+                        e.hurt(cleaveSource, (float) cleaveDmg);
+                    }
                 }
+            } finally {
+                cleaveProcessing = false;
             }
         }
 
