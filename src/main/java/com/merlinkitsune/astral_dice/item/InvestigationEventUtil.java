@@ -1,8 +1,14 @@
 package com.merlinkitsune.astral_dice.item;
 
+import com.merlinkitsune.astral_dice.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.event.AstralEventSystem;
+import com.merlinkitsune.astral_dice.network.ActionBarPayload;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
+import net.neoforged.neoforge.network.PacketDistributor;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.player.Player;
@@ -29,12 +35,14 @@ public final class InvestigationEventUtil {
             applyStageEffects(killer, null, stage, markLevel);
             ModAttachments.setInvestigationStage(applier, Math.min(stage + 1, 4));
             AstralEventSystem.triggerInvestigationEvent(killer);
+            sendInvestigationActionBar(killer);
             return;
         }
         applyStageEffects(killer, applier, stage, markLevel);
         // 推进进度(达到真相揭露阶段后永久保持,仅卸下立牌时清除)
         ModAttachments.setInvestigationStage(applier, Math.min(stage + 1, 4));
         AstralEventSystem.triggerInvestigationEvent(killer);
+            sendInvestigationActionBar(killer);
     }
 
     // 应用对应阶段的效果:隐身;阶段 II 及以上施加调查增益(攻击加成在攻击事件中按阶段/目标标记层数结算)
@@ -74,4 +82,13 @@ public final class InvestigationEventUtil {
             p.addEffect(new MobEffectInstance(ModEffects.INVESTIGATION_BONUS, duration, stage, false, false, true));
         }
     }
+
+    private static void sendInvestigationActionBar(Player player) {
+        if (player instanceof ServerPlayer sp) {
+            PacketDistributor.sendToPlayer(sp,
+                    new ActionBarPayload(Component.translatable("msg.astral_dice.investigation_event_triggered")
+                            .withStyle(ChatFormatting.YELLOW), GameplayConstants.ACTIONBAR_DURATION_TICKS));
+        }
+    }
+
 }

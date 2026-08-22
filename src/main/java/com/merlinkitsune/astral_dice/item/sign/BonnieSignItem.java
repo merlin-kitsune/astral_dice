@@ -13,6 +13,11 @@ import top.theillusivec4.curios.api.SlotContext;
 import com.merlinkitsune.astral_dice.item.MarkManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.InvestigationEventUtil;
+import com.merlinkitsune.astral_dice.network.ActionBarPayload;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
+import net.neoforged.neoforge.network.PacketDistributor;
 
 /**
  * 秘密侦探立牌(命名:bonnie)。
@@ -42,6 +47,12 @@ public class BonnieSignItem extends BaseSignItem {
             ModAttachments.setSignReadyType(player, 0);
             ModAttachments.setSignReadyExpire(player, 0);
             player.removeEffect(ModEffects.BONNIE_READY);
+        }
+        if (ModAttachments.getSignReadyType(player) == READY_TYPE && expire > 0
+                && player.tickCount % 20 == 0 && player instanceof ServerPlayer sp) {
+            PacketDistributor.sendToPlayer(sp,
+                    new ActionBarPayload(Component.translatable("msg.astral_dice.bonnie_ready")
+                            .withStyle(ChatFormatting.YELLOW), GameplayConstants.ACTIONBAR_DURATION_TICKS));
         }
     }
 
@@ -84,7 +95,10 @@ public class BonnieSignItem extends BaseSignItem {
     @Override
     protected void onKill(Player killer, net.minecraft.world.entity.LivingEntity killed) {
         // 被动 2:击杀带"标记"的目标 → 获得一张随机战斗牌
-        if (MarkManager.getLevel(killed) > 0) {
+        if (MarkManager.getLevel(killed) > 0
+                && !(killed instanceof Player)
+                && killed instanceof net.minecraft.world.entity.monster.Enemy
+                && killed.getMaxHealth() > 20) {
             giveRandomBattleCard(killer);
         }
         // 被动 3:击杀带"隐匿调查"的目标 → 触发调查阶段事件

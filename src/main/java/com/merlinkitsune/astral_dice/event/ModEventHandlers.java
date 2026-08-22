@@ -706,6 +706,11 @@ public class ModEventHandlers {
         if (!player.getInventory().add(card)) {
             player.drop(card, false);
         }
+        if (player instanceof ServerPlayer sp) {
+            PacketDistributor.sendToPlayer(sp,
+                    new ActionBarPayload(Component.translatable("msg.astral_dice.charge_refund_full_power")
+                            .withStyle(ChatFormatting.YELLOW), GameplayConstants.ACTIONBAR_DURATION_TICKS));
+        }
     }
 
     // 蓄力兜底:当玩家没有骰神赐福但骰子仍残留蓄力时,移除蓄力并返还全力攻击
@@ -743,6 +748,11 @@ public class ModEventHandlers {
         ItemStack card = new ItemStack(ModItems.ATTACK_CARD_FULL_POWER.get());
         if (!player.getInventory().add(card)) {
             player.drop(card, false);
+        if (player instanceof ServerPlayer sp) {
+            PacketDistributor.sendToPlayer(sp,
+                    new ActionBarPayload(Component.translatable("msg.astral_dice.charge_refund_full_power")
+                            .withStyle(ChatFormatting.YELLOW), GameplayConstants.ACTIONBAR_DURATION_TICKS));
+        }
         }
     }
 

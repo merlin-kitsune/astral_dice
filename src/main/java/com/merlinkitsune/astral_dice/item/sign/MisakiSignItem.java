@@ -22,8 +22,8 @@ public class MisakiSignItem extends BaseSignItem {
     @Override
     protected InteractionResultHolder<ItemStack> handleUse(Level level, Player player, ItemStack stack) {
         if (!level.isClientSide) {
-            // 主动技能:获得"爆发"效果 60 秒(visible=true 使效果图标在 HUD 正常显示)
-            player.addEffect(new MobEffectInstance(ModEffects.MISAKI_BURST, 1200, 0, false, true, true));
+            // 主动技能:获得"爆发"效果 2:00(visible=true 使效果图标在 HUD 正常显示)
+            player.addEffect(new MobEffectInstance(ModEffects.MISAKI_BURST, 2400, 0, false, true, true));
 
             // 若被动层数已达 3 层:减少 2 层,并向物品栏增加一张"名刀嘎呜切"
             int stacks = stack.getOrDefault(ModDataComponents.MISAKI_SIGN_STACKS.get(), 0);

@@ -12,9 +12,15 @@ import top.theillusivec4.curios.api.SlotContext;
 
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
+import com.merlinkitsune.astral_dice.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.event.AstralEventSystem;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.card.EffectCardUtil;
+import com.merlinkitsune.astral_dice.network.ActionBarPayload;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
+import net.neoforged.neoforge.network.PacketDistributor;
 
 public class FannySignItem extends BaseSignItem {
     public FannySignItem(Properties properties) {
@@ -33,6 +39,7 @@ public class FannySignItem extends BaseSignItem {
         // 主动:随机获得以下任一效果(固定 11 项,不含"调查阶段"事件)
         int roll = ThreadLocalRandom.current().nextInt(1, 12);
         applyEvent(player, roll);
+        sendEventActionBar(player, roll);
         // 保持与调查员立牌联动:触发事件后,佩戴调查员立牌的玩家获得一张"活体书页"
         // (带独立事件 ID,避免与调查阶段事件在同 tick 触发时互相串扰去重)
         com.merlinkitsune.astral_dice.event.AstralEventSystem.applyRinSignPassive(player, "fanny_active");
@@ -95,6 +102,16 @@ public class FannySignItem extends BaseSignItem {
     private static void giveItem(Player player, ItemStack item) {
         if (!player.getInventory().add(item)) {
             player.drop(item, false);
+        }
+    }
+    private static void sendEventActionBar(Player player, int roll) {
+        if (player instanceof ServerPlayer sp) {
+            PacketDistributor.sendToPlayer(sp,
+                    new ActionBarPayload(
+                            Component.translatable("msg.astral_dice.fanny_event",
+                                    Component.translatable("msg.astral_dice.fanny_event." + roll))
+                                    .withStyle(ChatFormatting.YELLOW),
+                            GameplayConstants.ACTIONBAR_DURATION_TICKS));
         }
     }
 }

@@ -125,9 +125,9 @@ public final class DiceCombatModifiers {
                     default -> 0;
                 };
             }
-            // 爆发期间伤害 +2
+            // 爆发期间伤害 +4
             if (ctx.misakiBurst) {
-                ap += 2;
+                    ap += 4;
             }
             return ap;
         });

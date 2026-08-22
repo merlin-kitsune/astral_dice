@@ -10,6 +10,12 @@ import top.theillusivec4.curios.api.SlotContext;
 import top.theillusivec4.curios.api.type.inventory.ICurioStacksHandler;
 import com.merlinkitsune.astral_dice.item.dice.DiceCurioItem;
 import com.merlinkitsune.astral_dice.item.sign.BaseSignItem;
+import com.merlinkitsune.astral_dice.component.GameplayConstants;
+import com.merlinkitsune.astral_dice.network.ActionBarPayload;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
+import net.neoforged.neoforge.network.PacketDistributor;
 
 /**
  * 栏位校验与装备工具:立牌/筹码/骰子只能放入各自原本的饰品栏,
@@ -52,6 +58,16 @@ public final class CurioSlotUtil {
         if (player.level().isClientSide()) {
             return InteractionResultHolder.success(stack);
         }
+        // 立牌/筹码需要先佩戴骰子
+        if (!"dice".equals(slotId) && !hasDiceEquipped(player)) {
+            if (player instanceof ServerPlayer sp) {
+                PacketDistributor.sendToPlayer(sp,
+                        new ActionBarPayload(Component.translatable("msg.astral_dice.need_dice")
+                                .withStyle(ChatFormatting.RED), GameplayConstants.ACTIONBAR_DURATION_TICKS));
+            }
+            return InteractionResultHolder.fail(stack);
+        }
+
         // 重复装备限制:同类型饰品已装备时不允许自动装备
         if (hasSameItemEquipped(player, stack)) {
             return InteractionResultHolder.fail(stack);
@@ -93,5 +109,9 @@ public final class CurioSlotUtil {
         if (isRealUnequip(slotContext, stack, entity)) {
             action.accept(player);
         }
+    }
+    private static boolean hasDiceEquipped(Player player) {
+        var curios = CuriosApi.getCuriosInventory(player);
+        return curios.isPresent() && curios.get().findFirstCurio(DiceCurioItem::isDiceItem).isPresent();
     }
 }

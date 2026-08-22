@@ -12,6 +12,11 @@ import top.theillusivec4.curios.api.SlotContext;
 import com.merlinkitsune.astral_dice.item.card.ExclusiveCardUtil;
 import com.merlinkitsune.astral_dice.event.ModEventHandlers;
 import com.merlinkitsune.astral_dice.item.ModItems;
+import com.merlinkitsune.astral_dice.network.ActionBarPayload;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
+import net.neoforged.neoforge.network.PacketDistributor;
 
 /**
  * 占星师立牌(命名:haiqing)。
@@ -39,6 +44,12 @@ public class HaiqingSignItem extends BaseSignItem {
             ModAttachments.setSignReadyType(player, 0);
             ModAttachments.setSignReadyExpire(player, 0);
             player.removeEffect(ModEffects.HAIQING_READY);
+        }
+        if (ModAttachments.getSignReadyType(player) == READY_TYPE && expire > 0
+                && player.tickCount % 20 == 0 && player instanceof ServerPlayer sp) {
+            PacketDistributor.sendToPlayer(sp,
+                    new ActionBarPayload(Component.translatable("msg.astral_dice.haiqing_ready")
+                            .withStyle(ChatFormatting.YELLOW), GameplayConstants.ACTIONBAR_DURATION_TICKS));
         }
     }
 
@@ -78,6 +89,11 @@ public class HaiqingSignItem extends BaseSignItem {
         ExclusiveCardUtil.setOwner(card, applier);
         if (!applier.getInventory().add(card)) {
             applier.drop(card, false);
+        }
+        if (applier instanceof ServerPlayer sp) {
+            PacketDistributor.sendToPlayer(sp,
+                    new ActionBarPayload(Component.translatable("msg.astral_dice.weak_mark_kill_reward")
+                            .withStyle(ChatFormatting.YELLOW), GameplayConstants.ACTIONBAR_DURATION_TICKS));
         }
     }
 }
