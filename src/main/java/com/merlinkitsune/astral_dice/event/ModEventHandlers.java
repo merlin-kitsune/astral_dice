@@ -394,6 +394,15 @@ public class ModEventHandlers {
         int attackCardSum = ctx.attackCardSum;
         boolean hasShadowStrike = ctx.hasShadowStrike;
         boolean hasFullPower = ctx.hasFullPower;
+        // 防御性兜底:即使未来调整掷骰注册顺序/逻辑,只要骰子已装载全力攻击,就必须应用最终攻击力 +50%
+        if (!hasFullPower && enhancement != null) {
+            for (AppliedStone stone : enhancement.appliedStones()) {
+                if ("full_power".equals(stone.type())) {
+                    hasFullPower = true;
+                    break;
+                }
+            }
+        }
 
         // === 神秘遗物+ 联动:七咒之戒 ===
         // 佩戴七咒之戒时,骰子伤害加成(骰点 + 卡牌点数)降低 40%;手持"启示之证"攻击时,减益再降低 20%;
@@ -1194,7 +1203,7 @@ public class ModEventHandlers {
                         continue;
                     }
                     if ("full_power".equals(stone.type())) {
-                        tooltip.add(Component.literal(" §7- §c全力攻击 §a+6 §7固定 §e最终+50% §7[剩余:" + stone.uses() + "]")
+                        tooltip.add(Component.literal(" §7- §c全力攻击 §a+6 §7攻击力 §e本次攻击的最终攻击力+50% §7[剩余:" + stone.uses() + "]")
                                 .withStyle(ChatFormatting.GRAY));
                         continue;
                     }
@@ -1237,7 +1246,7 @@ public class ModEventHandlers {
             tooltip.add(Component.literal("Cost: " + "⨀".repeat(
                             com.merlinkitsune.astral_dice.combat.CardRegistry.cost("medium", player)))
                     .withStyle(ChatFormatting.YELLOW));
-            int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), 0);
+            int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("medium"));
             tooltip.add(Component.translatable("tooltip.astral_dice.card.attack_medium", uses)
                     .withStyle(ChatFormatting.GRAY));
         }
@@ -1246,7 +1255,7 @@ public class ModEventHandlers {
             tooltip.add(Component.literal("Cost: " + "⨀".repeat(
                             com.merlinkitsune.astral_dice.combat.CardRegistry.cost("large", player)))
                     .withStyle(ChatFormatting.YELLOW));
-            int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), 0);
+            int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("large"));
             tooltip.add(Component.translatable("tooltip.astral_dice.card.attack_large", uses)
                     .withStyle(ChatFormatting.GRAY));
         }
@@ -1255,7 +1264,7 @@ public class ModEventHandlers {
             tooltip.add(Component.literal("Cost: " + "⨀".repeat(
                             com.merlinkitsune.astral_dice.combat.CardRegistry.cost("epic", player)))
                     .withStyle(ChatFormatting.YELLOW));
-            int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), 0);
+            int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("epic"));
             tooltip.add(Component.translatable("tooltip.astral_dice.card.attack_epic", uses)
                     .withStyle(ChatFormatting.GRAY));
         }
@@ -1264,7 +1273,7 @@ public class ModEventHandlers {
             tooltip.add(Component.literal("Cost: " + "⨀".repeat(
                             com.merlinkitsune.astral_dice.combat.CardRegistry.cost("shadow_strike", player)))
                     .withStyle(ChatFormatting.YELLOW));
-            int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), 0);
+            int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("shadow_strike"));
             tooltip.add(Component.translatable("tooltip.astral_dice.card.shadow_strike", uses)
                     .withStyle(ChatFormatting.GRAY));
         }
@@ -1273,7 +1282,7 @@ public class ModEventHandlers {
             tooltip.add(Component.literal("Cost: " + "⨀".repeat(
                             com.merlinkitsune.astral_dice.combat.CardRegistry.cost("meito", player)))
                     .withStyle(ChatFormatting.YELLOW));
-            int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), 0);
+            int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("meito"));
             tooltip.add(Component.translatable("tooltip.astral_dice.card.meito", uses)
                     .withStyle(ChatFormatting.GRAY));
         }
@@ -1282,7 +1291,7 @@ public class ModEventHandlers {
             tooltip.add(Component.literal("Cost: " + "⨀".repeat(
                             com.merlinkitsune.astral_dice.combat.CardRegistry.cost("charge", player)))
                     .withStyle(ChatFormatting.YELLOW));
-            int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), 0);
+            int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("charge"));
             tooltip.add(Component.translatable("tooltip.astral_dice.card.charge", uses)
                     .withStyle(ChatFormatting.GRAY));
         }
@@ -1291,7 +1300,7 @@ public class ModEventHandlers {
             tooltip.add(Component.literal("Cost: " + "⨀".repeat(
                             com.merlinkitsune.astral_dice.combat.CardRegistry.cost("full_power", player)))
                     .withStyle(ChatFormatting.YELLOW));
-            int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), 0);
+            int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("full_power"));
             tooltip.add(Component.translatable("tooltip.astral_dice.card.full_power", uses)
                     .withStyle(ChatFormatting.GRAY));
         }
@@ -1300,7 +1309,7 @@ public class ModEventHandlers {
             tooltip.add(Component.literal("Cost: " + "⨀".repeat(
                             com.merlinkitsune.astral_dice.combat.CardRegistry.cost("defense_medium", player)))
                     .withStyle(ChatFormatting.YELLOW));
-            int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), 0);
+            int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("defense_medium"));
             tooltip.add(Component.translatable("tooltip.astral_dice.card.defense_medium", uses)
                     .withStyle(ChatFormatting.GRAY));
         }
@@ -1309,7 +1318,7 @@ public class ModEventHandlers {
             tooltip.add(Component.literal("Cost: " + "⨀".repeat(
                             com.merlinkitsune.astral_dice.combat.CardRegistry.cost("defense_large", player)))
                     .withStyle(ChatFormatting.YELLOW));
-            int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), 0);
+            int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("defense_large"));
             tooltip.add(Component.translatable("tooltip.astral_dice.card.defense_large", uses)
                     .withStyle(ChatFormatting.GRAY));
         }
@@ -1318,7 +1327,7 @@ public class ModEventHandlers {
             tooltip.add(Component.literal("Cost: " + "⨀".repeat(
                             com.merlinkitsune.astral_dice.combat.CardRegistry.cost("defense_epic", player)))
                     .withStyle(ChatFormatting.YELLOW));
-            int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), 0);
+            int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("defense_epic"));
             tooltip.add(Component.translatable("tooltip.astral_dice.card.defense_epic", uses)
                     .withStyle(ChatFormatting.GRAY));
         }

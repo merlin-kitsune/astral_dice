@@ -117,7 +117,7 @@
   "tooltip.astral_dice.card.shadow_strike": "攻击力+3 + 黑暗§90:03§7 | 剩余次数: %s",
   "tooltip.astral_dice.card.meito": "攻击力1~20 | 剩余次数: %s",
   "tooltip.astral_dice.card.charge": "攻击力+5, 骰神赐福效果结束后返还全力攻击 | 剩余次数: %s",
-  "tooltip.astral_dice.card.full_power": "攻击力+6, 攻击威力+50%% | 剩余次数: %s",
+  "tooltip.astral_dice.card.full_power": "攻击力+6, 本次攻击的最终攻击力+50%% | 剩余次数: %s",
   "tooltip.astral_dice.card.defense_medium": "防御力1~3 | 剩余次数: %s",
   "tooltip.astral_dice.card.defense_large": "防御力1~6 | 剩余次数: %s",
   "tooltip.astral_dice.card.defense_epic": "防御力1~10 | 剩余次数: %s",
@@ -250,7 +250,8 @@
   "msg.astral_dice.charge_refund_full_power": "蓄力结束，返还“全力攻击”！",
   "msg.astral_dice.haiqing_ready": "攻击目标施加“虚弱印记”！",
   "msg.astral_dice.bonnie_ready": "攻击目标施加“隐匿调查”！",
-  "msg.astral_dice.need_dice": "需要先佩戴骰子！",  "hud.astral_dice.sign_ready": "技能已激活，攻击目标以释放！",
+  "msg.astral_dice.need_dice": "需要先佩戴骰子！",
+  "hud.astral_dice.sign_ready": "技能已激活，攻击目标以释放！",
   "hud.astral_dice.sign_active": "%s：技能已激活！",
   "hud.astral_dice.sign_active_cooldown": "%s：主动技能冷却中！"
 }

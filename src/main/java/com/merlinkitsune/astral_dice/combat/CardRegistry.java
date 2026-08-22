@@ -59,8 +59,20 @@ public final class CardRegistry {
     }
 
     public static int defaultUses(String typeId) {
-        CardType t = BY_ID.get(typeId);
-        return t != null ? t.defaultUses() : 10;
+        // 注意:ModItems 静态初始化阶段会调用本方法,而 CardRegistry.init() 在 FMLCommonSetup 才执行,
+        // 因此这里不能依赖 BY_ID(否则所有卡牌默认耐久都会错误地回退为 10)。
+        // 内置卡牌默认耐久在此集中维护,CardType 注册时也使用同一组数值。
+        return switch (typeId) {
+            case "medium", "large", "epic", "shadow_strike",
+                 "defense_medium", "defense_large", "defense_epic" -> 10;
+            case "meito" -> 5;
+            case "charge" -> 1;
+            case "full_power" -> 2;
+            default -> {
+                CardType t = BY_ID.get(typeId);
+                yield t != null ? t.defaultUses() : 10;
+            }
+        };
     }
 
     /**
@@ -178,6 +190,7 @@ public final class CardRegistry {
         register(new CardType("full_power", false, 2, 3,
                 com.merlinkitsune.astral_dice.item.ModItems.ATTACK_CARD_FULL_POWER.get(),
                 ctx -> {
+                    // 全力攻击:先提供固定 +6 攻击力,再令本次攻击的最终攻击力 +50%
                     ctx.hasFullPower = true;
                     return 6;
                 }));
