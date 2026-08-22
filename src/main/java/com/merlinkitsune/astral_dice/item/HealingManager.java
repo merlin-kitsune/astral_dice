@@ -262,6 +262,6 @@ public final class HealingManager {
             remain = Math.max(1, blessing.getDuration());
         }
         // amplifier = 层数 - 1(1 层显示 I 级);visible=true 使效果在 HUD 正常显示
-        player.addEffect(new MobEffectInstance(ModEffects.HEALING, remain, total - 1, false, true, true));
+        player.addEffect(new MobEffectInstance(ModEffects.HEALING, remain, total - 1, false, false, true));
     }
 }
