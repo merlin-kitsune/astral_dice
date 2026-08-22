@@ -1188,37 +1188,37 @@ public class ModEventHandlers {
                         .withStyle(ChatFormatting.GREEN));
                 for (AppliedStone stone : stones) {
                     if ("shadow_strike".equals(stone.type())) {
-                        tooltip.add(Component.literal(" §7- §5暗影突袭 §a+3 §7固定 §7| §8黑暗§90:03§7 §7[剩余:" + stone.uses() + "]")
+                        tooltip.add(Component.literal(" §7- §5暗影突袭 §e+3§7 固定 §7| 黑暗(§93秒§7) §7[剩余:§e" + stone.uses() + "§7]")
                                 .withStyle(ChatFormatting.GRAY));
                         continue;
                     }
                     if ("meito".equals(stone.type())) {
-                        tooltip.add(Component.literal(" §7- §d名刀·噶呜切 §a+1~20 §7骰子 §7[剩余:" + stone.uses() + "]")
+                        tooltip.add(Component.literal(" §7- §d名刀·噶呜切 §e1~20§7 骰子 §7[剩余:§e" + stone.uses() + "§7]")
                                 .withStyle(ChatFormatting.GRAY));
                         continue;
                     }
                     if ("charge".equals(stone.type())) {
-                        tooltip.add(Component.literal(" §7- §e蓄力 §a+5 §7固定(赐福期间) §7| 赐福结束后返还§c全力攻击")
+                        tooltip.add(Component.literal(" §7- §e蓄力 §e+5§7 固定(赐福期间) §7| 赐福结束后返还§c全力攻击")
                                 .withStyle(ChatFormatting.GRAY));
                         continue;
                     }
                     if ("full_power".equals(stone.type())) {
-                        tooltip.add(Component.literal(" §7- §c全力攻击 §a+6 §7攻击力 §e本次攻击的最终攻击力+50% §7[剩余:" + stone.uses() + "]")
+                        tooltip.add(Component.literal(" §7- §c全力攻击 §e+6§7 攻击力 §e本次攻击的最终攻击力+50%§7 §7[剩余:§e" + stone.uses() + "§7]")
                                 .withStyle(ChatFormatting.GRAY));
                         continue;
                     }
                     if ("defense_medium".equals(stone.type())) {
-                        tooltip.add(Component.literal(" §7- §b中 §a1~3 §7防御 §7[剩余:" + stone.uses() + "]")
+                        tooltip.add(Component.literal(" §7- §b中 §e1~3§7 防御 §7[剩余:§e" + stone.uses() + "§7]")
                                 .withStyle(ChatFormatting.GRAY));
                         continue;
                     }
                     if ("defense_large".equals(stone.type())) {
-                        tooltip.add(Component.literal(" §7- §d大 §a1~6 §7防御 §7[剩余:" + stone.uses() + "]")
+                        tooltip.add(Component.literal(" §7- §d大 §e1~6§7 防御 §7[剩余:§e" + stone.uses() + "§7]")
                                 .withStyle(ChatFormatting.GRAY));
                         continue;
                     }
                     if ("defense_epic".equals(stone.type())) {
-                        tooltip.add(Component.literal(" §7- §6特大 §a1~10 §7防御 §7[剩余:" + stone.uses() + "]")
+                        tooltip.add(Component.literal(" §7- §6特大 §e1~10§7 防御 §7[剩余:§e" + stone.uses() + "§7]")
                                 .withStyle(ChatFormatting.GRAY));
                         continue;
                     }
@@ -1234,7 +1234,7 @@ public class ModEventHandlers {
                         case "epic" -> "1~10";
                         default -> "?";
                     };
-                    tooltip.add(Component.literal(" §7- " + stoneName + " §a+" + range + " §7骰子 §7[剩余:" + stone.uses() + "]")
+                    tooltip.add(Component.literal(" §7- " + stoneName + " §e+" + range + "§7 骰子 §7[剩余:§e" + stone.uses() + "§7]")
                             .withStyle(ChatFormatting.GRAY));
                 }
             }
