@@ -2,36 +2,30 @@
 
 ## 1.0.1-rc1
 
-### 界面与显示 / UI & Display
-- 替换卡牌选择界面背景贴图。 / Replaced the card selection background texture.
-- 恢复战斗牌 Tooltip 剩余次数显示。 / Restored remaining uses text in battle card tooltips.
-- 修复攻击-特大/防御-特大等战斗牌耐久条显示问题。 / Fixed durability bar display for Epic battle cards and others.
-- 调整战斗牌耐久值：中/大/特大=10，暗影突袭=10，名刀=5，蓄力=1，全力攻击=2。 / Adjusted card durability values.
-
-### 战斗与触发 / Combat & Triggers
-- 修复骰子/筹码/立牌下蹲右键装备不生效。 / Fixed sneak-right-click auto-equip for dice/chips/signs.
-- 骰神赐福仅限近战武器触发。 / Dice Blessing now only triggers with melee weapons.
-- 攻击友好/被动/未激怒中立生物不再触发骰神赐福。 / Friendly, passive, and non-angered neutral mobs no longer trigger Dice Blessing.
+### 内容与平衡性调整 / Content & Balance Changes
+- 重新设计治愈体系：为治愈增加独立计时器，默认每 30 秒触发一次治愈效果（仅在骰神赐福期间）。 / Reworked the healing system with an independent timer: healing triggers every 30 seconds by default (only during Dice Blessing).
+- 触发骰神赐福时按治愈点×2 回血，计时结束治愈点减半。 / Healing Points heal ×2 when Dice Blessing triggers, and halve when the timer ends.
+- 美工刀触发阈值改为最大生命值 60% 以上即可触发，避免大部分时候都触发不了。 / Cutter chips now trigger above 60% of max HP, preventing them from being unable to trigger in most situations.
+- 护法立牌：主动技能攻击力加成提高至 +4，持续时间提高至 2:00。 / Misaki sign: active skill attack bonus increased to +4 and duration increased to 2:00.
+- 吸血鬼立牌：主动效果调整第二项为：不论玩家当前血量为多少，都同时视为满血和半血以下状态。 / Papara sign: the second active effect now treats the player as both full HP and below half HP regardless of current health.
+- 秘密侦探立牌：被动技能返还卡牌只对击杀 20 血以上敌对目标生效。 / Bonnie sign: passive card reward now only applies when killing hostile targets with more than 20 HP.
+- 巧克力蛋糕/汉堡改为恢复最大生命值 20%/40%；奢华大餐改为恢复自身最大生命值 30%，并治疗同队/无队伍玩家。 / Chocolate Cake and Hamburger now heal 20%/40% of max HP; Luxury Feast heals 30% of the user's max HP and also heals teammates and teamless players.
+- 治愈盾牌触发间隔改为 15 秒。 / Buffer Shield trigger cooldown changed to 15 seconds.
+- 调整战斗牌耐久值：中/大/特大=10，暗影突袭=10，名刀=5，蓄力=1，全力攻击=2。 / Adjusted battle card durability values: Medium/Large/Epic=10, Shadow Strike=10, Meito=5, Charge=1, Full Power=2.
 - 蓄力在赐福结束后返还全力攻击，并增加兜底检测与 ActionBar 提示。 / Charge now refunds Full Power after blessing, with fallback check and ActionBar message.
 
-### 治愈体系 / Healing System
-- 重构治愈机制：独立 30 秒计时器，触发时按治愈点×2 回血，计时结束减半。 / Reworked healing with an independent 30s timer.
+### 已修复BUG / Bug Fixes
+- 修复骰神赐福的触发目标判定和武器判定问题：仅近战武器触发，且友好/被动/未激怒中立生物不再触发。 / Fixed Dice Blessing target and weapon checks: it now only triggers with melee weapons and no longer triggers on friendly, passive, or non-angered neutral mobs.
+- 修复骰子/筹码/立牌下蹲右键装备不生效。 / Fixed sneak-right-click auto-equip for dice/chips/signs.
+- 修复战斗牌耐久条显示异常、Tooltip 丢失问题，恢复剩余次数显示。 / Fixed battle card durability bar display issues and missing tooltip, restored remaining uses display.
+- 修复大当家立牌触发伤害扩散时意外递归导致游戏崩溃。 / Fixed an unexpected recursion crash when Fen sign triggered damage cleave.
 - 治愈效果不再产生药水粒子。 / Healing effect no longer shows potion particles.
-- 美工刀触发条件改为生命值≥60%。 / Cutter chips now trigger at 60% HP or above.
-- 吸血鬼“嘬一口”期间视为满血与半血状态。 / During Vampire Bite, player counts as both full HP and half HP.
-- 巧克力蛋糕/汉堡改为恢复最大生命值 20%/40%。 / Chocolate Cake and Hamburger now heal 20%/40% of max HP.
-- 奢华大餐改为恢复自身最大生命值 30%，并治疗同队/无队伍玩家。 / Luxury Feast heals 30% of user max HP to teammates and teamless players.
 
-### 平衡性 / Balance
-- 秘密侦探立牌返还战斗牌仅限 20 血以上敌对目标。 / Bonnie sign battle card reward now only for hostile targets above 20 HP.
-- 治愈盾牌触发间隔改为 15 秒。 / Buffer Shield trigger cooldown changed to 15 seconds.
-- 护法立牌“爆发”攻击力 +4，持续 2:00。 / Misaki Burst attack bonus increased to +4 and duration to 2:00.
-
-### 提示与反馈 / Feedback
-- 新增多类 ActionBar 提示：虚弱印记奖励、随机事件、调查事件、全力攻击返还、立牌待命、未佩戴骰子等。 / Added ActionBar messages for Weak Mark rewards, random events, investigation events, Full Power refunds, sign ready states, and missing dice.
+### 质量更新 / Quality Improvements
+- 为部分行为增加 ActionBar 提示，同时受到事件影响的玩家也会有 ActionBar 提示。 / Added ActionBar feedback for several actions, and players affected by events also receive ActionBar messages.
 - 大侦探随机事件提示会显示具体事件名称。 / Fanny random event messages now show the triggered event name.
-
-### 工程 / Project
+- 微调骰子卡牌选择界面的卡牌显示。 / Fine-tuned card display in the dice card selection GUI.
+- 替换卡牌选择界面背景贴图。 / Replaced the card selection background texture.
 - 修复 GitHub Actions 中 `gradlew` 无执行权限问题，并增加构建产物上传。 / Fixed gradlew permission in CI and added artifact upload.
 - 更新 README 模组介绍。 / Updated README with mod introduction.
 - 版本号更新为 `1.0.1-rc1`。 / Version updated to `1.0.1-rc1`.
