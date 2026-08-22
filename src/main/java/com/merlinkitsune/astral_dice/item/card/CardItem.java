@@ -16,22 +16,22 @@ public class CardItem extends Item {
     // 未消耗耐久(满耐久)的战斗牌可堆叠 64 个;已消耗耐久后单独存放(单张)
     @Override
     public int getMaxStackSize(ItemStack stack) {
-        int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), 0);
         int max = AppliedStone.defaultUses(cardType);
+        int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), max);
         return uses >= max ? 64 : 1;
     }
 
     @Override
     public boolean isBarVisible(ItemStack stack) {
-        int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), 0);
         int max = AppliedStone.defaultUses(cardType);
+        int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), max);
         return uses < max;
     }
 
     @Override
     public int getBarWidth(ItemStack stack) {
-        int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), 0);
         int max = AppliedStone.defaultUses(cardType);
+        int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), max);
         if (max <= 0) return 0;
         return Math.round(13.0f * uses / max);
     }
@@ -39,7 +39,7 @@ public class CardItem extends Item {
     @Override
     public int getBarColor(ItemStack stack) {
         float max = AppliedStone.defaultUses(cardType);
-        float uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), 0);
+        float uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), (int) max);
         float ratio = max > 0 ? uses / max : 0;
         if (ratio > 0.5f) {
             return 0x00FF00;
