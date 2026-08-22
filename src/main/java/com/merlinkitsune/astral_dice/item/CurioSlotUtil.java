@@ -50,7 +50,7 @@ public final class CurioSlotUtil {
     // 下蹲右键自动装备:将手中物品放入指定饰品栏的第一个空槽位(仅服务端执行)
     public static InteractionResultHolder<ItemStack> tryAutoEquip(Player player, ItemStack stack, String slotId) {
         if (player.level().isClientSide()) {
-            return InteractionResultHolder.pass(stack);
+            return InteractionResultHolder.success(stack);
         }
         // 重复装备限制:同类型饰品已装备时不允许自动装备
         if (hasSameItemEquipped(player, stack)) {

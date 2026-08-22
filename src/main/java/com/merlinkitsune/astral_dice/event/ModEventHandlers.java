@@ -47,6 +47,11 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.ProjectileWeaponItem;
+import net.minecraft.world.item.AxeItem;
+import net.minecraft.world.item.MaceItem;
+import net.minecraft.world.item.SwordItem;
+import net.minecraft.world.item.TridentItem;
+
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -703,6 +708,45 @@ public class ModEventHandlers {
         }
     }
 
+    // 蓄力兜底:当玩家没有骰神赐福但骰子仍残留蓄力时,移除蓄力并返还全力攻击
+    private static void returnChargeCardIfBlessingEnded(Player player) {
+        if (player.level().isClientSide()) return;
+        if (player.hasEffect(ModEffects.DICE_BLESSING)) return;
+        var curios = CuriosApi.getCuriosInventory(player);
+        if (curios.isEmpty()) return;
+        var diceResult = curios.get().findFirstCurio(DiceCurioItem::isDiceItem);
+        if (diceResult.isEmpty()) return;
+        ItemStack dice = diceResult.get().stack();
+        WeaponEnhancement enh = dice.getOrDefault(ModDataComponents.WEAPON_ENHANCEMENT.get(), null);
+        if (enh == null) return;
+        boolean foundCharge = false;
+        int costFreed = 0;
+        List<AppliedStone> newStones = new ArrayList<>();
+        for (AppliedStone stone : enh.appliedStones()) {
+            if ("charge".equals(stone.type())) {
+                foundCharge = true;
+                costFreed += AppliedStone.cost(stone.type());
+            } else {
+                newStones.add(stone);
+            }
+        }
+        if (!foundCharge) return;
+        dice.set(ModDataComponents.WEAPON_ENHANCEMENT.get(),
+                new WeaponEnhancement(
+                        enh.usedCost() - costFreed,
+                        enh.maxCost(),
+                        enh.usedDefenseCost(),
+                        enh.maxDefenseCost(),
+                        enh.starLevel(),
+                        newStones
+                ));
+        ItemStack card = new ItemStack(ModItems.ATTACK_CARD_FULL_POWER.get());
+        if (!player.getInventory().add(card)) {
+            player.drop(card, false);
+        }
+    }
+
+
     // 标记效果自然结束时:每分钟减少 1 层标记(层数>1 时重新施加并重置计时,否则标记消失)
     @SubscribeEvent
     public static void onMarkExpired(MobEffectEvent.Expired event) {
@@ -861,6 +905,9 @@ public class ModEventHandlers {
         com.merlinkitsune.astral_dice.item.card.EffectCardPeriod.tick(player);
         // 大当家立牌:1 分钟内没有触发骰神赐福 → 养精蓄锐 +1 层
         com.merlinkitsune.astral_dice.item.sign.FenSignItem.tick(player);
+        // 蓄力兜底:若赐福已结束但骰子仍残留蓄力,返还全力攻击
+        returnChargeCardIfBlessingEnded(player);
+
     }
 
     // 美工刀-初级/锋利状态效果:佩戴对应筹码且生命值 ≥60% 或处于"嘬一口"状态时显示效果图标,否则移除
@@ -1775,12 +1822,15 @@ public class ModEventHandlers {
         return ThreadLocalRandom.current().nextInt(min, max + 1);
     }
 
-    // 近战武器攻击判定:非空手、非盾牌、非远程武器(弓/弩等),允许剑/斧/重锤/三叉戟等近战武器
+    // 近战武器攻击判定:仅允许剑/斧/重锤/三叉戟等近战武器触发骰神赐福
     private static boolean isMeleeWeaponAttack(Player player) {
         ItemStack held = player.getMainHandItem();
         if (held.isEmpty()) return false;
         if (held.is(Items.SHIELD)) return false;
-        return !(held.getItem() instanceof ProjectileWeaponItem);
+        return held.getItem() instanceof SwordItem
+                || held.getItem() instanceof AxeItem
+                || held.getItem() instanceof MaceItem
+                || held.getItem() instanceof TridentItem;
     }
 
     // 骰神赐福触发目标判定:敌对生物、非团队内玩家、已被激怒的中立生物,以及其余非被动动物实体

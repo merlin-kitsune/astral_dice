@@ -145,19 +145,19 @@ public final class CardRegistry {
         register(new CardType("medium", false, 10, 1,
                 com.merlinkitsune.astral_dice.item.ModItems.ATTACK_CARD_MEDIUM.get(),
                 ctx -> rollTwoMax(3, ctx)));
-        register(new CardType("large", false, 8, 2,
+        register(new CardType("large", false, 10, 2,
                 com.merlinkitsune.astral_dice.item.ModItems.ATTACK_CARD_LARGE.get(),
                 ctx -> rollTwoMax(6, ctx)));
-        register(new CardType("epic", false, 5, 3,
+        register(new CardType("epic", false, 10, 3,
                 com.merlinkitsune.astral_dice.item.ModItems.ATTACK_CARD_EPIC.get(),
                 ctx -> rollTwoMax(10, ctx)));
-        register(new CardType("shadow_strike", false, 5, 2,
+        register(new CardType("shadow_strike", false, 10, 2,
                 com.merlinkitsune.astral_dice.item.ModItems.ATTACK_CARD_SHADOW_STRIKE.get(),
                 ctx -> {
                     ctx.hasShadowStrike = true;
                     return 3;
                 }));
-        register(new CardType("meito", false, 3, 4,
+        register(new CardType("meito", false, 5, 4,
                 com.merlinkitsune.astral_dice.item.ModItems.ATTACK_CARD_MEITO.get(),
                 ctx -> {
                     // 护法立牌(misaki):爆发期间名刀伤害加成下限按星级增加(1星+2,2星+3,3星+5)
@@ -186,10 +186,10 @@ public final class CardRegistry {
         register(new CardType("defense_medium", true, 10, 1,
                 com.merlinkitsune.astral_dice.item.ModItems.DEFENSE_CARD_MEDIUM.get(),
                 ctx -> rollTwoMax(3, ctx)));
-        register(new CardType("defense_large", true, 8, 2,
+        register(new CardType("defense_large", true, 10, 2,
                 com.merlinkitsune.astral_dice.item.ModItems.DEFENSE_CARD_LARGE.get(),
                 ctx -> rollTwoMax(6, ctx)));
-        register(new CardType("defense_epic", true, 5, 3,
+        register(new CardType("defense_epic", true, 10, 3,
                 com.merlinkitsune.astral_dice.item.ModItems.DEFENSE_CARD_EPIC.get(),
                 ctx -> rollTwoMax(10, ctx)));
     }

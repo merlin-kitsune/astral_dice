@@ -25,7 +25,7 @@ public class CardItem extends Item {
     public boolean isBarVisible(ItemStack stack) {
         int max = AppliedStone.defaultUses(cardType);
         int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), max);
-        return uses < max;
+        return uses > 0 && uses < max;
     }
 
     @Override
