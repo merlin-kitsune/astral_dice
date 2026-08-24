@@ -16,6 +16,13 @@
 - 统一 Tooltip 时间与数值格式：时间蓝色、数值黄色、不足 1:00 使用秒、药水时间使用括号。 / Unified tooltip formatting: blue time, yellow values, seconds for durations under 1:00, and parentheses around potion effect times.
 - 同步大当家立牌主动技能中英文 Tooltip 文案。 / Synced the Fen sign active tooltip text between Chinese and English.
 
+### 已修复BUG / Bug Fixes
+- 移除立牌主动技能触发成功后的通用“技能已激活”ActionBar，避免覆盖各立牌自身的特殊提示。 / Removed the generic “Skill activated” ActionBar after sign skills trigger, preventing it from overwriting sign-specific messages.
+- 修复溅射/范围伤害未在被影响目标身上显示伤害数字的问题（大当家立牌扩散、定向爆破 AOE）。 / Fixed missing damage numbers on affected targets for splash/AOE damage (Fen cleave and Directional Blast AOE).
+- 定向爆破 AOE 伤害数字改为使用效果牌的绿色数字。 / Directional Blast AOE damage numbers now use the green effect-card damage color.
+- 本 Mod 创建的自定义效果无法被牛奶、蜂蜜瓶或 `/effect clear` 清除，仅玩家死亡可清除。 / Custom effects created by this mod can no longer be removed by milk, honey bottles, or `/effect clear`; only player death can remove them.
+- 修复玩家死亡时部分效果状态未正确重置的问题，统一清理立牌等待、扩散、出牌、魔法箭袋、命运指引、调查阶段等状态。 / Fixed some effect states not being reset on player death; sign-ready, cleave, play-count, Magic Quiver, Fate Guidance, and investigation states are now reset properly.
+
 ### 工程 / Project
 - 版本号更新为 `1.0.2-rc1`。 / Version updated to `1.0.2-rc1`.
 
