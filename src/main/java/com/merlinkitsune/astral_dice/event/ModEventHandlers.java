@@ -540,6 +540,7 @@ public class ModEventHandlers {
                             .diceDamage(target.level(), player);
                     for (var e : nearby) {
                         e.hurt(cleaveSource, (float) cleaveDmg);
+                        sendDamageNumber(e, (int) cleaveDmg);
                     }
                 }
             } finally {

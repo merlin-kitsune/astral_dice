@@ -11,6 +11,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.damagesource.DamageType;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.projectile.AbstractArrow;
 import net.minecraft.world.entity.projectile.ThrowableProjectile;
 
@@ -19,6 +20,7 @@ import java.util.List;
 import java.util.Locale;
 import com.merlinkitsune.astral_dice.damage.ModDamageTypes;
 import com.merlinkitsune.astral_dice.item.chip.MagicQuiverChipItem;
+import com.merlinkitsune.astral_dice.network.DamageNumberPayload;
 
 /**
  * 法伤(远程/魔法伤害)模块:作用域判定(白名单 matcher + 军火黑名单保险)与加成修饰器注册表。
@@ -222,6 +224,7 @@ public final class SpellDamageRegistry {
                         .diceDamage(ctx.target.level(), ctx.attacker);
                 for (var e : nearby) {
                     e.hurt(blastSource, 5);
+                    sendAoeDamageNumber(e, 5);
                 }
             }
         });
@@ -278,6 +281,16 @@ public final class SpellDamageRegistry {
                 com.merlinkitsune.astral_dice.item.chip.MagicQuiverChipItem.tryProc(ctx);
             }
         });
+    }
+
+    // 溅射/范围伤害跳数字(红色,与骰战主伤害数字一致)
+    private static void sendAoeDamageNumber(LivingEntity target, int damage) {
+        if (target.level().isClientSide()) return;
+        var packet = new DamageNumberPayload(target.getId(), damage, 0xFF5555);
+        net.neoforged.neoforge.network.PacketDistributor.sendToPlayersTrackingEntity(target, packet);
+        if (target instanceof net.minecraft.server.level.ServerPlayer serverTarget) {
+            net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(serverTarget, packet);
+        }
     }
 
     // 枪械/火炮类远程弹丸判定(保险):伤害类型与弹丸类名关键词识别
