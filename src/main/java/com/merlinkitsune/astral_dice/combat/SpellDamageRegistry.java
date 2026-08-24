@@ -224,7 +224,7 @@ public final class SpellDamageRegistry {
                         .diceDamage(ctx.target.level(), ctx.attacker);
                 for (var e : nearby) {
                     e.hurt(blastSource, 5);
-                    sendAoeDamageNumber(e, 5);
+                    sendAoeDamageNumber(e, 5, 0x7CFC00);
                 }
             }
         });
@@ -283,10 +283,10 @@ public final class SpellDamageRegistry {
         });
     }
 
-    // 溅射/范围伤害跳数字(红色,与骰战主伤害数字一致)
-    private static void sendAoeDamageNumber(LivingEntity target, int damage) {
+    // 溅射/范围伤害跳数字(颜色由调用方指定;定向爆破使用效果牌绿色)
+    private static void sendAoeDamageNumber(LivingEntity target, int damage, int color) {
         if (target.level().isClientSide()) return;
-        var packet = new DamageNumberPayload(target.getId(), damage, 0xFF5555);
+        var packet = new DamageNumberPayload(target.getId(), damage, color);
         net.neoforged.neoforge.network.PacketDistributor.sendToPlayersTrackingEntity(target, packet);
         if (target instanceof net.minecraft.server.level.ServerPlayer serverTarget) {
             net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(serverTarget, packet);

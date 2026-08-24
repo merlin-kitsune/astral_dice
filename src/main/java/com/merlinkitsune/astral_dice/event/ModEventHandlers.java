@@ -926,9 +926,24 @@ public class ModEventHandlers {
         BaseSignItem.invokeKillHooks(killer, target);
     }
 
+    // 本 Mod 创建的自定义效果不可被牛奶/蜂蜜/effect clear 等外部方式清除;仅玩家死亡可清除
+    @SubscribeEvent(priority = EventPriority.HIGH)
+    public static void onModEffectRemovalPrevented(MobEffectEvent.Remove event) {
+        if (event.getEntity().level().isClientSide()) return;
+        // 死亡时允许清除,保证死亡后效果状态能正常重置
+        if (event.getEntity().isDeadOrDying()) return;
+        MobEffectInstance effect = event.getEffectInstance();
+        if (effect == null || effect.getEffect() == null) return;
+        String effectId = effect.getEffect().getRegisteredName();
+        if (effectId != null && effectId.startsWith(AstralDiceMod.MODID + ":")) {
+            event.setCanceled(true);
+        }
+    }
+
     // 隐匿调查效果移除(目标死亡/被清除):清除来源
     @SubscribeEvent
     public static void onUndercoverRemoved(MobEffectEvent.Remove event) {
+        if (event.isCanceled()) return;
         MobEffectInstance effect = event.getEffectInstance();
         if (effect == null || effect.getEffect() == null
                 || effect.getEffect().value() != ModEffects.UNDERCOVER_INVESTIGATION.get()) return;
@@ -1943,8 +1958,33 @@ public class ModEventHandlers {
         if (!(event.getEntity() instanceof Player player)) return;
         if (player.level().isClientSide()) return;
         HealingManager.clear(player);
+        // 死亡时统一重置效果相关状态,避免效果被清除后附件残留
         ModAttachments.setDefenseCardConsumedThisBlessing(player, false);
+        ModAttachments.setSignReadyType(player, 0);
+        ModAttachments.setSignReadyExpire(player, 0);
+        ModAttachments.setFenCleavePending(player, false);
+        ModAttachments.setFenCleaveActive(player, false);
+        ModAttachments.setKomachiExtraPlayActive(player, false);
+        ModAttachments.setMagicQuiverTracking(player, false);
+        ModAttachments.setMagicQuiverFirstCard(player, "");
+        ModAttachments.setMagicQuiverCooldownEnd(player, 0);
+        ModAttachments.setFateActiveUntil(player, 0);
+        ModAttachments.setStarCoinHammerBonus(player, 0);
+        ModAttachments.setInvestigationStage(player, 1);
+        ModAttachments.setEffectCardPlayCount(player, 0);
+        ModAttachments.setEffectCardCooldownEnd(player, 0);
+        ModAttachments.setKomachiUseCount(player, 0);
+        ModAttachments.setMagicTomeUseCount(player, 0);
+        ModAttachments.setDamageEffectBonus(player, 0);
+        ModAttachments.setDiceCurseRatio(player, 1.0f);
         player.removeEffect(ModEffects.DICE_BLESSING);
+        player.removeEffect(ModEffects.HAIQING_READY);
+        player.removeEffect(ModEffects.BONNIE_READY);
+        player.removeEffect(ModEffects.INVESTIGATION_BONUS);
+        player.removeEffect(ModEffects.FATE_GUIDANCE);
+        player.removeEffect(ModEffects.FEN_FRENZY);
+        player.removeEffect(ModEffects.KOMACHI_COUNT);
+        player.removeEffect(ModEffects.MAGIC_TOME_COUNT);
     }
 
     // 命运的指引是否激活(功能由 attachment 截止时刻驱动;FATE_GUIDANCE 效果仅作状态显示)
