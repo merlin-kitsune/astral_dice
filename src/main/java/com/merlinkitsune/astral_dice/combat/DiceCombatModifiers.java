@@ -390,11 +390,18 @@ public final class DiceCombatModifiers {
         DiceCombatContext ctx = new DiceCombatContext(
                 player, player, null, 0, ItemStack.EMPTY, WeaponEnhancement.EMPTY, false,
                 false, 0, 0);
-        double dp = 2
-                + Math.min(player.getArmorValue(), 20) / 2.0
-                + 1.4 * player.getAttributeValue(Attributes.ARMOR_TOUGHNESS);
+        double modifierDefense = 0;
         for (DefensePowerModifier modifier : defenseModifiers()) {
-            dp = modifier.apply(ctx, dp);
+            modifierDefense = modifier.apply(ctx, modifierDefense);
+        }
+        double rawArmor = Math.min(player.getArmorValue(), 20);
+        double toughness = player.getAttributeValue(Attributes.ARMOR_TOUGHNESS);
+        double dp;
+        if (player.hasEffect(ModEffects.DICE_BLESSING)) {
+            dp = 2 + rawArmor / 2.0 + 1.4 * toughness + modifierDefense;
+        } else {
+            double effectiveArmor = Math.max(0, Math.min(rawArmor + modifierDefense, 20));
+            dp = 2 + effectiveArmor / 2.0 + 1.4 * toughness;
         }
         return (int) Math.floor(dp);
     }
@@ -440,19 +447,29 @@ public final class DiceCombatModifiers {
         DiceCombatContext ctx = new DiceCombatContext(
                 player, player, null, 0, ItemStack.EMPTY, enhancement, false,
                 false, 0, 0);
-        double dp = 2
-                + Math.min(player.getArmorValue(), 20) / 2.0
-                + 1.4 * player.getAttributeValue(Attributes.ARMOR_TOUGHNESS);
+        double modifierDefense = 0;
         for (DefensePowerModifier modifier : defenseModifiers()) {
-            dp = modifier.apply(ctx, dp);
+            modifierDefense = modifier.apply(ctx, modifierDefense);
+        }
+        double rawArmor = Math.min(player.getArmorValue(), 20);
+        double toughness = player.getAttributeValue(Attributes.ARMOR_TOUGHNESS);
+        double dp;
+        if (player.hasEffect(ModEffects.DICE_BLESSING)) {
+            dp = 2 + rawArmor / 2.0 + 1.4 * toughness + modifierDefense;
+        } else {
+            double effectiveArmor = Math.max(0, Math.min(rawArmor + modifierDefense, 20));
+            dp = 2 + effectiveArmor / 2.0 + 1.4 * toughness;
         }
         int base = (int) Math.floor(dp);
         int min = base;
         int max = base;
-        for (AppliedStone stone : enhancement.appliedStones()) {
-            if (!CardRegistry.isDefense(stone.type())) continue;
-            min += CardRegistry.minRoll(stone.type());
-            max += CardRegistry.maxRoll(stone.type());
+        // 防御卡仅在骰神赐福期间作为防御点生效
+        if (player.hasEffect(ModEffects.DICE_BLESSING)) {
+            for (AppliedStone stone : enhancement.appliedStones()) {
+                if (!CardRegistry.isDefense(stone.type())) continue;
+                min += CardRegistry.minRoll(stone.type());
+                max += CardRegistry.maxRoll(stone.type());
+            }
         }
         return new PowerRange(min, max);
     }

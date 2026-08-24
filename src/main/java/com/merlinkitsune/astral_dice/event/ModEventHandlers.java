@@ -479,17 +479,34 @@ public class ModEventHandlers {
             if (skipDefense) {
                 defensePower = 0;
             } else {
-                defensePower = 2
-                        + Math.min(target.getArmorValue(), 20)
-                                / (target instanceof Player ? 2.0 : 4.0)
-                        + 1.4 * target.getAttributeValue(Attributes.ARMOR_TOUGHNESS)
-                        + defenseBaseDice;
-
-                // 效果类防御加成(岿然不动/抗性)、防御卡掷骰与立牌/筹码防御加成:由注册表防御修饰器执行
+                // 先累计所有防御修饰器加成(防御卡掷骰会写入 ctx.defenseCardSum,不直接改变 modifierDefense)
+                double modifierDefense = 0;
                 for (var modifier : com.merlinkitsune.astral_dice.combat.DiceCombatModifiers.defenseModifiers()) {
-                    defensePower = modifier.apply(ctx, defensePower);
+                    modifierDefense = modifier.apply(ctx, modifierDefense);
                 }
-                defensePower += ctx.defenseCardSum;
+
+                double rawArmor = Math.min(target.getArmorValue(), 20);
+                double toughness = target.getAttributeValue(Attributes.ARMOR_TOUGHNESS);
+                boolean defenseAsPoints = !(target instanceof Player)
+                        || ((Player) target).hasEffect(ModEffects.DICE_BLESSING);
+
+                if (defenseAsPoints) {
+                    // 骰神赐福中(或怪物目标):防御加成直接作为防御点加入
+                    defensePower = 2
+                            + rawArmor / (target instanceof Player ? 2.0 : 4.0)
+                            + 1.4 * toughness
+                            + defenseBaseDice
+                            + modifierDefense
+                            + ctx.defenseCardSum;
+                } else {
+                    // 未触发骰神赐福的玩家:防御加成默认作为护甲值加成(受 20 点护甲上限约束)
+                    double effectiveArmor = Math.max(0, Math.min(rawArmor + modifierDefense, 20));
+                    defensePower = 2
+                            + effectiveArmor / 2.0
+                            + 1.4 * toughness
+                            + defenseBaseDice
+                            + ctx.defenseCardSum;
+                }
             }
 
             // Padman sign: attack dice == 6 bypass — ignore all defense except defense cards
