@@ -254,5 +254,5 @@
   "hud.astral_dice.sign_ready": "技能已激活，攻击目标以释放！",
   "hud.astral_dice.sign_active": "%s：技能已激活！",
   "hud.astral_dice.sign_active_cooldown": "%s：主动技能冷却中！",
-  "tooltip.astral_dice.sign.key_hint": "§6按下 §e%s§6 触发"
+  "tooltip.astral_dice.sign.key_hint": "§f按下 §e%s§f 触发"
 }

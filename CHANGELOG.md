@@ -6,28 +6,22 @@
 - 调整骰子筹码栏位数量（按 0★~3★）：普通 0/1/2/3，黄金 1/2/3/4，钻石 2/3/4/5，下界合金 3/4/5/6。 / Adjusted dice chip slot counts (0★~3★): Basic 0/1/2/3, Golden 1/2/3/4, Diamond 2/3/4/5, Netherite 3/4/5/6.
 - 调整骰子攻击/防御卡牌栏数量（每侧）：普通 3，黄金 4，钻石 5，下界合金 6。 / Adjusted per-side attack/defense card slots: Basic 3, Golden 4, Diamond 5, Netherite 6.
 - 主动触发“骰神赐福”时不再消耗防御牌耐久。 / Actively triggering Dice Blessing no longer consumes defense card durability.
-- 怪物近战攻击拥有“骰神赐福”的玩家时，每个赐福期间最多消耗一次防御牌耐久。 / When a melee monster attacks a player with Dice Blessing, defense card durability is consumed at most once per blessing.
+- 玩家若攻击带有骰子的玩家，则自动触发双方拥有骰子玩家的骰神赐福，并消耗被攻击方的防御牌耐久度（每次骰神赐福仅消耗一次）。 / When a player attacks another player with a dice, both dice-holding players automatically gain Dice Blessing, and the defender's defense card durability is consumed at most once per blessing.
 - 秘密侦探立牌击杀奖励只返还攻击牌，攻击玩家不返还卡牌。 / Bonnie sign kill rewards now grant only attack cards, and attacking players grants no card.
 - 所有效果牌、立牌、事件、筹码提供的防御力加成，默认只作为护甲值加成；触发骰神赐福后作为防御点加入。 / Defense bonuses from effect cards, signs, events, and chips now count as armor value by default, and become defense points while Dice Blessing is active.
 - 防御卡仅在骰神赐福期间作为防御点生效。 / Defense cards only provide defense points during Dice Blessing.
 
 ### 界面与显示 / UI & Display
 - 所有立牌 Tooltip 增加主动/被动技能名称，并将主动技能按键提示移至最上方。 / Added active/passive skill names to all sign tooltips and moved the key hint to the top.
-- 主动技能按键提示整体改为亮色，按键符本身改为黄色。 / The sign key hint is now bright-colored, with the key symbol in yellow.
+- 主动技能按键提示整体改为白色，按键符本身为黄色。 / The sign key hint is now white, with the key symbol in yellow.
 - 大当家立牌主动技能图标改为使用大当家立牌图标。 / The Fen sign active skill icon now uses the Fen sign icon.
 - 统一 Tooltip 时间与数值格式：时间蓝色、数值黄色、不足 1:00 使用秒、药水时间使用括号。 / Unified tooltip formatting: blue time, yellow values, seconds for durations under 1:00, and parentheses around potion effect times.
-- 同步大当家立牌主动技能中英文 Tooltip 文案。 / Synced the Fen sign active tooltip text between Chinese and English.
-- 卡牌界面防御点改为显示防御计算后的玩家防御点数，并根据骰神赐福状态动态计算。 / The card GUI defense points now show the player's post-calculation defense, dynamically adjusted by Dice Blessing state.
 
 ### 已修复BUG / Bug Fixes
 - 移除立牌主动技能触发成功后的通用“技能已激活”ActionBar，避免覆盖各立牌自身的特殊提示。 / Removed the generic “Skill activated” ActionBar after sign skills trigger, preventing it from overwriting sign-specific messages.
 - 修复溅射/范围伤害未在被影响目标身上显示伤害数字的问题（大当家立牌扩散、定向爆破 AOE）。 / Fixed missing damage numbers on affected targets for splash/AOE damage (Fen cleave and Directional Blast AOE).
-- 定向爆破 AOE 伤害数字改为使用效果牌的绿色数字。 / Directional Blast AOE damage numbers now use the green effect-card damage color.
 - 本 Mod 创建的自定义效果无法被牛奶、蜂蜜瓶或 `/effect clear` 清除，仅玩家死亡可清除。 / Custom effects created by this mod can no longer be removed by milk, honey bottles, or `/effect clear`; only player death can remove them.
 - 修复玩家死亡时部分效果状态未正确重置的问题，统一清理立牌等待、扩散、出牌、魔法箭袋、命运指引、调查阶段等状态。 / Fixed some effect states not being reset on player death; sign-ready, cleave, play-count, Magic Quiver, Fate Guidance, and investigation states are now reset properly.
-
-### 工程 / Project
-- 版本号更新为 `1.0.2-rc1`。 / Version updated to `1.0.2-rc1`.
 
 ## 1.0.1-rc1
 

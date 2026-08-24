@@ -181,7 +181,7 @@ public class ModEventHandlers {
                 && directEntity instanceof Mob
                 && defender.hasEffect(ModEffects.DICE_BLESSING)
                 && isMeleeMonsterAttack(source)) {
-            consumeDefenseCardDurabilityForMonsterAttack(defender);
+            consumeDefenseCardDurabilityOnce(defender);
             return;
         }
 
@@ -250,6 +250,18 @@ public class ModEventHandlers {
             triggeredBlessing = true;
             // 新赐福周期:重置“防御牌已消耗”标记,确保本次赐福期间最多消耗一次防御牌耐久
             ModAttachments.setDefenseCardConsumedThisBlessing(player, false);
+            // 玩家对玩家:若被攻击方也佩戴骰子,则同时触发其骰神赐福(双方都拥有骰子时)
+            if (target instanceof Player targetPlayer) {
+                var targetCurios = CuriosApi.getCuriosInventory(targetPlayer);
+                if (targetCurios.isPresent()) {
+                    var targetDiceResult = targetCurios.get().findFirstCurio(DiceCurioItem::isDiceItem);
+                    if (targetDiceResult.isPresent() && !targetPlayer.hasEffect(ModEffects.DICE_BLESSING)) {
+                        targetPlayer.addEffect(new MobEffectInstance(ModEffects.DICE_BLESSING,
+                                GameplayConstants.DICE_BLESSING_DURATION_TICKS, 0, false, false));
+                        ModAttachments.setDefenseCardConsumedThisBlessing(targetPlayer, false);
+                    }
+                }
+            }
             // 标靶筹码:触发骰神赐福后,对附近(标靶常量范围)随机一个敌对目标施加一层标记
             if (attackerCurios.isPresent()) {
                 var targetChipResult = attackerCurios.get().findFirstCurio(s -> s.is(ModItems.TARGET_CHIP.get()));
@@ -541,6 +553,12 @@ public class ModEventHandlers {
         event.setNewDamage((float) finalDmg);
         sendDamageNumber(event.getEntity(), (int) finalDmg);
 
+        // 玩家对玩家:被攻击方若佩戴骰子且处于骰神赐福,则每个赐福期间消耗一次防御牌耐久
+        if (!player.level().isClientSide() && target instanceof Player targetDefender
+                && targetDefender.hasEffect(ModEffects.DICE_BLESSING)) {
+            consumeDefenseCardDurabilityOnce(targetDefender);
+        }
+
         // 大当家立牌(战斗爽·扩散):本次赐福期间,每次攻击将总伤害的 80% 施加给目标 6 格内其他敌对目标
         // 使用递归保护:扩散造成的伤害不会再触发二次扩散,避免多目标互炸导致栈溢出
         if (!player.level().isClientSide() && !cleaveProcessing && com.merlinkitsune.astral_dice.item.sign.FenSignItem.isCleaveActive(player)) {
@@ -666,8 +684,8 @@ public class ModEventHandlers {
         return source.getDirectEntity() instanceof Mob;
     }
 
-    // 怪物近战攻击带骰神赐福的玩家:每个赐福期间仅消耗一次防御牌耐久,不修改原版伤害
-    private static void consumeDefenseCardDurabilityForMonsterAttack(Player defender) {
+    // 带骰神赐福的玩家受到攻击时:每个赐福期间仅消耗一次防御牌耐久,不修改原版伤害
+    private static void consumeDefenseCardDurabilityOnce(Player defender) {
         if (defender.level().isClientSide()) return;
         if (ModAttachments.isDefenseCardConsumedThisBlessing(defender)) return;
         var curios = CuriosApi.getCuriosInventory(defender);
@@ -1084,7 +1102,7 @@ public class ModEventHandlers {
     // 主动技能按键提示:置于 tooltip 最上方独立一行,并在末尾追加一个空行
     private static void addSignKeyHint(List<Component> tooltip) {
         tooltip.add(Component.translatable("tooltip.astral_dice.sign.key_hint", signKeyName())
-                .withStyle(ChatFormatting.GOLD));
+                .withStyle(ChatFormatting.WHITE));
         tooltip.add(Component.empty());
     }
 
