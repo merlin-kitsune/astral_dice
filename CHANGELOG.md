@@ -1,5 +1,24 @@
 # Changelog / 更新日志
 
+## 1.0.2-rc1
+
+### 内容与平衡性调整 / Content & Balance Changes
+- 调整骰子筹码栏位数量（按 0★~3★）：普通 0/1/2/3，黄金 1/2/3/4，钻石 2/3/4/5，下界合金 3/4/5/6。 / Adjusted dice chip slot counts (0★~3★): Basic 0/1/2/3, Golden 1/2/3/4, Diamond 2/3/4/5, Netherite 3/4/5/6.
+- 调整骰子攻击/防御卡牌栏数量（每侧）：普通 3，黄金 4，钻石 5，下界合金 6。 / Adjusted per-side attack/defense card slots: Basic 3, Golden 4, Diamond 5, Netherite 6.
+- 主动触发“骰神赐福”时不再消耗防御牌耐久。 / Actively triggering Dice Blessing no longer consumes defense card durability.
+- 怪物近战攻击拥有“骰神赐福”的玩家时，每个赐福期间最多消耗一次防御牌耐久。 / When a melee monster attacks a player with Dice Blessing, defense card durability is consumed at most once per blessing.
+- 秘密侦探立牌击杀奖励只返还攻击牌，攻击玩家不返还卡牌。 / Bonnie sign kill rewards now grant only attack cards, and attacking players grants no card.
+
+### 界面与显示 / UI & Display
+- 所有立牌 Tooltip 增加主动/被动技能名称，并将主动技能按键提示移至最上方。 / Added active/passive skill names to all sign tooltips and moved the key hint to the top.
+- 主动技能按键提示整体改为亮色，按键符本身改为黄色。 / The sign key hint is now bright-colored, with the key symbol in yellow.
+- 大当家立牌主动技能图标改为使用大当家立牌图标。 / The Fen sign active skill icon now uses the Fen sign icon.
+- 统一 Tooltip 时间与数值格式：时间蓝色、数值黄色、不足 1:00 使用秒、药水时间使用括号。 / Unified tooltip formatting: blue time, yellow values, seconds for durations under 1:00, and parentheses around potion effect times.
+- 同步大当家立牌主动技能中英文 Tooltip 文案。 / Synced the Fen sign active tooltip text between Chinese and English.
+
+### 工程 / Project
+- 版本号更新为 `1.0.2-rc1`。 / Version updated to `1.0.2-rc1`.
+
 ## 1.0.1-rc1
 
 ### 内容与平衡性调整 / Content & Balance Changes
