@@ -8,6 +8,8 @@
 - 主动触发“骰神赐福”时不再消耗防御牌耐久。 / Actively triggering Dice Blessing no longer consumes defense card durability.
 - 怪物近战攻击拥有“骰神赐福”的玩家时，每个赐福期间最多消耗一次防御牌耐久。 / When a melee monster attacks a player with Dice Blessing, defense card durability is consumed at most once per blessing.
 - 秘密侦探立牌击杀奖励只返还攻击牌，攻击玩家不返还卡牌。 / Bonnie sign kill rewards now grant only attack cards, and attacking players grants no card.
+- 所有效果牌、立牌、事件、筹码提供的防御力加成，默认只作为护甲值加成；触发骰神赐福后作为防御点加入。 / Defense bonuses from effect cards, signs, events, and chips now count as armor value by default, and become defense points while Dice Blessing is active.
+- 防御卡仅在骰神赐福期间作为防御点生效。 / Defense cards only provide defense points during Dice Blessing.
 
 ### 界面与显示 / UI & Display
 - 所有立牌 Tooltip 增加主动/被动技能名称，并将主动技能按键提示移至最上方。 / Added active/passive skill names to all sign tooltips and moved the key hint to the top.
@@ -15,6 +17,7 @@
 - 大当家立牌主动技能图标改为使用大当家立牌图标。 / The Fen sign active skill icon now uses the Fen sign icon.
 - 统一 Tooltip 时间与数值格式：时间蓝色、数值黄色、不足 1:00 使用秒、药水时间使用括号。 / Unified tooltip formatting: blue time, yellow values, seconds for durations under 1:00, and parentheses around potion effect times.
 - 同步大当家立牌主动技能中英文 Tooltip 文案。 / Synced the Fen sign active tooltip text between Chinese and English.
+- 卡牌界面防御点改为显示防御计算后的玩家防御点数，并根据骰神赐福状态动态计算。 / The card GUI defense points now show the player's post-calculation defense, dynamically adjusted by Dice Blessing state.
 
 ### 已修复BUG / Bug Fixes
 - 移除立牌主动技能触发成功后的通用“技能已激活”ActionBar，避免覆盖各立牌自身的特殊提示。 / Removed the generic “Skill activated” ActionBar after sign skills trigger, preventing it from overwriting sign-specific messages.
