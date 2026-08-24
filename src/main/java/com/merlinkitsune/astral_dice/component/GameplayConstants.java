@@ -65,8 +65,8 @@ public final class GameplayConstants {
     // 骰神赐福持续时长(单位:tick,派生值)
     public static int DICE_BLESSING_DURATION_TICKS = DICE_BLESSING_DURATION_SECONDS * 20;
 
-    // 卡牌槽位/费用点数固定规则(所有骰子统一)
-    public static final int CARD_SLOTS_PER_SIDE = 6;
+    // 卡牌槽位基础规则(默认按普通骰子;具体骰子槽位由 DiceTierRegistry 动态提供)
+    public static final int CARD_SLOTS_PER_SIDE = 3;
     public static final int CARD_SLOTS_TOTAL = CARD_SLOTS_PER_SIDE * 2;
     public static final int MAX_CARD_COST = 6;
 

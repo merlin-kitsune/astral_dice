@@ -39,12 +39,14 @@ public class MimiSignItem extends BaseSignItem {
         if (diceResult.isEmpty()) return InteractionResultHolder.fail(stack);
         ItemStack dice = diceResult.get().stack();
         WeaponEnhancement enh = dice.getOrDefault(ModDataComponents.WEAPON_ENHANCEMENT.get(), WeaponEnhancement.EMPTY);
+        int totalCardSlots = DiceCurioItem.getCardSlots(dice);
+        int perSideSlots = totalCardSlots / 2;
 
         List<AppliedStone> oldStones = enh.appliedStones();
         List<AppliedStone> transformed = new ArrayList<>();
         int maxCost = GameplayConstants.cardCostForStar(enh.starLevel());
 
-        // 1) 随机变化已有卡牌,但必须满足:每侧 ≤6 张、攻击/防御费用 ≤6
+        // 1) 随机变化已有卡牌,但必须满足:每侧不超过当前骰子槽位、攻击/防御费用 ≤6
         int attempts = 0;
         do {
             transformed.clear();
@@ -52,19 +54,19 @@ public class MimiSignItem extends BaseSignItem {
                 transformed.add(AppliedStone.of(getRandomCardType(true, true, false)));
             }
             attempts++;
-        } while (!isValidLayout(transformed, player, maxCost) && attempts < 200);
+        } while (!isValidLayout(transformed, player, maxCost, perSideSlots) && attempts < 200);
 
         // 若随机始终不合法(如旧数据异常),回退为原卡牌,避免数据丢失
-        if (!isValidLayout(transformed, player, maxCost)) {
+        if (!isValidLayout(transformed, player, maxCost, perSideSlots)) {
             transformed = new ArrayList<>(oldStones);
         }
 
         // 2) 仅在仍有空槽时尝试插入 1 张新卡,并且插入后仍必须满足费用/数量上限
-        if (transformed.size() < GameplayConstants.CARD_SLOTS_TOTAL) {
+        if (transformed.size() < totalCardSlots) {
             for (int insertAttempt = 0; insertAttempt < 20; insertAttempt++) {
                 List<AppliedStone> withNew = new ArrayList<>(transformed);
                 withNew.add(AppliedStone.of(getRandomCardType(true, true, true)));
-                if (isValidLayout(withNew, player, maxCost)) {
+                if (isValidLayout(withNew, player, maxCost, perSideSlots)) {
                     transformed = withNew;
                     break;
                 }
@@ -106,8 +108,8 @@ public class MimiSignItem extends BaseSignItem {
         }
     }
 
-    // 校验布局:攻击/防御每侧数量不超过 6,且攻击/防御费用不超过 6
-    private static boolean isValidLayout(List<AppliedStone> stones, Player player, int maxCost) {
+    // 校验布局:攻击/防御每侧数量不超过当前骰子槽位,且攻击/防御费用不超过 6
+    private static boolean isValidLayout(List<AppliedStone> stones, Player player, int maxCost, int perSideSlots) {
         int attackCount = 0;
         int defenseCount = 0;
         for (AppliedStone stone : stones) {
@@ -117,8 +119,8 @@ public class MimiSignItem extends BaseSignItem {
                 attackCount++;
             }
         }
-        return attackCount <= GameplayConstants.CARD_SLOTS_PER_SIDE
-                && defenseCount <= GameplayConstants.CARD_SLOTS_PER_SIDE
+        return attackCount <= perSideSlots
+                && defenseCount <= perSideSlots
                 && totalCost(stones, true, player) <= maxCost
                 && totalCost(stones, false, player) <= maxCost;
     }

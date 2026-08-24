@@ -88,19 +88,19 @@ public class ModItems {
     public static final DeferredItem<Item> DICE = registerItem("dice",
             () -> new DiceCurioItem(new Item.Properties()
                     .stacksTo(1)
-                    .rarity(Rarity.COMMON)));
+                    .rarity(Rarity.COMMON), 6));
 
-    // 黄金骰子:由基础骰子 + 4 星币 + 4 金锭升级而来,卡牌放置栏固定攻防各 6(共 12)
+    // 黄金骰子:由基础骰子 + 4 星币 + 4 金锭升级而来,卡牌放置栏固定攻防各 4(共 8)
     public static final DeferredItem<Item> GOLDEN_DICE = registerItem("golden_dice",
             () -> new DiceCurioItem(new Item.Properties()
                     .stacksTo(1)
-                    .rarity(Rarity.RARE), 12));
+                    .rarity(Rarity.RARE), 8));
 
-    // 钻石骰子:由黄金骰子 + 4 星盘 + 4 钻石升级而来,卡牌放置栏固定攻防各 6(共 12)
+    // 钻石骰子:由黄金骰子 + 4 星盘 + 4 钻石升级而来,卡牌放置栏固定攻防各 5(共 10)
     public static final DeferredItem<Item> DIAMOND_DICE = registerItem("diamond_dice",
             () -> new DiceCurioItem(new Item.Properties()
                     .stacksTo(1)
-                    .rarity(Rarity.EPIC), 12));
+                    .rarity(Rarity.EPIC), 10));
 
     // 合金骰子:由钻石骰子 + 4 黄金星盘 + 4 下界合金锭升级而来,卡牌放置栏为攻防各 6 个(共 12)
     public static final DeferredItem<Item> NETHERITE_DICE = registerItem("netherite_dice",
@@ -113,18 +113,18 @@ public class ModItems {
     // 重要:item 参数必须传 Supplier 延迟解析(() -> X.get()),禁止在静态初始化阶段调用
     //      DeferredHolder.get()——注册表未加载完成时会抛 IllegalStateException。
     static {
-        // 基础骰子:卡牌栏固定 12(6+6);筹码栏 1(0★/1★)/2(2★)/3(3★)
-        DiceTierRegistry.register(new DiceTier("dice", () -> DICE.get(), 12,
-                s -> s >= 2 ? s : 1));
-        // 金骰子:卡牌栏 6(3+3);筹码栏同基础骰子
-        DiceTierRegistry.register(new DiceTier("golden_dice", () -> GOLDEN_DICE.get(), 12,
-                s -> s >= 2 ? s : 1));
-        // 钻石骰子:卡牌栏 8(4+4);筹码栏 1+星(0★1/1★2/2★3/3★4)
-        DiceTierRegistry.register(new DiceTier("diamond_dice", () -> DIAMOND_DICE.get(), 12,
+        // 基础骰子:卡牌栏 6(3+3);筹码栏 0★0/1★1/2★2/3★3
+        DiceTierRegistry.register(new DiceTier("dice", () -> DICE.get(), 6,
+                s -> s));
+        // 金骰子:卡牌栏 8(4+4);筹码栏 0★1/1★2/2★3/3★4
+        DiceTierRegistry.register(new DiceTier("golden_dice", () -> GOLDEN_DICE.get(), 8,
                 s -> 1 + s));
-        // 合金骰子:卡牌栏 12(6+6);筹码栏 2+星(0★2/1★3/2★4/3★5)
-        DiceTierRegistry.register(new DiceTier("netherite_dice", () -> NETHERITE_DICE.get(), 12,
+        // 钻石骰子:卡牌栏 10(5+5);筹码栏 0★2/1★3/2★4/3★5
+        DiceTierRegistry.register(new DiceTier("diamond_dice", () -> DIAMOND_DICE.get(), 10,
                 s -> 2 + s));
+        // 合金骰子:卡牌栏 12(6+6);筹码栏 0★3/1★4/2★5/3★6
+        DiceTierRegistry.register(new DiceTier("netherite_dice", () -> NETHERITE_DICE.get(), 12,
+                s -> 3 + s));
     }
 
     public static final DeferredItem<Item> ATTACK_CARD_MEDIUM = registerItem("attack_card_medium",

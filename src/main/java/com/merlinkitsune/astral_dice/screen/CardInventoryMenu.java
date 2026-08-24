@@ -56,9 +56,12 @@ public class CardInventoryMenu extends AbstractContainerMenu {
         this.playerInventory = playerInventory;
         this.equippedDice = findEquippedDice();
         initMaxCostFromDice();
-        this.cardSlots = GameplayConstants.CARD_SLOTS_TOTAL;
-        this.attackSlots = GameplayConstants.CARD_SLOTS_PER_SIDE;
-        this.defenseSlots = GameplayConstants.CARD_SLOTS_PER_SIDE;
+        int totalCardSlots = equippedDice.isEmpty()
+                ? GameplayConstants.CARD_SLOTS_TOTAL
+                : DiceCurioItem.getCardSlots(equippedDice);
+        this.cardSlots = totalCardSlots;
+        this.attackSlots = totalCardSlots / 2;
+        this.defenseSlots = totalCardSlots / 2;
         this.cardContainer = new SimpleContainer(cardSlots);
 
         for (int i = 0; i < attackSlots; i++) {
