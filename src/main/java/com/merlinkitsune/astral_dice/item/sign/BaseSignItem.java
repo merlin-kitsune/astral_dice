@@ -81,11 +81,10 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
         // 3. 触发主动技能
         InteractionResultHolder<ItemStack> result = sign.handleUse(player.level(), player, stack);
         if (result.getResult() != InteractionResult.SUCCESS) return;
-        // 4. 触发成功:明确提示"<立牌名>技能已激活"(修复:此前触发成功也显示"冷却中")
-        notifyActionBar(player, "hud.astral_dice.sign_active", signName, ChatFormatting.GOLD);
-        // 5. 手持风扇-大筹码:使用主动技能后,获得一张随机效果牌(不含专属),并对周围范围内敌对目标施加标记
+        // 4. 手持风扇-大筹码:使用主动技能后,获得一张随机效果牌(不含专属),并对周围范围内敌对目标施加标记
+        // 注意:不再发送通用"技能已激活"ActionBar,避免覆盖各立牌自身的特殊 ActionBar 提示
         FanBigChipItem.applyAfterSignSkill(player);
-        // 6. 冷却:等待类技能(激活了玩家级等待状态)待完成指定目标/超时后再开始冷却;其余立牌立即开始玩家级冷却
+        // 5. 冷却:等待类技能(激活了玩家级等待状态)待完成指定目标/超时后再开始冷却;其余立牌立即开始玩家级冷却
         if (ModAttachments.getSignReadyExpire(player) <= 0) {
             ModAttachments.setSignActiveCooldownEnd(player,
                     now + GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS);
