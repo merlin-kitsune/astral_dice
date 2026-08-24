@@ -542,4 +542,18 @@ public class ModAttachments {
     public static void setFenCleaveActive(net.minecraft.world.entity.player.Player player, boolean value) {
         player.setData(FEN_CLEAVE_ACTIVE.get(), value);
     }
+
+    // 防御牌是否已在当前骰神赐福期间消耗过耐久(怪物近战攻击触发,每个赐福期间最多一次)
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Boolean>> DEFENSE_CARD_CONSUMED_BLESSING =
+            ATTACHMENTS.register("defense_card_consumed_blessing", () -> AttachmentType.builder(() -> false)
+                    .serialize(Codec.BOOL)
+                    .build());
+
+    public static boolean isDefenseCardConsumedThisBlessing(net.minecraft.world.entity.player.Player player) {
+        return player.getData(DEFENSE_CARD_CONSUMED_BLESSING.get());
+    }
+
+    public static void setDefenseCardConsumedThisBlessing(net.minecraft.world.entity.player.Player player, boolean value) {
+        player.setData(DEFENSE_CARD_CONSUMED_BLESSING.get(), value);
+    }
 }

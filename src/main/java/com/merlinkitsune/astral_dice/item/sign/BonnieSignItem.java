@@ -23,7 +23,7 @@ import net.neoforged.neoforge.network.PacketDistributor;
  * 秘密侦探立牌(命名:bonnie)。
  * 被动:
  * 1. 攻击带有"标记"的目标时攻击力+3;
- * 2. 击杀带有"标记"的目标后获得一张随机战斗牌(攻击/防御);
+ * 2. 击杀带有"标记"的敌对目标后获得一张随机攻击牌;
  * 3. 击杀带有"隐匿调查"的目标后触发"调查阶段"事件。
  * 主动:下次攻击的第一个目标被施加"隐匿调查"(永久,直到目标死亡/消失);若目标带"标记",按标记层数获得 标记层数*2 星币。
  * 主动为"等待目标释放"类技能:等待状态保存在玩家级(ModAttachments),激活后进入等待期(默认 30 秒),
@@ -90,7 +90,7 @@ public class BonnieSignItem extends BaseSignItem {
     }
 
     // 被动 2/3(击杀钩子,由 BaseSignItem.invokeKillHooks 分发):
-    // - 击杀带"标记"的目标 → 获得一张随机战斗牌(攻击/防御);
+    // - 击杀带"标记"的敌对目标 → 获得一张随机攻击牌;
     // - 击杀带"隐匿调查"的目标 → 触发调查阶段事件(推进施加者进度)。
     @Override
     protected void onKill(Player killer, net.minecraft.world.entity.LivingEntity killed) {
@@ -115,15 +115,12 @@ public class BonnieSignItem extends BaseSignItem {
         }
     }
 
-    // 给击杀者一张随机战斗牌(攻击/防御各 中/大/特大 之一)
+    // 给击杀者一张随机攻击牌(攻击-中/大/特大 之一)
     private static void giveRandomBattleCard(Player player) {
         net.minecraft.world.item.Item[] cards = {
                 ModItems.ATTACK_CARD_MEDIUM.get(),
                 ModItems.ATTACK_CARD_LARGE.get(),
-                ModItems.ATTACK_CARD_EPIC.get(),
-                ModItems.DEFENSE_CARD_MEDIUM.get(),
-                ModItems.DEFENSE_CARD_LARGE.get(),
-                ModItems.DEFENSE_CARD_EPIC.get()
+                ModItems.ATTACK_CARD_EPIC.get()
         };
         ItemStack stack = new ItemStack(cards[java.util.concurrent.ThreadLocalRandom.current().nextInt(cards.length)]);
         if (!player.getInventory().add(stack)) {

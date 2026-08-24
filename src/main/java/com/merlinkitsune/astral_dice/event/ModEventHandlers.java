@@ -175,6 +175,16 @@ public class ModEventHandlers {
             com.merlinkitsune.astral_dice.item.chip.BufferShieldChipItem.onHurt(targetPlayer, event.getNewDamage());
         }
 
+        // 怪物近战攻击带骰神赐福的玩家:进入独立防御结算
+        if (!target.level().isClientSide()
+                && target instanceof Player defender
+                && directEntity instanceof Mob monster
+                && defender.hasEffect(ModEffects.DICE_BLESSING)
+                && isMeleeMonsterAttack(source)) {
+            applyMonsterAttackDefense(event, defender, monster);
+            return;
+        }
+
         if (!(directEntity instanceof Player player)) return;
         if (target == player) return;
 
@@ -238,6 +248,8 @@ public class ModEventHandlers {
             player.addEffect(new MobEffectInstance(ModEffects.DICE_BLESSING,
                     GameplayConstants.DICE_BLESSING_DURATION_TICKS, 0, false, false));
             triggeredBlessing = true;
+            // 新赐福周期:重置“防御牌已消耗”标记,确保本次赐福期间最多消耗一次防御牌耐久
+            ModAttachments.setDefenseCardConsumedThisBlessing(player, false);
             // 标靶筹码:触发骰神赐福后,对附近(标靶常量范围)随机一个敌对目标施加一层标记
             if (attackerCurios.isPresent()) {
                 var targetChipResult = attackerCurios.get().findFirstCurio(s -> s.is(ModItems.TARGET_CHIP.get()));
@@ -467,17 +479,24 @@ public class ModEventHandlers {
             if (skipDefense) {
                 defensePower = 0;
             } else {
-                defensePower = 2
+                double baseDefense = 2
                         + Math.min(target.getArmorValue(), 20)
                                 / (target instanceof Player ? 2.0 : 4.0)
-                        + 1.4 * target.getAttributeValue(Attributes.ARMOR_TOUGHNESS)
-                        + defenseBaseDice;
+                        + 1.4 * target.getAttributeValue(Attributes.ARMOR_TOUGHNESS);
+                defensePower = baseDefense + defenseBaseDice;
 
                 // 效果类防御加成(岿然不动/抗性)、防御卡掷骰与立牌/筹码防御加成:由注册表防御修饰器执行
                 for (var modifier : com.merlinkitsune.astral_dice.combat.DiceCombatModifiers.defenseModifiers()) {
                     defensePower = modifier.apply(ctx, defensePower);
                 }
                 defensePower += ctx.defenseCardSum;
+
+                // 神秘遗物+ 七咒之戒:第一诅咒修正影响玩家防御力加成部分(基础护甲/韧性不受影响)
+                if (target instanceof Player targetDefender) {
+                    double curseDefenseFactor = getCurse1DefenseFactor(targetDefender);
+                    double bonusDefense = defensePower - baseDefense;
+                    defensePower = baseDefense + bonusDefense * curseDefenseFactor;
+                }
             }
 
             // Padman sign: attack dice == 6 bypass — ignore all defense except defense cards
@@ -487,20 +506,6 @@ public class ModEventHandlers {
 
             finalDmg = Math.max(1, attackPower - defensePower);
 
-        // 防御牌耐久消耗:玩家佩戴骰子且处于骰神赐福中,受到伤害时消耗防御卡耐久
-        if (!player.level().isClientSide() && target instanceof Player targetDefender && targetDefender.hasEffect(ModEffects.DICE_BLESSING)) {
-            var targetCurios = CuriosApi.getCuriosInventory(targetDefender);
-            if (targetCurios.isPresent()) {
-                var targetDiceResult = targetCurios.get().findFirstCurio(DiceCurioItem::isDiceItem);
-                if (targetDiceResult.isPresent()) {
-                    ItemStack targetDice = targetDiceResult.get().stack();
-                    WeaponEnhancement targetEnh = targetDice.get(ModDataComponents.WEAPON_ENHANCEMENT.get());
-                    if (targetEnh != null) {
-                        consumeDefenseCardDurability(targetDefender, targetDice, targetEnh);
-                    }
-                }
-            }
-        }
         }
 
         if (MarkManager.getLevel(target) > 0) {
@@ -566,6 +571,11 @@ public class ModEventHandlers {
             int defenseCostFreed = 0;
             boolean dirty = false;
             for (AppliedStone stone : enhancement.appliedStones()) {
+                // 防御牌:玩家主动触发骰神赐福时不再消耗耐久,仅保留在骰子内
+                if (stone.type().startsWith("defense_")) {
+                    newStones.add(stone);
+                    continue;
+                }
                 // 蓄力:赐福期间持续生效不消耗耐久,在骰神赐福结束时返还"全力攻击"
                 if ("charge".equals(stone.type())) {
                     newStones.add(stone);
@@ -640,6 +650,87 @@ public class ModEventHandlers {
         }
     }
 
+    // 判断是否为怪物近战攻击:直接伤害来源必须是怪物本身(排除箭矢/药水/地刺等远程或魔法)
+    private static boolean isMeleeMonsterAttack(DamageSource source) {
+        return source.getDirectEntity() instanceof Mob;
+    }
+
+    // 怪物近战攻击带骰神赐福玩家时的独立防御结算
+    private static void applyMonsterAttackDefense(LivingDamageEvent.Pre event, Player defender, Mob monster) {
+        if (defender.level().isClientSide()) return;
+        var curios = CuriosApi.getCuriosInventory(defender);
+        if (curios.isEmpty()) return;
+        var diceResult = curios.get().findFirstCurio(DiceCurioItem::isDiceItem);
+        if (diceResult.isEmpty()) return;
+        ItemStack dice = diceResult.get().stack();
+        WeaponEnhancement enh = dice.getOrDefault(ModDataComponents.WEAPON_ENHANCEMENT.get(), WeaponEnhancement.EMPTY);
+
+        // 世界难度倍率:简单 1.0 / 普通 1.2 / 困难 1.5
+        double difficultyMultiplier = switch (defender.level().getDifficulty()) {
+            case EASY -> 1.0;
+            case NORMAL -> 1.2;
+            case HARD -> 1.5;
+            default -> 1.0;
+        };
+        double monsterAttackPower = monster.getAttributeValue(Attributes.ATTACK_DAMAGE) * difficultyMultiplier
+                + rollDice(6);
+
+        // 玩家防御:基础护甲/韧性 + 防御骰 + 防御卡 + 防御修饰器
+        DiceCombatContext ctx = new DiceCombatContext(
+                defender, defender, event, 0, dice, enh, false, false, 0, 0);
+        ctx.targetEnhancement = enh;
+
+        double baseDefense = 2
+                + Math.min(defender.getArmorValue(), 20) / 2.0
+                + 1.4 * defender.getAttributeValue(Attributes.ARMOR_TOUGHNESS);
+        double defensePower = baseDefense + rollDice(6);
+        for (var modifier : DiceCombatModifiers.defenseModifiers()) {
+            defensePower = modifier.apply(ctx, defensePower);
+        }
+        defensePower += ctx.defenseCardSum;
+
+        // 神秘遗物+ 七咒之戒:第一诅咒修正影响防御力加成部分
+        double curseDefenseFactor = getCurse1DefenseFactor(defender);
+        double bonusDefense = defensePower - baseDefense;
+        defensePower = baseDefense + bonusDefense * curseDefenseFactor;
+
+        double finalDmg = Math.max(1, monsterAttackPower - defensePower);
+
+        // 标记额外伤害仍生效;虚弱印记由 onWeakMarkDamage(LOWEST)统一处理,避免重复应用
+        if (MarkManager.getLevel(defender) > 0) {
+            finalDmg += 1;
+        }
+
+        event.setNewDamage((float) finalDmg);
+        sendDamageNumber(defender, (int) finalDmg);
+
+        // 每个骰神赐福效果期间,防御牌耐久最多消耗一次
+        if (!ModAttachments.isDefenseCardConsumedThisBlessing(defender)) {
+            consumeDefenseCardDurability(defender, dice, enh);
+            ModAttachments.setDefenseCardConsumedThisBlessing(defender, true);
+        }
+    }
+
+    // 神秘遗物+ 第一诅咒对防御力加成的修正系数:
+    // 无修正 = 0.5(防御加成减半);50% 修正 = 0.75;完全修正 = 1.0
+    private static double getCurse1DefenseFactor(Player player) {
+        if (!hasEnigmaticCurse(player)) return 1.0;
+        double mitigation = 0.0;
+        if (isHoldingEnigmaticItem(player, ENIGMATIC_TWIST)
+                || isHoldingEnigmaticItem(player, ENIGMATIC_BLESS)) {
+            mitigation = 1.0;
+        } else {
+            if (isHoldingEnigmaticItem(player, ENIGMATIC_ACKNOWLEDGMENT)) {
+                mitigation += 0.5;
+            }
+            if (isFateGuidanceActive(player)) {
+                mitigation += 0.5;
+            }
+            mitigation = Math.min(1.0, mitigation);
+        }
+        return 1.0 - 0.5 * (1.0 - mitigation);
+    }
+
 
     @SubscribeEvent
     public static void onLivingChangeTarget(LivingChangeTargetEvent event) {
@@ -672,6 +763,9 @@ public class ModEventHandlers {
                 || effect.getEffect().value() != ModEffects.DICE_BLESSING.get()) {
             return;
         }
+
+        // 赐福结束:重置防御牌消耗标记
+        ModAttachments.setDefenseCardConsumedThisBlessing(player, false);
 
         // 星币锤筹码:赐福结束清除本次攻击加成
         com.merlinkitsune.astral_dice.item.chip.StarCoinHammerChipItem.onBlessingEnd(player);
@@ -1915,6 +2009,7 @@ public class ModEventHandlers {
         if (!(event.getEntity() instanceof Player player)) return;
         if (player.level().isClientSide()) return;
         HealingManager.clear(player);
+        ModAttachments.setDefenseCardConsumedThisBlessing(player, false);
         player.removeEffect(ModEffects.DICE_BLESSING);
     }
 
@@ -1988,6 +2083,7 @@ public class ModEventHandlers {
             net.neoforged.neoforge.event.entity.player.PlayerEvent.PlayerLoggedInEvent event) {
         if (!(event.getEntity() instanceof Player player)) return;
         if (player.level().isClientSide()) return;
+        ModAttachments.setDefenseCardConsumedThisBlessing(player, false);
         player.removeEffect(ModEffects.DICE_BLESSING);
         // 重连后刷新治愈体系(上限收缩/效果显示;赐福边沿 prev 标记初始 false,不会误触发减半)
         HealingManager.tick(player);
