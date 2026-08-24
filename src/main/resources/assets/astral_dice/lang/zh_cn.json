@@ -133,10 +133,10 @@
   "tooltip.astral_dice.card.parunan_passive": "每 §e%s§7 增加 §e1§7 点星光（上限 §e%s§7 点）。\n触发骰神赐福时，获得首次骰点×§e2§7 的星光",
   "tooltip.astral_dice.card.parunan_starlight": "星光: §e%s§7 / §e%s§7",
   "tooltip.astral_dice.chip.starlight": "当前星光: §e%s§7 / §e%s§7",
-  "tooltip.astral_dice.card.jasmine_active": "在(§92:00§7)内：移动速度 §e+20%%§7，护甲值 §e-30%%§7；\n随机获得以下任一效果：\n  抗性提升(§92:00§7)\n  力量(§92:00§7)",
+  "tooltip.astral_dice.card.jasmine_active": "在 §92:00§7 内：移动速度 §e+20%%§7，护甲值 §e-30%%§7；\n随机获得以下任一效果：\n  抗性提升(§92:00§7)\n  力量(§92:00§7)",
   "tooltip.astral_dice.card.jasmine_passive": "每移动 §e300§7 米，交替提升 §e1§7 点攻击力/防御力（各自上限 §e%s§7 点）",
   "tooltip.astral_dice.card.jasmine_bonus": "攻击力 §e+%s§7 | 防御力 §e+%s§7",
-  "tooltip.astral_dice.card.misaki_active": "获得 爆发(§92:00§7)：\n  攻击力 §e+4§7\n  骰点按装备骰子的星级追加（§e1★+1§7、§e2★+2§7、§e3★+3§7）\n  名刀嘎呜切伤害下限按装备骰子的星级增加（§e1★+2§7、§e2★+3§7、§e3★+5§7）\n若剑气已达 §e3§7 层：消耗 §e2§7 层兑换一张\"名刀嘎呜切\"",
+  "tooltip.astral_dice.card.misaki_active": "在 §92:00§7 内：\n  攻击力 §e+4§7\n  骰点按装备骰子的星级追加（§e1★+1§7、§e2★+2§7、§e3★+3§7）\n  名刀嘎呜切伤害下限按装备骰子的星级增加（§e1★+2§7、§e2★+3§7、§e3★+5§7）\n若剑气已达 §e3§7 层：消耗 §e2§7 层兑换一张\"名刀嘎呜切\"",
   "tooltip.astral_dice.card.misaki_passive": "触发骰神赐福时获得 §e1§7 层剑气（最多 §e3§7 层）；\n每层剑气攻击力 §e+1§7，§e3§7 层时额外 §e+2§7；\n装备时\"名刀嘎呜切\"费用降低至 §e3§7 点",
   "tooltip.astral_dice.card.misaki_enigmatic": "神秘遗物+联动：\n佩戴七咒之戒并处于“爆发”状态时，修正第四诅咒：总能造成全额伤害",
   "tooltip.astral_dice.card.misaki_stacks": "剑气：§e%s§7 / §e3§7",
@@ -158,7 +158,7 @@
   "tooltip.astral_dice.card.effect_cooldown": "效果牌冷却: §e%s秒§7",
   "tooltip.astral_dice.card.play_count": "出牌数：§e%s§7/§e%s§7",
   "tooltip.astral_dice.card.active_damage_bonus": "远程和魔法伤害提升：§e%s§7",
-  "tooltip.astral_dice.card.papara_active": "获得 嘬一口(§93:00§7)：\n  攻击时恢复战斗伤害一半数值的生命；\n  受伤时恢复单次受到伤害一半数值的生命\n  无论玩家当前血量多少，都将被视为满血和半血状态",
+  "tooltip.astral_dice.card.papara_active": "在 §93:00§7 内：\n  攻击时恢复战斗伤害一半数值的生命；\n  受伤时恢复单次受到伤害一半数值的生命\n  无论玩家当前血量多少，都将被视为满血和半血状态",
   "tooltip.astral_dice.card.papara_passive": "生命值低于最大生命值一半时，攻击力/防御力 §e+3§7",
   "tooltip.astral_dice.card.bonnie_active": "下次攻击的第一个目标被施加\"隐匿调查\"（永久，直到目标死亡/消失）；\n若目标带\"标记\"，按标记层数×§e2§7 获得星币",
   "tooltip.astral_dice.card.bonnie_passive": "攻击带\"标记\"的目标时攻击力 §e+3§7；\n击杀带\"标记\"的 §e20§7 血以上敌对目标后获得一张随机战斗牌；\n击杀带\"隐匿调查\"的目标后触发\"调查阶段\"事件",
@@ -254,5 +254,5 @@
   "hud.astral_dice.sign_ready": "技能已激活，攻击目标以释放！",
   "hud.astral_dice.sign_active": "%s：技能已激活！",
   "hud.astral_dice.sign_active_cooldown": "%s：主动技能冷却中！",
-  "tooltip.astral_dice.sign.key_hint": "按下 %s 触发"
+  "tooltip.astral_dice.sign.key_hint": "§6按下 §e%s§6 触发"
 }

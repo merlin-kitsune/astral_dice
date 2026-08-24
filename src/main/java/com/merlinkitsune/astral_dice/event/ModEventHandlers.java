@@ -1024,7 +1024,7 @@ public class ModEventHandlers {
     // 主动技能按键提示:置于 tooltip 最上方独立一行,并在末尾追加一个空行
     private static void addSignKeyHint(List<Component> tooltip) {
         tooltip.add(Component.translatable("tooltip.astral_dice.sign.key_hint", signKeyName())
-                .withStyle(ChatFormatting.GRAY));
+                .withStyle(ChatFormatting.GOLD));
         tooltip.add(Component.empty());
     }
 
