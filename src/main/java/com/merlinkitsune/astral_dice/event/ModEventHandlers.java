@@ -1005,11 +1005,13 @@ public class ModEventHandlers {
 
     // ============ 立牌 tooltip 统一格式辅助 ============
     // 格式模板:
-    //   主动技能（按下 <按键> 触发）:
+    //   <按键提示>
+    //
+    //   主动技能（技能名）:
     //   <标准项>
     //   <带子项>:
     //   - <子项>
-    //   被动技能:
+    //   被动技能（技能名）:
     //   <标准项>
     //   <带子项>:
     //   - <子项>
@@ -1019,15 +1021,22 @@ public class ModEventHandlers {
     //   <立牌计数器>
     // 颜色约定:标题=金(§6)、时间/冷却=黄(§e)、效果/数值=青(§b)/绿(§a)、负面=红(§c)、普通=灰(§7)
 
-    // 主动技能标题(金色,含按键;冷却倒计时由下方"冷却中"行单独展示,避免重复冲突)
-    private static void addSignActiveTitle(List<Component> tooltip) {
-        tooltip.add(Component.translatable("tooltip.astral_dice.sign.active_title", signKeyName())
+    // 主动技能按键提示:置于 tooltip 最上方独立一行,并在末尾追加一个空行
+    private static void addSignKeyHint(List<Component> tooltip) {
+        tooltip.add(Component.translatable("tooltip.astral_dice.sign.key_hint", signKeyName())
+                .withStyle(ChatFormatting.GRAY));
+        tooltip.add(Component.empty());
+    }
+
+    // 主动技能标题(金色,含技能名;冷却倒计时由下方"冷却中"行单独展示)
+    private static void addSignActiveTitle(List<Component> tooltip, String skillName) {
+        tooltip.add(Component.translatable("tooltip.astral_dice.sign.active_title", skillName)
                 .withStyle(ChatFormatting.GOLD));
     }
 
-    // 被动技能标题(金色)
-    private static void addSignPassiveTitle(List<Component> tooltip) {
-        tooltip.add(Component.translatable("tooltip.astral_dice.sign.passive_title")
+    // 被动技能标题(金色,含技能名)
+    private static void addSignPassiveTitle(List<Component> tooltip, String skillName) {
+        tooltip.add(Component.translatable("tooltip.astral_dice.sign.passive_title", skillName)
                 .withStyle(ChatFormatting.GOLD));
     }
 
@@ -1363,9 +1372,10 @@ public class ModEventHandlers {
         }
         if (stack.is(ModItems.PARUNAN_SIGN.get())) {
             tooltip.add(Component.empty());
-            addSignActiveTitle(tooltip);
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "套现");
             addSignLines(tooltip, "tooltip.astral_dice.card.parunan_active");
-            addSignPassiveTitle(tooltip);
+            addSignPassiveTitle(tooltip, "传奇商人");
             addSignLines(tooltip, "tooltip.astral_dice.card.parunan_passive",
                     formatSignTime(GameplayConstants.PARUNAN_PASSIVE_INTERVAL_SECONDS),
                     GameplayConstants.MAX_STARLIGHT);
@@ -1377,9 +1387,10 @@ public class ModEventHandlers {
         }
         if (stack.is(ModItems.JASMINE_SIGN.get())) {
             tooltip.add(Component.empty());
-            addSignActiveTitle(tooltip);
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "能量过载");
             addSignLines(tooltip, "tooltip.astral_dice.card.jasmine_active");
-            addSignPassiveTitle(tooltip);
+            addSignPassiveTitle(tooltip, "移动充能");
             addSignLines(tooltip, "tooltip.astral_dice.card.jasmine_passive",
                     GameplayConstants.JASMINE_MAX_BONUS);
             int atkBonus = JasmineSignItem.getAttackBonus(stack);
@@ -1389,9 +1400,10 @@ public class ModEventHandlers {
         }
         if (stack.is(ModItems.MISAKI_SIGN.get())) {
             tooltip.add(Component.empty());
-            addSignActiveTitle(tooltip);
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "樱花裂空斩");
             addSignLines(tooltip, "tooltip.astral_dice.card.misaki_active");
-            addSignPassiveTitle(tooltip);
+            addSignPassiveTitle(tooltip, "剑气");
             addSignLines(tooltip, "tooltip.astral_dice.card.misaki_passive");
             // 神秘遗物+ 联动描述:仅当安装神秘遗物+ 模组时展示(置于备注区,紫色,无标题)
             if (net.neoforged.fml.ModList.get().isLoaded("enigmaticlegacyplus")) {
@@ -1404,18 +1416,20 @@ public class ModEventHandlers {
         }
         if (stack.is(ModItems.MIMI_SIGN.get())) {
             tooltip.add(Component.empty());
-            addSignActiveTitle(tooltip);
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "商品补货");
             addSignLines(tooltip, "tooltip.astral_dice.card.mimi_active");
-            addSignPassiveTitle(tooltip);
+            addSignPassiveTitle(tooltip, "过期回收");
             addSignLines(tooltip, "tooltip.astral_dice.card.mimi_passive");
             addSignCooldownRemaining(tooltip, event.getEntity() instanceof Player p ? p : null);
         }
         if (stack.is(ModItems.LULU_SIGN.get())) {
             tooltip.add(Component.empty());
-            addSignActiveTitle(tooltip);
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "治愈粘液");
             addSignLines(tooltip, "tooltip.astral_dice.card.lulu_active",
                     GameplayConstants.LULU_ACTIVE_RANGE, GameplayConstants.LULU_ACTIVE_RANGE);
-            addSignPassiveTitle(tooltip);
+            addSignPassiveTitle(tooltip, "细胞分裂");
             addSignLines(tooltip, "tooltip.astral_dice.card.lulu_passive");
             if (event.getEntity() instanceof Player p) {
                 int healingPoints = HealingManager.getPoints(p);
@@ -1427,9 +1441,10 @@ public class ModEventHandlers {
         }
         if (stack.is(ModItems.KOMACHI_SIGN.get())) {
             tooltip.add(Component.empty());
-            addSignActiveTitle(tooltip);
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "忍术连击");
             addSignLines(tooltip, "tooltip.astral_dice.card.komachi_active");
-            addSignPassiveTitle(tooltip);
+            addSignPassiveTitle(tooltip, "复制者");
             addSignLines(tooltip, "tooltip.astral_dice.card.komachi_passive");
             if (event.getEntity() instanceof Player p) {
                 addSignCounter(tooltip, "tooltip.astral_dice.card.komachi_damage_bonus",
@@ -1611,9 +1626,10 @@ public class ModEventHandlers {
         }
         if (stack.is(ModItems.PADMAN_SIGN.get())) {
             tooltip.add(Component.empty());
-            addSignActiveTitle(tooltip);
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "真的生气了");
             addSignLines(tooltip, "tooltip.astral_dice.card.padman_active");
-            addSignPassiveTitle(tooltip);
+            addSignPassiveTitle(tooltip, "毫无主见");
             addSignLines(tooltip, "tooltip.astral_dice.card.padman_passive",
                     formatSignTime(GameplayConstants.PADMAN_REFRESH_SECONDS));
             int atkBonus = stack.getOrDefault(ModDataComponents.PADMAN_ATK_BONUS.get(), 0);
@@ -1623,17 +1639,19 @@ public class ModEventHandlers {
         }
         if (stack.is(ModItems.FANNY_SIGN.get())) {
             tooltip.add(Component.empty());
-            addSignActiveTitle(tooltip);
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "麻烦制造者");
             addSignLines(tooltip, "tooltip.astral_dice.card.fanny_active");
-            addSignPassiveTitle(tooltip);
+            addSignPassiveTitle(tooltip, "华点发现");
             addSignLines(tooltip, "tooltip.astral_dice.card.fanny_passive");
             addSignCooldownRemaining(tooltip, event.getEntity() instanceof Player p ? p : null);
         }
         if (stack.is(ModItems.RIN_SIGN.get())) {
             tooltip.add(Component.empty());
-            addSignActiveTitle(tooltip);
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "活体书页");
             addSignLines(tooltip, "tooltip.astral_dice.card.rin_active");
-            addSignPassiveTitle(tooltip);
+            addSignPassiveTitle(tooltip, "调查发现");
             addSignLines(tooltip, "tooltip.astral_dice.card.rin_passive", 32);
             if (event.getEntity() instanceof Player p) {
                 int pages = Math.min(ModAttachments.getRinPages(p), GameplayConstants.LIVING_BOOK_PAGE_BONUS_CAP);
@@ -1731,9 +1749,10 @@ public class ModEventHandlers {
         }
         if (stack.is(ModItems.HAIQING_SIGN.get())) {
             tooltip.add(Component.empty());
-            addSignActiveTitle(tooltip);
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "虚弱印记");
             addSignLines(tooltip, "tooltip.astral_dice.card.haiqing_active");
-            addSignPassiveTitle(tooltip);
+            addSignPassiveTitle(tooltip, "幸运星");
             addSignLines(tooltip, "tooltip.astral_dice.card.haiqing_passive");
             addSignCooldownRemaining(tooltip, event.getEntity() instanceof Player p ? p : null);
         }
@@ -1761,17 +1780,19 @@ public class ModEventHandlers {
         }
         if (stack.is(ModItems.PAPARA_SIGN.get())) {
             tooltip.add(Component.empty());
-            addSignActiveTitle(tooltip);
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "嘬你一口");
             addSignLines(tooltip, "tooltip.astral_dice.card.papara_active");
-            addSignPassiveTitle(tooltip);
+            addSignPassiveTitle(tooltip, "可爱即正义");
             addSignLines(tooltip, "tooltip.astral_dice.card.papara_passive");
             addSignCooldownRemaining(tooltip, event.getEntity() instanceof Player p ? p : null);
         }
         if (stack.is(ModItems.BONNIE_SIGN.get())) {
             tooltip.add(Component.empty());
-            addSignActiveTitle(tooltip);
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "隐匿行动");
             addSignLines(tooltip, "tooltip.astral_dice.card.bonnie_active");
-            addSignPassiveTitle(tooltip);
+            addSignPassiveTitle(tooltip, "关键线索");
             addSignLines(tooltip, "tooltip.astral_dice.card.bonnie_passive");
             // 调查阶段事件说明:置于备注区(紫色,无标题)
             tooltip.add(Component.empty());
@@ -1780,9 +1801,10 @@ public class ModEventHandlers {
         }
         if (stack.is(ModItems.FEN_SIGN.get())) {
             tooltip.add(Component.empty());
-            addSignActiveTitle(tooltip);
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "运攻");
             addSignLines(tooltip, "tooltip.astral_dice.card.fen_active");
-            addSignPassiveTitle(tooltip);
+            addSignPassiveTitle(tooltip, "养精蓄锐");
             addSignLines(tooltip, "tooltip.astral_dice.card.fen_passive");
             if (event.getEntity() instanceof Player p) {
                 addSignCounter(tooltip, "tooltip.astral_dice.card.fen_recharge",

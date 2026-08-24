@@ -126,8 +126,8 @@
   "effect.astral_dice.unwavering.description": "Defense §e+6§7, lasts(§92:00§7) (counts toward Dice Blessing defense)",
   "tooltip.astral_dice.card.blank_sign": "Material for further crafting",
   "tooltip.astral_dice.card.blank_chip": "Material for further crafting",
-  "tooltip.astral_dice.sign.active_title": "Active Skill (press %s):",
-  "tooltip.astral_dice.sign.passive_title": "Passive Skill:",
+  "tooltip.astral_dice.sign.active_title": "Active Skill (%s):",
+  "tooltip.astral_dice.sign.passive_title": "Passive Skill (%s):",
   "tooltip.astral_dice.sign.cooldown_remaining": "On cooldown: §c%s§7 s",
   "tooltip.astral_dice.card.parunan_active": "Spend Starlight to convert to Star Coins at §e2:1§7.\nRandomly gain one of the following:\n  Saturation(§930s§7)\n  Luck(§95:00§7)\n  Hero of the Village(§915:00§7)",
   "tooltip.astral_dice.card.parunan_passive": "§e+1§7 Starlight every §e%s§7 (max §e%s§7).\nTriggering Dice Blessing grants the first roll x§e2§7 Starlight",
@@ -253,5 +253,6 @@
   "msg.astral_dice.need_dice": "You need to equip a dice first!",
   "hud.astral_dice.sign_ready": "Skill ready! Attack a target to release it",
   "hud.astral_dice.sign_active": "%s: Skill activated!",
-  "hud.astral_dice.sign_active_cooldown": "%s: Active skill on cooldown!"
+  "hud.astral_dice.sign_active_cooldown": "%s: Active skill on cooldown!",
+  "tooltip.astral_dice.sign.key_hint": "Press %s to activate"
 }

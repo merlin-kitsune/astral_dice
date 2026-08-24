@@ -126,8 +126,8 @@
   "effect.astral_dice.unwavering.description": "防御力 §e+6§7，持续(§92:00§7)",
   "tooltip.astral_dice.card.blank_sign": "合成立牌的基础材料",
   "tooltip.astral_dice.card.blank_chip": "合成筹码的基础材料",
-  "tooltip.astral_dice.sign.active_title": "主动技能（按下 %s 触发）:",
-  "tooltip.astral_dice.sign.passive_title": "被动技能:",
+  "tooltip.astral_dice.sign.active_title": "主动技能（%s）:",
+  "tooltip.astral_dice.sign.passive_title": "被动技能（%s）:",
   "tooltip.astral_dice.sign.cooldown_remaining": "冷却中: §c%s§7 秒",
   "tooltip.astral_dice.card.parunan_active": "按 §e2:1§7 比例将持有的星光兑换为星币。\n随机获得以下任一效果：\n  饱和(§930秒§7)\n  幸运(§95:00§7)\n  村庄英雄(§915:00§7)",
   "tooltip.astral_dice.card.parunan_passive": "每 §e%s§7 增加 §e1§7 点星光（上限 §e%s§7 点）。\n触发骰神赐福时，获得首次骰点×§e2§7 的星光",
@@ -253,5 +253,6 @@
   "msg.astral_dice.need_dice": "需要先佩戴骰子！",
   "hud.astral_dice.sign_ready": "技能已激活，攻击目标以释放！",
   "hud.astral_dice.sign_active": "%s：技能已激活！",
-  "hud.astral_dice.sign_active_cooldown": "%s：主动技能冷却中！"
+  "hud.astral_dice.sign_active_cooldown": "%s：主动技能冷却中！",
+  "tooltip.astral_dice.sign.key_hint": "按下 %s 触发"
 }
