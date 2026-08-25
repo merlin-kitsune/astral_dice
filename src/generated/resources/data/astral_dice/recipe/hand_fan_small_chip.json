@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": {
+      "item": "astral_dice:star_coin"
+    },
+    "C": {
+      "item": "astral_dice:blank_chip"
+    },
+    "Y": {
+      "item": "minecraft:feather"
+    },
+    "Z": {
+      "item": "minecraft:bamboo"
+    }
+  },
+  "pattern": [
+    " Y ",
+    "ZCZ",
+    "BBB"
+  ],
+  "result": {
+    "count": 1,
+    "id": "astral_dice:hand_fan_small_chip"
+  }
+}

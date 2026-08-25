@@ -58,6 +58,7 @@ public class ModItemModelProvider extends ItemModelProvider {
         basicItem(ModItems.MAGIC_TOME_CHIP.get());
         basicItem(ModItems.BIG_BACKPACK_CHIP.get());
         basicItem(ModItems.NINJA_STAR_CHIP.get());
+        basicItem(ModItems.HAND_FAN_SMALL_CHIP.get());
         basicItem(ModItems.HAND_FAN_BIG_CHIP.get());
         basicItem(ModItems.STAR_PLATE.get());
         basicItem(ModItems.GOLDEN_STAR_PLATE.get());

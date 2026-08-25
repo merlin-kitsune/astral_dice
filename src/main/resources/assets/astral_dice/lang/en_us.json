@@ -257,5 +257,7 @@
   "tooltip.astral_dice.sign.key_hint": "§fPress §e%s§f to activate",
   "item.astral_dice.effect_card_fight_poison_with_poison": "Fight Poison with Poison",
   "effect.astral_dice.fight_poison_with_poison": "Fight Poison with Poison",
-  "effect.astral_dice.fight_poison_with_poison.description": "Grants §9Poison (0:08)§7. Then removes up to 3 vanilla negative effects and grants §9Regeneration II (0:15)§7"
+  "effect.astral_dice.fight_poison_with_poison.description": "Grants §9Poison (0:08)§7. Then removes up to 3 vanilla negative effects and grants §9Regeneration II (0:15)§7",
+  "item.astral_dice.hand_fan_small_chip": "Hand Fan (Small)",
+  "tooltip.astral_dice.chip.hand_fan_small": "After using an active skill: apply §e1§7 Mark layer to all hostiles within §e16§7 blocks of you"
 }

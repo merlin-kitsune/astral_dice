@@ -1578,6 +1578,11 @@ public class ModEventHandlers {
             tooltip.add(Component.translatable("tooltip.astral_dice.chip.ninja_star")
                     .withStyle(ChatFormatting.GRAY));
         }
+        if (stack.is(ModItems.HAND_FAN_SMALL_CHIP.get())) {
+            tooltip.add(Component.empty());
+            tooltip.add(Component.translatable("tooltip.astral_dice.chip.hand_fan_small")
+                    .withStyle(ChatFormatting.GRAY));
+        }
         if (stack.is(ModItems.HAND_FAN_BIG_CHIP.get())) {
             tooltip.add(Component.empty());
             tooltip.add(Component.translatable("tooltip.astral_dice.chip.hand_fan_big",

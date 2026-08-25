@@ -25,6 +25,7 @@ import com.merlinkitsune.astral_dice.item.card.BerserkCardItem;
 import com.merlinkitsune.astral_dice.item.chip.MarkerSprayerChipItem;
 import com.merlinkitsune.astral_dice.item.chip.CutterBladeChipItem;
 import com.merlinkitsune.astral_dice.item.chip.FanBigChipItem;
+import com.merlinkitsune.astral_dice.item.chip.FanSmallChipItem;
 import com.merlinkitsune.astral_dice.item.card.LivingBookPageItem;
 import com.merlinkitsune.astral_dice.item.sign.LuluSignItem;
 import com.merlinkitsune.astral_dice.item.chip.MedkitCompleteChipItem;
@@ -345,6 +346,12 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(Rarity.UNCOMMON)));
 
+    // 手持风扇-小:使用主动技能后对周围 16 格敌对目标施加标记
+    public static final DeferredItem<Item> HAND_FAN_SMALL_CHIP = registerItem("hand_fan_small_chip",
+            () -> new FanSmallChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.RARE)));
+
     // 手持风扇-大:使用主动技能后获得一张随机效果牌(不含专属),并对周围范围内敌对目标施加标记
     public static final DeferredItem<Item> HAND_FAN_BIG_CHIP = registerItem("hand_fan_big_chip",
             () -> new FanBigChipItem(new Item.Properties()
@@ -574,7 +581,8 @@ public class ModItems {
                 || stack.is(MEDKIT_EMERGENCY_CHIP.get()) || stack.is(MEDKIT_COMPLETE_CHIP.get())
                 || stack.is(TARGET_CHIP.get()) || stack.is(MARKER_SPRAYER_CHIP.get())
                 || stack.is(MAGIC_TOME_CHIP.get()) || stack.is(BIG_BACKPACK_CHIP.get())
-                || stack.is(NINJA_STAR_CHIP.get()) || stack.is(HAND_FAN_BIG_CHIP.get())
+                || stack.is(NINJA_STAR_CHIP.get()) || stack.is(HAND_FAN_SMALL_CHIP.get())
+                || stack.is(HAND_FAN_BIG_CHIP.get())
                 || stack.is(EIGHT_SIDED_DICE.get())
                 || stack.is(ATM.get()) || stack.is(BANK_CARD_LOW.get())
                 || stack.is(BANK_CARD_HIGH.get()) || stack.is(BANK_CARD_UNLIMITED.get())

@@ -18,6 +18,7 @@ import top.theillusivec4.curios.api.SlotContext;
 import top.theillusivec4.curios.api.type.capability.ICurioItem;
 import com.merlinkitsune.astral_dice.network.ActionBarPayload;
 import com.merlinkitsune.astral_dice.item.chip.FanBigChipItem;
+import com.merlinkitsune.astral_dice.item.chip.FanSmallChipItem;
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
 
 public abstract class BaseSignItem extends Item implements ICurioItem {
@@ -84,6 +85,7 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
         // 4. 手持风扇-大筹码:使用主动技能后,获得一张随机效果牌(不含专属),并对周围范围内敌对目标施加标记
         // 注意:不再发送通用"技能已激活"ActionBar,避免覆盖各立牌自身的特殊 ActionBar 提示
         FanBigChipItem.applyAfterSignSkill(player);
+        FanSmallChipItem.applyAfterSignSkill(player);
         // 5. 冷却:等待类技能(激活了玩家级等待状态)待完成指定目标/超时后再开始冷却;其余立牌立即开始玩家级冷却
         if (ModAttachments.getSignReadyExpire(player) <= 0) {
             ModAttachments.setSignActiveCooldownEnd(player,

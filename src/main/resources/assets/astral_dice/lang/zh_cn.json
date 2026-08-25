@@ -257,5 +257,7 @@
   "tooltip.astral_dice.sign.key_hint": "§f按下 §e%s§f 触发",
   "item.astral_dice.effect_card_fight_poison_with_poison": "以毒攻毒",
   "effect.astral_dice.fight_poison_with_poison": "以毒攻毒",
-  "effect.astral_dice.fight_poison_with_poison.description": "获得 §9中毒 (0:08)§7。随后，移除最多3种原版负面效果并获得 §9生命恢复 II (0:15)§7"
+  "effect.astral_dice.fight_poison_with_poison.description": "获得 §9中毒 (0:08)§7。随后，移除最多3种原版负面效果并获得 §9生命恢复 II (0:15)§7",
+  "item.astral_dice.hand_fan_small_chip": "手持风扇-小",
+  "tooltip.astral_dice.chip.hand_fan_small": "使用主动技能后：对自身周围 §e16§7 格范围内所有敌对目标施加 §e1§7 层标记"
 }

@@ -91,6 +91,7 @@ public class ModCreativeTabs {
                 output.accept(ModItems.MAGIC_TOME_CHIP.get());
                 output.accept(ModItems.BIG_BACKPACK_CHIP.get());
                 output.accept(ModItems.NINJA_STAR_CHIP.get());
+                output.accept(ModItems.HAND_FAN_SMALL_CHIP.get());
                 output.accept(ModItems.HAND_FAN_BIG_CHIP.get());
                 output.accept(ModItems.ATM.get());
                 output.accept(ModItems.BANK_CARD_LOW.get());
