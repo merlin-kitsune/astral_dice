@@ -1,11 +1,17 @@
 package com.merlinkitsune.astral_dice.item.chip;
 
+import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
+import net.minecraft.core.Holder;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.enchantment.Enchantment;
 import top.theillusivec4.curios.api.CuriosApi;
 import top.theillusivec4.curios.api.SlotContext;
 import com.merlinkitsune.astral_dice.item.ModItems;
@@ -40,6 +46,7 @@ public class CursedSwordChipItem extends BaseChipItem {
         if (!(slotContext.entity() instanceof Player player)) return;
         if (player.level().isClientSide()) return;
         applyBlueCurse(player);
+        ensureCurseMarker(player, curio);
     }
 
     @Override
@@ -48,6 +55,8 @@ public class CursedSwordChipItem extends BaseChipItem {
         if (player.level().isClientSide()) return;
         // 持续保持青之诅咒,防止效果因任何原因消失
         applyBlueCurse(player);
+        // 确保装备中的诅咒之剑带有千咒刻印,使千咒卷轴将其计入诅咒数量
+        ensureCurseMarker(player, stack);
     }
 
     @Override
@@ -75,6 +84,20 @@ public class CursedSwordChipItem extends BaseChipItem {
         int max = GameplayConstants.CURSED_SWORD_BONUS_MAX;
         if (current < max) {
             ModAttachments.setCursedSwordBonus(player, current + 1);
+        }
+    }
+
+    // 为诅咒之剑附加"千咒刻印"诅咒附魔(仅用于被千咒卷轴识别为 1 点诅咒,无其他效果)
+    private static void ensureCurseMarker(Player player, ItemStack stack) {
+        if (stack == null || stack.isEmpty()) return;
+        Holder<Enchantment> marker = player.level().registryAccess()
+                .lookupOrThrow(Registries.ENCHANTMENT)
+                .get(ResourceKey.create(Registries.ENCHANTMENT,
+                        ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID, "curse_marker")))
+                .orElse(null);
+        if (marker == null) return;
+        if (stack.getEnchantments().getLevel(marker) <= 0) {
+            stack.enchant(marker, 1);
         }
     }
 

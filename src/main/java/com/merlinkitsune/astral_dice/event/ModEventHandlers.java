@@ -1708,6 +1708,10 @@ public class ModEventHandlers {
             tooltip.add(Component.translatable("tooltip.astral_dice.chip.cursed_sword",
                             GameplayConstants.CURSED_SWORD_BONUS_MAX)
                     .withStyle(ChatFormatting.GRAY));
+            if (net.neoforged.fml.ModList.get().isLoaded("enigmaticlegacyplus")) {
+                tooltip.add(Component.translatable("tooltip.astral_dice.chip.cursed_sword_enigmatic")
+                        .withStyle(ChatFormatting.LIGHT_PURPLE));
+            }
             if (event.getEntity() instanceof Player p) {
                 addSignCounter(tooltip, "tooltip.astral_dice.chip.cursed_sword_bonus",
                         ModAttachments.getCursedSwordBonus(p));
