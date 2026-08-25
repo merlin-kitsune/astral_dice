@@ -1566,6 +1566,11 @@ public class ModEventHandlers {
             tooltip.add(Component.translatable("tooltip.astral_dice.chip.medkit_complete")
                     .withStyle(ChatFormatting.GRAY));
         }
+        if (stack.is(ModItems.VITAMIN_PILL_CHIP.get())) {
+            tooltip.add(Component.empty());
+            tooltip.add(Component.translatable("tooltip.astral_dice.chip.vitamin_pill")
+                    .withStyle(ChatFormatting.GRAY));
+        }
         if (stack.is(ModItems.TARGET_CHIP.get())) {
             tooltip.add(Component.empty());
             tooltip.add(Component.translatable("tooltip.astral_dice.chip.target",

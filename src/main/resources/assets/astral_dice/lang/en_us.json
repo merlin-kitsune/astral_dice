@@ -211,7 +211,7 @@
   "tooltip.astral_dice.chip.buffer_shield": "When damaged: gain §e2§7 healing points and §e3§7 Star Coins, once per §915s§7",
   "tooltip.astral_dice.chip.star_coin_hammer": "Gain §e5§7 Starlight on equip. If you hold more than §e20§7 Star Coins, each Dice Blessing consumes §e3§7 Star Coins and grants §e30%§7 of your held Star Coins as attack (Star Coin Bag counts as §e9§7)",
   "tooltip.astral_dice.chip.cursed_sword": "Always affected by §cBlue Curse§7 while equipped. Killing a hostile target with more than §e20§7 HP grants §e+1§7 attack, up to §e%s§7 (removing the chip clears all bonus and Blue Curse)",
-  "tooltip.astral_dice.chip.cursed_sword_enigmatic": "Enigmatic Legacy+ link:\nWhile equipped, Scroll of a Thousand Curses' curse count §e+1§7",
+  "tooltip.astral_dice.chip.cursed_sword_enigmatic": "\nEnigmatic Legacy+ link:\nWhile equipped, Scroll of a Thousand Curses' curse count §e+1§7",
   "tooltip.astral_dice.chip.cursed_sword_bonus": "Attack §e+%s§7",
   "msg.astral_dice.dice_roll": "Roll: %s",
   "msg.astral_dice.event_triggered": "%s triggered event: %s",
