@@ -973,6 +973,8 @@ public class ModEventHandlers {
         ArmorPenaltyHandler.tick(player);
         // 效果牌出牌周期计时
         com.merlinkitsune.astral_dice.item.card.EffectCardPeriod.tick(player);
+        // 以毒攻毒:中毒结束后给予隐藏图标的生命恢复 II
+        com.merlinkitsune.astral_dice.item.card.FightPoisonWithPoisonCardItem.tick(player);
         // 大当家立牌:1 分钟内没有触发骰神赐福 → 养精蓄锐 +1 层
         com.merlinkitsune.astral_dice.item.sign.FenSignItem.tick(player);
         // 蓄力兜底:若赐福已结束但骰子仍残留蓄力,返还全力攻击
@@ -1407,6 +1409,13 @@ public class ModEventHandlers {
         if (stack.is(ModItems.EFFECT_CARD_UNWAVERING.get())) {
             tooltip.add(Component.empty());
             tooltip.add(Component.translatable("effect.astral_dice.unwavering.description")
+                    .withStyle(ChatFormatting.GRAY));
+            addEffectCardPlayCountTooltip(tooltip, player);
+            tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown", GameplayConstants.EFFECT_CARD_COOLDOWN_SECONDS).withStyle(ChatFormatting.RED));
+        }
+        if (stack.is(ModItems.EFFECT_CARD_FIGHT_POISON_WITH_POISON.get())) {
+            tooltip.add(Component.empty());
+            tooltip.add(Component.translatable("effect.astral_dice.fight_poison_with_poison.description")
                     .withStyle(ChatFormatting.GRAY));
             addEffectCardPlayCountTooltip(tooltip, player);
             tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown", GameplayConstants.EFFECT_CARD_COOLDOWN_SECONDS).withStyle(ChatFormatting.RED));

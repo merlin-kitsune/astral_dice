@@ -17,6 +17,7 @@ import com.merlinkitsune.astral_dice.item.chip.MagicTomeChipItem;
 import com.merlinkitsune.astral_dice.item.chip.BufferShieldChipItem;
 import com.merlinkitsune.astral_dice.item.chip.EightSidedDiceChipItem;
 import com.merlinkitsune.astral_dice.item.card.UnwaveringCardItem;
+import com.merlinkitsune.astral_dice.item.card.FightPoisonWithPoisonCardItem;
 import com.merlinkitsune.astral_dice.item.dice.DiceCurioItem;
 import com.merlinkitsune.astral_dice.item.sign.FannySignItem;
 import com.merlinkitsune.astral_dice.item.card.DirectionalBlastCardItem;
@@ -199,6 +200,12 @@ public class ModItems {
             () -> new UnwaveringCardItem(new Item.Properties()
                     .stacksTo(64)
                     .rarity(Rarity.EPIC)));
+
+    // 以毒攻毒(效果牌):中毒 8 秒后获得生命恢复 II 15 秒
+    public static final DeferredItem<Item> EFFECT_CARD_FIGHT_POISON_WITH_POISON = registerItem("effect_card_fight_poison_with_poison",
+            () -> new FightPoisonWithPoisonCardItem(new Item.Properties()
+                    .stacksTo(64)
+                    .rarity(Rarity.RARE)));
 
     // 对怪激光(伤害效果牌):远程和魔法伤害 +4。品质:青(蓝)
     public static final DeferredItem<Item> MONSTER_LASER_CARD = registerItem("effect_card_monster_laser",

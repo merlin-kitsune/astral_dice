@@ -129,6 +129,7 @@ public final class RandomCardHandler {
                 ModItems.EFFECT_CARD_KING_POWER.get(),
                 ModItems.EFFECT_CARD_BERSERK.get(),
                 ModItems.EFFECT_CARD_UNWAVERING.get(),
+                ModItems.EFFECT_CARD_FIGHT_POISON_WITH_POISON.get(),
                 ModItems.MONSTER_LASER_CARD.get(),
                 ModItems.MONSTER_BRICK_CARD.get(),
                 ModItems.ORBITAL_STRIKE_CARD.get(),

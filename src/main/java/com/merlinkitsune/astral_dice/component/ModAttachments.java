@@ -543,6 +543,20 @@ public class ModAttachments {
         player.setData(FEN_CLEAVE_ACTIVE.get(), value);
     }
 
+    // 以毒攻毒:记录生命恢复 II 的触发时刻(中毒 8 秒后)
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> FIGHT_POISON_WITH_POISON_REGEN_AT =
+            ATTACHMENTS.register("fight_poison_with_poison_regen_at", () -> AttachmentType.builder(() -> 0L)
+                    .serialize(Codec.LONG)
+                    .build());
+
+    public static long getFightPoisonWithPoisonRegenAt(net.minecraft.world.entity.player.Player player) {
+        return player.getData(FIGHT_POISON_WITH_POISON_REGEN_AT.get());
+    }
+
+    public static void setFightPoisonWithPoisonRegenAt(net.minecraft.world.entity.player.Player player, long value) {
+        player.setData(FIGHT_POISON_WITH_POISON_REGEN_AT.get(), value);
+    }
+
     // 防御牌是否已在当前骰神赐福期间消耗过耐久(怪物近战攻击触发,每个赐福期间最多一次)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Boolean>> DEFENSE_CARD_CONSUMED_BLESSING =
             ATTACHMENTS.register("defense_card_consumed_blessing", () -> AttachmentType.builder(() -> false)

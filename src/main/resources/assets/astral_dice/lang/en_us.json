@@ -254,5 +254,8 @@
   "hud.astral_dice.sign_ready": "Skill ready! Attack a target to release it",
   "hud.astral_dice.sign_active": "%s: Skill activated!",
   "hud.astral_dice.sign_active_cooldown": "%s: Active skill on cooldown!",
-  "tooltip.astral_dice.sign.key_hint": "§fPress §e%s§f to activate"
+  "tooltip.astral_dice.sign.key_hint": "§fPress §e%s§f to activate",
+  "item.astral_dice.effect_card_fight_poison_with_poison": "Fight Poison with Poison",
+  "effect.astral_dice.fight_poison_with_poison": "Fight Poison with Poison",
+  "effect.astral_dice.fight_poison_with_poison.description": "Grants Poison for §98s§7, then grants Regeneration II for §915s§7 (hidden icon)"
 }

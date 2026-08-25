@@ -49,6 +49,7 @@ public class ModCreativeTabs {
                 output.accept(ModItems.EFFECT_CARD_BERSERK.get());
                 output.accept(ModItems.EFFECT_CARD_KING_POWER.get());
                 output.accept(ModItems.EFFECT_CARD_UNWAVERING.get());
+                output.accept(ModItems.EFFECT_CARD_FIGHT_POISON_WITH_POISON.get());
                 // 新效果牌（在岿然不动之后）
                 output.accept(ModItems.CHOCOLATE_CAKE.get());
                 output.accept(ModItems.HAMBURGER.get());

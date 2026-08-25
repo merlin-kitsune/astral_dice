@@ -254,5 +254,8 @@
   "hud.astral_dice.sign_ready": "技能已激活，攻击目标以释放！",
   "hud.astral_dice.sign_active": "%s：技能已激活！",
   "hud.astral_dice.sign_active_cooldown": "%s：主动技能冷却中！",
-  "tooltip.astral_dice.sign.key_hint": "§f按下 §e%s§f 触发"
+  "tooltip.astral_dice.sign.key_hint": "§f按下 §e%s§f 触发",
+  "item.astral_dice.effect_card_fight_poison_with_poison": "以毒攻毒",
+  "effect.astral_dice.fight_poison_with_poison": "以毒攻毒",
+  "effect.astral_dice.fight_poison_with_poison.description": "使用后获得 中毒 §98秒§7，随后获得 生命恢复 II §915秒§7（隐藏效果图标）"
 }
