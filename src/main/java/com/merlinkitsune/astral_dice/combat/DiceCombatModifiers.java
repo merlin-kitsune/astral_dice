@@ -394,15 +394,11 @@ public final class DiceCombatModifiers {
         for (DefensePowerModifier modifier : defenseModifiers()) {
             modifierDefense = modifier.apply(ctx, modifierDefense);
         }
+        // 效果牌/立牌/事件/筹码的防御力始终按 1 防御力 = 2 护甲值折算为护甲值
         double rawArmor = Math.min(player.getArmorValue(), 20);
         double toughness = player.getAttributeValue(Attributes.ARMOR_TOUGHNESS);
-        double dp;
-        if (player.hasEffect(ModEffects.DICE_BLESSING)) {
-            dp = 2 + rawArmor / 2.0 + 1.4 * toughness + modifierDefense;
-        } else {
-            double effectiveArmor = Math.max(0, Math.min(rawArmor + modifierDefense * 2.0, 20));
-            dp = 2 + effectiveArmor / 2.0 + 1.4 * toughness;
-        }
+        double effectiveArmor = Math.max(0, Math.min(rawArmor + modifierDefense * 2.0, 20));
+        double dp = 2 + effectiveArmor / 2.0 + 1.4 * toughness;
         return (int) Math.floor(dp);
     }
 
@@ -451,15 +447,11 @@ public final class DiceCombatModifiers {
         for (DefensePowerModifier modifier : defenseModifiers()) {
             modifierDefense = modifier.apply(ctx, modifierDefense);
         }
+        // 效果牌/立牌/事件/筹码的防御力始终按 1 防御力 = 2 护甲值折算为护甲值
         double rawArmor = Math.min(player.getArmorValue(), 20);
         double toughness = player.getAttributeValue(Attributes.ARMOR_TOUGHNESS);
-        double dp;
-        if (player.hasEffect(ModEffects.DICE_BLESSING)) {
-            dp = 2 + rawArmor / 2.0 + 1.4 * toughness + modifierDefense;
-        } else {
-            double effectiveArmor = Math.max(0, Math.min(rawArmor + modifierDefense * 2.0, 20));
-            dp = 2 + effectiveArmor / 2.0 + 1.4 * toughness;
-        }
+        double effectiveArmor = Math.max(0, Math.min(rawArmor + modifierDefense * 2.0, 20));
+        double dp = 2 + effectiveArmor / 2.0 + 1.4 * toughness;
         int base = (int) Math.floor(dp);
         int min = base;
         int max = base;

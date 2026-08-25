@@ -487,28 +487,16 @@ public class ModEventHandlers {
                     modifierDefense = modifier.apply(ctx, modifierDefense);
                 }
 
+                // 效果牌/立牌/事件/筹码提供的防御力始终按 1 防御力 = 2 护甲值折算,
+                // 即使处于骰神赐福也作为护甲值计入基础防御;仅战斗防御牌直接作为防御点加入。
                 double rawArmor = Math.min(target.getArmorValue(), 20);
                 double toughness = target.getAttributeValue(Attributes.ARMOR_TOUGHNESS);
-                boolean defenseAsPoints = !(target instanceof Player)
-                        || ((Player) target).hasEffect(ModEffects.DICE_BLESSING);
-
-                if (defenseAsPoints) {
-                    // 骰神赐福中(或怪物目标):防御加成直接作为防御点加入
-                    defensePower = 2
-                            + rawArmor / (target instanceof Player ? 2.0 : 4.0)
-                            + 1.4 * toughness
-                            + defenseBaseDice
-                            + modifierDefense
-                            + ctx.defenseCardSum;
-                } else {
-                    // 未触发骰神赐福的玩家:防御加成按 1 防御力 = 2 护甲值折算(受 20 点护甲上限约束)
-                    double effectiveArmor = Math.max(0, Math.min(rawArmor + modifierDefense * 2.0, 20));
-                    defensePower = 2
-                            + effectiveArmor / 2.0
-                            + 1.4 * toughness
-                            + defenseBaseDice
-                            + ctx.defenseCardSum;
-                }
+                double effectiveArmor = Math.max(0, Math.min(rawArmor + modifierDefense * 2.0, 20));
+                defensePower = 2
+                        + effectiveArmor / (target instanceof Player ? 2.0 : 4.0)
+                        + 1.4 * toughness
+                        + defenseBaseDice
+                        + ctx.defenseCardSum;
             }
 
             // Padman sign: attack dice == 6 bypass — ignore all defense except defense cards
