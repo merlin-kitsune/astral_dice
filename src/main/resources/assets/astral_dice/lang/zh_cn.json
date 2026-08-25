@@ -257,5 +257,5 @@
   "tooltip.astral_dice.sign.key_hint": "§f按下 §e%s§f 触发",
   "item.astral_dice.effect_card_fight_poison_with_poison": "以毒攻毒",
   "effect.astral_dice.fight_poison_with_poison": "以毒攻毒",
-  "effect.astral_dice.fight_poison_with_poison.description": "使用后获得 中毒 §98秒§7，随后获得 生命恢复 II §915秒§7（隐藏效果图标）"
+  "effect.astral_dice.fight_poison_with_poison.description": "获得 中毒 §98秒§7。随后，移除最多3种原版负面效果并获得 生命恢复 II ，持续§915秒§7"
 }
