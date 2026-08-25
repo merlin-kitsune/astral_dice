@@ -220,6 +220,14 @@ public final class DiceCombatModifiers {
             return ap;
         });
 
+        // === 内置:诅咒之剑(装备时受青之诅咒;每击杀 1 个 20 血以上敌对目标攻击力 +1,上限由配置决定) ===
+        registerAttackModifier((ctx, ap) -> {
+            if (hasCurio(ctx.attacker, ModItems.CURSED_SWORD.get())) {
+                ap += ModAttachments.getCursedSwordBonus(ctx.attacker);
+            }
+            return ap;
+        });
+
         // === 内置:大当家立牌(boss)被动:拥有养精蓄锐时攻击力 +2 ===
         registerAttackModifier((ctx, ap) -> {
             if (ctx.attacker.level().isClientSide()) return ap;

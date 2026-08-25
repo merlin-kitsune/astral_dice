@@ -8,7 +8,7 @@ import net.neoforged.neoforge.common.ModConfigSpec;
  */
 public final class ModCommonConfig {
         // 当前配置版本:新增配置选项时必须 +1
-        public static final int CONFIG_VERSION = 10;
+        public static final int CONFIG_VERSION = 11;
 
         public static final ModConfigSpec SPEC;
 
@@ -36,6 +36,7 @@ public final class ModCommonConfig {
         public static final ModConfigSpec.IntValue ACTIONBAR_DURATION_TICKS;
         public static final ModConfigSpec.IntValue ACTIONBAR_FADE_TICKS;
         public static final ModConfigSpec.IntValue DICE_BLESSING_DURATION_SECONDS;
+        public static final ModConfigSpec.IntValue CURSED_SWORD_BONUS_MAX;
 
         static {
                 ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
@@ -101,6 +102,11 @@ public final class ModCommonConfig {
                 builder.push("dice").comment("=== 骰子 ===");
                 DICE_BLESSING_DURATION_SECONDS = builder.comment("骰神赐福持续时长(单位：秒,默认：60)")
                                 .defineInRange("dice_blessing_duration_seconds", 60, 10, 300);
+                builder.pop();
+
+                builder.push("cursed_sword").comment("=== 诅咒之剑 ===");
+                CURSED_SWORD_BONUS_MAX = builder.comment("诅咒之剑:每击杀1个20血以上敌对目标攻击力+1,最大增加上限(默认：32,最大：64)")
+                                .defineInRange("cursed_sword_bonus_max", 32, 0, 64);
                 builder.pop();
 
                 SPEC = builder.build();

@@ -67,6 +67,7 @@ import com.merlinkitsune.astral_dice.item.chip.MedkitEmergencyChipItem;
 import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
 import com.merlinkitsune.astral_dice.item.sign.PadmanSignItem;
 import com.merlinkitsune.astral_dice.item.chip.CutterChipItem;
+import com.merlinkitsune.astral_dice.item.chip.CursedSwordChipItem;
 import com.merlinkitsune.astral_dice.item.chip.NinjaStarChipItem;
 import com.merlinkitsune.astral_dice.item.chip.FlashlightChipItem;
 
@@ -502,6 +503,12 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(Rarity.UNCOMMON)));
 
+    // 诅咒之剑:装备时始终受到青之诅咒;每击杀 1 个 20 血以上敌对目标攻击力 +1(上限默认 32,最大 64)
+    public static final DeferredItem<Item> CURSED_SWORD = registerItem("cursed_sword_chip",
+            () -> new CursedSwordChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.RARE)));
+
     public static final DeferredItem<Item> PADMAN_SIGN = registerItem("padman_sign",
             () -> new PadmanSignItem(new Item.Properties()
                     .stacksTo(1)
@@ -610,7 +617,8 @@ public class ModItems {
                 || stack.is(SANDWICH_LOW.get()) || stack.is(SANDWICH_MEDIUM.get())
                 || stack.is(SANDWICH_HIGH.get())
                 || stack.is(MAGIC_QUIVER.get()) || stack.is(BUFFER_SHIELD.get())
-                || stack.is(STAR_COIN_HAMMER.get());
+                || stack.is(STAR_COIN_HAMMER.get())
+                || stack.is(CURSED_SWORD.get());
     }
 
     // 判断物品栈是否为任意卡牌(战斗牌 + 效果牌;含专属牌)

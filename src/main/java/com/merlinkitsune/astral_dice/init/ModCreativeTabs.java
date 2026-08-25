@@ -113,5 +113,6 @@ public class ModCreativeTabs {
                 output.accept(ModItems.MAGIC_QUIVER.get());
                 output.accept(ModItems.BUFFER_SHIELD.get());
                 output.accept(ModItems.STAR_COIN_HAMMER.get());
+                output.accept(ModItems.CURSED_SWORD.get());
             }).build());
 }

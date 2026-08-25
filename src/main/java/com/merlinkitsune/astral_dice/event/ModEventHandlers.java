@@ -96,6 +96,7 @@ import com.merlinkitsune.astral_dice.item.sign.FenSignItem;
 import com.merlinkitsune.astral_dice.item.card.EffectCardPeriod;
 import com.merlinkitsune.astral_dice.item.chip.BankCardUnlimitedChipItem;
 import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
+import com.merlinkitsune.astral_dice.item.chip.CursedSwordChipItem;
 import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
 
 @EventBusSubscriber(modid = AstralDiceMod.MODID)
@@ -932,6 +933,16 @@ public class ModEventHandlers {
         BaseSignItem.invokeKillHooks(killer, target);
     }
 
+    // 诅咒之剑:每击杀 1 个 20 血以上敌对目标,攻击力 +1(上限由配置决定)
+    @SubscribeEvent
+    public static void onCursedSwordKill(LivingDeathEvent event) {
+        LivingEntity target = event.getEntity();
+        if (target.level().isClientSide()) return;
+        if (!(target instanceof Enemy) || target.getMaxHealth() <= 20) return;
+        if (!(event.getSource().getEntity() instanceof Player killer)) return;
+        CursedSwordChipItem.onKill(killer);
+    }
+
     // 本 Mod 创建的自定义效果不可被牛奶/蜂蜜/effect clear 等外部方式清除;仅玩家死亡可清除
     @SubscribeEvent(priority = EventPriority.HIGH)
     public static void onModEffectRemovalPrevented(MobEffectEvent.Remove event) {
@@ -940,6 +951,11 @@ public class ModEventHandlers {
         if (event.getEntity().isDeadOrDying()) return;
         MobEffectInstance effect = event.getEffectInstance();
         if (effect == null || effect.getEffect() == null) return;
+        // 诅咒之剑卸下筹码时允许主动移除青之诅咒
+        if (effect.getEffect().value() == ModEffects.BLUE_CURSE.get()
+                && CursedSwordChipItem.isRemovingBlueCurse()) {
+            return;
+        }
         String effectId = effect.getEffect().getRegisteredName();
         if (effectId != null && effectId.startsWith(AstralDiceMod.MODID + ":")) {
             event.setCanceled(true);
@@ -1687,6 +1703,16 @@ public class ModEventHandlers {
                         StarLightManager.get(p), StarLightManager.getCap());
             }
         }
+        if (stack.is(ModItems.CURSED_SWORD.get())) {
+            tooltip.add(Component.empty());
+            tooltip.add(Component.translatable("tooltip.astral_dice.chip.cursed_sword",
+                            GameplayConstants.CURSED_SWORD_BONUS_MAX)
+                    .withStyle(ChatFormatting.GRAY));
+            if (event.getEntity() instanceof Player p) {
+                addSignCounter(tooltip, "tooltip.astral_dice.chip.cursed_sword_bonus",
+                        ModAttachments.getCursedSwordBonus(p));
+            }
+        }
         if (stack.is(ModItems.PADMAN_SIGN.get())) {
             tooltip.add(Component.empty());
             addSignKeyHint(tooltip);
@@ -2001,6 +2027,8 @@ public class ModEventHandlers {
         ModAttachments.setMagicQuiverCooldownEnd(player, 0);
         ModAttachments.setFateActiveUntil(player, 0);
         ModAttachments.setStarCoinHammerBonus(player, 0);
+        ModAttachments.setCursedSwordBonus(player, 0);
+        player.removeEffect(ModEffects.BLUE_CURSE);
         ModAttachments.setInvestigationStage(player, 1);
         ModAttachments.setEffectCardPlayCount(player, 0);
         ModAttachments.setEffectCardCooldownEnd(player, 0);

@@ -444,6 +444,13 @@ public class ModAttachments {
                     .serialize(Codec.INT)
                     .build());
 
+    // 诅咒之剑筹码:累计击杀 20 血以上敌对目标获得的攻击力加成(移除筹码/死亡清除)
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> CURSED_SWORD_BONUS =
+            ATTACHMENTS.register("cursed_sword_bonus", () -> AttachmentType.builder(() -> 0)
+                    .serialize(Codec.INT)
+                    .sync(ByteBufCodecs.INT)
+                    .build());
+
     public static boolean getMagicQuiverTracking(net.minecraft.world.entity.player.Player player) {
         return player.getData(MAGIC_QUIVER_TRACKING.get());
     }
@@ -482,6 +489,14 @@ public class ModAttachments {
 
     public static void setStarCoinHammerBonus(net.minecraft.world.entity.player.Player player, int value) {
         player.setData(STAR_COIN_HAMMER_BONUS.get(), Math.max(0, value));
+    }
+
+    public static int getCursedSwordBonus(net.minecraft.world.entity.player.Player player) {
+        return player.getData(CURSED_SWORD_BONUS.get());
+    }
+
+    public static void setCursedSwordBonus(net.minecraft.world.entity.player.Player player, int value) {
+        player.setData(CURSED_SWORD_BONUS.get(), Math.max(0, value));
     }
 
     // === 大当家立牌(fen)附件 ===
