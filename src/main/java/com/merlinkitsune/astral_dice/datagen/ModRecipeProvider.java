@@ -552,16 +552,16 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
                 .save(output);
 
-        // 手持风扇-大:3 星盘 + 2 竹子 + 3 羽毛,空白筹码居中
+        // 手持风扇-大:通用蓝->紫升级配方(手持风扇-小 + 青金石 + 金锭 + 星盘)
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.HAND_FAN_BIG_CHIP.get())
-                .pattern("FFF")
-                .pattern("AEA")
+                .pattern("LGL")
+                .pattern("GTG")
                 .pattern("PPP")
-                .define('F', Items.FEATHER)
-                .define('A', Items.BAMBOO)
-                .define('E', ModItems.BLANK_CHIP.get())
+                .define('L', Items.LAPIS_LAZULI)
+                .define('G', Items.GOLD_INGOT)
+                .define('T', ModItems.HAND_FAN_SMALL_CHIP.get())
                 .define('P', ModItems.STAR_PLATE.get())
-                .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
+                .unlockedBy("has_hand_fan_small", has(ModItems.HAND_FAN_SMALL_CHIP.get()))
                 .save(output);
 
         // === 新筹码(全部为 shape:空白筹码居中,mod 物品在中轴,原版材料在四角) ===

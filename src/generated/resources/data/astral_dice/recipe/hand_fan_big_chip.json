@@ -2,22 +2,22 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
-    "A": {
-      "item": "minecraft:bamboo"
+    "G": {
+      "item": "minecraft:gold_ingot"
     },
-    "E": {
-      "item": "astral_dice:blank_chip"
-    },
-    "F": {
-      "item": "minecraft:feather"
+    "L": {
+      "item": "minecraft:lapis_lazuli"
     },
     "P": {
       "item": "astral_dice:star_plate"
+    },
+    "T": {
+      "item": "astral_dice:hand_fan_small_chip"
     }
   },
   "pattern": [
-    "FFF",
-    "AEA",
+    "LGL",
+    "GTG",
     "PPP"
   ],
   "result": {
