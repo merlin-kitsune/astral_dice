@@ -64,6 +64,7 @@ import com.merlinkitsune.astral_dice.item.card.MonsterLaserCardItem;
 import com.merlinkitsune.astral_dice.item.chip.BankCardUnlimitedChipItem;
 import com.merlinkitsune.astral_dice.item.card.FateGuidanceCardItem;
 import com.merlinkitsune.astral_dice.item.chip.MedkitEmergencyChipItem;
+import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
 import com.merlinkitsune.astral_dice.item.sign.PadmanSignItem;
 import com.merlinkitsune.astral_dice.item.chip.CutterChipItem;
 import com.merlinkitsune.astral_dice.item.chip.NinjaStarChipItem;
@@ -71,6 +72,13 @@ import com.merlinkitsune.astral_dice.item.chip.FlashlightChipItem;
 
 public class ModItems {
     public static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(AstralDiceMod.MODID);
+
+    private static final net.minecraft.tags.TagKey<Item> COMBAT_CARDS_TAG =
+            net.minecraft.tags.ItemTags.create(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(
+                    AstralDiceMod.MODID, "combat_cards"));
+    private static final net.minecraft.tags.TagKey<Item> EFFECT_CARDS_TAG =
+            net.minecraft.tags.ItemTags.create(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(
+                    AstralDiceMod.MODID, "effect_cards"));
 
     // ═══════════════════════════════════════════════════════════════════════════
     // 本模组稀有度标准(仅代码层表示,映射 MC 标准 Rarity):
@@ -316,6 +324,12 @@ public class ModItems {
             () -> new MedkitCompleteChipItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(Rarity.UNCOMMON)));
+
+    // 维生素药丸:通过合成或奖励途径获得任意卡牌时,治愈 +1
+    public static final DeferredItem<Item> VITAMIN_PILL_CHIP = registerItem("vitamin_pill_chip",
+            () -> new VitaminPillChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.EPIC)));
 
     public static final DeferredItem<Item> TARGET_CHIP = registerItem("target_chip",
             () -> new TargetChipItem(new Item.Properties()
@@ -579,6 +593,7 @@ public class ModItems {
                 || stack.is(CUTTER_BLADE_CHIP.get())
                 || stack.is(SCOPE_CHIP.get()) || stack.is(EAGLE_SCOPE_CHIP.get())
                 || stack.is(MEDKIT_EMERGENCY_CHIP.get()) || stack.is(MEDKIT_COMPLETE_CHIP.get())
+                || stack.is(VITAMIN_PILL_CHIP.get())
                 || stack.is(TARGET_CHIP.get()) || stack.is(MARKER_SPRAYER_CHIP.get())
                 || stack.is(MAGIC_TOME_CHIP.get()) || stack.is(BIG_BACKPACK_CHIP.get())
                 || stack.is(NINJA_STAR_CHIP.get()) || stack.is(HAND_FAN_SMALL_CHIP.get())
@@ -596,5 +611,10 @@ public class ModItems {
                 || stack.is(SANDWICH_HIGH.get())
                 || stack.is(MAGIC_QUIVER.get()) || stack.is(BUFFER_SHIELD.get())
                 || stack.is(STAR_COIN_HAMMER.get());
+    }
+
+    // 判断物品栈是否为任意卡牌(战斗牌 + 效果牌;含专属牌)
+    public static boolean isCardItem(ItemStack stack) {
+        return stack.is(COMBAT_CARDS_TAG) || stack.is(EFFECT_CARDS_TAG);
     }
 }

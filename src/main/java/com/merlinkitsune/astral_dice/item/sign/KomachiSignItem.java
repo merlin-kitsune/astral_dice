@@ -12,6 +12,7 @@ import top.theillusivec4.curios.api.SlotContext;
 import com.merlinkitsune.astral_dice.item.card.ExclusiveCardUtil;
 import com.merlinkitsune.astral_dice.item.card.EffectCardPeriod;
 import com.merlinkitsune.astral_dice.item.ModItems;
+import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
 
 /**
  * 忍者立牌。
@@ -71,8 +72,8 @@ public class KomachiSignItem extends BaseSignItem {
             if (ExclusiveCardUtil.isExclusive(card)) {
                 ExclusiveCardUtil.setOwner(card, player);
             }
-            if (!card.isEmpty() && !player.getInventory().add(card)) {
-                player.drop(card, false);
+            if (!card.isEmpty()) {
+                VitaminPillChipItem.giveCard(player, card);
             }
             // 2. 主动技能冷却时间立即减少 30%(剩余部分)
             reduceSignCooldown(player);

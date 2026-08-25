@@ -428,6 +428,16 @@
 			},
 			"unitWorth": 900
 		},
+		"vitamin_pill_chip": {
+			"type": "item",
+			"rarity": "EPIC",
+			"content": "astral_dice:vitamin_pill_chip",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 3000
+		},
 		"target_chip": {
 			"type": "item",
 			"rarity": "RARE",

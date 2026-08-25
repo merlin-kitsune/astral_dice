@@ -10,6 +10,7 @@ import net.minecraft.world.level.Level;
 import top.theillusivec4.curios.api.SlotContext;
 import com.merlinkitsune.astral_dice.item.card.ExclusiveCardUtil;
 import com.merlinkitsune.astral_dice.item.ModItems;
+import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
 
 public class RinSignItem extends BaseSignItem {
 
@@ -36,9 +37,7 @@ public class RinSignItem extends BaseSignItem {
         // 主动:立即获得一张"活体书页"(专属牌,绑定获得者)
         ItemStack page = new ItemStack(ModItems.LIVING_BOOK_PAGE.get());
         ExclusiveCardUtil.setOwner(page, player);
-        if (!player.getInventory().add(page)) {
-            player.drop(page, false);
-        }
+        VitaminPillChipItem.giveCard(player, page);
         return InteractionResultHolder.success(stack);
     }
 }

@@ -4,6 +4,7 @@ import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.item.card.ExclusiveCardUtil;
 import com.merlinkitsune.astral_dice.item.ModItems;
+import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -122,7 +123,9 @@ public final class AstralEventSystem {
     }
 
     private static void giveItem(Player player, ItemStack item) {
-        if (!player.getInventory().add(item)) {
+        if (ModItems.isCardItem(item)) {
+            VitaminPillChipItem.giveCard(player, item);
+        } else if (!player.getInventory().add(item)) {
             player.drop(item, false);
         }
     }

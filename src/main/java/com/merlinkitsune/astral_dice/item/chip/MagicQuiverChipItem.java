@@ -62,9 +62,7 @@ public class MagicQuiverChipItem extends BaseChipItem {
         // 返还第一张使用的效果牌
         ItemStack card = effectCardByType(ModAttachments.getMagicQuiverFirstCard(ctx.attacker));
         if (!card.isEmpty()) {
-            if (!ctx.attacker.getInventory().add(card)) {
-                ctx.attacker.drop(card, false);
-            }
+            VitaminPillChipItem.giveCard(ctx.attacker, card);
         }
 
         // 开始 1 分钟冷却并清除追踪

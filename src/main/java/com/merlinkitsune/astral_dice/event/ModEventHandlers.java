@@ -63,6 +63,8 @@ import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
 import net.neoforged.neoforge.event.entity.living.LivingDropsEvent;
 import net.neoforged.neoforge.event.entity.living.MobEffectEvent;
 import net.neoforged.neoforge.event.entity.player.ItemTooltipEvent;
+import net.neoforged.neoforge.event.entity.player.ItemEntityPickupEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
 import top.theillusivec4.curios.api.CuriosApi;
@@ -94,6 +96,7 @@ import com.merlinkitsune.astral_dice.damage.ModDamageTypes;
 import com.merlinkitsune.astral_dice.item.sign.FenSignItem;
 import com.merlinkitsune.astral_dice.item.card.EffectCardPeriod;
 import com.merlinkitsune.astral_dice.item.chip.BankCardUnlimitedChipItem;
+import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
 import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
 
 @EventBusSubscriber(modid = AstralDiceMod.MODID)
@@ -748,9 +751,7 @@ public class ModEventHandlers {
                 ));
 
         ItemStack card = new ItemStack(ModItems.ATTACK_CARD_FULL_POWER.get());
-        if (!player.getInventory().add(card)) {
-            player.drop(card, false);
-        }
+        VitaminPillChipItem.giveCard(player, card);
         if (player instanceof ServerPlayer sp) {
             PacketDistributor.sendToPlayer(sp,
                     new ActionBarPayload(Component.translatable("msg.astral_dice.charge_refund_full_power")
@@ -791,13 +792,11 @@ public class ModEventHandlers {
                         newStones
                 ));
         ItemStack card = new ItemStack(ModItems.ATTACK_CARD_FULL_POWER.get());
-        if (!player.getInventory().add(card)) {
-            player.drop(card, false);
+        VitaminPillChipItem.giveCard(player, card);
         if (player instanceof ServerPlayer sp) {
             PacketDistributor.sendToPlayer(sp,
                     new ActionBarPayload(Component.translatable("msg.astral_dice.charge_refund_full_power")
                             .withStyle(ChatFormatting.YELLOW), GameplayConstants.ACTIONBAR_DURATION_TICKS));
-        }
         }
     }
 
@@ -1972,6 +1971,31 @@ public class ModEventHandlers {
         PacketDistributor.sendToPlayer(serverPlayer,
                 new com.merlinkitsune.astral_dice.network.ActionBarPayload(msg,
                         GameplayConstants.ACTIONBAR_DURATION_TICKS));
+    }
+
+    // 维生素药丸:通过合成卡牌获得时触发
+    @SubscribeEvent
+    public static void onCardCrafted(PlayerEvent.ItemCraftedEvent event) {
+        Player player = event.getEntity();
+        if (player.level().isClientSide()) return;
+        ItemStack result = event.getCrafting();
+        if (!result.isEmpty()) {
+            VitaminPillChipItem.onCardGained(player, result);
+        }
+    }
+
+    // 维生素药丸:拾取地面卡牌时触发(覆盖发放时背包满、掉落后再拾取的情况)
+    @SubscribeEvent
+    public static void onCardPickup(ItemEntityPickupEvent.Post event) {
+        Player player = event.getPlayer();
+        if (player.level().isClientSide()) return;
+        ItemStack original = event.getOriginalStack();
+        ItemStack remaining = event.getCurrentStack();
+        if (original.isEmpty() || !ModItems.isCardItem(original)) return;
+        int gained = original.getCount() - remaining.getCount();
+        if (gained > 0) {
+            VitaminPillChipItem.onCardGained(player, gained);
+        }
     }
 
     // 玩家死亡:移除全部治愈(清零点数并结束"治愈"效果)与骰神赐福效果,防止死亡残留

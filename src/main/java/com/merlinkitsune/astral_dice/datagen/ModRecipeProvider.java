@@ -385,6 +385,18 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .unlockedBy("has_medkit_emergency", has(ModItems.MEDKIT_EMERGENCY_CHIP.get()))
                 .save(output);
 
+        // 维生素药丸:发酵蛛眼上排 + 红石中轴 + 空白筹码居中 + 星盘下排
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.VITAMIN_PILL_CHIP.get())
+                .pattern("FFF")
+                .pattern("RCR")
+                .pattern("PPP")
+                .define('F', Items.FERMENTED_SPIDER_EYE)
+                .define('R', Items.REDSTONE)
+                .define('C', ModItems.BLANK_CHIP.get())
+                .define('P', ModItems.STAR_PLATE.get())
+                .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
+                .save(output);
+
         // 标靶:5 原版标靶 + 3 星币,空白筹码居中
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.TARGET_CHIP.get())
                 .pattern("TTT")

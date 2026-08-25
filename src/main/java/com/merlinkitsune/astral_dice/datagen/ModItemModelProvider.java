@@ -53,6 +53,7 @@ public class ModItemModelProvider extends ItemModelProvider {
         basicItem(ModItems.EAGLE_SCOPE_CHIP.get());
         basicItem(ModItems.MEDKIT_EMERGENCY_CHIP.get());
         basicItem(ModItems.MEDKIT_COMPLETE_CHIP.get());
+        basicItem(ModItems.VITAMIN_PILL_CHIP.get());
         basicItem(ModItems.TARGET_CHIP.get());
         basicItem(ModItems.MARKER_SPRAYER_CHIP.get());
         basicItem(ModItems.MAGIC_TOME_CHIP.get());

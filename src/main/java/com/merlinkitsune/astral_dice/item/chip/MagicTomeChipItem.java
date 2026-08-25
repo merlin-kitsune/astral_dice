@@ -37,8 +37,8 @@ public class MagicTomeChipItem extends BaseChipItem {
             if (ExclusiveCardUtil.isExclusive(card)) {
                 ExclusiveCardUtil.setOwner(card, player);
             }
-            if (!card.isEmpty() && !player.getInventory().add(card)) {
-                player.drop(card, false);
+            if (!card.isEmpty()) {
+                VitaminPillChipItem.giveCard(player, card);
             }
             ModAttachments.setMagicTomeUseCount(player, 0);
             updateCountEffect(player);

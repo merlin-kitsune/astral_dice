@@ -12,6 +12,7 @@ import com.merlinkitsune.astral_dice.item.sign.BaseSignItem;
 import com.merlinkitsune.astral_dice.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.item.MarkManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
+import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
 import com.merlinkitsune.astral_dice.item.card.EffectCardUtil;
 
 /**
@@ -35,9 +36,7 @@ public class FanBigChipItem extends BaseChipItem {
         List<ItemStack> pool = EffectCardUtil.getRandomEffectCardPool();
         if (!pool.isEmpty()) {
             ItemStack card = pool.get(ThreadLocalRandom.current().nextInt(pool.size()));
-            if (!player.getInventory().add(card)) {
-                player.drop(card, false);
-            }
+            VitaminPillChipItem.giveCard(player, card);
         }
 
         // 对周围 HAND_FAN_BIG_RANGE 格范围内所有敌对目标施加一层标记

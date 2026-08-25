@@ -12,6 +12,7 @@ import top.theillusivec4.curios.api.SlotContext;
 import com.merlinkitsune.astral_dice.item.card.ExclusiveCardUtil;
 import com.merlinkitsune.astral_dice.event.ModEventHandlers;
 import com.merlinkitsune.astral_dice.item.ModItems;
+import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
 import com.merlinkitsune.astral_dice.network.ActionBarPayload;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
@@ -87,9 +88,7 @@ public class HaiqingSignItem extends BaseSignItem {
         }
         ItemStack card = new ItemStack(ModItems.FATE_GUIDANCE_CARD.get());
         ExclusiveCardUtil.setOwner(card, applier);
-        if (!applier.getInventory().add(card)) {
-            applier.drop(card, false);
-        }
+        VitaminPillChipItem.giveCard(applier, card);
         if (applier instanceof ServerPlayer sp) {
             PacketDistributor.sendToPlayer(sp,
                     new ActionBarPayload(Component.translatable("msg.astral_dice.weak_mark_kill_reward")

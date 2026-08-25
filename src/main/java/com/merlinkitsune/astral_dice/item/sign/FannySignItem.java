@@ -15,6 +15,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import com.merlinkitsune.astral_dice.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.event.AstralEventSystem;
 import com.merlinkitsune.astral_dice.item.ModItems;
+import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
 import com.merlinkitsune.astral_dice.item.card.EffectCardUtil;
 import com.merlinkitsune.astral_dice.network.ActionBarPayload;
 import net.minecraft.ChatFormatting;
@@ -100,7 +101,9 @@ public class FannySignItem extends BaseSignItem {
     }
 
     private static void giveItem(Player player, ItemStack item) {
-        if (!player.getInventory().add(item)) {
+        if (ModItems.isCardItem(item)) {
+            VitaminPillChipItem.giveCard(player, item);
+        } else if (!player.getInventory().add(item)) {
             player.drop(item, false);
         }
     }

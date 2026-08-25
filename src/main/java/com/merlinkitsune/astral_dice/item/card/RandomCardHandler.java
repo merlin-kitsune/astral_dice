@@ -14,6 +14,7 @@ import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 import com.merlinkitsune.astral_dice.event.ModEventHandlers;
 import com.merlinkitsune.astral_dice.item.ModItems;
+import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
 
 /**
  * 随机卡牌处理类:随机卡牌的类型筛选、专属牌强制排除与向其他玩家发放的统一逻辑。
@@ -184,9 +185,7 @@ public final class RandomCardHandler {
     public static void giveCardTo(Player receiver, CardCategory category) {
         ItemStack card = randomCard(category);
         if (card.isEmpty()) return;
-        if (!receiver.getInventory().add(card)) {
-            receiver.drop(card, false);
-        }
+        VitaminPillChipItem.giveCard(receiver, card);
         // 看板立牌被动:每获得 1 张战斗牌(攻击/防御卡)获得 1 星币(佩戴看板立牌时)
         if (com.merlinkitsune.astral_dice.combat.CardRegistry.itemToType(card) != null) {
             com.merlinkitsune.astral_dice.item.sign.MimiSignItem.onBattleCardGained(receiver);

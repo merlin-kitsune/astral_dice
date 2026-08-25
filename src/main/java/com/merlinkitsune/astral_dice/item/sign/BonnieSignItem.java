@@ -12,6 +12,7 @@ import top.theillusivec4.curios.api.CuriosApi;
 import top.theillusivec4.curios.api.SlotContext;
 import com.merlinkitsune.astral_dice.item.MarkManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
+import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
 import com.merlinkitsune.astral_dice.item.InvestigationEventUtil;
 import com.merlinkitsune.astral_dice.network.ActionBarPayload;
 import net.minecraft.ChatFormatting;
@@ -123,8 +124,6 @@ public class BonnieSignItem extends BaseSignItem {
                 ModItems.ATTACK_CARD_EPIC.get()
         };
         ItemStack stack = new ItemStack(cards[java.util.concurrent.ThreadLocalRandom.current().nextInt(cards.length)]);
-        if (!player.getInventory().add(stack)) {
-            player.drop(stack, false);
-        }
+        VitaminPillChipItem.giveCard(player, stack);
     }
 }

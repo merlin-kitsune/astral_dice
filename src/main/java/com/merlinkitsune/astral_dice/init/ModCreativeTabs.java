@@ -85,6 +85,7 @@ public class ModCreativeTabs {
                 output.accept(ModItems.EAGLE_SCOPE_CHIP.get());
                 output.accept(ModItems.MEDKIT_EMERGENCY_CHIP.get());
                 output.accept(ModItems.MEDKIT_COMPLETE_CHIP.get());
+                output.accept(ModItems.VITAMIN_PILL_CHIP.get());
                 output.accept(ModItems.TARGET_CHIP.get());
                 output.accept(ModItems.MARKER_SPRAYER_CHIP.get());
                 output.accept(ModItems.EIGHT_SIDED_DICE.get());

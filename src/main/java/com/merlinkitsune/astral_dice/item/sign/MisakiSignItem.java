@@ -13,6 +13,7 @@ import top.theillusivec4.curios.api.CuriosApi;
 
 import java.util.concurrent.ThreadLocalRandom;
 import com.merlinkitsune.astral_dice.item.ModItems;
+import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
 
 public class MisakiSignItem extends BaseSignItem {
     public MisakiSignItem(Properties properties) {
@@ -30,9 +31,7 @@ public class MisakiSignItem extends BaseSignItem {
             if (stacks >= 3) {
                 stack.set(ModDataComponents.MISAKI_SIGN_STACKS.get(), stacks - 2);
                 ItemStack meito = new ItemStack(ModItems.ATTACK_CARD_MEITO.get());
-                if (!player.getInventory().add(meito)) {
-                    player.drop(meito, false);
-                }
+                VitaminPillChipItem.giveCard(player, meito);
             }
         }
         return InteractionResultHolder.success(stack);
