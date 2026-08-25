@@ -81,6 +81,15 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .unlockedBy("has_star_coin", has(ModItems.STAR_COIN.get()))
                 .save(output);
 
+        // 以毒攻毒:1 谜之炖菜 + 1 红色蘑菇 + 1 兔子脚 + 1 星盘
+        ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ModItems.EFFECT_CARD_FIGHT_POISON_WITH_POISON.get())
+                .requires(Items.SUSPICIOUS_STEW)
+                .requires(Items.RED_MUSHROOM)
+                .requires(Items.RABBIT_FOOT)
+                .requires(ModItems.STAR_PLATE.get())
+                .unlockedBy("has_star_plate", has(ModItems.STAR_PLATE.get()))
+                .save(output);
+
         // 狂暴:2 火药 + 2 星币
         ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ModItems.EFFECT_CARD_BERSERK.get())
                 .requires(Items.GUNPOWDER, 2)

@@ -201,11 +201,11 @@ public class ModItems {
                     .stacksTo(64)
                     .rarity(Rarity.EPIC)));
 
-    // 以毒攻毒(效果牌):中毒 8 秒后获得生命恢复 II 15 秒
+    // 以毒攻毒(效果牌):中毒 8 秒后移除负面效果并获得生命恢复 II 15 秒
     public static final DeferredItem<Item> EFFECT_CARD_FIGHT_POISON_WITH_POISON = registerItem("effect_card_fight_poison_with_poison",
             () -> new FightPoisonWithPoisonCardItem(new Item.Properties()
                     .stacksTo(64)
-                    .rarity(Rarity.RARE)));
+                    .rarity(Rarity.EPIC)));
 
     // 对怪激光(伤害效果牌):远程和魔法伤害 +4。品质:青(蓝)
     public static final DeferredItem<Item> MONSTER_LASER_CARD = registerItem("effect_card_monster_laser",
