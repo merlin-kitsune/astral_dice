@@ -123,7 +123,7 @@
   "tooltip.astral_dice.card.defense_epic": "防御力 §e1~10§7 | 剩余次数: §e%s§7",
   "tooltip.astral_dice.card.king_power": "受到 §e8§7 点伤害，攻击力 §e+5§7，持续(§93:00§7)",
   "effect.astral_dice.berserk.description": "攻击力 §e+3§7，受到伤害 §e+1§7，持续(§92:00§7)",
-  "effect.astral_dice.unwavering.description": "防御力 §e+6§7，持续(§92:00§7)",
+  "effect.astral_dice.unwavering.description": "防御力 §e+2§7，并获得 抗性提升 II，持续(§91:00§7)",
   "tooltip.astral_dice.card.blank_sign": "合成立牌的基础材料",
   "tooltip.astral_dice.card.blank_chip": "合成筹码的基础材料",
   "tooltip.astral_dice.sign.active_title": "主动技能（%s）:",

@@ -175,16 +175,6 @@ public class ModEventHandlers {
             com.merlinkitsune.astral_dice.item.chip.BufferShieldChipItem.onHurt(targetPlayer, event.getNewDamage());
         }
 
-        // 怪物近战攻击带骰神赐福的玩家:仅消耗防御牌耐久,不修改原版伤害
-        if (!target.level().isClientSide()
-                && target instanceof Player defender
-                && directEntity instanceof Mob
-                && defender.hasEffect(ModEffects.DICE_BLESSING)
-                && isMeleeMonsterAttack(source)) {
-            consumeDefenseCardDurabilityOnce(defender);
-            return;
-        }
-
         if (!(directEntity instanceof Player player)) return;
         if (target == player) return;
 
@@ -511,8 +501,8 @@ public class ModEventHandlers {
                             + modifierDefense
                             + ctx.defenseCardSum;
                 } else {
-                    // 未触发骰神赐福的玩家:防御加成默认作为护甲值加成(受 20 点护甲上限约束)
-                    double effectiveArmor = Math.max(0, Math.min(rawArmor + modifierDefense, 20));
+                    // 未触发骰神赐福的玩家:防御加成按 1 防御力 = 2 护甲值折算(受 20 点护甲上限约束)
+                    double effectiveArmor = Math.max(0, Math.min(rawArmor + modifierDefense * 2.0, 20));
                     defensePower = 2
                             + effectiveArmor / 2.0
                             + 1.4 * toughness
@@ -677,11 +667,6 @@ public class ModEventHandlers {
                             newStones
                     ));
         }
-    }
-
-    // 判断是否为怪物近战攻击:直接伤害来源必须是怪物本身(排除箭矢/药水/地刺等远程或魔法)
-    private static boolean isMeleeMonsterAttack(DamageSource source) {
-        return source.getDirectEntity() instanceof Mob;
     }
 
     // 带骰神赐福的玩家受到攻击时:每个赐福期间仅消耗一次防御牌耐久,不修改原版伤害

@@ -123,7 +123,7 @@
   "tooltip.astral_dice.card.defense_epic": "Defense §e1~10§7 (max of 2 rolls) | Uses: §e%s§7",
   "tooltip.astral_dice.card.king_power": "Take §e8§7 damage, Attack §e+5§7, lasts(§93:00§7)",
   "effect.astral_dice.berserk.description": "Attack §e+3§7, take §e+1§7 damage from any source, lasts(§92:00§7)",
-  "effect.astral_dice.unwavering.description": "Defense §e+6§7, lasts(§92:00§7) (counts toward Dice Blessing defense)",
+  "effect.astral_dice.unwavering.description": "Defense §e+2§7, grants Resistance II, lasts(§91:00§7)",
   "tooltip.astral_dice.card.blank_sign": "Material for further crafting",
   "tooltip.astral_dice.card.blank_chip": "Material for further crafting",
   "tooltip.astral_dice.sign.active_title": "Active Skill (%s):",

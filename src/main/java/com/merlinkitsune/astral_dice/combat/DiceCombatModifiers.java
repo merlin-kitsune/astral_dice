@@ -288,7 +288,7 @@ public final class DiceCombatModifiers {
         registerDefenseModifier((ctx, dp) -> {
             var unwavering = ctx.target.getEffect(ModEffects.UNWAVERING);
             if (unwavering != null) {
-                dp += 6 * (unwavering.getAmplifier() + 1);
+                dp += 2 * (unwavering.getAmplifier() + 1);
             }
             var resistance = ctx.target.getEffect(MobEffects.DAMAGE_RESISTANCE);
             if (resistance != null) {
@@ -400,7 +400,7 @@ public final class DiceCombatModifiers {
         if (player.hasEffect(ModEffects.DICE_BLESSING)) {
             dp = 2 + rawArmor / 2.0 + 1.4 * toughness + modifierDefense;
         } else {
-            double effectiveArmor = Math.max(0, Math.min(rawArmor + modifierDefense, 20));
+            double effectiveArmor = Math.max(0, Math.min(rawArmor + modifierDefense * 2.0, 20));
             dp = 2 + effectiveArmor / 2.0 + 1.4 * toughness;
         }
         return (int) Math.floor(dp);
@@ -457,7 +457,7 @@ public final class DiceCombatModifiers {
         if (player.hasEffect(ModEffects.DICE_BLESSING)) {
             dp = 2 + rawArmor / 2.0 + 1.4 * toughness + modifierDefense;
         } else {
-            double effectiveArmor = Math.max(0, Math.min(rawArmor + modifierDefense, 20));
+            double effectiveArmor = Math.max(0, Math.min(rawArmor + modifierDefense * 2.0, 20));
             dp = 2 + effectiveArmor / 2.0 + 1.4 * toughness;
         }
         int base = (int) Math.floor(dp);
