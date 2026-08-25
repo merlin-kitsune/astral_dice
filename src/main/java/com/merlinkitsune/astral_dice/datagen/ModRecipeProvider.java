@@ -540,9 +540,9 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
                 .save(output);
 
-        // 手持风扇-小:羽毛上中 + 竹子中轴 + 空白筹码居中 + 星币下排
+        // 手持风扇-小:羽毛上排 + 竹子中轴 + 空白筹码居中 + 星币下排
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.HAND_FAN_SMALL_CHIP.get())
-                .pattern(" Y ")
+                .pattern("YYY")
                 .pattern("ZCZ")
                 .pattern("BBB")
                 .define('Y', Items.FEATHER)
