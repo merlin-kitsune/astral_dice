@@ -1,5 +1,16 @@
 # Changelog / 更新日志
 
+## 1.0.3-rc1
+
+### 内容与平衡性调整 / Content & Balance Changes
+- 防御牌耐久消耗恢复为仅 PvP 生效：玩家攻击带骰子的玩家时，双方触发骰神赐福，并消耗被攻击方防御牌耐久（每次赐福仅一次）；怪物攻击不再消耗防御牌耐久。 / Defense card durability is now only consumed in PvP: when attacking another dice-holding player, both gain Dice Blessing and the defender consumes defense card durability once per blessing; monster attacks no longer consume it.
+- 新增防御力/护甲值换算：1 防御力 = 2 护甲值。 / Added a defense-to-armor conversion: 1 defense = 2 armor.
+- 效果牌、立牌、事件、筹码提供的防御力，无论是否触发骰神赐福，均按 1:2 折算为护甲值；只有战斗防御牌直接作为防御点加入骰神赐福。 / Defense bonuses from effect cards, signs, events, and chips always convert to armor at 1:2 regardless of Dice Blessing; only battle defense cards add directly to defense points.
+- 重写“岿然不动”：使用后防御力 +2，并获得 抗性提升 II，持续 1:00。 / Reworked Unwavering: grants +2 defense and Resistance II for 1:00.
+
+### 工程 / Project
+- 版本号更新为 `1.0.3-rc1`。 / Version updated to `1.0.3-rc1`.
+
 ## 1.0.2-rc1
 
 ### 内容与平衡性调整 / Content & Balance Changes
