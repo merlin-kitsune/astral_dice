@@ -3,13 +3,13 @@
   "category": "misc",
   "ingredients": [
     {
-      "item": "minecraft:ink_sac"
+      "item": "minecraft:iron_sword"
     },
     {
       "item": "astral_dice:star_coin"
     },
     {
-      "item": "astral_dice:star_coin"
+      "item": "minecraft:iron_ingot"
     }
   ],
   "result": {

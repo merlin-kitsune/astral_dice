@@ -1,24 +1,19 @@
 {
-  "type": "minecraft:crafting_shaped",
+  "type": "minecraft:crafting_shapeless",
   "category": "misc",
-  "key": {
-    "G": {
-      "item": "astral_dice:golden_star_plate"
-    },
-    "Q": {
+  "ingredients": [
+    {
       "item": "minecraft:spyglass"
     },
-    "S": {
-      "item": "astral_dice:star_coin"
-    },
-    "T": {
+    {
       "item": "minecraft:tnt"
+    },
+    {
+      "item": "minecraft:tnt"
+    },
+    {
+      "item": "astral_dice:star_plate"
     }
-  },
-  "pattern": [
-    " Q ",
-    "TST",
-    " G "
   ],
   "result": {
     "count": 1,

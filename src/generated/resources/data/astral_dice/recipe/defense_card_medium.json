@@ -3,10 +3,10 @@
   "category": "misc",
   "ingredients": [
     {
-      "item": "minecraft:iron_ingot"
+      "item": "minecraft:shield"
     },
     {
-      "item": "astral_dice:dice"
+      "item": "astral_dice:star_coin"
     }
   ],
   "result": {

@@ -1,18 +1,19 @@
 {
-  "type": "minecraft:crafting_shaped",
+  "type": "minecraft:crafting_shapeless",
   "category": "misc",
-  "key": {
-    "R": {
+  "ingredients": [
+    {
       "item": "minecraft:redstone_block"
     },
-    "S": {
+    {
+      "item": "astral_dice:star_plate"
+    },
+    {
+      "item": "astral_dice:star_plate"
+    },
+    {
       "item": "astral_dice:star_plate"
     }
-  },
-  "pattern": [
-    " S ",
-    "SRS",
-    " S "
   ],
   "result": {
     "count": 1,

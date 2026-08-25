@@ -1,24 +1,19 @@
 {
-  "type": "minecraft:crafting_shaped",
+  "type": "minecraft:crafting_shapeless",
   "category": "misc",
-  "key": {
-    "C": {
-      "item": "minecraft:cake"
-    },
-    "E": {
-      "item": "astral_dice:star_plate"
-    },
-    "G": {
+  "ingredients": [
+    {
       "item": "minecraft:golden_carrot"
     },
-    "S": {
+    {
+      "item": "minecraft:glistering_melon_slice"
+    },
+    {
+      "item": "astral_dice:star_coin"
+    },
+    {
       "item": "astral_dice:star_coin"
     }
-  },
-  "pattern": [
-    "CGC",
-    "SES",
-    "GCG"
   ],
   "result": {
     "count": 1,

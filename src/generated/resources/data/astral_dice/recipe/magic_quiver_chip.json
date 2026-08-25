@@ -2,9 +2,6 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
-    "R": {
-      "item": "minecraft:echo_shard"
-    },
     "A": {
       "item": "minecraft:spectral_arrow"
     },
@@ -16,6 +13,9 @@
     },
     "Q": {
       "item": "minecraft:writable_book"
+    },
+    "R": {
+      "item": "minecraft:echo_shard"
     }
   },
   "pattern": [

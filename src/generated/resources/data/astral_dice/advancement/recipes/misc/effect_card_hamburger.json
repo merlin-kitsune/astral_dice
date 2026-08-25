@@ -1,11 +1,11 @@
 {
   "parent": "minecraft:recipes/root",
   "criteria": {
-    "has_star_plate": {
+    "has_star_coin": {
       "conditions": {
         "items": [
           {
-            "items": "astral_dice:star_plate"
+            "items": "astral_dice:star_coin"
           }
         ]
       },
@@ -21,7 +21,7 @@
   "requirements": [
     [
       "has_the_recipe",
-      "has_star_plate"
+      "has_star_coin"
     ]
   ],
   "rewards": {

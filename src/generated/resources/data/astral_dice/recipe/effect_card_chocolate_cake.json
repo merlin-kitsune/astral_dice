@@ -1,21 +1,19 @@
 {
-  "type": "minecraft:crafting_shaped",
+  "type": "minecraft:crafting_shapeless",
   "category": "misc",
-  "key": {
-    "C": {
+  "ingredients": [
+    {
       "item": "minecraft:cocoa_beans"
     },
-    "E": {
-      "item": "astral_dice:star_coin"
+    {
+      "item": "minecraft:egg"
     },
-    "S": {
+    {
       "item": "minecraft:sugar"
+    },
+    {
+      "item": "astral_dice:star_coin"
     }
-  },
-  "pattern": [
-    "CSC",
-    "SES",
-    "CSC"
   ],
   "result": {
     "count": 1,

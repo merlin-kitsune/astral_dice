@@ -1,18 +1,19 @@
 {
-  "type": "minecraft:crafting_shaped",
+  "type": "minecraft:crafting_shapeless",
   "category": "misc",
-  "key": {
-    "D": {
+  "ingredients": [
+    {
       "item": "minecraft:diamond"
     },
-    "S": {
+    {
+      "item": "astral_dice:star_coin"
+    },
+    {
+      "item": "astral_dice:star_coin"
+    },
+    {
       "item": "astral_dice:star_coin"
     }
-  },
-  "pattern": [
-    " S ",
-    "SDS",
-    " S "
   ],
   "result": {
     "count": 1,

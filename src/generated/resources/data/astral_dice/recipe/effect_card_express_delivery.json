@@ -1,21 +1,19 @@
 {
-  "type": "minecraft:crafting_shaped",
+  "type": "minecraft:crafting_shapeless",
   "category": "misc",
-  "key": {
-    "E": {
-      "item": "astral_dice:star_coin"
+  "ingredients": [
+    {
+      "item": "minecraft:glowstone_dust"
     },
-    "R": {
+    {
       "item": "minecraft:quartz"
     },
-    "U": {
-      "item": "minecraft:glowstone_dust"
+    {
+      "item": "minecraft:quartz"
+    },
+    {
+      "item": "astral_dice:star_plate"
     }
-  },
-  "pattern": [
-    "URU",
-    "RER",
-    "URU"
   ],
   "result": {
     "count": 1,

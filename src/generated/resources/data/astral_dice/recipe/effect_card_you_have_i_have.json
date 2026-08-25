@@ -1,21 +1,19 @@
 {
-  "type": "minecraft:crafting_shaped",
+  "type": "minecraft:crafting_shapeless",
   "category": "misc",
-  "key": {
-    "E": {
+  "ingredients": [
+    {
+      "item": "minecraft:emerald"
+    },
+    {
+      "item": "minecraft:emerald"
+    },
+    {
       "item": "astral_dice:star_coin"
     },
-    "G": {
-      "item": "minecraft:gold_ingot"
-    },
-    "M": {
-      "item": "minecraft:emerald"
+    {
+      "item": "astral_dice:star_coin"
     }
-  },
-  "pattern": [
-    "GMG",
-    "MEM",
-    "GMG"
   ],
   "result": {
     "count": 1,

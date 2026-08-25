@@ -1,24 +1,19 @@
 {
-  "type": "minecraft:crafting_shaped",
+  "type": "minecraft:crafting_shapeless",
   "category": "misc",
-  "key": {
-    "B": {
-      "item": "minecraft:cooked_beef"
-    },
-    "D": {
+  "ingredients": [
+    {
       "item": "minecraft:bread"
     },
-    "E": {
-      "item": "astral_dice:star_plate"
+    {
+      "item": "minecraft:cooked_beef"
     },
-    "S": {
+    {
+      "item": "astral_dice:star_coin"
+    },
+    {
       "item": "astral_dice:star_coin"
     }
-  },
-  "pattern": [
-    "BDB",
-    "SES",
-    "BDB"
   ],
   "result": {
     "count": 1,
