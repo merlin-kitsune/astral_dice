@@ -18,7 +18,8 @@ import com.merlinkitsune.astral_dice.item.ModItems;
 
 /**
  * 诅咒之剑筹码:装备时始终受到"青之诅咒"影响。
- * 每击杀 1 个 20 血以上的敌对目标,攻击力 +1,上限由配置
+ * 骰神赐福期间,每击杀 1 个 20 血以上的敌对目标,攻击力 +1;
+ * 每个骰神赐福效果期间最多触发一次,上限由配置
  * {@link GameplayConstants#CURSED_SWORD_BONUS_MAX} 决定(默认 32,最大 64)。
  * 移除筹码时清除全部攻击力加成与青之诅咒效果。
  */
@@ -63,6 +64,7 @@ public class CursedSwordChipItem extends BaseChipItem {
     protected void onChipUnequip(Player player, ItemStack stack) {
         // 清除所有加成与青之诅咒效果
         ModAttachments.setCursedSwordBonus(player, 0);
+        ModAttachments.setCursedSwordBlessingTriggered(player, false);
         removeBlueCurse(player);
     }
 
@@ -76,10 +78,15 @@ public class CursedSwordChipItem extends BaseChipItem {
         }
     }
 
-    // 击杀敌对目标(20 血以上)时增加 1 点攻击力,受配置上限约束
+    // 骰神赐福期间击杀敌对目标(20 血以上)时增加 1 点攻击力;每个赐福周期最多触发一次
     public static void onKill(Player player) {
         if (player == null || player.level().isClientSide()) return;
         if (!isEquipped(player)) return;
+        // 仅在骰神赐福期间生效
+        if (!player.hasEffect(ModEffects.DICE_BLESSING)) return;
+        // 每个骰神赐福效果期间只能触发一次
+        if (ModAttachments.getCursedSwordBlessingTriggered(player)) return;
+        ModAttachments.setCursedSwordBlessingTriggered(player, true);
         int current = ModAttachments.getCursedSwordBonus(player);
         int max = GameplayConstants.CURSED_SWORD_BONUS_MAX;
         if (current < max) {

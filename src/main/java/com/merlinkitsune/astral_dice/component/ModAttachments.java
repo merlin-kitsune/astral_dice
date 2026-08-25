@@ -451,6 +451,12 @@ public class ModAttachments {
                     .sync(ByteBufCodecs.INT)
                     .build());
 
+    // 诅咒之剑筹码:当前骰神赐福期间是否已触发过击杀加成(每个赐福周期最多一次)
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Boolean>> CURSED_SWORD_BLESSING_TRIGGERED =
+            ATTACHMENTS.register("cursed_sword_blessing_triggered", () -> AttachmentType.builder(() -> false)
+                    .serialize(Codec.BOOL)
+                    .build());
+
     public static boolean getMagicQuiverTracking(net.minecraft.world.entity.player.Player player) {
         return player.getData(MAGIC_QUIVER_TRACKING.get());
     }
@@ -497,6 +503,14 @@ public class ModAttachments {
 
     public static void setCursedSwordBonus(net.minecraft.world.entity.player.Player player, int value) {
         player.setData(CURSED_SWORD_BONUS.get(), Math.max(0, value));
+    }
+
+    public static boolean getCursedSwordBlessingTriggered(net.minecraft.world.entity.player.Player player) {
+        return player.getData(CURSED_SWORD_BLESSING_TRIGGERED.get());
+    }
+
+    public static void setCursedSwordBlessingTriggered(net.minecraft.world.entity.player.Player player, boolean value) {
+        player.setData(CURSED_SWORD_BLESSING_TRIGGERED.get(), value);
     }
 
     // === 大当家立牌(fen)附件 ===

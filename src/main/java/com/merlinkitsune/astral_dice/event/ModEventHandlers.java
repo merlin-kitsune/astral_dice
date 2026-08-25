@@ -243,6 +243,8 @@ public class ModEventHandlers {
             triggeredBlessing = true;
             // 新赐福周期:重置“防御牌已消耗”标记,确保本次赐福期间最多消耗一次防御牌耐久
             ModAttachments.setDefenseCardConsumedThisBlessing(player, false);
+            // 新赐福周期:重置诅咒之剑“本次赐福已触发”标记
+            ModAttachments.setCursedSwordBlessingTriggered(player, false);
             // 玩家对玩家:若被攻击方也佩戴骰子,则同时触发其骰神赐福(双方都拥有骰子时)
             if (target instanceof Player targetPlayer) {
                 var targetCurios = CuriosApi.getCuriosInventory(targetPlayer);
@@ -252,6 +254,7 @@ public class ModEventHandlers {
                         targetPlayer.addEffect(new MobEffectInstance(ModEffects.DICE_BLESSING,
                                 GameplayConstants.DICE_BLESSING_DURATION_TICKS, 0, false, false));
                         ModAttachments.setDefenseCardConsumedThisBlessing(targetPlayer, false);
+                        ModAttachments.setCursedSwordBlessingTriggered(targetPlayer, false);
                     }
                 }
             }
@@ -2037,6 +2040,7 @@ public class ModEventHandlers {
         ModAttachments.setFateActiveUntil(player, 0);
         ModAttachments.setStarCoinHammerBonus(player, 0);
         ModAttachments.setCursedSwordBonus(player, 0);
+        ModAttachments.setCursedSwordBlessingTriggered(player, false);
         player.removeEffect(ModEffects.BLUE_CURSE);
         ModAttachments.setInvestigationStage(player, 1);
         ModAttachments.setEffectCardPlayCount(player, 0);
