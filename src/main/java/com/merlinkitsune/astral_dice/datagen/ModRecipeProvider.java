@@ -90,10 +90,10 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .unlockedBy("has_star_plate", has(ModItems.STAR_PLATE.get()))
                 .save(output);
 
-        // 狂暴:2 火药 + 2 星币
+        // 狂暴:1 火药 + 1 星币
         ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ModItems.EFFECT_CARD_BERSERK.get())
-                .requires(Items.GUNPOWDER, 2)
-                .requires(ModItems.STAR_COIN.get(), 2)
+                .requires(Items.GUNPOWDER)
+                .requires(ModItems.STAR_COIN.get())
                 .unlockedBy("has_star_coin", has(ModItems.STAR_COIN.get()))
                 .save(output);
 
