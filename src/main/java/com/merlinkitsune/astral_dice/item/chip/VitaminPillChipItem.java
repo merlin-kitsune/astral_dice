@@ -9,9 +9,10 @@ import com.merlinkitsune.astral_dice.item.ModItems;
 /**
  * 维生素药丸筹码:通过合成或奖励途径获得任意卡牌时,治愈 +1。
  *
- * <p>触发范围包括:直接合成卡牌、随机/事件/立牌/筹码/效果牌特定能力发放的卡牌,
- * 以及拾取掉落的卡牌。发放卡牌的代码统一走 {@link #giveCard} 以便在成功放入背包时触发;
- * 合成与拾取由 ModEventHandlers 中的事件监听补充。
+ * <p>触发范围包括:直接合成卡牌,以及随机/事件/立牌/筹码/效果牌特定能力发放的卡牌。
+ * 发放卡牌的代码统一走 {@link #giveCard} 以便在成功放入背包时触发;
+ * 合成由 ModEventHandlers 中的事件监听补充。
+ * 拾取地面卡牌不会触发,避免反复丢弃/拾取刷治愈点。
  */
 public class VitaminPillChipItem extends BaseChipItem {
     /** 获得每张卡牌时增加的治愈点数 */
@@ -22,7 +23,8 @@ public class VitaminPillChipItem extends BaseChipItem {
     }
 
     /**
-     * 发放一张卡牌:成功放入背包时触发维生素药丸;背包满则掉落,等待拾取时再触发。
+     * 发放一张卡牌:成功放入背包时触发维生素药丸。
+     * 背包满则掉落,但不会在拾取时触发(防止丢弃/拾取刷治愈点)。
      */
     public static void giveCard(Player player, ItemStack card) {
         if (player == null || player.level().isClientSide()) return;

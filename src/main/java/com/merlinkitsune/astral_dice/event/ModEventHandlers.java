@@ -63,7 +63,6 @@ import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
 import net.neoforged.neoforge.event.entity.living.LivingDropsEvent;
 import net.neoforged.neoforge.event.entity.living.MobEffectEvent;
 import net.neoforged.neoforge.event.entity.player.ItemTooltipEvent;
-import net.neoforged.neoforge.event.entity.player.ItemEntityPickupEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
@@ -1981,20 +1980,6 @@ public class ModEventHandlers {
         ItemStack result = event.getCrafting();
         if (!result.isEmpty()) {
             VitaminPillChipItem.onCardGained(player, result);
-        }
-    }
-
-    // 维生素药丸:拾取地面卡牌时触发(覆盖发放时背包满、掉落后再拾取的情况)
-    @SubscribeEvent
-    public static void onCardPickup(ItemEntityPickupEvent.Post event) {
-        Player player = event.getPlayer();
-        if (player.level().isClientSide()) return;
-        ItemStack original = event.getOriginalStack();
-        ItemStack remaining = event.getCurrentStack();
-        if (original.isEmpty() || !ModItems.isCardItem(original)) return;
-        int gained = original.getCount() - remaining.getCount();
-        if (gained > 0) {
-            VitaminPillChipItem.onCardGained(player, gained);
         }
     }
 
