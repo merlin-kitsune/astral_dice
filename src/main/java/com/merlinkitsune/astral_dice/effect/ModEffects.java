@@ -103,4 +103,8 @@ public class ModEffects {
     // 战斗爽(大当家立牌 fen 主动):攻击力 +3,持续 1:00
     public static final DeferredHolder<MobEffect, MobEffect> FEN_FRENZY =
             EFFECTS.register("fen_frenzy", () -> new FenFrenzyEffect(0xFF4500));
+
+    // 青之诅咒:护甲值 -20%(向下取整),盔甲韧性归 0;暂未配置触发条件
+    public static final DeferredHolder<MobEffect, MobEffect> BLUE_CURSE =
+            EFFECTS.register("blue_curse", BlueCurseEffect::new);
 }

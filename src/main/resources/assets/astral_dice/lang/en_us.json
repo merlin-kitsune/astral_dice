@@ -99,6 +99,8 @@
   "effect.astral_dice.fate_guidance": "Fate's Guide",
   "effect.astral_dice.papara_bite": "Vampire Bite",
   "effect.astral_dice.fen_frenzy": "Battle Frenzy",
+  "effect.astral_dice.blue_curse": "Blue Curse",
+  "effect.astral_dice.blue_curse.description": "Armor §e-20%%§7, Armor Toughness §e0§7 (armor value rounded down)",
   "effect.astral_dice.undercover_investigation": "Undercover Investigation",
   "effect.astral_dice.investigation_bonus": "Investigation Stage",
   "effect.astral_dice.haiqing_ready": "Ready: Weak Mark",

@@ -99,6 +99,8 @@
   "effect.astral_dice.fate_guidance": "命运的指引",
   "effect.astral_dice.papara_bite": "嘬一口",
   "effect.astral_dice.fen_frenzy": "战斗爽",
+  "effect.astral_dice.blue_curse": "青之诅咒",
+  "effect.astral_dice.blue_curse.description": "护甲值 §e-20%%§7，盔甲韧性归 §e0§7（护甲值向下取整）",
   "effect.astral_dice.undercover_investigation": "隐匿调查",
   "effect.astral_dice.investigation_bonus": "调查阶段",
   "effect.astral_dice.haiqing_ready": "待命：虚弱印记",
