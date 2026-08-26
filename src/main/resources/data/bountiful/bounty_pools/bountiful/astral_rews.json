@@ -340,7 +340,7 @@
 		},
 		"komachi_sign": {
 			"type": "item",
-			"rarity": "RARE",
+			"rarity": "EPIC",
 			"content": "astral_dice:komachi_sign",
 			"amount": {
 				"min": 1,
@@ -370,7 +370,7 @@
 		},
 		"haiqing_sign": {
 			"type": "item",
-			"rarity": "RARE",
+			"rarity": "EPIC",
 			"content": "astral_dice:haiqing_sign",
 			"amount": {
 				"min": 1,

@@ -166,7 +166,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('I', Items.ECHO_SHARD)
                 .define('B', Items.BLACK_DYE)
                 .define('L', Items.DISPENSER)
-                .define('D', ModItems.GOLDEN_DICE.get())
+                .define('D', ModItems.DIAMOND_DICE.get())
                 .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
                 .save(output);
 
@@ -207,7 +207,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('C', Items.SPYGLASS)
                 .define('L', Items.PRISMARINE_CRYSTALS)
                 .define('G', Items.GOLD_INGOT)
-                .define('D', ModItems.GOLDEN_DICE.get())
+                .define('D', ModItems.DIAMOND_DICE.get())
                 .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
                 .save(output);
 
@@ -959,8 +959,8 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('L', ModItems.BLANK_SIGN.get())
                 .define('Y', Items.SCULK)
                 .define('F', Items.PINK_CONCRETE)
-                .define('B', Items.BLACK_CONCRETE)
-                .define('W', Items.WHITE_CONCRETE)
+                .define('B', Items.WHITE_CONCRETE)
+                .define('W', Items.BLACK_CONCRETE)
                 .define('P', ModItems.STAR_PLATE.get())
                 .define('Z', ModItems.DIAMOND_DICE.get())
                 .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))

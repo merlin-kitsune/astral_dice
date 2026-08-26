@@ -290,7 +290,7 @@ public class ModItems {
     public static final DeferredItem<Item> KOMACHI_SIGN = registerItem("komachi_sign",
             () -> new KomachiSignItem(new Item.Properties()
                     .stacksTo(1)
-                    .rarity(Rarity.RARE)));
+                    .rarity(Rarity.EPIC)));
 
     public static final DeferredItem<Item> FLASHLIGHT_CHIP = registerItem("flashlight_chip",
             () -> new FlashlightChipItem(new Item.Properties()
@@ -569,7 +569,7 @@ public class ModItems {
     public static final DeferredItem<Item> HAIQING_SIGN = registerItem("haiqing_sign",
             () -> new HaiqingSignItem(new Item.Properties()
                     .stacksTo(1)
-                    .rarity(Rarity.RARE)));
+                    .rarity(Rarity.EPIC)));
 
     // 命运的指引(专属功能效果牌,击杀带虚弱印记的目标获取)
     public static final DeferredItem<Item> FATE_GUIDANCE_CARD = registerItem("effect_card_fate_guidance",

@@ -3,7 +3,7 @@
   "category": "misc",
   "key": {
     "B": {
-      "item": "minecraft:black_concrete"
+      "item": "minecraft:white_concrete"
     },
     "F": {
       "item": "minecraft:pink_concrete"
@@ -15,7 +15,7 @@
       "item": "astral_dice:star_plate"
     },
     "W": {
-      "item": "minecraft:white_concrete"
+      "item": "minecraft:black_concrete"
     },
     "Y": {
       "item": "minecraft:sculk"
