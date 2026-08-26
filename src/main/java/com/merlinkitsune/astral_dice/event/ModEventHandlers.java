@@ -1761,6 +1761,11 @@ public class ModEventHandlers {
             tooltip.add(Component.translatable("tooltip.astral_dice.chip.cursed_sword",
                             GameplayConstants.CURSED_SWORD_BONUS_MAX)
                     .withStyle(ChatFormatting.GRAY));
+            // 青之诅咒效果描述:上下各空一行,名称使用红色
+            tooltip.add(Component.empty());
+            tooltip.add(Component.translatable("tooltip.astral_dice.chip.cursed_sword_blue_curse")
+                    .withStyle(ChatFormatting.GRAY));
+            tooltip.add(Component.empty());
             if (net.neoforged.fml.ModList.get().isLoaded("enigmaticlegacyplus")) {
                 tooltip.add(Component.translatable("tooltip.astral_dice.chip.cursed_sword_enigmatic")
                         .withStyle(ChatFormatting.LIGHT_PURPLE));
