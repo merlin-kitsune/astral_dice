@@ -91,6 +91,8 @@ public class ModCreativeTabs {
                 output.accept(ModItems.MEDKIT_EMERGENCY_CHIP.get());
                 output.accept(ModItems.MEDKIT_COMPLETE_CHIP.get());
                 output.accept(ModItems.VITAMIN_PILL_CHIP.get());
+                output.accept(ModItems.CUTTER_CHIP.get());
+                output.accept(ModItems.CUTTER_BLADE_CHIP.get());
                 output.accept(ModItems.BUFFER_SHIELD.get());
                 output.accept(ModItems.CANDY_CHIP.get());
                 output.accept(ModItems.FRIENDSHIP_BADGE.get());
@@ -104,8 +106,6 @@ public class ModCreativeTabs {
                 output.accept(ModItems.HAND_FAN_BIG_CHIP.get());
                 output.accept(ModItems.MAGIC_QUIVER.get());
                 // === 无流派 ===
-                output.accept(ModItems.CUTTER_CHIP.get());
-                output.accept(ModItems.CUTTER_BLADE_CHIP.get());
                 output.accept(ModItems.MAGIC_TOME_CHIP.get());
                 output.accept(ModItems.BIG_BACKPACK_CHIP.get());
                 output.accept(ModItems.BOXING_GLOVES_LOW.get());
