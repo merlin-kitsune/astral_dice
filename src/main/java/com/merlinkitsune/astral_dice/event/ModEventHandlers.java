@@ -1126,11 +1126,12 @@ public class ModEventHandlers {
     }
 
     // 备注区多行内容(紫色;无列表符号;无缩进;行内 § 码可覆盖,时间保持黄色)
+    // 行内原有的 §7 会重置为灰色,这里统一替换为 §d,使未单独着色的文本保持备注区粉色。
     private static void addSignNoteLines(List<Component> tooltip, String langKey, Object... args) {
         String text = Component.translatable(langKey, args).getString();
         for (String line : text.split("\n")) {
             if (line.isBlank()) continue;
-            tooltip.add(Component.literal("§d" + line.trim()));
+            tooltip.add(Component.literal("§d" + line.trim().replace("§7", "§d")));
         }
     }
 
