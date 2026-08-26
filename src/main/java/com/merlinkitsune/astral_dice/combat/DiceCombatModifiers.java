@@ -9,6 +9,7 @@ import com.merlinkitsune.astral_dice.item.HealingManager;
 import com.merlinkitsune.astral_dice.item.chip.BoxingGlovesChipItem;
 import com.merlinkitsune.astral_dice.item.chip.RevengeHalberdChipItem;
 import com.merlinkitsune.astral_dice.item.sign.FenSignItem;
+import com.merlinkitsune.astral_dice.item.sign.HackerSignItem;
 import com.merlinkitsune.astral_dice.item.sign.JasmineSignItem;
 import com.merlinkitsune.astral_dice.item.MarkManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
@@ -257,6 +258,14 @@ public final class DiceCombatModifiers {
             return ap;
         });
 
+        // === 内置:骇客立牌(hacker)被动攻击/主动远程骇入攻击力 ===
+        registerAttackModifier((ctx, ap) -> {
+            if (ctx.attacker.level().isClientSide()) return ap;
+            ap += HackerSignItem.getAttackBonus(ctx.attacker);
+            ap += HackerSignItem.getActiveAttackBonus(ctx.attacker);
+            return ap;
+        });
+
         // === 内置:秘密侦探立牌(bonnie)被动(攻击带"标记"目标攻击力+3) ===
         registerAttackModifier((ctx, ap) -> {
             if (ctx.attacker.level().isClientSide()) return ap;
@@ -377,6 +386,14 @@ public final class DiceCombatModifiers {
                     && RevengeHalberdChipItem.hasDefenseTriggerEffect(tp)) {
                 dp += RevengeHalberdChipItem.BONUS;
             }
+            return dp;
+        });
+
+        // === 内置:骇客立牌(hacker)被动防御 ===
+        registerDefenseModifier((ctx, dp) -> {
+            if (ctx.target.level().isClientSide()) return dp;
+            if (!(ctx.target instanceof Player tp)) return dp;
+            dp += HackerSignItem.getDefenseBonus(tp);
             return dp;
         });
 

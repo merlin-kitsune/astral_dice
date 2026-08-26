@@ -947,5 +947,20 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('D', ModItems.DIAMOND_DICE.get())
                 .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
                 .save(output);
+
+        // 骇客立牌:空白立牌 + 钻石骰子 + 幽匿块/混凝土 + 星盘(有序,空白立牌置中,骰子置中下)
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.HACKER_SIGN.get())
+                .pattern("YFY")
+                .pattern("BLW")
+                .pattern("PZP")
+                .define('L', ModItems.BLANK_SIGN.get())
+                .define('Y', Items.SCULK)
+                .define('F', Items.PINK_CONCRETE)
+                .define('B', Items.BLACK_CONCRETE)
+                .define('W', Items.WHITE_CONCRETE)
+                .define('P', ModItems.STAR_PLATE.get())
+                .define('Z', ModItems.DIAMOND_DICE.get())
+                .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
+                .save(output);
     }
 }

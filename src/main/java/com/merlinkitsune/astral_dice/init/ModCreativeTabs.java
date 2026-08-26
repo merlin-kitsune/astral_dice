@@ -77,6 +77,7 @@ public class ModCreativeTabs {
                 output.accept(ModItems.PAPARA_SIGN.get());
                 output.accept(ModItems.BONNIE_SIGN.get());
                 output.accept(ModItems.FEN_SIGN.get());
+                output.accept(ModItems.HACKER_SIGN.get());
                 // 筹码
                 output.accept(ModItems.FLASHLIGHT_CHIP.get());
                 output.accept(ModItems.CUTTER_CHIP.get());

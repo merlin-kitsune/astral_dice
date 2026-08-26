@@ -1,0 +1,253 @@
+package com.merlinkitsune.astral_dice.item.sign;
+
+import com.merlinkitsune.astral_dice.combat.CardRegistry;
+import com.merlinkitsune.astral_dice.component.ModAttachments;
+import com.merlinkitsune.astral_dice.effect.ModEffects;
+import com.merlinkitsune.astral_dice.item.ModItems;
+import com.merlinkitsune.astral_dice.item.card.RandomCardHandler;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.monster.Enemy;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.AABB;
+import top.theillusivec4.curios.api.CuriosApi;
+import top.theillusivec4.curios.api.SlotContext;
+import net.neoforged.neoforge.capabilities.Capabilities;
+import net.neoforged.neoforge.items.IItemHandler;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
+
+/**
+ * 骇客立牌(命名:hacker)。
+ *
+ * <p>被动"网络防火墙":
+ * - 免疫末影珍珠传送时的伤害;
+ * - 骰神赐福结束后,若周围 6 格内没有敌对生物:攻击力 +3 并获得一张随机战斗牌;
+ *   否则防御力 +3。被动类型每次刷新覆盖旧类型,不能叠加。
+ *
+ * <p>主动"远程骇入":
+ * - 获得 3 秒无敌;
+ * - 传送到同一水平区域 32 格内血量最高的敌对生物/玩家身边;
+ * - 消耗一张随机战斗牌(物品栏/末影箱),按该牌费用提升攻击力,持续 2:00。
+ */
+public class HackerSignItem extends BaseSignItem {
+    public static final int PASSIVE_NONE = 0;
+    public static final int PASSIVE_ATTACK = 1;
+    public static final int PASSIVE_DEFENSE = 2;
+    public static final int PASSIVE_BONUS = 3;
+    public static final double PASSIVE_RANGE = 6.0;
+    public static final double ACTIVE_RANGE = 32.0;
+    public static final int ACTIVE_DURATION_TICKS = 2400;
+    public static final int INVULNERABLE_TICKS = 60;
+    public static final int ENDER_PEARL_IMMUNE_TICKS = 20;
+
+    public HackerSignItem(Properties properties) {
+        super(properties);
+    }
+
+    @Override
+    protected void onCurioTick(SlotContext slotContext, ItemStack stack) {
+        if (!(slotContext.entity() instanceof Player player)) return;
+        if (player.level().isClientSide()) return;
+        long now = player.level().getGameTime();
+
+        // 主动无敌到期
+        if (player.isInvulnerable() && now >= ModAttachments.getHackerInvulnerableUntil(player)) {
+            player.setInvulnerable(false);
+            ModAttachments.setHackerInvulnerableUntil(player, 0);
+        }
+        // 主动攻击力加成到期
+        if (now >= ModAttachments.getHackerActiveBonusUntil(player)) {
+            ModAttachments.setHackerActiveBonus(player, 0);
+            ModAttachments.setHackerActiveBonusUntil(player, 0);
+            player.removeEffect(ModEffects.HACKER_HACK);
+        }
+    }
+
+    @Override
+    protected void clearSignData(Player player, ItemStack stack) {
+        super.clearSignData(player, stack);
+        ModAttachments.setHackerPassiveType(player, PASSIVE_NONE);
+        ModAttachments.setHackerActiveBonus(player, 0);
+        ModAttachments.setHackerActiveBonusUntil(player, 0);
+        ModAttachments.setHackerInvulnerableUntil(player, 0);
+        ModAttachments.setHackerEnderPearlImmuneUntil(player, 0);
+        player.setInvulnerable(false);
+        player.removeEffect(ModEffects.HACKER_HACK);
+    }
+
+    @Override
+    protected InteractionResultHolder<ItemStack> handleUse(Level level, Player player, ItemStack stack) {
+        if (level.isClientSide) {
+            return InteractionResultHolder.success(stack);
+        }
+        long now = level.getGameTime();
+
+        // 3 秒无敌
+        player.setInvulnerable(true);
+        ModAttachments.setHackerInvulnerableUntil(player, now + INVULNERABLE_TICKS);
+
+        // 传送到 32 格内血量最高的敌对生物/玩家身边
+        LivingEntity target = findHighestHealthTarget(player);
+        if (target != null) {
+            teleportNear(player, target);
+        }
+
+        // 消耗一张随机战斗牌并按其费用提升攻击力 2:00
+        ItemStack consumed = findAndConsumeRandomBattleCard(player);
+        if (consumed != null) {
+            String typeId = CardRegistry.itemToType(consumed);
+            int cost = typeId != null ? CardRegistry.cost(typeId, player) : 1;
+            ModAttachments.setHackerActiveBonus(player, cost);
+            ModAttachments.setHackerActiveBonusUntil(player, now + ACTIVE_DURATION_TICKS);
+            player.addEffect(new MobEffectInstance(ModEffects.HACKER_HACK,
+                    ACTIVE_DURATION_TICKS, 0, false, true, true));
+        }
+
+        return InteractionResultHolder.success(stack);
+    }
+
+    // === 被动 ===
+
+    public static boolean isEquipped(Player player) {
+        if (player == null) return false;
+        var curios = CuriosApi.getCuriosInventory(player);
+        return curios.isPresent() && curios.get().findFirstCurio(s -> s.is(ModItems.HACKER_SIGN.get())).isPresent();
+    }
+
+    public static int getAttackBonus(Player player) {
+        return isEquipped(player) && ModAttachments.getHackerPassiveType(player) == PASSIVE_ATTACK
+                ? PASSIVE_BONUS : 0;
+    }
+
+    public static int getDefenseBonus(Player player) {
+        return isEquipped(player) && ModAttachments.getHackerPassiveType(player) == PASSIVE_DEFENSE
+                ? PASSIVE_BONUS : 0;
+    }
+
+    public static int getActiveAttackBonus(Player player) {
+        if (!isEquipped(player)) return 0;
+        if (player.hasEffect(ModEffects.HACKER_HACK)) {
+            return ModAttachments.getHackerActiveBonus(player);
+        }
+        return 0;
+    }
+
+    // 骰神赐福结束时调用:刷新被动类型(覆盖旧类型,不能叠加)
+    public static void onDiceBlessingEnded(Player player) {
+        if (player == null || player.level().isClientSide()) return;
+        if (!isEquipped(player)) return;
+        boolean hostileNearby = !player.level().getEntitiesOfClass(LivingEntity.class,
+                player.getBoundingBox().inflate(PASSIVE_RANGE),
+                e -> e instanceof Enemy && e.isAlive()).isEmpty();
+        if (hostileNearby) {
+            ModAttachments.setHackerPassiveType(player, PASSIVE_DEFENSE);
+        } else {
+            ModAttachments.setHackerPassiveType(player, PASSIVE_ATTACK);
+            RandomCardHandler.giveCardTo(player, RandomCardHandler.CardCategory.BATTLE);
+        }
+    }
+
+    // === 主动辅助 ===
+
+    private static LivingEntity findHighestHealthTarget(Player player) {
+        List<LivingEntity> candidates = new ArrayList<>();
+        for (LivingEntity e : player.level().getEntitiesOfClass(LivingEntity.class,
+                player.getBoundingBox().inflate(ACTIVE_RANGE), e -> e.isAlive() && e != player)) {
+            if (e instanceof Enemy || e instanceof Player) {
+                candidates.add(e);
+            }
+        }
+        if (candidates.isEmpty()) return null;
+        candidates.sort((a, b) -> Float.compare(b.getHealth(), a.getHealth()));
+        return candidates.get(0);
+    }
+
+    private static void teleportNear(Player player, LivingEntity target) {
+        Level level = player.level();
+        BlockPos center = target.blockPosition();
+        for (int radius = 1; radius <= 3; radius++) {
+            List<BlockPos> offsets = new ArrayList<>();
+            for (int dx = -radius; dx <= radius; dx++) {
+                for (int dz = -radius; dz <= radius; dz++) {
+                    if (dx * dx + dz * dz <= radius * radius && (dx != 0 || dz != 0)) {
+                        offsets.add(center.offset(dx, 0, dz));
+                    }
+                }
+            }
+            // 随机顺序尝试
+            while (!offsets.isEmpty()) {
+                int idx = ThreadLocalRandom.current().nextInt(offsets.size());
+                BlockPos candidate = offsets.remove(idx);
+                BlockPos feet = findSafeStandingPos(level, candidate);
+                if (feet == null) continue;
+                AABB aabb = new AABB(feet).inflate(0.3);
+                if (!level.noCollision(player, aabb)) continue;
+                player.teleportTo(feet.getX() + 0.5, feet.getY() + 0.1, feet.getZ() + 0.5);
+                return;
+            }
+        }
+    }
+
+    private static BlockPos findSafeStandingPos(Level level, BlockPos pos) {
+        for (int y = Math.min(pos.getY() + 2, level.getMaxBuildHeight() - 1); y > level.getMinBuildHeight(); y--) {
+            BlockPos feet = new BlockPos(pos.getX(), y, pos.getZ());
+            BlockState below = level.getBlockState(feet.below());
+            BlockState at = level.getBlockState(feet);
+            BlockState above = level.getBlockState(feet.above());
+            boolean belowSolid = !below.isAir() || !below.getFluidState().isEmpty();
+            boolean feetOk = at.isAir() || !at.getFluidState().isEmpty();
+            boolean aboveOk = above.isAir() || !above.getFluidState().isEmpty();
+            if (belowSolid && feetOk && aboveOk) {
+                return feet;
+            }
+        }
+        return null;
+    }
+
+    private static ItemStack findAndConsumeRandomBattleCard(Player player) {
+        List<ItemStack> candidates = new ArrayList<>();
+        // 物品栏
+        for (ItemStack stack : player.getInventory().items) {
+            if (!stack.isEmpty() && CardRegistry.itemToType(stack) != null) {
+                candidates.add(stack);
+            }
+        }
+        // 末影箱
+        var enderChest = player.getEnderChestInventory();
+        for (int i = 0; i < enderChest.getContainerSize(); i++) {
+            ItemStack stack = enderChest.getItem(i);
+            if (!stack.isEmpty() && CardRegistry.itemToType(stack) != null) {
+                candidates.add(stack);
+            }
+        }
+        // 精妙背包等可打开物品栏的饰品(通过物品容器能力读取)
+        var curios = CuriosApi.getCuriosInventory(player);
+        if (curios.isPresent()) {
+            var equipped = curios.get().getEquippedCurios();
+            for (int i = 0; i < equipped.getSlots(); i++) {
+                ItemStack stack = equipped.getStackInSlot(i);
+                if (stack.isEmpty()) continue;
+                IItemHandler inv = stack.getCapability(Capabilities.ItemHandler.ITEM);
+                if (inv == null) continue;
+                for (int slot = 0; slot < inv.getSlots(); slot++) {
+                    ItemStack inner = inv.getStackInSlot(slot);
+                    if (!inner.isEmpty() && CardRegistry.itemToType(inner) != null) {
+                        candidates.add(inner);
+                    }
+                }
+            }
+        }
+        if (candidates.isEmpty()) return null;
+        ItemStack chosen = candidates.get(ThreadLocalRandom.current().nextInt(candidates.size()));
+        chosen.shrink(1);
+        return chosen.copy();
+    }
+}

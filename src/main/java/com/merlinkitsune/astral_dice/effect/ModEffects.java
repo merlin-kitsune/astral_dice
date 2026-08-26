@@ -107,4 +107,8 @@ public class ModEffects {
     // 青之诅咒:护甲值 -20%(向下取整),盔甲韧性归 0;暂未配置触发条件
     public static final DeferredHolder<MobEffect, MobEffect> BLUE_CURSE =
             EFFECTS.register("blue_curse", BlueCurseEffect::new);
+
+    // 骇客立牌主动"远程骇入":攻击力加成(数值由附件提供)
+    public static final DeferredHolder<MobEffect, MobEffect> HACKER_HACK =
+            EFFECTS.register("hacker_hack", HackerHackEffect::new);
 }

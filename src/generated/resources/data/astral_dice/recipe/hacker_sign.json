@@ -1,0 +1,36 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": {
+      "item": "minecraft:black_concrete"
+    },
+    "F": {
+      "item": "minecraft:pink_concrete"
+    },
+    "L": {
+      "item": "astral_dice:blank_sign"
+    },
+    "P": {
+      "item": "astral_dice:star_plate"
+    },
+    "W": {
+      "item": "minecraft:white_concrete"
+    },
+    "Y": {
+      "item": "minecraft:sculk"
+    },
+    "Z": {
+      "item": "astral_dice:diamond_dice"
+    }
+  },
+  "pattern": [
+    "YFY",
+    "BLW",
+    "PZP"
+  ],
+  "result": {
+    "count": 1,
+    "id": "astral_dice:hacker_sign"
+  }
+}
