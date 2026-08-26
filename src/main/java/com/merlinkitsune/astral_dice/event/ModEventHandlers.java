@@ -1740,6 +1740,11 @@ public class ModEventHandlers {
                         ModAttachments.getCursedSwordBonus(p));
             }
         }
+        if (stack.is(ModItems.REVENGE_HALBERD.get())) {
+            tooltip.add(Component.empty());
+            tooltip.add(Component.translatable("tooltip.astral_dice.chip.revenge_halberd")
+                    .withStyle(ChatFormatting.GRAY));
+        }
         if (stack.is(ModItems.PADMAN_SIGN.get())) {
             tooltip.add(Component.empty());
             addSignKeyHint(tooltip);

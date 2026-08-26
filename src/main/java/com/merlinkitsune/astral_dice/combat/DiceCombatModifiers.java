@@ -7,6 +7,7 @@ import com.merlinkitsune.astral_dice.component.ModDataComponents;
 import com.merlinkitsune.astral_dice.component.WeaponEnhancement;
 import com.merlinkitsune.astral_dice.item.HealingManager;
 import com.merlinkitsune.astral_dice.item.chip.BoxingGlovesChipItem;
+import com.merlinkitsune.astral_dice.item.chip.RevengeHalberdChipItem;
 import com.merlinkitsune.astral_dice.item.sign.FenSignItem;
 import com.merlinkitsune.astral_dice.item.sign.JasmineSignItem;
 import com.merlinkitsune.astral_dice.item.MarkManager;
@@ -228,6 +229,16 @@ public final class DiceCombatModifiers {
             return ap;
         });
 
+        // === 内置:复仇之戟(拥有指定负面/诅咒效果时攻击力 +6,只触发一次不叠加) ===
+        registerAttackModifier((ctx, ap) -> {
+            if (ctx.attacker.level().isClientSide()) return ap;
+            if (RevengeHalberdChipItem.isEquipped(ctx.attacker)
+                    && RevengeHalberdChipItem.hasAttackTriggerEffect(ctx.attacker)) {
+                ap += RevengeHalberdChipItem.BONUS;
+            }
+            return ap;
+        });
+
         // === 内置:大当家立牌(boss)被动:拥有养精蓄锐时攻击力 +2 ===
         registerAttackModifier((ctx, ap) -> {
             if (ctx.attacker.level().isClientSide()) return ap;
@@ -354,6 +365,17 @@ public final class DiceCombatModifiers {
             boolean active = tp.getHealth() <= tp.getMaxHealth() / 2.0f || tp.hasEffect(ModEffects.PAPARA_BITE);
             if (active && hasCurio(tp, ModItems.PAPARA_SIGN.get())) {
                 dp += 3;
+            }
+            return dp;
+        });
+
+        // === 内置:复仇之戟(拥有指定负面效果时防御力 +6,只触发一次不叠加) ===
+        registerDefenseModifier((ctx, dp) -> {
+            if (ctx.target.level().isClientSide()) return dp;
+            if (!(ctx.target instanceof Player tp)) return dp;
+            if (RevengeHalberdChipItem.isEquipped(tp)
+                    && RevengeHalberdChipItem.hasDefenseTriggerEffect(tp)) {
+                dp += RevengeHalberdChipItem.BONUS;
             }
             return dp;
         });

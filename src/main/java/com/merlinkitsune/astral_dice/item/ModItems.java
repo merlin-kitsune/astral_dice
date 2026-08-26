@@ -68,6 +68,7 @@ import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
 import com.merlinkitsune.astral_dice.item.sign.PadmanSignItem;
 import com.merlinkitsune.astral_dice.item.chip.CutterChipItem;
 import com.merlinkitsune.astral_dice.item.chip.CursedSwordChipItem;
+import com.merlinkitsune.astral_dice.item.chip.RevengeHalberdChipItem;
 import com.merlinkitsune.astral_dice.item.chip.NinjaStarChipItem;
 import com.merlinkitsune.astral_dice.item.chip.FlashlightChipItem;
 
@@ -509,6 +510,12 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(Rarity.RARE)));
 
+    // 复仇之戟:拥有指定负面/诅咒效果时,攻击力/防御力 +6(每类只触发一次,不叠加)
+    public static final DeferredItem<Item> REVENGE_HALBERD = registerItem("revenge_halberd_chip",
+            () -> new RevengeHalberdChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.EPIC)));
+
     public static final DeferredItem<Item> PADMAN_SIGN = registerItem("padman_sign",
             () -> new PadmanSignItem(new Item.Properties()
                     .stacksTo(1)
@@ -618,7 +625,8 @@ public class ModItems {
                 || stack.is(SANDWICH_HIGH.get())
                 || stack.is(MAGIC_QUIVER.get()) || stack.is(BUFFER_SHIELD.get())
                 || stack.is(STAR_COIN_HAMMER.get())
-                || stack.is(CURSED_SWORD.get());
+                || stack.is(CURSED_SWORD.get())
+                || stack.is(REVENGE_HALBERD.get());
     }
 
     // 判断物品栈是否为任意卡牌(战斗牌 + 效果牌;含专属牌)

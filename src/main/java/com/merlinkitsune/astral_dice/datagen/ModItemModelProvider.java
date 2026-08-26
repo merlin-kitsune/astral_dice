@@ -98,5 +98,6 @@ public class ModItemModelProvider extends ItemModelProvider {
         basicItem(ModItems.BUFFER_SHIELD.get());
         basicItem(ModItems.STAR_COIN_HAMMER.get());
         basicItem(ModItems.CURSED_SWORD.get());
+        basicItem(ModItems.REVENGE_HALBERD.get());
     }
 }
