@@ -1,0 +1,30 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": {
+      "item": "astral_dice:blank_chip"
+    },
+    "J": {
+      "item": "minecraft:enchanted_golden_apple"
+    },
+    "P": {
+      "item": "astral_dice:star_plate"
+    },
+    "Y": {
+      "item": "minecraft:potion"
+    },
+    "Z": {
+      "item": "minecraft:amethyst_shard"
+    }
+  },
+  "pattern": [
+    "YJY",
+    "ZCZ",
+    "PPP"
+  ],
+  "result": {
+    "count": 1,
+    "id": "astral_dice:friendship_badge_chip"
+  }
+}

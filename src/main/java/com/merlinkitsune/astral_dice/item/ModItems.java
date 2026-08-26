@@ -71,6 +71,7 @@ import com.merlinkitsune.astral_dice.item.chip.CursedSwordChipItem;
 import com.merlinkitsune.astral_dice.item.chip.RevengeHalberdChipItem;
 import com.merlinkitsune.astral_dice.item.chip.PiercingGunChipItem;
 import com.merlinkitsune.astral_dice.item.chip.CandyChipItem;
+import com.merlinkitsune.astral_dice.item.chip.FriendshipBadgeChipItem;
 import com.merlinkitsune.astral_dice.item.chip.NinjaStarChipItem;
 import com.merlinkitsune.astral_dice.item.chip.FlashlightChipItem;
 
@@ -530,6 +531,12 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(Rarity.EPIC)));
 
+    // 友情徽章:对友方玩家施加治疗效果时,双方各获得 2 点治愈
+    public static final DeferredItem<Item> FRIENDSHIP_BADGE = registerItem("friendship_badge_chip",
+            () -> new FriendshipBadgeChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.EPIC)));
+
     public static final DeferredItem<Item> PADMAN_SIGN = registerItem("padman_sign",
             () -> new PadmanSignItem(new Item.Properties()
                     .stacksTo(1)
@@ -642,7 +649,8 @@ public class ModItems {
                 || stack.is(CURSED_SWORD.get())
                 || stack.is(REVENGE_HALBERD.get())
                 || stack.is(PIERCING_GUN.get())
-                || stack.is(CANDY_CHIP.get());
+                || stack.is(CANDY_CHIP.get())
+                || stack.is(FRIENDSHIP_BADGE.get());
     }
 
     // 判断物品栈是否为任意卡牌(战斗牌 + 效果牌;含专属牌)

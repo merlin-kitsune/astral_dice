@@ -117,5 +117,6 @@ public class ModCreativeTabs {
                 output.accept(ModItems.REVENGE_HALBERD.get());
                 output.accept(ModItems.PIERCING_GUN.get());
                 output.accept(ModItems.CANDY_CHIP.get());
+                output.accept(ModItems.FRIENDSHIP_BADGE.get());
             }).build());
 }

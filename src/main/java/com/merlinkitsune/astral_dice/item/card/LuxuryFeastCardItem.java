@@ -5,6 +5,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
+import com.merlinkitsune.astral_dice.item.chip.FriendshipBadgeChipItem;
 
 /**
  * 奢华大餐(治疗效果牌):可以对自身和其他玩家使用(对目标玩家下蹲右键,或下蹲+右键面前玩家)。
@@ -40,6 +41,10 @@ public class LuxuryFeastCardItem extends BaseEffectCardItem {
         for (Player p : nearby) {
             if (p == user || user.getTeam() == null || p.getTeam() == null || p.getTeam() == user.getTeam()) {
                 p.heal(heal);
+                // 友情徽章:对友方玩家施加治疗时,双方各获得 2 点治愈
+                if (p != user) {
+                    FriendshipBadgeChipItem.onHealApplied(user, p);
+                }
             }
         }
     }

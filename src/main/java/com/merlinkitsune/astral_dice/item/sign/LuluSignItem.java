@@ -20,6 +20,7 @@ import top.theillusivec4.curios.api.SlotContext;
 import java.util.List;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.item.HealingManager;
+import com.merlinkitsune.astral_dice.item.chip.FriendshipBadgeChipItem;
 
 /**
  * 史莱姆立牌。
@@ -79,6 +80,10 @@ public class LuluSignItem extends BaseSignItem {
             } else if (isHealTarget(entity, player)) {
                 // 玩家/宠物/可骑乘生物:瞬间治疗 1
                 entity.addEffect(new MobEffectInstance(MobEffects.HEAL, 1, 0, false, true));
+                // 友情徽章:对友方玩家施加治疗时,双方各获得 2 点治愈
+                if (entity instanceof Player targetPlayer) {
+                    FriendshipBadgeChipItem.onHealApplied(player, targetPlayer);
+                }
             }
         }
         return InteractionResultHolder.success(stack);

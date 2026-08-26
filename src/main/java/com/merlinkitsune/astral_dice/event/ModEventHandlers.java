@@ -97,6 +97,7 @@ import com.merlinkitsune.astral_dice.item.card.EffectCardPeriod;
 import com.merlinkitsune.astral_dice.item.chip.BankCardUnlimitedChipItem;
 import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
 import com.merlinkitsune.astral_dice.item.chip.CursedSwordChipItem;
+import com.merlinkitsune.astral_dice.item.chip.FriendshipBadgeChipItem;
 import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
 
 @EventBusSubscriber(modid = AstralDiceMod.MODID)
@@ -961,6 +962,34 @@ public class ModEventHandlers {
         CursedSwordChipItem.onKill(killer);
     }
 
+    // 友情徽章:友方玩家获得治疗类效果(瞬间治疗/生命恢复)时,若来源为佩戴徽章的玩家,双方各获得 2 点治愈
+    @SubscribeEvent
+    public static void onFriendlyHealingEffectAdded(MobEffectEvent.Added event) {
+        if (event.getEntity().level().isClientSide()) return;
+        if (!(event.getEntity() instanceof Player target)) return;
+        MobEffectInstance effect = event.getEffectInstance();
+        if (effect == null) return;
+        if (effect.getEffect().value() != MobEffects.HEAL.value()
+                && effect.getEffect().value() != MobEffects.REGENERATION.value()) return;
+        Player healer = resolvePlayerSource(event.getEffectSource());
+        if (healer == null || healer == target) return;
+        FriendshipBadgeChipItem.onHealApplied(healer, target);
+    }
+
+    // 从治疗效果来源实体解析出施治玩家(直接玩家或弹射物所有者)
+    private static Player resolvePlayerSource(net.minecraft.world.entity.Entity source) {
+        if (source instanceof Player player) return player;
+        if (source instanceof net.minecraft.world.entity.projectile.Projectile projectile
+                && projectile.getOwner() instanceof Player player) {
+            return player;
+        }
+        if (source instanceof net.minecraft.world.entity.AreaEffectCloud cloud
+                && cloud.getOwner() instanceof Player player) {
+            return player;
+        }
+        return null;
+    }
+
     // 本 Mod 创建的自定义效果不可被牛奶/蜂蜜/effect clear 等外部方式清除;仅玩家死亡可清除
     @SubscribeEvent(priority = EventPriority.HIGH)
     public static void onModEffectRemovalPrevented(MobEffectEvent.Remove event) {
@@ -1754,6 +1783,11 @@ public class ModEventHandlers {
         if (stack.is(ModItems.CANDY_CHIP.get())) {
             tooltip.add(Component.empty());
             tooltip.add(Component.translatable("tooltip.astral_dice.chip.candy")
+                    .withStyle(ChatFormatting.GRAY));
+        }
+        if (stack.is(ModItems.FRIENDSHIP_BADGE.get())) {
+            tooltip.add(Component.empty());
+            tooltip.add(Component.translatable("tooltip.astral_dice.chip.friendship_badge")
                     .withStyle(ChatFormatting.GRAY));
         }
         if (stack.is(ModItems.PADMAN_SIGN.get())) {
