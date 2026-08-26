@@ -223,7 +223,7 @@
   "tooltip.astral_dice.chip.piercing_gun": "While a damage effect card is active, ranged/magic damage against hostile targets gains bonus damage equal to the target's defense points",
   "tooltip.astral_dice.chip.candy": "Each time you use an effect card, gain §e1§7 healing point and restore §e1§7 HP. If your HP is full, this round's play count §e+1§7 (once per play round)",
   "tooltip.astral_dice.chip.friendship_badge": "When applying any healing effect to a friendly player, both you and that player gain §e2§7 healing points",
-  "tooltip.astral_dice.chip.satellite": "If you have fewer than §e6§7 Orbital Strikes, gain one every §91:00§7. After using an Orbital Strike, this round's play count §e+1§7 (once per round). While Orbital Strike is active, killing a hostile target with ranged or magic damage grants a random effect card",
+  "tooltip.astral_dice.chip.satellite": "If you have fewer than §e6§7 Orbital Strikes, gain one every §91:00§7;\nAfter using an Orbital Strike, this round's play count §e+1§7 (once per round);\nWhile Orbital Strike is active, killing a hostile target with ranged or magic damage grants a random effect card",
   "msg.astral_dice.dice_roll": "Roll: %s",
   "msg.astral_dice.event_triggered": "%s triggered event: %s",
   "event.astral_dice.random_buff": "Random Buff",
