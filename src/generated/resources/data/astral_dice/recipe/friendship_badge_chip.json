@@ -12,7 +12,15 @@
       "item": "astral_dice:star_plate"
     },
     "Y": {
-      "item": "minecraft:potion"
+      "neoforge:components": {
+        "items": "minecraft:potion",
+        "components": {
+          "minecraft:potion_contents": {
+            "potion": "minecraft:healing"
+          }
+        },
+        "strict": false
+      }
     },
     "Z": {
       "item": "minecraft:amethyst_shard"
