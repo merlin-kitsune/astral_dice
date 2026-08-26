@@ -79,26 +79,35 @@ public class ModCreativeTabs {
                 output.accept(ModItems.FEN_SIGN.get());
                 output.accept(ModItems.NANCY_LU_SIGN.get());
                 // 筹码
+                // === 星光类 ===
                 output.accept(ModItems.FLASHLIGHT_CHIP.get());
-                output.accept(ModItems.CUTTER_CHIP.get());
-                output.accept(ModItems.CUTTER_BLADE_CHIP.get());
-                output.accept(ModItems.SCOPE_CHIP.get());
-                output.accept(ModItems.EAGLE_SCOPE_CHIP.get());
-                output.accept(ModItems.MEDKIT_EMERGENCY_CHIP.get());
-                output.accept(ModItems.MEDKIT_COMPLETE_CHIP.get());
-                output.accept(ModItems.VITAMIN_PILL_CHIP.get());
-                output.accept(ModItems.TARGET_CHIP.get());
-                output.accept(ModItems.MARKER_SPRAYER_CHIP.get());
                 output.accept(ModItems.EIGHT_SIDED_DICE.get());
-                output.accept(ModItems.MAGIC_TOME_CHIP.get());
-                output.accept(ModItems.BIG_BACKPACK_CHIP.get());
-                output.accept(ModItems.NINJA_STAR_CHIP.get());
-                output.accept(ModItems.HAND_FAN_SMALL_CHIP.get());
-                output.accept(ModItems.HAND_FAN_BIG_CHIP.get());
                 output.accept(ModItems.ATM.get());
                 output.accept(ModItems.BANK_CARD_LOW.get());
                 output.accept(ModItems.BANK_CARD_HIGH.get());
                 output.accept(ModItems.BANK_CARD_UNLIMITED.get());
+                output.accept(ModItems.STAR_COIN_HAMMER.get());
+                // === 治愈类 ===
+                output.accept(ModItems.MEDKIT_EMERGENCY_CHIP.get());
+                output.accept(ModItems.MEDKIT_COMPLETE_CHIP.get());
+                output.accept(ModItems.VITAMIN_PILL_CHIP.get());
+                output.accept(ModItems.BUFFER_SHIELD.get());
+                output.accept(ModItems.CANDY_CHIP.get());
+                output.accept(ModItems.FRIENDSHIP_BADGE.get());
+                // === 标记类 ===
+                output.accept(ModItems.SCOPE_CHIP.get());
+                output.accept(ModItems.EAGLE_SCOPE_CHIP.get());
+                output.accept(ModItems.TARGET_CHIP.get());
+                output.accept(ModItems.MARKER_SPRAYER_CHIP.get());
+                output.accept(ModItems.NINJA_STAR_CHIP.get());
+                output.accept(ModItems.HAND_FAN_SMALL_CHIP.get());
+                output.accept(ModItems.HAND_FAN_BIG_CHIP.get());
+                output.accept(ModItems.MAGIC_QUIVER.get());
+                // === 无流派 ===
+                output.accept(ModItems.CUTTER_CHIP.get());
+                output.accept(ModItems.CUTTER_BLADE_CHIP.get());
+                output.accept(ModItems.MAGIC_TOME_CHIP.get());
+                output.accept(ModItems.BIG_BACKPACK_CHIP.get());
                 output.accept(ModItems.BOXING_GLOVES_LOW.get());
                 output.accept(ModItems.BOXING_GLOVES_MEDIUM.get());
                 output.accept(ModItems.BOXING_GLOVES_HIGH.get());
@@ -111,14 +120,9 @@ public class ModCreativeTabs {
                 output.accept(ModItems.SANDWICH_LOW.get());
                 output.accept(ModItems.SANDWICH_MEDIUM.get());
                 output.accept(ModItems.SANDWICH_HIGH.get());
-                output.accept(ModItems.MAGIC_QUIVER.get());
-                output.accept(ModItems.BUFFER_SHIELD.get());
-                output.accept(ModItems.STAR_COIN_HAMMER.get());
                 output.accept(ModItems.CURSED_SWORD.get());
                 output.accept(ModItems.REVENGE_HALBERD.get());
                 output.accept(ModItems.PIERCING_GUN.get());
-                output.accept(ModItems.CANDY_CHIP.get());
-                output.accept(ModItems.FRIENDSHIP_BADGE.get());
                 output.accept(ModItems.SATELLITE_CHIP.get());
             }).build());
 }
