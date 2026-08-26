@@ -503,7 +503,7 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(Rarity.UNCOMMON)));
 
-    // 诅咒之剑:装备时始终受到青之诅咒;每击杀 1 个 20 血以上敌对目标攻击力 +1(上限默认 32,最大 64)
+    // 诅咒之剑:装备时始终受到青之诅咒;骰神赐福期间每击杀 1 个 20 血以上敌对目标攻击力 +1(上限默认 16,最大 32)
     public static final DeferredItem<Item> CURSED_SWORD = registerItem("cursed_sword_chip",
             () -> new CursedSwordChipItem(new Item.Properties()
                     .stacksTo(1)

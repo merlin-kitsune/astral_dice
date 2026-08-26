@@ -105,8 +105,8 @@ public final class ModCommonConfig {
                 builder.pop();
 
                 builder.push("cursed_sword").comment("=== 诅咒之剑 ===");
-                CURSED_SWORD_BONUS_MAX = builder.comment("诅咒之剑:每击杀1个20血以上敌对目标攻击力+1,最大增加上限(默认：32,最大：64)")
-                                .defineInRange("cursed_sword_bonus_max", 32, 0, 64);
+                CURSED_SWORD_BONUS_MAX = builder.comment("诅咒之剑:骰神赐福期间每击杀1个20血以上敌对目标攻击力+1(每个赐福最多一次),最大增加上限(默认：16,最大：32)")
+                                .defineInRange("cursed_sword_bonus_max", 16, 0, 32);
                 builder.pop();
 
                 SPEC = builder.build();

@@ -62,8 +62,8 @@ public final class GameplayConstants {
 
     // 骰神赐福持续时长(单位:秒,默认 60)
     public static int DICE_BLESSING_DURATION_SECONDS = 60;
-    // 诅咒之剑:每击杀 1 个 20 血以上敌对目标攻击力 +1,最大增加上限(默认 32,最大 64)
-    public static int CURSED_SWORD_BONUS_MAX = 32;
+    // 诅咒之剑:骰神赐福期间每击杀 1 个 20 血以上敌对目标攻击力 +1(每个赐福最多一次),最大增加上限(默认 16,最大 32)
+    public static int CURSED_SWORD_BONUS_MAX = 16;
     // 骰神赐福持续时长(单位:tick,派生值)
     public static int DICE_BLESSING_DURATION_TICKS = DICE_BLESSING_DURATION_SECONDS * 20;
 
