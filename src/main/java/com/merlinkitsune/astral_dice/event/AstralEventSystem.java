@@ -31,8 +31,14 @@ public final class AstralEventSystem {
         EventContext context = new EventContext(player, EventTargetCollector.collectTargets(player));
         type.trigger(context);
         notifyEventTriggered(player, type.id());
-        applySignBuffs(player);
-        applyRinSignPassive(player, type.id().getPath());
+        onEventTriggered(player, type.id().getPath());
+    }
+
+    // 事件触发后的统一附加效果:立牌被动(如大侦探 +3 星币)与调查员立牌联动
+    public static void onEventTriggered(Player triggerer, String eventId) {
+        if (triggerer.level().isClientSide()) return;
+        applySignBuffs(triggerer);
+        applyRinSignPassive(triggerer, eventId);
     }
 
     // 自定义 actionbar(5s+1s淡出):xxx玩家触发了:xxx事件
@@ -57,9 +63,7 @@ public final class AstralEventSystem {
 
     // 调查阶段事件触发时的附加效果(该事件属于事件系统):大侦探立牌 +3 星币、调查员立牌被动
     public static void triggerInvestigationEvent(Player triggerer) {
-        if (triggerer.level().isClientSide()) return;
-        applySignBuffs(triggerer);
-        applyRinSignPassive(triggerer, "investigation");
+        onEventTriggered(triggerer, "investigation");
     }
 
     // 立牌增益挂钩:触发事件后,持有特定立牌的玩家获得特定增益。

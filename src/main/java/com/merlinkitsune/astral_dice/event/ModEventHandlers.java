@@ -926,14 +926,29 @@ public class ModEventHandlers {
         ModAttachments.setWeakMarkSource(entity, Optional.empty());
     }
 
-    // 秘密侦探立牌被动:击杀带"标记"目标获得随机战斗牌;击杀带"隐匿调查"目标触发调查阶段事件。
-    // 通过立牌击杀钩子分发(见 BonnieSignItem.onKill)。
+    // 秘密侦探立牌被动:击杀带"标记"目标获得随机战斗牌。
+    // 通过立牌击杀钩子分发(见 BonnieSignItem.onKill);"隐匿调查"击杀事件由下方全局处理器统一触发。
     @SubscribeEvent
     public static void onBonnieKill(LivingDeathEvent event) {
         LivingEntity target = event.getEntity();
         if (target.level().isClientSide()) return;
         if (!(event.getSource().getEntity() instanceof Player killer)) return;
         BaseSignItem.invokeKillHooks(killer, target);
+    }
+
+    // 击杀"隐匿调查"目标 → 触发调查阶段事件(全局处理,不要求击杀者佩戴秘密侦探立牌)
+    @SubscribeEvent
+    public static void onUndercoverInvestigationKill(LivingDeathEvent event) {
+        LivingEntity target = event.getEntity();
+        if (target.level().isClientSide()) return;
+        if (!target.hasEffect(ModEffects.UNDERCOVER_INVESTIGATION)) return;
+        if (!(event.getSource().getEntity() instanceof Player killer)) return;
+        java.util.Optional<java.util.UUID> source = ModAttachments.getUndercoverSource(target);
+        if (source.isEmpty()) return;
+        Player applier = target.level().getPlayerByUUID(source.get());
+        if (applier == null) return;
+        int markLevel = MarkManager.getLevel(target);
+        InvestigationEventUtil.triggerByKill(killer, applier, markLevel);
     }
 
     // 诅咒之剑:每击杀 1 个 20 血以上敌对目标,攻击力 +1(上限由配置决定)

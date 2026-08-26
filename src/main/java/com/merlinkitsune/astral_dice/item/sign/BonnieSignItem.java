@@ -13,7 +13,6 @@ import top.theillusivec4.curios.api.SlotContext;
 import com.merlinkitsune.astral_dice.item.MarkManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
-import com.merlinkitsune.astral_dice.item.InvestigationEventUtil;
 import com.merlinkitsune.astral_dice.network.ActionBarPayload;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
@@ -25,7 +24,7 @@ import net.neoforged.neoforge.network.PacketDistributor;
  * 被动:
  * 1. 攻击带有"标记"的目标时攻击力+3;
  * 2. 击杀带有"标记"的敌对目标后获得一张随机攻击牌;
- * 3. 击杀带有"隐匿调查"的目标后触发"调查阶段"事件。
+ * (击杀"隐匿调查"目标触发调查阶段事件已由 ModEventHandlers 全局处理)
  * 主动:下次攻击的第一个目标被施加"隐匿调查"(永久,直到目标死亡/消失);若目标带"标记",按标记层数获得 标记层数*2 星币。
  * 主动为"等待目标释放"类技能:等待状态保存在玩家级(ModAttachments),激活后进入等待期(默认 30 秒),
  * 攻击目标即释放;超时或立牌被移除则中断等待。
@@ -90,9 +89,10 @@ public class BonnieSignItem extends BaseSignItem {
         return curios.isPresent() && curios.get().findFirstCurio(s -> s.is(ModItems.BONNIE_SIGN.get())).isPresent();
     }
 
-    // 被动 2/3(击杀钩子,由 BaseSignItem.invokeKillHooks 分发):
+    // 被动 2(击杀钩子,由 BaseSignItem.invokeKillHooks 分发):
     // - 击杀带"标记"的敌对目标 → 获得一张随机攻击牌;
-    // - 击杀带"隐匿调查"的目标 → 触发调查阶段事件(推进施加者进度)。
+    // 被动 3 已移至 ModEventHandlers.onUndercoverInvestigationKill 统一处理,
+    // 使任意玩家击杀"隐匿调查"目标都能触发调查阶段事件(不再要求击杀者佩戴秘密侦探立牌)。
     @Override
     protected void onKill(Player killer, net.minecraft.world.entity.LivingEntity killed) {
         // 被动 2:击杀带"标记"的目标 → 获得一张随机战斗牌
@@ -101,18 +101,6 @@ public class BonnieSignItem extends BaseSignItem {
                 && killed instanceof net.minecraft.world.entity.monster.Enemy
                 && killed.getMaxHealth() > 20) {
             giveRandomBattleCard(killer);
-        }
-        // 被动 3:击杀带"隐匿调查"的目标 → 触发调查阶段事件
-        if (killed.hasEffect(ModEffects.UNDERCOVER_INVESTIGATION)) {
-            java.util.Optional<java.util.UUID> source =
-                    com.merlinkitsune.astral_dice.component.ModAttachments.getUndercoverSource(killed);
-            if (source.isPresent()) {
-                Player applier = killed.level().getPlayerByUUID(source.get());
-                if (applier != null) {
-                    int markLevel = MarkManager.getLevel(killed);
-                    InvestigationEventUtil.triggerByKill(killer, applier, markLevel);
-                }
-            }
         }
     }
 
