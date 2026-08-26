@@ -9,7 +9,7 @@ import com.merlinkitsune.astral_dice.item.HealingManager;
 import com.merlinkitsune.astral_dice.item.chip.BoxingGlovesChipItem;
 import com.merlinkitsune.astral_dice.item.chip.RevengeHalberdChipItem;
 import com.merlinkitsune.astral_dice.item.sign.FenSignItem;
-import com.merlinkitsune.astral_dice.item.sign.HackerSignItem;
+import com.merlinkitsune.astral_dice.item.sign.NancyLuSignItem;
 import com.merlinkitsune.astral_dice.item.sign.JasmineSignItem;
 import com.merlinkitsune.astral_dice.item.MarkManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
@@ -258,11 +258,11 @@ public final class DiceCombatModifiers {
             return ap;
         });
 
-        // === 内置:骇客立牌(hacker)被动攻击/主动远程骇入攻击力 ===
+        // === 内置:骇客立牌(nancy_lu)被动攻击/主动远程骇入攻击力 ===
         registerAttackModifier((ctx, ap) -> {
             if (ctx.attacker.level().isClientSide()) return ap;
-            ap += HackerSignItem.getAttackBonus(ctx.attacker);
-            ap += HackerSignItem.getActiveAttackBonus(ctx.attacker);
+            ap += NancyLuSignItem.getAttackBonus(ctx.attacker);
+            ap += NancyLuSignItem.getActiveAttackBonus(ctx.attacker);
             return ap;
         });
 
@@ -389,11 +389,11 @@ public final class DiceCombatModifiers {
             return dp;
         });
 
-        // === 内置:骇客立牌(hacker)被动防御 ===
+        // === 内置:骇客立牌(nancy_lu)被动防御 ===
         registerDefenseModifier((ctx, dp) -> {
             if (ctx.target.level().isClientSide()) return dp;
             if (!(ctx.target instanceof Player tp)) return dp;
-            dp += HackerSignItem.getDefenseBonus(tp);
+            dp += NancyLuSignItem.getDefenseBonus(tp);
             return dp;
         });
 

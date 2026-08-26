@@ -478,33 +478,33 @@ public class ModAttachments {
                     .build());
 
     // 骇客立牌:被动类型(0=无,1=攻击,2=防御)
-    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> HACKER_PASSIVE_TYPE =
-            ATTACHMENTS.register("hacker_passive_type", () -> AttachmentType.builder(() -> 0)
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> NANCY_LU_PASSIVE_TYPE =
+            ATTACHMENTS.register("nancy_lu_passive_type", () -> AttachmentType.builder(() -> 0)
                     .serialize(Codec.INT)
                     .build());
 
     // 骇客立牌:主动"远程骇入"攻击力加成数值
-    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> HACKER_ACTIVE_BONUS =
-            ATTACHMENTS.register("hacker_active_bonus", () -> AttachmentType.builder(() -> 0)
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> NANCY_LU_ACTIVE_BONUS =
+            ATTACHMENTS.register("nancy_lu_active_bonus", () -> AttachmentType.builder(() -> 0)
                     .serialize(Codec.INT)
                     .sync(ByteBufCodecs.INT)
                     .build());
 
     // 骇客立牌:主动攻击力加成结束时刻
-    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> HACKER_ACTIVE_BONUS_UNTIL =
-            ATTACHMENTS.register("hacker_active_bonus_until", () -> AttachmentType.builder(() -> 0L)
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> NANCY_LU_ACTIVE_BONUS_UNTIL =
+            ATTACHMENTS.register("nancy_lu_active_bonus_until", () -> AttachmentType.builder(() -> 0L)
                     .serialize(Codec.LONG)
                     .build());
 
     // 骇客立牌:主动无敌结束时刻
-    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> HACKER_INVULNERABLE_UNTIL =
-            ATTACHMENTS.register("hacker_invulnerable_until", () -> AttachmentType.builder(() -> 0L)
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> NANCY_LU_INVULNERABLE_UNTIL =
+            ATTACHMENTS.register("nancy_lu_invulnerable_until", () -> AttachmentType.builder(() -> 0L)
                     .serialize(Codec.LONG)
                     .build());
 
     // 骇客立牌:末影珍珠传送伤害免疫结束时刻
-    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> HACKER_ENDER_PEARL_IMMUNE_UNTIL =
-            ATTACHMENTS.register("hacker_ender_pearl_immune_until", () -> AttachmentType.builder(() -> 0L)
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> NANCY_LU_ENDER_PEARL_IMMUNE_UNTIL =
+            ATTACHMENTS.register("nancy_lu_ender_pearl_immune_until", () -> AttachmentType.builder(() -> 0L)
                     .serialize(Codec.LONG)
                     .build());
 
@@ -588,44 +588,44 @@ public class ModAttachments {
         player.setData(SATELLITE_PLAY_BONUS.get(), value);
     }
 
-    public static int getHackerPassiveType(net.minecraft.world.entity.player.Player player) {
-        return player.getData(HACKER_PASSIVE_TYPE.get());
+    public static int getNancyLuPassiveType(net.minecraft.world.entity.player.Player player) {
+        return player.getData(NANCY_LU_PASSIVE_TYPE.get());
     }
 
-    public static void setHackerPassiveType(net.minecraft.world.entity.player.Player player, int value) {
-        player.setData(HACKER_PASSIVE_TYPE.get(), Math.max(0, value));
+    public static void setNancyLuPassiveType(net.minecraft.world.entity.player.Player player, int value) {
+        player.setData(NANCY_LU_PASSIVE_TYPE.get(), Math.max(0, value));
     }
 
-    public static int getHackerActiveBonus(net.minecraft.world.entity.player.Player player) {
-        return player.getData(HACKER_ACTIVE_BONUS.get());
+    public static int getNancyLuActiveBonus(net.minecraft.world.entity.player.Player player) {
+        return player.getData(NANCY_LU_ACTIVE_BONUS.get());
     }
 
-    public static void setHackerActiveBonus(net.minecraft.world.entity.player.Player player, int value) {
-        player.setData(HACKER_ACTIVE_BONUS.get(), Math.max(0, value));
+    public static void setNancyLuActiveBonus(net.minecraft.world.entity.player.Player player, int value) {
+        player.setData(NANCY_LU_ACTIVE_BONUS.get(), Math.max(0, value));
     }
 
-    public static long getHackerActiveBonusUntil(net.minecraft.world.entity.player.Player player) {
-        return player.getData(HACKER_ACTIVE_BONUS_UNTIL.get());
+    public static long getNancyLuActiveBonusUntil(net.minecraft.world.entity.player.Player player) {
+        return player.getData(NANCY_LU_ACTIVE_BONUS_UNTIL.get());
     }
 
-    public static void setHackerActiveBonusUntil(net.minecraft.world.entity.player.Player player, long value) {
-        player.setData(HACKER_ACTIVE_BONUS_UNTIL.get(), Math.max(0, value));
+    public static void setNancyLuActiveBonusUntil(net.minecraft.world.entity.player.Player player, long value) {
+        player.setData(NANCY_LU_ACTIVE_BONUS_UNTIL.get(), Math.max(0, value));
     }
 
-    public static long getHackerInvulnerableUntil(net.minecraft.world.entity.player.Player player) {
-        return player.getData(HACKER_INVULNERABLE_UNTIL.get());
+    public static long getNancyLuInvulnerableUntil(net.minecraft.world.entity.player.Player player) {
+        return player.getData(NANCY_LU_INVULNERABLE_UNTIL.get());
     }
 
-    public static void setHackerInvulnerableUntil(net.minecraft.world.entity.player.Player player, long value) {
-        player.setData(HACKER_INVULNERABLE_UNTIL.get(), Math.max(0, value));
+    public static void setNancyLuInvulnerableUntil(net.minecraft.world.entity.player.Player player, long value) {
+        player.setData(NANCY_LU_INVULNERABLE_UNTIL.get(), Math.max(0, value));
     }
 
-    public static long getHackerEnderPearlImmuneUntil(net.minecraft.world.entity.player.Player player) {
-        return player.getData(HACKER_ENDER_PEARL_IMMUNE_UNTIL.get());
+    public static long getNancyLuEnderPearlImmuneUntil(net.minecraft.world.entity.player.Player player) {
+        return player.getData(NANCY_LU_ENDER_PEARL_IMMUNE_UNTIL.get());
     }
 
-    public static void setHackerEnderPearlImmuneUntil(net.minecraft.world.entity.player.Player player, long value) {
-        player.setData(HACKER_ENDER_PEARL_IMMUNE_UNTIL.get(), Math.max(0, value));
+    public static void setNancyLuEnderPearlImmuneUntil(net.minecraft.world.entity.player.Player player, long value) {
+        player.setData(NANCY_LU_ENDER_PEARL_IMMUNE_UNTIL.get(), Math.max(0, value));
     }
 
     // === 大当家立牌(fen)附件 ===

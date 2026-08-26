@@ -1,6 +1,6 @@
 {
   "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "astral_dice:item/hacker_sign"
+    "layer0": "astral_dice:item/nancy_lu_sign"
   }
 }

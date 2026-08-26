@@ -73,7 +73,7 @@ public class ModItemModelProvider extends ItemModelProvider {
         basicItem(ModItems.PAPARA_SIGN.get());
         basicItem(ModItems.BONNIE_SIGN.get());
         basicItem(ModItems.FEN_SIGN.get());
-        basicItem(ModItems.HACKER_SIGN.get());
+        basicItem(ModItems.NANCY_LU_SIGN.get());
         basicItem(ModItems.CHOCOLATE_CAKE.get());
         basicItem(ModItems.HAMBURGER.get());
         basicItem(ModItems.LUXURY_FEAST.get());

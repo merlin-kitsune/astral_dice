@@ -25,7 +25,7 @@ import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
- * 骇客立牌(命名:hacker)。
+ * 骇客立牌(命名:nancy_lu)。
  *
  * <p>被动"网络防火墙":
  * - 免疫末影珍珠传送时的伤害;
@@ -37,7 +37,7 @@ import java.util.concurrent.ThreadLocalRandom;
  * - 传送到同一水平区域 32 格内血量最高的敌对生物/玩家身边;
  * - 消耗一张随机战斗牌(物品栏/末影箱),按该牌费用提升攻击力,持续 2:00。
  */
-public class HackerSignItem extends BaseSignItem {
+public class NancyLuSignItem extends BaseSignItem {
     public static final int PASSIVE_NONE = 0;
     public static final int PASSIVE_ATTACK = 1;
     public static final int PASSIVE_DEFENSE = 2;
@@ -48,7 +48,7 @@ public class HackerSignItem extends BaseSignItem {
     public static final int INVULNERABLE_TICKS = 60;
     public static final int ENDER_PEARL_IMMUNE_TICKS = 20;
 
-    public HackerSignItem(Properties properties) {
+    public NancyLuSignItem(Properties properties) {
         super(properties);
     }
 
@@ -59,28 +59,28 @@ public class HackerSignItem extends BaseSignItem {
         long now = player.level().getGameTime();
 
         // 主动无敌到期
-        if (player.isInvulnerable() && now >= ModAttachments.getHackerInvulnerableUntil(player)) {
+        if (player.isInvulnerable() && now >= ModAttachments.getNancyLuInvulnerableUntil(player)) {
             player.setInvulnerable(false);
-            ModAttachments.setHackerInvulnerableUntil(player, 0);
+            ModAttachments.setNancyLuInvulnerableUntil(player, 0);
         }
         // 主动攻击力加成到期
-        if (now >= ModAttachments.getHackerActiveBonusUntil(player)) {
-            ModAttachments.setHackerActiveBonus(player, 0);
-            ModAttachments.setHackerActiveBonusUntil(player, 0);
-            player.removeEffect(ModEffects.HACKER_HACK);
+        if (now >= ModAttachments.getNancyLuActiveBonusUntil(player)) {
+            ModAttachments.setNancyLuActiveBonus(player, 0);
+            ModAttachments.setNancyLuActiveBonusUntil(player, 0);
+            player.removeEffect(ModEffects.NANCY_LU_HACK);
         }
     }
 
     @Override
     protected void clearSignData(Player player, ItemStack stack) {
         super.clearSignData(player, stack);
-        ModAttachments.setHackerPassiveType(player, PASSIVE_NONE);
-        ModAttachments.setHackerActiveBonus(player, 0);
-        ModAttachments.setHackerActiveBonusUntil(player, 0);
-        ModAttachments.setHackerInvulnerableUntil(player, 0);
-        ModAttachments.setHackerEnderPearlImmuneUntil(player, 0);
+        ModAttachments.setNancyLuPassiveType(player, PASSIVE_NONE);
+        ModAttachments.setNancyLuActiveBonus(player, 0);
+        ModAttachments.setNancyLuActiveBonusUntil(player, 0);
+        ModAttachments.setNancyLuInvulnerableUntil(player, 0);
+        ModAttachments.setNancyLuEnderPearlImmuneUntil(player, 0);
         player.setInvulnerable(false);
-        player.removeEffect(ModEffects.HACKER_HACK);
+        player.removeEffect(ModEffects.NANCY_LU_HACK);
     }
 
     @Override
@@ -92,7 +92,7 @@ public class HackerSignItem extends BaseSignItem {
 
         // 3 秒无敌
         player.setInvulnerable(true);
-        ModAttachments.setHackerInvulnerableUntil(player, now + INVULNERABLE_TICKS);
+        ModAttachments.setNancyLuInvulnerableUntil(player, now + INVULNERABLE_TICKS);
 
         // 传送到 32 格内血量最高的敌对生物/玩家身边
         LivingEntity target = findHighestHealthTarget(player);
@@ -105,9 +105,9 @@ public class HackerSignItem extends BaseSignItem {
         if (consumed != null) {
             String typeId = CardRegistry.itemToType(consumed);
             int cost = typeId != null ? CardRegistry.cost(typeId, player) : 1;
-            ModAttachments.setHackerActiveBonus(player, cost);
-            ModAttachments.setHackerActiveBonusUntil(player, now + ACTIVE_DURATION_TICKS);
-            player.addEffect(new MobEffectInstance(ModEffects.HACKER_HACK,
+            ModAttachments.setNancyLuActiveBonus(player, cost);
+            ModAttachments.setNancyLuActiveBonusUntil(player, now + ACTIVE_DURATION_TICKS);
+            player.addEffect(new MobEffectInstance(ModEffects.NANCY_LU_HACK,
                     ACTIVE_DURATION_TICKS, 0, false, true, true));
         }
 
@@ -119,23 +119,23 @@ public class HackerSignItem extends BaseSignItem {
     public static boolean isEquipped(Player player) {
         if (player == null) return false;
         var curios = CuriosApi.getCuriosInventory(player);
-        return curios.isPresent() && curios.get().findFirstCurio(s -> s.is(ModItems.HACKER_SIGN.get())).isPresent();
+        return curios.isPresent() && curios.get().findFirstCurio(s -> s.is(ModItems.NANCY_LU_SIGN.get())).isPresent();
     }
 
     public static int getAttackBonus(Player player) {
-        return isEquipped(player) && ModAttachments.getHackerPassiveType(player) == PASSIVE_ATTACK
+        return isEquipped(player) && ModAttachments.getNancyLuPassiveType(player) == PASSIVE_ATTACK
                 ? PASSIVE_BONUS : 0;
     }
 
     public static int getDefenseBonus(Player player) {
-        return isEquipped(player) && ModAttachments.getHackerPassiveType(player) == PASSIVE_DEFENSE
+        return isEquipped(player) && ModAttachments.getNancyLuPassiveType(player) == PASSIVE_DEFENSE
                 ? PASSIVE_BONUS : 0;
     }
 
     public static int getActiveAttackBonus(Player player) {
         if (!isEquipped(player)) return 0;
-        if (player.hasEffect(ModEffects.HACKER_HACK)) {
-            return ModAttachments.getHackerActiveBonus(player);
+        if (player.hasEffect(ModEffects.NANCY_LU_HACK)) {
+            return ModAttachments.getNancyLuActiveBonus(player);
         }
         return 0;
     }
@@ -148,9 +148,9 @@ public class HackerSignItem extends BaseSignItem {
                 player.getBoundingBox().inflate(PASSIVE_RANGE),
                 e -> e instanceof Enemy && e.isAlive()).isEmpty();
         if (hostileNearby) {
-            ModAttachments.setHackerPassiveType(player, PASSIVE_DEFENSE);
+            ModAttachments.setNancyLuPassiveType(player, PASSIVE_DEFENSE);
         } else {
-            ModAttachments.setHackerPassiveType(player, PASSIVE_ATTACK);
+            ModAttachments.setNancyLuPassiveType(player, PASSIVE_ATTACK);
             RandomCardHandler.giveCardTo(player, RandomCardHandler.CardCategory.BATTLE);
         }
     }

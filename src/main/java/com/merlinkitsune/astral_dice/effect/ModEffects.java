@@ -109,6 +109,6 @@ public class ModEffects {
             EFFECTS.register("blue_curse", BlueCurseEffect::new);
 
     // 骇客立牌主动"远程骇入":攻击力加成(数值由附件提供)
-    public static final DeferredHolder<MobEffect, MobEffect> HACKER_HACK =
-            EFFECTS.register("hacker_hack", HackerHackEffect::new);
+    public static final DeferredHolder<MobEffect, MobEffect> NANCY_LU_HACK =
+            EFFECTS.register("nancy_lu_hack", NancyLuHackEffect::new);
 }

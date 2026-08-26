@@ -949,7 +949,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .save(output);
 
         // 骇客立牌:空白立牌 + 钻石骰子 + 幽匿块/混凝土 + 星盘(有序,空白立牌置中,骰子置中下)
-        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.HACKER_SIGN.get())
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.NANCY_LU_SIGN.get())
                 .pattern("YFY")
                 .pattern("BLW")
                 .pattern("PZP")

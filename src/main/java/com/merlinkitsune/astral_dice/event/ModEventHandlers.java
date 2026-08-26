@@ -100,7 +100,7 @@ import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
 import com.merlinkitsune.astral_dice.item.chip.CursedSwordChipItem;
 import com.merlinkitsune.astral_dice.item.chip.FriendshipBadgeChipItem;
 import com.merlinkitsune.astral_dice.item.chip.SatelliteChipItem;
-import com.merlinkitsune.astral_dice.item.sign.HackerSignItem;
+import com.merlinkitsune.astral_dice.item.sign.NancyLuSignItem;
 import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
 
 @EventBusSubscriber(modid = AstralDiceMod.MODID)
@@ -726,7 +726,7 @@ public class ModEventHandlers {
         // 大当家立牌:赐福结束清除"战斗爽·扩散"生效状态
         com.merlinkitsune.astral_dice.item.sign.FenSignItem.onBlessingEnd(player);
         // 骇客立牌:赐福结束刷新被动(攻击/防御,覆盖旧类型)
-        HackerSignItem.onDiceBlessingEnded(player);
+        NancyLuSignItem.onDiceBlessingEnded(player);
 
         var curios = CuriosApi.getCuriosInventory(player);
         if (curios.isEmpty()) return;
@@ -982,23 +982,23 @@ public class ModEventHandlers {
 
     // 骇客立牌:末影珍珠落地时记录短时免疫窗口,免疫随后的传送摔落伤害
     @SubscribeEvent
-    public static void onHackerEnderPearlImpact(ProjectileImpactEvent event) {
+    public static void onNancyLuEnderPearlImpact(ProjectileImpactEvent event) {
         if (event.getProjectile() instanceof net.minecraft.world.entity.projectile.ThrownEnderpearl pearl
                 && pearl.getOwner() instanceof Player player
-                && HackerSignItem.isEquipped(player)) {
-            ModAttachments.setHackerEnderPearlImmuneUntil(player,
-                    player.level().getGameTime() + com.merlinkitsune.astral_dice.item.sign.HackerSignItem.ENDER_PEARL_IMMUNE_TICKS);
+                && NancyLuSignItem.isEquipped(player)) {
+            ModAttachments.setNancyLuEnderPearlImmuneUntil(player,
+                    player.level().getGameTime() + com.merlinkitsune.astral_dice.item.sign.NancyLuSignItem.ENDER_PEARL_IMMUNE_TICKS);
         }
     }
 
     // 骇客立牌:免疫末影珍珠传送产生的摔落伤害
     @SubscribeEvent
-    public static void onHackerEnderPearlDamage(LivingDamageEvent.Pre event) {
+    public static void onNancyLuEnderPearlDamage(LivingDamageEvent.Pre event) {
         if (!(event.getEntity() instanceof Player player)) return;
         if (player.level().isClientSide()) return;
-        if (!HackerSignItem.isEquipped(player)) return;
+        if (!NancyLuSignItem.isEquipped(player)) return;
         if (!event.getSource().is(net.minecraft.world.damagesource.DamageTypes.FALL)) return;
-        if (player.level().getGameTime() < ModAttachments.getHackerEnderPearlImmuneUntil(player)) {
+        if (player.level().getGameTime() < ModAttachments.getNancyLuEnderPearlImmuneUntil(player)) {
             event.setNewDamage(0);
         }
     }
@@ -2030,19 +2030,19 @@ public class ModEventHandlers {
             }
             addSignCooldownRemaining(tooltip, event.getEntity() instanceof Player p ? p : null);
         }
-        if (stack.is(ModItems.HACKER_SIGN.get())) {
+        if (stack.is(ModItems.NANCY_LU_SIGN.get())) {
             tooltip.add(Component.empty());
             addSignKeyHint(tooltip);
             addSignActiveTitle(tooltip, "远程骇入");
-            addSignLines(tooltip, "tooltip.astral_dice.card.hacker_active");
+            addSignLines(tooltip, "tooltip.astral_dice.card.nancy_lu_active");
             addSignPassiveTitle(tooltip, "网络防火墙");
-            addSignLines(tooltip, "tooltip.astral_dice.card.hacker_passive");
+            addSignLines(tooltip, "tooltip.astral_dice.card.nancy_lu_passive");
             // 最下方显示本立牌攻击力与防御力加成
             if (event.getEntity() instanceof Player p) {
-                addSignCounter(tooltip, "tooltip.astral_dice.card.hacker_bonus",
-                        com.merlinkitsune.astral_dice.item.sign.HackerSignItem.getAttackBonus(p)
-                                + com.merlinkitsune.astral_dice.item.sign.HackerSignItem.getActiveAttackBonus(p),
-                        com.merlinkitsune.astral_dice.item.sign.HackerSignItem.getDefenseBonus(p));
+                addSignCounter(tooltip, "tooltip.astral_dice.card.nancy_lu_bonus",
+                        com.merlinkitsune.astral_dice.item.sign.NancyLuSignItem.getAttackBonus(p)
+                                + com.merlinkitsune.astral_dice.item.sign.NancyLuSignItem.getActiveAttackBonus(p),
+                        com.merlinkitsune.astral_dice.item.sign.NancyLuSignItem.getDefenseBonus(p));
             }
             addSignCooldownRemaining(tooltip, event.getEntity() instanceof Player p ? p : null);
         }
@@ -2176,13 +2176,13 @@ public class ModEventHandlers {
         ModAttachments.setCandyChipPlayBonusActive(player, false);
         ModAttachments.setSatellitePlayBonusActive(player, false);
         ModAttachments.setSatelliteGiveCooldownEnd(player, 0);
-        ModAttachments.setHackerPassiveType(player, 0);
-        ModAttachments.setHackerActiveBonus(player, 0);
-        ModAttachments.setHackerActiveBonusUntil(player, 0);
-        ModAttachments.setHackerInvulnerableUntil(player, 0);
-        ModAttachments.setHackerEnderPearlImmuneUntil(player, 0);
+        ModAttachments.setNancyLuPassiveType(player, 0);
+        ModAttachments.setNancyLuActiveBonus(player, 0);
+        ModAttachments.setNancyLuActiveBonusUntil(player, 0);
+        ModAttachments.setNancyLuInvulnerableUntil(player, 0);
+        ModAttachments.setNancyLuEnderPearlImmuneUntil(player, 0);
         player.setInvulnerable(false);
-        player.removeEffect(ModEffects.HACKER_HACK);
+        player.removeEffect(ModEffects.NANCY_LU_HACK);
         player.removeEffect(ModEffects.BLUE_CURSE);
         ModAttachments.setInvestigationStage(player, 1);
         ModAttachments.setEffectCardPlayCount(player, 0);

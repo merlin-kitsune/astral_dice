@@ -34,7 +34,7 @@ import com.merlinkitsune.astral_dice.item.chip.MagicQuiverChipItem;
 import com.merlinkitsune.astral_dice.item.card.ChocolateCakeCardItem;
 import com.merlinkitsune.astral_dice.item.chip.BigBackpackChipItem;
 import com.merlinkitsune.astral_dice.item.sign.HaiqingSignItem;
-import com.merlinkitsune.astral_dice.item.sign.HackerSignItem;
+import com.merlinkitsune.astral_dice.item.sign.NancyLuSignItem;
 import com.merlinkitsune.astral_dice.item.card.ExpressDeliveryCardItem;
 import com.merlinkitsune.astral_dice.item.sign.PaparaSignItem;
 import com.merlinkitsune.astral_dice.item.card.LuxuryFeastCardItem;
@@ -626,9 +626,9 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(Rarity.UNCOMMON)));
 
-    // 骇客立牌(命名:hacker):网络防火墙被动 + 远程骇入主动
-    public static final DeferredItem<Item> HACKER_SIGN = registerItem("hacker_sign",
-            () -> new HackerSignItem(new Item.Properties()
+    // 骇客立牌(命名:nancy_lu):网络防火墙被动 + 远程骇入主动
+    public static final DeferredItem<Item> NANCY_LU_SIGN = registerItem("nancy_lu_sign",
+            () -> new NancyLuSignItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(Rarity.EPIC)));
 

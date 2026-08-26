@@ -668,10 +668,10 @@
 			},
 			"unitWorth": 3200
 		},
-		"hacker_sign": {
+		"nancy_lu_sign": {
 			"type": "item",
 			"rarity": "EPIC",
-			"content": "astral_dice:hacker_sign",
+			"content": "astral_dice:nancy_lu_sign",
 			"amount": {
 				"min": 1,
 				"max": 1

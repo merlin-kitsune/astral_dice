@@ -13,7 +13,7 @@
     },
     "has_the_recipe": {
       "conditions": {
-        "recipe": "astral_dice:hacker_sign"
+        "recipe": "astral_dice:nancy_lu_sign"
       },
       "trigger": "minecraft:recipe_unlocked"
     }
@@ -26,7 +26,7 @@
   ],
   "rewards": {
     "recipes": [
-      "astral_dice:hacker_sign"
+      "astral_dice:nancy_lu_sign"
     ]
   }
 }
