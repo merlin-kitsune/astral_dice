@@ -115,5 +115,6 @@ public class ModCreativeTabs {
                 output.accept(ModItems.STAR_COIN_HAMMER.get());
                 output.accept(ModItems.CURSED_SWORD.get());
                 output.accept(ModItems.REVENGE_HALBERD.get());
+                output.accept(ModItems.PIERCING_GUN.get());
             }).build());
 }

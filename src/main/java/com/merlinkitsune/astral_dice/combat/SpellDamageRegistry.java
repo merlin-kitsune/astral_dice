@@ -12,6 +12,7 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.damagesource.DamageType;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.projectile.AbstractArrow;
 import net.minecraft.world.entity.projectile.ThrowableProjectile;
 
@@ -20,6 +21,7 @@ import java.util.List;
 import java.util.Locale;
 import com.merlinkitsune.astral_dice.damage.ModDamageTypes;
 import com.merlinkitsune.astral_dice.item.chip.MagicQuiverChipItem;
+import com.merlinkitsune.astral_dice.item.chip.PiercingGunChipItem;
 import com.merlinkitsune.astral_dice.network.DamageNumberPayload;
 
 /**
@@ -243,6 +245,24 @@ public final class SpellDamageRegistry {
             @Override
             public double apply(SpellDamageContext ctx, double bonus) {
                 return bonus + MarkManager.getLevel(ctx.target);
+            }
+        });
+        // 贯穿之铳:伤害效果牌生效时,对敌对目标远程/魔法伤害额外增加目标防御力点数
+        registerModifier(new SpellDamageModifier() {
+            @Override
+            public boolean isActive(SpellDamageContext ctx) {
+                if (!ctx.hasCurio(ModItems.PIERCING_GUN.get())) return false;
+                if (!(ctx.target instanceof Enemy)) return false;
+                return ctx.attacker.hasEffect(ModEffects.LIVING_BOOK_PAGE)
+                        || ctx.attacker.hasEffect(ModEffects.MONSTER_LASER)
+                        || ctx.attacker.hasEffect(ModEffects.MONSTER_BRICK)
+                        || ctx.attacker.hasEffect(ModEffects.ORBITAL_STRIKE)
+                        || ctx.attacker.hasEffect(ModEffects.DIRECTIONAL_BLAST);
+            }
+
+            @Override
+            public double apply(SpellDamageContext ctx, double bonus) {
+                return bonus + PiercingGunChipItem.getTargetDefense(ctx.target);
             }
         });
         // 标记喷灌:对目标造成远程或魔法伤害后,使目标获得一层"标记"

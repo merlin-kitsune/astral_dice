@@ -69,6 +69,7 @@ import com.merlinkitsune.astral_dice.item.sign.PadmanSignItem;
 import com.merlinkitsune.astral_dice.item.chip.CutterChipItem;
 import com.merlinkitsune.astral_dice.item.chip.CursedSwordChipItem;
 import com.merlinkitsune.astral_dice.item.chip.RevengeHalberdChipItem;
+import com.merlinkitsune.astral_dice.item.chip.PiercingGunChipItem;
 import com.merlinkitsune.astral_dice.item.chip.NinjaStarChipItem;
 import com.merlinkitsune.astral_dice.item.chip.FlashlightChipItem;
 
@@ -516,6 +517,12 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(Rarity.EPIC)));
 
+    // 贯穿之铳:伤害效果牌生效时,对敌对目标远程/魔法伤害额外增加目标防御力点数
+    public static final DeferredItem<Item> PIERCING_GUN = registerItem("piercing_gun_chip",
+            () -> new PiercingGunChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.UNCOMMON)));
+
     public static final DeferredItem<Item> PADMAN_SIGN = registerItem("padman_sign",
             () -> new PadmanSignItem(new Item.Properties()
                     .stacksTo(1)
@@ -626,7 +633,8 @@ public class ModItems {
                 || stack.is(MAGIC_QUIVER.get()) || stack.is(BUFFER_SHIELD.get())
                 || stack.is(STAR_COIN_HAMMER.get())
                 || stack.is(CURSED_SWORD.get())
-                || stack.is(REVENGE_HALBERD.get());
+                || stack.is(REVENGE_HALBERD.get())
+                || stack.is(PIERCING_GUN.get());
     }
 
     // 判断物品栈是否为任意卡牌(战斗牌 + 效果牌;含专属牌)

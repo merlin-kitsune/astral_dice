@@ -1746,6 +1746,11 @@ public class ModEventHandlers {
             tooltip.add(Component.translatable("tooltip.astral_dice.chip.revenge_halberd")
                     .withStyle(ChatFormatting.GRAY));
         }
+        if (stack.is(ModItems.PIERCING_GUN.get())) {
+            tooltip.add(Component.empty());
+            tooltip.add(Component.translatable("tooltip.astral_dice.chip.piercing_gun")
+                    .withStyle(ChatFormatting.GRAY));
+        }
         if (stack.is(ModItems.PADMAN_SIGN.get())) {
             tooltip.add(Component.empty());
             addSignKeyHint(tooltip);
