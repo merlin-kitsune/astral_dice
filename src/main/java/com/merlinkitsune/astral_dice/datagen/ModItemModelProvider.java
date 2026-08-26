@@ -100,5 +100,6 @@ public class ModItemModelProvider extends ItemModelProvider {
         basicItem(ModItems.CURSED_SWORD.get());
         basicItem(ModItems.REVENGE_HALBERD.get());
         basicItem(ModItems.PIERCING_GUN.get());
+        basicItem(ModItems.CANDY_CHIP.get());
     }
 }

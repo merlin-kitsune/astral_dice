@@ -83,6 +83,7 @@ public final class EffectCardPeriod {
         registerTemporarySource(p -> p.hasEffect(ModEffects.LIVING_BOOK_PAGE)); // 活体书页效果
         registerTemporarySource(p -> p.hasEffect(ModEffects.FATE_GUIDANCE));     // 命运的指引效果
         registerTemporarySource(p -> ModAttachments.isKomachiExtraPlayActive(p)); // 忍者立牌(komachi)主动(仅当前周期)
+        registerTemporarySource(p -> ModAttachments.isCandyChipPlayBonusActive(p)); // 可口糖果:满血使用效果牌触发(每轮一次)
 
         // 效果待定来源(全部效果牌统一注册;新增效果牌在此追加或调用 registerEffectPendingSource)
         registerEffectPendingSource(p -> p.hasEffect(ModEffects.LIVING_BOOK_PAGE));
@@ -194,6 +195,7 @@ public final class EffectCardPeriod {
             ModAttachments.setEffectCardCooldownEnd(player, 0);
             ModAttachments.setEffectCardPlayCount(player, 0);
             ModAttachments.setKomachiExtraPlayActive(player, false);
+            ModAttachments.setCandyChipPlayBonusActive(player, false);
             cooldown = 0;
         }
         int count = ModAttachments.getEffectCardPlayCount(player) + 1;
@@ -213,6 +215,8 @@ public final class EffectCardPeriod {
         ModAttachments.setEffectCardPlayCount(player, 0);
         // 周期归零:清除忍者立牌主动的临时出牌数+1(仅当前周期生效)
         ModAttachments.setKomachiExtraPlayActive(player, false);
+        // 周期归零:清除可口糖果的"满血出牌数+1"(每个轮次最多一次)
+        ModAttachments.setCandyChipPlayBonusActive(player, false);
     }
 
     private static boolean hasCurio(Player player, net.minecraft.world.item.Item item) {

@@ -457,6 +457,13 @@ public class ModAttachments {
                     .serialize(Codec.BOOL)
                     .build());
 
+    // 可口糖果筹码:当前效果牌出牌轮次是否已触发过"满血时出牌数+1"(每个轮次最多一次)
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Boolean>> CANDY_CHIP_PLAY_BONUS =
+            ATTACHMENTS.register("candy_chip_play_bonus", () -> AttachmentType.builder(() -> false)
+                    .serialize(Codec.BOOL)
+                    .sync(ByteBufCodecs.BOOL)
+                    .build());
+
     public static boolean getMagicQuiverTracking(net.minecraft.world.entity.player.Player player) {
         return player.getData(MAGIC_QUIVER_TRACKING.get());
     }
@@ -511,6 +518,14 @@ public class ModAttachments {
 
     public static void setCursedSwordBlessingTriggered(net.minecraft.world.entity.player.Player player, boolean value) {
         player.setData(CURSED_SWORD_BLESSING_TRIGGERED.get(), value);
+    }
+
+    public static boolean isCandyChipPlayBonusActive(net.minecraft.world.entity.player.Player player) {
+        return player.getData(CANDY_CHIP_PLAY_BONUS.get());
+    }
+
+    public static void setCandyChipPlayBonusActive(net.minecraft.world.entity.player.Player player, boolean value) {
+        player.setData(CANDY_CHIP_PLAY_BONUS.get(), value);
     }
 
     // === 大当家立牌(fen)附件 ===

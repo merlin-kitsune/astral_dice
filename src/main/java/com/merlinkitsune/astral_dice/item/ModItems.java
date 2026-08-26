@@ -70,6 +70,7 @@ import com.merlinkitsune.astral_dice.item.chip.CutterChipItem;
 import com.merlinkitsune.astral_dice.item.chip.CursedSwordChipItem;
 import com.merlinkitsune.astral_dice.item.chip.RevengeHalberdChipItem;
 import com.merlinkitsune.astral_dice.item.chip.PiercingGunChipItem;
+import com.merlinkitsune.astral_dice.item.chip.CandyChipItem;
 import com.merlinkitsune.astral_dice.item.chip.NinjaStarChipItem;
 import com.merlinkitsune.astral_dice.item.chip.FlashlightChipItem;
 
@@ -523,6 +524,12 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(Rarity.UNCOMMON)));
 
+    // 可口糖果:每使用一张效果牌,治愈+1并恢复1点生命;满血使用时本轮出牌数+1(每轮一次)
+    public static final DeferredItem<Item> CANDY_CHIP = registerItem("candy_chip",
+            () -> new CandyChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.EPIC)));
+
     public static final DeferredItem<Item> PADMAN_SIGN = registerItem("padman_sign",
             () -> new PadmanSignItem(new Item.Properties()
                     .stacksTo(1)
@@ -634,7 +641,8 @@ public class ModItems {
                 || stack.is(STAR_COIN_HAMMER.get())
                 || stack.is(CURSED_SWORD.get())
                 || stack.is(REVENGE_HALBERD.get())
-                || stack.is(PIERCING_GUN.get());
+                || stack.is(PIERCING_GUN.get())
+                || stack.is(CANDY_CHIP.get());
     }
 
     // 判断物品栈是否为任意卡牌(战斗牌 + 效果牌;含专属牌)

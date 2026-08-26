@@ -856,6 +856,19 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
                 .save(output);
 
+        // 可口糖果:糖上排 + 曲奇/雕刻南瓜中轴 + 空白筹码居中 + 星盘下排
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.CANDY_CHIP.get())
+                .pattern("TQT")
+                .pattern("NCN")
+                .pattern("PPP")
+                .define('T', Items.SUGAR)
+                .define('Q', Items.COOKIE)
+                .define('N', Items.CARVED_PUMPKIN)
+                .define('C', ModItems.BLANK_CHIP.get())
+                .define('P', ModItems.STAR_PLATE.get())
+                .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
+                .save(output);
+
         // === 新效果牌(治疗/互动;shape:星币居中,mod 物品在中轴) ===
         // 巧克力蛋糕:1 可可豆 + 1 鸡蛋 + 1 糖 + 1 星币(无序)
         ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ModItems.CHOCOLATE_CAKE.get())

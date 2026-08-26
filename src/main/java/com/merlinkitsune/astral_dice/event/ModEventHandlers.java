@@ -1751,6 +1751,11 @@ public class ModEventHandlers {
             tooltip.add(Component.translatable("tooltip.astral_dice.chip.piercing_gun")
                     .withStyle(ChatFormatting.GRAY));
         }
+        if (stack.is(ModItems.CANDY_CHIP.get())) {
+            tooltip.add(Component.empty());
+            tooltip.add(Component.translatable("tooltip.astral_dice.chip.candy")
+                    .withStyle(ChatFormatting.GRAY));
+        }
         if (stack.is(ModItems.PADMAN_SIGN.get())) {
             tooltip.add(Component.empty());
             addSignKeyHint(tooltip);
@@ -2067,6 +2072,7 @@ public class ModEventHandlers {
         ModAttachments.setStarCoinHammerBonus(player, 0);
         ModAttachments.setCursedSwordBonus(player, 0);
         ModAttachments.setCursedSwordBlessingTriggered(player, false);
+        ModAttachments.setCandyChipPlayBonusActive(player, false);
         player.removeEffect(ModEffects.BLUE_CURSE);
         ModAttachments.setInvestigationStage(player, 1);
         ModAttachments.setEffectCardPlayCount(player, 0);

@@ -14,6 +14,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import com.merlinkitsune.astral_dice.item.chip.MagicTomeChipItem;
+import com.merlinkitsune.astral_dice.item.chip.CandyChipItem;
 import com.merlinkitsune.astral_dice.item.sign.FenSignItem;
 import com.merlinkitsune.astral_dice.item.chip.MagicQuiverChipItem;
 import com.merlinkitsune.astral_dice.item.sign.KomachiSignItem;
@@ -194,6 +195,9 @@ public abstract class BaseEffectCardItem extends Item {
 
         // 出牌登记:立即开始/重置冷却倒计时(冷却与效果分离计算)
         EffectCardPeriod.registerPlay(player);
+
+        // 可口糖果:每使用一张效果牌触发(治愈+1、回血+1、满血时本轮出牌数+1)
+        CandyChipItem.onEffectCardUsed(player);
 
         // 治疗类效果牌:大当家立牌被动"养精蓄锐 +1 层"
         if (isHealingCard()) {

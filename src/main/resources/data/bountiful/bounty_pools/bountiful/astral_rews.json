@@ -647,6 +647,16 @@
 				"max": 1
 			},
 			"unitWorth": 3200
+		},
+		"candy_chip": {
+			"type": "item",
+			"rarity": "EPIC",
+			"content": "astral_dice:candy_chip",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 3000
 		}
 	}
 }
