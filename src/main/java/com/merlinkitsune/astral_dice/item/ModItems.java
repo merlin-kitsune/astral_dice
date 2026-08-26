@@ -72,6 +72,7 @@ import com.merlinkitsune.astral_dice.item.chip.RevengeHalberdChipItem;
 import com.merlinkitsune.astral_dice.item.chip.PiercingGunChipItem;
 import com.merlinkitsune.astral_dice.item.chip.CandyChipItem;
 import com.merlinkitsune.astral_dice.item.chip.FriendshipBadgeChipItem;
+import com.merlinkitsune.astral_dice.item.chip.SatelliteChipItem;
 import com.merlinkitsune.astral_dice.item.chip.NinjaStarChipItem;
 import com.merlinkitsune.astral_dice.item.chip.FlashlightChipItem;
 
@@ -537,6 +538,12 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(Rarity.EPIC)));
 
+    // 探天卫星:自动补充轨道炮;使用轨道炮后出牌数+1;轨道炮生效期间远程/魔法击杀给随机效果牌
+    public static final DeferredItem<Item> SATELLITE_CHIP = registerItem("satellite_chip",
+            () -> new SatelliteChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.UNCOMMON)));
+
     public static final DeferredItem<Item> PADMAN_SIGN = registerItem("padman_sign",
             () -> new PadmanSignItem(new Item.Properties()
                     .stacksTo(1)
@@ -650,7 +657,8 @@ public class ModItems {
                 || stack.is(REVENGE_HALBERD.get())
                 || stack.is(PIERCING_GUN.get())
                 || stack.is(CANDY_CHIP.get())
-                || stack.is(FRIENDSHIP_BADGE.get());
+                || stack.is(FRIENDSHIP_BADGE.get())
+                || stack.is(SATELLITE_CHIP.get());
     }
 
     // 判断物品栈是否为任意卡牌(战斗牌 + 效果牌;含专属牌)

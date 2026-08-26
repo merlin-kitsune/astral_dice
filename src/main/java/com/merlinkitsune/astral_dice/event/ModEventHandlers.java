@@ -98,6 +98,7 @@ import com.merlinkitsune.astral_dice.item.chip.BankCardUnlimitedChipItem;
 import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
 import com.merlinkitsune.astral_dice.item.chip.CursedSwordChipItem;
 import com.merlinkitsune.astral_dice.item.chip.FriendshipBadgeChipItem;
+import com.merlinkitsune.astral_dice.item.chip.SatelliteChipItem;
 import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
 
 @EventBusSubscriber(modid = AstralDiceMod.MODID)
@@ -962,6 +963,19 @@ public class ModEventHandlers {
         CursedSwordChipItem.onKill(killer);
     }
 
+    // 探天卫星:轨道炮生效期间,远程/魔法击杀敌方目标后获得一张随机效果牌
+    @SubscribeEvent
+    public static void onSatelliteRangedMagicKill(LivingDeathEvent event) {
+        LivingEntity target = event.getEntity();
+        if (target.level().isClientSide()) return;
+        if (!(target instanceof Enemy)) return;
+        if (!(event.getSource().getEntity() instanceof Player killer)) return;
+        if (!killer.hasEffect(ModEffects.ORBITAL_STRIKE)) return;
+        if (!com.merlinkitsune.astral_dice.combat.SpellDamageRegistry.isSpellDamage(
+                event.getSource(), event.getSource().getDirectEntity())) return;
+        SatelliteChipItem.onRangedMagicKill(killer);
+    }
+
     // 友情徽章:友方玩家获得治疗类效果(瞬间治疗/生命恢复)时,若来源为佩戴徽章的玩家,双方各获得 2 点治愈
     @SubscribeEvent
     public static void onFriendlyHealingEffectAdded(MobEffectEvent.Added event) {
@@ -1795,6 +1809,11 @@ public class ModEventHandlers {
             tooltip.add(Component.translatable("tooltip.astral_dice.chip.friendship_badge")
                     .withStyle(ChatFormatting.GRAY));
         }
+        if (stack.is(ModItems.SATELLITE_CHIP.get())) {
+            tooltip.add(Component.empty());
+            tooltip.add(Component.translatable("tooltip.astral_dice.chip.satellite")
+                    .withStyle(ChatFormatting.GRAY));
+        }
         if (stack.is(ModItems.PADMAN_SIGN.get())) {
             tooltip.add(Component.empty());
             addSignKeyHint(tooltip);
@@ -2112,6 +2131,8 @@ public class ModEventHandlers {
         ModAttachments.setCursedSwordBonus(player, 0);
         ModAttachments.setCursedSwordBlessingTriggered(player, false);
         ModAttachments.setCandyChipPlayBonusActive(player, false);
+        ModAttachments.setSatellitePlayBonusActive(player, false);
+        ModAttachments.setSatelliteGiveCooldownEnd(player, 0);
         player.removeEffect(ModEffects.BLUE_CURSE);
         ModAttachments.setInvestigationStage(player, 1);
         ModAttachments.setEffectCardPlayCount(player, 0);

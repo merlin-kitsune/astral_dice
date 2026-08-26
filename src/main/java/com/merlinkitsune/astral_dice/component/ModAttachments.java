@@ -464,6 +464,19 @@ public class ModAttachments {
                     .sync(ByteBufCodecs.BOOL)
                     .build());
 
+    // 探天卫星筹码:补充轨道炮冷却结束时刻
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> SATELLITE_GIVE_COOLDOWN_END =
+            ATTACHMENTS.register("satellite_give_cooldown_end", () -> AttachmentType.builder(() -> 0L)
+                    .serialize(Codec.LONG)
+                    .build());
+
+    // 探天卫星筹码:当前效果牌出牌轮次是否已触发过"使用轨道炮后出牌数+1"(每轮最多一次)
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Boolean>> SATELLITE_PLAY_BONUS =
+            ATTACHMENTS.register("satellite_play_bonus", () -> AttachmentType.builder(() -> false)
+                    .serialize(Codec.BOOL)
+                    .sync(ByteBufCodecs.BOOL)
+                    .build());
+
     public static boolean getMagicQuiverTracking(net.minecraft.world.entity.player.Player player) {
         return player.getData(MAGIC_QUIVER_TRACKING.get());
     }
@@ -526,6 +539,22 @@ public class ModAttachments {
 
     public static void setCandyChipPlayBonusActive(net.minecraft.world.entity.player.Player player, boolean value) {
         player.setData(CANDY_CHIP_PLAY_BONUS.get(), value);
+    }
+
+    public static long getSatelliteGiveCooldownEnd(net.minecraft.world.entity.player.Player player) {
+        return player.getData(SATELLITE_GIVE_COOLDOWN_END.get());
+    }
+
+    public static void setSatelliteGiveCooldownEnd(net.minecraft.world.entity.player.Player player, long value) {
+        player.setData(SATELLITE_GIVE_COOLDOWN_END.get(), Math.max(0, value));
+    }
+
+    public static boolean isSatellitePlayBonusActive(net.minecraft.world.entity.player.Player player) {
+        return player.getData(SATELLITE_PLAY_BONUS.get());
+    }
+
+    public static void setSatellitePlayBonusActive(net.minecraft.world.entity.player.Player player, boolean value) {
+        player.setData(SATELLITE_PLAY_BONUS.get(), value);
     }
 
     // === 大当家立牌(fen)附件 ===

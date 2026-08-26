@@ -102,5 +102,6 @@ public class ModItemModelProvider extends ItemModelProvider {
         basicItem(ModItems.PIERCING_GUN.get());
         basicItem(ModItems.CANDY_CHIP.get());
         basicItem(ModItems.FRIENDSHIP_BADGE.get());
+        basicItem(ModItems.SATELLITE_CHIP.get());
     }
 }

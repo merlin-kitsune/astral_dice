@@ -118,5 +118,6 @@ public class ModCreativeTabs {
                 output.accept(ModItems.PIERCING_GUN.get());
                 output.accept(ModItems.CANDY_CHIP.get());
                 output.accept(ModItems.FRIENDSHIP_BADGE.get());
+                output.accept(ModItems.SATELLITE_CHIP.get());
             }).build());
 }
