@@ -1213,7 +1213,7 @@ public class ModEventHandlers {
     // 备注区多行内容(紫色;无列表符号;无缩进;行内 § 码可覆盖,时间保持黄色)
     // 行内原有的 §7 会重置为灰色,这里统一替换为 §d,使未单独着色的文本保持备注区粉色。
     private static void addSignNoteLines(List<Component> tooltip, String langKey, Object... args) {
-        String text = Component.translatable(langKey, args).getString();
+        String text = translationString(langKey, args);
         for (String line : text.split("\n")) {
             if (line.isBlank()) continue;
             tooltip.add(Component.literal("§d" + line.trim().replace("§7", "§d")));
@@ -1224,7 +1224,7 @@ public class ModEventHandlers {
     // 约定:lang 中每行以 "\n" 分隔;以两个空格开头的行视为子项(带 "- " 符号),其余为普通项(无符号)。
     // 渲染:无缩进;子项加 "§7- " 前缀。
     private static void addSignLines(List<Component> tooltip, String langKey, Object... args) {
-        String text = Component.translatable(langKey, args).getString();
+        String text = translationString(langKey, args);
         for (String line : text.split("\n")) {
             if (line.isBlank()) continue;
             if (line.startsWith("  ")) {
@@ -1248,6 +1248,17 @@ public class ModEventHandlers {
         if (p == null) return;
         addSignCounter(tooltip, "tooltip.astral_dice.healing_points",
                 HealingManager.getPoints(p), HealingManager.getCap(p));
+    }
+
+    // 翻译文本修正:将 %% 转义为普通 % 后放入 Component.literal,
+    // 避免 Minecraft 将 %% 拆成无样式片段导致 % 号丢失颜色。
+    private static String translationString(String key, Object... args) {
+        String raw = net.minecraft.locale.Language.getInstance().getOrDefault(key, key);
+        return String.format(raw, args);
+    }
+
+    private static net.minecraft.network.chat.MutableComponent tt(String key, Object... args) {
+        return Component.literal(translationString(key, args));
     }
 
     // 冷却中提示(红色)
@@ -1488,7 +1499,7 @@ public class ModEventHandlers {
                             com.merlinkitsune.astral_dice.combat.CardRegistry.cost("full_power", player)))
                     .withStyle(ChatFormatting.YELLOW));
             int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("full_power"));
-            tooltip.add(Component.translatable("tooltip.astral_dice.card.full_power", uses)
+            tooltip.add(tt("tooltip.astral_dice.card.full_power", uses)
                     .withStyle(ChatFormatting.GRAY));
         }
         if (stack.is(ModItems.DEFENSE_CARD_MEDIUM.get())) {
@@ -1646,7 +1657,7 @@ public class ModEventHandlers {
         }
         if (stack.is(ModItems.CUTTER_CHIP.get())) {
             tooltip.add(Component.empty());
-            tooltip.add(Component.translatable("tooltip.astral_dice.chip.cutter")
+            tooltip.add(tt("tooltip.astral_dice.chip.cutter")
                     .withStyle(ChatFormatting.GRAY));
             if (event.getEntity() instanceof Player p) {
                 addHealingPointsCounter(tooltip, p);
@@ -1654,7 +1665,7 @@ public class ModEventHandlers {
         }
         if (stack.is(ModItems.CUTTER_BLADE_CHIP.get())) {
             tooltip.add(Component.empty());
-            tooltip.add(Component.translatable("tooltip.astral_dice.chip.cutter_blade")
+            tooltip.add(tt("tooltip.astral_dice.chip.cutter_blade")
                     .withStyle(ChatFormatting.GRAY));
             if (event.getEntity() instanceof Player p) {
                 addHealingPointsCounter(tooltip, p);
@@ -1745,7 +1756,7 @@ public class ModEventHandlers {
         // === 新筹码 tooltip ===
         if (stack.is(ModItems.ATM.get())) {
             tooltip.add(Component.empty());
-            tooltip.add(Component.translatable("tooltip.astral_dice.chip.atm")
+            tooltip.add(tt("tooltip.astral_dice.chip.atm")
                     .withStyle(ChatFormatting.GRAY));
             if (event.getEntity() instanceof Player p) {
                 addSignCounter(tooltip, "tooltip.astral_dice.chip.starlight",
@@ -1841,7 +1852,7 @@ public class ModEventHandlers {
                     .withStyle(ChatFormatting.GRAY));
             // 青之诅咒效果描述:上下各空一行,名称使用红色
             tooltip.add(Component.empty());
-            tooltip.add(Component.translatable("tooltip.astral_dice.chip.cursed_sword_blue_curse")
+            tooltip.add(tt("tooltip.astral_dice.chip.cursed_sword_blue_curse")
                     .withStyle(ChatFormatting.GRAY));
             tooltip.add(Component.empty());
             if (net.neoforged.fml.ModList.get().isLoaded("enigmaticlegacyplus")) {
@@ -1964,7 +1975,7 @@ public class ModEventHandlers {
         // === 新效果牌(治疗/互动) ===
         if (stack.is(ModItems.CHOCOLATE_CAKE.get())) {
             tooltip.add(Component.empty());
-            tooltip.add(Component.translatable("tooltip.astral_dice.card.chocolate_cake")
+            tooltip.add(tt("tooltip.astral_dice.card.chocolate_cake")
                     .withStyle(ChatFormatting.GRAY));
             addEffectCardPlayCountTooltip(tooltip, player);
             tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown",
@@ -1973,7 +1984,7 @@ public class ModEventHandlers {
         }
         if (stack.is(ModItems.HAMBURGER.get())) {
             tooltip.add(Component.empty());
-            tooltip.add(Component.translatable("tooltip.astral_dice.card.hamburger")
+            tooltip.add(tt("tooltip.astral_dice.card.hamburger")
                     .withStyle(ChatFormatting.GRAY));
             addEffectCardPlayCountTooltip(tooltip, player);
             tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown",
@@ -1982,7 +1993,7 @@ public class ModEventHandlers {
         }
         if (stack.is(ModItems.LUXURY_FEAST.get())) {
             tooltip.add(Component.empty());
-            tooltip.add(Component.translatable("tooltip.astral_dice.card.luxury_feast")
+            tooltip.add(tt("tooltip.astral_dice.card.luxury_feast")
                     .withStyle(ChatFormatting.GRAY));
             addEffectCardPlayCountTooltip(tooltip, player);
             tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown",
@@ -2018,13 +2029,13 @@ public class ModEventHandlers {
         }
         if (stack.is(ModItems.FATE_GUIDANCE_CARD.get())) {
             tooltip.add(Component.empty());
-            tooltip.add(Component.translatable("tooltip.astral_dice.card.fate_guidance_desc")
+            tooltip.add(tt("tooltip.astral_dice.card.fate_guidance_desc")
                     .withStyle(ChatFormatting.GRAY));
             tooltip.add(Component.translatable("tooltip.astral_dice.card.fate_saturation")
                     .withStyle(ChatFormatting.GRAY));
             // 联动条目:仅安装相关模组时显示(紫色,无编号)
             if (net.neoforged.fml.ModList.get().isLoaded("enigmaticlegacyplus")) {
-                tooltip.add(Component.translatable("tooltip.astral_dice.card.fate_curse_mitigation")
+                tooltip.add(tt("tooltip.astral_dice.card.fate_curse_mitigation")
                         .withStyle(ChatFormatting.LIGHT_PURPLE));
             }
             if (net.neoforged.fml.ModList.get().isLoaded("irons_spellbooks")) {
