@@ -1,5 +1,35 @@
 # Changelog / 更新日志
 
+## 1.1.0-rc1
+
+### 新内容 / New Content
+- 新增效果牌：以毒攻毒（移除最多 3 个原版负面效果，并获得生命恢复）。 / Added Fight Poison with Poison: removes up to 3 vanilla negative effects and grants Regeneration.
+- 新增效果：青之诅咒（护甲值 -20%，盔甲韧性归 0）。 / Added Blue Curse: -20% armor and zero armor toughness.
+- 新增筹码：维生素药丸、诅咒之剑、复仇之戟、贯穿之铳、可口糖果、友情徽章、探天卫星。 / Added chips: Vitamin Pill, Cursed Sword, Revenge Halberd, Piercing Gun, Candy, Friendship Badge, Satellite.
+- 新增立牌：骇客立牌（nancy_lu）。 / Added Nancy Lu (Hacker) sign.
+- 新增手持风扇-小 / 手持风扇-大筹码。 / Added Hand Fan Small and Hand Fan Big chips.
+
+### 内容与平衡性调整 / Content & Balance Changes
+- 手持风扇-小配方调整为羽毛上排；手持风扇-大改为通用蓝→紫升级配方（以手持风扇-小为原料）。 / Adjusted Hand Fan Small recipe; Hand Fan Big now uses the generic Blue→Purple upgrade recipe.
+- 狂暴配方简化为 1 火药 + 1 星币。 / Simplified Berserk recipe to 1 Gunpowder + 1 Star Coin.
+- 诅咒之剑：骰神赐福期间每轮最多触发一次击杀攻击力加成；上限默认 16、最大 32。 / Cursed Sword kill bonus now triggers at most once per Dice Blessing; cap default 16, max 32.
+- 占星师立牌、忍者立牌品质提升为史诗，配方由黄金骰子改为钻石骰子。 / Astrologer and Ninja signs upgraded to Epic and now require Diamond Dice.
+- 骇客立牌（nancy_lu）主动技能重做为完全隐身；攻击敌对目标/玩家时解除隐身并消耗战斗牌获得攻击力加成。 / Nancy Lu active reworked into full invisibility with attack-triggered battle card bonus.
+- 完全隐身期间生物无法将玩家设为索敌目标。 / While fully invisible, mobs cannot target the player.
+- 创造栏筹码按星光、治愈、标记、无流派分类摆放；美工刀归入治愈类。 / Creative chip tab regrouped by Starlight, Healing, Mark, and No-school; Cutter chips moved to Healing.
+
+### 界面与显示 / UI & Display
+- 治愈类筹码与史莱姆立牌 tooltip 显示当前治愈点。 / Healing chips and Slime sign now show current healing points.
+- 修复 tooltip 中按键名、`%` 号、计数器符号无法正确染色的问题。 / Fixed sign key, percent sign, and counter symbol coloring in tooltips.
+- 修复诅咒之剑 tooltip 中青之诅咒描述多余空行。 / Fixed an extra blank line around Blue Curse in the Cursed Sword tooltip.
+- 立牌/材料 tooltip 分类从 `card` 移至 `sign`/`material`。 / Moved sign and material tooltip keys out of the card category.
+
+### 已修复BUG / Bug Fixes
+- 修复大侦探立牌被动无法触发（主动技能与击杀“隐匿调查”目标）。 / Fixed Great Detective passive not triggering from active skill or Undercover Investigation kills.
+- 修复维生素药丸 tooltip 缺失；拾取卡牌不再触发维生素药丸效果。 / Fixed missing Vitamin Pill tooltip; picking up cards no longer triggers it.
+- 友情徽章配方改为必须使用瞬间治疗药水。 / Friendship Badge recipe now requires an Instant Healing potion.
+- 修复 tooltip 颜色代码导致部分文本变白的问题。 / Fixed tooltip color-code issues causing some text to appear white.
+
 ## 1.0.3-rc1
 
 ### 内容与平衡性调整 / Content & Balance Changes
