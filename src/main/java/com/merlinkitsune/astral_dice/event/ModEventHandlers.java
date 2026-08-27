@@ -1200,13 +1200,13 @@ public class ModEventHandlers {
 
     // 主动技能标题(金色,含技能名;冷却倒计时由下方"冷却中"行单独展示)
     private static void addSignActiveTitle(List<Component> tooltip, String skillName) {
-        tooltip.add(Component.translatable("tooltip.astral_dice.sign.active_title", skillName)
+        tooltip.add(tt("tooltip.astral_dice.sign.active_title", skillName)
                 .withStyle(ChatFormatting.GOLD));
     }
 
     // 被动技能标题(金色,含技能名)
     private static void addSignPassiveTitle(List<Component> tooltip, String skillName) {
-        tooltip.add(Component.translatable("tooltip.astral_dice.sign.passive_title", skillName)
+        tooltip.add(tt("tooltip.astral_dice.sign.passive_title", skillName)
                 .withStyle(ChatFormatting.GOLD));
     }
 
@@ -1240,7 +1240,7 @@ public class ModEventHandlers {
     // 立牌自身计数器(金色数值,其余灰色)
     private static void addSignCounter(List<Component> tooltip, String langKey, Object... args) {
         tooltip.add(Component.empty());
-        tooltip.add(Component.translatable(langKey, args).withStyle(ChatFormatting.GRAY));
+        tooltip.add(tt(langKey, args).withStyle(ChatFormatting.GRAY));
     }
 
     // 治愈类 tooltip 统一显示当前治愈点/上限
@@ -1267,7 +1267,7 @@ public class ModEventHandlers {
         long cdEnd = ModAttachments.getSignActiveCooldownEnd(p);
         int remainingTicks = cdEnd > 0 ? (int) (cdEnd - p.level().getGameTime()) : 0;
         if (remainingTicks > 0) {
-            tooltip.add(Component.translatable("tooltip.astral_dice.sign.cooldown_remaining", remainingTicks / 20)
+            tooltip.add(tt("tooltip.astral_dice.sign.cooldown_remaining", remainingTicks / 20)
                     .withStyle(ChatFormatting.RED));
         }
     }
@@ -1304,10 +1304,10 @@ public class ModEventHandlers {
     // 效果牌 tooltip:当前出牌周期出牌数(current/max)
     private static void addEffectCardPlayCountTooltip(List<Component> tooltip, Player p) {
         if (p == null) {
-            tooltip.add(Component.translatable("tooltip.astral_dice.card.play_count", "?", "?")
+            tooltip.add(tt("tooltip.astral_dice.card.play_count", "?", "?")
                     .withStyle(ChatFormatting.GRAY));
         } else {
-            tooltip.add(Component.translatable("tooltip.astral_dice.card.play_count",
+            tooltip.add(tt("tooltip.astral_dice.card.play_count",
                             EffectCardPeriod.getPlayCount(p), EffectCardPeriod.getMaxAllowed(p))
                     .withStyle(ChatFormatting.GRAY));
         }
@@ -1316,7 +1316,7 @@ public class ModEventHandlers {
     // 效果牌 tooltip:当前周期已激活伤害效果牌的总伤害加成
     private static void addActiveDamageBonusTooltip(List<Component> tooltip, Player p) {
         if (p == null) {
-            tooltip.add(Component.translatable("tooltip.astral_dice.card.active_damage_bonus", "?")
+            tooltip.add(tt("tooltip.astral_dice.card.active_damage_bonus", "?")
                     .withStyle(ChatFormatting.GRAY));
             return;
         }
@@ -1330,7 +1330,7 @@ public class ModEventHandlers {
             int pages = Math.min(ModAttachments.getRinPages(p), GameplayConstants.LIVING_BOOK_PAGE_BONUS_CAP);
             bonus += 2 + pages + komachi;
         }
-        tooltip.add(Component.translatable("tooltip.astral_dice.card.active_damage_bonus", bonus)
+        tooltip.add(tt("tooltip.astral_dice.card.active_damage_bonus", bonus)
                 .withStyle(ChatFormatting.GRAY));
     }
 
