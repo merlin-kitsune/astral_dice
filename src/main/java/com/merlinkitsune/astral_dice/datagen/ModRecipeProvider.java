@@ -875,7 +875,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .pattern("ZCZ")
                 .pattern("PPP")
                 .define('Y', net.neoforged.neoforge.common.crafting.DataComponentIngredient.of(
-                        false, net.minecraft.core.component.DataComponents.POTION_CONTENTS,
+                        true, net.minecraft.core.component.DataComponents.POTION_CONTENTS,
                         new net.minecraft.world.item.alchemy.PotionContents(net.minecraft.world.item.alchemy.Potions.HEALING),
                         Items.POTION))
                 .define('J', Items.ENCHANTED_GOLDEN_APPLE)

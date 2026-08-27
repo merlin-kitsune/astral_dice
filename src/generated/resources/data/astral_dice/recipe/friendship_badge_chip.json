@@ -13,13 +13,15 @@
     },
     "Y": {
       "neoforge:components": {
-        "items": "minecraft:potion",
+        "items": [
+          "minecraft:potion"
+        ],
         "components": {
           "minecraft:potion_contents": {
             "potion": "minecraft:healing"
           }
         },
-        "strict": false
+        "strict": true
       }
     },
     "Z": {
