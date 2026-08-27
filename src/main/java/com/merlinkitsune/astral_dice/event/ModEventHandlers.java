@@ -690,6 +690,11 @@ public class ModEventHandlers {
         var newTarget = event.getNewAboutToBeSetTarget();
         if (!(newTarget instanceof Player player)) return;
         if (player.level().isClientSide()) return;
+        // 骇客立牌完全隐身:绝对禁止生物将该玩家设为索敌目标
+        if (NancyLuSignItem.isHidden(player)) {
+            event.setCanceled(true);
+            return;
+        }
         if (!player.hasEffect(ModEffects.DICE_BLESSING)) return;
         var curios = CuriosApi.getCuriosInventory(player);
         if (curios.isEmpty()) return;

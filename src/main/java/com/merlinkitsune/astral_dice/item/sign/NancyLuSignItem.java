@@ -9,6 +9,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -103,6 +104,8 @@ public class NancyLuSignItem extends BaseSignItem {
         player.addEffect(new MobEffectInstance(net.minecraft.world.effect.MobEffects.INVISIBILITY,
                 HIDDEN_DURATION_TICKS, 0, false, true, true));
         ModAttachments.setNancyLuHiddenUntil(player, now + HIDDEN_DURATION_TICKS);
+        // 清除附近已经锁定该玩家的生物目标,确保“绝对无法被生物索敌”
+        clearNearbyMobTargets(player);
 
         return InteractionResultHolder.success(stack);
     }
@@ -135,6 +138,14 @@ public class NancyLuSignItem extends BaseSignItem {
         if (player == null) return false;
         var curios = CuriosApi.getCuriosInventory(player);
         return curios.isPresent() && curios.get().findFirstCurio(s -> s.is(ModItems.NANCY_LU_SIGN.get())).isPresent();
+    }
+
+    // 是否处于完全隐身(绝对无法被生物索敌)状态
+    public static boolean isHidden(Player player) {
+        if (player == null || player.level().isClientSide()) return false;
+        if (!isEquipped(player)) return false;
+        if (!player.hasEffect(net.minecraft.world.effect.MobEffects.INVISIBILITY)) return false;
+        return player.level().getGameTime() < ModAttachments.getNancyLuHiddenUntil(player);
     }
 
     public static int getAttackBonus(Player player) {
@@ -171,6 +182,14 @@ public class NancyLuSignItem extends BaseSignItem {
     }
 
     // === 主动辅助 ===
+
+    // 清除附近已把该玩家设为目标生物的仇恨
+    private static void clearNearbyMobTargets(Player player) {
+        for (Mob mob : player.level().getEntitiesOfClass(Mob.class,
+                player.getBoundingBox().inflate(64.0), mob -> mob.getTarget() == player)) {
+            mob.setTarget(null);
+        }
+    }
 
     private static LivingEntity findHighestHealthTarget(Player player) {
         List<LivingEntity> candidates = new ArrayList<>();
