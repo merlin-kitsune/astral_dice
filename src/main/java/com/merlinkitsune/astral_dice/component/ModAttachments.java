@@ -502,6 +502,12 @@ public class ModAttachments {
                     .serialize(Codec.LONG)
                     .build());
 
+    // 骇客立牌:主动"完全隐身"结束时刻
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> NANCY_LU_HIDDEN_UNTIL =
+            ATTACHMENTS.register("nancy_lu_hidden_until", () -> AttachmentType.builder(() -> 0L)
+                    .serialize(Codec.LONG)
+                    .build());
+
     // 骇客立牌:末影珍珠传送伤害免疫结束时刻
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> NANCY_LU_ENDER_PEARL_IMMUNE_UNTIL =
             ATTACHMENTS.register("nancy_lu_ender_pearl_immune_until", () -> AttachmentType.builder(() -> 0L)
@@ -618,6 +624,14 @@ public class ModAttachments {
 
     public static void setNancyLuInvulnerableUntil(net.minecraft.world.entity.player.Player player, long value) {
         player.setData(NANCY_LU_INVULNERABLE_UNTIL.get(), Math.max(0, value));
+    }
+
+    public static long getNancyLuHiddenUntil(net.minecraft.world.entity.player.Player player) {
+        return player.getData(NANCY_LU_HIDDEN_UNTIL.get());
+    }
+
+    public static void setNancyLuHiddenUntil(net.minecraft.world.entity.player.Player player, long value) {
+        player.setData(NANCY_LU_HIDDEN_UNTIL.get(), Math.max(0, value));
     }
 
     public static long getNancyLuEnderPearlImmuneUntil(net.minecraft.world.entity.player.Player player) {

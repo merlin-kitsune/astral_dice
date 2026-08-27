@@ -980,6 +980,19 @@ public class ModEventHandlers {
         SatelliteChipItem.onRangedMagicKill(killer);
     }
 
+    // 骇客立牌:完全隐身状态下攻击敌对目标/玩家 → 解除隐身并触发战斗牌加成
+    @SubscribeEvent
+    public static void onNancyLuAttackWhileHidden(
+            net.neoforged.neoforge.event.entity.player.AttackEntityEvent event) {
+        Player player = event.getEntity();
+        if (player.level().isClientSide()) return;
+        if (!NancyLuSignItem.isEquipped(player)) return;
+        net.minecraft.world.entity.Entity target = event.getTarget();
+        if (!(target instanceof net.minecraft.world.entity.monster.Enemy)
+                && !(target instanceof Player)) return;
+        NancyLuSignItem.onAttackWhileHidden(player);
+    }
+
     // 骇客立牌:末影珍珠落地时记录短时免疫窗口,免疫随后的传送摔落伤害
     @SubscribeEvent
     public static void onNancyLuEnderPearlImpact(ProjectileImpactEvent event) {
@@ -2208,8 +2221,10 @@ public class ModEventHandlers {
         ModAttachments.setNancyLuActiveBonus(player, 0);
         ModAttachments.setNancyLuActiveBonusUntil(player, 0);
         ModAttachments.setNancyLuInvulnerableUntil(player, 0);
+        ModAttachments.setNancyLuHiddenUntil(player, 0);
         ModAttachments.setNancyLuEnderPearlImmuneUntil(player, 0);
         player.setInvulnerable(false);
+        player.removeEffect(net.minecraft.world.effect.MobEffects.INVISIBILITY);
         player.removeEffect(ModEffects.NANCY_LU_HACK);
         player.removeEffect(ModEffects.BLUE_CURSE);
         ModAttachments.setInvestigationStage(player, 1);

@@ -33,9 +33,9 @@ import java.util.concurrent.ThreadLocalRandom;
  *   否则防御力 +3。被动类型每次刷新覆盖旧类型,不能叠加。
  *
  * <p>主动"远程骇入":
- * - 获得 3 秒无敌;
- * - 传送到同一水平区域 32 格内血量最高的敌对生物/玩家身边;
- * - 消耗一张随机战斗牌(物品栏/末影箱),按该牌费用提升攻击力,持续 2:00。
+ * - 立即进入完全隐身状态(最多持续 30 秒);
+ * - 攻击敌对目标或玩家时解除隐身,并消耗一张随机战斗牌;
+ * - 按该牌费用 ×2 提升攻击力,持续 2:00;若无战斗牌可用则不触发加成。
  */
 public class NancyLuSignItem extends BaseSignItem {
     public static final int PASSIVE_NONE = 0;
@@ -46,6 +46,8 @@ public class NancyLuSignItem extends BaseSignItem {
     public static final double ACTIVE_RANGE = 32.0;
     public static final int ACTIVE_DURATION_TICKS = 2400;
     public static final int INVULNERABLE_TICKS = 60;
+    public static final int HIDDEN_DURATION_TICKS = 600;
+    public static final int ACTIVE_BONUS_MULTIPLIER = 2;
     public static final int ENDER_PEARL_IMMUNE_TICKS = 20;
 
     public NancyLuSignItem(Properties properties) {
@@ -63,6 +65,11 @@ public class NancyLuSignItem extends BaseSignItem {
             player.setInvulnerable(false);
             ModAttachments.setNancyLuInvulnerableUntil(player, 0);
         }
+        // 主动完全隐身到期
+        if (now >= ModAttachments.getNancyLuHiddenUntil(player)) {
+            ModAttachments.setNancyLuHiddenUntil(player, 0);
+            player.removeEffect(net.minecraft.world.effect.MobEffects.INVISIBILITY);
+        }
         // 主动攻击力加成到期
         if (now >= ModAttachments.getNancyLuActiveBonusUntil(player)) {
             ModAttachments.setNancyLuActiveBonus(player, 0);
@@ -78,8 +85,10 @@ public class NancyLuSignItem extends BaseSignItem {
         ModAttachments.setNancyLuActiveBonus(player, 0);
         ModAttachments.setNancyLuActiveBonusUntil(player, 0);
         ModAttachments.setNancyLuInvulnerableUntil(player, 0);
+        ModAttachments.setNancyLuHiddenUntil(player, 0);
         ModAttachments.setNancyLuEnderPearlImmuneUntil(player, 0);
         player.setInvulnerable(false);
+        player.removeEffect(net.minecraft.world.effect.MobEffects.INVISIBILITY);
         player.removeEffect(ModEffects.NANCY_LU_HACK);
     }
 
@@ -90,28 +99,34 @@ public class NancyLuSignItem extends BaseSignItem {
         }
         long now = level.getGameTime();
 
-        // 3 秒无敌
-        player.setInvulnerable(true);
-        ModAttachments.setNancyLuInvulnerableUntil(player, now + INVULNERABLE_TICKS);
-
-        // 传送到 32 格内血量最高的敌对生物/玩家身边
-        LivingEntity target = findHighestHealthTarget(player);
-        if (target != null) {
-            teleportNear(player, target);
-        }
-
-        // 消耗一张随机战斗牌并按其费用提升攻击力 2:00
-        ItemStack consumed = findAndConsumeRandomBattleCard(player);
-        if (consumed != null) {
-            String typeId = CardRegistry.itemToType(consumed);
-            int cost = typeId != null ? CardRegistry.cost(typeId, player) : 1;
-            ModAttachments.setNancyLuActiveBonus(player, cost);
-            ModAttachments.setNancyLuActiveBonusUntil(player, now + ACTIVE_DURATION_TICKS);
-            player.addEffect(new MobEffectInstance(ModEffects.NANCY_LU_HACK,
-                    ACTIVE_DURATION_TICKS, 0, false, true, true));
-        }
+        // 立即进入完全隐身状态(最多持续 30 秒)
+        player.addEffect(new MobEffectInstance(net.minecraft.world.effect.MobEffects.INVISIBILITY,
+                HIDDEN_DURATION_TICKS, 0, false, true, true));
+        ModAttachments.setNancyLuHiddenUntil(player, now + HIDDEN_DURATION_TICKS);
 
         return InteractionResultHolder.success(stack);
+    }
+
+    // 隐身状态下攻击敌对目标/玩家时调用:解除隐身,尝试消耗战斗牌并按费用*2提升攻击力
+    public static void onAttackWhileHidden(Player player) {
+        if (player == null || player.level().isClientSide()) return;
+        long now = player.level().getGameTime();
+        if (now >= ModAttachments.getNancyLuHiddenUntil(player)) return;
+        if (!player.hasEffect(net.minecraft.world.effect.MobEffects.INVISIBILITY)) return;
+
+        // 解除完全隐身
+        ModAttachments.setNancyLuHiddenUntil(player, 0);
+        player.removeEffect(net.minecraft.world.effect.MobEffects.INVISIBILITY);
+
+        // 消耗一张随机战斗牌;若无牌可用则不触发攻击力加成
+        ItemStack consumed = findAndConsumeRandomBattleCard(player);
+        if (consumed == null) return;
+        String typeId = CardRegistry.itemToType(consumed);
+        int cost = typeId != null ? CardRegistry.cost(typeId, player) : 1;
+        ModAttachments.setNancyLuActiveBonus(player, cost * ACTIVE_BONUS_MULTIPLIER);
+        ModAttachments.setNancyLuActiveBonusUntil(player, now + ACTIVE_DURATION_TICKS);
+        player.addEffect(new MobEffectInstance(ModEffects.NANCY_LU_HACK,
+                ACTIVE_DURATION_TICKS, 0, false, true, true));
     }
 
     // === 被动 ===
