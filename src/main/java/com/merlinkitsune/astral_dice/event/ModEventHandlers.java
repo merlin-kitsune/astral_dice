@@ -1228,6 +1228,13 @@ public class ModEventHandlers {
         tooltip.add(Component.translatable(langKey, args).withStyle(ChatFormatting.GRAY));
     }
 
+    // 治愈类 tooltip 统一显示当前治愈点/上限
+    private static void addHealingPointsCounter(List<Component> tooltip, Player p) {
+        if (p == null) return;
+        addSignCounter(tooltip, "tooltip.astral_dice.healing_points",
+                HealingManager.getPoints(p), HealingManager.getCap(p));
+    }
+
     // 冷却中提示(红色)
     private static void addSignCooldownRemaining(List<Component> tooltip, Player p) {
         if (p == null) return;
@@ -1595,10 +1602,7 @@ public class ModEventHandlers {
             addSignPassiveTitle(tooltip, "细胞分裂");
             addSignLines(tooltip, "tooltip.astral_dice.sign.lulu_passive");
             if (event.getEntity() instanceof Player p) {
-                int healingPoints = HealingManager.getPoints(p);
-                if (healingPoints > 0) {
-                    addSignCounter(tooltip, "tooltip.astral_dice.sign.lulu_healing", healingPoints);
-                }
+                addHealingPointsCounter(tooltip, p);
             }
             addSignCooldownRemaining(tooltip, event.getEntity() instanceof Player p ? p : null);
         }
@@ -1629,11 +1633,17 @@ public class ModEventHandlers {
             tooltip.add(Component.empty());
             tooltip.add(Component.translatable("tooltip.astral_dice.chip.cutter")
                     .withStyle(ChatFormatting.GRAY));
+            if (event.getEntity() instanceof Player p) {
+                addHealingPointsCounter(tooltip, p);
+            }
         }
         if (stack.is(ModItems.CUTTER_BLADE_CHIP.get())) {
             tooltip.add(Component.empty());
             tooltip.add(Component.translatable("tooltip.astral_dice.chip.cutter_blade")
                     .withStyle(ChatFormatting.GRAY));
+            if (event.getEntity() instanceof Player p) {
+                addHealingPointsCounter(tooltip, p);
+            }
         }
         if (stack.is(ModItems.SCOPE_CHIP.get())) {
             tooltip.add(Component.empty());
@@ -1649,16 +1659,25 @@ public class ModEventHandlers {
             tooltip.add(Component.empty());
             tooltip.add(Component.translatable("tooltip.astral_dice.chip.medkit_emergency")
                     .withStyle(ChatFormatting.GRAY));
+            if (event.getEntity() instanceof Player p) {
+                addHealingPointsCounter(tooltip, p);
+            }
         }
         if (stack.is(ModItems.MEDKIT_COMPLETE_CHIP.get())) {
             tooltip.add(Component.empty());
             tooltip.add(Component.translatable("tooltip.astral_dice.chip.medkit_complete")
                     .withStyle(ChatFormatting.GRAY));
+            if (event.getEntity() instanceof Player p) {
+                addHealingPointsCounter(tooltip, p);
+            }
         }
         if (stack.is(ModItems.VITAMIN_PILL_CHIP.get())) {
             tooltip.add(Component.empty());
             tooltip.add(Component.translatable("tooltip.astral_dice.chip.vitamin_pill")
                     .withStyle(ChatFormatting.GRAY));
+            if (event.getEntity() instanceof Player p) {
+                addHealingPointsCounter(tooltip, p);
+            }
         }
         if (stack.is(ModItems.TARGET_CHIP.get())) {
             tooltip.add(Component.empty());
@@ -1787,6 +1806,9 @@ public class ModEventHandlers {
             tooltip.add(Component.empty());
             tooltip.add(Component.translatable("tooltip.astral_dice.chip.buffer_shield")
                     .withStyle(ChatFormatting.GRAY));
+            if (event.getEntity() instanceof Player p) {
+                addHealingPointsCounter(tooltip, p);
+            }
         }
         if (stack.is(ModItems.STAR_COIN_HAMMER.get())) {
             tooltip.add(Component.empty());
@@ -1830,11 +1852,17 @@ public class ModEventHandlers {
             tooltip.add(Component.empty());
             tooltip.add(Component.translatable("tooltip.astral_dice.chip.candy")
                     .withStyle(ChatFormatting.GRAY));
+            if (event.getEntity() instanceof Player p) {
+                addHealingPointsCounter(tooltip, p);
+            }
         }
         if (stack.is(ModItems.FRIENDSHIP_BADGE.get())) {
             tooltip.add(Component.empty());
             tooltip.add(Component.translatable("tooltip.astral_dice.chip.friendship_badge")
                     .withStyle(ChatFormatting.GRAY));
+            if (event.getEntity() instanceof Player p) {
+                addHealingPointsCounter(tooltip, p);
+            }
         }
         if (stack.is(ModItems.SATELLITE_CHIP.get())) {
             tooltip.add(Component.empty());
