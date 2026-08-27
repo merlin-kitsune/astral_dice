@@ -14,7 +14,6 @@
 - 狂暴配方简化为 1 火药 + 1 星币。 / Simplified Berserk recipe to 1 Gunpowder + 1 Star Coin.
 - 诅咒之剑：骰神赐福期间每轮最多触发一次击杀攻击力加成；上限默认 16、最大 32。 / Cursed Sword kill bonus now triggers at most once per Dice Blessing; cap default 16, max 32.
 - 占星师立牌、忍者立牌品质提升为史诗，配方由黄金骰子改为钻石骰子。 / Astrologer and Ninja signs upgraded to Epic and now require Diamond Dice.
-- 骇客立牌（nancy_lu）主动技能重做为完全隐身；攻击敌对目标/玩家时解除隐身并消耗战斗牌获得攻击力加成。 / Nancy Lu active reworked into full invisibility with attack-triggered battle card bonus.
 - 完全隐身期间生物无法将玩家设为索敌目标。 / While fully invisible, mobs cannot target the player.
 - 创造栏筹码按星光、治愈、标记、无流派分类摆放；美工刀归入治愈类。 / Creative chip tab regrouped by Starlight, Healing, Mark, and No-school; Cutter chips moved to Healing.
 
