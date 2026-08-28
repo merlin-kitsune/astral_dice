@@ -30,7 +30,7 @@ public class UnwaveringCardItem extends BaseEffectCardItem {
 
     @Override
     protected void applyEffect(Level level, Player user, LivingEntity applyTo, ItemStack stack) {
-        applyTo.addEffect(new MobEffectInstance(ModEffects.UNWAVERING, 1200, 0, false, false, true));
-        EffectTimerGuard.apply(applyTo, new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE, 1200, 1, false, true));
+        applyTo.addEffect(new MobEffectInstance(ModEffects.UNWAVERING, 3600, 0, false, false, true));
+        EffectTimerGuard.apply(applyTo, new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE, 3600, 1, false, true));
     }
 }

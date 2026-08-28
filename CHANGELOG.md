@@ -8,6 +8,9 @@
 - 移除 CurseForge / Modrinth 独立更新日志文件及其关联。 / Removed the separate CurseForge and Modrinth changelog files and their references.
 - 卡牌栏选择器改为 **3 列** 显示,同屏可见更多卡牌。 / The card selector now displays **3 columns**, showing more cards at once.
 
+### 内容与平衡性调整 / Balance Changes
+- 岿然不动、狂暴持续时间调整为 **3:00**。 / Unwavering and Berserk durations adjusted to **3:00**.
+
 ### 已修复BUG / Bug Fixes
 - 修复骰神赐福进行中放入蓄力会立即转换为全力攻击的问题:赐福进行中放入的蓄力本次赐福不生效、不转换,改为下次触发骰神赐福时生效并在其结束时转换。 / Fixed Charge converting to Full Power immediately when placed during an active Dice Blessing: a Charge placed mid-blessing is inactive for the current blessing and now only takes effect on the next blessing, converting to Full Power when that blessing ends.
 

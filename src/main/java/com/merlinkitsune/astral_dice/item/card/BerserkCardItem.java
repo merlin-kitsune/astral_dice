@@ -37,7 +37,7 @@ public class BerserkCardItem extends BaseEffectCardItem {
         var existing = applyTo.getEffect(ModEffects.BERSERK);
         int newAmp = existing != null
                 ? Math.min(existing.getAmplifier() + 1, GameplayConstants.MAX_EFFECT_STACKS - 1) : 0;
-        int newDuration = existing != null ? Math.max(existing.getDuration(), 2400) : 2400;
+        int newDuration = existing != null ? Math.max(existing.getDuration(), 3600) : 3600;
         applyTo.addEffect(new MobEffectInstance(ModEffects.BERSERK, newDuration, newAmp, false, false, true));
     }
 }
