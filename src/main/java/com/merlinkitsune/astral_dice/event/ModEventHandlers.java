@@ -744,15 +744,26 @@ public class ModEventHandlers {
         List<AppliedStone> newStones = new ArrayList<>();
         boolean foundCharge = false;
         int costFreed = 0;
+        // 赐福进行中放入的蓄力(charge_defer):本次赐福不转换,保留至下次赐福结束时转换
+        boolean deferCharge = ModAttachments.getChargeDefer(player);
         for (AppliedStone stone : enh.appliedStones()) {
             if ("charge".equals(stone.type())) {
                 foundCharge = true;
-                costFreed += AppliedStone.cost(stone.type());
+                if (deferCharge) {
+                    newStones.add(stone);
+                } else {
+                    costFreed += AppliedStone.cost(stone.type());
+                }
             } else {
                 newStones.add(stone);
             }
         }
         if (!foundCharge) return;
+        if (deferCharge) {
+            // 清除延迟标记:蓄力将在下次赐福结束时转换为全力攻击
+            ModAttachments.setChargeDefer(player, false);
+            return;
+        }
 
         dice.set(ModDataComponents.WEAPON_ENHANCEMENT.get(),
                 new WeaponEnhancement(
@@ -773,7 +784,8 @@ public class ModEventHandlers {
         }
     }
 
-    // 蓄力兜底:当玩家没有骰神赐福但骰子仍残留蓄力时,移除蓄力并返还全力攻击
+    // 蓄力兜底:玩家没有骰神赐福时,蓄力保留在骰子内等待下次触发骰神赐福(不再无赐福时立即转换);
+    // 若此前处于"赐福进行中放入"的延迟状态,在此清除,使蓄力在下次赐福中正常生效并在其结束时转换
     private static void returnChargeCardIfBlessingEnded(Player player) {
         if (player.level().isClientSide()) return;
         if (player.hasEffect(ModEffects.DICE_BLESSING)) return;
@@ -785,33 +797,14 @@ public class ModEventHandlers {
         WeaponEnhancement enh = dice.getOrDefault(ModDataComponents.WEAPON_ENHANCEMENT.get(), null);
         if (enh == null) return;
         boolean foundCharge = false;
-        int costFreed = 0;
-        List<AppliedStone> newStones = new ArrayList<>();
         for (AppliedStone stone : enh.appliedStones()) {
             if ("charge".equals(stone.type())) {
                 foundCharge = true;
-                costFreed += AppliedStone.cost(stone.type());
-            } else {
-                newStones.add(stone);
+                break;
             }
         }
         if (!foundCharge) return;
-        dice.set(ModDataComponents.WEAPON_ENHANCEMENT.get(),
-                new WeaponEnhancement(
-                        enh.usedCost() - costFreed,
-                        enh.maxCost(),
-                        enh.usedDefenseCost(),
-                        enh.maxDefenseCost(),
-                        enh.starLevel(),
-                        newStones
-                ));
-        ItemStack card = new ItemStack(ModItems.ATTACK_CARD_FULL_POWER.get());
-        VitaminPillChipItem.giveCard(player, card);
-        if (player instanceof ServerPlayer sp) {
-            PacketDistributor.sendToPlayer(sp,
-                    new ActionBarPayload(Component.translatable("msg.astral_dice.charge_refund_full_power")
-                            .withStyle(ChatFormatting.YELLOW), GameplayConstants.ACTIONBAR_DURATION_TICKS));
-        }
+        ModAttachments.setChargeDefer(player, false);
     }
 
 
@@ -2268,6 +2261,7 @@ public class ModEventHandlers {
         ModAttachments.setStarCoinHammerBonus(player, 0);
         ModAttachments.setCursedSwordBonus(player, 0);
         ModAttachments.setCursedSwordBlessingTriggered(player, false);
+        ModAttachments.setChargeDefer(player, false);
         ModAttachments.setCandyChipPlayBonusActive(player, false);
         ModAttachments.setSatellitePlayBonusActive(player, false);
         ModAttachments.setSatelliteGiveCooldownEnd(player, 0);

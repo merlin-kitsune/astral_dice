@@ -6,6 +6,10 @@
 - 新增**计时器守卫**:本模组所有有时长效果严格按 20 tick/秒 流动,不受任何加快/减慢效果时间的 buff(如神秘遗物+ 的烈焰之核)影响。 / Added a timer guard: all timed effects of this mod now strictly tick at 20 t/s, immune to buffs that speed up or slow down effect durations (e.g. the Blazing Core from Enigmatic Legacy+).
 - 同步本地中文文本修改(看板立牌 tooltip 措辞、命运的指引描述)。 / Synced local zh_cn.json text updates (Mimi sign tooltip wording, Fate Guidance description).
 - 移除 CurseForge / Modrinth 独立更新日志文件及其关联。 / Removed the separate CurseForge and Modrinth changelog files and their references.
+- 卡牌栏选择器改为 **3 列** 显示,同屏可见更多卡牌。 / The card selector now displays **3 columns**, showing more cards at once.
+
+### 已修复BUG / Bug Fixes
+- 修复骰神赐福进行中放入蓄力会立即转换为全力攻击的问题:赐福进行中放入的蓄力本次赐福不生效、不转换,改为下次触发骰神赐福时生效并在其结束时转换。 / Fixed Charge converting to Full Power immediately when placed during an active Dice Blessing: a Charge placed mid-blessing is inactive for the current blessing and now only takes effect on the next blessing, converting to Full Power when that blessing ends.
 
 ### 工程 / Project
 - 版本号更新为 `1.1.2-rc1`。 / Version updated to `1.1.2-rc1`.

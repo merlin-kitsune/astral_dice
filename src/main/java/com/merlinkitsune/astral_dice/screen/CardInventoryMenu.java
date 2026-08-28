@@ -4,7 +4,9 @@ import com.merlinkitsune.astral_dice.combat.CardRegistry;
 import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
 import com.merlinkitsune.astral_dice.component.AppliedStone;
 import com.merlinkitsune.astral_dice.component.GameplayConstants;
+import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
+import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.component.WeaponEnhancement;
 import com.merlinkitsune.astral_dice.item.dice.DiceCurioItem;
 import com.merlinkitsune.astral_dice.item.ModItems;
@@ -32,6 +34,7 @@ public class CardInventoryMenu extends AbstractContainerMenu {
     private static final int SELECTOR_RIGHT_X = 90;
     private static final int SELECTOR_ROW_Y = 56;
     private static final int SELECTOR_ROW_SPACING = 18;
+    public static final int SELECTOR_COLUMNS = 3;
 
     final Player player;
     final Inventory playerInventory;
@@ -45,6 +48,8 @@ public class CardInventoryMenu extends AbstractContainerMenu {
     private int maxDefenseCost = GameplayConstants.MAX_CARD_COST;
     private int starLevel = 0;
     private int selectorScrollOffset = 0;
+    // 打开界面时骰子内是否已装有蓄力(用于区分"赐福进行中新放入蓄力")
+    private boolean preSessionHadCharge = false;
     private int displayAttackMin;
     private int displayAttackMax;
     private int displayDefenseMin;
@@ -117,6 +122,15 @@ public class CardInventoryMenu extends AbstractContainerMenu {
         if (!player.level().isClientSide()) {
             loadFromDice();
             refreshDisplayStats();
+            // 记录打开界面时骰子内是否已装有蓄力
+            WeaponEnhancement preEnh = equippedDice.getOrDefault(
+                    ModDataComponents.WEAPON_ENHANCEMENT.get(), WeaponEnhancement.EMPTY);
+            for (AppliedStone s : preEnh.appliedStones()) {
+                if ("charge".equals(s.type())) {
+                    preSessionHadCharge = true;
+                    break;
+                }
+            }
         }
     }
 
@@ -202,9 +216,10 @@ public class CardInventoryMenu extends AbstractContainerMenu {
     }
 
     public int getMaxSelectorScrollOffset() {
-        int attack = getAttackSelectorSlots().size();
-        int defense = getDefenseSelectorSlots().size();
-        return Math.max(0, Math.max(attack, defense) - SELECTOR_VISIBLE_ROWS);
+        // 3 列网格:按行滚动(每行 SELECTOR_COLUMNS 张)
+        int slots = Math.max(getAttackSelectorSlots().size(), getDefenseSelectorSlots().size());
+        int rows = (slots + SELECTOR_COLUMNS - 1) / SELECTOR_COLUMNS;
+        return Math.max(0, rows - SELECTOR_VISIBLE_ROWS);
     }
 
     public void scrollSelector(int amount) {
@@ -290,6 +305,21 @@ public class CardInventoryMenu extends AbstractContainerMenu {
                 }
             }
         }
+        // 蓄力转换延迟:赐福进行中新放入蓄力 → 置位(本次赐福不生效、不转换,下次赐福结束时转换);
+        // 移除了蓄力 → 清除;打开界面时已在骰子内的蓄力不置位
+        boolean hasCharge = false;
+        for (AppliedStone s : stones) {
+            if ("charge".equals(s.type())) {
+                hasCharge = true;
+                break;
+            }
+        }
+        if (!hasCharge) {
+            ModAttachments.setChargeDefer(player, false);
+        } else if (!preSessionHadCharge && player.hasEffect(ModEffects.DICE_BLESSING)) {
+            ModAttachments.setChargeDefer(player, true);
+        }
+
         dice.set(ModDataComponents.WEAPON_ENHANCEMENT.get(),
                 new WeaponEnhancement(totalAttackCost, maxAttackCost, totalDefenseCost, maxDefenseCost, starLevel, stones));
     }

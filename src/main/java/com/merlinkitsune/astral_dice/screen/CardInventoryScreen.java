@@ -42,7 +42,8 @@ public class CardInventoryScreen extends AbstractContainerScreen<CardInventoryMe
     private static final int SELECTOR_ROW_Y = 56;
     private static final int SELECTOR_ROW_SPACING = 18;
     private static final int SELECTOR_VISIBLE_ROWS = CardInventoryMenu.SELECTOR_VISIBLE_ROWS;
-    private static final int SELECTOR_ITEM_SIZE = 16;
+    private static final int SELECTOR_COLUMNS = CardInventoryMenu.SELECTOR_COLUMNS;
+    private static final int SELECTOR_COL_SPACING = 18;
 
     // 这些卡牌图标偏大,在卡牌槽内渲染时缩小
     private static final Set<String> LARGE_CARD_TYPES = Set.of(
@@ -83,8 +84,8 @@ public class CardInventoryScreen extends AbstractContainerScreen<CardInventoryMe
 
         // 卡牌选择器:攻击左列 / 防御右列,按物品栏顺序,不堆叠,支持滚动
         int offset = this.menu.getSelectorScrollOffset();
-        renderSelectorColumn(guiGraphics, x, y, this.menu.getAttackSelectorSlots(), offset, SELECTOR_LEFT_X);
-        renderSelectorColumn(guiGraphics, x, y, this.menu.getDefenseSelectorSlots(), offset, SELECTOR_RIGHT_X);
+        renderSelectorGrid(guiGraphics, x, y, this.menu.getAttackSelectorSlots(), offset, SELECTOR_LEFT_X);
+        renderSelectorGrid(guiGraphics, x, y, this.menu.getDefenseSelectorSlots(), offset, SELECTOR_RIGHT_X);
     }
 
     @Override
@@ -169,11 +170,13 @@ public class CardInventoryScreen extends AbstractContainerScreen<CardInventoryMe
         guiGraphics.renderItemDecorations(this.font, stack, drawX, drawY);
     }
 
-    private void renderSelectorColumn(GuiGraphics guiGraphics, int guiX, int guiY, List<Slot> slots, int offset, int colX) {
+    // 3 列网格:同一侧(攻击/防御)的卡牌按 3 列排布,按行滚动
+    private void renderSelectorGrid(GuiGraphics guiGraphics, int guiX, int guiY, List<Slot> slots, int offset, int colStartX) {
         for (int i = 0; i < slots.size(); i++) {
-            int row = i - offset;
+            int row = i / SELECTOR_COLUMNS - offset;
             if (row < 0 || row >= SELECTOR_VISIBLE_ROWS) continue;
-            int sx = guiX + colX;
+            int col = i % SELECTOR_COLUMNS;
+            int sx = guiX + colStartX + col * SELECTOR_COL_SPACING;
             int sy = guiY + SELECTOR_ROW_Y + row * SELECTOR_ROW_SPACING;
             ItemStack stack = slots.get(i).getItem();
             if (!stack.isEmpty()) {
@@ -195,9 +198,12 @@ public class CardInventoryScreen extends AbstractContainerScreen<CardInventoryMe
         int localY = (int) (mouseY - this.topPos);
         boolean defense = localX >= SELECTOR_RIGHT_X;
         int colX = defense ? SELECTOR_RIGHT_X : SELECTOR_LEFT_X;
-        if (localX < colX || localX >= colX + SELECTOR_ITEM_SIZE) return null;
+        if (localX < colX || localX >= colX + SELECTOR_COLUMNS * SELECTOR_COL_SPACING) return null;
+        int col = (localX - colX) / SELECTOR_COL_SPACING;
+        if (col >= SELECTOR_COLUMNS) return null;
         int row = (localY - SELECTOR_ROW_Y) / SELECTOR_ROW_SPACING;
-        int index = row + this.menu.getSelectorScrollOffset();
+        if (row < 0) return null;
+        int index = (row + this.menu.getSelectorScrollOffset()) * SELECTOR_COLUMNS + col;
         List<Slot> slots = defense ? this.menu.getDefenseSelectorSlots() : this.menu.getAttackSelectorSlots();
         if (index >= 0 && index < slots.size()) {
             return slots.get(index);
