@@ -1,5 +1,20 @@
 # Changelog / 更新日志
 
+## 1.1.1-rc1
+
+### 新内容 / New Content
+- 看板立牌（mimi）技能重做：被动改为“合成、奖励、返还卡牌时，每获得一张战斗牌 +1 星币；装备时筹码栏位 +1；每累计 25 个星币获得 1 个随机筹码（蓝色 60% / 紫色 35% / 金色 5%）”；主动改为“回收物品栏中全部卡牌（含专属牌），返还 N+1 张随机卡牌（不含专属牌）”。 / Mimi sign reworked: passive now grants +1 Star Coin per battle card gained from crafting, rewards, or card returns, +1 chip slot while equipped, and a random chip every 25 Star Coins (Blue 60% / Purple 35% / Gold 5%); active now recycles all cards in the inventory (including exclusive cards) and returns N+1 random cards (exclusive cards excluded).
+- 新增通用谜之炖菜配方；诅咒之剑配方改用 `astral_dice:suspicious_stews` 标签。 / Added a generic Suspicious Stew recipe; Cursed Sword now uses the `astral_dice:suspicious_stews` tag.
+
+### 界面与显示 / UI & Display
+- 新增骇客立牌“远程骇入”效果图标与描述；立牌主动技能 ActionBar 改用本地化名称；命运指引备注颜色修正。 / Added Nancy Lu "Remote Hack" effect icon and description; sign active-skill ActionBar now uses localized names; fixed Fate Guidance note color.
+
+### 已修复BUG / Bug Fixes
+- 修复治愈图标在计时结束且未再次触发时未移除的问题。 / Fixed the healing icon not being removed when its timer ends without re-triggering.
+
+### 工程 / Project
+- 版本号更新为 `1.1.1-rc1`。 / Version updated to `1.1.1-rc1`.
+
 ## 1.1.0-rc1
 
 ### 新内容 / New Content
