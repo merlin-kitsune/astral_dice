@@ -1,21 +1,22 @@
 # Changelog / 更新日志
 
-## 1.1.2-rc1
+## 1.1.3-rc1
 
 ### 新内容 / New Content
 - 新增**计时器守卫**:本模组所有有时长效果严格按 20 tick/秒 流动,不受任何加快/减慢效果时间的 buff(如神秘遗物+ 的烈焰之核)影响。 / Added a timer guard: all timed effects of this mod now strictly tick at 20 t/s, immune to buffs that speed up or slow down effect durations (e.g. the Blazing Core from Enigmatic Legacy+).
+- 卡牌栏选择器改为 **3 列** 显示,同屏可见更多卡牌。 / The card selector now displays **3 columns**, showing more cards at once.
 - 同步本地中文文本修改(看板立牌 tooltip 措辞、命运的指引描述)。 / Synced local zh_cn.json text updates (Mimi sign tooltip wording, Fate Guidance description).
 - 移除 CurseForge / Modrinth 独立更新日志文件及其关联。 / Removed the separate CurseForge and Modrinth changelog files and their references.
-- 卡牌栏选择器改为 **3 列** 显示,同屏可见更多卡牌。 / The card selector now displays **3 columns**, showing more cards at once.
 
 ### 内容与平衡性调整 / Balance Changes
 - 岿然不动、狂暴持续时间调整为 **3:00**。 / Unwavering and Berserk durations adjusted to **3:00**.
 
 ### 已修复BUG / Bug Fixes
 - 修复骰神赐福进行中放入蓄力会立即转换为全力攻击的问题:赐福进行中放入的蓄力本次赐福不生效、不转换,改为下次触发骰神赐福时生效并在其结束时转换。 / Fixed Charge converting to Full Power immediately when placed during an active Dice Blessing: a Charge placed mid-blessing is inactive for the current blessing and now only takes effect on the next blessing, converting to Full Power when that blessing ends.
+- 修复标记效果消失后发光效果残留的问题:发光改为与标记同寿命(不再使用无限时长),多层标记同步刷新,标记结束时发光随之消失。 / Fixed the glowing effect lingering after the mark disappears: glowing now shares the mark's lifetime (no more infinite duration), is refreshed on layer transitions, and ends together with the mark.
 
 ### 工程 / Project
-- 版本号更新为 `1.1.2-rc1`。 / Version updated to `1.1.2-rc1`.
+- 版本号更新为 `1.1.3-rc1`。 / Version updated to `1.1.3-rc1`.
 ## 1.1.1-rc1
 
 ### 新内容 / New Content
