@@ -1,5 +1,7 @@
 package com.merlinkitsune.astral_dice.item.card;
 
+import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
+
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectCategory;
@@ -38,7 +40,7 @@ public class FightPoisonWithPoisonCardItem extends BaseEffectCardItem {
 
     @Override
     protected void applyEffect(Level level, Player user, LivingEntity applyTo, ItemStack stack) {
-        applyTo.addEffect(new MobEffectInstance(MobEffects.POISON, POISON_DURATION_TICKS, 0, false, true));
+        EffectTimerGuard.apply(applyTo, new MobEffectInstance(MobEffects.POISON, POISON_DURATION_TICKS, 0, false, true));
         if (applyTo instanceof Player targetPlayer) {
             ModAttachments.setFightPoisonWithPoisonRegenAt(targetPlayer,
                     targetPlayer.level().getGameTime() + REGEN_DELAY_TICKS);
@@ -54,7 +56,7 @@ public class FightPoisonWithPoisonCardItem extends BaseEffectCardItem {
         ModAttachments.setFightPoisonWithPoisonRegenAt(player, 0);
         removeUpToThreeVanillaNegativeEffects(player);
         // ambient=false, visible=false, showIcon=false → 隐藏生命恢复效果图标
-        player.addEffect(new MobEffectInstance(MobEffects.REGENERATION, REGEN_DURATION_TICKS, 1, false, false, false));
+        EffectTimerGuard.apply(player, new MobEffectInstance(MobEffects.REGENERATION, REGEN_DURATION_TICKS, 1, false, false, false));
     }
 
     /** 移除最多 3 种原版负面效果(仅 minecraft 命名空间且为 HARMFUL 分类) */

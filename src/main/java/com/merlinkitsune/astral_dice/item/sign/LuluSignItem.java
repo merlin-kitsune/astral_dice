@@ -1,5 +1,7 @@
 package com.merlinkitsune.astral_dice.item.sign;
 
+import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
+
 import com.merlinkitsune.astral_dice.component.GameplayConstants;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -76,7 +78,7 @@ public class LuluSignItem extends BaseSignItem {
         for (LivingEntity entity : nearby) {
             if (entity instanceof Enemy) {
                 // 敌对生物:缓慢 60 秒
-                entity.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, 1200, 0, false, true));
+                EffectTimerGuard.apply(entity, new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, 1200, 0, false, true));
             } else if (isHealTarget(entity, player)) {
                 // 玩家/宠物/可骑乘生物:瞬间治疗 1
                 entity.addEffect(new MobEffectInstance(MobEffects.HEAL, 1, 0, false, true));

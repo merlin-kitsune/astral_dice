@@ -9,6 +9,8 @@ import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import net.neoforged.neoforge.registries.NeoForgeRegistries;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import com.merlinkitsune.astral_dice.item.HealingManager;
@@ -742,4 +744,16 @@ public class ModAttachments {
     public static void setDefenseCardConsumedThisBlessing(net.minecraft.world.entity.player.Player player, boolean value) {
         player.setData(DEFENSE_CARD_CONSUMED_BLESSING.get(), value);
     }
+
+    // 计时器守卫:本模组有时长效果的结束时刻记录(效果注册名 → 结束 tick + 重施加参数)。
+    // 仅服务端使用,序列化持久化;由 EffectTimerGuard 维护,保证效果严格按 20t/s 流动。
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Map<String,
+            com.merlinkitsune.astral_dice.event.EffectTimerGuard.TimerEntry>>> EFFECT_TIMER_ENDS =
+            ATTACHMENTS.register("effect_timer_ends",
+                    () -> AttachmentType.<Map<String,
+                            com.merlinkitsune.astral_dice.event.EffectTimerGuard.TimerEntry>>builder(
+                                    () -> new HashMap<>())
+                            .serialize(Codec.unboundedMap(Codec.STRING,
+                                    com.merlinkitsune.astral_dice.event.EffectTimerGuard.TimerEntry.CODEC))
+                            .build());
 }

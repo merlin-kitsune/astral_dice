@@ -1,5 +1,7 @@
 package com.merlinkitsune.astral_dice.item.card;
 
+import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
+
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
@@ -29,6 +31,6 @@ public class UnwaveringCardItem extends BaseEffectCardItem {
     @Override
     protected void applyEffect(Level level, Player user, LivingEntity applyTo, ItemStack stack) {
         applyTo.addEffect(new MobEffectInstance(ModEffects.UNWAVERING, 1200, 0, false, false, true));
-        applyTo.addEffect(new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE, 1200, 1, false, true));
+        EffectTimerGuard.apply(applyTo, new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE, 1200, 1, false, true));
     }
 }

@@ -1,5 +1,7 @@
 package com.merlinkitsune.astral_dice.item.sign;
 
+import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
+
 import com.merlinkitsune.astral_dice.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
@@ -53,9 +55,9 @@ public class JasmineSignItem extends BaseSignItem {
             player.addEffect(new MobEffectInstance(ModEffects.JASMINE_SWEEP, 2400, 0, false, false, true));
             // 随机获得以下任一效果(时长与主动技能同步 2 分钟)
             if (ThreadLocalRandom.current().nextBoolean()) {
-                player.addEffect(new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE, 2400, 0, false, true)); // 抗性提升 2 分钟
+                EffectTimerGuard.apply(player, new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE, 2400, 0, false, true)); // 抗性提升 2 分钟
             } else {
-                player.addEffect(new MobEffectInstance(MobEffects.DAMAGE_BOOST, 2400, 0, false, true)); // 力量 2 分钟
+                EffectTimerGuard.apply(player, new MobEffectInstance(MobEffects.DAMAGE_BOOST, 2400, 0, false, true)); // 力量 2 分钟
             }
         }
         return InteractionResultHolder.success(stack);

@@ -1,5 +1,7 @@
 package com.merlinkitsune.astral_dice.item;
 
+import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
+
 import com.merlinkitsune.astral_dice.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
@@ -77,7 +79,7 @@ public final class InvestigationEventUtil {
             }
         }
         for (Player p : recipients) {
-            p.addEffect(new MobEffectInstance(MobEffects.INVISIBILITY, duration, 0, false, true));
+            EffectTimerGuard.apply(p, new MobEffectInstance(MobEffects.INVISIBILITY, duration, 0, false, true));
             // 调查阶段效果:所有受影响的玩家均显示(amplifier = 阶段序号 1=I,2=II,3=III,4=真相揭露)
             p.addEffect(new MobEffectInstance(ModEffects.INVESTIGATION_BONUS, duration, stage, false, false, true));
         }

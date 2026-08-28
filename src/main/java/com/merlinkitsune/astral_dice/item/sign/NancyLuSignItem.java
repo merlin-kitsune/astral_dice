@@ -1,5 +1,7 @@
 package com.merlinkitsune.astral_dice.item.sign;
 
+import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
+
 import com.merlinkitsune.astral_dice.combat.CardRegistry;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
@@ -101,7 +103,7 @@ public class NancyLuSignItem extends BaseSignItem {
         long now = level.getGameTime();
 
         // 立即进入完全隐身状态(最多持续 30 秒)
-        player.addEffect(new MobEffectInstance(net.minecraft.world.effect.MobEffects.INVISIBILITY,
+        EffectTimerGuard.apply(player, new MobEffectInstance(net.minecraft.world.effect.MobEffects.INVISIBILITY,
                 HIDDEN_DURATION_TICKS, 0, false, true, true));
         ModAttachments.setNancyLuHiddenUntil(player, now + HIDDEN_DURATION_TICKS);
         // 清除附近已经锁定该玩家的生物目标,确保“绝对无法被生物索敌”

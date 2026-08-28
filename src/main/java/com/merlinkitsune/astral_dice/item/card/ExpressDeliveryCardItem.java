@@ -1,5 +1,7 @@
 package com.merlinkitsune.astral_dice.item.card;
 
+import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
+
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.LivingEntity;
@@ -26,6 +28,6 @@ public class ExpressDeliveryCardItem extends BaseEffectCardItem {
 
     @Override
     protected void applyEffect(Level level, Player user, LivingEntity applyTo, ItemStack stack) {
-        applyTo.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, DURATION_TICKS, 1, false, true));
+        EffectTimerGuard.apply(applyTo, new MobEffectInstance(MobEffects.MOVEMENT_SPEED, DURATION_TICKS, 1, false, true));
     }
 }

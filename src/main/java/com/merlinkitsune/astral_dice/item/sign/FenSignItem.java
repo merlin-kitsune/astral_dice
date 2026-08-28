@@ -1,5 +1,7 @@
 package com.merlinkitsune.astral_dice.item.sign;
 
+import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
+
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import net.minecraft.world.InteractionResultHolder;
@@ -71,7 +73,7 @@ public class FenSignItem extends BaseSignItem {
         // 若拥有养精蓄锐:恢复 6 点血量并获得迅捷 1:00
         if (stacks > 0) {
             player.heal(ACTIVE_HEAL);
-            player.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED,
+            EffectTimerGuard.apply(player, new MobEffectInstance(MobEffects.MOVEMENT_SPEED,
                     FRENZY_DURATION_TICKS, 0, false, true));
         }
         // 若养精蓄锐已达 5 层:消耗 2 层,下次骰神赐福期间触发"战斗爽·扩散"

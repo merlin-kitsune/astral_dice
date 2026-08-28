@@ -58,7 +58,7 @@ public final class AstralEvents {
             case 2 -> new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 600, 0);
             default -> new MobEffectInstance(MobEffects.DAMAGE_BOOST, 600, 0);
         };
-        target.addEffect(effect);
+        EffectTimerGuard.apply(target, effect);
     }
 
     // 便捷:以 modid 命名空间注册

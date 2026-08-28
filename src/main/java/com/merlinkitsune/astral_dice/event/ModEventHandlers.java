@@ -210,7 +210,7 @@ public class ModEventHandlers {
                 ModAttachments.setSignReadyExpire(player, 0);
                 ModAttachments.setWeakMarkSource(target, Optional.of(player.getUUID()));
                 target.addEffect(new MobEffectInstance(ModEffects.WEAK_MARK, 6000, 0, false, true));
-                target.addEffect(new MobEffectInstance(MobEffects.WEAKNESS, 6000, 0, false, true));
+                EffectTimerGuard.apply(target, new MobEffectInstance(MobEffects.WEAKNESS, 6000, 0, false, true));
                 // 主动成功施加:移除"待命"提示效果并开始玩家级冷却
                 player.removeEffect(ModEffects.HAIQING_READY);
                 ModAttachments.setSignActiveCooldownEnd(player,
@@ -577,7 +577,7 @@ public class ModEventHandlers {
         }
 
         if (hasShadowStrike && !player.level().isClientSide()) {
-            target.addEffect(new MobEffectInstance(MobEffects.DARKNESS, 60, 0, false, false));
+            EffectTimerGuard.apply(target, new MobEffectInstance(MobEffects.DARKNESS, 60, 0, false, false));
         }
 
         // === DICE STONE CONSUMPTION (与赐福触发逻辑一致:仅在触发骰神赐福的那次攻击消耗一次耐久;
@@ -1053,6 +1053,8 @@ public class ModEventHandlers {
     @SubscribeEvent(priority = EventPriority.HIGH)
     public static void onModEffectRemovalPrevented(MobEffectEvent.Remove event) {
         if (event.getEntity().level().isClientSide()) return;
+        // 计时器守卫的强制移除(时长校正)放行
+        if (EffectTimerGuard.isForcedRemoval()) return;
         // 死亡时允许清除,保证死亡后效果状态能正常重置
         if (event.getEntity().isDeadOrDying()) return;
         MobEffectInstance effect = event.getEffectInstance();
@@ -1078,6 +1080,40 @@ public class ModEventHandlers {
         LivingEntity entity = event.getEntity();
         if (entity.level().isClientSide()) return;
         ModAttachments.setUndercoverSource(entity, Optional.empty());
+    }
+
+    // 计时器守卫:每 tick 之前校正本模组效果时长(严格 20t/s,不受烈焰之核等效果时间加速/减速 buff 影响)
+    @SubscribeEvent
+    public static void onPlayerTickPre(PlayerTickEvent.Pre event) {
+        Player player = event.getEntity();
+        if (player.level().isClientSide()) return;
+        EffectTimerGuard.tick(player);
+    }
+
+    // 计时器守卫:本模组自定义效果被成功施加时记录结束时刻(有限时长效果;无限时长效果不记录)
+    @SubscribeEvent
+    public static void onEffectTimerRecord(MobEffectEvent.Added event) {
+        if (event.getEntity().level().isClientSide()) return;
+        if (!(event.getEntity() instanceof Player player)) return;
+        MobEffectInstance instance = event.getEffectInstance();
+        if (instance == null || instance.getEffect() == null) return;
+        String id = instance.getEffect().getRegisteredName();
+        if (id == null || !id.startsWith(AstralDiceMod.MODID + ":")) return;
+        EffectTimerGuard.record(player, instance);
+    }
+
+    // 计时器守卫:本模组效果被成功移除(未被拦截/非守卫自身/非死亡)时遗忘计时记录,
+    // 避免守卫把本模组主动结束的效果(如卸下骇客立牌结束隐身)重新施加回来
+    @SubscribeEvent
+    public static void onEffectTimerForget(MobEffectEvent.Remove event) {
+        if (event.getEntity().level().isClientSide()) return;
+        if (event.isCanceled()) return;
+        if (EffectTimerGuard.isForcedRemoval()) return;
+        if (event.getEntity().isDeadOrDying()) return;
+        if (!(event.getEntity() instanceof Player player)) return;
+        MobEffectInstance instance = event.getEffectInstance();
+        if (instance == null || instance.getEffect() == null) return;
+        EffectTimerGuard.forget(player, instance.getEffect().getRegisteredName());
     }
 
     @SubscribeEvent
@@ -2216,6 +2252,8 @@ public class ModEventHandlers {
         if (!(event.getEntity() instanceof Player player)) return;
         if (player.level().isClientSide()) return;
         HealingManager.clear(player);
+        // 计时器守卫:清空效果结束时刻记录,防止死亡后守卫重新施加效果
+        EffectTimerGuard.clear(player);
         // 死亡时统一重置效果相关状态,避免效果被清除后附件残留
         ModAttachments.setDefenseCardConsumedThisBlessing(player, false);
         ModAttachments.setSignReadyType(player, 0);
@@ -2331,6 +2369,8 @@ public class ModEventHandlers {
         if (!(event.getEntity() instanceof Player player)) return;
         if (player.level().isClientSide()) return;
         ModAttachments.setDefenseCardConsumedThisBlessing(player, false);
+        // 计时器守卫:清空效果结束时刻记录,避免重登后守卫重新施加旧效果
+        EffectTimerGuard.clear(player);
         player.removeEffect(ModEffects.DICE_BLESSING);
         // 重连后刷新治愈体系(上限收缩/效果显示;赐福边沿 prev 标记初始 false,不会误触发减半)
         HealingManager.tick(player);

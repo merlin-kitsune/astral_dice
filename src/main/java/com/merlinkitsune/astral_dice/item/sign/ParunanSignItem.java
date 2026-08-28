@@ -1,5 +1,7 @@
 package com.merlinkitsune.astral_dice.item.sign;
 
+import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
+
 import com.merlinkitsune.astral_dice.component.GameplayConstants;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -50,7 +52,7 @@ public class ParunanSignItem extends BaseSignItem {
         } else {
             effect = new MobEffectInstance(MobEffects.HERO_OF_THE_VILLAGE, 18000, 0, false, true); // 村庄英雄 15 分钟
         }
-        player.addEffect(effect);
+        EffectTimerGuard.apply(player, effect);
 
         return InteractionResultHolder.success(stack);
     }
