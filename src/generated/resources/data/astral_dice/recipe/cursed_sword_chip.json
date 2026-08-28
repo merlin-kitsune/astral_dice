@@ -12,7 +12,7 @@
       "item": "minecraft:golden_sword"
     },
     "M": {
-      "item": "minecraft:suspicious_stew"
+      "tag": "astral_dice:suspicious_stews"
     },
     "Z": {
       "item": "minecraft:popped_chorus_fruit"
