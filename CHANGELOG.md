@@ -1,5 +1,14 @@
 # Changelog / 更新日志
 
+## 1.1.2-rc1
+
+### 新内容 / New Content
+- 新增**计时器守卫**:本模组所有有时长效果严格按 20 tick/秒 流动,不受任何加快/减慢效果时间的 buff(如神秘遗物+ 的烈焰之核)影响。 / Added a timer guard: all timed effects of this mod now strictly tick at 20 t/s, immune to buffs that speed up or slow down effect durations (e.g. the Blazing Core from Enigmatic Legacy+).
+- 同步本地中文文本修改(看板立牌 tooltip 措辞、命运的指引描述)。 / Synced local zh_cn.json text updates (Mimi sign tooltip wording, Fate Guidance description).
+- 移除 CurseForge / Modrinth 独立更新日志文件及其关联。 / Removed the separate CurseForge and Modrinth changelog files and their references.
+
+### 工程 / Project
+- 版本号更新为 `1.1.2-rc1`。 / Version updated to `1.1.2-rc1`.
 ## 1.1.1-rc1
 
 ### 新内容 / New Content
