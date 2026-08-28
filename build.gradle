@@ -65,6 +65,12 @@ neoForge {
     // Default run configurations.
     // These can be tweaked, removed, or duplicated as needed.
     runs {
+        // 版本隔离:开发测试游戏目录按 MC 版本隔离(run/<版本>),
+        // 与 1.20.1-forge 分支(run/1.20.1)互不污染 mods/config/saves
+        configureEach {
+            gameDirectory = project.file('run/1.21.1')
+        }
+
         client {
             client()
 
@@ -240,7 +246,7 @@ dependencies {
 //     1) gradlew build -PdeployToPack
 //     2) gradlew build pushToGame  (显式运行 pushToGame 任务)
 // 整合包位置:D:/.minecraft/versions/狐の航空学 Voxy Edition/mods
-def devRunModsDir = file('run/mods')
+def devRunModsDir = file('run/1.21.1/mods')
 def packModsDir = file('D:/.minecraft/versions/狐の航空学 Voxy Edition/mods')
 
 // 默认:推送到项目测试环境(run/mods)
@@ -248,7 +254,7 @@ def jarArchiveProvider = tasks.named('jar').flatMap { it.archiveFile }
 
 tasks.register('pushToDevRun') {
     group = 'build'
-    description = 'Copy the built mod jar to the dev run mods folder (run/mods) and remove old versions.'
+    description = 'Copy the built mod jar to the dev run mods folder (run/1.21.1/mods) and remove old versions.'
     dependsOn tasks.named('jar')
     doLast {
         def jarFile = jarArchiveProvider.get().asFile
