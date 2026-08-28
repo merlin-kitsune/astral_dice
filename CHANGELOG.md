@@ -1,6 +1,6 @@
 # Changelog / 更新日志
 
-## 1.1.3-rc1
+## 1.1.2-rc1
 
 ### 新内容 / New Content
 - 新增**计时器守卫**:本模组所有有时长效果严格按 20 tick/秒 流动,不受任何加快/减慢效果时间的 buff(如神秘遗物+ 的烈焰之核)影响。 / Added a timer guard: all timed effects of this mod now strictly tick at 20 t/s, immune to buffs that speed up or slow down effect durations (e.g. the Blazing Core from Enigmatic Legacy+).
@@ -16,7 +16,7 @@
 - 修复标记效果消失后发光效果残留的问题:发光改为与标记同寿命(不再使用无限时长),多层标记同步刷新,标记结束时发光随之消失。 / Fixed the glowing effect lingering after the mark disappears: glowing now shares the mark's lifetime (no more infinite duration), is refreshed on layer transitions, and ends together with the mark.
 
 ### 工程 / Project
-- 版本号更新为 `1.1.3-rc1`。 / Version updated to `1.1.3-rc1`.
+- 版本号更新为 `1.1.2-rc1`。 / Version updated to `1.1.2-rc1`.
 ## 1.1.1-rc1
 
 ### 新内容 / New Content
