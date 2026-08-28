@@ -22,13 +22,15 @@ public final class MarkManager {
         return apply(target, MARK_DURATION_TICKS);
     }
 
-    // 施加一层标记,指定持续时间;同时使目标获得"高亮"(直到标记层数归零,由标记结束逻辑移除)
+    // 施加一层标记,指定持续时间;同时使目标获得"高亮"。
+    // 发光与标记保持同一寿命(时长一致),不再使用无限时长——标记自然结束时发光随之一同消失,
+    // 不依赖 Expired 事件链的清理(多层标记由 onMarkExpired 同步刷新);玩家目标经计时器守卫记录。
     public static int apply(LivingEntity target, int durationTicks) {
         var existing = target.getEffect(ModEffects.MARKED);
         int level = existing != null ? Math.min(existing.getAmplifier() + 1, GameplayConstants.MAX_MARKER - 1) : 0;
         target.addEffect(new MobEffectInstance(ModEffects.MARKED, durationTicks, level, false, true));
-        // 获得标记的目标被施加"高亮"(大时长,标记归零时由 onMarkExpired 移除)
-        target.addEffect(new MobEffectInstance(net.minecraft.world.effect.MobEffects.GLOWING, Integer.MAX_VALUE, 0, false, true));
+        com.merlinkitsune.astral_dice.event.EffectTimerGuard.apply(target,
+                new MobEffectInstance(net.minecraft.world.effect.MobEffects.GLOWING, durationTicks, 0, false, true));
         return level + 1;
     }
 
