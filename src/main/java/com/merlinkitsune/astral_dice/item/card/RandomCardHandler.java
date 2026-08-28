@@ -185,11 +185,8 @@ public final class RandomCardHandler {
     public static void giveCardTo(Player receiver, CardCategory category) {
         ItemStack card = randomCard(category);
         if (card.isEmpty()) return;
+        // 看板立牌被动已由 VitaminPillChipItem 统一触发(与维生素药丸相同机制,不含拾取)
         VitaminPillChipItem.giveCard(receiver, card);
-        // 看板立牌被动:每获得 1 张战斗牌(攻击/防御卡)获得 1 星币(佩戴看板立牌时)
-        if (com.merlinkitsune.astral_dice.combat.CardRegistry.itemToType(card) != null) {
-            com.merlinkitsune.astral_dice.item.sign.MimiSignItem.onBattleCardGained(receiver);
-        }
     }
 
     // 收集发放目标:范围玩家 + (可选)团队队友;排除自己(按作用域);人数上限随机抽样

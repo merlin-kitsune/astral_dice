@@ -12,6 +12,7 @@ import top.theillusivec4.curios.api.SlotContext;
 import top.theillusivec4.curios.api.type.capability.ICurioItem;
 import top.theillusivec4.curios.api.type.inventory.ICurioStacksHandler;
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
+import com.merlinkitsune.astral_dice.item.sign.MimiSignItem;
 
 public class DiceCurioItem extends Item implements ICurioItem {
     private static final Logger LOGGER = LoggerFactory.getLogger(DiceCurioItem.class);
@@ -94,9 +95,15 @@ public class DiceCurioItem extends Item implements ICurioItem {
     // === 筹码栏位 ===
     private void tryApplyChipBonus(SlotContext slotContext, ItemStack stack, boolean forceRemove) {
         if (!(slotContext.entity() instanceof Player player)) return;
+        int target = targetChipSlots(stack);
+        // 看板立牌被动:装备时筹码栏位 +1
+        if (MimiSignItem.isEquipped(player)) {
+            target += 1;
+        }
+        int finalTarget = target;
         CuriosApi.getCuriosInventory(player)
                 .flatMap(h -> h.getStacksHandler("chip"))
-                .ifPresent(handler -> setChipSlotCount(player, handler, targetChipSlots(stack), forceRemove));
+                .ifPresent(handler -> setChipSlotCount(player, handler, finalTarget, forceRemove));
     }
 
     private static int targetChipSlots(ItemStack stack) {

@@ -3,6 +3,8 @@ package com.merlinkitsune.astral_dice.item.chip;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import top.theillusivec4.curios.api.CuriosApi;
+import com.merlinkitsune.astral_dice.combat.CardRegistry;
+import com.merlinkitsune.astral_dice.item.sign.MimiSignItem;
 import com.merlinkitsune.astral_dice.item.HealingManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
 
@@ -30,10 +32,15 @@ public class VitaminPillChipItem extends BaseChipItem {
         if (player == null || player.level().isClientSide()) return;
         if (card == null || card.isEmpty()) return;
         int amount = card.getCount();
+        boolean battleCard = CardRegistry.itemToType(card) != null;
         if (!player.getInventory().add(card)) {
             player.drop(card, false);
         } else {
             onCardGained(player, amount);
+            // 看板立牌被动:与维生素药丸相同的触发机制,仅成功放入背包时触发
+            if (battleCard) {
+                MimiSignItem.onBattleCardGained(player);
+            }
         }
     }
 
@@ -44,6 +51,10 @@ public class VitaminPillChipItem extends BaseChipItem {
     public static void onCardGained(Player player, ItemStack card) {
         if (card == null || card.isEmpty() || !ModItems.isCardItem(card)) return;
         onCardGained(player, card.getCount());
+        // 看板立牌被动:合成/奖励/返还卡牌时,战斗牌触发星币奖励
+        if (CardRegistry.itemToType(card) != null) {
+            MimiSignItem.onBattleCardGained(player);
+        }
     }
 
     /**
