@@ -247,7 +247,7 @@ public final class HealingManager {
 
     /**
      * 刷新"治愈"效果:等级 = 当前治愈点(层数);时长 = 骰神赐福剩余 tick(赐福中)
-     * 或固定常显时长(无赐福时 5 分钟,每 tick 刷新维持显示)。无治愈点时移除效果。
+     * 或治愈计时器剩余时间。无治愈点,或计时结束且未再次触发赐福时移除效果。
      */
     public static void updateEffect(Player player) {
         if (player.level().isClientSide()) return;
@@ -256,10 +256,20 @@ public final class HealingManager {
             player.removeEffect(ModEffects.HEALING);
             return;
         }
-        int remain = IDLE_EFFECT_TICKS;
+        long now = player.level().getGameTime();
+        long timerEnd = ModAttachments.getHealingTimerEnd(player);
         MobEffectInstance blessing = player.getEffect(ModEffects.DICE_BLESSING);
+        // 仅在有骰神赐福或治愈计时器仍在运行时显示效果图标;
+        // 计时结束且未再次触发赐福时移除图标,避免残留。
+        if (blessing == null && timerEnd <= now) {
+            player.removeEffect(ModEffects.HEALING);
+            return;
+        }
+        int remain;
         if (blessing != null) {
             remain = Math.max(1, blessing.getDuration());
+        } else {
+            remain = (int) Math.max(1, timerEnd - now);
         }
         // amplifier = 层数 - 1(1 层显示 I 级);visible=true 使效果在 HUD 正常显示
         player.addEffect(new MobEffectInstance(ModEffects.HEALING, remain, total - 1, false, false, true));

@@ -2038,14 +2038,12 @@ public class ModEventHandlers {
                     .withStyle(ChatFormatting.GRAY));
             tooltip.add(Component.translatable("tooltip.astral_dice.card.fate_saturation")
                     .withStyle(ChatFormatting.GRAY));
-            // 联动条目:仅安装相关模组时显示(紫色,无编号)
+            // 联动条目:仅安装相关模组时显示(备注区,紫色,无编号)
             if (net.neoforged.fml.ModList.get().isLoaded("enigmaticlegacyplus")) {
-                tooltip.add(tt("tooltip.astral_dice.card.fate_curse_mitigation")
-                        .withStyle(ChatFormatting.LIGHT_PURPLE));
+                addSignNoteLines(tooltip, "tooltip.astral_dice.card.fate_curse_mitigation");
             }
             if (net.neoforged.fml.ModList.get().isLoaded("irons_spellbooks")) {
-                tooltip.add(Component.translatable("tooltip.astral_dice.card.fate_spell_mana")
-                        .withStyle(ChatFormatting.LIGHT_PURPLE));
+                addSignNoteLines(tooltip, "tooltip.astral_dice.card.fate_spell_mana");
             }
             addEffectCardPlayCountTooltip(tooltip, player);
             tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown",

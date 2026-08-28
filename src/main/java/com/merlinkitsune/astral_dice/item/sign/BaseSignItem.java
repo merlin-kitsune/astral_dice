@@ -70,7 +70,7 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
         if (handler.getSlots() <= 0) return;
         ItemStack stack = handler.getStacks().getStackInSlot(0);
         if (!(stack.getItem() instanceof BaseSignItem sign)) return;
-        String signName = stack.getHoverName().getString();
+        net.minecraft.network.chat.Component signName = stack.getHoverName();
         // 1. 玩家级冷却检查:冷却中按键无效,并明确提示"<立牌名>冷却中"(修复:触发成功与冷却拒绝的反馈混淆)
         long cdEnd = ModAttachments.getSignActiveCooldownEnd(player);
         if (cdEnd > 0 && now < cdEnd) {
@@ -94,7 +94,7 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
     }
 
     // 服务端发送立牌技能反馈(actionbar 提示,带立牌名称前缀;统一由服务端判定成功/拒绝,避免客户端推测混淆)
-    private static void notifyActionBar(Player player, String langKey, String signName, ChatFormatting color) {
+    private static void notifyActionBar(Player player, String langKey, net.minecraft.network.chat.Component signName, ChatFormatting color) {
         if (!(player instanceof net.minecraft.server.level.ServerPlayer serverPlayer)) return;
         net.minecraft.network.chat.Component msg =
                 net.minecraft.network.chat.Component.translatable(langKey, signName).withStyle(color);
