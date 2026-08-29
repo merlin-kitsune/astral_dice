@@ -196,16 +196,16 @@ dependencies {
 // AutoForge: end mod addon dependencies
 
 // === 编译产物分发规则(与 1.21.1 分支保持同一任务面;旧 jar 清理按版本后缀隔离)===
-// 默认行为:每次构建完成后同时推送到两个目标,并各自删除旧的 astral_dice-*+1.20.1.jar:
+// 默认行为:每次构建完成后同时推送到两个目标,并各自删除旧的 astral_dice-*+forge_1.20.1.jar:
 //   1) 项目自身测试环境 run/mods(本机 runClient 调试)
 //   2) 1.20.1 用户测试环境 D:/.minecraft/versions/1.20.1 模组测试/mods(用户手动游戏内验证)
 // 目标根目录不存在时(如 CI 环境)自动跳过推送,不影响构建。
 def devRunModsDir = file('run/1.20.1/mods')
 def packModsDir = file('D:/.minecraft/versions/1.20.1 模组测试/mods')
 
-// 本分支(1.20.1)的旧产物识别规则:只清理带 +1.20.1 后缀的 jar,避免误删 1.21.1 分支产物
+// 本分支(1.20.1)的旧产物识别规则:只清理带 +forge_1.20.1 后缀的 jar,避免误删 1.21.1 分支产物
 def staleJarMatcher = { File f ->
-    f.isFile() && (f.name ==~ /astral_dice-.+\+1\.20\.1\.jar/)
+    f.isFile() && (f.name ==~ /astral_dice-.+\+forge_1\.20\.1\.jar/)
 }
 
 // 产物来源按环境区分(MDG LegacyForge 双产物):
@@ -270,9 +270,38 @@ tasks.register('pushToGame') {
     }
 }
 
+// === 编译产物集中规则:任何版本的编译产物统一复制到仓库根目录 build/libs ===
+def rootBuildLibsDir = rootProject.file('build/libs')
+
+tasks.register('pushToRootBuild') {
+    group = 'build'
+    description = 'Copy the built production jar to the repository root build/libs (shared by both versions).'
+    dependsOn tasks.named('reobfJar')
+    doLast {
+        def jarFile = prodJarArchiveProvider.get().asFile
+        if (!jarFile.exists()) {
+            logger.warn("pushToRootBuild: built jar not found, skipped: ${jarFile}")
+            return
+        }
+        if (!rootBuildLibsDir.exists()) {
+            rootBuildLibsDir.mkdirs()
+        }
+        // 只清理本加载器(forge)旧产物,避免误删 neoforge 版本 jar
+        def stale = rootBuildLibsDir.listFiles().findAll(staleJarMatcher)
+        stale.each { it.delete() }
+        def target = new File(rootBuildLibsDir, jarFile.name)
+        target.withOutputStream { out ->
+            jarFile.withInputStream { inp -> inp.transferTo(out) }
+        }
+        logger.lifecycle("pushToRootBuild: pushed ${jarFile.name} -> ${rootBuildLibsDir}")
+    }
+}
+
 tasks.named('build') {
     // 默认同时推送测试环境与整合包
     finalizedBy tasks.named('pushToDevRun')
     finalizedBy tasks.named('pushToGame')
+    // 编译产物集中到仓库根目录 build/libs
+    finalizedBy tasks.named('pushToRootBuild')
 }
 

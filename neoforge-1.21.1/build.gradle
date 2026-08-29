@@ -297,6 +297,35 @@ tasks.register('pushToGame') {
     }
 }
 
+// === 编译产物集中规则:任何版本的编译产物统一复制到仓库根目录 build/libs ===
+def rootBuildLibsDir = rootProject.file('build/libs')
+
+tasks.register('pushToRootBuild') {
+    group = 'build'
+    description = 'Copy the built mod jar to the repository root build/libs (shared by both versions).'
+    dependsOn tasks.named('jar')
+    doLast {
+        def jarFile = jarArchiveProvider.get().asFile
+        if (!jarFile.exists()) {
+            logger.warn("pushToRootBuild: built jar not found, skipped: ${jarFile}")
+            return
+        }
+        if (!rootBuildLibsDir.exists()) {
+            rootBuildLibsDir.mkdirs()
+        }
+        // 只清理本加载器(neoforge)旧产物,避免误删 forge 版本 jar
+        def stale = rootBuildLibsDir.listFiles().findAll { File f ->
+            f.isFile() && f.name.startsWith('astral_dice-') && f.name.endsWith('.jar') && f.name.contains('+neoforge_')
+        }
+        stale.each { it.delete() }
+        def target = new File(rootBuildLibsDir, jarFile.name)
+        target.withOutputStream { out ->
+            jarFile.withInputStream { inp -> inp.transferTo(out) }
+        }
+        logger.lifecycle("pushToRootBuild: pushed ${jarFile.name} -> ${rootBuildLibsDir}")
+    }
+}
+
 tasks.named('build') {
     // 默认仅推送测试环境
     finalizedBy tasks.named('pushToDevRun')
@@ -304,4 +333,6 @@ tasks.named('build') {
     if (project.hasProperty('deployToPack')) {
         finalizedBy tasks.named('pushToGame')
     }
+    // 编译产物集中到仓库根目录 build/libs
+    finalizedBy tasks.named('pushToRootBuild')
 }
