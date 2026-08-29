@@ -821,9 +821,9 @@ public class ModEventHandlers {
         }
         if (effect.getAmplifier() > 0) {
             entity.addEffect(new MobEffectInstance(ModEffects.MARKED, 1200, effect.getAmplifier() - 1, false, true));
-            // 同步刷新伴随的"高亮",与标记保持同一寿命
+            // 同步刷新伴随的"高亮",与标记保持同一寿命(showIcon=false 不显示 HUD 效果标识器)
             com.merlinkitsune.astral_dice.event.EffectTimerGuard.apply(entity,
-                    new MobEffectInstance(net.minecraft.world.effect.MobEffects.GLOWING, 1200, 0, false, true));
+                    new MobEffectInstance(net.minecraft.world.effect.MobEffects.GLOWING, 1200, 0, false, false));
         } else {
             // 标记层数归零:同时移除伴随的"高亮"效果(兜底;正常情况下发光随标记自然结束)
             entity.removeEffect(net.minecraft.world.effect.MobEffects.GLOWING);

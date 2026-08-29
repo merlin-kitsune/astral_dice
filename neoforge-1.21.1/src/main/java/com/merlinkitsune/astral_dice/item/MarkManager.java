@@ -25,12 +25,13 @@ public final class MarkManager {
     // 施加一层标记,指定持续时间;同时使目标获得"高亮"。
     // 发光与标记保持同一寿命(时长一致),不再使用无限时长——标记自然结束时发光随之一同消失,
     // 不依赖 Expired 事件链的清理(多层标记由 onMarkExpired 同步刷新);玩家目标经计时器守卫记录。
+    // 发光效果 showIcon=false:不显示 HUD 效果标识器(仅保留轮廓视觉,不占效果图标栏)。
     public static int apply(LivingEntity target, int durationTicks) {
         var existing = target.getEffect(ModEffects.MARKED);
         int level = existing != null ? Math.min(existing.getAmplifier() + 1, GameplayConstants.MAX_MARKER - 1) : 0;
         target.addEffect(new MobEffectInstance(ModEffects.MARKED, durationTicks, level, false, true));
         com.merlinkitsune.astral_dice.event.EffectTimerGuard.apply(target,
-                new MobEffectInstance(net.minecraft.world.effect.MobEffects.GLOWING, durationTicks, 0, false, true));
+                new MobEffectInstance(net.minecraft.world.effect.MobEffects.GLOWING, durationTicks, 0, false, false));
         return level + 1;
     }
 

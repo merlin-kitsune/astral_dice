@@ -4,6 +4,7 @@
 
 ### 已修复BUG / Bug Fixes
 - 修复牛奶/`/effect clear` 清除发光但保留标记的问题:标记携带的发光效果与标记同寿命,标记仍存在时发光不再被单独清除(仅 1.21.1)。 / Fixed glow being cleared by milk or `/effect clear` while the mark persisted: the glow carried by a mark now shares its lifetime, and is no longer removed alone while the mark is still active (1.21.1 only).
+- 标记携带的发光效果不再显示 HUD 效果标识器(仅保留实体轮廓发光,不占用效果图标栏;仅 1.21.1)。 / The glow carried by a mark no longer shows a HUD effect icon — only the entity outline remains, without occupying the effect indicator row (1.21.1 only).
 
 ### 工程 / Project
 - 仓库结构迁移为 **multiloader 单仓**（改编自 Player005/multiloader-mod-template）：原 `astra_dice` 仓库 `1.21.1-main` 分支整体迁入 `neoforge-1.21.1/` 子项目，`1.20.1-forge` 分支整体迁入 `forge-1.20.1/` 子项目；因跨 MC 大版本 API 差异，不设 common 共享源码层，两子项目沿用各自原构建脚本。 / Repository restructured as a **multiloader monorepo** (adapted from Player005/multiloader-mod-template): the `1.21.1-main` branch of the former `astra_dice` repo moved wholesale into the `neoforge-1.21.1` subproject and the `1.20.1-forge` branch into `forge-1.20.1`. Due to cross-MC-version API differences there is no shared `common` source set; each subproject keeps its original build scripts.
