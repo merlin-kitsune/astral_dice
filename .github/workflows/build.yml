@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - 'multi-1.20.1/1.21.1'
   pull_request:
   workflow_dispatch:
 
