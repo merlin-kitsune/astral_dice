@@ -2,6 +2,9 @@
 
 ## 未发布 / Unreleased（multiloader 迁移）
 
+### 已修复BUG / Bug Fixes
+- 修复牛奶/`/effect clear` 清除发光但保留标记的问题:标记携带的发光效果与标记同寿命,标记仍存在时发光不再被单独清除(仅 1.21.1)。 / Fixed glow being cleared by milk or `/effect clear` while the mark persisted: the glow carried by a mark now shares its lifetime, and is no longer removed alone while the mark is still active (1.21.1 only).
+
 ### 工程 / Project
 - 仓库结构迁移为 **multiloader 单仓**（改编自 Player005/multiloader-mod-template）：原 `astra_dice` 仓库 `1.21.1-main` 分支整体迁入 `neoforge-1.21.1/` 子项目，`1.20.1-forge` 分支整体迁入 `forge-1.20.1/` 子项目；因跨 MC 大版本 API 差异，不设 common 共享源码层，两子项目沿用各自原构建脚本。 / Repository restructured as a **multiloader monorepo** (adapted from Player005/multiloader-mod-template): the `1.21.1-main` branch of the former `astra_dice` repo moved wholesale into the `neoforge-1.21.1` subproject and the `1.20.1-forge` branch into `forge-1.20.1`. Due to cross-MC-version API differences there is no shared `common` source set; each subproject keeps its original build scripts.
 - 原仓库 git 排除内容（AGENTS.md、docs/、temp/、scripts/、run/ 开发环境、deploy.ps1、opencode.json、.zcode/ 等）一并迁入；`tools/check_lang_sync.py`（原 1.20.1 分支）移至根 `tools/`。 / Formerly git-excluded content (AGENTS.md, docs/, temp/, scripts/, run/ dev environments, deploy.ps1, opencode.json, .zcode/) migrated as well; `tools/check_lang_sync.py` (from the 1.20.1 branch) moved to the root `tools/` directory.

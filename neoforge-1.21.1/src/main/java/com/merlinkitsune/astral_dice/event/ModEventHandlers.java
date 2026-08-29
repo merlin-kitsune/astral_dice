@@ -1058,6 +1058,13 @@ public class ModEventHandlers {
         if (event.getEntity().isDeadOrDying()) return;
         MobEffectInstance effect = event.getEffectInstance();
         if (effect == null || effect.getEffect() == null) return;
+        // 标记携带的发光效果:标记仍存在时同步保留发光(牛奶/effect clear 不得单独清除),
+        // 保证发光与标记同寿命——标记自然到期/死亡时两者一起移除(此时标记已不存在,此处自动放行)
+        if (effect.getEffect().value() == net.minecraft.world.effect.MobEffects.GLOWING.value()
+                && event.getEntity().hasEffect(ModEffects.MARKED)) {
+            event.setCanceled(true);
+            return;
+        }
         // 诅咒之剑卸下筹码时允许主动移除青之诅咒
         if (effect.getEffect().value() == ModEffects.BLUE_CURSE.get()
                 && CursedSwordChipItem.isRemovingBlueCurse()) {
