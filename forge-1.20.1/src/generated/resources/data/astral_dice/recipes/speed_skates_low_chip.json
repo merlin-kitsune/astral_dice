@@ -1,0 +1,30 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": {
+      "item": "astral_dice:blank_chip"
+    },
+    "C": {
+      "item": "astral_dice:star_coin"
+    },
+    "I": {
+      "item": "minecraft:iron_ingot"
+    },
+    "L": {
+      "item": "minecraft:leather_boots"
+    },
+    "U": {
+      "item": "minecraft:blue_ice"
+    }
+  },
+  "pattern": [
+    "ULU",
+    "IBI",
+    "CCC"
+  ],
+  "result": {
+    "item": "astral_dice:speed_skates_low_chip"
+  },
+  "show_notification": true
+}

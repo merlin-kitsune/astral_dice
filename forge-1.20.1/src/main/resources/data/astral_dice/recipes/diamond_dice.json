@@ -1,0 +1,23 @@
+{
+  "type": "astral_dice:dice_upgrade",
+  "category": "equipment",
+  "key": {
+    "H": {
+      "item": "astral_dice:golden_dice"
+    },
+    "P": {
+      "item": "astral_dice:star_plate"
+    },
+    "D": {
+      "item": "minecraft:diamond"
+    }
+  },
+  "pattern": [
+    "DPD",
+    "PHP",
+    "DPD"
+  ],
+  "result": {
+    "item": "astral_dice:diamond_dice"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": {
+      "item": "astral_dice:blank_chip"
+    },
+    "N": {
+      "item": "minecraft:carved_pumpkin"
+    },
+    "P": {
+      "item": "astral_dice:star_plate"
+    },
+    "Q": {
+      "item": "minecraft:cookie"
+    },
+    "T": {
+      "item": "minecraft:sugar"
+    }
+  },
+  "pattern": [
+    "TQT",
+    "NCN",
+    "PPP"
+  ],
+  "result": {
+    "item": "astral_dice:candy_chip"
+  },
+  "show_notification": true
+}

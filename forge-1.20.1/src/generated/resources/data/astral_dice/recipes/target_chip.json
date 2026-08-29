@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": {
+      "item": "astral_dice:blank_chip"
+    },
+    "C": {
+      "item": "astral_dice:star_coin"
+    },
+    "T": {
+      "item": "minecraft:target"
+    }
+  },
+  "pattern": [
+    "TTT",
+    "TBT",
+    "CCC"
+  ],
+  "result": {
+    "item": "astral_dice:target_chip"
+  },
+  "show_notification": true
+}

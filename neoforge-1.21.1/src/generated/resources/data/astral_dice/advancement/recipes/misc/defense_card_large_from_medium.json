@@ -1,0 +1,32 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_defense_medium": {
+      "conditions": {
+        "items": [
+          {
+            "items": "astral_dice:defense_card_medium"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "has_the_recipe": {
+      "conditions": {
+        "recipe": "astral_dice:defense_card_large_from_medium"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    }
+  },
+  "requirements": [
+    [
+      "has_the_recipe",
+      "has_defense_medium"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "astral_dice:defense_card_large_from_medium"
+    ]
+  }
+}

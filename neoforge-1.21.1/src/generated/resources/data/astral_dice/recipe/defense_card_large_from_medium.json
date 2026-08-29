@@ -1,0 +1,22 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "astral_dice:defense_card_medium"
+    },
+    {
+      "item": "astral_dice:defense_card_medium"
+    },
+    {
+      "item": "astral_dice:star_coin"
+    },
+    {
+      "item": "astral_dice:star_coin"
+    }
+  ],
+  "result": {
+    "count": 1,
+    "id": "astral_dice:defense_card_large"
+  }
+}

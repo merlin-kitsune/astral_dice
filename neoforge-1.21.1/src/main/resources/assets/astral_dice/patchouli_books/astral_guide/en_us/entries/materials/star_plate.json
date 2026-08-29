@@ -1,0 +1,13 @@
+{
+  "name": "item.astral_dice.star_plate",
+  "category": "astral_dice:materials",
+  "icon": "astral_dice:star_plate",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:star_plate",
+      "text": "astral_dice.guide.entry.star_plate.1"
+    }
+  ],
+  "sortnum": 2
+}

@@ -1,0 +1,33 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "A": {
+      "item": "minecraft:amethyst_shard"
+    },
+    "B": {
+      "item": "astral_dice:blank_chip"
+    },
+    "C": {
+      "item": "minecraft:copper_ingot"
+    },
+    "I": {
+      "item": "minecraft:iron_ingot"
+    },
+    "P": {
+      "item": "astral_dice:star_plate"
+    },
+    "W": {
+      "item": "minecraft:oak_button"
+    }
+  },
+  "pattern": [
+    "APA",
+    "CBC",
+    "IWI"
+  ],
+  "result": {
+    "item": "astral_dice:scope_chip"
+  },
+  "show_notification": true
+}

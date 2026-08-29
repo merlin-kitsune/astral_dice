@@ -1,0 +1,32 @@
+{
+  "name": "astral_dice.guide.entry.playstyles.name",
+  "category": "astral_dice:getting_started",
+  "icon": "astral_dice:star_coin",
+  "pages": [
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.playstyles.1"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.playstyles.2"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.playstyles.3"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.playstyles.4"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.playstyles.5"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.playstyles.6"
+    }
+  ],
+  "sortnum": 3
+}

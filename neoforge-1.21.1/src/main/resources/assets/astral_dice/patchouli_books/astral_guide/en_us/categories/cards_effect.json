@@ -1,0 +1,7 @@
+{
+  "name": "astral_dice.guide.category.cards_effect",
+  "description": "astral_dice.guide.category.cards_effect.desc",
+  "icon": "astral_dice:effect_card_king_power",
+  "sortnum": 33,
+  "parent": "astral_dice:cards"
+}

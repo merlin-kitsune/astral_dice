@@ -1,0 +1,30 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": {
+      "item": "astral_dice:star_coin"
+    },
+    "C": {
+      "item": "astral_dice:blank_chip"
+    },
+    "J": {
+      "item": "minecraft:golden_sword"
+    },
+    "M": {
+      "tag": "astral_dice:suspicious_stews"
+    },
+    "Z": {
+      "item": "minecraft:popped_chorus_fruit"
+    }
+  },
+  "pattern": [
+    "JMJ",
+    "ZCZ",
+    "BBB"
+  ],
+  "result": {
+    "item": "astral_dice:cursed_sword_chip"
+  },
+  "show_notification": true
+}

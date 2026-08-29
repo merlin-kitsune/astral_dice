@@ -1,0 +1,64 @@
+{
+	"content": {
+		"astral_dice": {
+			"type": "item",
+			"rarity": "COMMON",
+			"content": "astral_dice:dice",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 800
+		},
+		"golden_dice": {
+			"type": "item",
+			"rarity": "RARE",
+			"content": "astral_dice:golden_dice",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 3000
+		},
+		"diamond_dice": {
+			"type": "item",
+			"rarity": "EPIC",
+			"content": "astral_dice:diamond_dice",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 8000
+		},
+		"star_coin": {
+			"type": "item",
+			"rarity": "RARE",
+			"content": "astral_dice:star_coin",
+			"amount": {
+				"min": 4,
+				"max": 16
+			},
+			"unitWorth": 250
+		},
+		"star_plate": {
+			"type": "item",
+			"rarity": "EPIC",
+			"content": "astral_dice:star_plate",
+			"amount": {
+				"min": 1,
+				"max": 2
+			},
+			"unitWorth": 4000
+		},
+		"golden_star_plate": {
+			"type": "item",
+			"rarity": "LEGENDARY",
+			"content": "astral_dice:golden_star_plate",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 16000
+		}
+	}
+}

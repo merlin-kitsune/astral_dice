@@ -1,0 +1,25 @@
+{
+  "name": "item.astral_dice.cursed_sword_chip",
+  "category": "astral_dice:chips_other",
+  "icon": "astral_dice:cursed_sword_chip",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:cursed_sword_chip",
+      "text": "astral_dice.guide.entry.cursed_sword_chip.1"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.cursed_sword_chip.2"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.cursed_sword_chip.3"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:cursed_sword_chip"
+    }
+  ],
+  "sortnum": 14
+}

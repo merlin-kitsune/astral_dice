@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": {
+      "item": "astral_dice:blank_chip"
+    },
+    "C": {
+      "item": "astral_dice:star_coin"
+    },
+    "S": {
+      "item": "minecraft:slime_ball"
+    }
+  },
+  "pattern": [
+    "SSS",
+    "SBS",
+    "CCC"
+  ],
+  "result": {
+    "item": "astral_dice:medkit_emergency_chip"
+  },
+  "show_notification": true
+}

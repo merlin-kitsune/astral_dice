@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": {
+      "item": "astral_dice:blank_chip"
+    },
+    "C": {
+      "item": "astral_dice:star_coin"
+    },
+    "D": {
+      "item": "minecraft:diamond"
+    },
+    "H": {
+      "item": "minecraft:shield"
+    }
+  },
+  "pattern": [
+    "DDD",
+    "HBH",
+    "CCC"
+  ],
+  "result": {
+    "item": "astral_dice:buffer_shield_chip"
+  },
+  "show_notification": true
+}

@@ -1,0 +1,10 @@
+{
+  "type": "forge:add_table",
+  "conditions": [
+    {
+      "condition": "forge:loot_table_id",
+      "loot_table_id": "minecraft:entities/wither"
+    }
+  ],
+  "table": "astral_dice:entities/star_plate_boss"
+}

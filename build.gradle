@@ -1,0 +1,20 @@
+// 根项目:仅提供聚合入口,不参与编译。
+// 子项目完全自包含(各自的 build.gradle / gradle.properties / src),
+// 沿用原分支构建脚本(ModDevGradle 2.0.x),避免跨 MC 版本共享构建逻辑的风险。
+plugins {
+    id 'base'
+}
+
+tasks.named('wrapper', Wrapper).configure {
+    // Define wrapper values here so as to not have to always do so when updating gradlew.properties.
+    // Switching this to Wrapper.DistributionType.ALL will download the full gradle sources that comes with
+    // documentation attached on cursor hover of gradle classes and methods. However, this comes with increased
+    // file size for Gradle. If you do switch this to ALL, run the Gradle wrapper task twice afterwards.
+    // (Verify by checking gradle/wrapper/gradle-wrapper.properties to see if distributionUrl now points to `-all`)
+    distributionType = Wrapper.DistributionType.BIN
+}
+
+// `gradlew build` 会按名字在所有子项目上执行 build 任务(即同时构建两个版本);
+// 也可以显式指定单个子项目:
+//   ./gradlew :neoforge-1.21.1:build   # 1.21.1 NeoForge
+//   ./gradlew :forge-1.20.1:build      # 1.20.1 Forge

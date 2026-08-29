@@ -1,0 +1,17 @@
+{
+  "name": "item.astral_dice.medkit_complete_chip",
+  "category": "astral_dice:chips_healing",
+  "icon": "astral_dice:medkit_complete_chip",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:medkit_complete_chip",
+      "text": "astral_dice.guide.entry.medkit_complete_chip.1"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:medkit_complete_chip"
+    }
+  ],
+  "sortnum": 1
+}

@@ -1,0 +1,32 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_bank_card_high": {
+      "conditions": {
+        "items": [
+          {
+            "items": "astral_dice:bank_card_high_chip"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "has_the_recipe": {
+      "conditions": {
+        "recipe": "astral_dice:bank_card_unlimited_chip"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    }
+  },
+  "requirements": [
+    [
+      "has_the_recipe",
+      "has_bank_card_high"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "astral_dice:bank_card_unlimited_chip"
+    ]
+  }
+}

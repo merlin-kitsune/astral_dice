@@ -1,0 +1,24 @@
+// Astral Dice multiloader(多加载器/多版本单仓)根设置
+// 结构改编自 Player005/multiloader-mod-template(1.21.1 分支):
+//   - 模板为"同一 MC 版本 + common 共享源码"结构,本项目因跨 MC 版本
+//     (1.21.1 NeoForge / 1.20.1 Forge API 差异大),不使用 common 源码子项目,
+//     改为每个"MC 版本+加载器"一个自包含子项目(各自的 src 与 build.gradle)。
+//   - 子项目 ↔ 原分支映射:
+//       neoforge-1.21.1 ← astra_dice 仓库 1.21.1-main 分支(NeoForge 21.1.x, Java 21)
+//       forge-1.20.1    ← astra_dice 仓库 1.20.1-forge 分支(Forge 47.4.x, Java 17)
+pluginManagement {
+    repositories {
+        maven { url = uri('https://maven.neoforged.net/releases') }
+        gradlePluginPortal()
+        mavenCentral()
+    }
+}
+
+plugins {
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
+}
+
+rootProject.name = 'astral_dice_multiloader'
+
+include 'neoforge-1.21.1'
+include 'forge-1.20.1'

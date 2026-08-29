@@ -1,0 +1,22 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "minecraft:glowstone_dust"
+    },
+    {
+      "item": "minecraft:quartz"
+    },
+    {
+      "item": "minecraft:quartz"
+    },
+    {
+      "item": "astral_dice:star_plate"
+    }
+  ],
+  "result": {
+    "count": 1,
+    "id": "astral_dice:effect_card_express_delivery"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": {
+      "item": "astral_dice:blank_chip"
+    },
+    "C": {
+      "item": "astral_dice:star_coin"
+    },
+    "E": {
+      "item": "minecraft:egg"
+    },
+    "K": {
+      "item": "minecraft:cookie"
+    },
+    "M": {
+      "item": "minecraft:milk_bucket"
+    }
+  },
+  "pattern": [
+    "KEK",
+    "MBM",
+    "CCC"
+  ],
+  "result": {
+    "item": "astral_dice:sandwich_low_chip"
+  },
+  "show_notification": true
+}

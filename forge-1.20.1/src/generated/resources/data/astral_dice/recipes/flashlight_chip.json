@@ -1,0 +1,30 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": {
+      "item": "astral_dice:blank_chip"
+    },
+    "I": {
+      "item": "minecraft:iron_ingot"
+    },
+    "L": {
+      "item": "minecraft:redstone_lamp"
+    },
+    "P": {
+      "item": "astral_dice:star_plate"
+    },
+    "Y": {
+      "item": "minecraft:yellow_stained_glass"
+    }
+  },
+  "pattern": [
+    "LYL",
+    " B ",
+    "IPI"
+  ],
+  "result": {
+    "item": "astral_dice:flashlight_chip"
+  },
+  "show_notification": true
+}

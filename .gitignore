@@ -1,0 +1,57 @@
+### Gradle ###
+.gradle
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/**/build/
+
+### IntelliJ IDEA ###
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+!**/src/**/out/
+
+.run/
+
+### Eclipse ###
+.apt_generated
+.classpath
+.eclipse/
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+bin/
+!**/src/**/bin/
+
+### VS Code ###
+.vscode/
+
+### Mac OS ###
+.DS_Store
+
+### Minecraft Modding ###
+run/
+!**/src/**/run/
+**/src/generated/**/.cache/
+repo/
+!**/src/**/repo/
+
+temp/
+"temp/
+.opencode/
+scripts/test/
+
+### 项目级排除(用户要求,与原 astra_dice 仓库一致) ###
+agents/
+build/
+docs/
+run/
+scripts/
+temp/
+AGENTS.md
+deploy.ps1
+opencode.json
+.zcode/

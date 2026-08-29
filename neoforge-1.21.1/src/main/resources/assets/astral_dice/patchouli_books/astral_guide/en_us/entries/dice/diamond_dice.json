@@ -1,0 +1,17 @@
+{
+  "name": "item.astral_dice.diamond_dice",
+  "category": "astral_dice:dice",
+  "icon": "astral_dice:diamond_dice",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:diamond_dice",
+      "text": "astral_dice.guide.entry.diamond_dice.1"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:diamond_dice"
+    }
+  ],
+  "sortnum": 2
+}

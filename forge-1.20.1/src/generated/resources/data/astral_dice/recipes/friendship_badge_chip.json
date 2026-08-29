@@ -1,0 +1,33 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": {
+      "item": "astral_dice:blank_chip"
+    },
+    "J": {
+      "item": "minecraft:enchanted_golden_apple"
+    },
+    "P": {
+      "item": "astral_dice:star_plate"
+    },
+    "Y": {
+      "type": "forge:nbt",
+      "count": 1,
+      "item": "minecraft:potion",
+      "nbt": "{Potion:\"minecraft:healing\"}"
+    },
+    "Z": {
+      "item": "minecraft:amethyst_shard"
+    }
+  },
+  "pattern": [
+    "YJY",
+    "ZCZ",
+    "PPP"
+  ],
+  "result": {
+    "item": "astral_dice:friendship_badge_chip"
+  },
+  "show_notification": true
+}

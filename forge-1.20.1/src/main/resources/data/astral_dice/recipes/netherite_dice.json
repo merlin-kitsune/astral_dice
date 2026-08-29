@@ -1,0 +1,23 @@
+{
+  "type": "astral_dice:dice_upgrade",
+  "category": "equipment",
+  "key": {
+    "D": {
+      "item": "astral_dice:diamond_dice"
+    },
+    "H": {
+      "item": "astral_dice:golden_star_plate"
+    },
+    "N": {
+      "item": "minecraft:netherite_ingot"
+    }
+  },
+  "pattern": [
+    "NHN",
+    "HDH",
+    "NHN"
+  ],
+  "result": {
+    "item": "astral_dice:netherite_dice"
+  }
+}

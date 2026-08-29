@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": {
+      "item": "astral_dice:blank_chip"
+    },
+    "C": {
+      "item": "astral_dice:star_coin"
+    },
+    "G": {
+      "item": "minecraft:gold_ingot"
+    },
+    "K": {
+      "item": "minecraft:gold_block"
+    }
+  },
+  "pattern": [
+    "GGG",
+    "KBK",
+    "CCC"
+  ],
+  "result": {
+    "item": "astral_dice:bank_card_low_chip"
+  },
+  "show_notification": true
+}

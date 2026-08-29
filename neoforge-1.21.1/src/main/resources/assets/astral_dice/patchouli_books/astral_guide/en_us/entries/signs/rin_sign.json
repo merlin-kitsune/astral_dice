@@ -1,0 +1,21 @@
+{
+  "name": "item.astral_dice.rin_sign",
+  "category": "astral_dice:signs",
+  "icon": "astral_dice:rin_sign",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:rin_sign",
+      "text": "astral_dice.guide.entry.rin_sign.1"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.rin_sign.2"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:rin_sign"
+    }
+  ],
+  "sortnum": 8
+}

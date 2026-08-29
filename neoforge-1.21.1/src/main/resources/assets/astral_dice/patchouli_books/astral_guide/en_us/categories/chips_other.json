@@ -1,0 +1,7 @@
+{
+  "name": "astral_dice.guide.category.chips_other",
+  "description": "astral_dice.guide.category.chips_other.desc",
+  "icon": "astral_dice:magic_tome_chip",
+  "sortnum": 44,
+  "parent": "astral_dice:chips"
+}

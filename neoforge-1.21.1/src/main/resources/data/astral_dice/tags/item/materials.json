@@ -1,0 +1,14 @@
+{
+  "values": [
+    "astral_dice:dice",
+    "astral_dice:golden_dice",
+    "astral_dice:diamond_dice",
+    "astral_dice:netherite_dice",
+    "astral_dice:star_coin",
+    "astral_dice:star_coin_bag",
+    "astral_dice:star_plate",
+    "astral_dice:golden_star_plate",
+    "astral_dice:blank_sign",
+    "astral_dice:blank_chip"
+  ]
+}

@@ -1,0 +1,85 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Setup JDK 21 (1.21.1 NeoForge)
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Setup JDK 17 (1.20.1 Forge)
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Check lang sync (neoforge-1.21.1)
+        run: python3 tools/check_lang_sync.py --lang-dir neoforge-1.21.1/src/main/resources/assets/astral_dice/lang
+
+      - name: Check lang sync (forge-1.20.1)
+        run: python3 tools/check_lang_sync.py --lang-dir forge-1.20.1/src/main/resources/assets/astral_dice/lang
+
+      - name: Build with Gradle (both targets)
+        run: ./gradlew build
+
+      - name: Upload Astral Dice JARs
+        uses: actions/upload-artifact@v4
+        with:
+          name: astral_dice-jars
+          path: |
+            neoforge-1.21.1/build/libs/astral_dice-*.jar
+            forge-1.20.1/build/libs/astral_dice-*.jar
+
+      - name: Read mod version
+        id: version
+        run: |
+          VERSION=$(grep '^mod_version=' neoforge-1.21.1/gradle.properties | cut -d'=' -f2)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Create Git tag
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            echo "Tag $TAG already exists"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git tag -a "$TAG" -m "Release $TAG"
+            git push origin "$TAG"
+          fi
+
+      - name: Create/Update GitHub Release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          VERSION="${{ steps.version.outputs.version }}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release edit "$TAG" --title "Astral Dice $VERSION" --notes "Release $VERSION"
+          else
+            gh release create "$TAG" neoforge-1.21.1/build/libs/astral_dice-*.jar forge-1.20.1/build/libs/astral_dice-*.jar --title "Astral Dice $VERSION" --notes "Release $VERSION" --latest
+          fi

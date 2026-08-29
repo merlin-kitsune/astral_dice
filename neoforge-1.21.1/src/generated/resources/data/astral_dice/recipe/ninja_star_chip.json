@@ -1,0 +1,33 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "A": {
+      "item": "minecraft:spectral_arrow"
+    },
+    "B": {
+      "item": "astral_dice:blank_chip"
+    },
+    "G": {
+      "item": "astral_dice:golden_star_plate"
+    },
+    "L": {
+      "item": "minecraft:redstone_block"
+    },
+    "N": {
+      "item": "minecraft:netherite_ingot"
+    },
+    "P": {
+      "item": "astral_dice:star_plate"
+    }
+  },
+  "pattern": [
+    "NLN",
+    "ABA",
+    "GPG"
+  ],
+  "result": {
+    "count": 1,
+    "id": "astral_dice:ninja_star_chip"
+  }
+}

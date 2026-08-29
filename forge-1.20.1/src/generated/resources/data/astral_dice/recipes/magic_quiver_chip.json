@@ -1,0 +1,30 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "A": {
+      "item": "minecraft:spectral_arrow"
+    },
+    "B": {
+      "item": "astral_dice:blank_chip"
+    },
+    "P": {
+      "item": "astral_dice:star_plate"
+    },
+    "Q": {
+      "item": "minecraft:writable_book"
+    },
+    "R": {
+      "item": "minecraft:echo_shard"
+    }
+  },
+  "pattern": [
+    "ARA",
+    "QBQ",
+    "PPP"
+  ],
+  "result": {
+    "item": "astral_dice:magic_quiver_chip"
+  },
+  "show_notification": true
+}

@@ -1,0 +1,17 @@
+{
+  "name": "item.astral_dice.friendship_badge_chip",
+  "category": "astral_dice:chips_healing",
+  "icon": "astral_dice:friendship_badge_chip",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:friendship_badge_chip",
+      "text": "astral_dice.guide.entry.friendship_badge_chip.1"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:friendship_badge_chip"
+    }
+  ],
+  "sortnum": 7
+}
