@@ -4,7 +4,7 @@
 
 ### 新内容 / New Content
 - 骰神赐福期间,骰子卡牌界面禁止插入/移除卡牌(服务端权威 + 客户端同步拦截),界面顶部显示红色提醒文字(仅 1.21.1)。 / During the Dice Blessing, cards can no longer be inserted into or removed from the dice card interface (server-authoritative with client-side blocking), and the screen shows a red warning at the top (1.21.1 only).
-- 手册「基本介绍」分类图标更换为「头号玩家立牌」(仅 1.21.1)。 / The handbook's "Getting Started" category icon is now the "No.1 Player Sign" (1.21.1 only).
+- 手册「基本介绍」「基础材料」分类图标更换为「头号玩家立牌」(仅 1.21.1)。 / The handbook's "Getting Started" and "Materials" category icons are now the "No.1 Player Sign" (1.21.1 only).
 - 效果牌复制/返还覆盖全部效果牌(忍者立牌/魔法秘典/魔法箭袋不再有排除项;含治疗/伤害/专属牌,专属牌复制后绑定获得者)(仅 1.21.1)。 / Effect-card copy/refund now covers every effect card — the Komachi sign, Magic Tome and Magic Quiver no longer exclude any card (healing/damage/exclusive cards included; exclusive copies are bound to their new owner) (1.21.1 only).
 
 ### 已修复BUG / Bug Fixes

@@ -1,6 +1,6 @@
 {
   "name": "astral_dice.guide.category.materials",
   "description": "astral_dice.guide.category.materials.desc",
-  "icon": "astral_dice:star_coin",
+  "icon": "astral_dice:textures/gui/head_player_sign.png",
   "sortnum": 1
 }
