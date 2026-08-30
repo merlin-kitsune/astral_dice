@@ -74,8 +74,9 @@ public class NancyLuSignItem extends BaseSignItem {
             player.setInvulnerable(false);
             ModAttachments.setNancyLuInvulnerableUntil(player, 0);
         }
-        // 主动完全隐身到期
-        if (now >= ModAttachments.getNancyLuHiddenUntil(player)) {
+        // 主动完全隐身到期(仅立牌自身授予的隐身到期时才移除,避免误清其他来源的隐身)
+        long hiddenUntil = ModAttachments.getNancyLuHiddenUntil(player);
+        if (hiddenUntil > 0 && now >= hiddenUntil) {
             ModAttachments.setNancyLuHiddenUntil(player, 0);
             player.removeEffect(net.minecraft.world.effect.MobEffects.INVISIBILITY);
         }

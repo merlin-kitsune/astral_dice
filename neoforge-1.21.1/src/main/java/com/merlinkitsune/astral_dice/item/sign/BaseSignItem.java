@@ -125,15 +125,8 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
         if (player.isShiftKeyDown()) {
             return CurioSlotUtil.tryAutoEquip(player, stack, "stand");
         }
-        // 仅帕鲁南立牌支持手持右键释放主动;与立牌栏触发共用同一套冷却/等待校验
-        if (!(this instanceof ParunanSignItem)) {
-            return InteractionResultHolder.fail(stack);
-        }
-        if (level.isClientSide) {
-            return InteractionResultHolder.success(stack);
-        }
-        performSkill(player, stack);
-        return InteractionResultHolder.success(stack);
+        // 右键行为仅为装备:主动技能统一由快捷键(立牌栏)触发,手持右键不触发任何技能
+        return InteractionResultHolder.fail(stack);
     }
 
     // 立牌被移除时:清除该立牌获得的增益/计数器/累计值,防止反复更换立牌实现效果叠加。
