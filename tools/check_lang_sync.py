@@ -58,6 +58,22 @@ def main() -> int:
         if not isinstance(zh_val, str) or not isinstance(en_val, str):
             continue
 
+        # 未转义的字面百分号检查:单 %(非 %% 且非合法说明符)经 I18n.get/String.format
+        # 会抛异常并显示 "Format error: ..."(如帕秋莉手册文本),必须写成 %%。
+        for lang_name, text in (("zh", zh_val), ("en", en_val)):
+            for m in re.finditer(r"%", text):
+                pos = m.start()
+                # %% 转义对(当前 % 是 %% 的第一个或第二个字符)跳过
+                if text[pos:pos + 2] == "%%" or (pos > 0 and text[pos - 1] == "%"):
+                    continue
+                seg = text[pos:pos + 4]
+                if re.match(r"%([sdbfxoeg]|\d+\$[sdbfxoeg])", seg):
+                    continue
+                print(
+                    f"[WARN] {key}({lang_name}): 含未转义字面百分号(应写 %%,"
+                    f"否则 I18n.get/String.format 显示 Format Error): ...{text[max(0, pos - 12):pos + 12]}..."
+                )
+
         def markers(text: str):
             return (
                 tuple(placeholder_re.findall(text)),

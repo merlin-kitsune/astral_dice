@@ -6,6 +6,7 @@
 - 骰神赐福期间,骰子卡牌界面禁止插入/移除卡牌(服务端权威 + 客户端同步拦截),界面顶部显示红色提醒文字(仅 1.21.1)。 / During the Dice Blessing, cards can no longer be inserted into or removed from the dice card interface (server-authoritative with client-side blocking), and the screen shows a red warning at the top (1.21.1 only).
 
 ### 已修复BUG / Bug Fixes
+- 修复帕秋莉手册部分条目显示 `Format error` 的问题:guide 文本中的字面百分号未转义(18 个条目,中英 36 条),经 `I18n.get`/`String.format` 时抛异常;已统一改为 `%%`,并同步修复 4 个同隐患 tooltip key(仅 1.21.1)。 / Fixed "Format error" showing in some Patchouli handbook entries: literal percent signs in guide texts (18 entries, zh+en) were unescaped and broke `I18n.get`/`String.format`; they are now written as `%%`, and the 4 tooltip keys with the same latent issue were fixed too (1.21.1 only).
 - 修复牛奶/`/effect clear` 清除发光但保留标记的问题:标记携带的发光效果与标记同寿命,标记仍存在时发光不再被单独清除(仅 1.21.1)。 / Fixed glow being cleared by milk or `/effect clear` while the mark persisted: the glow carried by a mark now shares its lifetime, and is no longer removed alone while the mark is still active (1.21.1 only).
 - 标记携带的发光效果不再显示 HUD 效果标识器(仅保留实体轮廓发光,不占用效果图标栏;仅 1.21.1)。 / The glow carried by a mark no longer shows a HUD effect icon — only the entity outline remains, without occupying the effect indicator row (1.21.1 only).
 
