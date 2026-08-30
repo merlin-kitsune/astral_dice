@@ -23,13 +23,17 @@ public final class GameplayConstants {
     // 标靶筹码:骰神赐福后标记作用范围(格,默认 16)
     public static int TARGET_CHIP_RANGE = 16;
 
-    // === 团队判定(随机卡牌发放等场景;事件管线已移除) ===
-    // 团队是否作用于 Minecraft 同队玩家
+    // === 事件系统 ===
+    // 事件作用范围(格,默认 16)
+    public static int EVENT_RANGE = 16;
+    // 事件是否作用于 Minecraft 同队玩家
     public static boolean EVENT_APPLY_MC_TEAM = true;
-    // 团队是否作用于 FTB Teams 队友(需安装 FTB Teams,API 不符时自动跳过)
+    // 事件是否作用于 FTB Teams 队友(需安装 FTB Teams,API 不符时自动跳过)
     public static boolean EVENT_APPLY_FTB_TEAM = true;
-    // 团队是否作用于 OPAC 队伍(需安装 Open Parties and Claims,API 不符时自动跳过)
+    // 事件是否作用于 OPAC 队伍(需安装 Open Parties and Claims,API 不符时自动跳过)
     public static boolean EVENT_APPLY_OPAC = true;
+    // 事件是否作用于玩家拥有的已放出女仆(需安装车万女仆模组)
+    public static boolean EVENT_APPLY_MAID = true;
     // 活体书页出牌伤害数增加上限(默认最大 20 点)
     public static int LIVING_BOOK_PAGE_BONUS_CAP = 20;
     // 立牌主动技能触发冷却(单位:秒,默认 180)
@@ -94,9 +98,11 @@ public final class GameplayConstants {
         MAX_DAMAGE_EFFECT_BONUS = ModCommonConfig.MAX_DAMAGE_EFFECT_BONUS.get();
         TARGET_CHIP_RANGE = ModCommonConfig.TARGET_CHIP_RANGE.get();
 
+        EVENT_RANGE = ModCommonConfig.EVENT_RANGE.get();
         EVENT_APPLY_MC_TEAM = ModCommonConfig.EVENT_APPLY_MC_TEAM.get();
         EVENT_APPLY_FTB_TEAM = ModCommonConfig.EVENT_APPLY_FTB_TEAM.get();
         EVENT_APPLY_OPAC = ModCommonConfig.EVENT_APPLY_OPAC.get();
+        EVENT_APPLY_MAID = ModCommonConfig.EVENT_APPLY_MAID.get();
         LIVING_BOOK_PAGE_BONUS_CAP = ModCommonConfig.LIVING_BOOK_PAGE_BONUS_CAP.get();
         SIGN_ACTIVE_COOLDOWN_SECONDS = ModCommonConfig.SIGN_ACTIVE_COOLDOWN_SECONDS.get();
         SIGN_ACTIVE_COOLDOWN_TICKS = SIGN_ACTIVE_COOLDOWN_SECONDS * 20;

@@ -19,9 +19,11 @@ public final class ModCommonConfig {
         public static final ModConfigSpec.IntValue MAX_EFFECT_CARD_PLAYS;
         public static final ModConfigSpec.IntValue MAX_DAMAGE_EFFECT_BONUS;
         public static final ModConfigSpec.IntValue TARGET_CHIP_RANGE;
+        public static final ModConfigSpec.IntValue EVENT_RANGE;
         public static final ModConfigSpec.BooleanValue EVENT_APPLY_MC_TEAM;
         public static final ModConfigSpec.BooleanValue EVENT_APPLY_FTB_TEAM;
         public static final ModConfigSpec.BooleanValue EVENT_APPLY_OPAC;
+        public static final ModConfigSpec.BooleanValue EVENT_APPLY_MAID;
         public static final ModConfigSpec.IntValue LIVING_BOOK_PAGE_BONUS_CAP;
         public static final ModConfigSpec.IntValue SIGN_ACTIVE_COOLDOWN_SECONDS;
         public static final ModConfigSpec.IntValue SKILL_WAIT_SECONDS;
@@ -56,13 +58,17 @@ public final class ModCommonConfig {
                 TARGET_CHIP_RANGE = builder.comment("标靶筹码:骰神赐福后标记作用范围(单位：格,默认：16)")
                                 .defineInRange("target_chip_range", 16, 1, 32);
 
-                builder.push("event_system").comment("=== 团队判定(随机卡牌发放) ===");
-                EVENT_APPLY_MC_TEAM = builder.comment("是否作用于 Minecraft 同队玩家")
+                builder.push("event_system").comment("=== 事件系统 ===");
+                EVENT_RANGE = builder.comment("事件作用范围(格,默认 16)")
+                                .defineInRange("event_range", 16, 1, 32);
+                EVENT_APPLY_MC_TEAM = builder.comment("事件是否作用于 Minecraft 同队玩家")
                                 .define("event_apply_mc_team", true);
-                EVENT_APPLY_FTB_TEAM = builder.comment("是否作用于 FTB Teams 队友(需安装 FTB Teams,API 不符时自动跳过)")
+                EVENT_APPLY_FTB_TEAM = builder.comment("事件是否作用于 FTB Teams 队友(需安装 FTB Teams,API 不符时自动跳过)")
                                 .define("event_apply_ftb_team", true);
-                EVENT_APPLY_OPAC = builder.comment("是否作用于 OPAC 队伍(需安装 Open Parties and Claims,API 不符时自动跳过)")
+                EVENT_APPLY_OPAC = builder.comment("事件是否作用于 OPAC 队伍(需安装 Open Parties and Claims,API 不符时自动跳过)")
                                 .define("event_apply_opac", true);
+                EVENT_APPLY_MAID = builder.comment("事件是否作用于玩家拥有的已放出女仆(需安装车万女仆模组)")
+                                .define("event_apply_maid", true);
                 LIVING_BOOK_PAGE_BONUS_CAP = builder.comment("活体书页出牌伤害数增加上限(默认：最大 20 点)")
                                 .defineInRange("living_book_page_bonus_cap", 20, 1, 64);
                 builder.pop();
