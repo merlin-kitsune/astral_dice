@@ -4,7 +4,6 @@ import com.merlinkitsune.astral_dice.combat.CardRegistry;
 import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
 import com.merlinkitsune.astral_dice.component.AppliedStone;
 import com.merlinkitsune.astral_dice.component.GameplayConstants;
-import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.component.WeaponEnhancement;
@@ -14,6 +13,7 @@ import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.inventory.ClickType;
 import net.minecraft.world.inventory.DataSlot;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
@@ -48,8 +48,6 @@ public class CardInventoryMenu extends AbstractContainerMenu {
     private int maxDefenseCost = GameplayConstants.MAX_CARD_COST;
     private int starLevel = 0;
     private int selectorScrollOffset = 0;
-    // 打开界面时骰子内是否已装有蓄力(用于区分"赐福进行中新放入蓄力")
-    private boolean preSessionHadCharge = false;
     private int displayAttackMin;
     private int displayAttackMax;
     private int displayDefenseMin;
@@ -122,15 +120,6 @@ public class CardInventoryMenu extends AbstractContainerMenu {
         if (!player.level().isClientSide()) {
             loadFromDice();
             refreshDisplayStats();
-            // 记录打开界面时骰子内是否已装有蓄力
-            WeaponEnhancement preEnh = equippedDice.getOrDefault(
-                    ModDataComponents.WEAPON_ENHANCEMENT.get(), WeaponEnhancement.EMPTY);
-            for (AppliedStone s : preEnh.appliedStones()) {
-                if ("charge".equals(s.type())) {
-                    preSessionHadCharge = true;
-                    break;
-                }
-            }
         }
     }
 
@@ -305,21 +294,6 @@ public class CardInventoryMenu extends AbstractContainerMenu {
                 }
             }
         }
-        // 蓄力转换延迟:赐福进行中新放入蓄力 → 置位(本次赐福不生效、不转换,下次赐福结束时转换);
-        // 移除了蓄力 → 清除;打开界面时已在骰子内的蓄力不置位
-        boolean hasCharge = false;
-        for (AppliedStone s : stones) {
-            if ("charge".equals(s.type())) {
-                hasCharge = true;
-                break;
-            }
-        }
-        if (!hasCharge) {
-            ModAttachments.setChargeDefer(player, false);
-        } else if (!preSessionHadCharge && player.hasEffect(ModEffects.DICE_BLESSING)) {
-            ModAttachments.setChargeDefer(player, true);
-        }
-
         dice.set(ModDataComponents.WEAPON_ENHANCEMENT.get(),
                 new WeaponEnhancement(totalAttackCost, maxAttackCost, totalDefenseCost, maxDefenseCost, starLevel, stones));
     }
@@ -390,9 +364,22 @@ public class CardInventoryMenu extends AbstractContainerMenu {
         super.removed(player);
     }
 
-    @Override
-    public ItemStack quickMoveStack(Player player, int index) {
-        ItemStack stack = ItemStack.EMPTY;
+        // 骰神赐福期间卡牌栏锁定:禁止插入/移除卡牌(服务端权威;客户端同逻辑避免操作闪烁)
+        @Override
+        public void clicked(int slotId, int button, ClickType clickType, Player player) {
+            if (player.hasEffect(ModEffects.DICE_BLESSING)) {
+                return;
+            }
+            super.clicked(slotId, button, clickType, player);
+        }
+
+        @Override
+        public ItemStack quickMoveStack(Player player, int index) {
+            // 骰神赐福期间禁止快捷移动卡牌(纵深防御;正常经 clicked 的 QUICK_MOVE 路由拦截)
+            if (player.hasEffect(ModEffects.DICE_BLESSING)) {
+                return ItemStack.EMPTY;
+            }
+            ItemStack stack = ItemStack.EMPTY;
         Slot slot = this.slots.get(index);
         if (slot != null && slot.hasItem()) {
             ItemStack slotStack = slot.getItem();

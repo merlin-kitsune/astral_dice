@@ -432,6 +432,7 @@
   "key.astral_dice.activate_sign": "Activate Sign Skill",
   "key.astral_dice.open_card_inventory": "Open Card Inventory",
   "gui.astral_dice.card_inventory": "Card Inventory",
+  "gui.astral_dice.card_inventory.locked": "Cannot change cards during Dice Blessing",
   "gui.astral_dice.cost": "Cost: %s / %s",
   "gui.astral_dice.attack_cost": "Attack Cost: %s / %s",
   "gui.astral_dice.defense_cost": "Defense Cost: %s / %s",

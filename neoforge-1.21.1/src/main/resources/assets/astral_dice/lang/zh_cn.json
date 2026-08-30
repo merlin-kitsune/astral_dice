@@ -432,6 +432,7 @@
   "key.astral_dice.activate_sign": "激活立牌技能",
   "key.astral_dice.open_card_inventory": "打开卡牌栏",
   "gui.astral_dice.card_inventory": "卡牌栏",
+  "gui.astral_dice.card_inventory.locked": "骰神赐福期间无法调整卡牌",
   "gui.astral_dice.cost": "Cost: %s / %s",
   "gui.astral_dice.attack_cost": "攻击 Cost: %s / %s",
   "gui.astral_dice.defense_cost": "防御 Cost: %s / %s",
