@@ -19,6 +19,7 @@ This changelog is fully split by language: the Chinese version comes first, foll
 
 ### 已修复BUG
 
+- **1.20.1 手册移植补全**:此前仅复制了手册页面(assets)而缺失书籍定义(book.json)、合成配方、创造栏书籍物品与书籍模型,导致手册物品丢失、全部页面文本(含联动文本)不可用;已补全(配方按 1.20.1 NBT 格式适配)并重新发布。
 - 效果移除拦截误伤本模组主动移除:新增内部移除通道(ModEffectRemoval),「待命」/计数/治愈等效果不再永久残留(双版本)。
 - 以毒攻毒移除效果时遍历实时视图导致 ConcurrentModificationException(服务端 tick 崩溃风险):改为快照迭代(双版本)。
 - 效果牌复制/返还映射缺失导致错发「王之力」:统一为 BaseEffectCardItem.cardByTypeId 单一映射,补齐以毒攻毒/活体书页等全部效果牌(双版本)。
@@ -292,6 +293,7 @@ This changelog is fully split by language: the Chinese version comes first, foll
 
 ### Bug Fixes
 
+- **1.20.1 handbook registration completed**: the earlier port copied only the book pages (assets) but missed the book definition (book.json), crafting recipe, creative-tab book item and book model, so the book item was missing and no page text (including the integration texts) was reachable; all are now in place (the recipe uses the 1.20.1 NBT format) and republished.
 - The effect-removal guard no longer swallows the mod's own removals — a new internal-removal channel (ModEffectRemoval) keeps ready/count/healing indicators from lingering forever (both versions).
 - 以毒攻毒 removed effects while iterating the live view, risking a ConcurrentModificationException on the server tick — now iterates a snapshot (both versions).
 - Copy/refund mappings missing card ids silently granted King Power — unified into BaseEffectCardItem.cardByTypeId covering every effect card (both versions).
