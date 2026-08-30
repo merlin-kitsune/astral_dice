@@ -29,14 +29,17 @@ Astral Dice is a survival expansion mod built around dice. Equip a dice and ever
 - 事件系统：大侦探、调查员、秘密侦探等立牌联动
 - Bountiful 赏金板联动
 
-### 环境要求
+### 支持版本 / 环境要求
 
-| 项目 | 要求 |
+| 支持 | 子项目 | Minecraft | 加载器 | Java | 当前模组版本 | 帕秋莉手册 |
+|---|---|---|---|---|---|---|
+| ✅ | `neoforge-1.21.1` | 1.21.1 | NeoForge 21.1.235 | 21 | 1.1.3 | ✅ |
+| ✅ | `forge-1.20.1` | 1.20.1 | Forge 47.4.10 | 17 | 1.1.3 | ✅ |
+
+| 前置/联动 | 要求 |
 |---|---|
-| Minecraft | 1.21.1（`neoforge-1.21.1`）/ 1.20.1（`forge-1.20.1`） |
-| 加载器 | NeoForge 21.1.235 / Forge 47.4.10 |
 | 前置模组 | Curios API |
-| 可选联动 | Bountiful、帕秋莉手册（仅 1.21.1） |
+| 可选联动 | Bountiful、帕秋莉手册 |
 
 ---
 
@@ -59,14 +62,17 @@ Astral Dice is a survival expansion mod built around dice. Equip a dice and ever
 - Event system featuring Detective, Investigator, and Secret Detective signs
 - Bountiful bounty board integration
 
-### Requirements
+### Supported Versions / Requirements
 
-| Item | Requirement |
+| Support | Subproject | Minecraft | Loader | Java | Current Version | Patchouli |
+|---|---|---|---|---|---|---|
+| ✅ | `neoforge-1.21.1` | 1.21.1 | NeoForge 21.1.235 | 21 | 1.1.3 | ✅ |
+| ✅ | `forge-1.20.1` | 1.20.1 | Forge 47.4.10 | 17 | 1.1.3 | ✅ |
+
+| Dependency | Requirement |
 |---|---|
-| Minecraft | 1.21.1 (`neoforge-1.21.1`) / 1.20.1 (`forge-1.20.1`) |
-| Loader | NeoForge 21.1.235 / Forge 47.4.10 |
-| Required Mod | Curios API |
-| Optional | Bountiful, Patchouli (1.21.1 only) |
+| Required | Curios API |
+| Optional | Bountiful, Patchouli |
 
 ---
 
@@ -74,7 +80,7 @@ Astral Dice is a survival expansion mod built around dice. Equip a dice and ever
 
 - 支持平台：Minecraft 1.21.1 / NeoForge 与 1.20.1 / Forge
 - 前置：Curios API
-- 构建产物：`neoforge-1.21.1/build/libs/astral_dice-<版本>.jar`、`forge-1.20.1/build/libs/astral_dice-<版本>+1.20.1.jar`
+- 构建产物：`neoforge-1.21.1/build/libs/astral_dice-<版本>+neoforge_1.21.1.jar`、`forge-1.20.1/build/libs/astral_dice-<版本>+forge_1.20.1.jar`；GitHub Release 的 tag 使用无后缀的基础版本号（如 `1.1.3`），自动附带两个 jar
 
 ## 构建 / Build
 
