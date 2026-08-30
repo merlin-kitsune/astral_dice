@@ -1,0 +1,17 @@
+{
+  "name": "item.astral_dice.eight_sided_dice_chip",
+  "category": "astral_dice:chips_starlight",
+  "icon": "astral_dice:eight_sided_dice_chip",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:eight_sided_dice_chip",
+      "text": "astral_dice.guide.entry.eight_sided_dice_chip.1"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:eight_sided_dice_chip"
+    }
+  ],
+  "sortnum": 1
+}

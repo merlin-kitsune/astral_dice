@@ -1,0 +1,17 @@
+{
+  "name": "item.astral_dice.buffer_shield_chip",
+  "category": "astral_dice:chips_healing",
+  "icon": "astral_dice:buffer_shield_chip",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:buffer_shield_chip",
+      "text": "astral_dice.guide.entry.buffer_shield_chip.1"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:buffer_shield_chip"
+    }
+  ],
+  "sortnum": 5
+}

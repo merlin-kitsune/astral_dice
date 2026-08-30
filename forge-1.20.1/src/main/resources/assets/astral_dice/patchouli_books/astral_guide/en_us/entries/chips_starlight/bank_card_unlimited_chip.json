@@ -1,0 +1,17 @@
+{
+  "name": "item.astral_dice.bank_card_unlimited_chip",
+  "category": "astral_dice:chips_starlight",
+  "icon": "astral_dice:bank_card_unlimited_chip",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:bank_card_unlimited_chip",
+      "text": "astral_dice.guide.entry.bank_card_unlimited_chip.1"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:bank_card_unlimited_chip"
+    }
+  ],
+  "sortnum": 5
+}

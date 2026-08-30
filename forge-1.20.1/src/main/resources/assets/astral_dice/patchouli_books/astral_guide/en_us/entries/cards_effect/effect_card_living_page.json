@@ -1,0 +1,21 @@
+{
+  "name": "item.astral_dice.effect_card_living_page",
+  "category": "astral_dice:cards_effect",
+  "icon": "astral_dice:effect_card_living_page",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:effect_card_living_page",
+      "text": "astral_dice.guide.entry.effect_card_living_page.1"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.effect_card_living_page.2"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.effect_card_living_page.3"
+    }
+  ],
+  "sortnum": 14
+}

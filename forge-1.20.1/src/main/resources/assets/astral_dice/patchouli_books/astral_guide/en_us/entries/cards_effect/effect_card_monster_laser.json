@@ -1,0 +1,17 @@
+{
+  "name": "item.astral_dice.effect_card_monster_laser",
+  "category": "astral_dice:cards_effect",
+  "icon": "astral_dice:effect_card_monster_laser",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:effect_card_monster_laser",
+      "text": "astral_dice.guide.entry.effect_card_monster_laser.1"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:effect_card_monster_laser"
+    }
+  ],
+  "sortnum": 10
+}

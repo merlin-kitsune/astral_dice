@@ -1,0 +1,7 @@
+{
+  "name": "astral_dice.guide.category.cards_defense",
+  "description": "astral_dice.guide.category.cards_defense.desc",
+  "icon": "astral_dice:defense_card_medium",
+  "sortnum": 32,
+  "parent": "astral_dice:cards"
+}

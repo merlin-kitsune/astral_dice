@@ -1,0 +1,21 @@
+{
+  "name": "item.astral_dice.fen_sign",
+  "category": "astral_dice:signs",
+  "icon": "astral_dice:fen_sign",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:fen_sign",
+      "text": "astral_dice.guide.entry.fen_sign.1"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.fen_sign.2"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:fen_sign"
+    }
+  ],
+  "sortnum": 12
+}

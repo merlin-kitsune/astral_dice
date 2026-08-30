@@ -1,0 +1,7 @@
+{
+  "name": "astral_dice.guide.category.cards_attack",
+  "description": "astral_dice.guide.category.cards_attack.desc",
+  "icon": "astral_dice:attack_card_medium",
+  "sortnum": 31,
+  "parent": "astral_dice:cards"
+}

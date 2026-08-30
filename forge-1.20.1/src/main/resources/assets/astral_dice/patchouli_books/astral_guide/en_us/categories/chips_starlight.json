@@ -1,0 +1,7 @@
+{
+  "name": "astral_dice.guide.category.chips_starlight",
+  "description": "astral_dice.guide.category.chips_starlight.desc",
+  "icon": "astral_dice:flashlight_chip",
+  "sortnum": 41,
+  "parent": "astral_dice:chips"
+}

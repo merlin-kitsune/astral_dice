@@ -1,0 +1,25 @@
+{
+  "name": "item.astral_dice.revenge_halberd_chip",
+  "category": "astral_dice:chips_other",
+  "icon": "astral_dice:revenge_halberd_chip",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:revenge_halberd_chip",
+      "text": "astral_dice.guide.entry.revenge_halberd_chip.1"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.revenge_halberd_chip.2"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.revenge_halberd_chip.3"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:revenge_halberd_chip"
+    }
+  ],
+  "sortnum": 15
+}

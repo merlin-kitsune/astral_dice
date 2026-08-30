@@ -1,0 +1,25 @@
+{
+  "name": "item.astral_dice.satellite_chip",
+  "category": "astral_dice:chips_other",
+  "icon": "astral_dice:satellite_chip",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:satellite_chip",
+      "text": "astral_dice.guide.entry.satellite_chip.1"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.satellite_chip.2"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.satellite_chip.3"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:satellite_chip"
+    }
+  ],
+  "sortnum": 17
+}

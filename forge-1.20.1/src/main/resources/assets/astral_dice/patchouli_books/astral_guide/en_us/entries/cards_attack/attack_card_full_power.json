@@ -1,0 +1,13 @@
+{
+  "name": "item.astral_dice.attack_card_full_power",
+  "category": "astral_dice:cards_attack",
+  "icon": "astral_dice:attack_card_full_power",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:attack_card_full_power",
+      "text": "astral_dice.guide.entry.attack_card_full_power.1"
+    }
+  ],
+  "sortnum": 6
+}

@@ -1,0 +1,17 @@
+{
+  "name": "item.astral_dice.golden_dice",
+  "category": "astral_dice:dice",
+  "icon": "astral_dice:golden_dice",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:golden_dice",
+      "text": "astral_dice.guide.entry.golden_dice.1"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:golden_dice"
+    }
+  ],
+  "sortnum": 1
+}

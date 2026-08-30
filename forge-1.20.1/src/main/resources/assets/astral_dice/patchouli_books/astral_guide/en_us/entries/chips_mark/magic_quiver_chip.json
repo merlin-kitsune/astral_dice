@@ -1,0 +1,17 @@
+{
+  "name": "item.astral_dice.magic_quiver_chip",
+  "category": "astral_dice:chips_mark",
+  "icon": "astral_dice:magic_quiver_chip",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:magic_quiver_chip",
+      "text": "astral_dice.guide.entry.magic_quiver_chip.1"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:magic_quiver_chip"
+    }
+  ],
+  "sortnum": 7
+}

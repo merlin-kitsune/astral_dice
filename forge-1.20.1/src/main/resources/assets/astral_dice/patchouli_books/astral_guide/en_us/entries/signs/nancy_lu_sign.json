@@ -1,0 +1,21 @@
+{
+  "name": "item.astral_dice.nancy_lu_sign",
+  "category": "astral_dice:signs",
+  "icon": "astral_dice:nancy_lu_sign",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:nancy_lu_sign",
+      "text": "astral_dice.guide.entry.nancy_lu_sign.1"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.nancy_lu_sign.2"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:nancy_lu_sign"
+    }
+  ],
+  "sortnum": 13
+}

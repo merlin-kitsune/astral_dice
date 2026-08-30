@@ -1,0 +1,17 @@
+{
+  "name": "item.astral_dice.medkit_emergency_chip",
+  "category": "astral_dice:chips_healing",
+  "icon": "astral_dice:medkit_emergency_chip",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:medkit_emergency_chip",
+      "text": "astral_dice.guide.entry.medkit_emergency_chip.1"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:medkit_emergency_chip"
+    }
+  ],
+  "sortnum": 0
+}

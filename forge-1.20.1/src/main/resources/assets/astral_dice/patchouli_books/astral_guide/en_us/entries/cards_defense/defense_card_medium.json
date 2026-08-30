@@ -1,0 +1,17 @@
+{
+  "name": "item.astral_dice.defense_card_medium",
+  "category": "astral_dice:cards_defense",
+  "icon": "astral_dice:defense_card_medium",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:defense_card_medium",
+      "text": "astral_dice.guide.entry.defense_card_medium.1"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:defense_card_medium"
+    }
+  ],
+  "sortnum": 0
+}

@@ -1,0 +1,17 @@
+{
+  "name": "item.astral_dice.piercing_gun_chip",
+  "category": "astral_dice:chips_other",
+  "icon": "astral_dice:piercing_gun_chip",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:piercing_gun_chip",
+      "text": "astral_dice.guide.entry.piercing_gun_chip.1"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:piercing_gun_chip"
+    }
+  ],
+  "sortnum": 16
+}

@@ -1,0 +1,17 @@
+{
+  "name": "item.astral_dice.netherite_dice",
+  "category": "astral_dice:dice",
+  "icon": "astral_dice:netherite_dice",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:netherite_dice",
+      "text": "astral_dice.guide.entry.netherite_dice.1"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:netherite_dice"
+    }
+  ],
+  "sortnum": 3
+}

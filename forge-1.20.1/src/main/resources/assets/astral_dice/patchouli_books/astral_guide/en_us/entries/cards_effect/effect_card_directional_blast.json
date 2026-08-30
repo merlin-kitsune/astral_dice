@@ -1,0 +1,17 @@
+{
+  "name": "item.astral_dice.effect_card_directional_blast",
+  "category": "astral_dice:cards_effect",
+  "icon": "astral_dice:effect_card_directional_blast",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:effect_card_directional_blast",
+      "text": "astral_dice.guide.entry.effect_card_directional_blast.1"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:effect_card_directional_blast"
+    }
+  ],
+  "sortnum": 13
+}
