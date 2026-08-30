@@ -5,10 +5,13 @@ import com.merlinkitsune.astral_dice.item.ModItems;
 
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.CreativeModeTabs;
+import net.minecraftforge.fml.ModList;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.RegistryObject;
+import vazkii.patchouli.common.item.ItemModBook;
 
 public class ModCreativeTabs {
 
@@ -21,6 +24,10 @@ public class ModCreativeTabs {
             .withTabsBefore(CreativeModeTabs.COMBAT)
             .icon(() -> ModItems.DICE.get().getDefaultInstance())
             .displayItems((params, output) -> {
+                // 恋的规则书（帕秋莉手册，置顶）
+                if (ModList.get().isLoaded("patchouli")) {
+                    output.accept(ItemModBook.forBook(new ResourceLocation(AstralDiceMod.MODID, "astral_guide")));
+                }
                 // 材料（最前端）
                 output.accept(ModItems.STAR_COIN.get());
                 output.accept(ModItems.STAR_COIN_BAG.get());
