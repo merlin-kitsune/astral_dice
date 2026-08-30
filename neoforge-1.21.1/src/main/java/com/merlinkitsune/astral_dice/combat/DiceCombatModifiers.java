@@ -109,11 +109,6 @@ public final class DiceCombatModifiers {
         registerAttackModifier((ctx, ap) -> {
             int sum = 0;
             for (AppliedStone stone : ctx.enhancement.appliedStones()) {
-                // 蓄力:赐福进行中放入的蓄力(charge_defer)本次赐福不生效,下次触发赐福再生效
-                if ("charge".equals(stone.type())
-                        && ModAttachments.getChargeDefer(ctx.attacker)) {
-                    continue;
-                }
                 // 掷骰逻辑统一由 CardRegistry 提供(含 shadow_strike/charge/full_power/meito 等特殊卡)
                 sum += CardRegistry.roll(stone.type(), ctx);
             }
@@ -483,8 +478,6 @@ public final class DiceCombatModifiers {
         int max = base;
         for (AppliedStone stone : enhancement.appliedStones()) {
             if (CardRegistry.isDefense(stone.type())) continue;
-            // 赐福进行中放入的蓄力本次赐福不生效,显示范围同样不计算
-            if ("charge".equals(stone.type()) && ModAttachments.getChargeDefer(player)) continue;
             min += CardRegistry.minRoll(stone.type());
             max += CardRegistry.maxRoll(stone.type());
         }

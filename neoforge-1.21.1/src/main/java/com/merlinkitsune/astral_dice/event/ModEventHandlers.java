@@ -745,26 +745,16 @@ public class ModEventHandlers {
         List<AppliedStone> newStones = new ArrayList<>();
         boolean foundCharge = false;
         int costFreed = 0;
-        // 赐福进行中放入的蓄力(charge_defer):本次赐福不转换,保留至下次赐福结束时转换
-        boolean deferCharge = ModAttachments.getChargeDefer(player);
+        // 蓄力:本次赐福结束后一律转换为全力攻击(赐福期间卡牌栏锁定,蓄力只可能预先放置)
         for (AppliedStone stone : enh.appliedStones()) {
             if ("charge".equals(stone.type())) {
                 foundCharge = true;
-                if (deferCharge) {
-                    newStones.add(stone);
-                } else {
-                    costFreed += AppliedStone.cost(stone.type());
-                }
+                costFreed += AppliedStone.cost(stone.type());
             } else {
                 newStones.add(stone);
             }
         }
         if (!foundCharge) return;
-        if (deferCharge) {
-            // 清除延迟标记:蓄力将在下次赐福结束时转换为全力攻击
-            ModAttachments.setChargeDefer(player, false);
-            return;
-        }
 
         dice.set(ModDataComponents.WEAPON_ENHANCEMENT.get(),
                 new WeaponEnhancement(
@@ -784,30 +774,6 @@ public class ModEventHandlers {
                             .withStyle(ChatFormatting.YELLOW), GameplayConstants.ACTIONBAR_DURATION_TICKS));
         }
     }
-
-    // 蓄力兜底:玩家没有骰神赐福时,蓄力保留在骰子内等待下次触发骰神赐福(不再无赐福时立即转换);
-    // 若此前处于"赐福进行中放入"的延迟状态,在此清除,使蓄力在下次赐福中正常生效并在其结束时转换
-    private static void returnChargeCardIfBlessingEnded(Player player) {
-        if (player.level().isClientSide()) return;
-        if (player.hasEffect(ModEffects.DICE_BLESSING)) return;
-        var curios = CuriosApi.getCuriosInventory(player);
-        if (curios.isEmpty()) return;
-        var diceResult = curios.get().findFirstCurio(DiceCurioItem::isDiceItem);
-        if (diceResult.isEmpty()) return;
-        ItemStack dice = diceResult.get().stack();
-        WeaponEnhancement enh = dice.getOrDefault(ModDataComponents.WEAPON_ENHANCEMENT.get(), null);
-        if (enh == null) return;
-        boolean foundCharge = false;
-        for (AppliedStone stone : enh.appliedStones()) {
-            if ("charge".equals(stone.type())) {
-                foundCharge = true;
-                break;
-            }
-        }
-        if (!foundCharge) return;
-        ModAttachments.setChargeDefer(player, false);
-    }
-
 
     // 标记效果自然结束时:每分钟减少 1 层标记(层数>1 时重新施加并重置计时,否则标记消失)
     @SubscribeEvent
@@ -1141,8 +1107,6 @@ public class ModEventHandlers {
         com.merlinkitsune.astral_dice.item.card.FightPoisonWithPoisonCardItem.tick(player);
         // 大当家立牌:1 分钟内没有触发骰神赐福 → 养精蓄锐 +1 层
         com.merlinkitsune.astral_dice.item.sign.FenSignItem.tick(player);
-        // 蓄力兜底:若赐福已结束但骰子仍残留蓄力,返还全力攻击
-        returnChargeCardIfBlessingEnded(player);
 
     }
 
@@ -2282,7 +2246,6 @@ public class ModEventHandlers {
         ModAttachments.setStarCoinHammerBonus(player, 0);
         ModAttachments.setCursedSwordBonus(player, 0);
         ModAttachments.setCursedSwordBlessingTriggered(player, false);
-        ModAttachments.setChargeDefer(player, false);
         ModAttachments.setCandyChipPlayBonusActive(player, false);
         ModAttachments.setSatellitePlayBonusActive(player, false);
         ModAttachments.setSatelliteGiveCooldownEnd(player, 0);
