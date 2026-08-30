@@ -4,6 +4,7 @@
 
 ### 新内容 / New Content
 - 骰神赐福期间,骰子卡牌界面禁止插入/移除卡牌(服务端权威 + 客户端同步拦截),界面顶部显示红色提醒文字(仅 1.21.1)。 / During the Dice Blessing, cards can no longer be inserted into or removed from the dice card interface (server-authoritative with client-side blocking), and the screen shows a red warning at the top (1.21.1 only).
+- 手册「基本介绍」分类图标更换为「头号玩家立牌」(仅 1.21.1)。 / The handbook's "Getting Started" category icon is now the "No.1 Player Sign" (1.21.1 only).
 
 ### 已修复BUG / Bug Fixes
 - 修复帕秋莉手册部分条目显示 `Format error` 的问题:guide 文本中的字面百分号未转义(18 个条目,中英 36 条),经 `I18n.get`/`String.format` 时抛异常;已统一改为 `%%`,并同步修复 4 个同隐患 tooltip key(仅 1.21.1)。 / Fixed "Format error" showing in some Patchouli handbook entries: literal percent signs in guide texts (18 entries, zh+en) were unescaped and broke `I18n.get`/`String.format`; they are now written as `%%`, and the 4 tooltip keys with the same latent issue were fixed too (1.21.1 only).
