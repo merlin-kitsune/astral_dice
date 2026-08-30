@@ -27,6 +27,7 @@ import net.minecraftforge.items.IItemHandler;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
+import com.merlinkitsune.astral_dice.event.ModEffectRemoval;
 
 /**
  * 骇客立牌(命名:nancy_lu)。
@@ -69,8 +70,9 @@ public class NancyLuSignItem extends BaseSignItem {
             player.setInvulnerable(false);
             ModAttachments.setNancyLuInvulnerableUntil(player, 0);
         }
-        // 主动完全隐身到期
-        if (now >= ModAttachments.getNancyLuHiddenUntil(player)) {
+        // 主动完全隐身到期(仅立牌自身授予的隐身到期时才移除,避免误清其他来源的隐身)
+        long hiddenUntil = ModAttachments.getNancyLuHiddenUntil(player);
+        if (hiddenUntil > 0 && now >= hiddenUntil) {
             ModAttachments.setNancyLuHiddenUntil(player, 0);
             player.removeEffect(net.minecraft.world.effect.MobEffects.INVISIBILITY);
         }
@@ -78,22 +80,27 @@ public class NancyLuSignItem extends BaseSignItem {
         if (now >= ModAttachments.getNancyLuActiveBonusUntil(player)) {
             ModAttachments.setNancyLuActiveBonus(player, 0);
             ModAttachments.setNancyLuActiveBonusUntil(player, 0);
-            player.removeEffect(ModEffects.NANCY_LU_HACK.get());
+            ModEffectRemoval.remove(player, ModEffects.NANCY_LU_HACK.get());
         }
     }
 
     @Override
     protected void clearSignData(Player player, ItemStack stack) {
         super.clearSignData(player, stack);
+        // 仅清除立牌自身授予的状态(附件标记仍有效时),不触碰其他来源的公共数值
+        if (ModAttachments.getNancyLuInvulnerableUntil(player) > 0) {
+            player.setInvulnerable(false);
+        }
+        if (ModAttachments.getNancyLuHiddenUntil(player) > 0) {
+            player.removeEffect(net.minecraft.world.effect.MobEffects.INVISIBILITY);
+        }
         ModAttachments.setNancyLuPassiveType(player, PASSIVE_NONE);
         ModAttachments.setNancyLuActiveBonus(player, 0);
         ModAttachments.setNancyLuActiveBonusUntil(player, 0);
         ModAttachments.setNancyLuInvulnerableUntil(player, 0);
         ModAttachments.setNancyLuHiddenUntil(player, 0);
         ModAttachments.setNancyLuEnderPearlImmuneUntil(player, 0);
-        player.setInvulnerable(false);
-        player.removeEffect(net.minecraft.world.effect.MobEffects.INVISIBILITY);
-        player.removeEffect(ModEffects.NANCY_LU_HACK.get());
+        ModEffectRemoval.remove(player, ModEffects.NANCY_LU_HACK.get());
     }
 
     @Override

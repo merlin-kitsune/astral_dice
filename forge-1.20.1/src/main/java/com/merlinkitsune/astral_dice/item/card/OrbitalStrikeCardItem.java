@@ -8,6 +8,11 @@ public class OrbitalStrikeCardItem extends BaseEffectCardItem {
     public OrbitalStrikeCardItem(Properties properties) {
         super(properties);
     }
+    @Override
+    protected String cardTypeId() {
+        return "orbital_strike";
+    }
+
 
     @Override
     protected MobEffect getEffect() {

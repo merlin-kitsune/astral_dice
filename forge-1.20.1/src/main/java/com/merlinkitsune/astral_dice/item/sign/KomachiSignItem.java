@@ -14,6 +14,8 @@ import com.merlinkitsune.astral_dice.item.card.ExclusiveCardUtil;
 import com.merlinkitsune.astral_dice.item.card.EffectCardPeriod;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
+import com.merlinkitsune.astral_dice.event.ModEffectRemoval;
+import com.merlinkitsune.astral_dice.item.card.BaseEffectCardItem;
 
 /**
  * 忍者立牌。
@@ -29,9 +31,6 @@ public class KomachiSignItem extends BaseSignItem {
         super(properties);
     }
 
-    @Override
-    protected void onCurioTick(SlotContext slotContext, ItemStack stack) {
-    }
 
     @Override
     protected void clearSignData(Player player, ItemStack stack) {
@@ -40,7 +39,7 @@ public class KomachiSignItem extends BaseSignItem {
         ModAttachments.setKomachiUseCount(player, 0);
         ModAttachments.setKomachiDamageBonus(player, 0);
         ModAttachments.setKomachiExtraPlayActive(player, false);
-        player.removeEffect(ModEffects.KOMACHI_COUNT.get());
+        ModEffectRemoval.remove(player, ModEffects.KOMACHI_COUNT.get());
     }
 
     @Override
@@ -68,7 +67,7 @@ public class KomachiSignItem extends BaseSignItem {
         updateCountEffect(player);
         if (count >= 3) {
             // 1. 复制最后一张使用的效果牌并返回到物品栏
-            ItemStack card = effectCardByType(cardType);
+            ItemStack card = BaseEffectCardItem.cardByTypeId(cardType);
             // 复制的专属效果牌绑定获得者(忍者)
             if (ExclusiveCardUtil.isExclusive(card)) {
                 ExclusiveCardUtil.setOwner(card, player);
@@ -105,18 +104,10 @@ public class KomachiSignItem extends BaseSignItem {
         if (player.level().isClientSide()) return;
         int count = ModAttachments.getKomachiUseCount(player);
         if (count <= 0) {
-            player.removeEffect(ModEffects.KOMACHI_COUNT.get());
+            ModEffectRemoval.remove(player, ModEffects.KOMACHI_COUNT.get());
             return;
         }
         player.addEffect(new MobEffectInstance(ModEffects.KOMACHI_COUNT.get(), 10000, count - 1, false, true, true));
     }
 
-    private static ItemStack effectCardByType(String cardType) {
-        return switch (cardType) {
-            case "berserk" -> new ItemStack(ModItems.EFFECT_CARD_BERSERK.get());
-            case "unwavering" -> new ItemStack(ModItems.EFFECT_CARD_UNWAVERING.get());
-            case "living_page" -> new ItemStack(ModItems.LIVING_BOOK_PAGE.get());
-            default -> new ItemStack(ModItems.EFFECT_CARD_KING_POWER.get());
-        };
-    }
 }

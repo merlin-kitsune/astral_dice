@@ -56,14 +56,32 @@ public abstract class BaseEffectCardItem extends Item {
         return false;
     }
 
-    // 是否参与"忍者立牌/魔法秘典"的复制计数(默认否;功能效果牌覆写为 true)
-    protected boolean countsForCopy() {
-        return false;
-    }
+    // 参与复制计数时的卡牌类型 id(与计数钩子的 cardByTypeId 映射对应;全部效果牌均参与复制,无排除项)
+    protected abstract String cardTypeId();
 
-    // 参与复制计数时的卡牌类型 id(与计数钩子的 effectCardByType 映射对应)
-    protected String cardTypeId() {
-        return "";
+    /**
+     * 效果牌类型 id → 对应物品(忍者立牌复制/魔法秘典返还/魔法箭袋返还共用,
+     * 与各牌 {@link #cardTypeId()} 保持单一实现;未识别的类型回退为王之力)。
+     */
+    public static ItemStack cardByTypeId(String cardTypeId) {
+        return switch (cardTypeId) {
+            case "berserk" -> new ItemStack(ModItems.EFFECT_CARD_BERSERK.get());
+            case "unwavering" -> new ItemStack(ModItems.EFFECT_CARD_UNWAVERING.get());
+            case "living_page" -> new ItemStack(ModItems.LIVING_BOOK_PAGE.get());
+            case "fight_poison_with_poison" -> new ItemStack(ModItems.EFFECT_CARD_FIGHT_POISON_WITH_POISON.get());
+            case "king_power" -> new ItemStack(ModItems.EFFECT_CARD_KING_POWER.get());
+            case "monster_laser" -> new ItemStack(ModItems.MONSTER_LASER_CARD.get());
+            case "monster_brick" -> new ItemStack(ModItems.MONSTER_BRICK_CARD.get());
+            case "orbital_strike" -> new ItemStack(ModItems.ORBITAL_STRIKE_CARD.get());
+            case "directional_blast" -> new ItemStack(ModItems.DIRECTIONAL_BLAST_CARD.get());
+            case "chocolate_cake" -> new ItemStack(ModItems.CHOCOLATE_CAKE.get());
+            case "hamburger" -> new ItemStack(ModItems.HAMBURGER.get());
+            case "luxury_feast" -> new ItemStack(ModItems.LUXURY_FEAST.get());
+            case "you_have_i_have" -> new ItemStack(ModItems.YOU_HAVE_I_HAVE.get());
+            case "express_delivery" -> new ItemStack(ModItems.EXPRESS_DELIVERY.get());
+            case "fate_guidance" -> new ItemStack(ModItems.FATE_GUIDANCE_CARD.get());
+            default -> new ItemStack(ModItems.EFFECT_CARD_KING_POWER.get());
+        };
     }
 
     /**
@@ -211,12 +229,10 @@ public abstract class BaseEffectCardItem extends Item {
             FenSignItem.onHealingCardUsed(player);
         }
 
-        // 复制计数钩子(忍者立牌/魔法秘典/魔法箭袋)
-        if (countsForCopy()) {
-            KomachiSignItem.onEffectCardUsed(player, cardTypeId());
-            MagicTomeChipItem.onEffectCardUsed(player, cardTypeId());
-            MagicQuiverChipItem.onEffectCardUsed(player, cardTypeId());
-        }
+        // 复制计数钩子(忍者立牌/魔法秘典/魔法箭袋):全部效果牌均参与,无排除项
+        KomachiSignItem.onEffectCardUsed(player, cardTypeId());
+        MagicTomeChipItem.onEffectCardUsed(player, cardTypeId());
+        MagicQuiverChipItem.onEffectCardUsed(player, cardTypeId());
         return true;
     }
 }

@@ -5,9 +5,7 @@ import com.merlinkitsune.astral_dice.component.ModAttachments;
 import net.minecraft.world.entity.player.Player;
 import com.merlinkitsune.astral_dice.item.CuriosCompat;
 import top.theillusivec4.curios.api.CuriosApi;
-import com.merlinkitsune.astral_dice.resource.PlayerResource;
 import com.merlinkitsune.astral_dice.item.chip.BankCardChipItem;
-import com.merlinkitsune.astral_dice.resource.PlayerResourceRegistry;
 
 /**
  * "星光"管理器(玩家级共享资源,与具体饰品解耦)。
@@ -22,35 +20,6 @@ import com.merlinkitsune.astral_dice.resource.PlayerResourceRegistry;
  * 获取来源:经商立牌被动/赐福加成、手电筒筹码攻击加成、八面骰累计、看板立牌兑换等。
  */
 public final class StarLightManager {
-    // 流派注册实现(供 PlayerResourceRegistry 注册)
-    public static final com.merlinkitsune.astral_dice.resource.PlayerResource RESOURCE =
-            new com.merlinkitsune.astral_dice.resource.PlayerResource() {
-                @Override
-                public int get(net.minecraft.world.entity.player.Player player) {
-                    return StarLightManager.get(player);
-                }
-
-                @Override
-                public int getCap(net.minecraft.world.entity.player.Player player) {
-                    return StarLightManager.getCap();
-                }
-
-                @Override
-                public int add(net.minecraft.world.entity.player.Player player, int amount) {
-                    return StarLightManager.add(player, amount);
-                }
-
-                @Override
-                public int spend(net.minecraft.world.entity.player.Player player, int amount) {
-                    return StarLightManager.spend(player, amount);
-                }
-
-                @Override
-                public void clear(net.minecraft.world.entity.player.Player player) {
-                    StarLightManager.set(player, 0);
-                }
-            };
-
     private StarLightManager() {
     }
 

@@ -18,6 +18,7 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import com.merlinkitsune.astral_dice.network.ModNetwork;
+import com.merlinkitsune.astral_dice.event.ModEffectRemoval;
 
 /**
  * 占星师立牌(命名:haiqing)。
@@ -44,7 +45,7 @@ public class HaiqingSignItem extends BaseSignItem {
                 && player.level().getGameTime() >= expire) {
             ModAttachments.setSignReadyType(player, 0);
             ModAttachments.setSignReadyExpire(player, 0);
-            player.removeEffect(ModEffects.HAIQING_READY.get());
+            ModEffectRemoval.remove(player, ModEffects.HAIQING_READY.get());
         }
         if (ModAttachments.getSignReadyType(player) == READY_TYPE && expire > 0
                 && player.tickCount % 20 == 0 && player instanceof ServerPlayer sp) {
@@ -62,7 +63,7 @@ public class HaiqingSignItem extends BaseSignItem {
             ModAttachments.setSignReadyType(player, 0);
             ModAttachments.setSignReadyExpire(player, 0);
         }
-        player.removeEffect(ModEffects.HAIQING_READY.get());
+        ModEffectRemoval.remove(player, ModEffects.HAIQING_READY.get());
     }
 
     @Override

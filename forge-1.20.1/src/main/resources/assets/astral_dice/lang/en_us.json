@@ -109,7 +109,7 @@
   "effect.astral_dice.fen_frenzy": "Battle Frenzy",
   "effect.astral_dice.blue_curse": "Blue Curse",
   "effect.astral_dice.blue_curse.description": "Armor §e-20%%§7, Armor Toughness §e0§7 (armor value rounded down)",
-  "effect.astral_dice.nancy_lu_hack": "Remote Hack",
+  "effect.astral_dice.nancy_lu_hack": "Remote Intrusion",
   "effect.astral_dice.nancy_lu_hack.description": "Attack boosted for §92:00§7",
   "effect.astral_dice.undercover_investigation": "Undercover Investigation",
   "effect.astral_dice.investigation_bonus": "Investigation Stage",
@@ -210,9 +210,9 @@
   "tooltip.astral_dice.chip.boxing_gloves_low": "Dice Blessing attack §e+2§7",
   "tooltip.astral_dice.chip.boxing_gloves_medium": "Dice Blessing attack §e+4§7",
   "tooltip.astral_dice.chip.boxing_gloves_high": "Dice Blessing attack §e+8§7",
-  "tooltip.astral_dice.chip.speed_skates_low": "Movement speed §e+5%§7",
-  "tooltip.astral_dice.chip.speed_skates_medium": "Movement speed §e+15%§7",
-  "tooltip.astral_dice.chip.speed_skates_high": "Movement speed §e+25%§7",
+  "tooltip.astral_dice.chip.speed_skates_low": "Movement speed §e+5%%§7",
+  "tooltip.astral_dice.chip.speed_skates_medium": "Movement speed §e+15%%§7",
+  "tooltip.astral_dice.chip.speed_skates_high": "Movement speed §e+25%%§7",
   "tooltip.astral_dice.chip.moto_helmet_low": "Defense §e+2§7",
   "tooltip.astral_dice.chip.moto_helmet_medium": "Defense §e+4§7",
   "tooltip.astral_dice.chip.moto_helmet_high": "Defense §e+6§7, Armor toughness §e+2§7",
@@ -221,7 +221,7 @@
   "tooltip.astral_dice.chip.sandwich_high": "Max health §e+12§7",
   "tooltip.astral_dice.chip.magic_quiver": "After using an effect card, dealing ranged/magic damage to a marked target applies §e1§7 Mark layer and returns the first effect card used. Triggers at most once per §91:00§7",
   "tooltip.astral_dice.chip.buffer_shield": "When damaged: gain §e2§7 healing points and §e3§7 Star Coins, once per §915s§7",
-  "tooltip.astral_dice.chip.star_coin_hammer": "Gain §e5§7 Starlight on equip. If you hold more than §e20§7 Star Coins, each Dice Blessing consumes §e3§7 Star Coins and grants §e30%§7 of your held Star Coins as attack (Star Coin Bag counts as §e9§7)",
+  "tooltip.astral_dice.chip.star_coin_hammer": "Gain §e5§7 Starlight on equip. If you hold more than §e20§7 Star Coins, each Dice Blessing consumes §e3§7 Star Coins and grants §e30%%§7 of your held Star Coins as attack (Star Coin Bag counts as §e9§7)",
   "tooltip.astral_dice.chip.cursed_sword": "Always affected by §cBlue Curse§7 while equipped. During Dice Blessing, killing a hostile target with more than §e20§7 HP grants §e+1§7 attack (once per Dice Blessing), up to §e%s§7 (removing the chip clears all bonus and Blue Curse)",
   "tooltip.astral_dice.chip.cursed_sword_blue_curse": "§cBlue Curse§7: Armor §e-20%%§7, Armor Toughness §e0§7 (armor value rounded down)",
   "tooltip.astral_dice.chip.cursed_sword_enigmatic": "Enigmatic Legacy link:\nWhile equipped, Scroll of a Thousand Curses' curse count §e+1§7",
@@ -288,5 +288,6 @@
   "effect.astral_dice.fight_poison_with_poison": "Fight Poison with Poison",
   "effect.astral_dice.fight_poison_with_poison.description": "Grants §9Poison (0:08)§7. Then removes up to 3 vanilla negative effects and grants §9Regeneration II (0:15)§7",
   "item.astral_dice.hand_fan_small_chip": "Hand Fan (Small)",
-  "tooltip.astral_dice.chip.hand_fan_small": "After using an active skill: apply §e1§7 Mark layer to all hostiles within §e16§7 blocks of you"
+  "tooltip.astral_dice.chip.hand_fan_small": "After using an active skill: apply §e1§7 Mark layer to all hostiles within §e16§7 blocks of you",
+  "gui.astral_dice.card_inventory.locked": "Cannot change cards during Dice Blessing"
 }

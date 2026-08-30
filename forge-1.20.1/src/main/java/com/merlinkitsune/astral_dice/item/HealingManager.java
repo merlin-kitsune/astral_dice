@@ -34,55 +34,11 @@ public final class HealingManager {
     public static final int MEDKIT_EMERGENCY_POINTS = 1;
     /** 完备医疗箱触发骰神赐福时增加的治愈点 */
     public static final int MEDKIT_COMPLETE_POINTS = 3;
-    /** 无骰神赐福时治愈效果的常显时长(tick,5 分钟;持续刷新维持显示) */
-    public static final int IDLE_EFFECT_TICKS = 6000;
     // 内部移除"治愈"显示效果时的放行标志:onModEffectRemovalPrevented 会拦截所有 astral_dice 效果移除
-    // (防止牛奶/effect clear 等外部清除),若不放行,赐福结束且治愈计时器走完后图标会驻留无法关闭
-    private static boolean removingHealingEffect = false;
-
-    /** 是否为治愈管理器发起的主动移除(供效果移除拦截器放行) */
-    public static boolean isRemovingHealingEffect() {
-        return removingHealingEffect;
-    }
-
-    /** 移除"治愈"显示效果(带内部放行标志,确保移除真正生效) */
+    /** 移除"治愈"显示效果(经 ModEffectRemoval 内部通道,确保不被外部清除拦截) */
     private static void removeHealingEffect(Player player) {
-        removingHealingEffect = true;
-        try {
-            player.removeEffect(ModEffects.HEALING.get());
-        } finally {
-            removingHealingEffect = false;
-        }
+        com.merlinkitsune.astral_dice.event.ModEffectRemoval.remove(player, ModEffects.HEALING.get());
     }
-
-    // 流派注册实现(供 PlayerResourceRegistry 注册;筹码/立牌可通过注册表按类型调用)
-    public static final com.merlinkitsune.astral_dice.resource.PlayerResource RESOURCE =
-            new com.merlinkitsune.astral_dice.resource.PlayerResource() {
-                @Override
-                public int get(net.minecraft.world.entity.player.Player player) {
-                    return HealingManager.getPoints(player);
-                }
-
-                @Override
-                public int getCap(net.minecraft.world.entity.player.Player player) {
-                    return HealingManager.getCap(player);
-                }
-
-                @Override
-                public int add(net.minecraft.world.entity.player.Player player, int amount) {
-                    return HealingManager.add(player, amount);
-                }
-
-                @Override
-                public int spend(net.minecraft.world.entity.player.Player player, int amount) {
-                    return HealingManager.spend(player, amount);
-                }
-
-                @Override
-                public void clear(net.minecraft.world.entity.player.Player player) {
-                    HealingManager.clear(player);
-                }
-            };
 
     private HealingManager() {
     }

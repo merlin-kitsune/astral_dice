@@ -15,6 +15,7 @@ import net.minecraftforge.network.simple.SimpleChannel;
 
 import java.util.List;
 import java.util.function.Supplier;
+import net.minecraft.world.entity.LivingEntity;
 
 /**
  * 1.20.1 Forge 网络层:SimpleChannel 承载 1.21 分支的 4 个载荷
@@ -137,7 +138,18 @@ public final class ModNetwork {
                     com.merlinkitsune.astral_dice.client.ClientDamageNumbers.add(msg.entityId, msg.bonusDamage, msg.color));
             ctx.get().setPacketHandled(true);
         }
+
+        /** 向目标追踪客户端(含目标本人)发送跳数字。全部跳数字发送统一走本方法。 */
+        public static void send(LivingEntity target, int damage, int color) {
+            if (target.level().isClientSide()) return;
+            var packet = new DamageNumberMessage(target.getId(), damage, color);
+            sendToPlayersTrackingEntity(target, packet);
+            if (target instanceof net.minecraft.server.level.ServerPlayer serverTarget) {
+                sendToPlayer(serverTarget, packet);
+            }
+        }
     }
+
 
     // === 动作栏消息(S→C) ===
 

@@ -10,6 +10,8 @@ import top.theillusivec4.curios.api.CuriosApi;
 import top.theillusivec4.curios.api.SlotContext;
 import com.merlinkitsune.astral_dice.item.card.ExclusiveCardUtil;
 import com.merlinkitsune.astral_dice.item.ModItems;
+import com.merlinkitsune.astral_dice.event.ModEffectRemoval;
+import com.merlinkitsune.astral_dice.item.card.BaseEffectCardItem;
 
 /**
  * 魔法秘典筹码:每使用 3 张效果牌,复制最后一张使用的效果牌并返回到物品栏(独立计数,与忍者立牌互不关联)。
@@ -33,7 +35,7 @@ public class MagicTomeChipItem extends BaseChipItem {
         ModAttachments.setMagicTomeLastCard(player, cardType);
         updateCountEffect(player);
         if (count >= 3) {
-            ItemStack card = effectCardByType(cardType);
+            ItemStack card = BaseEffectCardItem.cardByTypeId(cardType);
             // 复制的专属效果牌绑定获得者
             if (ExclusiveCardUtil.isExclusive(card)) {
                 ExclusiveCardUtil.setOwner(card, player);
@@ -51,25 +53,17 @@ public class MagicTomeChipItem extends BaseChipItem {
         if (player.level().isClientSide()) return;
         int count = ModAttachments.getMagicTomeUseCount(player);
         if (count <= 0) {
-            player.removeEffect(ModEffects.MAGIC_TOME_COUNT.get());
+            ModEffectRemoval.remove(player, ModEffects.MAGIC_TOME_COUNT.get());
             return;
         }
         player.addEffect(new MobEffectInstance(ModEffects.MAGIC_TOME_COUNT.get(), 10000, count - 1, false, true, true));
     }
 
-    private static ItemStack effectCardByType(String cardType) {
-        return switch (cardType) {
-            case "berserk" -> new ItemStack(ModItems.EFFECT_CARD_BERSERK.get());
-            case "unwavering" -> new ItemStack(ModItems.EFFECT_CARD_UNWAVERING.get());
-            case "living_page" -> new ItemStack(ModItems.LIVING_BOOK_PAGE.get());
-            default -> new ItemStack(ModItems.EFFECT_CARD_KING_POWER.get());
-        };
-    }
 
     // 卸下筹码(真正卸下):重置效果牌计数并移除计数效果
     @Override
     protected void onChipUnequip(Player player, ItemStack stack) {
         ModAttachments.setMagicTomeUseCount(player, 0);
-        player.removeEffect(ModEffects.MAGIC_TOME_COUNT.get());
+        ModEffectRemoval.remove(player, ModEffects.MAGIC_TOME_COUNT.get());
     }
 }

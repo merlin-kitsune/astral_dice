@@ -26,14 +26,6 @@ public final class CurioSlotUtil {
     private CurioSlotUtil() {
     }
 
-    // 该物品是否允许放入指定栏位;非本模组物品一律放行
-    public static boolean isAllowedInSlot(ItemStack stack, String slotId) {
-        if (DiceCurioItem.isDiceItem(stack)) return "dice".equals(slotId);
-        if (stack.getItem() instanceof BaseSignItem) return "stand".equals(slotId);
-        if (ModItems.isChipItem(stack)) return "chip".equals(slotId);
-        return true;
-    }
-
     // 是否已装备了与给定物品相同的物品(遍历玩家全部 Curios 槽位)
     // 排除"与传入栈引用相同"的槽位物品:Curios 对已装备物品重新校验 canEquip 时,
     // 传入的栈就是槽位中的栈本身,若不排除会误判"重复装备"导致物品被 Curios 弹出。

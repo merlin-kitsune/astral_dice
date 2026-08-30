@@ -9,6 +9,7 @@ import top.theillusivec4.curios.api.CuriosApi;
 import com.merlinkitsune.astral_dice.combat.SpellDamageRegistry;
 import com.merlinkitsune.astral_dice.item.MarkManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
+import com.merlinkitsune.astral_dice.item.card.BaseEffectCardItem;
 
 /**
  * 魔法箭袋筹码:若使用过效果牌,且对具有"标记"的目标造成了法伤(远程+魔法),
@@ -61,7 +62,7 @@ public class MagicQuiverChipItem extends BaseChipItem {
         MarkManager.apply(ctx.target);
 
         // 返还第一张使用的效果牌
-        ItemStack card = effectCardByType(ModAttachments.getMagicQuiverFirstCard(ctx.attacker));
+        ItemStack card = BaseEffectCardItem.cardByTypeId(ModAttachments.getMagicQuiverFirstCard(ctx.attacker));
         if (!card.isEmpty()) {
             VitaminPillChipItem.giveCard(ctx.attacker, card);
         }
@@ -72,13 +73,6 @@ public class MagicQuiverChipItem extends BaseChipItem {
         return true;
     }
 
-    private static ItemStack effectCardByType(String cardType) {
-        return switch (cardType) {
-            case "berserk" -> new ItemStack(ModItems.EFFECT_CARD_BERSERK.get());
-            case "unwavering" -> new ItemStack(ModItems.EFFECT_CARD_UNWAVERING.get());
-            default -> new ItemStack(ModItems.EFFECT_CARD_KING_POWER.get());
-        };
-    }
 
     // 卸下筹码:清除已记录的第一张效果牌(下次装备重新追踪)
     @Override

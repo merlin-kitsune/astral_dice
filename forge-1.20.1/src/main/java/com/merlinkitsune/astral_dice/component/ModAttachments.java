@@ -656,16 +656,6 @@ public class ModAttachments {
 
     // 蓄力卡:在骰神赐福进行中放入骰子时置位。置位期间蓄力不提供 +5 固定攻击,
     // 且本次赐福结束时不转换为"全力攻击";下次触发骰神赐福时正常生效并在其结束时转换。
-    public static final AttachedDataKey<Boolean> CHARGE_DEFER =
-            register(AttachedDataKey.builder("charge_defer", Codec.BOOL, () -> false).build());
-
-    public static boolean getChargeDefer(net.minecraft.world.entity.player.Player player) {
-        return CHARGE_DEFER.get(player);
-    }
-
-    public static void setChargeDefer(net.minecraft.world.entity.player.Player player, boolean value) {
-        CHARGE_DEFER.set(player, value);
-    }
 
     // 计时器守卫:本模组有时长效果的结束时刻记录(效果注册名 → 结束 tick + 重施加参数)。
     // 仅服务端使用,序列化持久化;由 EffectTimerGuard 维护,保证效果严格按 20t/s 流动。

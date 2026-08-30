@@ -30,7 +30,7 @@ public final class MarkManager {
         int level = existing != null ? Math.min(existing.getAmplifier() + 1, GameplayConstants.MAX_MARKER - 1) : 0;
         target.addEffect(new MobEffectInstance(ModEffects.MARKED.get(), durationTicks, level, false, true));
         com.merlinkitsune.astral_dice.event.EffectTimerGuard.apply(target,
-                new MobEffectInstance(net.minecraft.world.effect.MobEffects.GLOWING, durationTicks, 0, false, true));
+                new MobEffectInstance(net.minecraft.world.effect.MobEffects.GLOWING, durationTicks, 0, false, false, false));
         return level + 1;
     }
 
@@ -40,14 +40,4 @@ public final class MarkManager {
         return existing != null ? existing.getAmplifier() + 1 : 0;
     }
 
-    // 目标是否带有标记
-    public static boolean has(LivingEntity target) {
-        return target.hasEffect(ModEffects.MARKED.get());
-    }
-
-    // 移除目标全部标记层数与伴随高亮(主动移除/死亡清理等场景)
-    public static void remove(LivingEntity target) {
-        target.removeEffect(ModEffects.MARKED.get());
-        target.removeEffect(net.minecraft.world.effect.MobEffects.GLOWING);
-    }
 }

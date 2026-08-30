@@ -22,10 +22,6 @@ public class BerserkCardItem extends BaseEffectCardItem {
         return true;
     }
 
-    @Override
-    protected boolean countsForCopy() {
-        return true;
-    }
 
     @Override
     protected String cardTypeId() {

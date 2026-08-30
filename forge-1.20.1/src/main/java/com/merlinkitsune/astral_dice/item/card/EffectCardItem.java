@@ -17,10 +17,6 @@ public class EffectCardItem extends BaseEffectCardItem {
         super(properties);
     }
 
-    @Override
-    protected boolean countsForCopy() {
-        return true;
-    }
 
     @Override
     protected String cardTypeId() {

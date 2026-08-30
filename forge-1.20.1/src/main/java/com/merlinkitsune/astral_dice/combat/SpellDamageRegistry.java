@@ -306,12 +306,7 @@ public final class SpellDamageRegistry {
 
     // 溅射/范围伤害跳数字(颜色由调用方指定;定向爆破使用效果牌绿色)
     private static void sendAoeDamageNumber(LivingEntity target, int damage, int color) {
-        if (target.level().isClientSide()) return;
-        var packet = new ModNetwork.DamageNumberMessage(target.getId(), damage, color);
-        com.merlinkitsune.astral_dice.network.ModNetwork.sendToPlayersTrackingEntity(target, packet);
-        if (target instanceof net.minecraft.server.level.ServerPlayer serverTarget) {
-            com.merlinkitsune.astral_dice.network.ModNetwork.sendToPlayer(serverTarget, packet);
-        }
+        ModNetwork.DamageNumberMessage.send(target, damage, color);
     }
 
     // 枪械/火炮类远程弹丸判定(保险):伤害类型与弹丸类名关键词识别

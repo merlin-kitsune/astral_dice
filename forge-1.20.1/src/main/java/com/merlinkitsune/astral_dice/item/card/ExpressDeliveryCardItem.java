@@ -20,6 +20,11 @@ public class ExpressDeliveryCardItem extends BaseEffectCardItem {
     public ExpressDeliveryCardItem(Properties properties) {
         super(properties);
     }
+    @Override
+    protected String cardTypeId() {
+        return "express_delivery";
+    }
+
 
     @Override
     public boolean canUseOnOtherPlayers() {

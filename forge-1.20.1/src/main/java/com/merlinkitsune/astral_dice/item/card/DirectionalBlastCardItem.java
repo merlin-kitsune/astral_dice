@@ -9,6 +9,11 @@ public class DirectionalBlastCardItem extends BaseEffectCardItem {
     public DirectionalBlastCardItem(Properties properties) {
         super(properties);
     }
+    @Override
+    protected String cardTypeId() {
+        return "directional_blast";
+    }
+
 
     @Override
     protected MobEffect getEffect() {

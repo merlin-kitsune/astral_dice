@@ -8,6 +8,11 @@ public class MonsterLaserCardItem extends BaseEffectCardItem {
     public MonsterLaserCardItem(Properties properties) {
         super(properties);
     }
+    @Override
+    protected String cardTypeId() {
+        return "monster_laser";
+    }
+
 
     @Override
     protected MobEffect getEffect() {

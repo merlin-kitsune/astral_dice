@@ -16,6 +16,7 @@ import com.merlinkitsune.astral_dice.item.CuriosCompat;
 import top.theillusivec4.curios.api.CuriosApi;
 import top.theillusivec4.curios.api.SlotContext;
 import com.merlinkitsune.astral_dice.item.ModItems;
+import com.merlinkitsune.astral_dice.event.ModEffectRemoval;
 
 /**
  * 诅咒之剑筹码:装备时始终受到"青之诅咒"影响。
@@ -25,15 +26,8 @@ import com.merlinkitsune.astral_dice.item.ModItems;
  * 移除筹码时清除全部攻击力加成与青之诅咒效果。
  */
 public class CursedSwordChipItem extends BaseChipItem {
-    // 内部移除青之诅咒标记:仅用于卸下筹码时主动清理,避免被外部效果移除保护拦截
-    private static boolean removingBlueCurse = false;
-
     public CursedSwordChipItem(Properties properties) {
         super(properties);
-    }
-
-    public static boolean isRemovingBlueCurse() {
-        return removingBlueCurse;
     }
 
     // 玩家是否佩戴诅咒之剑筹码
@@ -69,14 +63,9 @@ public class CursedSwordChipItem extends BaseChipItem {
         removeBlueCurse(player);
     }
 
-    // 主动移除青之诅咒(临时放行内部移除)
+    // 主动移除青之诅咒(经 ModEffectRemoval 内部通道放行移除拦截)
     public static void removeBlueCurse(Player player) {
-        removingBlueCurse = true;
-        try {
-            player.removeEffect(ModEffects.BLUE_CURSE.get());
-        } finally {
-            removingBlueCurse = false;
-        }
+        ModEffectRemoval.remove(player, ModEffects.BLUE_CURSE.get());
     }
 
     // 骰神赐福期间击杀敌对目标(20 血以上)时增加 1 点攻击力;每个赐福周期最多触发一次

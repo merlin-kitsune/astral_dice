@@ -30,9 +30,6 @@ public class FannySignItem extends BaseSignItem {
         super(properties);
     }
 
-    @Override
-    protected void onCurioTick(SlotContext slotContext, ItemStack stack) {
-    }
 
     @Override
     protected InteractionResultHolder<ItemStack> handleUse(Level level, Player player, ItemStack stack) {

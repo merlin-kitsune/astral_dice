@@ -19,6 +19,7 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import com.merlinkitsune.astral_dice.network.ModNetwork;
+import com.merlinkitsune.astral_dice.event.ModEffectRemoval;
 
 /**
  * 秘密侦探立牌(命名:bonnie)。
@@ -47,7 +48,7 @@ public class BonnieSignItem extends BaseSignItem {
                 && player.level().getGameTime() >= expire) {
             ModAttachments.setSignReadyType(player, 0);
             ModAttachments.setSignReadyExpire(player, 0);
-            player.removeEffect(ModEffects.BONNIE_READY.get());
+            ModEffectRemoval.remove(player, ModEffects.BONNIE_READY.get());
         }
         if (ModAttachments.getSignReadyType(player) == READY_TYPE && expire > 0
                 && player.tickCount % 20 == 0 && player instanceof ServerPlayer sp) {
@@ -67,8 +68,8 @@ public class BonnieSignItem extends BaseSignItem {
         }
         // 卸下立牌:重置调查阶段进度并清除调查增益效果(buff 累积)与"待命"提示效果
         ModAttachments.setInvestigationStage(player, 1);
-        player.removeEffect(ModEffects.INVESTIGATION_BONUS.get());
-        player.removeEffect(ModEffects.BONNIE_READY.get());
+        ModEffectRemoval.remove(player, ModEffects.INVESTIGATION_BONUS.get());
+        ModEffectRemoval.remove(player, ModEffects.BONNIE_READY.get());
     }
 
     @Override
@@ -84,11 +85,6 @@ public class BonnieSignItem extends BaseSignItem {
         return InteractionResultHolder.success(stack);
     }
 
-    // 是否装备秘密侦探立牌
-    public static boolean hasBonnieEquipped(Player player) {
-        var curios = CuriosCompat.getCuriosInventory(player);
-        return curios.isPresent() && curios.get().findFirstCurio(s -> s.is(ModItems.BONNIE_SIGN.get())).isPresent();
-    }
 
     // 被动 2(击杀钩子,由 BaseSignItem.invokeKillHooks 分发):
     // - 击杀带"标记"的敌对目标 → 获得一张随机攻击牌;

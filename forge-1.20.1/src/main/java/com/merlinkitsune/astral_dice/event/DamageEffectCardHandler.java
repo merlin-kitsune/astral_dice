@@ -36,10 +36,12 @@ public class DamageEffectCardHandler {
 
         SpellDamageContext ctx = new SpellDamageContext(player, target, event, source, direct);
 
-        // 聚合加成(按注册顺序)
+        // 聚合加成(按注册顺序):单次遍历收集生效修饰器,避免 isActive 重复求值
+        java.util.List<SpellDamageModifier> active = new java.util.ArrayList<>();
         double bonus = 0;
         for (SpellDamageModifier modifier : SpellDamageRegistry.modifiers()) {
             if (modifier.isActive(ctx)) {
+                active.add(modifier);
                 bonus = modifier.apply(ctx, bonus);
             }
         }
@@ -51,21 +53,13 @@ public class DamageEffectCardHandler {
         }
 
         // 命中副作用(施加标记/定向爆破 AOE 等)
-        for (SpellDamageModifier modifier : SpellDamageRegistry.modifiers()) {
-            if (modifier.isActive(ctx)) {
-                modifier.onHit(ctx, bonus);
-            }
+        for (SpellDamageModifier modifier : active) {
+            modifier.onHit(ctx, bonus);
         }
     }
 
     // 法伤加成跳数字(草绿色 0x7CFC00)
     private static void sendBonusDamageNumber(net.minecraft.world.entity.LivingEntity target, int bonus) {
-        if (target.level().isClientSide()) return;
-        var packet = new com.merlinkitsune.astral_dice.network.ModNetwork.DamageNumberMessage(
-                target.getId(), bonus, 0x7CFC00);
-        com.merlinkitsune.astral_dice.network.ModNetwork.sendToPlayersTrackingEntity(target, packet);
-        if (target instanceof net.minecraft.server.level.ServerPlayer serverTarget) {
-            com.merlinkitsune.astral_dice.network.ModNetwork.sendToPlayer(serverTarget, packet);
-        }
+        com.merlinkitsune.astral_dice.network.ModNetwork.DamageNumberMessage.send(target, bonus, 0x7CFC00);
     }
 }

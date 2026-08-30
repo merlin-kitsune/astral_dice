@@ -8,6 +8,11 @@ public class MonsterBrickCardItem extends BaseEffectCardItem {
     public MonsterBrickCardItem(Properties properties) {
         super(properties);
     }
+    @Override
+    protected String cardTypeId() {
+        return "monster_brick";
+    }
+
 
     @Override
     protected MobEffect getEffect() {

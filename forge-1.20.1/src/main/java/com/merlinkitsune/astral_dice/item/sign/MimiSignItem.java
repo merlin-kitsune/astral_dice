@@ -38,9 +38,6 @@ public class MimiSignItem extends BaseSignItem {
         super(properties);
     }
 
-    @Override
-    protected void onCurioTick(SlotContext slotContext, ItemStack stack) {
-    }
 
     @Override
     protected void clearSignData(Player player, ItemStack stack) {

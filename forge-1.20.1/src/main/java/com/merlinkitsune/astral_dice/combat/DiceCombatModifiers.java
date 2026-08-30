@@ -110,11 +110,6 @@ public final class DiceCombatModifiers {
         registerAttackModifier((ctx, ap) -> {
             int sum = 0;
             for (AppliedStone stone : ctx.enhancement.appliedStones()) {
-                // 蓄力:赐福进行中放入的蓄力(charge_defer)本次赐福不生效,下次触发赐福再生效
-                if ("charge".equals(stone.type())
-                        && ModAttachments.getChargeDefer(ctx.attacker)) {
-                    continue;
-                }
                 // 掷骰逻辑统一由 CardRegistry 提供(含 shadow_strike/charge/full_power/meito 等特殊卡)
                 sum += CardRegistry.roll(stone.type(), ctx);
             }
@@ -414,47 +409,6 @@ public final class DiceCombatModifiers {
         });
     }
 
-    // === GUI 显示用:计算当前攻击力/防御力(不包含随机骰点与卡牌掷骰,仅基础值+修饰器) ===
-    public static int getDisplayAttackPower(Player player, ItemStack diceStack, WeaponEnhancement enhancement) {
-        if (player == null) return 0;
-        if (enhancement == null) enhancement = WeaponEnhancement.EMPTY;
-        int misakiStar = enhancement.starLevel();
-        int misakiStacks = 0;
-        boolean misakiBurst = player.hasEffect(ModEffects.MISAKI_BURST.get());
-        var curios = CuriosCompat.getCuriosInventory(player);
-        if (curios.isPresent()) {
-            var r = curios.get().findFirstCurio(s -> s.is(ModItems.MISAKI_SIGN.get()));
-            if (r.isPresent()) {
-                misakiStacks = ModDataComponents.MISAKI_SIGN_STACKS.getOrDefault(r.get().stack(),  0);
-            }
-        }
-        DiceCombatContext ctx = new DiceCombatContext(
-                player, player, null, 0, diceStack, enhancement, false,
-                misakiBurst, misakiStar, misakiStacks);
-        double ap = player.getAttributeValue(Attributes.ATTACK_DAMAGE);
-        for (AttackPowerModifier modifier : attackModifiers()) {
-            ap = modifier.apply(ctx, ap);
-        }
-        return (int) Math.floor(ap);
-    }
-
-    public static int getDisplayDefensePower(Player player) {
-        if (player == null) return 0;
-        DiceCombatContext ctx = new DiceCombatContext(
-                player, player, null, 0, ItemStack.EMPTY, WeaponEnhancement.EMPTY, false,
-                false, 0, 0);
-        double modifierDefense = 0;
-        for (DefensePowerModifier modifier : defenseModifiers()) {
-            modifierDefense = modifier.apply(ctx, modifierDefense);
-        }
-        // 效果牌/立牌/事件/筹码的防御力始终按 1 防御力 = 2 护甲值折算为护甲值
-        double rawArmor = Math.min(player.getArmorValue(), 20);
-        double toughness = player.getAttributeValue(Attributes.ARMOR_TOUGHNESS);
-        double effectiveArmor = Math.max(0, Math.min(rawArmor + modifierDefense * 2.0, 20));
-        double dp = 2 + effectiveArmor / 2.0 + 1.4 * toughness;
-        return (int) Math.floor(dp);
-    }
-
     public record PowerRange(int min, int max) {
     }
 
@@ -484,8 +438,6 @@ public final class DiceCombatModifiers {
         int max = base;
         for (AppliedStone stone : enhancement.appliedStones()) {
             if (CardRegistry.isDefense(stone.type())) continue;
-            // 赐福进行中放入的蓄力本次赐福不生效,显示范围同样不计算
-            if ("charge".equals(stone.type()) && ModAttachments.getChargeDefer(player)) continue;
             min += CardRegistry.minRoll(stone.type());
             max += CardRegistry.maxRoll(stone.type());
         }

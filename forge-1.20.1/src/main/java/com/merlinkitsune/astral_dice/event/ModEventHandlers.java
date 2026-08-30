@@ -157,18 +157,6 @@ public class ModEventHandlers {
         return points * (1 - cursePenalty);
     }
 
-    // 已装卡牌点数上限之和(骰子点数上限 6 之外的"攻击点数最大值"部分)。
-    // 与攻击卡掷骰一致遍历 appliedStones(当前攻击点数结算包含全部已装卡,含防御卡)。
-    // 注:闪避失败结算已改为使用实际掷出的 骰点+卡牌加成,本方法暂未被调用,保留备用。
-    private static int maxAttackCardPoints(WeaponEnhancement enhancement) {
-        int sum = 0;
-        if (enhancement == null) return 0;
-        for (AppliedStone stone : enhancement.appliedStones()) {
-            sum += com.merlinkitsune.astral_dice.combat.CardRegistry.maxRoll(stone.type());
-        }
-        return sum;
-    }
-
     @SubscribeEvent
     public static void onLivingDamagePre(LivingHurtEvent event) {
         DamageSource source = event.getSource();
@@ -182,6 +170,10 @@ public class ModEventHandlers {
             // 缓冲盾牌筹码:受到攻击时 +2 治愈 +3 星币(每分钟一次)
             com.merlinkitsune.astral_dice.item.chip.BufferShieldChipItem.onHurt(targetPlayer, event.getAmount());
         }
+
+        // AOE(顺劈/定向爆破溅射)使用 dice_damage 伤害类型:被波及目标不再进入骰战结算,
+        // 避免二次吃到完整骰战伤害(event.setAmount 覆盖溅射原始伤害)
+        if (source.is(com.merlinkitsune.astral_dice.damage.ModDamageTypes.DICE_DAMAGE)) return;
 
         if (!(directEntity instanceof Player player)) return;
         if (target == player) return;
@@ -213,7 +205,7 @@ public class ModEventHandlers {
                 target.addEffect(new MobEffectInstance(ModEffects.WEAK_MARK.get(), 6000, 0, false, true));
                 EffectTimerGuard.apply(target, new MobEffectInstance(MobEffects.WEAKNESS, 6000, 0, false, true));
                 // 主动成功施加:移除"待命"提示效果并开始玩家级冷却
-                player.removeEffect(ModEffects.HAIQING_READY.get());
+                ModEffectRemoval.remove(player, ModEffects.HAIQING_READY.get());
                 ModAttachments.setSignActiveCooldownEnd(player,
                         player.level().getGameTime() + GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS);
             }
@@ -233,7 +225,7 @@ public class ModEventHandlers {
                     }
                 }
                 // 主动成功施加:移除"待命"提示效果并开始玩家级冷却
-                player.removeEffect(ModEffects.BONNIE_READY.get());
+                ModEffectRemoval.remove(player, ModEffects.BONNIE_READY.get());
                 ModAttachments.setSignActiveCooldownEnd(player,
                         player.level().getGameTime() + GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS);
             }
@@ -746,26 +738,16 @@ public class ModEventHandlers {
         List<AppliedStone> newStones = new ArrayList<>();
         boolean foundCharge = false;
         int costFreed = 0;
-        // 赐福进行中放入的蓄力(charge_defer):本次赐福不转换,保留至下次赐福结束时转换
-        boolean deferCharge = ModAttachments.getChargeDefer(player);
+        // 蓄力:本次赐福结束后一律转换为全力攻击(赐福期间卡牌栏锁定,蓄力只可能预先放置)
         for (AppliedStone stone : enh.appliedStones()) {
             if ("charge".equals(stone.type())) {
                 foundCharge = true;
-                if (deferCharge) {
-                    newStones.add(stone);
-                } else {
-                    costFreed += AppliedStone.cost(stone.type());
-                }
+                costFreed += AppliedStone.cost(stone.type());
             } else {
                 newStones.add(stone);
             }
         }
         if (!foundCharge) return;
-        if (deferCharge) {
-            // 清除延迟标记:蓄力将在下次赐福结束时转换为全力攻击
-            ModAttachments.setChargeDefer(player, false);
-            return;
-        }
 
         ModDataComponents.WEAPON_ENHANCEMENT.set(dice, 
                 new WeaponEnhancement(
@@ -786,28 +768,6 @@ public class ModEventHandlers {
         }
     }
 
-    // 蓄力兜底:当玩家没有骰神赐福但骰子仍残留蓄力时,移除蓄力并返还全力攻击
-    private static void returnChargeCardIfBlessingEnded(Player player) {
-        if (player.level().isClientSide()) return;
-        if (player.hasEffect(ModEffects.DICE_BLESSING.get())) return;
-        var curios = CuriosCompat.getCuriosInventory(player);
-        if (curios.isEmpty()) return;
-        var diceResult = curios.get().findFirstCurio(DiceCurioItem::isDiceItem);
-        if (diceResult.isEmpty()) return;
-        ItemStack dice = diceResult.get().stack();
-        WeaponEnhancement enh = ModDataComponents.WEAPON_ENHANCEMENT.getOrDefault(dice,  null);
-        if (enh == null) return;
-        boolean foundCharge = false;
-        for (AppliedStone stone : enh.appliedStones()) {
-            if ("charge".equals(stone.type())) {
-                foundCharge = true;
-                break;
-            }
-        }
-        if (!foundCharge) return;
-        ModAttachments.setChargeDefer(player, false);
-    }
-
 
     // 标记效果自然结束时:每分钟减少 1 层标记(层数>1 时重新施加并重置计时,否则标记消失)
     @SubscribeEvent
@@ -823,7 +783,7 @@ public class ModEventHandlers {
             entity.addEffect(new MobEffectInstance(ModEffects.MARKED.get(), 1200, effect.getAmplifier() - 1, false, true));
             // 同步刷新伴随的"高亮",与标记保持同一寿命
             com.merlinkitsune.astral_dice.event.EffectTimerGuard.apply(entity,
-                    new MobEffectInstance(net.minecraft.world.effect.MobEffects.GLOWING, 1200, 0, false, true));
+                    new MobEffectInstance(net.minecraft.world.effect.MobEffects.GLOWING, 1200, 0, false, false, false));
         } else {
             // 标记层数归零:同时移除伴随的"高亮"效果(兜底;正常情况下发光随标记自然结束)
             entity.removeEffect(net.minecraft.world.effect.MobEffects.GLOWING);
@@ -1053,23 +1013,22 @@ public class ModEventHandlers {
     @SubscribeEvent(priority = EventPriority.HIGH)
     public static void onModEffectRemovalPrevented(MobEffectEvent.Remove event) {
         if (event.getEntity().level().isClientSide()) return;
-        // 计时器守卫的强制移除(时长校正)放行
+        // 本模组内部移除(ModEffectRemoval)/计时器守卫的强制移除(时长校正)放行
+        if (ModEffectRemoval.isInternal()) return;
         if (EffectTimerGuard.isForcedRemoval()) return;
-        // 治愈管理器主动移除"治愈"显示效果时放行(赐福结束且计时器走完后必须关闭图标)
-        if (com.merlinkitsune.astral_dice.item.HealingManager.isRemovingHealingEffect()) return;
-        // 复仇之戟主动移除显示效果时放行
-        if (RevengeHalberdChipItem.isRemovingEffect()) return;
         // 死亡时允许清除,保证死亡后效果状态能正常重置
         if (event.getEntity().isDeadOrDying()) return;
         MobEffectInstance effect = event.getEffectInstance();
         if (effect == null || effect.getEffect() == null) return;
-        // 诅咒之剑卸下筹码时允许主动移除青之诅咒
-        if (effect.getEffect() == ModEffects.BLUE_CURSE.get()
-                && CursedSwordChipItem.isRemovingBlueCurse()) {
+        // 标记携带的发光效果:标记仍存在时同步保留发光(牛奶/effect clear 不得单独清除),
+        // 保证发光与标记同寿命——标记自然到期/死亡时两者一起移除(此时标记已不存在,此处自动放行)
+        if (effect.getEffect() == net.minecraft.world.effect.MobEffects.GLOWING
+                && event.getEntity().hasEffect(ModEffects.MARKED.get())) {
+            event.setCanceled(true);
             return;
         }
-        String effectId = net.minecraftforge.registries.ForgeRegistries.MOB_EFFECTS.getKey(effect.getEffect()).toString();
-        if (effectId != null && effectId.startsWith(AstralDiceMod.MODID + ":")) {
+        ResourceLocation effectId = net.minecraftforge.registries.ForgeRegistries.MOB_EFFECTS.getKey(effect.getEffect());
+        if (effectId != null && effectId.getNamespace().equals(AstralDiceMod.MODID)) {
             event.setCanceled(true);
         }
     }
@@ -1143,8 +1102,6 @@ public class ModEventHandlers {
         com.merlinkitsune.astral_dice.item.card.FightPoisonWithPoisonCardItem.tick(player);
         // 大当家立牌:1 分钟内没有触发骰神赐福 → 养精蓄锐 +1 层
         com.merlinkitsune.astral_dice.item.sign.FenSignItem.tick(player);
-        // 蓄力兜底:若赐福已结束但骰子仍残留蓄力,返还全力攻击
-        returnChargeCardIfBlessingEnded(player);
 
     }
 
@@ -1158,15 +1115,21 @@ public class ModEventHandlers {
             hasBlade = curios.get().findFirstCurio(s -> s.is(ModItems.CUTTER_BLADE_CHIP.get())).isPresent();
         }
         boolean fullHp = player.getHealth() >= player.getMaxHealth() * 0.6f || player.hasEffect(ModEffects.PAPARA_BITE.get());
-        if (hasCutter && fullHp) {
-            player.addEffect(new MobEffectInstance(ModEffects.CUTTER_READY.get(), 100, 0, false, true, true));
-        } else {
-            player.removeEffect(ModEffects.CUTTER_READY.get());
-        }
-        if (hasBlade && fullHp) {
-            player.addEffect(new MobEffectInstance(ModEffects.CUTTER_BLADE_READY.get(), 100, 0, false, true, true));
-        } else {
-            player.removeEffect(ModEffects.CUTTER_BLADE_READY.get());
+        // 效果存在且剩余时长充足时不重复施加,避免每 tick 触发效果更新/同步包
+        refreshIndicator(player, ModEffects.CUTTER_READY.get(), hasCutter && fullHp);
+        refreshIndicator(player, ModEffects.CUTTER_BLADE_READY.get(), hasBlade && fullHp);
+    }
+
+    // 显示指示器效果:需要显示且(缺失/即将到期)时施加 5 秒;不需要显示且存在时内部移除
+    private static void refreshIndicator(Player player, net.minecraft.world.effect.MobEffect effect,
+                                         boolean shouldShow) {
+        if (shouldShow) {
+            MobEffectInstance existing = player.getEffect(effect);
+            if (existing == null || existing.getDuration() <= 20) {
+                player.addEffect(new MobEffectInstance(effect, 100, 0, false, true, true));
+            }
+        } else if (player.hasEffect(effect)) {
+            ModEffectRemoval.remove(player, effect);
         }
     }
 
@@ -2149,7 +2112,7 @@ public class ModEventHandlers {
         if (stack.is(ModItems.FEN_SIGN.get())) {
             tooltip.add(Component.empty());
             addSignKeyHint(tooltip);
-            addSignActiveTitle(tooltip, "运攻");
+            addSignActiveTitle(tooltip, "运功");
             addSignLines(tooltip, "tooltip.astral_dice.sign.fen_active");
             addSignPassiveTitle(tooltip, "养精蓄锐");
             addSignLines(tooltip, "tooltip.astral_dice.sign.fen_passive");
@@ -2164,7 +2127,7 @@ public class ModEventHandlers {
         if (stack.is(ModItems.NANCY_LU_SIGN.get())) {
             tooltip.add(Component.empty());
             addSignKeyHint(tooltip);
-            addSignActiveTitle(tooltip, "远程骇入");
+            addSignActiveTitle(tooltip, "远程侵入");
             addSignLines(tooltip, "tooltip.astral_dice.sign.nancy_lu_active");
             addSignPassiveTitle(tooltip, "网络防火墙");
             addSignLines(tooltip, "tooltip.astral_dice.sign.nancy_lu_passive");
@@ -2224,9 +2187,6 @@ public class ModEventHandlers {
         return ThreadLocalRandom.current().nextInt(1, max + 1);
     }
 
-    private static int rollDice(int min, int max) {
-        return ThreadLocalRandom.current().nextInt(min, max + 1);
-    }
 
     // 近战武器攻击判定:仅允许剑/斧/重锤/三叉戟等近战武器触发骰神赐福
     private static boolean isMeleeWeaponAttack(Player player) {
@@ -2307,7 +2267,6 @@ public class ModEventHandlers {
         ModAttachments.setStarCoinHammerBonus(player, 0);
         ModAttachments.setCursedSwordBonus(player, 0);
         ModAttachments.setCursedSwordBlessingTriggered(player, false);
-        ModAttachments.setChargeDefer(player, false);
         ModAttachments.setCandyChipPlayBonusActive(player, false);
         ModAttachments.setSatellitePlayBonusActive(player, false);
         ModAttachments.setSatelliteGiveCooldownEnd(player, 0);
@@ -2422,7 +2381,7 @@ public class ModEventHandlers {
         ModAttachments.setDefenseCardConsumedThisBlessing(player, false);
         // 计时器守卫:清空效果结束时刻记录,避免重登后守卫重新施加旧效果
         EffectTimerGuard.clear(player);
-        player.removeEffect(ModEffects.DICE_BLESSING.get());
+        ModEffectRemoval.remove(player, ModEffects.DICE_BLESSING.get());
         // 重连后刷新治愈体系(上限收缩/效果显示;赐福边沿 prev 标记初始 false,不会误触发减半)
         HealingManager.tick(player);
     }
@@ -2444,13 +2403,6 @@ public class ModEventHandlers {
 
     // 通用跳数字发送:指定 ARGB 颜色(0xRRGGBB 将被叠加透明度)
     private static void sendDamageNumber(LivingEntity target, int bonusDamage, int color) {
-        if (target.level().isClientSide()) return;
-
-        var packet = new ModNetwork.DamageNumberMessage(target.getId(), bonusDamage, color);
-        ModNetwork.sendToPlayersTrackingEntity(target, packet);
-
-        if (target instanceof ServerPlayer serverTarget) {
-            ModNetwork.sendToPlayer(serverTarget, packet);
-        }
+        ModNetwork.DamageNumberMessage.send(target, bonusDamage, color);
     }
 }

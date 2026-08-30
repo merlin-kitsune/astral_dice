@@ -37,9 +37,6 @@ public class LuluSignItem extends BaseSignItem {
         super(properties);
     }
 
-    @Override
-    protected void onCurioTick(SlotContext slotContext, ItemStack stack) {
-    }
 
     // 被动:受到伤害时,获得 1 点"治愈"(上限为玩家最大生命值的一半,即 ♥ 数),并使主动技能冷却 -10 秒。
     // 任何来源的伤害均触发(近战/远程/环境等),与骰神赐福的玩家攻击链路相互独立。

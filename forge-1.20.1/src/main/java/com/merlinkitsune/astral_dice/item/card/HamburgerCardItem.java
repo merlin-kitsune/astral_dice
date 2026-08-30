@@ -16,6 +16,11 @@ public class HamburgerCardItem extends BaseEffectCardItem {
     public HamburgerCardItem(Properties properties) {
         super(properties);
     }
+    @Override
+    protected String cardTypeId() {
+        return "hamburger";
+    }
+
 
     @Override
     protected boolean isHealingCard() {

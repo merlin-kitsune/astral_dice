@@ -17,6 +17,11 @@ public class YouHaveIHaveCardItem extends BaseEffectCardItem {
     public YouHaveIHaveCardItem(Properties properties) {
         super(properties);
     }
+    @Override
+    protected String cardTypeId() {
+        return "you_have_i_have";
+    }
+
 
     @Override
     public boolean canUseOnOtherPlayers() {

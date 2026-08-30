@@ -28,10 +28,6 @@ public class FightPoisonWithPoisonCardItem extends BaseEffectCardItem {
         super(properties);
     }
 
-    @Override
-    protected boolean countsForCopy() {
-        return true;
-    }
 
     @Override
     protected String cardTypeId() {
@@ -62,7 +58,9 @@ public class FightPoisonWithPoisonCardItem extends BaseEffectCardItem {
     /** 移除最多 3 种原版负面效果(仅 minecraft 命名空间且为 HARMFUL 分类) */
     private static void removeUpToThreeVanillaNegativeEffects(Player player) {
         int removed = 0;
-        for (MobEffectInstance instance : player.getActiveEffects()) {
+        // 迭代快照:getActiveEffects() 是活跃效果 map 的实时视图,边遍历边 removeEffect 会触发
+        // ConcurrentModificationException(服务端 tick 中崩溃)
+        for (MobEffectInstance instance : new java.util.ArrayList<>(player.getActiveEffects())) {
             if (removed >= 3) break;
             MobEffect effect = instance.getEffect();
             String id = net.minecraftforge.registries.ForgeRegistries.MOB_EFFECTS.getKey(instance.getEffect()).toString();

@@ -48,9 +48,6 @@ public class FenSignItem extends BaseSignItem {
         super(properties);
     }
 
-    @Override
-    protected void onCurioTick(SlotContext slotContext, ItemStack stack) {
-    }
 
     @Override
     public void onEquip(SlotContext slotContext, ItemStack curio, ItemStack prevStack) {

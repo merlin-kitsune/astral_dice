@@ -25,6 +25,11 @@ public class FateGuidanceCardItem extends BaseEffectCardItem {
     public FateGuidanceCardItem(Properties properties) {
         super(properties);
     }
+    @Override
+    protected String cardTypeId() {
+        return "fate_guidance";
+    }
+
 
     @Override
     protected boolean isExclusive() {

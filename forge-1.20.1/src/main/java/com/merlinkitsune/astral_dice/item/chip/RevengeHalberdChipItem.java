@@ -7,6 +7,7 @@ import net.minecraft.world.entity.player.Player;
 import com.merlinkitsune.astral_dice.item.CuriosCompat;
 import top.theillusivec4.curios.api.CuriosApi;
 import com.merlinkitsune.astral_dice.item.ModItems;
+import com.merlinkitsune.astral_dice.event.ModEffectRemoval;
 
 /**
  * 复仇之戟筹码:装备时,若身上出现指定负面/诅咒效果,则获得攻击力/防御力 +6。
@@ -48,13 +49,6 @@ public class RevengeHalberdChipItem extends BaseChipItem {
                 || player.hasEffect(ModEffects.MARKED.get());
     }
 
-    // 移除"复仇之戟"显示效果时的放行标志(效果移除拦截器据此放行)
-    private static boolean removingEffect = false;
-
-    public static boolean isRemovingEffect() {
-        return removingEffect;
-    }
-
     /** 当前攻击力加成(0 或 BONUS) */
     public static int currentAttackBonus(Player player) {
         return isEquipped(player) && hasAttackTriggerEffect(player) ? BONUS : 0;
@@ -70,14 +64,12 @@ public class RevengeHalberdChipItem extends BaseChipItem {
         if (player.level().isClientSide()) return;
         if (isEquipped(player)
                 && (hasAttackTriggerEffect(player) || hasDefenseTriggerEffect(player))) {
-            player.addEffect(new MobEffectInstance(ModEffects.REVENGE_HALBERD.get(), 100, 0, false, false, true));
-        } else if (player.hasEffect(ModEffects.REVENGE_HALBERD.get())) {
-            removingEffect = true;
-            try {
-                player.removeEffect(ModEffects.REVENGE_HALBERD.get());
-            } finally {
-                removingEffect = false;
+            // 效果已存在时不重复施加,避免每 tick 触发效果更新/同步
+            if (!player.hasEffect(ModEffects.REVENGE_HALBERD.get())) {
+                player.addEffect(new MobEffectInstance(ModEffects.REVENGE_HALBERD.get(), 100, 0, false, false, true));
             }
+        } else if (player.hasEffect(ModEffects.REVENGE_HALBERD.get())) {
+            ModEffectRemoval.remove(player, ModEffects.REVENGE_HALBERD.get());
         }
     }
 }

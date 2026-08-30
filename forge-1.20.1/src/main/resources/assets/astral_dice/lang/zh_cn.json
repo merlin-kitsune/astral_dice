@@ -109,7 +109,7 @@
   "effect.astral_dice.fen_frenzy": "战斗爽",
   "effect.astral_dice.blue_curse": "青之诅咒",
   "effect.astral_dice.blue_curse.description": "护甲值 §e-20%%§7，盔甲韧性归 §e0§7（护甲值向下取整）",
-  "effect.astral_dice.nancy_lu_hack": "远程骇入",
+  "effect.astral_dice.nancy_lu_hack": "远程侵入",
   "effect.astral_dice.nancy_lu_hack.description": "攻击力提升，持续 §92:00§7",
   "effect.astral_dice.undercover_investigation": "隐匿调查",
   "effect.astral_dice.investigation_bonus": "调查阶段",
@@ -210,9 +210,9 @@
   "tooltip.astral_dice.chip.boxing_gloves_low": "攻击力 §e+2§7",
   "tooltip.astral_dice.chip.boxing_gloves_medium": "攻击力 §e+4§7",
   "tooltip.astral_dice.chip.boxing_gloves_high": "攻击力 §e+8§7",
-  "tooltip.astral_dice.chip.speed_skates_low": "移动速度 §e+5%§7",
-  "tooltip.astral_dice.chip.speed_skates_medium": "移动速度 §e+15%§7",
-  "tooltip.astral_dice.chip.speed_skates_high": "移动速度 §e+25%§7",
+  "tooltip.astral_dice.chip.speed_skates_low": "移动速度 §e+5%%§7",
+  "tooltip.astral_dice.chip.speed_skates_medium": "移动速度 §e+15%%§7",
+  "tooltip.astral_dice.chip.speed_skates_high": "移动速度 §e+25%%§7",
   "tooltip.astral_dice.chip.moto_helmet_low": "防御力 §e+2§7",
   "tooltip.astral_dice.chip.moto_helmet_medium": "防御力 §e+4§7",
   "tooltip.astral_dice.chip.moto_helmet_high": "防御力 §e+6§7，盔甲韧性 §e+2§7",
@@ -221,7 +221,7 @@
   "tooltip.astral_dice.chip.sandwich_high": "最大生命值 §e+12§7",
   "tooltip.astral_dice.chip.magic_quiver": "若使用过效果牌，且对具有标记的目标造成远程或魔法伤害，则对其施加 §e1§7 层标记并返还第一张使用的效果牌。每 §91:00§7 仅能触发一次",
   "tooltip.astral_dice.chip.buffer_shield": "受到攻击时，增加 §e2§7 点治愈与 §e3§7 星币，每 §915秒§7 只能触发一次",
-  "tooltip.astral_dice.chip.star_coin_hammer": "装备时，获得 §e5§7 点星光。若物品栏中持有超过 §e20§7 枚星币，则每次进入骰神赐福时消耗 §e3§7 星币，并按照持有星币总数的 §e30%§7 提升攻击力（星币袋按 §e9§7 星币算）",
+  "tooltip.astral_dice.chip.star_coin_hammer": "装备时，获得 §e5§7 点星光。若物品栏中持有超过 §e20§7 枚星币，则每次进入骰神赐福时消耗 §e3§7 星币，并按照持有星币总数的 §e30%%§7 提升攻击力（星币袋按 §e9§7 星币算）",
   "tooltip.astral_dice.chip.cursed_sword": "装备时始终受到 §c青之诅咒§7。骰神赐福期间，每击杀 §e1§7 个 §e20§7 血以上的敌对目标，攻击力 §e+1§7（每个骰神赐福效果期间最多触发 §e1§7 次），最大增加 §e%s§7 点（移除筹码后清除所有加成与青之诅咒）",
   "tooltip.astral_dice.chip.cursed_sword_blue_curse": "§c青之诅咒§7：护甲值 §e-20%%§7，盔甲韧性归 §e0§7（护甲值向下取整）",
   "tooltip.astral_dice.chip.cursed_sword_enigmatic": "神秘遗物联动：\n装备该筹码时，千咒卷轴的诅咒数量 §e+1§7",
@@ -288,5 +288,6 @@
   "effect.astral_dice.fight_poison_with_poison": "以毒攻毒",
   "effect.astral_dice.fight_poison_with_poison.description": "获得 §9中毒 (0:08)§7。随后，移除最多3种原版负面效果并获得 §9生命恢复 II (0:15)§7",
   "item.astral_dice.hand_fan_small_chip": "手持风扇-小",
-  "tooltip.astral_dice.chip.hand_fan_small": "使用主动技能后：对自身周围 §e16§7 格范围内所有敌对目标施加 §e1§7 层标记"
+  "tooltip.astral_dice.chip.hand_fan_small": "使用主动技能后：对自身周围 §e16§7 格范围内所有敌对目标施加 §e1§7 层标记",
+  "gui.astral_dice.card_inventory.locked": "骰神赐福期间无法调整卡牌"
 }

@@ -13,6 +13,7 @@ import net.minecraft.world.item.ItemStack;
 
 import java.util.List;
 import java.util.Set;
+import com.merlinkitsune.astral_dice.effect.ModEffects;
 
 public class CardInventoryScreen extends AbstractContainerScreen<CardInventoryMenu> {
     private static final ResourceLocation GUI_TEXTURE =
@@ -97,6 +98,14 @@ public class CardInventoryScreen extends AbstractContainerScreen<CardInventoryMe
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
         super.render(guiGraphics, mouseX, mouseY, partialTick);
         this.renderTooltip(guiGraphics, mouseX, mouseY);
+        // 骰神赐福期间卡牌栏锁定:顶部显示红色提醒文字
+        if (this.minecraft.player != null && this.minecraft.player.hasEffect(ModEffects.DICE_BLESSING.get())) {
+            net.minecraft.network.chat.Component msg =
+                    net.minecraft.network.chat.Component.translatable("gui.astral_dice.card_inventory.locked");
+            int textWidth = this.font.width(msg);
+            guiGraphics.drawString(this.font, msg,
+                    this.leftPos + (this.imageWidth - textWidth) / 2, this.topPos + 3, 0xFFFF5555, true);
+        }
     }
 
     // 1.20.1:AbstractContainerScreen.renderSlot 为私有,无法覆写;
@@ -104,6 +113,10 @@ public class CardInventoryScreen extends AbstractContainerScreen<CardInventoryMe
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        // 骰神赐福期间禁止插入/移除卡牌(与服务端锁定一致,客户端直接忽略点击)
+        if (this.minecraft.player != null && this.minecraft.player.hasEffect(ModEffects.DICE_BLESSING.get())) {
+            return true;
+        }
         // 点击下方卡牌存放区域:若当前手持卡牌,则放回物品栏
         if (!this.menu.getCarried().isEmpty() && isInSelectorArea(mouseX, mouseY)) {
             Slot empty = this.menu.getFirstEmptyInventorySlot();
