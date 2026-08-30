@@ -2126,7 +2126,7 @@ public class ModEventHandlers {
         if (stack.is(ModItems.FEN_SIGN.get())) {
             tooltip.add(Component.empty());
             addSignKeyHint(tooltip);
-            addSignActiveTitle(tooltip, "运攻");
+            addSignActiveTitle(tooltip, "运功");
             addSignLines(tooltip, "tooltip.astral_dice.sign.fen_active");
             addSignPassiveTitle(tooltip, "养精蓄锐");
             addSignLines(tooltip, "tooltip.astral_dice.sign.fen_passive");
@@ -2140,7 +2140,7 @@ public class ModEventHandlers {
         if (stack.is(ModItems.NANCY_LU_SIGN.get())) {
             tooltip.add(Component.empty());
             addSignKeyHint(tooltip);
-            addSignActiveTitle(tooltip, "远程骇入");
+            addSignActiveTitle(tooltip, "远程侵入");
             addSignLines(tooltip, "tooltip.astral_dice.sign.nancy_lu_active");
             addSignPassiveTitle(tooltip, "网络防火墙");
             addSignLines(tooltip, "tooltip.astral_dice.sign.nancy_lu_passive");

@@ -263,7 +263,7 @@ public final class DiceCombatModifiers {
             return ap;
         });
 
-        // === 内置:骇客立牌(nancy_lu)被动攻击/主动远程骇入攻击力 ===
+        // === 内置:骇客立牌(nancy_lu)被动攻击/主动远程侵入攻击力 ===
         registerAttackModifier((ctx, ap) -> {
             if (ctx.attacker.level().isClientSide()) return ap;
             ap += NancyLuSignItem.getAttackBonus(ctx.attacker);

@@ -626,7 +626,7 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(Rarity.UNCOMMON)));
 
-    // 骇客立牌(命名:nancy_lu):网络防火墙被动 + 远程骇入主动
+    // 骇客立牌(命名:nancy_lu):网络防火墙被动 + 远程侵入主动
     public static final DeferredItem<Item> NANCY_LU_SIGN = registerItem("nancy_lu_sign",
             () -> new NancyLuSignItem(new Item.Properties()
                     .stacksTo(1)

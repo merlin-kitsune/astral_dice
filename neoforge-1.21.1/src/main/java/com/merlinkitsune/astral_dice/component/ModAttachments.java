@@ -485,7 +485,7 @@ public class ModAttachments {
                     .serialize(Codec.INT)
                     .build());
 
-    // 骇客立牌:主动"远程骇入"攻击力加成数值
+    // 骇客立牌:主动"远程侵入"攻击力加成数值
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> NANCY_LU_ACTIVE_BONUS =
             ATTACHMENTS.register("nancy_lu_active_bonus", () -> AttachmentType.builder(() -> 0)
                     .serialize(Codec.INT)
