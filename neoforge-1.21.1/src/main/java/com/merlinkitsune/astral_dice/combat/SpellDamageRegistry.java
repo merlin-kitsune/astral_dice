@@ -22,7 +22,6 @@ import java.util.Locale;
 import com.merlinkitsune.astral_dice.damage.ModDamageTypes;
 import com.merlinkitsune.astral_dice.item.chip.MagicQuiverChipItem;
 import com.merlinkitsune.astral_dice.item.chip.PiercingGunChipItem;
-import com.merlinkitsune.astral_dice.network.DamageNumberPayload;
 
 /**
  * 法伤(远程/魔法伤害)模块:作用域判定(白名单 matcher + 军火黑名单保险)与加成修饰器注册表。
@@ -305,12 +304,7 @@ public final class SpellDamageRegistry {
 
     // 溅射/范围伤害跳数字(颜色由调用方指定;定向爆破使用效果牌绿色)
     private static void sendAoeDamageNumber(LivingEntity target, int damage, int color) {
-        if (target.level().isClientSide()) return;
-        var packet = new DamageNumberPayload(target.getId(), damage, color);
-        net.neoforged.neoforge.network.PacketDistributor.sendToPlayersTrackingEntity(target, packet);
-        if (target instanceof net.minecraft.server.level.ServerPlayer serverTarget) {
-            net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(serverTarget, packet);
-        }
+        com.merlinkitsune.astral_dice.network.DamageNumberPayload.send(target, damage, color);
     }
 
     // 枪械/火炮类远程弹丸判定(保险):伤害类型与弹丸类名关键词识别

@@ -98,8 +98,8 @@ public final class EventTargetCollector {
                 for (Object member : iterable) {
                     if (member instanceof Player p && p != triggerer) {
                         members.add(p);
-                    } else if (member instanceof UUID uuid && uuid.equals(triggerer.getUUID())) {
-                        // UUID 列表:按 UUID 从世界查找在线玩家
+                    } else if (member instanceof UUID uuid) {
+                        // UUID 列表:按 UUID 从世界查找在线玩家(与 OPAC 分支一致)
                         Player p = triggerer.level().getPlayerByUUID(uuid);
                         if (p != null && p != triggerer) {
                             members.add(p);

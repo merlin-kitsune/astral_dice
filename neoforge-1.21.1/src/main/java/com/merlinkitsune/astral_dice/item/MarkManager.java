@@ -40,15 +40,4 @@ public final class MarkManager {
         var existing = target.getEffect(ModEffects.MARKED);
         return existing != null ? existing.getAmplifier() + 1 : 0;
     }
-
-    // 目标是否带有标记
-    public static boolean has(LivingEntity target) {
-        return target.hasEffect(ModEffects.MARKED);
-    }
-
-    // 移除目标全部标记层数与伴随高亮(主动移除/死亡清理等场景)
-    public static void remove(LivingEntity target) {
-        target.removeEffect(ModEffects.MARKED);
-        target.removeEffect(net.minecraft.world.effect.MobEffects.GLOWING);
-    }
 }

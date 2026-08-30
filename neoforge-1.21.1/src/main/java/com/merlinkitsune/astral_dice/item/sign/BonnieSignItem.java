@@ -3,12 +3,12 @@ package com.merlinkitsune.astral_dice.item.sign;
 import com.merlinkitsune.astral_dice.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
+import com.merlinkitsune.astral_dice.event.ModEffectRemoval;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import top.theillusivec4.curios.api.CuriosApi;
 import top.theillusivec4.curios.api.SlotContext;
 import com.merlinkitsune.astral_dice.item.MarkManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
@@ -46,7 +46,7 @@ public class BonnieSignItem extends BaseSignItem {
                 && player.level().getGameTime() >= expire) {
             ModAttachments.setSignReadyType(player, 0);
             ModAttachments.setSignReadyExpire(player, 0);
-            player.removeEffect(ModEffects.BONNIE_READY);
+            ModEffectRemoval.remove(player, ModEffects.BONNIE_READY);
         }
         if (ModAttachments.getSignReadyType(player) == READY_TYPE && expire > 0
                 && player.tickCount % 20 == 0 && player instanceof ServerPlayer sp) {
@@ -66,8 +66,8 @@ public class BonnieSignItem extends BaseSignItem {
         }
         // 卸下立牌:重置调查阶段进度并清除调查增益效果(buff 累积)与"待命"提示效果
         ModAttachments.setInvestigationStage(player, 1);
-        player.removeEffect(ModEffects.INVESTIGATION_BONUS);
-        player.removeEffect(ModEffects.BONNIE_READY);
+        ModEffectRemoval.remove(player, ModEffects.INVESTIGATION_BONUS);
+        ModEffectRemoval.remove(player, ModEffects.BONNIE_READY);
     }
 
     @Override
@@ -81,12 +81,6 @@ public class BonnieSignItem extends BaseSignItem {
                 level.getGameTime() + GameplayConstants.SKILL_WAIT_SECONDS * 20L);
         player.addEffect(new MobEffectInstance(ModEffects.BONNIE_READY, Integer.MAX_VALUE, 0, false, false, true));
         return InteractionResultHolder.success(stack);
-    }
-
-    // 是否装备秘密侦探立牌
-    public static boolean hasBonnieEquipped(Player player) {
-        var curios = CuriosApi.getCuriosInventory(player);
-        return curios.isPresent() && curios.get().findFirstCurio(s -> s.is(ModItems.BONNIE_SIGN.get())).isPresent();
     }
 
     // 被动 2(击杀钩子,由 BaseSignItem.invokeKillHooks 分发):

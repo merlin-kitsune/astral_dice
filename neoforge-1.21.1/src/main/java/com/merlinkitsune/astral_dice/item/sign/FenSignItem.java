@@ -12,10 +12,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import top.theillusivec4.curios.api.CuriosApi;
 import top.theillusivec4.curios.api.SlotContext;
-import com.merlinkitsune.astral_dice.event.ModEventHandlers;
-import com.merlinkitsune.astral_dice.item.card.BaseEffectCardItem;
 import com.merlinkitsune.astral_dice.item.ModItems;
-import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
 
 /**
  * 大当家立牌(命名:fen)。
@@ -45,10 +42,6 @@ public class FenSignItem extends BaseSignItem {
 
     public FenSignItem(Properties properties) {
         super(properties);
-    }
-
-    @Override
-    protected void onCurioTick(SlotContext slotContext, ItemStack stack) {
     }
 
     @Override

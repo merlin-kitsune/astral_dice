@@ -144,23 +144,23 @@ public final class RandomCardHandler {
 
     /**
      * 按类别获取随机卡牌池(已强制排除全部专属牌)。
+     * 池由统一的攻击/防御/效果列表组合而成,避免内联重复列表漂移。
      */
     public static List<ItemStack> getCardPool(CardCategory category) {
         List<Item> items = switch (category) {
-            case ALL -> new ArrayList<>(List.of(
-                    ModItems.ATTACK_CARD_MEDIUM.get(), ModItems.ATTACK_CARD_LARGE.get(),
-                    ModItems.ATTACK_CARD_EPIC.get(), ModItems.ATTACK_CARD_SHADOW_STRIKE.get(),
-                    ModItems.ATTACK_CARD_MEITO.get(), ModItems.ATTACK_CARD_CHARGE.get(),
-                    ModItems.DEFENSE_CARD_MEDIUM.get(), ModItems.DEFENSE_CARD_LARGE.get(),
-                    ModItems.DEFENSE_CARD_EPIC.get(),
-                    ModItems.EFFECT_CARD_KING_POWER.get(), ModItems.EFFECT_CARD_BERSERK.get(),
-                    ModItems.EFFECT_CARD_UNWAVERING.get(),
-                    ModItems.MONSTER_LASER_CARD.get(), ModItems.MONSTER_BRICK_CARD.get(),
-                    ModItems.ORBITAL_STRIKE_CARD.get(), ModItems.DIRECTIONAL_BLAST_CARD.get(),
-                    ModItems.CHOCOLATE_CAKE.get(), ModItems.HAMBURGER.get(),
-                    ModItems.LUXURY_FEAST.get(), ModItems.YOU_HAVE_I_HAVE.get(),
-                    ModItems.EXPRESS_DELIVERY.get()));
-            case BATTLE -> new ArrayList<>(attackCards());
+            case ALL -> {
+                List<Item> all = new ArrayList<>();
+                all.addAll(attackCards());
+                all.addAll(defenseCards());
+                all.addAll(effectCards());
+                yield all;
+            }
+            case BATTLE -> {
+                List<Item> battle = new ArrayList<>();
+                battle.addAll(attackCards());
+                battle.addAll(defenseCards());
+                yield battle;
+            }
             case EFFECT -> new ArrayList<>(effectCards());
         };
         items.removeIf(item -> {

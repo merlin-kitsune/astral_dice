@@ -408,47 +408,6 @@ public final class DiceCombatModifiers {
         });
     }
 
-    // === GUI 显示用:计算当前攻击力/防御力(不包含随机骰点与卡牌掷骰,仅基础值+修饰器) ===
-    public static int getDisplayAttackPower(Player player, ItemStack diceStack, WeaponEnhancement enhancement) {
-        if (player == null) return 0;
-        if (enhancement == null) enhancement = WeaponEnhancement.EMPTY;
-        int misakiStar = enhancement.starLevel();
-        int misakiStacks = 0;
-        boolean misakiBurst = player.hasEffect(ModEffects.MISAKI_BURST);
-        var curios = CuriosApi.getCuriosInventory(player);
-        if (curios.isPresent()) {
-            var r = curios.get().findFirstCurio(s -> s.is(ModItems.MISAKI_SIGN.get()));
-            if (r.isPresent()) {
-                misakiStacks = r.get().stack().getOrDefault(ModDataComponents.MISAKI_SIGN_STACKS.get(), 0);
-            }
-        }
-        DiceCombatContext ctx = new DiceCombatContext(
-                player, player, null, 0, diceStack, enhancement, false,
-                misakiBurst, misakiStar, misakiStacks);
-        double ap = player.getAttributeValue(Attributes.ATTACK_DAMAGE);
-        for (AttackPowerModifier modifier : attackModifiers()) {
-            ap = modifier.apply(ctx, ap);
-        }
-        return (int) Math.floor(ap);
-    }
-
-    public static int getDisplayDefensePower(Player player) {
-        if (player == null) return 0;
-        DiceCombatContext ctx = new DiceCombatContext(
-                player, player, null, 0, ItemStack.EMPTY, WeaponEnhancement.EMPTY, false,
-                false, 0, 0);
-        double modifierDefense = 0;
-        for (DefensePowerModifier modifier : defenseModifiers()) {
-            modifierDefense = modifier.apply(ctx, modifierDefense);
-        }
-        // 效果牌/立牌/事件/筹码的防御力始终按 1 防御力 = 2 护甲值折算为护甲值
-        double rawArmor = Math.min(player.getArmorValue(), 20);
-        double toughness = player.getAttributeValue(Attributes.ARMOR_TOUGHNESS);
-        double effectiveArmor = Math.max(0, Math.min(rawArmor + modifierDefense * 2.0, 20));
-        double dp = 2 + effectiveArmor / 2.0 + 1.4 * toughness;
-        return (int) Math.floor(dp);
-    }
-
     public record PowerRange(int min, int max) {
     }
 

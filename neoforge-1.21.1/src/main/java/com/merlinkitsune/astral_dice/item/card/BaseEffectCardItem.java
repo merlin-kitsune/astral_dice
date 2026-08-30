@@ -67,6 +67,20 @@ public abstract class BaseEffectCardItem extends Item {
     }
 
     /**
+     * 效果牌类型 id → 对应物品(忍者立牌复制/魔法秘典返还/魔法箭袋返还共用,
+     * 与各牌 {@link #cardTypeId()} 保持单一实现;未识别的类型回退为王之力)。
+     */
+    public static ItemStack cardByTypeId(String cardTypeId) {
+        return switch (cardTypeId) {
+            case "berserk" -> new ItemStack(ModItems.EFFECT_CARD_BERSERK.get());
+            case "unwavering" -> new ItemStack(ModItems.EFFECT_CARD_UNWAVERING.get());
+            case "living_page" -> new ItemStack(ModItems.LIVING_BOOK_PAGE.get());
+            case "fight_poison_with_poison" -> new ItemStack(ModItems.EFFECT_CARD_FIGHT_POISON_WITH_POISON.get());
+            default -> new ItemStack(ModItems.EFFECT_CARD_KING_POWER.get());
+        };
+    }
+
+    /**
      * 是否为治疗类效果牌(恢复生命值;大当家立牌被动:使用治疗类效果牌时"养精蓄锐"+1 层)。
      * 治疗类:巧克力蛋糕/汉堡/奢华大餐。
      */
@@ -104,8 +118,7 @@ public abstract class BaseEffectCardItem extends Item {
     // 通用:寻找玩家视线前方指定距离内的其他玩家
     public static Player findPlayerInFront(Player player, double range) {
         net.minecraft.world.phys.HitResult hit = player.pick(range, 1.0f, false);
-        if (hit.getType() == net.minecraft.world.phys.HitResult.Type.ENTITY
-                && hit instanceof net.minecraft.world.phys.EntityHitResult entityHit
+        if (hit instanceof net.minecraft.world.phys.EntityHitResult entityHit
                 && entityHit.getEntity() instanceof Player target && target != player) {
             return target;
         }

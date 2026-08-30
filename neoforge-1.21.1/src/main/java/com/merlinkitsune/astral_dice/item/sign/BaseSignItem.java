@@ -60,7 +60,6 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
      */
     public static void performSkillForCurio(Player player) {
         if (player.level().isClientSide()) return;
-        long now = player.level().getGameTime();
         // 读取立牌栏(唯一槽位)的立牌:用于技能触发与提示前缀(立牌名称)
         var curios = CuriosApi.getCuriosInventory(player);
         if (curios.isEmpty()) return;
@@ -69,7 +68,16 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
         var handler = handlerOpt.get();
         if (handler.getSlots() <= 0) return;
         ItemStack stack = handler.getStacks().getStackInSlot(0);
+        performSkill(player, stack);
+    }
+
+    // 服务端统一执行立牌主动技能(立牌栏触发与手持立牌右键共用,保证冷却/等待/扇子筹码逻辑一致):
+    // 1. 玩家级冷却(不受立牌装卸影响):冷却中按键无效;
+    // 2. 等待状态(占星师/秘密侦探等需指定目标的技能):等待完成或超时前按键保持无效;
+    // 3. 触发成功:非等待类技能立即开始玩家级冷却;等待类技能待其完成指定目标/超时后再计算。
+    private static void performSkill(Player player, ItemStack stack) {
         if (!(stack.getItem() instanceof BaseSignItem sign)) return;
+        long now = player.level().getGameTime();
         net.minecraft.network.chat.Component signName = stack.getHoverName();
         // 1. 玩家级冷却检查:冷却中按键无效,并明确提示"<立牌名>冷却中"(修复:触发成功与冷却拒绝的反馈混淆)
         long cdEnd = ModAttachments.getSignActiveCooldownEnd(player);
@@ -117,10 +125,15 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
         if (player.isShiftKeyDown()) {
             return CurioSlotUtil.tryAutoEquip(player, stack, "stand");
         }
+        // 仅帕鲁南立牌支持手持右键释放主动;与立牌栏触发共用同一套冷却/等待校验
         if (!(this instanceof ParunanSignItem)) {
             return InteractionResultHolder.fail(stack);
         }
-        return handleUse(level, player, stack);
+        if (level.isClientSide) {
+            return InteractionResultHolder.success(stack);
+        }
+        performSkill(player, stack);
+        return InteractionResultHolder.success(stack);
     }
 
     // 立牌被移除时:清除该立牌获得的增益/计数器/累计值,防止反复更换立牌实现效果叠加。

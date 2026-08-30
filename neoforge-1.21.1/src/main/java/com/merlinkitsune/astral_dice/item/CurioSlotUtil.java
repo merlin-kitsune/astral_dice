@@ -9,7 +9,6 @@ import top.theillusivec4.curios.api.CuriosApi;
 import top.theillusivec4.curios.api.SlotContext;
 import top.theillusivec4.curios.api.type.inventory.ICurioStacksHandler;
 import com.merlinkitsune.astral_dice.item.dice.DiceCurioItem;
-import com.merlinkitsune.astral_dice.item.sign.BaseSignItem;
 import com.merlinkitsune.astral_dice.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.network.ActionBarPayload;
 import net.minecraft.ChatFormatting;
@@ -18,19 +17,12 @@ import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.PacketDistributor;
 
 /**
- * 栏位校验与装备工具:立牌/筹码/骰子只能放入各自原本的饰品栏,
+ * 栏位校验与装备工具:立牌/筹码/骰子只能放入各自原本的饰品栏(由 Curios 物品标签与
+ * canEquip 限制,见 BaseSignItem/DiceCurioItem/BaseChipItem),
  * 提供下蹲右键自动装备与重复装备限制的通用逻辑。
  */
 public final class CurioSlotUtil {
     private CurioSlotUtil() {
-    }
-
-    // 该物品是否允许放入指定栏位;非本模组物品一律放行
-    public static boolean isAllowedInSlot(ItemStack stack, String slotId) {
-        if (DiceCurioItem.isDiceItem(stack)) return "dice".equals(slotId);
-        if (stack.getItem() instanceof BaseSignItem) return "stand".equals(slotId);
-        if (ModItems.isChipItem(stack)) return "chip".equals(slotId);
-        return true;
     }
 
     // 是否已装备了与给定物品相同的物品(遍历玩家全部 Curios 槽位)

@@ -19,20 +19,8 @@ public class DiceCurioItem extends Item implements ICurioItem {
     // 未佩戴骰子时的筹码栏位数量(对应 curios/slots/chip.json 的 size:0,需求:必须佩戴骰子才有筹码栏)
     private static final int CHIP_NO_DICE_SLOTS = 0;
 
-    // 该骰子的卡牌放置栏总槽位数(攻防各一半)
-    private final int cardSlots;
-
     public DiceCurioItem(Properties properties) {
-        this(properties, 6);
-    }
-
-    public DiceCurioItem(Properties properties, int cardSlots) {
         super(properties);
-        this.cardSlots = cardSlots;
-    }
-
-    public int getCardSlots() {
-        return cardSlots;
     }
 
     // 判断物品栈是否是任意一种骰子,供其它逻辑统一识别

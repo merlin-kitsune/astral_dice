@@ -11,7 +11,9 @@ import net.minecraft.world.entity.player.Player;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
-import com.merlinkitsune.astral_dice.network.DamageNumberPayload;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * 法伤(远程/魔法伤害)结算主链路:判定作用域后,由注册表修饰器聚合加成并应用。
@@ -36,10 +38,12 @@ public class DamageEffectCardHandler {
 
         SpellDamageContext ctx = new SpellDamageContext(player, target, event, source, direct);
 
-        // 聚合加成(按注册顺序)
+        // 聚合加成(按注册顺序):单次遍历收集生效修饰器,避免 isActive 重复求值
+        List<SpellDamageModifier> active = new ArrayList<>();
         double bonus = 0;
         for (SpellDamageModifier modifier : SpellDamageRegistry.modifiers()) {
             if (modifier.isActive(ctx)) {
+                active.add(modifier);
                 bonus = modifier.apply(ctx, bonus);
             }
         }
@@ -47,25 +51,12 @@ public class DamageEffectCardHandler {
         // 应用加成并跳数字
         if (bonus > 0) {
             event.setNewDamage(event.getNewDamage() + (float) bonus);
-            sendBonusDamageNumber(target, (int) bonus);
+            com.merlinkitsune.astral_dice.network.DamageNumberPayload.send(target, (int) bonus, 0x7CFC00);
         }
 
         // 命中副作用(施加标记/定向爆破 AOE 等)
-        for (SpellDamageModifier modifier : SpellDamageRegistry.modifiers()) {
-            if (modifier.isActive(ctx)) {
-                modifier.onHit(ctx, bonus);
-            }
-        }
-    }
-
-    // 法伤加成跳数字(草绿色 0x7CFC00)
-    private static void sendBonusDamageNumber(net.minecraft.world.entity.LivingEntity target, int bonus) {
-        if (target.level().isClientSide()) return;
-        var packet = new com.merlinkitsune.astral_dice.network.DamageNumberPayload(
-                target.getId(), bonus, 0x7CFC00);
-        net.neoforged.neoforge.network.PacketDistributor.sendToPlayersTrackingEntity(target, packet);
-        if (target instanceof net.minecraft.server.level.ServerPlayer serverTarget) {
-            net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(serverTarget, packet);
+        for (SpellDamageModifier modifier : active) {
+            modifier.onHit(ctx, bonus);
         }
     }
 }

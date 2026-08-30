@@ -157,18 +157,6 @@ public class ModEventHandlers {
         return points * (1 - cursePenalty);
     }
 
-    // 已装卡牌点数上限之和(骰子点数上限 6 之外的"攻击点数最大值"部分)。
-    // 与攻击卡掷骰一致遍历 appliedStones(当前攻击点数结算包含全部已装卡,含防御卡)。
-    // 注:闪避失败结算已改为使用实际掷出的 骰点+卡牌加成,本方法暂未被调用,保留备用。
-    private static int maxAttackCardPoints(WeaponEnhancement enhancement) {
-        int sum = 0;
-        if (enhancement == null) return 0;
-        for (AppliedStone stone : enhancement.appliedStones()) {
-            sum += com.merlinkitsune.astral_dice.combat.CardRegistry.maxRoll(stone.type());
-        }
-        return sum;
-    }
-
     @SubscribeEvent
     public static void onLivingDamagePre(LivingDamageEvent.Pre event) {
         DamageSource source = event.getSource();
@@ -213,7 +201,7 @@ public class ModEventHandlers {
                 target.addEffect(new MobEffectInstance(ModEffects.WEAK_MARK, 6000, 0, false, true));
                 EffectTimerGuard.apply(target, new MobEffectInstance(MobEffects.WEAKNESS, 6000, 0, false, true));
                 // 主动成功施加:移除"待命"提示效果并开始玩家级冷却
-                player.removeEffect(ModEffects.HAIQING_READY);
+                ModEffectRemoval.remove(player, ModEffects.HAIQING_READY);
                 ModAttachments.setSignActiveCooldownEnd(player,
                         player.level().getGameTime() + GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS);
             }
@@ -233,7 +221,7 @@ public class ModEventHandlers {
                     }
                 }
                 // 主动成功施加:移除"待命"提示效果并开始玩家级冷却
-                player.removeEffect(ModEffects.BONNIE_READY);
+                ModEffectRemoval.remove(player, ModEffects.BONNIE_READY);
                 ModAttachments.setSignActiveCooldownEnd(player,
                         player.level().getGameTime() + GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS);
             }
@@ -586,10 +574,9 @@ public class ModEventHandlers {
         if (!player.level().isClientSide() && triggeredBlessing && !enhancement.appliedStones().isEmpty()) {
             List<AppliedStone> newStones = new ArrayList<>();
             int attackCostFreed = 0;
-            int defenseCostFreed = 0;
             boolean dirty = false;
             for (AppliedStone stone : enhancement.appliedStones()) {
-                // 防御牌:玩家主动触发骰神赐福时不再消耗耐久,仅保留在骰子内
+                // 防御牌:玩家主动触发骰神赐福时不再消耗耐久,仅保留在骰子内(消耗见 consumeDefenseCardDurability)
                 if (stone.type().startsWith("defense_")) {
                     newStones.add(stone);
                     continue;
@@ -601,11 +588,7 @@ public class ModEventHandlers {
                 }
                 int newUses = stone.uses() - 1;
                 if (newUses <= 0) {
-                    if (stone.type().startsWith("defense_")) {
-                        defenseCostFreed += MisakiSignItem.effectiveCost(player, stone.type());
-                    } else {
-                        attackCostFreed += MisakiSignItem.effectiveCost(player, stone.type());
-                    }
+                    attackCostFreed += MisakiSignItem.effectiveCost(player, stone.type());
                     dirty = true;
                 } else {
                     newStones.add(new AppliedStone(stone.type(), newUses));
@@ -617,7 +600,7 @@ public class ModEventHandlers {
                         new WeaponEnhancement(
                                 enhancement.usedCost() - attackCostFreed,
                                 enhancement.maxCost(),
-                                enhancement.usedDefenseCost() - defenseCostFreed,
+                                enhancement.usedDefenseCost(),
                                 enhancement.maxDefenseCost(),
                                 enhancement.starLevel(),
                                 newStones
@@ -1016,10 +999,9 @@ public class ModEventHandlers {
     @SubscribeEvent(priority = EventPriority.HIGH)
     public static void onModEffectRemovalPrevented(MobEffectEvent.Remove event) {
         if (event.getEntity().level().isClientSide()) return;
-        // 计时器守卫的强制移除(时长校正)放行
+        // 本模组内部移除(ModEffectRemoval)/计时器守卫的强制移除(时长校正)放行
+        if (ModEffectRemoval.isInternal()) return;
         if (EffectTimerGuard.isForcedRemoval()) return;
-        // 复仇之戟主动移除显示效果时放行
-        if (RevengeHalberdChipItem.isRemovingEffect()) return;
         // 死亡时允许清除,保证死亡后效果状态能正常重置
         if (event.getEntity().isDeadOrDying()) return;
         MobEffectInstance effect = event.getEffectInstance();
@@ -1029,11 +1011,6 @@ public class ModEventHandlers {
         if (effect.getEffect().value() == net.minecraft.world.effect.MobEffects.GLOWING.value()
                 && event.getEntity().hasEffect(ModEffects.MARKED)) {
             event.setCanceled(true);
-            return;
-        }
-        // 诅咒之剑卸下筹码时允许主动移除青之诅咒
-        if (effect.getEffect().value() == ModEffects.BLUE_CURSE.get()
-                && CursedSwordChipItem.isRemovingBlueCurse()) {
             return;
         }
         String effectId = effect.getEffect().getRegisteredName();
@@ -1120,15 +1097,21 @@ public class ModEventHandlers {
             hasBlade = curios.get().findFirstCurio(s -> s.is(ModItems.CUTTER_BLADE_CHIP.get())).isPresent();
         }
         boolean fullHp = player.getHealth() >= player.getMaxHealth() * 0.6f || player.hasEffect(ModEffects.PAPARA_BITE);
-        if (hasCutter && fullHp) {
-            player.addEffect(new MobEffectInstance(ModEffects.CUTTER_READY, 100, 0, false, true, true));
-        } else {
-            player.removeEffect(ModEffects.CUTTER_READY);
-        }
-        if (hasBlade && fullHp) {
-            player.addEffect(new MobEffectInstance(ModEffects.CUTTER_BLADE_READY, 100, 0, false, true, true));
-        } else {
-            player.removeEffect(ModEffects.CUTTER_BLADE_READY);
+        // 效果存在且剩余时长充足时不重复施加,避免每 tick 触发效果更新/同步包
+        refreshIndicator(player, ModEffects.CUTTER_READY, hasCutter && fullHp);
+        refreshIndicator(player, ModEffects.CUTTER_BLADE_READY, hasBlade && fullHp);
+    }
+
+    // 显示指示器效果:需要显示且(缺失/即将到期)时施加 5 秒;不需要显示且存在时内部移除
+    private static void refreshIndicator(Player player, net.minecraft.core.Holder<net.minecraft.world.effect.MobEffect> effect,
+                                         boolean shouldShow) {
+        if (shouldShow) {
+            MobEffectInstance existing = player.getEffect(effect);
+            if (existing == null || existing.getDuration() <= 20) {
+                player.addEffect(new MobEffectInstance(effect, 100, 0, false, true, true));
+            }
+        } else if (player.hasEffect(effect)) {
+            ModEffectRemoval.remove(player, effect);
         }
     }
 
@@ -2163,10 +2146,6 @@ public class ModEventHandlers {
         return ThreadLocalRandom.current().nextInt(1, max + 1);
     }
 
-    private static int rollDice(int min, int max) {
-        return ThreadLocalRandom.current().nextInt(min, max + 1);
-    }
-
     // 近战武器攻击判定:仅允许剑/斧/重锤/三叉戟等近战武器触发骰神赐福
     private static boolean isMeleeWeaponAttack(Player player) {
         ItemStack held = player.getMainHandItem();
@@ -2349,7 +2328,7 @@ public class ModEventHandlers {
         ModAttachments.setDefenseCardConsumedThisBlessing(player, false);
         // 计时器守卫:清空效果结束时刻记录,避免重登后守卫重新施加旧效果
         EffectTimerGuard.clear(player);
-        player.removeEffect(ModEffects.DICE_BLESSING);
+        ModEffectRemoval.remove(player, ModEffects.DICE_BLESSING);
         // 重连后刷新治愈体系(上限收缩/效果显示;赐福边沿 prev 标记初始 false,不会误触发减半)
         HealingManager.tick(player);
     }
@@ -2370,13 +2349,6 @@ public class ModEventHandlers {
 
     // 通用跳数字发送:指定 ARGB 颜色(0xRRGGBB 将被叠加透明度)
     private static void sendDamageNumber(LivingEntity target, int bonusDamage, int color) {
-        if (target.level().isClientSide()) return;
-
-        var packet = new DamageNumberPayload(target.getId(), bonusDamage, color);
-        PacketDistributor.sendToPlayersTrackingEntity(target, packet);
-
-        if (target instanceof ServerPlayer serverTarget) {
-            PacketDistributor.sendToPlayer(serverTarget, packet);
-        }
+        com.merlinkitsune.astral_dice.network.DamageNumberPayload.send(target, bonusDamage, color);
     }
 }

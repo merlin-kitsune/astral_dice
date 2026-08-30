@@ -3,6 +3,7 @@ package com.merlinkitsune.astral_dice.item.sign;
 import com.merlinkitsune.astral_dice.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
+import com.merlinkitsune.astral_dice.event.ModEffectRemoval;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.player.Player;
@@ -10,7 +11,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import top.theillusivec4.curios.api.SlotContext;
 import com.merlinkitsune.astral_dice.item.card.ExclusiveCardUtil;
-import com.merlinkitsune.astral_dice.event.ModEventHandlers;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
 import com.merlinkitsune.astral_dice.network.ActionBarPayload;
@@ -44,7 +44,7 @@ public class HaiqingSignItem extends BaseSignItem {
                 && player.level().getGameTime() >= expire) {
             ModAttachments.setSignReadyType(player, 0);
             ModAttachments.setSignReadyExpire(player, 0);
-            player.removeEffect(ModEffects.HAIQING_READY);
+            ModEffectRemoval.remove(player, ModEffects.HAIQING_READY);
         }
         if (ModAttachments.getSignReadyType(player) == READY_TYPE && expire > 0
                 && player.tickCount % 20 == 0 && player instanceof ServerPlayer sp) {
@@ -62,7 +62,7 @@ public class HaiqingSignItem extends BaseSignItem {
             ModAttachments.setSignReadyType(player, 0);
             ModAttachments.setSignReadyExpire(player, 0);
         }
-        player.removeEffect(ModEffects.HAIQING_READY);
+        ModEffectRemoval.remove(player, ModEffects.HAIQING_READY);
     }
 
     @Override

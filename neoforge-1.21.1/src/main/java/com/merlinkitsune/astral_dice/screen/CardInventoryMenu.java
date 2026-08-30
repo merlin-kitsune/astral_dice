@@ -52,6 +52,8 @@ public class CardInventoryMenu extends AbstractContainerMenu {
     private int displayAttackMax;
     private int displayDefenseMin;
     private int displayDefenseMax;
+    // 显示数值刷新节流:完整修饰器链(含 Curios 查询/属性读取)只需每秒刷新一次
+    private long lastStatsRefreshTick = Long.MIN_VALUE;
 
     public CardInventoryMenu(int containerId, Inventory playerInventory) {
         super(ModMenuTypes.CARD_INVENTORY.get(), containerId);
@@ -159,7 +161,13 @@ public class CardInventoryMenu extends AbstractContainerMenu {
     @Override
     public void broadcastChanges() {
         if (!player.level().isClientSide()) {
-            refreshDisplayStats();
+            // 完整攻击/防御修饰器链每 tick 重算代价高(Curios 查询/属性读取/卡牌范围);
+            // 显示数值按 20 tick(1 秒)节流刷新,点击/放入卡牌后最迟 1 秒内更新
+            long now = player.level().getGameTime();
+            if (now - lastStatsRefreshTick >= 20) {
+                refreshDisplayStats();
+                lastStatsRefreshTick = now;
+            }
         }
         super.broadcastChanges();
     }

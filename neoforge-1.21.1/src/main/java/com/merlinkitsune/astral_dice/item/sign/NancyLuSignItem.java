@@ -1,13 +1,13 @@
 package com.merlinkitsune.astral_dice.item.sign;
 
 import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
+import com.merlinkitsune.astral_dice.event.ModEffectRemoval;
 
 import com.merlinkitsune.astral_dice.combat.CardRegistry;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.card.RandomCardHandler;
-import net.minecraft.core.BlockPos;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.LivingEntity;
@@ -16,8 +16,6 @@ import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.phys.AABB;
 import top.theillusivec4.curios.api.CuriosApi;
 import top.theillusivec4.curios.api.SlotContext;
 import net.neoforged.neoforge.capabilities.Capabilities;
@@ -46,7 +44,6 @@ public class NancyLuSignItem extends BaseSignItem {
     public static final int PASSIVE_DEFENSE = 2;
     public static final int PASSIVE_BONUS = 3;
     public static final double PASSIVE_RANGE = 6.0;
-    public static final double ACTIVE_RANGE = 32.0;
     public static final int ACTIVE_DURATION_TICKS = 2400;
     public static final int INVULNERABLE_TICKS = 60;
     public static final int HIDDEN_DURATION_TICKS = 600;
@@ -77,7 +74,7 @@ public class NancyLuSignItem extends BaseSignItem {
         if (now >= ModAttachments.getNancyLuActiveBonusUntil(player)) {
             ModAttachments.setNancyLuActiveBonus(player, 0);
             ModAttachments.setNancyLuActiveBonusUntil(player, 0);
-            player.removeEffect(ModEffects.NANCY_LU_HACK);
+            ModEffectRemoval.remove(player, ModEffects.NANCY_LU_HACK);
         }
     }
 
@@ -92,7 +89,7 @@ public class NancyLuSignItem extends BaseSignItem {
         ModAttachments.setNancyLuEnderPearlImmuneUntil(player, 0);
         player.setInvulnerable(false);
         player.removeEffect(net.minecraft.world.effect.MobEffects.INVISIBILITY);
-        player.removeEffect(ModEffects.NANCY_LU_HACK);
+        ModEffectRemoval.remove(player, ModEffects.NANCY_LU_HACK);
     }
 
     @Override
@@ -191,61 +188,6 @@ public class NancyLuSignItem extends BaseSignItem {
                 player.getBoundingBox().inflate(64.0), mob -> mob.getTarget() == player)) {
             mob.setTarget(null);
         }
-    }
-
-    private static LivingEntity findHighestHealthTarget(Player player) {
-        List<LivingEntity> candidates = new ArrayList<>();
-        for (LivingEntity e : player.level().getEntitiesOfClass(LivingEntity.class,
-                player.getBoundingBox().inflate(ACTIVE_RANGE), e -> e.isAlive() && e != player)) {
-            if (e instanceof Enemy || e instanceof Player) {
-                candidates.add(e);
-            }
-        }
-        if (candidates.isEmpty()) return null;
-        candidates.sort((a, b) -> Float.compare(b.getHealth(), a.getHealth()));
-        return candidates.get(0);
-    }
-
-    private static void teleportNear(Player player, LivingEntity target) {
-        Level level = player.level();
-        BlockPos center = target.blockPosition();
-        for (int radius = 1; radius <= 3; radius++) {
-            List<BlockPos> offsets = new ArrayList<>();
-            for (int dx = -radius; dx <= radius; dx++) {
-                for (int dz = -radius; dz <= radius; dz++) {
-                    if (dx * dx + dz * dz <= radius * radius && (dx != 0 || dz != 0)) {
-                        offsets.add(center.offset(dx, 0, dz));
-                    }
-                }
-            }
-            // 随机顺序尝试
-            while (!offsets.isEmpty()) {
-                int idx = ThreadLocalRandom.current().nextInt(offsets.size());
-                BlockPos candidate = offsets.remove(idx);
-                BlockPos feet = findSafeStandingPos(level, candidate);
-                if (feet == null) continue;
-                AABB aabb = new AABB(feet).inflate(0.3);
-                if (!level.noCollision(player, aabb)) continue;
-                player.teleportTo(feet.getX() + 0.5, feet.getY() + 0.1, feet.getZ() + 0.5);
-                return;
-            }
-        }
-    }
-
-    private static BlockPos findSafeStandingPos(Level level, BlockPos pos) {
-        for (int y = Math.min(pos.getY() + 2, level.getMaxBuildHeight() - 1); y > level.getMinBuildHeight(); y--) {
-            BlockPos feet = new BlockPos(pos.getX(), y, pos.getZ());
-            BlockState below = level.getBlockState(feet.below());
-            BlockState at = level.getBlockState(feet);
-            BlockState above = level.getBlockState(feet.above());
-            boolean belowSolid = !below.isAir() || !below.getFluidState().isEmpty();
-            boolean feetOk = at.isAir() || !at.getFluidState().isEmpty();
-            boolean aboveOk = above.isAir() || !above.getFluidState().isEmpty();
-            if (belowSolid && feetOk && aboveOk) {
-                return feet;
-            }
-        }
-        return null;
     }
 
     private static ItemStack findAndConsumeRandomBattleCard(Player player) {

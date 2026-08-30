@@ -1,6 +1,7 @@
 package com.merlinkitsune.astral_dice.item.chip;
 
 import com.merlinkitsune.astral_dice.effect.ModEffects;
+import com.merlinkitsune.astral_dice.event.ModEffectRemoval;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.player.Player;
@@ -53,13 +54,7 @@ public class RevengeHalberdChipItem extends BaseChipItem {
                 || player.hasEffect(ModEffects.MARKED);
     }
 
-    // 移除"复仇之戟"显示效果时的放行标志(效果移除拦截器据此放行)
-    private static boolean removingEffect = false;
-
-    public static boolean isRemovingEffect() {
-        return removingEffect;
-    }
-
+    // 移除"复仇之戟"显示效果:经 ModEffectRemoval 内部通道放行移除拦截
     /** 当前攻击力加成(0 或 BONUS) */
     public static int currentAttackBonus(Player player) {
         return isEquipped(player) && hasAttackTriggerEffect(player) ? BONUS : 0;
@@ -75,14 +70,12 @@ public class RevengeHalberdChipItem extends BaseChipItem {
         if (player.level().isClientSide()) return;
         if (isEquipped(player)
                 && (hasAttackTriggerEffect(player) || hasDefenseTriggerEffect(player))) {
-            player.addEffect(new MobEffectInstance(ModEffects.REVENGE_HALBERD, 100, 0, false, false, true));
-        } else if (player.hasEffect(ModEffects.REVENGE_HALBERD)) {
-            removingEffect = true;
-            try {
-                player.removeEffect(ModEffects.REVENGE_HALBERD);
-            } finally {
-                removingEffect = false;
+            // 效果已存在时不重复施加,避免每 tick 触发效果更新/同步包
+            if (!player.hasEffect(ModEffects.REVENGE_HALBERD)) {
+                player.addEffect(new MobEffectInstance(ModEffects.REVENGE_HALBERD, 100, 0, false, false, true));
             }
+        } else if (player.hasEffect(ModEffects.REVENGE_HALBERD)) {
+            ModEffectRemoval.remove(player, ModEffects.REVENGE_HALBERD);
         }
     }
 }

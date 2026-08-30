@@ -38,10 +38,6 @@ public class MimiSignItem extends BaseSignItem {
     }
 
     @Override
-    protected void onCurioTick(SlotContext slotContext, ItemStack stack) {
-    }
-
-    @Override
     protected void clearSignData(Player player, ItemStack stack) {
         super.clearSignData(player, stack);
         ModAttachments.setMimiStarCoinCounter(player, 0);

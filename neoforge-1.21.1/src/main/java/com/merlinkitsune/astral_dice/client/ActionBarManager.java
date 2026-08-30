@@ -24,19 +24,6 @@ public final class ActionBarManager {
         endTick = currentTick() + capped;
     }
 
-    public static void show(Component msg) {
-        show(msg, GameplayConstants.ACTIONBAR_DURATION_TICKS);
-    }
-
-    public static void clear() {
-        message = null;
-    }
-
-    // 当前是否正在显示指定消息
-    public static boolean isShowing(Component msg) {
-        return message != null && message.equals(msg);
-    }
-
     private static long currentTick() {
         Minecraft mc = Minecraft.getInstance();
         return mc.level != null ? mc.level.getGameTime() : 0;

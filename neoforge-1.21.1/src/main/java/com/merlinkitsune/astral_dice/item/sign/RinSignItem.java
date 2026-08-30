@@ -19,10 +19,6 @@ public class RinSignItem extends BaseSignItem {
     }
 
     @Override
-    protected void onCurioTick(SlotContext slotContext, ItemStack stack) {
-    }
-
-    @Override
     protected void clearSignData(Player player, ItemStack stack) {
         super.clearSignData(player, stack);
         // 移除立牌时重置调查员(rin)已使用的活体书页数量

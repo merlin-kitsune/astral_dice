@@ -4,6 +4,7 @@ import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.component.GameplayConstants;
 
 import com.merlinkitsune.astral_dice.effect.ModEffects;
+import com.merlinkitsune.astral_dice.event.ModEffectRemoval;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.player.Player;
 import top.theillusivec4.curios.api.CuriosApi;
@@ -11,11 +12,13 @@ import top.theillusivec4.curios.api.CuriosApi;
 /**
  * "治愈"点数管理器(玩家级共享资源,与具体饰品解耦)。
  *
- * <p>治愈体系无独立计时器,完全遵循"骰神赐福"效果的生命周期:
+ * <p>治愈体系由独立的 30 秒治愈计时器驱动({@link GameplayConstants#HEALING_TIMER_TICKS}):
  * <ul>
  *   <li><b>触发骰神赐福</b> → 先增加医疗箱筹码的治愈点(紧急 +1、完备 +3,受上限),
- *       再获得 当前治愈点×2 的治疗量(回血,不扣点);</li>
- *   <li><b>骰神赐福结束</b> → 治愈点减半(向下取整)。</li>
+ *       再获得 当前治愈点×2 的治疗量(回血,不扣点),并启动/重置 30 秒计时器;</li>
+ *   <li><b>治愈计时器到期</b> → 治愈点减半(向下取整);若仍处于骰神赐福且剩余点数 &gt; 0
+ *       则再次回血并重置计时器,否则等待下次触发;</li>
+ *   <li><b>骰神赐福结束</b> → 仅清除赐福周期标记(减半统一由计时器到期处理)。</li>
  * </ul>
  * 治愈点为单一数值池(附件 healing_points),由史莱姆立牌被动/主动、缓冲盾牌、
  * 医疗箱(赐福触发时)等来源增加;治愈点为 0 时不显示效果。
@@ -33,8 +36,6 @@ public final class HealingManager {
     public static final int MEDKIT_EMERGENCY_POINTS = 1;
     /** 完备医疗箱触发骰神赐福时增加的治愈点 */
     public static final int MEDKIT_COMPLETE_POINTS = 3;
-    /** 无骰神赐福时治愈效果的常显时长(tick,5 分钟;持续刷新维持显示) */
-    public static final int IDLE_EFFECT_TICKS = 6000;
 
     // 流派注册实现(供 PlayerResourceRegistry 注册;筹码/立牌可通过注册表按类型调用)
     public static final com.merlinkitsune.astral_dice.resource.PlayerResource RESOURCE =
@@ -119,7 +120,7 @@ public final class HealingManager {
         ModAttachments.setHealingPoints(player, 0);
         ModAttachments.setHealingPrevBlessing(player, false);
         ModAttachments.setHealingTimerEnd(player, 0);
-        player.removeEffect(ModEffects.HEALING);
+        ModEffectRemoval.remove(player, ModEffects.HEALING);
     }
 
     // ── 治愈计时器/骰神赐福结算 ──────────────────────────────────────────────
@@ -235,9 +236,11 @@ public final class HealingManager {
 
         // 赐福结束标记清理(不再减半,减半由计时器处理)
         boolean hasBlessing = player.hasEffect(ModEffects.DICE_BLESSING);
-        if (ModAttachments.isHealingPrevBlessing(player) && !hasBlessing) {
+        boolean prevBlessing = ModAttachments.isHealingPrevBlessing(player);
+        if (prevBlessing && !hasBlessing) {
             onBlessingEnded(player);
-        } else if (hasBlessing) {
+        } else if (!prevBlessing && hasBlessing) {
+            // 仅在上升沿写入一次,避免每 tick 重写附件触发同步
             ModAttachments.setHealingPrevBlessing(player, true);
         }
         updateEffect(player);
@@ -253,7 +256,7 @@ public final class HealingManager {
         if (player.level().isClientSide()) return;
         int total = getPoints(player);
         if (total <= 0) {
-            player.removeEffect(ModEffects.HEALING);
+            ModEffectRemoval.remove(player, ModEffects.HEALING);
             return;
         }
         long now = player.level().getGameTime();
@@ -262,7 +265,7 @@ public final class HealingManager {
         // 仅在有骰神赐福或治愈计时器仍在运行时显示效果图标;
         // 计时结束且未再次触发赐福时移除图标,避免残留。
         if (blessing == null && timerEnd <= now) {
-            player.removeEffect(ModEffects.HEALING);
+            ModEffectRemoval.remove(player, ModEffects.HEALING);
             return;
         }
         int remain;
@@ -270,6 +273,11 @@ public final class HealingManager {
             remain = Math.max(1, blessing.getDuration());
         } else {
             remain = (int) Math.max(1, timerEnd - now);
+        }
+        // 效果已存在且层级一致、剩余时长充足时不重复施加,避免每 tick 触发效果更新/同步包
+        MobEffectInstance existing = player.getEffect(ModEffects.HEALING);
+        if (existing != null && existing.getAmplifier() == total - 1 && existing.getDuration() > 20) {
+            return;
         }
         // amplifier = 层数 - 1(1 层显示 I 级);visible=true 使效果在 HUD 正常显示
         player.addEffect(new MobEffectInstance(ModEffects.HEALING, remain, total - 1, false, false, true));

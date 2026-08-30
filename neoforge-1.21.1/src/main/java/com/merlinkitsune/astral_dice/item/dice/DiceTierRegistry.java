@@ -36,8 +36,4 @@ public final class DiceTierRegistry {
     public static boolean isDice(ItemStack stack) {
         return get(stack) != null;
     }
-
-    public static List<DiceTier> all() {
-        return List.copyOf(TIERS);
-    }
 }

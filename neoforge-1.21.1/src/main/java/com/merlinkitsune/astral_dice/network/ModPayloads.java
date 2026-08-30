@@ -17,9 +17,8 @@ public class ModPayloads {
         registrar.playToClient(
                 DamageNumberPayload.TYPE,
                 DamageNumberPayload.STREAM_CODEC,
-                (payload, context) -> {
-                    ClientDamageNumbers.add(payload.entityId(), payload.bonusDamage(), payload.color());
-                }
+                (payload, context) -> context.enqueueWork(() ->
+                        ClientDamageNumbers.add(payload.entityId(), payload.bonusDamage(), payload.color()))
         );
         registrar.playToClient(
                 ActionBarPayload.TYPE,

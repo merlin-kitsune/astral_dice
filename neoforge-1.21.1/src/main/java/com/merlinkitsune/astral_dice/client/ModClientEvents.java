@@ -15,7 +15,6 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
-import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
 import org.joml.Matrix4f;
 import org.joml.Quaternionf;
@@ -47,11 +46,6 @@ public class ModClientEvents {
     public static void registerKeyMappings(RegisterKeyMappingsEvent event) {
         event.register(KeyBindingSetup.ACTIVATE_SIGN_KEY);
         event.register(KeyBindingSetup.OPEN_CARD_INVENTORY_KEY);
-    }
-
-    @SubscribeEvent
-    public static void onClientTick(ClientTickEvent.Post event) {
-        ClientDamageNumbers.tick();
     }
 
     public static class DamageNumberOverlay implements LayeredDraw.Layer {

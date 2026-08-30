@@ -4,6 +4,7 @@ import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
+import com.merlinkitsune.astral_dice.event.ModEffectRemoval;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
@@ -24,15 +25,13 @@ import com.merlinkitsune.astral_dice.item.ModItems;
  * 移除筹码时清除全部攻击力加成与青之诅咒效果。
  */
 public class CursedSwordChipItem extends BaseChipItem {
-    // 内部移除青之诅咒标记:仅用于卸下筹码时主动清理,避免被外部效果移除保护拦截
-    private static boolean removingBlueCurse = false;
+    // "千咒刻印"诅咒附魔的资源键(静态缓存,避免每 tick 重新构造 ResourceLocation/ResourceKey)
+    private static final ResourceKey<Enchantment> CURSE_MARKER_KEY =
+            ResourceKey.create(Registries.ENCHANTMENT,
+                    ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID, "curse_marker"));
 
     public CursedSwordChipItem(Properties properties) {
         super(properties);
-    }
-
-    public static boolean isRemovingBlueCurse() {
-        return removingBlueCurse;
     }
 
     // 玩家是否佩戴诅咒之剑筹码
@@ -68,14 +67,9 @@ public class CursedSwordChipItem extends BaseChipItem {
         removeBlueCurse(player);
     }
 
-    // 主动移除青之诅咒(临时放行内部移除)
+    // 主动移除青之诅咒(经 ModEffectRemoval 内部通道放行移除拦截)
     public static void removeBlueCurse(Player player) {
-        removingBlueCurse = true;
-        try {
-            player.removeEffect(ModEffects.BLUE_CURSE);
-        } finally {
-            removingBlueCurse = false;
-        }
+        ModEffectRemoval.remove(player, ModEffects.BLUE_CURSE);
     }
 
     // 骰神赐福期间击杀敌对目标(20 血以上)时增加 1 点攻击力;每个赐福周期最多触发一次
@@ -99,8 +93,7 @@ public class CursedSwordChipItem extends BaseChipItem {
         if (stack == null || stack.isEmpty()) return;
         Holder<Enchantment> marker = player.level().registryAccess()
                 .lookupOrThrow(Registries.ENCHANTMENT)
-                .get(ResourceKey.create(Registries.ENCHANTMENT,
-                        ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID, "curse_marker")))
+                .get(CURSE_MARKER_KEY)
                 .orElse(null);
         if (marker == null) return;
         if (stack.getEnchantments().getLevel(marker) <= 0) {

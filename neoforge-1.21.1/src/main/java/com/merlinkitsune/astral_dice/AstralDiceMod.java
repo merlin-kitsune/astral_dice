@@ -10,7 +10,6 @@ import com.merlinkitsune.astral_dice.event.AstralEvents;
 import com.merlinkitsune.astral_dice.init.ModCreativeTabs;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.recipe.ModRecipeSerializers;
-import com.merlinkitsune.astral_dice.screen.CardInventoryMenu;
 import com.merlinkitsune.astral_dice.screen.CardInventoryScreen;
 import com.merlinkitsune.astral_dice.screen.ModMenuTypes;
 import net.minecraft.world.inventory.MenuType;
