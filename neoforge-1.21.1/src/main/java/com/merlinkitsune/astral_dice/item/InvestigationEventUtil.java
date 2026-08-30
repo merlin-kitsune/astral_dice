@@ -3,26 +3,35 @@ package com.merlinkitsune.astral_dice.item;
 import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
 
 import com.merlinkitsune.astral_dice.component.GameplayConstants;
-import com.merlinkitsune.astral_dice.component.ModAttachments;
-import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.event.AstralEventSystem;
 import com.merlinkitsune.astral_dice.network.ActionBarPayload;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.PacketDistributor;
-import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
-import net.minecraft.world.entity.player.Player;
 
 import java.util.ArrayList;
 import java.util.List;
+import com.merlinkitsune.astral_dice.AstralDiceMod;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
+import net.neoforged.neoforge.event.entity.living.MobEffectEvent;
+import net.minecraft.world.entity.LivingEntity;
+import com.merlinkitsune.astral_dice.item.MarkManager;
+import net.minecraft.world.entity.player.Player;
+import com.merlinkitsune.astral_dice.component.ModAttachments;
+import com.merlinkitsune.astral_dice.effect.ModEffects;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.neoforged.bus.api.SubscribeEvent;
+import java.util.Optional;
 
 /**
  * "调查阶段"事件核心逻辑。
  * 阶段:调查阶段 I / II / III / 真相揭露。由击杀"隐匿调查"目标触发;大侦探立牌可抽取该事件(继承附近秘密侦探立牌玩家的进度,不推进)。
  * 调查阶段属于事件,触发时同样触发调查员立牌被动等事件附加效果。
  */
+@EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public final class InvestigationEventUtil {
     private InvestigationEventUtil() {
     }
@@ -91,6 +100,34 @@ public final class InvestigationEventUtil {
                     new ActionBarPayload(Component.translatable("msg.astral_dice.investigation_event_triggered")
                             .withStyle(ChatFormatting.YELLOW), GameplayConstants.ACTIONBAR_DURATION_TICKS));
         }
+    }
+
+
+    // 击杀"隐匿调查"目标 → 触发调查阶段事件(全局处理,不要求击杀者佩戴秘密侦探立牌)
+    @SubscribeEvent
+    public static void onUndercoverInvestigationKill(LivingDeathEvent event) {
+        LivingEntity target = event.getEntity();
+        if (target.level().isClientSide()) return;
+        if (!target.hasEffect(ModEffects.UNDERCOVER_INVESTIGATION)) return;
+        if (!(event.getSource().getEntity() instanceof Player killer)) return;
+        java.util.Optional<java.util.UUID> source = ModAttachments.getUndercoverSource(target);
+        if (source.isEmpty()) return;
+        Player applier = target.level().getPlayerByUUID(source.get());
+        if (applier == null) return;
+        int markLevel = MarkManager.getLevel(target);
+        InvestigationEventUtil.triggerByKill(killer, applier, markLevel);
+    }
+
+
+    @SubscribeEvent
+    public static void onUndercoverRemoved(MobEffectEvent.Remove event) {
+        if (event.isCanceled()) return;
+        MobEffectInstance effect = event.getEffectInstance();
+        if (effect == null || effect.getEffect() == null
+                || effect.getEffect().value() != ModEffects.UNDERCOVER_INVESTIGATION.get()) return;
+        LivingEntity entity = event.getEntity();
+        if (entity.level().isClientSide()) return;
+        ModAttachments.setUndercoverSource(entity, Optional.empty());
     }
 
 }

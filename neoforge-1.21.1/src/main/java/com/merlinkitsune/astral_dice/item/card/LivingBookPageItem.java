@@ -20,6 +20,11 @@ public class LivingBookPageItem extends BaseEffectCardItem {
     public LivingBookPageItem(Properties properties) {
         super(properties);
     }
+    @Override
+    protected String cardTypeId() {
+        return "living_page";
+    }
+
 
     @Override
     protected boolean isExclusive() {

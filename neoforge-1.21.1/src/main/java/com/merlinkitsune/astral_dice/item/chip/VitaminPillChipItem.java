@@ -1,21 +1,26 @@
 package com.merlinkitsune.astral_dice.item.chip;
 
-import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import top.theillusivec4.curios.api.CuriosApi;
 import com.merlinkitsune.astral_dice.combat.CardRegistry;
 import com.merlinkitsune.astral_dice.item.sign.MimiSignItem;
 import com.merlinkitsune.astral_dice.item.HealingManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
+import com.merlinkitsune.astral_dice.AstralDiceMod;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.minecraft.world.entity.player.Player;
+import net.neoforged.bus.api.SubscribeEvent;
 
 /**
  * 维生素药丸筹码:通过合成或奖励途径获得任意卡牌时,治愈 +1。
  *
  * <p>触发范围包括:直接合成卡牌,以及随机/事件/立牌/筹码/效果牌特定能力发放的卡牌。
  * 发放卡牌的代码统一走 {@link #giveCard} 以便在成功放入背包时触发;
- * 合成由 ModEventHandlers 中的事件监听补充。
+ * 合成由本类自身的 ItemCraftedEvent 监听补充。
  * 拾取地面卡牌不会触发,避免反复丢弃/拾取刷治愈点。
  */
+@EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public class VitaminPillChipItem extends BaseChipItem {
     /** 获得每张卡牌时增加的治愈点数 */
     public static final int HEALING_POINTS_PER_CARD = 1;
@@ -67,5 +72,16 @@ public class VitaminPillChipItem extends BaseChipItem {
         if (curios.isEmpty()) return;
         if (curios.get().findFirstCurio(s -> s.is(ModItems.VITAMIN_PILL_CHIP.get())).isEmpty()) return;
         HealingManager.add(player, HEALING_POINTS_PER_CARD * amount);
+    }
+
+    // 维生素药丸:通过合成卡牌获得时触发
+    @SubscribeEvent
+    public static void onCardCrafted(PlayerEvent.ItemCraftedEvent event) {
+        Player player = event.getEntity();
+        if (player.level().isClientSide()) return;
+        ItemStack result = event.getCrafting();
+        if (!result.isEmpty()) {
+            VitaminPillChipItem.onCardGained(player, result);
+        }
     }
 }

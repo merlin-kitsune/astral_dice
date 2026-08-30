@@ -7,6 +7,14 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import top.theillusivec4.curios.api.CuriosApi;
 import top.theillusivec4.curios.api.SlotContext;
+import com.merlinkitsune.astral_dice.AstralDiceMod;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.monster.Enemy;
+import com.merlinkitsune.astral_dice.combat.SpellDamageRegistry;
+import com.merlinkitsune.astral_dice.effect.ModEffects;
+import net.neoforged.bus.api.SubscribeEvent;
 
 /**
  * 探天卫星筹码:
@@ -14,6 +22,7 @@ import top.theillusivec4.curios.api.SlotContext;
  * - 使用一张"轨道炮"后,本轮出牌数 +1(每个出牌轮次最多一次);
  * - "轨道炮"生效期间,使用远程或魔法击杀一个敌方目标后,获得一张随机效果牌。
  */
+@EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public class SatelliteChipItem extends BaseChipItem {
     /** 轨道炮库存目标数量 */
     public static final int TARGET_ORBITAL_STRIKE_COUNT = 6;
@@ -78,4 +87,18 @@ public class SatelliteChipItem extends BaseChipItem {
         }
         return count;
     }
+
+    // 探天卫星:轨道炮生效期间,远程/魔法击杀敌方目标后获得一张随机效果牌
+    @SubscribeEvent
+    public static void onSatelliteRangedMagicKill(LivingDeathEvent event) {
+        LivingEntity target = event.getEntity();
+        if (target.level().isClientSide()) return;
+        if (!(target instanceof Enemy)) return;
+        if (!(event.getSource().getEntity() instanceof Player killer)) return;
+        if (!killer.hasEffect(ModEffects.ORBITAL_STRIKE)) return;
+        if (!com.merlinkitsune.astral_dice.combat.SpellDamageRegistry.isSpellDamage(
+                event.getSource(), event.getSource().getDirectEntity())) return;
+        SatelliteChipItem.onRangedMagicKill(killer);
+    }
+
 }

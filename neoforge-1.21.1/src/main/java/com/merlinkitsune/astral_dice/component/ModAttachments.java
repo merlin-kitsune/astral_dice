@@ -68,12 +68,6 @@ public class ModAttachments {
                     .sync(ByteBufCodecs.VAR_LONG)
                     .build());
 
-    // 事件系统:护甲 -30% 惩罚结束时刻(0 表示未生效)
-    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> ARMOR_PENALTY_END =
-            ATTACHMENTS.register("armor_penalty_end", () -> AttachmentType.builder(() -> 0L)
-                    .serialize(Codec.LONG)
-                    .build());
-
     // 史莱姆立牌:上次受击获得治愈的游戏时刻(限制受击 +1 的频率,防止围攻时点数暴涨)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> LULU_LAST_HURT_TICK =
             ATTACHMENTS.register("lulu_last_hurt_tick", () -> AttachmentType.builder(() -> 0L)
@@ -398,13 +392,6 @@ public class ModAttachments {
         player.setData(EFFECT_CARD_COOLDOWN_END.get(), value);
     }
 
-    public static long getArmorPenaltyEnd(net.minecraft.world.entity.player.Player player) {
-        return player.getData(ARMOR_PENALTY_END.get());
-    }
-
-    public static void setArmorPenaltyEnd(net.minecraft.world.entity.player.Player player, long value) {
-        player.setData(ARMOR_PENALTY_END.get(), value);
-    }
 
     public static int getRinPages(net.minecraft.world.entity.player.Player player) {
         return player.getData(RIN_PAGES.get());

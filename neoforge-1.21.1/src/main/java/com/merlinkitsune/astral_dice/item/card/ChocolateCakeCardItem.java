@@ -16,6 +16,11 @@ public class ChocolateCakeCardItem extends BaseEffectCardItem {
     public ChocolateCakeCardItem(Properties properties) {
         super(properties);
     }
+    @Override
+    protected String cardTypeId() {
+        return "chocolate_cake";
+    }
+
 
     @Override
     protected boolean isHealingCard() {

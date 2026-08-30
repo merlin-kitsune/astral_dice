@@ -12,7 +12,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
-import com.merlinkitsune.astral_dice.event.ModEventHandlers;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
 
@@ -105,7 +104,7 @@ public final class RandomCardHandler {
 
     // === 卡牌池 ===
 
-    // 全部攻击牌(全力攻击不在随机池:仅能通过消耗"蓄力"获得,见 ModEventHandlers.onDiceBlessingExpired)
+    // 全部攻击牌(全力攻击不在随机池:仅能通过消耗"蓄力"获得,见 DiceCombatEvents.onDiceBlessingExpired)
     private static List<Item> attackCards() {
         return List.of(
                 ModItems.ATTACK_CARD_MEDIUM.get(),

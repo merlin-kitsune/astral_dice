@@ -7,7 +7,7 @@ import net.minecraft.world.entity.player.Player;
 /**
  * 本模组主动移除效果的统一内部通道。
  *
- * <p>效果移除拦截器({@link ModEventHandlers#onModEffectRemovalPrevented})会拦截
+ * <p>效果移除拦截器({@link ModEffectEvents#onModEffectRemovalPrevented})会拦截
  * 牛奶/蜂蜜/{@code /effect clear} 等外部清除;本模组自己的移除逻辑必须经由本类移除,
  * 通过内部移除标志放行,避免"待命"提示、计数效果等被拦截后永久残留。
  * 与 {@link EffectTimerGuard} 的强制移除标志为同一模式(单一职责分离)。

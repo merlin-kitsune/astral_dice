@@ -37,35 +37,6 @@ public final class HealingManager {
     /** 完备医疗箱触发骰神赐福时增加的治愈点 */
     public static final int MEDKIT_COMPLETE_POINTS = 3;
 
-    // 流派注册实现(供 PlayerResourceRegistry 注册;筹码/立牌可通过注册表按类型调用)
-    public static final com.merlinkitsune.astral_dice.resource.PlayerResource RESOURCE =
-            new com.merlinkitsune.astral_dice.resource.PlayerResource() {
-                @Override
-                public int get(net.minecraft.world.entity.player.Player player) {
-                    return HealingManager.getPoints(player);
-                }
-
-                @Override
-                public int getCap(net.minecraft.world.entity.player.Player player) {
-                    return HealingManager.getCap(player);
-                }
-
-                @Override
-                public int add(net.minecraft.world.entity.player.Player player, int amount) {
-                    return HealingManager.add(player, amount);
-                }
-
-                @Override
-                public int spend(net.minecraft.world.entity.player.Player player, int amount) {
-                    return HealingManager.spend(player, amount);
-                }
-
-                @Override
-                public void clear(net.minecraft.world.entity.player.Player player) {
-                    HealingManager.clear(player);
-                }
-            };
-
     private HealingManager() {
     }
 

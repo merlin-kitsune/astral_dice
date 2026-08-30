@@ -1,5 +1,7 @@
 package com.merlinkitsune.astral_dice.event;
 
+import com.merlinkitsune.astral_dice.item.card.FateGuidanceCardItem;
+
 import io.redspace.ironsspellbooks.api.events.ChangeManaEvent;
 import net.neoforged.bus.api.SubscribeEvent;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
@@ -15,7 +17,7 @@ public class IronSpellbooksCompat {
     public static void onChangeMana(ChangeManaEvent event) {
         var player = event.getEntity();
         if (player.level().isClientSide()) return;
-        if (!ModEventHandlers.isFateGuidanceActive(player)) return;
+        if (!FateGuidanceCardItem.isFateGuidanceActive(player)) return;
         float oldMana = event.getOldMana();
         float newMana = event.getNewMana();
         // 仅处理消耗方向(新魔力 < 旧魔力):将消耗量减半

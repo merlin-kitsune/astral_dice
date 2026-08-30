@@ -93,7 +93,7 @@ public class FenSignItem extends BaseSignItem {
     }
 
     /**
-     * 触发骰神赐福时调用(ModEventHandlers triggeredBlessing 块):
+     * 触发骰神赐福时调用(DiceCombatEvents triggeredBlessing 块):
      * 记录触发时刻;佩戴立牌时养精蓄锐 -1 层(下限 0);
      * 若"战斗爽·扩散"待命,则本次赐福启用(持续到赐福结束)。
      */
@@ -113,7 +113,7 @@ public class FenSignItem extends BaseSignItem {
     }
 
     /**
-     * 每 20 tick 驱动(ModEventHandlers.onPlayerTick):1 分钟内没有触发骰神赐福 → 养精蓄锐 +1 层。
+     * 每 20 tick 驱动(PlayerTickEvents.onPlayerTick):1 分钟内没有触发骰神赐福 → 养精蓄锐 +1 层。
      * 计时起点:装备立牌时(onEquip)或首次 tick 惰性初始化。
      */
     public static void tick(Player player) {
@@ -132,7 +132,7 @@ public class FenSignItem extends BaseSignItem {
         ModAttachments.setFenLastBlessingTick(player, now);
     }
 
-    // 骰神赐福结束时调用(ModEventHandlers.onDiceBlessingExpired):清除"战斗爽·扩散"生效状态
+    // 骰神赐福结束时调用(DiceCombatEvents.onDiceBlessingExpired):清除"战斗爽·扩散"生效状态
     public static void onBlessingEnd(Player player) {
         if (player.level().isClientSide()) return;
         ModAttachments.setFenCleaveActive(player, false);

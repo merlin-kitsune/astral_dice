@@ -26,7 +26,6 @@ import top.theillusivec4.curios.api.CuriosApi;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
-import com.merlinkitsune.astral_dice.event.ModEventHandlers;
 
 /**
  * 骰神赐福攻防修饰器注册表:管理攻击力/防御力修饰器的有序注册与内置修饰器。
@@ -38,7 +37,7 @@ import com.merlinkitsune.astral_dice.event.ModEventHandlers;
  *   上班族 padman/调查阶段,以及美工刀/瞄具/标靶/手电筒等筹码)。
  *
  * 附属内容(新立牌/筹码/效果/联动)实现 {@link AttackPowerModifier} / {@link DefensePowerModifier}
- * 并通过 register 注册即可影响攻防,无需修改 ModEventHandlers 主流程。
+ * 并通过 register 注册即可影响攻防,无需修改 DiceCombatEvents 主流程。
  */
 public final class DiceCombatModifiers {
 

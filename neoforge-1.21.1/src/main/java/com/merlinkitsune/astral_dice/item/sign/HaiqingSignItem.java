@@ -18,6 +18,14 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.PacketDistributor;
+import com.merlinkitsune.astral_dice.AstralDiceMod;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
+import net.neoforged.neoforge.event.entity.living.MobEffectEvent;
+import net.minecraft.world.entity.LivingEntity;
+import java.util.Optional;
+import java.util.UUID;
+import net.neoforged.bus.api.SubscribeEvent;
 
 /**
  * 占星师立牌(命名:haiqing)。
@@ -27,6 +35,7 @@ import net.neoforged.neoforge.network.PacketDistributor;
  * 主动为"等待目标释放"类技能:等待状态保存在玩家级(ModAttachments),激活后进入等待期(默认 30 秒),
  * 攻击目标即释放;超时或立牌被移除则中断等待。
  */
+@EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public class HaiqingSignItem extends BaseSignItem {
     // 玩家级等待状态类型:占星师=1
     public static final int READY_TYPE = 1;
@@ -79,7 +88,7 @@ public class HaiqingSignItem extends BaseSignItem {
     }
 
     // 被动 2:带"虚弱印记"的目标被击杀时,仅释放该印记的玩家(占星师)获得 3 星币与一张"命运的指引"(绑定获得者)。
-    // 由 ModEventHandlers.onWeakMarkKill 事件分发(任何玩家击杀都触发,奖励归属印记释放者)。
+    // 由 HaiqingSignItem.onWeakMarkKill 事件分发(任何玩家击杀都触发,奖励归属印记释放者)。
     public static void grantWeakMarkKillReward(Player applier) {
         if (applier == null || applier.level().isClientSide()) return;
         ItemStack coinStack = new ItemStack(ModItems.STAR_COIN.get(), 3);
@@ -95,4 +104,29 @@ public class HaiqingSignItem extends BaseSignItem {
                             .withStyle(ChatFormatting.YELLOW), GameplayConstants.ACTIONBAR_DURATION_TICKS));
         }
     }
+
+    @SubscribeEvent
+    public static void onWeakMarkKill(LivingDeathEvent event) {
+        LivingEntity target = event.getEntity();
+        if (target.level().isClientSide()) return;
+        if (!target.hasEffect(ModEffects.WEAK_MARK)) return;
+        Optional<UUID> source = ModAttachments.getWeakMarkSource(target);
+        if (source.isEmpty()) return;
+        if (target.level().getPlayerByUUID(source.get()) instanceof Player applier) {
+            HaiqingSignItem.grantWeakMarkKillReward(applier);
+        }
+    }
+
+
+    // 虚弱印记结束(计时归零或目标死亡):清除印记来源
+    @SubscribeEvent
+    public static void onWeakMarkExpired(MobEffectEvent.Expired event) {
+        MobEffectInstance effect = event.getEffectInstance();
+        if (effect == null || effect.getEffect() == null
+                || effect.getEffect().value() != ModEffects.WEAK_MARK.get()) return;
+        LivingEntity entity = event.getEntity();
+        if (entity.level().isClientSide()) return;
+        ModAttachments.setWeakMarkSource(entity, Optional.empty());
+    }
+
 }

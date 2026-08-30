@@ -22,6 +22,11 @@ public class LuxuryFeastCardItem extends BaseEffectCardItem {
     public LuxuryFeastCardItem(Properties properties) {
         super(properties);
     }
+    @Override
+    protected String cardTypeId() {
+        return "luxury_feast";
+    }
+
 
     @Override
     public boolean canUseOnOtherPlayers() {

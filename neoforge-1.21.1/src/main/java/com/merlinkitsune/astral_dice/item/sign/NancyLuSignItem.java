@@ -24,6 +24,14 @@ import net.neoforged.neoforge.items.IItemHandler;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
+import com.merlinkitsune.astral_dice.AstralDiceMod;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
+import net.neoforged.neoforge.event.entity.player.AttackEntityEvent;
+import net.neoforged.neoforge.event.entity.ProjectileImpactEvent;
+import net.minecraft.world.damagesource.DamageTypes;
+import net.minecraft.world.entity.projectile.ThrownEnderpearl;
+import net.neoforged.bus.api.SubscribeEvent;
 
 /**
  * 骇客立牌(命名:nancy_lu)。
@@ -38,6 +46,7 @@ import java.util.concurrent.ThreadLocalRandom;
  * - 攻击敌对目标或玩家时解除隐身,并消耗一张随机战斗牌;
  * - 按该牌费用 ×2 提升攻击力,持续 2:00;若无战斗牌可用则不触发加成。
  */
+@EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public class NancyLuSignItem extends BaseSignItem {
     public static final int PASSIVE_NONE = 0;
     public static final int PASSIVE_ATTACK = 1;
@@ -81,14 +90,20 @@ public class NancyLuSignItem extends BaseSignItem {
     @Override
     protected void clearSignData(Player player, ItemStack stack) {
         super.clearSignData(player, stack);
+        // 仅清除立牌自身授予的状态(附件标记仍有效时),不触碰其他来源的公共数值:
+        // 无敌/隐身可能由其他模组或原版机制授予,卸载立牌不得一并清除
+        if (ModAttachments.getNancyLuInvulnerableUntil(player) > 0) {
+            player.setInvulnerable(false);
+        }
+        if (ModAttachments.getNancyLuHiddenUntil(player) > 0) {
+            player.removeEffect(net.minecraft.world.effect.MobEffects.INVISIBILITY);
+        }
         ModAttachments.setNancyLuPassiveType(player, PASSIVE_NONE);
         ModAttachments.setNancyLuActiveBonus(player, 0);
         ModAttachments.setNancyLuActiveBonusUntil(player, 0);
         ModAttachments.setNancyLuInvulnerableUntil(player, 0);
         ModAttachments.setNancyLuHiddenUntil(player, 0);
         ModAttachments.setNancyLuEnderPearlImmuneUntil(player, 0);
-        player.setInvulnerable(false);
-        player.removeEffect(net.minecraft.world.effect.MobEffects.INVISIBILITY);
         ModEffectRemoval.remove(player, ModEffects.NANCY_LU_HACK);
     }
 
@@ -228,4 +243,43 @@ public class NancyLuSignItem extends BaseSignItem {
         chosen.shrink(1);
         return chosen.copy();
     }
+
+    // 骇客立牌:完全隐身状态下攻击敌对目标/玩家 → 解除隐身并触发战斗牌加成
+    @SubscribeEvent
+    public static void onNancyLuAttackWhileHidden(
+            net.neoforged.neoforge.event.entity.player.AttackEntityEvent event) {
+        Player player = event.getEntity();
+        if (player.level().isClientSide()) return;
+        if (!NancyLuSignItem.isEquipped(player)) return;
+        net.minecraft.world.entity.Entity target = event.getTarget();
+        if (!(target instanceof net.minecraft.world.entity.monster.Enemy)
+                && !(target instanceof Player)) return;
+        NancyLuSignItem.onAttackWhileHidden(player);
+    }
+
+
+    // 骇客立牌:末影珍珠落地时记录短时免疫窗口,免疫随后的传送摔落伤害
+    @SubscribeEvent
+    public static void onNancyLuEnderPearlImpact(ProjectileImpactEvent event) {
+        if (event.getProjectile() instanceof net.minecraft.world.entity.projectile.ThrownEnderpearl pearl
+                && pearl.getOwner() instanceof Player player
+                && NancyLuSignItem.isEquipped(player)) {
+            ModAttachments.setNancyLuEnderPearlImmuneUntil(player,
+                    player.level().getGameTime() + com.merlinkitsune.astral_dice.item.sign.NancyLuSignItem.ENDER_PEARL_IMMUNE_TICKS);
+        }
+    }
+
+
+    // 骇客立牌:免疫末影珍珠传送产生的摔落伤害
+    @SubscribeEvent
+    public static void onNancyLuEnderPearlDamage(LivingDamageEvent.Pre event) {
+        if (!(event.getEntity() instanceof Player player)) return;
+        if (player.level().isClientSide()) return;
+        if (!NancyLuSignItem.isEquipped(player)) return;
+        if (!event.getSource().is(net.minecraft.world.damagesource.DamageTypes.FALL)) return;
+        if (player.level().getGameTime() < ModAttachments.getNancyLuEnderPearlImmuneUntil(player)) {
+            event.setNewDamage(0);
+        }
+    }
+
 }

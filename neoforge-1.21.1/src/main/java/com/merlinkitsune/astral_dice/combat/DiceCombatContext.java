@@ -5,10 +5,9 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
-import com.merlinkitsune.astral_dice.event.ModEventHandlers;
 
 /**
- * 一次骰神赐福攻击的上下文:由 {@code ModEventHandlers.onLivingDamagePre} 在攻击链路上构建,
+ * 一次骰神赐福攻击的上下文:由 {@code DiceCombatEvents.onLivingDamagePre} 在攻击链路上构建,
  * 供 {@link AttackPowerModifier} / {@link DefensePowerModifier} 读取与写入。
  * 修饰器只应读取 final 字段(只读输入)并修改自身负责的攻击力/防御力值;
  * 需要向后续流程传递结果时写入非 final 字段(如 attackCardSum/hasFullPower)。

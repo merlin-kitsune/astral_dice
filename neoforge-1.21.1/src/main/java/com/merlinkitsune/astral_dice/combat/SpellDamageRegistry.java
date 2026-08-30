@@ -223,9 +223,15 @@ public final class SpellDamageRegistry {
                                 && e != ctx.target && e.isAlive());
                 var blastSource = com.merlinkitsune.astral_dice.damage.ModDamageTypes
                         .diceDamage(ctx.target.level(), ctx.attacker);
-                for (var e : nearby) {
-                    e.hurt(blastSource, 5);
-                    sendAoeDamageNumber(e, 5, 0x7CFC00);
+                // AOE 波及伤害不进入骰战结算(见 DiceCombatEvents.aoeProcessing)
+                DiceCombatEvents.aoeProcessing = true;
+                try {
+                    for (var e : nearby) {
+                        e.hurt(blastSource, 5);
+                        sendAoeDamageNumber(e, 5, 0x7CFC00);
+                    }
+                } finally {
+                    DiceCombatEvents.aoeProcessing = false;
                 }
             }
         });
