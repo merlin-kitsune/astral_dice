@@ -82,7 +82,6 @@ public final class EffectCardPeriod {
         // 临时来源(效果驱动,效果结束自动清除):
         registerTemporarySource(p -> p.hasEffect(ModEffects.LIVING_BOOK_PAGE)); // 活体书页效果
         registerTemporarySource(p -> p.hasEffect(ModEffects.FATE_GUIDANCE));     // 命运的指引效果
-        registerTemporarySource(p -> ModAttachments.isKomachiExtraPlayActive(p)); // 忍者立牌(komachi)主动(仅当前周期)
         registerTemporarySource(p -> ModAttachments.isCandyChipPlayBonusActive(p)); // 可口糖果:满血使用效果牌触发(每轮一次)
         registerTemporarySource(p -> ModAttachments.isSatellitePlayBonusActive(p)); // 探天卫星:使用轨道炮后触发(每轮一次)
 
@@ -107,6 +106,8 @@ public final class EffectCardPeriod {
         for (ExtraPlaySource source : TEMPORARY_SOURCES) {
             if (source.isActive(player)) extra += source.amount();
         }
+        // 忍者立牌(komachi)主动的出牌数银行:按实际出牌消耗,跨周期保留至用尽
+        extra += ModAttachments.getKomachiExtraPlays(player);
         return Math.min(1 + extra,
                 GameplayConstants.MAX_EFFECT_CARD_PLAYS);
     }
@@ -195,13 +196,17 @@ public final class EffectCardPeriod {
         if (cooldown > 0 && now >= cooldown) {
             ModAttachments.setEffectCardCooldownEnd(player, 0);
             ModAttachments.setEffectCardPlayCount(player, 0);
-            ModAttachments.setKomachiExtraPlayActive(player, false);
             ModAttachments.setCandyChipPlayBonusActive(player, false);
             ModAttachments.setSatellitePlayBonusActive(player, false);
             cooldown = 0;
         }
         int count = ModAttachments.getEffectCardPlayCount(player) + 1;
         ModAttachments.setEffectCardPlayCount(player, count);
+        // 消耗一张忍者立牌主动的出牌数银行(若有),使 +1 恰好对应一次实际出牌
+        int komachiBank = ModAttachments.getKomachiExtraPlays(player);
+        if (komachiBank > 0) {
+            ModAttachments.setKomachiExtraPlays(player, komachiBank - 1);
+        }
         // 立即开始/重置冷却倒计时(从最后一张出牌起算)
         ModAttachments.setEffectCardCooldownEnd(player,
                 now + GameplayConstants.EFFECT_CARD_COOLDOWN_SECONDS * 20L);
@@ -215,8 +220,7 @@ public final class EffectCardPeriod {
         if (now < cooldown) return;
         ModAttachments.setEffectCardCooldownEnd(player, 0);
         ModAttachments.setEffectCardPlayCount(player, 0);
-        // 周期归零:清除忍者立牌主动的临时出牌数+1(仅当前周期生效)
-        ModAttachments.setKomachiExtraPlayActive(player, false);
+        // 周期归零:忍者立牌主动的出牌数银行保留(跨周期有效,按实际出牌消耗)
         // 周期归零:清除可口糖果的"满血出牌数+1"(每个轮次最多一次)
         ModAttachments.setCandyChipPlayBonusActive(player, false);
         ModAttachments.setSatellitePlayBonusActive(player, false);

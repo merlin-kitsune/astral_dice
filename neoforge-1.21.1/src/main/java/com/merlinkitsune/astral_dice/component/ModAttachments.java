@@ -46,19 +46,20 @@ public class ModAttachments {
                     .sync(ByteBufCodecs.INT)
                     .build());
 
-    // 忍者立牌(komachi)主动:临时出牌数+1 标记(仅当前效果牌周期内生效,周期归零时清除)
-    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Boolean>> KOMACHI_EXTRA_PLAY_ACTIVE =
-            ATTACHMENTS.register("komachi_extra_play_active", () -> AttachmentType.builder(() -> false)
-                    .serialize(Codec.BOOL)
-                    .sync(ByteBufCodecs.BOOL)
+    // 忍者立牌(komachi)主动:效果牌出牌数+1 累积银行(按实际出牌消耗;跨周期保留至用尽,
+    // 不受出牌进度/冷却/满额影响,确保主动技能在任何情况下均生效)
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> KOMACHI_EXTRA_PLAYS =
+            ATTACHMENTS.register("komachi_extra_plays", () -> AttachmentType.builder(() -> 0)
+                    .serialize(Codec.INT)
+                    .sync(ByteBufCodecs.VAR_INT)
                     .build());
 
-    public static boolean isKomachiExtraPlayActive(net.minecraft.world.entity.player.Player player) {
-        return player.getData(KOMACHI_EXTRA_PLAY_ACTIVE.get());
+    public static int getKomachiExtraPlays(net.minecraft.world.entity.player.Player player) {
+        return player.getData(KOMACHI_EXTRA_PLAYS.get());
     }
 
-    public static void setKomachiExtraPlayActive(net.minecraft.world.entity.player.Player player, boolean value) {
-        player.setData(KOMACHI_EXTRA_PLAY_ACTIVE.get(), value);
+    public static void setKomachiExtraPlays(net.minecraft.world.entity.player.Player player, int value) {
+        player.setData(KOMACHI_EXTRA_PLAYS.get(), value);
     }
 
     // 效果牌公共冷却结束时刻(-1 表示待定冷却=伤害效果牌效果等待中;0 表示无)

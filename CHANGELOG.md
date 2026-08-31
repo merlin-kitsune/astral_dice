@@ -15,6 +15,8 @@ This changelog is fully split by language: the Chinese version comes first, foll
 
 ### 已修复BUG
 
+- 修复忍者立牌主动技能在已有出牌进度或处于出牌冷却期时无法生效的问题:出牌数+1 改为累积式「出牌数银行」(按实际出牌消耗,跨周期保留,不受满额/冷却影响),并移除旧布尔标记及其残留调用(仅 1.21.1)。 / Fixed the Komachi sign's active failing when play progress existed or the cooldown was running: the play-count +1 is now a banked extra-play token (consumed per actual play, persists across windows, unaffected by burst-full or cooldown), and the old boolean flag plus its leftover calls were removed (1.21.1 only).
+
 ### 工程
 
 ## 1.1.3
@@ -286,6 +288,8 @@ This changelog is fully split by language: the Chinese version comes first, foll
 ### New Content
 
 ### Bug Fixes
+
+- Fixed the Komachi sign's active failing when effect-card play progress existed or the cooldown was running: the play-count +1 is now a banked extra-play token (consumed per actual play, persists across windows, unaffected by burst-full or cooldown); the old boolean flag and its leftover calls were removed (1.21.1 only).
 
 ### Project
 

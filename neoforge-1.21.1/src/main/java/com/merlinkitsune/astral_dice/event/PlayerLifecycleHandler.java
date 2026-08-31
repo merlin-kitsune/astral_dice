@@ -121,7 +121,7 @@ public class PlayerLifecycleHandler {
         ModAttachments.setSignReadyExpire(player, 0);
         ModAttachments.setFenCleavePending(player, false);
         ModAttachments.setFenCleaveActive(player, false);
-        ModAttachments.setKomachiExtraPlayActive(player, false);
+        ModAttachments.setKomachiExtraPlays(player, 0);
         ModAttachments.setMagicQuiverTracking(player, false);
         ModAttachments.setMagicQuiverFirstCard(player, "");
         ModAttachments.setMagicQuiverCooldownEnd(player, 0);

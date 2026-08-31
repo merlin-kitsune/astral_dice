@@ -37,7 +37,7 @@ public class KomachiSignItem extends BaseSignItem {
         // 卸下立牌:重置效果牌计数、效果牌伤害增益、移除计数效果与临时出牌数+1 标记
         ModAttachments.setKomachiUseCount(player, 0);
         ModAttachments.setKomachiDamageBonus(player, 0);
-        ModAttachments.setKomachiExtraPlayActive(player, false);
+        ModAttachments.setKomachiExtraPlays(player, 0);
         ModEffectRemoval.remove(player, ModEffects.KOMACHI_COUNT);
     }
 
@@ -46,10 +46,10 @@ public class KomachiSignItem extends BaseSignItem {
         if (level.isClientSide) {
             return InteractionResultHolder.success(stack);
         }
-        // 主动:本轮出牌数 +1(仅当前效果牌周期内生效;若本轮已达到出牌数上限则忽略)
-        if (!com.merlinkitsune.astral_dice.item.card.EffectCardPeriod.isBurstFull(player)) {
-            ModAttachments.setKomachiExtraPlayActive(player, true);
-        }
+        // 主动:效果牌出牌数 +1(累积到出牌数银行,按实际出牌消耗;不受出牌进度/冷却/满额影响)
+        ModAttachments.setKomachiExtraPlays(player,
+                Math.min(ModAttachments.getKomachiExtraPlays(player) + 1,
+                        com.merlinkitsune.astral_dice.component.GameplayConstants.MAX_EFFECT_CARD_PLAYS));
         return InteractionResultHolder.success(stack);
     }
 
