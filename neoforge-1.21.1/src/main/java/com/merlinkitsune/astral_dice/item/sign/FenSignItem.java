@@ -118,6 +118,9 @@ public class FenSignItem extends BaseSignItem {
      */
     public static void tick(Player player) {
         if (player.level().isClientSide()) return;
+        // 被动:拥有养精蓄锐层数时防御力 +2 → 护甲 +4(经 ARMOR 属性;层数/卸下后自动移除)
+        com.merlinkitsune.astral_dice.combat.DiceCombatModifiers.setDefenseArmorBonus(
+                player, "fen_def_armor", isEquipped(player) && ModAttachments.getFenRecharge(player) > 0 ? 2 : 0);
         long now = player.level().getGameTime();
         long last = ModAttachments.getFenLastBlessingTick(player);
         if (last <= 0) {

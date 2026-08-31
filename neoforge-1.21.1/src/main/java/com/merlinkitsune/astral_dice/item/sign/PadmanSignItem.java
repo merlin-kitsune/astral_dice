@@ -26,6 +26,9 @@ public class PadmanSignItem extends BaseSignItem {
             refreshBonus(stack);
             stack.set(ModDataComponents.PADMAN_LAST_REFRESH.get(), gameTime);
         }
+        // 防御力折算为真实护甲(1 防御力 = 2 护甲值;负防御受护甲属性下限 0 约束)
+        com.merlinkitsune.astral_dice.combat.DiceCombatModifiers.setDefenseArmorBonus(
+                player, "padman_def_armor", getDefenseBonus(stack));
     }
 
     @Override
@@ -43,10 +46,11 @@ public class PadmanSignItem extends BaseSignItem {
     @Override
     protected void clearSignData(Player player, ItemStack stack) {
         super.clearSignData(player, stack);
-        // 清除攻防点数与被动刷新计时(重戴后立即刷新)
+        // 清除攻防点数与被动刷新计时(重戴后立即刷新),并移除护甲折算修饰器
         stack.set(ModDataComponents.PADMAN_ATK_BONUS.get(), 0);
         stack.set(ModDataComponents.PADMAN_DEF_BONUS.get(), 0);
         stack.set(ModDataComponents.PADMAN_LAST_REFRESH.get(), 0L);
+        com.merlinkitsune.astral_dice.combat.DiceCombatModifiers.setDefenseArmorBonus(player, "padman_def_armor", 0);
     }
 
     private static void refreshBonus(ItemStack stack) {

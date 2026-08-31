@@ -1,5 +1,6 @@
 package com.merlinkitsune.astral_dice.combat;
 
+import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.component.AppliedStone;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
@@ -16,6 +17,9 @@ import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.sign.PadmanSignItem;
 import com.merlinkitsune.astral_dice.item.BossEntityUtil;
 import com.merlinkitsune.astral_dice.item.StarLightManager;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.ai.attributes.AttributeInstance;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -31,10 +35,15 @@ import java.util.concurrent.ThreadLocalRandom;
  * 骰神赐福攻防修饰器注册表:管理攻击力/防御力修饰器的有序注册与内置修饰器。
  *
  * 内置修饰器覆盖:
- * - 效果类加成(王之力/狂暴/力量 / 岿然不动/抗性);
+ * - 效果类加成(王之力/狂暴/力量 / 抗性);
  * - 卡牌掷骰(攻击/防御);
  * - 全部立牌与筹码的战斗加成(护法 misaki/扫地机 jasmine/吸血鬼 papara/秘密侦探 bonnie/
  *   上班族 padman/调查阶段,以及美工刀/瞄具/标靶/手电筒等筹码)。
+ *
+ * 防御力规范(必须遵守):**仅战斗牌(防御牌)参与骰战防御修饰器**(只有防御牌数值是区间变动,
+ * 由 {@link CardRegistry} 掷骰);效果牌/立牌/筹码提供的防御力一律折算为真实护甲
+ * (1 防御力 = 2 护甲值),经 {@link #setDefenseArmorBonus} 挂到玩家 ARMOR 属性——
+ * 骰战经护甲项(护甲÷2)自动计入,原版伤害管线(骰战伤害无穿透标志)同样按真实护甲减伤。
  *
  * 附属内容(新立牌/筹码/效果/联动)实现 {@link AttackPowerModifier} / {@link DefensePowerModifier}
  * 并通过 register 注册即可影响攻防,无需修改 DiceCombatEvents 主流程。
@@ -52,7 +61,7 @@ public final class DiceCombatModifiers {
         ATTACK_MODIFIERS.add(modifier);
     }
 
-    // 注册防御力修饰器(按注册顺序执行)
+    // 注册防御力修饰器(按注册顺序执行;仅战斗防御牌使用)
     public static void registerDefenseModifier(DefensePowerModifier modifier) {
         DEFENSE_MODIFIERS.add(modifier);
     }
@@ -63,6 +72,28 @@ public final class DiceCombatModifiers {
 
     public static List<DefensePowerModifier> defenseModifiers() {
         return List.copyOf(DEFENSE_MODIFIERS);
+    }
+
+    /**
+     * 效果牌/立牌/筹码的防御力统一折算为真实护甲(1 防御力 = 2 护甲值)。
+     * 通过瞬态 ARMOR 属性修饰器施加:仅当数值变化时才增删(避免每 tick 属性同步)。
+     * 数值 ≤ 0 时移除修饰器(护甲属性下限 0,负防御自然失效)。
+     */
+    public static void setDefenseArmorBonus(Player player, String modifierKey, int defensePoints) {
+        if (player == null || player.level().isClientSide()) return;
+        AttributeInstance attr = player.getAttribute(Attributes.ARMOR);
+        if (attr == null) return;
+        ResourceLocation id = ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID, modifierKey);
+        double armor = defensePoints * 2.0;
+        var existing = attr.getModifier(id);
+        if (armor <= 0) {
+            if (existing != null) attr.removeModifier(id);
+            return;
+        }
+        if (existing == null || existing.amount() != armor) {
+            attr.removeModifier(id);
+            attr.addTransientModifier(new AttributeModifier(id, armor, AttributeModifier.Operation.ADD_VALUE));
+        }
     }
 
     // 通用掷骰:1~max(含)(public:供 CardRegistry 等外部使用)
@@ -311,16 +342,10 @@ public final class DiceCombatModifiers {
             return ap;
         });
 
-        // === 内置:效果类防御加成(抗性;岿然不动已迁移为护甲属性修饰器,不再在此重复计算) ===
-        registerDefenseModifier((ctx, dp) -> {
-            var resistance = ctx.target.getEffect(MobEffects.DAMAGE_RESISTANCE);
-            if (resistance != null) {
-                dp += (resistance.getAmplifier() + 1) * 2;
-            }
-            return dp;
-        });
-
-        // === 内置:防御卡掷骰(收集结果写入上下文;目标无骰子时 targetEnhancement 为 null,结果 0) ===
+        // === 内置:防御卡掷骰(收集结果写入上下文;目标无骰子时 targetEnhancement 为 null,结果 0)。
+        // 防御力规范:骰战防御修饰器仅保留战斗防御牌(区间变动);效果牌/立牌/筹码的防御力
+        // 统一折算为真实护甲(1 防御力 = 2 护甲值),由各自 tick 经 setDefenseArmorBonus 挂到 ARMOR 属性,
+        // 骰战经护甲项自动计入(见 DiceCombatEvents 防御结算) ===
         registerDefenseModifier((ctx, dp) -> {
             int sum = 0;
             if (ctx.targetEnhancement != null) {
@@ -331,74 +356,6 @@ public final class DiceCombatModifiers {
                 }
             }
             ctx.defenseCardSum = sum;
-            return dp;
-        });
-
-        // === 内置:上班族立牌(padman)防御力增益(目标佩戴时) ===
-        registerDefenseModifier((ctx, dp) -> {
-            if (ctx.target.level().isClientSide()) return dp;
-            if (!(ctx.target instanceof Player tp)) return dp;
-            var curios = CuriosApi.getCuriosInventory(tp);
-            if (curios.isPresent()) {
-                var r = curios.get().findFirstCurio(s -> s.is(ModItems.PADMAN_SIGN.get()));
-                if (r.isPresent()) {
-                    dp += PadmanSignItem.getDefenseBonus(r.get().stack());
-                }
-            }
-            return dp;
-        });
-
-        // === 内置:扫地机立牌(jasmine)防御力增益(目标佩戴时) ===
-        registerDefenseModifier((ctx, dp) -> {
-            if (ctx.target.level().isClientSide()) return dp;
-            if (!(ctx.target instanceof Player tp)) return dp;
-            var curios = CuriosApi.getCuriosInventory(tp);
-            if (curios.isPresent()) {
-                var r = curios.get().findFirstCurio(s -> s.is(ModItems.JASMINE_SIGN.get()));
-                if (r.isPresent()) {
-                    dp += JasmineSignItem.getDefenseBonus(r.get().stack());
-                }
-            }
-            return dp;
-        });
-
-        // === 内置:吸血鬼立牌(papara)防御力被动(目标半血或"嘬一口"期间防御力+3) ===
-        registerDefenseModifier((ctx, dp) -> {
-            if (ctx.target.level().isClientSide()) return dp;
-            if (!(ctx.target instanceof Player tp)) return dp;
-            boolean active = tp.getHealth() <= tp.getMaxHealth() / 2.0f || tp.hasEffect(ModEffects.PAPARA_BITE);
-            if (active && hasCurio(tp, ModItems.PAPARA_SIGN.get())) {
-                dp += 3;
-            }
-            return dp;
-        });
-
-        // === 内置:复仇之戟(拥有指定负面效果时防御力 +6,只触发一次不叠加) ===
-        registerDefenseModifier((ctx, dp) -> {
-            if (ctx.target.level().isClientSide()) return dp;
-            if (!(ctx.target instanceof Player tp)) return dp;
-            if (RevengeHalberdChipItem.isEquipped(tp)
-                    && RevengeHalberdChipItem.hasDefenseTriggerEffect(tp)) {
-                dp += RevengeHalberdChipItem.BONUS;
-            }
-            return dp;
-        });
-
-        // === 内置:骇客立牌(nancy_lu)被动防御 ===
-        registerDefenseModifier((ctx, dp) -> {
-            if (ctx.target.level().isClientSide()) return dp;
-            if (!(ctx.target instanceof Player tp)) return dp;
-            dp += NancyLuSignItem.getDefenseBonus(tp);
-            return dp;
-        });
-
-        // === 内置:大当家立牌(fen)被动:拥有养精蓄锐时防御力 +2(目标佩戴时) ===
-        registerDefenseModifier((ctx, dp) -> {
-            if (ctx.target.level().isClientSide()) return dp;
-            if (!(ctx.target instanceof Player tp)) return dp;
-            if (FenSignItem.isEquipped(tp) && ModAttachments.getFenRecharge(tp) > 0) {
-                dp += 2;
-            }
             return dp;
         });
     }
@@ -448,7 +405,8 @@ public final class DiceCombatModifiers {
         for (DefensePowerModifier modifier : defenseModifiers()) {
             modifierDefense = modifier.apply(ctx, modifierDefense);
         }
-        // 效果牌/立牌/事件/筹码的防御力始终按 1 防御力 = 2 护甲值折算为护甲值
+        // 效果牌/立牌/筹码的防御力已折算为真实护甲(1 防御力 = 2 护甲值,见 setDefenseArmorBonus),
+        // getArmorValue() 已包含其瞬态修饰器;此处 modifierDefense 恒为 0(仅防御卡掷骰写 ctx.defenseCardSum)
         double rawArmor = Math.min(player.getArmorValue(), 20);
         double toughness = player.getAttributeValue(Attributes.ARMOR_TOUGHNESS);
         double effectiveArmor = Math.max(0, Math.min(rawArmor + modifierDefense * 2.0, 20));

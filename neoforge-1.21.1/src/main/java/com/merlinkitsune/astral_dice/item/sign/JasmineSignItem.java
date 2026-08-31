@@ -39,16 +39,20 @@ public class JasmineSignItem extends BaseSignItem {
         if (player.level().isClientSide()) return;
         // 被动:移动距离累计
         tickJasmineWalk(player, stack);
+        // 防御力折算为真实护甲(1 防御力 = 2 护甲值;经 ARMOR 属性,骰战与原版伤害均生效)
+        com.merlinkitsune.astral_dice.combat.DiceCombatModifiers.setDefenseArmorBonus(
+                player, "jasmine_def_armor", getDefenseBonus(stack));
     }
 
     @Override
     protected void clearSignData(Player player, ItemStack stack) {
         super.clearSignData(player, stack);
-        // 卸下立牌:清除攻击力/防御力增益计数与移动累计
+        // 卸下立牌:清除攻击力/防御力增益计数与移动累计,并移除护甲折算修饰器
         stack.set(ModDataComponents.JASMINE_ATK_BONUS.get(), 0);
         stack.set(ModDataComponents.JASMINE_DEF_BONUS.get(), 0);
         lastPosMap.remove(player.getUUID());
         walkAccumMap.remove(player.getUUID());
+        com.merlinkitsune.astral_dice.combat.DiceCombatModifiers.setDefenseArmorBonus(player, "jasmine_def_armor", 0);
     }
 
     @Override

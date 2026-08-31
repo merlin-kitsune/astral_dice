@@ -126,6 +126,8 @@ public class PlayerTickEvents {
         updateCutterEffect(player);
         // 复仇之戟:任意加成触发时显示效果图标,全部消失时移除
         RevengeHalberdChipItem.updateDisplayEffect(player);
+        // 复仇之戟:防御力折算为真实护甲(1 防御力 = 2 护甲值)
+        RevengeHalberdChipItem.updateArmorBonus(player);
         if (player.tickCount % 20 != 0) return;
         // 事件系统:护甲惩罚到期移除
         ArmorPenaltyHandler.tick(player);

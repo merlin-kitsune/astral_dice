@@ -493,8 +493,9 @@ public class DiceCombatEvents {
                     modifierDefense = modifier.apply(ctx, modifierDefense);
                 }
 
-                // 效果牌/立牌/事件/筹码提供的防御力始终按 1 防御力 = 2 护甲值折算,
-                // 即使处于骰神赐福也作为护甲值计入基础防御;仅战斗防御牌直接作为防御点加入。
+                // 效果牌/立牌/筹码的防御力已折算为真实护甲(1 防御力 = 2 护甲值,
+                // 见 DiceCombatModifiers.setDefenseArmorBonus),getArmorValue() 已包含;
+                // modifierDefense 恒为 0(仅防御卡掷骰写入 ctx.defenseCardSum 作为防御点直接加入)。
                 double rawArmor = Math.min(target.getArmorValue(), 20);
                 double toughness = target.getAttributeValue(Attributes.ARMOR_TOUGHNESS);
                 double effectiveArmor = Math.max(0, Math.min(rawArmor + modifierDefense * 2.0, 20));

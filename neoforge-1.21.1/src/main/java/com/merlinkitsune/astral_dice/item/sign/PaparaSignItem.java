@@ -36,6 +36,22 @@ public class PaparaSignItem extends BaseSignItem {
         return InteractionResultHolder.success(stack);
     }
 
+    @Override
+    protected void onCurioTick(SlotContext slotContext, ItemStack stack) {
+        if (!(slotContext.entity() instanceof Player player)) return;
+        if (player.level().isClientSide()) return;
+        // 被动:半血或"嘬一口"期间防御力 +3 → 护甲 +6(动态判断,经 ARMOR 属性生效)
+        boolean active = player.getHealth() <= player.getMaxHealth() / 2.0f || player.hasEffect(ModEffects.PAPARA_BITE);
+        com.merlinkitsune.astral_dice.combat.DiceCombatModifiers.setDefenseArmorBonus(
+                player, "papara_def_armor", active ? 3 : 0);
+    }
+
+    @Override
+    protected void clearSignData(Player player, ItemStack stack) {
+        super.clearSignData(player, stack);
+        com.merlinkitsune.astral_dice.combat.DiceCombatModifiers.setDefenseArmorBonus(player, "papara_def_armor", 0);
+    }
+
     // 吸血鬼立牌(papara)主动"嘬一口":受伤时恢复单次受到伤害的一半生命(取整,至少 1 点)
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public static void onPaparaBiteHurtHeal(LivingDamageEvent.Pre event) {

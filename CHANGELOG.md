@@ -29,6 +29,7 @@ This changelog is fully split by language: the Chinese version comes first, foll
 - 维生素药丸:触发范围由「合成或奖励途径」扩为「合成或获得卡牌时」;探天卫星补充轨道炮改经统一发牌路径(仅 1.21.1)。
 - 探天卫星第三项能力:使用「轨道炮」后本轮出牌数 +1 由「每轮最多一次」改为「每 1:00 仅一次」(仅 1.21.1)。
 - 命名统一:活体书页相关 Java 标识符/效果注册 id 统一为 `LIVING_PAGE`/`living_page`(物品 id `effect_card_living_page` 不变)(仅 1.21.1)。
+- 防御力折算规范:效果牌/立牌/筹码提供的防御力一律折算为**真实护甲**(1 防御力 = 2 护甲值,经 ARMOR 属性修饰器),不再参与骰战防御修饰器——骰战防御修饰器仅保留战斗防御牌(区间变动)。受影响来源:扫地机(2 护甲/点,护甲上限 40)、上班族(-4~+8 护甲)、吸血鬼(半血 +6 护甲)、复仇之戟(+12 护甲)、骇客(被动防御 +6 护甲)、大当家(养精蓄锐 +4 护甲);抗性提升不再折算骰战防御点(原版减伤仍生效)(仅 1.21.1)。
 
 ### 已修复BUG
 
@@ -321,6 +322,7 @@ This changelog is fully split by language: the Chinese version comes first, foll
 - Vitamin Pill: triggers on any crafted/obtained card (was crafting/reward sources only); the Satellite chip's Orbital Strike replenishment now uses the unified card-grant path (1.21.1 only).
 - Satellite third ability: the "play count +1 after using an Orbital Strike" is now once per 1:00 (was once per round) (1.21.1 only).
 - Naming unification: Living Page Java identifiers and the effect registry id are unified to `LIVING_PAGE`/`living_page` (item id `effect_card_living_page` unchanged) (1.21.1 only).
+- Defense conversion: defense from effect cards/signs/chips is now converted to real armor (1 defense = 2 armor via ARMOR attribute modifiers) and no longer participates in dice-combat defense modifiers — only battle defense cards (range-varying values) remain there. Affected sources: Jasmine (+2 armor per stack, armor cap 40), Padman (-4 to +8 armor), Papara (+6 armor at half HP), Revenge Halberd (+12 armor), Nancy Lu (+6 armor on defensive passive), Fen (+4 armor with Recharged Energy); Resistance no longer adds dice-defense points (its vanilla damage reduction still applies) (1.21.1 only).
 
 ### Bug Fixes
 

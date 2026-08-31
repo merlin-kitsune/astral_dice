@@ -5,6 +5,7 @@ import com.merlinkitsune.astral_dice.event.ModEffectRemoval;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import top.theillusivec4.curios.api.CuriosApi;
 import com.merlinkitsune.astral_dice.item.ModItems;
 
@@ -77,5 +78,17 @@ public class RevengeHalberdChipItem extends BaseChipItem {
         } else if (player.hasEffect(ModEffects.REVENGE_HALBERD)) {
             ModEffectRemoval.remove(player, ModEffects.REVENGE_HALBERD);
         }
+    }
+
+    /** 每 tick 驱动:防御力折算为真实护甲(1 防御力 = 2 护甲值;攻击加成仍走骰战攻击修饰器) */
+    public static void updateArmorBonus(Player player) {
+        com.merlinkitsune.astral_dice.combat.DiceCombatModifiers.setDefenseArmorBonus(
+                player, "revenge_halberd_def_armor", currentDefenseBonus(player));
+    }
+
+    @Override
+    protected void onChipUnequip(Player player, ItemStack stack) {
+        com.merlinkitsune.astral_dice.combat.DiceCombatModifiers.setDefenseArmorBonus(
+                player, "revenge_halberd_def_armor", 0);
     }
 }
