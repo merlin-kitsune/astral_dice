@@ -308,7 +308,7 @@ public class ModTooltipHandler {
                         continue;
                     }
                     if ("meito".equals(stone.type())) {
-                        tooltip.add(Component.literal(" §7- §d名刀·噶呜切 §e1~20§7 骰子 §7[剩余:§e" + stone.uses() + "§7]")
+                        tooltip.add(Component.literal(" §7- §d名刀·噶呜切 §e1~20§7 攻击 §7[剩余:§e" + stone.uses() + "§7]")
                                 .withStyle(ChatFormatting.GRAY));
                         continue;
                     }
@@ -349,7 +349,7 @@ public class ModTooltipHandler {
                         case "epic" -> "1~10";
                         default -> "?";
                     };
-                    tooltip.add(Component.literal(" §7- " + stoneName + " §e+" + range + "§7 骰子 §7[剩余:§e" + stone.uses() + "§7]")
+                    tooltip.add(Component.literal(" §7- " + stoneName + " §e" + range + "§7 攻击 §7[剩余:§e" + stone.uses() + "§7]")
                             .withStyle(ChatFormatting.GRAY));
                 }
             }

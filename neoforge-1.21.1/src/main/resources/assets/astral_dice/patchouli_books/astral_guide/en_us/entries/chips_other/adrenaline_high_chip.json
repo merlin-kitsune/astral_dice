@@ -1,0 +1,21 @@
+{
+  "name": "item.astral_dice.adrenaline_high_chip",
+  "category": "astral_dice:chips_other",
+  "icon": "astral_dice:adrenaline_high_chip",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:adrenaline_high_chip",
+      "text": "astral_dice.guide.entry.adrenaline_high_chip.1"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.adrenaline_high_chip.2"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:adrenaline_high_chip"
+    }
+  ],
+  "sortnum": 19
+}

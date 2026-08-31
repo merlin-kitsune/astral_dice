@@ -8,6 +8,7 @@ import com.merlinkitsune.astral_dice.component.ModDataComponents;
 import com.merlinkitsune.astral_dice.component.WeaponEnhancement;
 import com.merlinkitsune.astral_dice.item.HealingManager;
 import com.merlinkitsune.astral_dice.item.chip.BoxingGlovesChipItem;
+import com.merlinkitsune.astral_dice.item.chip.AdrenalineChipItem;
 import com.merlinkitsune.astral_dice.item.chip.RevengeHalberdChipItem;
 import com.merlinkitsune.astral_dice.item.sign.FenSignItem;
 import com.merlinkitsune.astral_dice.item.sign.NancyLuSignItem;
@@ -339,6 +340,16 @@ public final class DiceCombatModifiers {
                     }
                 }
             }
+            return ap;
+        });
+
+        // === 内置:肾上腺素筹码(生命值低于最大生命值一半时攻击力 +3/+8) ===
+        registerAttackModifier((ctx, ap) -> {
+            Player p = ctx.attacker;
+            if (p.level().isClientSide()) return ap;
+            if (p.getHealth() >= p.getMaxHealth() / 2.0f) return ap;
+            if (hasCurio(p, ModItems.ADRENALINE_LOW.get())) ap += AdrenalineChipItem.BONUS_LOW;
+            if (hasCurio(p, ModItems.ADRENALINE_HIGH.get())) ap += AdrenalineChipItem.BONUS_HIGH;
             return ap;
         });
 

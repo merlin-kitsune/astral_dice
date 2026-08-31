@@ -46,6 +46,7 @@ import com.merlinkitsune.astral_dice.item.card.HamburgerCardItem;
 import com.merlinkitsune.astral_dice.item.chip.TargetChipItem;
 import com.merlinkitsune.astral_dice.item.chip.ScopeChipItem;
 import com.merlinkitsune.astral_dice.item.chip.SandwichChipItem;
+import com.merlinkitsune.astral_dice.item.chip.AdrenalineChipItem;
 import com.merlinkitsune.astral_dice.item.sign.JasmineSignItem;
 import com.merlinkitsune.astral_dice.item.chip.SpeedSkatesChipItem;
 import com.merlinkitsune.astral_dice.item.sign.KomachiSignItem;
@@ -490,6 +491,19 @@ public class ModItems {
             () -> new SandwichChipItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(Rarity.UNCOMMON), SandwichChipItem.HEALTH_HIGH, true));
+
+    // 肾上腺素-一般:生命值低于最大生命值一半时,攻击力/防御力 +3(史诗)
+    public static final DeferredItem<Item> ADRENALINE_LOW = registerItem("adrenaline_low_chip",
+            () -> new AdrenalineChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.EPIC), AdrenalineChipItem.BONUS_LOW));
+
+    // 肾上腺素-高效:生命值低于最大生命值一半时,攻击力/防御力 +8;触发加成时被敌方攻击,
+    // 骰点 4-5 → 50% 闪避、6 → 100% 闪避本次伤害(传奇)
+    public static final DeferredItem<Item> ADRENALINE_HIGH = registerItem("adrenaline_high_chip",
+            () -> new AdrenalineChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.UNCOMMON), AdrenalineChipItem.BONUS_HIGH));
 
     // 魔法箭袋:使用过效果牌并对带标记目标造成法伤 → 施加标记并返还第一张使用的效果牌(每分钟一次)
     public static final DeferredItem<Item> MAGIC_QUIVER = registerItem("magic_quiver_chip",

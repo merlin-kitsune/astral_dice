@@ -32,6 +32,8 @@ This changelog is fully split by language: the Chinese version comes first, foll
 - 防御力折算规范:效果牌/立牌/筹码提供的防御力一律折算为**真实护甲**(1 防御力 = 2 护甲值,经 ARMOR 属性修饰器),不再参与骰战防御修饰器——骰战防御修饰器仅保留战斗防御牌(区间变动)。受影响来源:扫地机(2 护甲/点,护甲上限 40)、上班族(-4~+8 护甲)、吸血鬼(半血 +6 护甲)、复仇之戟(+12 护甲)、骇客(被动防御 +6 护甲)、大当家(养精蓄锐 +4 护甲);抗性提升不再折算骰战防御点(原版减伤仍生效)(仅 1.21.1)。
 - 怪物防御-护甲折算与玩家同步:怪物防御公式由「护甲÷4」改为与玩家一致「护甲÷2」(1 防御力 = 2 护甲值);贯穿之铳的目标防御计算同步(仅 1.21.1)。
 - 新增「反击」流派(玩家效果,图标 `temp/反击.png`):拥有反击层数时被近战敌对生物攻击触发一次反击——视为玩家近战攻击,按 手持最高近战武器基础伤害 + 1d6 骰点 + 攻击牌加成(未赐福时自动触发骰神赐福并消耗攻击牌耐久)+ 攻击力加成 计算总伤害并对攻击目标造成伤害,随后移除 1 层;魔法伤害(唤魔者尖牙/守卫者光束等)不算近战,不触发;首个层数来源:夹心饼干-美味(生命值低于最大生命值一半时,每 1:00 获得 1 层「反击」)(仅 1.21.1)。
+- 新增筹码「肾上腺素-一般/高效」(史诗/传奇):生命值低于最大生命值一半时,攻击力/防御力 +3/+8(防御按 1 点 = 2 点护甲折算为护甲 +6/+16);高效额外:触发加成时被敌方攻击,掷 1d6——骰点 4-5 → 50% 概率闪避本次伤害、骰点 6 → 100% 闪避。配方 ZXZ/DCD/PPP(Z=再生药水,X=下界之星,D=凋零玫瑰,C=空白筹码,P=星盘;高效用黄金星盘,遵循通用紫-金配方)(仅 1.21.1)。
+- 修复骰子 tooltip 显示攻击牌时加成误标为「骰子」及染色问题:攻击牌(中/大/特大/名刀)统一显示为「攻击」,范围不再带「+」前缀,与防御牌/独立牌 tooltip 格式一致(仅 1.21.1)。
 
 ### 已修复BUG
 
@@ -327,6 +329,8 @@ This changelog is fully split by language: the Chinese version comes first, foll
 - Defense conversion: defense from effect cards/signs/chips is now converted to real armor (1 defense = 2 armor via ARMOR attribute modifiers) and no longer participates in dice-combat defense modifiers — only battle defense cards (range-varying values) remain there. Affected sources: Jasmine (+2 armor per stack, armor cap 40), Padman (-4 to +8 armor), Papara (+6 armor at half HP), Revenge Halberd (+12 armor), Nancy Lu (+6 armor on defensive passive), Fen (+4 armor with Recharged Energy); Resistance no longer adds dice-defense points (its vanilla damage reduction still applies) (1.21.1 only).
 - Monster armor-to-defense conversion synced with players: monster defense now uses armor÷2 like players (1 defense = 2 armor); the Piercing Gun chip's target-defense calculation was synced too (1.21.1 only).
 - New Counterattack playstyle (player effect, icon `temp/反击.png`): with Counterattack layers, being hit by a hostile melee attack triggers a counter strike treated as your own melee attack — total damage = highest held melee weapon base damage + a 1d6 dice roll + attack-card bonus (auto-triggering the Dice Blessing and consuming card durability when you are not blessed) + all attack bonuses, dealt to the attacker, then 1 layer is removed; magic damage (evoker fangs, guardian beams, etc.) does not count as melee and does not trigger; first layer source: Sandwich (Deluxe) grants 1 Counterattack layer per 1:00 while below half max HP (1.21.1 only).
+- New chips "Adrenaline - Common/High-Grade" (epic/legendary): while below half max HP, attack/defense +3/+8 (defense converts to armor +6/+16 at 1 point = 2 armor); High-Grade extra: while the bonus is active, being attacked by a hostile rolls 1d6 — 4-5 gives a 50%% dodge chance, 6 gives a 100%% dodge for this damage. Recipe ZXZ/DCD/PPP (Z = Potion of Regeneration, X = Nether Star, D = Wither Rose, C = Blank Chip, P = Star Plate; High-Grade uses Golden Star Plate per the general purple-gold recipe convention) (1.21.1 only).
+- Fixed the dice tooltip showing attack cards' bonus mislabeled as "dice" and a coloring issue: attack cards (Medium/Large/Epic/Meito) now uniformly read "attack", the range no longer carries a "+" prefix, matching the defense-card and standalone-card tooltip format (1.21.1 only).
 
 ### Bug Fixes
 
