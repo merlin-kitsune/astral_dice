@@ -468,5 +468,6 @@
   "tooltip.astral_dice.star_level": "星级: §e★%s§7",
   "msg.astral_dice.komachi_active": "忍者立牌：已获得效果牌出牌数+1，剩余出牌数：%d",
   "msg.astral_dice.mimi_active": "看板立牌：已获得%d张新卡牌，并获得了%d枚星币",
-  "msg.astral_dice.nancy_lu_active": "骇客立牌：已触发完全隐身 (%d 秒)，攻击任意一个目标获得攻击力加成并移除完全隐身"
+  "msg.astral_dice.nancy_lu_active": "骇客立牌：已触发完全隐身 (%d 秒)，攻击任意一个目标获得攻击力加成并移除完全隐身",
+  "tooltip.astral_dice.sign.misaki_death_note": "死亡时丢失所有「剑气」层数"
 }

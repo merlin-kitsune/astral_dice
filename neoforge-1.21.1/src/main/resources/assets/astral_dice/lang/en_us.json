@@ -468,5 +468,6 @@
   "tooltip.astral_dice.star_level": "Star Level: §e★%s§7",
   "msg.astral_dice.komachi_active": "Ninja sign: effect card play count +1 granted. Remaining plays: %d",
   "msg.astral_dice.mimi_active": "Noticeboard sign: got %d new cards and %d Star Coins",
-  "msg.astral_dice.nancy_lu_active": "Hacker sign: full invisibility triggered (%d s) — attack any target to gain an attack bonus and end the invisibility"
+  "msg.astral_dice.nancy_lu_active": "Hacker sign: full invisibility triggered (%d s) — attack any target to gain an attack bonus and end the invisibility",
+  "tooltip.astral_dice.sign.misaki_death_note": "All Sword Qi stacks are lost on death"
 }

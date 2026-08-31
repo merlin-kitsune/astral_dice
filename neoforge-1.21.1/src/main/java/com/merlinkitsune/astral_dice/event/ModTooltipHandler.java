@@ -525,6 +525,8 @@ public class ModTooltipHandler {
             }
             int stacks = stack.getOrDefault(ModDataComponents.MISAKI_SIGN_STACKS.get(), 0);
             addSignCounter(tooltip, "tooltip.astral_dice.sign.misaki_stacks", stacks);
+            // 死亡提示:死亡时丢失全部"剑气"层数
+            addSignNoteLines(tooltip, "tooltip.astral_dice.sign.misaki_death_note");
             addSignCooldownRemaining(tooltip, event.getEntity() instanceof Player p ? p : null);
         }
         if (stack.is(ModItems.MIMI_SIGN.get())) {

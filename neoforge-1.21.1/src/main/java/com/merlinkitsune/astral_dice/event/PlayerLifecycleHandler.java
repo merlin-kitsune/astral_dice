@@ -112,6 +112,8 @@ public class PlayerLifecycleHandler {
     public static void onPlayerDeathClearEffects(LivingDeathEvent event) {
         if (!(event.getEntity() instanceof Player player)) return;
         if (player.level().isClientSide()) return;
+        // 不死图腾等取消死亡:不视为死亡,不执行任何清理
+        if (event.isCanceled()) return;
         HealingManager.clear(player);
         // 计时器守卫:清空效果结束时刻记录,防止死亡后守卫重新施加效果
         EffectTimerGuard.clear(player);
@@ -142,19 +144,30 @@ public class PlayerLifecycleHandler {
         player.removeEffect(net.minecraft.world.effect.MobEffects.INVISIBILITY);
         player.removeEffect(ModEffects.NANCY_LU_HACK);
         player.removeEffect(ModEffects.BLUE_CURSE);
-        ModAttachments.setInvestigationStage(player, 1);
+        // 秘密侦探:死亡保留调查阶段进度(仅卸牌时清除)
+        // 效果牌出牌相关计数复位
         ModAttachments.setEffectCardPlayCount(player, 0);
         ModAttachments.setEffectCardCooldownEnd(player, 0);
         ModAttachments.setKomachiUseCount(player, 0);
         ModAttachments.setMagicTomeUseCount(player, 0);
-        ModAttachments.setDamageEffectBonus(player, 0);
+        // 效果牌伤害加成(忍者立牌 KomachiDamageBonus/调查员立牌 RinPages)死亡保留,不清除
         ModAttachments.setDiceCurseRatio(player, 1.0f);
+        // 护法立牌:死亡时丢失全部"剑气"层数(死亡时刻即清除装备中的立牌数据,不受 KeepInventory 影响)
+        top.theillusivec4.curios.api.CuriosApi.getCuriosInventory(player).ifPresent(handler -> {
+            var misaki = handler.findFirstCurio(
+                    s -> s.is(com.merlinkitsune.astral_dice.item.ModItems.MISAKI_SIGN.get()));
+            if (misaki.isPresent()) {
+                misaki.get().stack().set(
+                        com.merlinkitsune.astral_dice.component.ModDataComponents.MISAKI_SIGN_STACKS.get(), 0);
+            }
+        });
         player.removeEffect(ModEffects.DICE_BLESSING);
         player.removeEffect(ModEffects.HAIQING_READY);
         player.removeEffect(ModEffects.BONNIE_READY);
         player.removeEffect(ModEffects.INVESTIGATION_BONUS);
         player.removeEffect(ModEffects.FATE_GUIDANCE);
         player.removeEffect(ModEffects.FEN_FRENZY);
+        player.removeEffect(ModEffects.PAPARA_BITE);
         player.removeEffect(ModEffects.KOMACHI_COUNT);
         player.removeEffect(ModEffects.MAGIC_TOME_COUNT);
     }
