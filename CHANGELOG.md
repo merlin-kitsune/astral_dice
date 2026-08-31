@@ -11,6 +11,8 @@ This changelog is fully split by language: the Chinese version comes first, foll
 
 ### 新内容
 
+- 全部立牌主动技能统一 ActionBar 提示:未自带反馈的立牌(大当家/扫地机/忍者/史莱姆/看板/护法/骇客/上班族/吸血鬼/经商/调查员)触发主动时显示「<立牌名>：已触发主动技能！」;占星师/秘密侦探/大侦探保留各自专属提示(仅 1.21.1)。 / All sign actives now give ActionBar feedback: signs without their own prompt (Fen, Jasmine, Komachi, Lulu, Mimi, Misaki, Nancy Lu, Padman, Papara, Parunan, Rin) show "<Sign>: Active skill triggered!" on activation; Haiqing, Bonnie and Fanny keep their own prompts (1.21.1 only).
+
 ### 已修复BUG
 
 ### 工程

@@ -125,4 +125,10 @@ public class BonnieSignItem extends BaseSignItem {
         BaseSignItem.invokeKillHooks(killer, target);
     }
 
+
+    // 主动技能自带 ActionBar 反馈("待命"提示/事件提示),不发送通用"已触发主动技能"
+    @Override
+    protected boolean hasOwnActionBarFeedback() {
+        return true;
+    }
 }
