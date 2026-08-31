@@ -5,10 +5,17 @@ This changelog is fully split by language: the Chinese version comes first, foll
 
 # 中文更新日志
 
-# Changelog / 更新日志
+## 未发布 / Unreleased（1.2.0-rc1，仅 1.21.1）
+
+> 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
+
+### 新内容
+
+### 已修复BUG
+
+### 工程
 
 ## 1.1.3
-
 
 ### 新内容
 
@@ -44,9 +51,7 @@ This changelog is fully split by language: the Chinese version comes first, foll
 - 原仓库 git 排除内容(AGENTS.md、docs/、temp/、scripts/、run/、deploy.ps1 等)迁入;tools/check_lang_sync.py 移至根 tools/。
 - CI(build.yml) 双 JDK(17/21) 构建两子项目并对两者执行 lang 同步检查。
 
-
 ## 1.1.2-rc1
-
 
 ### 新内容
 
@@ -70,7 +75,6 @@ This changelog is fully split by language: the Chinese version comes first, foll
 - 版本号更新为 `1.1.2-rc1`。
 ## 1.1.1-rc1
 
-
 ### 新内容
 
 - 看板立牌（mimi）技能重做：被动改为“合成、奖励、返还卡牌时，每获得一张战斗牌 +1 星币；装备时筹码栏位 +1；每累计 25 个星币获得 1 个随机筹码（蓝色 60% / 紫色 35% / 金色 5%）”；主动改为“回收物品栏中全部卡牌（含专属牌），返还 N+1 张随机卡牌（不含专属牌）”。
@@ -89,7 +93,6 @@ This changelog is fully split by language: the Chinese version comes first, foll
 - 版本号更新为 `1.1.1-rc1`。
 
 ## 1.1.0-rc1
-
 
 ### 新内容
 
@@ -124,7 +127,6 @@ This changelog is fully split by language: the Chinese version comes first, foll
 
 ## 1.0.3-rc1
 
-
 ### 内容与平衡性调整
 
 - 防御牌耐久消耗恢复为仅 PvP 生效：玩家攻击带骰子的玩家时，双方触发骰神赐福，并消耗被攻击方防御牌耐久（每次赐福仅一次）；怪物攻击不再消耗防御牌耐久。
@@ -137,7 +139,6 @@ This changelog is fully split by language: the Chinese version comes first, foll
 - 版本号更新为 `1.0.3-rc1`。
 
 ## 1.0.2-rc1
-
 
 ### 内容与平衡性调整
 
@@ -164,7 +165,6 @@ This changelog is fully split by language: the Chinese version comes first, foll
 - 修复玩家死亡时部分效果状态未正确重置的问题，统一清理立牌等待、扩散、出牌、魔法箭袋、命运指引、调查阶段等状态。
 
 ## 1.0.1-rc1
-
 
 ### 内容与平衡性调整
 
@@ -199,7 +199,6 @@ This changelog is fully split by language: the Chinese version comes first, foll
 
 ## 1.0-rc1
 
-
 ### 卡牌选择界面重写
 
 - 使用了新卡牌容器贴图。
@@ -231,7 +230,6 @@ This changelog is fully split by language: the Chinese version comes first, foll
 - 版本号更新为 `1.0-rc1`。
 
 ## 1.0-SNAPSHOT.23
-
 
 ### 物品 ID 与 Tag
 
@@ -279,10 +277,17 @@ This changelog is fully split by language: the Chinese version comes first, foll
 
 # English Changelog
 
-# Changelog / 更新日志
+## Unreleased (1.2.0-rc1, 1.21.1 only)
+
+> Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
+
+### New Content
+
+### Bug Fixes
+
+### Project
 
 ## 1.1.3
-
 
 ### New Content
 
@@ -318,9 +323,7 @@ This changelog is fully split by language: the Chinese version comes first, foll
 - Formerly git-excluded content (AGENTS.md, docs/, temp/, scripts/, run/, deploy.ps1, etc.) migrated; tools/check_lang_sync.py moved to the repo root tools/.
 - CI (build.yml) builds both subprojects with dual JDKs (17/21) and runs the lang sync check for both.
 
-
 ## 1.1.2-rc1
-
 
 ### New Content
 
@@ -344,7 +347,6 @@ This changelog is fully split by language: the Chinese version comes first, foll
 - Version updated to `1.1.2-rc1`.
 ## 1.1.1-rc1
 
-
 ### New Content
 
 - Mimi sign reworked: passive now grants +1 Star Coin per battle card gained from crafting, rewards, or card returns, +1 chip slot while equipped, and a random chip every 25 Star Coins (Blue 60% / Purple 35% / Gold 5%); active now recycles all cards in the inventory (including exclusive cards) and returns N+1 random cards (exclusive cards excluded).
@@ -363,7 +365,6 @@ This changelog is fully split by language: the Chinese version comes first, foll
 - Version updated to `1.1.1-rc1`.
 
 ## 1.1.0-rc1
-
 
 ### New Content
 
@@ -398,7 +399,6 @@ This changelog is fully split by language: the Chinese version comes first, foll
 
 ## 1.0.3-rc1
 
-
 ### Content & Balance Changes
 
 - Defense card durability is now only consumed in PvP: when attacking another dice-holding player, both gain Dice Blessing and the defender consumes defense card durability once per blessing; monster attacks no longer consume it.
@@ -411,7 +411,6 @@ This changelog is fully split by language: the Chinese version comes first, foll
 - Version updated to `1.0.3-rc1`.
 
 ## 1.0.2-rc1
-
 
 ### Content & Balance Changes
 
@@ -438,7 +437,6 @@ This changelog is fully split by language: the Chinese version comes first, foll
 - Fixed some effect states not being reset on player death; sign-ready, cleave, play-count, Magic Quiver, Fate Guidance, and investigation states are now reset properly.
 
 ## 1.0.1-rc1
-
 
 ### Content & Balance Changes
 
@@ -473,7 +471,6 @@ This changelog is fully split by language: the Chinese version comes first, foll
 
 ## 1.0-rc1
 
-
 ### Card Selection GUI Rewrite
 
 - Used the new card container texture.
@@ -505,7 +502,6 @@ This changelog is fully split by language: the Chinese version comes first, foll
 - Version updated to `1.0-rc1`.
 
 ## 1.0-SNAPSHOT.23
-
 
 ### Item IDs & Tags
 
