@@ -8,7 +8,7 @@ import net.neoforged.neoforge.common.ModConfigSpec;
  */
 public final class ModCommonConfig {
         // 当前配置版本:新增配置选项时必须 +1
-        public static final int CONFIG_VERSION = 11;
+        public static final int CONFIG_VERSION = 12;
 
         public static final ModConfigSpec SPEC;
 
@@ -16,7 +16,6 @@ public final class ModCommonConfig {
         public static final ModConfigSpec.IntValue MAX_MARKER;
         public static final ModConfigSpec.IntValue EFFECT_CARD_COOLDOWN_SECONDS;
         public static final ModConfigSpec.IntValue MAX_EFFECT_STACKS;
-        public static final ModConfigSpec.IntValue MAX_EFFECT_CARD_PLAYS;
         public static final ModConfigSpec.IntValue MAX_DAMAGE_EFFECT_BONUS;
         public static final ModConfigSpec.IntValue TARGET_CHIP_RANGE;
         public static final ModConfigSpec.IntValue EVENT_RANGE;
@@ -24,7 +23,7 @@ public final class ModCommonConfig {
         public static final ModConfigSpec.BooleanValue EVENT_APPLY_FTB_TEAM;
         public static final ModConfigSpec.BooleanValue EVENT_APPLY_OPAC;
         public static final ModConfigSpec.BooleanValue EVENT_APPLY_MAID;
-        public static final ModConfigSpec.IntValue LIVING_BOOK_PAGE_BONUS_CAP;
+        public static final ModConfigSpec.IntValue LIVING_PAGE_BONUS_CAP;
         public static final ModConfigSpec.IntValue SIGN_ACTIVE_COOLDOWN_SECONDS;
         public static final ModConfigSpec.IntValue SKILL_WAIT_SECONDS;
         public static final ModConfigSpec.IntValue JASMINE_MAX_BONUS;
@@ -51,8 +50,6 @@ public final class ModCommonConfig {
                                 .defineInRange("effect_card_cooldown_seconds", 30, 5, 120);
                 MAX_EFFECT_STACKS = builder.comment("功能效果牌叠加层数上限(默认：3 层,伤害效果牌不使用该叠加)")
                                 .defineInRange("max_effect_stacks", 3, 1, 9);
-                MAX_EFFECT_CARD_PLAYS = builder.comment("效果牌周期内连续出牌上限(默认：9 张)")
-                                .defineInRange("max_effect_card_plays", 9, 1, 18);
                 MAX_DAMAGE_EFFECT_BONUS = builder.comment("伤害效果牌伤害加成上限(默认：最大 16 点)")
                                 .defineInRange("max_damage_effect_bonus", 16, 1, 64);
                 TARGET_CHIP_RANGE = builder.comment("标靶筹码:骰神赐福后标记作用范围(单位：格,默认：16)")
@@ -69,8 +66,8 @@ public final class ModCommonConfig {
                                 .define("event_apply_opac", true);
                 EVENT_APPLY_MAID = builder.comment("事件是否作用于玩家拥有的已放出女仆(需安装车万女仆模组)")
                                 .define("event_apply_maid", true);
-                LIVING_BOOK_PAGE_BONUS_CAP = builder.comment("活体书页出牌伤害数增加上限(默认：最大 20 点)")
-                                .defineInRange("living_book_page_bonus_cap", 20, 1, 64);
+                LIVING_PAGE_BONUS_CAP = builder.comment("活体书页出牌伤害数增加上限(默认：最大 20 点)")
+                                .defineInRange("living_page_bonus_cap", 20, 1, 64);
                 builder.pop();
 
                 builder.push("signs").comment("=== 立牌 ===");

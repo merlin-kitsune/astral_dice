@@ -97,7 +97,7 @@ public final class RandomCardHandler {
 
     static {
         // 当前专属效果牌(注册引用,运行时解析,避免静态初始化 .get())
-        registerExclusiveCard(ModItems.LIVING_BOOK_PAGE);   // 活体书页(调查员立牌专属-伤害)
+        registerExclusiveCard(ModItems.LIVING_PAGE);   // 活体书页(调查员立牌专属-伤害)
         registerExclusiveCard(ModItems.FATE_GUIDANCE_CARD); // 命运的指引(专属-功能)
         // 未来专属战斗牌(撕咬/龙之咆哮等)在此注册
     }
@@ -184,7 +184,7 @@ public final class RandomCardHandler {
     public static void giveCardTo(Player receiver, CardCategory category) {
         ItemStack card = randomCard(category);
         if (card.isEmpty()) return;
-        // 看板立牌被动已由 VitaminPillChipItem 统一触发(与维生素药丸相同机制,不含拾取)
+        // 维生素药丸发牌统一入口(治愈联动;看板立牌被动不再随奖励/复制/返还触发,仅合成与主动返还显式触发)
         VitaminPillChipItem.giveCard(receiver, card);
     }
 

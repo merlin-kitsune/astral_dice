@@ -29,8 +29,8 @@ public class ModEffects {
     public static final DeferredHolder<MobEffect, MobEffect> MISAKI_BURST =
             EFFECTS.register("misaki_burst", MisakiBurstEffect::new);
 
-    public static final DeferredHolder<MobEffect, MobEffect> LIVING_BOOK_PAGE =
-            EFFECTS.register("living_book_page", LivingBookPageEffect::new);
+    public static final DeferredHolder<MobEffect, MobEffect> LIVING_PAGE =
+            EFFECTS.register("living_page", LivingPageEffect::new);
 
     // 清扫(扫地机立牌 jasmine 主动):迅捷+护甲惩罚,持续 1 分钟
     public static final DeferredHolder<MobEffect, MobEffect> JASMINE_SWEEP =
@@ -104,7 +104,7 @@ public class ModEffects {
     public static final DeferredHolder<MobEffect, MobEffect> FEN_FRENZY =
             EFFECTS.register("fen_frenzy", () -> new FenFrenzyEffect(0xFF4500));
 
-    // 青之诅咒:护甲值 -20%(向下取整),盔甲韧性归 0;暂未配置触发条件
+    // 青之诅咒:护甲值 -20%(向下取整),盔甲韧性 -100%(归 0);暂未配置触发条件
     public static final DeferredHolder<MobEffect, MobEffect> BLUE_CURSE =
             EFFECTS.register("blue_curse", BlueCurseEffect::new);
 

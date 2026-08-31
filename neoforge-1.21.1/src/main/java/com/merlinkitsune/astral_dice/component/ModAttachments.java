@@ -473,11 +473,19 @@ public class ModAttachments {
                     .serialize(Codec.LONG)
                     .build());
 
-    // 探天卫星筹码:当前效果牌出牌轮次是否已触发过"使用轨道炮后出牌数+1"(每轮最多一次)
+    // 探天卫星筹码:当前效果牌出牌轮次是否已触发过"使用轨道炮后出牌数+1"(每轮最多一次;
+    // 触发时机受 SATELLITE_PLAY_BONUS_COOLDOWN_END 限制,每 1:00 至多触发一次)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Boolean>> SATELLITE_PLAY_BONUS =
             ATTACHMENTS.register("satellite_play_bonus", () -> AttachmentType.builder(() -> false)
                     .serialize(Codec.BOOL)
                     .sync(ByteBufCodecs.BOOL)
+                    .build());
+
+    // 探天卫星筹码:"使用轨道炮后出牌数+1"的触发冷却结束时刻(每 1:00 至多触发一次;0 表示无冷却)
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> SATELLITE_PLAY_BONUS_COOLDOWN_END =
+            ATTACHMENTS.register("satellite_play_bonus_cooldown_end", () -> AttachmentType.builder(() -> 0L)
+                    .serialize(Codec.LONG)
+                    .sync(ByteBufCodecs.VAR_LONG)
                     .build());
 
     // 骇客立牌:被动类型(0=无,1=攻击,2=防御)
@@ -511,9 +519,9 @@ public class ModAttachments {
                     .serialize(Codec.LONG)
                     .build());
 
-    // 看板立牌:被动累计获得的星币数(每 25 个星币获得一个随机筹码)
-    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> MIMI_STAR_COIN_COUNTER =
-            ATTACHMENTS.register("mimi_star_coin_counter", () -> AttachmentType.builder(() -> 0)
+    // 看板立牌:被动"主动技能返还"累计的战斗牌数量(每累计 25 张返还战斗牌获得一个随机筹码)
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> MIMI_RETURNED_CARD_COUNT =
+            ATTACHMENTS.register("mimi_returned_card_count", () -> AttachmentType.builder(() -> 0)
                     .serialize(Codec.INT)
                     .build());
 
@@ -603,6 +611,14 @@ public class ModAttachments {
         player.setData(SATELLITE_PLAY_BONUS.get(), value);
     }
 
+    public static long getSatellitePlayBonusCooldownEnd(net.minecraft.world.entity.player.Player player) {
+        return player.getData(SATELLITE_PLAY_BONUS_COOLDOWN_END.get());
+    }
+
+    public static void setSatellitePlayBonusCooldownEnd(net.minecraft.world.entity.player.Player player, long value) {
+        player.setData(SATELLITE_PLAY_BONUS_COOLDOWN_END.get(), Math.max(0, value));
+    }
+
     public static int getNancyLuPassiveType(net.minecraft.world.entity.player.Player player) {
         return player.getData(NANCY_LU_PASSIVE_TYPE.get());
     }
@@ -643,12 +659,12 @@ public class ModAttachments {
         player.setData(NANCY_LU_HIDDEN_UNTIL.get(), Math.max(0, value));
     }
 
-    public static int getMimiStarCoinCounter(net.minecraft.world.entity.player.Player player) {
-        return player.getData(MIMI_STAR_COIN_COUNTER.get());
+    public static int getMimiReturnedCardCount(net.minecraft.world.entity.player.Player player) {
+        return player.getData(MIMI_RETURNED_CARD_COUNT.get());
     }
 
-    public static void setMimiStarCoinCounter(net.minecraft.world.entity.player.Player player, int value) {
-        player.setData(MIMI_STAR_COIN_COUNTER.get(), Math.max(0, value));
+    public static void setMimiReturnedCardCount(net.minecraft.world.entity.player.Player player, int value) {
+        player.setData(MIMI_RETURNED_CARD_COUNT.get(), Math.max(0, value));
     }
 
     public static long getNancyLuEnderPearlImmuneUntil(net.minecraft.world.entity.player.Player player) {

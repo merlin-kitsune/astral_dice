@@ -13,6 +13,23 @@ This changelog is fully split by language: the Chinese version comes first, foll
 
 - 立牌主动技能 ActionBar 提示重构:新建独立响应事件 `SignActiveTriggeredEvent`,各立牌在立牌类中注册自身提示——忍者(出牌数+1 及剩余出牌数)、看板(新卡牌数与星币数)、骇客(完全隐身时长)已注册专属提示;占星师/秘密侦探提示文本更新为「主动技能已激活,攻击敌对目标向其施加…」;未注册的立牌(大当家/扫地机/史莱姆/护法/上班族/吸血鬼/经商/调查员)显示默认提示「<立牌名>：主动技能已启动！」(仅 1.21.1)。 / Sign-active ActionBar feedback refactored: a dedicated response event `SignActiveTriggeredEvent` was added, and signs register their own prompts in their sign classes — Komachi (play count +1 and remaining), Mimi (new cards and Star Coins) and Nancy Lu (invisibility duration) now have custom texts; Haiqing/Bonnie prompt texts were updated; unregistered signs (Fen, Jasmine, Lulu, Misaki, Padman, Papara, Parunan, Rin) show the default "<Sign>: Active skill started!" (1.21.1 only).
 
+### 内容与平衡性调整
+
+- 效果牌出牌系统调整:保留出牌窗口(基础出牌数 1 + 固定/临时 +1 来源 + 忍者出牌数银行),移除效果牌周期内连续出牌上限(原默认 9 张,`max_effect_card_plays` 配置删除),加成来源可无限叠加;效果牌轮次按新定义判定(周期结束 = 所有效果牌进度走完 **且** 出牌冷却走完)(仅 1.21.1)。
+- 看板立牌被动重做:合成或主动返还卡牌时每获得一张战斗牌 +1 星币(奖励/复制不再触发);主动每返还累计 25 张战斗牌获得一个随机筹码(原为每累计 25 星币)(仅 1.21.1)。
+- 扫地机立牌被动追加:使用「加急加快」效果牌后,主动技能冷却立即减少最大冷却的 50%(仅 1.21.1)。
+- 调查员立牌主动:获得一张活体书页,若使用前物品栏中没有活体书页则共获得两张(仅 1.21.1)。
+- 秘密侦探立牌:调查阶段隐身期间(隐身 + 调查阶段效果)不会被生物索敌(仅 1.21.1)。
+- 骇客立牌主动:消耗的战斗牌仅从主物品栏选取(不再从末影箱/背包类容器)(仅 1.21.1)。
+- 岿然不动:防御力 +2 → 护甲 +8(对应骰战防御力 +4),迁移为效果属性修饰器,真实护甲与骰战均生效且不重复计算(仅 1.21.1)。
+- 全力攻击:耐久 2 → 5(仅 1.21.1)。
+- 诅咒之剑配方:中轴材料由「谜之炖菜」标签改为「哭泣黑曜石」;删除废弃的 `suspicious_stews` 物品标签(仅 1.21.1)。
+- 青之诅咒描述:盔甲韧性「归 0」→「-100%%」(数值本身不变)(仅 1.21.1)。
+- 治愈体系:治愈点上限改为固定 32(原 max(10, 最大生命值÷2));医疗箱-紧急/完备移除「装备时立即恢复 2/6 点生命」(赐福加点保留)(仅 1.21.1)。
+- 维生素药丸:触发范围由「合成或奖励途径」扩为「合成或获得卡牌时」;探天卫星补充轨道炮改经统一发牌路径(仅 1.21.1)。
+- 探天卫星第三项能力:使用「轨道炮」后本轮出牌数 +1 由「每轮最多一次」改为「每 1:00 仅一次」(仅 1.21.1)。
+- 命名统一:活体书页相关 Java 标识符/效果注册 id 统一为 `LIVING_PAGE`/`living_page`(物品 id `effect_card_living_page` 不变)(仅 1.21.1)。
+
 ### 已修复BUG
 
 - 死亡清理调整:不死图腾等取消死亡时不再执行任何清理;护法立牌死亡丢失全部「剑气」层数(tooltip 追加死亡提示);吸血鬼立牌死亡清除主动技能效果;秘密侦探死亡保留调查阶段进度(仅卸牌时清除);忍者/调查员立牌的效果牌伤害加成死亡保留;移除死亡清理中无读取者的 DamageEffectBonus 残留调用(仅 1.21.1)。 / Death-cleanup adjustments: totem-canceled deaths no longer trigger any cleanup; Misaki loses all Sword Qi stacks on death (tooltip note added); Papara's active effect is cleared on death; Bonnie keeps investigation progress on death (unequip only); Komachi/Rin effect-card damage bonuses survive death; removed the leftover no-reader DamageEffectBonus reset in the death handler (1.21.1 only).
@@ -287,6 +304,23 @@ This changelog is fully split by language: the Chinese version comes first, foll
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
 ### New Content
+
+### Content & Balance
+
+- Effect-card play system: the play window is kept (base 1 play + fixed/temporary +1 sources + Komachi's banked plays), while the per-window consecutive play cap (default 9, config `max_effect_card_plays`) is removed — bonus sources now stack without limit; the effect-card round now follows the new definition (a round ends only when all effect progress AND the play cooldown are done) (1.21.1 only).
+- Mimi passive rework: +1 Star Coin per battle card gained via crafting or the active skill's returns (rewards/copies no longer trigger); every 25 battle cards returned by the active skill grants a random chip (was: every 25 Star Coins) (1.21.1 only).
+- Jasmine passive addition: using an Express Delivery card immediately reduces the active skill's cooldown by 50%% of its maximum (1.21.1 only).
+- Rin active: grants one Living Page, or two if you had none before (1.21.1 only).
+- Bonnie: while hidden during an Investigation stage (Invisibility + Investigation Stage), mobs can no longer target you (1.21.1 only).
+- Nancy Lu active: the consumed battle card is now taken from the main inventory only (ender chest / backpack-like containers no longer count) (1.21.1 only).
+- Unwavering: defense +2 → armor +8 (equal to +4 defense in dice battles), moved to an attribute modifier on the effect so both real armor and dice combat apply without double counting (1.21.1 only).
+- Full Power: durability 2 → 5 (1.21.1 only).
+- Cursed Sword recipe: the middle ingredient is now Crying Obsidian instead of the Suspicious Stew item tag; the unused `suspicious_stews` item tag was removed (1.21.1 only).
+- Blue Curse description: armor toughness "0" → "-100%%" (values unchanged) (1.21.1 only).
+- Healing: the healing point cap is now fixed at 32 (was max(10, max HP ÷ 2)); Medkit chips no longer restore 2/6 HP on equip (blessing points kept) (1.21.1 only).
+- Vitamin Pill: triggers on any crafted/obtained card (was crafting/reward sources only); the Satellite chip's Orbital Strike replenishment now uses the unified card-grant path (1.21.1 only).
+- Satellite third ability: the "play count +1 after using an Orbital Strike" is now once per 1:00 (was once per round) (1.21.1 only).
+- Naming unification: Living Page Java identifiers and the effect registry id are unified to `LIVING_PAGE`/`living_page` (item id `effect_card_living_page` unchanged) (1.21.1 only).
 
 ### Bug Fixes
 

@@ -311,12 +311,8 @@ public final class DiceCombatModifiers {
             return ap;
         });
 
-        // === 内置:效果类防御加成(岿然不动/抗性) ===
+        // === 内置:效果类防御加成(抗性;岿然不动已迁移为护甲属性修饰器,不再在此重复计算) ===
         registerDefenseModifier((ctx, dp) -> {
-            var unwavering = ctx.target.getEffect(ModEffects.UNWAVERING);
-            if (unwavering != null) {
-                dp += 2 * (unwavering.getAmplifier() + 1);
-            }
             var resistance = ctx.target.getEffect(MobEffects.DAMAGE_RESISTANCE);
             if (resistance != null) {
                 dp += (resistance.getAmplifier() + 1) * 2;

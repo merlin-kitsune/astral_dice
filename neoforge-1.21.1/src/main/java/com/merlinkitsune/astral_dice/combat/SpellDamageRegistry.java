@@ -150,13 +150,13 @@ public final class SpellDamageRegistry {
         registerModifier(new SpellDamageModifier() {
             @Override
             public boolean isActive(SpellDamageContext ctx) {
-                return ctx.attacker.hasEffect(ModEffects.LIVING_BOOK_PAGE);
+                return ctx.attacker.hasEffect(ModEffects.LIVING_PAGE);
             }
 
             @Override
             public double apply(SpellDamageContext ctx, double bonus) {
                 int pages = Math.min(ModAttachments.getRinPages(ctx.attacker),
-                        GameplayConstants.LIVING_BOOK_PAGE_BONUS_CAP);
+                        GameplayConstants.LIVING_PAGE_BONUS_CAP);
                 return bonus + 2 + pages + ModAttachments.getKomachiDamageBonus(ctx.attacker);
             }
 
@@ -240,7 +240,7 @@ public final class SpellDamageRegistry {
             @Override
             public boolean isActive(SpellDamageContext ctx) {
                 if (!ctx.hasCurio(ModItems.NINJA_STAR_CHIP.get())) return false;
-                return ctx.attacker.hasEffect(ModEffects.LIVING_BOOK_PAGE)
+                return ctx.attacker.hasEffect(ModEffects.LIVING_PAGE)
                         || ctx.attacker.hasEffect(ModEffects.MONSTER_LASER)
                         || ctx.attacker.hasEffect(ModEffects.MONSTER_BRICK)
                         || ctx.attacker.hasEffect(ModEffects.ORBITAL_STRIKE)
@@ -258,7 +258,7 @@ public final class SpellDamageRegistry {
             public boolean isActive(SpellDamageContext ctx) {
                 if (!ctx.hasCurio(ModItems.PIERCING_GUN.get())) return false;
                 if (!(ctx.target instanceof Enemy)) return false;
-                return ctx.attacker.hasEffect(ModEffects.LIVING_BOOK_PAGE)
+                return ctx.attacker.hasEffect(ModEffects.LIVING_PAGE)
                         || ctx.attacker.hasEffect(ModEffects.MONSTER_LASER)
                         || ctx.attacker.hasEffect(ModEffects.MONSTER_BRICK)
                         || ctx.attacker.hasEffect(ModEffects.ORBITAL_STRIKE)

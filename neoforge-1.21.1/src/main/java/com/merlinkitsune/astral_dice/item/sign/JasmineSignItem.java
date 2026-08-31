@@ -3,8 +3,10 @@ package com.merlinkitsune.astral_dice.item.sign;
 import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
 
 import com.merlinkitsune.astral_dice.component.GameplayConstants;
+import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
+import com.merlinkitsune.astral_dice.item.ModItems;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
@@ -12,6 +14,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
+import top.theillusivec4.curios.api.CuriosApi;
 import top.theillusivec4.curios.api.SlotContext;
 
 import java.util.HashMap;
@@ -61,6 +64,27 @@ public class JasmineSignItem extends BaseSignItem {
             }
         }
         return InteractionResultHolder.success(stack);
+    }
+
+    // === 被动:加急加快联动(扫地机立牌被动追加) ===
+
+    // 玩家是否佩戴扫地机立牌
+    public static boolean isEquipped(Player player) {
+        if (player == null) return false;
+        var curios = CuriosApi.getCuriosInventory(player);
+        return curios.isPresent() && curios.get().findFirstCurio(s -> s.is(ModItems.JASMINE_SIGN.get())).isPresent();
+    }
+
+    // 使用「加急加快」效果牌后调用:立牌主动技能冷却立即减少最大冷却的 50%
+    public static void onExpressDeliveryUsed(Player player) {
+        if (player == null || player.level().isClientSide()) return;
+        if (!isEquipped(player)) return;
+        long now = player.level().getGameTime();
+        long cdEnd = ModAttachments.getSignActiveCooldownEnd(player);
+        if (cdEnd > now) {
+            ModAttachments.setSignActiveCooldownEnd(player,
+                    Math.max(now, cdEnd - GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS / 2));
+        }
     }
 
     // === 被动:移动距离累计 ===

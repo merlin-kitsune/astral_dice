@@ -67,7 +67,7 @@ public class ModItemModelProvider extends ItemModelProvider {
         basicItem(ModItems.PADMAN_SIGN.get());
         basicItem(ModItems.FANNY_SIGN.get());
         basicItem(ModItems.RIN_SIGN.get());
-        basicItem(ModItems.LIVING_BOOK_PAGE.get());
+        basicItem(ModItems.LIVING_PAGE.get());
         basicItem(ModItems.HAIQING_SIGN.get());
         basicItem(ModItems.FATE_GUIDANCE_CARD.get());
         basicItem(ModItems.PAPARA_SIGN.get());

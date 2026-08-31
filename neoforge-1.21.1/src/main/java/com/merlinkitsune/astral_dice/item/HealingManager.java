@@ -28,10 +28,8 @@ import top.theillusivec4.curios.api.CuriosApi;
  * 在伤害事件更早处已执行;医疗箱加点在本方法内先于回血完成)。
  */
 public final class HealingManager {
-    /** 紧急医疗箱装备时立即恢复的生命值(1 治愈单位 = 2 点血量) */
-    public static final int MEDKIT_EMERGENCY_HEAL = 2;
-    /** 完备医疗箱装备时立即恢复的生命值(1 治愈单位 = 2 点血量) */
-    public static final int MEDKIT_COMPLETE_HEAL = 6;
+    /** 治愈点上限(固定 32 点,不再随最大生命值变化) */
+    public static final int HEALING_POINT_CAP = 32;
     /** 紧急医疗箱触发骰神赐福时增加的治愈点 */
     public static final int MEDKIT_EMERGENCY_POINTS = 1;
     /** 完备医疗箱触发骰神赐福时增加的治愈点 */
@@ -48,12 +46,10 @@ public final class HealingManager {
     }
 
     /**
-     * 治愈点上限 = max(10, 玩家最大生命值 ÷ 2)。
-     * 即 MC 中 ♥ 的数量(20 HP → 10 点);下限固定 10,避免神秘遗物+ 中佩戴七咒之戒死亡
-     * 导致生命值上限丢失时治愈点数上限过低。
+     * 治愈点上限 = 固定 32 点(不再随最大生命值变化)。
      */
     public static int getCap(Player player) {
-        return Math.max(10, (int) player.getMaxHealth() / 2);
+        return HEALING_POINT_CAP;
     }
 
     // ── 点数增减 ─────────────────────────────────────────────────────────────
@@ -152,12 +148,6 @@ public final class HealingManager {
     /** 追加所有筹码提供的初始治愈点(仅在触发治愈效果条件时调用) */
     private static void addChipPoints(Player player) {
         addMedkitPoints(player);
-    }
-    public static void onMedkitEquipped(Player player, int heal) {
-        if (player.level().isClientSide()) return;
-        if (heal > 0) {
-            player.heal(heal);
-        }
     }
 
     /** 装备的医疗箱筹码触发赐福加点(紧急 +1、完备 +3,可叠加,受上限) */

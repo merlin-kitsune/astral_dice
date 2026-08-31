@@ -110,7 +110,7 @@ public final class AstralEventSystem {
                 com.merlinkitsune.astral_dice.component.ModAttachments.setRinGiftSignature(sp, signature);
                 com.merlinkitsune.astral_dice.component.ModAttachments.setRinGiftTick(sp, now);
                 // 活体书页为专属牌,绑定获得者
-                ItemStack page = new ItemStack(ModItems.LIVING_BOOK_PAGE.get());
+                ItemStack page = new ItemStack(ModItems.LIVING_PAGE.get());
                 ExclusiveCardUtil.setOwner(page, sp);
                 giveItem(sp, page);
             }

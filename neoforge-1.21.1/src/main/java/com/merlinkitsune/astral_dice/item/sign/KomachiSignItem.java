@@ -23,7 +23,8 @@ import net.neoforged.bus.api.SubscribeEvent;
  * - 主动技能冷却时间立即减少 30%;
  * - 伤害类效果牌伤害加成 +1(计数器"效果牌伤害增益",上限由配置 komachi_damage_bonus_max 控制,默认 10,最大 16)。
  * 计数期间显示"忍者立牌"效果图标,等级 = 当前第几张;第 3 张触发后计数归 0。
- * 主动:本轮出牌数 +1(仅当前效果牌周期内生效,周期归零自动清除;若本轮已达到出牌数上限则忽略)。
+ * 主动:本轮出牌数 +1(累积到出牌数银行,按实际出牌消耗;跨周期保留至用尽,不随周期归零清除,
+ * 不受出牌进度/冷却/满额影响;银行存储上限见 GameplayConstants.KOMACHI_EXTRA_PLAYS_CAP)。
  */
 @EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public class KomachiSignItem extends BaseSignItem {
@@ -46,10 +47,11 @@ public class KomachiSignItem extends BaseSignItem {
         if (level.isClientSide) {
             return InteractionResultHolder.success(stack);
         }
-        // 主动:效果牌出牌数 +1(累积到出牌数银行,按实际出牌消耗;不受出牌进度/冷却/满额影响)
+        // 主动:效果牌出牌数 +1(累积到出牌数银行,按实际出牌消耗;不受出牌进度/冷却/满额影响;
+        // 银行存储上限为独立常量,与效果牌出牌上限无关)
         ModAttachments.setKomachiExtraPlays(player,
                 Math.min(ModAttachments.getKomachiExtraPlays(player) + 1,
-                        com.merlinkitsune.astral_dice.component.GameplayConstants.MAX_EFFECT_CARD_PLAYS));
+                        com.merlinkitsune.astral_dice.component.GameplayConstants.KOMACHI_EXTRA_PLAYS_CAP));
         return InteractionResultHolder.success(stack);
     }
 

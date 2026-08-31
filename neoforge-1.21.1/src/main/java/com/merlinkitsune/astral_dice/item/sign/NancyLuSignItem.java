@@ -18,8 +18,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import top.theillusivec4.curios.api.CuriosApi;
 import top.theillusivec4.curios.api.SlotContext;
-import net.neoforged.neoforge.capabilities.Capabilities;
-import net.neoforged.neoforge.items.IItemHandler;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -217,35 +215,10 @@ public class NancyLuSignItem extends BaseSignItem {
 
     private static ItemStack findAndConsumeRandomBattleCard(Player player) {
         List<ItemStack> candidates = new ArrayList<>();
-        // 物品栏
+        // 仅主物品栏(平衡调整:不再从末影箱/精妙背包等容器能力中消耗)
         for (ItemStack stack : player.getInventory().items) {
             if (!stack.isEmpty() && CardRegistry.itemToType(stack) != null) {
                 candidates.add(stack);
-            }
-        }
-        // 末影箱
-        var enderChest = player.getEnderChestInventory();
-        for (int i = 0; i < enderChest.getContainerSize(); i++) {
-            ItemStack stack = enderChest.getItem(i);
-            if (!stack.isEmpty() && CardRegistry.itemToType(stack) != null) {
-                candidates.add(stack);
-            }
-        }
-        // 精妙背包等可打开物品栏的饰品(通过物品容器能力读取)
-        var curios = CuriosApi.getCuriosInventory(player);
-        if (curios.isPresent()) {
-            var equipped = curios.get().getEquippedCurios();
-            for (int i = 0; i < equipped.getSlots(); i++) {
-                ItemStack stack = equipped.getStackInSlot(i);
-                if (stack.isEmpty()) continue;
-                IItemHandler inv = stack.getCapability(Capabilities.ItemHandler.ITEM);
-                if (inv == null) continue;
-                for (int slot = 0; slot < inv.getSlots(); slot++) {
-                    ItemStack inner = inv.getStackInSlot(slot);
-                    if (!inner.isEmpty() && CardRegistry.itemToType(inner) != null) {
-                        candidates.add(inner);
-                    }
-                }
             }
         }
         if (candidates.isEmpty()) return null;

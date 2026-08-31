@@ -688,6 +688,12 @@ public class DiceCombatEvents {
             event.setCanceled(true);
             return;
         }
+        // 秘密侦探"调查阶段":隐身 + 调查阶段加成期间同样不被生物索敌
+        if (player.hasEffect(MobEffects.INVISIBILITY)
+                && player.hasEffect(ModEffects.INVESTIGATION_BONUS)) {
+            event.setCanceled(true);
+            return;
+        }
         if (!player.hasEffect(ModEffects.DICE_BLESSING)) return;
         var curios = CuriosApi.getCuriosInventory(player);
         if (curios.isEmpty()) return;

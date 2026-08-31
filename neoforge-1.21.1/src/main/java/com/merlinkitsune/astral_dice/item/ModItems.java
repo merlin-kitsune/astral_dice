@@ -26,7 +26,7 @@ import com.merlinkitsune.astral_dice.item.chip.MarkerSprayerChipItem;
 import com.merlinkitsune.astral_dice.item.chip.CutterBladeChipItem;
 import com.merlinkitsune.astral_dice.item.chip.FanBigChipItem;
 import com.merlinkitsune.astral_dice.item.chip.FanSmallChipItem;
-import com.merlinkitsune.astral_dice.item.card.LivingBookPageItem;
+import com.merlinkitsune.astral_dice.item.card.LivingPageItem;
 import com.merlinkitsune.astral_dice.item.sign.LuluSignItem;
 import com.merlinkitsune.astral_dice.item.chip.MedkitCompleteChipItem;
 import com.merlinkitsune.astral_dice.item.sign.FenSignItem;
@@ -560,8 +560,8 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(Rarity.UNCOMMON)));
 
-    public static final DeferredItem<Item> LIVING_BOOK_PAGE = registerItem("effect_card_living_page",
-            () -> new LivingBookPageItem(new Item.Properties()
+    public static final DeferredItem<Item> LIVING_PAGE = registerItem("effect_card_living_page",
+            () -> new LivingPageItem(new Item.Properties()
                     .stacksTo(64)
                     .rarity(Rarity.EPIC)));
 

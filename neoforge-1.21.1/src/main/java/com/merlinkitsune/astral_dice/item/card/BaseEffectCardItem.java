@@ -18,6 +18,7 @@ import com.merlinkitsune.astral_dice.item.chip.CandyChipItem;
 import com.merlinkitsune.astral_dice.item.chip.SatelliteChipItem;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.sign.FenSignItem;
+import com.merlinkitsune.astral_dice.item.sign.JasmineSignItem;
 import com.merlinkitsune.astral_dice.item.chip.MagicQuiverChipItem;
 import com.merlinkitsune.astral_dice.item.sign.KomachiSignItem;
 
@@ -68,7 +69,7 @@ public abstract class BaseEffectCardItem extends Item {
         return switch (cardTypeId) {
             case "berserk" -> new ItemStack(ModItems.EFFECT_CARD_BERSERK.get());
             case "unwavering" -> new ItemStack(ModItems.EFFECT_CARD_UNWAVERING.get());
-            case "living_page" -> new ItemStack(ModItems.LIVING_BOOK_PAGE.get());
+            case "living_page" -> new ItemStack(ModItems.LIVING_PAGE.get());
             case "fight_poison_with_poison" -> new ItemStack(ModItems.EFFECT_CARD_FIGHT_POISON_WITH_POISON.get());
             case "king_power" -> new ItemStack(ModItems.EFFECT_CARD_KING_POWER.get());
             case "monster_laser" -> new ItemStack(ModItems.MONSTER_LASER_CARD.get());
@@ -219,9 +220,14 @@ public abstract class BaseEffectCardItem extends Item {
         // 可口糖果:每使用一张效果牌触发(治愈+1、回血+1、满血时本轮出牌数+1)
         CandyChipItem.onEffectCardUsed(player);
 
-        // 探天卫星:使用"轨道炮"后本轮出牌数+1(每个轮次最多一次)
+        // 探天卫星:使用"轨道炮"后本轮出牌数+1(每 1:00 一次)
         if (stack.is(ModItems.ORBITAL_STRIKE_CARD.get())) {
             SatelliteChipItem.onOrbitalStrikeUsed(player);
+        }
+
+        // 扫地机立牌被动:使用「加急加快」后,主动技能冷却立即减少最大冷却的 50%
+        if (stack.is(ModItems.EXPRESS_DELIVERY.get())) {
+            JasmineSignItem.onExpressDeliveryUsed(player);
         }
 
         // 治疗类效果牌:大当家立牌被动"养精蓄锐 +1 层"

@@ -32,34 +32,28 @@ public class VitaminPillChipItem extends BaseChipItem {
     /**
      * 发放一张卡牌:成功放入背包时触发维生素药丸。
      * 背包满则掉落,但不会在拾取时触发(防止丢弃/拾取刷治愈点)。
+     * 注意:此路径不触发看板立牌(mimi)被动(奖励/复制/返还等发放不再计星币,
+     * mimi 仅由合成与主动返还两条显式路径触发)。
      */
     public static void giveCard(Player player, ItemStack card) {
         if (player == null || player.level().isClientSide()) return;
         if (card == null || card.isEmpty()) return;
         int amount = card.getCount();
-        boolean battleCard = CardRegistry.itemToType(card) != null;
         if (!player.getInventory().add(card)) {
             player.drop(card, false);
         } else {
             onCardGained(player, amount);
-            // 看板立牌被动:与维生素药丸相同的触发机制,仅成功放入背包时触发
-            if (battleCard) {
-                MimiSignItem.onBattleCardGained(player);
-            }
         }
     }
 
     /**
      * 由事件/发放逻辑调用:玩家获得任意卡牌时,若佩戴本筹码则治愈 +1(按卡牌数量)。
      * 调用前需确保传入的 stack 是卡牌且数量仍可读。
+     * 注意:此路径不触发看板立牌(mimi)被动(见 {@link #giveCard})。
      */
     public static void onCardGained(Player player, ItemStack card) {
         if (card == null || card.isEmpty() || !ModItems.isCardItem(card)) return;
         onCardGained(player, card.getCount());
-        // 看板立牌被动:合成/奖励/返还卡牌时,战斗牌触发星币奖励
-        if (CardRegistry.itemToType(card) != null) {
-            MimiSignItem.onBattleCardGained(player);
-        }
     }
 
     /**
@@ -74,7 +68,7 @@ public class VitaminPillChipItem extends BaseChipItem {
         HealingManager.add(player, HEALING_POINTS_PER_CARD * amount);
     }
 
-    // 维生素药丸:通过合成卡牌获得时触发
+    // 维生素药丸:通过合成卡牌获得时触发(合成战斗牌同时触发看板立牌被动)
     @SubscribeEvent
     public static void onCardCrafted(PlayerEvent.ItemCraftedEvent event) {
         Player player = event.getEntity();
@@ -82,6 +76,10 @@ public class VitaminPillChipItem extends BaseChipItem {
         ItemStack result = event.getCrafting();
         if (!result.isEmpty()) {
             VitaminPillChipItem.onCardGained(player, result);
+            // 看板立牌被动:合成战斗牌 → +1 星币(仅合成路径,见 giveCard 注释)
+            if (CardRegistry.itemToType(result) != null) {
+                MimiSignItem.onBattleCardGained(player);
+            }
         }
     }
 }

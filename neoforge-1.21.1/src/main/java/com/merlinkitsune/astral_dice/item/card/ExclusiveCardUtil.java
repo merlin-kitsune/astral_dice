@@ -29,7 +29,7 @@ public final class ExclusiveCardUtil {
 
     // 是否为专属效果牌
     public static boolean isExclusive(ItemStack stack) {
-        return stack.is(ModItems.LIVING_BOOK_PAGE.get()) || stack.is(ModItems.FATE_GUIDANCE_CARD.get());
+        return stack.is(ModItems.LIVING_PAGE.get()) || stack.is(ModItems.FATE_GUIDANCE_CARD.get());
     }
 
     // 无所有者时绑定为当前使用者

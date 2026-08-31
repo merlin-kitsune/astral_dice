@@ -69,7 +69,7 @@ public class ModCreativeTabs {
                 output.accept(ModItems.MONSTER_BRICK_CARD.get());
                 output.accept(ModItems.ORBITAL_STRIKE_CARD.get());
                 output.accept(ModItems.DIRECTIONAL_BLAST_CARD.get());
-                output.accept(ModItems.LIVING_BOOK_PAGE.get());
+                output.accept(ModItems.LIVING_PAGE.get());
                 // 立牌
                 output.accept(ModItems.PARUNAN_SIGN.get());
                 output.accept(ModItems.JASMINE_SIGN.get());

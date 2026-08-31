@@ -19,7 +19,7 @@ import net.neoforged.bus.api.SubscribeEvent;
 /**
  * 探天卫星筹码:
  * - 物品栏中"轨道炮"少于 6 张时,每 1:00 补充 1 张轨道炮;
- * - 使用一张"轨道炮"后,本轮出牌数 +1(每个出牌轮次最多一次);
+ * - 使用一张"轨道炮"后,本轮出牌数 +1(每 1:00 至多触发一次);
  * - "轨道炮"生效期间,使用远程或魔法击杀一个敌方目标后,获得一张随机效果牌。
  */
 @EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
@@ -28,6 +28,8 @@ public class SatelliteChipItem extends BaseChipItem {
     public static final int TARGET_ORBITAL_STRIKE_COUNT = 6;
     /** 补充轨道炮间隔(tick,1 分钟) */
     public static final int GIVE_INTERVAL_TICKS = 1200;
+    /** "使用轨道炮后出牌数+1"触发冷却(tick,1 分钟) */
+    public static final int PLAY_BONUS_COOLDOWN_TICKS = 1200;
 
     public SatelliteChipItem(Properties properties) {
         super(properties);
@@ -50,19 +52,21 @@ public class SatelliteChipItem extends BaseChipItem {
         if (now < cdEnd) return;
         if (countOrbitalStrike(player) < TARGET_ORBITAL_STRIKE_COUNT) {
             ItemStack card = new ItemStack(ModItems.ORBITAL_STRIKE_CARD.get());
-            if (!player.getInventory().add(card)) {
-                player.drop(card, false);
-            }
+            // 统一经维生素药丸发牌路径(合成/获得卡牌联动)
+            VitaminPillChipItem.giveCard(player, card);
         }
         ModAttachments.setSatelliteGiveCooldownEnd(player, now + GIVE_INTERVAL_TICKS);
     }
 
-    // 使用一张"轨道炮"后调用:本轮出牌数 +1(每个轮次最多一次)
+    // 使用一张"轨道炮"后调用:本轮出牌数 +1(每 1:00 至多触发一次;标记随效果牌周期归零清除)
     public static void onOrbitalStrikeUsed(Player player) {
         if (player == null || player.level().isClientSide()) return;
         if (!isEquipped(player)) return;
+        long now = player.level().getGameTime();
+        if (now < ModAttachments.getSatellitePlayBonusCooldownEnd(player)) return;
         if (ModAttachments.isSatellitePlayBonusActive(player)) return;
         ModAttachments.setSatellitePlayBonusActive(player, true);
+        ModAttachments.setSatellitePlayBonusCooldownEnd(player, now + PLAY_BONUS_COOLDOWN_TICKS);
     }
 
     // 轨道炮生效期间远程/魔法击杀敌方目标后调用:获得一张随机效果牌
@@ -74,6 +78,7 @@ public class SatelliteChipItem extends BaseChipItem {
 
     @Override
     protected void onChipUnequip(Player player, ItemStack stack) {
+        // 卸下筹码:清除"本轮出牌数+1"标记(每 1:00 触发冷却保留,防装卸刷新)
         ModAttachments.setSatellitePlayBonusActive(player, false);
     }
 

@@ -21,9 +21,6 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
     private static final net.minecraft.tags.TagKey<net.minecraft.world.item.Item> BRICKS_TAG =
             net.minecraft.tags.ItemTags.create(
                     net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("c", "bricks"));
-    private static final net.minecraft.tags.TagKey<net.minecraft.world.item.Item> SUSPICIOUS_STEWS_TAG =
-            net.minecraft.tags.ItemTags.create(
-                    net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID, "suspicious_stews"));
 
     public ModRecipeProvider(PackOutput output, CompletableFuture<HolderLookup.Provider> registries) {
         super(output, registries);
@@ -825,13 +822,13 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
                 .save(output);
 
-        // 诅咒之剑:金剑上排 + 谜之炖菜/爆裂紫颂果中轴 + 空白筹码居中 + 星币下排
+        // 诅咒之剑:金剑上排 + 哭泣黑曜石中轴 + 空白筹码居中 + 星币下排
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.CURSED_SWORD.get())
                 .pattern("JMJ")
                 .pattern("ZCZ")
                 .pattern("BBB")
                 .define('J', Items.GOLDEN_SWORD)
-                .define('M', SUSPICIOUS_STEWS_TAG)
+                .define('M', Items.CRYING_OBSIDIAN)
                 .define('Z', Items.POPPED_CHORUS_FRUIT)
                 .define('C', ModItems.BLANK_CHIP.get())
                 .define('B', ModItems.STAR_COIN.get())

@@ -20,9 +20,9 @@ import net.neoforged.bus.api.SubscribeEvent;
  * 看板立牌(mimi)。
  *
  * <p>被动:
- * - 合成、奖励、返还卡牌后,每获得一张战斗牌,增加 1 星币;
+ * - 合成或返还卡牌时,每获得一张战斗牌,增加 1 星币;
  * - 装备时,筹码栏位 +1;
- * - 每次通过被动获得 25 个星币后,获得 1 个随机筹码
+ * - 每次主动技能返还累计 25 张战斗牌后,获得 1 个随机筹码
  *   (蓝色 60%,紫色 35%,金色 5%)。
  *
  * <p>主动:将物品栏中所有卡牌回收(包括专属牌),并返还 N+1 张随机卡牌;
@@ -30,8 +30,8 @@ import net.neoforged.bus.api.SubscribeEvent;
  */
 @EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public class MimiSignItem extends BaseSignItem {
-    /** 被动累计星币阈值 */
-    public static final int STAR_COIN_THRESHOLD = 25;
+    /** 主动返还战斗牌累计阈值(达到后获得随机筹码) */
+    public static final int RETURNED_CARD_THRESHOLD = 25;
     /** 随机筹码概率 */
     private static final double BLUE_CHANCE = 0.60;
     private static final double PURPLE_CHANCE = 0.35;
@@ -43,7 +43,7 @@ public class MimiSignItem extends BaseSignItem {
     @Override
     protected void clearSignData(Player player, ItemStack stack) {
         super.clearSignData(player, stack);
-        ModAttachments.setMimiStarCoinCounter(player, 0);
+        ModAttachments.setMimiReturnedCardCount(player, 0);
     }
 
     @Override
@@ -53,9 +53,16 @@ public class MimiSignItem extends BaseSignItem {
         }
         // 回收物品栏中所有卡牌(含专属牌),返还 N+1 张随机卡牌(不含专属)
         int recycled = recycleAllCards(player);
+        int battleBefore = countBattleCards(player);
         int coinsBefore = countStarCoins(player);
         for (int i = 0; i < recycled + 1; i++) {
             RandomCardHandler.giveCardTo(player, RandomCardHandler.CardCategory.ALL);
+        }
+        // 被动:返还的战斗牌每张 +1 星币,并累计返还计数(每 25 张获得随机筹码)
+        int battleGained = countBattleCards(player) - battleBefore;
+        for (int i = 0; i < battleGained; i++) {
+            onBattleCardGained(player);
+            onBattleCardReturned(player);
         }
         // 主动技能 ActionBar:新卡牌数(回收数+1)与被动触发的星币数
         sendSignActionBar(player, "msg.astral_dice.mimi_active",
@@ -68,6 +75,17 @@ public class MimiSignItem extends BaseSignItem {
         int count = 0;
         for (ItemStack s : player.getInventory().items) {
             if (s.is(ModItems.STAR_COIN.get())) {
+                count += s.getCount();
+            }
+        }
+        return count;
+    }
+
+    // 统计物品栏中的战斗牌数量
+    private static int countBattleCards(Player player) {
+        int count = 0;
+        for (ItemStack s : player.getInventory().items) {
+            if (!s.isEmpty() && com.merlinkitsune.astral_dice.combat.CardRegistry.itemToType(s) != null) {
                 count += s.getCount();
             }
         }
@@ -89,18 +107,23 @@ public class MimiSignItem extends BaseSignItem {
         return curios.isPresent() && curios.get().findFirstCurio(s -> s.is(ModItems.MIMI_SIGN.get())).isPresent();
     }
 
-    // 被动:每获得一张战斗牌时调用(与维生素药丸相同触发机制,不包含拾取)
+    // 被动:每获得一张战斗牌时调用(合成或主动返还;与维生素药丸相同触发机制,不包含拾取/奖励/复制)
     public static void onBattleCardGained(Player player) {
         if (player == null || player.level().isClientSide()) return;
         if (!isEquipped(player)) return;
         giveStarCoin(player);
-        // 每累计 25 个被动星币,获得一个随机筹码
-        int counter = ModAttachments.getMimiStarCoinCounter(player) + 1;
-        if (counter >= STAR_COIN_THRESHOLD) {
-            ModAttachments.setMimiStarCoinCounter(player, 0);
+    }
+
+    // 被动:主动技能返还的战斗牌计数(每累计 25 张获得一个随机筹码)
+    public static void onBattleCardReturned(Player player) {
+        if (player == null || player.level().isClientSide()) return;
+        if (!isEquipped(player)) return;
+        int counter = ModAttachments.getMimiReturnedCardCount(player) + 1;
+        if (counter >= RETURNED_CARD_THRESHOLD) {
+            ModAttachments.setMimiReturnedCardCount(player, 0);
             giveRandomChip(player);
         } else {
-            ModAttachments.setMimiStarCoinCounter(player, counter);
+            ModAttachments.setMimiReturnedCardCount(player, counter);
         }
     }
 
