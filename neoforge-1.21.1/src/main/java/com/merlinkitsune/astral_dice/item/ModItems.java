@@ -473,23 +473,23 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(Rarity.UNCOMMON), MotoHelmetChipItem.ARMOR_HIGH, MotoHelmetChipItem.TOUGHNESS_BONUS));
 
-    // 夹心饼干-一般:最大生命值 +2
+    // 夹心饼干-一般:最大生命值 +4
     public static final DeferredItem<Item> SANDWICH_LOW = registerItem("sandwich_low_chip",
             () -> new SandwichChipItem(new Item.Properties()
                     .stacksTo(1)
-                    .rarity(Rarity.RARE), SandwichChipItem.HEALTH_LOW));
+                    .rarity(Rarity.RARE), SandwichChipItem.HEALTH_LOW, false));
 
-    // 夹心饼干-可口:最大生命值 +4
+    // 夹心饼干-可口:最大生命值 +8
     public static final DeferredItem<Item> SANDWICH_MEDIUM = registerItem("sandwich_medium_chip",
             () -> new SandwichChipItem(new Item.Properties()
                     .stacksTo(1)
-                    .rarity(Rarity.EPIC), SandwichChipItem.HEALTH_MEDIUM));
+                    .rarity(Rarity.EPIC), SandwichChipItem.HEALTH_MEDIUM, false));
 
-    // 夹心饼干-美味:最大生命值 +8
+    // 夹心饼干-美味:最大生命值 +12;生命值低于一半时每 1:00 获得 1 层「反击」
     public static final DeferredItem<Item> SANDWICH_HIGH = registerItem("sandwich_high_chip",
             () -> new SandwichChipItem(new Item.Properties()
                     .stacksTo(1)
-                    .rarity(Rarity.UNCOMMON), SandwichChipItem.HEALTH_HIGH));
+                    .rarity(Rarity.UNCOMMON), SandwichChipItem.HEALTH_HIGH, true));
 
     // 魔法箭袋:使用过效果牌并对带标记目标造成法伤 → 施加标记并返还第一张使用的效果牌(每分钟一次)
     public static final DeferredItem<Item> MAGIC_QUIVER = registerItem("magic_quiver_chip",
