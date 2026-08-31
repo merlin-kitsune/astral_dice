@@ -337,7 +337,7 @@
   "msg.astral_dice.investigation_event_triggered": "Investigation event triggered!",
   "msg.astral_dice.need_dice": "You need to equip a dice first!",
   "msg.astral_dice.no_dice_equipped": "You need to equip a dice first",
-  "msg.astral_dice.sign_active_triggered": "%s: Active skill triggered!",
+  "msg.astral_dice.sign_active_triggered": "%s: Active skill started!",
   "msg.astral_dice.weak_mark_kill_reward": "Weak Mark target slain! You received Fate Guidance!",
   "tooltip.astral_dice.applied_stones": "Loaded Cards:",
   "tooltip.astral_dice.card.active_damage_bonus": "Ranged and Magic Damage Boost: §e%s§7",

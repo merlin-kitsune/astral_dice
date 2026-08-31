@@ -56,10 +56,26 @@ public class HaiqingSignItem extends BaseSignItem {
             ModEffectRemoval.remove(player, ModEffects.HAIQING_READY);
         }
         if (ModAttachments.getSignReadyType(player) == READY_TYPE && expire > 0
-                && player.tickCount % 20 == 0 && player instanceof ServerPlayer sp) {
+                && player.tickCount % 20 == 0) {
+            sendReadyPrompt(player);
+        }
+    }
+
+    // 发送"待命"ActionBar 提示(激活瞬间与等待期间共用)
+    private static void sendReadyPrompt(Player player) {
+        if (player instanceof ServerPlayer sp) {
             PacketDistributor.sendToPlayer(sp,
                     new ActionBarPayload(Component.translatable("msg.astral_dice.haiqing_ready")
                             .withStyle(ChatFormatting.YELLOW), GameplayConstants.ACTIONBAR_DURATION_TICKS));
+        }
+    }
+
+    // 主动技能自带 ActionBar 反馈("待命"提示):注册到主动技能响应事件,阻止默认提示
+    @SubscribeEvent
+    public static void onSignActiveTriggered(com.merlinkitsune.astral_dice.event.SignActiveTriggeredEvent event) {
+        if (event.getSignStack().is(ModItems.HAIQING_SIGN.get())) {
+            sendReadyPrompt(event.getPlayer());
+            event.setHandled();
         }
     }
 
@@ -129,10 +145,4 @@ public class HaiqingSignItem extends BaseSignItem {
         ModAttachments.setWeakMarkSource(entity, Optional.empty());
     }
 
-
-    // 主动技能自带 ActionBar 反馈("待命"提示/事件提示),不发送通用"已触发主动技能"
-    @Override
-    protected boolean hasOwnActionBarFeedback() {
-        return true;
-    }
 }

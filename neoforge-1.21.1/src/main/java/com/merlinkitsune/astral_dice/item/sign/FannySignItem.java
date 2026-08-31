@@ -1,6 +1,9 @@
 package com.merlinkitsune.astral_dice.item.sign;
 
 import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
+import com.merlinkitsune.astral_dice.event.SignActiveTriggeredEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
 
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
@@ -25,6 +28,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.PacketDistributor;
 
+@EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public class FannySignItem extends BaseSignItem {
     public FannySignItem(Properties properties) {
         super(properties);
@@ -116,9 +120,12 @@ public class FannySignItem extends BaseSignItem {
         }
     }
 
-    // 主动技能自带 ActionBar 反馈("待命"提示/事件提示),不发送通用"已触发主动技能"
-    @Override
-    protected boolean hasOwnActionBarFeedback() {
-        return true;
+    // 大侦探主动自带 ActionBar 反馈(事件提示,依赖随机事件结果,仍在 handleUse 内发送):
+    // 注册到主动技能响应事件,阻止默认提示
+    @SubscribeEvent
+    public static void onSignActiveTriggered(SignActiveTriggeredEvent event) {
+        if (event.getSignStack().is(ModItems.FANNY_SIGN.get())) {
+            event.setHandled();
+        }
     }
 }

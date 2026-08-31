@@ -337,7 +337,7 @@
   "msg.astral_dice.investigation_event_triggered": "调查阶段事件触发！",
   "msg.astral_dice.need_dice": "需要先佩戴骰子！",
   "msg.astral_dice.no_dice_equipped": "需要先佩戴骰子",
-  "msg.astral_dice.sign_active_triggered": "%s：已触发主动技能！",
+  "msg.astral_dice.sign_active_triggered": "%s：主动技能已启动！",
   "msg.astral_dice.weak_mark_kill_reward": "击杀虚弱印记目标，获得“命运的指引”！",
   "tooltip.astral_dice.applied_stones": "已装载卡片:",
   "tooltip.astral_dice.card.active_damage_bonus": "远程和魔法伤害提升：§e%s§7",

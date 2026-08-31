@@ -93,9 +93,12 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
         // 4. 手持风扇-大筹码:使用主动技能后,获得一张随机效果牌(不含专属),并对周围范围内敌对目标施加标记
         FanBigChipItem.applyAfterSignSkill(player);
         FanSmallChipItem.applyAfterSignSkill(player);
-        // 5. 立牌未自带 ActionBar 反馈时,发送通用"已触发主动技能"提示(置于最后,避免被其他提示覆盖;
-        //    自带反馈的立牌(占星师/秘密侦探/大侦探)不发送,保留其专属提示)
-        if (!sign.hasOwnActionBarFeedback()) {
+        // 5. 立牌主动技能响应事件:立牌类订阅本事件注册自身 ActionBar 反馈(见 SignActiveTriggeredEvent);
+        //    无任何处理器响应(未注册)时,发送默认提示"xxx立牌:主动技能已启动!"
+        com.merlinkitsune.astral_dice.event.SignActiveTriggeredEvent triggered =
+                new com.merlinkitsune.astral_dice.event.SignActiveTriggeredEvent(player, stack);
+        net.neoforged.neoforge.common.NeoForge.EVENT_BUS.post(triggered);
+        if (!triggered.isHandled()) {
             notifyActionBar(player, "msg.astral_dice.sign_active_triggered", signName, ChatFormatting.YELLOW);
         }
         // 6. 冷却:等待类技能(激活了玩家级等待状态)待完成指定目标/超时后再开始冷却;其余立牌立即开始玩家级冷却
@@ -202,13 +205,4 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
     }
 
     protected abstract InteractionResultHolder<ItemStack> handleUse(Level level, Player player, ItemStack stack);
-
-    /**
-     * 立牌主动技能是否自带 ActionBar 反馈(触发成功时)。
-     * 自带的立牌不发送通用"已触发主动技能"提示,避免覆盖其专属提示;
-     * 未覆写的立牌由 {@link #performSkill} 统一发送通用提示。
-     */
-    protected boolean hasOwnActionBarFeedback() {
-        return false;
-    }
 }
