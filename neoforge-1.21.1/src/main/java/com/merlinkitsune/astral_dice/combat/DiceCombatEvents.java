@@ -496,11 +496,12 @@ public class DiceCombatEvents {
                 // 效果牌/立牌/筹码的防御力已折算为真实护甲(1 防御力 = 2 护甲值,
                 // 见 DiceCombatModifiers.setDefenseArmorBonus),getArmorValue() 已包含;
                 // modifierDefense 恒为 0(仅防御卡掷骰写入 ctx.defenseCardSum 作为防御点直接加入)。
+                // 怪物与玩家公式同步:防御 = 2 + 护甲÷2 + 1.4×韧性 + 防御骰 + 防御卡(1 防御 = 2 护甲)。
                 double rawArmor = Math.min(target.getArmorValue(), 20);
                 double toughness = target.getAttributeValue(Attributes.ARMOR_TOUGHNESS);
                 double effectiveArmor = Math.max(0, Math.min(rawArmor + modifierDefense * 2.0, 20));
                 defensePower = 2
-                        + effectiveArmor / (target instanceof Player ? 2.0 : 4.0)
+                        + effectiveArmor / 2.0
                         + 1.4 * toughness
                         + defenseBaseDice
                         + ctx.defenseCardSum;

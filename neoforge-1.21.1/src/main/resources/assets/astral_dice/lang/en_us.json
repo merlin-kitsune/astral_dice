@@ -37,7 +37,7 @@
   "astral_dice.guide.entry.bank_card_low_chip.1": "Provides 4 base Starlight while equipped (removed on unequip).",
   "astral_dice.guide.entry.bank_card_unlimited_chip.1": "Gain 3 Starlight on equip; after each Dice Blessing ends, you and all team members gain 3 Star Coins.",
   "astral_dice.guide.entry.battle_dice.1": "With a dice equipped, melee attacks apply the Dice Blessing to you; attacks made under the Blessing enter an attack-versus-defense dice battle. The attacker's roll and card bonuses count toward attack; the defender rolls a defense dice toward defense, and final damage = attack − defense (minimum 1).",
-  "astral_dice.guide.entry.battle_dice.2": "Monster defense = 2 + armor÷4 + 1.4×toughness + defense dice + bonuses; player defense = 2 + armor÷2 + 1.4×toughness + defense dice (during blessing) + bonuses.",
+  "astral_dice.guide.entry.battle_dice.2": "Monsters and players share the same defense formula: defense = 2 + armor÷2 + 1.4×toughness + defense dice + bonuses (1 defense = 2 armor); players roll their defense dice only during a Blessing.",
   "astral_dice.guide.entry.battle_dice.3": "Upgrade a die on the anvil with Star Coins to raise its star level for stronger blessings; the base → golden → diamond → netherite chain unlocks more card and chip slots.",
   "astral_dice.guide.entry.battle_dice.name": "Battle Dice Rolls",
   "astral_dice.guide.entry.big_backpack_chip.1": "Effect card play count +1.",

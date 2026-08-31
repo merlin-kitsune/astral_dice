@@ -37,7 +37,7 @@
   "astral_dice.guide.entry.bank_card_low_chip.1": "装备期间获得 4 点基础星光（卸下移除）。",
   "astral_dice.guide.entry.bank_card_unlimited_chip.1": "装备时获得 3 点星光；每次骰神赐福结束后，自身及团队所有成员获得 3 星币。",
   "astral_dice.guide.entry.battle_dice.1": "装备骰子后，近战攻击会为自身施加「骰神赐福」，赐福状态下的攻击进入攻防对垒的骰战。攻击方骰点与卡牌加成计入攻击力；受击方掷防御骰计入防御力，最终伤害 = 攻击力 − 防御力（最低 1）。",
-  "astral_dice.guide.entry.battle_dice.2": "怪物防御 = 2 + 护甲÷4 + 1.4×韧性 + 防御骰 + 防御加成；玩家防御 = 2 + 护甲÷2 + 1.4×韧性 + 防御骰（赐福中）+ 防御加成。",
+  "astral_dice.guide.entry.battle_dice.2": "怪物与玩家防御公式同步：防御 = 2 + 护甲÷2 + 1.4×韧性 + 防御骰 + 防御加成（1 防御力 = 2 护甲值）；玩家防御骰仅在赐福期间掷出。",
   "astral_dice.guide.entry.battle_dice.3": "骰子可经铁砧以星币升星，星级越高赐福加成越强；基础→黄金→钻石→下界合金的升级链解锁更多卡牌槽位与筹码栏位。",
   "astral_dice.guide.entry.battle_dice.name": "战斗骰点",
   "astral_dice.guide.entry.big_backpack_chip.1": "效果牌出牌数 +1。",
