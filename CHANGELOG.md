@@ -31,7 +31,7 @@ This changelog is fully split by language: the Chinese version comes first, foll
 - 命名统一:活体书页相关 Java 标识符/效果注册 id 统一为 `LIVING_PAGE`/`living_page`(物品 id `effect_card_living_page` 不变)(仅 1.21.1)。
 - 防御力折算规范:效果牌/立牌/筹码提供的防御力一律折算为**真实护甲**(1 防御力 = 2 护甲值,经 ARMOR 属性修饰器),不再参与骰战防御修饰器——骰战防御修饰器仅保留战斗防御牌(区间变动)。受影响来源:扫地机(2 护甲/点,护甲上限 40)、上班族(-4~+8 护甲)、吸血鬼(半血 +6 护甲)、复仇之戟(+12 护甲)、骇客(被动防御 +6 护甲)、大当家(养精蓄锐 +4 护甲);抗性提升不再折算骰战防御点(原版减伤仍生效)(仅 1.21.1)。
 - 怪物防御-护甲折算与玩家同步:怪物防御公式由「护甲÷4」改为与玩家一致「护甲÷2」(1 防御力 = 2 护甲值);贯穿之铳的目标防御计算同步(仅 1.21.1)。
-- 新增「反击」流派(玩家效果,图标 `temp/反击.png`):拥有反击层数时被近战敌对生物攻击触发一次反击——视为玩家近战攻击,按 手持最高近战武器基础伤害 + 1d6 骰点 + 攻击牌加成(未赐福时自动触发骰神赐福并消耗攻击牌耐久)+ 攻击力加成 计算总伤害并对攻击目标造成伤害,随后移除 1 层;层数获得来源待后续补充(仅 1.21.1)。
+- 新增「反击」流派(玩家效果,图标 `temp/反击.png`):拥有反击层数时被近战敌对生物攻击触发一次反击——视为玩家近战攻击,按 手持最高近战武器基础伤害 + 1d6 骰点 + 攻击牌加成(未赐福时自动触发骰神赐福并消耗攻击牌耐久)+ 攻击力加成 计算总伤害并对攻击目标造成伤害,随后移除 1 层;魔法伤害(唤魔者尖牙/守卫者光束等)不算近战,不触发;层数获得来源待后续补充(仅 1.21.1)。
 
 ### 已修复BUG
 
@@ -326,7 +326,7 @@ This changelog is fully split by language: the Chinese version comes first, foll
 - Naming unification: Living Page Java identifiers and the effect registry id are unified to `LIVING_PAGE`/`living_page` (item id `effect_card_living_page` unchanged) (1.21.1 only).
 - Defense conversion: defense from effect cards/signs/chips is now converted to real armor (1 defense = 2 armor via ARMOR attribute modifiers) and no longer participates in dice-combat defense modifiers — only battle defense cards (range-varying values) remain there. Affected sources: Jasmine (+2 armor per stack, armor cap 40), Padman (-4 to +8 armor), Papara (+6 armor at half HP), Revenge Halberd (+12 armor), Nancy Lu (+6 armor on defensive passive), Fen (+4 armor with Recharged Energy); Resistance no longer adds dice-defense points (its vanilla damage reduction still applies) (1.21.1 only).
 - Monster armor-to-defense conversion synced with players: monster defense now uses armor÷2 like players (1 defense = 2 armor); the Piercing Gun chip's target-defense calculation was synced too (1.21.1 only).
-- New Counterattack playstyle (player effect, icon `temp/反击.png`): with Counterattack layers, being hit by a hostile melee attack triggers a counter strike treated as your own melee attack — total damage = highest held melee weapon base damage + a 1d6 dice roll + attack-card bonus (auto-triggering the Dice Blessing and consuming card durability when you are not blessed) + all attack bonuses, dealt to the attacker, then 1 layer is removed; the layer source will be added later (1.21.1 only).
+- New Counterattack playstyle (player effect, icon `temp/反击.png`): with Counterattack layers, being hit by a hostile melee attack triggers a counter strike treated as your own melee attack — total damage = highest held melee weapon base damage + a 1d6 dice roll + attack-card bonus (auto-triggering the Dice Blessing and consuming card durability when you are not blessed) + all attack bonuses, dealt to the attacker, then 1 layer is removed; magic damage (evoker fangs, guardian beams, etc.) does not count as melee and does not trigger; the layer source will be added later (1.21.1 only).
 
 ### Bug Fixes
 

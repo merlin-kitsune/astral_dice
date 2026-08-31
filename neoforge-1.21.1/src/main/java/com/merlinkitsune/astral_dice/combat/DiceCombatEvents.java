@@ -937,6 +937,8 @@ public class DiceCombatEvents {
         if (!(attackerEntity instanceof LivingEntity attacker)) return;
         if (!(attacker instanceof Enemy)) return;
         if (source.getDirectEntity() != attacker) return;
+        // 魔法伤害(唤魔者尖牙/守卫者光束/药水等)不属于近战,不触发反击
+        if (com.merlinkitsune.astral_dice.combat.SpellDamageRegistry.isSpellDamage(source, source.getDirectEntity())) return;
         if (!attacker.isAlive()) return;
 
         double dmg = computeCounterattackDamage(player, attacker);
