@@ -115,4 +115,8 @@ public class ModEffects {
     // 复仇之戟:负面/诅咒效果触发攻击/防御加成时显示的标记效果(图标=复仇之戟自身图标)
     public static final DeferredHolder<MobEffect, MobEffect> REVENGE_HALBERD =
             EFFECTS.register("revenge_halberd", RevengeHalberdEffect::new);
+
+    // 反击(玩家效果/流派):层数 = amplifier+1;被近战敌方攻击时触发反击并消耗 1 层
+    public static final DeferredHolder<MobEffect, MobEffect> COUNTERATTACK =
+            EFFECTS.register("counterattack", CounterattackEffect::new);
 }
