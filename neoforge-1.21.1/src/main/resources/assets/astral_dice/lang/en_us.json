@@ -316,7 +316,7 @@
   "key.astral_dice.activate_sign": "Activate Sign Skill",
   "key.astral_dice.open_card_inventory": "Open Card Inventory",
   "key.categories.astral_dice": "Astral Dice Play",
-  "msg.astral_dice.bonnie_ready": "Attack a target to apply Undercover Investigation!",
+  "msg.astral_dice.bonnie_ready": "Detective sign: active skill activated — attack a hostile target to apply the Undercover Investigation",
   "msg.astral_dice.charge_refund_full_power": "Charge ended! Full Power Attack returned!",
   "msg.astral_dice.dice_roll": "Roll: %s",
   "msg.astral_dice.effect_card_burst_full": "Play count used up! Cooldown remaining: %s s",
@@ -333,7 +333,7 @@
   "msg.astral_dice.fanny_event.7": "Instant Damage",
   "msg.astral_dice.fanny_event.8": "Poison",
   "msg.astral_dice.fanny_event.9": "Hunger + Nausea",
-  "msg.astral_dice.haiqing_ready": "Attack a target to apply Weak Mark!",
+  "msg.astral_dice.haiqing_ready": "Astrologer sign: active skill activated — attack a hostile target to apply the Weak Mark",
   "msg.astral_dice.investigation_event_triggered": "Investigation event triggered!",
   "msg.astral_dice.need_dice": "You need to equip a dice first!",
   "msg.astral_dice.no_dice_equipped": "You need to equip a dice first",
@@ -465,5 +465,8 @@
   "tooltip.astral_dice.sign.rin_active": "Gain a Living Book Page",
   "tooltip.astral_dice.sign.rin_bonus": "Living Book Page damage bonus: §e+%s§7",
   "tooltip.astral_dice.sign.rin_passive": "When you trigger an event or are affected by one, gain a Living Book Page;\nUsing one permanently increases its damage by §e+1§7 (reset on unequip)",
-  "tooltip.astral_dice.star_level": "Star Level: §e★%s§7"
+  "tooltip.astral_dice.star_level": "Star Level: §e★%s§7",
+  "msg.astral_dice.komachi_active": "Ninja sign: effect card play count +1 granted. Remaining plays: %d",
+  "msg.astral_dice.mimi_active": "Noticeboard sign: got %d new cards and %d Star Coins",
+  "msg.astral_dice.nancy_lu_active": "Hacker sign: full invisibility triggered (%d s) — attack any target to gain an attack bonus and end the invisibility"
 }

@@ -13,6 +13,8 @@ import com.merlinkitsune.astral_dice.item.card.BaseEffectCardItem;
 import com.merlinkitsune.astral_dice.item.card.ExclusiveCardUtil;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.bus.api.SubscribeEvent;
 
 /**
  * 忍者立牌。
@@ -23,6 +25,7 @@ import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
  * 计数期间显示"忍者立牌"效果图标,等级 = 当前第几张;第 3 张触发后计数归 0。
  * 主动:本轮出牌数 +1(仅当前效果牌周期内生效,周期归零自动清除;若本轮已达到出牌数上限则忽略)。
  */
+@EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public class KomachiSignItem extends BaseSignItem {
     public KomachiSignItem(Properties properties) {
         super(properties);
@@ -48,6 +51,19 @@ public class KomachiSignItem extends BaseSignItem {
             ModAttachments.setKomachiExtraPlayActive(player, true);
         }
         return InteractionResultHolder.success(stack);
+    }
+
+    // 主动技能 ActionBar:出牌数+1 与剩余出牌数(注册到主动技能响应事件)
+    @SubscribeEvent
+    public static void onSignActiveTriggered(com.merlinkitsune.astral_dice.event.SignActiveTriggeredEvent event) {
+        if (event.getSignStack().is(ModItems.KOMACHI_SIGN.get())) {
+            Player player = event.getPlayer();
+            int remaining = Math.max(0,
+                    com.merlinkitsune.astral_dice.item.card.EffectCardPeriod.getMaxAllowed(player)
+                            - com.merlinkitsune.astral_dice.item.card.EffectCardPeriod.getPlayCount(player));
+            sendSignActionBar(player, "msg.astral_dice.komachi_active", remaining);
+            event.setHandled();
+        }
     }
 
     // 被动:每使用第 3 张效果牌时触发(独立计数)——复制最后一张效果牌 + 主动技能冷却 -30% + 伤害类效果牌伤害加成 +1

@@ -316,7 +316,7 @@
   "key.astral_dice.activate_sign": "激活立牌技能",
   "key.astral_dice.open_card_inventory": "打开卡牌栏",
   "key.categories.astral_dice": "星之骰戏",
-  "msg.astral_dice.bonnie_ready": "攻击目标施加“隐匿调查”！",
+  "msg.astral_dice.bonnie_ready": "秘密侦探立牌：主动技能已激活，攻击敌对目标向其施加「隐匿调查」",
   "msg.astral_dice.charge_refund_full_power": "蓄力结束，返还“全力攻击”！",
   "msg.astral_dice.dice_roll": "掷骰: %s",
   "msg.astral_dice.effect_card_burst_full": "本轮出牌数已用完！剩余冷却 %s 秒",
@@ -333,7 +333,7 @@
   "msg.astral_dice.fanny_event.7": "瞬间伤害",
   "msg.astral_dice.fanny_event.8": "中毒",
   "msg.astral_dice.fanny_event.9": "饥饿 + 反胃",
-  "msg.astral_dice.haiqing_ready": "攻击目标施加“虚弱印记”！",
+  "msg.astral_dice.haiqing_ready": "占星师立牌：主动技能已激活，攻击敌对目标向其施加「虚弱印记」",
   "msg.astral_dice.investigation_event_triggered": "调查阶段事件触发！",
   "msg.astral_dice.need_dice": "需要先佩戴骰子！",
   "msg.astral_dice.no_dice_equipped": "需要先佩戴骰子",
@@ -465,5 +465,8 @@
   "tooltip.astral_dice.sign.rin_active": "获得一张\"活体书页\"",
   "tooltip.astral_dice.sign.rin_bonus": "活体书页伤害增加：§e+%s§7",
   "tooltip.astral_dice.sign.rin_passive": "自身触发事件或受到事件影响时，获得一张\"活体书页\"；\n使用\"活体书页\"使其伤害永久 §e+1§7（移除立牌后重置）",
-  "tooltip.astral_dice.star_level": "星级: §e★%s§7"
+  "tooltip.astral_dice.star_level": "星级: §e★%s§7",
+  "msg.astral_dice.komachi_active": "忍者立牌：已获得效果牌出牌数+1，剩余出牌数：%d",
+  "msg.astral_dice.mimi_active": "看板立牌：已获得%d张新卡牌，并获得了%d枚星币",
+  "msg.astral_dice.nancy_lu_active": "骇客立牌：已触发完全隐身 (%d 秒)，攻击任意一个目标获得攻击力加成并移除完全隐身"
 }

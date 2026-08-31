@@ -108,6 +108,16 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
         }
     }
 
+    // 立牌主动技能反馈统一发送入口(黄色;供立牌类注册的 SignActiveTriggeredEvent 处理器与 handleUse 调用)
+    protected static void sendSignActionBar(Player player, String langKey, Object... args) {
+        if (!(player instanceof net.minecraft.server.level.ServerPlayer serverPlayer)) return;
+        net.minecraft.network.chat.Component msg =
+                net.minecraft.network.chat.Component.translatable(langKey, args).withStyle(ChatFormatting.YELLOW);
+        net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(serverPlayer,
+                new com.merlinkitsune.astral_dice.network.ActionBarPayload(msg,
+                        GameplayConstants.ACTIONBAR_DURATION_TICKS));
+    }
+
     // 服务端发送立牌技能反馈(actionbar 提示,带立牌名称前缀;统一由服务端判定成功/拒绝,避免客户端推测混淆)
     private static void notifyActionBar(Player player, String langKey, net.minecraft.network.chat.Component signName, ChatFormatting color) {
         if (!(player instanceof net.minecraft.server.level.ServerPlayer serverPlayer)) return;

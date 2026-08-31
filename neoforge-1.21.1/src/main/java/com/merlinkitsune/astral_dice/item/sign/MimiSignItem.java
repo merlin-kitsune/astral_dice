@@ -13,6 +13,8 @@ import top.theillusivec4.curios.api.SlotContext;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.bus.api.SubscribeEvent;
 
 /**
  * 看板立牌(mimi)。
@@ -26,6 +28,7 @@ import java.util.concurrent.ThreadLocalRandom;
  * <p>主动:将物品栏中所有卡牌回收(包括专属牌),并返还 N+1 张随机卡牌;
  * 返还的随机卡牌不会包含专属牌。
  */
+@EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public class MimiSignItem extends BaseSignItem {
     /** 被动累计星币阈值 */
     public static final int STAR_COIN_THRESHOLD = 25;
@@ -50,10 +53,33 @@ public class MimiSignItem extends BaseSignItem {
         }
         // 回收物品栏中所有卡牌(含专属牌),返还 N+1 张随机卡牌(不含专属)
         int recycled = recycleAllCards(player);
+        int coinsBefore = countStarCoins(player);
         for (int i = 0; i < recycled + 1; i++) {
             RandomCardHandler.giveCardTo(player, RandomCardHandler.CardCategory.ALL);
         }
+        // 主动技能 ActionBar:新卡牌数(回收数+1)与被动触发的星币数
+        sendSignActionBar(player, "msg.astral_dice.mimi_active",
+                recycled + 1, countStarCoins(player) - coinsBefore);
         return InteractionResultHolder.success(stack);
+    }
+
+    // 统计物品栏中的星币数量
+    private static int countStarCoins(Player player) {
+        int count = 0;
+        for (ItemStack s : player.getInventory().items) {
+            if (s.is(ModItems.STAR_COIN.get())) {
+                count += s.getCount();
+            }
+        }
+        return count;
+    }
+
+    // 主动技能 ActionBar 注册:自带提示已在 handleUse 内发送,仅阻止默认提示
+    @SubscribeEvent
+    public static void onSignActiveTriggered(com.merlinkitsune.astral_dice.event.SignActiveTriggeredEvent event) {
+        if (event.getSignStack().is(ModItems.MIMI_SIGN.get())) {
+            event.setHandled();
+        }
     }
 
     // 玩家是否佩戴看板立牌

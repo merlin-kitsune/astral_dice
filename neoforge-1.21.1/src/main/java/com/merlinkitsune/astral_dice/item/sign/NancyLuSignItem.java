@@ -147,6 +147,15 @@ public class NancyLuSignItem extends BaseSignItem {
                 ACTIVE_DURATION_TICKS, 0, false, true, true));
     }
 
+    // 主动技能 ActionBar:完全隐身提示(注册到主动技能响应事件)
+    @SubscribeEvent
+    public static void onSignActiveTriggered(com.merlinkitsune.astral_dice.event.SignActiveTriggeredEvent event) {
+        if (event.getSignStack().is(ModItems.NANCY_LU_SIGN.get())) {
+            sendSignActionBar(event.getPlayer(), "msg.astral_dice.nancy_lu_active", HIDDEN_DURATION_TICKS / 20);
+            event.setHandled();
+        }
+    }
+
     // === 被动 ===
 
     public static boolean isEquipped(Player player) {

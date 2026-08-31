@@ -11,7 +11,7 @@ This changelog is fully split by language: the Chinese version comes first, foll
 
 ### 新内容
 
-- 立牌主动技能 ActionBar 提示重构:新建独立响应事件 `SignActiveTriggeredEvent`,占星师/秘密侦探/大侦探等自带反馈的立牌在立牌类中注册自身提示;未注册的立牌(大当家/扫地机/忍者/史莱姆/看板/护法/骇客/上班族/吸血鬼/经商/调查员)触发主动时显示默认提示「<立牌名>：主动技能已启动！」(仅 1.21.1)。 / Sign-active ActionBar feedback refactored: a dedicated response event `SignActiveTriggeredEvent` was added; signs with their own feedback (Haiqing, Bonnie, Fanny) register their prompts in their sign classes; unregistered signs (Fen, Jasmine, Komachi, Lulu, Mimi, Misaki, Nancy Lu, Padman, Papara, Parunan, Rin) show the default "<Sign>: Active skill started!" (1.21.1 only).
+- 立牌主动技能 ActionBar 提示重构:新建独立响应事件 `SignActiveTriggeredEvent`,各立牌在立牌类中注册自身提示——忍者(出牌数+1 及剩余出牌数)、看板(新卡牌数与星币数)、骇客(完全隐身时长)已注册专属提示;占星师/秘密侦探提示文本更新为「主动技能已激活,攻击敌对目标向其施加…」;未注册的立牌(大当家/扫地机/史莱姆/护法/上班族/吸血鬼/经商/调查员)显示默认提示「<立牌名>：主动技能已启动！」(仅 1.21.1)。 / Sign-active ActionBar feedback refactored: a dedicated response event `SignActiveTriggeredEvent` was added, and signs register their own prompts in their sign classes — Komachi (play count +1 and remaining), Mimi (new cards and Star Coins) and Nancy Lu (invisibility duration) now have custom texts; Haiqing/Bonnie prompt texts were updated; unregistered signs (Fen, Jasmine, Lulu, Misaki, Padman, Papara, Parunan, Rin) show the default "<Sign>: Active skill started!" (1.21.1 only).
 
 ### 已修复BUG
 
