@@ -11,8 +11,11 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.OwnableEntity;
 import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.projectile.ProjectileUtil;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -50,6 +53,9 @@ public final class TargetSelectionClient {
     private static String actionId = "";
     private static LivingEntity currentTarget;
     private static long noTargetFlashUntil;
+    // 激活后的 tick 计数:选择激活前 0.5 秒(10 tick)内忽略 Enter 键盘确认,
+    // 避免聊天命令发送的 Enter 残留 KeyMapping.click 在选择刚激活瞬间误确认(真实 UX 修复)
+    private static int activeTicks;
 
     private TargetSelectionClient() {
     }
@@ -59,6 +65,11 @@ public final class TargetSelectionClient {
     public static boolean isActive() {
         Minecraft mc = Minecraft.getInstance();
         return active && mc.player != null && mc.level != null;
+    }
+
+    /** 键盘确认(Enter)是否已就绪:选择激活 10 tick(0.5s)后才接受,防残留点击误确认 */
+    public static boolean isConfirmReady() {
+        return activeTicks >= 10;
     }
 
     public static LivingEntity currentTarget() {
@@ -92,8 +103,10 @@ public final class TargetSelectionClient {
     }
 
     /**
-     * 键盘白名单（由 {@code KeyboardHandlerMixin} 调用）：移动键 + 确认键 + 主动技能键放行，
-     * 其余键盘按键在选择期间全部拦截（含 F3/E/T/H 与第三方模组按键）。
+     * 键盘白名单（由 {@code KeyboardHandlerMixin} 调用）：移动键 + 确认键 + 主动技能键 + 命令聊天键(/)放行，
+     * 其余键盘按键在选择期间全部拦截（含 F3/E/T(普通聊天)/H 与第三方模组按键）。
+     * 放行 keyCommand(/)是刻意的:选择期间允许玩家打开命令聊天(输指令/自动化测试注入命令),
+     * 普通聊天(T)与物品栏(E)等仍被拦截。
      */
     public static boolean isAllowedInputKey(int key, int scanCode) {
         Minecraft mc = Minecraft.getInstance();
@@ -105,6 +118,7 @@ public final class TargetSelectionClient {
                 || mc.options.keyJump.matches(key, scanCode)
                 || mc.options.keyShift.matches(key, scanCode)
                 || mc.options.keySprint.matches(key, scanCode)
+                || mc.options.keyCommand.matches(key, scanCode)
                 || KeyBindingSetup.CONFIRM_TARGET_KEY.matches(key, scanCode)
                 || KeyBindingSetup.ACTIVATE_SIGN_KEY.matches(key, scanCode);
     }
@@ -123,6 +137,7 @@ public final class TargetSelectionClient {
         active = true;
         currentTarget = null;
         noTargetFlashUntil = 0;
+        activeTicks = 0;
         // 清除遗留的左键按下状态：选择期间攻击键被接管，避免进入前长按导致持续攻击
         mc.options.keyAttack.setDown(false);
         LOGGER.debug("[Astral Dice][TargetSelectionClient] start token={} type={} radius={} expire={} action={}",
@@ -138,6 +153,7 @@ public final class TargetSelectionClient {
             cancel("expired");
             return;
         }
+        activeTicks++;
         updateRaycastTarget(mc);
     }
 
@@ -184,9 +200,23 @@ public final class TargetSelectionClient {
             currentTarget = null;
             return;
         }
-        HitResult hit = player.pick(radius, 1.0F, false);
+        // 实体射线:注意 1.21.1 的 Entity.pick() 只做方块射线(永不返回 EntityHitResult),
+        // 须参照 GameRenderer.pick 的标准做法:方块射线截断 + ProjectileUtil.getEntityHitResult 找最近实体。
+        double maxDist = radius;
+        Vec3 eye = player.getEyePosition(1.0F);
+        Vec3 look = player.getViewVector(1.0F);
+        HitResult blockHit = player.pick(maxDist, 1.0F, false); // 方块射线(Entity.pick 内部为 OUTLINE clip)
+        double blockDistSq = blockHit.getLocation().distanceToSqr(eye);
+        // 有方块命中时,实体搜索终点截断到方块处(准星被方块挡住时不应隔墙选中目标)
+        double entityLimitSq = blockHit.getType() != HitResult.Type.MISS ? blockDistSq : maxDist * maxDist;
+        double entityLimit = Math.sqrt(entityLimitSq);
+        Vec3 entityEnd = eye.add(look.x * entityLimit, look.y * entityLimit, look.z * entityLimit);
+        AABB searchBox = player.getBoundingBox().expandTowards(look.scale(entityLimit)).inflate(1.0, 1.0, 1.0);
+        EntityHitResult entityHit = ProjectileUtil.getEntityHitResult(player, eye, entityEnd, searchBox,
+                e -> !e.isSpectator() && e.isPickable(), entityLimitSq);
+
         LivingEntity newTarget = null;
-        if (hit instanceof EntityHitResult entityHit
+        if (entityHit != null
                 && entityHit.getEntity() instanceof LivingEntity living
                 && living != player
                 && living.isAlive()
@@ -208,6 +238,19 @@ public final class TargetSelectionClient {
 
     // === 输入事件（游戏总线，仅客户端） ===
 
+    /** 键盘确认键(默认 Enter)物理按下时确认。
+     *  用 InputEvent.Key 而非 KeyMapping.click 队列:聊天框打开时按 Enter 发送命令会被
+     *  ChatScreen 消费(键盘事件提前 return,不触发本事件),故聊天注入命令不会误确认目标;
+     *  仅游戏画面下物理按下 Enter 才确认(且须确认就绪,防触发瞬间残留)。 */
+    @SubscribeEvent
+    public static void onKey(InputEvent.Key event) {
+        if (!isActive() || event.getAction() != GLFW.GLFW_PRESS) return;
+        if (!isConfirmReady()) return;
+        if (KeyBindingSetup.CONFIRM_TARGET_KEY.matches(event.getKey(), event.getScanCode())) {
+            confirm();
+        }
+    }
+
     /** 选择期间接管鼠标：右键=确认，其余按钮（左键攻击/中键）全部拦截 */
     @SubscribeEvent
     public static void onMouseButton(InputEvent.MouseButton.Pre event) {
@@ -226,10 +269,12 @@ public final class TargetSelectionClient {
         }
     }
 
-    /** 防御：任何第三方界面被打开时取消选择（正常情况下键盘/鼠标已被拦截，不会走到这里） */
+    /** 防御：任何第三方界面被打开时取消选择（聊天框 ChatScreen 除外——命令聊天是白名单放行的，
+     *  选择期间允许输指令/测试注入，不应取消选择；正常情况下其他键盘/鼠标已被拦截不会走到这里） */
     @SubscribeEvent
     public static void onScreenOpening(ScreenEvent.Opening event) {
-        if (isActive() && event.getScreen() != null) {
+        if (isActive() && event.getScreen() != null
+                && !(event.getScreen() instanceof net.minecraft.client.gui.screens.ChatScreen)) {
             cancel("screen");
         }
     }
