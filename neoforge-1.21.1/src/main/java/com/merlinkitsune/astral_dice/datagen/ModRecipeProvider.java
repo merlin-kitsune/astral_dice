@@ -917,20 +917,17 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
                 .save(output);
 
-        // 肾上腺素-高效:同配方,星盘换黄金星盘(遵循通用紫-金配方,传奇)
+        // 肾上腺素-高效:紫→金升级配方 RZR/ZOZ/PPP
+        // (R=红石粉,Z=钻石,O=史诗品质筹码(本例肾上腺素-一般),P=黄金星盘;遵循通用紫-金配方)
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.ADRENALINE_HIGH.get())
-                .pattern("ZXZ")
-                .pattern("DCD")
+                .pattern("RZR")
+                .pattern("ZOZ")
                 .pattern("PPP")
-                .define('Z', net.neoforged.neoforge.common.crafting.DataComponentIngredient.of(
-                        true, net.minecraft.core.component.DataComponents.POTION_CONTENTS,
-                        new net.minecraft.world.item.alchemy.PotionContents(net.minecraft.world.item.alchemy.Potions.REGENERATION),
-                        Items.POTION))
-                .define('X', Items.NETHER_STAR)
-                .define('D', Items.WITHER_ROSE)
-                .define('C', ModItems.BLANK_CHIP.get())
+                .define('R', Items.REDSTONE)
+                .define('Z', Items.DIAMOND)
+                .define('O', ModItems.ADRENALINE_LOW.get())
                 .define('P', ModItems.GOLDEN_STAR_PLATE.get())
-                .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
+                .unlockedBy("has_adrenaline_low", has(ModItems.ADRENALINE_LOW.get()))
                 .save(output);
 
         // === 新效果牌(治疗/互动;shape:星币居中,mod 物品在中轴) ===
