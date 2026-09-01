@@ -30,6 +30,23 @@ public enum TargetType {
         public boolean matches(Player selector, LivingEntity target) {
             return target != selector;
         }
+    },
+    /**
+     * 敌对生物 或 非队友玩家（立牌主动技能专用，如占星师虚弱印记/秘密侦探隐匿调查）：
+     * - 敌对生物（vanilla {@link Enemy}）→ 可选中（客户端显示红色高亮）；
+     * - 玩家且不属于选择者队伍 → 可选中（黄色高亮）；选择者无队伍时对所有其他玩家生效；
+     * - 队友玩家 / 被动生物 / 自己 → 不可选中。
+     */
+    ENEMY_OR_RIVAL {
+        @Override
+        public boolean matches(Player selector, LivingEntity target) {
+            if (target instanceof Enemy) return true;
+            if (target instanceof Player other && other != selector) {
+                // 选择者无队伍 → 所有玩家可选;有队伍 → 仅非队友玩家可选
+                return selector.getTeam() == null || selector.getTeam() != other.getTeam();
+            }
+            return false;
+        }
     };
 
     public abstract boolean matches(Player selector, LivingEntity target);

@@ -66,6 +66,18 @@ public final class TargetSelectionManager {
     private TargetSelectionManager() {
     }
 
+    /** 玩家当前是否处于目标选择会话中（供立牌触发守卫 / 测试断言使用） */
+    public static boolean isSelecting(Player player) {
+        return player != null && SESSIONS.containsKey(player.getUUID());
+    }
+
+    /** 测试辅助:直接清除玩家选择会话（仅 SignSkillTests 等测试使用） */
+    public static void cancelSessionForTests(Player player) {
+        if (player != null) {
+            SESSIONS.remove(player.getUUID());
+        }
+    }
+
     /**
      * 触发目标选择模式（服务端）。
      *

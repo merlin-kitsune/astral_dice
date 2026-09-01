@@ -11,12 +11,10 @@ import com.merlinkitsune.astral_dice.network.DamageNumberPayload;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.item.sign.ParunanSignItem;
 import com.merlinkitsune.astral_dice.item.sign.BaseSignItem;
-import com.merlinkitsune.astral_dice.item.sign.BonnieSignItem;
 import com.merlinkitsune.astral_dice.item.BossEntityUtil;
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
 import com.merlinkitsune.astral_dice.item.dice.DiceCurioItem;
 import com.merlinkitsune.astral_dice.item.card.ExclusiveCardUtil;
-import com.merlinkitsune.astral_dice.item.sign.HaiqingSignItem;
 import com.merlinkitsune.astral_dice.item.HealingManager;
 import com.merlinkitsune.astral_dice.item.InvestigationEventUtil;
 import com.merlinkitsune.astral_dice.item.MarkManager;
@@ -200,42 +198,8 @@ public class DiceCombatEvents {
             }
         }
 
-        // 占星师立牌主动:对本次攻击的第一个目标施加"虚弱印记"5:00(须符合骰神赐福触发条件)+ 虚弱效果。
-        // 印记持续生效至目标被击杀或计时结束;记录释放者,击杀后仅释放者获得奖励。
-        if (!player.level().isClientSide() && attackerCurios.isPresent() && isBlessingTarget(target, player)) {
-            var haiqingResult = attackerCurios.get().findFirstCurio(s -> s.is(ModItems.HAIQING_SIGN.get()));
-            if (haiqingResult.isPresent() && ModAttachments.getSignReadyType(player) == HaiqingSignItem.READY_TYPE) {
-                ModAttachments.setSignReadyType(player, 0);
-                ModAttachments.setSignReadyExpire(player, 0);
-                ModAttachments.setWeakMarkSource(target, Optional.of(player.getUUID()));
-                target.addEffect(new MobEffectInstance(ModEffects.WEAK_MARK, 6000, 0, false, true));
-                EffectTimerGuard.apply(target, new MobEffectInstance(MobEffects.WEAKNESS, 6000, 0, false, true));
-                // 主动成功施加:移除"待命"提示效果并开始玩家级冷却
-                ModEffectRemoval.remove(player, ModEffects.HAIQING_READY);
-                ModAttachments.setSignActiveCooldownEnd(player,
-                        player.level().getGameTime() + GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS);
-            }
-            // 秘密侦探立牌主动:对本次攻击的第一个目标施加"隐匿调查"(永久,直到目标死亡/消失);若目标带"标记",按标记层数*2 获得星币
-            var bonnieResult = attackerCurios.get().findFirstCurio(s -> s.is(ModItems.BONNIE_SIGN.get()));
-            if (bonnieResult.isPresent() && ModAttachments.getSignReadyType(player) == BonnieSignItem.READY_TYPE) {
-                ModAttachments.setSignReadyType(player, 0);
-                ModAttachments.setSignReadyExpire(player, 0);
-                ModAttachments.setUndercoverSource(target, Optional.of(player.getUUID()));
-                target.addEffect(new MobEffectInstance(ModEffects.UNDERCOVER_INVESTIGATION,
-                        Integer.MAX_VALUE, 0, false, true));
-                int markLevel = MarkManager.getLevel(target);
-                if (markLevel > 0) {
-                    ItemStack coinStack = new ItemStack(ModItems.STAR_COIN.get(), markLevel * 2);
-                    if (!player.getInventory().add(coinStack)) {
-                        player.drop(coinStack, false);
-                    }
-                }
-                // 主动成功施加:移除"待命"提示效果并开始玩家级冷却
-                ModEffectRemoval.remove(player, ModEffects.BONNIE_READY);
-                ModAttachments.setSignActiveCooldownEnd(player,
-                        player.level().getGameTime() + GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS);
-            }
-        }
+        // 占星师/秘密侦探立牌主动已迁移至目标选择器(TargetSelectionManager + HaiqingSignItem/BonnieSignItem 的
+        // TargetSelectionAction.apply),不再于攻击时自动释放,此处无攻击释放逻辑。
 
         // 本次攻击是否触发了骰神赐福(与赐福触发逻辑一致:仅在未拥有赐福时触发;同一挥击命中多目标也仅触发一次)
         boolean triggeredBlessing = false;

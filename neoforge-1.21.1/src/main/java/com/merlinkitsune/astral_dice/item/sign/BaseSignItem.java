@@ -71,10 +71,10 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
         performSkill(player, stack);
     }
 
-    // 服务端统一执行立牌主动技能(立牌栏触发与手持立牌右键共用,保证冷却/等待/扇子筹码逻辑一致):
+    // 服务端统一执行立牌主动技能(立牌栏触发与手持立牌右键共用,保证冷却/目标选择/扇子筹码逻辑一致):
     // 1. 玩家级冷却(不受立牌装卸影响):冷却中按键无效;
-    // 2. 等待状态(占星师/秘密侦探等需指定目标的技能):等待完成或超时前按键保持无效;
-    // 3. 触发成功:非等待类技能立即开始玩家级冷却;等待类技能待其完成指定目标/超时后再计算。
+    // 2. 目标选择会话检查(占星师/秘密侦探等需选择目标的技能):选择进行中按键无效;
+    // 3. 触发成功:非选择器类技能立即开始玩家级冷却;选择器类技能待确认目标后再开始冷却(取消/超时不冷却)。
     private static void performSkill(Player player, ItemStack stack) {
         if (!(stack.getItem() instanceof BaseSignItem sign)) return;
         long now = player.level().getGameTime();
@@ -85,8 +85,8 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
             notifyActionBar(player, "hud.astral_dice.sign_active_cooldown", signName, ChatFormatting.RED);
             return;
         }
-        // 2. 等待状态检查:存在等待目标释放的主动技能时按键无效
-        if (isSkillWaiting(player)) return;
+        // 2. 目标选择会话检查:已处于目标选择模式时按键无效(防重复进入;客户端按 J 会先取消,此处为服务端兜底)
+        if (com.merlinkitsune.astral_dice.target.TargetSelectionManager.isSelecting(player)) return;
         // 3. 触发主动技能
         InteractionResultHolder<ItemStack> result = sign.handleUse(player.level(), player, stack);
         if (result.getResult() != InteractionResult.SUCCESS) return;
@@ -101,8 +101,8 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
         if (!triggered.isHandled()) {
             notifyActionBar(player, "msg.astral_dice.sign_active_triggered", signName, ChatFormatting.YELLOW);
         }
-        // 6. 冷却:等待类技能(激活了玩家级等待状态)待完成指定目标/超时后再开始冷却;其余立牌立即开始玩家级冷却
-        if (ModAttachments.getSignReadyExpire(player) <= 0) {
+        // 6. 冷却:目标选择器类技能(已进入选择会话)待确认目标后在 apply 中开始冷却;其余立牌立即开始玩家级冷却
+        if (!com.merlinkitsune.astral_dice.target.TargetSelectionManager.isSelecting(player)) {
             ModAttachments.setSignActiveCooldownEnd(player,
                     now + GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS);
         }
@@ -126,13 +126,6 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
         net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(serverPlayer,
                 new com.merlinkitsune.astral_dice.network.ActionBarPayload(msg,
                         GameplayConstants.ACTIONBAR_DURATION_TICKS));
-    }
-
-    // 是否存在等待目标释放的主动技能(占星师/秘密侦探等,等待期间按键无效)
-    private static boolean isSkillWaiting(Player player) {
-        long expire = ModAttachments.getSignReadyExpire(player);
-        return ModAttachments.getSignReadyType(player) > 0 && expire > 0
-                && player.level().getGameTime() < expire;
     }
 
     @Override

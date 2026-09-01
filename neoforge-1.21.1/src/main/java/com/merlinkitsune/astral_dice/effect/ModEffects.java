@@ -56,14 +56,6 @@ public class ModEffects {
     public static final DeferredHolder<MobEffect, MobEffect> INVESTIGATION_BONUS =
             EFFECTS.register("investigation_bonus", InvestigationBonusEffect::new);
 
-    // 占星师立牌主动待命:主动已激活,攻击目标后施加"虚弱印记"
-    public static final DeferredHolder<MobEffect, MobEffect> HAIQING_READY =
-            EFFECTS.register("haiqing_ready", () -> new ReadyEffect(0x4B0082));
-
-    // 秘密侦探立牌主动待命:主动已激活,攻击目标后施加"隐匿调查"
-    public static final DeferredHolder<MobEffect, MobEffect> BONNIE_READY =
-            EFFECTS.register("bonnie_ready", () -> new ReadyEffect(0x8B4513));
-
     // 治愈:显示当前治愈点数(等级=层数,时长=距下次结算);由史莱姆立牌等维护
     public static final DeferredHolder<MobEffect, MobEffect> HEALING =
             EFFECTS.register("healing", HealingEffect::new);

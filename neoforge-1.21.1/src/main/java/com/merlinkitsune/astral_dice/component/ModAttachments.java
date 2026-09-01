@@ -352,32 +352,41 @@ public class ModAttachments {
         player.setData(SIGN_ACTIVE_COOLDOWN_END.get(), value);
     }
 
-    // 立牌主动技能"等待目标释放"状态类型:1=占星师(虚弱印记) 2=秘密侦探(隐匿调查);0=无等待
+    // @Deprecated 已废弃:立牌主动技能"等待目标释放"机制已被目标选择器(TargetSelectionManager 会话)替代,
+    // 占星师/秘密侦探不再读写本附件。定义保留(已 serialize 持久化)以避免旧存档附件数据异常,禁止新代码使用。
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> SIGN_READY_TYPE =
             ATTACHMENTS.register("sign_ready_type", () -> AttachmentType.builder(() -> 0)
                     .serialize(Codec.INT)
                     .sync(ByteBufCodecs.INT)
                     .build());
 
-    // 立牌主动技能等待到期时刻(0 表示无等待)
+    // @Deprecated 已废弃:见 SIGN_READY_TYPE
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> SIGN_READY_EXPIRE =
             ATTACHMENTS.register("sign_ready_expire", () -> AttachmentType.builder(() -> 0L)
                     .serialize(Codec.LONG)
                     .sync(ByteBufCodecs.VAR_LONG)
                     .build());
 
+    /** @deprecated 已废弃,由目标选择器会话替代;禁止新代码使用 */
+    @Deprecated
     public static int getSignReadyType(net.minecraft.world.entity.player.Player player) {
         return player.getData(SIGN_READY_TYPE.get());
     }
 
+    /** @deprecated 已废弃,由目标选择器会话替代;禁止新代码使用 */
+    @Deprecated
     public static void setSignReadyType(net.minecraft.world.entity.player.Player player, int value) {
         player.setData(SIGN_READY_TYPE.get(), value);
     }
 
+    /** @deprecated 已废弃,由目标选择器会话替代;禁止新代码使用 */
+    @Deprecated
     public static long getSignReadyExpire(net.minecraft.world.entity.player.Player player) {
         return player.getData(SIGN_READY_EXPIRE.get());
     }
 
+    /** @deprecated 已废弃,由目标选择器会话替代;禁止新代码使用 */
+    @Deprecated
     public static void setSignReadyExpire(net.minecraft.world.entity.player.Player player, long value) {
         player.setData(SIGN_READY_EXPIRE.get(), value);
     }

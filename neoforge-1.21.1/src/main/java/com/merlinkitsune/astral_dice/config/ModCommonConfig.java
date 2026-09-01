@@ -74,7 +74,7 @@ public final class ModCommonConfig {
                 builder.push("signs").comment("=== 立牌 ===");
                 SIGN_ACTIVE_COOLDOWN_SECONDS = builder.comment("立牌主动技能冷却(单位：秒,默认：180)")
                                 .defineInRange("sign_active_cooldown_seconds", 180, 1, 360);
-                SKILL_WAIT_SECONDS = builder.comment("立牌主动技能等待期，需要选择目标的技能(占星师/秘密侦探)激活后,等待期内未对目标释放则自动取消(单位：秒,默认：30)")
+                SKILL_WAIT_SECONDS = builder.comment("立牌主动技能目标选择窗口期:目标选择器类技能(占星师/秘密侦探)进入选择模式后,选择会话的有效时长;未在窗口期内确认则自动取消(单位：秒,默认：30)")
                                 .defineInRange("skill_wait_seconds", 30, 5, 120);
                 JASMINE_MAX_BONUS = builder.comment("扫地机立牌被动:生命值上限/护甲增益各自的最大上限")
                                 .defineInRange("jasmine_max_bonus", 20, 1, 64);
