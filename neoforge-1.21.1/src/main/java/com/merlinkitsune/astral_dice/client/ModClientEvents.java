@@ -28,6 +28,9 @@ public class ModClientEvents {
         event.registerAbove(VanillaGuiLayers.CROSSHAIR,
                 ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID, "damage_number"),
                 DamageNumberOverlay.INSTANCE);
+        event.registerAbove(VanillaGuiLayers.CROSSHAIR,
+                ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID, "target_select"),
+                TargetSelectOverlay.INSTANCE);
         event.registerAbove(VanillaGuiLayers.AIR_LEVEL,
                 ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID, "action_bar"),
                 ActionBarOverlay.INSTANCE);
@@ -46,6 +49,7 @@ public class ModClientEvents {
     public static void registerKeyMappings(RegisterKeyMappingsEvent event) {
         event.register(KeyBindingSetup.ACTIVATE_SIGN_KEY);
         event.register(KeyBindingSetup.OPEN_CARD_INVENTORY_KEY);
+        event.register(KeyBindingSetup.CONFIRM_TARGET_KEY);
     }
 
     public static class DamageNumberOverlay implements LayeredDraw.Layer {

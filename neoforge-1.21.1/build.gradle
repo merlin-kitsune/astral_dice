@@ -167,6 +167,12 @@ dependencies {
     implementation 'maven.modrinth:curios:yohfFbgD'
 }
 
+// 目标选择器:键盘输入锁定 Mixin(KeyboardHandlerMixin)。NeoForge 运行时自带 Mixin,
+// 编译期仅需注解类;NeoForge 编译/运行同为 Mojmap,无需 refmap。
+dependencies {
+    compileOnly 'org.spongepowered:mixin:0.8.5'
+}
+
 // This block of code expands all declared replace properties in the specified resource targets.
 // A missing property will result in an error. Properties are expanded using ${} Groovy notation.
 var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {

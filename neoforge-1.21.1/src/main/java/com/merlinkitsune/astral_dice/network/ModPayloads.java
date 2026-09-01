@@ -3,6 +3,7 @@ package com.merlinkitsune.astral_dice.network;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.client.ActionBarManager;
 import com.merlinkitsune.astral_dice.client.ClientDamageNumbers;
+import com.merlinkitsune.astral_dice.client.TargetSelectionClient;
 import net.minecraft.network.chat.Component;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -35,6 +36,23 @@ public class ModPayloads {
                 OpenCardInventoryPayload.TYPE,
                 OpenCardInventoryPayload.STREAM_CODEC,
                 OpenCardInventoryPayload::handle
+        );
+        registrar.playToClient(
+                TargetSelectStartPayload.TYPE,
+                TargetSelectStartPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() ->
+                        TargetSelectionClient.start(payload.token(), payload.targetType(),
+                                payload.radius(), payload.durationTicks(), payload.actionId()))
+        );
+        registrar.playToServer(
+                TargetSelectConfirmPayload.TYPE,
+                TargetSelectConfirmPayload.STREAM_CODEC,
+                TargetSelectConfirmPayload::handle
+        );
+        registrar.playToServer(
+                TargetSelectCancelPayload.TYPE,
+                TargetSelectCancelPayload.STREAM_CODEC,
+                TargetSelectCancelPayload::handle
         );
     }
 }

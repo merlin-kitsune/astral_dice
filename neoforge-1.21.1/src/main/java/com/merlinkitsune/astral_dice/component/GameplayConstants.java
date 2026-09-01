@@ -64,6 +64,8 @@ public final class GameplayConstants {
     public static int DICE_BLESSING_DURATION_SECONDS = 60;
     // 诅咒之剑:骰神赐福期间每击杀 1 个 20 血以上敌对目标攻击力 +1(每个赐福最多一次),最大增加上限(默认 16,最大 32)
     public static int CURSED_SWORD_BONUS_MAX = 16;
+    // 目标选择器:可指定目标的最大距离(格,默认 16,配置上限 32,服务端确认校验以配置值为准)
+    public static int TARGET_SELECT_RADIUS = 16;
     // 骰神赐福持续时长(单位:tick,派生值)
     public static int DICE_BLESSING_DURATION_TICKS = DICE_BLESSING_DURATION_SECONDS * 20;
 
@@ -119,5 +121,6 @@ public final class GameplayConstants {
         DICE_BLESSING_DURATION_SECONDS = ModCommonConfig.DICE_BLESSING_DURATION_SECONDS.get();
         DICE_BLESSING_DURATION_TICKS = DICE_BLESSING_DURATION_SECONDS * 20;
         CURSED_SWORD_BONUS_MAX = ModCommonConfig.CURSED_SWORD_BONUS_MAX.get();
+        TARGET_SELECT_RADIUS = ModCommonConfig.TARGET_SELECT_RADIUS.get();
     }
 }

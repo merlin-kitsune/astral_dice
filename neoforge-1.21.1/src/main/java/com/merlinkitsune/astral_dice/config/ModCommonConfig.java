@@ -8,7 +8,7 @@ import net.neoforged.neoforge.common.ModConfigSpec;
  */
 public final class ModCommonConfig {
         // 当前配置版本:新增配置选项时必须 +1
-        public static final int CONFIG_VERSION = 12;
+        public static final int CONFIG_VERSION = 13;
 
         public static final ModConfigSpec SPEC;
 
@@ -36,6 +36,7 @@ public final class ModCommonConfig {
         public static final ModConfigSpec.IntValue ACTIONBAR_FADE_TICKS;
         public static final ModConfigSpec.IntValue DICE_BLESSING_DURATION_SECONDS;
         public static final ModConfigSpec.IntValue CURSED_SWORD_BONUS_MAX;
+        public static final ModConfigSpec.IntValue TARGET_SELECT_RADIUS;
 
         static {
                 ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
@@ -104,6 +105,11 @@ public final class ModCommonConfig {
                 builder.push("cursed_sword").comment("=== 诅咒之剑 ===");
                 CURSED_SWORD_BONUS_MAX = builder.comment("诅咒之剑:骰神赐福期间每击杀1个20血以上敌对目标攻击力+1(每个赐福最多一次),最大增加上限(默认：16,最大：32)")
                                 .defineInRange("cursed_sword_bonus_max", 16, 0, 32);
+                builder.pop();
+
+                builder.push("target_select").comment("=== 目标选择器 ===");
+                TARGET_SELECT_RADIUS = builder.comment("目标选择器:可指定目标的最大距离(单位：格,默认：16,上限：32)")
+                                .defineInRange("target_select_radius", 16, 1, 32);
                 builder.pop();
 
                 SPEC = builder.build();

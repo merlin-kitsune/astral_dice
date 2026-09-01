@@ -16,5 +16,10 @@ public class ClientTickHandler {
     @SubscribeEvent
     public static void onClientTick(ClientTickEvent.Post event) {
         ClientDamageNumbers.tick();
+        TargetSelectionClient.tick();
+        // 键盘确认键(默认 Enter):选择激活时消费并确认
+        if (TargetSelectionClient.isActive() && KeyBindingSetup.CONFIRM_TARGET_KEY.consumeClick()) {
+            TargetSelectionClient.confirm();
+        }
     }
 }
