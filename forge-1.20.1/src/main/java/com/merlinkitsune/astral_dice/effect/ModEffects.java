@@ -3,9 +3,8 @@ package com.merlinkitsune.astral_dice.effect;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.effect.MobEffect;
-import net.minecraft.world.effect.MobEffectCategory;
-import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.RegistryObject;
+import net.minecraftforge.registries.DeferredRegister;
 
 public class ModEffects {
     public static final DeferredRegister<MobEffect> EFFECTS =
@@ -30,8 +29,8 @@ public class ModEffects {
     public static final RegistryObject<MobEffect> MISAKI_BURST =
             EFFECTS.register("misaki_burst", MisakiBurstEffect::new);
 
-    public static final RegistryObject<MobEffect> LIVING_BOOK_PAGE =
-            EFFECTS.register("living_book_page", LivingBookPageEffect::new);
+    public static final RegistryObject<MobEffect> LIVING_PAGE =
+            EFFECTS.register("living_page", LivingPageEffect::new);
 
     // 清扫(扫地机立牌 jasmine 主动):迅捷+护甲惩罚,持续 1 分钟
     public static final RegistryObject<MobEffect> JASMINE_SWEEP =
@@ -105,15 +104,19 @@ public class ModEffects {
     public static final RegistryObject<MobEffect> FEN_FRENZY =
             EFFECTS.register("fen_frenzy", () -> new FenFrenzyEffect(0xFF4500));
 
-    // 青之诅咒:护甲值 -20%(向下取整),盔甲韧性归 0;暂未配置触发条件
+    // 青之诅咒:护甲值 -20%(向下取整),盔甲韧性 -100%(归 0);暂未配置触发条件
     public static final RegistryObject<MobEffect> BLUE_CURSE =
             EFFECTS.register("blue_curse", BlueCurseEffect::new);
 
-    // 骇客立牌主动"远程骇入":攻击力加成(数值由附件提供)
+    // 骇客立牌主动"远程侵入":攻击力加成(数值由附件提供)
     public static final RegistryObject<MobEffect> NANCY_LU_HACK =
             EFFECTS.register("nancy_lu_hack", NancyLuHackEffect::new);
 
     // 复仇之戟:负面/诅咒效果触发攻击/防御加成时显示的标记效果(图标=复仇之戟自身图标)
     public static final RegistryObject<MobEffect> REVENGE_HALBERD =
             EFFECTS.register("revenge_halberd", RevengeHalberdEffect::new);
+
+    // 反击(玩家效果/流派):层数 = amplifier+1;被近战敌方攻击时触发反击并消耗 1 层
+    public static final RegistryObject<MobEffect> COUNTERATTACK =
+            EFFECTS.register("counterattack", CounterattackEffect::new);
 }

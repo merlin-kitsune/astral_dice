@@ -1,13 +1,21 @@
 package com.merlinkitsune.astral_dice.item.chip;
+import com.merlinkitsune.astral_dice.item.CuriosCompat;
 
 import com.merlinkitsune.astral_dice.item.HealingManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
-import net.minecraft.world.entity.player.Player;
-import com.merlinkitsune.astral_dice.item.CuriosCompat;
 import top.theillusivec4.curios.api.CuriosApi;
 
 import java.util.HashMap;
 import java.util.Map;
+import com.merlinkitsune.astral_dice.AstralDiceMod;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.event.entity.living.MobEffectEvent;
+import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.entity.projectile.Projectile;
+import net.minecraft.world.entity.AreaEffectCloud;
+import net.minecraft.world.entity.player.Player;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
 
 /**
  * 友情徽章筹码:对友方玩家施加任意治疗效果时,使双方各获得 2 点治愈。
@@ -15,10 +23,11 @@ import java.util.Map;
  * <p>触发来源:
  * - 本模组内明确调用 {@link #onHealApplied} 的治疗方法;
  * - 原版/部分模组通过治疗类状态效果(瞬间治疗、生命恢复)施加时,由
- *   ModEventHandlers 的 MobEffectEvent.Added 监听分发。
+ *   本类自身的 MobEffectEvent.Added 监听分发。
  *
  * <p>去重:同一治疗者对同一目标短时间内(1 秒)只触发一次,避免混合/持续治疗重复触发。
  */
+@Mod.EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public class FriendshipBadgeChipItem extends BaseChipItem {
     /** 双方各获得的治愈点数 */
     public static final int HEALING_POINTS = 2;
@@ -62,4 +71,34 @@ public class FriendshipBadgeChipItem extends BaseChipItem {
     private static boolean isFriendly(Player healer, Player target) {
         return healer.getTeam() == null || target.getTeam() == null || healer.getTeam() == target.getTeam();
     }
+
+    // 友情徽章:友方玩家获得治疗类效果(瞬间治疗/生命恢复)时,若来源为佩戴徽章的玩家,双方各获得 2 点治愈
+    @SubscribeEvent
+    public static void onFriendlyHealingEffectAdded(MobEffectEvent.Added event) {
+        if (event.getEntity().level().isClientSide()) return;
+        if (!(event.getEntity() instanceof Player target)) return;
+        MobEffectInstance effect = event.getEffectInstance();
+        if (effect == null) return;
+        if (effect.getEffect() != MobEffects.HEAL
+                && effect.getEffect() != MobEffects.REGENERATION) return;
+        Player healer = resolvePlayerSource(event.getEffectSource());
+        if (healer == null || healer == target) return;
+        FriendshipBadgeChipItem.onHealApplied(healer, target);
+    }
+
+
+    // 从治疗效果来源实体解析出施治玩家(直接玩家或弹射物所有者)
+    private static Player resolvePlayerSource(net.minecraft.world.entity.Entity source) {
+        if (source instanceof Player player) return player;
+        if (source instanceof net.minecraft.world.entity.projectile.Projectile projectile
+                && projectile.getOwner() instanceof Player player) {
+            return player;
+        }
+        if (source instanceof net.minecraft.world.entity.AreaEffectCloud cloud
+                && cloud.getOwner() instanceof Player player) {
+            return player;
+        }
+        return null;
+    }
+
 }

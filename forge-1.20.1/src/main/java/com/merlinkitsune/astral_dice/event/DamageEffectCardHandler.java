@@ -29,7 +29,7 @@ public class DamageEffectCardHandler {
         // 施法者必须为玩家
         if (!(source.getEntity() instanceof Player player)) return;
         // 目标判定与骰神赐福一致
-        if (!ModEventHandlers.isBlessingTarget(target, player)) return;
+        if (!com.merlinkitsune.astral_dice.combat.DiceCombatEvents.isBlessingTarget(target, player)) return;
         // 作用域判定(白名单 + 军火排除)
         Entity direct = source.getDirectEntity();
         if (!SpellDamageRegistry.isSpellDamage(source, direct)) return;

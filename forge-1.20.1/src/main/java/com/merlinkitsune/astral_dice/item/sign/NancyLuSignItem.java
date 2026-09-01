@@ -1,13 +1,14 @@
 package com.merlinkitsune.astral_dice.item.sign;
+import com.merlinkitsune.astral_dice.item.CuriosCompat;
 
 import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
+import com.merlinkitsune.astral_dice.event.ModEffectRemoval;
 
 import com.merlinkitsune.astral_dice.combat.CardRegistry;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.card.RandomCardHandler;
-import net.minecraft.core.BlockPos;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.LivingEntity;
@@ -16,18 +17,20 @@ import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.phys.AABB;
-import com.merlinkitsune.astral_dice.item.CuriosCompat;
 import top.theillusivec4.curios.api.CuriosApi;
 import top.theillusivec4.curios.api.SlotContext;
-import net.minecraftforge.common.capabilities.ForgeCapabilities;
-import net.minecraftforge.items.IItemHandler;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
-import com.merlinkitsune.astral_dice.event.ModEffectRemoval;
+import com.merlinkitsune.astral_dice.AstralDiceMod;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.event.entity.living.LivingDamageEvent;
+import net.minecraftforge.event.entity.player.AttackEntityEvent;
+import net.minecraftforge.event.entity.ProjectileImpactEvent;
+import net.minecraft.world.damagesource.DamageTypes;
+import net.minecraft.world.entity.projectile.ThrownEnderpearl;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
 
 /**
  * 骇客立牌(命名:nancy_lu)。
@@ -37,18 +40,18 @@ import com.merlinkitsune.astral_dice.event.ModEffectRemoval;
  * - 骰神赐福结束后,若周围 6 格内没有敌对生物:攻击力 +3 并获得一张随机战斗牌;
  *   否则防御力 +3。被动类型每次刷新覆盖旧类型,不能叠加。
  *
- * <p>主动"远程骇入":
+ * <p>主动"远程侵入":
  * - 立即进入完全隐身状态(最多持续 30 秒);
  * - 攻击敌对目标或玩家时解除隐身,并消耗一张随机战斗牌;
  * - 按该牌费用 ×2 提升攻击力,持续 2:00;若无战斗牌可用则不触发加成。
  */
+@Mod.EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public class NancyLuSignItem extends BaseSignItem {
     public static final int PASSIVE_NONE = 0;
     public static final int PASSIVE_ATTACK = 1;
     public static final int PASSIVE_DEFENSE = 2;
     public static final int PASSIVE_BONUS = 3;
     public static final double PASSIVE_RANGE = 6.0;
-    public static final double ACTIVE_RANGE = 32.0;
     public static final int ACTIVE_DURATION_TICKS = 2400;
     public static final int INVULNERABLE_TICKS = 60;
     public static final int HIDDEN_DURATION_TICKS = 600;
@@ -82,12 +85,16 @@ public class NancyLuSignItem extends BaseSignItem {
             ModAttachments.setNancyLuActiveBonusUntil(player, 0);
             ModEffectRemoval.remove(player, ModEffects.NANCY_LU_HACK.get());
         }
+        // 防御力折算为真实护甲(1 防御力 = 2 护甲值;被动类型为防御时护甲 +6)
+        com.merlinkitsune.astral_dice.combat.DiceCombatModifiers.setDefenseArmorBonus(
+                player, "nancy_lu_def_armor", getDefenseBonus(player));
     }
 
     @Override
     protected void clearSignData(Player player, ItemStack stack) {
         super.clearSignData(player, stack);
-        // 仅清除立牌自身授予的状态(附件标记仍有效时),不触碰其他来源的公共数值
+        // 仅清除立牌自身授予的状态(附件标记仍有效时),不触碰其他来源的公共数值:
+        // 无敌/隐身可能由其他模组或原版机制授予,卸载立牌不得一并清除
         if (ModAttachments.getNancyLuInvulnerableUntil(player) > 0) {
             player.setInvulnerable(false);
         }
@@ -101,6 +108,7 @@ public class NancyLuSignItem extends BaseSignItem {
         ModAttachments.setNancyLuHiddenUntil(player, 0);
         ModAttachments.setNancyLuEnderPearlImmuneUntil(player, 0);
         ModEffectRemoval.remove(player, ModEffects.NANCY_LU_HACK.get());
+        com.merlinkitsune.astral_dice.combat.DiceCombatModifiers.setDefenseArmorBonus(player, "nancy_lu_def_armor", 0);
     }
 
     @Override
@@ -140,6 +148,15 @@ public class NancyLuSignItem extends BaseSignItem {
         ModAttachments.setNancyLuActiveBonusUntil(player, now + ACTIVE_DURATION_TICKS);
         player.addEffect(new MobEffectInstance(ModEffects.NANCY_LU_HACK.get(),
                 ACTIVE_DURATION_TICKS, 0, false, true, true));
+    }
+
+    // 主动技能 ActionBar:完全隐身提示(注册到主动技能响应事件)
+    @SubscribeEvent
+    public static void onSignActiveTriggered(com.merlinkitsune.astral_dice.event.SignActiveTriggeredEvent event) {
+        if (event.getSignStack().is(ModItems.NANCY_LU_SIGN.get())) {
+            sendSignActionBar(event.getPlayer(), "msg.astral_dice.nancy_lu_active", HIDDEN_DURATION_TICKS / 20);
+            event.setHandled();
+        }
     }
 
     // === 被动 ===
@@ -201,92 +218,12 @@ public class NancyLuSignItem extends BaseSignItem {
         }
     }
 
-    private static LivingEntity findHighestHealthTarget(Player player) {
-        List<LivingEntity> candidates = new ArrayList<>();
-        for (LivingEntity e : player.level().getEntitiesOfClass(LivingEntity.class,
-                player.getBoundingBox().inflate(ACTIVE_RANGE), e -> e.isAlive() && e != player)) {
-            if (e instanceof Enemy || e instanceof Player) {
-                candidates.add(e);
-            }
-        }
-        if (candidates.isEmpty()) return null;
-        candidates.sort((a, b) -> Float.compare(b.getHealth(), a.getHealth()));
-        return candidates.get(0);
-    }
-
-    private static void teleportNear(Player player, LivingEntity target) {
-        Level level = player.level();
-        BlockPos center = target.blockPosition();
-        for (int radius = 1; radius <= 3; radius++) {
-            List<BlockPos> offsets = new ArrayList<>();
-            for (int dx = -radius; dx <= radius; dx++) {
-                for (int dz = -radius; dz <= radius; dz++) {
-                    if (dx * dx + dz * dz <= radius * radius && (dx != 0 || dz != 0)) {
-                        offsets.add(center.offset(dx, 0, dz));
-                    }
-                }
-            }
-            // 随机顺序尝试
-            while (!offsets.isEmpty()) {
-                int idx = ThreadLocalRandom.current().nextInt(offsets.size());
-                BlockPos candidate = offsets.remove(idx);
-                BlockPos feet = findSafeStandingPos(level, candidate);
-                if (feet == null) continue;
-                AABB aabb = new AABB(feet).inflate(0.3);
-                if (!level.noCollision(player, aabb)) continue;
-                player.teleportTo(feet.getX() + 0.5, feet.getY() + 0.1, feet.getZ() + 0.5);
-                return;
-            }
-        }
-    }
-
-    private static BlockPos findSafeStandingPos(Level level, BlockPos pos) {
-        for (int y = Math.min(pos.getY() + 2, level.getMaxBuildHeight() - 1); y > level.getMinBuildHeight(); y--) {
-            BlockPos feet = new BlockPos(pos.getX(), y, pos.getZ());
-            BlockState below = level.getBlockState(feet.below());
-            BlockState at = level.getBlockState(feet);
-            BlockState above = level.getBlockState(feet.above());
-            boolean belowSolid = !below.isAir() || !below.getFluidState().isEmpty();
-            boolean feetOk = at.isAir() || !at.getFluidState().isEmpty();
-            boolean aboveOk = above.isAir() || !above.getFluidState().isEmpty();
-            if (belowSolid && feetOk && aboveOk) {
-                return feet;
-            }
-        }
-        return null;
-    }
-
     private static ItemStack findAndConsumeRandomBattleCard(Player player) {
         List<ItemStack> candidates = new ArrayList<>();
-        // 物品栏
+        // 仅主物品栏(平衡调整:不再从末影箱/精妙背包等容器能力中消耗)
         for (ItemStack stack : player.getInventory().items) {
             if (!stack.isEmpty() && CardRegistry.itemToType(stack) != null) {
                 candidates.add(stack);
-            }
-        }
-        // 末影箱
-        var enderChest = player.getEnderChestInventory();
-        for (int i = 0; i < enderChest.getContainerSize(); i++) {
-            ItemStack stack = enderChest.getItem(i);
-            if (!stack.isEmpty() && CardRegistry.itemToType(stack) != null) {
-                candidates.add(stack);
-            }
-        }
-        // 精妙背包等可打开物品栏的饰品(通过物品容器能力读取)
-        var curios = CuriosCompat.getCuriosInventory(player);
-        if (curios.isPresent()) {
-            var equipped = curios.get().getEquippedCurios();
-            for (int i = 0; i < equipped.getSlots(); i++) {
-                ItemStack stack = equipped.getStackInSlot(i);
-                if (stack.isEmpty()) continue;
-                IItemHandler inv = stack.getCapability(ForgeCapabilities.ITEM_HANDLER).orElse(null);
-                if (inv == null) continue;
-                for (int slot = 0; slot < inv.getSlots(); slot++) {
-                    ItemStack inner = inv.getStackInSlot(slot);
-                    if (!inner.isEmpty() && CardRegistry.itemToType(inner) != null) {
-                        candidates.add(inner);
-                    }
-                }
             }
         }
         if (candidates.isEmpty()) return null;
@@ -294,4 +231,43 @@ public class NancyLuSignItem extends BaseSignItem {
         chosen.shrink(1);
         return chosen.copy();
     }
+
+    // 骇客立牌:完全隐身状态下攻击敌对目标/玩家 → 解除隐身并触发战斗牌加成
+    @SubscribeEvent
+    public static void onNancyLuAttackWhileHidden(
+            net.minecraftforge.event.entity.player.AttackEntityEvent event) {
+        Player player = event.getEntity();
+        if (player.level().isClientSide()) return;
+        if (!NancyLuSignItem.isEquipped(player)) return;
+        net.minecraft.world.entity.Entity target = event.getTarget();
+        if (!(target instanceof net.minecraft.world.entity.monster.Enemy)
+                && !(target instanceof Player)) return;
+        NancyLuSignItem.onAttackWhileHidden(player);
+    }
+
+
+    // 骇客立牌:末影珍珠落地时记录短时免疫窗口,免疫随后的传送摔落伤害
+    @SubscribeEvent
+    public static void onNancyLuEnderPearlImpact(ProjectileImpactEvent event) {
+        if (event.getProjectile() instanceof net.minecraft.world.entity.projectile.ThrownEnderpearl pearl
+                && pearl.getOwner() instanceof Player player
+                && NancyLuSignItem.isEquipped(player)) {
+            ModAttachments.setNancyLuEnderPearlImmuneUntil(player,
+                    player.level().getGameTime() + com.merlinkitsune.astral_dice.item.sign.NancyLuSignItem.ENDER_PEARL_IMMUNE_TICKS);
+        }
+    }
+
+
+    // 骇客立牌:免疫末影珍珠传送产生的摔落伤害
+    @SubscribeEvent
+    public static void onNancyLuEnderPearlDamage(LivingDamageEvent event) {
+        if (!(event.getEntity() instanceof Player player)) return;
+        if (player.level().isClientSide()) return;
+        if (!NancyLuSignItem.isEquipped(player)) return;
+        if (!event.getSource().is(net.minecraft.world.damagesource.DamageTypes.FALL)) return;
+        if (player.level().getGameTime() < ModAttachments.getNancyLuEnderPearlImmuneUntil(player)) {
+            event.setAmount(0);
+        }
+    }
+
 }

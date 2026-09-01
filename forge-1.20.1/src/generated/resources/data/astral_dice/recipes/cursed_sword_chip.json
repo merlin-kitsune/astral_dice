@@ -12,7 +12,7 @@
       "item": "minecraft:golden_sword"
     },
     "M": {
-      "tag": "astral_dice:suspicious_stews"
+      "item": "minecraft:crying_obsidian"
     },
     "Z": {
       "item": "minecraft:popped_chorus_fruit"
@@ -24,7 +24,7 @@
     "BBB"
   ],
   "result": {
-    "item": "astral_dice:cursed_sword_chip"
-  },
-  "show_notification": true
+    "count": 1,
+    "id": "astral_dice:cursed_sword_chip"
+  }
 }

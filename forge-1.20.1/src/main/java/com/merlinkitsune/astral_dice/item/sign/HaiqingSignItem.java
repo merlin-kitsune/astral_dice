@@ -1,8 +1,10 @@
 package com.merlinkitsune.astral_dice.item.sign;
+import com.merlinkitsune.astral_dice.network.ModNetwork;
 
 import com.merlinkitsune.astral_dice.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
+import com.merlinkitsune.astral_dice.event.ModEffectRemoval;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.player.Player;
@@ -10,15 +12,19 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import top.theillusivec4.curios.api.SlotContext;
 import com.merlinkitsune.astral_dice.item.card.ExclusiveCardUtil;
-import com.merlinkitsune.astral_dice.event.ModEventHandlers;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
-import com.merlinkitsune.astral_dice.network.ModNetwork.ActionBarMessage;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
-import com.merlinkitsune.astral_dice.network.ModNetwork;
-import com.merlinkitsune.astral_dice.event.ModEffectRemoval;
+import com.merlinkitsune.astral_dice.AstralDiceMod;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.event.entity.living.LivingDeathEvent;
+import net.minecraftforge.event.entity.living.MobEffectEvent;
+import net.minecraft.world.entity.LivingEntity;
+import java.util.Optional;
+import java.util.UUID;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
 
 /**
  * 占星师立牌(命名:haiqing)。
@@ -28,6 +34,7 @@ import com.merlinkitsune.astral_dice.event.ModEffectRemoval;
  * 主动为"等待目标释放"类技能:等待状态保存在玩家级(ModAttachments),激活后进入等待期(默认 30 秒),
  * 攻击目标即释放;超时或立牌被移除则中断等待。
  */
+@Mod.EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public class HaiqingSignItem extends BaseSignItem {
     // 玩家级等待状态类型:占星师=1
     public static final int READY_TYPE = 1;
@@ -48,10 +55,26 @@ public class HaiqingSignItem extends BaseSignItem {
             ModEffectRemoval.remove(player, ModEffects.HAIQING_READY.get());
         }
         if (ModAttachments.getSignReadyType(player) == READY_TYPE && expire > 0
-                && player.tickCount % 20 == 0 && player instanceof ServerPlayer sp) {
+                && player.tickCount % 20 == 0) {
+            sendReadyPrompt(player);
+        }
+    }
+
+    // 发送"待命"ActionBar 提示(激活瞬间与等待期间共用)
+    private static void sendReadyPrompt(Player player) {
+        if (player instanceof ServerPlayer sp) {
             ModNetwork.sendToPlayer(sp,
                     new ModNetwork.ActionBarMessage(Component.translatable("msg.astral_dice.haiqing_ready")
                             .withStyle(ChatFormatting.YELLOW), GameplayConstants.ACTIONBAR_DURATION_TICKS));
+        }
+    }
+
+    // 主动技能自带 ActionBar 反馈("待命"提示):注册到主动技能响应事件,阻止默认提示
+    @SubscribeEvent
+    public static void onSignActiveTriggered(com.merlinkitsune.astral_dice.event.SignActiveTriggeredEvent event) {
+        if (event.getSignStack().is(ModItems.HAIQING_SIGN.get())) {
+            sendReadyPrompt(event.getPlayer());
+            event.setHandled();
         }
     }
 
@@ -80,7 +103,7 @@ public class HaiqingSignItem extends BaseSignItem {
     }
 
     // 被动 2:带"虚弱印记"的目标被击杀时,仅释放该印记的玩家(占星师)获得 3 星币与一张"命运的指引"(绑定获得者)。
-    // 由 ModEventHandlers.onWeakMarkKill 事件分发(任何玩家击杀都触发,奖励归属印记释放者)。
+    // 由 HaiqingSignItem.onWeakMarkKill 事件分发(任何玩家击杀都触发,奖励归属印记释放者)。
     public static void grantWeakMarkKillReward(Player applier) {
         if (applier == null || applier.level().isClientSide()) return;
         ItemStack coinStack = new ItemStack(ModItems.STAR_COIN.get(), 3);
@@ -96,4 +119,30 @@ public class HaiqingSignItem extends BaseSignItem {
                             .withStyle(ChatFormatting.YELLOW), GameplayConstants.ACTIONBAR_DURATION_TICKS));
         }
     }
+
+    @SubscribeEvent
+    public static void onWeakMarkKill(LivingDeathEvent event) {
+        LivingEntity target = event.getEntity();
+        if (target.level().isClientSide()) return;
+        if (!target.hasEffect(ModEffects.WEAK_MARK.get())) return;
+        Optional<UUID> source = ModAttachments.getWeakMarkSource(target);
+        if (source.isEmpty()) return;
+        Player applier = target.level().getPlayerByUUID(source.get());
+        if (applier != null) {
+            HaiqingSignItem.grantWeakMarkKillReward(applier);
+        }
+    }
+
+
+    // 虚弱印记结束(计时归零或目标死亡):清除印记来源
+    @SubscribeEvent
+    public static void onWeakMarkExpired(MobEffectEvent.Expired event) {
+        MobEffectInstance effect = event.getEffectInstance();
+        if (effect == null || effect.getEffect() == null
+                || effect.getEffect() != ModEffects.WEAK_MARK.get()) return;
+        LivingEntity entity = event.getEntity();
+        if (entity.level().isClientSide()) return;
+        ModAttachments.setWeakMarkSource(entity, Optional.empty());
+    }
+
 }

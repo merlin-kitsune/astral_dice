@@ -2,13 +2,14 @@ package com.merlinkitsune.astral_dice.item;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.component.AppliedStone;
+import com.merlinkitsune.astral_dice.component.ModDataComponents;
 
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Rarity;
-import net.minecraftforge.registries.DeferredRegister;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.registries.RegistryObject;
+import net.minecraftforge.registries.DeferredRegister;
 
 import java.util.function.Supplier;
 import com.merlinkitsune.astral_dice.item.chip.StarCoinHammerChipItem;
@@ -26,7 +27,7 @@ import com.merlinkitsune.astral_dice.item.chip.MarkerSprayerChipItem;
 import com.merlinkitsune.astral_dice.item.chip.CutterBladeChipItem;
 import com.merlinkitsune.astral_dice.item.chip.FanBigChipItem;
 import com.merlinkitsune.astral_dice.item.chip.FanSmallChipItem;
-import com.merlinkitsune.astral_dice.item.card.LivingBookPageItem;
+import com.merlinkitsune.astral_dice.item.card.LivingPageItem;
 import com.merlinkitsune.astral_dice.item.sign.LuluSignItem;
 import com.merlinkitsune.astral_dice.item.chip.MedkitCompleteChipItem;
 import com.merlinkitsune.astral_dice.item.sign.FenSignItem;
@@ -46,6 +47,7 @@ import com.merlinkitsune.astral_dice.item.card.HamburgerCardItem;
 import com.merlinkitsune.astral_dice.item.chip.TargetChipItem;
 import com.merlinkitsune.astral_dice.item.chip.ScopeChipItem;
 import com.merlinkitsune.astral_dice.item.chip.SandwichChipItem;
+import com.merlinkitsune.astral_dice.item.chip.AdrenalineChipItem;
 import com.merlinkitsune.astral_dice.item.sign.JasmineSignItem;
 import com.merlinkitsune.astral_dice.item.chip.SpeedSkatesChipItem;
 import com.merlinkitsune.astral_dice.item.sign.KomachiSignItem;
@@ -78,13 +80,13 @@ import com.merlinkitsune.astral_dice.item.chip.NinjaStarChipItem;
 import com.merlinkitsune.astral_dice.item.chip.FlashlightChipItem;
 
 public class ModItems {
-    public static final DeferredRegister<Item> ITEMS = DeferredRegister.create(ForgeRegistries.ITEMS, AstralDiceMod.MODID);
+    public static final DeferredRegister<Item> ITEMS = DeferredRegister.create(net.minecraftforge.registries.ForgeRegistries.ITEMS, AstralDiceMod.MODID);
 
     private static final net.minecraft.tags.TagKey<Item> COMBAT_CARDS_TAG =
-            net.minecraft.tags.ItemTags.create(new net.minecraft.resources.ResourceLocation(
+            net.minecraft.tags.ItemTags.create(new ResourceLocation(
                     AstralDiceMod.MODID, "combat_cards"));
     private static final net.minecraft.tags.TagKey<Item> EFFECT_CARDS_TAG =
-            net.minecraft.tags.ItemTags.create(new net.minecraft.resources.ResourceLocation(
+            net.minecraft.tags.ItemTags.create(new ResourceLocation(
                     AstralDiceMod.MODID, "effect_cards"));
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -146,51 +148,61 @@ public class ModItems {
 
     public static final RegistryObject<Item> ATTACK_CARD_MEDIUM = registerItem("attack_card_medium",
             () -> new CardItem(new Item.Properties()
-                    .stacksTo(64), "medium"));
+                    .stacksTo(64)
+                    , "medium"));
 
     public static final RegistryObject<Item> ATTACK_CARD_LARGE = registerItem("attack_card_large",
             () -> new CardItem(new Item.Properties()
                     .stacksTo(64)
-                    .rarity(Rarity.RARE), "large"));
+                    .rarity(Rarity.RARE)
+                    , "large"));
 
     public static final RegistryObject<Item> ATTACK_CARD_EPIC = registerItem("attack_card_epic",
             () -> new CardItem(new Item.Properties()
                     .stacksTo(64)
-                    .rarity(Rarity.EPIC), "epic"));
+                    .rarity(Rarity.EPIC)
+                    , "epic"));
 
     public static final RegistryObject<Item> ATTACK_CARD_SHADOW_STRIKE = registerItem("attack_card_shadow_strike",
             () -> new CardItem(new Item.Properties()
                     .stacksTo(64)
-                    .rarity(Rarity.RARE), "shadow_strike"));
+                    .rarity(Rarity.RARE)
+                    , "shadow_strike"));
 
     public static final RegistryObject<Item> ATTACK_CARD_MEITO = registerItem("attack_card_meito",
             () -> new CardItem(new Item.Properties()
                     .stacksTo(64)
-                    .rarity(Rarity.EPIC), "meito"));
+                    .rarity(Rarity.EPIC)
+                    , "meito"));
 
     public static final RegistryObject<Item> ATTACK_CARD_CHARGE = registerItem("attack_card_charge",
             () -> new CardItem(new Item.Properties()
                     .stacksTo(64)
-                    .rarity(Rarity.UNCOMMON), "charge"));
+                    .rarity(Rarity.UNCOMMON)
+                    , "charge"));
 
     public static final RegistryObject<Item> ATTACK_CARD_FULL_POWER = registerItem("attack_card_full_power",
             () -> new CardItem(new Item.Properties()
                     .stacksTo(64)
-                    .rarity(Rarity.UNCOMMON), "full_power"));
+                    .rarity(Rarity.UNCOMMON)
+                    , "full_power"));
 
     public static final RegistryObject<Item> DEFENSE_CARD_MEDIUM = registerItem("defense_card_medium",
             () -> new CardItem(new Item.Properties()
-                    .stacksTo(64), "defense_medium"));
+                    .stacksTo(64)
+                    , "defense_medium"));
 
     public static final RegistryObject<Item> DEFENSE_CARD_LARGE = registerItem("defense_card_large",
             () -> new CardItem(new Item.Properties()
                     .stacksTo(64)
-                    .rarity(Rarity.RARE), "defense_large"));
+                    .rarity(Rarity.RARE)
+                    , "defense_large"));
 
     public static final RegistryObject<Item> DEFENSE_CARD_EPIC = registerItem("defense_card_epic",
             () -> new CardItem(new Item.Properties()
                     .stacksTo(64)
-                    .rarity(Rarity.EPIC), "defense_epic"));
+                    .rarity(Rarity.EPIC)
+                    , "defense_epic"));
 
     public static final RegistryObject<Item> EFFECT_CARD_KING_POWER = registerItem("effect_card_king_power",
             () -> new EffectCardItem(new Item.Properties()
@@ -463,23 +475,36 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(Rarity.UNCOMMON), MotoHelmetChipItem.ARMOR_HIGH, MotoHelmetChipItem.TOUGHNESS_BONUS));
 
-    // 夹心饼干-一般:最大生命值 +2
+    // 夹心饼干-一般:最大生命值 +4
     public static final RegistryObject<Item> SANDWICH_LOW = registerItem("sandwich_low_chip",
             () -> new SandwichChipItem(new Item.Properties()
                     .stacksTo(1)
-                    .rarity(Rarity.RARE), SandwichChipItem.HEALTH_LOW));
+                    .rarity(Rarity.RARE), SandwichChipItem.HEALTH_LOW, false));
 
-    // 夹心饼干-可口:最大生命值 +4
+    // 夹心饼干-可口:最大生命值 +8
     public static final RegistryObject<Item> SANDWICH_MEDIUM = registerItem("sandwich_medium_chip",
             () -> new SandwichChipItem(new Item.Properties()
                     .stacksTo(1)
-                    .rarity(Rarity.EPIC), SandwichChipItem.HEALTH_MEDIUM));
+                    .rarity(Rarity.EPIC), SandwichChipItem.HEALTH_MEDIUM, false));
 
-    // 夹心饼干-美味:最大生命值 +8
+    // 夹心饼干-美味:最大生命值 +12;生命值低于一半时每 1:00 获得 1 层「反击」
     public static final RegistryObject<Item> SANDWICH_HIGH = registerItem("sandwich_high_chip",
             () -> new SandwichChipItem(new Item.Properties()
                     .stacksTo(1)
-                    .rarity(Rarity.UNCOMMON), SandwichChipItem.HEALTH_HIGH));
+                    .rarity(Rarity.UNCOMMON), SandwichChipItem.HEALTH_HIGH, true));
+
+    // 肾上腺素-一般:生命值低于最大生命值一半时,攻击力/防御力 +3(史诗)
+    public static final RegistryObject<Item> ADRENALINE_LOW = registerItem("adrenaline_low_chip",
+            () -> new AdrenalineChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.EPIC), AdrenalineChipItem.BONUS_LOW));
+
+    // 肾上腺素-高效:生命值低于最大生命值一半时,攻击力/防御力 +8;触发加成时被敌方攻击,
+    // 骰点 4-5 → 50% 闪避、6 → 100% 闪避本次伤害(传奇)
+    public static final RegistryObject<Item> ADRENALINE_HIGH = registerItem("adrenaline_high_chip",
+            () -> new AdrenalineChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.UNCOMMON), AdrenalineChipItem.BONUS_HIGH));
 
     // 魔法箭袋:使用过效果牌并对带标记目标造成法伤 → 施加标记并返还第一张使用的效果牌(每分钟一次)
     public static final RegistryObject<Item> MAGIC_QUIVER = registerItem("magic_quiver_chip",
@@ -550,8 +575,8 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(Rarity.UNCOMMON)));
 
-    public static final RegistryObject<Item> LIVING_BOOK_PAGE = registerItem("effect_card_living_page",
-            () -> new LivingBookPageItem(new Item.Properties()
+    public static final RegistryObject<Item> LIVING_PAGE = registerItem("effect_card_living_page",
+            () -> new LivingPageItem(new Item.Properties()
                     .stacksTo(64)
                     .rarity(Rarity.EPIC)));
 
@@ -616,7 +641,7 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(Rarity.UNCOMMON)));
 
-    // 骇客立牌(命名:nancy_lu):网络防火墙被动 + 远程骇入主动
+    // 骇客立牌(命名:nancy_lu):网络防火墙被动 + 远程侵入主动
     public static final RegistryObject<Item> NANCY_LU_SIGN = registerItem("nancy_lu_sign",
             () -> new NancyLuSignItem(new Item.Properties()
                     .stacksTo(1)

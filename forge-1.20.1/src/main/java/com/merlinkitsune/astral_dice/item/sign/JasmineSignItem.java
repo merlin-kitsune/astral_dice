@@ -1,10 +1,13 @@
 package com.merlinkitsune.astral_dice.item.sign;
+import com.merlinkitsune.astral_dice.item.CuriosCompat;
 
 import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
 
 import com.merlinkitsune.astral_dice.component.GameplayConstants;
+import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
+import com.merlinkitsune.astral_dice.item.ModItems;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
@@ -12,6 +15,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
+import top.theillusivec4.curios.api.CuriosApi;
 import top.theillusivec4.curios.api.SlotContext;
 
 import java.util.HashMap;
@@ -36,16 +40,20 @@ public class JasmineSignItem extends BaseSignItem {
         if (player.level().isClientSide()) return;
         // 被动:移动距离累计
         tickJasmineWalk(player, stack);
+        // 防御力折算为真实护甲(1 防御力 = 2 护甲值;经 ARMOR 属性,骰战与原版伤害均生效)
+        com.merlinkitsune.astral_dice.combat.DiceCombatModifiers.setDefenseArmorBonus(
+                player, "jasmine_def_armor", getDefenseBonus(stack));
     }
 
     @Override
     protected void clearSignData(Player player, ItemStack stack) {
         super.clearSignData(player, stack);
-        // 卸下立牌:清除攻击力/防御力增益计数与移动累计
-        ModDataComponents.JASMINE_ATK_BONUS.set(stack,  0);
-        ModDataComponents.JASMINE_DEF_BONUS.set(stack,  0);
+        // 卸下立牌:清除攻击力/防御力增益计数与移动累计,并移除护甲折算修饰器
+        ModDataComponents.JASMINE_ATK_BONUS.set(stack, 0);
+        ModDataComponents.JASMINE_DEF_BONUS.set(stack, 0);
         lastPosMap.remove(player.getUUID());
         walkAccumMap.remove(player.getUUID());
+        com.merlinkitsune.astral_dice.combat.DiceCombatModifiers.setDefenseArmorBonus(player, "jasmine_def_armor", 0);
     }
 
     @Override
@@ -61,6 +69,27 @@ public class JasmineSignItem extends BaseSignItem {
             }
         }
         return InteractionResultHolder.success(stack);
+    }
+
+    // === 被动:加急加快联动(扫地机立牌被动追加) ===
+
+    // 玩家是否佩戴扫地机立牌
+    public static boolean isEquipped(Player player) {
+        if (player == null) return false;
+        var curios = CuriosCompat.getCuriosInventory(player);
+        return curios.isPresent() && curios.get().findFirstCurio(s -> s.is(ModItems.JASMINE_SIGN.get())).isPresent();
+    }
+
+    // 使用「加急加快」效果牌后调用:立牌主动技能冷却立即减少最大冷却的 50%
+    public static void onExpressDeliveryUsed(Player player) {
+        if (player == null || player.level().isClientSide()) return;
+        if (!isEquipped(player)) return;
+        long now = player.level().getGameTime();
+        long cdEnd = ModAttachments.getSignActiveCooldownEnd(player);
+        if (cdEnd > now) {
+            ModAttachments.setSignActiveCooldownEnd(player,
+                    Math.max(now, cdEnd - GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS / 2));
+        }
     }
 
     // === 被动:移动距离累计 ===
@@ -88,8 +117,8 @@ public class JasmineSignItem extends BaseSignItem {
 
     // === 被动:交替增加攻击力/防御力(骰神赐福点数,各自上限 GameplayConstants.JASMINE_MAX_BONUS) ===
     private static void applyMovementBonus(Player player, ItemStack stack) {
-        int atkBonus = ModDataComponents.JASMINE_ATK_BONUS.getOrDefault(stack,  0);
-        int defBonus = ModDataComponents.JASMINE_DEF_BONUS.getOrDefault(stack,  0);
+        int atkBonus = ModDataComponents.JASMINE_ATK_BONUS.getOrDefault(stack, 0);
+        int defBonus = ModDataComponents.JASMINE_DEF_BONUS.getOrDefault(stack, 0);
 
         // 按交替顺序决定本次增加项;若该项已达上限则改加另一项
         boolean tryAtk = (atkBonus + defBonus) % 2 == 0;
@@ -101,18 +130,18 @@ public class JasmineSignItem extends BaseSignItem {
 
         if (tryAtk) {
             if (atkBonus >= GameplayConstants.JASMINE_MAX_BONUS) return; // 两者均已到上限
-            ModDataComponents.JASMINE_ATK_BONUS.set(stack,  atkBonus + 1);
+            ModDataComponents.JASMINE_ATK_BONUS.set(stack, atkBonus + 1);
         } else {
             if (defBonus >= GameplayConstants.JASMINE_MAX_BONUS) return; // 两者均已到上限
-            ModDataComponents.JASMINE_DEF_BONUS.set(stack,  defBonus + 1);
+            ModDataComponents.JASMINE_DEF_BONUS.set(stack, defBonus + 1);
         }
     }
 
     public static int getAttackBonus(ItemStack stack) {
-        return ModDataComponents.JASMINE_ATK_BONUS.getOrDefault(stack,  0);
+        return ModDataComponents.JASMINE_ATK_BONUS.getOrDefault(stack, 0);
     }
 
     public static int getDefenseBonus(ItemStack stack) {
-        return ModDataComponents.JASMINE_DEF_BONUS.getOrDefault(stack,  0);
+        return ModDataComponents.JASMINE_DEF_BONUS.getOrDefault(stack, 0);
     }
 }

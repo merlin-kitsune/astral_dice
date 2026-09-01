@@ -11,7 +11,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 
 /**
- * 岿然不动(功能效果牌):使用后防御力 +2,并获得 抗性提升 II,持续 3:00。
+ * 岿然不动(功能效果牌):使用后护甲 +8(对应骰战防御力 +4),并获得 抗性提升 II,持续 1:00。
  */
 public class UnwaveringCardItem extends BaseEffectCardItem {
     public UnwaveringCardItem(Properties properties) {

@@ -16,7 +16,7 @@ import java.util.Map;
  * 计时器守卫:保证本模组所有有时长效果严格按 20 tick/秒 的速率流动。
  *
  * <p>外部 buff(如神秘遗物+ 的烈焰之核)可能加快或减慢目标身上效果的计时流动
- * (提前到期或逾期残留)。本守卫在每个游戏 tick 之前({@code PlayerTickEvent.Pre})
+ * (提前到期或逾期残留)。本守卫在每个游戏 tick 之前({@code TickEvent.PlayerTickEvent})
  * 把本模组记录的效果剩余时长强制校正回 gameTime 驱动的预期值:
  * <ul>
  *   <li>加速(剩余少于预期)→ 以预期剩余重新施加(延长);</li>
@@ -91,7 +91,7 @@ public final class EffectTimerGuard {
         ModAttachments.EFFECT_TIMER_ENDS.set(player, map);
     }
 
-    /** 每 tick({@code PlayerTickEvent.Pre})校正:把记录的效果剩余时长拉回 20t/s 预期值 */
+    /** 每 tick({@code TickEvent.PlayerTickEvent})校正:把记录的效果剩余时长拉回 20t/s 预期值 */
     public static void tick(Player player) {
         if (player.level().isClientSide()) return;
         Map<String, TimerEntry> map = ModAttachments.EFFECT_TIMER_ENDS.get(player);

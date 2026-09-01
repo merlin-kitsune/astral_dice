@@ -1,4 +1,6 @@
 package com.merlinkitsune.astral_dice.event;
+import com.merlinkitsune.astral_dice.item.CuriosCompat;
+import com.merlinkitsune.astral_dice.network.ModNetwork;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.component.GameplayConstants;
@@ -12,11 +14,9 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import com.merlinkitsune.astral_dice.item.CuriosCompat;
 import top.theillusivec4.curios.api.CuriosApi;
 
 import java.util.Optional;
-import com.merlinkitsune.astral_dice.network.ModNetwork.ActionBarMessage;
 
 /**
  * 事件系统:触发事件并应用立牌增益。
@@ -49,10 +49,10 @@ public final class AstralEventSystem {
                 triggerer.getDisplayName(),
                 Component.translatable("event.astral_dice." + eventId.getPath()))
                 .withStyle(ChatFormatting.YELLOW);
-        com.merlinkitsune.astral_dice.network.ModNetwork.ActionBarMessage payload =
-                new com.merlinkitsune.astral_dice.network.ModNetwork.ActionBarMessage(msg,
+        ModNetwork.ActionBarMessage payload =
+                new ModNetwork.ActionBarMessage(msg,
                         GameplayConstants.ACTIONBAR_DURATION_TICKS);
-        com.merlinkitsune.astral_dice.network.ModNetwork.sendToPlayer(serverPlayer, payload);
+        ModNetwork.sendToPlayer(serverPlayer, payload);
     }
 
     // 通过 modid 命名空间下的 ID 触发事件
@@ -111,7 +111,7 @@ public final class AstralEventSystem {
                 com.merlinkitsune.astral_dice.component.ModAttachments.setRinGiftSignature(sp, signature);
                 com.merlinkitsune.astral_dice.component.ModAttachments.setRinGiftTick(sp, now);
                 // 活体书页为专属牌,绑定获得者
-                ItemStack page = new ItemStack(ModItems.LIVING_BOOK_PAGE.get());
+                ItemStack page = new ItemStack(ModItems.LIVING_PAGE.get());
                 ExclusiveCardUtil.setOwner(page, sp);
                 giveItem(sp, page);
             }

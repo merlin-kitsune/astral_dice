@@ -2,8 +2,8 @@ package com.merlinkitsune.astral_dice.combat;
 
 /**
  * 骰神赐福【防御力】修饰器:按注册顺序依次作用于防御力数值。
- * 附属内容(新立牌/筹码/效果/联动)实现本接口并通过
- * {@link DiceCombatModifiers#registerDefenseModifier} 注册即可影响防御力,无需修改主流程。
+ * 防御力规范:骰战防御修饰器**仅保留战斗防御牌**(只有防御牌数值是区间变动,由 CardRegistry 掷骰);
+ * 效果牌/立牌/筹码的防御力一律折算为真实护甲(见 {@link DiceCombatModifiers#setDefenseArmorBonus}),不在此注册。
  */
 @FunctionalInterface
 public interface DefensePowerModifier {

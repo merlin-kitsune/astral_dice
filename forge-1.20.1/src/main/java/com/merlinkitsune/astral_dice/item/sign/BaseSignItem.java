@@ -1,4 +1,6 @@
 package com.merlinkitsune.astral_dice.item.sign;
+import com.merlinkitsune.astral_dice.item.CuriosCompat;
+import com.merlinkitsune.astral_dice.network.ModNetwork;
 
 import com.merlinkitsune.astral_dice.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
@@ -13,11 +15,9 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.merlinkitsune.astral_dice.item.CuriosCompat;
 import top.theillusivec4.curios.api.CuriosApi;
 import top.theillusivec4.curios.api.SlotContext;
 import top.theillusivec4.curios.api.type.capability.ICurioItem;
-import com.merlinkitsune.astral_dice.network.ModNetwork.ActionBarMessage;
 import com.merlinkitsune.astral_dice.item.chip.FanBigChipItem;
 import com.merlinkitsune.astral_dice.item.chip.FanSmallChipItem;
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
@@ -92,14 +92,31 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
         InteractionResultHolder<ItemStack> result = sign.handleUse(player.level(), player, stack);
         if (result.getResult() != InteractionResult.SUCCESS) return;
         // 4. 手持风扇-大筹码:使用主动技能后,获得一张随机效果牌(不含专属),并对周围范围内敌对目标施加标记
-        // 注意:不再发送通用"技能已激活"ActionBar,避免覆盖各立牌自身的特殊 ActionBar 提示
         FanBigChipItem.applyAfterSignSkill(player);
         FanSmallChipItem.applyAfterSignSkill(player);
-        // 5. 冷却:等待类技能(激活了玩家级等待状态)待完成指定目标/超时后再开始冷却;其余立牌立即开始玩家级冷却
+        // 5. 立牌主动技能响应事件:立牌类订阅本事件注册自身 ActionBar 反馈(见 SignActiveTriggeredEvent);
+        //    无任何处理器响应(未注册)时,发送默认提示"xxx立牌:主动技能已启动!"
+        com.merlinkitsune.astral_dice.event.SignActiveTriggeredEvent triggered =
+                new com.merlinkitsune.astral_dice.event.SignActiveTriggeredEvent(player, stack);
+        net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(triggered);
+        if (!triggered.isHandled()) {
+            notifyActionBar(player, "msg.astral_dice.sign_active_triggered", signName, ChatFormatting.YELLOW);
+        }
+        // 6. 冷却:等待类技能(激活了玩家级等待状态)待完成指定目标/超时后再开始冷却;其余立牌立即开始玩家级冷却
         if (ModAttachments.getSignReadyExpire(player) <= 0) {
             ModAttachments.setSignActiveCooldownEnd(player,
                     now + GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS);
         }
+    }
+
+    // 立牌主动技能反馈统一发送入口(黄色;供立牌类注册的 SignActiveTriggeredEvent 处理器与 handleUse 调用)
+    protected static void sendSignActionBar(Player player, String langKey, Object... args) {
+        if (!(player instanceof net.minecraft.server.level.ServerPlayer serverPlayer)) return;
+        net.minecraft.network.chat.Component msg =
+                net.minecraft.network.chat.Component.translatable(langKey, args).withStyle(ChatFormatting.YELLOW);
+        ModNetwork.sendToPlayer(serverPlayer,
+                new ModNetwork.ActionBarMessage(msg,
+                        GameplayConstants.ACTIONBAR_DURATION_TICKS));
     }
 
     // 服务端发送立牌技能反馈(actionbar 提示,带立牌名称前缀;统一由服务端判定成功/拒绝,避免客户端推测混淆)
@@ -107,8 +124,8 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
         if (!(player instanceof net.minecraft.server.level.ServerPlayer serverPlayer)) return;
         net.minecraft.network.chat.Component msg =
                 net.minecraft.network.chat.Component.translatable(langKey, signName).withStyle(color);
-        com.merlinkitsune.astral_dice.network.ModNetwork.sendToPlayer(serverPlayer,
-                new com.merlinkitsune.astral_dice.network.ModNetwork.ActionBarMessage(msg,
+        ModNetwork.sendToPlayer(serverPlayer,
+                new ModNetwork.ActionBarMessage(msg,
                         GameplayConstants.ACTIONBAR_DURATION_TICKS));
     }
 

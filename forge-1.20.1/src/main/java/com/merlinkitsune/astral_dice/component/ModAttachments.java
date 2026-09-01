@@ -43,16 +43,17 @@ public class ModAttachments {
     public static final AttachedDataKey<Integer> EFFECT_CARD_PLAY_COUNT =
             register(AttachedDataKey.builder("effect_card_play_count", Codec.INT, () -> 0).sync().build());
 
-    // 忍者立牌(komachi)主动:临时出牌数+1 标记(仅当前效果牌周期内生效,周期归零时清除)
-    public static final AttachedDataKey<Boolean> KOMACHI_EXTRA_PLAY_ACTIVE =
-            register(AttachedDataKey.builder("komachi_extra_play_active", Codec.BOOL, () -> false).sync().build());
+    // 忍者立牌(komachi)主动:效果牌出牌数+1 累积银行(按实际出牌消耗;跨周期保留至用尽,
+    // 不受出牌进度/冷却/满额影响,确保主动技能在任何情况下均生效)
+    public static final AttachedDataKey<Integer> KOMACHI_EXTRA_PLAYS =
+            register(AttachedDataKey.builder("komachi_extra_plays", Codec.INT, () -> 0).sync().build());
 
-    public static boolean isKomachiExtraPlayActive(net.minecraft.world.entity.player.Player player) {
-        return KOMACHI_EXTRA_PLAY_ACTIVE.get(player);
+    public static int getKomachiExtraPlays(net.minecraft.world.entity.player.Player player) {
+        return KOMACHI_EXTRA_PLAYS.get(player);
     }
 
-    public static void setKomachiExtraPlayActive(net.minecraft.world.entity.player.Player player, boolean value) {
-        KOMACHI_EXTRA_PLAY_ACTIVE.set(player, value);
+    public static void setKomachiExtraPlays(net.minecraft.world.entity.player.Player player, int value) {
+        KOMACHI_EXTRA_PLAYS.set(player, value);
     }
 
     // 效果牌公共冷却结束时刻(-1 表示待定冷却=伤害效果牌效果等待中;0 表示无)
@@ -412,9 +413,14 @@ public class ModAttachments {
     public static final AttachedDataKey<Long> SATELLITE_GIVE_COOLDOWN_END =
             register(AttachedDataKey.builder("satellite_give_cooldown_end", Codec.LONG, () -> 0L).build());
 
-    // 探天卫星筹码:当前效果牌出牌轮次是否已触发过"使用轨道炮后出牌数+1"(每轮最多一次)
+    // 探天卫星筹码:当前效果牌出牌轮次是否已触发过"使用轨道炮后出牌数+1"(每轮最多一次;
+    // 触发时机受 SATELLITE_PLAY_BONUS_COOLDOWN_END 限制,每 1:00 至多触发一次)
     public static final AttachedDataKey<Boolean> SATELLITE_PLAY_BONUS =
             register(AttachedDataKey.builder("satellite_play_bonus", Codec.BOOL, () -> false).sync().build());
+
+    // 探天卫星筹码:"使用轨道炮后出牌数+1"的触发冷却结束时刻(每 1:00 至多触发一次;0 表示无冷却)
+    public static final AttachedDataKey<Long> SATELLITE_PLAY_BONUS_COOLDOWN_END =
+            register(AttachedDataKey.builder("satellite_play_bonus_cooldown_end", Codec.LONG, () -> 0L).sync().build());
 
     // 骇客立牌:被动类型(0=无,1=攻击,2=防御)
     public static final AttachedDataKey<Integer> NANCY_LU_PASSIVE_TYPE =
@@ -436,9 +442,13 @@ public class ModAttachments {
     public static final AttachedDataKey<Long> NANCY_LU_HIDDEN_UNTIL =
             register(AttachedDataKey.builder("nancy_lu_hidden_until", Codec.LONG, () -> 0L).build());
 
-    // 看板立牌:被动累计获得的星币数(每 25 个星币获得一个随机筹码)
-    public static final AttachedDataKey<Integer> MIMI_STAR_COIN_COUNTER =
-            register(AttachedDataKey.builder("mimi_star_coin_counter", Codec.INT, () -> 0).build());
+    // 看板立牌:被动"主动技能返还"累计的战斗牌数量(每累计 25 张返还战斗牌获得一个随机筹码)
+    public static final AttachedDataKey<Integer> MIMI_RETURNED_CARD_COUNT =
+            register(AttachedDataKey.builder("mimi_returned_card_count", Codec.INT, () -> 0).build());
+
+    // 夹心饼干-美味筹码:低生命值反击被动的触发冷却结束时刻(每 1:00 至多获得 1 层反击;0 表示无冷却)
+    public static final AttachedDataKey<Long> SANDWICH_HIGH_COUNTER_COOLDOWN_END =
+            register(AttachedDataKey.builder("sandwich_high_counter_cooldown_end", Codec.LONG, () -> 0L).build());
 
     // 骇客立牌:末影珍珠传送伤害免疫结束时刻
     public static final AttachedDataKey<Long> NANCY_LU_ENDER_PEARL_IMMUNE_UNTIL =
@@ -524,6 +534,14 @@ public class ModAttachments {
         SATELLITE_PLAY_BONUS.set(player, value);
     }
 
+    public static long getSatellitePlayBonusCooldownEnd(net.minecraft.world.entity.player.Player player) {
+        return SATELLITE_PLAY_BONUS_COOLDOWN_END.get(player);
+    }
+
+    public static void setSatellitePlayBonusCooldownEnd(net.minecraft.world.entity.player.Player player, long value) {
+        SATELLITE_PLAY_BONUS_COOLDOWN_END.set(player, Math.max(0, value));
+    }
+
     public static int getNancyLuPassiveType(net.minecraft.world.entity.player.Player player) {
         return NANCY_LU_PASSIVE_TYPE.get(player);
     }
@@ -564,12 +582,20 @@ public class ModAttachments {
         NANCY_LU_HIDDEN_UNTIL.set(player, Math.max(0, value));
     }
 
-    public static int getMimiStarCoinCounter(net.minecraft.world.entity.player.Player player) {
-        return MIMI_STAR_COIN_COUNTER.get(player);
+    public static int getMimiReturnedCardCount(net.minecraft.world.entity.player.Player player) {
+        return MIMI_RETURNED_CARD_COUNT.get(player);
     }
 
-    public static void setMimiStarCoinCounter(net.minecraft.world.entity.player.Player player, int value) {
-        MIMI_STAR_COIN_COUNTER.set(player, Math.max(0, value));
+    public static void setMimiReturnedCardCount(net.minecraft.world.entity.player.Player player, int value) {
+        MIMI_RETURNED_CARD_COUNT.set(player, Math.max(0, value));
+    }
+
+    public static long getSandwichHighCounterCooldownEnd(net.minecraft.world.entity.player.Player player) {
+        return SANDWICH_HIGH_COUNTER_COOLDOWN_END.get(player);
+    }
+
+    public static void setSandwichHighCounterCooldownEnd(net.minecraft.world.entity.player.Player player, long value) {
+        SANDWICH_HIGH_COUNTER_COOLDOWN_END.set(player, Math.max(0, value));
     }
 
     public static long getNancyLuEnderPearlImmuneUntil(net.minecraft.world.entity.player.Player player) {
@@ -676,7 +702,7 @@ public class ModAttachments {
             SYNCED_KEYS.add(PLAYER_STARLIGHT);
             SYNCED_KEYS.add(DAMAGE_EFFECT_BONUS);
             SYNCED_KEYS.add(EFFECT_CARD_PLAY_COUNT);
-            SYNCED_KEYS.add(KOMACHI_EXTRA_PLAY_ACTIVE);
+            SYNCED_KEYS.add(KOMACHI_EXTRA_PLAYS);
             SYNCED_KEYS.add(EFFECT_CARD_COOLDOWN_END);
             SYNCED_KEYS.add(HEALING_POINTS);
             SYNCED_KEYS.add(KOMACHI_DAMAGE_BONUS);
@@ -686,6 +712,7 @@ public class ModAttachments {
             SYNCED_KEYS.add(CURSED_SWORD_BONUS);
             SYNCED_KEYS.add(CANDY_CHIP_PLAY_BONUS);
             SYNCED_KEYS.add(SATELLITE_PLAY_BONUS);
+            SYNCED_KEYS.add(SATELLITE_PLAY_BONUS_COOLDOWN_END);
             SYNCED_KEYS.add(NANCY_LU_ACTIVE_BONUS);
             SYNCED_KEYS.add(FEN_RECHARGE);
         }

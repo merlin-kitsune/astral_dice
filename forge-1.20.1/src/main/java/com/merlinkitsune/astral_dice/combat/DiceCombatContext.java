@@ -4,11 +4,10 @@ import com.merlinkitsune.astral_dice.component.WeaponEnhancement;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.event.entity.living.LivingHurtEvent;
-import com.merlinkitsune.astral_dice.event.ModEventHandlers;
+import net.minecraftforge.event.entity.living.LivingDamageEvent;
 
 /**
- * 一次骰神赐福攻击的上下文:由 {@code ModEventHandlers.onLivingDamagePre} 在攻击链路上构建,
+ * 一次骰神赐福攻击的上下文:由 {@code DiceCombatEvents.onLivingDamagePre} 在攻击链路上构建,
  * 供 {@link AttackPowerModifier} / {@link DefensePowerModifier} 读取与写入。
  * 修饰器只应读取 final 字段(只读输入)并修改自身负责的攻击力/防御力值;
  * 需要向后续流程传递结果时写入非 final 字段(如 attackCardSum/hasFullPower)。
@@ -20,7 +19,7 @@ public class DiceCombatContext {
     /** 本次攻击的目标(受击实体) */
     public final LivingEntity target;
     /** 触发本次计算的伤害事件 */
-    public final LivingHurtEvent event;
+    public final LivingDamageEvent event;
     /** 本次攻击的基础骰点(1d6,已含护法爆发/上班族修正) */
     public final int baseDice;
     /** 攻击者骰子(可能存在) */
@@ -51,7 +50,7 @@ public class DiceCombatContext {
     /** 上班族立牌(padman):攻击骰点为 6 时忽略除防御卡外的全部防御(修饰器写入,主流程读取) */
     public boolean padmanDefBypass;
 
-    public DiceCombatContext(Player attacker, LivingEntity target, LivingHurtEvent event,
+    public DiceCombatContext(Player attacker, LivingEntity target, LivingDamageEvent event,
                              int baseDice, ItemStack diceStack, WeaponEnhancement enhancement,
                              boolean triggeredBlessing, boolean misakiBurst,
                              int misakiStar, int misakiStacks) {

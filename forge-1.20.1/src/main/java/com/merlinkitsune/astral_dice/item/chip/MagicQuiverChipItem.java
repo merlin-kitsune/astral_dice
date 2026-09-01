@@ -1,10 +1,10 @@
 package com.merlinkitsune.astral_dice.item.chip;
+import com.merlinkitsune.astral_dice.item.CuriosCompat;
 
 import com.merlinkitsune.astral_dice.combat.SpellDamageContext;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import com.merlinkitsune.astral_dice.item.CuriosCompat;
 import top.theillusivec4.curios.api.CuriosApi;
 import com.merlinkitsune.astral_dice.combat.SpellDamageRegistry;
 import com.merlinkitsune.astral_dice.item.MarkManager;
@@ -72,7 +72,6 @@ public class MagicQuiverChipItem extends BaseChipItem {
         ModAttachments.setMagicQuiverTracking(ctx.attacker, false);
         return true;
     }
-
 
     // 卸下筹码:清除已记录的第一张效果牌(下次装备重新追踪)
     @Override

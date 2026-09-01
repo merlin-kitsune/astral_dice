@@ -12,7 +12,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
-import com.merlinkitsune.astral_dice.event.ModEventHandlers;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
 
@@ -74,7 +73,7 @@ public final class RandomCardHandler {
     }
 
     // 专属牌注册表:随机发放强制排除(活体书页/命运的指引/未来的撕咬、龙之咆哮等)
-    // 存储 RegistryObject 引用,isExclusive 时延迟解析——避免静态初始化阶段调用 .get()
+    // 存储 DeferredItem 引用,isExclusive 时延迟解析——避免静态初始化阶段调用 .get()
     private static final Set<net.minecraftforge.registries.RegistryObject<net.minecraft.world.item.Item>> EXCLUSIVE_CARDS =
             new HashSet<>();
 
@@ -98,14 +97,14 @@ public final class RandomCardHandler {
 
     static {
         // 当前专属效果牌(注册引用,运行时解析,避免静态初始化 .get())
-        registerExclusiveCard(ModItems.LIVING_BOOK_PAGE);   // 活体书页(调查员立牌专属-伤害)
+        registerExclusiveCard(ModItems.LIVING_PAGE);   // 活体书页(调查员立牌专属-伤害)
         registerExclusiveCard(ModItems.FATE_GUIDANCE_CARD); // 命运的指引(专属-功能)
         // 未来专属战斗牌(撕咬/龙之咆哮等)在此注册
     }
 
     // === 卡牌池 ===
 
-    // 全部攻击牌(全力攻击不在随机池:仅能通过消耗"蓄力"获得,见 ModEventHandlers.onDiceBlessingExpired)
+    // 全部攻击牌(全力攻击不在随机池:仅能通过消耗"蓄力"获得,见 DiceCombatEvents.onDiceBlessingExpired)
     private static List<Item> attackCards() {
         return List.of(
                 ModItems.ATTACK_CARD_MEDIUM.get(),
@@ -144,9 +143,9 @@ public final class RandomCardHandler {
 
     /**
      * 按类别获取随机卡牌池(已强制排除全部专属牌)。
+     * 池由统一的攻击/防御/效果列表组合而成,避免内联重复列表漂移。
      */
     public static List<ItemStack> getCardPool(CardCategory category) {
-        // 池由统一的攻击/防御/效果列表组合而成,避免内联重复列表漂移
         List<Item> items = switch (category) {
             case ALL -> {
                 List<Item> all = new ArrayList<>();
@@ -185,7 +184,7 @@ public final class RandomCardHandler {
     public static void giveCardTo(Player receiver, CardCategory category) {
         ItemStack card = randomCard(category);
         if (card.isEmpty()) return;
-        // 看板立牌被动已由 VitaminPillChipItem 统一触发(与维生素药丸相同机制,不含拾取)
+        // 维生素药丸发牌统一入口(治愈联动;看板立牌被动不再随奖励/复制/返还触发,仅合成与主动返还显式触发)
         VitaminPillChipItem.giveCard(receiver, card);
     }
 

@@ -1,6 +1,6 @@
 package com.merlinkitsune.astral_dice.item.chip;
-
 import com.merlinkitsune.astral_dice.item.CuriosCompat;
+
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.player.Player;

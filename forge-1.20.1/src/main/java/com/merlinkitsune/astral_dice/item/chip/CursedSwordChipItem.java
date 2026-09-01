@@ -1,9 +1,10 @@
 package com.merlinkitsune.astral_dice.item.chip;
+import com.merlinkitsune.astral_dice.item.CuriosCompat;
 
-import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
+import com.merlinkitsune.astral_dice.event.ModEffectRemoval;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
@@ -12,11 +13,15 @@ import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.enchantment.Enchantment;
-import com.merlinkitsune.astral_dice.item.CuriosCompat;
 import top.theillusivec4.curios.api.CuriosApi;
 import top.theillusivec4.curios.api.SlotContext;
 import com.merlinkitsune.astral_dice.item.ModItems;
-import com.merlinkitsune.astral_dice.event.ModEffectRemoval;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.event.entity.living.LivingDeathEvent;
+import net.minecraft.world.entity.monster.Enemy;
+import com.merlinkitsune.astral_dice.AstralDiceMod;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraft.world.entity.LivingEntity;
 
 /**
  * 诅咒之剑筹码:装备时始终受到"青之诅咒"影响。
@@ -25,7 +30,13 @@ import com.merlinkitsune.astral_dice.event.ModEffectRemoval;
  * {@link GameplayConstants#CURSED_SWORD_BONUS_MAX} 决定(默认 16,最大 32)。
  * 移除筹码时清除全部攻击力加成与青之诅咒效果。
  */
+@Mod.EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public class CursedSwordChipItem extends BaseChipItem {
+    // "千咒刻印"诅咒附魔的资源键(静态缓存,避免每 tick 重新构造 ResourceLocation/ResourceKey)
+    private static final ResourceKey<Enchantment> CURSE_MARKER_KEY =
+            ResourceKey.create(Registries.ENCHANTMENT,
+                    new ResourceLocation(AstralDiceMod.MODID, "curse_marker"));
+
     public CursedSwordChipItem(Properties properties) {
         super(properties);
     }
@@ -99,4 +110,15 @@ public class CursedSwordChipItem extends BaseChipItem {
             player.addEffect(new MobEffectInstance(ModEffects.BLUE_CURSE.get(), Integer.MAX_VALUE, 0, false, true, true));
         }
     }
+
+    // 诅咒之剑:每击杀 1 个 20 血以上敌对目标,攻击力 +1(上限由配置决定)
+    @SubscribeEvent
+    public static void onCursedSwordKill(LivingDeathEvent event) {
+        LivingEntity target = event.getEntity();
+        if (target.level().isClientSide()) return;
+        if (!(target instanceof Enemy) || target.getMaxHealth() <= 20) return;
+        if (!(event.getSource().getEntity() instanceof Player killer)) return;
+        CursedSwordChipItem.onKill(killer);
+    }
+
 }
