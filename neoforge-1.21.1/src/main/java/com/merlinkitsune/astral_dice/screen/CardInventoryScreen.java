@@ -98,12 +98,12 @@ public class CardInventoryScreen extends AbstractContainerScreen<CardInventoryMe
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
         super.render(guiGraphics, mouseX, mouseY, partialTick);
         this.renderTooltip(guiGraphics, mouseX, mouseY);
-        // 骰神赐福期间卡牌栏锁定:顶部显示红色提醒文字
+        // 骰神赐福期间卡牌栏锁定:界面下方(选择区域以外)显示红色提醒文字
         if (this.minecraft.player != null && this.minecraft.player.hasEffect(ModEffects.DICE_BLESSING)) {
             Component msg = Component.translatable("gui.astral_dice.card_inventory.locked");
             int textWidth = this.font.width(msg);
             guiGraphics.drawString(this.font, msg,
-                    this.leftPos + (GUI_WIDTH - textWidth) / 2, this.topPos + 3, 0xFFFF5555, true);
+                    this.leftPos + (GUI_WIDTH - textWidth) / 2, this.topPos + GUI_HEIGHT - 11, 0xFFFF5555, true);
         }
     }
 
