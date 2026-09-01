@@ -1,0 +1,12 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.merlinkitsune.astral_dice.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "client": [
+    "client.KeyboardHandlerMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

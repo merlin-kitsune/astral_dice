@@ -8,7 +8,7 @@ import net.minecraftforge.common.ForgeConfigSpec;
  */
 public final class ModCommonConfig {
         // 当前配置版本:新增配置选项时必须 +1
-        public static final int CONFIG_VERSION = 12;
+        public static final int CONFIG_VERSION = 13;
 
         public static final ForgeConfigSpec SPEC;
 
@@ -36,6 +36,7 @@ public final class ModCommonConfig {
         public static final ForgeConfigSpec.IntValue ACTIONBAR_FADE_TICKS;
         public static final ForgeConfigSpec.IntValue DICE_BLESSING_DURATION_SECONDS;
         public static final ForgeConfigSpec.IntValue CURSED_SWORD_BONUS_MAX;
+        public static final ForgeConfigSpec.IntValue TARGET_SELECT_RADIUS;
 
         static {
                 ForgeConfigSpec.Builder builder = new ForgeConfigSpec.Builder();
@@ -73,7 +74,7 @@ public final class ModCommonConfig {
                 builder.push("signs").comment("=== 立牌 ===");
                 SIGN_ACTIVE_COOLDOWN_SECONDS = builder.comment("立牌主动技能冷却(单位：秒,默认：180)")
                                 .defineInRange("sign_active_cooldown_seconds", 180, 1, 360);
-                SKILL_WAIT_SECONDS = builder.comment("立牌主动技能等待期，需要选择目标的技能(占星师/秘密侦探)激活后,等待期内未对目标释放则自动取消(单位：秒,默认：30)")
+                SKILL_WAIT_SECONDS = builder.comment("立牌主动技能目标选择窗口期:目标选择器类技能(占星师/秘密侦探)进入选择模式后,选择会话的有效时长;未在窗口期内确认则自动取消(单位：秒,默认：30)")
                                 .defineInRange("skill_wait_seconds", 30, 5, 120);
                 JASMINE_MAX_BONUS = builder.comment("扫地机立牌被动:生命值上限/护甲增益各自的最大上限")
                                 .defineInRange("jasmine_max_bonus", 20, 1, 64);
@@ -104,6 +105,11 @@ public final class ModCommonConfig {
                 builder.push("cursed_sword").comment("=== 诅咒之剑 ===");
                 CURSED_SWORD_BONUS_MAX = builder.comment("诅咒之剑:骰神赐福期间每击杀1个20血以上敌对目标攻击力+1(每个赐福最多一次),最大增加上限(默认：16,最大：32)")
                                 .defineInRange("cursed_sword_bonus_max", 16, 0, 32);
+                builder.pop();
+
+                builder.push("target_select").comment("=== 目标选择器 ===");
+                TARGET_SELECT_RADIUS = builder.comment("目标选择器:可指定目标的最大距离(单位：格,默认：16,上限：32)")
+                                .defineInRange("target_select_radius", 16, 1, 32);
                 builder.pop();
 
                 SPEC = builder.build();

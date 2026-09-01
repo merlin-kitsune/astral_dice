@@ -15,6 +15,8 @@ public class ClientTickHandler {
 
     @SubscribeEvent
     public static void onClientTick(TickEvent.ClientTickEvent event) {
+        if (event.phase != TickEvent.Phase.END) return;
         ClientDamageNumbers.tick();
+        TargetSelectionClient.tick();
     }
 }

@@ -195,6 +195,10 @@ dependencies {
     // 自动化测试辅助:KubeJS(运行时依赖,用于游戏内 Curios 饰品栏检查脚本)
     // 1.20.1 = 2001.6.x 系列;如需启用请解开下行注释(开发环境依赖链较重)
     // modImplementation "dev.latvian.mods:kubejs-forge:${kubejs_version}"
+
+    // Mixin(目标选择器键盘输入锁定 KeyboardHandlerMixin):1.20.1 Forge 运行时自带 mixin 0.8.5,
+    // 编译期引用 @Mixin/@Inject 注解与 CallbackInfo 类型
+    compileOnly "org.spongepowered:mixin:0.8.5"
 }
 // AutoForge: end mod addon dependencies
 

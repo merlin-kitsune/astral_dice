@@ -116,8 +116,6 @@ public class PlayerLifecycleHandler {
         EffectTimerGuard.clear(player);
         // 死亡时统一重置效果相关状态,避免效果被清除后附件残留
         ModAttachments.setDefenseCardConsumedThisBlessing(player, false);
-        ModAttachments.setSignReadyType(player, 0);
-        ModAttachments.setSignReadyExpire(player, 0);
         ModAttachments.setFenCleavePending(player, false);
         ModAttachments.setFenCleaveActive(player, false);
         ModAttachments.setKomachiExtraPlays(player, 0);
@@ -158,8 +156,6 @@ public class PlayerLifecycleHandler {
             }
         });
         player.removeEffect(ModEffects.DICE_BLESSING.get());
-        player.removeEffect(ModEffects.HAIQING_READY.get());
-        player.removeEffect(ModEffects.BONNIE_READY.get());
         player.removeEffect(ModEffects.INVESTIGATION_BONUS.get());
         player.removeEffect(ModEffects.FATE_GUIDANCE.get());
         player.removeEffect(ModEffects.FEN_FRENZY.get());

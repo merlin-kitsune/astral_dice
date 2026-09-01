@@ -28,20 +28,34 @@ public class KeyBindingSetup {
             "key.categories.astral_dice"
     );
 
+    // 目标选择器:键盘确认键(默认 Enter;选择期间 Enter 不再打开聊天,用于确认目标)
+    public static final KeyMapping CONFIRM_TARGET_KEY = new KeyMapping(
+            "key.astral_dice.confirm_target",
+            InputConstants.Type.KEYSYM,
+            GLFW.GLFW_KEY_ENTER,
+            "key.categories.astral_dice"
+    );
+
     @Mod.EventBusSubscriber(modid = AstralDiceMod.MODID, value = Dist.CLIENT)
     public static class ClientEvents {
         @SubscribeEvent
         public static void onClientTick(TickEvent.ClientTickEvent event) {
             if (event.phase != TickEvent.Phase.END) return;
-            ClientDamageNumbers.tick();
             var player = Minecraft.getInstance().player;
             if (player == null) return;
 
             while (ACTIVATE_SIGN_KEY.consumeClick()) {
-                ModNetwork.sendToServer(new ModNetwork.SignActivateMessage());
+                if (TargetSelectionClient.isActive()) {
+                    // 目标选择期间再次按下主动技能键 = 取消选择(不触发立牌技能)
+                    TargetSelectionClient.cancel("key");
+                } else {
+                    ModNetwork.sendToServer(new ModNetwork.SignActivateMessage());
+                }
             }
             while (OPEN_CARD_INVENTORY_KEY.consumeClick()) {
-                ModNetwork.sendToServer(new ModNetwork.OpenCardInventoryMessage());
+                if (!TargetSelectionClient.isActive()) {
+                    ModNetwork.sendToServer(new ModNetwork.OpenCardInventoryMessage());
+                }
             }
         }
     }
