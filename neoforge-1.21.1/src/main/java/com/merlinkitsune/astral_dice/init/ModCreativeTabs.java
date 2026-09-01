@@ -129,9 +129,9 @@ public class ModCreativeTabs {
                 output.accept(ModItems.SANDWICH_HIGH.get());
                 output.accept(ModItems.ADRENALINE_LOW.get());
                 output.accept(ModItems.ADRENALINE_HIGH.get());
+                output.accept(ModItems.SATELLITE_CHIP.get());
                 output.accept(ModItems.CURSED_SWORD.get());
                 output.accept(ModItems.REVENGE_HALBERD.get());
                 output.accept(ModItems.PIERCING_GUN.get());
-                output.accept(ModItems.SATELLITE_CHIP.get());
             }).build());
 }
