@@ -20,8 +20,6 @@
     "ZOZ",
     "PPP"
   ],
-  "result": {
-    "count": 1,
-    "id": "astral_dice:adrenaline_high_chip"
+  "result": { "count": 1, "item": "astral_dice:adrenaline_high_chip"
   }
 }

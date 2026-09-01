@@ -125,6 +125,12 @@ legacyForge {
             sourceSet(sourceSets.main)
         }
     }
+
+    // MDG Legacy:Mixin 配置声明(dev run 需显式注册 mixin config,
+    // mods.toml [[mixins]] 仅生产 jar 生效;此处同时启用 refmap 生成链)
+    mixin {
+        config("${mod_id}.mixins.json")
+    }
 }
 
 // This block of code expands all declared replace properties in the specified resource targets.
@@ -193,8 +199,12 @@ dependencies {
     modCompileOnly "maven.modrinth:irons-spells-n-spellbooks:hZaEegS9"
 
     // 自动化测试辅助:KubeJS(运行时依赖,用于游戏内 Curios 饰品栏检查脚本)
-    // 1.20.1 = 2001.6.x 系列;如需启用请解开下行注释(开发环境依赖链较重)
-    // modImplementation "dev.latvian.mods:kubejs-forge:${kubejs_version}"
+    // 1.20.1 = 2001.6.x 系列;与 1.21.1 分支一致,测试环境经 implementation 注入 dev run
+    // 注意:architectury/rhino 是 kubejs 的 mod 级依赖,必须同样以 modImplementation 声明,
+    //      否则 Forge 依赖检查报 MISSING(MDG Legacy 不会把 classpath 上的传递依赖当 mod 注入)
+    modImplementation "dev.latvian.mods:kubejs-forge:${kubejs_version}"
+    modImplementation "dev.architectury:architectury-forge:9.2.14"
+    modImplementation "dev.latvian.mods:rhino-forge:2001.2.3-build.10"
 
     // Mixin(目标选择器键盘输入锁定 KeyboardHandlerMixin):1.20.1 Forge 运行时自带 mixin 0.8.5,
     // 编译期引用 @Mixin/@Inject 注解与 CallbackInfo 类型

@@ -23,8 +23,6 @@
     "ZCZ",
     "BBB"
   ],
-  "result": {
-    "count": 1,
-    "id": "astral_dice:cursed_sword_chip"
+  "result": { "count": 1, "item": "astral_dice:cursed_sword_chip"
   }
 }
