@@ -29,10 +29,12 @@ public class DiceCurioItem extends Item implements ICurioItem {
         return DiceTierRegistry.isDice(stack);
     }
 
-    // 返回某物品栈对应的卡牌放置栏总槽位数(优先查注册表,未注册回退基础骰子数量 6)
+    // 返回某物品栈对应的卡牌放置栏总槽位数(优先查注册表,未注册回退基础骰子数量 6)。
+    // 平衡规则:0-2 星骰子攻击/防御侧可用卡牌格各 -1(总数 -2);3 星为该骰子的完整槽位。
     public static int getCardSlots(ItemStack stack) {
         DiceTier tier = DiceTierRegistry.get(stack);
-        return tier != null ? tier.cardSlots() : 6;
+        int fullSlots = tier != null ? tier.cardSlots() : 6;
+        return starLevel(stack) < 3 ? fullSlots - 2 : fullSlots;
     }
 
     @Override

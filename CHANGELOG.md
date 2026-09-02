@@ -35,6 +35,7 @@ This changelog is fully split by language: the Chinese version comes first, foll
 - 新增「反击」流派(玩家效果,图标 `temp/反击.png`):拥有反击层数时被近战敌对生物攻击触发一次反击——视为玩家近战攻击,按 手持最高近战武器基础伤害 + 1d6 骰点 + 攻击牌加成(未赐福时自动触发骰神赐福并消耗攻击牌耐久)+ 攻击力加成 计算总伤害并对攻击目标造成伤害,随后移除 1 层;魔法伤害(唤魔者尖牙/守卫者光束等)不算近战,不触发;首个层数来源:夹心饼干-美味(生命值低于最大生命值一半时,每 1:00 获得 1 层「反击」)(双版本)。
 - 新增筹码「肾上腺素-一般/高效」(史诗/传奇):生命值低于最大生命值一半时,攻击力/防御力 +3/+8(防御按 1 点 = 2 点护甲折算为护甲 +6/+16);高效额外:触发加成时被敌方攻击,掷 1d6——骰点 4-5 → 50% 概率闪避本次伤害、骰点 6 → 100% 闪避。配方:一般 = ZXZ/DCD/PPP(Z=再生药水,X=下界之星,D=凋零玫瑰,C=空白筹码,P=星盘);高效 = RZR/ZOZ/PPP(R=红石粉,Z=钻石,O=肾上腺素-一般,P=黄金星盘,紫→金升级式)(双版本)。
 - 修复骰子 tooltip 显示攻击牌时加成误标为「骰子」及染色问题:攻击牌(中/大/特大/名刀)统一显示为「攻击」,范围不再带「+」前缀,与防御牌/独立牌 tooltip 格式一致(双版本)。
+- 骰子卡牌栏平衡:0-2 星骰子的攻击/防御可用卡牌格各 -1(基础 3+3→2+2、金 4+4→3+3、钻 5+5→4+4、合金 6+6→5+5);3 星保持该骰子的完整格数(双版本)。
 
 ### 已修复BUG
 
@@ -332,6 +333,7 @@ This changelog is fully split by language: the Chinese version comes first, foll
 - New Counterattack playstyle (player effect, icon `temp/反击.png`): with Counterattack layers, being hit by a hostile melee attack triggers a counter strike treated as your own melee attack — total damage = highest held melee weapon base damage + a 1d6 dice roll + attack-card bonus (auto-triggering the Dice Blessing and consuming card durability when you are not blessed) + all attack bonuses, dealt to the attacker, then 1 layer is removed; magic damage (evoker fangs, guardian beams, etc.) does not count as melee and does not trigger; first layer source: Sandwich (Deluxe) grants 1 Counterattack layer per 1:00 while below half max HP (both versions).
 - New chips "Adrenaline - Common/High-Grade" (epic/legendary): while below half max HP, attack/defense +3/+8 (defense converts to armor +6/+16 at 1 point = 2 armor); High-Grade extra: while the bonus is active, being attacked by a hostile rolls 1d6 — 4-5 gives a 50%% dodge chance, 6 gives a 100%% dodge for this damage. Recipes: Common = ZXZ/DCD/PPP (Z = Potion of Regeneration, X = Nether Star, D = Wither Rose, C = Blank Chip, P = Star Plate); High-Grade = RZR/ZOZ/PPP (R = Redstone Dust, Z = Diamond, O = Adrenaline - Common, P = Golden Star Plate, the purple-to-gold upgrade form) (both versions).
 - Fixed the dice tooltip showing attack cards' bonus mislabeled as "dice" and a coloring issue: attack cards (Medium/Large/Epic/Meito) now uniformly read "attack", the range no longer carries a "+" prefix, matching the defense-card and standalone-card tooltip format (both versions).
+- Dice card-slot balance: dice at star 0-2 now have one fewer usable attack slot and one fewer defense slot (base 3+3→2+2, golden 4+4→3+3, diamond 5+5→4+4, netherite 6+6→5+5); 3-star dice keep the dice's full slot count (both versions).
 
 ### Bug Fixes
 
