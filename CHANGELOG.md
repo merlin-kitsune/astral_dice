@@ -21,7 +21,7 @@ This changelog is fully split by language: the Chinese version comes first, foll
 - 扫地机立牌被动追加:使用「加急加快」效果牌后,主动技能冷却立即减少最大冷却的 50%(仅 1.21.1)。
 - 调查员立牌主动:获得一张活体书页,若使用前物品栏中没有活体书页则共获得两张(仅 1.21.1)。
 - 秘密侦探立牌:调查阶段隐身期间(隐身 + 调查阶段效果)不会被生物索敌(仅 1.21.1)。
-- 骇客立牌主动:消耗的战斗牌仅从主物品栏选取(不再从末影箱/背包类容器)(仅 1.21.1)。
+- 骇客立牌主动:消耗的战斗牌仅从主物品栏选取(不再从末影箱/背包类容器);攻击力加成最低 +2,主物品栏无战斗牌可消耗时同样获得保底 +2(仅 1.21.1)。
 - 岿然不动:防御力 +2 → 护甲 +8(对应骰战防御力 +4),迁移为效果属性修饰器,真实护甲与骰战均生效且不重复计算(仅 1.21.1)。
 - 全力攻击:耐久 2 → 5(仅 1.21.1)。
 - 诅咒之剑配方:中轴材料由「谜之炖菜」标签改为「哭泣黑曜石」;删除废弃的 `suspicious_stews` 物品标签(仅 1.21.1)。
@@ -319,7 +319,7 @@ This changelog is fully split by language: the Chinese version comes first, foll
 - Jasmine passive addition: using an Express Delivery card immediately reduces the active skill's cooldown by 50%% of its maximum (1.21.1 only).
 - Rin active: grants one Living Page, or two if you had none before (1.21.1 only).
 - Bonnie: while hidden during an Investigation stage (Invisibility + Investigation Stage), mobs can no longer target you (1.21.1 only).
-- Nancy Lu active: the consumed battle card is now taken from the main inventory only (ender chest / backpack-like containers no longer count) (1.21.1 only).
+- Nancy Lu active: the consumed battle card is now taken from the main inventory only (ender chest / backpack-like containers no longer count); the attack bonus is at least +2, and a guaranteed +2 applies even when no battle card is available in the main inventory (1.21.1 only).
 - Unwavering: defense +2 → armor +8 (equal to +4 defense in dice battles), moved to an attribute modifier on the effect so both real armor and dice combat apply without double counting (1.21.1 only).
 - Full Power: durability 2 → 5 (1.21.1 only).
 - Cursed Sword recipe: the middle ingredient is now Crying Obsidian instead of the Suspicious Stew item tag; the unused `suspicious_stews` item tag was removed (1.21.1 only).
