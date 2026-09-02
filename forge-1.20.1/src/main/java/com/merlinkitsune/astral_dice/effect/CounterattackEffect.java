@@ -8,7 +8,8 @@ import net.minecraft.world.entity.player.Player;
 
 /**
  * 反击(玩家效果/流派):层数 = amplifier + 1(HUD 图标显示层数)。
- * 拥有层数时被近战敌方攻击 → 触发一次反击并消耗 1 层(触发逻辑见
+ * 拥有层数时受到敌对生物任何伤害 → 触发:消耗 1 层并把该伤害来源登记为「反噬目标」,此后该目标
+ * 每次对玩家造成伤害都会受到一次返还伤害,直至目标死亡(触发/返还逻辑见
  * {@code DiceCombatEvents.onCounterattackTriggered})。
  * 层数获得来源后续补充;对外提供 {@link #addStacks} / {@link #getStacks} / {@link #consumeOne}。
  */
