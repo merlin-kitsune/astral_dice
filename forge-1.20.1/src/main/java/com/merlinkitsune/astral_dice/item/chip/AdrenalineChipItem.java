@@ -18,7 +18,7 @@ import java.util.concurrent.ThreadLocalRandom;
  * 肾上腺素-高效筹码:生命值低于最大生命值一半时,攻击力/防御力 +8。
  * - 攻击力经骰战攻击修饰器注册表(DiceCombatModifiers)计入;
  * - 防御力按「1 防御力 = 2 护甲值」折算为真实护甲(curioTick 维护,见防御力折算规范);
- * - 触发加成时被敌方攻击,掷 1d6 作为玩家骰点——骰点 ≥5 时,50% 概率闪避本次伤害。
+ * - 触发加成时被敌方攻击,有 20% 概率闪避单次攻击伤害。
  * (「肾上腺素-一般」筹码已删除,其配方改造后直接合成高效,见 ModRecipeProvider)
  */
 @Mod.EventBusSubscriber(modid = AstralDiceMod.MODID)
@@ -63,11 +63,9 @@ public class AdrenalineChipItem extends BaseChipItem {
                 player, "adrenaline_def_armor" + bonus, 0);
     }
 
-    // 高效闪避判定:掷 1d6 作为玩家骰点,骰点 ≥5(即 5/6)时有 50% 概率闪避
+    // 高效闪避判定:触发加成时,有 20% 概率闪避单次攻击
     private static boolean tryDodge() {
-        int roll = ThreadLocalRandom.current().nextInt(1, 7);
-        if (roll >= 5) return ThreadLocalRandom.current().nextBoolean();
-        return false;
+        return ThreadLocalRandom.current().nextInt(100) < 20;
     }
 
     // 肾上腺素-高效:触发加成时被敌方攻击 → 按骰点概率闪避本次伤害
