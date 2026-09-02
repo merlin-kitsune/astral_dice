@@ -742,11 +742,9 @@ public class ModTooltipHandler {
                             : "tooltip.astral_dice.chip.sandwich_high")
                     .withStyle(ChatFormatting.GRAY));
         }
-        if (stack.is(ModItems.ADRENALINE_LOW.get()) || stack.is(ModItems.ADRENALINE_HIGH.get())) {
+        if (stack.is(ModItems.ADRENALINE_HIGH.get())) {
             tooltip.add(Component.empty());
-            tooltip.add(Component.translatable(stack.is(ModItems.ADRENALINE_LOW.get())
-                            ? "tooltip.astral_dice.chip.adrenaline_low"
-                            : "tooltip.astral_dice.chip.adrenaline_high")
+            tooltip.add(Component.translatable("tooltip.astral_dice.chip.adrenaline_high")
                     .withStyle(ChatFormatting.GRAY));
         }
         if (stack.is(ModItems.MAGIC_QUIVER.get())) {

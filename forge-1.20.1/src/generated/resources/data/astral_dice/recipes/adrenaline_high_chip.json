@@ -2,26 +2,30 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
-    "O": {
-      "item": "astral_dice:adrenaline_low_chip"
+    "C": {
+      "item": "astral_dice:blank_chip"
+    },
+    "D": {
+      "item": "minecraft:wither_rose"
     },
     "P": {
       "item": "astral_dice:golden_star_plate"
     },
-    "R": {
-      "item": "minecraft:redstone"
+    "X": {
+      "item": "minecraft:nether_star"
     },
     "Z": {
-      "item": "minecraft:diamond"
+      "type": "forge:partial_nbt",
+      "item": "minecraft:potion",
+      "nbt": "{Potion:\"minecraft:regeneration\"}"
     }
   },
   "pattern": [
-    "RZR",
-    "ZOZ",
+    "ZXZ",
+    "DCD",
     "PPP"
   ],
   "result": {
-    "count": 1,
-    "id": "astral_dice:adrenaline_high_chip"
+    "item": "astral_dice:adrenaline_high_chip"
   }
 }
