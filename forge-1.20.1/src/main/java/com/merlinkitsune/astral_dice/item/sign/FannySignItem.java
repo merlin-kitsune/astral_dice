@@ -1,6 +1,10 @@
 package com.merlinkitsune.astral_dice.item.sign;
+import com.merlinkitsune.astral_dice.network.ModNetwork;
 
 import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
+import com.merlinkitsune.astral_dice.event.SignActiveTriggeredEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
 
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
@@ -19,17 +23,15 @@ import com.merlinkitsune.astral_dice.event.AstralEventSystem;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
 import com.merlinkitsune.astral_dice.item.card.EffectCardUtil;
-import com.merlinkitsune.astral_dice.network.ModNetwork.ActionBarMessage;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
-import com.merlinkitsune.astral_dice.network.ModNetwork;
 
+@Mod.EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public class FannySignItem extends BaseSignItem {
     public FannySignItem(Properties properties) {
         super(properties);
     }
-
 
     @Override
     protected InteractionResultHolder<ItemStack> handleUse(Level level, Player player, ItemStack stack) {
@@ -87,8 +89,7 @@ public class FannySignItem extends BaseSignItem {
     // 农夫乐事"滋养"效果(仅安装农夫乐事 Mod 时生效)
     private static void giveNourishment(Player player) {
         try {
-            var nourishment = net.minecraftforge.registries.ForgeRegistries.MOB_EFFECTS
-                    .getValue(new ResourceLocation("farmersdelight:nourishment"));
+            var nourishment = BuiltInRegistries.MOB_EFFECT.get(new ResourceLocation("farmersdelight:nourishment"));
             if (nourishment != null) {
                 EffectTimerGuard.apply(player, new MobEffectInstance(nourishment, 2400, 0, false, true));
             }
@@ -115,6 +116,15 @@ public class FannySignItem extends BaseSignItem {
                                     Component.translatable("msg.astral_dice.fanny_event." + roll))
                                     .withStyle(ChatFormatting.YELLOW),
                             GameplayConstants.ACTIONBAR_DURATION_TICKS));
+        }
+    }
+
+    // 大侦探主动自带 ActionBar 反馈(事件提示,依赖随机事件结果,仍在 handleUse 内发送):
+    // 注册到主动技能响应事件,阻止默认提示
+    @SubscribeEvent
+    public static void onSignActiveTriggered(SignActiveTriggeredEvent event) {
+        if (event.getSignStack().is(ModItems.FANNY_SIGN.get())) {
+            event.setHandled();
         }
     }
 }

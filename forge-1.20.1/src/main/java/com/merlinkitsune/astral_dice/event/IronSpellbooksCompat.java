@@ -15,7 +15,7 @@ public class IronSpellbooksCompat {
     public static void onChangeMana(ChangeManaEvent event) {
         var player = event.getEntity();
         if (player.level().isClientSide()) return;
-        if (!ModEventHandlers.isFateGuidanceActive(player)) return;
+        if (!com.merlinkitsune.astral_dice.item.card.FateGuidanceCardItem.isFateGuidanceActive(player)) return;
         float oldMana = event.getOldMana();
         float newMana = event.getNewMana();
         // 仅处理消耗方向(新魔力 < 旧魔力):将消耗量减半

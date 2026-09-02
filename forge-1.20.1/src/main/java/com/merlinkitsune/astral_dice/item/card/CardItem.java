@@ -21,21 +21,21 @@ public class CardItem extends Item {
     @Override
     public int getMaxStackSize(ItemStack stack) {
         int max = AppliedStone.defaultUses(cardType);
-        int uses = ModDataComponents.CARD_USES.getOrDefault(stack,  max);
+        int uses = ModDataComponents.CARD_USES.getOrDefault(stack, max);
         return uses >= max ? 64 : 1;
     }
 
     @Override
     public boolean isBarVisible(ItemStack stack) {
         int max = AppliedStone.defaultUses(cardType);
-        int uses = ModDataComponents.CARD_USES.getOrDefault(stack,  max);
+        int uses = ModDataComponents.CARD_USES.getOrDefault(stack, max);
         return uses > 0 && uses < max;
     }
 
     @Override
     public int getBarWidth(ItemStack stack) {
         int max = AppliedStone.defaultUses(cardType);
-        int uses = ModDataComponents.CARD_USES.getOrDefault(stack,  max);
+        int uses = ModDataComponents.CARD_USES.getOrDefault(stack, max);
         if (max <= 0) return 0;
         return Math.round(13.0f * uses / max);
     }
@@ -43,7 +43,7 @@ public class CardItem extends Item {
     @Override
     public int getBarColor(ItemStack stack) {
         float max = AppliedStone.defaultUses(cardType);
-        float uses = ModDataComponents.CARD_USES.getOrDefault(stack,  (int) max);
+        float uses = ModDataComponents.CARD_USES.getOrDefault(stack, (int) max);
         float ratio = max > 0 ? uses / max : 0;
         if (ratio > 0.5f) {
             return 0x00FF00;

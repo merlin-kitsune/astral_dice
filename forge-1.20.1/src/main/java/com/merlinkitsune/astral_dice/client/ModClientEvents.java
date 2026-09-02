@@ -31,6 +31,8 @@ public class ModClientEvents {
         // 1.20.1:registerAbove 的 id 参数是纯 path,Forge 自动拼 modid 前缀
         event.registerAbove(VanillaGuiOverlay.CROSSHAIR.id(),
                 "damage_number", DamageNumberOverlay.INSTANCE);
+        event.registerAbove(VanillaGuiOverlay.CROSSHAIR.id(),
+                "target_select", TargetSelectOverlay.INSTANCE);
         event.registerAbove(VanillaGuiOverlay.AIR_LEVEL.id(),
                 "action_bar", ActionBarOverlay.INSTANCE);
     }
@@ -55,6 +57,7 @@ public class ModClientEvents {
     public static void registerKeyMappings(RegisterKeyMappingsEvent event) {
         event.register(KeyBindingSetup.ACTIVATE_SIGN_KEY);
         event.register(KeyBindingSetup.OPEN_CARD_INVENTORY_KEY);
+        event.register(KeyBindingSetup.CONFIRM_TARGET_KEY);
     }
 
     public static class DamageNumberOverlay implements IGuiOverlay {

@@ -18,6 +18,7 @@ import com.merlinkitsune.astral_dice.item.chip.CandyChipItem;
 import com.merlinkitsune.astral_dice.item.chip.SatelliteChipItem;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.sign.FenSignItem;
+import com.merlinkitsune.astral_dice.item.sign.JasmineSignItem;
 import com.merlinkitsune.astral_dice.item.chip.MagicQuiverChipItem;
 import com.merlinkitsune.astral_dice.item.sign.KomachiSignItem;
 
@@ -37,8 +38,9 @@ import com.merlinkitsune.astral_dice.item.sign.KomachiSignItem;
  * 子类二选一实现效果:
  * - 简单状态牌:覆写 {@link #getEffect()} 返回效果引用(基类自动施加 {@link #getEffectDuration()} 时长);
  * - 复杂逻辑牌:覆写 {@link #applyEffect()}(使用后对玩家/目标施加的效果)。
- * 按需覆写 {@link #canUseOnOtherPlayers()} / {@link #countsForCopy()} / {@link #cardTypeId()} /
- * {@link #isExclusive()}。
+ * 按需覆写 {@link #canUseOnOtherPlayers()} / {@link #cardTypeId()} /
+ * {@link #isExclusive()}。全部效果牌均参与忍者立牌/魔法秘典/魔法箭袋的复制计数
+ * (通过 {@link #cardTypeId()} 与 {@link #cardByTypeId(String)} 映射,无排除项)。
  */
 public abstract class BaseEffectCardItem extends Item {
 
@@ -67,7 +69,7 @@ public abstract class BaseEffectCardItem extends Item {
         return switch (cardTypeId) {
             case "berserk" -> new ItemStack(ModItems.EFFECT_CARD_BERSERK.get());
             case "unwavering" -> new ItemStack(ModItems.EFFECT_CARD_UNWAVERING.get());
-            case "living_page" -> new ItemStack(ModItems.LIVING_BOOK_PAGE.get());
+            case "living_page" -> new ItemStack(ModItems.LIVING_PAGE.get());
             case "fight_poison_with_poison" -> new ItemStack(ModItems.EFFECT_CARD_FIGHT_POISON_WITH_POISON.get());
             case "king_power" -> new ItemStack(ModItems.EFFECT_CARD_KING_POWER.get());
             case "monster_laser" -> new ItemStack(ModItems.MONSTER_LASER_CARD.get());
@@ -122,8 +124,7 @@ public abstract class BaseEffectCardItem extends Item {
     // 通用:寻找玩家视线前方指定距离内的其他玩家
     public static Player findPlayerInFront(Player player, double range) {
         net.minecraft.world.phys.HitResult hit = player.pick(range, 1.0f, false);
-        if (hit.getType() == net.minecraft.world.phys.HitResult.Type.ENTITY
-                && hit instanceof net.minecraft.world.phys.EntityHitResult entityHit
+        if (hit instanceof net.minecraft.world.phys.EntityHitResult entityHit
                 && entityHit.getEntity() instanceof Player target && target != player) {
             return target;
         }
@@ -219,9 +220,14 @@ public abstract class BaseEffectCardItem extends Item {
         // 可口糖果:每使用一张效果牌触发(治愈+1、回血+1、满血时本轮出牌数+1)
         CandyChipItem.onEffectCardUsed(player);
 
-        // 探天卫星:使用"轨道炮"后本轮出牌数+1(每个轮次最多一次)
+        // 探天卫星:使用"轨道炮"后本轮出牌数+1(每 1:00 一次)
         if (stack.is(ModItems.ORBITAL_STRIKE_CARD.get())) {
             SatelliteChipItem.onOrbitalStrikeUsed(player);
+        }
+
+        // 扫地机立牌被动:使用「加急加快」后,主动技能冷却立即减少最大冷却的 50%
+        if (stack.is(ModItems.EXPRESS_DELIVERY.get())) {
+            JasmineSignItem.onExpressDeliveryUsed(player);
         }
 
         // 治疗类效果牌:大当家立牌被动"养精蓄锐 +1 层"

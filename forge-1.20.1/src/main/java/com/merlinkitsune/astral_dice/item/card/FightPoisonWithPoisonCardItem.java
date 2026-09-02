@@ -21,8 +21,8 @@ public class FightPoisonWithPoisonCardItem extends BaseEffectCardItem {
     private static final int POISON_DURATION_TICKS = 160;
     /** 生命恢复延迟 tick(8 秒后触发) */
     private static final int REGEN_DELAY_TICKS = 160;
-    /** 生命恢复持续 tick(15 秒) */
-    private static final int REGEN_DURATION_TICKS = 300;
+    /** 生命恢复持续 tick(30 秒) */
+    private static final int REGEN_DURATION_TICKS = 600;
 
     public FightPoisonWithPoisonCardItem(Properties properties) {
         super(properties);
@@ -63,7 +63,7 @@ public class FightPoisonWithPoisonCardItem extends BaseEffectCardItem {
         for (MobEffectInstance instance : new java.util.ArrayList<>(player.getActiveEffects())) {
             if (removed >= 3) break;
             MobEffect effect = instance.getEffect();
-            String id = net.minecraftforge.registries.ForgeRegistries.MOB_EFFECTS.getKey(instance.getEffect()).toString();
+            String id = instance.getEffect().getDescriptionId();
             if (id != null && id.startsWith("minecraft:")
                     && effect.getCategory() == MobEffectCategory.HARMFUL) {
                 player.removeEffect(instance.getEffect());

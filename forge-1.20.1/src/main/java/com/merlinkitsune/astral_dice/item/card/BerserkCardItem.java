@@ -9,7 +9,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 
 /**
- * 狂暴(功能效果牌):获得"狂暴"效果(攻击力 +3/层,受到任意伤害 +1/层,可叠 3 层,持续 3:00)。
+ * 狂暴(功能效果牌):获得"狂暴"效果(攻击力 +3/层,受到任意伤害 +1/层,可叠 3 层,持续 2:00)。
  * 允许对其他玩家/生物使用(下蹲+右键对面前玩家,或直接点击实体)。
  */
 public class BerserkCardItem extends BaseEffectCardItem {

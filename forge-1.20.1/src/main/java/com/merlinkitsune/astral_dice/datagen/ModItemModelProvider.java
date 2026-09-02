@@ -66,7 +66,7 @@ public class ModItemModelProvider extends ItemModelProvider {
         basicItem(ModItems.PADMAN_SIGN.get());
         basicItem(ModItems.FANNY_SIGN.get());
         basicItem(ModItems.RIN_SIGN.get());
-        basicItem(ModItems.LIVING_BOOK_PAGE.get());
+        basicItem(ModItems.LIVING_PAGE.get());
         basicItem(ModItems.HAIQING_SIGN.get());
         basicItem(ModItems.FATE_GUIDANCE_CARD.get());
         basicItem(ModItems.PAPARA_SIGN.get());
@@ -94,6 +94,8 @@ public class ModItemModelProvider extends ItemModelProvider {
         basicItem(ModItems.SANDWICH_LOW.get());
         basicItem(ModItems.SANDWICH_MEDIUM.get());
         basicItem(ModItems.SANDWICH_HIGH.get());
+        basicItem(ModItems.ADRENALINE_LOW.get());
+        basicItem(ModItems.ADRENALINE_HIGH.get());
         basicItem(ModItems.MAGIC_QUIVER.get());
         basicItem(ModItems.BUFFER_SHIELD.get());
         basicItem(ModItems.STAR_COIN_HAMMER.get());

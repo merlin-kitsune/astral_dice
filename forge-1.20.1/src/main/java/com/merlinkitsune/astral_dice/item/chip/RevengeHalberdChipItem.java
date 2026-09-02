@@ -1,13 +1,14 @@
 package com.merlinkitsune.astral_dice.item.chip;
+import com.merlinkitsune.astral_dice.item.CuriosCompat;
 
 import com.merlinkitsune.astral_dice.effect.ModEffects;
+import com.merlinkitsune.astral_dice.event.ModEffectRemoval;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.player.Player;
-import com.merlinkitsune.astral_dice.item.CuriosCompat;
+import net.minecraft.world.item.ItemStack;
 import top.theillusivec4.curios.api.CuriosApi;
 import com.merlinkitsune.astral_dice.item.ModItems;
-import com.merlinkitsune.astral_dice.event.ModEffectRemoval;
 
 /**
  * 复仇之戟筹码:装备时,若身上出现指定负面/诅咒效果,则获得攻击力/防御力 +6。
@@ -49,6 +50,7 @@ public class RevengeHalberdChipItem extends BaseChipItem {
                 || player.hasEffect(ModEffects.MARKED.get());
     }
 
+    // 移除"复仇之戟"显示效果:经 ModEffectRemoval 内部通道放行移除拦截
     /** 当前攻击力加成(0 或 BONUS) */
     public static int currentAttackBonus(Player player) {
         return isEquipped(player) && hasAttackTriggerEffect(player) ? BONUS : 0;
@@ -64,12 +66,24 @@ public class RevengeHalberdChipItem extends BaseChipItem {
         if (player.level().isClientSide()) return;
         if (isEquipped(player)
                 && (hasAttackTriggerEffect(player) || hasDefenseTriggerEffect(player))) {
-            // 效果已存在时不重复施加,避免每 tick 触发效果更新/同步
+            // 效果已存在时不重复施加,避免每 tick 触发效果更新/同步包
             if (!player.hasEffect(ModEffects.REVENGE_HALBERD.get())) {
                 player.addEffect(new MobEffectInstance(ModEffects.REVENGE_HALBERD.get(), 100, 0, false, false, true));
             }
         } else if (player.hasEffect(ModEffects.REVENGE_HALBERD.get())) {
             ModEffectRemoval.remove(player, ModEffects.REVENGE_HALBERD.get());
         }
+    }
+
+    /** 每 tick 驱动:防御力折算为真实护甲(1 防御力 = 2 护甲值;攻击加成仍走骰战攻击修饰器) */
+    public static void updateArmorBonus(Player player) {
+        com.merlinkitsune.astral_dice.combat.DiceCombatModifiers.setDefenseArmorBonus(
+                player, "revenge_halberd_def_armor", currentDefenseBonus(player));
+    }
+
+    @Override
+    protected void onChipUnequip(Player player, ItemStack stack) {
+        com.merlinkitsune.astral_dice.combat.DiceCombatModifiers.setDefenseArmorBonus(
+                player, "revenge_halberd_def_armor", 0);
     }
 }

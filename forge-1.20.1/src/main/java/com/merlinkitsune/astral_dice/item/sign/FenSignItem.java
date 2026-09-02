@@ -1,4 +1,5 @@
 package com.merlinkitsune.astral_dice.item.sign;
+import com.merlinkitsune.astral_dice.item.CuriosCompat;
 
 import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
 
@@ -10,13 +11,9 @@ import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import com.merlinkitsune.astral_dice.item.CuriosCompat;
 import top.theillusivec4.curios.api.CuriosApi;
 import top.theillusivec4.curios.api.SlotContext;
-import com.merlinkitsune.astral_dice.event.ModEventHandlers;
-import com.merlinkitsune.astral_dice.item.card.BaseEffectCardItem;
 import com.merlinkitsune.astral_dice.item.ModItems;
-import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
 
 /**
  * 大当家立牌(命名:fen)。
@@ -47,7 +44,6 @@ public class FenSignItem extends BaseSignItem {
     public FenSignItem(Properties properties) {
         super(properties);
     }
-
 
     @Override
     public void onEquip(SlotContext slotContext, ItemStack curio, ItemStack prevStack) {
@@ -98,7 +94,7 @@ public class FenSignItem extends BaseSignItem {
     }
 
     /**
-     * 触发骰神赐福时调用(ModEventHandlers triggeredBlessing 块):
+     * 触发骰神赐福时调用(DiceCombatEvents triggeredBlessing 块):
      * 记录触发时刻;佩戴立牌时养精蓄锐 -1 层(下限 0);
      * 若"战斗爽·扩散"待命,则本次赐福启用(持续到赐福结束)。
      */
@@ -118,11 +114,14 @@ public class FenSignItem extends BaseSignItem {
     }
 
     /**
-     * 每 20 tick 驱动(ModEventHandlers.onPlayerTick):1 分钟内没有触发骰神赐福 → 养精蓄锐 +1 层。
+     * 每 20 tick 驱动(PlayerTickEvents.onPlayerTick):1 分钟内没有触发骰神赐福 → 养精蓄锐 +1 层。
      * 计时起点:装备立牌时(onEquip)或首次 tick 惰性初始化。
      */
     public static void tick(Player player) {
         if (player.level().isClientSide()) return;
+        // 被动:拥有养精蓄锐层数时防御力 +2 → 护甲 +4(经 ARMOR 属性;层数/卸下后自动移除)
+        com.merlinkitsune.astral_dice.combat.DiceCombatModifiers.setDefenseArmorBonus(
+                player, "fen_def_armor", isEquipped(player) && ModAttachments.getFenRecharge(player) > 0 ? 2 : 0);
         long now = player.level().getGameTime();
         long last = ModAttachments.getFenLastBlessingTick(player);
         if (last <= 0) {
@@ -137,7 +136,7 @@ public class FenSignItem extends BaseSignItem {
         ModAttachments.setFenLastBlessingTick(player, now);
     }
 
-    // 骰神赐福结束时调用(ModEventHandlers.onDiceBlessingExpired):清除"战斗爽·扩散"生效状态
+    // 骰神赐福结束时调用(DiceCombatEvents.onDiceBlessingExpired):清除"战斗爽·扩散"生效状态
     public static void onBlessingEnd(Player player) {
         if (player.level().isClientSide()) return;
         ModAttachments.setFenCleaveActive(player, false);

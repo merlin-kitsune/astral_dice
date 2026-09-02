@@ -104,7 +104,7 @@ public class CardInventoryScreen extends AbstractContainerScreen<CardInventoryMe
                     net.minecraft.network.chat.Component.translatable("gui.astral_dice.card_inventory.locked");
             int textWidth = this.font.width(msg);
             guiGraphics.drawString(this.font, msg,
-                    this.leftPos + (this.imageWidth - textWidth) / 2, this.topPos + 3, 0xFFFF5555, true);
+                    this.leftPos + (this.imageWidth - textWidth) / 2, this.topPos + GUI_HEIGHT - 11, 0xFFFF5555, true);
         }
     }
 

@@ -44,6 +44,12 @@ public final class ModNetwork {
                 OpenCardInventoryMessage::encode, OpenCardInventoryMessage::decode, OpenCardInventoryMessage::handle);
         CHANNEL.registerMessage(id++, AttachmentSyncMessage.class,
                 AttachmentSyncMessage::encode, AttachmentSyncMessage::decode, AttachmentSyncMessage::handle);
+        CHANNEL.registerMessage(id++, TargetSelectStartMessage.class,
+                TargetSelectStartMessage::encode, TargetSelectStartMessage::decode, TargetSelectStartMessage::handle);
+        CHANNEL.registerMessage(id++, TargetSelectConfirmMessage.class,
+                TargetSelectConfirmMessage::encode, TargetSelectConfirmMessage::decode, TargetSelectConfirmMessage::handle);
+        CHANNEL.registerMessage(id++, TargetSelectCancelMessage.class,
+                TargetSelectCancelMessage::encode, TargetSelectCancelMessage::decode, TargetSelectCancelMessage::handle);
     }
 
     // === 发送助手(对应 1.21 PacketDistributor 静态方法) ===
@@ -214,6 +220,103 @@ public final class ModNetwork {
                 ServerPlayer serverPlayer = ctx.get().getSender();
                 if (serverPlayer != null) {
                     com.merlinkitsune.astral_dice.screen.ModMenuTypes.openCardInventory(serverPlayer);
+                }
+            });
+            ctx.get().setPacketHandled(true);
+        }
+    }
+
+    // === 目标选择器(S→C 会话开始 / C→S 确认 / C→S 取消) ===
+
+    /** 服务端下发目标选择会话开始(S→C):由 TargetSelectionManager.start 调用,客户端进入选择模式。 */
+    public static class TargetSelectStartMessage {
+        private final int token;
+        private final int targetType;
+        private final double radius;
+        private final int durationTicks;
+        private final String actionId;
+
+        public TargetSelectStartMessage(int token, int targetType, double radius, int durationTicks, String actionId) {
+            this.token = token;
+            this.targetType = targetType;
+            this.radius = radius;
+            this.durationTicks = durationTicks;
+            this.actionId = actionId;
+        }
+
+        public static void encode(TargetSelectStartMessage msg, FriendlyByteBuf buf) {
+            buf.writeVarInt(msg.token);
+            buf.writeVarInt(msg.targetType);
+            buf.writeDouble(msg.radius);
+            buf.writeVarInt(msg.durationTicks);
+            buf.writeUtf(msg.actionId);
+        }
+
+        public static TargetSelectStartMessage decode(FriendlyByteBuf buf) {
+            return new TargetSelectStartMessage(buf.readVarInt(), buf.readVarInt(), buf.readDouble(),
+                    buf.readVarInt(), buf.readUtf());
+        }
+
+        public static void handle(TargetSelectStartMessage msg, Supplier<NetworkEvent.Context> ctx) {
+            ctx.get().enqueueWork(() ->
+                    com.merlinkitsune.astral_dice.client.TargetSelectionClient.start(
+                            msg.token, msg.targetType, msg.radius, msg.durationTicks, msg.actionId));
+            ctx.get().setPacketHandled(true);
+        }
+    }
+
+    /** 客户端确认目标(C→S):由 TargetSelectionClient.confirm 发送,服务端 TargetSelectionManager.confirm 权威校验。 */
+    public static class TargetSelectConfirmMessage {
+        private final int token;
+        private final int targetId;
+
+        public TargetSelectConfirmMessage(int token, int targetId) {
+            this.token = token;
+            this.targetId = targetId;
+        }
+
+        public static void encode(TargetSelectConfirmMessage msg, FriendlyByteBuf buf) {
+            buf.writeVarInt(msg.token);
+            buf.writeVarInt(msg.targetId);
+        }
+
+        public static TargetSelectConfirmMessage decode(FriendlyByteBuf buf) {
+            return new TargetSelectConfirmMessage(buf.readVarInt(), buf.readVarInt());
+        }
+
+        public static void handle(TargetSelectConfirmMessage msg, Supplier<NetworkEvent.Context> ctx) {
+            ctx.get().enqueueWork(() -> {
+                ServerPlayer serverPlayer = ctx.get().getSender();
+                if (serverPlayer != null) {
+                    com.merlinkitsune.astral_dice.target.TargetSelectionManager.confirm(
+                            serverPlayer, msg.token, msg.targetId);
+                }
+            });
+            ctx.get().setPacketHandled(true);
+        }
+    }
+
+    /** 客户端取消选择(C→S):由 TargetSelectionClient.cancel 发送,服务端立即清除会话。 */
+    public static class TargetSelectCancelMessage {
+        private final int token;
+
+        public TargetSelectCancelMessage(int token) {
+            this.token = token;
+        }
+
+        public static void encode(TargetSelectCancelMessage msg, FriendlyByteBuf buf) {
+            buf.writeVarInt(msg.token);
+        }
+
+        public static TargetSelectCancelMessage decode(FriendlyByteBuf buf) {
+            return new TargetSelectCancelMessage(buf.readVarInt());
+        }
+
+        public static void handle(TargetSelectCancelMessage msg, Supplier<NetworkEvent.Context> ctx) {
+            ctx.get().enqueueWork(() -> {
+                ServerPlayer serverPlayer = ctx.get().getSender();
+                if (serverPlayer != null) {
+                    com.merlinkitsune.astral_dice.target.TargetSelectionManager.cancel(serverPlayer, msg.token);
                 }
             });
             ctx.get().setPacketHandled(true);

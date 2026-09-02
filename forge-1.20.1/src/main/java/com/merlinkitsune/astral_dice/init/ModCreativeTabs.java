@@ -5,13 +5,13 @@ import com.merlinkitsune.astral_dice.item.ModItems;
 
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.CreativeModeTabs;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.fml.ModList;
-import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.RegistryObject;
 import vazkii.patchouli.common.item.ItemModBook;
+import net.minecraftforge.registries.DeferredRegister;
 
 public class ModCreativeTabs {
 
@@ -69,7 +69,7 @@ public class ModCreativeTabs {
                 output.accept(ModItems.MONSTER_BRICK_CARD.get());
                 output.accept(ModItems.ORBITAL_STRIKE_CARD.get());
                 output.accept(ModItems.DIRECTIONAL_BLAST_CARD.get());
-                output.accept(ModItems.LIVING_BOOK_PAGE.get());
+                output.accept(ModItems.LIVING_PAGE.get());
                 // 立牌
                 output.accept(ModItems.PARUNAN_SIGN.get());
                 output.accept(ModItems.JASMINE_SIGN.get());
@@ -127,9 +127,11 @@ public class ModCreativeTabs {
                 output.accept(ModItems.SANDWICH_LOW.get());
                 output.accept(ModItems.SANDWICH_MEDIUM.get());
                 output.accept(ModItems.SANDWICH_HIGH.get());
+                output.accept(ModItems.ADRENALINE_LOW.get());
+                output.accept(ModItems.ADRENALINE_HIGH.get());
+                output.accept(ModItems.SATELLITE_CHIP.get());
                 output.accept(ModItems.CURSED_SWORD.get());
                 output.accept(ModItems.REVENGE_HALBERD.get());
                 output.accept(ModItems.PIERCING_GUN.get());
-                output.accept(ModItems.SATELLITE_CHIP.get());
             }).build());
 }

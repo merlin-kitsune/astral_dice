@@ -1,17 +1,16 @@
 package com.merlinkitsune.astral_dice.item.chip;
+import com.merlinkitsune.astral_dice.item.CuriosCompat;
 
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
+import com.merlinkitsune.astral_dice.event.ModEffectRemoval;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import com.merlinkitsune.astral_dice.item.CuriosCompat;
 import top.theillusivec4.curios.api.CuriosApi;
-import top.theillusivec4.curios.api.SlotContext;
+import com.merlinkitsune.astral_dice.item.card.BaseEffectCardItem;
 import com.merlinkitsune.astral_dice.item.card.ExclusiveCardUtil;
 import com.merlinkitsune.astral_dice.item.ModItems;
-import com.merlinkitsune.astral_dice.event.ModEffectRemoval;
-import com.merlinkitsune.astral_dice.item.card.BaseEffectCardItem;
 
 /**
  * 魔法秘典筹码:每使用 3 张效果牌,复制最后一张使用的效果牌并返回到物品栏(独立计数,与忍者立牌互不关联)。
@@ -58,7 +57,6 @@ public class MagicTomeChipItem extends BaseChipItem {
         }
         player.addEffect(new MobEffectInstance(ModEffects.MAGIC_TOME_COUNT.get(), 10000, count - 1, false, true, true));
     }
-
 
     // 卸下筹码(真正卸下):重置效果牌计数并移除计数效果
     @Override

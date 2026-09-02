@@ -1,6 +1,6 @@
 package com.merlinkitsune.astral_dice.combat;
-
 import com.merlinkitsune.astral_dice.network.ModNetwork;
+
 import com.merlinkitsune.astral_dice.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
@@ -23,7 +23,6 @@ import java.util.Locale;
 import com.merlinkitsune.astral_dice.damage.ModDamageTypes;
 import com.merlinkitsune.astral_dice.item.chip.MagicQuiverChipItem;
 import com.merlinkitsune.astral_dice.item.chip.PiercingGunChipItem;
-import com.merlinkitsune.astral_dice.network.ModNetwork.DamageNumberMessage;
 
 /**
  * 法伤(远程/魔法伤害)模块:作用域判定(白名单 matcher + 军火黑名单保险)与加成修饰器注册表。
@@ -152,13 +151,13 @@ public final class SpellDamageRegistry {
         registerModifier(new SpellDamageModifier() {
             @Override
             public boolean isActive(SpellDamageContext ctx) {
-                return ctx.attacker.hasEffect(ModEffects.LIVING_BOOK_PAGE.get());
+                return ctx.attacker.hasEffect(ModEffects.LIVING_PAGE.get());
             }
 
             @Override
             public double apply(SpellDamageContext ctx, double bonus) {
                 int pages = Math.min(ModAttachments.getRinPages(ctx.attacker),
-                        GameplayConstants.LIVING_BOOK_PAGE_BONUS_CAP);
+                        GameplayConstants.LIVING_PAGE_BONUS_CAP);
                 return bonus + 2 + pages + ModAttachments.getKomachiDamageBonus(ctx.attacker);
             }
 
@@ -225,9 +224,15 @@ public final class SpellDamageRegistry {
                                 && e != ctx.target && e.isAlive());
                 var blastSource = com.merlinkitsune.astral_dice.damage.ModDamageTypes
                         .diceDamage(ctx.target.level(), ctx.attacker);
-                for (var e : nearby) {
-                    e.hurt(blastSource, 5);
-                    sendAoeDamageNumber(e, 5, 0x7CFC00);
+                // AOE 波及伤害不进入骰战结算(见 DiceCombatEvents.aoeProcessing)
+                DiceCombatEvents.aoeProcessing = true;
+                try {
+                    for (var e : nearby) {
+                        e.hurt(blastSource, 5);
+                        sendAoeDamageNumber(e, 5, 0x7CFC00);
+                    }
+                } finally {
+                    DiceCombatEvents.aoeProcessing = false;
                 }
             }
         });
@@ -236,7 +241,7 @@ public final class SpellDamageRegistry {
             @Override
             public boolean isActive(SpellDamageContext ctx) {
                 if (!ctx.hasCurio(ModItems.NINJA_STAR_CHIP.get())) return false;
-                return ctx.attacker.hasEffect(ModEffects.LIVING_BOOK_PAGE.get())
+                return ctx.attacker.hasEffect(ModEffects.LIVING_PAGE.get())
                         || ctx.attacker.hasEffect(ModEffects.MONSTER_LASER.get())
                         || ctx.attacker.hasEffect(ModEffects.MONSTER_BRICK.get())
                         || ctx.attacker.hasEffect(ModEffects.ORBITAL_STRIKE.get())
@@ -254,7 +259,7 @@ public final class SpellDamageRegistry {
             public boolean isActive(SpellDamageContext ctx) {
                 if (!ctx.hasCurio(ModItems.PIERCING_GUN.get())) return false;
                 if (!(ctx.target instanceof Enemy)) return false;
-                return ctx.attacker.hasEffect(ModEffects.LIVING_BOOK_PAGE.get())
+                return ctx.attacker.hasEffect(ModEffects.LIVING_PAGE.get())
                         || ctx.attacker.hasEffect(ModEffects.MONSTER_LASER.get())
                         || ctx.attacker.hasEffect(ModEffects.MONSTER_BRICK.get())
                         || ctx.attacker.hasEffect(ModEffects.ORBITAL_STRIKE.get())

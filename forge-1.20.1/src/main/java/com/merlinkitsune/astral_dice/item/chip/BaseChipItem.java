@@ -60,10 +60,10 @@ public abstract class BaseChipItem extends Item implements ICurioItem {
     }
 
     /**
-     * 生成唯一的属性修饰器 UUID(按本物品注册名派生)。
-     * 同一属性在不同筹码间必须使用不同修饰器 UUID,否则 Curios 应用属性时后装者会覆盖先装者。
-     * 1.20.1 的 AttributeModifier 以 UUID 标识,此处由"注册名+后缀"稳定派生(对应 1.21 的 ResourceLocation id)。
+     * 生成唯一的属性修饰器 id(按本物品注册名派生)。
+     * 同一属性在不同筹码间必须使用不同修饰器 id,否则 Curios 应用属性时后装者会覆盖先装者。
      */
+    // 1.20.1 AttributeModifier 以 UUID 标识(按本物品注册名+后缀稳定派生,对应 1.21 的 ResourceLocation id)
     protected java.util.UUID attributeModifierId(String suffix) {
         net.minecraft.resources.ResourceLocation key =
                 net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(this);

@@ -67,7 +67,7 @@ public final class CardRegistry {
                  "defense_medium", "defense_large", "defense_epic" -> 10;
             case "meito" -> 5;
             case "charge" -> 1;
-            case "full_power" -> 2;
+            case "full_power" -> 5;
             default -> {
                 CardType t = BY_ID.get(typeId);
                 yield t != null ? t.defaultUses() : 10;
@@ -187,7 +187,7 @@ public final class CardRegistry {
         register(new CardType("charge", false, 1, 5,
                 com.merlinkitsune.astral_dice.item.ModItems.ATTACK_CARD_CHARGE.get(),
                 ctx -> 5));
-        register(new CardType("full_power", false, 2, 3,
+        register(new CardType("full_power", false, 5, 3,
                 com.merlinkitsune.astral_dice.item.ModItems.ATTACK_CARD_FULL_POWER.get(),
                 ctx -> {
                     // 全力攻击:先提供固定 +6 攻击力,再令本次攻击的最终攻击力 +50%

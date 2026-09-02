@@ -1,4 +1,6 @@
 package com.merlinkitsune.astral_dice.item.sign;
+import com.merlinkitsune.astral_dice.item.CuriosCompat;
+import com.merlinkitsune.astral_dice.network.ModNetwork;
 
 import com.merlinkitsune.astral_dice.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
@@ -13,11 +15,9 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.merlinkitsune.astral_dice.item.CuriosCompat;
 import top.theillusivec4.curios.api.CuriosApi;
 import top.theillusivec4.curios.api.SlotContext;
 import top.theillusivec4.curios.api.type.capability.ICurioItem;
-import com.merlinkitsune.astral_dice.network.ModNetwork.ActionBarMessage;
 import com.merlinkitsune.astral_dice.item.chip.FanBigChipItem;
 import com.merlinkitsune.astral_dice.item.chip.FanSmallChipItem;
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
@@ -56,8 +56,8 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
      * 立牌主动技能触发(服务端):触发立牌栏(唯一槽位)中立牌的技能。
      * 判定顺序:
      * 1. 玩家级冷却(不受立牌装卸影响):冷却中按键无效;
-     * 2. 等待状态(占星师/秘密侦探等需指定目标的技能):等待完成或超时前按键保持无效;
-     * 3. 触发成功:非等待类技能立即开始玩家级冷却;等待类技能待其完成指定目标/超时后再计算。
+     * 2. 目标选择会话(占星师/秘密侦探等需选择目标的技能):选择进行中按键无效;
+     * 3. 触发成功:非选择器类技能立即开始玩家级冷却;选择器类技能待其确认目标/超时后再计算。
      */
     public static void performSkillForCurio(Player player) {
         if (player.level().isClientSide()) return;
@@ -72,10 +72,10 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
         performSkill(player, stack);
     }
 
-    // 服务端统一执行立牌主动技能(立牌栏触发与手持立牌右键共用,保证冷却/等待/扇子筹码逻辑一致):
+    // 服务端统一执行立牌主动技能(立牌栏触发与手持立牌右键共用,保证冷却/目标选择/扇子筹码逻辑一致):
     // 1. 玩家级冷却(不受立牌装卸影响):冷却中按键无效;
-    // 2. 等待状态(占星师/秘密侦探等需指定目标的技能):等待完成或超时前按键保持无效;
-    // 3. 触发成功:非等待类技能立即开始玩家级冷却;等待类技能待其完成指定目标/超时后再计算。
+    // 2. 目标选择会话检查(占星师/秘密侦探等需选择目标的技能):选择进行中按键无效;
+    // 3. 触发成功:非选择器类技能立即开始玩家级冷却;选择器类技能待确认目标后再开始冷却(取消/超时不冷却)。
     private static void performSkill(Player player, ItemStack stack) {
         if (!(stack.getItem() instanceof BaseSignItem sign)) return;
         long now = player.level().getGameTime();
@@ -86,20 +86,37 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
             notifyActionBar(player, "hud.astral_dice.sign_active_cooldown", signName, ChatFormatting.RED);
             return;
         }
-        // 2. 等待状态检查:存在等待目标释放的主动技能时按键无效
-        if (isSkillWaiting(player)) return;
+        // 2. 目标选择会话检查:已处于目标选择模式时按键无效(防重复进入;客户端按 J 会先取消,此处为服务端兜底)
+        if (com.merlinkitsune.astral_dice.target.TargetSelectionManager.isSelecting(player)) return;
         // 3. 触发主动技能
         InteractionResultHolder<ItemStack> result = sign.handleUse(player.level(), player, stack);
         if (result.getResult() != InteractionResult.SUCCESS) return;
         // 4. 手持风扇-大筹码:使用主动技能后,获得一张随机效果牌(不含专属),并对周围范围内敌对目标施加标记
-        // 注意:不再发送通用"技能已激活"ActionBar,避免覆盖各立牌自身的特殊 ActionBar 提示
         FanBigChipItem.applyAfterSignSkill(player);
         FanSmallChipItem.applyAfterSignSkill(player);
-        // 5. 冷却:等待类技能(激活了玩家级等待状态)待完成指定目标/超时后再开始冷却;其余立牌立即开始玩家级冷却
-        if (ModAttachments.getSignReadyExpire(player) <= 0) {
+        // 5. 立牌主动技能响应事件:立牌类订阅本事件注册自身 ActionBar 反馈(见 SignActiveTriggeredEvent);
+        //    无任何处理器响应(未注册)时,发送默认提示"xxx立牌:主动技能已启动!"
+        com.merlinkitsune.astral_dice.event.SignActiveTriggeredEvent triggered =
+                new com.merlinkitsune.astral_dice.event.SignActiveTriggeredEvent(player, stack);
+        net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(triggered);
+        if (!triggered.isHandled()) {
+            notifyActionBar(player, "msg.astral_dice.sign_active_triggered", signName, ChatFormatting.YELLOW);
+        }
+        // 6. 冷却:目标选择器类技能(已进入选择会话)待确认目标后在 apply 中开始冷却;其余立牌立即开始玩家级冷却
+        if (!com.merlinkitsune.astral_dice.target.TargetSelectionManager.isSelecting(player)) {
             ModAttachments.setSignActiveCooldownEnd(player,
                     now + GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS);
         }
+    }
+
+    // 立牌主动技能反馈统一发送入口(黄色;供立牌类注册的 SignActiveTriggeredEvent 处理器与 handleUse 调用)
+    protected static void sendSignActionBar(Player player, String langKey, Object... args) {
+        if (!(player instanceof net.minecraft.server.level.ServerPlayer serverPlayer)) return;
+        net.minecraft.network.chat.Component msg =
+                net.minecraft.network.chat.Component.translatable(langKey, args).withStyle(ChatFormatting.YELLOW);
+        ModNetwork.sendToPlayer(serverPlayer,
+                new ModNetwork.ActionBarMessage(msg,
+                        GameplayConstants.ACTIONBAR_DURATION_TICKS));
     }
 
     // 服务端发送立牌技能反馈(actionbar 提示,带立牌名称前缀;统一由服务端判定成功/拒绝,避免客户端推测混淆)
@@ -107,16 +124,9 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
         if (!(player instanceof net.minecraft.server.level.ServerPlayer serverPlayer)) return;
         net.minecraft.network.chat.Component msg =
                 net.minecraft.network.chat.Component.translatable(langKey, signName).withStyle(color);
-        com.merlinkitsune.astral_dice.network.ModNetwork.sendToPlayer(serverPlayer,
-                new com.merlinkitsune.astral_dice.network.ModNetwork.ActionBarMessage(msg,
+        ModNetwork.sendToPlayer(serverPlayer,
+                new ModNetwork.ActionBarMessage(msg,
                         GameplayConstants.ACTIONBAR_DURATION_TICKS));
-    }
-
-    // 是否存在等待目标释放的主动技能(占星师/秘密侦探等,等待期间按键无效)
-    private static boolean isSkillWaiting(Player player) {
-        long expire = ModAttachments.getSignReadyExpire(player);
-        return ModAttachments.getSignReadyType(player) > 0 && expire > 0
-                && player.level().getGameTime() < expire;
     }
 
     @Override
