@@ -926,8 +926,10 @@ public class DiceCombatEvents {
     // === 反击流派(Counterattack) ===
     // 拥有反击层数的玩家受到敌对生物任何伤害时触发:消耗 1 层「反击」并把伤害来源登记为“反噬目标”;
     // 此后该目标每次对玩家造成伤害,都受到一次返还伤害 = 手持最高近战武器基础伤害 + 骰战攻击力加成链
-    // + 已装备攻击牌随机掷骰(每次独立随机;不含 1d6,不自动赐福/诅咒/×1.5),直至目标死亡
-    // (目标死亡或玩家死亡时清理登记;触发瞬间不额外造成伤害,本次受击即开始返还)。
+    // + 已装备攻击牌随机掷骰(每次独立随机;不含 1d6,不自动赐福),直至目标死亡。
+    // 返还伤害对总伤害计算七咒减益(含修正物),并可受「全力攻击」×1.5 等修正影响;
+    // 对 Boss 生物(末影龙/凋灵/监守者及灾变等)无效:不触发、不消耗层数、不登记。
+    // (目标死亡或玩家死亡时清理登记;触发瞬间不额外造成伤害,本次受击即开始返还。)
     /** 反噬目标登记:玩家UUID -> 该玩家登记的反噬目标UUID集合(纯服务端,不持久化) */
     private static final java.util.Map<java.util.UUID, java.util.Set<java.util.UUID>> COUNTER_RETALIATION_TARGETS =
             new java.util.HashMap<>();
@@ -943,6 +945,8 @@ public class DiceCombatEvents {
         Entity attackerEntity = source.getEntity();
         if (!(attackerEntity instanceof LivingEntity attacker)) return;
         if (!(attacker instanceof Enemy)) return;
+        // Boss 生物无效:不触发反击(不消耗层数/不登记/不返还)
+        if (BossEntityUtil.isBossEntity(attacker)) return;
         if (!attacker.isAlive()) return;
 
         java.util.UUID attackerId = attacker.getUUID();
@@ -1015,7 +1019,23 @@ public class DiceCombatEvents {
         for (var modifier : DiceCombatModifiers.attackModifiers()) {
             modifiersSum = modifier.apply(ctx, modifiersSum);
         }
-        return weaponBase + ctx.attackCardSum + modifiersSum;
+        double total = weaponBase + ctx.attackCardSum + modifiersSum;
+        // 七咒减益作用于反击总伤害(含修正物:启示之证/倒转之启/恩惠之典/护法爆发)
+        total = applyCurseToDicePoints(player, total);
+        // 可受到修正影响:装备「全力攻击」时返还伤害 ×1.5(与正常攻击结算一致)
+        boolean hasFullPower = ctx.hasFullPower;
+        if (!hasFullPower && enhancement != null) {
+            for (AppliedStone stone : enhancement.appliedStones()) {
+                if ("full_power".equals(stone.type())) {
+                    hasFullPower = true;
+                    break;
+                }
+            }
+        }
+        if (hasFullPower) {
+            total = Math.ceil(total * 1.5);
+        }
+        return total;
     }
 
     // 反噬目标死亡(或玩家死亡)时清理登记,避免残留
