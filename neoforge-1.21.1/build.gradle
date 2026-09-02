@@ -224,8 +224,9 @@ repositories {
 }
 dependencies {
     // 自动化测试辅助:KubeJS(运行时依赖,用于游戏内 Curios 饰品栏检查脚本)
-    // 注意:必须用 implementation 而非 localRuntime——ModDevGradle 的 mod 定位只识别 implementation 声明的 mod(与 Curios 一致)
-    implementation "dev.latvian.mods:kubejs-neoforge:${kubejs_version}"
+    // 2026-09:改由 dev run 的 run/mods 目录直接装载整合包同版 kubejs(2101.7.2-build.374),
+    // 此处不再 implementation 注入,避免 mods 目录 + classpath 重复加载同一 modid 导致崩溃。
+    // implementation "dev.latvian.mods:kubejs-neoforge:${kubejs_version}"
     implementation 'maven.modrinth:curios:yohfFbgD'
     implementation 'maven.modrinth:patchouli:1.21.1-93-neoforge'
     implementation fileTree(dir: 'base-mod-libs', include: ['*.jar'])
