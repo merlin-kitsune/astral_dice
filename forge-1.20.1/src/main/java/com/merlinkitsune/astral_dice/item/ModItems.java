@@ -132,17 +132,18 @@ public class ModItems {
     // 重要:item 参数必须传 Supplier 延迟解析(() -> X.get()),禁止在静态初始化阶段调用
     //      DeferredHolder.get()——注册表未加载完成时会抛 IllegalStateException。
     static {
-        // 基础骰子:卡牌栏 6(3+3);筹码栏 0★0/1★1/2★2/3★3
-        DiceTierRegistry.register(new DiceTier("dice", () -> DICE.get(), 6,
+        // 卡牌栏格数不再按品阶区分,仅由星级决定(见 DiceCurioItem.getCardSlots)
+        // 基础骰子:筹码栏 0★0/1★1/2★2/3★3
+        DiceTierRegistry.register(new DiceTier("dice", () -> DICE.get(),
                 s -> s));
-        // 金骰子:卡牌栏 8(4+4);筹码栏 0★1/1★2/2★3/3★4
-        DiceTierRegistry.register(new DiceTier("golden_dice", () -> GOLDEN_DICE.get(), 8,
+        // 金骰子:筹码栏 0★1/1★2/2★3/3★4
+        DiceTierRegistry.register(new DiceTier("golden_dice", () -> GOLDEN_DICE.get(),
                 s -> 1 + s));
-        // 钻石骰子:卡牌栏 10(5+5);筹码栏 0★2/1★3/2★4/3★5
-        DiceTierRegistry.register(new DiceTier("diamond_dice", () -> DIAMOND_DICE.get(), 10,
+        // 钻石骰子:筹码栏 0★2/1★3/2★4/3★5
+        DiceTierRegistry.register(new DiceTier("diamond_dice", () -> DIAMOND_DICE.get(),
                 s -> 2 + s));
-        // 合金骰子:卡牌栏 12(6+6);筹码栏 0★3/1★4/2★5/3★6
-        DiceTierRegistry.register(new DiceTier("netherite_dice", () -> NETHERITE_DICE.get(), 12,
+        // 合金骰子:筹码栏 0★3/1★4/2★5/3★6
+        DiceTierRegistry.register(new DiceTier("netherite_dice", () -> NETHERITE_DICE.get(),
                 s -> 3 + s));
     }
 

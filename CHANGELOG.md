@@ -36,7 +36,7 @@ This changelog is fully split by language: the Chinese version comes first, foll
 - 标靶筹码:触发骰神赐福后,对**距离最近的敌对目标**施加 1 层标记(移除原「标靶范围内随机」逻辑与 `target_chip_range` 范围配置,不再限定作用距离)(仅 1.21.1)。
 - 夹心饼干-美味:最大生命值 +12 → +8;移除「生命值低于一半时每 1:00 获得 1 层「反击」」;新增:最大生命值超过 20 点时,超出部分每 4 点生命值 +1 攻击力(仅 1.21.1)。
 - 修复骰子 tooltip 显示攻击牌时加成误标为「骰子」及染色问题:攻击牌(中/大/特大/名刀)统一显示为「攻击」,范围不再带「+」前缀,与防御牌/独立牌 tooltip 格式一致(仅 1.21.1)。
-- 骰子卡牌栏平衡:0-2 星骰子的攻击/防御可用卡牌格各 -1(基础 3+3→2+2、金 4+4→3+3、钻 5+5→4+4、合金 6+6→5+5);3 星保持该骰子的完整格数(双版本)。
+- 骰子卡牌栏平衡:卡牌栏总格数改为仅由星级决定(与骰子品阶无关)——0★=4(攻防各2)、1★=6(各3)、2★=8(各4)、3★=12(各6);实际可用格严格按星级,无隐藏可用格(双版本)。
 
 ### 已修复BUG
 
@@ -336,7 +336,7 @@ This changelog is fully split by language: the Chinese version comes first, foll
 - Target chip: after triggering the Dice Blessing, apply 1 Mark layer to the **nearest hostile target** (the old "random hostile within target-chip range" logic and the `target_chip_range` range config were removed; no distance cap) (1.21.1 only).
 - Sandwich (Gourmet): max health +12 → +8; removed the "gain 1 Counterattack layer per 1:00 while below half max HP" passive; new: while max HP exceeds 20, gain +1 attack per 4 HP above 20 (1.21.1 only).
 - Fixed the dice tooltip showing attack cards' bonus mislabeled as "dice" and a coloring issue: attack cards (Medium/Large/Epic/Meito) now uniformly read "attack", the range no longer carries a "+" prefix, matching the defense-card and standalone-card tooltip format (1.21.1 only).
-- Dice card-slot balance: dice at star 0-2 now have one fewer usable attack slot and one fewer defense slot (base 3+3→2+2, golden 4+4→3+3, diamond 5+5→4+4, netherite 6+6→5+5); 3-star dice keep the dice's full slot count (both versions).
+- Dice card-slot balance: the total card slots are now determined by star level only (independent of dice tier) — 0★ = 4 (2 attack + 2 defense), 1★ = 6 (3+3), 2★ = 8 (4+4), 3★ = 12 (6+6); usable slots strictly follow the star level, with no extra hidden usable slots (both versions).
 
 ### Bug Fixes
 
