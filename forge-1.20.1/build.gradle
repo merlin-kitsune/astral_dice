@@ -57,10 +57,10 @@ legacyForge {
     // Default run configurations.
     // These can be tweaked, removed, or duplicated as needed.
     runs {
-        // 版本隔离:开发测试游戏目录按 MC 版本隔离(run/<版本>),
-        // 与 1.21.1-main 分支(run/1.21.1)互不污染 mods/config/saves
+        // 版本隔离:开发测试游戏目录统一放在仓库根 run/<版本>,
+        // 与 neoforge(run/1.21.1)互不污染 mods/config/saves
         configureEach {
-            gameDirectory = project.file('run/1.20.1')
+            gameDirectory = rootProject.file('run/1.20.1')
         }
 
         client {
@@ -199,13 +199,13 @@ dependencies {
 // AutoForge: end mod addon dependencies
 
 // === 编译产物分发规则(与 1.21.1 分支保持同一任务面与同一推送标准;旧 jar 清理按版本后缀隔离)===
-// 默认行为:每次构建完成后仅推送到项目自身测试环境 run/mods(本机 runClient 调试),
+// 默认行为:每次构建完成后仅推送到仓库根 run/1.20.1/mods(本机 runClient 调试),
 // 并统一复制到仓库根目录 build/libs。推送整合包需显式指定:
 //   1) gradlew :forge-1.20.1:build -PdeployToPack
 //   2) gradlew :forge-1.20.1:build pushToGame  (显式运行 pushToGame 任务)
 // 整合包位置:D:/.minecraft/versions/1.20.1 模组测试/mods
 // 目标根目录不存在时(如 CI 环境)自动跳过推送,不影响构建。
-def devRunModsDir = file('run/1.20.1/mods')
+def devRunModsDir = rootProject.file('run/1.20.1/mods')
 def packModsDir = file('D:/.minecraft/versions/1.20.1 模组测试/mods')
 
 // 本分支(1.20.1)的旧产物识别规则:只清理带 +forge_1.20.1 后缀的 jar,避免误删 1.21.1 分支产物
@@ -214,7 +214,7 @@ def staleJarMatcher = { File f ->
 }
 
 // 产物来源按环境区分(MDG LegacyForge 双产物):
-//   - pushToDevRun(开发 runClient 环境 run/1.20.1/mods):jar.archiveFile = build/devlibs
+//   - pushToDevRun(开发 runClient 环境 root run/1.20.1/mods):jar.archiveFile = build/devlibs
 //     的未重混淆 jar(Mojmap 名)——forgeclientuserdev 运行时加载 Mojmap 原版类,
 //     推 SRG 版反而报 NoSuchFieldError(f_256929_)。
 //   - pushToGame(生产/整合包):reobfJar.archiveFile = build/libs 的 SRG 重混淆 jar——
@@ -224,7 +224,7 @@ def prodJarArchiveProvider = tasks.named('reobfJar').flatMap { it.archiveFile }
 
 tasks.register('pushToDevRun') {
     group = 'build'
-    description = 'Copy the built mod jar to the dev run mods folder (run/mods) and remove old 1.20.1 versions.'
+    description = 'Copy the built mod jar to the dev run mods folder (root run/1.20.1/mods) and remove old 1.20.1 versions.'
     dependsOn tasks.named('jar')
     doLast {
         def jarFile = devJarArchiveProvider.get().asFile
@@ -303,7 +303,7 @@ tasks.register('pushToRootBuild') {
 }
 
 tasks.named('build') {
-    // 统一推送标准:默认仅推送测试环境(run/mods);用户指定 -PdeployToPack 时,额外推送整合包
+    // 统一推送标准:默认仅推送仓库根 run/1.20.1/mods;用户指定 -PdeployToPack 时,额外推送整合包
     finalizedBy tasks.named('pushToDevRun')
     if (project.hasProperty('deployToPack')) {
         finalizedBy tasks.named('pushToGame')
