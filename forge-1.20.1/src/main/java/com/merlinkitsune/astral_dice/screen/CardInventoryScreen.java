@@ -1,7 +1,6 @@
 package com.merlinkitsune.astral_dice.screen;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
-import com.merlinkitsune.astral_dice.combat.CardRegistry;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
@@ -12,7 +11,6 @@ import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.List;
-import java.util.Set;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 
 public class CardInventoryScreen extends AbstractContainerScreen<CardInventoryMenu> {
@@ -45,12 +43,6 @@ public class CardInventoryScreen extends AbstractContainerScreen<CardInventoryMe
     private static final int SELECTOR_VISIBLE_ROWS = CardInventoryMenu.SELECTOR_VISIBLE_ROWS;
     private static final int SELECTOR_COLUMNS = CardInventoryMenu.SELECTOR_COLUMNS;
     private static final int SELECTOR_COL_SPACING = 18;
-
-    // 这些卡牌图标偏大,在卡牌槽内渲染时缩小
-    private static final Set<String> LARGE_CARD_TYPES = Set.of(
-            "shadow_strike", "meito", "charge", "full_power"
-    );
-    private static final float LARGE_CARD_SCALE = 0.8F;
 
     public CardInventoryScreen(CardInventoryMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title);
@@ -108,8 +100,8 @@ public class CardInventoryScreen extends AbstractContainerScreen<CardInventoryMe
         }
     }
 
-    // 1.20.1:AbstractContainerScreen.renderSlot 为私有,无法覆写;
-    // 大卡缩放(renderScaledSlotItem)在该版本退化为常规渲染,视觉差异记录于 docs/compat-1.20.1-forge.md。
+    // 与 neoforge-1.21.1 同步:卡牌槽内的特殊卡(暗影突袭/名刀/蓄力/全力攻击)按原生大小渲染,
+    // 不再做缩小(1.20.1 renderSlot 私有,旧缩放逻辑本就不会生效,死代码随 1e0047f 一并移除)。
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
@@ -153,21 +145,6 @@ public class CardInventoryScreen extends AbstractContainerScreen<CardInventoryMe
             return true;
         }
         return super.mouseScrolled(mouseX, mouseY, delta);
-    }
-
-    private void renderScaledSlotItem(GuiGraphics guiGraphics, Slot slot, ItemStack stack, float scale) {
-        // 向右下轻微偏移
-        float offsetX = 2.0F;
-        float offsetY = 2.0F;
-        int drawX = slot.x + (int) offsetX;
-        int drawY = slot.y + (int) offsetY;
-        guiGraphics.pose().pushPose();
-        guiGraphics.pose().translate(drawX, drawY, 0.0F);
-        guiGraphics.pose().scale(scale, scale, 1.0F);
-        guiGraphics.renderItem(stack, 0, 0);
-        guiGraphics.pose().popPose();
-        // 在未缩放坐标下绘制耐久条/装饰,确保耐久条可见
-        guiGraphics.renderItemDecorations(this.font, stack, drawX, drawY);
     }
 
     // 3 列网格:同一侧(攻击/防御)的卡牌按 3 列排布,按行滚动
