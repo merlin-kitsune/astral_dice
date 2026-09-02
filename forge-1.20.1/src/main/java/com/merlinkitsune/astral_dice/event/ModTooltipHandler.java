@@ -501,10 +501,10 @@ public class ModTooltipHandler {
             addSignLines(tooltip, "tooltip.astral_dice.sign.jasmine_active");
             addSignPassiveTitle(tooltip, "移动充能");
             addSignLines(tooltip, "tooltip.astral_dice.sign.jasmine_passive",
-                    GameplayConstants.JASMINE_MAX_BONUS, GameplayConstants.JASMINE_MAX_BONUS * 2);
+                    GameplayConstants.JASMINE_MAX_BONUS);
             int atkBonus = JasmineSignItem.getAttackBonus(stack);
             int defBonus = JasmineSignItem.getDefenseBonus(stack);
-            addSignCounter(tooltip, "tooltip.astral_dice.sign.jasmine_bonus", atkBonus, defBonus * 2);
+            addSignCounter(tooltip, "tooltip.astral_dice.sign.jasmine_bonus", atkBonus, defBonus);
             addSignCooldownRemaining(tooltip, event.getEntity());
         }
         if (stack.is(ModItems.MISAKI_SIGN.get())) {
@@ -791,7 +791,7 @@ public class ModTooltipHandler {
             if (event.getEntity() != null) {
                 tooltip.add(Component.translatable("tooltip.astral_dice.chip.revenge_halberd_current",
                         Component.literal("+" + RevengeHalberdChipItem.currentAttackBonus(player)).withStyle(ChatFormatting.YELLOW),
-                        Component.literal("+" + RevengeHalberdChipItem.currentDefenseBonus(player) * 2).withStyle(ChatFormatting.YELLOW))
+                        Component.literal("+" + RevengeHalberdChipItem.currentDefenseBonus(player)).withStyle(ChatFormatting.YELLOW))
                         .withStyle(ChatFormatting.GRAY));
             }
         }
@@ -831,7 +831,7 @@ public class ModTooltipHandler {
                     formatSignTime(GameplayConstants.PADMAN_REFRESH_SECONDS));
             int atkBonus = ModDataComponents.PADMAN_ATK_BONUS.getOrDefault(stack, 0);
             int defBonus = ModDataComponents.PADMAN_DEF_BONUS.getOrDefault(stack, 0);
-            addSignCounter(tooltip, "tooltip.astral_dice.sign.padman_bonus", atkBonus, defBonus * 2);
+            addSignCounter(tooltip, "tooltip.astral_dice.sign.padman_bonus", atkBonus, defBonus);
             addSignCooldownRemaining(tooltip, event.getEntity());
         }
         if (stack.is(ModItems.FANNY_SIGN.get())) {
@@ -1020,7 +1020,7 @@ public class ModTooltipHandler {
                 addSignCounter(tooltip, "tooltip.astral_dice.sign.nancy_lu_bonus",
                         com.merlinkitsune.astral_dice.item.sign.NancyLuSignItem.getAttackBonus(player)
                                 + com.merlinkitsune.astral_dice.item.sign.NancyLuSignItem.getActiveAttackBonus(player),
-                        com.merlinkitsune.astral_dice.item.sign.NancyLuSignItem.getDefenseBonus(player) * 2);
+                        com.merlinkitsune.astral_dice.item.sign.NancyLuSignItem.getDefenseBonus(player));
             }
             addSignCooldownRemaining(tooltip, event.getEntity());
         }
