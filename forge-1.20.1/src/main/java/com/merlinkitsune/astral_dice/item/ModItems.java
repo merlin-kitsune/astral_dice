@@ -479,19 +479,19 @@ public class ModItems {
     public static final RegistryObject<Item> SANDWICH_LOW = registerItem("sandwich_low_chip",
             () -> new SandwichChipItem(new Item.Properties()
                     .stacksTo(1)
-                    .rarity(Rarity.RARE), SandwichChipItem.HEALTH_LOW, false));
+                    .rarity(Rarity.RARE), SandwichChipItem.HEALTH_LOW));
 
     // 夹心饼干-可口:最大生命值 +8
     public static final RegistryObject<Item> SANDWICH_MEDIUM = registerItem("sandwich_medium_chip",
             () -> new SandwichChipItem(new Item.Properties()
                     .stacksTo(1)
-                    .rarity(Rarity.EPIC), SandwichChipItem.HEALTH_MEDIUM, false));
+                    .rarity(Rarity.EPIC), SandwichChipItem.HEALTH_MEDIUM));
 
-    // 夹心饼干-美味:最大生命值 +12;生命值低于一半时每 1:00 获得 1 层「反击」
+    // 夹心饼干-美味:最大生命值 +8;最大生命值超过 20 点时,超出部分每 4 点 +1 攻击力
     public static final RegistryObject<Item> SANDWICH_HIGH = registerItem("sandwich_high_chip",
             () -> new SandwichChipItem(new Item.Properties()
                     .stacksTo(1)
-                    .rarity(Rarity.UNCOMMON), SandwichChipItem.HEALTH_HIGH, true));
+                    .rarity(Rarity.UNCOMMON), SandwichChipItem.HEALTH_HIGH));
 
     // 肾上腺素-高效:生命值低于最大生命值一半时,攻击力/防御力 +8;触发加成时被敌方攻击,
     // 骰点 4-5 → 50% 闪避、6 → 100% 闪避本次伤害(传奇)

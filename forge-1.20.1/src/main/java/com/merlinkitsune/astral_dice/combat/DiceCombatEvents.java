@@ -258,7 +258,7 @@ public class DiceCombatEvents {
                     }
                 }
             }
-            // 标靶筹码:触发骰神赐福后,对附近(标靶常量范围)随机一个敌对目标施加一层标记
+            // 标靶筹码:触发骰神赐福后,对标靶范围内最近的一个敌对目标施加一层标记
             if (attackerCurios.isPresent()) {
                 var targetChipResult = attackerCurios.get().findFirstCurio(s -> s.is(ModItems.TARGET_CHIP.get()));
                 if (targetChipResult.isPresent()) {
@@ -267,8 +267,12 @@ public class DiceCombatEvents {
                     var nearby = player.level().getEntitiesOfClass(net.minecraft.world.entity.LivingEntity.class, aabb,
                             e -> e instanceof net.minecraft.world.entity.monster.Enemy && e.isAlive());
                     if (!nearby.isEmpty()) {
-                        var randTarget = nearby.get(java.util.concurrent.ThreadLocalRandom.current().nextInt(nearby.size()));
-                        MarkManager.apply(randTarget, 1200);
+                        var nearest = nearby.stream()
+                                .min(java.util.Comparator.comparingDouble(e -> e.distanceToSqr(player)))
+                                .orElse(null);
+                        if (nearest != null) {
+                            MarkManager.apply(nearest, 1200);
+                        }
                     }
                 }
             }
