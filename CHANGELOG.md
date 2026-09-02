@@ -5,7 +5,7 @@ This changelog is fully split by language: the Chinese version comes first, foll
 
 # 中文更新日志
 
-## 未发布 / Unreleased（1.2.0-rc1，双版本）
+## 未发布 / Unreleased（2.0.0-SNAPSHOT.1，双版本）
 
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 
@@ -305,7 +305,7 @@ This changelog is fully split by language: the Chinese version comes first, foll
 
 # English Changelog
 
-## Unreleased (1.2.0-rc1, both versions)
+## Unreleased (2.0.0-SNAPSHOT.1, both versions)
 
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
