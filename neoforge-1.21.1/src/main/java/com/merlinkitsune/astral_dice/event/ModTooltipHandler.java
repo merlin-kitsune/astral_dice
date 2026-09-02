@@ -626,8 +626,7 @@ public class ModTooltipHandler {
         }
         if (stack.is(ModItems.TARGET_CHIP.get())) {
             tooltip.add(Component.empty());
-            tooltip.add(Component.translatable("tooltip.astral_dice.chip.target",
-                            GameplayConstants.TARGET_CHIP_RANGE)
+            tooltip.add(Component.translatable("tooltip.astral_dice.chip.target")
                     .withStyle(ChatFormatting.GRAY));
         }
         if (stack.is(ModItems.MARKER_SPRAYER_CHIP.get())) {

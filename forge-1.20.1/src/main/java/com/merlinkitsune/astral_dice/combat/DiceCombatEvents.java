@@ -258,21 +258,26 @@ public class DiceCombatEvents {
                     }
                 }
             }
-            // 标靶筹码:触发骰神赐福后,对标靶范围内最近的一个敌对目标施加一层标记
+            // 标靶筹码:触发骰神赐福后,对距离最近的敌对目标施加一层标记(无固定范围常量)
             if (attackerCurios.isPresent()) {
                 var targetChipResult = attackerCurios.get().findFirstCurio(s -> s.is(ModItems.TARGET_CHIP.get()));
                 if (targetChipResult.isPresent()) {
-                    net.minecraft.world.phys.AABB aabb =
-                            player.getBoundingBox().inflate(GameplayConstants.TARGET_CHIP_RANGE);
-                    var nearby = player.level().getEntitiesOfClass(net.minecraft.world.entity.LivingEntity.class, aabb,
-                            e -> e instanceof net.minecraft.world.entity.monster.Enemy && e.isAlive());
-                    if (!nearby.isEmpty()) {
-                        var nearest = nearby.stream()
-                                .min(java.util.Comparator.comparingDouble(e -> e.distanceToSqr(player)))
-                                .orElse(null);
-                        if (nearest != null) {
-                            MarkManager.apply(nearest, 1200);
+                    LivingEntity nearest = null;
+                    double nearestDistSqr = Double.MAX_VALUE;
+                    net.minecraft.server.level.ServerLevel serverLevel =
+                            (net.minecraft.server.level.ServerLevel) player.level();
+                    for (net.minecraft.world.entity.Entity entity : serverLevel.getEntities().getAll()) {
+                        if (entity instanceof LivingEntity living
+                                && living instanceof net.minecraft.world.entity.monster.Enemy && living.isAlive()) {
+                            double distSqr = living.distanceToSqr(player);
+                            if (distSqr < nearestDistSqr) {
+                                nearestDistSqr = distSqr;
+                                nearest = living;
+                            }
                         }
+                    }
+                    if (nearest != null) {
+                        MarkManager.apply(nearest, 1200);
                     }
                 }
             }
