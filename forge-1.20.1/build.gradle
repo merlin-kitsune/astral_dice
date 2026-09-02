@@ -36,6 +36,9 @@ repositories {
     maven { url 'https://maven.architectury.dev' }
     // KubeJS transitive dependency animated-gif-lib-for-java
     maven { url 'https://jitpack.io' }
+    // CurseForge Maven:collective / superflatworldnoslimes / kubejs / rhino / embeddium / oculus
+    // (MDG modImplementation 会在解析期把生产 SRG jar 重映射为 dev Mojmap 命名,mixin 才能加载)
+    maven { url 'https://www.cursemaven.com' }
 }
 
 base {
@@ -193,8 +196,16 @@ dependencies {
     modCompileOnly "maven.modrinth:irons-spells-n-spellbooks:hZaEegS9"
 
     // 自动化测试辅助:KubeJS(运行时依赖,用于游戏内 Curios 饰品栏检查脚本)
-    // 1.20.1 = 2001.6.x 系列;如需启用请解开下行注释(开发环境依赖链较重)
-    // modImplementation "dev.latvian.mods:kubejs-forge:${kubejs_version}"
+    // 通过 curse maven modImplementation 引入,MDG 会将其重映射为 dev 命名,可在 dev 环境正常加载 mixin。
+    modImplementation "curse.maven:kubejs-238086:8020595"        // kubejs-forge-2001.6.5-build.26
+    modImplementation "curse.maven:rhino-416294:6186971"         // rhino-forge-2001.2.3-build.10
+    modImplementation "dev.architectury:architectury-forge:9.2.14" // architectury-9.2.14-forge(官方 maven)
+
+    // 与 1.20.1 整合包一致的运行时模组(curse maven,dev 重映射后加载)
+    modImplementation "curse.maven:collective-342584:7148968"    // collective-1.20.1-8.13
+    modImplementation "curse.maven:superflat-world-no-slimes-344185:6184996" // superflatworldnoslimes-1.20.1-3.5
+    modImplementation "curse.maven:embeddium-908741:5681725"     // embeddium-0.3.31+mc1.20.1
+    modImplementation "curse.maven:oculus-581495:6020952"        // oculus-mc1.20.1-1.8.0(curse 最新 1.20.1 版;本地 1.8.1 未上 curse)
 }
 // AutoForge: end mod addon dependencies
 
