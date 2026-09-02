@@ -41,6 +41,7 @@ This changelog is fully split by language: the Chinese version comes first, foll
 
 - 死亡清理调整:不死图腾等取消死亡时不再执行任何清理;护法立牌死亡丢失全部「剑气」层数(tooltip 追加死亡提示);吸血鬼立牌死亡清除主动技能效果;秘密侦探死亡保留调查阶段进度(仅卸牌时清除);忍者/调查员立牌的效果牌伤害加成死亡保留;移除死亡清理中无读取者的 DamageEffectBonus 残留调用(仅 1.21.1)。 / Death-cleanup adjustments: totem-canceled deaths no longer trigger any cleanup; Misaki loses all Sword Qi stacks on death (tooltip note added); Papara's active effect is cleared on death; Bonnie keeps investigation progress on death (unequip only); Komachi/Rin effect-card damage bonuses survive death; removed the leftover no-reader DamageEffectBonus reset in the death handler (1.21.1 only).
 - 修复忍者立牌主动技能在已有出牌进度或处于出牌冷却期时无法生效的问题:出牌数+1 改为累积式「出牌数银行」(按实际出牌消耗,跨周期保留,不受满额/冷却影响),并移除旧布尔标记及其残留调用(仅 1.21.1)。 / Fixed the Komachi sign's active failing when play progress existed or the cooldown was running: the play-count +1 is now a banked extra-play token (consumed per actual play, persists across windows, unaffected by burst-full or cooldown), and the old boolean flag plus its leftover calls were removed (1.21.1 only).
+- 修复部分筹码 tooltip 中换行符被渲染成方块占位符的问题(夹心饼干-美味/肾上腺素-高效/卫星/复仇之戟/诅咒之剑神秘遗物联动等多行 tooltip):改为按 lang 值内 `\n` 逐行拆分添加,不再整段组件内嵌真实换行符(仅 1.21.1)。 / Fixed chip tooltips rendering embedded newlines as box glyphs (Sandwich - Gourmet / Adrenaline - High-Grade / Satellite / Revenge Halberd / Cursed Sword Enigmatic Legacy+ link, etc.): multi-line lang values are now split into separate tooltip lines instead of keeping real `\n` inside a single component (1.21.1 only).
 
 ### 工程
 
