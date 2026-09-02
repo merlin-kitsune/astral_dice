@@ -89,6 +89,12 @@ public class CardInventoryMenu extends AbstractContainerMenu {
         });
         addDataSlot(new DataSlot() {
             @Override
+            public int get() { return starLevel; }
+            @Override
+            public void set(int value) { starLevel = value; }
+        });
+        addDataSlot(new DataSlot() {
+            @Override
             public int get() { return maxDefenseCost; }
             @Override
             public void set(int value) { maxDefenseCost = value; }
@@ -311,6 +317,10 @@ public class CardInventoryMenu extends AbstractContainerMenu {
     }
     public int getMaxAttackCost() {
         return maxAttackCost;
+    }
+
+    public int getStarLevel() {
+        return starLevel;
     }
 
     public int getMaxDefenseCost() {
