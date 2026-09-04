@@ -160,6 +160,20 @@ public class ModTooltipHandler {
         tooltip.add(tt(langKey, args).withStyle(ChatFormatting.GRAY));
     }
 
+    // 筹码 tooltip 多行文本:lang 值内嵌 "\n" 时逐行拆分添加,避免换行符被渲染成占位方块。
+    // 空白行保留为空行;行内 § 码着色保留;基础色按 style 参数。
+    private static void addChipLines(List<Component> tooltip, String langKey, ChatFormatting style,
+                                     Object... args) {
+        String text = translationString(langKey, args);
+        for (String line : text.split("\n")) {
+            if (line.isEmpty()) {
+                tooltip.add(Component.empty());
+            } else {
+                tooltip.add(Component.literal(line).withStyle(style));
+            }
+        }
+    }
+
     // 治愈类 tooltip 统一显示当前治愈点/上限
     private static void addHealingPointsCounter(List<Component> tooltip, Player p) {
         if (p == null) return;
@@ -505,10 +519,10 @@ public class ModTooltipHandler {
             addSignLines(tooltip, "tooltip.astral_dice.sign.jasmine_active");
             addSignPassiveTitle(tooltip, "移动充能");
             addSignLines(tooltip, "tooltip.astral_dice.sign.jasmine_passive",
-                    GameplayConstants.JASMINE_MAX_BONUS, GameplayConstants.JASMINE_MAX_BONUS * 2);
+                    GameplayConstants.JASMINE_MAX_BONUS);
             int atkBonus = JasmineSignItem.getAttackBonus(stack);
             int defBonus = JasmineSignItem.getDefenseBonus(stack);
-            addSignCounter(tooltip, "tooltip.astral_dice.sign.jasmine_bonus", atkBonus, defBonus * 2);
+            addSignCounter(tooltip, "tooltip.astral_dice.sign.jasmine_bonus", atkBonus, defBonus);
             addSignCooldownRemaining(tooltip, event.getEntity() instanceof Player p ? p : null);
         }
         if (stack.is(ModItems.MISAKI_SIGN.get())) {
@@ -626,8 +640,7 @@ public class ModTooltipHandler {
         }
         if (stack.is(ModItems.TARGET_CHIP.get())) {
             tooltip.add(Component.empty());
-            tooltip.add(Component.translatable("tooltip.astral_dice.chip.target",
-                            GameplayConstants.TARGET_CHIP_RANGE)
+            tooltip.add(Component.translatable("tooltip.astral_dice.chip.target")
                     .withStyle(ChatFormatting.GRAY));
         }
         if (stack.is(ModItems.MARKER_SPRAYER_CHIP.get())) {
@@ -735,19 +748,18 @@ public class ModTooltipHandler {
         if (stack.is(ModItems.SANDWICH_LOW.get()) || stack.is(ModItems.SANDWICH_MEDIUM.get())
                 || stack.is(ModItems.SANDWICH_HIGH.get())) {
             tooltip.add(Component.empty());
-            tooltip.add(Component.translatable(stack.is(ModItems.SANDWICH_LOW.get())
+            addChipLines(tooltip, stack.is(ModItems.SANDWICH_LOW.get())
                             ? "tooltip.astral_dice.chip.sandwich_low"
                             : stack.is(ModItems.SANDWICH_MEDIUM.get())
                             ? "tooltip.astral_dice.chip.sandwich_medium"
-                            : "tooltip.astral_dice.chip.sandwich_high")
-                    .withStyle(ChatFormatting.GRAY));
+                            : "tooltip.astral_dice.chip.sandwich_high",
+                    ChatFormatting.GRAY);
         }
         if (stack.is(ModItems.ADRENALINE_LOW.get()) || stack.is(ModItems.ADRENALINE_HIGH.get())) {
             tooltip.add(Component.empty());
-            tooltip.add(Component.translatable(stack.is(ModItems.ADRENALINE_LOW.get())
-                            ? "tooltip.astral_dice.chip.adrenaline_low"
-                            : "tooltip.astral_dice.chip.adrenaline_high")
-                    .withStyle(ChatFormatting.GRAY));
+            addChipLines(tooltip, stack.is(ModItems.ADRENALINE_LOW.get())
+                    ? "tooltip.astral_dice.chip.adrenaline_low"
+                    : "tooltip.astral_dice.chip.adrenaline_high", ChatFormatting.GRAY);
         }
         if (stack.is(ModItems.MAGIC_QUIVER.get())) {
             tooltip.add(Component.empty());
@@ -782,8 +794,8 @@ public class ModTooltipHandler {
                     .withStyle(ChatFormatting.GRAY));
             tooltip.add(Component.empty());
             if (net.neoforged.fml.ModList.get().isLoaded("enigmaticlegacyplus")) {
-                tooltip.add(Component.translatable("tooltip.astral_dice.chip.cursed_sword_enigmatic")
-                        .withStyle(ChatFormatting.LIGHT_PURPLE));
+                addChipLines(tooltip, "tooltip.astral_dice.chip.cursed_sword_enigmatic",
+                        ChatFormatting.LIGHT_PURPLE);
             }
             if (event.getEntity() instanceof Player p) {
                 addSignCounter(tooltip, "tooltip.astral_dice.chip.cursed_sword_bonus",
@@ -792,13 +804,11 @@ public class ModTooltipHandler {
         }
         if (stack.is(ModItems.REVENGE_HALBERD.get())) {
             tooltip.add(Component.empty());
-            tooltip.add(Component.translatable("tooltip.astral_dice.chip.revenge_halberd")
-                    .withStyle(ChatFormatting.GRAY));
+            addChipLines(tooltip, "tooltip.astral_dice.chip.revenge_halberd", ChatFormatting.GRAY);
             if (event.getEntity() instanceof Player p) {
-                tooltip.add(Component.translatable("tooltip.astral_dice.chip.revenge_halberd_current",
-                        Component.literal("+" + RevengeHalberdChipItem.currentAttackBonus(p)).withStyle(ChatFormatting.YELLOW),
-                        Component.literal("+" + RevengeHalberdChipItem.currentDefenseBonus(p) * 2).withStyle(ChatFormatting.YELLOW))
-                        .withStyle(ChatFormatting.GRAY));
+                addChipLines(tooltip, "tooltip.astral_dice.chip.revenge_halberd_current", ChatFormatting.GRAY,
+                        "§e+" + RevengeHalberdChipItem.currentAttackBonus(p) + "§7",
+                        "§e+" + RevengeHalberdChipItem.currentDefenseBonus(p) + "§7");
             }
         }
         if (stack.is(ModItems.PIERCING_GUN.get())) {
@@ -824,8 +834,7 @@ public class ModTooltipHandler {
         }
         if (stack.is(ModItems.SATELLITE_CHIP.get())) {
             tooltip.add(Component.empty());
-            tooltip.add(Component.translatable("tooltip.astral_dice.chip.satellite")
-                    .withStyle(ChatFormatting.GRAY));
+            addChipLines(tooltip, "tooltip.astral_dice.chip.satellite", ChatFormatting.GRAY);
         }
         if (stack.is(ModItems.PADMAN_SIGN.get())) {
             tooltip.add(Component.empty());
@@ -837,7 +846,7 @@ public class ModTooltipHandler {
                     formatSignTime(GameplayConstants.PADMAN_REFRESH_SECONDS));
             int atkBonus = stack.getOrDefault(ModDataComponents.PADMAN_ATK_BONUS.get(), 0);
             int defBonus = stack.getOrDefault(ModDataComponents.PADMAN_DEF_BONUS.get(), 0);
-            addSignCounter(tooltip, "tooltip.astral_dice.sign.padman_bonus", atkBonus, defBonus * 2);
+            addSignCounter(tooltip, "tooltip.astral_dice.sign.padman_bonus", atkBonus, defBonus);
             addSignCooldownRemaining(tooltip, event.getEntity() instanceof Player p ? p : null);
         }
         if (stack.is(ModItems.FANNY_SIGN.get())) {
@@ -1026,7 +1035,7 @@ public class ModTooltipHandler {
                 addSignCounter(tooltip, "tooltip.astral_dice.sign.nancy_lu_bonus",
                         com.merlinkitsune.astral_dice.item.sign.NancyLuSignItem.getAttackBonus(p)
                                 + com.merlinkitsune.astral_dice.item.sign.NancyLuSignItem.getActiveAttackBonus(p),
-                        com.merlinkitsune.astral_dice.item.sign.NancyLuSignItem.getDefenseBonus(p) * 2);
+                        com.merlinkitsune.astral_dice.item.sign.NancyLuSignItem.getDefenseBonus(p));
             }
             addSignCooldownRemaining(tooltip, event.getEntity() instanceof Player p ? p : null);
         }

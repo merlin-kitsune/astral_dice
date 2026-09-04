@@ -534,12 +534,6 @@ public class ModAttachments {
                     .serialize(Codec.INT)
                     .build());
 
-    // 夹心饼干-美味筹码:低生命值反击被动的触发冷却结束时刻(每 1:00 至多获得 1 层反击;0 表示无冷却)
-    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> SANDWICH_HIGH_COUNTER_COOLDOWN_END =
-            ATTACHMENTS.register("sandwich_high_counter_cooldown_end", () -> AttachmentType.builder(() -> 0L)
-                    .serialize(Codec.LONG)
-                    .build());
-
     // 骇客立牌:末影珍珠传送伤害免疫结束时刻
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> NANCY_LU_ENDER_PEARL_IMMUNE_UNTIL =
             ATTACHMENTS.register("nancy_lu_ender_pearl_immune_until", () -> AttachmentType.builder(() -> 0L)
@@ -680,14 +674,6 @@ public class ModAttachments {
 
     public static void setMimiReturnedCardCount(net.minecraft.world.entity.player.Player player, int value) {
         player.setData(MIMI_RETURNED_CARD_COUNT.get(), Math.max(0, value));
-    }
-
-    public static long getSandwichHighCounterCooldownEnd(net.minecraft.world.entity.player.Player player) {
-        return player.getData(SANDWICH_HIGH_COUNTER_COOLDOWN_END.get());
-    }
-
-    public static void setSandwichHighCounterCooldownEnd(net.minecraft.world.entity.player.Player player, long value) {
-        player.setData(SANDWICH_HIGH_COUNTER_COOLDOWN_END.get(), Math.max(0, value));
     }
 
     public static long getNancyLuEnderPearlImmuneUntil(net.minecraft.world.entity.player.Player player) {

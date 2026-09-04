@@ -225,17 +225,26 @@ public class DiceCombatEvents {
                     }
                 }
             }
-            // 标靶筹码:触发骰神赐福后,对附近(标靶常量范围)随机一个敌对目标施加一层标记
+            // 标靶筹码:触发骰神赐福后,对距离最近的敌对目标施加一层标记(无固定范围常量)
             if (attackerCurios.isPresent()) {
                 var targetChipResult = attackerCurios.get().findFirstCurio(s -> s.is(ModItems.TARGET_CHIP.get()));
                 if (targetChipResult.isPresent()) {
-                    net.minecraft.world.phys.AABB aabb =
-                            player.getBoundingBox().inflate(GameplayConstants.TARGET_CHIP_RANGE);
-                    var nearby = player.level().getEntitiesOfClass(net.minecraft.world.entity.LivingEntity.class, aabb,
-                            e -> e instanceof net.minecraft.world.entity.monster.Enemy && e.isAlive());
-                    if (!nearby.isEmpty()) {
-                        var randTarget = nearby.get(java.util.concurrent.ThreadLocalRandom.current().nextInt(nearby.size()));
-                        MarkManager.apply(randTarget, 1200);
+                    net.minecraft.world.entity.LivingEntity nearest = null;
+                    double nearestDistSqr = Double.MAX_VALUE;
+                    net.minecraft.server.level.ServerLevel serverLevel =
+                            (net.minecraft.server.level.ServerLevel) player.level();
+                    for (net.minecraft.world.entity.Entity entity : serverLevel.getEntities().getAll()) {
+                        if (entity instanceof net.minecraft.world.entity.LivingEntity living
+                                && living instanceof net.minecraft.world.entity.monster.Enemy && living.isAlive()) {
+                            double distSqr = living.distanceToSqr(player);
+                            if (distSqr < nearestDistSqr) {
+                                nearestDistSqr = distSqr;
+                                nearest = living;
+                            }
+                        }
+                    }
+                    if (nearest != null) {
+                        MarkManager.apply(nearest, 1200);
                     }
                 }
             }
@@ -884,28 +893,54 @@ public class DiceCombatEvents {
     }
 
     // === 反击流派(Counterattack) ===
-    // 拥有反击层数的玩家被近战敌方攻击时触发:视为玩家近战攻击,按
-    // "手持最高近战武器基础伤害 + 1d6 骰点 + 自动赐福攻击牌加成 + 攻击力加成"计算总伤害,
-    // 对攻击目标造成一次伤害并移除 1 层;未处于骰神赐福时自动触发赐福(消耗攻击牌耐久)。
+    // 拥有反击层数的玩家受到敌对生物任何伤害时触发:消耗 1 层「反击」并把伤害来源登记为“反噬目标”;
+    // 此后该目标每次对玩家造成伤害,都受到一次返还伤害 = 手持最高近战武器基础伤害 + 骰战攻击力加成链
+    // + 已装备攻击牌随机掷骰(每次独立随机;不含 1d6,不自动赐福),直至目标死亡。
+    // 返还伤害对总伤害计算七咒减益(含修正物),并可受「全力攻击」×1.5 等修正影响;
+    // 对 Boss 生物(末影龙/凋灵/监守者及灾变等)无效:不触发、不消耗层数、不登记。
+    // (目标死亡或玩家死亡时清理登记;触发瞬间不额外造成伤害,本次受击即开始返还。)
+    /** 反噬目标登记:玩家UUID -> 该玩家登记的反噬目标UUID集合(纯服务端,不持久化) */
+    private static final java.util.Map<java.util.UUID, java.util.Set<java.util.UUID>> COUNTER_RETALIATION_TARGETS =
+            new java.util.HashMap<>();
+
     @SubscribeEvent
     public static void onCounterattackTriggered(LivingDamageEvent.Pre event) {
-        LivingEntity target = event.getEntity();
-        if (target.level().isClientSide()) return;
-        if (!(target instanceof Player player)) return;
+        LivingEntity victim = event.getEntity();
+        if (victim.level().isClientSide()) return;
         if (counterProcessing) return;
+        if (!(victim instanceof Player player)) return;
         if (!player.isAlive()) return;
-        if (!player.hasEffect(ModEffects.COUNTERATTACK)) return;
         DamageSource source = event.getSource();
-        // 近战敌方攻击:来源为敌对生物且为直接接触(非间接/投射/爆炸)
         Entity attackerEntity = source.getEntity();
         if (!(attackerEntity instanceof LivingEntity attacker)) return;
         if (!(attacker instanceof Enemy)) return;
-        if (source.getDirectEntity() != attacker) return;
-        // 魔法伤害(唤魔者尖牙/守卫者光束/药水等)不属于近战,不触发反击
-        if (com.merlinkitsune.astral_dice.combat.SpellDamageRegistry.isSpellDamage(source, source.getDirectEntity())) return;
+        // Boss 生物无效:不触发反击(不消耗层数/不登记/不返还)
+        if (BossEntityUtil.isBossEntity(attacker)) return;
         if (!attacker.isAlive()) return;
 
-        double dmg = computeCounterattackDamage(player, attacker);
+        java.util.UUID attackerId = attacker.getUUID();
+        java.util.Set<java.util.UUID> targets = COUNTER_RETALIATION_TARGETS.get(player.getUUID());
+        boolean alreadyRegistered = targets != null && targets.contains(attackerId);
+        // 新触发(任意敌对伤害均可):消耗 1 层「反击」并登记该目标(同一目标只登记一次,后续不再消耗层数)
+        boolean triggered = false;
+        if (!alreadyRegistered && player.hasEffect(ModEffects.COUNTERATTACK)) {
+            com.merlinkitsune.astral_dice.effect.CounterattackEffect.consumeOne(player);
+            if (targets == null) {
+                targets = new java.util.HashSet<>();
+                COUNTER_RETALIATION_TARGETS.put(player.getUUID(), targets);
+            }
+            targets.add(attackerId);
+            triggered = true;
+        }
+        // 已登记目标每次造成伤害都返还;本次触发(消耗层数)的受击同样立即返还
+        if (alreadyRegistered || triggered) {
+            retaliateCounterDamage(player, attacker);
+        }
+    }
+
+    // 对反噬目标造成一次返还伤害(视为玩家伤害来源,不进入骰战结算/不递归触发)
+    private static void retaliateCounterDamage(Player player, LivingEntity attacker) {
+        double dmg = computeCounterDamage(player, attacker);
         if (dmg <= 0) return;
         counterProcessing = true;
         try {
@@ -915,26 +950,14 @@ public class DiceCombatEvents {
         } finally {
             counterProcessing = false;
         }
-        // 移除 1 层"反击"
-        com.merlinkitsune.astral_dice.effect.CounterattackEffect.consumeOne(player);
     }
 
-    // 反击伤害计算(视为玩家近战攻击):手持最高近战武器基础伤害 + 1d6 骰点
-    // + 攻击牌加成 + 攻击力加成;未赐福时自动触发骰神赐福并消耗攻击牌耐久
-    private static double computeCounterattackDamage(Player player, LivingEntity attacker) {
+    // 反击返还伤害 = 手持最高近战武器基础伤害 + 骰战攻击力加成链 + 已装备攻击牌随机掷骰
+    // (与正常攻击同一上下文以收集加成/掷骰,但不加入 1d6,也不自动赐福/施加诅咒/×1.5)
+    private static double computeCounterDamage(Player player, LivingEntity attacker) {
         double weaponBase = highestHeldMeleeBaseDamage(player);
 
-        // 自动赐福:仅在未处于骰神赐福时触发(施加效果 + 重置赐福周期标记 + 本次作为触发攻击消耗耐久)
-        boolean blessingTriggered = false;
-        if (!player.hasEffect(ModEffects.DICE_BLESSING)) {
-            player.addEffect(new MobEffectInstance(ModEffects.DICE_BLESSING,
-                    GameplayConstants.DICE_BLESSING_DURATION_TICKS, 0, false, false));
-            ModAttachments.setDefenseCardConsumedThisBlessing(player, false);
-            ModAttachments.setCursedSwordBlessingTriggered(player, false);
-            blessingTriggered = true;
-        }
-
-        // 骰子与卡牌
+        // 骰子与卡牌(与正常攻击路径一致的上下文,仅用于攻击力加成链与攻击牌随机掷骰)
         ItemStack diceStack = null;
         WeaponEnhancement enhancement = null;
         var curios = CuriosApi.getCuriosInventory(player);
@@ -947,7 +970,6 @@ public class DiceCombatEvents {
         }
         if (enhancement == null) enhancement = WeaponEnhancement.EMPTY;
 
-        // 1d6 骰点 + 攻击牌掷骰(构造与 getDisplayAttackRange 一致的上下文)
         int baseDice = ThreadLocalRandom.current().nextInt(1, 7);
         int misakiStar = enhancement.starLevel();
         int misakiStacks = 0;
@@ -966,20 +988,38 @@ public class DiceCombatEvents {
         for (var modifier : DiceCombatModifiers.attackModifiers()) {
             modifiersSum = modifier.apply(ctx, modifiersSum);
         }
-        int attackCardSum = ctx.attackCardSum;
-
-        // 攻击牌耐久:仅本次为触发赐福的攻击时消耗
-        if (blessingTriggered) {
-            consumeAttackCardDurabilityOnce(player, diceStack, enhancement);
+        double total = weaponBase + ctx.attackCardSum + modifiersSum;
+        // 七咒减益作用于反击总伤害(含修正物:启示之证/倒转之启/恩惠之典/护法爆发)
+        total = applyCurseToDicePoints(player, total);
+        // 可受到修正影响:装备「全力攻击」时返还伤害 ×1.5(与正常攻击结算一致)
+        boolean hasFullPower = ctx.hasFullPower;
+        if (!hasFullPower && enhancement != null) {
+            for (AppliedStone stone : enhancement.appliedStones()) {
+                if ("full_power".equals(stone.type())) {
+                    hasFullPower = true;
+                    break;
+                }
+            }
         }
-
-        // 七咒减益作用于 骰点+卡牌(与正常攻击路径一致);武器基础/攻击力加成不受减益
-        double diceAndCards = applyCurseToDicePoints(player, baseDice + attackCardSum);
-        double total = weaponBase + diceAndCards + modifiersSum;
-        if (ctx.hasFullPower) {
+        if (hasFullPower) {
             total = Math.ceil(total * 1.5);
         }
         return total;
+    }
+
+    // 反噬目标死亡(或玩家死亡)时清理登记,避免残留
+    @SubscribeEvent
+    public static void onCounterTargetDeath(net.neoforged.neoforge.event.entity.living.LivingDeathEvent event) {
+        if (event.getEntity().level().isClientSide()) return;
+        Entity dead = event.getEntity();
+        if (dead instanceof Player player) {
+            COUNTER_RETALIATION_TARGETS.remove(player.getUUID());
+            return;
+        }
+        if (dead instanceof Enemy) {
+            java.util.UUID deadId = dead.getUUID();
+            COUNTER_RETALIATION_TARGETS.values().forEach(set -> set.remove(deadId));
+        }
     }
 
     // 手持(主手+副手)近战武器的基础伤害最大值(不含附魔/属性效果);无近战武器回退空手 1.0

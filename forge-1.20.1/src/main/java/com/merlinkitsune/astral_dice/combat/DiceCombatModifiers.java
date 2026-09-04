@@ -210,6 +210,16 @@ public final class DiceCombatModifiers {
             return ap;
         });
 
+        // === 内置:夹心饼干-美味(最大生命值超过 20 点的部分,每 4 点 +1 攻击力) ===
+        registerAttackModifier((ctx, ap) -> {
+            Player p = ctx.attacker;
+            if (p.level().isClientSide()) return ap;
+            if (hasCurio(p, ModItems.SANDWICH_HIGH.get())) {
+                ap += com.merlinkitsune.astral_dice.item.chip.SandwichChipItem.getAttackBonus(p);
+            }
+            return ap;
+        });
+
         // === 内置:扫地机立牌(jasmine)攻击力增益 ===
         registerAttackModifier((ctx, ap) -> {
             if (ctx.attacker.level().isClientSide()) return ap;
@@ -346,7 +356,7 @@ public final class DiceCombatModifiers {
             return ap;
         });
 
-        // === 内置:肾上腺素筹码(生命值低于最大生命值一半时攻击力 +3/+8) ===
+        // === 内置:肾上腺素-高效筹码(生命值低于最大生命值一半时攻击力 +8) ===
         registerAttackModifier((ctx, ap) -> {
             Player p = ctx.attacker;
             if (p.level().isClientSide()) return ap;

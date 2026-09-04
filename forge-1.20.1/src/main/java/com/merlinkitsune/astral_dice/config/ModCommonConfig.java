@@ -17,7 +17,6 @@ public final class ModCommonConfig {
         public static final ForgeConfigSpec.IntValue EFFECT_CARD_COOLDOWN_SECONDS;
         public static final ForgeConfigSpec.IntValue MAX_EFFECT_STACKS;
         public static final ForgeConfigSpec.IntValue MAX_DAMAGE_EFFECT_BONUS;
-        public static final ForgeConfigSpec.IntValue TARGET_CHIP_RANGE;
         public static final ForgeConfigSpec.IntValue EVENT_RANGE;
         public static final ForgeConfigSpec.BooleanValue EVENT_APPLY_MC_TEAM;
         public static final ForgeConfigSpec.BooleanValue EVENT_APPLY_FTB_TEAM;
@@ -53,8 +52,6 @@ public final class ModCommonConfig {
                                 .defineInRange("max_effect_stacks", 3, 1, 9);
                 MAX_DAMAGE_EFFECT_BONUS = builder.comment("伤害效果牌伤害加成上限(默认：最大 16 点)")
                                 .defineInRange("max_damage_effect_bonus", 16, 1, 64);
-                TARGET_CHIP_RANGE = builder.comment("标靶筹码:骰神赐福后标记作用范围(单位：格,默认：16)")
-                                .defineInRange("target_chip_range", 16, 1, 32);
 
                 builder.push("event_system").comment("=== 事件系统 ===");
                 EVENT_RANGE = builder.comment("事件作用范围(格,默认 16)")

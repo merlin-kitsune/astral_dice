@@ -25,6 +25,8 @@
     "DCD",
     "PPP"
   ],
-  "result": { "count": 1, "item": "astral_dice:adrenaline_low_chip"
-  }
+  "result": {
+    "item": "astral_dice:adrenaline_low_chip"
+  },
+  "show_notification": true
 }

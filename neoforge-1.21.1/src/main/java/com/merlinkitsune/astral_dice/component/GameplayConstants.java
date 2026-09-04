@@ -18,8 +18,6 @@ public final class GameplayConstants {
     public static int MAX_EFFECT_STACKS = 3;
     // 伤害效果牌伤害加成上限(默认最大 16 点)
     public static int MAX_DAMAGE_EFFECT_BONUS = 16;
-    // 标靶筹码:骰神赐福后标记作用范围(格,默认 16)
-    public static int TARGET_CHIP_RANGE = 16;
 
     // === 事件系统 ===
     // 事件作用范围(格,默认 16)
@@ -97,7 +95,6 @@ public final class GameplayConstants {
         EFFECT_CARD_COOLDOWN_SECONDS = ModCommonConfig.EFFECT_CARD_COOLDOWN_SECONDS.get();
         MAX_EFFECT_STACKS = ModCommonConfig.MAX_EFFECT_STACKS.get();
         MAX_DAMAGE_EFFECT_BONUS = ModCommonConfig.MAX_DAMAGE_EFFECT_BONUS.get();
-        TARGET_CHIP_RANGE = ModCommonConfig.TARGET_CHIP_RANGE.get();
 
         EVENT_RANGE = ModCommonConfig.EVENT_RANGE.get();
         EVENT_APPLY_MC_TEAM = ModCommonConfig.EVENT_APPLY_MC_TEAM.get();

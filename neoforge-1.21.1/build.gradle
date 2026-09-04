@@ -34,6 +34,8 @@ repositories {
     maven { url 'https://maven.architectury.dev' }
     // KubeJS transitive dependency animated-gif-lib-for-java
     maven { url 'https://jitpack.io' }
+    // JEI 官方 maven(配方查看)
+    maven { url 'https://maven.blamejared.com' }
 }
 
 base {
@@ -58,10 +60,10 @@ neoForge {
     // Default run configurations.
     // These can be tweaked, removed, or duplicated as needed.
     runs {
-        // 版本隔离:开发测试游戏目录按 MC 版本隔离(run/<版本>),
-        // 与 1.20.1-forge 分支(run/1.20.1)互不污染 mods/config/saves
+        // 版本隔离:开发测试游戏目录统一放在仓库根 run/<版本>,
+        // 与 forge(run/1.20.1)互不污染 mods/config/saves
         configureEach {
-            gameDirectory = project.file('run/1.21.1')
+            gameDirectory = rootProject.file('run/1.21.1')
         }
 
         client {
@@ -165,6 +167,8 @@ dependencies {
     // http://www.gradle.org/docs/current/userguide/dependency_management.html
 
     implementation 'maven.modrinth:curios:yohfFbgD'
+    // JEI(配方查看,测试环境用);19.39 系仍兼容本项目 neoforge 21.1.235(19.42+ 要求 ≥21.1.238)
+    implementation "mezz.jei:jei-1.21.1-neoforge:19.39.0.372"
 }
 
 // 目标选择器:键盘输入锁定 Mixin(KeyboardHandlerMixin)。NeoForge 运行时自带 Mixin,
@@ -230,8 +234,9 @@ repositories {
 }
 dependencies {
     // 自动化测试辅助:KubeJS(运行时依赖,用于游戏内 Curios 饰品栏检查脚本)
-    // 注意:必须用 implementation 而非 localRuntime——ModDevGradle 的 mod 定位只识别 implementation 声明的 mod(与 Curios 一致)
-    implementation "dev.latvian.mods:kubejs-neoforge:${kubejs_version}"
+    // 2026-09:改由 dev run 的 run/mods 目录直接装载整合包同版 kubejs(2101.7.2-build.374),
+    // 此处不再 implementation 注入,避免 mods 目录 + classpath 重复加载同一 modid 导致崩溃。
+    // implementation "dev.latvian.mods:kubejs-neoforge:${kubejs_version}"
     implementation 'maven.modrinth:curios:yohfFbgD'
     implementation 'maven.modrinth:patchouli:1.21.1-93-neoforge'
     implementation fileTree(dir: 'base-mod-libs', include: ['*.jar'])
@@ -240,21 +245,21 @@ dependencies {
 // AutoForge: end mod addon dependencies
 
 // === 编译产物分发规则 ===
-// 默认行为:每次构建完成后仅将 mod 推送到项目自身测试环境(run/mods),用于本机 runClient 调试。
+// 默认行为:每次构建完成后仅将 mod 推送到仓库根 run/1.21.1/mods,用于本机 runClient 调试。
 // 用户指定推送整合包时:构建同时(额外)推送到整合包 mods 目录,并删除旧版本。
 //   指定方式二选一:
 //     1) gradlew build -PdeployToPack
 //     2) gradlew build pushToGame  (显式运行 pushToGame 任务)
 // 整合包位置:D:/.minecraft/versions/狐の航空学 Voxy Edition/mods
-def devRunModsDir = file('run/1.21.1/mods')
+def devRunModsDir = rootProject.file('run/1.21.1/mods')
 def packModsDir = file('D:/.minecraft/versions/狐の航空学 Voxy Edition/mods')
 
-// 默认:推送到项目测试环境(run/mods)
+// 默认:推送到仓库根 run/1.21.1/mods
 def jarArchiveProvider = tasks.named('jar').flatMap { it.archiveFile }
 
 tasks.register('pushToDevRun') {
     group = 'build'
-    description = 'Copy the built mod jar to the dev run mods folder (run/1.21.1/mods) and remove old versions.'
+    description = 'Copy the built mod jar to the dev run mods folder (root run/1.21.1/mods) and remove old versions.'
     dependsOn tasks.named('jar')
     doLast {
         def jarFile = jarArchiveProvider.get().asFile

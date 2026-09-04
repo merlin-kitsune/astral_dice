@@ -1,7 +1,6 @@
 package com.merlinkitsune.astral_dice.screen;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
-import com.merlinkitsune.astral_dice.combat.CardRegistry;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
@@ -13,13 +12,18 @@ import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.List;
-import java.util.Set;
 
 public class CardInventoryScreen extends AbstractContainerScreen<CardInventoryMenu> {
-    private static final ResourceLocation GUI_TEXTURE =
-            ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID, "textures/gui/card_inventory.png");
     private static final int GUI_WIDTH = 168;
     private static final int GUI_HEIGHT = 124;
+
+    // 不同星级骰子对应的卡牌选择界面背景
+    private static final String[] GUI_TEXTURES_BY_STAR = {
+            "textures/gui/card_inventory_0.png",
+            "textures/gui/card_inventory_1.png",
+            "textures/gui/card_inventory_2.png",
+            "textures/gui/card_inventory_3.png"
+    };
 
     // 费用点数槽(亮线上方的两个深色槽,左对齐绘制)
     private static final int COST_ATTACK_X = 8;
@@ -46,12 +50,6 @@ public class CardInventoryScreen extends AbstractContainerScreen<CardInventoryMe
     private static final int SELECTOR_COLUMNS = CardInventoryMenu.SELECTOR_COLUMNS;
     private static final int SELECTOR_COL_SPACING = 18;
 
-    // 这些卡牌图标偏大,在卡牌槽内渲染时缩小
-    private static final Set<String> LARGE_CARD_TYPES = Set.of(
-            "shadow_strike", "meito", "charge", "full_power"
-    );
-    private static final float LARGE_CARD_SCALE = 0.8F;
-
     public CardInventoryScreen(CardInventoryMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title);
         this.imageWidth = GUI_WIDTH;
@@ -66,7 +64,11 @@ public class CardInventoryScreen extends AbstractContainerScreen<CardInventoryMe
         int x = this.leftPos;
         int y = this.topPos;
 
-        guiGraphics.blit(GUI_TEXTURE, x, y, 0, 0.0F, 0.0F, GUI_WIDTH, GUI_HEIGHT, GUI_WIDTH, GUI_HEIGHT);
+        // 按当前骰子星级(0-3,超出取最近档)选择界面背景
+        int star = Math.max(0, Math.min(3, this.menu.getStarLevel()));
+        ResourceLocation texture = ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID,
+                GUI_TEXTURES_BY_STAR[star]);
+        guiGraphics.blit(texture, x, y, 0, 0.0F, 0.0F, GUI_WIDTH, GUI_HEIGHT, GUI_WIDTH, GUI_HEIGHT);
 
         // 费用点数:按当前骰子星级对应的最大点数显示
         int atkMax = Math.max(0, this.menu.getMaxAttackCost());
@@ -105,22 +107,6 @@ public class CardInventoryScreen extends AbstractContainerScreen<CardInventoryMe
             guiGraphics.drawString(this.font, msg,
                     this.leftPos + (GUI_WIDTH - textWidth) / 2, this.topPos + GUI_HEIGHT - 11, 0xFFFF5555, true);
         }
-    }
-
-    @Override
-    protected void renderSlot(GuiGraphics guiGraphics, Slot slot) {
-        // 卡牌槽内的大图标适当缩小,避免超出格子
-        if (slot.container == this.menu.cardContainer) {
-            ItemStack stack = slot.getItem();
-            if (!stack.isEmpty()) {
-                String type = CardRegistry.itemToType(stack);
-                if (type != null && LARGE_CARD_TYPES.contains(type)) {
-                    renderScaledSlotItem(guiGraphics, slot, stack, LARGE_CARD_SCALE);
-                    return;
-                }
-            }
-        }
-        super.renderSlot(guiGraphics, slot);
     }
 
     @Override
@@ -166,21 +152,6 @@ public class CardInventoryScreen extends AbstractContainerScreen<CardInventoryMe
             return true;
         }
         return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount);
-    }
-
-    private void renderScaledSlotItem(GuiGraphics guiGraphics, Slot slot, ItemStack stack, float scale) {
-        // 向右下轻微偏移
-        float offsetX = 2.0F;
-        float offsetY = 2.0F;
-        int drawX = slot.x + (int) offsetX;
-        int drawY = slot.y + (int) offsetY;
-        guiGraphics.pose().pushPose();
-        guiGraphics.pose().translate(drawX, drawY, 0.0F);
-        guiGraphics.pose().scale(scale, scale, 1.0F);
-        guiGraphics.renderItem(stack, 0, 0);
-        guiGraphics.pose().popPose();
-        // 在未缩放坐标下绘制耐久条/装饰,确保耐久条可见
-        guiGraphics.renderItemDecorations(this.font, stack, drawX, drawY);
     }
 
     // 3 列网格:同一侧(攻击/防御)的卡牌按 3 列排布,按行滚动

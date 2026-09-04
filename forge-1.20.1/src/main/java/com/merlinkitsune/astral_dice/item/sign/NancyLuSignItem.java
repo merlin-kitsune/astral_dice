@@ -43,7 +43,8 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
  * <p>主动"远程侵入":
  * - 立即进入完全隐身状态(最多持续 30 秒);
  * - 攻击敌对目标或玩家时解除隐身,并消耗一张随机战斗牌;
- * - 按该牌费用 ×2 提升攻击力,持续 2:00;若无战斗牌可用则不触发加成。
+ * - 按该牌费用 ×2 提升攻击力,持续 2:00;攻击力加成最低 +2,
+ *   主物品栏无战斗牌可消耗时同样获得保底 +2。
  */
 @Mod.EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public class NancyLuSignItem extends BaseSignItem {
@@ -56,6 +57,7 @@ public class NancyLuSignItem extends BaseSignItem {
     public static final int INVULNERABLE_TICKS = 60;
     public static final int HIDDEN_DURATION_TICKS = 600;
     public static final int ACTIVE_BONUS_MULTIPLIER = 2;
+    public static final int ACTIVE_MIN_BONUS = 2;
     public static final int ENDER_PEARL_IMMUNE_TICKS = 20;
 
     public NancyLuSignItem(Properties properties) {
@@ -139,12 +141,16 @@ public class NancyLuSignItem extends BaseSignItem {
         ModAttachments.setNancyLuHiddenUntil(player, 0);
         player.removeEffect(net.minecraft.world.effect.MobEffects.INVISIBILITY);
 
-        // 消耗一张随机战斗牌;若无牌可用则不触发攻击力加成
+        // 消耗一张随机战斗牌并按费用×2 提升攻击力;攻击力加成最低 +2。
+        // 主物品栏无战斗牌可消耗时,同样获得保底 +2 攻击力加成。
         ItemStack consumed = findAndConsumeRandomBattleCard(player);
-        if (consumed == null) return;
-        String typeId = CardRegistry.itemToType(consumed);
-        int cost = typeId != null ? CardRegistry.cost(typeId, player) : 1;
-        ModAttachments.setNancyLuActiveBonus(player, cost * ACTIVE_BONUS_MULTIPLIER);
+        int bonus = ACTIVE_MIN_BONUS;
+        if (consumed != null) {
+            String typeId = CardRegistry.itemToType(consumed);
+            int cost = typeId != null ? CardRegistry.cost(typeId, player) : 1;
+            bonus = Math.max(ACTIVE_MIN_BONUS, cost * ACTIVE_BONUS_MULTIPLIER);
+        }
+        ModAttachments.setNancyLuActiveBonus(player, bonus);
         ModAttachments.setNancyLuActiveBonusUntil(player, now + ACTIVE_DURATION_TICKS);
         player.addEffect(new MobEffectInstance(ModEffects.NANCY_LU_HACK.get(),
                 ACTIVE_DURATION_TICKS, 0, false, true, true));

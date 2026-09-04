@@ -844,12 +844,12 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
                 .save(output::accept);
 
-        // 贯穿之铳:下界合金碎片上排 + 潮涌核心/回响碎片中轴 + 空白筹码居中 + 黄金星盘下排
+        // 贯穿之铳:下界合金锭上排 + 潮涌核心/回响碎片中轴 + 空白筹码居中 + 黄金星盘下排
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.PIERCING_GUN.get())
                 .pattern("XSX")
                 .pattern("HCH")
                 .pattern("PPP")
-                .define('X', Items.NETHERITE_SCRAP)
+                .define('X', Items.NETHERITE_INGOT)
                 .define('S', Items.CONDUIT)
                 .define('H', Items.ECHO_SHARD)
                 .define('C', ModItems.BLANK_CHIP.get())
