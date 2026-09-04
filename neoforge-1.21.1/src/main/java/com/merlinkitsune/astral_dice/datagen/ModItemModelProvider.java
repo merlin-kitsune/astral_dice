@@ -95,6 +95,7 @@ public class ModItemModelProvider extends ItemModelProvider {
         basicItem(ModItems.SANDWICH_LOW.get());
         basicItem(ModItems.SANDWICH_MEDIUM.get());
         basicItem(ModItems.SANDWICH_HIGH.get());
+        basicItem(ModItems.ADRENALINE_LOW.get());
         basicItem(ModItems.ADRENALINE_HIGH.get());
         basicItem(ModItems.MAGIC_QUIVER.get());
         basicItem(ModItems.BUFFER_SHIELD.get());

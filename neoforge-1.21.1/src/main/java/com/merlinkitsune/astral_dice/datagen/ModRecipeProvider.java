@@ -901,10 +901,8 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .unlockedBy("has_orbital_strike", has(ModItems.ORBITAL_STRIKE_CARD.get()))
                 .save(output);
 
-        // 肾上腺素-高效(传奇):生命值低于最大生命值一半时攻击/防御 +8,触发时掷骰闪避。
-        // 直接合成(原「肾上腺素-一般」配方覆盖而来,P 由 星盘 改为 黄金星盘;一般筹码已删除):
-        // Z=再生药水 X=下界之星 D=凋零玫瑰 C=空白筹码 P=黄金星盘
-        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.ADRENALINE_HIGH.get())
+        // 肾上腺素-一般:再生药水 + 下界之星 + 凋零玫瑰 + 空白筹码 + 星盘(史诗)
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.ADRENALINE_LOW.get())
                 .pattern("ZXZ")
                 .pattern("DCD")
                 .pattern("PPP")
@@ -915,8 +913,21 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('X', Items.NETHER_STAR)
                 .define('D', Items.WITHER_ROSE)
                 .define('C', ModItems.BLANK_CHIP.get())
-                .define('P', ModItems.GOLDEN_STAR_PLATE.get())
+                .define('P', ModItems.STAR_PLATE.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
+                .save(output);
+
+        // 肾上腺素-高效:紫→金升级配方 RZR/ZOZ/PPP
+        // (R=红石粉,Z=钻石,O=史诗品质筹码(本例肾上腺素-一般),P=黄金星盘;遵循通用紫-金配方)
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.ADRENALINE_HIGH.get())
+                .pattern("RZR")
+                .pattern("ZOZ")
+                .pattern("PPP")
+                .define('R', Items.REDSTONE)
+                .define('Z', Items.DIAMOND)
+                .define('O', ModItems.ADRENALINE_LOW.get())
+                .define('P', ModItems.GOLDEN_STAR_PLATE.get())
+                .unlockedBy("has_adrenaline_low", has(ModItems.ADRENALINE_LOW.get()))
                 .save(output);
 
         // === 新效果牌(治疗/互动;shape:星币居中,mod 物品在中轴) ===

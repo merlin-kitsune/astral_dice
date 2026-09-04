@@ -9,7 +9,7 @@
       "item": "minecraft:wither_rose"
     },
     "P": {
-      "item": "astral_dice:golden_star_plate"
+      "item": "astral_dice:star_plate"
     },
     "X": {
       "item": "minecraft:nether_star"
@@ -32,6 +32,6 @@
   ],
   "result": {
     "count": 1,
-    "id": "astral_dice:adrenaline_high_chip"
+    "id": "astral_dice:adrenaline_low_chip"
   }
 }

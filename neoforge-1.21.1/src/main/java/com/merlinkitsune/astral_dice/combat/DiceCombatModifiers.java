@@ -358,6 +358,7 @@ public final class DiceCombatModifiers {
             Player p = ctx.attacker;
             if (p.level().isClientSide()) return ap;
             if (p.getHealth() >= p.getMaxHealth() / 2.0f) return ap;
+            if (hasCurio(p, ModItems.ADRENALINE_LOW.get())) ap += AdrenalineChipItem.BONUS_LOW;
             if (hasCurio(p, ModItems.ADRENALINE_HIGH.get())) ap += AdrenalineChipItem.BONUS_HIGH;
             return ap;
         });

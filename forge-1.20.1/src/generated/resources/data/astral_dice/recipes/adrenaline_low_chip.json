@@ -9,20 +9,15 @@
       "item": "minecraft:wither_rose"
     },
     "P": {
-      "item": "astral_dice:golden_star_plate"
+      "item": "astral_dice:star_plate"
     },
     "X": {
       "item": "minecraft:nether_star"
     },
     "Z": {
-      "type": "neoforge:components",
-      "components": {
-        "minecraft:potion_contents": {
-          "potion": "minecraft:regeneration"
-        }
-      },
-      "items": "minecraft:potion",
-      "strict": true
+      "type": "forge:partial_nbt",
+      "item": "minecraft:potion",
+      "nbt": "{Potion:\"minecraft:regeneration\"}"
     }
   },
   "pattern": [
@@ -31,7 +26,7 @@
     "PPP"
   ],
   "result": {
-    "count": 1,
-    "id": "astral_dice:adrenaline_high_chip"
-  }
+    "item": "astral_dice:adrenaline_low_chip"
+  },
+  "show_notification": true
 }
