@@ -51,6 +51,7 @@ docs/
 run/
 scripts/
 temp/
+images/
 AGENTS.md
 deploy.ps1
 opencode.json
