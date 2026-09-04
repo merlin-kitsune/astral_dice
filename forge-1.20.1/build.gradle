@@ -215,6 +215,10 @@ dependencies {
 
     // Mixin Booster(强依赖):Sponge Mixin 运行时替代 Forge 自带 Mixin,自动重映射,无需 refmap。
     modImplementation "maven.modrinth:mixinbooster:rOaAYvPZ"
+
+    // ModernFix(测试环境):dev runClient 加载优化;提供 "Total time to load game and open world was"
+    // 加载完成日志,供 launch_client_forge.ps1 判定启动/加载世界完成(整合包为 5.27.83,dev 用 Modrinth 最新 1.20.1 版)。
+    modImplementation "maven.modrinth:modernfix:OvpPdk44"
 }
 // AutoForge: end mod addon dependencies
 
