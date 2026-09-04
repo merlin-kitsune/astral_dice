@@ -114,6 +114,12 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(Rarity.RARE)));
 
+    // 玻璃骰子:与黄金骰子同阶(tag dice_t1),可由黄金骰子升级;战斗牌点数始终取最大值,但死亡会丢失该骰子及已装备卡牌
+    public static final DeferredItem<Item> GLASS_DICE = registerItem("glass_dice",
+            () -> new DiceCurioItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.RARE)));
+
     // 钻石骰子:由黄金骰子 + 4 星盘 + 4 钻石升级而来,卡牌放置栏固定攻防各 5(共 10)
     public static final DeferredItem<Item> DIAMOND_DICE = registerItem("diamond_dice",
             () -> new DiceCurioItem(new Item.Properties()
@@ -143,6 +149,9 @@ public class ModItems {
                 s -> s));
         // 金骰子:筹码栏 0★1/1★2/2★3/3★4
         DiceTierRegistry.register(new DiceTier("golden_dice", () -> GOLDEN_DICE.get(),
+                s -> 1 + s));
+        // 玻璃骰子:与金骰子同阶(筹码栏 0★1/1★2/2★3/3★4)
+        DiceTierRegistry.register(new DiceTier("glass_dice", () -> GLASS_DICE.get(),
                 s -> 1 + s));
         // 钻石骰子:筹码栏 0★2/1★3/2★4/3★5
         DiceTierRegistry.register(new DiceTier("diamond_dice", () -> DIAMOND_DICE.get(),

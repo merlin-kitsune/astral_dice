@@ -15,6 +15,7 @@ public class ModItemModelProvider extends ItemModelProvider {
     protected void registerModels() {
         basicItem(ModItems.DICE.get());
         basicItem(ModItems.GOLDEN_DICE.get());
+        basicItem(ModItems.GLASS_DICE.get());
         basicItem(ModItems.DIAMOND_DICE.get());
         basicItem(ModItems.NETHERITE_DICE.get());
         basicItem(ModItems.EMERALD_DICE.get());

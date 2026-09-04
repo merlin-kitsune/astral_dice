@@ -38,6 +38,7 @@ public class ModCreativeTabs {
                 // 骰子
                 output.accept(ModItems.DICE.get());
                 output.accept(ModItems.GOLDEN_DICE.get());
+                output.accept(ModItems.GLASS_DICE.get());
                 output.accept(ModItems.DIAMOND_DICE.get());
                 output.accept(ModItems.NETHERITE_DICE.get());
                 output.accept(ModItems.EMERALD_DICE.get());

@@ -89,8 +89,30 @@ public final class CardRegistry {
 
     /** 掷骰:类型不存在时返回 0 */
     public static int roll(String typeId, DiceCombatContext ctx) {
+        return roll(typeId, ctx, false);
+    }
+
+    /**
+     * 掷骰(maxMode=玻璃骰子:战斗牌点数始终取最大值)。
+     * 仅随机骰牌(中/大/特大/名刀/防御牌)在 maxMode 下直接返回上限;
+     * 固定值牌(暗影突袭/蓄力/全力攻击)仍走原 roller 以保留副作用(如 hasShadowStrike/hasFullPower)。
+     */
+    public static int roll(String typeId, DiceCombatContext ctx, boolean maxMode) {
         CardType t = BY_ID.get(typeId);
-        return t != null ? t.roller().roll(ctx) : 0;
+        if (t == null) return 0;
+        if (maxMode && isRandomRollCard(typeId)) {
+            return maxRoll(typeId);
+        }
+        return t.roller().roll(ctx);
+    }
+
+    /** 是否为随机骰点战斗牌(玻璃骰子取最大值仅作用于此类;固定值牌保留原掷骰副作用) */
+    private static boolean isRandomRollCard(String typeId) {
+        return switch (typeId) {
+            case "medium", "large", "epic",
+                 "defense_medium", "defense_large", "defense_epic", "meito" -> true;
+            default -> false;
+        };
     }
 
     /**

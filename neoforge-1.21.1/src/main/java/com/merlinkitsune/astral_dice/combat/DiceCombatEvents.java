@@ -483,6 +483,8 @@ public class DiceCombatEvents {
                     ItemStack targetDice = targetDiceResult.get().stack();
                     WeaponEnhancement targetEnh = targetDice.get(ModDataComponents.WEAPON_ENHANCEMENT.get());
                     ctx.targetEnhancement = targetEnh;
+                    // 玻璃骰子:防御方佩戴时,防御牌点数始终取最大值
+                    ctx.targetCardsMax = targetDice.is(ModItems.GLASS_DICE.get());
                 }
             }
         } else if (!target.level().isClientSide() && !(target instanceof Player)) {

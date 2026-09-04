@@ -12,6 +12,7 @@ import top.theillusivec4.curios.api.SlotContext;
 import top.theillusivec4.curios.api.type.capability.ICurioItem;
 import top.theillusivec4.curios.api.type.inventory.ICurioStacksHandler;
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
+import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.sign.MimiSignItem;
 
 public class DiceCurioItem extends Item implements ICurioItem {
@@ -160,5 +161,22 @@ public class DiceCurioItem extends Item implements ICurioItem {
         } else if (current < target) {
             handler.grow(target - current);
         }
+    }
+
+    // 玻璃骰子死亡惩罚:移除骰子本体(连同其 WEAPON_ENHANCEMENT 中已装备的全部卡牌),
+    // 并把筹码栏收缩归零(forceRemove=true,槽内筹码归还物品栏)。
+    public static void removeGlassDiceOnDeath(Player player) {
+        if (player == null || player.level().isClientSide()) return;
+        CuriosApi.getCuriosInventory(player).ifPresent(handler -> {
+            handler.getStacksHandler("dice").ifPresent(diceHandler -> {
+                ItemStack dice = diceHandler.getStacks().getStackInSlot(0);
+                if (!dice.isEmpty() && dice.is(ModItems.GLASS_DICE.get())) {
+                    diceHandler.getStacks().setStackInSlot(0, ItemStack.EMPTY);
+                    handler.getStacksHandler("chip").ifPresent(chip ->
+                            setChipSlotCount(player, chip, CHIP_NO_DICE_SLOTS, true));
+                    LOGGER.info("[Astral Dice] 玻璃骰子死亡丢失: {} 的玻璃骰子及其卡牌已移除", player.getGameProfile().getName());
+                }
+            });
+        });
     }
 }
