@@ -268,7 +268,8 @@ public class ModTooltipHandler {
         Player player = event.getEntity();
 
         if (stack.is(ModItems.DICE.get()) || stack.is(ModItems.GOLDEN_DICE.get()) || stack.is(ModItems.DIAMOND_DICE.get())
-                || stack.is(ModItems.NETHERITE_DICE.get())) {
+                || stack.is(ModItems.NETHERITE_DICE.get()) || stack.is(ModItems.EMERALD_DICE.get())
+                || stack.is(ModItems.GLASS_DICE.get())) {
             WeaponEnhancement enhancement = ModDataComponents.WEAPON_ENHANCEMENT.getOrDefault(stack, null);
             int starLevel = 0;
             int maxCost = 3;
@@ -362,6 +363,16 @@ public class ModTooltipHandler {
                     tooltip.add(Component.literal(" §7- " + stoneName + " §e" + range + "§7 攻击 §7[剩余:§e" + stone.uses() + "§7]")
                             .withStyle(ChatFormatting.GRAY));
                 }
+            }
+            if (stack.is(ModItems.EMERALD_DICE.get())) {
+                tooltip.add(Component.translatable("tooltip.astral_dice.emerald_dice_trade")
+                        .withStyle(ChatFormatting.DARK_GREEN));
+            }
+            if (stack.is(ModItems.GLASS_DICE.get())) {
+                tooltip.add(Component.translatable("tooltip.astral_dice.glass_dice_max")
+                        .withStyle(ChatFormatting.AQUA));
+                tooltip.add(Component.translatable("tooltip.astral_dice.glass_dice_death")
+                        .withStyle(ChatFormatting.RED));
             }
         }
 

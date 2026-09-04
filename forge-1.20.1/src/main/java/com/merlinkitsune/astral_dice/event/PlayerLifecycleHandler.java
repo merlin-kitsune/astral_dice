@@ -114,6 +114,8 @@ public class PlayerLifecycleHandler {
         if (event.isCanceled()) return;
         // 反击层数死亡保留:记录当前层数,重生后恢复
         CounterattackEffect.captureBeforeDeath(player);
+        // 玻璃骰子死亡惩罚:丢失玻璃骰子本体及其已装备的全部卡牌(同时收缩筹码栏)
+        DiceCurioItem.removeGlassDiceOnDeath(player);
         HealingManager.clear(player);
         // 计时器守卫:清空效果结束时刻记录,防止死亡后守卫重新施加效果
         EffectTimerGuard.clear(player);

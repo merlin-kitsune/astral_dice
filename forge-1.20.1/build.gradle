@@ -208,6 +208,10 @@ dependencies {
     modImplementation "curse.maven:oculus-581495:6020952"        // oculus-mc1.20.1-1.8.0(curse 最新 1.20.1 版;本地 1.8.1 未上 curse)
     // JEI(配方查看,测试环境用)
     modImplementation "mezz.jei:jei-1.20.1-forge:15.56.0.205"
+
+    // Mixin:Forge 1.20.1 运行时自带 Mixin(0.8.5),编译期仅需注解类。
+    // dev run 为 Mojmap 命名,无需 refmap;生产重混淆 jar 的 refmap 为待办(不影响 dev/测试)。
+    compileOnly 'org.spongepowered:mixin:0.8.5'
 }
 // AutoForge: end mod addon dependencies
 

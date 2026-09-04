@@ -144,7 +144,8 @@ public final class DiceCombatModifiers {
             int sum = 0;
             for (AppliedStone stone : ctx.enhancement.appliedStones()) {
                 // 掷骰逻辑统一由 CardRegistry 提供(含 shadow_strike/charge/full_power/meito 等特殊卡)
-                sum += CardRegistry.roll(stone.type(), ctx);
+                // 玻璃骰子:攻击牌点数始终取最大值
+                sum += CardRegistry.roll(stone.type(), ctx, ctx.attackerCardsMax);
             }
             ctx.attackCardSum = sum;
             return ap;
@@ -376,7 +377,8 @@ public final class DiceCombatModifiers {
                 // 防御牌在赐福期间持续生效,每次受击独立随机判定;耐久在佩戴者自身触发赐福时统一消耗
                 for (AppliedStone stone : ctx.targetEnhancement.appliedStones()) {
                     // 防御牌掷骰统一由 CardRegistry 提供(未知类型返回 0)
-                    sum += CardRegistry.roll(stone.type(), ctx);
+                    // 玻璃骰子:防御牌点数始终取最大值
+                    sum += CardRegistry.roll(stone.type(), ctx, ctx.targetCardsMax);
                 }
             }
             ctx.defenseCardSum = sum;

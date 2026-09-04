@@ -115,6 +115,12 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(Rarity.RARE)));
 
+    // 玻璃骰子:与黄金骰子同阶(tag dice_t1),可由黄金骰子升级;战斗牌点数始终取最大值,但死亡会丢失该骰子及已装备卡牌
+    public static final RegistryObject<Item> GLASS_DICE = registerItem("glass_dice",
+            () -> new DiceCurioItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.RARE)));
+
     // 钻石骰子:由黄金骰子 + 4 星盘 + 4 钻石升级而来,卡牌放置栏固定攻防各 5(共 10)
     public static final RegistryObject<Item> DIAMOND_DICE = registerItem("diamond_dice",
             () -> new DiceCurioItem(new Item.Properties()
@@ -126,6 +132,12 @@ public class ModItems {
             () -> new DiceCurioItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(Rarity.UNCOMMON)));
+
+    // 绿宝石骰子:与钻石骰子同阶(tag dice_t2),可由钻石骰子升级;佩戴后村民交易绿宝石费用改为星币并享 20% 折扣
+    public static final RegistryObject<Item> EMERALD_DICE = registerItem("emerald_dice",
+            () -> new DiceCurioItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.EPIC)));
 
     // === 骰子阶层注册表(槽位规则集中管理:新增骰子在此注册即可,无需修改 DiceCurioItem) ===
     // 立牌栏:固定 1(stand.json size=1,所有骰子一致);筹码栏:必须佩戴骰子才有(chip.json size=0)
@@ -139,12 +151,18 @@ public class ModItems {
         // 金骰子:筹码栏 0★1/1★2/2★3/3★4
         DiceTierRegistry.register(new DiceTier("golden_dice", () -> GOLDEN_DICE.get(),
                 s -> 1 + s));
+        // 玻璃骰子:与金骰子同阶(筹码栏 0★1/1★2/2★3/3★4)
+        DiceTierRegistry.register(new DiceTier("glass_dice", () -> GLASS_DICE.get(),
+                s -> 1 + s));
         // 钻石骰子:筹码栏 0★2/1★3/2★4/3★5
         DiceTierRegistry.register(new DiceTier("diamond_dice", () -> DIAMOND_DICE.get(),
                 s -> 2 + s));
         // 合金骰子:筹码栏 0★3/1★4/2★5/3★6
         DiceTierRegistry.register(new DiceTier("netherite_dice", () -> NETHERITE_DICE.get(),
                 s -> 3 + s));
+        // 绿宝石骰子:与钻石骰子同阶(筹码栏 0★2/1★3/2★4/3★5)
+        DiceTierRegistry.register(new DiceTier("emerald_dice", () -> EMERALD_DICE.get(),
+                s -> 2 + s));
     }
 
     public static final RegistryObject<Item> ATTACK_CARD_MEDIUM = registerItem("attack_card_medium",
