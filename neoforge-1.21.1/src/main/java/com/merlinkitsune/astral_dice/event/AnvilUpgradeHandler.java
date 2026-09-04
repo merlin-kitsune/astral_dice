@@ -113,7 +113,7 @@ public class AnvilUpgradeHandler {
         ItemStack right = event.getRight();
 
         if (left.is(ModItems.DICE.get()) || left.is(ModItems.GOLDEN_DICE.get()) || left.is(ModItems.DIAMOND_DICE.get())
-                || left.is(ModItems.NETHERITE_DICE.get())) {
+                || left.is(ModItems.NETHERITE_DICE.get()) || left.is(ModItems.EMERALD_DICE.get())) {
             if (!right.is(ModItems.STAR_COIN.get())) return;
             WeaponEnhancement enhancement = left.getOrDefault(ModDataComponents.WEAPON_ENHANCEMENT.get(), WeaponEnhancement.EMPTY);
             if (enhancement.starLevel() >= 3) return;

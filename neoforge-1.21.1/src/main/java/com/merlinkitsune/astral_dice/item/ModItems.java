@@ -126,6 +126,12 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(Rarity.UNCOMMON)));
 
+    // 绿宝石骰子:与钻石骰子同阶(tag dice_t2),可由钻石骰子升级;佩戴后村民交易绿宝石费用改为星币并享 20% 折扣
+    public static final DeferredItem<Item> EMERALD_DICE = registerItem("emerald_dice",
+            () -> new DiceCurioItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.EPIC)));
+
     // === 骰子阶层注册表(槽位规则集中管理:新增骰子在此注册即可,无需修改 DiceCurioItem) ===
     // 立牌栏:固定 1(stand.json size=1,所有骰子一致);筹码栏:必须佩戴骰子才有(chip.json size=0)
     // 重要:item 参数必须传 Supplier 延迟解析(() -> X.get()),禁止在静态初始化阶段调用
@@ -144,6 +150,9 @@ public class ModItems {
         // 合金骰子:筹码栏 0★3/1★4/2★5/3★6
         DiceTierRegistry.register(new DiceTier("netherite_dice", () -> NETHERITE_DICE.get(),
                 s -> 3 + s));
+        // 绿宝石骰子:与钻石骰子同阶(筹码栏 0★2/1★3/2★4/3★5)
+        DiceTierRegistry.register(new DiceTier("emerald_dice", () -> EMERALD_DICE.get(),
+                s -> 2 + s));
     }
 
     public static final DeferredItem<Item> ATTACK_CARD_MEDIUM = registerItem("attack_card_medium",
