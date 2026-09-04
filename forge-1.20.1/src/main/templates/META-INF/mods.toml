@@ -84,3 +84,11 @@ config="${mod_id}.mixins.json"
     versionRange="[5,6)"
     ordering="AFTER"
     side="BOTH"
+
+# Mixin Booster(强依赖):Sponge Mixin 运行时替代 Forge 自带 Mixin,自动处理 SRG 重映射
+[[dependencies.${mod_id}]]
+    modId="mixinbooster"
+    mandatory=true
+    versionRange="[0.1.3,)"
+    ordering="AFTER"
+    side="BOTH"

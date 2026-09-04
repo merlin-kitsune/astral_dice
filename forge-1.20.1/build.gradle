@@ -209,26 +209,14 @@ dependencies {
     // JEI(配方查看,测试环境用)
     modImplementation "mezz.jei:jei-1.20.1-forge:15.56.0.205"
 
-    // Mixin:Forge 1.20.1 运行时自带 Mixin(0.8.5);编译期注解 + 注解处理器生成 refmap。
+    // Mixin:编译期仅需注解类。运行时由 Mixin Booster(Sponge Mixin)接管 Mixin 执行并自动处理
+    // Mojmap→SRG 重映射,故不再使用 MDG LegacyForge 的 mixin 扩展/refmap/注解处理器。
     compileOnly 'org.spongepowered:mixin:0.8.5'
-    annotationProcessor 'org.spongepowered:mixin:0.8.5'
-    // Mixin 注解处理器依赖(主 jar 未内嵌,需显式提供:Gson/Guava/ASM)
-    annotationProcessor 'com.google.code.gson:gson:2.10.1'
-    annotationProcessor 'com.google.guava:guava:31.1-jre'
-    annotationProcessor 'org.ow2.asm:asm:9.8'
-    annotationProcessor 'org.ow2.asm:asm-tree:9.8'
-    annotationProcessor 'org.ow2.asm:asm-commons:9.8'
-    annotationProcessor 'org.ow2.asm:asm-util:9.8'
-    annotationProcessor 'org.ow2.asm:asm-analysis:9.8'
+
+    // Mixin Booster(强依赖):Sponge Mixin 运行时替代 Forge 自带 Mixin,自动重映射,无需 refmap。
+    modImplementation "maven.modrinth:mixinbooster:rOaAYvPZ"
 }
 // AutoForge: end mod addon dependencies
-
-// Mixin refmap:MDG LegacyForge 自动把官方名(Mojmap)→SRG 映射注入注解处理器,
-// 生成 astral_dice.refmap.json 并随 reobfJar 重混淆,解决生产 jar 的 @Shadow 字段映射。
-mixin {
-    add sourceSets.main, 'astral_dice.refmap.json'
-    config 'astral_dice.mixins.json'
-}
 
 // === 编译产物分发规则(与 1.21.1 分支保持同一任务面与同一推送标准;旧 jar 清理按版本后缀隔离)===
 // 默认行为:每次构建完成后仅推送到仓库根 run/1.20.1/mods(本机 runClient 调试),

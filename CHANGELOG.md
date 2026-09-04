@@ -55,6 +55,7 @@ This changelog is fully split by language: the Chinese version comes first, foll
 
 ### 工程
 - 测试环境集成 JEI 便于配方查验(forge-1.20.1 15.56.0.205 / neoforge-1.21.1 19.39.0.372);1.20.1 dev 的整合包模组改为 curse maven modImplementation 依赖,修复 dev 环境无法加载生产 mixin 模组的问题。
+- 1.20.1 引入 Mixin Booster 并改为强依赖(`mixinbooster` 0.1.3):运行时以 Sponge Mixin 接管 mixin 执行并自动处理 Mojmap→SRG 重映射,移除 MDG LegacyForge 的 `mixin` 扩展/refmap/注解处理器(村民交易 mixin 不再需要构建期 refmap)。 / 1.20.1 now depends on Mixin Booster (`mixinbooster` 0.1.3, mandatory): Sponge Mixin takes over mixin execution at runtime with automatic Mojmap→SRG remapping, replacing the MDG LegacyForge `mixin` extension/refmap/annotation-processor setup (the villager-trade mixins no longer need a build-time refmap).
 
 ## 1.1.3
 
