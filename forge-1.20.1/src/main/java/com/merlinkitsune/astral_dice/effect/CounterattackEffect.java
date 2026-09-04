@@ -6,6 +6,10 @@ import net.minecraft.world.effect.MobEffectCategory;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.player.Player;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
+
 /**
  * 反击(玩家效果/流派):层数 = amplifier + 1(HUD 图标显示层数)。
  * 拥有层数时受到敌对生物任何伤害 → 触发:消耗 1 层并把该伤害来源登记为「反噬目标」,此后该目标
@@ -13,10 +17,14 @@ import net.minecraft.world.entity.player.Player;
  * {@code DiceCombatEvents.onCounterattackTriggered})。返还伤害对总伤害计算七咒减益(含修正物),
  * 并可受「全力攻击」×1.5 等修正影响;对 Boss 生物无效(不触发、不登记)。
  * 层数获得来源后续补充;对外提供 {@link #addStacks} / {@link #getStacks} / {@link #consumeOne}。
+ * 玩家死亡不清除层数:死亡时经 {@link #captureBeforeDeath} 记录,重生后经 {@link #restoreAfterRespawn} 恢复。
  */
 public class CounterattackEffect extends MobEffect {
     /** 效果时长(无限,层数消耗完移除) */
     public static final int DURATION_TICKS = Integer.MAX_VALUE;
+
+    /** 死亡待恢复层数(死亡时记录,重生后恢复) */
+    private static final Map<UUID, Integer> DEATH_PENDING = new HashMap<>();
 
     public CounterattackEffect() {
         super(MobEffectCategory.BENEFICIAL, 0xFF5252);
@@ -49,6 +57,26 @@ public class CounterattackEffect extends MobEffect {
         } else {
             player.addEffect(new MobEffectInstance(ModEffects.COUNTERATTACK.get(),
                     DURATION_TICKS, remaining - 1, false, true, true));
+        }
+    }
+
+    // 死亡前记录当前层数(LivingDeathEvent 中调用;此时效果尚未被原版 removeAllEffects(DEATH) 清除)
+    public static void captureBeforeDeath(Player player) {
+        if (player == null || player.level().isClientSide()) return;
+        int stacks = getStacks(player);
+        if (stacks > 0) {
+            DEATH_PENDING.put(player.getUUID(), stacks);
+        } else {
+            DEATH_PENDING.remove(player.getUUID());
+        }
+    }
+
+    // 重生后恢复层数(PlayerRespawnEvent 中调用)
+    public static void restoreAfterRespawn(Player player) {
+        if (player == null || player.level().isClientSide()) return;
+        Integer stacks = DEATH_PENDING.remove(player.getUUID());
+        if (stacks != null && stacks > 0) {
+            addStacks(player, stacks);
         }
     }
 }

@@ -9,6 +9,7 @@ import com.merlinkitsune.astral_dice.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
 import com.merlinkitsune.astral_dice.component.WeaponEnhancement;
+import com.merlinkitsune.astral_dice.effect.CounterattackEffect;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.item.sign.ParunanSignItem;
 import com.merlinkitsune.astral_dice.item.sign.BaseSignItem;
@@ -111,6 +112,8 @@ public class PlayerLifecycleHandler {
         if (player.level().isClientSide()) return;
         // 不死图腾等取消死亡:不视为死亡,不执行任何清理
         if (event.isCanceled()) return;
+        // 反击层数死亡保留:记录当前层数,重生后恢复
+        CounterattackEffect.captureBeforeDeath(player);
         HealingManager.clear(player);
         // 计时器守卫:清空效果结束时刻记录,防止死亡后守卫重新施加效果
         EffectTimerGuard.clear(player);
@@ -190,6 +193,8 @@ public class PlayerLifecycleHandler {
         Player player = event.getEntity();
         if (player == null) return;
         if (player.level().isClientSide()) return;
+        // 反击层数死亡保留:重生后恢复
+        CounterattackEffect.restoreAfterRespawn(player);
         HealingManager.tick(player);
     }
 
