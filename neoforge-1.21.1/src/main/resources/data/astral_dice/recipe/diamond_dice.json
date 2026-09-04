@@ -3,7 +3,7 @@
   "category": "equipment",
   "key": {
     "H": {
-      "item": "astral_dice:golden_dice"
+      "tag": "astral_dice:dice_t1"
     },
     "P": {
       "item": "astral_dice:star_plate"
