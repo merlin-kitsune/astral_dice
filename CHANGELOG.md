@@ -40,7 +40,7 @@ This changelog is fully split by language: the Chinese version comes first, foll
 - 骰子卡牌栏平衡:卡牌栏总格数改为仅由星级决定(与骰子品阶无关)——0★=4(攻防各2)、1★=6(各3)、2★=8(各4)、3★=12(各6);实际可用格严格按星级,无隐藏可用格(双版本)。
 - 骰子升级配方改用阶层标签作为升级母体:新增 `astral_dice:dice_t0`(基础骰子)/`dice_t1`(黄金骰子)/`dice_t2`(钻石骰子)/`dice_t3`(下界合金骰子)四个物品标签;黄金/钻石/下界合金骰子的升级配方输入由具体物品改为对应标签(双版本)。
 - 反击效果器:玩家死亡不再清除反击层数——死亡时记录当前层数,重生后自动恢复(层数仍经 HUD 图标持续显示,归 0 自动移除)(双版本)。
-- 效果等级角标上限由 9 级扩展到 99 级:原版仅显示 II~X,现支持到等级 100(新增 `EffectRenderingInventoryScreenMixin` 自行生成罗马数字角标)(仅 1.21.1)。
+- 效果等级角标改为阿拉伯数字并扩展上限:原版显示罗马数字(II~X)且仅到等级 10,现改为阿拉伯数字角标(如「治愈 3」「治愈 32」)并支持到等级 100(新增 `EffectRenderingInventoryScreenMixin`)(仅 1.21.1)。
 
 ### 已修复BUG
 
@@ -347,7 +347,7 @@ This changelog is fully split by language: the Chinese version comes first, foll
 - Dice card-slot balance: the total card slots are now determined by star level only (independent of dice tier) — 0★ = 4 (2 attack + 2 defense), 1★ = 6 (3+3), 2★ = 8 (4+4), 3★ = 12 (6+6); usable slots strictly follow the star level, with no extra hidden usable slots (both versions).
 - Dice upgrade recipes now use tier tags for the upgrade base: added four item tags — `astral_dice:dice_t0` (base) / `dice_t1` (golden) / `dice_t2` (diamond) / `dice_t3` (netherite); the golden / diamond / netherite dice upgrade recipe inputs now reference these tags instead of specific items (both versions).
 - Counterattack effect: player death no longer clears counterattack layers — the current layer count is captured on death and restored on respawn (layers remain continuously visible via the HUD icon and are removed automatically at 0) (both versions).
-- Effect level badge cap raised from 9 to 99: vanilla only rendered II through X; levels up to 100 now render (a new `EffectRenderingInventoryScreenMixin` generates the Roman-numeral badge) (1.21.1 only).
+- Effect level badge now uses Arabic numerals and has a raised cap: vanilla rendered Roman numerals (II–X) up to level 10; it now shows an Arabic-numeral badge (e.g., "Healing 3", "Healing 32") up to level 100 (new `EffectRenderingInventoryScreenMixin`) (1.21.1 only).
 
 ### Bug Fixes
 
