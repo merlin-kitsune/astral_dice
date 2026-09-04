@@ -24,7 +24,7 @@
     "BBB"
   ],
   "result": {
-    "count": 1,
-    "id": "astral_dice:cursed_sword_chip"
-  }
+    "item": "astral_dice:cursed_sword_chip"
+  },
+  "show_notification": true
 }
