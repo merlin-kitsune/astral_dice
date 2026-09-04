@@ -60,7 +60,7 @@
   "astral_dice.guide.entry.defense_card_large.1": "Defense Card (Large): grants 1~6 defense power in dice battles.",
   "astral_dice.guide.entry.defense_card_medium.1": "Defense Card (Medium): grants 1~3 defense power in dice battles.",
   "astral_dice.guide.entry.diamond_dice.1": "Diamond die. A higher tier that unlocks more chip slots; card slots follow the star level only (identical across tiers at the same star).",
-  "astral_dice.guide.entry.emerald_dice.1": "Emerald die. Same tier as the diamond die and upgradeable from it; while equipped, villager trades use Star Coins instead of Emeralds with a 20% discount.",
+  "astral_dice.guide.entry.emerald_dice.1": "Emerald die. Same tier as the diamond die and upgradeable from it; while equipped, villager trades use Star Coins instead of Emeralds with a 20%% discount.",
   "astral_dice.guide.entry.dice.1": "The base die. While equipped, melee attacks trigger the Dice Blessing (gain it on attack, activate dice combat while blessed, press the key to open the card inventory).",
   "astral_dice.guide.entry.eagle_scope_chip.1": "On hit, apply 1 Mark layer; this combat, gain +2 attack per Mark layer on the target.",
   "astral_dice.guide.entry.effect_card_berserk.1": "Berserk: +3 attack, take +1 damage from all sources, for 3:00.",
