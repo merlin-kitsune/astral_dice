@@ -17,10 +17,8 @@ sourceSets.main.resources {
     // Exclude common development only resources from finalized outputs
     exclude("**/*.bbmodel") // BlockBench project files
     exclude("src/generated/**/.cache") // datagen cache files
-    exclude("opencode.json")
     exclude("INSTRUCTIONS.md")
     exclude("mc-src/**")
-    exclude(".opencode/**")
 }
 
 repositories {
