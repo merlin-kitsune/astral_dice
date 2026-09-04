@@ -38,6 +38,7 @@ This changelog is fully split by language: the Chinese version comes first, foll
 - 夹心饼干-美味:最大生命值 +12 → +8;移除「生命值低于一半时每 1:00 获得 1 层「反击」」;新增:最大生命值超过 20 点时,超出部分每 4 点生命值 +1 攻击力(仅 1.21.1)。
 - 修复骰子 tooltip 显示攻击牌时加成误标为「骰子」及染色问题:攻击牌(中/大/特大/名刀)统一显示为「攻击」,范围不再带「+」前缀,与防御牌/独立牌 tooltip 格式一致(仅 1.21.1)。
 - 骰子卡牌栏平衡:卡牌栏总格数改为仅由星级决定(与骰子品阶无关)——0★=4(攻防各2)、1★=6(各3)、2★=8(各4)、3★=12(各6);实际可用格严格按星级,无隐藏可用格(双版本)。
+- 骰子升级配方改用阶层标签作为升级母体:新增 `astral_dice:dice_t0`(基础骰子)/`dice_t1`(黄金骰子)/`dice_t2`(钻石骰子)/`dice_t3`(下界合金骰子)四个物品标签;黄金/钻石/下界合金骰子的升级配方输入由具体物品改为对应标签(双版本)。
 
 ### 已修复BUG
 
@@ -342,6 +343,7 @@ This changelog is fully split by language: the Chinese version comes first, foll
 - Sandwich (Gourmet): max health +12 → +8; removed the "gain 1 Counterattack layer per 1:00 while below half max HP" passive; new: while max HP exceeds 20, gain +1 attack per 4 HP above 20 (1.21.1 only).
 - Fixed the dice tooltip showing attack cards' bonus mislabeled as "dice" and a coloring issue: attack cards (Medium/Large/Epic/Meito) now uniformly read "attack", the range no longer carries a "+" prefix, matching the defense-card and standalone-card tooltip format (1.21.1 only).
 - Dice card-slot balance: the total card slots are now determined by star level only (independent of dice tier) — 0★ = 4 (2 attack + 2 defense), 1★ = 6 (3+3), 2★ = 8 (4+4), 3★ = 12 (6+6); usable slots strictly follow the star level, with no extra hidden usable slots (both versions).
+- Dice upgrade recipes now use tier tags for the upgrade base: added four item tags — `astral_dice:dice_t0` (base) / `dice_t1` (golden) / `dice_t2` (diamond) / `dice_t3` (netherite); the golden / diamond / netherite dice upgrade recipe inputs now reference these tags instead of specific items (both versions).
 
 ### Bug Fixes
 
