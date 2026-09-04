@@ -32,7 +32,8 @@ This changelog is fully split by language: the Chinese version comes first, foll
 - 命名统一:活体书页相关 Java 标识符/效果注册 id 统一为 `LIVING_PAGE`/`living_page`(物品 id `effect_card_living_page` 不变)(仅 1.21.1)。
 - 防御力折算规范:效果牌/立牌/筹码提供的防御力一律折算为**真实护甲**(1 防御力 = 2 护甲值,经 ARMOR 属性修饰器),不再参与骰战防御修饰器——骰战防御修饰器仅保留战斗防御牌(区间变动)。受影响来源:扫地机(2 护甲/点,护甲上限 40)、上班族(-4~+8 护甲)、吸血鬼(半血 +6 护甲)、复仇之戟(+12 护甲)、骇客(被动防御 +6 护甲)、大当家(养精蓄锐 +4 护甲);抗性提升不再折算骰战防御点(原版减伤仍生效)(仅 1.21.1)。
 - 怪物防御-护甲折算与玩家同步:怪物防御公式由「护甲÷4」改为与玩家一致「护甲÷2」(1 防御力 = 2 护甲值);贯穿之铳的目标防御计算同步(仅 1.21.1)。
-- 新增筹码「肾上腺素-高效」(传奇):生命值低于最大生命值一半时,攻击力/防御力 +8(防御按 1 点 = 2 点护甲折算为护甲 +16);触发加成时被敌方攻击,有 20% 概率闪避单次攻击伤害。配方:ZXZ/DCD/PPP(Z=再生药水,X=下界之星,D=凋零玫瑰,C=空白筹码,P=黄金星盘);「肾上腺素-一般」筹码已删除,其配方覆盖至高效(P 由 星盘 改为 黄金星盘)(仅 1.21.1)。
+- 贯穿之铳配方:下界合金碎片 → 下界合金锭(双版本)。
+- 新增筹码「肾上腺素-一般」(史诗)恢复,「肾上腺素-高效」(传奇)配方回滚为升级链:一般=生命值低于最大生命值一半时攻击/防御 +3(护甲 +6);高效=+8 且触发时被敌方攻击有 20%% 概率闪避单次攻击。配方:一般=ZXZ/DCD/PPP(Z=再生药水,X=下界之星,D=凋零玫瑰,C=空白筹码,P=星盘);高效=RZR/ZOZ/PPP(R=红石粉,Z=钻石,O=肾上腺素-一般,P=黄金星盘)(双版本)。
 - 标靶筹码:触发骰神赐福后,对**距离最近的敌对目标**施加 1 层标记(移除原「标靶范围内随机」逻辑与 `target_chip_range` 范围配置,不再限定作用距离)(仅 1.21.1)。
 - 夹心饼干-美味:最大生命值 +12 → +8;移除「生命值低于一半时每 1:00 获得 1 层「反击」」;新增:最大生命值超过 20 点时,超出部分每 4 点生命值 +1 攻击力(仅 1.21.1)。
 - 修复骰子 tooltip 显示攻击牌时加成误标为「骰子」及染色问题:攻击牌(中/大/特大/名刀)统一显示为「攻击」,范围不再带「+」前缀,与防御牌/独立牌 tooltip 格式一致(仅 1.21.1)。
@@ -42,9 +43,12 @@ This changelog is fully split by language: the Chinese version comes first, foll
 
 - 死亡清理调整:不死图腾等取消死亡时不再执行任何清理;护法立牌死亡丢失全部「剑气」层数(tooltip 追加死亡提示);吸血鬼立牌死亡清除主动技能效果;秘密侦探死亡保留调查阶段进度(仅卸牌时清除);忍者/调查员立牌的效果牌伤害加成死亡保留;移除死亡清理中无读取者的 DamageEffectBonus 残留调用(仅 1.21.1)。 / Death-cleanup adjustments: totem-canceled deaths no longer trigger any cleanup; Misaki loses all Sword Qi stacks on death (tooltip note added); Papara's active effect is cleared on death; Bonnie keeps investigation progress on death (unequip only); Komachi/Rin effect-card damage bonuses survive death; removed the leftover no-reader DamageEffectBonus reset in the death handler (1.21.1 only).
 - 修复忍者立牌主动技能在已有出牌进度或处于出牌冷却期时无法生效的问题:出牌数+1 改为累积式「出牌数银行」(按实际出牌消耗,跨周期保留,不受满额/冷却影响),并移除旧布尔标记及其残留调用(仅 1.21.1)。 / Fixed the Komachi sign's active failing when play progress existed or the cooldown was running: the play-count +1 is now a banked extra-play token (consumed per actual play, persists across windows, unaffected by burst-full or cooldown), and the old boolean flag plus its leftover calls were removed (1.21.1 only).
+- 1.20.1 recipe fixes: the "Koi's Rulebook" (patchouli:guide_book) recipe was in the wrong folder (singular "recipe") and thus never loaded — moved to "recipes"; the Cursed Sword chip's generated recipe used the 1.21 result.id format and failed to parse on 1.20.1 — regenerated in the 1.20.1 item format (generation sources fixed in both versions).
 - 修复部分筹码 tooltip 中换行符被渲染成方块占位符的问题(夹心饼干-美味/肾上腺素-高效/卫星/复仇之戟/诅咒之剑神秘遗物联动等多行 tooltip):改为按 lang 值内 `\n` 逐行拆分添加,不再整段组件内嵌真实换行符(仅 1.21.1)。 / Fixed chip tooltips rendering embedded newlines as box glyphs (Sandwich - Gourmet / Adrenaline - High-Grade / Satellite / Revenge Halberd / Cursed Sword Enigmatic Legacy+ link, etc.): multi-line lang values are now split into separate tooltip lines instead of keeping real `\n` inside a single component (1.21.1 only).
+- 1.20.1 配方修复:「恋的规则书」(patchouli:guide_book) 配方此前放错目录(recipe 单数)未加载,已移至 recipes;诅咒之剑配方生成文件误用 1.21 result.id 格式导致解析失败,已改回 1.20.1 item 格式(双版本生成源同步修正)。
 
 ### 工程
+- 测试环境集成 JEI 便于配方查验(forge-1.20.1 15.56.0.205 / neoforge-1.21.1 19.39.0.372);1.20.1 dev 的整合包模组改为 curse maven modImplementation 依赖,修复 dev 环境无法加载生产 mixin 模组的问题。
 
 ## 1.1.3
 
@@ -332,7 +336,8 @@ This changelog is fully split by language: the Chinese version comes first, foll
 - Naming unification: Living Page Java identifiers and the effect registry id are unified to `LIVING_PAGE`/`living_page` (item id `effect_card_living_page` unchanged) (1.21.1 only).
 - Defense conversion: defense from effect cards/signs/chips is now converted to real armor (1 defense = 2 armor via ARMOR attribute modifiers) and no longer participates in dice-combat defense modifiers — only battle defense cards (range-varying values) remain there. Affected sources: Jasmine (+2 armor per stack, armor cap 40), Padman (-4 to +8 armor), Papara (+6 armor at half HP), Revenge Halberd (+12 armor), Nancy Lu (+6 armor on defensive passive), Fen (+4 armor with Recharged Energy); Resistance no longer adds dice-defense points (its vanilla damage reduction still applies) (1.21.1 only).
 - Monster armor-to-defense conversion synced with players: monster defense now uses armor÷2 like players (1 defense = 2 armor); the Piercing Gun chip's target-defense calculation was synced too (1.21.1 only).
-- New chip "Adrenaline - High-Grade" (legendary): while below half max HP, attack/defense +8 (defense converts to armor +16 at 1 point = 2 armor); while the bonus is active and a hostile attacks you, a 20%% chance to dodge a single attack. Recipe: ZXZ/DCD/PPP (Z = Potion of Regeneration, X = Nether Star, D = Wither Rose, C = Blank Chip, P = Golden Star Plate). The "Adrenaline - Common" chip was removed and its recipe overridden onto High-Grade (P changed from Star Plate to Golden Star Plate) (1.21.1 only).
+- Piercing Gun recipe: Netherite Scrap → Netherite Ingot (both versions).
+- Restored the "Adrenaline - Common" chip (epic) and rolled back the "Adrenaline - High-Grade" (legendary) recipe to an upgrade chain: Common = attack/defense +3 (armor +6) while below half max HP; High-Grade = +8 with a 20%% dodge chance against a hostile attack while the bonus is active. Recipes: Common = ZXZ/DCD/PPP (Z = Potion of Regeneration, X = Nether Star, D = Wither Rose, C = Blank Chip, P = Star Plate); High-Grade = RZR/ZOZ/PPP (R = Redstone, Z = Diamond, O = Adrenaline - Common, P = Golden Star Plate) (both versions).
 - Target chip: after triggering the Dice Blessing, apply 1 Mark layer to the **nearest hostile target** (the old "random hostile within target-chip range" logic and the `target_chip_range` range config were removed; no distance cap) (1.21.1 only).
 - Sandwich (Gourmet): max health +12 → +8; removed the "gain 1 Counterattack layer per 1:00 while below half max HP" passive; new: while max HP exceeds 20, gain +1 attack per 4 HP above 20 (1.21.1 only).
 - Fixed the dice tooltip showing attack cards' bonus mislabeled as "dice" and a coloring issue: attack cards (Medium/Large/Epic/Meito) now uniformly read "attack", the range no longer carries a "+" prefix, matching the defense-card and standalone-card tooltip format (1.21.1 only).
@@ -344,6 +349,7 @@ This changelog is fully split by language: the Chinese version comes first, foll
 - Fixed the Komachi sign's active failing when effect-card play progress existed or the cooldown was running: the play-count +1 is now a banked extra-play token (consumed per actual play, persists across windows, unaffected by burst-full or cooldown); the old boolean flag and its leftover calls were removed (1.21.1 only).
 
 ### Project
+- Integrated JEI into the dev test environments for recipe checking (forge-1.20.1 15.56.0.205 / neoforge-1.21.1 19.39.0.372); the 1.20.1 dev pack mods now come from curse maven via modImplementation so production mixin mods load in the dev environment.
 
 ## 1.1.3
 
