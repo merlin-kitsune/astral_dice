@@ -39,6 +39,8 @@ repositories {
     // CurseForge Maven:collective / superflatworldnoslimes / kubejs / rhino / embeddium / oculus
     // (MDG modImplementation 会在解析期把生产 SRG jar 重映射为 dev Mojmap 命名,mixin 才能加载)
     maven { url 'https://www.cursemaven.com' }
+    // JEI 官方 maven(配方查看)
+    maven { url 'https://maven.blamejared.com' }
 }
 
 base {
@@ -206,6 +208,8 @@ dependencies {
     modImplementation "curse.maven:superflat-world-no-slimes-344185:6184996" // superflatworldnoslimes-1.20.1-3.5
     modImplementation "curse.maven:embeddium-908741:5681725"     // embeddium-0.3.31+mc1.20.1
     modImplementation "curse.maven:oculus-581495:6020952"        // oculus-mc1.20.1-1.8.0(curse 最新 1.20.1 版;本地 1.8.1 未上 curse)
+    // JEI(配方查看,测试环境用)
+    modImplementation "mezz.jei:jei-1.20.1-forge:15.56.0.205"
 }
 // AutoForge: end mod addon dependencies
 

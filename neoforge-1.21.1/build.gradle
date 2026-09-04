@@ -34,6 +34,8 @@ repositories {
     maven { url 'https://maven.architectury.dev' }
     // KubeJS transitive dependency animated-gif-lib-for-java
     maven { url 'https://jitpack.io' }
+    // JEI 官方 maven(配方查看)
+    maven { url 'https://maven.blamejared.com' }
 }
 
 base {
@@ -165,6 +167,8 @@ dependencies {
     // http://www.gradle.org/docs/current/userguide/dependency_management.html
 
     implementation 'maven.modrinth:curios:yohfFbgD'
+    // JEI(配方查看,测试环境用);19.39 系仍兼容本项目 neoforge 21.1.235(19.42+ 要求 ≥21.1.238)
+    implementation "mezz.jei:jei-1.21.1-neoforge:19.39.0.372"
 }
 
 // This block of code expands all declared replace properties in the specified resource targets.
