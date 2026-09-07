@@ -293,9 +293,13 @@ public class ModTooltipHandler {
                 usedDefenseCost = enhancement.usedDefenseCost();
             }
             tooltip.add(Component.empty());
-            tooltip.add(tt("tooltip.astral_dice.dice_desc",
-                    GameplayConstants.DICE_BLESSING_DURATION_SECONDS, cardInventoryKeyName())
-                    .withStyle(ChatFormatting.GOLD));
+            tooltip.add(Component.empty()
+                    .append(tt("tooltip.astral_dice.dice_desc_prefix").withStyle(ChatFormatting.GOLD))
+                    .append(tt("tooltip.astral_dice.dice_desc_blessing",
+                            GameplayConstants.DICE_BLESSING_DURATION_SECONDS).withStyle(ChatFormatting.BLUE))
+                    .append(tt("tooltip.astral_dice.dice_desc_middle").withStyle(ChatFormatting.GRAY))
+                    .append(Component.literal(cardInventoryKeyName()).withStyle(ChatFormatting.YELLOW))
+                    .append(tt("tooltip.astral_dice.dice_desc_suffix").withStyle(ChatFormatting.GRAY)));
             if (starLevel > 0) {
                 tooltip.add(tt("tooltip.astral_dice.star_level", starLevel)
                         .withStyle(ChatFormatting.GOLD));
