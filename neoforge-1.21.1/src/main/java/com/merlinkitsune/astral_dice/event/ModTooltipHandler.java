@@ -272,8 +272,11 @@ public class ModTooltipHandler {
         Player player = event.getEntity() instanceof Player p ? p : null;
 
         if (stack.is(ModItems.DICE.get()) || stack.is(ModItems.GOLDEN_DICE.get()) || stack.is(ModItems.DIAMOND_DICE.get())
-                || stack.is(ModItems.NETHERITE_DICE.get()) || stack.is(ModItems.EMERALD_DICE.get())
-                || stack.is(ModItems.GLASS_DICE.get())) {
+                || stack.is(ModItems.NETHERITE_DICE.get()) || stack.is(ModItems.GLASS_DICE.get())
+                || stack.is(ModItems.EMERALD_DICE.get()) || stack.is(ModItems.OBSIDIAN_DICE.get())
+                || stack.is(ModItems.NETHERRACK_DICE.get()) || stack.is(ModItems.WEIRD_DICE.get())
+                || stack.is(ModItems.CRIMSON_DICE.get()) || stack.is(ModItems.AMETHYST_DICE.get())
+                || stack.is(ModItems.ENDER_DICE.get()) || stack.is(ModItems.NETHER_STAR_DICE.get())) {
             WeaponEnhancement enhancement = stack.getOrDefault(ModDataComponents.WEAPON_ENHANCEMENT.get(), null);
             int starLevel = 0;
             int maxCost = 3;
@@ -290,11 +293,11 @@ public class ModTooltipHandler {
                 usedDefenseCost = enhancement.usedDefenseCost();
             }
             tooltip.add(Component.empty());
-            tooltip.add(Component.translatable("tooltip.astral_dice.dice_desc",
+            tooltip.add(tt("tooltip.astral_dice.dice_desc",
                     GameplayConstants.DICE_BLESSING_DURATION_SECONDS, cardInventoryKeyName())
                     .withStyle(ChatFormatting.GOLD));
             if (starLevel > 0) {
-                tooltip.add(Component.translatable("tooltip.astral_dice.star_level", starLevel)
+                tooltip.add(tt("tooltip.astral_dice.star_level", starLevel)
                         .withStyle(ChatFormatting.GOLD));
             }
             if (starLevel < 3) {
@@ -304,17 +307,17 @@ public class ModTooltipHandler {
                     case 2 -> 25;
                     default -> -1;
                 };
-                tooltip.add(Component.translatable("tooltip.astral_dice.card.upgrade_hint", starLevel, starLevel + 1, req)
+                tooltip.add(tt("tooltip.astral_dice.card.upgrade_hint", starLevel, starLevel + 1, req)
                         .withStyle(ChatFormatting.YELLOW));
             }
             String cost = usedCost + "/" + maxCost;
-            tooltip.add(Component.translatable("tooltip.astral_dice.cost", cost)
+            tooltip.add(tt("tooltip.astral_dice.cost", cost)
                     .withStyle(ChatFormatting.GRAY));
             String defCost = usedDefenseCost + "/" + maxDefenseCost;
-            tooltip.add(Component.translatable("tooltip.astral_dice.defense_cost", defCost)
+            tooltip.add(tt("tooltip.astral_dice.defense_cost", defCost)
                     .withStyle(ChatFormatting.GRAY));
             if (!stones.isEmpty()) {
-                tooltip.add(Component.translatable("tooltip.astral_dice.applied_stones")
+                tooltip.add(tt("tooltip.astral_dice.applied_stones")
                         .withStyle(ChatFormatting.GREEN));
                 for (AppliedStone stone : stones) {
                     if ("shadow_strike".equals(stone.type())) {
@@ -369,57 +372,57 @@ public class ModTooltipHandler {
                 }
             }
             if (stack.is(ModItems.EMERALD_DICE.get())) {
-                tooltip.add(Component.translatable("tooltip.astral_dice.emerald_dice_trade")
+                tooltip.add(tt("tooltip.astral_dice.emerald_dice_trade")
                         .withStyle(ChatFormatting.DARK_GREEN));
             }
             if (stack.is(ModItems.OBSIDIAN_DICE.get())) {
-                tooltip.add(Component.translatable("tooltip.astral_dice.obsidian_dice_defense")
+                tooltip.add(tt("tooltip.astral_dice.obsidian_dice_defense")
                         .withStyle(ChatFormatting.BLUE));
-                tooltip.add(Component.translatable("tooltip.astral_dice.obsidian_dice_fire")
+                tooltip.add(tt("tooltip.astral_dice.obsidian_dice_fire")
                         .withStyle(ChatFormatting.GOLD));
             }
             if (stack.is(ModItems.WEIRD_DICE.get())) {
-                tooltip.add(Component.translatable("tooltip.astral_dice.weird_dice_cooldown")
+                tooltip.add(tt("tooltip.astral_dice.weird_dice_cooldown")
                         .withStyle(ChatFormatting.GREEN));
-                tooltip.add(Component.translatable("tooltip.astral_dice.weird_dice_lowroll")
+                tooltip.add(tt("tooltip.astral_dice.weird_dice_lowroll")
                         .withStyle(ChatFormatting.RED));
             }
             if (stack.is(ModItems.CRIMSON_DICE.get())) {
-                tooltip.add(Component.translatable("tooltip.astral_dice.crimson_dice_highroll")
+                tooltip.add(tt("tooltip.astral_dice.crimson_dice_highroll")
                         .withStyle(ChatFormatting.GOLD));
-                tooltip.add(Component.translatable("tooltip.astral_dice.crimson_dice_roll1")
+                tooltip.add(tt("tooltip.astral_dice.crimson_dice_roll1")
                         .withStyle(ChatFormatting.RED));
             }
             if (stack.is(ModItems.AMETHYST_DICE.get())) {
-                tooltip.add(Component.translatable("tooltip.astral_dice.amethyst_dice_proc")
+                tooltip.add(tt("tooltip.astral_dice.amethyst_dice_proc")
                         .withStyle(ChatFormatting.LIGHT_PURPLE));
-                tooltip.add(Component.translatable("tooltip.astral_dice.amethyst_dice_no_blessing")
+                tooltip.add(tt("tooltip.astral_dice.amethyst_dice_no_blessing")
                         .withStyle(ChatFormatting.GRAY));
             }
             if (stack.is(ModItems.ENDER_DICE.get())) {
-                tooltip.add(Component.translatable("tooltip.astral_dice.ender_dice_totem")
+                tooltip.add(tt("tooltip.astral_dice.ender_dice_totem")
                         .withStyle(ChatFormatting.GOLD));
-                tooltip.add(Component.translatable("tooltip.astral_dice.ender_dice_rainwater")
+                tooltip.add(tt("tooltip.astral_dice.ender_dice_rainwater")
                         .withStyle(ChatFormatting.RED));
             }
             if (stack.is(ModItems.NETHER_STAR_DICE.get())) {
-                tooltip.add(Component.translatable("tooltip.astral_dice.nether_star_dice_maxcard")
+                tooltip.add(tt("tooltip.astral_dice.nether_star_dice_maxcard")
                         .withStyle(ChatFormatting.LIGHT_PURPLE));
-                tooltip.add(Component.translatable("tooltip.astral_dice.nether_star_dice_chip")
+                tooltip.add(tt("tooltip.astral_dice.nether_star_dice_chip")
                         .withStyle(ChatFormatting.AQUA));
-                tooltip.add(Component.translatable("tooltip.astral_dice.nether_star_dice_starattr")
+                tooltip.add(tt("tooltip.astral_dice.nether_star_dice_starattr")
                         .withStyle(ChatFormatting.GOLD));
             }
             if (stack.is(ModItems.GLASS_DICE.get())) {
-                tooltip.add(Component.translatable("tooltip.astral_dice.glass_dice_max")
+                tooltip.add(tt("tooltip.astral_dice.glass_dice_max")
                         .withStyle(ChatFormatting.AQUA));
-                tooltip.add(Component.translatable("tooltip.astral_dice.glass_dice_death")
+                tooltip.add(tt("tooltip.astral_dice.glass_dice_death")
                         .withStyle(ChatFormatting.RED));
             }
             if (stack.is(ModItems.NETHERRACK_DICE.get())) {
-                tooltip.add(Component.translatable("tooltip.astral_dice.netherrack_dice_mining")
+                tooltip.add(tt("tooltip.astral_dice.netherrack_dice_mining")
                         .withStyle(ChatFormatting.GOLD));
-                tooltip.add(Component.translatable("tooltip.astral_dice.netherrack_dice_piglin")
+                tooltip.add(tt("tooltip.astral_dice.netherrack_dice_piglin")
                         .withStyle(ChatFormatting.GREEN));
             }
         }
