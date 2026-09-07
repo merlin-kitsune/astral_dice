@@ -24,6 +24,7 @@ import com.merlinkitsune.astral_dice.item.StarLightManager;
 import com.merlinkitsune.astral_dice.item.sign.MisakiSignItem;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.event.WeirdDiceHandler;
+import com.merlinkitsune.astral_dice.event.CrimsonDiceHandler;
 import com.merlinkitsune.astral_dice.item.sign.PadmanSignItem;
 import com.merlinkitsune.astral_dice.item.sign.JasmineSignItem;
 import com.merlinkitsune.astral_dice.item.sign.LuluSignItem;
@@ -310,7 +311,7 @@ public class DiceCombatEvents {
             }
         }
 
-        int baseDice = WeirdDiceHandler.rollD6(player); // 诡异骰子:低点数(1-3)概率提升 50%
+        int baseDice = rollCombatDie(player); // 特殊骰子掷骰(诡异骰子低点数偏置/绯红骰子高点数偏置)
 
         // === MISAKI SIGN (护法立牌, via curios stand slot) ===
         boolean misakiFound = false;
@@ -479,8 +480,8 @@ public class DiceCombatEvents {
                     dodgeFailed = true;
                     dodgeFailDamage = baseDamage + baseDice + attackCardSum;
                 } else if (targetPlayer.hasEffect(ModEffects.DICE_BLESSING)) {
-                    // 诡异骰子:防御方佩戴时低点数概率提升
-                    defenseBaseDice = WeirdDiceHandler.rollD6(targetPlayer);
+                    // 特殊骰子掷骰(防御方:诡异骰子低点数偏置,绯红骰子高点数偏置)
+                    defenseBaseDice = rollCombatDie(targetPlayer);
                     // 防御卡掷骰由注册表防御修饰器执行(读 ctx.targetEnhancement,写 ctx.defenseCardSum)
                     ItemStack targetDice = targetDiceResult.get().stack();
                     WeaponEnhancement targetEnh = targetDice.get(ModDataComponents.WEAPON_ENHANCEMENT.get());
@@ -876,6 +877,24 @@ public class DiceCombatEvents {
         return ThreadLocalRandom.current().nextInt(1, max + 1);
     }
 
+    /**
+     * 玩家战斗骰(d1-6)统一掷骰入口(骰子槽位仅一个):
+     * 佩戴诡异骰子 → 低点数(1-3)偏置;佩戴绯红骰子 → 高点数(4-6)偏置(掷出 1 时自伤 6 点);
+     * 未佩戴特殊骰子 → 均匀分布。
+     */
+    private static int rollCombatDie(Player roller) {
+        if (roller == null) {
+            return ThreadLocalRandom.current().nextInt(1, 7);
+        }
+        if (WeirdDiceHandler.hasWeirdDice(roller)) {
+            return WeirdDiceHandler.rollD6(roller);
+        }
+        if (CrimsonDiceHandler.hasCrimsonDice(roller)) {
+            return CrimsonDiceHandler.rollD6(roller);
+        }
+        return ThreadLocalRandom.current().nextInt(1, 7);
+    }
+
     // 近战武器攻击判定:仅允许剑/斧/重锤/三叉戟等近战武器触发骰神赐福
     public static boolean isMeleeWeaponAttack(Player player) {
         ItemStack held = player.getMainHandItem();
@@ -1010,7 +1029,7 @@ public class DiceCombatEvents {
         }
         if (enhancement == null) enhancement = WeaponEnhancement.EMPTY;
 
-        int baseDice = WeirdDiceHandler.rollD6(player); // 诡异骰子:低点数(1-3)概率提升 50%
+        int baseDice = rollCombatDie(player); // 特殊骰子掷骰(诡异骰子低点数偏置/绯红骰子高点数偏置)
         int misakiStar = enhancement.starLevel();
         int misakiStacks = 0;
         boolean misakiBurst = false;

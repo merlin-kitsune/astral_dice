@@ -42,6 +42,7 @@ public class ModCreativeTabs {
                 output.accept(ModItems.NETHERRACK_DICE.get());
                 output.accept(ModItems.DIAMOND_DICE.get());
                 output.accept(ModItems.NETHERITE_DICE.get());
+                output.accept(ModItems.CRIMSON_DICE.get());
                 output.accept(ModItems.EMERALD_DICE.get());
                 output.accept(ModItems.OBSIDIAN_DICE.get());
                 output.accept(ModItems.WEIRD_DICE.get());

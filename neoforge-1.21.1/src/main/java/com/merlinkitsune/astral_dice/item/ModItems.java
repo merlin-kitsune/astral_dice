@@ -156,6 +156,12 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(Rarity.EPIC)));
 
+    // 绯红骰子:与下界合金骰子同阶(tag dice_t3),可由下界合金骰子升级;战斗骰高点数(4-6)概率提升 50%,但骰出 1 时立即受到 6 点伤害
+    public static final DeferredItem<Item> CRIMSON_DICE = registerItem("crimson_dice",
+            () -> new DiceCurioItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.UNCOMMON)));
+
     // === 骰子阶层注册表(槽位规则集中管理:新增骰子在此注册即可,无需修改 DiceCurioItem) ===
     // 立牌栏:固定 1(stand.json size=1,所有骰子一致);筹码栏:必须佩戴骰子才有(chip.json size=0)
     // 重要:item 参数必须传 Supplier 延迟解析(() -> X.get()),禁止在静态初始化阶段调用
@@ -189,6 +195,9 @@ public class ModItems {
         // 诡异骰子:与钻石骰子同阶(筹码栏 0★2/1★3/2★4/3★5)
         DiceTierRegistry.register(new DiceTier("weird_dice", () -> WEIRD_DICE.get(),
                 s -> 2 + s));
+        // 绯红骰子:与下界合金骰子同阶(筹码栏 0★3/1★4/2★5/3★6)
+        DiceTierRegistry.register(new DiceTier("crimson_dice", () -> CRIMSON_DICE.get(),
+                s -> 3 + s));
     }
 
     public static final DeferredItem<Item> ATTACK_CARD_MEDIUM = registerItem("attack_card_medium",
