@@ -266,6 +266,30 @@ public class ModAttachments {
     public static final AttachedDataKey<Integer> INVESTIGATION_STAGE =
             register(AttachedDataKey.builder("investigation_stage", Codec.INT, () -> 1).build());
 
+    // 破绽(枪匠立牌 Moses)期间,目标是否已被攻击方获得过弱点识破(每段破绽一次)
+    public static final AttachedDataKey<Boolean> MOSES_BROKEN_ATTACK_REWARDED =
+            register(AttachedDataKey.builder("moses_broken_attack_rewarded", Codec.BOOL, () -> false).build());
+
+    // 破绽(枪匠立牌 Moses)期间,目标是否已被枪匠闪避/反击过(每段破绽一次)
+    public static final AttachedDataKey<Boolean> MOSES_BROKEN_DODGED =
+            register(AttachedDataKey.builder("moses_broken_dodged", Codec.BOOL, () -> false).build());
+
+    public static boolean isMosesBrokenAttackRewarded(net.minecraft.world.entity.LivingEntity entity) {
+        return MOSES_BROKEN_ATTACK_REWARDED.get(entity);
+    }
+
+    public static void setMosesBrokenAttackRewarded(net.minecraft.world.entity.LivingEntity entity, boolean value) {
+        MOSES_BROKEN_ATTACK_REWARDED.set(entity, value);
+    }
+
+    public static boolean isMosesBrokenDodged(net.minecraft.world.entity.LivingEntity entity) {
+        return MOSES_BROKEN_DODGED.get(entity);
+    }
+
+    public static void setMosesBrokenDodged(net.minecraft.world.entity.LivingEntity entity, boolean value) {
+        MOSES_BROKEN_DODGED.set(entity, value);
+    }
+
     public static Optional<UUID> getUndercoverSource(net.minecraft.world.entity.LivingEntity entity) {
         return UNDERCOVER_SOURCE.get(entity);
     }

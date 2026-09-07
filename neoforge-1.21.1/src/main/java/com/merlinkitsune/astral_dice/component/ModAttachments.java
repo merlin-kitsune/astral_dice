@@ -297,6 +297,34 @@ public class ModAttachments {
                     .serialize(Codec.INT)
                     .build());
 
+    // 破绽(枪匠立牌 Moses)期间,目标是否已被攻击方获得过弱点识破(每段破绽一次)
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Boolean>> MOSES_BROKEN_ATTACK_REWARDED =
+            ATTACHMENTS.register("moses_broken_attack_rewarded", () -> AttachmentType.builder(() -> false)
+                    .serialize(Codec.BOOL)
+                    .build());
+
+    // 破绽(枪匠立牌 Moses)期间,目标是否已被枪匠闪避/反击过(每段破绽一次)
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Boolean>> MOSES_BROKEN_DODGED =
+            ATTACHMENTS.register("moses_broken_dodged", () -> AttachmentType.builder(() -> false)
+                    .serialize(Codec.BOOL)
+                    .build());
+
+    public static boolean isMosesBrokenAttackRewarded(net.minecraft.world.entity.LivingEntity entity) {
+        return entity.getData(MOSES_BROKEN_ATTACK_REWARDED.get());
+    }
+
+    public static void setMosesBrokenAttackRewarded(net.minecraft.world.entity.LivingEntity entity, boolean value) {
+        entity.setData(MOSES_BROKEN_ATTACK_REWARDED.get(), value);
+    }
+
+    public static boolean isMosesBrokenDodged(net.minecraft.world.entity.LivingEntity entity) {
+        return entity.getData(MOSES_BROKEN_DODGED.get());
+    }
+
+    public static void setMosesBrokenDodged(net.minecraft.world.entity.LivingEntity entity, boolean value) {
+        entity.setData(MOSES_BROKEN_DODGED.get(), value);
+    }
+
     public static Optional<UUID> getUndercoverSource(net.minecraft.world.entity.LivingEntity entity) {
         return entity.getData(UNDERCOVER_SOURCE.get());
     }

@@ -1,0 +1,25 @@
+{
+  "name": "item.astral_dice.moses_sign",
+  "category": "astral_dice:signs",
+  "icon": "astral_dice:moses_sign",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:moses_sign",
+      "text": "astral_dice.guide.entry.moses_sign.1"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.moses_sign.2"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.moses_sign.3"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:moses_sign"
+    }
+  ],
+  "sortnum": 14
+}

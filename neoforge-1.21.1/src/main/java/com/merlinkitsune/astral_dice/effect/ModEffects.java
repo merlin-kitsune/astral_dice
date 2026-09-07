@@ -119,4 +119,16 @@ public class ModEffects {
     // 反击(玩家效果/流派):层数 = amplifier+1;被近战敌方攻击时触发反击并消耗 1 层
     public static final DeferredHolder<MobEffect, MobEffect> COUNTERATTACK =
             EFFECTS.register("counterattack", CounterattackEffect::new);
+
+    // 弱点识破(枪匠立牌 Moses):玩家增益,层数 = amplifier+1;每层攻击/防御+1、骰点最低数+1
+    public static final DeferredHolder<MobEffect, MobEffect> WEAKNESS_REVEAL =
+            EFFECTS.register("weakness_reveal", WeaknessRevealEffect::new);
+
+    // 破绽(枪匠立牌 Moses 主动):目标减益,持续 2:00;该目标与枪匠交战时骰点只能为 0 且会被闪避
+    public static final DeferredHolder<MobEffect, MobEffect> MOSES_BROKEN =
+            EFFECTS.register("moses_broken", MosesBrokenEffect::new);
+
+    // 枪匠立牌主动待命:主动已激活,攻击敌对目标后施加"破绽"
+    public static final DeferredHolder<MobEffect, MobEffect> MOSES_READY =
+            EFFECTS.register("moses_ready", () -> new ReadyEffect(0x8B5A2B));
 }

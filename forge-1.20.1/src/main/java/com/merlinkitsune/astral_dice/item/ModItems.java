@@ -36,6 +36,7 @@ import com.merlinkitsune.astral_dice.item.card.ChocolateCakeCardItem;
 import com.merlinkitsune.astral_dice.item.chip.BigBackpackChipItem;
 import com.merlinkitsune.astral_dice.item.sign.HaiqingSignItem;
 import com.merlinkitsune.astral_dice.item.sign.NancyLuSignItem;
+import com.merlinkitsune.astral_dice.item.sign.MosesSignItem;
 import com.merlinkitsune.astral_dice.item.card.ExpressDeliveryCardItem;
 import com.merlinkitsune.astral_dice.item.sign.PaparaSignItem;
 import com.merlinkitsune.astral_dice.item.card.LuxuryFeastCardItem;
@@ -726,6 +727,12 @@ public class ModItems {
     // 骇客立牌(命名:nancy_lu):网络防火墙被动 + 远程侵入主动
     public static final RegistryObject<Item> NANCY_LU_SIGN = registerItem("nancy_lu_sign",
             () -> new NancyLuSignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.EPIC)));
+
+    // 枪匠立牌(命名:moses):弱点识破 + 破绽;主动弱点反击,主动冷却 120 秒(史诗)
+    public static final RegistryObject<Item> MOSES_SIGN = registerItem("moses_sign",
+            () -> new MosesSignItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(Rarity.EPIC)));
 

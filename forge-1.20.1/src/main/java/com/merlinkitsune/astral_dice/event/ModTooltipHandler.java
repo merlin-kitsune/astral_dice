@@ -1097,6 +1097,22 @@ public class ModTooltipHandler {
             }
             addSignCooldownRemaining(tooltip, event.getEntity());
         }
+        if (stack.is(ModItems.MOSES_SIGN.get())) {
+            tooltip.add(Component.empty());
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "弱点反击");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.moses_active");
+            addSignPassiveTitle(tooltip, "弱点识破");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.moses_passive");
+            addSignPassiveTitle(tooltip, "精密技巧");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.moses_passive_precision");
+            if (event.getEntity() != null) {
+                addSignCounter(tooltip, "tooltip.astral_dice.sign.moses_weakness_reveal",
+                        com.merlinkitsune.astral_dice.effect.WeaknessRevealEffect.getStacks(player),
+                        com.merlinkitsune.astral_dice.effect.WeaknessRevealEffect.MAX_STACKS);
+            }
+            addSignCooldownRemaining(tooltip, event.getEntity());
+        }
     }
 
 }

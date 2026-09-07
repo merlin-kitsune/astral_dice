@@ -13,6 +13,8 @@ import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.item.sign.ParunanSignItem;
 import com.merlinkitsune.astral_dice.item.sign.BaseSignItem;
 import com.merlinkitsune.astral_dice.item.sign.BonnieSignItem;
+import com.merlinkitsune.astral_dice.item.sign.MosesSignItem;
+import com.merlinkitsune.astral_dice.effect.WeaknessRevealEffect;
 import com.merlinkitsune.astral_dice.item.BossEntityUtil;
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
 import com.merlinkitsune.astral_dice.item.dice.DiceCurioItem;
@@ -231,6 +233,23 @@ public class DiceCombatEvents {
                 ModEffectRemoval.remove(player, ModEffects.BONNIE_READY.get());
                 ModAttachments.setSignActiveCooldownEnd(player,
                         player.level().getGameTime() + com.merlinkitsune.astral_dice.event.WeirdDiceHandler.signCooldownTicks(player));
+            }
+            // 枪匠立牌主动:对本次攻击的第一个普通敌对目标施加"破绽"2:00(已带破绽则不重复施加)
+            var mosesResult = attackerCurios.get().findFirstCurio(s -> s.is(ModItems.MOSES_SIGN.get()));
+            if (mosesResult.isPresent() && target instanceof net.minecraft.world.entity.monster.Enemy
+                    && ModAttachments.getSignReadyType(player) == MosesSignItem.READY_TYPE) {
+                if (MosesSignItem.applyBroken(player, target)) {
+                    ModAttachments.setSignReadyType(player, 0);
+                    ModAttachments.setSignReadyExpire(player, 0);
+                    ModEffectRemoval.remove(player, ModEffects.MOSES_READY.get());
+                    ModAttachments.setSignActiveCooldownEnd(player,
+                            player.level().getGameTime() + MosesSignItem.signCooldownTicks(player));
+                }
+            }
+            // 枪匠立牌被动:攻击已带"破绽"的敌对目标,每段破绽获得 1 层弱点识破
+            if (MosesSignItem.isEquipped(player) && target instanceof net.minecraft.world.entity.monster.Enemy
+                    && target.hasEffect(ModEffects.MOSES_BROKEN.get())) {
+                MosesSignItem.onAttackBrokenTarget(player, target);
             }
         }
 
@@ -487,7 +506,12 @@ public class DiceCombatEvents {
             }
         } else if (!target.level().isClientSide() && !(target instanceof Player)) {
             // 怪物:始终防御,每次受击掷 1d6 防御骰(不再闪避)
-            defenseBaseDice = ThreadLocalRandom.current().nextInt(1, 7);
+            // 枪匠"破绽":目标骰点只能为 0
+            if (target.hasEffect(ModEffects.MOSES_BROKEN.get())) {
+                defenseBaseDice = 0;
+            } else {
+                defenseBaseDice = ThreadLocalRandom.current().nextInt(1, 7);
+            }
         }
 
         double finalDmg;
@@ -750,6 +774,8 @@ public class DiceCombatEvents {
         com.merlinkitsune.astral_dice.item.sign.FenSignItem.onBlessingEnd(player);
         // 骇客立牌:赐福结束刷新被动(攻击/防御,覆盖旧类型)
         NancyLuSignItem.onDiceBlessingEnded(player);
+        // 枪匠立牌:赐福结束弱点识破减少 1 层
+        MosesSignItem.onDiceBlessingEnded(player);
 
         var curios = CuriosCompat.getCuriosInventory(player);
         if (curios.isEmpty()) return;
@@ -875,16 +901,21 @@ public class DiceCombatEvents {
      * 未佩戴特殊骰子 → 均匀分布。
      */
     private static int rollCombatDie(Player roller) {
+        int roll;
         if (roller == null) {
-            return ThreadLocalRandom.current().nextInt(1, 7);
+            roll = ThreadLocalRandom.current().nextInt(1, 7);
+        } else if (com.merlinkitsune.astral_dice.event.WeirdDiceHandler.hasWeirdDice(roller)) {
+            roll = com.merlinkitsune.astral_dice.event.WeirdDiceHandler.rollD6(roller);
+        } else if (com.merlinkitsune.astral_dice.event.CrimsonDiceHandler.hasCrimsonDice(roller)) {
+            roll = com.merlinkitsune.astral_dice.event.CrimsonDiceHandler.rollD6(roller);
+        } else {
+            roll = ThreadLocalRandom.current().nextInt(1, 7);
         }
-        if (com.merlinkitsune.astral_dice.event.WeirdDiceHandler.hasWeirdDice(roller)) {
-            return com.merlinkitsune.astral_dice.event.WeirdDiceHandler.rollD6(roller);
+        // 枪匠立牌:弱点识破每层使骰点最低数 +1
+        if (roller != null && MosesSignItem.isEquipped(roller)) {
+            roll = Math.max(roll, 1 + WeaknessRevealEffect.getStacks(roller));
         }
-        if (com.merlinkitsune.astral_dice.event.CrimsonDiceHandler.hasCrimsonDice(roller)) {
-            return com.merlinkitsune.astral_dice.event.CrimsonDiceHandler.rollD6(roller);
-        }
-        return ThreadLocalRandom.current().nextInt(1, 7);
+        return roll;
     }
 
     // 近战武器攻击判定:仅允许剑/斧/重锤/三叉戟等近战武器触发骰神赐福
@@ -940,6 +971,35 @@ public class DiceCombatEvents {
     // 通用跳数字发送:指定 ARGB 颜色(0xRRGGBB 将被叠加透明度)
     private static void sendDamageNumber(LivingEntity target, int bonusDamage, int color) {
         ModNetwork.DamageNumberMessage.send(target, bonusDamage, color);
+    }
+
+    // === 枪匠立牌(Moses)破绽闪避/反击 ===
+    @SubscribeEvent
+    public static void onMosesBrokenDodge(LivingDamageEvent event) {
+        LivingEntity victim = event.getEntity();
+        if (victim.level().isClientSide()) return;
+        if (!(victim instanceof Player player)) return;
+        if (!MosesSignItem.isEquipped(player)) return;
+        if (!(event.getSource().getEntity() instanceof LivingEntity attacker)) return;
+        if (!(attacker instanceof net.minecraft.world.entity.monster.Enemy)) return;
+        if (!attacker.hasEffect(ModEffects.MOSES_BROKEN.get())) return;
+        if (ModAttachments.isMosesBrokenDodged(attacker)) return;
+        // 闪避本次伤害
+        event.setAmount(0);
+        // 获得弱点识破并标记该目标已闪避
+        MosesSignItem.onDodgeBrokenTarget(player, attacker);
+        // 自动反击(沿用反击流派公式,含弱点识破攻击加成)
+        double dmg = computeCounterDamage(player, attacker);
+        if (dmg > 0) {
+            counterProcessing = true;
+            try {
+                attacker.hurt(com.merlinkitsune.astral_dice.damage.ModDamageTypes.diceDamage(attacker.level(), player),
+                        (float) dmg);
+                sendDamageNumber(attacker, (int) dmg);
+            } finally {
+                counterProcessing = false;
+            }
+        }
     }
 
     // === 反击流派(Counterattack) ===

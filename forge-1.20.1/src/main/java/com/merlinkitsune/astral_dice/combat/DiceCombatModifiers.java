@@ -13,6 +13,8 @@ import com.merlinkitsune.astral_dice.item.chip.AdrenalineChipItem;
 import com.merlinkitsune.astral_dice.item.chip.RevengeHalberdChipItem;
 import com.merlinkitsune.astral_dice.item.sign.FenSignItem;
 import com.merlinkitsune.astral_dice.item.sign.NancyLuSignItem;
+import com.merlinkitsune.astral_dice.item.sign.MosesSignItem;
+import com.merlinkitsune.astral_dice.effect.WeaknessRevealEffect;
 import com.merlinkitsune.astral_dice.item.sign.JasmineSignItem;
 import com.merlinkitsune.astral_dice.item.MarkManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
@@ -319,6 +321,15 @@ public final class DiceCombatModifiers {
             }
             return ap;
         });
+        // === 内置:枪匠立牌(moses)弱点识破攻击力(每层 +1) ===
+        registerAttackModifier((ctx, ap) -> {
+            if (ctx.attacker.level().isClientSide()) return ap;
+            if (MosesSignItem.isEquipped(ctx.attacker)) {
+                ap += WeaknessRevealEffect.getStacks(ctx.attacker);
+            }
+            return ap;
+        });
+
 
         // === 内置:调查阶段增益(阶段 II 及以上对非 boss 敌对目标/真相揭露对 boss) ===
         registerAttackModifier((ctx, ap) -> {
