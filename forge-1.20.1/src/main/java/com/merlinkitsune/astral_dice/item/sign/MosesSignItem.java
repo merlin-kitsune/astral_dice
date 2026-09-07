@@ -133,7 +133,6 @@ public class MosesSignItem extends BaseSignItem {
         if (target == null || target.level().isClientSide()) return false;
         if (target.hasEffect(ModEffects.MOSES_BROKEN.get())) return false;
         ModAttachments.setMosesBrokenAttackRewarded(target, false);
-        ModAttachments.setMosesBrokenDodged(target, false);
         target.addEffect(new MobEffectInstance(ModEffects.MOSES_BROKEN.get(),
                 MosesBrokenEffect.DURATION_TICKS, 0, false, true));
         sendSignActionBar(player, "msg.astral_dice.moses_apply");
@@ -152,13 +151,14 @@ public class MosesSignItem extends BaseSignItem {
     }
 
     /**
-     * 破绽目标被枪匠闪避/反击:每段破绽只获得 1 层弱点识破。
+     * 触发闪避/反击(任意来源):每名目标只获得 1 层弱点识破。
      */
-    public static void onDodgeBrokenTarget(Player player, LivingEntity target) {
-        if (target == null || target.level().isClientSide()) return;
-        if (ModAttachments.isMosesBrokenDodged(target)) return;
+    public static void onDodgeCounter(Player player, LivingEntity target) {
+        if (player == null || target == null || player.level().isClientSide()) return;
+        if (!isEquipped(player)) return;
+        if (ModAttachments.isMosesDodgeCounterRewarded(target)) return;
         WeaknessRevealEffect.addStacks(player, 1);
-        ModAttachments.setMosesBrokenDodged(target, true);
+        ModAttachments.setMosesDodgeCounterRewarded(target, true);
     }
 
     /**

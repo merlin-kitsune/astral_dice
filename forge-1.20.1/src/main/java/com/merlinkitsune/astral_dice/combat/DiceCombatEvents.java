@@ -983,11 +983,11 @@ public class DiceCombatEvents {
         if (!(event.getSource().getEntity() instanceof LivingEntity attacker)) return;
         if (!(attacker instanceof net.minecraft.world.entity.monster.Enemy)) return;
         if (!attacker.hasEffect(ModEffects.MOSES_BROKEN.get())) return;
-        if (ModAttachments.isMosesBrokenDodged(attacker)) return;
+        if (ModAttachments.isMosesDodgeCounterRewarded(attacker)) return;
         // 闪避本次伤害
         event.setAmount(0);
         // 获得弱点识破并标记该目标已闪避
-        MosesSignItem.onDodgeBrokenTarget(player, attacker);
+        MosesSignItem.onDodgeCounter(player, attacker);
         // 自动反击(沿用反击流派公式,含弱点识破攻击加成)
         double dmg = computeCounterDamage(player, attacker);
         if (dmg > 0) {
@@ -1044,6 +1044,8 @@ public class DiceCombatEvents {
         }
         // 已登记目标每次造成伤害都返还;本次触发(消耗层数)的受击同样立即返还
         if (alreadyRegistered || triggered) {
+            // 枪匠立牌:任意来源的反击都会尝试获得 1 层弱点识破(每目标一次)
+            MosesSignItem.onDodgeCounter(player, attacker);
             retaliateCounterDamage(player, attacker);
         }
     }
