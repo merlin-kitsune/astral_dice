@@ -54,6 +54,7 @@ This changelog is fully split by language: the Chinese version comes first, foll
 
 ### 已修复BUG
 
+- 修复 `PiglinAiMixin` 注入签名:1.21.1 原版 `PiglinAi.isWearingGold` 参数为 `LivingEntity`,此前按 `Player` 编写导致整合包运行时 Mixin 应用失败(Invalid descriptor);现改为 `LivingEntity` 并在内部仅对玩家执行下界岩骰子判定(仅 1.21.1)。 / Fixed the `PiglinAiMixin` injection signature: vanilla `PiglinAi.isWearingGold` takes a `LivingEntity` in 1.21.1; it was written against `Player`, causing a runtime Mixin apply failure (invalid descriptor) in the modpack — it now accepts `LivingEntity` and applies the Netherrack-die check only to players (1.21.1 only).
 - 绿宝石骰子补充 `curios:dice` 饰品槽标签(此前遗漏,导致无法装备进骰子栏),并同步补入 `astral_dice:dices` 汇总标签(双版本)。 / Added the missing `curios:dice` curios-slot tag for the Emerald Die (previously it could not be equipped into the dice slot), and synced it into the `astral_dice:dices` summary tag (both loaders).
 - 死亡清理调整:不死图腾等取消死亡时不再执行任何清理;护法立牌死亡丢失全部「剑气」层数(tooltip 追加死亡提示);吸血鬼立牌死亡清除主动技能效果;秘密侦探死亡保留调查阶段进度(仅卸牌时清除);忍者/调查员立牌的效果牌伤害加成死亡保留;移除死亡清理中无读取者的 DamageEffectBonus 残留调用(仅 1.21.1)。 / Death-cleanup adjustments: totem-canceled deaths no longer trigger any cleanup; Misaki loses all Sword Qi stacks on death (tooltip note added); Papara's active effect is cleared on death; Bonnie keeps investigation progress on death (unequip only); Komachi/Rin effect-card damage bonuses survive death; removed the leftover no-reader DamageEffectBonus reset in the death handler (1.21.1 only).
 - 修复忍者立牌主动技能在已有出牌进度或处于出牌冷却期时无法生效的问题:出牌数+1 改为累积式「出牌数银行」(按实际出牌消耗,跨周期保留,不受满额/冷却影响),并移除旧布尔标记及其残留调用(仅 1.21.1)。 / Fixed the Komachi sign's active failing when play progress existed or the cooldown was running: the play-count +1 is now a banked extra-play token (consumed per actual play, persists across windows, unaffected by burst-full or cooldown), and the old boolean flag plus its leftover calls were removed (1.21.1 only).
@@ -364,6 +365,7 @@ This changelog is fully split by language: the Chinese version comes first, foll
 
 ### Bug Fixes
 
+- Fixed the `PiglinAiMixin` injection signature: vanilla `PiglinAi.isWearingGold` takes a `LivingEntity` in 1.21.1; it was written against `Player`, causing a runtime Mixin apply failure (invalid descriptor) in the modpack — it now accepts `LivingEntity` and applies the Netherrack-die check only to players (1.21.1 only).
 - Death-cleanup adjustments: totem-canceled deaths no longer trigger any cleanup; Misaki loses all Sword Qi stacks on death (tooltip note added); Papara's active effect is cleared on death; Bonnie keeps investigation progress on death (unequip only); Komachi/Rin effect-card damage bonuses survive death; removed the leftover no-reader DamageEffectBonus reset in the death handler (1.21.1 only).
 - Fixed the Komachi sign's active failing when effect-card play progress existed or the cooldown was running: the play-count +1 is now a banked extra-play token (consumed per actual play, persists across windows, unaffected by burst-full or cooldown); the old boolean flag and its leftover calls were removed (1.21.1 only).
 

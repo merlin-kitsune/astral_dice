@@ -1,6 +1,7 @@
 package com.merlinkitsune.astral_dice.mixin;
 
 import com.merlinkitsune.astral_dice.event.NetherrackDiceHandler;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.monster.piglin.PiglinAi;
 import org.spongepowered.asm.mixin.Mixin;
@@ -19,8 +20,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public abstract class PiglinAiMixin {
 
     @Inject(method = "isWearingGold", at = @At("RETURN"), cancellable = true)
-    private static void astralDice$netherrackDiceNeutral(Player player, CallbackInfoReturnable<Boolean> cir) {
+    private static void astralDice$netherrackDiceNeutral(LivingEntity livingEntity,
+                                                         CallbackInfoReturnable<Boolean> cir) {
         if (Boolean.TRUE.equals(cir.getReturnValue())) return;
+        // 1.21.1 原版签名参数为 LivingEntity:仅对玩家执行骰子判定
+        if (!(livingEntity instanceof Player player)) return;
         if (!player.level().isClientSide() && NetherrackDiceHandler.hasNetherrackDice(player)) {
             cir.setReturnValue(true);
         }
