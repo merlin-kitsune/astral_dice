@@ -24,6 +24,7 @@ public class ModItemModelProvider extends ItemModelProvider {
         basicItem(ModItems.WEIRD_DICE.get());
         basicItem(ModItems.CRIMSON_DICE.get());
         basicItem(ModItems.AMETHYST_DICE.get());
+        basicItem(ModItems.ENDER_DICE.get());
         basicItem(ModItems.ATTACK_CARD_MEDIUM.get());
         basicItem(ModItems.ATTACK_CARD_LARGE.get());
         basicItem(ModItems.ATTACK_CARD_EPIC.get());

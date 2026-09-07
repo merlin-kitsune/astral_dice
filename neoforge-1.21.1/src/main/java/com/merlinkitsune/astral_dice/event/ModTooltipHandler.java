@@ -396,6 +396,12 @@ public class ModTooltipHandler {
                 tooltip.add(Component.translatable("tooltip.astral_dice.amethyst_dice_no_blessing")
                         .withStyle(ChatFormatting.GRAY));
             }
+            if (stack.is(ModItems.ENDER_DICE.get())) {
+                tooltip.add(Component.translatable("tooltip.astral_dice.ender_dice_totem")
+                        .withStyle(ChatFormatting.GOLD));
+                tooltip.add(Component.translatable("tooltip.astral_dice.ender_dice_rainwater")
+                        .withStyle(ChatFormatting.RED));
+            }
             if (stack.is(ModItems.GLASS_DICE.get())) {
                 tooltip.add(Component.translatable("tooltip.astral_dice.glass_dice_max")
                         .withStyle(ChatFormatting.AQUA));
