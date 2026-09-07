@@ -38,10 +38,17 @@ public class ModCreativeTabs {
                 // 骰子
                 output.accept(ModItems.DICE.get());
                 output.accept(ModItems.GOLDEN_DICE.get());
-                output.accept(ModItems.GLASS_DICE.get());
                 output.accept(ModItems.DIAMOND_DICE.get());
                 output.accept(ModItems.NETHERITE_DICE.get());
+                output.accept(ModItems.GLASS_DICE.get());
+                output.accept(ModItems.NETHERRACK_DICE.get());
+                output.accept(ModItems.CRIMSON_DICE.get());
                 output.accept(ModItems.EMERALD_DICE.get());
+                output.accept(ModItems.OBSIDIAN_DICE.get());
+                output.accept(ModItems.WEIRD_DICE.get());
+                output.accept(ModItems.AMETHYST_DICE.get());
+                output.accept(ModItems.ENDER_DICE.get());
+                output.accept(ModItems.NETHER_STAR_DICE.get());
                 // 攻击牌
                 output.accept(ModItems.ATTACK_CARD_MEDIUM.get());
                 output.accept(ModItems.ATTACK_CARD_LARGE.get());

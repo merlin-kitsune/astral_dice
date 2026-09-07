@@ -30,13 +30,21 @@ public class DiceCurioItem extends Item implements ICurioItem {
         return DiceTierRegistry.isDice(stack);
     }
 
-    // 卡牌放置栏总槽位数:仅由骰子星级决定,与骰子品阶无关——0★=4(攻防各2)、1★=6(各3)、
+    // 卡牌放置栏总槽位数:由"卡牌配置星级"决定,与骰子品阶无关——0★=4(攻防各2)、1★=6(各3)、
     // 2★=8(各4)、3★=12(各6);星级超出 0-3 时按最近档钳制。
+    // 下界之星骰子(T4):卡牌槽与费用点数始终按最高档 3★ 配置(12 格 / 费用上限各 6)。
     private static final int[] CARD_SLOTS_BY_STAR = {4, 6, 8, 12};
 
+    /** 卡牌配置星级:下界之星骰子恒为 3★(最高档),其余骰子取实际星级 */
+    public static int configStarLevel(ItemStack stack) {
+        if (!stack.isEmpty() && stack.is(ModItems.NETHER_STAR_DICE.get())) {
+            return 3;
+        }
+        return Math.max(0, Math.min(3, starLevel(stack)));
+    }
+
     public static int getCardSlots(ItemStack stack) {
-        int star = Math.max(0, Math.min(3, starLevel(stack)));
-        return CARD_SLOTS_BY_STAR[star];
+        return CARD_SLOTS_BY_STAR[configStarLevel(stack)];
     }
 
     @Override

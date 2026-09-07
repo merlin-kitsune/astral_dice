@@ -318,6 +318,18 @@ public class ModAttachments {
         SIGN_ACTIVE_COOLDOWN_END.set(player, value);
     }
 
+    // 末影骰子:不死图腾效果冷却结束时刻(玩家级,0 表示未进入冷却)
+    public static final AttachedDataKey<Long> ENDER_DIE_TOTEM_COOLDOWN_END =
+            register(AttachedDataKey.builder("ender_die_totem_cooldown_end", Codec.LONG, () -> 0L).sync().build());
+
+    public static long getEnderDieTotemCooldownEnd(net.minecraft.world.entity.player.Player player) {
+        return ENDER_DIE_TOTEM_COOLDOWN_END.get(player);
+    }
+
+    public static void setEnderDieTotemCooldownEnd(net.minecraft.world.entity.player.Player player, long value) {
+        ENDER_DIE_TOTEM_COOLDOWN_END.set(player, value);
+    }
+
     // 立牌主动技能"等待目标释放"状态类型:1=占星师(虚弱印记) 2=秘密侦探(隐匿调查);0=无等待
     public static final AttachedDataKey<Integer> SIGN_READY_TYPE =
             register(AttachedDataKey.builder("sign_ready_type", Codec.INT, () -> 0).sync().build());
@@ -697,6 +709,7 @@ public class ModAttachments {
             SYNCED_KEYS.add(SIGN_ACTIVE_COOLDOWN_END);
             SYNCED_KEYS.add(SIGN_READY_TYPE);
             SYNCED_KEYS.add(SIGN_READY_EXPIRE);
+            SYNCED_KEYS.add(ENDER_DIE_TOTEM_COOLDOWN_END);
             SYNCED_KEYS.add(CURSED_SWORD_BONUS);
             SYNCED_KEYS.add(CANDY_CHIP_PLAY_BONUS);
             SYNCED_KEYS.add(SATELLITE_PLAY_BONUS);

@@ -307,6 +307,18 @@ public final class SpellDamageRegistry {
                 com.merlinkitsune.astral_dice.item.chip.MagicQuiverChipItem.tryProc(ctx);
             }
         });
+        // 紫晶骰子:远程/魔法攻击命中时也触发战斗骰(1-6)并追加骰点伤害;不触发骰神赐福、不消耗卡牌耐久
+        registerModifier(new SpellDamageModifier() {
+            @Override
+            public boolean isActive(SpellDamageContext ctx) {
+                return ctx.hasCurio(ModItems.AMETHYST_DICE.get());
+            }
+
+            @Override
+            public double apply(SpellDamageContext ctx, double bonus) {
+                return bonus + com.merlinkitsune.astral_dice.event.AmethystDiceHandler.rollD6(ctx.attacker);
+            }
+        });
     }
 
     // 溅射/范围伤害跳数字(颜色由调用方指定;定向爆破使用效果牌绿色)

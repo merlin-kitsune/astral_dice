@@ -1,6 +1,9 @@
 {
   "values": [
     "astral_dice:diamond_dice",
-    "astral_dice:emerald_dice"
+    "astral_dice:emerald_dice",
+    "astral_dice:obsidian_dice",
+    "astral_dice:weird_dice",
+    "astral_dice:amethyst_dice"
   ]
 }

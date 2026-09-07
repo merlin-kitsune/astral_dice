@@ -104,8 +104,9 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
         }
         // 6. 冷却:等待类技能(激活了玩家级等待状态)待完成指定目标/超时后再开始冷却;其余立牌立即开始玩家级冷却
         if (ModAttachments.getSignReadyExpire(player) <= 0) {
+            // 诡异骰子:立牌主动冷却 -50%
             ModAttachments.setSignActiveCooldownEnd(player,
-                    now + GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS);
+                    now + com.merlinkitsune.astral_dice.event.WeirdDiceHandler.signCooldownTicks(player));
         }
     }
 

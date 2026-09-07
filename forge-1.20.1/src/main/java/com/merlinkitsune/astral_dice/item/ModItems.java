@@ -139,6 +139,48 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(Rarity.EPIC)));
 
+    // 黑曜石骰子:与钻石骰子同阶(tag dice_t2),可由钻石骰子升级;基础防御力 +3(折算 +6 护甲),火焰伤害 -70%
+    public static final RegistryObject<Item> OBSIDIAN_DICE = registerItem("obsidian_dice",
+            () -> new com.merlinkitsune.astral_dice.item.dice.ObsidianDiceItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.EPIC)));
+
+    // 下界岩骰子:与黄金骰子同阶(tag dice_t1),可由黄金骰子升级;下界挖矿概率掉星币/星盘,猪灵保持中立
+    public static final RegistryObject<Item> NETHERRACK_DICE = registerItem("netherrack_dice",
+            () -> new DiceCurioItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.RARE)));
+
+    // 诡异骰子:与钻石骰子同阶(tag dice_t2),可由钻石骰子升级;立牌主动冷却 -50%,但战斗骰低点数(1-3)概率提升 50%
+    public static final RegistryObject<Item> WEIRD_DICE = registerItem("weird_dice",
+            () -> new DiceCurioItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.EPIC)));
+
+    // 绯红骰子:与下界合金骰子同阶(tag dice_t3),可由下界合金骰子升级;战斗骰高点数(4-6)概率提升 50%,但骰出 1 时立即受到 6 点伤害
+    public static final RegistryObject<Item> CRIMSON_DICE = registerItem("crimson_dice",
+            () -> new DiceCurioItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.UNCOMMON)));
+
+    // 紫晶骰子:与钻石骰子同阶(tag dice_t2),可由钻石骰子升级;远程/魔法攻击也触发战斗骰并追加骰点伤害(不触发骰神赐福)
+    public static final RegistryObject<Item> AMETHYST_DICE = registerItem("amethyst_dice",
+            () -> new DiceCurioItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.EPIC)));
+
+    // 末影骰子:与下界合金骰子同阶(tag dice_t3),可由下界合金骰子升级;致命伤害触发不死图腾效果(冷却 5:00),但雨中/水下受到的伤害 +40%
+    public static final RegistryObject<Item> ENDER_DICE = registerItem("ender_dice",
+            () -> new DiceCurioItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.UNCOMMON)));
+
+    // 下界之星骰子:T4 奇异品阶(tag dice_t4),可由任意 T3 骰子升级;卡牌槽/费用恒为最高档、筹码栏 +1,星级附加攻防
+    public static final RegistryObject<Item> NETHER_STAR_DICE = registerItem("nether_star_dice",
+            () -> new com.merlinkitsune.astral_dice.item.dice.NetherStarDiceItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.UNCOMMON)));
+
     // === 骰子阶层注册表(槽位规则集中管理:新增骰子在此注册即可,无需修改 DiceCurioItem) ===
     // 立牌栏:固定 1(stand.json size=1,所有骰子一致);筹码栏:必须佩戴骰子才有(chip.json size=0)
     // 重要:item 参数必须传 Supplier 延迟解析(() -> X.get()),禁止在静态初始化阶段调用
@@ -163,6 +205,27 @@ public class ModItems {
         // 绿宝石骰子:与钻石骰子同阶(筹码栏 0★2/1★3/2★4/3★5)
         DiceTierRegistry.register(new DiceTier("emerald_dice", () -> EMERALD_DICE.get(),
                 s -> 2 + s));
+        // 黑曜石骰子:与钻石骰子同阶(筹码栏 0★2/1★3/2★4/3★5)
+        DiceTierRegistry.register(new DiceTier("obsidian_dice", () -> OBSIDIAN_DICE.get(),
+                s -> 2 + s));
+        // 下界岩骰子:与金骰子同阶(筹码栏 0★1/1★2/2★3/3★4)
+        DiceTierRegistry.register(new DiceTier("netherrack_dice", () -> NETHERRACK_DICE.get(),
+                s -> 1 + s));
+        // 诡异骰子:与钻石骰子同阶(筹码栏 0★2/1★3/2★4/3★5)
+        DiceTierRegistry.register(new DiceTier("weird_dice", () -> WEIRD_DICE.get(),
+                s -> 2 + s));
+        // 绯红骰子:与下界合金骰子同阶(筹码栏 0★3/1★4/2★5/3★6)
+        DiceTierRegistry.register(new DiceTier("crimson_dice", () -> CRIMSON_DICE.get(),
+                s -> 3 + s));
+        // 紫晶骰子:与钻石骰子同阶(筹码栏 0★2/1★3/2★4/3★5)
+        DiceTierRegistry.register(new DiceTier("amethyst_dice", () -> AMETHYST_DICE.get(),
+                s -> 2 + s));
+        // 末影骰子:与下界合金骰子同阶(筹码栏 0★3/1★4/2★5/3★6)
+        DiceTierRegistry.register(new DiceTier("ender_dice", () -> ENDER_DICE.get(),
+                s -> 3 + s));
+        // 下界之星骰子:T4 奇异品阶(筹码栏 0★4/1★5/2★6/3★7,比 T3 多 1 格)
+        DiceTierRegistry.register(new DiceTier("nether_star_dice", () -> NETHER_STAR_DICE.get(),
+                s -> 4 + s));
     }
 
     public static final RegistryObject<Item> ATTACK_CARD_MEDIUM = registerItem("attack_card_medium",

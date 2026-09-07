@@ -1,0 +1,17 @@
+{
+  "name": "item.astral_dice.amethyst_dice",
+  "category": "astral_dice:dice",
+  "icon": "astral_dice:amethyst_dice",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:amethyst_dice",
+      "text": "astral_dice.guide.entry.amethyst_dice.1"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:amethyst_dice"
+    }
+  ],
+  "sortnum": 10
+}
