@@ -384,6 +384,12 @@ public class ModTooltipHandler {
                 tooltip.add(Component.translatable("tooltip.astral_dice.glass_dice_death")
                         .withStyle(ChatFormatting.RED));
             }
+            if (stack.is(ModItems.NETHERRACK_DICE.get())) {
+                tooltip.add(Component.translatable("tooltip.astral_dice.netherrack_dice_mining")
+                        .withStyle(ChatFormatting.GOLD));
+                tooltip.add(Component.translatable("tooltip.astral_dice.netherrack_dice_piglin")
+                        .withStyle(ChatFormatting.GREEN));
+            }
         }
 
         if (stack.is(ModItems.ATTACK_CARD_MEDIUM.get())) {

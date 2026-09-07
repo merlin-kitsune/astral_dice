@@ -8,7 +8,8 @@
     "trade.MerchantMenuMixin",
     "trade.MerchantOfferMixin",
     "trade.MerchantResultSlotMixin",
-    "trade.ServerPlayerMixin"
+    "trade.ServerPlayerMixin",
+    "PiglinAiMixin"
   ],
   "client": [
     "client.EffectRenderingInventoryScreenMixin"

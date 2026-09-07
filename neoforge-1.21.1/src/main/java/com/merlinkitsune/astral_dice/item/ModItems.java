@@ -144,6 +144,12 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(Rarity.EPIC)));
 
+    // 下界岩骰子:与黄金骰子同阶(tag dice_t1),可由黄金骰子升级;下界挖矿概率掉星币/星盘,猪灵保持中立
+    public static final DeferredItem<Item> NETHERRACK_DICE = registerItem("netherrack_dice",
+            () -> new DiceCurioItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.RARE)));
+
     // === 骰子阶层注册表(槽位规则集中管理:新增骰子在此注册即可,无需修改 DiceCurioItem) ===
     // 立牌栏:固定 1(stand.json size=1,所有骰子一致);筹码栏:必须佩戴骰子才有(chip.json size=0)
     // 重要:item 参数必须传 Supplier 延迟解析(() -> X.get()),禁止在静态初始化阶段调用
@@ -171,6 +177,9 @@ public class ModItems {
         // 黑曜石骰子:与钻石骰子同阶(筹码栏 0★2/1★3/2★4/3★5)
         DiceTierRegistry.register(new DiceTier("obsidian_dice", () -> OBSIDIAN_DICE.get(),
                 s -> 2 + s));
+        // 下界岩骰子:与金骰子同阶(筹码栏 0★1/1★2/2★3/3★4)
+        DiceTierRegistry.register(new DiceTier("netherrack_dice", () -> NETHERRACK_DICE.get(),
+                s -> 1 + s));
     }
 
     public static final DeferredItem<Item> ATTACK_CARD_MEDIUM = registerItem("attack_card_medium",
