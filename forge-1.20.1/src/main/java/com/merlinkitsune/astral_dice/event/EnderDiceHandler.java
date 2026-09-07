@@ -22,6 +22,7 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import net.minecraftforge.event.entity.living.LivingHurtEvent;
+import net.minecraftforge.event.entity.living.LivingUseTotemEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
@@ -34,6 +35,7 @@ import net.minecraftforge.fml.common.Mod;
  *   随后进入 5:00 冷却;
  * - 不死图腾触发后,会尝试瞬移到 16 格内一个安全地面位置(非空气/水面/船上),并播放末影粒子与传送音效;
  *   玩家在水中时不进行该传送;
+ * - 除自身伪不死图腾触发外,主手/副手原版不死图腾触发保命时,若佩戴末影骰子也会执行同款瞬移(不消耗末影骰子冷却);
  * - 装备期间处于雨中/水下时,受到的伤害 +40%。
  */
 @Mod.EventBusSubscriber(modid = AstralDiceMod.MODID)
@@ -171,5 +173,19 @@ public final class EnderDiceHandler {
         // 开始 5:00 冷却(以世界时间为准)
         ModAttachments.setEnderDieTotemCooldownEnd(player,
                 player.level().getGameTime() + TOTEM_COOLDOWN_TICKS);
+    }
+
+    // 主手/副手原版不死图腾即将触发保命:佩戴末影骰子时附加同款安全瞬移(不进入末影骰子冷却)
+    @SubscribeEvent
+    public static void onLivingUseTotem(LivingUseTotemEvent event) {
+        LivingEntity entity = event.getEntity();
+        if (entity.level().isClientSide()) return;
+        if (event.isCanceled()) return;
+        if (!(entity instanceof Player player)) return;
+        if (!hasEnderDie(player)) return;
+        Vec3 from = player.position();
+        if (tryTeleportToSafeGround(player)) {
+            playTeleportEffects((ServerLevel) player.level(), from, player.position());
+        }
     }
 }
