@@ -3,6 +3,7 @@ package com.merlinkitsune.astral_dice.network;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.client.ActionBarManager;
 import com.merlinkitsune.astral_dice.client.ClientDamageNumbers;
+import com.merlinkitsune.astral_dice.client.EnderDieTotemAnimator;
 import net.minecraft.network.chat.Component;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -25,6 +26,12 @@ public class ModPayloads {
                 ActionBarPayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(() ->
                         ActionBarManager.show(payload.message(), payload.durationTicks()))
+        );
+        registrar.playToClient(
+                EnderDieTotemPayload.TYPE,
+                EnderDieTotemPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() ->
+                        EnderDieTotemAnimator.play(payload.entityId()))
         );
         registrar.playToServer(
                 SignActivatePayload.TYPE,

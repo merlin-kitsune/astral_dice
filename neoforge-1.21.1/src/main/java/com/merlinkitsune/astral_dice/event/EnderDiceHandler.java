@@ -3,6 +3,7 @@ package com.merlinkitsune.astral_dice.event;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.item.ModItems;
+import com.merlinkitsune.astral_dice.network.EnderDieTotemPayload;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.LivingEntity;
@@ -18,7 +19,8 @@ import top.theillusivec4.curios.api.CuriosApi;
  *
  * 功能:
  * - 受到致命伤害时,触发一次"不死图腾"效果(恢复 1 生命 + 移除全部效果 + 生命恢复 II(0:45)
- *   + 伤害吸收 II(0:05) + 火焰抗性(0:40) + 图腾动画),随后进入 5:00 冷却;
+ *   + 伤害吸收 II(0:05) + 火焰抗性(0:40) + 图腾动画——手持高亮动画使用末影骰子图标),
+ *   随后进入 5:00 冷却;
  * - 装备期间处于雨中/水下时,受到的伤害 +40%(经 {@link LivingDamageEvent.Pre} 于最终减免后放大)。
  */
 @EventBusSubscriber(modid = AstralDiceMod.MODID)
@@ -85,8 +87,8 @@ public final class EnderDiceHandler {
                 ABSORPTION_DURATION_TICKS, ABSORPTION_AMPLIFIER, false, true));
         player.addEffect(new MobEffectInstance(MobEffects.FIRE_RESISTANCE,
                 FIRE_RESIST_DURATION_TICKS, FIRE_RESIST_AMPLIFIER, false, true));
-        // 客户端播放不死图腾动画/音效(原版实体事件 35)
-        player.level().broadcastEntityEvent(player, (byte) 35);
+        // 客户端播放不死图腾动画:粒子 + 音效 + 手持高亮(图标为末影骰子)
+        EnderDieTotemPayload.send(player);
         // 开始 5:00 冷却(以世界时间为准)
         ModAttachments.setEnderDieTotemCooldownEnd(player,
                 player.level().getGameTime() + TOTEM_COOLDOWN_TICKS);
