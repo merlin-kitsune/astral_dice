@@ -43,6 +43,12 @@ public class NetherStarDiceItem extends DiceCurioItem {
         return Math.max(0, Math.min(MAX_STAR, enh.starLevel()));
     }
 
+    // 附魔光效:奇异品阶的视觉标识(物品栏/掉落物/手持渲染均闪烁)
+    @Override
+    public boolean isFoil(ItemStack stack) {
+        return true;
+    }
+
     @Override
     public void curioTick(SlotContext slotContext, ItemStack stack) {
         super.curioTick(slotContext, stack);
