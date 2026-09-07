@@ -3,6 +3,7 @@ package com.merlinkitsune.astral_dice.combat;
 import com.merlinkitsune.astral_dice.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
+import com.merlinkitsune.astral_dice.event.AmethystDiceHandler;
 import com.merlinkitsune.astral_dice.item.MarkManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import net.minecraft.core.registries.Registries;
@@ -304,6 +305,18 @@ public final class SpellDamageRegistry {
             @Override
             public void onHit(SpellDamageContext ctx, double bonus) {
                 com.merlinkitsune.astral_dice.item.chip.MagicQuiverChipItem.tryProc(ctx);
+            }
+        });
+        // 紫晶骰子:远程/魔法攻击命中时也触发战斗骰(1-6)并追加骰点伤害;不触发骰神赐福、不消耗卡牌耐久
+        registerModifier(new SpellDamageModifier() {
+            @Override
+            public boolean isActive(SpellDamageContext ctx) {
+                return ctx.hasCurio(ModItems.AMETHYST_DICE.get());
+            }
+
+            @Override
+            public double apply(SpellDamageContext ctx, double bonus) {
+                return bonus + AmethystDiceHandler.rollD6(ctx.attacker);
             }
         });
     }
