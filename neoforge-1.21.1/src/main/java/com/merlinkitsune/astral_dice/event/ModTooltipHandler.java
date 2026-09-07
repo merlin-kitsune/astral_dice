@@ -404,6 +404,8 @@ public class ModTooltipHandler {
             if (stack.is(ModItems.ENDER_DICE.get())) {
                 tooltip.add(tt("tooltip.astral_dice.ender_dice_totem")
                         .withStyle(ChatFormatting.GOLD));
+                tooltip.add(tt("tooltip.astral_dice.ender_dice_teleport")
+                        .withStyle(ChatFormatting.LIGHT_PURPLE));
                 tooltip.add(tt("tooltip.astral_dice.ender_dice_rainwater")
                         .withStyle(ChatFormatting.RED));
             }
