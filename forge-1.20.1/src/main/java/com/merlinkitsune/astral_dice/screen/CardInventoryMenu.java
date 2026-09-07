@@ -308,6 +308,10 @@ public class CardInventoryMenu extends AbstractContainerMenu {
         return maxAttackCost;
     }
 
+    public int getStarLevel() {
+        return starLevel;
+    }
+
     public int getMaxDefenseCost() {
         return maxDefenseCost;
     }

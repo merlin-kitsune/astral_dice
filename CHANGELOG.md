@@ -13,6 +13,7 @@ This changelog is fully split by language: the Chinese version comes first, foll
 
 - 立牌主动技能 ActionBar 提示重构:新建独立响应事件 `SignActiveTriggeredEvent`,各立牌在立牌类中注册自身提示——忍者(出牌数+1 及剩余出牌数)、看板(新卡牌数与星币数)、骇客(完全隐身时长)已注册专属提示;占星师/秘密侦探提示文本更新为「主动技能已激活,攻击敌对目标向其施加…」;未注册的立牌(大当家/扫地机/史莱姆/护法/上班族/吸血鬼/经商/调查员)显示默认提示「<立牌名>：主动技能已启动！」(仅 1.21.1)。 / Sign-active ActionBar feedback refactored: a dedicated response event `SignActiveTriggeredEvent` was added, and signs register their own prompts in their sign classes — Komachi (play count +1 and remaining), Mimi (new cards and Star Coins) and Nancy Lu (invisibility duration) now have custom texts; Haiqing/Bonnie prompt texts were updated; unregistered signs (Fen, Jasmine, Lulu, Misaki, Padman, Papara, Parunan, Rin) show the default "<Sign>: Active skill started!" (1.21.1 only).
 - 卡牌界面:骰神赐福期间的锁定红色提醒由界面顶部移至界面下方(选择区域以外)(仅 1.21.1)。 / Card inventory screen: the red locked warning during a Dice Blessing moved from the top to the bottom of the screen, outside the selection area (1.21.1 only).
+- 卡牌选择界面:卡牌背包背景贴图按骰子星级(0-3)自动切换(`card_inventory_0~3.png`),`CardInventoryMenu` 暴露 `getStarLevel()`(1.20.1 同步,双版本一致)。 / Card inventory screen: background texture now switches by die star level (0-3), with `getStarLevel()` exposed on the menu (synced to 1.20.1, feature parity across loaders).
 - 新增骰子「绿宝石骰子」:与钻石骰子同阶(`astral_dice:dice_t2`),佩戴后与村民交易时用星币代替绿宝石支付,并享受 20% 折扣(向下取整,至少 1 枚);配方 = GPG/PDP/GPG(G=绿宝石块,P=星盘,D=钻石骰子)(双版本)。 / New "Emerald Die": same tier as the Diamond Die (`astral_dice:dice_t2`); while equipped, villager trades are paid with Star Coins instead of Emeralds at a 20% discount (rounded down, minimum 1); recipe = GPG/PDP/GPG (G=Emerald Block, P=Star Plate, D=Diamond Die) (both loaders).
 - 新增骰子「玻璃骰子」:与黄金骰子同阶(`astral_dice:dice_t1`),战斗牌点数始终取最大值(仅随机骰牌:中/大/特大/名刀/防御牌;固定牌暗影突袭/蓄力/全力攻击副作用保留),但死亡会丢失该骰子及其已装备的全部卡牌;配方 = GGG/GTG/GGG(G=玻璃,T=黄金骰子)(双版本)。 / New "Glass Die": same tier as the Golden Die (`astral_dice:dice_t1`); combat cards always roll their maximum (random cards only: Medium/Large/Epic/Meito/Defense; fixed cards Shadow Strike/Charge/Full Power keep their side effects), but dying destroys this die and all of its equipped cards; recipe = GGG/GTG/GGG (G=Glass, T=Golden Die) (both loaders).
 
@@ -42,7 +43,7 @@ This changelog is fully split by language: the Chinese version comes first, foll
 - 骰子卡牌栏平衡:卡牌栏总格数改为仅由星级决定(与骰子品阶无关)——0★=4(攻防各2)、1★=6(各3)、2★=8(各4)、3★=12(各6);实际可用格严格按星级,无隐藏可用格(双版本)。
 - 骰子升级配方改用阶层标签作为升级母体:新增 `astral_dice:dice_t0`(基础骰子)/`dice_t1`(黄金骰子)/`dice_t2`(钻石骰子)/`dice_t3`(下界合金骰子)四个物品标签;黄金/钻石/下界合金骰子的升级配方输入由具体物品改为对应标签(双版本)。
 - 反击效果器:玩家死亡不再清除反击层数——死亡时记录当前层数,重生后自动恢复(层数仍经 HUD 图标持续显示,归 0 自动移除)(双版本)。
-- 效果等级角标改为阿拉伯数字并扩展上限:原版显示罗马数字(II~X)且仅到等级 10,现改为阿拉伯数字角标(如「治愈 3」「治愈 32」)并支持到等级 100(新增 `EffectRenderingInventoryScreenMixin`)(仅 1.21.1)。
+- 效果等级角标改为阿拉伯数字并扩展上限:原版显示罗马数字(II~X)且仅到等级 10,现改为阿拉伯数字角标(如「治愈 3」「治愈 32」)并支持到等级 100(新增 `EffectRenderingInventoryScreenMixin`;1.20.1 经 Mixin Booster 运行时重映射,`getEffect()` 无 Holder 包装)(双版本)。
 
 ### 已修复BUG
 

@@ -14,10 +14,16 @@ import java.util.List;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 
 public class CardInventoryScreen extends AbstractContainerScreen<CardInventoryMenu> {
-    private static final ResourceLocation GUI_TEXTURE =
-            new ResourceLocation(AstralDiceMod.MODID, "textures/gui/card_inventory.png");
     private static final int GUI_WIDTH = 168;
     private static final int GUI_HEIGHT = 124;
+
+    // 不同星级骰子对应的卡牌选择界面背景
+    private static final String[] GUI_TEXTURES_BY_STAR = {
+            "textures/gui/card_inventory_0.png",
+            "textures/gui/card_inventory_1.png",
+            "textures/gui/card_inventory_2.png",
+            "textures/gui/card_inventory_3.png"
+    };
 
     // 费用点数槽(亮线上方的两个深色槽,左对齐绘制)
     private static final int COST_ATTACK_X = 8;
@@ -58,7 +64,11 @@ public class CardInventoryScreen extends AbstractContainerScreen<CardInventoryMe
         int x = this.leftPos;
         int y = this.topPos;
 
-        guiGraphics.blit(GUI_TEXTURE, x, y, 0, 0.0F, 0.0F, GUI_WIDTH, GUI_HEIGHT, GUI_WIDTH, GUI_HEIGHT);
+        // 按当前骰子星级(0-3,超出取最近档)选择界面背景
+        int star = Math.max(0, Math.min(3, this.menu.getStarLevel()));
+        ResourceLocation texture = new ResourceLocation(AstralDiceMod.MODID,
+                GUI_TEXTURES_BY_STAR[star]);
+        guiGraphics.blit(texture, x, y, 0, 0.0F, 0.0F, GUI_WIDTH, GUI_HEIGHT, GUI_WIDTH, GUI_HEIGHT);
 
         // 费用点数:按当前骰子星级对应的最大点数显示
         int atkMax = Math.max(0, this.menu.getMaxAttackCost());
