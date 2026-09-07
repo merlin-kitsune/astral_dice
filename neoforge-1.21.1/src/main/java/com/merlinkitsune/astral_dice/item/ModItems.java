@@ -174,6 +174,12 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(Rarity.UNCOMMON)));
 
+    // 下界之星骰子:T4 奇异品阶(tag dice_t4),可由任意 T3 骰子升级;卡牌槽/费用恒为最高档、筹码栏 +1,星级附加攻防
+    public static final DeferredItem<Item> NETHER_STAR_DICE = registerItem("nether_star_dice",
+            () -> new com.merlinkitsune.astral_dice.item.dice.NetherStarDiceItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.UNCOMMON)));
+
     // === 骰子阶层注册表(槽位规则集中管理:新增骰子在此注册即可,无需修改 DiceCurioItem) ===
     // 立牌栏:固定 1(stand.json size=1,所有骰子一致);筹码栏:必须佩戴骰子才有(chip.json size=0)
     // 重要:item 参数必须传 Supplier 延迟解析(() -> X.get()),禁止在静态初始化阶段调用
@@ -216,6 +222,9 @@ public class ModItems {
         // 末影骰子:与下界合金骰子同阶(筹码栏 0★3/1★4/2★5/3★6)
         DiceTierRegistry.register(new DiceTier("ender_dice", () -> ENDER_DICE.get(),
                 s -> 3 + s));
+        // 下界之星骰子:T4 奇异品阶(筹码栏 0★4/1★5/2★6/3★7,比 T3 多 1 格)
+        DiceTierRegistry.register(new DiceTier("nether_star_dice", () -> NETHER_STAR_DICE.get(),
+                s -> 4 + s));
     }
 
     public static final DeferredItem<Item> ATTACK_CARD_MEDIUM = registerItem("attack_card_medium",

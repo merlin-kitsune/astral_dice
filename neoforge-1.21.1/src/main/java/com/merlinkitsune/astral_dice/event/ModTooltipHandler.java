@@ -402,6 +402,14 @@ public class ModTooltipHandler {
                 tooltip.add(Component.translatable("tooltip.astral_dice.ender_dice_rainwater")
                         .withStyle(ChatFormatting.RED));
             }
+            if (stack.is(ModItems.NETHER_STAR_DICE.get())) {
+                tooltip.add(Component.translatable("tooltip.astral_dice.nether_star_dice_maxcard")
+                        .withStyle(ChatFormatting.LIGHT_PURPLE));
+                tooltip.add(Component.translatable("tooltip.astral_dice.nether_star_dice_chip")
+                        .withStyle(ChatFormatting.AQUA));
+                tooltip.add(Component.translatable("tooltip.astral_dice.nether_star_dice_starattr")
+                        .withStyle(ChatFormatting.GOLD));
+            }
             if (stack.is(ModItems.GLASS_DICE.get())) {
                 tooltip.add(Component.translatable("tooltip.astral_dice.glass_dice_max")
                         .withStyle(ChatFormatting.AQUA));
