@@ -400,8 +400,6 @@ public class ModTooltipHandler {
             if (stack.is(ModItems.AMETHYST_DICE.get())) {
                 tooltip.add(tt("tooltip.astral_dice.amethyst_dice_proc")
                         .withStyle(ChatFormatting.LIGHT_PURPLE));
-                tooltip.add(tt("tooltip.astral_dice.amethyst_dice_no_blessing")
-                        .withStyle(ChatFormatting.GRAY));
             }
             if (stack.is(ModItems.ENDER_DICE.get())) {
                 tooltip.add(tt("tooltip.astral_dice.ender_dice_totem")

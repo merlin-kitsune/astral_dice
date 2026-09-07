@@ -364,7 +364,6 @@
   "msg.astral_dice.no_dice_equipped": "You need to equip a dice first",
   "msg.astral_dice.sign_active_triggered": "%s: Active skill started!",
   "msg.astral_dice.weak_mark_kill_reward": "Weak Mark target slain! You received Fate Guidance!",
-  "tooltip.astral_dice.amethyst_dice_no_blessing": "Does not trigger a Dice Blessing",
   "tooltip.astral_dice.amethyst_dice_proc": "Ranged/magic attacks also roll the combat die and add its roll as damage",
   "tooltip.astral_dice.applied_stones": "Loaded Cards:",
   "tooltip.astral_dice.card.active_damage_bonus": "Ranged and Magic Damage Boost: §e%s§7",
