@@ -2,17 +2,20 @@
   "type": "astral_dice:dice_upgrade",
   "category": "equipment",
   "key": {
-    "W": {
-      "item": "minecraft:soul_sand"
+    "C": {
+      "item": "minecraft:weeping_vines"
+    },
+    "J": {
+      "item": "minecraft:warped_fungus"
     },
     "D": {
       "item": "astral_dice:diamond_dice"
     }
   },
   "pattern": [
-    "WWW",
-    "WDW",
-    "WWW"
+    "CJC",
+    "JDJ",
+    "CJC"
   ],
   "result": {
     "count": 1,
