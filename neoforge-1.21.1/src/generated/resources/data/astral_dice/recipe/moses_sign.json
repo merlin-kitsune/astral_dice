@@ -3,25 +3,25 @@
   "category": "misc",
   "key": {
     "C": {
-      "item": "minecraft:crossbow"
-    },
-    "D": {
-      "item": "astral_dice:diamond_dice"
-    },
-    "E": {
-      "item": "astral_dice:blank_sign"
+      "item": "astral_dice:blank_chip"
     },
     "G": {
-      "item": "minecraft:gunpowder"
+      "item": "minecraft:crossbow"
     },
-    "I": {
-      "item": "minecraft:iron_ingot"
+    "P": {
+      "item": "astral_dice:star_plate"
+    },
+    "T": {
+      "item": "minecraft:redstone_block"
+    },
+    "Z": {
+      "item": "astral_dice:diamond_dice"
     }
   },
   "pattern": [
-    "GIG",
-    "CEC",
-    "IDI"
+    "GPG",
+    "TCT",
+    "PZP"
   ],
   "result": {
     "count": 1,

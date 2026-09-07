@@ -994,16 +994,16 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
                 .save(output::accept);
 
-        // 枪匠立牌(Moses,占位配方):火药/铁锭/弩 + 空白立牌 + 钻石骰子
+        // 枪匠立牌(Moses):GPG/TCT/PZP(G=弩,P=星盘,Z=钻石骰子,C=空白筹码,T=红石块)
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.MOSES_SIGN.get())
-                .pattern("GIG")
-                .pattern("CEC")
-                .pattern("IDI")
-                .define('E', ModItems.BLANK_SIGN.get())
-                .define('G', Items.GUNPOWDER)
-                .define('I', Items.IRON_INGOT)
-                .define('C', Items.CROSSBOW)
-                .define('D', ModItems.DIAMOND_DICE.get())
+                .pattern("GPG")
+                .pattern("TCT")
+                .pattern("PZP")
+                .define('G', Items.CROSSBOW)
+                .define('P', ModItems.STAR_PLATE.get())
+                .define('Z', ModItems.DIAMOND_DICE.get())
+                .define('C', ModItems.BLANK_CHIP.get())
+                .define('T', Items.REDSTONE_BLOCK)
                 .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
                 .save(output::accept);
     }
