@@ -372,6 +372,12 @@ public class ModTooltipHandler {
                 tooltip.add(Component.translatable("tooltip.astral_dice.emerald_dice_trade")
                         .withStyle(ChatFormatting.DARK_GREEN));
             }
+            if (stack.is(ModItems.OBSIDIAN_DICE.get())) {
+                tooltip.add(Component.translatable("tooltip.astral_dice.obsidian_dice_defense")
+                        .withStyle(ChatFormatting.BLUE));
+                tooltip.add(Component.translatable("tooltip.astral_dice.obsidian_dice_fire")
+                        .withStyle(ChatFormatting.GOLD));
+            }
             if (stack.is(ModItems.GLASS_DICE.get())) {
                 tooltip.add(Component.translatable("tooltip.astral_dice.glass_dice_max")
                         .withStyle(ChatFormatting.AQUA));

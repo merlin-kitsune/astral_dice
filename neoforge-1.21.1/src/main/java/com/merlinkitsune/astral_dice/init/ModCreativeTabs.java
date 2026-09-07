@@ -42,6 +42,7 @@ public class ModCreativeTabs {
                 output.accept(ModItems.DIAMOND_DICE.get());
                 output.accept(ModItems.NETHERITE_DICE.get());
                 output.accept(ModItems.EMERALD_DICE.get());
+                output.accept(ModItems.OBSIDIAN_DICE.get());
                 // 攻击牌
                 output.accept(ModItems.ATTACK_CARD_MEDIUM.get());
                 output.accept(ModItems.ATTACK_CARD_LARGE.get());

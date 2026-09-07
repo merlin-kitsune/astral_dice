@@ -1,0 +1,17 @@
+{
+  "name": "item.astral_dice.obsidian_dice",
+  "category": "astral_dice:dice",
+  "icon": "astral_dice:obsidian_dice",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:obsidian_dice",
+      "text": "astral_dice.guide.entry.obsidian_dice.1"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:obsidian_dice"
+    }
+  ],
+  "sortnum": 6
+}
