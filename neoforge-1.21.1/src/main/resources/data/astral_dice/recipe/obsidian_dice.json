@@ -2,20 +2,17 @@
   "type": "astral_dice:dice_upgrade",
   "category": "equipment",
   "key": {
-    "G": {
+    "O": {
       "item": "minecraft:obsidian"
-    },
-    "P": {
-      "item": "astral_dice:star_plate"
     },
     "D": {
       "item": "astral_dice:diamond_dice"
     }
   },
   "pattern": [
-    "GPG",
-    "PDP",
-    "GPG"
+    "OOO",
+    "ODO",
+    "OOO"
   ],
   "result": {
     "count": 1,
