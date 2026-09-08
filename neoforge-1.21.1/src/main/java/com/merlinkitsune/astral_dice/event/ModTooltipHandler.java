@@ -1123,6 +1123,8 @@ public class ModTooltipHandler {
             addSignPassiveTitle(tooltip, "有好有坏");
             addSignLines(tooltip, "tooltip.astral_dice.sign.pandaman_passive");
             if (event.getEntity() instanceof Player p) {
+                addSignCounter(tooltip, "tooltip.astral_dice.sign.pandaman_health_gain",
+                        ModAttachments.getPandamanMaxHealthBonus(p));
                 addHealingPointsCounter(tooltip, p);
             }
             addSignCooldownRemaining(tooltip, event.getEntity() instanceof Player p ? p : null);

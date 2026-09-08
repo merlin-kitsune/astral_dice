@@ -535,5 +535,6 @@
   "astral_dice.guide.entry.pandaman_sign.1": "Pandaman Sign (rare). Active \"Devour\": gain one random healing effect card, then apply Taunt (1:00) to all hostile targets within 16 blocks.",
   "astral_dice.guide.entry.pandaman_sign.2": "Passive \"Good and Bad\": Using Hamburger grants 2 max health (up to 100, cleared on unequip); using Hamburger or Chocolate Cake gives friendly players within 8 blocks 2 healing and 1 Healing Point.",
   "astral_dice.guide.entry.pandaman_sign.3": "While equipped, counterattacks add damage equal to your missing health when you are not at full health. Taunted targets can only attack the player who taunted them.",
-  "msg.astral_dice.pandaman_active_used": "Pandaman Sign: Devour! Healing card gained and Taunt applied"
+  "msg.astral_dice.pandaman_active_used": "Pandaman Sign: Devour! Healing card gained and Taunt applied",
+  "tooltip.astral_dice.sign.pandaman_health_gain": "Health Gained: §e+%s§7"
 }

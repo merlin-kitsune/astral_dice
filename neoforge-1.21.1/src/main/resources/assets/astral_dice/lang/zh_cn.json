@@ -535,5 +535,6 @@
   "astral_dice.guide.entry.pandaman_sign.1": "肉弹战车立牌（Pandaman，稀有）。主动「大吃特吃」：获得一张随机治疗类效果牌，并对 16 格内所有敌对目标施加嘲讽（1:00）。",
   "astral_dice.guide.entry.pandaman_sign.2": "被动「有好有坏」：使用「汉堡」获得 2 点最大生命上限（不超过 100，卸下清除）；使用「汉堡」或「巧克力蛋糕」后，使 8 格内所有友方玩家获得 2 点治疗和 1 点治愈。",
   "astral_dice.guide.entry.pandaman_sign.3": "装备时反击若生命未满，增加缺失生命值等值的伤害。嘲讽目标只能攻击对其施加嘲讽的玩家。",
-  "msg.astral_dice.pandaman_active_used": "肉弹战车立牌：大吃特吃！获得了治疗牌并施加嘲讽"
+  "msg.astral_dice.pandaman_active_used": "肉弹战车立牌：大吃特吃！获得了治疗牌并施加嘲讽",
+  "tooltip.astral_dice.sign.pandaman_health_gain": "获得生命值: §e+%s§7"
 }
