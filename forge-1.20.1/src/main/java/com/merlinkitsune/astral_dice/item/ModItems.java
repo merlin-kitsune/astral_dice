@@ -667,17 +667,17 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(Rarity.RARE)));
 
-    // 永动机:触发骰神赐福时,充能 +6
-    public static final RegistryObject<Item> PERPETUAL_MOTION = registerItem("perpetual_motion_chip",
-            () -> new PerpetualMotionChipItem(new Item.Properties()
-                    .stacksTo(1)
-                    .rarity(Rarity.UNCOMMON)));
-
     // 高级外设:充能 ≥ 4 时攻击力 +4;每次触发骰神赐福移除 1 层充能
     public static final RegistryObject<Item> ADVANCED_PERIPHERALS = registerItem("advanced_peripherals_chip",
             () -> new AdvancedPeripheralsChipItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(Rarity.EPIC)));
+
+    // 永动机:触发骰神赐福时,充能 +6
+    public static final RegistryObject<Item> PERPETUAL_MOTION = registerItem("perpetual_motion_chip",
+            () -> new PerpetualMotionChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.UNCOMMON)));
 
     public static final RegistryObject<Item> PADMAN_SIGN = registerItem("padman_sign",
             () -> new PadmanSignItem(new Item.Properties()

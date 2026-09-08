@@ -893,6 +893,26 @@ public class ModTooltipHandler {
             tooltip.add(Component.empty());
             addChipLines(tooltip, "tooltip.astral_dice.chip.satellite", ChatFormatting.GRAY);
         }
+        if (stack.is(ModItems.WARP_ENGINE_CHIP.get())) {
+            tooltip.add(Component.empty());
+            addChipLines(tooltip, "tooltip.astral_dice.chip.warp_engine", ChatFormatting.GRAY);
+        }
+        if (stack.is(ModItems.ENERGY_RECYCLER.get())) {
+            tooltip.add(Component.empty());
+            addChipLines(tooltip, "tooltip.astral_dice.chip.energy_recycler", ChatFormatting.GRAY);
+        }
+        if (stack.is(ModItems.ELECTRIC_SWORD.get())) {
+            tooltip.add(Component.empty());
+            addChipLines(tooltip, "tooltip.astral_dice.chip.electric_sword", ChatFormatting.GRAY);
+        }
+        if (stack.is(ModItems.ADVANCED_PERIPHERALS.get())) {
+            tooltip.add(Component.empty());
+            addChipLines(tooltip, "tooltip.astral_dice.chip.advanced_peripherals", ChatFormatting.GRAY);
+        }
+        if (stack.is(ModItems.PERPETUAL_MOTION.get())) {
+            tooltip.add(Component.empty());
+            addChipLines(tooltip, "tooltip.astral_dice.chip.perpetual_motion", ChatFormatting.GRAY);
+        }
         if (stack.is(ModItems.PADMAN_SIGN.get())) {
             tooltip.add(Component.empty());
             addSignKeyHint(tooltip);
