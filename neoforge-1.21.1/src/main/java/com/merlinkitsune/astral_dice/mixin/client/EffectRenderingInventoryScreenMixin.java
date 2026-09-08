@@ -1,5 +1,6 @@
 package com.merlinkitsune.astral_dice.mixin.client;
 
+import com.merlinkitsune.astral_dice.effect.ModEffects;
 import net.minecraft.client.gui.screens.inventory.EffectRenderingInventoryScreen;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
@@ -25,7 +26,8 @@ public abstract class EffectRenderingInventoryScreenMixin {
     private void astralDice$numericEffectLevelBadge(MobEffectInstance effect, CallbackInfoReturnable<Component> cir) {
         MutableComponent name = effect.getEffect().value().getDisplayName().copy();
         int amplifier = effect.getAmplifier();
-        if (amplifier >= 1 && amplifier <= 99) {
+        boolean isCharge = effect.getEffect().value() == ModEffects.CHARGE.get();
+        if (amplifier >= 0 && amplifier <= 99 && (isCharge || amplifier >= 1)) {
             name.append(CommonComponents.SPACE).append(Component.literal(String.valueOf(amplifier + 1)));
         }
         cir.setReturnValue(name);
