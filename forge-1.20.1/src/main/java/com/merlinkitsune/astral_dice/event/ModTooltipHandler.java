@@ -1101,7 +1101,7 @@ public class ModTooltipHandler {
             addSignKeyHint(tooltip);
             addSignActiveTitle(tooltip, "弱点反击");
             addSignLines(tooltip, "tooltip.astral_dice.sign.moses_active");
-            addSignPassiveTitle(tooltip, "弱点识破 / 精密技巧");
+            addSignPassiveTitle(tooltip, "精密技巧");
             addSignLines(tooltip, "tooltip.astral_dice.sign.moses_passive");
             if (event.getEntity() != null) {
                 addSignCounter(tooltip, "tooltip.astral_dice.sign.moses_weakness_reveal",
