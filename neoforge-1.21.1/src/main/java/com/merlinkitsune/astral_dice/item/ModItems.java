@@ -80,6 +80,7 @@ import com.merlinkitsune.astral_dice.item.chip.SatelliteChipItem;
 import com.merlinkitsune.astral_dice.item.chip.WarpEngineChipItem;
 import com.merlinkitsune.astral_dice.item.chip.EnergyRecyclerChipItem;
 import com.merlinkitsune.astral_dice.item.chip.ElectricSwordChipItem;
+import com.merlinkitsune.astral_dice.item.chip.PerpetualMotionChipItem;
 import com.merlinkitsune.astral_dice.item.chip.NinjaStarChipItem;
 import com.merlinkitsune.astral_dice.item.chip.FlashlightChipItem;
 
@@ -663,6 +664,12 @@ public class ModItems {
             () -> new ElectricSwordChipItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(Rarity.RARE)));
+
+    // 永动机:触发骰神赐福时,充能 +6
+    public static final DeferredItem<Item> PERPETUAL_MOTION = registerItem("perpetual_motion_chip",
+            () -> new PerpetualMotionChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.UNCOMMON)));
 
     public static final DeferredItem<Item> PADMAN_SIGN = registerItem("padman_sign",
             () -> new PadmanSignItem(new Item.Properties()

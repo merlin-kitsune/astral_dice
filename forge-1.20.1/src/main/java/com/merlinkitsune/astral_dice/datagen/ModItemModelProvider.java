@@ -119,5 +119,6 @@ public class ModItemModelProvider extends ItemModelProvider {
         basicItem(ModItems.WARP_ENGINE_CHIP.get());
         basicItem(ModItems.ENERGY_RECYCLER.get());
         basicItem(ModItems.ELECTRIC_SWORD.get());
+        basicItem(ModItems.PERPETUAL_MOTION.get());
     }
 }
