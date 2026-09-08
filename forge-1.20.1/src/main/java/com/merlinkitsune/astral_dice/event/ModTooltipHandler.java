@@ -1111,6 +1111,18 @@ public class ModTooltipHandler {
             }
             addSignCooldownRemaining(tooltip, event.getEntity());
         }
+        if (stack.is(ModItems.PANDAMAN_SIGN.get())) {
+            tooltip.add(Component.empty());
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "大吃特吃");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.pandaman_active");
+            addSignPassiveTitle(tooltip, "有好有坏");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.pandaman_passive");
+            if (event.getEntity() != null) {
+                addHealingPointsCounter(tooltip, player);
+            }
+            addSignCooldownRemaining(tooltip, event.getEntity());
+        }
     }
 
 }

@@ -14,6 +14,7 @@ import com.merlinkitsune.astral_dice.item.sign.ParunanSignItem;
 import com.merlinkitsune.astral_dice.item.sign.BaseSignItem;
 import com.merlinkitsune.astral_dice.item.sign.BonnieSignItem;
 import com.merlinkitsune.astral_dice.item.sign.MosesSignItem;
+import com.merlinkitsune.astral_dice.item.sign.PandamanSignItem;
 import com.merlinkitsune.astral_dice.effect.WeaknessRevealEffect;
 import com.merlinkitsune.astral_dice.item.BossEntityUtil;
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
@@ -724,6 +725,15 @@ public class DiceCombatEvents {
     @SubscribeEvent
     public static void onLivingChangeTarget(LivingChangeTargetEvent event) {
         if (event.isCanceled()) return;
+        // 肉弹战车立牌「嘲讽」:带嘲讽的目标只能攻击施加嘲讽的玩家
+        var tauntSource = ModAttachments.getPandamanTauntSource(event.getEntity());
+        if (event.getEntity().hasEffect(ModEffects.PANDAMAN_TAUNT.get()) && tauntSource.isPresent()) {
+            Player taunter = event.getEntity().level().getPlayerByUUID(tauntSource.get());
+            if (taunter != null && taunter.isAlive()) {
+                event.setNewTarget(taunter);
+                return;
+            }
+        }
         var newTarget = event.getNewTarget();
         if (!(newTarget instanceof Player player)) return;
         if (player.level().isClientSide()) return;
@@ -1115,6 +1125,13 @@ public class DiceCombatEvents {
         }
         if (hasFullPower) {
             total = Math.ceil(total * 1.5);
+        }
+        // 肉弹战车立牌(pandaman)常驻被动:反击时若生命未满,附加缺失生命值等值的伤害
+        if (PandamanSignItem.isEquipped(player)) {
+            double missingHp = Math.max(0.0, player.getMaxHealth() - player.getHealth());
+            if (missingHp > 0) {
+                total += missingHp;
+            }
         }
         return total;
     }

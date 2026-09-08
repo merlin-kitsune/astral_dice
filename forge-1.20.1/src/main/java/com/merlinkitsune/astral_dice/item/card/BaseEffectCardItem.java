@@ -18,6 +18,7 @@ import com.merlinkitsune.astral_dice.item.chip.CandyChipItem;
 import com.merlinkitsune.astral_dice.item.chip.SatelliteChipItem;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.sign.FenSignItem;
+import com.merlinkitsune.astral_dice.item.sign.PandamanSignItem;
 import com.merlinkitsune.astral_dice.item.sign.JasmineSignItem;
 import com.merlinkitsune.astral_dice.item.chip.MagicQuiverChipItem;
 import com.merlinkitsune.astral_dice.item.sign.KomachiSignItem;
@@ -233,6 +234,10 @@ public abstract class BaseEffectCardItem extends Item {
         // 治疗类效果牌:大当家立牌被动"养精蓄锐 +1 层"
         if (isHealingCard()) {
             FenSignItem.onHealingCardUsed(player);
+        }
+        // 肉弹战车立牌被动:使用汉堡/巧克力蛋糕后触发治疗与生命上限效果
+        if (stack.is(ModItems.HAMBURGER.get()) || stack.is(ModItems.CHOCOLATE_CAKE.get())) {
+            PandamanSignItem.onHealingFoodUsed(player, stack.is(ModItems.HAMBURGER.get()));
         }
 
         // 复制计数钩子(忍者立牌/魔法秘典/魔法箭袋):全部效果牌均参与,无排除项

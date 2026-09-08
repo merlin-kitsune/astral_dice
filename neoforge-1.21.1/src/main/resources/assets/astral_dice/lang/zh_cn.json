@@ -526,5 +526,14 @@
   "msg.astral_dice.komachi_active": "忍者立牌：已获得效果牌出牌数+1，剩余出牌数：%d",
   "msg.astral_dice.mimi_active": "看板立牌：已获得%d张新卡牌，并获得了%d枚星币",
   "msg.astral_dice.nancy_lu_active": "骇客立牌：已触发完全隐身 (%d 秒)，攻击任意一个目标获得攻击力加成并移除完全隐身",
-  "tooltip.astral_dice.sign.misaki_death_note": "死亡时丢失所有「剑气」层数"
+  "tooltip.astral_dice.sign.misaki_death_note": "死亡时丢失所有「剑气」层数",
+  "item.astral_dice.pandaman_sign": "肉弹战车立牌",
+  "effect.astral_dice.pandaman_taunt": "嘲讽",
+  "effect.astral_dice.pandaman_taunt.description": "使目标只能攻击对其施加嘲讽的玩家",
+  "tooltip.astral_dice.sign.pandaman_active": "获得一张随机治疗类效果牌（汉堡/巧克力蛋糕/奢华大餐）\n对 §e16§7 格内所有敌对目标施加 §c嘲讽 (1:00)§7",
+  "tooltip.astral_dice.sign.pandaman_passive": "使用「汉堡」后获得 §e2§7 点最大生命上限（不超过 §e100§7 点，卸下清除）\n使用「汉堡」或「巧克力蛋糕」后，使 §e8§7 格内所有友方玩家获得 §e2§7 点治疗和 §e1§7 点治愈\n反击时若生命未满，增加缺失生命值等值的伤害",
+  "astral_dice.guide.entry.pandaman_sign.1": "肉弹战车立牌（Pandaman，稀有）。主动「大吃特吃」：获得一张随机治疗类效果牌，并对 16 格内所有敌对目标施加嘲讽（1:00）。",
+  "astral_dice.guide.entry.pandaman_sign.2": "被动「有好有坏」：使用「汉堡」获得 2 点最大生命上限（不超过 100，卸下清除）；使用「汉堡」或「巧克力蛋糕」后，使 8 格内所有友方玩家获得 2 点治疗和 1 点治愈。",
+  "astral_dice.guide.entry.pandaman_sign.3": "装备时反击若生命未满，增加缺失生命值等值的伤害。嘲讽目标只能攻击对其施加嘲讽的玩家。",
+  "msg.astral_dice.pandaman_active_used": "肉弹战车立牌：大吃特吃！获得了治疗牌并施加嘲讽"
 }

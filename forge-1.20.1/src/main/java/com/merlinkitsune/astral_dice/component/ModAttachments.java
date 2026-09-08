@@ -707,6 +707,31 @@ public class ModAttachments {
     // 蓄力卡:在骰神赐福进行中放入骰子时置位。置位期间蓄力不提供 +5 固定攻击,
     // 且本次赐福结束时不转换为"全力攻击";下次触发骰神赐福时正常生效并在其结束时转换。
 
+    // 肉弹战车立牌(pandaman)被动:吃汉堡累计的生命值上限加成(卸下立牌时清除)
+    public static final AttachedDataKey<Integer> PANDAMAN_MAX_HEALTH_BONUS =
+            register(AttachedDataKey.builder("pandaman_max_health_bonus", Codec.INT, () -> 0).build());
+
+    public static int getPandamanMaxHealthBonus(net.minecraft.world.entity.player.Player player) {
+        return PANDAMAN_MAX_HEALTH_BONUS.get(player);
+    }
+
+    public static void setPandamanMaxHealthBonus(net.minecraft.world.entity.player.Player player, int value) {
+        PANDAMAN_MAX_HEALTH_BONUS.set(player, Math.max(0, value));
+    }
+
+    // 嘲讽来源:肉弹战车立牌(pandaman)主动施加"嘲讽"的玩家 UUID
+    public static final AttachedDataKey<Optional<UUID>> PANDAMAN_TAUNT_SOURCE =
+            register(AttachedDataKey.builder("pandaman_taunt_source",
+                    UUIDUtil.CODEC.optionalFieldOf("id").codec(), Optional::empty).build());
+
+    public static Optional<UUID> getPandamanTauntSource(net.minecraft.world.entity.LivingEntity entity) {
+        return PANDAMAN_TAUNT_SOURCE.get(entity);
+    }
+
+    public static void setPandamanTauntSource(net.minecraft.world.entity.LivingEntity entity, Optional<UUID> value) {
+        PANDAMAN_TAUNT_SOURCE.set(entity, value);
+    }
+
     // 计时器守卫:本模组有时长效果的结束时刻记录(效果注册名 → 结束 tick + 重施加参数)。
     // 仅服务端使用,序列化持久化;由 EffectTimerGuard 维护,保证效果严格按 20t/s 流动。
     public static final AttachedDataKey<Map<String,

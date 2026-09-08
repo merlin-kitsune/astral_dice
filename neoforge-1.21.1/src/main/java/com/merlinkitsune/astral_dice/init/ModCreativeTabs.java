@@ -95,6 +95,7 @@ public class ModCreativeTabs {
                 output.accept(ModItems.FEN_SIGN.get());
                 output.accept(ModItems.NANCY_LU_SIGN.get());
                 output.accept(ModItems.MOSES_SIGN.get());
+                output.accept(ModItems.PANDAMAN_SIGN.get());
                 // 筹码
                 // === 星光类 ===
                 output.accept(ModItems.FLASHLIGHT_CHIP.get());

@@ -131,4 +131,8 @@ public class ModEffects {
     // 枪匠立牌主动待命:主动已激活,攻击敌对目标后施加"破绽"
     public static final DeferredHolder<MobEffect, MobEffect> MOSES_READY =
             EFFECTS.register("moses_ready", () -> new ReadyEffect(0x8B5A2B));
+
+    // 嘲讽(肉弹战车立牌 pandaman 主动):目标只能攻击对其施加嘲讽的玩家
+    public static final DeferredHolder<MobEffect, MobEffect> PANDAMAN_TAUNT =
+            EFFECTS.register("pandaman_taunt", PandamanTauntEffect::new);
 }

@@ -1006,6 +1006,18 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('T', Items.REDSTONE_BLOCK)
                 .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
                 .save(output::accept);
+
+        // 肉弹战车立牌(Pandaman):WHW/HCH/BBB(W=白色混凝土,H=黑色混凝土,C=空白立牌,B=星币)
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.PANDAMAN_SIGN.get())
+                .pattern("WHW")
+                .pattern("HCH")
+                .pattern("BBB")
+                .define('W', Items.WHITE_CONCRETE)
+                .define('H', Items.BLACK_CONCRETE)
+                .define('C', ModItems.BLANK_SIGN.get())
+                .define('B', ModItems.STAR_COIN.get())
+                .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
+                .save(output::accept);
     }
     // 1.20.1 无 1.21 的 DataComponentIngredient:以 PartialNBTIngredient 匹配指定药水
     private static net.minecraft.nbt.CompoundTag potionTag(String potionId) {

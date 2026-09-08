@@ -36,6 +36,7 @@ import com.merlinkitsune.astral_dice.item.chip.BigBackpackChipItem;
 import com.merlinkitsune.astral_dice.item.sign.HaiqingSignItem;
 import com.merlinkitsune.astral_dice.item.sign.NancyLuSignItem;
 import com.merlinkitsune.astral_dice.item.sign.MosesSignItem;
+import com.merlinkitsune.astral_dice.item.sign.PandamanSignItem;
 import com.merlinkitsune.astral_dice.item.card.ExpressDeliveryCardItem;
 import com.merlinkitsune.astral_dice.item.sign.PaparaSignItem;
 import com.merlinkitsune.astral_dice.item.card.LuxuryFeastCardItem;
@@ -734,6 +735,12 @@ public class ModItems {
             () -> new MosesSignItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(Rarity.EPIC)));
+
+    // 肉弹战车立牌(命名:pandaman,稀有):治疗/生命上限被动 + 大吃特吃主动
+    public static final DeferredItem<Item> PANDAMAN_SIGN = registerItem("pandaman_sign",
+            () -> new PandamanSignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.RARE)));
 
     public static <T extends Item> DeferredItem<T> registerItem(String name, Supplier<T> itemSupplier) {
         return ITEMS.register(name, itemSupplier);

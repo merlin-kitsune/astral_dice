@@ -526,5 +526,14 @@
   "msg.astral_dice.komachi_active": "Ninja sign: effect card play count +1 granted. Remaining plays: %d",
   "msg.astral_dice.mimi_active": "Noticeboard sign: got %d new cards and %d Star Coins",
   "msg.astral_dice.nancy_lu_active": "Hacker sign: full invisibility triggered (%d s) — attack any target to gain an attack bonus and end the invisibility",
-  "tooltip.astral_dice.sign.misaki_death_note": "All Sword Qi stacks are lost on death"
+  "tooltip.astral_dice.sign.misaki_death_note": "All Sword Qi stacks are lost on death",
+  "item.astral_dice.pandaman_sign": "Pandaman Sign",
+  "effect.astral_dice.pandaman_taunt": "Taunt",
+  "effect.astral_dice.pandaman_taunt.description": "Forces the target to attack only the player who taunted it",
+  "tooltip.astral_dice.sign.pandaman_active": "Gain a random healing effect card (Hamburger/Chocolate Cake/Luxury Feast)\nApply §cTaunt (1:00)§7 to all hostile targets within §e16§7 blocks",
+  "tooltip.astral_dice.sign.pandaman_passive": "Using Hamburger grants §e2§7 max health (up to §e100§7, cleared on unequip)\nUsing Hamburger or Chocolate Cake gives friendly players within §e8§7 blocks §e2§7 healing and §e1§7 Healing Point\nWhen counterattacking while not at full health, add damage equal to missing health",
+  "astral_dice.guide.entry.pandaman_sign.1": "Pandaman Sign (rare). Active \"Devour\": gain one random healing effect card, then apply Taunt (1:00) to all hostile targets within 16 blocks.",
+  "astral_dice.guide.entry.pandaman_sign.2": "Passive \"Good and Bad\": Using Hamburger grants 2 max health (up to 100, cleared on unequip); using Hamburger or Chocolate Cake gives friendly players within 8 blocks 2 healing and 1 Healing Point.",
+  "astral_dice.guide.entry.pandaman_sign.3": "While equipped, counterattacks add damage equal to your missing health when you are not at full health. Taunted targets can only attack the player who taunted them.",
+  "msg.astral_dice.pandaman_active_used": "Pandaman Sign: Devour! Healing card gained and Taunt applied"
 }

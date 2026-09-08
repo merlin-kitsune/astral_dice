@@ -805,6 +805,34 @@ public class ModAttachments {
         player.setData(DEFENSE_CARD_CONSUMED_BLESSING.get(), value);
     }
 
+    // 肉弹战车立牌(pandaman)被动:吃汉堡累计的生命值上限加成(卸下立牌时清除)
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> PANDAMAN_MAX_HEALTH_BONUS =
+            ATTACHMENTS.register("pandaman_max_health_bonus", () -> AttachmentType.builder(() -> 0)
+                    .serialize(Codec.INT)
+                    .build());
+
+    public static int getPandamanMaxHealthBonus(net.minecraft.world.entity.player.Player player) {
+        return player.getData(PANDAMAN_MAX_HEALTH_BONUS.get());
+    }
+
+    public static void setPandamanMaxHealthBonus(net.minecraft.world.entity.player.Player player, int value) {
+        player.setData(PANDAMAN_MAX_HEALTH_BONUS.get(), Math.max(0, value));
+    }
+
+    // 嘲讽来源:肉弹战车立牌(pandaman)主动施加"嘲讽"的玩家 UUID
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Optional<UUID>>> PANDAMAN_TAUNT_SOURCE =
+            ATTACHMENTS.register("pandaman_taunt_source", () -> AttachmentType.<Optional<UUID>>builder(Optional::empty)
+                    .serialize(UUIDUtil.CODEC.optionalFieldOf("id").codec())
+                    .build());
+
+    public static Optional<UUID> getPandamanTauntSource(net.minecraft.world.entity.LivingEntity entity) {
+        return entity.getData(PANDAMAN_TAUNT_SOURCE.get());
+    }
+
+    public static void setPandamanTauntSource(net.minecraft.world.entity.LivingEntity entity, Optional<UUID> value) {
+        entity.setData(PANDAMAN_TAUNT_SOURCE.get(), value);
+    }
+
     // 计时器守卫:本模组有时长效果的结束时刻记录(效果注册名 → 结束 tick + 重施加参数)。
     // 仅服务端使用,序列化持久化;由 EffectTimerGuard 维护,保证效果严格按 20t/s 流动。
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Map<String,
