@@ -49,7 +49,7 @@ This changelog is fully split by language: the Chinese version comes first, foll
 - 新增筹码「肾上腺素-一般」(史诗)恢复,「肾上腺素-高效」(传奇)配方回滚为升级链:一般=生命值低于最大生命值一半时攻击/防御 +3;高效=+8 且触发时被敌方攻击有 20%% 概率闪避单次攻击。配方:一般=ZXZ/DCD/PPP(Z=再生药水,X=下界之星,D=凋零玫瑰,C=空白筹码,P=星盘);高效=RZR/ZOZ/PPP(R=红石粉,Z=钻石,O=肾上腺素-一般,P=黄金星盘)(双版本)。
 - 标靶筹码:触发骰神赐福后,对**距离最近的敌对目标**施加 1 层标记(移除原「标靶范围内随机」逻辑与 `target_chip_range` 范围配置,不再限定作用距离)(仅 1.21.1)。
 - 夹心饼干-美味:最大生命值 +12 → +8;移除「生命值低于一半时每 1:00 获得 1 层「反击」」;新增:最大生命值超过 20 点时,超出部分每 4 点生命值 +1 攻击力(仅 1.21.1)。
-- 创造物品栏骰子顺序调整:玻璃骰子、下界岩骰子移到下界合金骰子之后(1.20.1 已同步,双版本一致)。 / Creative tab dice order adjusted: Glass and Netherrack dice now appear after the Netherite die (both loaders).
+- 创造物品栏骰子顺序调整:下界之星骰子移到下界合金骰子正后方;玻璃骰子、下界岩骰子移到下界合金骰子之后(1.20.1 已同步,双版本一致)。 / Creative tab dice order adjusted: the Nether Star die now appears immediately after the Netherite die; Glass and Netherrack dice also appear after the Netherite die (both loaders).
 - 立牌显示顺序调整:创造栏与帕秋莉手册按稀有度低→高排列(蓝稀有 → 紫史诗 → 金传奇,同稀有度保持原内部顺序)(双版本一致)。 / Sign display order adjusted: creative tab and Patchouli handbook now sort by rarity low→high (RARE → EPIC → UNCOMMON in this mod's quality mapping; same-rarity signs keep their existing relative order) (both loaders).
 - 文本/手册整理:合并本地修改至双版本——Moses 手册被动页合并、移除 integration 第 4 页(千咒刻印)、Pandaman tooltip 嘲讽改为蓝色;同时移除肉弹战车立牌 tooltip 两个计数器之间的多余空行。 / Text/handbook cleanup merged to both loaders: Moses handbook passive pages merged, integration page 4 (Curse Mark) removed, Pandaman tooltip Taunt recolored blue, and the extra blank line between the two Pandaman tooltip counters was removed.
 - 修复骰子 tooltip 显示攻击牌时加成误标为「骰子」及染色问题:攻击牌(中/大/特大/名刀)统一显示为「攻击」,范围不再带「+」前缀,与防御牌/独立牌 tooltip 格式一致(仅 1.21.1)。
