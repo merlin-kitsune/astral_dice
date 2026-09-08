@@ -4,6 +4,7 @@ import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
 
 import com.merlinkitsune.astral_dice.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.event.AstralEventSystem;
+import com.merlinkitsune.astral_dice.event.EventTargetCollector;
 import com.merlinkitsune.astral_dice.network.ActionBarPayload;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
@@ -69,13 +70,12 @@ public final class InvestigationEventUtil {
         if (applier != null && applier != self) {
             recipients.add(applier);
         }
-        // 真相揭露:同队伍内所有玩家,以及"参与 boss 战"的玩家(附近存在 boss 生物时,周围 32 格内的玩家)
+        // 真相揭露:队伍/友方内所有玩家,以及"参与 boss 战"的玩家(附近存在 boss 生物时,周围 32 格内的玩家)
         if (stage >= 4) {
-            if (self.getTeam() != null) {
-                for (Player p : self.level().players()) {
-                    if (p.getTeam() == self.getTeam() && !recipients.contains(p)) {
-                        recipients.add(p);
-                    }
+            // 触发者已加入队伍时只影响同队玩家;未加入任何队伍时 collectTeamPlayers 返回全服在线玩家
+            for (Player ally : EventTargetCollector.collectTeamPlayers(self)) {
+                if (!recipients.contains(ally)) {
+                    recipients.add(ally);
                 }
             }
             boolean bossNearby = !self.level().getEntitiesOfClass(net.minecraft.world.entity.Mob.class,
