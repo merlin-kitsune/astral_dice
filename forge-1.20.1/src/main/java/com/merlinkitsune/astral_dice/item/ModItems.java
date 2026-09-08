@@ -78,6 +78,7 @@ import com.merlinkitsune.astral_dice.item.chip.PiercingGunChipItem;
 import com.merlinkitsune.astral_dice.item.chip.CandyChipItem;
 import com.merlinkitsune.astral_dice.item.chip.FriendshipBadgeChipItem;
 import com.merlinkitsune.astral_dice.item.chip.SatelliteChipItem;
+import com.merlinkitsune.astral_dice.item.chip.WarpEngineChipItem;
 import com.merlinkitsune.astral_dice.item.chip.NinjaStarChipItem;
 import com.merlinkitsune.astral_dice.item.chip.FlashlightChipItem;
 
@@ -643,6 +644,12 @@ public class ModItems {
             () -> new SatelliteChipItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(Rarity.UNCOMMON)));
+
+    // 跃迁引擎:触发指定传送后,获得 2 层充能并获得迅捷 0:10
+    public static final RegistryObject<Item> WARP_ENGINE_CHIP = registerItem("warp_engine_chip",
+            () -> new WarpEngineChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.RARE)));
 
     public static final RegistryObject<Item> PADMAN_SIGN = registerItem("padman_sign",
             () -> new PadmanSignItem(new Item.Properties()

@@ -116,5 +116,6 @@ public class ModItemModelProvider extends ItemModelProvider {
         basicItem(ModItems.CANDY_CHIP.get());
         basicItem(ModItems.FRIENDSHIP_BADGE.get());
         basicItem(ModItems.SATELLITE_CHIP.get());
+        basicItem(ModItems.WARP_ENGINE_CHIP.get());
     }
 }

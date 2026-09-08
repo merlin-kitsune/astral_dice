@@ -126,6 +126,8 @@ public class ModCreativeTabs {
                 output.accept(ModItems.HAND_FAN_SMALL_CHIP.get());
                 output.accept(ModItems.HAND_FAN_BIG_CHIP.get());
                 output.accept(ModItems.MAGIC_QUIVER.get());
+                // === 充能类 ===
+                output.accept(ModItems.WARP_ENGINE_CHIP.get());
                 // === 无流派 ===
                 output.accept(ModItems.MAGIC_TOME_CHIP.get());
                 output.accept(ModItems.BIG_BACKPACK_CHIP.get());

@@ -51,6 +51,8 @@ public class AstralDiceMod {
             net.neoforged.neoforge.common.NeoForge.EVENT_BUS
                     .register(com.merlinkitsune.astral_dice.event.IronSpellbooksCompat.class);
         }
+        // Waystones 传送联动:仅在模组加载时反射注册事件,未安装时静默跳过
+        com.merlinkitsune.astral_dice.event.WaystoneWarpCompat.init();
         if (FMLEnvironment.dist == Dist.CLIENT) {
             modEventBus.addListener(this::registerScreens);
         }

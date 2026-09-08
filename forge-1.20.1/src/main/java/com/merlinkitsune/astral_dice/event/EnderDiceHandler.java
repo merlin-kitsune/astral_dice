@@ -4,6 +4,7 @@ import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.item.CuriosCompat;
 import com.merlinkitsune.astral_dice.item.ModItems;
+import com.merlinkitsune.astral_dice.item.chip.WarpEngineChipItem;
 import com.merlinkitsune.astral_dice.network.ModNetwork;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
@@ -169,6 +170,7 @@ public final class EnderDiceHandler {
         Vec3 from = player.position();
         if (tryTeleportToSafeGround(player)) {
             playTeleportEffects((ServerLevel) player.level(), from, player.position());
+            WarpEngineChipItem.onTeleport(player);
         }
         // 开始 5:00 冷却(以世界时间为准)
         ModAttachments.setEnderDieTotemCooldownEnd(player,
@@ -186,6 +188,7 @@ public final class EnderDiceHandler {
         Vec3 from = player.position();
         if (tryTeleportToSafeGround(player)) {
             playTeleportEffects((ServerLevel) player.level(), from, player.position());
+            WarpEngineChipItem.onTeleport(player);
         }
     }
 }
