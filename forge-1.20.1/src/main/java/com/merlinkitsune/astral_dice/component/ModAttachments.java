@@ -132,7 +132,7 @@ public class ModAttachments {
     public static final AttachedDataKey<String> KOMACHI_LAST_CARD =
             register(AttachedDataKey.builder("komachi_last_card", Codec.STRING, () -> "").build());
 
-    // 忍者立牌(komachi):效果牌伤害增益(每使用 3 张效果牌 +1,上限见 GameplayConstants.KOMACHI_DAMAGE_BONUS_MAX)
+    // 忍者立牌(komachi):效果牌伤害增益(每使用 3 张效果牌 +1,无上限,卸下立牌重置)
     public static final AttachedDataKey<Integer> KOMACHI_DAMAGE_BONUS =
             register(AttachedDataKey.builder("komachi_damage_bonus", Codec.INT, () -> 0).sync().build());
 

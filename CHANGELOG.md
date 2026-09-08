@@ -60,6 +60,7 @@ This changelog is fully split by language: the Chinese version comes first, foll
 - 效果等级角标改为阿拉伯数字并扩展上限:原版显示罗马数字(II~X)且仅到等级 10,现改为阿拉伯数字角标(如「治愈 3」「治愈 32」)并支持到等级 100(新增 `EffectRenderingInventoryScreenMixin`;1.20.1 经 Mixin Booster 运行时重映射,`getEffect()` 无 Holder 包装)(双版本)。
 
 - 配置文件精简重写:公共配置版本重置为 1;移除 client 配置文件;移除效果牌伤害加成上限、活体书页伤害上限、立牌主动冷却、立牌等待期、所有立牌数值、骰神赐福时长、诅咒之剑上限配置项——这些数值固定为 GameplayConstants 常量(数值保持不变);需要选择目标/等待释放的立牌(占星师、秘密侦探、枪匠)等待期固定为常量 30 秒。 / Config rewritten and trimmed: common config version reset to 1; the client config was removed; the damage-bonus cap, Living Page cap, sign active cooldown, sign waiting time, all sign numeric tuning, Dice Blessing duration, and Cursed Sword cap entries were removed and are now fixed GameplayConstants values (values unchanged); target/wait signs (Astrologer, Undercover Detective, Gunsmith) use the fixed 30-second wait constant.
+- 移除法伤模块伤害加成上限:活体书页“每次使用叠加伤害”与忍者立牌“效果牌伤害增益”均改为无上限(卸下/移除立牌仍会重置),删除不再使用的 `MAX_DAMAGE_EFFECT_BONUS` 及固定常量 `LIVING_PAGE_BONUS_CAP`/`KOMACHI_DAMAGE_BONUS_MAX`;手册与 tooltip 同步移除“上限 20/10”文案(双版本一致)。 / Removed the spell-damage bonus caps: both the Living Page per-use stacking damage and the Ninja sign “Effect Card Damage Bonus” are now uncapped (still reset on unequip); the unused `MAX_DAMAGE_EFFECT_BONUS` and the fixed constants `LIVING_PAGE_BONUS_CAP`/`KOMACHI_DAMAGE_BONUS_MAX` were deleted, and handbook/tooltip text no longer mentions “cap 20/10” (both loaders).
 
 ### 已修复BUG
 

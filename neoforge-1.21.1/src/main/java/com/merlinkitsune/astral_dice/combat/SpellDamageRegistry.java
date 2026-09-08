@@ -1,6 +1,5 @@
 package com.merlinkitsune.astral_dice.combat;
 
-import com.merlinkitsune.astral_dice.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.event.AmethystDiceHandler;
@@ -147,7 +146,7 @@ public final class SpellDamageRegistry {
         });
 
         // === 内置修饰器 ===
-        // 活体书页:对敌对目标远程/魔法伤害增加(基础 2 + 调查员(rin)已使用数量 + 忍者立牌效果牌伤害增益,上限),并施加 1 层标记
+        // 活体书页:对敌对目标远程/魔法伤害增加(基础 2 + 调查员(rin)已使用数量 + 忍者立牌效果牌伤害增益,均无上限),并施加 1 层标记
         registerModifier(new SpellDamageModifier() {
             @Override
             public boolean isActive(SpellDamageContext ctx) {
@@ -156,8 +155,7 @@ public final class SpellDamageRegistry {
 
             @Override
             public double apply(SpellDamageContext ctx, double bonus) {
-                int pages = Math.min(ModAttachments.getRinPages(ctx.attacker),
-                        GameplayConstants.LIVING_PAGE_BONUS_CAP);
+                int pages = ModAttachments.getRinPages(ctx.attacker);
                 return bonus + 2 + pages + ModAttachments.getKomachiDamageBonus(ctx.attacker);
             }
 

@@ -18,9 +18,6 @@ public final class GameplayConstants {
     public static int MAX_EFFECT_STACKS = 3;
     // 是否在玩家第一次加入世界时给予《恋的规则书》(默认 true)
     public static boolean GIVE_GUIDE_BOOK_ON_FIRST_JOIN = true;
-    // 伤害效果牌伤害加成上限(默认最大 16 点)
-    public static int MAX_DAMAGE_EFFECT_BONUS = 16;
-
     // === 事件系统 ===
     // 事件作用范围(格,默认 16)
     public static int EVENT_RANGE = 16;
@@ -32,8 +29,6 @@ public final class GameplayConstants {
     public static boolean EVENT_APPLY_OPAC = true;
     // 事件是否作用于玩家拥有的已放出女仆(需安装车万女仆模组)
     public static boolean EVENT_APPLY_MAID = true;
-    // 活体书页出牌伤害数增加上限(默认最大 20 点)
-    public static int LIVING_PAGE_BONUS_CAP = 20;
     // 立牌主动技能触发冷却(单位:秒,默认 180)
     public static int SIGN_ACTIVE_COOLDOWN_SECONDS = 180;
     // 立牌主动技能触发冷却 tick 数(派生值)
@@ -50,8 +45,6 @@ public final class GameplayConstants {
     public static int PARUNAN_PASSIVE_INTERVAL_SECONDS = 60;
     // 手持风扇-大:主动技能后对周围敌对目标施加标记的范围(格,默认 16)
     public static int HAND_FAN_BIG_RANGE = 16;
-    // 忍者立牌:效果牌伤害增益上限(每使用 3 张效果牌 +1,默认 10,最大 16)
-    public static int KOMACHI_DAMAGE_BONUS_MAX = 10;
     // 忍者立牌:主动"出牌数+1"银行的存储上限(仅银行容量,与出牌上限无关)
     public static final int KOMACHI_EXTRA_PLAYS_CAP = 9;
 

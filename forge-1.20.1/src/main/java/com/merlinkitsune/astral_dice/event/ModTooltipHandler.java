@@ -254,7 +254,7 @@ public class ModTooltipHandler {
         if (player.hasEffect(ModEffects.ORBITAL_STRIKE.get())) bonus += 8 + komachi;
         if (player.hasEffect(ModEffects.DIRECTIONAL_BLAST.get())) bonus += 5 + komachi;
         if (player.hasEffect(ModEffects.LIVING_PAGE.get())) {
-            int pages = Math.min(ModAttachments.getRinPages(player), GameplayConstants.LIVING_PAGE_BONUS_CAP);
+            int pages = ModAttachments.getRinPages(player);
             bonus += 2 + pages + komachi;
         }
         tooltip.add(tt("tooltip.astral_dice.card.active_damage_bonus", bonus)
@@ -632,8 +632,7 @@ public class ModTooltipHandler {
             addSignLines(tooltip, "tooltip.astral_dice.sign.komachi_passive");
             if (event.getEntity() != null) {
                 addSignCounter(tooltip, "tooltip.astral_dice.sign.komachi_damage_bonus",
-                        ModAttachments.getKomachiDamageBonus(player),
-                        com.merlinkitsune.astral_dice.component.GameplayConstants.KOMACHI_DAMAGE_BONUS_MAX);
+                        ModAttachments.getKomachiDamageBonus(player));
             }
             addSignCooldownRemaining(tooltip, event.getEntity());
         }
@@ -924,7 +923,7 @@ public class ModTooltipHandler {
             addSignPassiveTitle(tooltip, "调查发现");
             addSignLines(tooltip, "tooltip.astral_dice.sign.rin_passive", 32);
             if (event.getEntity() != null) {
-                int pages = Math.min(ModAttachments.getRinPages(player), GameplayConstants.LIVING_PAGE_BONUS_CAP);
+                int pages = ModAttachments.getRinPages(player);
                 addSignCounter(tooltip, "tooltip.astral_dice.sign.rin_bonus", pages);
             }
             addSignCooldownRemaining(tooltip, event.getEntity());
@@ -933,7 +932,7 @@ public class ModTooltipHandler {
             tooltip.add(Component.empty());
             if (event.getEntity() != null) {
                 // 活体书页伤害 = 基础 2 + 调查员(rin)已使用数量 + 忍者立牌效果牌伤害增益
-                int pages = Math.min(ModAttachments.getRinPages(player), GameplayConstants.LIVING_PAGE_BONUS_CAP);
+                int pages = ModAttachments.getRinPages(player);
                 // 组件基础色为灰(普通文本);行内颜色码:数值=黄 §e、时间=蓝 §9
                 tooltip.add(Component.translatable("tooltip.astral_dice.card.living_page",
                                 2 + pages + ModAttachments.getKomachiDamageBonus(player))
