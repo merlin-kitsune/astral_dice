@@ -79,6 +79,7 @@ import com.merlinkitsune.astral_dice.item.chip.CandyChipItem;
 import com.merlinkitsune.astral_dice.item.chip.FriendshipBadgeChipItem;
 import com.merlinkitsune.astral_dice.item.chip.SatelliteChipItem;
 import com.merlinkitsune.astral_dice.item.chip.WarpEngineChipItem;
+import com.merlinkitsune.astral_dice.item.chip.EnergyRecyclerChipItem;
 import com.merlinkitsune.astral_dice.item.chip.NinjaStarChipItem;
 import com.merlinkitsune.astral_dice.item.chip.FlashlightChipItem;
 
@@ -648,6 +649,12 @@ public class ModItems {
     // 跃迁引擎:触发指定传送后,获得 2 层充能并获得迅捷 0:10
     public static final RegistryObject<Item> WARP_ENGINE_CHIP = registerItem("warp_engine_chip",
             () -> new WarpEngineChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.RARE)));
+
+    // 能量回收器:每移动 50 米获得 1 点充能
+    public static final RegistryObject<Item> ENERGY_RECYCLER = registerItem("energy_recycler_chip",
+            () -> new EnergyRecyclerChipItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(Rarity.RARE)));
 

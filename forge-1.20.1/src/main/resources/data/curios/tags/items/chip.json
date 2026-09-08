@@ -43,6 +43,7 @@
     "astral_dice:candy_chip",
     "astral_dice:friendship_badge_chip",
     "astral_dice:satellite_chip",
-    "astral_dice:warp_engine_chip"
+    "astral_dice:warp_engine_chip",
+    "astral_dice:energy_recycler_chip"
   ]
 }
