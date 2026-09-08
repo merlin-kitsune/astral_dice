@@ -13,12 +13,15 @@
     },
     "W": {
       "item": "minecraft:white_concrete"
+    },
+    "D": {
+      "item": "astral_dice:dice"
     }
   },
   "pattern": [
     "WHW",
     "HCH",
-    "BBB"
+    "BDB"
   ],
   "result": {
     "item": "astral_dice:pandaman_sign"

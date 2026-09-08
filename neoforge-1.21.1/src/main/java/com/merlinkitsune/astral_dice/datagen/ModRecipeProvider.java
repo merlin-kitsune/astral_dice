@@ -999,7 +999,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
                 .save(output);
 
-        // 枪匠立牌(Moses):GPG/TCT/PZP(G=弩,P=星盘,Z=钻石骰子,C=空白筹码,T=红石块)
+        // 枪匠立牌(Moses):GPG/TCT/PZP(G=弩,P=星盘,Z=钻石骰子,C=空白立牌,T=红石块)
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.MOSES_SIGN.get())
                 .pattern("GPG")
                 .pattern("TCT")
@@ -1007,20 +1007,21 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('G', Items.CROSSBOW)
                 .define('P', ModItems.STAR_PLATE.get())
                 .define('Z', ModItems.DIAMOND_DICE.get())
-                .define('C', ModItems.BLANK_CHIP.get())
+                .define('C', ModItems.BLANK_SIGN.get())
                 .define('T', Items.REDSTONE_BLOCK)
                 .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
                 .save(output);
 
-        // 肉弹战车立牌(Pandaman):WHW/HCH/BBB(W=白色混凝土,H=黑色混凝土,C=空白立牌,B=星币)
+        // 肉弹战车立牌(Pandaman):WHW/HCH/BDB(W=白色混凝土,H=黑色混凝土,C=空白立牌,B=星币,D=骰子)
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.PANDAMAN_SIGN.get())
                 .pattern("WHW")
                 .pattern("HCH")
-                .pattern("BBB")
+                .pattern("BDB")
                 .define('W', Items.WHITE_CONCRETE)
                 .define('H', Items.BLACK_CONCRETE)
                 .define('C', ModItems.BLANK_SIGN.get())
                 .define('B', ModItems.STAR_COIN.get())
+                .define('D', ModItems.DICE.get())
                 .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
                 .save(output);
     }
