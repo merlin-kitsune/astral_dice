@@ -1012,6 +1012,23 @@ public class DiceCombatEvents {
         }
     }
 
+    // 肉弹战车立牌(pandaman)主动「嘲讽」:被嘲讽目标攻击施加者时触发反击
+    // (沿用反击伤害公式;不消耗“反击”层数,每次嘲讽目标成功攻击时触发)
+    @SubscribeEvent
+    public static void onPandamanTauntCounter(LivingDamageEvent event) {
+        LivingEntity victim = event.getEntity();
+        if (victim.level().isClientSide()) return;
+        if (counterProcessing) return;
+        if (!(victim instanceof Player player)) return;
+        if (!player.isAlive()) return;
+        if (!(event.getSource().getEntity() instanceof LivingEntity attacker)) return;
+        if (!(attacker instanceof Enemy)) return;
+        if (!attacker.hasEffect(ModEffects.PANDAMAN_TAUNT.get())) return;
+        Optional<UUID> tauntSource = ModAttachments.getPandamanTauntSource(attacker);
+        if (tauntSource.isEmpty() || !tauntSource.get().equals(player.getUUID())) return;
+        retaliateCounterDamage(player, attacker);
+    }
+
     // === 反击流派(Counterattack) ===
     // 拥有反击层数的玩家受到敌对生物任何伤害时触发:消耗 1 层「反击」并把伤害来源登记为“反噬目标”;
     // 此后该目标每次对玩家造成伤害,都受到一次返还伤害 = 手持最高近战武器基础伤害 + 骰战攻击力加成链
