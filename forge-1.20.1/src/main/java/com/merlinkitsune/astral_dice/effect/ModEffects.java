@@ -116,9 +116,6 @@ public class ModEffects {
     public static final RegistryObject<MobEffect> REVENGE_HALBERD =
             EFFECTS.register("revenge_halberd", RevengeHalberdEffect::new);
 
-    // 反击(玩家效果/流派):层数 = amplifier+1;被近战敌方攻击时触发反击并消耗 1 层
-    public static final RegistryObject<MobEffect> COUNTERATTACK =
-            EFFECTS.register("counterattack", CounterattackEffect::new);
 
     // 弱点识破(枪匠立牌 Moses):玩家增益,层数 = amplifier+1;每层攻击/防御+1、骰点最低数+1
     public static final RegistryObject<MobEffect> WEAKNESS_REVEAL =

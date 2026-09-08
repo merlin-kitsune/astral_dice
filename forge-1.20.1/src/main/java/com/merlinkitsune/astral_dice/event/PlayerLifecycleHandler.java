@@ -9,7 +9,6 @@ import com.merlinkitsune.astral_dice.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
 import com.merlinkitsune.astral_dice.component.WeaponEnhancement;
-import com.merlinkitsune.astral_dice.effect.CounterattackEffect;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.item.sign.ParunanSignItem;
 import com.merlinkitsune.astral_dice.item.sign.BaseSignItem;
@@ -114,8 +113,6 @@ public class PlayerLifecycleHandler {
         if (player.level().isClientSide()) return;
         // 不死图腾等取消死亡:不视为死亡,不执行任何清理
         if (event.isCanceled()) return;
-        // 反击层数死亡保留:记录当前层数,重生后恢复
-        CounterattackEffect.captureBeforeDeath(player);
         // 玻璃骰子死亡惩罚:丢失玻璃骰子本体及其已装备的全部卡牌(同时收缩筹码栏)
         DiceCurioItem.removeGlassDiceOnDeath(player);
         HealingManager.clear(player);
@@ -199,8 +196,6 @@ public class PlayerLifecycleHandler {
         Player player = event.getEntity();
         if (player == null) return;
         if (player.level().isClientSide()) return;
-        // 反击层数死亡保留:重生后恢复
-        CounterattackEffect.restoreAfterRespawn(player);
         HealingManager.tick(player);
     }
 

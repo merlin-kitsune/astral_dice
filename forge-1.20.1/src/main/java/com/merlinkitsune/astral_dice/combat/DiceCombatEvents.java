@@ -63,7 +63,6 @@ import net.minecraftforge.event.AnvilUpdateEvent;
 import net.minecraftforge.event.LootTableLoadEvent;
 import net.minecraftforge.event.entity.living.LivingChangeTargetEvent;
 import net.minecraftforge.event.entity.living.LivingDamageEvent;
-import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import net.minecraftforge.event.entity.living.LivingDropsEvent;
 import net.minecraftforge.event.entity.living.MobEffectEvent;
 import net.minecraftforge.event.entity.player.ItemTooltipEvent;
@@ -127,7 +126,7 @@ public class DiceCombatEvents {
     private static boolean cleaveProcessing = false;
     // AOE(顺劈/溅射)波及伤害处理中:被波及目标不再进入骰战结算
     static boolean aoeProcessing = false;
-    // 反击流派:反击伤害结算进行中(防止反击伤害再次进入骰战结算/递归触发)
+    // 反击伤害注入进行中(防止注入的反击伤害再次进入骰战结算/递归触发)
     private static boolean counterProcessing = false;
 
 
@@ -179,7 +178,7 @@ public class DiceCombatEvents {
         }
 
         // AOE(顺劈/溅射)波及的目标不进入骰战结算,避免二次吃到完整骰战;
-        // 反击流派:反击伤害不进入骰战结算(已按反击公式自算)
+        // 反击伤害注入:注入伤害不进入骰战结算(已按反击公式自算)
         if (aoeProcessing || counterProcessing) return;
         if (!(directEntity instanceof Player player)) return;
         if (target == player) return;
@@ -635,7 +634,7 @@ public class DiceCombatEvents {
 
 
     // 攻击牌耐久消耗(仅在触发骰神赐福的那次攻击执行一次;防御牌/蓄力不消耗)。
-    // 普通近战触发与反击流派共用(反击未赐福时作为触发攻击消耗一次耐久)。
+    // 普通近战触发与反击伤害注入共用(反击未赐福时作为触发攻击消耗一次耐久)。
     private static void consumeAttackCardDurabilityOnce(Player player, ItemStack diceStack, WeaponEnhancement enhancement) {
         if (diceStack == null || diceStack.isEmpty() || enhancement == null
                 || enhancement.appliedStones().isEmpty()) return;
@@ -998,18 +997,8 @@ public class DiceCombatEvents {
         event.setAmount(0);
         // 获得弱点识破并标记该目标已闪避
         MosesSignItem.onDodgeCounter(player, attacker);
-        // 自动反击(沿用反击流派公式,含弱点识破攻击加成)
-        double dmg = computeCounterDamage(player, attacker);
-        if (dmg > 0) {
-            counterProcessing = true;
-            try {
-                attacker.hurt(com.merlinkitsune.astral_dice.damage.ModDamageTypes.diceDamage(attacker.level(), player),
-                        (float) dmg);
-                sendDamageNumber(attacker, (int) dmg);
-            } finally {
-                counterProcessing = false;
-            }
-        }
+        // 单次反击伤害注入(不进入反击效果/层数体系)
+        injectCounterDamage(player, attacker);
     }
 
     // 肉弹战车立牌(pandaman)主动「嘲讽」:被嘲讽目标攻击施加者时触发反击
@@ -1026,59 +1015,16 @@ public class DiceCombatEvents {
         if (!attacker.hasEffect(ModEffects.PANDAMAN_TAUNT.get())) return;
         Optional<UUID> tauntSource = ModAttachments.getPandamanTauntSource(attacker);
         if (tauntSource.isEmpty() || !tauntSource.get().equals(player.getUUID())) return;
-        retaliateCounterDamage(player, attacker);
+        injectCounterDamage(player, attacker);
     }
 
-    // === 反击流派(Counterattack) ===
-    // 拥有反击层数的玩家受到敌对生物任何伤害时触发:消耗 1 层「反击」并把伤害来源登记为“反噬目标”;
-    // 此后该目标每次对玩家造成伤害,都受到一次返还伤害 = 手持最高近战武器基础伤害 + 骰战攻击力加成链
-    // + 已装备攻击牌随机掷骰(每次独立随机;不含 1d6,不自动赐福),直至目标死亡。
-    // 返还伤害对总伤害计算七咒减益(含修正物),并可受「全力攻击」×1.5 等修正影响;
-    // 对 Boss 生物(末影龙/凋灵/监守者及灾变等)无效:不触发、不消耗层数、不登记。
-    // (目标死亡或玩家死亡时清理登记;触发瞬间不额外造成伤害,本次受击即开始返还。)
-    /** 反噬目标登记:玩家UUID -> 该玩家登记的反噬目标UUID集合(纯服务端,不持久化) */
-    private static final java.util.Map<java.util.UUID, java.util.Set<java.util.UUID>> COUNTER_RETALIATION_TARGETS =
-            new java.util.HashMap<>();
+    // === 反击伤害注入(Counterattack Damage Injection) ===
+    // 反击不再作为效果/流派存在:没有 counterattack 效果、没有层数、没有持续反噬周期。
+    // 具体触发源(肉弹战车嘲讽、枪匠破绽闪避)命中时调用 injectCounterDamage 做单次伤害计算并注入,
+    // 不登记反噬目标、不持续返还。
 
-    @SubscribeEvent
-    public static void onCounterattackTriggered(LivingDamageEvent event) {
-        LivingEntity victim = event.getEntity();
-        if (victim.level().isClientSide()) return;
-        if (counterProcessing) return;
-        if (!(victim instanceof Player player)) return;
-        if (!player.isAlive()) return;
-        DamageSource source = event.getSource();
-        Entity attackerEntity = source.getEntity();
-        if (!(attackerEntity instanceof LivingEntity attacker)) return;
-        if (!(attacker instanceof Enemy)) return;
-        // Boss 生物无效:不触发反击(不消耗层数/不登记/不返还)
-        if (BossEntityUtil.isBossEntity(attacker)) return;
-        if (!attacker.isAlive()) return;
-
-        java.util.UUID attackerId = attacker.getUUID();
-        java.util.Set<java.util.UUID> targets = COUNTER_RETALIATION_TARGETS.get(player.getUUID());
-        boolean alreadyRegistered = targets != null && targets.contains(attackerId);
-        // 新触发(任意敌对伤害均可):消耗 1 层「反击」并登记该目标(同一目标只登记一次,后续不再消耗层数)
-        boolean triggered = false;
-        if (!alreadyRegistered && player.hasEffect(ModEffects.COUNTERATTACK.get())) {
-            com.merlinkitsune.astral_dice.effect.CounterattackEffect.consumeOne(player);
-            if (targets == null) {
-                targets = new java.util.HashSet<>();
-                COUNTER_RETALIATION_TARGETS.put(player.getUUID(), targets);
-            }
-            targets.add(attackerId);
-            triggered = true;
-        }
-        // 已登记目标每次造成伤害都返还;本次触发(消耗层数)的受击同样立即返还
-        if (alreadyRegistered || triggered) {
-            // 枪匠立牌:任意来源的反击都会尝试获得 1 层弱点识破(每目标一次)
-            MosesSignItem.onDodgeCounter(player, attacker);
-            retaliateCounterDamage(player, attacker);
-        }
-    }
-
-    // 对反噬目标造成一次返还伤害(视为玩家伤害来源,不进入骰战结算/不递归触发)
-    private static void retaliateCounterDamage(Player player, LivingEntity attacker) {
+    // 对当前目标注入一次反击伤害(视为玩家伤害来源,不进入骰战结算/不递归触发)
+    private static void injectCounterDamage(Player player, LivingEntity attacker) {
         double dmg = computeCounterDamage(player, attacker);
         if (dmg <= 0) return;
         counterProcessing = true;
@@ -1151,21 +1097,6 @@ public class DiceCombatEvents {
             }
         }
         return total;
-    }
-
-    // 反噬目标死亡(或玩家死亡)时清理登记,避免残留
-    @SubscribeEvent
-    public static void onCounterTargetDeath(net.minecraftforge.event.entity.living.LivingDeathEvent event) {
-        if (event.getEntity().level().isClientSide()) return;
-        Entity dead = event.getEntity();
-        if (dead instanceof Player player) {
-            COUNTER_RETALIATION_TARGETS.remove(player.getUUID());
-            return;
-        }
-        if (dead instanceof Enemy) {
-            java.util.UUID deadId = dead.getUUID();
-            COUNTER_RETALIATION_TARGETS.values().forEach(set -> set.remove(deadId));
-        }
     }
 
     // 手持(主手+副手)近战武器的基础伤害最大值(不含附魔/属性效果);无近战武器回退空手 1.0
