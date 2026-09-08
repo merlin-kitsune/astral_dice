@@ -1102,15 +1102,17 @@ public class ModTooltipHandler {
             addSignKeyHint(tooltip);
             addSignActiveTitle(tooltip, "弱点反击");
             addSignLines(tooltip, "tooltip.astral_dice.sign.moses_active");
-            addSignPassiveTitle(tooltip, "弱点识破");
+            addSignPassiveTitle(tooltip, "弱点识破 / 精密技巧");
             addSignLines(tooltip, "tooltip.astral_dice.sign.moses_passive");
-            addSignPassiveTitle(tooltip, "精密技巧");
             addSignLines(tooltip, "tooltip.astral_dice.sign.moses_passive_precision");
             if (event.getEntity() != null) {
                 addSignCounter(tooltip, "tooltip.astral_dice.sign.moses_weakness_reveal",
                         com.merlinkitsune.astral_dice.effect.WeaknessRevealEffect.getStacks(player),
                         com.merlinkitsune.astral_dice.effect.WeaknessRevealEffect.MAX_STACKS);
             }
+            // 破绽效果描述:置于备注区(紫色,无标题)
+            tooltip.add(Component.empty());
+            addSignNoteLines(tooltip, "tooltip.astral_dice.sign.moses_broken_note");
             addSignCooldownRemaining(tooltip, event.getEntity());
         }
     }
