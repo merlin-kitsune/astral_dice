@@ -47,6 +47,8 @@ public class AstralDiceMod {
         if (net.minecraftforge.fml.ModList.get().isLoaded("irons_spellbooks")) {
             MinecraftForge.EVENT_BUS.register(com.merlinkitsune.astral_dice.event.IronSpellbooksCompat.class);
         }
+        // Waystones 传送联动:仅在模组加载时反射注册事件,未安装时静默跳过
+        com.merlinkitsune.astral_dice.event.WaystoneWarpCompat.init();
     }
 
     // 若配置文件版本号低于当前版本(新增了配置项):备份旧文件,由 Forge 加载时继承旧值并补齐新项

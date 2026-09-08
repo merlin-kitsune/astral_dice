@@ -2,6 +2,7 @@ package com.merlinkitsune.astral_dice.item.chip;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
+import com.merlinkitsune.astral_dice.event.WaystoneWarpCompat;
 import com.merlinkitsune.astral_dice.item.ChargeManager;
 import com.merlinkitsune.astral_dice.item.CuriosCompat;
 import com.merlinkitsune.astral_dice.item.ModItems;
@@ -21,7 +22,7 @@ import net.minecraftforge.fml.common.Mod;
  *   <li>末影珍珠传送;</li>
  *   <li>末影骰子不死图腾后的安全瞬移;</li>
  *   <li>进入维度传送门(EntityTravelToDimensionEvent);</li>
- *   <li>Waystone 传送(在 NeoForge 分支通过可选联动接入)。</li>
+ *   <li>Waystone 传送(通过 WaystoneWarpCompat 可选接入,避免跨维度时双重计数)。</li>
  * </ul>
  */
 @Mod.EventBusSubscriber(modid = AstralDiceMod.MODID)
@@ -62,6 +63,9 @@ public class WarpEngineChipItem extends BaseChipItem {
     public static void onDimensionTravel(EntityTravelToDimensionEvent event) {
         if (event.isCanceled()) return;
         if (event.getEntity() instanceof Player player) {
+            // Waystone 跨维度传送也会经过此事件;Pre 标记后这里只消费标记,不重复给充能,
+            // 由 WaystoneTeleportEntityEvent.Post 在实际传送成功后统一结算。
+            if (WaystoneWarpCompat.isPendingAndClear(player)) return;
             onTeleport(player);
         }
     }
