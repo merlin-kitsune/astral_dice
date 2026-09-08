@@ -732,6 +732,18 @@ public class ModAttachments {
         PANDAMAN_TAUNT_SOURCE.set(entity, value);
     }
 
+    // 恋的规则书:是否已在当前世界为玩家发放过首次加入的规则书(仅服务端持久化,无需同步)
+    public static final AttachedDataKey<Boolean> GUIDE_BOOK_GIVEN =
+            register(AttachedDataKey.builder("guide_book_given", Codec.BOOL, () -> false).build());
+
+    public static boolean isGuideBookGiven(net.minecraft.world.entity.player.Player player) {
+        return GUIDE_BOOK_GIVEN.get(player);
+    }
+
+    public static void setGuideBookGiven(net.minecraft.world.entity.player.Player player, boolean value) {
+        GUIDE_BOOK_GIVEN.set(player, value);
+    }
+
     // 计时器守卫:本模组有时长效果的结束时刻记录(效果注册名 → 结束 tick + 重施加参数)。
     // 仅服务端使用,序列化持久化;由 EffectTimerGuard 维护,保证效果严格按 20t/s 流动。
     public static final AttachedDataKey<Map<String,

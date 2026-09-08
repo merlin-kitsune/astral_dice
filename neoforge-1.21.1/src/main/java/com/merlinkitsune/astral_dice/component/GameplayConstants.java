@@ -16,6 +16,8 @@ public final class GameplayConstants {
     public static int EFFECT_CARD_COOLDOWN_SECONDS = 30;
     // 功能效果牌叠加层数上限(默认 3 层,伤害效果牌不使用该叠加)
     public static int MAX_EFFECT_STACKS = 3;
+    // 是否在玩家第一次加入世界时给予《恋的规则书》(默认 true)
+    public static boolean GIVE_GUIDE_BOOK_ON_FIRST_JOIN = true;
     // 伤害效果牌伤害加成上限(默认最大 16 点)
     public static int MAX_DAMAGE_EFFECT_BONUS = 16;
 
@@ -92,6 +94,7 @@ public final class GameplayConstants {
         MAX_MARKER = ModCommonConfig.MAX_MARKER.get();
         EFFECT_CARD_COOLDOWN_SECONDS = ModCommonConfig.EFFECT_CARD_COOLDOWN_SECONDS.get();
         MAX_EFFECT_STACKS = ModCommonConfig.MAX_EFFECT_STACKS.get();
+        GIVE_GUIDE_BOOK_ON_FIRST_JOIN = ModCommonConfig.GIVE_GUIDE_BOOK_ON_FIRST_JOIN.get();
 
         EVENT_RANGE = ModCommonConfig.EVENT_RANGE.get();
         EVENT_APPLY_MC_TEAM = ModCommonConfig.EVENT_APPLY_MC_TEAM.get();

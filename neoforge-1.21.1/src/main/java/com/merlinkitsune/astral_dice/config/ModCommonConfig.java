@@ -16,6 +16,7 @@ public final class ModCommonConfig {
     public static final ModConfigSpec.IntValue MAX_MARKER;
     public static final ModConfigSpec.IntValue EFFECT_CARD_COOLDOWN_SECONDS;
     public static final ModConfigSpec.IntValue MAX_EFFECT_STACKS;
+    public static final ModConfigSpec.BooleanValue GIVE_GUIDE_BOOK_ON_FIRST_JOIN;
     public static final ModConfigSpec.IntValue EVENT_RANGE;
     public static final ModConfigSpec.BooleanValue EVENT_APPLY_MC_TEAM;
     public static final ModConfigSpec.BooleanValue EVENT_APPLY_FTB_TEAM;
@@ -38,6 +39,8 @@ public final class ModCommonConfig {
                 .defineInRange("effect_card_cooldown_seconds", 30, 5, 120);
         MAX_EFFECT_STACKS = builder.comment("功能效果牌叠加层数上限(默认：3 层,伤害效果牌不使用该叠加)")
                 .defineInRange("max_effect_stacks", 3, 1, 9);
+        GIVE_GUIDE_BOOK_ON_FIRST_JOIN = builder.comment("是否在玩家第一次加入世界时给予《恋的规则书》(默认：true; 每个玩家每个世界只发放一次)")
+                .define("give_guide_book_on_first_join", true);
 
         builder.push("event_system").comment("=== 事件系统 ===");
         EVENT_RANGE = builder.comment("事件作用范围(格,默认 16)")

@@ -55,6 +55,7 @@ import net.minecraft.world.item.SwordItem;
 import net.minecraft.world.item.TridentItem;
 
 import net.minecraftforge.eventbus.api.EventPriority;
+import net.minecraftforge.fml.ModList;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.event.AnvilUpdateEvent;
@@ -68,6 +69,7 @@ import net.minecraftforge.event.entity.player.ItemTooltipEvent;
 import net.minecraftforge.event.entity.ProjectileImpactEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import top.theillusivec4.curios.api.CuriosApi;
+import vazkii.patchouli.common.item.ItemModBook;
 import top.theillusivec4.curios.api.type.inventory.ICurioStacksHandler;
 
 import java.util.ArrayList;
@@ -186,6 +188,8 @@ public class PlayerLifecycleHandler {
         ModEffectRemoval.remove(player, ModEffects.DICE_BLESSING.get());
         // 重连后刷新治愈体系(上限收缩/效果显示;赐福边沿 prev 标记初始 false,不会误触发减半)
         HealingManager.tick(player);
+        // 首次加入世界赠送《恋的规则书》(开关见 common 配置)
+        giveGuideBookOnFirstJoin(player);
     }
 
     // 死亡重生:刷新治愈体系(上限收缩/效果显示)
@@ -200,4 +204,15 @@ public class PlayerLifecycleHandler {
         HealingManager.tick(player);
     }
 
+    // 首次加入世界:若配置开启且玩家尚未领过,赠送《恋的规则书》(每个玩家在每个世界只发一次)
+    private static void giveGuideBookOnFirstJoin(Player player) {
+        if (!GameplayConstants.GIVE_GUIDE_BOOK_ON_FIRST_JOIN) return;
+        if (ModAttachments.isGuideBookGiven(player)) return;
+        if (!ModList.get().isLoaded("patchouli")) return;
+        ItemStack book = ItemModBook.forBook(new ResourceLocation(AstralDiceMod.MODID, "astral_guide"));
+        if (!player.getInventory().add(book)) {
+            player.drop(book, false);
+        }
+        ModAttachments.setGuideBookGiven(player, true);
+    }
 }
