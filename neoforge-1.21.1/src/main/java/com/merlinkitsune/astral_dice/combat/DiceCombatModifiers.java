@@ -11,6 +11,7 @@ import com.merlinkitsune.astral_dice.item.chip.BoxingGlovesChipItem;
 import com.merlinkitsune.astral_dice.item.chip.AdrenalineChipItem;
 import com.merlinkitsune.astral_dice.item.chip.RevengeHalberdChipItem;
 import com.merlinkitsune.astral_dice.item.chip.ElectricSwordChipItem;
+import com.merlinkitsune.astral_dice.item.chip.AdvancedPeripheralsChipItem;
 import com.merlinkitsune.astral_dice.item.sign.FenSignItem;
 import com.merlinkitsune.astral_dice.item.sign.NancyLuSignItem;
 import com.merlinkitsune.astral_dice.item.sign.MosesSignItem;
@@ -215,6 +216,13 @@ public final class DiceCombatModifiers {
         registerAttackModifier((ctx, ap) -> {
             if (ctx.attacker.level().isClientSide()) return ap;
             ap += ElectricSwordChipItem.getAttackBonus(ctx.attacker);
+            return ap;
+        });
+
+        // === 内置:高级外设(充能 ≥ 4 时攻击力 +4) ===
+        registerAttackModifier((ctx, ap) -> {
+            if (ctx.attacker.level().isClientSide()) return ap;
+            ap += AdvancedPeripheralsChipItem.getAttackBonus(ctx.attacker);
             return ap;
         });
 

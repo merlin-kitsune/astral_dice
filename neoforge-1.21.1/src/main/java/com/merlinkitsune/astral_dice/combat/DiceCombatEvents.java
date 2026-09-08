@@ -93,6 +93,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.merlinkitsune.astral_dice.item.chip.StarCoinHammerChipItem;
 import com.merlinkitsune.astral_dice.item.chip.PerpetualMotionChipItem;
+import com.merlinkitsune.astral_dice.item.chip.AdvancedPeripheralsChipItem;
 import com.merlinkitsune.astral_dice.item.chip.BufferShieldChipItem;
 import com.merlinkitsune.astral_dice.network.ActionBarPayload;
 import com.merlinkitsune.astral_dice.combat.CardRegistry;
@@ -315,6 +316,8 @@ public class DiceCombatEvents {
             }
             // 永动机筹码:触发骰神赐福时,充能 +6
             PerpetualMotionChipItem.onBlessingStart(player);
+            // 高级外设筹码:触发骰神赐福时,移除 1 层充能
+            AdvancedPeripheralsChipItem.onBlessingStart(player);
             // 大当家立牌:触发骰神赐福 → 养精蓄锐 -1 层并记录触发时刻;"战斗爽·扩散"待命则本次赐福启用
             com.merlinkitsune.astral_dice.item.sign.FenSignItem.onBlessingTriggered(player);
             // 治愈体系:触发骰神赐福 → 医疗箱加点(先)+ 按当前治愈点×2 回血(后)。

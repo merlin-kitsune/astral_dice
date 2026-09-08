@@ -131,6 +131,7 @@ public class ModCreativeTabs {
                 output.accept(ModItems.ENERGY_RECYCLER.get());
                 output.accept(ModItems.ELECTRIC_SWORD.get());
                 output.accept(ModItems.PERPETUAL_MOTION.get());
+                output.accept(ModItems.ADVANCED_PERIPHERALS.get());
                 // === 无流派 ===
                 output.accept(ModItems.MAGIC_TOME_CHIP.get());
                 output.accept(ModItems.BIG_BACKPACK_CHIP.get());
