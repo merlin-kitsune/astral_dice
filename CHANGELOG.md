@@ -50,6 +50,7 @@ This changelog is fully split by language: the Chinese version comes first, foll
 - 标靶筹码:触发骰神赐福后,对**距离最近的敌对目标**施加 1 层标记(移除原「标靶范围内随机」逻辑与 `target_chip_range` 范围配置,不再限定作用距离)(仅 1.21.1)。
 - 夹心饼干-美味:最大生命值 +12 → +8;移除「生命值低于一半时每 1:00 获得 1 层「反击」」;新增:最大生命值超过 20 点时,超出部分每 4 点生命值 +1 攻击力(仅 1.21.1)。
 - 创造物品栏骰子顺序调整:玻璃骰子、下界岩骰子移到下界合金骰子之后(1.20.1 已同步,双版本一致)。 / Creative tab dice order adjusted: Glass and Netherrack dice now appear after the Netherite die (both loaders).
+- 立牌显示顺序调整:创造栏与帕秋莉手册按稀有度低→高排列(蓝稀有 → 紫史诗 → 金传奇,同稀有度保持原内部顺序)(双版本一致)。 / Sign display order adjusted: creative tab and Patchouli handbook now sort by rarity low→high (RARE → EPIC → UNCOMMON in this mod's quality mapping; same-rarity signs keep their existing relative order) (both loaders).
 - 修复骰子 tooltip 显示攻击牌时加成误标为「骰子」及染色问题:攻击牌(中/大/特大/名刀)统一显示为「攻击」,范围不再带「+」前缀,与防御牌/独立牌 tooltip 格式一致(仅 1.21.1)。
 - 骰子卡牌栏平衡:卡牌栏总格数改为仅由星级决定(与骰子品阶无关)——0★=4(攻防各2)、1★=6(各3)、2★=8(各4)、3★=12(各6);实际可用格严格按星级,无隐藏可用格(双版本)。
 - 骰子升级配方改用阶层标签作为升级母体:新增 `astral_dice:dice_t0`(基础骰子)/`dice_t1`(黄金骰子)/`dice_t2`(钻石骰子)/`dice_t3`(下界合金骰子)四个物品标签;黄金/钻石/下界合金骰子的升级配方输入由具体物品改为对应标签(双版本)。

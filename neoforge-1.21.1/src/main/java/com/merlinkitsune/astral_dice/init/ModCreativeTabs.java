@@ -79,23 +79,26 @@ public class ModCreativeTabs {
                 output.accept(ModItems.ORBITAL_STRIKE_CARD.get());
                 output.accept(ModItems.DIRECTIONAL_BLAST_CARD.get());
                 output.accept(ModItems.LIVING_PAGE.get());
-                // 立牌
+                // 立牌(按稀有度低→高:稀有→史诗→传奇)
+                // 稀有 RARE
                 output.accept(ModItems.PARUNAN_SIGN.get());
                 output.accept(ModItems.JASMINE_SIGN.get());
-                output.accept(ModItems.MISAKI_SIGN.get());
                 output.accept(ModItems.MIMI_SIGN.get());
                 output.accept(ModItems.LULU_SIGN.get());
-                output.accept(ModItems.KOMACHI_SIGN.get());
                 output.accept(ModItems.PADMAN_SIGN.get());
+                output.accept(ModItems.PANDAMAN_SIGN.get());
+                // 史诗 EPIC
+                output.accept(ModItems.KOMACHI_SIGN.get());
                 output.accept(ModItems.FANNY_SIGN.get());
-                output.accept(ModItems.RIN_SIGN.get());
                 output.accept(ModItems.HAIQING_SIGN.get());
                 output.accept(ModItems.PAPARA_SIGN.get());
-                output.accept(ModItems.BONNIE_SIGN.get());
-                output.accept(ModItems.FEN_SIGN.get());
                 output.accept(ModItems.NANCY_LU_SIGN.get());
                 output.accept(ModItems.MOSES_SIGN.get());
-                output.accept(ModItems.PANDAMAN_SIGN.get());
+                // 传奇 UNCOMMON
+                output.accept(ModItems.MISAKI_SIGN.get());
+                output.accept(ModItems.RIN_SIGN.get());
+                output.accept(ModItems.BONNIE_SIGN.get());
+                output.accept(ModItems.FEN_SIGN.get());
                 // 筹码
                 // === 星光类 ===
                 output.accept(ModItems.FLASHLIGHT_CHIP.get());
