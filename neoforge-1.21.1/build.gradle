@@ -239,11 +239,9 @@ dependencies {
 // AutoForge: end mod addon dependencies
 
 // === 编译产物分发规则 ===
-// 默认行为:每次构建完成后仅将 mod 推送到仓库根 run/1.21.1/mods,用于本机 runClient 调试。
-// 用户指定推送整合包时:构建同时(额外)推送到整合包 mods 目录,并删除旧版本。
-//   指定方式二选一:
-//     1) gradlew build -PdeployToPack
-//     2) gradlew build pushToGame  (显式运行 pushToGame 任务)
+// 默认行为:每次构建完成后自动推送到仓库根 run/1.21.1/mods(本机 runClient 调试)、
+// 仓库根目录 build/libs,并推送到整合包 mods 目录(删除旧版后复制新版)。
+// 保留 -PdeployToPack / 显式 pushToGame 仅为兼容,默认 build 已自动推送整合包。
 // 整合包位置:D:/.minecraft/versions/狐の航空学 Voxy Edition/mods
 def devRunModsDir = rootProject.file('run/1.21.1/mods')
 def packModsDir = file('D:/.minecraft/versions/狐の航空学 Voxy Edition/mods')
@@ -276,7 +274,7 @@ tasks.register('pushToDevRun') {
     }
 }
 
-// 用户指定:推送到整合包 mods 目录
+// 默认随 build 推送到整合包 mods 目录
 tasks.register('pushToGame') {
     group = 'build'
     description = 'Copy the built mod jar to the bound game pack mods folder and remove old versions.'
@@ -288,6 +286,12 @@ tasks.register('pushToGame') {
             return
         }
         if (!packModsDir.exists()) {
+            // 仅当整合包根目录存在时才创建 mods 子目录;根目录不存在(如 CI 环境)直接跳过
+            def packRoot = packModsDir.getParentFile()
+            if (packRoot == null || !packRoot.exists()) {
+                logger.warn("pushToGame: pack dir not found, skipped: ${packModsDir}")
+                return
+            }
             packModsDir.mkdirs()
         }
         def stale = packModsDir.listFiles().findAll { File f ->
@@ -332,12 +336,9 @@ tasks.register('pushToRootBuild') {
 }
 
 tasks.named('build') {
-    // 默认仅推送测试环境
+    // 统一推送标准:pushToDevRun/pushToRootBuild/pushToGame 均在 build 后默认触发
     finalizedBy tasks.named('pushToDevRun')
-    // 用户指定 -PdeployToPack 时,额外推送整合包
-    if (project.hasProperty('deployToPack')) {
-        finalizedBy tasks.named('pushToGame')
-    }
+    finalizedBy tasks.named('pushToGame')
     // 编译产物集中到仓库根目录 build/libs
     finalizedBy tasks.named('pushToRootBuild')
 }
