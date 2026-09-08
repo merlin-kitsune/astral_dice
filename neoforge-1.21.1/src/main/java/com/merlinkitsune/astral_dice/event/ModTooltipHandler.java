@@ -1125,7 +1125,9 @@ public class ModTooltipHandler {
             if (event.getEntity() instanceof Player p) {
                 addSignCounter(tooltip, "tooltip.astral_dice.sign.pandaman_health_gain",
                         ModAttachments.getPandamanMaxHealthBonus(p));
-                addHealingPointsCounter(tooltip, p);
+                tooltip.add(tt("tooltip.astral_dice.healing_points",
+                        HealingManager.getPoints(p), HealingManager.getCap(p))
+                        .withStyle(ChatFormatting.GRAY));
             }
             addSignCooldownRemaining(tooltip, event.getEntity() instanceof Player p ? p : null);
         }
