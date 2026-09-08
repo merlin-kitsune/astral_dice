@@ -26,8 +26,9 @@ public abstract class EffectRenderingInventoryScreenMixin {
     private void astralDice$numericEffectLevelBadge(MobEffectInstance effect, CallbackInfoReturnable<Component> cir) {
         MutableComponent name = effect.getEffect().value().getDisplayName().copy();
         int amplifier = effect.getAmplifier();
-        boolean isCharge = effect.getEffect().value() == ModEffects.CHARGE.get();
-        if (amplifier >= 0 && amplifier <= 99 && (isCharge || amplifier >= 1)) {
+        boolean isChargeOrHealing = effect.getEffect().value() == ModEffects.CHARGE.get()
+                || effect.getEffect().value() == ModEffects.HEALING.get();
+        if (amplifier >= 0 && amplifier <= 99 && (isChargeOrHealing || amplifier >= 1)) {
             name.append(CommonComponents.SPACE).append(Component.literal(String.valueOf(amplifier + 1)));
         }
         cir.setReturnValue(name);
