@@ -1105,14 +1105,14 @@ public class ModTooltipHandler {
             addSignPassiveTitle(tooltip, "弱点识破 / 精密技巧");
             addSignLines(tooltip, "tooltip.astral_dice.sign.moses_passive");
             addSignLines(tooltip, "tooltip.astral_dice.sign.moses_passive_precision");
+            // 破绽效果描述:置于备注区(紫色,无标题);计数器按规范放在备注区之后、tooltip 最下方
+            tooltip.add(Component.empty());
+            addSignNoteLines(tooltip, "tooltip.astral_dice.sign.moses_broken_note");
             if (event.getEntity() != null) {
                 addSignCounter(tooltip, "tooltip.astral_dice.sign.moses_weakness_reveal",
                         com.merlinkitsune.astral_dice.effect.WeaknessRevealEffect.getStacks(player),
                         com.merlinkitsune.astral_dice.effect.WeaknessRevealEffect.MAX_STACKS);
             }
-            // 破绽效果描述:置于备注区(紫色,无标题)
-            tooltip.add(Component.empty());
-            addSignNoteLines(tooltip, "tooltip.astral_dice.sign.moses_broken_note");
             addSignCooldownRemaining(tooltip, event.getEntity());
         }
     }
