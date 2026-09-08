@@ -354,6 +354,18 @@ public class ModAttachments {
         ENDER_DIE_TOTEM_COOLDOWN_END.set(player, value);
     }
 
+    // 跃迁引擎:传送门/Waystone 传送获得充能的共享冷却结束时刻(玩家级,0 表示无冷却;仅服务端使用)
+    public static final AttachedDataKey<Long> WARP_ENGINE_PORTAL_COOLDOWN_END =
+            register(AttachedDataKey.builder("warp_engine_portal_cooldown_end", Codec.LONG, () -> 0L).build());
+
+    public static long getWarpEnginePortalCooldownEnd(net.minecraft.world.entity.player.Player player) {
+        return WARP_ENGINE_PORTAL_COOLDOWN_END.get(player);
+    }
+
+    public static void setWarpEnginePortalCooldownEnd(net.minecraft.world.entity.player.Player player, long value) {
+        WARP_ENGINE_PORTAL_COOLDOWN_END.set(player, value);
+    }
+
     // 立牌主动技能"等待目标释放"状态类型:1=占星师(虚弱印记) 2=秘密侦探(隐匿调查);0=无等待
     public static final AttachedDataKey<Integer> SIGN_READY_TYPE =
             register(AttachedDataKey.builder("sign_ready_type", Codec.INT, () -> 0).sync().build());

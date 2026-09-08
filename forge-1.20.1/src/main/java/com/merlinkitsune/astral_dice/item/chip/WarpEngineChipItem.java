@@ -1,6 +1,7 @@
 package com.merlinkitsune.astral_dice.item.chip;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
+import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
 import com.merlinkitsune.astral_dice.event.WaystoneWarpCompat;
 import com.merlinkitsune.astral_dice.item.ChargeManager;
@@ -24,6 +25,9 @@ import net.minecraftforge.fml.common.Mod;
  *   <li>进入维度传送门(EntityTravelToDimensionEvent);</li>
  *   <li>Waystone 传送(通过 WaystoneWarpCompat 可选接入,避免跨维度时双重计数)。</li>
  * </ul>
+ *
+ * <p>传送门与 Waystone 触发共享 5:00 冷却:通过任意一种方式获得充能后,
+ * 5 分钟内不能再通过传送门或 Waystone 触发;末影珍珠与末影骰子瞬移不受此冷却限制。
  */
 @Mod.EventBusSubscriber(modid = AstralDiceMod.MODID)
 public class WarpEngineChipItem extends BaseChipItem {
@@ -31,6 +35,8 @@ public class WarpEngineChipItem extends BaseChipItem {
     public static final int STACK_GAIN = 2;
     /** 迅捷持续时间(0:10) */
     public static final int SPEED_DURATION_TICKS = 200;
+    /** 传送门/Waystone 触发的共享冷却时长(5:00) */
+    public static final int PORTAL_WAYSTONE_COOLDOWN_TICKS = 20 * 60 * 5;
 
     public WarpEngineChipItem(Properties properties) {
         super(properties);
@@ -42,10 +48,24 @@ public class WarpEngineChipItem extends BaseChipItem {
         return curios.isPresent() && curios.get().findFirstCurio(s -> s.is(ModItems.WARP_ENGINE_CHIP.get())).isPresent();
     }
 
-    /** 传送成功后调用:佩戴跃迁引擎时获得充能 + 迅捷 */
+    /** 通用传送成功结算(末影珍珠/末影骰子等不受传送门冷却限制的来源) */
     public static void onTeleport(Player player) {
         if (player == null || player.level().isClientSide()) return;
         if (!isEquipped(player)) return;
+        grantTeleportReward(player);
+    }
+
+    /** 传送门/Waystone 专属结算:共享 5:00 冷却 */
+    public static void onPortalOrWaystoneTeleport(Player player) {
+        if (player == null || player.level().isClientSide()) return;
+        if (!isEquipped(player)) return;
+        long now = player.level().getGameTime();
+        if (now < ModAttachments.getWarpEnginePortalCooldownEnd(player)) return;
+        ModAttachments.setWarpEnginePortalCooldownEnd(player, now + PORTAL_WAYSTONE_COOLDOWN_TICKS);
+        grantTeleportReward(player);
+    }
+
+    private static void grantTeleportReward(Player player) {
         ChargeManager.addStacks(player, STACK_GAIN);
         EffectTimerGuard.apply(player, new MobEffectInstance(MobEffects.MOVEMENT_SPEED,
                 SPEED_DURATION_TICKS, 0, false, true));
@@ -66,7 +86,7 @@ public class WarpEngineChipItem extends BaseChipItem {
             // Waystone 跨维度传送也会经过此事件;Pre 标记后这里只消费标记,不重复给充能,
             // 由 WaystoneTeleportEntityEvent.Post 在实际传送成功后统一结算。
             if (WaystoneWarpCompat.isPendingAndClear(player)) return;
-            onTeleport(player);
+            onPortalOrWaystoneTeleport(player);
         }
     }
 }

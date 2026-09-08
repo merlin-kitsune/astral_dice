@@ -117,7 +117,7 @@ public final class WaystoneWarpCompat {
             Object result = invoke(event, "getTeleportResult");
             if (result != null && Boolean.TRUE.equals(invoke(result, "isSuccessful"))) {
                 clearPending(player);
-                WarpEngineChipItem.onTeleport(player);
+                WarpEngineChipItem.onPortalOrWaystoneTeleport(player);
             } else {
                 clearPending(player);
             }
