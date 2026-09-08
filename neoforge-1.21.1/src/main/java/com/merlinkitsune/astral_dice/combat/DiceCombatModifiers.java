@@ -10,6 +10,7 @@ import com.merlinkitsune.astral_dice.item.HealingManager;
 import com.merlinkitsune.astral_dice.item.chip.BoxingGlovesChipItem;
 import com.merlinkitsune.astral_dice.item.chip.AdrenalineChipItem;
 import com.merlinkitsune.astral_dice.item.chip.RevengeHalberdChipItem;
+import com.merlinkitsune.astral_dice.item.chip.ElectricSwordChipItem;
 import com.merlinkitsune.astral_dice.item.sign.FenSignItem;
 import com.merlinkitsune.astral_dice.item.sign.NancyLuSignItem;
 import com.merlinkitsune.astral_dice.item.sign.MosesSignItem;
@@ -207,6 +208,13 @@ public final class DiceCombatModifiers {
             if (hasCurio(ctx.attacker, ModItems.FLASHLIGHT_CHIP.get())) {
                 ap += StarLightManager.get(ctx.attacker) / 4;
             }
+            return ap;
+        });
+
+        // === 内置:电流剑(每 4 点充能 +1 攻击力) ===
+        registerAttackModifier((ctx, ap) -> {
+            if (ctx.attacker.level().isClientSide()) return ap;
+            ap += ElectricSwordChipItem.getAttackBonus(ctx.attacker);
             return ap;
         });
 

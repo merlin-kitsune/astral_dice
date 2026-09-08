@@ -80,6 +80,7 @@ import com.merlinkitsune.astral_dice.item.chip.FriendshipBadgeChipItem;
 import com.merlinkitsune.astral_dice.item.chip.SatelliteChipItem;
 import com.merlinkitsune.astral_dice.item.chip.WarpEngineChipItem;
 import com.merlinkitsune.astral_dice.item.chip.EnergyRecyclerChipItem;
+import com.merlinkitsune.astral_dice.item.chip.ElectricSwordChipItem;
 import com.merlinkitsune.astral_dice.item.chip.NinjaStarChipItem;
 import com.merlinkitsune.astral_dice.item.chip.FlashlightChipItem;
 
@@ -655,6 +656,12 @@ public class ModItems {
     // 能量回收器:每移动 50 米获得 1 点充能
     public static final RegistryObject<Item> ENERGY_RECYCLER = registerItem("energy_recycler_chip",
             () -> new EnergyRecyclerChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.RARE)));
+
+    // 电流剑:每 4 点充能攻击力 +1;击杀 10 个敌对目标后获得 2 点充能
+    public static final RegistryObject<Item> ELECTRIC_SWORD = registerItem("electric_sword_chip",
+            () -> new ElectricSwordChipItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(Rarity.RARE)));
 
