@@ -5,12 +5,14 @@ import com.merlinkitsune.astral_dice.event.ModEffectRemoval;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectCategory;
 import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
 
 /**
  * 充能(流派资源/效果):层数 = amplifier + 1。
  * 不论层数多少,只要拥有至少 1 层,就提供固定流派效果:
- * 防御力 +1、立牌主动/效果牌冷却时间 -20%。
+ * 护甲值 +10%(按最终护甲值计算)、立牌主动/效果牌冷却时间 -20%。
  */
 public class ChargeEffect extends MobEffect {
     /** 效果时长(无限,清空/层数归零时移除) */
@@ -18,6 +20,10 @@ public class ChargeEffect extends MobEffect {
 
     public ChargeEffect() {
         super(MobEffectCategory.BENEFICIAL, 0xFFC800);
+        // 最终护甲值按原版属性公式计算:基础+固定加成后再按该倍率整体提升
+        this.addAttributeModifier(Attributes.ARMOR, "e47c9e3a-2c64-4a8c-8dc0-44e85dca71d9",
+                GameplayConstants.CHARGE_ARMOR_MULTIPLIER,
+                AttributeModifier.Operation.MULTIPLY_TOTAL);
     }
 
     /** 增加层数(上限见 GameplayConstants.CHARGE_MAX_STACKS) */
