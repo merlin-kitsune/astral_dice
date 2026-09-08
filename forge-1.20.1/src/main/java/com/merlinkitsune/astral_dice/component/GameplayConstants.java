@@ -3,8 +3,8 @@ package com.merlinkitsune.astral_dice.component;
 import com.merlinkitsune.astral_dice.config.ModCommonConfig;
 
 /**
- * 全局玩法常量(运行时从配置文件读取)。
- * 配置加载完成后(FMLCommonSetupEvent)调用 {@link #refresh()} 将配置值写入字段。
+ * 全局玩法常量(少量仍从配置文件读取,其余为固定数值)。
+ * 配置加载完成后(FMLCommonSetupEvent)调用 {@link #refresh()} 将仍保留的配置值写入字段。
  * 注意:字段为非 final,引用处为运行时读取,切勿改回 final(否则编译期内联导致配置不生效)。
  */
 public final class GameplayConstants {
@@ -36,7 +36,7 @@ public final class GameplayConstants {
     public static int SIGN_ACTIVE_COOLDOWN_SECONDS = 180;
     // 立牌主动技能触发冷却 tick 数(派生值)
     public static int SIGN_ACTIVE_COOLDOWN_TICKS = SIGN_ACTIVE_COOLDOWN_SECONDS * 20;
-    // 立牌主动技能等待期(秒,默认 30):需要选择目标的技能(占星师/秘密侦探)激活后,等待期内未释放则自动取消
+    // 立牌主动技能等待期(固定常量 30 秒):需要选择目标/等待释放的立牌(占星师、秘密侦探、枪匠)统一使用
     public static int SKILL_WAIT_SECONDS = 30;
     // 扫地机立牌被动:生命值上限/护甲增益各自的最大上限(点)
     public static int JASMINE_MAX_BONUS = 20;
@@ -86,35 +86,25 @@ public final class GameplayConstants {
     private GameplayConstants() {
     }
 
-    // 从配置文件刷新全部常量(配置加载完成后调用)
+    // 从配置文件刷新仍保留的可配置项;其余玩法数值固定为上方默认常量
     public static void refresh() {
         MAX_STARLIGHT = ModCommonConfig.MAX_STARLIGHT.get();
         MAX_MARKER = ModCommonConfig.MAX_MARKER.get();
         EFFECT_CARD_COOLDOWN_SECONDS = ModCommonConfig.EFFECT_CARD_COOLDOWN_SECONDS.get();
         MAX_EFFECT_STACKS = ModCommonConfig.MAX_EFFECT_STACKS.get();
-        MAX_DAMAGE_EFFECT_BONUS = ModCommonConfig.MAX_DAMAGE_EFFECT_BONUS.get();
 
         EVENT_RANGE = ModCommonConfig.EVENT_RANGE.get();
         EVENT_APPLY_MC_TEAM = ModCommonConfig.EVENT_APPLY_MC_TEAM.get();
         EVENT_APPLY_FTB_TEAM = ModCommonConfig.EVENT_APPLY_FTB_TEAM.get();
         EVENT_APPLY_OPAC = ModCommonConfig.EVENT_APPLY_OPAC.get();
         EVENT_APPLY_MAID = ModCommonConfig.EVENT_APPLY_MAID.get();
-        LIVING_PAGE_BONUS_CAP = ModCommonConfig.LIVING_PAGE_BONUS_CAP.get();
-        SIGN_ACTIVE_COOLDOWN_SECONDS = ModCommonConfig.SIGN_ACTIVE_COOLDOWN_SECONDS.get();
-        SIGN_ACTIVE_COOLDOWN_TICKS = SIGN_ACTIVE_COOLDOWN_SECONDS * 20;
-        SKILL_WAIT_SECONDS = ModCommonConfig.SKILL_WAIT_SECONDS.get();
-        JASMINE_MAX_BONUS = ModCommonConfig.JASMINE_MAX_BONUS.get();
-        LULU_ACTIVE_RANGE = ModCommonConfig.LULU_ACTIVE_RANGE.get();
-        PADMAN_REFRESH_SECONDS = ModCommonConfig.PADMAN_REFRESH_SECONDS.get();
-        PARUNAN_PASSIVE_INTERVAL_SECONDS = ModCommonConfig.PARUNAN_PASSIVE_INTERVAL_SECONDS.get();
         HAND_FAN_BIG_RANGE = ModCommonConfig.HAND_FAN_BIG_RANGE.get();
-        KOMACHI_DAMAGE_BONUS_MAX = ModCommonConfig.KOMACHI_DAMAGE_BONUS_MAX.get();
 
         ACTIONBAR_DURATION_TICKS = ModCommonConfig.ACTIONBAR_DURATION_TICKS.get();
         ACTIONBAR_FADE_TICKS = ModCommonConfig.ACTIONBAR_FADE_TICKS.get();
 
-        DICE_BLESSING_DURATION_SECONDS = ModCommonConfig.DICE_BLESSING_DURATION_SECONDS.get();
+        // 以下为固定常量对应的派生 tick 值
+        SIGN_ACTIVE_COOLDOWN_TICKS = SIGN_ACTIVE_COOLDOWN_SECONDS * 20;
         DICE_BLESSING_DURATION_TICKS = DICE_BLESSING_DURATION_SECONDS * 20;
-        CURSED_SWORD_BONUS_MAX = ModCommonConfig.CURSED_SWORD_BONUS_MAX.get();
     }
 }

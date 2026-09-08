@@ -1,7 +1,6 @@
 package com.merlinkitsune.astral_dice;
 
 import com.merlinkitsune.astral_dice.component.GameplayConstants;
-import com.merlinkitsune.astral_dice.config.ModClientConfig;
 import com.merlinkitsune.astral_dice.config.ModCommonConfig;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.effect.ModEnchantments;
@@ -41,11 +40,9 @@ public class AstralDiceMod {
         ModMenuTypes.MENU_TYPES.register(modEventBus);
         AstralEvents.init();
         modEventBus.register(this);
-        // 配置版本检查:旧版本配置文件先备份,再由 Forge 继承旧值写入新配置
+        // 配置版本检查:旧版本配置文件先备份,再由 Forge 继承旧值写入新配置(仅公共配置;client 配置已移除)
         backupOldConfigIfNeeded("astral_dice-common.toml", ModCommonConfig.CONFIG_VERSION);
-        backupOldConfigIfNeeded("astral_dice-client.toml", ModClientConfig.CONFIG_VERSION);
         net.minecraftforge.fml.ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, ModCommonConfig.SPEC);
-        net.minecraftforge.fml.ModLoadingContext.get().registerConfig(ModConfig.Type.CLIENT, ModClientConfig.SPEC);
         // Iron 的法术与魔法书联动:仅在模组加载时注册其事件处理器(类引用只在加载条件下触发)
         if (net.minecraftforge.fml.ModList.get().isLoaded("irons_spellbooks")) {
             MinecraftForge.EVENT_BUS.register(com.merlinkitsune.astral_dice.event.IronSpellbooksCompat.class);
