@@ -17,6 +17,7 @@ import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
 import com.merlinkitsune.astral_dice.item.dice.DiceCurioItem;
 import com.merlinkitsune.astral_dice.item.card.ExclusiveCardUtil;
 import com.merlinkitsune.astral_dice.item.sign.HaiqingSignItem;
+import com.merlinkitsune.astral_dice.item.ChargeManager;
 import com.merlinkitsune.astral_dice.item.HealingManager;
 import com.merlinkitsune.astral_dice.item.InvestigationEventUtil;
 import com.merlinkitsune.astral_dice.item.MarkManager;
@@ -128,6 +129,8 @@ public class PlayerTickEvents {
         RevengeHalberdChipItem.updateDisplayEffect(player);
         // 复仇之戟:防御力折算为真实护甲(1 防御力 = 2 护甲值)
         RevengeHalberdChipItem.updateArmorBonus(player);
+        // 充能流派:刷新固定防御加成(拥有至少 1 层时生效)
+        ChargeManager.tick(player);
         if (player.tickCount % 20 != 0) return;
         // 事件系统:护甲惩罚到期移除
         ArmorPenaltyHandler.tick(player);

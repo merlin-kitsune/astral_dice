@@ -3,6 +3,7 @@ package com.merlinkitsune.astral_dice.item.card;
 import com.merlinkitsune.astral_dice.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
+import com.merlinkitsune.astral_dice.item.ChargeManager;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.core.Holder;
 import net.minecraft.world.effect.MobEffect;
@@ -231,8 +232,9 @@ public final class EffectCardPeriod {
             ModAttachments.setKomachiExtraPlays(player, komachiBank - 1);
         }
         // 立即开始/重置冷却倒计时(从最后一张出牌起算)
-        ModAttachments.setEffectCardCooldownEnd(player,
-                now + GameplayConstants.EFFECT_CARD_COOLDOWN_SECONDS * 20L);
+        long cooldownTicks = ChargeManager.cooldownTicks(player,
+                GameplayConstants.EFFECT_CARD_COOLDOWN_SECONDS * 20L);
+        ModAttachments.setEffectCardCooldownEnd(player, now + cooldownTicks);
     }
 
     // 每 tick 调用:冷却倒计时归 0 时出牌数归零

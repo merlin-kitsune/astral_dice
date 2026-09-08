@@ -116,6 +116,10 @@ public class ModEffects {
     public static final DeferredHolder<MobEffect, MobEffect> REVENGE_HALBERD =
             EFFECTS.register("revenge_halberd", RevengeHalberdEffect::new);
 
+    // 充能(流派资源):层数 = amplifier+1;拥有至少 1 层时提供固定流派加成(防御+1、冷却-20%)
+    public static final DeferredHolder<MobEffect, MobEffect> CHARGE =
+            EFFECTS.register("charge", ChargeEffect::new);
+
 
     // 弱点识破(枪匠立牌 Moses):玩家增益,层数 = amplifier+1;每层攻击/防御+1、骰点最低数+1
     public static final DeferredHolder<MobEffect, MobEffect> WEAKNESS_REVEAL =

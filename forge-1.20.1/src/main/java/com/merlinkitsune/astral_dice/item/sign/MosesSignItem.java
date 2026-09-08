@@ -9,6 +9,7 @@ import com.merlinkitsune.astral_dice.effect.MosesBrokenEffect;
 import com.merlinkitsune.astral_dice.effect.WeaknessRevealEffect;
 import com.merlinkitsune.astral_dice.event.ModEffectRemoval;
 import com.merlinkitsune.astral_dice.event.WeirdDiceHandler;
+import com.merlinkitsune.astral_dice.item.ChargeManager;
 import com.merlinkitsune.astral_dice.item.CuriosCompat;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import net.minecraft.ChatFormatting;
@@ -122,7 +123,10 @@ public class MosesSignItem extends BaseSignItem {
         int ticks = isEquipped(player)
                 ? ACTIVE_COOLDOWN_SECONDS * 20
                 : GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS;
-        return WeirdDiceHandler.hasWeirdDice(player) ? Math.max(1, ticks / 2) : ticks;
+        if (WeirdDiceHandler.hasWeirdDice(player)) {
+            ticks = Math.max(1, ticks / 2);
+        }
+        return (int) ChargeManager.cooldownTicks(player, ticks);
     }
 
     /**

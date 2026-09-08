@@ -1,6 +1,7 @@
 package com.merlinkitsune.astral_dice.event;
 
 import com.merlinkitsune.astral_dice.component.GameplayConstants;
+import com.merlinkitsune.astral_dice.item.ChargeManager;
 import com.merlinkitsune.astral_dice.item.CuriosCompat;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import net.minecraft.world.entity.player.Player;
@@ -31,10 +32,13 @@ public final class WeirdDiceHandler {
                 .orElse(false);
     }
 
-    /** 立牌主动技能冷却 tick:佩戴诡异骰子时减半 */
+    /** 立牌主动技能冷却 tick:佩戴诡异骰子时减半;拥有充能时再 -20% */
     public static int signCooldownTicks(Player player) {
         int ticks = GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS;
-        return hasWeirdDice(player) ? Math.max(1, ticks / 2) : ticks;
+        if (hasWeirdDice(player)) {
+            ticks = Math.max(1, ticks / 2);
+        }
+        return (int) ChargeManager.cooldownTicks(player, ticks);
     }
 
     /**
