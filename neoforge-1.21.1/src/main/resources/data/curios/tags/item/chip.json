@@ -52,6 +52,7 @@
     "astral_dice:member_recommendation_chip",
     "astral_dice:bookmark_chip",
     "astral_dice:piggy_bank_chip",
-    "astral_dice:smart_watch_chip"
+    "astral_dice:smart_watch_chip",
+    "astral_dice:current_core_chip"
   ]
 }

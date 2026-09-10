@@ -938,6 +938,11 @@ public class ModTooltipHandler {
             addChipLines(tooltip, "tooltip.astral_dice.chip.perpetual_motion", ChatFormatting.GRAY);
             addChargeCounter(tooltip, event.getEntity() instanceof Player p ? p : null);
         }
+        if (stack.is(ModItems.CURRENT_CORE_CHIP.get())) {
+            tooltip.add(Component.empty());
+            addChipLines(tooltip, "tooltip.astral_dice.chip.current_core", ChatFormatting.GRAY);
+            addChargeCounter(tooltip, event.getEntity() instanceof Player p ? p : null);
+        }
         if (stack.is(ModItems.MEMBER_RECOMMENDATION_CHIP.get())) {
             tooltip.add(Component.empty());
             addChipLines(tooltip, "tooltip.astral_dice.chip.member_recommendation", ChatFormatting.GRAY);

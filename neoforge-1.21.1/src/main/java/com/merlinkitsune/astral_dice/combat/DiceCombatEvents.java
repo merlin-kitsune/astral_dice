@@ -108,6 +108,7 @@ import com.merlinkitsune.astral_dice.item.chip.CursedSwordChipItem;
 import com.merlinkitsune.astral_dice.item.chip.FriendshipBadgeChipItem;
 import com.merlinkitsune.astral_dice.item.chip.RevengeHalberdChipItem;
 import com.merlinkitsune.astral_dice.item.chip.SatelliteChipItem;
+import com.merlinkitsune.astral_dice.item.chip.CurrentCoreChipItem;
 import com.merlinkitsune.astral_dice.item.sign.NancyLuSignItem;
 import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
 import com.merlinkitsune.astral_dice.item.card.FateGuidanceCardItem;
@@ -220,6 +221,7 @@ public class DiceCombatEvents {
                 ModEffectRemoval.remove(player, ModEffects.HAIQING_READY);
                 ModAttachments.setSignActiveCooldownEnd(player,
                         player.level().getGameTime() + WeirdDiceHandler.signCooldownTicks(player));
+                CurrentCoreChipItem.onActiveSkillUsed(player);
             }
             // 秘密侦探立牌主动:对本次攻击的第一个目标施加"隐匿调查"(永久,直到目标死亡/消失);若目标带"标记",按标记层数*2 获得星币
             var bonnieResult = attackerCurios.get().findFirstCurio(s -> s.is(ModItems.BONNIE_SIGN.get()));
@@ -240,6 +242,7 @@ public class DiceCombatEvents {
                 ModEffectRemoval.remove(player, ModEffects.BONNIE_READY);
                 ModAttachments.setSignActiveCooldownEnd(player,
                         player.level().getGameTime() + WeirdDiceHandler.signCooldownTicks(player));
+                CurrentCoreChipItem.onActiveSkillUsed(player);
             }
             // 枪匠立牌主动:对本次攻击的第一个普通敌对目标施加"破绽"2:00(已带破绽则不重复施加)
             var mosesResult = attackerCurios.get().findFirstCurio(s -> s.is(ModItems.MOSES_SIGN.get()));
@@ -251,6 +254,7 @@ public class DiceCombatEvents {
                     ModEffectRemoval.remove(player, ModEffects.MOSES_READY);
                     ModAttachments.setSignActiveCooldownEnd(player,
                             player.level().getGameTime() + MosesSignItem.signCooldownTicks(player));
+                    CurrentCoreChipItem.onActiveSkillUsed(player);
                 }
             }
             // 枪匠立牌被动:攻击已带"破绽"的敌对目标,每段破绽获得 1 层弱点识破

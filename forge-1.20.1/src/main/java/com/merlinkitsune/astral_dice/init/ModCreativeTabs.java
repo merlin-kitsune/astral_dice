@@ -133,6 +133,7 @@ public class ModCreativeTabs {
                 output.accept(ModItems.ELECTRIC_SWORD.get());
                 output.accept(ModItems.ADVANCED_PERIPHERALS.get());
                 output.accept(ModItems.PERPETUAL_MOTION.get());
+                output.accept(ModItems.CURRENT_CORE_CHIP.get());
                 // === 无流派 ===
                 output.accept(ModItems.MAGIC_TOME_CHIP.get());
                 output.accept(ModItems.BIG_BACKPACK_CHIP.get());

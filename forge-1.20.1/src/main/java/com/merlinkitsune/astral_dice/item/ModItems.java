@@ -82,6 +82,7 @@ import com.merlinkitsune.astral_dice.item.chip.WarpEngineChipItem;
 import com.merlinkitsune.astral_dice.item.chip.EnergyRecyclerChipItem;
 import com.merlinkitsune.astral_dice.item.chip.ElectricSwordChipItem;
 import com.merlinkitsune.astral_dice.item.chip.PerpetualMotionChipItem;
+import com.merlinkitsune.astral_dice.item.chip.CurrentCoreChipItem;
 import com.merlinkitsune.astral_dice.item.chip.AdvancedPeripheralsChipItem;
 import com.merlinkitsune.astral_dice.item.chip.BigBowlStewChipItem;
 import com.merlinkitsune.astral_dice.item.chip.MemberRecommendationChipItem;
@@ -683,6 +684,12 @@ public class ModItems {
             () -> new PerpetualMotionChipItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(Rarity.UNCOMMON)));
+
+    // 电流核心:使用主动技能时充能 +1;冷却中按下主动技能键时按剩余冷却占比消耗充能并立即使冷却完成
+    public static final RegistryObject<Item> CURRENT_CORE_CHIP = registerItem("current_core_chip",
+            () -> new CurrentCoreChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.EPIC)));
 
     // 大碗炖肉:骰神赐福结束后,16 格范围内所有友方目标 +1 治愈并恢复 2 点生命值
     public static final RegistryObject<Item> BIG_BOWL_STEW_CHIP = registerItem("big_bowl_stew_chip",

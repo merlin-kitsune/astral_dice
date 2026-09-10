@@ -121,6 +121,7 @@ public class ModItemModelProvider extends ItemModelProvider {
         basicItem(ModItems.ENERGY_RECYCLER.get());
         basicItem(ModItems.ELECTRIC_SWORD.get());
         basicItem(ModItems.PERPETUAL_MOTION.get());
+        basicItem(ModItems.CURRENT_CORE_CHIP.get());
         basicItem(ModItems.ADVANCED_PERIPHERALS.get());
         basicItem(ModItems.BIG_BOWL_STEW_CHIP.get());
         basicItem(ModItems.MEMBER_RECOMMENDATION_CHIP.get());
