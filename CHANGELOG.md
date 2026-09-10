@@ -33,7 +33,7 @@
 
 ### Content & Balance
 
-- Effect-card play system: the play window is kept (base 1 play + fixed/temporary +1 sources + Komachi's banked plays), while the per-window consecutive play cap (default 9, config `max_effect_card_plays`) is removed — bonus sources now stack without limit; the effect-card round now follows the new definition (a round ends only when all effect progress AND the play cooldown are done).
+- Effect-card play system: the play window is kept (base 1 play + fixed/temporary +1 sources + Komachi's banked plays), and the per-round play cap is restored as a **fixed constant of 9 cards** (`GameplayConstants.MAX_EFFECT_CARD_PLAYS = 9`; `getMaxAllowed` returns `min(1 + bonuses, 9)`) — it is a fixed constant, **not a config option**, so the former `max_effect_card_plays` entry is no longer provided; bonus sources stack but cannot exceed the cap; the effect-card round follows the new definition (a round ends only when all effect progress AND the play cooldown are done).
 - Mimi passive rework: +1 Star Coin per battle card gained via crafting or the active skill's returns (rewards/copies no longer trigger); every 25 battle cards returned by the active skill grants a random chip (was: every 25 Star Coins).
 - Jasmine passive addition: using an Express Delivery card immediately reduces the active skill's cooldown by 50%% of its maximum.
 - Rin active: grants one Living Page, or two if you had none before.

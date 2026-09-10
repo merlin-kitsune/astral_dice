@@ -19,6 +19,11 @@ public final class GameplayConstants {
     // 是否在玩家第一次加入世界时给予《恋的规则书》(默认 true)
     public static boolean GIVE_GUIDE_BOOK_ON_FIRST_JOIN = true;
 
+    // === 效果牌出牌数 ===
+    // 效果牌单轮(单出牌周期)出牌数上限:固定常量 9,**不写入配置文件**。
+    // 实际上限 = min(基础 1 + 固定来源 + 临时来源 + 忍者立牌银行, MAX_EFFECT_CARD_PLAYS)
+    public static final int MAX_EFFECT_CARD_PLAYS = 9;
+
     // === 充能流派 ===
     // 充能最大层数(写入常量,暂不提供配置文件)
     public static final int CHARGE_MAX_STACKS = 20;
@@ -53,7 +58,7 @@ public final class GameplayConstants {
     public static int PARUNAN_PASSIVE_INTERVAL_SECONDS = 60;
     // 手持风扇-大:主动技能后对周围敌对目标施加标记的范围(格,默认 16)
     public static int HAND_FAN_BIG_RANGE = 16;
-    // 忍者立牌:主动"出牌数+1"银行的存储上限(仅银行容量,与出牌上限无关)
+    // 忍者立牌:主动"出牌数+1"银行的存储上限(仅银行容量,与 MAX_EFFECT_CARD_PLAYS 出牌上限无关)
     public static final int KOMACHI_EXTRA_PLAYS_CAP = 9;
 
     // actionbar 消息显示总时长上限(单位: tick,默认 3 秒;任何消息最多显示该时长)
