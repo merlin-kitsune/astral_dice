@@ -532,7 +532,7 @@ public class ModAttachments {
                     .serialize(Codec.INT)
                     .build());
 
-    // 诅咒之剑筹码:累计击杀 20 血以上敌对目标获得的攻击力加成(移除筹码/死亡清除)
+    // 诅咒之剑筹码:累计击杀不少于 20 血的敌对目标获得的攻击力加成(移除筹码/死亡清除)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> CURSED_SWORD_BONUS =
             ATTACHMENTS.register("cursed_sword_bonus", () -> AttachmentType.builder(() -> 0)
                     .serialize(Codec.INT)

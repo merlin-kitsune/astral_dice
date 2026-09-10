@@ -114,7 +114,7 @@ public class BonnieSignItem extends BaseSignItem {
         if (MarkManager.getLevel(killed) > 0
                 && !(killed instanceof Player)
                 && killed instanceof net.minecraft.world.entity.monster.Enemy
-                && killed.getMaxHealth() > 20) {
+                && killed.getMaxHealth() >= 20) {
             giveRandomBattleCard(killer);
         }
     }

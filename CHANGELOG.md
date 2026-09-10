@@ -69,6 +69,7 @@
 - Config rewritten and trimmed: common config version reset to 1; the client config was removed; the damage-bonus cap, Living Page cap, sign active cooldown, sign waiting time, all sign numeric tuning, Dice Blessing duration, and Cursed Sword cap entries were removed and are now fixed GameplayConstants values (values unchanged); target/wait signs (Astrologer, Undercover Detective, Gunsmith) use the fixed 30-second wait constant.
 - Removed the spell-damage bonus caps: both the Living Page per-use stacking damage and the Ninja sign “Effect Card Damage Bonus” are now uncapped (still reset on unequip); the unused `MAX_DAMAGE_EFFECT_BONUS` and the fixed constants `LIVING_PAGE_BONUS_CAP`/`KOMACHI_DAMAGE_BONUS_MAX` were deleted, and handbook/tooltip text no longer mentions “cap 20/10” (both loaders).
 - Friendly/team reward rule: when a player is in a team, rewards/buffs to friendly players still affect only teammates (collected centrally via MC/FTB/OPAC); when the player is not in any team, they affect all online players instead. This is now unified for random event buffs, the Unlimited Bank Card Star Coins, the Investigator sign’s Living Page, and the Truth-Revealed Investigation effect; handbook/tooltip text now notes “all players if not in a team” (both loaders).
+- Hostile HP threshold unified: the kill checks of the Undercover Detective sign's "Key Clue" and the Cursed Sword chip changed from "more than 20 HP" to "at least 20 HP" — hostiles with exactly 20 HP (10 hearts) now count (tooltip/handbook text updated to "at least 20 HP" as well) (both loaders).
 
 ### Bug Fixes
 
@@ -251,7 +252,7 @@
 - Cutter chips now trigger above 60% of max HP, preventing them from being unable to trigger in most situations.
 - Misaki sign: active skill attack bonus increased to +4 and duration increased to 2:00.
 - Papara sign: the second active effect now treats the player as both full HP and below half HP regardless of current health.
-- Bonnie sign: passive card reward now only applies when killing hostile targets with more than 20 HP.
+- Bonnie sign: passive card reward now only applies when killing hostile targets with at least 20 HP.
 - Chocolate Cake and Hamburger now heal 20%/40% of max HP; Luxury Feast heals 30% of the user's max HP and also heals teammates and teamless players.
 - Buffer Shield trigger cooldown changed to 15 seconds.
 - Adjusted battle card durability values: Medium/Large/Epic=10, Shadow Strike=10, Meito=5, Charge=1, Full Power=2.

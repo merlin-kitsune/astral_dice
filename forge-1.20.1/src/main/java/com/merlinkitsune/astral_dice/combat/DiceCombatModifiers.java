@@ -285,7 +285,7 @@ public final class DiceCombatModifiers {
             return ap;
         });
 
-        // === 内置:诅咒之剑(装备时受青之诅咒;每击杀 1 个 20 血以上敌对目标攻击力 +1,上限由配置决定) ===
+        // === 内置:诅咒之剑(装备时受青之诅咒;每击杀 1 个不少于 20 血的敌对目标攻击力 +1,上限由配置决定) ===
         registerAttackModifier((ctx, ap) -> {
             if (hasCurio(ctx.attacker, ModItems.CURSED_SWORD.get())) {
                 ap += ModAttachments.getCursedSwordBonus(ctx.attacker);

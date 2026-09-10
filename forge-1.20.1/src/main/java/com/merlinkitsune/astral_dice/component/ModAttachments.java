@@ -469,7 +469,7 @@ public class ModAttachments {
     public static final AttachedDataKey<Integer> STAR_COIN_HAMMER_BONUS =
             register(AttachedDataKey.builder("star_coin_hammer_bonus", Codec.INT, () -> 0).build());
 
-    // 诅咒之剑筹码:累计击杀 20 血以上敌对目标获得的攻击力加成(移除筹码/死亡清除)
+    // 诅咒之剑筹码:累计击杀不少于 20 血的敌对目标获得的攻击力加成(移除筹码/死亡清除)
     public static final AttachedDataKey<Integer> CURSED_SWORD_BONUS =
             register(AttachedDataKey.builder("cursed_sword_bonus", Codec.INT, () -> 0).sync().build());
 
