@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": {
+      "item": "astral_dice:star_coin"
+    },
+    "C": {
+      "item": "astral_dice:blank_chip"
+    },
+    "X": {
+      "item": "minecraft:piston"
+    }
+  },
+  "pattern": [
+    "XXX",
+    "XCX",
+    "BBB"
+  ],
+  "result": {
+    "item": "astral_dice:energy_recycler_chip"
+  },
+  "show_notification": true
+}

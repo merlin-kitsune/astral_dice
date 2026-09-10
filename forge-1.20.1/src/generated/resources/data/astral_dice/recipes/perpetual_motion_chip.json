@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": {
+      "item": "astral_dice:blank_chip"
+    },
+    "G": {
+      "item": "astral_dice:golden_star_plate"
+    },
+    "X": {
+      "item": "minecraft:gold_ingot"
+    }
+  },
+  "pattern": [
+    "XXX",
+    "XCX",
+    "GGG"
+  ],
+  "result": {
+    "item": "astral_dice:perpetual_motion_chip"
+  },
+  "show_notification": true
+}

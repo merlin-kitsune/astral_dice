@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": {
+      "item": "astral_dice:star_coin"
+    },
+    "C": {
+      "item": "astral_dice:blank_chip"
+    },
+    "X": {
+      "item": "minecraft:iron_sword"
+    }
+  },
+  "pattern": [
+    "XXX",
+    "XCX",
+    "BBB"
+  ],
+  "result": {
+    "count": 1,
+    "id": "astral_dice:electric_sword_chip"
+  }
+}

@@ -1,11 +1,11 @@
 {
   "parent": "minecraft:recipes/root",
   "criteria": {
-    "has_adrenaline_low": {
+    "has_blank_chip": {
       "conditions": {
         "items": [
           {
-            "items": "astral_dice:adrenaline_low_chip"
+            "items": "astral_dice:blank_chip"
           }
         ]
       },
@@ -13,7 +13,7 @@
     },
     "has_the_recipe": {
       "conditions": {
-        "recipe": "astral_dice:adrenaline_high_chip"
+        "recipe": "astral_dice:energy_recycler_chip"
       },
       "trigger": "minecraft:recipe_unlocked"
     }
@@ -21,12 +21,12 @@
   "requirements": [
     [
       "has_the_recipe",
-      "has_adrenaline_low"
+      "has_blank_chip"
     ]
   ],
   "rewards": {
     "recipes": [
-      "astral_dice:adrenaline_high_chip"
+      "astral_dice:energy_recycler_chip"
     ]
   }
 }

@@ -8,14 +8,14 @@
     "C": {
       "item": "astral_dice:blank_sign"
     },
+    "D": {
+      "item": "astral_dice:dice"
+    },
     "H": {
       "item": "minecraft:black_concrete"
     },
     "W": {
       "item": "minecraft:white_concrete"
-    },
-    "D": {
-      "item": "astral_dice:dice"
     }
   },
   "pattern": [

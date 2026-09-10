@@ -930,6 +930,63 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .unlockedBy("has_adrenaline_low", has(ModItems.ADRENALINE_LOW.get()))
                 .save(output);
 
+        // === 充能流派筹码(1.2.0):XXX/XCX/下排 ===
+        // X 由各筹码图标视觉判读确定。
+        // 跃迁引擎:5 末影珍珠(跃迁/传送) + 空白筹码居中 + 星币下排
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.WARP_ENGINE_CHIP.get())
+                .pattern("XXX")
+                .pattern("XCX")
+                .pattern("BBB")
+                .define('X', Items.ENDER_PEARL)
+                .define('C', ModItems.BLANK_CHIP.get())
+                .define('B', ModItems.STAR_COIN.get())
+                .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
+                .save(output);
+
+        // 能量回收器:5 活塞(运动↔能量机械) + 空白筹码居中 + 星币下排
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.ENERGY_RECYCLER.get())
+                .pattern("XXX")
+                .pattern("XCX")
+                .pattern("BBB")
+                .define('X', Items.PISTON)
+                .define('C', ModItems.BLANK_CHIP.get())
+                .define('B', ModItems.STAR_COIN.get())
+                .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
+                .save(output);
+
+        // 电流剑:5 铁剑(剑形图标) + 空白筹码居中 + 星币下排
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.ELECTRIC_SWORD.get())
+                .pattern("XXX")
+                .pattern("XCX")
+                .pattern("BBB")
+                .define('X', Items.IRON_SWORD)
+                .define('C', ModItems.BLANK_CHIP.get())
+                .define('B', ModItems.STAR_COIN.get())
+                .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
+                .save(output);
+
+        // 高级外设:5 回响碎片(高级装置面板) + 空白筹码居中 + 星盘下排(紫)
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.ADVANCED_PERIPHERALS.get())
+                .pattern("XXX")
+                .pattern("XCX")
+                .pattern("PPP")
+                .define('X', Items.ECHO_SHARD)
+                .define('C', ModItems.BLANK_CHIP.get())
+                .define('P', ModItems.STAR_PLATE.get())
+                .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
+                .save(output);
+
+        // 永动机:5 金锭(金色机体) + 空白筹码居中 + 黄金星盘下排(金)
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.PERPETUAL_MOTION.get())
+                .pattern("XXX")
+                .pattern("XCX")
+                .pattern("GGG")
+                .define('X', Items.GOLD_INGOT)
+                .define('C', ModItems.BLANK_CHIP.get())
+                .define('G', ModItems.GOLDEN_STAR_PLATE.get())
+                .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
+                .save(output);
+
         // === 新效果牌(治疗/互动;shape:星币居中,mod 物品在中轴) ===
         // 巧克力蛋糕:1 可可豆 + 1 鸡蛋 + 1 糖 + 1 星币(无序)
         ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ModItems.CHOCOLATE_CAKE.get())
