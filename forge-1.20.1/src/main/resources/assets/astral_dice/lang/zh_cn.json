@@ -416,6 +416,7 @@
   "tooltip.astral_dice.chip.boxing_gloves_medium": "攻击力 §e+4§7",
   "tooltip.astral_dice.chip.buffer_shield": "受到攻击时，增加 §e2§7 点治愈与 §e3§7 星币，每 §915秒§7 只能触发一次",
   "tooltip.astral_dice.chip.candy": "每使用一张效果牌，增加 §e1§7 点治愈并恢复 §e1§7 点生命值；当生命值已满时，本轮出牌数 §e+1§7（每个出牌轮次最多触发一次）",
+  "tooltip.astral_dice.chip.charge": "当前充能: §e%s§7 / §e%s§7",
   "tooltip.astral_dice.chip.cursed_sword": "装备时始终受到 §c青之诅咒§7。骰神赐福期间，每击杀 §e1§7 个 §e20§7 血以上的敌对目标，攻击力 §e+1§7（每个骰神赐福效果期间最多触发 §e1§7 次），最大增加 §e%s§7 点（移除筹码后清除所有加成与青之诅咒）",
   "tooltip.astral_dice.chip.cursed_sword_blue_curse": "§c青之诅咒§7：护甲值 §e-20%%§7，盔甲韧性 §e-100%%§7（护甲值向下取整）",
   "tooltip.astral_dice.chip.cursed_sword_bonus": "攻击力 §e+%s§7",

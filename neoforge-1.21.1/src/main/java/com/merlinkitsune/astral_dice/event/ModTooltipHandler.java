@@ -13,6 +13,7 @@ import com.merlinkitsune.astral_dice.item.sign.ParunanSignItem;
 import com.merlinkitsune.astral_dice.item.sign.BaseSignItem;
 import com.merlinkitsune.astral_dice.item.sign.BonnieSignItem;
 import com.merlinkitsune.astral_dice.item.BossEntityUtil;
+import com.merlinkitsune.astral_dice.item.ChargeManager;
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
 import com.merlinkitsune.astral_dice.item.dice.DiceCurioItem;
 import com.merlinkitsune.astral_dice.item.card.ExclusiveCardUtil;
@@ -179,6 +180,13 @@ public class ModTooltipHandler {
         if (p == null) return;
         addSignCounter(tooltip, "tooltip.astral_dice.healing_points",
                 HealingManager.getPoints(p), HealingManager.getCap(p));
+    }
+
+    // 充能类筹码 tooltip 统一显示当前充能/上限(5 个充能筹码全部调用)
+    private static void addChargeCounter(List<Component> tooltip, Player p) {
+        if (p == null) return;
+        addSignCounter(tooltip, "tooltip.astral_dice.chip.charge",
+                ChargeManager.getStacks(p), GameplayConstants.CHARGE_MAX_STACKS);
     }
 
     // 翻译文本修正:将 %% 转义为普通 % 后放入 Component.literal,
@@ -900,22 +908,27 @@ public class ModTooltipHandler {
         if (stack.is(ModItems.WARP_ENGINE_CHIP.get())) {
             tooltip.add(Component.empty());
             addChipLines(tooltip, "tooltip.astral_dice.chip.warp_engine", ChatFormatting.GRAY);
+            addChargeCounter(tooltip, event.getEntity() instanceof Player p ? p : null);
         }
         if (stack.is(ModItems.ENERGY_RECYCLER.get())) {
             tooltip.add(Component.empty());
             addChipLines(tooltip, "tooltip.astral_dice.chip.energy_recycler", ChatFormatting.GRAY);
+            addChargeCounter(tooltip, event.getEntity() instanceof Player p ? p : null);
         }
         if (stack.is(ModItems.ELECTRIC_SWORD.get())) {
             tooltip.add(Component.empty());
             addChipLines(tooltip, "tooltip.astral_dice.chip.electric_sword", ChatFormatting.GRAY);
+            addChargeCounter(tooltip, event.getEntity() instanceof Player p ? p : null);
         }
         if (stack.is(ModItems.ADVANCED_PERIPHERALS.get())) {
             tooltip.add(Component.empty());
             addChipLines(tooltip, "tooltip.astral_dice.chip.advanced_peripherals", ChatFormatting.GRAY);
+            addChargeCounter(tooltip, event.getEntity() instanceof Player p ? p : null);
         }
         if (stack.is(ModItems.PERPETUAL_MOTION.get())) {
             tooltip.add(Component.empty());
             addChipLines(tooltip, "tooltip.astral_dice.chip.perpetual_motion", ChatFormatting.GRAY);
+            addChargeCounter(tooltip, event.getEntity() instanceof Player p ? p : null);
         }
         if (stack.is(ModItems.PADMAN_SIGN.get())) {
             tooltip.add(Component.empty());

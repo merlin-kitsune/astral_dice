@@ -9,7 +9,7 @@
 
 ### 新内容
 
-- 新增充能流派基础设施:图标取自 `images/充能.png`(效果纹理 `mob_effect/charge.png`);最大层数写入 `GameplayConstants.CHARGE_MAX_STACKS = 20`;拥有至少 1 层充能时固定获得**最终护甲值 +10%**(`CHARGE_ARMOR_MULTIPLIER`,按原版属性公式在固定加成之后整体乘算,不进骰战防御修饰器)并使立牌主动/效果牌冷却时间 -20%(经 `ChargeManager`,接入立牌冷却入口与效果牌冷却);充能层数死亡不丢失(死亡前 `ChargeManager.preserveOnDeath`、重生恢复);获得/消耗来源统一调用 `ChargeManager.addStacks/consumeOne/removeAll`(双版本一致)。
+- 新增充能流派基础设施:图标取自 `images/充能.png`(效果纹理 `mob_effect/charge.png`);最大层数写入 `GameplayConstants.CHARGE_MAX_STACKS = 20`;拥有至少 1 层充能时固定获得**最终护甲值 +10%**(`CHARGE_ARMOR_MULTIPLIER`,按原版属性公式在固定加成之后整体乘算,不进骰战防御修饰器)并使立牌主动/效果牌冷却时间 -20%(经 `ChargeManager`,接入立牌冷却入口与效果牌冷却);充能层数死亡不丢失(死亡前 `ChargeManager.preserveOnDeath`、重生恢复);获得/消耗来源统一调用 `ChargeManager.addStacks/consumeOne/removeAll`(双版本一致)。5 个充能筹码(跃迁引擎/能量回收器/电流剑/高级外设/永动机)的 tooltip 统一追加「当前充能」计数器(显示 `当前层数 / CHARGE_MAX_STACKS`,经 `ModTooltipHandler.addChargeCounter` → lang `tooltip.astral_dice.chip.charge`)(双版本一致)。
 - 立牌主动技能 ActionBar 提示重构:新建独立响应事件 `SignActiveTriggeredEvent`,各立牌在立牌类中注册自身提示——忍者(出牌数+1 及剩余出牌数)、看板(新卡牌数与星币数)、骇客(完全隐身时长)已注册专属提示;占星师/秘密侦探提示文本更新为「主动技能已激活,攻击敌对目标向其施加…」;未注册的立牌(大当家/扫地机/史莱姆/护法/上班族/吸血鬼/经商/调查员)显示默认提示「<立牌名>：主动技能已启动！」。
 - 卡牌界面:骰神赐福期间的锁定红色提醒由界面顶部移至界面下方(选择区域以外)。
 - 卡牌选择界面:卡牌背包背景贴图按骰子星级(0-3)自动切换(`card_inventory_0~3.png`),`CardInventoryMenu` 暴露 `getStarLevel()`(1.20.1 同步,双版本一致)。
