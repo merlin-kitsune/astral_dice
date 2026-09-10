@@ -448,7 +448,7 @@
   "tooltip.astral_dice.chip.sandwich_medium": "Max health §e+8§7",
   "tooltip.astral_dice.chip.satellite": "If you have fewer than §e6§7 Orbital Strikes, gain one every §91:00§7;\nAfter using an Orbital Strike, this round's play count §e+1§7 (once per 1:00);\nWhile Orbital Strike is active, killing a hostile target with ranged or magic damage grants a random effect card",
   "tooltip.astral_dice.chip.warp_engine": "On teleport: charge §e+2§7 and gain §9Speed (0:10)§7",
-  "tooltip.astral_dice.chip.energy_recycler": "Every §e50§7 m traveled: charge §e+1§7",
+  "tooltip.astral_dice.chip.energy_recycler": "Every §e50§7 m traveled: charge §e+1§7\nAt §e5§7+ Charge: movement speed §e+5%%§7",
   "tooltip.astral_dice.chip.electric_sword": "Each §e4§7 charge: attack §e+1§7\nAfter killing §e10§7 hostiles: charge §e+2§7",
   "tooltip.astral_dice.chip.advanced_peripherals": "When you have at least §e4§7 charge: attack §e+4§7\nOn Dice Blessing trigger: charge §e-1§7",
   "tooltip.astral_dice.chip.perpetual_motion": "On Dice Blessing trigger: charge §e+6§7",

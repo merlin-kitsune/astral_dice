@@ -448,7 +448,7 @@
   "tooltip.astral_dice.chip.sandwich_medium": "最大生命值 §e+8§7",
   "tooltip.astral_dice.chip.satellite": "物品栏中“轨道炮”少于 §e6§7 张时，每 §91:00§7 获得一张“轨道炮”\n使用“轨道炮”后，本轮出牌数 §e+1§7（每 1:00 仅触发一次）\n“轨道炮”生效期间，远程或魔法击杀敌方目标后获得一张随机效果牌",
   "tooltip.astral_dice.chip.warp_engine": "触发瞬移时：充能 §e+2§7，并获得 §9迅捷 (0:10)§7",
-  "tooltip.astral_dice.chip.energy_recycler": "每移动 §e50§7 米：充能 §e+1§7",
+  "tooltip.astral_dice.chip.energy_recycler": "每移动 §e50§7 米：充能 §e+1§7\n当前充能不少于 §e5§7 点时：移动速度 §e+5%%§7",
   "tooltip.astral_dice.chip.electric_sword": "每拥有 §e4§7 层充能：攻击力 §e+1§7\n累计击杀 §e10§7 个敌对目标：充能 §e+2§7",
   "tooltip.astral_dice.chip.advanced_peripherals": "充能层数不低于 §e4§7 时：攻击力 §e+4§7\n触发骰神赐福时：充能 §e-1§7",
   "tooltip.astral_dice.chip.perpetual_motion": "触发骰神赐福时：充能 §e+6§7",
