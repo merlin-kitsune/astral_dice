@@ -117,6 +117,7 @@ public class ModCreativeTabs {
                 output.accept(ModItems.BUFFER_SHIELD.get());
                 output.accept(ModItems.CANDY_CHIP.get());
                 output.accept(ModItems.FRIENDSHIP_BADGE.get());
+                output.accept(ModItems.BIG_BOWL_STEW_CHIP.get());
                 // === 标记类 ===
                 output.accept(ModItems.SCOPE_CHIP.get());
                 output.accept(ModItems.EAGLE_SCOPE_CHIP.get());
@@ -153,5 +154,9 @@ public class ModCreativeTabs {
                 output.accept(ModItems.CURSED_SWORD.get());
                 output.accept(ModItems.REVENGE_HALBERD.get());
                 output.accept(ModItems.PIERCING_GUN.get());
+                output.accept(ModItems.MEMBER_RECOMMENDATION_CHIP.get());
+                output.accept(ModItems.BOOKMARK_CHIP.get());
+                output.accept(ModItems.PIGGY_BANK_CHIP.get());
+                output.accept(ModItems.SMART_WATCH_CHIP.get());
             }).build());
 }

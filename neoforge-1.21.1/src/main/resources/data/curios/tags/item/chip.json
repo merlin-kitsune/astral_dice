@@ -47,6 +47,11 @@
     "astral_dice:energy_recycler_chip",
     "astral_dice:electric_sword_chip",
     "astral_dice:perpetual_motion_chip",
-    "astral_dice:advanced_peripherals_chip"
+    "astral_dice:advanced_peripherals_chip",
+    "astral_dice:big_bowl_stew_chip",
+    "astral_dice:member_recommendation_chip",
+    "astral_dice:bookmark_chip",
+    "astral_dice:piggy_bank_chip",
+    "astral_dice:smart_watch_chip"
   ]
 }

@@ -21,6 +21,7 @@ import com.merlinkitsune.astral_dice.item.sign.FenSignItem;
 import com.merlinkitsune.astral_dice.item.sign.PandamanSignItem;
 import com.merlinkitsune.astral_dice.item.sign.JasmineSignItem;
 import com.merlinkitsune.astral_dice.item.chip.MagicQuiverChipItem;
+import com.merlinkitsune.astral_dice.item.chip.PiggyBankChipItem;
 import com.merlinkitsune.astral_dice.item.sign.KomachiSignItem;
 
 /**
@@ -244,6 +245,8 @@ public abstract class BaseEffectCardItem extends Item {
         KomachiSignItem.onEffectCardUsed(player, cardTypeId());
         MagicTomeChipItem.onEffectCardUsed(player, cardTypeId());
         MagicQuiverChipItem.onEffectCardUsed(player, cardTypeId());
+        // 小猪存钱罐筹码:每使用 2 张效果牌获得 3 星币(独立计数)
+        PiggyBankChipItem.onEffectCardUsed(player);
         return true;
     }
 }

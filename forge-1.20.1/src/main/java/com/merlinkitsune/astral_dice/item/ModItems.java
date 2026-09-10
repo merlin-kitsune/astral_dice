@@ -83,6 +83,11 @@ import com.merlinkitsune.astral_dice.item.chip.EnergyRecyclerChipItem;
 import com.merlinkitsune.astral_dice.item.chip.ElectricSwordChipItem;
 import com.merlinkitsune.astral_dice.item.chip.PerpetualMotionChipItem;
 import com.merlinkitsune.astral_dice.item.chip.AdvancedPeripheralsChipItem;
+import com.merlinkitsune.astral_dice.item.chip.BigBowlStewChipItem;
+import com.merlinkitsune.astral_dice.item.chip.MemberRecommendationChipItem;
+import com.merlinkitsune.astral_dice.item.chip.BookmarkChipItem;
+import com.merlinkitsune.astral_dice.item.chip.PiggyBankChipItem;
+import com.merlinkitsune.astral_dice.item.chip.SmartWatchChipItem;
 import com.merlinkitsune.astral_dice.item.chip.NinjaStarChipItem;
 import com.merlinkitsune.astral_dice.item.chip.FlashlightChipItem;
 
@@ -676,6 +681,36 @@ public class ModItems {
     // 永动机:触发骰神赐福时,充能 +6
     public static final RegistryObject<Item> PERPETUAL_MOTION = registerItem("perpetual_motion_chip",
             () -> new PerpetualMotionChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.UNCOMMON)));
+
+    // 大碗炖肉:骰神赐福结束后,16 格范围内所有友方目标 +1 治愈并恢复 2 点生命值
+    public static final RegistryObject<Item> BIG_BOWL_STEW_CHIP = registerItem("big_bowl_stew_chip",
+            () -> new BigBowlStewChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.EPIC)));
+
+    // 会员推荐信:每次触发骰神赐福时,获得一张随机卡牌
+    public static final RegistryObject<Item> MEMBER_RECOMMENDATION_CHIP = registerItem("member_recommendation_chip",
+            () -> new MemberRecommendationChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.EPIC)));
+
+    // 书签:使伤害效果牌伤害加成 +1
+    public static final RegistryObject<Item> BOOKMARK_CHIP = registerItem("bookmark_chip",
+            () -> new BookmarkChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.RARE)));
+
+    // 小猪存钱罐:每使用 2 张效果牌后,获得 3 星币
+    public static final RegistryObject<Item> PIGGY_BANK_CHIP = registerItem("piggy_bank_chip",
+            () -> new PiggyBankChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.EPIC)));
+
+    // 智能手表:物品栏卡牌不足 10 张时,每 1:00 自动补充一张随机手牌
+    public static final RegistryObject<Item> SMART_WATCH_CHIP = registerItem("smart_watch_chip",
+            () -> new SmartWatchChipItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(Rarity.UNCOMMON)));
 

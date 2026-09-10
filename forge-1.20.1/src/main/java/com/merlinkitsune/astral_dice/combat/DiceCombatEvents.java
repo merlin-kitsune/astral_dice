@@ -313,6 +313,8 @@ public class DiceCombatEvents {
             PerpetualMotionChipItem.onBlessingStart(player);
             // 高级外设筹码:触发骰神赐福时,移除 1 层充能
             AdvancedPeripheralsChipItem.onBlessingStart(player);
+            // 会员推荐信筹码:触发骰神赐福时,获得一张随机卡牌
+            com.merlinkitsune.astral_dice.item.chip.MemberRecommendationChipItem.onBlessingStart(player);
             // 大当家立牌:触发骰神赐福 → 养精蓄锐 -1 层并记录触发时刻;"战斗爽·扩散"待命则本次赐福启用
             com.merlinkitsune.astral_dice.item.sign.FenSignItem.onBlessingTriggered(player);
             // 治愈体系:触发骰神赐福 → 医疗箱加点(先)+ 按当前治愈点×2 回血(后)。
@@ -785,6 +787,8 @@ public class DiceCombatEvents {
         com.merlinkitsune.astral_dice.item.chip.StarCoinHammerChipItem.onBlessingEnd(player);
         // 银行卡-用不完:赐福结束后使自身及团队所有成员获得 3 星币(死亡清场等已死亡时不发放)
         com.merlinkitsune.astral_dice.item.chip.BankCardUnlimitedChipItem.onBlessingEnd(player);
+        // 大碗炖肉筹码:赐福结束后,16 格范围内所有友方目标 +1 治愈并恢复 2 点生命值
+        com.merlinkitsune.astral_dice.item.chip.BigBowlStewChipItem.onBlessingEnd(player);
         // 大当家立牌:赐福结束清除"战斗爽·扩散"生效状态
         com.merlinkitsune.astral_dice.item.sign.FenSignItem.onBlessingEnd(player);
         // 骇客立牌:赐福结束刷新被动(攻击/防御,覆盖旧类型)

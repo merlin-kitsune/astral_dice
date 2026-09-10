@@ -30,6 +30,11 @@
 - New Charge chip "Electric Sword" (`electric_sword_chip`, rare): +1 attack per 4 Charge stacks (rounded down); charge +2 after 10 hostile kills (counter cleared on unequip); recipe = `XXX/XCX/BBB` (X=Iron Sword, C=Blank Chip, B=Star Coin) (both loaders).
 - New Charge chip "Advanced Peripherals" (`advanced_peripherals_chip`, epic): +4 attack while you have at least 4 Charge stacks; each Dice Blessing removes 1 Charge stack; recipe = `XXX/XCX/PPP` (X=Echo Shard, C=Blank Chip, P=Star Plate) (both loaders).
 - New Charge chip "Perpetual Motion" (`perpetual_motion_chip`, legendary): charge +6 on every Dice Blessing trigger (legendary chip, excluded from the Bountiful reward pool); recipe = `XXX/XCX/GGG` (X=Gold Ingot, C=Blank Chip, G=Golden Star Plate) (both loaders).
+- New Healing chip "Big Bowl Stew" (`big_bowl_stew_chip`, epic): after a Dice Blessing ends, all friendly targets within 16 blocks gain the effect — players get +1 Healing Point and restore 2 health; tamed/rideable friendly mobs (pets, horses, pigs, striders, camels) only restore 2 health (Healing Points are a player-level resource); icon from images/大碗炖肉.png (both loaders).
+- New Other chip "Member Recommendation" (`member_recommendation_chip`, epic): gain one random card every time a Dice Blessing triggers (the normal random pool, exclusive cards excluded); icon from images/会员推荐信.png (both loaders).
+- New Other chip "Bookmark" (`bookmark_chip`, rare): damage effect cards gain +1 damage bonus (uncapped, uncounted; it feeds the same single aggregate exit `SpellDamageRegistry.effectCardDamageBonus` as the Ninja sign's "effect-card damage bonus", applying to Laser/Brick/Orbital Strike/Directional Blast/Living Page spell damage, and tooltips show the boosted values); icon from images/书签.png (both loaders).
+- New Other chip "Piggy Bank" (`piggy_bank_chip`, epic): gain 3 Star Coins for every 2 effect cards used (its own counter, independent of the Magic Tome/Ninja sign, cleared on unequip); icon from images/小猪存钱罐.png (both loaders).
+- New Other chip "Smart Watch" (`smart_watch_chip`, rare): while you carry fewer than 10 cards, it grants one random card every 1:00 (own cooldown, reset after every check); icon from images/智能手表.png (both loaders).
 
 ### Content & Balance
 

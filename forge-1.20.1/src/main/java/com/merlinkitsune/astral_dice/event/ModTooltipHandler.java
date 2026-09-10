@@ -256,14 +256,15 @@ public class ModTooltipHandler {
             return;
         }
         int bonus = 0;
-        int komachi = ModAttachments.getKomachiDamageBonus(player);
-        if (player.hasEffect(ModEffects.MONSTER_LASER.get())) bonus += 4 + komachi;
-        if (player.hasEffect(ModEffects.MONSTER_BRICK.get())) bonus += 6 + komachi;
-        if (player.hasEffect(ModEffects.ORBITAL_STRIKE.get())) bonus += 8 + komachi;
-        if (player.hasEffect(ModEffects.DIRECTIONAL_BLAST.get())) bonus += 5 + komachi;
+        // 伤害效果牌统一加成 = 忍者立牌「效果牌伤害增益」+ 书签筹码(见 SpellDamageRegistry.effectCardDamageBonus)
+        int cardBonus = com.merlinkitsune.astral_dice.combat.SpellDamageRegistry.effectCardDamageBonus(player);
+        if (player.hasEffect(ModEffects.MONSTER_LASER.get())) bonus += 4 + cardBonus;
+        if (player.hasEffect(ModEffects.MONSTER_BRICK.get())) bonus += 6 + cardBonus;
+        if (player.hasEffect(ModEffects.ORBITAL_STRIKE.get())) bonus += 8 + cardBonus;
+        if (player.hasEffect(ModEffects.DIRECTIONAL_BLAST.get())) bonus += 5 + cardBonus;
         if (player.hasEffect(ModEffects.LIVING_PAGE.get())) {
             int pages = ModAttachments.getRinPages(player);
-            bonus += 2 + pages + komachi;
+            bonus += 2 + pages + cardBonus;
         }
         tooltip.add(tt("tooltip.astral_dice.card.active_damage_bonus", bonus)
                 .withStyle(ChatFormatting.GRAY));
@@ -897,6 +898,13 @@ public class ModTooltipHandler {
                 addHealingPointsCounter(tooltip, player);
             }
         }
+        if (stack.is(ModItems.BIG_BOWL_STEW_CHIP.get())) {
+            tooltip.add(Component.empty());
+            addChipLines(tooltip, "tooltip.astral_dice.chip.big_bowl_stew", ChatFormatting.GRAY);
+            if (event.getEntity() != null) {
+                addHealingPointsCounter(tooltip, player);
+            }
+        }
         if (stack.is(ModItems.SATELLITE_CHIP.get())) {
             tooltip.add(Component.empty());
             addChipLines(tooltip, "tooltip.astral_dice.chip.satellite", ChatFormatting.GRAY);
@@ -925,6 +933,22 @@ public class ModTooltipHandler {
             tooltip.add(Component.empty());
             addChipLines(tooltip, "tooltip.astral_dice.chip.perpetual_motion", ChatFormatting.GRAY);
             addChargeCounter(tooltip, event.getEntity());
+        }
+        if (stack.is(ModItems.MEMBER_RECOMMENDATION_CHIP.get())) {
+            tooltip.add(Component.empty());
+            addChipLines(tooltip, "tooltip.astral_dice.chip.member_recommendation", ChatFormatting.GRAY);
+        }
+        if (stack.is(ModItems.BOOKMARK_CHIP.get())) {
+            tooltip.add(Component.empty());
+            addChipLines(tooltip, "tooltip.astral_dice.chip.bookmark", ChatFormatting.GRAY);
+        }
+        if (stack.is(ModItems.PIGGY_BANK_CHIP.get())) {
+            tooltip.add(Component.empty());
+            addChipLines(tooltip, "tooltip.astral_dice.chip.piggy_bank", ChatFormatting.GRAY);
+        }
+        if (stack.is(ModItems.SMART_WATCH_CHIP.get())) {
+            tooltip.add(Component.empty());
+            addChipLines(tooltip, "tooltip.astral_dice.chip.smart_watch", ChatFormatting.GRAY);
         }
         if (stack.is(ModItems.PADMAN_SIGN.get())) {
             tooltip.add(Component.empty());
@@ -964,11 +988,12 @@ public class ModTooltipHandler {
         if (stack.is(ModItems.LIVING_PAGE.get())) {
             tooltip.add(Component.empty());
             if (event.getEntity() != null) {
-                // 活体书页伤害 = 基础 2 + 调查员(rin)已使用数量 + 忍者立牌效果牌伤害增益
+                // 活体书页伤害 = 基础 2 + 调查员(rin)已使用数量 + 伤害效果牌统一加成(忍者立牌效果牌伤害增益 + 书签)
                 int pages = ModAttachments.getRinPages(player);
                 // 组件基础色为灰(普通文本);行内颜色码:数值=黄 §e、时间=蓝 §9
                 tooltip.add(Component.translatable("tooltip.astral_dice.card.living_page",
-                                2 + pages + ModAttachments.getKomachiDamageBonus(player))
+                                2 + pages + com.merlinkitsune.astral_dice.combat.SpellDamageRegistry
+                                        .effectCardDamageBonus(player))
                         .withStyle(ChatFormatting.GRAY));
             } else {
                 tooltip.add(Component.translatable("tooltip.astral_dice.card.living_page", "?")
@@ -988,14 +1013,16 @@ public class ModTooltipHandler {
                     : stack.is(ModItems.MONSTER_BRICK_CARD.get()) ? "tooltip.astral_dice.card.monster_brick"
                     : stack.is(ModItems.ORBITAL_STRIKE_CARD.get()) ? "tooltip.astral_dice.card.orbital_strike"
                     : "tooltip.astral_dice.card.directional_blast";
-            // 伤害数值显示:基础 + 忍者立牌效果牌伤害增益(观看者佩戴忍者立牌时显示加成后的数值)
+            // 伤害数值显示:基础 + 伤害效果牌统一加成(观看者佩戴忍者立牌/书签时显示加成后的数值)
             int baseDamage = stack.is(ModItems.MONSTER_LASER_CARD.get()) ? 4
                     : stack.is(ModItems.MONSTER_BRICK_CARD.get()) ? 6
                     : stack.is(ModItems.ORBITAL_STRIKE_CARD.get()) ? 8 : 5;
-            int ninjaBonus = event.getEntity() != null ? ModAttachments.getKomachiDamageBonus(event.getEntity()) : 0;
+            int effectCardBonus = event.getEntity() != null
+                    ? com.merlinkitsune.astral_dice.combat.SpellDamageRegistry.effectCardDamageBonus(event.getEntity())
+                    : 0;
             tooltip.add(Component.empty());
             // 组件基础色为灰(普通文本);行内颜色码:数值=黄 §e、时间=蓝 §9
-            tooltip.add(Component.translatable(tooltipKey, baseDamage + ninjaBonus)
+            tooltip.add(Component.translatable(tooltipKey, baseDamage + effectCardBonus)
                     .withStyle(ChatFormatting.GRAY));
             addEffectCardPlayCountTooltip(tooltip, player);
             addActiveDamageBonusTooltip(tooltip, player);

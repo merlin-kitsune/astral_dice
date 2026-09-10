@@ -121,5 +121,10 @@ public class ModItemModelProvider extends ItemModelProvider {
         basicItem(ModItems.ELECTRIC_SWORD.get());
         basicItem(ModItems.PERPETUAL_MOTION.get());
         basicItem(ModItems.ADVANCED_PERIPHERALS.get());
+        basicItem(ModItems.BIG_BOWL_STEW_CHIP.get());
+        basicItem(ModItems.MEMBER_RECOMMENDATION_CHIP.get());
+        basicItem(ModItems.BOOKMARK_CHIP.get());
+        basicItem(ModItems.PIGGY_BANK_CHIP.get());
+        basicItem(ModItems.SMART_WATCH_CHIP.get());
     }
 }

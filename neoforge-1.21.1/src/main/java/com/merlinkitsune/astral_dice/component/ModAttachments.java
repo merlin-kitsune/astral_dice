@@ -167,6 +167,34 @@ public class ModAttachments {
                     .sync(ByteBufCodecs.INT)
                     .build());
 
+    // 小猪存钱罐筹码:效果牌使用计数(每使用 2 张获得 3 星币;卸下筹码重置)
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> PIGGY_BANK_USE_COUNT =
+            ATTACHMENTS.register("piggy_bank_use_count", () -> AttachmentType.builder(() -> 0)
+                    .serialize(Codec.INT)
+                    .build());
+
+    // 智能手表筹码:补充随机卡牌的冷却结束时刻(每 1:00 至多补充一次)
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> SMART_WATCH_GIVE_COOLDOWN_END =
+            ATTACHMENTS.register("smart_watch_give_cooldown_end", () -> AttachmentType.builder(() -> 0L)
+                    .serialize(Codec.LONG)
+                    .build());
+
+    public static int getPiggyBankUseCount(net.minecraft.world.entity.player.Player player) {
+        return player.getData(PIGGY_BANK_USE_COUNT.get());
+    }
+
+    public static void setPiggyBankUseCount(net.minecraft.world.entity.player.Player player, int value) {
+        player.setData(PIGGY_BANK_USE_COUNT.get(), Math.max(0, value));
+    }
+
+    public static long getSmartWatchGiveCooldownEnd(net.minecraft.world.entity.player.Player player) {
+        return player.getData(SMART_WATCH_GIVE_COOLDOWN_END.get());
+    }
+
+    public static void setSmartWatchGiveCooldownEnd(net.minecraft.world.entity.player.Player player, long value) {
+        player.setData(SMART_WATCH_GIVE_COOLDOWN_END.get(), Math.max(0, value));
+    }
+
     public static int getMagicTomeUseCount(net.minecraft.world.entity.player.Player player) {
         return player.getData(MAGIC_TOME_USE_COUNT.get());
     }
