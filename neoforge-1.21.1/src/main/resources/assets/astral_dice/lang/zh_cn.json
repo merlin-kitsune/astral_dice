@@ -462,7 +462,7 @@
   "tooltip.astral_dice.chip.advanced_peripherals": "充能层数不低于 §e4§7 时：攻击力 §e+4§7\n触发骰神赐福时：充能 §e-1§7",
   "tooltip.astral_dice.chip.perpetual_motion": "触发骰神赐福时：充能 §e+6§7",
   "tooltip.astral_dice.chip.scope": "攻击力 §e+2§7。攻击时对目标施加 §e1§7 点标记",
-  "tooltip.astral_dice.chip.smart_watch": "物品栏中卡牌数量不足 §e10§7 张时，每 §91:00§7 自动补充一张随机手牌",
+  "tooltip.astral_dice.chip.smart_watch": "物品栏中卡牌数量不足 §e10§7 张时，每击杀 §e1§7 个敌对目标获得一张随机手牌",
   "tooltip.astral_dice.chip.speed_skates_high": "移动速度 §e+25%%§7",
   "tooltip.astral_dice.chip.speed_skates_low": "移动速度 §e+5%%§7",
   "tooltip.astral_dice.chip.speed_skates_medium": "移动速度 §e+15%%§7",

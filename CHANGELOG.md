@@ -34,7 +34,7 @@
 - New Other chip "Member Recommendation" (`member_recommendation_chip`, epic): gain one random card every time a Dice Blessing triggers (the normal random pool, exclusive cards excluded); icon from images/会员推荐信.png (both loaders).
 - New Other chip "Bookmark" (`bookmark_chip`, rare): damage effect cards gain +1 damage bonus (uncapped, uncounted; it feeds the same single aggregate exit `SpellDamageRegistry.effectCardDamageBonus` as the Ninja sign's "effect-card damage bonus", applying to Laser/Brick/Orbital Strike/Directional Blast/Living Page spell damage, and tooltips show the boosted values); icon from images/书签.png (both loaders).
 - New Other chip "Piggy Bank" (`piggy_bank_chip`, epic): gain 3 Star Coins for every 2 effect cards used (its own counter, independent of the Magic Tome/Ninja sign, cleared on unequip); icon from images/小猪存钱罐.png (both loaders).
-- New Other chip "Smart Watch" (`smart_watch_chip`, rare): while you carry fewer than 10 cards, it grants one random card every 1:00 (own cooldown, reset after every check); icon from images/智能手表.png (both loaders).
+- New Other chip "Smart Watch" (`smart_watch_chip`, rare): while you carry fewer than 10 cards, each hostile kill grants one random card (no cooldown and no counter; nothing is granted once you are at or above the threshold); icon from images/智能手表.png (both loaders).
 
 ### Content & Balance
 

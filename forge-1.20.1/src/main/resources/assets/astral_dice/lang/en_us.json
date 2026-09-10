@@ -462,7 +462,7 @@
   "tooltip.astral_dice.chip.advanced_peripherals": "When you have at least §e4§7 charge: attack §e+4§7\nOn Dice Blessing trigger: charge §e-1§7",
   "tooltip.astral_dice.chip.perpetual_motion": "On Dice Blessing trigger: charge §e+6§7",
   "tooltip.astral_dice.chip.scope": "Attack §e+2§7. On hit, apply §e1§7 Mark layer",
-  "tooltip.astral_dice.chip.smart_watch": "While you have fewer than §e10§7 cards in your inventory, gain one random card every §91:00§7",
+  "tooltip.astral_dice.chip.smart_watch": "While you have fewer than §e10§7 cards in your inventory, gain one random card per hostile kill",
   "tooltip.astral_dice.chip.speed_skates_high": "Movement speed §e+25%%§7",
   "tooltip.astral_dice.chip.speed_skates_low": "Movement speed §e+5%%§7",
   "tooltip.astral_dice.chip.speed_skates_medium": "Movement speed §e+15%%§7",

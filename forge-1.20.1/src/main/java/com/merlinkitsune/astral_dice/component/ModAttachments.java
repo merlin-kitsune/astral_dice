@@ -140,24 +140,12 @@ public class ModAttachments {
     public static final AttachedDataKey<Integer> PIGGY_BANK_USE_COUNT =
             register(AttachedDataKey.builder("piggy_bank_use_count", Codec.INT, () -> 0).build());
 
-    // 智能手表筹码:补充随机卡牌的冷却结束时刻(每 1:00 至多补充一次)
-    public static final AttachedDataKey<Long> SMART_WATCH_GIVE_COOLDOWN_END =
-            register(AttachedDataKey.builder("smart_watch_give_cooldown_end", Codec.LONG, () -> 0L).build());
-
     public static int getPiggyBankUseCount(net.minecraft.world.entity.player.Player player) {
         return PIGGY_BANK_USE_COUNT.get(player);
     }
 
     public static void setPiggyBankUseCount(net.minecraft.world.entity.player.Player player, int value) {
         PIGGY_BANK_USE_COUNT.set(player, Math.max(0, value));
-    }
-
-    public static long getSmartWatchGiveCooldownEnd(net.minecraft.world.entity.player.Player player) {
-        return SMART_WATCH_GIVE_COOLDOWN_END.get(player);
-    }
-
-    public static void setSmartWatchGiveCooldownEnd(net.minecraft.world.entity.player.Player player, long value) {
-        SMART_WATCH_GIVE_COOLDOWN_END.set(player, Math.max(0, value));
     }
 
     public static int getMagicTomeUseCount(net.minecraft.world.entity.player.Player player) {
