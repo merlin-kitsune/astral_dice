@@ -486,6 +486,27 @@ public class ModItems {
                     .stacksTo(64)
                     .rarity(Rarity.UNCOMMON)));
 
+    // === 新材料(1.2.0):合成材料,本身不参与配方 ===
+    // 再生试剂:再生相关的试剂(动态贴图,2 帧)
+    public static final RegistryObject<Item> REGENERATION_REAGENT = registerItem("regeneration_reagent",
+            () -> new Item(new Item.Properties()
+                    .stacksTo(64)));
+
+    // 导电线材:可导引电流的线材(动态贴图,10 帧)
+    public static final RegistryObject<Item> CONDUCTIVE_WIRE = registerItem("conductive_wire",
+            () -> new Item(new Item.Properties()
+                    .stacksTo(64)));
+
+    // 星币尘:星币研磨而成的粉末(动态贴图,7 帧)
+    public static final RegistryObject<Item> STAR_COIN_DUST = registerItem("star_coin_dust",
+            () -> new Item(new Item.Properties()
+                    .stacksTo(64)));
+
+    // 标记涂料:用于标记目标的涂料(静态贴图)
+    public static final RegistryObject<Item> MARK_PAINT = registerItem("mark_paint",
+            () -> new Item(new Item.Properties()
+                    .stacksTo(64)));
+
     public static final RegistryObject<Item> EIGHT_SIDED_DICE = registerItem("eight_sided_dice_chip",
             () -> new EightSidedDiceChipItem(new Item.Properties()
                     .stacksTo(1)

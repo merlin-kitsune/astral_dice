@@ -72,6 +72,10 @@ public class ModItemModelProvider extends ItemModelProvider {
         basicItem(ModItems.HAND_FAN_BIG_CHIP.get());
         basicItem(ModItems.STAR_PLATE.get());
         basicItem(ModItems.GOLDEN_STAR_PLATE.get());
+        basicItem(ModItems.REGENERATION_REAGENT.get());
+        basicItem(ModItems.CONDUCTIVE_WIRE.get());
+        basicItem(ModItems.STAR_COIN_DUST.get());
+        basicItem(ModItems.MARK_PAINT.get());
         basicItem(ModItems.EIGHT_SIDED_DICE.get());
         basicItem(ModItems.PADMAN_SIGN.get());
         basicItem(ModItems.FANNY_SIGN.get());

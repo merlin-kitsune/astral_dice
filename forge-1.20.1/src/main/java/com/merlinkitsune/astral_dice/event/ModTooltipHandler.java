@@ -564,6 +564,27 @@ public class ModTooltipHandler {
             tooltip.add(Component.translatable("tooltip.astral_dice.material.blank_chip")
                     .withStyle(ChatFormatting.GRAY));
         }
+        // 新材料(1.2.0)合成材料 tip
+        if (stack.is(ModItems.REGENERATION_REAGENT.get())) {
+            tooltip.add(Component.empty());
+            tooltip.add(Component.translatable("tooltip.astral_dice.material.regeneration_reagent")
+                    .withStyle(ChatFormatting.GRAY));
+        }
+        if (stack.is(ModItems.CONDUCTIVE_WIRE.get())) {
+            tooltip.add(Component.empty());
+            tooltip.add(Component.translatable("tooltip.astral_dice.material.conductive_wire")
+                    .withStyle(ChatFormatting.GRAY));
+        }
+        if (stack.is(ModItems.STAR_COIN_DUST.get())) {
+            tooltip.add(Component.empty());
+            tooltip.add(Component.translatable("tooltip.astral_dice.material.star_coin_dust")
+                    .withStyle(ChatFormatting.GRAY));
+        }
+        if (stack.is(ModItems.MARK_PAINT.get())) {
+            tooltip.add(Component.empty());
+            tooltip.add(Component.translatable("tooltip.astral_dice.material.mark_paint")
+                    .withStyle(ChatFormatting.GRAY));
+        }
         if (stack.is(ModItems.PARUNAN_SIGN.get())) {
             tooltip.add(Component.empty());
             addSignKeyHint(tooltip);

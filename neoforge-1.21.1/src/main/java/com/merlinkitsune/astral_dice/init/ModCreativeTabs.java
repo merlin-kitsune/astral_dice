@@ -35,6 +35,10 @@ public class ModCreativeTabs {
                 output.accept(ModItems.GOLDEN_STAR_PLATE.get());
                 output.accept(ModItems.BLANK_SIGN.get());
                 output.accept(ModItems.BLANK_CHIP.get());
+                output.accept(ModItems.REGENERATION_REAGENT.get());
+                output.accept(ModItems.CONDUCTIVE_WIRE.get());
+                output.accept(ModItems.STAR_COIN_DUST.get());
+                output.accept(ModItems.MARK_PAINT.get());
                 // 骰子
                 output.accept(ModItems.DICE.get());
                 output.accept(ModItems.GOLDEN_DICE.get());
