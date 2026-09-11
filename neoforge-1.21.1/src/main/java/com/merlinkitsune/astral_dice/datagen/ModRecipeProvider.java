@@ -1053,13 +1053,13 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
                 .save(output);
 
-        // 原初核心:上排 回响碎片·下界之星·回响碎片｜中排 导电线材·空白筹码·导电线材｜下排 黄金星盘·黄金星盘·黄金星盘 [传奇·充能]
+        // 原初核心:上排 回响碎片·龙首·回响碎片｜中排 导电线材·空白筹码·导电线材｜下排 黄金星盘·黄金星盘·黄金星盘 [传奇·充能]
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.PRIMORDIAL_CORE_CHIP.get())
-                .pattern("XLX")
+                .pattern("XHX")
                 .pattern("WBW")
                 .pattern("GGG")
                 .define('X', Items.ECHO_SHARD)
-                .define('L', Items.NETHER_STAR)
+                .define('H', Items.DRAGON_HEAD)
                 .define('W', ModItems.CONDUCTIVE_WIRE.get())
                 .define('B', ModItems.BLANK_CHIP.get())
                 .define('G', ModItems.GOLDEN_STAR_PLATE.get())

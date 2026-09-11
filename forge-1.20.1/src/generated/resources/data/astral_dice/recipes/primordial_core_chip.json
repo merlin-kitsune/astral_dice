@@ -8,8 +8,8 @@
     "G": {
       "item": "astral_dice:golden_star_plate"
     },
-    "L": {
-      "item": "minecraft:nether_star"
+    "H": {
+      "item": "minecraft:dragon_head"
     },
     "W": {
       "item": "astral_dice:conductive_wire"
@@ -19,7 +19,7 @@
     }
   },
   "pattern": [
-    "XLX",
+    "XHX",
     "WBW",
     "GGG"
   ],
