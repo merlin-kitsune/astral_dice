@@ -1133,12 +1133,12 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
                 .save(output);
 
-        // 磨刀石:上排 铁锭·砂轮·铁锭｜中排 燧石·空白筹码·燧石｜下排 星盘·星盘·星盘 [史诗·无流派]
+        // 磨刀石:上排 下界合金锭·砂轮·下界合金锭｜中排 燧石·空白筹码·燧石｜下排 星盘·星盘·星盘 [史诗·无流派]
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.WHETSTONE_CHIP.get())
                 .pattern("XLX")
                 .pattern("GBG")
                 .pattern("PPP")
-                .define('X', Items.IRON_INGOT)
+                .define('X', Items.NETHERITE_INGOT)
                 .define('L', Items.GRINDSTONE)
                 .define('G', Items.FLINT)
                 .define('B', ModItems.BLANK_CHIP.get())
