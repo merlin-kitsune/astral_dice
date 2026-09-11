@@ -694,13 +694,13 @@ public class ModItems {
     public static final DeferredItem<Item> BIG_BOWL_STEW_CHIP = registerItem("big_bowl_stew_chip",
             () -> new BigBowlStewChipItem(new Item.Properties()
                     .stacksTo(1)
-                    .rarity(Rarity.EPIC)));
+                    .rarity(Rarity.UNCOMMON)));
 
     // 会员推荐信:每次触发骰神赐福时,获得一张随机卡牌
     public static final DeferredItem<Item> MEMBER_RECOMMENDATION_CHIP = registerItem("member_recommendation_chip",
             () -> new MemberRecommendationChipItem(new Item.Properties()
                     .stacksTo(1)
-                    .rarity(Rarity.EPIC)));
+                    .rarity(Rarity.RARE)));
 
     // 书签:使伤害效果牌伤害加成 +1
     public static final DeferredItem<Item> BOOKMARK_CHIP = registerItem("bookmark_chip",
@@ -712,13 +712,13 @@ public class ModItems {
     public static final DeferredItem<Item> PIGGY_BANK_CHIP = registerItem("piggy_bank_chip",
             () -> new PiggyBankChipItem(new Item.Properties()
                     .stacksTo(1)
-                    .rarity(Rarity.EPIC)));
+                    .rarity(Rarity.RARE)));
 
-    // 智能手表:物品栏卡牌不足 10 张时,每 1:00 自动补充一张随机手牌
+    // 智能手表:物品栏卡牌不足 10 张时,每击杀 1 个敌对目标获得一张随机卡牌
     public static final DeferredItem<Item> SMART_WATCH_CHIP = registerItem("smart_watch_chip",
             () -> new SmartWatchChipItem(new Item.Properties()
                     .stacksTo(1)
-                    .rarity(Rarity.UNCOMMON)));
+                    .rarity(Rarity.EPIC)));
 
     public static final DeferredItem<Item> PADMAN_SIGN = registerItem("padman_sign",
             () -> new PadmanSignItem(new Item.Properties()
