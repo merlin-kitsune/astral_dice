@@ -2,26 +2,23 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
-    "G": {
-      "item": "minecraft:milk_bucket"
+    "D": {
+      "item": "minecraft:diamond"
     },
-    "H": {
+    "G": {
       "item": "astral_dice:golden_star_plate"
     },
-    "L": {
-      "item": "minecraft:egg"
+    "R": {
+      "item": "minecraft:redstone"
     },
     "T": {
       "item": "astral_dice:sandwich_medium_chip"
-    },
-    "X": {
-      "item": "minecraft:cookie"
     }
   },
   "pattern": [
-    "XLX",
-    "GTG",
-    "HHH"
+    "RDR",
+    "DTD",
+    "GGG"
   ],
   "result": {
     "count": 1,

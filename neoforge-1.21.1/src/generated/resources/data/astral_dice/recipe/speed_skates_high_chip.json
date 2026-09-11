@@ -2,26 +2,23 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
-    "G": {
-      "item": "minecraft:iron_ingot"
+    "D": {
+      "item": "minecraft:diamond"
     },
-    "H": {
+    "G": {
       "item": "astral_dice:golden_star_plate"
     },
-    "L": {
-      "item": "minecraft:leather_boots"
+    "R": {
+      "item": "minecraft:redstone"
     },
     "T": {
       "item": "astral_dice:speed_skates_medium_chip"
-    },
-    "X": {
-      "item": "minecraft:blue_ice"
     }
   },
   "pattern": [
-    "XLX",
-    "GTG",
-    "HHH"
+    "RDR",
+    "DTD",
+    "GGG"
   ],
   "result": {
     "count": 1,

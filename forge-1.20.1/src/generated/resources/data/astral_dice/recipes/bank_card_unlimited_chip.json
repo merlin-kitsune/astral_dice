@@ -3,23 +3,20 @@
   "category": "misc",
   "key": {
     "D": {
-      "item": "astral_dice:star_coin_dust"
+      "item": "minecraft:diamond"
     },
     "G": {
       "item": "astral_dice:golden_star_plate"
     },
-    "L": {
-      "item": "minecraft:gold_block"
+    "R": {
+      "item": "minecraft:redstone"
     },
     "T": {
       "item": "astral_dice:bank_card_high_chip"
-    },
-    "X": {
-      "item": "minecraft:gold_ingot"
     }
   },
   "pattern": [
-    "XLX",
+    "RDR",
     "DTD",
     "GGG"
   ],

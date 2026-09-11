@@ -3,23 +3,20 @@
   "category": "misc",
   "key": {
     "G": {
-      "item": "minecraft:milk_bucket"
+      "item": "minecraft:gold_ingot"
     },
     "L": {
-      "item": "minecraft:egg"
+      "item": "minecraft:lapis_lazuli"
     },
     "P": {
       "item": "astral_dice:star_plate"
     },
     "T": {
       "item": "astral_dice:sandwich_low_chip"
-    },
-    "X": {
-      "item": "minecraft:cookie"
     }
   },
   "pattern": [
-    "XLX",
+    "LGL",
     "GTG",
     "PPP"
   ],

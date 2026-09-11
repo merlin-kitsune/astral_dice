@@ -1,7 +1,7 @@
 {
   "parent": "minecraft:recipes/root",
   "criteria": {
-    "has_hand_fan_small_chip": {
+    "has_hand_fan_small": {
       "conditions": {
         "items": [
           {
@@ -21,7 +21,7 @@
   "requirements": [
     [
       "has_the_recipe",
-      "has_hand_fan_small_chip"
+      "has_hand_fan_small"
     ]
   ],
   "rewards": {

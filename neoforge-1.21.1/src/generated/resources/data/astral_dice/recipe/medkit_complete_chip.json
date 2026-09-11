@@ -2,22 +2,22 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
+    "D": {
+      "item": "minecraft:diamond"
+    },
     "G": {
       "item": "astral_dice:golden_star_plate"
     },
     "R": {
-      "item": "astral_dice:regeneration_reagent"
+      "item": "minecraft:redstone"
     },
     "T": {
       "item": "astral_dice:medkit_emergency_chip"
-    },
-    "X": {
-      "item": "minecraft:slime_ball"
     }
   },
   "pattern": [
-    "XXX",
-    "RTR",
+    "RDR",
+    "DTD",
     "GGG"
   ],
   "result": {

@@ -1,7 +1,7 @@
 {
   "parent": "minecraft:recipes/root",
   "criteria": {
-    "has_medkit_emergency_chip": {
+    "has_medkit_emergency": {
       "conditions": {
         "items": [
           {
@@ -22,7 +22,7 @@
   },
   "requirements": [
     [
-      "has_medkit_emergency_chip",
+      "has_medkit_emergency",
       "has_the_recipe"
     ]
   ],
