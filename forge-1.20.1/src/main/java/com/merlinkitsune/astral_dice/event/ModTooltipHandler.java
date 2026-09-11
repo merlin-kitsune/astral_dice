@@ -102,6 +102,36 @@ import com.merlinkitsune.astral_dice.item.chip.SatelliteChipItem;
 import com.merlinkitsune.astral_dice.item.sign.NancyLuSignItem;
 import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
 
+/**
+ * 物品 tooltip 统一染色规则（权威副本；可读版见 docs/tooltip-color-rules.md）。
+ *
+ * <p>基调：组件基础色为灰 {@code §7}（普通文本），它同时是「值结束后回落」的复位色。
+ * 颜色即语义 —— 黄只出现在数值上，蓝只出现在时间上。行级 {@code withStyle(...)}（标题金、负面行红、
+ * 骰子词条各行语义色）与本规则并行，互不覆盖。
+ *
+ * <p><b>规则 1（非时间数值 -&gt; 黄 {@code §e}）</b>：所有非时间数值（点数/层数/次数/格数/区间/百分比/
+ * 星级/倍率/距离/费用/兑换比例）一律黄色，并连同其前后紧邻的符号一起染色（{@code +3}、{@code -2}、
+ * {@code 50%}、{@code ×2}、{@code ★3}、{@code 1~10}、{@code 2:1}）；值后一律接 {@code §7} 回落灰色正文。
+ *
+ * <p><b>规则 2（时间 -&gt; 蓝 {@code §9}）</b>：所有时间值一律蓝色，形态为 {@code M:SS} 与 {@code N 秒} /
+ * {@code Ns} / {@code N seconds}，同样包含其前后符号（{@code -10秒}、{@code 180 秒}）。秒数格式化统一走
+ * {@link #formatSignTime(int)}；{@code 2:1} 这类兑换比例属于规则 1，不是时间。
+ *
+ * <p><b>规则 3（效果条目 -&gt; 整段蓝）</b>：文本形如 {@code 效果名 (时间)}（含无空格写法
+ * {@code 效果名(时间)}）时，名称与时间必须同色、整段蓝色；禁止「名称灰 + 时间蓝」的割裂写法。
+ *
+ * <p><b>例外（优先级：例外 &gt; 规则 3 &gt; 规则 2 &gt; 规则 1）</b>：
+ * <ol>
+ *   <li>条目已用 {@code §c} 的保持红色（负面效果条目、负面数值、状态警示行、名称类红色），规则 1/2/3 不再改写；</li>
+ *   <li>行级 {@code withStyle(...)} 语义色不作为改写对象，行内数值/时间照常着色；</li>
+ *   <li>现有 {@code §r}（重置为白）保持原样，不做 {@code §r -> §7} 规范化；</li>
+ *   <li>{@code §f} 仅用于 {@code sign.key_hint}（白色行）；</li>
+ *   <li>列表序号（{@code 1.}）与标签序号（{@code 第一诅咒} / {@code Curse 1} / {@code T4}）不染色；</li>
+ *   <li>连接词性质的 {@code +}（如 {@code §e+3§7 + §9黑暗 (0:03)§7} 中间那个）保持灰色。</li>
+ * </ol>
+ *
+ * <p>审计：{@code python scripts/audit/tooltip_color_audit.py}（退出码 0 = 无违规）。
+ */
 @Mod.EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public class ModTooltipHandler {
     private static void addSignKeyHint(List<Component> tooltip) {
@@ -330,7 +360,7 @@ public class ModTooltipHandler {
                         .withStyle(ChatFormatting.GREEN));
                 for (AppliedStone stone : stones) {
                     if ("shadow_strike".equals(stone.type())) {
-                        tooltip.add(Component.literal(" §7- §5暗影突袭 §e+3§7 固定 §7| 黑暗(§93秒§7) §7[剩余:§e" + stone.uses() + "§7]")
+                        tooltip.add(Component.literal(" §7- §5暗影突袭 §e+3§7 固定 §7| §9黑暗(3秒)§7 §7[剩余:§e" + stone.uses() + "§7]")
                                 .withStyle(ChatFormatting.GRAY));
                         continue;
                     }
@@ -345,7 +375,7 @@ public class ModTooltipHandler {
                         continue;
                     }
                     if ("full_power".equals(stone.type())) {
-                        tooltip.add(Component.literal(" §7- §c全力攻击 §e+6§7 攻击力 §e本次攻击的最终攻击力+50%§7 §7[剩余:§e" + stone.uses() + "§7]")
+                        tooltip.add(Component.literal(" §7- §c全力攻击 §e+6§7 攻击力 本次攻击的最终攻击力§e+50%§7 §7[剩余:§e" + stone.uses() + "§7]")
                                 .withStyle(ChatFormatting.GRAY));
                         continue;
                     }
