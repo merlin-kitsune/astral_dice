@@ -12,9 +12,7 @@
       "item": "minecraft:glistering_melon_slice"
     },
     {
-      "type": "forge:partial_nbt",
-      "item": "minecraft:potion",
-      "nbt": "{Potion:\"minecraft:awkward\"}"
+      "item": "minecraft:honey_bottle"
     }
   ],
   "result": {

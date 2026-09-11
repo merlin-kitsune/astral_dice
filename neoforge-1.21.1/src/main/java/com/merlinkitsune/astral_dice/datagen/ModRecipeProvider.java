@@ -1083,15 +1083,12 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .save(output);
 
         // === 合成材料(1.2.0) ===
-        // 再生试剂:红石粉 + 粘液球 + 金西瓜片 + 粗制的药水(无序)
+        // 再生试剂:红石粉 + 粘液球 + 金西瓜片 + 蜂蜜瓶(无序)
         ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ModItems.REGENERATION_REAGENT.get())
                 .requires(Items.REDSTONE)
                 .requires(Items.SLIME_BALL)
                 .requires(Items.GLISTERING_MELON_SLICE)
-                .requires(net.neoforged.neoforge.common.crafting.DataComponentIngredient.of(
-                        true, net.minecraft.core.component.DataComponents.POTION_CONTENTS,
-                        new net.minecraft.world.item.alchemy.PotionContents(net.minecraft.world.item.alchemy.Potions.AWKWARD),
-                        Items.POTION))
+                .requires(Items.HONEY_BOTTLE)
                 .unlockedBy("has_glistering_melon_slice", has(Items.GLISTERING_MELON_SLICE))
                 .save(output);
 

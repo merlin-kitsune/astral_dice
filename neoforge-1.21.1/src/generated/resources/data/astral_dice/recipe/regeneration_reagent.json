@@ -12,14 +12,7 @@
       "item": "minecraft:glistering_melon_slice"
     },
     {
-      "type": "neoforge:components",
-      "components": {
-        "minecraft:potion_contents": {
-          "potion": "minecraft:awkward"
-        }
-      },
-      "items": "minecraft:potion",
-      "strict": true
+      "item": "minecraft:honey_bottle"
     }
   ],
   "result": {
