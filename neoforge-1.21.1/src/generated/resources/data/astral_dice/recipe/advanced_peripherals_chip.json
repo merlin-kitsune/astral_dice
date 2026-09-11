@@ -2,19 +2,19 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
-    "C": {
-      "item": "astral_dice:blank_chip"
+    "E": {
+      "item": "minecraft:echo_shard"
     },
     "P": {
       "item": "astral_dice:star_plate"
     },
-    "X": {
-      "item": "minecraft:echo_shard"
+    "T": {
+      "item": "minecraft:redstone_torch"
     }
   },
   "pattern": [
-    "XXX",
-    "XCX",
+    "TET",
+    "TET",
     "PPP"
   ],
   "result": {

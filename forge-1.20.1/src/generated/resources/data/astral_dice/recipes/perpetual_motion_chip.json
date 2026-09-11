@@ -2,19 +2,19 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
-    "C": {
-      "item": "astral_dice:blank_chip"
+    "B": {
+      "item": "minecraft:gold_block"
     },
     "G": {
       "item": "astral_dice:golden_star_plate"
     },
-    "X": {
-      "item": "minecraft:gold_ingot"
+    "N": {
+      "item": "minecraft:nether_star"
     }
   },
   "pattern": [
-    "XXX",
-    "XCX",
+    "BNB",
+    "BNB",
     "GGG"
   ],
   "result": {

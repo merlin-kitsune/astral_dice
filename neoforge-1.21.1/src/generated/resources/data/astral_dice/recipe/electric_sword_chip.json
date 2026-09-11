@@ -5,16 +5,16 @@
     "B": {
       "item": "astral_dice:star_coin"
     },
-    "C": {
-      "item": "astral_dice:blank_chip"
+    "D": {
+      "item": "minecraft:diamond_sword"
     },
-    "X": {
-      "item": "minecraft:iron_sword"
+    "H": {
+      "item": "minecraft:redstone"
     }
   },
   "pattern": [
-    "XXX",
-    "XCX",
+    "HDH",
+    "HDH",
     "BBB"
   ],
   "result": {

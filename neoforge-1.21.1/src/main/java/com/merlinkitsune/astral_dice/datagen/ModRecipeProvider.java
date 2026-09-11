@@ -930,60 +930,73 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .unlockedBy("has_adrenaline_low", has(ModItems.ADRENALINE_LOW.get()))
                 .save(output);
 
-        // === 充能流派筹码(1.2.0):XXX/XCX/下排 ===
-        // X 由各筹码图标视觉判读确定。
-        // 跃迁引擎:5 末影珍珠(跃迁/传送) + 空白筹码居中 + 星币下排
+        // === 充能流派筹码(1.2.0):图案按各筹码图标视觉判读,末行为基底材料行 ===
+        // 跃迁引擎:末影珍珠外圈 + 导电线材中轴(居中空白筹码) + 星币下排
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.WARP_ENGINE_CHIP.get())
                 .pattern("XXX")
-                .pattern("XCX")
+                .pattern("WCW")
                 .pattern("BBB")
                 .define('X', Items.ENDER_PEARL)
+                .define('W', ModItems.CONDUCTIVE_WIRE.get())
                 .define('C', ModItems.BLANK_CHIP.get())
                 .define('B', ModItems.STAR_COIN.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
                 .save(output);
 
-        // 能量回收器:5 活塞(运动↔能量机械) + 空白筹码居中 + 星币下排
+        // 能量回收器:燧石外圈 + 活塞中轴 + 星币下排
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.ENERGY_RECYCLER.get())
-                .pattern("XXX")
-                .pattern("XCX")
+                .pattern("SHS")
+                .pattern("SHS")
                 .pattern("BBB")
-                .define('X', Items.PISTON)
-                .define('C', ModItems.BLANK_CHIP.get())
+                .define('S', Items.FLINT)
+                .define('H', Items.PISTON)
                 .define('B', ModItems.STAR_COIN.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
                 .save(output);
 
-        // 电流剑:5 铁剑(剑形图标) + 空白筹码居中 + 星币下排
+        // 电流剑:红石粉外圈 + 钻石剑中轴 + 星币下排
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.ELECTRIC_SWORD.get())
-                .pattern("XXX")
-                .pattern("XCX")
+                .pattern("HDH")
+                .pattern("HDH")
                 .pattern("BBB")
-                .define('X', Items.IRON_SWORD)
-                .define('C', ModItems.BLANK_CHIP.get())
+                .define('H', Items.REDSTONE)
+                .define('D', Items.DIAMOND_SWORD)
                 .define('B', ModItems.STAR_COIN.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
                 .save(output);
 
-        // 高级外设:5 回响碎片(高级装置面板) + 空白筹码居中 + 星盘下排(紫)
+        // 高级外设:红石火把外圈 + 回响碎片中轴 + 星盘下排(紫)
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.ADVANCED_PERIPHERALS.get())
-                .pattern("XXX")
-                .pattern("XCX")
+                .pattern("TET")
+                .pattern("TET")
                 .pattern("PPP")
-                .define('X', Items.ECHO_SHARD)
-                .define('C', ModItems.BLANK_CHIP.get())
+                .define('T', Items.REDSTONE_TORCH)
+                .define('E', Items.ECHO_SHARD)
                 .define('P', ModItems.STAR_PLATE.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
                 .save(output);
 
-        // 永动机:5 金锭(金色机体) + 空白筹码居中 + 黄金星盘下排(金)
+        // 永动机:金块外圈 + 下界之星中轴 + 黄金星盘下排(金)
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.PERPETUAL_MOTION.get())
-                .pattern("XXX")
-                .pattern("XCX")
+                .pattern("BNB")
+                .pattern("BNB")
                 .pattern("GGG")
-                .define('X', Items.GOLD_INGOT)
-                .define('C', ModItems.BLANK_CHIP.get())
+                .define('B', Items.GOLD_BLOCK)
+                .define('N', Items.NETHER_STAR)
                 .define('G', ModItems.GOLDEN_STAR_PLATE.get())
+                .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
+                .save(output);
+
+        // 电流核心:红石比较器外圈 + 避雷针中轴 / 导电线材外圈 + 空白筹码居中 / 星盘下排(紫)
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.CURRENT_CORE_CHIP.get())
+                .pattern("UEU")
+                .pattern("WCW")
+                .pattern("PPP")
+                .define('U', Items.COMPARATOR)
+                .define('E', Items.LIGHTNING_ROD)
+                .define('W', ModItems.CONDUCTIVE_WIRE.get())
+                .define('C', ModItems.BLANK_CHIP.get())
+                .define('P', ModItems.STAR_PLATE.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
                 .save(output);
 

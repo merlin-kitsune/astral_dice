@@ -2,26 +2,29 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
-    "B": {
-      "item": "astral_dice:star_coin"
-    },
     "C": {
       "item": "astral_dice:blank_chip"
     },
+    "E": {
+      "item": "minecraft:lightning_rod"
+    },
+    "P": {
+      "item": "astral_dice:star_plate"
+    },
+    "U": {
+      "item": "minecraft:comparator"
+    },
     "W": {
       "item": "astral_dice:conductive_wire"
-    },
-    "X": {
-      "item": "minecraft:ender_pearl"
     }
   },
   "pattern": [
-    "XXX",
+    "UEU",
     "WCW",
-    "BBB"
+    "PPP"
   ],
   "result": {
     "count": 1,
-    "id": "astral_dice:warp_engine_chip"
+    "id": "astral_dice:current_core_chip"
   }
 }
