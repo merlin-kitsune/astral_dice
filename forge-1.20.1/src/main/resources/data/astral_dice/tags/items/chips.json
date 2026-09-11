@@ -42,6 +42,18 @@
     "astral_dice:candy_chip",
     "astral_dice:friendship_badge_chip",
     "astral_dice:satellite_chip",
-    "astral_dice:current_core_chip"
+    "astral_dice:current_core_chip",
+    "astral_dice:big_bowl_stew_chip",
+    "astral_dice:warp_engine_chip",
+    "astral_dice:energy_recycler_chip",
+    "astral_dice:electric_sword_chip",
+    "astral_dice:advanced_peripherals_chip",
+    "astral_dice:perpetual_motion_chip",
+    "astral_dice:adrenaline_low_chip",
+    "astral_dice:adrenaline_high_chip",
+    "astral_dice:member_recommendation_chip",
+    "astral_dice:bookmark_chip",
+    "astral_dice:piggy_bank_chip",
+    "astral_dice:smart_watch_chip"
   ]
 }

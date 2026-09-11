@@ -87,6 +87,7 @@
 - Fixed the Komachi sign's active failing when play progress existed or the cooldown was running: the play-count +1 is now a banked extra-play token (consumed per actual play, persists across windows, unaffected by burst-full or cooldown), and the old boolean flag plus its leftover calls were removed.
 - 1.20.1 recipe fixes: the "Koi's Rulebook" (patchouli:guide_book) recipe was in the wrong folder (singular "recipe") and thus never loaded — moved to "recipes"; the Cursed Sword chip's generated recipe used the 1.21 result.id format and failed to parse on 1.20.1 — regenerated in the 1.20.1 item format (generation sources fixed in both versions).
 - Fixed chip tooltips rendering embedded newlines as box glyphs (Sandwich - Gourmet / Adrenaline - High-Grade / Satellite / Revenge Halberd / Cursed Sword Enigmatic Legacy+ link, etc.): multi-line lang values are now split into separate tooltip lines instead of keeping real `\n` inside a single component.
+- Completed item aggregate tags: newly added chips/signs were missing from the `astral_dice:chips` / `astral_dice:signs` aggregate tags — 12 chips (Adrenaline - Regular/High-Grade, Warp Engine / Energy Recycler / Electric Sword / Advanced Peripherals / Perpetual Motion / Current Core, Big Bowl Stew / Member Recommendation / Bookmark / Piggy Bank / Smart Watch) and 2 signs (Gunsmith / Pandaman); both loaders' aggregate tags now contain every chip (55) and sign (17) (both loaders).
 
 ### Project
 
