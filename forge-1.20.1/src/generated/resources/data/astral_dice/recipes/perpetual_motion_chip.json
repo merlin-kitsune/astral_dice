@@ -5,8 +5,14 @@
     "B": {
       "item": "minecraft:gold_block"
     },
+    "C": {
+      "item": "astral_dice:blank_chip"
+    },
     "G": {
       "item": "astral_dice:golden_star_plate"
+    },
+    "L": {
+      "item": "astral_dice:conductive_wire"
     },
     "N": {
       "item": "minecraft:nether_star"
@@ -14,7 +20,7 @@
   },
   "pattern": [
     "BNB",
-    "BNB",
+    "LCL",
     "GGG"
   ],
   "result": {

@@ -5,8 +5,14 @@
     "B": {
       "item": "astral_dice:star_coin"
     },
+    "C": {
+      "item": "astral_dice:blank_chip"
+    },
     "H": {
       "item": "minecraft:piston"
+    },
+    "L": {
+      "item": "astral_dice:conductive_wire"
     },
     "S": {
       "item": "minecraft:flint"
@@ -14,7 +20,7 @@
   },
   "pattern": [
     "SHS",
-    "SHS",
+    "LCL",
     "BBB"
   ],
   "result": {

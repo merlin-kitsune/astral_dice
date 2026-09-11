@@ -943,46 +943,54 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
                 .save(output);
 
-        // 能量回收器:燧石外圈 + 活塞中轴 + 星币下排
+        // 能量回收器:燧石/活塞外圈 + 导电线材中轴(居中空白筹码) + 星币下排
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.ENERGY_RECYCLER.get())
                 .pattern("SHS")
-                .pattern("SHS")
+                .pattern("LCL")
                 .pattern("BBB")
                 .define('S', Items.FLINT)
                 .define('H', Items.PISTON)
+                .define('L', ModItems.CONDUCTIVE_WIRE.get())
+                .define('C', ModItems.BLANK_CHIP.get())
                 .define('B', ModItems.STAR_COIN.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
                 .save(output);
 
-        // 电流剑:红石粉外圈 + 钻石剑中轴 + 星币下排
+        // 电流剑:红石/钻石剑外圈 + 导电线材中轴(居中空白筹码) + 星币下排
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.ELECTRIC_SWORD.get())
                 .pattern("HDH")
-                .pattern("HDH")
+                .pattern("LCL")
                 .pattern("BBB")
                 .define('H', Items.REDSTONE)
                 .define('D', Items.DIAMOND_SWORD)
+                .define('L', ModItems.CONDUCTIVE_WIRE.get())
+                .define('C', ModItems.BLANK_CHIP.get())
                 .define('B', ModItems.STAR_COIN.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
                 .save(output);
 
-        // 高级外设:红石火把外圈 + 回响碎片中轴 + 星盘下排(紫)
+        // 高级外设:红石火把/回响碎片外圈 + 导电线材中轴(居中空白筹码) + 星盘下排(紫)
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.ADVANCED_PERIPHERALS.get())
                 .pattern("TET")
-                .pattern("TET")
+                .pattern("LCL")
                 .pattern("PPP")
                 .define('T', Items.REDSTONE_TORCH)
                 .define('E', Items.ECHO_SHARD)
+                .define('L', ModItems.CONDUCTIVE_WIRE.get())
+                .define('C', ModItems.BLANK_CHIP.get())
                 .define('P', ModItems.STAR_PLATE.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
                 .save(output);
 
-        // 永动机:金块外圈 + 下界之星中轴 + 黄金星盘下排(金)
+        // 永动机:金块/下界之星外圈 + 导电线材中轴(居中空白筹码) + 黄金星盘下排(金)
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.PERPETUAL_MOTION.get())
                 .pattern("BNB")
-                .pattern("BNB")
+                .pattern("LCL")
                 .pattern("GGG")
                 .define('B', Items.GOLD_BLOCK)
                 .define('N', Items.NETHER_STAR)
+                .define('L', ModItems.CONDUCTIVE_WIRE.get())
+                .define('C', ModItems.BLANK_CHIP.get())
                 .define('G', ModItems.GOLDEN_STAR_PLATE.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
                 .save(output);

@@ -5,16 +5,22 @@
     "B": {
       "item": "astral_dice:star_coin"
     },
+    "C": {
+      "item": "astral_dice:blank_chip"
+    },
     "D": {
       "item": "minecraft:diamond_sword"
     },
     "H": {
       "item": "minecraft:redstone"
+    },
+    "L": {
+      "item": "astral_dice:conductive_wire"
     }
   },
   "pattern": [
     "HDH",
-    "HDH",
+    "LCL",
     "BBB"
   ],
   "result": {

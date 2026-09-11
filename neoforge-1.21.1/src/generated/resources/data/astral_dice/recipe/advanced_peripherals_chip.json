@@ -2,8 +2,14 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
+    "C": {
+      "item": "astral_dice:blank_chip"
+    },
     "E": {
       "item": "minecraft:echo_shard"
+    },
+    "L": {
+      "item": "astral_dice:conductive_wire"
     },
     "P": {
       "item": "astral_dice:star_plate"
@@ -14,7 +20,7 @@
   },
   "pattern": [
     "TET",
-    "TET",
+    "LCL",
     "PPP"
   ],
   "result": {
