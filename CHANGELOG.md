@@ -90,6 +90,8 @@
 - Fixed chip tooltips rendering embedded newlines as box glyphs (Sandwich - Gourmet / Adrenaline - High-Grade / Satellite / Revenge Halberd / Cursed Sword Enigmatic Legacy+ link, etc.): multi-line lang values are now split into separate tooltip lines instead of keeping real `\n` inside a single component.
 - Completed item aggregate tags: newly added chips/signs were missing from the `astral_dice:chips` / `astral_dice:signs` aggregate tags — 12 chips (Adrenaline - Regular/High-Grade, Warp Engine / Energy Recycler / Electric Sword / Advanced Peripherals / Perpetual Motion / Current Core, Big Bowl Stew / Member Recommendation / Bookmark / Piggy Bank / Smart Watch) and 2 signs (Gunsmith / Pandaman); both loaders' aggregate tags now contain every chip (55) and sign (17) (both loaders).
 - Fixed the `tooltip.astral_dice.chip.smart_watch` color-code count mismatch between zh_cn and en_us (the English string omitted the highlight on "1"); both languages now use aligned coloring (both loaders).
+- Fixed the "Investigation Stage" event never triggering on 1.20.1: Bonnie's passive 3 (killing an Undercover Investigation target triggers the Investigation Stage) existed only on 1.21.1 — 1.20.1 lacked the global kill hook `onUndercoverInvestigationKill` (the class also had no event subscription), leaving `triggerByKill` as dead code, so killing an undercover target did not advance the stage. The global kill trigger is now implemented, along with a fallback that clears the `undercover_source` when the effect is removed (1.20.1 only, aligned with 1.21.1).
+- Fixed multi-layer Marks vanishing all at once when they expire on 1.20.1: 1.20.1 had no mark-expiry decrement implementation, so the whole stack was cleared at once; it now decrements by one layer and resets the timer on expiry, and removes the accompanying glow once the stack reaches zero, matching 1.21.1 (1.20.1 only).
 
 ### Project
 
@@ -99,6 +101,7 @@
 - Integrated ModernFix into the test environment: 1.21.1 copies `modernfix-neoforge-5.27.24+mc1.21.1.jar` from the modpack to `run/1.21.1/mods` (`install_test_mods.ps1`); 1.20.1 injects it into the dev run classpath via `modImplementation "maven.modrinth:modernfix:OvpPdk44"`. Both launch verifications now detect ModernFix's `Total time to load game and open world was` loading-complete log (base wait 30s, re-check every 15s if absent).
 - Builds now push to integration packs by default: `gradlew build` deploys to run/mods, the root build/libs, and both pack mods directories automatically (previously required `-PdeployToPack`; the flag remains accepted for compatibility, and missing pack roots are skipped).
 - Completed the Patchouli handbook: added all 11 previously undocumented chips (6 Charge / 1 Healing / 4 General) to the Ren's Rulebook and a new "Charge Chips" category (`chips_charge`, parent "Chips", ordered between Mark and General with `chips_other` shifted down); every chip (55) now has a handbook entry (both loaders).
+- Fixed the CI branch filter pointing at a retired branch name: `.github/workflows/build.yml` still listened for the old slash form `multi-1.20.1/1.21.1`, so pushes to the working branch `multi-1.20.1-1.21.1` did not trigger CI (the lang-sync check and dual-version build gate were inert); it now uses the new slash-free branch name.
 
 ## 1.1.3
 
