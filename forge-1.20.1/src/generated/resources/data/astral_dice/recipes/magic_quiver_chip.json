@@ -2,25 +2,25 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
-    "A": {
-      "item": "minecraft:spectral_arrow"
-    },
     "B": {
       "item": "astral_dice:blank_chip"
+    },
+    "L": {
+      "item": "minecraft:echo_shard"
+    },
+    "M": {
+      "item": "astral_dice:mark_paint"
     },
     "P": {
       "item": "astral_dice:star_plate"
     },
-    "Q": {
-      "item": "minecraft:writable_book"
-    },
-    "R": {
-      "item": "minecraft:echo_shard"
+    "X": {
+      "item": "minecraft:spectral_arrow"
     }
   },
   "pattern": [
-    "ARA",
-    "QBQ",
+    "XLX",
+    "MBM",
     "PPP"
   ],
   "result": {

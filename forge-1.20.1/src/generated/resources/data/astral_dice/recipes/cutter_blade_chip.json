@@ -2,22 +2,25 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
-    "D": {
-      "item": "minecraft:diamond"
-    },
     "G": {
       "item": "astral_dice:golden_star_plate"
     },
+    "L": {
+      "item": "minecraft:golden_apple"
+    },
     "R": {
-      "item": "minecraft:redstone"
+      "item": "astral_dice:regeneration_reagent"
     },
     "T": {
       "item": "astral_dice:cutter_chip"
+    },
+    "X": {
+      "item": "minecraft:iron_sword"
     }
   },
   "pattern": [
-    "RDR",
-    "DTD",
+    "XLX",
+    "RTR",
     "GGG"
   ],
   "result": {

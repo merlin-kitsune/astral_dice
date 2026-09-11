@@ -2,29 +2,26 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
-    "A": {
-      "item": "minecraft:amethyst_shard"
-    },
     "B": {
       "item": "astral_dice:blank_chip"
     },
-    "C": {
+    "L": {
       "item": "minecraft:copper_ingot"
     },
-    "I": {
-      "item": "minecraft:iron_ingot"
+    "M": {
+      "item": "astral_dice:mark_paint"
     },
     "P": {
       "item": "astral_dice:star_plate"
     },
-    "W": {
-      "item": "minecraft:oak_button"
+    "X": {
+      "item": "minecraft:amethyst_shard"
     }
   },
   "pattern": [
-    "APA",
-    "CBC",
-    "IWI"
+    "XLX",
+    "MBM",
+    "PPP"
   ],
   "result": {
     "count": 1,

@@ -5,20 +5,23 @@
     "B": {
       "item": "astral_dice:blank_chip"
     },
-    "G": {
+    "L": {
       "item": "minecraft:golden_apple"
-    },
-    "I": {
-      "item": "minecraft:iron_sword"
     },
     "P": {
       "item": "astral_dice:star_plate"
+    },
+    "R": {
+      "item": "astral_dice:regeneration_reagent"
+    },
+    "X": {
+      "item": "minecraft:iron_sword"
     }
   },
   "pattern": [
-    " G ",
-    "IBI",
-    " P "
+    "XLX",
+    "RBR",
+    "PPP"
   ],
   "result": {
     "item": "astral_dice:cutter_chip"

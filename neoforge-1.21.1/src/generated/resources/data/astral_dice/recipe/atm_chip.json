@@ -8,13 +8,16 @@
     "C": {
       "item": "astral_dice:star_coin"
     },
-    "G": {
+    "D": {
+      "item": "astral_dice:star_coin_dust"
+    },
+    "X": {
       "item": "minecraft:gold_ingot"
     }
   },
   "pattern": [
-    "GGG",
-    "GBG",
+    "XXX",
+    "DBD",
     "CCC"
   ],
   "result": {

@@ -3,22 +3,25 @@
   "category": "misc",
   "key": {
     "B": {
-      "item": "astral_dice:star_coin"
-    },
-    "C": {
       "item": "astral_dice:blank_chip"
     },
-    "Y": {
-      "item": "minecraft:feather"
+    "C": {
+      "item": "astral_dice:star_coin"
     },
-    "Z": {
+    "L": {
       "item": "minecraft:bamboo"
+    },
+    "M": {
+      "item": "astral_dice:mark_paint"
+    },
+    "X": {
+      "item": "minecraft:feather"
     }
   },
   "pattern": [
-    "YYY",
-    "ZCZ",
-    "BBB"
+    "XLX",
+    "MBM",
+    "CCC"
   ],
   "result": {
     "count": 1,

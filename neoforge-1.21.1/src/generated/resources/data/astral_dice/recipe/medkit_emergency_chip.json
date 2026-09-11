@@ -8,13 +8,16 @@
     "C": {
       "item": "astral_dice:star_coin"
     },
-    "S": {
+    "R": {
+      "item": "astral_dice:regeneration_reagent"
+    },
+    "X": {
       "item": "minecraft:slime_ball"
     }
   },
   "pattern": [
-    "SSS",
-    "SBS",
+    "XXX",
+    "RBR",
     "CCC"
   ],
   "result": {

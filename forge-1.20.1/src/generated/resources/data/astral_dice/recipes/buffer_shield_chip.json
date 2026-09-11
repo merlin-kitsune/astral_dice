@@ -8,16 +8,19 @@
     "C": {
       "item": "astral_dice:star_coin"
     },
-    "D": {
-      "item": "minecraft:diamond"
-    },
-    "H": {
+    "L": {
       "item": "minecraft:shield"
+    },
+    "R": {
+      "item": "astral_dice:regeneration_reagent"
+    },
+    "X": {
+      "item": "minecraft:diamond"
     }
   },
   "pattern": [
-    "DDD",
-    "HBH",
+    "XLX",
+    "RBR",
     "CCC"
   ],
   "result": {

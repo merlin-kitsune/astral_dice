@@ -2,28 +2,28 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
-    "C": {
+    "B": {
       "item": "astral_dice:blank_chip"
-    },
-    "J": {
-      "item": "minecraft:enchanted_golden_apple"
     },
     "P": {
       "item": "astral_dice:star_plate"
     },
-    "Y": {
+    "R": {
+      "item": "astral_dice:regeneration_reagent"
+    },
+    "X": {
+      "item": "minecraft:enchanted_golden_apple"
+    },
+    "Z": {
       "type": "forge:nbt",
       "count": 1,
       "item": "minecraft:potion",
       "nbt": "{Potion:\"minecraft:healing\"}"
-    },
-    "Z": {
-      "item": "minecraft:amethyst_shard"
     }
   },
   "pattern": [
-    "YJY",
-    "ZCZ",
+    "ZXZ",
+    "RBR",
     "PPP"
   ],
   "result": {

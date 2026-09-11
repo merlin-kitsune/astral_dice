@@ -2,22 +2,22 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
-    "G": {
-      "item": "minecraft:gold_ingot"
-    },
     "L": {
-      "item": "minecraft:lapis_lazuli"
+      "item": "minecraft:leather"
     },
     "P": {
       "item": "astral_dice:star_plate"
     },
     "T": {
       "item": "astral_dice:boxing_gloves_low_chip"
+    },
+    "X": {
+      "item": "minecraft:sponge"
     }
   },
   "pattern": [
-    "LGL",
-    "GTG",
+    "XXX",
+    "LTL",
     "PPP"
   ],
   "result": {

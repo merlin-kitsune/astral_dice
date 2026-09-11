@@ -2,22 +2,25 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
-    "G": {
-      "item": "minecraft:gold_ingot"
+    "D": {
+      "item": "astral_dice:star_coin_dust"
     },
     "L": {
-      "item": "minecraft:lapis_lazuli"
+      "item": "minecraft:gold_block"
     },
     "P": {
       "item": "astral_dice:star_plate"
     },
     "T": {
       "item": "astral_dice:bank_card_low_chip"
+    },
+    "X": {
+      "item": "minecraft:gold_ingot"
     }
   },
   "pattern": [
-    "LGL",
-    "GTG",
+    "XLX",
+    "DTD",
     "PPP"
   ],
   "result": {

@@ -2,22 +2,25 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
-    "D": {
-      "item": "minecraft:diamond"
-    },
     "G": {
       "item": "astral_dice:golden_star_plate"
     },
-    "R": {
-      "item": "minecraft:redstone"
+    "L": {
+      "item": "minecraft:copper_ingot"
+    },
+    "M": {
+      "item": "astral_dice:mark_paint"
     },
     "T": {
       "item": "astral_dice:scope_chip"
+    },
+    "X": {
+      "item": "minecraft:amethyst_shard"
     }
   },
   "pattern": [
-    "RDR",
-    "DTD",
+    "XLX",
+    "MTM",
     "GGG"
   ],
   "result": {

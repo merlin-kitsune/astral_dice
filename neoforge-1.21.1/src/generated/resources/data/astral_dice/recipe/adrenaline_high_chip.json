@@ -2,23 +2,33 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
-    "O": {
-      "item": "astral_dice:adrenaline_low_chip"
-    },
-    "P": {
+    "G": {
       "item": "astral_dice:golden_star_plate"
     },
-    "R": {
-      "item": "minecraft:redstone"
+    "L": {
+      "item": "minecraft:wither_rose"
+    },
+    "T": {
+      "item": "astral_dice:adrenaline_low_chip"
+    },
+    "X": {
+      "item": "minecraft:nether_star"
     },
     "Z": {
-      "item": "minecraft:diamond"
+      "type": "neoforge:components",
+      "components": {
+        "minecraft:potion_contents": {
+          "potion": "minecraft:regeneration"
+        }
+      },
+      "items": "minecraft:potion",
+      "strict": true
     }
   },
   "pattern": [
-    "RZR",
-    "ZOZ",
-    "PPP"
+    "ZXZ",
+    "LTL",
+    "GGG"
   ],
   "result": {
     "count": 1,

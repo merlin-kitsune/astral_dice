@@ -3,20 +3,23 @@
   "category": "misc",
   "key": {
     "G": {
-      "item": "minecraft:gold_ingot"
+      "item": "minecraft:iron_ingot"
     },
     "L": {
-      "item": "minecraft:lapis_lazuli"
+      "item": "minecraft:leather_boots"
     },
     "P": {
       "item": "astral_dice:star_plate"
     },
     "T": {
       "item": "astral_dice:speed_skates_low_chip"
+    },
+    "X": {
+      "item": "minecraft:blue_ice"
     }
   },
   "pattern": [
-    "LGL",
+    "XLX",
     "GTG",
     "PPP"
   ],
