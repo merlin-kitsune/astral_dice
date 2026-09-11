@@ -159,12 +159,12 @@ public class ModCreativeTabs {
                 output.accept(ModItems.SANDWICH_MEDIUM.get());
                 output.accept(ModItems.SANDWICH_HIGH.get());
                 output.accept(ModItems.ADRENALINE_LOW.get());
+                output.accept(ModItems.ADRENALINE_HIGH.get());
                 output.accept(ModItems.MEMBER_RECOMMENDATION_CHIP.get());
                 output.accept(ModItems.BOOKMARK_CHIP.get());
                 output.accept(ModItems.PIGGY_BANK_CHIP.get());
                 output.accept(ModItems.SMART_WATCH_CHIP.get());
                 output.accept(ModItems.WHETSTONE_CHIP.get());
-                output.accept(ModItems.ADRENALINE_HIGH.get());
                 output.accept(ModItems.SATELLITE_CHIP.get());
                 output.accept(ModItems.CURSED_SWORD.get());
                 output.accept(ModItems.REVENGE_HALBERD.get());
