@@ -1,0 +1,17 @@
+{
+  "name": "item.astral_dice.electric_sword_chip",
+  "category": "astral_dice:chips_charge",
+  "icon": "astral_dice:electric_sword_chip",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:electric_sword_chip",
+      "text": "astral_dice.guide.entry.electric_sword_chip.1"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:electric_sword_chip"
+    }
+  ],
+  "sortnum": 2
+}

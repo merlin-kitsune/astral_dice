@@ -88,6 +88,7 @@
 - 1.20.1 recipe fixes: the "Koi's Rulebook" (patchouli:guide_book) recipe was in the wrong folder (singular "recipe") and thus never loaded — moved to "recipes"; the Cursed Sword chip's generated recipe used the 1.21 result.id format and failed to parse on 1.20.1 — regenerated in the 1.20.1 item format (generation sources fixed in both versions).
 - Fixed chip tooltips rendering embedded newlines as box glyphs (Sandwich - Gourmet / Adrenaline - High-Grade / Satellite / Revenge Halberd / Cursed Sword Enigmatic Legacy+ link, etc.): multi-line lang values are now split into separate tooltip lines instead of keeping real `\n` inside a single component.
 - Completed item aggregate tags: newly added chips/signs were missing from the `astral_dice:chips` / `astral_dice:signs` aggregate tags — 12 chips (Adrenaline - Regular/High-Grade, Warp Engine / Energy Recycler / Electric Sword / Advanced Peripherals / Perpetual Motion / Current Core, Big Bowl Stew / Member Recommendation / Bookmark / Piggy Bank / Smart Watch) and 2 signs (Gunsmith / Pandaman); both loaders' aggregate tags now contain every chip (55) and sign (17) (both loaders).
+- Fixed the `tooltip.astral_dice.chip.smart_watch` color-code count mismatch between zh_cn and en_us (the English string omitted the highlight on "1"); both languages now use aligned coloring (both loaders).
 
 ### Project
 
@@ -96,6 +97,7 @@
 - Ported the newer dice (Obsidian/Netherrack/Weird/Crimson/Amethyst/Ender/Nether Star), creative-tab ordering, tooltip coloring, and the Ender Die teleport changes from 1.21.1 to forge-1.20.1; the 1.20.1 Netherrack-die piglin-neutral `PiglinAiMixin` follows the Mixin Booster / Sponge Mixin convention (consistent with NeoForge/Fabric) and does not use Forge-native or other third-party Mixin APIs (1.20.1 sync).
 - Integrated ModernFix into the test environment: 1.21.1 copies `modernfix-neoforge-5.27.24+mc1.21.1.jar` from the modpack to `run/1.21.1/mods` (`install_test_mods.ps1`); 1.20.1 injects it into the dev run classpath via `modImplementation "maven.modrinth:modernfix:OvpPdk44"`. Both launch verifications now detect ModernFix's `Total time to load game and open world was` loading-complete log (base wait 30s, re-check every 15s if absent).
 - Builds now push to integration packs by default: `gradlew build` deploys to run/mods, the root build/libs, and both pack mods directories automatically (previously required `-PdeployToPack`; the flag remains accepted for compatibility, and missing pack roots are skipped).
+- Completed the Patchouli handbook: added all 11 previously undocumented chips (6 Charge / 1 Healing / 4 General) to the Ren's Rulebook and a new "Charge Chips" category (`chips_charge`, parent "Chips", ordered between Mark and General with `chips_other` shifted down); every chip (55) now has a handbook entry (both loaders).
 
 ## 1.1.3
 

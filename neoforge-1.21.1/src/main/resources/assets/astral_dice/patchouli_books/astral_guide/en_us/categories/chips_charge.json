@@ -1,0 +1,7 @@
+{
+  "name": "astral_dice.guide.category.chips_charge",
+  "description": "astral_dice.guide.category.chips_charge.desc",
+  "icon": "astral_dice:warp_engine_chip",
+  "sortnum": 44,
+  "parent": "astral_dice:chips"
+}

@@ -1,0 +1,13 @@
+{
+  "name": "item.astral_dice.member_recommendation_chip",
+  "category": "astral_dice:chips_other",
+  "icon": "astral_dice:member_recommendation_chip",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:member_recommendation_chip",
+      "text": "astral_dice.guide.entry.member_recommendation_chip.1"
+    }
+  ],
+  "sortnum": 20
+}

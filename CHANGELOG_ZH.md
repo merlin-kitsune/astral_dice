@@ -88,6 +88,7 @@
 - 1.20.1 配方修复:「恋的规则书」(patchouli:guide_book) 配方此前放错目录(recipe 单数)未加载,已移至 recipes;诅咒之剑配方生成文件误用 1.21 result.id 格式导致解析失败,已改回 1.20.1 item 格式(双版本生成源同步修正)。
 - 修复部分筹码 tooltip 中换行符被渲染成方块占位符的问题(夹心饼干-美味/肾上腺素-高效/卫星/复仇之戟/诅咒之剑神秘遗物联动等多行 tooltip):改为按 lang 值内 `\n` 逐行拆分添加,不再整段组件内嵌真实换行符。
 - 补全物品汇总标签:此前新增的筹码/立牌遗漏进 `astral_dice:chips` / `astral_dice:signs` 汇总标签——筹码 12 个(肾上腺素-一般/高效、跃迁引擎/能量回收器/电流剑/高级外设/永动机/电流核心、大碗炖肉/会员推荐信/书签/小猪存钱罐/智能手表)、立牌 2 个(枪匠/肉弹战车);现已补全,两版本汇总标签含全部筹码(55)与立牌(17)(双版本一致)。
+- 修复 `tooltip.astral_dice.chip.smart_watch` 中英染色码数量不一致(英文漏染「1」),现中英染色结构对齐(双版本一致)。
 
 ### 工程
 
@@ -96,6 +97,7 @@
 - 将 1.21.1 的新增骰子(黑曜石/下界岩/诡异/绯红/紫晶/末影/下界之星)、创造栏排序、tooltip 染色与末影骰子瞬移等改动同步移植到 forge-1.20.1;1.20.1 的下界岩猪灵中立 `PiglinAiMixin` 沿用 Mixin Booster / Sponge Mixin 规范(与 neoforge/fabric 一致),未使用 Forge 原生或其他第三方 Mixin API(1.20.1 同步)。
 - 测试环境集成 ModernFix:1.21.1 从整合包复制 `modernfix-neoforge-5.27.24+mc1.21.1.jar` 到 `run/1.21.1/mods`(`install_test_mods.ps1`);1.20.1 经 build.gradle `modImplementation "maven.modrinth:modernfix:OvpPdk44"` 注入 dev run classpath。两版 launch 验证改为识别 ModernFix 的 `Total time to load game and open world was` 加载完成日志(基础等待 30s,未出现则每 15s 再检测)。
 - 构建默认自动推送整合包:双版本 `gradlew build` 现在会同时推送 run/mods、根目录 build/libs 与各自整合包 mods 目录(原需 `-PdeployToPack`,现默认触发;该参数保留兼容;pack 根不存在仍自动跳过)。
+- 帕秋莉手册补全:此前新增的 11 个筹码(6 充能/1 治愈/4 泛用)全部补入《恋的规则书》图鉴,并新增「充能类筹码」章节(`chips_charge`,父级「筹码」,排序在标记类与泛用之间,`chips_other` 顺延);补全后 55 个筹码均有手册条目(双版本一致)。
 
 ## 1.1.3
 
