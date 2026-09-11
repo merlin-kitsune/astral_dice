@@ -27,8 +27,6 @@ public final class GameplayConstants {
     // === 充能流派 ===
     // 充能最大层数(写入常量,暂不提供配置文件)
     public static final int CHARGE_MAX_STACKS = 20;
-    // 拥有至少 1 层充能时,护甲值提升比例(按最终护甲值计算 +10%)
-    public static final double CHARGE_ARMOR_MULTIPLIER = 0.10;
     // 拥有至少 1 层充能时,立牌主动/效果牌冷却时间缩短比例(20%)
     public static final double CHARGE_COOLDOWN_REDUCTION = 0.2;
     // === 事件系统 ===

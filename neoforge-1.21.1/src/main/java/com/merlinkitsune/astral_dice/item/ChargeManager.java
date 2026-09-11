@@ -14,8 +14,7 @@ import java.util.UUID;
  * <p>层数存储于 {@link ChargeEffect}(amplifier = 层数-1,上限见
  * {@link GameplayConstants#CHARGE_MAX_STACKS})。
  * 流派固定效果(与层数多少无关):拥有至少 1 层充能时,
- * 护甲值 +10%(由 {@link ChargeEffect} 的属性修饰器按最终护甲值计算)、
- * 立牌主动/效果牌冷却时间 -20%。
+ * 立牌主动/效果牌冷却时间 -20%(无防御力/护甲加成)。
  */
 public final class ChargeManager {
     /** 死亡时暂存的充能层数:等待重生后恢复(仅内存态,用于跨死亡实体转移) */
