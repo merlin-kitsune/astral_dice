@@ -136,10 +136,11 @@ public class ModCreativeTabs {
                 output.accept(ModItems.ENERGY_RECYCLER.get());
                 output.accept(ModItems.ELECTRIC_SWORD.get());
                 output.accept(ModItems.ADVANCED_PERIPHERALS.get());
-                output.accept(ModItems.PERPETUAL_MOTION.get());
                 output.accept(ModItems.CURRENT_CORE_CHIP.get());
                 output.accept(ModItems.ELECTRIC_GLOVE_CHIP.get());
                 output.accept(ModItems.AIRBAG_CHIP.get());
+                // 永动机（移至电磁炮之前）
+                output.accept(ModItems.PERPETUAL_MOTION.get());
                 output.accept(ModItems.RAILGUN_CHIP.get());
                 output.accept(ModItems.PRIMORDIAL_CORE_CHIP.get());
                 // === 无流派 ===

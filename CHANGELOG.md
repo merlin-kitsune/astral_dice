@@ -79,6 +79,7 @@
 - Friendly/team reward rule: when a player is in a team, rewards/buffs to friendly players still affect only teammates (collected centrally via MC/FTB/OPAC); when the player is not in any team, they affect all online players instead. This is now unified for random event buffs, the Unlimited Bank Card Star Coins, the Investigator sign’s Living Page, and the Truth-Revealed Investigation effect; handbook/tooltip text now notes “all players if not in a team” (both loaders).
 - Hostile HP threshold unified: the kill checks of the Undercover Detective sign's "Key Clue" and the Cursed Sword chip changed from "more than 20 HP" to "at least 20 HP" — hostiles with exactly 20 HP (10 hearts) now count (tooltip/handbook text updated to "at least 20 HP" as well) (both loaders).
 - Chip rarity standard: a new chip's rarity is now determined by its **icon border colour** (blue = rare / purple = epic / gold = legendary; added as a mandatory rule in AGENTS.md); four chips were corrected accordingly — Member Recommendation and Piggy Bank (epic → rare), Smart Watch (rare → epic), Big Bowl Stew (epic → legendary) (both loaders).
+- Charge-chip display order adjusted: Perpetual Motion now sits immediately before the Railgun (the creative tab and the Patchouli "Charge Chips" chapter were reordered together so both views stay in sync; the resulting order is Warp Engine → Energy Recycler → Electric Sword → Advanced Peripherals → Current Core → Electric Glove → Airbag → Perpetual Motion → Railgun → Primordial Core) (both loaders).
 
 ### Bug Fixes
 
