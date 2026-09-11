@@ -88,6 +88,11 @@ import com.merlinkitsune.astral_dice.item.chip.MemberRecommendationChipItem;
 import com.merlinkitsune.astral_dice.item.chip.BookmarkChipItem;
 import com.merlinkitsune.astral_dice.item.chip.PiggyBankChipItem;
 import com.merlinkitsune.astral_dice.item.chip.SmartWatchChipItem;
+import com.merlinkitsune.astral_dice.item.chip.ElectricGloveChipItem;
+import com.merlinkitsune.astral_dice.item.chip.AirbagChipItem;
+import com.merlinkitsune.astral_dice.item.chip.RailgunChipItem;
+import com.merlinkitsune.astral_dice.item.chip.PrimordialCoreChipItem;
+import com.merlinkitsune.astral_dice.item.chip.WhetstoneChipItem;
 import com.merlinkitsune.astral_dice.item.chip.NinjaStarChipItem;
 import com.merlinkitsune.astral_dice.item.chip.FlashlightChipItem;
 
@@ -738,6 +743,37 @@ public class ModItems {
     // 智能手表:物品栏卡牌不足 10 张时,每击杀 1 个敌对目标获得一张随机卡牌
     public static final DeferredItem<Item> SMART_WATCH_CHIP = registerItem("smart_watch_chip",
             () -> new SmartWatchChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.EPIC)));
+
+    // 电击手套:使用效果牌时充能 +1;充能 ≥4 时使用伤害效果牌会消耗 4 层充能,使本周期内远程/魔法伤害
+    // 同时命中目标 3 格范围内的其他敌对目标(每周期一次,史诗)
+    public static final DeferredItem<Item> ELECTRIC_GLOVE_CHIP = registerItem("electric_glove_chip",
+            () -> new ElectricGloveChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.EPIC)));
+
+    // 安全气囊:受到致命伤害时消耗 6 点充能无效化本次伤害(冷却 1:00,史诗)
+    public static final DeferredItem<Item> AIRBAG_CHIP = registerItem("airbag_chip",
+            () -> new AirbagChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.EPIC)));
+
+    // 电磁炮:充能 ≥6 时攻击力 +5;攻击敌对目标消耗 6 层充能,延迟 1 秒对其 3 格内敌对目标降下雷击(传奇)
+    public static final DeferredItem<Item> RAILGUN_CHIP = registerItem("railgun_chip",
+            () -> new RailgunChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.UNCOMMON)));
+
+    // 原初核心:每消耗 1 层充能获得 1 层赋能(每层 +1 攻击/防御,每 0:30 递减 1 层,传奇)
+    public static final DeferredItem<Item> PRIMORDIAL_CORE_CHIP = registerItem("primordial_core_chip",
+            () -> new PrimordialCoreChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.UNCOMMON)));
+
+    // 磨刀石:血量 ≤50% 时攻击力 +4、受到伤害 -2;血量 >1 时受到的伤害不超过剩余血量(史诗)
+    public static final DeferredItem<Item> WHETSTONE_CHIP = registerItem("whetstone_chip",
+            () -> new WhetstoneChipItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(Rarity.EPIC)));
 

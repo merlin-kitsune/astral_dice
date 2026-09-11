@@ -394,6 +394,27 @@ public final class DiceCombatModifiers {
             return ap;
         });
 
+        // === 内置:原初核心筹码(每层"赋能"攻击力 +1;防御力经 tick 折算为真实护甲,不在骰战修饰器内) ===
+        registerAttackModifier((ctx, ap) -> {
+            Player p = ctx.attacker;
+            if (p.level().isClientSide()) return ap;
+            return ap + com.merlinkitsune.astral_dice.item.chip.PrimordialCoreChipItem.getAttackBonus(p);
+        });
+
+        // === 内置:电磁炮筹码(充能不少于 6 层时攻击力 +5) ===
+        registerAttackModifier((ctx, ap) -> {
+            Player p = ctx.attacker;
+            if (p.level().isClientSide()) return ap;
+            return ap + com.merlinkitsune.astral_dice.item.chip.RailgunChipItem.getAttackBonus(p);
+        });
+
+        // === 内置:磨刀石筹码(血量不多于 50% 时攻击力 +4;减伤在受击侧处理) ===
+        registerAttackModifier((ctx, ap) -> {
+            Player p = ctx.attacker;
+            if (p.level().isClientSide()) return ap;
+            return ap + com.merlinkitsune.astral_dice.item.chip.WhetstoneChipItem.getAttackBonus(p);
+        });
+
         // === 内置:防御卡掷骰(收集结果写入上下文;目标无骰子时 targetEnhancement 为 null,结果 0)。
         // 防御力规范:骰战防御修饰器仅保留战斗防御牌(区间变动);效果牌/立牌/筹码的防御力
         // 统一折算为真实护甲(1 防御力 = 2 护甲值),由各自 tick 经 setDefenseArmorBonus 挂到 ARMOR 属性,

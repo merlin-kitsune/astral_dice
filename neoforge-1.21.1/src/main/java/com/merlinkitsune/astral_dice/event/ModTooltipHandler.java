@@ -980,6 +980,30 @@ public class ModTooltipHandler {
             tooltip.add(Component.empty());
             addChipLines(tooltip, "tooltip.astral_dice.chip.smart_watch", ChatFormatting.GRAY);
         }
+        if (stack.is(ModItems.ELECTRIC_GLOVE_CHIP.get())) {
+            tooltip.add(Component.empty());
+            addChipLines(tooltip, "tooltip.astral_dice.chip.electric_glove", ChatFormatting.GRAY);
+            addChargeCounter(tooltip, event.getEntity() instanceof Player p ? p : null);
+        }
+        if (stack.is(ModItems.AIRBAG_CHIP.get())) {
+            tooltip.add(Component.empty());
+            addChipLines(tooltip, "tooltip.astral_dice.chip.airbag", ChatFormatting.GRAY);
+            addChargeCounter(tooltip, event.getEntity() instanceof Player p ? p : null);
+        }
+        if (stack.is(ModItems.RAILGUN_CHIP.get())) {
+            tooltip.add(Component.empty());
+            addChipLines(tooltip, "tooltip.astral_dice.chip.railgun", ChatFormatting.GRAY);
+            addChargeCounter(tooltip, event.getEntity() instanceof Player p ? p : null);
+        }
+        if (stack.is(ModItems.PRIMORDIAL_CORE_CHIP.get())) {
+            tooltip.add(Component.empty());
+            addChipLines(tooltip, "tooltip.astral_dice.chip.primordial_core", ChatFormatting.GRAY);
+            addChargeCounter(tooltip, event.getEntity() instanceof Player p ? p : null);
+        }
+        if (stack.is(ModItems.WHETSTONE_CHIP.get())) {
+            tooltip.add(Component.empty());
+            addChipLines(tooltip, "tooltip.astral_dice.chip.whetstone", ChatFormatting.GRAY);
+        }
         if (stack.is(ModItems.PADMAN_SIGN.get())) {
             tooltip.add(Component.empty());
             addSignKeyHint(tooltip);

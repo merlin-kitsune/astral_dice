@@ -777,6 +777,44 @@ public class ModAttachments {
                             com.merlinkitsune.astral_dice.event.EffectTimerGuard.TimerEntry.CODEC),
                     HashMap::new).build());
 
+    // === 新筹码:原初核心 / 电击手套 / 安全气囊 ===
+
+    /** 赋能:下一层递减的到期时刻(gameTime;0 表示无计时器) */
+    public static final AttachedDataKey<Long> EMPOWER_DECAY_AT =
+            register(AttachedDataKey.builder("empower_decay_at", Codec.LONG, () -> 0L).sync().build());
+
+    /** 电击手套:本效果牌周期内是否已武装法伤扩散(触发后/周期结束清除) */
+    public static final AttachedDataKey<Boolean> ELECTRIC_GLOVE_AOE =
+            register(AttachedDataKey.builder("electric_glove_aoe", Codec.BOOL, () -> false).sync().build());
+
+    /** 安全气囊:触发冷却结束时刻(1:00;0 表示无冷却) */
+    public static final AttachedDataKey<Long> AIRBAG_COOLDOWN_END =
+            register(AttachedDataKey.builder("airbag_cooldown_end", Codec.LONG, () -> 0L).sync().build());
+
+    public static long getEmpowerDecayAt(net.minecraft.world.entity.player.Player player) {
+        return EMPOWER_DECAY_AT.get(player);
+    }
+
+    public static void setEmpowerDecayAt(net.minecraft.world.entity.player.Player player, long value) {
+        EMPOWER_DECAY_AT.set(player, Math.max(0, value));
+    }
+
+    public static boolean isElectricGloveAoe(net.minecraft.world.entity.player.Player player) {
+        return ELECTRIC_GLOVE_AOE.get(player);
+    }
+
+    public static void setElectricGloveAoe(net.minecraft.world.entity.player.Player player, boolean value) {
+        ELECTRIC_GLOVE_AOE.set(player, value);
+    }
+
+    public static long getAirbagCooldownEnd(net.minecraft.world.entity.player.Player player) {
+        return AIRBAG_COOLDOWN_END.get(player);
+    }
+
+    public static void setAirbagCooldownEnd(net.minecraft.world.entity.player.Player player, long value) {
+        AIRBAG_COOLDOWN_END.set(player, Math.max(0, value));
+    }
+
     /** synced 键快照发送(登录/重生/切维度时)。 */
     public static void sendSyncSnapshot(ServerPlayer player) {
         com.merlinkitsune.astral_dice.network.ModNetwork.syncSnapshot(player, syncedKeys());
@@ -801,6 +839,9 @@ public class ModAttachments {
             SYNCED_KEYS.add(SATELLITE_PLAY_BONUS_COOLDOWN_END);
             SYNCED_KEYS.add(NANCY_LU_ACTIVE_BONUS);
             SYNCED_KEYS.add(FEN_RECHARGE);
+            SYNCED_KEYS.add(EMPOWER_DECAY_AT);
+            SYNCED_KEYS.add(ELECTRIC_GLOVE_AOE);
+            SYNCED_KEYS.add(AIRBAG_COOLDOWN_END);
         }
         return SYNCED_KEYS;
     }

@@ -1,0 +1,13 @@
+{
+  "name": "item.astral_dice.whetstone_chip",
+  "category": "astral_dice:chips_other",
+  "icon": "astral_dice:whetstone_chip",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:whetstone_chip",
+      "text": "astral_dice.guide.entry.whetstone_chip.1"
+    }
+  ],
+  "sortnum": 24
+}

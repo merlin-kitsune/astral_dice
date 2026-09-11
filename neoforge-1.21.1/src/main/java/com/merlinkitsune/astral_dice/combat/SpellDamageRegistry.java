@@ -331,6 +331,43 @@ public final class SpellDamageRegistry {
                 return bonus + AmethystDiceHandler.rollD6(ctx.attacker);
             }
         });
+        // 电击手套:武装期间(使用伤害效果牌时消耗 4 层充能置位),本次远程/魔法伤害同时命中目标 3 格内的
+        // 其他敌对目标(每个效果牌周期仅触发一次,触发后解除武装)
+        registerModifier(new SpellDamageModifier() {
+            @Override
+            public boolean isActive(SpellDamageContext ctx) {
+                return com.merlinkitsune.astral_dice.item.chip.ElectricGloveChipItem.isAoeArmed(ctx.attacker);
+            }
+
+            @Override
+            public double apply(SpellDamageContext ctx, double bonus) {
+                return bonus;
+            }
+
+            @Override
+            public void onHit(SpellDamageContext ctx, double bonus) {
+                float total = ctx.event.getNewDamage();
+                if (total <= 0) return;
+                net.minecraft.world.phys.AABB aabb = ctx.target.getBoundingBox()
+                        .inflate(com.merlinkitsune.astral_dice.item.chip.ElectricGloveChipItem.AOE_RADIUS);
+                var nearby = ctx.target.level().getEntitiesOfClass(LivingEntity.class, aabb,
+                        e -> e instanceof Enemy && e != ctx.target && e.isAlive());
+                var source = com.merlinkitsune.astral_dice.damage.ModDamageTypes
+                        .diceDamage(ctx.target.level(), ctx.attacker);
+                // AOE 波及伤害不进入骰战结算(见 DiceCombatEvents.aoeProcessing)
+                DiceCombatEvents.aoeProcessing = true;
+                try {
+                    for (LivingEntity e : nearby) {
+                        e.hurt(source, total);
+                        sendAoeDamageNumber(e, (int) total, 0x00E5FF);
+                    }
+                } finally {
+                    DiceCombatEvents.aoeProcessing = false;
+                }
+                // 每周期仅触发一次:触发后解除武装
+                com.merlinkitsune.astral_dice.item.chip.ElectricGloveChipItem.disarmAoe(ctx.attacker);
+            }
+        });
     }
 
     // 溅射/范围伤害跳数字(颜色由调用方指定;定向爆破使用效果牌绿色)

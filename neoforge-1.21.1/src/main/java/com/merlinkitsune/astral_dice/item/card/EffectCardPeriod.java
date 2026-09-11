@@ -250,6 +250,8 @@ public final class EffectCardPeriod {
         // 周期归零:清除可口糖果的"满血出牌数+1"(每个轮次最多一次)
         ModAttachments.setCandyChipPlayBonusActive(player, false);
         ModAttachments.setSatellitePlayBonusActive(player, false);
+        // 周期归零:解除电击手套本周期已武装的法伤扩散(下个周期可重新武装)
+        com.merlinkitsune.astral_dice.item.chip.ElectricGloveChipItem.disarmAoe(player);
     }
 
     private static boolean hasCurio(Player player, net.minecraft.world.item.Item item) {

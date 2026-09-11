@@ -138,6 +138,10 @@ public class ModCreativeTabs {
                 output.accept(ModItems.ADVANCED_PERIPHERALS.get());
                 output.accept(ModItems.PERPETUAL_MOTION.get());
                 output.accept(ModItems.CURRENT_CORE_CHIP.get());
+                output.accept(ModItems.ELECTRIC_GLOVE_CHIP.get());
+                output.accept(ModItems.AIRBAG_CHIP.get());
+                output.accept(ModItems.RAILGUN_CHIP.get());
+                output.accept(ModItems.PRIMORDIAL_CORE_CHIP.get());
                 // === 无流派 ===
                 output.accept(ModItems.MAGIC_TOME_CHIP.get());
                 output.accept(ModItems.BIG_BACKPACK_CHIP.get());
@@ -163,5 +167,6 @@ public class ModCreativeTabs {
                 output.accept(ModItems.BOOKMARK_CHIP.get());
                 output.accept(ModItems.PIGGY_BANK_CHIP.get());
                 output.accept(ModItems.SMART_WATCH_CHIP.get());
+                output.accept(ModItems.WHETSTONE_CHIP.get());
             }).build());
 }

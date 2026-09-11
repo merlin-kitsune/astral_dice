@@ -121,6 +121,12 @@ public class ModEffects {
             EFFECTS.register("charge", ChargeEffect::new);
 
 
+    // 赋能(资源):层数 = amplifier+1;每消耗 1 层充能获得 1 层(原初核心筹码);
+    // 每层攻击/防御 +1,每 0:30 减少 1 层(层数为 1 时直接归 0)
+    public static final DeferredHolder<MobEffect, MobEffect> EMPOWER =
+            EFFECTS.register("empower", EmpowerEffect::new);
+
+
     // 弱点识破(枪匠立牌 Moses):玩家增益,层数 = amplifier+1;每层攻击/防御+1、骰点最低数+1
     public static final DeferredHolder<MobEffect, MobEffect> WEAKNESS_REVEAL =
             EFFECTS.register("weakness_reveal", WeaknessRevealEffect::new);

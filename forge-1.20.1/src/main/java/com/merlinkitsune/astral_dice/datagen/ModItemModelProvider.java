@@ -131,5 +131,10 @@ public class ModItemModelProvider extends ItemModelProvider {
         basicItem(ModItems.BOOKMARK_CHIP.get());
         basicItem(ModItems.PIGGY_BANK_CHIP.get());
         basicItem(ModItems.SMART_WATCH_CHIP.get());
+        basicItem(ModItems.ELECTRIC_GLOVE_CHIP.get());
+        basicItem(ModItems.AIRBAG_CHIP.get());
+        basicItem(ModItems.RAILGUN_CHIP.get());
+        basicItem(ModItems.PRIMORDIAL_CORE_CHIP.get());
+        basicItem(ModItems.WHETSTONE_CHIP.get());
     }
 }

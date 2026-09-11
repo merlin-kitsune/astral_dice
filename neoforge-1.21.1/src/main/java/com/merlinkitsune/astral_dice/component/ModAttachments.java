@@ -886,4 +886,51 @@ public class ModAttachments {
                             .serialize(Codec.unboundedMap(Codec.STRING,
                                     com.merlinkitsune.astral_dice.event.EffectTimerGuard.TimerEntry.CODEC))
                             .build());
+
+    // === 新筹码:原初核心 / 电击手套 / 安全气囊 ===
+
+    /** 赋能:下一层递减的到期时刻(gameTime;0 表示无计时器) */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> EMPOWER_DECAY_AT =
+            ATTACHMENTS.register("empower_decay_at", () -> AttachmentType.builder(() -> 0L)
+                    .serialize(Codec.LONG)
+                    .sync(ByteBufCodecs.VAR_LONG)
+                    .build());
+
+    /** 电击手套:本效果牌周期内是否已武装法伤扩散(触发后/周期结束清除) */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Boolean>> ELECTRIC_GLOVE_AOE =
+            ATTACHMENTS.register("electric_glove_aoe", () -> AttachmentType.builder(() -> false)
+                    .serialize(Codec.BOOL)
+                    .sync(ByteBufCodecs.BOOL)
+                    .build());
+
+    /** 安全气囊:触发冷却结束时刻(1:00;0 表示无冷却) */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> AIRBAG_COOLDOWN_END =
+            ATTACHMENTS.register("airbag_cooldown_end", () -> AttachmentType.builder(() -> 0L)
+                    .serialize(Codec.LONG)
+                    .sync(ByteBufCodecs.VAR_LONG)
+                    .build());
+
+    public static long getEmpowerDecayAt(net.minecraft.world.entity.player.Player player) {
+        return player.getData(EMPOWER_DECAY_AT.get());
+    }
+
+    public static void setEmpowerDecayAt(net.minecraft.world.entity.player.Player player, long value) {
+        player.setData(EMPOWER_DECAY_AT.get(), Math.max(0, value));
+    }
+
+    public static boolean isElectricGloveAoe(net.minecraft.world.entity.player.Player player) {
+        return player.getData(ELECTRIC_GLOVE_AOE.get());
+    }
+
+    public static void setElectricGloveAoe(net.minecraft.world.entity.player.Player player, boolean value) {
+        player.setData(ELECTRIC_GLOVE_AOE.get(), value);
+    }
+
+    public static long getAirbagCooldownEnd(net.minecraft.world.entity.player.Player player) {
+        return player.getData(AIRBAG_COOLDOWN_END.get());
+    }
+
+    public static void setAirbagCooldownEnd(net.minecraft.world.entity.player.Player player, long value) {
+        player.setData(AIRBAG_COOLDOWN_END.get(), Math.max(0, value));
+    }
 }

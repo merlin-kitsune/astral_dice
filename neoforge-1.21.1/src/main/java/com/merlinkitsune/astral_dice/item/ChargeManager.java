@@ -38,7 +38,21 @@ public final class ChargeManager {
 
     /** 减少 1 层 */
     public static void consumeOne(Player player) {
-        ChargeEffect.consumeOne(player);
+        consume(player, 1);
+    }
+
+    /**
+     * 一次性减少指定层数,返回实际消耗层数。
+     *
+     * <p>充能被消耗时统一在此挂钩 {@link EmpowerManager#onChargeConsumed}:
+     * 佩戴「原初核心」筹码的玩家按实际消耗层数获得等量「赋能」。
+     */
+    public static int consume(Player player, int amount) {
+        int consumed = ChargeEffect.consume(player, amount);
+        if (consumed > 0) {
+            EmpowerManager.onChargeConsumed(player, consumed);
+        }
+        return consumed;
     }
 
     /** 清空充能 */

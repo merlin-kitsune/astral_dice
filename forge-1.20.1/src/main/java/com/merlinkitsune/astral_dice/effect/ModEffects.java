@@ -121,6 +121,11 @@ public class ModEffects {
             EFFECTS.register("charge", ChargeEffect::new);
 
 
+    // 赋能(原初核心筹码转换而来的资源):层数 = amplifier+1;每层攻击/防御 +1,每 0:30 递减 1 层
+    public static final RegistryObject<MobEffect> EMPOWER =
+            EFFECTS.register("empower", EmpowerEffect::new);
+
+
     // 弱点识破(枪匠立牌 Moses):玩家增益,层数 = amplifier+1;每层攻击/防御+1、骰点最低数+1
     public static final RegistryObject<MobEffect> WEAKNESS_REVEAL =
             EFFECTS.register("weakness_reveal", WeaknessRevealEffect::new);

@@ -1,0 +1,13 @@
+{
+  "name": "item.astral_dice.airbag_chip",
+  "category": "astral_dice:chips_charge",
+  "icon": "astral_dice:airbag_chip",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:airbag_chip",
+      "text": "astral_dice.guide.entry.airbag_chip.1"
+    }
+  ],
+  "sortnum": 7
+}

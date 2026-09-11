@@ -186,6 +186,9 @@ public class DiceCombatEvents {
         if (!(directEntity instanceof Player player)) return;
         if (target == player) return;
 
+        // 电磁炮筹码:对敌对目标发起攻击时消耗 6 层充能,延迟 1 秒对目标 3 格内敌对目标降下雷击
+        com.merlinkitsune.astral_dice.item.chip.RailgunChipItem.onAttack(player, target);
+
         // 骰神赐福仅能由近战武器攻击触发与生效:直接伤害来源必须为玩家(已排除弓/弩/三叉戟投掷等远程),
         // 主手必须持有近战武器(排除空手/盾牌/非近战类武器)
         if (!isMeleeWeaponAttack(player)) return;

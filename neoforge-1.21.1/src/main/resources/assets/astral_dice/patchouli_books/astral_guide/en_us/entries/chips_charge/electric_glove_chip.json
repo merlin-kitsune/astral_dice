@@ -1,0 +1,13 @@
+{
+  "name": "item.astral_dice.electric_glove_chip",
+  "category": "astral_dice:chips_charge",
+  "icon": "astral_dice:electric_glove_chip",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:electric_glove_chip",
+      "text": "astral_dice.guide.entry.electric_glove_chip.1"
+    }
+  ],
+  "sortnum": 6
+}
