@@ -19,6 +19,7 @@ import net.minecraft.world.entity.vehicle.Boat;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
@@ -129,8 +130,8 @@ public final class EnderDiceHandler {
                 SoundEvents.ENDERMAN_TELEPORT, SoundSource.PLAYERS, 1.0F, 1.0F);
     }
 
-    // 装备期间处于雨中或水下:受到的伤害 +40%
-    @SubscribeEvent
+    // 装备期间处于雨中或水下:受到的伤害 +40%(在气囊判定之前完成放大,见 ChipDamageHandler 优先级说明)
+    @SubscribeEvent(priority = EventPriority.HIGH)
     public static void onLivingDamagePre(LivingDamageEvent.Pre event) {
         LivingEntity entity = event.getEntity();
         if (entity.level().isClientSide()) return;

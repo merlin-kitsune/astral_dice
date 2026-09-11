@@ -845,7 +845,8 @@ public class DiceCombatEvents {
 
     // 标记效果自然结束时:每分钟减少 1 层标记(层数>1 时重新施加并重置计时,否则标记消失)
 
-    @SubscribeEvent(priority = EventPriority.LOWEST)
+    // 伤害放大须先于 ChipDamageHandler(安全气囊,LOWEST)执行,故用 LOW
+    @SubscribeEvent(priority = EventPriority.LOW)
     public static void onBerserkDamageTaken(LivingDamageEvent event) {
         LivingEntity target = event.getEntity();
         if (target.level().isClientSide()) return;
@@ -890,7 +891,8 @@ public class DiceCombatEvents {
     }
 
 
-    @SubscribeEvent(priority = EventPriority.LOWEST)
+    // 伤害放大须先于 ChipDamageHandler(安全气囊,LOWEST)执行,故用 LOW
+    @SubscribeEvent(priority = EventPriority.LOW)
     public static void onWeakMarkDamage(LivingDamageEvent event) {
         LivingEntity target = event.getEntity();
         if (target.level().isClientSide()) return;
