@@ -613,13 +613,13 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(Rarity.UNCOMMON), SandwichChipItem.HEALTH_HIGH));
 
-    // 肾上腺素-一般:生命值低于最大生命值一半时,攻击力/防御力 +3(史诗)
+    // 肾上腺素-一般:生命值为 50% 或更低时,攻击力/防御力 +3(史诗)
     public static final DeferredItem<Item> ADRENALINE_LOW = registerItem("adrenaline_low_chip",
             () -> new AdrenalineChipItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(Rarity.EPIC), AdrenalineChipItem.BONUS_LOW));
 
-    // 肾上腺素-高效:生命值低于最大生命值一半时,攻击力/防御力 +8;触发加成时被敌方攻击,
+    // 肾上腺素-高效:生命值为 50% 或更低时,攻击力/防御力 +8;触发加成时被敌方攻击,
     // 骰点 4-5 → 50% 闪避、6 → 100% 闪避本次伤害(传奇)
     public static final DeferredItem<Item> ADRENALINE_HIGH = registerItem("adrenaline_high_chip",
             () -> new AdrenalineChipItem(new Item.Properties()
@@ -771,7 +771,7 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(Rarity.UNCOMMON)));
 
-    // 磨刀石:血量 ≤50% 时攻击力 +4、受到伤害 -2;血量 >1 时受到的伤害不超过剩余血量(史诗)
+    // 磨刀石:生命值为 50% 或更低时攻击力 +4、受到伤害 -2;生命值 >1 时受到的伤害不超过剩余生命值(史诗)
     public static final DeferredItem<Item> WHETSTONE_CHIP = registerItem("whetstone_chip",
             () -> new WhetstoneChipItem(new Item.Properties()
                     .stacksTo(1)
