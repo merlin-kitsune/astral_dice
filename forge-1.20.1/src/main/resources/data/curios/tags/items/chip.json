@@ -53,6 +53,11 @@
     "astral_dice:bookmark_chip",
     "astral_dice:piggy_bank_chip",
     "astral_dice:smart_watch_chip",
-    "astral_dice:current_core_chip"
+    "astral_dice:current_core_chip",
+    "astral_dice:electric_glove_chip",
+    "astral_dice:airbag_chip",
+    "astral_dice:railgun_chip",
+    "astral_dice:primordial_core_chip",
+    "astral_dice:whetstone_chip"
   ]
 }

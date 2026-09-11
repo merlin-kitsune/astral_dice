@@ -87,6 +87,8 @@
 
 ### 已修复BUG
 
+- 修复 1.2.0 新增充能筹码遗漏 `curios:chip` 饰品槽标签:安全气囊/电击手套/电磁炮/原初核心/磨刀石 5 个筹码此前只补进了 `astral_dice:chips` 汇总标签,遗漏 `curios:chip` 装备槽标签——1.21.1 筹码槽启用 `curios:tag` 校验会直接拒绝装备(5 个筹码效果完全失效),1.20.1 无校验仍可装备,造成双版本行为不一致;现已补全(双版本一致)。
+- 补全枪匠立牌 3 个新增效果的名称键:`weakness_reveal`(弱点识破)/`moses_broken`(破绽)/`moses_ready`(待命：破绽)此前缺少 `effect.astral_dice.*` 语言键,玩家状态栏会显示原始翻译键(同类 `haiqing_ready`/`bonnie_ready` 均有键);现已补入双版本中英文(双版本一致)。
 - 修复 `PiglinAiMixin` 注入签名:1.21.1 原版 `PiglinAi.isWearingGold` 参数为 `LivingEntity`,此前按 `Player` 编写导致整合包运行时 Mixin 应用失败(Invalid descriptor);现改为 `LivingEntity` 并在内部仅对玩家执行下界岩骰子判定。
 - 修复新增骰子 tooltip 缺失:黑曜石/下界岩/诡异/绯红/紫晶/末影/下界之星骰子此前未进入骰子 tooltip 分发入口,导致这些骰子缺少专属说明;现已统一纳入骰子 tooltip 处理(1.20.1 已同步,双版本一致)。
 - 修复骰子 tooltip 染色在 `%%`/占位符转译后断裂的问题:含 `%%` 或 `%s` 的骰子 tooltip(如绿宝石骰子的 20%% 折扣)改为先经 `translationString` 展开再放入 `Component.literal`,避免 Minecraft 将 `%%`/`%s` 拆成独立无样式片段,导致 `%` 号与后续文字丢失正确颜色(1.20.1 已同步,双版本一致)。
