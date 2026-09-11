@@ -1035,13 +1035,13 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
                 .save(output::accept);
 
-        // 电磁炮:上排 铁块·避雷针·铁块｜中排 导电线材·空白筹码·导电线材｜下排 黄金星盘·黄金星盘·黄金星盘 [传奇·充能]
+        // 电磁炮:上排 红石块·末地水晶·红石块｜中排 导电线材·空白筹码·导电线材｜下排 黄金星盘·黄金星盘·黄金星盘 [传奇·充能]
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.RAILGUN_CHIP.get())
-                .pattern("XLX")
+                .pattern("RCR")
                 .pattern("WBW")
                 .pattern("GGG")
-                .define('X', Items.IRON_BLOCK)
-                .define('L', Items.LIGHTNING_ROD)
+                .define('R', Items.REDSTONE_BLOCK)
+                .define('C', Items.END_CRYSTAL)
                 .define('W', ModItems.CONDUCTIVE_WIRE.get())
                 .define('B', ModItems.BLANK_CHIP.get())
                 .define('G', ModItems.GOLDEN_STAR_PLATE.get())

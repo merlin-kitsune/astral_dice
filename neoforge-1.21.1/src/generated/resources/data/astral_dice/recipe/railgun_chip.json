@@ -5,21 +5,21 @@
     "B": {
       "item": "astral_dice:blank_chip"
     },
+    "C": {
+      "item": "minecraft:end_crystal"
+    },
     "G": {
       "item": "astral_dice:golden_star_plate"
     },
-    "L": {
-      "item": "minecraft:lightning_rod"
+    "R": {
+      "item": "minecraft:redstone_block"
     },
     "W": {
       "item": "astral_dice:conductive_wire"
-    },
-    "X": {
-      "item": "minecraft:iron_block"
     }
   },
   "pattern": [
-    "XLX",
+    "RCR",
     "WBW",
     "GGG"
   ],

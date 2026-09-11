@@ -22,8 +22,11 @@ import java.util.List;
  * <ul>
  *   <li>充能层数不少于 6 时,攻击力 +5;</li>
  *   <li>对敌对目标发起攻击时,消耗 6 层充能,并对目标 3 格范围内所有敌对目标
- *       额外降下同样伤害的雷击(延迟 1 秒触发,使用 Minecraft 原生雷击,可生成闪电苦力怕)。</li>
+ *       额外降下雷击(延迟 1 秒触发,使用 Minecraft 原生雷击,基础伤害固定 5 点,
+ *       与本次攻击的伤害无关;可生成闪电苦力怕)。</li>
  * </ul>
+ * <p>雷击使用原版 {@code DamageTypes.LIGHTNING_BOLT} 伤害源(伤害实体为空),
+ * 既不是近战攻击,也不进入骰战结算,因此不会触发骰神赐福。</p>
  */
 public class RailgunChipItem extends BaseChipItem {
     /** 攻击力加成所需的充能层数 */
@@ -84,7 +87,7 @@ public class RailgunChipItem extends BaseChipItem {
         }));
     }
 
-    // 原生雷击:setVisualOnly(false) 才会造成雷击伤害并把苦力怕转化为闪电苦力怕
+    // 原生雷击:setVisualOnly(false) 才会造成雷击伤害(基础 5 点)并把苦力怕转化为闪电苦力怕
     private static void strike(ServerLevel level, Vec3 pos, Player cause) {
         LightningBolt bolt = EntityType.LIGHTNING_BOLT.create(level);
         if (bolt == null) return;
