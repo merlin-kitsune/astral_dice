@@ -1081,5 +1081,50 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('D', ModItems.DICE.get())
                 .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
                 .save(output);
+
+        // === 合成材料(1.2.0) ===
+        // 再生试剂:红石粉 + 粘液球 + 金西瓜片 + 粗制的药水(无序)
+        ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ModItems.REGENERATION_REAGENT.get())
+                .requires(Items.REDSTONE)
+                .requires(Items.SLIME_BALL)
+                .requires(Items.GLISTERING_MELON_SLICE)
+                .requires(net.neoforged.neoforge.common.crafting.DataComponentIngredient.of(
+                        true, net.minecraft.core.component.DataComponents.POTION_CONTENTS,
+                        new net.minecraft.world.item.alchemy.PotionContents(net.minecraft.world.item.alchemy.Potions.AWKWARD),
+                        Items.POTION))
+                .unlockedBy("has_glistering_melon_slice", has(Items.GLISTERING_MELON_SLICE))
+                .save(output);
+
+        // 导电线材:DLD/DLD/RRR(D=钻石,L=线,R=红石粉)
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.CONDUCTIVE_WIRE.get())
+                .pattern("DLD")
+                .pattern("DLD")
+                .pattern("RRR")
+                .define('D', Items.DIAMOND)
+                .define('L', Items.STRING)
+                .define('R', Items.REDSTONE)
+                .unlockedBy("has_diamond", has(Items.DIAMOND))
+                .save(output);
+
+        // 星币尘:星币 + 下界石英 + 荧石粉(无序)
+        ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ModItems.STAR_COIN_DUST.get())
+                .requires(ModItems.STAR_COIN.get())
+                .requires(Items.QUARTZ)
+                .requires(Items.GLOWSTONE_DUST)
+                .unlockedBy("has_star_coin", has(ModItems.STAR_COIN.get()))
+                .save(output);
+
+        // 标记涂料:空/Y/空, I/R/I, C/G/C(Y=岩浆膏,I=铁锭,R=红石粉,C=铜锭,G=金锭)
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.MARK_PAINT.get())
+                .pattern(" Y ")
+                .pattern("IRI")
+                .pattern("CGC")
+                .define('Y', Items.MAGMA_CREAM)
+                .define('I', Items.IRON_INGOT)
+                .define('R', Items.REDSTONE)
+                .define('C', Items.COPPER_INGOT)
+                .define('G', Items.GOLD_INGOT)
+                .unlockedBy("has_magma_cream", has(Items.MAGMA_CREAM))
+                .save(output);
     }
 }
