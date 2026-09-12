@@ -21,8 +21,24 @@ import net.minecraft.world.entity.player.Player;
 public class EmpowerEffect extends MobEffect {
     /** 最大层数(与充能上限 CHARGE_MAX_STACKS 对齐) */
     public static final int MAX_STACKS = 20;
-    /** 效果时长(无限,层数归零/清除时移除;不参与 EffectTimerGuard 计时) */
-    public static final int DURATION_TICKS = Integer.MAX_VALUE;
+    /** 递减间隔:每 0:30 减少 1 层({@link com.merlinkitsune.astral_dice.item.EmpowerManager} 同源引用) */
+    public static final int DECAY_INTERVAL_TICKS = 30 * 20;
+    /**
+     * 效果时长 = 递减间隔 + 20 tick 余量。
+     *
+     * <p><b>必须是有限值</b>:物品栏效果面板与其悬停提示显示的时长直接取自本值
+     * (vanilla {@code MobEffectUtil.formatDuration}),原先的 {@code Integer.MAX_VALUE}
+     * 会让面板显示一个天文数字、永远不倒数 —— 玩家实测「赋能没有倒计时」即此。
+     * 取 620 tick 后,面板显示 0:31 → 0:01 的真实倒计时,归零前由
+     * {@link com.merlinkitsune.astral_dice.item.EmpowerManager#tick} 减 1 层并重新起算。
+     *
+     * <p>留 20 tick 余量是必需的:服务端递减(600 tick)必须**先于**效果自然到期发生,
+     * 否则实例先到期 → 层数直接归零,表现为「层数凭空消失」而不是递减 1 层。
+     *
+     * <p>不影响 {@code EffectTimerGuard}:守卫只管理经其 {@code apply} 登记的效果,
+     * 且 {@code INFINITE_THRESHOLD} 以上的旧值本就被跳过;本效果不经守卫登记。
+     */
+    public static final int DURATION_TICKS = DECAY_INTERVAL_TICKS + 20;
 
     public EmpowerEffect() {
         super(MobEffectCategory.BENEFICIAL, 0x00E5FF);
@@ -53,9 +69,10 @@ public class EmpowerEffect extends MobEffect {
         MobEffectInstance instance = player.getEffect(ModEffects.EMPOWER);
         if (instance == null) return;
         int remaining = instance.getAmplifier();
-        if (remaining <= 0) {
-            ModEffectRemoval.remove(player, ModEffects.EMPOWER);
-        } else {
+        // 原版 MobEffectInstance#update 只接受更高的 amplifier,直接 addEffect 降级会被忽略
+        // (低等级实例被塞进 hiddenEffect,层数永远不变)。故必须"先移除旧实例,再写入新层数"。
+        ModEffectRemoval.remove(player, ModEffects.EMPOWER);
+        if (remaining > 0) {
             player.addEffect(new MobEffectInstance(ModEffects.EMPOWER,
                     DURATION_TICKS, remaining - 1, false, true, true));
         }
@@ -65,5 +82,18 @@ public class EmpowerEffect extends MobEffect {
     public static void removeAll(Player player) {
         if (player == null || player.level().isClientSide()) return;
         ModEffectRemoval.remove(player, ModEffects.EMPOWER);
+    }
+
+    /**
+     * 以当前层数重写效果实例(不改层数),用于刷新时长:计时器缺失/被外部改动时,
+     * 让「面板显示的倒计时」与「服务端 empowerDecayAt」重新对齐,避免倒计时与实际递减脱节。
+     */
+    public static void refresh(Player player) {
+        if (player == null || player.level().isClientSide()) return;
+        int stacks = getStacks(player);
+        if (stacks <= 0) return;
+        ModEffectRemoval.remove(player, ModEffects.EMPOWER);
+        player.addEffect(new MobEffectInstance(ModEffects.EMPOWER,
+                DURATION_TICKS, stacks - 1, false, true, true));
     }
 }

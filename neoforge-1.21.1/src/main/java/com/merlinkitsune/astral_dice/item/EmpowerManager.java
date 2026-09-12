@@ -21,8 +21,8 @@ import net.minecraft.world.entity.player.Player;
  * 计时器仅服务端运行,由 {@code PlayerTickEvents} 每 20 tick 驱动一次。
  */
 public final class EmpowerManager {
-    /** 每 0:30 减少 1 层 */
-    public static final int DECAY_INTERVAL_TICKS = 30 * 20;
+    /** 每 0:30 减少 1 层(与 {@link EmpowerEffect#DECAY_INTERVAL_TICKS} 同源) */
+    public static final int DECAY_INTERVAL_TICKS = EmpowerEffect.DECAY_INTERVAL_TICKS;
 
     private EmpowerManager() {
     }
@@ -68,10 +68,14 @@ public final class EmpowerManager {
         long now = player.level().getGameTime();
         long next = ModAttachments.getEmpowerDecayAt(player);
         if (next <= 0) {
-            // 层数存在但计时器缺失(如热重载):重新起算
+            // 层数存在但计时器缺失(如热重载):重新起算,并刷新效果时长让面板倒计时跟上
             ModAttachments.setEmpowerDecayAt(player, now + DECAY_INTERVAL_TICKS);
+            EmpowerEffect.refresh(player);
             return;
         }
+        // 注意:此处**不可**每秒刷新效果时长 —— 面板倒计时由客户端自行递减实例时长,
+        // 每秒重写会把倒计时重置成恒显 0:31(看起来"永远不动")。
+        // 时长(620)> 递减间隔(600)已足够保证递减先于到期发生。
         if (now < next) return;
         // 递减 1 层:剩余层数为 1 时 consumeOne 内部直接移除效果(归 0)
         EmpowerEffect.consumeOne(player);

@@ -87,6 +87,7 @@
 
 ### 已修复BUG
 
+- 修复「赋能」效果没有倒计时、层数变化看不出来:效果实例时长此前为 `Integer.MAX_VALUE`(无限),而物品栏效果面板与其悬停提示显示的时长直接取自该值(`MobEffectUtil.formatDuration`),于是面板永远显示一个天文数字、不倒数;现改为「递减间隔 + 20 tick 余量」(`EmpowerEffect.DURATION_TICKS = 620`,`DECAY_INTERVAL_TICKS = 600` 与之同源),面板显示 0:31 → 0:01 的真实倒计时,归零前由 `EmpowerManager.tick` 减 1 层并重新起算。留 20 tick 余量是必需的:递减必须**先于**效果自然到期发生,否则实例先到期会让层数直接归零(表现为「层数凭空消失」而非减 1 层)。(双版本一致)。
 - 修复 1.2.0 新增充能筹码遗漏 `curios:chip` 饰品槽标签:安全气囊/电击手套/电磁炮/原初核心/磨刀石 5 个筹码此前只补进了 `astral_dice:chips` 汇总标签,遗漏 `curios:chip` 装备槽标签——1.21.1 筹码槽启用 `curios:tag` 校验会直接拒绝装备(5 个筹码效果完全失效),1.20.1 无校验仍可装备,造成双版本行为不一致;现已补全(双版本一致)。
 - 补全枪匠立牌 3 个新增效果的名称键:`weakness_reveal`(弱点识破)/`moses_broken`(破绽)/`moses_ready`(待命：破绽)此前缺少 `effect.astral_dice.*` 语言键,玩家状态栏会显示原始翻译键(同类 `haiqing_ready`/`bonnie_ready` 均有键);现已补入双版本中英文(双版本一致)。
 - 修复 `PiglinAiMixin` 注入签名:1.21.1 原版 `PiglinAi.isWearingGold` 参数为 `LivingEntity`,此前按 `Player` 编写导致整合包运行时 Mixin 应用失败(Invalid descriptor);现改为 `LivingEntity` 并在内部仅对玩家执行下界岩骰子判定。
