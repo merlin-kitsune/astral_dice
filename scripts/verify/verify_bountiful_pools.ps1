@@ -1,0 +1,412 @@
+# -*- coding: utf-8 -*-
+<#
+Bountiful 赏金联动一致性校验（只读守门）。
+
+独立重算「按规则应进入赏金池的物品集合」，与双版本四份池文件逐项比对：
+  1. 双版本 ModItems 注册物品 id 与品质完全一致；
+  2. astral_objs = 非传奇骰子 + 货币(star_coin / star_coin_bag / star_plate / golden_star_plate)；
+  3. astral_rews = astral_objs ∪ 卡牌(全部) ∪ 非传奇筹码 ∪ 非传奇立牌
+     （**传奇=物品层 Rarity.UNCOMMON，数据层 LEGENDARY**：传奇骰子/筹码/立牌不进 rews；卡牌不受限）；
+  4. 集合相等（0 缺失 / 0 多余），且数据层 rarity 与物品品质映射一致
+     （RARE→RARE、EPIC→EPIC、UNCOMMON→LEGENDARY）；
+  5. 双版本四份文件逐字节一致（md5）；
+  6. 文件格式：UTF-8 / CRLF / Tab 缩进 / 末尾换行；
+  7. 价值平衡式：objs 顶值(1 条, amount.max×unitWorth) ≥ rews 顶值(2 条之和) × 0.9
+     （Bountiful 加载告警阈值，违反会刷不出匹配赏金）。
+
+退出码：0 = 全部通过；1 = 存在致命偏差。只读，不修改任何工程文件。
+
+用法: pwsh -File scripts/verify/verify_bountiful_pools.ps1 [-Root .]
+
+—— PowerShell 移植版:1:1 对应 scripts/verify/verify_bountiful_pools.py(原 .py 保留不删)。
+#>
+[CmdletBinding()]
+param(
+    [Parameter(Position = 0)]
+    [string]$Root = '.'
+)
+
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
+$ErrorActionPreference = 'Stop'
+
+$NS = 'astral_dice'
+$VERSIONS = @('neoforge-1.21.1', 'forge-1.20.1')
+$MODITEMS_REL = 'src/main/java/com/merlinkitsune/astral_dice/item/ModItems.java'
+$POOL_REL = 'src/main/resources/data/bountiful/bounty_pools/bountiful/'
+$DECREE_REL = 'src/main/resources/data/bountiful/bounty_decrees/bountiful/astral.json'
+
+$REG = 'registerItem\("([a-z0-9_]+)"'
+$RAR = 'rarity\(Rarity\.([A-Z_]+)\)'
+
+$DICE = @('dice', 'golden_dice', 'glass_dice', 'netherrack_dice', 'diamond_dice',
+    'emerald_dice', 'obsidian_dice', 'weird_dice', 'amethyst_dice',
+    'netherite_dice', 'crimson_dice', 'ender_dice', 'nether_star_dice')
+$MONEY = @('star_coin', 'star_coin_bag', 'star_plate', 'golden_star_plate')
+$LEGEND = 'UNCOMMON'                       # 本 mod「金 = 传奇」
+$RARITY_MAP = [ordered]@{ 'COMMON' = 'COMMON'; 'RARE' = 'RARE'; 'EPIC' = 'EPIC'; 'UNCOMMON' = 'LEGENDARY' }
+
+$errors = New-Object System.Collections.Generic.List[string]
+$warnings = New-Object System.Collections.Generic.List[string]
+
+# ---------------------------------------------------------------------------
+# 输出:统一经 [Console]::Out 写显式 LF（不得 CRLF;与 Mt.Phase 的 Write-MtLine 同契约)
+#       Python print() 在 Windows 上把 "\n" 按 os.linesep 翻译成 CRLF 的行为）
+# ---------------------------------------------------------------------------
+function Write-Out([string]$text) {
+    [Console]::Out.Write($text)
+    [Console]::Out.Write("`n")
+}
+
+function New-Map {
+    return , ([System.Collections.Specialized.OrderedDictionary]::new([System.StringComparer]::Ordinal))
+}
+
+function New-StrSet {
+    return , ([System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal))
+}
+
+function ConvertTo-StrSet {
+    param($Values)
+    $s = New-StrSet
+    if ($null -ne $Values) { foreach ($v in $Values) { [void]$s.Add([string]$v) } }
+    return , $s
+}
+
+function New-PyTuple {
+    param([object[]]$Items)
+    return [pscustomobject]@{ __pytuple = $Items }
+}
+
+function ConvertTo-PyRepr {
+    param($Value)
+    if ($null -eq $Value) { return 'None' }
+    if ($Value -is [bool]) { if ($Value) { return 'True' } else { return 'False' } }
+    if ($Value -is [string]) {
+        return "'" + $Value.Replace('\', '\\').Replace("'", "\'").Replace("`n", '\n').Replace("`r", '\r') + "'"
+    }
+    if (($Value -is [psobject]) -and ($Value.PSObject.Properties.Name -contains '__pytuple')) {
+        $parts = @()
+        foreach ($x in @($Value.__pytuple)) { $parts += (ConvertTo-PyRepr $x) }
+        if ($parts.Count -eq 1) { return '(' + $parts[0] + ',)' }
+        return '(' + ($parts -join ', ') + ')'
+    }
+    if ($Value -is [System.Collections.IDictionary]) {
+        $parts = @()
+        foreach ($e in $Value.GetEnumerator()) { $parts += ((ConvertTo-PyRepr $e.Key) + ': ' + (ConvertTo-PyRepr $e.Value)) }
+        return '{' + ($parts -join ', ') + '}'
+    }
+    if ($Value -is [System.Collections.IEnumerable]) {
+        $parts = @()
+        foreach ($x in $Value) { $parts += (ConvertTo-PyRepr $x) }
+        return '[' + ($parts -join ', ') + ']'
+    }
+    return [string]$Value
+}
+
+function Sort-Ordinal {
+    param($Values)
+    $arr = @($Values)
+    [Array]::Sort($arr, [System.StringComparer]::Ordinal)
+    return , $arr
+}
+
+function Get-SetDiff {
+    param($a, $b)
+    $d = [System.Collections.Generic.HashSet[string]]::new($a, [System.StringComparer]::Ordinal)
+    $d.ExceptWith($b)
+    return , $d
+}
+
+function Add-Err {
+    param([string]$msg)
+    $errors.Add($msg)
+}
+
+function Add-Warn {
+    param([string]$msg)
+    $warnings.Add($msg)
+}
+
+# Python 的 io.open(path, "r", encoding="utf-8", newline="").read() — 不做换行翻译
+function Read-RawText {
+    param([string]$Path)
+    return [System.IO.File]::ReadAllText($Path, [System.Text.Encoding]::UTF8)
+}
+
+function Get-Md5Hex {
+    param([string]$Path)
+    $bytes = [System.IO.File]::ReadAllBytes($Path)
+    $hash = [System.Security.Cryptography.MD5]::HashData($bytes)
+    return [System.Convert]::ToHexString($hash).ToLowerInvariant()
+}
+
+# ---------------------------------------------------------------------------
+function Get-ParsedItems {
+    param([string]$path)
+    $text = Read-RawText $path
+    $hits = [regex]::Matches($text, $REG)
+    $out = New-Map
+    for ($i = 0; $i -lt $hits.Count; $i++) {
+        $start = $hits[$i].Index + $hits[$i].Length
+        $end = $text.Length
+        if ($i + 1 -lt $hits.Count) { $end = $hits[$i + 1].Index }
+        $seg = $text.Substring($start, $end - $start)
+        $r = [regex]::Match($seg, $RAR)
+        # 注意:PowerShell 变量名大小写不敏感,本地名不得写成 $rar(会与 $RAR 冲突)
+        $rarityText = 'COMMON'
+        if ($r.Success) { $rarityText = $r.Groups[1].Value }
+        $out[$hits[$i].Groups[1].Value] = $rarityText
+    }
+    return , $out
+}
+
+
+function Get-Classified {
+    param($items)
+    $c = New-Map
+    foreach ($k in @('dice', 'money', 'cards', 'signs', 'chips', 'materials')) { $c[$k] = New-StrSet }
+    foreach ($k in $items.Keys) {
+        if ($DICE -contains $k) { [void]$c['dice'].Add($k) }
+        elseif ($MONEY -contains $k) { [void]$c['money'].Add($k) }
+        elseif ($k.StartsWith('attack_card_') -or $k.StartsWith('defense_card_') -or $k.StartsWith('effect_card_')) { [void]$c['cards'].Add($k) }
+        elseif ($k.EndsWith('_sign') -and $k -cne 'blank_sign') { [void]$c['signs'].Add($k) }
+        elseif ($k.EndsWith('_chip') -and $k -cne 'blank_chip') { [void]$c['chips'].Add($k) }
+        else { [void]$c['materials'].Add($k) }
+    }
+    return , $c
+}
+
+
+function Get-Expected {
+    param($items, $c)
+    $objs = New-StrSet
+    foreach ($k in $c['dice']) { if ($items[$k] -cne $LEGEND) { [void]$objs.Add($k) } }
+    foreach ($k in $c['money']) { [void]$objs.Add($k) }
+    $rews = [System.Collections.Generic.HashSet[string]]::new($objs, [System.StringComparer]::Ordinal)
+    foreach ($k in $c['cards']) { [void]$rews.Add($k) }
+    foreach ($k in $c['signs']) { if ($items[$k] -cne $LEGEND) { [void]$rews.Add($k) } }
+    foreach ($k in $c['chips']) { if ($items[$k] -cne $LEGEND) { [void]$rews.Add($k) } }
+    return , @($objs, $rews)
+}
+
+
+function Get-Pool {
+    <#
+    返回 (content_id → 条目 dict) 与原始文本。
+    #>
+    param([string]$path)
+    $raw = Read-RawText $path
+    $d = ConvertFrom-Json -InputObject $raw -AsHashtable
+    $content = New-Map
+    foreach ($v in $d['content'].Values) {
+        $parts = ([string]$v['content']) -split ':', 2
+        $content[$parts[1]] = $v
+    }
+    return , @($content, $raw)
+}
+
+
+# ---------------------------------------------------------------------------
+# main
+# ---------------------------------------------------------------------------
+$root = $Root
+$root = $root.TrimEnd([char[]]@('/', '\'))
+$pre = ''
+if ($root -cnotin @('.', '')) { $pre = $root + '/' }
+
+# 1) 双版本物品清单一致
+$items_by_ver = New-Map
+foreach ($ver in $VERSIONS) {
+    $p = $pre + $ver + '/' + $MODITEMS_REL
+    $items_by_ver[$ver] = Get-ParsedItems $p
+}
+$a = $items_by_ver[$VERSIONS[0]]
+$b = $items_by_ver[$VERSIONS[1]]
+$sameItems = $true
+if ($a.Count -ne $b.Count) { $sameItems = $false }
+else {
+    foreach ($k in $a.Keys) {
+        if (-not $b.Contains($k)) { $sameItems = $false; break }
+        if ($b[$k] -cne $a[$k]) { $sameItems = $false; break }
+    }
+}
+if (-not $sameItems) {
+    $only_a = Sort-Ordinal (Get-SetDiff (ConvertTo-StrSet @($a.Keys)) (ConvertTo-StrSet @($b.Keys)))
+    $only_b = Sort-Ordinal (Get-SetDiff (ConvertTo-StrSet @($b.Keys)) (ConvertTo-StrSet @($a.Keys)))
+    $diffRar = @()
+    foreach ($k in $a.Keys) {
+        if ($b.Contains($k) -and ($a[$k] -cne $b[$k])) { $diffRar += $k }
+    }
+    $diffRar = Sort-Ordinal $diffRar
+    Add-Err ('双版本 ModItems 不一致：仅 ' + $VERSIONS[0] + '=' + (ConvertTo-PyRepr $only_a) + '；品质差异=' + (ConvertTo-PyRepr $diffRar))
+    Add-Err ('双版本 ModItems 不一致：仅 ' + $VERSIONS[1] + '=' + (ConvertTo-PyRepr $only_b))
+}
+$items = $a
+$c = Get-Classified $items
+$ex = Get-Expected $items $c
+$eo = $ex[0]
+$er = $ex[1]
+$counts = New-Map
+foreach ($k in $c.Keys) { $counts[$k] = $c[$k].Count }
+Write-Out ('物品分类: ' + (ConvertTo-PyRepr $counts) + ' 总 ' + $items.Count)
+Write-Out ('规则应含: objs ' + $eo.Count + ' / rews ' + $er.Count)
+$excl = @()
+foreach ($k in $c['chips']) { if ($items[$k] -ceq $LEGEND) { $excl += $k } }
+foreach ($k in $c['signs']) { if ($items[$k] -ceq $LEGEND) { $excl += $k } }
+foreach ($k in $c['dice']) { if ($items[$k] -ceq $LEGEND) { $excl += $k } }
+$excl = Sort-Ordinal $excl
+Write-Out ('按规则排除(传奇筹码/立牌/骰子): ' + $excl.Count + ' 项')
+
+# 2/3/4) 逐版本逐池比对
+foreach ($ver in $VERSIONS) {
+    foreach ($pair in @(@('astral_objs.json', $eo), @('astral_rews.json', $er))) {
+        $pool = $pair[0]
+        $exp = $pair[1]
+        $path = $pre + $ver + '/' + $POOL_REL + $pool
+        $pr = Get-Pool $path
+        $content = $pr[0]
+        $actual = ConvertTo-StrSet @($content.Keys)
+        $miss = Sort-Ordinal (Get-SetDiff $exp $actual)
+        $extra = Sort-Ordinal (Get-SetDiff $actual $exp)
+        $tag = $ver + '/' + $pool
+        if (@($miss).Count -gt 0) {
+            Add-Err ($tag + ' 缺失条目(' + @($miss).Count + '): ' + (ConvertTo-PyRepr $miss))
+        }
+        if (@($extra).Count -gt 0) {
+            Add-Err ($tag + ' 多余/应排除条目(' + @($extra).Count + '): ' + (ConvertTo-PyRepr $extra))
+        }
+        if ((@($miss).Count -eq 0) -and (@($extra).Count -eq 0)) {
+            Write-Out ('OK  ' + $tag.PadRight(40) + ' 条目 ' + $actual.Count + ' 与规则一致')
+        }
+
+        # 数据层 rarity 映射（缺省字段 = COMMON，Bountiful 默认）
+        $badR = @()
+        foreach ($kv in $content.GetEnumerator()) {
+            $k = $kv.Key
+            $v = $kv.Value
+            if (-not $items.Contains($k)) { continue }
+            $vr = 'COMMON'
+            if ($v.Contains('rarity')) { $vr = $v['rarity'] }
+            $want = $null
+            if ($RARITY_MAP.Contains($items[$k])) { $want = $RARITY_MAP[$items[$k]] }
+            if ($vr -cne $want) {
+                $rawRar = $null
+                if ($v.Contains('rarity')) { $rawRar = $v['rarity'] }
+                $badR += , (New-PyTuple @($k, $rawRar, $want))
+            }
+        }
+        if ($badR.Count -gt 0) {
+            $lim = [Math]::Min(8, $badR.Count)
+            $slice = @()
+            for ($i = 0; $i -lt $lim; $i++) { $slice += , $badR[$i] }
+            Add-Err ($tag + ' rarity 映射错误: ' + (ConvertTo-PyRepr $slice))
+        }
+
+        # 格式
+        $rawb = [System.IO.File]::ReadAllBytes($path)
+        $s = [System.Text.Encoding]::Latin1.GetString($rawb)
+        $crlfCount = ([regex]::Matches($s, "`r`n")).Count
+        $lfCount = ([regex]::Matches($s, "`n")).Count
+        if ($crlfCount -ne $lfCount) {
+            Add-Err ($tag + ' 换行符非纯 CRLF')
+        }
+        if (-not $s.EndsWith("`r`n")) {
+            Add-Err ($tag + ' 末尾缺换行')
+        }
+        if ($s.Contains("`r`n    ") -or $s.Contains("`r`n  ")) {
+            Add-Err ($tag + ' 存在空格缩进(应为 Tab)')
+        }
+    }
+}
+
+# 5) 双版本逐字节一致
+foreach ($pool in @('astral_objs.json', 'astral_rews.json', 'astral.json')) {
+    $paths = @()
+    foreach ($v in $VERSIONS) {
+        if ($pool -ceq 'astral.json') { $paths += ($pre + $v + '/' + $DECREE_REL) }
+        else { $paths += ($pre + $v + '/' + $POOL_REL + $pool) }
+    }
+    $digests = @()
+    $missing = $false
+    foreach ($p in $paths) {
+        if (-not [System.IO.File]::Exists($p)) {
+            Add-Err ("双版本文件缺失: [Errno 2] No such file or directory: '" + $p + "'")
+            $missing = $true
+            break
+        }
+        $digests += (Get-Md5Hex $p)
+    }
+    if ($missing) { continue }
+    if ((ConvertTo-StrSet $digests).Count -ne 1) {
+        Add-Err ('双版本不一致: ' + $pool + ' → ' + (ConvertTo-PyRepr $digests))
+    }
+    else {
+        Write-Out ('OK  双版本一致 ' + $pool.PadRight(24) + ' md5 ' + $digests[0])
+    }
+}
+
+# 6) 价值平衡式（逐版本，取 neoforge 结果展示）
+foreach ($ver in $VERSIONS) {
+    $objs = (Get-Pool ($pre + $ver + '/' + $POOL_REL + 'astral_objs.json'))[0]
+    $rews = (Get-Pool ($pre + $ver + '/' + $POOL_REL + 'astral_rews.json'))[0]
+    $objsTopD = 0.0
+    foreach ($v in $objs.Values) {
+        $x = [double]$v['amount']['max'] * [double]$v['unitWorth']
+        if ($x -gt $objsTopD) { $objsTopD = $x }
+    }
+    $vals = @()
+    foreach ($v in $rews.Values) { $vals += ([double]$v['amount']['max'] * [double]$v['unitWorth']) }
+    [Array]::Sort($vals)
+    $top2 = @()
+    if ($vals.Count -ge 1) { $top2 += $vals[$vals.Count - 1] }
+    if ($vals.Count -ge 2) { $top2 += $vals[$vals.Count - 2] }
+    $sumTop2D = 0.0
+    foreach ($x in $top2) { $sumTop2D += $x }
+    $need = $sumTop2D * 0.9
+    $ok = $objsTopD -ge $need
+    $head = 'FAIL'
+    $verdict = 'FAIL'
+    if ($ok) { $head = 'OK  '; $verdict = 'PASS' }
+    $dispObjs = [long][Math]::Truncate($objsTopD)
+    $dispSum = [long][Math]::Truncate($sumTop2D)
+    $dispNeed = [long][Math]::Round($need, 0, [System.MidpointRounding]::ToEven)
+    Write-Out ($head + ' 价值平衡: objs 顶值 ' + $dispObjs + ' ≥ rews 顶值2和 ' + $dispSum + ' × 0.9 = ' + $dispNeed + ' → ' + $verdict)
+    if (-not $ok) {
+        Add-Err ($ver + ' 价值平衡式不成立')
+    }
+}
+
+# 7) decree 引用
+foreach ($ver in $VERSIONS) {
+    $p = $pre + $ver + '/' + $DECREE_REL
+    try {
+        $d = ConvertFrom-Json -InputObject (Read-RawText $p) -AsHashtable
+        $objOk = ($d.Contains('objectives') -and (@($d['objectives']).Count -eq 1) -and ($d['objectives'][0] -ceq 'astral_objs'))
+        $rewOk = ($d.Contains('rewards') -and (@($d['rewards']).Count -eq 1) -and ($d['rewards'][0] -ceq 'astral_rews'))
+        if ((-not $objOk) -or (-not $rewOk)) {
+            Add-Err ($ver + ' decree 引用异常: ' + (ConvertTo-PyRepr $d))
+        }
+        else {
+            Write-Out ('OK  ' + $ver + ' decree 引用 astral_objs/astral_rews')
+        }
+    }
+    catch [System.IO.IOException] {
+        Add-Err ($ver + " decree 缺失: [Errno 2] No such file or directory: '" + $p + "'")
+    }
+}
+
+Write-Out ''
+foreach ($w in $warnings) { Write-Out ('WARN ' + $w) }
+if ($errors.Count -gt 0) {
+    foreach ($e in $errors) { Write-Out ('FAIL ' + $e) }
+    Write-Out ''
+    Write-Out ('结果: ' + $errors.Count + ' 项致命偏差')
+    [Console]::Out.Flush()
+    exit 1
+}
+$suffix = ''
+if ($warnings.Count -gt 0) { $suffix = '（' + $warnings.Count + ' 条提示）' }
+Write-Out ('结果: ALL OK' + $suffix)
+[Console]::Out.Flush()
+exit 0
