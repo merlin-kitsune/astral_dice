@@ -44,7 +44,7 @@ public class ModEffects {
     public static final RegistryObject<MobEffect> FATE_GUIDANCE =
             EFFECTS.register("fate_guidance", FateGuidanceEffect::new);
 
-    // 嘬一口(吸血鬼立牌 papara 主动):攻击与受伤时按骰神赐福最终伤害/受到伤害的一半恢复生命
+    // 汲取(吸血鬼立牌 papara 主动):攻击与受伤时按骰神赐福最终伤害/受到伤害的一半恢复生命
     public static final RegistryObject<MobEffect> PAPARA_BITE =
             EFFECTS.register("papara_bite", PaparaBiteEffect::new);
 

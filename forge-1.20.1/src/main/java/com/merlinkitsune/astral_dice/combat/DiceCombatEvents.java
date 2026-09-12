@@ -622,7 +622,7 @@ public class DiceCombatEvents {
             }
         }
 
-        // 吸血鬼立牌(papara)主动"嘬一口":攻击时恢复骰神赐福最终伤害的一半生命(取整,至少 1 点)
+        // 吸血鬼立牌(papara)主动"汲取":攻击时恢复骰神赐福最终伤害的一半生命(取整,至少 1 点)
         if (!player.level().isClientSide() && player.hasEffect(ModEffects.PAPARA_BITE.get())) {
             player.heal(Math.max(1, (int) finalDmg / 2));
         }

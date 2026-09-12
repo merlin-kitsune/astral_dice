@@ -144,7 +144,7 @@ public class PlayerTickEvents {
 
     }
 
-    // 美工刀-初级/锋利状态效果:佩戴对应筹码且生命值 ≥60% 或处于"嘬一口"状态时显示效果图标,否则移除
+    // 美工刀-初级/锋利状态效果:佩戴对应筹码且生命值 ≥60% 或处于"汲取"状态时显示效果图标,否则移除
     private static void updateCutterEffect(Player player) {
         var curios = CuriosApi.getCuriosInventory(player);
         boolean hasCutter = false;

@@ -252,7 +252,7 @@ public final class DiceCombatModifiers {
             return ap;
         });
 
-        // === 内置:吸血鬼立牌(papara)被动(半血或"嘬一口"期间攻击力+3) ===
+        // === 内置:吸血鬼立牌(papara)被动(半血或"汲取"期间攻击力+3) ===
         registerAttackModifier((ctx, ap) -> {
             Player p = ctx.attacker;
             if (p.level().isClientSide()) return ap;
