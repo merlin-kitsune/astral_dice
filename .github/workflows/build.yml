@@ -60,14 +60,25 @@ jobs:
         id: version
         run: |
           VERSION=$(grep '^mod_version=' neoforge-1.21.1/gradle.properties | cut -d'=' -f2)
-          BASE=${VERSION%%-*}
+          # tag = 基础版本号:先剥掉 +加载器 后缀(1.2.0+neoforge_1.21.1 → 1.2.0),再剥 -rc/-pre。
+          # ⚠️ 必须两条都剥:只剥 '-' 时,`1.2.0+neoforge_1.21.1` 不含 '-' → tag 会原样带上 '+后缀'。
+          BASE=${VERSION%%+*}
+          BASE=${BASE%%-*}
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "base=$BASE" >> "$GITHUB_OUTPUT"
+          # 守门:base 必须是裸 x.y.z,否则不打 tag(避免再次出现不合规 tag)
+          if [[ "$BASE" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "skip_tag=0" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::base version '$BASE' is not a bare x.y.z — tag creation skipped"
+            echo "skip_tag=1" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Create Git tag (release branch push only)
         # 仅在发布线分支(multi-1.20.1-1.21.1)自动打 tag:tag = 基础版本号(去掉 -rc/-pre 与 +后缀),如 1.1.3。
         # ⚠️ 该分支推送时若 mod_version 不含 '-',会自动建 tag 并触发下面一步发布 Release。
-        if: github.event_name == 'push' && github.ref == 'refs/heads/multi-1.20.1-1.21.1'
+        # tag 由 GITHUB_TOKEN 推送 → 不会再触发本 workflow,Release 步骤需在 tag 上手动 dispatch(或用户 token 推 tag)。
+        if: github.event_name == 'push' && github.ref == 'refs/heads/multi-1.20.1-1.21.1' && steps.version.outputs.skip_tag == '0'
         run: |
           TAG="${{ steps.version.outputs.base }}"
           if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
