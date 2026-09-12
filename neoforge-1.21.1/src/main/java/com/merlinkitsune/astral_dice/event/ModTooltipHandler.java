@@ -246,6 +246,11 @@ public class ModTooltipHandler {
         return String.format("§9%d:%02d§7", seconds / 60, seconds % 60);
     }
 
+    // 秒数 → 纯 M:SS 文本(不含染色码,由所在组件的样式着色;如 60 → 1:00)
+    private static String formatMmSs(int seconds) {
+        return String.format(java.util.Locale.ROOT, "%d:%02d", seconds / 60, seconds % 60);
+    }
+
     // 立牌主动技能按键显示名(客户端取实际映射,服务端/异常回退 "J")
     private static String signKeyName() {
         if (net.neoforged.fml.loading.FMLEnvironment.dist == net.neoforged.api.distmarker.Dist.CLIENT) {
@@ -335,7 +340,7 @@ public class ModTooltipHandler {
             tooltip.add(Component.empty()
                     .append(tt("tooltip.astral_dice.dice_desc_prefix").withStyle(ChatFormatting.GOLD))
                     .append(tt("tooltip.astral_dice.dice_desc_blessing",
-                            GameplayConstants.DICE_BLESSING_DURATION_SECONDS).withStyle(ChatFormatting.BLUE))
+                            formatMmSs(GameplayConstants.DICE_BLESSING_DURATION_SECONDS)).withStyle(ChatFormatting.BLUE))
                     .append(tt("tooltip.astral_dice.dice_desc_middle").withStyle(ChatFormatting.GRAY))
                     .append(Component.literal(cardInventoryKeyName()).withStyle(ChatFormatting.YELLOW))
                     .append(tt("tooltip.astral_dice.dice_desc_suffix").withStyle(ChatFormatting.GRAY)));
