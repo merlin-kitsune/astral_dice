@@ -1,0 +1,25 @@
+# mt — 机器本地配置**示例**（复制为 mt.conf 后按本机修改；mt.conf 不入版本库）
+#
+# 作用：把「因机器而异」的路径集中到这里，使流程脚本本身不含绝对路径。
+#
+# 书写规则：值一律用双引号包住。
+#   两侧采用同一套逐行解析：`KEY=VALUE` / `KEY="VALUE"` / `KEY='VALUE'`，
+#   剥掉成对引号，忽略注释行与空行。
+#   ⚠️ 缺 mt.conf 时两侧都会**回落到内置默认值**（见 Mt.Paths.psm1 / mt_paths.py），
+#      所以没有本文件也能跑，只是默认值未必是你的机器。
+#
+# ⚠️ 2026-09-12 起脚本已全面迁移到 pwsh 7：
+#    · `MT_PYTHON` 已废弃 —— 它的 27 处消费点随 python 版脚本一并移除；
+#    · `MT_NODE` 已废弃 —— 它从未被任何脚本消费。
+#    两者都不要在新的 mt.conf 里再写。
+
+# 整合包 / 用户测试环境的 mods 目录（兼容模组与光影的来源）
+MT_PACK_MODS_NEOFORGE="D:/.minecraft/versions/狐の航空学 Voxy Edition/mods"
+MT_PACK_MODS_FORGE="D:/.minecraft/versions/1.20.1 模组测试/mods"
+
+# 本地 MCP 二进制（前置检查用）
+MT_MCP_BIN="C:/Users/<你的用户名>/.local/bin/computer-control-mcp.exe"
+
+# 注入所需键盘布局：由 mt_ime 在注入前自动切到目标窗口线程，
+# 不再需要用户手动切换输入法。唯一的机器前提是：系统已安装「英语(美国)」键盘
+# （KLID 00000409），由前置检查 mt_preflight 的「输入法」一项校验。

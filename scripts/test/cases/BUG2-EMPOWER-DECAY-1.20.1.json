@@ -1,0 +1,97 @@
+{
+  "case_id": "BUG2-EMPOWER-DECAY-1.20.1",
+  "title": "bug2 赋能应每 0:30 递减一层(含 0:30 规格常量核验)",
+  "version": "1.20.1",
+  "target": {
+    "type": "bugfix",
+    "ref": "bug2"
+  },
+  "steps": [
+    {
+      "op": "note",
+      "text": "步骤1 基线清零,并读取生产代码里的递减间隔常量(应 600 tick)"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe empowerclear B2"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe decayinterval B2"
+    },
+    {
+      "op": "note",
+      "text": "步骤2 叠 5 层赋能(应同时把递减计时器重新起算为 600 tick)"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe empower 5 B2"
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe status B2"
+    },
+    {
+      "op": "wait",
+      "ms": 300
+    },
+    {
+      "op": "note",
+      "text": "步骤3 把递减计时器置为「已到期」,驱动链(PlayerTickEvents 每 20 tick → EmpowerManager.tick → EmpowerEffect.consumeOne)应在 ≤1 秒内真实减 1 层—— 无需真的等 30 秒"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe decaydue B2"
+    },
+    {
+      "op": "wait",
+      "ms": 1800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe status B2D"
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_B2_DECAY_INTERVAL:600"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_B2_EMPOWER_STEP:read:5"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_B2_EMPOWER:5:6\\d\\d"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_B2D_EMPOWER:4:\\d+"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_B2_ERR|AP_B2_EX|AP_B2D_ERR|AP_B2D_EX"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "crash"
+    }
+  ],
+  "on_fail": "keep_game_running"
+}

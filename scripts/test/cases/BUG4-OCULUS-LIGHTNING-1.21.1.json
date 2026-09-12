@@ -1,0 +1,88 @@
+{
+  "case_id": "BUG4-OCULUS-LIGHTNING-1.21.1",
+  "title": "bug4 Oculus+光影启用时雷击应可正常渲染",
+  "version": "1.21.1",
+  "target": {
+    "type": "bugfix",
+    "ref": "bug4"
+  },
+  "steps": [
+    {
+      "op": "note",
+      "text": "步骤1 记录当前状态(含客户端已加载的渲染栈)"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe status B4"
+    },
+    {
+      "op": "note",
+      "text": "步骤2 持续生成无伤害真雷击实体(每 tick 1 枚,共 100 tick≈5 秒),并开 200 tick 观测窗口确认雷击实体真的存在(见到即定论)"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe boltvis 100 B4"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe watch 200 B4W"
+    },
+    {
+      "op": "wait",
+      "ms": 2200
+    },
+    {
+      "op": "screenshot",
+      "tag": "bug4_bolt",
+      "mode": "f2"
+    },
+    {
+      "op": "wait",
+      "ms": 1800
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_B4_BOLT:1:100"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_B4W_LIGHTNING_MAX:[1-9]"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_B4_BOLT_END"
+    },
+    {
+      "type": "log",
+      "source": "debug",
+      "pattern": "(?i)oculus"
+    },
+    {
+      "type": "log",
+      "source": "debug",
+      "pattern": "(?i)embeddium"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_B4_ERR|AP_B4_EX|AP_B4W_WATCH_TIMEOUT|AP_TICK_EX"
+    },
+    {
+      "type": "vision",
+      "question": "玩家正前方是否可见原版雷击的闪电视觉(白色锯齿状闪电柱/强闪光)?",
+      "image": "bug4_bolt"
+    },
+    {
+      "type": "mixin"
+    },
+    {
+      "type": "crash"
+    }
+  ],
+  "on_fail": "keep_game_running"
+}
