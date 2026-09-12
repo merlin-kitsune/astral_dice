@@ -181,13 +181,17 @@ $off = Get-FirstDiffOffset -A $n1 -B $raw2
 
 # PS 侧必须纯 LF（在掩码之前判定 —— 掩码会重编码，不能用来掩盖 CRLF）
 $psPureLf = ($psCrlf -eq 0)
-$ok = ($off -eq -1) -and ($pyRc -eq $psRc) -and $psPureLf
-if ($ok -and $MaskPattern.Count -gt 0) {
+
+# ⚠️ 掩码必须**无条件**施加，不能写成「先看原始比较是否通过，只有通过才去掩码」——
+#    那样等于掩码永不生效：需要掩码的场景（耗时/PID/run id 本来就不同）原始比较必然失败，
+#    于是掩码被跳过、直接判 DIFF，正好把该掩码的唯一情形排除掉了（本仓踩过：
+#    mt_ime selftest 的 hwnd/tid 每次都不同 → 掩码形同不存在）。
+if ($MaskPattern.Count -gt 0) {
     $m1 = Mask-Bytes -Bytes $n1 -Patterns $MaskPattern
     $m2 = Mask-Bytes -Bytes $raw2 -Patterns $MaskPattern
     $off = Get-FirstDiffOffset -A $m1 -B $m2
-    $ok = ($off -eq -1)
 }
+$ok = ($off -eq -1) -and ($pyRc -eq $psRc) -and $psPureLf
 $verdict = if ($ok) { 'EQUIVALENT' } else { 'DIFF' }
 
 [Console]::Out.Write("COMPARE $Label : $verdict`n")
