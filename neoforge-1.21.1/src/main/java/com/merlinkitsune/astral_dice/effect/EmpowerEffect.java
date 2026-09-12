@@ -19,8 +19,8 @@ import net.minecraft.world.entity.player.Player;
  * 层数归零时移除。
  */
 public class EmpowerEffect extends MobEffect {
-    /** 最大层数(与充能上限 CHARGE_MAX_STACKS 对齐) */
-    public static final int MAX_STACKS = 20;
+    /** 最大层数(平衡:固定 10 层上限,与充能上限 {@code CHARGE_MAX_STACKS} 解耦) */
+    public static final int MAX_STACKS = 10;
     /** 递减间隔:每 0:30 减少 1 层({@link com.merlinkitsune.astral_dice.item.EmpowerManager} 同源引用) */
     public static final int DECAY_INTERVAL_TICKS = 30 * 20;
     /**
