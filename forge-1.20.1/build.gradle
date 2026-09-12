@@ -40,6 +40,8 @@ repositories {
     // CurseForge Maven:collective / superflatworldnoslimes / kubejs / rhino / embeddium / oculus
     // (MDG modImplementation 会在解析期把生产 SRG jar 重映射为 dev Mojmap 命名,mixin 才能加载)
     maven { url 'https://www.cursemaven.com' }
+    // Cloth Config(配置 GUI + AutoConfig)官方 maven
+    maven { url 'https://maven.shedaniel.me/' }
     // JEI 官方 maven(配方查看)
     maven { url 'https://maven.blamejared.com' }
 }
@@ -152,6 +154,7 @@ var generateModMetadata = tasks.register("generateModMetadata", ProcessResources
             mod_license            : mod_license,
             mod_version            : mod_version,
             starengine_lib_version_range: starengine_lib_version_range,
+            cloth_config_version_range: cloth_config_version_range,
     ]
     inputs.properties replaceProperties
     expand replaceProperties
@@ -200,6 +203,12 @@ dependencies {
     // 库发布的是生产 SRG jar(reobfJar),MDG legacyforge 会在解析期重映射为 dev Mojmap 命名,
     // 因此必须用 modImplementation(与 curse.maven / modrinth 的 mod 依赖同一机制)。
     modImplementation "${starengine_lib_group}:starengine_lib-forge-1.20.1:${starengine_lib_version}"
+    // Cloth Config(必须前置,见 mods.toml):配置文件读写 + GUI + AutoConfig 全由它接管,
+    // schema 在 starengine_lib 的 StarEngineCommonConfig 里。
+    // 库虽然也依赖它,但库发布的是普通 jar,modImplementation 依赖不传递,故此处显式声明。
+    // 该发布 jar 为生产 SRG 命名(实测内含 819 处 m_xxxxx_ 形态方法名),与 Curios/库同一机制,
+    // 必须走 modImplementation 由 MDG 重映射为 dev Mojmap 命名。
+    modImplementation "me.shedaniel.cloth:cloth-config-forge:${cloth_config_version}"
     // Curios API(必须前置):1.20.1 Forge = Curios 5.x(IPQlZkz1 = 5.14.1+1.20.1 的 Modrinth 版本 id)
     modImplementation "maven.modrinth:curios:IPQlZkz1"
 

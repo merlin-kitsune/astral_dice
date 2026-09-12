@@ -2,8 +2,8 @@ package com.merlinkitsune.astral_dice;
 
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
-import com.merlinkitsune.starengine.component.GameplayConstants;
-import com.merlinkitsune.astral_dice.config.ModCommonConfig;
+import com.merlinkitsune.starengine.client.StarEngineConfigScreen;
+import com.merlinkitsune.starengine.config.StarEngineConfigs;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.event.AstralEvents;
 import com.merlinkitsune.astral_dice.init.ModCreativeTabs;
@@ -17,10 +17,10 @@ import net.neoforged.bus.api.IEventBus;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
-import net.neoforged.fml.config.ModConfig;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
+import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import top.theillusivec4.curios.api.CuriosApi;
@@ -28,7 +28,6 @@ import top.theillusivec4.curios.api.type.capability.ICurioItem;
 import com.merlinkitsune.astral_dice.combat.CardRegistry;
 import com.merlinkitsune.astral_dice.event.IronSpellbooksCompat;
 
-import com.merlinkitsune.astral_dice.config.GameplayConfigBinder;
 @Mod(AstralDiceMod.MODID)
 public class AstralDiceMod {
     public static final String MODID = "astral_dice";
@@ -43,9 +42,11 @@ public class AstralDiceMod {
         ModMenuTypes.MENU_TYPES.register(modEventBus);
         ModAttachments.ATTACHMENTS.register(modEventBus);
         AstralEvents.init();
-        // 配置版本检查:旧版本配置文件先备份,再由 NeoForge 继承旧值写入新配置(仅公共配置;client 配置已移除)
-        backupOldConfigIfNeeded("astral_dice-common.toml", ModCommonConfig.CONFIG_VERSION);
-        modContainer.registerConfig(ModConfig.Type.COMMON, ModCommonConfig.SPEC);
+        // 配置:Cloth Config 的 AutoConfig 全接管(含文件读写)。
+        // schema 在共享库 starengine_lib(StarEngineCommonConfig),本方法内部依次完成
+        // 「旧 astral_dice-common.toml 迁移 → 读盘 → 推送到 GameplayConstants」,
+        // 因此这里调用后配置值即为真实值,不再需要旧 CommonSetup 里的 refresh 时机。
+        StarEngineConfigs.register();
         modEventBus.register(this);
         // Iron 的法术与魔法书联动:仅在模组加载时注册其事件处理器(类引用只在加载条件下触发)
         if (net.neoforged.fml.ModList.get().isLoaded("irons_spellbooks")) {
@@ -56,34 +57,10 @@ public class AstralDiceMod {
         com.merlinkitsune.astral_dice.event.WaystoneWarpCompat.init();
         if (FMLEnvironment.dist == Dist.CLIENT) {
             modEventBus.addListener(this::registerScreens);
-        }
-    }
-
-    // 若配置文件版本号低于当前版本(新增了配置项):备份旧文件,由 NeoForge 加载时继承旧值并补齐新项
-    private static void backupOldConfigIfNeeded(String fileName, int currentVersion) {
-        try {
-            java.nio.file.Path configPath = net.neoforged.fml.loading.FMLPaths.CONFIGDIR.get().resolve(fileName);
-            if (!java.nio.file.Files.exists(configPath))
-                return;
-            int fileVersion = readConfigVersion(configPath);
-            if (fileVersion >= currentVersion)
-                return;
-            java.nio.file.Path backup = configPath.resolveSibling(fileName + ".bak");
-            java.nio.file.Files.copy(configPath, backup, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-            LOGGER.info("[Astral Dice] 配置 {} 版本过旧(v{} < v{}),已备份至 {}", fileName, fileVersion, currentVersion, backup);
-        } catch (Exception e) {
-            LOGGER.warn("[Astral Dice] 备份旧配置 {} 失败: {}", fileName, e.toString());
-        }
-    }
-
-    private static int readConfigVersion(java.nio.file.Path configPath) {
-        try {
-            String content = java.nio.file.Files.readString(configPath, java.nio.charset.StandardCharsets.UTF_8);
-            java.util.regex.Matcher m = java.util.regex.Pattern
-                    .compile("config_version\\s*=\\s*(\\d+)").matcher(content);
-            return m.find() ? Integer.parseInt(m.group(1)) : 0;
-        } catch (Exception e) {
-            return 0;
+            // 模组列表的 Config 按钮:NeoForge 用 IConfigScreenFactory 扩展点。
+            // 屏幕内容由库提供(库内持有 AutoConfig holder),这里只做平台接线。
+            modContainer.registerExtensionPoint(IConfigScreenFactory.class,
+                    (container, parent) -> StarEngineConfigScreen.create(parent));
         }
     }
 
@@ -94,8 +71,6 @@ public class AstralDiceMod {
     @SubscribeEvent
     private void onCommonSetup(FMLCommonSetupEvent event) {
         event.enqueueWork(() -> {
-            // 配置已加载:将配置值刷新到 GameplayConstants
-            GameplayConfigBinder.refresh();
             // 卡牌类型注册表初始化(战斗牌定义集中管理)
             com.merlinkitsune.astral_dice.combat.CardRegistry.init();
             LOGGER.info("Astral Dice mod loaded.");
