@@ -30,16 +30,12 @@ public final class GameplayConstants {
     // 拥有至少 1 层充能时,立牌主动/效果牌冷却时间缩短比例(20%)
     public static final double CHARGE_COOLDOWN_REDUCTION = 0.2;
     // === 事件系统 ===
-    // 事件作用范围(格,默认 16)
-    public static int EVENT_RANGE = 16;
     // 事件是否作用于 Minecraft 同队玩家
     public static boolean EVENT_APPLY_MC_TEAM = true;
     // 事件是否作用于 FTB Teams 队友(需安装 FTB Teams,API 不符时自动跳过)
     public static boolean EVENT_APPLY_FTB_TEAM = true;
     // 事件是否作用于 OPAC 队伍(需安装 Open Parties and Claims,API 不符时自动跳过)
     public static boolean EVENT_APPLY_OPAC = true;
-    // 事件是否作用于玩家拥有的已放出女仆(需安装车万女仆模组)
-    public static boolean EVENT_APPLY_MAID = true;
     // 立牌主动技能触发冷却(单位:秒,默认 180)
     public static int SIGN_ACTIVE_COOLDOWN_SECONDS = 180;
     // 立牌主动技能触发冷却 tick 数(派生值)
@@ -100,11 +96,9 @@ public final class GameplayConstants {
         MAX_EFFECT_STACKS = ModCommonConfig.MAX_EFFECT_STACKS.get();
         GIVE_GUIDE_BOOK_ON_FIRST_JOIN = ModCommonConfig.GIVE_GUIDE_BOOK_ON_FIRST_JOIN.get();
 
-        EVENT_RANGE = ModCommonConfig.EVENT_RANGE.get();
         EVENT_APPLY_MC_TEAM = ModCommonConfig.EVENT_APPLY_MC_TEAM.get();
         EVENT_APPLY_FTB_TEAM = ModCommonConfig.EVENT_APPLY_FTB_TEAM.get();
         EVENT_APPLY_OPAC = ModCommonConfig.EVENT_APPLY_OPAC.get();
-        EVENT_APPLY_MAID = ModCommonConfig.EVENT_APPLY_MAID.get();
         HAND_FAN_BIG_RANGE = ModCommonConfig.HAND_FAN_BIG_RANGE.get();
 
         ACTIONBAR_DURATION_TICKS = ModCommonConfig.ACTIONBAR_DURATION_TICKS.get();

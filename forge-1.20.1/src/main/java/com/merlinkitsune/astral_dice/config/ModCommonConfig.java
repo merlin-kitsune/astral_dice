@@ -5,10 +5,10 @@ import net.minecraftforge.common.ForgeConfigSpec;
 /**
  * 公共配置:仅保留少量仍允许玩家调整的选项。
  * 其余玩法数值已固定为 {@link com.merlinkitsune.astral_dice.component.GameplayConstants} 常量,
- * 不再写入配置文件;配置版本固定为 1。
+ * 不再写入配置文件;配置版本随「配置项移除」递增(v2:移除事件范围与女仆开关)。
  */
 public final class ModCommonConfig {
-    public static final int CONFIG_VERSION = 1;
+    public static final int CONFIG_VERSION = 2;
 
     public static final ForgeConfigSpec SPEC;
 
@@ -17,11 +17,9 @@ public final class ModCommonConfig {
     public static final ForgeConfigSpec.IntValue EFFECT_CARD_COOLDOWN_SECONDS;
     public static final ForgeConfigSpec.IntValue MAX_EFFECT_STACKS;
     public static final ForgeConfigSpec.BooleanValue GIVE_GUIDE_BOOK_ON_FIRST_JOIN;
-    public static final ForgeConfigSpec.IntValue EVENT_RANGE;
     public static final ForgeConfigSpec.BooleanValue EVENT_APPLY_MC_TEAM;
     public static final ForgeConfigSpec.BooleanValue EVENT_APPLY_FTB_TEAM;
     public static final ForgeConfigSpec.BooleanValue EVENT_APPLY_OPAC;
-    public static final ForgeConfigSpec.BooleanValue EVENT_APPLY_MAID;
     public static final ForgeConfigSpec.IntValue HAND_FAN_BIG_RANGE;
     public static final ForgeConfigSpec.IntValue ACTIONBAR_DURATION_TICKS;
     public static final ForgeConfigSpec.IntValue ACTIONBAR_FADE_TICKS;
@@ -43,16 +41,12 @@ public final class ModCommonConfig {
                 .define("give_guide_book_on_first_join", true);
 
         builder.push("event_system").comment("=== 事件系统 ===");
-        EVENT_RANGE = builder.comment("事件作用范围(格,默认 16)")
-                .defineInRange("event_range", 16, 1, 32);
         EVENT_APPLY_MC_TEAM = builder.comment("事件是否作用于 Minecraft 同队玩家")
                 .define("event_apply_mc_team", true);
         EVENT_APPLY_FTB_TEAM = builder.comment("事件是否作用于 FTB Teams 队友(需安装 FTB Teams,API 不符时自动跳过)")
                 .define("event_apply_ftb_team", true);
         EVENT_APPLY_OPAC = builder.comment("事件是否作用于 OPAC 队伍(需安装 Open Parties and Claims,API 不符时自动跳过)")
                 .define("event_apply_opac", true);
-        EVENT_APPLY_MAID = builder.comment("事件是否作用于玩家拥有的已放出女仆(需安装车万女仆模组)")
-                .define("event_apply_maid", true);
         builder.pop();
 
         builder.push("chips").comment("=== 筹码 ===");

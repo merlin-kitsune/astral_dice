@@ -17,15 +17,15 @@ Astral Dice is a survival expansion mod built around dice. Equip a dice and ever
 - **骰子**：基础 → 黄金 → 钻石 → 下界合金，四阶升级；星级提升解锁更多费用点数与卡牌槽位。
 - **战斗牌**：攻击牌与防御牌，插入骰子卡牌栏后，在骰神赐福中提供随机点数加成；每张卡牌拥有独立耐久。
 - **效果牌**：王之力、狂暴、岿然不动、对怪激光、轨道炮、活体书页等丰富效果牌，拥有独立的出牌数与冷却周期。
-- **立牌**：12 位风格各异的角色立牌，每位都有专属被动与主动技能，例如经商、扫地机、护法、忍者、吸血鬼等。
+- **立牌**：17 位风格各异的角色立牌，每位都有专属被动与主动技能，例如经商、扫地机、护法、忍者、吸血鬼等。
 - **筹码**：大量被动饰品，如拳击手套、速度轮滑、摩托头盔、医疗箱、魔法箭袋、星币锤等，提供攻击、防御、移速、生命、星光等多维加成。
-- **资源流派**：治愈点、星光点、标记层数三大玩家资源体系，配合立牌与筹码形成多样构筑。
+- **资源流派**：治愈点、星光点、标记层数、充能层数四大玩家资源体系，配合立牌与筹码形成多样构筑。
 
 ### 特色系统
 
 - 骰神赐福攻防对垒
 - 法伤模块：兼容弓箭、三叉戟、魔法与多种法术模组
-- 卡牌选择界面：6 攻 + 6 防卡牌栏，实时数值预览
+- 卡牌选择界面：卡牌栏按骰子星级（0★=4 / 1★=6 / 2★=8 / 3★=12 格，攻防各半），实时数值预览
 - 事件系统：大侦探、调查员、秘密侦探等立牌联动
 - Bountiful 赏金板联动
 
@@ -33,12 +33,12 @@ Astral Dice is a survival expansion mod built around dice. Equip a dice and ever
 
 | 支持 | 子项目 | Minecraft | 加载器 | Java | 当前模组版本 | 帕秋莉手册 |
 |---|---|---|---|---|---|---|
-| ✅ | `neoforge-1.21.1` | 1.21.1 | NeoForge 21.1.235 | 21 | 1.1.3 | ✅ |
-| ✅ | `forge-1.20.1` | 1.20.1 | Forge 47.4.10 | 17 | 1.1.3 | ✅ |
+| ✅ | `neoforge-1.21.1` | 1.21.1 | NeoForge 21.1.235 | 21 | 1.2.0 | ✅ |
+| ✅ | `forge-1.20.1` | 1.20.1 | Forge 47.4.10 | 17 | 1.2.0 | ✅ |
 
 | 前置/联动 | 要求 |
 |---|---|
-| 前置模组 | Curios API |
+| 前置模组 | Curios API（1.20.1 另需 Mixin Booster） |
 | 可选联动 | Bountiful、帕秋莉手册 |
 
 ---
@@ -50,15 +50,15 @@ Astral Dice is a survival expansion mod built around dice. Equip a dice and ever
 - **Dice**: Four tiers — Basic, Golden, Diamond, and Netherite. Star upgrades unlock more cost points and card slots.
 - **Battle Cards**: Attack and defense cards are inserted into the dice card inventory. They grant random bonus points during Dice Blessings, and each card has its own durability.
 - **Effect Cards**: King's Power, Berserk, Unwavering, Monster Laser, Orbital Strike, Living Page, and many more — each with its own play-count and cooldown cycle.
-- **Signs**: 12 unique character signs, each with a passive ability and an active skill, such as Business, Sweeper, Guardian, Ninja, and Vampire.
+- **Signs**: 17 unique character signs, each with a passive ability and an active skill, such as Business, Sweeper, Guardian, Ninja, and Vampire.
 - **Chips**: A wide variety of passive curios — Boxing Gloves, Speed Skates, Moto Helmet, Medkit, Magic Quiver, Star Coin Hammer, and more — providing attack, defense, movement speed, health, starlight, and other bonuses.
-- **Player Resources**: Healing Points, Starlight, and Mark stacks form three player resource systems that work together with signs and chips.
+- **Player Resources**: Healing Points, Starlight, Mark stacks and Charge stacks form four player resource systems that work together with signs and chips.
 
 ### Highlights
 
 - Dice Blessing attack/defense showdown
 - Spell Damage system compatible with bows, crossbows, tridents, magic, and many magic mods
-- Card selection GUI with 6 attack + 6 defense slots and real-time stat previews
+- Card selection GUI with star-based card slots (0★=4 / 1★=6 / 2★=8 / 3★=12, split evenly between attack and defense) and real-time stat previews
 - Event system featuring Detective, Investigator, and Secret Detective signs
 - Bountiful bounty board integration
 
@@ -66,12 +66,12 @@ Astral Dice is a survival expansion mod built around dice. Equip a dice and ever
 
 | Support | Subproject | Minecraft | Loader | Java | Current Version | Patchouli |
 |---|---|---|---|---|---|---|
-| ✅ | `neoforge-1.21.1` | 1.21.1 | NeoForge 21.1.235 | 21 | 1.1.3 | ✅ |
-| ✅ | `forge-1.20.1` | 1.20.1 | Forge 47.4.10 | 17 | 1.1.3 | ✅ |
+| ✅ | `neoforge-1.21.1` | 1.21.1 | NeoForge 21.1.235 | 21 | 1.2.0 | ✅ |
+| ✅ | `forge-1.20.1` | 1.20.1 | Forge 47.4.10 | 17 | 1.2.0 | ✅ |
 
 | Dependency | Requirement |
 |---|---|
-| Required | Curios API |
+| Required | Curios API (Mixin Booster is additionally required on 1.20.1) |
 | Optional | Bountiful, Patchouli |
 
 ---
