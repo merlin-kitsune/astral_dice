@@ -20,10 +20,70 @@
 			},
 			"unitWorth": 2800
 		},
+		"glass_dice": {
+			"type": "item",
+			"rarity": "RARE",
+			"content": "astral_dice:glass_dice",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 2800
+		},
 		"diamond_dice": {
 			"type": "item",
 			"rarity": "EPIC",
 			"content": "astral_dice:diamond_dice",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 7500
+		},
+		"emerald_dice": {
+			"type": "item",
+			"rarity": "EPIC",
+			"content": "astral_dice:emerald_dice",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 7500
+		},
+		"obsidian_dice": {
+			"type": "item",
+			"rarity": "EPIC",
+			"content": "astral_dice:obsidian_dice",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 7500
+		},
+		"netherrack_dice": {
+			"type": "item",
+			"rarity": "RARE",
+			"content": "astral_dice:netherrack_dice",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 2800
+		},
+		"weird_dice": {
+			"type": "item",
+			"rarity": "EPIC",
+			"content": "astral_dice:weird_dice",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 7500
+		},
+		"amethyst_dice": {
+			"type": "item",
+			"rarity": "EPIC",
+			"content": "astral_dice:amethyst_dice",
 			"amount": {
 				"min": 1,
 				"max": 1
@@ -39,6 +99,16 @@
 				"max": 12
 			},
 			"unitWorth": 220
+		},
+		"star_coin_bag": {
+			"type": "item",
+			"rarity": "RARE",
+			"content": "astral_dice:star_coin_bag",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 1980
 		},
 		"star_plate": {
 			"type": "item",
@@ -187,6 +257,16 @@
 				"max": 1
 			},
 			"unitWorth": 3500
+		},
+		"effect_card_fight_poison_with_poison": {
+			"type": "item",
+			"rarity": "EPIC",
+			"content": "astral_dice:effect_card_fight_poison_with_poison",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 3000
 		},
 		"effect_card_monster_laser": {
 			"type": "item",
@@ -478,6 +558,16 @@
 			},
 			"unitWorth": 3000
 		},
+		"hand_fan_small_chip": {
+			"type": "item",
+			"rarity": "RARE",
+			"content": "astral_dice:hand_fan_small_chip",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 1100
+		},
 		"hand_fan_big_chip": {
 			"type": "item",
 			"rarity": "EPIC",
@@ -608,6 +698,16 @@
 			},
 			"unitWorth": 2400
 		},
+		"adrenaline_low_chip": {
+			"type": "item",
+			"rarity": "EPIC",
+			"content": "astral_dice:adrenaline_low_chip",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 3000
+		},
 		"magic_quiver_chip": {
 			"type": "item",
 			"rarity": "EPIC",
@@ -668,6 +768,126 @@
 			},
 			"unitWorth": 3200
 		},
+		"warp_engine_chip": {
+			"type": "item",
+			"rarity": "RARE",
+			"content": "astral_dice:warp_engine_chip",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 1100
+		},
+		"energy_recycler_chip": {
+			"type": "item",
+			"rarity": "RARE",
+			"content": "astral_dice:energy_recycler_chip",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 1100
+		},
+		"electric_sword_chip": {
+			"type": "item",
+			"rarity": "RARE",
+			"content": "astral_dice:electric_sword_chip",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 1200
+		},
+		"advanced_peripherals_chip": {
+			"type": "item",
+			"rarity": "EPIC",
+			"content": "astral_dice:advanced_peripherals_chip",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 3000
+		},
+		"current_core_chip": {
+			"type": "item",
+			"rarity": "EPIC",
+			"content": "astral_dice:current_core_chip",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 3200
+		},
+		"member_recommendation_chip": {
+			"type": "item",
+			"rarity": "RARE",
+			"content": "astral_dice:member_recommendation_chip",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 900
+		},
+		"bookmark_chip": {
+			"type": "item",
+			"rarity": "RARE",
+			"content": "astral_dice:bookmark_chip",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 1000
+		},
+		"piggy_bank_chip": {
+			"type": "item",
+			"rarity": "RARE",
+			"content": "astral_dice:piggy_bank_chip",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 900
+		},
+		"smart_watch_chip": {
+			"type": "item",
+			"rarity": "EPIC",
+			"content": "astral_dice:smart_watch_chip",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 3000
+		},
+		"electric_glove_chip": {
+			"type": "item",
+			"rarity": "EPIC",
+			"content": "astral_dice:electric_glove_chip",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 3000
+		},
+		"airbag_chip": {
+			"type": "item",
+			"rarity": "EPIC",
+			"content": "astral_dice:airbag_chip",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 3400
+		},
+		"whetstone_chip": {
+			"type": "item",
+			"rarity": "EPIC",
+			"content": "astral_dice:whetstone_chip",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 2800
+		},
 		"nancy_lu_sign": {
 			"type": "item",
 			"rarity": "EPIC",
@@ -677,6 +897,26 @@
 				"max": 1
 			},
 			"unitWorth": 3400
+		},
+		"moses_sign": {
+			"type": "item",
+			"rarity": "EPIC",
+			"content": "astral_dice:moses_sign",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 3400
+		},
+		"pandaman_sign": {
+			"type": "item",
+			"rarity": "RARE",
+			"content": "astral_dice:pandaman_sign",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 1200
 		}
 	}
 }
