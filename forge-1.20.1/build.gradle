@@ -250,11 +250,33 @@ dependencies {
 // === 编译产物分发规则(与 1.21.1 分支保持同一任务面与同一推送标准;旧 jar 清理按版本后缀隔离)===
 // 默认行为:每次构建完成后自动推送到仓库根 run/1.20.1/mods(本机 runClient 调试)、
 // 仓库根目录 build/libs,并推送到整合包 mods 目录(删除旧版后复制新版)。
-// 保留 -PdeployToPack / 显式 pushToGame 仅为兼容,默认 build 已自动推送整合包。
 // 整合包位置:D:/.minecraft/versions/1.20.1 模组测试/mods
 // 目标根目录不存在时(如 CI 环境)自动跳过推送,不影响构建。
+//
+// ⚠️ 约定(2026-09-12):**开发分支不推送整合包。**
+//   判定依据是当前 git 分支(读 .git/HEAD,兼容普通仓库与 worktree),规则:
+//     · 分支出现在 noPackPushBranches 中  → 跳过 pushToGame,只打日志,不算失败
+//     · 无法确定分支(detached HEAD/无 .git,如 CI) → 同样跳过(取安全侧)
+//     · 传 -PdeployToPack 或 -PpackPush    → 强制推送,覆盖上述判定(手动出包用)
+//   理由:整合包是需要"成对匹配"的测试环境 —— 前置库 jar 与 mod jar 必须版本互相匹配
+//   (mod 在编译期锁定库版本,mods.toml 又声明了库版本区间)。开发分支上两者各自演进,
+//   自动推送会把不匹配的组合灌进测试包,表现为启动期 NoClassDefFoundError 或"缺必需前置"。
+//   恢复推送:把分支从 noPackPushBranches 里移除;或单次用 -PdeployToPack 强制。
+//   ⚠️ 用 -PdeployToPack 强推本 mod 时,务必确认整合包内 starengine_lib-*.jar 与之成对
+//      (下方会读 starengine_lib_version 做一次比对并告警)。
 def devRunModsDir = rootProject.file('run/1.20.1/mods')
 def packModsDir = file('D:/.minecraft/versions/1.20.1 模组测试/mods')
+
+// --- 整合包推送的 git 分支守卫(配合上方约定) ---
+// 分支判定放在**执行期**(见 pushToGame 的 doLast),不做配置期求值:
+//   ① 每次构建都读当时的 .git/HEAD,切分支后立即生效,不存在配置缓存陈旧问题;
+//   ② 不把 Provider/闭包塞进 configuration-cache,避免缓存序列化限制与行为漂移。
+// dotGitEntry 是配置期算好的 File(可序列化),执行期读它即可 —— 普通仓库这里就是
+// .git 目录;worktree 下它是**文件**,内容为 `gitdir: <path>`,真正的 HEAD 在 gitdir 下。
+def noPackPushBranches = ['multi-dev-next']
+def forcePackPush = project.hasProperty('deployToPack') || project.hasProperty('packPush')
+def libVersionLocked = project.findProperty('starengine_lib_version')?.toString()
+def dotGitEntry = rootProject.file('.git')
 
 // 本分支(1.20.1)的旧产物识别规则:只清理带 +forge_1.20.1 后缀的 jar,避免误删 1.21.1 分支产物
 def staleJarMatcher = { File f ->
@@ -296,9 +318,44 @@ tasks.register('pushToDevRun') {
 // 默认随 build 推送到 1.20.1 用户测试环境 mods 目录(与 1.21.1 一致;pack 根不存在自动跳过)
 tasks.register('pushToGame') {
     group = 'build'
-    description = 'Copy the built mod jar to the 1.20.1 user test environment mods folder and remove old 1.20.1 versions.'
+    description = 'Copy the built mod jar to the 1.20.1 user test environment mods folder and remove old 1.20.1 versions. Skipped on development branches; force with -PdeployToPack.'
     dependsOn tasks.named('reobfJar')
     doLast {
+        // --- 约定:开发分支不推送整合包(见文件顶部「编译产物分发规则」) ---
+        if (!forcePackPush) {
+            // 执行期读取当前分支:普通仓库 .git 是目录;worktree 的 .git 是文件,内容记录 gitdir
+            def readGitBranch = { File dotGit ->
+                File headFile = null
+                if (dotGit.isDirectory()) {
+                    def hf = new File(dotGit, 'HEAD')
+                    headFile = hf.isFile() ? hf : null
+                } else if (dotGit.isFile()) {
+                    def m = dotGit.text.trim() =~ /^gitdir:\s*(.+)$/
+                    if (m.find()) {
+                        def gd = new File(m.group(1).trim())
+                        if (!gd.isAbsolute()) {
+                            gd = new File(dotGit.parentFile, m.group(1).trim())
+                        }
+                        def hf = new File(gd, 'HEAD')
+                        headFile = hf.isFile() ? hf : null
+                    }
+                }
+                if (headFile == null) {
+                    return ''
+                }
+                def s = headFile.text.trim()
+                s.startsWith('ref: refs/heads/') ? s.substring('ref: refs/heads/'.length()) : ''
+            }
+            def branch = readGitBranch(dotGitEntry)
+            if (branch.isEmpty()) {
+                logger.lifecycle('pushToGame: skipped — 无法确定当前 git 分支(detached HEAD 或无 .git);如需强制推送请加 -PdeployToPack')
+                return
+            }
+            if (noPackPushBranches.contains(branch)) {
+                logger.lifecycle("pushToGame: skipped — 分支 '${branch}' 按约定不推送整合包;如需强制推送请加 -PdeployToPack")
+                return
+            }
+        }
         def jarFile = prodJarArchiveProvider.get().asFile
         if (!jarFile.exists()) {
             logger.warn("pushToGame: built jar not found, skipped: ${jarFile}")
@@ -320,6 +377,24 @@ tasks.register('pushToGame') {
             jarFile.withInputStream { inp -> inp.transferTo(out) }
         }
         logger.lifecycle("pushToGame: pushed ${jarFile.name} -> ${packModsDir}")
+
+        // --- 成对匹配自检:整合包内前置库 jar 必须与 mod 锁定的库版本一致 ---
+        // 强推本 mod 时最容易踩的坑:库 jar 没跟着更新(或反过来),两者版本区间对不上,
+        // 表现为启动期 NoClassDefFoundError / "缺必需前置"。此处只告警,不阻断构建。
+        if (libVersionLocked) {
+            def libJars = packModsDir.listFiles()?.findAll { File f ->
+                f.isFile() && f.name.startsWith('starengine_lib-') && f.name.endsWith('.jar')
+            } ?: []
+            if (libJars.isEmpty()) {
+                logger.warn("pushToGame: 整合包内没有 starengine_lib-*.jar —— 本 mod 把它声明为必需前置,缺失会导致整合包拒绝启动")
+            } else {
+                def mismatched = libJars.findAll { !it.name.contains(libVersionLocked) }
+                if (mismatched) {
+                    logger.warn("pushToGame: 整合包内的前置库 jar 与 starengine_lib_version=${libVersionLocked} 不一致: " +
+                            "${mismatched*.name} —— 请到 starengine_lib 仓库同步推送库 jar")
+                }
+            }
+        }
     }
 }
 
