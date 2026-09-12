@@ -40,6 +40,21 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      - name: Checkout StarEngine Lib (required prerequisite)
+        # 前置库 starengine_lib 只在 mavenLocal 发布(无远程 maven),CI 上必须先从源码构建。
+        # 注意:ref 固定 main 且与 neoforge-1.21.1/gradle.properties 的 starengine_lib_version 强耦合
+        # —— 库版本 bump 后本文件所在的消费方必须同步 bump,否则断在依赖解析。
+        uses: actions/checkout@v4
+        with:
+          repository: merlin-kitsune/starengine_lib
+          ref: main
+          path: .ci/starengine_lib
+          fetch-depth: 1
+
+      - name: Publish StarEngine Lib to mavenLocal
+        working-directory: .ci/starengine_lib
+        run: ./gradlew publishToMavenLocal
+
       - name: Check lang sync (neoforge-1.21.1)
         run: python3 tools/check_lang_sync.py --lang-dir neoforge-1.21.1/src/main/resources/assets/astral_dice/lang
 
@@ -65,10 +80,17 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "base=$BASE" >> "$GITHUB_OUTPUT"
 
-      - name: Create Git tag (main push only)
-        # 仅在 main 分支自动打 tag:tag = 基础版本号(去掉 -rc/-pre 与 +后缀),如 1.1.3
+      - name: Create Git tag (main push only, stable versions only)
+        # 仅在 main 分支自动打 tag:tag = 基础版本号(去掉 -rc/-pre 与 +后缀),如 1.1.3。
+        # 守卫:版本号含 '-'(即 SNAPSHOT/rc/pre)时不打 tag —— 否则 2.0.0-SNAPSHOT.5
+        # 会被截成 "2.0.0" 并自动打出正式 tag,把未定型的快照误标为发布。
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          if [[ "$VERSION" == *-* ]]; then
+            echo "Version $VERSION is a pre-release/snapshot (contains '-'), skip auto tagging"
+            exit 0
+          fi
           TAG="${{ steps.version.outputs.base }}"
           if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
             echo "Tag $TAG already exists"
@@ -80,19 +102,22 @@ jobs:
           fi
 
       - name: Create/Update GitHub Release (tag push only, both JARs)
-        # 打 tag(如 1.1.3)后自动发布:附件 = 1.21.1 与 1.20.1 两个 jar
+        # 打 tag(如 1.1.3)后自动发布:附件 = 1.21.1 与 1.20.1 两个 jar。
+        # 玩家还需要对应的前置:starengine_lib 与 cloth_config(见仓库 README)。
         if: startsWith(github.ref, 'refs/tags/')
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           TAG="${GITHUB_REF#refs/tags/}"
+          LIB=$(grep '^starengine_lib_version=' neoforge-1.21.1/gradle.properties | cut -d'=' -f2)
+          NOTES="Astral Dice $TAG — 1.21.1 (NeoForge) + 1.20.1 (Forge)"$'\n\n'"Requires: starengine_lib $LIB (https://github.com/merlin-kitsune/starengine_lib/releases) and Cloth Config."
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release edit "$TAG" --title "Astral Dice $TAG" --notes "Astral Dice $TAG — 1.21.1 (NeoForge) + 1.20.1 (Forge)"
+            gh release edit "$TAG" --title "Astral Dice $TAG" --notes "$NOTES"
           else
             gh release create "$TAG" \
               neoforge-1.21.1/build/libs/astral_dice-*.jar \
               forge-1.20.1/build/libs/astral_dice-*.jar \
               --title "Astral Dice $TAG" \
-              --notes "Astral Dice $TAG — 1.21.1 (NeoForge) + 1.20.1 (Forge)" \
+              --notes "$NOTES" \
               --latest
           fi
