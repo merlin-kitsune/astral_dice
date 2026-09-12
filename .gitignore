@@ -41,14 +41,22 @@ repo/
 
 temp/
 "temp/
-scripts/test/
+
+### 脚本目录:脚本本身入库,**运行时产物不入库** (2026-09-12 起;原先整目录排除 scripts/) ###
+scripts/**/__pycache__/
+scripts/temp/
+scripts/devtools/tmp/
+scripts/test/reports/*
+!scripts/test/reports/_template.md
+scripts/test/cases/.mt_*
+scripts/test/mt.conf
+scripts/test/mt.conf.bak
 
 ### 项目级排除(用户要求,与原 astra_dice 仓库一致) ###
 agents/
 build/
 docs/
 run/
-scripts/
 temp/
 images/
 AGENTS.md
