@@ -253,15 +253,17 @@ dependencies {
 // 整合包位置:D:/.minecraft/versions/1.20.1 模组测试/mods
 // 目标根目录不存在时(如 CI 环境)自动跳过推送,不影响构建。
 //
-// ⚠️ 约定(2026-09-12):**开发分支不推送整合包。**
+// ⚠️ 约定(2026-09-12 起,同日修订为白名单):**只有发布线分支推送整合包。**
 //   判定依据是当前 git 分支(读 .git/HEAD,兼容普通仓库与 worktree),规则:
-//     · 分支出现在 noPackPushBranches 中  → 跳过 pushToGame,只打日志,不算失败
-//     · 无法确定分支(detached HEAD/无 .git,如 CI) → 同样跳过(取安全侧)
+//     · 分支出现在 packPushBranches(**白名单**)中 → 允许 pushToGame
+//     · 分支不在白名单 / 无法确定分支(detached HEAD/无 .git,如 CI) → 跳过,只打日志,不算失败
 //     · 传 -PdeployToPack 或 -PpackPush    → 强制推送,覆盖上述判定(手动出包用)
 //   理由:整合包是需要"成对匹配"的测试环境 —— 前置库 jar 与 mod jar 必须版本互相匹配
 //   (mod 在编译期锁定库版本,mods.toml 又声明了库版本区间)。开发分支上两者各自演进,
 //   自动推送会把不匹配的组合灌进测试包,表现为启动期 NoClassDefFoundError 或"缺必需前置"。
-//   恢复推送:把分支从 noPackPushBranches 里移除;或单次用 -PdeployToPack 强制。
+//   **白名单优于黑名单**:新开的分支(含 DSH/WorkBuddy 自动建的 `wt/*` worktree 分支)
+//   默认落在"不推送"一侧,不会因为忘了把分支名登记进黑名单而误推、误删整合包里的正式 jar。
+//   需要推送时:把分支加进白名单;或单次用 -PdeployToPack 强制。
 //   ⚠️ 用 -PdeployToPack 强推本 mod 时,务必确认整合包内 starengine_lib-*.jar 与之成对
 //      (下方会读 starengine_lib_version 做一次比对并告警)。
 def devRunModsDir = rootProject.file('run/1.20.1/mods')
@@ -273,7 +275,8 @@ def packModsDir = file('D:/.minecraft/versions/1.20.1 模组测试/mods')
 //   ② 不把 Provider/闭包塞进 configuration-cache,避免缓存序列化限制与行为漂移。
 // dotGitEntry 是配置期算好的 File(可序列化),执行期读它即可 —— 普通仓库这里就是
 // .git 目录;worktree 下它是**文件**,内容为 `gitdir: <path>`,真正的 HEAD 在 gitdir 下。
-def noPackPushBranches = ['multi-dev-next']
+// 【白名单】只有列在这里的分支允许把 jar 推进整合包;其余分支(含 worktree 的 `wt/*`)一律跳过。
+def packPushBranches = ['multi-1.20.1-1.21.1']
 def forcePackPush = project.hasProperty('deployToPack') || project.hasProperty('packPush')
 def libVersionLocked = project.findProperty('starengine_lib_version')?.toString()
 def dotGitEntry = rootProject.file('.git')
@@ -318,10 +321,10 @@ tasks.register('pushToDevRun') {
 // 默认随 build 推送到 1.20.1 用户测试环境 mods 目录(与 1.21.1 一致;pack 根不存在自动跳过)
 tasks.register('pushToGame') {
     group = 'build'
-    description = 'Copy the built mod jar to the 1.20.1 user test environment mods folder and remove old 1.20.1 versions. Skipped on development branches; force with -PdeployToPack.'
+    description = 'Copy the built mod jar to the 1.20.1 user test environment mods folder and remove old 1.20.1 versions. Only the release branch (see packPushBranches) pushes; force with -PdeployToPack.'
     dependsOn tasks.named('reobfJar')
     doLast {
-        // --- 约定:开发分支不推送整合包(见文件顶部「编译产物分发规则」) ---
+        // --- 约定:只有发布线分支推送整合包(白名单,见文件顶部「编译产物分发规则」) ---
         if (!forcePackPush) {
             // 执行期读取当前分支:普通仓库 .git 是目录;worktree 的 .git 是文件,内容记录 gitdir
             def readGitBranch = { File dotGit ->
@@ -351,8 +354,8 @@ tasks.register('pushToGame') {
                 logger.lifecycle('pushToGame: skipped — 无法确定当前 git 分支(detached HEAD 或无 .git);如需强制推送请加 -PdeployToPack')
                 return
             }
-            if (noPackPushBranches.contains(branch)) {
-                logger.lifecycle("pushToGame: skipped — 分支 '${branch}' 按约定不推送整合包;如需强制推送请加 -PdeployToPack")
+            if (!packPushBranches.contains(branch)) {
+                logger.lifecycle("pushToGame: skipped — 分支 '${branch}' 不在整合包推送白名单 ${packPushBranches} 内;如需强制推送请加 -PdeployToPack")
                 return
             }
         }
