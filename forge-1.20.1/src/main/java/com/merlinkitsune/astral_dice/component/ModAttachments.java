@@ -60,10 +60,6 @@ public class ModAttachments {
     public static final AttachedDataKey<Long> EFFECT_CARD_COOLDOWN_END =
             register(AttachedDataKey.builder("effect_card_cooldown_end", Codec.LONG, () -> 0L).sync().build());
 
-    // 事件系统:护甲 -30% 惩罚结束时刻(0 表示未生效)
-    public static final AttachedDataKey<Long> ARMOR_PENALTY_END =
-            register(AttachedDataKey.builder("armor_penalty_end", Codec.LONG, () -> 0L).build());
-
     // 史莱姆立牌:上次受击获得治愈的游戏时刻(限制受击 +1 的频率,防止围攻时点数暴涨)
     public static final AttachedDataKey<Long> LULU_LAST_HURT_TICK =
             register(AttachedDataKey.builder("lulu_last_hurt_tick", Codec.LONG, () -> 0L).build());
@@ -417,14 +413,6 @@ public class ModAttachments {
 
     public static void setEffectCardCooldownEnd(net.minecraft.world.entity.player.Player player, long value) {
         EFFECT_CARD_COOLDOWN_END.set(player, value);
-    }
-
-    public static long getArmorPenaltyEnd(net.minecraft.world.entity.player.Player player) {
-        return ARMOR_PENALTY_END.get(player);
-    }
-
-    public static void setArmorPenaltyEnd(net.minecraft.world.entity.player.Player player, long value) {
-        ARMOR_PENALTY_END.set(player, value);
     }
 
     public static int getRinPages(net.minecraft.world.entity.player.Player player) {

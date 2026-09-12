@@ -127,6 +127,7 @@
 - 事件优先级整理:末影骰子的雨中/水下伤害放大提升为 `HIGH`、狂暴与虚弱印记的伤害加成由 `LOWEST` 调整为 `LOW`,使三者均先于 `ChipDamageHandler`(安全气囊/磨刀石,`LOWEST`)执行;安全气囊因此恒按最终伤害判定致命性,保命优先级稳定高于不死图腾与末影骰子(双版本一致)。
 - 新增 tooltip 统一染色规则(权威副本为 `ModTooltipHandler` 类头 javadoc,可读版见 `docs/tooltip-color-rules.md`):① 所有**非时间**数值连同其前后符号统一染黄 `§e`(如 `§e+50%%§7`、`§e×2§7`);② 时间数值统一染蓝 `§9`,覆盖 `M:SS` 与 `N 秒`/`Ns` 两种写法(含 `0:00` 与 `0 秒`);③ 形如「<效果名> (<效果时间>)」的条目整段染蓝(如 `§9黑暗(3秒)§7`、`§9Burst(2:00)§7`);优先级上规则 3 > 规则 2 > 规则 1,负面数值保留红 `§c`、重置码 `§r`、按键提示 `§f` 与行内语义色(攻击牌品阶色等)按既有约定保留;并新增只读审计脚本 `scripts/audit/tooltip_color_audit.py`(位置感知,检查 R1 数值未黄 / R2 时间未蓝 / R3 效果条目未整段同色 / R1b 符号外置),双版本语言文件与硬编码 tooltip 全量按规则处理完毕后审计 0 违规(双版本一致)。
 - 补全 Bountiful「赏金板」联动数据(1.2.0 新增物品此前整体遗漏同步):`astral_objs` 需求池新增 7 条(玻璃/下界岩/绿宝石/黑曜石/诡异/紫晶骰子、袋装星币),`astral_rews` 奖励池新增 24 条(上述 7 条 + 枪匠/肉弹战车立牌 + 以毒攻毒效果牌 + 13 个新增筹码),补全后 objs 13 条 / rews 92 条;入池判定按规则闭集化(**传奇品质的骰子、筹码、立牌一律不进池**,货币与卡牌例外),价值按骰子阶层(T1=黄金档 3000/2800、T2=钻石档 8000/7500;前者 objs、后者 rews)与物品品质落在既有价值带内;新增只读守门脚本 `scripts/verify/verify_bountiful_pools.py`(集合一致 / 品质双层映射 / 双版本逐字节一致 / 价值平衡式,退出码 0 = 一致),并扩充 `AGENTS.md` 与 `docs/bountiful-integration.md` 的入池规则与价值带说明(双版本一致)。
+- 清除事件系统的失效链路(全仓零调用):移除事件类型注册表与触发入口(`AstralEvents`/`AstralEventType`/`EventContext`/`EventEffect`/`AstralEventSystem.trigger`)、护甲惩罚处理器与其附件 `armor_penalty_end`、孤儿二进制 `lib/junit-platform-console-standalone-6.1.2.jar`、3 个无引用语言键(`event.astral_dice.random_buff`/`reduce_armor`、`msg.astral_dice.event_triggered`);在用的「事件后置钩子」(大侦探 +3 星币 / 调查员活体书页)原样保留,**行为无任何变化**(双版本一致)。
 
 ## 1.1.3
 

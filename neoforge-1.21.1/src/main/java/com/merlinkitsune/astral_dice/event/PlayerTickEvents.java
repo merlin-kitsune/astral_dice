@@ -133,8 +133,6 @@ public class PlayerTickEvents {
         if (player.tickCount % 20 != 0) return;
         // 赋能:每 0:30 减少 1 层(剩余 1 层时直接归 0)
         com.merlinkitsune.astral_dice.item.EmpowerManager.tick(player);
-        // 事件系统:护甲惩罚到期移除
-        ArmorPenaltyHandler.tick(player);
         // 效果牌出牌周期计时
         com.merlinkitsune.astral_dice.item.card.EffectCardPeriod.tick(player);
         // 以毒攻毒:中毒结束后给予隐藏图标的生命恢复 II
