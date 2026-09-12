@@ -22,7 +22,7 @@ import java.util.List;
  *   <li>每拥有 4 层星光,攻击力 +1(结算在 {@code DiceCombatModifiers} 攻击修饰器)。</li>
  * </ul>
  *
- * <p>已记录目标上限 {@link #MAX_TRACKED_TARGETS}(先进先出:超出后最早的记录失效,避免数据无限增长);
+ * <p>已记录目标上限 {@link #MAX_TRACKED_TARGETS}(记录满后不再发放,以保证"同一目标仅 +1 层"严格成立);
  * 卸下筹码或玩家死亡时清空记录。星光上限由 {@link StarLightManager} 统一管理。
  */
 public class FlashlightChipItem extends BaseChipItem {
@@ -54,10 +54,10 @@ public class FlashlightChipItem extends BaseChipItem {
         String uuid = target.getUUID().toString();
         List<String> granted = readGrantedTargets(player);
         if (granted.contains(uuid)) return;
+        // 严格保证「同一目标仅 +1 层」:记录已满时**不再发放**(不做先进先出淘汰,
+        // 否则被淘汰的目标可再次获得,破坏"仅一次"语义);卸下筹码或死亡后重置记录。
+        if (granted.size() >= MAX_TRACKED_TARGETS) return;
         granted.add(uuid);
-        while (granted.size() > MAX_TRACKED_TARGETS) {
-            granted.remove(0);
-        }
         writeGrantedTargets(player, granted);
         StarLightManager.add(player, STARLIGHT_PER_TARGET);
     }

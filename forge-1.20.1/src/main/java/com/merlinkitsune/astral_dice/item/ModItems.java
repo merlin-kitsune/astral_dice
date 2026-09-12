@@ -582,19 +582,19 @@ public class ModItems {
     public static final RegistryObject<Item> MOTO_HELMET_LOW = registerItem("moto_helmet_low_chip",
             () -> new MotoHelmetChipItem(new Item.Properties()
                     .stacksTo(1)
-                    .rarity(Rarity.RARE), MotoHelmetChipItem.ARMOR_LOW, 0));
+                    .rarity(Rarity.RARE), MotoHelmetChipItem.DEFENSE_LOW, 0));
 
     // 摩托头盔-中级:护甲值 +4(无盔甲韧性)
     public static final RegistryObject<Item> MOTO_HELMET_MEDIUM = registerItem("moto_helmet_medium_chip",
             () -> new MotoHelmetChipItem(new Item.Properties()
                     .stacksTo(1)
-                    .rarity(Rarity.EPIC), MotoHelmetChipItem.ARMOR_MEDIUM, 0));
+                    .rarity(Rarity.EPIC), MotoHelmetChipItem.DEFENSE_MEDIUM, 0));
 
     // 摩托头盔-高级:护甲值 +8,盔甲韧性 +2(仅高级拥有韧性)
     public static final RegistryObject<Item> MOTO_HELMET_HIGH = registerItem("moto_helmet_high_chip",
             () -> new MotoHelmetChipItem(new Item.Properties()
                     .stacksTo(1)
-                    .rarity(Rarity.UNCOMMON), MotoHelmetChipItem.ARMOR_HIGH, MotoHelmetChipItem.TOUGHNESS_BONUS));
+                    .rarity(Rarity.UNCOMMON), MotoHelmetChipItem.DEFENSE_HIGH, MotoHelmetChipItem.TOUGHNESS_BONUS));
 
     // 夹心饼干-一般:最大生命值 +4
     public static final RegistryObject<Item> SANDWICH_LOW = registerItem("sandwich_low_chip",

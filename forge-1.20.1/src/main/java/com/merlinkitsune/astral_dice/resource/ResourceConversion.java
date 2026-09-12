@@ -34,8 +34,9 @@ public final class ResourceConversion {
         int spent = StarLightManager.spend(player, coins * STARLIGHT_PER_COIN);
         int gained = spent / STARLIGHT_PER_COIN;
         // ATM机筹码:使用星光兑换星币时,兑换量(星币产出)增加 40%
+        // 百分比加成统一采用「下限为 1」策略:收益率截断后不足 1 时至少 +1(避免小额兑换加成为 0)
         if (AtmChipItem.isEquipped(player)) {
-            gained += (int) (gained * 0.4);
+            gained += Math.max(1, (int) (gained * 0.4));
         }
         if (gained > 0) {
             giveItem(player, new ItemStack(ModItems.STAR_COIN.get(), gained));

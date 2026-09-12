@@ -5,6 +5,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
+import com.merlinkitsune.astral_dice.event.EventTargetCollector;
 import com.merlinkitsune.astral_dice.item.chip.FriendshipBadgeChipItem;
 
 /**
@@ -42,14 +43,16 @@ public class LuxuryFeastCardItem extends BaseEffectCardItem {
     protected void applyEffect(Level level, Player user, LivingEntity applyTo, ItemStack stack) {
         int heal = Math.max(1, (int) (user.getMaxHealth() * HEAL_RATIO));
         AABB aabb = applyTo.getBoundingBox().inflate(RANGE);
+        // 队伍过滤:统一经 EventTargetCollector.collectTeamPlayers ——
+        // 已加入队伍时仅影响同队/队友;未加入任何队伍时目标为全服在线玩家
+        java.util.List<Player> allies = EventTargetCollector.collectTeamPlayers(user);
         var nearby = level.getEntitiesOfClass(Player.class, aabb, p -> p.isAlive());
         for (Player p : nearby) {
-            if (p == user || user.getTeam() == null || p.getTeam() == null || p.getTeam() == user.getTeam()) {
-                p.heal(heal);
-                // 友情徽章:对友方玩家施加治疗时,双方各获得 2 点治愈
-                if (p != user) {
-                    FriendshipBadgeChipItem.onHealApplied(user, p);
-                }
+            if (p != user && !allies.contains(p)) continue;
+            p.heal(heal);
+            // 友情徽章:对友方玩家施加治疗时,双方各获得 2 点治愈
+            if (p != user) {
+                FriendshipBadgeChipItem.onHealApplied(user, p);
             }
         }
     }

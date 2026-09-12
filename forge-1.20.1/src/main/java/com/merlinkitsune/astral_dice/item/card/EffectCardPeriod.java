@@ -212,8 +212,12 @@ public final class EffectCardPeriod {
     }
 
     /**
-     * 出牌登记:出牌数 +1(调用前需通过 {@link #isBlocked} 校验),并立即开始/重置冷却倒计时。
-     * 所有效果牌(功能/伤害/专属)出牌均立即开始冷却,效果与冷却分离计算。
+     * 出牌登记:出牌数 +1(调用前需通过 {@link #isBlocked} 校验)。
+     *
+     * <p><b>冷却严格按照「出牌数打满后才进入冷却」</b>:未打满时**不启动**冷却倒计时,
+     * 只在本次出牌使出牌数达到上限({@link #getMaxAllowed})时才开始 30 秒冷却;
+     * 冷却归零后由 {@link #tick} 清空出牌数占用。任何增加出牌数的手段(固定/临时来源、忍者银行)
+     * 都只能提高上限,不能绕过 {@link GameplayConstants#MAX_EFFECT_CARD_PLAYS} 这一最高优先级封顶。
      */
     public static void registerPlay(Player player) {
         long now = player.level().getGameTime();
@@ -233,10 +237,12 @@ public final class EffectCardPeriod {
         if (komachiBank > 0) {
             ModAttachments.setKomachiExtraPlays(player, komachiBank - 1);
         }
-        // 立即开始/重置冷却倒计时(从最后一张出牌起算)
-        long cooldownTicks = ChargeManager.cooldownTicks(player,
-                GameplayConstants.EFFECT_CARD_COOLDOWN_SECONDS * 20L);
-        ModAttachments.setEffectCardCooldownEnd(player, now + cooldownTicks);
+        // 仅当本次出牌打满当前上限时才进入冷却(未打满不开始倒计时)
+        if (count >= getMaxAllowed(player)) {
+            long cooldownTicks = ChargeManager.cooldownTicks(player,
+                    GameplayConstants.EFFECT_CARD_COOLDOWN_SECONDS * 20L);
+            ModAttachments.setEffectCardCooldownEnd(player, now + cooldownTicks);
+        }
     }
 
     // 每 tick 调用:冷却倒计时归 0 时出牌数归零

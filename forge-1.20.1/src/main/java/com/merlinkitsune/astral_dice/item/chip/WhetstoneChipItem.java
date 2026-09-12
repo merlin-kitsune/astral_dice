@@ -34,10 +34,16 @@ public class WhetstoneChipItem extends BaseChipItem {
                 && curios.get().findFirstCurio(s -> s.is(ModItems.WHETSTONE_CHIP.get())).isPresent();
     }
 
-    /** 生命值是否为最大生命值的 50% 或更低 */
+    /**
+     * 生命值是否为最大生命值的 50% 或更低。
+     *
+     * <p>吸血鬼立牌(papara)主动「汲取」生效期间:任何以血量条件决定是否生效的效果都**视为条件通过**
+     * (无条件触发),故此处直接返回 true。
+     */
     public static boolean isLowHealth(Player player) {
         if (player == null) return false;
-        return player.getHealth() <= player.getMaxHealth() * HEALTH_THRESHOLD;
+        return player.hasEffect(com.merlinkitsune.astral_dice.effect.ModEffects.PAPARA_BITE.get())
+                || player.getHealth() <= player.getMaxHealth() * HEALTH_THRESHOLD;
     }
 
     /** 当前攻击力加成(0 或 {@link #ATTACK_BONUS}) */
@@ -60,7 +66,10 @@ public class WhetstoneChipItem extends BaseChipItem {
             reduced = Math.max(0.0F, reduced - DAMAGE_REDUCTION);
         }
         float health = player.getHealth();
-        if (health > 1.0F) {
+        // 「汲取」期间视为满血/无条件通过:血量 > 1 的不可击杀保护同样无条件生效
+        boolean guardActive = health > 1.0F
+                || player.hasEffect(com.merlinkitsune.astral_dice.effect.ModEffects.PAPARA_BITE.get());
+        if (guardActive) {
             // 「使受到的伤害不超过剩余生命值」:按不可致死语义处理(至多扣到剩 1 点生命值)
             float cap = health - 1.0F;
             if (reduced > cap) reduced = cap;

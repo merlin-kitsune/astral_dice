@@ -30,7 +30,10 @@ public class CandyChipItem extends BaseChipItem {
         if (player == null || player.level().isClientSide()) return;
         if (!isEquipped(player)) return;
 
-        boolean wasFull = player.getHealth() >= player.getMaxHealth();
+        // 满血时本轮出牌数 +1,每个出牌轮次最多触发一次
+        // (吸血鬼立牌「汲取」期间:以血量条件决定是否生效的效果视为条件通过,即无条件触发)
+        boolean wasFull = player.getHealth() >= player.getMaxHealth()
+                || player.hasEffect(com.merlinkitsune.astral_dice.effect.ModEffects.PAPARA_BITE);
         HealingManager.add(player, 1);
         player.heal(1);
 

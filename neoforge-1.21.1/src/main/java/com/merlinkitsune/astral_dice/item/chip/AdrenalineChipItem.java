@@ -36,8 +36,11 @@ public class AdrenalineChipItem extends BaseChipItem {
     }
 
     // 是否处于触发加成状态(生命值为 50% 或更低)
+    // 吸血鬼立牌「汲取」生效期间:以血量条件决定是否生效的效果视为条件通过(无条件触发)
     public static boolean isLowHp(Player player) {
-        return player != null && player.getHealth() <= player.getMaxHealth() / 2.0f;
+        if (player == null) return false;
+        return player.hasEffect(com.merlinkitsune.astral_dice.effect.ModEffects.PAPARA_BITE)
+                || player.getHealth() <= player.getMaxHealth() / 2.0f;
     }
 
     public static boolean hasLowEquipped(Player player) {

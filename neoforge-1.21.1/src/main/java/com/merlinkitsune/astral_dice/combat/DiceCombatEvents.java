@@ -247,9 +247,11 @@ public class DiceCombatEvents {
                         player.level().getGameTime() + WeirdDiceHandler.signCooldownTicks(player));
                 CurrentCoreChipItem.onActiveSkillUsed(player);
             }
-            // 枪匠立牌主动:对本次攻击的第一个普通敌对目标施加"破绽"2:00(已带破绽则不重复施加)
+            // 枪匠立牌主动:对本次攻击的第一个目标施加"破绽"2:00(已带破绽则不重复施加)。
+            // 触发条件与骰神赐福完全一致:近战武器(外层已判定)+ isBlessingTarget(外层已判定),
+            // 因此不再额外限制"普通敌对生物"。
             var mosesResult = attackerCurios.get().findFirstCurio(s -> s.is(ModItems.MOSES_SIGN.get()));
-            if (mosesResult.isPresent() && target instanceof net.minecraft.world.entity.monster.Enemy
+            if (mosesResult.isPresent()
                     && ModAttachments.getSignReadyType(player) == MosesSignItem.READY_TYPE) {
                 if (MosesSignItem.applyBroken(player, target)) {
                     ModAttachments.setSignReadyType(player, 0);
@@ -260,9 +262,8 @@ public class DiceCombatEvents {
                     CurrentCoreChipItem.onActiveSkillUsed(player);
                 }
             }
-            // 枪匠立牌被动:攻击已带"破绽"的敌对目标,每段破绽获得 1 层弱点识破
-            if (MosesSignItem.isEquipped(player) && target instanceof net.minecraft.world.entity.monster.Enemy
-                    && target.hasEffect(ModEffects.MOSES_BROKEN)) {
+            // 枪匠立牌被动:攻击已带"破绽"的目标,每段破绽获得 1 层弱点识破
+            if (MosesSignItem.isEquipped(player) && target.hasEffect(ModEffects.MOSES_BROKEN)) {
                 MosesSignItem.onAttackBrokenTarget(player, target);
             }
         }
@@ -563,9 +564,11 @@ public class DiceCombatEvents {
                         + ctx.defenseCardSum;
             }
 
-            // Padman sign: attack dice == 6 bypass — ignore all defense except defense cards
+            // 上班族立牌:攻击骰为 6 时无视目标防御力——按本模组「目标防御力」口径
+            // (与贯穿之铳同一公式:2 + 护甲÷2 + 1.4×韧性;护甲已包含由防御力折算而来的部分)
+            // 整项不计入防御,但保留目标的防御骰与防御牌加成。
             if (ctx.padmanDefBypass && !skipDefense) {
-                defensePower = ctx.defenseCardSum;
+                defensePower = defenseBaseDice + ctx.defenseCardSum;
             }
 
             finalDmg = Math.max(1, attackPower - defensePower);
@@ -607,7 +610,8 @@ public class DiceCombatEvents {
             cleaveProcessing = true;
             aoeProcessing = true;
             try {
-                double cleaveDmg = finalDmg * com.merlinkitsune.astral_dice.item.sign.FenSignItem.CLEAVE_RATIO;
+                // 百分比伤害统一下限为 1(80% 扩散,截断后至少 1 点)
+                double cleaveDmg = Math.max(1.0, finalDmg * com.merlinkitsune.astral_dice.item.sign.FenSignItem.CLEAVE_RATIO);
                 if (cleaveDmg > 0) {
                     net.minecraft.world.phys.AABB cleaveBox =
                             target.getBoundingBox().inflate(com.merlinkitsune.astral_dice.item.sign.FenSignItem.CLEAVE_RANGE);
@@ -1005,6 +1009,8 @@ public class DiceCombatEvents {
     }
 
     // === 枪匠立牌(Moses)破绽闪避/反击 ===
+    // 破绽持续 2:00,期间**每一次**目标攻击都会被闪避并触发反击(不再被"每目标已发放"标记拦掉);
+    // 「弱点识破」层数的"每目标每段破绽只 +1"限制由 MosesSignItem.onDodgeCounter 内部判定。
     @SubscribeEvent
     public static void onMosesBrokenDodge(LivingDamageEvent.Pre event) {
         LivingEntity victim = event.getEntity();
@@ -1012,12 +1018,10 @@ public class DiceCombatEvents {
         if (!(victim instanceof Player player)) return;
         if (!MosesSignItem.isEquipped(player)) return;
         if (!(event.getSource().getEntity() instanceof LivingEntity attacker)) return;
-        if (!(attacker instanceof net.minecraft.world.entity.monster.Enemy)) return;
         if (!attacker.hasEffect(ModEffects.MOSES_BROKEN)) return;
-        if (ModAttachments.isMosesDodgeCounterRewarded(attacker)) return;
         // 闪避本次伤害
         event.setNewDamage(0);
-        // 获得弱点识破并标记该目标已闪避
+        // 获得弱点识破并标记该目标已闪避(每目标每段破绽最多 1 层)
         MosesSignItem.onDodgeCounter(player, attacker);
         // 单次反击伤害注入(不进入反击效果/层数体系)
         injectCounterDamage(player, attacker);

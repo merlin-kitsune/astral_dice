@@ -381,11 +381,11 @@ public final class DiceCombatModifiers {
             return ap;
         });
 
-        // === 内置:肾上腺素-高效筹码(生命值为 50% 或更低时攻击力 +8) ===
+        // === 内置:肾上腺素-高效筹码(生命值为 50% 或更低时攻击力 +8;汲取期间无条件触发) ===
         registerAttackModifier((ctx, ap) -> {
             Player p = ctx.attacker;
             if (p.level().isClientSide()) return ap;
-            if (p.getHealth() > p.getMaxHealth() / 2.0f) return ap;
+            if (!com.merlinkitsune.astral_dice.item.chip.AdrenalineChipItem.isLowHp(p)) return ap;
             if (hasCurio(p, ModItems.ADRENALINE_LOW.get())) ap += AdrenalineChipItem.BONUS_LOW;
             if (hasCurio(p, ModItems.ADRENALINE_HIGH.get())) ap += AdrenalineChipItem.BONUS_HIGH;
             return ap;

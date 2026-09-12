@@ -183,7 +183,8 @@ public class StarCoinHammerChipItem extends BaseChipItem {
         int total = countStarCoins(player);
         if (total <= THRESHOLD_COINS) return;
         if (!consumeStarCoins(player, CONSUME_COINS)) return;
-        ModAttachments.setStarCoinHammerBonus(player, (int) (total * ATTACK_RATIO));
+        // 百分比加成统一下限为 1(按持有总数 30% 提升攻击力,截断后至少 +1)
+        ModAttachments.setStarCoinHammerBonus(player, Math.max(1, (int) (total * ATTACK_RATIO)));
     }
 
     /**
