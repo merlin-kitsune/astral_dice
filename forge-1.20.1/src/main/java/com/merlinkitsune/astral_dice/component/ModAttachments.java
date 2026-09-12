@@ -791,6 +791,10 @@ public class ModAttachments {
     public static final AttachedDataKey<Long> AIRBAG_COOLDOWN_END =
             register(AttachedDataKey.builder("airbag_cooldown_end", Codec.LONG, () -> 0L).sync().build());
 
+    /** 电磁炮:雷击触发冷却结束时刻(1:00;0 表示无冷却;仅第二能力雷击,不影响充能攻击力加成) */
+    public static final AttachedDataKey<Long> RAILGUN_COOLDOWN_END =
+            register(AttachedDataKey.builder("railgun_cooldown_end", Codec.LONG, () -> 0L).sync().build());
+
     public static long getEmpowerDecayAt(net.minecraft.world.entity.player.Player player) {
         return EMPOWER_DECAY_AT.get(player);
     }
@@ -813,6 +817,14 @@ public class ModAttachments {
 
     public static void setAirbagCooldownEnd(net.minecraft.world.entity.player.Player player, long value) {
         AIRBAG_COOLDOWN_END.set(player, Math.max(0, value));
+    }
+
+    public static long getRailgunCooldownEnd(net.minecraft.world.entity.player.Player player) {
+        return RAILGUN_COOLDOWN_END.get(player);
+    }
+
+    public static void setRailgunCooldownEnd(net.minecraft.world.entity.player.Player player, long value) {
+        RAILGUN_COOLDOWN_END.set(player, Math.max(0, value));
     }
 
     /** synced 键快照发送(登录/重生/切维度时)。 */
@@ -842,6 +854,7 @@ public class ModAttachments {
             SYNCED_KEYS.add(EMPOWER_DECAY_AT);
             SYNCED_KEYS.add(ELECTRIC_GLOVE_AOE);
             SYNCED_KEYS.add(AIRBAG_COOLDOWN_END);
+            SYNCED_KEYS.add(RAILGUN_COOLDOWN_END);
         }
         return SYNCED_KEYS;
     }

@@ -910,6 +910,13 @@ public class ModAttachments {
                     .sync(ByteBufCodecs.VAR_LONG)
                     .build());
 
+    /** 电磁炮:雷击触发冷却结束时刻(1:00;0 表示无冷却;仅第二能力雷击,不影响充能攻击力加成) */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> RAILGUN_COOLDOWN_END =
+            ATTACHMENTS.register("railgun_cooldown_end", () -> AttachmentType.builder(() -> 0L)
+                    .serialize(Codec.LONG)
+                    .sync(ByteBufCodecs.VAR_LONG)
+                    .build());
+
     public static long getEmpowerDecayAt(net.minecraft.world.entity.player.Player player) {
         return player.getData(EMPOWER_DECAY_AT.get());
     }
@@ -932,5 +939,13 @@ public class ModAttachments {
 
     public static void setAirbagCooldownEnd(net.minecraft.world.entity.player.Player player, long value) {
         player.setData(AIRBAG_COOLDOWN_END.get(), Math.max(0, value));
+    }
+
+    public static long getRailgunCooldownEnd(net.minecraft.world.entity.player.Player player) {
+        return player.getData(RAILGUN_COOLDOWN_END.get());
+    }
+
+    public static void setRailgunCooldownEnd(net.minecraft.world.entity.player.Player player, long value) {
+        player.setData(RAILGUN_COOLDOWN_END.get(), Math.max(0, value));
     }
 }
