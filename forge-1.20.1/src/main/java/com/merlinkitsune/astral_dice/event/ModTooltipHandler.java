@@ -130,7 +130,7 @@ import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
  *   <li>连接词性质的 {@code +}（如 {@code §e+3§7 + §9黑暗 (0:03)§7} 中间那个）保持灰色。</li>
  * </ol>
  *
- * <p>审计：{@code python scripts/audit/tooltip_color_audit.py}（退出码 0 = 无违规）。
+ * <p>审计：{@code pwsh -NoProfile -File scripts/audit/tooltip_color_audit.ps1}（退出码 0 = 无违规）。
  */
 @Mod.EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public class ModTooltipHandler {

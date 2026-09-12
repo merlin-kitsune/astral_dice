@@ -7,7 +7,7 @@
 > `temp/legacy_scripts_20260912.zip`**（含 MANIFEST，可解压取回），按本文执行会直接失败。
 >
 > **现行流程**：见 `AGENTS.md` →「自动化测试流程（Automated Testing）」，
-> 唯一入口 `bash scripts/test/mt.sh`（bash + python 工具链，阶段 P/B/E/L/C/R）。
+> 唯一入口 `pwsh -NoProfile -File scripts/test/mt.ps1`（pwsh 7 工具链，阶段 P/B/E/L/C/R）。
 > 本文保留仅为查阅历史用例口径（TC 清单）与当年的环境约定。
 
 > 对象版本:multi-1.20.1/1.21.1 HEAD(卡牌格数仅由星级决定:0★=4 / 1★=6 / 2★=8 / 3★=12,攻防各半)
