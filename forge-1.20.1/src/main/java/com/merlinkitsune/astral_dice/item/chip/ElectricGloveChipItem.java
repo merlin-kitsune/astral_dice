@@ -1,6 +1,6 @@
 package com.merlinkitsune.astral_dice.item.chip;
 
-import com.merlinkitsune.astral_dice.item.CuriosCompat;
+import com.merlinkitsune.starengine.item.CuriosCompat;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.item.ChargeManager;
 import com.merlinkitsune.astral_dice.item.ModItems;

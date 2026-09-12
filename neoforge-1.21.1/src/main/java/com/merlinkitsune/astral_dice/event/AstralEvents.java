@@ -12,6 +12,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 
+import com.merlinkitsune.starengine.event.AstralEventType;
+import com.merlinkitsune.starengine.event.EventEffect;
 /**
  * 事件类型注册表。
  * 立牌等模块通过 register 注册事件类型;init 在模组启动时调用。

@@ -2,7 +2,7 @@ package com.merlinkitsune.astral_dice;
 
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
-import com.merlinkitsune.astral_dice.component.GameplayConstants;
+import com.merlinkitsune.starengine.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.config.ModCommonConfig;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.event.AstralEvents;
@@ -28,6 +28,7 @@ import top.theillusivec4.curios.api.type.capability.ICurioItem;
 import com.merlinkitsune.astral_dice.combat.CardRegistry;
 import com.merlinkitsune.astral_dice.event.IronSpellbooksCompat;
 
+import com.merlinkitsune.astral_dice.config.GameplayConfigBinder;
 @Mod(AstralDiceMod.MODID)
 public class AstralDiceMod {
     public static final String MODID = "astral_dice";
@@ -94,7 +95,7 @@ public class AstralDiceMod {
     private void onCommonSetup(FMLCommonSetupEvent event) {
         event.enqueueWork(() -> {
             // 配置已加载:将配置值刷新到 GameplayConstants
-            GameplayConstants.refresh();
+            GameplayConfigBinder.refresh();
             // 卡牌类型注册表初始化(战斗牌定义集中管理)
             com.merlinkitsune.astral_dice.combat.CardRegistry.init();
             LOGGER.info("Astral Dice mod loaded.");

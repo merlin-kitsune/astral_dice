@@ -93,3 +93,12 @@ config="${mod_id}.mixins.json"
     versionRange="[0.1.3,)"
     ordering="AFTER"
     side="BOTH"
+
+# StarEngine Lib(必须前置):效果/事件/目标选择/通用组件的共享实现所在库。
+# 本模组绝大多数共享逻辑已下沉至该库,缺失将导致 NoClassDefFoundError,故为 mandatory。
+[[dependencies.${mod_id}]]
+    modId="starengine_lib"
+    mandatory=true
+    versionRange="${starengine_lib_version_range}"
+    ordering="AFTER"
+    side="BOTH"

@@ -22,6 +22,9 @@ sourceSets.main.resources {
 }
 
 repositories {
+    // 前置库 StarEngine Lib 走本地 Maven(库仓库执行 ./gradlew publishToMavenLocal 后即可解析)。
+    // 置于首位:该 group 不在任何远程仓库中,不会误命中同名远程工件。
+    mavenLocal()
     mavenCentral()
     maven { url = uri('https://maven.neoforged.net/releases') }
     // Curios API is resolved from the Modrinth maven.
@@ -164,6 +167,10 @@ dependencies {
     // http://www.gradle.org/docs/current/userguide/artifact_dependencies_tutorial.html
     // http://www.gradle.org/docs/current/userguide/dependency_management.html
 
+    // StarEngine Lib(必须前置):效果/事件/目标选择/通用组件等共享逻辑所在库。
+    // NeoForge 侧发布的是普通 Mojmap jar(NeoForge 1.20.5+ 编译与生产同为 Mojmap,无重映射),
+    // 因此用 implementation 而非 modImplementation(net.neoforged.moddev 不提供后者)。
+    implementation "${starengine_lib_group}:starengine_lib-neoforge-1.21.1:${starengine_lib_version}"
     implementation 'maven.modrinth:curios:yohfFbgD'
     // JEI(配方查看,测试环境用);19.39 系仍兼容本项目 neoforge 21.1.235(19.42+ 要求 ≥21.1.238)
     implementation "mezz.jei:jei-1.21.1-neoforge:19.39.0.372"
@@ -189,6 +196,7 @@ var generateModMetadata = tasks.register("generateModMetadata", ProcessResources
             mod_name               : mod_name,
             mod_license            : mod_license,
             mod_version            : mod_version,
+            starengine_lib_version_range: starengine_lib_version_range,
     ]
     inputs.properties replaceProperties
     expand replaceProperties

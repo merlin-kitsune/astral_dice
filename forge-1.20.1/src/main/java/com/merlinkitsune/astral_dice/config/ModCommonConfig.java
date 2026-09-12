@@ -4,7 +4,7 @@ import net.minecraftforge.common.ForgeConfigSpec;
 
 /**
  * 公共配置:仅保留少量仍允许玩家调整的选项。
- * 其余玩法数值已固定为 {@link com.merlinkitsune.astral_dice.component.GameplayConstants} 常量,
+ * 其余玩法数值已固定为 {@link com.merlinkitsune.starengine.component.GameplayConstants} 常量,
  * 不再写入配置文件;配置版本固定为 1。
  */
 public final class ModCommonConfig {

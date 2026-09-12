@@ -6,6 +6,7 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.event.TickEvent;
 
+import com.merlinkitsune.starengine.client.ClientDamageNumbers;
 /**
  * 客户端游戏总线 tick 订阅(游戏事件总线;注册类事件如 GuiLayers/KeyMappings 在模组总线,
  * 见 {@link ModClientEvents},两类事件不可混挂在同一订阅器上)。

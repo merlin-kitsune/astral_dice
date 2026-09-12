@@ -143,7 +143,7 @@ public final class ModNetwork {
 
         public static void handle(DamageNumberMessage msg, Supplier<NetworkEvent.Context> ctx) {
             ctx.get().enqueueWork(() ->
-                    com.merlinkitsune.astral_dice.client.ClientDamageNumbers.add(msg.entityId, msg.bonusDamage, msg.color));
+                    com.merlinkitsune.starengine.client.ClientDamageNumbers.add(msg.entityId, msg.bonusDamage, msg.color));
             ctx.get().setPacketHandled(true);
         }
 
@@ -181,7 +181,7 @@ public final class ModNetwork {
 
         public static void handle(ActionBarMessage msg, Supplier<NetworkEvent.Context> ctx) {
             ctx.get().enqueueWork(() ->
-                    com.merlinkitsune.astral_dice.client.ActionBarManager.show(msg.message, msg.durationTicks));
+                    com.merlinkitsune.starengine.client.ActionBarManager.show(msg.message, msg.durationTicks));
             ctx.get().setPacketHandled(true);
         }
     }

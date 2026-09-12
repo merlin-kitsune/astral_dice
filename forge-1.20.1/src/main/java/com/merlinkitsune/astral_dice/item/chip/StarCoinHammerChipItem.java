@@ -1,5 +1,5 @@
 package com.merlinkitsune.astral_dice.item.chip;
-import com.merlinkitsune.astral_dice.item.CuriosCompat;
+import com.merlinkitsune.starengine.item.CuriosCompat;
 
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import net.minecraft.world.entity.player.Player;

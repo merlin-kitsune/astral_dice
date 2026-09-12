@@ -2,7 +2,7 @@ package com.merlinkitsune.astral_dice.item.sign;
 
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
-import com.merlinkitsune.astral_dice.event.ModEffectRemoval;
+import com.merlinkitsune.starengine.event.ModEffectRemoval;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.player.Player;
@@ -51,13 +51,13 @@ public class KomachiSignItem extends BaseSignItem {
         // 银行存储上限为独立常量,与效果牌出牌上限无关)
         ModAttachments.setKomachiExtraPlays(player,
                 Math.min(ModAttachments.getKomachiExtraPlays(player) + 1,
-                        com.merlinkitsune.astral_dice.component.GameplayConstants.KOMACHI_EXTRA_PLAYS_CAP));
+                        com.merlinkitsune.starengine.component.GameplayConstants.KOMACHI_EXTRA_PLAYS_CAP));
         return InteractionResultHolder.success(stack);
     }
 
     // 主动技能 ActionBar:出牌数+1 与剩余出牌数(注册到主动技能响应事件)
     @SubscribeEvent
-    public static void onSignActiveTriggered(com.merlinkitsune.astral_dice.event.SignActiveTriggeredEvent event) {
+    public static void onSignActiveTriggered(com.merlinkitsune.starengine.event.SignActiveTriggeredEvent event) {
         if (event.getSignStack().is(ModItems.KOMACHI_SIGN.get())) {
             Player player = event.getPlayer();
             int remaining = Math.max(0,

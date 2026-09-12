@@ -1,7 +1,7 @@
 package com.merlinkitsune.astral_dice.item.card;
-import com.merlinkitsune.astral_dice.item.CuriosCompat;
+import com.merlinkitsune.starengine.item.CuriosCompat;
 
-import com.merlinkitsune.astral_dice.component.GameplayConstants;
+import com.merlinkitsune.starengine.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.item.ChargeManager;
@@ -256,7 +256,7 @@ public final class EffectCardPeriod {
     }
 
     private static boolean hasCurio(Player player, net.minecraft.world.item.Item item) {
-        var curios = com.merlinkitsune.astral_dice.item.CuriosCompat.getCuriosInventory(player);
+        var curios = com.merlinkitsune.starengine.item.CuriosCompat.getCuriosInventory(player);
         return curios.isPresent() && curios.get().findFirstCurio(s -> s.is(item)).isPresent();
     }
 }

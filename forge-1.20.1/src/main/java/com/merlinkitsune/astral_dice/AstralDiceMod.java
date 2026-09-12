@@ -1,6 +1,6 @@
 package com.merlinkitsune.astral_dice;
 
-import com.merlinkitsune.astral_dice.component.GameplayConstants;
+import com.merlinkitsune.starengine.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.config.ModCommonConfig;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.effect.ModEnchantments;
@@ -25,6 +25,7 @@ import top.theillusivec4.curios.api.CuriosApi;
 import top.theillusivec4.curios.api.SlotTypeMessage;
 
 
+import com.merlinkitsune.astral_dice.config.GameplayConfigBinder;
 @Mod(AstralDiceMod.MODID)
 public class AstralDiceMod {
     public static final String MODID = "astral_dice";
@@ -96,7 +97,7 @@ public class AstralDiceMod {
                     () -> new SlotTypeMessage.Builder("chip").size(0)
                             .icon(new net.minecraft.resources.ResourceLocation(AstralDiceMod.MODID, "slot/empty_chip_slot")).build());
             // 配置已加载:将配置值刷新到 GameplayConstants
-            GameplayConstants.refresh();
+            GameplayConfigBinder.refresh();
             // 卡牌类型注册表初始化(战斗牌定义集中管理)
             com.merlinkitsune.astral_dice.combat.CardRegistry.init();
             LOGGER.info("Astral Dice mod loaded.");
