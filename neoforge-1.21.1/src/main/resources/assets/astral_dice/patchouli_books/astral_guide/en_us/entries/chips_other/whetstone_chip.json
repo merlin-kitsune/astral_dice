@@ -7,6 +7,10 @@
       "type": "patchouli:spotlight",
       "item": "astral_dice:whetstone_chip",
       "text": "astral_dice.guide.entry.whetstone_chip.1"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:whetstone_chip"
     }
   ],
   "sortnum": 20

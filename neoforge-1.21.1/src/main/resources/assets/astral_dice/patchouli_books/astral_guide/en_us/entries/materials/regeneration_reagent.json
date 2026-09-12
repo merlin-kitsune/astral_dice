@@ -7,6 +7,10 @@
       "type": "patchouli:spotlight",
       "item": "astral_dice:regeneration_reagent",
       "text": "astral_dice.guide.entry.regeneration_reagent.1"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:regeneration_reagent"
     }
   ],
   "sortnum": 6

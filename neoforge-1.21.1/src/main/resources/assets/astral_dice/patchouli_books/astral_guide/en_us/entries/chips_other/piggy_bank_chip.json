@@ -7,6 +7,10 @@
       "type": "patchouli:spotlight",
       "item": "astral_dice:piggy_bank_chip",
       "text": "astral_dice.guide.entry.piggy_bank_chip.1"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:piggy_bank_chip"
     }
   ],
   "sortnum": 18

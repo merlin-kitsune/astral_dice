@@ -7,6 +7,10 @@
       "type": "patchouli:spotlight",
       "item": "astral_dice:smart_watch_chip",
       "text": "astral_dice.guide.entry.smart_watch_chip.1"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:smart_watch_chip"
     }
   ],
   "sortnum": 19

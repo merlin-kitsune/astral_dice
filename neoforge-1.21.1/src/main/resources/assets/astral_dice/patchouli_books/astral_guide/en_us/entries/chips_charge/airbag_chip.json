@@ -7,6 +7,10 @@
       "type": "patchouli:spotlight",
       "item": "astral_dice:airbag_chip",
       "text": "astral_dice.guide.entry.airbag_chip.1"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:airbag_chip"
     }
   ],
   "sortnum": 6

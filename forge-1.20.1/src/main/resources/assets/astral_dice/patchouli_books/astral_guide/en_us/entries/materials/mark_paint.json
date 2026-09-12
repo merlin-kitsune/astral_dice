@@ -7,6 +7,10 @@
       "type": "patchouli:spotlight",
       "item": "astral_dice:mark_paint",
       "text": "astral_dice.guide.entry.mark_paint.1"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:mark_paint"
     }
   ],
   "sortnum": 9
