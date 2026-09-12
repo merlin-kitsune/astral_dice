@@ -112,6 +112,7 @@
 
 ### 工程
 
+- pwsh 自动化测试工具链修复与增强(均为工具链自身缺陷,不影响玩法):① `mt.ps1` 的 env 阶段种子包开关改为**按版本**判定(原实现硬编码 `testworld-seed-1.20.1.zip` 的存在性并作为两版本共用的 `--seed`,导致 1.21.1 必然 `MT_WORLD: BLOCKED`,全流程在该处中断);② `Find-MtMinecraftWindow` 增加回退:ModDevGradle/FML 的 DevLaunch 以「短命令行 + args 文件」启动客户端(实测窗口属主命令行仅 56 字符,整条父链都读不到 dev-run 标记),原判据永远返回 0 使注入被拒;现回退为「标题含该版本号的唯一候选」,多候选仍不猜;③ 用例断言新增 `scope: whole`(对整文件求值,用于只在启动期出现的行,如 Mixin 应用行)与 screenshot 步的 `crop` 开关(即时裁剪抓窗,用于跳字/雷击等瞬态画面);④ BUG2 用例增加**自然递减**正例(不干预等 31 秒)与效果时长读数断言;⑤ 两版本 KubeJS 探针 `status` 增补 `AP_<tag>_EMPOWER_DUR` 读数;⑥ 新增 `scripts/devtools/Start-MtDetached.ps1`:把会留下长命后代(Gradle 守护/游戏客户端)的阶段放到独立控制台执行并落日志,避免非交互式调用方按整棵进程树等待而卡到超时;⑦ `mt_env world` 强制写入测试世界规则:`Data.allowCommands=1`(TAG_Byte)与 `Data.GameRules.keepInventory="true"`(TAG_String,缺 `GameRules` 复合标签时用 Ordinal 比较器补建),**新建世界与种子恢复两条路径都写**,任一规则缺失即 `MT_WORLD: BLOCKED` 并以退出码 11 终止(此前只写 `allowCommands`,种子恢复路径还会把规则整体丢掉,导致测试中死亡掉落物品、实验反复被打断)。
 - 测试环境集成 JEI 便于配方查验(forge-1.20.1 15.56.0.205 / neoforge-1.21.1 19.39.0.372);1.20.1 dev 的整合包模组改为 curse maven modImplementation 依赖,修复 dev 环境无法加载生产 mixin 模组的问题。
 - 1.20.1 引入 Mixin Booster 并改为强依赖(`mixinbooster` 0.1.3):运行时以 Sponge Mixin 接管 mixin 执行并自动处理 Mojmap→SRG 重映射,移除 MDG LegacyForge 的 `mixin` 扩展/refmap/注解处理器(村民交易 mixin 不再需要构建期 refmap)。
 - 将 1.21.1 的新增骰子(黑曜石/下界岩/诡异/绯红/紫晶/末影/下界之星)、创造栏排序、tooltip 染色与末影骰子瞬移等改动同步移植到 forge-1.20.1;1.20.1 的下界岩猪灵中立 `PiglinAiMixin` 沿用 Mixin Booster / Sponge Mixin 规范(与 neoforge/fabric 一致),未使用 Forge 原生或其他第三方 Mixin API(1.20.1 同步)。

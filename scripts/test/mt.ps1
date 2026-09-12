@@ -33,6 +33,10 @@
     （`& pwsh …` 的调用运算符会让原生输出过一遍 PS 的编码层）。
 
     文案偏差：前置失败提示里的 `mt.sh --phase stop` 改为 `mt.ps1`（同一入口的新名字）。
+
+    行为修复（唯一一处非 1:1 移植）：env 阶段的种子包开关由「硬编码 1.20.1 种子包存在性、
+    两版本共用」改为「按版本各查 testworld-seed-<版本>.zip」，见 Invoke-MtRunPhase 内注释。
+    1.20.1 行为与原版一致；1.21.1 不再被塞入 1.20.1 的 --seed（原版必然 MT_WORLD: BLOCKED）。
 #>
 
 $ErrorActionPreference = 'Stop'
@@ -127,8 +131,7 @@ function Invoke-MtRunPhase {
     param(
         [Parameter(Mandatory)][string]$PhaseVersion,
         [Parameter(Mandatory)][string]$PhaseName,
-        [string]$CasePath = '',
-        [string[]]$SeedArgs = @()
+        [string]$CasePath = ''
     )
 
     if ($PhaseName -eq 'build') {
@@ -137,7 +140,15 @@ function Invoke-MtRunPhase {
     if ($PhaseName -eq 'env') {
         $rc = Invoke-MtChild -Script 'mt_env.ps1' -ScriptArgs @('mods', '--version', $PhaseVersion)
         if ($rc -ne 0) { return $rc }
-        return (Invoke-MtChild -Script 'mt_env.ps1' -ScriptArgs (@('world', '--version', $PhaseVersion) + $SeedArgs))
+        # 缺陷修复（2026-09-12）：种子包按**版本**判定。bash 原件硬编码
+        # resources/testworld-seed-1.20.1.zip 的存在性并把它作为两个版本共用的 --seed 开关，
+        # 而 mt_env 的 seed 恢复是按版本找 testworld-seed-<版本>.zip —— 只要 1.20.1 种子包在位，
+        # 1.21.1 的 env 阶段必然 MT_WORLD: BLOCKED（exit 11）而全流程在此中断。
+        # 现改为各版本各自查自己的种子包：1.20.1 行为不变（有包 → --seed），1.21.1 无包 → 生成世界。
+        $seedArgs = @()
+        $seedZip = Join-Path (Join-Path $script:TestDir 'resources') "testworld-seed-$PhaseVersion.zip"
+        if (Test-Path -LiteralPath $seedZip -PathType Leaf) { $seedArgs = @('--seed') }
+        return (Invoke-MtChild -Script 'mt_env.ps1' -ScriptArgs (@('world', '--version', $PhaseVersion) + $seedArgs))
     }
     if ($PhaseName -eq 'launch') {
         return (Invoke-MtChild -Script 'mt_launch.ps1' -ScriptArgs @('--version', $PhaseVersion))
@@ -250,25 +261,19 @@ try {
 
     # ── 单阶段模式 ──────────────────────────────────────────────────────
     # 单阶段默认不清理（launch → cases 需分步执行、客户端要活着）；显式开关已在上面生效。
-    $seedArgs = @()
-    if ($Phase -eq 'env') {
-        $seedZip = Join-Path (Join-Path $script:TestDir 'resources') 'testworld-seed-1.20.1.zip'
-        if (Test-Path -LiteralPath $seedZip -PathType Leaf) { $seedArgs = @('--seed') }
-    }
-
     if ($Phase) {
         if (-not $Version) {
             # 无 --version 时对两个版本顺序执行该阶段
             $rc = 0
             foreach ($v in @(Get-MtVersions)) {
                 if (-not (Assert-MtVersion -Version $v)) { exit $MT_EXIT_ERROR }
-                $one = Invoke-MtRunPhase -PhaseVersion $v -PhaseName $Phase -CasePath $CasePath -SeedArgs $seedArgs
+                $one = Invoke-MtRunPhase -PhaseVersion $v -PhaseName $Phase -CasePath $CasePath
                 if ($one -ne 0) { $rc = $one }
             }
             exit $rc
         }
         if (-not (Assert-MtVersion -Version $Version)) { exit $MT_EXIT_ERROR }
-        exit (Invoke-MtRunPhase -PhaseVersion $Version -PhaseName $Phase -CasePath $CasePath -SeedArgs $seedArgs)
+        exit (Invoke-MtRunPhase -PhaseVersion $Version -PhaseName $Phase -CasePath $CasePath)
     }
 
     # ── 全流程 ──────────────────────────────────────────────────────────
@@ -310,7 +315,7 @@ try {
 
         if ($vrc -eq 0) {
             Start-MtPhase 'env'
-            $vrc = Invoke-MtRunPhase -PhaseVersion $v -PhaseName 'env' -SeedArgs $seedArgs
+            $vrc = Invoke-MtRunPhase -PhaseVersion $v -PhaseName 'env'
             $r = if ($vrc -eq 0) { 'PASS' } else { 'FAIL' }
             [void](Invoke-MtChild -Script 'mt_report.ps1' -ScriptArgs @('mark', '--version', $v, '--phase', 'env', '--result', $r))
         }

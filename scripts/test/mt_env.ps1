@@ -387,6 +387,62 @@ function Set-MtAllowCommands {
     return $true
 }
 
+function Set-MtKeepInventory {
+    <#
+    .SYNOPSIS
+        测试世界规则：keepInventory=true（死亡不掉落）。返回 $true 表示规则已就位。
+
+    .DESCRIPTION
+        自动化用例会主动击杀/被击杀（僵尸靶子、雷击、骰战反伤等），若死亡掉落物品，
+        掉落物会留在世界里污染后续用例（背包/装备状态被清空、地面残留实体卡 tick），
+        且「死亡前后背包一致」类断言的基线不再稳定。故**任何新建或恢复的测试世界**
+        都必须带 keepInventory=true。
+
+        存储位置：单人存档的 gamerule 在 level.dat 的 `Data.GameRules` 复合标签里，
+        值是 **TAG_String**（"true"/"false"），与 `Data.allowCommands`（TAG_Byte）不同。
+        `GameRules` 缺失时按 Ordinal 比较器新建（NBT 键大小写敏感，不能用 [ordered]@{}）。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$LevelDat)
+
+    try {
+        $nbt = Read-MtNbt -Path $LevelDat
+    } catch {
+        Write-MtErrorLine "解析 level.dat 失败：$($_.Exception.Message)"
+        return $false
+    }
+
+    if ($nbt.TagId -ne $script:TAG_COMPOUND -or -not $nbt.Payload.Contains('Data')) {
+        Write-MtErrorLine 'level.dat 结构异常（缺少 Data）'
+        return $false
+    }
+
+    $data = $nbt.Payload['Data'][1]
+    if (-not ($data -is [System.Collections.IDictionary])) {
+        Write-MtErrorLine 'Data 不是复合标签'
+        return $false
+    }
+
+    $rules = $null
+    if ($data.Contains('GameRules')) {
+        $candidate = $data['GameRules'][1]
+        if ($candidate -is [System.Collections.IDictionary]) { $rules = $candidate }
+    }
+    if ($null -eq $rules) {
+        $rules = [System.Collections.Specialized.OrderedDictionary]::new([System.StringComparer]::Ordinal)
+        $data['GameRules'] = (New-MtPair $script:TAG_COMPOUND $rules)
+    }
+    $rules['keepInventory'] = (New-MtPair $script:TAG_STRING 'true')
+
+    try {
+        Write-MtNbt -Path $LevelDat -TagId $nbt.TagId -Name $nbt.Name -Payload $nbt.Payload
+    } catch {
+        Write-MtErrorLine "写回 level.dat 失败：$($_.Exception.Message)"
+        return $false
+    }
+    return $true
+}
+
 # ══ 子命令：mods ══════════════════════════════════════════════════════════
 function Invoke-MtEnvMods {
     [CmdletBinding()]
@@ -545,7 +601,12 @@ function Invoke-MtEnvWorld {
             Write-MtLine 'MT_WORLD: BLOCKED — level.dat 的 AllowCommands 未能设置'
             return 11
         }
-        Write-MtLine "MT_WORLD: OK — 种子快恢复 $($p.client_world)"
+        # 测试规则：新建/恢复的世界必须 keepInventory=true（见 Set-MtKeepInventory）
+        if (-not (Set-MtKeepInventory -LevelDat (Join-Path $p.client_world 'level.dat'))) {
+            Write-MtLine 'MT_WORLD: BLOCKED — level.dat 的 GameRules.keepInventory 未能设置'
+            return 11
+        }
+        Write-MtLine "MT_WORLD: OK — 种子快恢复（allowCommands=1, keepInventory=true） $($p.client_world)"
         return 0
     }
 
@@ -656,7 +717,12 @@ function Invoke-MtEnvWorld {
         Write-MtErrLine 'MT_WORLD: BLOCKED — level.dat 的 AllowCommands 未能设置'
         return 11
     }
-    Write-MtLine "MT_WORLD: OK — 世界重建并设 AllowCommands=1 $($p.client_world)"
+    # 测试规则：新建/恢复的世界必须 keepInventory=true（见 Set-MtKeepInventory）
+    if (-not (Set-MtKeepInventory -LevelDat $level)) {
+        Write-MtErrLine 'MT_WORLD: BLOCKED — level.dat 的 GameRules.keepInventory 未能设置'
+        return 11
+    }
+    Write-MtLine "MT_WORLD: OK — 世界重建（allowCommands=1, keepInventory=true） $($p.client_world)"
     return 0
 }
 

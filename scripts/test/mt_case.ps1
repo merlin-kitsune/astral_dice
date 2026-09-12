@@ -117,7 +117,7 @@ $script:Primitives = [ordered]@{
     'inject_command' = @('command', 'no_esc')
     'kubejs_reload'  = @()
     'wait'           = @('ms')
-    'screenshot'     = @('tag', 'mode')
+    'screenshot'     = @('tag', 'mode', 'crop')
     'assert'         = @('type', 'pattern', 'source', 'image', 'question', 'tool', 'args', 'expect')
     'mcp_call'       = @('tool', 'args', 'id')
     'note'           = @('text')
@@ -595,10 +595,17 @@ function Invoke-MtCaseAssert {
 
     $t = [string](Get-MtMapValue -Map $Assert -Key 'type')
     if ($t -eq 'log') {
-        $r = Invoke-MtCaseChild -Script 'mt_assert.ps1' -ScriptArgs @(
+        $logArgs = @(
             'log', '--version', $Paths.version,
             '--pattern', (ConvertTo-MtPyText (Get-MtMapValue -Map $Assert -Key 'pattern')),
             '--source', (Get-MtMapValue -Map $Assert -Key 'source' -Default 'latest'))
+        # scope=whole：对**整文件**求值（mt_assert 的 --no-snapshot；默认只读快照之后的增量）。
+        # 用于「只在启动期出现」的行 —— Mixin 应用行、渲染栈加载行等。若沿用增量语义，
+        # 这类断言在快照点晚于启动时必然落空，会被误判成产品缺陷（BUG3 的 Mixing 行即如此）。
+        if ([string](Get-MtMapValue -Map $Assert -Key 'scope' -Default '') -eq 'whole') {
+            $logArgs += '--no-snapshot'
+        }
+        $r = Invoke-MtCaseChild -Script 'mt_assert.ps1' -ScriptArgs $logArgs
         return (Get-MtVerdict -ExitCode $r.ExitCode -Result $r)
     }
     if ($t -eq 'absent') {
@@ -741,10 +748,18 @@ function Invoke-MtCaseOp {
     }
 
     if ($op -eq 'screenshot') {
-        $r = Invoke-MtCaseChild -Script 'mt_capture.ps1' -ScriptArgs @(
+        $shotArgs = @(
             'capture', '--version', $Paths.version,
             '--tag', (ConvertTo-MtPyText (Get-MtMapValue -Map $Step -Key 'tag')),
             '--mode', (Get-MtMapValue -Map $Step -Key 'mode' -Default 'f2'))
+        # crop=true：按窗口矩形裁剪（mt_capture 的 --crop-to-window）。
+        # 瞬态画面（跳字 HUD / 雷击闪光只存在数秒）应配合 mode=window 使用：
+        # f2 通道走「注入 F2 → 等游戏落盘」，本机前台抢占限制下 3×10s 重试
+        # 会整体超出瞬态窗口，等同取不到证；窗口抓取是即时的。
+        if (Test-MtTruthyValue (Get-MtMapValue -Map $Step -Key 'crop' -Default $false)) {
+            $shotArgs += '--crop-to-window'
+        }
+        $r = Invoke-MtCaseChild -Script 'mt_capture.ps1' -ScriptArgs $shotArgs
         $text = if ($r.StdOut) { [string]$r.StdOut } else { [string]$r.StdErr }
         return (New-MtPair $(if ($r.ExitCode -eq 0) { 'PASS' } else { 'ERROR' }) (Get-MtTail -Text $text -FromTextMode))
     }

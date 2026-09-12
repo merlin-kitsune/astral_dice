@@ -41,7 +41,23 @@
     },
     {
       "op": "note",
-      "text": "步骤3 把递减计时器置为「已到期」,驱动链(PlayerTickEvents 每 20 tick → EmpowerManager.tick → EmpowerEffect.consumeOne)应在 ≤1 秒内真实减 1 层—— 无需真的等 30 秒"
+      "text": "步骤3 自然递减验证(玩家实测症状的正面覆盖):不做任何干预等 31 秒(> 0:30 递减间隔),层数应由 5 自然降为 4、且效果实例时长应为有限值(倒计时来源;原实现 = Integer.MAX_VALUE,面板永不倒数)"
+    },
+    {
+      "op": "wait",
+      "ms": 31000
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe status B2N"
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "note",
+      "text": "步骤4 再把递减计时器置为「已到期」,验证驱动链(PlayerTickEvents 每 20 tick → EmpowerManager.tick → EmpowerEffect.consumeOne)在 ≤1 秒内真实减 1 层—— 无需真的等 30 秒"
     },
     {
       "op": "inject_command",
@@ -79,7 +95,17 @@
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_B2D_EMPOWER:4:\\d+"
+      "pattern": "AP_B2N_EMPOWER:4:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_B2_EMPOWER_DUR:[1-9]\\d{2}"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_B2D_EMPOWER:3:\\d+"
     },
     {
       "type": "absent",

@@ -44,7 +44,8 @@
     {
       "type": "log",
       "source": "debug",
-      "pattern": "Mixing .* from astral_dice\\.mixins\\.json into"
+      "pattern": "Mixing .* from astral_dice\\.mixins\\.json into",
+      "scope": "whole"
     },
     {
       "type": "mixin"

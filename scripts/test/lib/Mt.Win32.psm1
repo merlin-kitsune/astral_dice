@@ -828,6 +828,8 @@ function Find-MtMinecraftWindow {
         产生「看起来通过」的假结论 —— 因此必须精确匹配而非猜测：
 
           -Version 指定 → 只认命令行匹配该版本 dev run 的进程（唯一权威依据）；
+                         标记全都读不到时（FML DevLaunch 短命令行，见下方回退段），
+                         回退为「标题含该版本号的唯一候选」；仍不唯一 → 返回 0；
           未指定且候选 >1 → 返回 0，由调用方报错退出，不猜。
 
         ⚠️ 这里的标记是 python `_find_window` 用的那三个（**裸子项目名** + run 目录
@@ -869,6 +871,25 @@ function Find-MtMinecraftWindow {
                 if ($m -and $cmd.Contains($m)) { return [long]$c.Hwnd }
             }
         }
+
+        # ── 回退：标题含版本号的唯一候选 ───────────────────────────────────
+        # 缺陷修复（2026-09-12，真机实测）：ModDevGradle/FML 的 DevLaunch 以
+        # 「短命令行 + args 文件」启动客户端，窗口属主的命令行只有 56 字符
+        # （实测 1.21.1: `net.caffeinemc.sodium / net.minecraft.client.main.Main /`），
+        # 其父进程（FML bootstrapper）命令行 1185 字符里也不含子项目名/run 目录，
+        # 再上一级启动器进程已退出（reparent）—— 即**整条链都读不到标记**，
+        # 于是 -Version 分支永远返回 0，mt_inject 拒绝注入（MT_PUBLISH: FAILED），
+        # 所有 inject_command 步骤在进入断言前就失败。
+        # python `_find_window` 用的是同一套标记判据，故这是**原有缺陷**而非移植回归。
+        #
+        # 回退仍不猜：仅当候选**唯一**、且该候选窗口标题含本版本号时才接受；
+        # 多候选（如用户自己的整合包客户端也在跑）一律返回 0，由调用方报错退出。
+        # 安全性兜底：万一选中了错误窗口，被注入的命令不会写进
+        # `run/<版本>/logs/latest.log`，用例的 MT_ASSERT_LOG 会判 FAIL ——
+        # 该回退不可能把错误的客户端变成「看起来通过」。
+        $titleHit = @($cands | Where-Object { (Get-MtWindowTitle -Hwnd $_.Hwnd).Contains($Version) })
+        if ($cands.Count -eq 1 -and $titleHit.Count -eq 1) { return [long]$titleHit[0].Hwnd }
+
         return [long]0   # 有客户端，但都不是本版本的 dev 进程
     }
 

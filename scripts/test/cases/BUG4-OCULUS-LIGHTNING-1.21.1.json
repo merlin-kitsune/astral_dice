@@ -17,11 +17,21 @@
     },
     {
       "op": "note",
-      "text": "步骤2 持续生成无伤害真雷击实体(每 tick 1 枚,共 100 tick≈5 秒),并开 200 tick 观测窗口确认雷击实体真的存在(见到即定论)"
+      "text": "步骤2 持续生成无伤害真雷击实体(每 tick 1 枚,共 100 tick≈5 秒),并开 200 tick 观测窗口确认雷击实体真的存在(见到即定论);截图用即时裁剪抓窗(mode=window+crop)——F2 通道在本机不稳定且 3×10s 重试会超出这 5 秒窗口"
     },
     {
       "op": "inject_command",
       "command": "/astralprobe boltvis 100 B4"
+    },
+    {
+      "op": "wait",
+      "ms": 300
+    },
+    {
+      "op": "screenshot",
+      "tag": "bug4_bolt",
+      "mode": "window",
+      "crop": true
     },
     {
       "op": "inject_command",
@@ -30,11 +40,6 @@
     {
       "op": "wait",
       "ms": 2200
-    },
-    {
-      "op": "screenshot",
-      "tag": "bug4_bolt",
-      "mode": "f2"
     },
     {
       "op": "wait",
@@ -60,12 +65,14 @@
     {
       "type": "log",
       "source": "debug",
-      "pattern": "(?i)oculus"
+      "pattern": "(?i)sodium",
+      "scope": "whole"
     },
     {
       "type": "log",
       "source": "debug",
-      "pattern": "(?i)embeddium"
+      "pattern": "(?i)iris",
+      "scope": "whole"
     },
     {
       "type": "absent",
