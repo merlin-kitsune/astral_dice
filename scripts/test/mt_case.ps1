@@ -1057,7 +1057,13 @@ function Invoke-MtCaseRunCommand {
             Write-MtErrLine ("MT_CASE: ERROR — {0}: {1}" -f [System.IO.Path]::GetFileName($f), $_.Exception.Message)
             $outcome = 'ERROR'
         }
-        $summary += ("{0}={1}" -f [System.IO.Path]::GetFileNameWithoutExtension($f), $outcome)
+        $caseName = [System.IO.Path]::GetFileNameWithoutExtension($f)
+        $summary += ("{0}={1}" -f $caseName, $outcome)
+        # 把本条结果写进报告状态。`mt_report summary` **只按 per-case 结果**汇总，
+        # 缺这一步总览会恒显示「未执行 / 0 条目」（此前只能在编排侧手工补 mark，
+        # 一旦漏补，全绿的运行也会被总览判成「未全部通过」并返回退出码 1）。
+        [void](Invoke-MtCaseChild -Script 'mt_report.ps1' `
+                -ScriptArgs @('mark', '--version', $Version, '--case', $caseName, '--result', $outcome))
         if ($outcome -eq 'ERROR') {
             $worst = 'ERROR'
         } elseif ($outcome -eq 'FAIL' -and $worst -ne 'ERROR') {
