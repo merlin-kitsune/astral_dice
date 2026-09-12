@@ -37,6 +37,9 @@ public class EmpowerEffect extends MobEffect {
      *
      * <p>不影响 {@code EffectTimerGuard}:守卫只管理经其 {@code apply} 登记的效果,
      * 且 {@code INFINITE_THRESHOLD} 以上的旧值本就被跳过;本效果不经守卫登记。
+ *
+ * <p><b>禁用粒子</b>:实例一律以 {@code visible=false} 构造(第 5 参),不产生原版药水粒子;
+ * 面板图标与倒计时由 {@code showIcon=true} 保留(原版显示闸门是 showIcon,粒子闸门才是 visible)。
      */
     public static final int DURATION_TICKS = DECAY_INTERVAL_TICKS + 20;
 
@@ -50,8 +53,9 @@ public class EmpowerEffect extends MobEffect {
         if (stacks <= 0) return getStacks(player);
         int total = Math.min(MAX_STACKS, getStacks(player) + stacks);
         if (total > 0) {
+            // visible=false:禁用粒子(showIcon 仍为 true → 图标/层数/倒计时照常显示)
             player.addEffect(new MobEffectInstance(ModEffects.EMPOWER,
-                    DURATION_TICKS, total - 1, false, true, true));
+                    DURATION_TICKS, total - 1, false, false, true));
         }
         return total;
     }
@@ -74,7 +78,7 @@ public class EmpowerEffect extends MobEffect {
         ModEffectRemoval.remove(player, ModEffects.EMPOWER);
         if (remaining > 0) {
             player.addEffect(new MobEffectInstance(ModEffects.EMPOWER,
-                    DURATION_TICKS, remaining - 1, false, true, true));
+                    DURATION_TICKS, remaining - 1, false, false, true));
         }
     }
 
@@ -94,6 +98,6 @@ public class EmpowerEffect extends MobEffect {
         if (stacks <= 0) return;
         ModEffectRemoval.remove(player, ModEffects.EMPOWER);
         player.addEffect(new MobEffectInstance(ModEffects.EMPOWER,
-                DURATION_TICKS, stacks - 1, false, true, true));
+                DURATION_TICKS, stacks - 1, false, false, true));
     }
 }

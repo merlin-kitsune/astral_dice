@@ -84,6 +84,7 @@
 - 无流派筹码展示顺序调整：「会员推荐信/书签/小猪存钱罐/智能手表/磨刀石」五项统一移至「肾上腺素-高效」之后（五项之间原有相对顺序不变，其余条目位置保持不变；创造物品栏与帕秋莉手册「无流派筹码」章节同步重排，两处顺序保持一致）（双版本一致）。
 - 原初核心筹码配方调整：第一行中位材料由「下界之星」改为「龙首」（配方变为 `XHX/WBW/GGG`；X=回响碎片、H=龙首、W=导电线材、B=空白筹码、G=黄金星盘）（双版本一致）。
 - 磨刀石筹码配方调整：第一行两侧材料由「铁锭」改为「下界合金锭」（配方变为 `XLX/GBG/PPP`；X=下界合金锭、L=砂轮、G=燧石、B=空白筹码、P=星盘）（双版本一致）。
+- 充能/赋能不能再产生原版药水粒子：两个效果的效果实例一律以 `visible=false` 构造（`MobEffectInstance` 第 5 参），持续存在的资源类效果不再有粒子糊住视野；**图标/层数/倒计时显示不受影响**——显示闸门是 `showIcon`，粒子闸门才是 `visible`（已核实两版本原版源码：1.20.1 的 `PotionUtils.getColor` 会跳过不可见效果、无可见效果时返回 0，`LivingEntity` 据此不生成粒子；1.21.1 由 `LivingEntity#updateSynchronizedMobEffectParticles` 逐效果经 `EffectParticleModificationEvent` 判定，事件默认取 `MobEffectInstance#isVisible()`）（双版本一致）。
 
 ### 已修复BUG
 

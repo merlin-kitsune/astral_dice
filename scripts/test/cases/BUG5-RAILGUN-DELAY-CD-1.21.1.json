@@ -152,6 +152,16 @@
     {
       "type": "log",
       "source": "latest",
+      "pattern": "AP_B5L_CHARGE_VIS:-1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_B5C2_CHARGE_VIS:0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
       "pattern": "AP_B5C_BONUS_BEFORE:[1-9]"
     },
     {

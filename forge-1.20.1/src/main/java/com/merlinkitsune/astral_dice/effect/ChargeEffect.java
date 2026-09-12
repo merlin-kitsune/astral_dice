@@ -11,6 +11,11 @@ import net.minecraft.world.entity.player.Player;
  * 充能(流派资源/效果):层数 = amplifier + 1。
  * 不论层数多少,只要拥有至少 1 层,就提供固定流派效果:
  * 立牌主动/效果牌冷却时间 -20%(无防御力/护甲加成)。
+ *
+ * <p><b>禁用粒子</b>:实例一律以 {@code visible=false} 构造(MobEffectInstance 第 5 参),
+ * 故不产生原版药水粒子;图标与层数/倒计时显示由 {@code showIcon=true} 保留。已核实两版本
+ * 原版源码:HUD 与物品栏效果面板的显示闸门是 {@code showIcon}(Forge/NeoForge 的
+ * {@code isVisibleInGui} 默认 true),粒子闸门才是 {@code visible}。
  */
 public class ChargeEffect extends MobEffect {
     /** 效果时长(无限,清空/层数归零时移除) */
@@ -26,8 +31,9 @@ public class ChargeEffect extends MobEffect {
         if (stacks <= 0) return getStacks(player);
         int total = Math.min(GameplayConstants.CHARGE_MAX_STACKS, getStacks(player) + stacks);
         if (total > 0) {
+            // visible=false:禁用粒子(showIcon 仍为 true → 图标/层数/倒计时照常显示)
             player.addEffect(new MobEffectInstance(ModEffects.CHARGE.get(),
-                    DURATION_TICKS, total - 1, false, true, true));
+                    DURATION_TICKS, total - 1, false, false, true));
         }
         return total;
     }
@@ -54,7 +60,7 @@ public class ChargeEffect extends MobEffect {
             ModEffectRemoval.remove(player, ModEffects.CHARGE.get());
         } else {
             player.addEffect(new MobEffectInstance(ModEffects.CHARGE.get(),
-                    DURATION_TICKS, remaining - 1, false, true, true));
+                    DURATION_TICKS, remaining - 1, false, false, true));
         }
         return consumed;
     }
@@ -69,7 +75,7 @@ public class ChargeEffect extends MobEffect {
             ModEffectRemoval.remove(player, ModEffects.CHARGE.get());
         } else {
             player.addEffect(new MobEffectInstance(ModEffects.CHARGE.get(),
-                    DURATION_TICKS, remaining - 1, false, true, true));
+                    DURATION_TICKS, remaining - 1, false, false, true));
         }
     }
 

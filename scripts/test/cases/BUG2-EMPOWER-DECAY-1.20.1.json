@@ -108,6 +108,21 @@
       "pattern": "AP_B2D_EMPOWER:3:\\d+"
     },
     {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_B2_EMPOWER_VIS:0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_B2N_EMPOWER_VIS:0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_B2D_EMPOWER_VIS:0"
+    },
+    {
       "type": "absent",
       "source": "latest",
       "pattern": "AP_B2_ERR|AP_B2_EX|AP_B2D_ERR|AP_B2D_EX"
