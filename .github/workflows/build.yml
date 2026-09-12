@@ -3,7 +3,8 @@ name: Build
 on:
   push:
     branches:
-      - main
+      # 发布线分支(本仓已无 main 分支;origin/HEAD 默认分支即此分支)。
+      # 原先写的 `main` 是不存在的分支 → push 过滤与下方自动打 tag 永远不生效。
       - 'multi-1.20.1-1.21.1'
       # 合并后的开发主线（原 dev-targetselector 重命名而来）
       - 'multi-dev-next'
@@ -80,11 +81,12 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "base=$BASE" >> "$GITHUB_OUTPUT"
 
-      - name: Create Git tag (main push only, stable versions only)
-        # 仅在 main 分支自动打 tag:tag = 基础版本号(去掉 -rc/-pre 与 +后缀),如 1.1.3。
+      - name: Create Git tag (release branch push only, stable versions only)
+        # 仅在发布线分支(multi-1.20.1-1.21.1)自动打 tag:tag = 基础版本号(去掉 -rc/-pre 与 +后缀),如 1.1.3。
         # 守卫:版本号含 '-'(即 SNAPSHOT/rc/pre)时不打 tag —— 否则 2.0.0-SNAPSHOT.5
         # 会被截成 "2.0.0" 并自动打出正式 tag,把未定型的快照误标为发布。
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        # ⚠️ 该分支推送时若 mod_version 不含 '-',会自动建 tag 并触发下面一步发布 Release。
+        if: github.event_name == 'push' && github.ref == 'refs/heads/multi-1.20.1-1.21.1'
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           if [[ "$VERSION" == *-* ]]; then
