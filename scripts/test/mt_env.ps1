@@ -22,6 +22,12 @@
          `run/<版本>/mt_server_gen.log`(+`.err`) —— 保留现场比丢弃更有用；
       2. gradle 入口：python 走 `bash gradlew`，此处走 `cmd /c gradlew.bat`
          （Windows-only 工具链，不再依赖 git-bash）。
+
+   另修掉两件**原实现里的真 BUG**（python 版同样有，已在对应代码处写明证据与症状；
+   不修的话 `world` 阶段在本机**永远失败**，世界生成不出来）:
+      1. 移出的客户端模组备份名仍以 `.jar` 结尾 → FML 照样扫描到 → 服务端秒崩；
+      2. 「崩溃报告」判定用了目录里的**历史残留**（`any(glob("*.txt"))`）→ 旧报告
+         会让世界生成直接放弃；改为只认**本次新增**的崩溃报告。
 #>
 
 $ErrorActionPreference = 'Stop'
@@ -560,6 +566,18 @@ function Invoke-MtEnvWorld {
     Disable-MtPauseOnLostFocus -Paths $p
 
     # 3. 生成世界期间临时移出纯客户端模组（服务端加载会崩溃或挂起）
+    #
+    # ⚠️ 修正一件原实现的真 BUG（python 版 scripts/test/mt_env.py L329 同样有）：
+    #    原来的备份名是 `__clientonly_bak__<原名>`，**仍以 .jar 结尾**，而 FML 在
+    #    ModDirTransformerDiscoverer 阶段扫描 mods 目录里的**所有 .jar** —— 于是
+    #    「移走」的 Sodium 照样被发现，服务端启动瞬间就崩：
+    #      Found additional transformation services from discovery services:
+    #        [...\run\1.21.1\mods\__clientonly_bak__sodium-neoforge-0.8.13+mc1.21.1.jar]
+    #      Invoking bootstrap method sodium
+    #      Exception in thread "main" java.lang.NoClassDefFoundError: org/lwjgl/Version
+    #    （真机实测：runServer 2 秒退出、exit 1、latest.log 只到 ModLauncher 启动行）
+    #    因此给备份名再加 `.disabled` 后缀，让它不再被当作模组。
+    #    恢复逻辑用代码里记下的 (Bak, Orig) 配对，不依赖文件名可逆，故改名安全。
     $moved = @()
     if (Test-Path -LiteralPath $p.mods_dir -PathType Container) {
         foreach ($f in @(Get-ChildItem -LiteralPath $p.mods_dir -File -Filter '*.jar')) {
@@ -569,10 +587,22 @@ function Invoke-MtEnvWorld {
                 if ($lower.Contains($k)) { $isClientOnly = $true; break }
             }
             if (-not $isClientOnly) { continue }
-            $bak = Join-Path $f.DirectoryName ("__clientonly_bak__" + $f.Name)
+            $bak = Join-Path $f.DirectoryName ("__clientonly_bak__" + $f.Name + ".disabled")
             Move-Item -LiteralPath $f.FullName -Destination $bak -Force
             $moved += [pscustomobject]@{ Bak = $bak; Orig = $f.FullName }
         }
+    }
+
+    # 崩溃基线：只看**本次生成期间新增**的崩溃报告
+    #
+    # ⚠️ 同样修正原实现的真 BUG（python 版 L347 的 `any(p.crash_dir.glob("*.txt"))`）：
+    #    原来只要目录里**存在任何**历史崩溃报告就直接判 FAIL 并放弃生成 —— 本机
+    #    run/1.21.1/crash-reports 里躺着一条 2026-09-11 的旧报告，于是世界永远生成不出来
+    #    （实测先打印 `MT_WORLD: FAIL — 生成世界期间产生崩溃报告` 再 BLOCKED）。
+    #    期望语义显然是「生成期间产生的崩溃报告」，故先记基线、只认新增。
+    $crashBaseline = @()
+    if (Test-Path -LiteralPath $p.crash_dir -PathType Container) {
+        $crashBaseline = @(Get-ChildItem -LiteralPath $p.crash_dir -File -Filter '*.txt' | ForEach-Object { $_.Name })
     }
 
     $done = $false
@@ -591,10 +621,11 @@ function Invoke-MtEnvWorld {
                 if ($txt.Contains('Done (')) { $done = $true; break }
                 $crashes = @()
                 if (Test-Path -LiteralPath $p.crash_dir -PathType Container) {
-                    $crashes = @(Get-ChildItem -LiteralPath $p.crash_dir -File -Filter '*.txt')
+                    $crashes = @(Get-ChildItem -LiteralPath $p.crash_dir -File -Filter '*.txt' |
+                        Where-Object { $crashBaseline -notcontains $_.Name })
                 }
                 if ($crashes.Count -gt 0) {
-                    Write-MtLine 'MT_WORLD: FAIL — 生成世界期间产生崩溃报告'
+                    Write-MtLine "MT_WORLD: FAIL — 生成世界期间产生崩溃报告（$($crashes[0].Name)）"
                     break
                 }
             }
