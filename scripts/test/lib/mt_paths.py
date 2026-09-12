@@ -163,10 +163,16 @@ def active_run_id() -> str:
 
 
 def run_start_ts(run_id: str) -> float:
-    """由 run id（yyyymmdd-HHMMSS）还原运行开始时间戳。"""
+    """由 run id（yyyymmdd-HHMMSS）还原运行开始时间戳。
+
+    ⚠️ 2026-09-12（pwsh 迁移期修正）：原实现只捕获 ValueError，但 Windows 上
+    `time.mktime` 对**可解析却越界**的时间（如 19700101-000000，早于本地 epoch）
+    抛的是 OverflowError，会直接冒泡成未捕获异常。按本函数自身文档「解析失败返回
+    0.0」的契约，这里把 OverflowError / OSError 一并折叠为 0.0。
+    """
     try:
         return time.mktime(time.strptime(run_id, "%Y%m%d-%H%M%S"))
-    except ValueError:
+    except (ValueError, OverflowError, OSError):
         return 0.0
 
 
