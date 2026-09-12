@@ -7,7 +7,7 @@ import net.minecraft.world.item.ItemStack;
 import java.util.Optional;
 import java.util.UUID;
 
-import com.merlinkitsune.starengine.component.ItemDataKey;
+import com.merlinkitsune.starenginelib.component.ItemDataKey;
 /**
  * 1.20.1 Forge 数据组件 shim:常量名与 1.21 分支的 {@code ModDataComponents} 一一对应,
  * 内部由 {@link ItemDataKey}(ItemStack NBT)承载;1.21 的 networkSynchronized 语义

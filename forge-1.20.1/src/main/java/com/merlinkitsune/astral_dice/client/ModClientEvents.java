@@ -23,8 +23,8 @@ import org.joml.Matrix4f;
 import org.joml.Quaternionf;
 import org.joml.Vector4f;
 
-import com.merlinkitsune.starengine.client.ActionBarManager;
-import com.merlinkitsune.starengine.client.ClientDamageNumbers;
+import com.merlinkitsune.starenginelib.client.ActionBarManager;
+import com.merlinkitsune.starenginelib.client.ClientDamageNumbers;
 @Mod.EventBusSubscriber(modid = AstralDiceMod.MODID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.MOD)
 public class ModClientEvents {
 

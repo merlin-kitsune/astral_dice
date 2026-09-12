@@ -1,9 +1,9 @@
 package com.merlinkitsune.astral_dice.item.chip;
 
-import com.merlinkitsune.starengine.component.GameplayConstants;
+import com.merlinkitsune.starenginelib.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.item.ChargeManager;
-import com.merlinkitsune.starengine.item.CuriosCompat;
+import com.merlinkitsune.starenginelib.item.CuriosCompat;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.network.ModNetwork;
 import net.minecraft.ChatFormatting;

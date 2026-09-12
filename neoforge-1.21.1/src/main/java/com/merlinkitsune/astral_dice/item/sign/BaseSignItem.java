@@ -1,6 +1,6 @@
 package com.merlinkitsune.astral_dice.item.sign;
 
-import com.merlinkitsune.starengine.component.GameplayConstants;
+import com.merlinkitsune.starenginelib.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
 import net.minecraft.ChatFormatting;
@@ -102,8 +102,8 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
         FanSmallChipItem.applyAfterSignSkill(player);
         // 5. 立牌主动技能响应事件:立牌类订阅本事件注册自身 ActionBar 反馈(见 SignActiveTriggeredEvent);
         //    无任何处理器响应(未注册)时,发送默认提示"xxx立牌:主动技能已启动!"
-        com.merlinkitsune.starengine.event.SignActiveTriggeredEvent triggered =
-                new com.merlinkitsune.starengine.event.SignActiveTriggeredEvent(player, stack);
+        com.merlinkitsune.starenginelib.event.SignActiveTriggeredEvent triggered =
+                new com.merlinkitsune.starenginelib.event.SignActiveTriggeredEvent(player, stack);
         net.neoforged.neoforge.common.NeoForge.EVENT_BUS.post(triggered);
         if (!triggered.isHandled()) {
             notifyActionBar(player, "msg.astral_dice.sign_active_triggered", signName, ChatFormatting.YELLOW);

@@ -2,7 +2,7 @@ package com.merlinkitsune.astral_dice.event;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
-import com.merlinkitsune.starengine.item.CuriosCompat;
+import com.merlinkitsune.starenginelib.item.CuriosCompat;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.chip.WarpEngineChipItem;
 import com.merlinkitsune.astral_dice.network.ModNetwork;

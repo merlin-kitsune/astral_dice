@@ -1,9 +1,9 @@
 package com.merlinkitsune.astral_dice.item.sign;
-import com.merlinkitsune.starengine.item.CuriosCompat;
+import com.merlinkitsune.starenginelib.item.CuriosCompat;
 
 import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
 
-import com.merlinkitsune.starengine.component.GameplayConstants;
+import com.merlinkitsune.starenginelib.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
 import com.merlinkitsune.astral_dice.effect.ModEffects;

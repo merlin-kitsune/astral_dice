@@ -1,7 +1,7 @@
 package com.merlinkitsune.astral_dice.item.sign;
 
 import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
-import com.merlinkitsune.starengine.event.SignActiveTriggeredEvent;
+import com.merlinkitsune.starenginelib.event.SignActiveTriggeredEvent;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 
@@ -17,7 +17,7 @@ import top.theillusivec4.curios.api.SlotContext;
 
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
-import com.merlinkitsune.starengine.component.GameplayConstants;
+import com.merlinkitsune.starenginelib.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.event.AstralEventSystem;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;

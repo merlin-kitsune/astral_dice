@@ -2,8 +2,8 @@ package com.merlinkitsune.astral_dice;
 
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
-import com.merlinkitsune.starengine.client.StarEngineConfigScreen;
-import com.merlinkitsune.starengine.config.StarEngineConfigs;
+import com.merlinkitsune.starenginelib.client.StarEngineConfigScreen;
+import com.merlinkitsune.starenginelib.config.StarEngineConfigs;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.event.AstralEvents;
 import com.merlinkitsune.astral_dice.init.ModCreativeTabs;

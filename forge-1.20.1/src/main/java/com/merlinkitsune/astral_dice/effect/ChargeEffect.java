@@ -1,7 +1,7 @@
 package com.merlinkitsune.astral_dice.effect;
 
-import com.merlinkitsune.starengine.component.GameplayConstants;
-import com.merlinkitsune.starengine.event.ModEffectRemoval;
+import com.merlinkitsune.starenginelib.component.GameplayConstants;
+import com.merlinkitsune.starenginelib.event.ModEffectRemoval;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectCategory;
 import net.minecraft.world.effect.MobEffectInstance;

@@ -1,7 +1,7 @@
 package com.merlinkitsune.astral_dice.target;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
-import com.merlinkitsune.starengine.component.GameplayConstants;
+import com.merlinkitsune.starenginelib.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.network.ActionBarPayload;
 import com.merlinkitsune.astral_dice.network.TargetSelectCancelPayload;
 import com.merlinkitsune.astral_dice.network.TargetSelectConfirmPayload;
@@ -25,9 +25,9 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 
-import com.merlinkitsune.starengine.target.TargetSelectionAction;
-import com.merlinkitsune.starengine.target.TargetSelectionRegistry;
-import com.merlinkitsune.starengine.target.TargetType;
+import com.merlinkitsune.starenginelib.target.TargetSelectionAction;
+import com.merlinkitsune.starenginelib.target.TargetSelectionRegistry;
+import com.merlinkitsune.starenginelib.target.TargetType;
 /**
  * 目标选择器服务端管理器（权威）。
  *

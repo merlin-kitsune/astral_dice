@@ -2,7 +2,7 @@ package com.merlinkitsune.astral_dice.combat;
 
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
-import com.merlinkitsune.starengine.event.AmethystDiceHandler;
+import com.merlinkitsune.starenginelib.event.AmethystDiceHandler;
 import com.merlinkitsune.astral_dice.item.MarkManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import net.minecraft.core.registries.Registries;

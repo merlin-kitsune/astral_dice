@@ -1,11 +1,11 @@
 package com.merlinkitsune.astral_dice.event;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
-import com.merlinkitsune.starengine.component.GameplayConstants;
-import com.merlinkitsune.starengine.target.TargetSelectionAction;
+import com.merlinkitsune.starenginelib.component.GameplayConstants;
+import com.merlinkitsune.starenginelib.target.TargetSelectionAction;
 import com.merlinkitsune.astral_dice.target.TargetSelectionManager;
-import com.merlinkitsune.starengine.target.TargetSelectionRegistry;
-import com.merlinkitsune.starengine.target.TargetType;
+import com.merlinkitsune.starenginelib.target.TargetSelectionRegistry;
+import com.merlinkitsune.starenginelib.target.TargetType;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;

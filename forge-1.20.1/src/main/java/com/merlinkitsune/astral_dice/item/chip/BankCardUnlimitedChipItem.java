@@ -1,7 +1,7 @@
 package com.merlinkitsune.astral_dice.item.chip;
-import com.merlinkitsune.starengine.item.CuriosCompat;
+import com.merlinkitsune.starenginelib.item.CuriosCompat;
 
-import com.merlinkitsune.starengine.event.EventTargetCollector;
+import com.merlinkitsune.starenginelib.event.EventTargetCollector;
 import com.merlinkitsune.astral_dice.resource.ResourceConversion;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;

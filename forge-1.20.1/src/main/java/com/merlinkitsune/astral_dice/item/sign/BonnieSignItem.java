@@ -1,18 +1,18 @@
 package com.merlinkitsune.astral_dice.item.sign;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
-import com.merlinkitsune.starengine.component.GameplayConstants;
+import com.merlinkitsune.starenginelib.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
-import com.merlinkitsune.starengine.event.ModEffectRemoval;
+import com.merlinkitsune.starenginelib.event.ModEffectRemoval;
 import com.merlinkitsune.astral_dice.item.MarkManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
 import com.merlinkitsune.astral_dice.network.ModNetwork;
-import com.merlinkitsune.starengine.target.TargetSelectionAction;
+import com.merlinkitsune.starenginelib.target.TargetSelectionAction;
 import com.merlinkitsune.astral_dice.target.TargetSelectionManager;
-import com.merlinkitsune.starengine.target.TargetSelectionRegistry;
-import com.merlinkitsune.starengine.target.TargetType;
+import com.merlinkitsune.starenginelib.target.TargetSelectionRegistry;
+import com.merlinkitsune.starenginelib.target.TargetType;
 import com.merlinkitsune.astral_dice.event.WeirdDiceHandler;
 import com.merlinkitsune.astral_dice.item.chip.CurrentCoreChipItem;
 

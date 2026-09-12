@@ -2,19 +2,19 @@ package com.merlinkitsune.astral_dice.item.sign;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
-import com.merlinkitsune.starengine.component.GameplayConstants;
+import com.merlinkitsune.starenginelib.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
-import com.merlinkitsune.starengine.effect.MosesBrokenEffect;
+import com.merlinkitsune.starenginelib.effect.MosesBrokenEffect;
 import com.merlinkitsune.astral_dice.effect.WeaknessRevealEffect;
 import com.merlinkitsune.astral_dice.event.WeirdDiceHandler;
 import com.merlinkitsune.astral_dice.item.ChargeManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.chip.CurrentCoreChipItem;
-import com.merlinkitsune.starengine.target.TargetSelectionAction;
+import com.merlinkitsune.starenginelib.target.TargetSelectionAction;
 import com.merlinkitsune.astral_dice.target.TargetSelectionManager;
-import com.merlinkitsune.starengine.target.TargetSelectionRegistry;
-import com.merlinkitsune.starengine.target.TargetType;
+import com.merlinkitsune.starenginelib.target.TargetSelectionRegistry;
+import com.merlinkitsune.starenginelib.target.TargetType;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -94,7 +94,7 @@ public class MosesSignItem extends BaseSignItem {
 
     // 主动技能自带 ActionBar 反馈:注册到主动技能响应事件,阻止默认提示
     @SubscribeEvent
-    public static void onSignActiveTriggered(com.merlinkitsune.starengine.event.SignActiveTriggeredEvent event) {
+    public static void onSignActiveTriggered(com.merlinkitsune.starenginelib.event.SignActiveTriggeredEvent event) {
         if (event.getSignStack().is(ModItems.MOSES_SIGN.get())) {
             sendReadyPrompt(event.getPlayer());
             event.setHandled();

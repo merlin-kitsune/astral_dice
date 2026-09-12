@@ -2,11 +2,11 @@ package com.merlinkitsune.astral_dice.item;
 
 import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
 
-import com.merlinkitsune.starengine.component.GameplayConstants;
+import com.merlinkitsune.starenginelib.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.event.AstralEventSystem;
-import com.merlinkitsune.starengine.event.EventTargetCollector;
+import com.merlinkitsune.starenginelib.event.EventTargetCollector;
 import com.merlinkitsune.astral_dice.network.ModNetwork.ActionBarMessage;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
@@ -25,7 +25,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-import com.merlinkitsune.starengine.item.BossEntityUtil;
+import com.merlinkitsune.starenginelib.item.BossEntityUtil;
 /**
  * "调查阶段"事件核心逻辑。
  * 阶段:调查阶段 I / II / III / 真相揭露。由击杀"隐匿调查"目标触发;大侦探立牌可抽取该事件(继承附近秘密侦探立牌玩家的进度,不推进)。

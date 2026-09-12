@@ -1,7 +1,7 @@
 package com.merlinkitsune.astral_dice.event;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
-import com.merlinkitsune.starengine.component.GameplayConstants;
+import com.merlinkitsune.starenginelib.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.item.card.ExclusiveCardUtil;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
@@ -17,9 +17,9 @@ import top.theillusivec4.curios.api.CuriosApi;
 import java.util.Optional;
 import com.merlinkitsune.astral_dice.network.ActionBarPayload;
 
-import com.merlinkitsune.starengine.event.AstralEventType;
-import com.merlinkitsune.starengine.event.EventContext;
-import com.merlinkitsune.starengine.event.EventTargetCollector;
+import com.merlinkitsune.starenginelib.event.AstralEventType;
+import com.merlinkitsune.starenginelib.event.EventContext;
+import com.merlinkitsune.starenginelib.event.EventTargetCollector;
 /**
  * 事件系统:触发事件并应用立牌增益。
  * 立牌可注册事件类型,并可通过 trigger 触发事件;触发后为持有特定立牌的玩家提供特定增益。

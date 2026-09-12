@@ -328,7 +328,7 @@ public final class SpellDamageRegistry {
 
             @Override
             public double apply(SpellDamageContext ctx, double bonus) {
-                return bonus + com.merlinkitsune.starengine.event.AmethystDiceHandler.rollD6(ctx.attacker);
+                return bonus + com.merlinkitsune.starenginelib.event.AmethystDiceHandler.rollD6(ctx.attacker);
             }
         });
         // 电击手套:武装期间(使用伤害效果牌时消耗 4 层充能置位),本次远程/魔法伤害同时命中目标 3 格内的

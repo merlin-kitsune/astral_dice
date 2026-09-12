@@ -1,8 +1,8 @@
 package com.merlinkitsune.astral_dice.item.chip;
-import com.merlinkitsune.starengine.item.CuriosCompat;
+import com.merlinkitsune.starenginelib.item.CuriosCompat;
 
 import com.merlinkitsune.astral_dice.effect.ModEffects;
-import com.merlinkitsune.starengine.event.ModEffectRemoval;
+import com.merlinkitsune.starenginelib.event.ModEffectRemoval;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.player.Player;

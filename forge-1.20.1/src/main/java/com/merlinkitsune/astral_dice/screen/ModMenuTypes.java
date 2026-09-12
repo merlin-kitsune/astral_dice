@@ -1,7 +1,7 @@
 package com.merlinkitsune.astral_dice.screen;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
-import com.merlinkitsune.starengine.item.CuriosCompat;
+import com.merlinkitsune.starenginelib.item.CuriosCompat;
 import com.merlinkitsune.astral_dice.item.dice.DiceCurioItem;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
