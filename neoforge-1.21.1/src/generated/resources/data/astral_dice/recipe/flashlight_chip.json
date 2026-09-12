@@ -5,23 +5,23 @@
     "B": {
       "item": "astral_dice:blank_chip"
     },
-    "I": {
-      "item": "minecraft:iron_ingot"
+    "D": {
+      "item": "astral_dice:star_coin_dust"
     },
     "L": {
-      "item": "minecraft:redstone_lamp"
+      "item": "minecraft:yellow_stained_glass"
     },
     "P": {
       "item": "astral_dice:star_plate"
     },
-    "Y": {
-      "item": "minecraft:yellow_stained_glass"
+    "X": {
+      "item": "minecraft:redstone_lamp"
     }
   },
   "pattern": [
-    "LYL",
-    " B ",
-    "IPI"
+    "XLX",
+    "DBD",
+    "PPP"
   ],
   "result": {
     "count": 1,

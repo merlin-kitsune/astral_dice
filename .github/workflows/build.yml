@@ -4,7 +4,9 @@ on:
   push:
     branches:
       - main
-      - 'multi-1.20.1/1.21.1'
+      - 'multi-1.20.1-1.21.1'
+      # 合并后的开发主线（原 dev-targetselector 重命名而来）
+      - 'multi-dev-next'
     tags:
       # 发布规范:tag 使用不含后缀的基础版本号(如 1.1.3),禁止 v 前缀与 +加载器后缀
       - '[0-9]*'

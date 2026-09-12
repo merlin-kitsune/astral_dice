@@ -243,8 +243,8 @@ public class CardInventoryMenu extends AbstractContainerMenu {
     }
     private void initMaxCostFromDice() {
         if (equippedDice.isEmpty()) return;
-        WeaponEnhancement enh = equippedDice.getOrDefault(ModDataComponents.WEAPON_ENHANCEMENT.get(), WeaponEnhancement.EMPTY);
-        this.starLevel = enh.starLevel();
+        // 卡牌配置星级:下界之星骰子(T4)恒为最高档 3★(卡牌槽 12/费用上限各 6)
+        this.starLevel = DiceCurioItem.configStarLevel(equippedDice);
         this.maxAttackCost = GameplayConstants.cardCostForStar(starLevel);
         this.maxDefenseCost = GameplayConstants.cardCostForStar(starLevel);
     }
@@ -259,7 +259,7 @@ public class CardInventoryMenu extends AbstractContainerMenu {
         if (player.level().isClientSide()) return;
         if (equippedDice.isEmpty()) return;
         WeaponEnhancement enh = equippedDice.getOrDefault(ModDataComponents.WEAPON_ENHANCEMENT.get(), WeaponEnhancement.EMPTY);
-        this.starLevel = enh.starLevel();
+        this.starLevel = DiceCurioItem.configStarLevel(equippedDice);
         this.maxAttackCost = GameplayConstants.cardCostForStar(starLevel);
         this.maxDefenseCost = GameplayConstants.cardCostForStar(starLevel);
         List<AppliedStone> stones = enh.appliedStones();
@@ -308,8 +308,10 @@ public class CardInventoryMenu extends AbstractContainerMenu {
                 }
             }
         }
+        // 星级持久化为实际星级(下界之星骰子 GUI 显示 3★ 档配置,但不得把实际星级改写为 3)
+        int actualStar = dice.getOrDefault(ModDataComponents.WEAPON_ENHANCEMENT.get(), WeaponEnhancement.EMPTY).starLevel();
         dice.set(ModDataComponents.WEAPON_ENHANCEMENT.get(),
-                new WeaponEnhancement(totalAttackCost, maxAttackCost, totalDefenseCost, maxDefenseCost, starLevel, stones));
+                new WeaponEnhancement(totalAttackCost, maxAttackCost, totalDefenseCost, maxDefenseCost, actualStar, stones));
     }
 
     public ItemStack getCardItem(int slotIndex) {

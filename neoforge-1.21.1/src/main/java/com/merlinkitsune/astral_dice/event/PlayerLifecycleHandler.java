@@ -18,6 +18,7 @@ import com.merlinkitsune.astral_dice.item.dice.DiceCurioItem;
 import com.merlinkitsune.astral_dice.item.card.ExclusiveCardUtil;
 import com.merlinkitsune.astral_dice.item.sign.HaiqingSignItem;
 import com.merlinkitsune.astral_dice.item.HealingManager;
+import com.merlinkitsune.astral_dice.item.ChargeManager;
 import com.merlinkitsune.astral_dice.item.InvestigationEventUtil;
 import com.merlinkitsune.astral_dice.item.MarkManager;
 import com.merlinkitsune.astral_dice.item.StarLightManager;
@@ -56,6 +57,7 @@ import net.minecraft.world.item.TridentItem;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.event.AnvilUpdateEvent;
 import net.neoforged.neoforge.event.LootTableLoadEvent;
 import net.neoforged.neoforge.event.entity.living.LivingChangeTargetEvent;
@@ -69,6 +71,7 @@ import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
 import top.theillusivec4.curios.api.CuriosApi;
+import vazkii.patchouli.common.item.ItemModBook;
 import top.theillusivec4.curios.api.type.inventory.ICurioStacksHandler;
 
 import java.util.ArrayList;
@@ -114,6 +117,10 @@ public class PlayerLifecycleHandler {
         if (player.level().isClientSide()) return;
         // 不死图腾等取消死亡:不视为死亡,不执行任何清理
         if (event.isCanceled()) return;
+        // 充能流派:死亡不丢失充能层数,先暂存等待重生恢复
+        ChargeManager.preserveOnDeath(player);
+        // 玻璃骰子死亡惩罚:丢失玻璃骰子本体及其已装备的全部卡牌(同时收缩筹码栏)
+        DiceCurioItem.removeGlassDiceOnDeath(player);
         HealingManager.clear(player);
         // 计时器守卫:清空效果结束时刻记录,防止死亡后守卫重新施加效果
         EffectTimerGuard.clear(player);
@@ -168,6 +175,16 @@ public class PlayerLifecycleHandler {
         player.removeEffect(ModEffects.MAGIC_TOME_COUNT);
     }
 
+    // 死亡重生克隆:尽早恢复充能层数(配合 PlayerRespawnEvent 兜底,重复恢复会自动去重)
+    @SubscribeEvent
+    public static void onPlayerCloneRestoreCharge(
+            net.neoforged.neoforge.event.entity.player.PlayerEvent.Clone event) {
+        if (!event.isWasDeath()) return;
+        if (!(event.getEntity() instanceof Player player)) return;
+        if (player.level().isClientSide()) return;
+        ChargeManager.restoreAfterDeath(player);
+    }
+
     // 玩家退出/重新登录:清除骰神赐福效果(防止退出后重进仍保留战斗状态)
     @SubscribeEvent
     public static void onPlayerLoggedInClearDiceBlessing(
@@ -180,6 +197,8 @@ public class PlayerLifecycleHandler {
         ModEffectRemoval.remove(player, ModEffects.DICE_BLESSING);
         // 重连后刷新治愈体系(上限收缩/效果显示;赐福边沿 prev 标记初始 false,不会误触发减半)
         HealingManager.tick(player);
+        // 首次加入世界赠送《恋的规则书》(开关见 common 配置)
+        giveGuideBookOnFirstJoin(player);
     }
 
     // 死亡重生:刷新治愈体系(上限收缩/效果显示)
@@ -189,6 +208,19 @@ public class PlayerLifecycleHandler {
         if (!(event.getEntity() instanceof Player player)) return;
         if (player.level().isClientSide()) return;
         HealingManager.tick(player);
+        // 充能流派:死亡不丢失充能层数,重生后恢复
+        ChargeManager.restoreAfterDeath(player);
     }
 
+    // 首次加入世界:若配置开启且玩家尚未领过,赠送《恋的规则书》(每个玩家在每个世界只发一次)
+    private static void giveGuideBookOnFirstJoin(Player player) {
+        if (!GameplayConstants.GIVE_GUIDE_BOOK_ON_FIRST_JOIN) return;
+        if (ModAttachments.isGuideBookGiven(player)) return;
+        if (!ModList.get().isLoaded("patchouli")) return;
+        ItemStack book = ItemModBook.forBook(ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID, "astral_guide"));
+        if (!player.getInventory().add(book)) {
+            player.drop(book, false);
+        }
+        ModAttachments.setGuideBookGiven(player, true);
+    }
 }

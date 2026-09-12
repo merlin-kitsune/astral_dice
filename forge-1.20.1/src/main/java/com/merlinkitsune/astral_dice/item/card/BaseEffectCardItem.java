@@ -18,8 +18,10 @@ import com.merlinkitsune.astral_dice.item.chip.CandyChipItem;
 import com.merlinkitsune.astral_dice.item.chip.SatelliteChipItem;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.sign.FenSignItem;
+import com.merlinkitsune.astral_dice.item.sign.PandamanSignItem;
 import com.merlinkitsune.astral_dice.item.sign.JasmineSignItem;
 import com.merlinkitsune.astral_dice.item.chip.MagicQuiverChipItem;
+import com.merlinkitsune.astral_dice.item.chip.PiggyBankChipItem;
 import com.merlinkitsune.astral_dice.item.sign.KomachiSignItem;
 
 /**
@@ -220,6 +222,9 @@ public abstract class BaseEffectCardItem extends Item {
         // 可口糖果:每使用一张效果牌触发(治愈+1、回血+1、满血时本轮出牌数+1)
         CandyChipItem.onEffectCardUsed(player);
 
+        // 电击手套:使用效果牌充能 +1;伤害效果牌且充能 ≥4 时消耗 4 层充能,武装本周期的法伤扩散
+        com.merlinkitsune.astral_dice.item.chip.ElectricGloveChipItem.onEffectCardUsed(player, stack);
+
         // 探天卫星:使用"轨道炮"后本轮出牌数+1(每 1:00 一次)
         if (stack.is(ModItems.ORBITAL_STRIKE_CARD.get())) {
             SatelliteChipItem.onOrbitalStrikeUsed(player);
@@ -234,11 +239,17 @@ public abstract class BaseEffectCardItem extends Item {
         if (isHealingCard()) {
             FenSignItem.onHealingCardUsed(player);
         }
+        // 肉弹战车立牌被动:使用汉堡/巧克力蛋糕后触发治疗与生命上限效果
+        if (stack.is(ModItems.HAMBURGER.get()) || stack.is(ModItems.CHOCOLATE_CAKE.get())) {
+            PandamanSignItem.onHealingFoodUsed(player, stack.is(ModItems.HAMBURGER.get()));
+        }
 
         // 复制计数钩子(忍者立牌/魔法秘典/魔法箭袋):全部效果牌均参与,无排除项
         KomachiSignItem.onEffectCardUsed(player, cardTypeId());
         MagicTomeChipItem.onEffectCardUsed(player, cardTypeId());
         MagicQuiverChipItem.onEffectCardUsed(player, cardTypeId());
+        // 小猪存钱罐筹码:每使用 2 张效果牌获得 3 星币(独立计数)
+        PiggyBankChipItem.onEffectCardUsed(player);
         return true;
     }
 }

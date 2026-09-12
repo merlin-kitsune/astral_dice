@@ -1,0 +1,30 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": {
+      "item": "astral_dice:blank_chip"
+    },
+    "C": {
+      "item": "astral_dice:star_coin"
+    },
+    "G": {
+      "item": "minecraft:feather"
+    },
+    "L": {
+      "item": "minecraft:ink_sac"
+    },
+    "X": {
+      "item": "minecraft:paper"
+    }
+  },
+  "pattern": [
+    "XLX",
+    "GBG",
+    "CCC"
+  ],
+  "result": {
+    "item": "astral_dice:member_recommendation_chip"
+  },
+  "show_notification": true
+}

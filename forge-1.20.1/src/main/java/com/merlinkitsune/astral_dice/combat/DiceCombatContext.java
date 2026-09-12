@@ -1,6 +1,7 @@
 package com.merlinkitsune.astral_dice.combat;
 
 import com.merlinkitsune.astral_dice.component.WeaponEnhancement;
+import com.merlinkitsune.astral_dice.item.ModItems;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -34,6 +35,8 @@ public class DiceCombatContext {
     public final int misakiStar;
     /** 护法立牌(misaki)层数 */
     public final int misakiStacks;
+    /** 攻击者是否佩戴玻璃骰子(战斗牌点数始终取最大值) */
+    public final boolean attackerCardsMax;
 
     // === 修饰器写入区(供后续流程/主方法使用) ===
 
@@ -49,6 +52,8 @@ public class DiceCombatContext {
     public boolean hasFullPower;
     /** 上班族立牌(padman):攻击骰点为 6 时忽略除防御卡外的全部防御(修饰器写入,主流程读取) */
     public boolean padmanDefBypass;
+    /** 防御方(目标玩家)是否佩戴玻璃骰子(防御牌点数始终取最大值;由防御结算流程写入) */
+    public boolean targetCardsMax;
 
     public DiceCombatContext(Player attacker, LivingEntity target, LivingDamageEvent event,
                              int baseDice, ItemStack diceStack, WeaponEnhancement enhancement,
@@ -64,5 +69,6 @@ public class DiceCombatContext {
         this.misakiBurst = misakiBurst;
         this.misakiStar = misakiStar;
         this.misakiStacks = misakiStacks;
+        this.attackerCardsMax = diceStack != null && !diceStack.isEmpty() && diceStack.is(ModItems.GLASS_DICE.get());
     }
 }

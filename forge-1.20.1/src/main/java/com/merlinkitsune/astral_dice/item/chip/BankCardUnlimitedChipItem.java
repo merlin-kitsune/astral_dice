@@ -1,6 +1,7 @@
 package com.merlinkitsune.astral_dice.item.chip;
 import com.merlinkitsune.astral_dice.item.CuriosCompat;
 
+import com.merlinkitsune.astral_dice.event.EventTargetCollector;
 import com.merlinkitsune.astral_dice.resource.ResourceConversion;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -13,7 +14,8 @@ import com.merlinkitsune.astral_dice.item.StarLightManager;
 
 /**
  * 银行卡-用不完筹码:装备时获得 3 点星光(一次性);
- * 每次骰神赐福效果结束后,使自身及团队所有成员获得 3 星币(由 {@link #onBlessingEnd} 在赐福结束时调用)。
+ * 每次骰神赐福效果结束后,使自身及友方玩家(团队内成员;未加入任何队伍时为全服在线玩家)获得 3 星币
+ * (由 {@link #onBlessingEnd} 在赐福结束时调用)。
  */
 public class BankCardUnlimitedChipItem extends BaseChipItem {
     /** 赐福结束后发放的星币数量 */
@@ -40,7 +42,8 @@ public class BankCardUnlimitedChipItem extends BaseChipItem {
     }
 
     /**
-     * 骰神赐福结束时调用:使自身及团队所有成员(Minecraft 同队)获得 3 星币。
+     * 骰神赐福结束时调用:使自身及友方玩家获得 3 星币。
+     * 友方 = 已加入队伍时同队在线玩家(MC/FTB/OPAC);未加入任何队伍时 = 全服在线玩家。
      * 死亡清场时(玩家已死亡)不发放。
      */
     public static void onBlessingEnd(Player player) {
@@ -48,8 +51,9 @@ public class BankCardUnlimitedChipItem extends BaseChipItem {
         if (!isEquipped(player)) return;
         if (player.isDeadOrDying()) return;
         if (!(player.level() instanceof ServerLevel serverLevel)) return;
+        java.util.List<Player> allies = EventTargetCollector.collectTeamPlayers(player);
         for (ServerPlayer sp : serverLevel.players()) {
-            if (sp == player || (sp.getTeam() != null && sp.getTeam() == player.getTeam())) {
+            if (sp == player || allies.contains(sp)) {
                 giveCoins(sp);
             }
         }

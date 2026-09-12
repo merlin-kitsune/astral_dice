@@ -41,7 +41,6 @@ repo/
 
 temp/
 "temp/
-.opencode/
 scripts/test/
 
 ### 项目级排除(用户要求,与原 astra_dice 仓库一致) ###
@@ -54,5 +53,5 @@ temp/
 images/
 AGENTS.md
 deploy.ps1
-opencode.json
 .zcode/
+.workbuddy/

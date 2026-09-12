@@ -1,0 +1,13 @@
+{
+  "name": "item.astral_dice.conductive_wire",
+  "category": "astral_dice:materials",
+  "icon": "astral_dice:conductive_wire",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:conductive_wire",
+      "text": "astral_dice.guide.entry.conductive_wire.1"
+    }
+  ],
+  "sortnum": 7
+}

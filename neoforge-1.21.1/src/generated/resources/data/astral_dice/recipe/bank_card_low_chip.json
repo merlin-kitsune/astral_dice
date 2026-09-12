@@ -8,16 +8,19 @@
     "C": {
       "item": "astral_dice:star_coin"
     },
-    "G": {
-      "item": "minecraft:gold_ingot"
+    "D": {
+      "item": "astral_dice:star_coin_dust"
     },
-    "K": {
+    "L": {
       "item": "minecraft:gold_block"
+    },
+    "X": {
+      "item": "minecraft:gold_ingot"
     }
   },
   "pattern": [
-    "GGG",
-    "KBK",
+    "XLX",
+    "DBD",
     "CCC"
   ],
   "result": {

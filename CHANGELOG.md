@@ -1,363 +1,125 @@
-# 更新日志 / Changelog
+# Changelog (English)
 
-本文档按语言完全拆分:上半部分为中文版,下半部分为英文版。
-This changelog is fully split by language: the Chinese version comes first, followed by the English version.
+> This file contains the English changelog only. Chinese version: [`CHANGELOG_ZH.md`](CHANGELOG_ZH.md).
+> The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 
-# 中文更新日志
-
-## 未发布 / Unreleased（2.0.0-SNAPSHOT.2，双版本）
-
-> 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
-
-### 新内容
-
-- 立牌主动技能 ActionBar 提示重构:新建独立响应事件 `SignActiveTriggeredEvent`,各立牌在立牌类中注册自身提示——忍者(出牌数+1 及剩余出牌数)、看板(新卡牌数与星币数)、骇客(完全隐身时长)已注册专属提示;占星师/秘密侦探提示文本更新为「主动技能已激活,攻击敌对目标向其施加…」;未注册的立牌(大当家/扫地机/史莱姆/护法/上班族/吸血鬼/经商/调查员)显示默认提示「<立牌名>：主动技能已启动！」(双版本)。 / Sign-active ActionBar feedback refactored: a dedicated response event `SignActiveTriggeredEvent` was added, and signs register their own prompts in their sign classes — Komachi (play count +1 and remaining), Mimi (new cards and Star Coins) and Nancy Lu (invisibility duration) now have custom texts; Haiqing/Bonnie prompt texts were updated; unregistered signs (Fen, Jasmine, Lulu, Misaki, Padman, Papara, Parunan, Rin) show the default "<Sign>: Active skill started!" (both versions).
-- 卡牌界面:骰神赐福期间的锁定红色提醒由界面顶部移至界面下方(选择区域以外)(双版本)。 / Card inventory screen: the red locked warning during a Dice Blessing moved from the top to the bottom of the screen, outside the selection area (both versions).
-
-### 内容与平衡性调整
-
-- 效果牌出牌系统调整:保留出牌窗口(基础出牌数 1 + 固定/临时 +1 来源 + 忍者出牌数银行),移除效果牌周期内连续出牌上限(原默认 9 张,`max_effect_card_plays` 配置删除),加成来源可无限叠加;效果牌轮次按新定义判定(周期结束 = 所有效果牌进度走完 **且** 出牌冷却走完)(仅 1.21.1)。
-- 看板立牌被动重做:合成或主动返还卡牌时每获得一张战斗牌 +1 星币(奖励/复制不再触发);主动每返还累计 25 张战斗牌获得一个随机筹码(原为每累计 25 星币)(仅 1.21.1)。
-- 扫地机立牌被动追加:使用「加急加快」效果牌后,主动技能冷却立即减少最大冷却的 50%(仅 1.21.1)。
-- 调查员立牌主动:获得一张活体书页,若使用前物品栏中没有活体书页则共获得两张(仅 1.21.1)。
-- 秘密侦探立牌:调查阶段隐身期间(隐身 + 调查阶段效果)不会被生物索敌(仅 1.21.1)。
-- 骇客立牌主动:消耗的战斗牌仅从主物品栏选取(不再从末影箱/背包类容器);攻击力加成最低 +2,主物品栏无战斗牌可消耗时同样获得保底 +2(仅 1.21.1)。
-- 岿然不动:防御力 +2 → 护甲 +8(对应骰战防御力 +4),迁移为效果属性修饰器,真实护甲与骰战均生效且不重复计算(仅 1.21.1)。
-- 全力攻击:耐久 2 → 5(仅 1.21.1)。
-- 诅咒之剑配方:中轴材料由「谜之炖菜」标签改为「哭泣黑曜石」;删除废弃的 `suspicious_stews` 物品标签(仅 1.21.1)。
-- 青之诅咒描述:盔甲韧性「归 0」→「-100%%」(数值本身不变)(仅 1.21.1)。
-- 治愈体系:治愈点上限改为固定 32(原 max(10, 最大生命值÷2));医疗箱-紧急/完备移除「装备时立即恢复 2/6 点生命」(赐福加点保留)(仅 1.21.1)。
-- 维生素药丸:触发范围由「合成或奖励途径」扩为「合成或获得卡牌时」;探天卫星补充轨道炮改经统一发牌路径(仅 1.21.1)。
-- 探天卫星第三项能力:使用「轨道炮」后本轮出牌数 +1 由「每轮最多一次」改为「每 1:00 仅一次」(仅 1.21.1)。
-- 命名统一:活体书页相关 Java 标识符/效果注册 id 统一为 `LIVING_PAGE`/`living_page`(物品 id `effect_card_living_page` 不变)(仅 1.21.1)。
-- 防御力折算规范:效果牌/立牌/筹码提供的防御力一律折算为**真实护甲**(1 防御力 = 2 护甲值,经 ARMOR 属性修饰器),不再参与骰战防御修饰器——骰战防御修饰器仅保留战斗防御牌(区间变动)。受影响来源:扫地机(2 护甲/点,护甲上限 40)、上班族(-4~+8 护甲)、吸血鬼(半血 +6 护甲)、复仇之戟(+12 护甲)、骇客(被动防御 +6 护甲)、大当家(养精蓄锐 +4 护甲);抗性提升不再折算骰战防御点(原版减伤仍生效)(仅 1.21.1)。
-- 怪物防御-护甲折算与玩家同步:怪物防御公式由「护甲÷4」改为与玩家一致「护甲÷2」(1 防御力 = 2 护甲值);贯穿之铳的目标防御计算同步(仅 1.21.1)。
-- 贯穿之铳配方:下界合金碎片 → 下界合金锭(双版本)。
-- 新增筹码「肾上腺素-一般」(史诗)恢复,「肾上腺素-高效」(传奇)配方回滚为升级链:一般=生命值低于最大生命值一半时攻击/防御 +3(护甲 +6);高效=+8 且触发时被敌方攻击有 20%% 概率闪避单次攻击。配方:一般=ZXZ/DCD/PPP(Z=再生药水,X=下界之星,D=凋零玫瑰,C=空白筹码,P=星盘);高效=RZR/ZOZ/PPP(R=红石粉,Z=钻石,O=肾上腺素-一般,P=黄金星盘)(双版本)。
-- 标靶筹码:触发骰神赐福后,对**距离最近的敌对目标**施加 1 层标记(移除原「标靶范围内随机」逻辑与 `target_chip_range` 范围配置,不再限定作用距离)(仅 1.21.1)。
-- 夹心饼干-美味:最大生命值 +12 → +8;移除「生命值低于一半时每 1:00 获得 1 层「反击」」;新增:最大生命值超过 20 点时,超出部分每 4 点生命值 +1 攻击力(仅 1.21.1)。
-- 修复骰子 tooltip 显示攻击牌时加成误标为「骰子」及染色问题:攻击牌(中/大/特大/名刀)统一显示为「攻击」,范围不再带「+」前缀,与防御牌/独立牌 tooltip 格式一致(仅 1.21.1)。
-- 骰子卡牌栏平衡:卡牌栏总格数改为仅由星级决定(与骰子品阶无关)——0★=4(攻防各2)、1★=6(各3)、2★=8(各4)、3★=12(各6);实际可用格严格按星级,无隐藏可用格(双版本)。
-- 骰子升级配方改用阶层标签作为升级母体:新增 `astral_dice:dice_t0`(基础骰子)/`dice_t1`(黄金骰子)/`dice_t2`(钻石骰子)/`dice_t3`(下界合金骰子)四个物品标签;黄金/钻石/下界合金骰子的升级配方输入由具体物品改为对应标签(双版本)。
-
-### 已修复BUG
-
-- 死亡清理调整:不死图腾等取消死亡时不再执行任何清理;护法立牌死亡丢失全部「剑气」层数(tooltip 追加死亡提示);吸血鬼立牌死亡清除主动技能效果;秘密侦探死亡保留调查阶段进度(仅卸牌时清除);忍者/调查员立牌的效果牌伤害加成死亡保留;移除死亡清理中无读取者的 DamageEffectBonus 残留调用(仅 1.21.1)。 / Death-cleanup adjustments: totem-canceled deaths no longer trigger any cleanup; Misaki loses all Sword Qi stacks on death (tooltip note added); Papara's active effect is cleared on death; Bonnie keeps investigation progress on death (unequip only); Komachi/Rin effect-card damage bonuses survive death; removed the leftover no-reader DamageEffectBonus reset in the death handler (1.21.1 only).
-- 修复忍者立牌主动技能在已有出牌进度或处于出牌冷却期时无法生效的问题:出牌数+1 改为累积式「出牌数银行」(按实际出牌消耗,跨周期保留,不受满额/冷却影响),并移除旧布尔标记及其残留调用(仅 1.21.1)。 / Fixed the Komachi sign's active failing when play progress existed or the cooldown was running: the play-count +1 is now a banked extra-play token (consumed per actual play, persists across windows, unaffected by burst-full or cooldown), and the old boolean flag plus its leftover calls were removed (1.21.1 only).
-- 1.20.1 recipe fixes: the "Koi's Rulebook" (patchouli:guide_book) recipe was in the wrong folder (singular "recipe") and thus never loaded — moved to "recipes"; the Cursed Sword chip's generated recipe used the 1.21 result.id format and failed to parse on 1.20.1 — regenerated in the 1.20.1 item format (generation sources fixed in both versions).
-- 修复部分筹码 tooltip 中换行符被渲染成方块占位符的问题(夹心饼干-美味/肾上腺素-高效/卫星/复仇之戟/诅咒之剑神秘遗物联动等多行 tooltip):改为按 lang 值内 `\n` 逐行拆分添加,不再整段组件内嵌真实换行符(仅 1.21.1)。 / Fixed chip tooltips rendering embedded newlines as box glyphs (Sandwich - Gourmet / Adrenaline - High-Grade / Satellite / Revenge Halberd / Cursed Sword Enigmatic Legacy+ link, etc.): multi-line lang values are now split into separate tooltip lines instead of keeping real `\n` inside a single component (1.21.1 only).
-- 1.20.1 配方修复:「恋的规则书」(patchouli:guide_book) 配方此前放错目录(recipe 单数)未加载,已移至 recipes;诅咒之剑配方生成文件误用 1.21 result.id 格式导致解析失败,已改回 1.20.1 item 格式(双版本生成源同步修正)。
-- 新增「反击」流派(玩家效果,图标 `images/反击.png`):拥有反击层数时被近战敌对生物攻击触发一次反击——视为玩家近战攻击,按 手持最高近战武器基础伤害 + 1d6 骰点 + 攻击牌加成(未赐福时自动触发骰神赐福并消耗攻击牌耐久)+ 攻击力加成 计算总伤害并对攻击目标造成伤害,随后移除 1 层;魔法伤害(唤魔者尖牙/守卫者光束等)不算近战,不触发;首个层数来源:夹心饼干-美味(生命值低于最大生命值一半时,每 1:00 获得 1 层「反击」)(双版本)。
-- 新增筹码「肾上腺素-一般/高效」(史诗/传奇):生命值低于最大生命值一半时,攻击力/防御力 +3/+8(防御按 1 点 = 2 点护甲折算为护甲 +6/+16);高效额外:触发加成时被敌方攻击,掷 1d6——骰点 4-5 → 50% 概率闪避本次伤害、骰点 6 → 100% 闪避。配方:一般 = ZXZ/DCD/PPP(Z=再生药水,X=下界之星,D=凋零玫瑰,C=空白筹码,P=星盘);高效 = RZR/ZOZ/PPP(R=红石粉,Z=钻石,O=肾上腺素-一般,P=黄金星盘,紫→金升级式)(双版本)。
-
-
-### 工程
-- 测试环境集成 JEI 便于配方查验(forge-1.20.1 15.56.0.205 / neoforge-1.21.1 19.39.0.372);1.20.1 dev 的整合包模组改为 curse maven modImplementation 依赖,修复 dev 环境无法加载生产 mixin 模组的问题。
-
-## 1.1.3
-
-### 新内容
-
-- 骰神赐福期间,骰子卡牌界面禁止插入/移除卡牌(服务端权威 clicked/quickMoveStack 拦截 + 客户端同步拦截),界面顶部显示红色提醒文字(双版本)。
-- 效果牌复制/返还覆盖全部效果牌(忍者立牌/魔法秘典/魔法箭袋不再有排除项;含治疗/伤害/专属牌,专属牌复制后绑定获得者)(双版本)。
-- 帕秋莉手册:1.21.1 原有;1.20.1 新增移植(109 个页面 + 175×2 条 guide key,新增 Patchouli 1.20.1-85-forge 依赖,整合包补装 Patchouli;4 处联动文案按 1.20.1 改写为「神秘遗物」)。
-- 手册分类图标:基本介绍=头号玩家立牌、材料=星币、卡牌=攻击-特大(双版本)。
-
-### 已修复BUG
-
-- **1.20.1 手册移植补全**:此前仅复制了手册页面(assets)而缺失书籍定义(book.json)、合成配方、创造栏书籍物品与书籍模型,导致手册物品丢失、全部页面文本(含联动文本)不可用;已补全(配方按 1.20.1 NBT 格式适配)并重新发布。
-- 效果移除拦截误伤本模组主动移除:新增内部移除通道(ModEffectRemoval),「待命」/计数/治愈等效果不再永久残留(双版本)。
-- 以毒攻毒移除效果时遍历实时视图导致 ConcurrentModificationException(服务端 tick 崩溃风险):改为快照迭代(双版本)。
-- 效果牌复制/返还映射缺失导致错发「王之力」:统一为 BaseEffectCardItem.cardByTypeId 单一映射,补齐以毒攻毒/活体书页等全部效果牌(双版本)。
-- 随机卡牌池不一致:ALL 补齐以毒攻毒、BATTLE 按定义含防御牌(双版本)。
-- 帕鲁南(经商)立牌手持右键可绕过冷却/等待并意外触发主动:右键行为统一为仅装备或替换装备,主动技能统一由快捷键/立牌栏触发(双版本)。
-- FTB Teams UUID 成员分支永不入队:与 OPAC 分支对齐修复(双版本)。
-- 顺劈/定向爆破等 AOE 波及目标二次进入骰战结算:改为跳过(1.21.1 标志位 / 1.20.1 dice_damage 源判定)(双版本)。
-- 骇客立牌卸载误清公共无敌/隐身,且 onCurioTick 隐身到期判断恒真(默认附件 0)每 tick 误删其他来源隐身:仅清除自身授予的状态(双版本)。
-- 标记携带的发光与标记同寿命(牛奶/effect clear 不再单独清除),且不再显示 HUD 效果标识器(双版本)。
-- 帕秋莉手册条目 `Format error`:guide 文本字面 `%` 未转义(18 条目中英 36 条)改为 `%%`;4 个同隐患 tooltip key 同步修复(1.21.1;1.20.1 手册为移植的已转义文案,4 个 tooltip key 同步修复)。
-- 客户端伤害数字因错误总线订阅永不消失 + 网络线程竞态(1.21.1;1.20.1 无此问题)。
-- 技能改名:大当家立牌主动「运攻」→「运功」、骇客立牌主动「远程骇入」→「远程侵入」(双版本)。
-
-### 工程
-
-- 版本号:1.21.1 = `1.1.3-rc1+neoforge_1.21.1`,1.20.1 = `1.1.3-pre1+forge_1.20.1`;重新编译并发布至各自整合包(自动清理旧版本产物)。
-- ModEventHandlers 订阅拆分到各自功能实现处(DiceCombatEvents/ModTooltipHandler/LootInjectionHandler/AnvilUpgradeHandler/PlayerLifecycleHandler/ModEffectEvents/PlayerTickEvents + 各立牌/筹码/卡牌/管理器类)(仅 1.21.1)。
-- 移除蓄力卡"赐福进行中放入"的延迟转换代码(charge_defer 附件及分支)——卡牌栏锁定后不再可能发生;赐福结束一律返还「全力攻击」(双版本)。
-- 移除写而未读的 PlayerResourceRegistry(PlayerResource/ResourceType 及治愈/星光注册实现)(双版本)。
-- 全量代码审计与清理(1.21.1 为主,1.20.1 同步移植):消除每 tick 重复施加效果同步包(美工刀/复仇之戟/治愈)、每 tick 附魔资源键分配、菜单打开时每 tick 全量重算(20 tick 节流)、法伤修饰器 isActive 双次求值;跳数字发送/效果牌类型映射等重复实现收敛为单一入口;删除 8 个未用数据组件、isChipItem 手写链、骰子冗余构造参数、空覆写、未用方法/导入与死分支。
-- 仓库结构迁移为 multiloader 单仓(1.21.1-main → neoforge-1.21.1/、1.20.1-forge → forge-1.20.1/;跨 MC 大版本不设 common 共享层)。
-- 原仓库 git 排除内容(AGENTS.md、docs/、temp/、scripts/、run/、deploy.ps1 等)迁入;tools/check_lang_sync.py 移至根 tools/。
-- CI(build.yml) 双 JDK(17/21) 构建两子项目并对两者执行 lang 同步检查。
-
-## 1.1.2-rc1
-
-### 新内容
-
-- **复仇之戟**:tooltip 新增当前攻击力/防御力加成显示;触发任意加成时显示"复仇之戟"状态效果(图标为物品本体图标),加成消失时自动移除。
-- 新增**计时器守卫**:本模组所有有时长效果严格按 20 tick/秒 流动,不受任何加快/减慢效果时间的 buff(如神秘遗物+ 的烈焰之核)影响。
-- 卡牌栏选择器改为 **3 列** 显示,同屏可见更多卡牌。
-- 同步本地中文文本修改(看板立牌 tooltip 措辞、命运的指引描述)。
-- 移除 CurseForge / Modrinth 独立更新日志文件及其关联。
-
-### 内容与平衡性调整
-
-- 岿然不动、狂暴持续时间调整为 **3:00**。
-
-### 已修复BUG
-
-- 修复骰神赐福进行中放入蓄力会立即转换为全力攻击的问题:赐福进行中放入的蓄力本次赐福不生效、不转换,改为下次触发骰神赐福时生效并在其结束时转换。
-- 修复标记效果消失后发光效果残留的问题:发光改为与标记同寿命(不再使用无限时长),多层标记同步刷新,标记结束时发光随之消失。
-
-### 工程
-
-- 版本号更新为 `1.1.2-rc1`。
-## 1.1.1-rc1
-
-### 新内容
-
-- 看板立牌（mimi）技能重做：被动改为“合成、奖励、返还卡牌时，每获得一张战斗牌 +1 星币；装备时筹码栏位 +1；每累计 25 个星币获得 1 个随机筹码（蓝色 60% / 紫色 35% / 金色 5%）”；主动改为“回收物品栏中全部卡牌（含专属牌），返还 N+1 张随机卡牌（不含专属牌）”。
-- 新增通用谜之炖菜配方；诅咒之剑配方改用 `astral_dice:suspicious_stews` 标签。
-
-### 界面与显示
-
-- 新增骇客立牌“远程骇入”效果图标与描述；立牌主动技能 ActionBar 改用本地化名称；命运指引备注颜色修正。
-
-### 已修复BUG
-
-- 修复治愈图标在计时结束且未再次触发时未移除的问题。
-
-### 工程
-
-- 版本号更新为 `1.1.1-rc1`。
-
-## 1.1.0-rc1
-
-### 新内容
-
-- 新增效果牌：以毒攻毒（移除最多 3 个原版负面效果，并获得生命恢复）。
-- 新增效果：青之诅咒（护甲值 -20%，盔甲韧性归 0）。
-- 新增筹码：维生素药丸、诅咒之剑、复仇之戟、贯穿之铳、可口糖果、友情徽章、探天卫星。
-- 新增立牌：骇客立牌（nancy_lu）。
-- 新增手持风扇-小 / 手持风扇-大筹码。
-
-### 内容与平衡性调整
-
-- 手持风扇-小配方调整为羽毛上排；手持风扇-大改为通用蓝→紫升级配方（以手持风扇-小为原料）。
-- 狂暴配方简化为 1 火药 + 1 星币。
-- 诅咒之剑：骰神赐福期间每轮最多触发一次击杀攻击力加成；上限默认 16、最大 32。
-- 占星师立牌、忍者立牌品质提升为史诗，配方由黄金骰子改为钻石骰子。
-- 完全隐身期间生物无法将玩家设为索敌目标。
-- 创造栏筹码按星光、治愈、标记、无流派分类摆放；美工刀归入治愈类。
-
-### 界面与显示
-
-- 治愈类筹码与史莱姆立牌 tooltip 显示当前治愈点。
-- 修复 tooltip 中按键名、`%` 号、计数器符号无法正确染色的问题。
-- 修复诅咒之剑 tooltip 中青之诅咒描述多余空行。
-- 立牌/材料 tooltip 分类从 `card` 移至 `sign`/`material`。
-
-### 已修复BUG
-
-- 修复大侦探立牌被动无法触发（主动技能与击杀“隐匿调查”目标）。
-- 修复维生素药丸 tooltip 缺失；拾取卡牌不再触发维生素药丸效果。
-- 友情徽章配方改为必须使用瞬间治疗药水。
-- 修复 tooltip 颜色代码导致部分文本变白的问题。
-
-## 1.0.3-rc1
-
-### 内容与平衡性调整
-
-- 防御牌耐久消耗恢复为仅 PvP 生效：玩家攻击带骰子的玩家时，双方触发骰神赐福，并消耗被攻击方防御牌耐久（每次赐福仅一次）；怪物攻击不再消耗防御牌耐久。
-- 新增防御力/护甲值换算：1 防御力 = 2 护甲值。
-- 效果牌、立牌、事件、筹码提供的防御力，无论是否触发骰神赐福，均按 1:2 折算为护甲值；只有战斗防御牌直接作为防御点加入骰神赐福。
-- 重写“岿然不动”：使用后防御力 +2，并获得 抗性提升 II，持续 1:00。
-
-### 工程
-
-- 版本号更新为 `1.0.3-rc1`。
-
-## 1.0.2-rc1
-
-### 内容与平衡性调整
-
-- 调整骰子筹码栏位数量（按 0★~3★）：普通 0/1/2/3，黄金 1/2/3/4，钻石 2/3/4/5，下界合金 3/4/5/6。
-- 调整骰子攻击/防御卡牌栏数量（每侧）：普通 3，黄金 4，钻石 5，下界合金 6。
-- 主动触发“骰神赐福”时不再消耗防御牌耐久。
-- 玩家若攻击带有骰子的玩家，则自动触发双方拥有骰子玩家的骰神赐福，并消耗被攻击方的防御牌耐久度（每次骰神赐福仅消耗一次）。
-- 秘密侦探立牌击杀奖励只返还攻击牌，攻击玩家不返还卡牌。
-- 所有效果牌、立牌、事件、筹码提供的防御力加成，默认只作为护甲值加成；触发骰神赐福后作为防御点加入。
-- 防御卡仅在骰神赐福期间作为防御点生效。
-
-### 界面与显示
-
-- 所有立牌 Tooltip 增加主动/被动技能名称，并将主动技能按键提示移至最上方。
-- 主动技能按键提示整体改为白色，按键符本身为黄色。
-- 大当家立牌主动技能图标改为使用大当家立牌图标。
-- 统一 Tooltip 时间与数值格式：时间蓝色、数值黄色、不足 1:00 使用秒、药水时间使用括号。
-
-### 已修复BUG
-
-- 移除立牌主动技能触发成功后的通用“技能已激活”ActionBar，避免覆盖各立牌自身的特殊提示。
-- 修复溅射/范围伤害未在被影响目标身上显示伤害数字的问题（大当家立牌扩散、定向爆破 AOE）。
-- 本 Mod 创建的自定义效果无法被牛奶、蜂蜜瓶或 `/effect clear` 清除，仅玩家死亡可清除。
-- 修复玩家死亡时部分效果状态未正确重置的问题，统一清理立牌等待、扩散、出牌、魔法箭袋、命运指引、调查阶段等状态。
-
-## 1.0.1-rc1
-
-### 内容与平衡性调整
-
-- 重新设计治愈体系：为治愈增加独立计时器，默认每 30 秒触发一次治愈效果（仅在骰神赐福期间）。
-- 触发骰神赐福时按治愈点×2 回血，计时结束治愈点减半。
-- 美工刀触发阈值改为最大生命值 60% 以上即可触发，避免大部分时候都触发不了。
-- 护法立牌：主动技能攻击力加成提高至 +4，持续时间提高至 2:00。
-- 吸血鬼立牌：主动效果调整第二项为：不论玩家当前血量为多少，都同时视为满血和半血以下状态。
-- 秘密侦探立牌：被动技能返还卡牌只对击杀 20 血以上敌对目标生效。
-- 巧克力蛋糕/汉堡改为恢复最大生命值 20%/40%；奢华大餐改为恢复自身最大生命值 30%，并治疗同队/无队伍玩家。
-- 治愈盾牌触发间隔改为 15 秒。
-- 调整战斗牌耐久值：中/大/特大=10，暗影突袭=10，名刀=5，蓄力=1，全力攻击=2。
-- 蓄力在赐福结束后返还全力攻击，并增加兜底检测与 ActionBar 提示。
-
-### 已修复BUG
-
-- 修复骰神赐福的触发目标判定和武器判定问题：仅近战武器触发，且友好/被动/未激怒中立生物不再触发。
-- 修复骰子/筹码/立牌下蹲右键装备不生效。
-- 修复战斗牌耐久条显示异常、Tooltip 丢失问题，恢复剩余次数显示。
-- 修复大当家立牌触发伤害扩散时意外递归导致游戏崩溃。
-- 治愈效果不再产生药水粒子。
-
-### 质量更新
-
-- 为部分行为增加 ActionBar 提示，同时受到事件影响的玩家也会有 ActionBar 提示。
-- 大侦探随机事件提示会显示具体事件名称。
-- 微调骰子卡牌选择界面的卡牌显示。
-- 替换卡牌选择界面背景贴图。
-- 修复 GitHub Actions 中 `gradlew` 无执行权限问题，并增加构建产物上传。
-- 更新 README 模组介绍。
-- 版本号更新为 `1.0.1-rc1`。
-
-## 1.0-rc1
-
-### 卡牌选择界面重写
-
-- 使用了新卡牌容器贴图。
-- 右侧显示攻击/防御 `<下限>-<上限>` 范围，并实时随卡牌增删更新。
-- 下方新增卡牌选择器：攻击左列、防御右列，按物品栏顺序排列，支持滚动。
-- 支持点击下方存放区域/右键将手持卡牌放回物品栏。
-- 暗影突袭、名刀、蓄力、全力攻击图标缩放并向右下对齐。
-
-### 耐久度机制
-
-- 战斗牌改用 MC 原生耐久数据（damage/maxDamage），可被 Durability Tooltip 模组识别。
-- 移除战斗牌自定义“剩余次数”Tooltip 文本。
-- 防御牌现在会在受到伤害时正确消耗耐久。
-
-### 配方调整
-
-- 忍者立牌：铁锭 → 回响碎片。
-- 占星师立牌：青金石块 → 海晶砂砾。
-- 魔法秘典：中间书与笔 → 回响碎片。
-- 魔法箭袋：中间光灵箭 → 回响碎片。
-- 忍术飞镖：磁石 → 红石块。
-
-### 效果牌提示
-
-- 出牌数用完后显示 ActionBar 提示，冷却按所有效果牌中最长剩余时间计算。
-
-### 工程配置
-
-- 版本号更新为 `1.0-rc1`。
-
-## 1.0-SNAPSHOT.23
-
-### 物品 ID 与 Tag
-
-- 效果牌统一为 `effect_card_*`。
-- 筹码统一为 `*_chip`。
-- 活体书页改为 `effect_card_living_page`。
-- 新增物品 Tag：`dices`、`combat_cards`、`effect_cards`、`is_exclusive`、`signs`、`chips`、`materials`。
-
-### 配方
-
-- 基础骰子改为红石 + 石英块。
-- 黄金/钻石/下界合金骰子统一为 `dice_upgrade` 有序升级；移除下界合金骰子锻造配方。
-- 调整大量卡牌、效果牌、立牌、筹码配方。
-- 筹码通用升级模板：
-  - 蓝→紫：`LGL/GTG/PPP`
-  - 紫→金：`RDR/DTD/GGG`
-- 定向爆破改为有序对称配方。
-
-### 战利品
-
-- 星盘可从所有原版宝箱开出。
-- 黄金星盘可从 `minecraft:chests/trial_chambers/reward_ominous` 开出。
-
-### 创造栏
-
-- 材料移至最前端。
-- 调整效果牌与活体书页顺序。
-
-### 数值与 Tooltip
-
-- 拳击手套攻击：+2/+4/+8。
-- 速度轮滑移速：+5%/+15%/+25%。
-- 摩托头盔防御：+2/+4/+6；高级额外盔甲韧性 +2。
-- 夹心饼干生命：+4/+8/+12。
-- 缓冲盾牌冷却改为 30 秒。
-- 手电筒：每 4 点星光 +1 攻击力。
-- 效果牌 Tooltip 新增出牌数与当前周期伤害加成提示。
-
----
-
-# 更新日志 / Changelog
-
-本文档按语言完全拆分:上半部分为中文版,下半部分为英文版。
-This changelog is fully split by language: the Chinese version comes first, followed by the English version.
-
-# English Changelog
-
-## Unreleased (2.0.0-SNAPSHOT.2, both versions)
+## Unreleased (2.0.0-SNAPSHOT.3)
 
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
 ### New Content
 
+- Added the Charge playstyle infrastructure: icon copied from `images/充能.png` (effect texture `mob_effect/charge.png`); max stacks stored in `GameplayConstants.CHARGE_MAX_STACKS = 20`; with at least 1 Charge stack, sign-active/effect-card cooldowns are reduced by 20%% (via `ChargeManager`, wired into sign cooldown and effect-card cooldown entries; **no defense/armor bonus**); Charge stacks are kept on death (`ChargeManager.preserveOnDeath` before death, restored on respawn); all gain/spend sources go through `ChargeManager.addStacks/consumeOne/removeAll` (both loaders). All 5 charge chips (Warp Engine / Energy Recycler / Electric Sword / Advanced Peripherals / Perpetual Motion) now append a unified "Current Charge" counter to their tooltips (`current stacks / CHARGE_MAX_STACKS`, via `ModTooltipHandler.addChargeCounter` → lang key `tooltip.astral_dice.chip.charge`) (both loaders).
+- Sign-active ActionBar feedback refactored: a dedicated response event `SignActiveTriggeredEvent` was added, and signs register their own prompts in their sign classes — Komachi (play count +1 and remaining), Mimi (new cards and Star Coins) and Nancy Lu (invisibility duration) now have custom texts; Haiqing/Bonnie prompt texts were updated; unregistered signs (Fen, Jasmine, Lulu, Misaki, Padman, Papara, Parunan, Rin) show the default "<Sign>: Active skill started!".
+- Target-selection framework + sign-active migration: a generic target-selection framework was added (`TargetSelectionManager` is server-authoritative, with `TargetSelectionAction` / `TargetSelectionRegistry` / `TargetType`), and the sign actives that need a target no longer designate it through the attack action — activating the skill now enters a target-selection mode: aim at a valid target within **16 blocks** and confirm to apply. Cancelling, or letting the **30-second** window lapse, counts as a miss and consumes neither the active cooldown nor Current Core Charge. All three migrated signs go through this path: Astrologer (Weak Mark), Undercover Detective (Undercover Investigation) and Gunsmith (Broken). The radius and the window are fixed constants (`GameplayConstants.TARGET_SELECT_RADIUS = 16`, `GameplayConstants.SKILL_WAIT_SECONDS = 30`); on a successful apply the player-level sign cooldown starts through the unified `WeirdDiceHandler.signCooldownTicks` entry (Weird Die -50%% and Charge ramp included) and the Current Core chip is credited via `CurrentCoreChipItem.onActiveSkillUsed` (both loaders).
+- Card inventory screen: the red locked warning during a Dice Blessing moved from the top to the bottom of the screen, outside the selection area.
+- Card inventory screen: background texture now switches by die star level (0-3), with `getStarLevel()` exposed on the menu (synced to 1.20.1, feature parity across loaders).
+- New "Nether Star Die": a brand-new exotic T4 tier (`astral_dice:dice_t4`), upgradeable from any T3 die (Netherite/Crimson/Ender via the `dice_t3` tag) — 4 Nether Stars in a cross around it (`" N " / "NDN" / " N "`, N=Nether Star, D=T3 die); chip slots = 4+s (0★4/1★5/2★6/3★7, one more than T3); card slots and cost points are always configured as the top 3★ tier (12 card slots / cost cap 6 per side, via `DiceCurioItem.configStarLevel`, while the menu persists the actual star); each star level grants +2 attack and +2 defense (+4 armor via transient attribute modifiers refreshed by `NetherStarDiceItem`); the item has a permanent enchanted glint (`isFoil` always true) (both loaders).
+- New "Ender Die": same tier as the Netherite Die (`astral_dice:dice_t3`), upgradeable from it (ZYZ/YDY/ZYZ, Z=Ender Pearl, Y=Eye of Ender, D=Netherite Die); lethal damage triggers one totem-of-undying effect (revive to 1 HP, clear all effects, Regeneration II 0:45, Absorption II 0:05, Fire Resistance 0:40 — matching the vanilla totem, with the totem particles/sound/held-up animation using the Ender Die icon), followed by a 5:00 cooldown (via `EnderDiceHandler`, cancelling `LivingDeathEvent` and attached to the player); after the Ender Die's own totem effect or a vanilla Totem of Undying triggers, it attempts to teleport to safe ground within 16 blocks (no air/water-surface/boat destinations, and no teleport while the player is in water), with ender particles and a teleport sound; the vanilla-totem path does not start the Ender Die cooldown; while equipped, damage taken in rain/underwater (`isInWaterRainOrBubble`) is increased by 40%% (applied after final reductions in `LivingDamageEvent.Pre`) (both loaders).
+- New "Amethyst Die": same tier as the Diamond Die (`astral_dice:dice_t2`), upgradeable from it (AAA/ADA/AAA, A=Block of Amethyst, D=Diamond Die); ranged/magic attacks also roll the combat die (1-6) and add its roll as damage (settled through the `SpellDamageRegistry` spell-damage modifier chain, sharing the whitelisted scope — arrows/throwables/vanilla and linked mod magic — with the spell-damage effect cards), without triggering a Dice Blessing or consuming card durability (both loaders).
+- New "Crimson Die": same tier as the Netherite Die (`astral_dice:dice_t3`), upgradeable from it (YJY/JDJ/YJY, Y=Nether Wart Block, J=Crimson Fungus, D=Netherite Die); high combat-die rolls (4-6) are 50%% more likely (weighted: faces 4-6 ×1.5, P(high) 50%%→60%%, applies to attack rolls and player defense rolls), but rolling a natural 1 immediately deals 6 damage to you (dice-damage type, the same source as King Power's self-damage) (both loaders).
+- New "Weird Die": same tier as the Diamond Die (`astral_dice:dice_t2`), upgradeable from it (CJC/JDJ/CJC, C=Twisting Vines, J=Warped Fungus, D=Diamond Die); sign active-skill cooldowns are halved, but low combat-die rolls (1-3) are 50%% more likely (weighted: faces 1-3 ×1.5, P(low) 50%%→60%%, applies to attack rolls and player defense rolls) (both loaders).
+- New "Netherrack Die": same tier as the Golden Die (`astral_dice:dice_t1`), upgradeable from it (NNN/NTN/NNN, N=Nether Brick, T=Golden Die); mining Nether ores (quartz/gold/ancient debris) has a 30% chance to drop a Star Coin and 5% to drop a Star Plate (at most one per block, plate checked first), and piglins stay neutral to the wearer (via `PiglinAiMixin`, treated as wearing gold armor) (both loaders).
+- New "Obsidian Die": same tier as the Diamond Die (`astral_dice:dice_t2`), upgradeable from it; grants 3 base defense (+6 armor via attribute modifier, 1 defense = 2 armor) and reduces fire damage taken (vanilla `is_fire` tag) by 70%; being in the `dice_t2` tag it can craft the higher-tier Netherite Die (both loaders).
+- New "Emerald Die": same tier as the Diamond Die (`astral_dice:dice_t2`); while equipped, villager trades are paid with Star Coins instead of Emeralds at a 20% discount (rounded down, minimum 1); recipe = GPG/PDP/GPG (G=Emerald Block, P=Star Plate, D=Diamond Die) (both loaders).
+- New "Glass Die": same tier as the Golden Die (`astral_dice:dice_t1`); combat cards always roll their maximum (random cards only: Medium/Large/Epic/Meito/Defense; fixed cards Shadow Strike/Charge/Full Power keep their side effects), but dying destroys this die and all of its equipped cards; recipe = GGG/GTG/GGG (G=Glass, T=Golden Die) (both loaders).
+- New "Gunsmith Sign" (Moses, epic): Weakness Insight — gain 1 layer (max 4) after any source of dodging/counterattacking (at most once per target) or after attacking a Broken target; each layer gives +1 attack/defense and raises the minimum dice roll by +1; one layer is removed when a Dice Blessing ends. Active "Weak Counter" — opens the target selector (pick a normal hostile within 16 blocks, 30-second window) and applies Broken (2:00) on confirmation; cancelling, timing out, or a target that already has Broken consumes no cooldown, and Passive "Precision" reduces the active cooldown to 120s. A Broken target's dice can only be 0 and it is dodged by the Gunsmith; after dodging the Gunsmith automatically counterattacks (including Weakness Insight attack). The tooltip merges the two passive sections (Weakness Insight/Precision), moves the Broken effect description into the active description, and places the counter at the very bottom. Recipe = GPG/TCT/PZP (G=Crossbow, P=Star Plate, Z=Diamond Die, C=Blank Sign, T=Block of Redstone); icon taken from images/枪匠立牌.png (both loaders).
+- New "Pandaman Sign" (rare): Passive "Good and Bad" — using Hamburger grants 2 max health (up to 100, cleared on unequip); using Hamburger or Chocolate Cake gives friendly players within 8 blocks 2 healing and 1 Healing Point; while equipped, counterattacks add damage equal to missing health when not at full health. Active "Devour" — gain one random healing card (Hamburger/Chocolate Cake/Luxury Feast) and apply Taunt (1:00) to all hostile targets within 16 blocks; taunted targets trigger a counterattack when they attack the taunter (using the counterattack damage formula, no Counterattack layers consumed). New Taunt effect: the target can only attack the player who taunted it. Recipe = WHW/HCH/BDB (W=White Concrete, H=Black Concrete, C=Blank Sign, B=Star Coin, D=Die); the tooltip shows Health Gained and Healing Point counters at the bottom; icon from images/肉弹战车立牌.png (both loaders).
+- Added first-join rulebook option: new common-config entry `give_guide_book_on_first_join` (default `true`) backed by a GameplayConstants field; when enabled, players receive the Koi's Rulebook (Patchouli guide) on first join, once per player per world; config version remains 1 (both loaders).
+- New Charge chip "Warp Engine" (`warp_engine_chip`, rare): charge +2 and Speed (0:10) after select teleports (ender pearl, the Ender Die's safe blink after its totem, dimension portals and Waystones; portals and Waystones share a 5:00 cooldown, while ender pearl and Ender Die blinks ignore it); recipe = `XXX/WCW/BBB` (X=Ender Pearl, W=Conductive Wire, C=Blank Chip, B=Star Coin) (both loaders).
+- New Charge chip "Energy Recycler" (`energy_recycler_chip`, rare): charge +1 per 50 m of **horizontal** travel (a single-tick displacement above 10 blocks counts as a teleport/dimension change and is ignored; unequipping clears progress); **movement speed +5%% while you have at least 5 Charge stacks** (a conditional attribute, applied and removed live as Charge rises and falls, and cleared immediately on unequip); recipe = `SHS/LCL/BBB` (S=Flint, H=Piston, L=Conductive Wire, C=Blank Chip, B=Star Coin) (both loaders).
+- New Charge chip "Electric Sword" (`electric_sword_chip`, rare): +1 attack per 4 Charge stacks (rounded down); charge +2 after 10 hostile kills (counter cleared on unequip); recipe = `HDH/LCL/BBB` (H=Redstone, D=Diamond Sword, L=Conductive Wire, C=Blank Chip, B=Star Coin) (both loaders).
+- New Charge chip "Advanced Peripherals" (`advanced_peripherals_chip`, epic): +4 attack while you have at least 4 Charge stacks; each Dice Blessing removes 1 Charge stack; recipe = `TET/LCL/PPP` (T=Redstone Torch, E=Echo Shard, L=Conductive Wire, C=Blank Chip, P=Star Plate) (both loaders).
+- New Charge chip "Perpetual Motion" (`perpetual_motion_chip`, legendary): charge +6 on every Dice Blessing trigger (legendary chip, excluded from the Bountiful reward pool); recipe = `BNB/LCL/GGG` (B=Block of Gold, N=Nether Star, L=Conductive Wire, C=Blank Chip, G=Golden Star Plate) (both loaders).
+- New Healing chip "Big Bowl Stew" (`big_bowl_stew_chip`, legendary): after a Dice Blessing ends, all friendly targets within 16 blocks gain the effect — players get +1 Healing Point and restore 2 health; tamed/rideable friendly mobs (pets, horses, pigs, striders, camels) only restore 2 health (Healing Points are a player-level resource); icon from images/大碗炖肉.png (both loaders).
+- New Other chip "Member Recommendation" (`member_recommendation_chip`, rare): gain one random card every time a Dice Blessing triggers (the normal random pool, exclusive cards excluded); icon from images/会员推荐信.png (both loaders).
+- New Other chip "Bookmark" (`bookmark_chip`, rare): damage effect cards gain +1 damage bonus (uncapped, uncounted; it feeds the same single aggregate exit `SpellDamageRegistry.effectCardDamageBonus` as the Ninja sign's "effect-card damage bonus", applying to Laser/Brick/Orbital Strike/Directional Blast/Living Page spell damage, and tooltips show the boosted values); icon from images/书签.png (both loaders).
+- New Other chip "Piggy Bank" (`piggy_bank_chip`, rare): gain 3 Star Coins for every 2 effect cards used (its own counter, independent of the Magic Tome/Ninja sign, cleared on unequip); icon from images/小猪存钱罐.png (both loaders).
+- New Other chip "Smart Watch" (`smart_watch_chip`, epic): while you carry fewer than 10 cards, each hostile kill grants one random card (no cooldown and no counter; nothing is granted once you are at or above the threshold); icon from images/智能手表.png (both loaders).
+- New Charge chip "Current Core" (`current_core_chip`, epic): (1) gain +1 Charge when you use an active skill (target-waiting signs count it when the wait resolves successfully, not when it times out); (2) while the active skill is on cooldown, pressing the active-skill key consumes Charge based on the remaining cooldown's share of 180 s (one tier per 1/6, rounded up, min 1 and max 6) and **instantly finishes the cooldown** — the skill itself is not cast, press again to use it; if Charge is insufficient nothing happens and a warning is shown. Its tooltip carries the unified "Current Charge" counter; icon from images/电流核心.png; recipe = `UEU/WCW/PPP` (U=Redstone Comparator, E=Lightning Rod, W=Conductive Wire, C=Blank Chip, P=Star Plate) (both loaders).
+- New 4 crafting materials (all added to the `astral_dice:materials` item tag and the guidebook "Materials" category, both loaders): "Regeneration Reagent" (`regeneration_reagent`) and "Star Coin Dust" (`star_coin_dust`) use animated textures (Regeneration Reagent 2 frames, Star Coin Dust 7 frames), "Conductive Wire" (`conductive_wire`) is a 10-frame animated texture (the source image's last frame was a loop marker duplicating the first, now trimmed), and all three generate matching `.png.mcmeta` animation files; "Mark Paint" (`mark_paint`) uses a static texture. Icons taken from images/再生试剂.png, images/导电线材.png, images/星币尘.png and images/标记涂料.png respectively. Each has a crafting recipe (both loaders): Regeneration Reagent = Redstone + Slime Ball + Glistering Melon Slice + Honey Bottle (shapeless); Conductive Wire = DLD/DLD/RRR (D=Diamond, L=String, R=Redstone); Star Coin Dust = Star Coin + Nether Quartz + Glowstone Dust (shapeless); Mark Paint = empty/Y/empty, IRI, CGC (Y=Magma Cream, I=Iron Ingot, R=Redstone, C=Copper Ingot, G=Gold Ingot).
+- New Charge chip "Electric Glove" (`electric_glove_chip`, epic): using an effect card grants charge +1; while you have at least 4 Charge stacks, using a damage effect card consumes 4 stacks so that the damage also hits other hostile targets within 3 blocks of the target in the same period (at most once per period); the counted damage-card whitelist is Living Page / Laser (hostile) / Brick (hostile) / Orbital Strike / Directional Blast; icon from images/电击手套.png (both loaders).
+- New Charge chip "Airbag" (`airbag_chip`, epic): when you take lethal damage, consume 6 Charge to negate it and enter a 1:00 cooldown; it does nothing when Charge is insufficient or the cooldown is running (intercepted by `ChipDamageHandler` at the final-damage stage with the lowest priority so it judges by the **final** damage: Charge is consumed, a sound plays and a warning is shown); **its saving priority is higher than the Totem of Undying and the Ender Die** — as long as you have enough Charge and are not on cooldown, the Airbag always takes over first, so neither a vanilla Totem of Undying nor the Ender Die's pseudo-totem is consumed; like those two, lethal damage that bypasses invulnerability does not participate; icon from images/安全气囊.png (both loaders).
+- New Charge chip "Railgun" (`railgun_chip`, legendary): +5 attack while you have at least 6 Charge stacks; attacking a hostile target consumes 6 stacks and, 1 second later, strikes hostile targets within 3 blocks with lightning (natural lightning, fixed 5 base damage, able to create charged creepers; this lightning is a separate vanilla damage source — it is not added to the damage of the triggering hit and does not trigger Dice Blessing); recipe = `RCR/WBW/GGG` (R = Block of Redstone, C = End Crystal, W = Conductive Wire, B = Blank Chip, G = Golden Star Plate); a legendary chip excluded from the Bountiful reward pool; icon from images/电磁炮.png (both loaders).
+- New Charge chip "Primordial Core" (`primordial_core_chip`, legendary): each Charge stack consumed grants 1 Empower stack; each Empower stack gives +1 attack/defense (defense converted to real armor); Empower loses 1 stack every 0:30 and collapses straight to 0 at 1 stack; unequipping the chip clears all Empower stacks; a legendary chip excluded from the Bountiful reward pool; icon from images/原初核心.png (both loaders).
+- New Other chip "Whetstone" (`whetstone_chip`, epic): at 50% health or below, +4 attack and -2 damage taken; while your health is above 1, a single hit cannot deal more than your remaining health (so it cannot kill you); icon from images/磨刀石.png (both loaders).
+- New effect "Empower" (`empower`, texture `mob_effect/empower.png`, icon from images/赋能.png): a stacking buff, +1 attack/defense per stack (carried by the "Primordial Core" chip, converting consumed Charge into Empower stacks), losing 1 stack every 0:30 and collapsing straight to 0 at 1 stack (via `EmpowerManager`), exposing `addStacks/getStacks/consumeOne/removeAll` (both loaders).
+
 ### Content & Balance
 
-- Effect-card play system: the play window is kept (base 1 play + fixed/temporary +1 sources + Komachi's banked plays), while the per-window consecutive play cap (default 9, config `max_effect_card_plays`) is removed — bonus sources now stack without limit; the effect-card round now follows the new definition (a round ends only when all effect progress AND the play cooldown are done) (1.21.1 only).
-- Mimi passive rework: +1 Star Coin per battle card gained via crafting or the active skill's returns (rewards/copies no longer trigger); every 25 battle cards returned by the active skill grants a random chip (was: every 25 Star Coins) (1.21.1 only).
-- Jasmine passive addition: using an Express Delivery card immediately reduces the active skill's cooldown by 50%% of its maximum (1.21.1 only).
-- Rin active: grants one Living Page, or two if you had none before (1.21.1 only).
-- Bonnie: while hidden during an Investigation stage (Invisibility + Investigation Stage), mobs can no longer target you (1.21.1 only).
-- Nancy Lu active: the consumed battle card is now taken from the main inventory only (ender chest / backpack-like containers no longer count); the attack bonus is at least +2, and a guaranteed +2 applies even when no battle card is available in the main inventory (1.21.1 only).
-- Unwavering: defense +2 → armor +8 (equal to +4 defense in dice battles), moved to an attribute modifier on the effect so both real armor and dice combat apply without double counting (1.21.1 only).
-- Full Power: durability 2 → 5 (1.21.1 only).
-- Cursed Sword recipe: the middle ingredient is now Crying Obsidian instead of the Suspicious Stew item tag; the unused `suspicious_stews` item tag was removed (1.21.1 only).
-- Blue Curse description: armor toughness "0" → "-100%%" (values unchanged) (1.21.1 only).
-- Healing: the healing point cap is now fixed at 32 (was max(10, max HP ÷ 2)); Medkit chips no longer restore 2/6 HP on equip (blessing points kept) (1.21.1 only).
-- Vitamin Pill: triggers on any crafted/obtained card (was crafting/reward sources only); the Satellite chip's Orbital Strike replenishment now uses the unified card-grant path (1.21.1 only).
-- Satellite third ability: the "play count +1 after using an Orbital Strike" is now once per 1:00 (was once per round) (1.21.1 only).
-- Naming unification: Living Page Java identifiers and the effect registry id are unified to `LIVING_PAGE`/`living_page` (item id `effect_card_living_page` unchanged) (1.21.1 only).
-- Defense conversion: defense from effect cards/signs/chips is now converted to real armor (1 defense = 2 armor via ARMOR attribute modifiers) and no longer participates in dice-combat defense modifiers — only battle defense cards (range-varying values) remain there. Affected sources: Jasmine (+2 armor per stack, armor cap 40), Padman (-4 to +8 armor), Papara (+6 armor at half HP), Revenge Halberd (+12 armor), Nancy Lu (+6 armor on defensive passive), Fen (+4 armor with Recharged Energy); Resistance no longer adds dice-defense points (its vanilla damage reduction still applies) (1.21.1 only).
-- Monster armor-to-defense conversion synced with players: monster defense now uses armor÷2 like players (1 defense = 2 armor); the Piercing Gun chip's target-defense calculation was synced too (1.21.1 only).
+- Effect-card play system: the play window is kept (base 1 play + fixed/temporary +1 sources + Komachi's banked plays), and the per-round play cap is restored as a **fixed constant of 9 cards** (`GameplayConstants.MAX_EFFECT_CARD_PLAYS = 9`; `getMaxAllowed` returns `min(1 + bonuses, 9)`) — it is a fixed constant, **not a config option**, so the former `max_effect_card_plays` entry is no longer provided; bonus sources stack but cannot exceed the cap; the effect-card round follows the new definition (a round ends only when all effect progress AND the play cooldown are done).
+- Mimi passive rework: +1 Star Coin per battle card gained via crafting or the active skill's returns (rewards/copies no longer trigger); every 25 battle cards returned by the active skill grants a random chip (was: every 25 Star Coins).
+- Jasmine passive addition: using an Express Delivery card immediately reduces the active skill's cooldown by 50%% of its maximum.
+- Rin active: grants one Living Page, or two if you had none before.
+- Bonnie: while hidden during an Investigation stage (Invisibility + Investigation Stage), mobs can no longer target you.
+- Nancy Lu active: the consumed battle card is now taken from the main inventory only (ender chest / backpack-like containers no longer count); the attack bonus is at least +2, and a guaranteed +2 applies even when no battle card is available in the main inventory.
+- Unwavering: defense +2 → armor +8 (equal to +4 defense in dice battles), moved to an attribute modifier on the effect so both real armor and dice combat apply without double counting.
+- Full Power: durability 2 → 5.
+- Cursed Sword recipe: the middle ingredient is now Crying Obsidian instead of the Suspicious Stew item tag; the unused `suspicious_stews` item tag was removed.
+- Blue Curse description: armor toughness "0" → "-100%%" (values unchanged).
+- Healing: the healing point cap is now fixed at 32 (was max(10, max HP ÷ 2)); Medkit chips no longer restore 2/6 HP on equip (blessing points kept).
+- Vitamin Pill: triggers on any crafted/obtained card (was crafting/reward sources only); the Satellite chip's Orbital Strike replenishment now uses the unified card-grant path.
+- Satellite third ability: the "play count +1 after using an Orbital Strike" is now once per 1:00 (was once per round).
+- Naming unification: Living Page Java identifiers and the effect registry id are unified to `LIVING_PAGE`/`living_page` (item id `effect_card_living_page` unchanged).
+- Defense conversion: defense from effect cards/signs/chips is now converted to real armor (1 defense = 2 armor via ARMOR attribute modifiers) and no longer participates in dice-combat defense modifiers — only battle defense cards (range-varying values) remain there. Affected sources: Jasmine (+2 armor per stack, armor cap 40), Padman (-4 to +8 armor), Papara (+6 armor at half HP), Revenge Halberd (+12 armor), Nancy Lu (+6 armor on defensive passive), Fen (+4 armor with Recharged Energy); Resistance no longer adds dice-defense points (its vanilla damage reduction still applies).
+- Monster armor-to-defense conversion synced with players: monster defense now uses armor÷2 like players (1 defense = 2 armor); the Piercing Gun chip's target-defense calculation was synced too.
 - Piercing Gun recipe: Netherite Scrap → Netherite Ingot (both versions).
-- Restored the "Adrenaline - Common" chip (epic) and rolled back the "Adrenaline - High-Grade" (legendary) recipe to an upgrade chain: Common = attack/defense +3 (armor +6) while below half max HP; High-Grade = +8 with a 20%% dodge chance against a hostile attack while the bonus is active. Recipes: Common = ZXZ/DCD/PPP (Z = Potion of Regeneration, X = Nether Star, D = Wither Rose, C = Blank Chip, P = Star Plate); High-Grade = RZR/ZOZ/PPP (R = Redstone, Z = Diamond, O = Adrenaline - Common, P = Golden Star Plate) (both versions).
-- Target chip: after triggering the Dice Blessing, apply 1 Mark layer to the **nearest hostile target** (the old "random hostile within target-chip range" logic and the `target_chip_range` range config were removed; no distance cap) (1.21.1 only).
-- Sandwich (Gourmet): max health +12 → +8; removed the "gain 1 Counterattack layer per 1:00 while below half max HP" passive; new: while max HP exceeds 20, gain +1 attack per 4 HP above 20 (1.21.1 only).
-- Fixed the dice tooltip showing attack cards' bonus mislabeled as "dice" and a coloring issue: attack cards (Medium/Large/Epic/Meito) now uniformly read "attack", the range no longer carries a "+" prefix, matching the defense-card and standalone-card tooltip format (1.21.1 only).
+- Restored the "Adrenaline - Common" chip (epic) and rolled back the "Adrenaline - High-Grade" (legendary) recipe to an upgrade chain: Common = attack/defense +3 at 50% health or below; High-Grade = +8 with a 20%% dodge chance against a hostile attack while the bonus is active. Recipes: Common = ZXZ/DCD/PPP (Z = Potion of Regeneration, X = Nether Star, D = Wither Rose, C = Blank Chip, P = Star Plate); High-Grade = RZR/ZOZ/PPP (R = Redstone, Z = Diamond, O = Adrenaline - Common, P = Golden Star Plate) (both versions).
+- Target chip: after triggering the Dice Blessing, apply 1 Mark layer to the **nearest hostile target** (the old "random hostile within target-chip range" logic and the `target_chip_range` range config were removed; no distance cap).
+- Sandwich (Gourmet): max health +12 → +8; removed the "gain 1 Counterattack layer per 1:00 while below half max HP" passive; new: while max HP exceeds 20, gain +1 attack per 4 HP above 20.
+- Creative tab dice order adjusted: the Nether Star die now appears immediately after the Netherite die; Glass and Netherrack dice also appear after the Netherite die (both loaders).
+- Sign display order adjusted: creative tab and Patchouli handbook now sort by rarity low→high (RARE → EPIC → UNCOMMON in this mod's quality mapping; same-rarity signs keep their existing relative order) (both loaders).
+- Text/handbook cleanup merged to both loaders: Moses handbook passive pages merged, integration page 4 (Curse Mark) removed, Pandaman tooltip Taunt recolored blue, the extra blank line between the two Pandaman tooltip counters was removed, and the Gunsmith sign tooltip passive title now shows only “Precision” (removing “Weakness Insight”); this round also unified eight material/chip texts (Regeneration Reagent / Conductive Wire / Star Coin Dust handbook blurbs, Big Bowl of Stew / Bookmark handbook blurbs, Star Coin Dust / Regeneration Reagent / Conductive Wire tooltips) to match the real effects and playstyle terms (“Powder ground from Star Coins” → “An alloy material made from Star Coins”, “conducts current” → “stores and transfers energy”, “(no cap, no counter)” dropped), and all material tooltips are now aligned to the handbook wording as the source of truth (“regenerative power” → “the power of rebirth”), synced to English and 1.20.1. A follow-up full text audit (tooltips and guide entries across signs, chips and cards) then unified terminology and formatting: the Charge / Healing / Star Coin / Mark counters all use “layer” (Charge: Electric Sword / Advanced Peripherals / Primordial Core / Current Core / Electric Glove / Airbag / Railgun; Healing: Medkit / Candy / Friendship Badge / Buffer Shield / Big Bowl of Stew / Vitamin Pill / Lulu sign / Pandaman sign; Star Coin: ATM / Bank Card / Flashlight / Star Coin Hammer / Eight-Sided Dice / Parunan sign), loose phrasings now say HP / max HP / random cards / damage-type effect cards; quotation marks, colons and commas are normalized, stray spaces after `%%` and inside status-effect descriptions are fixed, and the Revenge Halberd multi-line list is re-indented; every colored tooltip/effect description now ends its lines with `§r` (was `§7`, preventing the color from bleeding into the next line); the dead key `tooltip.astral_dice.sign.lulu_healing` (referenced nowhere in code) was removed; the following proper nouns keep their original forms: card names “Attack (XL)/(L)/(M)” and “Defense (XL)/(L)/(M)” and “Attack XL” (the Great Detective’s guide entry and random-event text follow), chip names (Cutter Blade Chip / Cutter Chip / Medkit - Complete / Medkit - Emergency / Sandwich - Gourmet / Delicious / Basic / Adrenaline - High-Grade / Common / Moto Helmet - Basic), “Marker Sprayer” (the original Koi Party proper noun, kept as-is), and the Vampire sign’s “treated as both full HP and half HP” (the original Koi Party wording, kept rather than rewritten as 60%%/50%% thresholds) (zh/en on both loaders).
+- Fixed the dice tooltip showing attack cards' bonus mislabeled as "dice" and a coloring issue: attack cards (Medium/Large/Epic/Meito) now uniformly read "attack", the range no longer carries a "+" prefix, matching the defense-card and standalone-card tooltip format.
 - Dice card-slot balance: the total card slots are now determined by star level only (independent of dice tier) — 0★ = 4 (2 attack + 2 defense), 1★ = 6 (3+3), 2★ = 8 (4+4), 3★ = 12 (6+6); usable slots strictly follow the star level, with no extra hidden usable slots (both versions).
 - Dice upgrade recipes now use tier tags for the upgrade base: added four item tags — `astral_dice:dice_t0` (base) / `dice_t1` (golden) / `dice_t2` (diamond) / `dice_t3` (netherite); the golden / diamond / netherite dice upgrade recipe inputs now reference these tags instead of specific items (both versions).
-- New Counterattack playstyle (player effect, icon `images/反击.png`): with Counterattack layers, being hit by a hostile melee attack triggers a counter strike treated as your own melee attack — total damage = highest held melee weapon base damage + a 1d6 dice roll + attack-card bonus (auto-triggering the Dice Blessing and consuming card durability when you are not blessed) + all attack bonuses, dealt to the attacker, then 1 layer is removed; magic damage (evoker fangs, guardian beams, etc.) does not count as melee and does not trigger; first layer source: Sandwich (Deluxe) grants 1 Counterattack layer per 1:00 while below half max HP (both versions).
-- New chips "Adrenaline - Common/High-Grade" (epic/legendary): while below half max HP, attack/defense +3/+8 (defense converts to armor +6/+16 at 1 point = 2 armor); High-Grade extra: while the bonus is active, being attacked by a hostile rolls 1d6 — 4-5 gives a 50%% dodge chance, 6 gives a 100%% dodge for this damage. Recipes: Common = ZXZ/DCD/PPP (Z = Potion of Regeneration, X = Nether Star, D = Wither Rose, C = Blank Chip, P = Star Plate); High-Grade = RZR/ZOZ/PPP (R = Redstone Dust, Z = Diamond, O = Adrenaline - Common, P = Golden Star Plate, the purple-to-gold upgrade form) (both versions).
-
+- Removed the Counterattack playstyle/effect: deleted the `counterattack` effect, layers, and the continuous retaliation-target cycle; direct triggers (Gunsmith Broken dodge, Pandaman Taunt attacks) still perform a **single counterattack damage injection** via `DiceCombatEvents.injectCounterDamage`; the Patchouli playstyle page and effect entry were removed (both loaders).
+- Effect level badge now uses Arabic numerals and has a raised cap: vanilla rendered Roman numerals (II–X) up to level 10; it now shows an Arabic-numeral badge (e.g., "Healing 3", "Healing 32") up to level 100 (new `EffectRenderingInventoryScreenMixin`) (both versions).
+- Config rewritten and trimmed: common config version reset to 1; the client config was removed; the damage-bonus cap, Living Page cap, sign active cooldown, sign waiting time, all sign numeric tuning, Dice Blessing duration, and Cursed Sword cap entries were removed and are now fixed GameplayConstants values (values unchanged); target-selection signs (Astrologer, Undercover Detective, Gunsmith) use the fixed selection radius and window constants (16 blocks / 30 seconds).
+- Removed the spell-damage bonus caps: both the Living Page per-use stacking damage and the Ninja sign “Effect Card Damage Bonus” are now uncapped (still reset on unequip); the unused `MAX_DAMAGE_EFFECT_BONUS` and the fixed constants `LIVING_PAGE_BONUS_CAP`/`KOMACHI_DAMAGE_BONUS_MAX` were deleted, and handbook/tooltip text no longer mentions “cap 20/10” (both loaders).
+- Friendly/team reward rule: when a player is in a team, rewards/buffs to friendly players still affect only teammates (collected centrally via MC/FTB/OPAC); when the player is not in any team, they affect all online players instead. This is now unified for random event buffs, the Unlimited Bank Card Star Coins, the Investigator sign’s Living Page, and the Truth-Revealed Investigation effect; handbook/tooltip text now notes “all players if not in a team” (both loaders).
+- Hostile HP threshold unified: the kill checks of the Undercover Detective sign's "Key Clue" and the Cursed Sword chip changed from "more than 20 HP" to "at least 20 HP" — hostiles with exactly 20 HP (10 hearts) now count (tooltip/handbook text updated to "at least 20 HP" as well) (both loaders).
+- Chip rarity standard: a new chip's rarity is now determined by its **icon border colour** (blue = rare / purple = epic / gold = legendary; added as a mandatory rule in AGENTS.md); four chips were corrected accordingly — Member Recommendation and Piggy Bank (epic → rare), Smart Watch (rare → epic), Big Bowl Stew (epic → legendary) (both loaders).
+- Charge-chip display order adjusted: Perpetual Motion now sits immediately before the Railgun (the creative tab and the Patchouli "Charge Chips" chapter were reordered together so both views stay in sync; the resulting order is Warp Engine → Energy Recycler → Electric Sword → Advanced Peripherals → Current Core → Electric Glove → Airbag → Perpetual Motion → Railgun → Primordial Core) (both loaders).
+- Chip recipe unification (all 59 chips): (1) **the third row always uses the quality material** — rare = Star Coin, epic = Star Plate, legendary = Golden Star Plate; (2) **the second row's centre is always a Blank Chip**; (3) **the second row's two side slots of stream chips follow the stream** — Healing = Regeneration Reagent, Starlight = Star Coin Dust, Mark = Mark Paint, Charge = Conductive Wire; (4) **upgrade chips keep their existing "generic upgrade" recipes** (blue→purple = `LGL/GTG/PPP`, purple→gold = `RDR/DTD/GGG`; L = Lapis Lazuli, G = Gold Ingot, R = Redstone, D = Diamond, T = previous-tier chip, P/G = the matching Star Plate / Golden Star Plate) and are not part of the unification above; (5) base recipes were added for the 10 chips that previously had none (Big Bowl Stew / Member Recommendation / Bookmark / Piggy Bank / Smart Watch / Electric Glove / Airbag / Railgun / Primordial Core / Whetstone), all left-right symmetric and free of Star Coin / Star Plate / Golden Star Plate / Blank Chip / Blank Sign; the Star Coin Hammer's centre slot is the 1.21-only Mace, replaced by an Anvil on 1.20.1 (both loaders).
+- No-stream chip display order adjusted: Member Recommendation / Bookmark / Piggy Bank / Smart Watch / Whetstone now sit together immediately after Adrenaline - High-Grade (their relative order is unchanged and every other entry keeps its position; the creative tab and the Patchouli "No-stream Chips" chapter were reordered together so both views stay in sync) (both loaders).
+- Primordial Core chip recipe: the centre material of the top row changed from a Nether Star to a Dragon Head (the recipe is now `XHX/WBW/GGG`; X = Echo Shard, H = Dragon Head, W = Conductive Wire, B = Blank Chip, G = Golden Star Plate) (both loaders).
+- Whetstone chip recipe: the two side materials of the top row changed from Iron Ingots to Netherite Ingots (the recipe is now `XLX/GBG/PPP`; X = Netherite Ingot, L = Grindstone, G = Flint, B = Blank Chip, P = Star Plate) (both loaders).
 
 ### Bug Fixes
 
-- Death-cleanup adjustments: totem-canceled deaths no longer trigger any cleanup; Misaki loses all Sword Qi stacks on death (tooltip note added); Papara's active effect is cleared on death; Bonnie keeps investigation progress on death (unequip only); Komachi/Rin effect-card damage bonuses survive death; removed the leftover no-reader DamageEffectBonus reset in the death handler (both versions).
-- Fixed the Komachi sign's active failing when effect-card play progress existed or the cooldown was running: the play-count +1 is now a banked extra-play token (consumed per actual play, persists across windows, unaffected by burst-full or cooldown); the old boolean flag and its leftover calls were removed (both versions).
+- Fixed the newly added charge chips missing from the `curios:chip` accessory slot tag: five chips (Airbag / Electric Glove / Railgun / Primordial Core / Whetstone) had only been added to the `astral_dice:chips` summary tag while the `curios:chip` slot tag was omitted. As the chip slot enables the `curios:tag` validator on 1.21.1, these chips could not be equipped at all (their effects were entirely non-functional), whereas 1.20.1 has no validator and still allowed equipping — an inconsistency between the two versions. The tag is now complete (both loaders).
+- Added the missing name keys for the Gunsmith sign's three new effects: `weakness_reveal` (Weakness Insight), `moses_broken` (Broken) and `moses_ready` (Ready: Broken) lacked `effect.astral_dice.*` lang keys, so the raw translation key was shown in the player status bar (comparable `haiqing_ready`/`bonnie_ready` both had keys). Keys are now present in zh/en for both loaders (both loaders).
+- Fixed the `PiglinAiMixin` injection signature: vanilla `PiglinAi.isWearingGold` takes a `LivingEntity` in 1.21.1; it was written against `Player`, causing a runtime Mixin apply failure (invalid descriptor) in the modpack — it now accepts `LivingEntity` and applies the Netherrack-die check only to players.
+- Fixed missing tooltips on newer dice: Obsidian, Netherrack, Weird, Crimson, Amethyst, Ender, and Nether Star dice were not entering the dice tooltip branch, so their unique descriptions were absent — they are now handled as dice (both loaders).
+- Fixed dice-tooltip coloring breaking around translated `%%`/placeholder tokens: dice tooltips containing `%%` or `%s` (e.g. the Emerald die's 20%% discount) are now expanded via `translationString` into a single `Component.literal`, so Minecraft no longer splits the format token into an unstyled fragment and the `%` sign and following text keep the intended colors (both loaders).
+- Fixed the broken coloring of “Dice Blessing + duration” in every die tooltip: the shared `dice_desc` line no longer places the duration inside a legacy-color range that translation/placeholder handling can split; it is now assembled from independently styled fragments (prefix / blessing+duration / middle / key / suffix), so “Dice Blessing (60s)” stays fully blue (both loaders).
+- Fixed text after numeric highlights in die tooltips being wrongly colored gray (including newer die unique descriptions and the anvil star-upgrade hint): they used `§7` (gray) as the “restore” marker, so gold/red/green/dark-green lines turned gray after the highlighted number; changed to `§r` (true reset back to the line’s own color), keeping the following text consistent with each tooltip’s intended color (both loaders).
+- Removed the potentially misleading “Does not trigger a Dice Blessing” line from the Amethyst die tooltip, keeping only the ranged/magic combat-die description (both loaders).
+- Fixed durability numbers on some combat-card tooltips not being colored yellow: medium/large/epic/Shadow Strike/Meito/Charge/defense medium/large/epic still used `Component.translatable`, so the `%s` durability value became an unstyled fragment; they now use `tt()` to expand first and render as one literal, keeping the remaining-uses number yellow (both loaders).
+- Added the missing `curios:dice` curios-slot tag for the Emerald Die (previously it could not be equipped into the dice slot), and synced it into the `astral_dice:dices` summary tag (both loaders).
+- Death-cleanup adjustments: totem-canceled deaths no longer trigger any cleanup; Misaki loses all Sword Qi stacks on death (tooltip note added); Papara's active effect is cleared on death; Bonnie keeps investigation progress on death (unequip only); Komachi/Rin effect-card damage bonuses survive death; removed the leftover no-reader DamageEffectBonus reset in the death handler.
+- Fixed the Komachi sign's active failing when play progress existed or the cooldown was running: the play-count +1 is now a banked extra-play token (consumed per actual play, persists across windows, unaffected by burst-full or cooldown), and the old boolean flag plus its leftover calls were removed.
+- 1.20.1 recipe fixes: the "Koi's Rulebook" (patchouli:guide_book) recipe was in the wrong folder (singular "recipe") and thus never loaded — moved to "recipes"; the Cursed Sword chip's generated recipe used the 1.21 result.id format and failed to parse on 1.20.1 — regenerated in the 1.20.1 item format (generation sources fixed in both versions).
+- Fixed chip tooltips rendering embedded newlines as box glyphs (Sandwich - Gourmet / Adrenaline - High-Grade / Satellite / Revenge Halberd / Cursed Sword Enigmatic Legacy+ link, etc.): multi-line lang values are now split into separate tooltip lines instead of keeping real `\n` inside a single component.
+- Completed item aggregate tags: newly added chips/signs were missing from the `astral_dice:chips` / `astral_dice:signs` aggregate tags — 12 chips (Adrenaline - Regular/High-Grade, Warp Engine / Energy Recycler / Electric Sword / Advanced Peripherals / Perpetual Motion / Current Core, Big Bowl Stew / Member Recommendation / Bookmark / Piggy Bank / Smart Watch) and 2 signs (Gunsmith / Pandaman); both loaders' aggregate tags now contain every chip (55) and sign (17) (both loaders).
+- Fixed the `tooltip.astral_dice.chip.smart_watch` color-code count mismatch between zh_cn and en_us (the English string omitted the highlight on "1"); both languages now use aligned coloring (both loaders).
+- Fixed the "Investigation Stage" event never triggering on 1.20.1: Bonnie's passive 3 (killing an Undercover Investigation target triggers the Investigation Stage) existed only on 1.21.1 — 1.20.1 lacked the global kill hook `onUndercoverInvestigationKill` (the class also had no event subscription), leaving `triggerByKill` as dead code, so killing an undercover target did not advance the stage. The global kill trigger is now implemented, along with a fallback that clears the `undercover_source` when the effect is removed (1.20.1 only, aligned with 1.21.1).
+- Fixed multi-layer Marks vanishing all at once when they expire on 1.20.1: 1.20.1 had no mark-expiry decrement implementation, so the whole stack was cleared at once; it now decrements by one layer and resets the timer on expiry, and removes the accompanying glow once the stack reaches zero, matching 1.21.1 (1.20.1 only).
+- Fixed an unescaped literal percent sign in the Whetstone guide entry (zh/en `50%` → `50%%`): the same class of issue was fixed back in 1.1.3, and this newly added entry missed the escaping again, which showed `Format error` in the guide; corrected now and the language consistency check passes (both loaders).
+- Corrected sign/chip texts that contradicted the actual rules or omitted key details: the Vampire sign’s active “Take a Bite” no longer claims to count as “both full and half HP” but as “both ‘HP 60% or higher’ and ‘HP 50% or lower’ (used only for the Cutter and this sign’s passive thresholds)”, and its passive threshold changed from “below half max HP” to “at 50% HP or lower” (the code tests `>= 0.6×max HP` / `<= max HP÷2`; the Chinese wording had dropped the boundary case); the Whetstone’s “damage taken cannot exceed remaining health” is now “a single hit can at most reduce your health to 1 (you cannot be felled by a single hit)”; Big Bowl Stew now distinguishes “friendly players restore 2 HP and gain 1 healing point” from “friendly creatures restore 2 HP only”; the Bonnie / Astrologer / Gunsmith actives now read as entering target-selection mode (pick a target within 16 blocks and confirm within 30 seconds; a cancel or time-out counts as a miss and consumes no cooldown) (the Gunsmith limits it to “normal hostile” targets, the Astrologer notes the Dice Blessing prerequisite); the Astrologer / Undercover Detective guide entries now describe the target selector instead of “the first target of your next attack”; the Current Core tooltip now includes “press again to cast; nothing happens if Charge is insufficient”; the Signboard’s active now reads “(recycled count +1)” instead of the ambiguous `N+1` and marks “incl./excl. exclusive cards”; the Cursed Sword guide now gives the concrete “+16” cap (`CURSED_SWORD_BONUS_MAX`) instead of “up to a cap”, and the attack/defense/Meito guide entries note the “max of 2 rolls”; the Chinese tooltips now carry the qualifiers and prerequisites already present in English and the guide (Electric Glove / Directional Blast / Monster Laser / Monster Brick / Orbital Strike now say “against hostile targets”, Charge / Shadow Strike note their “fixed / during Dice Blessing” conditions) (zh/en on both loaders).
 
 ### Project
+
 - Integrated JEI into the dev test environments for recipe checking (forge-1.20.1 15.56.0.205 / neoforge-1.21.1 19.39.0.372); the 1.20.1 dev pack mods now come from curse maven via modImplementation so production mixin mods load in the dev environment.
+- 1.20.1 now depends on Mixin Booster (`mixinbooster` 0.1.3, mandatory): Sponge Mixin takes over mixin execution at runtime with automatic Mojmap→SRG remapping, replacing the MDG LegacyForge `mixin` extension/refmap/annotation-processor setup (the villager-trade mixins no longer need a build-time refmap).
+- Ported the newer dice (Obsidian/Netherrack/Weird/Crimson/Amethyst/Ender/Nether Star), creative-tab ordering, tooltip coloring, and the Ender Die teleport changes from 1.21.1 to forge-1.20.1; the 1.20.1 Netherrack-die piglin-neutral `PiglinAiMixin` follows the Mixin Booster / Sponge Mixin convention (consistent with NeoForge/Fabric) and does not use Forge-native or other third-party Mixin APIs (1.20.1 sync).
+- Integrated ModernFix into the test environment: 1.21.1 copies `modernfix-neoforge-5.27.24+mc1.21.1.jar` from the modpack to `run/1.21.1/mods` (`install_test_mods.ps1`); 1.20.1 injects it into the dev run classpath via `modImplementation "maven.modrinth:modernfix:OvpPdk44"`. Both launch verifications now detect ModernFix's `Total time to load game and open world was` loading-complete log (base wait 30s, re-check every 15s if absent).
+- Builds now push to integration packs by default: `gradlew build` deploys to run/mods, the root build/libs, and both pack mods directories automatically (previously required `-PdeployToPack`; the flag remains accepted for compatibility, and missing pack roots are skipped).
+- Completed the Patchouli handbook: added all 11 previously undocumented chips (6 Charge / 1 Healing / 4 General) to the Ren's Rulebook and a new "Charge Chips" category (`chips_charge`, parent "Chips", ordered between Mark and General with `chips_other` shifted down); every chip (55) now has a handbook entry (both loaders).
+- Fixed the CI branch filter pointing at a retired branch name: `.github/workflows/build.yml` still listened for the old slash form `multi-1.20.1/1.21.1`, so pushes to the working branch `multi-1.20.1-1.21.1` did not trigger CI (the lang-sync check and dual-version build gate were inert); it now uses the new slash-free branch name.
+- Event priority cleanup: the Ender Die's rain/water damage amplification was moved to `HIGH` and the Berserk / Weak Mark damage bonuses from `LOWEST` to `LOW`, so all three run before `ChipDamageHandler` (Airbag / Whetstone, `LOWEST`); the Airbag therefore always judges lethality by the final damage, keeping its saving priority reliably above the Totem of Undying and the Ender Die (both loaders).
+- Added a unified tooltip coloring rule (authoritative copy: the `ModTooltipHandler` class-header javadoc; readable version in `docs/tooltip-color-rules.md`): (1) every **non-time** numeric value is highlighted yellow `§e` together with its adjacent sign (e.g. `§e+50%%§7`, `§e×2§7`); (2) time values are highlighted blue `§9`, covering both `M:SS` and `N s`/`Ns` forms (including `0:00` and `0 s`); (3) an entry shaped "<effect name> (<duration>)" is colored fully blue (e.g. `§9Darkness(3s)§7`, `§9Burst(2:00)§7`); priority is rule 3 > rule 2 > rule 1, while negative values stay red `§c` and `§r` resets, `§f` key hints and inline semantic colors (attack-card tier colors, etc.) are preserved as before; a read-only audit script `scripts/audit/tooltip_color_audit.py` was also added (position-aware; checks R1 uncolored numbers / R2 uncolored times / R3 effect entries not fully blue / R1b externalized signs); after processing every tooltip across both languages and both hard-coded sites the audit reports 0 violations (both loaders).
 
 ## 1.1.3
 
@@ -387,7 +149,7 @@ This changelog is fully split by language: the Chinese version comes first, foll
 ### Project
 
 - Versions: 1.21.1 = `1.1.3-rc1+neoforge_1.21.1`, 1.20.1 = `1.1.3-pre1+forge_1.20.1`; rebuilt and published to each modpack (old artifacts auto-cleaned).
-- ModEventHandlers subscribers moved to their feature homes (DiceCombatEvents, ModTooltipHandler, LootInjectionHandler, AnvilUpgradeHandler, PlayerLifecycleHandler, ModEffectEvents, PlayerTickEvents, plus sign/chip/card/manager classes) (1.21.1 only).
+- ModEventHandlers subscribers moved to their feature homes (DiceCombatEvents, ModTooltipHandler, LootInjectionHandler, AnvilUpgradeHandler, PlayerLifecycleHandler, ModEffectEvents, PlayerTickEvents, plus sign/chip/card/manager classes).
 - Removed the charge-deferral timing code for Charge cards (the charge_defer attachment and branches) — impossible now that the card slots lock; Full Power is always refunded when the Blessing ends (both versions).
 - Removed the write-only PlayerResourceRegistry (PlayerResource/ResourceType and the healing/starlight registration stubs) (both versions).
 - Full code audit and cleanup (led by 1.21.1, synced to 1.20.1): removed per-tick effect re-apply sync packets (cutter/revenge-halberd/healing), per-tick enchantment ResourceKey allocation, per-tick full recompute while a menu is open (20-tick throttle) and double isActive evaluation; consolidated duplicated damage-number senders and card-type mappings; removed 8 unused data components, the isChipItem chain, redundant dice ctor args, empty overrides, unused methods/imports and dead branches.
@@ -517,7 +279,7 @@ This changelog is fully split by language: the Chinese version comes first, foll
 - Cutter chips now trigger above 60% of max HP, preventing them from being unable to trigger in most situations.
 - Misaki sign: active skill attack bonus increased to +4 and duration increased to 2:00.
 - Papara sign: the second active effect now treats the player as both full HP and below half HP regardless of current health.
-- Bonnie sign: passive card reward now only applies when killing hostile targets with more than 20 HP.
+- Bonnie sign: passive card reward now only applies when killing hostile targets with at least 20 HP.
 - Chocolate Cake and Hamburger now heal 20%/40% of max HP; Luxury Feast heals 30% of the user's max HP and also heals teammates and teamless players.
 - Buffer Shield trigger cooldown changed to 15 seconds.
 - Adjusted battle card durability values: Medium/Large/Epic=10, Shadow Strike=10, Meito=5, Charge=1, Full Power=2.

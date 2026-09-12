@@ -10,8 +10,12 @@ import com.merlinkitsune.astral_dice.item.HealingManager;
 import com.merlinkitsune.astral_dice.item.chip.BoxingGlovesChipItem;
 import com.merlinkitsune.astral_dice.item.chip.AdrenalineChipItem;
 import com.merlinkitsune.astral_dice.item.chip.RevengeHalberdChipItem;
+import com.merlinkitsune.astral_dice.item.chip.ElectricSwordChipItem;
+import com.merlinkitsune.astral_dice.item.chip.AdvancedPeripheralsChipItem;
 import com.merlinkitsune.astral_dice.item.sign.FenSignItem;
 import com.merlinkitsune.astral_dice.item.sign.NancyLuSignItem;
+import com.merlinkitsune.astral_dice.item.sign.MosesSignItem;
+import com.merlinkitsune.astral_dice.effect.WeaknessRevealEffect;
 import com.merlinkitsune.astral_dice.item.sign.JasmineSignItem;
 import com.merlinkitsune.astral_dice.item.MarkManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
@@ -141,7 +145,8 @@ public final class DiceCombatModifiers {
             int sum = 0;
             for (AppliedStone stone : ctx.enhancement.appliedStones()) {
                 // 掷骰逻辑统一由 CardRegistry 提供(含 shadow_strike/charge/full_power/meito 等特殊卡)
-                sum += CardRegistry.roll(stone.type(), ctx);
+                // 玻璃骰子:攻击牌点数始终取最大值
+                sum += CardRegistry.roll(stone.type(), ctx, ctx.attackerCardsMax);
             }
             ctx.attackCardSum = sum;
             return ap;
@@ -207,6 +212,20 @@ public final class DiceCombatModifiers {
             return ap;
         });
 
+        // === 内置:电流剑(每 4 点充能 +1 攻击力) ===
+        registerAttackModifier((ctx, ap) -> {
+            if (ctx.attacker.level().isClientSide()) return ap;
+            ap += ElectricSwordChipItem.getAttackBonus(ctx.attacker);
+            return ap;
+        });
+
+        // === 内置:高级外设(充能 ≥ 4 时攻击力 +4) ===
+        registerAttackModifier((ctx, ap) -> {
+            if (ctx.attacker.level().isClientSide()) return ap;
+            ap += AdvancedPeripheralsChipItem.getAttackBonus(ctx.attacker);
+            return ap;
+        });
+
         // === 内置:夹心饼干-美味(最大生命值超过 20 点的部分,每 4 点 +1 攻击力) ===
         registerAttackModifier((ctx, ap) -> {
             Player p = ctx.attacker;
@@ -263,7 +282,7 @@ public final class DiceCombatModifiers {
             return ap;
         });
 
-        // === 内置:诅咒之剑(装备时受青之诅咒;每击杀 1 个 20 血以上敌对目标攻击力 +1,上限由配置决定) ===
+        // === 内置:诅咒之剑(装备时受青之诅咒;每击杀 1 个不少于 20 血的敌对目标攻击力 +1,上限由配置决定) ===
         registerAttackModifier((ctx, ap) -> {
             if (hasCurio(ctx.attacker, ModItems.CURSED_SWORD.get())) {
                 ap += ModAttachments.getCursedSwordBonus(ctx.attacker);
@@ -315,6 +334,15 @@ public final class DiceCombatModifiers {
             }
             return ap;
         });
+        // === 内置:枪匠立牌(moses)弱点识破攻击力(每层 +1) ===
+        registerAttackModifier((ctx, ap) -> {
+            if (ctx.attacker.level().isClientSide()) return ap;
+            if (MosesSignItem.isEquipped(ctx.attacker)) {
+                ap += WeaknessRevealEffect.getStacks(ctx.attacker);
+            }
+            return ap;
+        });
+
 
         // === 内置:调查阶段增益(阶段 II 及以上对非 boss 敌对目标/真相揭露对 boss) ===
         registerAttackModifier((ctx, ap) -> {
@@ -353,14 +381,35 @@ public final class DiceCombatModifiers {
             return ap;
         });
 
-        // === 内置:肾上腺素-高效筹码(生命值低于最大生命值一半时攻击力 +8) ===
+        // === 内置:肾上腺素-高效筹码(生命值为 50% 或更低时攻击力 +8) ===
         registerAttackModifier((ctx, ap) -> {
             Player p = ctx.attacker;
             if (p.level().isClientSide()) return ap;
-            if (p.getHealth() >= p.getMaxHealth() / 2.0f) return ap;
+            if (p.getHealth() > p.getMaxHealth() / 2.0f) return ap;
             if (hasCurio(p, ModItems.ADRENALINE_LOW.get())) ap += AdrenalineChipItem.BONUS_LOW;
             if (hasCurio(p, ModItems.ADRENALINE_HIGH.get())) ap += AdrenalineChipItem.BONUS_HIGH;
             return ap;
+        });
+
+        // === 内置:原初核心筹码(每层"赋能"攻击力 +1;防御力经 tick 折算为真实护甲,不在骰战修饰器内) ===
+        registerAttackModifier((ctx, ap) -> {
+            Player p = ctx.attacker;
+            if (p.level().isClientSide()) return ap;
+            return ap + com.merlinkitsune.astral_dice.item.chip.PrimordialCoreChipItem.getAttackBonus(p);
+        });
+
+        // === 内置:电磁炮筹码(充能不少于 6 层时攻击力 +5) ===
+        registerAttackModifier((ctx, ap) -> {
+            Player p = ctx.attacker;
+            if (p.level().isClientSide()) return ap;
+            return ap + com.merlinkitsune.astral_dice.item.chip.RailgunChipItem.getAttackBonus(p);
+        });
+
+        // === 内置:磨刀石筹码(生命值为 50% 或更低时攻击力 +4;减伤在受击侧处理) ===
+        registerAttackModifier((ctx, ap) -> {
+            Player p = ctx.attacker;
+            if (p.level().isClientSide()) return ap;
+            return ap + com.merlinkitsune.astral_dice.item.chip.WhetstoneChipItem.getAttackBonus(p);
         });
 
         // === 内置:防御卡掷骰(收集结果写入上下文;目标无骰子时 targetEnhancement 为 null,结果 0)。
@@ -373,7 +422,8 @@ public final class DiceCombatModifiers {
                 // 防御牌在赐福期间持续生效,每次受击独立随机判定;耐久在佩戴者自身触发赐福时统一消耗
                 for (AppliedStone stone : ctx.targetEnhancement.appliedStones()) {
                     // 防御牌掷骰统一由 CardRegistry 提供(未知类型返回 0)
-                    sum += CardRegistry.roll(stone.type(), ctx);
+                    // 玻璃骰子:防御牌点数始终取最大值
+                    sum += CardRegistry.roll(stone.type(), ctx, ctx.targetCardsMax);
                 }
             }
             ctx.defenseCardSum = sum;

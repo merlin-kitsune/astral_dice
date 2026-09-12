@@ -35,6 +35,8 @@ import com.merlinkitsune.astral_dice.item.card.ChocolateCakeCardItem;
 import com.merlinkitsune.astral_dice.item.chip.BigBackpackChipItem;
 import com.merlinkitsune.astral_dice.item.sign.HaiqingSignItem;
 import com.merlinkitsune.astral_dice.item.sign.NancyLuSignItem;
+import com.merlinkitsune.astral_dice.item.sign.MosesSignItem;
+import com.merlinkitsune.astral_dice.item.sign.PandamanSignItem;
 import com.merlinkitsune.astral_dice.item.card.ExpressDeliveryCardItem;
 import com.merlinkitsune.astral_dice.item.sign.PaparaSignItem;
 import com.merlinkitsune.astral_dice.item.card.LuxuryFeastCardItem;
@@ -75,6 +77,22 @@ import com.merlinkitsune.astral_dice.item.chip.PiercingGunChipItem;
 import com.merlinkitsune.astral_dice.item.chip.CandyChipItem;
 import com.merlinkitsune.astral_dice.item.chip.FriendshipBadgeChipItem;
 import com.merlinkitsune.astral_dice.item.chip.SatelliteChipItem;
+import com.merlinkitsune.astral_dice.item.chip.WarpEngineChipItem;
+import com.merlinkitsune.astral_dice.item.chip.EnergyRecyclerChipItem;
+import com.merlinkitsune.astral_dice.item.chip.ElectricSwordChipItem;
+import com.merlinkitsune.astral_dice.item.chip.PerpetualMotionChipItem;
+import com.merlinkitsune.astral_dice.item.chip.CurrentCoreChipItem;
+import com.merlinkitsune.astral_dice.item.chip.AdvancedPeripheralsChipItem;
+import com.merlinkitsune.astral_dice.item.chip.BigBowlStewChipItem;
+import com.merlinkitsune.astral_dice.item.chip.MemberRecommendationChipItem;
+import com.merlinkitsune.astral_dice.item.chip.BookmarkChipItem;
+import com.merlinkitsune.astral_dice.item.chip.PiggyBankChipItem;
+import com.merlinkitsune.astral_dice.item.chip.SmartWatchChipItem;
+import com.merlinkitsune.astral_dice.item.chip.ElectricGloveChipItem;
+import com.merlinkitsune.astral_dice.item.chip.AirbagChipItem;
+import com.merlinkitsune.astral_dice.item.chip.RailgunChipItem;
+import com.merlinkitsune.astral_dice.item.chip.PrimordialCoreChipItem;
+import com.merlinkitsune.astral_dice.item.chip.WhetstoneChipItem;
 import com.merlinkitsune.astral_dice.item.chip.NinjaStarChipItem;
 import com.merlinkitsune.astral_dice.item.chip.FlashlightChipItem;
 
@@ -114,6 +132,12 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(Rarity.RARE)));
 
+    // 玻璃骰子:与黄金骰子同阶(tag dice_t1),可由黄金骰子升级;战斗牌点数始终取最大值,但死亡会丢失该骰子及已装备卡牌
+    public static final DeferredItem<Item> GLASS_DICE = registerItem("glass_dice",
+            () -> new DiceCurioItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.RARE)));
+
     // 钻石骰子:由黄金骰子 + 4 星盘 + 4 钻石升级而来,卡牌放置栏固定攻防各 5(共 10)
     public static final DeferredItem<Item> DIAMOND_DICE = registerItem("diamond_dice",
             () -> new DiceCurioItem(new Item.Properties()
@@ -123,6 +147,54 @@ public class ModItems {
     // 合金骰子:由钻石骰子 + 4 黄金星盘 + 4 下界合金锭升级而来,卡牌放置栏为攻防各 6 个(共 12)
     public static final DeferredItem<Item> NETHERITE_DICE = registerItem("netherite_dice",
             () -> new DiceCurioItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.UNCOMMON)));
+
+    // 绿宝石骰子:与钻石骰子同阶(tag dice_t2),可由钻石骰子升级;佩戴后村民交易绿宝石费用改为星币并享 20% 折扣
+    public static final DeferredItem<Item> EMERALD_DICE = registerItem("emerald_dice",
+            () -> new DiceCurioItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.EPIC)));
+
+    // 黑曜石骰子:与钻石骰子同阶(tag dice_t2),可由钻石骰子升级;基础防御力 +3(折算 +6 护甲),火焰伤害 -70%
+    public static final DeferredItem<Item> OBSIDIAN_DICE = registerItem("obsidian_dice",
+            () -> new com.merlinkitsune.astral_dice.item.dice.ObsidianDiceItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.EPIC)));
+
+    // 下界岩骰子:与黄金骰子同阶(tag dice_t1),可由黄金骰子升级;下界挖矿概率掉星币/星盘,猪灵保持中立
+    public static final DeferredItem<Item> NETHERRACK_DICE = registerItem("netherrack_dice",
+            () -> new DiceCurioItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.RARE)));
+
+    // 诡异骰子:与钻石骰子同阶(tag dice_t2),可由钻石骰子升级;立牌主动冷却 -50%,但战斗骰低点数(1-3)概率提升 50%
+    public static final DeferredItem<Item> WEIRD_DICE = registerItem("weird_dice",
+            () -> new DiceCurioItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.EPIC)));
+
+    // 绯红骰子:与下界合金骰子同阶(tag dice_t3),可由下界合金骰子升级;战斗骰高点数(4-6)概率提升 50%,但骰出 1 时立即受到 6 点伤害
+    public static final DeferredItem<Item> CRIMSON_DICE = registerItem("crimson_dice",
+            () -> new DiceCurioItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.UNCOMMON)));
+
+    // 紫晶骰子:与钻石骰子同阶(tag dice_t2),可由钻石骰子升级;远程/魔法攻击也触发战斗骰并追加骰点伤害(不触发骰神赐福)
+    public static final DeferredItem<Item> AMETHYST_DICE = registerItem("amethyst_dice",
+            () -> new DiceCurioItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.EPIC)));
+
+    // 末影骰子:与下界合金骰子同阶(tag dice_t3),可由下界合金骰子升级;致命伤害触发不死图腾效果(冷却 5:00),但雨中/水下受到的伤害 +40%
+    public static final DeferredItem<Item> ENDER_DICE = registerItem("ender_dice",
+            () -> new DiceCurioItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.UNCOMMON)));
+
+    // 下界之星骰子:T4 奇异品阶(tag dice_t4),可由任意 T3 骰子升级;卡牌槽/费用恒为最高档、筹码栏 +1,星级附加攻防
+    public static final DeferredItem<Item> NETHER_STAR_DICE = registerItem("nether_star_dice",
+            () -> new com.merlinkitsune.astral_dice.item.dice.NetherStarDiceItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(Rarity.UNCOMMON)));
 
@@ -138,12 +210,39 @@ public class ModItems {
         // 金骰子:筹码栏 0★1/1★2/2★3/3★4
         DiceTierRegistry.register(new DiceTier("golden_dice", () -> GOLDEN_DICE.get(),
                 s -> 1 + s));
+        // 玻璃骰子:与金骰子同阶(筹码栏 0★1/1★2/2★3/3★4)
+        DiceTierRegistry.register(new DiceTier("glass_dice", () -> GLASS_DICE.get(),
+                s -> 1 + s));
         // 钻石骰子:筹码栏 0★2/1★3/2★4/3★5
         DiceTierRegistry.register(new DiceTier("diamond_dice", () -> DIAMOND_DICE.get(),
                 s -> 2 + s));
         // 合金骰子:筹码栏 0★3/1★4/2★5/3★6
         DiceTierRegistry.register(new DiceTier("netherite_dice", () -> NETHERITE_DICE.get(),
                 s -> 3 + s));
+        // 绿宝石骰子:与钻石骰子同阶(筹码栏 0★2/1★3/2★4/3★5)
+        DiceTierRegistry.register(new DiceTier("emerald_dice", () -> EMERALD_DICE.get(),
+                s -> 2 + s));
+        // 黑曜石骰子:与钻石骰子同阶(筹码栏 0★2/1★3/2★4/3★5)
+        DiceTierRegistry.register(new DiceTier("obsidian_dice", () -> OBSIDIAN_DICE.get(),
+                s -> 2 + s));
+        // 下界岩骰子:与金骰子同阶(筹码栏 0★1/1★2/2★3/3★4)
+        DiceTierRegistry.register(new DiceTier("netherrack_dice", () -> NETHERRACK_DICE.get(),
+                s -> 1 + s));
+        // 诡异骰子:与钻石骰子同阶(筹码栏 0★2/1★3/2★4/3★5)
+        DiceTierRegistry.register(new DiceTier("weird_dice", () -> WEIRD_DICE.get(),
+                s -> 2 + s));
+        // 绯红骰子:与下界合金骰子同阶(筹码栏 0★3/1★4/2★5/3★6)
+        DiceTierRegistry.register(new DiceTier("crimson_dice", () -> CRIMSON_DICE.get(),
+                s -> 3 + s));
+        // 紫晶骰子:与钻石骰子同阶(筹码栏 0★2/1★3/2★4/3★5)
+        DiceTierRegistry.register(new DiceTier("amethyst_dice", () -> AMETHYST_DICE.get(),
+                s -> 2 + s));
+        // 末影骰子:与下界合金骰子同阶(筹码栏 0★3/1★4/2★5/3★6)
+        DiceTierRegistry.register(new DiceTier("ender_dice", () -> ENDER_DICE.get(),
+                s -> 3 + s));
+        // 下界之星骰子:T4 奇异品阶(筹码栏 0★4/1★5/2★6/3★7,比 T3 多 1 格)
+        DiceTierRegistry.register(new DiceTier("nether_star_dice", () -> NETHER_STAR_DICE.get(),
+                s -> 4 + s));
     }
 
     public static final DeferredItem<Item> ATTACK_CARD_MEDIUM = registerItem("attack_card_medium",
@@ -391,6 +490,27 @@ public class ModItems {
                     .stacksTo(64)
                     .rarity(Rarity.UNCOMMON)));
 
+    // === 新材料(1.2.0):合成材料,本身不参与配方 ===
+    // 再生试剂:再生相关的试剂(动态贴图,2 帧)
+    public static final DeferredItem<Item> REGENERATION_REAGENT = registerItem("regeneration_reagent",
+            () -> new Item(new Item.Properties()
+                    .stacksTo(64)));
+
+    // 导电线材:可导引电流的线材(动态贴图,10 帧)
+    public static final DeferredItem<Item> CONDUCTIVE_WIRE = registerItem("conductive_wire",
+            () -> new Item(new Item.Properties()
+                    .stacksTo(64)));
+
+    // 星币尘:星币研磨而成的粉末(动态贴图,7 帧)
+    public static final DeferredItem<Item> STAR_COIN_DUST = registerItem("star_coin_dust",
+            () -> new Item(new Item.Properties()
+                    .stacksTo(64)));
+
+    // 标记涂料:用于标记目标的涂料(静态贴图)
+    public static final DeferredItem<Item> MARK_PAINT = registerItem("mark_paint",
+            () -> new Item(new Item.Properties()
+                    .stacksTo(64)));
+
     public static final DeferredItem<Item> EIGHT_SIDED_DICE = registerItem("eight_sided_dice_chip",
             () -> new EightSidedDiceChipItem(new Item.Properties()
                     .stacksTo(1)
@@ -493,13 +613,13 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(Rarity.UNCOMMON), SandwichChipItem.HEALTH_HIGH));
 
-    // 肾上腺素-一般:生命值低于最大生命值一半时,攻击力/防御力 +3(史诗)
+    // 肾上腺素-一般:生命值为 50% 或更低时,攻击力/防御力 +3(史诗)
     public static final DeferredItem<Item> ADRENALINE_LOW = registerItem("adrenaline_low_chip",
             () -> new AdrenalineChipItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(Rarity.EPIC), AdrenalineChipItem.BONUS_LOW));
 
-    // 肾上腺素-高效:生命值低于最大生命值一半时,攻击力/防御力 +8;触发加成时被敌方攻击,
+    // 肾上腺素-高效:生命值为 50% 或更低时,攻击力/防御力 +8;触发加成时被敌方攻击,
     // 骰点 4-5 → 50% 闪避、6 → 100% 闪避本次伤害(传奇)
     public static final DeferredItem<Item> ADRENALINE_HIGH = registerItem("adrenaline_high_chip",
             () -> new AdrenalineChipItem(new Item.Properties()
@@ -524,7 +644,7 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(Rarity.UNCOMMON)));
 
-    // 诅咒之剑:装备时始终受到青之诅咒;骰神赐福期间每击杀 1 个 20 血以上敌对目标攻击力 +1(上限默认 16,最大 32)
+    // 诅咒之剑:装备时始终受到青之诅咒;骰神赐福期间每击杀 1 个不少于 20 血的敌对目标攻击力 +1(上限默认 16,最大 32)
     public static final DeferredItem<Item> CURSED_SWORD = registerItem("cursed_sword_chip",
             () -> new CursedSwordChipItem(new Item.Properties()
                     .stacksTo(1)
@@ -559,6 +679,103 @@ public class ModItems {
             () -> new SatelliteChipItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(Rarity.UNCOMMON)));
+
+    // 跃迁引擎:触发指定传送后,获得 2 层充能并获得迅捷 0:10
+    public static final DeferredItem<Item> WARP_ENGINE_CHIP = registerItem("warp_engine_chip",
+            () -> new WarpEngineChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.RARE)));
+
+    // 能量回收器:每移动 50 米获得 1 点充能
+    public static final DeferredItem<Item> ENERGY_RECYCLER = registerItem("energy_recycler_chip",
+            () -> new EnergyRecyclerChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.RARE)));
+
+    // 电流剑:每 4 点充能攻击力 +1;击杀 10 个敌对目标后获得 2 点充能
+    public static final DeferredItem<Item> ELECTRIC_SWORD = registerItem("electric_sword_chip",
+            () -> new ElectricSwordChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.RARE)));
+
+    // 高级外设:充能 ≥ 4 时攻击力 +4;每次触发骰神赐福移除 1 层充能
+    public static final DeferredItem<Item> ADVANCED_PERIPHERALS = registerItem("advanced_peripherals_chip",
+            () -> new AdvancedPeripheralsChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.EPIC)));
+
+    // 永动机:触发骰神赐福时,充能 +6
+    public static final DeferredItem<Item> PERPETUAL_MOTION = registerItem("perpetual_motion_chip",
+            () -> new PerpetualMotionChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.UNCOMMON)));
+
+    // 电流核心:使用主动技能时充能 +1;冷却中按下主动技能键时按剩余冷却占比消耗充能并立即使冷却完成
+    public static final DeferredItem<Item> CURRENT_CORE_CHIP = registerItem("current_core_chip",
+            () -> new CurrentCoreChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.EPIC)));
+
+    // 大碗炖肉:骰神赐福结束后,16 格范围内所有友方目标 +1 治愈并恢复 2 点生命值
+    public static final DeferredItem<Item> BIG_BOWL_STEW_CHIP = registerItem("big_bowl_stew_chip",
+            () -> new BigBowlStewChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.UNCOMMON)));
+
+    // 会员推荐信:每次触发骰神赐福时,获得一张随机卡牌
+    public static final DeferredItem<Item> MEMBER_RECOMMENDATION_CHIP = registerItem("member_recommendation_chip",
+            () -> new MemberRecommendationChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.RARE)));
+
+    // 书签:使伤害效果牌伤害加成 +1
+    public static final DeferredItem<Item> BOOKMARK_CHIP = registerItem("bookmark_chip",
+            () -> new BookmarkChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.RARE)));
+
+    // 小猪存钱罐:每使用 2 张效果牌后,获得 3 星币
+    public static final DeferredItem<Item> PIGGY_BANK_CHIP = registerItem("piggy_bank_chip",
+            () -> new PiggyBankChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.RARE)));
+
+    // 智能手表:物品栏卡牌不足 10 张时,每击杀 1 个敌对目标获得一张随机卡牌
+    public static final DeferredItem<Item> SMART_WATCH_CHIP = registerItem("smart_watch_chip",
+            () -> new SmartWatchChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.EPIC)));
+
+    // 电击手套:使用效果牌时充能 +1;充能 ≥4 时使用伤害效果牌会消耗 4 层充能,使本周期内远程/魔法伤害
+    // 同时命中目标 3 格范围内的其他敌对目标(每周期一次,史诗)
+    public static final DeferredItem<Item> ELECTRIC_GLOVE_CHIP = registerItem("electric_glove_chip",
+            () -> new ElectricGloveChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.EPIC)));
+
+    // 安全气囊:受到致命伤害时消耗 6 点充能无效化本次伤害(冷却 1:00,史诗)
+    public static final DeferredItem<Item> AIRBAG_CHIP = registerItem("airbag_chip",
+            () -> new AirbagChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.EPIC)));
+
+    // 电磁炮:充能 ≥6 时攻击力 +5;攻击敌对目标消耗 6 层充能,延迟 1 秒对其 3 格内敌对目标降下雷击(传奇)
+    public static final DeferredItem<Item> RAILGUN_CHIP = registerItem("railgun_chip",
+            () -> new RailgunChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.UNCOMMON)));
+
+    // 原初核心:每消耗 1 层充能获得 1 层赋能(每层 +1 攻击/防御,每 0:30 递减 1 层,传奇)
+    public static final DeferredItem<Item> PRIMORDIAL_CORE_CHIP = registerItem("primordial_core_chip",
+            () -> new PrimordialCoreChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.UNCOMMON)));
+
+    // 磨刀石:生命值为 50% 或更低时攻击力 +4、受到伤害 -2;生命值 >1 时受到的伤害不超过剩余生命值(史诗)
+    public static final DeferredItem<Item> WHETSTONE_CHIP = registerItem("whetstone_chip",
+            () -> new WhetstoneChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.EPIC)));
 
     public static final DeferredItem<Item> PADMAN_SIGN = registerItem("padman_sign",
             () -> new PadmanSignItem(new Item.Properties()
@@ -646,6 +863,18 @@ public class ModItems {
             () -> new NancyLuSignItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(Rarity.EPIC)));
+
+    // 枪匠立牌(命名:moses):弱点识破 + 破绽;主动弱点反击,主动冷却 120 秒(史诗)
+    public static final DeferredItem<Item> MOSES_SIGN = registerItem("moses_sign",
+            () -> new MosesSignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.EPIC)));
+
+    // 肉弹战车立牌(命名:pandaman,稀有):治疗/生命上限被动 + 大吃特吃主动
+    public static final DeferredItem<Item> PANDAMAN_SIGN = registerItem("pandaman_sign",
+            () -> new PandamanSignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.RARE)));
 
     public static <T extends Item> DeferredItem<T> registerItem(String name, Supplier<T> itemSupplier) {
         return ITEMS.register(name, itemSupplier);

@@ -25,7 +25,7 @@ import net.minecraft.world.entity.LivingEntity;
 
 /**
  * 诅咒之剑筹码:装备时始终受到"青之诅咒"影响。
- * 骰神赐福期间,每击杀 1 个 20 血以上的敌对目标,攻击力 +1;
+ * 骰神赐福期间,每击杀 1 个不少于 20 血的敌对目标,攻击力 +1;
  * 每个骰神赐福效果期间最多触发一次,上限由配置
  * {@link GameplayConstants#CURSED_SWORD_BONUS_MAX} 决定(默认 16,最大 32)。
  * 移除筹码时清除全部攻击力加成与青之诅咒效果。
@@ -79,7 +79,7 @@ public class CursedSwordChipItem extends BaseChipItem {
         ModEffectRemoval.remove(player, ModEffects.BLUE_CURSE.get());
     }
 
-    // 骰神赐福期间击杀敌对目标(20 血以上)时增加 1 点攻击力;每个赐福周期最多触发一次
+    // 骰神赐福期间击杀敌对目标(不少于 20 血)时增加 1 点攻击力;每个赐福周期最多触发一次
     public static void onKill(Player player) {
         if (player == null || player.level().isClientSide()) return;
         if (!isEquipped(player)) return;
@@ -111,12 +111,12 @@ public class CursedSwordChipItem extends BaseChipItem {
         }
     }
 
-    // 诅咒之剑:每击杀 1 个 20 血以上敌对目标,攻击力 +1(上限由配置决定)
+    // 诅咒之剑:每击杀 1 个不少于 20 血敌对目标,攻击力 +1(上限由配置决定)
     @SubscribeEvent
     public static void onCursedSwordKill(LivingDeathEvent event) {
         LivingEntity target = event.getEntity();
         if (target.level().isClientSide()) return;
-        if (!(target instanceof Enemy) || target.getMaxHealth() <= 20) return;
+        if (!(target instanceof Enemy) || target.getMaxHealth() < 20) return;
         if (!(event.getSource().getEntity() instanceof Player killer)) return;
         CursedSwordChipItem.onKill(killer);
     }

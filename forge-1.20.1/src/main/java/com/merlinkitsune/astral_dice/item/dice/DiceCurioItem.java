@@ -13,6 +13,7 @@ import top.theillusivec4.curios.api.SlotContext;
 import top.theillusivec4.curios.api.type.capability.ICurioItem;
 import top.theillusivec4.curios.api.type.inventory.ICurioStacksHandler;
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
+import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.sign.MimiSignItem;
 
 public class DiceCurioItem extends Item implements ICurioItem {
@@ -29,13 +30,21 @@ public class DiceCurioItem extends Item implements ICurioItem {
         return DiceTierRegistry.isDice(stack);
     }
 
-    // 卡牌放置栏总槽位数:仅由骰子星级决定,与骰子品阶无关——0★=4(攻防各2)、1★=6(各3)、
+    // 卡牌放置栏总槽位数:由"卡牌配置星级"决定,与骰子品阶无关——0★=4(攻防各2)、1★=6(各3)、
     // 2★=8(各4)、3★=12(各6);星级超出 0-3 时按最近档钳制。
+    // 下界之星骰子(T4):卡牌槽与费用点数始终按最高档 3★ 配置(12 格 / 费用上限各 6)。
     private static final int[] CARD_SLOTS_BY_STAR = {4, 6, 8, 12};
 
+    /** 卡牌配置星级:下界之星骰子恒为 3★(最高档),其余骰子取实际星级 */
+    public static int configStarLevel(ItemStack stack) {
+        if (!stack.isEmpty() && stack.is(ModItems.NETHER_STAR_DICE.get())) {
+            return 3;
+        }
+        return Math.max(0, Math.min(3, starLevel(stack)));
+    }
+
     public static int getCardSlots(ItemStack stack) {
-        int star = Math.max(0, Math.min(3, starLevel(stack)));
-        return CARD_SLOTS_BY_STAR[star];
+        return CARD_SLOTS_BY_STAR[configStarLevel(stack)];
     }
 
     @Override
@@ -161,5 +170,22 @@ public class DiceCurioItem extends Item implements ICurioItem {
         } else if (current < target) {
             handler.grow(target - current);
         }
+    }
+
+    // 玻璃骰子死亡惩罚:移除骰子本体(连同其 WEAPON_ENHANCEMENT 中已装备的全部卡牌),
+    // 并把筹码栏收缩归零(forceRemove=true,槽内筹码归还物品栏)。
+    public static void removeGlassDiceOnDeath(Player player) {
+        if (player == null || player.level().isClientSide()) return;
+        CuriosCompat.getCuriosInventory(player).ifPresent(handler -> {
+            handler.getStacksHandler("dice").ifPresent(diceHandler -> {
+                ItemStack dice = diceHandler.getStacks().getStackInSlot(0);
+                if (!dice.isEmpty() && dice.is(ModItems.GLASS_DICE.get())) {
+                    diceHandler.getStacks().setStackInSlot(0, ItemStack.EMPTY);
+                    handler.getStacksHandler("chip").ifPresent(chip ->
+                            setChipSlotCount(player, chip, CHIP_NO_DICE_SLOTS, true));
+                    LOGGER.info("[Astral Dice] 玻璃骰子死亡丢失: {} 的玻璃骰子及其卡牌已移除", player.getGameProfile().getName());
+                }
+            });
+        });
     }
 }

@@ -3,7 +3,6 @@ package com.merlinkitsune.astral_dice;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
 import com.merlinkitsune.astral_dice.component.GameplayConstants;
-import com.merlinkitsune.astral_dice.config.ModClientConfig;
 import com.merlinkitsune.astral_dice.config.ModCommonConfig;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.event.AstralEvents;
@@ -43,17 +42,17 @@ public class AstralDiceMod {
         ModMenuTypes.MENU_TYPES.register(modEventBus);
         ModAttachments.ATTACHMENTS.register(modEventBus);
         AstralEvents.init();
-        // 配置版本检查:旧版本配置文件先备份,再由 NeoForge 继承旧值写入新配置
+        // 配置版本检查:旧版本配置文件先备份,再由 NeoForge 继承旧值写入新配置(仅公共配置;client 配置已移除)
         backupOldConfigIfNeeded("astral_dice-common.toml", ModCommonConfig.CONFIG_VERSION);
-        backupOldConfigIfNeeded("astral_dice-client.toml", ModClientConfig.CONFIG_VERSION);
         modContainer.registerConfig(ModConfig.Type.COMMON, ModCommonConfig.SPEC);
-        modContainer.registerConfig(ModConfig.Type.CLIENT, ModClientConfig.SPEC);
         modEventBus.register(this);
         // Iron 的法术与魔法书联动:仅在模组加载时注册其事件处理器(类引用只在加载条件下触发)
         if (net.neoforged.fml.ModList.get().isLoaded("irons_spellbooks")) {
             net.neoforged.neoforge.common.NeoForge.EVENT_BUS
                     .register(com.merlinkitsune.astral_dice.event.IronSpellbooksCompat.class);
         }
+        // Waystones 传送联动:仅在模组加载时反射注册事件,未安装时静默跳过
+        com.merlinkitsune.astral_dice.event.WaystoneWarpCompat.init();
         if (FMLEnvironment.dist == Dist.CLIENT) {
             modEventBus.addListener(this::registerScreens);
         }
@@ -102,8 +101,10 @@ public class AstralDiceMod {
             LOGGER.info("May the god of the dice be with you!");
             CuriosApi.registerCurio(ModItems.DICE.get(), (ICurioItem) ModItems.DICE.get());
             CuriosApi.registerCurio(ModItems.GOLDEN_DICE.get(), (ICurioItem) ModItems.GOLDEN_DICE.get());
+            CuriosApi.registerCurio(ModItems.GLASS_DICE.get(), (ICurioItem) ModItems.GLASS_DICE.get());
             CuriosApi.registerCurio(ModItems.DIAMOND_DICE.get(), (ICurioItem) ModItems.DIAMOND_DICE.get());
             CuriosApi.registerCurio(ModItems.NETHERITE_DICE.get(), (ICurioItem) ModItems.NETHERITE_DICE.get());
+            CuriosApi.registerCurio(ModItems.EMERALD_DICE.get(), (ICurioItem) ModItems.EMERALD_DICE.get());
             CuriosApi.registerCurio(ModItems.PARUNAN_SIGN.get(), (ICurioItem) ModItems.PARUNAN_SIGN.get());
             CuriosApi.registerCurio(ModItems.JASMINE_SIGN.get(), (ICurioItem) ModItems.JASMINE_SIGN.get());
             CuriosApi.registerCurio(ModItems.MISAKI_SIGN.get(), (ICurioItem) ModItems.MISAKI_SIGN.get());

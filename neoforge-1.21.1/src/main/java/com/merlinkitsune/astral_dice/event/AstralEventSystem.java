@@ -76,9 +76,9 @@ public final class AstralEventSystem {
     }
 
     // 调查员立牌被动:自身触发事件(击杀"隐匿调查"目标),或受到事件影响
-    // (大侦探触发事件影响到调查员 / 周围 32 格或团队内有人触发"调查阶段")后,
+    // (大侦探触发事件影响到调查员 / 周围 32 格或团队/友方内有人触发"调查阶段")后,
     // 佩戴调查员立牌的玩家获得一张"活体书页"。
-    // 影响范围 32 格与团队判定为硬编码(不再走配置常量)。
+    // 影响范围 32 格为硬编码;团队/友方判定走统一收集(触发者无队伍时全服在线玩家视为友方)。
     // 兼容入口:未指定事件 ID 时按默认签名去重(供外部直接调用)。
     public static void applyRinSignPassive(Player triggerer) {
         applyRinSignPassive(triggerer, "sign_effect");
@@ -94,13 +94,15 @@ public final class AstralEventSystem {
     public static void applyRinSignPassive(Player triggerer, String eventId) {
         if (!(triggerer.level() instanceof ServerLevel serverLevel)) return;
         long now = serverLevel.getGameTime();
+        // 团队/友方目标:若触发者未加入任何队伍,collectTeamPlayers 会返回全服在线玩家
+        java.util.List<Player> teamPlayers = EventTargetCollector.collectTeamPlayers(triggerer);
         String signature = triggerer.getUUID() + "|" + eventId;
         for (ServerPlayer sp : serverLevel.players()) {
             if (!holdsSign(sp, ModItems.RIN_SIGN.get())) continue;
             // 范围 32 格(硬编码)
             boolean inRange = sp.distanceToSqr(triggerer) <= 32 * 32;
-            // 团队判定(硬编码:计入同队)
-            boolean team = sp.getTeam() != null && sp.getTeam() == triggerer.getTeam();
+            // 团队判定:走统一收集(MC/FTB/OPAC;无队伍时全服在线玩家视为友方)
+            boolean team = teamPlayers.contains(sp);
             if (sp == triggerer || inRange || team) {
                 // 同一事件 2 tick 窗口内已给过 → 跳过(防多槽重复分发)
                 if (signature.equals(com.merlinkitsune.astral_dice.component.ModAttachments.getRinGiftSignature(sp))

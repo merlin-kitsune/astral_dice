@@ -160,12 +160,26 @@ public class ModAttachments {
                     .serialize(Codec.STRING)
                     .build());
 
-    // 忍者立牌(komachi):效果牌伤害增益(每使用 3 张效果牌 +1,上限见 GameplayConstants.KOMACHI_DAMAGE_BONUS_MAX)
+    // 忍者立牌(komachi):效果牌伤害增益(每使用 3 张效果牌 +1,无上限,卸下立牌重置)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> KOMACHI_DAMAGE_BONUS =
             ATTACHMENTS.register("komachi_damage_bonus", () -> AttachmentType.builder(() -> 0)
                     .serialize(Codec.INT)
                     .sync(ByteBufCodecs.INT)
                     .build());
+
+    // 小猪存钱罐筹码:效果牌使用计数(每使用 2 张获得 3 星币;卸下筹码重置)
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> PIGGY_BANK_USE_COUNT =
+            ATTACHMENTS.register("piggy_bank_use_count", () -> AttachmentType.builder(() -> 0)
+                    .serialize(Codec.INT)
+                    .build());
+
+    public static int getPiggyBankUseCount(net.minecraft.world.entity.player.Player player) {
+        return player.getData(PIGGY_BANK_USE_COUNT.get());
+    }
+
+    public static void setPiggyBankUseCount(net.minecraft.world.entity.player.Player player, int value) {
+        player.setData(PIGGY_BANK_USE_COUNT.get(), Math.max(0, value));
+    }
 
     public static int getMagicTomeUseCount(net.minecraft.world.entity.player.Player player) {
         return player.getData(MAGIC_TOME_USE_COUNT.get());
@@ -297,6 +311,34 @@ public class ModAttachments {
                     .serialize(Codec.INT)
                     .build());
 
+    // 破绽(枪匠立牌 Moses)期间,目标是否已被攻击方获得过弱点识破(每段破绽一次)
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Boolean>> MOSES_BROKEN_ATTACK_REWARDED =
+            ATTACHMENTS.register("moses_broken_attack_rewarded", () -> AttachmentType.builder(() -> false)
+                    .serialize(Codec.BOOL)
+                    .build());
+
+    // 枪匠立牌 Moses:目标是否已因闪避/反击获得过弱点识破(每个目标一次,不依赖破绽)
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Boolean>> MOSES_DODGE_COUNTER_REWARDED =
+            ATTACHMENTS.register("moses_dodge_counter_rewarded", () -> AttachmentType.builder(() -> false)
+                    .serialize(Codec.BOOL)
+                    .build());
+
+    public static boolean isMosesBrokenAttackRewarded(net.minecraft.world.entity.LivingEntity entity) {
+        return entity.getData(MOSES_BROKEN_ATTACK_REWARDED.get());
+    }
+
+    public static void setMosesBrokenAttackRewarded(net.minecraft.world.entity.LivingEntity entity, boolean value) {
+        entity.setData(MOSES_BROKEN_ATTACK_REWARDED.get(), value);
+    }
+
+    public static boolean isMosesDodgeCounterRewarded(net.minecraft.world.entity.LivingEntity entity) {
+        return entity.getData(MOSES_DODGE_COUNTER_REWARDED.get());
+    }
+
+    public static void setMosesDodgeCounterRewarded(net.minecraft.world.entity.LivingEntity entity, boolean value) {
+        entity.setData(MOSES_DODGE_COUNTER_REWARDED.get(), value);
+    }
+
     public static Optional<UUID> getUndercoverSource(net.minecraft.world.entity.LivingEntity entity) {
         return entity.getData(UNDERCOVER_SOURCE.get());
     }
@@ -350,6 +392,35 @@ public class ModAttachments {
 
     public static void setSignActiveCooldownEnd(net.minecraft.world.entity.player.Player player, long value) {
         player.setData(SIGN_ACTIVE_COOLDOWN_END.get(), value);
+    }
+
+    // 末影骰子:不死图腾效果冷却结束时刻(玩家级,0 表示未进入冷却)
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> ENDER_DIE_TOTEM_COOLDOWN_END =
+            ATTACHMENTS.register("ender_die_totem_cooldown_end", () -> AttachmentType.builder(() -> 0L)
+                    .serialize(Codec.LONG)
+                    .sync(ByteBufCodecs.VAR_LONG)
+                    .build());
+
+    public static long getEnderDieTotemCooldownEnd(net.minecraft.world.entity.player.Player player) {
+        return player.getData(ENDER_DIE_TOTEM_COOLDOWN_END.get());
+    }
+
+    public static void setEnderDieTotemCooldownEnd(net.minecraft.world.entity.player.Player player, long value) {
+        player.setData(ENDER_DIE_TOTEM_COOLDOWN_END.get(), value);
+    }
+
+    // 跃迁引擎:传送门/Waystone 传送获得充能的共享冷却结束时刻(玩家级,0 表示无冷却;仅服务端使用)
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> WARP_ENGINE_PORTAL_COOLDOWN_END =
+            ATTACHMENTS.register("warp_engine_portal_cooldown_end", () -> AttachmentType.builder(() -> 0L)
+                    .serialize(Codec.LONG)
+                    .build());
+
+    public static long getWarpEnginePortalCooldownEnd(net.minecraft.world.entity.player.Player player) {
+        return player.getData(WARP_ENGINE_PORTAL_COOLDOWN_END.get());
+    }
+
+    public static void setWarpEnginePortalCooldownEnd(net.minecraft.world.entity.player.Player player, long value) {
+        player.setData(WARP_ENGINE_PORTAL_COOLDOWN_END.get(), value);
     }
 
     // @Deprecated 已废弃:立牌主动技能"等待目标释放"机制已被目标选择器(TargetSelectionManager 会话)替代,
@@ -456,7 +527,7 @@ public class ModAttachments {
                     .serialize(Codec.INT)
                     .build());
 
-    // 诅咒之剑筹码:累计击杀 20 血以上敌对目标获得的攻击力加成(移除筹码/死亡清除)
+    // 诅咒之剑筹码:累计击杀不少于 20 血的敌对目标获得的攻击力加成(移除筹码/死亡清除)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> CURSED_SWORD_BONUS =
             ATTACHMENTS.register("cursed_sword_bonus", () -> AttachmentType.builder(() -> 0)
                     .serialize(Codec.INT)
@@ -771,6 +842,48 @@ public class ModAttachments {
         player.setData(DEFENSE_CARD_CONSUMED_BLESSING.get(), value);
     }
 
+    // 肉弹战车立牌(pandaman)被动:吃汉堡累计的生命值上限加成(卸下立牌时清除)
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> PANDAMAN_MAX_HEALTH_BONUS =
+            ATTACHMENTS.register("pandaman_max_health_bonus", () -> AttachmentType.builder(() -> 0)
+                    .serialize(Codec.INT)
+                    .build());
+
+    public static int getPandamanMaxHealthBonus(net.minecraft.world.entity.player.Player player) {
+        return player.getData(PANDAMAN_MAX_HEALTH_BONUS.get());
+    }
+
+    public static void setPandamanMaxHealthBonus(net.minecraft.world.entity.player.Player player, int value) {
+        player.setData(PANDAMAN_MAX_HEALTH_BONUS.get(), Math.max(0, value));
+    }
+
+    // 嘲讽来源:肉弹战车立牌(pandaman)主动施加"嘲讽"的玩家 UUID
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Optional<UUID>>> PANDAMAN_TAUNT_SOURCE =
+            ATTACHMENTS.register("pandaman_taunt_source", () -> AttachmentType.<Optional<UUID>>builder(Optional::empty)
+                    .serialize(UUIDUtil.CODEC.optionalFieldOf("id").codec())
+                    .build());
+
+    public static Optional<UUID> getPandamanTauntSource(net.minecraft.world.entity.LivingEntity entity) {
+        return entity.getData(PANDAMAN_TAUNT_SOURCE.get());
+    }
+
+    public static void setPandamanTauntSource(net.minecraft.world.entity.LivingEntity entity, Optional<UUID> value) {
+        entity.setData(PANDAMAN_TAUNT_SOURCE.get(), value);
+    }
+
+    // 恋的规则书:是否已在当前世界为玩家发放过首次加入的规则书(仅服务端持久化,无需同步)
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Boolean>> GUIDE_BOOK_GIVEN =
+            ATTACHMENTS.register("guide_book_given", () -> AttachmentType.builder(() -> false)
+                    .serialize(Codec.BOOL)
+                    .build());
+
+    public static boolean isGuideBookGiven(net.minecraft.world.entity.player.Player player) {
+        return player.getData(GUIDE_BOOK_GIVEN.get());
+    }
+
+    public static void setGuideBookGiven(net.minecraft.world.entity.player.Player player, boolean value) {
+        player.setData(GUIDE_BOOK_GIVEN.get(), value);
+    }
+
     // 计时器守卫:本模组有时长效果的结束时刻记录(效果注册名 → 结束 tick + 重施加参数)。
     // 仅服务端使用,序列化持久化;由 EffectTimerGuard 维护,保证效果严格按 20t/s 流动。
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Map<String,
@@ -782,4 +895,51 @@ public class ModAttachments {
                             .serialize(Codec.unboundedMap(Codec.STRING,
                                     com.merlinkitsune.astral_dice.event.EffectTimerGuard.TimerEntry.CODEC))
                             .build());
+
+    // === 新筹码:原初核心 / 电击手套 / 安全气囊 ===
+
+    /** 赋能:下一层递减的到期时刻(gameTime;0 表示无计时器) */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> EMPOWER_DECAY_AT =
+            ATTACHMENTS.register("empower_decay_at", () -> AttachmentType.builder(() -> 0L)
+                    .serialize(Codec.LONG)
+                    .sync(ByteBufCodecs.VAR_LONG)
+                    .build());
+
+    /** 电击手套:本效果牌周期内是否已武装法伤扩散(触发后/周期结束清除) */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Boolean>> ELECTRIC_GLOVE_AOE =
+            ATTACHMENTS.register("electric_glove_aoe", () -> AttachmentType.builder(() -> false)
+                    .serialize(Codec.BOOL)
+                    .sync(ByteBufCodecs.BOOL)
+                    .build());
+
+    /** 安全气囊:触发冷却结束时刻(1:00;0 表示无冷却) */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> AIRBAG_COOLDOWN_END =
+            ATTACHMENTS.register("airbag_cooldown_end", () -> AttachmentType.builder(() -> 0L)
+                    .serialize(Codec.LONG)
+                    .sync(ByteBufCodecs.VAR_LONG)
+                    .build());
+
+    public static long getEmpowerDecayAt(net.minecraft.world.entity.player.Player player) {
+        return player.getData(EMPOWER_DECAY_AT.get());
+    }
+
+    public static void setEmpowerDecayAt(net.minecraft.world.entity.player.Player player, long value) {
+        player.setData(EMPOWER_DECAY_AT.get(), Math.max(0, value));
+    }
+
+    public static boolean isElectricGloveAoe(net.minecraft.world.entity.player.Player player) {
+        return player.getData(ELECTRIC_GLOVE_AOE.get());
+    }
+
+    public static void setElectricGloveAoe(net.minecraft.world.entity.player.Player player, boolean value) {
+        player.setData(ELECTRIC_GLOVE_AOE.get(), value);
+    }
+
+    public static long getAirbagCooldownEnd(net.minecraft.world.entity.player.Player player) {
+        return player.getData(AIRBAG_COOLDOWN_END.get());
+    }
+
+    public static void setAirbagCooldownEnd(net.minecraft.world.entity.player.Player player, long value) {
+        player.setData(AIRBAG_COOLDOWN_END.get(), Math.max(0, value));
+    }
 }

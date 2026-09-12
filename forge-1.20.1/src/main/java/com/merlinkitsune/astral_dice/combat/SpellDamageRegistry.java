@@ -1,7 +1,6 @@
 package com.merlinkitsune.astral_dice.combat;
 import com.merlinkitsune.astral_dice.network.ModNetwork;
 
-import com.merlinkitsune.astral_dice.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.item.MarkManager;
@@ -124,6 +123,20 @@ public final class SpellDamageRegistry {
         return false;
     }
 
+    /**
+     * 伤害效果牌的统一伤害加成(不含各牌自身基础值):
+     * 忍者立牌「效果牌伤害增益」计数(附件 {@code komachi_damage_bonus})
+     * + 书签筹码固定 +{@link com.merlinkitsune.astral_dice.item.chip.BookmarkChipItem#DAMAGE_BONUS}(装备时)。
+     *
+     * <p>伤害计算(本类各修饰器)与 tooltip 显示统一走本方法,保证两处数值一致;
+     * 新增"提升伤害效果牌伤害"的筹码/立牌时在本方法内累加,勿散落到各修饰器。
+     */
+    public static int effectCardDamageBonus(net.minecraft.world.entity.player.Player attacker) {
+        if (attacker == null) return 0;
+        return ModAttachments.getKomachiDamageBonus(attacker)
+                + com.merlinkitsune.astral_dice.item.chip.BookmarkChipItem.damageBonus(attacker);
+    }
+
     private static ResourceKey<DamageType> key(String namespace, String path) {
         return ResourceKey.create(Registries.DAMAGE_TYPE,
                 new ResourceLocation(namespace, path));
@@ -147,7 +160,7 @@ public final class SpellDamageRegistry {
         });
 
         // === 内置修饰器 ===
-        // 活体书页:对敌对目标远程/魔法伤害增加(基础 2 + 调查员(rin)已使用数量 + 忍者立牌效果牌伤害增益,上限),并施加 1 层标记
+        // 活体书页:对敌对目标远程/魔法伤害增加(基础 2 + 调查员(rin)已使用数量 + 忍者立牌效果牌伤害增益,均无上限),并施加 1 层标记
         registerModifier(new SpellDamageModifier() {
             @Override
             public boolean isActive(SpellDamageContext ctx) {
@@ -156,9 +169,8 @@ public final class SpellDamageRegistry {
 
             @Override
             public double apply(SpellDamageContext ctx, double bonus) {
-                int pages = Math.min(ModAttachments.getRinPages(ctx.attacker),
-                        GameplayConstants.LIVING_PAGE_BONUS_CAP);
-                return bonus + 2 + pages + ModAttachments.getKomachiDamageBonus(ctx.attacker);
+                int pages = ModAttachments.getRinPages(ctx.attacker);
+                return bonus + 2 + pages + effectCardDamageBonus(ctx.attacker);
             }
 
             @Override
@@ -175,7 +187,7 @@ public final class SpellDamageRegistry {
 
             @Override
             public double apply(SpellDamageContext ctx, double bonus) {
-                return bonus + 4 + ModAttachments.getKomachiDamageBonus(ctx.attacker);
+                return bonus + 4 + effectCardDamageBonus(ctx.attacker);
             }
         });
         // 对怪板砖:远程和魔法伤害 +6(+忍者立牌效果牌伤害增益)
@@ -187,7 +199,7 @@ public final class SpellDamageRegistry {
 
             @Override
             public double apply(SpellDamageContext ctx, double bonus) {
-                return bonus + 6 + ModAttachments.getKomachiDamageBonus(ctx.attacker);
+                return bonus + 6 + effectCardDamageBonus(ctx.attacker);
             }
         });
         // 轨道炮:远程和魔法伤害 +8(+忍者立牌效果牌伤害增益)
@@ -199,7 +211,7 @@ public final class SpellDamageRegistry {
 
             @Override
             public double apply(SpellDamageContext ctx, double bonus) {
-                return bonus + 8 + ModAttachments.getKomachiDamageBonus(ctx.attacker);
+                return bonus + 8 + effectCardDamageBonus(ctx.attacker);
             }
         });
         // 定向爆破:远程和魔法伤害 +5(+忍者立牌效果牌伤害增益),并对目标周围 6 格敌对目标造成同样伤害
@@ -211,7 +223,7 @@ public final class SpellDamageRegistry {
 
             @Override
             public double apply(SpellDamageContext ctx, double bonus) {
-                return bonus + 5 + ModAttachments.getKomachiDamageBonus(ctx.attacker);
+                return bonus + 5 + effectCardDamageBonus(ctx.attacker);
             }
 
             @Override
@@ -305,6 +317,55 @@ public final class SpellDamageRegistry {
             @Override
             public void onHit(SpellDamageContext ctx, double bonus) {
                 com.merlinkitsune.astral_dice.item.chip.MagicQuiverChipItem.tryProc(ctx);
+            }
+        });
+        // 紫晶骰子:远程/魔法攻击命中时也触发战斗骰(1-6)并追加骰点伤害;不触发骰神赐福、不消耗卡牌耐久
+        registerModifier(new SpellDamageModifier() {
+            @Override
+            public boolean isActive(SpellDamageContext ctx) {
+                return ctx.hasCurio(ModItems.AMETHYST_DICE.get());
+            }
+
+            @Override
+            public double apply(SpellDamageContext ctx, double bonus) {
+                return bonus + com.merlinkitsune.astral_dice.event.AmethystDiceHandler.rollD6(ctx.attacker);
+            }
+        });
+        // 电击手套:武装期间(使用伤害效果牌时消耗 4 层充能置位),本次远程/魔法伤害同时命中目标 3 格内的
+        // 其他敌对目标(每个效果牌周期仅触发一次,触发后解除武装)
+        registerModifier(new SpellDamageModifier() {
+            @Override
+            public boolean isActive(SpellDamageContext ctx) {
+                return com.merlinkitsune.astral_dice.item.chip.ElectricGloveChipItem.isAoeArmed(ctx.attacker);
+            }
+
+            @Override
+            public double apply(SpellDamageContext ctx, double bonus) {
+                return bonus;
+            }
+
+            @Override
+            public void onHit(SpellDamageContext ctx, double bonus) {
+                float total = ctx.event.getAmount();
+                if (total <= 0) return;
+                net.minecraft.world.phys.AABB aabb = ctx.target.getBoundingBox()
+                        .inflate(com.merlinkitsune.astral_dice.item.chip.ElectricGloveChipItem.AOE_RADIUS);
+                var nearby = ctx.target.level().getEntitiesOfClass(LivingEntity.class, aabb,
+                        e -> e instanceof Enemy && e != ctx.target && e.isAlive());
+                var source = com.merlinkitsune.astral_dice.damage.ModDamageTypes
+                        .diceDamage(ctx.target.level(), ctx.attacker);
+                // AOE 波及伤害不进入骰战结算(见 DiceCombatEvents.aoeProcessing)
+                DiceCombatEvents.aoeProcessing = true;
+                try {
+                    for (LivingEntity e : nearby) {
+                        e.hurt(source, total);
+                        sendAoeDamageNumber(e, (int) total, 0x00E5FF);
+                    }
+                } finally {
+                    DiceCombatEvents.aoeProcessing = false;
+                }
+                // 每周期仅触发一次:触发后解除武装
+                com.merlinkitsune.astral_dice.item.chip.ElectricGloveChipItem.disarmAoe(ctx.attacker);
             }
         });
     }

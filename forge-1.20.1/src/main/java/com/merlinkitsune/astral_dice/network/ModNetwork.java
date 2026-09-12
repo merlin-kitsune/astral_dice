@@ -50,6 +50,8 @@ public final class ModNetwork {
                 TargetSelectConfirmMessage::encode, TargetSelectConfirmMessage::decode, TargetSelectConfirmMessage::handle);
         CHANNEL.registerMessage(id++, TargetSelectCancelMessage.class,
                 TargetSelectCancelMessage::encode, TargetSelectCancelMessage::decode, TargetSelectCancelMessage::handle);
+        CHANNEL.registerMessage(id++, EnderDieTotemMessage.class,
+                EnderDieTotemMessage::encode, EnderDieTotemMessage::decode, EnderDieTotemMessage::handle);
     }
 
     // === 发送助手(对应 1.21 PacketDistributor 静态方法) ===
@@ -320,6 +322,40 @@ public final class ModNetwork {
                 }
             });
             ctx.get().setPacketHandled(true);
+        }
+    }
+
+    // === 末影骰子不死图腾动画(S→C) ===
+
+    public static class EnderDieTotemMessage {
+        private final int entityId;
+
+        public EnderDieTotemMessage(int entityId) {
+            this.entityId = entityId;
+        }
+
+        public static void encode(EnderDieTotemMessage msg, FriendlyByteBuf buf) {
+            buf.writeVarInt(msg.entityId);
+        }
+
+        public static EnderDieTotemMessage decode(FriendlyByteBuf buf) {
+            return new EnderDieTotemMessage(buf.readVarInt());
+        }
+
+        public static void handle(EnderDieTotemMessage msg, Supplier<NetworkEvent.Context> ctx) {
+            ctx.get().enqueueWork(() ->
+                    com.merlinkitsune.astral_dice.client.EnderDieTotemAnimator.play(msg.entityId));
+            ctx.get().setPacketHandled(true);
+        }
+
+        /** 向目标及所有追踪客户端广播图腾动画(含目标本人) */
+        public static void send(LivingEntity target) {
+            if (target.level().isClientSide()) return;
+            var packet = new EnderDieTotemMessage(target.getId());
+            sendToPlayersTrackingEntity(target, packet);
+            if (target instanceof ServerPlayer serverTarget) {
+                sendToPlayer(serverTarget, packet);
+            }
         }
     }
 }

@@ -15,8 +15,17 @@ public class ModItemModelProvider extends ItemModelProvider {
     protected void registerModels() {
         basicItem(ModItems.DICE.get());
         basicItem(ModItems.GOLDEN_DICE.get());
+        basicItem(ModItems.GLASS_DICE.get());
+        basicItem(ModItems.NETHERRACK_DICE.get());
         basicItem(ModItems.DIAMOND_DICE.get());
         basicItem(ModItems.NETHERITE_DICE.get());
+        basicItem(ModItems.EMERALD_DICE.get());
+        basicItem(ModItems.OBSIDIAN_DICE.get());
+        basicItem(ModItems.WEIRD_DICE.get());
+        basicItem(ModItems.CRIMSON_DICE.get());
+        basicItem(ModItems.AMETHYST_DICE.get());
+        basicItem(ModItems.ENDER_DICE.get());
+        basicItem(ModItems.NETHER_STAR_DICE.get());
         basicItem(ModItems.ATTACK_CARD_MEDIUM.get());
         basicItem(ModItems.ATTACK_CARD_LARGE.get());
         basicItem(ModItems.ATTACK_CARD_EPIC.get());
@@ -63,6 +72,10 @@ public class ModItemModelProvider extends ItemModelProvider {
         basicItem(ModItems.HAND_FAN_BIG_CHIP.get());
         basicItem(ModItems.STAR_PLATE.get());
         basicItem(ModItems.GOLDEN_STAR_PLATE.get());
+        basicItem(ModItems.REGENERATION_REAGENT.get());
+        basicItem(ModItems.CONDUCTIVE_WIRE.get());
+        basicItem(ModItems.STAR_COIN_DUST.get());
+        basicItem(ModItems.MARK_PAINT.get());
         basicItem(ModItems.EIGHT_SIDED_DICE.get());
         basicItem(ModItems.PADMAN_SIGN.get());
         basicItem(ModItems.FANNY_SIGN.get());
@@ -74,6 +87,8 @@ public class ModItemModelProvider extends ItemModelProvider {
         basicItem(ModItems.BONNIE_SIGN.get());
         basicItem(ModItems.FEN_SIGN.get());
         basicItem(ModItems.NANCY_LU_SIGN.get());
+        basicItem(ModItems.MOSES_SIGN.get());
+        basicItem(ModItems.PANDAMAN_SIGN.get());
         basicItem(ModItems.CHOCOLATE_CAKE.get());
         basicItem(ModItems.HAMBURGER.get());
         basicItem(ModItems.LUXURY_FEAST.get());
@@ -106,5 +121,21 @@ public class ModItemModelProvider extends ItemModelProvider {
         basicItem(ModItems.CANDY_CHIP.get());
         basicItem(ModItems.FRIENDSHIP_BADGE.get());
         basicItem(ModItems.SATELLITE_CHIP.get());
+        basicItem(ModItems.WARP_ENGINE_CHIP.get());
+        basicItem(ModItems.ENERGY_RECYCLER.get());
+        basicItem(ModItems.ELECTRIC_SWORD.get());
+        basicItem(ModItems.PERPETUAL_MOTION.get());
+        basicItem(ModItems.CURRENT_CORE_CHIP.get());
+        basicItem(ModItems.ADVANCED_PERIPHERALS.get());
+        basicItem(ModItems.BIG_BOWL_STEW_CHIP.get());
+        basicItem(ModItems.MEMBER_RECOMMENDATION_CHIP.get());
+        basicItem(ModItems.BOOKMARK_CHIP.get());
+        basicItem(ModItems.PIGGY_BANK_CHIP.get());
+        basicItem(ModItems.SMART_WATCH_CHIP.get());
+        basicItem(ModItems.ELECTRIC_GLOVE_CHIP.get());
+        basicItem(ModItems.AIRBAG_CHIP.get());
+        basicItem(ModItems.RAILGUN_CHIP.get());
+        basicItem(ModItems.PRIMORDIAL_CORE_CHIP.get());
+        basicItem(ModItems.WHETSTONE_CHIP.get());
     }
 }

@@ -2,9 +2,6 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
-    "A": {
-      "item": "minecraft:spectral_arrow"
-    },
     "B": {
       "item": "astral_dice:blank_chip"
     },
@@ -14,17 +11,17 @@
     "L": {
       "item": "minecraft:redstone_block"
     },
-    "N": {
-      "item": "minecraft:netherite_ingot"
+    "M": {
+      "item": "astral_dice:mark_paint"
     },
-    "P": {
-      "item": "astral_dice:star_plate"
+    "X": {
+      "item": "minecraft:netherite_ingot"
     }
   },
   "pattern": [
-    "NLN",
-    "ABA",
-    "GPG"
+    "XLX",
+    "MBM",
+    "GGG"
   ],
   "result": {
     "item": "astral_dice:ninja_star_chip"

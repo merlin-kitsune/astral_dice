@@ -1,0 +1,30 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": {
+      "item": "astral_dice:star_coin"
+    },
+    "C": {
+      "item": "astral_dice:blank_sign"
+    },
+    "D": {
+      "item": "astral_dice:dice"
+    },
+    "H": {
+      "item": "minecraft:black_concrete"
+    },
+    "W": {
+      "item": "minecraft:white_concrete"
+    }
+  },
+  "pattern": [
+    "WHW",
+    "HCH",
+    "BDB"
+  ],
+  "result": {
+    "item": "astral_dice:pandaman_sign"
+  },
+  "show_notification": true
+}

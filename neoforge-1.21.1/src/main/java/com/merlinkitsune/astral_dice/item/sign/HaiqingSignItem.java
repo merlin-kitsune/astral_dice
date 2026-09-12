@@ -13,6 +13,9 @@ import com.merlinkitsune.astral_dice.target.TargetSelectionAction;
 import com.merlinkitsune.astral_dice.target.TargetSelectionManager;
 import com.merlinkitsune.astral_dice.target.TargetSelectionRegistry;
 import com.merlinkitsune.astral_dice.target.TargetType;
+import com.merlinkitsune.astral_dice.event.WeirdDiceHandler;
+import com.merlinkitsune.astral_dice.item.chip.CurrentCoreChipItem;
+
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
@@ -66,9 +69,11 @@ public class HaiqingSignItem extends BaseSignItem {
                 ModAttachments.setWeakMarkSource(target, Optional.of(player.getUUID()));
                 target.addEffect(new MobEffectInstance(ModEffects.WEAK_MARK, 6000, 0, false, true));
                 EffectTimerGuard.apply(target, new MobEffectInstance(MobEffects.WEAKNESS, 6000, 0, false, true));
-                // 主动成功施加:开始玩家级冷却
+                // 主动成功施加:开始玩家级冷却(统一经 signCooldownTicks:含诡异骰子 -50% 与充能递减)
                 ModAttachments.setSignActiveCooldownEnd(player,
-                        player.level().getGameTime() + GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS);
+                        player.level().getGameTime() + WeirdDiceHandler.signCooldownTicks(player));
+                // 电流核心筹码:主动技能实际生效时充能 +1
+                CurrentCoreChipItem.onActiveSkillUsed(player);
                 PacketDistributor.sendToPlayer(player, new ActionBarPayload(
                         Component.translatable("msg.astral_dice.haiqing_weak_mark_applied", target.getDisplayName())
                                 .withStyle(ChatFormatting.YELLOW), GameplayConstants.ACTIONBAR_DURATION_TICKS));

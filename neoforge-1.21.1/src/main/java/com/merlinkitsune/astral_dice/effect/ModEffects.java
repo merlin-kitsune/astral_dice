@@ -108,7 +108,26 @@ public class ModEffects {
     public static final DeferredHolder<MobEffect, MobEffect> REVENGE_HALBERD =
             EFFECTS.register("revenge_halberd", RevengeHalberdEffect::new);
 
-    // 反击(玩家效果/流派):层数 = amplifier+1;被近战敌方攻击时触发反击并消耗 1 层
-    public static final DeferredHolder<MobEffect, MobEffect> COUNTERATTACK =
-            EFFECTS.register("counterattack", CounterattackEffect::new);
+    // 充能(流派资源):层数 = amplifier+1;拥有至少 1 层时提供固定流派加成(防御+1、冷却-20%)
+    public static final DeferredHolder<MobEffect, MobEffect> CHARGE =
+            EFFECTS.register("charge", ChargeEffect::new);
+
+
+    // 赋能(资源):层数 = amplifier+1;每消耗 1 层充能获得 1 层(原初核心筹码);
+    // 每层攻击/防御 +1,每 0:30 减少 1 层(层数为 1 时直接归 0)
+    public static final DeferredHolder<MobEffect, MobEffect> EMPOWER =
+            EFFECTS.register("empower", EmpowerEffect::new);
+
+
+    // 弱点识破(枪匠立牌 Moses):玩家增益,层数 = amplifier+1;每层攻击/防御+1、骰点最低数+1
+    public static final DeferredHolder<MobEffect, MobEffect> WEAKNESS_REVEAL =
+            EFFECTS.register("weakness_reveal", WeaknessRevealEffect::new);
+
+    // 破绽(枪匠立牌 Moses 主动):目标减益,持续 2:00;该目标与枪匠交战时骰点只能为 0 且会被闪避
+    public static final DeferredHolder<MobEffect, MobEffect> MOSES_BROKEN =
+            EFFECTS.register("moses_broken", MosesBrokenEffect::new);
+
+    // 嘲讽(肉弹战车立牌 pandaman 主动):目标只能攻击对其施加嘲讽的玩家
+    public static final DeferredHolder<MobEffect, MobEffect> PANDAMAN_TAUNT =
+            EFFECTS.register("pandaman_taunt", PandamanTauntEffect::new);
 }

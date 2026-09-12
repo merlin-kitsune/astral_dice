@@ -1,11 +1,11 @@
 {
   "parent": "minecraft:recipes/root",
   "criteria": {
-    "has_blank_chip": {
+    "has_adrenaline_low": {
       "conditions": {
         "items": [
           {
-            "items": "astral_dice:blank_chip"
+            "items": "astral_dice:adrenaline_low_chip"
           }
         ]
       },
@@ -21,7 +21,7 @@
   "requirements": [
     [
       "has_the_recipe",
-      "has_blank_chip"
+      "has_adrenaline_low"
     ]
   ],
   "rewards": {

@@ -11,6 +11,9 @@ import com.merlinkitsune.astral_dice.network.DamageNumberPayload;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.item.sign.ParunanSignItem;
 import com.merlinkitsune.astral_dice.item.sign.BaseSignItem;
+import com.merlinkitsune.astral_dice.item.sign.MosesSignItem;
+import com.merlinkitsune.astral_dice.item.sign.PandamanSignItem;
+import com.merlinkitsune.astral_dice.effect.WeaknessRevealEffect;
 import com.merlinkitsune.astral_dice.item.BossEntityUtil;
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
 import com.merlinkitsune.astral_dice.item.dice.DiceCurioItem;
@@ -21,6 +24,8 @@ import com.merlinkitsune.astral_dice.item.MarkManager;
 import com.merlinkitsune.astral_dice.item.StarLightManager;
 import com.merlinkitsune.astral_dice.item.sign.MisakiSignItem;
 import com.merlinkitsune.astral_dice.item.ModItems;
+import com.merlinkitsune.astral_dice.event.WeirdDiceHandler;
+import com.merlinkitsune.astral_dice.event.CrimsonDiceHandler;
 import com.merlinkitsune.astral_dice.item.sign.PadmanSignItem;
 import com.merlinkitsune.astral_dice.item.sign.JasmineSignItem;
 import com.merlinkitsune.astral_dice.item.sign.LuluSignItem;
@@ -58,7 +63,6 @@ import net.neoforged.neoforge.event.AnvilUpdateEvent;
 import net.neoforged.neoforge.event.LootTableLoadEvent;
 import net.neoforged.neoforge.event.entity.living.LivingChangeTargetEvent;
 import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
-import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
 import net.neoforged.neoforge.event.entity.living.LivingDropsEvent;
 import net.neoforged.neoforge.event.entity.living.MobEffectEvent;
 import net.neoforged.neoforge.event.entity.player.ItemTooltipEvent;
@@ -86,6 +90,8 @@ import net.minecraft.world.level.storage.loot.providers.number.UniformGenerator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.merlinkitsune.astral_dice.item.chip.StarCoinHammerChipItem;
+import com.merlinkitsune.astral_dice.item.chip.PerpetualMotionChipItem;
+import com.merlinkitsune.astral_dice.item.chip.AdvancedPeripheralsChipItem;
 import com.merlinkitsune.astral_dice.item.chip.BufferShieldChipItem;
 import com.merlinkitsune.astral_dice.network.ActionBarPayload;
 import com.merlinkitsune.astral_dice.combat.CardRegistry;
@@ -100,6 +106,7 @@ import com.merlinkitsune.astral_dice.item.chip.CursedSwordChipItem;
 import com.merlinkitsune.astral_dice.item.chip.FriendshipBadgeChipItem;
 import com.merlinkitsune.astral_dice.item.chip.RevengeHalberdChipItem;
 import com.merlinkitsune.astral_dice.item.chip.SatelliteChipItem;
+import com.merlinkitsune.astral_dice.item.chip.CurrentCoreChipItem;
 import com.merlinkitsune.astral_dice.item.sign.NancyLuSignItem;
 import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
 import com.merlinkitsune.astral_dice.item.card.FateGuidanceCardItem;
@@ -125,7 +132,7 @@ public class DiceCombatEvents {
     private static boolean cleaveProcessing = false;
     // AOE(顺劈/溅射)波及伤害处理中:被波及目标不再进入骰战结算
     static boolean aoeProcessing = false;
-    // 反击流派:反击伤害结算进行中(防止反击伤害再次进入骰战结算/递归触发)
+    // 反击伤害注入进行中(防止注入的反击伤害再次进入骰战结算/递归触发)
     private static boolean counterProcessing = false;
 
 
@@ -177,10 +184,13 @@ public class DiceCombatEvents {
         }
 
         // AOE(顺劈/溅射)波及的目标不进入骰战结算,避免二次吃到完整骰战;
-        // 反击流派:反击伤害不进入骰战结算(已按反击公式自算)
+        // 反击伤害注入:注入伤害不进入骰战结算(已按反击公式自算)
         if (aoeProcessing || counterProcessing) return;
         if (!(directEntity instanceof Player player)) return;
         if (target == player) return;
+
+        // 电磁炮筹码:对敌对目标发起攻击时消耗 6 层充能,延迟 1 秒对目标 3 格内敌对目标降下雷击
+        com.merlinkitsune.astral_dice.item.chip.RailgunChipItem.onAttack(player, target);
 
         // 骰神赐福仅能由近战武器攻击触发与生效:直接伤害来源必须为玩家(已排除弓/弩/三叉戟投掷等远程),
         // 主手必须持有近战武器(排除空手/盾牌/非近战类武器)
@@ -200,6 +210,14 @@ public class DiceCombatEvents {
 
         // 占星师/秘密侦探立牌主动已迁移至目标选择器(TargetSelectionManager + HaiqingSignItem/BonnieSignItem 的
         // TargetSelectionAction.apply),不再于攻击时自动释放,此处无攻击释放逻辑。
+        // 枪匠立牌主动同样已迁移至目标选择器(见 MosesSignItem 注册的 TargetSelectionAction),此处仅保留其被动:
+        // 攻击已带"破绽"的敌对目标,每段破绽获得 1 层「弱点识破」。
+        if (!player.level().isClientSide() && attackerCurios.isPresent() && isBlessingTarget(target, player)) {
+            if (MosesSignItem.isEquipped(player) && target instanceof net.minecraft.world.entity.monster.Enemy
+                    && target.hasEffect(ModEffects.MOSES_BROKEN)) {
+                MosesSignItem.onAttackBrokenTarget(player, target);
+            }
+        }
 
         // 本次攻击是否触发了骰神赐福(与赐福触发逻辑一致:仅在未拥有赐福时触发;同一挥击命中多目标也仅触发一次)
         boolean triggeredBlessing = false;
@@ -255,6 +273,12 @@ public class DiceCombatEvents {
                     com.merlinkitsune.astral_dice.item.chip.StarCoinHammerChipItem.onBlessingStart(player);
                 }
             }
+            // 永动机筹码:触发骰神赐福时,充能 +6
+            PerpetualMotionChipItem.onBlessingStart(player);
+            // 高级外设筹码:触发骰神赐福时,移除 1 层充能
+            AdvancedPeripheralsChipItem.onBlessingStart(player);
+            // 会员推荐信筹码:触发骰神赐福时,获得一张随机卡牌
+            com.merlinkitsune.astral_dice.item.chip.MemberRecommendationChipItem.onBlessingStart(player);
             // 大当家立牌:触发骰神赐福 → 养精蓄锐 -1 层并记录触发时刻;"战斗爽·扩散"待命则本次赐福启用
             com.merlinkitsune.astral_dice.item.sign.FenSignItem.onBlessingTriggered(player);
             // 治愈体系:触发骰神赐福 → 医疗箱加点(先)+ 按当前治愈点×2 回血(后)。
@@ -273,7 +297,7 @@ public class DiceCombatEvents {
             }
         }
 
-        int baseDice = ThreadLocalRandom.current().nextInt(1, 7);
+        int baseDice = rollCombatDie(player); // 特殊骰子掷骰(诡异骰子低点数偏置/绯红骰子高点数偏置)
 
         // === MISAKI SIGN (护法立牌, via curios stand slot) ===
         boolean misakiFound = false;
@@ -442,16 +466,24 @@ public class DiceCombatEvents {
                     dodgeFailed = true;
                     dodgeFailDamage = baseDamage + baseDice + attackCardSum;
                 } else if (targetPlayer.hasEffect(ModEffects.DICE_BLESSING)) {
-                    defenseBaseDice = ThreadLocalRandom.current().nextInt(1, 7);
+                    // 特殊骰子掷骰(防御方:诡异骰子低点数偏置,绯红骰子高点数偏置)
+                    defenseBaseDice = rollCombatDie(targetPlayer);
                     // 防御卡掷骰由注册表防御修饰器执行(读 ctx.targetEnhancement,写 ctx.defenseCardSum)
                     ItemStack targetDice = targetDiceResult.get().stack();
                     WeaponEnhancement targetEnh = targetDice.get(ModDataComponents.WEAPON_ENHANCEMENT.get());
                     ctx.targetEnhancement = targetEnh;
+                    // 玻璃骰子:防御方佩戴时,防御牌点数始终取最大值
+                    ctx.targetCardsMax = targetDice.is(ModItems.GLASS_DICE.get());
                 }
             }
         } else if (!target.level().isClientSide() && !(target instanceof Player)) {
             // 怪物:始终防御,每次受击掷 1d6 防御骰(不再闪避)
-            defenseBaseDice = ThreadLocalRandom.current().nextInt(1, 7);
+            // 枪匠"破绽":目标骰点只能为 0
+            if (target.hasEffect(ModEffects.MOSES_BROKEN)) {
+                defenseBaseDice = 0;
+            } else {
+                defenseBaseDice = ThreadLocalRandom.current().nextInt(1, 7);
+            }
         }
 
         double finalDmg;
@@ -574,7 +606,7 @@ public class DiceCombatEvents {
 
 
     // 攻击牌耐久消耗(仅在触发骰神赐福的那次攻击执行一次;防御牌/蓄力不消耗)。
-    // 普通近战触发与反击流派共用(反击未赐福时作为触发攻击消耗一次耐久)。
+    // 普通近战触发与反击伤害注入共用(反击未赐福时作为触发攻击消耗一次耐久)。
     private static void consumeAttackCardDurabilityOnce(Player player, ItemStack diceStack, WeaponEnhancement enhancement) {
         if (diceStack == null || diceStack.isEmpty() || enhancement == null
                 || enhancement.appliedStones().isEmpty()) return;
@@ -666,6 +698,15 @@ public class DiceCombatEvents {
     @SubscribeEvent
     public static void onLivingChangeTarget(LivingChangeTargetEvent event) {
         if (event.isCanceled()) return;
+        // 肉弹战车立牌「嘲讽」:带嘲讽的目标只能攻击施加嘲讽的玩家
+        var tauntSource = ModAttachments.getPandamanTauntSource(event.getEntity());
+        if (event.getEntity().hasEffect(ModEffects.PANDAMAN_TAUNT) && tauntSource.isPresent()) {
+            Player taunter = event.getEntity().level().getPlayerByUUID(tauntSource.get());
+            if (taunter != null && taunter.isAlive()) {
+                event.setNewAboutToBeSetTarget(taunter);
+                return;
+            }
+        }
         var newTarget = event.getNewAboutToBeSetTarget();
         if (!(newTarget instanceof Player player)) return;
         if (player.level().isClientSide()) return;
@@ -712,10 +753,14 @@ public class DiceCombatEvents {
         com.merlinkitsune.astral_dice.item.chip.StarCoinHammerChipItem.onBlessingEnd(player);
         // 银行卡-用不完:赐福结束后使自身及团队所有成员获得 3 星币(死亡清场等已死亡时不发放)
         com.merlinkitsune.astral_dice.item.chip.BankCardUnlimitedChipItem.onBlessingEnd(player);
+        // 大碗炖肉筹码:赐福结束后,16 格范围内所有友方目标 +1 治愈并恢复 2 点生命值
+        com.merlinkitsune.astral_dice.item.chip.BigBowlStewChipItem.onBlessingEnd(player);
         // 大当家立牌:赐福结束清除"战斗爽·扩散"生效状态
         com.merlinkitsune.astral_dice.item.sign.FenSignItem.onBlessingEnd(player);
         // 骇客立牌:赐福结束刷新被动(攻击/防御,覆盖旧类型)
         NancyLuSignItem.onDiceBlessingEnded(player);
+        // 枪匠立牌:赐福结束弱点识破减少 1 层
+        MosesSignItem.onDiceBlessingEnded(player);
 
         var curios = CuriosApi.getCuriosInventory(player);
         if (curios.isEmpty()) return;
@@ -760,7 +805,8 @@ public class DiceCombatEvents {
 
     // 标记效果自然结束时:每分钟减少 1 层标记(层数>1 时重新施加并重置计时,否则标记消失)
 
-    @SubscribeEvent(priority = EventPriority.LOWEST)
+    // 伤害放大须先于 ChipDamageHandler(安全气囊,LOWEST)执行,故用 LOW
+    @SubscribeEvent(priority = EventPriority.LOW)
     public static void onBerserkDamageTaken(LivingDamageEvent.Pre event) {
         LivingEntity target = event.getEntity();
         if (target.level().isClientSide()) return;
@@ -805,7 +851,8 @@ public class DiceCombatEvents {
     }
 
 
-    @SubscribeEvent(priority = EventPriority.LOWEST)
+    // 伤害放大须先于 ChipDamageHandler(安全气囊,LOWEST)执行,故用 LOW
+    @SubscribeEvent(priority = EventPriority.LOW)
     public static void onWeakMarkDamage(LivingDamageEvent.Pre event) {
         LivingEntity target = event.getEntity();
         if (target.level().isClientSide()) return;
@@ -834,6 +881,29 @@ public class DiceCombatEvents {
 
     private static int rollDice(int max) {
         return ThreadLocalRandom.current().nextInt(1, max + 1);
+    }
+
+    /**
+     * 玩家战斗骰(d1-6)统一掷骰入口(骰子槽位仅一个):
+     * 佩戴诡异骰子 → 低点数(1-3)偏置;佩戴绯红骰子 → 高点数(4-6)偏置(掷出 1 时自伤 6 点);
+     * 未佩戴特殊骰子 → 均匀分布。
+     */
+    private static int rollCombatDie(Player roller) {
+        int roll;
+        if (roller == null) {
+            roll = ThreadLocalRandom.current().nextInt(1, 7);
+        } else if (WeirdDiceHandler.hasWeirdDice(roller)) {
+            roll = WeirdDiceHandler.rollD6(roller);
+        } else if (CrimsonDiceHandler.hasCrimsonDice(roller)) {
+            roll = CrimsonDiceHandler.rollD6(roller);
+        } else {
+            roll = ThreadLocalRandom.current().nextInt(1, 7);
+        }
+        // 枪匠立牌:弱点识破每层使骰点最低数 +1
+        if (roller != null && MosesSignItem.isEquipped(roller)) {
+            roll = Math.max(roll, 1 + WeaknessRevealEffect.getStacks(roller));
+        }
+        return roll;
     }
 
     // 近战武器攻击判定:仅允许剑/斧/重锤/三叉戟等近战武器触发骰神赐福
@@ -892,54 +962,49 @@ public class DiceCombatEvents {
         com.merlinkitsune.astral_dice.network.DamageNumberPayload.send(target, bonusDamage, color);
     }
 
-    // === 反击流派(Counterattack) ===
-    // 拥有反击层数的玩家受到敌对生物任何伤害时触发:消耗 1 层「反击」并把伤害来源登记为“反噬目标”;
-    // 此后该目标每次对玩家造成伤害,都受到一次返还伤害 = 手持最高近战武器基础伤害 + 骰战攻击力加成链
-    // + 已装备攻击牌随机掷骰(每次独立随机;不含 1d6,不自动赐福),直至目标死亡。
-    // 返还伤害对总伤害计算七咒减益(含修正物),并可受「全力攻击」×1.5 等修正影响;
-    // 对 Boss 生物(末影龙/凋灵/监守者及灾变等)无效:不触发、不消耗层数、不登记。
-    // (目标死亡或玩家死亡时清理登记;触发瞬间不额外造成伤害,本次受击即开始返还。)
-    /** 反噬目标登记:玩家UUID -> 该玩家登记的反噬目标UUID集合(纯服务端,不持久化) */
-    private static final java.util.Map<java.util.UUID, java.util.Set<java.util.UUID>> COUNTER_RETALIATION_TARGETS =
-            new java.util.HashMap<>();
-
+    // === 枪匠立牌(Moses)破绽闪避/反击 ===
     @SubscribeEvent
-    public static void onCounterattackTriggered(LivingDamageEvent.Pre event) {
+    public static void onMosesBrokenDodge(LivingDamageEvent.Pre event) {
+        LivingEntity victim = event.getEntity();
+        if (victim.level().isClientSide()) return;
+        if (!(victim instanceof Player player)) return;
+        if (!MosesSignItem.isEquipped(player)) return;
+        if (!(event.getSource().getEntity() instanceof LivingEntity attacker)) return;
+        if (!(attacker instanceof net.minecraft.world.entity.monster.Enemy)) return;
+        if (!attacker.hasEffect(ModEffects.MOSES_BROKEN)) return;
+        if (ModAttachments.isMosesDodgeCounterRewarded(attacker)) return;
+        // 闪避本次伤害
+        event.setNewDamage(0);
+        // 获得弱点识破并标记该目标已闪避
+        MosesSignItem.onDodgeCounter(player, attacker);
+        // 单次反击伤害注入(不进入反击效果/层数体系)
+        injectCounterDamage(player, attacker);
+    }
+
+    // 肉弹战车立牌(pandaman)主动「嘲讽」:被嘲讽目标攻击施加者时触发反击
+    // (沿用反击伤害公式;不消耗“反击”层数,每次嘲讽目标成功攻击时触发)
+    @SubscribeEvent
+    public static void onPandamanTauntCounter(LivingDamageEvent.Pre event) {
         LivingEntity victim = event.getEntity();
         if (victim.level().isClientSide()) return;
         if (counterProcessing) return;
         if (!(victim instanceof Player player)) return;
         if (!player.isAlive()) return;
-        DamageSource source = event.getSource();
-        Entity attackerEntity = source.getEntity();
-        if (!(attackerEntity instanceof LivingEntity attacker)) return;
+        if (!(event.getSource().getEntity() instanceof LivingEntity attacker)) return;
         if (!(attacker instanceof Enemy)) return;
-        // Boss 生物无效:不触发反击(不消耗层数/不登记/不返还)
-        if (BossEntityUtil.isBossEntity(attacker)) return;
-        if (!attacker.isAlive()) return;
-
-        java.util.UUID attackerId = attacker.getUUID();
-        java.util.Set<java.util.UUID> targets = COUNTER_RETALIATION_TARGETS.get(player.getUUID());
-        boolean alreadyRegistered = targets != null && targets.contains(attackerId);
-        // 新触发(任意敌对伤害均可):消耗 1 层「反击」并登记该目标(同一目标只登记一次,后续不再消耗层数)
-        boolean triggered = false;
-        if (!alreadyRegistered && player.hasEffect(ModEffects.COUNTERATTACK)) {
-            com.merlinkitsune.astral_dice.effect.CounterattackEffect.consumeOne(player);
-            if (targets == null) {
-                targets = new java.util.HashSet<>();
-                COUNTER_RETALIATION_TARGETS.put(player.getUUID(), targets);
-            }
-            targets.add(attackerId);
-            triggered = true;
-        }
-        // 已登记目标每次造成伤害都返还;本次触发(消耗层数)的受击同样立即返还
-        if (alreadyRegistered || triggered) {
-            retaliateCounterDamage(player, attacker);
-        }
+        if (!attacker.hasEffect(ModEffects.PANDAMAN_TAUNT)) return;
+        Optional<UUID> tauntSource = ModAttachments.getPandamanTauntSource(attacker);
+        if (tauntSource.isEmpty() || !tauntSource.get().equals(player.getUUID())) return;
+        injectCounterDamage(player, attacker);
     }
 
-    // 对反噬目标造成一次返还伤害(视为玩家伤害来源,不进入骰战结算/不递归触发)
-    private static void retaliateCounterDamage(Player player, LivingEntity attacker) {
+    // === 反击伤害注入(Counterattack Damage Injection) ===
+    // 反击不再作为效果/流派存在:没有 counterattack 效果、没有层数、没有持续反噬周期。
+    // 具体触发源(肉弹战车嘲讽、枪匠破绽闪避)命中时调用 injectCounterDamage 做单次伤害计算并注入,
+    // 不登记反噬目标、不持续返还。
+
+    // 对当前目标注入一次反击伤害(视为玩家伤害来源,不进入骰战结算/不递归触发)
+    private static void injectCounterDamage(Player player, LivingEntity attacker) {
         double dmg = computeCounterDamage(player, attacker);
         if (dmg <= 0) return;
         counterProcessing = true;
@@ -970,7 +1035,7 @@ public class DiceCombatEvents {
         }
         if (enhancement == null) enhancement = WeaponEnhancement.EMPTY;
 
-        int baseDice = ThreadLocalRandom.current().nextInt(1, 7);
+        int baseDice = rollCombatDie(player); // 特殊骰子掷骰(诡异骰子低点数偏置/绯红骰子高点数偏置)
         int misakiStar = enhancement.starLevel();
         int misakiStacks = 0;
         boolean misakiBurst = false;
@@ -1004,22 +1069,14 @@ public class DiceCombatEvents {
         if (hasFullPower) {
             total = Math.ceil(total * 1.5);
         }
+        // 肉弹战车立牌(pandaman)常驻被动:反击时若生命未满,附加缺失生命值等值的伤害
+        if (PandamanSignItem.isEquipped(player)) {
+            double missingHp = Math.max(0.0, player.getMaxHealth() - player.getHealth());
+            if (missingHp > 0) {
+                total += missingHp;
+            }
+        }
         return total;
-    }
-
-    // 反噬目标死亡(或玩家死亡)时清理登记,避免残留
-    @SubscribeEvent
-    public static void onCounterTargetDeath(net.neoforged.neoforge.event.entity.living.LivingDeathEvent event) {
-        if (event.getEntity().level().isClientSide()) return;
-        Entity dead = event.getEntity();
-        if (dead instanceof Player player) {
-            COUNTER_RETALIATION_TARGETS.remove(player.getUUID());
-            return;
-        }
-        if (dead instanceof Enemy) {
-            java.util.UUID deadId = dead.getUUID();
-            COUNTER_RETALIATION_TARGETS.values().forEach(set -> set.remove(deadId));
-        }
     }
 
     // 手持(主手+副手)近战武器的基础伤害最大值(不含附魔/属性效果);无近战武器回退空手 1.0

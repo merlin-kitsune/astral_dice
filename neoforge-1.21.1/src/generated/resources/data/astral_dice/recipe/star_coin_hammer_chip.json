@@ -5,22 +5,22 @@
     "B": {
       "item": "astral_dice:blank_chip"
     },
+    "D": {
+      "item": "astral_dice:star_coin_dust"
+    },
     "G": {
       "item": "astral_dice:golden_star_plate"
     },
-    "M": {
-      "item": "minecraft:mace"
-    },
-    "N": {
-      "item": "minecraft:netherite_ingot"
-    },
     "S": {
       "item": "astral_dice:star_coin_bag"
+    },
+    "X": {
+      "item": "minecraft:mace"
     }
   },
   "pattern": [
-    "SMS",
-    "NBN",
+    "SXS",
+    "DBD",
     "GGG"
   ],
   "result": {

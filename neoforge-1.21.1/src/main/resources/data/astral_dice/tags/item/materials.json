@@ -9,6 +9,10 @@
     "astral_dice:star_plate",
     "astral_dice:golden_star_plate",
     "astral_dice:blank_sign",
-    "astral_dice:blank_chip"
+    "astral_dice:blank_chip",
+    "astral_dice:regeneration_reagent",
+    "astral_dice:conductive_wire",
+    "astral_dice:star_coin_dust",
+    "astral_dice:mark_paint"
   ]
 }

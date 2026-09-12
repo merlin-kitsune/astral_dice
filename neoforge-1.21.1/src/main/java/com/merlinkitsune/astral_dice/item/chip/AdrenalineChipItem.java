@@ -14,7 +14,7 @@ import top.theillusivec4.curios.api.SlotContext;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
- * 肾上腺素筹码(一般/高效):生命值低于最大生命值一半时,攻击力/防御力 +3/+8。
+ * 肾上腺素筹码(一般/高效):生命值为 50% 或更低时,攻击力/防御力 +3/+8。
  * - 攻击力经骰战攻击修饰器注册表(DiceCombatModifiers)计入;
  * - 防御力按「1 防御力 = 2 护甲值」折算为真实护甲(curioTick 维护,见防御力折算规范);
  * - 触发加成时被敌方攻击,有 20% 概率闪避单次攻击伤害。
@@ -35,9 +35,9 @@ public class AdrenalineChipItem extends BaseChipItem {
         this.bonus = bonus;
     }
 
-    // 是否处于触发加成状态(生命值低于最大生命值一半)
+    // 是否处于触发加成状态(生命值为 50% 或更低)
     public static boolean isLowHp(Player player) {
-        return player != null && player.getHealth() < player.getMaxHealth() / 2.0f;
+        return player != null && player.getHealth() <= player.getMaxHealth() / 2.0f;
     }
 
     public static boolean hasLowEquipped(Player player) {
@@ -82,9 +82,12 @@ public class AdrenalineChipItem extends BaseChipItem {
         if (!isLowHp(player)) return;
         if (!hasHighEquipped(player)) return;
         // 敌方攻击(来源为敌对生物;排除摔落/火焰等环境伤害)
-        if (!(event.getSource().getEntity() instanceof Enemy)) return;
+        if (!(event.getSource().getEntity() instanceof net.minecraft.world.entity.LivingEntity attacker)) return;
+        if (!(attacker instanceof Enemy)) return;
         if (tryDodge()) {
             event.setNewDamage(0);
+            // 枪匠立牌:任意来源的闪避都会尝试获得 1 层弱点识破(每目标一次)
+            com.merlinkitsune.astral_dice.item.sign.MosesSignItem.onDodgeCounter(player, attacker);
         }
     }
 }

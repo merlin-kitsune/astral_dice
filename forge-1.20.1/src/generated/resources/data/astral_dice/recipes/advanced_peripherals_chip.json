@@ -1,0 +1,30 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": {
+      "item": "astral_dice:blank_chip"
+    },
+    "E": {
+      "item": "minecraft:echo_shard"
+    },
+    "L": {
+      "item": "astral_dice:conductive_wire"
+    },
+    "P": {
+      "item": "astral_dice:star_plate"
+    },
+    "T": {
+      "item": "minecraft:redstone_torch"
+    }
+  },
+  "pattern": [
+    "TET",
+    "LCL",
+    "PPP"
+  ],
+  "result": {
+    "item": "astral_dice:advanced_peripherals_chip"
+  },
+  "show_notification": true
+}

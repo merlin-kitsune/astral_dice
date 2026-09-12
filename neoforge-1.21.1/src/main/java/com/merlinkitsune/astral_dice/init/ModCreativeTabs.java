@@ -35,11 +35,24 @@ public class ModCreativeTabs {
                 output.accept(ModItems.GOLDEN_STAR_PLATE.get());
                 output.accept(ModItems.BLANK_SIGN.get());
                 output.accept(ModItems.BLANK_CHIP.get());
+                output.accept(ModItems.REGENERATION_REAGENT.get());
+                output.accept(ModItems.CONDUCTIVE_WIRE.get());
+                output.accept(ModItems.STAR_COIN_DUST.get());
+                output.accept(ModItems.MARK_PAINT.get());
                 // 骰子
                 output.accept(ModItems.DICE.get());
                 output.accept(ModItems.GOLDEN_DICE.get());
                 output.accept(ModItems.DIAMOND_DICE.get());
                 output.accept(ModItems.NETHERITE_DICE.get());
+                output.accept(ModItems.NETHER_STAR_DICE.get());
+                output.accept(ModItems.GLASS_DICE.get());
+                output.accept(ModItems.NETHERRACK_DICE.get());
+                output.accept(ModItems.CRIMSON_DICE.get());
+                output.accept(ModItems.EMERALD_DICE.get());
+                output.accept(ModItems.OBSIDIAN_DICE.get());
+                output.accept(ModItems.WEIRD_DICE.get());
+                output.accept(ModItems.AMETHYST_DICE.get());
+                output.accept(ModItems.ENDER_DICE.get());
                 // 攻击牌
                 output.accept(ModItems.ATTACK_CARD_MEDIUM.get());
                 output.accept(ModItems.ATTACK_CARD_LARGE.get());
@@ -70,21 +83,26 @@ public class ModCreativeTabs {
                 output.accept(ModItems.ORBITAL_STRIKE_CARD.get());
                 output.accept(ModItems.DIRECTIONAL_BLAST_CARD.get());
                 output.accept(ModItems.LIVING_PAGE.get());
-                // 立牌
+                // 立牌(按稀有度低→高:稀有→史诗→传奇)
+                // 稀有 RARE
                 output.accept(ModItems.PARUNAN_SIGN.get());
                 output.accept(ModItems.JASMINE_SIGN.get());
-                output.accept(ModItems.MISAKI_SIGN.get());
                 output.accept(ModItems.MIMI_SIGN.get());
                 output.accept(ModItems.LULU_SIGN.get());
-                output.accept(ModItems.KOMACHI_SIGN.get());
                 output.accept(ModItems.PADMAN_SIGN.get());
+                output.accept(ModItems.PANDAMAN_SIGN.get());
+                // 史诗 EPIC
+                output.accept(ModItems.KOMACHI_SIGN.get());
                 output.accept(ModItems.FANNY_SIGN.get());
-                output.accept(ModItems.RIN_SIGN.get());
                 output.accept(ModItems.HAIQING_SIGN.get());
                 output.accept(ModItems.PAPARA_SIGN.get());
+                output.accept(ModItems.NANCY_LU_SIGN.get());
+                output.accept(ModItems.MOSES_SIGN.get());
+                // 传奇 UNCOMMON
+                output.accept(ModItems.MISAKI_SIGN.get());
+                output.accept(ModItems.RIN_SIGN.get());
                 output.accept(ModItems.BONNIE_SIGN.get());
                 output.accept(ModItems.FEN_SIGN.get());
-                output.accept(ModItems.NANCY_LU_SIGN.get());
                 // 筹码
                 // === 星光类 ===
                 output.accept(ModItems.FLASHLIGHT_CHIP.get());
@@ -103,6 +121,7 @@ public class ModCreativeTabs {
                 output.accept(ModItems.BUFFER_SHIELD.get());
                 output.accept(ModItems.CANDY_CHIP.get());
                 output.accept(ModItems.FRIENDSHIP_BADGE.get());
+                output.accept(ModItems.BIG_BOWL_STEW_CHIP.get());
                 // === 标记类 ===
                 output.accept(ModItems.SCOPE_CHIP.get());
                 output.accept(ModItems.EAGLE_SCOPE_CHIP.get());
@@ -112,6 +131,18 @@ public class ModCreativeTabs {
                 output.accept(ModItems.HAND_FAN_SMALL_CHIP.get());
                 output.accept(ModItems.HAND_FAN_BIG_CHIP.get());
                 output.accept(ModItems.MAGIC_QUIVER.get());
+                // === 充能类 ===
+                output.accept(ModItems.WARP_ENGINE_CHIP.get());
+                output.accept(ModItems.ENERGY_RECYCLER.get());
+                output.accept(ModItems.ELECTRIC_SWORD.get());
+                output.accept(ModItems.ADVANCED_PERIPHERALS.get());
+                output.accept(ModItems.CURRENT_CORE_CHIP.get());
+                output.accept(ModItems.ELECTRIC_GLOVE_CHIP.get());
+                output.accept(ModItems.AIRBAG_CHIP.get());
+                // 永动机（移至电磁炮之前）
+                output.accept(ModItems.PERPETUAL_MOTION.get());
+                output.accept(ModItems.RAILGUN_CHIP.get());
+                output.accept(ModItems.PRIMORDIAL_CORE_CHIP.get());
                 // === 无流派 ===
                 output.accept(ModItems.MAGIC_TOME_CHIP.get());
                 output.accept(ModItems.BIG_BACKPACK_CHIP.get());
@@ -129,6 +160,11 @@ public class ModCreativeTabs {
                 output.accept(ModItems.SANDWICH_HIGH.get());
                 output.accept(ModItems.ADRENALINE_LOW.get());
                 output.accept(ModItems.ADRENALINE_HIGH.get());
+                output.accept(ModItems.MEMBER_RECOMMENDATION_CHIP.get());
+                output.accept(ModItems.BOOKMARK_CHIP.get());
+                output.accept(ModItems.PIGGY_BANK_CHIP.get());
+                output.accept(ModItems.SMART_WATCH_CHIP.get());
+                output.accept(ModItems.WHETSTONE_CHIP.get());
                 output.accept(ModItems.SATELLITE_CHIP.get());
                 output.accept(ModItems.CURSED_SWORD.get());
                 output.accept(ModItems.REVENGE_HALBERD.get());

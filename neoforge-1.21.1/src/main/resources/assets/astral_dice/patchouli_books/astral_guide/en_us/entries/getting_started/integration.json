@@ -14,10 +14,6 @@
     {
       "type": "patchouli:text",
       "text": "astral_dice.guide.entry.integration.3"
-    },
-    {
-      "type": "patchouli:text",
-      "text": "astral_dice.guide.entry.integration.4"
     }
   ],
   "sortnum": 4

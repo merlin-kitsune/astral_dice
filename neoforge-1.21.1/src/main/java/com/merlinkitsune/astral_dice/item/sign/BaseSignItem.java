@@ -79,9 +79,16 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
         if (!(stack.getItem() instanceof BaseSignItem sign)) return;
         long now = player.level().getGameTime();
         net.minecraft.network.chat.Component signName = stack.getHoverName();
-        // 1. 玩家级冷却检查:冷却中按键无效,并明确提示"<立牌名>冷却中"(修复:触发成功与冷却拒绝的反馈混淆)
+        // 1. 玩家级冷却检查:冷却中按键默认无效,并明确提示"<立牌名>冷却中"(修复:触发成功与冷却拒绝的反馈混淆)
+        //    电流核心筹码:冷却中按下主动技能键 → 按剩余冷却占比消耗充能并立即使冷却完成(佩戴且充能足够时)
         long cdEnd = ModAttachments.getSignActiveCooldownEnd(player);
         if (cdEnd > 0 && now < cdEnd) {
+            int coreResult = com.merlinkitsune.astral_dice.item.chip.CurrentCoreChipItem
+                    .tryFinishCooldown(player, cdEnd, now);
+            if (coreResult != com.merlinkitsune.astral_dice.item.chip.CurrentCoreChipItem.FINISH_NONE) {
+                // 已完成冷却(等待玩家再次按键释放)或充能不足(已提示):不再叠加默认冷却提示
+                return;
+            }
             notifyActionBar(player, "hud.astral_dice.sign_active_cooldown", signName, ChatFormatting.RED);
             return;
         }
@@ -103,8 +110,11 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
         }
         // 6. 冷却:目标选择器类技能(已进入选择会话)待确认目标后在 apply 中开始冷却;其余立牌立即开始玩家级冷却
         if (!com.merlinkitsune.astral_dice.target.TargetSelectionManager.isSelecting(player)) {
+            // 诡异骰子:立牌主动冷却 -50%
             ModAttachments.setSignActiveCooldownEnd(player,
-                    now + GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS);
+                    now + com.merlinkitsune.astral_dice.event.WeirdDiceHandler.signCooldownTicks(player));
+            // 电流核心筹码:主动技能实际生效时充能 +1
+            com.merlinkitsune.astral_dice.item.chip.CurrentCoreChipItem.onActiveSkillUsed(player);
         }
     }
 

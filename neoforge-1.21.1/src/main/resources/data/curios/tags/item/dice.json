@@ -3,6 +3,15 @@
     "astral_dice:dice",
     "astral_dice:golden_dice",
     "astral_dice:diamond_dice",
-    "astral_dice:netherite_dice"
+    "astral_dice:netherite_dice",
+    "astral_dice:emerald_dice",
+    "astral_dice:glass_dice",
+    "astral_dice:obsidian_dice",
+    "astral_dice:netherrack_dice",
+    "astral_dice:weird_dice",
+    "astral_dice:crimson_dice",
+    "astral_dice:amethyst_dice",
+    "astral_dice:ender_dice",
+    "astral_dice:nether_star_dice"
   ]
 }

@@ -1,0 +1,13 @@
+{
+  "name": "item.astral_dice.big_bowl_stew_chip",
+  "category": "astral_dice:chips_healing",
+  "icon": "astral_dice:big_bowl_stew_chip",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:big_bowl_stew_chip",
+      "text": "astral_dice.guide.entry.big_bowl_stew_chip.1"
+    }
+  ],
+  "sortnum": 8
+}

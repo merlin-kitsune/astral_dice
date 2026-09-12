@@ -8,13 +8,16 @@
     "C": {
       "item": "astral_dice:star_coin"
     },
-    "T": {
+    "M": {
+      "item": "astral_dice:mark_paint"
+    },
+    "X": {
       "item": "minecraft:target"
     }
   },
   "pattern": [
-    "TTT",
-    "TBT",
+    "XXX",
+    "MBM",
     "CCC"
   ],
   "result": {

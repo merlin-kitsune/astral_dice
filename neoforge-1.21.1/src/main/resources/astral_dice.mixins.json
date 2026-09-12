@@ -3,7 +3,16 @@
   "minVersion": "0.8",
   "package": "com.merlinkitsune.astral_dice.mixin",
   "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "trade.MerchantContainerMixin",
+    "trade.MerchantMenuMixin",
+    "trade.MerchantOfferMixin",
+    "trade.MerchantResultSlotMixin",
+    "trade.ServerPlayerMixin",
+    "PiglinAiMixin"
+  ],
   "client": [
+    "client.EffectRenderingInventoryScreenMixin",
     "client.KeyboardHandlerMixin"
   ],
   "injectors": {

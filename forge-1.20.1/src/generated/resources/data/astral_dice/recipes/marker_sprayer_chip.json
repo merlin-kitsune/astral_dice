@@ -11,13 +11,16 @@
     "L": {
       "item": "minecraft:lapis_lazuli"
     },
-    "N": {
+    "M": {
+      "item": "astral_dice:mark_paint"
+    },
+    "X": {
       "item": "minecraft:nether_wart"
     }
   },
   "pattern": [
-    "NNN",
-    "LBL",
+    "XLX",
+    "MBM",
     "CCC"
   ],
   "result": {

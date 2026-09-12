@@ -2,25 +2,25 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
-    "C": {
+    "B": {
       "item": "astral_dice:blank_chip"
     },
-    "N": {
-      "item": "minecraft:carved_pumpkin"
+    "L": {
+      "item": "minecraft:cookie"
     },
     "P": {
       "item": "astral_dice:star_plate"
     },
-    "Q": {
-      "item": "minecraft:cookie"
+    "R": {
+      "item": "astral_dice:regeneration_reagent"
     },
-    "T": {
+    "X": {
       "item": "minecraft:sugar"
     }
   },
   "pattern": [
-    "TQT",
-    "NCN",
+    "XLX",
+    "RBR",
     "PPP"
   ],
   "result": {

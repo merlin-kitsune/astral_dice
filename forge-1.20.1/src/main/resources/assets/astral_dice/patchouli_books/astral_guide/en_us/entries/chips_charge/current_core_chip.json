@@ -1,0 +1,17 @@
+{
+  "name": "item.astral_dice.current_core_chip",
+  "category": "astral_dice:chips_charge",
+  "icon": "astral_dice:current_core_chip",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:current_core_chip",
+      "text": "astral_dice.guide.entry.current_core_chip.1"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.current_core_chip.2"
+    }
+  ],
+  "sortnum": 4
+}

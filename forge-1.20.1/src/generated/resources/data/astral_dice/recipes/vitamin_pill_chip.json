@@ -2,22 +2,22 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
-    "C": {
+    "B": {
       "item": "astral_dice:blank_chip"
-    },
-    "F": {
-      "item": "minecraft:fermented_spider_eye"
     },
     "P": {
       "item": "astral_dice:star_plate"
     },
     "R": {
-      "item": "minecraft:redstone"
+      "item": "astral_dice:regeneration_reagent"
+    },
+    "X": {
+      "item": "minecraft:fermented_spider_eye"
     }
   },
   "pattern": [
-    "FFF",
-    "RCR",
+    "XXX",
+    "RBR",
     "PPP"
   ],
   "result": {

@@ -13,6 +13,9 @@ import com.merlinkitsune.astral_dice.target.TargetSelectionAction;
 import com.merlinkitsune.astral_dice.target.TargetSelectionManager;
 import com.merlinkitsune.astral_dice.target.TargetSelectionRegistry;
 import com.merlinkitsune.astral_dice.target.TargetType;
+import com.merlinkitsune.astral_dice.event.WeirdDiceHandler;
+import com.merlinkitsune.astral_dice.item.chip.CurrentCoreChipItem;
+
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
@@ -77,9 +80,11 @@ public class BonnieSignItem extends BaseSignItem {
                         player.drop(coinStack, false);
                     }
                 }
-                // 主动成功施加:开始玩家级冷却
+                // 主动成功施加:开始玩家级冷却(统一经 signCooldownTicks:含诡异骰子 -50% 与充能递减)
                 ModAttachments.setSignActiveCooldownEnd(player,
-                        player.level().getGameTime() + GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS);
+                        player.level().getGameTime() + WeirdDiceHandler.signCooldownTicks(player));
+                // 电流核心筹码:主动技能实际生效时充能 +1
+                CurrentCoreChipItem.onActiveSkillUsed(player);
                 PacketDistributor.sendToPlayer(player, new ActionBarPayload(
                         Component.translatable("msg.astral_dice.bonnie_undercover_applied", target.getDisplayName())
                                 .withStyle(ChatFormatting.YELLOW), GameplayConstants.ACTIONBAR_DURATION_TICKS));
@@ -124,7 +129,7 @@ public class BonnieSignItem extends BaseSignItem {
         if (MarkManager.getLevel(killed) > 0
                 && !(killed instanceof Player)
                 && killed instanceof Enemy
-                && killed.getMaxHealth() > 20) {
+                && killed.getMaxHealth() >= 20) {
             giveRandomBattleCard(killer);
         }
     }

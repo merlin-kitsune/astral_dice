@@ -5,20 +5,23 @@
     "B": {
       "item": "astral_dice:blank_chip"
     },
+    "C": {
+      "item": "astral_dice:star_coin"
+    },
     "D": {
+      "item": "astral_dice:star_coin_dust"
+    },
+    "L": {
       "item": "astral_dice:dice"
     },
-    "G": {
+    "X": {
       "item": "minecraft:gold_ingot"
-    },
-    "S": {
-      "item": "astral_dice:star_coin"
     }
   },
   "pattern": [
-    "GDG",
-    "GBG",
-    "SSS"
+    "XLX",
+    "DBD",
+    "CCC"
   ],
   "result": {
     "item": "astral_dice:eight_sided_dice_chip"

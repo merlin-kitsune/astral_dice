@@ -6,6 +6,7 @@ import com.merlinkitsune.astral_dice.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.event.AstralEventSystem;
+import com.merlinkitsune.astral_dice.event.EventTargetCollector;
 import com.merlinkitsune.astral_dice.network.ModNetwork.ActionBarMessage;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
@@ -13,16 +14,23 @@ import net.minecraft.server.level.ServerPlayer;
 import com.merlinkitsune.astral_dice.network.ModNetwork;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraftforge.event.entity.living.LivingDeathEvent;
+import net.minecraftforge.event.entity.living.MobEffectEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * "调查阶段"事件核心逻辑。
  * 阶段:调查阶段 I / II / III / 真相揭露。由击杀"隐匿调查"目标触发;大侦探立牌可抽取该事件(继承附近秘密侦探立牌玩家的进度,不推进)。
  * 调查阶段属于事件,触发时同样触发调查员立牌被动等事件附加效果。
  */
+@Mod.EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public final class InvestigationEventUtil {
     private InvestigationEventUtil() {
     }
@@ -60,13 +68,12 @@ public final class InvestigationEventUtil {
         if (applier != null && applier != self) {
             recipients.add(applier);
         }
-        // 真相揭露:同队伍内所有玩家,以及"参与 boss 战"的玩家(附近存在 boss 生物时,周围 32 格内的玩家)
+        // 真相揭露:队伍/友方内所有玩家,以及"参与 boss 战"的玩家(附近存在 boss 生物时,周围 32 格内的玩家)
         if (stage >= 4) {
-            if (self.getTeam() != null) {
-                for (Player p : self.level().players()) {
-                    if (p.getTeam() == self.getTeam() && !recipients.contains(p)) {
-                        recipients.add(p);
-                    }
+            // 触发者已加入队伍时只影响同队玩家;未加入任何队伍时 collectTeamPlayers 返回全服在线玩家
+            for (Player ally : EventTargetCollector.collectTeamPlayers(self)) {
+                if (!recipients.contains(ally)) {
+                    recipients.add(ally);
                 }
             }
             boolean bossNearby = !self.level().getEntitiesOfClass(net.minecraft.world.entity.Mob.class,
@@ -91,6 +98,33 @@ public final class InvestigationEventUtil {
                     new ModNetwork.ActionBarMessage(Component.translatable("msg.astral_dice.investigation_event_triggered")
                             .withStyle(ChatFormatting.YELLOW), GameplayConstants.ACTIONBAR_DURATION_TICKS));
         }
+    }
+
+    // 击杀"隐匿调查"目标 → 触发调查阶段事件(全局处理,不要求击杀者佩戴秘密侦探立牌)
+    @SubscribeEvent
+    public static void onUndercoverInvestigationKill(LivingDeathEvent event) {
+        LivingEntity target = event.getEntity();
+        if (target.level().isClientSide()) return;
+        if (!target.hasEffect(ModEffects.UNDERCOVER_INVESTIGATION.get())) return;
+        if (!(event.getSource().getEntity() instanceof Player killer)) return;
+        Optional<java.util.UUID> source = ModAttachments.getUndercoverSource(target);
+        if (source.isEmpty()) return;
+        Player applier = target.level().getPlayerByUUID(source.get());
+        if (applier == null) return;
+        int markLevel = MarkManager.getLevel(target);
+        InvestigationEventUtil.triggerByKill(killer, applier, markLevel);
+    }
+
+    // "隐匿调查"被移除(自然到期/死亡/清除)时清空来源,避免残留 UUID 后续误触发
+    @SubscribeEvent
+    public static void onUndercoverRemoved(MobEffectEvent.Remove event) {
+        if (event.isCanceled()) return;
+        MobEffectInstance effect = event.getEffectInstance();
+        if (effect == null || effect.getEffect() == null
+                || effect.getEffect() != ModEffects.UNDERCOVER_INVESTIGATION.get()) return;
+        LivingEntity entity = event.getEntity();
+        if (entity.level().isClientSide()) return;
+        ModAttachments.setUndercoverSource(entity, Optional.empty());
     }
 
 }

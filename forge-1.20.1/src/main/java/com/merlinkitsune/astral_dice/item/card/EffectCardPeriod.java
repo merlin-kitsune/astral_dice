@@ -4,6 +4,7 @@ import com.merlinkitsune.astral_dice.item.CuriosCompat;
 import com.merlinkitsune.astral_dice.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
+import com.merlinkitsune.astral_dice.item.ChargeManager;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.core.Holder;
 import net.minecraft.world.effect.MobEffect;
@@ -22,8 +23,8 @@ import com.merlinkitsune.astral_dice.item.ModItems;
  * - 固定出牌数加成(佩戴即提供,不卸载一直有效):大背包 +1、忍术飞镖 +1。
  * - 临时出牌数加成(效果驱动,效果结束自动清除):活体书页效果 +1、命运的指引效果 +1、
  *   忍者立牌(komachi)主动技能 +1(出牌数银行,按实际出牌消耗,跨周期保留至用尽)。
- * - 出牌数无绝对上限:1 + 固定 + 临时 + 忍者银行 实时计算,加成来源可无限叠加
- *   (不再有 MAX_EFFECT_CARD_PLAYS=9 上限)。
+ * - 出牌数上限:min(1 + 固定 + 临时 + 忍者银行, {@link GameplayConstants#MAX_EFFECT_CARD_PLAYS})
+ *   实时计算,加成来源可叠加,但单轮总出牌数固定封顶 9 张(固定常量,非配置文件项)。
  * - 只要出效果牌就立即开始冷却倒计时(30 秒);冷却归零时出牌数归零。
  *   效果牌本身的效果单独计算;单个轮询内所有已出效果牌的效果全部结束后才可重新出牌
  *   (冷却已归零但效果仍在生效时,出牌被锁定)。
@@ -124,7 +125,7 @@ public final class EffectCardPeriod {
         registerEffectPendingSource(ModEffects.UNWAVERING.get());
     }
 
-    // 当前出牌数上限 = 基础 1 + 固定 + 临时 + 忍者银行(实时计算,无绝对上限)
+    // 当前出牌数上限 = min(基础 1 + 固定 + 临时 + 忍者银行, MAX_EFFECT_CARD_PLAYS)(实时计算)
     public static int getMaxAllowed(Player player) {
         int extra = 0;
         for (ExtraPlaySource source : FIXED_SOURCES) {
@@ -135,7 +136,8 @@ public final class EffectCardPeriod {
         }
         // 忍者立牌(komachi)主动的出牌数银行:按实际出牌消耗,跨周期保留至用尽
         extra += ModAttachments.getKomachiExtraPlays(player);
-        return 1 + extra;
+        // 单轮出牌数固定封顶(常量 9,不写入配置文件)
+        return Math.min(GameplayConstants.MAX_EFFECT_CARD_PLAYS, 1 + extra);
     }
 
     // 本轮已出牌数
@@ -232,8 +234,9 @@ public final class EffectCardPeriod {
             ModAttachments.setKomachiExtraPlays(player, komachiBank - 1);
         }
         // 立即开始/重置冷却倒计时(从最后一张出牌起算)
-        ModAttachments.setEffectCardCooldownEnd(player,
-                now + GameplayConstants.EFFECT_CARD_COOLDOWN_SECONDS * 20L);
+        long cooldownTicks = ChargeManager.cooldownTicks(player,
+                GameplayConstants.EFFECT_CARD_COOLDOWN_SECONDS * 20L);
+        ModAttachments.setEffectCardCooldownEnd(player, now + cooldownTicks);
     }
 
     // 每 tick 调用:冷却倒计时归 0 时出牌数归零
@@ -248,6 +251,8 @@ public final class EffectCardPeriod {
         // 周期归零:清除可口糖果的"满血出牌数+1"(每个轮次最多一次)
         ModAttachments.setCandyChipPlayBonusActive(player, false);
         ModAttachments.setSatellitePlayBonusActive(player, false);
+        // 周期归零:解除电击手套本周期已武装的法伤扩散(下个周期可重新武装)
+        com.merlinkitsune.astral_dice.item.chip.ElectricGloveChipItem.disarmAoe(player);
     }
 
     private static boolean hasCurio(Player player, net.minecraft.world.item.Item item) {

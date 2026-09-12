@@ -113,7 +113,8 @@ public class AnvilUpgradeHandler {
         ItemStack right = event.getRight();
 
         if (left.is(ModItems.DICE.get()) || left.is(ModItems.GOLDEN_DICE.get()) || left.is(ModItems.DIAMOND_DICE.get())
-                || left.is(ModItems.NETHERITE_DICE.get())) {
+                || left.is(ModItems.NETHERITE_DICE.get()) || left.is(ModItems.EMERALD_DICE.get())
+                || left.is(ModItems.GLASS_DICE.get())) {
             if (!right.is(ModItems.STAR_COIN.get())) return;
             WeaponEnhancement enhancement = left.getOrDefault(ModDataComponents.WEAPON_ENHANCEMENT.get(), WeaponEnhancement.EMPTY);
             if (enhancement.starLevel() >= 3) return;
@@ -157,7 +158,8 @@ public class AnvilUpgradeHandler {
     //   <备注信息(紫色,无符号)>
     //
     //   <立牌计数器>
-    // 颜色约定:标题=金(§6)、时间/冷却=黄(§e)、效果/数值=青(§b)/绿(§a)、负面=红(§c)、普通=灰(§7)
+    // 颜色约定:见 ModTooltipHandler 类头「物品 tooltip 统一染色规则」
+    //   (数值=黄 §e、时间=蓝 §9、效果条目「名 (时间)」整段蓝 §9;§c 红色语义保留、§r/§f 例外)
 
     // 主动技能按键提示:置于 tooltip 最上方独立一行,并在末尾追加一个空行
 }

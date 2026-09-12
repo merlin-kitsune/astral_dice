@@ -21,7 +21,7 @@ import net.neoforged.bus.api.SubscribeEvent;
  * 被动:每使用 3 张效果牌时(独立计数,与魔法秘典互不关联):
  * - 复制最后一张使用的效果牌并返回到物品栏;
  * - 主动技能冷却时间立即减少 30%;
- * - 伤害类效果牌伤害加成 +1(计数器"效果牌伤害增益",上限由配置 komachi_damage_bonus_max 控制,默认 10,最大 16)。
+ * - 伤害类效果牌伤害加成 +1(计数器"效果牌伤害增益",无上限,卸下立牌重置)。
  * 计数期间显示"忍者立牌"效果图标,等级 = 当前第几张;第 3 张触发后计数归 0。
  * 主动:本轮出牌数 +1(累积到出牌数银行,按实际出牌消耗;跨周期保留至用尽,不随周期归零清除,
  * 不受出牌进度/冷却/满额影响;银行存储上限见 GameplayConstants.KOMACHI_EXTRA_PLAYS_CAP)。
@@ -91,11 +91,9 @@ public class KomachiSignItem extends BaseSignItem {
             }
             // 2. 主动技能冷却时间立即减少 30%(剩余部分)
             reduceSignCooldown(player);
-            // 3. 伤害类效果牌伤害加成 +1(上限由配置 komachi_damage_bonus_max 控制)
-            int bonus = ModAttachments.getKomachiDamageBonus(player);
-            if (bonus < com.merlinkitsune.astral_dice.component.GameplayConstants.KOMACHI_DAMAGE_BONUS_MAX) {
-                ModAttachments.setKomachiDamageBonus(player, bonus + 1);
-            }
+            // 3. 伤害类效果牌伤害加成 +1(无上限,卸下立牌重置)
+            ModAttachments.setKomachiDamageBonus(player,
+                    ModAttachments.getKomachiDamageBonus(player) + 1);
             ModAttachments.setKomachiUseCount(player, 0);
             updateCountEffect(player);
         }

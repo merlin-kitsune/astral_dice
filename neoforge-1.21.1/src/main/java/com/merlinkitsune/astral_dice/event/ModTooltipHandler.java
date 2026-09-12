@@ -13,6 +13,7 @@ import com.merlinkitsune.astral_dice.item.sign.ParunanSignItem;
 import com.merlinkitsune.astral_dice.item.sign.BaseSignItem;
 import com.merlinkitsune.astral_dice.item.sign.BonnieSignItem;
 import com.merlinkitsune.astral_dice.item.BossEntityUtil;
+import com.merlinkitsune.astral_dice.item.ChargeManager;
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
 import com.merlinkitsune.astral_dice.item.dice.DiceCurioItem;
 import com.merlinkitsune.astral_dice.item.card.ExclusiveCardUtil;
@@ -105,6 +106,36 @@ import com.merlinkitsune.astral_dice.item.chip.SatelliteChipItem;
 import com.merlinkitsune.astral_dice.item.sign.NancyLuSignItem;
 import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
 
+/**
+ * 物品 tooltip 统一染色规则（权威副本；可读版见 docs/tooltip-color-rules.md）。
+ *
+ * <p>基调：组件基础色为灰 {@code §7}（普通文本），它同时是「值结束后回落」的复位色。
+ * 颜色即语义 —— 黄只出现在数值上，蓝只出现在时间上。行级 {@code withStyle(...)}（标题金、负面行红、
+ * 骰子词条各行语义色）与本规则并行，互不覆盖。
+ *
+ * <p><b>规则 1（非时间数值 -&gt; 黄 {@code §e}）</b>：所有非时间数值（点数/层数/次数/格数/区间/百分比/
+ * 星级/倍率/距离/费用/兑换比例）一律黄色，并连同其前后紧邻的符号一起染色（{@code +3}、{@code -2}、
+ * {@code 50%}、{@code ×2}、{@code ★3}、{@code 1~10}、{@code 2:1}）；值后一律接 {@code §7} 回落灰色正文。
+ *
+ * <p><b>规则 2（时间 -&gt; 蓝 {@code §9}）</b>：所有时间值一律蓝色，形态为 {@code M:SS} 与 {@code N 秒} /
+ * {@code Ns} / {@code N seconds}，同样包含其前后符号（{@code -10秒}、{@code 180 秒}）。秒数格式化统一走
+ * {@link #formatSignTime(int)}；{@code 2:1} 这类兑换比例属于规则 1，不是时间。
+ *
+ * <p><b>规则 3（效果条目 -&gt; 整段蓝）</b>：文本形如 {@code 效果名 (时间)}（含无空格写法
+ * {@code 效果名(时间)}）时，名称与时间必须同色、整段蓝色；禁止「名称灰 + 时间蓝」的割裂写法。
+ *
+ * <p><b>例外（优先级：例外 &gt; 规则 3 &gt; 规则 2 &gt; 规则 1）</b>：
+ * <ol>
+ *   <li>条目已用 {@code §c} 的保持红色（负面效果条目、负面数值、状态警示行、名称类红色），规则 1/2/3 不再改写；</li>
+ *   <li>行级 {@code withStyle(...)} 语义色不作为改写对象，行内数值/时间照常着色；</li>
+ *   <li>现有 {@code §r}（重置为白）保持原样，不做 {@code §r -> §7} 规范化；</li>
+ *   <li>{@code §f} 仅用于 {@code sign.key_hint}（白色行）；</li>
+ *   <li>列表序号（{@code 1.}）与标签序号（{@code 第一诅咒} / {@code Curse 1} / {@code T4}）不染色；</li>
+ *   <li>连接词性质的 {@code +}（如 {@code §e+3§7 + §9黑暗 (0:03)§7} 中间那个）保持灰色。</li>
+ * </ol>
+ *
+ * <p>审计：{@code python scripts/audit/tooltip_color_audit.py}（退出码 0 = 无违规）。
+ */
 @EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public class ModTooltipHandler {
     private static void addSignKeyHint(List<Component> tooltip) {
@@ -181,6 +212,13 @@ public class ModTooltipHandler {
                 HealingManager.getPoints(p), HealingManager.getCap(p));
     }
 
+    // 充能类筹码 tooltip 统一显示当前充能/上限(5 个充能筹码全部调用)
+    private static void addChargeCounter(List<Component> tooltip, Player p) {
+        if (p == null) return;
+        addSignCounter(tooltip, "tooltip.astral_dice.chip.charge",
+                ChargeManager.getStacks(p), GameplayConstants.CHARGE_MAX_STACKS);
+    }
+
     // 翻译文本修正:将 %% 转义为普通 % 后放入 Component.literal,
     // 避免 Minecraft 将 %% 拆成无样式片段导致 % 号丢失颜色。
     private static String translationString(String key, Object... args) {
@@ -252,14 +290,15 @@ public class ModTooltipHandler {
             return;
         }
         int bonus = 0;
-        int komachi = ModAttachments.getKomachiDamageBonus(p);
-        if (p.hasEffect(ModEffects.MONSTER_LASER)) bonus += 4 + komachi;
-        if (p.hasEffect(ModEffects.MONSTER_BRICK)) bonus += 6 + komachi;
-        if (p.hasEffect(ModEffects.ORBITAL_STRIKE)) bonus += 8 + komachi;
-        if (p.hasEffect(ModEffects.DIRECTIONAL_BLAST)) bonus += 5 + komachi;
+        // 伤害效果牌统一加成 = 忍者立牌「效果牌伤害增益」+ 书签筹码(见 SpellDamageRegistry.effectCardDamageBonus)
+        int cardBonus = com.merlinkitsune.astral_dice.combat.SpellDamageRegistry.effectCardDamageBonus(p);
+        if (p.hasEffect(ModEffects.MONSTER_LASER)) bonus += 4 + cardBonus;
+        if (p.hasEffect(ModEffects.MONSTER_BRICK)) bonus += 6 + cardBonus;
+        if (p.hasEffect(ModEffects.ORBITAL_STRIKE)) bonus += 8 + cardBonus;
+        if (p.hasEffect(ModEffects.DIRECTIONAL_BLAST)) bonus += 5 + cardBonus;
         if (p.hasEffect(ModEffects.LIVING_PAGE)) {
-            int pages = Math.min(ModAttachments.getRinPages(p), GameplayConstants.LIVING_PAGE_BONUS_CAP);
-            bonus += 2 + pages + komachi;
+            int pages = ModAttachments.getRinPages(p);
+            bonus += 2 + pages + cardBonus;
         }
         tooltip.add(tt("tooltip.astral_dice.card.active_damage_bonus", bonus)
                 .withStyle(ChatFormatting.GRAY));
@@ -272,7 +311,11 @@ public class ModTooltipHandler {
         Player player = event.getEntity() instanceof Player p ? p : null;
 
         if (stack.is(ModItems.DICE.get()) || stack.is(ModItems.GOLDEN_DICE.get()) || stack.is(ModItems.DIAMOND_DICE.get())
-                || stack.is(ModItems.NETHERITE_DICE.get())) {
+                || stack.is(ModItems.NETHERITE_DICE.get()) || stack.is(ModItems.GLASS_DICE.get())
+                || stack.is(ModItems.EMERALD_DICE.get()) || stack.is(ModItems.OBSIDIAN_DICE.get())
+                || stack.is(ModItems.NETHERRACK_DICE.get()) || stack.is(ModItems.WEIRD_DICE.get())
+                || stack.is(ModItems.CRIMSON_DICE.get()) || stack.is(ModItems.AMETHYST_DICE.get())
+                || stack.is(ModItems.ENDER_DICE.get()) || stack.is(ModItems.NETHER_STAR_DICE.get())) {
             WeaponEnhancement enhancement = stack.getOrDefault(ModDataComponents.WEAPON_ENHANCEMENT.get(), null);
             int starLevel = 0;
             int maxCost = 3;
@@ -289,11 +332,15 @@ public class ModTooltipHandler {
                 usedDefenseCost = enhancement.usedDefenseCost();
             }
             tooltip.add(Component.empty());
-            tooltip.add(Component.translatable("tooltip.astral_dice.dice_desc",
-                    GameplayConstants.DICE_BLESSING_DURATION_SECONDS, cardInventoryKeyName())
-                    .withStyle(ChatFormatting.GOLD));
+            tooltip.add(Component.empty()
+                    .append(tt("tooltip.astral_dice.dice_desc_prefix").withStyle(ChatFormatting.GOLD))
+                    .append(tt("tooltip.astral_dice.dice_desc_blessing",
+                            GameplayConstants.DICE_BLESSING_DURATION_SECONDS).withStyle(ChatFormatting.BLUE))
+                    .append(tt("tooltip.astral_dice.dice_desc_middle").withStyle(ChatFormatting.GRAY))
+                    .append(Component.literal(cardInventoryKeyName()).withStyle(ChatFormatting.YELLOW))
+                    .append(tt("tooltip.astral_dice.dice_desc_suffix").withStyle(ChatFormatting.GRAY)));
             if (starLevel > 0) {
-                tooltip.add(Component.translatable("tooltip.astral_dice.star_level", starLevel)
+                tooltip.add(tt("tooltip.astral_dice.star_level", starLevel)
                         .withStyle(ChatFormatting.GOLD));
             }
             if (starLevel < 3) {
@@ -303,21 +350,21 @@ public class ModTooltipHandler {
                     case 2 -> 25;
                     default -> -1;
                 };
-                tooltip.add(Component.translatable("tooltip.astral_dice.card.upgrade_hint", starLevel, starLevel + 1, req)
+                tooltip.add(tt("tooltip.astral_dice.card.upgrade_hint", starLevel, starLevel + 1, req)
                         .withStyle(ChatFormatting.YELLOW));
             }
             String cost = usedCost + "/" + maxCost;
-            tooltip.add(Component.translatable("tooltip.astral_dice.cost", cost)
+            tooltip.add(tt("tooltip.astral_dice.cost", cost)
                     .withStyle(ChatFormatting.GRAY));
             String defCost = usedDefenseCost + "/" + maxDefenseCost;
-            tooltip.add(Component.translatable("tooltip.astral_dice.defense_cost", defCost)
+            tooltip.add(tt("tooltip.astral_dice.defense_cost", defCost)
                     .withStyle(ChatFormatting.GRAY));
             if (!stones.isEmpty()) {
-                tooltip.add(Component.translatable("tooltip.astral_dice.applied_stones")
+                tooltip.add(tt("tooltip.astral_dice.applied_stones")
                         .withStyle(ChatFormatting.GREEN));
                 for (AppliedStone stone : stones) {
                     if ("shadow_strike".equals(stone.type())) {
-                        tooltip.add(Component.literal(" §7- §5暗影突袭 §e+3§7 固定 §7| 黑暗(§93秒§7) §7[剩余:§e" + stone.uses() + "§7]")
+                        tooltip.add(Component.literal(" §7- §5暗影突袭 §e+3§7 固定 §7| §9黑暗(3秒)§7 §7[剩余:§e" + stone.uses() + "§7]")
                                 .withStyle(ChatFormatting.GRAY));
                         continue;
                     }
@@ -332,7 +379,7 @@ public class ModTooltipHandler {
                         continue;
                     }
                     if ("full_power".equals(stone.type())) {
-                        tooltip.add(Component.literal(" §7- §c全力攻击 §e+6§7 攻击力 §e本次攻击的最终攻击力+50%§7 §7[剩余:§e" + stone.uses() + "§7]")
+                        tooltip.add(Component.literal(" §7- §c全力攻击 §e+6§7 攻击力 本次攻击的最终攻击力§e+50%§7 §7[剩余:§e" + stone.uses() + "§7]")
                                 .withStyle(ChatFormatting.GRAY));
                         continue;
                     }
@@ -367,6 +414,60 @@ public class ModTooltipHandler {
                             .withStyle(ChatFormatting.GRAY));
                 }
             }
+            if (stack.is(ModItems.EMERALD_DICE.get())) {
+                tooltip.add(tt("tooltip.astral_dice.emerald_dice_trade")
+                        .withStyle(ChatFormatting.DARK_GREEN));
+            }
+            if (stack.is(ModItems.OBSIDIAN_DICE.get())) {
+                tooltip.add(tt("tooltip.astral_dice.obsidian_dice_defense")
+                        .withStyle(ChatFormatting.BLUE));
+                tooltip.add(tt("tooltip.astral_dice.obsidian_dice_fire")
+                        .withStyle(ChatFormatting.GOLD));
+            }
+            if (stack.is(ModItems.WEIRD_DICE.get())) {
+                tooltip.add(tt("tooltip.astral_dice.weird_dice_cooldown")
+                        .withStyle(ChatFormatting.GREEN));
+                tooltip.add(tt("tooltip.astral_dice.weird_dice_lowroll")
+                        .withStyle(ChatFormatting.RED));
+            }
+            if (stack.is(ModItems.CRIMSON_DICE.get())) {
+                tooltip.add(tt("tooltip.astral_dice.crimson_dice_highroll")
+                        .withStyle(ChatFormatting.GOLD));
+                tooltip.add(tt("tooltip.astral_dice.crimson_dice_roll1")
+                        .withStyle(ChatFormatting.RED));
+            }
+            if (stack.is(ModItems.AMETHYST_DICE.get())) {
+                tooltip.add(tt("tooltip.astral_dice.amethyst_dice_proc")
+                        .withStyle(ChatFormatting.LIGHT_PURPLE));
+            }
+            if (stack.is(ModItems.ENDER_DICE.get())) {
+                tooltip.add(tt("tooltip.astral_dice.ender_dice_totem")
+                        .withStyle(ChatFormatting.GOLD));
+                tooltip.add(tt("tooltip.astral_dice.ender_dice_teleport")
+                        .withStyle(ChatFormatting.LIGHT_PURPLE));
+                tooltip.add(tt("tooltip.astral_dice.ender_dice_rainwater")
+                        .withStyle(ChatFormatting.RED));
+            }
+            if (stack.is(ModItems.NETHER_STAR_DICE.get())) {
+                tooltip.add(tt("tooltip.astral_dice.nether_star_dice_maxcard")
+                        .withStyle(ChatFormatting.LIGHT_PURPLE));
+                tooltip.add(tt("tooltip.astral_dice.nether_star_dice_chip")
+                        .withStyle(ChatFormatting.AQUA));
+                tooltip.add(tt("tooltip.astral_dice.nether_star_dice_starattr")
+                        .withStyle(ChatFormatting.GOLD));
+            }
+            if (stack.is(ModItems.GLASS_DICE.get())) {
+                tooltip.add(tt("tooltip.astral_dice.glass_dice_max")
+                        .withStyle(ChatFormatting.AQUA));
+                tooltip.add(tt("tooltip.astral_dice.glass_dice_death")
+                        .withStyle(ChatFormatting.RED));
+            }
+            if (stack.is(ModItems.NETHERRACK_DICE.get())) {
+                tooltip.add(tt("tooltip.astral_dice.netherrack_dice_mining")
+                        .withStyle(ChatFormatting.GOLD));
+                tooltip.add(tt("tooltip.astral_dice.netherrack_dice_piglin")
+                        .withStyle(ChatFormatting.GREEN));
+            }
         }
 
         if (stack.is(ModItems.ATTACK_CARD_MEDIUM.get())) {
@@ -376,7 +477,7 @@ public class ModTooltipHandler {
                             com.merlinkitsune.astral_dice.combat.CardRegistry.cost("medium", player)))
                     .withStyle(ChatFormatting.YELLOW));
             int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("medium"));
-            tooltip.add(Component.translatable("tooltip.astral_dice.card.attack_medium", uses)
+            tooltip.add(tt("tooltip.astral_dice.card.attack_medium", uses)
                     .withStyle(ChatFormatting.GRAY));
         }
         if (stack.is(ModItems.ATTACK_CARD_LARGE.get())) {
@@ -385,7 +486,7 @@ public class ModTooltipHandler {
                             com.merlinkitsune.astral_dice.combat.CardRegistry.cost("large", player)))
                     .withStyle(ChatFormatting.YELLOW));
             int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("large"));
-            tooltip.add(Component.translatable("tooltip.astral_dice.card.attack_large", uses)
+            tooltip.add(tt("tooltip.astral_dice.card.attack_large", uses)
                     .withStyle(ChatFormatting.GRAY));
         }
         if (stack.is(ModItems.ATTACK_CARD_EPIC.get())) {
@@ -394,7 +495,7 @@ public class ModTooltipHandler {
                             com.merlinkitsune.astral_dice.combat.CardRegistry.cost("epic", player)))
                     .withStyle(ChatFormatting.YELLOW));
             int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("epic"));
-            tooltip.add(Component.translatable("tooltip.astral_dice.card.attack_epic", uses)
+            tooltip.add(tt("tooltip.astral_dice.card.attack_epic", uses)
                     .withStyle(ChatFormatting.GRAY));
         }
         if (stack.is(ModItems.ATTACK_CARD_SHADOW_STRIKE.get())) {
@@ -403,7 +504,7 @@ public class ModTooltipHandler {
                             com.merlinkitsune.astral_dice.combat.CardRegistry.cost("shadow_strike", player)))
                     .withStyle(ChatFormatting.YELLOW));
             int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("shadow_strike"));
-            tooltip.add(Component.translatable("tooltip.astral_dice.card.shadow_strike", uses)
+            tooltip.add(tt("tooltip.astral_dice.card.shadow_strike", uses)
                     .withStyle(ChatFormatting.GRAY));
         }
         if (stack.is(ModItems.ATTACK_CARD_MEITO.get())) {
@@ -412,7 +513,7 @@ public class ModTooltipHandler {
                             com.merlinkitsune.astral_dice.combat.CardRegistry.cost("meito", player)))
                     .withStyle(ChatFormatting.YELLOW));
             int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("meito"));
-            tooltip.add(Component.translatable("tooltip.astral_dice.card.meito", uses)
+            tooltip.add(tt("tooltip.astral_dice.card.meito", uses)
                     .withStyle(ChatFormatting.GRAY));
         }
         if (stack.is(ModItems.ATTACK_CARD_CHARGE.get())) {
@@ -421,7 +522,7 @@ public class ModTooltipHandler {
                             com.merlinkitsune.astral_dice.combat.CardRegistry.cost("charge", player)))
                     .withStyle(ChatFormatting.YELLOW));
             int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("charge"));
-            tooltip.add(Component.translatable("tooltip.astral_dice.card.charge", uses)
+            tooltip.add(tt("tooltip.astral_dice.card.charge", uses)
                     .withStyle(ChatFormatting.GRAY));
         }
         if (stack.is(ModItems.ATTACK_CARD_FULL_POWER.get())) {
@@ -439,7 +540,7 @@ public class ModTooltipHandler {
                             com.merlinkitsune.astral_dice.combat.CardRegistry.cost("defense_medium", player)))
                     .withStyle(ChatFormatting.YELLOW));
             int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("defense_medium"));
-            tooltip.add(Component.translatable("tooltip.astral_dice.card.defense_medium", uses)
+            tooltip.add(tt("tooltip.astral_dice.card.defense_medium", uses)
                     .withStyle(ChatFormatting.GRAY));
         }
         if (stack.is(ModItems.DEFENSE_CARD_LARGE.get())) {
@@ -448,7 +549,7 @@ public class ModTooltipHandler {
                             com.merlinkitsune.astral_dice.combat.CardRegistry.cost("defense_large", player)))
                     .withStyle(ChatFormatting.YELLOW));
             int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("defense_large"));
-            tooltip.add(Component.translatable("tooltip.astral_dice.card.defense_large", uses)
+            tooltip.add(tt("tooltip.astral_dice.card.defense_large", uses)
                     .withStyle(ChatFormatting.GRAY));
         }
         if (stack.is(ModItems.DEFENSE_CARD_EPIC.get())) {
@@ -457,7 +558,7 @@ public class ModTooltipHandler {
                             com.merlinkitsune.astral_dice.combat.CardRegistry.cost("defense_epic", player)))
                     .withStyle(ChatFormatting.YELLOW));
             int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("defense_epic"));
-            tooltip.add(Component.translatable("tooltip.astral_dice.card.defense_epic", uses)
+            tooltip.add(tt("tooltip.astral_dice.card.defense_epic", uses)
                     .withStyle(ChatFormatting.GRAY));
         }
         if (stack.is(ModItems.EFFECT_CARD_KING_POWER.get())) {
@@ -495,6 +596,27 @@ public class ModTooltipHandler {
         if (stack.is(ModItems.BLANK_CHIP.get())) {
             tooltip.add(Component.empty());
             tooltip.add(Component.translatable("tooltip.astral_dice.material.blank_chip")
+                    .withStyle(ChatFormatting.GRAY));
+        }
+        // 新材料(1.2.0)合成材料 tip
+        if (stack.is(ModItems.REGENERATION_REAGENT.get())) {
+            tooltip.add(Component.empty());
+            tooltip.add(Component.translatable("tooltip.astral_dice.material.regeneration_reagent")
+                    .withStyle(ChatFormatting.GRAY));
+        }
+        if (stack.is(ModItems.CONDUCTIVE_WIRE.get())) {
+            tooltip.add(Component.empty());
+            tooltip.add(Component.translatable("tooltip.astral_dice.material.conductive_wire")
+                    .withStyle(ChatFormatting.GRAY));
+        }
+        if (stack.is(ModItems.STAR_COIN_DUST.get())) {
+            tooltip.add(Component.empty());
+            tooltip.add(Component.translatable("tooltip.astral_dice.material.star_coin_dust")
+                    .withStyle(ChatFormatting.GRAY));
+        }
+        if (stack.is(ModItems.MARK_PAINT.get())) {
+            tooltip.add(Component.empty());
+            tooltip.add(Component.translatable("tooltip.astral_dice.material.mark_paint")
                     .withStyle(ChatFormatting.GRAY));
         }
         if (stack.is(ModItems.PARUNAN_SIGN.get())) {
@@ -574,8 +696,7 @@ public class ModTooltipHandler {
             addSignLines(tooltip, "tooltip.astral_dice.sign.komachi_passive");
             if (event.getEntity() instanceof Player p) {
                 addSignCounter(tooltip, "tooltip.astral_dice.sign.komachi_damage_bonus",
-                        ModAttachments.getKomachiDamageBonus(p),
-                        com.merlinkitsune.astral_dice.component.GameplayConstants.KOMACHI_DAMAGE_BONUS_MAX);
+                        ModAttachments.getKomachiDamageBonus(p));
             }
             addSignCooldownRemaining(tooltip, event.getEntity() instanceof Player p ? p : null);
         }
@@ -832,9 +953,86 @@ public class ModTooltipHandler {
                 addHealingPointsCounter(tooltip, p);
             }
         }
+        if (stack.is(ModItems.BIG_BOWL_STEW_CHIP.get())) {
+            tooltip.add(Component.empty());
+            addChipLines(tooltip, "tooltip.astral_dice.chip.big_bowl_stew", ChatFormatting.GRAY);
+            if (event.getEntity() instanceof Player p) {
+                addHealingPointsCounter(tooltip, p);
+            }
+        }
         if (stack.is(ModItems.SATELLITE_CHIP.get())) {
             tooltip.add(Component.empty());
             addChipLines(tooltip, "tooltip.astral_dice.chip.satellite", ChatFormatting.GRAY);
+        }
+        if (stack.is(ModItems.WARP_ENGINE_CHIP.get())) {
+            tooltip.add(Component.empty());
+            addChipLines(tooltip, "tooltip.astral_dice.chip.warp_engine", ChatFormatting.GRAY);
+            addChargeCounter(tooltip, event.getEntity() instanceof Player p ? p : null);
+        }
+        if (stack.is(ModItems.ENERGY_RECYCLER.get())) {
+            tooltip.add(Component.empty());
+            addChipLines(tooltip, "tooltip.astral_dice.chip.energy_recycler", ChatFormatting.GRAY);
+            addChargeCounter(tooltip, event.getEntity() instanceof Player p ? p : null);
+        }
+        if (stack.is(ModItems.ELECTRIC_SWORD.get())) {
+            tooltip.add(Component.empty());
+            addChipLines(tooltip, "tooltip.astral_dice.chip.electric_sword", ChatFormatting.GRAY);
+            addChargeCounter(tooltip, event.getEntity() instanceof Player p ? p : null);
+        }
+        if (stack.is(ModItems.ADVANCED_PERIPHERALS.get())) {
+            tooltip.add(Component.empty());
+            addChipLines(tooltip, "tooltip.astral_dice.chip.advanced_peripherals", ChatFormatting.GRAY);
+            addChargeCounter(tooltip, event.getEntity() instanceof Player p ? p : null);
+        }
+        if (stack.is(ModItems.PERPETUAL_MOTION.get())) {
+            tooltip.add(Component.empty());
+            addChipLines(tooltip, "tooltip.astral_dice.chip.perpetual_motion", ChatFormatting.GRAY);
+            addChargeCounter(tooltip, event.getEntity() instanceof Player p ? p : null);
+        }
+        if (stack.is(ModItems.CURRENT_CORE_CHIP.get())) {
+            tooltip.add(Component.empty());
+            addChipLines(tooltip, "tooltip.astral_dice.chip.current_core", ChatFormatting.GRAY);
+            addChargeCounter(tooltip, event.getEntity() instanceof Player p ? p : null);
+        }
+        if (stack.is(ModItems.MEMBER_RECOMMENDATION_CHIP.get())) {
+            tooltip.add(Component.empty());
+            addChipLines(tooltip, "tooltip.astral_dice.chip.member_recommendation", ChatFormatting.GRAY);
+        }
+        if (stack.is(ModItems.BOOKMARK_CHIP.get())) {
+            tooltip.add(Component.empty());
+            addChipLines(tooltip, "tooltip.astral_dice.chip.bookmark", ChatFormatting.GRAY);
+        }
+        if (stack.is(ModItems.PIGGY_BANK_CHIP.get())) {
+            tooltip.add(Component.empty());
+            addChipLines(tooltip, "tooltip.astral_dice.chip.piggy_bank", ChatFormatting.GRAY);
+        }
+        if (stack.is(ModItems.SMART_WATCH_CHIP.get())) {
+            tooltip.add(Component.empty());
+            addChipLines(tooltip, "tooltip.astral_dice.chip.smart_watch", ChatFormatting.GRAY);
+        }
+        if (stack.is(ModItems.ELECTRIC_GLOVE_CHIP.get())) {
+            tooltip.add(Component.empty());
+            addChipLines(tooltip, "tooltip.astral_dice.chip.electric_glove", ChatFormatting.GRAY);
+            addChargeCounter(tooltip, event.getEntity() instanceof Player p ? p : null);
+        }
+        if (stack.is(ModItems.AIRBAG_CHIP.get())) {
+            tooltip.add(Component.empty());
+            addChipLines(tooltip, "tooltip.astral_dice.chip.airbag", ChatFormatting.GRAY);
+            addChargeCounter(tooltip, event.getEntity() instanceof Player p ? p : null);
+        }
+        if (stack.is(ModItems.RAILGUN_CHIP.get())) {
+            tooltip.add(Component.empty());
+            addChipLines(tooltip, "tooltip.astral_dice.chip.railgun", ChatFormatting.GRAY);
+            addChargeCounter(tooltip, event.getEntity() instanceof Player p ? p : null);
+        }
+        if (stack.is(ModItems.PRIMORDIAL_CORE_CHIP.get())) {
+            tooltip.add(Component.empty());
+            addChipLines(tooltip, "tooltip.astral_dice.chip.primordial_core", ChatFormatting.GRAY);
+            addChargeCounter(tooltip, event.getEntity() instanceof Player p ? p : null);
+        }
+        if (stack.is(ModItems.WHETSTONE_CHIP.get())) {
+            tooltip.add(Component.empty());
+            addChipLines(tooltip, "tooltip.astral_dice.chip.whetstone", ChatFormatting.GRAY);
         }
         if (stack.is(ModItems.PADMAN_SIGN.get())) {
             tooltip.add(Component.empty());
@@ -866,7 +1064,7 @@ public class ModTooltipHandler {
             addSignPassiveTitle(tooltip, "调查发现");
             addSignLines(tooltip, "tooltip.astral_dice.sign.rin_passive", 32);
             if (event.getEntity() instanceof Player p) {
-                int pages = Math.min(ModAttachments.getRinPages(p), GameplayConstants.LIVING_PAGE_BONUS_CAP);
+                int pages = ModAttachments.getRinPages(p);
                 addSignCounter(tooltip, "tooltip.astral_dice.sign.rin_bonus", pages);
             }
             addSignCooldownRemaining(tooltip, event.getEntity() instanceof Player p ? p : null);
@@ -874,11 +1072,12 @@ public class ModTooltipHandler {
         if (stack.is(ModItems.LIVING_PAGE.get())) {
             tooltip.add(Component.empty());
             if (event.getEntity() instanceof Player p) {
-                // 活体书页伤害 = 基础 2 + 调查员(rin)已使用数量 + 忍者立牌效果牌伤害增益
-                int pages = Math.min(ModAttachments.getRinPages(p), GameplayConstants.LIVING_PAGE_BONUS_CAP);
+                // 活体书页伤害 = 基础 2 + 调查员(rin)已使用数量 + 伤害效果牌统一加成(忍者立牌效果牌伤害增益 + 书签)
+                int pages = ModAttachments.getRinPages(p);
                 // 组件基础色为灰(普通文本);行内颜色码:数值=黄 §e、时间=蓝 §9
                 tooltip.add(Component.translatable("tooltip.astral_dice.card.living_page",
-                                2 + pages + ModAttachments.getKomachiDamageBonus(p))
+                                2 + pages + com.merlinkitsune.astral_dice.combat.SpellDamageRegistry
+                                        .effectCardDamageBonus(p))
                         .withStyle(ChatFormatting.GRAY));
             } else {
                 tooltip.add(Component.translatable("tooltip.astral_dice.card.living_page", "?")
@@ -898,14 +1097,15 @@ public class ModTooltipHandler {
                     : stack.is(ModItems.MONSTER_BRICK_CARD.get()) ? "tooltip.astral_dice.card.monster_brick"
                     : stack.is(ModItems.ORBITAL_STRIKE_CARD.get()) ? "tooltip.astral_dice.card.orbital_strike"
                     : "tooltip.astral_dice.card.directional_blast";
-            // 伤害数值显示:基础 + 忍者立牌效果牌伤害增益(观看者佩戴忍者立牌时显示加成后的数值)
+            // 伤害数值显示:基础 + 伤害效果牌统一加成(观看者佩戴忍者立牌/书签时显示加成后的数值)
             int baseDamage = stack.is(ModItems.MONSTER_LASER_CARD.get()) ? 4
                     : stack.is(ModItems.MONSTER_BRICK_CARD.get()) ? 6
                     : stack.is(ModItems.ORBITAL_STRIKE_CARD.get()) ? 8 : 5;
-            int ninjaBonus = event.getEntity() instanceof Player p ? ModAttachments.getKomachiDamageBonus(p) : 0;
+            int effectCardBonus = event.getEntity() instanceof Player p
+                    ? com.merlinkitsune.astral_dice.combat.SpellDamageRegistry.effectCardDamageBonus(p) : 0;
             tooltip.add(Component.empty());
             // 组件基础色为灰(普通文本);行内颜色码:数值=黄 §e、时间=蓝 §9
-            tooltip.add(Component.translatable(tooltipKey, baseDamage + ninjaBonus)
+            tooltip.add(Component.translatable(tooltipKey, baseDamage + effectCardBonus)
                     .withStyle(ChatFormatting.GRAY));
             addEffectCardPlayCountTooltip(tooltip, player);
             addActiveDamageBonusTooltip(tooltip, player);
@@ -1036,6 +1236,36 @@ public class ModTooltipHandler {
                         com.merlinkitsune.astral_dice.item.sign.NancyLuSignItem.getAttackBonus(p)
                                 + com.merlinkitsune.astral_dice.item.sign.NancyLuSignItem.getActiveAttackBonus(p),
                         com.merlinkitsune.astral_dice.item.sign.NancyLuSignItem.getDefenseBonus(p));
+            }
+            addSignCooldownRemaining(tooltip, event.getEntity() instanceof Player p ? p : null);
+        }
+        if (stack.is(ModItems.MOSES_SIGN.get())) {
+            tooltip.add(Component.empty());
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "弱点反击");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.moses_active");
+            addSignPassiveTitle(tooltip, "精密技巧");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.moses_passive");
+            if (event.getEntity() instanceof Player p) {
+                addSignCounter(tooltip, "tooltip.astral_dice.sign.moses_weakness_reveal",
+                        com.merlinkitsune.astral_dice.effect.WeaknessRevealEffect.getStacks(p),
+                        com.merlinkitsune.astral_dice.effect.WeaknessRevealEffect.MAX_STACKS);
+            }
+            addSignCooldownRemaining(tooltip, event.getEntity() instanceof Player p ? p : null);
+        }
+        if (stack.is(ModItems.PANDAMAN_SIGN.get())) {
+            tooltip.add(Component.empty());
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "大吃特吃");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.pandaman_active");
+            addSignPassiveTitle(tooltip, "有好有坏");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.pandaman_passive");
+            if (event.getEntity() instanceof Player p) {
+                addSignCounter(tooltip, "tooltip.astral_dice.sign.pandaman_health_gain",
+                        ModAttachments.getPandamanMaxHealthBonus(p));
+                tooltip.add(tt("tooltip.astral_dice.healing_points",
+                        HealingManager.getPoints(p), HealingManager.getCap(p))
+                        .withStyle(ChatFormatting.GRAY));
             }
             addSignCooldownRemaining(tooltip, event.getEntity() instanceof Player p ? p : null);
         }

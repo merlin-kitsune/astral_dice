@@ -3,115 +3,73 @@ package com.merlinkitsune.astral_dice.config;
 import net.neoforged.neoforge.common.ModConfigSpec;
 
 /**
- * 公共配置:承载全部玩法常量。
- * 配置版本号:每次新增配置项时推进(备份旧文件并继承旧值)。
+ * 公共配置:仅保留少量仍允许玩家调整的选项。
+ * 其余玩法数值已固定为 {@link com.merlinkitsune.astral_dice.component.GameplayConstants} 常量,
+ * 不再写入配置文件;配置版本固定为 1。
  */
 public final class ModCommonConfig {
-        // 当前配置版本:新增配置选项时必须 +1
-        public static final int CONFIG_VERSION = 13;
+    public static final int CONFIG_VERSION = 1;
 
-        public static final ModConfigSpec SPEC;
+    public static final ModConfigSpec SPEC;
 
-        public static final ModConfigSpec.IntValue MAX_STARLIGHT;
-        public static final ModConfigSpec.IntValue MAX_MARKER;
-        public static final ModConfigSpec.IntValue EFFECT_CARD_COOLDOWN_SECONDS;
-        public static final ModConfigSpec.IntValue MAX_EFFECT_STACKS;
-        public static final ModConfigSpec.IntValue MAX_DAMAGE_EFFECT_BONUS;
-        public static final ModConfigSpec.IntValue EVENT_RANGE;
-        public static final ModConfigSpec.BooleanValue EVENT_APPLY_MC_TEAM;
-        public static final ModConfigSpec.BooleanValue EVENT_APPLY_FTB_TEAM;
-        public static final ModConfigSpec.BooleanValue EVENT_APPLY_OPAC;
-        public static final ModConfigSpec.BooleanValue EVENT_APPLY_MAID;
-        public static final ModConfigSpec.IntValue LIVING_PAGE_BONUS_CAP;
-        public static final ModConfigSpec.IntValue SIGN_ACTIVE_COOLDOWN_SECONDS;
-        public static final ModConfigSpec.IntValue SKILL_WAIT_SECONDS;
-        public static final ModConfigSpec.IntValue JASMINE_MAX_BONUS;
-        public static final ModConfigSpec.IntValue LULU_ACTIVE_RANGE;
-        public static final ModConfigSpec.IntValue PADMAN_REFRESH_SECONDS;
-        public static final ModConfigSpec.IntValue PARUNAN_PASSIVE_INTERVAL_SECONDS;
-        public static final ModConfigSpec.IntValue HAND_FAN_BIG_RANGE;
-        public static final ModConfigSpec.IntValue KOMACHI_DAMAGE_BONUS_MAX;
-        public static final ModConfigSpec.IntValue ACTIONBAR_DURATION_TICKS;
-        public static final ModConfigSpec.IntValue ACTIONBAR_FADE_TICKS;
-        public static final ModConfigSpec.IntValue DICE_BLESSING_DURATION_SECONDS;
-        public static final ModConfigSpec.IntValue CURSED_SWORD_BONUS_MAX;
-        public static final ModConfigSpec.IntValue TARGET_SELECT_RADIUS;
+    public static final ModConfigSpec.IntValue MAX_STARLIGHT;
+    public static final ModConfigSpec.IntValue MAX_MARKER;
+    public static final ModConfigSpec.IntValue EFFECT_CARD_COOLDOWN_SECONDS;
+    public static final ModConfigSpec.IntValue MAX_EFFECT_STACKS;
+    public static final ModConfigSpec.BooleanValue GIVE_GUIDE_BOOK_ON_FIRST_JOIN;
+    public static final ModConfigSpec.IntValue EVENT_RANGE;
+    public static final ModConfigSpec.BooleanValue EVENT_APPLY_MC_TEAM;
+    public static final ModConfigSpec.BooleanValue EVENT_APPLY_FTB_TEAM;
+    public static final ModConfigSpec.BooleanValue EVENT_APPLY_OPAC;
+    public static final ModConfigSpec.BooleanValue EVENT_APPLY_MAID;
+    public static final ModConfigSpec.IntValue HAND_FAN_BIG_RANGE;
+    public static final ModConfigSpec.IntValue ACTIONBAR_DURATION_TICKS;
+    public static final ModConfigSpec.IntValue ACTIONBAR_FADE_TICKS;
 
-        static {
-                ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
-                builder.comment("配置文件版本号:新增配置项时推进(自动备份旧文件并继承旧值)")
-                                .define("config_version", CONFIG_VERSION);
+    static {
+        ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
+        builder.comment("配置文件版本号:固定为 1")
+                .define("config_version", CONFIG_VERSION);
 
-                MAX_STARLIGHT = builder.comment("星光获取上限(默认：最大 32 点)")
-                                .defineInRange("max_starlight", 32, 8, 48);
-                MAX_MARKER = builder.comment("标记层数上限(默认：最大 16 层)")
-                                .defineInRange("max_marker", 16, 8, 48);
-                EFFECT_CARD_COOLDOWN_SECONDS = builder.comment("效果牌公共冷却(单位：秒,默认：30)")
-                                .defineInRange("effect_card_cooldown_seconds", 30, 5, 120);
-                MAX_EFFECT_STACKS = builder.comment("功能效果牌叠加层数上限(默认：3 层,伤害效果牌不使用该叠加)")
-                                .defineInRange("max_effect_stacks", 3, 1, 9);
-                MAX_DAMAGE_EFFECT_BONUS = builder.comment("伤害效果牌伤害加成上限(默认：最大 16 点)")
-                                .defineInRange("max_damage_effect_bonus", 16, 1, 64);
+        MAX_STARLIGHT = builder.comment("星光获取上限(默认：最大 32 点)")
+                .defineInRange("max_starlight", 32, 8, 48);
+        MAX_MARKER = builder.comment("标记层数上限(默认：最大 16 层)")
+                .defineInRange("max_marker", 16, 8, 48);
+        EFFECT_CARD_COOLDOWN_SECONDS = builder.comment("效果牌公共冷却(单位：秒,默认：30)")
+                .defineInRange("effect_card_cooldown_seconds", 30, 5, 120);
+        MAX_EFFECT_STACKS = builder.comment("功能效果牌叠加层数上限(默认：3 层,伤害效果牌不使用该叠加)")
+                .defineInRange("max_effect_stacks", 3, 1, 9);
+        GIVE_GUIDE_BOOK_ON_FIRST_JOIN = builder.comment("是否在玩家第一次加入世界时给予《恋的规则书》(默认：true; 每个玩家每个世界只发放一次)")
+                .define("give_guide_book_on_first_join", true);
 
-                builder.push("event_system").comment("=== 事件系统 ===");
-                EVENT_RANGE = builder.comment("事件作用范围(格,默认 16)")
-                                .defineInRange("event_range", 16, 1, 32);
-                EVENT_APPLY_MC_TEAM = builder.comment("事件是否作用于 Minecraft 同队玩家")
-                                .define("event_apply_mc_team", true);
-                EVENT_APPLY_FTB_TEAM = builder.comment("事件是否作用于 FTB Teams 队友(需安装 FTB Teams,API 不符时自动跳过)")
-                                .define("event_apply_ftb_team", true);
-                EVENT_APPLY_OPAC = builder.comment("事件是否作用于 OPAC 队伍(需安装 Open Parties and Claims,API 不符时自动跳过)")
-                                .define("event_apply_opac", true);
-                EVENT_APPLY_MAID = builder.comment("事件是否作用于玩家拥有的已放出女仆(需安装车万女仆模组)")
-                                .define("event_apply_maid", true);
-                LIVING_PAGE_BONUS_CAP = builder.comment("活体书页出牌伤害数增加上限(默认：最大 20 点)")
-                                .defineInRange("living_page_bonus_cap", 20, 1, 64);
-                builder.pop();
+        builder.push("event_system").comment("=== 事件系统 ===");
+        EVENT_RANGE = builder.comment("事件作用范围(格,默认 16)")
+                .defineInRange("event_range", 16, 1, 32);
+        EVENT_APPLY_MC_TEAM = builder.comment("事件是否作用于 Minecraft 同队玩家")
+                .define("event_apply_mc_team", true);
+        EVENT_APPLY_FTB_TEAM = builder.comment("事件是否作用于 FTB Teams 队友(需安装 FTB Teams,API 不符时自动跳过)")
+                .define("event_apply_ftb_team", true);
+        EVENT_APPLY_OPAC = builder.comment("事件是否作用于 OPAC 队伍(需安装 Open Parties and Claims,API 不符时自动跳过)")
+                .define("event_apply_opac", true);
+        EVENT_APPLY_MAID = builder.comment("事件是否作用于玩家拥有的已放出女仆(需安装车万女仆模组)")
+                .define("event_apply_maid", true);
+        builder.pop();
 
-                builder.push("signs").comment("=== 立牌 ===");
-                SIGN_ACTIVE_COOLDOWN_SECONDS = builder.comment("立牌主动技能冷却(单位：秒,默认：180)")
-                                .defineInRange("sign_active_cooldown_seconds", 180, 1, 360);
-                SKILL_WAIT_SECONDS = builder.comment("立牌主动技能目标选择窗口期:目标选择器类技能(占星师/秘密侦探)进入选择模式后,选择会话的有效时长;未在窗口期内确认则自动取消(单位：秒,默认：30)")
-                                .defineInRange("skill_wait_seconds", 30, 5, 120);
-                JASMINE_MAX_BONUS = builder.comment("扫地机立牌被动:生命值上限/护甲增益各自的最大上限")
-                                .defineInRange("jasmine_max_bonus", 20, 1, 64);
-                LULU_ACTIVE_RANGE = builder.comment("史莱姆立牌主动技能作用范围(单位：格,默认：16)")
-                                .defineInRange("lulu_active_range", 16, 1, 32);
-                PADMAN_REFRESH_SECONDS = builder.comment("上班族立牌被动攻防数值刷新间隔(单位：秒,默认：60)")
-                                .defineInRange("padman_refresh_seconds", 60, 1, 180);
-                PARUNAN_PASSIVE_INTERVAL_SECONDS = builder.comment("经商立牌被动产星光间隔(单位：秒,默认：60)")
-                                .defineInRange("parunan_passive_interval_seconds", 60, 1, 180);
-                HAND_FAN_BIG_RANGE = builder.comment("手持风扇-大:主动技能后对周围敌对目标施加标记的范围(单位：格,默认：16)")
-                                .defineInRange("hand_fan_big_range", 16, 1, 64);
-                KOMACHI_DAMAGE_BONUS_MAX = builder.comment("忍者立牌:效果牌伤害增益上限(每使用3张效果牌+1,默认：10,最大：16)")
-                                .defineInRange("komachi_damage_bonus_max", 10, 0, 16);
-                builder.pop();
+        builder.push("chips").comment("=== 筹码 ===");
+        HAND_FAN_BIG_RANGE = builder.comment("手持风扇-大:主动技能后对周围敌对目标施加标记的范围(单位：格,默认：16)")
+                .defineInRange("hand_fan_big_range", 16, 1, 64);
+        builder.pop();
 
-                builder.push("actionbar").comment("=== actionbar ===");
-                ACTIONBAR_DURATION_TICKS = builder.comment("actionbar 消息显示总时长上限(单位: tick,默认：3 秒; 任何消息最多显示该时长)")
-                                .defineInRange("actionbar_duration_ticks", 60, 20, 200);
-                ACTIONBAR_FADE_TICKS = builder.comment("actionbar 消息最后淡出时长(单位: tick,默认：1 秒)")
-                                .defineInRange("actionbar_fade_ticks", 20, 1, 60);
-                builder.pop();
+        builder.push("actionbar").comment("=== actionbar ===");
+        ACTIONBAR_DURATION_TICKS = builder.comment("actionbar 消息显示总时长上限(单位: tick,默认：3 秒; 任何消息最多显示该时长)")
+                .defineInRange("actionbar_duration_ticks", 60, 20, 200);
+        ACTIONBAR_FADE_TICKS = builder.comment("actionbar 消息最后淡出时长(单位: tick,默认：1 秒)")
+                .defineInRange("actionbar_fade_ticks", 20, 1, 60);
+        builder.pop();
 
-                builder.push("dice").comment("=== 骰子 ===");
-                DICE_BLESSING_DURATION_SECONDS = builder.comment("骰神赐福持续时长(单位：秒,默认：60)")
-                                .defineInRange("dice_blessing_duration_seconds", 60, 10, 300);
-                builder.pop();
+        SPEC = builder.build();
+    }
 
-                builder.push("cursed_sword").comment("=== 诅咒之剑 ===");
-                CURSED_SWORD_BONUS_MAX = builder.comment("诅咒之剑:骰神赐福期间每击杀1个20血以上敌对目标攻击力+1(每个赐福最多一次),最大增加上限(默认：16,最大：32)")
-                                .defineInRange("cursed_sword_bonus_max", 16, 0, 32);
-                builder.pop();
-
-                builder.push("target_select").comment("=== 目标选择器 ===");
-                TARGET_SELECT_RADIUS = builder.comment("目标选择器:可指定目标的最大距离(单位：格,默认：16,上限：32)")
-                                .defineInRange("target_select_radius", 16, 1, 32);
-                builder.pop();
-
-                SPEC = builder.build();
-        }
-
-        private ModCommonConfig() {
-        }
+    private ModCommonConfig() {
+    }
 }

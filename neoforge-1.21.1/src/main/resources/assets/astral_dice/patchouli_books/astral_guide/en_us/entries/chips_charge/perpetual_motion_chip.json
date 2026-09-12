@@ -1,0 +1,17 @@
+{
+  "name": "item.astral_dice.perpetual_motion_chip",
+  "category": "astral_dice:chips_charge",
+  "icon": "astral_dice:perpetual_motion_chip",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:perpetual_motion_chip",
+      "text": "astral_dice.guide.entry.perpetual_motion_chip.1"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:perpetual_motion_chip"
+    }
+  ],
+  "sortnum": 7
+}

@@ -5,23 +5,23 @@
     "B": {
       "item": "astral_dice:blank_chip"
     },
-    "C": {
-      "item": "astral_dice:star_coin"
-    },
-    "E": {
+    "G": {
       "item": "minecraft:experience_bottle"
     },
-    "Q": {
-      "item": "minecraft:writable_book"
-    },
-    "R": {
+    "L": {
       "item": "minecraft:echo_shard"
+    },
+    "P": {
+      "item": "astral_dice:star_plate"
+    },
+    "X": {
+      "item": "minecraft:writable_book"
     }
   },
   "pattern": [
-    "QRQ",
-    "EBE",
-    "CCC"
+    "XLX",
+    "GBG",
+    "PPP"
   ],
   "result": {
     "count": 1,
