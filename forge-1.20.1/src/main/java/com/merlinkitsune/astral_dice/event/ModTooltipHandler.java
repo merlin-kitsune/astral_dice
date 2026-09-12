@@ -105,13 +105,20 @@ import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
 /**
  * 物品 tooltip 统一染色规则（权威副本；可读版见 docs/tooltip-color-rules.md）。
  *
- * <p>基调：组件基础色为灰 {@code §7}（普通文本），它同时是「值结束后回落」的复位色。
- * 颜色即语义 —— 黄只出现在数值上，蓝只出现在时间上。行级 {@code withStyle(...)}（标题金、负面行红、
- * 骰子词条各行语义色）与本规则并行，互不覆盖。
+ * <p>基调：普通文本用灰 {@code §7}；行级 {@code withStyle(...)} 可为整行指定语义底色（标题金、负面行红、
+ * 骰子词条各行语义色），与行内规则并行、互不覆盖。颜色即语义 —— 黄只出现在数值上，蓝只出现在时间上。
+ *
+ * <p><b>规则 0（回落码 = 本行底色码）</b>：行内高亮值结束后，必须用「本行底色」的色码回落，禁止用
+ * {@code §r}。tooltip 每一行都经 {@code Tooltip.splitTooltip -> Font.split(component, 170)} 渲染，其
+ * defaultStyle 传的是 {@code Style.EMPTY}（{@code Font.java:328} → {@code StringSplitter.java:259} →
+ * {@code StringDecomposer.java:114}），因此 {@code §r} 复位为「无颜色 = 白」、{@code §7} 复位为灰，两者都
+ * 不等于本行底色。底色码：灰 {@code §7}、金 {@code §6}、粉 {@code §d}、青 {@code §b}、蓝 {@code §9}、
+ * 红 {@code §c}、绿 {@code §a}、深绿 {@code §2}、黄 {@code §e}、白 {@code §f}（如金底 {@code 冷却 §95:00§6）}、
+ * 粉底 {@code 瞬移到 §e16§d 格内}）。值串末尾无后续文本的回落码不影响显示，保持原样即可。
  *
  * <p><b>规则 1（非时间数值 -&gt; 黄 {@code §e}）</b>：所有非时间数值（点数/层数/次数/格数/区间/百分比/
  * 星级/倍率/距离/费用/兑换比例）一律黄色，并连同其前后紧邻的符号一起染色（{@code +3}、{@code -2}、
- * {@code 50%}、{@code ×2}、{@code ★3}、{@code 1~10}、{@code 2:1}）；值后一律接 {@code §7} 回落灰色正文。
+ * {@code 50%}、{@code ×2}、{@code ★3}、{@code 1~10}、{@code 2:1}）；值后按规则 0 回落本行底色。
  *
  * <p><b>规则 2（时间 -&gt; 蓝 {@code §9}）</b>：所有时间值一律蓝色，形态为 {@code M:SS} 与 {@code N 秒} /
  * {@code Ns} / {@code N seconds}，同样包含其前后符号（{@code -10秒}、{@code 180 秒}）。秒数格式化统一走
@@ -120,11 +127,19 @@ import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
  * <p><b>规则 3（效果条目 -&gt; 整段蓝）</b>：文本形如 {@code 效果名 (时间)}（含无空格写法
  * {@code 效果名(时间)}）时，名称与时间必须同色、整段蓝色；禁止「名称灰 + 时间蓝」的割裂写法。
  *
+ * <p><b>规则 4（含 {@code %} 的文案必须走 {@code tt(...)}）</b>：{@code Component.translatable} 会经
+ * {@code TranslatableContents.decomposeTemplate}（{@code TranslatableContents.java:124-171}）把 {@code %%}
+ * 拆成独立的无样式 {@code TEXT_PERCENT} 片段，落在高亮区内的 {@code %} 会掉成行底色（灰）；
+ * {@link #translationString(String, Object...)} 先用 {@code String.format} 把 {@code %%} 收成 {@code %}，
+ * 再整体放进 {@code Component.literal}，颜色才不会丢。故凡 lang 值内含 {@code %%} 的行必须用
+ * {@code tt(...)}，不得直接用 {@code Component.translatable(...)}。
+ *
  * <p><b>例外（优先级：例外 &gt; 规则 3 &gt; 规则 2 &gt; 规则 1）</b>：
  * <ol>
  *   <li>条目已用 {@code §c} 的保持红色（负面效果条目、负面数值、状态警示行、名称类红色），规则 1/2/3 不再改写；</li>
  *   <li>行级 {@code withStyle(...)} 语义色不作为改写对象，行内数值/时间照常着色；</li>
- *   <li>现有 {@code §r}（重置为白）保持原样，不做 {@code §r -> §7} 规范化；</li>
+ *   <li>行内回落码一律按规则 0 处理（{@code §r} / {@code §7} 都不是「恢复本行底色」）；仅值串末尾、
+ *       后面没有任何文本（含 {@code \n} 之后的文本）的回落码不做规范化；</li>
  *   <li>{@code §f} 仅用于 {@code sign.key_hint}（白色行）；</li>
  *   <li>列表序号（{@code 1.}）与标签序号（{@code 第一诅咒} / {@code Curse 1} / {@code T4}）不染色；</li>
  *   <li>连接词性质的 {@code +}（如 {@code §e+3§7 + §9黑暗 (0:03)§7} 中间那个）保持灰色。</li>
@@ -898,7 +913,9 @@ public class ModTooltipHandler {
         }
         if (stack.is(ModItems.STAR_COIN_HAMMER.get())) {
             tooltip.add(Component.empty());
-            tooltip.add(Component.translatable("tooltip.astral_dice.chip.star_coin_hammer")
+            // 必须走 tt():值内含 "%%",Component.translatable 会经 TranslatableContents.decomposeTemplate
+            // 把 "%%" 拆成独立的无样式片段,落在黄色区间里的 % 会掉成行底色(灰)。
+            tooltip.add(tt("tooltip.astral_dice.chip.star_coin_hammer")
                     .withStyle(ChatFormatting.GRAY));
             if (event.getEntity() != null) {
                 addSignCounter(tooltip, "tooltip.astral_dice.chip.starlight",

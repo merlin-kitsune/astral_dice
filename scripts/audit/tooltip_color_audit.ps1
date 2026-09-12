@@ -8,10 +8,14 @@ Tooltip 染色规则审计（规则见 docs/tooltip-color-rules.md）。
   R1  非时间数值未着黄（§e）
   R2  时间未着蓝（§9）      —— 形态 M:SS 与 N 秒 / Ns / N seconds
   R3  「<效果名> (<效果时间>)」未整段同色
+  R0  行内回落码 ≠ 本行底色码（§r 复位为无颜色=白、§7 复位为灰，都不是「恢复本行底色」）。
+      行底色自 ModTooltipHandler.java 解析（tt("key"...).withStyle(ChatFormatting.X)）。
+      仅当回落码后仍有文本（含 \n 之后的文本）时检查；值串末尾的回落码不判违规。
+  R4  值内含 %%（字面百分号）却走 Component.translatable(...)：原版 TranslatableContents.decomposeTemplate
+      会把 %% 拆成独立的无样式 TEXT_PERCENT 片段，落在高亮区内的 % 会掉成行底色。必须走 tt(...)。
   R1b 数值/时间的前后符号被留在染色区之外（+ - × ÷ ★ ~ 等）
-  R5  行级 withStyle 与行内规则冲突的易错点（仅提示，不判失败）
 
-例外（不报错）：§c 红色条目、行级语义色、§r 复位码、§f 按键提示行、
+例外（不报错）：§c 红色条目、行级语义色、§f 按键提示行、
 列表序号与标签序号（1. / 第一 / Curse 1 / T4）。
 
 用法：
@@ -118,8 +122,73 @@ function Clear-WithCodes {
     return , @($sb.ToString(), $codes)
 }
 
-function Test-ExemptRun {
+# ---------------------------------------------------------------------------
+# 行底色映射：从两个子项目的 ModTooltipHandler.java 解析
+#   tt("key"...).withStyle(ChatFormatting.X)          -> R0 用（本行底色码）
+#   Component.translatable("key"...).withStyle(...)   -> R0 + R4 用
+# 同一 key 出现多种底色（或解析不到）时视为不确定，R0 跳过该项。
+# ---------------------------------------------------------------------------
+$COLOR_CODE = @{
+    'BLACK' = '§0'; 'DARK_BLUE' = '§1'; 'DARK_GREEN' = '§2'; 'DARK_AQUA' = '§3';
+    'DARK_RED' = '§4'; 'DARK_PURPLE' = '§5'; 'GOLD' = '§6'; 'GRAY' = '§7';
+    'DARK_GRAY' = '§8'; 'BLUE' = '§9'; 'GREEN' = '§a'; 'AQUA' = '§b';
+    'RED' = '§c'; 'LIGHT_PURPLE' = '§d'; 'YELLOW' = '§e'; 'WHITE' = '§f'
+}
+
+function Get-TooltipColorContext {
+    param([string]$Root)
+    $codes = @{}
+    $translatable = New-Object System.Collections.Generic.HashSet[string]
+    foreach ($sub in $SUBPROJECTS) {
+        $path = [System.IO.Path]::Combine($Root, $sub, 'src/main/java/com/merlinkitsune/astral_dice/event/ModTooltipHandler.java')
+        if (-not [System.IO.File]::Exists($path)) { continue }
+        $src = [System.IO.File]::ReadAllText($path, [System.Text.Encoding]::UTF8)
+        $calls = @(
+            @{ re = 'tt\(\s*"([^"]+)"'; trans = $false },
+            @{ re = 'Component\.translatable\(\s*"([^"]+)"'; trans = $true }
+        )
+        foreach ($call in $calls) {
+            foreach ($m in [regex]::Matches($src, $call.re)) {
+                $key = $m.Groups[1].Value
+                if ($call.trans) { [void]$translatable.Add($key) }
+                $len = [Math]::Min(600, $src.Length - $m.Index - $m.Length)
+                if ($len -le 0) { continue }
+                $tail = $src.Substring($m.Index + $m.Length, $len)
+                $cm = [regex]::Match($tail, '\.withStyle\(\s*ChatFormatting\.([A-Z_]+)')
+                if (-not $cm.Success) { continue }
+                $code = $COLOR_CODE[$cm.Groups[1].Value]
+                if ($null -eq $code) { continue }
+                if (-not $codes.ContainsKey($key)) {
+                    $codes[$key] = $code
+                } elseif ($codes[$key] -cne $code) {
+                    $codes[$key] = $null      # 同 key 多底色 → 不确定
+                }
+            }
+        }
+    }
+    return , @($codes, $translatable)
+}
+
+function Test-FallbackCode {
     <#
+    规则 0：行内回落码（§7 / §r）必须等于本行底色码。
+    §r 的实际渲染色是「无颜色 = 白」（StringDecomposer.java:114，defaultStyle = Style.EMPTY），
+    §7 的实际渲染色是灰；两者都不等于本行底色时判违规。
+    仅当回落码之后仍有文本（含 \n 之后的文本）时才检查。
+    #>
+    param([string]$value, [string]$baseCode)
+    $out = New-Object System.Collections.Generic.List[string]
+    foreach ($m in [regex]::Matches($value, '§[7r]')) {
+        $rest = $value.Substring($m.Index + 2)
+        if ($rest.Trim().Length -eq 0) { continue }          # 值串末尾 → 不影响显示
+        $actual = $m.Value
+        if ($actual -ceq '§r') { $actual = '§f' }            # §r 渲染为白
+        if ($actual -cne $baseCode) { $out.Add($m.Value) }
+    }
+    return , $out
+}
+
+function Test-ExemptRun {    <#
     §c 红色条目、列表序号 / 标签序号等豁免内容。
     #>
     param([string]$text, $code, [int]$pos)
@@ -140,7 +209,7 @@ function Test-ExemptRun {
 }
 
 function Invoke-AuditLang {
-    param([string]$path)
+    param([string]$path, $codesByKey, $translatableKeys)
     $problems = New-Object System.Collections.Generic.List[object]
     foreach ($pair in (Get-Pairs $path)) {
         $key = $pair[0]
@@ -184,6 +253,18 @@ function Invoke-AuditLang {
             }
         }
 
+        # R0：行内回落码 ≠ 本行底色码
+        if ($codesByKey.ContainsKey($key) -and $null -ne $codesByKey[$key]) {
+            foreach ($bad in (Test-FallbackCode $value $codesByKey[$key])) {
+                $problems.Add(@('R0', $key, $bad, ('base=' + $codesByKey[$key])))
+            }
+        }
+
+        # R4：值内含 %% 却走 Component.translatable(...)
+        if ($value.Contains('%%') -and $translatableKeys.Contains($key)) {
+            $problems.Add(@('R4', $key, 'translatable', '%% 需走 tt(...)'))
+        }
+
         # R1b：取值符号被留在染色区之外（在原始文本上检查）
         foreach ($m in [regex]::Matches($value, '[%+×÷~]§[e9]|\-[%+×÷~]?§[e9]')) {
             $problems.Add(@('R1b', $key, '符号外置', $m.Value))
@@ -197,11 +278,14 @@ function Invoke-AuditLang {
 # main
 # ---------------------------------------------------------------------------
 $total = 0
+$ctx = Get-TooltipColorContext $Root
+$codesByKey = $ctx[0]
+$translatableKeys = $ctx[1]
 foreach ($sub in $SUBPROJECTS) {
     foreach ($lang in $LANGS) {
         $path = [System.IO.Path]::Combine($Root, $sub, 'src/main/resources/assets/astral_dice/lang', $lang)
         if (-not [System.IO.File]::Exists($path)) { continue }
-        $problems = Invoke-AuditLang $path
+        $problems = Invoke-AuditLang $path $codesByKey $translatableKeys
         if ($problems.Count -gt 0) {
             Write-Out ('--- ' + $sub + '/' + $lang + ': ' + $problems.Count + ' 处')
             foreach ($p in $problems) {

@@ -151,7 +151,7 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --phase <p> --version <v>
 ```powershell
 pwsh -NoProfile -File tools/check_lang_sync.ps1 -LangDir neoforge-1.21.1/src/main/resources/assets/astral_dice/lang
 pwsh -NoProfile -File tools/check_lang_sync.ps1 -LangDir forge-1.20.1/src/main/resources/assets/astral_dice/lang
-pwsh -NoProfile -File scripts/audit/tooltip_color_audit.ps1 --root .
+pwsh -NoProfile -File scripts/audit/tooltip_color_audit.ps1 --root .   # R1/R1b/R2/R3 + R0(回落码=行底色)/R4(%% 必须走 tt())
 pwsh -NoProfile -File scripts/verify/verify_content_library.ps1
 pwsh -NoProfile -File scripts/verify/verify_chip_recipes.ps1          # java / gen / jar 三档
 pwsh -NoProfile -File scripts/verify/verify_chip_acquisition.ps1
