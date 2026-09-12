@@ -369,12 +369,15 @@ public class ModTooltipHandler {
                 tooltip.add(tt("tooltip.astral_dice.card.upgrade_hint", starLevel, starLevel + 1, req)
                         .withStyle(ChatFormatting.YELLOW));
             }
-            String cost = usedCost + "/" + maxCost;
-            tooltip.add(tt("tooltip.astral_dice.cost", cost)
-                    .withStyle(ChatFormatting.GRAY));
-            String defCost = usedDefenseCost + "/" + maxDefenseCost;
-            tooltip.add(tt("tooltip.astral_dice.defense_cost", defCost)
-                    .withStyle(ChatFormatting.GRAY));
+            // 下界之星骰子(T4):卡牌栏与费用上限恒为最高档、不随星级变化 → 不显示星级费用行
+            if (!stack.is(ModItems.NETHER_STAR_DICE.get())) {
+                String cost = usedCost + "/" + maxCost;
+                tooltip.add(tt("tooltip.astral_dice.cost", cost)
+                        .withStyle(ChatFormatting.GRAY));
+                String defCost = usedDefenseCost + "/" + maxDefenseCost;
+                tooltip.add(tt("tooltip.astral_dice.defense_cost", defCost)
+                        .withStyle(ChatFormatting.GRAY));
+            }
             if (!stones.isEmpty()) {
                 tooltip.add(tt("tooltip.astral_dice.applied_stones")
                         .withStyle(ChatFormatting.GREEN));

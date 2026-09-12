@@ -31,6 +31,8 @@ public class LivingPageItem extends BaseEffectCardItem {
 
     @Override
     protected void applyEffect(Level level, Player user, LivingEntity applyTo, ItemStack stack) {
+        // 专属牌:绑定获得者(发放路径已绑定本人;指令/创造栏等未绑定副本在此兜底,首位使用者即获得者)
+        ExclusiveCardUtil.bindIfAbsent(stack, user);
         // 调查员(rin)已使用数量 +1(无上限);活体书页效果期间提供临时出牌数 +1(效果驱动)
         ModAttachments.setRinPages(user, ModAttachments.getRinPages(user) + 1);
         // 获得活体书页效果 60 秒
