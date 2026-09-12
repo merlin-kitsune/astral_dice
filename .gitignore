@@ -55,3 +55,4 @@ AGENTS.md
 deploy.ps1
 .zcode/
 .workbuddy/
+.dsh/
