@@ -36,15 +36,20 @@ public class WeaknessRevealEffect extends MobEffect {
         return instance != null ? instance.getAmplifier() + 1 : 0;
     }
 
-    /** 减少 1 层;归零时移除效果 */
+    /**
+     * 减少 1 层;归零时移除效果。
+     *
+     * <p><b>必须先移除旧实例、再写入更低层数</b>:原版 {@code MobEffectInstance#update} 只接受
+     * <b>更高的 amplifier</b>,直接 {@code addEffect} 一个更低层数的实例会被忽略(只进
+     * {@code hiddenEffect}),层数永不下降——此前赐福结束时调用本方法,层数实际不减。
+     */
     public static void consumeOne(Player player) {
         if (player == null || player.level().isClientSide()) return;
         MobEffectInstance instance = player.getEffect(ModEffects.WEAKNESS_REVEAL);
         if (instance == null) return;
         int remaining = instance.getAmplifier();
-        if (remaining <= 0) {
-            ModEffectRemoval.remove(player, ModEffects.WEAKNESS_REVEAL);
-        } else {
+        ModEffectRemoval.remove(player, ModEffects.WEAKNESS_REVEAL);
+        if (remaining > 0) {
             player.addEffect(new MobEffectInstance(ModEffects.WEAKNESS_REVEAL,
                     DURATION_TICKS, remaining - 1, false, true, true));
         }
