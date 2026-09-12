@@ -210,7 +210,7 @@ dependencies {
     modImplementation "mezz.jei:jei-1.20.1-forge:15.56.0.205"
 
     // Mixin:编译期仅需注解类。运行时由 Mixin Booster(Sponge Mixin)接管 Mixin 执行并自动处理
-    // Mojmap→SRG 重映射,故不再使用 MDG LegacyForge 的 mixin 扩展/refmap/注解处理器。
+    // Mojmap→SRG 重映射,故不需要 refmap/注解处理器。
     compileOnly 'org.spongepowered:mixin:0.8.5'
 
     // Mixin Booster(强依赖):Sponge Mixin 运行时替代 Forge 自带 Mixin,自动重映射,无需 refmap。
@@ -221,6 +221,25 @@ dependencies {
     modImplementation "maven.modrinth:modernfix:OvpPdk44"
 }
 // AutoForge: end mod addon dependencies
+
+// === Mixin 配置发现(Forge 1.20.1 关键;缺失会导致全部 Mixin 静默失效)===
+// 已核实:Forge 1.20.1 的 FML 47.4.10 对 Mixin 零集成(fmlloader/fmlcore 源码全文无 mixin 处理),
+// 因此 mods.toml 里的 `[[mixins]] config=` 在 1.20.1 被完全忽略(该写法只在 NeoForge 生效)。
+// Mixin(fabric-mixin.jar / Sponge Mixin 0.8.5)实际只认两条通道:
+//   ① 生产 jar  → META-INF/MANIFEST.MF 的 `MixinConfigs` 属性(MixinPlatformAgentDefault#prepare 读取);
+//   ② 开发环境  → ModLauncher 启动参数 `--mixin.config`(MDG mixin 扩展按 RunModel 注入)。
+// 二者缺一,物品栏效果角标、村民交易、猪灵 AI 等 Mixin 全部不生效。
+// 运行时由 Mixin Booster 负责 Mojmap→SRG 重映射,故无需 refmap 与注解处理器。
+mixin {
+    config 'astral_dice.mixins.json'
+}
+
+// 生产 jar(reobfJar,RemapJar extends Jar)与开发 jar(jar)统一写入 MixinConfigs 清单属性。
+tasks.withType(org.gradle.api.tasks.bundling.Jar).configureEach {
+    manifest {
+        attributes 'MixinConfigs': 'astral_dice.mixins.json'
+    }
+}
 
 // === 编译产物分发规则(与 1.21.1 分支保持同一任务面与同一推送标准;旧 jar 清理按版本后缀隔离)===
 // 默认行为:每次构建完成后自动推送到仓库根 run/1.20.1/mods(本机 runClient 调试)、
