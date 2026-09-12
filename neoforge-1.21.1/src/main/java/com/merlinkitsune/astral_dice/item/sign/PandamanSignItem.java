@@ -101,7 +101,7 @@ public class PandamanSignItem extends BaseSignItem {
         // 2. 嘲讽 16 格内所有敌对目标(含 Boss)
         AABB aabb = player.getBoundingBox().inflate(TAUNT_RANGE);
         List<LivingEntity> nearby = player.level().getEntitiesOfClass(LivingEntity.class, aabb,
-                e -> e instanceof Enemy && e.isAlive());
+                e -> e instanceof Enemy && !(e instanceof Player) && e.isAlive());
         for (LivingEntity target : nearby) {
             target.addEffect(new MobEffectInstance(ModEffects.PANDAMAN_TAUNT,
                     TAUNT_DURATION_TICKS, 0, false, true));

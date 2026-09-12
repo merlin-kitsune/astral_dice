@@ -56,14 +56,16 @@ public class FateGuidanceCardItem extends BaseEffectCardItem {
         ExclusiveCardUtil.bindIfAbsent(stack, user);
     }
 
-    // 主动技能冷却时间减半(实时功能):冷却中则立刻把最大冷却倒计时剩余一半的时间
-    // (剩余时间减半 = 最大冷却时长减半;玩家级冷却,不受立牌装卸影响)
+    // 主动技能冷却时间减半(实时功能):冷却中则从剩余时间中扣除「当前生效的最大冷却时长」的 50%
+    // (减少量 = 当前最大冷却 ÷ 2,例:180 秒冷却一次减少 90 秒;玩家级冷却,不受立牌装卸影响)
     private static void reduceActiveSkillCooldown(Player player) {
         long cdEnd = ModAttachments.getSignActiveCooldownEnd(player);
         if (cdEnd > 0) {
             long now = player.level().getGameTime();
             long remaining = cdEnd - now;
-            ModAttachments.setSignActiveCooldownEnd(player, now + Math.max(0, remaining / 2));
+            long maxCooldown = com.merlinkitsune.astral_dice.event.WeirdDiceHandler.signCooldownTicks(player);
+            long reduction = maxCooldown / 2;
+            ModAttachments.setSignActiveCooldownEnd(player, now + Math.max(0, remaining - reduction));
         }
     }
 

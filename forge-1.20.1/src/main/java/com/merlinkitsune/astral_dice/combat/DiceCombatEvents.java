@@ -426,23 +426,14 @@ public class DiceCombatEvents {
                     }
                 }
                 int starlight = StarLightManager.get(player);
-                if (starlight < StarLightManager.getCap()) {
-                    int accum = ModAttachments.getEightSidedAccum(player) + roll;
-                    while (accum >= 8 && starlight < StarLightManager.getCap()) {
-                        accum -= 8;
-                        starlight++;
-                    }
-                    if (starlight >= StarLightManager.getCap()) {
-                        ModAttachments.setEightSidedAccum(player, 0);
-                        StarLightManager.set(player, StarLightManager.getCap());
-                    } else {
-                        ModAttachments.setEightSidedAccum(player, accum);
-                        StarLightManager.set(player, starlight);
-                    }
-                } else {
-                    // 星光已满,不再累计
-                    ModAttachments.setEightSidedAccum(player, 0);
+                int accum = ModAttachments.getEightSidedAccum(player) + roll;
+                while (accum >= 8 && starlight < StarLightManager.getCap()) {
+                    accum -= 8;
+                    starlight++;
                 }
+                // 星光已满时**保留**累计点数(不清零),待星光回落后继续换算
+                ModAttachments.setEightSidedAccum(player, accum);
+                StarLightManager.set(player, Math.min(starlight, StarLightManager.getCap()));
             }
         }
 

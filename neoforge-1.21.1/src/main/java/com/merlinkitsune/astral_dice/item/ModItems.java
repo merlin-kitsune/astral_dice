@@ -541,19 +541,19 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(Rarity.UNCOMMON)));
 
-    // 拳击手套-初级:骰神赐福攻击力 +1
+    // 拳击手套-初级:骰神赐福攻击力 +2
     public static final DeferredItem<Item> BOXING_GLOVES_LOW = registerItem("boxing_gloves_low_chip",
             () -> new BoxingGlovesChipItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(Rarity.RARE)));
 
-    // 拳击手套-中级:骰神赐福攻击力 +3
+    // 拳击手套-中级:骰神赐福攻击力 +4
     public static final DeferredItem<Item> BOXING_GLOVES_MEDIUM = registerItem("boxing_gloves_medium_chip",
             () -> new BoxingGlovesChipItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(Rarity.EPIC)));
 
-    // 拳击手套-高级:骰神赐福攻击力 +5
+    // 拳击手套-高级:骰神赐福攻击力 +8
     public static final DeferredItem<Item> BOXING_GLOVES_HIGH = registerItem("boxing_gloves_high_chip",
             () -> new BoxingGlovesChipItem(new Item.Properties()
                     .stacksTo(1)
@@ -565,31 +565,31 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(Rarity.RARE), SpeedSkatesChipItem.SPEED_LOW));
 
-    // 速度轮滑-中级:移动速度 +10%
+    // 速度轮滑-中级:移动速度 +15%
     public static final DeferredItem<Item> SPEED_SKATES_MEDIUM = registerItem("speed_skates_medium_chip",
             () -> new SpeedSkatesChipItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(Rarity.EPIC), SpeedSkatesChipItem.SPEED_MEDIUM));
 
-    // 速度轮滑-高级:移动速度 +20%
+    // 速度轮滑-高级:移动速度 +25%
     public static final DeferredItem<Item> SPEED_SKATES_HIGH = registerItem("speed_skates_high_chip",
             () -> new SpeedSkatesChipItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(Rarity.UNCOMMON), SpeedSkatesChipItem.SPEED_HIGH));
 
-    // 摩托头盔-一般:护甲值 +2(无盔甲韧性)
+    // 摩托头盔-一般:防御力 +2(无盔甲韧性;代码折算护甲 +4)
     public static final DeferredItem<Item> MOTO_HELMET_LOW = registerItem("moto_helmet_low_chip",
             () -> new MotoHelmetChipItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(Rarity.RARE), MotoHelmetChipItem.DEFENSE_LOW, 0));
 
-    // 摩托头盔-中级:护甲值 +4(无盔甲韧性)
+    // 摩托头盔-中级:防御力 +4(无盔甲韧性;代码折算护甲 +8)
     public static final DeferredItem<Item> MOTO_HELMET_MEDIUM = registerItem("moto_helmet_medium_chip",
             () -> new MotoHelmetChipItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(Rarity.EPIC), MotoHelmetChipItem.DEFENSE_MEDIUM, 0));
 
-    // 摩托头盔-高级:护甲值 +8,盔甲韧性 +2(仅高级拥有韧性)
+    // 摩托头盔-高级:防御力 +6,盔甲韧性 +2(仅高级拥有韧性;代码折算护甲 +12)
     public static final DeferredItem<Item> MOTO_HELMET_HIGH = registerItem("moto_helmet_high_chip",
             () -> new MotoHelmetChipItem(new Item.Properties()
                     .stacksTo(1)

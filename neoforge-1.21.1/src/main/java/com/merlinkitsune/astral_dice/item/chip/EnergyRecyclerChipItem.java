@@ -104,8 +104,9 @@ public class EnergyRecyclerChipItem extends BaseChipItem {
         }
 
         double dx = pos.x - lastPos.x;
+        double dy = pos.y - lastPos.y;
         double dz = pos.z - lastPos.z;
-        float dist = (float) Math.sqrt(dx * dx + dz * dz);
+        float dist = (float) Math.sqrt(dx * dx + dy * dy + dz * dz);
         lastPosMap.put(uuid, pos);
 
         // 传送/切维度等瞬移不视为移动,保留已有进度但不累计瞬移距离

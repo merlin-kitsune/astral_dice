@@ -14,7 +14,7 @@ import net.minecraft.world.level.Level;
 
 /**
  * 以毒攻毒(效果牌):使用后获得 中毒 8 秒;随后移除最多 3 种原版负面效果,
- * 并获得 生命恢复 II 15 秒(隐藏效果图标)。
+ * 并获得 生命恢复 II 30 秒(隐藏效果图标)。
  */
 public class FightPoisonWithPoisonCardItem extends BaseEffectCardItem {
     /** 中毒持续 tick(8 秒) */

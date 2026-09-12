@@ -81,7 +81,10 @@ public class KomachiSignItem extends BaseSignItem {
         updateCountEffect(player);
         if (count >= 3) {
             // 1. 复制最后一张使用的效果牌并返回到物品栏
-            ItemStack card = BaseEffectCardItem.cardByTypeId(cardType);
+            // 读回附件中的「最后一张效果牌」记录作为唯一来源(方法参数仅作兜底),保证跨周期/跨会话一致
+            String lastCardType = ModAttachments.getKomachiLastCard(player);
+            if (lastCardType == null || lastCardType.isEmpty()) lastCardType = cardType;
+            ItemStack card = BaseEffectCardItem.cardByTypeId(lastCardType);
             // 复制的专属效果牌绑定获得者(忍者)
             if (ExclusiveCardUtil.isExclusive(card)) {
                 ExclusiveCardUtil.setOwner(card, player);

@@ -127,6 +127,7 @@ public class PlayerLifecycleHandler {
         ModAttachments.setSignReadyExpire(player, 0);
         ModAttachments.setFenCleavePending(player, false);
         ModAttachments.setFenCleaveActive(player, false);
+        ModAttachments.setFenRecharge(player, 0);
         ModAttachments.setKomachiExtraPlays(player, 0);
         ModAttachments.setMagicQuiverTracking(player, false);
         ModAttachments.setMagicQuiverFirstCard(player, "");
@@ -142,7 +143,6 @@ public class PlayerLifecycleHandler {
         ModAttachments.setNancyLuPassiveType(player, 0);
         ModAttachments.setNancyLuActiveBonus(player, 0);
         ModAttachments.setNancyLuActiveBonusUntil(player, 0);
-        ModAttachments.setNancyLuInvulnerableUntil(player, 0);
         ModAttachments.setNancyLuHiddenUntil(player, 0);
         ModAttachments.setNancyLuEnderPearlImmuneUntil(player, 0);
         player.setInvulnerable(false);

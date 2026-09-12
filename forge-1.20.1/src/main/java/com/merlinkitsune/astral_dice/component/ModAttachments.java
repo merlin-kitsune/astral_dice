@@ -494,10 +494,6 @@ public class ModAttachments {
     public static final AttachedDataKey<Long> NANCY_LU_ACTIVE_BONUS_UNTIL =
             register(AttachedDataKey.builder("nancy_lu_active_bonus_until", Codec.LONG, () -> 0L).build());
 
-    // 骇客立牌:主动无敌结束时刻
-    public static final AttachedDataKey<Long> NANCY_LU_INVULNERABLE_UNTIL =
-            register(AttachedDataKey.builder("nancy_lu_invulnerable_until", Codec.LONG, () -> 0L).build());
-
     // 骇客立牌:主动"完全隐身"结束时刻
     public static final AttachedDataKey<Long> NANCY_LU_HIDDEN_UNTIL =
             register(AttachedDataKey.builder("nancy_lu_hidden_until", Codec.LONG, () -> 0L).build());
@@ -620,14 +616,6 @@ public class ModAttachments {
 
     public static void setNancyLuActiveBonusUntil(net.minecraft.world.entity.player.Player player, long value) {
         NANCY_LU_ACTIVE_BONUS_UNTIL.set(player, Math.max(0, value));
-    }
-
-    public static long getNancyLuInvulnerableUntil(net.minecraft.world.entity.player.Player player) {
-        return NANCY_LU_INVULNERABLE_UNTIL.get(player);
-    }
-
-    public static void setNancyLuInvulnerableUntil(net.minecraft.world.entity.player.Player player, long value) {
-        NANCY_LU_INVULNERABLE_UNTIL.set(player, Math.max(0, value));
     }
 
     public static long getNancyLuHiddenUntil(net.minecraft.world.entity.player.Player player) {

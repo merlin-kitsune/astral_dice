@@ -32,13 +32,6 @@ public class ModAttachments {
                     .serialize(Codec.INT)
                     .build());
 
-    // 伤害效果牌:当前生效的远程/魔法攻击追加伤害数值(由伤害效果牌使用后设置)
-    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> DAMAGE_EFFECT_BONUS =
-            ATTACHMENTS.register("damage_effect_bonus", () -> AttachmentType.builder(() -> 0)
-                    .serialize(Codec.INT)
-                    .sync(ByteBufCodecs.INT)
-                    .build());
-
     // 效果牌:当前周期内已连续出牌数
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> EFFECT_CARD_PLAY_COUNT =
             ATTACHMENTS.register("effect_card_play_count", () -> AttachmentType.builder(() -> 0)
@@ -379,14 +372,6 @@ public class ModAttachments {
         player.setData(EIGHT_SIDED_ROLL_ACCUM.get(), value);
     }
 
-    public static int getDamageEffectBonus(net.minecraft.world.entity.player.Player player) {
-        return player.getData(DAMAGE_EFFECT_BONUS.get());
-    }
-
-    public static void setDamageEffectBonus(net.minecraft.world.entity.player.Player player, int value) {
-        player.setData(DAMAGE_EFFECT_BONUS.get(), value);
-    }
-
     // 立牌主动技能冷却结束时刻(玩家级,不受立牌装卸影响;0 表示无冷却)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> SIGN_ACTIVE_COOLDOWN_END =
             ATTACHMENTS.register("sign_active_cooldown_end", () -> AttachmentType.builder(() -> 0L)
@@ -578,12 +563,6 @@ public class ModAttachments {
                     .serialize(Codec.LONG)
                     .build());
 
-    // 骇客立牌:主动无敌结束时刻
-    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> NANCY_LU_INVULNERABLE_UNTIL =
-            ATTACHMENTS.register("nancy_lu_invulnerable_until", () -> AttachmentType.builder(() -> 0L)
-                    .serialize(Codec.LONG)
-                    .build());
-
     // 骇客立牌:主动"完全隐身"结束时刻
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> NANCY_LU_HIDDEN_UNTIL =
             ATTACHMENTS.register("nancy_lu_hidden_until", () -> AttachmentType.builder(() -> 0L)
@@ -712,14 +691,6 @@ public class ModAttachments {
 
     public static void setNancyLuActiveBonusUntil(net.minecraft.world.entity.player.Player player, long value) {
         player.setData(NANCY_LU_ACTIVE_BONUS_UNTIL.get(), Math.max(0, value));
-    }
-
-    public static long getNancyLuInvulnerableUntil(net.minecraft.world.entity.player.Player player) {
-        return player.getData(NANCY_LU_INVULNERABLE_UNTIL.get());
-    }
-
-    public static void setNancyLuInvulnerableUntil(net.minecraft.world.entity.player.Player player, long value) {
-        player.setData(NANCY_LU_INVULNERABLE_UNTIL.get(), Math.max(0, value));
     }
 
     public static long getNancyLuHiddenUntil(net.minecraft.world.entity.player.Player player) {

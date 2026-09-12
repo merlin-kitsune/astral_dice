@@ -11,7 +11,7 @@ import com.merlinkitsune.astral_dice.item.chip.FriendshipBadgeChipItem;
 /**
  * 奢华大餐(治疗效果牌):可以对自身和其他玩家使用(对目标玩家下蹲右键,或下蹲+右键面前玩家)。
  * 使用后:治疗自身及周围 6 格范围内同队玩家(若自身无队伍则治疗范围内所有玩家,无队伍玩家也默认被治疗),
- * 各恢复自身最大生命值 30% 的血量。
+ * 各恢复使用者最大生命值 30% 的血量。
  * 治疗类效果牌:使用后触发大当家立牌被动"养精蓄锐 +1 层"。
  */
 public class LuxuryFeastCardItem extends BaseEffectCardItem {

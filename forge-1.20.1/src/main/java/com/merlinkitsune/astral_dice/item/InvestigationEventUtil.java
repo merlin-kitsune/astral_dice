@@ -27,7 +27,7 @@ import java.util.Optional;
 
 /**
  * "调查阶段"事件核心逻辑。
- * 阶段:调查阶段 I / II / III / 真相揭露。由击杀"隐匿调查"目标触发;大侦探立牌可抽取该事件(继承附近秘密侦探立牌玩家的进度,不推进)。
+ * 阶段:调查阶段 I / II / III / 真相揭露。仅由击杀"隐匿调查"目标触发(大侦探立牌的 11 项随机事件不包含该事件)。
  * 调查阶段属于事件,触发时同样触发调查员立牌被动等事件附加效果。
  */
 @Mod.EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)

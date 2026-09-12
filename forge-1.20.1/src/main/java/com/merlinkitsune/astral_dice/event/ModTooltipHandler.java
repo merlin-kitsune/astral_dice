@@ -581,28 +581,28 @@ public class ModTooltipHandler {
             tooltip.add(Component.empty());
             tooltip.add(Component.translatable("tooltip.astral_dice.card.king_power").withStyle(ChatFormatting.GRAY));
             addEffectCardPlayCountTooltip(tooltip, player);
-            tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown", GameplayConstants.EFFECT_CARD_COOLDOWN_SECONDS).withStyle(ChatFormatting.RED));
+            tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown", effectCardCooldownSeconds(player)).withStyle(ChatFormatting.RED));
         }
         if (stack.is(ModItems.EFFECT_CARD_BERSERK.get())) {
             tooltip.add(Component.empty());
             tooltip.add(Component.translatable("effect.astral_dice.berserk.description")
                     .withStyle(ChatFormatting.GRAY));
             addEffectCardPlayCountTooltip(tooltip, player);
-            tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown", GameplayConstants.EFFECT_CARD_COOLDOWN_SECONDS).withStyle(ChatFormatting.RED));
+            tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown", effectCardCooldownSeconds(player)).withStyle(ChatFormatting.RED));
         }
         if (stack.is(ModItems.EFFECT_CARD_UNWAVERING.get())) {
             tooltip.add(Component.empty());
             tooltip.add(Component.translatable("effect.astral_dice.unwavering.description")
                     .withStyle(ChatFormatting.GRAY));
             addEffectCardPlayCountTooltip(tooltip, player);
-            tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown", GameplayConstants.EFFECT_CARD_COOLDOWN_SECONDS).withStyle(ChatFormatting.RED));
+            tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown", effectCardCooldownSeconds(player)).withStyle(ChatFormatting.RED));
         }
         if (stack.is(ModItems.EFFECT_CARD_FIGHT_POISON_WITH_POISON.get())) {
             tooltip.add(Component.empty());
             tooltip.add(Component.translatable("effect.astral_dice.fight_poison_with_poison.description")
                     .withStyle(ChatFormatting.GRAY));
             addEffectCardPlayCountTooltip(tooltip, player);
-            tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown", GameplayConstants.EFFECT_CARD_COOLDOWN_SECONDS).withStyle(ChatFormatting.RED));
+            tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown", effectCardCooldownSeconds(player)).withStyle(ChatFormatting.RED));
         }
         if (stack.is(ModItems.BLANK_SIGN.get())) {
             tooltip.add(Component.empty());
@@ -1104,7 +1104,7 @@ public class ModTooltipHandler {
             addEffectCardPlayCountTooltip(tooltip, player);
             addActiveDamageBonusTooltip(tooltip, player);
             tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown",
-                            GameplayConstants.EFFECT_CARD_COOLDOWN_SECONDS)
+                            effectCardCooldownSeconds(player))
                     .withStyle(ChatFormatting.RED));
             tooltip.add(Component.translatable("tooltip.astral_dice.card.exclusive_owner")
                     .withStyle(ChatFormatting.DARK_PURPLE));
@@ -1129,7 +1129,7 @@ public class ModTooltipHandler {
             addEffectCardPlayCountTooltip(tooltip, player);
             addActiveDamageBonusTooltip(tooltip, player);
             tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown",
-                            GameplayConstants.EFFECT_CARD_COOLDOWN_SECONDS)
+                            effectCardCooldownSeconds(player))
                     .withStyle(ChatFormatting.RED));
         }
         // === 新效果牌(治疗/互动) ===
@@ -1139,7 +1139,7 @@ public class ModTooltipHandler {
                     .withStyle(ChatFormatting.GRAY));
             addEffectCardPlayCountTooltip(tooltip, player);
             tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown",
-                            GameplayConstants.EFFECT_CARD_COOLDOWN_SECONDS)
+                            effectCardCooldownSeconds(player))
                     .withStyle(ChatFormatting.RED));
         }
         if (stack.is(ModItems.HAMBURGER.get())) {
@@ -1148,7 +1148,7 @@ public class ModTooltipHandler {
                     .withStyle(ChatFormatting.GRAY));
             addEffectCardPlayCountTooltip(tooltip, player);
             tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown",
-                            GameplayConstants.EFFECT_CARD_COOLDOWN_SECONDS)
+                            effectCardCooldownSeconds(player))
                     .withStyle(ChatFormatting.RED));
         }
         if (stack.is(ModItems.LUXURY_FEAST.get())) {
@@ -1157,7 +1157,7 @@ public class ModTooltipHandler {
                     .withStyle(ChatFormatting.GRAY));
             addEffectCardPlayCountTooltip(tooltip, player);
             tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown",
-                            GameplayConstants.EFFECT_CARD_COOLDOWN_SECONDS)
+                            effectCardCooldownSeconds(player))
                     .withStyle(ChatFormatting.RED));
         }
         if (stack.is(ModItems.YOU_HAVE_I_HAVE.get())) {
@@ -1166,7 +1166,7 @@ public class ModTooltipHandler {
                     .withStyle(ChatFormatting.GRAY));
             addEffectCardPlayCountTooltip(tooltip, player);
             tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown",
-                            GameplayConstants.EFFECT_CARD_COOLDOWN_SECONDS)
+                            effectCardCooldownSeconds(player))
                     .withStyle(ChatFormatting.RED));
         }
         if (stack.is(ModItems.EXPRESS_DELIVERY.get())) {
@@ -1175,7 +1175,7 @@ public class ModTooltipHandler {
                     .withStyle(ChatFormatting.GRAY));
             addEffectCardPlayCountTooltip(tooltip, player);
             tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown",
-                            GameplayConstants.EFFECT_CARD_COOLDOWN_SECONDS)
+                            effectCardCooldownSeconds(player))
                     .withStyle(ChatFormatting.RED));
         }
         if (stack.is(ModItems.HAIQING_SIGN.get())) {
@@ -1202,7 +1202,7 @@ public class ModTooltipHandler {
             }
             addEffectCardPlayCountTooltip(tooltip, player);
             tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown",
-                            GameplayConstants.EFFECT_CARD_COOLDOWN_SECONDS)
+                            effectCardCooldownSeconds(player))
                     .withStyle(ChatFormatting.RED));
             tooltip.add(Component.translatable("tooltip.astral_dice.card.exclusive_owner")
                     .withStyle(ChatFormatting.DARK_PURPLE));
@@ -1288,6 +1288,15 @@ public class ModTooltipHandler {
             }
             addSignCooldownRemaining(tooltip, event.getEntity());
         }
+    }
+
+    /** 效果牌冷却显示:按玩家当前实际冷却取值(含充能的 -20% 减免),结果向下取整为秒 */
+    private static long effectCardCooldownSeconds(Player player) {
+        long baseTicks = GameplayConstants.EFFECT_CARD_COOLDOWN_SECONDS * 20L;
+        long ticks = player != null
+                ? com.merlinkitsune.astral_dice.item.ChargeManager.cooldownTicks(player, baseTicks)
+                : baseTicks;
+        return Math.max(1L, ticks / 20L);
     }
 
 }

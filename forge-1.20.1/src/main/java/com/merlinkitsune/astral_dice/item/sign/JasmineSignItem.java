@@ -103,8 +103,9 @@ public class JasmineSignItem extends BaseSignItem {
             return;
         }
         double dx = pos.x - lastPos.x;
+        double dy = pos.y - lastPos.y;
         double dz = pos.z - lastPos.z;
-        float dist = (float) Math.sqrt(dx * dx + dz * dz);
+        float dist = (float) Math.sqrt(dx * dx + dy * dy + dz * dz);
         lastPosMap.put(uuid, pos);
 
         float total = walkAccumMap.getOrDefault(uuid, 0f) + dist;

@@ -54,7 +54,6 @@ public class NancyLuSignItem extends BaseSignItem {
     public static final int PASSIVE_BONUS = 3;
     public static final double PASSIVE_RANGE = 6.0;
     public static final int ACTIVE_DURATION_TICKS = 2400;
-    public static final int INVULNERABLE_TICKS = 60;
     public static final int HIDDEN_DURATION_TICKS = 600;
     public static final int ACTIVE_BONUS_MULTIPLIER = 2;
     public static final int ACTIVE_MIN_BONUS = 2;
@@ -70,11 +69,6 @@ public class NancyLuSignItem extends BaseSignItem {
         if (player.level().isClientSide()) return;
         long now = player.level().getGameTime();
 
-        // 主动无敌到期
-        if (player.isInvulnerable() && now >= ModAttachments.getNancyLuInvulnerableUntil(player)) {
-            player.setInvulnerable(false);
-            ModAttachments.setNancyLuInvulnerableUntil(player, 0);
-        }
         // 主动完全隐身到期(仅立牌自身授予的隐身到期时才移除,避免误清其他来源的隐身)
         long hiddenUntil = ModAttachments.getNancyLuHiddenUntil(player);
         if (hiddenUntil > 0 && now >= hiddenUntil) {
@@ -97,16 +91,12 @@ public class NancyLuSignItem extends BaseSignItem {
         super.clearSignData(player, stack);
         // 仅清除立牌自身授予的状态(附件标记仍有效时),不触碰其他来源的公共数值:
         // 无敌/隐身可能由其他模组或原版机制授予,卸载立牌不得一并清除
-        if (ModAttachments.getNancyLuInvulnerableUntil(player) > 0) {
-            player.setInvulnerable(false);
-        }
         if (ModAttachments.getNancyLuHiddenUntil(player) > 0) {
             player.removeEffect(net.minecraft.world.effect.MobEffects.INVISIBILITY);
         }
         ModAttachments.setNancyLuPassiveType(player, PASSIVE_NONE);
         ModAttachments.setNancyLuActiveBonus(player, 0);
         ModAttachments.setNancyLuActiveBonusUntil(player, 0);
-        ModAttachments.setNancyLuInvulnerableUntil(player, 0);
         ModAttachments.setNancyLuHiddenUntil(player, 0);
         ModAttachments.setNancyLuEnderPearlImmuneUntil(player, 0);
         ModEffectRemoval.remove(player, ModEffects.NANCY_LU_HACK.get());
@@ -251,6 +241,18 @@ public class NancyLuSignItem extends BaseSignItem {
         NancyLuSignItem.onAttackWhileHidden(player);
     }
 
+
+    // 骇客立牌:任何攻击行为(含远程/投掷物/魔法)命中敌对生物或玩家时,同样解除隐身并触发战斗牌加成
+    @SubscribeEvent
+    public static void onNancyLuAnyAttackWhileHidden(LivingDamageEvent event) {
+        if (event.getEntity().level().isClientSide()) return;
+        if (!(event.getSource().getEntity() instanceof Player player)) return;
+        if (player == event.getEntity()) return;
+        LivingEntity victim = event.getEntity();
+        if (!(victim instanceof Enemy) && !(victim instanceof Player)) return;
+        if (!isEquipped(player)) return;
+        onAttackWhileHidden(player);
+    }
 
     // 骇客立牌:末影珍珠落地时记录短时免疫窗口,免疫随后的传送摔落伤害
     @SubscribeEvent
