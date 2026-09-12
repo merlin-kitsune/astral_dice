@@ -136,6 +136,7 @@ public class PlayerLifecycleHandler {
         ModAttachments.setCursedSwordBonus(player, 0);
         ModAttachments.setCursedSwordBlessingTriggered(player, false);
         ModAttachments.setCandyChipPlayBonusActive(player, false);
+        ModAttachments.setFlashlightGrantedTargets(player, "");
         ModAttachments.setSatellitePlayBonusActive(player, false);
         ModAttachments.setSatelliteGiveCooldownEnd(player, 0);
         ModAttachments.setNancyLuPassiveType(player, 0);

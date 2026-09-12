@@ -175,6 +175,20 @@ public class ModAttachments {
         player.setData(PIGGY_BANK_USE_COUNT.get(), Math.max(0, value));
     }
 
+    // 手电筒-强光筹码:已发放过星光的敌对目标 UUID(逗号分隔;同一目标仅 +1 层星光)
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<String>> FLASHLIGHT_GRANTED_TARGETS =
+            ATTACHMENTS.register("flashlight_granted_targets", () -> AttachmentType.builder(() -> "")
+                    .serialize(Codec.STRING)
+                    .build());
+
+    public static String getFlashlightGrantedTargets(net.minecraft.world.entity.player.Player player) {
+        return player.getData(FLASHLIGHT_GRANTED_TARGETS.get());
+    }
+
+    public static void setFlashlightGrantedTargets(net.minecraft.world.entity.player.Player player, String value) {
+        player.setData(FLASHLIGHT_GRANTED_TARGETS.get(), value == null ? "" : value);
+    }
+
     public static int getMagicTomeUseCount(net.minecraft.world.entity.player.Player player) {
         return player.getData(MAGIC_TOME_USE_COUNT.get());
     }

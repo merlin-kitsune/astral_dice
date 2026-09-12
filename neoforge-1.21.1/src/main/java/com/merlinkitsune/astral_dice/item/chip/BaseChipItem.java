@@ -22,8 +22,8 @@ import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
  * - {@link #canEquip}:仅允许放入 "chip" 饰品栏,并禁止重复装备相同筹码(服务端校验;客户端放行避免误判);
  * - {@link #use}:下蹲右键自动装备到 "chip" 饰品栏;
  * - {@link #curioTick}:默认空实现,子类可覆写;
- * - {@link #onUnequip}:默认处理"卸下时清理"的钩子 {@link #onChipUnequip}(子类可覆写),并调用
- *   {@link CurioSlotUtil#onChipUnequip} 完成通用清理(如八面骰累计点清空、魔法秘典计数重置等)。
+ * - {@link #onUnequip}:仅在"真正卸下"时调用清理钩子 {@link #onChipUnequip}(子类覆写实现自身清理,
+ *   如八面骰累计点清空、魔法秘典计数重置、手电筒已发放目标清空等)。
  *
  * 新增筹码时:
  * 1. 继承本类,覆写业务钩子(如 {@link #curioTick} / {@link #onChipEquip} / {@link #onChipUnequip});

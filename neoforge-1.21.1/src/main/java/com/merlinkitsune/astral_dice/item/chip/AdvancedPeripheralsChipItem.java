@@ -36,10 +36,10 @@ public class AdvancedPeripheralsChipItem extends BaseChipItem {
         return ChargeManager.getStacks(player) >= CHARGE_REQUIRED ? ATTACK_BONUS : 0;
     }
 
-    /** 触发骰神赐福时调用:移除 1 层充能 */
+    /** 触发骰神赐福时调用:移除 {@link #BLESSING_CONSUME} 层充能 */
     public static void onBlessingStart(Player player) {
         if (player == null || player.level().isClientSide()) return;
         if (!isEquipped(player)) return;
-        ChargeManager.consumeOne(player);
+        ChargeManager.consume(player, BLESSING_CONSUME);
     }
 }

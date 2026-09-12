@@ -176,7 +176,7 @@ public class DiceCombatEvents {
         // 立牌受击钩子分发(史莱姆立牌等受击类被动由各立牌 onHurt 实现,不再在此硬编码)
         if (!target.level().isClientSide() && target instanceof Player targetPlayer) {
             BaseSignItem.invokeHurtHooks(targetPlayer, event.getAmount());
-            // 缓冲盾牌筹码:受到攻击时 +2 治愈 +3 星币(每分钟一次)
+            // 缓冲盾牌筹码:受到攻击时 +2 治愈 +3 星币(每 15 秒一次)
             com.merlinkitsune.astral_dice.item.chip.BufferShieldChipItem.onHurt(targetPlayer, event.getAmount());
         }
 
@@ -637,14 +637,8 @@ public class DiceCombatEvents {
             consumeAttackCardDurabilityOnce(player, diceStack, enhancement);
         }
 
-        // Flashlight chip: 攻击单个敌对目标时 +1 星光(每个目标仅增加 1 点,不超过上限)
-        if (!player.level().isClientSide() && target instanceof Enemy && attackerCurios.isPresent()) {
-            var flashlightResult = attackerCurios.get().findFirstCurio(s -> s.is(ModItems.FLASHLIGHT_CHIP.get()));
-            if (flashlightResult.isPresent()) {
-                // 手电筒:攻击单个敌对目标时 +1 星光(上限由 StarLightManager 统一管理)
-                StarLightManager.add(player, 1);
-            }
-        }
+        // 手电筒筹码:攻击敌对目标时 +1 星光(同一目标仅 +1 层,去重记录见 FlashlightChipItem)
+        com.merlinkitsune.astral_dice.item.chip.FlashlightChipItem.onAttack(player, target);
     }
 
 

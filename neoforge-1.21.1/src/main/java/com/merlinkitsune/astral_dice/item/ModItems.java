@@ -632,7 +632,7 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(Rarity.EPIC)));
 
-    // 缓冲盾牌:受到攻击时增加 2 点治愈与 3 星币(每分钟一次)
+    // 缓冲盾牌:受到攻击时增加 2 点治愈与 3 星币(每 15 秒一次)
     public static final DeferredItem<Item> BUFFER_SHIELD = registerItem("buffer_shield_chip",
             () -> new BufferShieldChipItem(new Item.Properties()
                     .stacksTo(1)
