@@ -232,7 +232,7 @@ function Get-MtCurrentShots {
     if ($data.ContainsKey('run_id') -and $data['run_id'] -eq $RunId) {
         # ⚠️ 必须按文件名**去重**：python 侧是 `names = {s["file"] for s in shots}`（set）。
         #    清单里同一个文件被登记两次时（本机 run/1.20.1 的清单里
-        #    bug4_bolt_20260912-162712.png 就有 2 条），逐条 append 会多返回一份，
+        #    bolt_<时间戳>.png 这类同世代截图就有 2 条），逐条 append 会多返回一份，
         #    表现为 `mt_capture list --version 1.20.1` 比 python 多一行（实测 DIFF，firstDiff=139）。
         $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
         $out = @()

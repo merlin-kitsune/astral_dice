@@ -172,7 +172,7 @@ function Show-MtHits {
         必须**复用已编译的正则对象**，不要用字符串重新拼 `.*{pattern}.*` 再编译：早期实现
         正是后者，一旦 pattern 带内联标志（如用例里的 `(?i)oculus`），标志就不在表达式开头
         → Python 3.11+ 抛 re.error，异常未捕获 → 进程带 traceback 退出（stdout 已打印 PASS）
-        → 表现为「断言打印 PASS 却被上层判成 FAIL」（2026-09-12 真机 BUG4）。
+        → 表现为「断言打印 PASS 却被上层判成 FAIL」（2026-09-12 真机实测）。
     #>
     [CmdletBinding()]
     param(

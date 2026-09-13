@@ -1,5 +1,5 @@
 // ════════════════════════════════════════════════════════════════════════════
-//  astral_bugfix_probe.js —— 1.20.1 (Forge) 五 bug 冒烟取证探针
+//  astral_bugfix_probe.js —— 1.20.1 (Forge) 回归取证探针
 //
 //  取证通道(唯一权威 = 聊天):
 //    · 有命令上下文      → ctx.source.sendFailure(Component)
@@ -28,22 +28,14 @@
 //
 //  ── 命令一览(用例 mt_case.py 依赖这些名字与参数顺序) ──────────────────────
 //    /astralprobe diag <tag>                          环境自检:API 可见性 + 时间基准 + 雷击计数
-//    /astralprobe status <tag>
-//    /astralprobe setup <diceId> <weaponId> <tag>     骰子入 dice 槽 0 + 主手换武器
 //    /astralprobe equipslot <slotId> <itemId> <tag>
-//    /astralprobe attack <entityTypeId> <tag>
-//    /astralprobe railtest <tag>
-//    /astralprobe cdguard <tag>                        冷却期内二次攻击守卫(不得再触发雷击)
-//    /astralprobe charge <n> <tag>
-//    /astralprobe empower <n> <tag>
-//    /astralprobe empowerclear <tag>
-//    /astralprobe blessingclear <tag>
+//    /astralprobe attack <entityTypeId> <tag>         生成靶子并真实近战命中(仍被 NANCY-LU-CLOAK 复用)
 //    /astralprobe railguncd <tag>
-//    /astralprobe decayinterval <tag>
-//    /astralprobe decaydue <tag>
-//    /astralprobe boltvis <ticks> <tag>
-//    /astralprobe watch <ticks> <tag>
-//    /astralprobe hud <ticks> <tag>
+//    ── 2026-09-14 追加(忍者主动 / 骇客末影珍珠免疫 / 骇客完全隐身 / 层数递减闪烁)──
+//    /astralprobe komachicast|komachirepeat|komachicap|komachicycle|komachiread <tag>
+//    /astralprobe nancycloak|nancyexpire|nancystate|nancyfall <tag>
+//    /astralprobe nancypearl|nancypearlctrl|nancypearlclose <tag>
+//    /astralprobe decayflash|decayclear <tag>
 //
 //  ── 实现约束 ─────────────────────────────────────────────────────────────
 //   1. 命令注册必须在 ServerEvents.commandRegistry 回调内;执行体提取为顶层命名函数;
@@ -63,19 +55,13 @@ var ResourceLocation = Java.loadClass("net.minecraft.resources.ResourceLocation"
 var StringArg = Java.loadClass("com.mojang.brigadier.arguments.StringArgumentType");
 var IntegerArg = Java.loadClass("com.mojang.brigadier.arguments.IntegerArgumentType");
 var ItemStack = Java.loadClass("net.minecraft.world.item.ItemStack");
-var InteractionHand = Java.loadClass("net.minecraft.world.InteractionHand");
 var CuriosApi = Java.loadClass("top.theillusivec4.curios.api.CuriosApi");
 var ModAttachments = Java.loadClass("com.merlinkitsune.astral_dice.component.ModAttachments");
 var ModEffects = Java.loadClass("com.merlinkitsune.astral_dice.effect.ModEffects");
 var ModEffectRemoval = Java.loadClass("com.merlinkitsune.astral_dice.event.ModEffectRemoval");
 var EmpowerManager = Java.loadClass("com.merlinkitsune.astral_dice.item.EmpowerManager");
-var EmpowerEffect = Java.loadClass("com.merlinkitsune.astral_dice.effect.EmpowerEffect");
-var ChargeManager = Java.loadClass("com.merlinkitsune.astral_dice.item.ChargeManager");
 
-var DESC_BLESSING = "effect.astral_dice.dice_blessing";
 var DESC_EMPOWER = "effect.astral_dice.empower";
-var DESC_CHARGE = "effect.astral_dice.charge";
-var RAILGUN_CHIP = "astral_dice:railgun_chip";
 var BOLT_TYPE_ID = "minecraft:lightning_bolt";
 /** 筹码槽默认 0,按骰子星级动态增长(AstralDiceMod: SlotTypeMessage.Builder("chip").size(0)) */
 var CHIP_SLOT_MIN = 1;
@@ -156,16 +142,6 @@ function nowTick(p) {
 function loadScheduler() {
     try { return Java.loadClass("com.merlinkitsune.astral_dice.event.RailgunStrikeScheduler"); }
     catch (e) { return null; }
-}
-
-/** 电磁炮攻击力加成读口(装备且充能 ≥6 → +5):证明「筹码在槽里」而无需碰两版本不同的 Curios API */
-function railgunAttackBonus(p) {
-    try {
-        var c = Java.loadClass("com.merlinkitsune.astral_dice.item.chip.RailgunChipItem");
-        return c.getAttackBonus(p);
-    } catch (e) {
-        return -1;
-    }
 }
 
 function loadDamageNumberMessage() {
@@ -288,23 +264,6 @@ function countLightning(p, radius) {
     return n;
 }
 
-function railgunCooldownRemaining(p) {
-    try {
-        var end = ModAttachments.getRailgunCooldownEnd(p);
-        if (end <= 0) return 0;
-        var now = nowTick(p);
-        return now < 0 ? -1 : (end - now);
-    } catch (e) {
-        return -1;
-    }
-}
-
-function railgunPending(p) {
-    var sched = loadScheduler();
-    if (sched == null) return -1;
-    try { return sched.pendingRemainingTicks(p.level); } catch (e) { return -1; }
-}
-
 function putInSlot(player, slotId, itemStack, index) {
     var opt = CuriosApi.getCuriosInventory(player);
     if (opt == null || !opt.isPresent()) return "no_curios";
@@ -352,7 +311,7 @@ function aimPositiveZ(p, dist) {
 
 /**
  * 生成一只定点靶(无 AI、持久化),返回实体对象。
- * 靶子必须站定:bug5 的延迟雷击按**触发瞬间目标位置**结算 3 格范围,
+ * 靶子必须站定:按**触发瞬间目标位置**结算 3 格范围的攻击,
  * 目标一旦走开就会漏掉,导致「修复无效」的假结论。
  */
 function spawnDummy(p, typeId, dist) {
@@ -401,9 +360,9 @@ function meleeHit(p, mob) {
 }
 
 // ── 雷击生成计数(主判据)────────────────────────────────────────────────────
-// 雷击实体存活仅数 tick,靠 AABB 单点采样必然漏检(上一轮 bug4/bug5 因此全判 0)。
+// 雷击实体存活仅数 tick,靠 AABB 单点采样必然漏检(历史轮次因此全判 0),故不以其瞬时数量为准。
 // 改为挂钩「实体进入世界」事件做累积计数:窗口内增量 ≥1 即证明雷击**真的生成过**,
-// 对「探针自己造的」(bug4 渲染取证)与「生产代码延迟触发的」(bug5 延迟验证)同样成立。
+// 对「探针自己造的」与「生产代码延迟触发的」同样成立。
 // KubeJS 事件 API 版本间存在差异,故三层防御式注册;失败也不影响脚本加载。
 var boltSpawnCount = 0;
 var boltSpawnHook = "none";
@@ -483,51 +442,6 @@ function doDiag(ctx, tag) {
     return 1;
 }
 
-function doStatus(ctx, tag) {
-    var p = ctx.source.getPlayerOrException();
-    var now = nowTick(p);
-    send(ctx, "AP_" + tag + "_NOWTICK:" + now + ":" + nowTickSource);
-    send(ctx, "AP_" + tag + "_DICE:" + diceSlotItemId(p));
-    send(ctx, "AP_" + tag + "_MAINHAND:" + itemIdOf(p.getMainHandItem()));
-    var bless = findEffect(p, DESC_BLESSING);
-    send(ctx, "AP_" + tag + "_BLESSING:" + (bless != null ? "1" : "0") + ":"
-        + (bless != null ? bless.getAmplifier() : -1) + ":"
-        + (bless != null ? bless.getDuration() : -1));
-    var empower = findEffect(p, DESC_EMPOWER);
-    var decayAt = ModAttachments.getEmpowerDecayAt(p);
-    var decayIn = (empower != null && decayAt > 0 && now >= 0) ? (decayAt - now) : -1;
-    send(ctx, "AP_" + tag + "_EMPOWER:" + EmpowerEffect.getStacks(p) + ":" + decayIn);
-    // 效果实例时长 = 面板/悬停提示显示的倒计时来源(原实现为 Integer.MAX_VALUE → 面板永不倒数)
-    send(ctx, "AP_" + tag + "_EMPOWER_DUR:" + (empower != null ? empower.getDuration() : -1));
-    // 粒子开关:0 = 不产生原版药水粒子(充能/赋能已禁用粒子)
-    send(ctx, "AP_" + tag + "_EMPOWER_VIS:" + effectVis(p, DESC_EMPOWER));
-    send(ctx, "AP_" + tag + "_CHARGE:" + ChargeManager.getStacks(p));
-    send(ctx, "AP_" + tag + "_CHARGE_VIS:" + effectVis(p, DESC_CHARGE));
-    send(ctx, "AP_" + tag + "_RAILGUN_CD:" + railgunCooldownRemaining(p));
-    send(ctx, "AP_" + tag + "_RAILGUN_PENDING:" + railgunPending(p));
-    send(ctx, "AP_" + tag + "_CHIPSLOTS:" + chipSlotCount(p));
-    send(ctx, "AP_" + tag + "_LIGHTNING:" + countLightning(p, 16));
-    send(ctx, "AP_" + tag + "_DONE");
-    return 1;
-}
-
-function doSetup(ctx, diceId, weaponId, tag) {
-    var p = ctx.source.getPlayerOrException();
-    var diceItem = resolveItem(diceId);
-    if (diceItem == null) { send(ctx, "AP_" + tag + "_ERR:unknown_dice:" + diceId); return 0; }
-    var weaponItem = resolveItem(weaponId);
-    if (weaponItem == null) { send(ctx, "AP_" + tag + "_ERR:unknown_weapon:" + weaponId); return 0; }
-    var err = putInSlot(p, "dice", new ItemStack(diceItem), 0);
-    if (err != null) { send(ctx, "AP_" + tag + "_ERR:" + err); return 0; }
-    p.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(weaponItem));
-    // 回读真实装配结果:避免"命令返回了但状态没变"的假通过
-    send(ctx, "AP_" + tag + "_SETUP:" + diceId + ":" + weaponId);
-    send(ctx, "AP_" + tag + "_DICE:" + diceSlotItemId(p));
-    send(ctx, "AP_" + tag + "_MAINHAND:" + itemIdOf(p.getMainHandItem()));
-    send(ctx, "AP_" + tag + "_DONE");
-    return 1;
-}
-
 function doEquipSlot(ctx, slotId, itemId, tag) {
     var p = ctx.source.getPlayerOrException();
     var item = resolveItem(itemId);
@@ -555,129 +469,6 @@ function doAttack(ctx, typeId, tag) {
     return 1;
 }
 
-function doRailTest(ctx, tag) {
-    var p = ctx.source.getPlayerOrException();
-    // 预置:清冷却 + 清空后恰好补 6 层充能(使 CHARGE_AFTER 断言确定)
-    ModAttachments.setRailgunCooldownEnd(p, 0);
-    ChargeManager.removeAll(p);
-    ChargeManager.addStacks(p, 6);
-    // chip 槽生产上按骰子星级动态增长(基础骰子 → 0 槽)→ 测试侧先补齐槽位
-    var slotErr = ensureChipSlot(p, CHIP_SLOT_MIN);
-    if (slotErr != null) { send(ctx, "AP_" + tag + "_ERR:" + slotErr); return 0; }
-    var chip = resolveItem(RAILGUN_CHIP);
-    if (chip == null) { send(ctx, "AP_" + tag + "_ERR:unknown_chip:" + RAILGUN_CHIP); return 0; }
-    var putErr = putInSlot(p, "chip", new ItemStack(chip), 0);
-    if (putErr != null) { send(ctx, "AP_" + tag + "_ERR:" + putErr); return 0; }
-    send(ctx, "AP_" + tag + "_CHIP:ok");
-    send(ctx, "AP_" + tag + "_CHIPSLOTS:" + chipSlotCount(p));
-
-    // 基线必须在攻击**之前**取:延迟雷击由服务端 tick 边界队列在 20 tick 后生成,
-    // 窗口内首个新增雷击就是这次攻击的落点,据此量出**真实延迟**(见 rgWatch)。
-    var boltBase = boltSpawnCount;
-    var mob = spawnDummy(p, "minecraft:zombie", 3);
-    if (mob == null) { send(ctx, "AP_" + tag + "_ERR:spawn_failed"); return 0; }
-    send(ctx, "AP_" + tag + "_AIM:2");
-    var hit = meleeHit(p, mob);
-    send(ctx, "AP_" + tag + "_MELEE:" + hit.api + ":dealt=" + hit.dealt);
-
-    // 同一 tick 内立刻采样:这是区分"真 1 秒延迟"与"延迟塌缩"的判据
-    send(ctx, "AP_" + tag + "_DELAY:" + railgunPending(p));
-    send(ctx, "AP_" + tag + "_LIGHTNING_NOW:" + countLightning(p, 16));
-    send(ctx, "AP_" + tag + "_CD_AFTER:" + railgunCooldownRemaining(p));
-    send(ctx, "AP_" + tag + "_CHARGE_AFTER:" + ChargeManager.getStacks(p));
-
-    // 延迟量测窗口(120 tick):首个新增雷击相对本次攻击的 tick 偏移
-    // → 真 1 秒 = 20/21 tick;塌缩为 0 或来自上一用例的残留雷击会给出 0~3。
-    rgWatchTag = tag;
-    rgWatchBase = boltBase;
-    rgWatchStart = nowTick(p);
-    rgWatchRemaining = 120;
-    send(ctx, "AP_" + tag + "_RG_WATCH:start:" + boltBase);
-    send(ctx, "AP_" + tag + "_DONE");
-    return 1;
-}
-
-// ── 冷却守卫验证:冷却期内再次命中敌对目标**不得**再触发雷击 ─────────────────
-// 判据全部与天气无关(确定性强):
-//   · 充能不被消耗 —— 冷却分支在 ChargeManager.consume 之前就 return
-//   · 调度队列无待触发雷击(pendingRemainingTicks == -1)
-//   · 同 tick 雷击实体增量为 0(boltSpawnCount 基线差)
-//   · 冷却剩余未被重置(前后差值只应等于本命令自身耗时)
-function doCdGuard(ctx, tag) {
-    var p = ctx.source.getPlayerOrException();
-    // 清天气:雷暴会自造雷击实体,污染雷击计数的负向断言(此项失败不影响其它判据)
-    var weather = "skip";
-    try { p.level.setWeatherParameters(6000, 0, false, false); weather = "clear"; } catch (e0) { weather = "err"; }
-    send(ctx, "AP_" + tag + "_WEATHER:" + weather);
-
-    var cdBefore = railgunCooldownRemaining(p);
-    send(ctx, "AP_" + tag + "_CD_BEFORE:" + cdBefore);
-    if (cdBefore <= 0) { send(ctx, "AP_" + tag + "_ERR:not_on_cooldown:" + cdBefore); return 0; }
-
-    // 充能恢复为恰好 6 层:冷却期攻击不应消耗它
-    ChargeManager.removeAll(p);
-    ChargeManager.addStacks(p, 6);
-    send(ctx, "AP_" + tag + "_CHARGE_BEFORE:" + ChargeManager.getStacks(p));
-    // 「筹码真的装在槽里 + 充能 ≥6」的生产读口(不用 Curios API:两版本 API 形态不同)
-    send(ctx, "AP_" + tag + "_BONUS_BEFORE:" + railgunAttackBonus(p));
-
-    var boltBase = boltSpawnCount;
-    var mob = spawnDummy(p, "minecraft:zombie", 3);
-    if (mob == null) { send(ctx, "AP_" + tag + "_ERR:spawn_failed"); return 0; }
-    var hit = meleeHit(p, mob);
-    send(ctx, "AP_" + tag + "_MELEE:" + hit.api + ":dealt=" + hit.dealt);
-
-    var chargeAfter = ChargeManager.getStacks(p);
-    var pending = railgunPending(p);
-    var boltDelta = boltSpawnCount - boltBase;
-    var cdAfter = railgunCooldownRemaining(p);
-    send(ctx, "AP_" + tag + "_CDGUARD:" + chargeAfter + ":" + pending + ":" + boltDelta
-        + ":" + railgunAttackBonus(p));
-    send(ctx, "AP_" + tag + "_CD_AFTER:" + cdAfter);
-    send(ctx, "AP_" + tag + "_CD_DELTA:" + (cdBefore - cdAfter));
-    send(ctx, "AP_" + tag + "_DONE");
-    return 1;
-}
-
-function doCharge(ctx, n, tag) {
-    var p = ctx.source.getPlayerOrException();
-    ChargeManager.addStacks(p, n);
-    send(ctx, "AP_" + tag + "_CHARGE:" + ChargeManager.getStacks(p));
-    send(ctx, "AP_" + tag + "_DONE");
-    return 1;
-}
-
-function doEmpower(ctx, n, tag) {
-    var p = ctx.source.getPlayerOrException();
-    send(ctx, "AP_" + tag + "_EMPOWER_STEP:before");
-    EmpowerManager.addStacks(p, n);
-    send(ctx, "AP_" + tag + "_EMPOWER_STEP:added");
-    var stacks = EmpowerEffect.getStacks(p);
-    send(ctx, "AP_" + tag + "_EMPOWER_STEP:read:" + stacks);
-    var decayAt = ModAttachments.getEmpowerDecayAt(p);
-    var now = nowTick(p);
-    send(ctx, "AP_" + tag + "_EMPOWER:" + stacks + ":"
-        + ((decayAt > 0 && now >= 0) ? (decayAt - now) : -1));
-    send(ctx, "AP_" + tag + "_DONE");
-    return 1;
-}
-
-function doEmpowerClear(ctx, tag) {
-    var p = ctx.source.getPlayerOrException();
-    EmpowerManager.removeAll(p);
-    send(ctx, "AP_" + tag + "_EMPOWER:" + EmpowerEffect.getStacks(p) + ":-1");
-    send(ctx, "AP_" + tag + "_DONE");
-    return 1;
-}
-
-function doBlessingClear(ctx, tag) {
-    var p = ctx.source.getPlayerOrException();
-    ModEffectRemoval.remove(p, ModEffects.DICE_BLESSING.get());
-    send(ctx, "AP_" + tag + "_BLESSING:0:-1:-1");
-    send(ctx, "AP_" + tag + "_DONE");
-    return 1;
-}
-
 function doRailgunCleared(ctx, tag) {
     var p = ctx.source.getPlayerOrException();
     ModAttachments.setRailgunCooldownEnd(p, 0);
@@ -686,32 +477,7 @@ function doRailgunCleared(ctx, tag) {
     return 1;
 }
 
-// 赋能递减间隔常量:直接读生产代码,验证"每 0:30"规格(600 tick)
-function doDecayInterval(ctx, tag) {
-    send(ctx, "AP_" + tag + "_DECAY_INTERVAL:" + EmpowerManager.DECAY_INTERVAL_TICKS);
-    send(ctx, "AP_" + tag + "_DONE");
-    return 1;
-}
-
-// 把赋能递减计时器置为"已到期":驱动链(PlayerTickEvents 每 20 tick → EmpowerManager.tick
-// → EmpowerEffect.consumeOne)应在 ≤1 秒内真实减 1 层 —— 无需等 30 秒
-function doDecayDue(ctx, tag) {
-    var p = ctx.source.getPlayerOrException();
-    var now = nowTick(p);
-    send(ctx, "AP_" + tag + "_DECAYDUE_STEP:before:" + now);
-    ModAttachments.setEmpowerDecayAt(p, now > 0 ? now : 1);
-    send(ctx, "AP_" + tag + "_DECAYDUE_STEP:set");
-    var stacks = EmpowerEffect.getStacks(p);
-    send(ctx, "AP_" + tag + "_EMPOWER:" + stacks + ":0");
-    send(ctx, "AP_" + tag + "_DONE");
-    return 1;
-}
-
-// ── 渲染验证:每 tick 生成 1 枚 visualOnly(无伤害/不引燃)雷击实体,持续 N tick ──
-var boltVisRemaining = 0;
-var boltVisTag = "S";
-var boltVisPos = null;
-
+/** 生成一枚 visualOnly(无伤害/不引燃)雷击实体:单点采样,供 diag 探针取证。 */
 function spawnVisualBoltAt(p, pos) {
     try {
         var type = BuiltInRegistries.ENTITY_TYPE.get(new ResourceLocation(BOLT_TYPE_ID));
@@ -725,154 +491,6 @@ function spawnVisualBoltAt(p, pos) {
         return false;
     }
 }
-
-function doBoltVis(ctx, ticks, tag) {
-    var p = ctx.source.getPlayerOrException();
-    // 朝向**只在命令时钉一次**:每 tick 重复 teleport 会让摄像机抖动并刷屏位置包
-    var pos = aimPositiveZ(p, 6);
-    boltVisPos = pos;
-    var ok = spawnVisualBoltAt(p, pos);
-    boltVisRemaining = ok ? ticks : 0;
-    boltVisTag = tag;
-    send(ctx, "AP_" + tag + "_AIM:" + pos.aimed);
-    send(ctx, "AP_" + tag + "_BOLT:" + (ok ? "1" : "0") + ":" + ticks);
-    send(ctx, "AP_" + tag + "_DONE");
-    return 1;
-}
-
-// ── HUD 隔离验证:生成 1 只僵尸,每 tick 直发一次伤害跳字包 ─────────────────
-// (跳字存活数十 tick)持续 N tick —— 期间任意截图都应能看到跳字,且与骰战/赐福
-// 是否触发**无关**。这样 bug1 的两个症状可被分别定位。
-// 靶子直接持有实体引用(不再按 id 回查):避免目标死亡/移除后 getEntity 返回 null
-// 导致的 HUD_ABORT 误报。靶子设为无 AI + 无敌 + 持久化,保证窗口内必定存活。
-var hudRemaining = 0;
-var hudTag = "H";
-var hudMob = null;
-var hudSent = 0;
-
-function doHud(ctx, ticks, tag) {
-    var p = ctx.source.getPlayerOrException();
-    var type = BuiltInRegistries.ENTITY_TYPE.get(new ResourceLocation("minecraft:zombie"));
-    var mob = type.create(p.level);
-    if (mob == null) { send(ctx, "AP_" + tag + "_ERR:spawn_failed"); return 0; }
-    var pos = aimPositiveZ(p, 4);
-    send(ctx, "AP_" + tag + "_AIM:" + pos.aimed);
-    placeAt(mob, pos.x, pos.y, pos.z);
-    try { mob.setNoAi(true); } catch (e1) { /* 忽略 */ }
-    try { mob.setInvulnerable(true); } catch (e2) { /* 忽略 */ }
-    try { mob.setPersistenceRequired(); } catch (e3) { /* 忽略 */ }
-    p.level.addFreshEntity(mob);
-    hudMob = mob;
-    hudRemaining = ticks;
-    hudTag = tag;
-    hudSent = 0;
-    var dn = loadDamageNumberMessage();
-    send(ctx, "AP_" + tag + "_HUD:" + mob.getId() + ":" + ticks + ":" + (dn != null ? "1" : "0"));
-    send(ctx, "AP_" + tag + "_DONE");
-    return 1;
-}
-
-// ── 雷击窗口观测:统计窗口内**新增**雷击实体数(主判据见 boltSpawnCount 说明)────
-// 用途:bug4「雷击实体确实进入世界」与 bug5「1 秒后雷击真的落下」的服务端确定性证据。
-var boltWatchRemaining = 0;
-var boltWatchTag = "W";
-var boltWatchMax = 0;
-var boltWatchBase = 0;
-
-// 电磁炮延迟量测窗口:窗口内首个新增雷击相对攻击时刻的 tick 偏移(= 真实延迟)
-var rgWatchTag = "";
-var rgWatchBase = 0;
-var rgWatchStart = 0;
-var rgWatchRemaining = 0;
-
-function doWatch(ctx, ticks, tag) {
-    var p = ctx.source.getPlayerOrException();
-    boltWatchTag = tag;
-    boltWatchRemaining = ticks;              // ticks = 最长窗口:见到「新增」雷击即刻定论
-    boltWatchBase = boltSpawnCount;          // 基线:只有比基线更多的雷击才算事件,避免旧计数假通过
-    boltWatchMax = 0;
-    send(ctx, "AP_" + tag + "_WATCH:start:" + ticks + ":base=" + boltWatchBase);
-    send(ctx, "AP_" + tag + "_DONE");
-    return 1;
-}
-
-// 渲染/事件窗口驱动:仅在 boltvis / hud / watch 期间活跃,非活跃时零开销。
-// 整体 try/catch —— tick 回调抛错会被 KubeJS 吞掉,必须显式落标记才能定位。
-var tickErrorReported = false;
-ServerEvents.tick(event => {
-    if (boltVisRemaining <= 0 && hudRemaining <= 0 && boltWatchRemaining <= 0 && rgWatchRemaining <= 0) return;
-    try {
-        var players = event.server.getPlayerList().getPlayers();
-        if (players.isEmpty()) {
-            boltVisRemaining = 0; hudRemaining = 0; boltWatchRemaining = 0; rgWatchRemaining = 0;
-            return;
-        }
-        var p = players.get(0);
-
-        if (boltVisRemaining > 0) {
-            var bpos = boltVisPos != null
-                ? boltVisPos
-                : { x: p.getX() + 0.0, y: p.getY() + 0.0, z: p.getZ() + 6.0 };
-            spawnVisualBoltAt(p, bpos);
-            boltVisRemaining--;
-            if (boltVisRemaining <= 0) {
-                emitTo(p, "AP_" + boltVisTag + "_BOLT_END");
-            }
-        }
-
-        if (boltWatchRemaining > 0) {
-            var seen = boltSpawnCount - boltWatchBase;
-            if (seen > boltWatchMax) boltWatchMax = seen;
-            boltWatchRemaining--;
-            // 见到「比基线更多」的雷击即刻定论(不必等满窗口),保证 bug5 快速判正;
-            // 窗口耗尽仍为 0 才报超时,并把绝对值一并落盘便于定位。
-            if (boltWatchMax > 0) {
-                emitTo(p, "AP_" + boltWatchTag + "_LIGHTNING_MAX:" + boltWatchMax);
-                boltWatchRemaining = 0;
-            } else if (boltWatchRemaining <= 0) {
-                emitTo(p, "AP_" + boltWatchTag + "_LIGHTNING_MAX:0");
-                emitTo(p, "AP_" + boltWatchTag + "_WATCH_TIMEOUT");
-            }
-        }
-
-        if (rgWatchRemaining > 0) {
-            if (boltSpawnCount > rgWatchBase) {
-                emitTo(p, "AP_" + rgWatchTag + "_DELAY_MEASURED:" + (nowTick(p) - rgWatchStart));
-                rgWatchRemaining = 0;
-            } else {
-                rgWatchRemaining--;
-                if (rgWatchRemaining <= 0) {
-                    emitTo(p, "AP_" + rgWatchTag + "_DELAY_TIMEOUT");
-                }
-            }
-        }
-
-        if (hudRemaining > 0) {
-            var target = hudMob;
-            var alive = false;
-            try { alive = target != null && target.isAlive(); } catch (e0) { alive = target != null; }
-            var dn = loadDamageNumberMessage();
-            if (!alive || dn == null) {
-                hudRemaining = 0;
-                emitTo(p, "AP_" + hudTag + "_HUD_ABORT:"
-                    + (!alive ? "no_entity" : "no_packet_class"));
-            } else {
-                dn.send(target, 777, 0xFF5555);
-                hudSent++;
-                hudRemaining--;
-                if (hudRemaining <= 0) {
-                    emitTo(p, "AP_" + hudTag + "_HUD_END:" + hudSent);
-                }
-            }
-        }
-    } catch (err) {
-        if (!tickErrorReported) {
-            tickErrorReported = true;
-            emitTo(players.get(0), "AP_TICK_EX:" + exText(err));
-        }
-        boltVisRemaining = 0; hudRemaining = 0; boltWatchRemaining = 0; rgWatchRemaining = 0;
-    }
-});
 
 // ════════════════════════════════════════════════════════════════════════════
 //  二重验证追加探针(2026-09-13):绿宝石骰子交易 + 定向爆破 AOE 口径
@@ -1344,6 +962,741 @@ function doAnvilClose(ctx, tag) {
     return 1;
 }
 
+// ════════════════════════════════════════════════════════════════════════════
+//  二重验证追加探针(2026-09-14):忍者主动「仅当前周期 +1」/ 骇客末影珍珠免疫 /
+//  骇客主动完全隐身 / 层数递减类效果不闪烁
+//
+//  ⚠️ 探针改动必须**冷启动**(stop → launch)才生效 —— /kubejs reload server-scripts
+//     不会重绑已注册命令的 lambda,只能用来确认脚本语法。
+//
+//  证据口径(全部经聊天栏 AP_<TAG>_…;输出通道见文件头):
+//    · 忍者:EffectCardPeriod.getMaxAllowed/getPlayCount + 附件 komachi_extra_plays
+//      + 玩家级主动冷却 sign_active_cooldown_end。「按主动」= BaseSignItem.performSkillForCurio
+//      —— 与客户端按键经 SignActivatePayload(1.20.1 为 ModNetwork)的服务端处理同一入口。
+//    · 骇客:附件 nancy_lu_ender_pearl_immune_until / nancy_lu_hidden_until
+//      + 原版隐身实例 isVisible() + 原版受伤反馈字段 hurtTime / invulnerableTime / hurtMarked
+//      (hurtMarked 即 markHurt 置位、供击退同步消费的标记)。
+//    · 闪烁:治愈/标记/赋能三个效果实例的 amplifier/duration/ambient + endsWithin(200)
+//      —— 原版 Gui#renderEffects 的闪烁条件恰为「非 ambient 且 endsWithin(200)」。
+//    · 「主动不释放」的可观测结果是「附件不变 + 不进入主动冷却」;主动本身不消耗任何资源。
+// ════════════════════════════════════════════════════════════════════════════
+
+var GameplayConstantsClass = Java.loadClass("com.merlinkitsune.astral_dice.component.GameplayConstants");
+var EffectCardPeriodClass = Java.loadClass("com.merlinkitsune.astral_dice.item.card.EffectCardPeriod");
+var BaseSignItemClass = Java.loadClass("com.merlinkitsune.astral_dice.item.sign.BaseSignItem");
+var NancyLuSignItemClass = Java.loadClass("com.merlinkitsune.astral_dice.item.sign.NancyLuSignItem");
+var HealingManagerClass = Java.loadClass("com.merlinkitsune.astral_dice.item.HealingManager");
+var MarkManagerClass = Java.loadClass("com.merlinkitsune.astral_dice.item.MarkManager");
+var MobEffectsClass = Java.loadClass("net.minecraft.world.effect.MobEffects");
+var ThrownEnderpearlClass = Java.loadClass("net.minecraft.world.entity.projectile.ThrownEnderpearl");
+
+var DESC_INVIS = "effect.minecraft.invisibility";
+var DESC_LIVING = "effect.astral_dice.living_page";
+var DESC_FATE = "effect.astral_dice.fate_guidance";
+var DESC_HEAL = "effect.astral_dice.healing";
+var DESC_MARK = "effect.astral_dice.marked";
+var DESC_HACK = "effect.astral_dice.nancy_lu_hack";
+var KOMACHI_SIGN_ID = "astral_dice:komachi_sign";
+var NANCY_LU_SIGN_ID = "astral_dice:nancy_lu_sign";
+/** 施加的 FALL 伤害点数(固定值,便于断言 delta) */
+var FALL_DAMAGE_AMOUNT = 5.0;
+/** 末影珍珠免疫窗口:读生产常量(20 tick)而非硬编码,防止两版本漂移 */
+var PEARL_IMMUNE_TICKS = NancyLuSignItemClass.ENDER_PEARL_IMMUNE_TICKS;
+/** 完全隐身持续(生产常量 600 tick = 30 秒) */
+var NANCY_HIDDEN_TICKS = 600;
+/** 闪烁窗口:原版 Gui#renderEffects 用 200 tick 判定「即将到期」的图标 alpha 脉冲 */
+var FLICKER_WINDOW_TICKS = 200;
+
+/** 取模组效果对象(1.20.1:效果常量是注册表对象,须经 .get() 取到 MobEffect) */
+function fxLivingPage() { return ModEffects.LIVING_PAGE.get(); }
+function fxFateGuidance() { return ModEffects.FATE_GUIDANCE.get(); }
+function fxEmpower() { return ModEffects.EMPOWER.get(); }
+function fxHealing() { return ModEffects.HEALING.get(); }
+function fxMarked() { return ModEffects.MARKED.get(); }
+function fxHack() { return ModEffects.NANCY_LU_HACK.get(); }
+
+/** Curios 槽位 handler(1.20.1:getCuriosInventory 返回 LazyOptional,须经 resolve()) */
+function curioHandler(player, slotId) {
+    try {
+        var opt = CuriosApi.getCuriosInventory(player);
+        if (opt == null || !opt.isPresent()) return null;
+        var h = opt.resolve().get().getStacksHandler(slotId);
+        if (h == null || !h.isPresent()) return null;
+        return h.get();
+    } catch (e) {
+        return null;
+    }
+}
+
+/** 清空某 Curios 槽位的全部格子(测试脚手架:消除上一条用例留下的筹码/立牌;不碰其它槽位) */
+function clearCurioSlots(player, slotId) {
+    var h = curioHandler(player, slotId);
+    if (h == null) return "no_slot:" + slotId;
+    var stacks = h.getStacks();
+    for (var i = 0; i < stacks.getSlots(); i++) stacks.setStackInSlot(i, ItemStack.EMPTY);
+    return null;
+}
+
+/** 把立牌放进 stand 槽(幂等:putInSlot 先清空再放,顺带走 onUnequip 的清理语义) */
+function equipSign(player, itemId) {
+    var item = resolveItem(itemId);
+    if (item == null) return "unknown_item:" + itemId;
+    return putInSlot(player, "stand", new ItemStack(item), 0);
+}
+
+/** 出牌周期与忍者主动状态归零(每条命令都从同一基线起测) */
+function resetEffectCardCycle(player) {
+    ModAttachments.setKomachiExtraPlays(player, 0);
+    ModAttachments.setEffectCardPlayCount(player, 0);
+    ModAttachments.setEffectCardCooldownEnd(player, 0);
+    ModAttachments.setSignActiveCooldownEnd(player, 0);
+    ModAttachments.setCandyChipPlayBonusActive(player, false);
+    ModAttachments.setSatellitePlayBonusActive(player, false);
+}
+
+/** 摘下两个「临时出牌数来源」效果(附件已由 resetEffectCardCycle 归零) */
+function clearExtraPlayEffects(player) {
+    try { ModEffectRemoval.remove(player, fxLivingPage()); } catch (e1) { /* 忽略 */ }
+    try { ModEffectRemoval.remove(player, fxFateGuidance()); } catch (e2) { /* 忽略 */ }
+}
+
+/** 主动技能冷却剩余 tick(0 = 未在冷却) */
+function signCooldownRemaining(player) {
+    var end = ModAttachments.getSignActiveCooldownEnd(player);
+    var now = nowTick(player);
+    if (end <= 0 || now < 0) return 0;
+    return end - now;
+}
+
+// ── 忍者:主动「仅当前周期 +1」──────────────────────────────────────────────
+/**
+ * 正常释放:归零基线 → 按主动。断言链 = 附件 0→1、出牌上限 +1、主动冷却开始。
+ * 出牌上限读数用「前后差值」而非绝对值(不依赖其它用例是否留下固定来源筹码)。
+ */
+function doKomachiCast(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    clearCurioSlots(p, "chip");
+    clearExtraPlayEffects(p);
+    resetEffectCardCycle(p);
+    var err = equipSign(p, KOMACHI_SIGN_ID);
+    if (err != null) { send(ctx, "AP_" + tag + "_ERR:" + err); return 0; }
+    var maxBefore = EffectCardPeriodClass.getMaxAllowed(p);
+    send(ctx, "AP_" + tag + "_BEFORE:max=" + maxBefore
+        + ":extra=" + ModAttachments.getKomachiExtraPlays(p)
+        + ":cd=" + (signCooldownRemaining(p) > 0 ? 1 : 0)
+        + ":count=" + EffectCardPeriodClass.getPlayCount(p)
+        + ":living=" + (findEffect(p, DESC_LIVING) != null ? 1 : 0)
+        + ":fate=" + (findEffect(p, DESC_FATE) != null ? 1 : 0));
+    BaseSignItemClass.performSkillForCurio(p);
+    var maxAfter = EffectCardPeriodClass.getMaxAllowed(p);
+    var extraAfter = ModAttachments.getKomachiExtraPlays(p);
+    var cd = signCooldownRemaining(p);
+    send(ctx, "AP_" + tag + "_AFTER:max=" + maxAfter + ":extra=" + extraAfter
+        + ":cd=" + (cd > 0 ? 1 : 0));
+    send(ctx, "AP_" + tag + "_DELTA:max=+" + (maxAfter - maxBefore)
+        + ":extra=" + extraAfter + ":cd=" + (cd > 0 ? "started" : "none"));
+    var ok = (extraAfter === 1) && (maxAfter === maxBefore + 1) && (cd > 0);
+    send(ctx, "AP_" + tag + "_RELEASED:" + (ok ? 1 : 0));
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+/**
+ * 本周期已生效时再按主动:不得释放,且**不得进入冷却**。
+ * 构造:附件先置 1(本周期已生效),并把主动冷却结束时刻置为「已过期但非 0」——
+ * 既能越过 performSkill 的冷却分支(走到 handleUse 的 used 守卫),
+ * 又能用「该字段是否被重新写成未来时刻」判定冷却有没有被起算。
+ */
+function doKomachiRepeat(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var err = equipSign(p, KOMACHI_SIGN_ID);
+    if (err != null) { send(ctx, "AP_" + tag + "_ERR:" + err); return 0; }
+    clearExtraPlayEffects(p);
+    var seed = 0;
+    if (ModAttachments.getKomachiExtraPlays(p) <= 0) {
+        ModAttachments.setKomachiExtraPlays(p, 1);
+        seed = 1;
+    }
+    var now = nowTick(p);
+    var past = (now > 1 ? now : 1) - 1;
+    ModAttachments.setSignActiveCooldownEnd(p, past);
+    ModAttachments.setEffectCardCooldownEnd(p, 0);
+    ModAttachments.setEffectCardPlayCount(p, 0);
+    var maxBefore = EffectCardPeriodClass.getMaxAllowed(p);
+    send(ctx, "AP_" + tag + "_BEFORE:seed=" + seed
+        + ":extra=" + ModAttachments.getKomachiExtraPlays(p)
+        + ":max=" + maxBefore + ":cd=" + past);
+    BaseSignItemClass.performSkillForCurio(p);
+    var extraAfter = ModAttachments.getKomachiExtraPlays(p);
+    var cdAfter = ModAttachments.getSignActiveCooldownEnd(p);
+    var maxAfter = EffectCardPeriodClass.getMaxAllowed(p);
+    send(ctx, "AP_" + tag + "_AFTER:extra=" + extraAfter + ":max=" + maxAfter
+        + ":cd_same=" + (cdAfter === past ? 1 : 0)
+        + ":cd_future=" + (cdAfter > nowTick(p) ? 1 : 0));
+    var rejected = (extraAfter === 1) && (cdAfter === past) && (maxAfter === maxBefore);
+    send(ctx, "AP_" + tag + "_REJECTED:" + (rejected ? 1 : 0));
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+// 可选脚手架:注册一个「常态关闭」的临时出牌数来源,用来把出牌上限真正推到封顶 9。
+// 只有在 Rhino 能实现该接口(JavaAdapter)且预检通过时才注册 —— 预检不通过就完全不注册,
+// 绝不把可能抛错的实现放进全局来源表(那会污染后续所有出牌判定)。
+var probeExtraSourceArmed = false;
+var probeExtraSourceState = "not_tried";
+
+/**
+ * 尝试用 JS 对象实现 EffectCardPeriod$ExtraPlaySource(两种 Rhino 写法都试),
+ * 返回通过预检的实现;两种都不可用则返回 null(调用方不注册任何东西)。
+ */
+function makeProbeExtraSource(p) {
+    var body = { isActive: function (pl) { return probeExtraSourceArmed === true; } };
+    var Iface = Java.loadClass("com.merlinkitsune.astral_dice.item.card.EffectCardPeriod$ExtraPlaySource");
+    function checked(impl) {
+        if (impl == null) return null;
+        if (impl.isActive(p)) { probeExtraSourceState = "precheck_isActive_true"; return null; }
+        if (impl.amount() !== 1) { probeExtraSourceState = "precheck_amount_not_1"; return null; }
+        return impl;
+    }
+    try {
+        var one = checked(new Iface(body));
+        if (one != null) { probeExtraSourceState = "form:kubejs"; return one; }
+        return null;
+    } catch (e1) { /* 落到 Rhino 标准 JavaAdapter 写法 */ }
+    try {
+        if (typeof JavaAdapter === "function") {
+            var two = checked(new JavaAdapter(Iface, body));
+            if (two != null) { probeExtraSourceState = "form:javaadapter"; return two; }
+        }
+    } catch (e2) { probeExtraSourceState = "unavailable:" + exText(e2); }
+    return null;
+}
+
+function tryInstallProbeSources(p) {
+    var installed = 0;
+    var form = "not_tried";
+    for (var i = 0; i < 2; i++) {
+        try {
+            var impl = makeProbeExtraSource(p);
+            if (impl == null) {
+                if (probeExtraSourceState === "not_tried") probeExtraSourceState = "unavailable:no_adapter";
+                return;
+            }
+            form = probeExtraSourceState;
+            EffectCardPeriodClass.registerTemporarySource(impl);
+            installed++;
+        } catch (e) {
+            probeExtraSourceState = "unavailable:" + exText(e);
+            return;
+        }
+    }
+    probeExtraSourceState = "ok:" + installed + ":" + form;
+}
+
+/**
+ * 出牌上限已达封顶(9)时按主动:必须不释放且不进入冷却。
+ * 构造:挂满当前全部固定来源(大背包 + 忍术飞镖)与临时来源(活体书页 / 命运的指引 /
+ * 可口糖果 / 探天卫星)= extra 6 → 上限 7;再尝试注册两个「常态关闭」的探针临时来源,
+ * 置位后 extra = 8 → getMaxAllowed() = min(9, 1+8) = 9,封顶分支才可达。
+ * 若 Rhino 无法实现该接口(预检不通过,不注册),封顶分支不可达 → 退化为
+ * 「上限未达封顶时主动必须正常释放、且不得超过常量封顶 9」的正向对照。
+ * 两条分支各自的正确性由 _CAP_OK 判定,_BRANCH/_VERDICT 标明实际跑到哪条。
+ */
+function doKomachiCap(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var err = equipSign(p, KOMACHI_SIGN_ID);
+    if (err != null) { send(ctx, "AP_" + tag + "_ERR:" + err); return 0; }
+    clearExtraPlayEffects(p);
+    resetEffectCardCycle(p);
+    var slotErr = ensureChipSlot(p, 2);
+    if (slotErr != null) { send(ctx, "AP_" + tag + "_ERR:" + slotErr); return 0; }
+    clearCurioSlots(p, "chip");
+    var bp = resolveItem("astral_dice:big_backpack_chip");
+    var ns = resolveItem("astral_dice:ninja_star_chip");
+    if (bp == null || ns == null) { send(ctx, "AP_" + tag + "_ERR:unknown_chip"); return 0; }
+    putInSlot(p, "chip", new ItemStack(bp), 0);
+    putInSlot(p, "chip", new ItemStack(ns), 1);
+    try {
+        p.addEffect(new MobEffectInstanceClass(fxLivingPage(), 6000, 0, false, false, true));
+        p.addEffect(new MobEffectInstanceClass(fxFateGuidance(), 6000, 0, false, false, true));
+    } catch (e1) { send(ctx, "AP_" + tag + "_ERR:effect:" + exText(e1)); return 0; }
+    ModAttachments.setCandyChipPlayBonusActive(p, true);
+    ModAttachments.setSatellitePlayBonusActive(p, true);
+    var fill = EffectCardPeriodClass.getMaxAllowed(p);
+    send(ctx, "AP_" + tag + "_CONST:" + GameplayConstantsClass.MAX_EFFECT_CARD_PLAYS
+        + ":" + GameplayConstantsClass.KOMACHI_EXTRA_PLAYS_CAP);
+    send(ctx, "AP_" + tag + "_FILL:" + fill);
+    if (probeExtraSourceState === "not_tried") tryInstallProbeSources(p);
+    send(ctx, "AP_" + tag + "_SRC:" + probeExtraSourceState);
+    var armedMax = fill;
+    if (probeExtraSourceState.indexOf("ok:2") === 0) {
+        probeExtraSourceArmed = true;
+        armedMax = EffectCardPeriodClass.getMaxAllowed(p);
+        probeExtraSourceArmed = false;
+    }
+    send(ctx, "AP_" + tag + "_ARMED_MAX:" + armedMax);
+    var capOk = 0;
+    var branch = "uncapped_release";
+    if (armedMax >= GameplayConstantsClass.MAX_EFFECT_CARD_PLAYS) {
+        // 封顶分支:不释放(附件保持 0)且不进入冷却
+        branch = "capped_reject";
+        probeExtraSourceArmed = true;
+        ModAttachments.setKomachiExtraPlays(p, 0);
+        ModAttachments.setSignActiveCooldownEnd(p, 0);
+        BaseSignItemClass.performSkillForCurio(p);
+        var ex = ModAttachments.getKomachiExtraPlays(p);
+        var cd = signCooldownRemaining(p);
+        var mx = EffectCardPeriodClass.getMaxAllowed(p);
+        probeExtraSourceArmed = false;
+        capOk = (ex === 0 && cd === 0 && mx === armedMax) ? 1 : 0;
+        send(ctx, "AP_" + tag + "_BRANCH:capped_reject");
+        send(ctx, "AP_" + tag + "_AFTER:extra=" + ex + ":cd=" + (cd > 0 ? 1 : 0) + ":max=" + mx);
+    } else {
+        // 未封顶的正向对照:必须释放(附件 0→1、上限 +1)且不得超过常量封顶
+        ModAttachments.setKomachiExtraPlays(p, 0);
+        ModAttachments.setSignActiveCooldownEnd(p, 0);
+        BaseSignItemClass.performSkillForCurio(p);
+        var ex2 = ModAttachments.getKomachiExtraPlays(p);
+        var cd2 = signCooldownRemaining(p);
+        var mx2 = EffectCardPeriodClass.getMaxAllowed(p);
+        capOk = (ex2 === 1 && cd2 > 0 && mx2 === fill + 1
+            && mx2 <= GameplayConstantsClass.MAX_EFFECT_CARD_PLAYS) ? 1 : 0;
+        send(ctx, "AP_" + tag + "_BRANCH:uncapped_release");
+        send(ctx, "AP_" + tag + "_AFTER:extra=" + ex2 + ":cd=" + (cd2 > 0 ? 1 : 0) + ":max=" + mx2);
+    }
+    send(ctx, "AP_" + tag + "_CAP_OK:" + capOk);
+    // 单行「联合判词」把三个读数绑在一起,便于用例用一条正则锁死两种合法形态
+    send(ctx, "AP_" + tag + "_VERDICT:" + probeExtraSourceState + ":" + armedMax + ":"
+        + branch + ":" + capOk);
+    // 收尾:清场(不污染后续用例)
+    clearExtraPlayEffects(p);
+    clearCurioSlots(p, "chip");
+    resetEffectCardCycle(p);
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+/**
+ * 武装「周期归零」现场:附件 = 1、出牌数 = 当前上限、冷却结束时刻 = 已到期(非 0)。
+ * 真正驱动归零的是 PlayerTickEvents.onPlayerTick(每 20 tick)→ EffectCardPeriod.tick,
+ * 故本命令只武装、由后续 komachiread 读结果(不直接调用 tick,保证走真实驱动链)。
+ */
+function doKomachiCycle(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    resetEffectCardCycle(p);
+    clearExtraPlayEffects(p);
+    var err = equipSign(p, KOMACHI_SIGN_ID);
+    if (err != null) { send(ctx, "AP_" + tag + "_ERR:" + err); return 0; }
+    ModAttachments.setKomachiExtraPlays(p, 1);
+    var max = EffectCardPeriodClass.getMaxAllowed(p);
+    ModAttachments.setEffectCardPlayCount(p, max);
+    var now = nowTick(p);
+    ModAttachments.setEffectCardCooldownEnd(p, now > 1 ? now : 1);
+    send(ctx, "AP_" + tag + "_ARMED:extra=" + ModAttachments.getKomachiExtraPlays(p)
+        + ":count=" + EffectCardPeriodClass.getPlayCount(p)
+        + ":max=" + max
+        + ":cd_end=" + ModAttachments.getEffectCardCooldownEnd(p)
+        + ":now=" + now);
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+/** 读「周期归零」结果:附件 komachi_extra_plays 与出牌数/冷却结束时刻都必须被清除 */
+function doKomachiRead(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var extra = ModAttachments.getKomachiExtraPlays(p);
+    var count = EffectCardPeriodClass.getPlayCount(p);
+    var cdEnd = ModAttachments.getEffectCardCooldownEnd(p);
+    send(ctx, "AP_" + tag + "_READ:extra=" + extra + ":count=" + count
+        + ":cd=" + (cdEnd > 0 ? 1 : 0) + ":max=" + EffectCardPeriodClass.getMaxAllowed(p));
+    var ok = (extra === 0 && count === 0 && cdEnd === 0) ? 1 : 0;
+    send(ctx, "AP_" + tag + "_CLEARED:" + ok);
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+// ── 骇客:完全隐身 / 末影珍珠免疫 ───────────────────────────────────────────
+/** 隐身相关状态一行读数(附件 + 原版隐身实例 + 主动加成) */
+function nancyStateText(p) {
+    var now = nowTick(p);
+    var hidden = ModAttachments.getNancyLuHiddenUntil(p);
+    var remain = hidden > 0 ? (hidden - now) : 0;
+    var inv = findEffect(p, DESC_INVIS);
+    return "hidden_until=" + remain
+        + ":effect=" + (inv != null ? 1 : 0)
+        + ":vis=" + effectVis(p, DESC_INVIS)
+        + ":dur=" + (inv != null ? inv.getDuration() : -1)
+        + ":hack=" + (findEffect(p, DESC_HACK) != null ? 1 : 0)
+        + ":bonus=" + ModAttachments.getNancyLuActiveBonus(p)
+        + ":win=" + ((remain > 0 && remain <= NANCY_HIDDEN_TICKS) ? 1 : 0);
+}
+
+/** 按主动进入完全隐身 + 读数(hasEffect / 实例可见性 / 附件窗口 / 客户端抑制判定) */
+function doNancyCloak(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    resetEffectCardCycle(p);
+    ModAttachments.setNancyLuHiddenUntil(p, 0);
+    ModAttachments.setNancyLuActiveBonus(p, 0);
+    ModAttachments.setNancyLuActiveBonusUntil(p, 0);
+    ModAttachments.setNancyLuEnderPearlImmuneUntil(p, 0);
+    try { p.removeEffect(MobEffectsClass.INVISIBILITY); } catch (e0) { /* 忽略 */ }
+    try { ModEffectRemoval.remove(p, fxHack()); } catch (e1) { /* 忽略 */ }
+    var err = equipSign(p, NANCY_LU_SIGN_ID);
+    if (err != null) { send(ctx, "AP_" + tag + "_ERR:" + err); return 0; }
+    send(ctx, "AP_" + tag + "_EQUIP:" + (NancyLuSignItemClass.isEquipped(p) ? 1 : 0));
+    BaseSignItemClass.performSkillForCurio(p);
+    send(ctx, "AP_" + tag + "_STATE:" + nancyStateText(p));
+    send(ctx, "AP_" + tag + "_HIDDEN:" + (NancyLuSignItemClass.isHidden(p) ? 1 : 0)
+        + ":" + (NancyLuSignItemClass.isHiddenClient(p) ? 1 : 0));
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+/** 武装「隐身到期」现场:附件置为已到期(非 0)+ 施加隐身实例,归零由 onCurioTick 每 tick 完成 */
+function doNancyExpire(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var err = equipSign(p, NANCY_LU_SIGN_ID);
+    if (err != null) { send(ctx, "AP_" + tag + "_ERR:" + err); return 0; }
+    try { p.addEffect(new MobEffectInstanceClass(MobEffectsClass.INVISIBILITY, 6000, 0, false, false, true)); }
+    catch (e1) { send(ctx, "AP_" + tag + "_ERR:effect:" + exText(e1)); return 0; }
+    var now = nowTick(p);
+    ModAttachments.setNancyLuHiddenUntil(p, (now > 1 ? now : 1) - 1);
+    send(ctx, "AP_" + tag + "_ARMED:" + nancyStateText(p));
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+/** 读隐身状态 + 判定「附件与效果是否都被清掉」 */
+function doNancyState(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    send(ctx, "AP_" + tag + "_STATE:" + nancyStateText(p));
+    var cleared = (ModAttachments.getNancyLuHiddenUntil(p) === 0 && findEffect(p, DESC_INVIS) == null) ? 1 : 0;
+    send(ctx, "AP_" + tag + "_CLEARED:" + cleared);
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+/** 受伤反馈字段快照(hp/hurtTime/invulnerableTime/hurtMarked) */
+function nancyHurtSnapshot(p) {
+    return "hp=" + p.getHealth() + ":hurt=" + p.hurtTime
+        + ":invul=" + p.invulnerableTime + ":marked=" + p.hurtMarked;
+}
+
+/** 归零受伤反馈字段(脚手架,避免上一条用例留下的无敌帧/受伤标记污染读数) */
+function resetHurtFeedback(p) {
+    // 只写**公有**字段:hurtTime/hurtDuration 在 LivingEntity,invulnerableTime/hurtMarked 在 Entity;
+    // lastHurt 是 protected,Rhino 写不到 —— 也不必写:无敌帧分支要求 invulnerableTime > 10,
+    // 归零 invulnerableTime 后 lastHurt 不参与判定。
+    var bad = [];
+    try { p.hurtTime = 0; } catch (e1) { bad.push("hurtTime"); }
+    try { p.invulnerableTime = 0; } catch (e2) { bad.push("invulnerableTime"); }
+    try { p.hurtMarked = false; } catch (e3) { bad.push("hurtMarked"); }
+    return bad.length === 0 ? "ok" : ("partial:" + bad.join(","));
+}
+
+/**
+ * 对玩家施加一次 FALL 伤害,返回**真正使生命值下降**的 API 名。
+ * hurt 声明于 LivingEntity,Rhino 直接成员查找可能不可见(见文件头真机实证),
+ * 故链式回退;判据是「血量真的掉了」而不是「没抛异常」。
+ */
+function applyFallDamage(p, amount) {
+    var src = p.level.damageSources().fall();
+    var before = p.getHealth();
+    var tried = [];
+    function dropped() { return p.getHealth() < before; }
+    try { p.hurt(src, amount); if (dropped()) return "hurt"; }
+    catch (e1) { tried.push("hurt:" + exText(e1)); }
+    try { p.causeFallDamage(amount, 1.0, src); if (dropped()) return "causeFallDamage"; }
+    catch (e2) { tried.push("causeFallDamage:" + exText(e2)); }
+    try { p.damage(src, amount); if (dropped()) return "damage"; }
+    catch (e3) { tried.push("damage:" + exText(e3)); }
+    return "none[" + tried.join(" | ") + "]";
+}
+
+/**
+ * 免疫窗口内施加 FALL 伤害 → 生命值不变 / hurtTime=0 / 未进无敌帧 / 未置 hurtMarked;
+ * 紧接同一构造清掉免疫窗口做对照 → 必须真的受伤(证明伤害 API 可用、结论非「空跑」)。
+ * 创造模式(abilities.invulnerable)下 Player#hurt 直接返回 false,故先临时切生存,收尾还原。
+ */
+function doNancyFall(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var err = equipSign(p, NANCY_LU_SIGN_ID);
+    if (err != null) { send(ctx, "AP_" + tag + "_ERR:" + err); return 0; }
+    var mode = "already_survival";
+    if (p.getAbilities().instabuild) {
+        try { p.setGameMode(GameTypeClass.SURVIVAL); mode = "forced_survival"; }
+        catch (e1) { send(ctx, "AP_" + tag + "_ERR:gamemode:" + exText(e1)); return 0; }
+    }
+    p.setHealth(p.getMaxHealth());
+    send(ctx, "AP_" + tag + "_FIELDS:" + resetHurtFeedback(p));
+    // ── 相位 A:对照(无免疫窗口)必须真的受伤 ──────────────────────────────
+    ModAttachments.setNancyLuEnderPearlImmuneUntil(p, 0);
+    p.setHealth(p.getMaxHealth());
+    resetHurtFeedback(p);
+    var b0 = nancyHurtSnapshot(p);
+    var api = applyFallDamage(p, FALL_DAMAGE_AMOUNT);
+    var a0 = nancyHurtSnapshot(p);
+    send(ctx, "AP_" + tag + "_CTRL:" + b0 + "->" + a0);
+    var ctrlOk = (p.getHealth() < p.getMaxHealth() && p.hurtTime > 0
+        && p.invulnerableTime > 0 && p.hurtMarked === true) ? 1 : 0;
+    send(ctx, "AP_" + tag + "_CTRL_OK:" + ctrlOk);
+    send(ctx, "AP_" + tag + "_API:" + api);
+    // ── 相位 B:免疫窗口内(修复点)必须毫无变化 ────────────────────────────
+    p.setHealth(p.getMaxHealth());
+    resetHurtFeedback(p);
+    var now = nowTick(p);
+    ModAttachments.setNancyLuEnderPearlImmuneUntil(p, (now > 0 ? now : 1) + PEARL_IMMUNE_TICKS * 10);
+    var b1 = nancyHurtSnapshot(p);
+    var apiImm = applyFallDamage(p, FALL_DAMAGE_AMOUNT);
+    var a1 = nancyHurtSnapshot(p);
+    send(ctx, "AP_" + tag + "_IMM:" + b1 + "->" + a1);
+    var immOk = (b1 === a1) && (p.getHealth() >= p.getMaxHealth()
+        && p.hurtTime === 0 && p.invulnerableTime === 0 && p.hurtMarked === false) ? 1 : 0;
+    send(ctx, "AP_" + tag + "_IMM_OK:" + immOk);
+    send(ctx, "AP_" + tag + "_IMM_API:" + apiImm);
+    // 收尾
+    p.setHealth(p.getMaxHealth());
+    ModAttachments.setNancyLuEnderPearlImmuneUntil(p, 0);
+    send(ctx, "AP_" + tag + "_MODE:" + mode);
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+// 真实末影珍珠:落地时生产代码先由 ProjectileImpactEvent 记下免疫窗口,
+// 随后原版在同一个 onHit 里 teleport + hurt(damageSources().fall(), 5) —— 正是被修复的链路。
+// 珍珠本体不指望探针调用 hurt,故即使 Rhino 看不到 hurt,本条仍能取证。
+var pearlWatchTag = "";
+var pearlWatchPlayer = null;
+var pearlWatchPearl = null;
+var pearlWatchRemaining = 0;
+var pearlWatchExpectImmune = true;
+var pearlWatchZ0 = 0.0;
+
+/** 确定几何:清出正前方口袋 + 脚下石台 + 正前方 3 格处的接珠柱(珍珠必须有确定落点) */
+function nancyPearlArena(p) {
+    var base = p.blockPosition();
+    for (var dx = -1; dx <= 1; dx++) {
+        for (var dy = 0; dy <= 2; dy++) {
+            for (var dz = 0; dz <= 3; dz++) {
+                try { p.level.setBlockAndUpdate(base.offset(dx, dy, dz), BlocksClass.AIR.defaultBlockState()); }
+                catch (e1) { /* 忽略 */ }
+            }
+        }
+    }
+    for (var dx2 = -1; dx2 <= 1; dx2++) {
+        for (var dz2 = 0; dz2 <= 3; dz2++) {
+            try { p.level.setBlockAndUpdate(base.offset(dx2, -1, dz2), BlocksClass.STONE.defaultBlockState()); }
+            catch (e2) { /* 忽略 */ }
+        }
+    }
+    try { p.level.setBlockAndUpdate(base.offset(0, 1, 3), BlocksClass.STONE.defaultBlockState()); }
+    catch (e3) { /* 忽略 */ }
+    try { p.level.setBlockAndUpdate(base.offset(0, 2, 3), BlocksClass.STONE.defaultBlockState()); }
+    catch (e4) { /* 忽略 */ }
+    return base;
+}
+
+/** 在玩家正前方 1 格、眼睛高度生成一枚真珍珠,朝 +Z(与 aimPositiveZ 的朝向一致)飞出 */
+function nancySpawnPearl(p) {
+    var pearl = new ThrownEnderpearlClass(p.level, p);
+    pearl.setPos(p.getX(), p.getY() + 1.5, p.getZ() + 1.0);
+    pearl.setDeltaMovement(0.0, 0.0, 0.8);
+    p.level.addFreshEntity(pearl);
+    return pearl;
+}
+
+/**
+ * 真实珍珠相位:withSign=true → 装立牌(免疫);false → 卸下立牌(对照,必须受伤)。
+ * 珍珠落地后由 tick 观察窗读数(含「在窗口内再施加一次 FALL 伤害」)。
+ */
+function doNancyPearl(ctx, tag, withSign) {
+    var p = ctx.source.getPlayerOrException();
+    var mode = "already_survival";
+    if (p.getAbilities().instabuild) {
+        try { p.setGameMode(GameTypeClass.SURVIVAL); mode = "forced_survival"; }
+        catch (e1) { send(ctx, "AP_" + tag + "_ERR:gamemode:" + exText(e1)); return 0; }
+    }
+    if (withSign) {
+        var err = equipSign(p, NANCY_LU_SIGN_ID);
+        if (err != null) { send(ctx, "AP_" + tag + "_ERR:" + err); return 0; }
+    } else {
+        clearCurioSlots(p, "stand");
+    }
+    ModAttachments.setNancyLuEnderPearlImmuneUntil(p, 0);
+    p.setHealth(p.getMaxHealth());
+    var fields = resetHurtFeedback(p);
+    send(ctx, "AP_" + tag + "_SETUP:equip=" + (NancyLuSignItemClass.isEquipped(p) ? 1 : 0)
+        + ":mode=" + mode + ":hp=" + p.getHealth() + ":fields=" + fields);
+    aimPositiveZ(p, 3);
+    nancyPearlArena(p);
+    var pearl = nancySpawnPearl(p);
+    pearlWatchTag = tag;
+    pearlWatchPlayer = p;
+    pearlWatchPearl = pearl;
+    pearlWatchExpectImmune = withSign;
+    pearlWatchRemaining = 160;
+    pearlWatchZ0 = p.getZ();
+    send(ctx, "AP_" + tag + "_SPAWN:" + pearl.getId());
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+/** 收尾:回满血 / 清窗口与隐身附件 / 立牌离场 */
+function doNancyPearlClose(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    pearlWatchRemaining = 0;
+    p.setHealth(p.getMaxHealth());
+    ModAttachments.setNancyLuEnderPearlImmuneUntil(p, 0);
+    ModAttachments.setNancyLuHiddenUntil(p, 0);
+    ModAttachments.setNancyLuActiveBonus(p, 0);
+    ModAttachments.setNancyLuActiveBonusUntil(p, 0);
+    try { p.removeEffect(MobEffectsClass.INVISIBILITY); } catch (e1) { /* 忽略 */ }
+    try { ModEffectRemoval.remove(p, fxHack()); } catch (e2) { /* 忽略 */ }
+    resetHurtFeedback(p);
+    clearCurioSlots(p, "stand");
+    clearCurioSlots(p, "chip");
+    resetEffectCardCycle(p);
+    var restore = "n/a";
+    try {
+        p.setGameMode(GameTypeClass.CREATIVE);
+        restore = "creative";
+    } catch (e3) { restore = "failed:" + exText(e3); }
+    send(ctx, "AP_" + tag + "_RESTORE:" + restore);
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+// ── 层数递减类效果:构造「闪烁窗口」状态(判定为人工,见 TESTING-SPEC)────────
+/** 效果实例一行读数(amp/dur/amb/vis);absent = 当前没有该效果 */
+function fxState(p, descId) {
+    var inst = findEffect(p, descId);
+    if (inst == null) return "absent";
+    var amb = "?";
+    var vis = "?";
+    try { amb = inst.isAmbient() ? 1 : 0; } catch (e1) { amb = "?"; }
+    try { vis = inst.isVisible() ? 1 : 0; } catch (e2) { vis = "?"; }
+    return "amp=" + inst.getAmplifier() + ":dur=" + inst.getDuration() + ":amb=" + amb + ":vis=" + vis;
+}
+
+/** 是否落在原版闪烁条件里(非 ambient 且 endsWithin(200))—— 与 Gui#renderEffects 同表达式 */
+function fxInWindow(p, descId) {
+    var inst = findEffect(p, descId);
+    if (inst == null) return false;
+    try { return (!inst.isAmbient()) && inst.endsWithin(FLICKER_WINDOW_TICKS); }
+    catch (e) { return false; }
+}
+
+/**
+ * 让治愈 / 标记 / 赋能三个效果同时存在,且实例时长都 ≤ 200 tick(= 原版即将到期闪烁窗口)。
+ * 治愈:先武装治愈计时器再 add(updateEffect 才会按计时器剩余时长施加图标);
+ * 标记:MarkManager.apply 直接接受时长;
+ * 赋能:addStacks 后把实例时长改写成 200(与其余两类口径一致)。
+ */
+function doDecayFlash(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    try { EmpowerManager.removeAll(p); } catch (e0) { /* 忽略 */ }
+    try { ModEffectRemoval.remove(p, fxEmpower()); } catch (e1) { /* 忽略 */ }
+    try { ModEffectRemoval.remove(p, fxHealing()); } catch (e2) { /* 忽略 */ }
+    try { ModEffectRemoval.remove(p, fxMarked()); } catch (e3) { /* 忽略 */ }
+    try { p.removeEffect(MobEffectsClass.GLOWING); } catch (e4) { /* 忽略 */ }
+    try { HealingManagerClass.clear(p); } catch (e5) { /* 忽略 */ }
+    var now = nowTick(p);
+    var heal = "err";
+    var mark = "err";
+    var emp = "err";
+    try {
+        ModAttachments.setHealingTimerEnd(p, now + FLICKER_WINDOW_TICKS);
+        HealingManagerClass.add(p, 3);
+        heal = "ok";
+    } catch (e6) { heal = exText(e6); }
+    try { MarkManagerClass.apply(p, FLICKER_WINDOW_TICKS); MarkManagerClass.apply(p, FLICKER_WINDOW_TICKS); mark = "ok"; }
+    catch (e7) { mark = exText(e7); }
+    try {
+        EmpowerManager.addStacks(p, 3);
+        var inst = findEffect(p, DESC_EMPOWER);
+        if (inst != null) {
+            var amp = inst.getAmplifier();
+            ModEffectRemoval.remove(p, fxEmpower());
+            p.addEffect(new MobEffectInstanceClass(fxEmpower(), FLICKER_WINDOW_TICKS, amp, false, false, true));
+        }
+        emp = "ok";
+    } catch (e8) { emp = exText(e8); }
+    send(ctx, "AP_" + tag + "_SETUP:heal=" + heal + ":mark=" + mark + ":emp=" + emp);
+    send(ctx, "AP_" + tag + "_STATE:heal=" + fxState(p, DESC_HEAL)
+        + "|mark=" + fxState(p, DESC_MARK) + "|emp=" + fxState(p, DESC_EMPOWER));
+    var win = (fxInWindow(p, DESC_HEAL) && fxInWindow(p, DESC_MARK) && fxInWindow(p, DESC_EMPOWER)) ? 1 : 0;
+    send(ctx, "AP_" + tag + "_WINDOW:" + win + ":" + FLICKER_WINDOW_TICKS);
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+/** 闪烁取证的清场:清掉三类效果与治愈点数(避免污染后续用例) */
+function doDecayClear(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    try { EmpowerManager.removeAll(p); } catch (e0) { /* 忽略 */ }
+    try { HealingManagerClass.clear(p); } catch (e1) { /* 忽略 */ }
+    try { ModAttachments.setHealingTimerEnd(p, 0); } catch (e2) { /* 忽略 */ }
+    try { ModEffectRemoval.remove(p, fxHealing()); } catch (e3) { /* 忽略 */ }
+    try { ModEffectRemoval.remove(p, fxMarked()); } catch (e4) { /* 忽略 */ }
+    try { ModEffectRemoval.remove(p, fxEmpower()); } catch (e5) { /* 忽略 */ }
+    try { p.removeEffect(MobEffectsClass.GLOWING); } catch (e6) { /* 忽略 */ }
+    send(ctx, "AP_" + tag + "_STATE:heal=" + fxState(p, DESC_HEAL)
+        + "|mark=" + fxState(p, DESC_MARK) + "|emp=" + fxState(p, DESC_EMPOWER));
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+// 珍珠落地观察窗(独立于 boltvis/hud/watch 的 tick 回调,非活跃时零开销)。
+// 只在珍珠消失(命中)后读数一次,并在同一免疫窗口内再施加一次 FALL 伤害。
+ServerEvents.tick(event => {
+    if (pearlWatchRemaining <= 0) return;
+    pearlWatchRemaining--;
+    try {
+        var p = pearlWatchPlayer;
+        if (p == null) { pearlWatchRemaining = 0; return; }
+        var pearl = pearlWatchPearl;
+        var gone = false;
+        try { gone = (pearl == null) || pearl.isRemoved() || !pearl.isAlive(); }
+        catch (e0) { gone = false; }
+        if (!gone) {
+            if (pearlWatchRemaining <= 0) emitTo(p, "AP_" + pearlWatchTag + "_TIMEOUT");
+            return;
+        }
+        var now = nowTick(p);
+        var until = ModAttachments.getNancyLuEnderPearlImmuneUntil(p);
+        var remain = until > 0 ? (until - now) : 0;
+        var drop = Math.round((p.getMaxHealth() - p.getHealth()) * 100) / 100;
+        // 传送位移:证明走的是原版 onHit(命中方块 → teleportTo 后才会 hurt),
+        // 而不是「珍珠撞到玩家本体」那种不产生摔落伤害的退化路径。
+        var tel = ((p.getZ() - pearlWatchZ0) > 1.0) ? 1 : 0;
+        var api = "n/a";
+        if (pearlWatchExpectImmune) {
+            // 免疫相位:窗口内再施加一次 FALL 伤害,必须依旧毫无反馈
+            api = applyFallDamage(p, FALL_DAMAGE_AMOUNT);
+        }
+        var ok;
+        if (pearlWatchExpectImmune) {
+            ok = (remain > 0) && (tel === 1) && (p.getHealth() >= p.getMaxHealth())
+                && (p.hurtTime === 0) && (p.invulnerableTime === 0) && (p.hurtMarked === false);
+        } else {
+            // hurtMarked 由 ServerEntity#sendChanges 在同一 tick 内消费并复位,
+            // 观察窗读到它时已不可靠 → 对照组只用「确实掉血 + hurtTime > 0」判定,
+            // marked 值仍打印出来作为证据。
+            ok = (remain === 0) && (tel === 1) && (p.getHealth() < p.getMaxHealth())
+                && (p.hurtTime > 0);
+        }
+        emitTo(p, "AP_" + pearlWatchTag + "_PEARL:window=" + remain + ":tel=" + tel
+            + ":drop=" + drop + ":hurt=" + p.hurtTime + ":invul=" + p.invulnerableTime
+            + ":marked=" + p.hurtMarked + ":api=" + api);
+        emitTo(p, "AP_" + pearlWatchTag + "_OK:" + (ok ? 1 : 0));
+        emitTo(p, "AP_" + pearlWatchTag + "_DONE");
+        pearlWatchRemaining = 0;
+    } catch (err) {
+        emitTo(pearlWatchPlayer, "AP_" + pearlWatchTag + "_EX:" + exText(err));
+        pearlWatchRemaining = 0;
+    }
+});
+
 ServerEvents.commandRegistry(event => {
     var Commands = event.commands;
     event.register(
@@ -1353,19 +1706,6 @@ ServerEvents.commandRegistry(event => {
                     .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
                         return doDiag(ctx, StringArg.getString(ctx, "tag"));
                     }))))
-            .then(Commands.literal("status")
-                .then(Commands.argument("tag", StringArg.word())
-                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
-                        return doStatus(ctx, StringArg.getString(ctx, "tag"));
-                    }))))
-            .then(Commands.literal("setup")
-                .then(Commands.argument("dice", StringArg.string())
-                    .then(Commands.argument("weapon", StringArg.string())
-                        .then(Commands.argument("tag", StringArg.word())
-                            .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
-                                return doSetup(ctx, StringArg.getString(ctx, "dice"),
-                                    StringArg.getString(ctx, "weapon"), StringArg.getString(ctx, "tag"));
-                            }))))))
             .then(Commands.literal("equipslot")
                 .then(Commands.argument("slot", StringArg.word())
                     .then(Commands.argument("item", StringArg.string())
@@ -1381,76 +1721,11 @@ ServerEvents.commandRegistry(event => {
                             return doAttack(ctx, StringArg.getString(ctx, "type"),
                                 StringArg.getString(ctx, "tag"));
                         })))))
-            .then(Commands.literal("railtest")
-                .then(Commands.argument("tag", StringArg.word())
-                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
-                        return doRailTest(ctx, StringArg.getString(ctx, "tag"));
-                    }))))
-            .then(Commands.literal("cdguard")
-                .then(Commands.argument("tag", StringArg.word())
-                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
-                        return doCdGuard(ctx, StringArg.getString(ctx, "tag"));
-                    }))))
-            .then(Commands.literal("charge")
-                .then(Commands.argument("n", IntegerArg.integer(1, 64))
-                    .then(Commands.argument("tag", StringArg.word())
-                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
-                            return doCharge(ctx, IntegerArg.getInteger(ctx, "n"),
-                                StringArg.getString(ctx, "tag"));
-                        })))))
-            .then(Commands.literal("empower")
-                .then(Commands.argument("n", IntegerArg.integer(1, 20))
-                    .then(Commands.argument("tag", StringArg.word())
-                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
-                            return doEmpower(ctx, IntegerArg.getInteger(ctx, "n"),
-                                StringArg.getString(ctx, "tag"));
-                        })))))
-            .then(Commands.literal("empowerclear")
-                .then(Commands.argument("tag", StringArg.word())
-                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
-                        return doEmpowerClear(ctx, StringArg.getString(ctx, "tag"));
-                    }))))
-            .then(Commands.literal("blessingclear")
-                .then(Commands.argument("tag", StringArg.word())
-                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
-                        return doBlessingClear(ctx, StringArg.getString(ctx, "tag"));
-                    }))))
             .then(Commands.literal("railguncd")
                 .then(Commands.argument("tag", StringArg.word())
                     .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
                         return doRailgunCleared(ctx, StringArg.getString(ctx, "tag"));
                     }))))
-            .then(Commands.literal("decayinterval")
-                .then(Commands.argument("tag", StringArg.word())
-                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
-                        return doDecayInterval(ctx, StringArg.getString(ctx, "tag"));
-                    }))))
-            .then(Commands.literal("decaydue")
-                .then(Commands.argument("tag", StringArg.word())
-                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
-                        return doDecayDue(ctx, StringArg.getString(ctx, "tag"));
-                    }))))
-            .then(Commands.literal("boltvis")
-                .then(Commands.argument("ticks", IntegerArg.integer(1, 400))
-                    .then(Commands.argument("tag", StringArg.word())
-                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
-                            return doBoltVis(ctx, IntegerArg.getInteger(ctx, "ticks"),
-                                StringArg.getString(ctx, "tag"));
-                        })))))
-            .then(Commands.literal("watch")
-                .then(Commands.argument("ticks", IntegerArg.integer(1, 400))
-                    .then(Commands.argument("tag", StringArg.word())
-                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
-                            return doWatch(ctx, IntegerArg.getInteger(ctx, "ticks"),
-                                StringArg.getString(ctx, "tag"));
-                        })))))
-            .then(Commands.literal("hud")
-                .then(Commands.argument("ticks", IntegerArg.integer(1, 400))
-                    .then(Commands.argument("tag", StringArg.word())
-                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
-                            return doHud(ctx, IntegerArg.getInteger(ctx, "ticks"),
-                                StringArg.getString(ctx, "tag"));
-                        })))))
             .then(Commands.literal("emeraldtrade")
                 .then(Commands.argument("tag", StringArg.word())
                     .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
@@ -1487,6 +1762,76 @@ ServerEvents.commandRegistry(event => {
                 .then(Commands.argument("tag", StringArg.word())
                     .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
                         return doAnvilClose(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("komachicast")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doKomachiCast(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("komachirepeat")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doKomachiRepeat(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("komachicap")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doKomachiCap(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("komachicycle")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doKomachiCycle(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("komachiread")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doKomachiRead(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("nancycloak")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doNancyCloak(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("nancyexpire")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doNancyExpire(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("nancystate")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doNancyState(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("nancyfall")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doNancyFall(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("nancypearl")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doNancyPearl(ctx, StringArg.getString(ctx, "tag"), true);
+                    }))))
+            .then(Commands.literal("nancypearlctrl")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doNancyPearl(ctx, StringArg.getString(ctx, "tag"), false);
+                    }))))
+            .then(Commands.literal("nancypearlclose")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doNancyPearlClose(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("decayflash")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doDecayFlash(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("decayclear")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doDecayClear(ctx, StringArg.getString(ctx, "tag"));
                     }))))
     );
 });

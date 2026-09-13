@@ -601,7 +601,7 @@ function Invoke-MtCaseAssert {
             '--source', (Get-MtMapValue -Map $Assert -Key 'source' -Default 'latest'))
         # scope=whole：对**整文件**求值（mt_assert 的 --no-snapshot；默认只读快照之后的增量）。
         # 用于「只在启动期出现」的行 —— Mixin 应用行、渲染栈加载行等。若沿用增量语义，
-        # 这类断言在快照点晚于启动时必然落空，会被误判成产品缺陷（BUG3 的 Mixing 行即如此）。
+        # 这类断言在快照点晚于启动时必然落空，会被误判成产品缺陷（实测 Mixin 应用行即如此）。
         if ([string](Get-MtMapValue -Map $Assert -Key 'scope' -Default '') -eq 'whole') {
             $logArgs += '--no-snapshot'
         }
