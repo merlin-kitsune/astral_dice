@@ -52,7 +52,7 @@
 - Rin active: grants one Living Page, or two if you had none before.
 - Bonnie: while hidden during an Investigation stage (Invisibility + Investigation Stage), mobs can no longer target you.
 - Nancy Lu active: the consumed battle card is now taken from the main inventory only (ender chest / backpack-like containers no longer count); the attack bonus is at least +2, and a guaranteed +2 applies even when no battle card is available in the main inventory.
-- Unwavering: defense +2 → armor +8 (equal to +4 defense in dice battles), moved to an attribute modifier on the effect so both real armor and dice combat apply without double counting.
+- Unwavering: defense +2 → armor +8 (equal to +4 defense in dice battles), moved to an attribute modifier on the effect so both real armor and dice combat apply without double counting; it now **stacks as ruled** (2026-09-13): +8 armor per layer, up to 3 layers, a repeat use adds one layer and refreshes the duration to max(old, 3:00), and a 4th use no longer raises it; the armor modifier scales linearly with the amplifier (1.21.1 uses the `MobEffect#addAttributeModifier` curve overload, 1.20.1 overrides `getAttributeModifierValue`; both are bit-for-bit equivalent to vanilla's default `amount × (amplifier + 1)` and exist to make the scaling explicit), while Resistance stays fixed at II.
 - Full Power: durability 2 → 5.
 - Cursed Sword recipe: the middle ingredient is now Crying Obsidian instead of the Suspicious Stew item tag; the unused `suspicious_stews` item tag was removed.
 - Blue Curse description: armor toughness "0" → "-100%%" (values unchanged).
