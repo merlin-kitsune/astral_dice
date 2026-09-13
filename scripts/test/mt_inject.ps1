@@ -327,7 +327,7 @@ function Assert-MtInjectForeground {
     param([Parameter(Mandatory)][long]$Hwnd, [int]$Retries = 3)
 
     for ($attempt = 1; $attempt -le $Retries; $attempt++) {
-        if ((Get-MtForegroundWindow) -eq $Hwnd) { return $true }
+        if (((Get-MtForegroundWindow) -eq $Hwnd) -and ((Get-MtRealFocus -Hwnd $Hwnd) -eq $Hwnd)) { return $true }
 
         [void](Invoke-MtShowWindow -Hwnd $Hwnd -CmdShow 9)   # SW_RESTORE：最小化时先还原
         [void](Invoke-MtBringWindowToTop -Hwnd $Hwnd)
@@ -346,13 +346,18 @@ function Assert-MtInjectForeground {
         }
         try {
             [void](Set-MtForegroundWindow -Hwnd $Hwnd)
+            # 关键补充：**前台不等于焦点**。附加状态下把键盘焦点也交给目标窗口，
+            # 否则按键会被游戏静默忽略（2026-09-13 实测根因）。
+            if ($targetTid -and ($targetTid -eq $myTid -or $a2)) {
+                [void][Mt.RealInput]::FocusWindow([IntPtr]::new($Hwnd))
+            }
             Start-Sleep -Milliseconds 120
         } finally {
             if ($a2) { [void](Set-MtAttachThreadInput -FromTid $myTid -ToTid $targetTid -Attach $false) }
             if ($a1) { [void](Set-MtAttachThreadInput -FromTid $myTid -ToTid $fgTid -Attach $false) }
         }
 
-        if ((Get-MtForegroundWindow) -eq $Hwnd) { return $true }
+        if (((Get-MtForegroundWindow) -eq $Hwnd) -and ((Get-MtRealFocus -Hwnd $Hwnd) -eq $Hwnd)) { return $true }
     }
     return $false
 }
@@ -452,16 +457,23 @@ function Invoke-MtInjectCmdCommand {
         Start-MtInjectPause -Milliseconds 200
     }
 
-    Send-MtInjectKey -Hwnd $hwnd -Vk $script:Vk['slash'] -Scan $script:Scan['slash']   # 斜杠键自带 "/" 前缀
+    # 打开聊天并输入命令。
+    # 2026-09-13 实测：**不要按 `/` 键**（VK_OEM_2）——真实输入下它会把游戏搞进暂停菜单
+    # （日志 Saving and pausing game...），命令全部失效；改用与 computer-control MCP 同款的
+    # 「按 T 开聊天 → 输入含前导 `/` 的全文 → 回车」，已实测能正常执行并产出读数。
+    Send-MtInjectKey -Hwnd $hwnd -Vk $script:Vk['t'] -Scan $script:Scan['t']
     Start-MtInjectPause -Milliseconds 800
 
     $text = $Command
-    if ($text.StartsWith('/')) { $text = $text.Substring(1) }
     if ($script:Transport -eq 'sendinput') {
-        # 真实文本输入：整串一次 SendInput(KEYEVENTF_UNICODE)
+        # 真实文本输入：整串一次 SendInput(KEYEVENTF_UNICODE)，保留前导 `/`
         [void](Send-MtRealText -Text $text)
     } else {
-        # 旧路径：按**码点**遍历（python `for ch in text` 的语义），不是 UTF-16 码元
+        # 旧路径：`/` 键自带前缀，故剥掉前导 `/`，再按**码点**遍历
+        # （python `for ch in text` 的语义，不是 UTF-16 码元）
+        if ($text.StartsWith('/')) { $text = $text.Substring(1) }
+        Send-MtInjectKey -Hwnd $hwnd -Vk $script:Vk['slash'] -Scan $script:Scan['slash']
+        Start-MtInjectPause -Milliseconds 800
         $i = 0
         while ($i -lt $text.Length) {
             $cp = [char]::ConvertToUtf32($text, $i)

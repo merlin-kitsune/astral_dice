@@ -963,6 +963,26 @@ namespace Mt
         [DllImport("user32.dll", SetLastError = true)]
         private static extern bool SetCursorPos(int X, int Y);
 
+        // ── 键盘焦点 ─────────────────────────────────────────────────────
+        // 关键：MC 窗口可以是「前台」却**没有键盘焦点**，此时任何 SendInput/PostMessage 按键
+        // 都被游戏忽略（2026-09-13 实测）。GetFocus/SetFocus 只对**调用线程所拥有的输入队列**
+        // 生效，所以调用方必须先用 AttachThreadInput 附加到目标窗口所在线程。
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern IntPtr SetFocus(IntPtr hWnd);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern IntPtr GetFocus();
+
+        public static bool FocusWindow(IntPtr hwnd)
+        {
+            return SetFocus(hwnd) != IntPtr.Zero;
+        }
+
+        public static long FocusedWindow()
+        {
+            return GetFocus().ToInt64();
+        }
+
         private static bool Send(INPUT input)
         {
             INPUT[] batch = new INPUT[] { input };
@@ -1078,6 +1098,56 @@ function Send-MtRealMouse {
     return [bool][Mt.RealInput]::Mouse($Right, $Up)
 }
 
+function Get-MtRealFocus {
+    <#
+    .SYNOPSIS
+        查询目标窗口是否持有**键盘焦点**（先附加到该窗口线程，再读 GetFocus）。
+
+    .NOTES
+        `GetFocus()` 只返回调用线程输入队列的焦点窗口，故必须先 AttachThreadInput 到
+        目标窗口线程；返回 0 表示焦点不在本进程/该队列内。前台窗口 ≠ 焦点窗口，
+        这是 2026-09-13 那轮游戏内用例全部「无输出」的根因判定点。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][long]$Hwnd)
+
+    $tid = [int](Get-MtThreadOfWindow -Hwnd $Hwnd)
+    $myTid = [int][Mt.Win32.Native]::GetCurrentThreadId()
+    $attached = $false
+    if ($tid -and $tid -ne $myTid) {
+        $attached = [bool](Set-MtAttachThreadInput -FromTid $myTid -ToTid $tid -Attach $true)
+    }
+    try {
+        return [long][Mt.RealInput]::FocusedWindow()
+    } finally {
+        if ($attached) { [void](Set-MtAttachThreadInput -FromTid $myTid -ToTid $tid -Attach $false) }
+    }
+}
+
+function Set-MtRealFocus {
+    <#
+    .SYNOPSIS
+        把键盘焦点给到目标窗口（附加到该窗口线程后 SetFocus），返回是否成功。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][long]$Hwnd)
+
+    $tid = [int](Get-MtThreadOfWindow -Hwnd $Hwnd)
+    $myTid = [int][Mt.Win32.Native]::GetCurrentThreadId()
+    $attached = $false
+    if ($tid -and $tid -ne $myTid) {
+        $attached = [bool](Set-MtAttachThreadInput -FromTid $myTid -ToTid $tid -Attach $true)
+    }
+    try {
+        $prev = [long][Mt.RealInput]::FocusedWindow()
+        [void][Mt.RealInput]::FocusWindow([IntPtr]::new($Hwnd))
+        $now = [long][Mt.RealInput]::FocusedWindow()
+        return [pscustomobject]@{ Ok = ($now -eq $Hwnd); Prev = $prev; Now = $now }
+    } finally {
+        if ($attached) { [void](Set-MtAttachThreadInput -FromTid $myTid -ToTid $tid -Attach $false) }
+    }
+}
+
 Export-ModuleMember -Function @(
     'Get-MtModuleHandle', 'Set-MtThreadDpiAwareness', 'Get-MtScreenSize',
     'Get-MtKeyboardLayouts', 'Test-MtEnUsLayoutAvailable', 'Get-MtLangIdOfThread',
@@ -1090,5 +1160,6 @@ Export-ModuleMember -Function @(
     'Get-MtCurrentThreadId', 'Register-MtMessageClass', 'New-MtMessageWindow',
     'Unregister-MtMessageClass', 'Remove-MtWindow', 'Invoke-MtPumpMessages',
     'Test-MtPidIsJava', 'Find-MtMinecraftWindow',
-    'Send-MtRealKey', 'Send-MtRealText', 'Set-MtRealCursorPosition', 'Send-MtRealMouse'
+    'Send-MtRealKey', 'Send-MtRealText', 'Set-MtRealCursorPosition', 'Send-MtRealMouse',
+    'Get-MtRealFocus', 'Set-MtRealFocus'
 )
