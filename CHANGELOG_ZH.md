@@ -144,6 +144,8 @@
 
 - 骇客立牌三项修复:① **清除过时「免疫任何攻击伤害」残留**——死亡清理中的 `player.setInvulnerable(false)` 会强制解除任何来源(其他模组/指令)授予的无敌,已删除;② **被动「网络防火墙」免疫末影珍珠摔落伤害改为在伤害判定最前置处取消**(1.21.1 `LivingIncomingDamageEvent`、1.20.1 `LivingAttackEvent` + `setCanceled(true)`,取代原先只把伤害改成 0 的做法):旧实现下 `LivingEntity.hurt` 仍会走完流程,`ServerPlayer.indicateDamage` 照常发送 `ClientboundHurtAnimationPacket`(红屏/屏幕震动)并播放受伤音效,现在 `hurt` 直接返回 false,无任何受伤反馈;③ **主动「远程侵入」改为真正的完全隐身**:隐身效果实例 `visible=false`(不再冒药水粒子),并由客户端订阅 `RenderPlayerEvent.Pre`/`RenderHandEvent` 抑制自身盔甲/手持/Curios 装饰渲染(原版隐身只隐藏本体,渲染层不检查 `isInvisible()`);`nancy_lu_hidden_until` 增加客户端同步以驱动该抑制(双版本一致;旁观者视角的隐藏不在本批范围内)。
 
+- 消除「层数递减类」效果在客户端 HUD 的「即将到期」闪烁:原版 `Gui#renderEffects` 对剩余时长 ≤ 200 tick(10 秒)的效果按 `MobEffectInstance#endsWithin(200)` 计算图标 alpha 脉冲(背景不受影响;物品栏效果面板本身无此逻辑),而治愈/标记/赋能这类**以层数递减为机制**的效果在每周期末段必然落入该窗口,表现为「层数还在却一直闪」。现新增客户端 mixin `mixin/client/GuiMixin`(注入 `Gui#renderEffects` 内的 `endsWithin` 调用),对治愈/标记/弱点识破/赋能四类效果直接返回 false——**层数 > 0 期间图标恒定不闪烁,归零时正常消失**;其余效果(原版与其他模组)一律委托原逻辑,零影响。效果的实例时长/层数上限/递减间隔/面板倒计时语义均未改动(双版本一致)。
+
 ### 工程
 
 - 新增两条回归用例与配套探针命令:定向爆破 AOE 口径守卫(`DIRECTIONAL-BLAST-AOE`,断言「自身 5 点 + 效果牌伤害加成」不被其它伤害牌污染)与绿宝石骰子交易(`EMERALD-DICE-TRADE`,断言客户端载荷为星币且成交后重发报价);探针新增 `blastbonus`/`emeraldtrade`/`tradeclose` 三条命令(改探针后必须冷启动)。

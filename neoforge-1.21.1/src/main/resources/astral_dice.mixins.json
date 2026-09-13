@@ -12,7 +12,8 @@
     "PiglinAiMixin"
   ],
   "client": [
-    "client.EffectRenderingInventoryScreenMixin"
+    "client.EffectRenderingInventoryScreenMixin",
+    "client.GuiMixin"
   ],
   "injectors": {
     "defaultRequire": 1
