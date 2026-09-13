@@ -22,7 +22,7 @@ import java.util.List;
  * <ul>
  *   <li>充能层数不少于 6 时,攻击力 +5(被动加成,不受冷却影响);</li>
  *   <li>对敌对目标发起攻击时,消耗 6 层充能,并在 **1 秒后**对目标 3 格范围内所有敌对目标
- *       降下雷击(**雷击伤害 = 本次攻击(骰战最终)伤害 × 50%**,经原版
+ *       降下雷击(**雷击伤害 = 本次攻击(骰战最终)伤害 × 50%,下限 5 点**,经原版
  *       {@code LightningBolt#setDamage} 覆写默认的 5.0F;仍会点火并生成闪电苦力怕),
  *       随后进入 **1:00** 冷却。</li>
  * </ul>
@@ -45,6 +45,8 @@ public class RailgunChipItem extends BaseChipItem {
     public static final int COOLDOWN_TICKS = 20 * 60;
     /** 雷击伤害占本次攻击(骰战最终)伤害的比例 */
     public static final float STRIKE_DAMAGE_RATIO = 0.5F;
+    /** 雷击伤害下限(点):攻击伤害过低时按此值结算(与改动前的原版固定 5 点持平) */
+    public static final float STRIKE_DAMAGE_MIN = 5.0F;
 
     public RailgunChipItem(Properties properties) {
         super(properties);
@@ -103,9 +105,9 @@ public class RailgunChipItem extends BaseChipItem {
         pending.setDamage(strikeDamage(finalDamage));
     }
 
-    /** 雷击伤害 = 本次攻击伤害 × {@link #STRIKE_DAMAGE_RATIO} */
+    /** 雷击伤害 = max(本次攻击伤害 × {@link #STRIKE_DAMAGE_RATIO}, {@link #STRIKE_DAMAGE_MIN}) */
     private static float strikeDamage(float attackDamage) {
-        return Math.max(0.0F, attackDamage * STRIKE_DAMAGE_RATIO);
+        return Math.max(STRIKE_DAMAGE_MIN, Math.max(0.0F, attackDamage * STRIKE_DAMAGE_RATIO));
     }
 
     /** 延迟到期时由 {@link RailgunStrikeScheduler} 调用:对中心 3 格内的敌对目标逐一降下雷击 */
