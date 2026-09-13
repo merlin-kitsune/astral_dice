@@ -204,8 +204,11 @@ public class DiceCombatEvents {
         if (!(directEntity instanceof Player player)) return;
         if (target == player) return;
 
-        // 电磁炮筹码:对敌对目标发起攻击时消耗 6 层充能,延迟 1 秒对目标 3 格内敌对目标降下雷击
-        com.merlinkitsune.astral_dice.item.chip.RailgunChipItem.onAttack(player, target);
+        // 电磁炮筹码:对敌对目标发起攻击时消耗 6 层充能,延迟 1 秒对目标 3 格内敌对目标降下雷击。
+        // 雷击伤害 = 本次攻击伤害的 50%:此处骰战尚未结算,先按即时伤害兜底登记,
+        // 骰战最终伤害确定后(下方 setNewDamage 之后)回填。
+        var railgunStrike = com.merlinkitsune.astral_dice.item.chip.RailgunChipItem.onAttack(
+                player, target, event.getNewDamage());
 
         // 骰神赐福仅能由近战武器攻击触发与生效:直接伤害来源必须为玩家(已排除弓/弩/三叉戟投掷等远程),
         // 主手必须持有近战武器(排除空手/盾牌/非近战类武器)
@@ -601,6 +604,8 @@ public class DiceCombatEvents {
 
         event.setNewDamage((float) finalDmg);
         sendDamageNumber(event.getEntity(), (int) finalDmg);
+        // 电磁炮:以本次骰战最终伤害回填雷击伤害(50%)
+        com.merlinkitsune.astral_dice.item.chip.RailgunChipItem.applyFinalDamage(railgunStrike, (float) finalDmg);
 
         // 玩家对玩家:被攻击方若佩戴骰子且处于骰神赐福,则每个赐福期间消耗一次防御牌耐久
         if (!player.level().isClientSide() && target instanceof Player targetDefender

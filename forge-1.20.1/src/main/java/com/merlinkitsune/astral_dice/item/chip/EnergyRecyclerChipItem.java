@@ -16,9 +16,9 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * 能量回收器筹码:每移动 50 米获得 1 点充能;充能不少于 5 点时移动速度 +5%。
+ * 能量回收器筹码:每移动 150 米获得 1 点充能;充能不少于 5 点时移动速度 +5%。
  *
- * <p>只累计水平移动距离(与扫地机立牌 jasmine 的移动累计一致);
+ * <p>按**三维位移(含垂直)**累计移动距离(与扫地机立牌 jasmine 的移动累计一致);
  * 传送等单 tick 大幅位移不会计入移动距离。
  *
  * <p>移动速度加成为**条件属性**(取决于当前充能层数,可随时升降),
@@ -28,7 +28,7 @@ import java.util.UUID;
  */
 public class EnergyRecyclerChipItem extends BaseChipItem {
     /** 每获得 1 点充能所需移动距离(米/方块) */
-    public static final float DISTANCE_THRESHOLD = 50f;
+    public static final float DISTANCE_THRESHOLD = 150f;
     /** 单 tick 位移超过该值视为传送/维度跳转,不累计为移动(避免传送刷充能) */
     private static final float MAX_MOVE_PER_TICK = 10f;
     /** 触发移动速度加成所需的充能层数门槛 */

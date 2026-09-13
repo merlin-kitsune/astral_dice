@@ -31,9 +31,47 @@ import java.util.List;
 @EventBusSubscriber(modid = AstralDiceMod.MODID)
 public final class RailgunStrikeScheduler {
 
-    /** 待触发雷击:触发瞬间优先跟随仍存活的原目标,否则回退到攻击时的位置快照 */
-    private record Pending(ServerLevel level, LivingEntity target, Vec3 fallbackCenter,
-                           ServerPlayer cause, long fireAt) {
+    /**
+     * 待触发雷击:触发瞬间优先跟随仍存活的原目标,否则回退到攻击时的位置快照。
+     *
+     * <p>伤害值**可变**:登记发生在伤害结算前段(骰战尚未算出最终伤害),先以攻击的即时伤害
+     * 兜底,骰战结算完成后由 {@link #setDamage} 回填,故不能用 record。
+     */
+    public static final class Pending {
+        private final ServerLevel level;
+        private final LivingEntity target;
+        private final Vec3 fallbackCenter;
+        private final ServerPlayer cause;
+        private final long fireAt;
+        /** 本次雷击伤害(降雷时按此值 {@code LightningBolt#setDamage}) */
+        private float damage;
+
+        private Pending(ServerLevel level, LivingEntity target, Vec3 fallbackCenter,
+                        ServerPlayer cause, long fireAt, float damage) {
+            this.level = level;
+            this.target = target;
+            this.fallbackCenter = fallbackCenter;
+            this.cause = cause;
+            this.fireAt = fireAt;
+            this.damage = Math.max(0.0F, damage);
+        }
+
+        /** 回填/覆盖本次雷击伤害(负数按 0 处理) */
+        public void setDamage(float damage) {
+            this.damage = Math.max(0.0F, damage);
+        }
+
+        private ServerLevel level() { return level; }
+
+        private LivingEntity target() { return target; }
+
+        private Vec3 fallbackCenter() { return fallbackCenter; }
+
+        private ServerPlayer cause() { return cause; }
+
+        private long fireAt() { return fireAt; }
+
+        private float damage() { return damage; }
     }
 
     private static final List<Pending> PENDING = new ArrayList<>();
@@ -52,12 +90,16 @@ public final class RailgunStrikeScheduler {
      * @param fallbackCenter 目标不可用时的位置快照
      * @param cause        雷击来源玩家(可为 null)
      * @param delayTicks   延迟 tick 数(1 秒 = 20)
+     * @param damage       初始雷击伤害(可随后经 {@link Pending#setDamage} 回填)
+     * @return 本次登记的句柄(供回填最终伤害);{@code level} 为空时返回 {@code null}
      */
-    public static void schedule(ServerLevel level, LivingEntity target, Vec3 fallbackCenter,
-                               ServerPlayer cause, int delayTicks) {
-        if (level == null) return;
-        PENDING.add(new Pending(level, target, fallbackCenter, cause,
-                level.getGameTime() + Math.max(0, delayTicks)));
+    public static Pending schedule(ServerLevel level, LivingEntity target, Vec3 fallbackCenter,
+                               ServerPlayer cause, int delayTicks, float damage) {
+        if (level == null) return null;
+        Pending pending = new Pending(level, target, fallbackCenter, cause,
+                level.getGameTime() + Math.max(0, delayTicks), damage);
+        PENDING.add(pending);
+        return pending;
     }
 
     /** 最早一个待触发雷击的剩余 tick 数;-1 表示该维度当前没有待触发雷击(测试/调试用) */
@@ -93,7 +135,7 @@ public final class RailgunStrikeScheduler {
             LivingEntity target = p.target();
             Vec3 center = (target != null && target.isAlive() && target.level() == p.level())
                     ? target.position() : p.fallbackCenter();
-            RailgunChipItem.executeStrike(p.level(), center, p.cause());
+            RailgunChipItem.executeStrike(p.level(), center, p.cause(), p.damage());
         }
     }
 }
