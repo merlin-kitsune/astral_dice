@@ -43,6 +43,11 @@ May the god of the dice be with you!
 [[mixins]]
 config="${mod_id}.mixins.json"
 
+# NeoForge 自身 BUG 的修复补丁(21.1.x LivingEntity#hurt 取消分支不 pop → damageContainers 泄漏)。
+# 独立配置:required=false + 注入器 require=0,目标方法/字段在未来版本变化时只静默失效,不会导致启动失败。
+[[mixins]]
+config="${mod_id}.neoforge_fixes.mixins.json"
+
 # The [[accessTransformers]] block allows you to declare where your AT file is.
 # If this block is omitted, a fallback attempt will be made to load an AT from META-INF/accesstransformer.cfg
 #[[accessTransformers]]

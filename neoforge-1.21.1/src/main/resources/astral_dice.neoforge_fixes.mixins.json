@@ -1,0 +1,12 @@
+{
+  "required": false,
+  "minVersion": "0.8",
+  "package": "com.merlinkitsune.astral_dice.mixin.fixes",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "LivingEntityDamageContainerMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 0
+  }
+}
