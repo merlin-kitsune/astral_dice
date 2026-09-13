@@ -9,7 +9,6 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
@@ -49,9 +48,18 @@ public abstract class LivingEntityDamageContainerMixin {
     @Shadow
     protected Stack<DamageContainer> damageContainers;
 
-    /** 进入 hurt（含全部 3 个出口之前）：接入 slf4j 存活日志落点，并记录进入深度。 */
+    /**
+     * 进入 hurt（含全部 3 个出口之前）：接入 slf4j 存活日志落点，并记录进入深度。
+     *
+     * <p>⚠️ 目标 {@code hurt} 返回 {@code boolean}，故 HEAD 注入器的回调参数**必须**是
+     * {@code CallbackInfoReturnable<Boolean>}——写成 {@code CallbackInfo} 会在
+     * {@code CallbackInjector.inject} 抛 {@code InvalidInjectionException: Invalid descriptor}
+     * （2026-09-13 实测：注入整体失败、补丁静默不生效，仅留一条 WARN；`required:false` 保证了不崩，
+     * 但也意味着这种错误不会自己冒出来，必须靠游戏内日志核对）。
+     */
     @Inject(method = DamageStackSanitizer.HURT_DESCRIPTOR, at = @At("HEAD"), require = 0)
-    private void astral_dice$recordDamageContainerDepth(DamageSource source, float amount, CallbackInfo callback) {
+    private void astral_dice$recordDamageContainerDepth(DamageSource source, float amount,
+                                                        CallbackInfoReturnable<Boolean> callback) {
         NeoForgeFixesLog.install(); // 幂等：把一次性存活日志接到 slf4j，使其进入 logs/latest.log
         DamageStackSanitizer.recordEntry(this.damageContainers);
     }
