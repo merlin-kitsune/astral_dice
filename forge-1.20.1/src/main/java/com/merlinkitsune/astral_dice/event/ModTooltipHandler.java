@@ -470,8 +470,6 @@ public class ModTooltipHandler {
             if (stack.is(ModItems.NETHER_STAR_DICE.get())) {
                 tooltip.add(tt("tooltip.astral_dice.nether_star_dice_maxcard")
                         .withStyle(ChatFormatting.LIGHT_PURPLE));
-                tooltip.add(tt("tooltip.astral_dice.nether_star_dice_chip")
-                        .withStyle(ChatFormatting.AQUA));
                 tooltip.add(tt("tooltip.astral_dice.nether_star_dice_starattr")
                         .withStyle(ChatFormatting.GOLD));
             }
