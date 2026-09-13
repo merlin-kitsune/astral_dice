@@ -1,0 +1,174 @@
+{
+  "case_id": "KOMACHI-EXTRA-PLAY-1.20.1",
+  "title": "忍者立牌主动「忍术连击」：仅当前周期 +1（正常释放 / 本周期已生效时不再释放且不进冷却 / 出牌上限不得超过封顶 9 / 周期归零后附件被清除）",
+  "version": "1.20.1",
+  "target": {
+    "type": "bugfix",
+    "ref": "komachi-extra-plays-cycle"
+  },
+  "steps": [
+    {
+      "op": "note",
+      "text": "被测语义(忍者立牌主动「忍术连击」):本轮出牌数 +1,**仅当前出牌周期有效、每周期至多一次、不跨周期累积**(附件 komachi_extra_plays,常量 KOMACHI_EXTRA_PLAYS_CAP=1);单轮出牌数上限 = min(1 + 固定来源 + 临时来源, MAX_EFFECT_CARD_PLAYS=9)。释放条件三条,任一不满足即**不释放且不进入主动技能冷却**:① 冷却中(BaseSignItem.performSkill 统一拦截);② 上限已达封顶 9;③ 本周期已生效。证据口径:①『按主动』= BaseSignItem.performSkillForCurio —— 与客户端按键经网络包的服务端处理**同一入口**,不是直接改附件;②出牌上限读 EffectCardPeriod.getMaxAllowed、出牌数读 getPlayCount、主动冷却读附件 sign_active_cooldown_end(玩家级);③K1 正常释放(附件 0→1、上限 +1、冷却开始);④K2 本周期已生效时再按主动 —— 先把冷却结束时刻置为『已过期但非 0』以越过冷却分支、走到 handleUse 的 used 守卫,再用『该字段是否被重新写成未来时刻(cd_future)』判定冷却有没有被起算;⑤K3 挂满全部固定来源(大背包/忍术飞镖)与临时来源(活体书页/命运的指引/可口糖果/探天卫星)后按主动 —— 满配 extra=6 → 上限 7,封顶分支不可达;探针会尝试注册两个『常态关闭』的临时来源把上限推到 9 以真正覆盖封顶分支(Rhino 若无法实现该接口则完全不注册,退化为未封顶的正向对照);两种合法形态由 _VERDICT 一条正则锁死;⑥K4/K5 走**真实 tick 驱动链**(PlayerTickEvents 每 20 tick → EffectCardPeriod.tick)验证周期归零后附件被清除 —— K4 只武装现场(附件=1、出牌数=上限、冷却已到期),K5 读结果,因此 K4→K5 之间必须 wait ≥ 1 秒。⚠️ 探针改动必须**冷启动**才生效(stop → launch):/kubejs reload server-scripts 不会重绑已注册命令的 lambda,只能确认脚本语法。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe komachicast K1"
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe komachirepeat K2"
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe komachicap K3"
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe komachicycle K4"
+    },
+    {
+      "op": "wait",
+      "ms": 2500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe komachiread K5"
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_K1_BEFORE:max=1:extra=0:cd=0:count=0:living=0:fate=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_K1_AFTER:max=2:extra=1:cd=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_K1_DELTA:max=\\+1:extra=1:cd=started"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_K1_RELEASED:1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_K1_DONE"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_K2_BEFORE:seed=0:extra=1:max=2:cd=\\d+"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_K2_AFTER:extra=1:max=2:cd_same=1:cd_future=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_K2_REJECTED:1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_K2_DONE"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_K3_CONST:9:1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_K3_FILL:7"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_K3_SRC:(ok:2:form:(kubejs|javaadapter)|unavailable:.*|precheck_.*)"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_K3_ARMED_MAX:(7|9)"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_K3_VERDICT:(ok:2:form:(kubejs|javaadapter):9:capped_reject:1|(unavailable:.*|precheck_.*):7:uncapped_release:1)"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_K3_CAP_OK:1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_K3_DONE"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_K4_ARMED:extra=1:count=2:max=2:cd_end=\\d+:now=\\d+"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_K4_DONE"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_K5_READ:extra=0:count=0:cd=0:max=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_K5_CLEARED:1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_K5_DONE"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_K1_ERR|AP_K1_EX|AP_K2_ERR|AP_K2_EX|AP_K3_ERR|AP_K3_EX|AP_K4_ERR|AP_K4_EX|AP_K5_ERR|AP_K5_EX|AP_TICK_EX|AP_K1_RELEASED:0|AP_K2_REJECTED:0"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "crash"
+    }
+  ],
+  "on_fail": "keep_game_running"
+}

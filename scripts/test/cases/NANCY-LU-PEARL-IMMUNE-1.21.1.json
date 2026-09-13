@@ -1,0 +1,151 @@
+{
+  "case_id": "NANCY-LU-PEARL-IMMUNE-1.21.1",
+  "title": "骇客立牌「网络防火墙」：末影珍珠传送摔落伤害在最前置处被取消——生命值不变、无任何受伤反馈（hurtTime / invulnerableTime / hurtMarked 均未被写入），并带同构造对照相位",
+  "version": "1.21.1",
+  "target": {
+    "type": "bugfix",
+    "ref": "nancy-lu-ender-pearl-immune"
+  },
+  "steps": [
+    {
+      "op": "note",
+      "text": "复现 2026-09-13 报告:旧实现只把伤害改成 0,LivingEntity.hurt 仍走完全流程 → ServerPlayer.indicateDamage 照常发送 ClientboundHurtAnimationPacket(红屏/屏幕震动)、playHurtSound 照常播放受伤音效、markHurt 照常置 hurtMarked;修复改为在伤害判定最前置处**取消事件**(1.21.1 LivingIncomingDamageEvent / 1.20.1 LivingAttackEvent + setCanceled(true))→ hurt 直接 return false。证据口径:①P1 nancyfall 由探针直接对该玩家施加 FALL 伤害 ——【对照相位(清掉免疫窗口)必须真的掉血且 hurtTime>0、invulnerableTime>0、hurtMarked=true】证明伤害 API 与链路可用,【免疫相位(窗口 = now+200)必须『与施加前逐字一致』】(探针用前后快照字符串相等 + 四项字段判定);若 API 链全灭则 CTRL_OK=0、本条明确 FAIL —— 那是探针可见性问题而非产品缺陷。②P2/P3 用**真实末影珍珠**(nancyPearlArena 先清出正前方口袋并放置接珠柱,珍珠必定命中方块):P2 装立牌 → 珍珠落地时生产代码先由 ProjectileImpactEvent 记下 20 tick 免疫窗口,原版随后在同一个 onHit 里 teleportTo + hurt(damageSources().fall(), 5) → 必须 window∈[18,20] 且 tel=1(传送位移 > 1 格,证明走的是真实 onHit 路径而不是『珍珠撞到玩家本体』这种不产生摔落伤害的退化路径)、drop=0、hurtTime=0、invulnerableTime=0、hurtMarked=false;P3 卸下立牌(唯一变量)→ window=0、tel=1、drop=5、hurtTime>0。③创造模式下 Player#hurt 会因 abilities.invulnerable 直接返回、Player#causeFallDamage 会因 mayFly 直接返回,故探针临时切生存并在 P4 收尾还原。④受伤音效/受伤动画包无法在服务端直接读,以『hurtTime/hurtDuration/invulnerableTime 未被赋值 + hurtMarked 未被置位』为口径:四者与 indicateDamage/playHurtSound/markHurt 同处取消点之后的同一段代码,hurt 提前 return false 即全部不执行。⚠️ 探针改动必须**冷启动**才生效(stop → launch):/kubejs reload server-scripts 不会重绑已注册命令的 lambda,只能确认脚本语法。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nancyfall P1"
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nancypearl P2"
+    },
+    {
+      "op": "wait",
+      "ms": 2600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nancypearlctrl P3"
+    },
+    {
+      "op": "wait",
+      "ms": 2600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nancypearlclose P4"
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_P1_FIELDS:ok"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_P1_API:(hurt|causeFallDamage)"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_P1_CTRL_OK:1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_P1_IMM:hp=[\\d.]+:hurt=0:invul=0:marked=false->hp=[\\d.]+:hurt=0:invul=0:marked=false"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_P1_IMM_OK:1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_P1_IMM_API:none"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_P1_MODE:(forced_survival|already_survival)"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_P1_DONE"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_P2_SETUP:equip=1:mode=(forced_survival|already_survival)"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_P2_PEARL:window=(1[89]|20):tel=1:drop=0:hurt=0:invul=0:marked=false"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_P2_OK:1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_P2_DONE"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_P3_SETUP:equip=0:mode=(forced_survival|already_survival)"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_P3_PEARL:window=0:tel=1:drop=5:hurt=[1-9]\\d*"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_P3_OK:1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_P3_DONE"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_P4_RESTORE:creative"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_P4_DONE"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_P1_ERR|AP_P1_EX|AP_P2_ERR|AP_P2_EX|AP_P2_TIMEOUT|AP_P3_ERR|AP_P3_EX|AP_P3_TIMEOUT|AP_P4_ERR|AP_P4_EX|AP_TICK_EX|AP_P2_OK:0|AP_P3_OK:0"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "crash"
+    }
+  ],
+  "on_fail": "keep_game_running"
+}
