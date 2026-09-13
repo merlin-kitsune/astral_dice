@@ -71,7 +71,7 @@ public class WhetstoneChipItem extends BaseChipItem {
                 || player.hasEffect(com.merlinkitsune.astral_dice.effect.ModEffects.PAPARA_BITE.get());
         if (guardActive) {
             // 「使受到的伤害不超过剩余生命值」:按不可致死语义处理(至多扣到剩 1 点生命值)
-            float cap = health - 1.0F;
+            float cap = Math.max(0.0F, health - 1.0F);
             if (reduced > cap) reduced = cap;
         }
         return reduced;

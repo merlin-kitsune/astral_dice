@@ -444,7 +444,7 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(Rarity.RARE)));
 
-    // 标记喷灌:对目标造成远程或魔法伤害后,使目标获得一层"标记"
+    // 标记喷罐:对目标造成远程或魔法伤害后,使目标获得一层"标记"
     public static final DeferredItem<Item> MARKER_SPRAYER_CHIP = registerItem("marker_sprayer_chip",
             () -> new MarkerSprayerChipItem(new Item.Properties()
                     .stacksTo(1)
