@@ -143,11 +143,26 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --phase <p> --version <v>
 | `DIRECTIONAL-BLAST-AOE` | 定向爆破 AOE 口径守卫：只吃「自身 5 点 + 效果牌伤害加成」，其它伤害效果牌不得计入 | 3 步 / 11 断言 | `AP_B1_AOE_FORMULA:5`（装齐激光/板砖/轨道炮后仍为 5）、`AP_B2_AOE_FORMULA:6`（再装书签 → +1）、`BONUS_OTHER_CARDS:0`、`absent`、`kubejs`、`crash` |
 | `EMERALD-DICE-TRADE` | 绿宝石骰子：客户端报价必须是星币（本体仍是绿宝石）+ 成交后立即重发报价刷新经验 | 6 步 / 13 断言 | `AP_E1_SERVER_A:minecraft:emerald`（本体不变）、`AP_E1_CLIENT_A:astral_dice:star_coin`（客户端载荷）、`AP_E1_RESEND:ok`、`AP_E1_OPEN:ok`、`absent`、`kubejs`、`crash`；交易界面另出截图供人工核对 |
 | `SMOKE-TOOLCHAIN` | 工具链自检（不依赖游戏） | 2 步 / 2 断言 | 反向断言 + `mixin` 通道可用 |
+| `ANVIL-STAR-UPGRADE` | 铁砧升星端到端扣费：★0→★1/★1→★2/★2→★3 实扣 15/20/25 星币（物品栏实测） + `weapon_enhancement` 星级 +1；袋装星币 / 数量不足一律不产出 | 15 步 / 41 断言 | `AP_S1_FEE:15:0->1`、`AP_S2_FEE:20:1->2`、`AP_S3_FEE:25:2->3`、`_COINS_BEFORE:25/30/35`、`_RIGHT_LEFT:astral_dice:star_coin:3`、`_INV_AFTER_CLOSE:10`、`_STAR`、`_PUTBACK:ok:…`、`_TAKE:clicked:30:20`、`AP_Z1_BAG_RESULT:empty`、`AP_Z1_FEW_TOTAL:9`、`absent`、`kubejs`、`crash` |
 
 > `DIRECTIONAL-BLAST-AOE` / `EMERALD-DICE-TRADE` 于 2026-09-13 追加，配套探针命令
 > `/astralprobe blastbonus|emeraldtrade|tradeclose`（见 §6 探针安装步骤，改探针后必须冷启动）。
 > 两例的视觉面（交易列表图标、经验条）**不做机器断言**（`vision` 只输出提问请求），
 > 报告内附截图作为人工核对证据。
+>
+> `ANVIL-STAR-UPGRADE` 于 2026-09-14 追加，配套探针命令
+> `/astralprobe anvilstar <diceId> <tag> [fresh]` / `anvilbags <tag>` / `anvilclose <tag>`
+> （见 §6 探针安装步骤，改探针后必须冷启动）。
+> **交互半自动**：铁砧升星的真实链路是「`AnvilUpdateEvent` 只写 `output`/`materialCost`/`cost`
+> → 原版 `AnvilMenu#onTake` 按 `repairItemCountCost` 从**铁砧右槽**扣材料、按 `cost` 扣经验」，
+> 故该例由探针用 `player.openMenu`（真实铁砧方块的 `MenuProvider`）+ `AbstractContainerMenu#clicked`
+> 驱动原版铁砧界面（与真人 GUI 的差别只有「点击由服务端发起，不经客户端网络包」）；
+> `AP_<TAG>_SRC` 读数标明走的是真实铁砧方块（`block`）还是退化的直接构造菜单（`direct`），
+> 后者两个读数都判 PASS、但报告里应人工留意。
+> **视觉/交互面不做机器断言**：用例只附一张 HUD 截图作人工核对证据
+> （末态快捷栏应为 ★0 骰子 + 1 个袋装星币 + 9 枚散装星币），机器判定全部来自聊天栏 `AP_` 读数。
+> 探针会把玩家**临时切到生存再还原**（原版在创造模式 `instabuild` 下跳过经验扣除，不切就无法
+> 断言 `TAKE:clicked:30:20`），实际路径由 `AP_<TAG>_MODE` 读数注明。
 
 **最近一次全量结果**：运行 `20260912-200747` —— 双版本 **BUG1–BUG5 全部 PASS**；运行 `20260912-215424` —— 双版本 **BUG2 + BUG5 PASS**（充能/赋能禁用粒子改动后的回归）。
 

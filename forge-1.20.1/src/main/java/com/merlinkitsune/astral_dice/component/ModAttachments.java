@@ -495,8 +495,9 @@ public class ModAttachments {
             register(AttachedDataKey.builder("nancy_lu_active_bonus_until", Codec.LONG, () -> 0L).build());
 
     // 骇客立牌:主动"完全隐身"结束时刻
+    // (同步到客户端:client/NancyLuClientEvents 据此在隐身期间取消自身渲染)
     public static final AttachedDataKey<Long> NANCY_LU_HIDDEN_UNTIL =
-            register(AttachedDataKey.builder("nancy_lu_hidden_until", Codec.LONG, () -> 0L).build());
+            register(AttachedDataKey.builder("nancy_lu_hidden_until", Codec.LONG, () -> 0L).sync().build());
 
     // 看板立牌:被动"主动技能返还"累计的战斗牌数量(每累计 25 张返还战斗牌获得一个随机筹码)
     public static final AttachedDataKey<Integer> MIMI_RETURNED_CARD_COUNT =
@@ -838,6 +839,7 @@ public class ModAttachments {
             SYNCED_KEYS.add(SATELLITE_PLAY_BONUS);
             SYNCED_KEYS.add(SATELLITE_PLAY_BONUS_COOLDOWN_END);
             SYNCED_KEYS.add(NANCY_LU_ACTIVE_BONUS);
+            SYNCED_KEYS.add(NANCY_LU_HIDDEN_UNTIL);
             SYNCED_KEYS.add(FEN_RECHARGE);
             SYNCED_KEYS.add(EMPOWER_DECAY_AT);
             SYNCED_KEYS.add(ELECTRIC_GLOVE_AOE);

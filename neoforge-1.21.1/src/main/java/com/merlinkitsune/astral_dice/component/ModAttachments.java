@@ -564,9 +564,11 @@ public class ModAttachments {
                     .build());
 
     // 骇客立牌:主动"完全隐身"结束时刻
+    // (同步到客户端:client/NancyLuClientEvents 据此在隐身期间取消自身渲染)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> NANCY_LU_HIDDEN_UNTIL =
             ATTACHMENTS.register("nancy_lu_hidden_until", () -> AttachmentType.builder(() -> 0L)
                     .serialize(Codec.LONG)
+                    .sync(ByteBufCodecs.VAR_LONG)
                     .build());
 
     // 看板立牌:被动"主动技能返还"累计的战斗牌数量(每累计 25 张返还战斗牌获得一个随机筹码)

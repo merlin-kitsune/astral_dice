@@ -25,6 +25,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
+import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
 import net.neoforged.neoforge.event.entity.player.AttackEntityEvent;
 import net.neoforged.neoforge.event.entity.ProjectileImpactEvent;
 import net.minecraft.world.damagesource.DamageTypes;
@@ -89,7 +90,7 @@ public class NancyLuSignItem extends BaseSignItem {
     protected void clearSignData(Player player, ItemStack stack) {
         super.clearSignData(player, stack);
         // 仅清除立牌自身授予的状态(附件标记仍有效时),不触碰其他来源的公共数值:
-        // 无敌/隐身可能由其他模组或原版机制授予,卸载立牌不得一并清除
+        // 隐身可能由其他模组或原版机制授予,卸载立牌不得一并清除
         if (ModAttachments.getNancyLuHiddenUntil(player) > 0) {
             player.removeEffect(net.minecraft.world.effect.MobEffects.INVISIBILITY);
         }
@@ -110,8 +111,12 @@ public class NancyLuSignItem extends BaseSignItem {
         long now = level.getGameTime();
 
         // 立即进入完全隐身状态(最多持续 30 秒)
+        // visible=false:不产生药水粒子——1.21.1 的效果粒子由 LivingEntity 的
+        // DATA_EFFECT_PARTICLES 承载(updateSynchronizedMobEffectParticles 只收集
+        // isVisible() 的效果实例),置 true 时隐身期间自身会持续冒粒子而暴露位置。
+        // showIcon=true 只保留 HUD 图标,不影响世界可见性。
         EffectTimerGuard.apply(player, new MobEffectInstance(net.minecraft.world.effect.MobEffects.INVISIBILITY,
-                HIDDEN_DURATION_TICKS, 0, false, true, true));
+                HIDDEN_DURATION_TICKS, 0, false, false, true));
         ModAttachments.setNancyLuHiddenUntil(player, now + HIDDEN_DURATION_TICKS);
         // 清除附近已经锁定该玩家的生物目标,确保“绝对无法被生物索敌”
         clearNearbyMobTargets(player);
@@ -168,6 +173,18 @@ public class NancyLuSignItem extends BaseSignItem {
         if (!isEquipped(player)) return false;
         if (!player.hasEffect(net.minecraft.world.effect.MobEffects.INVISIBILITY)) return false;
         return player.level().getGameTime() < ModAttachments.getNancyLuHiddenUntil(player);
+    }
+
+    // 客户端渲染抑制判定:玩家当前是否处于本立牌主动授予的完全隐身状态。
+    // 服务端附件 nancy_lu_hidden_until 已 .sync() 到客户端,可读到权威状态;同时要求
+    // 原版隐身效果仍在(效果被提前清除/技能被解除时立即停止抑制)。仅供
+    // client/NancyLuClientEvents 抑制渲染使用,不参与任何伤害与数值结算。
+    public static boolean isHiddenClient(Player player) {
+        if (player == null) return false;
+        long hiddenUntil = ModAttachments.getNancyLuHiddenUntil(player);
+        if (hiddenUntil <= 0) return false;
+        if (!player.hasEffect(net.minecraft.world.effect.MobEffects.INVISIBILITY)) return false;
+        return player.level().getGameTime() < hiddenUntil;
     }
 
     public static int getAttackBonus(Player player) {
@@ -266,14 +283,22 @@ public class NancyLuSignItem extends BaseSignItem {
 
 
     // 骇客立牌:免疫末影珍珠传送产生的摔落伤害
+    // 必须在伤害判定最前置处"取消",而不是把伤害改成 0:
+    // LivingIncomingDamageEvent 由 CommonHooks.onEntityIncomingDamage 在
+    // LivingEntity.hurt 压入 DamageContainer 后立即派发(NeoForge 21.1
+    // LivingEntity.java:1152-1153),取消后 hurt 直接 return false,于是
+    // invulnerableTime/hurtDuration/hurtTime 不被赋值、不 broadcastDamageEvent、
+    // 不 markHurt(无击退同步)、不 indicateDamage(即不发送
+    // ClientboundHurtAnimationPacket,无红屏与屏幕震动)、不 playHurtSound(无受伤音效)。
+    // 旧实现只 setNewDamage(0),hurt 仍走完整个流程并播放全部受伤反馈。
     @SubscribeEvent
-    public static void onNancyLuEnderPearlDamage(LivingDamageEvent.Pre event) {
+    public static void onNancyLuEnderPearlDamage(LivingIncomingDamageEvent event) {
         if (!(event.getEntity() instanceof Player player)) return;
         if (player.level().isClientSide()) return;
         if (!NancyLuSignItem.isEquipped(player)) return;
         if (!event.getSource().is(net.minecraft.world.damagesource.DamageTypes.FALL)) return;
         if (player.level().getGameTime() < ModAttachments.getNancyLuEnderPearlImmuneUntil(player)) {
-            event.setNewDamage(0);
+            event.setCanceled(true);
         }
     }
 

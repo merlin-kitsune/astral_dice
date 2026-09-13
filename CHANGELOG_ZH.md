@@ -142,6 +142,8 @@
 
 - 修复磨刀石筹码受伤上限钳制的负值缺陷:汲取(`papara_bite`)期间「不可击杀」保护会无条件激活,此时上限取自「剩余生命值 - 1」;当生命值 ≤ 1(如被压到 0.5 点)时该值为负,`reduced = cap` 会把受到的伤害改写为负值(等效于受伤回血/异常)。现改为 `Math.max(0, 生命值 - 1)`,下限为 0(双版本一致)。
 
+- 骇客立牌三项修复:① **清除过时「免疫任何攻击伤害」残留**——死亡清理中的 `player.setInvulnerable(false)` 会强制解除任何来源(其他模组/指令)授予的无敌,已删除;② **被动「网络防火墙」免疫末影珍珠摔落伤害改为在伤害判定最前置处取消**(1.21.1 `LivingIncomingDamageEvent`、1.20.1 `LivingAttackEvent` + `setCanceled(true)`,取代原先只把伤害改成 0 的做法):旧实现下 `LivingEntity.hurt` 仍会走完流程,`ServerPlayer.indicateDamage` 照常发送 `ClientboundHurtAnimationPacket`(红屏/屏幕震动)并播放受伤音效,现在 `hurt` 直接返回 false,无任何受伤反馈;③ **主动「远程侵入」改为真正的完全隐身**:隐身效果实例 `visible=false`(不再冒药水粒子),并由客户端订阅 `RenderPlayerEvent.Pre`/`RenderHandEvent` 抑制自身盔甲/手持/Curios 装饰渲染(原版隐身只隐藏本体,渲染层不检查 `isInvisible()`);`nancy_lu_hidden_until` 增加客户端同步以驱动该抑制(双版本一致;旁观者视角的隐藏不在本批范围内)。
+
 ### 工程
 
 - 新增两条回归用例与配套探针命令:定向爆破 AOE 口径守卫(`DIRECTIONAL-BLAST-AOE`,断言「自身 5 点 + 效果牌伤害加成」不被其它伤害牌污染)与绿宝石骰子交易(`EMERALD-DICE-TRADE`,断言客户端载荷为星币且成交后重发报价);探针新增 `blastbonus`/`emeraldtrade`/`tradeclose` 三条命令(改探针后必须冷启动)。

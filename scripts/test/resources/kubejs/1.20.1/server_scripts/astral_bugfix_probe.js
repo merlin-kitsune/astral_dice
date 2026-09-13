@@ -1018,6 +1018,332 @@ function doBlastBonus(ctx, tag) {
     return 1;
 }
 
+// ════════════════════════════════════════════════════════════════════════════
+//  二重验证追加探针(2026-09-14):铁砧升星端到端扣费
+//    /astralprobe anvilstar <diceId> <tag> [fresh]  走真实铁砧界面升 1 星并读数
+//    /astralprobe anvilbags  <tag>                  袋装星币 / 数量不足 的拒收读数
+//    /astralprobe anvilclose <tag>                  收尾:关掉铁砧界面
+//
+//  被测语义(AnvilUpgradeHandler#onAnvilUpdate;★0→★1=15、★1→★2=20、★2→★3=25 星币):
+//    · 该事件只做 event.setOutput / setMaterialCost / setCost —— **真正的扣费是原版
+//      AnvilMenu#onTake 干的**:材料按 repairItemCountCost 从**铁砧右槽**扣
+//      (槽内数量 > 费用则 shrink,否则整槽清空),经验按 cost 扣。
+//    · 所以「物品栏里的星币真的少了」只能靠「把物品栏的星币搬进右槽 → 取走结果」这条
+//      真实链路证明。本探针用 player.openMenu(真实铁砧方块自带的 MenuProvider) 打开原版
+//      铁砧界面,再用 AbstractContainerMenu#clicked(与原版服务端处理
+//      ServerboundContainerClickPacket 的入口逐字相同)完成搬运与取件 ——
+//      与真人 GUI 的唯一差别是「点击由服务端发起」,不经客户端网络包。
+//    · 右槽刻意多放 3 枚(费用 + 3):既证明「只扣费用、多余原样留在右槽」,
+//      也覆盖 onTake 的 shrink 分支;物品栏另留 7 枚作对照。
+//    · 原版在创造模式(instabuild)下**跳过经验扣除**,故探针临时切生存走完整结算,
+//      结束后还原(测试脚手架,不改被测逻辑)。
+//    · 1.20.1 差异:weapon_enhancement 是 ItemStack NBT 键(component/ItemDataKey),
+//      读取形态为 ModDataComponents.WEAPON_ENHANCEMENT.getOrDefault(stack, EMPTY)
+//      (1.21.1 为 stack.getOrDefault(WEAPON_ENHANCEMENT.get(), EMPTY))。
+// ════════════════════════════════════════════════════════════════════════════
+var ClickTypeClass = Java.loadClass("net.minecraft.world.inventory.ClickType");
+var BlocksClass = Java.loadClass("net.minecraft.world.level.block.Blocks");
+var GameTypeClass = Java.loadClass("net.minecraft.world.level.GameType");
+var AnvilMenuClass = Java.loadClass("net.minecraft.world.inventory.AnvilMenu");
+var SimpleMenuProviderClass = Java.loadClass("net.minecraft.world.SimpleMenuProvider");
+var ModDataComponentsClass = Java.loadClass("com.merlinkitsune.astral_dice.component.ModDataComponents");
+var WeaponEnhancementClass = Java.loadClass("com.merlinkitsune.astral_dice.component.WeaponEnhancement");
+
+var ANVIL_STAR_COIN = "astral_dice:star_coin";
+var ANVIL_STAR_COIN_BAG = "astral_dice:star_coin_bag";
+var ANVIL_TEST_DICE = "astral_dice:dice";
+/** 与 AnvilUpgradeHandler 的 switch 逐字对应(下标 = 当前星级) */
+var ANVIL_FEE_BY_STAR = [15, 20, 25];
+/** 右槽多放的枚数:证「只扣费用」并覆盖 onTake 的 shrink 分支 */
+var ANVIL_EXTRA_IN_SLOT = 3;
+/** 物品栏对照堆:扣费后物品栏必须恰好剩这么多 */
+var ANVIL_RESERVE = 7;
+/** 原版铁砧菜单槽位:0/1 = 左右输入,2 = 结果(见 ItemCombinerMenuSlotDefinition) */
+var ANVIL_SLOT_INPUT = 0;
+var ANVIL_SLOT_ADDITIONAL = 1;
+var ANVIL_SLOT_RESULT = 2;
+
+/** 读 weapon_enhancement 星级;-1 = 空槽,-2 = 读不到 */
+function anvilStarLevel(stack) {
+    if (stack == null || stack.isEmpty()) return -1;
+    try {
+        return ModDataComponentsClass.WEAPON_ENHANCEMENT.getOrDefault(stack,
+            WeaponEnhancementClass.EMPTY).starLevel();
+    } catch (e) { return -2; }
+}
+
+/** 骰子栈描述 "id:star"(空槽为 "empty:-1") */
+function anvilDiceDesc(stack) {
+    return itemIdOf(stack) + ":" + anvilStarLevel(stack);
+}
+
+/** 数量描述 "id:count"(空槽为 "empty:0") */
+function anvilStackDesc(stack) {
+    if (stack == null || stack.isEmpty()) return "empty:0";
+    return itemIdOf(stack) + ":" + stack.getCount();
+}
+
+/** 物品栏内某 id 的总枚数 */
+function anvilCountItem(p, itemId) {
+    var inv = p.getInventory();
+    var n = 0;
+    for (var i = 0; i < inv.getContainerSize(); i++) {
+        var s = inv.getItem(i);
+        if (!s.isEmpty() && itemIdOf(s) === itemId) n += s.getCount();
+    }
+    return n;
+}
+
+/** 首个空槽:优先快捷栏(0..8),便于 HUD 截图取证;没有则 -1 */
+function anvilFreeSlot(p) {
+    var inv = p.getInventory();
+    var i;
+    for (i = 0; i < 9; i++) { if (inv.getItem(i).isEmpty()) return i; }
+    for (i = 9; i < inv.getContainerSize(); i++) { if (inv.getItem(i).isEmpty()) return i; }
+    return -1;
+}
+
+/** 物品栏内首个匹配 itemId 的槽;没有则 -1 */
+function anvilFindSlot(p, itemId) {
+    var inv = p.getInventory();
+    for (var i = 0; i < inv.getContainerSize(); i++) {
+        var s = inv.getItem(i);
+        if (!s.isEmpty() && itemIdOf(s) === itemId) return i;
+    }
+    return -1;
+}
+
+/** 清掉物品栏内全部同类物品(测试脚手架:等价 give/clear,精确控制初始数量;不碰其它物品) */
+function anvilClearItem(p, itemId) {
+    var inv = p.getInventory();
+    for (var i = 0; i < inv.getContainerSize(); i++) {
+        var s = inv.getItem(i);
+        if (!s.isEmpty() && itemIdOf(s) === itemId) inv.setItem(i, ItemStack.EMPTY);
+    }
+}
+
+/**
+ * 物品栏下标 → 铁砧菜单槽位下标。
+ * 原版 ItemCombinerMenu#createInventorySlots:0/1 输入 + 2 结果,随后主物品栏 9..35 → 槽 3..29、
+ * 快捷栏 0..8 → 槽 30..38。**不按 container 反查**:Rhino 下 Java 包装对象的 === 不保证引用同一性。
+ */
+function anvilMenuSlotOf(invIndex) {
+    return invIndex < 9 ? 30 + invIndex : invIndex - 6;
+}
+
+/** 上一档若走 removed() 回退分支,containerMenu 仍指着旧铁砧菜单 → 先复位(否则 openMenu 内部 closeContainer 可能失败) */
+function anvilEnsureNoOpenMenu(p) {
+    try {
+        if (p.containerMenu != p.inventoryMenu) {
+            try { p.closeContainer(); } catch (e1) { p.containerMenu = p.inventoryMenu; }
+        }
+    } catch (e2) { /* 忽略 */ }
+}
+
+/**
+ * 打开真实铁砧界面:放一个铁砧方块 + 走方块自带的 MenuProvider(与真人右键铁砧同源)。
+ * 方块路径不可用时退回「直接构造 AnvilMenu」(同一原版菜单类,仅 ContainerLevelAccess 为空),
+ * 走哪条由 AP_<TAG>_SRC 读数标明。
+ */
+function anvilOpenMenu(p) {
+    anvilEnsureNoOpenMenu(p);
+    var src = "direct";
+    var provider = null;
+    try {
+        var pos = p.blockPosition().relative(p.getDirection());
+        p.level.setBlockAndUpdate(pos, BlocksClass.ANVIL.defaultBlockState());
+        provider = p.level.getBlockState(pos).getMenuProvider(p.level, pos);
+    } catch (e1) { provider = null; }
+    if (provider == null) {
+        provider = new SimpleMenuProviderClass(function (id, inv, pl) {
+            return new AnvilMenuClass(id, inv);
+        }, ComponentClass.literal("astral_probe_anvil"));
+    } else {
+        src = "block";
+    }
+    var res = p.openMenu(provider);
+    if (res == null || !res.isPresent()) return null;
+    return { menu: p.containerMenu, src: src };
+}
+
+/** 真实搬运/取件:与原版服务端处理 ServerboundContainerClickPacket 同一入口 */
+function anvilClick(p, menu, slot, button) {
+    menu.clicked(slot, button, ClickTypeClass.PICKUP, p);
+    try { menu.broadcastChanges(); } catch (e) { /* 同步失败不影响服务端权威状态 */ }
+}
+
+/** 关界面:铁砧输入槽的剩余材料由 ItemCombinerMenu#removed → clearContainer 退回物品栏 */
+function anvilCloseMenu(p) {
+    var how = "unavailable";
+    try { p.closeContainer(); how = "closeContainer"; }
+    catch (e1) {
+        try { p.containerMenu.removed(p); how = "menuRemoved"; } catch (e2) { /* 都不可用 */ }
+    }
+    return how;
+}
+
+/**
+ * 一档真实铁砧升星:清币 → 精确投料 → 真实点击搬运 → 真实取件 → 端到端读数。
+ * fresh = 先清掉物品栏里同 id 的旧骰子(上一轮可能留下 ★3 的)并新建一颗 ★0,保证从 ★0 起测。
+ */
+function doAnvilStar(ctx, diceId, tag, fresh) {
+    var p = ctx.source.getPlayerOrException();
+    var diceItem = resolveItem(diceId);
+    var coinItem = resolveItem(ANVIL_STAR_COIN);
+    if (diceItem == null) { send(ctx, "AP_" + tag + "_ERR:unknown_dice:" + diceId); return 0; }
+    if (coinItem == null) { send(ctx, "AP_" + tag + "_ERR:unknown_coin"); return 0; }
+
+    anvilClearItem(p, ANVIL_STAR_COIN);
+    anvilClearItem(p, ANVIL_STAR_COIN_BAG);
+
+    if (fresh) anvilClearItem(p, diceId);
+    var diceSlot = anvilFindSlot(p, diceId);
+    if (diceSlot < 0) {
+        diceSlot = anvilFreeSlot(p);
+        if (diceSlot < 0) { send(ctx, "AP_" + tag + "_ERR:no_free_slot_dice"); return 0; }
+        p.getInventory().setItem(diceSlot, new ItemStack(diceItem));
+    }
+    send(ctx, "AP_" + tag + "_DICE_IN:" + anvilDiceDesc(p.getInventory().getItem(diceSlot)));
+    var starBefore = anvilStarLevel(p.getInventory().getItem(diceSlot));
+    if (starBefore < 0 || starBefore > 2) { send(ctx, "AP_" + tag + "_ERR:bad_star:" + starBefore); return 0; }
+    var fee = ANVIL_FEE_BY_STAR[starBefore];
+
+    var feeSlot = anvilFreeSlot(p);
+    if (feeSlot < 0) { send(ctx, "AP_" + tag + "_ERR:no_free_slot_fee"); return 0; }
+    p.getInventory().setItem(feeSlot, new ItemStack(coinItem, fee + ANVIL_EXTRA_IN_SLOT));
+    var reserveSlot = anvilFreeSlot(p);
+    if (reserveSlot < 0) { send(ctx, "AP_" + tag + "_ERR:no_free_slot_reserve"); return 0; }
+    p.getInventory().setItem(reserveSlot, new ItemStack(coinItem, ANVIL_RESERVE));
+
+    send(ctx, "AP_" + tag + "_FEE:" + fee + ":" + starBefore + "->" + (starBefore + 1));
+    send(ctx, "AP_" + tag + "_COINS_BEFORE:" + anvilCountItem(p, ANVIL_STAR_COIN));
+    send(ctx, "AP_" + tag + "_BAGS:" + anvilCountItem(p, ANVIL_STAR_COIN_BAG));
+
+    // 原版在创造模式(instabuild)下跳过经验扣除 → 临时切生存走完整结算,收尾还原
+    var mode = "already_survival";
+    if (p.getAbilities().instabuild) {
+        try { p.setGameMode(GameTypeClass.SURVIVAL); mode = "forced_survival"; }
+        catch (e1) { send(ctx, "AP_" + tag + "_ERR:gamemode:" + exText(e1)); return 0; }
+    }
+    try { p.setExperienceLevels(30); } catch (e2) { send(ctx, "AP_" + tag + "_ERR:setxp:" + exText(e2)); }
+
+    var opened = anvilOpenMenu(p);
+    if (opened == null) { send(ctx, "AP_" + tag + "_ERR:open_menu"); return 0; }
+    var menu = opened.menu;
+    send(ctx, "AP_" + tag + "_SRC:" + opened.src);
+
+    // 真实点击链:星币 → 右槽;骰子 → 左槽(每次 setChanged 都会重跑 createResult → AnvilUpdateEvent)
+    anvilClick(p, menu, anvilMenuSlotOf(feeSlot), 0);
+    anvilClick(p, menu, ANVIL_SLOT_ADDITIONAL, 0);
+    anvilClick(p, menu, anvilMenuSlotOf(diceSlot), 0);
+    anvilClick(p, menu, ANVIL_SLOT_INPUT, 0);
+    send(ctx, "AP_" + tag + "_ANVIL_IN:" + anvilDiceDesc(menu.getSlot(ANVIL_SLOT_INPUT).getItem())
+        + ":" + anvilStackDesc(menu.getSlot(ANVIL_SLOT_ADDITIONAL).getItem()));
+    send(ctx, "AP_" + tag + "_RESULT:" + anvilDiceDesc(menu.getSlot(ANVIL_SLOT_RESULT).getItem()));
+
+    // 取走结果 = 原版 AnvilMenu#onTake(按 repairItemCountCost 扣右槽 + 按 cost 扣经验)
+    var xpBefore = p.experienceLevel;
+    var takeHow = "clicked";
+    try { anvilClick(p, menu, ANVIL_SLOT_RESULT, 0); }
+    catch (e3) { takeHow = "failed"; send(ctx, "AP_" + tag + "_ERR:take:" + exText(e3)); }
+    send(ctx, "AP_" + tag + "_TAKE:" + takeHow + ":" + xpBefore + ":" + p.experienceLevel);
+    send(ctx, "AP_" + tag + "_RIGHT_LEFT:" + anvilStackDesc(menu.getSlot(ANVIL_SLOT_ADDITIONAL).getItem()));
+    send(ctx, "AP_" + tag + "_INV_AFTER_TAKE:" + anvilCountItem(p, ANVIL_STAR_COIN));
+
+    // 独立菜单的光标物品不会自动进物品栏 → 显式把升级后的骰子放回原槽
+    var starAfter = anvilStarLevel(menu.getCarried());
+    send(ctx, "AP_" + tag + "_CARRIED:" + anvilDiceDesc(menu.getCarried()));
+    var putBack = "ok";
+    try { anvilClick(p, menu, anvilMenuSlotOf(diceSlot), 0); }
+    catch (e4) { putBack = "failed:" + exText(e4); }
+    send(ctx, "AP_" + tag + "_PUTBACK:" + putBack + ":"
+        + anvilDiceDesc(p.getInventory().getItem(diceSlot)));
+
+    // 关界面:右槽剩余材料退回物品栏,物品栏星币数即「初始 − 费用」
+    send(ctx, "AP_" + tag + "_CLOSE:" + anvilCloseMenu(p));
+    send(ctx, "AP_" + tag + "_INV_AFTER_CLOSE:" + anvilCountItem(p, ANVIL_STAR_COIN));
+    send(ctx, "AP_" + tag + "_STAR:" + starBefore + ":" + starAfter);
+
+    var restore = "n/a";
+    if (mode === "forced_survival") {
+        try { p.setGameMode(GameTypeClass.CREATIVE); restore = "ok"; }
+        catch (e5) { restore = "failed"; }
+    }
+    send(ctx, "AP_" + tag + "_MODE:" + mode + ":" + restore);
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+/**
+ * 袋装星币与「数量不足」的拒收读数:
+ *   阶段 A:右槽放 1 个袋装星币 —— AnvilUpgradeHandler 只认 right.is(STAR_COIN),
+ *           袋装星币不是升星材料 → 结果槽必须为空、袋一枚不扣、骰子不升星(9:1 须玩家自行转换)。
+ *   阶段 B:右槽放 9 枚散装星币(< 15)→ 费用不足必须整次放弃(不是「有多少扣多少」)。
+ */
+function doAnvilBags(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var coinItem = resolveItem(ANVIL_STAR_COIN);
+    var bagItem = resolveItem(ANVIL_STAR_COIN_BAG);
+    var diceItem = resolveItem(ANVIL_TEST_DICE);
+    if (coinItem == null || bagItem == null || diceItem == null) {
+        send(ctx, "AP_" + tag + "_ERR:unknown_item"); return 0;
+    }
+    anvilClearItem(p, ANVIL_STAR_COIN);
+    anvilClearItem(p, ANVIL_STAR_COIN_BAG);
+    anvilClearItem(p, ANVIL_TEST_DICE);
+    var diceSlot = anvilFreeSlot(p);
+    if (diceSlot < 0) { send(ctx, "AP_" + tag + "_ERR:no_free_slot_dice"); return 0; }
+    p.getInventory().setItem(diceSlot, new ItemStack(diceItem));
+    var bagSlot = anvilFreeSlot(p);
+    if (bagSlot < 0) { send(ctx, "AP_" + tag + "_ERR:no_free_slot_bag"); return 0; }
+    p.getInventory().setItem(bagSlot, new ItemStack(bagItem));
+    var fewSlot = anvilFreeSlot(p);
+    if (fewSlot < 0) { send(ctx, "AP_" + tag + "_ERR:no_free_slot_few"); return 0; }
+    p.getInventory().setItem(fewSlot, new ItemStack(coinItem, 9));
+    send(ctx, "AP_" + tag + "_SETUP:" + anvilDiceDesc(p.getInventory().getItem(diceSlot))
+        + ":coins=" + anvilCountItem(p, ANVIL_STAR_COIN)
+        + ":bags=" + anvilCountItem(p, ANVIL_STAR_COIN_BAG));
+
+    var a = anvilOpenMenu(p);
+    if (a == null) { send(ctx, "AP_" + tag + "_ERR:open_menu_a"); return 0; }
+    anvilClick(p, a.menu, anvilMenuSlotOf(bagSlot), 0);
+    anvilClick(p, a.menu, ANVIL_SLOT_ADDITIONAL, 0);
+    anvilClick(p, a.menu, anvilMenuSlotOf(diceSlot), 0);
+    anvilClick(p, a.menu, ANVIL_SLOT_INPUT, 0);
+    send(ctx, "AP_" + tag + "_BAG_IN:" + anvilStackDesc(a.menu.getSlot(ANVIL_SLOT_ADDITIONAL).getItem())
+        + ":" + anvilDiceDesc(a.menu.getSlot(ANVIL_SLOT_INPUT).getItem()));
+    send(ctx, "AP_" + tag + "_BAG_RESULT:" + itemIdOf(a.menu.getSlot(ANVIL_SLOT_RESULT).getItem()));
+    send(ctx, "AP_" + tag + "_BAG_RIGHT:" + anvilStackDesc(a.menu.getSlot(ANVIL_SLOT_ADDITIONAL).getItem()));
+    send(ctx, "AP_" + tag + "_BAG_DICE:" + anvilDiceDesc(a.menu.getSlot(ANVIL_SLOT_INPUT).getItem()));
+    send(ctx, "AP_" + tag + "_BAG_CLOSE:" + anvilCloseMenu(p));
+
+    var ds = anvilFindSlot(p, ANVIL_TEST_DICE);
+    var fs = anvilFindSlot(p, ANVIL_STAR_COIN);
+    if (ds < 0 || fs < 0) { send(ctx, "AP_" + tag + "_ERR:lost_after_close:" + ds + ":" + fs); return 0; }
+    var b = anvilOpenMenu(p);
+    if (b == null) { send(ctx, "AP_" + tag + "_ERR:open_menu_b"); return 0; }
+    anvilClick(p, b.menu, anvilMenuSlotOf(fs), 0);
+    anvilClick(p, b.menu, ANVIL_SLOT_ADDITIONAL, 0);
+    anvilClick(p, b.menu, anvilMenuSlotOf(ds), 0);
+    anvilClick(p, b.menu, ANVIL_SLOT_INPUT, 0);
+    send(ctx, "AP_" + tag + "_FEW_IN:" + anvilStackDesc(b.menu.getSlot(ANVIL_SLOT_ADDITIONAL).getItem()));
+    send(ctx, "AP_" + tag + "_FEW_RESULT:" + itemIdOf(b.menu.getSlot(ANVIL_SLOT_RESULT).getItem()));
+    send(ctx, "AP_" + tag + "_FEW_TOTAL:" + (anvilCountItem(p, ANVIL_STAR_COIN)
+        + b.menu.getSlot(ANVIL_SLOT_ADDITIONAL).getItem().getCount()));
+    send(ctx, "AP_" + tag + "_FEW_DICE:" + anvilDiceDesc(b.menu.getSlot(ANVIL_SLOT_INPUT).getItem()));
+    send(ctx, "AP_" + tag + "_CLOSE:" + anvilCloseMenu(p));
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+/** 收尾:关闭可能残留的铁砧界面(供用例在截图取证之后调用) */
+function doAnvilClose(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    send(ctx, "AP_" + tag + "_CLOSE:" + anvilCloseMenu(p));
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
 ServerEvents.commandRegistry(event => {
     var Commands = event.commands;
     event.register(
@@ -1139,6 +1465,28 @@ ServerEvents.commandRegistry(event => {
                 .then(Commands.argument("tag", StringArg.word())
                     .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
                         return doBlastBonus(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("anvilstar")
+                .then(Commands.argument("dice", StringArg.string())
+                    .then(Commands.argument("tag", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doAnvilStar(ctx, StringArg.getString(ctx, "dice"),
+                                StringArg.getString(ctx, "tag"), false);
+                        }))
+                        .then(Commands.literal("fresh")
+                            .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                                return doAnvilStar(ctx, StringArg.getString(ctx, "dice"),
+                                    StringArg.getString(ctx, "tag"), true);
+                            }))))))
+            .then(Commands.literal("anvilbags")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doAnvilBags(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("anvilclose")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doAnvilClose(ctx, StringArg.getString(ctx, "tag"));
                     }))))
     );
 });

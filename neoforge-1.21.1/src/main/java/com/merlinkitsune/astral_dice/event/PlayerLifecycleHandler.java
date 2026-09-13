@@ -148,7 +148,6 @@ public class PlayerLifecycleHandler {
         ModAttachments.setNancyLuActiveBonusUntil(player, 0);
         ModAttachments.setNancyLuHiddenUntil(player, 0);
         ModAttachments.setNancyLuEnderPearlImmuneUntil(player, 0);
-        player.setInvulnerable(false);
         player.removeEffect(net.minecraft.world.effect.MobEffects.INVISIBILITY);
         player.removeEffect(ModEffects.NANCY_LU_HACK);
         player.removeEffect(ModEffects.BLUE_CURSE);
