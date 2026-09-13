@@ -279,6 +279,53 @@ function Resolve-MtInjectWindow {
 
 # ══ 子命令 ═══════════════════════════════════════════════════════════════
 
+function Assert-MtInjectForeground {
+    <#
+    .SYNOPSIS
+        注入前把目标窗口置前台；置不上则返回 $false（调用方按错误处理，绝不静默通过）。
+
+    .NOTES
+        2026-09-13 实测根因：注入走 PostMessage(WM_KEYDOWN/WM_CHAR)，而 GLFW **忽略非前台窗口**
+        收到的按键 —— 窗口一旦失焦，命令被静默丢弃而脚本仍打印成功；更糟的是注入器自带的
+        「Esc 归一化」若第二个 Esc 因此丢失，暂停菜单会被永久顶开（`Minecraft.pause=true`
+        → `IntegratedServer` 停止 tick），其后整轮用例全部无输出。
+        SetForegroundWindow 受 Windows 前台锁限制，故按 Win32 惯例先 AttachThreadInput
+        到当前前台线程与目标线程，再调用，最后恢复附加状态。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][long]$Hwnd, [int]$Retries = 3)
+
+    for ($attempt = 1; $attempt -le $Retries; $attempt++) {
+        if ((Get-MtForegroundWindow) -eq $Hwnd) { return $true }
+
+        [void](Invoke-MtShowWindow -Hwnd $Hwnd -CmdShow 9)   # SW_RESTORE：最小化时先还原
+        [void](Invoke-MtBringWindowToTop -Hwnd $Hwnd)
+
+        $fg = Get-MtForegroundWindow
+        $fgTid = 0
+        if ($fg) { $fgTid = [int](Get-MtThreadOfWindow -Hwnd $fg) }
+        $targetTid = [int](Get-MtThreadOfWindow -Hwnd $Hwnd)
+        $myTid = [int][Mt.Win32.Native]::GetCurrentThreadId()
+
+        $a1 = $false
+        if ($fgTid) { $a1 = [bool](Set-MtAttachThreadInput -FromTid $myTid -ToTid $fgTid -Attach $true) }
+        $a2 = $false
+        if ($targetTid -and $targetTid -ne $fgTid) {
+            $a2 = [bool](Set-MtAttachThreadInput -FromTid $myTid -ToTid $targetTid -Attach $true)
+        }
+        try {
+            [void](Set-MtForegroundWindow -Hwnd $Hwnd)
+            Start-Sleep -Milliseconds 120
+        } finally {
+            if ($a2) { [void](Set-MtAttachThreadInput -FromTid $myTid -ToTid $targetTid -Attach $false) }
+            if ($a1) { [void](Set-MtAttachThreadInput -FromTid $myTid -ToTid $fgTid -Attach $false) }
+        }
+
+        if ((Get-MtForegroundWindow) -eq $Hwnd) { return $true }
+    }
+    return $false
+}
+
 function Invoke-MtInjectKeyCommand {
     [CmdletBinding()]
     param([string]$Key, [int]$HoldMs, [string]$Version, [string]$Layout, [long]$Hwnd)
@@ -294,6 +341,12 @@ function Invoke-MtInjectKeyCommand {
             Write-MtErrLine ('MT_INJECT: ERROR — 输入语言未就绪，拒绝注入（{0}）' -f $r.Message)
             return 2
         }
+        if (-not (Assert-MtInjectForeground -Hwnd $hwnd)) {
+            Write-MtInjectLine 'MT_INJECT_FOCUS: FAIL — 目标窗口无法置前台，按键会被游戏忽略'
+            Write-MtErrLine 'MT_INJECT: ERROR — 目标窗口未取得前台，拒绝注入（失焦时 GLFW 会丢弃按键）'
+            return 2
+        }
+        Write-MtInjectLine 'MT_INJECT_FOCUS: OK'
     }
 
     $k = $Key.ToLowerInvariant()
@@ -341,11 +394,25 @@ function Invoke-MtInjectCmdCommand {
             Write-MtErrLine ('MT_INJECT: ERROR — 输入语言未就绪，拒绝注入（{0}）' -f $r.Message)
             return 2
         }
+        if (-not (Assert-MtInjectForeground -Hwnd $hwnd)) {
+            Write-MtInjectLine 'MT_INJECT_FOCUS: FAIL — 目标窗口无法置前台，按键会被游戏忽略'
+            Write-MtErrLine 'MT_INJECT: ERROR — 目标窗口未取得前台，拒绝注入（失焦时 GLFW 会丢弃按键）'
+            return 2
+        }
+        Write-MtInjectLine 'MT_INJECT_FOCUS: OK'
     }
 
     # 目标选择会话激活期间 Esc 会取消选择，此时必须 -NoEsc（斜杠命令已被白名单放行）
     if (-not $NoEsc) {
-        Send-MtInjectKey -Hwnd $hwnd -Vk $script:Vk['escape'] -Scan $script:Scan['escape']
+        # 状态无关的「关闭一切界面」归一化：先 T 再 Esc。
+        # 为什么不是原来的 Esc×2：Esc 对「暂停菜单」是**开关**，故 Esc×2 依赖奇偶性 ——
+        # 一旦暂停菜单被留下开着（第二个 Esc 与菜单开启动画抢帧时可能丢失），之后每次注入都变成
+        # 「关掉→立刻重新打开」，'/' 落进暂停菜单、命令被静默丢弃，而注入脚本仍报 PASS
+        # （2026-09-13 实测：ANVIL 用例第 2 次注入起暂停菜单卡开 → 集成服务端停止 tick → 整轮用例全灭）。
+        # T/Esc 与初始状态无关，终态恒为「无界面」：
+        #   无界面 → T 开聊天、Esc 关聊天；暂停菜单 → T 无副作用、Esc 关闭；
+        #   容器界面 → T 无副作用（有 screen 时聊天键不会开聊天）、Esc 关闭。
+        Send-MtInjectKey -Hwnd $hwnd -Vk $script:Vk['t'] -Scan $script:Scan['t']
         Start-MtInjectPause -Milliseconds 150
         Send-MtInjectKey -Hwnd $hwnd -Vk $script:Vk['escape'] -Scan $script:Scan['escape']
         Start-MtInjectPause -Milliseconds 200
