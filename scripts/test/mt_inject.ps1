@@ -99,6 +99,15 @@ $script:WM_RBUTTONDOWN = 0x0204
 $script:WM_RBUTTONUP = 0x0205
 $script:VK_SHIFT = 0xA0
 
+# 投递通道（2026-09-13）：
+#   sendinput   —— 默认。用 SendInput 发**真实**键鼠，GLFW 才会当作真实输入处理。
+#   postmessage —— 旧路径（PostMessage(WM_KEYDOWN/WM_CHAR)），仅在排查时用 --transport postmessage 切回。
+# 为什么换：PostMessage 的按键在 GLFW 侧不被接受（窗口失焦后尤其明显），命令被静默丢弃而脚本仍报成功。
+$script:Transport = 'sendinput'
+# 是否强制旧的「界面归一化」（T+Esc）。默认 false；sendinput 通道下保持 false，
+# postmessage 通道下仍按老行为执行（见 Invoke-MtInjectCmdCommand 内注释）。
+$script:EscNormalize = $false
+
 # ══ 输出纪律 ══════════════════════════════════════════════════════════════
 
 function Write-MtInjectLine {
@@ -167,6 +176,12 @@ function Send-MtInjectKeyDown {
     [CmdletBinding()]
     param([Parameter(Mandatory)][long]$Hwnd, [Parameter(Mandatory)][int]$Vk, [Parameter(Mandatory)][int]$Scan)
 
+    if ($script:DryRun) { return }
+    if ($script:Transport -eq 'sendinput') {
+        # 真实输入：只进前台窗口（调用方已 Assert-MtInjectForeground）
+        [void](Send-MtRealKey -Vk $Vk)
+        return
+    }
     Send-MtInjectMessage -Hwnd $Hwnd -Msg $script:WM_KEYDOWN -WParam $Vk -LParam (1 -bor ($Scan -shl 16))
 }
 
@@ -179,6 +194,11 @@ function Send-MtInjectKeyUp {
     [CmdletBinding()]
     param([Parameter(Mandatory)][long]$Hwnd, [Parameter(Mandatory)][int]$Vk, [Parameter(Mandatory)][int]$Scan)
 
+    if ($script:DryRun) { return }
+    if ($script:Transport -eq 'sendinput') {
+        [void](Send-MtRealKey -Vk $Vk -Up)
+        return
+    }
     Send-MtInjectMessage -Hwnd $Hwnd -Msg $script:WM_KEYUP -WParam $Vk `
         -LParam ((1 -shl 30) -bor (1 -shl 14) -bor (1 -shl 14) -bor ($Scan -shl 16))
 }
@@ -219,13 +239,24 @@ function Send-MtInjectMouseCenter {
     $rect = Get-MtWindowRect -Hwnd $Hwnd
     $x = [int](($rect.Right - $rect.Left) / 2)
     $y = [int](($rect.Bottom - $rect.Top) / 2)
-    $lp = ($y -shl 16) -bor ($x -band 0xFFFF)
 
-    $down = if ($Right) { $script:WM_RBUTTONDOWN } else { $script:WM_LBUTTONDOWN }
-    $up = if ($Right) { $script:WM_RBUTTONUP } else { $script:WM_LBUTTONUP }
-    Send-MtInjectMessage -Hwnd $Hwnd -Msg $down -WParam 1 -LParam $lp
-    Start-MtInjectPause -Milliseconds 100
-    Send-MtInjectMessage -Hwnd $Hwnd -Msg $up -WParam 0 -LParam $lp
+    if ($script:Transport -eq 'sendinput') {
+        # 真实鼠标：先把光标移到窗口中心（屏幕坐标），再发真实左右键
+        if (-not $script:DryRun) {
+            [void](Set-MtRealCursorPosition -X ($rect.Left + $x) -Y ($rect.Top + $y))
+            Start-MtInjectPause -Milliseconds 80
+            [void](Send-MtRealMouse -Right $Right -Up $false)
+            Start-MtInjectPause -Milliseconds 100
+            [void](Send-MtRealMouse -Right $Right -Up $true)
+        }
+    } else {
+        $lp = ($y -shl 16) -bor ($x -band 0xFFFF)
+        $down = if ($Right) { $script:WM_RBUTTONDOWN } else { $script:WM_LBUTTONDOWN }
+        $up = if ($Right) { $script:WM_RBUTTONUP } else { $script:WM_LBUTTONUP }
+        Send-MtInjectMessage -Hwnd $Hwnd -Msg $down -WParam 1 -LParam $lp
+        Start-MtInjectPause -Milliseconds 100
+        Send-MtInjectMessage -Hwnd $Hwnd -Msg $up -WParam 0 -LParam $lp
+    }
 
     if ($Shift) {
         Start-MtInjectPause -Milliseconds 100
@@ -402,16 +433,19 @@ function Invoke-MtInjectCmdCommand {
         Write-MtInjectLine 'MT_INJECT_FOCUS: OK'
     }
 
-    # 目标选择会话激活期间 Esc 会取消选择，此时必须 -NoEsc（斜杠命令已被白名单放行）
-    if (-not $NoEsc) {
-        # 状态无关的「关闭一切界面」归一化：先 T 再 Esc。
-        # 为什么不是原来的 Esc×2：Esc 对「暂停菜单」是**开关**，故 Esc×2 依赖奇偶性 ——
-        # 一旦暂停菜单被留下开着（第二个 Esc 与菜单开启动画抢帧时可能丢失），之后每次注入都变成
-        # 「关掉→立刻重新打开」，'/' 落进暂停菜单、命令被静默丢弃，而注入脚本仍报 PASS
-        # （2026-09-13 实测：ANVIL 用例第 2 次注入起暂停菜单卡开 → 集成服务端停止 tick → 整轮用例全灭）。
-        # T/Esc 与初始状态无关，终态恒为「无界面」：
-        #   无界面 → T 开聊天、Esc 关聊天；暂停菜单 → T 无副作用、Esc 关闭；
-        #   容器界面 → T 无副作用（有 screen 时聊天键不会开聊天）、Esc 关闭。
+    # 目标选择会话激活期间 Esc 会取消选择，此时必须 -NoEsc（斜杠命令已被白名单放行）。
+    #
+    # ⚠️ sendinput 通道**默认不做**这步归一化（2026-09-13 实测）：旧实现每次注入先盲发
+    # `Esc, Esc`，而 Esc 对暂停菜单是**开关**——真实输入下若 T 尚未把聊天打开（客户端一帧延迟、
+    # 或窗口刚获得焦点），紧随的 Esc 就会打开暂停菜单；暂停后 `Minecraft.pause=true` →
+    # `IntegratedServer` 停止 tick（日志 `Saving and pausing game...`），聊天键再也打不开聊天、
+    # 整轮用例的命令全部静默丢失（断言「未命中」而 KUBEJS/CRASH/MIXIN 全绿）。
+    # 改为 T+Esc 也挡不住这种竞态。真实输入下**根本不需要**归一化：每条命令末尾的 Enter
+    # 本来就会关掉聊天，终端状态恒为「无界面」；万一有残留界面，用
+    # `mt_inject.ps1 key --key cancel`（单次真实 Esc）显式关闭即可。
+    # 需要旧行为时用 --esc-normalize 强制开启（仅排查用）。
+    $escNormalize = ((-not $NoEsc) -and ($script:Transport -ne 'sendinput')) -or $script:EscNormalize
+    if ($escNormalize) {
         Send-MtInjectKey -Hwnd $hwnd -Vk $script:Vk['t'] -Scan $script:Scan['t']
         Start-MtInjectPause -Milliseconds 150
         Send-MtInjectKey -Hwnd $hwnd -Vk $script:Vk['escape'] -Scan $script:Scan['escape']
@@ -423,12 +457,17 @@ function Invoke-MtInjectCmdCommand {
 
     $text = $Command
     if ($text.StartsWith('/')) { $text = $text.Substring(1) }
-    # ⚠️ 按**码点**遍历（python `for ch in text` 的语义），不是 UTF-16 码元
-    $i = 0
-    while ($i -lt $text.Length) {
-        $cp = [char]::ConvertToUtf32($text, $i)
-        if ([char]::IsHighSurrogate($text[$i])) { $i += 2 } else { $i += 1 }
-        Send-MtInjectMessage -Hwnd $hwnd -Msg $script:WM_CHAR -WParam $cp -LParam 1
+    if ($script:Transport -eq 'sendinput') {
+        # 真实文本输入：整串一次 SendInput(KEYEVENTF_UNICODE)
+        [void](Send-MtRealText -Text $text)
+    } else {
+        # 旧路径：按**码点**遍历（python `for ch in text` 的语义），不是 UTF-16 码元
+        $i = 0
+        while ($i -lt $text.Length) {
+            $cp = [char]::ConvertToUtf32($text, $i)
+            if ([char]::IsHighSurrogate($text[$i])) { $i += 2 } else { $i += 1 }
+            Send-MtInjectMessage -Hwnd $hwnd -Msg $script:WM_CHAR -WParam $cp -LParam 1
+        }
     }
 
     Start-MtInjectPause -Milliseconds 300
@@ -464,6 +503,8 @@ $Version = ''
 $Layout = 'auto'
 $Hwnd = [long]0
 $DryRun = $false
+$Transport = ''
+$EscNormalize = $false
 
 $i = 0
 while ($i -lt $args.Count) {
@@ -493,6 +534,11 @@ while ($i -lt $args.Count) {
         $Hwnd = ConvertTo-MtArgLong -Raw ([string]$args[$i + 1]) -Name '--hwnd'; $i += 2
     } elseif ($optName -eq 'noesc') {
         $NoEsc = $true; $i++
+    } elseif ($optName -eq 'transport') {
+        if ($i + 1 -ge $args.Count) { Write-MtErrorLine '缺少 --transport 的值'; exit $MT_EXIT_ERROR }
+        $Transport = [string]$args[$i + 1]; $i += 2
+    } elseif ($optName -eq 'escnormalize') {
+        $EscNormalize = $true; $i++
     } elseif ($optName -eq 'dryrun') {
         $DryRun = $true; $i++
     } else {
@@ -509,6 +555,18 @@ if ($Layout -ne 'auto' -and $Layout -ne 'as-is') {
     Write-MtErrorLine ("非法 -Layout 值 {0}（可选：auto as-is）" -f $Layout)
     exit $MT_EXIT_ERROR
 }
+
+# 投递通道：默认 sendinput（真实键鼠）；--transport postmessage 可切回旧路径排查用
+if ($Transport) {
+    $t = $Transport.Trim().ToLowerInvariant()
+    if ($t -ne 'sendinput' -and $t -ne 'postmessage') {
+        Write-MtErrorLine ("非法 --transport 值 {0}（可选：sendinput postmessage）" -f $Transport)
+        exit $MT_EXIT_ERROR
+    }
+    $script:Transport = $t
+}
+
+if ($EscNormalize) { $script:EscNormalize = $true }
 
 switch ($modeName) {
     'key' {

@@ -897,6 +897,187 @@ function Find-MtMinecraftWindow {
     return [long]0
 }
 
+# ══ 真实输入（SendInput）════════════════════════════════════════════════════
+# 背景（2026-09-13 实测）：注入原本走 PostMessage(WM_KEYDOWN/WM_CHAR)，而 GLFW **不把
+# PostMessage 投递的按键当作真实输入**（窗口失焦时尤其明显：命令被静默丢弃、脚本仍报成功）。
+# 这里提供 SendInput 版本的真实键鼠输入：必须先由调用方把目标窗口置前台
+# （见 mt_inject.ps1 的 Assert-MtInjectForeground），真实输入只会进前台窗口。
+
+if (-not ('Mt.RealInput' -as [type])) {
+    Add-Type -ErrorAction Stop -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+
+namespace Mt
+{
+    public static class RealInput
+    {
+        [StructLayout(LayoutKind.Sequential)]
+        public struct KEYBDINPUT
+        {
+            public ushort wVk;
+            public ushort wScan;
+            public uint dwFlags;
+            public uint time;
+            public IntPtr dwExtraInfo;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct MOUSEINPUT
+        {
+            public int dx;
+            public int dy;
+            public uint mouseData;
+            public uint dwFlags;
+            public uint time;
+            public IntPtr dwExtraInfo;
+        }
+
+        [StructLayout(LayoutKind.Explicit)]
+        public struct INPUTUNION
+        {
+            [FieldOffset(0)] public KEYBDINPUT ki;
+            [FieldOffset(0)] public MOUSEINPUT mi;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct INPUT
+        {
+            public uint type;
+            public INPUTUNION u;
+        }
+
+        private const uint INPUT_MOUSE = 0;
+        private const uint INPUT_KEYBOARD = 1;
+        private const uint KEYEVENTF_EXTENDEDKEY = 0x0001;
+        private const uint KEYEVENTF_KEYUP = 0x0002;
+        private const uint KEYEVENTF_UNICODE = 0x0004;
+        private const uint MOUSEEVENTF_LEFTDOWN = 0x0002;
+        private const uint MOUSEEVENTF_LEFTUP = 0x0004;
+        private const uint MOUSEEVENTF_RIGHTDOWN = 0x0008;
+        private const uint MOUSEEVENTF_RIGHTUP = 0x0010;
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool SetCursorPos(int X, int Y);
+
+        private static bool Send(INPUT input)
+        {
+            INPUT[] batch = new INPUT[] { input };
+            return SendInput(1, batch, Marshal.SizeOf(typeof(INPUT))) == 1;
+        }
+
+        public static bool Key(int vk, bool up)
+        {
+            INPUT input = new INPUT();
+            input.type = INPUT_KEYBOARD;
+            input.u.ki.wVk = (ushort)vk;
+            input.u.ki.wScan = 0;
+            input.u.ki.dwFlags = up ? KEYEVENTF_KEYUP : 0;
+            return Send(input);
+        }
+
+        // 含扩展键（如右 Alt/方向键区）时置 KEYEVENTF_EXTENDEDKEY
+        public static bool KeyEx(int vk, bool up, bool extended)
+        {
+            INPUT input = new INPUT();
+            input.type = INPUT_KEYBOARD;
+            input.u.ki.wVk = (ushort)vk;
+            input.u.ki.wScan = 0;
+            input.u.ki.dwFlags = (up ? KEYEVENTF_KEYUP : 0) | (extended ? KEYEVENTF_EXTENDEDKEY : 0);
+            return Send(input);
+        }
+
+        public static bool Text(string text)
+        {
+            if (string.IsNullOrEmpty(text)) { return true; }
+            INPUT[] batch = new INPUT[text.Length * 2];
+            int n = 0;
+            foreach (char c in text)
+            {
+                INPUT down = new INPUT();
+                down.type = INPUT_KEYBOARD;
+                down.u.ki.wVk = 0;
+                down.u.ki.wScan = c;
+                down.u.ki.dwFlags = KEYEVENTF_UNICODE;
+                batch[n++] = down;
+
+                INPUT up = new INPUT();
+                up.type = INPUT_KEYBOARD;
+                up.u.ki.wVk = 0;
+                up.u.ki.wScan = c;
+                up.u.ki.dwFlags = KEYEVENTF_UNICODE | KEYEVENTF_KEYUP;
+                batch[n++] = up;
+            }
+            return SendInput((uint)batch.Length, batch, Marshal.SizeOf(typeof(INPUT))) == (uint)batch.Length;
+        }
+
+        public static bool CursorTo(int x, int y)
+        {
+            return SetCursorPos(x, y);
+        }
+
+        public static bool Mouse(bool right, bool up)
+        {
+            INPUT input = new INPUT();
+            input.type = INPUT_MOUSE;
+            input.u.mi.dwFlags = right
+                ? (up ? MOUSEEVENTF_RIGHTUP : MOUSEEVENTF_RIGHTDOWN)
+                : (up ? MOUSEEVENTF_LEFTUP : MOUSEEVENTF_LEFTDOWN);
+            return Send(input);
+        }
+    }
+}
+'@
+}
+
+function Send-MtRealKey {
+    <#
+    .SYNOPSIS
+        真实按键（SendInput）——只作用于当前前台窗口；扩展键需 -Extended。
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][int]$Vk,
+        [switch]$Up,
+        [switch]$Extended
+    )
+
+    if ($Extended) { return [bool][Mt.RealInput]::KeyEx($Vk, [bool]$Up, $true) }
+    return [bool][Mt.RealInput]::Key($Vk, [bool]$Up)
+}
+
+function Send-MtRealText {
+    <#
+    .SYNOPSIS
+        真实文本输入（SendInput KEYEVENTF_UNICODE，逐 UTF-16 码元）。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][AllowEmptyString()][string]$Text)
+
+    return [bool][Mt.RealInput]::Text($Text)
+}
+
+function Set-MtRealCursorPosition {
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][int]$X, [Parameter(Mandatory)][int]$Y)
+
+    return [bool][Mt.RealInput]::CursorTo($X, $Y)
+}
+
+function Send-MtRealMouse {
+    <#
+    .SYNOPSIS
+        真实鼠标按键（SendInput）——配合 Set-MtRealCursorPosition 使用。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][bool]$Right, [Parameter(Mandatory)][bool]$Up)
+
+    return [bool][Mt.RealInput]::Mouse($Right, $Up)
+}
+
 Export-ModuleMember -Function @(
     'Get-MtModuleHandle', 'Set-MtThreadDpiAwareness', 'Get-MtScreenSize',
     'Get-MtKeyboardLayouts', 'Test-MtEnUsLayoutAvailable', 'Get-MtLangIdOfThread',
@@ -908,5 +1089,6 @@ Export-ModuleMember -Function @(
     'Get-MtForegroundWindow', 'Set-MtForegroundWindow', 'Set-MtAttachThreadInput',
     'Get-MtCurrentThreadId', 'Register-MtMessageClass', 'New-MtMessageWindow',
     'Unregister-MtMessageClass', 'Remove-MtWindow', 'Invoke-MtPumpMessages',
-    'Test-MtPidIsJava', 'Find-MtMinecraftWindow'
+    'Test-MtPidIsJava', 'Find-MtMinecraftWindow',
+    'Send-MtRealKey', 'Send-MtRealText', 'Set-MtRealCursorPosition', 'Send-MtRealMouse'
 )
