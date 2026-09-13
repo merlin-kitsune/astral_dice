@@ -302,7 +302,13 @@ function Resolve-MtInjectWindow {
     $h = $Hwnd
     if (-not $h) { $h = Find-MtMinecraftWindow -Version $Version }
     if (-not $h) {
-        Write-MtErrLine 'MT_INJECT: ERROR — 未能唯一确定本版本 Minecraft 窗口（未找到，或存在多个候选客户端）'
+        $st = $null
+        try { $st = Get-MtClientStatus -Paths (Get-MtPaths -Version $Version) } catch { }
+        if ($st -and -not $st.Alive) {
+            Write-MtErrLine ("MT_INJECT: ERROR — {0} 客户端未在运行（无 net.minecraft.client.main.Main 进程；先跑 --phase launch）" -f $Version)
+            return [long]0
+        }
+        Write-MtErrLine 'MT_INJECT: ERROR — 未能唯一确定本版本 Minecraft 窗口（存在多个候选客户端）'
         return [long]0
     }
     return [long]$h

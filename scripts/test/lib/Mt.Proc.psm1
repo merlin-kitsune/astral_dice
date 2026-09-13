@@ -345,9 +345,51 @@ function Stop-MtVersionProcesses {
     return $killed
 }
 
+function Get-MtClientStatus {
+    <#
+    .SYNOPSIS
+        本版本 Minecraft 客户端（runClient）的存活状态。
+
+    .NOTES
+        2026-09-13 新增。此前工具链**完全没有客户端存活校验**：崩溃/被收停后各步骤仍照跑并
+        逐条打印 PASS（注入器只打 MT_INJECT_CMD，不校验命令是否落地），失败要等几个用例之后
+        才以猜谜式的「断言未命中」暴露。判定口径：
+          ① 进程：java 进程中**同时**命中本流程标记（Get-MtProcessMarkers，与
+             Stop-MtVersionProcesses 同一套）且命令行含 net.minecraft.client.main.Main
+             —— 后半句把 Gradle 守护/包装器排除掉；
+          ② 崩溃报告：run/<版本>/crash-reports/crash-*.txt 的数量与最新一份（供调用方按
+             「相对基线是否新增」判因）。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][psobject]$Paths)
+
+    $markers = @(Get-MtProcessMarkers -Paths $Paths)
+    $pids = @()
+    foreach ($p in Get-JavaProcesses) {
+        $cmd = [string]$p.CommandLine
+        if ($cmd -notlike '*net.minecraft.client.main.Main*') { continue }
+        foreach ($m in $markers) {
+            if ($m -and $cmd.Contains([string]$m)) { $pids += [int]$p.Pid; break }
+        }
+    }
+    $crashes = @()
+    $crashDir = [string]$Paths.crash_dir
+    if ($crashDir -and (Test-Path -LiteralPath $crashDir -PathType Container)) {
+        $crashes = @(Get-ChildItem -LiteralPath $crashDir -Filter 'crash-*.txt' -File -ErrorAction SilentlyContinue |
+            Sort-Object LastWriteTime)
+    }
+    return [pscustomobject]@{
+        Version         = [string]$Paths.version
+        Alive           = ($pids.Count -gt 0)
+        Pids            = $pids
+        CrashCount      = $crashes.Count
+        LatestCrash     = $(if ($crashes.Count -gt 0) { [string]$crashes[-1].FullName } else { '' })
+        LatestCrashTime = $(if ($crashes.Count -gt 0) { $crashes[-1].LastWriteTime } else { [datetime]::MinValue })
+    }
+}
 Export-ModuleMember -Function @(
     'ConvertFrom-MtBytes', 'Invoke-MtProcess', 'Invoke-MtProcessFull',
     'Stop-MtProcessTree', 'Get-JavaProcesses', 'Get-GradleDaemonProcesses',
     'Read-MtSharedText', 'ConvertTo-MtStartArgs', 'Start-MtProcessToFile',
-    'Stop-MtVersionProcesses'
+    'Stop-MtVersionProcesses', 'Get-MtClientStatus'
 )

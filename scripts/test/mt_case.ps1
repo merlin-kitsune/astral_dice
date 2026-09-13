@@ -876,6 +876,41 @@ function Get-MtCaseFiles {
 }
 
 # ── 条目执行 ──────────────────────────────────────────────────────────────
+function Get-MtCaseClientStatus {
+    <#
+    .SYNOPSIS
+        读取本版本客户端存活状态；工具链缺该能力时返回 $null（fail-open，绝不因此中断用例）。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$Version)
+
+    if (-not (Get-Command Get-MtClientStatus -ErrorAction SilentlyContinue)) { return $null }
+    try { return (Get-MtClientStatus -Paths (Get-MtPaths -Version $Version)) } catch { return $null }
+}
+
+function Restart-MtCaseClient {
+    <#
+    .SYNOPSIS
+        客户端已死时自动重启（策略经用户裁决：重跑当前用例，每用例最多 1 次）。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$Version, [Parameter(Mandatory)][AllowEmptyString()][string]$Reason)
+
+    # ⚠️ 2026-09-13 实测：从用例执行器内部经 Invoke-MtCaseChild 调 mt_launch.ps1 **拉不起可用的客户端**
+    # —— mt_launch 返回后重跑仍报「客户端未在运行」，且残留的 gradlew 会占住调用方 stdout 管道
+    # （表现为整条命令超时）。根因是启动方与被启动方在同一进程树/管道内，客户端随启动方结束而被回收。
+    # 因此**默认关闭**自动重启（只做检测 + 明确归因），待启动方式改为脱离调用方进程树（detached）后再默认开启。
+    # 需要实验时置环境变量 MT_RESTART_CLIENT=1。
+    if ($env:MT_RESTART_CLIENT -ne '1') {
+        Write-MtErrLine 'MT_CASE: 客户端自动重启默认关闭（启动方式尚未脱离调用方进程树；置 MT_RESTART_CLIENT=1 可实验开启）'
+        return $false
+    }
+    Write-MtLine ("MT_CASE_RESTART: {0} — 自动重启客户端后重跑本用例（{1}）" -f $Version, $Reason)
+    $r = Invoke-MtCaseChild -Script 'mt_launch.ps1' -ScriptArgs @('--version', $Version)
+    if ($r.ExitCode -eq 0) { return $true }
+    Write-MtErrLine ("MT_CASE: ERROR — 自动重启失败（mt_launch 退出码 {0}）" -f $r.ExitCode)
+    return $false
+}
 function Invoke-MtCaseRun {
     <#
     .SYNOPSIS
@@ -889,7 +924,10 @@ function Invoke-MtCaseRun {
     param(
         [Parameter(Mandatory)][string]$Version,
         [Parameter(Mandatory)][AllowEmptyString()][string]$CaseFile,
-        [Parameter(Mandatory)][AllowEmptyString()][string]$RunId
+        [Parameter(Mandatory)][AllowEmptyString()][string]$RunId,
+        # 客户端自动重启预算（用户 2026-09-13 裁决：客户端死在用例前/用例中 → 重启并重跑本用例，每用例最多 1 次）。
+        # 递归重跑时递减；耗尽后该用例记 ERROR，不再无限重启。
+        [int]$RestartBudget = 1
     )
 
     $case = $null
@@ -918,6 +956,23 @@ function Invoke-MtCaseRun {
     $p = Get-MtPaths -Version $Version
     Write-MtLine ''
     Write-MtLine ("--- MT_CASE: {0} — {1} ---" -f $caseId, (Get-MtMapValue -Map $case -Key 'title'))
+    # ── 状态校验（2026-09-13 新增；此前完全没有，客户端崩掉后仍会刷一屏 PASS）──────────
+    # 是否需要客户端：由步骤 op 自动判定（inject_* / screenshot），SMOKE-TOOLCHAIN 之类无客户端用例不受影响。
+    $rawSteps = @(Get-MtMapValue -Map $case -Key 'steps' -Default @())
+    $needsClient = @($rawSteps | Where-Object {
+            $o = [string](Get-MtMapValue -Map $_ -Key 'op')
+            $o -like 'inject*' -or $o -eq 'screenshot'
+        }).Count -gt 0
+    $clientStart = if ($needsClient) { Get-MtCaseClientStatus -Version $Version } else { $null }
+    if ($needsClient -and $null -ne $clientStart -and -not $clientStart.Alive) {
+        if ($RestartBudget -gt 0) {
+            if (Restart-MtCaseClient -Version $Version -Reason '用例开始前客户端未在运行') {
+                return (Invoke-MtCaseRun -Version $Version -CaseFile $CaseFile -RunId $RunId -RestartBudget ($RestartBudget - 1))
+            }
+        }
+        Write-MtErrLine ("MT_CASE: ERROR — {0} 需要客户端，但客户端未在运行（自动重启已用尽）" -f $caseId)
+        return (New-MtPair 'ERROR' @())
+    }
 
     $steps = @()
     $fixtures = Get-MtMapValue -Map $case -Key 'fixtures'
@@ -974,6 +1029,28 @@ function Invoke-MtCaseRun {
         }
     }
 
+    # ── 收尾状态校验：崩溃报告 / 客户端中途死亡 → 归因到本用例（而不是留给后续用例猜谜）────
+    if ($needsClient -and $null -ne $clientStart) {
+        $clientEnd = Get-MtCaseClientStatus -Version $Version
+        $newCrash = ($null -ne $clientEnd) -and ($clientEnd.CrashCount -gt $clientStart.CrashCount)
+        $died = ($null -ne $clientEnd) -and $clientStart.Alive -and (-not $clientEnd.Alive)
+        if ($newCrash -or $died) {
+            if ($newCrash) {
+                Write-MtErrLine ("MT_CASE_CRASH: {0} — 新增崩溃报告 {1}" -f $caseId, $clientEnd.LatestCrash)
+                $first = ''
+                try { $first = (Get-Content -LiteralPath $clientEnd.LatestCrash -TotalCount 8 | Where-Object { $_ -match '\S' } | Select-Object -First 3) -join ' | ' } catch { }
+                if ($first) { Write-MtErrLine ("    {0}" -f $first) }
+            } else {
+                Write-MtErrLine ("MT_CASE: ERROR — {0} 执行期间客户端退出（进程消失且无新崩溃报告）" -f $caseId)
+            }
+            if ($RestartBudget -gt 0) {
+                if (Restart-MtCaseClient -Version $Version -Reason $(if ($newCrash) { '本用例执行期间客户端崩溃' } else { '本用例执行期间客户端退出' })) {
+                    return (Invoke-MtCaseRun -Version $Version -CaseFile $CaseFile -RunId $RunId -RestartBudget ($RestartBudget - 1))
+                }
+            }
+            $worst = 'ERROR'
+        }
+    }
     Write-MtLine ("MT_CASE_RESULT: {0} = {1}" -f $caseId, $worst)
 
     # on_fail=keep_game_running：失败时保留游戏现场供取证。
