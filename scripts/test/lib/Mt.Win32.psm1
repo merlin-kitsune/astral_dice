@@ -952,6 +952,7 @@ namespace Mt
         private const uint KEYEVENTF_EXTENDEDKEY = 0x0001;
         private const uint KEYEVENTF_KEYUP = 0x0002;
         private const uint KEYEVENTF_UNICODE = 0x0004;
+        private const uint KEYEVENTF_SCANCODE = 0x0008;
         private const uint MOUSEEVENTF_LEFTDOWN = 0x0002;
         private const uint MOUSEEVENTF_LEFTUP = 0x0004;
         private const uint MOUSEEVENTF_RIGHTDOWN = 0x0008;
@@ -1010,6 +1011,19 @@ namespace Mt
             return Send(input);
         }
 
+        // 按**扫描码**发送真实按键（2026-09-13 实测：只给虚拟键时游戏不响应，
+        // GLFW/游戏侧按键识别依赖扫描码；computer-control MCP 亦按扫描码发送）。
+        public static bool KeyScan(int scan, bool up, bool extended)
+        {
+            INPUT input = new INPUT();
+            input.type = INPUT_KEYBOARD;
+            input.u.ki.wVk = 0;
+            input.u.ki.wScan = (ushort)scan;
+            input.u.ki.dwFlags = (up ? KEYEVENTF_KEYUP : 0) | KEYEVENTF_SCANCODE
+                | (extended ? KEYEVENTF_EXTENDEDKEY : 0);
+            return Send(input);
+        }
+
         public static bool Text(string text)
         {
             if (string.IsNullOrEmpty(text)) { return true; }
@@ -1056,15 +1070,20 @@ namespace Mt
 function Send-MtRealKey {
     <#
     .SYNOPSIS
-        真实按键（SendInput）——只作用于当前前台窗口；扩展键需 -Extended。
+        真实按键（SendInput）——只作用于当前前台窗口；给了 -Scan 就按**扫描码**发送
+        （游戏侧按键识别依赖扫描码，只给虚拟键时 MC 不响应），扩展键加 -Extended。
     #>
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][int]$Vk,
+        [int]$Scan = 0,
         [switch]$Up,
         [switch]$Extended
     )
 
+    if ($Scan -gt 0) {
+        return [bool][Mt.RealInput]::KeyScan($Scan, [bool]$Up, [bool]$Extended)
+    }
     if ($Extended) { return [bool][Mt.RealInput]::KeyEx($Vk, [bool]$Up, $true) }
     return [bool][Mt.RealInput]::Key($Vk, [bool]$Up)
 }

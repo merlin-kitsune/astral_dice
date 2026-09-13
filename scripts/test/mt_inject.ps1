@@ -178,8 +178,8 @@ function Send-MtInjectKeyDown {
 
     if ($script:DryRun) { return }
     if ($script:Transport -eq 'sendinput') {
-        # 真实输入：只进前台窗口（调用方已 Assert-MtInjectForeground）
-        [void](Send-MtRealKey -Vk $Vk)
+        # 真实输入：只进前台窗口（调用方已 Assert-MtInjectForeground）；按**扫描码**发送
+        [void](Send-MtRealKey -Vk $Vk -Scan $Scan)
         return
     }
     Send-MtInjectMessage -Hwnd $Hwnd -Msg $script:WM_KEYDOWN -WParam $Vk -LParam (1 -bor ($Scan -shl 16))
@@ -196,7 +196,7 @@ function Send-MtInjectKeyUp {
 
     if ($script:DryRun) { return }
     if ($script:Transport -eq 'sendinput') {
-        [void](Send-MtRealKey -Vk $Vk -Up)
+        [void](Send-MtRealKey -Vk $Vk -Scan $Scan -Up)
         return
     }
     Send-MtInjectMessage -Hwnd $Hwnd -Msg $script:WM_KEYUP -WParam $Vk `
@@ -458,9 +458,21 @@ function Invoke-MtInjectCmdCommand {
     }
 
     # 打开聊天并输入命令。
-    # 2026-09-13 实测：**不要按 `/` 键**（VK_OEM_2）——真实输入下它会把游戏搞进暂停菜单
-    # （日志 Saving and pausing game...），命令全部失效；改用与 computer-control MCP 同款的
-    # 「按 T 开聊天 → 输入含前导 `/` 的全文 → 回车」，已实测能正常执行并产出读数。
+    # 2026-09-13 更正：「按 `/` 键会把游戏顶进暂停菜单」属**误判**——真实原因是入口把
+    # `$script:Transport` 覆盖成空串，使 escNormalize 恒为真、每次注入先发一次真实 Esc
+    # （完整推演见下方参数解析段的注释）。那条 `/` 观测是在「Esc 已经打开菜单」的前提下取得的，
+    # 归因错了。sendinput 通道本来就不按 `/` 键，而是走与 computer-control MCP 同款的
+    # 「按 T 开聊天 → 输入含前导 `/` 的全文 → 回车」。
+    #
+    # 状态归一化（必须，且**不能用 Esc**）：Esc 对暂停菜单是**开关**，菜单已开着时再按
+    # 只会「关掉→再打开」，命令仍被丢进菜单里（2026-09-13 反复踩到）。改用 Enter：
+    #   · 暂停菜单开着 → 激活默认聚焦的「回到游戏」按钮 → 解除暂停（`Minecraft.pause=false`）
+    #   · 无界面       → Enter 无绑定，无副作用
+    #   · 聊天开着     → 结束当前聊天
+    # 三者终态都是「无界面且未暂停」，随后 T 才能真正打开聊天。
+    Send-MtInjectKey -Hwnd $hwnd -Vk $script:Vk['enter'] -Scan $script:Scan['enter']
+    Start-MtInjectPause -Milliseconds 250
+
     Send-MtInjectKey -Hwnd $hwnd -Vk $script:Vk['t'] -Scan $script:Scan['t']
     Start-MtInjectPause -Milliseconds 800
 
@@ -515,8 +527,15 @@ $Version = ''
 $Layout = 'auto'
 $Hwnd = [long]0
 $DryRun = $false
-$Transport = ''
-$EscNormalize = $false
+# ⚠️ 这两个 CLI 解析变量**必须**带 Arg 后缀（2026-09-13 踩坑）：脚本顶层 `$X = ...` 与
+# `$script:X` **是同一个变量**，早先写作 `$Transport = ''` / `$EscNormalize = $false`，会把上方
+# 第 106/109 行设置的 `$script:Transport = 'sendinput'` / `$script:EscNormalize = $false` 直接
+# 覆盖成空串 —— 结果是「默认走 sendinput」形同虚设：实际落进 postmessage 分支，且
+# `$escNormalize` 因 `'' -ne 'sendinput'` 变为 **$true**，每条命令注入前先发一次真实 Esc，
+# 把暂停菜单顶开（日志 `Saving and pausing game...`），后续按键与命令全部丢进菜单里。
+# 症状极具误导性：脚本仍打印 MT_INJECT_CMD 成功，游戏里却毫无输出。
+$TransportArg = ''
+$EscNormalizeArg = $false
 
 $i = 0
 while ($i -lt $args.Count) {
@@ -548,9 +567,9 @@ while ($i -lt $args.Count) {
         $NoEsc = $true; $i++
     } elseif ($optName -eq 'transport') {
         if ($i + 1 -ge $args.Count) { Write-MtErrorLine '缺少 --transport 的值'; exit $MT_EXIT_ERROR }
-        $Transport = [string]$args[$i + 1]; $i += 2
+        $TransportArg = [string]$args[$i + 1]; $i += 2
     } elseif ($optName -eq 'escnormalize') {
-        $EscNormalize = $true; $i++
+        $EscNormalizeArg = $true; $i++
     } elseif ($optName -eq 'dryrun') {
         $DryRun = $true; $i++
     } else {
@@ -569,16 +588,16 @@ if ($Layout -ne 'auto' -and $Layout -ne 'as-is') {
 }
 
 # 投递通道：默认 sendinput（真实键鼠）；--transport postmessage 可切回旧路径排查用
-if ($Transport) {
-    $t = $Transport.Trim().ToLowerInvariant()
+if ($TransportArg) {
+    $t = $TransportArg.Trim().ToLowerInvariant()
     if ($t -ne 'sendinput' -and $t -ne 'postmessage') {
-        Write-MtErrorLine ("非法 --transport 值 {0}（可选：sendinput postmessage）" -f $Transport)
+        Write-MtErrorLine ("非法 --transport 值 {0}（可选：sendinput postmessage）" -f $TransportArg)
         exit $MT_EXIT_ERROR
     }
     $script:Transport = $t
 }
 
-if ($EscNormalize) { $script:EscNormalize = $true }
+if ($EscNormalizeArg) { $script:EscNormalize = $true }
 
 switch ($modeName) {
     'key' {
