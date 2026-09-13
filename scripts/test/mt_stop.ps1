@@ -89,6 +89,6 @@ $rc = $LASTEXITCODE
 if ($rc -eq 0) {
     Write-MtOk 'STOP' '收停完成，无本流程残留进程'
 } else {
-    Write-MtWarn 'STOP' '收停后仍有残留，详见上方 mt_cleanup 输出'
+    Write-MtWarn 'STOP: 收停后仍有残留，详见上方 mt_cleanup 输出'
 }
 exit $rc

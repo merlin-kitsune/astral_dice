@@ -111,14 +111,14 @@ function Invoke-MtAutoCleanup {
     foreach ($ln in (Get-MtCleanupDisplayLines -Text $r.StdOut)) { Write-MtLine $ln }
 
     if ($r.StdOut.Contains('MT_CLEANUP_RESULT: SKIP')) {
-        Write-MtWarn 'CLEANUP' '按失败取证标记保留了游戏现场（未收停）—— 取证完用 --phase stop --force 释放'
+        Write-MtWarn 'CLEANUP: 按失败取证标记保留了游戏现场（未收停）—— 取证完用 --phase stop --force 释放'
         return 0
     }
     if ($r.ExitCode -eq 0) {
         Write-MtOk 'CLEANUP' '退出清理完成，无本流程残留进程'
         return 0
     }
-    Write-MtWarn 'CLEANUP' '退出清理后仍有残留，详见上方 mt_cleanup 输出'
+    Write-MtWarn 'CLEANUP: 退出清理后仍有残留，详见上方 mt_cleanup 输出'
     return 1
 }
 
