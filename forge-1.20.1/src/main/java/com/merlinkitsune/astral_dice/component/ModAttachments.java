@@ -43,8 +43,8 @@ public class ModAttachments {
     public static final AttachedDataKey<Integer> EFFECT_CARD_PLAY_COUNT =
             register(AttachedDataKey.builder("effect_card_play_count", Codec.INT, () -> 0).sync().build());
 
-    // 忍者立牌(komachi)主动:效果牌出牌数+1 累积银行(按实际出牌消耗;跨周期保留至用尽,
-    // 不受出牌进度/冷却/满额影响,确保主动技能在任何情况下均生效)
+    // 忍者立牌(komachi)主动:本轮出牌数 +1 的本周期标记(0/1;仅当前出牌周期有效,
+    // 周期归零时由 EffectCardPeriod 清除;冷却中无法触发,已达封顶或本周期已生效时不释放)
     public static final AttachedDataKey<Integer> KOMACHI_EXTRA_PLAYS =
             register(AttachedDataKey.builder("komachi_extra_plays", Codec.INT, () -> 0).sync().build());
 

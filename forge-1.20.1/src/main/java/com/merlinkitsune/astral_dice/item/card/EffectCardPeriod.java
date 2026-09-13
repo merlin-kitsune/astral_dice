@@ -22,8 +22,8 @@ import com.merlinkitsune.astral_dice.item.ModItems;
  * - 基础出牌数固定为 1(游戏设计决定,不可配置)。
  * - 固定出牌数加成(佩戴即提供,不卸载一直有效):大背包 +1、忍术飞镖 +1。
  * - 临时出牌数加成(效果驱动,效果结束自动清除):活体书页效果 +1、命运的指引效果 +1、
- *   忍者立牌(komachi)主动技能 +1(出牌数银行,按实际出牌消耗,跨周期保留至用尽)。
- * - 出牌数上限:min(1 + 固定 + 临时 + 忍者银行, {@link GameplayConstants#MAX_EFFECT_CARD_PLAYS})
+ *   忍者立牌(komachi)主动技能 +1(仅当前出牌周期有效,每周期至多一次,不跨周期累积)。
+ * - 出牌数上限:min(1 + 固定 + 临时, {@link GameplayConstants#MAX_EFFECT_CARD_PLAYS})
  *   实时计算,加成来源可叠加,但单轮总出牌数固定封顶 9 张(固定常量,非配置文件项)。
  * - 出牌数打满上限后才开始冷却倒计时(30 秒);未打满不开始倒计时,冷却归零时出牌数归零。
  *   效果牌本身的效果单独计算;单个轮询内所有已出效果牌的效果全部结束后才可重新出牌
@@ -112,6 +112,7 @@ public final class EffectCardPeriod {
         registerTemporarySource(p -> p.hasEffect(ModEffects.FATE_GUIDANCE.get()));     // 命运的指引效果
         registerTemporarySource(p -> ModAttachments.isCandyChipPlayBonusActive(p)); // 可口糖果:满血使用效果牌触发(每轮一次)
         registerTemporarySource(p -> ModAttachments.isSatellitePlayBonusActive(p)); // 探天卫星:使用轨道炮后触发(每 1:00 一次)
+        registerTemporarySource(p -> ModAttachments.getKomachiExtraPlays(p) > 0); // 忍者立牌主动:本轮出牌数 +1(仅当前周期,周期归零时清除)
 
         // 效果待定来源(全部效果牌统一注册;新增效果牌在此追加或调用 registerEffectPendingSource)
         registerEffectPendingSource(ModEffects.LIVING_PAGE.get());
@@ -125,7 +126,7 @@ public final class EffectCardPeriod {
         registerEffectPendingSource(ModEffects.UNWAVERING.get());
     }
 
-    // 当前出牌数上限 = min(基础 1 + 固定 + 临时 + 忍者银行, MAX_EFFECT_CARD_PLAYS)(实时计算)
+    // 当前出牌数上限 = min(基础 1 + 固定 + 临时, MAX_EFFECT_CARD_PLAYS)(实时计算;忍者立牌主动已并入临时来源)
     public static int getMaxAllowed(Player player) {
         int extra = 0;
         for (ExtraPlaySource source : FIXED_SOURCES) {
@@ -134,8 +135,6 @@ public final class EffectCardPeriod {
         for (ExtraPlaySource source : TEMPORARY_SOURCES) {
             if (source.isActive(player)) extra += source.amount();
         }
-        // 忍者立牌(komachi)主动的出牌数银行:按实际出牌消耗,跨周期保留至用尽
-        extra += ModAttachments.getKomachiExtraPlays(player);
         // 单轮出牌数固定封顶(常量 9,不写入配置文件)
         return Math.min(GameplayConstants.MAX_EFFECT_CARD_PLAYS, 1 + extra);
     }
@@ -216,7 +215,7 @@ public final class EffectCardPeriod {
      *
      * <p><b>冷却严格按照「出牌数打满后才进入冷却」</b>:未打满时**不启动**冷却倒计时,
      * 只在本次出牌使出牌数达到上限({@link #getMaxAllowed})时才开始 30 秒冷却;
-     * 冷却归零后由 {@link #tick} 清空出牌数占用。任何增加出牌数的手段(固定/临时来源、忍者银行)
+     * 冷却归零后由 {@link #tick} 清空出牌数占用。任何增加出牌数的手段(固定/临时来源、忍者本轮加成)
      * 都只能提高上限,不能绕过 {@link GameplayConstants#MAX_EFFECT_CARD_PLAYS} 这一最高优先级封顶。
      */
     public static void registerPlay(Player player) {
@@ -228,15 +227,11 @@ public final class EffectCardPeriod {
             ModAttachments.setEffectCardPlayCount(player, 0);
             ModAttachments.setCandyChipPlayBonusActive(player, false);
             ModAttachments.setSatellitePlayBonusActive(player, false);
+            ModAttachments.setKomachiExtraPlays(player, 0);
             cooldown = 0;
         }
         int count = ModAttachments.getEffectCardPlayCount(player) + 1;
         ModAttachments.setEffectCardPlayCount(player, count);
-        // 消耗一张忍者立牌主动的出牌数银行(若有),使 +1 恰好对应一次实际出牌
-        int komachiBank = ModAttachments.getKomachiExtraPlays(player);
-        if (komachiBank > 0) {
-            ModAttachments.setKomachiExtraPlays(player, komachiBank - 1);
-        }
         // 仅当本次出牌打满当前上限时才进入冷却(未打满不开始倒计时)
         if (count >= getMaxAllowed(player)) {
             long cooldownTicks = ChargeManager.cooldownTicks(player,
@@ -253,7 +248,8 @@ public final class EffectCardPeriod {
         if (now < cooldown) return;
         ModAttachments.setEffectCardCooldownEnd(player, 0);
         ModAttachments.setEffectCardPlayCount(player, 0);
-        // 周期归零:忍者立牌主动的出牌数银行保留(跨周期有效,按实际出牌消耗)
+        // 周期归零:忍者立牌主动的本轮出牌数 +1 失效(仅当前周期有效,不跨周期累积)
+        ModAttachments.setKomachiExtraPlays(player, 0);
         // 周期归零:清除可口糖果的"满血出牌数+1"(每个轮次最多一次)
         ModAttachments.setCandyChipPlayBonusActive(player, false);
         ModAttachments.setSatellitePlayBonusActive(player, false);

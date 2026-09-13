@@ -24,8 +24,9 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
  * - 主动技能冷却时间立即减少 30%;
  * - 伤害类效果牌伤害加成 +1(计数器"效果牌伤害增益",无上限,卸下立牌重置)。
  * 计数期间显示"忍者立牌"效果图标,等级 = 当前第几张;第 3 张触发后计数归 0。
- * 主动:本轮出牌数 +1(累积到出牌数银行,按实际出牌消耗;跨周期保留至用尽,不随周期归零清除,
- * 不受出牌进度/冷却/满额影响;银行存储上限见 GameplayConstants.KOMACHI_EXTRA_PLAYS_CAP)。
+ * 主动(忍术连击):本轮出牌数 +1——仅当前出牌周期有效、每周期至多一次,不跨周期累积。
+ * 冷却中不可触发(BaseSignItem.performSkill 统一拦截);出牌数已达封顶 MAX_EFFECT_CARD_PLAYS
+ * 或本周期已生效时不释放,且不进入主动技能冷却(见 handleUse)。
  */
 @Mod.EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public class KomachiSignItem extends BaseSignItem {
@@ -48,11 +49,23 @@ public class KomachiSignItem extends BaseSignItem {
         if (level.isClientSide) {
             return InteractionResultHolder.success(stack);
         }
-        // 主动:效果牌出牌数 +1(累积到出牌数银行,按实际出牌消耗;不受出牌进度/冷却/满额影响;
-        // 银行存储上限为独立常量,与效果牌出牌上限无关)
+        // 主动(忍术连击):本轮出牌数 +1——仅当前出牌周期有效,每周期至多一次,不跨周期累积。
+        // 释放条件(任一不满足即不释放,且不消耗主动技能冷却,由 performSkill 的返回值判定):
+        //   1. 当前出牌数上限未达封顶(MAX_EFFECT_CARD_PLAYS = 9),否则 +1 无任何意义;
+        //   2. 本周期尚未由忍者主动 +1。
+        // 冷却中的拒绝由 BaseSignItem.performSkill 统一处理,此处不重复判定。
+        if (com.merlinkitsune.astral_dice.item.card.EffectCardPeriod.getMaxAllowed(player)
+                >= com.merlinkitsune.astral_dice.component.GameplayConstants.MAX_EFFECT_CARD_PLAYS) {
+            sendSignActionBar(player, "msg.astral_dice.komachi_active_capped",
+                    com.merlinkitsune.astral_dice.component.GameplayConstants.MAX_EFFECT_CARD_PLAYS);
+            return InteractionResultHolder.fail(stack);
+        }
+        if (ModAttachments.getKomachiExtraPlays(player) > 0) {
+            sendSignActionBar(player, "msg.astral_dice.komachi_active_used");
+            return InteractionResultHolder.fail(stack);
+        }
         ModAttachments.setKomachiExtraPlays(player,
-                Math.min(ModAttachments.getKomachiExtraPlays(player) + 1,
-                        com.merlinkitsune.astral_dice.component.GameplayConstants.KOMACHI_EXTRA_PLAYS_CAP));
+                com.merlinkitsune.astral_dice.component.GameplayConstants.KOMACHI_EXTRA_PLAYS_CAP);
         return InteractionResultHolder.success(stack);
     }
 
