@@ -71,11 +71,11 @@ Initialize-MtConsole
 # ── 扫描码表（美式布局；注入前由 mt_ime 把目标窗口线程切到 en-US）────────
 $script:Scan = @{
     't' = 0x14; 'enter' = 0x1C; 'escape' = 0x01; 'e' = 0x12; 'j' = 0x24
-    'h' = 0x23; 'w' = 0x11; 'f2' = 0x3C; 'f3' = 0x3D; 'slash' = 0x35
+    'h' = 0x23; 'w' = 0x11; 'f2' = 0x3C; 'f3' = 0x3D; 'slash' = 0x35; 'tab' = 0x0F
 }
 $script:Vk = @{
     't' = 0x54; 'enter' = 0x0D; 'escape' = 0x1B; 'e' = 0x45; 'j' = 0x4A
-    'h' = 0x48; 'w' = 0x57; 'f2' = 0x71; 'f3' = 0x72; 'slash' = 0xBF
+    'h' = 0x48; 'w' = 0x57; 'f2' = 0x71; 'f3' = 0x72; 'slash' = 0xBF; 'tab' = 0x09
 }
 for ($i = 1; $i -le 9; $i++) {
     $digit = [string]$i
@@ -464,14 +464,28 @@ function Invoke-MtInjectCmdCommand {
     # 归因错了。sendinput 通道本来就不按 `/` 键，而是走与 computer-control MCP 同款的
     # 「按 T 开聊天 → 输入含前导 `/` 的全文 → 回车」。
     #
-    # 状态归一化（必须，且**不能用 Esc**）：Esc 对暂停菜单是**开关**，菜单已开着时再按
-    # 只会「关掉→再打开」，命令仍被丢进菜单里（2026-09-13 反复踩到）。改用 Enter：
-    #   · 暂停菜单开着 → 激活默认聚焦的「回到游戏」按钮 → 解除暂停（`Minecraft.pause=false`）
-    #   · 无界面       → Enter 无绑定，无副作用
-    #   · 聊天开着     → 结束当前聊天
-    # 三者终态都是「无界面且未暂停」，随后 T 才能真正打开聊天。
+    # ── 状态归一化：Esc → Tab → Enter（2026-09-13 实机逐一验证，必须遵守）────────
+    # 目的：把界面收敛到「无界面且未暂停」，随后 T 才能真正打开聊天。
+    # 为什么是这三键（穷举起始状态，全部实测）：
+    #   · 无界面       → Esc 打开暂停菜单 → Tab 聚焦首个按钮「回到游戏」→ Enter 激活 → 回到无界面
+    #                    （**单按 Enter 点不掉暂停菜单**：1.21.1 GameMenuScreen 初始无聚焦控件）
+    #   · 暂停菜单开着 → Esc 关掉 → Tab/Enter 无控件可作用、无副作用
+    #   · 容器 GUI 开着 → Esc 关掉容器。这是**唯一**能关容器的安全键：E 会开关背包、T 与 / 在容器里
+    #                    无绑定，都无法收敛状态；而容器 GUI 不关掉 ⇒ T 打不开聊天 ⇒ 命令被 GUI 吞掉
+    #   · 聊天开着     → Esc 关聊天 → Tab/Enter 无副作用
+    # 反面教材（都实测踩过，禁止改回去）：
+    #   · 只按 Enter：容器关不掉、暂停菜单点不掉 ⇒ 从容器界面起「全部后续命令零输出」。
+    #   · Esc×2：Esc 是暂停菜单**开关**，奇偶性取决于起始状态，可能把菜单顶开。
+    #   · 只按 Esc：无界面时会**打开**暂停菜单（暂停 + 存盘 + 停止 tick）。
+    # 代价：无界面时每条命令走一次「开菜单→关菜单」，日志多一条 Saving and pausing 并伴一次存盘
+    # （几十毫秒）。这是换取「任意起始状态都能注入」的代价，属**预期行为**——不要再把
+    # Saving and pausing 当作「暂停菜单被顶开」的故障信号（那条旧判据已作废）。
+    Send-MtInjectKey -Hwnd $hwnd -Vk $script:Vk['escape'] -Scan $script:Scan['escape']
+    Start-MtInjectPause -Milliseconds 350
+    Send-MtInjectKey -Hwnd $hwnd -Vk $script:Vk['tab'] -Scan $script:Scan['tab']
+    Start-MtInjectPause -Milliseconds 150
     Send-MtInjectKey -Hwnd $hwnd -Vk $script:Vk['enter'] -Scan $script:Scan['enter']
-    Start-MtInjectPause -Milliseconds 250
+    Start-MtInjectPause -Milliseconds 450
 
     Send-MtInjectKey -Hwnd $hwnd -Vk $script:Vk['t'] -Scan $script:Scan['t']
     Start-MtInjectPause -Milliseconds 800
