@@ -1,4 +1,4 @@
-package com.merlinkitsune.astral_dice.mixin.fixes;
+package com.merlinkitsune.astral_dice.fixes;
 
 import java.util.function.Consumer;
 
@@ -17,7 +17,7 @@ import org.slf4j.LoggerFactory;
  * <p>未安装 slf4j 时不会走到这里：单测直接使用 {@link DamageStackSanitizer} 的默认
  * {@code System.out} 落点。
  */
-final class NeoForgeFixesLog {
+public final class NeoForgeFixesLog {
 
     /** 日志器名与补丁配置名对齐（{@code astral_dice.neoforge_fixes} ←→ 配置 astral_dice.neoforge_fixes.mixins.json）。 */
     private static final Logger LOGGER = LoggerFactory.getLogger("astral_dice.neoforge_fixes");
@@ -29,7 +29,7 @@ final class NeoForgeFixesLog {
     }
 
     /** 把补丁存活日志接到 slf4j（幂等；由 Mixin 的 HEAD 注入器在每次 hurt 进入时调用，成本为一次引用比较）。 */
-    static void install() {
+    public static void install() {
         DamageStackSanitizer.setLogSink(SINK);
     }
 }

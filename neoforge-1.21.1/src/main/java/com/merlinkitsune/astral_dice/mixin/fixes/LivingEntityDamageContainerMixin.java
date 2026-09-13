@@ -2,6 +2,8 @@ package com.merlinkitsune.astral_dice.mixin.fixes;
 
 import java.util.Stack;
 
+import com.merlinkitsune.astral_dice.fixes.DamageStackSanitizer;
+import com.merlinkitsune.astral_dice.fixes.NeoForgeFixesLog;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.LivingEntity;
 import net.neoforged.neoforge.common.damagesource.DamageContainer;

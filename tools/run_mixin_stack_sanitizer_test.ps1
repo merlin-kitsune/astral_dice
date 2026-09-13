@@ -19,7 +19,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
-$sanitizer = Join-Path $root 'neoforge-1.21.1/src/main/java/com/merlinkitsune/astral_dice/mixin/fixes/DamageStackSanitizer.java'
+$sanitizer = Join-Path $root 'neoforge-1.21.1/src/main/java/com/merlinkitsune/astral_dice/fixes/DamageStackSanitizer.java'
 $test = Join-Path $root 'tools/mixin-stack-sanitizer-test/DamageStackSanitizerTest.java'
 
 foreach ($f in @($sanitizer, $test)) {

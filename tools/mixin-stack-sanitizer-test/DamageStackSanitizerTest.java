@@ -2,7 +2,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Stack;
 
-import com.merlinkitsune.astral_dice.mixin.fixes.DamageStackSanitizer;
+import com.merlinkitsune.astral_dice.fixes.DamageStackSanitizer;
 
 /**
  * DamageStackSanitizer 的纯 Java 语义验证（不依赖 Gradle / Minecraft / NeoForge / Mixin / slf4j）。
@@ -20,7 +20,7 @@ import com.merlinkitsune.astral_dice.mixin.fixes.DamageStackSanitizer;
  * Remove-Item -Recurse -Force $out -ErrorAction SilentlyContinue
  * New-Item -ItemType Directory -Force -Path $out | Out-Null
  * & javac -encoding UTF-8 -d $out `
- *     'neoforge-1.21.1\src\main\java\com\merlinkitsune\astral_dice\mixin\fixes\DamageStackSanitizer.java' `
+ *     'neoforge-1.21.1\src\main\java\com\merlinkitsune\astral_dice\fixes\DamageStackSanitizer.java' `
  *     'tools\mixin-stack-sanitizer-test\DamageStackSanitizerTest.java'
  * & java -cp $out DamageStackSanitizerTest
  * </pre>

@@ -1,4 +1,4 @@
-package com.merlinkitsune.astral_dice.mixin.fixes;
+package com.merlinkitsune.astral_dice.fixes;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
