@@ -96,6 +96,7 @@
 
 ### 已修复BUG
 
+- 修复绿宝石骰子交易时客户端「交易列表」始终显示绿宝石:村民报价的换币替换此前只走取值覆写,而报价数据包的网络编码被投递到 Netty 事件循环后才执行(`Connection.sendPacket` 的 `eventLoop().execute(...)` 分支),那时线程局部的交换上下文已经关闭,客户端收到的永远是未替换的绿宝石费用(服务端实际扣款仍是星币,表现为「显示与实际不一致」)。现改为在数据层替换发往客户端的报价副本(1.21.1 经报价复制构造注入,1.20.1 在发送前重建报价),村民本体报价不受影响;并在成交后立即重发一次报价,使客户端的职业经验条与职业等级即时刷新(原版只在开界面/补货/升级时重发)。(双版本一致)。
 - 修复「赋能」效果没有倒计时、层数变化看不出来:效果实例时长此前为 `Integer.MAX_VALUE`(无限),而物品栏效果面板与其悬停提示显示的时长直接取自该值(`MobEffectUtil.formatDuration`),于是面板永远显示一个天文数字、不倒数;现改为「递减间隔 + 20 tick 余量」(`EmpowerEffect.DURATION_TICKS = 620`,`DECAY_INTERVAL_TICKS = 600` 与之同源),面板显示 0:31 → 0:01 的真实倒计时,归零前由 `EmpowerManager.tick` 减 1 层并重新起算。留 20 tick 余量是必需的:递减必须**先于**效果自然到期发生,否则实例先到期会让层数直接归零(表现为「层数凭空消失」而非减 1 层)。(双版本一致)。
 - 修复 1.2.0 新增充能筹码遗漏 `curios:chip` 饰品槽标签:安全气囊/电击手套/电磁炮/原初核心/磨刀石 5 个筹码此前只补进了 `astral_dice:chips` 汇总标签,遗漏 `curios:chip` 装备槽标签——1.21.1 筹码槽启用 `curios:tag` 校验会直接拒绝装备(5 个筹码效果完全失效),1.20.1 无校验仍可装备,造成双版本行为不一致;现已补全(双版本一致)。
 - 补全枪匠立牌 3 个新增效果的名称键:`weakness_reveal`(弱点识破)/`moses_broken`(破绽)/`moses_ready`(待命：破绽)此前缺少 `effect.astral_dice.*` 语言键,玩家状态栏会显示原始翻译键(同类 `haiqing_ready`/`bonnie_ready` 均有键);现已补入双版本中英文(双版本一致)。
@@ -140,6 +141,7 @@
 
 ### 工程
 
+- 新增两条回归用例与配套探针命令:定向爆破 AOE 口径守卫(`DIRECTIONAL-BLAST-AOE`,断言「自身 5 点 + 效果牌伤害加成」不被其它伤害牌污染)与绿宝石骰子交易(`EMERALD-DICE-TRADE`,断言客户端载荷为星币且成交后重发报价);探针新增 `blastbonus`/`emeraldtrade`/`tradeclose` 三条命令(改探针后必须冷启动)。
 - 1.20.1 引入 Mixin Booster 并改为强依赖(`mixinbooster` 0.1.3):运行时以 Sponge Mixin 接管 mixin 执行并自动处理 Mojmap→SRG 重映射,不再需要 refmap 与注解处理器(村民交易 mixin 不再需要构建期 refmap);同时**补齐 Mixin 配置发现**——已核实 Forge 1.20.1 的 FML 47.4.10 对 Mixin 零集成(fmlloader/fmlcore 全文无 mixin 处理),mods.toml 的 `[[mixins]] config=` 在 1.20.1 被完全忽略,故开发环境经 `mixin { config 'astral_dice.mixins.json' }` 注入 ModLauncher 的 `--mixin.config`,生产 jar 由所有 `Jar` 任务写入 `MixinConfigs` 清单属性(已核验产物 `META-INF/MANIFEST.MF` 含 `MixinConfigs: astral_dice.mixins.json`);两条通道缺一,物品栏效果角标、村民交易、猪灵 AI 等 Mixin 会全部静默失效。
 - 新增 tooltip 统一染色规则(非时间数值连同其前后符号染黄 `§e`;时间数值染蓝 `§9`,覆盖 `M:SS` 与 `N 秒`/`Ns` 两种写法;形如「<效果名> (<效果时间>)」的条目整段染蓝;**规则 0:行内回落码必须等于本行底色码,`§r`/`§7` 都不是「恢复本行底色」**;**规则 4:值内含 `%%` 的文案必须走 `tt()`**;负面数值保留红 `§c`、按键提示 `§f` 与行内语义色保留;优先级 例外 > 规则 3 > 规则 2 > 规则 1),双版本语言文件与硬编码 tooltip 已全量按规则处理完毕;规则 0/4 已并入审计脚本(审计脚本与用法见 `scripts/test/TESTING-SPEC.md` §9)。
 - 补全 Bountiful「赏金板」联动数据(1.2.0 新增物品此前整体遗漏同步):`astral_objs` 需求池新增 7 条(玻璃/下界岩/绿宝石/黑曜石/诡异/紫晶骰子、袋装星币),`astral_rews` 奖励池新增 24 条(上述 7 条 + 枪匠/肉弹战车立牌 + 以毒攻毒效果牌 + 13 个新增筹码),补全后 objs 13 条 / rews 92 条;入池判定按规则闭集化(**传奇品质的骰子、筹码、立牌一律不进池**,货币与卡牌例外),价值按骰子阶层与物品品质落在既有价值带内(校验脚本见 `scripts/test/TESTING-SPEC.md` §9)(双版本一致)。

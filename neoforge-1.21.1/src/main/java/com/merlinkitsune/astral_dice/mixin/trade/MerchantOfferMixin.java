@@ -7,9 +7,11 @@ import net.minecraft.world.item.trading.ItemCost;
 import net.minecraft.world.item.trading.MerchantOffer;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Mutable;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.Optional;
@@ -22,8 +24,10 @@ import java.util.Optional;
 @Mixin(MerchantOffer.class)
 public abstract class MerchantOfferMixin {
 
-    @Shadow @Final private ItemCost baseCostA;
-    @Shadow @Final private Optional<ItemCost> costB;
+    // baseCostA / costB 在目标类中是 final;这里配合 @Mutable 声明为非 final,以便在「复制构造」时
+    // 把副本的费用替换为星币(只改副本,村民本体报价不受影响)。
+    @Shadow @Mutable private ItemCost baseCostA;
+    @Shadow @Mutable private Optional<ItemCost> costB;
     @Shadow private int demand;
     @Shadow @Final private float priceMultiplier;
     @Shadow private int specialPriceDiff;
@@ -83,6 +87,26 @@ public abstract class MerchantOfferMixin {
             return;
         }
         cir.setReturnValue(true);
+    }
+
+    /**
+     * 复制构造(仅由 {@code MerchantOffer#copy()} 调用)完成时,若正处于「向佩戴绿宝石骰子的玩家发送报价」
+     * 的交换窗口内,则把副本的两项费用替换为星币并打 20% 折扣。
+     *
+     * <p>为什么必须在数据层改:{@code ClientboundMerchantOffersPacket} 构造时**同步**执行
+     * {@code offers.copy()},但真正的网络编码被投递到 Netty 事件循环后才执行(见 1.21.1
+     * {@code Connection.sendPacket} 的 {@code eventLoop().execute(...)} 分支),那时交换上下文已经
+     * 关闭 —— 仅靠取值覆写({@code getItemCostA} 等)影响不到客户端载荷,客户端会一直显示绿宝石费用。
+     * 复制发生在上下文活跃期内,所以在这里把副本字段一次替换到位。
+     */
+    @Inject(method = "<init>(Lnet/minecraft/world/item/trading/MerchantOffer;)V", at = @At("RETURN"))
+    private void astralDice$transformCopy(MerchantOffer source, CallbackInfo ci) {
+        if (!EmeraldDiceTrade.isSwapActive()) return;
+        if (EmeraldDiceTrade.isEmerald(this.baseCostA)) {
+            this.baseCostA = EmeraldDiceTrade.transform(this.baseCostA);
+        }
+        this.costB = this.costB.map(cost -> EmeraldDiceTrade.isEmerald(cost)
+                ? EmeraldDiceTrade.transform(cost) : cost);
     }
 
     /** 复刻原版 {@code getModifiedCostCount},用于对替换后的星币费用计算需求/乘数/特殊价格。 */

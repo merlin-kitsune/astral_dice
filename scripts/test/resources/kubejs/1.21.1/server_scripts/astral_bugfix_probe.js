@@ -885,6 +885,152 @@ ServerEvents.tick(event => {
     }
 });
 
+// ════════════════════════════════════════════════════════════════════════════
+//  二重验证追加探针(2026-09-13):绿宝石骰子交易 + 定向爆破 AOE 口径
+//    /astralprobe emeraldtrade <tag>   戴骰子 + 造流浪商人 + 复现客户端载荷 + 开交易界面
+//    /astralprobe tradeclose  <tag>    关掉交易界面(取证结束后调用)
+//    /astralprobe blastbonus  <tag>    定向爆破 AOE 唯一变量(效果牌伤害加成)读数
+//
+//  为什么这里用「流浪商人」:它天生带绿宝石报价且是 Merchant,可直接 openTradingScreen,
+//  从而走真实的 sendMerchantOffers(被修复的发送路径),无需依赖村民职业/等级初始化。
+// ════════════════════════════════════════════════════════════════════════════
+var EmeraldDiceTradeClass = Java.loadClass("com.merlinkitsune.astral_dice.trade.EmeraldDiceTrade");
+var SpellDamageRegistryClass = Java.loadClass("com.merlinkitsune.astral_dice.combat.SpellDamageRegistry");
+var MobEffectInstanceClass = Java.loadClass("net.minecraft.world.effect.MobEffectInstance");
+var EMERALD_DICE = "astral_dice:emerald_dice";
+
+/** 在玩家正前方 2 格造一个流浪商人(无 AI、持久化),返回实体。 */
+function spawnTrader(p) {
+    var type = BuiltInRegistries.ENTITY_TYPE.get(ResourceLocation.parse("minecraft:wandering_trader"));
+    var trader = type.create(p.level);
+    if (trader == null) return null;
+    var pos = aimPositiveZ(p, 2);
+    placeAt(trader, pos.x, pos.y, pos.z);
+    try { trader.setNoAi(true); } catch (e1) { /* 忽略 */ }
+    try { trader.setPersistenceRequired(); } catch (e2) { /* 忽略 */ }
+    p.level.addFreshEntity(trader);
+    return trader;
+}
+
+/** 报价费用描述(1.21.1:ItemCost 形态)。 */
+function costDesc(cost) {
+    if (cost == null) return "null";
+    try { return BuiltInRegistries.ITEM.getKey(cost.item().value()).toString() + ":" + cost.count(); }
+    catch (e) { return "ERR:" + exText(e); }
+}
+
+/**
+ * 绿宝石骰子交易:本体报价(绿宝石) vs 发给客户端的那一份(星币) + 成交后重发报价。
+ *
+ * <p>客户端载荷无法在服务端「读」,所以这里**复现生产路径**:把交换上下文打开后取
+ * {@code offer.copy()} —— 这正是数据包构造时同步执行的那一步(见 MerchantOfferMixin 的复制构造注入)。
+ */
+function doEmeraldTrade(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var dice = resolveItem(EMERALD_DICE);
+    if (dice == null) { send(ctx, "AP_" + tag + "_ERR:unknown_dice"); return 0; }
+    var err = putInSlot(p, "dice", new ItemStack(dice), 0);
+    if (err != null) { send(ctx, "AP_" + tag + "_ERR:" + err); return 0; }
+    send(ctx, "AP_" + tag + "_DICE:" + diceSlotItemId(p));
+    var hasDice = -1;
+    try { hasDice = EmeraldDiceTradeClass.hasEmeraldDice(p) ? 1 : 0; } catch (e0) { hasDice = -1; }
+    send(ctx, "AP_" + tag + "_HASDICE:" + hasDice);
+
+    var trader = spawnTrader(p);
+    if (trader == null) { send(ctx, "AP_" + tag + "_ERR:spawn_failed"); return 0; }
+    var offers = trader.getOffers();
+    if (offers == null || offers.isEmpty()) { send(ctx, "AP_" + tag + "_ERR:no_offers"); return 0; }
+
+    var index = -1;
+    for (var i = 0; i < offers.size(); i++) {
+        try {
+            if (EmeraldDiceTradeClass.isEmerald(function (o) { return o.getItemCostA(); }(offers.get(i)))) { index = i; break; }
+        } catch (e1) { /* 忽略 */ }
+    }
+    if (index < 0) { send(ctx, "AP_" + tag + "_ERR:no_emerald_offer:" + offers.size()); return 0; }
+    var offer = offers.get(index);
+    send(ctx, "AP_" + tag + "_OFFERS:" + offers.size() + ":idx=" + index);
+    send(ctx, "AP_" + tag + "_SERVER_A:" + costDesc(function (o) { return o.getItemCostA(); }(offer)));
+
+    var client = "err";
+    EmeraldDiceTradeClass.begin(p);
+    try {
+        // 生产路径复现:数据包构造时同步执行的正是 offers.copy() → 每份报价的复制构造
+        var copyOffer = offer.copy();
+        client = costDesc(copyOffer.getItemCostA());
+    } catch (e2) { client = "ERR:" + exText(e2); }
+    EmeraldDiceTradeClass.end();
+    send(ctx, "AP_" + tag + "_CLIENT_A:" + client);
+
+    var xpBefore = -1; var xpAfter = -1; var offerXp = -1;
+    try { xpBefore = trader.getVillagerXp(); } catch (e3) { /* 忽略 */ }
+    try { offerXp = offer.getXp(); } catch (e4) { /* 忽略 */ }
+    try { trader.notifyTrade(offer); } catch (e5) { send(ctx, "AP_" + tag + "_ERR:notify:" + exText(e5)); }
+    try { xpAfter = trader.getVillagerXp(); } catch (e6) { /* 忽略 */ }
+    send(ctx, "AP_" + tag + "_XP:" + xpBefore + ":" + xpAfter + ":offerxp=" + offerXp);
+    try {
+        EmeraldDiceTradeClass.resendOffers(p, trader);
+        send(ctx, "AP_" + tag + "_RESEND:ok");
+    } catch (e7) { send(ctx, "AP_" + tag + "_ERR:resend:" + exText(e7)); }
+    try {
+        trader.openTradingScreen(p, ComponentClass.literal("astral_probe_trade"), 1);
+        send(ctx, "AP_" + tag + "_OPEN:ok");
+    } catch (e8) { send(ctx, "AP_" + tag + "_ERR:open:" + exText(e8)); }
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+/** 关闭交易界面(截图取证之后调用,避免界面残留在后续用例里)。 */
+function doTradeClose(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    // Rhino 对部分继承来的方法查不到(实测 closeContainer 报 TypeError),按 API 链容错:
+    // 关闭只是收尾动作、不构成被测行为,实际走到的路径记进读数。
+    var how = "unavailable";
+    try { p.closeContainer(); how = "closeContainer"; }
+    catch (e1) {
+        try { p.containerMenu.removed(p); how = "menuRemoved"; } catch (e2) { /* 都不可用 */ }
+    }
+    send(ctx, "AP_" + tag + "_CLOSE:" + how);
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+/**
+ * 定向爆破 AOE 口径守卫:定向爆破对周围 6 格造成的伤害公式为「5 + 效果牌伤害加成」,
+ * 而效果牌伤害加成只能由书签筹码与忍者立牌提供 —— **不得**被激光/板砖/轨道炮/活体书页
+ * 这类「其它伤害效果牌」污染(用户 2026-09-13 裁决口径 B)。
+ * 强断言:装齐其它伤害牌后 AOE_FORMULA 仍为 5;装上书签后变为 6。
+ */
+function doBlastBonus(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    function bonus() {
+        try { return "" + SpellDamageRegistryClass.effectCardDamageBonus(p); }
+        catch (e) { return "ERR:" + exText(e); }
+    }
+    function clear(holder) { try { p.removeEffect(holder); } catch (e) { /* 忽略 */ } }
+    clear(ModEffects.MONSTER_LASER);
+    clear(ModEffects.MONSTER_BRICK);
+    clear(ModEffects.ORBITAL_STRIKE);
+    clear(ModEffects.LIVING_PAGE);
+    clear(ModEffects.DIRECTIONAL_BLAST);
+    // 忍者立牌的「效果牌伤害增益」是附件(卸下不自动清) → 显式归零,BONUS_BASE 才确定
+    try { ModAttachments.setKomachiDamageBonus(p, 0); } catch (e7) { /* 忽略 */ }
+    send(ctx, "AP_" + tag + "_BONUS_BASE:" + bonus());
+    try { p.addEffect(new MobEffectInstanceClass(ModEffects.DIRECTIONAL_BLAST, 2400, 0)); }
+    catch (e1) { send(ctx, "AP_" + tag + "_ERR:blast:" + exText(e1)); }
+    send(ctx, "AP_" + tag + "_BONUS_BLAST:" + bonus());
+    try { p.addEffect(new MobEffectInstanceClass(ModEffects.MONSTER_LASER, 2400, 0)); } catch (e2) { /* 忽略 */ }
+    try { p.addEffect(new MobEffectInstanceClass(ModEffects.MONSTER_BRICK, 2400, 0)); } catch (e3) { /* 忽略 */ }
+    try { p.addEffect(new MobEffectInstanceClass(ModEffects.ORBITAL_STRIKE, 2400, 0)); } catch (e4) { /* 忽略 */ }
+    send(ctx, "AP_" + tag + "_BONUS_OTHER_CARDS:" + bonus());
+    var total = "ERR";
+    try { total = "" + (5 + SpellDamageRegistryClass.effectCardDamageBonus(p)); }
+    catch (e5) { total = "ERR:" + exText(e5); }
+    send(ctx, "AP_" + tag + "_AOE_FORMULA:" + total);
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
 ServerEvents.commandRegistry(event => {
     var Commands = event.commands;
     event.register(
@@ -992,5 +1138,20 @@ ServerEvents.commandRegistry(event => {
                             return doHud(ctx, IntegerArg.getInteger(ctx, "ticks"),
                                 StringArg.getString(ctx, "tag"));
                         })))))
+            .then(Commands.literal("emeraldtrade")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doEmeraldTrade(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("tradeclose")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doTradeClose(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("blastbonus")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doBlastBonus(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
     );
 });

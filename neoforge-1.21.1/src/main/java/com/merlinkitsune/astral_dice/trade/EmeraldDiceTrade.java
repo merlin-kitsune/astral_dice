@@ -1,9 +1,13 @@
 package com.merlinkitsune.astral_dice.trade;
 
 import com.merlinkitsune.astral_dice.item.ModItems;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.trading.ItemCost;
+import net.minecraft.world.item.trading.Merchant;
+import net.minecraft.world.item.trading.MerchantOffers;
 import top.theillusivec4.curios.api.CuriosApi;
 
 /**
@@ -64,5 +68,23 @@ public final class EmeraldDiceTrade {
     /** 20% 折扣(向下取整,至少 1)。 */
     public static int discount(int count) {
         return Math.max(1, (int) Math.floor(count * 0.8));
+    }
+
+    /**
+     * 成交后立即把报价重发给当前交易玩家,使客户端的「职业经验 / 职业等级 / 报价列表」即时刷新。
+     *
+     * <p>原版只在开界面、补货与升级时重发报价({@code Villager.resendOffersToTradingPlayer}),
+     * 普通成交不会重发 —— 客户端那条经验条读的是数据包里的 {@code villagerXp}(见
+     * {@code ClientPacketListener.handleMerchantOffers} → {@code MerchantMenu.setXp}),
+     * 因此成交后不重发就一直是旧值。佩戴绿宝石骰子交易时补一次重发。
+     */
+    public static void resendOffers(ServerPlayer player, Merchant merchant) {
+        if (player == null || merchant == null) return;
+        if (!hasEmeraldDice(player)) return;
+        MerchantOffers offers = merchant.getOffers();
+        if (offers == null || offers.isEmpty()) return;
+        int level = merchant instanceof Villager villager ? villager.getVillagerData().getLevel() : 1;
+        player.sendMerchantOffers(player.containerMenu.containerId, offers, level,
+                merchant.getVillagerXp(), merchant.showProgressBar(), merchant.canRestock());
     }
 }

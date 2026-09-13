@@ -140,7 +140,14 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --phase <p> --version <v>
 | `BUG3-MIXIN-BADGE` | 物品栏效果角标 Mixin 应被加载（阿拉伯数字角标） | 8 步 / 7 断言 | `mixin` 应用行、角标日志、`absent`、`kubejs`、`crash` |
 | `BUG4-OCULUS-LIGHTNING` | Oculus + 光影启用时雷击可正常渲染 | 9 步 / 9 断言 | 雷击实体日志、`vision` 截图比对、`mixin`、`crash` |
 | `BUG5-RAILGUN-DELAY-CD` | 电磁炮雷击延迟 1 秒 + 1:00 冷却内不得再触发 | 25 步 / 26 断言 | 真实延迟量测 `DELAY_MEASURED:2[01]`、`cdguard` 冷却守卫（充能不消耗/不登记/不重置剩余）、两段负向观测窗、末端复查 |
+| `DIRECTIONAL-BLAST-AOE` | 定向爆破 AOE 口径守卫：只吃「自身 5 点 + 效果牌伤害加成」，其它伤害效果牌不得计入 | 3 步 / 11 断言 | `AP_B1_AOE_FORMULA:5`（装齐激光/板砖/轨道炮后仍为 5）、`AP_B2_AOE_FORMULA:6`（再装书签 → +1）、`BONUS_OTHER_CARDS:0`、`absent`、`kubejs`、`crash` |
+| `EMERALD-DICE-TRADE` | 绿宝石骰子：客户端报价必须是星币（本体仍是绿宝石）+ 成交后立即重发报价刷新经验 | 6 步 / 13 断言 | `AP_E1_SERVER_A:minecraft:emerald`（本体不变）、`AP_E1_CLIENT_A:astral_dice:star_coin`（客户端载荷）、`AP_E1_RESEND:ok`、`AP_E1_OPEN:ok`、`absent`、`kubejs`、`crash`；交易界面另出截图供人工核对 |
 | `SMOKE-TOOLCHAIN` | 工具链自检（不依赖游戏） | 2 步 / 2 断言 | 反向断言 + `mixin` 通道可用 |
+
+> `DIRECTIONAL-BLAST-AOE` / `EMERALD-DICE-TRADE` 于 2026-09-13 追加，配套探针命令
+> `/astralprobe blastbonus|emeraldtrade|tradeclose`（见 §6 探针安装步骤，改探针后必须冷启动）。
+> 两例的视觉面（交易列表图标、经验条）**不做机器断言**（`vision` 只输出提问请求），
+> 报告内附截图作为人工核对证据。
 
 **最近一次全量结果**：运行 `20260912-200747` —— 双版本 **BUG1–BUG5 全部 PASS**；运行 `20260912-215424` —— 双版本 **BUG2 + BUG5 PASS**（充能/赋能禁用粒子改动后的回归）。
 
