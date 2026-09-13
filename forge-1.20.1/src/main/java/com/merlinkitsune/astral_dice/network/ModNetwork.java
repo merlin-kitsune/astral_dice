@@ -23,10 +23,15 @@ import net.minecraft.world.entity.LivingEntity;
  * 静态发送助手对应 1.21 的 PacketDistributor.sendTo* 调用面。
  */
 public final class ModNetwork {
-    private static final String PROTOCOL_VERSION = "1";
+    /**
+     * 版本互通门槛(见 AGENTS.md):通道协议版本号 = mod_version 的 major.minor(自动派生,禁止硬编码)。
+     * FML 登录握手会交换本通道版本号并由两端各自的谓词校验,不匹配即拒绝连接;
+     * 同二号位的 1.2.x ↔ 1.2.y 互通号相同,照常放行。
+     */
+    private static final String PROTOCOL_VERSION = VersionGate.interopVersion();
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new net.minecraft.resources.ResourceLocation(AstralDiceMod.MODID, "main"),
-            () -> PROTOCOL_VERSION, PROTOCOL_VERSION::equals, PROTOCOL_VERSION::equals);
+            () -> PROTOCOL_VERSION, VersionGate::accepts, VersionGate::accepts);
 
     private ModNetwork() {
     }
