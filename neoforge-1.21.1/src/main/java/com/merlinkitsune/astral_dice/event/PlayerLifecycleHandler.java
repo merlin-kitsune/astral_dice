@@ -132,6 +132,8 @@ public class PlayerLifecycleHandler {
         ModAttachments.setFenCleaveActive(player, false);
         ModAttachments.setFenRecharge(player, 0);
         ModAttachments.setKomachiExtraPlays(player, 0);
+        // 活体书页本周期累计的出牌数加成:与忍者本轮 +1 等周期附件同口径,死亡时一并清零
+        ModAttachments.setLivingPageCycleBonus(player, 0);
         ModAttachments.setMagicQuiverTracking(player, false);
         ModAttachments.setMagicQuiverFirstCard(player, "");
         ModAttachments.setMagicQuiverCooldownEnd(player, 0);

@@ -55,6 +55,24 @@ public class ModAttachments {
         player.setData(KOMACHI_EXTRA_PLAYS.get(), value);
     }
 
+    // 活体书页(effect_card_living_page):本周期活体书页累计的出牌数加成(0,1,2,…)。
+    // 每次使用活体书页 +1(可累计;不是"效果存在即 +1"的开关式),周期归零时由 EffectCardPeriod 清除。
+    // 注意:与"调查员已用页数"(rin_pages,永久、无上限)无关,不可复用后者做本周期计数。
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> LIVING_PAGE_CYCLE_BONUS =
+            ATTACHMENTS.register("living_page_cycle_bonus", () -> AttachmentType.builder(() -> 0)
+                    .serialize(Codec.INT)
+                    .sync(ByteBufCodecs.VAR_INT)
+                    .build());
+
+    public static int getLivingPageCycleBonus(net.minecraft.world.entity.player.Player player) {
+        return player.getData(LIVING_PAGE_CYCLE_BONUS.get());
+    }
+
+    // 计数器只增不减(归零由周期清理负责),此处仅钳制非负
+    public static void setLivingPageCycleBonus(net.minecraft.world.entity.player.Player player, int value) {
+        player.setData(LIVING_PAGE_CYCLE_BONUS.get(), Math.max(0, value));
+    }
+
     // 效果牌公共冷却结束时刻(-1 表示待定冷却=伤害效果牌效果等待中;0 表示无)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> EFFECT_CARD_COOLDOWN_END =
             ATTACHMENTS.register("effect_card_cooldown_end", () -> AttachmentType.builder(() -> 0L)

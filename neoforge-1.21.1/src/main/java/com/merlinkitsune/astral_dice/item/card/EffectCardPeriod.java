@@ -20,8 +20,10 @@ import com.merlinkitsune.astral_dice.item.ModItems;
  * 规则(冷却与效果判定分离):
  * - 基础出牌数固定为 1(游戏设计决定,不可配置)。
  * - 固定出牌数加成(佩戴即提供,不卸载一直有效):大背包 +1、忍术飞镖 +1。
- * - 临时出牌数加成(效果驱动,效果结束自动清除):活体书页效果 +1、命运的指引效果 +1、
- *   忍者立牌(komachi)主动技能 +1(仅当前出牌周期有效,每周期至多一次,不跨周期累积)。
+ * - 临时出牌数加成(仅当前出牌周期有效,周期归零时清除):活体书页每次使用累计 +1(可叠加,
+ *   非"效果存在即 +1"的开关式)、命运的指引效果存在即 +1(覆盖式,不累计)、可口糖果满血触发 +1
+ *   (每周期一次)、探天卫星轨道炮触发 +1(每 1:00 一次)、
+ *   忍者立牌(komachi)主动技能 +1(每周期至多一次,不跨周期累积)。
  * - 出牌数上限:min(1 + 固定 + 临时, {@link GameplayConstants#MAX_EFFECT_CARD_PLAYS})
  *   实时计算,加成来源可叠加,但单轮总出牌数固定封顶 9 张(固定常量,非配置文件项)。
  * - 出牌数打满上限后才开始冷却倒计时(30 秒);未打满不开始倒计时,冷却归零时出牌数归零。
@@ -106,9 +108,11 @@ public final class EffectCardPeriod {
         // 固定来源:大背包 +1、忍术飞镖 +1(不卸载持续提供)
         registerFixedSource(p -> hasCurio(p, ModItems.BIG_BACKPACK_CHIP.get()));
         registerFixedSource(p -> hasCurio(p, ModItems.NINJA_STAR_CHIP.get()));
-        // 临时来源(效果驱动,效果结束自动清除):
-        registerTemporarySource(p -> p.hasEffect(ModEffects.LIVING_PAGE)); // 活体书页效果
-        registerTemporarySource(p -> p.hasEffect(ModEffects.FATE_GUIDANCE));     // 命运的指引效果
+        // 临时来源(仅当前出牌周期有效,周期归零时清除):
+        // 活体书页已改为"每次使用累计 +1"的本周期计数(见 getMaxAllowed 的 LIVING_PAGE_CYCLE_BONUS),
+        // 不再注册为"效果存在即 +1"的开关式临时来源(否则会与累计计数重复计算);
+        // 活体书页效果本身仍作为效果待定来源注册(registerEffectPendingSource),与出牌数无关。
+        registerTemporarySource(p -> p.hasEffect(ModEffects.FATE_GUIDANCE));     // 命运的指引效果(存在即 +1,覆盖式,不累计)
         registerTemporarySource(p -> ModAttachments.isCandyChipPlayBonusActive(p)); // 可口糖果:满血使用效果牌触发(每轮一次)
         registerTemporarySource(p -> ModAttachments.isSatellitePlayBonusActive(p)); // 探天卫星:使用轨道炮后触发(每 1:00 一次)
         registerTemporarySource(p -> ModAttachments.getKomachiExtraPlays(p) > 0); // 忍者立牌主动:本轮出牌数 +1(仅当前周期,周期归零时清除)
@@ -134,6 +138,8 @@ public final class EffectCardPeriod {
         for (ExtraPlaySource source : TEMPORARY_SOURCES) {
             if (source.isActive(player)) extra += source.amount();
         }
+        // 活体书页:每次使用在本周期内累计 +1(仅当前周期,周期归零时清除;可叠加,非"效果存在即 +1"的开关式)
+        extra += ModAttachments.getLivingPageCycleBonus(player);
         // 单轮出牌数固定封顶(常量 9,不写入配置文件)
         return Math.min(GameplayConstants.MAX_EFFECT_CARD_PLAYS, 1 + extra);
     }
@@ -227,6 +233,8 @@ public final class EffectCardPeriod {
             ModAttachments.setCandyChipPlayBonusActive(player, false);
             ModAttachments.setSatellitePlayBonusActive(player, false);
             ModAttachments.setKomachiExtraPlays(player, 0);
+            // 周期归零:活体书页本周期累计的出牌数加成失效(下个周期从 0 重新累计)
+            ModAttachments.setLivingPageCycleBonus(player, 0);
             cooldown = 0;
         }
         int count = ModAttachments.getEffectCardPlayCount(player) + 1;
@@ -252,6 +260,8 @@ public final class EffectCardPeriod {
         // 周期归零:清除可口糖果的"满血出牌数+1"(每个轮次最多一次)
         ModAttachments.setCandyChipPlayBonusActive(player, false);
         ModAttachments.setSatellitePlayBonusActive(player, false);
+        // 周期归零:活体书页本周期累计的出牌数加成失效(下个周期从 0 重新累计)
+        ModAttachments.setLivingPageCycleBonus(player, 0);
         // 周期归零:解除电击手套本周期已武装的法伤扩散(下个周期可重新武装)
         com.merlinkitsune.astral_dice.item.chip.ElectricGloveChipItem.disarmAoe(player);
     }
