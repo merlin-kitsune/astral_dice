@@ -8,7 +8,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.event.entity.living.LivingDamageEvent;
+import net.minecraftforge.event.entity.living.LivingAttackEvent;
 import top.theillusivec4.curios.api.CuriosApi;
 import top.theillusivec4.curios.api.SlotContext;
 
@@ -78,18 +78,26 @@ public class AdrenalineChipItem extends BaseChipItem {
         return ThreadLocalRandom.current().nextInt(100) < 20;
     }
 
-    // 肾上腺素-高效:触发加成时被敌方攻击 → 按骰点概率闪避本次伤害
+    // 肾上腺素-高效:触发加成时被敌方攻击 → 20% 概率闪避本次攻击
+    // (触发条件 50% 血量 + 佩戴高效 + 来源为敌对生物、概率 20%、文案均与旧实现完全一致)
+    // 必须在伤害判定最前置处"取消"(LivingAttackEvent)而不是在伤害阶段把伤害改成 0:
+    // 否则攻击方 Mob#doHurtTarget 仍会拿到 hurt()==true,继续施加命中附加效果(如尸壳的饥饿)
+    // 并播放红屏/屏幕震动/受伤音效。详见 DiceCombatEvents.applyDodgeCancel 的注释。
     @SubscribeEvent
-    public static void onAdrenalineDodge(LivingDamageEvent event) {
+    public static void onAdrenalineDodge(LivingAttackEvent event) {
         if (!(event.getEntity() instanceof Player player)) return;
         if (player.level().isClientSide()) return;
+        // 平台差异补位:LivingAttackEvent 早于无敌/濒死判定,复刻 1.21.1 的事件阶段
+        if (com.merlinkitsune.astral_dice.combat.DiceCombatEvents.isImmuneToDamage(player, event.getSource())) return;
+        // 反击链中的伤害不参与闪避判定(结构性递归截断,与 DiceCombatEvents 的守卫一致)
+        if (com.merlinkitsune.astral_dice.combat.DiceCombatEvents.isInCounterChain()) return;
         if (!isLowHp(player)) return;
         if (!hasHighEquipped(player)) return;
         // 敌方攻击(来源为敌对生物;排除摔落/火焰等环境伤害)
         if (!(event.getSource().getEntity() instanceof net.minecraft.world.entity.LivingEntity attacker)) return;
         if (!(attacker instanceof Enemy)) return;
         if (tryDodge()) {
-            event.setAmount(0);
+            com.merlinkitsune.astral_dice.combat.DiceCombatEvents.applyDodgeCancel(event);
             // 枪匠立牌:任意来源的闪避都会尝试获得 1 层弱点识破(每目标一次)
             com.merlinkitsune.astral_dice.item.sign.MosesSignItem.onDodgeCounter(player, attacker);
         }

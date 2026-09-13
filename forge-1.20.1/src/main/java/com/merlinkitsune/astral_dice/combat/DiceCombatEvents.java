@@ -61,6 +61,8 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.event.AnvilUpdateEvent;
 import net.minecraftforge.event.LootTableLoadEvent;
+import net.minecraft.tags.DamageTypeTags;
+import net.minecraftforge.event.entity.living.LivingAttackEvent;
 import net.minecraftforge.event.entity.living.LivingChangeTargetEvent;
 import net.minecraftforge.event.entity.living.LivingDamageEvent;
 import net.minecraftforge.event.entity.living.LivingDropsEvent;
@@ -129,8 +131,20 @@ public class DiceCombatEvents {
     private static boolean cleaveProcessing = false;
     // AOE(顺劈/溅射)波及伤害处理中:被波及目标不再进入骰战结算
     static boolean aoeProcessing = false;
-    // 反击伤害注入进行中(防止注入的反击伤害再次进入骰战结算/递归触发)
-    private static boolean counterProcessing = false;
+    // 反击链深度(替代原单层布尔 counterProcessing,结构性阻止"反击→闪避→反击"递归):
+    //   >0 表示当前正处于「injectCounterDamage → attacker.hurt(...)」的同步调用链中。
+    //   ① 用"深度"而不是布尔:嵌套注入时内层 finally 只把深度减回 1,而不会把守卫整体清零,
+    //      外层剩余的注入过程始终受保护(原 boolean 会被内层 finally 提前复位 = 守卫失效);
+    //   ② 增减包在 try/finally 内:异常/提前返回都会复位,守卫不会卡死;
+    //   ③ 所有能绕回 injectCounterDamage 的入口(骰战结算 / 破绽闪避 / 嘲讽反击 / 肾上腺素闪避)
+    //      都先判定 isInCounterChain(),injectCounterDamage 自身也拒绝再入 →
+    //      反击链内不可能再发起一次反击,递归在结构上不成立(不是"限制递归层数")。
+    private static int counterDepth = 0;
+
+    // 当前是否处于反击链中(供骰战结算 / 闪避 / 反击入口判定)
+    public static boolean isInCounterChain() {
+        return counterDepth > 0;
+    }
 
 
     // 检测玩家是否佩戴了七咒之戒(按物品 ID 识别,未安装该模组时返回 false)
@@ -181,8 +195,8 @@ public class DiceCombatEvents {
         }
 
         // AOE(顺劈/溅射)波及的目标不进入骰战结算,避免二次吃到完整骰战;
-        // 反击伤害注入:注入伤害不进入骰战结算(已按反击公式自算)
-        if (aoeProcessing || counterProcessing) return;
+        // 反击链中的伤害不进入骰战结算(已按反击公式自算),同时结构性阻止反击递归
+        if (aoeProcessing || counterDepth > 0) return;
         if (!(directEntity instanceof Player player)) return;
         if (target == player) return;
 
@@ -991,19 +1005,74 @@ public class DiceCombatEvents {
         ModNetwork.DamageNumberMessage.send(target, bonusDamage, color);
     }
 
+    // === 闪避统一取消入口(必须在伤害判定最前置处"取消") ===
+    // 为什么必须"取消"而不是"把伤害改成 0":
+    //  - 派发点:Forge 的 LivingAttackEvent 由 ForgeHooks.onLivingAttack 在 LivingEntity.hurt
+    //    的**第一条语句**派发(forge 47.4.10 LivingEntity.java:1089;玩家实体走 Player.hurt
+    //    首行的 ForgeHooks.onPlayerAttack,Player.java:842),
+    //    setCanceled(true) 后 hurt 直接 return false。
+    //  - 只有在这一层取消,攻击方 Mob#doHurtTarget 才拿到 false(1.20.1 Mob.java:1455-1471),
+    //    从而不再执行"命中后附加效果"。原版尸壳 Husk#doHurtTarget 为:
+    //      boolean flag = super.doHurtTarget(entity);
+    //      if (flag && this.getMainHandItem().isEmpty() && entity instanceof LivingEntity)
+    //          ((LivingEntity)entity).addEffect(new MobEffectInstance(MobEffects.HUNGER, 140 * (int)f), this);
+    //    (1.20.1 Husk.java:48-56)flag 为 false 时饥饿不会被施加。
+    //  - 同时不产生受伤反馈:hurt 在赋值 invulnerableTime / hurtDuration / hurtTime、
+    //    broadcastDamageEvent、markHurt、knockback、indicateDamage(ClientboundHurtAnimationPacket)、
+    //    playHurtSound 之前就已经返回。
+    // 旧实现只在伤害阶段 setAmount(0)(LivingDamageEvent 在 actuallyHurt 内派发,
+    // LivingEntity.java:1680):此时 hurt 早已走完全部流程并返回 true,
+    // 所以命中附加效果与红屏/晃动/受伤音效照旧发生。
+    public static void applyDodgeCancel(LivingAttackEvent event) {
+        LivingEntity target = event.getEntity();
+        // 先取消:立牌 onHurt / 缓冲盾牌等受击联动即使抛异常,也不得让"闪避"退化成命中
+        event.setCanceled(true);
+        // 保留旧实现(伤害阶段)下的受击联动:旧代码只把伤害改成 0,hurt 仍走完全流程,
+        // LivingDamageEvent 照常派发,因此 BaseSignItem.invokeHurtHooks 与
+        // BufferShieldChipItem.onHurt 在"被闪避的那一击"上依然会触发。上移到最前置处后,
+        // 取消会跳过整段伤害处理,故在此显式补发一次(取消后伤害阶段不再派发 → 不会重复触发)。
+        // 注:此处传入的是减伤前原始值;两个钩子实现都不读取该数值(仅用于"是否受击"判定)。
+        if (!target.level().isClientSide() && target instanceof Player player) {
+            BaseSignItem.invokeHurtHooks(player, event.getAmount());
+            com.merlinkitsune.astral_dice.item.chip.BufferShieldChipItem.onHurt(player, event.getAmount());
+        }
+    }
+
+    // 1.20.1 平台差异前置判定:LivingAttackEvent 在 hurt 的**第一条语句**派发,早于
+    // isInvulnerableTo / 创造模式无敌 / isDeadOrDying 判定(1.21.1 的 LivingIncomingDamageEvent
+    // 派发在 LivingEntity.java:1152-1153,位于这些判定之后),两者所处阶段不同。
+    // 为保持双版本对等、并与本模组旧实现(伤害阶段)一致,1.20.1 侧在此补回同等前置判定,
+    // 避免创造/无敌/濒死状态下仍然触发闪避与反击。
+    public static boolean isImmuneToDamage(LivingEntity target, DamageSource source) {
+        if (target.isInvulnerableTo(source)) return true;
+        if (target instanceof Player player && player.getAbilities().invulnerable
+                && !source.is(DamageTypeTags.BYPASSES_INVULNERABILITY)) {
+            return true;
+        }
+        return target.isDeadOrDying();
+    }
+
     // === 枪匠立牌(Moses)破绽闪避/反击 ===
     // 破绽持续 2:00,期间**每一次**目标攻击都会被闪避并触发反击(不再被"每目标已发放"标记拦掉);
     // 「弱点识破」层数的"每目标每段破绽只 +1"限制由 MosesSignItem.onDodgeCounter 内部判定。
+    // 闪避改在伤害判定最前置处"取消"(LivingAttackEvent)而不是在伤害阶段把伤害改成 0:
+    // 只有前者能让攻击方 Mob#doHurtTarget 拿到 hurt()==false,从而不施加尸壳饥饿等命中附加效果、
+    // 也不产生红屏/屏幕震动/受伤音效与击退同步。详见 applyDodgeCancel 的注释。
     @SubscribeEvent
-    public static void onMosesBrokenDodge(LivingDamageEvent event) {
+    public static void onMosesBrokenDodge(LivingAttackEvent event) {
         LivingEntity victim = event.getEntity();
         if (victim.level().isClientSide()) return;
         if (!(victim instanceof Player player)) return;
+        // 平台差异补位:LivingAttackEvent 早于无敌/濒死判定,复刻 1.21.1 的事件阶段
+        if (isImmuneToDamage(player, event.getSource())) return;
         if (!MosesSignItem.isEquipped(player)) return;
+        // 反击链中的伤害不参与破绽闪避/反击判定(结构性递归截断):
+        // 否则 A/B 双方各自都带破绽时会 A 闪避 B → 反击注入 B → B 闪避 → 反击注入 A → ... 无限互相递归
+        if (isInCounterChain()) return;
         if (!(event.getSource().getEntity() instanceof LivingEntity attacker)) return;
         if (!attacker.hasEffect(ModEffects.MOSES_BROKEN.get())) return;
-        // 闪避本次伤害
-        event.setAmount(0);
+        // 闪避本次攻击(最前置取消)
+        applyDodgeCancel(event);
         // 获得弱点识破并标记该目标已闪避(每目标每段破绽最多 1 层)
         MosesSignItem.onDodgeCounter(player, attacker);
         // 单次反击伤害注入(不进入反击效果/层数体系)
@@ -1016,7 +1085,8 @@ public class DiceCombatEvents {
     public static void onPandamanTauntCounter(LivingDamageEvent event) {
         LivingEntity victim = event.getEntity();
         if (victim.level().isClientSide()) return;
-        if (counterProcessing) return;
+        // 反击链中不再触发嘲讽反击(与破绽闪避共用同一结构性递归截断)
+        if (isInCounterChain()) return;
         if (!(victim instanceof Player player)) return;
         if (!player.isAlive()) return;
         if (!(event.getSource().getEntity() instanceof LivingEntity attacker)) return;
@@ -1033,16 +1103,24 @@ public class DiceCombatEvents {
     // 不登记反噬目标、不持续返还。
 
     // 对当前目标注入一次反击伤害(视为玩家伤害来源,不进入骰战结算/不递归触发)
+    // 结构性递归截断:本方法自身拒绝在反击链中再入——即使将来新增调用点忘记加守卫,
+    // 反击链也不可能自我递归(而不是"限制递归层数"这类可被绕过的软限制)。
     private static void injectCounterDamage(Player player, LivingEntity attacker) {
-        double dmg = computeCounterDamage(player, attacker);
-        if (dmg <= 0) return;
-        counterProcessing = true;
+        if (isInCounterChain()) return;
+        // 整个「反击伤害计算 + 注入」都必须落在反击链内:计算过程本身也会造成伤害——
+        // computeCounterDamage → rollCombatDie → CrimsonDiceHandler.rollD6 掷出 1 时会对掷骰者
+        // 本人施加 6 点 astral_dice:dice_damage(CrimsonDiceHandler.java:63-65)。若把计算留在
+        // 守卫之外,这份自伤仍可能再次进入破绽闪避/反击判定,构成第二条(概率性、无上界的)递归路径。
+        counterDepth++;
         try {
+            double dmg = computeCounterDamage(player, attacker);
+            if (dmg <= 0) return;
             attacker.hurt(com.merlinkitsune.astral_dice.damage.ModDamageTypes.diceDamage(attacker.level(), player),
                     (float) dmg);
             sendDamageNumber(attacker, (int) dmg);
         } finally {
-            counterProcessing = false;
+            // try/finally:异常/提前返回都会复位;计数器只减不置零 → 嵌套同样安全
+            counterDepth--;
         }
     }
 

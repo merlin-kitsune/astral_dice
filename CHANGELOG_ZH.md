@@ -146,6 +146,10 @@
 
 - 消除「层数递减类」效果在客户端 HUD 的「即将到期」闪烁:原版 `Gui#renderEffects` 对剩余时长 ≤ 200 tick(10 秒)的效果按 `MobEffectInstance#endsWithin(200)` 计算图标 alpha 脉冲(背景不受影响;物品栏效果面板本身无此逻辑),而治愈/标记/赋能这类**以层数递减为机制**的效果在每周期末段必然落入该窗口,表现为「层数还在却一直闪」。现新增客户端 mixin `mixin/client/GuiMixin`(注入 `Gui#renderEffects` 内的 `endsWithin` 调用),对治愈/标记/弱点识破/赋能四类效果直接返回 false——**层数 > 0 期间图标恒定不闪烁,归零时正常消失**;其余效果(原版与其他模组)一律委托原逻辑,零影响。效果的实例时长/层数上限/递减间隔/面板倒计时语义均未改动(双版本一致)。
 
+- 修复闪避只把伤害归零、无法阻止攻击命中后附加效果的问题(如空手尸壳命中后施加的饥饿):枪匠「破绽」闪避与肾上腺素-高效的 20%% 闪避原先写在伤害阶段(`LivingDamageEvent.Pre`/`LivingDamageEvent`)只把伤害改成 0,`LivingEntity.hurt` 仍返回 true,攻击方 `Mob#doHurtTarget` 的命中后附加效果照常施加;现改为在**伤害判定最前置处取消**(1.21.1 `LivingIncomingDamageEvent`、1.20.1 `LivingAttackEvent` + `setCanceled(true)`),使 `hurt` 直接返回 false——附加效果不再施加,且不再产生受伤反馈(无 `hurtTime`、无受击动画包、无受伤音效)。闪避概率(20%%)、触发条件(生命值 ≤50%% 或汲取期间、佩戴对应筹码)、枪匠判定与全部文案均未改动;原先由伤害阶段派发的受击联动(史莱姆立牌 `onHurt`、缓冲盾牌)在取消路径上**显式补发一次**,保持「被闪避的那一击仍算受击」的既有语义;1.20.1 侧另补 `isImmuneToDamage` 复刻 `hurt` 的创造无敌/无敌/濒死短路,保证双版本判定对等(双版本一致)。
+
+- 修复枪匠「破绽」反击的异常递归(双方均带破绽时会互相反击、无上界递归至栈溢出):原实现用单个静态布尔 `counterProcessing` 作重入守卫,但破绽闪避入口(`onMosesBrokenDodge`)与肾上腺素闪避入口从不读取该守卫,且 `injectCounterDamage` 只守卫「注入」而把伤害计算(`computeCounterDamage`,其中绯红骰掷出 1 会自伤)留在守卫之外;嵌套时内层 `finally` 还会提前清零守卫(而它是 static 全局,残留会让全服跳过骰战结算)。现改为**结构化拒绝再入**:守卫改为深度计数 `counterDepth` + `isInCounterChain()`,`injectCounterDamage` 自身在链内直接返回(计算与注入整体入链),并让破绽闪避/嘲讽反击/肾上腺素闪避/骰战结算四个可达入口一律先判定;反击链内的伤害不再参与破绽/闪避/反击判定(反击不可被闪避、也不再反噬)。深度计数 + `try/finally` 保证嵌套时只减不置零、异常与提前 `return` 都会复位,守卫不会卡死(双版本一致)。
+
 ### 工程
 
 - 新增两条回归用例与配套探针命令:定向爆破 AOE 口径守卫(`DIRECTIONAL-BLAST-AOE`,断言「自身 5 点 + 效果牌伤害加成」不被其它伤害牌污染)与绿宝石骰子交易(`EMERALD-DICE-TRADE`,断言客户端载荷为星币且成交后重发报价);探针新增 `blastbonus`/`emeraldtrade`/`tradeclose` 三条命令(改探针后必须冷启动)。
