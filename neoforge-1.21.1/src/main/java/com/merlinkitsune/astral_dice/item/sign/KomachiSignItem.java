@@ -51,6 +51,15 @@ public class KomachiSignItem extends BaseSignItem {
         ModAttachments.setKomachiDamageBonus(player, 0);
     }
 
+    /**
+     * 是否佩戴本立牌(饰品槽)。死亡保留的累计值只在佩戴时作为加成生效(2026-09-15 裁决)——
+     * 判定入口统一在 {@code SpellDamageRegistry},禁止在别处直接读原附件值做加成或显示加成。
+     */
+    public static boolean isEquipped(Player player) {
+        var curios = CuriosApi.getCuriosInventory(player);
+        return curios.isPresent() && curios.get().findFirstCurio(s -> s.is(ModItems.KOMACHI_SIGN.get())).isPresent();
+    }
+
     @Override
     protected InteractionResultHolder<ItemStack> handleUse(Level level, Player player, ItemStack stack) {
         if (level.isClientSide) {

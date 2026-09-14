@@ -132,8 +132,23 @@ public final class SpellDamageRegistry {
      */
     public static int effectCardDamageBonus(net.minecraft.world.entity.player.Player attacker) {
         if (attacker == null) return 0;
-        return ModAttachments.getKomachiDamageBonus(attacker)
+        // 忍者立牌的伤害增益只在**佩戴立牌**时生效(2026-09-15 裁决):死亡保留的累计值不因
+        // "立牌死亡掉落、尚未重新装备"而继续加成。故此处统一按佩戴判定,勿在别处直接读原值。
+        int komachi = com.merlinkitsune.astral_dice.item.sign.KomachiSignItem.isEquipped(attacker)
+                ? ModAttachments.getKomachiDamageBonus(attacker) : 0;
+        return komachi
                 + com.merlinkitsune.astral_dice.item.chip.BookmarkChipItem.damageBonus(attacker);
+    }
+
+    /**
+     * 活体书页的**有效**累计页数:只在佩戴调查员立牌时计入(2026-09-15 裁决,与
+     * {@link #effectCardDamageBonus} 同一口径)。伤害结算与 tooltip 显示统一走本方法,
+     * 禁止在别处直接读 {@code rin_pages} 原值来做加成或显示加成。
+     */
+    public static int livingPageBonusPages(net.minecraft.world.entity.player.Player attacker) {
+        if (attacker == null) return 0;
+        return com.merlinkitsune.astral_dice.item.sign.RinSignItem.isEquipped(attacker)
+                ? ModAttachments.getRinPages(attacker) : 0;
     }
 
     private static ResourceKey<DamageType> key(String namespace, String path) {
@@ -168,7 +183,7 @@ public final class SpellDamageRegistry {
 
             @Override
             public double apply(SpellDamageContext ctx, double bonus) {
-                int pages = ModAttachments.getRinPages(ctx.attacker);
+                int pages = livingPageBonusPages(ctx.attacker);
                 return bonus + 2 + pages + effectCardDamageBonus(ctx.attacker);
             }
 

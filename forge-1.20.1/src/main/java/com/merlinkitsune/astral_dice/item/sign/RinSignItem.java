@@ -9,6 +9,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import top.theillusivec4.curios.api.SlotContext;
 import com.merlinkitsune.astral_dice.item.card.ExclusiveCardUtil;
+import com.merlinkitsune.astral_dice.item.CuriosCompat;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
 
@@ -23,6 +24,15 @@ public class RinSignItem extends BaseSignItem {
         super.clearSignData(player, stack);
         // 移除立牌时重置调查员(rin)已使用的活体书页数量
         ModAttachments.setRinPages(player, 0);
+    }
+
+    /**
+     * 是否佩戴本立牌(饰品槽)。死亡保留的累计值只在佩戴时作为加成生效(2026-09-15 裁决)——
+     * 判定入口统一在 {@code SpellDamageRegistry},禁止在别处直接读原附件值做加成或显示加成。
+     */
+    public static boolean isEquipped(Player player) {
+        var curios = CuriosCompat.getCuriosInventory(player);
+        return curios.isPresent() && curios.get().findFirstCurio(s -> s.is(ModItems.RIN_SIGN.get())).isPresent();
     }
 
     @Override

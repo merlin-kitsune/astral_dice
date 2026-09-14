@@ -144,7 +144,8 @@ public class ModAttachments {
     public static final AttachedDataKey<String> KOMACHI_LAST_CARD =
             register(AttachedDataKey.builder("komachi_last_card", Codec.STRING, () -> "").build());
 
-    // 忍者立牌(komachi):效果牌伤害增益(每使用 3 张效果牌 +1,无上限,卸下立牌重置)
+    // 忍者立牌(komachi):效果牌伤害增益(每使用 3 张效果牌 +1,无上限,卸下立牌重置;死亡重生保留)
+    // 「死亡重生保留」由 AstralData.onPlayerClone 的死亡分支复制本键实现(对应 1.21.1 的 .copyOnDeath())
     public static final AttachedDataKey<Integer> KOMACHI_DAMAGE_BONUS =
             register(AttachedDataKey.builder("komachi_damage_bonus", Codec.INT, () -> 0).sync().build());
 
@@ -250,7 +251,8 @@ public class ModAttachments {
         CURSE_ORIGINAL_AMOUNT.set(player, value);
     }
 
-    // 调查员立牌(rin):已使用的活体书页数量(活体书页伤害永久+1 的来源,移除立牌后重置)
+    // 调查员立牌(rin):已使用的活体书页数量(活体书页伤害永久+1 的来源,移除立牌后重置;死亡重生保留)
+    // 「死亡重生保留」由 AstralData.onPlayerClone 的死亡分支复制本键实现(对应 1.21.1 的 .copyOnDeath())
     public static final AttachedDataKey<Integer> RIN_PAGES =
             register(AttachedDataKey.builder("rin_pages", Codec.INT, () -> 0).sync().build());
 

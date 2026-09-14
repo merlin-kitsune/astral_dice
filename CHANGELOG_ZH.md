@@ -30,6 +30,10 @@
 
 - 修复 **tooltip 数值恒为客户端默认值 0 的三处附件同步缺陷**(与上一条同源,由独立验证逐条比对 `ModTooltipHandler` 取值点及其读取链发现):① `rin_pages`(调查员立牌「活体书页伤害增加：+N」);② `pandaman_max_health_bonus`(肉弹战车立牌「获得生命值: +N」);③ `nancy_lu_passive_type`(骇客立牌 tooltip 最下方「攻击力/防御力加成」行——它经 `NancyLuSignItem.getAttackBonus/getDefenseBonus` **间接**读取,不是 `ModTooltipHandler` 里的直接调用,故极易漏检)。三者此前均**未同步**,而这些数值全部由客户端渲染 → 恒显示 `0`(骇客被动 +3 同样恒为 0)。现按同一口径补齐:1.21.1 各加 `.sync(ByteBufCodecs.INT)`;1.20.1 各加 `.sync()` 并登记 `SYNCED_KEYS`(25 → 28)。修正后双版本 tooltip 涉及的全部附件(含间接读取链)均为已同步键,无遗漏。
 
+- 修复**调查员/忍者立牌「效果牌伤害加成」的「死亡保留」从未真正生效**:1.2.0 起更新日志与两版本代码注释均称 `rin_pages`/`komachi_damage_bonus` 死亡保留,但全仓库没有任何附件标记「随死亡复制」(`copyOnDeath`)——NeoForge 附件的默认语义是**死亡不复制**(仅在维度切换与从末地返回时复制),1.20.1 的 `AstralData.onPlayerClone` 也在死亡分支直接 `return`,于是玩家一死,已累计的活体书页数与忍者伤害增益即归零(表现为 live 数值与法伤加成凭空掉回初始值,与文档及玩家可见更新日志不符)。现按记录的本意补齐:1.21.1 给 `rin_pages`/`komachi_damage_bonus` 加 `.copyOnDeath()`;1.20.1 在 `AstralData.onPlayerClone` 的死亡分支**只复制这两个键**,其余键维持「死亡不复制」(两侧保留集合必须一致)。注意死亡清理(`LivingDeathEvent`,在**旧实体**上执行)刻意不清除这两个键——保留逻辑正是从旧数据中取值,改动该清理时必须保留这一约定(双版本一致)。**但仅靠克隆复制不够(独立验证发现的 high 缺陷)**:默认 gamerule(`keepInventory=false`)下死亡会把立牌从饰品槽丢出,Curios 的 tick 轮询随即回调 `onUnequip` → 立牌 `clearSignData` 把这两个键清零,且**早于**克隆复制——于是「死亡保留」只在 `keepInventory=true`(测试世界)或死亡时未佩戴立牌时才成立,真实生存世界仍会归零。现补第二层机制:新增 `component/DeathPreservedBonuses`,在死亡清理时暂存、克隆(`priority=LOWEST`,必须在复制之后)与重生时回写(与 `ChargeManager` 充能死亡保留同一模式),双版本同步。同时明确一条口径(2026-09-15 裁决):**这两项加成只在佩戴对应立牌时生效**——判定入口统一为 `SpellDamageRegistry#effectCardDamageBonus`(忍者)与 `#livingPageBonusPages`(调查员),伤害结算与 tooltip 显示一律走它们,死亡掉落立牌后累计值虽保留但不再加成,直至重新装备。
+
+- 修复 **1.20.1 客户端附件缓存跨会话残留、tooltip 显示上一局的旧值**:客户端缓存 `ClientAstralData` 是**静态字段**(不随客户端玩家实体重建),而全量同步快照只下发「服务端存在原值」的键——上一世界/上一会话的残留值会一直生效到该键被再次写入。实测路径:世界 A 用过 5 张活体书页 → 换到新世界(服务端 `rin_pages` 已是 0)时客户端 tooltip 仍显示 +5(与上一条「未同步恒为 0」是两类不同的错误:值本身是对的,但显示的是旧世界的值)。现双管齐下:① `ModNetwork.syncSnapshot` 改为对**全部 28 个 synced 键**下发,服务端缺失的键下发**显式默认值**(新增 `AttachedDataKey#defaultRawTag()`),覆盖登录/重生/切维度三种入口(重生时新玩家数据为空,正是此前漏发的情形);② 新增客户端会话清理 `client/ClientSessionEvents`,断线(`ClientPlayerNetworkEvent.LoggingOut`)时清空缓存,兜住「此后不再写该键」的离线残留。仅 1.20.1 需要(1.21.1 用原生附件、客户端数据随加入世界重建)。
+
 ### 工程
 
 - 工程:版本号升至 **1.2.1**(`mod_version=1.2.1+neoforge_1.21.1` / `1.2.1+forge_1.20.1`);互通号仍为 `1.2`,故 **1.2.0 ↔ 1.2.1 保持双向互通**(Version Gate 只比较二号位,不受补丁号影响);中英更新日志同步开启 `未发布(1.2.1)` 小节,1.2.0 小节冻结为已发布状态。
@@ -39,6 +43,7 @@
 - 工具:修复 `scripts/verify/verify_chip_recipes.ps1` 的 jar 档——其产物 jar 名此前硬编码 `$VER = '1.2.0'`,版本升到 1.2.1 后一直在找不存在的旧 jar 而**误报失败**(源码档与生成资源档本身一直是全绿);现改为从各子项目 `gradle.properties` 的 `mod_version` 派生,三档 × 双版本恢复全绿(122 个配方文件 / 59 个筹码一致)。
 - 工具:修复 `scripts/test/mt_inject.ps1` 的**右键长按缺失**——`key -Key rclick -HoldMs N` 此前**静默忽略** `-HoldMs`(始终 down→100ms→up 的单击),于是「长按右键」类回归(效果牌一次按下只出一张)在自动化里根本走不到原版 4 tick 自动重复分支,单击也能"通过"。现按 `w` 键同一口径实现按住语义(按下 → 停顿 HoldMs → 抬起,`-HoldMs 0` 保持旧行为),输出行回显按住时长;并在 `EFFECT-CARD-HOLD` 用例里加入**对照步**——生存模式下以 16 枚鸡蛋长按 3 秒后必须只剩 1 枚(即原版 15 次右键),该对照不成立则修复判据不成立。
 - 工程:`AGENTS.md` **纳入版本库**(`.gitignore` 中针对它的排除项移除,自 2026-09-15 起随提交入库;是否推送 GitHub 仍按「仅在用户明确要求时执行」),文件内两处「AGENTS.md 不入库/为本地共享文件」的说明同步改写;并删除 1.20.1 `KomachiSignItem` 中**未使用**的 `CuriosApi` import(该文件实际走 `CuriosCompat`)。
+- 工程:`AGENTS.md` 的玩家附件清单补齐**漏列**的 `effect_card_bonus_plays`(出牌轮一次性 +1 标记;该行自称 61 个却只列了 60 个),并补记附件侧的机制约束——**死亡重生保留的键仅 `rin_pages` 与 `komachi_damage_bonus` 两个**、两版本保留集合必须一致、且死亡清理不得清除这两个键。
 
 ## 1.2.0
 

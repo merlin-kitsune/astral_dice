@@ -168,11 +168,12 @@ public class ModAttachments {
                     .serialize(Codec.STRING)
                     .build());
 
-    // 忍者立牌(komachi):效果牌伤害增益(每使用 3 张效果牌 +1,无上限,卸下立牌重置)
+    // 忍者立牌(komachi):效果牌伤害增益(每使用 3 张效果牌 +1,无上限,卸下立牌重置;死亡重生保留)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> KOMACHI_DAMAGE_BONUS =
             ATTACHMENTS.register("komachi_damage_bonus", () -> AttachmentType.builder(() -> 0)
                     .serialize(Codec.INT)
                     .sync(ByteBufCodecs.INT)
+                    .copyOnDeath()
                     .build());
 
     // 小猪存钱罐筹码:效果牌使用计数(每使用 2 张获得 3 星币;卸下筹码重置)
@@ -271,11 +272,12 @@ public class ModAttachments {
         player.setData(DICE_CURSE_RATIO.get(), value);
     }
 
-    // 调查员立牌(rin):已使用的活体书页数量(活体书页伤害永久+1 的来源,移除立牌后重置)
+    // 调查员立牌(rin):已使用的活体书页数量(活体书页伤害永久+1 的来源,移除立牌后重置;死亡重生保留)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> RIN_PAGES =
             ATTACHMENTS.register("rin_pages", () -> AttachmentType.builder(() -> 0)
                     .serialize(Codec.INT)
                     .sync(ByteBufCodecs.INT)
+                    .copyOnDeath()
                     .build());
 
     // 调查员立牌(rin):最近一次获得活体书页的事件签名(触发者 UUID + "|" + 事件 ID)。

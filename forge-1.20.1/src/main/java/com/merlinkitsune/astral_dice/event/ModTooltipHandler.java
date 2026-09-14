@@ -313,7 +313,7 @@ public class ModTooltipHandler {
         if (player.hasEffect(ModEffects.ORBITAL_STRIKE.get())) bonus += 8 + cardBonus;
         if (player.hasEffect(ModEffects.DIRECTIONAL_BLAST.get())) bonus += 5 + cardBonus;
         if (player.hasEffect(ModEffects.LIVING_PAGE.get())) {
-            int pages = ModAttachments.getRinPages(player);
+            int pages = com.merlinkitsune.astral_dice.combat.SpellDamageRegistry.livingPageBonusPages(player);
             bonus += 2 + pages + cardBonus;
         }
         tooltip.add(tt("tooltip.astral_dice.card.active_damage_bonus", bonus)
@@ -714,8 +714,10 @@ public class ModTooltipHandler {
             if (event.getEntity() != null) {
                 addSignCounter(tooltip, "tooltip.astral_dice.sign.komachi_effect_count",
                         ModAttachments.getKomachiUseCount(player));
+                // 伤害增益只在**佩戴立牌**时生效(2026-09-15 裁决):死亡保留的值不因"牌不在身上"而显示为加成
                 addSignCounter(tooltip, "tooltip.astral_dice.sign.komachi_damage_bonus",
-                        ModAttachments.getKomachiDamageBonus(player));
+                        com.merlinkitsune.astral_dice.item.sign.KomachiSignItem.isEquipped(player)
+                                ? ModAttachments.getKomachiDamageBonus(player) : 0);
             }
             addSignCooldownRemaining(tooltip, event.getEntity());
         }
@@ -1089,7 +1091,7 @@ public class ModTooltipHandler {
             addSignPassiveTitle(tooltip, "调查发现");
             addSignLines(tooltip, "tooltip.astral_dice.sign.rin_passive", 32);
             if (event.getEntity() != null) {
-                int pages = ModAttachments.getRinPages(player);
+                int pages = com.merlinkitsune.astral_dice.combat.SpellDamageRegistry.livingPageBonusPages(player);
                 addSignCounter(tooltip, "tooltip.astral_dice.sign.rin_bonus", pages);
             }
             addSignCooldownRemaining(tooltip, event.getEntity());
@@ -1098,7 +1100,8 @@ public class ModTooltipHandler {
             tooltip.add(Component.empty());
             if (event.getEntity() != null) {
                 // 活体书页伤害 = 基础 2 + 调查员(rin)已使用数量 + 伤害效果牌统一加成(忍者立牌效果牌伤害增益 + 书签)
-                int pages = ModAttachments.getRinPages(player);
+                // 两项都只在**佩戴对应立牌**时生效(2026-09-15 裁决),故一律走 SpellDamageRegistry 的判定入口
+                int pages = com.merlinkitsune.astral_dice.combat.SpellDamageRegistry.livingPageBonusPages(player);
                 // 组件基础色为灰(普通文本);行内颜色码:数值=黄 §e、时间=蓝 §9
                 tooltip.add(Component.translatable("tooltip.astral_dice.card.living_page",
                                 2 + pages + com.merlinkitsune.astral_dice.combat.SpellDamageRegistry

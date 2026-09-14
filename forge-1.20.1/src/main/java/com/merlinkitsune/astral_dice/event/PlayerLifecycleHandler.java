@@ -116,6 +116,9 @@ public class PlayerLifecycleHandler {
         if (event.isCanceled()) return;
         // 充能流派:死亡不丢失充能层数,先暂存等待重生恢复
         ChargeManager.preserveOnDeath(player);
+        // 调查员/忍者立牌累计加成:死亡暂存(默认 gamerule 下立牌会因死亡掉落被 Curios 判定"已卸下",
+        // 其 clearSignData 会在克隆之前清零这两个键,故必须在此先存下——见 DeathPreservedBonuses)
+        com.merlinkitsune.astral_dice.component.DeathPreservedBonuses.preserveOnDeath(player);
         // 玻璃骰子死亡惩罚:丢失玻璃骰子本体及其已装备的全部卡牌(同时收缩筹码栏)
         DiceCurioItem.removeGlassDiceOnDeath(player);
         HealingManager.clear(player);
@@ -171,14 +174,17 @@ public class PlayerLifecycleHandler {
         player.removeEffect(ModEffects.MAGIC_TOME_COUNT.get());
     }
 
-    // 死亡重生克隆:尽早恢复充能层数(配合 PlayerRespawnEvent 兜底,重复恢复会自动去重)
-    @SubscribeEvent
-    public static void onPlayerCloneRestoreCharge(
+    // 死亡重生克隆:恢复"死亡保留"的数据(充能层数 + 调查员/忍者累计加成)。
+    // 必须最后执行(priority = LOWEST):AstralData 的死亡分支复制在此之前完成,否则回写会被复制覆盖成 0。
+    // PlayerRespawnEvent 侧再兜底一次(暂存表项取走即为空操作,幂等)。
+    @SubscribeEvent(priority = net.minecraftforge.eventbus.api.EventPriority.LOWEST)
+    public static void onPlayerCloneRestoreDeathPreserved(
             net.minecraftforge.event.entity.player.PlayerEvent.Clone event) {
         if (!event.isWasDeath()) return;
         Player player = event.getEntity();
         if (player == null || player.level().isClientSide()) return;
         ChargeManager.restoreAfterDeath(player);
+        com.merlinkitsune.astral_dice.component.DeathPreservedBonuses.restoreAfterDeath(player);
     }
 
     // 玩家退出/重新登录:清除骰神赐福效果(防止退出后重进仍保留战斗状态)
@@ -208,6 +214,8 @@ public class PlayerLifecycleHandler {
         HealingManager.tick(player);
         // 充能流派:死亡不丢失充能层数,重生后恢复
         ChargeManager.restoreAfterDeath(player);
+        // 调查员/忍者立牌累计加成:重生后再兜底恢复(克隆已恢复过则此处空操作)
+        com.merlinkitsune.astral_dice.component.DeathPreservedBonuses.restoreAfterDeath(player);
     }
 
     // 首次加入世界:若配置开启且玩家尚未领过,赠送《恋的规则书》(每个玩家在每个世界只发一次)

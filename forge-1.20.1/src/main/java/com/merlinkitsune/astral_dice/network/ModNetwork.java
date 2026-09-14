@@ -72,17 +72,30 @@ public final class ModNetwork {
     /** 单键同步(AttachedDataKey.set 服务端写入后调用)。 */
     public static <T> void syncAttachment(ServerPlayer player, AttachedDataKey<T> key, net.minecraft.nbt.Tag tag) {
         CompoundTag payload = new CompoundTag();
+        if (tag == null) {
+            // 服务端已移除该键(set 中编码失败走 store.remove):必须下发**显式默认值**,
+            // 否则客户端缓存里仍是旧值(与全量快照 syncSnapshot 同一口径)。
+            tag = key.defaultRawTag();
+        }
         if (tag != null) {
             payload.put(key.name(), tag);
         }
         sendToPlayer(player, new AttachmentSyncMessage(payload));
     }
 
-    /** synced 键全量快照(登录/重生/切维度)。 */
+    /**
+     * synced 键全量快照(登录/重生/切维度)。
+     *
+     * <p>服务端缺失的键**必须下发显式默认值**:客户端缓存是静态字段(不随客户端玩家实体重建),
+     * 只发"存在的键"会让上一会话/上一个世界的残留值继续生效(tooltip 显示上一局计数,而服务端已归零)。
+     */
     public static void syncSnapshot(ServerPlayer player, List<AttachedDataKey<?>> keys) {
         CompoundTag payload = new CompoundTag();
         for (AttachedDataKey<?> key : keys) {
             net.minecraft.nbt.Tag tag = key.readRawTag(player);
+            if (tag == null) {
+                tag = key.defaultRawTag();
+            }
             if (tag != null) {
                 payload.put(key.name(), tag);
             }
