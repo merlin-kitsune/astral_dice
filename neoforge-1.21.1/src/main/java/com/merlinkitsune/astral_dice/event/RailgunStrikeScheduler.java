@@ -10,6 +10,8 @@ import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -74,6 +76,8 @@ public final class RailgunStrikeScheduler {
         private float damage() { return damage; }
     }
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(RailgunStrikeScheduler.class);
+
     private static final List<Pending> PENDING = new ArrayList<>();
 
     /** 超龄保护(tick):维度卸载等极端情形下丢弃滞留条目,避免无限堆积 */
@@ -121,7 +125,10 @@ public final class RailgunStrikeScheduler {
     }
 
     private static void process(MinecraftServer server) {
-        if (server == null) return;
+        if (server == null || PENDING.isEmpty()) return;
+        // 先把到期条目整体摘出队列,再逐个处理:处理过程会触发伤害/击杀等联动,
+        // 有可能回调 schedule 往队列里追加新条目 —— 边遍历边改列表会抛 ConcurrentModificationException。
+        List<Pending> due = new ArrayList<>();
         Iterator<Pending> it = PENDING.iterator();
         while (it.hasNext()) {
             Pending p = it.next();
@@ -132,10 +139,20 @@ public final class RailgunStrikeScheduler {
             }
             if (now < p.fireAt()) continue;
             it.remove();
-            LivingEntity target = p.target();
-            Vec3 center = (target != null && target.isAlive() && target.level() == p.level())
-                    ? target.position() : p.fallbackCenter();
-            RailgunChipItem.executeStrike(p.level(), center, p.cause(), p.damage());
+            due.add(p);
+        }
+        for (Pending p : due) {
+            // 单条失败不牵连其它待触发雷击,也不让异常冒泡到服务端 tick 循环
+            // (旧实现里异常会从这里抛出,表现为"继续触发雷击即报错")
+            try {
+                LivingEntity target = p.target();
+                Vec3 center = (target != null && target.isAlive() && target.level() == p.level())
+                        ? target.position() : p.fallbackCenter();
+                if (center == null) continue;
+                RailgunChipItem.executeStrike(p.level(), center, p.cause(), p.damage());
+            } catch (Exception ex) {
+                LOGGER.warn("[Astral Dice] 电磁炮雷击触发失败,已跳过本次", ex);
+            }
         }
     }
 }

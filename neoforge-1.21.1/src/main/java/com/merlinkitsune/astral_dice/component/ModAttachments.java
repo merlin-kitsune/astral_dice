@@ -752,17 +752,7 @@ public class ModAttachments {
                     .serialize(Codec.LONG)
                     .build());
 
-    // 战斗爽·扩散待命:主动消耗 2 层养精蓄锐后置位,下次骰神赐福期间启用
-    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Boolean>> FEN_CLEAVE_PENDING =
-            ATTACHMENTS.register("fen_cleave_pending", () -> AttachmentType.builder(() -> false)
-                    .serialize(Codec.BOOL)
-                    .build());
-
-    // 战斗爽·扩散生效:本次骰神赐福期间,每次攻击将总伤害的 80% 扩散给目标 6 格内敌对目标,赐福结束清除
-    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Boolean>> FEN_CLEAVE_ACTIVE =
-            ATTACHMENTS.register("fen_cleave_active", () -> AttachmentType.builder(() -> false)
-                    .serialize(Codec.BOOL)
-                    .build());
+    // 注:"战斗爽·溅射"已改为被动单次效果,由 DiceCombatEvents 的局部变量承载,不再需要附件
 
     public static int getFenRecharge(net.minecraft.world.entity.player.Player player) {
         return player.getData(FEN_RECHARGE.get());
@@ -778,22 +768,6 @@ public class ModAttachments {
 
     public static void setFenLastBlessingTick(net.minecraft.world.entity.player.Player player, long value) {
         player.setData(FEN_LAST_BLESSING_TICK.get(), value);
-    }
-
-    public static boolean isFenCleavePending(net.minecraft.world.entity.player.Player player) {
-        return player.getData(FEN_CLEAVE_PENDING.get());
-    }
-
-    public static void setFenCleavePending(net.minecraft.world.entity.player.Player player, boolean value) {
-        player.setData(FEN_CLEAVE_PENDING.get(), value);
-    }
-
-    public static boolean isFenCleaveActive(net.minecraft.world.entity.player.Player player) {
-        return player.getData(FEN_CLEAVE_ACTIVE.get());
-    }
-
-    public static void setFenCleaveActive(net.minecraft.world.entity.player.Player player, boolean value) {
-        player.setData(FEN_CLEAVE_ACTIVE.get(), value);
     }
 
     // 以毒攻毒:记录生命恢复 II 的触发时刻(中毒 8 秒后)

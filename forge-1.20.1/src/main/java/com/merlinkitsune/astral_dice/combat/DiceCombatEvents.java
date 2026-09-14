@@ -127,8 +127,6 @@ public class DiceCombatEvents {
      * {@code onLivingDamagePre} 的 targetDiceResult.isEmpty() 分支内。
      */
     private static final boolean PLAYER_DODGE_ENABLED = false;
-    // 大当家立牌“战斗爽·扩散”递归保护:防止群体伤害再次触发扩散造成无限递归
-    private static boolean cleaveProcessing = false;
     // AOE(顺劈/溅射)波及伤害处理中:被波及目标不再进入骰战结算
     static boolean aoeProcessing = false;
     // 反击链深度(替代原单层布尔 counterProcessing,结构性阻止"反击→闪避→反击"递归):
@@ -283,6 +281,8 @@ public class DiceCombatEvents {
 
         // 本次攻击是否触发了骰神赐福(与赐福触发逻辑一致:仅在未拥有赐福时触发;同一挥击命中多目标也仅触发一次)
         boolean triggeredBlessing = false;
+        // 大当家立牌被动"战斗爽·溅射":满层赐福触发时置位,本次攻击伤害定稿后立即引爆一次
+        boolean fenSplashArmed = false;
         if (!player.level().isClientSide() && diceStack != null && !player.hasEffect(ModEffects.DICE_BLESSING.get())
                 && isBlessingTarget(target, player)) {
             player.addEffect(new MobEffectInstance(ModEffects.DICE_BLESSING.get(),
@@ -341,8 +341,8 @@ public class DiceCombatEvents {
             AdvancedPeripheralsChipItem.onBlessingStart(player);
             // 会员推荐信筹码:触发骰神赐福时,获得一张随机卡牌
             com.merlinkitsune.astral_dice.item.chip.MemberRecommendationChipItem.onBlessingStart(player);
-            // 大当家立牌:触发骰神赐福 → 养精蓄锐 -1 层并记录触发时刻;"战斗爽·扩散"待命则本次赐福启用
-            com.merlinkitsune.astral_dice.item.sign.FenSignItem.onBlessingTriggered(player);
+            // 大当家立牌:触发骰神赐福 → 记录触发时刻;养精蓄锐满层则消耗 2 层并置位本次攻击的溅射
+            fenSplashArmed = com.merlinkitsune.astral_dice.item.sign.FenSignItem.onBlessingTriggered(player);
             // 治愈体系:触发骰神赐福 → 医疗箱加点(先)+ 按当前治愈点×2 回血(后)。
             // 置于触发块末尾,确保晚于本事件内所有影响治愈点数量的效果(立牌受击钩子/缓冲盾牌在前部已执行)
             com.merlinkitsune.astral_dice.item.HealingManager.onBlessingTriggered(player);
@@ -610,29 +610,45 @@ public class DiceCombatEvents {
             consumeDefenseCardDurabilityOnce(targetDefender);
         }
 
-        // 大当家立牌(战斗爽·扩散):本次赐福期间,每次攻击将总伤害的 80% 施加给目标 6 格内其他敌对目标
-        // 使用递归保护:扩散造成的伤害不会再触发二次扩散,避免多目标互炸导致栈溢出
-        if (!player.level().isClientSide() && !cleaveProcessing && com.merlinkitsune.astral_dice.item.sign.FenSignItem.isCleaveActive(player)) {
-            cleaveProcessing = true;
+        // 大当家立牌被动(战斗爽·溅射):本次攻击触发骰神赐福且养精蓄锐满层时,触发块已置位;
+        // 这里在本次攻击伤害定稿后**立即引爆一次**(单次效果:不再等待下一次赐福,也没有持续期),
+        // 并在此刻才扣除养精蓄锐代价(攻击被取消时不会白扣)。
+        // 伤害 = 本次攻击伤害的 80%(百分比下限 1),范围为**目标及其 3 格范围内**(含主目标)的敌对目标,
+        // 伤害类型为**原版爆炸伤害**(可被爆炸保护减伤);只打敌对目标(**无友伤**)、不破坏方块。
+        // 递归保护:溅射伤害不进入骰战结算(aoeProcessing 统一闸门),避免二次触发赐福/互相引爆。
+        if (!player.level().isClientSide() && fenSplashArmed) {
+            com.merlinkitsune.astral_dice.item.sign.FenSignItem.consumeSplashCost(player);
             aoeProcessing = true;
             try {
-                // 百分比伤害统一下限为 1(80% 扩散,截断后至少 1 点)
-                double cleaveDmg = Math.max(1.0, finalDmg * com.merlinkitsune.astral_dice.item.sign.FenSignItem.CLEAVE_RATIO);
-                if (cleaveDmg > 0) {
-                    net.minecraft.world.phys.AABB cleaveBox =
-                            target.getBoundingBox().inflate(com.merlinkitsune.astral_dice.item.sign.FenSignItem.CLEAVE_RANGE);
-                    var nearby = target.level().getEntitiesOfClass(
-                            net.minecraft.world.entity.LivingEntity.class, cleaveBox,
-                            e -> e != target && e instanceof net.minecraft.world.entity.monster.Enemy && e.isAlive());
-                    var cleaveSource = com.merlinkitsune.astral_dice.damage.ModDamageTypes
-                            .diceDamage(target.level(), player);
-                    for (var e : nearby) {
-                        e.hurt(cleaveSource, (float) cleaveDmg);
-                        sendDamageNumber(e, (int) cleaveDmg);
+                float splashDmg = (float) Math.max(1.0, finalDmg
+                        * com.merlinkitsune.astral_dice.item.sign.FenSignItem.SPLASH_RATIO);
+                net.minecraft.world.phys.AABB splashBox = target.getBoundingBox()
+                        .inflate(com.merlinkitsune.astral_dice.item.sign.FenSignItem.SPLASH_RANGE);
+                var splashVictims = target.level().getEntitiesOfClass(
+                        net.minecraft.world.entity.LivingEntity.class, splashBox,
+                        e -> e instanceof net.minecraft.world.entity.monster.Enemy && e.isAlive());
+                if (!splashVictims.isEmpty()) {
+                    // 爆炸伤害源:原版 explosion(...) 的第一参是 directEntity、第二参是 causingEntity,
+                    // 故 (null, player) = "无直接伤害实体 + 击杀归属玩家":不会被本模组或其它模组
+                    // 再当成一次"玩家的直接攻击"重走命中判定,同时保留击杀归属(掉落/经验/联动)。
+                    var splashSource = target.level().damageSources().explosion(null, player);
+                    for (var victim : splashVictims) {
+                        victim.hurt(splashSource, splashDmg);
+                        sendDamageNumber(victim, (int) splashDmg);
+                    }
+                    // 爆炸视觉效果:只发粒子与音效,不改动世界(不破坏方块)
+                    if (target.level() instanceof net.minecraft.server.level.ServerLevel serverLevel) {
+                        double ex = target.getX();
+                        double ey = target.getY(0.5);
+                        double ez = target.getZ();
+                        serverLevel.sendParticles(net.minecraft.core.particles.ParticleTypes.EXPLOSION_EMITTER,
+                                ex, ey, ez, 1, 0.0, 0.0, 0.0, 0.0);
+                        serverLevel.playSound(null, ex, ey, ez, net.minecraft.sounds.SoundEvents.GENERIC_EXPLODE,
+                                net.minecraft.sounds.SoundSource.BLOCKS, 4.0F,
+                                (1.0F + (serverLevel.random.nextFloat() - serverLevel.random.nextFloat()) * 0.2F) * 0.7F);
                     }
                 }
             } finally {
-                cleaveProcessing = false;
                 aoeProcessing = false;
             }
         }
@@ -805,8 +821,6 @@ public class DiceCombatEvents {
         com.merlinkitsune.astral_dice.item.chip.BankCardUnlimitedChipItem.onBlessingEnd(player);
         // 大碗炖肉筹码:赐福结束后,16 格范围内所有友方目标 +1 治愈并恢复 2 点生命值
         com.merlinkitsune.astral_dice.item.chip.BigBowlStewChipItem.onBlessingEnd(player);
-        // 大当家立牌:赐福结束清除"战斗爽·扩散"生效状态
-        com.merlinkitsune.astral_dice.item.sign.FenSignItem.onBlessingEnd(player);
         // 骇客立牌:赐福结束刷新被动(攻击/防御,覆盖旧类型)
         NancyLuSignItem.onDiceBlessingEnded(player);
         // 枪匠立牌:赐福结束弱点识破减少 1 层

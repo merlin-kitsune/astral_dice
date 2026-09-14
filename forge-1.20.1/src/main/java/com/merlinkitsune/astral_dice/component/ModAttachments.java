@@ -668,13 +668,7 @@ public class ModAttachments {
     public static final AttachedDataKey<Long> FEN_LAST_BLESSING_TICK =
             register(AttachedDataKey.builder("fen_last_blessing_tick", Codec.LONG, () -> 0L).build());
 
-    // 战斗爽·扩散待命:主动消耗 2 层养精蓄锐后置位,下次骰神赐福期间启用
-    public static final AttachedDataKey<Boolean> FEN_CLEAVE_PENDING =
-            register(AttachedDataKey.builder("fen_cleave_pending", Codec.BOOL, () -> false).build());
-
-    // 战斗爽·扩散生效:本次骰神赐福期间,每次攻击将总伤害的 80% 扩散给目标 6 格内敌对目标,赐福结束清除
-    public static final AttachedDataKey<Boolean> FEN_CLEAVE_ACTIVE =
-            register(AttachedDataKey.builder("fen_cleave_active", Codec.BOOL, () -> false).build());
+    // 注:"战斗爽·溅射"已改为被动单次效果,由 DiceCombatEvents 的局部变量承载,不再需要附件
 
     public static int getFenRecharge(net.minecraft.world.entity.player.Player player) {
         return FEN_RECHARGE.get(player);
@@ -690,22 +684,6 @@ public class ModAttachments {
 
     public static void setFenLastBlessingTick(net.minecraft.world.entity.player.Player player, long value) {
         FEN_LAST_BLESSING_TICK.set(player, value);
-    }
-
-    public static boolean isFenCleavePending(net.minecraft.world.entity.player.Player player) {
-        return FEN_CLEAVE_PENDING.get(player);
-    }
-
-    public static void setFenCleavePending(net.minecraft.world.entity.player.Player player, boolean value) {
-        FEN_CLEAVE_PENDING.set(player, value);
-    }
-
-    public static boolean isFenCleaveActive(net.minecraft.world.entity.player.Player player) {
-        return FEN_CLEAVE_ACTIVE.get(player);
-    }
-
-    public static void setFenCleaveActive(net.minecraft.world.entity.player.Player player, boolean value) {
-        FEN_CLEAVE_ACTIVE.set(player, value);
     }
 
     // 以毒攻毒:记录生命恢复 II 的触发时刻(中毒 8 秒后)
