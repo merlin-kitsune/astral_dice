@@ -92,10 +92,6 @@ public class ModEffects {
     public static final RegistryObject<MobEffect> DIRECTIONAL_BLAST =
             EFFECTS.register("directional_blast", () -> new RangedBoostEffect(0xFF8C00));
 
-    // 忍者立牌(komachi):出牌计数(等级 = 当前第几张效果牌)
-    public static final RegistryObject<MobEffect> KOMACHI_COUNT =
-            EFFECTS.register("komachi_count", () -> new CounterEffect(0x9C27B0));
-
     // 魔法秘典:出牌计数(等级 = 当前第几张效果牌)
     public static final RegistryObject<MobEffect> MAGIC_TOME_COUNT =
             EFFECTS.register("magic_tome_count", () -> new CounterEffect(0x7B68EE));

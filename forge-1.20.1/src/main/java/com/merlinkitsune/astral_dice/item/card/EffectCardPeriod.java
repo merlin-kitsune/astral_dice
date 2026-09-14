@@ -176,10 +176,11 @@ public final class EffectCardPeriod {
 
     /**
      * 出牌轮归零:清除全部"仅当前出牌轮有效"的出牌数加成与标记。
-     * <b>唯一入口</b> —— {@link #registerPlay} 的周期边界与 {@link #tick} 的周期结束共用,
-     * 禁止在别处各自列一遍(历史上分散清理曾导致状态残留与"上限中途下降"的永久锁死 BUG)。
+     * <b>唯一入口</b> —— {@link #registerPlay} 的周期边界、{@link #tick} 的周期结束与
+     * 玩家死亡清理({@code PlayerLifecycleHandler})共用,禁止在别处各自列一遍
+     * (历史上分散清理曾导致状态残留与"上限中途下降"的永久锁死 BUG)。
      */
-    private static void clearRoundBonuses(Player player) {
+    public static void clearRoundBonuses(Player player) {
         ModAttachments.setEffectCardBonusPlays(player, 0);
         ModAttachments.setCandyChipPlayBonusActive(player, false);
         ModAttachments.setSatellitePlayBonusActive(player, false);

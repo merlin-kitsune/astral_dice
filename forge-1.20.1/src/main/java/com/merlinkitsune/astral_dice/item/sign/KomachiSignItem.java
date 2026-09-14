@@ -3,10 +3,7 @@ import com.merlinkitsune.astral_dice.item.CuriosCompat;
 
 import com.merlinkitsune.astral_dice.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
-import com.merlinkitsune.astral_dice.effect.ModEffects;
-import com.merlinkitsune.astral_dice.event.ModEffectRemoval;
 import net.minecraft.world.InteractionResultHolder;
-import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
@@ -25,7 +22,8 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
  * - 复制最后一张使用的效果牌并返回到物品栏;
  * - 主动技能冷却时间立即减少 30%;
  * - 伤害类效果牌伤害加成 +1(计数器"效果牌伤害增益",无上限,卸下立牌重置)。
- * 计数期间显示"忍者立牌"效果图标,等级 = 当前第几张;第 3 张触发后计数归 0。
+ * 被动计数只保存在附件 {@code komachi_use_count} 中,<b>不再用任何效果承载/显示</b>
+ * (原「忍者立牌出牌」计数效果 komachi_count 已删除)。
  *
  * <p>主动(忍术连击)= <b>一次性</b>:只把<b>当前出牌轮</b>的可出牌数 +1
  * ({@link EffectCardPeriod#grantBonusPlay});不累积、不跨轮保留、不产生任何常驻状态,
@@ -47,12 +45,11 @@ public class KomachiSignItem extends BaseSignItem {
     @Override
     protected void clearSignData(Player player, ItemStack stack) {
         super.clearSignData(player, stack);
-        // 卸下立牌:重置被动计数与效果牌伤害增益,并移除计数效果。
+        // 卸下立牌:重置被动计数与效果牌伤害增益(计数只存附件,无效果需要移除)。
         // 注意:出牌轮的一次性 +1 属于**出牌轮状态**(授予即已消耗),不随立牌装卸回收——
         // 若在此清除,会造成"上限在周期中途下降"的不变量违例(见 EffectCardPeriod#tick)。
         ModAttachments.setKomachiUseCount(player, 0);
         ModAttachments.setKomachiDamageBonus(player, 0);
-        ModEffectRemoval.remove(player, ModEffects.KOMACHI_COUNT.get());
     }
 
     @Override
@@ -102,7 +99,6 @@ public class KomachiSignItem extends BaseSignItem {
         int count = ModAttachments.getKomachiUseCount(player) + 1;
         ModAttachments.setKomachiUseCount(player, count);
         ModAttachments.setKomachiLastCard(player, cardType);
-        updateCountEffect(player);
         if (count >= 3) {
             // 1. 复制最后一张使用的效果牌并返回到物品栏
             // 读回附件中的「最后一张效果牌」记录作为唯一来源(方法参数仅作兜底),保证跨周期/跨会话一致
@@ -122,7 +118,6 @@ public class KomachiSignItem extends BaseSignItem {
             ModAttachments.setKomachiDamageBonus(player,
                     ModAttachments.getKomachiDamageBonus(player) + 1);
             ModAttachments.setKomachiUseCount(player, 0);
-            updateCountEffect(player);
         }
     }
 
@@ -138,14 +133,4 @@ public class KomachiSignItem extends BaseSignItem {
         }
     }
 
-    // 刷新计数效果:等级 = 当前计数(第几张);计数归 0 时移除效果
-    public static void updateCountEffect(Player player) {
-        if (player.level().isClientSide()) return;
-        int count = ModAttachments.getKomachiUseCount(player);
-        if (count <= 0) {
-            ModEffectRemoval.remove(player, ModEffects.KOMACHI_COUNT.get());
-            return;
-        }
-        player.addEffect(new MobEffectInstance(ModEffects.KOMACHI_COUNT.get(), 10000, count - 1, false, true, true));
-    }
 }

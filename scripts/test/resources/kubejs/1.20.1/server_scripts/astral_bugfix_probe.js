@@ -1047,7 +1047,11 @@ function equipSign(player, itemId) {
     return putInSlot(player, "stand", new ItemStack(item), 0);
 }
 
-/** 出牌周期与忍者主动状态归零(每条命令都从同一基线起测) */
+/**
+ * 出牌周期与忍者主动状态归零(每条命令都从同一基线起测)。
+ * 必须与生产侧 EffectCardPeriod.clearRoundBonuses 的清理项**逐项对齐**(bonus / 可口糖果 /
+ * 探天卫星 / 活体书页本周期累计),否则读数会依赖前序用例残留、绝对期望变得顺序相关。
+ */
 function resetEffectCardCycle(player) {
     ModAttachments.setEffectCardBonusPlays(player, 0);
     ModAttachments.setEffectCardPlayCount(player, 0);
@@ -1055,6 +1059,7 @@ function resetEffectCardCycle(player) {
     ModAttachments.setSignActiveCooldownEnd(player, 0);
     ModAttachments.setCandyChipPlayBonusActive(player, false);
     ModAttachments.setSatellitePlayBonusActive(player, false);
+    ModAttachments.setLivingPageCycleBonus(player, 0);
 }
 
 /** 摘下两个「临时出牌数来源」效果(附件已由 resetEffectCardCycle 归零) */
@@ -1198,11 +1203,14 @@ function tryInstallProbeSources(p) {
 
 /**
  * 出牌上限已达封顶(9)时按主动:必须不释放且不进入冷却。
- * 构造:挂满当前全部固定来源(大背包 + 忍术飞镖)与临时来源(活体书页 / 命运的指引 /
- * 可口糖果 / 探天卫星)= extra 6 → 上限 7;再尝试注册两个「常态关闭」的探针临时来源,
- * 置位后 extra = 8 → getMaxAllowed() = min(9, 1+8) = 9,封顶分支才可达。
- * 若 Rhino 无法实现该接口(预检不通过,不注册),封顶分支不可达 → 退化为
- * 「上限未达封顶时主动必须正常释放、且不得超过常量封顶 9」的正向对照。
+ * 构造与实测口径:挂上大背包 + 忍术飞镖(固定 2)与命运的指引效果 + 可口糖果 + 探天卫星
+ * (临时 3)⇒ 干净基线 extra = 5 → 上限 6(_FILL:6;活体书页自改版起是"本周期累计"来源、
+ * **不再是效果驱动的临时来源**,故探针即使加了活体书页效果也不再额外 +1)。
+ * 再尝试注册两个「常态关闭」的探针临时来源,置位后 extra = 7 → getMaxAllowed() = 8,
+ * **封顶 9 依旧不可达**(当前内容下满配也只能到 8),故本命令实机走的是
+ * 「上限未达封顶时主动必须正常释放、且不得超过常量封顶 9」的正向对照分支;
+ * 若将来内容变化使 9 可达,则自动走封顶拒绝分支。
+ * 若 Rhino 无法实现该接口(预检不通过,不注册),则只有正向对照形态。
  * 两条分支各自的正确性由 _CAP_OK 判定,_BRANCH/_VERDICT 标明实际跑到哪条。
  */
 function doKomachiCap(ctx, tag) {

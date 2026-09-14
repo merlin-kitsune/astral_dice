@@ -129,9 +129,6 @@ public class PlayerLifecycleHandler {
         ModAttachments.setSignReadyType(player, 0);
         ModAttachments.setSignReadyExpire(player, 0);
         ModAttachments.setFenRecharge(player, 0);
-        // 出牌轮的一次性出牌数加成(立牌主动授予)与活体书页本周期累计:同属"仅当前出牌轮"的附件,死亡一并清零
-        ModAttachments.setEffectCardBonusPlays(player, 0);
-        ModAttachments.setLivingPageCycleBonus(player, 0);
         ModAttachments.setMagicQuiverTracking(player, false);
         ModAttachments.setMagicQuiverFirstCard(player, "");
         ModAttachments.setMagicQuiverCooldownEnd(player, 0);
@@ -139,9 +136,7 @@ public class PlayerLifecycleHandler {
         ModAttachments.setStarCoinHammerBonus(player, 0);
         ModAttachments.setCursedSwordBonus(player, 0);
         ModAttachments.setCursedSwordBlessingTriggered(player, false);
-        ModAttachments.setCandyChipPlayBonusActive(player, false);
         ModAttachments.setFlashlightGrantedTargets(player, "");
-        ModAttachments.setSatellitePlayBonusActive(player, false);
         ModAttachments.setSatelliteGiveCooldownEnd(player, 0);
         ModAttachments.setNancyLuPassiveType(player, 0);
         ModAttachments.setNancyLuActiveBonus(player, 0);
@@ -152,9 +147,11 @@ public class PlayerLifecycleHandler {
         player.removeEffect(ModEffects.NANCY_LU_HACK);
         player.removeEffect(ModEffects.BLUE_CURSE);
         // 秘密侦探:死亡保留调查阶段进度(仅卸牌时清除)
-        // 效果牌出牌相关计数复位
+        // 效果牌出牌相关计数复位:出牌轮的一次性加成与"每轮一次"标记(可口糖果/探天卫星/活体书页累计)
+        // 走周期边界的**同一入口**清理,禁止在此另列一遍逐项清单
         ModAttachments.setEffectCardPlayCount(player, 0);
         ModAttachments.setEffectCardCooldownEnd(player, 0);
+        EffectCardPeriod.clearRoundBonuses(player);
         ModAttachments.setKomachiUseCount(player, 0);
         ModAttachments.setMagicTomeUseCount(player, 0);
         // 效果牌伤害加成(忍者立牌 KomachiDamageBonus/调查员立牌 RinPages)死亡保留,不清除
@@ -175,7 +172,6 @@ public class PlayerLifecycleHandler {
         player.removeEffect(ModEffects.FATE_GUIDANCE);
         player.removeEffect(ModEffects.FEN_FRENZY);
         player.removeEffect(ModEffects.PAPARA_BITE);
-        player.removeEffect(ModEffects.KOMACHI_COUNT);
         player.removeEffect(ModEffects.MAGIC_TOME_COUNT);
     }
 
