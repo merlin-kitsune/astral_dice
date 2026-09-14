@@ -1753,6 +1753,49 @@ function playerUuid(p) {
     return { ok: false, value: null, src: "none" };
 }
 
+// ════════════════════════════════════════════════════════════════════════════
+//  效果牌出牌状态机「永久锁死」回归(2026-09-14 严重 BUG 的外部汇报)
+//    /astralprobe eccardlock <tag>
+//  复现方式(等价于线上触发链的最末态):出牌数 = 当前上限,**且**冷却结束时间为 0。
+//  该状态只可能由「上限在周期中途下降」造成(卸下大背包/忍术飞镖/可口糖果/探天卫星、
+//  忍者主动 +1 标记被清、命运指引到期),旧实现下 tick 会因 cooldown <= 0 直接返回,
+//  计数永远清不掉 ⇒ 效果牌永久不可用(界面:本轮出牌数已用完!剩余冷却 0 秒)。
+//  断言:① 该状态被判为"已打满"且剩余 0 秒;② 修复后 tick 必须补上一轮冷却(结束时间落在未来);
+//        ③ 该冷却到期后再 tick 一次,出牌数与冷却双双清零、出牌锁解除。
+// ════════════════════════════════════════════════════════════════════════════
+function doEffectCardLock(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    // 清掉全部药水效果:避免已生效的效果牌残效(效果待定源)干扰"剩余 0 秒"的断言
+    runCmd(ctx, "effect clear @s");
+    resetEffectCardCycle(p);
+    var max = EffectCardPeriodClass.getMaxAllowed(p);
+    var now = nowTickLevel(p.level);
+    // 构造死状态:计数 = 上限,但没有冷却在跑
+    ModAttachments.setEffectCardPlayCount(p, max);
+    ModAttachments.setEffectCardCooldownEnd(p, 0);
+    var blockedBefore = EffectCardPeriodClass.isBlocked(p);
+    var remainBefore = EffectCardPeriodClass.getRemainingBlockSeconds(p);
+    // ① 修复点:无冷却时的 tick 必须把这一轮冷却补上
+    EffectCardPeriodClass.tick(p);
+    var cdAfter = ModAttachments.getEffectCardCooldownEnd(p);
+    var recovered = (cdAfter > now) ? 1 : 0;
+    // ② 冷却到期 → tick 必须清空计数与冷却
+    ModAttachments.setEffectCardCooldownEnd(p, now - 1);
+    EffectCardPeriodClass.tick(p);
+    var countCleared = ModAttachments.getEffectCardPlayCount(p);
+    var cdCleared = ModAttachments.getEffectCardCooldownEnd(p);
+    var blockedAfter = EffectCardPeriodClass.isBlocked(p);
+    send(ctx, "AP_" + tag + "_LOCK:max=" + max + ":now=" + now + ":src=" + nowTickSource
+        + ":blocked_before=" + (blockedBefore ? 1 : 0) + ":remain_before=" + remainBefore
+        + ":cd_after_future=" + recovered + ":count_cleared=" + countCleared
+        + ":cd_cleared=" + cdCleared + ":blocked_after=" + (blockedAfter ? 1 : 0));
+    var ok = blockedBefore && remainBefore === 0 && recovered === 1
+        && countCleared === 0 && cdCleared === 0 && !blockedAfter;
+    send(ctx, "AP_" + tag + "_LOCK_OK:" + (ok ? 1 : 0));
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
 function doRailgunFriendly(ctx, tag) {
     var p = ctx.source.getPlayerOrException();
     var ChargeManagerClass = Java.loadClass("com.merlinkitsune.astral_dice.item.ChargeManager");
@@ -2263,6 +2306,11 @@ ServerEvents.commandRegistry(event => {
                 .then(Commands.argument("tag", StringArg.word())
                     .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
                         return doRailgunFriendlyEnd(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("eccardlock")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doEffectCardLock(ctx, StringArg.getString(ctx, "tag"));
                     }))))
             .then(Commands.literal("emeraldtrade")
                 .then(Commands.argument("tag", StringArg.word())

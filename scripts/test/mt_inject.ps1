@@ -18,6 +18,7 @@ mt_inject.ps1 — 游戏内输入注入（阶段 C 的执行臂）。
 ## 用法
 
   mt_inject.ps1 key -Key rclick
+  mt_inject.ps1 key -Key rclick -HoldMs 3000      # 按住右键 3 秒（长按/自动重复类回归）
   mt_inject.ps1 key -Key w -HoldMs 1000
   mt_inject.ps1 cmd -Command "/astral_dice targetselect enemy"
   mt_inject.ps1 cmd -Command "/give @s minecraft:stone" -NoEsc
@@ -218,17 +219,21 @@ function Send-MtInjectKey {
 function Send-MtInjectMouseCenter {
     <#
     .SYNOPSIS
-        在窗口中心投递一次鼠标左右键（对应 python _click_center）。
+        在窗口中心投递鼠标左右键（对应 python _click_center）；-HoldMs 可把按键按住一段时间。
 
     .NOTES
         坐标只由**窗口矩形**算出（不含客户区偏移），这是 python 版的原样行为：
         游戏窗口是全屏/无边框时二者等价，带边框时会有偏差 —— 保持 1:1 不擅自修正。
+        HoldMs：down 与 up 之间的停顿毫秒数（0 = 旧行为 100ms 单击）。
+        按住期间原版 `Minecraft#startUseItem` 每 4 tick 自动重复 —— 「长按右键」类回归
+        （如效果牌长按不连发）必须用它，单击无法覆盖该分支。
     #>
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][long]$Hwnd,
         [Parameter(Mandatory)][bool]$Right,
-        [bool]$Shift = $false
+        [bool]$Shift = $false,
+        [int]$HoldMs = 0
     )
 
     if ($Shift) {
@@ -239,6 +244,7 @@ function Send-MtInjectMouseCenter {
     $rect = Get-MtWindowRect -Hwnd $Hwnd
     $x = [int](($rect.Right - $rect.Left) / 2)
     $y = [int](($rect.Bottom - $rect.Top) / 2)
+    $hold = if ($HoldMs -gt 0) { $HoldMs } else { 100 }
 
     if ($script:Transport -eq 'sendinput') {
         # 真实鼠标：先把光标移到窗口中心（屏幕坐标），再发真实左右键
@@ -246,7 +252,7 @@ function Send-MtInjectMouseCenter {
             [void](Set-MtRealCursorPosition -X ($rect.Left + $x) -Y ($rect.Top + $y))
             Start-MtInjectPause -Milliseconds 80
             [void](Send-MtRealMouse -Right $Right -Up $false)
-            Start-MtInjectPause -Milliseconds 100
+            Start-MtInjectPause -Milliseconds $hold
             [void](Send-MtRealMouse -Right $Right -Up $true)
         }
     } else {
@@ -254,7 +260,7 @@ function Send-MtInjectMouseCenter {
         $down = if ($Right) { $script:WM_RBUTTONDOWN } else { $script:WM_LBUTTONDOWN }
         $up = if ($Right) { $script:WM_RBUTTONUP } else { $script:WM_LBUTTONUP }
         Send-MtInjectMessage -Hwnd $Hwnd -Msg $down -WParam 1 -LParam $lp
-        Start-MtInjectPause -Milliseconds 100
+        Start-MtInjectPause -Milliseconds $hold
         Send-MtInjectMessage -Hwnd $Hwnd -Msg $up -WParam 0 -LParam $lp
     }
 
@@ -396,8 +402,10 @@ function Invoke-MtInjectKeyCommand {
 
     if ($k -eq 'attack' -or $k -eq 'rclick' -or $k -eq 'shift-rclick') {
         Send-MtInjectMouseCenter -Hwnd $hwnd `
-            -Right ($k -eq 'rclick' -or $k -eq 'shift-rclick') -Shift ($k -eq 'shift-rclick')
-        Write-MtInjectLine ('MT_INJECT_KEY: {0} (窗口中心)' -f $k)
+            -Right ($k -eq 'rclick' -or $k -eq 'shift-rclick') -Shift ($k -eq 'shift-rclick') `
+            -HoldMs $HoldMs
+        $held = if ($HoldMs -gt 0) { " 按住 ${HoldMs}ms" } else { '' }
+        Write-MtInjectLine ('MT_INJECT_KEY: {0} (窗口中心){1}' -f $k, $held)
         return 0
     }
 

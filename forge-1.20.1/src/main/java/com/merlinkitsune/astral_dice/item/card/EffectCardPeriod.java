@@ -141,6 +141,9 @@ public final class EffectCardPeriod {
         }
         // 活体书页:每次使用在本周期内累计 +1(仅当前周期,周期归零时清除;可叠加,非"效果存在即 +1"的开关式)
         extra += ModAttachments.getLivingPageCycleBonus(player);
+        // 防御性下界:附件被写成负值(异常/溢出)时不得让上限退化为 0 或负数——
+        // 否则 count >= max 恒成立,出牌会被永久判定为"已打满"
+        if (extra < 0) extra = 0;
         // 单轮出牌数固定封顶(常量 9,不写入配置文件)
         return Math.min(GameplayConstants.MAX_EFFECT_CARD_PLAYS, 1 + extra);
     }
@@ -227,8 +230,14 @@ public final class EffectCardPeriod {
     public static void registerPlay(Player player) {
         long now = player.level().getGameTime();
         long cooldown = ModAttachments.getEffectCardCooldownEnd(player);
-        // 冷却倒计时已归 0 未及清理:先恢复计数再登记(避免跨窗口残留计数)
-        if (cooldown > 0 && now >= cooldown) {
+        int played = ModAttachments.getEffectCardPlayCount(player);
+        // 周期边界(任一成立即开新周期:先归零再登记,避免跨窗口残留计数):
+        //   ① 冷却倒计时已归 0 但 tick 尚未清理;
+        //   ② 不变量违例 —— 出牌数已达当轮上限却**没有**冷却在跑(只可能来自"上限在周期中途下降",
+        //      见 tick 的 2026-09-14 严重 BUG 说明)。此处把它当新周期处理,保证无论调用方如何,
+        //      registerPlay 自身不会留下"count >= max 且无冷却"的死状态。
+        if ((cooldown > 0 && now >= cooldown)
+                || (cooldown <= 0 && played > 0 && played >= getMaxAllowed(player))) {
             ModAttachments.setEffectCardCooldownEnd(player, 0);
             ModAttachments.setEffectCardPlayCount(player, 0);
             ModAttachments.setCandyChipPlayBonusActive(player, false);
@@ -248,12 +257,36 @@ public final class EffectCardPeriod {
         }
     }
 
-    // 每 tick 调用:冷却倒计时归 0 时出牌数归零
+    /**
+     * 每 tick 调用(实际每 20 tick 一次,见 {@code PlayerTickEvents#onPlayerTick})。
+     *
+     * <p>两种情形:
+     * <ol>
+     *   <li><b>冷却已到期</b>:出牌数与全部"每轮一次"标记归零,周期结束(原有行为);</li>
+     *   <li><b>不变量违例的修复(2026-09-14 严重 BUG)</b>:出牌数已达当轮上限、却<b>没有</b>冷却在跑。
+     *       该状态只可能来自「上限在周期中途下降」——卸下大背包/忍术飞镖(固定 +1)、
+     *       卸下可口糖果/探天卫星筹码、忍者立牌主动的 +1 标记被清除、命运的指引效果到期等,
+     *       都会让 {@link #getMaxAllowed} 实时变小,而 {@link #registerPlay} 当初是按<b>当时的</b>上限
+     *       判定"未打满、不进入冷却"的,于是计数留存下来。旧实现此处 {@code if (cooldown <= 0) return;}
+     *       直接返回 ⇒ 计数永远清不掉、{@link #isBurstFull} 永远为真 ⇒ <b>效果牌永久不可用</b>,
+     *       界面停在「本轮出牌数已用完!剩余冷却 0 秒」,且摘掉任何筹码/立牌都无法恢复
+     *       (计数是玩家附件,与物品无关)。这里按既定口径「打满上限即进入冷却」补上这一轮冷却,
+     *       使其在一轮冷却后走情形 1 正常清除。</li>
+     * </ol>
+     */
     public static void tick(Player player) {
         long now = player.level().getGameTime();
         long cooldown = ModAttachments.getEffectCardCooldownEnd(player);
-        if (cooldown <= 0) return;
-        if (now < cooldown) return;
+        int played = ModAttachments.getEffectCardPlayCount(player);
+        if (cooldown > 0 && now < cooldown) return;          // 冷却进行中:不动
+        if (cooldown <= 0) {
+            if (played <= 0) return;                          // 无残留
+            if (played < getMaxAllowed(player)) return;       // 正常累积中(未打满、无冷却)
+            long recoverTicks = ChargeManager.cooldownTicks(player,
+                    GameplayConstants.EFFECT_CARD_COOLDOWN_SECONDS * 20L);
+            ModAttachments.setEffectCardCooldownEnd(player, now + recoverTicks);
+            return;
+        }
         ModAttachments.setEffectCardCooldownEnd(player, 0);
         ModAttachments.setEffectCardPlayCount(player, 0);
         // 周期归零:忍者立牌主动的本轮出牌数 +1 失效(仅当前周期有效,不跨周期累积)
