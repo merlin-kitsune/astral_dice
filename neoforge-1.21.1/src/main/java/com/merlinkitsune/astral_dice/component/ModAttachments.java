@@ -275,6 +275,7 @@ public class ModAttachments {
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> RIN_PAGES =
             ATTACHMENTS.register("rin_pages", () -> AttachmentType.builder(() -> 0)
                     .serialize(Codec.INT)
+                    .sync(ByteBufCodecs.INT)
                     .build());
 
     // 调查员立牌(rin):最近一次获得活体书页的事件签名(触发者 UUID + "|" + 事件 ID)。
@@ -805,6 +806,7 @@ public class ModAttachments {
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> PANDAMAN_MAX_HEALTH_BONUS =
             ATTACHMENTS.register("pandaman_max_health_bonus", () -> AttachmentType.builder(() -> 0)
                     .serialize(Codec.INT)
+                    .sync(ByteBufCodecs.INT)
                     .build());
 
     public static int getPandamanMaxHealthBonus(net.minecraft.world.entity.player.Player player) {

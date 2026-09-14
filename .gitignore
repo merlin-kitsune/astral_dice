@@ -59,8 +59,8 @@ docs/
 run/
 temp/
 images/
-AGENTS.md
 deploy.ps1
 .zcode/
 .workbuddy/
 .dsh/
+### AGENTS.md 自 2026-09-15 起纳入版本库(用户要求),不再排除 ###

@@ -252,7 +252,7 @@ public class ModAttachments {
 
     // 调查员立牌(rin):已使用的活体书页数量(活体书页伤害永久+1 的来源,移除立牌后重置)
     public static final AttachedDataKey<Integer> RIN_PAGES =
-            register(AttachedDataKey.builder("rin_pages", Codec.INT, () -> 0).build());
+            register(AttachedDataKey.builder("rin_pages", Codec.INT, () -> 0).sync().build());
 
     // 调查员立牌(rin):最近一次获得活体书页的事件签名(触发者 UUID + "|" + 事件 ID)。
     // 用于同一事件在极短窗口(2 tick)内被重复分发时去重(如多立牌槽重复调用 onKill),
@@ -716,7 +716,7 @@ public class ModAttachments {
 
     // 肉弹战车立牌(pandaman)被动:吃汉堡累计的生命值上限加成(卸下立牌时清除)
     public static final AttachedDataKey<Integer> PANDAMAN_MAX_HEALTH_BONUS =
-            register(AttachedDataKey.builder("pandaman_max_health_bonus", Codec.INT, () -> 0).build());
+            register(AttachedDataKey.builder("pandaman_max_health_bonus", Codec.INT, () -> 0).sync().build());
 
     public static int getPandamanMaxHealthBonus(net.minecraft.world.entity.player.Player player) {
         return PANDAMAN_MAX_HEALTH_BONUS.get(player);
@@ -842,6 +842,8 @@ public class ModAttachments {
             SYNCED_KEYS.add(ELECTRIC_GLOVE_AOE);
             SYNCED_KEYS.add(AIRBAG_COOLDOWN_END);
             SYNCED_KEYS.add(RAILGUN_COOLDOWN_END);
+            SYNCED_KEYS.add(RIN_PAGES);
+            SYNCED_KEYS.add(PANDAMAN_MAX_HEALTH_BONUS);
         }
         return SYNCED_KEYS;
     }
