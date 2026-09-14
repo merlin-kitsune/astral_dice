@@ -613,15 +613,17 @@ public class DiceCombatEvents {
         // 大当家立牌被动(战斗爽·溅射):本次攻击触发骰神赐福且养精蓄锐满层时,触发块已置位;
         // 这里在本次攻击伤害定稿后**立即引爆一次**(单次效果:不再等待下一次赐福,也没有持续期),
         // 并在此刻才扣除养精蓄锐代价(攻击被取消时不会白扣)。
-        // 伤害 = 本次攻击伤害的 80%(百分比下限 1),范围为**目标及其 3 格范围内**(含主目标)的敌对目标,
+        // 伤害 = 本次攻击伤害的 80%(**下限 5 点**),范围为**目标及其 3 格范围内**(含主目标)的敌对目标,
         // 伤害类型为**原版爆炸伤害**(可被爆炸保护减伤);只打敌对目标(**无友伤**)、不破坏方块。
         // 递归保护:溅射伤害不进入骰战结算(aoeProcessing 统一闸门),避免二次触发赐福/互相引爆。
         if (!player.level().isClientSide() && fenSplashArmed) {
             com.merlinkitsune.astral_dice.item.sign.FenSignItem.consumeSplashCost(player);
             aoeProcessing = true;
             try {
-                float splashDmg = (float) Math.max(1.0, finalDmg
-                        * com.merlinkitsune.astral_dice.item.sign.FenSignItem.SPLASH_RATIO);
+                // 下限取立牌常量(5 点),高于全局"按比例不足 1 时按 1 计"的兜底
+                float splashDmg = (float) Math.max(
+                        com.merlinkitsune.astral_dice.item.sign.FenSignItem.SPLASH_DAMAGE_MIN,
+                        finalDmg * com.merlinkitsune.astral_dice.item.sign.FenSignItem.SPLASH_RATIO);
                 net.minecraft.world.phys.AABB splashBox = target.getBoundingBox()
                         .inflate(com.merlinkitsune.astral_dice.item.sign.FenSignItem.SPLASH_RANGE);
                 var splashVictims = target.level().getEntitiesOfClass(
