@@ -1,5 +1,6 @@
 package com.merlinkitsune.astral_dice.item.chip;
 
+import com.merlinkitsune.astral_dice.combat.HostileTargets;
 import com.merlinkitsune.astral_dice.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
@@ -118,7 +119,7 @@ public class CursedSwordChipItem extends BaseChipItem {
     public static void onCursedSwordKill(LivingDeathEvent event) {
         LivingEntity target = event.getEntity();
         if (target.level().isClientSide()) return;
-        if (!(target instanceof Enemy) || target.getMaxHealth() < 20) return;
+        if (!HostileTargets.isHostile(target) || target.getMaxHealth() < 20) return;
         if (!(event.getSource().getEntity() instanceof Player killer)) return;
         CursedSwordChipItem.onKill(killer);
     }

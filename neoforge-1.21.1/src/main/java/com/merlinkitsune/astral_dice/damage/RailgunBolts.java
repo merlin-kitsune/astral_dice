@@ -1,5 +1,6 @@
 package com.merlinkitsune.astral_dice.damage;
 
+import com.merlinkitsune.astral_dice.combat.HostileTargets;
 import net.minecraft.world.entity.LightningBolt;
 
 import java.util.Collections;
@@ -30,17 +31,19 @@ public final class RailgunBolts {
     }
 
     /**
-     * 这道电磁炮雷击是否应当命中该实体:**敌对生物**,或**已被激怒的中立生物**(如被攻击后的末影人)。
+     * 这道电磁炮雷击是否应当命中该实体:即该实体是否为「敌对目标」。
+     *
+     * <p>判定口径已统一到 {@link HostileTargets#isHostile(net.minecraft.world.entity.Entity)}
+     * ——**敌对生物(`Enemy`)或已被激怒的中立生物(`NeutralMob#isAngry()`)**;平静的狼/铁傀儡/
+     * 北极熊/蜜蜂、攻击者自己、友方宠物、中立动物、盔甲架等一律不算。
      *
      * <p>原版 {@code LightningBolt#tick} 对判定箱内**所有存活实体**一律调用 {@code thunderHit}
      * (箱体 ±3 格、垂直 +6+3),没有任何阵营过滤——会把攻击者自己、友方宠物、中立动物一起打,
-     * 还会顺手点燃它们。本模组按用户裁决收窄为"仅对敌对目标(含被激怒的中立目标)生效":
-     * 其余实体在 {@code EntityThunderHitMixin} 里整段取消——**既不受伤也不被点燃**。
+     * 还会顺手点燃它们。本模组按用户裁决收窄为"仅对敌对目标生效":其余实体在
+     * {@code EntityThunderHitMixin} 里整段取消——**既不受伤也不被点燃**。
      */
     public static boolean isValidLightningTarget(net.minecraft.world.entity.Entity target) {
-        if (target == null) return false;
-        if (target instanceof net.minecraft.world.entity.monster.Enemy) return true;
-        return target instanceof net.minecraft.world.entity.NeutralMob neutral && neutral.isAngry();
+        return target != null && HostileTargets.isHostile(target);
     }
 
     /** 该闪电是否为本模组电磁炮降下的雷击。 */

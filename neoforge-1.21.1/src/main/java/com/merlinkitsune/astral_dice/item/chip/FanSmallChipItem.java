@@ -1,5 +1,6 @@
 package com.merlinkitsune.astral_dice.item.chip;
 
+import com.merlinkitsune.astral_dice.combat.HostileTargets;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.player.Player;
@@ -29,7 +30,7 @@ public class FanSmallChipItem extends BaseChipItem {
 
         AABB aabb = player.getBoundingBox().inflate(RANGE);
         for (LivingEntity entity : player.level().getEntitiesOfClass(LivingEntity.class, aabb,
-                e -> e instanceof Enemy && e.isAlive())) {
+                e -> HostileTargets.isHostile(e) && e.isAlive())) {
             MarkManager.apply(entity);
         }
     }

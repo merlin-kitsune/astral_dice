@@ -1,5 +1,6 @@
 package com.merlinkitsune.astral_dice.item.chip;
 
+import com.merlinkitsune.astral_dice.combat.HostileTargets;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.item.CuriosCompat;
 import com.merlinkitsune.astral_dice.item.ModItems;
@@ -47,7 +48,7 @@ public class SmartWatchChipItem extends BaseChipItem {
     public static void onLivingDeath(LivingDeathEvent event) {
         if (event.isCanceled()) return;
         if (event.getEntity().level().isClientSide()) return;
-        if (!(event.getEntity() instanceof Enemy)) return;
+        if (!HostileTargets.isHostile(event.getEntity())) return;
         if (!(event.getSource().getEntity() instanceof Player killer)) return;
         onHostileKilled(killer);
     }

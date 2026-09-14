@@ -351,7 +351,7 @@ public final class DiceCombatModifiers {
             int stage = investigation.getAmplifier(); // 1=I,2=II,3=III,4=真相揭露(I 无攻击加成)
             int markLevel = MarkManager.getLevel(ctx.target);
             boolean isBoss = BossEntityUtil.isBossEntity(ctx.target);
-            boolean isHostile = ctx.target instanceof Enemy;
+            boolean isHostile = HostileTargets.isHostile(ctx.target);
             if (!isBoss && isHostile) {
                 if (stage >= 3) {
                     ap += 2 + markLevel;

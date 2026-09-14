@@ -1,5 +1,6 @@
 package com.merlinkitsune.astral_dice.item.chip;
 
+import com.merlinkitsune.astral_dice.combat.HostileTargets;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.event.RailgunStrikeScheduler;
 import com.merlinkitsune.astral_dice.item.CuriosCompat;
@@ -10,7 +11,6 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LightningBolt;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -100,7 +100,7 @@ public class RailgunChipItem extends BaseChipItem {
         if (player == null || target == null) return null;
         if (player.level().isClientSide()) return null;
         if (!isEquipped(player)) return null;
-        if (!(target instanceof Enemy)) return null;
+        if (!HostileTargets.isHostile(target)) return null;
         if (!(player.level() instanceof ServerLevel level)) return null;
         if (isOnCooldown(player)) return null;
         if (ChargeManager.getStacks(player) < CHARGE_REQUIRED) return null;
@@ -142,7 +142,7 @@ public class RailgunChipItem extends BaseChipItem {
         if (level == null || center == null) return false;
         AABB aabb = new AABB(center, center).inflate(AOE_RADIUS);
         List<LivingEntity> victims = level.getEntitiesOfClass(LivingEntity.class, aabb,
-                e -> e instanceof Enemy && e.isAlive());
+                e -> HostileTargets.isHostile(e) && e.isAlive());
         if (victims.isEmpty()) return false;
         if (cause != null) {
             // 充能在 1 秒延迟内可能已被其它筹码花掉:不足则整次触发作废(不进入冷却)

@@ -1,5 +1,6 @@
 package com.merlinkitsune.astral_dice.item.chip;
 
+import com.merlinkitsune.astral_dice.combat.HostileTargets;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.player.Player;
@@ -42,7 +43,7 @@ public class FanBigChipItem extends BaseChipItem {
         // 对周围 HAND_FAN_BIG_RANGE 格范围内所有敌对目标施加一层标记
         AABB aabb = player.getBoundingBox().inflate(com.merlinkitsune.astral_dice.component.GameplayConstants.HAND_FAN_BIG_RANGE);
         List<LivingEntity> nearby = player.level().getEntitiesOfClass(LivingEntity.class, aabb,
-                e -> e instanceof Enemy && e.isAlive());
+                e -> HostileTargets.isHostile(e) && e.isAlive());
         for (LivingEntity entity : nearby) {
             MarkManager.apply(entity);
         }

@@ -1,5 +1,6 @@
 package com.merlinkitsune.astral_dice.item.chip;
 
+import com.merlinkitsune.astral_dice.combat.HostileTargets;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.StarLightManager;
@@ -49,7 +50,7 @@ public class FlashlightChipItem extends BaseChipItem {
     public static void onAttack(Player player, LivingEntity target) {
         if (player == null || target == null) return;
         if (player.level().isClientSide()) return;
-        if (!(target instanceof Enemy)) return;
+        if (!HostileTargets.isHostile(target)) return;
         if (!isEquipped(player)) return;
         String uuid = target.getUUID().toString();
         List<String> granted = readGrantedTargets(player);

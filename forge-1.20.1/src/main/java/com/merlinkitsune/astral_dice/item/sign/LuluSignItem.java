@@ -1,5 +1,6 @@
 package com.merlinkitsune.astral_dice.item.sign;
 
+import com.merlinkitsune.astral_dice.combat.HostileTargets;
 import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
 
 import com.merlinkitsune.astral_dice.component.GameplayConstants;
@@ -72,7 +73,7 @@ public class LuluSignItem extends BaseSignItem {
                 e -> e != player);
 
         for (LivingEntity entity : nearby) {
-            if (entity instanceof Enemy) {
+            if (HostileTargets.isHostile(entity)) {
                 // 敌对生物:缓慢 60 秒
                 EffectTimerGuard.apply(entity, new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, 1200, 0, false, true));
             } else if (isHealTarget(entity, player)) {

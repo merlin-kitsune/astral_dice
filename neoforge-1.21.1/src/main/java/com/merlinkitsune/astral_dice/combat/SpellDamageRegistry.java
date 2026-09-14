@@ -12,7 +12,6 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.damagesource.DamageType;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.projectile.AbstractArrow;
 import net.minecraft.world.entity.projectile.ThrowableProjectile;
 
@@ -232,7 +231,7 @@ public final class SpellDamageRegistry {
                 net.minecraft.world.phys.AABB aabb = ctx.target.getBoundingBox().inflate(6);
                 var nearby = ctx.target.level().getEntitiesOfClass(
                         net.minecraft.world.entity.LivingEntity.class, aabb,
-                        e -> e instanceof net.minecraft.world.entity.monster.Enemy
+                        e -> HostileTargets.isHostile(e)
                                 && e != ctx.target && e.isAlive());
                 var blastSource = com.merlinkitsune.astral_dice.damage.ModDamageTypes
                         .trueDamage(ctx.target.level(), ctx.attacker);   // 真伤:效果牌范围波及伤害同样无视护甲值/盔甲韧性
@@ -272,7 +271,7 @@ public final class SpellDamageRegistry {
             @Override
             public boolean isActive(SpellDamageContext ctx) {
                 if (!ctx.hasCurio(ModItems.PIERCING_GUN.get())) return false;
-                if (!(ctx.target instanceof Enemy)) return false;
+                if (!HostileTargets.isHostile(ctx.target)) return false;
                 return ctx.attacker.hasEffect(ModEffects.LIVING_PAGE)
                         || ctx.attacker.hasEffect(ModEffects.MONSTER_LASER)
                         || ctx.attacker.hasEffect(ModEffects.MONSTER_BRICK)
@@ -353,7 +352,7 @@ public final class SpellDamageRegistry {
                 net.minecraft.world.phys.AABB aabb = ctx.target.getBoundingBox()
                         .inflate(com.merlinkitsune.astral_dice.item.chip.ElectricGloveChipItem.AOE_RADIUS);
                 var nearby = ctx.target.level().getEntitiesOfClass(LivingEntity.class, aabb,
-                        e -> e instanceof Enemy && e != ctx.target && e.isAlive());
+                        e -> HostileTargets.isHostile(e) && e != ctx.target && e.isAlive());
                 var source = com.merlinkitsune.astral_dice.damage.ModDamageTypes
                         .trueDamage(ctx.target.level(), ctx.attacker);   // 真伤:效果牌范围波及伤害同样无视护甲值/盔甲韧性
                 // AOE 波及伤害不进入骰战结算(见 DiceCombatEvents.aoeProcessing)

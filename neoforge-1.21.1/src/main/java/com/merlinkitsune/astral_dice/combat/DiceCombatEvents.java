@@ -45,7 +45,6 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.animal.Animal;
 import net.minecraft.world.entity.boss.wither.WitherBoss;
-import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.entity.monster.warden.Warden;
 import net.minecraft.world.entity.player.Player;
@@ -318,7 +317,7 @@ public class DiceCombatEvents {
                             (net.minecraft.server.level.ServerLevel) player.level();
                     for (net.minecraft.world.entity.Entity entity : serverLevel.getEntities().getAll()) {
                         if (entity instanceof net.minecraft.world.entity.LivingEntity living
-                                && living instanceof net.minecraft.world.entity.monster.Enemy && living.isAlive()) {
+                                && HostileTargets.isHostile(living) && living.isAlive()) {
                             double distSqr = living.distanceToSqr(player);
                             if (distSqr < nearestDistSqr) {
                                 nearestDistSqr = distSqr;
@@ -633,7 +632,7 @@ public class DiceCombatEvents {
                         .inflate(com.merlinkitsune.astral_dice.item.sign.FenSignItem.SPLASH_RANGE);
                 var splashVictims = target.level().getEntitiesOfClass(
                         net.minecraft.world.entity.LivingEntity.class, splashBox,
-                        e -> e instanceof net.minecraft.world.entity.monster.Enemy && e.isAlive());
+                        e -> HostileTargets.isHostile(e) && e.isAlive());
                 if (!splashVictims.isEmpty()) {
                     // 真伤伤害源:直接伤害实体为空、击杀归属玩家(与旧 explosion(null, player) 同形状,
                     // 不会被本模组或其它模组再当成一次"玩家的直接攻击"重走命中判定,同时保留击杀归属);
@@ -1010,7 +1009,7 @@ public class DiceCombatEvents {
         if (target instanceof Player other) {
             return other.getTeam() == null || other.getTeam() != player.getTeam();
         }
-        if (target instanceof Enemy) return true;
+        if (HostileTargets.isHostile(target)) return true;
         if (target instanceof Mob mob) {
             // Boss 允许触发;其余生物仅在被激怒/正在攻击玩家时允许
             if (com.merlinkitsune.astral_dice.item.BossEntityUtil.isBossEntity(target)) return true;
@@ -1116,7 +1115,7 @@ public class DiceCombatEvents {
         if (!(victim instanceof Player player)) return;
         if (!player.isAlive()) return;
         if (!(event.getSource().getEntity() instanceof LivingEntity attacker)) return;
-        if (!(attacker instanceof Enemy)) return;
+        if (!HostileTargets.isHostile(attacker)) return;
         if (!attacker.hasEffect(ModEffects.PANDAMAN_TAUNT)) return;
         Optional<UUID> tauntSource = ModAttachments.getPandamanTauntSource(attacker);
         if (tauntSource.isEmpty() || !tauntSource.get().equals(player.getUUID())) return;

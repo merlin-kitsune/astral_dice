@@ -1,5 +1,6 @@
 package com.merlinkitsune.astral_dice.item.sign;
 
+import com.merlinkitsune.astral_dice.combat.HostileTargets;
 import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
 import com.merlinkitsune.astral_dice.event.ModEffectRemoval;
 
@@ -12,7 +13,6 @@ import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
-import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
@@ -211,7 +211,7 @@ public class NancyLuSignItem extends BaseSignItem {
         if (!isEquipped(player)) return;
         boolean hostileNearby = !player.level().getEntitiesOfClass(LivingEntity.class,
                 player.getBoundingBox().inflate(PASSIVE_RANGE),
-                e -> e instanceof Enemy && e.isAlive()).isEmpty();
+                e -> HostileTargets.isHostile(e) && e.isAlive()).isEmpty();
         if (hostileNearby) {
             ModAttachments.setNancyLuPassiveType(player, PASSIVE_DEFENSE);
         } else {
@@ -252,7 +252,7 @@ public class NancyLuSignItem extends BaseSignItem {
         if (player.level().isClientSide()) return;
         if (!NancyLuSignItem.isEquipped(player)) return;
         net.minecraft.world.entity.Entity target = event.getTarget();
-        if (!(target instanceof net.minecraft.world.entity.monster.Enemy)
+        if (!HostileTargets.isHostile(target)
                 && !(target instanceof Player)) return;
         NancyLuSignItem.onAttackWhileHidden(player);
     }
@@ -265,7 +265,7 @@ public class NancyLuSignItem extends BaseSignItem {
         if (!(event.getSource().getEntity() instanceof Player player)) return;
         if (player == event.getEntity()) return;
         LivingEntity victim = event.getEntity();
-        if (!(victim instanceof Enemy) && !(victim instanceof Player)) return;
+        if (!HostileTargets.isHostile(victim) && !(victim instanceof Player)) return;
         if (!isEquipped(player)) return;
         onAttackWhileHidden(player);
     }

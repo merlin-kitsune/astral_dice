@@ -1,5 +1,6 @@
 package com.merlinkitsune.astral_dice.item.chip;
 
+import com.merlinkitsune.astral_dice.combat.HostileTargets;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import net.minecraft.world.entity.monster.Enemy;
@@ -92,7 +93,7 @@ public class AdrenalineChipItem extends BaseChipItem {
         if (!hasHighEquipped(player)) return;
         // 敌方攻击(来源为敌对生物;排除摔落/火焰等环境伤害)
         if (!(event.getSource().getEntity() instanceof net.minecraft.world.entity.LivingEntity attacker)) return;
-        if (!(attacker instanceof Enemy)) return;
+        if (!HostileTargets.isHostile(attacker)) return;
         if (tryDodge()) {
             com.merlinkitsune.astral_dice.combat.DiceCombatEvents.applyDodgeCancel(event);
             // 枪匠立牌:任意来源的闪避都会尝试获得 1 层弱点识破(每目标一次)

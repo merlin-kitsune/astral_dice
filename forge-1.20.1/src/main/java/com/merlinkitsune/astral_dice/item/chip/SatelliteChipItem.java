@@ -1,4 +1,5 @@
 package com.merlinkitsune.astral_dice.item.chip;
+import com.merlinkitsune.astral_dice.combat.HostileTargets;
 import com.merlinkitsune.astral_dice.item.CuriosCompat;
 
 import com.merlinkitsune.astral_dice.component.ModAttachments;
@@ -99,7 +100,7 @@ public class SatelliteChipItem extends BaseChipItem {
     public static void onSatelliteRangedMagicKill(LivingDeathEvent event) {
         LivingEntity target = event.getEntity();
         if (target.level().isClientSide()) return;
-        if (!(target instanceof Enemy)) return;
+        if (!HostileTargets.isHostile(target)) return;
         if (!(event.getSource().getEntity() instanceof Player killer)) return;
         if (!killer.hasEffect(ModEffects.ORBITAL_STRIKE.get())) return;
         if (!com.merlinkitsune.astral_dice.combat.SpellDamageRegistry.isSpellDamage(

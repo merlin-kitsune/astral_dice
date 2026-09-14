@@ -1,5 +1,6 @@
 package com.merlinkitsune.astral_dice.item.sign;
 
+import com.merlinkitsune.astral_dice.combat.HostileTargets;
 import com.merlinkitsune.astral_dice.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
@@ -114,7 +115,7 @@ public class BonnieSignItem extends BaseSignItem {
         // 被动 2:击杀带"标记"的目标 → 获得一张随机战斗牌
         if (MarkManager.getLevel(killed) > 0
                 && !(killed instanceof Player)
-                && killed instanceof net.minecraft.world.entity.monster.Enemy
+                && HostileTargets.isHostile(killed)
                 && killed.getMaxHealth() >= 20) {
             giveRandomBattleCard(killer);
         }

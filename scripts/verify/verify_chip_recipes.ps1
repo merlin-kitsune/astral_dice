@@ -96,10 +96,17 @@ Import-Module (Join-Path $PSScriptRoot 'ChipCommon.psm1') -Force -PassThru | Out
 
 $SUB = @{ 'neo' = 'neoforge-1.21.1'; 'forge' = 'forge-1.20.1' }
 $RECDIR = @{ 'neo' = 'recipe'; 'forge' = 'recipes' }
-$VER = '1.2.0'
-$JAR = @{
-    'neo'   = "astral_dice-${VER}+neoforge_1.21.1.jar"
-    'forge' = "astral_dice-${VER}+forge_1.20.1.jar"
+# 产物 jar 名从各子项目 gradle.properties 的 mod_version 派生
+# (禁止硬编码版本号:mod_version 已自带 `+neoforge_1.21.1` / `+forge_1.20.1` 后缀,
+#  旧实现写死 $VER = '1.2.0',版本升到 1.2.1 后本档一直在找不存在的 1.2.0 jar 而误报失败)
+$MODVER = @{}
+$JAR = @{}
+foreach ($k in $SUB.Keys) {
+    $propsPath = Join-Path $ROOT "$($SUB[$k])\gradle.properties"
+    $verLine = Get-Content $propsPath | Where-Object { $_ -match '^\s*mod_version\s*=' } | Select-Object -First 1
+    if (-not $verLine) { throw "未在 $propsPath 中找到 mod_version" }
+    $MODVER[$k] = ($verLine -split '=', 2)[1].Trim()
+    $JAR[$k] = "astral_dice-$($MODVER[$k]).jar"
 }
 
 # 非筹码的模组常量 -> 物品 id
