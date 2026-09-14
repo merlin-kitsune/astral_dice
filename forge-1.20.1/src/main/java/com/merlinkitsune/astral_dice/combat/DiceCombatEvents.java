@@ -613,8 +613,10 @@ public class DiceCombatEvents {
         // 大当家立牌被动(战斗爽·溅射):本次攻击触发骰神赐福且养精蓄锐满层时,触发块已置位;
         // 这里在本次攻击伤害定稿后**立即引爆一次**(单次效果:不再等待下一次赐福,也没有持续期),
         // 并在此刻才扣除养精蓄锐代价(攻击被取消时不会白扣)。
-        // 伤害 = 本次攻击伤害的 80%(**下限 5 点**),范围为**目标及其 3 格范围内**(含主目标)的敌对目标,
-        // 伤害类型为**原版爆炸伤害**(可被爆炸保护减伤);只打敌对目标(**无友伤**)、不破坏方块。
+        // 伤害 = 本次攻击伤害的 88%(**下限 5 点**),范围为**目标及其 6 格范围内**(含主目标)的敌对目标,
+        // 伤害类型为**真伤**(astral_dice:true_damage,登记于 minecraft:bypasses_armor →
+        // 无视护甲值与盔甲韧性;保护附魔与抗性提升不在此口径内,仍会减免);
+        // 只打敌对目标(**无友伤**)、不破坏方块,命中仍附带爆炸粒子与音效(视觉表现与伤害类型无关)。
         // 递归保护:溅射伤害不进入骰战结算(aoeProcessing 统一闸门),避免二次触发赐福/互相引爆。
         if (!player.level().isClientSide() && fenSplashArmed) {
             com.merlinkitsune.astral_dice.item.sign.FenSignItem.consumeSplashCost(player);
@@ -630,10 +632,11 @@ public class DiceCombatEvents {
                         net.minecraft.world.entity.LivingEntity.class, splashBox,
                         e -> e instanceof net.minecraft.world.entity.monster.Enemy && e.isAlive());
                 if (!splashVictims.isEmpty()) {
-                    // 爆炸伤害源:原版 explosion(...) 的第一参是 directEntity、第二参是 causingEntity,
-                    // 故 (null, player) = "无直接伤害实体 + 击杀归属玩家":不会被本模组或其它模组
-                    // 再当成一次"玩家的直接攻击"重走命中判定,同时保留击杀归属(掉落/经验/联动)。
-                    var splashSource = target.level().damageSources().explosion(null, player);
+                    // 真伤伤害源:直接伤害实体为空、击杀归属玩家(与旧 explosion(null, player) 同形状,
+                    // 不会被本模组或其它模组再当成一次"玩家的直接攻击"重走命中判定,同时保留击杀归属);
+                    // 类型 astral_dice:true_damage 登记于 minecraft:bypasses_armor → 无视护甲值与盔甲韧性。
+                    var splashSource = com.merlinkitsune.astral_dice.damage.ModDamageTypes.trueDamage(
+                            target.level(), player);
                     for (var victim : splashVictims) {
                         victim.hurt(splashSource, splashDmg);
                         sendDamageNumber(victim, (int) splashDmg);

@@ -23,7 +23,8 @@ import java.util.List;
  *   <li>充能层数不少于 6 时,攻击力 +5(被动加成,不受冷却影响);</li>
  *   <li>对敌对目标发起攻击时,在 **1 秒后**对目标 3 格范围内所有敌对目标降下雷击
  *       (**雷击伤害 = 5 + 本次攻击(骰战最终)伤害 × 50%,下限 5 点**,经原版
- *       {@code LightningBolt#setDamage} 覆写默认的 5.0F;仍会点火并生成闪电苦力怕),
+ *       {@code LightningBolt#setDamage} 覆写默认的 5.0F;**伤害类型为真伤**——
+ *       无视护甲值与盔甲韧性;仍会点火并生成闪电苦力怕),
  *       随后进入 **1:00** 冷却;</li>
  *   <li>**充能与冷却都在雷击真正落下的那一刻才结算**:1 秒后范围内没有任何可命中的敌对目标
  *       (例如被攻击的目标已死、周围 3 格也没有其它敌对目标)时,整次触发作废——不消耗充能、
@@ -32,8 +33,12 @@ import java.util.List;
  * <p>延迟经 {@link RailgunStrikeScheduler} 由服务端 tick 边界驱动(原版
  * {@code TickTask} 传入未来 tick 会立即执行,无法表达 1 秒延迟)。
  *
- * <p>雷击使用原版 {@code DamageTypes.LIGHTNING_BOLT} 伤害源(伤害实体为空),
- * 既不算近战攻击、也不进入骰战结算——只有**伤害数值**取自本次攻击,因此不会触发骰神赐福。
+ * <p>雷击的伤害类型为**真伤**({@code astral_dice:true_damage},登记于 {@code minecraft:bypasses_armor}
+ * → 无视护甲值与盔甲韧性):伤害结算在原版 {@code Entity#thunderHit} 内,故由
+ * {@code mixin.EntityThunderHitMixin} **只对本模组电磁炮降下的闪电**({@link com.merlinkitsune.astral_dice.damage.RailgunBolts})
+ * 替换伤害源,原版闪电的其余行为(目标筛选、点火、闪电苦力怕、僵尸猪灵/女巫转化)保持不变。
+ * 伤害实体为空,既不算近战攻击、也不进入骰战结算——只有**伤害数值**取自本次攻击,
+ * 因此不会触发骰神赐福。
  */
 public class RailgunChipItem extends BaseChipItem {
     /** 攻击力加成所需的充能层数 */
@@ -154,6 +159,7 @@ public class RailgunChipItem extends BaseChipItem {
     // 原生雷击:setVisualOnly(false) 才会造成伤害、点火并把苦力怕转化为闪电苦力怕。
     // 伤害值经 LightningBolt#setDamage 覆写(原版字段 damage 默认 5.0F);点火与闪电苦力怕
     // 由 LightningBolt#tick 内 !visualOnly 分支独立驱动,与伤害值无关。
+    // 标记为"电磁炮雷击"后,EntityThunderHitMixin 会把这份伤害换成真伤(无视护甲值/盔甲韧性)。
     private static void strike(ServerLevel level, Vec3 pos, ServerPlayer cause, float damage) {
         LightningBolt bolt = EntityType.LIGHTNING_BOLT.create(level);
         if (bolt == null) return;
@@ -161,6 +167,7 @@ public class RailgunChipItem extends BaseChipItem {
         bolt.setVisualOnly(false);
         bolt.setDamage(damage);
         bolt.setCause(cause);
+        com.merlinkitsune.astral_dice.damage.RailgunBolts.mark(bolt);
         level.addFreshEntity(bolt);
     }
 }

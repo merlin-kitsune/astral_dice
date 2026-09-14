@@ -4,6 +4,7 @@
   "package": "com.merlinkitsune.astral_dice.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
+    "EntityThunderHitMixin",
     "trade.MerchantContainerMixin",
     "trade.MerchantMenuMixin",
     "trade.MerchantOfferMixin",

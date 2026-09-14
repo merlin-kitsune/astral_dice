@@ -1929,10 +1929,196 @@ function doGlmCheck(ctx, tag) {
     return 1;
 }
 
+// ════════════════════════════════════════════════════════════════════════════
+//  真伤验证(astral_dice:true_damage)
+//    /astralprobe truedmg <tag>          护甲 20 / 韧性 8 的靶子上,对比本模组真伤
+//                                        与可被护甲减免的 minecraft:mob_attack 的实扣
+//    /astralprobe railtruedmg <tag>      装备电磁炮 + 6 充能,**空手**打一只无甲僵尸,
+//                                        同时让一只重甲尸壳站在雷击判定箱内(不被近战命中)
+//    /astralprobe railtruedmgread <tag>  读差值:空手基伤 1 → 雷击真伤全额 ≈5.5;
+//                                        若雷击仍被护甲减免则 ≈1.2
+//  状态改写一律走原版命令入口(/attribute、/damage、/item),避开 Rhino 方法可见性坑;
+//  靶子用**不同实体类型**以便用类型选择器唯一定位(避免 @e[sort=nearest] 歧义)。
+// ════════════════════════════════════════════════════════════════════════════
+
+/** 跑一条原版命令;返回 rc=<performPrefixedCommand 返回值> 或 ERR:<异常>
+ *  ⚠️ 不能用 `MinecraftServer#runCommandSilent` —— 实测(1.21.1/1.20.1, Rhino)它返回 undefined
+ *  且**命令根本没有执行**(属性/伤害都静默丢失,读数会伪装成「伤害为 0」)。
+ *  这里走 `getCommands().performPrefixedCommand(source, cmd)`:返回 1/0 = 成功/失败,
+ *  并且**不抑制输出**,`data get ...` 之类的结果会进聊天栏 → 落日志,可当正向证据。
+ *  以**玩家**为命令源(权限足够,且位置与靶子一致)。 */
+function runCmd(ctx, cmd) {
+    try {
+        var p = ctx.source.getPlayerOrException();
+        var src = p.createCommandSourceStack();
+        return "rc=" + p.level.getServer().getCommands().performPrefixedCommand(src, cmd);
+    } catch (e) { return "ERR:" + exText(e); }
+}
+
+/** 给唯一一只 <typeId> 靶子挂护甲/韧性(类型选择器,不依赖距离排序)。
+ *  设置完再跑一次 `data get entity ... Attributes`:它的**聊天输出**会进日志,
+ *  作为「护甲真的挂上了」的正向证据(命令静默失败只靠 rc 判定不够直观)。
+ *
+ *  ⚠️ 两条实测结论(2026-09-14,1.21.1 Rhino):
+ *   ① `MinecraftServer#runCommandSilent` 返回 undefined **且命令根本不执行** —— 属性/伤害会
+ *      静默丢失,读数伪装成「伤害为 0」。故本文件统一走 `performPrefixedCommand`。
+ *   ② 即便走 `performPrefixedCommand`,**属性类命令的生效时机晚于同一 tick 内的后续代码**:
+ *      同一命令里「先 attribute、紧接着施加伤害」读到的仍是**旧护甲值**。
+ *      因此单条 `truedmg` 的判据只看**真伤是否全额**(与护甲无关),穿甲对照必须像
+ *      手工判据那样**分两步**:先 attribute,下一条命令再施加伤害(见 TESTING-SPEC「真伤判据」)。 */
+function armorSingle(ctx, typeId, armor, toughness) {
+    var sel = "@e[type=" + typeId + ",limit=1]";
+    var a = runCmd(ctx, "attribute " + sel + " minecraft:generic.armor base set " + armor);
+    var t = runCmd(ctx, "attribute " + sel + " minecraft:generic.armor_toughness base set " + toughness);
+    var probe = runCmd(ctx, "data get entity " + sel + " Attributes");
+    return "armor=" + a + ":tough=" + t + ":read=" + probe;
+}
+
+/** 真伤 vs 可减免伤害:同一只重甲靶子(护甲 20 / 韧性 8)上各打 10 点,对比实扣 */
+function doTrueDmg(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var weather = "skip";
+    try { p.level.setWeatherParameters(6000, 0, false, false); weather = "clear"; } catch (e0) { weather = "err"; }
+    // 两只不同实体类型 → 类型选择器可唯一定位;真伤靶=僵尸,对照靶=尸壳(互不共享无敌帧)
+    var mob = spawnDummy(p, "minecraft:zombie", 2);
+    if (mob == null) { send(ctx, "AP_" + tag + "_ERR:spawn_failed"); return 0; }
+    var ctrl = spawnDummy(p, "minecraft:husk", 3);
+    if (ctrl == null) { send(ctx, "AP_" + tag + "_ERR:spawn_failed_ctrl"); return 0; }
+    try { placeAt(ctrl, p.getX() - 1.5, p.getY(), p.getZ() + 3.0); } catch (e9) { /* 忽略 */ }
+    try { mob.setHealth(mob.getMaxHealth()); } catch (e1) { /* 忽略 */ }
+    try { ctrl.setHealth(ctrl.getMaxHealth()); } catch (e1b) { /* 忽略 */ }
+
+    var armorState = armorSingle(ctx, "minecraft:zombie", 20, 8);
+    var ctrlArmor = armorSingle(ctx, "minecraft:husk", 20, 8);
+
+    var ResourceKey = Java.loadClass("net.minecraft.resources.ResourceKey");
+    var Registries = Java.loadClass("net.minecraft.core.registries.Registries");
+    /** 按注册 id 造伤害源 */
+    function sourceOf(id) {
+        return p.level.damageSources().source(ResourceKey.create(Registries.DAMAGE_TYPE,
+            ResourceLocation.parse(id)));
+    }
+    /** 经 KubeJS 可见的伤害 API 施加(实测 1.21.1 `mob.attack(DamageSource,float)` 可用) */
+    function applyDamage(ent, src, amount) {
+        try { ent.attack(src, amount); return "attack"; } catch (ea) { /* 试下一个 */ }
+        try { ent.damage(src, amount); return "damage"; } catch (eb) { /* 试下一个 */ }
+        return "none";
+    }
+    function delta(a, b) { return (a < 0 || b < 0) ? -1 : Math.round((a - b) * 100) / 100; }
+
+    // 1) 本模组真伤:期望**全额** 10 点(护甲 20/韧性 8 下若不穿甲只应掉约 3 点)
+    var hp0 = rghp(mob), api1;
+    try { api1 = applyDamage(mob, sourceOf("astral_dice:true_damage"), 10.0); }
+    catch (e1a) { api1 = "ERR:" + exText(e1a); }
+    var hp1 = rghp(mob);
+    // 2) 对照组:minecraft:mob_attack 必须被护甲减免(护甲 20/韧性 8 下 10 点 ≈ 3 点)
+    var chp0 = rghp(ctrl), api2;
+    try { api2 = applyDamage(ctrl, sourceOf("minecraft:mob_attack"), 10.0); }
+    catch (e2a) { api2 = "ERR:" + exText(e2a); }
+    var chp1 = rghp(ctrl);
+
+    var trueDealt = delta(hp0, hp1), vanillaDealt = delta(chp0, chp1);
+    // 3) 诊断:命令路径(rc=1 才算真的执行过;runCommandSilent 会伪装成 undefined)
+    var r1 = runCmd(ctx, "damage @e[type=minecraft:zombie,limit=1] 10 astral_dice:true_damage");
+    try { mob.discard(); } catch (e3) { /* 忽略 */ }
+    try { ctrl.discard(); } catch (e4) { /* 忽略 */ }
+    send(ctx, "AP_" + tag + "_ARMOR:" + armorState + ":weather=" + weather);
+    send(ctx, "AP_" + tag + "_CTRL_ARMOR:" + ctrlArmor);
+    send(ctx, "AP_" + tag + "_TRUE:api=" + api1 + ":hp=" + hp0 + "->" + hp1 + ":dealt=" + trueDealt);
+    send(ctx, "AP_" + tag + "_VANILLA:api=" + api2 + ":hp=" + chp0 + "->" + chp1 + ":dealt=" + vanillaDealt);
+    send(ctx, "AP_" + tag + "_CMD_DIAG:" + r1);
+    var bypass = (trueDealt === 10 && vanillaDealt > 0 && vanillaDealt < 9.5) ? 1 : 0;
+    send(ctx, "AP_" + tag + "_VERDICT:true=" + trueDealt + ":vanilla=" + vanillaDealt + ":bypass=" + bypass);
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+var rtgState = null;
+
+/** 电磁炮雷击真伤:重甲尸壳只吃雷击(不被近战命中),空手近战基伤固定 1 → 雷击 ≈5.5 */
+function doRailTrueDmg(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var ChargeManagerClass = Java.loadClass("com.merlinkitsune.astral_dice.item.ChargeManager");
+    var weather = "skip";
+    try { p.level.setWeatherParameters(6000, 0, false, false); weather = "clear"; } catch (e0) { weather = "err"; }
+    var mode = "already_survival";
+    try { p.setGameMode(GameTypeClass.SURVIVAL); mode = "forced_survival"; } catch (e1) { /* 忽略 */ }
+    try { p.setHealth(p.getMaxHealth()); } catch (e2) { /* 忽略 */ }
+    // 空手:近战基伤 1(空手不是近战武器 → 骰战不改写伤害,雷击直接按即时伤害登记)
+    var hand = runCmd(ctx, "item replace entity @s weapon.mainhand with minecraft:air");
+    var dice = "skip";
+    try { clearCurioSlots(p, "dice"); dice = "cleared"; } catch (e3) { dice = "ERR:" + exText(e3); }
+
+    ModAttachments.setRailgunCooldownEnd(p, 0);
+    ChargeManagerClass.removeAll(p);
+    ChargeManagerClass.addStacks(p, 6);
+    var slotErr = ensureChipSlot(p, CHIP_SLOT_MIN);
+    if (slotErr != null) { send(ctx, "AP_" + tag + "_ERR:" + slotErr); return 0; }
+    var chip = resolveItem("astral_dice:railgun_chip");
+    if (chip == null) { send(ctx, "AP_" + tag + "_ERR:unknown_chip"); return 0; }
+    var putErr = putInSlot(p, "chip", new ItemStack(chip), 0);
+    if (putErr != null) { send(ctx, "AP_" + tag + "_ERR:" + putErr); return 0; }
+
+    // 近战目标:无甲僵尸(它的血量不参与判定);旁观靶:重甲尸壳(只吃雷击,无无敌帧干扰)
+    var target = spawnDummy(p, "minecraft:zombie", 2);
+    if (target == null) { send(ctx, "AP_" + tag + "_ERR:spawn_failed_target"); return 0; }
+    var probe = spawnDummy(p, "minecraft:husk", 2);
+    if (probe == null) { send(ctx, "AP_" + tag + "_ERR:spawn_failed_probe"); return 0; }
+    try { placeAt(probe, p.getX() + 1.0, p.getY(), p.getZ() + 2.0); } catch (e4) { /* 忽略 */ }
+    try { probe.setHealth(probe.getMaxHealth()); } catch (e5) { /* 忽略 */ }
+    var armorState = armorSingle(ctx, "minecraft:husk", 20, 8);
+
+    var thp = rghp(target), php = rghp(probe);
+    send(ctx, "AP_" + tag + "_BEFORE:thp=" + thp + ":php=" + php + ":" + armorState
+        + ":hand=" + hand + ":dice=" + dice + ":charge=" + ChargeManagerClass.getStacks(p)
+        + ":mode=" + mode + ":weather=" + weather + ":bolt_base=" + boltSpawnCount);
+    var hit = meleeHit(p, target);
+    send(ctx, "AP_" + tag + "_MELEE:" + hit.api + ":dealt=" + hit.dealt);
+    rtgState = { tag: tag, target: target, probe: probe, thp: thp, php: php, player: p, boltBase: boltSpawnCount };
+    send(ctx, "AP_" + tag + "_ARMED");
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+function doRailTrueDmgRead(ctx, tag) {
+    var st = rtgState;
+    if (st == null) { send(ctx, "AP_" + tag + "_ERR:no_state"); return 0; }
+    var ChargeManagerClass = Java.loadClass("com.merlinkitsune.astral_dice.item.ChargeManager");
+    var thp = rghp(st.target), php = rghp(st.probe);
+    function delta(a, b) { return (a < 0 || b < 0) ? -1 : Math.round((a - b) * 100) / 100; }
+    var probeDealt = delta(st.php, php), targetDealt = delta(st.thp, thp);
+    // 重甲旁观靶只吃雷击:真伤 ≈5.5(空手基伤 1);若仍被护甲减免则 ≈1.2
+    var boltTrue = (probeDealt >= 4.5) ? 1 : 0;
+    send(ctx, "AP_" + tag + "_AFTER:thp=" + thp + ":php=" + php + ":probe_dealt=" + probeDealt
+        + ":target_dealt=" + targetDealt + ":charge=" + ChargeManagerClass.getStacks(st.player)
+        + ":bolt_delta=" + (boltSpawnCount - st.boltBase));
+    send(ctx, "AP_" + tag + "_VERDICT:probe_dealt=" + probeDealt + ":bolt_true_damage=" + boltTrue);
+    try { st.target.discard(); } catch (e1) { /* 忽略 */ }
+    try { st.probe.discard(); } catch (e2) { /* 忽略 */ }
+    rtgState = null;
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
 ServerEvents.commandRegistry(event => {
     var Commands = event.commands;
     event.register(
         Commands.literal("astralprobe")
+            .then(Commands.literal("truedmg")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doTrueDmg(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("railtruedmg")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doRailTrueDmg(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("railtruedmgread")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doRailTrueDmgRead(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
             .then(Commands.literal("diag")
                 .then(Commands.argument("tag", StringArg.word())
                     .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {

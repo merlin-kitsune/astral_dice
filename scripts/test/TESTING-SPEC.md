@@ -94,7 +94,7 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --phase <p> --version <v>
 
 | 探针 | 1.21.1 | 1.20.1 | 作用 |
 |---|---|---|---|
-| `astral_bugfix_probe.js` | ✅ | ✅ | 回归套件主探针：命令（`diag` / `equipslot` / `railguncd` / `railgunfriendly`·`railgunfriendlyread`·`railgunfriendlyend`（双版本）+ `glmcheck`（仅 1.20.1）+ 各用例专用命令）、状态读数 `AP_*` |
+| `astral_bugfix_probe.js` | ✅ | ✅ | 回归套件主探针：命令（`diag` / `equipslot` / `railguncd` / `railgunfriendly`·`railgunfriendlyread`·`railgunfriendlyend`（双版本）、`truedmg`/`railtruedmg`·`railtruedmgread`（双版本：真伤穿甲取证）+ `glmcheck`（仅 1.20.1）+ 各用例专用命令）、状态读数 `AP_*` |
 | `astral_dice_curios_check.js` | ✅ | ✅ | Curios 槽位 / 装备状态观测 |
 | `astral_dice_target_select_check.js` | ✅ | ✅ | 待命等待器（占星师 / 秘密侦探 / 枪匠）观测 |
 | `astral_dice_curio_watch.js` | ✅ | — | 立牌槽位变化观测（1.21.1 专用） |
@@ -147,6 +147,27 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --phase <p> --version <v>
 | `EFFECT-DECAY-FLICKER` |**视觉半自动**（1 张截图，不做机器判定） |
 
 > `DIRECTIONAL-BLAST-AOE` / `EMERALD-DICE-TRADE` 于 2026-09-13 追加，配套探针命令
+> **真伤判据(2026-09-14 手工实测,两步走)**:`astral_dice:true_damage` 的穿甲能力**必须分两条命令**验证——
+> 因为属性类命令的生效时机晚于同一 tick 内的后续代码(先 `attribute` 再立刻打伤害会读到旧护甲值)。
+> ```text
+> /kill @e[type=minecraft:husk]
+> /summon minecraft:husk ~ ~ ~3
+> /attribute @e[type=minecraft:husk,limit=1] minecraft:generic.armor base set 20
+> /attribute @e[type=minecraft:husk,limit=1] minecraft:generic.armor_toughness base set 8
+> /damage @e[type=minecraft:husk,limit=1] 10 minecraft:mob_attack      # 对照:应只掉 3.0
+> /data get entity @e[type=minecraft:husk,limit=1] Health               # → 17.0f
+> /data merge entity @e[type=minecraft:husk,limit=1] {Health:20.0f}
+> /damage @e[type=minecraft:husk,limit=1] 10 astral_dice:true_damage   # 真伤:应掉满 10.0
+> /data get entity @e[type=minecraft:husk,limit=1] Health               # → 10.0f
+> ```
+> 实测读数(1.21.1):对照 20.0→17.0(**3.0**),真伤 20.0→10.0(**10.0**) —— 同一只重甲靶、同为 10 点,
+> 护甲减免对真伤完全不生效。
+>
+> **探针命令**:`/astralprobe truedmg <tag>`(重甲靶上分别施加本模组真伤与 `minecraft:mob_attack` 并读差值;
+> 注意其 attribute 步骤落在下一 tick,故其判据只看「真伤是否全额」)、
+> `/astralprobe railtruedmg <tag>` + `/astralprobe railtruedmgread <tag>`
+> (装备电磁炮 + 6 充能,空手打一只无甲僵尸、另让一只重甲尸壳站在雷击箱内只吃雷击;`bolt_true_damage=1` 即穿甲)。
+>
 > `/astralprobe blastbonus|emeraldtrade|tradeclose`（见 §6 探针安装步骤，改探针后必须冷启动）。
 > 两例的视觉面（交易列表图标、经验条）**不做机器断言**（`vision` 只输出提问请求），
 > 报告内附截图作为人工核对证据。

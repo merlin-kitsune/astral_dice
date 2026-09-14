@@ -11,8 +11,8 @@
 
 ### 内容与平衡性调整
 
-- **电磁炮**:雷击伤害改为 **5 + 本次攻击(骰战最终)伤害 × 50%**(下限 5 点;此前为"本次攻击伤害的 50%、下限 5 点"),由 `STRIKE_DAMAGE_BASE`/`STRIKE_DAMAGE_RATIO`/`STRIKE_DAMAGE_MIN` 三个常量共同表达,实际数值经原版 `LightningBolt#setDamage` 覆写(两版本同源)。
-- **大当家立牌·溅射改为被动单次效果**:触发骰神赐福时若养精蓄锐已满 5 层,则**消耗 2 层**(替代常规的 -1 层,且这 2 层在溅射**真正生效时**才扣除),并在**本次攻击伤害定稿后立即**对**目标及其 3 格范围内(含目标本身)**的敌对目标造成本次攻击伤害 **80%**(**下限 5 点**)的伤害;伤害类型改为**原版爆炸伤害**(可被爆炸保护减伤),命中时附带爆炸粒子与音效、**不破坏方块**、**无友伤**(只命中敌对目标)。旧的"主动消耗 2 层 → 下次赐福期间每次攻击持续扩散(6 格、其他敌对目标)"已移除,主动技能不再消耗层数。
+- **电磁炮**:雷击伤害改为 **5 + 本次攻击(骰战最终)伤害 × 50%**(下限 5 点;此前为"本次攻击伤害的 50%、下限 5 点"),由 `STRIKE_DAMAGE_BASE`/`STRIKE_DAMAGE_RATIO`/`STRIKE_DAMAGE_MIN` 三个常量共同表达,实际数值经原版 `LightningBolt#setDamage` 覆写(两版本同源)。雷击的**伤害类型同时改为真伤**(`astral_dice:true_damage`,登记于 `minecraft:bypasses_armor` → **无视护甲值与盔甲韧性**;保护附魔与抗性提升仍会减免):原版 `minecraft:lightning_bolt` 不在该标签内(实机核对),故新增 `EntityThunderHitMixin` **只对电磁炮自己降下的闪电**替换伤害源(标记集合 `RailgunBolts`,在 `RailgunChipItem#strike` 中登记),原版闪电的其余行为(目标筛选、点火、闪电苦力怕、僵尸猪灵/女巫转化、`onEntityStruckByLightning` 事件)一律不变;并补齐该伤害类型的死亡消息文案(中英 × 双版本)。
+- **大当家立牌·溅射改为被动单次效果**:触发骰神赐福时若养精蓄锐已满 5 层,则**消耗 2 层**(替代常规的 -1 层,且这 2 层在溅射**真正生效时**才扣除),并在**本次攻击伤害定稿后立即**对**目标及其 6 格范围内(含目标本身)**的敌对目标造成本次攻击伤害 **88%**(**下限 5 点**)的伤害;伤害类型改为**真伤**(`astral_dice:true_damage` → **无视护甲值与盔甲韧性**,保护附魔与抗性提升仍会减免),命中时附带爆炸粒子与音效(**仅视觉表现**)、**不破坏方块**、**无友伤**(只命中敌对目标)。旧实现(主动消耗 2 层 → 下次赐福期间每次攻击持续扩散,6 格、其他敌对目标)已移除,主动技能不再消耗层数。
 - **高级外设**:文案由「触发骰神赐福时:充能 -1」统一为「**消耗 1 层充能**」(tooltip 与帕秋莉手册同改)。实现本就经 `ChargeManager.consume` 扣层,佩戴「原初核心」时的赋能返还一直生效;本次消除"看起来不入赋能"的歧义,并把该依赖写入代码注释。
 
 ### 已修复BUG
@@ -25,7 +25,7 @@
 
 - 工程:版本号升至 **1.2.1**(`mod_version=1.2.1+neoforge_1.21.1` / `1.2.1+forge_1.20.1`);互通号仍为 `1.2`,故 **1.2.0 ↔ 1.2.1 保持双向互通**(Version Gate 只比较二号位,不受补丁号影响);中英更新日志同步开启 `未发布(1.2.1)` 小节,1.2.0 小节冻结为已发布状态。
 - 工具:修复 `scripts/test/mt_build.ps1` 的产物提示——版本号切换后子项目 `build/libs` 会同时留有**旧版本** jar(Gradle 不清理改名前的旧产物),而成功提示取的是**序数排序快照的首行**,于是打印出旧版本文件名(本轮实测:实际产出 `1.2.1`,提示却写 `1.2.0`);现改为取 mtime 最新者(新增 `Get-MtNewestJarName`),提示与实际产出对应。判定逻辑未变(仍是 before/after 快照差异),且**只影响提示**。
-- 工程:自动化测试套件新增两条回归条目及配套探针命令——`RAILGUN-AOE-SCOPE`(双版本:取证电磁炮雷击对落点箱内**自己/中立/友方/敌方**四方目标的实际命中范围,并复核「充能与冷却只在雷击真正落下时结算」)与 `LOOT-MODIFIER`(1.20.1:断言序列化器注册表含 `astral_dice:add_table`、`getAllLootMods() = 13`、400 次宝箱实滚的星盘产出数,并要求日志无解码失败);探针命令为 `/astralprobe railgunfriendly|railgunfriendlyread|railgunfriendlyend`(双版本)与 `/astralprobe glmcheck`(仅 1.20.1)。
+- 工程:自动化测试套件新增两条回归条目及配套探针命令——`RAILGUN-AOE-SCOPE`(双版本:取证电磁炮雷击对落点箱内**自己/中立/友方/敌方**四方目标的实际命中范围,并复核「充能与冷却只在雷击真正落下时结算」)与 `LOOT-MODIFIER`(1.20.1:断言序列化器注册表含 `astral_dice:add_table`、`getAllLootMods() = 13`、400 次宝箱实滚的星盘产出数,并要求日志无解码失败);探针命令为 `/astralprobe railgunfriendly|railgunfriendlyread|railgunfriendlyend`(双版本)与 `/astralprobe glmcheck`(仅 1.20.1);另增真伤取证命令 `/astralprobe truedmg|railtruedmg|railtruedmgread`(双版本)并把「真伤判据」写入 `TESTING-SPEC.md`——两条实测结论同时记录在案:① `MinecraftServer#runCommandSilent` 在 Rhino 下返回 undefined 且**命令不执行**,探针统一改走 `performPrefixedCommand`;② 属性类命令的生效时机晚于同一 tick 的后续代码,故穿甲对照必须分两条命令做
 - 工具:自动化测试流程**彻底移除 mineflayer/MCP 机器人路线**——`scripts/test` 不再包含 `--publish`(本地端口映射)、`mcp_call` 步骤原语、`mcp` 断言类型,以及经 `cases/.mcp-pending.json` ↔ `.mcp-results.json` 委托给会话层的 MCP 调用与其 `Get-MtMcpResults`/`Add-MtMcpPending`/`Wait-MtMcpResult` 辅助函数;`Mt.Paths.psm1` 的 `$PUBLISH_PORT`/`Get-MtPublishPort`、`mt_launch.ps1` 的 `/publish` 启动参数及各处文档说明一并删除,**其余键鼠注入与用例链路不变**(移除后 `mt_preflight.ps1` 9 项、`SMOKE-TOOLCHAIN` 用例仍全绿)。移除依据是实测该路线不可行:NeoForge 1.21.1 的局域网服务器在**配置阶段**直接拒绝原版客户端(`你正在尝试连接一个安装了 NeoForge 的服务器…请安装 NeoForge 版本 21.1.235`),Forge 1.20.1 的 `NetworkRegistry` 以 `Channels [astral_dice:main,patchouli:main,curios:main] rejected vanilla connections` 拒绝未携带各通道 `ACCEPTVANILLA` 标记的握手(`patchouli`/`curios` 通道不声明该标记,本模组无法代为放行);机器人侧一律表现为 `ECONNRESET`/`socketClosed`。游戏内输入继续由 `computer-control` 键鼠注入(`mt_inject.ps1`)承担。
 
 ## 1.2.0

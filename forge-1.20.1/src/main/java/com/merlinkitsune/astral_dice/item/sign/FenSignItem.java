@@ -25,7 +25,9 @@ import com.merlinkitsune.astral_dice.item.ModItems;
  *   <li>触发骰神赐福 → 养精蓄锐 -1 层;若触发时已满 {@value #MAX_RECHARGE} 层,则改为
  *       **消耗 {@value #SPLASH_COST} 层**,并在**本次攻击结算时立即**引爆一次
  *       "战斗爽·溅射"(**单次效果**):对目标及其 {@value #SPLASH_RANGE} 格范围内的敌对目标
- *       (**含主目标**)造成本次攻击伤害 80%(**下限 5 点**)的爆炸伤害;</li>
+ *       (**含主目标**)造成本次攻击伤害 88%(**下限 5 点**)的**真实伤害**
+ *       (伤害类型 {@code astral_dice:true_damage},登记于 {@code minecraft:bypasses_armor}
+ *       → 无视护甲值与盔甲韧性);</li>
  *   <li>使用治疗类效果牌 → 养精蓄锐 +1 层(BaseEffectCardItem 钩子)。</li>
  * </ul>
  * <p>主动"战斗爽"(1:00):攻击力 +3;若拥有养精蓄锐则恢复 6 点血量并获得迅捷 1:00。
@@ -41,9 +43,9 @@ public class FenSignItem extends BaseSignItem {
     /** 战斗爽·溅射消耗的养精蓄锐层数(满层触发时替代常规的 -1 层) */
     public static final int SPLASH_COST = 2;
     /** 溅射范围(格):目标及其附近,含主目标本身 */
-    public static final double SPLASH_RANGE = 3.0;
-    /** 溅射伤害比例(本次攻击伤害的 80%) */
-    public static final double SPLASH_RATIO = 0.8;
+    public static final double SPLASH_RANGE = 6.0;
+    /** 溅射伤害比例(本次攻击伤害的 88%) */
+    public static final double SPLASH_RATIO = 0.88;
     /** 溅射伤害下限(点):本次攻击伤害过低时按此值结算(高于全局"不足 1 按 1"的兜底) */
     public static final double SPLASH_DAMAGE_MIN = 5.0;
 
