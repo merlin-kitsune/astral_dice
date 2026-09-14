@@ -1777,13 +1777,22 @@ function doRailgunFriendly(ctx, tag) {
 
     // 敌方(僵尸)在正前方 2 格 —— 近战距离,攻击者本人必在同一雷击判定箱内;
     // 中立(牛)与友方(已驯服狼,主人=玩家)分列僵尸左右各 1.5 格,同样落在箱内。
+    // 清场(2026-09-14 实测):自然刷新的苦力怕一旦落进雷击箱,会被劈成高压苦力怕并爆炸,
+    // 污染所有差值读数(实测 bolt_delta=2、非靶实体凭空掉血),故先清掉附近的苦力怕再摆靶。
+    runCmd(ctx, "kill @e[type=minecraft:creeper]");
     var enemy = spawnDummy(p, "minecraft:spider", 2);
     if (enemy == null) { send(ctx, "AP_" + tag + "_ERR:spawn_failed_enemy"); return 0; }
-    var neutral = spawnDummy(p, "minecraft:cow", 2);
+    var neutral = spawnDummy(p, "minecraft:polar_bear", 2);
     var friendly = spawnDummy(p, "minecraft:wolf", 2);
-    if (neutral == null || friendly == null) { send(ctx, "AP_" + tag + "_ERR:spawn_failed_side"); return 0; }
+    var turtle = spawnDummy(p, "minecraft:turtle", 2);
+    var villager = spawnDummy(p, "minecraft:villager", 2);
+    if (neutral == null || friendly == null || turtle == null || villager == null) {
+        send(ctx, "AP_" + tag + "_ERR:spawn_failed_side"); return 0;
+    }
     try { placeAt(neutral, p.getX() + 1.5, p.getY(), p.getZ() + 2.0); } catch (e3) { /* 忽略 */ }
     try { placeAt(friendly, p.getX() - 1.5, p.getY(), p.getZ() + 2.0); } catch (e4) { /* 忽略 */ }
+    try { placeAt(turtle, p.getX() + 2.5, p.getY(), p.getZ() + 2.0); } catch (e4b) { /* 忽略 */ }
+    try { placeAt(villager, p.getX() - 2.5, p.getY(), p.getZ() + 2.0); } catch (e4c) { /* 忽略 */ }
     var tameState = "skip";
     var ownerState = "skip";
     try { friendly.setTame(true, true); tameState = "1"; }
@@ -1796,10 +1805,26 @@ function doRailgunFriendly(ctx, tag) {
         ownerState = "0";
     }
     send(ctx, "AP_" + tag + "_TAME:tame=" + tameState + ":owner=" + ownerState + ":src=" + puuid.src);
+    // 激怒两只中立生物:北极熊(非 Enemy)→ 应被计入敌对目标;已驯服狼(主人=攻击者)→ 应被排除。
+    // NoAI 下 NeutralMob 的 anger 计时不会递减,足够撑到 1 秒后的落雷。
+    runCmd(ctx, "data merge entity @e[type=minecraft:polar_bear,limit=1] {AngerTime:1200}");
+    runCmd(ctx, "data merge entity @e[type=minecraft:wolf,limit=1] {AngerTime:1200}");
+    function angerOf(e) { return (e == null) ? "?" : (e.isAlive() ? "alive" : "dead"); }
+    function angryFlag(e) {
+        try { return "" + e.isAngry(); } catch (e1) { return "ERR:" + exText(e1); }
+    }
+    send(ctx, "AP_" + tag + "_ANGER_PRE:neutral=" + angerOf(neutral) + ":friendly=" + angerOf(friendly)
+        + ":nAngry=" + angryFlag(neutral) + ":fAngry=" + angryFlag(friendly));
+    var mergeN = runCmd(ctx, "data merge entity @e[type=minecraft:polar_bear,limit=1] {AngerTime:1200}");
+    var mergeF = runCmd(ctx, "data merge entity @e[type=minecraft:wolf,limit=1] {AngerTime:1200}");
+    send(ctx, "AP_" + tag + "_ANGER_POST:mergeN=" + mergeN + ":mergeF=" + mergeF
+        + ":nAngry=" + angryFlag(neutral) + ":fAngry=" + angryFlag(friendly));
 
     var boltBase = boltSpawnCount;
     var php = rghp(p), ehp = rghp(enemy), nhp = rghp(neutral), fhp = rghp(friendly);
+    var thp = rghp(turtle), vhp = rghp(villager);
     send(ctx, "AP_" + tag + "_BEFORE:php=" + php + ":ehp=" + ehp + ":nhp=" + nhp + ":fhp=" + fhp
+        + ":thp=" + thp + ":vhp=" + vhp
         + ":charge=" + ChargeManagerClass.getStacks(p) + ":mode=" + mode + ":weather=" + weather);
 
     var hit = meleeHit(p, enemy);
@@ -1809,7 +1834,8 @@ function doRailgunFriendly(ctx, tag) {
 
     rgfState = {
         tag: tag, player: p, enemy: enemy, neutral: neutral, friendly: friendly,
-        php: php, ehp: ehp, nhp: nhp, fhp: fhp, boltBase: boltBase
+        turtle: turtle, villager: villager,
+        php: php, ehp: ehp, nhp: nhp, fhp: fhp, thp: thp, vhp: vhp, boltBase: boltBase
     };
     send(ctx, "AP_" + tag + "_ARMED");
     send(ctx, "AP_" + tag + "_DONE");
@@ -1825,15 +1851,30 @@ function doRailgunFriendlyRead(ctx, tag) {
         return Math.round((before - now) * 100) / 100;
     }
     var php = rghp(st.player), ehp = rghp(st.enemy), nhp = rghp(st.neutral), fhp = rghp(st.friendly);
+    var thp = rghp(st.turtle), vhp = rghp(st.villager);
     var self = dealt(st.php, php), enemy = dealt(st.ehp, ehp);
     var neutral = dealt(st.nhp, nhp), friendly = dealt(st.fhp, fhp);
+    var turtle = dealt(st.thp, thp), villager = dealt(st.vhp, vhp);
     var boltDelta = boltSpawnCount - st.boltBase;
+    // 村民若被转成女巫,原实体会被移除 → isAlive() 变 false;这里必须是 1。
+    var valive = (st.villager != null && st.villager.isAlive()) ? 1 : 0;
+    var talive = (st.turtle != null && st.turtle.isAlive()) ? 1 : 0;
     send(ctx, "AP_" + tag + "_AFTER:php=" + php + ":ehp=" + ehp + ":nhp=" + nhp + ":fhp=" + fhp
+        + ":thp=" + thp + ":vhp=" + vhp
         + ":self=" + self + ":enemy=" + enemy + ":neutral=" + neutral + ":friendly=" + friendly
+        + ":turtle=" + turtle + ":villager=" + villager
+        + ":valive=" + valive + ":talive=" + talive
         + ":bolt_delta=" + boltDelta + ":charge=" + ChargeManagerClass.getStacks(st.player));
     function hit(x) { return x > 0 ? 1 : 0; }
     send(ctx, "AP_" + tag + "_VERDICT:self=" + hit(self) + ":enemy=" + hit(enemy)
-        + ":neutral=" + hit(neutral) + ":friendly=" + hit(friendly));
+        + ":neutral=" + hit(neutral) + ":friendly=" + hit(friendly)
+        + ":turtle=" + hit(turtle) + ":villager=" + hit(villager)
+        + ":valive=" + valive + ":talive=" + talive);
+    // 期望:self=0 enemy=1 neutral=1 friendly=0 turtle=0 villager=0 valive=1 talive=1
+    var okScope = (hit(self) === 0 && hit(enemy) === 1 && hit(neutral) === 1
+        && hit(friendly) === 0 && hit(turtle) === 0 && hit(villager) === 0
+        && valive === 1 && talive === 1);
+    send(ctx, "AP_" + tag + "_SCOPE_OK:" + (okScope ? 1 : 0));
     send(ctx, "AP_" + tag + "_DONE");
     return 1;
 }
@@ -1845,6 +1886,8 @@ function doRailgunFriendlyEnd(ctx, tag) {
         try { st.enemy.discard(); } catch (e1) { /* 忽略 */ }
         try { st.neutral.discard(); } catch (e2) { /* 忽略 */ }
         try { st.friendly.discard(); } catch (e3) { /* 忽略 */ }
+        try { st.turtle.discard(); } catch (e3b) { /* 忽略 */ }
+        try { st.villager.discard(); } catch (e3c) { /* 忽略 */ }
     }
     rgfState = null;
     var restore = "skip";

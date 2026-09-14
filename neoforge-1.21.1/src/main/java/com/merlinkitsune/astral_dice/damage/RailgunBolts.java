@@ -1,7 +1,9 @@
 package com.merlinkitsune.astral_dice.damage;
 
 import com.merlinkitsune.astral_dice.combat.HostileTargets;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LightningBolt;
+import net.minecraft.world.entity.OwnableEntity;
 
 import java.util.Collections;
 import java.util.Set;
@@ -31,19 +33,39 @@ public final class RailgunBolts {
     }
 
     /**
-     * 这道电磁炮雷击是否应当命中该实体:即该实体是否为「敌对目标」。
+     * 这道电磁炮雷击是否应当命中该实体(完整口径,**必须带闪电实例调用**)。
      *
-     * <p>判定口径已统一到 {@link HostileTargets#isHostile(net.minecraft.world.entity.Entity)}
-     * ——**敌对生物(`Enemy`)或已被激怒的中立生物(`NeutralMob#isAngry()`)**;平静的狼/铁傀儡/
-     * 北极熊/蜜蜂、攻击者自己、友方宠物、中立动物、盔甲架等一律不算。
+     * <p>① 先过统一入口 {@link HostileTargets#isHostile(net.minecraft.world.entity.Entity)}:
+     * **敌对生物(`Enemy`)或已被激怒的中立生物(`NeutralMob#isAngry()`)**;
+     * 平静的狼/铁傀儡/北极熊/蜜蜂、攻击者自己、中立动物、盔甲架等一律不算。
+     *
+     * <p>② 再排除**施放者自己拥有的宠物**({@link OwnableEntity} 的 owner == 闪电的
+     * {@code cause}):被激怒的已驯服宠物(如自己养的狼)属"友方宠物",永不挨自己的雷击
+     * (2026-09-14 用户裁决)。其它玩家的宠物不在排除范围内。
      *
      * <p>原版 {@code LightningBolt#tick} 对判定箱内**所有存活实体**一律调用 {@code thunderHit}
      * (箱体 ±3 格、垂直 +6+3),没有任何阵营过滤——会把攻击者自己、友方宠物、中立动物一起打,
-     * 还会顺手点燃它们。本模组按用户裁决收窄为"仅对敌对目标生效":其余实体在
-     * {@code EntityThunderHitMixin} 里整段取消——**既不受伤也不被点燃**。
+     * 还会顺手点燃它们,并触发 {@code onEntityStruckByLightning} 事件与
+     * {@code CHANNELED_LIGHTNING}("Very Very Frightening")成就、把村民转成女巫、把猪转成
+     * 僵尸猪灵、秒杀海龟(这些覆写 {@code thunderHit} 的生物**不经过** {@code Entity#thunderHit},
+     * 所以在该方法里拦截根本挡不住)。故本模组把白名单**上移到
+     * {@code LightningBolt#tick} 的目标筛选**——见 {@code mixin/LightningBoltStrikeScopeMixin}:
+     * 非敌对目标**在进入循环之前就被剔除**,既不受伤、也不被转化、也不触发事件与成就。
+     * 方块着火/避雷针等落雷的世界行为按原版保留。
      */
+    public static boolean isValidLightningTarget(net.minecraft.world.entity.Entity target, LightningBolt bolt) {
+        if (target == null) return false;
+        if (!HostileTargets.isHostile(target)) return false;
+        if (target instanceof OwnableEntity ownable) {
+            ServerPlayer cause = bolt == null ? null : bolt.getCause();
+            if (cause != null && cause.getUUID().equals(ownable.getOwnerUUID())) return false;
+        }
+        return true;
+    }
+
+    /** 无闪电实例时的退化口径(只做敌对目标判定,不做宠物排除)。 */
     public static boolean isValidLightningTarget(net.minecraft.world.entity.Entity target) {
-        return target != null && HostileTargets.isHostile(target);
+        return isValidLightningTarget(target, null);
     }
 
     /** 该闪电是否为本模组电磁炮降下的雷击。 */

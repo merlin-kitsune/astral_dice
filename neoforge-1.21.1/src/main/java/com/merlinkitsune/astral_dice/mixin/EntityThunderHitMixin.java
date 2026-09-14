@@ -44,9 +44,11 @@ public abstract class EntityThunderHitMixin {
     private void astral$railgunTrueDamage(ServerLevel level, LightningBolt bolt, CallbackInfo ci) {
         if (!RailgunBolts.isRailgunBolt(bolt)) return;
         Entity self = (Entity) (Object) this;
-        // 命中范围收窄(2026-09-14 用户裁决):只对**敌对生物 / 被激怒的中立生物**生效;
-        // 其余实体(攻击者自己、友方宠物、中立动物、盔甲架等)整段取消 —— 既不受伤也不点燃。
-        if (!RailgunBolts.isValidLightningTarget(self)) {
+        // 命中范围(2026-09-14 用户裁决):只对**敌对生物 / 被激怒的中立生物**生效,并排除
+        // 施放者自己拥有的宠物;其余实体整段取消 —— 既不受伤也不点燃。
+        // 注意:这里只是**纵深防御**——覆写 thunderHit 且不调 super 的原版生物(海龟/村民/猪/
+        // 蘑菇牛)根本进不到本方法,真正的范围收窄在 LightningBoltStrikeScopeMixin 的目标筛选里。
+        if (!RailgunBolts.isValidLightningTarget(self, bolt)) {
             ci.cancel();
             return;
         }

@@ -5,6 +5,7 @@
   "compatibilityLevel": "JAVA_21",
   "mixins": [
     "EntityThunderHitMixin",
+    "LightningBoltStrikeScopeMixin",
     "trade.MerchantContainerMixin",
     "trade.MerchantMenuMixin",
     "trade.MerchantOfferMixin",
