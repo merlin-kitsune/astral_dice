@@ -7,9 +7,7 @@
     设计约束（AGENTS「子技能设计」）:
       1. 原语表封闭 —— 只接受 PRIMITIVES 中列出的 op，未知 op 立即 ERROR 并拒绝执行，
          不产生「半执行」的污染状态；
-      2. 需要 stdio MCP 的步骤不在本脚本内直连，改为写「待执行清单」交会话层回填
-         （.mcp-pending.json ↔ .mcp-results.json）；
-      3. 不做视觉判断 —— vision 断言只输出提问请求，判定交视觉模型。
+      2. 不做视觉判断 —— vision 断言只输出提问请求，判定交视觉模型。
 
 .EXAMPLE
     pwsh -File scripts/test/mt_case.ps1 run      --version 1.21.1 --case cases/xxx.json
@@ -38,10 +36,7 @@
       （实测多行命中示例：`…@0BU\r     line1\r     line2`）。pwsh 子脚本按本仓规范只写 LF，
       因此 `Get-MtTail -FromTextMode` 显式把折行写成 `"\r "` 来复刻它 —— 否则多行 detail
       会差 N 个字节（比对器的 CRLF→LF 归一化**不会**折掉行内 `\r`；实测曾差 3 字节）。
-      来自 JSON 文本（mcp 断言的 `text`）的一律走默认折法（两侧同为 LF）。
-    - **`[:n]` 与 `_tail` 是两套语义**：`exec_assert` 的 mcp 分支用**裸切片** `text[:200]` /
-      `text[:120]`（不 strip、不折行），故单列 `Get-MtSlice`；混用会在 text 带首尾空白或换行时不等
-      （实测由夹具 `w8_mcpassert` 覆盖）。
+      来自 JSON 文本的一律走默认折法（两侧同为 LF）。
 
     **无法 1:1 复刻之处（逐条）**:
 
@@ -72,15 +67,15 @@
        `pwsh -File scripts/test/mt.ps1 --phase stop`（同一入口的新名字，沿用 mt_report.ps1 /
        mt_launch.ps1 / mt_cleanup.ps1 已确立的文案偏差先例）。
     6. `[:n]` 切片按 **UTF-16 码元**（python 按码点）：仅当第 n 个码元落在代理对中间时输出
-       不同（python 会多带/少带半个代理对，pwsh 按码元切）。影响 `_tail` 的 240、
-       mcp 的 200/120。另外 python 的 `.strip()` 等价于 .NET `.Trim()`
+       不同（python 会多带/少带半个代理对，pwsh 按码元切）。影响 `_tail` 的 240。
+       另外 python 的 `.strip()` 等价于 .NET `.Trim()`
        （两者都按 Unicode 空白）。
     7. `sorted(...)` 用 **Ordinal** 序（python 按码点）：BMP 范围内完全一致。
     8. `{x!r}` 的 repr 是**近似实现**（单引号包裹 + `\\`/`\'`/`\n`/`\r`/`\t`/`\xNN` 转义）；
        非字符串类型退化为 `str()` 形态。
     9. `ConvertTo-MtJson` 对**顶层空数组**会返回 `null`（`ConvertTo-Json` 的管道会把空集合
-       吞成无输出；python `json.dumps([])` 是 `[]`）。`.mcp-pending.json` 只在 append **之后**
-       落盘，永远至少 1 项，故用 `(, $data)` 包装即可逐字节对齐 python 的
+       吞成无输出；python `json.dumps([])` 是 `[]`）。凡需落盘的数组一律在 append **之后**写出
+       （永远至少 1 项），故用 `(, $data)` 包装即可逐字节对齐 python 的
        `json.dumps(data, ensure_ascii=False, indent=2)`；该分支不涉及浮点字段。
    10. argparse 的 usage/错误文案未复刻：参数缺失/非法一律
        `MT_ERROR: …` + `exit $MT_EXIT_ERROR(2)`（与其它 pwsh 入口脚本同一约定），
@@ -118,14 +113,11 @@ $script:Primitives = [ordered]@{
     'kubejs_reload'  = @()
     'wait'           = @('ms')
     'screenshot'     = @('tag', 'mode', 'crop')
-    'assert'         = @('type', 'pattern', 'source', 'image', 'question', 'tool', 'args', 'expect')
-    'mcp_call'       = @('tool', 'args', 'id')
+    'assert'         = @('type', 'pattern', 'source', 'image', 'question')
     'note'           = @('text')
 }
-$script:AssertTypes = @('log', 'absent', 'crash', 'kubejs', 'mixin', 'mcp', 'vision')
+$script:AssertTypes = @('log', 'absent', 'crash', 'kubejs', 'mixin', 'vision')
 
-$script:Pending = Join-Path $script:CasesDir '.mcp-pending.json'
-$script:Results = Join-Path $script:CasesDir '.mcp-results.json'
 # 失败取证标记：存在时，流程退出清理不杀游戏客户端（见 run_case 与 mt_cleanup.ps1）
 $script:KeepAlive = Join-Path $script:CasesDir '.mt_keep_alive'
 
@@ -281,7 +273,7 @@ function Get-MtTail {
         按本仓规范只写 LF，所以这里显式补上那个 `\r`，两侧的 detail 才会逐字节相同。
         **不是可选美化**：`\r` 夹在两个空格之间，比对器的 CRLF→LF 归一化**不会**把它折掉
         （实测多行 detail 曾差 3 字节 = 3 个折行点）。
-        来自 JSON 文本（如 mcp 断言的 `text` 字段）的一律用默认值：json 解析出来的
+        来自 JSON 文本的一律用默认值：json 解析出来的
         `\n` 在两侧同为 LF，补 `\r` 反而会造出差异。
     #>
     [CmdletBinding()]
@@ -296,27 +288,6 @@ function Get-MtTail {
     $t = $Text.Trim().Replace("`n", $sep)
     if ($t.Length -gt $Limit) { $t = $t.Substring(0, $Limit) }
     return $t
-}
-
-function Get-MtSlice {
-    <#
-    .SYNOPSIS
-        python 的 `text[:n]`（**不**做 strip、**不**折行）。
-    .NOTES
-        `exec_assert` 的 mcp 分支用的就是这个（`text[:200]` / `text[:120]`），
-        与 `_tail` 语义不同 —— 早期实现误用了 `_tail`，单行短文本看不出差别，
-        一旦 text 带首尾空白或换行就会与 python 不等。切片按 UTF-16 码元
-        （python 按码点，仅代理对边界有差异）。
-    #>
-    [CmdletBinding()]
-    param(
-        [AllowNull()][AllowEmptyString()][string]$Text,
-        [int]$Limit = 200
-    )
-
-    if ($null -eq $Text) { return '' }
-    if ($Text.Length -gt $Limit) { return $Text.Substring(0, $Limit) }
-    return $Text
 }
 
 function Get-MtIoErrorText {
@@ -482,103 +453,6 @@ function Get-MtVerdict {
     return (New-MtPair 'FAIL' (Get-MtTail -Text $text -FromTextMode))
 }
 
-# ── MCP 待执行清单 ↔ 回填结果 ═════════════════════════════════════════════
-
-function Get-MtMcpResults {
-    <#
-    .SYNOPSIS
-        python `_read_mcp_results()`：读 `.mcp-results.json`（列表）→ {id: item} 映射。
-
-    .NOTES
-        文件缺失/损坏一律返回空表（与 python 的 `except (JSONDecodeError, OSError)` 同义）。
-        返回 OrderedHashtable（**不加** unary comma 包装）：PowerShell 的输出流不展开
-        IDictionary，调用方的 `.Contains()`/索引都能正常工作。
-    #>
-    [CmdletBinding()]
-    param()
-
-    $map = [ordered]@{}
-    if (-not (Test-Path -LiteralPath $script:Results -PathType Leaf)) { return $map }
-    try {
-        $txt = [System.IO.File]::ReadAllText($script:Results, $script:TAG_UTF8)
-        $data = $txt | ConvertFrom-Json -AsHashtable -ErrorAction Stop
-    } catch {
-        return $map
-    }
-    if ($null -eq $data) { return $map }
-    foreach ($item in @($data)) {
-        if ($null -eq $item) { continue }
-        $id = [string](Get-MtMapValue -Map $item -Key 'id' -Default '')
-        $map[$id] = $item
-    }
-    return $map
-}
-
-function Add-MtMcpPending {
-    <#
-    .SYNOPSIS
-        python `_queue_mcp(step)`：把需要 stdio MCP 的调用登记进待执行清单。
-
-    .NOTES
-        JSON 形态必须与 python 的 `json.dumps(data, ensure_ascii=False, indent=2)`
-        逐字段一致（id/tool/args）。args 默认 `{}`（python 的 `step.get("args", {})`）。
-        `ConvertTo-MtJson -InputObject (, $data)` 的 unary comma **不是可选装饰**：
-        ConvertTo-MtJson 内部走管道，单元素数组会被展开成裸对象（实测输出 `{…}` 而非 `[{…}]`）。
-    #>
-    [CmdletBinding()]
-    param([Parameter(Mandatory)]$Step)
-
-    $dir = [System.IO.Path]::GetDirectoryName($script:Pending)
-    if (-not (Test-Path -LiteralPath $dir)) { [void](New-Item -ItemType Directory -Force -Path $dir) }
-
-    $data = @()
-    if (Test-Path -LiteralPath $script:Pending -PathType Leaf) {
-        try {
-            $raw = [System.IO.File]::ReadAllText($script:Pending, $script:TAG_UTF8)
-            $parsed = $raw | ConvertFrom-Json -AsHashtable -ErrorAction Stop
-            $data = @($parsed)
-        } catch {
-            $data = @()
-        }
-    }
-
-    $id = Get-MtMapValue -Map $Step -Key 'id'
-    if (-not (Test-MtTruthyValue $id)) { $id = "m$($data.Count + 1)" }
-    $rec = [ordered]@{
-        id   = [string]$id
-        tool = [string](Get-MtMapValue -Map $Step -Key 'tool')
-        args = (Get-MtMapValue -Map $Step -Key 'args' -Default ([ordered]@{}))
-    }
-    $data = @($data) + , $rec
-
-    [System.IO.File]::WriteAllText($script:Pending, (ConvertTo-MtJson -InputObject (, $data)), $script:TAG_UTF8)
-    Write-MtLine ("MT_MCP_PENDING: 已登记 {0} → {1}（等待会话层回填 {2}）" -f `
-            $rec['id'], $rec['tool'], [System.IO.Path]::GetFileName($script:Results))
-}
-
-function Wait-MtMcpResult {
-    <#
-    .SYNOPSIS
-        python `_await_mcp(key, timeout)`：轮询回填结果，超时返回「未找到」。
-
-    .NOTES
-        返回值用 `, @($found)` 包一层：返回空数组与返回「找到但值为 null」必须可区分，
-        否则调用方的 `res is None` 判定会失真。调用方读 `$pair[0]`。
-    #>
-    [CmdletBinding()]
-    param([AllowEmptyString()][string]$Key = '', [double]$TimeoutSec = 120)
-
-    $deadline = ([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() / 1000.0) + $TimeoutSec
-    while (([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() / 1000.0) -lt $deadline) {
-        if (Test-Path -LiteralPath $script:Results -PathType Leaf) {
-            $all = Get-MtMcpResults
-            if ($all.Contains($Key)) { return , @($all[$Key]) }
-        }
-        Start-Sleep -Milliseconds 1000
-    }
-    return , @($null)
-}
-
 # ── 断言 ──────────────────────────────────────────────────────────────────
 function Invoke-MtCaseAssert {
     <#
@@ -627,26 +501,6 @@ function Invoke-MtCaseAssert {
     if ($t -eq 'mixin') {
         $r = Invoke-MtCaseChild -Script 'mt_assert.ps1' -ScriptArgs @('mixin', '--version', $Paths.version)
         return (Get-MtVerdict -ExitCode $r.ExitCode -Result $r)
-    }
-    if ($t -eq 'mcp') {
-        $all = Get-MtMcpResults
-        $key = [string](Get-MtMapValue -Map $Assert -Key 'id' -Default '')
-        $res = $null
-        if ($all.Contains($key)) { $res = $all[$key] }
-        if ($null -eq $res) {
-            return (New-MtPair 'BLOCKED' ("会话层未回填 MCP 结果（id={0}）" -f (ConvertTo-MtPyText (Get-MtMapValue -Map $Assert -Key 'id'))))
-        }
-        $text = ConvertTo-MtPyText (Get-MtMapValue -Map $res -Key 'text' -Default '')
-        if (Test-MtTruthyValue (Get-MtMapValue -Map $res -Key 'isError')) {
-            # python: text[:200]（**裸切片**，不是 _tail：不 strip、不折行）
-            return (New-MtPair 'FAIL' (Get-MtSlice -Text $text -Limit 200))
-        }
-        $expect = Get-MtMapValue -Map $Assert -Key 'expect'
-        if ((Test-MtTruthyValue $expect) -and (-not $text.Contains([string]$expect))) {
-            return (New-MtPair 'FAIL' ("期望包含 {0}，实际 {1}" -f `
-                        (ConvertTo-MtPyRepr $expect), (ConvertTo-MtPyRepr (Get-MtSlice -Text $text -Limit 120))))
-        }
-        return (New-MtPair 'PASS' (Get-MtSlice -Text $text -Limit 200))
     }
     if ($t -eq 'vision') {
         # image 可以是「截图文件名」,也可以是截图 op 登记过的 **tag** —— 用例普遍写 tag,
@@ -762,19 +616,6 @@ function Invoke-MtCaseOp {
         $r = Invoke-MtCaseChild -Script 'mt_capture.ps1' -ScriptArgs $shotArgs
         $text = if ($r.StdOut) { [string]$r.StdOut } else { [string]$r.StdErr }
         return (New-MtPair $(if ($r.ExitCode -eq 0) { 'PASS' } else { 'ERROR' }) (Get-MtTail -Text $text -FromTextMode))
-    }
-
-    if ($op -eq 'mcp_call') {
-        Add-MtMcpPending -Step $Step
-        $key = [string](Get-MtMapValue -Map $Step -Key 'id' -Default '')
-        $timeout = [double](Get-MtMapValue -Map $Step -Key 'timeout' -Default 120)
-        $pair = Wait-MtMcpResult -Key $key -TimeoutSec $timeout
-        $res = $pair[0]
-        if ($null -eq $res) {
-            return (New-MtPair 'BLOCKED' ("MCP 握手超时（id={0}）" -f (ConvertTo-MtPyText (Get-MtMapValue -Map $Step -Key 'id'))))
-        }
-        $ok = if (Test-MtTruthyValue (Get-MtMapValue -Map $res -Key 'isError')) { 'FAIL' } else { 'PASS' }
-        return (New-MtPair $ok (Get-MtTail (ConvertTo-MtPyText (Get-MtMapValue -Map $res -Key 'text' -Default ''))))
     }
 
     if ($op -eq 'assert') {

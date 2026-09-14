@@ -352,7 +352,7 @@ function Set-MtAllowCommands {
         单人存档的「允许命令」由 level.dat 的 Data.allowCommands 决定。
 
     .DESCRIPTION
-        runServer 生成的世界默认不写该字段，因此必须补上，否则 /publish、/give 等
+        runServer 生成的世界默认不写该字段，因此必须补上，否则 /give 等
         测试命令不可用。返回 $true 表示字段已就位。
     #>
     [CmdletBinding()]

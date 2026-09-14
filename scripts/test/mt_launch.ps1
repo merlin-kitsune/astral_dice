@@ -1,17 +1,15 @@
 #Requires -Version 7.0
 <#
 .SYNOPSIS
-    mt_launch — 启动 runClient 并等待进入世界（阶段 L），收尾自动开放局域网。
+    mt_launch — 启动 runClient 并等待进入世界（阶段 L）。
 
 .DESCRIPTION
     就绪判据（沿用既有约定）: 基础等待 30s，随后轮询 ModernFix 加载完成日志
       "Total time to load game and open world was"
     每 15s 复检一次，180s 上限；出现崩溃报告或进程退出即判失败。
-    进入世界后自动执行 /publish 25565（供 minecraft MCP 第二玩家 LLMBot 连接）。
 
 .EXAMPLE
     pwsh -File scripts/test/mt_launch.ps1 --version 1.21.1
-    pwsh -File scripts/test/mt_launch.ps1 --version 1.21.1 --no-publish
 
 .NOTES
     对应源文件（迁移前）：scripts/test/mt_launch.sh。
@@ -39,7 +37,6 @@ Initialize-MtConsole
 if ($MyInvocation.InvocationName -ne '.') {
 
     $Version = ''
-    $DoPublish = $true
 
     $i = 0
     while ($i -lt $args.Count) {
@@ -49,10 +46,6 @@ if ($MyInvocation.InvocationName -ne '.') {
             if ($i + 1 -ge $args.Count) { Write-MtErrorLine '缺少 --version 的值'; exit $MT_EXIT_ERROR }
             $Version = [string]$args[$i + 1]
             $i += 2
-        } elseif ($key -eq 'no-publish') {
-            $DoPublish = $false; $i++
-        } elseif ($key -eq 'publish') {
-            $DoPublish = $true; $i++
         } else {
             Write-MtErrorLine "未知参数 $tok"; exit $MT_EXIT_ERROR
         }
@@ -159,25 +152,6 @@ if ($MyInvocation.InvocationName -ne '.') {
     # KubeJS 脚本健康（进入世界后第一步）
     & $psExe -NoProfile -File (Join-Path $testDir 'mt_assert.ps1') kubejs --version $Version
     if ($LASTEXITCODE -ne 0) { Write-MtWarn 'KubeJS server.log 非 0 errors' }
-
-    # 开放局域网，供第二玩家（LLMBot）接入
-    if ($DoPublish) {
-        $port = Get-MtPublishPort
-        Start-Sleep -Seconds 2
-        & $psExe -NoProfile -File (Join-Path $testDir 'mt_inject.ps1') cmd `
-            --command "/publish $port" --version $Version *> $null
-        if ($LASTEXITCODE -eq 0) {
-            Start-Sleep -Seconds 4
-            $latest = Read-MtSharedText -Path $p.latest_log
-            if ($latest -imatch "publish|open to lan|local network|$port") {
-                Write-MtInfo 'MT_PUBLISH: OK — 日志已留痕'
-            } else {
-                Write-MtInfo 'MT_PUBLISH: SENT — 连通性由会话层 minecraft MCP 验证（BOT_JOINED）'
-            }
-        } else {
-            Write-MtWarn 'MT_PUBLISH: FAILED — 注入失败，双人条目将不可用'
-        }
-    }
 
     Write-MtOk 'LAUNCH' "已进入世界（quickplay=$world）"
     exit $MT_EXIT_PASS

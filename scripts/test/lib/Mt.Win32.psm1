@@ -878,7 +878,7 @@ function Find-MtMinecraftWindow {
         # （实测 1.21.1: `net.caffeinemc.sodium / net.minecraft.client.main.Main /`），
         # 其父进程（FML bootstrapper）命令行 1185 字符里也不含子项目名/run 目录，
         # 再上一级启动器进程已退出（reparent）—— 即**整条链都读不到标记**，
-        # 于是 -Version 分支永远返回 0，mt_inject 拒绝注入（MT_PUBLISH: FAILED），
+        # 于是 -Version 分支永远返回 0，mt_inject 拒绝注入，
         # 所有 inject_command 步骤在进入断言前就失败。
         # python `_find_window` 用的是同一套标记判据，故这是**原有缺陷**而非移植回归。
         #

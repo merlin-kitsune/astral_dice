@@ -193,7 +193,7 @@ function Test-MtPreflightLeftover {
 function Test-MtPreflightMcpBinary {
     <#
     .SYNOPSIS
-        本地 MCP 二进制存在（连接状态由会话内校验，不在本脚本职责内）。返回 @(bool, detail)。
+        注入通道所用的本地 MCP 二进制（computer-control-mcp）存在。返回 @(bool, detail)。
     #>
     [CmdletBinding()]
     param()

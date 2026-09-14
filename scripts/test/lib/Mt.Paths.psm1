@@ -30,7 +30,6 @@ $script:VERSIONS = @('1.21.1', '1.20.1')
 $script:LOADER = @{ '1.21.1' = 'neoforge'; '1.20.1' = 'forge' }
 $script:SUBPROJECT = @{ '1.21.1' = 'neoforge-1.21.1'; '1.20.1' = 'forge-1.20.1' }
 $script:WORLD_NAME = 'testworld'
-$script:PUBLISH_PORT = 25565
 $script:SHOTS_MANIFEST = '.mt_shots.json'
 
 # ⚠️ 用 .NET 的 GetDirectoryName 而不是 `Split-Path -LiteralPath X -Parent`：
@@ -58,19 +57,6 @@ function Get-MtConfFile { $script:CONF_FILE }
 function Get-MtRunsFile { $script:RUNS_FILE }
 function Get-MtConf { $script:CONF }
 function Get-MtWorldName { $script:WORLD_NAME }
-
-function Get-MtPublishPort {
-    <#
-    .SYNOPSIS
-        局域网开放端口（与 paths.sh 的 MT_PUBLISH_PORT 同值）。
-
-    .NOTES
-        python 的 Paths 对象里没有这一项（它只在 bash 侧作为全局变量存在），
-        因此这里以独立函数提供，不塞进 Get-MtPaths 的返回对象，避免与 python 侧
-        的字段集合失去 1:1 对照。
-    #>
-    return $script:PUBLISH_PORT
-}
 
 function Assert-MtVersion {
     <#
@@ -350,7 +336,7 @@ function ConvertTo-MtJson {
 
 Export-ModuleMember -Function @(
     'Get-MtVersions', 'Get-MtTestDir', 'Get-MtRoot', 'Get-MtConfFile', 'Get-MtRunsFile',
-    'Get-MtConf', 'Get-MtWorldName', 'Get-MtPublishPort', 'Assert-MtVersion', 'Get-MtPaths',
+    'Get-MtConf', 'Get-MtWorldName', 'Assert-MtVersion', 'Get-MtPaths',
     'Get-MtProcessMarkers', 'Get-MtShotsManifest', 'Get-MtShots', 'Add-MtShot',
     'Get-MtCurrentShots', 'New-MtRunId', 'Get-MtActiveRunId', 'Get-MtRunStartTs',
     'Get-MtReportsDir', 'ConvertTo-MtJson'

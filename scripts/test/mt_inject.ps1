@@ -20,7 +20,7 @@ mt_inject.ps1 — 游戏内输入注入（阶段 C 的执行臂）。
   mt_inject.ps1 key -Key rclick
   mt_inject.ps1 key -Key w -HoldMs 1000
   mt_inject.ps1 cmd -Command "/astral_dice targetselect enemy"
-  mt_inject.ps1 cmd -Command "/publish 25565" -NoEsc
+  mt_inject.ps1 cmd -Command "/give @s minecraft:stone" -NoEsc
   mt_inject.ps1 cmd -Command "/give Dev x" -Layout as-is     # 排查用：不切语言
 
 ## 退出码（与 python 版一致）

@@ -28,7 +28,7 @@
 | 游戏环境 | dev `runClient`（`run/<版本>/`，Mojmap 命名），模组经 `modImplementation` 引入 |
 | 兼容栈 | 1.21.1：KubeJS / JEI / ModernFix /（可选）光影；1.20.1：KubeJS / JEI / ModernFix 经 build.gradle 注入 + 整合包 mods 复制 |
 | 输入注入 | 需系统已安装「英语(美国)」键盘（KLID 00000409）：`mt_ime` 在注入前**按窗口线程**切换，不改系统默认 |
-| 可选 MCP | `computer-control-mcp`（窗口激活 / OCR / 截图的降级通道），路径写在 `mt.conf` |
+| 可选 MCP | `computer-control-mcp`（**唯一保留的 MCP**：窗口激活 / OCR / 截图 / 输入注入的降级通道），路径写在 `mt.conf`；mineflayer bot（minecraft-mcp-server）已于 2026-09-14 彻底移除 |
 | 机器本地配置 | `scripts/test/mt.conf`（**不入库**）。缺失时回落到内置默认值；模板见 `mt.conf.example` |
 
 ---
@@ -42,10 +42,10 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --phase <p> --version <v>
 
 | 阶段 | 实现 | 职责 | 终态标记 |
 |---|---|---|---|
-| **P** 前置 | `mt_preflight.ps1` | 分支 / 输入法 / 遗留进程 / MCP / 兼容栈 / 可写性；启动前兜底清理 | `MT_PREFLIGHT: OK/FAIL`（失败退出码 10） |
+| **P** 前置 | `mt_preflight.ps1` | 分支 / 输入法 / 遗留进程 / MCP 二进制 / 兼容栈 / 可写性；启动前兜底清理 | `MT_PREFLIGHT: OK/FAIL`（失败退出码 10） |
 | **B** 构建 | `mt_build.ps1` | `gradlew :<子项目>:build`，60s 看门狗 + `BUILD SUCCESSFUL` 识别 + 产物 jar 校验 + 重试 | `MT_BUILD: OK/FAIL` |
 | **E** 环境 | `mt_env.ps1` | `mods`（装兼容模组）/ `world`（重建测试世界，含原生 NBT 改写）/ `kill` | `MT_WORLD: OK/BLOCKED`（退出码 11） |
-| **L** 启动 | `mt_launch.ps1` | 启动 `runClient`、轮询就绪日志、兼容栈信号、收尾 `/publish 25565` | `MT_LAUNCH: OK/FAIL` |
+| **L** 启动 | `mt_launch.ps1` | 启动 `runClient`、轮询就绪日志、兼容栈信号 | `MT_LAUNCH: OK/FAIL` |
 | **C** 条目 | `mt_case.ps1` | 顺序执行 `cases/*.json`：注入命令/按键 → 等待 → 断言；每条结果**自动**写入报告状态 | 每条 `PASS/FAIL` |
 | **R** 报告 | `mt_report.ps1` | 收集证据（日志 / 崩溃 / 截图）→ 单版本 `report.md` → 双版本 `SUMMARY.md` | `MT_REPORT: OK/FAIL`（未全绿退出码 1） |
 
@@ -126,7 +126,7 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --phase <p> --version <v>
 ```
 
 **步骤 op**：`inject_command`、`inject_key`、`note`、`wait`、`screenshot`、`kubejs_reload`。
-**断言 type**：`log`（正/反向正则，`scope: whole` = 对整文件求值，用于启动期行）、`absent`（整文件不得出现）、`crash`（无崩溃报告）、`kubejs`（server.log 0 error）、`mixin`（Mixin 应用行存在）、`mcp`、`vision`（截图视觉判定）。
+**断言 type**：`log`（正/反向正则，`scope: whole` = 对整文件求值，用于启动期行）、`absent`（整文件不得出现）、`crash`（无崩溃报告）、`kubejs`（server.log 0 error）、`mixin`（Mixin 应用行存在）、`vision`（截图视觉判定）。
 **失败取证**：`on_fail=keep_game_running` 会落 `.mt_keep_alive`；此时**退出清理不杀客户端也不停守护**（保留现场），取证后执行 `mt.ps1 --phase stop --force`。
 
 ---
