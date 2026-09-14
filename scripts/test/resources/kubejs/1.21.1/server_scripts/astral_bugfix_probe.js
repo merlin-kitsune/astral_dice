@@ -49,6 +49,8 @@
 //    /astralprobe nancycloak|nancyexpire|nancystate|nancyfall <tag>
 //    /astralprobe nancypearl|nancypearlctrl|nancypearlclose <tag>
 //    /astralprobe decayflash|decayclear <tag>
+//    ── 2026-09-15 追加(伤害效果牌法伤加成的真伤口径)──
+//    /astralprobe spelltdsetup|spelltdhit <tag>
 //
 //  ── 实现约束 ─────────────────────────────────────────────────────────────
 //   1. 命令注册必须在 ServerEvents.commandRegistry 回调内;执行体提取为顶层命名函数;
@@ -627,7 +629,8 @@ function doBlastBonus(ctx, tag) {
         try { return "" + SpellDamageRegistryClass.effectCardDamageBonus(p); }
         catch (e) { return "ERR:" + exText(e); }
     }
-    function clear(holder) { try { p.removeEffect(holder); } catch (e) { /* 忽略 */ } }
+    // 本模组效果必须走 ModEffectRemoval:普通 removeEffect 会被 onModEffectRemovalPrevented 拦掉(见 doDecayFlash 注释)
+    function clear(holder) { try { ModEffectRemoval.remove(p, holder); } catch (e) { /* 忽略 */ } }
     clear(ModEffects.MONSTER_LASER);
     clear(ModEffects.MONSTER_BRICK);
     clear(ModEffects.ORBITAL_STRIKE);
@@ -1652,6 +1655,14 @@ function doDecayFlash(ctx, tag) {
     try { ModEffectRemoval.remove(p, fxHealing()); } catch (e2) { /* 忽略 */ }
     try { ModEffectRemoval.remove(p, fxMarked()); } catch (e3) { /* 忽略 */ }
     try { p.removeEffect(MobEffectsClass.GLOWING); } catch (e4) { /* 忽略 */ }
+    // 骰神赐福在场时 HealingManager#updateEffect 会用「赐福剩余时长」覆盖治愈图标时长(必然 > 200 tick),
+    // 闪烁窗口永远不可能成立 → 必须先清掉赐福再武装窗口,否则本用例前置在赐福残留时不可满足。
+    // 且**必须走 ModEffectRemoval**:ModEffectEvents#onModEffectRemovalPrevented 以 HIGH 优先级
+    // 取消玩家身上 astral_dice:* 的普通移除(直接 removeEffect 与 /effect clear 一律无效),
+    // 只有 ModEffectRemoval(内部标志)/EffectTimerGuard(强制标志)/死亡 三条通道放行。
+    var blessedBefore = "?";
+    try { blessedBefore = p.hasEffect(ModEffects.DICE_BLESSING) ? 1 : 0; } catch (e10) { blessedBefore = "ERR:" + exText(e10); }
+    try { ModEffectRemoval.remove(p, ModEffects.DICE_BLESSING); } catch (e11) { /* 忽略 */ }
     try { HealingManagerClass.clear(p); } catch (e5) { /* 忽略 */ }
     var now = nowTick(p);
     var heal = "err";
@@ -1674,7 +1685,7 @@ function doDecayFlash(ctx, tag) {
         }
         emp = "ok";
     } catch (e8) { emp = exText(e8); }
-    send(ctx, "AP_" + tag + "_SETUP:heal=" + heal + ":mark=" + mark + ":emp=" + emp);
+    send(ctx, "AP_" + tag + "_SETUP:heal=" + heal + ":mark=" + mark + ":emp=" + emp + ":blessed_before=" + blessedBefore);
     send(ctx, "AP_" + tag + "_STATE:heal=" + fxState(p, DESC_HEAL)
         + "|mark=" + fxState(p, DESC_MARK) + "|emp=" + fxState(p, DESC_EMPOWER));
     var win = (fxInWindow(p, DESC_HEAL) && fxInWindow(p, DESC_MARK) && fxInWindow(p, DESC_EMPOWER)) ? 1 : 0;
@@ -1860,7 +1871,11 @@ function doRailgunFriendly(ctx, tag) {
     if (putErr != null) { send(ctx, "AP_" + tag + "_ERR:" + putErr); return 0; }
 
     // 敌方(僵尸)在正前方 2 格 —— 近战距离,攻击者本人必在同一雷击判定箱内;
-    // 中立(牛)与友方(已驯服狼,主人=玩家)分列僵尸左右各 1.5 格,同样落在箱内。
+    // 中立(北极熊)与友方(已驯服狼,主人=玩家)分列左右各 2.8 格:
+    //   ⚠️ 2026-09-15 实测标定:原 1.5 格会落进**玩家近战横扫(sweep)判定盒**
+    //   (目标 AABB 外扩 1.0 格),使「中立/友方掉血」读数被横扫污染(实测北极熊 24.5、
+    //   狼 11 点伤害在**落雷之前**就已结算,而落雷本身 0 伤害)。2.8 格同时满足:
+    //   ① 在雷击判定箱(落点 ±3 格)内 → 仍会被雷击命中;② 在横扫盒(≈1.7 格)之外 → 悬置。
     // 清场(2026-09-14 实测):自然刷新的苦力怕一旦落进雷击箱,会被劈成高压苦力怕并爆炸,
     // 污染所有差值读数(实测 bolt_delta=2、非靶实体凭空掉血),故先清掉附近的苦力怕再摆靶。
     runCmd(ctx, "kill @e[type=minecraft:creeper]");
@@ -1873,8 +1888,8 @@ function doRailgunFriendly(ctx, tag) {
     if (neutral == null || friendly == null || turtle == null || villager == null) {
         send(ctx, "AP_" + tag + "_ERR:spawn_failed_side"); return 0;
     }
-    try { placeAt(neutral, p.getX() + 1.5, p.getY(), p.getZ() + 2.0); } catch (e3) { /* 忽略 */ }
-    try { placeAt(friendly, p.getX() - 1.5, p.getY(), p.getZ() + 2.0); } catch (e4) { /* 忽略 */ }
+    try { placeAt(neutral, p.getX() + 2.8, p.getY(), p.getZ() + 2.0); } catch (e3) { /* 忽略 */ }
+    try { placeAt(friendly, p.getX() - 2.8, p.getY(), p.getZ() + 2.0); } catch (e4) { /* 忽略 */ }
     try { placeAt(turtle, p.getX() + 2.5, p.getY(), p.getZ() + 2.0); } catch (e4b) { /* 忽略 */ }
     try { placeAt(villager, p.getX() - 2.5, p.getY(), p.getZ() + 2.0); } catch (e4c) { /* 忽略 */ }
     var tameState = "skip";
@@ -2190,7 +2205,7 @@ function doFenSplash(ctx, tag) {
     var diceItem = resolveItem("astral_dice:dice");
     var diceErr = diceItem == null ? "unknown_dice" : putInSlot(p, "dice", new ItemStack(diceItem), 0);
     var weapon = runCmd(ctx, "item replace entity @s weapon.mainhand with minecraft:iron_sword");
-    try { p.removeEffect(ModEffects.DICE_BLESSING); } catch (e2) { /* 忽略 */ }
+    try { ModEffectRemoval.remove(p, ModEffects.DICE_BLESSING); } catch (e2) { /* 忽略 */ }
     ModAttachments.setFenRecharge(p, 5);
     var equipped = "?";
     try { equipped = "" + FenSignItem.isEquipped(p); } catch (e3) { equipped = "ERR:" + exText(e3); }
@@ -2263,7 +2278,7 @@ function doFenSplashRead(ctx, tag) {
     send(ctx, "AP_" + tag + "_VERDICT:in_range=" + inRange + ":out_range=" + outRange
         + ":true_damage=" + trueDmg + ":at_floor=" + atFloor + ":ratio_ok=" + ratioOk);
     try { ModAttachments.setFenRecharge(st.player, 0); } catch (e1) { /* 忽略 */ }
-    try { st.player.removeEffect(ModEffects.DICE_BLESSING); } catch (e2) { /* 忽略 */ }
+    try { ModEffectRemoval.remove(st.player, ModEffects.DICE_BLESSING); } catch (e2) { /* 忽略 */ }
     try { clearCurioSlots(st.player, "stand"); } catch (e3) { /* 忽略 */ }
     try { st.target.discard(); } catch (e4) { /* 忽略 */ }
     try { st.near.discard(); } catch (e5) { /* 忽略 */ }
@@ -2274,10 +2289,203 @@ function doFenSplashRead(ctx, tag) {
     return 1;
 }
 
+// ════════════════════════════════════════════════════════════════════════════
+//  伤害效果牌(法伤)加成的「真伤」口径取证(SPELL-TRUE-DAMAGE)
+//    /astralprobe spelltdsetup <tag>  阶段1:清效果/清 Curios + 摆 4 只非亡灵敌对靶
+//                                     (ctrl_bare / test_bare 无甲;ctrl_arm / test_arm 护甲20·韧性8)
+//    /astralprobe spelltdhit   <tag>  阶段2(下一条命令,**属性命令生效时机要求分两条**):
+//                                     先无效果牌打两靶(控制相位),再加「对怪激光」打另两靶(试相位)
+//
+//  被测链路:DamageEffectCardHandler#onLivingDamagePre —— 玩家造成的「远程/魔法」伤害命中
+//   骰神赐福目标时,聚合 SpellDamageRegistry 修饰器(bonus),再把 **bonus 这部分**以
+//   ModDamageTypes.trueDamage(level, player) 独立 hurt 结算(不吃护甲值/盔甲韧性);
+//   基础伤害本身仍走原版链路照旧吃护甲。
+//
+//  判据(全部在游戏内计算):
+//    · 基础伤害照旧吃护甲:ctrl_arm 的掉血 **明显小于** ctrl_bare(护甲 20/韧性 8 → 约 30%)
+//    · 效果牌那部分穿甲:armored_lift ≈ bare_lift(同一个 +4 加成,重甲靶与无甲靶掉血相同)
+//  说明:`astral_dice:true_damage` 只登记 bypasses_armor(未登记 bypasses_cooldown),
+//   故原版无敌帧的「amount − lastHurt」差额结算会体现在**绝对值**上;两靶同条件 ⇒ 差值可比。
+// ════════════════════════════════════════════════════════════════════════════
+var spellState = null;
+
+/** 读回某个靶子**真实生效**的护甲/韧性值(直接问属性实例,不信命令返回值)。
+ *
+ *  ⚠️ 2026-09-15 实测:KubeJS/Rhino 下 `Commands#performPrefixedCommand` 返回
+ *  **undefined**(命令其实执行了),所以 `armorSingle` 的 `armor=rc=1` 判据在本机永远落空。
+ *  命令是否执行要看聊天回显;数值是否生效就用本函数在**同一实体实例**上直接读。 */
+function spellArmorOf(ent) {
+    try {
+        var Attrs = Java.loadClass("net.minecraft.world.entity.ai.attributes.Attributes");
+        return "armor=" + ent.getAttributeValue(Attrs.ARMOR)
+            + ":tough=" + ent.getAttributeValue(Attrs.ARMOR_TOUGHNESS);
+    } catch (e) { return "ERR:" + exText(e); }
+}
+
+/** 玩家造成的「远程/魔法」伤害源。
+ *
+ *  ⚠️ 2026-09-15 实测标定:不能用 `damageSources().indirectMagic(p, p)` ——
+ *  `minecraft:magic` / `minecraft:indirect_magic` **本身就在原版
+ *  `minecraft:bypasses_armor` 标签里**(魔法伤害按原版设计无视护甲),那样「基础伤害
+ *  照旧吃护甲」的对照根本不成立(实测护甲 20·韧性 8 的靶子上 1.0 点伤害全额落地)。
+ *  改用**实体弹射物**承载:`damageSources().arrow(arrowEntity, player)` ——
+ *  ① `getDirectEntity()` 是 {@code AbstractArrow} → 命中 SpellDamageRegistry 的
+ *  「原生弹射物」matcher;② `getEntity()` 是玩家 → 满足 DamageEffectCardHandler 的
+ *  施法者要求;③ `minecraft:arrow` 不在 bypasses_armor 里 → 基础伤害照旧吃护甲。
+ *  箭实体只作伤害源载体,无需入世界。 */
+function spellSource(p) {
+    var arrow = null;
+    try { arrow = Java.loadClass("net.minecraft.world.entity.EntityType").ARROW.create(p.level); }
+    catch (e1) { arrow = null; }
+    if (arrow == null) return null;
+    try { arrow.setOwner(p); } catch (e2) { /* 忽略 */ }
+    return p.level.damageSources().arrow(arrow, p);
+}
+
+/** 经 KubeJS 可见的伤害 API 施加伤害,返回 {api, dealt};api=none 表示没有任何入口可用。 */
+function applySpellDamage(ent, src, amount) {
+    var before = -1, after = -1;
+    try { before = ent.getHealth(); } catch (e) { before = -1; }
+    var api = "none";
+    var errText = "";
+    var tries = [
+        function () { ent.hurt(src, amount); return "hurt"; },
+        function () { ent.attack(src, amount); return "attack"; },
+        function () { ent.damage(src, amount); return "damage"; }
+    ];
+    for (var i = 0; i < tries.length; i++) {
+        try { api = tries[i](); break; } catch (e2) { errText += "/" + exText(e2); }
+    }
+    try { after = ent.getHealth(); } catch (e3) { after = -1; }
+    return {
+        api: api, err: errText.substring(0, 200),
+        dealt: (before < 0 || after < 0) ? -1 : Math.round((before - after) * 100) / 100,
+        hp: (before < 0 || after < 0) ? "?" : (before + "->" + after)
+    };
+}
+
+/** 阶段1:清场 + 摆靶(含重甲) */
+function doSpellTdSetup(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var weather = "skip";
+    try { p.level.setWeatherParameters(6000, 0, false, false); weather = "clear"; } catch (e0) { weather = "err"; }
+    try { p.setHealth(p.getMaxHealth()); } catch (eh) { /* 忽略 */ }
+    runCmd(ctx, "effect clear @s");
+    try { clearCurioSlots(p, "dice"); } catch (e1) { /* 忽略 */ }
+    try { clearCurioSlots(p, "chip"); } catch (e2) { /* 忽略 */ }
+    try { clearCurioSlots(p, "stand"); } catch (e3) { /* 忽略 */ }
+    // 忍者立牌「效果牌伤害增益」是附件(卸下不自动清) → 显式归零,否则 extra_bonus 不确定
+    try { ModAttachments.setKomachiDamageBonus(p, 0); } catch (e4) { /* 忽略 */ }
+
+    var ctrlBare = spawnDummy(p, "minecraft:spider", 2);
+    var testBare = spawnDummy(p, "minecraft:spider", 2);
+    var ctrlArm = spawnDummy(p, "minecraft:vindicator", 2);
+    var testArm = spawnDummy(p, "minecraft:pillager", 2);
+    if (ctrlBare == null || testBare == null || ctrlArm == null || testArm == null) {
+        send(ctx, "AP_" + tag + "_ERR:spawn_failed"); return 0;
+    }
+    // 分散摆放(两两相距 ≥4 格):避免任何 AOE/连锁读数互相污染
+    try { placeAt(ctrlBare, p.getX() - 6.0, p.getY(), p.getZ() + 3.0); } catch (e5) { /* 忽略 */ }
+    try { placeAt(testBare, p.getX() - 2.0, p.getY(), p.getZ() + 3.0); } catch (e6) { /* 忽略 */ }
+    try { placeAt(ctrlArm, p.getX() + 2.0, p.getY(), p.getZ() + 3.0); } catch (e7) { /* 忽略 */ }
+    try { placeAt(testArm, p.getX() + 6.0, p.getY(), p.getZ() + 3.0); } catch (e8) { /* 忽略 */ }
+    var all = [ctrlBare, testBare, ctrlArm, testArm];
+    for (var i = 0; i < all.length; i++) {
+        try { all[i].setHealth(all[i].getMaxHealth()); } catch (e9) { /* 忽略 */ }
+        try { all[i].setNoAi(true); } catch (e10) { /* 忽略 */ }
+    }
+    var armCtrl = armorSingle(ctx, "minecraft:vindicator", 20, 8);
+    var armTest = armorSingle(ctx, "minecraft:pillager", 20, 8);
+    var bonus = "ERR";
+    try { bonus = "" + SpellDamageRegistryClass.effectCardDamageBonus(p); } catch (e11) { bonus = "ERR:" + exText(e11); }
+    send(ctx, "AP_" + tag + "_ARMOR_CTRL:" + armCtrl);
+    send(ctx, "AP_" + tag + "_ARMOR_TEST:" + armTest);
+    send(ctx, "AP_" + tag + "_ARMOR_EFFECTIVE:ctrl_arm=" + spellArmorOf(ctrlArm)
+        + ":test_arm=" + spellArmorOf(testArm)
+        + ":ctrl_bare=" + spellArmorOf(ctrlBare) + ":test_bare=" + spellArmorOf(testBare));
+    send(ctx, "AP_" + tag + "_SETUP:ctrl_bare=" + rghp(ctrlBare) + ":test_bare=" + rghp(testBare)
+        + ":ctrl_arm=" + rghp(ctrlArm) + ":test_arm=" + rghp(testArm)
+        + ":extra_bonus=" + bonus + ":weather=" + weather);
+    spellState = {
+        tag: tag, player: p, ctrlBare: ctrlBare, testBare: testBare,
+        ctrlArm: ctrlArm, testArm: testArm
+    };
+    send(ctx, "AP_" + tag + "_SETUP_DONE");
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+/** 阶段2:控制相位(无效果牌) → 试相位(对怪激光 +4) → 读差值判定 → 收尾 */
+function doSpellTdHit(ctx, tag) {
+    var st = spellState;
+    if (st == null) { send(ctx, "AP_" + tag + "_ERR:no_state"); return 0; }
+    var p = st.player;
+    // 干净基线:保证控制相位时身上没有任何「伤害效果牌」效果
+    function clearCards() {
+        var holders = [ModEffects.LIVING_PAGE, ModEffects.MONSTER_LASER, ModEffects.MONSTER_BRICK,
+                       ModEffects.ORBITAL_STRIKE, ModEffects.DIRECTIONAL_BLAST];
+        for (var i = 0; i < holders.length; i++) {
+            try { ModEffectRemoval.remove(p, holders[i]); } catch (e) { /* 忽略 */ }
+        }
+    }
+    clearCards();
+    var src = spellSource(p);
+    if (src == null) { send(ctx, "AP_" + tag + "_ERR:no_arrow_carrier"); return 0; }
+    var cBare = applySpellDamage(st.ctrlBare, src, 1.0);
+    var cArm = applySpellDamage(st.ctrlArm, src, 1.0);
+    // 试相位:同一发伤害,但此时玩家身上有「对怪激光」(法伤 +4)
+    var laser = "ok";
+    try { p.addEffect(new MobEffectInstanceClass(ModEffects.MONSTER_LASER, 2400, 0)); }
+    catch (e1) { laser = "ERR:" + exText(e1); }
+    var bonusNow = "ERR";
+    try { bonusNow = "" + SpellDamageRegistryClass.effectCardDamageBonus(p); }
+    catch (e2) { bonusNow = "ERR:" + exText(e2); }
+    var tBare = applySpellDamage(st.testBare, src, 1.0);
+    var tArm = applySpellDamage(st.testArm, src, 1.0);
+
+    function r2(x) { return Math.round(x * 100) / 100; }
+    var bareLift = r2(tBare.dealt - cBare.dealt);
+    var armLift = r2(tArm.dealt - cArm.dealt);
+    var noApi = (cBare.api === "none" && tBare.api === "none") ? 1 : 0;
+    // 基础伤害照旧吃护甲:重甲对照靶掉血必须明显小于无甲对照靶
+    var baseArmored = (cBare.dealt > 0 && cArm.dealt > 0 && cArm.dealt < cBare.dealt) ? 1 : 0;
+    // 效果牌那部分穿甲:两靶的加成掉血必须相同(且必须真的掉了血)
+    var bonusImmune = (bareLift > 0 && Math.abs(bareLift - armLift) <= 0.01) ? 1 : 0;
+
+    send(ctx, "AP_" + tag + "_API:ctrl_bare=" + cBare.api + ":ctrl_arm=" + cArm.api
+        + ":test_bare=" + tBare.api + ":test_arm=" + tArm.api);
+    send(ctx, "AP_" + tag + "_CTRL:bare=" + cBare.dealt + "(" + cBare.hp + "):arm=" + cArm.dealt + "(" + cArm.hp + ")");
+    send(ctx, "AP_" + tag + "_TEST:bare=" + tBare.dealt + "(" + tBare.hp + "):arm=" + tArm.dealt + "(" + tArm.hp + ")");
+    send(ctx, "AP_" + tag + "_CARD:laser=" + laser + ":extra_bonus=" + bonusNow);
+    send(ctx, "AP_" + tag + "_AFTER:bare_lift=" + bareLift + ":armored_lift=" + armLift
+        + ":base_armored=" + baseArmored + ":bonus_armor_immune=" + bonusImmune + ":no_api=" + noApi);
+    send(ctx, "AP_" + tag + "_VERDICT:base_armor_effective=" + baseArmored
+        + ":bonus_true_damage=" + bonusImmune + ":no_api=" + noApi);
+    // 收尾
+    clearCards();
+    try { st.ctrlBare.discard(); } catch (e3) { /* 忽略 */ }
+    try { st.testBare.discard(); } catch (e4) { /* 忽略 */ }
+    try { st.ctrlArm.discard(); } catch (e5) { /* 忽略 */ }
+    try { st.testArm.discard(); } catch (e6) { /* 忽略 */ }
+    spellState = null;
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
 ServerEvents.commandRegistry(event => {
     var Commands = event.commands;
     event.register(
         Commands.literal("astralprobe")
+            .then(Commands.literal("spelltdsetup")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doSpellTdSetup(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("spelltdhit")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doSpellTdHit(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
             .then(Commands.literal("fensplash")
                 .then(Commands.argument("tag", StringArg.word())
                     .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {

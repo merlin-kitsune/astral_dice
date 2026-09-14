@@ -1,0 +1,110 @@
+{
+  "case_id": "RAILGUN-OVERRIDE-CLASS-1.21.1",
+  "title": "雷击白名单上移到 LightningBolt#tick 的目标筛选后，覆写 thunderHit 且不调 super 的原版生物（海龟/村民/猪/蘑菇牛）不再被伤害或转化（村民不得被转女巫、海龟不得被秒杀）",
+  "version": "1.21.1",
+  "target": {
+    "type": "bugfix",
+    "ref": "railgun-override-class"
+  },
+  "steps": [
+    {
+      "op": "note",
+      "text": "被测口径：原版 LightningBolt#tick 对落点箱内所有 isAlive 实体逐个调 entity.thunderHit(...)，而海龟/村民/猪/蘑菇牛**覆写 thunderHit 且不调用 super** → 在 Entity#thunderHit 里 cancel 对它们完全无效（村民仍会被转成女巫、海龟仍会被秒杀）。修复把白名单上移到 LightningBolt#tick 的目标筛选（mixin/LightningBoltStrikeScopeMixin → RailgunBolts.isValidLightningTarget），非敌对目标在进入循环前就被剔除。"
+    },
+    {
+      "op": "note",
+      "text": "判据：海龟与村民都摆在落点 ±3 格箱内（±2.5 格），落雷后 ① 两者掉血必须为 0（turtle=0 / villager=0）；② 两者必须仍然存活（valive=1 / talive=1）—— 村民被转女巫时原实体会被移除，isAlive() 会变 false，故 aliveness 是「未被转化」的直接证据。"
+    },
+    {
+      "op": "note",
+      "text": "取证环境防污染（2026-09-15 实测必需）：① `/gamerule doFireTick false` + 把脚下 2 层草方块可点燃层替换为石头（`/fill`）—— 否则落雷在玩家周围点燃地面，**玩家自己的掉血读数会混入火焰伤害**（实测 1.20.1 self=4.83~18.83 全部来自火焰、与雷击无关；石头地面 + 关火焰蔓延后 self=0）；② 下面每条读命令都注入**两次**（`railgunfriendlyread` 是幂等只读，不会改状态）—— 冷启动后前若干次注入偶发丢失，只发一次会得到「没有读数」的空跑。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamerule doFireTick false"
+    },
+    {
+      "op": "wait",
+      "ms": 300
+    },
+    {
+      "op": "inject_command",
+      "command": "/fill ~-8 ~-1 ~-6 ~8 ~-1 ~14 minecraft:stone"
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },    {
+      "op": "inject_command",
+      "command": "/astralprobe railgunfriendly OC"
+    },
+    {
+      "op": "wait",
+      "ms": 2500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe railgunfriendlyread OC"
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe railgunfriendlyread OC"
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe railgunfriendlyend OC"
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_OC_BEFORE:.*:thp=[\\d.]+:vhp=[\\d.]+:.*charge=6:mode=forced_survival"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_OC_AFTER:.*bolt_delta=[1-9]"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_OC_VERDICT:.*:turtle=0:villager=0:valive=1:talive=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_OC_RESTORE:creative"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_OC_ERR|AP_OC_EX:"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_OC_VERDICT:.*:turtle=[1-9]|AP_OC_VERDICT:.*:villager=[1-9]|AP_OC_VERDICT:.*:valive=0|AP_OC_VERDICT:.*:talive=0"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "crash"
+    }
+  ],
+  "evidence": [],
+  "on_fail": "keep_game_running"
+}

@@ -309,6 +309,71 @@ function Start-MtProcessToFile {
     return [pscustomobject]@{ Process = $proc; LogPath = $LogPath }
 }
 
+function Test-MtClientProcess {
+    <#
+    .SYNOPSIS
+        该 java 进程是否为「**本版本**的 Minecraft 客户端」（进程级双路径判定）。
+
+    .NOTES
+        2026-09-15 新增。此前只有「命令行命中本流程标记」一条路径，而本机 DevLaunch
+        （ModDevGradle legacyforge/neoforge 的 runClient）把真正的参数写进 **args 文件**，
+        `Win32_Process.CommandLine` 只剩
+        `net.caffeinemc.sodium / net.minecraft.client.main.Main /`（实测 56 字符），
+        **不含**子项目名与 run 目录 → 旧判定恒为「客户端未在运行」。
+
+        双路径（**同等严格**，不是放宽）：
+          ① 命令行命中 `Get-MtProcessMarkers`（普通 Gradle 启动仍然走这条）；
+          ② **窗口标题包含本版本号**（`MainWindowTitle`，与 mt_inject 的
+             「标题含版本号」回退同一口径）。
+
+        两条都不成立才算「不是本版本客户端」：
+          · 崩溃/被收停 → 进程已退出 → 无标题 → false；
+          · Gradle 守护 / 包装器 → 命令行不含 Main，或标题为空 → false；
+          · 另一个版本的客户端 → 命令行无本版本 marker **且**标题含的是另一个版本号 → false。
+        ⚠️ 版本号匹配**必须**用 `.Contains()` 字面量：`-match '1.2.1'` 的正则点号会误命中
+           `1.21.1`；`-match '1.21.1'` 同理会被 `1x21y1` 之类文本命中。禁止改成正则。
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][psobject]$Paths,
+        [Parameter(Mandatory)][int]$ProcessId,
+        [Parameter(Mandatory)][AllowEmptyString()][string]$CommandLine
+    )
+
+    $title = ''
+    try {
+        $proc = Get-Process -Id $ProcessId -ErrorAction SilentlyContinue
+        if ($null -ne $proc) { $title = [string]$proc.MainWindowTitle }
+    } catch {
+        $title = ''
+    }
+
+    # 路径①（最强、跨加载器）：**窗口标题含本版本号**。
+    #   1.21.1 DevLaunch → `Minecraft NeoForge* 1.21.1 - 单人游戏`
+    #   1.20.1 DevLaunch → `Minecraft* Forge 1.20.1 - 单人游戏`
+    #   Gradle 守护/包装器无窗口 → MainWindowTitle 为空 → 不会误命中。
+    if ($title -and $title.Contains([string]$Paths.version)) { return $true }
+
+    # 路径②（无窗口/标题读不到时的兜底）：命令行必须是**客户端入口**，且带本版本证据。
+    #   ⚠️ 2026-09-15 实测：1.20.1 的 DevLaunch 客户端命令行**不含**
+    #   `net.minecraft.client.main.Main`（走 `cpw.mods.bootstraplauncher.BootstrapLauncher`，
+    #   且不含 `:forge-1.20.1:` / `run\1.20.1` 任一 marker）——只认 Main + marker 的旧判定
+    #   对 1.20.1 恒为「未在运行」，连带 `mt_stop --version 1.20.1` 静默杀 0 个进程。
+    $isClientEntry = $CommandLine.Contains('net.minecraft.client.main.Main') -or
+                     $CommandLine.Contains('bootstraplauncher')
+    if (-not $isClientEntry) { return $false }
+
+    foreach ($m in @(Get-MtProcessMarkers -Paths $Paths)) {
+        if ($m -and $CommandLine.Contains([string]$m)) { return $true }
+    }
+    # 命令行里同时出现**本版本号**与**本子项目名**也算证据（如
+    # `-Dfml.modFolders=astral_dice%%…\forge-1.20.1\build\…`）。
+    if ($CommandLine.Contains([string]$Paths.version) -and $CommandLine.Contains([string]$Paths.subproject)) {
+        return $true
+    }
+    return $false
+}
+
 function Stop-MtVersionProcesses {
     <#
     .SYNOPSIS
@@ -320,6 +385,12 @@ function Stop-MtVersionProcesses {
         `Get-MtProcessMarkers` 给出：刻意不用裸子项目名（那同时是仓库内的目录名，会把
         只是引用了该目录的进程——IDE 语言服务器等——误杀）。旧流程「按进程名 java 全杀」
         更是明确的破坏性行为。
+
+        2026-09-15：判定统一改为 `Test-MtClientProcess`（命令行 marker **或**
+        本版本窗口标题）。原因：DevLaunch 客户端的命令行不含任何版本 marker，
+        旧判定导致 `mt_stop --version X` **静默杀 0 个**，而「杀不掉」会直接
+        毒化下一次 mt_launch 的日志窗口（读到他人/上一轮的 latest.log）。
+        窗口标题路径同样**只认本版本号**，不会退化成「按 java 名全杀」。
     #>
     [CmdletBinding()]
     param(
@@ -327,15 +398,11 @@ function Stop-MtVersionProcesses {
         [switch]$Quiet
     )
 
-    $markers = @(Get-MtProcessMarkers -Paths $Paths)
     $killed = 0
     foreach ($p in Get-JavaProcesses) {
-        $cmd = [string]$p.CommandLine
-        $hit = $false
-        foreach ($m in $markers) {
-            if ($m -and $cmd.Contains([string]$m)) { $hit = $true; break }
+        if (-not (Test-MtClientProcess -Paths $Paths -ProcessId $p.Pid -CommandLine ([string]$p.CommandLine))) {
+            continue
         }
-        if (-not $hit) { continue }
         [void](Invoke-MtProcess -FilePath 'taskkill' `
                 -ArgumentList @('/PID', "$($p.Pid)", '/T', '/F') -TimeoutSec 30)
         $killed++
@@ -363,14 +430,17 @@ function Get-MtClientStatus {
     [CmdletBinding()]
     param([Parameter(Mandatory)][psobject]$Paths)
 
-    $markers = @(Get-MtProcessMarkers -Paths $Paths)
     $pids = @()
+    $titles = @()
     foreach ($p in Get-JavaProcesses) {
-        $cmd = [string]$p.CommandLine
-        if ($cmd -notlike '*net.minecraft.client.main.Main*') { continue }
-        foreach ($m in $markers) {
-            if ($m -and $cmd.Contains([string]$m)) { $pids += [int]$p.Pid; break }
+        if (-not (Test-MtClientProcess -Paths $Paths -ProcessId $p.Pid -CommandLine ([string]$p.CommandLine))) {
+            continue
         }
+        $pids += [int]$p.Pid
+        try {
+            $pr = Get-Process -Id $p.Pid -ErrorAction SilentlyContinue
+            if ($null -ne $pr) { $titles += [string]$pr.MainWindowTitle }
+        } catch { /* 忽略标题读取失败 */ }
     }
     $crashes = @()
     $crashDir = [string]$Paths.crash_dir
@@ -382,6 +452,7 @@ function Get-MtClientStatus {
         Version         = [string]$Paths.version
         Alive           = ($pids.Count -gt 0)
         Pids            = $pids
+        Titles          = $titles
         CrashCount      = $crashes.Count
         LatestCrash     = $(if ($crashes.Count -gt 0) { [string]$crashes[-1].FullName } else { '' })
         LatestCrashTime = $(if ($crashes.Count -gt 0) { $crashes[-1].LastWriteTime } else { [datetime]::MinValue })
@@ -391,5 +462,5 @@ Export-ModuleMember -Function @(
     'ConvertFrom-MtBytes', 'Invoke-MtProcess', 'Invoke-MtProcessFull',
     'Stop-MtProcessTree', 'Get-JavaProcesses', 'Get-GradleDaemonProcesses',
     'Read-MtSharedText', 'ConvertTo-MtStartArgs', 'Start-MtProcessToFile',
-    'Stop-MtVersionProcesses', 'Get-MtClientStatus'
+    'Stop-MtVersionProcesses', 'Get-MtClientStatus', 'Test-MtClientProcess'
 )

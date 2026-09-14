@@ -142,17 +142,17 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --phase <p> --version <v>
 | `KOMACHI-EXTRA-PLAY` | 忍者立牌主动「忍术连击」= **一次性** +1：只作用于**当前出牌轮**（不累积、不跨轮、**无出牌银行附件**、**无来源注册**）；释放前置三条 = 效果牌冷却进行中 / 出牌上限已达封顶 9 / 本轮已授予过 → 一律拒绝且**不消耗**主动技能冷却；正常释放 = 本轮上限 +1 且主动冷却起算；周期归零后一次性加成必须归零（用例文件 `cases/KOMACHI-EXTRA-PLAY-{1.21.1,1.20.1}.json`） | 13 步 / 28 断言 | `AP_K1_BEFORE:max=1:extra=0`、`AP_K1_AFTER:max=2:extra=1:cd=1`、`AP_K1_DELTA:max=+1:…:cd=started`、`AP_K1_RELEASED:1`、`AP_K2_REJECTED:1`（本轮已授予过：加成不变、主动冷却结束时刻逐字未变 `cd_same=1`/`cd_future=0`）、**`AP_K6_BEFORE:bonus=0:cd_active=1:sign_cd=0`、`AP_K6_AFTER:bonus=0:…:sign_cd=0:cd_kept=1`、`AP_K6_REJECTED:1`（**效果牌冷却进行中不得释放**，新规则）**、`AP_K3_CONST:9:bonus_one_shot=1`、`AP_K3_FILL:6`（干净基线 extra = 固定 2（大背包/忍术飞镖）+ 临时 3（命运的指引/可口糖果/探天卫星）= 5 → 上限 6；活体书页自改版起是"本周期累计"来源、**不再是效果驱动的临时来源**，故不计入）、`AP_K3_VERDICT:…`（封顶分支与未封顶正对照两形态一条正则锁死）、`AP_K5_READ:extra=0:count=0:cd=0`、`AP_K5_CLEARED:1`（周期归零 ⇒ 一次性加成归零 ＝ 无残留银行）、`absent`、`kubejs`、`crash` |
 | `NANCY-LU-PEARL-IMMUNE` | 骇客「网络防火墙」：末影珍珠传送摔落伤害在伤害判定最前置处被取消（生命值不变 + `hurtTime`/`invulnerableTime`/`hurtMarked` 全未被写入），并带同构造对照相位 | 9 步 / 21 断言 | `AP_P1_FIELDS:ok`、`AP_P1_API:(hurt\|causeFallDamage)`、`AP_P1_CTRL_OK:1`（对照相位必须真受伤）、`AP_P1_IMM:…->…`（前后快照逐字一致）、`AP_P1_IMM_OK:1`、`AP_P2_PEARL:window=…:tel=1:drop=0:hurt=0:invul=0:marked=false`、`AP_P3_PEARL:window=0:tel=1:drop=5:hurt>0`、`absent`、`kubejs`、`crash` |
 | `NANCY-LU-CLOAK` | 骇客主动「远程侵入」：完全隐身的机器可判定一半——隐身实例 `visible=false`（无粒子）、`nancy_lu_hidden_until>0`、到期与攻击两条解除路径都能清掉附件与效果 | 14 步 / 19 断言 | `AP_N1_STATE:hidden_until=…:vis=0:…:win=1`、`AP_N1_HIDDEN:1:1`（服务端 `isHidden` + 客户端 `isHiddenClient`）、`AP_N3_CLEARED:1`（到期路径）、`AP_N6_STATE:hidden_until=0:effect=0:vis=-1:…:hack=1:bonus=…`（攻击路径）、`absent`、`kubejs`、`crash`；**视觉半自动**（1 张截图，无 `vision` 断言） |
-| `RAILGUN-AOE-SCOPE` | 电磁炮雷击命中范围取证：单个可命中敌对目标只生成 **1 道**原版雷击，而原版雷击对落点箱内**所有**存活实体生效——实测同时打中攻击者本人、中立生物与已驯服的宠物，证明该链路**没有任何阵营/所有权过滤** | 8 步 / 13 断言 | `AP_RG_TAME:tame=1:owner=1:src=`（狼已驯服并绑定主人，`src` 为命中的 UUID 取值器）、`AP_RG_BEFORE:…:charge=6:mode=forced_survival:weather=clear`、`AP_RG_CHARGE_AT_ATTACK:6`（充能**延迟到雷击落下**才结算）、`AP_RG_AFTER:…bolt_delta=1`（只 1 道雷击）、`AP_RG_AFTER:…:charge=0`、`AP_RG_VERDICT:enemy=1`（敌方必被命中）、`AP_RG_RESTORE:creative`、`absent`、`kubejs`、`crash` |
+| `RAILGUN-AOE-SCOPE` | 电磁炮雷击命中范围取证：每个**可命中敌对目标**各生成 1 道原版雷击，而原版雷击对落点箱内**所有**存活实体生效——实测同时打中攻击者本人、中立生物与已驯服的宠物，证明该链路**没有任何阵营/所有权过滤** | 9 步 / 13 断言 | `AP_RG_TAME:tame=1:owner=1:src=`（狼已驯服并绑定主人，`src` 为命中的 UUID 取值器）、`AP_RG_BEFORE:…:charge=6:mode=forced_survival:weather=clear`、`AP_RG_CHARGE_AT_ATTACK:6`（充能**延迟到雷击落下**才结算）、`AP_RG_AFTER:…bolt_delta=3`（**只生成预期数量**的雷击：现行探针的 3 个可命中目标各 1 道；2026-09-15 裁决「方案 A」，基线由 `1` 更新为 `3`，见 §8.1 口径 2）、`AP_RG_AFTER:…:charge=0`、`AP_RG_VERDICT:enemy=1`（敌方必被命中）、`AP_RG_RESTORE:creative`、`absent`、`kubejs`、`crash` |
 | `LOOT-MODIFIER` | 1.20.1 星盘战利品修饰符：Forge 47.4.10 **没有**内置 `add_table`，改用自带的 `astral_dice:add_table` 后 13 条修饰符必须全部解码成功并能真正注入星盘 | 5 步 / 6 断言 | `AP_GLM_SERIALIZERS:.*astral_dice:add_table`、`AP_GLM_ROLL:rolls=400:plates=([5-9]\|[1-9][0-9]+):items=[1-9][0-9]*:err=none`（实滚 400 次 `minecraft:chests/simple_dungeon`，子表 5% 出星盘）、`absent` `Could not decode GlobalLootModifier`、`kubejs`、`crash`（仅 1.20.1 一份） |
-| `EFFECT-DECAY-FLICKER` |**视觉半自动**（1 张截图，不做机器判定） |
+| `EFFECT-DECAY-FLICKER` | 层数递减类效果（治愈/标记/弱点识破/赋能）客户端 HUD **不再闪烁**：`mixin/client/GuiMixin` 把 `Gui#renderEffects` 的 `endsWithin(200)` 判定对四类效果恒定返回 false | 13 步 / 11 断言 + 1 张截图 | `AP_F1_SETUP:heal=ok:mark=ok:emp=ok:blessed_before=…`、`AP_F1_STATE:heal=amp=2:dur=200…\|mark=amp=1:dur=200…\|emp=amp=2:dur=200…`（三实例**同时**落入原版闪烁窗口）、`AP_F1_WINDOW:1:200`、`AP_F2_STATE:heal=absent\|mark=absent\|emp=absent`、`Mixing client.GuiMixin … into net.minecraft.client.gui.Gui`（`scope: whole`）、`mixin`/`kubejs`/`crash`；**闪烁与否不做机器判定**，附 1 张截图人工核对（2026-09-15 双版本 PASS） |
 | `EFFECT-CARD-LOCK` | 效果牌出牌状态机**永久锁死**回归（2026-09-14 外部汇报的严重 BUG）：出牌数已达当轮上限却没有冷却在跑（"上限在周期中途下降"造成的不变量违例）时，`tick` 必须补上一轮冷却，且该冷却到期后出牌数与冷却双双清零、出牌锁解除 | 1 步 / 3 断言 | `AP_<tag>_LOCK:…:blocked_before=1:remain_before=0:cd_after_future=1:count_cleared=0:cd_cleared=0:blocked_after=0`、`AP_<tag>_LOCK_OK:1`、`AP_<tag>_DONE`、`absent`、`kubejs`、`crash` |
 | `EFFECT-CARD-HOLD` | 效果牌「一次按下只出一张」：长按右键不得连续出牌（客户端 `Minecraft#startUseItem` 在 HEAD 被取消 ⇒ 既不调用 `use` 也不发 `ServerboundUseItemPacket`，服务端自然不多出牌） | 4 步 / 3 断言（含 1 步对照） | ① 对照（证明原版自动重复**真的**发生，否则修复判据不成立）：`/gamemode survival` + `/effect give @s minecraft:resistance 60 4 true` + `/item replace entity @s weapon.mainhand with minecraft:egg 16` → `mt_inject.ps1 key -Key rclick -HoldMs 3000` → `/data get entity @s SelectedItem` 的 `count` 必须**下降约 15**（16 → 1，原版 4 tick/次）；② 修复判据：`/astralprobe komachicast H` + `/astralprobe equipslot chip "astral_dice:big_backpack_chip" HB`（当轮上限 = 1+1+1 = 3）+ 手中持**无待定效果**的效果牌（`/item replace entity @s weapon.mainhand with astral_dice:effect_card_chocolate_cake 16`；王之力/激光一类「效果待定」牌会自我封锁，不可用于本用例）→ 同样 `-HoldMs 3000` → `AP_H_READ:extra=1:count=1:cd=0:max=3`（15 次尝试只出 1 张，且**不得**起周期冷却）；③ 复位判据：松键后再单击一次 → `count=2`（守卫按「同一次按下」复位，不是永久锁） |
-| `HOSTILE-TARGET-NEUTRAL` | 「敌对目标」判定纳入**被激怒的中立生物**（北极熊/狼/铁傀儡/蜜蜂；末影人/僵尸猪灵本身即 `Enemy`）：统一入口 `HostileTargets.isHostile` 生效 | 复用 `railgunfriendly` 探针 | `AP_<tag>_VERDICT:…:neutral=1…`（北极熊 `AngerTime>0` 时必被雷击） |
-| `RAILGUN-PET-EXCLUDE` | 电磁炮雷击排除**施放者自己拥有的宠物**（`OwnableEntity` owner == 闪电 cause） | 复用 `railgunfriendly` 探针 | `AP_<tag>_VERDICT:…:friendly=0…`（已驯服狼 `AngerTime>0` 仍不被雷击） |
-| `RAILGUN-OVERRIDE-CLASS` | 雷击白名单**上移到 `LightningBolt#tick` 目标筛选**后，覆写 `thunderHit` 且不调 `super` 的原版生物（海龟/村民/猪/蘑菇牛）不再被伤害/转化 | 复用 `railgunfriendly` 探针 | `AP_<tag>_VERDICT:…:turtle=0:villager=0:valive=1:talive=1`（村民不得被移除＝未被转女巫） |
-| `SPELL-TRUE-DAMAGE` | 伤害效果牌（法伤）加成走 `astral_dice:true_damage`（只效果牌那部分穿甲，基础武器伤害照旧） | **待补探针**（需 `DamageEffectCardHandler` 加成路径的实机读数） | 待补 |
-| `FEN-SPLASH-MAIN-TARGET` | 大当家溅射对主目标生效（原版 `hurt` 的 `lastHurt`/无敌帧顺序缺陷已修） | 复用 `fensplash` / `fensplashhit` / `fensplashread` 探针 | `AP_<tag>_AFTER:tdealt=…:near_dealt=…:armored_dealt=…` + `VERDICT:true_damage=1:ratio_ok=1` |
-| `LOADER-GATE-FORGE` | 1.20.1 Forge 加载器门槛：低于 47.4.10 必须在 FML 依赖排序阶段被拒（离线 `VersionRange` 实测） | 5 步 / 6 断言 | 旧区间接纳 47.0.0（BUG 复现）／新区间拒绝 47.0.0、47.4.9 并接纳 47.4.10+ |
+| `HOSTILE-TARGET-NEUTRAL` | 「敌对目标」判定纳入**被激怒的中立生物**（北极熊/狼/铁傀儡/蜜蜂；末影人/僵尸猪灵本身即 `Enemy`）：统一入口 `HostileTargets.isHostile` 生效 | 复用 `railgunfriendly` 探针（2026-09-15 双版本 PASS） | `AP_<tag>_VERDICT:…:neutral=1…`（北极熊 `AngerTime>0` 时必被雷击） |
+| `RAILGUN-PET-EXCLUDE` | 电磁炮雷击排除**施放者自己拥有的宠物**（`OwnableEntity` owner == 闪电 cause） | 复用 `railgunfriendly` 探针（2026-09-15 双版本 PASS） | `AP_<tag>_VERDICT:…:friendly=0…`（已驯服狼 `AngerTime>0` 仍不被雷击） |
+| `RAILGUN-OVERRIDE-CLASS` | 雷击白名单**上移到 `LightningBolt#tick` 目标筛选**后，覆写 `thunderHit` 且不调 `super` 的原版生物（海龟/村民/猪/蘑菇牛）不再被伤害/转化 | 复用 `railgunfriendly` 探针（2026-09-15 双版本 PASS） | `AP_<tag>_VERDICT:…:turtle=0:villager=0:valive=1:talive=1`（村民不得被移除＝未被转女巫） |
+| `SPELL-TRUE-DAMAGE` | 伤害效果牌（法伤）加成走 `astral_dice:true_damage`（只效果牌那部分穿甲，基础武器伤害照旧） | 探针 `/astralprobe spelltdsetup <tag>` + `spelltdhit <tag>`（**必须分两条命令**：属性命令晚一 tick 生效；2026-09-15 双版本 PASS） | `AP_SD_CTRL:bare=1:arm=0.21`（对照相位：无效果牌，护甲吃满）、`AP_SD_TEST:bare=4:arm=3.21`（试相位：+4 法伤后两相位差值相等 ⇒ 加成部分不吃护甲）、`AP_SD_VERDICT:base_armor_effective=1:bonus_true_damage=1:no_api=0` |
+| `FEN-SPLASH-MAIN-TARGET` | 大当家溅射对主目标生效（原版 `hurt` 的 `lastHurt`/无敌帧顺序缺陷已修） | 复用 `fensplash` / `fensplashhit` / `fensplashread` 探针（2026-09-15 双版本 PASS） | `AP_<tag>_AFTER:tdealt=…:near_dealt=…:armored_dealt=…` + `VERDICT:true_damage=1:ratio_ok=1` |
+| `LOADER-GATE-FORGE` | 1.20.1 Forge 加载器门槛：低于 47.4.10 必须在 FML 依赖排序阶段被拒（离线 `VersionRange` 实测，不需启动游戏） | `mt_loadergate.ps1` + 5 步 / 6 断言（2026-09-15 PASS） | 旧区间接纳 47.0.0（BUG 复现）／新区间拒绝 47.0.0、47.4.9 并接纳 47.4.10+（`AP_LG_VERDICT:bug_repro=1:gate_ok=1:loader_ok=1:overall=1`） |
 
 > `DIRECTIONAL-BLAST-AOE` / `EMERALD-DICE-TRADE` 于 2026-09-13 追加，配套探针命令
 > **真伤判据(2026-09-14 手工实测,两步走)**:`astral_dice:true_damage` 的穿甲能力**必须分两条命令**验证——
@@ -231,7 +231,7 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --phase <p> --version <v>
 > **不写 `vision` 断言**，其余判定全部来自聊天栏 `AP_` 读数与 Mixin 应用行
 > （`debug.log` 不随每次运行清空，故 `Mixing` 行只作「本机曾成功应用」的证据，失败面由增量区间的
 > `mixin` 断言兜底）。
-> ⚠️ **本批四条用例尚未在真实游戏中运行**（新增探针命令需冷启动一次），首次运行结果请回填本文件。
+> ✅ **本批四条用例已于 2026-09-15 在真实游戏中运行**（探针改动经冷启动生效），逐条结果见 §8.1。`EFFECT-DECAY-FLICKER` 在 1.20.1 首次运行失败，根因是**测试侧状态污染**（同会话前序用例残留的骰神赐福），**非产品回归**；已定位（见 §10 第 16 条）并修好探针后复跑 PASS。
 
 > **历史说明（2026-09-14）**：`BUG1-BLESSING-HUD`、`BUG2-EMPOWER-DECAY`、`BUG3-MIXIN-BADGE`、
 > `BUG4-OCULUS-LIGHTNING`、`BUG5-RAILGUN-DELAY-CD` 五条用例**及其全部判定内容**（含仅服务它们的
@@ -240,6 +240,37 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --phase <p> --version <v>
 > **不再是在用用例**，后续运行不再产出它们的结论；`attack` 因仍被 `NANCY-LU-CLOAK` 的
 > 「攻击解除隐身」相位复用而**保留**。它们的历史运行报告仍保留在 `scripts/test/reports/2026*`
 > 作为证据存档（不再复跑）。
+
+### 8.1 A 组复跑实测结果（2026-09-15，执行者独立于实现方）
+
+- 运行 id：`20260913-175652`（sticky run）；产物：`scripts/test/reports/20260913-175652/{1.21.1,1.20.1}/report.md`、`SUMMARY.md`（含日志与截图副本）；条目状态契约：`cases/.mt_run_state.json`。
+- 被测二进制**未改动**：沿用已部署的 `astral_dice-1.2.1+*.jar`（2026-09-15 01:17 构建），本批只改 `scripts/test/**`。
+- 日志归属可证：每条用例都由 `mt_launch`（启动前预检全机无客户端 + `latest.log` 删除成功 + 只接受 `CreationTime` 晚于本次启动的日志）拉起本机客户端产生；1.21.1 窗口标题 `Minecraft NeoForge* 1.21.1`，1.20.1 为 `Minecraft* Forge 1.20.1`。
+
+| # | 用例 | 1.21.1 | 1.20.1 | 关键原始读数（聊天栏 `AP_` 行） |
+|---|---|---|---|---|
+| 1 | `HOSTILE-TARGET-NEUTRAL` | PASS | PASS | `AP_<tag>_VERDICT:self=0:enemy=1:neutral=1:friendly=0:turtle=0:villager=0:valive=1:talive=1`；`neutral=25`（被激怒北极熊 `AngerTime>0` 确被雷击）；`bolt_delta=3` |
+| 2 | `RAILGUN-PET-EXCLUDE` | PASS | PASS | `AP_PE_AFTER:…:friendly=0` + `SCOPE_OK:1`（施放者自己的已驯服狼未被自方雷击；`Fire=-1` 证明未被点燃） |
+| 3 | `RAILGUN-OVERRIDE-CLASS` | PASS | PASS | `AP_<tag>_VERDICT:…:turtle=0:villager=0:valive=1:talive=1` + `SCOPE_OK:1`（村民未被转女巫、海龟未被伤害） |
+| 4 | `SPELL-TRUE-DAMAGE` | PASS | PASS | `AP_SD_CTRL:bare=1:arm=0.21`、`AP_SD_TEST:bare=4:arm=3.21`、`AP_SD_VERDICT:base_armor_effective=1:bonus_true_damage=1:no_api=0`（两相位差值相等 ⇒ 只有效果牌那段法伤穿甲） |
+| 5 | `FEN-SPLASH-MAIN-TARGET` | PASS | PASS | 1.20.1 末次：`AP_FS_BEFORE:thp=16` → `AP_FS_SNAP:thp=4.72`、`AP_FS_MELEE:player_attack:dealt=11.28:recharge=3`（5→3 = 满层引爆）、`AP_FS_AFTER:tdealt=11.28:near_dealt=5.28:armored_dealt=5.28:far_dealt=0:melee_est=6:ratio=0.88`、`AP_FS_VERDICT:in_range=1:out_range=1:true_damage=1:at_floor=0:ratio_ok=1` |
+| 6 | `LOADER-GATE-FORGE`（仅 1.20.1，纯离线） | —（无此版本） | PASS | `AP_LG_VERDICT:bug_repro=1:gate_ok=1:loader_ok=1:fail=:fml_stage=dependency_sorting:msg=Missing or unsupported mandatory dependencies:overall=1` |
+| 7 | `EFFECT-DECAY-FLICKER` | PASS | PASS | `AP_F1_STATE:heal=amp=2:dur=200:amb=0:vis=0\|mark=amp=1:dur=200:amb=0:vis=1\|emp=amp=2:dur=200:amb=0:vis=0`、`AP_F1_WINDOW:1:200`、`AP_F2_STATE:heal=absent\|mark=absent\|emp=absent`；截图 `run/1.20.1/screenshots/decay_flash_20260913-175652.png`、`run/1.21.1/screenshots/decay_flash_20260913-175652.png`（三效果图标恒定不闪，人工核对） |
+
+**必须一并阅读的五条口径**：
+
+1. **`SUMMARY.md` 的版本结论显示 FAIL，那是全量条目聚合**：同一 sticky run 里仍留着上一轮会话的 `ANVIL-STAR-UPGRADE` / `DIRECTIONAL-BLAST-AOE` / `EMERALD-DICE-TRADE` / `KOMACHI-EXTRA-PLAY` / `NANCY-LU-*` / `RAILGUN-AOE-SCOPE`（`ERROR`/`SKIP`），以及执行者两次**调用姿势错误**留下的 `.mt_snapshot`、`EFFECT-DECAY-FLICKER`（漏 `--case` 路径）两条 `ERROR`。A 组 7 项在 `cases/.mt_run_state.json` 中逐条为 `PASS`。
+2. `RAILGUN-AOE-SCOPE` 行内的 `bolt_delta` 期望**相对现行探针已过期**（原为 `1`），**2026-09-15 裁决走「方案 A」**：直接把 `RAILGUN-AOE-SCOPE-{1.21.1,1.20.1}.json` 的断言改为 `bolt_delta=3`（现行 `railgunfriendly` 探针摆 5 靶并激怒中立/宠物，其中可命中者为 3 个 → 3 道雷击），用例语义保持「只生成预期数量、没有多生成」。**「方案 B」记为待办**：下次因其它原因动探针输出格式时，顺手把 `bolt_delta` 改成**按目标类型分桶**（如 `extra_neutral` / `extra_pet` / `extra_override`），届时把期望逐项锁死——不要为这一条次要计数断言单独付「改探针格式 + 冷启动 + 读数失去可比性」的代价。该用例的鉴别力来自 `VERDICT` 的命中范围/防误伤（`turtle=0:villager=0:friendly=0` 等），`bolt_delta` 只是旁证，故方案 A 不降低鉴别力。⚠️ 新期望由现行探针的目标集合推得，**尚待该用例在新产物上复跑确认**（本批 A 组未复跑它）。
+3. `HOSTILE-TARGET-NEUTRAL` 在 1.20.1 首轮出现过一次 `self=2.67/4.67`（施放者间歇自伤），随后复跑 `self=0`；1.21.1 全程 `self=0`。间歇复现、根因未定，见 §8.2。
+4. 1.20.1 的 `FEN-SPLASH-MAIN-TARGET` 三次运行中一次 FAIL：远靶（`blaze`，`placeAt(p.x, p.y, p.z+11)`）在**两次命令之间自行掉 8 血**——该窗口内玩家无任何攻击，且远靶距玩家 11 格、距主靶约 9 格，均在 6 格溅射半径之外 → 判为环境/放置位置导致的伤害，使 `far_dealt=0` 断言失守，**非产品面**；随后原样复跑 PASS。用例的远靶放置对地形敏感，属用例健壮性问题（待加固）。
+5. 探针新增/修正的 `ModEffectRemoval` 通道（§10 第 16 条）对 1.21.1 已记录的 PASS 无实质影响：1.21.1 的 `EFFECT-DECAY-FLICKER` 读数为 `dur=200`，按 `HealingManager#updateEffect` 的分支逻辑**只可能来自 `blessing == null`**，故「清赐福」在该次运行中是空操作。若要求字节级 JSON↔运行一一对应，需再冷启动一次 1.21.1 复跑（本次未做，等交接）。
+
+### 8.2 产品面存疑项（只登记，未改任何产品代码）
+
+1. **1.20.1 施放者间歇自伤**：`HOSTILE-TARGET-NEUTRAL` 首轮 `self=2.67/4.67`（雷击落点附近的玩家自己掉血），复跑为 `self=0`；1.21.1 未复现。既可能是雷击箱内自伤，也可能是着火/环境，**间歇且未定根因**。
+2. **`HealingManager#updateEffect` 的赐福分支**：赐福在场时治愈图标时长被写成**赐福剩余时长**（实测 `/effect give … dice_blessing 600`（秒）→ `heal dur=119943`）。这是设计内行为（图标与赐福同寿命），但会让「层数递减类效果」在赐福期间**永远**处于「剩余 > 200」，即原版闪烁窗口在此期间不可达——测试侧构造该前置时必须显式清赐福。
+3. **本模组效果的移除被自身拦截**：`ModEffectEvents#onModEffectRemovalPrevented`（`EventPriority.HIGH`）取消玩家身上 `astral_dice:*` 效果的一切**普通**移除，含原版 `/effect clear`、牛奶，以及第三方/脚本的直接 `removeEffect`；只有 `ModEffectRemoval`（内部标志）、`EffectTimerGuard`（强制标志）、死亡三条通道放行。同族风险：任何「让玩家或其他模组清掉本模组效果」的诉求都会被**静默拒绝**（无日志、无反馈），排查者容易误判成「效果清不掉」。本次未改产品代码，仅登记。
+4. **`ModEffects.X` 的 API 形态跨版本不对称**（测试侧已适配）：1.21.1 是 `Holder<MobEffect>`、1.20.1 是 `RegistryObject<MobEffect>`（探针必须 `.get()`），漏写会抛 `Could not create ID from 'RegistryObject…'` 并中断整条探针命令。
 
 ---
 
@@ -270,6 +301,14 @@ pwsh -NoProfile -File scripts/verify/verify_bountiful_instance_exclusions.ps1
 6. **测试世界规则**：`mt_env world` 强制写入 `allowCommands=1` 与 `GameRules.keepInventory="true"`（新建与种子恢复两条路径都写）；任一规则缺失即 `MT_WORLD: BLOCKED`（退出码 11）。缺 `keepInventory` 会让测试中死亡掉落物品、实验反复被打断。
 7. **逐条结果必须自动入报告**：`mt_case.ps1` 执行完每条即调用 `mt_report mark --case`；漏记会让 `summary` 恒显示「未执行 / 0 条目」并把全绿误判为失败。
 8. **脱离执行**：见 §3 末尾（Start-MtDetached）。
+9. **DevLaunch 的客户端命令行不是原版形态**（2026-09-15 实测，导致 `mt_case` 拒绝运行 + `mt_stop` 杀不掉）：1.21.1 客户端命令行只剩 `net.caffeinemc.sodium … net.minecraft.client.main.Main`（≈56 字符，无 classpath、无版本目录）；1.20.1 客户端命令行里**根本没有** `net.minecraft.client.main.Main`（走 `cpw.mods.bootstraplauncher.BootstrapLauncher`，只含 `forge-1.20.1` 而不含 `:forge-1.20.1:` 或 `run\1.20.1`）。凡「按命令行含 `Main` 判客户端」的判据都会漏判。现行判据是 `Mt.Proc.psm1` 的 `Test-MtClientProcess`（窗口标题含版本号 **或**（`net.minecraft.client.main.Main`/`bootstraplauncher`）且（DevLaunch 标记 **或** 版本+子项目））；新增任何进程判定必须走它。
+10. **`mt_launch` 假阳性 `MT_LAUNCH: OK`**（2026-09-15 实测后修复）：旧实现用 `-ErrorAction SilentlyContinue` 删 `latest.log`，且只认「已进入世界」这一行文本 —— 当**另一个版本/别人的客户端**正在运行时，删除会失败（句柄被占）却静默吞掉，随后读到的是**别人的 `latest.log`**，于是误判本机启动成功并断言到错误日志。现行实现：① 启动前若全机存在任一客户端进程即 `BLOCKED`（exit 11）；② `latest.log` 删不掉即硬失败（exit 11），启动前必须不存在；③ 只接受 `CreationTime` 晚于本次 `$launchStartedAt` 的 `latest.log` 里的「已进入世界」行。
+11. **`performPrefixedCommand` 的返回值跨版本不一致**：1.21.1 上返回 `undefined`（命令**其实已执行**，探针日志照常出现），1.20.1 上返回 `0/1`。探针判定一律**不得**以返回值或 `rc=` 为准，改读聊天栏 `AP_` 行。
+12. **1.21 起 `data get` 的 NBT 键变小写**：实体属性键 1.20.1 为 `Attributes`、1.21.1 为 `attributes`；跨版本断言不要依赖 NBT 键名（改用聊天栏读数，如 `的属性护甲值的基值已设置为 20.0`）。
+13. **近战横扫 / 着火的混淆**（2026-09-15 实测）：把中立/宠物靶放在 ~1.5 格内，会被玩家的**近战横扫**打到（与雷击无关，判据是「伤害在雷击落下**之前**就已出现 + 靶 `Fire=-1`」）；雷击点燃草地也会给出额外伤害（曾被误算成施放者自伤 `self=18.83`）。规避：靶移到 **2.8 格**（出横扫箱、仍在 ±3 的雷击箱内），并加 `/gamerule doFireTick false` + 石地板。
+14. **`.mt_snapshot.json` 的残留偏移会静默漏行**：`log`/`absent` 断言默认只扫「自快照以来的增量」，偏移陈旧（如 1.20.1 残留 `@96917B`）会把早期行判为「不存在」。每条用例前先跑 `pwsh -NoProfile -File scripts/test/mt_assert.ps1 snapshot --version <版本>`。
+15. **1.20.1 探针里 `ModEffects.X` 必须 `.get()`**：1.20.1 是 `RegistryObject`、1.21.1 是 `Holder`；漏 `.get()` 会在运行期抛 `Could not create ID from 'RegistryObject…'` 并**中断该条探针命令**（实测 1.20.1 `fensplash` 第 2265 行），表现为该相位所有 `AP_` 行整段消失 —— 必须与前一条「命令未执行」的排查区分开。
+16. **`HealingManager#updateEffect` 的骰神赐福分支**（2026-09-15 实测，`EFFECT-DECAY-FLICKER` 首次运行失败的真正根因）：治愈图标时长在**赐福在场时等于赐福剩余时长**（`HealingManager` 的 `blessing != null` 分支），与治愈计时器无关；因此只要玩家身上残留 `dice_blessing`（前一用例触发过赐福即可），`endsWithin(200)` 的原版闪烁窗口**不可能**成立，`_WINDOW:0` 与本模组修复无关。构造该窗口的探针命令必须**先 `removeEffect(DICE_BLESSING)`** 再 `setHealingTimerEnd(now+200)` + `add`；仅靠 `/effect clear @s` 或 `decayclear`（只清治愈点数/计时器/三类效果）**不够**。判定「赐福是否在场」可读 `AP_<tag>_SETUP:…:blessed_before=`。
 
 ---
 

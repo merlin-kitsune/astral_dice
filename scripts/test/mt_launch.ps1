@@ -67,8 +67,39 @@ if ($MyInvocation.InvocationName -ne '.') {
         exit $MT_EXIT_BLOCKED
     }
 
+    # ── 防撞预检（2026-09-15 实测后的硬性口径）─────────────────────────────────
+    # ① 全机存在**任何** Minecraft 客户端（不分版本）即拒绝启动：跨版本/他人客户端
+    #    同时开着会让本阶段的「等待日志出现」直接读到**别人写的** latest.log，
+    #    而窗口/注入目标也会撞车（实测：01:17 那次启动就是这样误判成 OK 的）。
+    $existing = @(Get-JavaProcesses | Where-Object {
+            $c = [string]$_.CommandLine
+            $t = ''
+            try { $t = [string](Get-Process -Id $_.Pid -ErrorAction SilentlyContinue).MainWindowTitle } catch { $t = '' }
+            # ⚠️ 1.20.1 的 DevLaunch 客户端命令行**不含** net.minecraft.client.main.Main
+            #    （走 cpw.mods.bootstraplauncher.BootstrapLauncher），只认 Main 会漏检 →
+            #    跨版本撞车照旧发生。这里同时认两种入口 + 「MC 客户端窗口标题」。
+            ($c.Contains('net.minecraft.client.main.Main') -or $c.Contains('bootstraplauncher'))
+        })
+    if ($existing.Count -gt 0) {
+        $pidsText = ($existing | ForEach-Object { $_.Pid }) -join ', '
+        Write-MtBlocked 'launch' ("全机已存在 Minecraft 客户端进程(PID=$pidsText)，拒绝启动以免读到他人日志/抢占注入目标；先收停：pwsh -File scripts/test/mt.ps1 --phase stop --force")
+        exit $MT_EXIT_BLOCKED
+    }
+
+    # ② latest.log 存在却删不掉 ⇒ 一定有别的进程正在写它（句柄被占）→ 硬失败。
+    #    旧实现用 -ErrorAction SilentlyContinue 吞掉失败，随后必然读到上一轮/他人的
+    #    「Total time to load game and open world was」→ **假阳性 MT_LAUNCH: OK**。
     if (Test-Path -LiteralPath $p.latest_log -PathType Leaf) {
-        Remove-Item -LiteralPath $p.latest_log -Force -ErrorAction SilentlyContinue
+        try {
+            Remove-Item -LiteralPath $p.latest_log -Force -ErrorAction Stop
+        } catch {
+            Write-MtBlocked 'launch' ("无法清空 $($p.latest_log)（有其它进程正在写它）：$($_.Exception.Message)")
+            exit $MT_EXIT_BLOCKED
+        }
+        if (Test-Path -LiteralPath $p.latest_log -PathType Leaf) {
+            Write-MtBlocked 'launch' "无法清空 $($p.latest_log)（文件仍存在）：拒绝启动以免读到非本轮日志"
+            exit $MT_EXIT_BLOCKED
+        }
     }
     # 服务端权威通道（KubeJS 探针追加写）必须每次运行清零，否则上一轮标记会污染本轮断言
     if (Test-Path -LiteralPath $p.probe_log -PathType Leaf) {
@@ -88,6 +119,10 @@ if ($MyInvocation.InvocationName -ne '.') {
     $gradlew = Join-Path $root 'gradlew.bat'
     if (-not (Test-Path -LiteralPath $gradlew -PathType Leaf)) { $gradlew = Join-Path $root 'gradlew' }
 
+    # 本次启动时刻：接受「已进入世界」标记前，必须证明那行日志是**本次启动之后**写的
+    # （旧 latest.log 已被删除 + 预检无其它客户端，构成第二重保险）。
+    $launchStartedAt = Get-Date
+
     $started = $null
     try {
         $started = Start-MtProcessToFile -FilePath 'cmd.exe' `
@@ -106,9 +141,16 @@ if ($MyInvocation.InvocationName -ne '.') {
 
     $deadline = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds() + 180
     $entered = $false
+    $logFresh = $false
     while ([DateTimeOffset]::UtcNow.ToUnixTimeSeconds() -lt $deadline) {
         $latest = Read-MtSharedText -Path $p.latest_log
-        if ($latest.Contains('Total time to load game and open world was')) { $entered = $true; break }
+        # 归属校验：latest.log 必须是**本次启动之后**创建的；否则那行「已进入世界」可能是
+        # 别人/上一轮写的（2026-09-15 实测到的假阳性根因）。
+        $logFresh = $false
+        if (Test-Path -LiteralPath $p.latest_log -PathType Leaf) {
+            try { $logFresh = ((Get-Item -LiteralPath $p.latest_log).CreationTime -gt $launchStartedAt) } catch { $logFresh = $false }
+        }
+        if ($logFresh -and $latest.Contains('Total time to load game and open world was')) { $entered = $true; break }
 
         # 崩溃报告出现即失败（启动期大量良性 Exception 不应中止）
         $crashes = @()

@@ -16,6 +16,10 @@
       "text": "同时复核延迟结算口径：攻击瞬间充能必须仍为 6(充能与冷却在雷击真正落下时才结算)，落雷后充能应为 0。"
     },
     {
+      "op": "note",
+      "text": "断言基线更新(2026-09-15 裁决,方案 A):`bolt_delta` 期望由 1 改为 **3** —— 现行 railgunfriendly 探针摆入 5 个靶(蜘蛛/北极熊/狼/海龟/村民)并激怒中立与宠物,其中「可命中」者为 3 个(蜘蛛 + 被激怒北极熊 + 被激怒的已驯服狼),模组对每个可命中目标各生成一道雷击,故 3 道为预期值。`bolt_delta` 只是「没有多生成雷击」的旁证,本用例的鉴别力来自 VERDICT 的命中范围/防误伤(turtle=0:villager=0:friendly=0 等)。方案 B(探针按目标类型分桶输出 extra_neutral/extra_pet 等)记为**下次因其它原因动探针格式时顺手做**,届时把期望逐项锁死。⚠️ 本条期望由现行探针的目标集合推得,尚待本用例在新产物上复跑确认。"
+    },
+    {
       "op": "inject_command",
       "command": "/astralprobe railgunfriendly RG"
     },
@@ -69,7 +73,7 @@
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_RG_AFTER:.*bolt_delta=1"
+      "pattern": "AP_RG_AFTER:.*bolt_delta=3"
     },
     {
       "type": "log",

@@ -1,0 +1,132 @@
+{
+  "case_id": "HOSTILE-TARGET-NEUTRAL-1.20.1",
+  "title": "「敌对目标」判定纳入被激怒的中立生物：被激怒的北极熊（NeutralMob#isAngry，AngerTime>0）必须被电磁炮雷击命中（统一入口 combat/HostileTargets.isHostile）",
+  "version": "1.20.1",
+  "target": {
+    "type": "bugfix",
+    "ref": "hostile-target-neutral"
+  },
+  "steps": [
+    {
+      "op": "note",
+      "text": "被测口径（AGENTS「敌对目标」唯一入口）：敌对目标 = 敌对生物(Enemy) ∪ 已被激怒的中立生物(NeutralMob 实例且 isAngry()=getRemainingPersistentAngerTime()>0)。北极熊**不是** Enemy，只有 AngerTime>0 时才应被视为敌对目标。判据链：RailgunChipItem#onAttack/executeStrike 与 RailgunBolts.isValidLightningTarget 都只经 HostileTargets.isHostile —— 没有裸 instanceof Enemy 的旁路。"
+    },
+    {
+      "op": "note",
+      "text": "复用 railgunfriendly 探针（与 RAILGUN-AOE-SCOPE 同一条命令）：清天气 → 强制生存 → 装备电磁炮 + 恰好 6 层充能 → 摆 4 只靶（蜘蛛=敌方、北极熊=中立、已驯服狼=友方、海龟/村民=覆写类）→ 把北极熊与狼的 AngerTime 置 1200（NoAI 下 anger 不递减）→ 真实近战命中蜘蛛触发赐福 → 20 tick 后落雷。北极熊摆在落点约 1.5 格处（雷击判定箱 ±3 格内）。"
+    },
+    {
+      "op": "note",
+      "text": "取证环境防污染（2026-09-15 实测必需）：① `/gamerule doFireTick false` + 把脚下 2 层草方块可点燃层替换为石头（`/fill`）—— 否则落雷在玩家周围点燃地面，**玩家自己的掉血读数会混入火焰伤害**（实测 1.20.1 self=4.83~18.83 全部来自火焰、与雷击无关；石头地面 + 关火焰蔓延后 self=0）；② 下面每条读命令都注入**两次**（`railgunfriendlyread` 是幂等只读，不会改状态）—— 冷启动后前若干次注入偶发丢失，只发一次会得到「没有读数」的空跑。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamerule doFireTick false"
+    },
+    {
+      "op": "wait",
+      "ms": 300
+    },
+    {
+      "op": "inject_command",
+      "command": "/fill ~-8 ~-1 ~-6 ~8 ~-1 ~14 minecraft:stone"
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },    {
+      "op": "inject_command",
+      "command": "/astralprobe railgunfriendly HN"
+    },
+    {
+      "op": "wait",
+      "ms": 2500
+    },
+    {
+      "op": "note",
+      "text": "怒气前置条件取证：探针自报的 `nAngry` 读数为 false，是 **Rhino 侧 `NeutralMob#isAngry()` 取值的已知失真**（同一条命令里 `data merge {AngerTime:1200}` 的 rc 也是 undefined），不可当判据；改用**原版 NBT 回读**证明北极熊确实带着 AngerTime>0（`data get entity … AngerTime` 的输出会进聊天栏）。产品侧真正的判据是服务端 Java 的 `HostileTargets.isHostile` → 由「3 道雷击被生成 + 北极熊掉血」两者共同证明（北极熊不是 Enemy，若 anger 未生效则它既不会进雷击白名单、也不会有雷击落在它位置上）。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/data get entity @e[type=minecraft:polar_bear,limit=1] AngerTime"
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe railgunfriendlyread HN"
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe railgunfriendlyread HN"
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe railgunfriendlyend HN"
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_HN_BEFORE:.*:charge=6:mode=forced_survival:weather=clear"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "北极熊拥有以下实体数据：\\d+"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_HN_ARMED"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_HN_AFTER:.*:neutral=[\\d.]+:friendly=0:.*bolt_delta=[1-9]"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_HN_VERDICT:.*:enemy=1:neutral=1:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_HN_RESTORE:creative"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_HN_ERR|AP_HN_EX:"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_HN_VERDICT:.*:neutral=0"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "crash"
+    }
+  ],
+  "evidence": [],
+  "on_fail": "keep_game_running"
+}

@@ -1,0 +1,132 @@
+{
+  "case_id": "RAILGUN-PET-EXCLUDE-1.20.1",
+  "title": "电磁炮雷击排除施放者自己拥有的宠物：已驯服狼（owner=攻击者）即使被激怒也不吃自己的雷击（RailgunBolts.isValidLightningTarget 的 OwnableEntity owner==bolt.cause 分支）",
+  "version": "1.20.1",
+  "target": {
+    "type": "bugfix",
+    "ref": "railgun-pet-exclude"
+  },
+  "steps": [
+    {
+      "op": "note",
+      "text": "被测口径：Electromagnetic 雷击的目标筛选 = HostileTargets.isHostile(target) **且** 目标若是 OwnableEntity 则其 ownerUUID ≠ 闪电 cause(施放者)。被激怒的已驯服狼同时满足「是 NeutralMob 且 isAngry()=true」→ 会被包进雷击白名单；必须由第二条（owner 排除）挡住。注意「不被命中」的判据是 AP_<tag>_AFTER 里 friendly 掉血 = 0（雷击实体是否在宠物位置落下不参与判定）。"
+    },
+    {
+      "op": "note",
+      "text": "复用 railgunfriendly 探针：`friendly.setTame(true,true)` + `friendly.setOwnerUUID(攻击者 UUID)`（探针把实际取到的 UUID 取值器报在 AP_<tag>_TAME:src=1|2|3，未取到则 src=none 且 owner=0 —— 该情形下本用例的排除判据不成立，必须记不可判定）。狼与北极熊的 AngerTime 都置 1200，狼同样落在落点 ±3 格箱内。"
+    },
+    {
+      "op": "note",
+      "text": "取证环境防污染（2026-09-15 实测必需）：① `/gamerule doFireTick false` + 把脚下 2 层草方块可点燃层替换为石头（`/fill`）—— 否则落雷在玩家周围点燃地面，**玩家自己的掉血读数会混入火焰伤害**（实测 1.20.1 self=4.83~18.83 全部来自火焰、与雷击无关；石头地面 + 关火焰蔓延后 self=0）；② 下面每条读命令都注入**两次**（`railgunfriendlyread` 是幂等只读，不会改状态）—— 冷启动后前若干次注入偶发丢失，只发一次会得到「没有读数」的空跑。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamerule doFireTick false"
+    },
+    {
+      "op": "wait",
+      "ms": 300
+    },
+    {
+      "op": "inject_command",
+      "command": "/fill ~-8 ~-1 ~-6 ~8 ~-1 ~14 minecraft:stone"
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },    {
+      "op": "inject_command",
+      "command": "/astralprobe railgunfriendly PE"
+    },
+    {
+      "op": "wait",
+      "ms": 2500
+    },
+    {
+      "op": "note",
+      "text": "⚠️ 2026-09-15 实测标定（**必须保留这段说明，否则读数会被误读**）：旧几何把狼摆在距落点 **1.5 格**，那正落在**玩家近战横扫（sweep）判定盒**（目标 AABB 外扩 1.0 格）里 → 狼掉的血其实是**横扫伤害，不是雷击**（实测：落雷之前狼已掉 11 点、落雷之后不再掉；狼的 `Fire` NBT 全程为 -1 ⇒ 从未被雷击点燃 ⇒ 从未走 thunderHit）。探针已把中立/友方移到 **2.8 格**（横扫盒之外、雷击判定箱 ±3 格之内），本轮读数才可归因。Owner 用原版 NBT 回读取证（与玩家 UUID 逐字相同）。探针自报的 `nAngry/fAngry=false` 是 Rhino 侧取值失真，不作判据。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/data get entity @e[type=minecraft:wolf,limit=1] Owner"
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe railgunfriendlyread PE"
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe railgunfriendlyread PE"
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe railgunfriendlyend PE"
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_PE_TAME:tame=1:owner=1:src="
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "狼拥有以下实体数据：\\[I;"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_PE_AFTER:.*bolt_delta=[1-9]"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_PE_AFTER:.*:neutral=[\\d.]+:friendly=0:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_PE_VERDICT:.*:friendly=0:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_PE_RESTORE:creative"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_PE_ERR|AP_PE_EX:"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_PE_VERDICT:.*:friendly=[1-9]"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "crash"
+    }
+  ],
+  "evidence": [],
+  "on_fail": "keep_game_running"
+}

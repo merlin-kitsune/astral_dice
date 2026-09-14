@@ -49,7 +49,10 @@ $script:SnapshotFile = Join-Path (Join-Path (Get-MtTestDir) 'cases') '.mt_snapsh
 # ⚠️ 已移除的 `probe` 通道（run/<版本>/astral_probe.log）：该文件从未生成 —— KubeJS 的
 #    Java 类过滤器拒绝 java.io，FileWriter 构造失败又被 try/catch 静默吞掉，表现为
 #    「服务端权威通道不存在」，把测试链故障伪装成修复无效。不要再加回来。
-$script:LogSources = [ordered]@{ 'latest' = 'latest_log'; 'debug' = 'debug_log' }
+# loadergate —— **纯离线**用例（LOADER-GATE-FORGE）的读数通道：由
+#    scripts/test/mt_loadergate.ps1 直接写 run/<版本>/logs/loadergate.log，
+#    不经过游戏客户端（该用例不需要 runClient）。断言一律配 scope=whole。
+$script:LogSources = [ordered]@{ 'latest' = 'latest_log'; 'debug' = 'debug_log'; 'loadergate' = 'loadergate_log' }
 
 $script:TAG_UTF8 = [System.Text.UTF8Encoding]::new($false, $false)
 
