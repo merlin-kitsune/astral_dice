@@ -94,7 +94,7 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --phase <p> --version <v>
 
 | 探针 | 1.21.1 | 1.20.1 | 作用 |
 |---|---|---|---|
-| `astral_bugfix_probe.js` | ✅ | ✅ | 回归套件主探针：命令（`diag` / `equipslot` / `railguncd` / `railgunfriendly`·`railgunfriendlyread`·`railgunfriendlyend`（双版本）、`truedmg`/`railtruedmg`·`railtruedmgread`（双版本：真伤穿甲取证）+ `glmcheck`（仅 1.20.1）+ 各用例专用命令）、状态读数 `AP_*` |
+| `astral_bugfix_probe.js` | ✅ | ✅ | 回归套件主探针：命令（`diag` / `equipslot` / `railguncd` / `railgunfriendly`·`railgunfriendlyread`·`railgunfriendlyend`（双版本）、`truedmg`/`railtruedmg`·`railtruedmgread`（双版本：真伤穿甲取证）、`fensplash`/`fensplashhit`/`fensplashread`（双版本：大当家溅射三段式——装备与摆靶、命中、读差值；判据=4.5 格内命中(旧 3 格打不到)、8 格外 0 伤害、重甲靶与无甲靶掉血相同(真伤)、溅射÷近战≈0.88 或被 5 点下限托住；靶子一律非亡灵、非苦力怕）+ `glmcheck`（仅 1.20.1）+ 各用例专用命令）、状态读数 `AP_*` |
 | `astral_dice_curios_check.js` | ✅ | ✅ | Curios 槽位 / 装备状态观测 |
 | `astral_dice_target_select_check.js` | ✅ | ✅ | 待命等待器（占星师 / 秘密侦探 / 枪匠）观测 |
 | `astral_dice_curio_watch.js` | ✅ | — | 立牌槽位变化观测（1.21.1 专用） |

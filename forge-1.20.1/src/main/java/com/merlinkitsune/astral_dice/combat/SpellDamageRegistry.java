@@ -235,7 +235,7 @@ public final class SpellDamageRegistry {
                         e -> e instanceof net.minecraft.world.entity.monster.Enemy
                                 && e != ctx.target && e.isAlive());
                 var blastSource = com.merlinkitsune.astral_dice.damage.ModDamageTypes
-                        .diceDamage(ctx.target.level(), ctx.attacker);
+                        .trueDamage(ctx.target.level(), ctx.attacker);   // 真伤:效果牌范围波及伤害同样无视护甲值/盔甲韧性
                 // AOE 造成与主目标「同样的伤害」:基础 5 + 效果牌伤害加成(与主目标一致)
                 int aoeDamage = (int) Math.max(1.0, 5 + effectCardDamageBonus(ctx.attacker));
                 // AOE 波及伤害不进入骰战结算(见 DiceCombatEvents.aoeProcessing)
@@ -355,7 +355,7 @@ public final class SpellDamageRegistry {
                 var nearby = ctx.target.level().getEntitiesOfClass(LivingEntity.class, aabb,
                         e -> e instanceof Enemy && e != ctx.target && e.isAlive());
                 var source = com.merlinkitsune.astral_dice.damage.ModDamageTypes
-                        .diceDamage(ctx.target.level(), ctx.attacker);
+                        .trueDamage(ctx.target.level(), ctx.attacker);   // 真伤:效果牌范围波及伤害同样无视护甲值/盔甲韧性
                 // AOE 波及伤害不进入骰战结算(见 DiceCombatEvents.aoeProcessing)
                 DiceCombatEvents.aoeProcessing = true;
                 try {

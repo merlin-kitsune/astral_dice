@@ -638,8 +638,20 @@ public class DiceCombatEvents {
                     var splashSource = com.merlinkitsune.astral_dice.damage.ModDamageTypes.trueDamage(
                             target.level(), player);
                     for (var victim : splashVictims) {
-                        victim.hurt(splashSource, splashDmg);
-                        sendDamageNumber(victim, (int) splashDmg);
+                        // 主目标此刻正处在**自己这次攻击的伤害事件内部**:原版 LivingEntity#hurt 先写
+                        // lastHurt/invulnerableTime(用的是**骰战结算前**的武器伤害),再进 actuallyHurt →
+                        // 本事件;于是"无敌帧内不更低的伤害被丢弃"规则会把溅射整段吞掉(实测主靶只掉近战
+                        // 那 3 点、5 点溅射凭空消失)。这里只对主目标临时清零无敌帧,让溅射照常结算;
+                        // 其余目标没有在飞的伤害,不动。
+                        boolean isMainTarget = victim == target;
+                        int savedInvulnerable = isMainTarget ? victim.invulnerableTime : 0;
+                        try {
+                            if (isMainTarget) victim.invulnerableTime = 0;
+                            victim.hurt(splashSource, splashDmg);
+                            sendDamageNumber(victim, (int) splashDmg);
+                        } finally {
+                            if (isMainTarget) victim.invulnerableTime = savedInvulnerable;
+                        }
                     }
                     // 爆炸视觉效果:只发粒子与音效,不改动世界(不破坏方块)
                     if (target.level() instanceof net.minecraft.server.level.ServerLevel serverLevel) {

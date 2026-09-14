@@ -1768,7 +1768,7 @@ function doRailgunFriendly(ctx, tag) {
 
     // 敌方(僵尸)在正前方 2 格 —— 近战距离,攻击者本人必在同一雷击判定箱内;
     // 中立(牛)与友方(已驯服狼,主人=玩家)分列僵尸左右各 1.5 格,同样落在箱内。
-    var enemy = spawnDummy(p, "minecraft:zombie", 2);
+    var enemy = spawnDummy(p, "minecraft:spider", 2);
     if (enemy == null) { send(ctx, "AP_" + tag + "_ERR:spawn_failed_enemy"); return 0; }
     var neutral = spawnDummy(p, "minecraft:cow", 2);
     var friendly = spawnDummy(p, "minecraft:wolf", 2);
@@ -1980,16 +1980,16 @@ function doTrueDmg(ctx, tag) {
     var weather = "skip";
     try { p.level.setWeatherParameters(6000, 0, false, false); weather = "clear"; } catch (e0) { weather = "err"; }
     // 两只不同实体类型 → 类型选择器可唯一定位;真伤靶=僵尸,对照靶=尸壳(互不共享无敌帧)
-    var mob = spawnDummy(p, "minecraft:zombie", 2);
+    var mob = spawnDummy(p, "minecraft:spider", 2);
     if (mob == null) { send(ctx, "AP_" + tag + "_ERR:spawn_failed"); return 0; }
-    var ctrl = spawnDummy(p, "minecraft:husk", 3);
+    var ctrl = spawnDummy(p, "minecraft:vindicator", 3);
     if (ctrl == null) { send(ctx, "AP_" + tag + "_ERR:spawn_failed_ctrl"); return 0; }
     try { placeAt(ctrl, p.getX() - 1.5, p.getY(), p.getZ() + 3.0); } catch (e9) { /* 忽略 */ }
     try { mob.setHealth(mob.getMaxHealth()); } catch (e1) { /* 忽略 */ }
     try { ctrl.setHealth(ctrl.getMaxHealth()); } catch (e1b) { /* 忽略 */ }
 
-    var armorState = armorSingle(ctx, "minecraft:zombie", 20, 8);
-    var ctrlArmor = armorSingle(ctx, "minecraft:husk", 20, 8);
+    var armorState = armorSingle(ctx, "minecraft:spider", 20, 8);
+    var ctrlArmor = armorSingle(ctx, "minecraft:vindicator", 20, 8);
 
     var ResourceKey = Java.loadClass("net.minecraft.resources.ResourceKey");
     var Registries = Java.loadClass("net.minecraft.core.registries.Registries");
@@ -2019,7 +2019,7 @@ function doTrueDmg(ctx, tag) {
 
     var trueDealt = delta(hp0, hp1), vanillaDealt = delta(chp0, chp1);
     // 3) 诊断:命令路径(rc=1 才算真的执行过;runCommandSilent 会伪装成 undefined)
-    var r1 = runCmd(ctx, "damage @e[type=minecraft:zombie,limit=1] 10 astral_dice:true_damage");
+    var r1 = runCmd(ctx, "damage @e[type=minecraft:spider,limit=1] 10 astral_dice:true_damage");
     try { mob.discard(); } catch (e3) { /* 忽略 */ }
     try { ctrl.discard(); } catch (e4) { /* 忽略 */ }
     send(ctx, "AP_" + tag + "_ARMOR:" + armorState + ":weather=" + weather);
@@ -2060,13 +2060,13 @@ function doRailTrueDmg(ctx, tag) {
     if (putErr != null) { send(ctx, "AP_" + tag + "_ERR:" + putErr); return 0; }
 
     // 近战目标:无甲僵尸(它的血量不参与判定);旁观靶:重甲尸壳(只吃雷击,无无敌帧干扰)
-    var target = spawnDummy(p, "minecraft:zombie", 2);
+    var target = spawnDummy(p, "minecraft:spider", 2);
     if (target == null) { send(ctx, "AP_" + tag + "_ERR:spawn_failed_target"); return 0; }
-    var probe = spawnDummy(p, "minecraft:husk", 2);
+    var probe = spawnDummy(p, "minecraft:vindicator", 2);
     if (probe == null) { send(ctx, "AP_" + tag + "_ERR:spawn_failed_probe"); return 0; }
     try { placeAt(probe, p.getX() + 1.0, p.getY(), p.getZ() + 2.0); } catch (e4) { /* 忽略 */ }
     try { probe.setHealth(probe.getMaxHealth()); } catch (e5) { /* 忽略 */ }
-    var armorState = armorSingle(ctx, "minecraft:husk", 20, 8);
+    var armorState = armorSingle(ctx, "minecraft:vindicator", 20, 8);
 
     var thp = rghp(target), php = rghp(probe);
     send(ctx, "AP_" + tag + "_BEFORE:thp=" + thp + ":php=" + php + ":" + armorState
@@ -2100,10 +2100,142 @@ function doRailTrueDmgRead(ctx, tag) {
     return 1;
 }
 
+// ════════════════════════════════════════════════════════════════════════════
+//  大当家「战斗爽·溅射」取证:6 格 / 88% / 真伤(无视护甲值与盔甲韧性)
+//    /astralprobe fensplash <tag>      阶段1:装备大当家立牌 + 骰子 + 铁剑,养精蓄锐置 5,
+//                                      摆 4 只靶子并给重甲靶挂护甲 20/韧性 8
+//    /astralprobe fensplashhit <tag>   阶段2(下一条命令):近战命中主靶 → 触发骰神赐福 →
+//                                      满层溅射立即引爆
+//    /astralprobe fensplashread <tag>  阶段3:读差值并判定,然后收尾
+//
+//  判据(全部在游戏内计算):
+//    · 范围:4.5 格靶掉血(旧范围 3 格打不到)、8 格靶必须 0(新范围 6 格)
+//    · 真伤:重甲靶与无甲靶**掉血相同**(若吃护甲,重甲靶只应掉约 1/4)
+//    · 88%:溅射值 ÷ 近战部分 ≈ 0.88(近战部分 = 主靶掉血 − 溅射值)
+//  靶子一律**非亡灵敌对生物**(蜘蛛/苦力怕/女巫/掠夺者):亡灵白天被太阳点燃会持续掉血,
+//  污染差值读数(用户 2026-09-14 要求);且全部 setNoAi,不会反击/爆炸。
+//  ⚠️ 属性命令的生效时机晚于同一 tick 内的后续代码,故护甲必须在**上一条命令**里挂好。
+// ════════════════════════════════════════════════════════════════════════════
+
+var fenState = null;
+
+/** 阶段1:装备 + 摆靶(含重甲) */
+function doFenSplash(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var FenSignItem = Java.loadClass("com.merlinkitsune.astral_dice.item.sign.FenSignItem");
+    var weather = "skip";
+    try { p.level.setWeatherParameters(6000, 0, false, false); weather = "clear"; } catch (e0) { weather = "err"; }
+    try { p.setHealth(p.getMaxHealth()); } catch (e1) { /* 忽略 */ }
+
+    clearCurioSlots(p, "stand");
+    clearCurioSlots(p, "chip");
+    var signErr = equipSign(p, "astral_dice:fen_sign");
+    var diceItem = resolveItem("astral_dice:dice");
+    var diceErr = diceItem == null ? "unknown_dice" : putInSlot(p, "dice", new ItemStack(diceItem), 0);
+    var weapon = runCmd(ctx, "item replace entity @s weapon.mainhand with minecraft:iron_sword");
+    try { p.removeEffect(ModEffects.DICE_BLESSING); } catch (e2) { /* 忽略 */ }
+    ModAttachments.setFenRecharge(p, 5);
+    var equipped = "?";
+    try { equipped = "" + FenSignItem.isEquipped(p); } catch (e3) { equipped = "ERR:" + exText(e3); }
+
+    var target = spawnDummy(p, "minecraft:spider", 2);
+    var near = spawnDummy(p, "minecraft:vindicator", 2);
+    var armd = spawnDummy(p, "minecraft:pillager", 2);
+    var far = spawnDummy(p, "minecraft:blaze", 2);
+    if (target == null || near == null || armd == null || far == null) {
+        send(ctx, "AP_" + tag + "_ERR:spawn_failed"); return 0;
+    }
+    try { placeAt(near, p.getX() - 4.5, p.getY(), p.getZ() + 2.0); } catch (e4) { /* 忽略 */ }
+    try { placeAt(armd, p.getX() + 4.5, p.getY(), p.getZ() + 2.0); } catch (e5) { /* 忽略 */ }
+    try { placeAt(far, p.getX(), p.getY(), p.getZ() + 11.0); } catch (e6) { /* 忽略 */ }
+    try { target.setHealth(target.getMaxHealth()); } catch (e7) { /* 忽略 */ }
+    try { near.setHealth(near.getMaxHealth()); } catch (e8) { /* 忽略 */ }
+    try { armd.setHealth(armd.getMaxHealth()); } catch (e9) { /* 忽略 */ }
+    try { far.setHealth(far.getMaxHealth()); } catch (e10) { /* 忽略 */ }
+    var armorState = armorSingle(ctx, "minecraft:pillager", 20, 8);
+
+    send(ctx, "AP_" + tag + "_EQUIP:sign=" + signErr + ":dice=" + diceErr + ":weapon=" + weapon
+        + ":equipped=" + equipped + ":recharge=" + ModAttachments.getFenRecharge(p)
+        + ":weather=" + weather);
+    send(ctx, "AP_" + tag + "_ARMOR:" + armorState);
+    send(ctx, "AP_" + tag + "_BEFORE:thp=" + rghp(target) + ":nhp=" + rghp(near)
+        + ":ahp=" + rghp(armd) + ":fhp=" + rghp(far));
+    fenState = { tag: tag, target: target, near: near, armd: armd, far: far, player: p,
+                 thp: rghp(target), nhp: rghp(near), ahp: rghp(armd), fhp: rghp(far) };
+    send(ctx, "AP_" + tag + "_SETUP_DONE");
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+/** 阶段2:近战命中主靶(触发赐福 → 满层溅射立即引爆) */
+function doFenSplashHit(ctx, tag) {
+    var st = fenState;
+    if (st == null) { send(ctx, "AP_" + tag + "_ERR:no_state"); return 0; }
+    var hit = meleeHit(st.player, st.target);
+    // 命中瞬间快照:与读阶段的差值对比,可区分「溅射当场伤害」与「之后的漂移(如自愈/着火)」
+    send(ctx, "AP_" + tag + "_SNAP:thp=" + rghp(st.target) + ":nhp=" + rghp(st.near)
+        + ":ahp=" + rghp(st.armd) + ":fhp=" + rghp(st.far));
+    var blessed = "?";
+    try { blessed = "" + st.player.hasEffect(ModEffects.DICE_BLESSING); } catch (e1) { blessed = "ERR:" + exText(e1); }
+    send(ctx, "AP_" + tag + "_MELEE:" + hit.api + ":dealt=" + hit.dealt
+        + ":blessing=" + blessed + ":recharge=" + ModAttachments.getFenRecharge(st.player));
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+/** 阶段3:读差值 + 判定 + 收尾 */
+function doFenSplashRead(ctx, tag) {
+    var st = fenState;
+    if (st == null) { send(ctx, "AP_" + tag + "_ERR:no_state"); return 0; }
+    function delta(a, b) { return (a < 0 || b < 0) ? -1 : Math.round((a - b) * 100) / 100; }
+    var tD = delta(st.thp, rghp(st.target));   // 主靶:近战 + 溅射
+    var nD = delta(st.nhp, rghp(st.near));     // 4.5 格 无甲:只吃溅射
+    var aD = delta(st.ahp, rghp(st.armd));     // 4.5 格 重甲:只吃溅射
+    var fD = delta(st.fhp, rghp(st.far));      // 8 格:范围外
+    var meleeEst = Math.round((tD - nD) * 100) / 100;
+    var ratio = meleeEst > 0 ? Math.round((nD / meleeEst) * 1000) / 1000 : -1;
+    var inRange = (nD > 0 && aD > 0) ? 1 : 0;
+    var outRange = (fD === 0) ? 1 : 0;
+    var trueDmg = (nD > 0 && Math.abs(nD - aD) <= 0.01) ? 1 : 0;
+    // 溅射有下限 5 点(SPLASH_DAMAGE_MIN):近战伤害小时 88% 被下限托住,比值必然 > 0.88 →
+    // 判定把「正好等于下限」也算通过,并单独回报下限标志与 88% 目标值(nD/0.88)。
+    var atFloor = (nD === 5) ? 1 : 0;
+    var ratioOk = (atFloor === 1 || (ratio >= 0.82 && ratio <= 0.94)) ? 1 : 0;
+    send(ctx, "AP_" + tag + "_AFTER:tdealt=" + tD + ":near_dealt=" + nD + ":armored_dealt=" + aD
+        + ":far_dealt=" + fD + ":melee_est=" + meleeEst + ":ratio=" + ratio);
+    send(ctx, "AP_" + tag + "_VERDICT:in_range=" + inRange + ":out_range=" + outRange
+        + ":true_damage=" + trueDmg + ":at_floor=" + atFloor + ":ratio_ok=" + ratioOk);
+    try { ModAttachments.setFenRecharge(st.player, 0); } catch (e1) { /* 忽略 */ }
+    try { st.player.removeEffect(ModEffects.DICE_BLESSING); } catch (e2) { /* 忽略 */ }
+    try { clearCurioSlots(st.player, "stand"); } catch (e3) { /* 忽略 */ }
+    try { st.target.discard(); } catch (e4) { /* 忽略 */ }
+    try { st.near.discard(); } catch (e5) { /* 忽略 */ }
+    try { st.armd.discard(); } catch (e6) { /* 忽略 */ }
+    try { st.far.discard(); } catch (e7) { /* 忽略 */ }
+    fenState = null;
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
 ServerEvents.commandRegistry(event => {
     var Commands = event.commands;
     event.register(
         Commands.literal("astralprobe")
+            .then(Commands.literal("fensplash")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doFenSplash(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("fensplashhit")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doFenSplashHit(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("fensplashread")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doFenSplashRead(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
             .then(Commands.literal("truedmg")
                 .then(Commands.argument("tag", StringArg.word())
                     .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {

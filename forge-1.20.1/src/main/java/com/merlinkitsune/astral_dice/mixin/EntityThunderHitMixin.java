@@ -44,6 +44,12 @@ public abstract class EntityThunderHitMixin {
     private void astral$railgunTrueDamage(ServerLevel level, LightningBolt bolt, CallbackInfo ci) {
         if (!RailgunBolts.isRailgunBolt(bolt)) return;
         Entity self = (Entity) (Object) this;
+        // 命中范围收窄(2026-09-14 用户裁决):只对**敌对生物 / 被激怒的中立生物**生效;
+        // 其余实体(攻击者自己、友方宠物、中立动物、盔甲架等)整段取消 —— 既不受伤也不点燃。
+        if (!RailgunBolts.isValidLightningTarget(self)) {
+            ci.cancel();
+            return;
+        }
         // 复刻原版点火(Entity.java:2424-2427):先 +1 tick,再在"原本未着火"(== 0)时点燃 8 秒
         self.setRemainingFireTicks(self.getRemainingFireTicks() + 1);
         if (self.getRemainingFireTicks() == 0) {
