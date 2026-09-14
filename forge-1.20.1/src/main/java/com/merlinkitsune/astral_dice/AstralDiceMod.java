@@ -38,6 +38,10 @@ public class AstralDiceMod {
         ModRecipeSerializers.RECIPE_SERIALIZERS.register(modEventBus);
         ModCreativeTabs.CREATIVE_TABS.register(modEventBus);
         ModMenuTypes.MENU_TYPES.register(modEventBus);
+        // 全局战利品修饰符序列化器:1.20.1 的 Forge 自带注册表里**没有任何内置项**
+        // (没有 forge:add_table),必须由本模组注册 astral_dice:add_table,
+        // 否则 data/astral_dice/loot_modifiers/*.json 全部解码失败(详见 loot/AstralLootModifiers)
+        com.merlinkitsune.astral_dice.loot.AstralLootModifiers.SERIALIZERS.register(modEventBus);
         modEventBus.register(this);
         // 配置版本检查:旧版本配置文件先备份,再由 Forge 继承旧值写入新配置(仅公共配置;client 配置已移除)
         backupOldConfigIfNeeded("astral_dice-common.toml", ModCommonConfig.CONFIG_VERSION);

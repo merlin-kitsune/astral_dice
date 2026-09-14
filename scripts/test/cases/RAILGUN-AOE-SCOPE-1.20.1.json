@@ -1,0 +1,107 @@
+{
+  "case_id": "RAILGUN-AOE-SCOPE-1.20.1",
+  "title": "电磁炮雷击命中范围取证：原版雷击对落点箱内所有存活实体生效，是否波及自己/中立/友方",
+  "version": "1.20.1",
+  "target": {
+    "type": "probe",
+    "ref": "railgun-lightning-scope"
+  },
+  "steps": [
+    {
+      "op": "note",
+      "text": "确定性结论取证：原版 LightningBolt#tick 在 !visualOnly 分支对「落点 ±3 格、y-3..y+9 箱内所有 isAlive 实体」逐个 thunderHit(...) → hurt(lightningBolt(), getDamage())，箱内无阵营过滤；本模组为「每个可命中敌对目标处各生成一道雷击」，而攻击者在近战距离(约 2 格)必然落在该箱内。探针把 僵尸/牛/已驯服狼 分别摆在落点箱内，先记血量基线再触发，1 秒后读差值。"
+    },
+    {
+      "op": "note",
+      "text": "同时复核延迟结算口径：攻击瞬间充能必须仍为 6(充能与冷却在雷击真正落下时才结算)，落雷后充能应为 0。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe railgunfriendly RG"
+    },
+    {
+      "op": "wait",
+      "ms": 2500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe railgunfriendlyread RG"
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe railgunfriendlyend RG"
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_RG_TAME:tame=1:owner=1:src="
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_RG_BEFORE:.*:charge=6:mode=forced_survival:weather=clear"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_RG_MELEE:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_RG_CHARGE_AT_ATTACK:6"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_RG_ARMED"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_RG_AFTER:.*bolt_delta=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_RG_AFTER:.*:charge=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_RG_VERDICT:enemy=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_RG_RESTORE:creative"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_RG_DONE"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_RG_ERR|AP_RG_EX:|AP_RG_VERDICT:enemy=0"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "crash"
+    }
+  ],
+  "on_fail": "keep_game_running"
+}

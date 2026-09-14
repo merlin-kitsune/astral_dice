@@ -31,6 +31,9 @@
 //    /astralprobe equipslot <slotId> <itemId> <tag>
 //    /astralprobe attack <entityTypeId> <tag>         生成靶子并真实近战命中(仍被 NANCY-LU-CLOAK 复用)
 //    /astralprobe railguncd <tag>
+//    /astralprobe railgunfriendly|railgunfriendlyread|railgunfriendlyend <tag>
+//                                                    电磁炮雷击命中范围取证(自己/中立/友方/敌方)
+//    /astralprobe glmcheck <tag>                       全局战利品修饰符:注册表 + 解码成功数 + 实滚计数
 //    ── 2026-09-14 追加(忍者主动 / 骇客末影珍珠免疫 / 骇客完全隐身 / 层数递减闪烁)──
 //    /astralprobe komachicast|komachirepeat|komachicap|komachicycle|komachiread <tag>
 //    /astralprobe nancycloak|nancyexpire|nancystate|nancyfall <tag>
@@ -1697,6 +1700,235 @@ ServerEvents.tick(event => {
     }
 });
 
+
+// ════════════════════════════════════════════════════════════════════════════
+//  电磁炮雷击命中范围取证(railgunfriendly / railgunfriendlyread / railgunfriendlyend)
+//
+//  取证的是一条**确定性事实**,不是靠读代码推断:原版 LightningBolt#tick 在
+//  `!visualOnly` 分支里对「以落点为中心 (x±3, y-3 .. y+9, z±3) 的箱内所有 isAlive 实体」
+//  逐个调用 entity.thunderHit(...) → hurt(damageSources().lightningBolt(), getDamage()),
+//  箱内**没有任何阵营过滤**(只排除 isAlive=false)。
+//  而本模组是「每个可命中敌对目标处各生成一道雷击」(RailgunChipItem#executeStrike),
+//  攻击者本人正处在近战距离(约 2 格),必然落在该箱内。
+//  故本探针把四方靶子全部摆在落点箱内,同一 tick 记录血量基线 → 触发 → 1 秒后读差值。
+//
+//  对照条件:清天气(避免自然雷击污染计数)、强制生存(创造免伤读不到「打到自己」)、
+//  清冷却 + 恰好 6 层充能 + 装备电磁炮筹码。
+// ════════════════════════════════════════════════════════════════════════════
+var rgfState = null;
+
+function rghp(entity) {
+    if (entity == null) return -1;
+    try { return Math.round(entity.getHealth() * 100) / 100; } catch (e) { return -1; }
+}
+
+/**
+ * 取玩家 UUID —— Rhino 对 KubeJS 过滤后的方法可见性有版本差异(实测 1.21.1 上
+ * `ServerPlayer#getUUID` 抛 "Cannot find function getUUID"),故按三个取值器依次尝试,
+ * 并把**成功的那一个**作为读数(src=1|2|3)暴露出去,避免"取不到就当没驯服"的静默降级。
+ */
+function playerUuid(p) {
+    var tries = [
+        function () { return p.getUUID(); },
+        function () { return p.uuid; },
+        function () {
+            return Java.loadClass("net.minecraft.core.UUIDUtil").uuidFromIntArray(p.nbt.getIntArray("UUID"));
+        }
+    ];
+    for (var i = 0; i < tries.length; i++) {
+        try {
+            var v = tries[i]();
+            if (v != null) return { ok: true, value: v, src: (i + 1) };
+        } catch (e) { /* 试下一个取值器 */ }
+    }
+    return { ok: false, value: null, src: "none" };
+}
+
+function doRailgunFriendly(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var ChargeManagerClass = Java.loadClass("com.merlinkitsune.astral_dice.item.ChargeManager");
+
+    var weather = "skip";
+    try { p.level.setWeatherParameters(6000, 0, false, false); weather = "clear"; }
+    catch (e0) { weather = "err"; }
+    // 生存模式:创造模式下玩家对雷击免伤,读不到「雷击是否打到自己」
+    var mode = "already_survival";
+    try { p.setGameMode(GameTypeClass.SURVIVAL); mode = "forced_survival"; } catch (e1) { /* 忽略 */ }
+    try { p.setHealth(p.getMaxHealth()); } catch (e2) { /* 忽略 */ }
+
+    ModAttachments.setRailgunCooldownEnd(p, 0);
+    ChargeManagerClass.removeAll(p);
+    ChargeManagerClass.addStacks(p, 6);
+    var slotErr = ensureChipSlot(p, CHIP_SLOT_MIN);
+    if (slotErr != null) { send(ctx, "AP_" + tag + "_ERR:" + slotErr); return 0; }
+    var chip = resolveItem("astral_dice:railgun_chip");
+    if (chip == null) { send(ctx, "AP_" + tag + "_ERR:unknown_chip"); return 0; }
+    var putErr = putInSlot(p, "chip", new ItemStack(chip), 0);
+    if (putErr != null) { send(ctx, "AP_" + tag + "_ERR:" + putErr); return 0; }
+
+    // 敌方(僵尸)在正前方 2 格 —— 近战距离,攻击者本人必在同一雷击判定箱内;
+    // 中立(牛)与友方(已驯服狼,主人=玩家)分列僵尸左右各 1.5 格,同样落在箱内。
+    var enemy = spawnDummy(p, "minecraft:zombie", 2);
+    if (enemy == null) { send(ctx, "AP_" + tag + "_ERR:spawn_failed_enemy"); return 0; }
+    var neutral = spawnDummy(p, "minecraft:cow", 2);
+    var friendly = spawnDummy(p, "minecraft:wolf", 2);
+    if (neutral == null || friendly == null) { send(ctx, "AP_" + tag + "_ERR:spawn_failed_side"); return 0; }
+    try { placeAt(neutral, p.getX() + 1.5, p.getY(), p.getZ() + 2.0); } catch (e3) { /* 忽略 */ }
+    try { placeAt(friendly, p.getX() - 1.5, p.getY(), p.getZ() + 2.0); } catch (e4) { /* 忽略 */ }
+    var tameState = "skip";
+    var ownerState = "skip";
+    try { friendly.setTame(true); tameState = "1"; }
+    catch (e5) { tameState = "ERR:" + exText(e5); }
+    var puuid = playerUuid(p);
+    if (puuid.ok) {
+        try { friendly.setOwnerUUID(puuid.value); ownerState = "1"; }
+        catch (e6) { ownerState = "ERR:" + exText(e6); }
+    } else {
+        ownerState = "0";
+    }
+    send(ctx, "AP_" + tag + "_TAME:tame=" + tameState + ":owner=" + ownerState + ":src=" + puuid.src);
+
+    var boltBase = boltSpawnCount;
+    var php = rghp(p), ehp = rghp(enemy), nhp = rghp(neutral), fhp = rghp(friendly);
+    send(ctx, "AP_" + tag + "_BEFORE:php=" + php + ":ehp=" + ehp + ":nhp=" + nhp + ":fhp=" + fhp
+        + ":charge=" + ChargeManagerClass.getStacks(p) + ":mode=" + mode + ":weather=" + weather);
+
+    var hit = meleeHit(p, enemy);
+    send(ctx, "AP_" + tag + "_MELEE:" + hit.api + ":dealt=" + hit.dealt);
+    // 延迟结算口径复核:攻击瞬间充能**不应**被扣(充能与冷却都在雷击真正落下时才结算)
+    send(ctx, "AP_" + tag + "_CHARGE_AT_ATTACK:" + ChargeManagerClass.getStacks(p));
+
+    rgfState = {
+        tag: tag, player: p, enemy: enemy, neutral: neutral, friendly: friendly,
+        php: php, ehp: ehp, nhp: nhp, fhp: fhp, boltBase: boltBase
+    };
+    send(ctx, "AP_" + tag + "_ARMED");
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+function doRailgunFriendlyRead(ctx, tag) {
+    var st = rgfState;
+    if (st == null) { send(ctx, "AP_" + tag + "_ERR:no_state"); return 0; }
+    var ChargeManagerClass = Java.loadClass("com.merlinkitsune.astral_dice.item.ChargeManager");
+    function dealt(before, now) {
+        if (before < 0 || now < 0) return -1;
+        return Math.round((before - now) * 100) / 100;
+    }
+    var php = rghp(st.player), ehp = rghp(st.enemy), nhp = rghp(st.neutral), fhp = rghp(st.friendly);
+    var self = dealt(st.php, php), enemy = dealt(st.ehp, ehp);
+    var neutral = dealt(st.nhp, nhp), friendly = dealt(st.fhp, fhp);
+    var boltDelta = boltSpawnCount - st.boltBase;
+    send(ctx, "AP_" + tag + "_AFTER:php=" + php + ":ehp=" + ehp + ":nhp=" + nhp + ":fhp=" + fhp
+        + ":self=" + self + ":enemy=" + enemy + ":neutral=" + neutral + ":friendly=" + friendly
+        + ":bolt_delta=" + boltDelta + ":charge=" + ChargeManagerClass.getStacks(st.player));
+    function hit(x) { return x > 0 ? 1 : 0; }
+    send(ctx, "AP_" + tag + "_VERDICT:self=" + hit(self) + ":enemy=" + hit(enemy)
+        + ":neutral=" + hit(neutral) + ":friendly=" + hit(friendly));
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+function doRailgunFriendlyEnd(ctx, tag) {
+    var st = rgfState;
+    var p = ctx.source.getPlayerOrException();
+    if (st != null) {
+        try { st.enemy.discard(); } catch (e1) { /* 忽略 */ }
+        try { st.neutral.discard(); } catch (e2) { /* 忽略 */ }
+        try { st.friendly.discard(); } catch (e3) { /* 忽略 */ }
+    }
+    rgfState = null;
+    var restore = "skip";
+    try { p.setHealth(p.getMaxHealth()); p.setGameMode(GameTypeClass.CREATIVE); restore = "creative"; }
+    catch (e4) { restore = "ERR:" + exText(e4); }
+    try {
+        var ChargeManagerClass = Java.loadClass("com.merlinkitsune.astral_dice.item.ChargeManager");
+        ChargeManagerClass.removeAll(p);
+    } catch (e5) { /* 忽略 */ }
+    send(ctx, "AP_" + tag + "_RESTORE:" + restore);
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+// ── 全局战利品修饰符自检(glmcheck,仅 1.20.1)────────────────────────────────
+// 三个独立读数,缺一不可:
+//  ① 序列化器注册表是否含 astral_dice:add_table —— Forge 1.20.1-47.4.10 的
+//     net.minecraftforge.common.loot **没有** add_table(全 jar 无该注册名),故本模组自带;
+//  ② 13 条修饰符是否真的解码成功 —— LootModifierManager 只把**解析成功**的修饰符放进
+//     registeredLootModifiers,故 getAllLootMods().size() 是权威读数(修复前为 0,
+//     并伴 13 条「Could not decode GlobalLootModifier」警告)。该方法在 Forge 内是
+//     包级私有,故走反射;读写失败只报告不抛错(判据另有日志面与功能面两条)。
+//  ③ 功能面:把 minecraft:chests/simple_dungeon 连滚 400 次 —— 该表命中
+//     star_plate_all_chests 修饰符,子表 astral_dice:chests/star_plate 内含
+//     星盘(权重 1)/空(权重 19)= 5%,故期望约 20 枚;修饰符失效时为 0 枚。
+function doGlmCheck(ctx, tag) {
+    var serializers = "err";
+    try {
+        var FR = Java.loadClass("net.minecraftforge.registries.ForgeRegistries");
+        var keys = FR.GLOBAL_LOOT_MODIFIER_SERIALIZERS.get().getKeys();
+        var arr = [];
+        var it = keys.iterator();
+        while (it.hasNext()) arr.push("" + it.next());
+        arr.sort();
+        serializers = arr.join(",");
+    } catch (e1) { serializers = "ERR:" + exText(e1); }
+    send(ctx, "AP_" + tag + "_SERIALIZERS:" + serializers);
+
+    // ⚠️ 反射取 LootModifierManager 在本机 Rhino 下有两处坑(均已实测):
+    //   Java.loadClass(...) 的包装对象上既没有 `getDeclaredMethod`,也没有 `.class`;
+    //   故第一条路径走 Class.forName,第二条才对包装对象直接取方法。
+    var loaded = "err";
+    var loadedSrc = "none";
+    var paths = [
+        function () {
+            var cls = Java.loadClass("java.lang.Class").forName("net.minecraftforge.common.ForgeInternalHandler");
+            return cls.getDeclaredMethod("getLootModifierManager");
+        },
+        function () {
+            return Java.loadClass("net.minecraftforge.common.ForgeInternalHandler")
+                .getDeclaredMethod("getLootModifierManager");
+        }
+    ];
+    for (var li = 0; li < paths.length; li++) {
+        try {
+            var m = paths[li]();
+            m.setAccessible(true);
+            loaded = "" + m.invoke(null, []).getAllLootMods().size();
+            loadedSrc = "" + (li + 1);
+            break;
+        } catch (e2) {
+            // 本机 Rhino 两条路径都不可达(实测):给出明确的「不可用」而不是抛错字符串,
+            // 免得后来者把环境限制误读成「解码失败」。
+            loaded = "unavailable";
+        }
+    }
+    send(ctx, "AP_" + tag + "_LOADED:" + loaded + ":src=" + loadedSrc);
+
+    var rolls = 400, plates = 0, items = 0, rollErr = "none";
+    try {
+        var p = ctx.source.getPlayerOrException();
+        var inv = p.getInventory();
+        // ⚠️ 1.20.1 的 Rhino 下 ServerPlayer#getScoreboardName 不可见,改用 KubeJS 的 username 属性。
+        var name = p.username;
+        var server = p.level.getServer();
+        for (var i = 0; i < rolls; i++) {
+            inv.clearContent();
+            server.runCommandSilent("loot give " + name + " loot minecraft:chests/simple_dungeon");
+            for (var s = 0; s < inv.getContainerSize(); s++) {
+                var stack = inv.getItem(s);
+                if (stack == null || stack.isEmpty()) continue;
+                items++;
+                if (itemIdOf(stack) === "astral_dice:star_plate") plates++;
+            }
+        }
+        inv.clearContent();
+    } catch (e4) { rollErr = exText(e4); }
+    send(ctx, "AP_" + tag + "_ROLL:rolls=" + rolls + ":plates=" + plates + ":items=" + items
+        + ":err=" + rollErr);
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
 ServerEvents.commandRegistry(event => {
     var Commands = event.commands;
     event.register(
@@ -1725,6 +1957,26 @@ ServerEvents.commandRegistry(event => {
                 .then(Commands.argument("tag", StringArg.word())
                     .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
                         return doRailgunCleared(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("glmcheck")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doGlmCheck(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("railgunfriendly")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doRailgunFriendly(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("railgunfriendlyread")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doRailgunFriendlyRead(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("railgunfriendlyend")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doRailgunFriendlyEnd(ctx, StringArg.getString(ctx, "tag"));
                     }))))
             .then(Commands.literal("emeraldtrade")
                 .then(Commands.argument("tag", StringArg.word())

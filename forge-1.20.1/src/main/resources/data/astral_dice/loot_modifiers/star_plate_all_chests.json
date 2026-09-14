@@ -1,5 +1,5 @@
 {
-  "type": "forge:add_table",
+  "type": "astral_dice:add_table",
   "conditions": [
     {
       "condition": "minecraft:any_of",

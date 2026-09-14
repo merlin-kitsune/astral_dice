@@ -94,7 +94,7 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --phase <p> --version <v>
 
 | 探针 | 1.21.1 | 1.20.1 | 作用 |
 |---|---|---|---|
-| `astral_bugfix_probe.js` | ✅ | ✅ | 回归套件主探针：命令（`diag` / `equipslot` / `railguncd` + 各用例专用命令）、状态读数 `AP_*` |
+| `astral_bugfix_probe.js` | ✅ | ✅ | 回归套件主探针：命令（`diag` / `equipslot` / `railguncd` / `railgunfriendly`·`railgunfriendlyread`·`railgunfriendlyend`（双版本）+ `glmcheck`（仅 1.20.1）+ 各用例专用命令）、状态读数 `AP_*` |
 | `astral_dice_curios_check.js` | ✅ | ✅ | Curios 槽位 / 装备状态观测 |
 | `astral_dice_target_select_check.js` | ✅ | ✅ | 待命等待器（占星师 / 秘密侦探 / 枪匠）观测 |
 | `astral_dice_curio_watch.js` | ✅ | — | 立牌槽位变化观测（1.21.1 专用） |
@@ -142,7 +142,9 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --phase <p> --version <v>
 | `KOMACHI-EXTRA-PLAY` | 忍者立牌主动「忍术连击」：仅当前周期 +1（正常释放 / 本周期已生效时不再释放且不进冷却 / 出牌上限不得超过封顶 9 / 周期归零后附件被清除） | 11 步 / 24 断言 | `AP_K1_BEFORE:max=1:extra=0`、`AP_K1_AFTER:max=2:extra=1:cd=1`、`AP_K1_DELTA:max=+1:…:cd=started`、`AP_K1_RELEASED:1`、`AP_K2_REJECTED:1`（冷却结束时刻逐字未变 `cd_same=1`/`cd_future=0`）、`AP_K3_CONST:9:1`、`AP_K3_FILL:7`、`AP_K3_VERDICT:…`（封顶分支与未封顶正对照两形态一条正则锁死）、`AP_K5_READ:extra=0:count=0:cd=0`、`AP_K5_CLEARED:1`、`absent`、`kubejs`、`crash` |
 | `NANCY-LU-PEARL-IMMUNE` | 骇客「网络防火墙」：末影珍珠传送摔落伤害在伤害判定最前置处被取消（生命值不变 + `hurtTime`/`invulnerableTime`/`hurtMarked` 全未被写入），并带同构造对照相位 | 9 步 / 21 断言 | `AP_P1_FIELDS:ok`、`AP_P1_API:(hurt\|causeFallDamage)`、`AP_P1_CTRL_OK:1`（对照相位必须真受伤）、`AP_P1_IMM:…->…`（前后快照逐字一致）、`AP_P1_IMM_OK:1`、`AP_P2_PEARL:window=…:tel=1:drop=0:hurt=0:invul=0:marked=false`、`AP_P3_PEARL:window=0:tel=1:drop=5:hurt>0`、`absent`、`kubejs`、`crash` |
 | `NANCY-LU-CLOAK` | 骇客主动「远程侵入」：完全隐身的机器可判定一半——隐身实例 `visible=false`（无粒子）、`nancy_lu_hidden_until>0`、到期与攻击两条解除路径都能清掉附件与效果 | 14 步 / 19 断言 | `AP_N1_STATE:hidden_until=…:vis=0:…:win=1`、`AP_N1_HIDDEN:1:1`（服务端 `isHidden` + 客户端 `isHiddenClient`）、`AP_N3_CLEARED:1`（到期路径）、`AP_N6_STATE:hidden_until=0:effect=0:vis=-1:…:hack=1:bonus=…`（攻击路径）、`absent`、`kubejs`、`crash`；**视觉半自动**（1 张截图，无 `vision` 断言） |
-| `EFFECT-DECAY-FLICKER` | 层数递减类效果（治愈/标记/弱点识破/赋能）客户端 HUD 不再闪烁：闪烁窗口状态可机器构造 + `GuiMixin` 应用行可断言 | 6 步 / 11 断言 | `Mixing client.GuiMixin from astral_dice.mixins.json into net.minecraft.client.gui.Gui`（`source=debug`、`scope=whole`）、`AP_F1_SETUP:heal=ok:mark=ok:emp=ok`、`AP_F1_STATE:…:amb=0:…`、`AP_F1_WINDOW:1:200`（与 `Gui#renderEffects` 同一表达式 `endsWithin(200)` 求值）、`AP_F2_STATE:…=absent`、`absent`、`mixin`、`kubejs`、`crash`；**视觉半自动**（1 张截图，不做机器判定） |
+| `RAILGUN-AOE-SCOPE` | 电磁炮雷击命中范围取证：单个可命中敌对目标只生成 **1 道**原版雷击，而原版雷击对落点箱内**所有**存活实体生效——实测同时打中攻击者本人、中立生物与已驯服的宠物，证明该链路**没有任何阵营/所有权过滤** | 8 步 / 13 断言 | `AP_RG_TAME:tame=1:owner=1:src=`（狼已驯服并绑定主人，`src` 为命中的 UUID 取值器）、`AP_RG_BEFORE:…:charge=6:mode=forced_survival:weather=clear`、`AP_RG_CHARGE_AT_ATTACK:6`（充能**延迟到雷击落下**才结算）、`AP_RG_AFTER:…bolt_delta=1`（只 1 道雷击）、`AP_RG_AFTER:…:charge=0`、`AP_RG_VERDICT:enemy=1`（敌方必被命中）、`AP_RG_RESTORE:creative`、`absent`、`kubejs`、`crash` |
+| `LOOT-MODIFIER` | 1.20.1 星盘战利品修饰符：Forge 47.4.10 **没有**内置 `add_table`，改用自带的 `astral_dice:add_table` 后 13 条修饰符必须全部解码成功并能真正注入星盘 | 5 步 / 6 断言 | `AP_GLM_SERIALIZERS:.*astral_dice:add_table`、`AP_GLM_ROLL:rolls=400:plates=([5-9]\|[1-9][0-9]+):items=[1-9][0-9]*:err=none`（实滚 400 次 `minecraft:chests/simple_dungeon`，子表 5% 出星盘）、`absent` `Could not decode GlobalLootModifier`、`kubejs`、`crash`（仅 1.20.1 一份） |
+| `EFFECT-DECAY-FLICKER` |**视觉半自动**（1 张截图，不做机器判定） |
 
 > `DIRECTIONAL-BLAST-AOE` / `EMERALD-DICE-TRADE` 于 2026-09-13 追加，配套探针命令
 > `/astralprobe blastbonus|emeraldtrade|tradeclose`（见 §6 探针安装步骤，改探针后必须冷启动）。

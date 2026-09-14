@@ -120,15 +120,19 @@ legacyForge {
 }
 
 // Forge 自身版本门槛(**单一来源 = gradle.properties 的 forge_version**,形如 1.20.1-47.4.10):
-//   下限 = 本工程编译所依赖的 Forge 版本;上限 = 其次版本(47 → 48),即 1.20.1 所属的 47.x 系列
-//   (与 neoforge 侧 neoforge.mods.toml 的 `[21.1,21.2)` 同思路)。
-// 该区间同时用于 mods.toml 的 `loaderVersion`(javafml 语言提供者版本校验,fml.language.missingversion)
-// 与 `modId="forge"` 强制依赖校验(FML 依赖排序阶段报 "Missing or unsupported mandatory dependencies"),
-// 使**低于该版本的 Forge 环境在 mods.toml 解析阶段即被拒绝**,而不是照常加载后才抛 mixin 错误。
-// (2026-09-14 修复:此前 loader_version_range=[47,) 只卡到 47.0.0,47.0.0~47.4.9 会带着 mixin 错误加载。)
+//   依赖区间(写入 modId="forge" 强制依赖):下限 = 本工程编译所依赖的 Forge 版本,上限 = 其次版本(47 → 48)。
+//   语言区间(写入 loaderVersion):**只能卡到主版本系列**(47)—— javafml 语言提供者的版本号就是 Forge
+//   主系列号,与完整版本号并不同构。2026-09-14 实机验证:`loaderVersion="[47.4.10,48)"` 会被 FML 判为
+//   `Missing language javafml version [47.4.10,48) wanted by astral_dice-…, found 47` 而**直接拒绝加载本模组**
+//   (Forge 自身的 mods.toml 也只写 loaderVersion="[24,]")。故:
+//     loaderVersion = [<major>,<major+1>)(当前 [47,48)),精确下限只放在 forge 依赖上;
+//   低于 47.4.10 的环境仍在 FML 依赖排序阶段被拒("Missing or unsupported mandatory dependencies"),
+//   即在 mods.toml 解析/依赖排序阶段就拒绝,而不是照常加载后才抛 mixin 错误。
 def forgeSemver = project.forge_version.toString().split('-').last()
-def forgeVersionRange = "[${forgeSemver},${(forgeSemver.split('\\.')[0] as int) + 1})"
-logger.lifecycle("forgeVersionRange: ${forgeVersionRange} (derived from forge_version=${forge_version})")
+def forgeMajor = (forgeSemver.split('\\.')[0] as int)
+def forgeVersionRange = "[${forgeSemver},${forgeMajor + 1})"
+def forgeLanguageRange = "[${forgeMajor},${forgeMajor + 1})"
+logger.lifecycle("forgeVersionRange: ${forgeVersionRange} / forgeLanguageRange: ${forgeLanguageRange} (derived from forge_version=${forge_version})")
 
 // This block of code expands all declared replace properties in the specified resource targets.
 // A missing property will result in an error. Properties are expanded using ${} Groovy notation.
@@ -138,6 +142,7 @@ var generateModMetadata = tasks.register("generateModMetadata", ProcessResources
             minecraft_version_range: minecraft_version_range,
             forge_version          : forge_version,
             forge_version_range    : forgeVersionRange,
+            forge_language_version_range: forgeLanguageRange,
             mod_id                 : mod_id,
             mod_name               : mod_name,
             mod_license            : mod_license,

@@ -1,0 +1,60 @@
+{
+  "case_id": "LOOT-MODIFIER-1.20.1",
+  "title": "1.20.1 星盘战利品修饰符：Forge 47.4.10 无内置 add_table，改用自带的 astral_dice:add_table 后 13 条修饰符必须全部解码成功",
+  "version": "1.20.1",
+  "target": {
+    "type": "bugfix",
+    "ref": "forge-global-loot-modifier-add-table"
+  },
+  "steps": [
+    {
+      "op": "note",
+      "text": "注意:`AP_GLM_LOADED`(LootModifierManager#getAllLootMods().size())在本机 Rhino 下不可达 —— `Java.loadClass(...)` 包装对象既无 `getDeclaredMethod` 也无 `.class`,`Class.forName(...)` 亦同(均已实测),该读数固定为 `unavailable:src=none`,故**不作为断言**。解码成功的权威判据是另外两条:日志中 `Could not decode GlobalLootModifier` 必须为 0 条(修复前为 13 条),以及 400 次实滚 minecraft:chests/simple_dungeon 必须真的产出星盘(子表权重 1:19 = 5%,修复前为 0 枚)。"
+    },
+    {
+      "op": "note",
+      "text": "根因：Forge 1.20.1-47.4.10 的 net.minecraftforge.common.loot 不含 GlobalLootModifierSerializers / AddTableLootModifier，全 jar 无 add_table 注册名；原 13 个 data/astral_dice/loot_modifiers/*.json 全都写 type=forge:add_table，故全部解码失败(日志 Could not decode GlobalLootModifier)，星盘注入形同不存在。修复：注册 astral_dice:add_table 等价实现并改写 13 个 json 的 type。"
+    },
+    {
+      "op": "note",
+      "text": "三个独立读数：序列化器注册表须含 astral_dice:add_table；LootModifierManager.getAllLootMods() 须为 13(解码成功条数)；把 minecraft:chests/simple_dungeon 连滚 400 次，子表 astral_dice:chests/star_plate 为 1:19 权重(星盘 5%)，期望约 20 枚，修饰符失效时为 0 枚。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe glmcheck GLM"
+    },
+    {
+      "op": "wait",
+      "ms": 5000
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_GLM_SERIALIZERS:.*astral_dice:add_table"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_GLM_ROLL:rolls=400:plates=([5-9]|[1-9][0-9]+):items=[1-9][0-9]*:err=none"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_GLM_DONE"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_GLM_ERR|AP_GLM_EX:|Could not decode GlobalLootModifier"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "crash"
+    }
+  ],
+  "on_fail": "keep_game_running"
+}

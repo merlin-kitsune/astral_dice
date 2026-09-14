@@ -1,9 +1,10 @@
 modLoader="javafml" #mandatory
 
-# 加载器(javafml 语言提供者)版本门槛:与下方 modId="forge" 依赖同一区间,由 build.gradle 从
-# forge_version 派生(当前 = [47.4.10,48))。低于该区间的 Forge 会在 mods.toml 解析阶段被 FML 拒绝
-# (fml.language.missingversion),不会出现「能加载但 Mixin 随后报错」的状态。
-loaderVersion="${forge_version_range}" #mandatory
+# 加载器(javafml 语言提供者)版本门槛:只能卡到 **Forge 主版本系列**(由 build.gradle 从 forge_version
+# 派生,当前 = [47,48))—— javafml 语言提供者的版本号就是主系列号(47),与完整版本号不同构;
+# 实测 loaderVersion="[47.4.10,48)" 会被 FML 判为 fml.language.missingversion 而拒绝加载本模组。
+# 精确下限([47.4.10,48))放在下方 modId="forge" 依赖上,由 FML 依赖排序阶段拒绝。
+loaderVersion="${forge_language_version_range}" #mandatory
 
 license="${mod_license}"
 
@@ -63,7 +64,7 @@ config="${mod_id}.mixins.json"
     # Optional field describing why the dependency is required or why it is incompatible
     # reason="..."
     # The version range of the dependency
-    # Forge 自身版本门槛(派生自 forge_version,与上方 loaderVersion 同一区间):
+    # Forge 自身版本门槛的**精确下限**(派生自 forge_version;上方 loaderVersion 只卡主系列):
     # 不满足时 FML 在依赖排序阶段直接报 "Missing or unsupported mandatory dependencies: forge"。
     versionRange="${forge_version_range}" #mandatory
     # An ordering relationship for the dependency.
