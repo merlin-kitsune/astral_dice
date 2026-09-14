@@ -3,6 +3,21 @@
 > This file contains the English changelog only. Chinese version: [`CHANGELOG_ZH.md`](CHANGELOG_ZH.md).
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 
+## Unreleased (1.2.1)
+
+> Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
+
+### New Content
+
+### Content & Balance
+
+### Bug Fixes
+
+### Project
+
+- Project: version bumped to **1.2.1** (`mod_version=1.2.1+neoforge_1.21.1` / `1.2.1+forge_1.20.1`); the interop number stays `1.2`, so **1.2.0 and 1.2.1 remain mutually compatible** (the Version Gate only compares major.minor and ignores the patch number); both changelogs opened a new `Unreleased (1.2.1)` section, and the 1.2.0 section is frozen as released.
+- Tooling: fixed the artifact line printed by `scripts/test/mt_build.ps1` — after a version bump a subproject's `build/libs` also keeps the **previous** version's jar (Gradle does not clean outputs whose name changed), while the success line reported the **first entry of an ordinally sorted snapshot**, so it named the stale jar (observed here: the build produced `1.2.1` but the line said `1.2.0`); it now reports the newest jar by mtime (new `Get-MtNewestJarName`). The pass/fail logic is unchanged (still a before/after snapshot diff) and **only the message** is affected.
+
 ## 1.2.0
 
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.

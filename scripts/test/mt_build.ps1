@@ -59,6 +59,25 @@ function Get-MtJarStamp {
     return ($lines -join "`n")
 }
 
+function Get-MtNewestJarName {
+    <#
+    .SYNOPSIS
+        目录中 mtime 最新的 jar 文件名（用于构建成功提示）。
+
+    .NOTES
+        版本号切换后，子项目 build/libs 可能同时留有旧版本 jar（Gradle 不清理改名前的旧产物），
+        而 Get-MtJarStamp 是**序数排序**快照——直接取首行会打印出旧版本文件名（误导）。
+        提示一律改取 mtime 最新者，与实际刚产出的构建对应。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$JarDir)
+
+    if (-not (Test-Path -LiteralPath $JarDir -PathType Container)) { return '' }
+    $jars = @(Get-ChildItem -LiteralPath $JarDir -File -Filter '*.jar')
+    if ($jars.Count -eq 0) { return '' }
+    return ($jars | Sort-Object -Property LastWriteTimeUtc -Descending | Select-Object -First 1).Name
+}
+
 function Get-MtLogTailLines {
     [CmdletBinding()]
     param([Parameter(Mandatory)][AllowEmptyString()][string]$Text, [int]$Count = 15)
@@ -157,11 +176,11 @@ if ($MyInvocation.InvocationName -ne '.') {
 
         $after = Get-MtJarStamp -JarDir $jarDir
         if ($after -and $after -ne $before) {
-            Write-MtOk 'BUILD' "产物已更新：$((($after -split "`n")[0]))"
+            Write-MtOk 'BUILD' "产物已更新：$(Get-MtNewestJarName -JarDir $jarDir)"
             exit $MT_EXIT_PASS
         }
         if ($txt.Contains('BUILD SUCCESSFUL') -and $after) {
-            Write-MtOk 'BUILD' '输出含 BUILD SUCCESSFUL 且产物存在（时间戳未变）'
+            Write-MtOk 'BUILD' "输出含 BUILD SUCCESSFUL 且产物存在（时间戳未变）：$(Get-MtNewestJarName -JarDir $jarDir)"
             exit $MT_EXIT_PASS
         }
 
