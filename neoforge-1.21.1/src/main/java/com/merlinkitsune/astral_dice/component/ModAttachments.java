@@ -146,6 +146,7 @@ public class ModAttachments {
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> MAGIC_TOME_USE_COUNT =
             ATTACHMENTS.register("magic_tome_use_count", () -> AttachmentType.builder(() -> 0)
                     .serialize(Codec.INT)
+                    .sync(ByteBufCodecs.INT)
                     .build());
 
     // 魔法秘典筹码:最后一张使用的效果牌类型(king_power/berserk/unwavering)
@@ -158,6 +159,7 @@ public class ModAttachments {
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> KOMACHI_USE_COUNT =
             ATTACHMENTS.register("komachi_use_count", () -> AttachmentType.builder(() -> 0)
                     .serialize(Codec.INT)
+                    .sync(ByteBufCodecs.INT)
                     .build());
 
     // 忍者立牌(komachi):最后一张使用的效果牌类型

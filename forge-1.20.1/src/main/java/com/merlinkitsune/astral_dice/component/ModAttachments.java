@@ -130,7 +130,7 @@ public class ModAttachments {
 
     // 魔法秘典筹码:效果牌使用计数(每使用 3 张复制最后一张)
     public static final AttachedDataKey<Integer> MAGIC_TOME_USE_COUNT =
-            register(AttachedDataKey.builder("magic_tome_use_count", Codec.INT, () -> 0).build());
+            register(AttachedDataKey.builder("magic_tome_use_count", Codec.INT, () -> 0).sync().build());
 
     // 魔法秘典筹码:最后一张使用的效果牌类型(king_power/berserk/unwavering)
     public static final AttachedDataKey<String> MAGIC_TOME_LAST_CARD =
@@ -138,7 +138,7 @@ public class ModAttachments {
 
     // 忍者立牌(komachi):效果牌使用计数(独立于魔法秘典与周期计数,每使用 3 张复制最后一张)
     public static final AttachedDataKey<Integer> KOMACHI_USE_COUNT =
-            register(AttachedDataKey.builder("komachi_use_count", Codec.INT, () -> 0).build());
+            register(AttachedDataKey.builder("komachi_use_count", Codec.INT, () -> 0).sync().build());
 
     // 忍者立牌(komachi):最后一张使用的效果牌类型
     public static final AttachedDataKey<String> KOMACHI_LAST_CARD =
@@ -825,6 +825,8 @@ public class ModAttachments {
             SYNCED_KEYS.add(EFFECT_CARD_COOLDOWN_END);
             SYNCED_KEYS.add(HEALING_POINTS);
             SYNCED_KEYS.add(KOMACHI_DAMAGE_BONUS);
+            SYNCED_KEYS.add(KOMACHI_USE_COUNT);
+            SYNCED_KEYS.add(MAGIC_TOME_USE_COUNT);
             SYNCED_KEYS.add(SIGN_ACTIVE_COOLDOWN_END);
             SYNCED_KEYS.add(SIGN_READY_TYPE);
             SYNCED_KEYS.add(SIGN_READY_EXPIRE);

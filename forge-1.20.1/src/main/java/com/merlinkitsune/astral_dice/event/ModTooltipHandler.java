@@ -712,6 +712,8 @@ public class ModTooltipHandler {
             addSignPassiveTitle(tooltip, "复制者");
             addSignLines(tooltip, "tooltip.astral_dice.sign.komachi_passive");
             if (event.getEntity() != null) {
+                addSignCounter(tooltip, "tooltip.astral_dice.sign.komachi_effect_count",
+                        ModAttachments.getKomachiUseCount(player));
                 addSignCounter(tooltip, "tooltip.astral_dice.sign.komachi_damage_bonus",
                         ModAttachments.getKomachiDamageBonus(player));
             }
@@ -790,6 +792,10 @@ public class ModTooltipHandler {
             tooltip.add(Component.empty());
             tooltip.add(Component.translatable("tooltip.astral_dice.chip.magic_tome")
                     .withStyle(ChatFormatting.GRAY));
+            if (event.getEntity() != null) {
+                addSignCounter(tooltip, "tooltip.astral_dice.chip.magic_tome_count",
+                        ModAttachments.getMagicTomeUseCount(player));
+            }
         }
         if (stack.is(ModItems.BIG_BACKPACK_CHIP.get())) {
             tooltip.add(Component.empty());
