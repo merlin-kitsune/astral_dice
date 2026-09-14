@@ -13,6 +13,8 @@
 
 ### 已修复BUG
 
+- 修复 **1.20.1 缺少 Forge 版本门槛**(低于 Forge 47.4.10 的环境也能加载本模组,随后抛 mixin 错误):`mods.toml` 的 `loaderVersion` 与 `modId="forge"` 依赖此前共用 `loader_version_range=[47,)`,只卡到 **47.0.0**;现改为**由 `gradle.properties` 的 `forge_version` 自动派生**为 `[<forge_version>,<major+1>)`(当前 `[47.4.10,48)`,即 1.20.1 所属的 47.x 系列),并**同时**写入 `loaderVersion`(javafml 语言提供者版本校验,失败键 `fml.language.missingversion`)与 `forge` 强制依赖(FML 依赖排序阶段报 `Missing or unsupported mandatory dependencies:`);forge 子项目不再保留可与之冲突的 `loader_version_range` 属性。校验:用 FML 依赖排序所用的同一实现 `org.apache.maven.artifact.versioning.VersionRange` 实测——旧区间接受 47.0.0/47.3.0/47.4.9(BUG 复现),新区间三者全部拒绝,47.4.10/47.4.23/47.5.0/47.9.9 通过、48.0.0 拒绝;产物 `META-INF/mods.toml` 的 `loaderVersion` 与 `forge` 依赖均为 `[47.4.10,48)`(双版本构建通过,1.21.1 侧未改动)。
+
 ### 工程
 
 - 工程:版本号升至 **1.2.1**(`mod_version=1.2.1+neoforge_1.21.1` / `1.2.1+forge_1.20.1`);互通号仍为 `1.2`,故 **1.2.0 ↔ 1.2.1 保持双向互通**(Version Gate 只比较二号位,不受补丁号影响);中英更新日志同步开启 `未发布(1.2.1)` 小节,1.2.0 小节冻结为已发布状态。

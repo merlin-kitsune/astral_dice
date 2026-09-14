@@ -13,6 +13,8 @@
 
 ### Bug Fixes
 
+- Fixed the **missing Forge version gate on 1.20.1** (environments below Forge 47.4.10 could still load the mod and then hit a mixin error): `mods.toml`'s `loaderVersion` and the `modId="forge"` dependency previously shared `loader_version_range=[47,)` — a floor of only **47.0.0**. Both now use a range **derived from `gradle.properties`'s `forge_version`** — `[<forge_version>,<major+1>)` (currently `[47.4.10,48)`, the 1.20.1 / 47.x series) — written to **both** `loaderVersion` (javafml language-provider version check; failure key `fml.language.missingversion`) and the mandatory `forge` dependency (FML dependency sorting then reports `Missing or unsupported mandatory dependencies:`); the forge subproject no longer keeps a conflicting `loader_version_range` property. Verified with the exact implementation FML uses for dependency sorting (`org.apache.maven.artifact.versioning.VersionRange`): the old range accepted 47.0.0 / 47.3.0 / 47.4.9 (bug reproduced), the new one rejects all three and accepts 47.4.10 / 47.4.23 / 47.5.0 / 47.9.9 while rejecting 48.0.0; the built `META-INF/mods.toml` carries `[47.4.10,48)` in both places (both versions build; the 1.21.1 side is unchanged).
+
 ### Project
 
 - Project: version bumped to **1.2.1** (`mod_version=1.2.1+neoforge_1.21.1` / `1.2.1+forge_1.20.1`); the interop number stays `1.2`, so **1.2.0 and 1.2.1 remain mutually compatible** (the Version Gate only compares major.minor and ignores the patch number); both changelogs opened a new `Unreleased (1.2.1)` section, and the 1.2.0 section is frozen as released.

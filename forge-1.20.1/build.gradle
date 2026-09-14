@@ -119,6 +119,17 @@ legacyForge {
     }
 }
 
+// Forge 自身版本门槛(**单一来源 = gradle.properties 的 forge_version**,形如 1.20.1-47.4.10):
+//   下限 = 本工程编译所依赖的 Forge 版本;上限 = 其次版本(47 → 48),即 1.20.1 所属的 47.x 系列
+//   (与 neoforge 侧 neoforge.mods.toml 的 `[21.1,21.2)` 同思路)。
+// 该区间同时用于 mods.toml 的 `loaderVersion`(javafml 语言提供者版本校验,fml.language.missingversion)
+// 与 `modId="forge"` 强制依赖校验(FML 依赖排序阶段报 "Missing or unsupported mandatory dependencies"),
+// 使**低于该版本的 Forge 环境在 mods.toml 解析阶段即被拒绝**,而不是照常加载后才抛 mixin 错误。
+// (2026-09-14 修复:此前 loader_version_range=[47,) 只卡到 47.0.0,47.0.0~47.4.9 会带着 mixin 错误加载。)
+def forgeSemver = project.forge_version.toString().split('-').last()
+def forgeVersionRange = "[${forgeSemver},${(forgeSemver.split('\\.')[0] as int) + 1})"
+logger.lifecycle("forgeVersionRange: ${forgeVersionRange} (derived from forge_version=${forge_version})")
+
 // This block of code expands all declared replace properties in the specified resource targets.
 // A missing property will result in an error. Properties are expanded using ${} Groovy notation.
 var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {
@@ -126,7 +137,7 @@ var generateModMetadata = tasks.register("generateModMetadata", ProcessResources
             minecraft_version      : minecraft_version,
             minecraft_version_range: minecraft_version_range,
             forge_version          : forge_version,
-            loader_version_range   : loader_version_range,
+            forge_version_range    : forgeVersionRange,
             mod_id                 : mod_id,
             mod_name               : mod_name,
             mod_license            : mod_license,
