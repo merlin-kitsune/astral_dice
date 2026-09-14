@@ -139,7 +139,7 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --phase <p> --version <v>
 | `EMERALD-DICE-TRADE` | 绿宝石骰子：客户端报价必须是星币（本体仍是绿宝石）+ 成交后立即重发报价刷新经验 | 6 步 / 13 断言 | `AP_E1_SERVER_A:minecraft:emerald`（本体不变）、`AP_E1_CLIENT_A:astral_dice:star_coin`（客户端载荷）、`AP_E1_RESEND:ok`、`AP_E1_OPEN:ok`、`absent`、`kubejs`、`crash`；交易界面另出截图供人工核对 |
 | `SMOKE-TOOLCHAIN` | 工具链自检（不依赖游戏） | 2 步 / 2 断言 | 反向断言 + `mixin` 通道可用 |
 | `ANVIL-STAR-UPGRADE` | 铁砧升星端到端扣费：★0→★1/★1→★2/★2→★3 实扣 15/20/25 星币（物品栏实测） + `weapon_enhancement` 星级 +1；袋装星币 / 数量不足一律不产出 | 15 步 / 41 断言 | `AP_S1_FEE:15:0->1`、`AP_S2_FEE:20:1->2`、`AP_S3_FEE:25:2->3`、`_COINS_BEFORE:25/30/35`、`_RIGHT_LEFT:astral_dice:star_coin:3`、`_INV_AFTER_CLOSE:10`、`_STAR`、`_PUTBACK:ok:…`、`_TAKE:clicked:30:20`、`AP_Z1_BAG_RESULT:empty`、`AP_Z1_FEW_TOTAL:9`、`absent`、`kubejs`、`crash` |
-| `KOMACHI-EXTRA-PLAY` | 忍者立牌主动「忍术连击」：仅当前周期 +1（正常释放 / 本周期已生效时不再释放且不进冷却 / 出牌上限不得超过封顶 9 / 周期归零后附件被清除） | 11 步 / 24 断言 | `AP_K1_BEFORE:max=1:extra=0`、`AP_K1_AFTER:max=2:extra=1:cd=1`、`AP_K1_DELTA:max=+1:…:cd=started`、`AP_K1_RELEASED:1`、`AP_K2_REJECTED:1`（冷却结束时刻逐字未变 `cd_same=1`/`cd_future=0`）、`AP_K3_CONST:9:1`、`AP_K3_FILL:7`、`AP_K3_VERDICT:…`（封顶分支与未封顶正对照两形态一条正则锁死）、`AP_K5_READ:extra=0:count=0:cd=0`、`AP_K5_CLEARED:1`、`absent`、`kubejs`、`crash` |
+| `KOMACHI-EXTRA-PLAY` | 忍者立牌主动「忍术连击」= **一次性** +1：只作用于**当前出牌轮**（不累积、不跨轮、**无出牌银行附件**、**无来源注册**）；释放前置三条 = 效果牌冷却进行中 / 出牌上限已达封顶 9 / 本轮已授予过 → 一律拒绝且**不消耗**主动技能冷却；正常释放 = 本轮上限 +1 且主动冷却起算；周期归零后一次性加成必须归零 | 12 步 / 26 断言 | `AP_K1_BEFORE:max=1:extra=0`、`AP_K1_AFTER:max=2:extra=1:cd=1`、`AP_K1_DELTA:max=+1:…:cd=started`、`AP_K1_RELEASED:1`、`AP_K2_REJECTED:1`（本轮已授予过：加成不变、主动冷却结束时刻逐字未变 `cd_same=1`/`cd_future=0`）、**`AP_K6_BEFORE:bonus=0:cd_active=1:sign_cd=0`、`AP_K6_AFTER:bonus=0:…:sign_cd=0:cd_kept=1`、`AP_K6_REJECTED:1`（**效果牌冷却进行中不得释放**，新规则）**、`AP_K3_CONST:9:bonus_one_shot=1`、`AP_K3_FILL:(6|7)`（满配固定 2 + 临时 4 = 6 → 上限 7；实机曾观测到 6，故两种取值都放行）、`AP_K3_VERDICT:…`（封顶分支与未封顶正对照两形态一条正则锁死）、`AP_K5_READ:extra=0:count=0:cd=0`、`AP_K5_CLEARED:1`（周期归零 ⇒ 一次性加成归零 ＝ 无残留银行）、`absent`、`kubejs`、`crash` |
 | `NANCY-LU-PEARL-IMMUNE` | 骇客「网络防火墙」：末影珍珠传送摔落伤害在伤害判定最前置处被取消（生命值不变 + `hurtTime`/`invulnerableTime`/`hurtMarked` 全未被写入），并带同构造对照相位 | 9 步 / 21 断言 | `AP_P1_FIELDS:ok`、`AP_P1_API:(hurt\|causeFallDamage)`、`AP_P1_CTRL_OK:1`（对照相位必须真受伤）、`AP_P1_IMM:…->…`（前后快照逐字一致）、`AP_P1_IMM_OK:1`、`AP_P2_PEARL:window=…:tel=1:drop=0:hurt=0:invul=0:marked=false`、`AP_P3_PEARL:window=0:tel=1:drop=5:hurt>0`、`absent`、`kubejs`、`crash` |
 | `NANCY-LU-CLOAK` | 骇客主动「远程侵入」：完全隐身的机器可判定一半——隐身实例 `visible=false`（无粒子）、`nancy_lu_hidden_until>0`、到期与攻击两条解除路径都能清掉附件与效果 | 14 步 / 19 断言 | `AP_N1_STATE:hidden_until=…:vis=0:…:win=1`、`AP_N1_HIDDEN:1:1`（服务端 `isHidden` + 客户端 `isHiddenClient`）、`AP_N3_CLEARED:1`（到期路径）、`AP_N6_STATE:hidden_until=0:effect=0:vis=-1:…:hack=1:bonus=…`（攻击路径）、`absent`、`kubejs`、`crash`；**视觉半自动**（1 张截图，无 `vision` 断言） |
 | `RAILGUN-AOE-SCOPE` | 电磁炮雷击命中范围取证：单个可命中敌对目标只生成 **1 道**原版雷击，而原版雷击对落点箱内**所有**存活实体生效——实测同时打中攻击者本人、中立生物与已驯服的宠物，证明该链路**没有任何阵营/所有权过滤** | 8 步 / 13 断言 | `AP_RG_TAME:tame=1:owner=1:src=`（狼已驯服并绑定主人，`src` 为命中的 UUID 取值器）、`AP_RG_BEFORE:…:charge=6:mode=forced_survival:weather=clear`、`AP_RG_CHARGE_AT_ATTACK:6`（充能**延迟到雷击落下**才结算）、`AP_RG_AFTER:…bolt_delta=1`（只 1 道雷击）、`AP_RG_AFTER:…:charge=0`、`AP_RG_VERDICT:enemy=1`（敌方必被命中）、`AP_RG_RESTORE:creative`、`absent`、`kubejs`、`crash` |
@@ -196,18 +196,25 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --phase <p> --version <v>
 
 > `KOMACHI-EXTRA-PLAY` / `NANCY-LU-PEARL-IMMUNE` / `NANCY-LU-CLOAK` / `EFFECT-DECAY-FLICKER`
 > 于 2026-09-14 追加，配套探针命令
-> `/astralprobe komachicast|komachirepeat|komachicap|komachicycle|komachiread`、
+> `/astralprobe komachicast|komachirepeat|komachicap|komachicooldown|komachicycle|komachiread`、
 > `nancycloak|nancyexpire|nancystate|nancyfall`、`nancypearl|nancypearlctrl|nancypearlclose`、
 > `decayflash|decayclear`（见 §6 探针安装步骤；**探针改动必须冷启动**：`/kubejs reload server-scripts`
 > 不会重绑已注册命令的 lambda）。
 > **「按主动」的取证口径**：三例统一由 `BaseSignItem.performSkillForCurio` 触发 —— 与客户端按键经网络包
 > （1.21.1 `SignActivatePayload` / 1.20.1 `ModNetwork`）的服务端处理是**同一入口**，不是直接改附件。
+> **忍者主动的现行语义（2026-09-14 按用户裁决重写）**：主动只调用 `EffectCardPeriod.grantBonusPlay(player)`
+> —— 一次性把**当前出牌轮**的上限 +1（附件 `effect_card_bonus_plays`，0/1，随出牌轮归零清除）。
+> **旧「出牌银行」与主动来源注册已全部删除**：`komachi_extra_plays` 附件、`KOMACHI_EXTRA_PLAYS_CAP` 常量、
+> `EffectCardPeriod` 里为主动注册的 `ExtraPlaySource` 一律不复存在（残留检查：全仓 `grep komachi_extra_plays`
+> 必须为 0 命中）；立牌装卸**不影响**已授予的加成（授予即已消耗；若在卸下时回收会造成"上限中途下降"的
+> 不变量违例，见 `EffectCardPeriod#tick`）。
 > **「不进入冷却」的取证口径**：先把主动冷却结束时刻置为「已过期但非 0」（既越过 `performSkill` 的冷却分支、
 > 又留下可比的基线），按主动后该字段必须**逐字未变**（`cd_same=1` / `cd_future=0`）；若被重新写成未来时刻，
 > 即说明冷却被起算。
 > **封顶分支的现状（如实标注，勿当成已验证）**：忍者主动「出牌上限已达封顶 9」这一分支在当前内容下
 > **不可达** —— 满配 extra = 固定来源 2（大背包 / 忍术飞镖）+ 临时来源 4（活体书页 / 命运的指引 /
-> 可口糖果 / 探天卫星）= 6 → `getMaxAllowed()` = 7。`komachicap` 会尝试注册两个「常态关闭」的
+> 可口糖果 / 探天卫星）= 6 → `getMaxAllowed()` = 7；再叠加忍者主动的一次性 +1 也只到 8。
+> `komachicap` 会尝试注册两个「常态关闭」的
 > 临时来源把上限推到 9 以真正覆盖该分支（两种 Rhino 写法都试：`new Iface({...})` 与
 > `new JavaAdapter(Iface, {...})`；都不可用则**不注册**、读数落 `_SRC:unavailable:…`），
 > 此时用例退化为「未封顶时主动必须正常释放、且不得超过封顶 9」

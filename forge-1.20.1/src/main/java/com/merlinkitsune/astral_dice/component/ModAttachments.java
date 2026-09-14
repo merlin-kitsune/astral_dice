@@ -43,17 +43,18 @@ public class ModAttachments {
     public static final AttachedDataKey<Integer> EFFECT_CARD_PLAY_COUNT =
             register(AttachedDataKey.builder("effect_card_play_count", Codec.INT, () -> 0).sync().build());
 
-    // 忍者立牌(komachi)主动:本轮出牌数 +1 的本周期标记(0/1;仅当前出牌周期有效,
-    // 周期归零时由 EffectCardPeriod 清除;冷却中无法触发,已达封顶或本周期已生效时不释放)
-    public static final AttachedDataKey<Integer> KOMACHI_EXTRA_PLAYS =
-            register(AttachedDataKey.builder("komachi_extra_plays", Codec.INT, () -> 0).sync().build());
+    // 出牌轮一次性追加的出牌数(0/1):由立牌主动技能(忍者「忍术连击」)授予,**仅当前出牌轮有效**——
+    // 不是可累积、可跨轮保留的"出牌银行";周期结束时由 EffectCardPeriod 统一清除,
+    // 立牌装卸不影响(授予即已消耗)。授予入口见 EffectCardPeriod#grantBonusPlay。
+    public static final AttachedDataKey<Integer> EFFECT_CARD_BONUS_PLAYS =
+            register(AttachedDataKey.builder("effect_card_bonus_plays", Codec.INT, () -> 0).sync().build());
 
-    public static int getKomachiExtraPlays(net.minecraft.world.entity.player.Player player) {
-        return KOMACHI_EXTRA_PLAYS.get(player);
+    public static int getEffectCardBonusPlays(net.minecraft.world.entity.player.Player player) {
+        return EFFECT_CARD_BONUS_PLAYS.get(player);
     }
 
-    public static void setKomachiExtraPlays(net.minecraft.world.entity.player.Player player, int value) {
-        KOMACHI_EXTRA_PLAYS.set(player, value);
+    public static void setEffectCardBonusPlays(net.minecraft.world.entity.player.Player player, int value) {
+        EFFECT_CARD_BONUS_PLAYS.set(player, Math.max(0, value));
     }
 
     // 活体书页(effect_card_living_page):本周期活体书页累计的出牌数加成(0,1,2,…)。
@@ -819,7 +820,7 @@ public class ModAttachments {
             SYNCED_KEYS.add(PLAYER_STARLIGHT);
             SYNCED_KEYS.add(DAMAGE_EFFECT_BONUS);
             SYNCED_KEYS.add(EFFECT_CARD_PLAY_COUNT);
-            SYNCED_KEYS.add(KOMACHI_EXTRA_PLAYS);
+            SYNCED_KEYS.add(EFFECT_CARD_BONUS_PLAYS);
             SYNCED_KEYS.add(LIVING_PAGE_CYCLE_BONUS);
             SYNCED_KEYS.add(EFFECT_CARD_COOLDOWN_END);
             SYNCED_KEYS.add(HEALING_POINTS);

@@ -45,7 +45,7 @@
 //    /astralprobe railgunfriendly|railgunfriendlyread|railgunfriendlyend <tag>
 //                                                    电磁炮雷击命中范围取证(自己/中立/友方/敌方)
 //    ── 2026-09-14 追加(忍者主动 / 骇客末影珍珠免疫 / 骇客完全隐身 / 层数递减闪烁)──
-//    /astralprobe komachicast|komachirepeat|komachicap|komachicycle|komachiread <tag>
+//    /astralprobe komachicast|komachirepeat|komachicap|komachicooldown|komachicycle|komachiread <tag>
 //    /astralprobe nancycloak|nancyexpire|nancystate|nancyfall <tag>
 //    /astralprobe nancypearl|nancypearlctrl|nancypearlclose <tag>
 //    /astralprobe decayflash|decayclear <tag>
@@ -982,7 +982,7 @@ function doAnvilClose(ctx, tag) {
 //     不会重绑已注册命令的 lambda,只能用来确认脚本语法。
 //
 //  证据口径(全部经聊天栏 AP_<TAG>_…;输出通道见文件头):
-//    · 忍者:EffectCardPeriod.getMaxAllowed/getPlayCount + 附件 komachi_extra_plays
+//    · 忍者:EffectCardPeriod.getMaxAllowed/getPlayCount + 出牌轮一次性加成附件 effect_card_bonus_plays
 //      + 玩家级主动冷却 sign_active_cooldown_end。「按主动」= BaseSignItem.performSkillForCurio
 //      —— 与客户端按键经 SignActivatePayload(1.20.1 为 ModNetwork)的服务端处理同一入口。
 //    · 骇客:附件 nancy_lu_ender_pearl_immune_until / nancy_lu_hidden_until
@@ -1058,7 +1058,7 @@ function equipSign(player, itemId) {
 
 /** 出牌周期与忍者主动状态归零(每条命令都从同一基线起测) */
 function resetEffectCardCycle(player) {
-    ModAttachments.setKomachiExtraPlays(player, 0);
+    ModAttachments.setEffectCardBonusPlays(player, 0);
     ModAttachments.setEffectCardPlayCount(player, 0);
     ModAttachments.setEffectCardCooldownEnd(player, 0);
     ModAttachments.setSignActiveCooldownEnd(player, 0);
@@ -1080,7 +1080,7 @@ function signCooldownRemaining(player) {
     return end - now;
 }
 
-// ── 忍者:主动「仅当前周期 +1」──────────────────────────────────────────────
+// ── 忍者:主动「一次性 +1」(仅当前出牌轮;无银行、无来源注册)──────────────
 /**
  * 正常释放:归零基线 → 按主动。断言链 = 附件 0→1、出牌上限 +1、主动冷却开始。
  * 出牌上限读数用「前后差值」而非绝对值(不依赖其它用例是否留下固定来源筹码)。
@@ -1094,14 +1094,14 @@ function doKomachiCast(ctx, tag) {
     if (err != null) { send(ctx, "AP_" + tag + "_ERR:" + err); return 0; }
     var maxBefore = EffectCardPeriodClass.getMaxAllowed(p);
     send(ctx, "AP_" + tag + "_BEFORE:max=" + maxBefore
-        + ":extra=" + ModAttachments.getKomachiExtraPlays(p)
+        + ":extra=" + EffectCardPeriodClass.getBonusPlays(p)
         + ":cd=" + (signCooldownRemaining(p) > 0 ? 1 : 0)
         + ":count=" + EffectCardPeriodClass.getPlayCount(p)
         + ":living=" + (findEffect(p, DESC_LIVING) != null ? 1 : 0)
         + ":fate=" + (findEffect(p, DESC_FATE) != null ? 1 : 0));
     BaseSignItemClass.performSkillForCurio(p);
     var maxAfter = EffectCardPeriodClass.getMaxAllowed(p);
-    var extraAfter = ModAttachments.getKomachiExtraPlays(p);
+    var extraAfter = EffectCardPeriodClass.getBonusPlays(p);
     var cd = signCooldownRemaining(p);
     send(ctx, "AP_" + tag + "_AFTER:max=" + maxAfter + ":extra=" + extraAfter
         + ":cd=" + (cd > 0 ? 1 : 0));
@@ -1125,8 +1125,8 @@ function doKomachiRepeat(ctx, tag) {
     if (err != null) { send(ctx, "AP_" + tag + "_ERR:" + err); return 0; }
     clearExtraPlayEffects(p);
     var seed = 0;
-    if (ModAttachments.getKomachiExtraPlays(p) <= 0) {
-        ModAttachments.setKomachiExtraPlays(p, 1);
+    if (EffectCardPeriodClass.getBonusPlays(p) <= 0) {
+        ModAttachments.setEffectCardBonusPlays(p, 1);
         seed = 1;
     }
     var now = nowTick(p);
@@ -1136,10 +1136,10 @@ function doKomachiRepeat(ctx, tag) {
     ModAttachments.setEffectCardPlayCount(p, 0);
     var maxBefore = EffectCardPeriodClass.getMaxAllowed(p);
     send(ctx, "AP_" + tag + "_BEFORE:seed=" + seed
-        + ":extra=" + ModAttachments.getKomachiExtraPlays(p)
+        + ":extra=" + EffectCardPeriodClass.getBonusPlays(p)
         + ":max=" + maxBefore + ":cd=" + past);
     BaseSignItemClass.performSkillForCurio(p);
-    var extraAfter = ModAttachments.getKomachiExtraPlays(p);
+    var extraAfter = EffectCardPeriodClass.getBonusPlays(p);
     var cdAfter = ModAttachments.getSignActiveCooldownEnd(p);
     var maxAfter = EffectCardPeriodClass.getMaxAllowed(p);
     send(ctx, "AP_" + tag + "_AFTER:extra=" + extraAfter + ":max=" + maxAfter
@@ -1236,7 +1236,7 @@ function doKomachiCap(ctx, tag) {
     ModAttachments.setSatellitePlayBonusActive(p, true);
     var fill = EffectCardPeriodClass.getMaxAllowed(p);
     send(ctx, "AP_" + tag + "_CONST:" + GameplayConstantsClass.MAX_EFFECT_CARD_PLAYS
-        + ":" + GameplayConstantsClass.KOMACHI_EXTRA_PLAYS_CAP);
+        + ":bonus_one_shot=1");
     send(ctx, "AP_" + tag + "_FILL:" + fill);
     if (probeExtraSourceState === "not_tried") tryInstallProbeSources(p);
     send(ctx, "AP_" + tag + "_SRC:" + probeExtraSourceState);
@@ -1253,10 +1253,10 @@ function doKomachiCap(ctx, tag) {
         // 封顶分支:不释放(附件保持 0)且不进入冷却
         branch = "capped_reject";
         probeExtraSourceArmed = true;
-        ModAttachments.setKomachiExtraPlays(p, 0);
+        ModAttachments.setEffectCardBonusPlays(p, 0);
         ModAttachments.setSignActiveCooldownEnd(p, 0);
         BaseSignItemClass.performSkillForCurio(p);
-        var ex = ModAttachments.getKomachiExtraPlays(p);
+        var ex = EffectCardPeriodClass.getBonusPlays(p);
         var cd = signCooldownRemaining(p);
         var mx = EffectCardPeriodClass.getMaxAllowed(p);
         probeExtraSourceArmed = false;
@@ -1265,10 +1265,10 @@ function doKomachiCap(ctx, tag) {
         send(ctx, "AP_" + tag + "_AFTER:extra=" + ex + ":cd=" + (cd > 0 ? 1 : 0) + ":max=" + mx);
     } else {
         // 未封顶的正向对照:必须释放(附件 0→1、上限 +1)且不得超过常量封顶
-        ModAttachments.setKomachiExtraPlays(p, 0);
+        ModAttachments.setEffectCardBonusPlays(p, 0);
         ModAttachments.setSignActiveCooldownEnd(p, 0);
         BaseSignItemClass.performSkillForCurio(p);
-        var ex2 = ModAttachments.getKomachiExtraPlays(p);
+        var ex2 = EffectCardPeriodClass.getBonusPlays(p);
         var cd2 = signCooldownRemaining(p);
         var mx2 = EffectCardPeriodClass.getMaxAllowed(p);
         capOk = (ex2 === 1 && cd2 > 0 && mx2 === fill + 1
@@ -1299,12 +1299,12 @@ function doKomachiCycle(ctx, tag) {
     clearExtraPlayEffects(p);
     var err = equipSign(p, KOMACHI_SIGN_ID);
     if (err != null) { send(ctx, "AP_" + tag + "_ERR:" + err); return 0; }
-    ModAttachments.setKomachiExtraPlays(p, 1);
+    ModAttachments.setEffectCardBonusPlays(p, 1);
     var max = EffectCardPeriodClass.getMaxAllowed(p);
     ModAttachments.setEffectCardPlayCount(p, max);
     var now = nowTick(p);
     ModAttachments.setEffectCardCooldownEnd(p, now > 1 ? now : 1);
-    send(ctx, "AP_" + tag + "_ARMED:extra=" + ModAttachments.getKomachiExtraPlays(p)
+    send(ctx, "AP_" + tag + "_ARMED:extra=" + EffectCardPeriodClass.getBonusPlays(p)
         + ":count=" + EffectCardPeriodClass.getPlayCount(p)
         + ":max=" + max
         + ":cd_end=" + ModAttachments.getEffectCardCooldownEnd(p)
@@ -1313,10 +1313,43 @@ function doKomachiCycle(ctx, tag) {
     return 1;
 }
 
-/** 读「周期归零」结果:附件 komachi_extra_plays 与出牌数/冷却结束时刻都必须被清除 */
+/**
+ * 效果牌**冷却进行中**按主动:必须不释放、不改动本轮一次性 +1、不进入主动技能冷却。
+ * 构造:主动技能自身冷却置零(可触发)+ 出牌轮冷却结束时刻置为未来(冷却进行中)+ 基线加成 0。
+ * 判据:bonus 保持 0、上限不变、主动冷却未起算、出牌轮冷却未被改写。
+ */
+function doKomachiCooldown(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    clearCurioSlots(p, "chip");
+    clearExtraPlayEffects(p);
+    resetEffectCardCycle(p);
+    var err = equipSign(p, KOMACHI_SIGN_ID);
+    if (err != null) { send(ctx, "AP_" + tag + "_ERR:" + err); return 0; }
+    var now = nowTick(p);
+    ModAttachments.setEffectCardCooldownEnd(p, now + 600);      // 出牌轮冷却:进行中(未来时刻)
+    var maxBefore = EffectCardPeriodClass.getMaxAllowed(p);
+    send(ctx, "AP_" + tag + "_BEFORE:bonus=" + EffectCardPeriodClass.getBonusPlays(p)
+        + ":cd_active=" + (EffectCardPeriodClass.isCooldownActive(p) ? 1 : 0)
+        + ":sign_cd=" + (signCooldownRemaining(p) > 0 ? 1 : 0)
+        + ":max=" + maxBefore);
+    BaseSignItemClass.performSkillForCurio(p);
+    var bonusAfter = EffectCardPeriodClass.getBonusPlays(p);
+    var maxAfter = EffectCardPeriodClass.getMaxAllowed(p);
+    var signCd = signCooldownRemaining(p);
+    var cdEnd = ModAttachments.getEffectCardCooldownEnd(p);
+    send(ctx, "AP_" + tag + "_AFTER:bonus=" + bonusAfter + ":max=" + maxAfter
+        + ":sign_cd=" + (signCd > 0 ? 1 : 0) + ":cd_kept=" + (cdEnd > now ? 1 : 0));
+    var ok = (bonusAfter === 0) && (maxAfter === maxBefore) && (signCd <= 0) && (cdEnd > now);
+    send(ctx, "AP_" + tag + "_REJECTED:" + (ok ? 1 : 0));
+    resetEffectCardCycle(p);
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+/** 读「周期归零」结果:出牌轮一次性加成附件 effect_card_bonus_plays 与出牌数/冷却结束时刻都必须被清除 */
 function doKomachiRead(ctx, tag) {
     var p = ctx.source.getPlayerOrException();
-    var extra = ModAttachments.getKomachiExtraPlays(p);
+    var extra = EffectCardPeriodClass.getBonusPlays(p);
     var count = EffectCardPeriodClass.getPlayCount(p);
     var cdEnd = ModAttachments.getEffectCardCooldownEnd(p);
     send(ctx, "AP_" + tag + "_READ:extra=" + extra + ":count=" + count
@@ -2368,6 +2401,11 @@ ServerEvents.commandRegistry(event => {
                 .then(Commands.argument("tag", StringArg.word())
                     .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
                         return doKomachiCycle(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("komachicooldown")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doKomachiCooldown(ctx, StringArg.getString(ctx, "tag"));
                     }))))
             .then(Commands.literal("komachiread")
                 .then(Commands.argument("tag", StringArg.word())

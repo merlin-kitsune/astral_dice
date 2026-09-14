@@ -52,8 +52,6 @@ public final class GameplayConstants {
     public static int PARUNAN_PASSIVE_INTERVAL_SECONDS = 60;
     // 手持风扇-大:主动技能后对周围敌对目标施加标记的范围(格,默认 16)
     public static int HAND_FAN_BIG_RANGE = 16;
-    // 忍者立牌:主动"本轮出牌数 +1"每周期至多生效次数(仅当前周期有效,不跨周期累积)
-    public static final int KOMACHI_EXTRA_PLAYS_CAP = 1;
 
     // actionbar 消息显示总时长上限(单位: tick,默认 3 秒;任何消息最多显示该时长)
     public static int ACTIONBAR_DURATION_TICKS = 60;

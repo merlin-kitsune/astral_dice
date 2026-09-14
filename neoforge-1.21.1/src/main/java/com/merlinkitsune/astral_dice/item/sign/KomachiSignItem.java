@@ -1,5 +1,6 @@
 package com.merlinkitsune.astral_dice.item.sign;
 
+import com.merlinkitsune.astral_dice.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.event.ModEffectRemoval;
@@ -10,6 +11,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import top.theillusivec4.curios.api.CuriosApi;
 import com.merlinkitsune.astral_dice.item.card.BaseEffectCardItem;
+import com.merlinkitsune.astral_dice.item.card.EffectCardPeriod;
 import com.merlinkitsune.astral_dice.item.card.ExclusiveCardUtil;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
@@ -23,9 +25,17 @@ import net.neoforged.bus.api.SubscribeEvent;
  * - 主动技能冷却时间立即减少 30%;
  * - 伤害类效果牌伤害加成 +1(计数器"效果牌伤害增益",无上限,卸下立牌重置)。
  * 计数期间显示"忍者立牌"效果图标,等级 = 当前第几张;第 3 张触发后计数归 0。
- * 主动(忍术连击):本轮出牌数 +1——仅当前出牌周期有效、每周期至多一次,不跨周期累积。
- * 冷却中不可触发(BaseSignItem.performSkill 统一拦截);出牌数已达封顶 MAX_EFFECT_CARD_PLAYS
- * 或本周期已生效时不释放,且不进入主动技能冷却(见 handleUse)。
+ *
+ * <p>主动(忍术连击)= <b>一次性</b>:只把<b>当前出牌轮</b>的可出牌数 +1
+ * ({@link EffectCardPeriod#grantBonusPlay});不累积、不跨轮保留、不产生任何常驻状态,
+ * 周期结束时由 {@link EffectCardPeriod} 的出牌轮清理统一归零。释放前置(任一不满足即不释放,
+ * 且<b>不消耗</b>主动技能冷却 —— performSkill 以 SUCCESS 判定是否起冷却):
+ * <ol>
+ *   <li>效果牌已进入冷却({@link EffectCardPeriod#isCooldownActive})→ 拒绝;</li>
+ *   <li>出牌数上限已达封顶 {@link GameplayConstants#MAX_EFFECT_CARD_PLAYS} → 拒绝(+1 无意义,且不得绕过封顶);</li>
+ *   <li>本轮已授予过这次 +1 → 拒绝(一次性;同一轮内不叠加)。</li>
+ * </ol>
+ * 主动技能自身冷却中的拒绝仍由 {@link BaseSignItem#performSkillForCurio} 统一处理。
  */
 @EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public class KomachiSignItem extends BaseSignItem {
@@ -36,10 +46,11 @@ public class KomachiSignItem extends BaseSignItem {
     @Override
     protected void clearSignData(Player player, ItemStack stack) {
         super.clearSignData(player, stack);
-        // 卸下立牌:重置效果牌计数、效果牌伤害增益、移除计数效果与临时出牌数+1 标记
+        // 卸下立牌:重置被动计数与效果牌伤害增益,并移除计数效果。
+        // 注意:出牌轮的一次性 +1 属于**出牌轮状态**(授予即已消耗),不随立牌装卸回收——
+        // 若在此清除,会造成"上限在周期中途下降"的不变量违例(见 EffectCardPeriod#tick)。
         ModAttachments.setKomachiUseCount(player, 0);
         ModAttachments.setKomachiDamageBonus(player, 0);
-        ModAttachments.setKomachiExtraPlays(player, 0);
         ModEffectRemoval.remove(player, ModEffects.KOMACHI_COUNT);
     }
 
@@ -48,23 +59,22 @@ public class KomachiSignItem extends BaseSignItem {
         if (level.isClientSide) {
             return InteractionResultHolder.success(stack);
         }
-        // 主动(忍术连击):本轮出牌数 +1——仅当前出牌周期有效,每周期至多一次,不跨周期累积。
-        // 释放条件(任一不满足即不释放,且不消耗主动技能冷却,由 performSkill 的返回值判定):
-        //   1. 当前出牌数上限未达封顶(MAX_EFFECT_CARD_PLAYS = 9),否则 +1 无任何意义;
-        //   2. 本周期尚未由忍者主动 +1。
-        // 冷却中的拒绝由 BaseSignItem.performSkill 统一处理,此处不重复判定。
-        if (com.merlinkitsune.astral_dice.item.card.EffectCardPeriod.getMaxAllowed(player)
-                >= com.merlinkitsune.astral_dice.component.GameplayConstants.MAX_EFFECT_CARD_PLAYS) {
-            sendSignActionBar(player, "msg.astral_dice.komachi_active_capped",
-                    com.merlinkitsune.astral_dice.component.GameplayConstants.MAX_EFFECT_CARD_PLAYS);
+        // 主动(忍术连击):一次性 —— 仅当前出牌轮 +1 张出牌数。释放前置见类注释(三条)。
+        // 效果牌冷却中(本周期已打满并进入 30 秒冷却)时不释放:此时 +1 已无意义。
+        if (EffectCardPeriod.isCooldownActive(player)) {
+            sendSignActionBar(player, "msg.astral_dice.komachi_active_cooldown");
             return InteractionResultHolder.fail(stack);
         }
-        if (ModAttachments.getKomachiExtraPlays(player) > 0) {
+        if (EffectCardPeriod.getMaxAllowed(player) >= GameplayConstants.MAX_EFFECT_CARD_PLAYS) {
+            sendSignActionBar(player, "msg.astral_dice.komachi_active_capped",
+                    GameplayConstants.MAX_EFFECT_CARD_PLAYS);
+            return InteractionResultHolder.fail(stack);
+        }
+        // 一次性授予:本轮已授予过则不再释放(不消耗主动技能冷却)
+        if (!EffectCardPeriod.grantBonusPlay(player)) {
             sendSignActionBar(player, "msg.astral_dice.komachi_active_used");
             return InteractionResultHolder.fail(stack);
         }
-        ModAttachments.setKomachiExtraPlays(player,
-                com.merlinkitsune.astral_dice.component.GameplayConstants.KOMACHI_EXTRA_PLAYS_CAP);
         return InteractionResultHolder.success(stack);
     }
 
@@ -74,8 +84,7 @@ public class KomachiSignItem extends BaseSignItem {
         if (event.getSignStack().is(ModItems.KOMACHI_SIGN.get())) {
             Player player = event.getPlayer();
             int remaining = Math.max(0,
-                    com.merlinkitsune.astral_dice.item.card.EffectCardPeriod.getMaxAllowed(player)
-                            - com.merlinkitsune.astral_dice.item.card.EffectCardPeriod.getPlayCount(player));
+                    EffectCardPeriod.getMaxAllowed(player) - EffectCardPeriod.getPlayCount(player));
             sendSignActionBar(player, "msg.astral_dice.komachi_active", remaining);
             event.setHandled();
         }
