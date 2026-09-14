@@ -500,7 +500,7 @@ public class ModAttachments {
 
     // 骇客立牌:被动类型(0=无,1=攻击,2=防御)
     public static final AttachedDataKey<Integer> NANCY_LU_PASSIVE_TYPE =
-            register(AttachedDataKey.builder("nancy_lu_passive_type", Codec.INT, () -> 0).build());
+            register(AttachedDataKey.builder("nancy_lu_passive_type", Codec.INT, () -> 0).sync().build());
 
     // 骇客立牌:主动"远程骇入"攻击力加成数值
     public static final AttachedDataKey<Integer> NANCY_LU_ACTIVE_BONUS =
@@ -844,6 +844,7 @@ public class ModAttachments {
             SYNCED_KEYS.add(RAILGUN_COOLDOWN_END);
             SYNCED_KEYS.add(RIN_PAGES);
             SYNCED_KEYS.add(PANDAMAN_MAX_HEALTH_BONUS);
+            SYNCED_KEYS.add(NANCY_LU_PASSIVE_TYPE);
         }
         return SYNCED_KEYS;
     }

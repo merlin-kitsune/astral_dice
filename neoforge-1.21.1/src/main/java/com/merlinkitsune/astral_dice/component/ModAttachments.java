@@ -570,6 +570,7 @@ public class ModAttachments {
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> NANCY_LU_PASSIVE_TYPE =
             ATTACHMENTS.register("nancy_lu_passive_type", () -> AttachmentType.builder(() -> 0)
                     .serialize(Codec.INT)
+                    .sync(ByteBufCodecs.INT)
                     .build());
 
     // 骇客立牌:主动"远程侵入"攻击力加成数值
