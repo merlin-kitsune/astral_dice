@@ -3,6 +3,7 @@ package com.merlinkitsune.astral_dice.event;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
+import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.item.CuriosCompat;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.chip.WarpEngineChipItem;
@@ -172,13 +173,22 @@ public final class EnderDiceHandler {
         // 它以内部标志放行,故 astral_dice: 命名空间的效果同样被移除
         // (该命名空间守卫只拦外部清除:牛奶/蜂蜜//effect clear 等,不要动那个守卫)。
         player.setHealth(1.0F);
-        List<MobEffect> harmfulEffects = new ArrayList<>();
+        List<MobEffect> effectsToRemove = new ArrayList<>();
         for (MobEffectInstance instance : player.getActiveEffects()) {
             if (instance.getEffect().getCategory() == MobEffectCategory.HARMFUL) {
-                harmfulEffects.add(instance.getEffect());
+                effectsToRemove.add(instance.getEffect());
             }
         }
-        for (MobEffect effect : harmfulEffects) {
+        // 显式白名单 = HARMFUL ∪ {@code GLOWING}(绝不用 removeAllEffects)。
+        // 为什么必须补这一项:标记(MARKED,HARMFUL)被清后,标记随身的高亮(GLOWING = NEUTRAL,
+        // 由 MarkManager.apply 与标记**一同施加**、同寿命)不在 HARMFUL 之列 ⇒ 只清 HARMFUL 会留下
+        // 残留的发光轮廓,与守卫 ModEffectEvents「发光与标记同寿命」的口径不一致。
+        // 只在目标**确实带着本模组标记**时才清:GLOWING 也可能来自原版光灵箭等其它来源,
+        // 那种发光不属本模组,不能顺手清掉(见本批报告)。
+        if (player.hasEffect(ModEffects.MARKED.get())) {
+            effectsToRemove.add(MobEffects.GLOWING);
+        }
+        for (MobEffect effect : effectsToRemove) {
             ModEffectRemoval.remove(player, effect);
         }
         player.addEffect(new MobEffectInstance(MobEffects.REGENERATION,

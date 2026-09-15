@@ -35,8 +35,12 @@ public final class RailgunBolts {
     /**
      * 这道电磁炮雷击是否应当命中该实体(完整口径,**必须带闪电实例调用**)。
      *
-     * <p>① 先过统一入口 {@link HostileTargets#isHostile(net.minecraft.world.entity.Entity)}:
-     * **敌对生物(`Enemy`)或已被激怒的中立生物(`NeutralMob#isAngry()`)**;
+     * <p>① 先过统一入口 {@link HostileTargets#isHostile(net.minecraft.world.entity.Entity, net.minecraft.world.entity.Entity)}
+     * (双参口径,{@code viewer} = 落雷来源玩家 = {@code LightningBolt#getCause()},由
+     * {@code RailgunChipItem#strike} 的 {@code bolt.setCause(cause)} 写入):
+     * **敌对生物(`Enemy`)或已被激怒的中立生物(`NeutralMob#isAngry()`)**,以及
+     * **「非同队伍、且曾主动攻击过施放者的玩家」**——与其它 AOE 的双参敌对口径完全一致
+     * (2026-09-15 用户裁决:电磁炮落雷同样参与"双向意图记录 + 仅同队豁免"口径);
      * 平静的狼/铁傀儡/北极熊/蜜蜂、攻击者自己、中立动物、盔甲架等一律不算。
      *
      * <p>② 再排除**施放者自己拥有的宠物**({@link OwnableEntity} 的 owner == 闪电的
@@ -55,15 +59,16 @@ public final class RailgunBolts {
      */
     public static boolean isValidLightningTarget(net.minecraft.world.entity.Entity target, LightningBolt bolt) {
         if (target == null) return false;
-        if (!HostileTargets.isHostile(target)) return false;
+        // 「视谁为敌」的上下文 = 落雷来源玩家(无闪电实例时 viewer 为 null ⇒ 玩家一律不计入敌对)
+        ServerPlayer cause = bolt == null ? null : bolt.getCause();
+        if (!HostileTargets.isHostile(cause, target)) return false;
         if (target instanceof OwnableEntity ownable) {
-            ServerPlayer cause = bolt == null ? null : bolt.getCause();
             if (cause != null && cause.getUUID().equals(ownable.getOwnerUUID())) return false;
         }
         return true;
     }
 
-    /** 无闪电实例时的退化口径(只做敌对目标判定,不做宠物排除)。 */
+    /** 无闪电实例时的退化口径(拿不到来源玩家 ⇒ viewer 为 null,玩家不计入敌对;也不做宠物排除)。 */
     public static boolean isValidLightningTarget(net.minecraft.world.entity.Entity target) {
         return isValidLightningTarget(target, null);
     }

@@ -4,6 +4,7 @@ import com.merlinkitsune.astral_dice.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.item.ChargeManager;
+import com.merlinkitsune.astral_dice.item.chip.ElectricGloveChipItem;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.core.Holder;
 import net.minecraft.world.effect.MobEffect;
@@ -175,17 +176,27 @@ public final class EffectCardPeriod {
     }
 
     /**
-     * 出牌轮归零:清除全部"仅当前出牌轮有效"的出牌数加成与标记。
-     * <b>唯一入口</b> —— 仅由 {@link #registerPlay} 的周期边界与 {@link #tick} 的周期结束调用
+     * 出牌轮归零:清除全部"仅当前出牌轮有效"的出牌数加成与标记,
+     * 以及**本周期已武装的电击手套法伤扩散**({@link ElectricGloveChipItem#disarmAoe}——下个周期可重新武装)。
+     * <b>唯一入口</b> —— 仅由 {@link #registerPlay} 的周期边界、{@link #tick} 的周期结束(情形 1)
+     * 与 {@link #forceResetRound}(忍者宽限期满的强重置)调用
      * (玩家死亡清理自 2026-09-15「S4-C6 清理无效项」裁决后不再调用:这些键不是 copyOnDeath,
      * 新实体上本就是默认值),禁止在别处各自列一遍
      * (历史上分散清理曾导致状态残留与"上限中途下降"的永久锁死 BUG)。
+     *
+     * <p><b>为什么 disarmAoe 必须放在这里(2026-09-15,本批 C1)</b>:此前它只写在 {@link #tick} 情形 1,
+     * 于是"周期正常到期"会解除武装、而忍者宽限期满走的 {@link #forceResetRound} 不会 ⇒
+     * <b>两条"轮次完全重置"路径的清理口径不等价</b>,宽限强重置后电击手套本周期仍处于武装态。
+     * 上移到本方法后两条路径共用同一套清理口径(它同时也是 {@code registerPlay} 周期边界块的口径,
+     * 那里的调用是<b>期望</b>的:轮次完全重置即解除武装)。
      */
     public static void clearRoundBonuses(Player player) {
         ModAttachments.setEffectCardBonusPlays(player, 0);
         ModAttachments.setCandyChipPlayBonusActive(player, false);
         ModAttachments.setSatellitePlayBonusActive(player, false);
         ModAttachments.setLivingPageCycleBonus(player, 0);
+        // 周期归零:解除电击手套本周期已武装的法伤扩散(下个周期可重新武装)
+        ElectricGloveChipItem.disarmAoe(player);
     }
 
     /**
@@ -389,12 +400,10 @@ public final class EffectCardPeriod {
         ModAttachments.setEffectCardCooldownEnd(player, 0);
         ModAttachments.setEffectCardPlayCount(player, 0);
         // 周期归零:一次性出牌数加成(立牌主动) / 可口糖果(每轮一次) / 探天卫星(每 1:00 一次) /
-        // 活体书页本周期累计,统一清除(唯一入口,避免各处各列一遍导致残留)
+        // 活体书页本周期累计 / 电击手套本周期武装,统一清除(唯一入口,避免各处各列一遍导致残留)
         clearRoundBonuses(player);
         // 出牌轮完全重置:通知立牌主动(忍者在此刻起主动技能冷却)
         onRoundFullyReset(player);
-        // 周期归零:解除电击手套本周期已武装的法伤扩散(下个周期可重新武装)
-        com.merlinkitsune.astral_dice.item.chip.ElectricGloveChipItem.disarmAoe(player);
     }
 
     private static boolean hasCurio(Player player, net.minecraft.world.item.Item item) {
