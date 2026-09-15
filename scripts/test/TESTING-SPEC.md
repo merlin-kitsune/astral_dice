@@ -31,6 +31,8 @@
 | 可选 MCP | `computer-control-mcp`（**唯一保留的 MCP**：窗口激活 / OCR / 截图 / 输入注入的降级通道），路径写在 `mt.conf`；mineflayer bot（minecraft-mcp-server）已于 2026-09-14 彻底移除 |
 | 机器本地配置 | `scripts/test/mt.conf`（**不入库**）。缺失时回落到内置默认值；模板见 `mt.conf.example` |
 
+**测试前清场（2026-09-15 起强制）**：每次冷启动**进入世界后、跑任何条目前**先清场一次 —— `/kill @e[type=!player]`（或 `/kill @e[type=!player,distance=..128]`），或 `/difficulty peaceful` → 等 ≥1s → `/difficulty easy`。理由与禁止事项见 `AGENTS.md`「测试前清场」；本条直接对应 §8.2-1（1.20.1 常驻蜘蛛污染 `self`）与 §10-18。⚠️ 1.21.1 的命令在 tick 末才生效，清场后要 `wait ≥500ms` 再摆靶；**禁止**在用例两次 read 之间清场。
+
 ---
 
 ## 3. 唯一入口与阶段
@@ -273,7 +275,7 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --phase <p> --version <v>
 
 ### 8.2 产品面存疑项（只登记，未改任何产品代码）
 
-1. **1.20.1 侧 `self` 读数被测试世界污染（原「施放者间歇自伤」；2026-09-15 定性为**环境**，不指向产品白名单）**：曾观测到一次 `RAILGUN-AOE-SCOPE-1.20.1` 的「落点箱内全体被劈」（`self=2→6`、`friendly`/`turtle`/`villager` 各掉 12），但**第 3 批冷启动未复现** —— 同一批 1.20.1 四例（AOE/HN/PE/OC）的 `friendly`/`turtle`/`villager` **全为 0**，只剩 `self>0`（AOE `11→16`、HN `6.67→12.67`、PE/OC 为 0）。该 `self` 已由旁证定性：① HN 两次 read 之间 `php` −6.0，而同一区间 `bolt_delta` 保持 3 未变（**区间内没有新雷击**）；② 该会话 `Dev被蜘蛛杀死了` 出现三次（11:00:03 / 11:03:35 / 11:04:32），1.21.1 同批零死亡行；③ 探针把玩家置 `forced_survival` 后，测试世界里一只**常驻蜘蛛**持续攻击玩家。⇒ `self`、以及据此计算的 `SCOPE_OK`，在 1.20.1 上不可信，属**测试世界脏**（探针开场清场按类型清僵尸/骷髅/尸壳/溺尸与苦力怕，但**不能按类型清蜘蛛** —— 蜘蛛正是探针自己的敌方靶），**未改任何产品代码**。静态面亦已排除：两版 mixin 配置同样列出 `LightningBoltStrikeScopeMixin`、1.20.1 `debug.log` 显示它已应用且无任何报错、`RailgunBolts`/`HostileTargets`/`LightningBoltStrikeScopeMixin` 三文件两版逐字节相同、`mark()` 先于 `addFreshEntity()`。**待办（可选）**：若要让 1.20.1 的 `self` 可信 —— 换敌方靶类型（如 `minecraft:zombie`）并把 `minecraft:spider` 纳入开场按距离清场，或给自摆靶打 tag 后用 `tag=!…` 排除，或在无怪世界跑该用例。
+1. **1.20.1 侧 `self` 读数被测试世界污染（原「施放者间歇自伤」；2026-09-15 定性为**环境**，不指向产品白名单）**：曾观测到一次 `RAILGUN-AOE-SCOPE-1.20.1` 的「落点箱内全体被劈」（`self=2→6`、`friendly`/`turtle`/`villager` 各掉 12），但**第 3 批冷启动未复现** —— 同一批 1.20.1 四例（AOE/HN/PE/OC）的 `friendly`/`turtle`/`villager` **全为 0**，只剩 `self>0`（AOE `11→16`、HN `6.67→12.67`、PE/OC 为 0）。该 `self` 已由旁证定性：① HN 两次 read 之间 `php` −6.0，而同一区间 `bolt_delta` 保持 3 未变（**区间内没有新雷击**）；② 该会话 `Dev被蜘蛛杀死了` 出现三次（11:00:03 / 11:03:35 / 11:04:32），1.21.1 同批零死亡行；③ 探针把玩家置 `forced_survival` 后，测试世界里一只**常驻蜘蛛**持续攻击玩家。⇒ `self`、以及据此计算的 `SCOPE_OK`，在 1.20.1 上不可信，属**测试世界脏**（探针开场清场按类型清僵尸/骷髅/尸壳/溺尸与苦力怕，但**不能按类型清蜘蛛** —— 蜘蛛正是探针自己的敌方靶），**未改任何产品代码**。静态面亦已排除：两版 mixin 配置同样列出 `LightningBoltStrikeScopeMixin`、1.20.1 `debug.log` 显示它已应用且无任何报错、`RailgunBolts`/`HostileTargets`/`LightningBoltStrikeScopeMixin` 三文件两版逐字节相同、`mark()` 先于 `addFreshEntity()`。⇒ **处置规则（2026-09-15 起强制）**：每次冷启动进入世界后、跑任何条目前先做一轮清场（`/kill @e[type=!player]` 或难度切换法），见 `AGENTS.md`「测试前清场」与本文档 §2。**待办（可选）**：若要让 1.20.1 的 `self` 可信 —— 换敌方靶类型（如 `minecraft:zombie`）并把 `minecraft:spider` 纳入开场按距离清场，或给自摆靶打 tag 后用 `tag=!…` 排除，或在无怪世界跑该用例。
 2. **`HealingManager#updateEffect` 的赐福分支**：赐福在场时治愈图标时长被写成**赐福剩余时长**（实测 `/effect give … dice_blessing 600`（秒）→ `heal dur=119943`）。这是设计内行为（图标与赐福同寿命），但会让「层数递减类效果」在赐福期间**永远**处于「剩余 > 200」，即原版闪烁窗口在此期间不可达——测试侧构造该前置时必须显式清赐福。
 3. **本模组效果的移除被自身拦截**：`ModEffectEvents#onModEffectRemovalPrevented`（`EventPriority.HIGH`）取消玩家身上 `astral_dice:*` 效果的一切**普通**移除，含原版 `/effect clear`、牛奶，以及第三方/脚本的直接 `removeEffect`；只有 `ModEffectRemoval`（内部标志）、`EffectTimerGuard`（强制标志）、死亡三条通道放行。同族风险：任何「让玩家或其他模组清掉本模组效果」的诉求都会被**静默拒绝**（无日志、无反馈），排查者容易误判成「效果清不掉」。本次未改产品代码，仅登记。
 4. **`ModEffects.X` 的 API 形态跨版本不对称**（测试侧已适配）：1.21.1 是 `Holder<MobEffect>`、1.20.1 是 `RegistryObject<MobEffect>`（探针必须 `.get()`），漏写会抛 `Could not create ID from 'RegistryObject…'` 并中断整条探针命令。
