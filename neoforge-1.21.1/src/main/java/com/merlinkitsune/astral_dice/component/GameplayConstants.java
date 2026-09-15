@@ -6,7 +6,9 @@ import com.merlinkitsune.astral_dice.config.ModCommonConfig;
  * 全局玩法常量。
  * 「仍从配置文件读取」的少量字段(赠送规则书 / 事件作用队伍 / actionbar 时长)必须保持**非 final**:
  * 它们由配置加载完成后的 {@link #refresh()} 写入,改成 final 会让编译期内联导致配置不生效。
- * 其余字段均为固定常量(不再写入配置文件),恒为 final。
+ * 其余字段为固定常量(不再写入配置文件);其中一部分历史上按 `static`(无 final)书写并沿用至今
+ * (如 `SIGN_ACTIVE_COOLDOWN_SECONDS`/`SKILL_WAIT_SECONDS`/`CURSED_SWORD_BONUS_MAX` 等),它们只在
+ * {@link #refresh()} 中派生 tick 值、不读取配置,需要时可逐步改为 `final`。
  */
 public final class GameplayConstants {
     // 星光点获取上限(常量:32)

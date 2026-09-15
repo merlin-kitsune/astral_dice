@@ -2576,6 +2576,145 @@ function doSpellTdHit(ctx, tag) {
     return 1;
 }
 
+// ════════════════════════════════════════════════════════════════════════════
+// 安全气囊(airbag_chip):「无视无敌」的致死伤害必须同样被拦下(2026-09-15 用户裁决)
+//   被测语义:`ChipDamageHandler` 的伤害阶段不再按 DamageTypeTags.BYPASSES_INVULNERABILITY
+//   排除伤害源 —— `/kill`(= LivingEntity#kill() = hurt(generic_kill, Float.MAX_VALUE))、
+//   虚空伤害与其它模组真伤在气囊前一律止步;代价仍是 6 层充能 + 1:00 冷却。
+//   证据口径(四段):
+//     ① `airbagprep` 造初态:强制生存 + 装备 airbag_chip + 清充能后加满 6 层 + 冷却归零 + 满血,
+//        并读出全量状态(health/alive/equipped/chip/charge/cd_end/cd_left/gametime)。
+//     ② `airbagkill` 用**与 /kill 完全同一条原版代码路径**施加致死:`player.kill()`
+//        (LivingEntity#kill → hurt(damageSources().genericKill(), Float.MAX_VALUE));
+//        若 Rhino 不暴露 kill() 则退化为显式 generic_kill 伤害源 + hurt(src, 1000),
+//        实际走哪条由读数里的 path= 字段暴露。施放后**同一函数内立刻复读**。
+//     ③ `airbaglethal` 同构造对照:用**同一个 kill() 调用**打一只新生成的猪(气囊只对玩家生效),
+//        必须真的死亡 → 证明本局内该伤害源确实致命,排除「伤害根本没生效」的伪阳性。
+//     ④ `airbagreset` 收尾:清充能/冷却、回满血、切回创造并复读。
+//   ⚠️ 覆盖缺口(如实记录,见 TESTING-SPEC §10):「充能不足 / 冷却进行中时玩家真会死」这条
+//   玩家侧对照**不在**本用例内 —— 玩家死亡会停在死亡界面,后续注入命令全部失效(工具链无自动重生),
+//   故该分支目前只有代码层结论(charge < 6 或 isOnCooldown 时 tryNegateFatal 返回 false)。
+// ════════════════════════════════════════════════════════════════════════════
+
+/** 读 chip 槽第 0 格物品 id(核验气囊是否真的戴在身上) */
+function chipSlotItemId(player) {
+    try {
+        var opt = CuriosApi.getCuriosInventory(player);
+        if (opt == null || !opt.isPresent()) return "<no-curios>";
+        var handlerOpt = opt.resolve().get().getStacksHandler("chip");
+        if (handlerOpt == null || !handlerOpt.isPresent()) return "<no-chip-slot>";
+        var stacks = handlerOpt.get().getStacks();
+        if (stacks.getSlots() <= 0) return "<empty-slot>";
+        return itemIdOf(stacks.getStackInSlot(0));
+    } catch (e) { return "<err:" + exText(e) + ">"; }
+}
+
+function airbagClasses() {
+    return {
+        Airbag: Java.loadClass("com.merlinkitsune.astral_dice.item.chip.AirbagChipItem"),
+        Charge: Java.loadClass("com.merlinkitsune.astral_dice.item.ChargeManager")
+    };
+}
+
+/** 气囊全量读数(单行,正则友好) */
+function airbagState(p) {
+    var cls = airbagClasses();
+    var equipped = -1, charge = -1, cdEnd = -1, cdLeft = -1;
+    try { equipped = cls.Airbag.isEquipped(p) ? 1 : 0; } catch (e0) { equipped = -1; }
+    try { charge = cls.Charge.getStacks(p); } catch (e1) { charge = -1; }
+    try { cdEnd = ModAttachments.getAirbagCooldownEnd(p); } catch (e2) { cdEnd = -1; }
+    try { cdLeft = cdEnd - nowTick(p); } catch (e3) { cdLeft = -2; }
+    return "health=" + rghp(p) + ":alive=" + (p.isAlive() ? 1 : 0)
+        + ":equipped=" + equipped + ":chip=" + chipSlotItemId(p)
+        + ":charge=" + charge + ":cd_end=" + cdEnd + ":cd_left=" + cdLeft
+        + ":gametime=" + nowTick(p);
+}
+
+/** 与 /kill 同路径的致死施加器:返回实际用到的路径名 */
+function airbagApplyKill(entity) {
+    try { entity.kill(); return "kill"; } catch (e0) { /* 退化到显式伤害源 */ }
+    try {
+        var ResourceKey = Java.loadClass("net.minecraft.resources.ResourceKey");
+        var Registries = Java.loadClass("net.minecraft.core.registries.Registries");
+        var src = entity.level.damageSources().source(ResourceKey.create(Registries.DAMAGE_TYPE,
+            ResourceLocation.parse("minecraft:generic_kill")));
+        entity.hurt(src, 1000.0);
+        return "hurt:generic_kill";
+    } catch (e1) { return "ERR:" + exText(e1); }
+}
+
+function doAirbagPrep(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var item = resolveItem("astral_dice:airbag_chip");
+    if (item == null) { send(ctx, "AP_" + tag + "_ERR:unknown_item:airbag_chip"); return 0; }
+    var mode = "keep";
+    try { p.setGameMode(GameTypeClass.SURVIVAL); mode = "forced_survival"; } catch (e0) { mode = "err"; }
+    var slotErr = ensureChipSlot(p, CHIP_SLOT_MIN);
+    if (slotErr != null) { send(ctx, "AP_" + tag + "_ERR:" + slotErr); return 0; }
+    var err = putInSlot(p, "chip", new ItemStack(item), 0);
+    if (err != null) { send(ctx, "AP_" + tag + "_ERR:" + err); return 0; }
+    var cls = airbagClasses();
+    try { cls.Charge.removeAll(p); } catch (e1) { send(ctx, "AP_" + tag + "_ERR:charge_remove:" + exText(e1)); return 0; }
+    try { cls.Charge.addStacks(p, 6); } catch (e2) { send(ctx, "AP_" + tag + "_ERR:charge_add:" + exText(e2)); return 0; }
+    try { ModAttachments.setAirbagCooldownEnd(p, 0); } catch (e3) { /* 忽略 */ }
+    try { p.setHealth(p.getMaxHealth()); } catch (e4) { /* 忽略 */ }
+    send(ctx, "AP_" + tag + "_PREP:mode=" + mode + ":" + airbagState(p));
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+function doAirbagKill(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var before = rghp(p);
+    var path = airbagApplyKill(p);
+    send(ctx, "AP_" + tag + "_KILL:path=" + path + ":hp_before=" + before + ":" + airbagState(p));
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+function doAirbagLethal(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var mob = spawnDummy(p, "minecraft:pig", 4);
+    if (mob == null) { send(ctx, "AP_" + tag + "_ERR:spawn_failed"); return 0; }
+    try { mob.setHealth(mob.getMaxHealth()); } catch (e0) { /* 忽略 */ }
+    try { mob.invulnerableTime = 0; } catch (e1) { /* 忽略 */ }
+    var before = rghp(mob);
+    var path = airbagApplyKill(mob);
+    send(ctx, "AP_" + tag + "_LETHAL:path=" + path + ":hp_before=" + before
+        + ":hp_after=" + rghp(mob) + ":alive=" + (mob.isAlive() ? 1 : 0));
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+function doAirbagRead(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    send(ctx, "AP_" + tag + "_STATE:" + airbagState(p));
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+function doAirbagNoCharge(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var cls = airbagClasses();
+    try { cls.Charge.removeAll(p); } catch (e0) { send(ctx, "AP_" + tag + "_ERR:charge_remove:" + exText(e0)); return 0; }
+    try { ModAttachments.setAirbagCooldownEnd(p, 0); } catch (e1) { /* 忽略 */ }
+    send(ctx, "AP_" + tag + "_NOCHARGE:" + airbagState(p));
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+function doAirbagReset(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var cls = airbagClasses();
+    try { cls.Charge.removeAll(p); } catch (e0) { /* 忽略 */ }
+    try { ModAttachments.setAirbagCooldownEnd(p, 0); } catch (e1) { /* 忽略 */ }
+    try { p.setHealth(p.getMaxHealth()); } catch (e2) { /* 忽略 */ }
+    var mode = "keep";
+    try { p.setGameMode(GameTypeClass.CREATIVE); mode = "creative"; } catch (e3) { mode = "err"; }
+    send(ctx, "AP_" + tag + "_RESET:mode=" + mode + ":" + airbagState(p));
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
 ServerEvents.commandRegistry(event => {
     var Commands = event.commands;
     event.register(
@@ -2781,6 +2920,36 @@ ServerEvents.commandRegistry(event => {
                 .then(Commands.argument("tag", StringArg.word())
                     .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
                         return doDecayClear(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("airbagprep")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doAirbagPrep(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("airbagkill")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doAirbagKill(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("airbaglethal")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doAirbagLethal(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("airbagread")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doAirbagRead(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("airbagnocharge")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doAirbagNoCharge(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("airbagreset")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doAirbagReset(ctx, StringArg.getString(ctx, "tag"));
                     }))))
     );
 });
