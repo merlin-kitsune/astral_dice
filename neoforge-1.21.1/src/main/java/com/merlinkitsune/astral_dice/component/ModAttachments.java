@@ -933,9 +933,13 @@ public class ModAttachments {
     }
 
     // 恋的规则书:是否已在当前世界为玩家发放过首次加入的规则书(仅服务端持久化,无需同步)
+    // 「死亡重生保留」(2026-09-15 用户裁决,必须遵守):口径是「仅在玩家第一次进入世界发放一次,
+    // 此后任何情况下都不再自动发放」⇒ 本键**必须随死亡复制**:否则死亡后新实体回默认 false,
+    // 而发放挂在 PlayerLoggedInEvent ⇒ 下次登录必再发一本(实测缺陷,且 keepInventory 下书仍在背包)。
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Boolean>> GUIDE_BOOK_GIVEN =
             ATTACHMENTS.register("guide_book_given", () -> AttachmentType.builder(() -> false)
                     .serialize(Codec.BOOL)
+                    .copyOnDeath()
                     .build());
 
     public static boolean isGuideBookGiven(net.minecraft.world.entity.player.Player player) {

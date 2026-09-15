@@ -43,6 +43,10 @@
 //    /astralprobe decayflash|decayclear <tag>
 //    ── 2026-09-15 追加(伤害效果牌法伤加成的真伤口径)──
 //    /astralprobe spelltdsetup|spelltdhit <tag>
+//    ── 2026-09-15 追加(《恋的规则书》「仅首次进入世界发放一次」守卫)──
+//    /astralprobe guidebook <tag>                     只读:given(首登守卫附件)+ 背包内手册总本数
+//    ── 2026-09-25 追加(KI-5:电击手套 3 格 AOE 伤害基准的双版本对等)──
+//    /astralprobe glovebase <tag>                     生产同路读取 AOE 基准 + 护甲前/后客观对照
 //
 //  ── 实现约束 ─────────────────────────────────────────────────────────────
 //   1. 命令注册必须在 ServerEvents.commandRegistry 回调内;执行体提取为顶层命名函数;
@@ -3583,6 +3587,290 @@ function doEnderTotem(ctx, tag, sub) {
     return 0;
 }
 
+// ════════════════════════════════════════════════════════════════════════════
+//  《恋的规则书》「仅首次进入世界发放一次」守卫读数(2026-09-15 追加)
+//    /astralprobe guidebook <tag>
+//
+//  被测口径(用户裁定):手册**仅在玩家第一次进入世界时发放一次**,此后任何情况下都不再自动发放。
+//  R1 独立代码验证发现并已修补的缺陷:守卫附件 `guide_book_given` 原先**不随死亡复制**
+//  ⇒ 玩家死亡后新实体回默认 false,而发放挂在 PlayerLoggedInEvent(登录时)
+//  ⇒ **死亡后重登会再发一本**。修补 = 让守卫随死亡保留
+//  (1.20.1 侧 = `AstralData.onPlayerClone` 的死亡白名单加入 `ModAttachments.GUIDE_BOOK_GIVEN.name()`)。
+//
+//  读数(一行,落 chat 与 latest.log,与其它命令一致):
+//    AP_<tag>_GUIDE:given=<0|1>:count=<n>
+//      given = ModAttachments.isGuideBookGiven(p) 的读数(布尔直接转 0/1);
+//      count = 玩家背包内《恋的规则书》的总数量(统计范围见 guideCountItem)。
+//  用例 GUIDE-BOOK-FIRST-JOIN-ONLY-{1.21.1,1.20.1} 的判据:首登与「死亡+重登」两次运行
+//  **都必须**读到 `given=1:count=1`;修补前「死亡后重生」相位读 given=0(重登后 count 变 2)。
+// ════════════════════════════════════════════════════════════════════════════
+
+/** 手册的**书籍 id**(Patchouli 书,定义在 data/astral_dice/patchouli_books/astral_guide) */
+var GUIDE_BOOK_ID = "astral_dice:astral_guide";
+/**
+ * 手册的**物品注册 id**。⚠️ 不是 `astral_dice:astral_guide`:
+ * 《恋的规则书》经 `ItemModBook.forBook(书籍 id)` 生成 = Patchouli 的 `patchouli:guide_book`
+ * 物品 + 书籍 id 存在**NBT**(1.21.1 为数据组件)(AGENTS.md「物品一览」亦记其为
+ * 「帕秋莉书籍 id(**非 `ModItems` 注册物品**)」)。若拿 `astral_dice:astral_guide` 去查
+ * `BuiltInRegistries.ITEM`,得到的是默认值 `minecraft:air` ⇒ `resolveItem` 返回 null
+ * (TESTING-SPEC §10 第 19 条那个坑的另一面:**书籍 id ≠ 物品 id**)。
+ */
+var GUIDE_BOOK_ITEM_ID = "patchouli:guide_book";
+
+/** Patchouli 书籍物品类(防御式加载:缺失时返回 null,由命令显式报 ERR,绝不静默降级) */
+function loadItemModBook() {
+    try { return Java.loadClass("vazkii.patchouli.common.item.ItemModBook"); }
+    catch (e) { return null; }
+}
+
+/** 该栈是不是目标手册:物品 id 粗筛(字符串比较,避开 Rhino 里 Java 对象 `===` 不可靠)+ 书籍 id 精确比对 */
+function guideIsTargetBook(stack, itemModBook) {
+    if (stack == null || stack.isEmpty()) return false;
+    if (itemIdOf(stack) !== GUIDE_BOOK_ITEM_ID) return false;
+    var book = itemModBook.getBook(stack);   // 书籍未注册 / 组件缺失时返回 null
+    if (book == null) return false;
+    return ("" + book.id) === GUIDE_BOOK_ID; // Book.id 是 public final ResourceLocation
+}
+
+/**
+ * 玩家背包内《恋的规则书》的总数量。
+ * 范围 = **主物品栏 + 快捷栏**(0..8 快捷栏、9..35 主栏,共 36 格,与 `anvilCountItem` 同一遍历口径)
+ *        + **副手**(`LivingEntity#getOffhandItem`);**不含**护甲槽与 Curios 饰品槽。
+ * 为什么不直接复用 `anvilCountItem`:它按**物品注册 id** 求和,而手册的物品 id 是 Patchouli 的
+ * `patchouli:guide_book`(`astral_dice:astral_guide` 只是书籍 id)⇒ 按 id 求和**恒为 0**;
+ * 且它不覆盖副手。故沿用其风格另写本 helper(产品的发放路径 `player.getInventory().add(book)`
+ * 只会落进主物品栏/快捷栏,副手是防御性纳入)。
+ */
+function guideCountItem(p, itemModBook) {
+    var inv = p.getInventory();
+    var n = 0;
+    for (var i = 0; i < inv.getContainerSize(); i++) {
+        var s = inv.getItem(i);
+        if (guideIsTargetBook(s, itemModBook)) n += s.getCount();
+    }
+    var off = p.getOffhandItem();
+    if (guideIsTargetBook(off, itemModBook)) n += off.getCount();
+    return n;
+}
+
+/** 只读:首登发放守卫附件 + 背包内手册总本数(用例 GUIDE-BOOK-FIRST-JOIN-ONLY-*) */
+function doGuidebook(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var item = resolveItem(GUIDE_BOOK_ITEM_ID);
+    if (item == null) { send(ctx, "AP_" + tag + "_ERR:unknown_item:" + GUIDE_BOOK_ITEM_ID); return 0; }
+    var itemModBook = loadItemModBook();
+    if (itemModBook == null) { send(ctx, "AP_" + tag + "_ERR:patchouli_missing"); return 0; }
+    var given = 0;
+    try { given = ModAttachments.isGuideBookGiven(p) ? 1 : 0; }
+    catch (e0) { send(ctx, "AP_" + tag + "_ERR:is_given:" + exText(e0)); return 0; }
+    var count = 0;
+    try { count = guideCountItem(p, itemModBook); }
+    catch (e1) { send(ctx, "AP_" + tag + "_ERR:count:" + exText(e1)); return 0; }
+    send(ctx, "AP_" + tag + "_GUIDE:given=" + given + ":count=" + count);
+    send(ctx, "AP_" + tag + "_GUIDE_DONE");
+    return 1;
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  电击手套 3 格 AOE 波及伤害的「基准口径」取证(KI-5:两版本 AOE 基准必须一致)
+//    /astralprobe glovebase <tag>
+//
+//  被测唯一来源(读生产代码定死,不许另算):SpellDamageRegistry 里电击手套修饰器的
+//  onHit —— `float total = ctx.event.<事件伤害读取>;` 随后对主目标 3 格内的敌对目标
+//  `e.hurt(ModDamageTypes.trueDamage(...), total)`(真伤、不吃护甲)。
+//  ⇒ AOE 基准 = **生产代码从 ctx.event 读出的那个值**。两版本差异只在
+//    DamageEffectCardHandler 把 ctx.event 构造成哪个事件:
+//      · 1.21.1 = LivingDamageEvent.Pre(#getNewDamage())  → 护甲/附魔减免**之后**
+//      · 1.20.1 = 修补前 LivingHurtEvent(#getAmount())    → 护甲**之前**(缺陷)
+//                 修补后 LivingDamageEvent(#getAmount())  → 护甲**之后**
+//  ⚠️ 1.20.1 侧本探针**故意用 `ctx.event.getAmount()`**:该读取表达式在修补前后的
+//    `LivingHurtEvent` / `LivingDamageEvent` 上**同名同签名**,因此它自动跟随生产实际挂的那个
+//    事件 —— 修补前读到护甲前值、修补后读到护甲后值,不存在"探针自己挑事件"的自由度。
+//
+//  取证方式:探针用 KubeJS 的接口实现(`new Iface({...})` —— 与本仓 komachicap 已实证的
+//  `EffectCardPeriod$ExtraPlaySource`(`AP_K3_SRC:ok:2:form:kubejs`)同一机制)**自己实现一个
+//  SpellDamageModifier**,并 `SpellDamageRegistry.registerModifier(...)` 注册进**生产同一张
+//  修饰器表**;在它的 onHit 里用**与生产逐字相同的那一条读取表达式**读 ctx.event 的伤害值。
+//  ⇒ 读数 `base=` 在任何事件挂载状态下都等于「生产当时真正用掉的那个基准」:既不另算,
+//    也不会因为版本差异读错事件。生产修饰器注册在前 ⇒ 它的 onHit 先跑(先结算 AOE 再解除武装),
+//    探针的 onHit 随后读**同一个事件对象的同一个字段**,两者必然相等。
+//  读不到(接口实现失败 / 修饰器未被调用 / 读取抛错)一律落 `AP_<tag>_ERR:`,**绝不静默降级**。
+//
+//  构造(全在同一条命令内完成并自证;护甲**直写属性实例**而非 `attribute` 命令,
+//  以规避 TESTING-SPEC §10 实测的「属性命令生效时机晚于同一 tick 内后续代码」):
+//    · ref  = 无甲敌对靶(距 main ≥6 格)⇒ 同额伤害的掉血 = 「护甲前」客观参照 `raw`;
+//    · main = 护甲 20 / 韧性 8 的敌对靶 = 主目标 ⇒ `self` = 其实掉血(护甲后客观值);
+//    · nbr  = main 3 格内的敌对邻居 ⇒ `nbr` = AOE 实际造成的掉血(AOE 波及的客观结果);
+//    · 玩家强制生存 + weather clear + 清空 5 张伤害效果牌效果 + 忍者伤害增益归零
+//      ⇒ 本次事件 bonus=0(不产生第二发真伤),main 只吃这一发箭伤,`self` 无歧义;
+//    · 武装 = 装电击手套 + 直接置位武装附件(与 ELECTRIC-GLOVE-ROUND-RESET 同一脚手架),
+//      读数 `armed=` 取**生产判定入口** ElectricGloveChipItem.isAoeArmed。
+//  读数一行:`AP_<tag>_GA:base=…:raw=…:self=…:nbr=…:armor=…:rarmor=…:mode=…:weather=…:armed=…:bonus=…:bsrc=…`
+//    base 生产基准 / raw 护甲前客观参照 / self 主目标实掉血 / nbr 邻居实掉血 /
+//    armor 主目标护甲(构造自证) / rarmor 参照靶护甲 / bsrc=modifier 表示 base 来自
+//    上面那条生产同路修饰器(否则落 _ERR)。
+// ════════════════════════════════════════════════════════════════════════════
+var gloveBaseState = { armed: false, value: -1, calls: 0, err: null };
+var gloveBaseModifierForm = "not_tried";
+
+/** 与生产 SpellDamageRegistry 电击手套修饰器**逐字相同**的读取表达式(1.20.1 侧)。
+ *  `getAmount()` 在修补前的 LivingHurtEvent 与修补后的 LivingDamageEvent 上同名同签名 ⇒
+ *  本表达式自动跟随生产实际挂载的那个事件。 */
+function gloveBaseReadFromEvent(ctx) {
+    return ctx.event.getAmount();
+}
+
+/** 把探针修饰器注册进生产修饰器表(脚本加载时注册一次;isActive 常态关闭) */
+function installGloveBaseModifier() {
+    try {
+        var Iface = Java.loadClass("com.merlinkitsune.astral_dice.combat.SpellDamageModifier");
+        var impl = new Iface({
+            isActive: function (ctx) { return gloveBaseState.armed === true; },
+            apply: function (ctx, bonus) { return bonus; },
+            onHit: function (ctx, bonus) {
+                gloveBaseState.calls = gloveBaseState.calls + 1;
+                // 只认**第一条**命中的事件(= 本相位那一发);后续嵌套事件不覆盖读数
+                if (gloveBaseState.calls > 1) return;
+                try { gloveBaseState.value = gloveBaseReadFromEvent(ctx); }
+                catch (e) { gloveBaseState.err = exText(e); }
+            }
+        });
+        SpellDamageRegistryClass.registerModifier(impl);
+        gloveBaseModifierForm = "modifier";
+    } catch (e) {
+        gloveBaseModifierForm = "unavailable:" + exText(e);
+    }
+}
+installGloveBaseModifier();
+
+/** 直写属性实例(不依赖 attribute 命令的下一 tick 生效);返回 null 表示成功 */
+function gloveSetArmor(ent, armor, tough) {
+    try {
+        var Attrs = Java.loadClass("net.minecraft.world.entity.ai.attributes.Attributes");
+        var a = ent.getAttribute(Attrs.ARMOR);
+        var t = ent.getAttribute(Attrs.ARMOR_TOUGHNESS);
+        if (a == null || t == null) return "no_attr_instance";
+        a.setBaseValue(armor);
+        t.setBaseValue(tough);
+        return null;
+    } catch (e) { return exText(e); }
+}
+
+/** 读回某靶**真实生效**的护甲值(构造自证:证明"真的挂了甲") */
+function gloveArmorRead(ent, key) {
+    try {
+        var Attrs = Java.loadClass("net.minecraft.world.entity.ai.attributes.Attributes");
+        return key + "=" + ent.getAttributeValue(Attrs.ARMOR);
+    } catch (e) { return key + "=ERR"; }
+}
+
+function gloveR2(x) { return Math.round(x * 100) / 100; }
+
+function doGloveBase(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var mode = "already_survival";
+    try { p.setGameMode(GameTypeClass.SURVIVAL); mode = "forced_survival"; } catch (e0) { /* 忽略 */ }
+    var weather = "skip";
+    try { p.level.setWeatherParameters(6000, 0, false, false); weather = "clear"; } catch (e1) { weather = "err"; }
+    try { p.setHealth(p.getMaxHealth()); } catch (e2) { /* 忽略 */ }
+
+    // 外部加成归零:清 5 张伤害效果牌效果 + 忍者「效果牌伤害增益」+ 三个 Curios 槽
+    var holders = [ModEffects.LIVING_PAGE.get(), ModEffects.MONSTER_LASER.get(), ModEffects.MONSTER_BRICK.get(),
+                   ModEffects.ORBITAL_STRIKE.get(), ModEffects.DIRECTIONAL_BLAST.get()];
+    for (var i = 0; i < holders.length; i++) {
+        try { ModEffectRemoval.remove(p, holders[i]); } catch (e3) { /* 忽略 */ }
+    }
+    try { ModAttachments.setKomachiDamageBonus(p, 0); } catch (e4) { /* 忽略 */ }
+    try { clearCurioSlots(p, "dice"); } catch (e5) { /* 忽略 */ }
+    try { clearCurioSlots(p, "chip"); } catch (e6) { /* 忽略 */ }
+    try { clearCurioSlots(p, "stand"); } catch (e7) { /* 忽略 */ }
+    try { resetEffectCardCycle(p); } catch (e8) { /* 忽略 */ }
+
+    // 装电击手套(全限定 id;短 id 会被当成 minecraft: 前缀 → resolveItem 返 null)
+    var slotErr = ensureChipSlot(p, CHIP_SLOT_MIN);
+    if (slotErr != null) { send(ctx, "AP_" + tag + "_ERR:" + slotErr); return 0; }
+    var chip = resolveItem("astral_dice:electric_glove_chip");
+    if (chip == null) { send(ctx, "AP_" + tag + "_ERR:unknown_chip"); return 0; }
+    var putErr = putInSlot(p, "chip", new ItemStack(chip), 0);
+    if (putErr != null) { send(ctx, "AP_" + tag + "_ERR:" + putErr); return 0; }
+    ModAttachments.setElectricGloveAoe(p, false);
+
+    // 三只非亡灵敌对靶(spider 本身无甲,护甲由探针直写 ⇒ raw 参照干净)
+    var ref = spawnDummy(p, "minecraft:spider", 2);
+    var main = spawnDummy(p, "minecraft:spider", 3);
+    var nbr = spawnDummy(p, "minecraft:spider", 2);
+    if (ref == null || main == null || nbr == null) { send(ctx, "AP_" + tag + "_ERR:spawn_failed"); return 0; }
+    try { placeAt(ref, p.getX() - 6.0, p.getY(), p.getZ()); } catch (e9) { /* 忽略 */ }
+    try { placeAt(main, p.getX(), p.getY(), p.getZ() + 3.0); } catch (e10) { /* 忽略 */ }
+    try { placeAt(nbr, p.getX() + 2.0, p.getY(), p.getZ() + 3.0); } catch (e11) { /* 忽略 */ }
+    var all = [ref, main, nbr];
+    for (var k = 0; k < all.length; k++) {
+        try { all[k].setNoAi(true); } catch (e12) { /* 忽略 */ }
+        try { all[k].setPersistenceRequired(); } catch (e13) { /* 忽略 */ }
+        try { all[k].setHealth(all[k].getMaxHealth()); } catch (e14) { /* 忽略 */ }
+    }
+    var setMain = gloveSetArmor(main, 20.0, 8.0);
+    var setRef = gloveSetArmor(ref, 0.0, 0.0);
+    if (setMain != null || setRef != null) {
+        send(ctx, "AP_" + tag + "_ERR:armor_set:" + setMain + "/" + setRef);
+    }
+
+    var src = spellSource(p);
+    if (src == null) { send(ctx, "AP_" + tag + "_ERR:no_arrow_carrier"); return 0; }
+
+    // 相位 1:无甲参照靶吃同一发伤害(= 「护甲前」客观参照;此时武装已清 ⇒ 不会触发 AOE)
+    var refHit = applySpellDamage(ref, src, 8.0);
+
+    // 相位 2:武装后主目标吃同一发伤害 ⇒ 生产在这一刻读出基准并对 nbr 结算 AOE
+    ModAttachments.setElectricGloveAoe(p, true);
+    var armed = -1;
+    try { armed = ElectricGloveClass.isAoeArmed(p) ? 1 : 0; } catch (e20) { armed = -1; }
+    var bonus = -1;
+    try { bonus = SpellDamageRegistryClass.effectCardDamageBonus(p); } catch (e21) { bonus = -1; }
+    var armorMain = gloveArmorRead(main, "armor");
+    var armorRef = gloveArmorRead(ref, "rarmor");
+    gloveBaseState.value = -1;
+    gloveBaseState.calls = 0;
+    gloveBaseState.err = null;
+    var nbrBefore = -1;
+    try { nbrBefore = nbr.getHealth(); } catch (e22) { nbrBefore = -1; }
+    var mainHit = null;
+    gloveBaseState.armed = true;
+    try {
+        mainHit = applySpellDamage(main, src, 8.0);
+    } finally {
+        gloveBaseState.armed = false;
+    }
+    var nbrAfter = -1;
+    try { nbrAfter = nbr.getHealth(); } catch (e23) { nbrAfter = -1; }
+    if (mainHit == null) mainHit = { dealt: -1, api: "none" };
+
+    var raw = refHit.dealt;
+    var self = mainHit.dealt;
+    var nbrDealt = (nbrBefore < 0 || nbrAfter < 0) ? -1 : gloveR2(nbrBefore - nbrAfter);
+    var base = (gloveBaseState.calls > 0 && gloveBaseState.err == null && gloveBaseState.value >= 0)
+        ? gloveR2(gloveBaseState.value) : -1;
+    var bsrc = gloveBaseModifierForm;
+    if (bsrc === "modifier" && gloveBaseState.calls <= 0) bsrc = "no_read";
+    if (bsrc === "modifier" && gloveBaseState.err != null) bsrc = "read_err";
+    if (bsrc !== "modifier") {
+        send(ctx, "AP_" + tag + "_ERR:base_source:" + bsrc + ":calls=" + gloveBaseState.calls);
+    }
+
+    send(ctx, "AP_" + tag + "_GA:base=" + base + ":raw=" + raw + ":self=" + self
+        + ":nbr=" + nbrDealt + ":" + armorMain + ":" + armorRef
+        + ":mode=" + mode + ":weather=" + weather
+        + ":armed=" + armed + ":bonus=" + bonus + ":bsrc=" + bsrc);
+
+    // 收尾:撤靶 / 撤武装 / 摘筹码 / 回创造
+    for (var q = 0; q < all.length; q++) { try { all[q].discard(); } catch (e30) { /* 忽略 */ } }
+    try { ModAttachments.setElectricGloveAoe(p, false); } catch (e31) { /* 忽略 */ }
+    try { clearCurioSlots(p, "chip"); } catch (e32) { /* 忽略 */ }
+    try { p.setGameMode(GameTypeClass.CREATIVE); } catch (e33) { /* 忽略 */ }
+    send(ctx, "AP_" + tag + "_GA_DONE");
+    return 1;
+}
+
 ServerEvents.commandRegistry(event => {
     var Commands = event.commands;
     event.register(
@@ -3607,6 +3895,11 @@ ServerEvents.commandRegistry(event => {
 
         }))))
 
+            .then(Commands.literal("glovebase")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doGloveBase(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
             .then(Commands.literal("spelltdsetup")
                 .then(Commands.argument("tag", StringArg.word())
                     .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
@@ -3851,5 +4144,11 @@ ServerEvents.commandRegistry(event => {
                         .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
                             return doEnderTotem(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "sub"));
                         })))))
+            // ── 2026-09-15 追加：《恋的规则书》「仅首次进入世界发放一次」守卫读数 ──
+            .then(Commands.literal("guidebook")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doGuidebook(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
     );
 });

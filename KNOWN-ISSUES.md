@@ -61,6 +61,21 @@
 - 文档定性：**单侧差异（medium）**，「未修」
 - 待复核点：`electric_glove_aoe` 的范围/伤害基准在 1.20.1 与 1.21.1 是否同构（对照 `ELECTRIC-GLOVE-ROUND-RESET` 用例已有的读数口径）。
 
+**→ 2026-09-16：已确认，且已按推荐方案修复（用户裁定「按推荐方案修补」）。**
+
+- 根因（与 `AGENTS.md` 的伤害事件映射一致）：1.20.1 的法伤主链路原挂在 `LivingHurtEvent`，
+  该事件在**护甲前**派发（`LivingEntity.java:1665`，早于 `:1667-1668` 的护甲/附魔减免），
+  而 1.21.1 挂在 `LivingDamageEvent.Pre`（**护甲后**）⇒ 电击手套 3 格 AOE 在 1.20.1 以
+  「护甲前原始值」为基准，带甲目标周围会多打一截。
+- 修复（双版本对等，2026-09-15 用户裁决口径）：
+  - `forge-1.20.1/.../event/DamageEffectCardHandler.java`：事件由 `LivingHurtEvent` 改为 `LivingDamageEvent`；
+  - `forge-1.20.1/.../combat/SpellDamageContext.java`：`event` 字段与构造参数同步改为 `LivingDamageEvent`；
+  - 唯一读取 `ctx.event` 的取值点 = `SpellDamageRegistry`（1.21.1 `getNewDamage()` / 1.20.1 `getAmount()`），签名不变。
+- 回归用例：`scripts/test/cases/ELECTRIC-GLOVE-AOE-BASE-{1.21.1,1.20.1}.json`（探针 `/astralprobe glovebase <tag>`，
+  8 断言；核心不变量 = 读数 `base=…:raw=8…:self=…:nbr=…` 中 **base/self/nbr 三者相等**）。
+- 状态：**代码已改 + 已编译通过**；1.20.1 必须在**重新构建**后再跑该用例（否则读到的仍是旧的护甲前基准 `base=8`，用例会正确地 FAIL）。
+- 残余（平台固有，不修）：目标带**吸收（黄心）**时两侧基准仍有差（1.20.1 在吸收后派发、1.21.1 在吸收前），普通目标无吸收故实际影响可忽略。
+
 ### KI-6 ＝ P2-C10「肾上腺素 / 能量回收 修饰器残留」
 
 - 文档定性：**缺陷（medium）**，「未修」
@@ -116,9 +131,15 @@
 | P2-C1 / P2-C3 / P2-C4 / 安全气囊致命判定基准 | 文档自标「已修」 |
 | `mt_assert` 断言窗口「自 launch 起」 | **已改为自本用例起**（commit `cc49f0d`；`assert.scope` = `case`/`launch`/`whole`） |
 | `LOOT-MODIFIER` 反向断言丢启动期覆盖 | **已修**（补 `scope: whole`，commit `c0ad51f`，实测读数 `@0B(win=whole)`） |
+| **追加 A**：《恋的规则书》「仅首次进入世界发放一次」被违反 —— 死亡重生后再登录会**补发**一本 | **已闭环（2026-09-16 实测）**：守卫附件 `guide_book_given` 原先不随死亡复制 ⇒ 死亡后新实体回默认 `false`，而发放挂在 `PlayerLoggedInEvent` ⇒ 重登必补发。修补 = 把该键纳入**死亡保留集合**（1.21.1 `component/ModAttachments.java` 的 `GUIDE_BOOK_GIVEN` 加 `.copyOnDeath()`；1.20.1 `component/AstralData.java#onPlayerClone` 死亡白名单加同键），两侧键集合保持三个（`rin_pages` / `komachi_damage_bonus` / `guide_book_given`）。用例 `GUIDE-BOOK-FIRST-JOIN-ONLY-{1.21.1,1.20.1}` 必须**跑两次**（首登 + 不跑 env 的重登）：1.21.1 两轮均 **7/7 PASS**（重登读数 `AP_G1_GUIDE:given=1:count=1`，2026-09-16 00:47，耗时 29 s） |
+| **追加 B**：双版本「死亡保留集合」是否一致 | **一致**（两侧均为 `rin_pages` / `komachi_damage_bonus` / `guide_book_given`；`AGENTS.md` 与代码逐条对应），不属差异项 |
+| **追加 C**：新用例 `ELECTRIC-GLOVE-AOE-BASE` 的**探针取数缺陷**（测试资产缺陷，**不是产品缺陷**） | **已登记，待修**（2026-09-16 实测）：首次执行即 FAIL，取证读数 `AP_GB_ERR:base_source:no_read:calls=0` + `AP_GB_GA:base=-1:raw=8:self=2.24:nbr=2.24:armor=20:rarmor=0:mode=forced_survival:armed=1:bsrc=no_read`。**判据**：`self == nbr == 2.24` —— 真正重要的**对等不变量成立**；失败的是「读 `base`」那一路（`bsrc=no_read`，注册进生产修饰器表的探针读取器**一次都没被调用**）⇒ 断言 7/8/9 因 `base=-1` 不匹配而 FAIL，断言 12（absent）又抓到探针自己吐出的 `AP_GB_ERR`。**结论**：该用例当前**不可用**，在任何版本上都会 FAIL；KI-5 的**游戏内**数值验证因此**尚未完成**（代码级证据见本文件 KI-5 段：事件映射 + jar 内 class 常量池 `LivingHurtEvent=0 / LivingDamageEvent=4`）。修法方向（择一，需先复现 `calls=0` 的原因）：① 让探针改从**已确定会被调用**的路径取 `ctx.event` 的值；② 或改判据为「同一版本内 `self == nbr` 且跨版本同值」这类不依赖生产修饰器被调用的对照。**禁止**为了让它变绿而放宽断言 |
 
 ## 6. 变更记录
 
 | 日期 | 变更 |
 |---|---|
 | 2026-09-15 | 建档：登记 B7 交付后审计发现的 11 项未修/未决项（用户裁定「作为未来版本修补内容」） |
+| 2026-09-16 | KI-5 确认根因并**按推荐方案修复**（1.20.1 法伤主链路事件 `LivingHurtEvent` → `LivingDamageEvent`，双版本对等）；新增回归用例 `ELECTRIC-GLOVE-AOE-BASE-{1.21.1,1.20.1}` |
+| 2026-09-16 | 追加 A（《恋的规则书》赠书守卫随死亡保留）**闭环**：1.21.1 首登 + 重登两轮用例各 7/7 PASS；追加 B（双版本死亡保留集合一致性）核为一致 |
+| 2026-09-16 | 新增「测试工具链」纪律（见 `AGENTS.md` / `scripts/test/TESTING-SPEC.md` §12）：严格分层硬预算、`MT_WAIT` 心跳、进度信标 `cases/.mt_progress.json`、看门狗语义判据、探针自动同步、点火入口 `mt_fire.ps1`（根治「长驻孙进程持有调用方管道 ⇒ 命令早已结束却看起来永不返回」） |

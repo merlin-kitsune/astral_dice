@@ -64,11 +64,11 @@ public class AstralData implements INBTSerializable<CompoundTag> {
 
     /**
      * 维度切换:复制全部数据。死亡重生:只复制**随死亡保留**的键
-     * ({@code rin_pages} / {@code komachi_damage_bonus}),与 1.21.1 侧
+     * ({@code rin_pages} / {@code komachi_damage_bonus} / {@code guide_book_given}),与 1.21.1 侧
      * {@code AttachmentType.Builder#copyOnDeath()} 的键集合一一对应;
      * 其余键与 1.21 附件默认行为一致——死亡不复制。
      *
-     * <p>注意:死亡清理({@code LivingDeathEvent})在**旧实体**上执行且刻意不清除这两个键,
+     * <p>注意:死亡清理({@code LivingDeathEvent})在**旧实体**上执行且刻意不清除这些键,
      * 因此此处仍能从旧数据中读到值;若将来在死亡清理里加了清除调用,本保留逻辑会失效。
      */
     public static void onPlayerClone(PlayerEvent.Clone event) {
@@ -78,7 +78,9 @@ public class AstralData implements INBTSerializable<CompoundTag> {
             if (event.isWasDeath()) {
                 String[] kept = {
                         ModAttachments.RIN_PAGES.name(),
-                        ModAttachments.KOMACHI_DAMAGE_BONUS.name()
+                        ModAttachments.KOMACHI_DAMAGE_BONUS.name(),
+                        // 2026-09-15 用户裁决:赠书守卫必须随死亡保留,否则重登会再发一本(对应 1.21.1 的 .copyOnDeath())
+                        ModAttachments.GUIDE_BOOK_GIVEN.name()
                 };
                 event.getEntity().getCapability(ModCapabilities.ASTRAL_DATA).ifPresent(newData -> {
                     CompoundTag src = oldData.persistentStore();

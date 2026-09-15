@@ -828,6 +828,9 @@ public class ModAttachments {
     }
 
     // 恋的规则书:是否已在当前世界为玩家发放过首次加入的规则书(仅服务端持久化,无需同步)
+    // 「死亡重生保留」(2026-09-15 用户裁决,必须遵守):口径是「仅在玩家第一次进入世界发放一次,
+    // 此后任何情况下都不再自动发放」⇒ 本键必须出现在 AstralData.onPlayerClone 的死亡保留白名单里
+    // (对应 1.21.1 的 .copyOnDeath());否则死亡后回默认 false,下次登录会再发一本。
     public static final AttachedDataKey<Boolean> GUIDE_BOOK_GIVEN =
             register(AttachedDataKey.builder("guide_book_given", Codec.BOOL, () -> false).build());
 

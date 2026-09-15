@@ -130,7 +130,7 @@ public class PlayerLifecycleHandler {
         // 计时器守卫:清空效果结束时刻记录,防止死亡后守卫重新施加效果(有真实副作用:阻止已移除的效果被重新施加)
         EffectTimerGuard.clear(player);
         // 附件类"计数器/状态"不再逐项写默认值(2026-09-15 用户裁决「S4-C6 清理无效项」):
-        // copyOnDeath 只复制 rin_pages 与 komachi_damage_bonus(见 component/ModAttachments),其余附件键
+        // copyOnDeath 只复制 rin_pages、komachi_damage_bonus 与 guide_book_given(见 component/ModAttachments),其余附件键
         // 在重生后的**新实体**上一律回默认值;而本清单唯一真正生效的"死亡被取消"路径已由上面的
         // isCanceled() 早退挡住 —— 即"把附件设为 0/false/空串"在真实死亡路径上是空操作(写了也没人读)。
         // 故原清单的 23 个附件键逐项清零(外加 EffectCardPeriod.clearRoundBonuses —— 它同样只是写 4 个
