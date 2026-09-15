@@ -443,6 +443,71 @@ function Set-MtKeepInventory {
     return $true
 }
 
+# ══ 子命令：kubejs（探针脚本同步）══════════════════════════════════════════
+function Sync-MtEnvKubejs {
+    <#
+    .SYNOPSIS
+        把 `scripts/test/resources/kubejs/<版本>/**` 同步到 `run/<版本>/kubejs/**`。
+
+    .NOTES
+        **为什么必须有这一步（2026-09-16 实测事故根因）**：在此之前**没有任何脚本**负责把
+        KubeJS 探针脚本装进 run 目录 —— 它们是被**手工**拷进去的。于是「模板已更新、run 目录
+        里还是旧探针」会**静默**发生：用例照样注入 `/astralprobe …`，而游戏侧根本没有那条
+        命令 ⇒ 所有断言都读不到读数、每个断言都在等一个永不出现的标记。这正是那次
+        「launch 之后 cases 空转 7 分 45 秒、跑完还查不出原因」的形态之一。
+        判据用**内容哈希**（不用大小+mtime：大小相同而内容不同一样会漏）。
+        本函数**只碰 run/<版本>/kubejs**，不动世界、不动 mods。
+    .OUTPUTS
+        @(更新数, 检查数, 源目录是否存在)
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$Version)
+
+    $src = Join-Path (Join-Path (Get-MtTestDir) 'resources') "kubejs/$Version"
+    if (-not (Test-Path -LiteralPath $src -PathType Container)) { return , @(0, 0, $false) }
+
+    $dstRoot = Join-Path (Get-MtPaths -Version $Version).run_dir 'kubejs'
+    $copied = 0
+    $total = 0
+    foreach ($f in @(Get-ChildItem -LiteralPath $src -Recurse -File)) {
+        $rel = $f.FullName.Substring($src.Length).TrimStart('\', '/')
+        $dst = Join-Path $dstRoot $rel
+        $total++
+        $need = $true
+        if (Test-Path -LiteralPath $dst -PathType Leaf) {
+            try {
+                $hs = (Get-FileHash -LiteralPath $f.FullName -Algorithm SHA256).Hash
+                $hd = (Get-FileHash -LiteralPath $dst -Algorithm SHA256).Hash
+                if ($hs -eq $hd) { $need = $false }
+            } catch { $need = $true }
+        }
+        if ($need) {
+            $dir = [System.IO.Path]::GetDirectoryName($dst)
+            if (-not (Test-Path -LiteralPath $dir)) { [void](New-Item -ItemType Directory -Force -Path $dir) }
+            Copy-Item -LiteralPath $f.FullName -Destination $dst -Force
+            $copied++
+        }
+    }
+    return , @($copied, $total, $true)
+}
+
+function Invoke-MtEnvKubejs {
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$Version)
+
+    $r = Sync-MtEnvKubejs -Version $Version
+    if (-not $r[2]) {
+        Write-MtLine ("MT_KUBEJS: SKIP — 模板目录不存在 scripts/test/resources/kubejs/{0}" -f $Version)
+        return 0
+    }
+    if ($r[0] -gt 0) {
+        Write-MtLine ("MT_KUBEJS: OK — 已同步 {0}/{1} 个脚本到 run/{2}/kubejs（模板有更新；探针命令的改动需**冷启动**才生效）" -f $r[0], $r[1], $Version)
+    } else {
+        Write-MtLine ("MT_KUBEJS: OK — {0} 个脚本均与模板一致（无需同步）" -f $r[1])
+    }
+    return 0
+}
+
 # ══ 子命令：mods ══════════════════════════════════════════════════════════
 function Invoke-MtEnvMods {
     [CmdletBinding()]
@@ -452,6 +517,9 @@ function Invoke-MtEnvMods {
     if (-not (Test-Path -LiteralPath $p.mods_dir)) {
         [void](New-Item -ItemType Directory -Force -Path $p.mods_dir)
     }
+
+    # 探针脚本与 mods 同批同步（都要在 launch 之前就位；此前这一步完全缺失）
+    [void](Invoke-MtEnvKubejs -Version $Version)
 
     if ($Version -eq '1.20.1') {
         # dev run 不装渲染模组（Embeddium/Oculus 的 refmap 在 mojmap 下无法解析）；
@@ -759,8 +827,8 @@ if ($MyInvocation.InvocationName -ne '.') {
         }
     }
 
-    if ($Cmd -notin @('mods', 'world', 'kill')) {
-        Write-MtErrorLine '必须指定子命令 mods / world / kill'
+    if ($Cmd -notin @('mods', 'world', 'kill', 'kubejs')) {
+        Write-MtErrorLine '必须指定子命令 mods / world / kill / kubejs'
         exit $MT_EXIT_ERROR
     }
     if (-not $Version) {
@@ -771,6 +839,7 @@ if ($MyInvocation.InvocationName -ne '.') {
 
     switch ($Cmd) {
         'mods' { exit (Invoke-MtEnvMods -Version $Version) }
+        'kubejs' { exit (Invoke-MtEnvKubejs -Version $Version) }
         'world' { exit (Invoke-MtEnvWorld -Version $Version -Seed $SeedFlag -Timeout $TimeoutSec) }
         'kill' {
             [void](Stop-MtVersionProcesses -Paths (Get-MtPaths -Version $Version))

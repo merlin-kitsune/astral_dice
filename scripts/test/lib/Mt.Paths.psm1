@@ -337,10 +337,94 @@ function ConvertTo-MtJson {
     return (($out -join "`n"))
 }
 
+function Get-MtProgressFile {
+    <#
+    .SYNOPSIS
+        进度信标文件路径（`cases/.mt_progress.json`）。
+
+    .NOTES
+        为什么放在 `cases/`：它与 `.mt_run_state.json` / `.mt_snapshot.json` 同级，
+        都属于「跨脚本契约文件」。`cases/` 下的**点开头**文件不会被 run-dir 当作用例
+        （见 mt_case.ps1 的 Get-MtCaseFiles 点文件过滤），故不会污染用例发现。
+    #>
+    [CmdletBinding()]
+    param()
+
+    return (Join-Path (Join-Path $script:TEST_DIR 'cases') '.mt_progress.json')
+}
+
+function Set-MtProgress {
+    <#
+    .SYNOPSIS
+        写「此刻正在做什么」的信标（原子写：临时文件 + 覆盖改名，读方永不看到半截 JSON）。
+
+    .NOTES
+        存在的理由（2026-09-16 用户要求「严格控制等待时间并完善监视器」）：
+        实测过一次「客户端一切正常、但 cases 阶段 7 分 45 秒零输出」的事故 —— 事后**无法**
+        从日志判定它卡在哪一步（该阶段输出在被 `Select-Object` 吞掉的管道里）。本信标把
+        「阶段 / 用例 / 第几步 / 什么 op / 开始时刻」落到磁盘 ⇒ 监视器与事后取证都能直接读到。
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$Phase,
+        [string]$Version = '',
+        [string]$Case = '',
+        [int]$StepIndex = 0,
+        [int]$StepTotal = 0,
+        [string]$Op = '',
+        [string]$Detail = ''
+    )
+
+    $f = Get-MtProgressFile
+    $dir = [System.IO.Path]::GetDirectoryName($f)
+    if (-not (Test-Path -LiteralPath $dir)) { [void](New-Item -ItemType Directory -Force -Path $dir) }
+
+    $obj = [ordered]@{
+        ts         = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+        pid        = $PID
+        phase      = $Phase
+        version    = $Version
+        case       = $Case
+        step_index = $StepIndex
+        step_total = $StepTotal
+        op         = $Op
+        detail     = $Detail
+    }
+
+    $tmp = "$f.tmp"
+    try {
+        $enc = [System.Text.UTF8Encoding]::new($false)
+        [System.IO.File]::WriteAllText($tmp, (ConvertTo-MtJson -InputObject $obj), $enc)
+        Move-Item -LiteralPath $tmp -Destination $f -Force
+    } catch {
+        # 信标是诊断设施，写不进去绝不能影响测试本身
+    }
+}
+
+function Get-MtProgress {
+    <#
+    .SYNOPSIS
+        读进度信标；返回 hashtable，缺失/损坏时返回 $null（调用方自己决定怎么报）。
+    #>
+    [CmdletBinding()]
+    param()
+
+    $f = Get-MtProgressFile
+    if (-not (Test-Path -LiteralPath $f -PathType Leaf)) { return $null }
+    try {
+        $raw = [System.IO.File]::ReadAllText($f, [System.Text.UTF8Encoding]::new($false))
+        if (-not $raw.Trim()) { return $null }
+        return ($raw | ConvertFrom-Json -AsHashtable -ErrorAction Stop)
+    } catch {
+        return $null
+    }
+}
+
 Export-ModuleMember -Function @(
     'Get-MtVersions', 'Get-MtTestDir', 'Get-MtRoot', 'Get-MtConfFile', 'Get-MtRunsFile',
     'Get-MtConf', 'Get-MtWorldName', 'Assert-MtVersion', 'Get-MtPaths',
     'Get-MtProcessMarkers', 'Get-MtShotsManifest', 'Get-MtShots', 'Add-MtShot',
     'Get-MtCurrentShots', 'New-MtRunId', 'Get-MtActiveRunId', 'Get-MtRunStartTs',
-    'Get-MtReportsDir', 'ConvertTo-MtJson'
+    'Get-MtReportsDir', 'ConvertTo-MtJson',
+    'Get-MtProgressFile', 'Set-MtProgress', 'Get-MtProgress'
 )

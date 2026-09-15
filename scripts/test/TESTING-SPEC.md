@@ -100,11 +100,22 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --phase <p> --version <v>
 
 回归套件依赖探针提供的服务端读数（如 `AP_K1_AFTER`、`AP_F1_WINDOW`、`AP_P2_PEARL`）。
 
-**安装**：把 `scripts/test/resources/kubejs/<版本>/server_scripts/*.js` 复制到 `run/<版本>/kubejs/server_scripts/`。
+**安装（2026-09-16 起自动化，此前**只写在文档里、实际靠手工拷贝**）**：
+- `pwsh -File scripts/test/mt_env.ps1 kubejs --version <版本>` —— 按**内容哈希**把
+  `scripts/test/resources/kubejs/<版本>/**` 同步到 `run/<版本>/kubejs/**`（只碰 kubejs，不动世界/mods）；
+- `mt_env.ps1 mods` 会**顺带**执行同一步；`mt.ps1 --phase launch` 也会在启动前自动执行，
+  失败即 `MT_LAUNCH: BLOCKED`（返回 11）。
+- ⚠️ **为什么必须自动化（实测事故根因）**：手工拷贝会静默漂移 —— 模板已更新、run 目录还是旧探针时，
+  用例照样注入 `/astralprobe <新命令>`，而游戏侧**没有那条命令** ⇒ 所有断言读不到读数、
+  每个断言都在等一个永不出现的标记。实测出现过「run 目录 218 KB / 模板 229.7 KB、哈希不一致」的状态。
+- ⚠️ 探针**命令**的改动需**冷启动**（`--phase stop` → `--phase launch`）才生效；
+  `/kubejs reload server-scripts` **不会**重绑已注册命令的 lambda。同步只保证**文件**就位，
+  不保证**正在运行**的客户端已加载它。
+
 
 | 探针 | 1.21.1 | 1.20.1 | 作用 |
 |---|---|---|---|
-| `astral_bugfix_probe.js` | ✅ | ✅ | 回归套件主探针：命令（`diag` / `equipslot` / `railguncd` / `railgunfriendly`·`railgunfriendlyread`·`railgunfriendlyend`（双版本）、`truedmg`/`railtruedmg`·`railtruedmgread`（双版本：真伤穿甲取证）、`fensplash`/`fensplashhit`/`fensplashread`（双版本：大当家溅射三段式——装备与摆靶、命中、读差值；判据=4.5 格内命中(旧 3 格打不到)、8 格外 0 伤害、重甲靶与无甲靶掉血相同(真伤)、溅射÷近战≈0.88 或被 5 点下限托住；靶子一律非亡灵、非苦力怕）+ `glmcheck`（仅 1.20.1）+ 各用例专用命令）、状态读数 `AP_*` |
+| `astral_bugfix_probe.js` | ✅ | ✅ | 回归套件主探针：命令（`diag` / `equipslot` / `railguncd` / `railgunfriendly`·`railgunfriendlyread`·`railgunfriendlyend`（双版本）、`truedmg`/`railtruedmg`·`railtruedmgread`（双版本：真伤穿甲取证）、`fensplash`/`fensplashhit`/`fensplashread`（双版本：大当家溅射三段式——装备与摆靶、命中、读差值；判据=4.5 格内命中(旧 3 格打不到)、8 格外 0 伤害、重甲靶与无甲靶掉血相同(真伤)、溅射÷近战≈0.88 或被 5 点下限托住；靶子一律非亡灵、非苦力怕）+ `guidebook`（双版本：**只读**——《恋的规则书》首登唯一发放守卫 `given` + 背包内手册总本数，见 §8 专项说明）+ `glmcheck`（仅 1.20.1）+ `glovebase`（双版本：电击手套 3 格 AOE 的**伤害基准口径**——用注册进生产修饰器表的同路 `SpellDamageModifier` 读 `ctx.event` 的伤害值，同时给出护甲前/护甲后客观对照；判据见 §8 专项说明）+ 各用例专用命令）、状态读数 `AP_*` |
 | `astral_dice_curios_check.js` | ✅ | ✅ | Curios 槽位 / 装备状态观测 |
 | `astral_dice_target_select_check.js` | ✅ | ✅ | 待命等待器（占星师 / 秘密侦探 / 枪匠）观测 |
 | `astral_dice_curio_watch.js` | ✅ | — | 立牌槽位变化观测（1.21.1 专用） |
@@ -182,6 +193,8 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --phase <p> --version <v>
 | `FEN-SPLASH-MAIN-TARGET` | 大当家溅射对主目标生效（原版 `hurt` 的 `lastHurt`/无敌帧顺序缺陷已修） | 复用 `fensplash` / `fensplashhit` / `fensplashread` 探针（2026-09-15 双版本 PASS） | `AP_<tag>_AFTER:tdealt=…:near_dealt=…:armored_dealt=…` + `VERDICT:true_damage=1:ratio_ok=1` |
 | `LOADER-GATE-FORGE` | 1.20.1 Forge 加载器门槛：低于 47.4.10 必须在 FML 依赖排序阶段被拒（离线 `VersionRange` 实测，不需启动游戏） | `mt_loadergate.ps1` + 5 步 / 6 断言（2026-09-15 PASS） | 旧区间接纳 47.0.0（BUG 复现）／新区间拒绝 47.0.0、47.4.9 并接纳 47.4.10+（`AP_LG_VERDICT:bug_repro=1:gate_ok=1:loader_ok=1:overall=1`） |
 | `AIRBAG-BYPASS-KILL` | 安全气囊对**无视无敌**的致死伤害依然有效(2026-09-15 用户裁决「使其始终保持有效」):用与 `/kill` **完全同一条原版代码路径**(`LivingEntity#kill` = `hurt(generic_kill, Float.MAX_VALUE)`)施加致死,气囊必须拦下;并带**同构造对照**证明该伤害源在本局内确实致命 | 13 步 / 26 断言(2026-09-15 双版本冷启动 PASS) | `AP_A_PREP:mode=forced_survival:…:equipped=1:chip=astral_dice:airbag_chip:charge=6:cd_end=0`、`AP_A_KILL:path=kill:hp_before=<h>:health=<h>:alive=1:…:charge=0:cd_left=(1200\|1[01]\d{2})`(血量**逐字不变**,由正则反向引用 `\2` 锁死)、`AP_A_STATE:…:charge=0:cd_left=1[01]\d{2}`、`AP_B_LETHAL:path=kill:hp_before=10:hp_after=0:alive=0`(对照:同一 `kill()` 打猪必死)、`AP_C_NOCHARGE:…:charge=0:cd_end=0`、`AP_Z_RESET:mode=creative`、`absent`、`kubejs`、`crash`;⚠️ 玩家侧「充能不足/冷却中真会死」分支未覆盖,见 §11 覆盖缺口 |
+| `GUIDE-BOOK-FIRST-JOIN-ONLY` | 《恋的规则书》「**仅首次进入世界发放一次**」守卫:附件 `guide_book_given` 必须**随死亡保留**(1.21.1 `ModAttachments.GUIDE_BOOK_GIVEN` 加 `.copyOnDeath()`;1.20.1 `AstralData.onPlayerClone` 死亡白名单加该键)——首登发 1 本且守卫置位(`given=1`),死亡 + 重生后 `given` 仍为 1,死亡后**重登不得再补发**(背包仍只有 1 本);修补前「死亡后重生」读到 `given=0`、重登后 `count` 变 2 | 9 步 / 7 断言 | `AP_G1_GUIDE:given=1:count=1`(首登)、`AP_G3_GUIDE:given=1:count=1`(**死亡重生后**,修补前必 FAIL: `given=0`)、`AP_G1_GUIDE_DONE`、`AP_G3_GUIDE_DONE`、`absent`(`AP_G1_GUIDE:given=0` / `AP_G3_GUIDE:given=0` / 探针 `_ERR`/`_EX` / `AP_TICK_EX`)、`kubejs`、`crash`;⚠️ **需跑两次**:全流程(首登)+ 仅 `--phase launch`(死亡后重登),见下方专项说明 |
+| `ELECTRIC-GLOVE-AOE-BASE` | 电击手套 3 格 AOE 波及伤害的**基准口径**双版本对等(KI-5):生产读到的那个基准必须是**护甲后**值 —— 同一条读数里 `base=`(探针注册进生产修饰器表的同路 `SpellDamageModifier` 读 `ctx.event`,非另算)必须与主目标实掉血 `self=`、3 格内敌对邻居实掉血 `nbr=` **逐字相等**,且严格小于无甲参照靶的护甲前值 `raw=`;修补前 1.20.1 的法伤主链路挂 `LivingHurtEvent`(护甲前)⇒ 读到 `base=raw=8:self=nbr=2.24` ⇒ **必 FAIL** | 6 步 / 8 断言(双版本各一份) | `AP_GB_GA:base=[0-9.]+:raw=8(?:\\.0+)?:self=[0-9.]+:nbr=[0-9.]+:armor=20(?:\\.0+)?:rarmor=0(?:\\.0+)?:mode=(forced_survival\|already_survival):weather=clear:armed=1:bonus=0:bsrc=modifier`(构造自证:`raw`=同额伤害在无甲靶上的掉血、`armor`=主目标护甲、`armed`=生产判定入口 `isAoeArmed`、`bonus=0` 排除第二发真伤、`bsrc=modifier` 证明基准确由生产同路修饰器读出)、**`AP_GB_GA:base=([0-9.]+):raw=8(?:\\.0+)?:self=\\1:nbr=\\1:`(核心不变量:生产基准 = 护甲后主目标掉血 = 邻居掉血;由正则反向引用 `\\1` 锁死)**、`AP_GB_GA:base=(?:0\\.[0-9]+\|[1-7](?:\\.[0-9]+)?):raw=8(?:\\.0+)?:`(数值区间断言:base 严格小于护甲前值 8)、`AP_GB_GA:.*:nbr=(?:0\\.[0-9]*[1-9][0-9]*\|[1-9][0-9]*(?:\\.[0-9]+)?):`(AOE 真的波及,`nbr>0`)、`AP_GB_GA_DONE`、`absent`(`AP_GB_ERR`/`AP_GB_EX:`/`AP_TICK_EX`)、`kubejs`、`crash` |
 
 > `DIRECTIONAL-BLAST-AOE` / `EMERALD-DICE-TRADE` 于 2026-09-13 追加，配套探针命令
 > **真伤判据(2026-09-14 手工实测,两步走)**:`astral_dice:true_damage` 的穿甲能力**必须分两条命令**验证——
@@ -261,6 +274,59 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --phase <p> --version <v>
 > （`debug.log` 不随每次运行清空，故 `Mixing` 行只作「本机曾成功应用」的证据，失败面由增量区间的
 > `mixin` 断言兜底）。
 > ✅ **本批四条用例已于 2026-09-15 在真实游戏中运行**（探针改动经冷启动生效），逐条结果见 §8.1。`EFFECT-DECAY-FLICKER` 在 1.20.1 首次运行失败，根因是**测试侧状态污染**（同会话前序用例残留的骰神赐福），**非产品回归**；已定位（见 §10 第 16 条）并修好探针后复跑 PASS。
+
+> `GUIDE-BOOK-FIRST-JOIN-ONLY` 于 2026-09-15 追加（R1 独立代码验证发现缺陷、产品侧修补后的回归用例），配套探针命令
+> `/astralprobe guidebook <tag>`（**只读**；与同族一致，**改探针后必须冷启动**才生效）。
+> **⚠️ 特殊用法：本用例必须跑两次，且两次都必须 PASS** ——
+> ① **第 1 次跑全流程**（`--phase build/env/launch/cases`，`env` 会**重建测试世界**）= 玩家**首次进入世界**：
+> `AP_G1_GUIDE:given=1:count=1` ⇒ 证明「首次发放 1 本」且守卫已置位；随后 `/kill @s`（= `generic_kill`）让玩家**真死**，
+> 重生后 `AP_G3_GUIDE:given=1:count=1` ⇒ **修补前此处必 FAIL（读到 `given=0`）**。
+> ② **第 2 次只跑 `--phase launch` + 本用例**
+> （`pwsh -NoProfile -File scripts/test/mt.ps1 --phase launch --version <版本>`，再
+> `pwsh -NoProfile -File scripts/test/mt.ps1 --phase cases --version <版本> --case cases/GUIDE-BOOK-FIRST-JOIN-ONLY-<版本>.json`），
+> **不跑 `env` ⇒ 不重建世界**，等价「**死亡后重新登录**」：**同一条** G1 断言必须仍然 `given=1:count=1`
+> ⇒ 证明「死亡 + 重登**不再**补发」；若守卫没随死亡保留，登录时会再发一本 ⇒ G1 读到 `count=2`。
+> **为什么不能只靠 `count` 判**：测试世界 `keepInventory=true`，死亡不丢物品 ⇒ 死亡相位 `count` 恒为 1，
+> **决定性字段是 `given`**（修补前死亡后新实体回默认 `false`）。
+> **死亡相位的读法**：玩家真死后停在死亡界面，**紧接死亡的那一次注入（含回车）会落在「重生」按钮上**（§10 第 21 条实测），
+> 约 4 秒后完成重生 ⇒ 那一次读数**不可信**：用例把它当「触发重生」的注入（标 `G2`，**不做任何断言**），
+> 留 ≥5 秒后再注入 `G3` 作**死亡后的权威读数**。
+> **`count` 的取值口径**：探针 helper 统计**主物品栏 + 快捷栏 + 副手**（不含护甲 / Curios 槽）；
+> 手册的**物品注册 id 是 `patchouli:guide_book`**，`astral_dice:astral_guide` 只是数据组件（1.20.1 为 NBT）里的**书籍 id**，
+> 故 `count` =「物品 id 粗筛 + `ItemModBook.getBook(stack).id` 精确比对」（§10 第 19 条的同族坑：**书籍 id ≠ 物品 id**，
+> 直接 `resolveItem("astral_dice:astral_guide")` 必返 `null`）。**不做视觉断言**、不生成截图。
+
+> `ELECTRIC-GLOVE-AOE-BASE` 于 2026-09-25 追加（KI-5「电击手套 3 格 AOE 波及伤害基准跨版本不一致」的回归判据），
+> 双版本各一份（`cases/ELECTRIC-GLOVE-AOE-BASE-{1.21.1,1.20.1}.json`），配套探针命令
+> `/astralprobe glovebase <tag>`（**改探针后必须冷启动**才生效；本命令自造并自证全部构造，一条命令产出一行读数）。
+> **被测的唯一来源（读生产代码定死，不许另算）**：`SpellDamageRegistry` 里电击手套修饰器的 `onHit` 用
+> `float total = ctx.event.<事件伤害读取>` 作为本次 AOE 的**唯一伤害基准**，随后用
+> `astral_dice:true_damage`（不吃护甲）对主目标 3 格内的敌对目标逐个 `hurt`。两版本的差异只在
+> `DamageEffectCardHandler` 把 `ctx.event` 构造成哪个事件：1.21.1 = `LivingDamageEvent.Pre`（`getNewDamage()`，
+> **护甲/附魔减免之后**）；1.20.1 修补前 = `LivingHurtEvent`（`getAmount()`，**护甲之前**）、修补后 =
+> `LivingDamageEvent`（`getAmount()`，护甲后）。⇒ 修补前同一发法伤在 1.20.1 上会以**护甲前原始值**为基准做
+> 3 格 AOE，带甲目标周围多打一截。
+> **取证口径（为什么这样做不算"自己算"）**：探针用 KubeJS 的接口实现（`new Iface({...})` —— 与本仓
+> `komachicap` 已实证的 `EffectCardPeriod$ExtraPlaySource`（`AP_K3_SRC:ok:2:form:kubejs`）同一机制）
+> **自己实现一个 `SpellDamageModifier` 并注册进生产同一张修饰器表**，在它的 `onHit` 里用
+> **与生产逐字相同的读取表达式**读 `ctx.event`：1.21.1 是 `getNewDamage()`；1.20.1 是 `getAmount()`
+> （该表达式在修补前后的 `LivingHurtEvent`/`LivingDamageEvent` 上**同名同签名**，故读数自动跟随生产实际
+> 挂载的事件，不存在"探针自己挑事件"的自由度）。生产修饰器注册在前 ⇒ 它的 `onHit` 先跑（先结算 AOE
+> 再解除武装），探针随后读**同一事件对象的同一字段**。读不到（接口实现失败 / 未被调用 / 读取抛错）一律落
+> `AP_<tag>_ERR:`，**绝不静默降级**。
+> **构造自证（全在同一条命令内）**：三只非亡灵敌对靶 —— `ref` 无甲（与 `main` 相距 ≥6 格，同额伤害的掉血即
+> 「护甲前」客观参照 `raw`）、`main` 护甲 20/韧性 8（主目标，`self` = 其实掉血 = 护甲后客观值）、`nbr` 在
+> `main` 3 格内（`nbr` = AOE 实际造成的掉血）；护甲**直写属性实例**而非 `attribute` 命令，以规避本条 §10
+> 实测的「属性命令生效时机晚于同一 tick 内后续代码」；玩家强制生存、天气 clear、5 张伤害效果牌效果清空 +
+> 忍者「效果牌伤害增益」归零（⇒ 本次事件 `bonus=0`，`main` 只吃这一发箭伤，`self` 无歧义）；
+> 武装由探针直接置位附件（与 `ELECTRIC-GLOVE-ROUND-RESET` 同一脚手架），读数 `armed=` 取**生产判定入口**
+> `ElectricGloveChipItem.isAoeArmed`。
+> **判据与鉴别力**：核心断言是 `base == self == nbr`（正则反向引用 `\1` 锁死）+ `base < raw`（数值区间）
+> + `raw=8`/`armor=20`/`rarmor=0`/`nbr>0`。**修补前的 1.20.1 预期读数**为
+> `AP_GB_GA:base=8:raw=8:self=2.24:nbr=8:armor=20:…`（AOE 以护甲前值 8 为基准，邻居多打 5.76），
+> 此时第 2、3 条断言必不命中 ⇒ **FAIL**；修补后（挂 `LivingDamageEvent`）应为
+> `base=2.24:raw=8:self=2.24:nbr=2.24` ⇒ 两版本均 PASS。离线预检（把上面两种读数行喂给本用例的全部正则）：
+> 修补后形态 5/5 正断言命中、反断言 0 命中；修补前形态正断言 2 条不命中 ⇒ 两个方向都符合预期。
 
 > **历史说明（2026-09-14）**：`BUG1-BLESSING-HUD`、`BUG2-EMPOWER-DECAY`、`BUG3-MIXIN-BADGE`、
 > `BUG4-OCULUS-LIGHTNING`、`BUG5-RAILGUN-DELAY-CD` 五条用例**及其全部判定内容**（含仅服务它们的
@@ -367,43 +433,76 @@ pwsh -NoProfile -File scripts/verify/verify_bountiful_instance_exclusions.ps1
 
 ---
 
-## 12. 超时机制与看门狗（2026-09-15 B6 ⑥，**长流程必须遵守**）
+## 12. 超时机制与看门狗（2026-09-15 B6 ⑥；**2026-09-16 收紧为严格预算**，长流程必须遵守）
 
-### 12.1 三层超时（默认值与覆写）
+> **2026-09-16 用户裁决：「现有情况下不允许长时间等待，请重写控制脚本，严格控制等待时间，并完善监视器」。**
+> 触发事故（实测）：一次 `--phase cases` 在 launch 正常结束后**零输出空转 7 分 45 秒**，期间
+> ① 子进程预算是 600/900 秒、全局预算「0 = 不限」；② 等待期间**一行输出都没有**；
+> ③ 看门狗一路报 `ALIVE（有进展）` —— 因为它的判据是 `runclient_launch.log` 的**大小/mtime**，
+> 而游戏空闲时 ModernFix 仍会**每分钟**吐一条 `[Worker-ResourceReload-N/DEBUG] … shutdown`。
+> ④ 事后**无法**从日志判定它卡在哪一步（该阶段输出在被截断的管道里）。
+> 以下四条改动分别消灭这四点。
+
+### 12.1 分层硬预算（默认值与覆写）
 
 | 层 | 实现 | 默认 | 覆写 | 超时后的行为 |
 |---|---|---|---|---|
-| **单条用例** | `mt_case.ps1` 的 `$script:CaseTimeoutSec` | **300 s** | 环境变量 `MT_CASE_TIMEOUT_SEC`，或 CLI `--case-timeout <秒>`（`0` = 关闭） | 该条记 **`TIMEOUT`**，**跳过剩余步骤**并**继续跑下一条**；`MT_CASES_SUMMARY` 里显示 `NAME=TIMEOUT`；`run-dir` 返回退出码 **12** |
-| **单阶段子进程** | `mt.ps1` 的 `Invoke-MtChild -TimeoutSec` | 900 s（`launch` 用 `MT_LAUNCH` 标记轮询） | 改调用点 | 只终止该子进程自身，返回 `ERROR` |
-| **全局运行** | `mt.ps1 --run-timeout <秒>` | **0 = 不限** | CLI，或环境变量 `MT_RUN_TIMEOUT_SEC` | 走 `mt_stop.ps1 --force` 收停 → 报告写 `TIMEOUT` → 退出码 **12** |
+| **单条用例** | `mt_case.ps1` 的 `$script:CaseTimeoutSec` | **180 s** | `MT_CASE_TIMEOUT_SEC` / `--case-timeout <秒>`（`0` = 关闭） | 该条记 **`TIMEOUT`**，**跳过剩余步骤**并**继续跑下一条**；`run-dir` 返回退出码 **12** |
+| **单阶段子进程** | `mt.ps1` 的 `Invoke-MtChild -TimeoutSec` | 见下表（120~300 s） | `MT_<阶段>_TIMEOUT_SEC`（如 `MT_ENV_TIMEOUT_SEC=600`） | 终止**我们自己那个**子进程（绝不动进程树）→ 打印卡点 → 返回 **12** |
+| **cases 阶段** | `mt.ps1` 自适应推导 | 单条 = `单条上限 + 90 s`；`run-dir` = `90 s × 用例数 + 90 s` | `MT_CASES_TIMEOUT_SEC` | 同上；`CASES_BUDGET:` 行在阶段开始时打印实际预算 |
+| **全局运行** | `mt.ps1 --run-timeout <秒>` | **2700 s**（旧默认「0 = 不限」已废除） | CLI / `MT_RUN_TIMEOUT_SEC` | 走 `mt_stop.ps1 --force` 收停 → 报告写 `TIMEOUT` → 退出码 **12** |
+
+| 阶段 | preflight | build | env | launch | report | stop | cleanup |
+|---|---|---|---|---|---|---|---|
+| 默认预算 | 120 s | 300 s | 240 s | 180 s | 90 s | 150 s | 180 s |
 
 单条用例的预算由**两层**共同保证，缺一不可：
-① 步骤循环在**每步之前**核对 deadline，超时即跳出循环（不再发起新动作）；
-② `Invoke-MtCaseChild` 把**剩余预算**折算成子进程超时（`Get-MtCaseStepBudget`，下限 5 s / 上限 600 s），`Invoke-MtProcessFull` 超时会**强杀该子进程树** ⇒ 超时路径不留挂在等待里的子进程/句柄。
+① 步骤循环在**每步之前**核对 deadline，超时即跳出循环（不再发起新动作）——
+   且 `CaseDeadline` 现在**先于「本用例窗口快照」建立**（旧实现把 deadline 设在快照之后，
+   于是那次快照调用退化到 600 s 兜底值，用例自身的硬超时形同虚设——已修）；
+② `Invoke-MtCaseChild` 把**剩余预算**折算成子进程超时（`Get-MtCaseStepBudget`，下限 5 s），
+   `Invoke-MtProcessFull` 超时会**强杀该子进程树** ⇒ 超时路径不留挂在等待里的子进程/句柄。
+
+### 12.1.1 等待期的可见性（心跳与进度信标）
+
+- **`MT_WAIT:` 心跳**：`mt.ps1` 等待任何子进程期间，每 10 s 打一行，含「脚本 / 已等待 / 硬上限 /
+  子进程 CPU（非脱离式）或日志字节数与最后增长时刻（脱离式）」。脱离式（launch）还额外判定
+  **日志 90 s 零增长 ⇒ `CHILD: STALL`**（进程存活 ≠ 有进展），放弃等待终态标记并返回 `TIMEOUT`。
+- **进度信标 `cases/.mt_progress.json`**（`Set-MtProgress` / `Get-MtProgress`，实现在 `lib/Mt.Paths.psm1`）：
+  `mt.ps1` 进入每个阶段、`mt_case.ps1` 每条用例开头与**每个步骤开跑前**写入
+  `{ts, pid, phase, version, case, step_index, step_total, op, detail}`（原子写：临时文件 + 改名）。
+  用途：**监视器与事后取证都只读这一处**即可回答「它现在卡在哪一步」。
+  该文件以点开头，`cases/` 的 run-dir 用例发现按 `StartsWith('.')` 过滤，不会被当作用例（已有单测路径覆盖）。
 
 `TIMEOUT` 的语义边界（**必须分清**）：`FAIL` = 断言不满足（产品可疑）；`ERROR` = 用例跑不起来（工具链/前置）；**`TIMEOUT` = 在预算内没有跑完**（可能是环境慢、注入卡住、客户端死了）。
-⚠️ `TIMEOUT` **不**置位 `.mt_keep_alive`（否则 `mt_cleanup` 会拒绝收停、整套流程再无人清理）；它的现场诊断由 `mt_watchdog.ps1` 的尾部输出承担。
+⚠️ `TIMEOUT` **不**置位 `.mt_keep_alive`（否则 `mt_cleanup` 会拒绝收停、整套流程再无人清理）；它的现场诊断由进度信标 + `mt_watchdog.ps1` 的取证输出承担。
 
 ### 12.2 看门狗 `mt_watchdog.ps1`（可独立跑）
 
 ```powershell
-pwsh -NoProfile -File scripts/test/mt_watchdog.ps1 -Version 1.21.1 [-StallSeconds 360] [-PollSeconds 10] [-Action report|stop] [-MaxSeconds N]
+pwsh -NoProfile -File scripts/test/mt_watchdog.ps1 -Version 1.21.1 [-StallSeconds 180] [-WarnSeconds 90] [-PollSeconds 10] [-IdleExitSeconds 60] [-Action report|stop] [-MaxSeconds N]
 ```
 
 | 项 | 说明 |
 |---|---|
-| **进展信号**（任一变化即重置停滞计时） | `cases/.mt_run_state.json`、`cases/.mt_active_run`、当前活动报告目录（`reports/<run_id>/<版本>/`）下任何文件、`run/<版本>/logs/latest.log`、`run/<版本>/runclient_launch.log`、`run/<版本>/logs/kubejs/server.log`（后三者按**大小 + mtime**） |
-| **心跳** | 每 `-PollSeconds`（默认 10 s）打一行 `MT_WATCHDOG: ALIVE t=<秒> last_signal=<文件@时间>（停滞 <秒>）` ⇒ 外层（人或代理）看得见存活 |
-| **停滞** | 连续 `-StallSeconds`（默认 **360 s**）无进展 ⇒ `MT_WATCHDOG: STALL` + 最后一个进展信号 + `latest.log` / `kubejs/server.log` / `runclient_launch.log` 的**尾部若干行** |
-| **动作** | `-Action report`（默认）只报告；`-Action stop` 额外调 `mt.ps1 --phase stop --force` 收停 |
-| **退出码** | **42** = 检出停滞（独立值，与 `FAIL=1` / `ERROR=2` / `TIMEOUT=12` 都不同）；0 = 观察窗内始终有进展 |
+| **进展判据 ①（最强）** | `cases/.mt_progress.json` 的**内容**（阶段/用例/步号/op/ts）——阶段、每条用例、每个步骤都会刷新它，因此它不变就是真没往前走 |
+| **进展判据 ②** | `cases/.mt_run_state.json`、`cases/.mt_snapshot.json`、`cases/.mt_active_run`、当前活动报告目录下任何文件（大小 + mtime） |
+| **进展判据 ③** | `run/<版本>/logs/latest.log` **尾部的语义标记**（`[CHAT]`、`AP_*:`、`Saving and pausing`、`logged in/out`、`joined/left the game`、`KubeJS Server/`、`已将截图保存为`…）。⚠️ **不再用「文件大小/mtime」，也不再认 DEBUG 行**——那正是旧判据被 ModernFix 每分钟一条的周期噪声骗过的地方 |
+| **心跳** | 每 `-PollSeconds`（默认 10 s）打一行：`MT_WATCHDOG: ALIVE t=<秒> step=<阶段 用例 步/总 op> │ marker=<最后语义标记> │ client=alive|none（停滞 <秒>）` |
+| **预警** | 停滞达 `-WarnSeconds`（默认 `min(90, Stall/2)`）⇒ `MT_WATCHDOG: WARN` + 卡点取证（**提前介入，不退出**） |
+| **停滞** | 停滞达 `-StallSeconds`（默认由 360 收紧为 **180**）⇒ `MT_WATCHDOG: STALL` + 完整取证（进度信标原文 + 客户端/守护进程存活与 PID + 三个日志尾部） |
+| **目标已结束** | 客户端进程已退出且再无进展达 `-IdleExitSeconds`（默认 60 s）⇒ 打印一行并**退出 0**（旧版此时会以莫名退出码结束，容易被误读成故障） |
+| **动作** | `-Action report`（默认）只报告；`-Action stop` 额外调 `mt.ps1 --phase stop --force` 收停（该收停调用本身有 180 s 上限） |
+| **退出码** | **42** = 检出停滞（独立值，与 `FAIL=1` / `ERROR=2` / `TIMEOUT=12` 都不同）；0 = 有进展 / 目标已结束 |
 | **安全** | 收停**只**经 `mt.ps1 --phase stop --force`（唯一收停实现，按进程标记只杀本流程的客户端与 Gradle 守护）；本脚本**绝不**自己 `taskkill` 任何 java 进程 |
 
 ### 12.3 纪律（**硬要求**）
 
 1. **任何「启动客户端 + 跑用例」的长流程，必须**由 `mt_watchdog.ps1` 包裹（`-Action stop` 更好），**或**至少显式设置 `MT_CASE_TIMEOUT_SEC`；**禁止**无超时地等待客户端标记 / 等待用例完成。
-2. 遇到 **`TIMEOUT`** 时的处置：先看 watchdog 的 `===== 诊断尾部 =====`（`latest.log` / `kubejs/server.log` / `runclient_launch.log` 末若干行）判断是"环境慢"还是"客户端已死"；**不要盲目重试整轮** —— 先 `--phase stop --force` 清干净，再决定是重跑单条（`--case`）还是整轮。
-3. 遇到 **`MT_WATCHDOG: STALL`** 的处置：它只说明"没有进展"，不等于产品缺陷；先按上一条定位，再重跑。
+2. 遇到 **`TIMEOUT`** 时的处置：先读 `cases/.mt_progress.json`（卡在第几阶段/哪条用例/第几步/什么 op）与 watchdog 的取证块，再决定是重跑单条（`--case`）还是整轮；**不要盲目重试整轮** —— 先 `--phase stop --force` 清干净。
+3. 遇到 **`MT_WATCHDOG: STALL`** 的处置：它只说明"没有进展"，不等于产品缺陷；按第 2 条的卡点定位后再跑。
+4. **后台/长任务不得用会缓冲的管道**（2026-09-16 实测教训）：`pwsh … | Select-Object -Last N` / `| Select-Object -First N` 会把子进程输出**全部缓冲到命令结束**，一旦外层作业被截断或超时，**整段日志消失**，事后无从取证。后台跑一律用 `*> <文件>` 落盘，再从文件读；**禁止**用 `Select-Object` 截断长流程的输出管道。
+
 
 ---
 

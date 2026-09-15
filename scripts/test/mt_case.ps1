@@ -126,8 +126,9 @@ $script:KeepAlive = Join-Path $script:CasesDir '.mt_keep_alive'
 # 客户端没就绪时 `Invoke-MtCaseChild` 会一直等（旧实现还是 `-Wait` 等整棵进程树）。
 # 超时后该条记**独立状态 `TIMEOUT`**（≠ FAIL：断言不满足；≠ ERROR：跑不起来），
 # 然后**继续跑下一条**，不整体挂住。
-# 默认 300 s；覆写：环境变量 `MT_CASE_TIMEOUT_SEC`、或 CLI `--case-timeout <秒>`。
-$script:CaseTimeoutSec = 300
+# 默认 180 s（2026-09-16 由 300 s 收紧：用户裁决「不允许长时间等待」；单条用例的实测典型
+# 开销是 30~60 s，180 s 已留三倍余量）。覆写：环境变量 `MT_CASE_TIMEOUT_SEC`、CLI `--case-timeout <秒>`。
+$script:CaseTimeoutSec = 180
 if ($env:MT_CASE_TIMEOUT_SEC -and $env:MT_CASE_TIMEOUT_SEC -match '^\d+$') { $script:CaseTimeoutSec = [int]$env:MT_CASE_TIMEOUT_SEC }
 $script:CaseTimeoutOverride = -1   # CLI 覆盖（-1 = 未给）
 # 当前用例的硬 deadline（unix 秒；0 = 未启用）。由 Invoke-MtCaseRun 设置，供
@@ -903,6 +904,17 @@ function Invoke-MtCaseRun {
         $steps += $merged
     }
 
+    # ── B6 ⑥-1：本条用例的硬超时 ─────────────────────────────────────────────
+    # ⚠️ 时序（2026-09-16 修正）：必须在**任何**子步骤之前设好 —— 旧实现把 CaseDeadline 放在
+    # 「本用例窗口快照」之后，于是那次快照调用拿不到用例预算，退化成 Invoke-MtCaseChild 的
+    # 兜底值 600 s（用例自身的硬超时形同虚设，正好是「长时间等待」的一个入口）。
+    $timeoutSec = if ($script:CaseTimeoutOverride -ge 0) { $script:CaseTimeoutOverride } else { $script:CaseTimeoutSec }
+    $script:CaseDeadline = if ($timeoutSec -gt 0) { [DateTimeOffset]::UtcNow.ToUnixTimeSeconds() + $timeoutSec } else { [long]0 }
+    if ($timeoutSec -gt 0) {
+        Write-MtInfo ("CASE_TIMEOUT: {0} 硬超时 {1}s（MT_CASE_TIMEOUT_SEC / --case-timeout 可覆写）" -f $caseId, $timeoutSec)
+    }
+    [void](Set-MtProgress -Phase 'cases' -Version $Version -Case $caseId -StepIndex 0 -StepTotal $steps.Count -Op 'window-snapshot')
+
     # ── B7：把断言窗口收窄到「自本用例起」─────────────────────────────────────
     # 依据（B6 §4.3 实测）：`offsets` 原先只在 launch 之后写一次 ⇒ `log`/`absent` 的窗口是
     # 「自 launch 起」而非「自本用例起」，于是**任何不带 tag 唯一标识的标记都能被前序用例满足**
@@ -934,13 +946,6 @@ function Invoke-MtCaseRun {
         'SKIP' = 'SKIP'; 'NOTE' = 'note'; 'DELEGATED' = '→VIS'; 'TIMEOUT' = 'TIMEOUT'
     }
 
-    # ── B6 ⑥-1：本条用例的硬超时 ─────────────────────────────────────────────
-    $timeoutSec = if ($script:CaseTimeoutOverride -ge 0) { $script:CaseTimeoutOverride } else { $script:CaseTimeoutSec }
-    $script:CaseDeadline = if ($timeoutSec -gt 0) { [DateTimeOffset]::UtcNow.ToUnixTimeSeconds() + $timeoutSec } else { [long]0 }
-    if ($timeoutSec -gt 0) {
-        Write-MtInfo ("CASE_TIMEOUT: {0} 硬超时 {1}s（MT_CASE_TIMEOUT_SEC / --case-timeout 可覆写）" -f $caseId, $timeoutSec)
-    }
-
     $timeline = @()
     $worst = 'PASS'
     $timedOut = $false
@@ -955,6 +960,16 @@ function Invoke-MtCaseRun {
                 break
             }
             $step = $steps[$i - 1]
+            # 进度信标（2026-09-16）：每步开跑前落盘「第几步 / 什么 op / 什么目标」——
+            # 监视器与事后取证都只读这一个文件就能定位卡点，不必再从日志噪声里猜。
+            $opName = [string](Get-MtMapValue -Map $step -Key 'op')
+            $opDetail = ''
+            foreach ($k in @('type', 'command', 'key', 'tag', 'source')) {
+                $vv = Get-MtMapValue -Map $step -Key $k
+                if (Test-MtTruthyValue $vv) { $opDetail = ConvertTo-MtPyText $vv; break }
+            }
+            [void](Set-MtProgress -Phase 'cases' -Version $Version -Case $caseId -StepIndex $i `
+                    -StepTotal $steps.Count -Op $opName -Detail $opDetail)
             $t0 = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() / 1000.0
             $pair = Invoke-MtCaseOp -Paths $p -Step $step -RunId $RunId
             $outcome = [string]$pair[0]
@@ -991,6 +1006,8 @@ function Invoke-MtCaseRun {
         $script:CaseDeadline = [long]0
     }
     if ($timedOut -and $worst -ne 'ERROR') { $worst = 'TIMEOUT' }
+    [void](Set-MtProgress -Phase 'cases' -Version $Version -Case $caseId -StepIndex $steps.Count `
+            -StepTotal $steps.Count -Op 'done' -Detail $worst)
 
     # ── 收尾状态校验：崩溃报告 / 客户端中途死亡 → 归因到本用例（而不是留给后续用例猜谜）────
     if ($needsClient -and $null -ne $clientStart) {

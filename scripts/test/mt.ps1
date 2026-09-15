@@ -45,12 +45,25 @@
     + 输出落文件句柄 + 按 `MT_LAUNCH: <终态>` 标记轮询），因为 launch 会把 Minecraft
     客户端作为后代留下，必须让启动方**立即返回**（详见 docs/batch3/B1-in-game-results.md ①）。
 
-    超时（B6 ⑥）:
-      · 单条用例硬超时 `MT_CASE_TIMEOUT_SEC`（默认 300 s，见 mt_case.ps1）⇒ 该条记 **TIMEOUT**
-        并继续跑下一条；
-      · 全局 `--run-timeout <秒>`（默认 0 = 不限）⇒ 超时走 `--phase stop --force` 收停、
-        报告写 TIMEOUT、退出码 12（与 FAIL=1 区分）；
-      · 长流程包裹用 `mt_watchdog.ps1`（独立脚本，见 TESTING-SPEC §12）。
+    超时与「不允许长时间等待」（B6 ⑥；2026-09-16 用户裁决后**收紧为严格预算**）:
+      · **每一类子进程都有硬上限**：preflight 120s / build 300s / env 240s / launch 180s /
+        report 90s / stop 150s / cleanup 180s（表见 `$script:PhaseBudgets`）；
+        cases 阶段**自适应**：单条 = 单条硬上限 + 90s，全目录 = 90s × 用例数 + 90s
+        （固定值要么误杀 17 条全量跑、要么等于不限，故按用例数推导）。
+        单阶段可用 `MT_<阶段>_TIMEOUT_SEC`（如 `MT_ENV_TIMEOUT_SEC=600`）覆写。
+      · 等待期间每 10s 一行 `MT_WAIT:` 心跳（已等待 / 硬上限 / 子进程 CPU 或日志字节数）；
+        到点即终止**我们自己那个**子进程并打印卡点，绝不 taskkill 进程树。
+      · launch 走脱离式，除硬上限外还有「日志 90s 零增长 ⇒ `CHILD: STALL` 放弃等待」——
+        进程存活 ≠ 有进展（实测：游戏空闲时仍有每月一分钟一条的 ModernFix DEBUG 噪声，
+        旧监视器就是被它骗过，见 TESTING-SPEC §12）。
+      · 单条用例硬超时 `--case-timeout` / `MT_CASE_TIMEOUT_SEC`（默认 180 s，见 mt_case.ps1）
+        ⇒ 该条记 **TIMEOUT** 并继续跑下一条；
+      · 全局 `--run-timeout <秒>`（**默认 2700s**；旧默认「0 = 不限」已废除 —— 那正是
+        「7 分 45 秒静默空转、人只能干等」能发生的前提）⇒ 超时走 `--phase stop --force`
+        收停、报告写 TIMEOUT、退出码 12（与 FAIL=1 区分）；
+      · 长流程包裹用 `mt_watchdog.ps1`（独立脚本，见 TESTING-SPEC §12；判据已从「日志
+        mtime」改为**语义标记 + 进度信标**）；阶段/用例/步骤级进度写在
+        `cases/.mt_progress.json`，监视器与事后取证共读这一个文件即可定位卡点。
 
     文案偏差：前置失败提示里的 `mt.sh --phase stop` 改为 `mt.ps1`（同一入口的新名字）。
 
@@ -72,6 +85,49 @@ $script:TestDir = $PSScriptRoot
 $script:PsExe = (Get-Process -Id $PID).Path
 $script:MtDoCleanup = 0
 $script:MtCleanupDone = 0
+
+# ══ 严格等待预算（2026-09-16 用户裁决：**不允许长时间等待**）══════════════════
+# 背景（实测事故）：一次「launch OK 之后 cases 阶段零输出空转 7 分 45 秒」的运行里，
+# 子进程预算是 600/900 秒、全局预算是「0 = 不限」，且**等待期间一行输出都没有** ⇒
+# 人只能干等，事后也无法从日志判定卡在哪一步。
+# 现在的规则：
+#   ① 每一类子进程都有**硬上限**（下表），到点即终止并打印卡点诊断；
+#   ② 等待期间每 $script:HeartbeatSeconds 秒打一行 `MT_WAIT:` 心跳（含已等待/上限/子进程 CPU）；
+#   ③ launch 走脱离式，额外用「日志是否还在增长」判 STALL（`$script:LaunchNoProgressSec`）；
+#   ④ 每次进入阶段/用例/步骤都写进度信标 `cases/.mt_progress.json`（监视器与事后取证共读）。
+# 覆写：环境变量 `MT_<阶段>_TIMEOUT_SEC`（如 `MT_CASES_TIMEOUT_SEC=600`），或 `--run-timeout`（全局）。
+$script:PhaseBudgets = [ordered]@{
+    preflight = 120
+    gen       = 120
+    build     = 300
+    env       = 240
+    launch    = 180
+    cases     = 300
+    report    = 90
+    stop      = 150
+    cleanup   = 180
+}
+$script:ChildTimeoutSec = 300       # 未列名阶段的兜底上限
+$script:HeartbeatSeconds = 10       # 心跳间隔
+$script:LaunchNoProgressSec = 90    # launch 脱离式：日志 90s 零增长即判 STALL（放弃等待，不杀进程）
+
+function Get-MtPhaseBudget {
+    <#
+    .SYNOPSIS
+        取某阶段的硬超时（秒）；`MT_<阶段>_TIMEOUT_SEC` 可覆写。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][AllowEmptyString()][string]$PhaseName)
+
+    $v = $script:ChildTimeoutSec
+    if ($PhaseName -and $script:PhaseBudgets.Contains($PhaseName)) { $v = [int]$script:PhaseBudgets[$PhaseName] }
+    if ($PhaseName) {
+        $envName = 'MT_' + (($PhaseName -replace '[^A-Za-z0-9]', '_').ToUpperInvariant()) + '_TIMEOUT_SEC'
+        $raw = [Environment]::GetEnvironmentVariable($envName)
+        if ($raw -and $raw -match '^\d+$') { $v = [int]$raw }
+    }
+    return [int]$v
+}
 
 function Invoke-MtChild {
     <#
@@ -101,7 +157,8 @@ function Invoke-MtChild {
         [string[]]$ScriptArgs = @(),
         [switch]$Detached,
         [string]$PhaseMarker = '',
-        [int]$TimeoutSec = 900
+        [int]$TimeoutSec = 300,
+        [int]$NoProgressSec = 0
     )
 
     $argv = @('-NoProfile', '-File', (Join-Path $script:TestDir $Script)) + $ScriptArgs
@@ -119,14 +176,29 @@ function Invoke-MtChild {
         $proc = Start-Process -FilePath $script:PsExe `
             -ArgumentList (ConvertTo-MtStartArgs -ArgumentList $argv) `
             -NoNewWindow -PassThru
-        $deadline = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds() + $TimeoutSec
-        while ((-not $proc.HasExited) -and ([DateTimeOffset]::UtcNow.ToUnixTimeSeconds() -lt $deadline)) {
+        $sw = [System.Diagnostics.Stopwatch]::StartNew()
+        $lastBeat = 0.0
+        while ((-not $proc.HasExited) -and ($sw.Elapsed.TotalSeconds -lt $TimeoutSec)) {
             Start-Sleep -Milliseconds 500
+            if (($sw.Elapsed.TotalSeconds - $lastBeat) -ge $script:HeartbeatSeconds) {
+                $lastBeat = $sw.Elapsed.TotalSeconds
+                $cpu = 0.0
+                try { $cpu = $proc.TotalProcessorTime.TotalSeconds } catch { }
+                Write-MtInfo ("WAIT: {0} 已等待 {1:N0}s / 硬上限 {2}s（子进程 CPU {3:N1}s，pid={4}）" -f `
+                        $Script, $sw.Elapsed.TotalSeconds, $TimeoutSec, $cpu, $proc.Id)
+            }
         }
         if (-not $proc.HasExited) {
-            Write-MtWarn ("CHILD: {0} 超过 {1}s 未退出 —— 只终止该子进程（pid={2}），不动进程树" -f $Script, $TimeoutSec, $proc.Id)
+            # 到点即止：不再等（用户的硬性要求）。只终止**我们自己那个**子进程，绝不动进程树。
+            Write-MtErrLine ("CHILD: TIMEOUT — {0} 超过硬上限 {1}s 未退出（pid={2}）；只终止该子进程，不动进程树" -f `
+                    $Script, $TimeoutSec, $proc.Id)
             try { Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue } catch { }
-            return $MT_EXIT_ERROR
+            $prog = Get-MtProgress
+            if ($prog) {
+                Write-MtErrLine ("CHILD: 卡点 — 阶段={0} 版本={1} 用例={2} 步骤={3}/{4} op={5}" -f `
+                        $prog['phase'], $prog['version'], $prog['case'], $prog['step_index'], $prog['step_total'], $prog['op'])
+            }
+            return $MT_EXIT_TIMEOUT
         }
         return $proc.ExitCode
     }
@@ -146,8 +218,11 @@ function Invoke-MtChild {
 
     # 终态标记：mt_launch 的三条出口都是 MT_LAUNCH: <OK|FAIL|ERROR|BLOCKED>
     $marker = if ($PhaseMarker) { $PhaseMarker } else { 'MT_LAUNCH: ' }
-    $deadline = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds() + $TimeoutSec
-    while ([DateTimeOffset]::UtcNow.ToUnixTimeSeconds() -lt $deadline) {
+    $sw = [System.Diagnostics.Stopwatch]::StartNew()
+    $lastBeat = 0.0
+    $lastSize = [long]-1
+    $lastGrowth = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+    while ($sw.Elapsed.TotalSeconds -lt $TimeoutSec) {
         $text = ''
         try { $text = Read-MtSharedText -Path $outLog } catch { $text = '' }
         $errText = ''
@@ -166,11 +241,35 @@ function Invoke-MtChild {
             }
             return $MT_EXIT_ERROR
         }
+
+        # 「日志是否还在增长」是脱离式子进程唯一可靠的干活证据（进程存活 ≠ 有进展）
+        $size = [long]0
+        try { $size = (Get-Item -LiteralPath $outLog -ErrorAction Stop).Length } catch { $size = [long]0 }
+        $now = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+        if ($size -ne $lastSize) { $lastSize = $size; $lastGrowth = $now }
+        $idle = $now - $lastGrowth
+
+        if ($NoProgressSec -gt 0 -and $idle -ge $NoProgressSec) {
+            Write-MtErrLine ("CHILD: STALL — {0} 的日志已 {1}s 无增长（无进展阈值 {2}s，硬上限 {3}s）⇒ 放弃等待终态标记" -f `
+                    $Script, $idle, $NoProgressSec, $TimeoutSec)
+            Write-MtErrLine ("CHILD: STALL log={0}（pid={1} 未终止 —— 由 --phase stop 收停）" -f $outLog, $proc.Id)
+            foreach ($ln in @($all -split "`n" | Where-Object { $_.Trim() -ne '' } | Select-Object -Last 10)) {
+                Write-MtErrLine ([string]$ln)
+            }
+            return $MT_EXIT_TIMEOUT
+        }
+
+        if (($sw.Elapsed.TotalSeconds - $lastBeat) -ge $script:HeartbeatSeconds) {
+            $lastBeat = $sw.Elapsed.TotalSeconds
+            Write-MtInfo ("WAIT: {0}（脱离式）已等待 {1:N0}s / 硬上限 {2}s；日志 {3} 字节，最后增长于 {4}s 前" -f `
+                    $Script, $sw.Elapsed.TotalSeconds, $TimeoutSec, $size, $idle)
+        }
         Start-Sleep -Seconds 3
     }
 
-    Write-MtWarn ("DETACHED: 等待 {0} 的终态标记超时（{1}s）—— 进程继续运行，日志见 {2}" -f $Script, $TimeoutSec, $outLog)
-    return $MT_EXIT_ERROR
+    Write-MtErrLine ("CHILD: TIMEOUT — 等待 {0} 的终态标记超过硬上限 {1}s（log={2}）；进程未终止，由 --phase stop 收停" -f `
+            $Script, $TimeoutSec, $outLog)
+    return $MT_EXIT_TIMEOUT
 }
 
 function Test-MtRunBudgetExceeded {
@@ -249,7 +348,7 @@ function Invoke-MtAutoCleanup {
     Start-MtPhase 'cleanup (auto)'
 
     $argv = @('-NoProfile', '-File', (Join-Path $script:TestDir 'mt_cleanup.ps1'), 'run', '--quiet')
-    $r = Invoke-MtProcessFull -FilePath $script:PsExe -ArgumentList $argv -TimeoutSec 600
+    $r = Invoke-MtProcessFull -FilePath $script:PsExe -ArgumentList $argv -TimeoutSec (Get-MtPhaseBudget 'cleanup')
 
     foreach ($ln in (Get-MtCleanupDisplayLines -Text $r.StdOut)) { Write-MtLine $ln }
 
@@ -277,11 +376,15 @@ function Invoke-MtRunPhase {
         [string]$CasePath = ''
     )
 
+    [void](Set-MtProgress -Phase $PhaseName -Version $PhaseVersion)
+
     if ($PhaseName -eq 'build') {
-        return (Invoke-MtChild -Script 'mt_build.ps1' -ScriptArgs @('--version', $PhaseVersion))
+        return (Invoke-MtChild -Script 'mt_build.ps1' -ScriptArgs @('--version', $PhaseVersion) `
+                -TimeoutSec (Get-MtPhaseBudget 'build'))
     }
     if ($PhaseName -eq 'env') {
-        $rc = Invoke-MtChild -Script 'mt_env.ps1' -ScriptArgs @('mods', '--version', $PhaseVersion)
+        $envBudget = Get-MtPhaseBudget 'env'
+        $rc = Invoke-MtChild -Script 'mt_env.ps1' -ScriptArgs @('mods', '--version', $PhaseVersion) -TimeoutSec $envBudget
         if ($rc -ne 0) { return $rc }
         # 缺陷修复（2026-09-12）：种子包按**版本**判定。bash 原件硬编码
         # resources/testworld-seed-1.20.1.zip 的存在性并把它作为两个版本共用的 --seed 开关，
@@ -291,21 +394,51 @@ function Invoke-MtRunPhase {
         $seedArgs = @()
         $seedZip = Join-Path (Join-Path $script:TestDir 'resources') "testworld-seed-$PhaseVersion.zip"
         if (Test-Path -LiteralPath $seedZip -PathType Leaf) { $seedArgs = @('--seed') }
-        return (Invoke-MtChild -Script 'mt_env.ps1' -ScriptArgs (@('world', '--version', $PhaseVersion) + $seedArgs))
+        return (Invoke-MtChild -Script 'mt_env.ps1' -ScriptArgs (@('world', '--version', $PhaseVersion) + $seedArgs) `
+                -TimeoutSec $envBudget)
     }
     if ($PhaseName -eq 'launch') {
+        # 2026-09-16：launch **之前强制**同步探针脚本（安装路径见 mt_env.ps1 的 Sync-MtEnvKubejs）。
+        # 为什么放在 launch 而不是只放在 env：单阶段 `--phase launch`（重登类用例的标准跑法）
+        # 会跳过 env ⇒ 若模板已更新而 run 目录还是旧探针，所有探针断言都会**静默**失败
+        # （游戏侧没有那条命令，断言只会读不到读数）——实测事故形态，必须结构性消除。
+        # 客户端在 launch 时冷启动并重新加载 KubeJS，因此此处同步一定生效。
+        $krc = Invoke-MtChild -Script 'mt_env.ps1' -ScriptArgs @('kubejs', '--version', $PhaseVersion) -TimeoutSec 60
+        if ($krc -ne 0) {
+            Write-MtErrLine 'MT_LAUNCH: BLOCKED — 探针脚本同步失败（mt_env.ps1 kubejs）'
+            return $MT_EXIT_BLOCKED
+        }
         # A1（B2）：launch **必须**脱离执行，否则 -Wait 会等整棵进程树（客户端）
         # 直到它退出才返回 ⇒ 全流程与「分步 --phase launch」都拿不到活客户端。
-        return (Invoke-MtChild -Script 'mt_launch.ps1' -ScriptArgs @('--version', $PhaseVersion) -Detached)
+        # 2026-09-16：再加「日志零增长即 STALL」的判定 —— 进程活着不等于有进展。
+        return (Invoke-MtChild -Script 'mt_launch.ps1' -ScriptArgs @('--version', $PhaseVersion) -Detached `
+                -TimeoutSec (Get-MtPhaseBudget 'launch') -NoProgressSec $script:LaunchNoProgressSec)
     }
     if ($PhaseName -eq 'cases') {
+        # cases 阶段是**预算自适应**的：单条 = 单条硬上限 + 90s 余量；全目录 = 90s × 用例数 + 90s。
+        # 为什么不用固定值：固定 300s 会把 17 条用例的正常全量跑**误杀**，而固定 3600s 又等于不限。
+        $perCase = if ($script:CaseTimeoutSec -gt 0) { $script:CaseTimeoutSec } else { 180 }
+        $caseArgs = @('--version', $PhaseVersion, '--case-timeout', "$perCase")
         if ($CasePath) {
-            return (Invoke-MtChild -Script 'mt_case.ps1' -ScriptArgs @('run', '--version', $PhaseVersion, '--case', $CasePath))
+            $budget = $perCase + 90
+            Write-MtInfo ("CASES_BUDGET: 单条用例 硬上限 {0}s + 余量 90s = {1}s（每步另有用例剩余预算兜底）" -f $perCase, $budget)
+            return (Invoke-MtChild -Script 'mt_case.ps1' -ScriptArgs (@('run', '--case', $CasePath) + $caseArgs) `
+                    -TimeoutSec $budget)
         }
-        return (Invoke-MtChild -Script 'mt_case.ps1' -ScriptArgs @('run-dir', '--version', $PhaseVersion))
+        $n = 0
+        try {
+            $caseDir = Join-Path $script:TestDir 'cases'
+            $n = @(Get-ChildItem -LiteralPath $caseDir -File -ErrorAction SilentlyContinue |
+                Where-Object { (-not $_.Name.StartsWith('.')) -and ($_.Name -like "*-$PhaseVersion.json") }).Count
+        } catch { $n = 0 }
+        if ($n -le 0) { $n = 20 }
+        $budget = 90 + (90 * $n)
+        Write-MtInfo ("CASES_BUDGET: {0} 条用例 × 90s + 90s = {1}s（单条硬上限 {2}s；覆写 MT_CASES_TIMEOUT_SEC）" -f $n, $budget, $perCase)
+        return (Invoke-MtChild -Script 'mt_case.ps1' -ScriptArgs (@('run-dir') + $caseArgs) -TimeoutSec $budget)
     }
     if ($PhaseName -eq 'report') {
-        return (Invoke-MtChild -Script 'mt_report.ps1' -ScriptArgs @('collect', '--version', $PhaseVersion))
+        return (Invoke-MtChild -Script 'mt_report.ps1' -ScriptArgs @('collect', '--version', $PhaseVersion) `
+                -TimeoutSec (Get-MtPhaseBudget 'report'))
     }
     Write-MtErrorLine "未知阶段 $PhaseName"
     return $MT_EXIT_ERROR
@@ -321,9 +454,14 @@ $GenSpec = ''
 $CleanupMode = ''          # '' = 按场景默认；1 = 强制开启；0 = 强制关闭
 $StopForce = $false
 $StopKeepDaemon = $false
-# B6 ⑥-2：全流程全局超时（秒；0 = 不限）。可用环境变量 MT_RUN_TIMEOUT_SEC 覆写默认值。
-$RunTimeoutSec = 0
+# B6 ⑥-2：全流程全局超时（秒）。**2026-09-16 起默认 2700s（45 分钟）而不是「0 = 不限」**——
+# 「不限」正是那次「launch 之后 cases 空转 7 分 45 秒、人只能干等」能发生的前提。
+# 覆写：环境变量 MT_RUN_TIMEOUT_SEC 或 --run-timeout <秒>。
+$RunTimeoutSec = 2700
 if ($env:MT_RUN_TIMEOUT_SEC -and $env:MT_RUN_TIMEOUT_SEC -match '^\d+$') { $RunTimeoutSec = [int]$env:MT_RUN_TIMEOUT_SEC }
+# 单条用例硬超时（透传给 mt_case 的 --case-timeout；0 = 用 mt_case 自己的默认 180s）
+$script:CaseTimeoutSec = 0
+if ($env:MT_CASE_TIMEOUT_SEC -and $env:MT_CASE_TIMEOUT_SEC -match '^\d+$') { $script:CaseTimeoutSec = [int]$env:MT_CASE_TIMEOUT_SEC }
 
 $ShowHelp = $false
 $i = 0
@@ -356,6 +494,10 @@ while ($i -lt $args.Count) {
         if ($i + 1 -ge $args.Count) { Write-MtErrorLine '缺少 --run-timeout 的值'; exit $MT_EXIT_ERROR }
         if ([string]$args[$i + 1] -notmatch '^\d+$') { Write-MtErrorLine '--run-timeout 需要非负整数（秒）'; exit $MT_EXIT_ERROR }
         $RunTimeoutSec = [int]$args[$i + 1]; $i += 2
+    } elseif ($key -eq 'case-timeout') {
+        if ($i + 1 -ge $args.Count) { Write-MtErrorLine '缺少 --case-timeout 的值'; exit $MT_EXIT_ERROR }
+        if ([string]$args[$i + 1] -notmatch '^\d+$') { Write-MtErrorLine '--case-timeout 需要非负整数（秒）'; exit $MT_EXIT_ERROR }
+        $script:CaseTimeoutSec = [int]$args[$i + 1]; $i += 2
     } elseif ($key -eq 'force') {
         $StopForce = $true; $i++
     } elseif ($key -eq 'keep-daemon') {
@@ -451,7 +593,8 @@ try {
     }
 
     Start-MtPhase 'preflight'
-    $rc = Invoke-MtChild -Script 'mt_preflight.ps1' -ScriptArgs @('--all')
+    [void](Set-MtProgress -Phase 'preflight' -Version ($flowVersions -join ','))
+    $rc = Invoke-MtChild -Script 'mt_preflight.ps1' -ScriptArgs @('--all') -TimeoutSec (Get-MtPhaseBudget 'preflight')
     if ($rc -ne 0) {
         Write-MtErrLine 'MT_RUN: ABORT（前置失败）'
         Write-MtErrLine '提示: 如需清理前置检查发现的残留进程，执行 pwsh -File scripts/test/mt.ps1 --phase stop'
@@ -482,7 +625,7 @@ try {
         $vrc = Invoke-MtRunPhase -PhaseVersion $v -PhaseName 'build'
         # BLOCKED 单列：B6 ④ 的 OP / dump 前置闸门返回 MT_EXIT_BLOCKED(11)，它是前置欠缺，
         # 不是产品缺陷 —— 报告里必须看得出来
-        $r = if ($vrc -eq 0) { 'PASS' } elseif ($vrc -eq $MT_EXIT_BLOCKED) { 'BLOCKED' } else { 'FAIL' }
+        $r = if ($vrc -eq 0) { 'PASS' } elseif ($vrc -eq $MT_EXIT_BLOCKED) { 'BLOCKED' } elseif ($vrc -eq $MT_EXIT_TIMEOUT) { 'TIMEOUT' } else { 'FAIL' }
         [void](Invoke-MtChild -Script 'mt_report.ps1' -ScriptArgs @('mark', '--version', $v, '--phase', 'build', '--result', $r))
 
         if ($vrc -eq 0) {
@@ -490,7 +633,7 @@ try {
             $vrc = Invoke-MtRunPhase -PhaseVersion $v -PhaseName 'env'
             # BLOCKED 单列：B6 ④ 的 OP / dump 前置闸门返回 MT_EXIT_BLOCKED(11)，它是前置欠缺，
             # 不是产品缺陷 —— 报告里必须看得出来
-            $r = if ($vrc -eq 0) { 'PASS' } elseif ($vrc -eq $MT_EXIT_BLOCKED) { 'BLOCKED' } else { 'FAIL' }
+            $r = if ($vrc -eq 0) { 'PASS' } elseif ($vrc -eq $MT_EXIT_BLOCKED) { 'BLOCKED' } elseif ($vrc -eq $MT_EXIT_TIMEOUT) { 'TIMEOUT' } else { 'FAIL' }
             [void](Invoke-MtChild -Script 'mt_report.ps1' -ScriptArgs @('mark', '--version', $v, '--phase', 'env', '--result', $r))
         }
 
@@ -499,7 +642,7 @@ try {
             $vrc = Invoke-MtRunPhase -PhaseVersion $v -PhaseName 'launch'
             # BLOCKED 单列：B6 ④ 的 OP / dump 前置闸门返回 MT_EXIT_BLOCKED(11)，它是前置欠缺，
             # 不是产品缺陷 —— 报告里必须看得出来
-            $r = if ($vrc -eq 0) { 'PASS' } elseif ($vrc -eq $MT_EXIT_BLOCKED) { 'BLOCKED' } else { 'FAIL' }
+            $r = if ($vrc -eq 0) { 'PASS' } elseif ($vrc -eq $MT_EXIT_BLOCKED) { 'BLOCKED' } elseif ($vrc -eq $MT_EXIT_TIMEOUT) { 'TIMEOUT' } else { 'FAIL' }
             [void](Invoke-MtChild -Script 'mt_report.ps1' -ScriptArgs @('mark', '--version', $v, '--phase', 'launch', '--result', $r))
             # launch 基线：此后 `mixin` 断言与报告摘要读 `launch_offsets`；
             # 每条用例自己再写 `--window case` 的 `offsets`（B7，见 mt_assert.ps1 文件头）
