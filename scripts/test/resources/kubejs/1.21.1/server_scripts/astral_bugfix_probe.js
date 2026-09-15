@@ -1879,6 +1879,13 @@ function doRailgunFriendly(ctx, tag) {
     // 清场(2026-09-14 实测):自然刷新的苦力怕一旦落进雷击箱,会被劈成高压苦力怕并爆炸,
     // 污染所有差值读数(实测 bolt_delta=2、非靶实体凭空掉血),故先清掉附近的苦力怕再摆靶。
     runCmd(ctx, "kill @e[type=minecraft:creeper]");
+    // 清场(2026-09-15 补):按**距离**清掉玩家 16 格内的同类残留靶 —— 上一轮若在
+    // railgunfriendlyend 之前被打断(注入丢失),被激怒的北极熊/狼会留在雷击判定箱内,
+    // 照样各生成一道雷击,污染全局雷击计数(同一探针同一轮实测 1.20.1=5 / 1.21.1=2)。
+    // 用 distance=..16 而非无差别 kill,避免误伤世界里其它同类实体。
+    ["minecraft:polar_bear", "minecraft:wolf", "minecraft:turtle", "minecraft:villager"].forEach(function (t) {
+        runCmd(ctx, "kill @e[type=" + t + ",distance=..16]");
+    });
     var enemy = spawnDummy(p, "minecraft:spider", 2);
     if (enemy == null) { send(ctx, "AP_" + tag + "_ERR:spawn_failed_enemy"); return 0; }
     var neutral = spawnDummy(p, "minecraft:polar_bear", 2);
@@ -1906,16 +1913,28 @@ function doRailgunFriendly(ctx, tag) {
     send(ctx, "AP_" + tag + "_TAME:tame=" + tameState + ":owner=" + ownerState + ":src=" + puuid.src);
     // 激怒两只中立生物:北极熊(非 Enemy)→ 应被计入敌对目标;已驯服狼(主人=攻击者)→ 应被排除。
     // NoAI 下 NeutralMob 的 anger 计时不会递减,足够撑到 1 秒后的落雷。
-    runCmd(ctx, "data merge entity @e[type=minecraft:polar_bear,limit=1] {AngerTime:1200}");
-    runCmd(ctx, "data merge entity @e[type=minecraft:wolf,limit=1] {AngerTime:1200}");
+    //
+    // ⚠️ 2026-09-15 修复:原写法 `@e[type=…,limit=1]` 选中的是**全世界最近的同类实体**,
+    //    而不是本探针刚摆下的那只。上一轮若在 railgunfriendlyend 之前被打断(注入丢失),
+    //    激怒过的靶会留在世界里 → 原写法去激怒那只**残留**,本次新摆的靶始终平静,读数
+    //    自相矛盾(实测 1.20.1 的 ANGER_PRE 直接读到 nAngry=true —— 新摆的熊不可能自带愤怒);
+    //    而残留者落在雷击判定箱内会额外各生成一道雷击,把全局雷击计数器顶高
+    //    (同一探针同一轮实测 1.20.1=5 / 1.21.1=2)。现改为**按 UUID 指向自己持有的实体**。
+    function angerCmd(e, ticks) {
+        if (e == null) { return "null_entity"; }
+        try { return runCmd(ctx, "data merge entity " + e.getStringUUID() + " {AngerTime:" + ticks + "}"); }
+        catch (e7) { return "ERR:" + exText(e7); }
+    }
+    angerCmd(neutral, 1200);
+    angerCmd(friendly, 1200);
     function angerOf(e) { return (e == null) ? "?" : (e.isAlive() ? "alive" : "dead"); }
     function angryFlag(e) {
         try { return "" + e.isAngry(); } catch (e1) { return "ERR:" + exText(e1); }
     }
     send(ctx, "AP_" + tag + "_ANGER_PRE:neutral=" + angerOf(neutral) + ":friendly=" + angerOf(friendly)
         + ":nAngry=" + angryFlag(neutral) + ":fAngry=" + angryFlag(friendly));
-    var mergeN = runCmd(ctx, "data merge entity @e[type=minecraft:polar_bear,limit=1] {AngerTime:1200}");
-    var mergeF = runCmd(ctx, "data merge entity @e[type=minecraft:wolf,limit=1] {AngerTime:1200}");
+    var mergeN = angerCmd(neutral, 1200);
+    var mergeF = angerCmd(friendly, 1200);
     send(ctx, "AP_" + tag + "_ANGER_POST:mergeN=" + mergeN + ":mergeF=" + mergeF
         + ":nAngry=" + angryFlag(neutral) + ":fAngry=" + angryFlag(friendly));
 
