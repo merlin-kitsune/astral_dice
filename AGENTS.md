@@ -1269,6 +1269,7 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --new <注册id>
 3. **遇到 `TIMEOUT` 或 `STALL` 时**：先读 `cases/.mt_progress.json`（卡在第几阶段/哪条用例/第几步/什么 op）与 watchdog 的取证块定位，再决定是否重跑；**不要盲目重试整轮**（这正是先前反复挂死的原因）。
 4. 判断"是否还活着"应当看**进度信标与语义标记心跳行**，而不是单纯等待、也不是只看进程是否存活。
 5. **任何后台任务超过 5 分钟没有任何响应，立即终止并检查状态**（用户 2026-09-16 裁决）：先 `job_output`/读日志文件确认卡点，再按第 3 条定位；**禁止**继续干等。
+6. **客户端进程判据（2026-09-16 实测）**：1.21.1 dev 客户端主类是 `net.minecraft.client.main.Main`，而 **1.20.1 dev 客户端主类是 `net.neoforged.devlaunch.Main`** —— 只按前者筛查会**漏判 1.20.1 的残留客户端**（进而出现「明明有客户端却报无」或反过来重复启动被 `BLOCKED(rc=2)` 拦下）。判定一律用脚本内的 `Get-MtProcessMarkers`（gradle 任务选择器 + run 目录），**不要**自己按主类名 grep。
 
 **OP 前提（测试命令可用性）**：`/astralparty` 与 `/astralprobe dumpstate` 需要**权限级 2**；测试环境实测 `hasPermissions(2)=1`、`level=4`（单人 quickplay 集成服）。不满足时 preflight 报 **`BLOCKED(11)`**（探针/dump 不可用报 `ERROR(2)`）。**禁止**为测试降低 `requires` 门槛或加后门 —— 测试必须走真实 OP 路径。已知缺口：非 OP 的**否定面**在单人环境无法覆盖。
 
