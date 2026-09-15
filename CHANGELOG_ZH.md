@@ -18,7 +18,8 @@
 
 - **统一「敌对目标」判定口径**:新增唯一入口 `combat/HostileTargets.isHostile(Entity)`,口径 = **敌对生物(`net.minecraft.world.entity.monster.Enemy`)∪ 已被激怒的中立生物(`NeutralMob#isAngry()`,即 `getRemainingPersistentAngerTime() > 0`)**;双版本各 **24 处**玩法判据点(贯穿之铳门、定向爆破/电击手套/大当家溅射/标靶/手持风扇小大的范围筛选、调查阶段增益、嘲讽反击、诅咒之剑/电流剑/智能手表/探天卫星/手电筒/肾上腺素/电磁炮的触发与击杀计数、史莱姆「治愈粘液」的缓慢、骇客的解除隐身与被动类型、秘密侦探「关键线索」)全部改调该入口。此前只有电磁炮雷击一处做了 anger 判定,**被激怒的狼/铁傀儡/北极熊/蜜蜂**(全原版 `NeutralMob` 直接实现者仅 6 个,其中只有这 4 个不是 `Enemy`)在其余各处一律被漏掉;末影人/僵尸猪灵/猪灵等"敌对类中立生物"本身就是 `Enemy`,一直计入,且**平静(未激怒)时同样算敌对目标**(本次裁决维持现状)。顺带修正 **5 处用全限定名 `net.minecraft.world.entity.monster.Enemy` 绕过统一入口**的历史写法(定向爆破 AOE、标靶最近敌对目标、大当家溅射、骇客解除隐身、秘密侦探关键线索);**战利品注入池**(`LootInjectionHandler` 的 `instanceof Monster`,怪物类 0.3% 掉星盘)属掉落池口径、与"敌对目标"无关,刻意不改。
 
-- **标记层数上限由 16 层提高到 32 层**:标记(`marked`)的可叠加上限改由配置 `max_marker` 的**默认值 32** 表达(`GameplayConstants.MAX_MARKER` 同步改为 32);可调范围仍为 **8~48**,已存在的配置文件保留旧值(需自行改或删才会跟随新默认值)。施加标记的唯一入口 `MarkManager.apply` 仍按 `MAX_MARKER - 1` 钳制效果等级,故 HUD 上最多显示 **32 层**(双版本一致)。
+- **标记层数上限由 16 层提高到 32 层**:标记(`marked`)的可叠加上限现为**固定常量** `GameplayConstants.MAX_MARKER = 32`(原为配置项 `max_marker`,该配置项已删除,见下一条);施加标记的唯一入口 `MarkManager.apply` 仍按 `MAX_MARKER - 1` 钳制效果等级,故层数上限 **32 层**(层数数字显示在**物品栏效果面板的标签与悬浮提示**上;原版 HUD 只画图标、不显示层数)(双版本一致)。
+- **配置项精简:5 项回归固定常量**(公共配置现只剩 7 项):删除 `max_starlight`、`max_marker`、`effect_card_cooldown_seconds`、`max_effect_stacks`、`hand_fan_big_range` 五项,全部改用 `GameplayConstants` 的 **`static final` 常量**(依次 32 / 32 / 30 秒 / 3 层 / 16 格);消费方(`StarLightManager`/`MarkManager`/`EffectCardPeriod`/`BerserkCardItem`/`EffectCardItem`/`UnwaveringCardItem`/`FanBigChipItem`/`ModTooltipHandler`)本就只读这些常量,故**数值与行为完全不变**。公共配置只剩 `config_version`、`give_guide_book_on_first_join`、`[event_system]` 三项队伍开关、`[actionbar]` 两项时长。已存在的配置文件里这 5 个旧键由加载器剔除(文件版本低于 `CONFIG_VERSION` 时启动会先备份为 `.bak`);**配置版本号按用户裁决不递增**——规则是「只有修改了配置项才 +1」,当前版本保持 2(双版本一致)。
 
 ### 已修复BUG
 

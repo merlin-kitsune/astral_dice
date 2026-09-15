@@ -236,8 +236,8 @@ When extending this workspace:
 
 | 中文名 | 注册 id | 品质 | 效果 | 备注 |
 |---|---|---|---|---|
-| 狂暴 | `effect_card_berserk` | 紫 | 攻击力 +3/层、受到伤害 +1/层(最多叠 3 层,上限取配置 `max_effect_stacks`),3:00(重复使用叠层并刷新时长,时长取 `max(旧,3:00)`) | 效果牌,参与复制计数 |
-| 王之力 | `effect_card_king_power` | 金 | 受到 8 点伤害,攻击力 +5/层(最多叠 3 层,上限取配置 `max_effect_stacks`),3:00(重复使用叠层并刷新时长) | 效果牌,参与复制计数 |
+| 狂暴 | `effect_card_berserk` | 紫 | 攻击力 +3/层、受到伤害 +1/层(最多叠 3 层,上限取常量 `MAX_EFFECT_STACKS` = 3),3:00(重复使用叠层并刷新时长,时长取 `max(旧,3:00)`) | 效果牌,参与复制计数 |
+| 王之力 | `effect_card_king_power` | 金 | 受到 8 点伤害,攻击力 +5/层(最多叠 3 层,上限取常量 `MAX_EFFECT_STACKS` = 3),3:00(重复使用叠层并刷新时长) | 效果牌,参与复制计数 |
 | 岿然不动 | `effect_card_unwavering` | 紫 | 每层护甲 +8(对应骰战防御力 +4,最多叠 3 层,重复使用叠层并刷新时长)+ 抗性提升 II,3:00 | 功能牌,参与复制计数 |
 | 以毒攻毒 | `effect_card_fight_poison_with_poison` | 紫 | 中毒 8 秒后移除最多 3 个原版负面效果,生命恢复 II 30 秒 | 延迟触发 |
 | 巧克力蛋糕 | `effect_card_chocolate_cake` | 蓝 | 恢复 20% 最大生命值 | 治疗类 |
@@ -369,10 +369,10 @@ When extending this workspace:
   - 忍者立牌主动「忍术连击」= **一次性 +1(2026-09-14 用户裁决后完全重写,必须遵守)**:语义只有一条——**把当前出牌轮的可出牌数 +1**,调用唯一入口 `EffectCardPeriod.grantBonusPlay(player)`(附件 `effect_card_bonus_plays`,0/1,随出牌轮归零清除)。**禁止**再引入任何形式的「出牌银行」或主动技能来源注册:旧附件 `komachi_extra_plays`、旧常量 `GameplayConstants.KOMACHI_EXTRA_PLAYS_CAP`、以及 `EffectCardPeriod` 静态块里为主动注册的 `ExtraPlaySource` **已全部删除**,不得复活(残留检查:`grep -r komachi_extra_plays` 必须 0 命中)。出牌轮清理只有 `EffectCardPeriod.clearRoundBonuses` **一个入口**(`registerPlay` 的周期边界、`tick` 的周期结束、玩家死亡 `PlayerLifecycleHandler` **三处共用**),禁止在各处再列一遍清理项。立牌装卸**不得**回收已授予的 +1(授予即已消耗;中途回收会造成"上限在周期中途下降"的不变量违例,见下条)。释放前置(任一不满足即**不释放且不进入主动技能冷却**,仅回 ActionBar 提示):① **效果牌冷却进行中**(`EffectCardPeriod.isCooldownActive`,提示 `msg.astral_dice.komachi_active_cooldown`)——此时本轮已无"多出一张"的空间;② 当前出牌数上限已达封顶 9 张(提示 `msg.astral_dice.komachi_active_capped`);③ 本轮已授予过这次 +1(提示 `msg.astral_dice.komachi_active_used`)。主动技能自身冷却中的拒绝仍由 `BaseSignItem.performSkill` 统一拦截。
   - **忍者立牌被动**(`KomachiSignItem.onEffectCardUsed`,每使用 3 张效果牌触发一次):复制最后一张使用的效果牌到物品栏 + 主动技能冷却立即减少 30%(剩余部分) + 伤害类效果牌伤害加成 +1(计数器"效果牌伤害增益",附件 `komachi_damage_bonus`,无上限,卸下立牌重置)。伤害加成经 `SpellDamageRegistry` 计入激光/板砖/轨道炮/定向爆破/活体书页的法伤;tooltip 按观看者实时显示加成后的伤害数值。
 - **效果待定**:新增效果牌后,在 `EffectCardPeriod` 静态块用 `registerEffectPendingSource(Holder<MobEffect>)` 注册"效果是否在生效"的判定(冷却归零但效果未结束则禁止开新轮;剩余被锁时长由该注册源的效果自动推导,禁止硬编码效果列表)。当前已注册:活体书页/激光/板砖/轨道炮/定向爆破/命运指引/王之力/狂暴/岿然不动。
-- **出牌数打满后才进入冷却**:`registerPlay` 仅在本次出牌使出牌数**达到上限**(`getMaxAllowed`)时启动 30 秒冷却(时长由 `EFFECT_CARD_COOLDOWN_SECONDS` 配置,未打满不开始倒计时),冷却归零出牌数归零(`tick` 由 `event/PlayerTickEvents.onPlayerTick` 驱动);可口糖果"每轮一次"标记随周期归零清除;探天卫星"每 1:00 一次"由附件 `satellite_play_bonus_cooldown_end` 独立计时。
+- **出牌数打满后才进入冷却**:`registerPlay` 仅在本次出牌使出牌数**达到上限**(`getMaxAllowed`)时启动 30 秒冷却(时长由常量 `EFFECT_CARD_COOLDOWN_SECONDS` = 30 秒,未打满不开始倒计时),冷却归零出牌数归零(`tick` 由 `event/PlayerTickEvents.onPlayerTick` 驱动);可口糖果"每轮一次"标记随周期归零清除;探天卫星"每 1:00 一次"由附件 `satellite_play_bonus_cooldown_end` 独立计时。
 - **出牌周期状态机的不变量(2026-09-14 严重 BUG 后固化,必须遵守)**:`effect_card_play_count`(本轮已出牌数)**只在「周期存活」时有意义**,周期的唯一权威标志是 `effect_card_cooldown_end`(冷却结束时刻):① 计数达到**当轮上限**时 `registerPlay` 必然启动冷却,**禁止**出现「计数 ≥ 上限却没有冷却在跑」的状态;② 上限 `getMaxAllowed` 是**实时**计算的,任何来源变小(卸下大背包/忍术飞镖/可口糖果/探天卫星、命运指引效果到期…)都可能让计数瞬间"超标",故 `tick` **必须**把这种状态当成周期结束处理(补上这一轮冷却),**禁止**像旧实现那样在 `cooldown <= 0` 时直接 `return` —— 那会让 `isBurstFull` 永久为真、**效果牌永久不可用**,且摘掉任何筹码/立牌都救不回来(计数在玩家附件上,与物品无关);③ 新增/修改任何"每轮一次"的临时出牌数来源时,必须同时确认它在周期归零时被清除(`tick` 与 `registerPlay` 的周期边界**两处**都要覆盖)。
 - **长按右键一次按下只出一张牌(2026-09-14 外部 BUG 汇报,必须遵守)**:原版在右键按住时每 4 tick 调一次 `Minecraft#startUseItem`(自动重复),而客户端 `MultiPlayerGameMode#useItem` 在 `startPrediction` 内**无论** `Item#use` 返回什么都会把 `ServerboundUseItemPacket` 发出去(**连物品冷却命中的分支也照样发包**)——所以在 `Item#use` 里返回 `fail` 或做客户端预检都**拦不住服务端**。抑制点必须在 `Minecraft#startUseItem` 的 HEAD(`client/EffectCardUseGuard` + `mixin/client/AstralUseItemGuardMixin`,两子项目同文):同一次按下只放行第一张,**松键后由 `client/ClientTickHandler` 复位**;且只对手持效果牌生效(不影响放置方块/进食/弓箭等右键行为)。**禁止**把该守卫改到 `Item#use` 或 `isBlockedOnClient` 里实现。
-- **效果牌叠层口径(2026-09-13 用户裁决,必须遵守)**:① **活体书页叠层无上限**——每次使用 +1 层,法伤 = 2 + 调查员已用页数(`rin_pages` 永久累计、无上限;与本周期出牌数加成 `living_page_cycle_bonus` 是两个互不相干的计数);② **狂暴/王之力各自最多 3 层**(层数上限由配置 `max_effect_stacks` 支撑:`BerserkCardItem`/`EffectCardItem` 取 `min(已有效果层+1, GameplayConstants.MAX_EFFECT_STACKS-1)`,重复使用同时刷新时长为 `max(旧, 3:00)`);**岿然不动**同属"功能效果牌最多 3 层"的口径,**已按口径实现叠层**(2026-09-13):`UnwaveringCardItem` 取 `min(已有效果层+1, MAX_EFFECT_STACKS-1)`、护甲修饰器随 amplifier 线性放大(1.21.1 用 `MobEffect#addAttributeModifier` 的 curve 重载,1.20.1 覆写 `getAttributeModifierValue`),抗性提升仍固定 II;③ **命运的指引为覆盖式刷新**——不累计:只要效果在生效就 +1 出牌数(覆盖式),重复使用仅刷新 5:00 时长与"主动冷却减半"的即时结算,不叠加层数、不叠加出牌数。
+- **效果牌叠层口径(2026-09-13 用户裁决,必须遵守)**:① **活体书页叠层无上限**——每次使用 +1 层,法伤 = 2 + 调查员已用页数(`rin_pages` 永久累计、无上限;与本周期出牌数加成 `living_page_cycle_bonus` 是两个互不相干的计数);② **狂暴/王之力各自最多 3 层**(层数上限由常量 `MAX_EFFECT_STACKS` = 3 支撑:`BerserkCardItem`/`EffectCardItem` 取 `min(已有效果层+1, GameplayConstants.MAX_EFFECT_STACKS-1)`,重复使用同时刷新时长为 `max(旧, 3:00)`);**岿然不动**同属"功能效果牌最多 3 层"的口径,**已按口径实现叠层**(2026-09-13):`UnwaveringCardItem` 取 `min(已有效果层+1, MAX_EFFECT_STACKS-1)`、护甲修饰器随 amplifier 线性放大(1.21.1 用 `MobEffect#addAttributeModifier` 的 curve 重载,1.20.1 覆写 `getAttributeModifierValue`),抗性提升仍固定 II;③ **命运的指引为覆盖式刷新**——不累计:只要效果在生效就 +1 出牌数(覆盖式),重复使用仅刷新 5:00 时长与"主动冷却减半"的即时结算,不叠加层数、不叠加出牌数。
 
 ### 活体书页命名规范(LIVING_PAGE)— 必须遵守
 活体书页相关命名**一律使用 `LIVING_PAGE`**(统一命名标准):Java 标识符用 `ModItems.LIVING_PAGE`/`ModEffects.LIVING_PAGE`/`LivingPageItem`/`LivingPageEffect`,禁止 `LIVING_BOOK_PAGE` 等变体;效果注册 id 为 `living_page`,物品注册 id 为 `effect_card_living_page`(snake_case 已是 LIVING_PAGE 形式)。中文显示名仍为「活体书页」。
@@ -550,7 +550,7 @@ When extending this workspace:
 
 星光点数由 `StarLightManager` 统一管理(玩家级共享资源,与具体饰品解耦)。
 
-- **星光为固定点数,不随时间衰减,无计数器,只有增加与减少**(存储于附件 `player_starlight`,上限由配置 `max_starlight` 控制,默认 32)。
+- **星光为固定点数,不随时间衰减,无计数器,只有增加与减少**(存储于附件 `player_starlight`,上限为常量 `MAX_STARLIGHT` = 32)。
 - **基础值(下限)默认 0**:由 `StarLightManager.getBasePoints` 实时计算——银行卡-余额少/多(银行卡-用不完除外)装备期间提供常驻基础值 +4/+7;卸下自动回落,装备时 `set` 自动补回。
 - **消耗后自动补回**:`spend()` 消耗星光后若低于基础值,`set()` 自动补充回基础值(`Math.max(base, ...)`)。
 - **显示**:所有影响星光的立牌/筹码 tooltip 显示当前星光点数(经商立牌计数器;手电筒/八面骰筹码经 `tooltip.astral_dice.chip.starlight`)。

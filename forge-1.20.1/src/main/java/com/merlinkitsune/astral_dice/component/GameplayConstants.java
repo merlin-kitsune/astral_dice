@@ -3,19 +3,20 @@ package com.merlinkitsune.astral_dice.component;
 import com.merlinkitsune.astral_dice.config.ModCommonConfig;
 
 /**
- * 全局玩法常量(少量仍从配置文件读取,其余为固定数值)。
- * 配置加载完成后(FMLCommonSetupEvent)调用 {@link #refresh()} 将仍保留的配置值写入字段。
- * 注意:字段为非 final,引用处为运行时读取,切勿改回 final(否则编译期内联导致配置不生效)。
+ * 全局玩法常量。
+ * 「仍从配置文件读取」的少量字段(赠送规则书 / 事件作用队伍 / actionbar 时长)必须保持**非 final**:
+ * 它们由配置加载完成后的 {@link #refresh()} 写入,改成 final 会让编译期内联导致配置不生效。
+ * 其余字段均为固定常量(不再写入配置文件),恒为 final。
  */
 public final class GameplayConstants {
-    // 星光点获取上限(默认最大 32 点)
-    public static int MAX_STARLIGHT = 32;
-    // 标记层数上限(默认最大 32 层)
-    public static int MAX_MARKER = 32;
-    // 效果牌公共冷却(单位:秒,默认 30)
-    public static int EFFECT_CARD_COOLDOWN_SECONDS = 30;
-    // 功能效果牌叠加层数上限(默认 3 层,伤害效果牌不使用该叠加)
-    public static int MAX_EFFECT_STACKS = 3;
+    // 星光点获取上限(常量:32)
+    public static final int MAX_STARLIGHT = 32;
+    // 标记层数上限(常量:32)
+    public static final int MAX_MARKER = 32;
+    // 效果牌公共冷却(单位:秒,常量:30)
+    public static final int EFFECT_CARD_COOLDOWN_SECONDS = 30;
+    // 功能效果牌叠加层数上限(常量:3 层,伤害效果牌不使用该叠加)
+    public static final int MAX_EFFECT_STACKS = 3;
     // 是否在玩家第一次加入世界时给予《恋的规则书》(默认 true)
     public static boolean GIVE_GUIDE_BOOK_ON_FIRST_JOIN = true;
 
@@ -50,8 +51,8 @@ public final class GameplayConstants {
     public static int PADMAN_REFRESH_SECONDS = 60;
     // 经商立牌被动产星光间隔(秒,默认 60)
     public static int PARUNAN_PASSIVE_INTERVAL_SECONDS = 60;
-    // 手持风扇-大:主动技能后对周围敌对目标施加标记的范围(格,默认 16)
-    public static int HAND_FAN_BIG_RANGE = 16;
+    // 手持风扇-大:主动技能后对周围敌对目标施加标记的范围(格,常量:16)
+    public static final int HAND_FAN_BIG_RANGE = 16;
 
     // actionbar 消息显示总时长上限(单位: tick,默认 3 秒;任何消息最多显示该时长)
     public static int ACTIONBAR_DURATION_TICKS = 60;
@@ -86,18 +87,13 @@ public final class GameplayConstants {
     private GameplayConstants() {
     }
 
-    // 从配置文件刷新仍保留的可配置项;其余玩法数值固定为上方默认常量
+    // 从配置文件刷新仍保留的可配置项(赠送规则书 / 事件作用队伍 / actionbar 时长);其余均为上方固定常量
     public static void refresh() {
-        MAX_STARLIGHT = ModCommonConfig.MAX_STARLIGHT.get();
-        MAX_MARKER = ModCommonConfig.MAX_MARKER.get();
-        EFFECT_CARD_COOLDOWN_SECONDS = ModCommonConfig.EFFECT_CARD_COOLDOWN_SECONDS.get();
-        MAX_EFFECT_STACKS = ModCommonConfig.MAX_EFFECT_STACKS.get();
         GIVE_GUIDE_BOOK_ON_FIRST_JOIN = ModCommonConfig.GIVE_GUIDE_BOOK_ON_FIRST_JOIN.get();
 
         EVENT_APPLY_MC_TEAM = ModCommonConfig.EVENT_APPLY_MC_TEAM.get();
         EVENT_APPLY_FTB_TEAM = ModCommonConfig.EVENT_APPLY_FTB_TEAM.get();
         EVENT_APPLY_OPAC = ModCommonConfig.EVENT_APPLY_OPAC.get();
-        HAND_FAN_BIG_RANGE = ModCommonConfig.HAND_FAN_BIG_RANGE.get();
 
         ACTIONBAR_DURATION_TICKS = ModCommonConfig.ACTIONBAR_DURATION_TICKS.get();
         ACTIONBAR_FADE_TICKS = ModCommonConfig.ACTIONBAR_FADE_TICKS.get();
