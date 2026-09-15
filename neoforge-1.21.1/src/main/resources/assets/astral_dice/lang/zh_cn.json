@@ -595,6 +595,7 @@
         "msg.astral_dice.komachi_active_cooldown": "忍者立牌：效果牌冷却中，主动技能未释放",
   "msg.astral_dice.mimi_active": "看板立牌：已获得%d张新卡牌，并获得了%d枚星币",
   "msg.astral_dice.nancy_lu_active": "骇客立牌：已触发完全隐身 (%d 秒)，攻击任意一个目标获得攻击力加成并移除完全隐身",
+  "msg.astral_dice.parunan_active_no_starlight": "经商立牌:没有可兑换的星光（银行卡提供的基础星光不可兑换），主动技能未释放",
   "tooltip.astral_dice.sign.misaki_death_note": "死亡时丢失所有「剑气」层数",
   "item.astral_dice.pandaman_sign": "肉弹战车立牌",
   "effect.astral_dice.pandaman_taunt": "嘲讽",

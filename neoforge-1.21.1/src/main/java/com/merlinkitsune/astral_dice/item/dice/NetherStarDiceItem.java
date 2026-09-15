@@ -59,8 +59,9 @@ public class NetherStarDiceItem extends DiceCurioItem {
     }
 
     @Override
-    public void onUnequip(SlotContext slotContext, ItemStack curio, ItemStack prevStack) {
-        super.onUnequip(slotContext, curio, prevStack);
+    public void onUnequip(SlotContext slotContext, ItemStack newStack, ItemStack stack) {
+        // Curios 官方签名:第 2 参 newStack = 将要占用槽位的栈,第 3 参 stack = 被卸下的那件骰子(按真实语义命名)
+        super.onUnequip(slotContext, newStack, stack);
         if (slotContext.entity().level().isClientSide()) return;
         if (!(slotContext.entity() instanceof Player player)) return;
         // 清除瞬态星级属性,防止卸下后残留

@@ -31,7 +31,7 @@ public class FanSmallChipItem extends BaseChipItem {
 
         AABB aabb = player.getBoundingBox().inflate(RANGE);
         for (LivingEntity entity : player.level().getEntitiesOfClass(LivingEntity.class, aabb,
-                e -> HostileTargets.isHostile(e) && e.isAlive())) {
+                e -> HostileTargets.isHostile(player, e) && e.isAlive())) {
             MarkManager.apply(entity);
         }
     }

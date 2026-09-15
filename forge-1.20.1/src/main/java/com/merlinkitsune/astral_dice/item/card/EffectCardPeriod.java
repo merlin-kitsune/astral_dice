@@ -27,7 +27,8 @@ import com.merlinkitsune.astral_dice.item.ModItems;
  *   立牌主动技能一次性 +1({@link #grantBonusPlay},同样只作用于当前出牌轮)。
  * - 出牌数上限:min(1 + 固定 + 临时, {@link GameplayConstants#MAX_EFFECT_CARD_PLAYS})
  *   实时计算,加成来源可叠加,但单轮总出牌数固定封顶 9 张(固定常量,非配置文件项)。
- * - 出牌数打满上限后才开始冷却倒计时(30 秒);未打满不开始倒计时,冷却归零时出牌数归零。
+ * - 出牌数打满上限后立即开始冷却倒计时(30 秒);未打满的一轮在**本轮所有计时器(效果待定/被锁时长)
+ *   都结束后**同样进入一轮 30 秒冷却(2026-09-15 用户裁决,选项 2),冷却归零时出牌数归零。
  *   效果牌本身的效果单独计算;单个轮询内所有已出效果牌的效果全部结束后才可重新出牌
  *   (冷却已归零但效果仍在生效时,出牌被锁定)。
  * - 效果牌轮次(出牌周期)定义:指当前出牌周期——不论出牌数是否已达上限——只要仍有
@@ -176,8 +177,9 @@ public final class EffectCardPeriod {
 
     /**
      * 出牌轮归零:清除全部"仅当前出牌轮有效"的出牌数加成与标记。
-     * <b>唯一入口</b> —— {@link #registerPlay} 的周期边界、{@link #tick} 的周期结束与
-     * 玩家死亡清理({@code PlayerLifecycleHandler})共用,禁止在别处各自列一遍
+     * <b>唯一入口</b> —— 仅由 {@link #registerPlay} 的周期边界与 {@link #tick} 的周期结束调用
+     * (玩家死亡清理自 2026-09-15「S4-C6 清理无效项」裁决后不再调用:这些键不是随死亡复制,
+     * 新实体上本就是默认值),禁止在别处各自列一遍
      * (历史上分散清理曾导致状态残留与"上限中途下降"的永久锁死 BUG)。
      */
     public static void clearRoundBonuses(Player player) {
@@ -285,20 +287,40 @@ public final class EffectCardPeriod {
         }
         int count = ModAttachments.getEffectCardPlayCount(player) + 1;
         ModAttachments.setEffectCardPlayCount(player, count);
-        // 仅当本次出牌打满当前上限时才进入冷却(未打满不开始倒计时)
+        // 仅当本次出牌打满当前上限时才进入冷却(未打满不开始倒计时)。
+        // 2026-09-15(D-1 配套):一轮冷却**已在跑**时不得被"冷却期间的补牌"重启或延长——
+        // 未打满的一轮在计时器结束后已开始冷却(见 tick),此时 count 尚未达上限,玩家仍可补完
+        // 剩余出牌数(上限内);若补牌打满时重开 30 秒,会把该轮冷却从"计时器结束时刻"拖到
+        // "最后一次补牌时刻"(补得越晚冷却越长,持续出牌时周期永不结束)。
+        // 判据用"是否仍在进行中"(cooldown > 0 && now < cooldown):仍在进行中 ⇒ 保持原到期时刻
+        // 不变(什么都不写);仅当没有冷却在跑(为 0 或已到期)时才写入 now + cooldownTicks。
+        // 正常打满路径(无冷却在跑)与改动前逐字等价。
         if (count >= getMaxAllowed(player)) {
             long cooldownTicks = ChargeManager.cooldownTicks(player,
                     GameplayConstants.EFFECT_CARD_COOLDOWN_SECONDS * 20L);
-            ModAttachments.setEffectCardCooldownEnd(player, now + cooldownTicks);
+            if (cooldown <= now) {
+                ModAttachments.setEffectCardCooldownEnd(player, now + cooldownTicks);
+            }
         }
     }
 
     /**
      * 每 tick 调用(实际每 20 tick 一次,见 {@code PlayerTickEvents#onPlayerTick})。
      *
-     * <p>两种情形:
+     * <p>三种情形:
      * <ol>
      *   <li><b>冷却已到期</b>:出牌数与全部"每轮一次"标记归零,周期结束(原有行为);</li>
+     *   <li><b>未打满的一轮在计时器全部结束后收尾(2026-09-15 用户裁决)</b>:出牌数未达上限、
+     *       但本轮的"剩余被锁时长"({@link #getRemainingBlockTicks},由 {@code EFFECT_PENDING_SOURCES}
+     *       的效果自动推导,不硬编码效果列表)已归 0 时,同样启动一轮 30 秒冷却(时长与"打满上限"复用
+     *       同一 {@code ChargeManager.cooldownTicks} 口径)。判据:{@code played > 0 &&
+     *       played < getMaxAllowed(player)} 且 {@code getRemainingBlockTicks(player) <= 0};
+     *       仍有计时器在跑时继续等待(即正常累积中)。
+     *       <b>最终语义(2026-09-15 用户裁决)</b>:未打满的一轮在所有计时器结束后也会进入一轮冷却,
+     *       但<b>不</b>作废剩余出牌数;冷却期间仍可继续出牌,冷却到期后计数归零。
+     *       为此本分支<b>不</b>把出牌数补齐到当轮上限——{@link #isBurstFull} 因而保持为假,
+     *       玩家不会在冷却期间被"已打满"提前拦住({@link #isBlocked} 对"冷却进行中"本身并不拦截),
+     *       剩余出牌数得以在冷却期间继续使用,冷却不会被后续出牌重置。</li>
      *   <li><b>不变量违例的修复(2026-09-14 严重 BUG)</b>:出牌数已达当轮上限、却<b>没有</b>冷却在跑。
      *       该状态只可能来自「上限在周期中途下降」——卸下大背包/忍术飞镖(固定 +1)、
      *       卸下可口糖果/探天卫星筹码、命运的指引效果到期等,
@@ -316,8 +338,15 @@ public final class EffectCardPeriod {
         int played = ModAttachments.getEffectCardPlayCount(player);
         if (cooldown > 0 && now < cooldown) return;          // 冷却进行中:不动
         if (cooldown <= 0) {
-            if (played <= 0) return;                          // 无残留
-            if (played < getMaxAllowed(player)) return;       // 正常累积中(未打满、无冷却)
+            if (played <= 0) return;                          // 无残留(不凭空开冷却)
+            int maxAllowed = getMaxAllowed(player);
+            if (played < maxAllowed) {
+                // 未打满:仍有计时器在跑(剩余被锁时长 > 0)时继续等待,即正常累积中;
+                // 本轮所有计时器结束后按 2026-09-15 用户裁决同样进入一轮冷却(下方统一启动),
+                // 但**不**作废剩余出牌数(不再把计数补齐到当轮上限):冷却期间仍可继续出牌,
+                // 冷却到期后计数归零。
+                if (getRemainingBlockTicks(player) > 0) return;
+            }
             long recoverTicks = ChargeManager.cooldownTicks(player,
                     GameplayConstants.EFFECT_CARD_COOLDOWN_SECONDS * 20L);
             ModAttachments.setEffectCardCooldownEnd(player, now + recoverTicks);

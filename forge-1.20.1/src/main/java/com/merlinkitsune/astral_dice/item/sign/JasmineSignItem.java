@@ -81,14 +81,21 @@ public class JasmineSignItem extends BaseSignItem {
     }
 
     // 使用「加急加快」效果牌后调用:立牌主动技能冷却立即减少最大冷却的 50%
+    // (路线 A:基准取起冷却时记录的 sign_active_max_cooldown,记录缺失时兜底回退旧行为——
+    //  按通用常量 SIGN_ACTIVE_COOLDOWN_TICKS 计算)
     public static void onExpressDeliveryUsed(Player player) {
         if (player == null || player.level().isClientSide()) return;
         if (!isEquipped(player)) return;
         long now = player.level().getGameTime();
         long cdEnd = ModAttachments.getSignActiveCooldownEnd(player);
+        // 冷却为 0(无冷却哨兵值)或已过期:视作无冷却,直接返回
         if (cdEnd > now) {
+            long maxCooldown = ModAttachments.getSignActiveMaxCooldown(player);
+            if (maxCooldown <= 0) {
+                maxCooldown = GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS;
+            }
             ModAttachments.setSignActiveCooldownEnd(player,
-                    Math.max(now, cdEnd - GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS / 2));
+                    Math.max(now, cdEnd - maxCooldown / 2));
         }
     }
 

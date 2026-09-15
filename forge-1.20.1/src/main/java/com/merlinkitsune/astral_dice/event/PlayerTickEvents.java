@@ -110,6 +110,11 @@ public class PlayerTickEvents {
         Player player = event.player;
         if (player.level().isClientSide()) return;
         EffectTimerGuard.tick(player);
+        // 立牌"待命"状态与计时器分离(S6-C2,2026-09-15 用户裁决):计时器归 0/过期即自动重置待命状态。
+        // 必须挂在玩家级 tick——原先写在各立牌 onCurioTick 里的超时清除只在立牌仍佩戴时执行,
+        // 立牌离身后残留的正计时器会让该玩家任何立牌的主动技能都不再进入冷却(可无限连发)。
+        // (本方法随 PlayerTickEvent 的 START/END 两个阶段各执行一次,重置逻辑幂等,无副作用)
+        BaseSignItem.tickSignReadyTimeout(player);
     }
 
     // 计时器守卫:本模组自定义效果被成功施加时记录结束时刻(有限时长效果;无限时长效果不记录)

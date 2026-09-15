@@ -79,9 +79,11 @@ public class DiceCurioItem extends Item implements ICurioItem {
     }
 
     @Override
-    public void onUnequip(SlotContext slotContext, ItemStack curio, ItemStack prevStack) {
+    public void onUnequip(SlotContext slotContext, ItemStack newStack, ItemStack stack) {
         if (!slotContext.entity().level().isClientSide()) {
-            tryRemoveChipBonus(slotContext, curio);
+            // Curios 官方签名:第 2 参 newStack = 将要占用槽位的栈,第 3 参 stack = **被卸下的那件骰子**。
+            // 旧实现误把第 2 参(newStack)传给了 tryRemoveChipBonus——那不是被卸下的骰子。
+            tryRemoveChipBonus(slotContext, stack);
         }
     }
 

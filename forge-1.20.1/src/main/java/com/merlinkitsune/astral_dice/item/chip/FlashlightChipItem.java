@@ -50,7 +50,7 @@ public class FlashlightChipItem extends BaseChipItem {
     public static void onAttack(Player player, LivingEntity target) {
         if (player == null || target == null) return;
         if (player.level().isClientSide()) return;
-        if (!HostileTargets.isHostile(target)) return;
+        if (!HostileTargets.isHostile(player, target)) return;
         if (!isEquipped(player)) return;
         String uuid = target.getUUID().toString();
         List<String> granted = readGrantedTargets(player);

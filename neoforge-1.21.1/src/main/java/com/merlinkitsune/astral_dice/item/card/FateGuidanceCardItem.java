@@ -57,14 +57,20 @@ public class FateGuidanceCardItem extends BaseEffectCardItem {
         ExclusiveCardUtil.bindIfAbsent(stack, user);
     }
 
-    // 主动技能冷却时间减半(实时功能):冷却中则从剩余时间中扣除「当前生效的最大冷却时长」的 50%
-    // (减少量 = 当前最大冷却 ÷ 2,例:180 秒冷却一次减少 90 秒;玩家级冷却,不受立牌装卸影响)
+    // 主动技能冷却时间减半(实时功能):冷却中则从剩余时间中扣除「本次冷却实际使用的最大冷却时长」的 50%
+    // (路线 A:减少量 = 起冷却时记录的 sign_active_max_cooldown ÷ 2,例:180 秒冷却减 90 秒、枪匠 120 秒冷却减 60 秒;
+    //  记录缺失时兜底回退旧行为——按通用最大值重算;玩家级冷却,不受立牌装卸影响)
     private static void reduceActiveSkillCooldown(Player player) {
         long cdEnd = ModAttachments.getSignActiveCooldownEnd(player);
-        if (cdEnd > 0) {
-            long now = player.level().getGameTime();
+        long now = player.level().getGameTime();
+        // 冷却为 0(无冷却哨兵值)或已过期:视作无冷却,直接返回
+        if (cdEnd > now) {
             long remaining = cdEnd - now;
-            long maxCooldown = com.merlinkitsune.astral_dice.event.WeirdDiceHandler.signCooldownTicks(player);
+            long maxCooldown = ModAttachments.getSignActiveMaxCooldown(player);
+            if (maxCooldown <= 0) {
+                // 兜底:记录缺失(老存档/漏写路径)时按旧行为重算通用最大值
+                maxCooldown = com.merlinkitsune.astral_dice.event.WeirdDiceHandler.signCooldownTicks(player);
+            }
             long reduction = maxCooldown / 2;
             ModAttachments.setSignActiveCooldownEnd(player, now + Math.max(0, remaining - reduction));
         }

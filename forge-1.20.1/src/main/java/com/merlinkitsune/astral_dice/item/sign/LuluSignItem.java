@@ -48,11 +48,12 @@ public class LuluSignItem extends BaseSignItem {
             return;
         }
         com.merlinkitsune.astral_dice.component.ModAttachments.setLuluLastHurtTick(player, nowTick);
-        // 主动技能冷却 -10 秒(200 tick)
+        // 主动技能冷却 -10 秒(200 tick,绝对量,与最大冷却无关);
+        // 夹底取 now:cdEnd == 0 是"无冷却"哨兵值,不得写出 0
         long cdEnd = com.merlinkitsune.astral_dice.component.ModAttachments.getSignActiveCooldownEnd(player);
-        if (cdEnd > 0) {
+        if (cdEnd > nowTick) {
             com.merlinkitsune.astral_dice.component.ModAttachments.setSignActiveCooldownEnd(player,
-                    Math.max(0, cdEnd - 200));
+                    Math.max(nowTick, cdEnd - 200));
         }
         // 治愈点 +1(上限为玩家最大生命值的一半,即 ♥ 数)
         HealingManager.add(player, 1);
@@ -73,7 +74,7 @@ public class LuluSignItem extends BaseSignItem {
                 e -> e != player);
 
         for (LivingEntity entity : nearby) {
-            if (HostileTargets.isHostile(entity)) {
+            if (HostileTargets.isHostile(player, entity)) {
                 // 敌对生物:缓慢 60 秒
                 EffectTimerGuard.apply(entity, new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, 1200, 0, false, true));
             } else if (isHealTarget(entity, player)) {

@@ -39,8 +39,16 @@ public class ParunanSignItem extends BaseSignItem {
             return InteractionResultHolder.fail(stack);
         }
 
-        // 每 2 点星光返还 1 个星币(转化比例集中管理,余数部分保留)
-        com.merlinkitsune.astral_dice.resource.ResourceConversion.starlightToStarCoins(player, -1);
+        // 每 2 点星光返还 1 个星币(转化比例集中管理,余数部分保留)。
+        // 2026-09-15 用户裁决(F-1):兑换一律**按结果判定**——银行卡等提供的基础值(下限)不可兑换出去,
+        // 故"亮着银行卡但没有任何可支配星光"时兑换产出为 0;此时整个主动技能作废(返回 fail,
+        // 与"技能未释放"一致,不进入主动技能冷却、不发随机增益、也不触发技能响应事件),
+        // 并给出 ActionBar 提示,避免"3 选 1 增益 + 180 秒冷却"被白嫖。
+        int gained = ResourceConversion.starlightToStarCoins(player, -1);
+        if (gained <= 0) {
+            sendSignActionBar(player, "msg.astral_dice.parunan_active_no_starlight");
+            return InteractionResultHolder.fail(stack);
+        }
 
         // 主动技能:随机获得以下任一效果
         int choice = ThreadLocalRandom.current().nextInt(3);

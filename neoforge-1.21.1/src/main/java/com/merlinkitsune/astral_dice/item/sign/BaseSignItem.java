@@ -3,6 +3,8 @@ package com.merlinkitsune.astral_dice.item.sign;
 import com.merlinkitsune.astral_dice.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
+import com.merlinkitsune.astral_dice.effect.ModEffects;
+import com.merlinkitsune.astral_dice.event.ModEffectRemoval;
 import net.minecraft.ChatFormatting;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -109,10 +111,17 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
             notifyActionBar(player, "msg.astral_dice.sign_active_triggered", signName, ChatFormatting.YELLOW);
         }
         // 6. 冷却:等待类技能(激活了玩家级等待状态)待完成指定目标/超时后再开始冷却;其余立牌立即开始玩家级冷却
-        if (ModAttachments.getSignReadyExpire(player) <= 0) {
+        //    2026-09-15 用户裁决(S6-C2,状态与计时器分离):门槛只看"当前是否处于待命状态"(sign_ready_type),
+        //    不再看原始计时器数值(sign_ready_expire)——**陈旧的正计时器不得阻止冷却**:
+        //    立牌离身后残留的计时器(如死亡掉落,Curios 不走 onUnequip)曾让旧门槛永远成立,
+        //    使该玩家任何立牌的主动技能都不再进入冷却(可无限连发);
+        //    待命超时(计时器归 0)现由玩家级 tick 自动重置状态,见 tickSignReadyTimeout。
+        if (ModAttachments.getSignReadyType(player) <= 0) {
             // 诡异骰子:立牌主动冷却 -50%
-            ModAttachments.setSignActiveCooldownEnd(player,
-                    now + com.merlinkitsune.astral_dice.event.WeirdDiceHandler.signCooldownTicks(player));
+            int signCooldownTicks = com.merlinkitsune.astral_dice.event.WeirdDiceHandler.signCooldownTicks(player);
+            ModAttachments.setSignActiveCooldownEnd(player, now + signCooldownTicks);
+            // 路线 A:记录本次冷却实际使用的最大冷却值,所有减免方一律读它(不再各自重算基准)
+            ModAttachments.setSignActiveMaxCooldown(player, signCooldownTicks);
             // 电流核心筹码:主动技能实际生效时充能 +1
             com.merlinkitsune.astral_dice.item.chip.CurrentCoreChipItem.onActiveSkillUsed(player);
         }
@@ -139,10 +148,44 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
     }
 
     // 是否存在等待目标释放的主动技能(占星师/秘密侦探等,等待期间按键无效)
+    // 说明(S6-C2):本方法语义保持不变——等待必须同时具备"待命状态"且"尚未过期";
+    // 它与 performSkill 里的冷却门槛是两件事:冷却门槛只看状态(sign_ready_type),本方法还要求未过期。
     private static boolean isSkillWaiting(Player player) {
         long expire = ModAttachments.getSignReadyExpire(player);
         return ModAttachments.getSignReadyType(player) > 0 && expire > 0
                 && player.level().getGameTime() < expire;
+    }
+
+    /**
+     * 立牌"待命"状态与计时器分离(S6-C2,2026-09-15 用户裁决):计时器归 0/已过期即自动重置待命状态。
+     *
+     * <p>为什么必须挂在**玩家级 tick**(见 {@code event/PlayerTickEvents} 的每 tick 服务端处理):
+     * 原来的"超时清除"写在各立牌自己的 {@code onCurioTick} 里,而 onCurioTick 只在立牌仍佩戴时执行
+     * (Curios 的部分移除路径——如死亡掉落 {@code handleDrops}——根本不会回调 onUnequip)。
+     * 立牌离身后残留的正计时器会让旧门槛({@code sign_ready_expire > 0})永远成立,
+     * 使该玩家**任何立牌**的主动技能都不再进入冷却(可无限连发)。改为玩家级后,与立牌是否在槽位无关。
+     *
+     * <p>本方法只负责"归零状态 + 清计时器 + 移除对应提示效果",不涉及主动技能冷却
+     * (冷却由攻击命中释放路径 {@code combat/DiceCombatEvents} 或 performSkill 开始)。
+     */
+    public static void tickSignReadyTimeout(Player player) {
+        if (player == null) return;
+        if (player.level().isClientSide()) return;
+        int type = ModAttachments.getSignReadyType(player);
+        if (type <= 0) return;
+        long expire = ModAttachments.getSignReadyExpire(player);
+        // 计时器仍有效(未归 0 且未到期):等待继续,不做处理
+        if (expire > 0 && player.level().getGameTime() < expire) return;
+        // 计时器归 0:自动重置待命状态并移除对应的"待命"提示效果
+        ModAttachments.setSignReadyType(player, 0);
+        ModAttachments.setSignReadyExpire(player, 0);
+        if (type == HaiqingSignItem.READY_TYPE) {
+            ModEffectRemoval.remove(player, ModEffects.HAIQING_READY);
+        } else if (type == BonnieSignItem.READY_TYPE) {
+            ModEffectRemoval.remove(player, ModEffects.BONNIE_READY);
+        } else if (type == MosesSignItem.READY_TYPE) {
+            ModEffectRemoval.remove(player, ModEffects.MOSES_READY);
+        }
     }
 
     @Override
@@ -158,23 +201,20 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
 
     // 立牌被移除时:清除该立牌获得的增益/计数器/累计值,防止反复更换立牌实现效果叠加。
     // 主动技能冷却为玩家级(ModAttachments.SIGN_ACTIVE_COOLDOWN_END),不受立牌装卸影响。
-    // 注意:Curios 在攻击/受击等场景会对已装备物品触发 onUnequip+onEquip 重载(from=to 同一物品,
-    // 此时物品仍在槽位)——重载场景不应清除立牌数据,否则治愈点数等累计值会被反复清零。
-    // 仅在物品真正离开槽位(玩家主动卸下)时清理。
+    // 语义(2026-09-15 用户裁决,S6-C1):只有"玩家有意卸除"才清理;Curios 自身原因导致的重载
+    // (from=to 同一物品、物品仍留在槽位)不清理,否则治愈点数等累计值会被反复清零。
+    // Curios 官方签名为 onUnequip(SlotContext slotContext, ItemStack newStack, ItemStack stack):
+    //   第 2 参 newStack 是"将要占用槽位的栈"(玩家真正卸下时为 EMPTY,换装时为新放入的那件),
+    //   第 3 参 stack 才是**被卸下的那件饰品**。旧实现把第 2 参当成被卸下的物品,后果是:
+    //   clearSignData 的组件归零写到了 newStack(常为 EMPTY,会污染 ItemStack.EMPTY 这个全局单例)上,
+    //   被卸下的立牌自身反而没被清零;旧 stillInSlot 判据又用第 2 参比对槽位内容,换装时误判"仍在槽位"而跳过整段清理。
+    // 现在:判据走 CurioSlotUtil.isIntentionalUnequip(只依赖 Curios 的两个参数,不再查槽位内容),
+    //       清理对象固定为"被卸下的那个栈"(第 3 参),各立牌 clearSignData 的组件归零才会落在正确的物品上。
     @Override
-    public void onUnequip(SlotContext slotContext, ItemStack stack, ItemStack prevStack) {
+    public void onUnequip(SlotContext slotContext, ItemStack newStack, ItemStack stack) {
         if (!(slotContext.entity() instanceof Player player)) return;
         if (player.level().isClientSide()) return;
-        boolean stillInSlot = CuriosApi.getCuriosInventory(player)
-                .flatMap(h -> h.getStacksHandler(slotContext.identifier()))
-                .map(h -> slotContext.index() < h.getSlots()
-                        && !h.getStacks().getStackInSlot(slotContext.index()).isEmpty()
-                        && h.getStacks().getStackInSlot(slotContext.index()).getItem() == stack.getItem())
-                .orElse(false);
-        if (stillInSlot) {
-            // 重载场景(物品仍在槽位):不清理数据
-            return;
-        }
+        if (!CurioSlotUtil.isIntentionalUnequip(newStack, stack)) return;
         clearSignData(player, stack);
     }
 

@@ -46,15 +46,10 @@ public class BonnieSignItem extends BaseSignItem {
 
     @Override
     protected void onCurioTick(SlotContext slotContext, ItemStack stack) {
-        // 主动技能等待期:超时未对目标释放则取消技能,恢复到未使用状态
+        // 主动技能等待期:超时清除已移到玩家级 tick(BaseSignItem#tickSignReadyTimeout,S6-C2 状态与计时器分离),
+        // 不再依赖"立牌仍在饰品槽位"——否则立牌离身后残留的正计时器会让该玩家所有立牌的主动都不再进入冷却。
         if (!(slotContext.entity() instanceof Player player)) return;
         long expire = ModAttachments.getSignReadyExpire(player);
-        if (ModAttachments.getSignReadyType(player) == READY_TYPE && expire > 0
-                && player.level().getGameTime() >= expire) {
-            ModAttachments.setSignReadyType(player, 0);
-            ModAttachments.setSignReadyExpire(player, 0);
-            ModEffectRemoval.remove(player, ModEffects.BONNIE_READY);
-        }
         if (ModAttachments.getSignReadyType(player) == READY_TYPE && expire > 0
                 && player.tickCount % 20 == 0) {
             sendReadyPrompt(player);
@@ -115,7 +110,7 @@ public class BonnieSignItem extends BaseSignItem {
         // 被动 2:击杀带"标记"的目标 → 获得一张随机战斗牌
         if (MarkManager.getLevel(killed) > 0
                 && !(killed instanceof Player)
-                && HostileTargets.isHostile(killed)
+                && HostileTargets.isHostile(killer, killed)
                 && killed.getMaxHealth() >= 20) {
             giveRandomBattleCard(killer);
         }

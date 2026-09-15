@@ -119,8 +119,9 @@ public class CursedSwordChipItem extends BaseChipItem {
     public static void onCursedSwordKill(LivingDeathEvent event) {
         LivingEntity target = event.getEntity();
         if (target.level().isClientSide()) return;
-        if (!HostileTargets.isHostile(target) || target.getMaxHealth() < 20) return;
+        // 先取击杀者再判定敌对:视者 = 击杀者(全局敌对玩家规则)
         if (!(event.getSource().getEntity() instanceof Player killer)) return;
+        if (!HostileTargets.isHostile(killer, target) || target.getMaxHealth() < 20) return;
         CursedSwordChipItem.onKill(killer);
     }
 

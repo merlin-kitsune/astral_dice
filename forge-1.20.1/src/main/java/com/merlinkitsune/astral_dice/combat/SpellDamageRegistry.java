@@ -246,7 +246,7 @@ public final class SpellDamageRegistry {
                 net.minecraft.world.phys.AABB aabb = ctx.target.getBoundingBox().inflate(6);
                 var nearby = ctx.target.level().getEntitiesOfClass(
                         net.minecraft.world.entity.LivingEntity.class, aabb,
-                        e -> HostileTargets.isHostile(e)
+                        e -> HostileTargets.isHostile(ctx.attacker, e)
                                 && e != ctx.target && e.isAlive());
                 var blastSource = com.merlinkitsune.astral_dice.damage.ModDamageTypes
                         .trueDamage(ctx.target.level(), ctx.attacker);   // 真伤:效果牌范围波及伤害同样无视护甲值/盔甲韧性
@@ -286,7 +286,7 @@ public final class SpellDamageRegistry {
             @Override
             public boolean isActive(SpellDamageContext ctx) {
                 if (!ctx.hasCurio(ModItems.PIERCING_GUN.get())) return false;
-                if (!HostileTargets.isHostile(ctx.target)) return false;
+                if (!HostileTargets.isHostile(ctx.attacker, ctx.target)) return false;
                 return ctx.attacker.hasEffect(ModEffects.LIVING_PAGE.get())
                         || ctx.attacker.hasEffect(ModEffects.MONSTER_LASER.get())
                         || ctx.attacker.hasEffect(ModEffects.MONSTER_BRICK.get())
@@ -367,7 +367,7 @@ public final class SpellDamageRegistry {
                 net.minecraft.world.phys.AABB aabb = ctx.target.getBoundingBox()
                         .inflate(com.merlinkitsune.astral_dice.item.chip.ElectricGloveChipItem.AOE_RADIUS);
                 var nearby = ctx.target.level().getEntitiesOfClass(LivingEntity.class, aabb,
-                        e -> HostileTargets.isHostile(e) && e != ctx.target && e.isAlive());
+                        e -> HostileTargets.isHostile(ctx.attacker, e) && e != ctx.target && e.isAlive());
                 var source = com.merlinkitsune.astral_dice.damage.ModDamageTypes
                         .trueDamage(ctx.target.level(), ctx.attacker);   // 真伤:效果牌范围波及伤害同样无视护甲值/盔甲韧性
                 // AOE 波及伤害不进入骰战结算(见 DiceCombatEvents.aoeProcessing)

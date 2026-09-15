@@ -103,6 +103,8 @@ public class PandamanSignItem extends BaseSignItem {
         // 2. 嘲讽 16 格内所有敌对目标(含 Boss)
         AABB aabb = player.getBoundingBox().inflate(TAUNT_RANGE);
         List<LivingEntity> nearby = player.level().getEntitiesOfClass(LivingEntity.class, aabb,
+                // 嘲讽只对敌对生物生效,永不施加给玩家(AGENTS.md 既有约定):本次"敌对玩家"全局规则**不改**该例外,
+                // 故此处显式排除玩家并保留单参判定(玩家不是"嘲讽目标"的语义域)
                 e -> HostileTargets.isHostile(e) && !(e instanceof Player) && e.isAlive());
         for (LivingEntity target : nearby) {
             target.addEffect(new MobEffectInstance(ModEffects.PANDAMAN_TAUNT.get(),

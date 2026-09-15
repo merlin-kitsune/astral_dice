@@ -76,8 +76,9 @@ public class ElectricSwordChipItem extends BaseChipItem {
     public static void onLivingDeath(LivingDeathEvent event) {
         if (event.isCanceled()) return;
         if (event.getEntity().level().isClientSide()) return;
-        if (!HostileTargets.isHostile(event.getEntity())) return;
+        // 先取击杀者再判定敌对:视者 = 击杀者(全局敌对玩家规则)
         if (!(event.getSource().getEntity() instanceof Player killer)) return;
+        if (!HostileTargets.isHostile(killer, event.getEntity())) return;
         onHostileKilled(killer);
     }
 }

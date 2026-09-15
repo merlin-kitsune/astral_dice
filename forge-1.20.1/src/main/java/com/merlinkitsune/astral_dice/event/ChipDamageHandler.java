@@ -3,6 +3,7 @@ package com.merlinkitsune.astral_dice.event;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.item.chip.AirbagChipItem;
 import com.merlinkitsune.astral_dice.item.chip.WhetstoneChipItem;
+import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.event.entity.living.LivingDamageEvent;
@@ -26,8 +27,9 @@ import net.minecraftforge.fml.common.Mod;
  * {@code ForgeHooks.onLivingDamage} 在 {@code LivingEntity#actuallyHurt} 内派发,
  * 且 {@code actuallyHurt} 的 {@code isInvulnerableTo} 前置判定对 bypasses_invulnerability
  * 的伤害源为假 → 事件照常派发;把最终伤害改成 0 后 {@code if (f1 != 0.0F)} 分支跳过扣血,
- * 与普通致命伤完全等价。故 {@code /kill}(generic_kill)、虚空伤害与其它模组的真伤都会在
- * 气囊前止步。另有 {@link #onLivingDeath} 兜底:绕过伤害管线直接致死时仍由气囊接管。
+ * 与普通致命伤完全等价。故 {@code /kill}(generic_kill)与其它模组的真伤都会在气囊前止步。
+ * <b>虚空伤害(out_of_world)例外</b>(用户裁决):虚空击杀优先级最高,气囊与磨刀石一律不阻止
+ * (见 {@link #onLivingDamage})。另有 {@link #onLivingDeath} 兜底:绕过伤害管线直接致死时仍由气囊接管。
  *
  * <p><b>保命优先级(安全气囊 &gt; 不死图腾 &gt; 末影骰子)</b>:本处理器使用 {@link EventPriority#LOWEST},
  * 即排在所有同事件伤害修正(雨中/水下放大、狂暴/虚弱印记加成等)之后执行,保证按<b>最终伤害</b>
@@ -51,8 +53,18 @@ public final class ChipDamageHandler {
         float damage = event.getAmount();
         if (damage <= 0.0F) return;
 
+        // 虚空击杀优先级最高(用户裁决):掉入虚空的 out_of_world 伤害不得被保命阻止,
+        // 故整段保命处理(安全气囊 + 磨刀石"不可被一次击倒"的不可击杀保护)直接跳过。
+        // 只按伤害类型排除 out_of_world:bypasses_invulnerability 标签同时含 generic_kill(/kill),
+        // 一律查标签会把 /kill 也变成不可救(用户裁决:/kill 维持现状 = 气囊照旧能救)。
+        if (event.getSource().is(DamageTypes.FELL_OUT_OF_WORLD)) return;
+
         // 安全气囊:致命伤害(伤害 ≥ 当前血量)时消耗 6 点充能使本次伤害无效。
         // 不排除「无视无敌」(bypasses_invulnerability)的伤害源:气囊必须始终有效(见类注释)。
+        // A6 口径(致命判定按**吸收(黄心)之后**)在本版本**天然达标**,无需换算:
+        // 1.20.1 的 LivingDamageEvent 由 ForgeHooks.onLivingDamage 在
+        // forge-1.20.1-47.4.10 LivingEntity#actuallyHurt L1680 派发,晚于 L1669-1670 的吸收结算,
+        // 传入的 damage 已是"吸收后仍会扣的生命值"⇒ 直接与生命值比较即为同一口径。
         if (damage >= player.getHealth() && AirbagChipItem.tryNegateFatal(player)) {
             event.setAmount(0.0F);
             return;
@@ -78,6 +90,8 @@ public final class ChipDamageHandler {
         if (entity.level().isClientSide()) return;
         if (!(entity instanceof Player player)) return;
         if (event.isCanceled()) return;
+        // 虚空击杀不可被保命阻止(见 onLivingDamage);/kill(generic_kill)维持现状(照旧可救)
+        if (event.getSource().is(DamageTypes.FELL_OUT_OF_WORLD)) return;
         if (!AirbagChipItem.tryNegateFatal(player)) return;
 
         event.setCanceled(true);

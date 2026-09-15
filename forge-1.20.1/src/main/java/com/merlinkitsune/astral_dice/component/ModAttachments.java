@@ -380,6 +380,20 @@ public class ModAttachments {
         SIGN_ACTIVE_COOLDOWN_END.set(player, value);
     }
 
+    // 立牌主动技能"本次冷却实际使用的最大冷却 tick"(路线 A:起冷却时与 SIGN_ACTIVE_COOLDOWN_END 成对写入,
+    // 所有减免方一律读它作基准,不再各自重算;0 表示缺失/无冷却,减免方回退旧行为;
+    // 仅服务端使用,故不 .sync()、不加入 SYNCED_KEYS —— 客户端 tooltip 不需要该值)
+    public static final AttachedDataKey<Long> SIGN_ACTIVE_MAX_COOLDOWN =
+            register(AttachedDataKey.builder("sign_active_max_cooldown", Codec.LONG, () -> 0L).build());
+
+    public static long getSignActiveMaxCooldown(net.minecraft.world.entity.player.Player player) {
+        return SIGN_ACTIVE_MAX_COOLDOWN.get(player);
+    }
+
+    public static void setSignActiveMaxCooldown(net.minecraft.world.entity.player.Player player, long value) {
+        SIGN_ACTIVE_MAX_COOLDOWN.set(player, value);
+    }
+
     // 末影骰子:不死图腾效果冷却结束时刻(玩家级,0 表示未进入冷却)
     public static final AttachedDataKey<Long> ENDER_DIE_TOTEM_COOLDOWN_END =
             register(AttachedDataKey.builder("ender_die_totem_cooldown_end", Codec.LONG, () -> 0L).sync().build());

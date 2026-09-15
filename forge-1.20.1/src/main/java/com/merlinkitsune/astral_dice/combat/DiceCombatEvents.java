@@ -143,6 +143,12 @@ public class DiceCombatEvents {
         return counterDepth > 0;
     }
 
+    // 当前是否处于本模组内部 AOE(顺劈/溅射/法伤波及)结算窗口。
+    // 语义化只读入口:供受击记录等外部判定区分"主动攻击"与"内部波及"(禁止复制该标志)。
+    public static boolean isInternalAoe() {
+        return aoeProcessing;
+    }
+
 
     // 检测玩家是否佩戴了七咒之戒(按物品 ID 识别,未安装该模组时返回 false)
     public static boolean hasEnigmaticCurse(Player player) {
@@ -183,6 +189,19 @@ public class DiceCombatEvents {
         Entity directEntity = source.getDirectEntity();
 
         LivingEntity target = event.getEntity();
+        // A3:先把本次伤害实例的受击侧倍率固化到局部变量(前置 HIGH 监听器已登记)——
+        // 后续若发生**嵌套**伤害实例(溅射/AOE/反击注入等),登记槽会被那些实例刷新,
+        // 此处先取值可保证骰战路径搬运的仍是"本实例"的倍率(仅同一受害者的登记才会被读取)。
+        double victimFactor = DiceCombatModifiers.instanceVictimFactor(target);
+        // P2-C8(仅 1.20.1):七咒 ratio 的捕获点是 FateGuidanceCardItem 的 LivingHurtEvent@LOWEST,
+        // **晚于**本模组受击侧修饰器的应用点(HIGH)⇒ 捕获到的 ratio 已把本次 ×1.4 计入;
+        // 骰战路径随后用该 ratio 应用一次(见 EXTERNAL_DAMAGE_FACTORS 内置因子),
+        // 若此处再搬运一次受击侧倍率就会变成 ×1.96。故 ratio > 1(说明本次增伤已进入 ratio 链路)时不再搬运。
+        // 1.21.1 的捕获点在 LivingIncomingDamageEvent(早于本模组的应用点),ratio 不含该倍率,无需此规则。
+        if (victimFactor != 1.0 && target instanceof Player cursed
+                && ModAttachments.getDiceCurseRatio(cursed) > 1.0f) {
+            victimFactor = 1.0;
+        }
 
         // 立牌受击钩子分发(史莱姆立牌等受击类被动由各立牌 onHurt 实现,不再在此硬编码)
         if (!target.level().isClientSide() && target instanceof Player targetPlayer) {
@@ -231,8 +250,11 @@ public class DiceCombatEvents {
                 EffectTimerGuard.apply(target, new MobEffectInstance(MobEffects.WEAKNESS, 6000, 0, false, true));
                 // 主动成功施加:移除"待命"提示效果并开始玩家级冷却
                 ModEffectRemoval.remove(player, ModEffects.HAIQING_READY.get());
+                int signCooldownTicks = com.merlinkitsune.astral_dice.event.WeirdDiceHandler.signCooldownTicks(player);
                 ModAttachments.setSignActiveCooldownEnd(player,
-                        player.level().getGameTime() + com.merlinkitsune.astral_dice.event.WeirdDiceHandler.signCooldownTicks(player));
+                        player.level().getGameTime() + signCooldownTicks);
+                // 路线 A:记录本次冷却实际使用的最大冷却值,所有减免方一律读它(不再各自重算基准)
+                ModAttachments.setSignActiveMaxCooldown(player, signCooldownTicks);
                 CurrentCoreChipItem.onActiveSkillUsed(player);
             }
             // 秘密侦探立牌主动:对本次攻击的第一个目标施加"隐匿调查"(永久,直到目标死亡/消失);若目标带"标记",按标记层数*2 获得星币
@@ -252,8 +274,11 @@ public class DiceCombatEvents {
                 }
                 // 主动成功施加:移除"待命"提示效果并开始玩家级冷却
                 ModEffectRemoval.remove(player, ModEffects.BONNIE_READY.get());
+                int signCooldownTicks = com.merlinkitsune.astral_dice.event.WeirdDiceHandler.signCooldownTicks(player);
                 ModAttachments.setSignActiveCooldownEnd(player,
-                        player.level().getGameTime() + com.merlinkitsune.astral_dice.event.WeirdDiceHandler.signCooldownTicks(player));
+                        player.level().getGameTime() + signCooldownTicks);
+                // 路线 A:记录本次冷却实际使用的最大冷却值,所有减免方一律读它(不再各自重算基准)
+                ModAttachments.setSignActiveMaxCooldown(player, signCooldownTicks);
                 CurrentCoreChipItem.onActiveSkillUsed(player);
             }
             // 枪匠立牌主动:对本次攻击的第一个普通敌对目标施加"破绽"2:00(已带破绽则不重复施加)
@@ -267,8 +292,11 @@ public class DiceCombatEvents {
                     ModAttachments.setSignReadyType(player, 0);
                     ModAttachments.setSignReadyExpire(player, 0);
                     ModEffectRemoval.remove(player, ModEffects.MOSES_READY.get());
+                    int signCooldownTicks = MosesSignItem.signCooldownTicks(player);
                     ModAttachments.setSignActiveCooldownEnd(player,
-                            player.level().getGameTime() + MosesSignItem.signCooldownTicks(player));
+                            player.level().getGameTime() + signCooldownTicks);
+                    // 路线 A:记录本次冷却实际使用的最大冷却值,所有减免方一律读它(不再各自重算基准)
+                    ModAttachments.setSignActiveMaxCooldown(player, signCooldownTicks);
                     CurrentCoreChipItem.onActiveSkillUsed(player);
                 }
             }
@@ -314,7 +342,8 @@ public class DiceCombatEvents {
                             (net.minecraft.server.level.ServerLevel) player.level();
                     for (net.minecraft.world.entity.Entity entity : serverLevel.getEntities().getAll()) {
                         if (entity instanceof LivingEntity living
-                                && HostileTargets.isHostile(living) && living.isAlive()) {
+                                // 上下文重载:攻击者"视谁为敌"(全局规则,含曾主动攻击过攻击者的非同队玩家)
+                                && HostileTargets.isHostile(player, living) && living.isAlive()) {
                             double distSqr = living.distanceToSqr(player);
                             if (distSqr < nearestDistSqr) {
                                 nearestDistSqr = distSqr;
@@ -598,6 +627,15 @@ public class DiceCombatEvents {
             finalDmg = factor.modify(player, target, finalDmg);
         }
 
+        // A3:受击侧伤害修饰器(末影骰子雨中/水下 +40% 等)**只搬运、不二次消费** ——
+        // 骰战以 setAmount 覆盖式写入自算的最终伤害,前置 HIGH 监听器(修饰器唯一应用点)乘出的那份值
+        // 会被整段替换(见 docs/interaction-audit-1.2.1.md 的 A3);若此处再消费一次修饰器,
+        // 同一次伤害就会经过两套独立计算(把"丢弃"变成"重复"×1.96)。
+        // instanceVictimFactor(target) 取回**同一伤害实例**由前置监听器登记的倍率(仅同一受害者有效),
+        // 故整条链上修饰器只求值一次、倍率只落在最终落地的这个值上(恰好 ×1.4 一次)。
+        // 注:victimFactor 可能已被上面的七咒 ratio 规则(P2-C8)置为 1.0,避免与 ratio 链路重复计。
+        finalDmg *= victimFactor;
+
         event.setAmount((float) finalDmg);
         sendDamageNumber(event.getEntity(), (int) finalDmg);
         // 电磁炮:以本次骰战最终伤害回填雷击伤害(50%)
@@ -629,7 +667,8 @@ public class DiceCombatEvents {
                         .inflate(com.merlinkitsune.astral_dice.item.sign.FenSignItem.SPLASH_RANGE);
                 var splashVictims = target.level().getEntitiesOfClass(
                         net.minecraft.world.entity.LivingEntity.class, splashBox,
-                        e -> HostileTargets.isHostile(e) && e.isAlive());
+                        // 上下文重载:施放者"视谁为敌" —— 溅射现在也会命中「非同队伍且曾主动攻击过施放者的玩家」
+                        e -> HostileTargets.isHostile(player, e) && e.isAlive());
                 if (!splashVictims.isEmpty()) {
                     // 真伤伤害源:直接伤害实体为空、击杀归属玩家(与旧 explosion(null, player) 同形状,
                     // 不会被本模组或其它模组再当成一次"玩家的直接攻击"重走命中判定,同时保留击杀归属);
@@ -1125,7 +1164,8 @@ public class DiceCombatEvents {
         if (!(victim instanceof Player player)) return;
         if (!player.isAlive()) return;
         if (!(event.getSource().getEntity() instanceof LivingEntity attacker)) return;
-        if (!HostileTargets.isHostile(attacker)) return;
+        // 视者 = 被攻击的玩家(player):被嘲讽目标若为"曾主动攻击过本玩家的非同队玩家"同样计入敌对
+        if (!HostileTargets.isHostile(player, attacker)) return;
         if (!attacker.hasEffect(ModEffects.PANDAMAN_TAUNT.get())) return;
         Optional<UUID> tauntSource = ModAttachments.getPandamanTauntSource(attacker);
         if (tauntSource.isEmpty() || !tauntSource.get().equals(player.getUUID())) return;

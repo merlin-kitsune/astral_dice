@@ -23,6 +23,8 @@ import com.merlinkitsune.astral_dice.item.sign.PadmanSignItem;
 import com.merlinkitsune.astral_dice.item.BossEntityUtil;
 import com.merlinkitsune.astral_dice.item.StarLightManager;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.monster.Enemy;
@@ -52,6 +54,9 @@ import java.util.concurrent.ThreadLocalRandom;
  *
  * 附属内容(新立牌/筹码/效果/联动)实现 {@link AttackPowerModifier} / {@link DefensePowerModifier}
  * 并通过 register 注册即可影响攻防,无需修改 DiceCombatEvents 主流程。
+ *
+ * <p>另含**受击侧(受伤方)伤害修饰器**注册表({@link VictimDamageModifier}):作用于**任何来源**的
+ * 最终伤害,与攻击方是否触发骰神赐福无关(内置:末影骰子雨中/水下 +40%)。
  */
 public final class DiceCombatModifiers {
 
@@ -77,6 +82,77 @@ public final class DiceCombatModifiers {
 
     public static List<DefensePowerModifier> defenseModifiers() {
         return List.copyOf(DEFENSE_MODIFIERS);
+    }
+
+    // ===== 受击侧(受伤方)伤害修饰器注册表 =====
+
+    /**
+     * 受击侧伤害修饰器:按「受伤方 + 伤害来源」给出**伤害倍率**(1.0 = 不变)。
+     *
+     * <p>与攻击/防御修饰器不同,本表作用于**任何来源**的伤害(近战/远程/怪物/摔落/溺水/虚空等),
+     * 因为"受伤方减益"与攻击方是否触发骰神赐福无关。
+     *
+     * <p>约定:修饰器必须是**实时谓词**(每次调用基于当前状态重新判定),不得缓存状态 ——
+     * 条件不再成立时倍率立即失效(例:末影骰雨中/水下 +40% 在脱下骰子或离开雨/水后立刻消失)。
+     */
+    @FunctionalInterface
+    public interface VictimDamageModifier {
+        double multiplier(LivingEntity victim, DamageSource source);
+    }
+
+    private static final List<VictimDamageModifier> VICTIM_DAMAGE_MODIFIERS = new ArrayList<>();
+
+    // A3「恰好一次」口径:本次伤害实例已登记的受击侧倍率与受害者。
+    // 仅在**单次伤害事件的同步处理链**内存活(下一个伤害实例的前置消费点会整槽刷新,
+    // 且读取方必须校验受害者同一),不跨 tick/跨实例持久化;服务端主线程假设与
+    // aoeProcessing / counterDepth 一致(见 docs/scan2/P3 的 A17)。
+    private static LivingEntity instanceVictim;
+    private static double instanceFactor = 1.0;
+
+    /** 注册受击侧伤害修饰器(按注册顺序连乘) */
+    public static void registerVictimDamageModifier(VictimDamageModifier modifier) {
+        VICTIM_DAMAGE_MODIFIERS.add(modifier);
+    }
+
+    /** 本次伤害应应用的受击侧倍率乘积(纯函数,不落地状态) */
+    private static double victimDamageFactor(LivingEntity victim, DamageSource source) {
+        if (victim == null) return 1.0;
+        double factor = 1.0;
+        for (VictimDamageModifier modifier : VICTIM_DAMAGE_MODIFIERS) {
+            factor *= modifier.multiplier(victim, source);
+        }
+        return factor;
+    }
+
+    /**
+     * **修饰器的唯一应用点**:把受击侧修饰器应用到当前伤害值,并把本次实例的倍率登记下来
+     * (供骰战路径搬运)。
+     *
+     * <p><b>A3 口径(恰好一次)</b>:修饰器在整个伤害实例内只被求值一次、倍率只落在**最终落地的那个值**上。
+     * 骰战在 {@code LivingDamageEvent.Pre}/{@code LivingDamageEvent} 以
+     * {@code setNewDamage}/{@code setAmount} **覆盖式**写入自算的最终伤害,前置消费点乘出的那份值会被整段替换
+     * (见 {@code docs/interaction-audit-1.2.1.md} 的 A3)—— 若骰战路径再消费一次修饰器,
+     * 同一次伤害就经过两套独立计算("丢弃"变成"重复");故骰战路径只调用
+     * {@link #instanceVictimFactor(LivingEntity)} 搬运同一倍率。
+     *
+     * <p>damage ≤ 0 时仍刷新登记(只是不乘),避免骰战路径读到上一次实例的陈旧倍率。
+     */
+    public static double applyVictimDamageModifiers(LivingEntity victim, DamageSource source, double damage) {
+        if (victim == null) return damage;
+        double factor = victimDamageFactor(victim, source);
+        instanceVictim = victim;
+        instanceFactor = factor;
+        return damage > 0 ? damage * factor : damage;
+    }
+
+    /**
+     * 取**本次伤害实例**已登记的受击侧倍率(仅当受害者与登记对象相同时有效,否则返回 1.0)。
+     *
+     * <p>只做"搬运",不重新消费修饰器:保证同一次伤害恰好应用一次(见
+     * {@link #applyVictimDamageModifiers})。
+     */
+    public static double instanceVictimFactor(LivingEntity victim) {
+        return victim != null && victim == instanceVictim ? instanceFactor : 1.0;
     }
 
     /**
@@ -351,7 +427,8 @@ public final class DiceCombatModifiers {
             int stage = investigation.getAmplifier(); // 1=I,2=II,3=III,4=真相揭露(I 无攻击加成)
             int markLevel = MarkManager.getLevel(ctx.target);
             boolean isBoss = BossEntityUtil.isBossEntity(ctx.target);
-            boolean isHostile = HostileTargets.isHostile(ctx.target);
+            // 上下文重载:把「非同队伍且曾主动攻击过攻击者的玩家」一并计入敌对(全局规则)
+            boolean isHostile = HostileTargets.isHostile(ctx.attacker, ctx.target);
             if (!isBoss && isHostile) {
                 if (stage >= 3) {
                     ap += 2 + markLevel;
@@ -428,6 +505,19 @@ public final class DiceCombatModifiers {
             }
             ctx.defenseCardSum = sum;
             return dp;
+        });
+
+        // === 内置:受击侧伤害修饰器 —— 末影骰子「雨中/水下受伤 +40%」(A3) ===
+        // 判定口径**原样复用**原实现:佩戴末影骰子 + isInWaterRainOrBubble()(雨/水/气泡柱)。
+        // 以"实时谓词"注册、不落地任何状态 ⇒ 脱下末影骰子或离开雨/水后该倍率立即失效。
+        // 唯一应用点是 applyVictimDamageModifiers(EnderDiceHandler@HIGH 调用):覆盖环境/怪物/弹射物/
+        // 非赐福攻击等全部来源;骰战路径只搬运 instanceVictimFactor,不再二次消费(见 applyVictimDamageModifiers 注释)。
+        registerVictimDamageModifier((victim, source) -> {
+            if (victim.level().isClientSide()) return 1.0;
+            if (!(victim instanceof Player player)) return 1.0;
+            if (!com.merlinkitsune.astral_dice.event.EnderDiceHandler.hasEnderDie(player)) return 1.0;
+            if (!player.isInWaterRainOrBubble()) return 1.0;
+            return com.merlinkitsune.astral_dice.event.EnderDiceHandler.RAIN_WATER_DAMAGE_MULTIPLIER;
         });
     }
 
