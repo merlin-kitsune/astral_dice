@@ -61,9 +61,12 @@ config="${mod_id}.mixins.json"
     modId="forge" #mandatory
     # 1.20.1:mandatory 布尔(NeoForge 1.20.5+ 改为 type="required" 等)
     mandatory=true #mandatory
-    # ⚠️ Forge 1.20.1 **没有 reason 字段**:实测 net.minecraftforge.fml.loading.moddiscovery.
-    # ModInfo$ModVersion 的构造器常量池只读 modId/mandatory/versionRange/ordering/side/referralUrl,
+    # ⚠️ Forge 1.20.1 **没有 reason 字段**:实测 net.minecraftforge.fml.loading.moddiscovery.ModInfo
+    # 内部的 ModVersion 记录,其构造器常量池只读 modId/mandatory/versionRange/ordering/side/referralUrl,
     # reason 是 NeoForge 的字段。写成 reason="..." 既不会显示给用户、也不会进任何提示,只会误导后来者。
+    # ⚠️ 本文件经 Groovy 模板展开:注释里也**不得**出现「美元符号 + 标识符」的裸写法
+    #    (只有「美元符号 + 花括号 + 键名」才是合法展开式),否则 build 会以
+    #    "Missing property (xxx) for Groovy template expansion" 直接失败。
     # 缺前置/版本不符时用户看到的是 FML 原生文案(ModSorter 常量池实测字符串):
     #   "Missing or unsupported mandatory dependencies:" + Mod ID / Requested by / Expected range / Actual version
     # The version range of the dependency

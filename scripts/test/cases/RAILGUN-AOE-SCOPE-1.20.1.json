@@ -83,7 +83,7 @@
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_RG_VERDICT:enemy=1"
+      "pattern": "AP_RG_VERDICT:.*:enemy=1:"
     },
     {
       "type": "log",
@@ -98,7 +98,7 @@
     {
       "type": "absent",
       "source": "latest",
-      "pattern": "AP_RG_ERR|AP_RG_EX:|AP_RG_VERDICT:enemy=0"
+      "pattern": "AP_RG_ERR|AP_RG_EX:|AP_RG_VERDICT:.*:enemy=0:"
     },
     {
       "type": "kubejs"
