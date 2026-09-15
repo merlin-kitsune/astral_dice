@@ -1220,6 +1220,35 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --new <注册id>
 - **仓库内 `.ps1` 共 28 个，全部在用**：根 `deploy.ps1`（发布流程：版本递增 + 构建 + 本地提交）、`scripts/test/*.ps1`（16 个）、`scripts/verify/*.ps1`（5 个）、`scripts/maintenance/repair-loose-refs.ps1`、`scripts/audit/tooltip_color_audit.ps1`、`scripts/devtools/*.ps1`（2 个）、`tools/*.ps1`（2 个），不要删；另有 6 个 `.psm1` 模块（`scripts/test/lib/*.psm1` 5 个 + `scripts/verify/ChipCommon.psm1`）。迁移期比对器 `scripts/devtools/Compare-MtOutput.ps1` 已于 2026-09-15 删除（它比对的 python/bash 原件自 `92fbeaf` 起已不存在）；旧测试 `.ps1` 归档包在 `docs/archive/legacy_scripts_20260912.zip`。
 - `scripts/test/TESTING-SPEC.md` 是测试条目 schema 规范；旧功能流程文档 `scripts/test/FLOW_1.20.1_functional.md` 已于 2026-09-12 删除（`git show 57d337f^:scripts/test/FLOW_1.20.1_functional.md` 可取回；归档包内不含此文档），实际执行一律以本章节为准。
 
+### 测试流程超时与看门狗（Test Timeout & Watchdog）— 必须遵守
+
+**卡死根因（2026-09-15 实测取证并已修复）**：`mt.ps1` 的 `Invoke-MtChild` 曾以 `Start-Process -NoNewWindow -PassThru -Wait` 启动子阶段，而 `-Wait` 会等待**整棵进程树**；`mt_build` 新起的 **Gradle 守护进程是其后代且长期存活** ⇒ **全流程会永久卡在 `build` 相位**（曾导致 3 位执行者先后挂死）。修复方式：需要长期驻留的阶段（launch / 会派生守护进程的 build）**改为脱离式启动 + 轮询终态标记**，不再用 `-Wait` 等树。
+
+**三层超时（必须知道默认值）**：
+
+| 层 | 开关 | 默认 | 行为 |
+|---|---|---|---|
+| 单条用例 | `MT_CASE_TIMEOUT_SEC` | **300 s** | 超时记为**独立状态 `TIMEOUT`**（与 `FAIL`=断言不满足、`ERROR`=跑不起来**严格区分**），**继续跑下一条**，不整体挂住；退出码 **12** |
+| 全局运行 | `mt.ps1 --run-timeout <秒>` | 0（不限） | 超时走 `--phase stop --force` 收停，报告写 `TIMEOUT` |
+| 外部看门狗 | `scripts/test/mt_watchdog.ps1` | — | 见下 |
+
+**`scripts/test/mt_watchdog.ps1` 用法**：`-Version <1.21.1|1.20.1>`、`-StallSeconds <int>`（默认 **360**）、`-PollSeconds <int>`（默认 10）、`-Action <report|stop>`（默认 `report`）。它以 `.mt_run_state.json`、`.mt_active_run`、活动报告目录、`run/<版本>/logs/latest.log`（大小+mtime）、`runclient_launch.log`、`kubejs/server.log` 作为**进展信号**；
+
+- 定期输出 `MT_WATCHDOG: ALIVE t=<秒> last_signal=<文件@时间>` **心跳**（供人/代理判断存活，不要用"干等"代替）；
+- 停滞超时输出 `MT_WATCHDOG: STALL` + 最后进展信号 + `latest.log`/`kubejs/server.log` **尾部诊断**，`-Action stop` 时经 `mt_stop` 收停；**退出码 42** 表示「检出停滞」。
+- **安全红线**：watchdog **只经 `mt.ps1 --phase stop` 收停**，**禁止**自己 `taskkill` 任意 java 进程（尤其**绝不可误杀用户其它 java 程序**）。
+
+**纪律（必须遵守）**：
+
+1. **任何「启动客户端 + 跑用例」的长流程，必须由 `mt_watchdog.ps1` 包裹，或至少设置 `MT_CASE_TIMEOUT_SEC`**；禁止无超时地等待客户端标记。
+2. 需要长期驻留 / 会派生守护进程的阶段一律**脱离式启动**，不得用 `-Wait` 等整棵进程树。
+3. **遇到 `TIMEOUT` 或 `STALL` 时**：先看 watchdog 打出的**日志尾部诊断**定位卡在哪一步，再决定是否重跑；**不要盲目重试整轮**（这正是先前反复挂死的原因）。
+4. 判断"是否还活着"应当看**进展信号（文件 mtime/大小、心跳行）**，而不是单纯等待。
+
+**OP 前提（测试命令可用性）**：`/astralparty` 与 `/astralprobe dumpstate` 需要**权限级 2**；测试环境实测 `hasPermissions(2)=1`、`level=4`（单人 quickplay 集成服）。不满足时 preflight 报 **`BLOCKED(11)`**（探针/dump 不可用报 `ERROR(2)`）。**禁止**为测试降低 `requires` 门槛或加后门 —— 测试必须走真实 OP 路径。已知缺口：非 OP 的**否定面**在单人环境无法覆盖。
+
+**`mt.ps1 --version` 语义**：全流程分支**已尊重 `--version`**（指定单版本时只跑该版本、不做跨版本门控）；此前忽略该参数、恒受 1.21.1 门控的行为已修正。
+
 ## NeoForge 上游 BUG 补丁（neoforge_fixes）— 必须遵守
 
 **背景（已用字节码核实，2026-09-13）**:NeoForge 21.1.235 的 `LivingEntity#hurt` 在方法开头把新建的 `DamageContainer` 压入 `damageContainers`,随后调用 `CommonHooks.onEntityIncomingDamage`;**事件被取消时直接 `return false` 而不 `pop`**,容器永久残留。`javap -p -c` 实证:`hurt(Lnet/minecraft/world/damagesource/DamageSource;F)Z` 的全部 `IRETURN` = {9, 21, 30, 52, 88, 402, 1063};`Stack.push` 仅 1 次(off 66),`Stack.pop` 仅 2 次(off 397 无敌帧出口、off 1057 方法结尾),**off 88 的取消出口没有 pop** ⇒ 每取消一次泄漏一层。上游修复(取消分支补 `pop`,PR #3101)只落在 **26.1.x / 26.2.x**,**21.x 全线(含 21.1.250)未 backport**。
