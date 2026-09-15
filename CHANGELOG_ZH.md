@@ -20,6 +20,7 @@
 
 - **标记层数上限由 16 层提高到 32 层**:标记(`marked`)的可叠加上限现为**固定常量** `GameplayConstants.MAX_MARKER = 32`(原为配置项 `max_marker`,该配置项已删除,见下一条);施加标记的唯一入口 `MarkManager.apply` 仍按 `MAX_MARKER - 1` 钳制效果等级,故层数上限 **32 层**(层数数字显示在**物品栏效果面板的标签与悬浮提示**上;原版 HUD 只画图标、不显示层数)(双版本一致)。
 - **配置项精简:5 项回归固定常量**(公共配置现只剩 7 项):删除 `max_starlight`、`max_marker`、`effect_card_cooldown_seconds`、`max_effect_stacks`、`hand_fan_big_range` 五项,全部改用 `GameplayConstants` 的 **`static final` 常量**(依次 32 / 32 / 30 秒 / 3 层 / 16 格);消费方(`StarLightManager`/`MarkManager`/`EffectCardPeriod`/`BerserkCardItem`/`EffectCardItem`/`UnwaveringCardItem`/`FanBigChipItem`/`ModTooltipHandler`)本就只读这些常量,故**数值与行为完全不变**。公共配置只剩 `config_version`、`give_guide_book_on_first_join`、`[event_system]` 三项队伍开关、`[actionbar]` 两项时长。已存在的配置文件里这 5 个旧键由加载器剔除(文件版本低于 `CONFIG_VERSION` 时启动会先备份为 `.bak`);**配置版本号按用户裁决不递增**——规则是「只有修改了配置项才 +1」,当前版本保持 2(双版本一致)。
+- **安全气囊:保命范围扩大到「无视无敌」的致死伤害**:`ChipDamageHandler` 的伤害阶段不再按 `DamageTypeTags.BYPASSES_INVULNERABILITY` 排除伤害源(原口径为「无视无敌的致死伤害不参与」),因此 `/kill`(generic_kill)、虚空伤害以及其它模组的真伤等**无视无敌的致死伤害同样会被安全气囊无效化**;另新增**死亡事件兜底**(`EventPriority.HIGHEST`,早于末影骰子的死亡处理):若致死绕过了伤害管线(如外部直接把血量清零),气囊同样取消死亡并把血量抬到 1。其余口径不变 —— 仍按最终伤害判定、仍消耗 6 层充能并进入 1:00 冷却,充能不足或冷却中不生效;tooltip 与帕秋莉手册同步改为「无视无敌的致死伤害同样有效(如指令 /kill)」(双版本一致)。
 
 ### 已修复BUG
 

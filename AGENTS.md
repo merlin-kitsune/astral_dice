@@ -466,7 +466,7 @@ When extending this workspace:
 | 原初核心 | `primordial_core_chip` | 金(传奇) | 每消耗 1 层充能获得 1 层赋能(`EmpowerManager.onChargeConsumed`,经 `ChargeManager.consume` 统一挂钩);每层赋能攻击力 +1、防御力 +1(经 `DiceCombatModifiers` 计入,防御力按 1 防御力 = 2 护甲值折算)。赋能上限 10 层、每 0:30 递减 1 层(`DECAY_INTERVAL_TICKS = 600`),卸下筹码清除全部赋能;**金品筹码,禁止进入 Bountiful `astral_rews` 奖励池** |
 | 电流核心 | `current_core_chip` | 紫(史诗) | ①**使用主动技能时充能 +1**(`CurrentCoreChipItem.onActiveSkillUsed`;普通立牌在 `BaseSignItem.performSkill` 触发成功并开始冷却处调用,需指定目标的立牌在其等待释放成功处——`DiceCombatEvents` 三处——调用,等待超时未释放不发放);②**主动技能冷却中按下主动技能键** → 按剩余冷却占比消耗充能并**立即使主动技能冷却完成**(`BaseSignItem.performSkill` 冷却分支内 `tryFinishCooldown`)。消耗档位:剩余冷却 ÷ `MAX_COOLDOWN_SECONDS = 180` 秒的占比 × `MAX_COOLDOWN_COST = 6` 向上取整,钳制 1~6 点(每 1/6 一档);充能不足则不生效并提示。完成后**不直接释放技能**,需再次按键使用 |
 | 电击手套 | `electric_glove_chip` | 紫(史诗) | 使用效果牌时充能 +1(`CHARGE_GAIN_PER_CARD = 1`);充能不少于 4 层(`CHARGE_REQUIRED = 4`)时,**使用伤害类效果牌**会消耗 4 层充能并武装本周期的法伤扩散——本周期内对敌对目标造成的远程/魔法伤害同时命中目标 3 格(`AOE_RADIUS = 3`)范围内的其他敌对目标(每个效果牌持续周期仅触发一次,武装状态存附件 `electric_glove_aoe`) |
-| 安全气囊 | `airbag_chip` | 紫(史诗) | 受到致命伤害时消耗 6 层充能(`CHARGE_COST = 6`)使本次伤害无效,随后进入 1:00 冷却(`COOLDOWN_TICKS = 1200`,附件 `airbag_cooldown_end`);充能不足或冷却中不生效。经 `ChipDamageHandler` 在最终伤害阶段以最低优先级拦截,**保命优先级高于不死图腾与末影骰子**;无视无敌的致死伤害不参与 |
+| 安全气囊 | `airbag_chip` | 紫(史诗) | 受到致命伤害时消耗 6 层充能(`CHARGE_COST = 6`)使本次伤害无效,随后进入 1:00 冷却(`COOLDOWN_TICKS = 1200`,附件 `airbag_cooldown_end`);充能不足或冷却中不生效。经 `ChipDamageHandler` 在最终伤害阶段以最低优先级拦截,**保命优先级高于不死图腾与末影骰子**;对**无视无敌**(`DamageTypeTags.BYPASSES_INVULNERABILITY`,如 `/kill`、虚空伤害、其它模组真伤)的致死伤害**同样有效** —— `ChipDamageHandler` 的伤害阶段不再按该标签排除,并另有死亡事件兜底(`EventPriority.HIGHEST`:绕过伤害管线直接致死时取消死亡并抬血到 1) |
 
 注意事项:
 - 充能类筹码的获得/消耗一律经 `ChargeManager.addStacks/consumeOne`(见「充能流派规范」),禁止直接操作 MobEffect 层数。
