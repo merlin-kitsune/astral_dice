@@ -1878,13 +1878,18 @@ function doRailgunFriendly(ctx, tag) {
     //   ① 在雷击判定箱(落点 ±3 格)内 → 仍会被雷击命中;② 在横扫盒(≈1.7 格)之外 → 悬置。
     // 清场(2026-09-14 实测):自然刷新的苦力怕一旦落进雷击箱,会被劈成高压苦力怕并爆炸,
     // 污染所有差值读数(实测 bolt_delta=2、非靶实体凭空掉血),故先清掉附近的苦力怕再摆靶。
+    // 环境清场(2026-09-15 补),两处都在**摆靶之前**下发:
+    //   ① 苦力怕:落进雷击判定箱会被劈成高压苦力怕并爆炸,污染全部差值读数(原有步骤);
+    //   ② 玩家 24 格内**预先存在**的敌对生物:实测 1.20.1 本轮玩家在落点被僵尸围殴致死
+    //      (php 20→0、self=19),整轮读数随之作废。
+    // ⚠️ **绝不能**把本探针自己摆的靶类型(北极熊/狼/海龟/村民)列进来:命令在 1.21.1 上是
+    //    **延迟到本 tick 末**才执行的(见 runCmd 注释),而靶子是同一 tick 内
+    //    addFreshEntity 直接入世的 → 开场清场会把刚摆下的靶一起杀掉(2026-09-15 实测:
+    //    4 个靶全灭、valive=0:talive=0、bolt_delta=0、充能不消耗)。同类残留的清场改放
+    //    doRailgunFriendlyEnd(那里本 tick 不再生成任何实体)。
     runCmd(ctx, "kill @e[type=minecraft:creeper]");
-    // 清场(2026-09-15 补):按**距离**清掉玩家 16 格内的同类残留靶 —— 上一轮若在
-    // railgunfriendlyend 之前被打断(注入丢失),被激怒的北极熊/狼会留在雷击判定箱内,
-    // 照样各生成一道雷击,污染全局雷击计数(同一探针同一轮实测 1.20.1=5 / 1.21.1=2)。
-    // 用 distance=..16 而非无差别 kill,避免误伤世界里其它同类实体。
-    ["minecraft:polar_bear", "minecraft:wolf", "minecraft:turtle", "minecraft:villager"].forEach(function (t) {
-        runCmd(ctx, "kill @e[type=" + t + ",distance=..16]");
+    ["minecraft:zombie", "minecraft:skeleton", "minecraft:husk", "minecraft:drowned"].forEach(function (t) {
+        runCmd(ctx, "kill @e[type=" + t + ",distance=..24]");
     });
     var enemy = spawnDummy(p, "minecraft:spider", 2);
     if (enemy == null) { send(ctx, "AP_" + tag + "_ERR:spawn_failed_enemy"); return 0; }
@@ -1914,27 +1919,34 @@ function doRailgunFriendly(ctx, tag) {
     // 激怒两只中立生物:北极熊(非 Enemy)→ 应被计入敌对目标;已驯服狼(主人=攻击者)→ 应被排除。
     // NoAI 下 NeutralMob 的 anger 计时不会递减,足够撑到 1 秒后的落雷。
     //
-    // ⚠️ 2026-09-15 修复:原写法 `@e[type=…,limit=1]` 选中的是**全世界最近的同类实体**,
-    //    而不是本探针刚摆下的那只。上一轮若在 railgunfriendlyend 之前被打断(注入丢失),
-    //    激怒过的靶会留在世界里 → 原写法去激怒那只**残留**,本次新摆的靶始终平静,读数
-    //    自相矛盾(实测 1.20.1 的 ANGER_PRE 直接读到 nAngry=true —— 新摆的熊不可能自带愤怒);
-    //    而残留者落在雷击判定箱内会额外各生成一道雷击,把全局雷击计数器顶高
-    //    (同一探针同一轮实测 1.20.1=5 / 1.21.1=2)。现改为**按 UUID 指向自己持有的实体**。
-    function angerCmd(e, ticks) {
+    // ⚠️ 2026-09-15 修复(两轮迭代,第一轮走 UUID 失败记录在案):原写法 `@e[type=…,limit=1]`
+    //    选中的是**全世界最近的同类实体**,不是本探针刚摆下的那只 —— 上一轮 railgunfriendlyend
+    //    注入丢失留下的、已被激怒的残留靶会顶替成为目标(实测 1.20.1 的 ANGER_PRE 直接读到
+    //    nAngry=true,而新摆的熊不可能自带愤怒),残留者又落在雷击判定箱内额外各生成一道雷击。
+    //    第一轮改用 `e.getStringUUID()` 在**两个版本**都被 Rhino 拒绝
+    //    (Cannot find function getStringUUID;同 playerUuid 注释里记的 getUUID 可见性问题),
+    //    于是激怒步在两版都没执行。现在直接调 **Java API**(NeutralMob#setRemainingPersistentAngerTime
+    //    —— 同一接口的 isAngry() 本文件一直在用,可见性没问题),不依赖选择器也不依赖 UUID;
+    //    仅在 API 失败时回退到按类型选择器的命令,并把实际路径暴露在读数里
+    //    (api / cmd:… / ERR:…)以免"取不到就当没驯服"式的静默降级。
+    function angerCmd(e, typeId, ticks) {
         if (e == null) { return "null_entity"; }
-        try { return runCmd(ctx, "data merge entity " + e.getStringUUID() + " {AngerTime:" + ticks + "}"); }
-        catch (e7) { return "ERR:" + exText(e7); }
+        try { e.setRemainingPersistentAngerTime(ticks); return "api"; }
+        catch (e9) {
+            try { return "cmd:" + runCmd(ctx, "data merge entity @e[type=" + typeId + ",limit=1] {AngerTime:" + ticks + "}"); }
+            catch (e10) { return "ERR:" + exText(e9); }
+        }
     }
-    angerCmd(neutral, 1200);
-    angerCmd(friendly, 1200);
+    angerCmd(neutral, "minecraft:polar_bear", 1200);
+    angerCmd(friendly, "minecraft:wolf", 1200);
     function angerOf(e) { return (e == null) ? "?" : (e.isAlive() ? "alive" : "dead"); }
     function angryFlag(e) {
         try { return "" + e.isAngry(); } catch (e1) { return "ERR:" + exText(e1); }
     }
     send(ctx, "AP_" + tag + "_ANGER_PRE:neutral=" + angerOf(neutral) + ":friendly=" + angerOf(friendly)
         + ":nAngry=" + angryFlag(neutral) + ":fAngry=" + angryFlag(friendly));
-    var mergeN = angerCmd(neutral, 1200);
-    var mergeF = angerCmd(friendly, 1200);
+    var mergeN = angerCmd(neutral, "minecraft:polar_bear", 1200);
+    var mergeF = angerCmd(friendly, "minecraft:wolf", 1200);
     send(ctx, "AP_" + tag + "_ANGER_POST:mergeN=" + mergeN + ":mergeF=" + mergeF
         + ":nAngry=" + angryFlag(neutral) + ":fAngry=" + angryFlag(friendly));
 
@@ -2007,6 +2019,13 @@ function doRailgunFriendlyEnd(ctx, tag) {
         try { st.turtle.discard(); } catch (e3b) { /* 忽略 */ }
         try { st.villager.discard(); } catch (e3c) { /* 忽略 */ }
     }
+    // 残留清场(2026-09-15 补):本函数是每轮收尾的唯一入口。若某一轮的 railgunfriendlyend
+    // 注入丢失,被激怒的靶就会留在世界里 —— 下一轮它们落在雷击判定箱内会额外各生成一道雷击,
+    // 污染全局雷击计数(实测 bolt_delta 1.20.1=5/6 ↔ 1.21.1=2)。放在收尾而不是开场:命令在
+    // 1.21.1 上延迟到本 tick 末执行,开场清场会误杀同一 tick 新摆的靶(见 doRailgunFriendly 注释)。
+    ["minecraft:polar_bear", "minecraft:wolf", "minecraft:turtle", "minecraft:villager"].forEach(function (t) {
+        runCmd(ctx, "kill @e[type=" + t + ",distance=..16]");
+    });
     rgfState = null;
     var restore = "skip";
     try { p.setHealth(p.getMaxHealth()); p.setGameMode(GameTypeClass.CREATIVE); restore = "creative"; }
