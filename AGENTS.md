@@ -99,6 +99,8 @@ When extending this workspace:
   `Missing language javafml version [47.4.10,48) wanted by astral_dice-1.2.1+forge_1.20.1.jar, found 47` **直接拒绝加载本模组**(Forge 自身的 `mods.toml` 也只写 `loaderVersion="[24,]"`)。
   精确下限放在依赖上即达到同一门槛:低于 47.4.10 的环境在 FML 依赖排序阶段报 `Missing or unsupported mandatory dependencies:`。**禁止**再引入 `loader_version_range` 之类的独立属性或硬编码区间。
   曾因 `[47,)` 只卡到 47.0.0,导致 47.0.0~47.4.9 环境照常加载后才在 Mixin 变换阶段报错(2026-09-14 修复)。改动 `forge_version` 时两个区间自动跟随,无需手工同步。
+  **同一门槛体系里的第二道硬前置 = Mixin Booster**(2026-09-15 固化,详见下方「forge-1.20.1 子项目关键差异速记」首条):Forge 1.20.1 的 FML 没有 Mixin 集成,
+  缺 `mixinbooster` 时本模组**不报错、全部 Mixin 静默失效**,故必须声明为 `mandatory=true` + `versionRange="[0.1.3,)"`,未安装即在同一阶段拒绝启动。
 - **1.21.1(NeoForge)**:`neoforge.mods.toml` 的 `neoforge` 依赖声明为 `[21.1,21.2)`(二号位 band);`loaderVersion` 仍用 `loader_version_range=[1,)`(FML 主版本)。
 - 两侧门槛都必须在 **mods.toml 解析 / 依赖排序阶段**拒绝不合格环境(FML 会给出可读提示:语言提供者版本不符 = `fml.language.missingversion`;
   强制依赖不满足 = `Missing or unsupported mandatory dependencies:`),**不得**依赖"先加载、再在代码里检查"——mixin 变换早于 mod 构造器,那样只会得到 mixin 报错。
@@ -143,6 +145,7 @@ When extending this workspace:
 - 用户在任一版本测试时报告的 BUG/需求,默认在**两个版本同步修复**。
 
 ### forge-1.20.1 子项目关键差异速记(相对 neoforge-1.21.1)
+- **Mixin Booster 是硬前置:未安装 → 直接拒绝启动(2026-09-15 固化,不得删除)**:Forge 1.20.1 的 FML **没有 Mixin 集成**,Sponge Mixin 0.8.5 完全由 `mixinbooster`(Modrinth `mixinbooster`,纯 ModLauncher 服务 jar,内嵌 `fabric-mixin.jar`;模组条目与版本号由自带 `IModLocator` 读 jar 根 `mixinbooster_version.txt` 得到,实装 `0.1.3+1.20.1`,实机 debug.log:`Found valid mod file transmog-mod.jar with {mixinbooster} mods - versions {0.1.3+1.20.1}`)提供——**缺它时本模组不报任何错、全部 Mixin 静默失效**,故必须在 FML **依赖排序阶段**硬拒。三处必须同时保持:① `templates/META-INF/mods.toml` 的 `[[dependencies.${mod_id}]]` 段 `modId="mixinbooster"` + `mandatory=true` + `versionRange="[0.1.3,)"` + `ordering="AFTER"` + `side="BOTH"`(**禁止**写成 `"*"`/省略:旧版本前置同样静默失效);② `build.gradle` 的 `modImplementation "maven.modrinth:mixinbooster:rOaAYvZPZ"`(dev 运行时);③ 防回归用例 `scripts/test/mt_loadergate.ps1`(读数 `AP_LG_MB`/`AP_LG_MB_RANGE`)与 `scripts/test/cases/LOADER-GATE-FORGE-1.20.1.json`(8 断言)。拒绝文案 = FML 原生 `Missing or unsupported mandatory dependencies:` + Mod ID / Requested by / Expected range / Actual version。⚠️ **1.20.1 的依赖段不支持 `reason` 字段**(实测 `ModInfo$ModVersion` 构造器常量池只读 modId/mandatory/versionRange/ordering/side/referralUrl;`reason` 是 NeoForge 的字段),写了也不会显示给用户。
 - 无数据组件/附件 API:物品数据走 `component/ItemDataKey`(ItemStack NBT),玩家数据走 `component/AttachedDataKey`(AstralData Capability;28 个 synced 键经 `ModNetwork.AttachmentSyncMessage` 同步(完整清单以 `component/ModAttachments.java` 的 `SYNCED_KEYS` 为准,含 `LIVING_PAGE_CYCLE_BONUS`/`EMPOWER_DECAY_AT`/`ELECTRIC_GLOVE_AOE`/`AIRBAG_COOLDOWN_END`/`RAILGUN_COOLDOWN_END` 等)。`ModDataComponents`/`ModAttachments` 常量名与 getX/setX 包装器签名与 1.21 分支一致。
 - 伤害事件:`LivingDamageEvent.Pre` → `LivingHurtEvent`;`LivingIncomingDamageEvent` → `LivingAttackEvent`(HIGHEST 记原始值)+ `LivingHurtEvent`(LOWEST 算倍率,见 onCurseMitigation)。
 - Curios:槽位经 FMLCommonSetup IMC 注册(`SlotTypeMessage`,dice=1/stand=1/chip=0);`CuriosApi.getCuriosInventory` 返回 LazyOptional,统一经 `item/CuriosCompat` 包装为 Optional。

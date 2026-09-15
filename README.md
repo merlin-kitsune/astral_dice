@@ -38,7 +38,7 @@ Astral Dice is a survival expansion mod built around dice. Equip a dice and ever
 
 | 前置/联动 | 要求 |
 |---|---|
-| 前置模组 | Curios API（1.20.1 另需 Mixin Booster） |
+| 前置模组 | Curios API（1.20.1 另需 **Mixin Booster ≥ 0.1.3**，**强制**：未安装时游戏会在 Forge 依赖排序阶段直接拒绝启动并提示缺少 `mixinbooster`；装旧版本同样会被拒） |
 | 可选联动 | Bountiful、帕秋莉手册 |
 
 ---
@@ -71,7 +71,7 @@ Astral Dice is a survival expansion mod built around dice. Equip a dice and ever
 
 | Dependency | Requirement |
 |---|---|
-| Required | Curios API (Mixin Booster is additionally required on 1.20.1) |
+| Required | Curios API (on 1.20.1, **Mixin Booster ≥ 0.1.3** is additionally **mandatory**: when it is missing, the game refuses to start right at Forge's dependency-sorting stage and reports the missing `mixinbooster`; an outdated version is rejected the same way) |
 | Optional | Bountiful, Patchouli |
 
 ---

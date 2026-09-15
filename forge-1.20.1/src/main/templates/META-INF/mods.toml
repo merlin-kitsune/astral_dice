@@ -61,8 +61,11 @@ config="${mod_id}.mixins.json"
     modId="forge" #mandatory
     # 1.20.1:mandatory 布尔(NeoForge 1.20.5+ 改为 type="required" 等)
     mandatory=true #mandatory
-    # Optional field describing why the dependency is required or why it is incompatible
-    # reason="..."
+    # ⚠️ Forge 1.20.1 **没有 reason 字段**:实测 net.minecraftforge.fml.loading.moddiscovery.
+    # ModInfo$ModVersion 的构造器常量池只读 modId/mandatory/versionRange/ordering/side/referralUrl,
+    # reason 是 NeoForge 的字段。写成 reason="..." 既不会显示给用户、也不会进任何提示,只会误导后来者。
+    # 缺前置/版本不符时用户看到的是 FML 原生文案(ModSorter 常量池实测字符串):
+    #   "Missing or unsupported mandatory dependencies:" + Mod ID / Requested by / Expected range / Actual version
     # The version range of the dependency
     # Forge 自身版本门槛的**精确下限**(派生自 forge_version;上方 loaderVersion 只卡主系列):
     # 不满足时 FML 在依赖排序阶段直接报 "Missing or unsupported mandatory dependencies: forge"。
@@ -91,7 +94,14 @@ config="${mod_id}.mixins.json"
     ordering="AFTER"
     side="BOTH"
 
-# Mixin Booster(强依赖):Sponge Mixin 运行时替代 Forge 自带 Mixin,自动处理 SRG 重映射
+# Mixin Booster(强依赖,**未安装即拒绝启动**):Forge 1.20.1 的 FML 没有 Mixin 集成——Sponge Mixin
+# 0.8.5 完全由这个纯 ModLauncher 服务 jar 提供(它内嵌 fabric-mixin.jar;模组条目与版本号由自带
+# IModLocator 读 jar 根 mixinbooster_version.txt 得到,实机 debug.log 原文:
+#   Found valid mod file transmog-mod.jar with {mixinbooster} mods - versions {0.1.3+1.20.1})。
+# **缺它时本模组不报任何错、全部 mixin 静默失效**,故必须在 FML 依赖排序阶段硬拒:
+# mandatory=true;versionRange 的下限卡住实装版本(实装 0.1.3+1.20.1 → 下限 [0.1.3,) —— 旧版本前置
+# 同样是静默失效,所以不能写成 "*" 或省略)。防回归:scripts/test/mt_loadergate.ps1
+# (读数 AP_LG_MB / AP_LG_MB_RANGE,断言在 cases/LOADER-GATE-FORGE-1.20.1.json)。
 [[dependencies.${mod_id}]]
     modId="mixinbooster"
     mandatory=true
