@@ -10,8 +10,8 @@ import com.merlinkitsune.astral_dice.config.ModCommonConfig;
 public final class GameplayConstants {
     // 星光点获取上限(默认最大 32 点)
     public static int MAX_STARLIGHT = 32;
-    // 标记层数上限(默认最大 16 层)
-    public static int MAX_MARKER = 16;
+    // 标记层数上限(默认最大 32 层)
+    public static int MAX_MARKER = 32;
     // 效果牌公共冷却(单位:秒,默认 30)
     public static int EFFECT_CARD_COOLDOWN_SECONDS = 30;
     // 功能效果牌叠加层数上限(默认 3 层,伤害效果牌不使用该叠加)

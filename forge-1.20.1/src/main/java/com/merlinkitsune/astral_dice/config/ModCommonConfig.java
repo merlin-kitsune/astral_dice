@@ -31,8 +31,8 @@ public final class ModCommonConfig {
 
         MAX_STARLIGHT = builder.comment("星光获取上限(默认：最大 32 点)")
                 .defineInRange("max_starlight", 32, 8, 48);
-        MAX_MARKER = builder.comment("标记层数上限(默认：最大 16 层)")
-                .defineInRange("max_marker", 16, 8, 48);
+        MAX_MARKER = builder.comment("标记层数上限(默认：最大 32 层)")
+                .defineInRange("max_marker", 32, 8, 48);
         EFFECT_CARD_COOLDOWN_SECONDS = builder.comment("效果牌公共冷却(单位：秒,默认：30)")
                 .defineInRange("effect_card_cooldown_seconds", 30, 5, 120);
         MAX_EFFECT_STACKS = builder.comment("功能效果牌叠加层数上限(默认：3 层,伤害效果牌不使用该叠加)")
