@@ -365,7 +365,7 @@ function meleeHit(p, mob) {
     catch (e2) { tried.push("mob_hurt:" + exText(e2)); }
     try { mob.attack(src, 1.0); if (ok()) return { api: "mob_attack", dealt: dealt() }; }
     catch (e3) { tried.push("mob_attack:" + exText(e3)); }
-    try { mob.damage(src, 1.0); if (ok()) return { api: "mob_damage", dealt: dealt() }; }
+    try { mob.damage(1.0, src); if (ok()) return { api: "mob_damage", dealt: dealt() }; }
     catch (e4) { tried.push("mob_damage:" + exText(e4)); }
     throw new Error("no_melee_api:" + tried.join(" | "));
 }
@@ -1100,6 +1100,8 @@ var ThrownEnderpearlClass = Java.loadClass("net.minecraft.world.entity.projectil
 var ElectricGloveClass = Java.loadClass("com.merlinkitsune.astral_dice.item.chip.ElectricGloveChipItem");
 // C4（2026-09-15 B2）：末影骰保命入口（装备判定）
 var EnderDiceHandlerClass = Java.loadClass("com.merlinkitsune.astral_dice.event.EnderDiceHandler");
+// C4（2026-09-15 B3）：致死伤害源是否属 BYPASSES_INVULNERABILITY 的只读取证入口
+var DamageTypeTagsClass = Java.loadClass("net.minecraft.tags.DamageTypeTags");
 
 var DESC_INVIS = "effect.minecraft.invisibility";
 var DESC_GLOW = "effect.minecraft.glowing";
@@ -1635,18 +1637,23 @@ function applyFallDamage(p, amount) {
         catch (e) { tried.push(name + ":" + exText(e)); }
         return null;
     }
-    // ⚠️ 2026-09-15 B2 实测(该环境 Rhino/KubeJS 2101.7.2 的三个坑,逐条实测):
-    //   ① `p.hurt(src, number)` **不可用** —— 被 DamageSource 类型包装器错配参数并抛
-    //      `IllegalStateException: … damage_type … minecraft:5.0`,还会以未捕获异常的形式
-    //      污染 KubeJS server.log(连带后续用例的 kubejs 断言 FAIL)。**不调用它。**
-    //   ② `/damage` 命令**不能同步判定** —— `performPrefixedCommand` 在 1.21.1 上把命令
-    //      推迟到本 tick 末执行,同一次调用里读 getHealth() 必然读到"还没打"。
-    //   ③ `p.causeFallDamage(amount, 1.0, src)` / `p.damage(src, amount)` **同步生效且可用**
-    //      (实测 CTRL 相位真实掉血),故本函数只走这两条;免疫窗口生效时两者都会被产品取消 ⇒ 不掉血。
+    // ⚠️ 2026-09-15 B3 更正(与 1.21.1 侧同款;字节码取证见本批报告 §0.1):
+    //   ① `p.damage(src, amount)` **参数顺序错** —— KubeJS 的 `EntityKJS` 把伤害包装暴露成
+    //      `damage(amount, source)`(1.21.1 的 `kjs$damage(float, DamageSource)`),旧写法把
+    //      数字送进 DamageSource 形参 ⇒ KubeJS 的 `DamageSourceWrapper` 拿它当伤害类型 id ⇒
+    //      `IllegalStateException: … damage_type … minecraft:5.0`,并以未捕获异常污染 server.log。
+    //      **B2 曾把这条误记为 `p.hurt`,实际 `hurt(DamageSource, float)` 顺序本就正确。**
+    //      (1.20.1 的 EntityKJS 只有 `kjs$attack(float)`,没有 `kjs$damage` ⇒ 这条在 1.20.1 上
+    //      只是「找不到函数」;两侧仍保持同一写法,避免下次移植时把 1.21.1 的坑重新引入。)
+    //   ② `/damage` 命令**不能同步判定** —— `performPrefixedCommand` 把命令推迟到本 tick 末执行。
+    //   ③ `p.causeFallDamage(amount, 1.0, src)` / `p.damage(amount, src)` **同步生效且可用**;
+    //      免疫窗口生效时两者都会被产品取消 ⇒ 不掉血。
     if (src != null) {
         var r = attempt("causeFallDamage", function () { p.causeFallDamage(amount, 1.0, src); });
         if (r != null) { lastFallDiag = r; return r; }
-        r = attempt("damage", function () { p.damage(src, amount); });
+        r = attempt("damage", function () { p.damage(amount, src); });
+        if (r != null) { lastFallDiag = r; return r; }
+        r = attempt("attack", function () { p.attack(src, amount); });
         if (r != null) { lastFallDiag = r; return r; }
     } else { tried.push("src_unavailable"); }
     // ⚠️ **不再回退 `/damage` 命令**:1.21.1 上 `performPrefixedCommand` 把命令**推迟到本 tick 末**
@@ -2408,7 +2415,7 @@ function doTrueDmg(ctx, tag) {
     /** 经 KubeJS 可见的伤害 API 施加(实测 1.21.1 `mob.attack(DamageSource,float)` 可用) */
     function applyDamage(ent, src, amount) {
         try { ent.attack(src, amount); return "attack"; } catch (ea) { /* 试下一个 */ }
-        try { ent.damage(src, amount); return "damage"; } catch (eb) { /* 试下一个 */ }
+        try { ent.damage(amount, src); return "damage"; } catch (eb) { /* 试下一个 */ }
         return "none";
     }
     function delta(a, b) { return (a < 0 || b < 0) ? -1 : Math.round((a - b) * 100) / 100; }
@@ -2686,7 +2693,7 @@ function applySpellDamage(ent, src, amount) {
     var tries = [
         function () { ent.hurt(src, amount); return "hurt"; },
         function () { ent.attack(src, amount); return "attack"; },
-        function () { ent.damage(src, amount); return "damage"; }
+        function () { ent.damage(amount, src); return "damage"; }
     ];
     for (var i = 0; i < tries.length; i++) {
         try { api = tries[i](); break; } catch (e2) { errText += "/" + exText(e2); }
@@ -3069,8 +3076,12 @@ function doGloveRound(ctx, tag) {
 //  两个相位:
 //    P1 MARKED + GLOWING + 增益(速度) → 致命伤害 ⇒ MARKED 与 GLOWING 均被移除、增益仍在;
 //    P2 只有 GLOWING(无 MARKED)      → 致命伤害 ⇒ GLOWING **被保留**(验证门控)。
-//  ⚠️ 致死伤害必须**不绕过无敌**:/kill = minecraft:generic_kill 属
-//  BYPASSES_INVULNERABILITY,产品与原版不死图腾都会跳过它(见 AIRBAG 是另一条口径)。
+//  ⚠️ 致死伤害必须**不绕过无敌**:`/kill` = minecraft:generic_kill 属
+//  BYPASSES_INVULNERABILITY,产品(EnderDiceHandler#onLivingDeath:164)与原版不死图腾
+//  都会**故意跳过**它 ⇒ `/kill` 打不出末影骰保命(玩家直接死亡),故本相位**不用 /kill**
+//  (AIRBAG 用例用 /kill 是另一条口径:气囊改成了「连绕过无敌的伤害也拦」)。
+//  本相位照抄 AIRBAG 已实证的**直接 Java 调用**路线(airbagApplyKill 的 hurt 分支),
+//  伤害源换成不在该标签内的 `minecraft:generic`。
 // ════════════════════════════════════════════════════════════════════════════
 
 /** 保命相位前的干净基线(清 marked/glowing/speed、清无敌帧、回满血、冷却归零) */
@@ -3091,46 +3102,81 @@ function enderGlowState(p) {
     return "marked=" + (findEffect(p, DESC_MARK) != null ? 1 : 0)
         + ":glow=" + (findEffect(p, DESC_GLOW) != null ? 1 : 0)
         + ":speed=" + (findEffect(p, DESC_SPEED) != null ? 1 : 0)
-        + ":hp=" + rghp(p) + ":invul=" + (function(){ try { return p.getAbilities().invulnerable ? 1 : 0; } catch (e) { return -1; } })() + ":totem_cd_left=" + cdLeft;
+        + ":hp=" + rghp(p) + ":alive=" + (p.isAlive() ? 1 : 0)
+        + ":invul=" + (function(){ try { return p.getAbilities().invulnerable ? 1 : 0; } catch (e) { return -1; } })() + ":totem_cd_left=" + cdLeft;
+}
+
+/** 保命是否真的触发(冷却被写入正数剩余)= 1/0/-1(读不到) */
+function enderTotemFired(p) {
+    try {
+        var left = ModAttachments.getEnderDieTotemCooldownEnd(p) - nowTick(p);
+        return left > 0 ? 1 : 0;
+    } catch (e) { return -1; }
+}
+
+/** 致死相位实际用的伤害源是否属 BYPASSES_INVULNERABILITY(必须为 0 才可能触发保命) */
+var lastLethalBypass = -2;
+function srcBypassesInvuln(src) {
+    try {
+        return src.is(DamageTypeTagsClass.BYPASSES_INVULNERABILITY) ? 1 : 0;
+    } catch (e) { return -1; }
 }
 
 /**
- * 施加一次**不绕过无敌**的致死伤害,返回真正生效的 API 名。
- * 判据是「玩家没死 + 末影骰保命冷却被写入」,两者同时成立才算走通了保命链路。
+ * 施加一次**不绕过无敌**的致死伤害。
+ *
+ * 2026-09-15 B3 重写(与 1.21.1 侧同款)。分步命令流(prep → hit → read)的原因:`/damage`
+ * 命令经 `performPrefixedCommand` 会被**推迟到本 tick 末**执行,同一次调用里读不到结果,
+ * 故注入与读数必须拆成两条命令(相隔数秒),不能像旧版那样"一条命令内同步判定"。
+ *
+ * 路线(逐条尝试,任一条让保命触发即停,不再施加第二次致死 —— 否则冷却中的玩家会真死):
+ *   ① `causeFallDamage(1000, 1.0, fall())`;② `p.damage(1000.0, src)`;
+ *   ③ 显式全名 `p["kjs$damage"](1000.0, src)`;④ `p.attack(src, 1000.0)`;
+ *   ⑤ 显式全名 `p["kjs$attack"](src, 1000.0)`;
+ *   ⑥ 兜底:原版命令 `/damage @a 1000 minecraft:generic`(推迟到 tick 末 ⇒ 由下一步 `read` 判定)。
+ * **绝不用 `p.hurt`**(Rhino 把 `hurt` 解析成 `Player#isHurt()` 的 bean 属性 → "not a function");
+ * 也**不用 `/kill`**(generic_kill 属 BYPASSES_INVULNERABILITY,产品会故意跳过)。
+ * 每一步都落成 `名字=返回值:hp前>hp后:f=保命是否触发` 的诊断串。
+ * (1.20.1 的 `EntityKJS` 只有 `kjs$attack(float)`,②③④⑤ 里多半只有 `damage` 形式可用;
+ *  保留全套只为两版本写法一致,并在读数里暴露真正生效的那一条。)
  */
-function applyLethalDamage(p) {
-    // 走**原版命令入口** `/damage`(TESTING-SPEC 既定口径:状态改写一律走原版命令,
-    // 避开 Rhino/KubeJS 的 DamageSource 类型包装器——1.21.1 实测该包装器会把 JS number
-    // 当成伤害类型 id 解析并抛 IllegalStateException)。判据不变:玩家没死 + 末影骰保命冷却被写入。
-    var now = nowTick(p);
-    function fired() {
-        if (!p.isAlive()) return false;
-        try { return ModAttachments.getEnderDieTotemCooldownEnd(p) > now; } catch (e) { return false; }
-    }
-    // 先确认可受伤:创造/旁观(abilities.invulnerable)下 Player#hurt 直接返回 false,
-    // `/damage` 会回「对象免疫指定的伤害类型」而什么也不发生 —— 那会让本相位静默空跑。
-    // 故同时用 Java 与命令两条路切生存,并把不可受伤状态显式落成读数。
+var enderLastApi = { "1": "n/a", "2": "n/a" };
+function enderLethalHit(p, phase) {
+    var diag = [];
+    if (p.getAbilities().invulnerable) return "not_damageable";
+    var src = null;
     try {
-        if (p.getAbilities().invulnerable) {
-            p.setGameMode(GameTypeClass.SURVIVAL);
-            runCmdP(p, "gamemode survival @s");
-        }
-    } catch (e0) { /* 忽略 */ }
-    var invul = 0;
-    try { invul = p.getAbilities().invulnerable ? 1 : 0; } catch (e1) { invul = -1; }
-    if (invul !== 0) return "none[not_damageable:invul=" + invul + "]";
-    // 致死:走原版 `/damage`(Java 侧 `p.hurt(src, 100.0)` 在本环境下被 KubeJS 的 DamageSource
-    // 类型包装器错配参数并抛异常,详见 applyFallDamage 注释)。`minecraft:fall` 不属
-    // bypasses_invulnerability(该标签只有 out_of_world / generic_kill)⇒ 会真正触发保命。
-    var rc = "causeFallDamage";
-    try { p.causeFallDamage(100.0, 1.0, p.level.damageSources().fall()); }
-    catch (e9) { rc = "ex:" + exText(e9); }
-    if (fired()) return "cmd";
-    return "none[" + rc + ":invul=" + invul + ":hp=" + rghp(p) + "]";
+        var ResourceKey = Java.loadClass("net.minecraft.resources.ResourceKey");
+        var Registries = Java.loadClass("net.minecraft.core.registries.Registries");
+        src = p.level.damageSources().source(ResourceKey.create(Registries.DAMAGE_TYPE,
+            new ResourceLocation("minecraft:generic")));
+    } catch (e0) { return "src_ex:" + exText(e0); }
+    lastLethalBypass = srcBypassesInvuln(src);
+
+    var done = "none";
+    function step(name, fn) {
+        if (done !== "none" || !p.isAlive()) return;
+        var before = rghp(p);
+        var rv = "n/a";
+        try { rv = String(fn()); } catch (e) { rv = "EX:" + exText(e); }
+        diag.push(name + "=" + rv + ":hp" + before + ">" + rghp(p) + ":f=" + enderTotemFired(p));
+        if (enderTotemFired(p) === 1) done = name;
+    }
+    step("fall", function () { return p.causeFallDamage(1000.0, 1.0, p.level.damageSources().fall()); });
+    step("damage", function () { return p.damage(1000.0, src); });
+    step("kjs_damage", function () { return p["kjs$damage"](1000.0, src); });
+    step("attack", function () { return p.attack(src, 1000.0); });
+    step("kjs_attack", function () { return p["kjs$attack"](src, 1000.0); });
+    if (done === "none" && p.isAlive()) {
+        diag.push("cmd=" + runCmdP(p, "damage @a 1000 minecraft:generic"));
+        done = "cmd";
+    }
+    enderLastApi[phase] = done;
+    return diag.join("|");
 }
 
-function doEnderTotem(ctx, tag) {
-    var p = ctx.source.getPlayerOrException();
+/** prep<phase>:造相位初态(生存 + 末影骰 + 清其它饰品槽 + 干净基线 + 相位效果)并读 BEFORE */
+function enderPrep(ctx, tag, p, phase) {
     var mode = "already_survival";
     try { p.setGameMode(GameTypeClass.SURVIVAL); mode = "forced_survival"; } catch (e0) { /* 忽略 */ }
     var diceItem = resolveItem("astral_dice:ender_dice");
@@ -3144,38 +3190,58 @@ function doEnderTotem(ctx, tag) {
         try { p.setGameMode(GameTypeClass.CREATIVE); } catch (e2) { /* 忽略 */ }
         return 0;
     }
-
-    // ── P1:MARKED + GLOWING + 增益(速度) → 保命后 MARKED/GLOWING 被清、增益仍在 ──
+    // 清其它饰品槽:避免上一条用例残留的充能类筹码(安全气囊等)把致死伤害吃掉。
+    clearCurioSlots(p, "chip");
+    clearCurioSlots(p, "stand");
     enderGlowReset(p);
-    try { p.addEffect(new MobEffectInstanceClass(fxMarked(), 2400, 0)); } catch (e3) { send(ctx, "AP_" + tag + "_ERR:add_marked:" + exText(e3)); return 0; }
-    try { p.addEffect(new MobEffectInstanceClass(MobEffectsClass.GLOWING, 2400, 0)); } catch (e4) { send(ctx, "AP_" + tag + "_ERR:add_glow:" + exText(e4)); return 0; }
-    try { p.addEffect(new MobEffectInstanceClass(MobEffectsClass.MOVEMENT_SPEED, 2400, 0)); } catch (e5) { send(ctx, "AP_" + tag + "_ERR:add_speed:" + exText(e5)); return 0; }
-    send(ctx, "AP_" + tag + "_P1_BEFORE:mode=" + mode + ":" + enderGlowState(p));
-    var api1 = applyLethalDamage(p);
-    var s1 = enderGlowState(p);
-    send(ctx, "AP_" + tag + "_P1_AFTER:" + s1 + ":api=" + api1);
-    var p1Ok = (findEffect(p, DESC_MARK) == null) && (findEffect(p, DESC_GLOW) == null)
-        && (findEffect(p, DESC_SPEED) != null) && p.isAlive();
-    send(ctx, "AP_" + tag + "_P1_OK:" + (p1Ok ? 1 : 0));
+    if (phase === "1") {
+        try { p.addEffect(new MobEffectInstanceClass(fxMarked(), 2400, 0)); }
+        catch (e3) { send(ctx, "AP_" + tag + "_ERR:add_marked:" + exText(e3)); return 0; }
+    }
+    try { p.addEffect(new MobEffectInstanceClass(MobEffectsClass.GLOWING, 2400, 0)); }
+    catch (e4) { send(ctx, "AP_" + tag + "_ERR:add_glow:" + exText(e4)); return 0; }
+    try { p.addEffect(new MobEffectInstanceClass(MobEffectsClass.MOVEMENT_SPEED, 2400, 0)); }
+    catch (e5) { send(ctx, "AP_" + tag + "_ERR:add_speed:" + exText(e5)); return 0; }
+    lastLethalBypass = -2;
+    enderLastApi[phase] = "n/a";
+    send(ctx, "AP_" + tag + "_P" + phase + "_BEFORE:"
+        + (phase === "1" ? ("mode=" + mode + ":") : "") + enderGlowState(p));
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
 
-    // ── P2:对照相位 —— 只有 GLOWING(无本模组 MARKED) → 保命后 GLOWING 必须保留 ──
-    // 保命冷却按 5:00 写入,产品语义正确;此处归零只是**为了在同一会话内造第二个保命相位**,
-    // 属测试脚手架(与本用例要验证的"清哪些效果"无关),在读数里以 totem_cd_left 显式暴露。
-    enderGlowReset(p);
-    try { p.addEffect(new MobEffectInstanceClass(MobEffectsClass.GLOWING, 2400, 0)); } catch (e6) { send(ctx, "AP_" + tag + "_ERR:add_glow2:" + exText(e6)); return 0; }
-    try { p.addEffect(new MobEffectInstanceClass(MobEffectsClass.MOVEMENT_SPEED, 2400, 0)); } catch (e7) { send(ctx, "AP_" + tag + "_ERR:add_speed2:" + exText(e7)); return 0; }
-    send(ctx, "AP_" + tag + "_P2_BEFORE:" + enderGlowState(p));
-    var api2 = applyLethalDamage(p);
-    var s2 = enderGlowState(p);
-    send(ctx, "AP_" + tag + "_P2_AFTER:" + s2 + ":api=" + api2);
-    var p2Ok = (findEffect(p, DESC_MARK) == null) && (findEffect(p, DESC_GLOW) != null)
-        && (findEffect(p, DESC_SPEED) != null) && p.isAlive();
-    send(ctx, "AP_" + tag + "_P2_OK:" + (p2Ok ? 1 : 0));
+/** read<phase>:读 AFTER + 判定(保命必须真触发:fired=1) */
+var enderP1Ok = -1;
+function enderRead(ctx, tag, p, phase) {
+    var f = enderTotemFired(p);
+    send(ctx, "AP_" + tag + "_P" + phase + "_AFTER:" + enderGlowState(p)
+        + ":bypass=" + lastLethalBypass + ":fired=" + f + ":api=" + enderLastApi[phase]);
+    var ok;
+    if (phase === "1") {
+        ok = (findEffect(p, DESC_MARK) == null) && (findEffect(p, DESC_GLOW) == null)
+            && (findEffect(p, DESC_SPEED) != null) && p.isAlive() && (f === 1);
+        enderP1Ok = ok ? 1 : 0;
+    } else {
+        ok = (findEffect(p, DESC_MARK) == null) && (findEffect(p, DESC_GLOW) != null)
+            && (findEffect(p, DESC_SPEED) != null) && p.isAlive() && (f === 1);
+    }
+    send(ctx, "AP_" + tag + "_P" + phase + "_OK:" + (ok ? 1 : 0));
+    if (!p.isAlive()) {
+        send(ctx, "AP_" + tag + "_ERR:player_died_p" + phase + ":bypass=" + lastLethalBypass
+            + ":api=" + enderLastApi[phase]);
+        return 0;
+    }
+    if (phase === "2") {
+        send(ctx, "AP_" + tag + "_VERDICT:gated_clear=" + (enderP1Ok === 1 ? 1 : 0)
+            + ":control_keep=" + (ok ? 1 : 0)
+            + ":marked_cleared=" + (findEffect(p, DESC_MARK) == null ? 1 : 0));
+    }
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
 
-    send(ctx, "AP_" + tag + "_VERDICT:gated_clear=" + (p1Ok ? 1 : 0) + ":control_keep=" + (p2Ok ? 1 : 0)
-        + ":marked_cleared=" + (findEffect(p, DESC_MARK) == null ? 1 : 0));
-
-    // 收尾:清效果与冷却、回满血、回创造
+/** done:收尾(清效果与冷却、摘骰子、回满血、回创造) */
+function enderDone(ctx, tag, p) {
     enderGlowReset(p);
     try { p.removeEffect(MobEffectsClass.REGENERATION); } catch (e8) { /* 忽略 */ }
     try { p.removeEffect(MobEffectsClass.ABSORPTION); } catch (e9) { /* 忽略 */ }
@@ -3186,6 +3252,24 @@ function doEnderTotem(ctx, tag) {
     send(ctx, "AP_" + tag + "_RESTORE:creative:" + enderGlowState(p));
     send(ctx, "AP_" + tag + "_DONE");
     return 1;
+}
+
+function doEnderTotem(ctx, tag, sub) {
+    var p = ctx.source.getPlayerOrException();
+    if (sub === "done") return enderDone(ctx, tag, p);
+    // 不用 `sub.charAt(sub.length - 1)`:Rhino 下 `length` 被解析成属性(非函数)⇒ 得到 NaN 而抛
+    // `InternalError: Cannot convert NaN to int`(本批实测)。改为按全名比较,零字符串运算。
+    var phase = (sub === "prep1" || sub === "hit1" || sub === "read1") ? "1" : "2";
+    if (sub === "prep1" || sub === "prep2") return enderPrep(ctx, tag, p, phase);
+    if (sub === "hit1" || sub === "hit2") {
+        var routes = enderLethalHit(p, phase);
+        send(ctx, "AP_" + tag + "_HIT" + phase + ":" + routes);
+        send(ctx, "AP_" + tag + "_DONE");
+        return 1;
+    }
+    if (sub === "read1" || sub === "read2") return enderRead(ctx, tag, p, phase);
+    send(ctx, "AP_" + tag + "_ERR:unknown_sub:" + sub);
+    return 0;
 }
 
 ServerEvents.commandRegistry(event => {
@@ -3432,8 +3516,9 @@ ServerEvents.commandRegistry(event => {
                     }))))
             .then(Commands.literal("endertotem")
                 .then(Commands.argument("tag", StringArg.word())
-                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
-                        return doEnderTotem(ctx, StringArg.getString(ctx, "tag"));
-                    }))))
+                    .then(Commands.argument("sub", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doEnderTotem(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "sub"));
+                        })))))
     );
 });

@@ -13,23 +13,67 @@
     },
     {
       "op": "note",
-      "text": "取证方式：/astralprobe endertotem ET 一条命令内两个相位 —— P1（本模组 MARKED + GLOWING + 增益速度）受**致命伤害** ⇒ 断言 MARKED 与 GLOWING 均被移除、增益仍在；P2 对照相位（只有 GLOWING、**无** MARKED）受致命伤害 ⇒ 断言 GLOWING **被保留**（验证门控），增益同样保留。致死伤害必须**不绕过无敌**：探针用 damageSources().generic()（`minecraft:generic` 不在 bypasses_invulnerability 标签里；`/kill` 的 `minecraft:generic_kill` 在标签里，产品与原版不死图腾都会跳过它）；判据是「玩家没死 + ender_die_totem_cooldown_end 被写入」。P2 前把保命冷却归零只是为在同一会话内造第二个保命相位，属测试脚手架，读数以 totem_cd_left 显式暴露。探针会先校验 EnderDiceHandler#hasEnderDie 为真才施加致死伤害，否则直接 ERR 并回创造，避免误杀玩家。"
+      "text": "取证方式（2026-09-15 B3 改为分步命令）：`prep<N>` 造相位初态（生存 + 装备末影骰 + 清其它饰品槽 + 干净基线 + 相位效果）并读 BEFORE；`hit<N>` 施加致死；`read<N>` 读 AFTER 并判定；`done` 收尾。P1 = 本模组 MARKED + GLOWING + 增益速度 ⇒ 断言 MARKED 与 GLOWING 均被移除、增益仍在、保命确已触发（fired=1）；P2 对照 = 只有 GLOWING（**无** MARKED）⇒ 断言 GLOWING **被保留**、增益保留、保命同样确已触发。"
+    },
+    {
+      "op": "note",
+      "text": "致死注入：**不用 `/kill`** —— `/kill` = minecraft:generic_kill，属 `DamageTypeTags.BYPASSES_INVULNERABILITY`，而 EnderDiceHandler.java:164 与原版不死图腾一致地**故意跳过**这类伤害源 ⇒ 用它只会直接打死玩家、打不出末影骰保命。本用例改用**同一条直连原版入口**的注入、伤害源换成不在该标签内的 `minecraft:generic`：探针按 causeFallDamage → damage(amount,src) → kjs$damage → attack(src,amount) → kjs$attack → 原版 `/damage @a 1000 minecraft:generic` 的顺序逐条尝试，任一条让保命触发即停，实际生效的那条写进 `api=`；`bypass=0` 是「该伤害源确实不绕过无敌」的直接读数校验，`fired=1` 证明保命冷却确被写入。**不再用** `p.hurt`（Rhino 把 `hurt` 解析成 `Player#isHurt()` 的 bean 属性 → TypeError: not a function），也不用旧版的 `p.damage(src, n)`（KubeJS 的 `damage` 参数顺序是 (amount, source)）。"
     },
     {
       "op": "inject_command",
-      "command": "/astralprobe endertotem ET"
+      "command": "/astralprobe endertotem ET prep1"
     },
     {
       "op": "wait",
-      "ms": 1800
+      "ms": 900
     },
     {
       "op": "inject_command",
-      "command": "/astralprobe endertotem ET"
+      "command": "/astralprobe endertotem ET hit1"
     },
     {
       "op": "wait",
-      "ms": 1200
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe endertotem ET read1"
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe endertotem ET prep2"
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe endertotem ET hit2"
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe endertotem ET read2"
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe endertotem ET done"
+    },
+    {
+      "op": "wait",
+      "ms": 700
     }
   ],
   "asserts": [
@@ -41,7 +85,7 @@
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_ET_P1_AFTER:marked=0:glow=0:speed=1:.*:api=(hurt|damage|cmd)"
+      "pattern": "AP_ET_P1_AFTER:marked=0:glow=0:speed=1:.*:bypass=0:fired=1:api=(fall|damage|kjs_damage|attack|kjs_attack|cmd)"
     },
     {
       "type": "log",
@@ -56,7 +100,7 @@
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_ET_P2_AFTER:marked=0:glow=1:speed=1:.*:api=(hurt|damage|cmd)"
+      "pattern": "AP_ET_P2_AFTER:marked=0:glow=1:speed=1:.*:bypass=0:fired=1:api=(fall|damage|kjs_damage|attack|kjs_attack|cmd)"
     },
     {
       "type": "log",
