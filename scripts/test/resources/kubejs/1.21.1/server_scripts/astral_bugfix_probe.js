@@ -3037,9 +3037,11 @@ function doGloveRound(ctx, tag) {
 //  都会**故意跳过**它 ⇒ `/kill` 打不出末影骰保命(玩家直接死亡),故本相位**不用 /kill**
 //  (AIRBAG 用例用 /kill 是另一条口径:气囊改成了「连绕过无敌的伤害也拦」)。
 //  本相位照抄 AIRBAG 已实证的**直接 Java 调用**路线(airbagApplyKill 的 hurt 分支),
-//  伤害源换成不在该标签内的 `minecraft:generic`,该标签 1.21.1 只含
-//  out_of_world / generic_kill(取自 client-extra jar 的
-//  data/minecraft/tags/damage_type/bypasses_invulnerability.json)。
+//  伤害源换成不在该标签内的 `minecraft:generic`。
+//  ⚠️ 2026-09-15 B5 更正:上句的「已实证」只对 1.21.1 的 `.source(ResourceKey)` 成立,
+//  而 AIRBAG 用例总是先命中 `entity.kill()`,`hurt` 分支从未真正被执行过。
+//  现两侧统一改走 `Entity#damageSources().generic()`(两版本都可见的公开工厂),
+//  首条路线为 `causeFallDamage(1000, 1.0, fall())`(1.20.1 已实证可打出真实掉血)。
 // ════════════════════════════════════════════════════════════════════════════
 
 /** 保命相位前的干净基线(清 marked/glowing/speed、清无敌帧、回满血、冷却归零) */
@@ -3081,6 +3083,31 @@ function srcBypassesInvuln(src) {
 }
 
 /**
+ * 致死相位的伤害源 —— **两版本都可见**的公开入口。
+ *
+ * 2026-09-15 B5(与 1.20.1 侧同步)。旧写法
+ *     `p.level.damageSources().source(ResourceKey.create(Registries.DAMAGE_TYPE, …))`
+ * 在本版本**恰好可用**,但在 1.20.1 **根本不存在**(1.20.1 的 `DamageSources#source(...)`
+ * 三个重载全是 private,只供本类内部具名工厂调用;公开面只有 `generic()`/`fall()`/`magic()` …)。
+ * 两侧探针必须同写法,否则 1.20.1 会在下一次同步时被重新引入该缺陷
+ * (1.20.1 实跑读数:`src_ex:TypeError: Cannot find function source in object DamageSources@…`)。
+ *
+ * 两版本共同可见的等价入口 = `Entity#damageSources()`(**Entity 上 public**,两版本同签名)
+ * → `DamageSources#generic()`(两版本均 public,返回 `minecraft:generic` 的 DamageSource)。
+ * 已按两版本反编译源码逐条核对(`forge-1.20.1-47.4.10-sources.jar` /
+ * `neoforge-21.1.235-sources.jar` 的 `net/minecraft/world/damagesource/DamageSources.java`),
+ * **不是照搬**。
+ *
+ * `minecraft:generic` 不在 `bypasses_invulnerability` 内(该标签两版本都只含
+ * `minecraft:out_of_world` 与 `minecraft:generic_kill`),故产品
+ * `EnderDiceHandler#onLivingDeath:165` 的早退分支不会被走到 —— `/kill`
+ * (=`minecraft:generic_kill`)则会,这正是本相位**不能用 `/kill`** 的原因。
+ */
+function enderLethalSource(p) {
+    return p.damageSources().generic();
+}
+
+/**
  * 施加一次**不绕过无敌**的致死伤害。
  *
  * 2026-09-15 B3 重写。分步命令流(prep → hit → read)的原因:`/damage` 命令经
@@ -3099,38 +3126,57 @@ function srcBypassesInvuln(src) {
  * (`TypeError: … it is not a function, it is "boolean"`,本批实测);也**不用 `/kill`**
  * (`generic_kill` 属 BYPASSES_INVULNERABILITY,产品会故意跳过)。
  * 每一步都落成 `名字=返回值:hp前>hp后:f=保命是否触发` 的诊断串。
+ *
+ * 2026-09-15 B5(与 1.20.1 侧同步):**伤害源构造失败不再提前 return** ——
+ * `src` 拿不到时只把原因写进诊断串并跳过 ②~⑤,① (`fall`,自带伤害源)与 ⑥
+ * (原版 `/damage` 兜底)**照常执行**;`bypass` 只对「真正让保命触发的那条路线」的伤害源求值,
+ * 不再固定读 `src`。两条硬化对 1.21.1 是纯防御(该版本 `source(ResourceKey)` 本就可见),
+ * 但两版本探针必须保持同一份实现。
  */
 var enderLastApi = { "1": "n/a", "2": "n/a" };
 function enderLethalHit(p, phase) {
     var diag = [];
     if (p.getAbilities().invulnerable) return "not_damageable";
+    // 伤害源:构造失败**不早退**(阻塞 A 的第二处缺陷),只记原因后继续走不依赖它的兜底路线
     var src = null;
-    try {
-        var ResourceKey = Java.loadClass("net.minecraft.resources.ResourceKey");
-        var Registries = Java.loadClass("net.minecraft.core.registries.Registries");
-        src = p.level.damageSources().source(ResourceKey.create(Registries.DAMAGE_TYPE,
-            ResourceLocation.parse("minecraft:generic")));
-    } catch (e0) { return "src_ex:" + exText(e0); }
-    lastLethalBypass = srcBypassesInvuln(src);
+    try { src = enderLethalSource(p); }
+    catch (e0) { diag.push("src_ex=" + exText(e0)); }
+    var srcFall = null;
+    try { srcFall = p.level.damageSources().fall(); }
+    catch (e1) { srcFall = null; }
+    lastLethalBypass = -2;
 
     var done = "none";
-    function step(name, fn) {
+    function step(name, fn, ds) {
         if (done !== "none" || !p.isAlive()) return;
         var before = rghp(p);
         var rv = "n/a";
         try { rv = String(fn()); } catch (e) { rv = "EX:" + exText(e); }
-        diag.push(name + "=" + rv + ":hp" + before + ">" + rghp(p) + ":f=" + enderTotemFired(p));
-        if (enderTotemFired(p) === 1) done = name;
+        var f = enderTotemFired(p);
+        diag.push(name + "=" + rv + ":hp" + before + ">" + rghp(p) + ":f=" + f);
+        if (f === 1) {
+            done = name;
+            if (ds != null) lastLethalBypass = srcBypassesInvuln(ds);
+        }
     }
-    step("fall", function () { return p.causeFallDamage(1000.0, 1.0, p.level.damageSources().fall()); });
-    step("damage", function () { return p.damage(1000.0, src); });
-    step("kjs_damage", function () { return p["kjs$damage"](1000.0, src); });
-    step("attack", function () { return p.attack(src, 1000.0); });
-    step("kjs_attack", function () { return p["kjs$attack"](src, 1000.0); });
+    step("fall", function () {
+        var fs = srcFall;
+        if (fs == null) fs = p.level.damageSources().fall();
+        return p.causeFallDamage(1000.0, 1.0, fs);
+    }, srcFall);
+    if (src != null) {
+        step("damage", function () { return p.damage(1000.0, src); }, src);
+        step("kjs_damage", function () { return p["kjs$damage"](1000.0, src); }, src);
+        step("attack", function () { return p.attack(src, 1000.0); }, src);
+        step("kjs_attack", function () { return p["kjs$attack"](src, 1000.0); }, src);
+    } else {
+        diag.push("src_unavailable:damage/attack_routes_skipped");
+    }
     if (done === "none" && p.isAlive()) {
         // 兜底:原版命令入口(与真人/命令块同一入口)。推迟到本 tick 末 ⇒ 由 read 判定。
         diag.push("cmd=" + runCmdP(p, "damage @a 1000 minecraft:generic"));
         done = "cmd";
+        if (src != null) lastLethalBypass = srcBypassesInvuln(src);
     }
     enderLastApi[phase] = done;
     return diag.join("|");

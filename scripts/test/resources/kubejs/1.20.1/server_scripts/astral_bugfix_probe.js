@@ -3080,8 +3080,14 @@ function doGloveRound(ctx, tag) {
 //  BYPASSES_INVULNERABILITY,产品(EnderDiceHandler#onLivingDeath:164)与原版不死图腾
 //  都会**故意跳过**它 ⇒ `/kill` 打不出末影骰保命(玩家直接死亡),故本相位**不用 /kill**
 //  (AIRBAG 用例用 /kill 是另一条口径:气囊改成了「连绕过无敌的伤害也拦」)。
-//  本相位照抄 AIRBAG 已实证的**直接 Java 调用**路线(airbagApplyKill 的 hurt 分支),
-//  伤害源换成不在该标签内的 `minecraft:generic`。
+//  致死注入路线(2026-09-15 B5 修复阻塞 A 后):首条 = `causeFallDamage(1000, 1.0, fall())`
+//  —— 该入口在 1.20.1 **已实证可用**(同批 NANCY-LU-PEARL-IMMUNE 的 `AP_P1_API:causeFallDamage`
+//  确实打出掉血),且伤害源由 `DamageSources#fall()` 这个**公开具名工厂**构造,
+//  不经过任何版本相关的 `source(ResourceKey)` 入口;其后 `damage/attack` 与
+//  原版 `/damage @a 1000 minecraft:generic` 命令兜底照旧。
+//  ⚠️ 此前照抄的 AIRBAG `airbagApplyKill` 的 `hurt` 分支在本版本**不可用**
+//  (它用的就是 1.20.1 不存在的 `DamageSources#source(ResourceKey)`;且 AIRBAG 用例
+//   总是先命中 `entity.kill()`,那条分支从未真正被执行过)。
 // ════════════════════════════════════════════════════════════════════════════
 
 /** 保命相位前的干净基线(清 marked/glowing/speed、清无敌帧、回满血、冷却归零) */
@@ -3123,6 +3129,34 @@ function srcBypassesInvuln(src) {
 }
 
 /**
+ * 致死相位的伤害源 —— **两版本都可见**的公开入口。
+ *
+ * 2026-09-15 B5 修复(阻塞 A)。旧写法是
+ *     `p.level.damageSources().source(ResourceKey.create(Registries.DAMAGE_TYPE, …))`
+ * 它**只在 1.21.1 可用**:1.20.1 的 `DamageSources#source(ResourceKey)` 方法
+ * **整个都不存在**(1.20.1 的 `source(...)` 三个重载全是 private,只供本类内部具名工厂调用;
+ * 公开面只有 `generic()` / `fall()` / `magic()`… 这些具名工厂)。1.20.1 实跑读数:
+ *     AP_ET_HIT1:src_ex:TypeError: Cannot find function source in object
+ *                 net.minecraft.world.damagesource.DamageSources@…
+ * ⇒ 连同其后全部兜底路线一起被跳过(旧代码在 catch 里直接 `return`)。
+ *
+ * 两版本共同可见的等价入口 = `Entity#damageSources()`(**Entity 上 public**,1.20.1 与 1.21.1
+ * 同签名)→ `DamageSources#generic()`(两版本均 public,返回 `minecraft:generic` 的 DamageSource)。
+ * 已按两版本反编译源码逐条核对(`forge-1.20.1-47.4.10-sources.jar` /
+ * `neoforge-21.1.235-sources.jar` 的 `net/minecraft/world/damagesource/DamageSources.java`),
+ * **不是照搬**。
+ *
+ * `minecraft:generic` 不在 `bypasses_invulnerability` 内(该标签两版本都只含
+ * `minecraft:out_of_world` 与 `minecraft:generic_kill`,取自各自 client-extra jar 的
+ * `data/minecraft/tags/damage_type/bypasses_invulnerability.json`),故产品
+ * `EnderDiceHandler#onLivingDeath` 的 `BYPASSES_INVULNERABILITY` 早退分支不会被走到
+ * —— `/kill`(=`minecraft:generic_kill`)则会,这正是本相位**不能用 `/kill`** 的原因。
+ */
+function enderLethalSource(p) {
+    return p.damageSources().generic();
+}
+
+/**
  * 施加一次**不绕过无敌**的致死伤害。
  *
  * 2026-09-15 B3 重写(与 1.21.1 侧同款)。分步命令流(prep → hit → read)的原因:`/damage`
@@ -3137,39 +3171,58 @@ function srcBypassesInvuln(src) {
  * **绝不用 `p.hurt`**(Rhino 把 `hurt` 解析成 `Player#isHurt()` 的 bean 属性 → "not a function");
  * 也**不用 `/kill`**(generic_kill 属 BYPASSES_INVULNERABILITY,产品会故意跳过)。
  * 每一步都落成 `名字=返回值:hp前>hp后:f=保命是否触发` 的诊断串。
- * (1.20.1 的 `EntityKJS` 只有 `kjs$attack(float)`,②③④⑤ 里多半只有 `damage` 形式可用;
- *  保留全套只为两版本写法一致,并在读数里暴露真正生效的那一条。)
+ *
+ * 2026-09-15 B5 修复(阻塞 A)后:**伤害源构造失败也不再提前 return** ——
+ * `src` 拿不到时只把原因写进诊断串并跳过 ②~⑤,① (`fall`,自带伤害源)与 ⑥
+ * (原版 `/damage` 兜底)**照常执行**;`bypass` 只对「真正让保命触发的那条路线」的伤害源求值,
+ * 不再固定读 `src`(否则 src 不可用时会把 -2 哨兵值带进断言)。
+ * (1.20.1 的 `EntityKJS` 只有 `kjs$attack`/`kjs$damage` 两个入口,且实测 `p.damage` 在此版本
+ *  不可见;保留全套只为两版本写法一致,并在读数里暴露真正生效的那一条。)
  */
 var enderLastApi = { "1": "n/a", "2": "n/a" };
 function enderLethalHit(p, phase) {
     var diag = [];
     if (p.getAbilities().invulnerable) return "not_damageable";
+    // 伤害源:构造失败**不早退**(阻塞 A 的第二处缺陷),只记原因后继续走不依赖它的兜底路线
     var src = null;
-    try {
-        var ResourceKey = Java.loadClass("net.minecraft.resources.ResourceKey");
-        var Registries = Java.loadClass("net.minecraft.core.registries.Registries");
-        src = p.level.damageSources().source(ResourceKey.create(Registries.DAMAGE_TYPE,
-            new ResourceLocation("minecraft:generic")));
-    } catch (e0) { return "src_ex:" + exText(e0); }
-    lastLethalBypass = srcBypassesInvuln(src);
+    try { src = enderLethalSource(p); }
+    catch (e0) { diag.push("src_ex=" + exText(e0)); }
+    var srcFall = null;
+    try { srcFall = p.level.damageSources().fall(); }
+    catch (e1) { srcFall = null; }
+    lastLethalBypass = -2;
 
     var done = "none";
-    function step(name, fn) {
+    function step(name, fn, ds) {
         if (done !== "none" || !p.isAlive()) return;
         var before = rghp(p);
         var rv = "n/a";
         try { rv = String(fn()); } catch (e) { rv = "EX:" + exText(e); }
-        diag.push(name + "=" + rv + ":hp" + before + ">" + rghp(p) + ":f=" + enderTotemFired(p));
-        if (enderTotemFired(p) === 1) done = name;
+        var f = enderTotemFired(p);
+        diag.push(name + "=" + rv + ":hp" + before + ">" + rghp(p) + ":f=" + f);
+        if (f === 1) {
+            done = name;
+            if (ds != null) lastLethalBypass = srcBypassesInvuln(ds);
+        }
     }
-    step("fall", function () { return p.causeFallDamage(1000.0, 1.0, p.level.damageSources().fall()); });
-    step("damage", function () { return p.damage(1000.0, src); });
-    step("kjs_damage", function () { return p["kjs$damage"](1000.0, src); });
-    step("attack", function () { return p.attack(src, 1000.0); });
-    step("kjs_attack", function () { return p["kjs$attack"](src, 1000.0); });
+    step("fall", function () {
+        var fs = srcFall;
+        if (fs == null) fs = p.level.damageSources().fall();
+        return p.causeFallDamage(1000.0, 1.0, fs);
+    }, srcFall);
+    if (src != null) {
+        step("damage", function () { return p.damage(1000.0, src); }, src);
+        step("kjs_damage", function () { return p["kjs$damage"](1000.0, src); }, src);
+        step("attack", function () { return p.attack(src, 1000.0); }, src);
+        step("kjs_attack", function () { return p["kjs$attack"](src, 1000.0); }, src);
+    } else {
+        diag.push("src_unavailable:damage/attack_routes_skipped");
+    }
     if (done === "none" && p.isAlive()) {
+        // 兜底:原版命令入口(与真人/命令块同一入口)。推迟到本 tick 末 ⇒ 由 read 判定。
         diag.push("cmd=" + runCmdP(p, "damage @a 1000 minecraft:generic"));
         done = "cmd";
+        if (src != null) lastLethalBypass = srcBypassesInvuln(src);
     }
     enderLastApi[phase] = done;
     return diag.join("|");
