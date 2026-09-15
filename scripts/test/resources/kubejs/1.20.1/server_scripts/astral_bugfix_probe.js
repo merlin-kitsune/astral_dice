@@ -28,6 +28,8 @@
 //
 //  ── 命令一览(用例 mt_case.py 依赖这些名字与参数顺序) ──────────────────────
 //    /astralprobe diag <tag>                          环境自检:API 可见性 + 时间基准 + 雷击计数
+//    /astralprobe opprobe                             只读:打印 hasPermissions(2) 实测值(B6 ④)
+//    /astralprobe dumpstate <tag>                     只读:转调 /astralparty dump(B6 ③)
 //    /astralprobe equipslot <slotId> <itemId> <tag>
 //    /astralprobe attack <entityTypeId> <tag>         生成靶子并真实近战命中(仍被 NANCY-LU-CLOAK 复用)
 //    /astralprobe railguncd <tag>
@@ -1511,9 +1513,25 @@ function doKomachiCooldown(ctx, tag) {
     return 1;
 }
 
-/** 读「周期归零」结果:出牌轮一次性加成附件 effect_card_bonus_plays 与出牌数/冷却结束时刻都必须被清除 */
+/**
+ * 读「周期归零」结果(2026-09-15 B6 ③:读数同时走 `/astralparty dump`)。
+ *
+ * 两件事**都要**,不是二选一(勿简化):
+ *  ① 保留下面 tag 唯一的 `READ` / `CLEARED` —— 断言窗口是「自 launch 快照起的 latest.log
+ *     增量」、**跨用例共享**(见 mt_assert.ps1 的 `Get-MtSnapFor`),不带 tag 的 APDUMP 行
+ *     无法归属到某一条用例 ⇒ 拿通用 APDUMP 行顶替 tag 唯一的既有断言等于**弱化断言**
+ *     (前序 AIRBAG 的 dump 就能把 `effect_card_play_count=0` 之类的行先喂饱)。
+ *  ② **追加** `dumpState`:由 dump 的 `LOCKRAW` 组把 `effect_card_bonus_plays` /
+ *     `effect_card_play_count` / `effect_card_cooldown_end` / `max_allowed` 按固定机器格式
+ *     落 `latest.log`,用例断言**直接锚定这四行原始值**(红线:判定入口 LOCKDERIVED 禁止作落点)。
+ *
+ * 红线(见 dumpState 注释):dump 只作读数;本函数不写任何状态,真实出牌 / `registerPlay` /
+ * `tick` 三条归零路径一字未动。dump 调用失败会额外落 `AP_<tag>_DUMP_ERR:`,用例对它做
+ * absent 断言 ⇒ 落 FAIL,绝不静默降级。
+ */
 function doKomachiRead(ctx, tag) {
     var p = ctx.source.getPlayerOrException();
+    dumpState(ctx, tag);
     var extra = EffectCardPeriodClass.getBonusPlays(p);
     var count = EffectCardPeriodClass.getPlayCount(p);
     var cdEnd = ModAttachments.getEffectCardCooldownEnd(p);
@@ -1579,6 +1597,11 @@ function doNancyExpire(ctx, tag) {
 /** 读隐身状态 + 判定「附件与效果是否都被清掉」 */
 function doNancyState(ctx, tag) {
     var p = ctx.source.getPlayerOrException();
+    // B6 ③:只读相位同时调 dump(只读),把本模组效果原始行(EFFECTS 组)落进本轮增量,
+    // 断言可锚定 `APDUMP|EFFECTS|effect=astral_dice:...` 的**原始**存在性,而不是判定入口。
+    // 特性特有的读数(hidden_until / vis / bonus)不在 dump 的能力边界内(dump 只输出本模组
+    // 自身状态,且刻意不输出原版隐身实例),故下面的 nancyStateText 继续保留。
+    dumpState(ctx, tag);
     send(ctx, "AP_" + tag + "_STATE:" + nancyStateText(p));
     var cleared = (ModAttachments.getNancyLuHiddenUntil(p) === 0 && findEffect(p, DESC_INVIS) == null) ? 1 : 0;
     send(ctx, "AP_" + tag + "_CLEARED:" + cleared);
@@ -1894,6 +1917,11 @@ function doDecayFlash(ctx, tag) {
 /** 闪烁取证的清场:清掉三类效果与治愈点数(避免污染后续用例) */
 function doDecayClear(ctx, tag) {
     var p = ctx.source.getPlayerOrException();
+    // B6 ②:原用例注入的 `/effect clear @s` 折叠到探针内(省一条 ≥2.65 s 的键盘注入)。
+    // ⚠️ 它**只清原版效果** —— `astral_dice:*` 的移除会被 ModEffectEvents 取消(见用例 NOTE);
+    //    本模组效果的真实清除由下面三行 `ModEffectRemoval.remove` 直接完成。
+    var preClear = runCmd(ctx, "effect clear @s");
+    send(ctx, "AP_" + tag + "_CLEAR:" + preClear);
     try { EmpowerManager.removeAll(p); } catch (e0) { /* 忽略 */ }
     try { HealingManagerClass.clear(p); } catch (e1) { /* 忽略 */ }
     try { ModAttachments.setHealingTimerEnd(p, 0); } catch (e2) { /* 忽略 */ }
@@ -2073,6 +2101,16 @@ function doRailgunFriendly(ctx, tag) {
     var p = ctx.source.getPlayerOrException();
     var ChargeManagerClass = Java.loadClass("com.merlinkitsune.astral_dice.item.ChargeManager");
 
+    // ── B6 ②(2026-09-15):原先由**用例注入**的两条原版准备命令改在探针内跑 ────────────
+    //    `runCmd` 走 `performPrefixedCommand`(同进程、无键盘注入),每条省 ≥2.65 s。
+    //    ① `gamerule doFireTick false` + ② 把脚下 y-1 那一层换成石头 —— 否则落雷点燃地面,
+    //    **玩家自己的掉血读数会混入火焰伤害**(2026-09-15 实测 1.20.1 self=4.83~18.83 全部
+    //    来自火焰、与雷击无关;石头地面 + 关火焰蔓延后 self=0)。
+    //    两条都在**摆靶之前**下发;`fill` 只动 y-1 那一层地面,不碰摆在同一水平面的靶子。
+    var prepRule = runCmd(ctx, "gamerule doFireTick false");
+    var prepFill = runCmd(ctx, "fill ~-8 ~-1 ~-6 ~8 ~-1 ~14 minecraft:stone");
+    send(ctx, "AP_" + tag + "_PREP:rule=" + prepRule + ":fill=" + prepFill);
+
     var weather = "skip";
     try { p.level.setWeatherParameters(6000, 0, false, false); weather = "clear"; }
     catch (e0) { weather = "err"; }
@@ -2200,6 +2238,20 @@ function doRailgunFriendly(ctx, tag) {
 function doRailgunFriendlyRead(ctx, tag) {
     var st = rgfState;
     if (st == null) { send(ctx, "AP_" + tag + "_ERR:no_state"); return 0; }
+    // B6 ③:只读相位同时调 dump(只读) —— 出牌锁/立牌原始值由 LOCKRAW 与 SIGN 组给出。
+    // B6 ②:原用例注入的 `/data get entity @e[type=minecraft:wolf,limit=1] Owner` 折叠到
+    //   探针内(省一条 ≥2.65 s 的键盘注入)。`performPrefixedCommand` **不抑制输出**,
+    //   同一条原版命令的同一句回显(「狼拥有以下实体数据：[I; …]」)照旧落 latest.log,
+    //   用例断言文本一字未改(本文件上游 `data get … AngerTime` 已有同样的既成事实)。
+    dumpState(ctx, tag);
+    //   ⚠️ 只在 PET-EXCLUDE(tag=PE)下跑这条回读:它的回显文本(「狼拥有以下实体数据：[I; …]」)
+    //   是 PET-EXCLUDE 的断言落点,而断言窗口跨用例共享 —— 若四条 railgun 用例都跑这条回读,
+    //   按名字序先跑的 railgun-aoe / railgun-override 就会先把该断言**喂饱** ⇒ 等于把
+    //   PET-EXCLUDE 的这条断言弱化成"任何一轮都能过"。故按 tag 收口,不做无差别折叠。
+    if (tag === "PE") {
+        var ownerRead = runCmd(ctx, "data get entity @e[type=minecraft:wolf,limit=1] Owner");
+        send(ctx, "AP_" + tag + "_OWNER:" + ownerRead);
+    }
     var ChargeManagerClass = Java.loadClass("com.merlinkitsune.astral_dice.item.ChargeManager");
     function dealt(before, now) {
         if (before < 0 || now < 0) return -1;
@@ -2369,6 +2421,78 @@ function runCmd(ctx, cmd) {
     } catch (e) { return "ERR:" + exText(e); }
 }
 
+// ════════════════════════════════════════════════════════════════════════════
+//  B6(2026-09-15)新增:只读读数统一出口 + OP 前置只读断言
+// ════════════════════════════════════════════════════════════════════════════
+
+/**
+ * 只读读数统一出口:跑 `/astralparty dump`(产品侧**只读**子命令,`hasPermission(2)`)。
+ *
+ * 为什么由探针调它:探针原来对同一批原始附件"每个特性自己发明读数口号",断言落点因此与
+ * 原始值隔了一层派生写法。`dump` 把这些原始值按**固定机器格式** `APDUMP|<组>|<键>=<值>`
+ * 同时打到聊天栏与 `LOGGER.info`(必然进 `latest.log`),用例断言可以直接锚定**原始值**
+ * (`LOCKRAW` / `SIGN` / `EFFECTS` / `PENDING`)。
+ *
+ * 红线(必须遵守,勿删注释):
+ *  ① `dump` 只用于**读数**。不得用它替代被测动作 —— 真实出牌 / `registerPlay` / `tick` /
+ *     各相位里的真实生产入口一律照旧,本函数本身**不写任何状态**;
+ *  ② 断言只许锚定**原始值组**:`LOCKDERIVED` 组与 `SIGN|is_sign_active_locked` 行尾带
+ *     `|assert=forbidden`(它们是判定入口,断言它们等于拿被测功能验证自身);
+ *  ③ 命令缺失/失败**必须**显式失败:返回串不是 `rc=1` 时另打一条
+ *     `AP_<tag>_DUMP_ERR:`,用例侧对它做 absent 断言 ⇒ 落 FAIL/ERROR,**绝不静默降级**
+ *     (旧版无此能力时,"读数缺失"会被当成"未命中",把工具链故障伪装成产品缺陷)。
+ */
+function dumpState(ctx, tag) {
+    var rc = runCmd(ctx, "astralparty dump");
+    var s = "" + rc;
+    send(ctx, "AP_" + tag + "_DUMP:" + s);
+    // ⚠️ **不能**用「期望 rc=1」作成功判据:1.21.1 的 Rhino 下 `performPrefixedCommand`
+    // 返回 **undefined**(命令其实执行了),1.20.1 才返回 1/2(TESTING-SPEC §10-11 实测)。
+    // 可靠判据是**解析失败面**:未知命令 / 语法错误时 `Commands#performPrefixedCommand`
+    // 走 catch 分支返回 **rc=0**(两版本一致);探针自身异常则是 `ERR:` 前缀。
+    // 真正的"dump 生效"证据是 `APDUMP|` 原始值行本身(用例侧断言锚定它)。
+    if (s === "rc=0" || s.indexOf("ERR:") === 0) { send(ctx, "AP_" + tag + "_DUMP_ERR:" + s); }
+    return rc;
+}
+
+/**
+ * OP 前置的**只读**断言:`hasPermissions(2)` 的实测值(2026-09-15 B6 ④)。
+ *
+ * 判据与 `/astralparty` **完全相同** —— 玩家命令源上的 `CommandSourceStack#hasPermission(2)`
+ * (1.21.1 `CommandSourceStack.java:390` / 1.20.1 `:174`),也就是命令注册时
+ * `requires(AstralPartyCommand::hasPermission)` 用的同一个入口。数值级另经
+ * `MinecraftServer#getProfilePermissions`(1.21.1 `:1759` / 1.20.1 `:1516`)取,
+ * 只为把"为什么够/不够"写清楚:单人 quickplay 集成服走 `isSingleplayerOwner` 分支 ⇒ **4**。
+ *
+ * 红线:本函数**只读**,不改任何状态;`mt_launch` 进入世界后据此判前置,**不满足记 BLOCKED**
+ * (前置不足不是产品缺陷)。**禁止**为让测试通过而降低 `requires` 门槛 / 加测试专用开关 /
+ * 绕开 OP 走客户端旁路 —— 测试必须走真实 OP 路径。
+ */
+function opprobe(ctx) {
+    var p = ctx.source.getPlayerOrException();
+    var has2 = -1, level = -1, src = "none";
+    try {
+        var cs = p.createCommandSourceStack();
+        has2 = cs.hasPermission(2) ? 1 : 0;
+        src = "cmdsource";
+    } catch (e1) { /* 落到下面的数值级 */ }
+    try {
+        level = p.level.getServer().getProfilePermissions(p.getGameProfile());
+        if (src === "none") { src = "profile"; } else { src = src + "+profile"; }
+    } catch (e2) {
+        try {
+            level = p.level.getServer().getPlayerList().getProfilePermissions(p.getGameProfile());
+            if (src === "none") { src = "list"; } else { src = src + "+list"; }
+        } catch (e3) { /* level 保持 -1 */ }
+    }
+    // 同一读数里再报一次 `/astralparty dump` 的返回值:mt_launch 用它做第二道闸门 ——
+    // 本批测试资产的只读断言锚定 APDUMP| 原始值行,命令缺失/失败必须显式失败(不静默降级)。
+    var dumpRc = runCmd(ctx, "astralparty dump");
+    send(ctx, "AP_OP_PERM:has2=" + has2 + ":level=" + level + ":src=" + src + ":dump=" + dumpRc);
+    send(ctx, "AP_OP_DONE");
+    return 1;
+}
+
 /** 给唯一一只 <typeId> 靶子挂护甲/韧性(类型选择器,不依赖距离排序)。
  *  设置完再跑一次 `data get entity ... Attributes`:它的**聊天输出**会进日志,
  *  作为「护甲真的挂上了」的正向证据(命令静默失败只靠 rc 判定不够直观)。
@@ -2497,6 +2621,9 @@ function doRailTrueDmg(ctx, tag) {
 function doRailTrueDmgRead(ctx, tag) {
     var st = rtgState;
     if (st == null) { send(ctx, "AP_" + tag + "_ERR:no_state"); return 0; }
+    // B6 ③:只读相位同时调 dump(只读)。靶子血量的差值读数不在 dump 的能力边界内
+    // (dump 只输出本模组自身状态,不输出实体血量),故下面的 HP 差值逻辑保留。
+    dumpState(ctx, tag);
     var ChargeManagerClass = Java.loadClass("com.merlinkitsune.astral_dice.item.ChargeManager");
     var thp = rghp(st.target), php = rghp(st.probe);
     function delta(a, b) { return (a < 0 || b < 0) ? -1 : Math.round((a - b) * 100) / 100; }
@@ -2576,6 +2703,13 @@ function doFenSplash(ctx, tag) {
         + ":ahp=" + rghp(armd) + ":fhp=" + rghp(far));
     fenState = { tag: tag, target: target, near: near, armd: armd, far: far, player: p,
                  thp: rghp(target), nhp: rghp(near), ahp: rghp(armd), fhp: rghp(far) };
+    // B6 ②:原用例注入的 `/effect clear @s` 折叠到探针内(省一条 ≥2.65 s 的键盘注入)。
+    // 刻意放在**本相位末尾**而不是命中相位开头:`performPrefixedCommand` 在 1.21.1 上被
+    // **推迟到本 tick 末**执行(见本文件多处实测注释),若放在命中相位开头,清除会晚于
+    // `meleeHit` ⇒ 赐福不会重新触发(实测现象:recharge 停在 5、in_range=0)。
+    // 放在这里则被用例原有的 1500 ms 等待完全吸收。
+    var preClear = runCmd(ctx, "effect clear @s");
+    send(ctx, "AP_" + tag + "_CLEAR:" + preClear);
     send(ctx, "AP_" + tag + "_SETUP_DONE");
     send(ctx, "AP_" + tag + "_DONE");
     return 1;
@@ -2601,6 +2735,9 @@ function doFenSplashHit(ctx, tag) {
 function doFenSplashRead(ctx, tag) {
     var st = fenState;
     if (st == null) { send(ctx, "AP_" + tag + "_ERR:no_state"); return 0; }
+    // B6 ③:只读相位同时调 dump(只读)。四只靶子的血量差值不在 dump 的能力边界内
+    // (dump 只输出本模组自身状态,不输出实体血量),故下面的溅射差值逻辑保留。
+    dumpState(ctx, tag);
     function delta(a, b) { return (a < 0 || b < 0) ? -1 : Math.round((a - b) * 100) / 100; }
     var tD = delta(st.thp, rghp(st.target));   // 主靶:近战 + 溅射
     var nD = delta(st.nhp, rghp(st.near));     // 4.5 格 无甲:只吃溅射
@@ -2926,6 +3063,10 @@ function doAirbagLethal(ctx, tag) {
 
 function doAirbagRead(ctx, tag) {
     var p = ctx.source.getPlayerOrException();
+    // B6 ③:只读相位同时调 dump(只读) —— 出牌锁原始值由 LOCKRAW 组给出。
+    // 特性特有的读数(health / equipped / chip / charge / airbag cd)不在 dump 的能力边界内
+    // (dump 只输出本模组自身状态,且刻意不输出血量、背包与其它模组的冷却),故保留。
+    dumpState(ctx, tag);
     send(ctx, "AP_" + tag + "_STATE:" + airbagState(p));
     send(ctx, "AP_" + tag + "_DONE");
     return 1;
@@ -3329,6 +3470,26 @@ ServerEvents.commandRegistry(event => {
     var Commands = event.commands;
     event.register(
         Commands.literal("astralprobe")
+// ── B6(2026-09-15):OP 只读前置 + 只读读数统一出口(dump) ──
+
+.then(Commands.literal("opprobe")
+
+    .executes(ctx => guard(ctx, "OP", function () {
+
+        return opprobe(ctx);
+
+    })))
+
+.then(Commands.literal("dumpstate")
+
+    .then(Commands.argument("tag", StringArg.word())
+
+        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+
+            return dumpState(ctx, StringArg.getString(ctx, "tag"));
+
+        }))))
+
             .then(Commands.literal("spelltdsetup")
                 .then(Commands.argument("tag", StringArg.word())
                     .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {

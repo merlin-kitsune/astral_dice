@@ -121,6 +121,19 @@ $script:AssertTypes = @('log', 'absent', 'crash', 'kubejs', 'mixin', 'vision')
 # 失败取证标记：存在时，流程退出清理不杀游戏客户端（见 run_case 与 mt_cleanup.ps1）
 $script:KeepAlive = Join-Path $script:CasesDir '.mt_keep_alive'
 
+# ── ⑥-1 单条用例硬超时（2026-09-15 B6 ⑥）──────────────────────────────────
+# 为什么必须有：本轮有三位执行者卡死在「启动客户端 + 跑用例」—— 根因是**单条用例没有超时**，
+# 客户端没就绪时 `Invoke-MtCaseChild` 会一直等（旧实现还是 `-Wait` 等整棵进程树）。
+# 超时后该条记**独立状态 `TIMEOUT`**（≠ FAIL：断言不满足；≠ ERROR：跑不起来），
+# 然后**继续跑下一条**，不整体挂住。
+# 默认 300 s；覆写：环境变量 `MT_CASE_TIMEOUT_SEC`、或 CLI `--case-timeout <秒>`。
+$script:CaseTimeoutSec = 300
+if ($env:MT_CASE_TIMEOUT_SEC -and $env:MT_CASE_TIMEOUT_SEC -match '^\d+$') { $script:CaseTimeoutSec = [int]$env:MT_CASE_TIMEOUT_SEC }
+$script:CaseTimeoutOverride = -1   # CLI 覆盖（-1 = 未给）
+# 当前用例的硬 deadline（unix 秒；0 = 未启用）。由 Invoke-MtCaseRun 设置，供
+# Invoke-MtCaseChild 折算单步超时预算。
+$script:CaseDeadline = [long]0
+
 # ── 通用小工具 ════════════════════════════════════════════════════════════
 
 function New-MtPair {
@@ -410,16 +423,44 @@ function Invoke-MtCaseChild {
         走 Invoke-MtProcessFull（.NET ProcessStartInfo.ArgumentList）：参数由 .NET 负责
         转义，中文/空格/引号都不需要自己加引号（**不要**改用 Start-Process，它不给数组
         元素加引号，含空白的参数会被拆开）。
-        timeout 固定 600s，与 python 侧 `run_py` 的默认值一致（超时语义差异见文件头第 2 条）。
+        `-TimeoutSec` 由调用方给（B6 ⑥）：超时后 Invoke-MtProcessFull 会**强杀整棵子进程树**，
+        因此超时路径**不会**留下挂在等待里的子进程/句柄。
     #>
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][string]$Script,
-        [string[]]$ScriptArgs = @()
+        [string[]]$ScriptArgs = @(),
+        [int]$TimeoutSec = -1
     )
 
+    # -1 = 用「本条用例的剩余预算」（B6 ⑥-1）；未设 deadline（如 validate 路径）时退回 600 s
+    if ($TimeoutSec -le 0) {
+        if ($script:CaseDeadline -gt 0) { $TimeoutSec = Get-MtCaseStepBudget -DeadlineUnix $script:CaseDeadline }
+        else { $TimeoutSec = 600 }
+    }
+
     $argv = @('-NoProfile', '-File', (Join-Path $script:TestDir $Script)) + $ScriptArgs
-    return (Invoke-MtProcessFull -FilePath $script:PsExe -ArgumentList $argv -TimeoutSec 600)
+    return (Invoke-MtProcessFull -FilePath $script:PsExe -ArgumentList $argv -TimeoutSec $TimeoutSec)
+}
+
+function Get-MtCaseStepBudget {
+    <#
+    .SYNOPSIS
+        B6 ⑥-1：把「本条用例的剩余预算」折算成单个子进程的超时秒数（下限 5 s，上限 600 s）。
+
+    .NOTES
+        单条用例的硬超时由**两层**保证：① 每个子进程按剩余预算设超时（`Invoke-MtProcessFull`
+        超时会强杀该子进程树）；② 步骤循环在每步之前核对总 deadline。两层缺一不可 ——
+        只做 ② 的话，一个卡住的子进程仍会把 deadline 拖过去。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][double]$DeadlineUnix)
+
+    $left = $DeadlineUnix - ([DateTimeOffset]::UtcNow.ToUnixTimeSeconds())
+    $sec = [int][Math]::Floor($left)
+    if ($sec -lt 5) { return 5 }
+    if ($sec -gt 600) { return 600 }
+    return $sec
 }
 
 function Get-MtVerdict {
@@ -570,7 +611,9 @@ function Invoke-MtCaseOp {
         }
         $r = Invoke-MtCaseChild -Script 'mt_inject.ps1' -ScriptArgs $argv
         $text = if ($r.StdOut) { [string]$r.StdOut } else { [string]$r.StdErr }
-        return (New-MtPair $(if ($r.ExitCode -eq 0) { 'PASS' } else { 'ERROR' }) (Get-MtTail -Text $text -FromTextMode))
+        # ⑥-1：子进程被超时强杀 ⇒ TIMEOUT（不是 ERROR：跑不起来；也不是 FAIL：断言不满足）
+        $oc = if ($r.TimedOut) { 'TIMEOUT' } elseif ($r.ExitCode -eq 0) { 'PASS' } else { 'ERROR' }
+        return (New-MtPair $oc (Get-MtTail -Text $text -FromTextMode))
     }
 
     if ($op -eq 'inject_command') {
@@ -582,7 +625,8 @@ function Invoke-MtCaseOp {
         $r = Invoke-MtCaseChild -Script 'mt_inject.ps1' -ScriptArgs $argv
         Start-Sleep -Milliseconds 600
         $text = if ($r.StdOut) { [string]$r.StdOut } else { [string]$r.StdErr }
-        return (New-MtPair $(if ($r.ExitCode -eq 0) { 'PASS' } else { 'ERROR' }) (Get-MtTail -Text $text -FromTextMode))
+        $oc = if ($r.TimedOut) { 'TIMEOUT' } elseif ($r.ExitCode -eq 0) { 'PASS' } else { 'ERROR' }
+        return (New-MtPair $oc (Get-MtTail -Text $text -FromTextMode))
     }
 
     if ($op -eq 'kubejs_reload') {
@@ -615,7 +659,8 @@ function Invoke-MtCaseOp {
         }
         $r = Invoke-MtCaseChild -Script 'mt_capture.ps1' -ScriptArgs $shotArgs
         $text = if ($r.StdOut) { [string]$r.StdOut } else { [string]$r.StdErr }
-        return (New-MtPair $(if ($r.ExitCode -eq 0) { 'PASS' } else { 'ERROR' }) (Get-MtTail -Text $text -FromTextMode))
+        $oc = if ($r.TimedOut) { 'TIMEOUT' } elseif ($r.ExitCode -eq 0) { 'PASS' } else { 'ERROR' }
+        return (New-MtPair $oc (Get-MtTail -Text $text -FromTextMode))
     }
 
     if ($op -eq 'assert') {
@@ -844,43 +889,66 @@ function Invoke-MtCaseRun {
 
     $marks = @{
         'PASS' = 'PASS'; 'FAIL' = 'FAIL'; 'BLOCKED' = 'BLOCK'; 'ERROR' = 'ERROR'
-        'SKIP' = 'SKIP'; 'NOTE' = 'note'; 'DELEGATED' = '→VIS'
+        'SKIP' = 'SKIP'; 'NOTE' = 'note'; 'DELEGATED' = '→VIS'; 'TIMEOUT' = 'TIMEOUT'
+    }
+
+    # ── B6 ⑥-1：本条用例的硬超时 ─────────────────────────────────────────────
+    $timeoutSec = if ($script:CaseTimeoutOverride -ge 0) { $script:CaseTimeoutOverride } else { $script:CaseTimeoutSec }
+    $script:CaseDeadline = if ($timeoutSec -gt 0) { [DateTimeOffset]::UtcNow.ToUnixTimeSeconds() + $timeoutSec } else { [long]0 }
+    if ($timeoutSec -gt 0) {
+        Write-MtInfo ("CASE_TIMEOUT: {0} 硬超时 {1}s（MT_CASE_TIMEOUT_SEC / --case-timeout 可覆写）" -f $caseId, $timeoutSec)
     }
 
     $timeline = @()
     $worst = 'PASS'
-    for ($i = 1; $i -le $steps.Count; $i++) {
-        $step = $steps[$i - 1]
-        $t0 = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() / 1000.0
-        $pair = Invoke-MtCaseOp -Paths $p -Step $step -RunId $RunId
-        $outcome = [string]$pair[0]
-        $detail = [string]$pair[1]
-        $secs = [Math]::Round((([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() / 1000.0) - $t0), 1)
-        $timeline += [ordered]@{
-            i       = $i
-            op      = [string](Get-MtMapValue -Map $step -Key 'op')
-            outcome = $outcome
-            detail  = $detail
-            secs    = $secs
-        }
+    $timedOut = $false
+    try {
+        for ($i = 1; $i -le $steps.Count; $i++) {
+            # ⑥-1：每步之前核对总 deadline —— 超时即**跳过剩余步骤**并把本条记 TIMEOUT
+            # （不抛异常、不挂住、不留子进程：子进程超时预算已由 Get-MtCaseStepBudget 收口）
+            if (($script:CaseDeadline -gt 0) -and ([DateTimeOffset]::UtcNow.ToUnixTimeSeconds() -ge $script:CaseDeadline)) {
+                $timedOut = $true
+                Write-MtErrLine ("MT_CASE_TIMEOUT: {0} — 第 {1}/{2} 步前已超过 {3}s 硬超时，跳过剩余步骤" -f `
+                        $caseId, $i, $steps.Count, $timeoutSec)
+                break
+            }
+            $step = $steps[$i - 1]
+            $t0 = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() / 1000.0
+            $pair = Invoke-MtCaseOp -Paths $p -Step $step -RunId $RunId
+            $outcome = [string]$pair[0]
+            $detail = [string]$pair[1]
+            $secs = [Math]::Round((([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() / 1000.0) - $t0), 1)
+            $timeline += [ordered]@{
+                i       = $i
+                op      = [string](Get-MtMapValue -Map $step -Key 'op')
+                outcome = $outcome
+                detail  = $detail
+                secs    = $secs
+            }
 
-        $mark = if ($marks.ContainsKey($outcome)) { $marks[$outcome] } else { $outcome }
-        $label = ''
-        foreach ($k in @('key', 'command', 'tag')) {
-            $v = Get-MtMapValue -Map $step -Key $k
-            if (Test-MtTruthyValue $v) { $label = ConvertTo-MtPyText $v; break }
-        }
-        Write-MtLine ("  [{0,5}] {1,2}. {2} {3} — {4}" -f `
-                $mark, $i, [string](Get-MtMapValue -Map $step -Key 'op'), $label, $detail)
+            $mark = if ($marks.ContainsKey($outcome)) { $marks[$outcome] } else { $outcome }
+            $label = ''
+            foreach ($k in @('key', 'command', 'tag')) {
+                $v = Get-MtMapValue -Map $step -Key $k
+                if (Test-MtTruthyValue $v) { $label = ConvertTo-MtPyText $v; break }
+            }
+            Write-MtLine ("  [{0,5}] {1,2}. {2} {3} — {4}" -f `
+                    $mark, $i, [string](Get-MtMapValue -Map $step -Key 'op'), $label, $detail)
 
-        if ($outcome -eq 'ERROR') {
-            $worst = 'ERROR'
-        } elseif ($outcome -eq 'BLOCKED' -and @('PASS', 'SKIP') -contains $worst) {
-            $worst = 'BLOCKED'
-        } elseif ($outcome -eq 'FAIL' -and $worst -ne 'ERROR') {
-            $worst = 'FAIL'
+            if ($outcome -eq 'ERROR') {
+                $worst = 'ERROR'
+            } elseif ($outcome -eq 'TIMEOUT') {
+                if ($worst -ne 'ERROR') { $worst = 'TIMEOUT' }
+            } elseif ($outcome -eq 'BLOCKED' -and @('PASS', 'SKIP') -contains $worst) {
+                $worst = 'BLOCKED'
+            } elseif ($outcome -eq 'FAIL' -and $worst -ne 'ERROR' -and $worst -ne 'TIMEOUT') {
+                $worst = 'FAIL'
+            }
         }
+    } finally {
+        $script:CaseDeadline = [long]0
     }
+    if ($timedOut -and $worst -ne 'ERROR') { $worst = 'TIMEOUT' }
 
     # ── 收尾状态校验：崩溃报告 / 客户端中途死亡 → 归因到本用例（而不是留给后续用例猜谜）────
     if ($needsClient -and $null -ne $clientStart) {
@@ -909,6 +977,9 @@ function Invoke-MtCaseRun {
     # on_fail=keep_game_running：失败时保留游戏现场供取证。
     # 落一个标记文件，供流程退出清理判断 —— 否则「自动杀进程」会在失败瞬间
     # 把现场销毁，让取证变成不可能。
+    # ⑥-1 例外：**TIMEOUT 不置位**这个标记 —— 超时后要**继续跑下一条用例**（置位会让
+    # mt_cleanup 拒绝收停、整套流程再无人清理），且超时的现场价值由 mt_watchdog 的尾部
+    # 诊断替代（见 TESTING-SPEC §12）。
     if (@('FAIL', 'ERROR') -contains $worst -and (Get-MtMapValue -Map $case -Key 'on_fail') -eq 'keep_game_running') {
         $dir = [System.IO.Path]::GetDirectoryName($script:KeepAlive)
         if (-not (Test-Path -LiteralPath $dir)) { [void](New-Item -ItemType Directory -Force -Path $dir) }
@@ -996,7 +1067,9 @@ function Invoke-MtCaseRunCommand {
                 -ScriptArgs @('mark', '--version', $Version, '--case', $caseName, '--result', $outcome))
         if ($outcome -eq 'ERROR') {
             $worst = 'ERROR'
-        } elseif ($outcome -eq 'FAIL' -and $worst -ne 'ERROR') {
+        } elseif ($outcome -eq 'TIMEOUT') {
+            if ($worst -ne 'ERROR') { $worst = 'TIMEOUT' }
+        } elseif ($outcome -eq 'FAIL' -and $worst -ne 'ERROR' -and $worst -ne 'TIMEOUT') {
             $worst = 'FAIL'
         } elseif ($outcome -eq 'BLOCKED' -and @('PASS', 'SKIP') -contains $worst) {
             $worst = 'BLOCKED'
@@ -1005,9 +1078,16 @@ function Invoke-MtCaseRunCommand {
 
     Write-MtLine ''
     Write-MtLine ("MT_CASES_SUMMARY: {0}" -f ($summary -join ', '))
+    # ⑥-1：TIMEOUT 用**独立退出码**上报（12），与 FAIL(1)/ERROR(2)/BLOCKED(11) 区分
+    $timeoutCount = @($summary | Where-Object { $_ -like '*=TIMEOUT' }).Count
+    if ($timeoutCount -gt 0) {
+        Write-MtErrLine ("MT_CASES_TIMEOUT: {0} 条用例硬超时（{1}s/条上限，MT_CASE_TIMEOUT_SEC 可覆写）" -f `
+                $timeoutCount, $(if ($script:CaseTimeoutOverride -ge 0) { $script:CaseTimeoutOverride } else { $script:CaseTimeoutSec }))
+    }
     switch ($worst) {
         'FAIL' { return $MT_EXIT_FAIL }
         'BLOCKED' { return $MT_EXIT_BLOCKED }
+        'TIMEOUT' { return $MT_EXIT_TIMEOUT }
         'ERROR' { return $MT_EXIT_ERROR }
         default { return 0 }
     }
@@ -1040,6 +1120,11 @@ if ($MyInvocation.InvocationName -ne '.') {
         } elseif ($key -eq 'dir') {
             if ($i + 1 -ge $args.Count) { Write-MtErrorLine '缺少 --dir 的值'; exit $MT_EXIT_ERROR }
             $Dir = [string]$args[$i + 1]; $i += 2
+        } elseif ($key -eq 'case-timeout') {
+            # ⑥-1：单条用例硬超时（秒）；0 = 关闭。优先级：CLI > 环境变量 MT_CASE_TIMEOUT_SEC > 300
+            if ($i + 1 -ge $args.Count) { Write-MtErrorLine '缺少 --case-timeout 的值'; exit $MT_EXIT_ERROR }
+            if ([string]$args[$i + 1] -notmatch '^\d+$') { Write-MtErrorLine '--case-timeout 需要非负整数（秒）'; exit $MT_EXIT_ERROR }
+            $script:CaseTimeoutOverride = [int]$args[$i + 1]; $i += 2
         } else {
             Write-MtErrorLine "未知参数 $tok"; exit $MT_EXIT_ERROR
         }

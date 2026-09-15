@@ -114,13 +114,23 @@
     {
       "type": "absent",
       "source": "latest",
-      "pattern": "AP_A_ERR|AP_A_EX|AP_B_ERR|AP_B_EX|AP_C_ERR|AP_C_EX|AP_Z_ERR|AP_Z_EX|AP_TICK_EX|path=ERR|AP_B_LETHAL:.*alive=1"
+      "pattern": "AP_A_ERR|AP_A_EX|AP_B_ERR|AP_B_EX|AP_C_ERR|AP_C_EX|AP_Z_ERR|AP_Z_EX|AP_TICK_EX|path=ERR|AP_B_LETHAL:.*alive=1|AP_A_DUMP_ERR"
     },
     {
       "type": "kubejs"
     },
     {
       "type": "crash"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_A_DUMP:rc="
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "APDUMP\\|LOCKRAW\\|"
     }
   ],
   "on_fail": "keep_game_running"

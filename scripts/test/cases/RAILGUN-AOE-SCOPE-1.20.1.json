@@ -25,22 +25,6 @@
     },
     {
       "op": "inject_command",
-      "command": "/gamerule doFireTick false"
-    },
-    {
-      "op": "wait",
-      "ms": 300
-    },
-    {
-      "op": "inject_command",
-      "command": "/fill ~-8 ~-1 ~-6 ~8 ~-1 ~14 minecraft:stone"
-    },
-    {
-      "op": "wait",
-      "ms": 600
-    },
-    {
-      "op": "inject_command",
       "command": "/astralprobe railgunfriendly RG"
     },
     {
@@ -56,10 +40,6 @@
       "ms": 400
     },
     {
-      "op": "inject_command",
-      "command": "/astralprobe railgunfriendlyread RG"
-    },
-    {
       "op": "wait",
       "ms": 900
     },
@@ -70,10 +50,6 @@
     {
       "op": "wait",
       "ms": 500
-    },
-        {
-      "op": "inject_command",
-      "command": "/astralprobe railgunfriendlyend RG"
     },
     {
       "op": "wait",
@@ -144,13 +120,33 @@
     {
       "type": "absent",
       "source": "latest",
-      "pattern": "AP_RG_ERR|AP_RG_EX:|AP_RG_VERDICT:.*:enemy=0:|AP_RG_VERDICT:.*:friendly=[1-9]|AP_RG_VERDICT:.*:turtle=[1-9]|AP_RG_VERDICT:.*:villager=[1-9]|AP_RG_VERDICT:.*:valive=0|AP_RG_VERDICT:.*:talive=0"
+      "pattern": "AP_RG_ERR|AP_RG_EX:|AP_RG_VERDICT:.*:enemy=0:|AP_RG_VERDICT:.*:friendly=[1-9]|AP_RG_VERDICT:.*:turtle=[1-9]|AP_RG_VERDICT:.*:villager=[1-9]|AP_RG_VERDICT:.*:valive=0|AP_RG_VERDICT:.*:talive=0|AP_RG_DUMP_ERR"
     },
     {
       "type": "kubejs"
     },
     {
       "type": "crash"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_RG_PREP:rule=rc=(undefined|[0-9]+):fill=rc=(undefined|[0-9]+)"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_RG_DUMP:rc="
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "APDUMP\\|LOCKRAW\\|"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "APDUMP\\|SIGN\\|sign_active_cooldown_end="
     }
   ],
   "on_fail": "keep_game_running"

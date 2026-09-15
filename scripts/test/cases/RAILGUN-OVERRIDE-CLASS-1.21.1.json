@@ -17,24 +17,9 @@
     },
     {
       "op": "note",
-      "text": "取证环境防污染（2026-09-15 实测必需）：① `/gamerule doFireTick false` + 把脚下 2 层草方块可点燃层替换为石头（`/fill`）—— 否则落雷在玩家周围点燃地面，**玩家自己的掉血读数会混入火焰伤害**（实测 1.20.1 self=4.83~18.83 全部来自火焰、与雷击无关；石头地面 + 关火焰蔓延后 self=0）；② 下面每条读命令都注入**两次**（`railgunfriendlyread` 是幂等只读，不会改状态）—— 冷启动后前若干次注入偶发丢失，只发一次会得到「没有读数」的空跑。"
+      "text": "取证环境防污染（2026-09-15 实测必需）：① `gamerule doFireTick false` + 把脚下 y-1 那一层草方块替换为石头（`fill`）—— 否则落雷在玩家周围点燃地面，**玩家自己的掉血读数会混入火焰伤害**（实测 1.20.1 self=4.83~18.83 全部来自火焰、与雷击无关；石头地面 + 关火焰蔓延后 self=0）；**2026-09-15 B6 ②** 起这两条命令**折叠进探针**（`/astralprobe railgunfriendly` 内用 `runCmd` 直接跑：`performPrefixedCommand` 同进程、无键盘注入，省两条 ≥2.65 s/条的注入），证据行 `AP_<tag>_PREP:rule=…:fill=…`。② 读/清命令只注入**一次**（**B6 ①** 删掉了冗余的第二次重试）：原写法是「注入两次兜冷启动丢注入」，而读/清相位远在冷启动 + 多次成功注入之后，第一次必然送达；复跑稳定性由本轮全量回归背书（断言数不变）。③ 只读相位同时调 **`/astralparty dump`**（只读）：原始值行 `APDUMP|LOCKRAW|` / `APDUMP|SIGN|` 落 latest.log，断言直接锚定它们；调用成功由 tag 唯一的 `AP_<tag>_DUMP:rc=1` 证明，失败另落 `AP_<tag>_DUMP_ERR`（用例对其做 absent 断言 ⇒ **绝不静默降级**）。"
     },
     {
-      "op": "inject_command",
-      "command": "/gamerule doFireTick false"
-    },
-    {
-      "op": "wait",
-      "ms": 300
-    },
-    {
-      "op": "inject_command",
-      "command": "/fill ~-8 ~-1 ~-6 ~8 ~-1 ~14 minecraft:stone"
-    },
-    {
-      "op": "wait",
-      "ms": 600
-    },    {
       "op": "inject_command",
       "command": "/astralprobe railgunfriendly OC"
     },
@@ -51,10 +36,6 @@
       "ms": 400
     },
     {
-      "op": "inject_command",
-      "command": "/astralprobe railgunfriendlyread OC"
-    },
-    {
       "op": "wait",
       "ms": 900
     },
@@ -65,10 +46,6 @@
     {
       "op": "wait",
       "ms": 500
-    },
-        {
-      "op": "inject_command",
-      "command": "/astralprobe railgunfriendlyend OC"
     },
     {
       "op": "wait",
@@ -99,18 +76,38 @@
     {
       "type": "absent",
       "source": "latest",
-      "pattern": "AP_OC_ERR|AP_OC_EX:"
+      "pattern": "AP_OC_ERR|AP_OC_EX:|AP_OC_DUMP_ERR"
     },
     {
       "type": "absent",
       "source": "latest",
-      "pattern": "AP_OC_VERDICT:.*:turtle=[1-9]|AP_OC_VERDICT:.*:villager=[1-9]|AP_OC_VERDICT:.*:valive=0|AP_OC_VERDICT:.*:talive=0"
+      "pattern": "AP_OC_VERDICT:.*:turtle=[1-9]|AP_OC_VERDICT:.*:villager=[1-9]|AP_OC_VERDICT:.*:valive=0|AP_OC_VERDICT:.*:talive=0|AP_OC_DUMP_ERR"
     },
     {
       "type": "kubejs"
     },
     {
       "type": "crash"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_OC_PREP:rule=rc=(undefined|[0-9]+):fill=rc=(undefined|[0-9]+)"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_OC_DUMP:rc="
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "APDUMP\\|LOCKRAW\\|"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "APDUMP\\|SIGN\\|sign_active_cooldown_end="
     }
   ],
   "evidence": [],

@@ -40,18 +40,24 @@
 ## 3. 唯一入口与阶段
 
 ```powershell
-pwsh -NoProfile -File scripts/test/mt.ps1                      # 全流程（P→B→E→L→C→R，双版本）
+pwsh -NoProfile -File scripts/test/mt.ps1                      # 全流程（P→B→E→L→C→R，双版本 + 跨版本门控）
+pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1      # 全流程**只跑指定版本**（无跨版本门控）
 pwsh -NoProfile -File scripts/test/mt.ps1 --phase <p> --version <v>
 ```
+
+> **`--version` 语义（2026-09-15 B6 ⑤ 修正）**：全流程分支**同样尊重** `--version` ——
+> 指定单版本时只跑该版本、**不做跨版本门控**（门控的前提是"两版本顺序执行"），`mt_report summary`
+> 也只汇总实际执行过的版本。旧实现无条件跑两版本，`mt.ps1 --version 1.20.1` 会**先跑 1.21.1**，
+> 1.21.1 一旦不通过就把 1.20.1 记成 `GATED` 而根本没跑 —— 与 `--version` 相反。
 
 | 阶段 | 实现 | 职责 | 终态标记 |
 |---|---|---|---|
 | **P** 前置 | `mt_preflight.ps1` | 分支 / 输入法 / 遗留进程 / MCP 二进制 / 兼容栈 / 可写性；启动前兜底清理 | `MT_PREFLIGHT: OK/FAIL`（失败退出码 10） |
 | **B** 构建 | `mt_build.ps1` | `gradlew :<子项目>:build`，60s 看门狗 + `BUILD SUCCESSFUL` 识别 + 产物 jar 校验 + 重试 | `MT_BUILD: OK/FAIL` |
 | **E** 环境 | `mt_env.ps1` | `mods`（装兼容模组）/ `world`（重建测试世界，含原生 NBT 改写）/ `kill` | `MT_WORLD: OK/BLOCKED`（退出码 11） |
-| **L** 启动 | `mt_launch.ps1` | 启动 `runClient`、轮询就绪日志、兼容栈信号 | `MT_LAUNCH: OK/FAIL` |
+| **L** 启动 | `mt_launch.ps1` | 启动 `runClient`、轮询就绪日志、兼容栈信号；**进入世界后先跑 B6 ④ 的 OP / `dump` 前置闸门**（只读；前置不足 ⇒ `BLOCKED`，探针/dump 不可用 ⇒ `ERROR`） | `MT_LAUNCH: OK/FAIL`、`MT_preflight-op: BLOCKED/ERROR` |
 | **C** 条目 | `mt_case.ps1` | 顺序执行 `cases/*.json`：注入命令/按键 → 等待 → 断言；每条结果**自动**写入报告状态 | 每条 `PASS/FAIL` |
-| **R** 报告 | `mt_report.ps1` | 收集证据（日志 / 崩溃 / 截图）→ 单版本 `report.md` → 双版本 `SUMMARY.md` | `MT_REPORT: OK/FAIL`（未全绿退出码 1） |
+| **R** 报告 | `mt_report.ps1` | 收集证据（日志 / 崩溃 / 截图）→ 单版本 `report.md` → 双版本/单版本 `SUMMARY.md` | `MT_REPORT: OK/FAIL`（未全绿退出码 1） |
 
 **辅助脚本**：`mt_assert.ps1`（断言引擎）、`mt_inject.ps1`（键鼠注入）、`mt_ime.ps1`（输入法）、`mt_capture.ps1`（截图世代）、`mt_cleanup.ps1`（退出清理唯一实现）、`mt_stop.ps1`（薄封装）、`mt_gen_case.ps1`（条目生成器）。
 **共享模块**：`lib/Mt.{Conf,Paths,Phase,Proc,Win32}.psm1`。
@@ -109,6 +115,22 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --phase <p> --version <v>
 > `scripts/test/resources/kubejs/<版本>/server_scripts/`（入库副本）与 `run/<版本>/kubejs/server_scripts/`（运行副本）。
 
 **两版本差异**（除下列行外逐字相同）：`opt.resolve().get()`（1.21.1）↔ `opt.get()`（1.20.1）；`ResourceLocation.parse(...)` ↔ `new ResourceLocation(...)`；`ModEffects.X` ↔ `ModEffects.X.get()`。
+
+### 6.1 只读读数统一出口（2026-09-15 B6 ③）
+
+| 命令 | 语义 |
+|---|---|
+| `/astralprobe dumpstate <tag>` | **只读**：转调产品侧 `/astralparty dump`（OP 级 2）。dump 把本模组自身状态按 `APDUMP\|<组>\|<键>=<值>` 同时写聊天栏与 `LOGGER.info`（必然进 `latest.log`） |
+| `/astralprobe opprobe` | **只读**：打印 `AP_OP_PERM:has2=<0\|1>:level=<n>:src=<…>:dump=<…>`；`has2` 的判据与 `/astralparty` 完全相同（玩家命令源上的 `CommandSourceStack#hasPermission(2)`），由 `mt_launch` 作为 cases 阶段的前置闸门 |
+
+6 个纯只读命令（`komachiread` / `nancystate` / `airbagread` / `railgunfriendlyread` / `railtruedmgread` / `fensplashread`）**全部**接上 `dumpState`。
+
+**红线（必须遵守）**：
+
+1. `dump` **只用于读数**，不得替代被测动作（真实出牌 / `registerPlay` / `tick` / 各相位真实生产入口照旧）；
+2. 断言**只能锚定原始值组** `LOCKRAW` / `SIGN` / `EFFECTS` / `PENDING` —— `LOCKDERIVED` 与 `SIGN|is_sign_active_locked` 行尾带 `|assert=forbidden`，它们是判定入口，断言它们等于拿被测功能验证自身；
+3. 命令缺失/失败**必须**显式失败：`dumpState` 在返回值不是 `rc=1`（1.20.1）或取不到读数时另打 `AP_<tag>_DUMP_ERR:`，用例对该标记做 `absent` 断言 ⇒ 落 FAIL；`mt_launch` 另有第二道闸门（`latest.log` 里找不到 `APDUMP|LOCKRAW|` ⇒ `ERROR`）。**绝不静默降级**；
+4. **不得**用通用 `APDUMP|` 行顶替 tag 唯一的既有断言：断言窗口是「自 launch 快照起的增量」、**跨用例共享**（见 §10-14），不带 tag 的标记可被前序用例满足 ⇒ 那等于弱化断言。`dumpState` 一律**追加**而非替换。
 
 > ⚠️ `/kubejs reload server-scripts` **不会重绑已注册命令的 lambda**。改动探针后必须**冷启动**（stop → launch）才会生效；`reload` 只用于确认脚本无语法错误。
 
@@ -320,13 +342,60 @@ pwsh -NoProfile -File scripts/verify/verify_bountiful_instance_exclusions.ps1
 14. **`.mt_snapshot.json` 的残留偏移会静默漏行**：`log`/`absent` 断言默认只扫「自快照以来的增量」，偏移陈旧（如 1.20.1 残留 `@96917B`）会把早期行判为「不存在」。每条用例前先跑 `pwsh -NoProfile -File scripts/test/mt_assert.ps1 snapshot --version <版本>`。
 15. **1.20.1 探针里 `ModEffects.X` 必须 `.get()`**：1.20.1 是 `RegistryObject`、1.21.1 是 `Holder`；漏 `.get()` 会在运行期抛 `Could not create ID from 'RegistryObject…'` 并**中断该条探针命令**（实测 1.20.1 `fensplash` 第 2265 行），表现为该相位所有 `AP_` 行整段消失 —— 必须与前一条「命令未执行」的排查区分开。
 16. **`HealingManager#updateEffect` 的骰神赐福分支**（2026-09-15 实测，`EFFECT-DECAY-FLICKER` 首次运行失败的真正根因）：治愈图标时长在**赐福在场时等于赐福剩余时长**（`HealingManager` 的 `blessing != null` 分支），与治愈计时器无关；因此只要玩家身上残留 `dice_blessing`（前一用例触发过赐福即可），`endsWithin(200)` 的原版闪烁窗口**不可能**成立，`_WINDOW:0` 与本模组修复无关。构造该窗口的探针命令必须**先 `removeEffect(DICE_BLESSING)`** 再 `setHealingTimerEnd(now+200)` + `add`；仅靠 `/effect clear @s` 或 `decayclear`（只清治愈点数/计时器/三类效果）**不够**。判定「赐福是否在场」可读 `AP_<tag>_SETUP:…:blessed_before=`。
-17. **探针收尾命令 `railgunfriendlyend` 的注入偶发丢失**（2026-09-15 两次实测：`RAILGUN-OVERRIDE-CLASS-1.21.1` 首轮缺 `AP_OC_RESTORE:creative`、`HOSTILE-TARGET-NEUTRAL-1.20.1` 缺 `AP_HN_RESTORE:creative`）：表现是**该轮读数全部正常、唯独收尾读数一行都没有**，用例因 `RESTORE` 断言 FAIL，极易被误当成产品问题。`doRailgunFriendlyEnd` 是幂等的（`rgfState == null` 时仍会清同类残留、回创造模式、清充能并输出 `RESTORE`/`DONE`），故**8 个探针用例统一改为连续注入两次 `railgunfriendlyend`（中间 `wait 500ms`）**。同族：读命令同样建议注入两次（冷启动后前若干次注入偶发丢失，多个用例 note 已记录），以及在**同一会话内重跑同一用例会误伤 `absent` 断言**（快照按 launch 建立，粒度是会话不是用例）—— 重跑前先 `stop` → `launch` 重置快照。
-    同族实测（2026-09-15，`mt_launch` 的测试前清场）：`MT_INJECT_CMD` 打印了**两次**，而 `latest.log` 里只有**一条** `/kill` 反馈（1.20.1 = `杀死了94个实体`；1.21.1 两次都在 = `9` / `6`）—— 即「注入函数跑完并打印」**不等于**「命令一定被客户端执行」。凡结论依赖「某条命令确实执行过」的场景，要么读原版反馈行，要么双发。
+17. **探针收尾命令 `railgunfriendlyend` 的注入偶发丢失**（2026-09-15 两次实测：`RAILGUN-OVERRIDE-CLASS-1.21.1` 首轮缺 `AP_OC_RESTORE:creative`、`HOSTILE-TARGET-NEUTRAL-1.20.1` 缺 `AP_HN_RESTORE:creative`）：表现是**该轮读数全部正常、唯独收尾读数一行都没有**，用例因 `RESTORE` 断言 FAIL，极易被误当成产品问题。
+    - **历史处置（已废止）**：当初把 8 个探针用例的 `railgunfriendlyread` / `railgunfriendlyend` 统一改为**连续注入两次**（中间 `wait`）兜冷启动丢注入。
+    - **现行处置（2026-09-15 B6 ①，已实跑回归）**：**删掉这些第二次注入**（共 16 次，≈42 s）。依据：这两个相位位于该用例第 4～7 次注入之后，冷启动期早已过去；且 `mt_inject.ps1` 每次注入前都做 `Esc→Tab→Enter` 状态归一化 + 强制前台（`:497-502`、`Assert-MtInjectForeground`），冷启动丢注入的前提（界面未收敛 / 窗口未获焦）此时不成立。`railgunfriendlyread` 通篇只有读 + `send`（幂等）；`railgunfriendlyend` 第二次进入时 `rgfState` 已置 `null`，只剩重复清场与重复报 `RESTORE`/`DONE`，无增量副作用。
+    - **不要再按"一律注入两次"写新用例**：重复注入只对**真正处于冷启动窗口**的首批命令有意义；其余位置重复只是白花 ≥2.65 s/次。
+    - 同族：**在同一会话内重跑同一用例会误伤 `absent` 断言**（快照按 launch 建立，粒度是会话不是用例）—— 重跑前先 `stop` → `launch` 重置快照。
+    - 同族实测（2026-09-15，`mt_launch` 的测试前清场）：`MT_INJECT_CMD` 打印了**两次**，而 `latest.log` 里只有**一条** `/kill` 反馈（1.20.1 = `杀死了94个实体`；1.21.1 两次都在 = `9` / `6`）—— 即「注入函数跑完并打印」**不等于**「命令一定被客户端执行」。凡结论依赖「某条命令确实执行过」的场景，要么读原版反馈行，要么双发。
 18. **`RAILGUN-AOE-SCOPE` 的断言集缺「防误伤 / 范围」项（2026-09-15 复核断言集时发现；同日用户裁决「方案①」，已实施并待冷启动复跑确认）**：该用例名叫「电磁炮雷击命中范围取证」，但 13 条断言里只有 `AP_RG_VERDICT:.*:enemy=1:` + `absent …:enemy=0:` 覆盖「敌对标确实被劈」，**没有** `friendly`/`turtle`/`villager` 为 0 的断言，也没有 `SCOPE_OK:1`。后果很实在：**设计万一失效（雷击波及落点箱内全部实体），本用例照样 PASS** —— 实测出现过 `self=2→6:friendly=12:turtle=12:villager=12:SCOPE_OK:0` 而本用例断言全绿（当时把它当成「产品疑点」排查，其实是断言没覆盖）。补强方案（改完需一次冷启动复跑）：① 补正断言 `AP_RG_AFTER:.*:friendly=0:turtle=0:villager=0:valive=1:talive=1`（`friendly`→`talive` 在 AFTER 行里本就相邻，无需插 `.*`）、补 `AP_RG_VERDICT:.*:neutral=1:`，并照抄 `RAILGUN-OVERRIDE-CLASS` 的反断言写法；② 在 ① 之上再给 1.21.1 追加 `AP_RG_SCOPE_OK:1` 与反断言 `AP_RG_VERDICT:.*:self=[1-9]`。**1.20.1 不建议直接断言 `self=0` / `SCOPE_OK:1`**：`self` 是**施放者 HP 的原始差值**（`dealt(st.php, php)`，不区分伤害来源），测试世界里常驻的敌对生物（实测蜘蛛近战使 `php −6.0`，同期 `bolt_delta` 未变）会让它偶发非 0 —— 那是环境脏，不是产品白名单问题。若要让两版都能断言 `self`，须先三选一：把 `spider` 加进 setup 的**既有**敌对生物清场（⚠️ 1.21.1 命令延迟到 tick 末生效，清场必须排在自己摆靶之前的**不同 tick**，否则会清掉自己刚摆的靶，旧伤见 `6479603`）、或给探针自持靶打 tag 后用 `tag=!…` 反选清场、或把该用例挪到无怪世界运行。
    - ✅ **2026-09-15 用户裁决「方案①」并已实施**：1.20.1 断言 13→15、1.21.1 断言 13→16 —— 两版新增正断言 `AP_RG_AFTER:.*:friendly=0:turtle=0:villager=0:valive=1:talive=1` 与 `AP_RG_VERDICT:.*:neutral=1:`，反断言扩为 `…:enemy=0:|…:friendly=[1-9]|…:turtle=[1-9]|…:villager=[1-9]|…:valive=0|…:talive=0`；1.21.1 另加 `AP_RG_SCOPE_OK:1` + 反断言 `AP_RG_SCOPE_OK:0|AP_RG_VERDICT:.*:self=[1-9]`，1.20.1 侧则按上面的理由**刻意不**断言 `self`/`SCOPE_OK`（用例 note 已写明「施放者不自伤」由 1.21.1 同名用例承担）。**离线预检（把新正则喂给上一轮绿色批次的原始行）**：新正断言全部命中、新反断言 0 命中；再把那轮「箱内全体被劈」的异常读数喂进去 → 正断言不命中、反断言命中 ⇒ 两个方向都符合预期。改断言属测试资产变更，**仍需一次冷启动复跑**才算了结 —— **复跑确认（同 HEAD `09a34e5`，12:39 / 12:41 双版本各冷启动一次）**：1.20.1 15/15 PASS、1.21.1 16/16 PASS（0 FAIL / 0 ERROR），新正断言全部命中、新反断言 0 命中；读数 `self=0`、`friendly`/`turtle`/`villager` 全 0、`SCOPE_OK:1`、`bolt_delta` 1.20.1=`3`（两次 read 均 3）/1.21.1=`2`（两次 read 均 2）。⚠️ 1.20.1 本轮 `self=0` 只说明**该轮没有生物来打玩家**，不等于该版 `self` 已可断言 —— §8.2-1 那只常驻蜘蛛的间歇性并未消除。
 19. **探针里取物品必须用全限定 id(`resolveItem`)**（2026-09-15 实测,`AIRBAG-BYPASS-KILL` 首轮 FAIL 的根因）:`resolveItem("airbag_chip")` 会被 `ResourceLocation.parse` 当成 `minecraft:airbag_chip` → 返回 null → 探针打印 `AP_<tag>_ERR:unknown_item:…` 并**中止该条命令**,表现为该相位**除 `_DONE` 外一条读数都没有**（DONE 由外层 guard 之外的分支照常发出）,极易被误读成「产品没生效」。凡新增探针命令取物品一律写 `astral_dice:<id>`（既有 `equipslot chip "astral_dice:…"` 即此约定）。
 20. **1.20.1 的 Curios 查询必须经 `resolve()`**（同族平台差异,同日实测）:`CuriosApi.getCuriosInventory` 在 1.20.1 返回 `LazyOptional`,套用 1.21.1 的 `opt.get()` 会抛 `TypeError: Cannot find function get in object net.minecraftforge.common.util.LazyOptional@…`;因为探针把该字段包在 try/catch 里,读数只剩 `chip=<err:…>` 而**其余字段全部正常**,很容易被误判成「气囊没装上」这类产品问题。正确写法(与既有 `diceSlotItemId`/`ensureChipSlot` 一致):`opt.isPresent()` 判空 + `opt.resolve().get().getStacksHandler(...)`。
 21. **测试中玩家真的死亡时,工具链会「自行恢复」,但期间读数不可信**（2026-09-15 实测,`AIRBAG-BYPASS-KILL` 首轮）:该轮因装备步骤失败,玩家被 `kill()` 打死（`health=0:alive=0`),而**下一次注入的按键（含回车）落在死亡界面的「重生」按钮上**,约 4 秒后的读数变成 `health=20:alive=1`（推断机制如此——未逐帧取证;`keepInventory=true` 使饰品槽内容保留,可作为旁证）。含义有二:① 「玩家死亡」**不会**让后续注入全部失效,不要据此断言用例必然卡死;② 但死亡与重生之间的读数一律不可信,凡要求玩家存活的用例必须**自证前置条件**（本用例读 `equipped=` / `charge=` / `chip=`）,并保留 `absent …_ERR` 反断言把「前置条件没建立」直接判 FAIL——否则「玩家没被致死」会被当成「气囊生效」。
+
+22. **`Start-Process … -Wait` 会等整棵进程树 ⇒ 全流程必然卡在 build 阶段**（2026-09-15 B6 ⑥ 实测，**本轮三位执行者卡死的直接根因**）：`mt_build.ps1` 在需要时会让 `gradlew` **新起一个 Gradle 守护**（wrapper 的后代）⇒ 构建早已打印 `MT_BUILD: OK` 并退出，而 `mt.ps1` 的 `-Wait` 一直阻塞到守护退出。**触发条件**：`--phase stop --force` 杀掉守护之后的下一次全流程（守护不在场 ⇒ 本次必须新起 ⇒ 它成为后代）。**实测特征**：最后一行输出停在 `MT_BUILD: OK (4s)`，找不到任何 `mt_env`/`mt_report` 子进程，Gradle 守护仍活着，`mt.ps1` 永不返回。**现行处置**：`Invoke-MtChild` 的非脱离式分支**一律不用 `-Wait`**，改为「`-PassThru` 轮询 `HasExited`」+ `$TimeoutSec` 上限（超时只终止该子进程自身，**绝不** taskkill 进程树）。这与 A1 记录在 `launch` 阶段踩到的是**同一个坑**，只是这次落在 `build`。
+23. **超时是独立结论，不得与 FAIL/ERROR 混同**（2026-09-15 B6 ⑥）：单条用例硬超时记 **`TIMEOUT`**（退出码 12），`mt_report` 汇总把它与 `FAIL` 分开列；`--run-timeout` 全局超时同样退出码 12。若把超时并进 FAIL，工具链/环境故障会被读成产品缺陷。
+
+---
+
+## 12. 超时机制与看门狗（2026-09-15 B6 ⑥，**长流程必须遵守**）
+
+### 12.1 三层超时（默认值与覆写）
+
+| 层 | 实现 | 默认 | 覆写 | 超时后的行为 |
+|---|---|---|---|---|
+| **单条用例** | `mt_case.ps1` 的 `$script:CaseTimeoutSec` | **300 s** | 环境变量 `MT_CASE_TIMEOUT_SEC`，或 CLI `--case-timeout <秒>`（`0` = 关闭） | 该条记 **`TIMEOUT`**，**跳过剩余步骤**并**继续跑下一条**；`MT_CASES_SUMMARY` 里显示 `NAME=TIMEOUT`；`run-dir` 返回退出码 **12** |
+| **单阶段子进程** | `mt.ps1` 的 `Invoke-MtChild -TimeoutSec` | 900 s（`launch` 用 `MT_LAUNCH` 标记轮询） | 改调用点 | 只终止该子进程自身，返回 `ERROR` |
+| **全局运行** | `mt.ps1 --run-timeout <秒>` | **0 = 不限** | CLI，或环境变量 `MT_RUN_TIMEOUT_SEC` | 走 `mt_stop.ps1 --force` 收停 → 报告写 `TIMEOUT` → 退出码 **12** |
+
+单条用例的预算由**两层**共同保证，缺一不可：
+① 步骤循环在**每步之前**核对 deadline，超时即跳出循环（不再发起新动作）；
+② `Invoke-MtCaseChild` 把**剩余预算**折算成子进程超时（`Get-MtCaseStepBudget`，下限 5 s / 上限 600 s），`Invoke-MtProcessFull` 超时会**强杀该子进程树** ⇒ 超时路径不留挂在等待里的子进程/句柄。
+
+`TIMEOUT` 的语义边界（**必须分清**）：`FAIL` = 断言不满足（产品可疑）；`ERROR` = 用例跑不起来（工具链/前置）；**`TIMEOUT` = 在预算内没有跑完**（可能是环境慢、注入卡住、客户端死了）。
+⚠️ `TIMEOUT` **不**置位 `.mt_keep_alive`（否则 `mt_cleanup` 会拒绝收停、整套流程再无人清理）；它的现场诊断由 `mt_watchdog.ps1` 的尾部输出承担。
+
+### 12.2 看门狗 `mt_watchdog.ps1`（可独立跑）
+
+```powershell
+pwsh -NoProfile -File scripts/test/mt_watchdog.ps1 -Version 1.21.1 [-StallSeconds 360] [-PollSeconds 10] [-Action report|stop] [-MaxSeconds N]
+```
+
+| 项 | 说明 |
+|---|---|
+| **进展信号**（任一变化即重置停滞计时） | `cases/.mt_run_state.json`、`cases/.mt_active_run`、当前活动报告目录（`reports/<run_id>/<版本>/`）下任何文件、`run/<版本>/logs/latest.log`、`run/<版本>/runclient_launch.log`、`run/<版本>/logs/kubejs/server.log`（后三者按**大小 + mtime**） |
+| **心跳** | 每 `-PollSeconds`（默认 10 s）打一行 `MT_WATCHDOG: ALIVE t=<秒> last_signal=<文件@时间>（停滞 <秒>）` ⇒ 外层（人或代理）看得见存活 |
+| **停滞** | 连续 `-StallSeconds`（默认 **360 s**）无进展 ⇒ `MT_WATCHDOG: STALL` + 最后一个进展信号 + `latest.log` / `kubejs/server.log` / `runclient_launch.log` 的**尾部若干行** |
+| **动作** | `-Action report`（默认）只报告；`-Action stop` 额外调 `mt.ps1 --phase stop --force` 收停 |
+| **退出码** | **42** = 检出停滞（独立值，与 `FAIL=1` / `ERROR=2` / `TIMEOUT=12` 都不同）；0 = 观察窗内始终有进展 |
+| **安全** | 收停**只**经 `mt.ps1 --phase stop --force`（唯一收停实现，按进程标记只杀本流程的客户端与 Gradle 守护）；本脚本**绝不**自己 `taskkill` 任何 java 进程 |
+
+### 12.3 纪律（**硬要求**）
+
+1. **任何「启动客户端 + 跑用例」的长流程，必须**由 `mt_watchdog.ps1` 包裹（`-Action stop` 更好），**或**至少显式设置 `MT_CASE_TIMEOUT_SEC`；**禁止**无超时地等待客户端标记 / 等待用例完成。
+2. 遇到 **`TIMEOUT`** 时的处置：先看 watchdog 的 `===== 诊断尾部 =====`（`latest.log` / `kubejs/server.log` / `runclient_launch.log` 末若干行）判断是"环境慢"还是"客户端已死"；**不要盲目重试整轮** —— 先 `--phase stop --force` 清干净，再决定是重跑单条（`--case`）还是整轮。
+3. 遇到 **`MT_WATCHDOG: STALL`** 的处置：它只说明"没有进展"，不等于产品缺陷；先按上一条定位，再重跑。
 
 ---
 

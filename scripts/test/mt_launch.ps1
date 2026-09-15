@@ -117,6 +117,93 @@ function Sync-MtProbeScripts {
     Write-MtInfo ("PROBE_DEPLOY: OK — {0} 个脚本（复制 {1} / 已是最新 {2}）" -f $files.Count, $copied, $sameCount)
 }
 
+function Invoke-MtLaunchOpPreflight {
+    <#
+    .SYNOPSIS
+        B6 ④（2026-09-15）：**只读** OP 前置闸门 + `/astralparty dump` 可用性闸门。
+
+    .DESCRIPTION
+        为什么落在 launch 而不是 mt_preflight：`hasPermissions(2)` 只能由**游戏内玩家**给出，
+        而 `mt_preflight` 的契约是「在处理任何游戏进程之前跑、绝不触达游戏」。进入世界之后、
+        用例之前这一段就是 cases 阶段的前置闸门，语义与 mt_preflight 完全一致：
+
+          前置不足  ⇒ **BLOCKED**（不是 FAIL —— 它不是产品缺陷）；
+          探针不可用 / dump 不可用 ⇒ **ERROR**（工具链或产品资产缺失，绝不静默降级）。
+
+        判据与 `/astralparty` **完全相同**：探针在玩家命令源上调
+        `CommandSourceStack#hasPermission(2)`（1.21.1 `CommandSourceStack.java:390` /
+        1.20.1 `:174`），并把数值级（`MinecraftServer#getProfilePermissions`）与来源一并打印，
+        实测值落在 `latest.log` 的 `AP_OP_PERM:has2=<0|1>:level=<n>:src=<…>:dump=<rc>`。
+
+        红线：**不得**为让测试通过而降低 `requires` 门槛 / 加测试专用开关 / 绕过 OP 走客户端
+        旁路（审计 §4.6 / §5.4 红线 4、8）。前置拿不到时的正确做法是把环境修好，或按本节记 BLOCKED。
+
+        注入两次（与 preclean 同口径）：注入通道偶发丢失；只发一次若丢了会得到"没有读数"的空跑，
+        这里会把它记成 ERROR 而**不是**静默通过。
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$Version,
+        [Parameter(Mandatory)][string]$PsExe,
+        [Parameter(Mandatory)][string]$TestDir,
+        [Parameter(Mandatory)][psobject]$Paths
+    )
+
+    $rcs = @()
+    for ($attempt = 1; $attempt -le 2; $attempt++) {
+        & $PsExe -NoProfile -File (Join-Path $TestDir 'mt_inject.ps1') cmd `
+            --command '/astralprobe opprobe' --version $Version
+        $rcs += $LASTEXITCODE
+        Start-Sleep -Milliseconds 800
+    }
+
+    $text = ''
+    try { $text = Read-MtSharedText -Path $Paths.latest_log } catch { $text = '' }
+
+    $m = [regex]::Match($text, 'AP_OP_PERM:has2=(-?\d+):level=(-?\d+):src=([^:\s]+):dump=([^\s]*)')
+    if (-not $m.Success) {
+        return [pscustomobject]@{
+            Code   = 'ERROR'
+            Detail = ('未取到 AP_OP_PERM 读数（注入返回码 {0}）—— 探针未加载 / KubeJS 脚本未生效 / ' +
+                '`/astralprobe opprobe` 不存在，属工具链故障而非产品缺陷' -f ($rcs -join '/'))
+        }
+    }
+
+    $has2 = [int]$m.Groups[1].Value
+    $level = [int]$m.Groups[2].Value
+    $src = [string]$m.Groups[3].Value
+    $dumpRc = [string]$m.Groups[4].Value
+
+    Write-MtInfo ("PREFLIGHT_OP: hasPermissions(2)={0} level={1} src={2} required=2" -f $has2, $level, $src)
+
+    if ($has2 -ne 1) {
+        return [pscustomobject]@{
+            Code   = 'BLOCKED'
+            Detail = ('实测 hasPermissions(2)={0}（权限级 level={1}，来源 {2}）< 2 —— `/astralparty` ' +
+                '与 dump 均需 OP 级 2；这是**环境前置欠缺**，不是产品缺陷。请确认测试世界的 level.dat ' +
+                'Data.allowCommands=1（mt_env world 会强制写入），单人 quickplay 集成服应得到 level=4' -f `
+                    $has2, $level, $src)
+        }
+    }
+
+    # dump 可用性的判据**不能**用 performPrefixedCommand 的返回值：1.21.1 的 Rhino 下它返回
+    # `undefined`（命令其实执行了），1.20.1 才返回 rc=1。稳定契约是**机器格式行本身** ——
+    # `AstralPartyCommand` 的 LOGGER.info 必然把 `APDUMP|<组>|` 写进 latest.log。
+    $dumpRows = ([regex]::Matches($text, 'APDUMP\|LOCKRAW\|')).Count
+    Write-MtInfo ("ASTRALPARTY_DUMP: rc={0} lockraw_rows={1}" -f $dumpRc, $dumpRows)
+    if ($dumpRows -lt 1) {
+        return [pscustomobject]@{
+            Code   = 'ERROR'
+            Detail = ('未在 latest.log 里找到任何 `APDUMP|LOCKRAW|` 行（`/astralparty dump` 返回值 {0}）' +
+                ' —— 本批测试资产的只读断言锚定 APDUMP| 原始值行，命令缺失/失败必须显式失败而' +
+                '**不得静默降级**。请核对 run/<版本>/mods 里的 jar 是否为含 /astralparty 的构建，' +
+                '以及 KubeJS 侧探针是否最新' -f $dumpRc)
+        }
+    }
+
+    return [pscustomobject]@{ Code = 'OK'; Detail = ("has2={0} level={1} src={2} dump={3}" -f $has2, $level, $src, $dumpRc) }
+}
+
 if ($MyInvocation.InvocationName -ne '.') {
 
     $Version = ''
@@ -287,6 +374,20 @@ if ($MyInvocation.InvocationName -ne '.') {
     # KubeJS 脚本健康（进入世界后第一步）
     & $psExe -NoProfile -File (Join-Path $testDir 'mt_assert.ps1') kubejs --version $Version
     if ($LASTEXITCODE -ne 0) { Write-MtWarn 'KubeJS server.log 非 0 errors' }
+
+    # ── B6 ④：cases 阶段的前置闸门（只读 OP 断言 + /astralparty dump 可用性）──────────────
+    # 前置不足 ⇒ BLOCKED；探针/dump 不可用 ⇒ ERROR。两者都在用例之前收口，绝不静默降级。
+    # 刻意**不**新开阶段头：阶段仍是 launch，`MT_LAUNCH: OK (elapsed)` 的计时口径不变。
+    $opInfo = Invoke-MtLaunchOpPreflight -Version $Version -PsExe $psExe -TestDir $testDir -Paths $p
+    if ($opInfo.Code -eq 'BLOCKED') {
+        Write-MtBlocked 'preflight-op' $opInfo.Detail
+        exit $MT_EXIT_BLOCKED
+    }
+    if ($opInfo.Code -eq 'ERROR') {
+        Write-MtError 'preflight-op' $opInfo.Detail
+        exit $MT_EXIT_ERROR
+    }
+    Write-MtInfo ("PREFLIGHT_OP: OK — {0}" -f $opInfo.Detail)
 
     # ── 测试前清场（2026-09-15 用户裁决后强制；规则见 AGENTS.md「测试前清场」）──────────
     # 清掉玩家 128 格内的非玩家实体：残留靶 / 散落物 / 常驻敌对生物。它们会污染

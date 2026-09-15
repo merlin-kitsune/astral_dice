@@ -194,13 +194,38 @@
     {
       "type": "absent",
       "source": "latest",
-      "pattern": "AP_K1_ERR|AP_K1_EX|AP_K2_ERR|AP_K2_EX|AP_K3_ERR|AP_K3_EX|AP_K4_ERR|AP_K4_EX|AP_K5_ERR|AP_K5_EX|AP_K6_ERR|AP_K6_EX|AP_TICK_EX|AP_K1_RELEASED:0|AP_K2_REJECTED:0|AP_K6_REJECTED:0"
+      "pattern": "AP_K1_ERR|AP_K1_EX|AP_K2_ERR|AP_K2_EX|AP_K3_ERR|AP_K3_EX|AP_K4_ERR|AP_K4_EX|AP_K5_ERR|AP_K5_EX|AP_K6_ERR|AP_K6_EX|AP_TICK_EX|AP_K1_RELEASED:0|AP_K2_REJECTED:0|AP_K6_REJECTED:0|AP_K5_DUMP_ERR"
     },
     {
       "type": "kubejs"
     },
     {
       "type": "crash"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_K5_DUMP:rc="
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "APDUMP\\|LOCKRAW\\|effect_card_bonus_plays=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "APDUMP\\|LOCKRAW\\|effect_card_play_count=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "APDUMP\\|LOCKRAW\\|effect_card_cooldown_end=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "APDUMP\\|LOCKRAW\\|max_allowed=1"
     }
   ],
   "on_fail": "keep_game_running"

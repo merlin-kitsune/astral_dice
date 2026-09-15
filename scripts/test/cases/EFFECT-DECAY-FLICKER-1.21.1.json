@@ -13,15 +13,7 @@
     },
     {
       "op": "note",
-"text": "前置清理(2026-09-15 实测定案)：① `/effect clear @s` 只能清原版效果 —— 本模组效果(astral_dice:*)的移除会被 `ModEffectEvents#onModEffectRemovalPrevented`(EventPriority.HIGH)取消,探针里的直接 `p.removeEffect(...)` 同样被取消,只有 `ModEffectRemoval`(内部标志)/`EffectTimerGuard`(强制标志)/死亡三条通道放行;② 骰神赐福一旦在场,`HealingManager#updateEffect` 会把治愈图标时长写成**赐福剩余时长**(实测 `blessed_before=1` 时 heal `dur=119943`,>200) → `_WINDOW:0`,与本模组修复无关;③ 探针现于武装窗口前用 `ModEffectRemoval.remove(...)` 清掉赐福,并在 `AP_F1_SETUP` 回报 `blessed_before=`,本用例前置才可靠;`decayclear` 仍需先行(它清治愈点数/计时器/三类效果)。"
-    },
-    {
-      "op": "inject_command",
-      "command": "/effect clear @s"
-    },
-    {
-      "op": "wait",
-      "ms": 400
+      "text": "前置清理(2026-09-15 实测定案)：① `/effect clear @s` 只能清原版效果 —— 本模组效果(astral_dice:*)的移除会被 `ModEffectEvents#onModEffectRemovalPrevented`(EventPriority.HIGH)取消,探针里的直接 `p.removeEffect(...)` 同样被取消,只有 `ModEffectRemoval`(内部标志)/`EffectTimerGuard`(强制标志)/死亡三条通道放行;② 骰神赐福一旦在场,`HealingManager#updateEffect` 会把治愈图标时长写成**赐福剩余时长**(实测 `blessed_before=1` 时 heal `dur=119943`,>200) → `_WINDOW:0`,与本模组修复无关;③ 探针现于武装窗口前用 `ModEffectRemoval.remove(...)` 清掉赐福,并在 `AP_F1_SETUP` 回报 `blessed_before=`,本用例前置才可靠;`decayclear` 仍需先行(它清治愈点数/计时器/三类效果)。"
     },
     {
       "op": "inject_command",
@@ -112,6 +104,11 @@
     },
     {
       "type": "crash"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_X0_CLEAR:rc="
     }
   ],
   "on_fail": "keep_game_running"

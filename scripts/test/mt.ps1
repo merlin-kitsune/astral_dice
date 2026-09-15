@@ -8,10 +8,16 @@
       前置检查 → 1.21.1 全流程 → 判定通过后才执行 → 1.20.1 全流程 → 总览
       两个版本都给出独立的通过/失败结论；1.21.1 不通过时 1.20.1 记为「因门控未执行」。
 
+    `--version <V>`:
+      全流程分支**同样尊重该参数** —— 指定单版本时只跑该版本，且**不做跨版本门控**
+      （门控的前提是「两版本顺序执行」）。不带 `--version` 时才是「两版本顺序 + 门控」。
+
     阶段: preflight | build | env | launch | cases | report | stop
 
 .EXAMPLE
     pwsh -File scripts/test/mt.ps1                                  # 全流程（两版本，带门控）
+    pwsh -File scripts/test/mt.ps1 --version 1.21.1                 # 全流程（只跑 1.21.1，无门控）
+    pwsh -File scripts/test/mt.ps1 --version 1.20.1                 # 全流程（只跑 1.20.1，无门控）
     pwsh -File scripts/test/mt.ps1 --version 1.21.1 --phase build   # 单阶段
     pwsh -File scripts/test/mt.ps1 --version 1.21.1 --case cases/X.json
     pwsh -File scripts/test/mt.ps1 --version 1.21.1 --new ember_chip
@@ -28,15 +34,23 @@
       若条目失败且 on_fail=keep_game_running，会落 .mt_keep_alive 标记，
       此时自动清理只提示不杀进程，保留现场供取证（取证完用 --phase stop --force）。
 
-    子进程一律用 Start-Process -NoNewWindow -PassThru -Wait 启动：子进程**直接继承
-    父进程的控制台句柄**，输出不经 PowerShell 的解码/再编码，字节原样透传
-    （`& pwsh …` 的调用运算符会让原生输出过一遍 PS 的编码层）。
+    子进程启动方式（B6 ⑥ 修订）: **一律不用 `Start-Process -Wait`**。它等的是**整棵进程
+    树**（本机最小复现：子进程 0.4s 退出、父进程 12.4s 才返回 = 孙进程 ping 的时长），而
+    `mt_build` 会让 `gradlew` 新起 Gradle 守护、`mt_launch` 会留下游戏客户端 ⇒ 用 `-Wait`
+    必然永久阻塞（`launch` 那条已在本文件 A1 记录；`build` 那条在 B6 ⑥ 实测定位）。
+    现在非脱离式子进程统一「`-PassThru` 轮询 `HasExited`」+ `$TimeoutSec` 上限，且输出
+    仍是**直接继承父控制台句柄**（不经 PowerShell 的解码/再编码），与旧行为一致。
 
     **A1 例外（2026-09-15 B2）**：`launch` 阶段改用**脱离式**启动（`-WindowStyle Hidden`
-    + 输出落文件句柄 + 按 `MT_LAUNCH: <终态>` 标记轮询），因为 PowerShell 的 `-Wait`
-    等的是**整棵进程树**，而 launch 会把 Minecraft 客户端作为后代留下 ⇒ 用 `-Wait`
-    必然阻塞到客户端退出，launch/cases 无法共存（实测根因见 docs/batch3/B1-in-game-results.md ①）。
-    其余阶段保持 `-Wait` 语义不变。
+    + 输出落文件句柄 + 按 `MT_LAUNCH: <终态>` 标记轮询），因为 launch 会把 Minecraft
+    客户端作为后代留下，必须让启动方**立即返回**（详见 docs/batch3/B1-in-game-results.md ①）。
+
+    超时（B6 ⑥）:
+      · 单条用例硬超时 `MT_CASE_TIMEOUT_SEC`（默认 300 s，见 mt_case.ps1）⇒ 该条记 **TIMEOUT**
+        并继续跑下一条；
+      · 全局 `--run-timeout <秒>`（默认 0 = 不限）⇒ 超时走 `--phase stop --force` 收停、
+        报告写 TIMEOUT、退出码 12（与 FAIL=1 区分）；
+      · 长流程包裹用 `mt_watchdog.ps1`（独立脚本，见 TESTING-SPEC §12）。
 
     文案偏差：前置失败提示里的 `mt.sh --phase stop` 改为 `mt.ps1`（同一入口的新名字）。
 
@@ -93,9 +107,27 @@ function Invoke-MtChild {
     $argv = @('-NoProfile', '-File', (Join-Path $script:TestDir $Script)) + $ScriptArgs
 
     if (-not $Detached) {
+        # ⚠️ **禁止**用 `Start-Process … -Wait`（2026-09-15 B6 ⑥ 实测根因，三位执行者卡死于此）：
+        #    `-Wait` 等的是**整棵进程树**，而 `mt_build.ps1` 在需要时会让 `gradlew` **新起一个
+        #    Gradle 守护**（`gradlew` wrapper 的后代）⇒ 构建早已打印 `MT_BUILD: OK` 并退出，
+        #    父进程却一直阻塞到守护退出（实测：`--phase stop --force` 杀掉守护之后，下一次
+        #    全流程**必然**卡在 build 阶段 —— 最后一行输出停在 `MT_BUILD: OK`，找不到任何
+        #    mt_env/mt_report 子进程，而 Gradle 守护仍活着 ⇒ 永不返回）。
+        #    这里改为**只等我们自己那个子进程**（轮询 `HasExited`，不跟踪后代），并加
+        #    `$TimeoutSec` 上限；超时只终止该子进程自身（**绝不** taskkill 进程树，
+        #    以免误伤 Minecraft 客户端或用户其它 java 程序）。
         $proc = Start-Process -FilePath $script:PsExe `
             -ArgumentList (ConvertTo-MtStartArgs -ArgumentList $argv) `
-            -NoNewWindow -PassThru -Wait
+            -NoNewWindow -PassThru
+        $deadline = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds() + $TimeoutSec
+        while ((-not $proc.HasExited) -and ([DateTimeOffset]::UtcNow.ToUnixTimeSeconds() -lt $deadline)) {
+            Start-Sleep -Milliseconds 500
+        }
+        if (-not $proc.HasExited) {
+            Write-MtWarn ("CHILD: {0} 超过 {1}s 未退出 —— 只终止该子进程（pid={2}），不动进程树" -f $Script, $TimeoutSec, $proc.Id)
+            try { Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue } catch { }
+            return $MT_EXIT_ERROR
+        }
         return $proc.ExitCode
     }
 
@@ -139,6 +171,44 @@ function Invoke-MtChild {
 
     Write-MtWarn ("DETACHED: 等待 {0} 的终态标记超时（{1}s）—— 进程继续运行，日志见 {2}" -f $Script, $TimeoutSec, $outLog)
     return $MT_EXIT_ERROR
+}
+
+function Test-MtRunBudgetExceeded {
+    <#
+    .SYNOPSIS
+        B6 ⑥-2：全局运行预算是否已耗尽（`$Deadline -le 0` = 不限时）。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][long]$Deadline)
+
+    if ($Deadline -le 0) { return $false }
+    return ([DateTimeOffset]::UtcNow.ToUnixTimeSeconds() -ge $Deadline)
+}
+
+function Invoke-MtRunTimeoutStop {
+    <#
+    .SYNOPSIS
+        B6 ⑥-2：全局超时的**收停 + 记账**。退出码 12（`MT_EXIT_TIMEOUT`），与 FAIL(1) 区分。
+
+    .NOTES
+        收停只走 `mt_stop.ps1 --force`（唯一收停实现，按进程标记只杀本流程的客户端与守护），
+        **绝不**自己 taskkill 任意 java。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][AllowEmptyString()][string]$Version)
+
+    Write-MtErrLine ''
+    Write-MtErrLine 'MT_RUN: TIMEOUT — 已超过 --run-timeout；按纪律执行 --phase stop --force 收停'
+    Start-MtPhase 'timeout-stop'
+    if ($Version) {
+        [void](Invoke-MtChild -Script 'mt_stop.ps1' -ScriptArgs @('--version', $Version, '--force'))
+        [void](Invoke-MtChild -Script 'mt_report.ps1' -ScriptArgs @('mark', '--version', $Version, '--phase', 'cases', '--result', 'TIMEOUT'))
+        [void](Invoke-MtChild -Script 'mt_report.ps1' -ScriptArgs @('collect', '--version', $Version, '--verdict', 'TIMEOUT'))
+    } else {
+        [void](Invoke-MtChild -Script 'mt_stop.ps1' -ScriptArgs @('--all', '--force'))
+    }
+    [void](Invoke-MtChild -Script 'mt_report.ps1' -ScriptArgs @('summary'))
+    exit $MT_EXIT_TIMEOUT
 }
 
 function Get-MtCleanupDisplayLines {
@@ -251,6 +321,9 @@ $GenSpec = ''
 $CleanupMode = ''          # '' = 按场景默认；1 = 强制开启；0 = 强制关闭
 $StopForce = $false
 $StopKeepDaemon = $false
+# B6 ⑥-2：全流程全局超时（秒；0 = 不限）。可用环境变量 MT_RUN_TIMEOUT_SEC 覆写默认值。
+$RunTimeoutSec = 0
+if ($env:MT_RUN_TIMEOUT_SEC -and $env:MT_RUN_TIMEOUT_SEC -match '^\d+$') { $RunTimeoutSec = [int]$env:MT_RUN_TIMEOUT_SEC }
 
 $ShowHelp = $false
 $i = 0
@@ -279,6 +352,10 @@ while ($i -lt $args.Count) {
         $CleanupMode = '1'; $i++
     } elseif ($key -eq 'no-cleanup-on-exit') {
         $CleanupMode = '0'; $i++
+    } elseif ($key -eq 'run-timeout') {
+        if ($i + 1 -ge $args.Count) { Write-MtErrorLine '缺少 --run-timeout 的值'; exit $MT_EXIT_ERROR }
+        if ([string]$args[$i + 1] -notmatch '^\d+$') { Write-MtErrorLine '--run-timeout 需要非负整数（秒）'; exit $MT_EXIT_ERROR }
+        $RunTimeoutSec = [int]$args[$i + 1]; $i += 2
     } elseif ($key -eq 'force') {
         $StopForce = $true; $i++
     } elseif ($key -eq 'keep-daemon') {
@@ -358,6 +435,21 @@ try {
     Write-MtLine ''
     Write-MtLine "########## MT RUN $runId ##########"
 
+    # ⑤ 修复（2026-09-15 B6）:`--version` 在**全流程**分支同样生效。
+    # 旧实现无条件 `foreach ($v in @(Get-MtVersions))`,并把 1.20.1 挂在 `$gateOpen` 上 ⇒
+    # `mt.ps1 --version 1.20.1` 会**先跑 1.21.1**（无视用户指定的版本),1.21.1 一旦不通过,
+    # 1.20.1 立刻被记成 `GATED` 而**根本没跑** —— 与 `--version` 的语义完全相反。
+    # 现在:指定单版本 ⇒ 只跑该版本、不做跨版本门控（门控的前提是"两版本顺序执行",
+    # 单版本时不存在"上一个版本");未指定 ⇒ 沿用两版本顺序 + 门控的原行为。
+    $flowVersions = if ($Version) { @($Version) } else { @(Get-MtVersions) }
+    $multiVersion = -not [bool]$Version
+
+    # B6 ⑥-2：全局运行预算（只对全流程生效；单阶段模式不适用）
+    $runDeadline = if ($RunTimeoutSec -gt 0) { [DateTimeOffset]::UtcNow.ToUnixTimeSeconds() + $RunTimeoutSec } else { [long]0 }
+    if ($RunTimeoutSec -gt 0) {
+        Write-MtInfo ("RUN_TIMEOUT: {0}s（超时即 --phase stop --force 收停，退出码 {1}）" -f $RunTimeoutSec, $MT_EXIT_TIMEOUT)
+    }
+
     Start-MtPhase 'preflight'
     $rc = Invoke-MtChild -Script 'mt_preflight.ps1' -ScriptArgs @('--all')
     if ($rc -ne 0) {
@@ -365,18 +457,21 @@ try {
         Write-MtErrLine '提示: 如需清理前置检查发现的残留进程，执行 pwsh -File scripts/test/mt.ps1 --phase stop'
         exit $MT_EXIT_PREFLIGHT
     }
-    [void](Invoke-MtChild -Script 'mt_report.ps1' -ScriptArgs @('mark', '--version', '1.21.1', '--phase', 'preflight', '--result', 'PASS'))
-    [void](Invoke-MtChild -Script 'mt_report.ps1' -ScriptArgs @('mark', '--version', '1.20.1', '--phase', 'preflight', '--result', 'PASS'))
+    foreach ($pv in $flowVersions) {
+        [void](Invoke-MtChild -Script 'mt_report.ps1' -ScriptArgs @('mark', '--version', $pv, '--phase', 'preflight', '--result', 'PASS'))
+    }
 
     $overall = $MT_EXIT_PASS
     $gateOpen = $true
 
-    foreach ($v in @(Get-MtVersions)) {
+    foreach ($v in $flowVersions) {
         if (-not (Assert-MtVersion -Version $v)) { exit $MT_EXIT_ERROR }
+        # B6 ⑥-2：进入每个版本、以及每跑完一个阶段都核一次全局预算
+        if (Test-MtRunBudgetExceeded -Deadline $runDeadline) { Invoke-MtRunTimeoutStop -Version $v }
         Write-MtLine ''
         Write-MtLine "########## MT VERSION: $v ##########"
 
-        if ($v -eq '1.20.1' -and -not $gateOpen) {
+        if ($multiVersion -and $v -eq '1.20.1' -and -not $gateOpen) {
             Write-MtBlocked "version-$v" '1.21.1 未通过，按测试顺序门控不执行 1.20.1'
             [void](Invoke-MtChild -Script 'mt_report.ps1' -ScriptArgs @('mark', '--version', $v, '--phase', 'cases', '--result', 'GATED'))
             break
@@ -385,20 +480,26 @@ try {
         $vrc = 0
         Start-MtPhase 'build'
         $vrc = Invoke-MtRunPhase -PhaseVersion $v -PhaseName 'build'
-        $r = if ($vrc -eq 0) { 'PASS' } else { 'FAIL' }
+        # BLOCKED 单列：B6 ④ 的 OP / dump 前置闸门返回 MT_EXIT_BLOCKED(11)，它是前置欠缺，
+        # 不是产品缺陷 —— 报告里必须看得出来
+        $r = if ($vrc -eq 0) { 'PASS' } elseif ($vrc -eq $MT_EXIT_BLOCKED) { 'BLOCKED' } else { 'FAIL' }
         [void](Invoke-MtChild -Script 'mt_report.ps1' -ScriptArgs @('mark', '--version', $v, '--phase', 'build', '--result', $r))
 
         if ($vrc -eq 0) {
             Start-MtPhase 'env'
             $vrc = Invoke-MtRunPhase -PhaseVersion $v -PhaseName 'env'
-            $r = if ($vrc -eq 0) { 'PASS' } else { 'FAIL' }
+            # BLOCKED 单列：B6 ④ 的 OP / dump 前置闸门返回 MT_EXIT_BLOCKED(11)，它是前置欠缺，
+            # 不是产品缺陷 —— 报告里必须看得出来
+            $r = if ($vrc -eq 0) { 'PASS' } elseif ($vrc -eq $MT_EXIT_BLOCKED) { 'BLOCKED' } else { 'FAIL' }
             [void](Invoke-MtChild -Script 'mt_report.ps1' -ScriptArgs @('mark', '--version', $v, '--phase', 'env', '--result', $r))
         }
 
         if ($vrc -eq 0) {
             Start-MtPhase 'launch'
             $vrc = Invoke-MtRunPhase -PhaseVersion $v -PhaseName 'launch'
-            $r = if ($vrc -eq 0) { 'PASS' } else { 'FAIL' }
+            # BLOCKED 单列：B6 ④ 的 OP / dump 前置闸门返回 MT_EXIT_BLOCKED(11)，它是前置欠缺，
+            # 不是产品缺陷 —— 报告里必须看得出来
+            $r = if ($vrc -eq 0) { 'PASS' } elseif ($vrc -eq $MT_EXIT_BLOCKED) { 'BLOCKED' } else { 'FAIL' }
             [void](Invoke-MtChild -Script 'mt_report.ps1' -ScriptArgs @('mark', '--version', $v, '--phase', 'launch', '--result', $r))
             # 快照点：此后所有日志断言只看增量区间
             # （A2 起 mt_launch 收尾已自行写快照，覆盖单阶段路线；这里再写一次是幂等的保险）
@@ -410,20 +511,27 @@ try {
         if ($vrc -eq 0) {
             Start-MtPhase 'cases'
             $vrc = Invoke-MtRunPhase -PhaseVersion $v -PhaseName 'cases' -CasePath $CasePath
-            $r = if ($vrc -eq 0) { 'PASS' } else { 'FAIL' }
+            # BLOCKED 单列：B6 ④ 的 OP / dump 前置闸门返回 MT_EXIT_BLOCKED(11)，它是前置欠缺，
+            # 不是产品缺陷 —— 报告里必须看得出来。TIMEOUT(12) 同理单列（B6 ⑥-1）。
+            $r = if ($vrc -eq 0) { 'PASS' } elseif ($vrc -eq $MT_EXIT_BLOCKED) { 'BLOCKED' }
+            elseif ($vrc -eq $MT_EXIT_TIMEOUT) { 'TIMEOUT' } else { 'FAIL' }
             [void](Invoke-MtChild -Script 'mt_report.ps1' -ScriptArgs @('mark', '--version', $v, '--phase', 'cases', '--result', $r))
         }
 
+        # B6 ⑥-2：cases 阶段可能跑很久，跑完立刻核一次全局预算
+        if (Test-MtRunBudgetExceeded -Deadline $runDeadline) { Invoke-MtRunTimeoutStop -Version $v }
+
         Start-MtPhase 'report'
-        $verdict = if ($vrc -eq 0) { 'PASS' } else { 'FAIL' }
+        $verdict = if ($vrc -eq 0) { 'PASS' } elseif ($vrc -eq $MT_EXIT_TIMEOUT) { 'TIMEOUT' } else { 'FAIL' }
         [void](Invoke-MtChild -Script 'mt_report.ps1' -ScriptArgs @('collect', '--version', $v, '--verdict', $verdict))
         [void](Invoke-MtChild -Script 'mt_stop.ps1' -ScriptArgs @('--version', $v))
 
         if ($vrc -eq 0) {
             Write-MtLine "MT_VERSION_VERDICT: $v = PASS"
         } else {
-            Write-MtLine "MT_VERSION_VERDICT: $v = FAIL (exit=$vrc)"
-            $overall = $MT_EXIT_FAIL
+            $label = if ($vrc -eq $MT_EXIT_TIMEOUT) { 'TIMEOUT' } else { 'FAIL' }
+            Write-MtLine "MT_VERSION_VERDICT: $v = $label (exit=$vrc)"
+            $overall = if ($vrc -eq $MT_EXIT_TIMEOUT) { $MT_EXIT_TIMEOUT } else { $MT_EXIT_FAIL }
             $gateOpen = $false      # 关闭门控：1.20.1 不再执行
         }
     }
@@ -440,7 +548,10 @@ try {
 
 Write-MtLine ''
 if ($overall -eq 0) {
-    Write-MtLine 'MT_RUN: PASS — 两版本均通过'
+    if ($multiVersion) { Write-MtLine 'MT_RUN: PASS — 两版本均通过' }
+    else { Write-MtLine "MT_RUN: PASS — $Version 通过（--version 指定单版本，未执行跨版本门控）" }
+} elseif ($overall -eq $MT_EXIT_TIMEOUT) {
+    Write-MtLine "MT_RUN: TIMEOUT — 见 reports/$runId/SUMMARY.md（超时与 FAIL 是两种结论）"
 } else {
     Write-MtLine "MT_RUN: FAIL — 见 reports/$runId/SUMMARY.md"
 }

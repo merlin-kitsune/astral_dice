@@ -406,6 +406,7 @@ function Invoke-MtReportSummary {
         "- **生成时间**: $(Get-MtNowStamp)",
         '',
         '> 测试顺序：先 1.21.1，通过后才执行 1.20.1。两个版本都给出独立结论。',
+        '> `mt.ps1 --version <V>` 指定单版本时只跑该版本、不做跨版本门控，总览也只列实际执行过的版本。',
         '',
         '## 版本结论',
         '',
@@ -413,9 +414,19 @@ function Invoke-MtReportSummary {
         '|---|---|---|---|'
     )
 
+    # 单版本运行（mt.ps1 --version <V>）时，状态文件里只会有那一个版本；
+    # 此时**不能**把未执行的另一个版本判成「未执行 → 总览 FAIL」（否则 --version 单跑必然自判失败）。
+    $summaryVersions = @(Get-MtVersions)
+    if ($state.Contains('versions') -and $null -ne $state['versions']) {
+        $present = @($state['versions'].Keys)
+        if ($present.Count -gt 0 -and $present.Count -lt $summaryVersions.Count) {
+            $summaryVersions = @($summaryVersions | Where-Object { $present -contains $_ })
+        }
+    }
+
     $overallPass = $true
     $idx = 0
-    foreach ($v in @(Get-MtVersions)) {
+    foreach ($v in $summaryVersions) {
         $idx++
         $cases = [ordered]@{}
         if ($state.Contains('versions') -and $null -ne $state['versions'] -and $state['versions'].Contains($v)) {
@@ -426,9 +437,24 @@ function Invoke-MtReportSummary {
             $verdict = '未执行'
             $overallPass = $false
         } else {
+            # ⑤⑥（B6）：把结果**连名字一起**列出来，并把 TIMEOUT 单列 —— 超时是独立结论，
+            # 不是"断言不满足"（FAIL），也不是"跑不起来"（ERROR）。
             $bad = @()
-            foreach ($k in $cases.Keys) { if (@('PASS', 'SKIP') -notcontains [string]$cases[$k]) { $bad += $k } }
-            $verdict = if ($bad.Count -eq 0) { '✅ PASS' } else { "❌ FAIL（$($bad -join ', ')）" }
+            $timeouts = @()
+            foreach ($k in $cases.Keys) {
+                $res = [string]$cases[$k]
+                if (@('PASS', 'SKIP') -notcontains $res) {
+                    $bad += ("{0}={1}" -f $k, $res)
+                    if ($res -eq 'TIMEOUT') { $timeouts += $k }
+                }
+            }
+            if ($bad.Count -eq 0) {
+                $verdict = '✅ PASS'
+            } elseif ($timeouts.Count -gt 0 -and $timeouts.Count -eq $bad.Count) {
+                $verdict = "⏱ TIMEOUT（$($bad -join ', ')）"
+            } else {
+                $verdict = "❌ FAIL（$($bad -join ', ')）"
+            }
             if ($bad.Count -gt 0) { $overallPass = $false }
         }
         $lines += "| $idx | $v | $verdict | $($cases.Count) |"

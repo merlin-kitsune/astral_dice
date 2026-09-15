@@ -150,13 +150,33 @@
     {
       "type": "absent",
       "source": "latest",
-      "pattern": "AP_N1_ERR|AP_N1_EX|AP_N2_ERR|AP_N2_EX|AP_N3_ERR|AP_N3_EX|AP_N4_ERR|AP_N4_EX|AP_N5_ERR|AP_N5_EX|AP_N6_ERR|AP_N6_EX|AP_N3_CLEARED:0|AP_N6_CLEARED:0|AP_TICK_EX"
+      "pattern": "AP_N1_ERR|AP_N1_EX|AP_N2_ERR|AP_N2_EX|AP_N3_ERR|AP_N3_EX|AP_N4_ERR|AP_N4_EX|AP_N5_ERR|AP_N5_EX|AP_N6_ERR|AP_N6_EX|AP_N3_CLEARED:0|AP_N6_CLEARED:0|AP_TICK_EX|AP_N3_DUMP_ERR|AP_N6_DUMP_ERR"
     },
     {
       "type": "kubejs"
     },
     {
       "type": "crash"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_N3_DUMP:rc="
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_N6_DUMP:rc="
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "APDUMP\\|LOCKRAW\\|"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "APDUMP\\|SIGN\\|sign_active_lock_sign="
     }
   ],
   "on_fail": "keep_game_running"

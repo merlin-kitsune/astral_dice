@@ -31,6 +31,9 @@ $MT_EXIT_FAIL = 1
 $MT_EXIT_ERROR = 2
 $MT_EXIT_PREFLIGHT = 10
 $MT_EXIT_BLOCKED = 11
+# ⑤⑥（2026-09-15 B6）：超时是**独立**结果 —— 与 FAIL（断言不满足）、ERROR（跑不起来）区分。
+# 使用者：mt_case.ps1 的单条用例硬超时（MT_CASE_TIMEOUT_SEC）、mt.ps1 的全局 --run-timeout。
+$MT_EXIT_TIMEOUT = 12
 
 $script:MtPhaseStart = 0
 
@@ -211,5 +214,5 @@ Export-ModuleMember -Function @(
     'Write-MtOk', 'Write-MtFail', 'Write-MtBlocked', 'Write-MtError',
     'Write-MtInfo', 'Write-MtWarn', 'Write-MtErrorLine'
 ) -Variable @(
-    'MT_EXIT_PASS', 'MT_EXIT_FAIL', 'MT_EXIT_ERROR', 'MT_EXIT_PREFLIGHT', 'MT_EXIT_BLOCKED'
+    'MT_EXIT_PASS', 'MT_EXIT_FAIL', 'MT_EXIT_ERROR', 'MT_EXIT_PREFLIGHT', 'MT_EXIT_BLOCKED', 'MT_EXIT_TIMEOUT'
 )

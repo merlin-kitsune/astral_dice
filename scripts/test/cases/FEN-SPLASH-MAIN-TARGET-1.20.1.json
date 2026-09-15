@@ -25,15 +25,7 @@
     },
     {
       "op": "note",
-      "text": "阶段 2/3：**先 `/effect clear @s` 再命中**（2026-09-15 实测必需）：本用例与该批次前面的用例同处一个客户端会话，前序用例已经给玩家挂上了骰神赐福；此时再近战命中**不会触发新的赐福**，满层溅射因此不引爆（实测：recharge 停在 5、near_dealt=0、VERDICT:in_range=0）。清掉效果后命中 → 赐福重新触发 → 满层溅射立即引爆（recharge 5→3）。真实近战命中主靶 → AP_FS_SNAP / AP_FS_MELEE:...:blessing=true。"
-    },
-    {
-      "op": "inject_command",
-      "command": "/effect clear @s"
-    },
-    {
-      "op": "wait",
-      "ms": 400
+      "text": "阶段 2/3：**先清效果再命中**（2026-09-15 实测必需）：本用例与该批次前面的用例同处一个客户端会话，前序用例已经给玩家挂上了骰神赐福；此时再近战命中**不会触发新的赐福**，满层溅射因此不引爆（实测：recharge 停在 5、near_dealt=0、VERDICT:in_range=0）。清掉效果后命中 → 赐福重新触发 → 满层溅射立即引爆（recharge 5→3）。**2026-09-15 B6 ②**：原用例注入的 `/effect clear @s` 已折叠进探针的 `fensplash` 相位**末尾**（`runCmd`，省一条 ≥2.65 s 的注入；放在末尾而非命中相位开头，是因为 `performPrefixedCommand` 在 1.21.1 上被推迟到本 tick 末执行，放开头会让清除晚于 `meleeHit` ⇒ 赐福不会重新触发），证据行 `AP_FS_CLEAR:rc=…`。真实近战命中主靶 → AP_FS_SNAP / AP_FS_MELEE:...:blessing=true。"
     },
     {
       "op": "inject_command",
@@ -100,13 +92,28 @@
     {
       "type": "absent",
       "source": "latest",
-      "pattern": "AP_FS_ERR|AP_FS_EX:"
+      "pattern": "AP_FS_ERR|AP_FS_EX:|AP_FS_DUMP_ERR"
     },
     {
       "type": "kubejs"
     },
     {
       "type": "crash"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_FS_CLEAR:rc="
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_FS_DUMP:rc="
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "APDUMP\\|LOCKRAW\\|"
     }
   ],
   "evidence": [],
