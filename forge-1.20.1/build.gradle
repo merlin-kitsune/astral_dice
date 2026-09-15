@@ -214,11 +214,33 @@ dependencies {
     // JEI(配方查看,测试环境用)
     modImplementation "mezz.jei:jei-1.20.1-forge:15.56.0.205"
 
-    // Mixin:编译期仅需注解类。运行时由 Mixin Booster(Sponge Mixin)接管 Mixin 执行并自动处理
-    // Mojmap→SRG 重映射,故不需要 refmap/注解处理器。
+    // Mixin:编译期注解类 + **注解处理器(生成 refmap)**。
+    // ⚠️ 2026-09-16 生产事故校正(必须理解,**禁止再删**):
+    //   此前这里写着「Mixin Booster 会自动重映射,故不需要 refmap/注解处理器」—— **该前提是错的**。
+    //   Booster 提供的是 org.sinytra.mixinbooster.MixinModlauncherRemapper,它只重映射**字节码引用**;
+    //   而 `@Inject(method = "startUseItem()V")`、`@Shadow` 这类**注解里的字符串选择器**靠 reobf 改不动
+    //   (注解字符串不是符号引用),必须由 refmap 在运行时翻译成 SRG 名。
+    //   实测事故(生产 reobf/SRG jar 启动即崩):
+    //     InvalidInjectionException: ... could not find any targets matching 'startUseItem()V'
+    //     in net.minecraft.client.Minecraft. No refMap loaded.
+    //     -> astral_dice.mixins.json:client.AstralUseItemGuardMixin from mod (unknown) -> FATAL
+    //   为什么 dev 看不出来:dev 类是 Mojmap 名,选择器直接命中,refmap 根本不参与 ⇒ 该缺陷**只在生产暴露**。
+    //   历史:commit 01be1fb 曾加入本机制,专门修「生产 jar @Shadow 字段映射」;127a2b7 依据上述错误前提
+    //   把它整体移除 ⇒ 生产从此必崩(当时只是碰巧还没有会失败的 mixin)。
     compileOnly 'org.spongepowered:mixin:0.8.5'
+    // Mixin 注解处理器(主 jar 已内嵌 org/spongepowered/tools/obfuscation/,故用主坐标即可)
+    annotationProcessor 'org.spongepowered:mixin:0.8.5'
+    // 注解处理器自身依赖(主 jar 未打包:Gson/Guava/ASM)
+    annotationProcessor 'com.google.code.gson:gson:2.10.1'
+    annotationProcessor 'com.google.guava:guava:31.1-jre'
+    annotationProcessor 'org.ow2.asm:asm:9.8'
+    annotationProcessor 'org.ow2.asm:asm-tree:9.8'
+    annotationProcessor 'org.ow2.asm:asm-commons:9.8'
+    annotationProcessor 'org.ow2.asm:asm-util:9.8'
+    annotationProcessor 'org.ow2.asm:asm-analysis:9.8'
 
-    // Mixin Booster(强依赖):Sponge Mixin 运行时替代 Forge 自带 Mixin,自动重映射,无需 refmap。
+    // Mixin Booster(强依赖):为 Forge 1.20.1 提供 Sponge Mixin 运行时(该版本 FML 无 Mixin 集成)。
+    // 它**不能**替代 refmap —— 见上方说明。
     modImplementation "maven.modrinth:mixinbooster:rOaAYvPZ"
 
     // ModernFix(测试环境):dev runClient 加载优化;提供 "Total time to load game and open world was"
@@ -234,9 +256,12 @@ dependencies {
 //   ① 生产 jar  → META-INF/MANIFEST.MF 的 `MixinConfigs` 属性(MixinPlatformAgentDefault#prepare 读取);
 //   ② 开发环境  → ModLauncher 启动参数 `--mixin.config`(MDG mixin 扩展按 RunModel 注入)。
 // 二者缺一,物品栏效果角标、村民交易、猪灵 AI 等 Mixin 全部不生效。
-// 运行时由 Mixin Booster 负责 Mojmap→SRG 重映射,故无需 refmap 与注解处理器。
+// ⚠️ 2026-09-16:refmap **必须**生成(见上方 dependencies 段的详细说明)。
+// MDG LegacyForge 的 mixin 扩展会把「官方名(Mojmap)→SRG」映射经 MixinCompilerArgs
+// (`-AinMapFile`/`-AoutRefMapFile`)注入注解处理器,产出 refmap 并随 jar 一起打包/重混淆。
 mixin {
     config 'astral_dice.mixins.json'
+    add sourceSets.main, 'astral_dice.refmap.json'
 }
 
 // 生产 jar(reobfJar,RemapJar extends Jar)与开发 jar(jar)统一写入 MixinConfigs 清单属性。
