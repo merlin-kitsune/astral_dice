@@ -510,7 +510,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .unlockedBy("has_cutter_chip", has(ModItems.CUTTER_CHIP.get()))
                 .save(output);
 
-        // 标记喷灌:上排 下界疣·青金石·下界疣｜中排 标记涂料·空白筹码·标记涂料｜下排 星币·星币·星币 [稀有·标记]
+        // 标记喷罐:上排 下界疣·青金石·下界疣｜中排 标记涂料·空白筹码·标记涂料｜下排 星币·星币·星币 [稀有·标记]
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.MARKER_SPRAYER_CHIP.get())
                 .pattern("XLX")
                 .pattern("MBM")

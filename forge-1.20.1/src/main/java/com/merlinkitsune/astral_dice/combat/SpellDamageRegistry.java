@@ -299,7 +299,7 @@ public final class SpellDamageRegistry {
                 return bonus + PiercingGunChipItem.getTargetDefense(ctx.target);
             }
         });
-        // 标记喷灌:对目标造成远程或魔法伤害后,使目标获得一层"标记"
+        // 标记喷罐:对目标造成远程或魔法伤害后,使目标获得一层"标记"
         registerModifier(new SpellDamageModifier() {
             @Override
             public double apply(SpellDamageContext ctx, double bonus) {

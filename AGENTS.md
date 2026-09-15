@@ -514,7 +514,7 @@ When extending this workspace:
 - **「嘲讽」(`pandaman_taunt`)只对敌对生物生效**,施加点必须带 `!(entity instanceof Player)` 守卫。
 - **死亡清理口径(2026-09-13 定案)**:养精蓄锐(`fen_recharge`)死亡清零;「骇客无敌」(`INVULNERABLE_TICKS`/`nancy_lu_invulnerable_until`)因无授予点已整段删除,含死亡清理中会强制解除任何来源(其他模组/指令)无敌的 `player.setInvulnerable(false)` 残留;其余冷却类附件维持现状(仅在创建/修改时的约定要求下才清除)。
 - **`damage_effect_bonus` 死键**:1.21.1 侧已删除(无任何调用);1.20.1 侧因该键在 `SYNCED_KEYS` 同步协议内而保留——属「功能一致、实现允许不一致」的已登记差异。
-- **物品名「标记喷灌」为正确写法**(不再按错字处理,zh 文案与代码注释均用「喷灌」)。
+- **物品名「标记喷罐」是唯一正确写法(2026-09-15 用户裁定,必须遵守)**:zh 显示名、帕秋莉手册、文档与**代码注释**一律写「喷罐」,**禁止**写成「标记喷灌」(「喷灌」在中文里指农田灌溉,与喷涂无关;早期曾被误判为《吉星派对》专有名词而「保留原名」,该旧口径作废)。判定入口:`item.astral_dice.marker_sprayer_chip`(类 `MarkerSprayerChipItem`,英文名 `Marker Sprayer` 不受影响)。
 - **技能名硬编码**:立牌 tooltip 的主动/被动技能名仍以中文字面量传入 `active_title`/`passive_title`(既定实现,不改);玩家侧功能与数值一致即可。- **敌对目标血量门槛统一为「不少于 20 血」(必须遵守)**:所有以「20 血」为门槛的筹码/立牌判定一律为**不少于 20 血**(`getMaxHealth() >= 20`,恰好 20 血/10 心计入),禁止写成「大于/超过 20 血」。当前两处:诅咒之剑筹码(`CursedSwordChipItem.onCursedSwordKill`,用 `getMaxHealth() < 20` 提前 return)与秘密侦探立牌「关键线索」(`BonnieSignItem.onKill`);新增同类判定必须沿用该阈值与措辞,tooltip/手册文案同步写「不少于 20 血」。
 
 ## 治愈流派规范（Healing System）— 必须遵守
