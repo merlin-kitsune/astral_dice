@@ -1,0 +1,95 @@
+{
+  "case_id": "ELECTRIC-GLOVE-ROUND-RESET-1.21.1",
+  "title": "电击手套「轮次归零解除武装」：三条出牌轮归零路径（tick 情形 1 周期正常到期 / registerPlay 周期边界 / forceResetRound 忍者宽限强重置）都必须把 electric_glove_aoe 解除；未归零时武装必须仍在",
+  "version": "1.21.1",
+  "target": {
+    "type": "bugfix",
+    "ref": "electric-glove-round-reset-disarm"
+  },
+  "steps": [
+    {
+      "op": "note",
+      "text": "被测口径：出牌轮归零的**唯一入口**是 EffectCardPeriod.clearRoundBonuses，它现在统一调用 ElectricGloveChipItem.disarmAoe(player)（本批 C1 的产品改动点）。clearRoundBonuses 的调用点恰好三条：① EffectCardPeriod.tick 情形 1（冷却到期 ⇒ 周期正常到期）；② registerPlay 的周期边界块；③ EffectCardPeriod.forceResetRound（忍者主动「宽限 1:00 内未出任何效果牌」的保险，由 BaseSignItem.tickSignActiveLock 调用）。此前的缺陷是 disarmAoe 只写在 tick 情形 1，于是「忍者宽限强重置」这条路径不会解除武装 ⇒ 两条归零路径口径不等价。"
+    },
+    {
+      "op": "note",
+      "text": "取证方式：/astralprobe gloveround G1 一条命令内自造四个相位，全部走生产入口、不绕开被测逻辑 —— A 正对照（冷却进行中，未归零 ⇒ 武装必须仍在，且冷却结束时刻未被改写）；B 路径①（cooldown_end 置为已过期 ⇒ tick 情形 1）；C 路径②（cooldown_end 已归 0 但 tick 未清理、出牌数 > 0 ⇒ registerPlay 的周期边界块）；D 路径③（装忍者立牌 + 置锁定态 + 宽限已过期 + 期内未出效果牌 ⇒ 真实调用 BaseSignItem.tickSignActiveLock ⇒ forceResetRound，并要求随后确实起主动冷却、锁定态被清）。读数同时给出附件真值 aoe= 与生产判定入口 armed=（isEquipped && 附件）。D 相位的 sign_active_max_cooldown 由探针显式写成 180 秒基准：本相位不调 performSkillForCurio，而 endLockAndStartCooldown 从该基准起冷却；这只替换基准的写入者，不绕过被测路径。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe gloveround G1"
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe gloveround G1"
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_G1_PREP:mode=(forced_survival|already_survival):equipped=1:aoe=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_G1_A_HELD:count=1:cd_kept=1:aoe=1:armed=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_G1_B_TICK:count=0:cd=0:aoe=0:armed=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_G1_C_REGISTER:.*:aoe=0:armed=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_G1_D_GRACE:aoe=0:armed=0:locked=0:cd=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_G1_VERDICT:held=1:tick_reset=1:register_reset=1:force_reset=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_G1_GLOVE_OK:1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_G1_RESTORE:creative"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_G1_DONE"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_G1_ERR|AP_G1_EX:|AP_TICK_EX"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "crash"
+    }
+  ],
+  "evidence": [],
+  "on_fail": "keep_game_running"
+}

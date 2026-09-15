@@ -32,6 +32,12 @@
     父进程的控制台句柄**，输出不经 PowerShell 的解码/再编码，字节原样透传
     （`& pwsh …` 的调用运算符会让原生输出过一遍 PS 的编码层）。
 
+    **A1 例外（2026-09-15 B2）**：`launch` 阶段改用**脱离式**启动（`-WindowStyle Hidden`
+    + 输出落文件句柄 + 按 `MT_LAUNCH: <终态>` 标记轮询），因为 PowerShell 的 `-Wait`
+    等的是**整棵进程树**，而 launch 会把 Minecraft 客户端作为后代留下 ⇒ 用 `-Wait`
+    必然阻塞到客户端退出，launch/cases 无法共存（实测根因见 docs/batch3/B1-in-game-results.md ①）。
+    其余阶段保持 `-Wait` 语义不变。
+
     文案偏差：前置失败提示里的 `mt.sh --phase stop` 改为 `mt.ps1`（同一入口的新名字）。
 
     行为修复（唯一一处非 1:1 移植）：env 阶段的种子包开关由「硬编码 1.20.1 种子包存在性、
@@ -57,15 +63,82 @@ function Invoke-MtChild {
     <#
     .SYNOPSIS
         启动一个 mt_*.ps1 子进程并返回其退出码（输出直通，不经 PS 编码层）。
+
+    .PARAMETER Detached
+        **脱离式**执行（A1，2026-09-15 B2）：`-WindowStyle Hidden` + stdout/stderr 落
+        **文件句柄**，本进程立即返回，随后按日志里的终态标记轮询。
+
+    .NOTES
+        为什么 launch 必须脱离（B1 实测根因，docs/batch3/B1-in-game-results.md ①）：
+        PowerShell 的 `Start-Process -Wait` 等的是**整棵进程树**，而 mt_launch 以
+        `-NoNewWindow` 起 `cmd → gradlew → 客户端`，客户端是同一控制台的后代 ⇒
+        `-Wait` 会一直阻塞到**客户端退出**才返回（本机最小复现：子进程 0.4s 退出、
+        父进程 12.4s 才返回 = 孙进程 ping 的时长）。后果是 launch 阶段 PASS 被记在
+        客户端死后，cases 阶段拿不到活客户端 ⇒ 上一轮「全流程 cases 全线 ERROR」。
+        实测同一坑也让「分步 --phase launch」不可能留下活客户端。
+
+        做法复刻已验证的 `scripts/devtools/Start-MtDetached.ps1`（`-WindowStyle Hidden`
+        + 重定向落文件 + 调用方按标记轮询），只是把它内联进 mt.ps1，避免测试工具链
+        依赖同级 devtools 目录。其余阶段保持 `-Wait` 语义不变。
     #>
     [CmdletBinding()]
-    param([Parameter(Mandatory)][string]$Script, [string[]]$ScriptArgs = @())
+    param(
+        [Parameter(Mandatory)][string]$Script,
+        [string[]]$ScriptArgs = @(),
+        [switch]$Detached,
+        [string]$PhaseMarker = '',
+        [int]$TimeoutSec = 900
+    )
 
     $argv = @('-NoProfile', '-File', (Join-Path $script:TestDir $Script)) + $ScriptArgs
+
+    if (-not $Detached) {
+        $proc = Start-Process -FilePath $script:PsExe `
+            -ArgumentList (ConvertTo-MtStartArgs -ArgumentList $argv) `
+            -NoNewWindow -PassThru -Wait
+        return $proc.ExitCode
+    }
+
+    $logDir = Join-Path (Join-Path (Get-MtRoot) 'temp') 'mt_detached'
+    if (-not (Test-Path -LiteralPath $logDir)) { [void](New-Item -ItemType Directory -Force -Path $logDir) }
+    $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+    $outLog = Join-Path $logDir ("{0}_{1}.log" -f ([System.IO.Path]::GetFileNameWithoutExtension($Script)), $stamp)
+    $errLog = "$outLog.err"
+
     $proc = Start-Process -FilePath $script:PsExe `
         -ArgumentList (ConvertTo-MtStartArgs -ArgumentList $argv) `
-        -NoNewWindow -PassThru -Wait
-    return $proc.ExitCode
+        -PassThru -WindowStyle Hidden -WorkingDirectory (Get-MtRoot) `
+        -RedirectStandardOutput $outLog -RedirectStandardError $errLog
+
+    Write-MtInfo ("DETACHED: {0} pid={1} log={2}" -f $Script, $proc.Id, $outLog)
+
+    # 终态标记：mt_launch 的三条出口都是 MT_LAUNCH: <OK|FAIL|ERROR|BLOCKED>
+    $marker = if ($PhaseMarker) { $PhaseMarker } else { 'MT_LAUNCH: ' }
+    $deadline = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds() + $TimeoutSec
+    while ([DateTimeOffset]::UtcNow.ToUnixTimeSeconds() -lt $deadline) {
+        $text = ''
+        try { $text = Read-MtSharedText -Path $outLog } catch { $text = '' }
+        $errText = ''
+        try { $errText = Read-MtSharedText -Path $errLog } catch { $errText = '' }
+        $all = $text + "`n" + $errText
+
+        if ($all.Contains("$marker" + 'OK')) { return $MT_EXIT_PASS }
+        if ($all.Contains("$marker" + 'BLOCKED')) { return $MT_EXIT_BLOCKED }
+        if ($all.Contains("$marker" + 'FAIL')) { return $MT_EXIT_FAIL }
+        if ($all.Contains("$marker" + 'ERROR')) { return $MT_EXIT_ERROR }
+
+        if ($proc.HasExited) {
+            # 进程已退出但没打出终态标记 ⇒ 子脚本自身崩了：把日志尾部透传出来再判 ERROR
+            foreach ($ln in @($all -split "`n" | Where-Object { $_.Trim() -ne '' } | Select-Object -Last 20)) {
+                Write-MtErrLine ([string]$ln)
+            }
+            return $MT_EXIT_ERROR
+        }
+        Start-Sleep -Seconds 3
+    }
+
+    Write-MtWarn ("DETACHED: 等待 {0} 的终态标记超时（{1}s）—— 进程继续运行，日志见 {2}" -f $Script, $TimeoutSec, $outLog)
+    return $MT_EXIT_ERROR
 }
 
 function Get-MtCleanupDisplayLines {
@@ -151,7 +224,9 @@ function Invoke-MtRunPhase {
         return (Invoke-MtChild -Script 'mt_env.ps1' -ScriptArgs (@('world', '--version', $PhaseVersion) + $seedArgs))
     }
     if ($PhaseName -eq 'launch') {
-        return (Invoke-MtChild -Script 'mt_launch.ps1' -ScriptArgs @('--version', $PhaseVersion))
+        # A1（B2）：launch **必须**脱离执行，否则 -Wait 会等整棵进程树（客户端）
+        # 直到它退出才返回 ⇒ 全流程与「分步 --phase launch」都拿不到活客户端。
+        return (Invoke-MtChild -Script 'mt_launch.ps1' -ScriptArgs @('--version', $PhaseVersion) -Detached)
     }
     if ($PhaseName -eq 'cases') {
         if ($CasePath) {
@@ -326,6 +401,7 @@ try {
             $r = if ($vrc -eq 0) { 'PASS' } else { 'FAIL' }
             [void](Invoke-MtChild -Script 'mt_report.ps1' -ScriptArgs @('mark', '--version', $v, '--phase', 'launch', '--result', $r))
             # 快照点：此后所有日志断言只看增量区间
+            # （A2 起 mt_launch 收尾已自行写快照，覆盖单阶段路线；这里再写一次是幂等的保险）
             if ($vrc -eq 0) {
                 [void](Invoke-MtChild -Script 'mt_assert.ps1' -ScriptArgs @('snapshot', '--version', $v))
             }

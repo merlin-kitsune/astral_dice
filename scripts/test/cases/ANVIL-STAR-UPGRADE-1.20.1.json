@@ -9,7 +9,7 @@
   "steps": [
     {
       "op": "note",
-      "text": "被测语义：AnvilUpgradeHandler#onAnvilUpdate（AnvilUpdateEvent）只写 output/materialCost/cost，真正扣费的是原版 AnvilMenu#onTake —— 材料按 repairItemCountCost 从【铁砧右槽】扣（槽内数量 > 费用则 shrink，否则整槽清空），经验按 cost=10 级扣。用例路径：/astralprobe anvilstar 清币 → 精确投料（费用+3 枚进铁砧右槽、7 枚留物品栏做对照）→ player.openMenu（真实铁砧方块自带的 MenuProvider）打开原版铁砧界面 → 用 AbstractContainerMenu#clicked（与原版服务端处理 ServerboundContainerClickPacket 的入口逐字相同）把星币搬进右槽、骰子搬进左槽、再点结果槽取件 → 关闭界面把右槽剩余退回物品栏。与真人 GUI 的唯一差异：点击由服务端发起而不是客户端网络包；菜单类、槽位、AnvilUpdateEvent 与 onTake 结算全部是同一条原版路径（AP_S1_SRC:block 表示走的是真实铁砧方块；若退化为 direct，说明方块路径不可用、改用直接构造的同一个 AnvilMenu）。三档在同一颗骰子上真实连升（★0→1→2→3），不对 weapon_enhancement 做任何组件写入脚手架。1.20.1 侧 weapon_enhancement 是 ItemStack NBT 键（component/ItemDataKey），探针以 ModDataComponents.WEAPON_ENHANCEMENT.getOrDefault(stack, EMPTY) 读取星级（1.21.1 为 stack.getOrDefault(WEAPON_ENHANCEMENT.get(), EMPTY)），断言语义两版本逐条对等。"
+      "text": "被测语义：AnvilUpgradeHandler#onAnvilUpdate（AnvilUpdateEvent）只写 output/materialCost/cost，真正扣费的是原版 AnvilMenu#onTake —— 材料按 repairItemCountCost 从【铁砧右槽】扣（槽内数量 > 费用则 shrink，否则整槽清空），经验按 cost=10 级扣。用例路径：/astralprobe anvilstar 清币 → 精确投料（费用+3 枚进铁砧右槽、7 枚留物品栏做对照）→ player.openMenu（真实铁砧方块自带的 MenuProvider）打开原版铁砧界面 → 用 AbstractContainerMenu#clicked（与原版服务端处理 ServerboundContainerClickPacket 的入口逐字相同）把星币搬进右槽、骰子搬进左槽、再点结果槽取件 → 关闭界面把右槽剩余退回物品栏。与真人 GUI 的唯一差异：点击由服务端发起而不是客户端网络包；菜单类、槽位、AnvilUpdateEvent 与 onTake 结算全部是同一条原版路径（AP_S1_SRC:block **为硬前置**：2026-09-15 B2 起 `_SRC` 断言已收紧为 `block`（原为 `(block|direct)`）。原因见 `docs/batch3/ANVIL-attribution.md`：两参构造 `new AnvilMenu(id,inv)` 的 `ContainerLevelAccess` 是 `NULL`，其 `execute` 是接口 default 而 `evaluate` 恒返回 empty ⇒ `ItemCombinerMenu#removed` 的退回动作**静默 no-op**，`_INV_AFTER_CLOSE` 永远 7；只有真实方块访问（`ContainerLevelAccess.create(level,pos)`，与 `AnvilBlock#getMenuProvider` 同源）才会把右槽剩余退回物品栏。探针现同时打印 `_SRC:block:why=…` 与关界面前后的 `_S*_PRE/POST_STATE`（物品栏星币数 / 槽0 / 槽1 / 8 格内 ItemEntity 列表），使该路径完全可判。）。三档在同一颗骰子上真实连升（★0→1→2→3），不对 weapon_enhancement 做任何组件写入脚手架。1.20.1 侧 weapon_enhancement 是 ItemStack NBT 键（component/ItemDataKey），探针以 ModDataComponents.WEAPON_ENHANCEMENT.getOrDefault(stack, EMPTY) 读取星级（1.21.1 为 stack.getOrDefault(WEAPON_ENHANCEMENT.get(), EMPTY)），断言语义两版本逐条对等。"
     },
     {
       "op": "inject_command",
@@ -84,7 +84,7 @@
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_S1_SRC:(block|direct)"
+      "pattern": "AP_S1_SRC:block"
     },
     {
       "type": "log",
@@ -134,7 +134,7 @@
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_S2_SRC:(block|direct)"
+      "pattern": "AP_S2_SRC:block"
     },
     {
       "type": "log",
@@ -184,7 +184,7 @@
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_S3_SRC:(block|direct)"
+      "pattern": "AP_S3_SRC:block"
     },
     {
       "type": "log",

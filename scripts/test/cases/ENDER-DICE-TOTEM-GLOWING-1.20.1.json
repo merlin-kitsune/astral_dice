@@ -1,0 +1,95 @@
+{
+  "case_id": "ENDER-DICE-TOTEM-GLOWING-1.20.1",
+  "title": "末影骰「保命清 GLOWING」门控：带本模组 MARKED 时保命必须同时移除 MARKED 与 GLOWING、保留增益；无 MARKED 时保命必须保留 GLOWING",
+  "version": "1.20.1",
+  "target": {
+    "type": "bugfix",
+    "ref": "ender-dice-totem-glowing-gate"
+  },
+  "steps": [
+    {
+      "op": "note",
+      "text": "被测口径：EnderDiceHandler#onLivingDeath 的保命清除集合 = HARMFUL ∪ {GLOWING，**仅当**玩家确实带着本模组 MARKED}，绝不用 removeAllEffects（用 removeEffectsCuredBy(PROTECTED_BY_TOTEM) 会连增益一起清掉）。必须补 GLOWING 的原因：MARKED 是 HARMFUL 会被清，而与它一同施加、同寿命的 GLOWING 是 NEUTRAL，只清 HARMFUL 会留下残留的发光轮廓。必须**门控**的原因：GLOWING 也可能来自原版光灵箭等其它来源，那种发光不属于本模组，不能顺手清掉。"
+    },
+    {
+      "op": "note",
+      "text": "取证方式：/astralprobe endertotem ET 一条命令内两个相位 —— P1（本模组 MARKED + GLOWING + 增益速度）受**致命伤害** ⇒ 断言 MARKED 与 GLOWING 均被移除、增益仍在；P2 对照相位（只有 GLOWING、**无** MARKED）受致命伤害 ⇒ 断言 GLOWING **被保留**（验证门控），增益同样保留。致死伤害必须**不绕过无敌**：探针用 damageSources().generic()（`minecraft:generic` 不在 bypasses_invulnerability 标签里；`/kill` 的 `minecraft:generic_kill` 在标签里，产品与原版不死图腾都会跳过它）；判据是「玩家没死 + ender_die_totem_cooldown_end 被写入」。P2 前把保命冷却归零只是为在同一会话内造第二个保命相位，属测试脚手架，读数以 totem_cd_left 显式暴露。探针会先校验 EnderDiceHandler#hasEnderDie 为真才施加致死伤害，否则直接 ERR 并回创造，避免误杀玩家。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe endertotem ET"
+    },
+    {
+      "op": "wait",
+      "ms": 1800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe endertotem ET"
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_ET_P1_BEFORE:mode=(forced_survival|already_survival):marked=1:glow=1:speed=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_ET_P1_AFTER:marked=0:glow=0:speed=1:.*:api=(hurt|damage|cmd)"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_ET_P1_OK:1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_ET_P2_BEFORE:marked=0:glow=1:speed=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_ET_P2_AFTER:marked=0:glow=1:speed=1:.*:api=(hurt|damage|cmd)"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_ET_P2_OK:1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_ET_VERDICT:gated_clear=1:control_keep=1:marked_cleared=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_ET_RESTORE:creative:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_ET_DONE"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_ET_ERR|AP_ET_EX:|AP_TICK_EX"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "crash"
+    }
+  ],
+  "evidence": [],
+  "on_fail": "keep_game_running"
+}

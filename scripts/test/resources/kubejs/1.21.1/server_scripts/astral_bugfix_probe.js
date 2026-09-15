@@ -62,6 +62,13 @@
 
 var ComponentClass = Java.loadClass("net.minecraft.network.chat.Component");
 var AABBClass = Java.loadClass("net.minecraft.world.phys.AABB");
+// B（2026-09-15 B2）：`Entity#setDeltaMovement` 在本版**必须**走 `Vec3` 重载 ——
+// 三参 `(double,double,double)` 虽然存在于 1.21.1 的 `Entity`（反编译源 `Entity.java:3477`），
+// 但 Rhino 在 `ThrownEnderpearl` 实例上按 `(number,number,number)` 解析时报
+// `InternalError: Can't find method net.minecraft.world.entity.Entity.setDeltaMovement(number,number,number)`，
+// 使 NANCY-LU-PEARL-IMMUNE 的 P2/P3 相位整段不执行（17/29，产品不可判）。
+// `Vec3(double,double,double)` 两版本都存在且唯一（另一构造为 `Vec3(Vector3f)`，不会被 3 个 number 命中）。
+var Vec3Class = Java.loadClass("net.minecraft.world.phys.Vec3");
 var EntityClass = Java.loadClass("net.minecraft.world.entity.Entity");
 var LivingEntityClass = Java.loadClass("net.minecraft.world.entity.LivingEntity");
 var LightningBoltClass = Java.loadClass("net.minecraft.world.entity.LightningBolt");
@@ -679,6 +686,13 @@ var BlocksClass = Java.loadClass("net.minecraft.world.level.block.Blocks");
 var GameTypeClass = Java.loadClass("net.minecraft.world.level.GameType");
 var AnvilMenuClass = Java.loadClass("net.minecraft.world.inventory.AnvilMenu");
 var SimpleMenuProviderClass = Java.loadClass("net.minecraft.world.SimpleMenuProvider");
+// ANVIL 追加（2026-09-15 B2）：block 路径必须携带**真实方块访问**。
+// `ItemCombinerMenu#removed` 的退回动作写在 `this.access.execute(() -> clearContainer(player, inputSlots))`
+// 里，而 `ContainerLevelAccess.NULL` 覆写 `evaluate` 返回 Optional.empty、`execute` 是接口 default
+// ⇒ `NULL.execute()` 静默 no-op（`AnvilMenu(id, inv)` 两参构造正是 NULL）。故兜底也必须用
+// `ContainerLevelAccess.create(level, pos)`（与 `AnvilBlock#getMenuProvider` 同源），而不是两参构造。
+var ContainerLevelAccessClass = Java.loadClass("net.minecraft.world.inventory.ContainerLevelAccess");
+var ItemEntityClass = Java.loadClass("net.minecraft.world.entity.item.ItemEntity");
 var ModDataComponentsClass = Java.loadClass("com.merlinkitsune.astral_dice.component.ModDataComponents");
 var WeaponEnhancementClass = Java.loadClass("com.merlinkitsune.astral_dice.component.WeaponEnhancement");
 
@@ -774,29 +788,61 @@ function anvilEnsureNoOpenMenu(p) {
 }
 
 /**
- * 打开真实铁砧界面:放一个铁砧方块 + 走方块自带的 MenuProvider(与真人右键铁砧同源)。
- * 方块路径不可用时退回「直接构造 AnvilMenu」(同一原版菜单类,仅 ContainerLevelAccess 为空),
- * 走哪条由 AP_<TAG>_SRC 读数标明。
+ * 打开真实铁砧界面:放一个铁砧方块 + 走**真实方块访问**的 MenuProvider(与真人右键铁砧同源)。
+ *
+ * ANVIL 追加修复（2026-09-15 B2）：旧写法在一次 try 里做完「放方块 → 取 MenuProvider」，
+ * 任何一步抛异常都 `provider = null` 且**不留任何原因**，实跑 100% 落到两参构造的 direct 菜单
+ * （`ContainerLevelAccess.NULL`）⇒ 关界面时 `ItemCombinerMenu#removed` 的退回动作静默 no-op
+ * （`ContainerLevelAccess.java:12-14` + `:32-37`），`_INV_AFTER_CLOSE` 永远 7。
+ * 现在:① 每一步的失败原因都进读数 `AP_<TAG>_SRC:<src>:why=…`；
+ *       ② 兜底改为 `ContainerLevelAccess.create(level,pos)`（**不是** NULL 两参构造），
+ *          即便 MenuProvider 查询失败也保住 block 语义。
  */
 function anvilOpenMenu(p) {
     anvilEnsureNoOpenMenu(p);
     var src = "direct";
+    var why = "none";
     var provider = null;
+    var pos = null;
     try {
-        var pos = p.blockPosition().relative(p.getDirection());
+        // ⚠️ 2026-09-15 B2 实测:Rhino 在 ServerPlayer 包装对象上**找不到 `getDirection`**
+        // (`TypeError: Cannot find function getDirection`,KubeJS 2101.7.2 的方法白名单里没有它),
+        // 旧写法 `p.blockPosition().relative(p.getDirection())` 因此**每次都抛异常**并静默落回
+        // 两参构造(NULL)⇒ 关界面退回动作变 no-op、`_INV_AFTER_CLOSE` 永远 7。改用固定偏移坐标
+        // (只依赖 BlockPos#offset,int 参数,Rhino 稳定可用)。
+        pos = p.blockPosition().offset(2, 0, 0);
         p.level.setBlockAndUpdate(pos, BlocksClass.ANVIL.defaultBlockState());
+        // ⚠️ 不要用 `BlockState#is(Block)` 做校验:Rhino 下 `is(Block)` 与 `is(HolderSet)`
+        // 对 AnvilBlock 实参**歧义**(实测 `The choice of Java method … is … is ambiguous`)。
+        // 放块成功与否由下一步的 MenuProvider 是否为空来判定即可。
         provider = p.level.getBlockState(pos).getMenuProvider(p.level, pos);
-    } catch (e1) { provider = null; }
+        if (provider == null && why === "none") { why = "provider_null"; }
+    } catch (e1) { provider = null; why = "block_ex:" + exText(e1); }
+
+    if (provider != null) {
+        src = "block";
+    } else if (pos != null) {
+        // 兜底仍走真实方块访问(与 AnvilBlock 自带 MenuProvider 同源)
+        try {
+            var acc = ContainerLevelAccessClass.create(p.level, pos);
+            provider = new SimpleMenuProviderClass(function (id, inv, pl) {
+                return new AnvilMenuClass(id, inv, acc);
+            }, ComponentClass.literal("astral_probe_anvil"));
+            src = "block";
+            why = why + "|access_create";
+        } catch (e2) { provider = null; why = why + "|access_ex:" + exText(e2); }
+    }
+
     if (provider == null) {
         provider = new SimpleMenuProviderClass(function (id, inv, pl) {
             return new AnvilMenuClass(id, inv);
         }, ComponentClass.literal("astral_probe_anvil"));
-    } else {
-        src = "block";
+        why = why + "|null_access";
     }
     var res = p.openMenu(provider);
     if (res == null || !res.isPresent()) return null;
-    return { menu: p.containerMenu, src: src };
+    // 开完再复核一次菜单真实状态:menu 的 access 类型无从直接读,故以 src 与后续关界面读数为准
+    return { menu: p.containerMenu, src: src, why: why, pos: pos };
 }
 
 /** 真实搬运/取件:与原版服务端处理 ServerboundContainerClickPacket 同一入口 */
@@ -805,14 +851,45 @@ function anvilClick(p, menu, slot, button) {
     try { menu.broadcastChanges(); } catch (e) { /* 同步失败不影响服务端权威状态 */ }
 }
 
-/** 关界面:铁砧输入槽的剩余材料由 ItemCombinerMenu#removed → clearContainer 退回物品栏 */
+/** 关界面:铁砧输入槽的剩余材料由 ItemCombinerMenu#removed → clearContainer 退回物品栏
+ *  ANVIL 追加修复（2026-09-15 B2）：**不再吞异常** —— 旧写法把 `p.closeContainer()` 的异常
+ *  吞掉后只用 `menuRemoved` 标记，实跑 100% 是 `menuRemoved`，于是「哪条路径执行」永远不可判
+ *  （归因文档 §4-6 指出这是修 block 路径的前置信息）。现在把异常类型/消息写进读数。 */
 function anvilCloseMenu(p) {
     var how = "unavailable";
     try { p.closeContainer(); how = "closeContainer"; }
     catch (e1) {
-        try { p.containerMenu.removed(p); how = "menuRemoved"; } catch (e2) { /* 都不可用 */ }
+        how = "closeContainer_ex:" + exText(e1);
+        try { p.containerMenu.removed(p); how = how + "|menuRemoved"; }
+        catch (e2) { how = how + "|removed_ex:" + exText(e2); }
     }
     return how;
+}
+
+/**
+ * 关界面前后的**只读**诊断读数（ANVIL 追加，2026-09-15 B2；归因文档 §7-1）。
+ * 打印:物品栏星币数 / 铁砧槽 0 与槽 1 的内容 / 玩家 8 格内的 ItemEntity 列表。
+ * 目的:把「附加槽残留到底去哪了」从"静态无法判定"变成可读事实 —— 若关界面后有 star_coin
+ * 掉落物 ⇒ 走的是 clearContainer 的 drop 分支;若槽内容仍在且物品栏没增加 ⇒ 随菜单丢弃(no-op)。
+ * 纯只读,不改任何状态,也不引入新的被测逻辑。
+ */
+function anvilCloseState(ctx, tag, phase, p, menu) {
+    var drops = [];
+    try {
+        var list = p.level.getEntitiesOfClass(ItemEntityClass,
+            AABBClass.ofSize(p.position(), 16.0, 16.0, 16.0));
+        for (var i = 0; i < list.size(); i++) {
+            var e = list.get(i);
+            drops.push(itemIdOf(e.getItem()) + "x" + e.getItem().getCount());
+        }
+    } catch (e0) { drops.push("<err:" + exText(e0) + ">"); }
+    var s0 = "n/a";
+    var s1 = "n/a";
+    try { s0 = anvilStackDesc(menu.getSlot(ANVIL_SLOT_INPUT).getItem()); } catch (e1) { s0 = "<ex:" + exText(e1) + ">"; }
+    try { s1 = anvilStackDesc(menu.getSlot(ANVIL_SLOT_ADDITIONAL).getItem()); } catch (e2) { s1 = "<ex:" + exText(e2) + ">"; }
+    send(ctx, "AP_" + tag + "_" + phase + "_STATE:coins=" + anvilCountItem(p, ANVIL_STAR_COIN)
+        + ":slot0=" + s0 + ":slot1=" + s1
+        + ":drops=" + (drops.length === 0 ? "none" : drops.join(",")));
 }
 
 /**
@@ -863,7 +940,7 @@ function doAnvilStar(ctx, diceId, tag, fresh) {
     var opened = anvilOpenMenu(p);
     if (opened == null) { send(ctx, "AP_" + tag + "_ERR:open_menu"); return 0; }
     var menu = opened.menu;
-    send(ctx, "AP_" + tag + "_SRC:" + opened.src);
+    send(ctx, "AP_" + tag + "_SRC:" + opened.src + ":why=" + opened.why);
 
     // 真实点击链:星币 → 右槽;骰子 → 左槽(每次 setChanged 都会重跑 createResult → AnvilUpdateEvent)
     anvilClick(p, menu, anvilMenuSlotOf(feeSlot), 0);
@@ -893,8 +970,10 @@ function doAnvilStar(ctx, diceId, tag, fresh) {
         + anvilDiceDesc(p.getInventory().getItem(diceSlot)));
 
     // 关界面:右槽剩余材料退回物品栏,物品栏星币数即「初始 − 费用」
+    anvilCloseState(ctx, tag, "S" + (starBefore + 1) + "_PRE", p, menu);
     send(ctx, "AP_" + tag + "_CLOSE:" + anvilCloseMenu(p));
     send(ctx, "AP_" + tag + "_INV_AFTER_CLOSE:" + anvilCountItem(p, ANVIL_STAR_COIN));
+    anvilCloseState(ctx, tag, "S" + (starBefore + 1) + "_POST", p, menu);
     send(ctx, "AP_" + tag + "_STAR:" + starBefore + ":" + starAfter);
 
     var restore = "n/a";
@@ -948,11 +1027,41 @@ function doAnvilBags(ctx, tag) {
     send(ctx, "AP_" + tag + "_BAG_RESULT:" + itemIdOf(a.menu.getSlot(ANVIL_SLOT_RESULT).getItem()));
     send(ctx, "AP_" + tag + "_BAG_RIGHT:" + anvilStackDesc(a.menu.getSlot(ANVIL_SLOT_ADDITIONAL).getItem()));
     send(ctx, "AP_" + tag + "_BAG_DICE:" + anvilDiceDesc(a.menu.getSlot(ANVIL_SLOT_INPUT).getItem()));
+    anvilCloseState(ctx, tag, "Z1_BAG_PRE", p, a.menu);
     send(ctx, "AP_" + tag + "_BAG_CLOSE:" + anvilCloseMenu(p));
+    anvilCloseState(ctx, tag, "Z1_BAG_POST", p, a.menu);
 
+    // ANVIL 追加修复（2026-09-15 B2 / 归因文档 §6-3）：旧写法把「物品栏里找不到骰子」直接判成
+    // `lost_after_close` 并 return 0。这在 **direct 路径下必然触发**（骰子还在旧菜单的第一输入槽里，
+    // 从未回到物品栏），于是 4 条 `AP_Z1_FEW_*` / `AP_Z1_DONE` 断言永远缺失 —— 那是探针自身的
+    // 判据缺陷，不是产品丢物品。现在:先从上一菜单槽 0 把骰子取回（direct 认这条路），
+    // 只有两条路都拿不到才报 ERR。
     var ds = anvilFindSlot(p, ANVIL_TEST_DICE);
+    var recovered = "none";
+    if (ds < 0) {
+        try {
+            var left0 = a.menu.getSlot(ANVIL_SLOT_INPUT).getItem();
+            if (left0 != null && !left0.isEmpty() && itemIdOf(left0) === ANVIL_TEST_DICE) {
+                var backSlot = anvilFreeSlot(p);
+                if (backSlot >= 0) {
+                    p.getInventory().setItem(backSlot, left0.copy());
+                    ds = backSlot;
+                    recovered = "from_menu_slot0";
+                } else { recovered = "no_free_slot"; }
+            } else { recovered = "slot0_empty"; }
+        } catch (e3) { recovered = "ex:" + exText(e3); }
+    }
     var fs = anvilFindSlot(p, ANVIL_STAR_COIN);
-    if (ds < 0 || fs < 0) { send(ctx, "AP_" + tag + "_ERR:lost_after_close:" + ds + ":" + fs); return 0; }
+    // ⚠️ `fs`/`ds` 是**物品栏槽位下标**(anvilFindSlot)，不是枚数；星币枚数用 anvilCountItem 单独打印，
+    //    避免「下标 5」被误读成「只剩 5 枚」（旧读数 AP_Z1_ERR:…:-1:5 就是这么被误读的）。
+    send(ctx, "AP_" + tag + "_Z1_AFTER_CLOSE:ds=" + ds + ":fs=" + fs
+        + ":coins=" + anvilCountItem(p, ANVIL_STAR_COIN)
+        + ":recovered=" + recovered);
+    if (ds < 0 || fs < 0) {
+        send(ctx, "AP_" + tag + "_ERR:lost_after_close:" + ds + ":" + fs
+            + ":coins=" + anvilCountItem(p, ANVIL_STAR_COIN) + ":recovered=" + recovered);
+        return 0;
+    }
     var b = anvilOpenMenu(p);
     if (b == null) { send(ctx, "AP_" + tag + "_ERR:open_menu_b"); return 0; }
     anvilClick(p, b.menu, anvilMenuSlotOf(fs), 0);
@@ -964,7 +1073,9 @@ function doAnvilBags(ctx, tag) {
     send(ctx, "AP_" + tag + "_FEW_TOTAL:" + (anvilCountItem(p, ANVIL_STAR_COIN)
         + b.menu.getSlot(ANVIL_SLOT_ADDITIONAL).getItem().getCount()));
     send(ctx, "AP_" + tag + "_FEW_DICE:" + anvilDiceDesc(b.menu.getSlot(ANVIL_SLOT_INPUT).getItem()));
+    anvilCloseState(ctx, tag, "Z1_FEW_PRE", p, b.menu);
     send(ctx, "AP_" + tag + "_CLOSE:" + anvilCloseMenu(p));
+    anvilCloseState(ctx, tag, "Z1_FEW_POST", p, b.menu);
     send(ctx, "AP_" + tag + "_DONE");
     return 1;
 }
@@ -1004,8 +1115,14 @@ var HealingManagerClass = Java.loadClass("com.merlinkitsune.astral_dice.item.Hea
 var MarkManagerClass = Java.loadClass("com.merlinkitsune.astral_dice.item.MarkManager");
 var MobEffectsClass = Java.loadClass("net.minecraft.world.effect.MobEffects");
 var ThrownEnderpearlClass = Java.loadClass("net.minecraft.world.entity.projectile.ThrownEnderpearl");
+// C1（2026-09-15 B2）：电击手套武装状态的生产入口
+var ElectricGloveClass = Java.loadClass("com.merlinkitsune.astral_dice.item.chip.ElectricGloveChipItem");
+// C4（2026-09-15 B2）：末影骰保命入口（装备判定）
+var EnderDiceHandlerClass = Java.loadClass("com.merlinkitsune.astral_dice.event.EnderDiceHandler");
 
 var DESC_INVIS = "effect.minecraft.invisibility";
+var DESC_GLOW = "effect.minecraft.glowing";
+var DESC_SPEED = "effect.minecraft.speed";
 var DESC_LIVING = "effect.astral_dice.living_page";
 var DESC_FATE = "effect.astral_dice.fate_guidance";
 var DESC_HEAL = "effect.astral_dice.healing";
@@ -1508,19 +1625,58 @@ function resetHurtFeedback(p) {
  * 对玩家施加一次 FALL 伤害,返回**真正使生命值下降**的 API 名。
  * hurt 声明于 LivingEntity,Rhino 直接成员查找可能不可见(见文件头真机实证),
  * 故链式回退;判据是「血量真的掉了」而不是「没抛异常」。
+ *
+ * ⚠️ 2026-09-15 B2 加固(实测 NANCY-LU-PEARL-IMMUNE 首次真正跑到 P1 免疫相位时,
+ * 本函数在**免疫相位**抛 `IllegalStateException: Missing key in ResourceKey[… damage_type]: …minecraft:5.0`
+ * 并逃出命令执行体,表现为「试图执行该命令时出现意外错误」+ 后续读数整段缺失):
+ * KubeJS 的 `DamageSource` 类型包装器(`DamageSourceWrapper.wrap`)把某个 **JS number(5.0)**
+ * 当成伤害类型 id 解析了。属**测试探针侧**的 Rhino/KubeJS 调用形态问题,不是产品行为。
+ * 加固三层:① `src` 的获取本身也进 try(此前它在所有 try 之外,是唯一能让异常逃逸的位置);
+ *          ② 三次尝试各自独立 try;③ 全部失败时回退**原版命令入口** `/damage`
+ *          (TESTING-SPEC 的既定口径:状态改写一律走原版命令,避开 Rhino 方法可见性坑)。
+ * 返回语义保持:真掉血才返回 API 名;免疫相位必须返回 `none[...]`。
  */
+var lastFallDiag = "";
+function runCmdP(p, cmd) {
+    try {
+        var src = p.createCommandSourceStack();
+        return "rc=" + p.level.getServer().getCommands().performPrefixedCommand(src, cmd);
+    } catch (e) { return "ERR:" + exText(e); }
+}
+
 function applyFallDamage(p, amount) {
-    var src = p.level.damageSources().fall();
-    var before = p.getHealth();
     var tried = [];
-    function dropped() { return p.getHealth() < before; }
-    try { p.hurt(src, amount); if (dropped()) return "hurt"; }
-    catch (e1) { tried.push("hurt:" + exText(e1)); }
-    try { p.causeFallDamage(amount, 1.0, src); if (dropped()) return "causeFallDamage"; }
-    catch (e2) { tried.push("causeFallDamage:" + exText(e2)); }
-    try { p.damage(src, amount); if (dropped()) return "damage"; }
-    catch (e3) { tried.push("damage:" + exText(e3)); }
-    return "none[" + tried.join(" | ") + "]";
+    var src = null;
+    try { src = p.level.damageSources().fall(); }
+    catch (e0) { tried.push("src:" + exText(e0)); }
+    var before = -1;
+    try { before = p.getHealth(); } catch (e00) { tried.push("health:" + exText(e00)); }
+    function dropped() { try { return (before >= 0) && (p.getHealth() < before); } catch (e) { return false; } }
+    function attempt(name, fn) {
+        try { fn(); if (dropped()) return name; }
+        catch (e) { tried.push(name + ":" + exText(e)); }
+        return null;
+    }
+    // ⚠️ 2026-09-15 B2 实测(该环境 Rhino/KubeJS 2101.7.2 的三个坑,逐条实测):
+    //   ① `p.hurt(src, number)` **不可用** —— 被 DamageSource 类型包装器错配参数并抛
+    //      `IllegalStateException: … damage_type … minecraft:5.0`,还会以未捕获异常的形式
+    //      污染 KubeJS server.log(连带后续用例的 kubejs 断言 FAIL)。**不调用它。**
+    //   ② `/damage` 命令**不能同步判定** —— `performPrefixedCommand` 在 1.21.1 上把命令
+    //      推迟到本 tick 末执行,同一次调用里读 getHealth() 必然读到"还没打"。
+    //   ③ `p.causeFallDamage(amount, 1.0, src)` / `p.damage(src, amount)` **同步生效且可用**
+    //      (实测 CTRL 相位真实掉血),故本函数只走这两条;免疫窗口生效时两者都会被产品取消 ⇒ 不掉血。
+    if (src != null) {
+        var r = attempt("causeFallDamage", function () { p.causeFallDamage(amount, 1.0, src); });
+        if (r != null) { lastFallDiag = r; return r; }
+        r = attempt("damage", function () { p.damage(src, amount); });
+        if (r != null) { lastFallDiag = r; return r; }
+    } else { tried.push("src_unavailable"); }
+    // 回退:原版 /damage(与真人/命令同一入口)。免疫窗口生效时它同样会被产品取消 ⇒ 不掉血。
+    // ⚠️ **不再回退 `/damage` 命令**:1.21.1 上 `performPrefixedCommand` 把命令**推迟到本 tick 末**
+    // 才执行,同一次调用里读 `getHealth()` 必然读到「还没打」⇒ 该回退无法给出同步判据
+    // (实测 api=none[] 且血量不变,纯属时序)。真需要命令通道时应拆成「下发 + 下一 tick 再读」两步。
+    lastFallDiag = "none[" + tried.join(" | ") + "]";
+    return lastFallDiag;
 }
 
 /**
@@ -1581,6 +1737,8 @@ var pearlWatchPearl = null;
 var pearlWatchRemaining = 0;
 var pearlWatchExpectImmune = true;
 var pearlWatchZ0 = 0.0;
+/** 免疫窗口峰值(每 tick 采样;见 pearlTickBody 注释) */
+var pearlWatchMaxWindow = 0;
 
 /** 确定几何:清出正前方口袋 + 脚下石台 + 正前方 3 格处的接珠柱(珍珠必须有确定落点) */
 function nancyPearlArena(p) {
@@ -1610,7 +1768,7 @@ function nancyPearlArena(p) {
 function nancySpawnPearl(p) {
     var pearl = new ThrownEnderpearlClass(p.level, p);
     pearl.setPos(p.getX(), p.getY() + 1.5, p.getZ() + 1.0);
-    pearl.setDeltaMovement(0.0, 0.0, 0.8);
+    pearl.setDeltaMovement(new Vec3Class(0.0, 0.0, 0.8));
     p.level.addFreshEntity(pearl);
     return pearl;
 }
@@ -1645,6 +1803,7 @@ function doNancyPearl(ctx, tag, withSign) {
     pearlWatchPearl = pearl;
     pearlWatchExpectImmune = withSign;
     pearlWatchRemaining = 160;
+    pearlWatchMaxWindow = 0;
     pearlWatchZ0 = p.getZ();
     send(ctx, "AP_" + tag + "_SPAWN:" + pearl.getId());
     send(ctx, "AP_" + tag + "_DONE");
@@ -1767,6 +1926,18 @@ function doDecayClear(ctx, tag) {
 // 珍珠落地观察窗(独立于 boltvis/hud/watch 的 tick 回调,非活跃时零开销)。
 // 只在珍珠消失(命中)后读数一次,并在同一免疫窗口内再施加一次 FALL 伤害。
 ServerEvents.tick(event => {
+    // 外层兜底(B2 加固):此前任何逃出内层 try 的异常只会进 KubeJS server.log,
+    // 既看不到是哪一步、也不进 latest.log ⇒ 用例只能看到「读数整段缺失」。
+    // 这里额外把异常落到一条 AP_ 行(用独立标记 TICKDIAG,不污染各用例的 absent 断言)。
+    try {
+        pearlTickBody();
+    } catch (eOuter) {
+        try { emitTo(pearlWatchPlayer, "AP_TICKDIAG:" + pearlWatchTag + ":" + exText(eOuter)); } catch (e2) { /* 忽略 */ }
+        pearlWatchRemaining = 0;
+    }
+});
+
+function pearlTickBody() {
     if (pearlWatchRemaining <= 0) return;
     pearlWatchRemaining--;
     try {
@@ -1776,8 +1947,19 @@ ServerEvents.tick(event => {
         var gone = false;
         try { gone = (pearl == null) || pearl.isRemoved() || !pearl.isAlive(); }
         catch (e0) { gone = false; }
+        // 2026-09-15 B2:免疫窗口的**峰值**必须每 tick 采样一次。
+        // 此前只在「珍珠消失」那一 tick 读一次 ⇒ 实测读到 window=0(珍珠落地后仍存活约 20 tick,
+        // 20 tick 的窗口在读取时已耗尽),断言 `window∈[18,20]` 在时序上不可达(与 HOSTILE 同类缺陷)。
+        // 峰值同样落在 latest.log,证据不弱化:它证明产品在落地那一刻确实写入了 ~20 tick 的窗口。
+        var maxWin = 0;
+        try {
+            var u = ModAttachments.getNancyLuEnderPearlImmuneUntil(p);
+            var n0 = nowTick(p);
+            if (u > 0) { var r0 = u - n0; if (r0 > pearlWatchMaxWindow) pearlWatchMaxWindow = r0; }
+            maxWin = pearlWatchMaxWindow;
+        } catch (e0b) { /* 读不到就保持 0 */ }
         if (!gone) {
-            if (pearlWatchRemaining <= 0) emitTo(p, "AP_" + pearlWatchTag + "_TIMEOUT");
+            if (pearlWatchRemaining <= 0) emitTo(p, "AP_" + pearlWatchTag + "_TIMEOUT:window_max=" + maxWin);
             return;
         }
         var now = nowTick(p);
@@ -1789,22 +1971,24 @@ ServerEvents.tick(event => {
         var tel = ((p.getZ() - pearlWatchZ0) > 1.0) ? 1 : 0;
         var api = "n/a";
         if (pearlWatchExpectImmune) {
-            // 免疫相位:窗口内再施加一次 FALL 伤害,必须依旧毫无反馈
-            api = applyFallDamage(p, FALL_DAMAGE_AMOUNT);
+            // 免疫相位:窗口**仍在**时再施加一次 FALL 伤害,必须依旧毫无反馈。
+            // 窗口已耗尽时不再施加(那已不是被测语义,施加只会制造一个与产品无关的受伤读数)。
+            api = (remain > 0) ? applyFallDamage(p, FALL_DAMAGE_AMOUNT) : "window_expired";
         }
         var ok;
         if (pearlWatchExpectImmune) {
-            ok = (remain > 0) && (tel === 1) && (p.getHealth() >= p.getMaxHealth())
+            ok = (pearlWatchMaxWindow >= 18) && (pearlWatchMaxWindow <= 20) && (tel === 1)
+                && (p.getHealth() >= p.getMaxHealth())
                 && (p.hurtTime === 0) && (p.invulnerableTime === 0) && (p.hurtMarked === false);
         } else {
             // hurtMarked 由 ServerEntity#sendChanges 在同一 tick 内消费并复位,
             // 观察窗读到它时已不可靠 → 对照组只用「确实掉血 + hurtTime > 0」判定,
             // marked 值仍打印出来作为证据。
-            ok = (remain === 0) && (tel === 1) && (p.getHealth() < p.getMaxHealth())
+            ok = (pearlWatchMaxWindow === 0) && (tel === 1) && (p.getHealth() < p.getMaxHealth())
                 && (p.hurtTime > 0);
         }
-        emitTo(p, "AP_" + pearlWatchTag + "_PEARL:window=" + remain + ":tel=" + tel
-            + ":drop=" + drop + ":hurt=" + p.hurtTime + ":invul=" + p.invulnerableTime
+        emitTo(p, "AP_" + pearlWatchTag + "_PEARL:window=" + remain + ":window_max=" + pearlWatchMaxWindow
+            + ":tel=" + tel + ":drop=" + drop + ":hurt=" + p.hurtTime + ":invul=" + p.invulnerableTime
             + ":marked=" + p.hurtMarked + ":api=" + api);
         emitTo(p, "AP_" + pearlWatchTag + "_OK:" + (ok ? 1 : 0));
         emitTo(p, "AP_" + pearlWatchTag + "_DONE");
@@ -1813,7 +1997,7 @@ ServerEvents.tick(event => {
         emitTo(pearlWatchPlayer, "AP_" + pearlWatchTag + "_EX:" + exText(err));
         pearlWatchRemaining = 0;
     }
-});
+}
 
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -2005,6 +2189,17 @@ function doRailgunFriendly(ctx, tag) {
         + ":nAngry=" + angryFlag(neutral) + ":fAngry=" + angryFlag(friendly));
 
     var boltBase = boltSpawnCount;
+    // ── C0（2026-09-15 B2）：怒气前置的**原版 NBT 回读**必须在触发赐福/落雷**之前**取下 ──
+    // 用例侧原先在臂装步之后注入同一条命令，但注入器每条命令的固定按键序列约 2.5–3 s，
+    // 而本命令的 `meleeHit` 会立刻触发骰神赐福、落雷只等 ~1 s 就结算，30 HP 的北极熊
+    // 在窗口内 hp 30→0 并从世界消失 ⇒ 那条 `/data get` 永远回「未找到实体」，
+    // 断言 `北极熊拥有以下实体数据：\d+` **在时序上不可达**（B1 实测 25/26）。
+    // 这里由探针**自己**在近战之前跑同一条原版命令：输出同样进聊天栏 → 落 latest.log，
+    // 断言文本一字未改（不是弱化断言，也不是换成探针私有读数），只是把取证时刻前移。
+    // 命令走 performPrefixedCommand，1.21.1 上延迟到本 tick 末执行，而落雷在 20 tick 后，
+    // 故读数必然作用在**仍存活**的靶上。
+    var angerNbt = runCmd(ctx, "data get entity @e[type=minecraft:polar_bear,limit=1] AngerTime");
+    send(ctx, "AP_" + tag + "_ANGER_NBT:" + angerNbt);
     var php = rghp(p), ehp = rghp(enemy), nhp = rghp(neutral), fhp = rghp(friendly);
     var thp = rghp(turtle), vhp = rghp(villager);
     send(ctx, "AP_" + tag + "_BEFORE:php=" + php + ":ehp=" + ehp + ":nhp=" + nhp + ":fhp=" + fhp
@@ -2703,6 +2898,249 @@ function doAirbagReset(ctx, tag) {
     send(ctx, "AP_" + tag + "_DONE");
     return 1;
 }
+// ════════════════════════════════════════════════════════════════════════════
+//  电击手套「轮次归零解除武装」(2026-09-15 B2 / 本批 C1)
+//    /astralprobe gloveround <tag>
+//
+//  产品口径:出牌轮归零的**唯一入口** = EffectCardPeriod.clearRoundBonuses,
+//  它现在统一调用 ElectricGloveChipItem.disarmAoe(player)(本批 C1 的改动点);
+//  clearRoundBonuses 的调用点恰好三条 = tick 情形 1(周期正常到期) /
+//  registerPlay 周期边界 / forceResetRound(忍者宽限强重置)。
+//  本命令覆盖**三条全部** + 一条正对照(未归零时武装必须仍在),避免"只有一条路径对了"。
+// ════════════════════════════════════════════════════════════════════════════
+
+/** 武装读数:附件真值(disarmAoe 写的那个键) + 生产判定入口 isAoeArmed(= isEquipped && 附件) */
+function gloveArmed(p) {
+    var att = -1;
+    try { att = ModAttachments.isElectricGloveAoe(p) ? 1 : 0; } catch (e0) { att = -1; }
+    var armed = -1;
+    try { armed = ElectricGloveClass.isAoeArmed(p) ? 1 : 0; } catch (e1) { armed = -1; }
+    return "aoe=" + att + ":armed=" + armed;
+}
+
+function doGloveRound(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var mode = "already_survival";
+    try { p.setGameMode(GameTypeClass.SURVIVAL); mode = "forced_survival"; } catch (e0) { /* 忽略 */ }
+    try { p.setHealth(p.getMaxHealth()); } catch (e0b) { /* 忽略 */ }
+    var slotErr = ensureChipSlot(p, CHIP_SLOT_MIN);
+    if (slotErr != null) { send(ctx, "AP_" + tag + "_ERR:" + slotErr); return 0; }
+    var chip = resolveItem("astral_dice:electric_glove_chip");
+    if (chip == null) { send(ctx, "AP_" + tag + "_ERR:unknown_chip"); return 0; }
+    clearCurioSlots(p, "chip");
+    clearCurioSlots(p, "stand");
+    var putErr = putInSlot(p, "chip", new ItemStack(chip), 0);
+    if (putErr != null) { send(ctx, "AP_" + tag + "_ERR:" + putErr); return 0; }
+    resetEffectCardCycle(p);
+    ModAttachments.setElectricGloveAoe(p, false);
+    send(ctx, "AP_" + tag + "_PREP:mode=" + mode
+        + ":equipped=" + (ElectricGloveClass.isEquipped(p) ? 1 : 0)
+        + ":" + gloveArmed(p));
+
+    var now = nowTick(p);
+
+    // ── 正对照 A:本轮**未**归零(冷却进行中)tick 必须不动武装 ────────────────
+    ModAttachments.setElectricGloveAoe(p, true);
+    ModAttachments.setEffectCardPlayCount(p, 1);
+    ModAttachments.setEffectCardCooldownEnd(p, now + 200);   // 冷却进行中 ⇒ tick 首行直接返回
+    EffectCardPeriodClass.tick(p);
+    var aAoe = ModAttachments.isElectricGloveAoe(p);
+    var aCd = ModAttachments.getEffectCardCooldownEnd(p);
+    send(ctx, "AP_" + tag + "_A_HELD:count=" + ModAttachments.getEffectCardPlayCount(p)
+        + ":cd_kept=" + (aCd > now ? 1 : 0) + ":" + gloveArmed(p));
+    var aOk = aAoe && (aCd > now);
+
+    // ── 路径 B:tick 情形 1(冷却到期 ⇒ 周期正常到期)归零 ───────────────────────
+    ModAttachments.setElectricGloveAoe(p, true);
+    ModAttachments.setEffectCardPlayCount(p, 2);
+    ModAttachments.setEffectCardCooldownEnd(p, now - 1);
+    EffectCardPeriodClass.tick(p);
+    var bAoe = ModAttachments.isElectricGloveAoe(p);
+    send(ctx, "AP_" + tag + "_B_TICK:count=" + ModAttachments.getEffectCardPlayCount(p)
+        + ":cd=" + ModAttachments.getEffectCardCooldownEnd(p) + ":" + gloveArmed(p));
+    var bOk = !bAoe;
+
+    // ── 路径 C:registerPlay 周期边界(冷却已归 0 但 tick 尚未清理) ──────────────
+    ModAttachments.setElectricGloveAoe(p, true);
+    ModAttachments.setEffectCardPlayCount(p, 2);
+    ModAttachments.setEffectCardCooldownEnd(p, now - 1);
+    EffectCardPeriodClass.registerPlay(p);
+    var cAoe = ModAttachments.isElectricGloveAoe(p);
+    send(ctx, "AP_" + tag + "_C_REGISTER:count=" + ModAttachments.getEffectCardPlayCount(p)
+        + ":cd_end=" + ModAttachments.getEffectCardCooldownEnd(p) + ":" + gloveArmed(p));
+    var cOk = !cAoe;
+
+    // ── 路径 D:忍者宽限强重置(forceResetRound) ────────────────────────────────
+    // 走**真实入口** BaseSignItem.tickSignActiveLock:忍者锁定态 + 门控硬上界 0(忍者无自身计时器)
+    // + 宽限已过期 + 期内未出任何效果牌 ⇒ 强制重置出牌状态并起主动冷却。
+    var err = equipSign(p, KOMACHI_SIGN_ID);
+    if (err != null) { send(ctx, "AP_" + tag + "_ERR:" + err); return 0; }
+    resetEffectCardCycle(p);
+    var nowD = nowTick(p);
+    ModAttachments.setElectricGloveAoe(p, true);
+    ModAttachments.setEffectCardPlayCount(p, 1);
+    ModAttachments.setSignActiveLockSign(p, KOMACHI_SIGN_ID);
+    ModAttachments.setSignActiveLockEnd(p, 0);
+    ModAttachments.setSignActiveLockGraceEnd(p, (nowD > 1 ? nowD : 1) - 1);
+    ModAttachments.setSignActiveLockPlayed(p, false);
+    // 测试脚手架:`endLockAndStartCooldown` 的基准读 `sign_active_max_cooldown`
+    // (= "本次冷却实际使用的最大冷却",正常由各立牌释放主动时写定,如忍者 180 秒)。
+    // 本相位不调 performSkillForCurio,故显式写一个非 0 基准,让"强重置后**确实起了冷却**"
+    // 可判定;这只替换基准的写入者,不绕过被测路径(forceResetRound → clearRoundBonuses → disarmAoe)。
+    ModAttachments.setSignActiveMaxCooldown(p, 3600);
+    BaseSignItemClass.tickSignActiveLock(p);
+    var dAoe = ModAttachments.isElectricGloveAoe(p);
+    var dLock = lockSignId(p);
+    var dCd = signCooldownRemaining(p);
+    send(ctx, "AP_" + tag + "_D_GRACE:" + gloveArmed(p)
+        + ":locked=" + (dLock === "" ? 0 : 1) + ":cd=" + (dCd > 0 ? 1 : 0));
+    var dOk = (!dAoe) && (dLock === "") && (dCd > 0);
+
+    send(ctx, "AP_" + tag + "_VERDICT:held=" + (aOk ? 1 : 0) + ":tick_reset=" + (bOk ? 1 : 0)
+        + ":register_reset=" + (cOk ? 1 : 0) + ":force_reset=" + (dOk ? 1 : 0));
+    send(ctx, "AP_" + tag + "_GLOVE_OK:" + ((aOk && bOk && cOk && dOk) ? 1 : 0));
+
+    // 收尾:摘筹码/立牌、清周期与武装、回创造
+    clearCurioSlots(p, "chip");
+    clearCurioSlots(p, "stand");
+    resetEffectCardCycle(p);
+    ModAttachments.setElectricGloveAoe(p, false);
+    try { p.setHealth(p.getMaxHealth()); } catch (e9) { /* 忽略 */ }
+    try { p.setGameMode(GameTypeClass.CREATIVE); } catch (e10) { /* 忽略 */ }
+    send(ctx, "AP_" + tag + "_RESTORE:creative");
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  末影骰「保命清 GLOWING」门控(2026-09-15 B2 / 本批 C4)
+//    /astralprobe endertotem <tag>
+//
+//  产品口径(event/EnderDiceHandler#onLivingDeath):保命时移除集合 = HARMFUL ∪
+//  {GLOWING 仅当玩家确实带着本模组 MARKED};绝不用 removeAllEffects。
+//  两个相位:
+//    P1 MARKED + GLOWING + 增益(速度) → 致命伤害 ⇒ MARKED 与 GLOWING 均被移除、增益仍在;
+//    P2 只有 GLOWING(无 MARKED)      → 致命伤害 ⇒ GLOWING **被保留**(验证门控)。
+//  ⚠️ 致死伤害必须**不绕过无敌**:/kill = minecraft:generic_kill 属
+//  BYPASSES_INVULNERABILITY,产品与原版不死图腾都会跳过它(见 AIRBAG 是另一条口径)。
+// ════════════════════════════════════════════════════════════════════════════
+
+/** 保命相位前的干净基线(清 marked/glowing/speed、清无敌帧、回满血、冷却归零) */
+function enderGlowReset(p) {
+    try { ModEffectRemoval.remove(p, fxMarked()); } catch (e0) { /* 忽略 */ }
+    try { p.removeEffect(MobEffectsClass.GLOWING); } catch (e1) { /* 忽略 */ }
+    try { p.removeEffect(MobEffectsClass.MOVEMENT_SPEED); } catch (e2) { /* 忽略 */ }
+    try { ModAttachments.setEnderDieTotemCooldownEnd(p, 0); } catch (e3) { /* 忽略 */ }
+    try { p.setHealth(p.getMaxHealth()); } catch (e4) { /* 忽略 */ }
+    resetHurtFeedback(p);
+}
+
+/** 保命读数:三个效果的存在性 + 血量 + 末影骰保命冷却剩余(>0 = 图腾确实触发过) */
+function enderGlowState(p) {
+    var now = nowTick(p);
+    var cdLeft = -1;
+    try { cdLeft = ModAttachments.getEnderDieTotemCooldownEnd(p) - now; } catch (e0) { cdLeft = -1; }
+    return "marked=" + (findEffect(p, DESC_MARK) != null ? 1 : 0)
+        + ":glow=" + (findEffect(p, DESC_GLOW) != null ? 1 : 0)
+        + ":speed=" + (findEffect(p, DESC_SPEED) != null ? 1 : 0)
+        + ":hp=" + rghp(p) + ":invul=" + (function(){ try { return p.getAbilities().invulnerable ? 1 : 0; } catch (e) { return -1; } })() + ":totem_cd_left=" + cdLeft;
+}
+
+/**
+ * 施加一次**不绕过无敌**的致死伤害,返回真正生效的 API 名。
+ * 判据是「玩家没死 + 末影骰保命冷却被写入」,两者同时成立才算走通了保命链路。
+ */
+function applyLethalDamage(p) {
+    // 走**原版命令入口** `/damage`(TESTING-SPEC 既定口径:状态改写一律走原版命令,
+    // 避开 Rhino/KubeJS 的 DamageSource 类型包装器 —— 实测同一包装器在 `p.hurt(src, 5.0)`
+    // 形态下会把 JS number 当成伤害类型 id 解析并抛 IllegalStateException)。
+    // 判据不变:玩家没死 + 末影骰保命冷却被写入。
+    var now = nowTick(p);
+    function fired() {
+        if (!p.isAlive()) return false;
+        try { return ModAttachments.getEnderDieTotemCooldownEnd(p) > now; } catch (e) { return false; }
+    }
+    // 先确认可受伤:创造/旁观(abilities.invulnerable)下 Player#hurt 直接返回 false,
+    // `/damage` 会回「对象免疫指定的伤害类型」而什么也不发生 —— 那会让本相位静默空跑。
+    // 故同时用 Java 与命令两条路切生存,并把不可受伤状态显式落成读数。
+    try {
+        if (p.getAbilities().invulnerable) {
+            p.setGameMode(GameTypeClass.SURVIVAL);
+            runCmdP(p, "gamemode survival @s");
+        }
+    } catch (e0) { /* 忽略 */ }
+    var invul = 0;
+    try { invul = p.getAbilities().invulnerable ? 1 : 0; } catch (e1) { invul = -1; }
+    if (invul !== 0) return "none[not_damageable:invul=" + invul + "]";
+    // 致死:走原版 `/damage`(Java 侧 `p.hurt(src, 100.0)` 在本环境下被 KubeJS 的 DamageSource
+    // 类型包装器错配参数并抛异常,详见 applyFallDamage 注释)。`minecraft:fall` 不属
+    // bypasses_invulnerability(该标签只有 out_of_world / generic_kill)⇒ 会真正触发保命。
+    var rc = "causeFallDamage";
+    try { p.causeFallDamage(100.0, 1.0, p.level.damageSources().fall()); }
+    catch (e9) { rc = "ex:" + exText(e9); }
+    if (fired()) return "cmd";
+    return "none[" + rc + ":invul=" + invul + ":hp=" + rghp(p) + "]";
+}
+
+function doEnderTotem(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var mode = "already_survival";
+    try { p.setGameMode(GameTypeClass.SURVIVAL); mode = "forced_survival"; } catch (e0) { /* 忽略 */ }
+    var diceItem = resolveItem("astral_dice:ender_dice");
+    if (diceItem == null) { send(ctx, "AP_" + tag + "_ERR:unknown_item:ender_dice"); return 0; }
+    var diceErr = putInSlot(p, "dice", new ItemStack(diceItem), 0);
+    if (diceErr != null) { send(ctx, "AP_" + tag + "_ERR:" + diceErr); return 0; }
+    var equipped = -1;
+    try { equipped = EnderDiceHandlerClass.hasEnderDie(p) ? 1 : 0; } catch (e1) { equipped = -1; }
+    if (equipped !== 1) {
+        send(ctx, "AP_" + tag + "_ERR:no_ender_dice:equipped=" + equipped);
+        try { p.setGameMode(GameTypeClass.CREATIVE); } catch (e2) { /* 忽略 */ }
+        return 0;
+    }
+
+    // ── P1:MARKED + GLOWING + 增益(速度) → 保命后 MARKED/GLOWING 被清、增益仍在 ──
+    enderGlowReset(p);
+    try { p.addEffect(new MobEffectInstanceClass(fxMarked(), 2400, 0)); } catch (e3) { send(ctx, "AP_" + tag + "_ERR:add_marked:" + exText(e3)); return 0; }
+    try { p.addEffect(new MobEffectInstanceClass(MobEffectsClass.GLOWING, 2400, 0)); } catch (e4) { send(ctx, "AP_" + tag + "_ERR:add_glow:" + exText(e4)); return 0; }
+    try { p.addEffect(new MobEffectInstanceClass(MobEffectsClass.MOVEMENT_SPEED, 2400, 0)); } catch (e5) { send(ctx, "AP_" + tag + "_ERR:add_speed:" + exText(e5)); return 0; }
+    send(ctx, "AP_" + tag + "_P1_BEFORE:mode=" + mode + ":" + enderGlowState(p));
+    var api1 = applyLethalDamage(p);
+    var s1 = enderGlowState(p);
+    send(ctx, "AP_" + tag + "_P1_AFTER:" + s1 + ":api=" + api1);
+    var p1Ok = (findEffect(p, DESC_MARK) == null) && (findEffect(p, DESC_GLOW) == null)
+        && (findEffect(p, DESC_SPEED) != null) && p.isAlive();
+    send(ctx, "AP_" + tag + "_P1_OK:" + (p1Ok ? 1 : 0));
+
+    // ── P2:对照相位 —— 只有 GLOWING(无本模组 MARKED) → 保命后 GLOWING 必须保留 ──
+    // 保命冷却按 5:00 写入,产品语义正确;此处归零只是**为了在同一会话内造第二个保命相位**,
+    // 属测试脚手架(与本用例要验证的"清哪些效果"无关),在读数里以 totem_cd_left 显式暴露。
+    enderGlowReset(p);
+    try { p.addEffect(new MobEffectInstanceClass(MobEffectsClass.GLOWING, 2400, 0)); } catch (e6) { send(ctx, "AP_" + tag + "_ERR:add_glow2:" + exText(e6)); return 0; }
+    try { p.addEffect(new MobEffectInstanceClass(MobEffectsClass.MOVEMENT_SPEED, 2400, 0)); } catch (e7) { send(ctx, "AP_" + tag + "_ERR:add_speed2:" + exText(e7)); return 0; }
+    send(ctx, "AP_" + tag + "_P2_BEFORE:" + enderGlowState(p));
+    var api2 = applyLethalDamage(p);
+    var s2 = enderGlowState(p);
+    send(ctx, "AP_" + tag + "_P2_AFTER:" + s2 + ":api=" + api2);
+    var p2Ok = (findEffect(p, DESC_MARK) == null) && (findEffect(p, DESC_GLOW) != null)
+        && (findEffect(p, DESC_SPEED) != null) && p.isAlive();
+    send(ctx, "AP_" + tag + "_P2_OK:" + (p2Ok ? 1 : 0));
+
+    send(ctx, "AP_" + tag + "_VERDICT:gated_clear=" + (p1Ok ? 1 : 0) + ":control_keep=" + (p2Ok ? 1 : 0)
+        + ":marked_cleared=" + (findEffect(p, DESC_MARK) == null ? 1 : 0));
+
+    // 收尾:清效果与冷却、回满血、回创造
+    enderGlowReset(p);
+    try { p.removeEffect(MobEffectsClass.REGENERATION); } catch (e8) { /* 忽略 */ }
+    try { p.removeEffect(MobEffectsClass.ABSORPTION); } catch (e9) { /* 忽略 */ }
+    try { p.removeEffect(MobEffectsClass.FIRE_RESISTANCE); } catch (e10) { /* 忽略 */ }
+    clearCurioSlots(p, "dice");
+    try { p.setHealth(p.getMaxHealth()); } catch (e11) { /* 忽略 */ }
+    try { p.setGameMode(GameTypeClass.CREATIVE); } catch (e12) { /* 忽略 */ }
+    send(ctx, "AP_" + tag + "_RESTORE:creative:" + enderGlowState(p));
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
 ServerEvents.commandRegistry(event => {
     var Commands = event.commands;
     event.register(
@@ -2933,6 +3371,17 @@ ServerEvents.commandRegistry(event => {
                 .then(Commands.argument("tag", StringArg.word())
                     .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
                         return doAirbagReset(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            // ── 2026-09-15 B2 追加：C1 电击手套轮次归零解除武装 / C4 末影骰保命清 GLOWING ──
+            .then(Commands.literal("gloveround")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doGloveRound(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("endertotem")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doEnderTotem(ctx, StringArg.getString(ctx, "tag"));
                     }))))
     );
 });

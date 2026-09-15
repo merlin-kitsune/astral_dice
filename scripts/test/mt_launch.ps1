@@ -41,6 +41,82 @@ Import-Module (Join-Path $script:LibDir 'Mt.Proc.psm1')
 
 Initialize-MtConsole
 
+function Sync-MtProbeScripts {
+    <#
+    .SYNOPSIS
+        A4（2026-09-15 B2）：把 `scripts/test/resources/kubejs/<版本>/server_scripts/*.js`
+        部署到 `run/<版本>/kubejs/server_scripts/`，并逐文件核对 SHA256。
+
+    .DESCRIPTION
+        为什么必须自动化（B1 实测根因，`docs/batch3/B1-in-game-results.md` ⑥-4）：
+        TESTING-SPEC §6 规定探针靠**手工**复制，而 `mt_env` 只管 mods/world、从不刷新
+        `run/<版本>/kubejs/`。于是 2026-09-15 18:19 的全流程用的仍是 14:54 的旧探针
+        （源 16:33 已更新，SHA256 不同）⇒ `KOMACHI-EXTRA-PLAY-1.21.1` 在旧探针下 34/41 FAIL、
+        换上新探针后 41/41 PASS。**用旧探针跑出的 FAIL 是假 FAIL**，必须由工具链自己消除。
+
+        设计：与源**逐字节比对**（不是看时间戳），不同才复制；复制后再复核一次哈希。
+        每个文件打一行 `MT_INFO: PROBE_DEPLOY: <名字> <哈希前12位> <状态>`，便于日志取证。
+        缺失源目录只告警不中断（例如 1.20.1 侧的探针集合并非 1.21.1 的完全镜像）。
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$Version,
+        [Parameter(Mandatory)][string]$RunDir,
+        [Parameter(Mandatory)][string]$TestDir
+    )
+
+    $srcDir = Join-Path (Join-Path (Join-Path $TestDir 'resources') 'kubejs') `
+        (Join-Path $Version 'server_scripts')
+    $dstDir = Join-Path (Join-Path $RunDir 'kubejs') 'server_scripts'
+
+    if (-not (Test-Path -LiteralPath $srcDir -PathType Container)) {
+        Write-MtWarn "PROBE_DEPLOY: 源目录不存在，跳过（$srcDir）"
+        return
+    }
+    if (-not (Test-Path -LiteralPath $dstDir)) {
+        [void](New-Item -ItemType Directory -Force -Path $dstDir)
+    }
+
+    $files = @(Get-ChildItem -LiteralPath $srcDir -File -Filter '*.js' | Sort-Object Name)
+    if ($files.Count -eq 0) {
+        Write-MtWarn "PROBE_DEPLOY: 源目录无 *.js，跳过（$srcDir）"
+        return
+    }
+
+    $copied = 0
+    $sameCount = 0
+    $bad = @()
+    foreach ($f in $files) {
+        $dst = Join-Path $dstDir $f.Name
+        $srcHash = (Get-FileHash -LiteralPath $f.FullName -Algorithm SHA256).Hash
+        $state = 'copied'
+        if (Test-Path -LiteralPath $dst -PathType Leaf) {
+            $dstHash0 = (Get-FileHash -LiteralPath $dst -Algorithm SHA256).Hash
+            if ($dstHash0 -eq $srcHash) {
+                $state = 'up-to-date'
+                $sameCount++
+                Write-MtInfo ("PROBE_DEPLOY: {0} {1} {2}" -f $f.Name, $srcHash.Substring(0, 12), $state)
+                continue
+            }
+        }
+        Copy-Item -LiteralPath $f.FullName -Destination $dst -Force
+        $copied++
+        $dstHash1 = (Get-FileHash -LiteralPath $dst -Algorithm SHA256).Hash
+        if ($dstHash1 -ne $srcHash) {
+            $bad += $f.Name
+            $state = 'MISMATCH'
+        }
+        Write-MtInfo ("PROBE_DEPLOY: {0} {1} {2}" -f $f.Name, $srcHash.Substring(0, 12), $state)
+    }
+
+    if ($bad.Count -gt 0) {
+        Write-MtWarn ("PROBE_DEPLOY: {0} 个文件复制后哈希不一致（{1}）—— 本轮的 AP_ 读数不可信" -f `
+                $bad.Count, ($bad -join ', '))
+        return
+    }
+    Write-MtInfo ("PROBE_DEPLOY: OK — {0} 个脚本（复制 {1} / 已是最新 {2}）" -f $files.Count, $copied, $sameCount)
+}
+
 if ($MyInvocation.InvocationName -ne '.') {
 
     $Version = ''
@@ -122,6 +198,12 @@ if ($MyInvocation.InvocationName -ne '.') {
     if (-not (Test-Path -LiteralPath $p.shot_dir)) {
         [void](New-Item -ItemType Directory -Force -Path $p.shot_dir)
     }
+
+    # A4（B2）：探针脚本必须在**冷启动之前**刷新 —— 用旧探针跑出的 FAIL 是假 FAIL。
+    # 放在这里（而不是 mt_env）的理由：① KubeJS 只在启动时加载 server_scripts，
+    # 部署必须紧邻 Start-MtProcessToFile；② `--phase launch` 单阶段同样会走到这里，
+    # 分步路线（B1 实际采用的路线）因此自动获得新探针。
+    Sync-MtProbeScripts -Version $Version -RunDir $p.run_dir -TestDir $testDir
 
     $launchLog = Join-Path $p.run_dir 'runclient_launch.log'
 
@@ -229,6 +311,16 @@ if ($MyInvocation.InvocationName -ne '.') {
             Write-MtWarn ("PRECLEAN: WARN — 注入返回码 {0}（命令可能未送达，读数有被世界残留污染的风险）" -f ($precleanRc -join '/'))
         }
     }
+
+    # ── A2（B2）：单阶段 launch 也必须建立快照基线 ─────────────────────────────
+    # 背景（B1 实测，docs/batch3/B1-in-game-results.md ⑥-2）：此前**只有全流程**在
+    # mt.ps1:330 调 `mt_assert snapshot`；`--phase launch` 单阶段不写快照，分步路线会
+    # 静默沿用上一轮的日志字节偏移，把确实存在的 AP_ 行判成「未命中」→ **假 FAIL**
+    # （实测：第一轮 RAILGUN-PET-EXCLUDE 因此 26/26 里的 tame 行未命中，复跑才 PASS）。
+    # 现在快照动作放进 launch 自己的收尾：全流程与分步路线共用同一处，调用方不必再手工补
+    # （覆盖 preclean 之后的所有行 —— preclean 是 launch 自己的动作，不属于任何用例的增量）。
+    & $psExe -NoProfile -File (Join-Path $testDir 'mt_assert.ps1') snapshot --version $Version
+    if ($LASTEXITCODE -ne 0) { Write-MtWarn 'SNAPSHOT: 基线写入失败（用例断言可能落在陈旧偏移上）' }
 
     Write-MtOk 'LAUNCH' "已进入世界（quickplay=$world）"
     exit $MT_EXIT_PASS

@@ -697,16 +697,28 @@ function Get-MtCaseFiles {
         排序复刻 `sorted(Path.glob(...))`：Windows 上 pathlib 的 `_str_normcase` 是
         「整串小写 + '/' 归一为 '\'」，再按 Ordinal 比较 —— 因此用「小写键 + Ordinal」
         排，而不是 Sort-Object 的区域性比较（后者对 `a.json`/`B.json` 这种会给错序）。
+        **A3 修正**：python 的 `glob("*.json")` 不匹配点文件，pwsh 的 `-like '*.json'` 会匹配
+        ⇒ 这里显式排除 `.` 开头的名字（状态文件不是用例，见函数内注释）。
     #>
     [CmdletBinding()]
     param([Parameter(Mandatory)][AllowEmptyString()][string]$Directory)
 
     $out = @()
     foreach ($item in @(Get-ChildItem -LiteralPath $Directory -ErrorAction SilentlyContinue)) {
-        if ([string]$item.Name -like '*.json') {
-            # python 的 glob 返回「目录参数原样 + 名字」：目录是相对的，结果就是相对的
-            $full = if ([System.IO.Path]::IsPathRooted($Directory)) { $item.FullName } else { Join-Path $Directory $item.Name }
-            $out += (ConvertTo-MtPathText $full)
+        # A3（2026-09-15 B2）：**必须排除点开头的运行态文件**。
+        # `cases/` 目录下同时住着 `.mt_run_state.json` / `.mt_snapshot.json` /
+        # `.mt_shots.json` / `.mt_keep_alive` 等状态文件；python 原实现用
+        # `Path.glob("*.json")`（**不匹配**点文件），而 PowerShell 的 `-like '*.json'`
+        # **会**匹配 `.mt_run_state.json` ⇒ pwsh 移植引入的回归：这两个状态文件被当成
+        # 用例扫描、走进 validate 分支并各记一条 ERROR（B1 实测见
+        # docs/batch3/B1-in-game-results.md ⑤/⑥-3）。真实用例文件名一律不以 `.` 开头，
+        # 故该过滤不会误伤任何用例（下列清单已复核：cases/*.json 无点开头者）。
+        if (-not ([string]$item.Name).StartsWith('.')) {
+            if ([string]$item.Name -like '*.json') {
+                # python 的 glob 返回「目录参数原样 + 名字」：目录是相对的，结果就是相对的
+                $full = if ([System.IO.Path]::IsPathRooted($Directory)) { $item.FullName } else { Join-Path $Directory $item.Name }
+                $out += (ConvertTo-MtPathText $full)
+            }
         }
     }
     if ($out.Count -eq 0) { return , @() }

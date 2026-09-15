@@ -44,15 +44,11 @@
     },
     {
       "op": "note",
-      "text": "怒气前置条件取证：探针自报的 `nAngry` 读数为 false，是 **Rhino 侧 `NeutralMob#isAngry()` 取值的已知失真**（同一条命令里 `data merge {AngerTime:1200}` 的 rc 也是 undefined），不可当判据；改用**原版 NBT 回读**证明北极熊确实带着 AngerTime>0（`data get entity … AngerTime` 的输出会进聊天栏）。产品侧真正的判据是服务端 Java 的 `HostileTargets.isHostile` → 由「3 道雷击被生成 + 北极熊掉血」两者共同证明（北极熊不是 Enemy，若 anger 未生效则它既不会进雷击白名单、也不会有雷击落在它位置上）。"
-    },
-    {
-      "op": "inject_command",
-      "command": "/data get entity @e[type=minecraft:polar_bear,limit=1] AngerTime"
+      "text": "怒气前置条件取证（2026-09-15 B2 修时序）：探针自报的 `nAngry` 读数不可当判据（Rhino 侧 `NeutralMob#isAngry()` 取值失真）；判据用**原版 NBT 回读**证明北极熊确实带着 AngerTime>0（`data get entity … AngerTime` 的输出会进聊天栏 → 落 latest.log）。⚠️ 该回读**由探针在近战之前自己跑**（`/astralprobe railgunfriendly` 内的 `AP_<tag>_ANGER_NBT` 步，同一条原版命令、同一句输出文本），用例侧**不再**注入这条命令：注入器每条命令的固定按键序列约 2.5–3 s，而臂装步的近战会立刻触发赐福、落雷 ~1 s 后就把 30 HP 的北极熊劈死并从世界移除 ⇒ 用例侧那条 `/data get` 只会回「未找到实体」，断言在时序上**永远不可达**（B1 在 1.21.1 实测 25/26，唯一失守就是它）。断言文本保持不变（没有弱化）。"
     },
     {
       "op": "wait",
-      "ms": 500
+      "ms": 900
     },
     {
       "op": "inject_command",
