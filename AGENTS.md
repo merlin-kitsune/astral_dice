@@ -1275,6 +1275,44 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --new <注册id>
 
 **电磁炮雷击命中范围(2026-09-14 用户裁决;2026-09-15 本批 D-B2 对齐双参口径)**:`RailgunBolts.isValidLightningTarget(Entity, LightningBolt)` 放行的只有 —— ① 统一入口 **带上下文** 的 `HostileTargets.isHostile(viewer, target)` 认定的**敌对目标**(敌对生物 `Enemy`,或已被激怒的中立生物 `NeutralMob#isAngry()`,如被攻击后的末影人;**以及「非同队伍、且曾主动攻击过 viewer 的玩家」**),其中 **`viewer` = 落雷来源玩家 = `bolt.getCause()`**(由 `RailgunChipItem#strike` 的 `bolt.setCause(cause)` 写入,故两版本都拿得到来源玩家;无闪电实例的退化重载 `isValidLightningTarget(Entity)` 的 viewer 为 null ⇒ 玩家不计入敌对)——电磁炮落雷由此与其它 AOE 的双参敌对口径完全一致,**会打你视为敌对的玩家**;**且** ② **不是雷击施放者自己拥有的宠物**(`OwnableEntity#getOwnerUUID()` 等于 `bolt.getCause().getUUID()`)——被激怒的已驯服宠物(如自己养的狼)属"友方宠物",永不挨自己的雷击;其它玩家拥有的宠物不在此列。其余实体(攻击者自己、平静的中立动物、盔甲架等)**在 `LightningBolt#tick` 的目标筛选处就被剔除**:不受伤、不转化、不触发 `onEntityStruckByLightning`、不发成就;方块着火按原版保留。实机取证:`/astralprobe railgunfriendly` 读数 `self=0:enemy=1:neutral=0:friendly=0`。
 
+## 管理员调试命令 `/astralparty`（Admin Debug Commands）— 必须遵守
+
+**定位**:本命令是**正式管理员功能**,随 jar 发布(不加 dev/测试专用开关、不加配置开关、不做「仅调试模式注册」),**只在服务端**注册与执行(`RegisterCommandsEvent` 的服务端命令派发器 + `CommandSourceStack` 的 `ServerPlayer` 路径,不存在仅客户端生效的分支);入口唯一 = `requires(src -> src.hasPermission(2))`——根字面量与每个子命令都带该门槛,**禁止**任何降低门槛的旁路(配置项、非 OP 别名、客户端旁路)。实现位于 `command/AstralPartyCommand`(两子项目各一份,API 差异见本节末)。
+
+| 子命令 | 语义 | 作用范围 |
+|---|---|---|
+| `cleareffect [目标]` | 清除**全部本模组效果**(`ModEffects.ALL`,33 个) | 排障兜底(含立牌主动效果) |
+| `clearcardeffect [目标]` | 只清**效果牌施加的效果**(`EffectCardPeriod.effectPendingEffects()`,9 个) | 出牌锁第 ③ 条的**最小**解锁手段 |
+| `resetcardlock [目标]` | 重置出牌锁的 **①②** | **仅效果牌轮次**,不含立牌锁定态 |
+| `resetcardcolddown [目标]` / `resetcardcooldown [目标]` | `resetcardlock` 的**别名**(原话拼写 + 拼写正确版) | 与主字面量**共用同一实现**,禁止写第二份逻辑 |
+| `dump [目标]` | **只读**转储本模组自身的关键状态为 `APDUMP\|<组>\|<键>=<值>` 行 | 排障与自动化断言取数;**不改变任何状态** |
+
+目标参数可选(`@a`/玩家名),省略时作用于执行者自己;执行者不是玩家且未给参数、或选择器解析不出玩家时返回可读失败文案而**不抛异常**。反馈文案一律走 lang key(`command.astral_dice.astralparty.*`,经 `Component.translatable`),禁止内联文本。
+
+**出牌锁三条判据与分工**(判据见 `EffectCardPeriod#isBlocked`):①出牌数达当轮上限(`isBurstFull`)、②出牌冷却进行中(`isCooldownActive`)、③**效果待定**(`isEffectPending`)。
+
+- `resetcardlock` **只解 ①②** —— 调 `EffectCardPeriod.forceResetRound(player)`:出牌数、出牌冷却、全部「每轮一次」标记(含电击手套本周期武装)一并归零。**明确不做 ③**:不清 `EFFECT_PENDING_SOURCES` 对应的效果、**不清立牌锁定态 `sign_active_lock_*`**、**不清待命等待器 `sign_ready_*`**、不补 `onRoundFullyReset` 回调。该入口对「未处于任何轮次状态」的玩家**幂等安全**(全是无条件写默认值,不读旧值)。
+- ③ **只能靠清掉效果实例**解除(`forceResetRound` 覆盖不到),由 `clearcardeffect` 负责。
+- `cleareffect` 与 `clearcardeffect` 的区别:前者 = **全部本模组效果**(含立牌主动效果 `misaki_burst`/`papara_bite`/`nancy_lu_hack`/`weak_mark` 等);后者 = **仅效果牌留下的那批效果**(= 出牌锁第 ③ 条的权威来源),不碰立牌主动效果,也不碰效果牌顺带施加的原版 rider(迅捷/中毒/生命恢复/抗性提升——它们不参与出牌锁且来源众多)。
+
+**`dump [目标]`(只读转储,机器格式)**:语法 `/astralparty dump [目标]`,权限门槛与其它子命令**完全相同**(`requires(src -> src.hasPermission(2))`,服务端注册/执行);目标参数可选(`@a`/玩家名),省略时作用于执行者自己,执行者不是玩家且未给参数时 `sendFailure` 可读文案、**不抛异常**。**本命令不改变任何状态**——只经 getter 与 `is*` 判定取值(含判定入口方法),不写任何附件/组件/效果,也不提供任何"设置/给予"入口;同理**不得越界**:只 dump 本模组自己的状态(效果清单只遍历 `ModEffects.ALL`,非本模组效果一行都不输出)。
+
+**为什么存在**:测试流程的断言 100% 是对 `run/<版本>/logs/latest.log` 的正则匹配,PowerShell 侧没有读游戏内状态的能力;`dump` 用**一条命令**把关键状态倾倒出来,以替换那批"纯读探针"代码。**所以输出格式的稳定性就是本命令的核心价值**(不是给人看的漂亮输出)——改形状 = 破坏既有断言,新增字段只能**追加**、不得改名/改序。
+
+- **输出格式**:每个目标玩家一段,段首一行 `APDUMP|HEAD|<玩家名>=<UUID>`;其后每行固定为 `APDUMP|<组>|<键>=<值>`,分隔符固定为 `|`。组固定为 `LOCKRAW`(出牌锁原始值:`game_time`、`effect_card_cooldown_end`、`effect_card_play_count`、`effect_card_bonus_plays`、`living_page_cycle_bonus`、`max_allowed`、`remaining_block_ticks`)、`LOCKDERIVED`(`is_burst_full`/`is_cooldown_active`/`is_effect_pending`/`is_blocked`)、`SIGN`(`sign_active_lock_sign`/`sign_active_lock_end`/`sign_active_reduction_pool`/`sign_active_lock_grace_end`/`sign_active_lock_played`/`sign_active_cooldown_end`/`sign_active_max_cooldown`/`sign_ready_type`/`sign_ready_expire` + 派生 `is_sign_active_locked`)、`EFFECTS`(每行 `effect=<注册id>|amplifier=<n>|duration=<n>`)、`PENDING`(每行 `source=<稳定标识>|effect=<注册id|none>|is_active=<bool>|remaining=<n>`)。
+- **约定**:数值一律十进制、tick 用 long、布尔用 `true/false`;**`APDUMP` 行内不得出现颜色码(§)**——颜色码会破坏正则;`APDUMP` 正文**不走 lang key**(它是机器格式),只有紧随其后的人类可读摘要走 lang key(`command.astral_dice.astralparty.dump.summary`)且**不得**带 `APDUMP|` 前缀。同时走**两条通道**:`source.sendSuccess(...)`(玩家 chat)与 `LOGGER.info(...)`(保证进 `latest.log`,不依赖 chat 渲染)。多玩家按选择器顺序输出,段内行序**固定**(键序写死;效果组按注册 id 序数排序;来源组按注册顺序;禁止依赖任何 `HashMap` 迭代序)。
+- **原始值优先于派生值**:断言一律锚定 `LOCKRAW`/`SIGN`/`EFFECTS`/`PENDING` 的原始值。`LOCKDERIVED` 组与 `SIGN` 组的 `is_sign_active_locked` 是**判定入口字段**(它们的布尔值由多条原始值实时推导),行尾固定带 `|assert=forbidden` 标记——**禁止作为断言落点**,只作人工参考。
+
+**能力边界(红线,违反即不合格)**:命令只做「**重置 / 清除 / 只读转储本模组自身状态**」这一件事。**不得**新增 —— ① 任何资源给予/设置(物品、卡牌、筹码、星币、星光、治愈、剑气层数、最大生命…);② 任何「把任意数值/状态设成任意值」的通用写入(如 `seteffect <效果> <时长>`、`setcooldown <tick>`、`setplaycount <n>`);③ 跨玩家扩散(默认只作用于执行者,给了选择器才作用于该玩家;**禁止**隐式作用于全体或影响选择器之外的人);④ 被任何游戏内正常玩法路径调用,或为「方便测试」在产品逻辑里加调试分支/后门;⑤ 去动原版或其它模组的玩家状态(如光灵箭施加的 `GLOWING`、经验、背包)。判定不清时的默认答案是**不做**。
+
+**实现纪律(三条)**:
+
+1. **效果移除只走 `ModEffectRemoval` 内部通道**:`ModEffectEvents.onModEffectRemovalPrevented` 会拦截并取消**全部 `astral_dice:` 命名空间效果**的外部移除(牛奶/`/effect clear`),直接 `removeEffect` 会让命令**完全无效**。走内部通道另有两个附带收益(**不要**另行重写):`onEffectTimerForget` 遗忘 `effect_timer_ends`(否则 `EffectTimerGuard.tick` 的 `inst == null` 分支会把效果**原样施加回来**)、`InvestigationEventUtil.onUndercoverRemoved` 清 `undercover_source`。
+2. **只清与所清效果「同生共死」的耦合状态**:`fate_active_until`(效果只是显示,功能由附件驱动)、`weak_mark_source`(印记来源归属,唯一读取点被 `hasEffect` 守卫)、`sign_ready_type`/`sign_ready_expire`(`*_ready` 提示效果是待命窗口的显示,只清效果会让按主动键被 `isSkillWaiting` **静默拒绝**且无任何提示)。**不动**玩家资源与进度计数器(`healing_points`/`healing_timer_end`、`investigation_stage`、`cursed_sword_*`、`empower_decay_at`)与立牌锁定态 `sign_active_lock_*`(后者由玩家级 tick `tickSignActiveLock` 自动迁移为冷却:无空档、无残留)。**不得**去清原版效果(如 `marked` 的伴生 `GLOWING`)——已知后果:清掉 `marked` 后发光按自己的计时自然结束,期间可能短暂出现「发光但无标记」;这是该边界下的既定取舍,不要"顺手修"。
+3. **只读入口**:`ModEffects.ALL`(派生自 `DeferredRegister#getEntries()` 的活视图,新增效果自动纳入)、`EffectCardPeriod.effectPendingEffects()`(由效果待定注册表去重派生)与 `EffectCardPeriod.effectPendingSources()`/`effectPendingSourceIds()`(同一注册表的逐条只读视图 + 稳定来源标识,供 `dump` 输出每条来源自己的 `isActive`);两子项目保持一致,**禁止**改成手写清单(必然漂移)。
+
+**两版本 API 差异(已用本机 moddev 反编译源码核对)**:①「全部效果」集合的元素类型 —— 1.21.1 `DeferredHolder<MobEffect, ? extends MobEffect>`(本身即 `Holder<MobEffect>`)/ 1.20.1 `RegistryObject<MobEffect>`(需 `.get()`);② 移除签名 —— 1.21.1 `LivingEntity#removeEffect(Holder<MobEffect>)` / 1.20.1 `LivingEntity#removeEffect(MobEffect)`;③ 命令事件 —— 1.21.1 `net.neoforged.neoforge.event.RegisterCommandsEvent`(GAME bus)/ 1.20.1 `net.minecraftforge.event.RegisterCommandsEvent`(FORGE bus);④ **效果待定来源的 `effect()` 返回类型**(`dump` 的 E 组用)—— 1.21.1 `Holder<MobEffect>`(注册 id 经 `Holder#unwrapKey()`) / 1.20.1 `MobEffect`(注册 id 经 `BuiltInRegistries.MOB_EFFECT.getKey(effect)`);⑤ **`getEffect`/`hasEffect` 的入参**随之不同(1.21.1 收 `Holder<MobEffect>`,1.20.1 收 `MobEffect`);⑥ `LOGGER` 在 `AstralDiceMod` 里是 **private**,两个子项目的命令类各自声明 `LoggerFactory.getLogger(AstralPartyCommand.class)`。命令树、权限门槛、参数形态、文案与 **`APDUMP` 行的组名/键名/行序**两版本逐字一致。**新增子命令前必须重读本节的能力边界。**
+
 ## 版本历史与发布记录
 
 历史功能/平衡性/BUG 修复记录见 `CHANGELOG_ZH.md`(中文)与 `CHANGELOG.md`(英文),两文件按版本号一一对应、条目数一致;配方细节以 `datagen/ModRecipeProvider.java` 实际生成内容为准。

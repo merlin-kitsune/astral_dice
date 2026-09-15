@@ -107,6 +107,75 @@ public final class EffectCardPeriod {
         });
     }
 
+    /**
+     * 「效果牌施加的效果」的权威清单(只读、去重、已剔除 {@code null})——供调试命令
+     * {@code /astralparty clearcardeffect} 使用。
+     *
+     * <p>与 {@link #EFFECT_PENDING_SOURCES} **同源**(逐条取 {@code effect()} 去重),因此
+     * 新增效果牌注册后自动纳入,不存在清单漂移;返回 {@link List#copyOf} 的不可变副本,
+     * 调用方无法改动注册表。注意本清单的语义是「效果牌留下的、会锁住出牌的效果」
+     * (= 出牌锁三条判据里的第 ③ 条),**不含**立牌主动效果与不参与出牌锁的展示类效果。
+     */
+    public static List<MobEffect> effectPendingEffects() {
+        List<MobEffect> effects = new ArrayList<>();
+        for (EffectPendingSource source : EFFECT_PENDING_SOURCES) {
+            MobEffect effect = source.effect();
+            if (effect != null && !effects.contains(effect)) {
+                effects.add(effect);
+            }
+        }
+        return List.copyOf(effects);
+    }
+
+    /**
+     * 效果待定来源的**只读**视图(与 {@link #effectPendingSourceIds()} 一一对应、同序)——供调试命令
+     * {@code /astralparty dump} 逐条输出「每个来源自己的 {@code isActive} 结果」。
+     *
+     * <p>返回 {@link List#copyOf} 的不可变副本,调用方无法改动注册表;顺序 = 注册顺序(静态块里的
+     * 注册次序,长期稳定),因此输出行序稳定。本方法**只读**、不改变注册语义。
+     *
+     * <p>{@link #effectPendingEffects()} 是「去重后的效果清单」(可清对象),本方法是「逐条来源」
+     * (可判定对象)——两者同源但用途不同,不要互相替代。
+     */
+    public static List<EffectPendingSource> effectPendingSources() {
+        return List.copyOf(EFFECT_PENDING_SOURCES);
+    }
+
+    /**
+     * 与 {@link #effectPendingSources()} **一一对应、同序**的稳定来源标识(调试输出用)。
+     *
+     * <p>效果驱动的来源取其效果注册 id 的**路径段**(如 {@code living_page}),这样标识既稳定
+     * (不依赖匿名类的 {@code toString} / 对象身份哈希)又和效果注册 id 对得上;纯逻辑来源
+     * (当前不存在)退化为按注册顺序的 {@code source_N}。同一效果被注册多次时,第 2 条起追加
+     * {@code #2}、{@code #3} 保证唯一(当前 9 条来源各自对应不同效果,不会走到该分支)。
+     */
+    public static List<String> effectPendingSourceIds() {
+        List<String> ids = new ArrayList<>();
+        java.util.Set<String> seen = new java.util.HashSet<>();
+        for (int i = 0; i < EFFECT_PENDING_SOURCES.size(); i++) {
+            String base = pendingSourceId(EFFECT_PENDING_SOURCES.get(i), i);
+            String unique = base;
+            int suffix = 2;
+            while (!seen.add(unique)) {
+                unique = base + "#" + suffix++;
+            }
+            ids.add(unique);
+        }
+        return List.copyOf(ids);
+    }
+
+    private static String pendingSourceId(EffectPendingSource source, int index) {
+        MobEffect effect = source.effect();
+        if (effect != null) {
+            net.minecraft.resources.ResourceLocation id =
+                    net.minecraft.core.registries.BuiltInRegistries.MOB_EFFECT.getKey(effect);
+            if (id != null) {
+                return id.getPath();
+            }
+        }
+        return "source_" + index;
+    }
+
     static {
         // 固定来源:大背包 +1、忍术飞镖 +1(不卸载持续提供)
         registerFixedSource(p -> hasCurio(p, ModItems.BIG_BACKPACK_CHIP.get()));

@@ -613,5 +613,13 @@
   "tooltip.astral_dice.sign.pandaman_health_gain": "Health Gained: §e+%s§r",
   "death.attack.true_damage": "%1$s was shattered by true damage",
   "death.attack.true_damage.player": "%1$s was shattered by %2$s's true damage",
-  "death.attack.true_damage.item": "%1$s was shattered by %2$s using %3$s"
+  "death.attack.true_damage.item": "%1$s was shattered by %2$s using %3$s",
+  "command.astral_dice.astralparty.cleareffect.success": "Cleared %s Astral Dice effect(s)",
+  "command.astral_dice.astralparty.cleareffect.success.other": "Cleared %s Astral Dice effect(s) across %s player(s)",
+  "command.astral_dice.astralparty.clearcardeffect.success": "Cleared %s effect card effect(s)",
+  "command.astral_dice.astralparty.clearcardeffect.success.other": "Cleared %s effect card effect(s) across %s player(s)",
+  "command.astral_dice.astralparty.resetcardlock.success": "Reset the play lock: play count and play cooldown cleared",
+  "command.astral_dice.astralparty.resetcardlock.success.other": "Reset the play lock for %s player(s)",
+  "command.astral_dice.astralparty.error.no_player": "This command must be run by a player, or you must specify a player argument",
+  "command.astral_dice.astralparty.dump.summary": "Dumped state for %s player(s); machine-readable lines are in latest.log"
 }

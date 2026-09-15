@@ -6,6 +6,8 @@ import net.minecraft.world.effect.MobEffect;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
+import java.util.Collection;
+
 public class ModEffects {
     public static final DeferredRegister<MobEffect> EFFECTS =
             DeferredRegister.create(Registries.MOB_EFFECT, AstralDiceMod.MODID);
@@ -138,4 +140,14 @@ public class ModEffects {
     // 嘲讽(肉弹战车立牌 pandaman 主动):目标只能攻击对其施加嘲讽的玩家
     public static final DeferredHolder<MobEffect, MobEffect> PANDAMAN_TAUNT =
             EFFECTS.register("pandaman_taunt", PandamanTauntEffect::new);
+
+    /**
+     * 本模组已注册的全部效果的**只读**视图(调试命令 {@code /astralparty cleareffect} 用)。
+     *
+     * <p>直接派生自 {@link #EFFECTS} 的注册条目视图——NeoForge 的 {@code getEntries()} 返回
+     * {@code Collections.unmodifiableSet(entries.keySet())} 的**活视图**,故新增效果会自动纳入,
+     * 不存在「忘记往清单里补一个」的漂移风险;同时**不改变任何既有注册语义**
+     * (不新增、不重排、不延迟任何注册调用)。
+     */
+    public static final Collection<DeferredHolder<MobEffect, ? extends MobEffect>> ALL = EFFECTS.getEntries();
 }
