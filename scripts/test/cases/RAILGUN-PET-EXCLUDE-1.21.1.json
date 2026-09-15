@@ -76,6 +76,14 @@
     },
     {
       "op": "wait",
+      "ms": 500
+    },
+        {
+      "op": "inject_command",
+      "command": "/astralprobe railgunfriendlyend PE"
+    },
+    {
+      "op": "wait",
       "ms": 700
     }
   ],
