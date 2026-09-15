@@ -420,7 +420,11 @@ if ($MyInvocation.InvocationName -ne '.') {
     # （实测：第一轮 RAILGUN-PET-EXCLUDE 因此 26/26 里的 tame 行未命中，复跑才 PASS）。
     # 现在快照动作放进 launch 自己的收尾：全流程与分步路线共用同一处，调用方不必再手工补
     # （覆盖 preclean 之后的所有行 —— preclean 是 launch 自己的动作，不属于任何用例的增量）。
-    & $psExe -NoProfile -File (Join-Path $testDir 'mt_assert.ps1') snapshot --version $Version
+    #
+    # B7：这里必须显式写 `--window launch` —— 它将同一组偏移**冻结**成 `launch_offsets`，
+    # 供 `mixin` 断言与 `mt_report` 的整轮摘要读取；此后每条用例的 `--window case` 只改写
+    # `offsets`，不会冲掉这份 launch 基线。
+    & $psExe -NoProfile -File (Join-Path $testDir 'mt_assert.ps1') snapshot --window launch --version $Version
     if ($LASTEXITCODE -ne 0) { Write-MtWarn 'SNAPSHOT: 基线写入失败（用例断言可能落在陈旧偏移上）' }
 
     Write-MtOk 'LAUNCH' "已进入世界（quickplay=$world）"

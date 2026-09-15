@@ -4,17 +4,40 @@
     mt_assert — 断言引擎（阶段 C 的判定臂）。
 
 .DESCRIPTION
-    判定原则：所有日志断言只针对**快照点之后的增量区间**求值。
+    判定原则：所有日志断言只针对**窗口起点之后的增量区间**求值。
     旧流程是对整个 latest.log 做 grep，历史运行留下的同名标记会让断言假通过；
     本模块用字节游标把断言锚定到本次运行产生的日志，使结论可复算。
 
+    ## B7：断言窗口 = 「自本用例起」（不再是「自 launch 起」）
+
+    `offsets` 的语义已改为**当前窗口起点**，由两类调用方写入：
+
+      · `mt_launch.ps1` 收尾  → `snapshot --window launch`：写 `offsets` **并冻结** `launch_offsets`；
+      · `mt_case.ps1` 每条用例开始 → `snapshot --window case`：只改写 `offsets`（+ crash 基线），
+        **不动** `launch_offsets`。
+
+    于是 `log` / `absent` 默认只看「本用例开始之后」的日志（B6 已实证：共用 launch 窗口会让
+    不带 tag 唯一标识的标记被前序用例"喂饱"⇒ 假 PASS，实测 `APDUMP|LOCKRAW|` 命中数随用例递增
+    14→28→…→126）。需要看**整轮**的断言（Mixin 应用、渲染栈加载等启动期事实）显式声明窗口：
+
+      --window case    自本用例起（默认；`offsets`）
+      --window launch  自 launch 起（`launch_offsets`；缺失时退化为 `offsets` 并告警）
+      --window whole   整文件（等价旧 `--no-snapshot`）
+      --no-snapshot    仅为兼容保留 = --window whole
+
+    `mixin` 子命令的默认窗口是 **launch**（Mixin 应用发生在启动期；若跟随 case 窗口会退化成
+    「恒真」，属于弱化断言 —— 故保持既有语义不变）。
+
     子命令:
-      snapshot --version V                记录基线（日志字节游标 / crash 基线 / run id）
-      log      --version V --pattern RE   增量区间内是否存在标记
-      absent   --version V --pattern RE   增量区间内不得出现某标记
-      crash    --version V                增量区间内无崩溃报告
+      snapshot --version V [--window launch|case]
+                                          记录窗口起点（日志字节游标 / crash 基线 / run id）
+      log      --version V --pattern RE [--window case|launch|whole]
+                                          窗口内是否存在标记
+      absent   --version V --pattern RE [--window case|launch|whole]
+                                          窗口内不得出现某标记
+      crash    --version V                窗口内无崩溃报告
       kubejs   --version V                KubeJS server.log 为 0 errors
-      mixin    --version V                增量区间内无 Mixin 应用失败
+      mixin    --version V [--window ...] 窗口内无 Mixin 应用失败（默认 launch）
 
 .NOTES
     迁移前源文件 scripts/test/mt_assert.py（该原件已在 92fbeaf「工具链收敛为纯 pwsh」删除，取回：`git show 92fbeaf^:scripts/test/mt_assert.py`）。
@@ -97,6 +120,44 @@ function Get-MtSnapFor {
     $versions = $snap['versions']
     if ($null -eq $versions -or -not $versions.Contains($Version)) { return [ordered]@{} }
     return $versions[$Version]
+}
+
+# ── B7 窗口选择 ───────────────────────────────────────────────────────────
+function Get-MtWindowOffset {
+    <#
+    .SYNOPSIS
+        按窗口种类取某日志文件的起始字节偏移。
+
+    .NOTES
+        case   → `offsets`（自本用例起，B7 的默认语义）
+        launch → `launch_offsets`（自 launch 起；旧快照没有该键时**退化并告警**，
+                 绝不静默把 launch 断言变成 case 断言 —— 那会凭空制造假 FAIL）
+        whole  → 0（整文件）
+
+        返回 (偏移, 实际生效的窗口名, 退化告警文本或空串)。
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]$Entry,
+        [Parameter(Mandatory)][string]$LogName,
+        [Parameter(Mandatory)][string]$Window
+    )
+
+    if ($Window -eq 'whole') { return , @([long]0, 'whole', '') }
+
+    $key = if ($Window -eq 'launch') { 'launch_offsets' } else { 'offsets' }
+    $degraded = ''
+    if (-not $Entry.Contains($key) -or $null -eq $Entry[$key]) {
+        if ($Window -eq 'launch' -and $Entry.Contains('offsets')) {
+            $key = 'offsets'
+            $degraded = 'launch_offsets 缺失（快照早于 B7 / 本条走的是 --phase cases 单步路线）⇒ 退化为当前窗口'
+        } else {
+            return , @([long]0, $Window, '')
+        }
+    }
+    $offsets = $Entry[$key]
+    if ($offsets.Contains($LogName)) { return , @([long]$offsets[$LogName], $Window, $degraded) }
+    return , @([long]0, $Window, $degraded)
 }
 
 # ── 增量读取 ──────────────────────────────────────────────────────────────
@@ -214,13 +275,27 @@ function New-MtRegex {
 
 # ── 子命令 ════════════════════════════════════════════════════════════════
 function Invoke-MtAssertSnapshot {
+    <#
+    .SYNOPSIS
+        写窗口起点。`--window launch`（launch 阶段收尾）额外把同一组偏移冻结成 `launch_offsets`；
+        `--window case`（每条用例开始）只改写 `offsets`，**保留** `launch_offsets`。
+
+    .NOTES
+        B7：为什么必须分两个键 —— 断言窗口收窄到「自本用例起」之后，`mixin` 子命令与
+        `mt_report` 的增量摘要仍需要「自 launch 起」的偏移。若只有一个 `offsets`，
+        每次用例刷新都会把 launch 基线冲掉 ⇒ 启动期断言退化成恒真（弱化）。
+    #>
     [CmdletBinding()]
-    param([Parameter(Mandatory)][string]$Version)
+    param(
+        [Parameter(Mandatory)][string]$Version,
+        [string]$Window = 'launch'
+    )
 
     $p = Get-MtPaths -Version $Version
     $runId = Get-MtActiveRunId
     $snap = Get-MtSnapshot
-    if (-not $snap.Contains('run_id') -or $snap['run_id'] -ne $runId) {
+    $sameRun = $snap.Contains('run_id') -and $snap['run_id'] -eq $runId
+    if (-not $sameRun) {
         $snap = [ordered]@{ run_id = $runId; versions = [ordered]@{} }
     }
     if (-not $snap.Contains('versions') -or $null -eq $snap['versions']) {
@@ -243,19 +318,37 @@ function Invoke-MtAssertSnapshot {
             ForEach-Object { $_.Name } | Sort-Object)
     }
 
-    $snap['versions'][$Version] = [ordered]@{
+    $prev = if ($sameRun -and $snap['versions'].Contains($Version)) { $snap['versions'][$Version] } else { $null }
+
+    # launch 基线：launch 窗口写死；case 窗口沿用上一份（没有则退化为当前偏移并告警）
+    $launchOffsets = $null
+    $launchWarn = ''
+    if ($Window -ne 'case') {
+        $launchOffsets = $offsets
+    } elseif ($null -ne $prev -and $prev.Contains('launch_offsets') -and $null -ne $prev['launch_offsets']) {
+        $launchOffsets = $prev['launch_offsets']
+    } else {
+        $launchOffsets = $offsets
+        $launchWarn = 'WARN — 无 launch 基线（--phase cases 单步路线 / 快照早于 B7），launch 窗口退化为当前起点'
+    }
+
+    $entry = [ordered]@{
         offsets        = $offsets
+        launch_offsets = $launchOffsets
+        window         = $Window
         ts             = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() / 1000.0
         crash_baseline = @($crashNames)
         mixin_errors   = @()
     }
+    $snap['versions'][$Version] = $entry
 
     Save-MtSnapshot -Snapshot $snap
 
     $latest = if ($offsets.Contains('latest.log')) { $offsets['latest.log'] } else { 0 }
     $debug = if ($offsets.Contains('debug.log')) { $offsets['debug.log'] } else { 0 }
     $probe = if ($offsets.Contains('astral_probe.log')) { $offsets['astral_probe.log'] } else { 0 }
-    Write-MtLine "MT_SNAPSHOT: OK — $Version run=$runId latest=${latest}B debug=${debug}B probe=${probe}B"
+    Write-MtLine "MT_SNAPSHOT: OK — $Version run=$runId window=$Window latest=${latest}B debug=${debug}B probe=${probe}B"
+    if ($launchWarn) { Write-MtWarn "MT_SNAPSHOT: $launchWarn" }
     return 0
 }
 
@@ -265,29 +358,27 @@ function Invoke-MtAssertLog {
         [Parameter(Mandatory)][string]$Version,
         [Parameter(Mandatory)][string]$PatternText,
         [Parameter(Mandatory)][string]$Source,
-        [bool]$SinceSnapshot = $true
+        [string]$Window = 'case'
     )
 
     $p = Get-MtPaths -Version $Version
-    if (-not $SinceSnapshot) {
-        Write-MtWarn '未指定 --since-snapshot，将对全文件求值（可能被历史标记污染）'
+    if ($Window -eq 'whole') {
+        Write-MtWarn '窗口 = whole：对全文件求值（可能被历史标记污染）'
     }
     $log = Get-MtLogPath -Paths $p -Source $Source
     if (Test-MtLogMissing -Source $Source -LogPath $log) { return 2 }
 
-    $offset = 0
-    if ($SinceSnapshot) {
-        $entry = Get-MtSnapFor -Version $Version
-        if ($entry.Contains('offsets')) {
-            $name = [System.IO.Path]::GetFileName($log)
-            if ($entry['offsets'].Contains($name)) { $offset = [long]$entry['offsets'][$name] }
-        }
-    }
+    $entry = Get-MtSnapFor -Version $Version
+    $name = [System.IO.Path]::GetFileName($log)
+    $wo = Get-MtWindowOffset -Entry $entry -LogName $name -Window $Window
+    $offset = [long]$wo[0]
+    $winUsed = [string]$wo[1]
+    if ([string]$wo[2]) { Write-MtWarn ("MT_ASSERT_LOG: {0}" -f [string]$wo[2]) }
 
     $text = Read-MtLogDelta -LogPath $log -Offset $offset
     $pat = New-MtRegex -Pattern $PatternText
     $hits = $pat.Matches($text).Count
-    $label = "$Source`:$([System.IO.Path]::GetFileName($log))@${offset}B"
+    $label = "$Source`:$name@${offset}B(win=$winUsed)"
 
     if ($hits -gt 0) {
         Write-MtLine "MT_ASSERT_LOG: PASS — /$PatternText/ 命中 $hits 次（$label）"
@@ -301,33 +392,38 @@ function Invoke-MtAssertLog {
 function Invoke-MtAssertAbsent {
     <#
     .SYNOPSIS
-        反向断言：增量区间内不得出现某标记（用于「旧机制无残留」类 TC）。
+        反向断言：窗口内不得出现某标记（用于「旧机制无残留」类 TC）。
 
     .NOTES
         通道缺失时返回 ERROR 而不是 PASS —— 否则「文件不存在」会被静默判成「标记未出现」，
         把环境故障伪装成通过。
+
+        B7 窗口语义：默认 `case` = **本用例窗口内**未出现。窗口只是"变短"，判据本身没变
+        （仍然必须在窗口内**实际读到过日志文本**且未命中）：起始偏移由本用例开始时写入，
+        覆盖本用例自身的全部动作，故不会退化成「永远成立」。
     #>
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][string]$Version,
         [Parameter(Mandatory)][string]$PatternText,
-        [Parameter(Mandatory)][string]$Source
+        [Parameter(Mandatory)][string]$Source,
+        [string]$Window = 'case'
     )
 
     $p = Get-MtPaths -Version $Version
     $log = Get-MtLogPath -Paths $p -Source $Source
     if (Test-MtLogMissing -Source $Source -LogPath $log) { return 2 }
 
-    $offset = 0
     $entry = Get-MtSnapFor -Version $Version
-    if ($entry.Contains('offsets')) {
-        $name = [System.IO.Path]::GetFileName($log)
-        if ($entry['offsets'].Contains($name)) { $offset = [long]$entry['offsets'][$name] }
-    }
+    $name = [System.IO.Path]::GetFileName($log)
+    $wo = Get-MtWindowOffset -Entry $entry -LogName $name -Window $Window
+    $offset = [long]$wo[0]
+    $winUsed = [string]$wo[1]
+    if ([string]$wo[2]) { Write-MtWarn ("MT_ASSERT_ABSENT: {0}" -f [string]$wo[2]) }
 
     $text = Read-MtLogDelta -LogPath $log -Offset $offset
     $pat = New-MtRegex -Pattern $PatternText
-    $label = "$Source`:$([System.IO.Path]::GetFileName($log))@${offset}B"
+    $label = "$Source`:$name@${offset}B(win=$winUsed)"
 
     if ($pat.IsMatch($text)) {
         Write-MtLine "MT_ASSERT_ABSENT: FAIL — 不应出现的 /$PatternText/ 出现了"
@@ -395,19 +491,24 @@ function Invoke-MtAssertKubejs {
 function Invoke-MtAssertMixin {
     <#
     .SYNOPSIS
-        增量区间内不得出现 Mixin 应用失败（渲染栈兼容性的硬信号）。
+        窗口内不得出现 Mixin 应用失败（渲染栈兼容性的硬信号）。
+
+    .NOTES
+        B7：默认窗口是 **launch**（不是 case）。Mixin 应用发生在启动期，若跟随「自本用例起」
+        的窗口，对绝大多数用例都会变成「窗口内无 Mixin 失败」= 恒真 ⇒ **弱化断言**。
+        故这里沿用旧语义（自 launch 起读 debug.log 增量），由 `launch_offsets` 承载。
     #>
     [CmdletBinding()]
-    param([Parameter(Mandatory)][string]$Version)
+    param([Parameter(Mandatory)][string]$Version, [string]$Window = 'launch')
 
     $p = Get-MtPaths -Version $Version
     $log = if (Test-Path -LiteralPath $p.debug_log -PathType Leaf) { $p.debug_log } else { $p.latest_log }
-    $offset = 0
     $entry = Get-MtSnapFor -Version $Version
-    if ($entry.Contains('offsets')) {
-        $name = [System.IO.Path]::GetFileName($log)
-        if ($entry['offsets'].Contains($name)) { $offset = [long]$entry['offsets'][$name] }
-    }
+    $name = [System.IO.Path]::GetFileName($log)
+    $wo = Get-MtWindowOffset -Entry $entry -LogName $name -Window $Window
+    $offset = [long]$wo[0]
+    $winUsed = [string]$wo[1]
+    if ([string]$wo[2]) { Write-MtWarn ("MT_ASSERT_MIXIN: {0}" -f [string]$wo[2]) }
 
     $text = Read-MtLogDelta -LogPath $log -Offset $offset
     $pat = [regex]::new('Mixin apply failed|Mixin apply error|Failed to apply mixin')
@@ -415,7 +516,7 @@ function Invoke-MtAssertMixin {
         Write-MtLine 'MT_ASSERT_MIXIN: FAIL — 检测到 Mixin 应用失败（兼容模组栈异常）'
         return 1
     }
-    Write-MtLine "MT_ASSERT_MIXIN: PASS — $([System.IO.Path]::GetFileName($log)) 增量区间无 Mixin 失败"
+    Write-MtLine "MT_ASSERT_MIXIN: PASS — $name@${offset}B(win=$winUsed) 窗口内无 Mixin 失败"
     return 0
 }
 
@@ -426,7 +527,7 @@ if ($MyInvocation.InvocationName -ne '.') {
     $Version = ''
     $PatternText = ''
     $Source = 'latest'
-    $SinceSnapshot = $true
+    $Window = ''            # '' = 按子命令取默认（log/absent=case，mixin=launch）
 
     $i = 0
     while ($i -lt $args.Count) {
@@ -445,10 +546,13 @@ if ($MyInvocation.InvocationName -ne '.') {
         } elseif ($key -eq 'source') {
             if ($i + 1 -ge $args.Count) { Write-MtErrorLine '缺少 --source 的值'; exit $MT_EXIT_ERROR }
             $Source = [string]$args[$i + 1]; $i += 2
+        } elseif ($key -eq 'window') {
+            if ($i + 1 -ge $args.Count) { Write-MtErrorLine '缺少 --window 的值'; exit $MT_EXIT_ERROR }
+            $Window = ([string]$args[$i + 1]).ToLowerInvariant(); $i += 2
         } elseif ($key -eq 'since-snapshot') {
-            $SinceSnapshot = $true; $i++
+            $Window = 'case'; $i++
         } elseif ($key -eq 'no-snapshot') {
-            $SinceSnapshot = $false; $i++
+            $Window = 'whole'; $i++
         } else {
             Write-MtErrorLine "未知参数 $tok"; exit $MT_EXIT_ERROR
         }
@@ -466,14 +570,18 @@ if ($MyInvocation.InvocationName -ne '.') {
         Write-MtErrorLine "未知断言通道 $Source"
         exit $MT_EXIT_ERROR
     }
+    if ($Window -and (@('case', 'launch', 'whole') -notcontains $Window)) {
+        Write-MtErrorLine "--window 只接受 case / launch / whole（收到 $Window）"
+        exit $MT_EXIT_ERROR
+    }
 
     switch ($Cmd) {
-        'snapshot' { exit (Invoke-MtAssertSnapshot -Version $Version) }
-        'log' { exit (Invoke-MtAssertLog -Version $Version -PatternText $PatternText -Source $Source -SinceSnapshot $SinceSnapshot) }
-        'absent' { exit (Invoke-MtAssertAbsent -Version $Version -PatternText $PatternText -Source $Source) }
+        'snapshot' { exit (Invoke-MtAssertSnapshot -Version $Version -Window $(if ($Window) { $Window } else { 'launch' })) }
+        'log' { exit (Invoke-MtAssertLog -Version $Version -PatternText $PatternText -Source $Source -Window $(if ($Window) { $Window } else { 'case' })) }
+        'absent' { exit (Invoke-MtAssertAbsent -Version $Version -PatternText $PatternText -Source $Source -Window $(if ($Window) { $Window } else { 'case' })) }
         'crash' { exit (Invoke-MtAssertCrash -Version $Version) }
         'kubejs' { exit (Invoke-MtAssertKubejs -Version $Version) }
-        'mixin' { exit (Invoke-MtAssertMixin -Version $Version) }
+        'mixin' { exit (Invoke-MtAssertMixin -Version $Version -Window $(if ($Window) { $Window } else { 'launch' })) }
     }
     exit $MT_EXIT_ERROR
 }

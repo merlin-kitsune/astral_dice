@@ -1772,28 +1772,101 @@ var pearlWatchExpectImmune = true;
 var pearlWatchZ0 = 0.0;
 /** 免疫窗口峰值(每 tick 采样;见 pearlTickBody 注释) */
 var pearlWatchMaxWindow = 0;
+/** B7 诊断:逐 tick 轨迹(玩家 z / 珍珠 z)与几何读数;观察窗内累积,一次性落 AP_<tag>_TRACE/_GEO/_POST */
+var pearlTracePz = [];
+var pearlTracePearlZ = [];
+var pearlTraceDzMax = 0.0;
+var pearlTracePost = 0;
+var pearlTraceGeo = "";
 
-/** 确定几何:清出正前方口袋 + 脚下石台 + 正前方 3 格处的接珠柱(珍珠必须有确定落点) */
+/** 三位小数(读数用;避免浮点噪声把日志撑爆) */
+function r3(v) { return Math.round(v * 1000) / 1000; }
+
+/** 方块状态文本(读不到返回 '?') */
+function blkAt(level, pos) {
+    try { return String(level.getBlockState(pos)); } catch (e) { return "?"; }
+}
+
+/** 半径内非玩家实体摘要(type@x,y,z;最多 4 条;读不到返回 '?') */
+function nearbyEntsText(p, radius) {
+    try {
+        var list = p.level.getEntitiesOfClass(EntityClass,
+            AABBClass.ofSize(p.position(), radius, radius, radius));
+        var out = [];
+        for (var i = 0; i < list.size() && out.length < 4; i++) {
+            var e = list.get(i);
+            if (e.getId() === p.getId()) continue;
+            out.push(typeIdOf(e) + "@" + r3(e.getX()) + "," + r3(e.getY()) + "," + r3(e.getZ()));
+        }
+        return "n=" + list.size() + "[" + out.join(";") + "]";
+    } catch (e2) { return "?"; }
+}
+
+/**
+ * 确定几何(B7 加固):先把玩家 x/z 吸到方块中心,再清出一条**足够长的无阻挡通道**,
+ * 末端立接珠柱,并把通道内的非玩家实体一并清除。
+ *
+ * 为什么要加固(取证见 docs/batch3/B7-assert-window.md):
+ *   旧几何只清 dx∈[-1,1] / dy∈[0,2] / dz∈[0,3],接珠柱立在 dz=3,珍珠从 p.z+1.0 起飞
+ *   ⇒ **最早可能在第 0 tick 就命中**(原版 Projectile#tick 是"先按移动向量判命中、再移动",
+ *   `ThrownEnderpearl#onHit` 用**移动前**的位置做 teleportTo)⇒ 位移恰好 = 起飞偏移 1.000 格;
+ *   若第 1 tick 才命中则位移 = 1.8 格。用例判据是 `位移 > 1.0` ⇒ **刚好卡在临界值上**:
+ *   1.20.1 实测一轮 P2 读到 tel=0(位移 1.000)、同构造的 P3 读到 tel=1(位移 1.8)——
+ *   差别只是"命中发生在第 0 还是第 1 tick",与装不装立牌无关,即旧几何让 `tel` 变成掷硬币。
+ *   方块清得掉、**实体清不掉**:残留实体同样会造成"起飞即命中"的退化路径,故必须一并清。
+ *   加固后通道长 6 格、接珠柱在 dz=5 ⇒ 飞行 ≥4 格、位移期望 ≈4.15 格,判据留 3 格余量。
+ */
 function nancyPearlArena(p) {
+    // ① 吸到方块中心:消除"站在方块边缘"造成的落点不确定性
+    var b0 = p.blockPosition();
+    try { p.connection.teleport(b0.getX() + 0.5, p.getY(), b0.getZ() + 0.5, 0.0, 0.0); } catch (e0) { /* 忽略 */ }
     var base = p.blockPosition();
+
+    // ② 加固前读数(诊断:旧几何"起飞即命中"的成因;只落证据,不参与判定)
+    var preEnts = nearbyEntsText(p, 6.0);
+    var preBlocks = blkAt(p.level, base.offset(0, 1, 1)) + "|" + blkAt(p.level, base.offset(0, 1, 2));
+
+    // ③ 通道:6 格长 × 4 格高的空腔 + 石地板
     for (var dx = -1; dx <= 1; dx++) {
-        for (var dy = 0; dy <= 2; dy++) {
-            for (var dz = 0; dz <= 3; dz++) {
+        for (var dy = 0; dy <= 3; dy++) {
+            for (var dz = 0; dz <= 6; dz++) {
                 try { p.level.setBlockAndUpdate(base.offset(dx, dy, dz), BlocksClass.AIR.defaultBlockState()); }
                 catch (e1) { /* 忽略 */ }
             }
         }
     }
     for (var dx2 = -1; dx2 <= 1; dx2++) {
-        for (var dz2 = 0; dz2 <= 3; dz2++) {
+        for (var dz2 = 0; dz2 <= 6; dz2++) {
             try { p.level.setBlockAndUpdate(base.offset(dx2, -1, dz2), BlocksClass.STONE.defaultBlockState()); }
             catch (e2) { /* 忽略 */ }
         }
     }
-    try { p.level.setBlockAndUpdate(base.offset(0, 1, 3), BlocksClass.STONE.defaultBlockState()); }
-    catch (e3) { /* 忽略 */ }
-    try { p.level.setBlockAndUpdate(base.offset(0, 2, 3), BlocksClass.STONE.defaultBlockState()); }
-    catch (e4) { /* 忽略 */ }
+    // ④ 接珠柱:dz=5 处 3 格高(珍珠必须飞满 ~4 格才够得到)
+    for (var py = 1; py <= 3; py++) {
+        try { p.level.setBlockAndUpdate(base.offset(0, py, 5), BlocksClass.STONE.defaultBlockState()); }
+        catch (e3) { /* 忽略 */ }
+    }
+
+    // ⑤ 清掉通道内的非玩家实体
+    var removed = 0;
+    try {
+        var list = p.level.getEntitiesOfClass(EntityClass,
+            AABBClass.ofSize(p.position(), 12.0, 12.0, 12.0));
+        for (var i = 0; i < list.size(); i++) {
+            var e = list.get(i);
+            if (e.getId() === p.getId()) continue;
+            try { e.discard(); removed++; } catch (e4) { /* 忽略 */ }
+        }
+    } catch (e5) { /* 忽略 */ }
+
+    // ⑥ 加固后读数(诊断 + 证明通道确实建起来了)
+    pearlTraceGeo = "base=" + base.getX() + "," + base.getY() + "," + base.getZ()
+        + ":pre_ents=" + preEnts
+        + ":pre_blk=" + preBlocks
+        + ":post_blk=" + blkAt(p.level, base.offset(0, 1, 1)) + "|" + blkAt(p.level, base.offset(0, 1, 2))
+        + "|" + blkAt(p.level, base.offset(0, 1, 5))
+        + ":removed=" + removed
+        + ":p=" + r3(p.getX()) + "," + r3(p.getY()) + "," + r3(p.getZ());
     return base;
 }
 
@@ -1838,6 +1911,11 @@ function doNancyPearl(ctx, tag, withSign) {
     pearlWatchRemaining = 160;
     pearlWatchMaxWindow = 0;
     pearlWatchZ0 = p.getZ();
+    pearlTracePz = [r3(p.getZ())];
+    pearlTracePearlZ = [r3(pearl.getZ())];
+    pearlTraceDzMax = 0.0;
+    pearlTracePost = 0;
+    send(ctx, "AP_" + tag + "_GEO:" + pearlTraceGeo);
     send(ctx, "AP_" + tag + "_SPAWN:" + pearl.getId());
     send(ctx, "AP_" + tag + "_DONE");
     return 1;
@@ -1981,6 +2059,25 @@ function pearlTickBody() {
     try {
         var p = pearlWatchPlayer;
         if (p == null) { pearlWatchRemaining = 0; return; }
+
+        // ── B7 诊断尾迹:命中读数落盘之后再采 6 tick 的玩家 z ──────────────────
+        // 目的:区分「传送还没被应用的时序问题」与「传送确实没发生(产品抑制)」。
+        // 只落 AP_<tag>_POST 证据行,不参与任何判定。
+        if (pearlTracePost > 0) {
+            pearlTracePost--;
+            pearlTracePz.push(r3(p.getZ()));
+            var dzp = Math.abs(p.getZ() - pearlWatchZ0);
+            if (dzp > pearlTraceDzMax) pearlTraceDzMax = dzp;
+            if (pearlTracePost <= 0) {
+                emitTo(p, "AP_" + pearlWatchTag + "_POST:z0=" + r3(pearlWatchZ0)
+                    + ":dz_max=" + r3(pearlTraceDzMax)
+                    + ":pz=" + pearlTracePz.join("|")
+                    + ":pearlz=" + pearlTracePearlZ.join("|"));
+                pearlWatchRemaining = 0;
+            }
+            return;
+        }
+
         var pearl = pearlWatchPearl;
         var gone = false;
         try { gone = (pearl == null) || pearl.isRemoved() || !pearl.isAlive(); }
@@ -1996,6 +2093,13 @@ function pearlTickBody() {
             if (u > 0) { var r0 = u - n0; if (r0 > pearlWatchMaxWindow) pearlWatchMaxWindow = r0; }
             maxWin = pearlWatchMaxWindow;
         } catch (e0b) { /* 读不到就保持 0 */ }
+        // B7 诊断:逐 tick 记录玩家 z / 珍珠 z,并累积**位移峰值**(见下方 tel 的说明)
+        try {
+            pearlTracePz.push(r3(p.getZ()));
+            if (pearl != null) { pearlTracePearlZ.push(r3(pearl.getZ())); }
+            var dzc = Math.abs(p.getZ() - pearlWatchZ0);
+            if (dzc > pearlTraceDzMax) pearlTraceDzMax = dzc;
+        } catch (e0c) { /* 忽略 */ }
         if (!gone) {
             if (pearlWatchRemaining <= 0) emitTo(p, "AP_" + pearlWatchTag + "_TIMEOUT:window_max=" + maxWin);
             return;
@@ -2006,7 +2110,16 @@ function pearlTickBody() {
         var drop = Math.round((p.getMaxHealth() - p.getHealth()) * 100) / 100;
         // 传送位移:证明走的是原版 onHit(命中方块 → teleportTo 后才会 hurt),
         // 而不是「珍珠撞到玩家本体」那种不产生摔落伤害的退化路径。
-        var tel = ((p.getZ() - pearlWatchZ0) > 1.0) ? 1 : 0;
+        //
+        // B7:位移改取**窗口内峰值**(每 tick 采样,含命中后 6 tick 的尾迹),不再只读命中这一 tick。
+        // 理由与原版时序有关:Projectile#tick 是"先判命中(用移动前的位置)、再移动",
+        // 而观察窗的 tick 回调与弹射物自身的 tick 谁先谁后并无约定 ⇒ 单点采样会读到"传送尚未应用"
+        // 的 0 值(与 B2 修过的 window 峰值是同一类缺陷)。**判据不放宽**:阈值取 2.0 格 ——
+        // 加固前的退化路径位移是 1.000(第 0 tick 命中)或 1.8(第 1 tick 命中),都 < 2.0;
+        // 加固后的真实方块命中位移期望 ≈4.15 格,留 2 格余量。
+        var dzInst = p.getZ() - pearlWatchZ0;
+        var TEL_MIN_DZ = 2.0;
+        var tel = (pearlTraceDzMax >= TEL_MIN_DZ) ? 1 : 0;
         var api = "n/a";
         if (pearlWatchExpectImmune) {
             // 免疫相位:窗口**仍在**时再施加一次 FALL 伤害,必须依旧毫无反馈。
@@ -2025,12 +2138,16 @@ function pearlTickBody() {
             ok = (pearlWatchMaxWindow === 0) && (tel === 1) && (p.getHealth() < p.getMaxHealth())
                 && (p.hurtTime > 0);
         }
+        emitTo(p, "AP_" + pearlWatchTag + "_TEL:dz=" + r3(dzInst) + ":dz_max=" + r3(pearlTraceDzMax)
+            + ":thresh=" + TEL_MIN_DZ + ":ok=" + tel);
         emitTo(p, "AP_" + pearlWatchTag + "_PEARL:window=" + remain + ":window_max=" + pearlWatchMaxWindow
             + ":tel=" + tel + ":drop=" + drop + ":hurt=" + p.hurtTime + ":invul=" + p.invulnerableTime
-            + ":marked=" + p.hurtMarked + ":api=" + api);
+            + ":marked=" + p.hurtMarked + ":api=" + api + ":dz=" + r3(dzInst) + ":dz_max=" + r3(pearlTraceDzMax));
         emitTo(p, "AP_" + pearlWatchTag + "_OK:" + (ok ? 1 : 0));
         emitTo(p, "AP_" + pearlWatchTag + "_DONE");
-        pearlWatchRemaining = 0;
+        // 命中后再采样 6 tick(诊断尾迹),随后由 POST 分支收窗
+        pearlTracePost = 6;
+        pearlWatchRemaining = 30;
     } catch (err) {
         emitTo(pearlWatchPlayer, "AP_" + pearlWatchTag + "_EX:" + exText(err));
         pearlWatchRemaining = 0;

@@ -407,6 +407,14 @@ function Test-MtCaseValid {
         if ($at -eq 'log' -and -not (Test-MtTruthyValue (Get-MtMapValue -Map $a -Key 'pattern'))) {
             $errs += ("断言 {0}: log 断言缺少 pattern" -f $i)
         }
+        # B7：窗口作用域白名单。缺省 = case（自本用例起）；写错必须在校验阶段拦下，
+        # 不能在执行期静默落回默认窗口（那会把"写错 scope"伪装成"窗口没生效"）。
+        if ($a -is [System.Collections.IDictionary] -and $a.Contains('scope')) {
+            $sc = [string]$a['scope']
+            if (@('case', 'launch', 'whole') -notcontains $sc) {
+                $errs += ("断言 {0}: 未知 scope '{1}'（只接受 case / launch / whole）" -f $i, (ConvertTo-MtPyText $a['scope']))
+            }
+        }
     }
 
     return , $errs
@@ -509,25 +517,32 @@ function Invoke-MtCaseAssert {
     )
 
     $t = [string](Get-MtMapValue -Map $Assert -Key 'type')
+    # ── B7：断言窗口 ────────────────────────────────────────────────────────
+    # scope=case（缺省）→ 只读「自本用例开始之后」的增量：这是本次改造的核心，
+    #   修掉"共用 launch 窗口 ⇒ 前序用例把断言喂饱 ⇒ 假 PASS"（B6 实测 `APDUMP|LOCKRAW|`
+    #   命中数随用例递增 14→28→…→126）。
+    # scope=whole → 整文件（启动期事实：Mixin 应用行、渲染栈加载行等；旧 `--no-snapshot` 语义）。
+    # scope=launch → 自 launch 起（两者之间的显式 opt-in；例如需要"本用例之前但不属于启动"
+    #   的输出时）。**默认不再是 launch** —— 需要它的用例必须显式写出来。
+    $scope = [string](Get-MtMapValue -Map $Assert -Key 'scope' -Default '')
+    $winArgs = @()
+    if ($scope -eq 'whole') { $winArgs = @('--window', 'whole') }
+    elseif ($scope -eq 'launch') { $winArgs = @('--window', 'launch') }
+    elseif ($scope -and $scope -ne 'case') { return (New-MtPair 'ERROR' "未知 scope '$scope'（只接受 case / launch / whole）") }
+
     if ($t -eq 'log') {
         $logArgs = @(
             'log', '--version', $Paths.version,
             '--pattern', (ConvertTo-MtPyText (Get-MtMapValue -Map $Assert -Key 'pattern')),
-            '--source', (Get-MtMapValue -Map $Assert -Key 'source' -Default 'latest'))
-        # scope=whole：对**整文件**求值（mt_assert 的 --no-snapshot；默认只读快照之后的增量）。
-        # 用于「只在启动期出现」的行 —— Mixin 应用行、渲染栈加载行等。若沿用增量语义，
-        # 这类断言在快照点晚于启动时必然落空，会被误判成产品缺陷（实测 Mixin 应用行即如此）。
-        if ([string](Get-MtMapValue -Map $Assert -Key 'scope' -Default '') -eq 'whole') {
-            $logArgs += '--no-snapshot'
-        }
+            '--source', (Get-MtMapValue -Map $Assert -Key 'source' -Default 'latest')) + $winArgs
         $r = Invoke-MtCaseChild -Script 'mt_assert.ps1' -ScriptArgs $logArgs
         return (Get-MtVerdict -ExitCode $r.ExitCode -Result $r)
     }
     if ($t -eq 'absent') {
-        $r = Invoke-MtCaseChild -Script 'mt_assert.ps1' -ScriptArgs @(
-            'absent', '--version', $Paths.version,
-            '--pattern', (ConvertTo-MtPyText (Get-MtMapValue -Map $Assert -Key 'pattern')),
-            '--source', (Get-MtMapValue -Map $Assert -Key 'source' -Default 'latest'))
+        $r = Invoke-MtCaseChild -Script 'mt_assert.ps1' -ScriptArgs (@(
+                'absent', '--version', $Paths.version,
+                '--pattern', (ConvertTo-MtPyText (Get-MtMapValue -Map $Assert -Key 'pattern')),
+                '--source', (Get-MtMapValue -Map $Assert -Key 'source' -Default 'latest')) + $winArgs)
         return (Get-MtVerdict -ExitCode $r.ExitCode -Result $r)
     }
     if ($t -eq 'crash') {
@@ -540,7 +555,8 @@ function Invoke-MtCaseAssert {
         return (Get-MtVerdict -ExitCode $r.ExitCode -Result $r)
     }
     if ($t -eq 'mixin') {
-        $r = Invoke-MtCaseChild -Script 'mt_assert.ps1' -ScriptArgs @('mixin', '--version', $Paths.version)
+        # 默认窗口 = launch（见 mt_assert.ps1 的 Invoke-MtAssertMixin：跟随 case 窗口会退化成恒真）
+        $r = Invoke-MtCaseChild -Script 'mt_assert.ps1' -ScriptArgs (@('mixin', '--version', $Paths.version) + $winArgs)
         return (Get-MtVerdict -ExitCode $r.ExitCode -Result $r)
     }
     if ($t -eq 'vision') {
@@ -886,6 +902,32 @@ function Invoke-MtCaseRun {
         }
         $steps += $merged
     }
+
+    # ── B7：把断言窗口收窄到「自本用例起」─────────────────────────────────────
+    # 依据（B6 §4.3 实测）：`offsets` 原先只在 launch 之后写一次 ⇒ `log`/`absent` 的窗口是
+    # 「自 launch 起」而非「自本用例起」，于是**任何不带 tag 唯一标识的标记都能被前序用例满足**
+    # （`APDUMP|LOCKRAW|` 命中数随用例递增 14→28→…→126）。这在事实上把断言弱化成
+    # 「本轮任意时刻出现过即通过」。
+    #
+    # 机制：每条用例开始处刷新 `offsets`（`snapshot --window case`）—— 起点覆盖本用例自己的
+    # 全部动作（kubejs 热重载 fixture、注入、等待、截图、探针输出），`launch_offsets` 原样保留。
+    # 为什么不用「独立窗口文件/自建偏移」：`.mt_snapshot.json` 是本仓既有的**跨脚本契约**
+    # （mt_assert / mt_case / mt_report 三方共读），沿用它可以避免第三套偏移来源；
+    # B2 记录过的「单阶段 launch 不写快照 ⇒ 陈旧 offset 出假 FAIL」在这里被**结构性消除**：
+    # 偏移不再依赖"调用方记得补快照"，而是由用例执行器每条自己写。
+    #
+    # 失败即 ERROR，绝不静默沿用陈旧偏移（那会退化成"窗口跨用例"，正是本次要修的东西）。
+    $winChild = Invoke-MtCaseChild -Script 'mt_assert.ps1' -ScriptArgs @('snapshot', '--window', 'case', '--version', $Version)
+    if ($winChild.ExitCode -ne 0) {
+        Write-MtErrLine ("MT_CASE_WINDOW: ERROR — {0} 无法建立本用例窗口（mt_assert snapshot 退出码 {1}）" -f `
+                $caseId, $winChild.ExitCode)
+        return (New-MtPair 'ERROR' @())
+    }
+    $winLine = ''
+    foreach ($ln in @(([string]$winChild.StdOut) -split "`n")) {
+        if (([string]$ln).Trim().StartsWith('MT_SNAPSHOT:')) { $winLine = ([string]$ln).Trim(); break }
+    }
+    Write-MtLine ("MT_CASE_WINDOW: {0} — 断言窗口自本用例起{1}" -f $caseId, $(if ($winLine) { "（$winLine）" } else { '' }))
 
     $marks = @{
         'PASS' = 'PASS'; 'FAIL' = 'FAIL'; 'BLOCKED' = 'BLOCK'; 'ERROR' = 'ERROR'

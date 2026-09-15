@@ -501,10 +501,11 @@ try {
             # 不是产品缺陷 —— 报告里必须看得出来
             $r = if ($vrc -eq 0) { 'PASS' } elseif ($vrc -eq $MT_EXIT_BLOCKED) { 'BLOCKED' } else { 'FAIL' }
             [void](Invoke-MtChild -Script 'mt_report.ps1' -ScriptArgs @('mark', '--version', $v, '--phase', 'launch', '--result', $r))
-            # 快照点：此后所有日志断言只看增量区间
+            # launch 基线：此后 `mixin` 断言与报告摘要读 `launch_offsets`；
+            # 每条用例自己再写 `--window case` 的 `offsets`（B7，见 mt_assert.ps1 文件头）
             # （A2 起 mt_launch 收尾已自行写快照，覆盖单阶段路线；这里再写一次是幂等的保险）
             if ($vrc -eq 0) {
-                [void](Invoke-MtChild -Script 'mt_assert.ps1' -ScriptArgs @('snapshot', '--version', $v))
+                [void](Invoke-MtChild -Script 'mt_assert.ps1' -ScriptArgs @('snapshot', '--window', 'launch', '--version', $v))
             }
         }
 

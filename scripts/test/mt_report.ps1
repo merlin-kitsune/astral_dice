@@ -185,6 +185,10 @@ function Get-MtReportDelta {
     .NOTES
         偏移固定取快照里 `debug.log` 一项（python 原实现如此），再在
         debug_log / latest_log 之间选实际存在的那个来读。
+
+        B7：优先取 `launch_offsets`（自 launch 起）。`offsets` 已被改写成**最后一条用例**的
+        窗口起点（每条用例开始时刷新），若沿用它，报告的关键标记摘要会只剩最后一条用例 —— 
+        collect 是**整轮**的取证，必须看整轮。旧快照无该键时回落到 `offsets`。
     #>
     [CmdletBinding()]
     param([Parameter(Mandatory)][psobject]$Paths)
@@ -196,8 +200,9 @@ function Get-MtReportDelta {
             $versions = $snap['versions']
             if ($null -ne $versions -and $versions.Contains($Paths.version)) {
                 $entry = $versions[$Paths.version]
-                if ($entry.Contains('offsets') -and $entry['offsets'].Contains('debug.log')) {
-                    $offset = [long]$entry['offsets']['debug.log']
+                $key = if ($entry.Contains('launch_offsets') -and $null -ne $entry['launch_offsets']) { 'launch_offsets' } else { 'offsets' }
+                if ($entry.Contains($key) -and $null -ne $entry[$key] -and $entry[$key].Contains('debug.log')) {
+                    $offset = [long]$entry[$key]['debug.log']
                 }
             }
         }
