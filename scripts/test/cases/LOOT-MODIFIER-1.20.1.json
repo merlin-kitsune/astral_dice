@@ -47,6 +47,7 @@
     {
       "type": "absent",
       "source": "latest",
+      "scope": "whole",
       "pattern": "AP_GLM_ERR|AP_GLM_EX:|Could not decode GlobalLootModifier"
     },
     {

@@ -152,7 +152,9 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --phase <p> --version <v>
 ```
 
 **步骤 op**：`inject_command`、`inject_key`、`note`、`wait`、`screenshot`、`kubejs_reload`。
-**断言 type**：`log`（正/反向正则，`scope: whole` = 对整文件求值，用于启动期行）、`absent`（整文件不得出现）、`crash`（无崩溃报告）、`kubejs`（server.log 0 error）、`mixin`（Mixin 应用行存在）、`vision`（截图视觉判定）。
+**断言 type**：`log`（正/反向正则）、`absent`（反向正则，以「不得出现」为通过）、`crash`（无崩溃报告）、`kubejs`（server.log 0 error）、`mixin`（Mixin 应用行存在）、`vision`（截图视觉判定）。
+**断言窗口（B7 起，`scope` 字段）**：`case`（**缺省**）只读「自**本用例**开始之后」的增量——修掉共用 launch 窗口时「前序用例把断言喂饱 ⇒ 假 PASS」（B6 实测 `APDUMP|LOCKRAW|` 命中数随用例递增 14→28→…→126）；`whole` = 整文件（启动期事实：Mixin 应用行、渲染栈加载行、`Could not decode GlobalLootModifier` 之类数据包解码行）；`launch` = 自 launch 起（介于两者之间的显式 opt-in）。
+⚠️ **`log` 与 `absent` 都遵循该字段**：`absent` 的旧语义是「整文件不得出现」，收窄后**只检测本用例窗口内不得出现**——因此**凡「文本不是本用例产生」的反向断言（尤其启动/数据包解码期文本）必须显式写 `scope: whole`**（`LOOT-MODIFIER-1.20.1` 的 `Could not decode GlobalLootModifier` 即此类，已补标），否则会**静默丢掉启动期覆盖**。非法 `scope` 在 `mt_case.ps1 validate` 阶段被拦下，不在执行期静默落回默认。`mixin` **固定读 launch 窗口**（跟随 case 会退化成「窗口内无 Mixin 失败」= 恒真）。日志源不在快照偏移表内时（如离线用例的 `loadergate.log`；表内只有 `latest.log`/`debug.log`/`server.log`/`astral_probe.log`）偏移恒为 0 = 整文件，`scope` 对其无影响。
 **失败取证**：`on_fail=keep_game_running` 会落 `.mt_keep_alive`；此时**退出清理不杀客户端也不停守护**（保留现场），取证后执行 `mt.ps1 --phase stop --force`。
 
 ---
