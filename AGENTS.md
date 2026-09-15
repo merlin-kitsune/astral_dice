@@ -866,7 +866,7 @@ mt.ps1
      ├─ mt_env.ps1        mods   --version <v>
      ├─ mt_env.ps1        world  --version <v> [--seed]
      ├─ mt_launch.ps1     --version <v> .... 进入世界 + /publish
-     ├─ mt_assert.ps1     snapshot --version <v>   ← 快照点：此后断言只看增量
+     ├─ mt_assert.ps1     snapshot --version <v> --window launch|case|whole  ← 写判定窗口起点
      ├─ mt_case.ps1       run-dir  --version <v>（或 run --case <文件>）
      │    └─ 逐条目调用 mt_inject.ps1 / mt_capture.ps1 / mt_assert.ps1
      ├─ mt_report.ps1     collect --version <v> --verdict <PASS|FAIL>
@@ -1054,7 +1054,7 @@ pwsh -NoProfile -File scripts/test/mt_launch.ps1 --version 1.21.1 [--no-publish]
 
 **失败处理**：`MT_LAUNCH: BLOCKED`（未在时限内进入世界）→ 查看 `run/<版本>/runclient_launch.log` 末 30 行；退出码 `11`。检测到崩溃报告 → 退出码 `2`，进 `crash-reports` 定位。
 
-> **快照点**：阶段 L 成功后由 `mt_assert.ps1 snapshot` 记录 `latest.log` / `debug.log` / `kubejs/server.log` 的**字节游标**与 crash 基线。此后**所有日志断言只针对游标之后的增量区间**，不使用全文件匹配——避免上一轮运行留下的同名标记造成假通过。
+> **快照点与断言窗口（B7 起）**：阶段 L 成功后由 `mt_assert.ps1 snapshot --window launch` 记录 `latest.log` / `debug.log` / `kubejs/server.log` 的**字节游标**与 crash 基线，并把这组游标**冻结**为 `launch_offsets`；阶段 C 的**每条用例开始**再由 `mt_case.ps1` 写 `snapshot --window case` 刷新当前窗口 ⇒ 断言窗口是「**自本用例起**」，而不是旧的「自 launch 起」（旧写法会让前序用例把断言喂饱 ⇒ 假 PASS，B6 实测 `APDUMP|LOCKRAW|` 命中数随用例递增 14→28→…→126）。用例可用 `assert.scope` 显式切换：`case`（缺省）/ `launch`（读 `launch_offsets`）/ `whole`（整文件）；非法值在 `validate` 阶段即被拦下。**`mixin` 断言固定读 launch 窗口**（跟随 case 会退化成恒真），`crash` 基线亦随每条用例刷新。⚠️ **反向断言注意**：`absent` 的旧语义是「整文件不得出现」，收窄后只检测本用例窗口 —— 凡「文本不是本用例产生」（尤其启动/数据包解码期文本，如 `Could not decode GlobalLootModifier`）的反向断言**必须显式写 `scope: whole`**，否则会静默丢掉启动期覆盖。详见 `scripts/test/TESTING-SPEC.md` 的「断言窗口」段。
 
 ### 阶段 C — 测试条目
 
