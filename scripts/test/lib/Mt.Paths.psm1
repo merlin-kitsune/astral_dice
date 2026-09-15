@@ -1,8 +1,8 @@
 <#
 Mt.Paths.psm1 — 版本→路径映射（PowerShell 侧唯一路径来源）。
 
-对应源文件：scripts/test/lib/mt_paths.py（python 侧）+ scripts/test/lib/paths.sh（bash 侧）。
-三份必须保持**同一张版本表**：新增 MC 版本时三处同步（python 版在迁移完成前仍保留）。
+迁移前源文件：scripts/test/lib/mt_paths.py（python 侧）+ scripts/test/lib/paths.sh（bash 侧）——两者均已在 92fbeaf 删除（取回：`git show 92fbeaf^:<路径>`）。
+版本表以本模块为唯一来源：新增 MC 版本时只需改这一处。
 
 ## 命名约定（有意为之）
 

@@ -15,7 +15,7 @@
     pwsh -File scripts/test/mt_env.ps1 kill  --version 1.21.1
 
 .NOTES
-    对应源文件（迁移前）：scripts/test/mt_env.py。
+    迁移前源文件 scripts/test/mt_env.py（该原件已在 92fbeaf「工具链收敛为纯 pwsh」删除，取回：`git show 92fbeaf^:scripts/test/mt_env.py`）。
 
     两处**有意偏差**（都不改变只读判定，只影响取证文件）:
       1. 生成世界时的 runServer 输出：python 丢弃（DEVNULL），此处落到
@@ -628,7 +628,7 @@ function Invoke-MtEnvWorld {
 
     # 3. 生成世界期间临时移出纯客户端模组（服务端加载会崩溃或挂起）
     #
-    # ⚠️ 修正一件原实现的真 BUG（python 版 scripts/test/mt_env.py L329 同样有）：
+    # ⚠️ 修正一件原实现的真 BUG（已在 92fbeaf 删除的 python 版 scripts/test/mt_env.py L329 同样有）：
     #    原来的备份名是 `__clientonly_bak__<原名>`，**仍以 .jar 结尾**，而 FML 在
     #    ModDirTransformerDiscoverer 阶段扫描 mods 目录里的**所有 .jar** —— 于是
     #    「移走」的 Sodium 照样被发现，服务端启动瞬间就崩：
@@ -728,7 +728,7 @@ function Invoke-MtEnvWorld {
 
 # ══ 入口 ══════════════════════════════════════════════════════════════════
 # 点源（`. ./mt_env.ps1`）时只加载函数、不执行入口 —— 迁移期的 NBT 等价门
-# （temp/nbt_gate.ps1）正是靠这一点直接调用 Set-MtAllowCommands。
+# 迁移期的一次性原型即靠这一点直接调用 Set-MtAllowCommands（该原型已随 temp/ 清理移除）。
 if ($MyInvocation.InvocationName -ne '.') {
 
     $Cmd = ''

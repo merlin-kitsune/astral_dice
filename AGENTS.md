@@ -792,7 +792,7 @@ When extending this workspace:
 针对**两个子项目**（`neoforge-1.21.1` 优先、`forge-1.20.1` 随后）的客户端渲染/输入类功能，以及任意**新增内容**与**用户指定内容**的真实游戏自动化验证。经本流程启动的自动化 `runClient` 属于「编译产物上传规则」第 5 条的**例外**；无流程的手动冒烟仍禁止。
 
 - **测试分支（唯一）**：`multi-1.20.1-1.21.1`。前置检查会对当前分支做强断言；在其它分支（如旧 `dev-targetselector`）上运行本流程将被拒绝。
-- **脚本语言**：全流程为纯 **PowerShell 7（pwsh）**，不使用 bash / python。平台特异的输入注入集中在 `mt_inject.ps1` / `mt_ime.ps1` 内以 P/Invoke 实现，工具链为 Windows-only（历史上的 bash + python 版本已于 2026-09-12 全部移除，见 `temp/legacy_scripts_20260912.zip`）。
+- **脚本语言**：全流程为纯 **PowerShell 7（pwsh）**，不使用 bash / python。平台特异的输入注入集中在 `mt_inject.ps1` / `mt_ime.ps1` 内以 P/Invoke 实现，工具链为 Windows-only（历史上的 bash + python 版本已于 2026-09-12 全部移除；旧脚本归档包见 `docs/archive/legacy_scripts_20260912.zip`）。
 - **「长按」类回归必须真的按住，且必须有对照步（2026-09-14 实测教训，必须遵守）**：`mt_inject.ps1 key -Key rclick -HoldMs N` 曾**静默忽略** `-HoldMs`（始终 down→100ms→up 的单击），于是「长按右键」类用例走不到原版 4 tick 自动重复分支，用**单击也能"通过"**——判据形同虚设。现已按 `w` 键同口径实现按住语义（`-HoldMs 0` 保留旧行为，输出行回显按住时长）。凡结论依赖"重复触发"的用例，必须附一条**对照步**证明重复真的发生（如生存模式投 16 枚鸡蛋长按 3 秒后必须只剩 1 枚；创造模式下物品不消耗，**不能**用作对照）。
 
 ### 测试顺序（必须遵守）
@@ -1214,9 +1214,9 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --new <注册id>
 - 测试流程**必须串行**：本流程独占 `runClient`，前置检查会拒绝在已有实例运行时启动（不抢占、不并行两版本）。
 - **进程泄漏已被自动化拦截**：退出时（正常 / 失败 / Ctrl-C）自动收停本流程进程与 Gradle 守护（详见「退出清理」）。手工收停用 `--phase stop`；失败取证保留的现场要用 `--phase stop --force` 释放，否则会一直堵住下一次前置检查。
 - `AGENTS.md` **自 2026-09-15 起已纳入版本库**（`.gitignore` 中的排除项已移除，随提交进入本仓库；是否推送 GitHub 仍按「仅在用户明确要求时执行」）；`scripts/` 下脚本本身入库，仅 `scripts/test/mt.conf`、`scripts/test/reports/*`、`scripts/test/cases/.mt_*` 为本地忽略的运行时产物（与现有 gitignore 一致）；git 网络操作仍须经代理。
-- 具体用例清单（功能 TC、立牌 S 系列等）以 `scripts/test/cases/` 下的条目文件与 `scripts/test/reports/` 下的历史报告为准；旧版 PowerShell 脚本已归档至 `temp/legacy_scripts_20260912.zip`（含 MANIFEST 与逐文件 sha256，可解压取回），仅供追溯。
-- **仓库内 `.ps1` 共 28 个，全部在用**：根 `deploy.ps1`（发布流程：版本递增 + 构建 + 本地提交）、`scripts/test/*.ps1`（15 个）、`scripts/verify/*.ps1`（5 个）、`scripts/maintenance/repair-loose-refs.ps1`、`scripts/audit/tooltip_color_audit.ps1`、`scripts/devtools/*.ps1`（3 个）、`tools/*.ps1`（2 个），不要删；旧测试 `.ps1` 已归档至 `temp/legacy_scripts_20260912.zip`。
-- `scripts/test/TESTING-SPEC.md` 是测试条目 schema 规范；旧功能流程文档 `scripts/test/FLOW_1.20.1_functional.md` 已归档至 `temp/legacy_scripts_20260912.zip`，实际执行一律以本章节为准。
+- 具体用例清单（功能 TC、立牌 S 系列等）以 `scripts/test/cases/` 下的条目文件与 `scripts/test/reports/` 下的历史报告为准；旧版 PowerShell 脚本归档包 `legacy_scripts_20260912.zip`（含 MANIFEST 与逐文件 sha256，可解压取回）已于 2026-09-15 从 `temp/` 移出至 `docs/archive/`，仅供追溯。
+- **仓库内 `.ps1` 共 28 个，全部在用**：根 `deploy.ps1`（发布流程：版本递增 + 构建 + 本地提交）、`scripts/test/*.ps1`（16 个）、`scripts/verify/*.ps1`（5 个）、`scripts/maintenance/repair-loose-refs.ps1`、`scripts/audit/tooltip_color_audit.ps1`、`scripts/devtools/*.ps1`（2 个）、`tools/*.ps1`（2 个），不要删；另有 6 个 `.psm1` 模块（`scripts/test/lib/*.psm1` 5 个 + `scripts/verify/ChipCommon.psm1`）。迁移期比对器 `scripts/devtools/Compare-MtOutput.ps1` 已于 2026-09-15 删除（它比对的 python/bash 原件自 `92fbeaf` 起已不存在）；旧测试 `.ps1` 归档包在 `docs/archive/legacy_scripts_20260912.zip`。
+- `scripts/test/TESTING-SPEC.md` 是测试条目 schema 规范；旧功能流程文档 `scripts/test/FLOW_1.20.1_functional.md` 已于 2026-09-12 删除（`git show 57d337f^:scripts/test/FLOW_1.20.1_functional.md` 可取回；归档包内不含此文档），实际执行一律以本章节为准。
 
 ## NeoForge 上游 BUG 补丁（neoforge_fixes）— 必须遵守
 

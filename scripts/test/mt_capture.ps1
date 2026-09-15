@@ -2,7 +2,7 @@
 <#
 mt_capture.ps1 — 截图采集与「世代」管理。
 
-对应源文件：scripts/test/mt_capture.py（1:1 移植；python 原件保留，迁移期用于逐字节比对）。
+1:1 移植自 scripts/test/mt_capture.py（python 原件已在 92fbeaf 删除，迁移期曾用于逐字节比对；取回：`git show 92fbeaf^:scripts/test/mt_capture.py`）。
 
 不再依赖任何固定截图目录的环境变量配置：每次运行由 Mt.Paths 分配唯一 run id，
 截图在采集时登记进该运行的世代清单（<截图目录>/.mt_shots.json）。

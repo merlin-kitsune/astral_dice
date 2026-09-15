@@ -18,7 +18,7 @@
     pwsh -File scripts/test/mt_gen_case.ps1 --version 1.21.1 --spec "验证充能类筹码顺序为永动机在电磁炮之前"
 
 .NOTES
-    对应源文件（迁移前）：scripts/test/mt_gen_case.py。
+    迁移前源文件 scripts/test/mt_gen_case.py（该原件已在 92fbeaf「工具链收敛为纯 pwsh」删除，取回：`git show 92fbeaf^:scripts/test/mt_gen_case.py`）。
 
     ## 校验函数的复用方式（1:1 对照）
 
@@ -29,7 +29,7 @@
 
     ## 与 python 版的差异（逐条）
 
-    1. **文案偏差**：`MT_GEN_NEXT` 里的复跑入口 `bash scripts/test/mt.sh …` 改为
+    1. **文案偏差**：`MT_GEN_NEXT` 里的复跑入口 `bash scripts/test/mt.sh …`（旧 bash 版脚本已在 92fbeaf 删除）改为
        `pwsh -File scripts/test/mt.ps1 …`（同一入口的新名字，沿用 mt_report.ps1 /
        mt_launch.ps1 / mt_cleanup.ps1 已确立的先例）。
     2. **落盘行尾**：`cases/<id>.json` / `cases/<id>.md` 用 **LF** 写。python 的

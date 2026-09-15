@@ -35,7 +35,7 @@
 //   · Curios 直接 Optional#get()(1.20.1 经 LazyOptional#resolve())
 //   · MobEffects 常量本身即 Holder,无 .get()
 //   · 伤害跳字包为 network.DamageNumberPayload(1.20.1 为 ModNetwork$DamageNumberMessage)
-//   · 本文件由 temp/_adapt_probe_1211.py 从 1.20.1 版生成,请勿手工分叉修改
+//   · 本文件由一次性脚本从 1.20.1 版生成(该脚本已随 2026-09-15 的 temp/ 清理移除),请勿手工分叉修改
 //
 //  ── 命令一览(用例 mt_case.py 依赖这些名字与参数顺序) ──────────────────────
 //    /astralprobe diag <tag>                          环境自检:API 可见性 + 时间基准 + 雷击计数

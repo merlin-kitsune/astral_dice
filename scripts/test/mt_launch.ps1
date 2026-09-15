@@ -13,7 +13,7 @@
     pwsh -File scripts/test/mt_launch.ps1 --version 1.20.1 --no-preclean   # 跳过清场（仅特殊取证）
 
 .NOTES
-    对应源文件（迁移前）：scripts/test/mt_launch.sh。
+    迁移前源文件 scripts/test/mt_launch.sh（该原件已在 92fbeaf「工具链收敛为纯 pwsh」删除，取回：`git show 92fbeaf^:scripts/test/mt_launch.sh`）。
 
     **关键点：客户端必须在脚本退出后继续运行**（launch → cases 是分步执行的）。
     因此启动走 `cmd.exe /c gradlew.bat … > 日志`（由 cmd 持有日志文件句柄），

@@ -55,7 +55,7 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --phase <p> --version <v>
 
 **辅助脚本**：`mt_assert.ps1`（断言引擎）、`mt_inject.ps1`（键鼠注入）、`mt_ime.ps1`（输入法）、`mt_capture.ps1`（截图世代）、`mt_cleanup.ps1`（退出清理唯一实现）、`mt_stop.ps1`（薄封装）、`mt_gen_case.ps1`（条目生成器）。
 **共享模块**：`lib/Mt.{Conf,Paths,Phase,Proc,Win32}.psm1`。
-**开发辅助**：`scripts/devtools/Start-MtDetached.ps1`（脱离式执行）、`Test-MtSyntax.ps1`（脚本语法门）、`Compare-MtOutput.ps1`（迁移期逐字节比对）。
+**开发辅助**：`scripts/devtools/Start-MtDetached.ps1`（脱离式执行）、`Test-MtSyntax.ps1`（脚本语法门）。迁移期的 `Compare-MtOutput.ps1` 已于 2026-09-15 删除——它比对的 python/bash 原件自 `92fbeaf`「工具链收敛为纯 pwsh」起已不存在。
 
 > ⚠️ **长命后代阶段必须脱离执行**：`mt_build`（新起 Gradle 守护）、`mt_launch`、`mt_env world` 会留下 Gradle 守护 / 游戏客户端；非交互式调用方会按**整棵进程树**等待而卡死。统一用：
 > ```powershell
@@ -339,7 +339,7 @@ pwsh -NoProfile -File scripts/verify/verify_bountiful_instance_exclusions.ps1
 | 已删除工具链的编译缓存（`__pycache__` 等） | 对应源文件已不存在 | 可删 |
 | 空目录 / IDE 生成物（`.vscode/launch.json`、`build/`） | 不参与发布、可再生成 | 可删/忽略 |
 | 历史运行报告 `reports/<旧运行id>/` | 证据价值随时间衰减 | 保留最近一次 + 模板，其余可删 |
-| `temp/` 会话期探针与验证脚本 | 一次性 | 可删（`legacy_scripts_*.zip` 归档除外） |
+| `temp/` 会话期探针与验证脚本 | 一次性 | 可删（2026-09-15 已整体清空；旧脚本归档包已移至 `docs/archive/legacy_scripts_20260912.zip`） |
 | **KubeJS 探针、测试世界种子包、回归条目 JSON** | **用例可复现性依赖** | **必须入库，禁止删除** |
 | `run/<版本>/mods`、`run/<版本>/kubejs` | 下一次运行的现成环境 | 保留 |
 

@@ -25,7 +25,7 @@
     },
     {
       "op": "note",
-      "text": "步骤 4/6（编译离线判定器）：`temp/loadergate/LoaderGateProbe.java` 用**同一个 maven-artifact jar**（+ 同一 POM 声明的 commons-lang3，DefaultArtifactVersion#tryParseInt 依赖它）编译；判定式逐字复刻 modVersionNotContained，含 VersionSupportMatrix 的 `mod.forge → 47.1.79` 别名覆盖项 → AP_LG_COMPILE。"
+      "text": "步骤 4/6（编译离线判定器）：由本用例的执行体 `scripts/test/mt_loadergate.ps1` 在运行时生成到 `temp/loadergate/LoaderGateProbe.java`，再用**同一个 maven-artifact jar**（+ 同一 POM 声明的 commons-lang3，DefaultArtifactVersion#tryParseInt 依赖它）编译；判定式逐字复刻 modVersionNotContained，含 VersionSupportMatrix 的 `mod.forge → 47.1.79` 别名覆盖项 → AP_LG_COMPILE。"
     },
     {
       "op": "note",

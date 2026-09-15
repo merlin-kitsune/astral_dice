@@ -2,7 +2,7 @@
 <#
 内容库一致性校验：docs/1.2.0-content.json ↔ 工程实际文件。
 
-独立重算工程事实（不依赖 temp/gen_content_library.py 的中间产物），逐项比对内容库：
+独立重算工程事实（不依赖任何生成脚本的中间产物），逐项比对内容库：
   1. 新增物品闭集（git 差集 vs 内容库 items 键集）
   2. 逐物品：ModItems 注册 / 汇总标签 / curios 槽位 / 配方 / 手册条目（双版本）
   3. 新增效果：ModEffects 注册 + effect.<ns>.<id> lang 键（双版本 × 中英）
@@ -14,7 +14,7 @@
 
 用法: pwsh -File scripts/verify/verify_content_library.ps1 [-Root .]
 
-—— PowerShell 移植版:1:1 对应 scripts/verify/verify_content_library.py(原 .py 保留不删)。
+—— PowerShell 移植版:1:1 对应 scripts/verify/verify_content_library.py（原 .py 已在 92fbeaf 删除；取回：`git show 92fbeaf^:scripts/verify/verify_content_library.py`）。
 #>
 [CmdletBinding()]
 param(
@@ -247,7 +247,7 @@ function Get-ModEffects {
 $root = $Root
 $out_json = [System.IO.Path]::Combine($root, 'docs/1.2.0-content.json')
 if (-not [System.IO.File]::Exists($out_json)) {
-    Write-Out '!! 缺少 docs/1.2.0-content.json，请先运行 temp/gen_content_library.py'
+    Write-Out '!! 缺少 docs/1.2.0-content.json（内容库快照，被 .gitignore 排除，其生成脚本已于 2026-09-15 随 temp/ 清理移除）—— 请先从备份恢复该文件，详见 scripts/test/TESTING-SPEC.md §11'
     [Console]::Out.Flush()
     exit 1
 }

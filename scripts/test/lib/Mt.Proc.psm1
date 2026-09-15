@@ -1,7 +1,7 @@
 <#
 Mt.Proc.psm1 — 外部命令执行与进程识别（Windows 中文环境容错）。
 
-对应源文件：scripts/test/lib/mt_ps.py。
+迁移前源文件：scripts/test/lib/mt_ps.py（已在 92fbeaf 删除；取回：`git show 92fbeaf^:scripts/test/lib/mt_ps.py`）。
 
 ## 为什么不能直接用 & / Start-Process 捕获输出
 

@@ -22,7 +22,7 @@
   * 1.20.1 无 1.21 新增物品须走 ChipCommon 的 PLATFORM_OVERRIDE(如 MACE->ANVIL),
     并同步登记到 docs/compat-1.20.1-forge.md,不得强行统一成 1.21 物品。
 
-—— PowerShell 移植版:1:1 对应 scripts/verify/verify_chip_recipes.py(原 .py 保留不删)。
+—— PowerShell 移植版:1:1 对应 scripts/verify/verify_chip_recipes.py（原 .py 已在 92fbeaf 删除；取回：`git show 92fbeaf^:scripts/verify/verify_chip_recipes.py`）。
 #>
 [CmdletBinding()]
 param(

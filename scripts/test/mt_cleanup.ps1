@@ -41,12 +41,12 @@
     pwsh -File scripts/test/mt_cleanup.ps1 run --force
 
 .NOTES
-    对应源文件（迁移前）：scripts/test/mt_cleanup.py。CLI 保持 `--version / --force /
+    迁移前源文件 scripts/test/mt_cleanup.py（该原件已在 92fbeaf「工具链收敛为纯 pwsh」删除，取回：`git show 92fbeaf^:scripts/test/mt_cleanup.py`）。CLI 保持 `--version / --force /
     --keep-daemon / --quiet` 写法，同时接受 PowerShell 风格 `-Version / -Force`（`$args`
     解析时统一剥掉前导 `-`）。
 
     **有意偏差（1 处）**：SKIP 分支里的取证提示原为
-    `bash scripts/test/mt.sh --phase stop --force`，此处改为等价的 pwsh 入口。
+    `bash scripts/test/mt.sh --phase stop --force`（旧 bash 版脚本已在 92fbeaf 删除），此处改为等价的 pwsh 入口。
 #>
 
 $ErrorActionPreference = 'Stop'

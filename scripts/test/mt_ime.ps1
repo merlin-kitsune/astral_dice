@@ -2,7 +2,7 @@
 <#
 mt_ime.ps1 — 目标窗口输入语言（键盘布局）管理。
 
-对应源文件：scripts/test/mt_ime.py（1:1 移植；python 原件保留，迁移期用于逐字节比对）。
+1:1 移植自 scripts/test/mt_ime.py（python 原件已在 92fbeaf 删除，迁移期曾用于逐字节比对；取回：`git show 92fbeaf^:scripts/test/mt_ime.py`）。
 
 ## 为什么需要它
 

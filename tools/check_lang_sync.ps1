@@ -3,7 +3,7 @@
 # -*- coding: utf-8 -*-
 <#
 .SYNOPSIS
-    语言文件同步检查(zh_cn.json <-> en_us.json) —— tools/check_lang_sync.py 的 1:1 PowerShell 移植。
+    语言文件同步检查(zh_cn.json <-> en_us.json) —— tools/check_lang_sync.py（已于 92fbeaf 删除；取回：`git show 92fbeaf^:tools/check_lang_sync.py`）的 1:1 PowerShell 移植。
 
 .DESCRIPTION
     用法:

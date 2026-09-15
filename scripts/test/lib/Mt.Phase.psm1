@@ -1,7 +1,7 @@
 <#
 Mt.Phase.psm1 — 阶段标记、计时、退出码与统一输出契约。
 
-对应源文件：scripts/test/lib/phase.sh（1:1 移植；输出的字节形态必须与 bash/python 版一致）。
+迁移前源文件：scripts/test/lib/phase.sh（已在 92fbeaf 删除；取回：`git show 92fbeaf^:scripts/test/lib/phase.sh`）；1:1 移植，输出的字节形态必须与原 bash/python 版一致。
 
 ## 输出纪律（Tier-1 等价门的前提）
 

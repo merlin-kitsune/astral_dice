@@ -17,7 +17,7 @@
       mixin    --version V                增量区间内无 Mixin 应用失败
 
 .NOTES
-    对应源文件（迁移前）：scripts/test/mt_assert.py。
+    迁移前源文件 scripts/test/mt_assert.py（该原件已在 92fbeaf「工具链收敛为纯 pwsh」删除，取回：`git show 92fbeaf^:scripts/test/mt_assert.py`）。
 
     `.mt_snapshot.json` 是**跨语言契约文件**：迁移期 python 版与 pwsh 版会互相读对方写的
     快照，因此 JSON 的**语义**（键名、结构、offsets 键为日志文件名）必须一致；字节形态

@@ -15,13 +15,13 @@
     pwsh -File scripts/test/mt_report.ps1 summary
 
 .NOTES
-    对应源文件（迁移前）：scripts/test/mt_report.py。
+    迁移前源文件 scripts/test/mt_report.py（该原件已在 92fbeaf「工具链收敛为纯 pwsh」删除，取回：`git show 92fbeaf^:scripts/test/mt_report.py`）。
 
     `.mt_run_state.json`（cases/.mt_run_state.json）是阶段/条目状态的**跨语言契约文件**：
     python 版与 pwsh 版会互相读写，键名与结构必须一致（`phases.<name>.result/ts`、
     `cases.<name>` = 结果字符串）。
 
-    文案偏差：报告里的「复跑命令」由 `bash scripts/test/mt.sh …` 改为
+    文案偏差：报告里的「复跑命令」由 `bash scripts/test/mt.sh …`（旧 bash 版脚本已在 92fbeaf 删除）改为
     `pwsh -File scripts/test/mt.ps1 …`（同一入口的新名字）。
 #>
 

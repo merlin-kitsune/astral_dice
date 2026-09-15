@@ -43,7 +43,7 @@ Bountiful 8.x 自带一批**兼容池**，位于 bountiful 自己的 jar 内：
   pwsh -File scripts/verify/verify_bountiful_instance_exclusions.ps1 -Target supplementaries
   pwsh -File scripts/verify/verify_bountiful_instance_exclusions.ps1 -Instances "D:\.minecraft\versions\狐の航空学"
 
-—— PowerShell 移植版:1:1 对应 scripts/verify/verify_bountiful_instance_exclusions.py(原 .py 保留不删)。
+—— PowerShell 移植版:1:1 对应 scripts/verify/verify_bountiful_instance_exclusions.py（原 .py 已在 92fbeaf 删除；取回：`git show 92fbeaf^:scripts/verify/verify_bountiful_instance_exclusions.py`）。
 #>
 [CmdletBinding()]
 param(

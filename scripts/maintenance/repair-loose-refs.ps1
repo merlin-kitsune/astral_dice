@@ -2,7 +2,7 @@
 #Requires -Version 7.0
 # -*- coding: utf-8 -*-
 <#
-repair-loose-refs.ps1  (scripts/maintenance/repair-loose-refs.sh 的 1:1 PowerShell 移植)
+repair-loose-refs.ps1  (scripts/maintenance/repair-loose-refs.sh（已于 92fbeaf 删除；取回：`git show 92fbeaf^:scripts/maintenance/repair-loose-refs.sh`）的 1:1 PowerShell 移植)
 ---------------------------------------------------------------------------
 背景:本机曾观察到 git 刚写完 .git/refs/heads/<含斜杠的分支>/<引用> 之后,该松散引用
 文件连同目录一起"消失",而 .git/logs/... 下的同名 reflog 不受影响。

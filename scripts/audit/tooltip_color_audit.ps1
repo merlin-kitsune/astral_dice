@@ -23,7 +23,7 @@ Tooltip 染色规则审计（规则见 docs/tooltip-color-rules.md）。
 
 退出码：0 = 无违规；1 = 存在违规。
 
-—— PowerShell 移植版:1:1 对应 scripts/audit/tooltip_color_audit.py(原 .py 保留不删)。
+—— PowerShell 移植版:1:1 对应 scripts/audit/tooltip_color_audit.py（原 .py 已在 92fbeaf 删除；取回：`git show 92fbeaf^:scripts/audit/tooltip_color_audit.py`）。
 #>
 [CmdletBinding()]
 param(

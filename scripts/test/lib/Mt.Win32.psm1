@@ -1,8 +1,8 @@
 <#
 Mt.Win32.psm1 — Win32 输入 / 截图的原生层（user32/kernel32/gdi32 的 P/Invoke 单一来源）。
 
-对应源文件：scripts/test/mt_ime.py、scripts/test/mt_inject.py、scripts/test/mt_capture.py
-里散落的 ctypes 调用。三个脚本共用同一份声明，避免「同一 API 三种写法」。
+迁移前源文件：scripts/test/mt_ime.py、scripts/test/mt_inject.py、scripts/test/mt_capture.py
+里散落的 ctypes 调用（三者均已在 92fbeaf 删除；取回：`git show 92fbeaf^:<路径>`）。声明已收敛到本模块，避免「同一 API 三种写法」。
 
 ## 为什么用一份内联 C# 而不是 Add-Type -MemberDefinition
 

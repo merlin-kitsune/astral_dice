@@ -15,7 +15,7 @@
     pwsh -File scripts/test/mt_case.ps1 validate --case cases/xxx.json
 
 .NOTES
-    对应源文件（迁移前）：scripts/test/mt_case.py。
+    迁移前源文件 scripts/test/mt_case.py（该原件已在 92fbeaf「工具链收敛为纯 pwsh」删除，取回：`git show 92fbeaf^:scripts/test/mt_case.py`）。
 
     数据结构字段名一律沿用 python 侧的 snake_case（step/hold_ms/no_esc/…），
     目的是让 python → powershell 的逐行对照不需要任何名字映射。
@@ -63,7 +63,7 @@
     4. `.mt_keep_alive` 标记文件用 **LF** 写（python `write_text` 的文本模式把 `\n`
        翻译成 CRLF）。读方 `mt_cleanup.ps1` 用 `Get-Content -Raw` + `.Trim()`，两种行尾等价；
        本仓规范换行是 LF。
-    5. `MT_KEEP_ALIVE` 提示里的复跑入口 `bash scripts/test/mt.sh --phase stop` →
+    5. `MT_KEEP_ALIVE` 提示里的复跑入口 `bash scripts/test/mt.sh --phase stop`（旧 bash 版脚本已在 92fbeaf 删除）→
        `pwsh -File scripts/test/mt.ps1 --phase stop`（同一入口的新名字，沿用 mt_report.ps1 /
        mt_launch.ps1 / mt_cleanup.ps1 已确立的文案偏差先例）。
     6. `[:n]` 切片按 **UTF-16 码元**（python 按码点）：仅当第 n 个码元落在代理对中间时输出

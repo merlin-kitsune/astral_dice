@@ -29,7 +29,7 @@
     pwsh -File scripts/test/mt_stop.ps1 --all --force
 
 .NOTES
-    对应源文件（迁移前）：scripts/test/mt_stop.sh。
+    迁移前源文件 scripts/test/mt_stop.sh（该原件已在 92fbeaf「工具链收敛为纯 pwsh」删除，取回：`git show 92fbeaf^:scripts/test/mt_stop.sh`）。
 
     子进程走 `pwsh -File mt_cleanup.ps1`：**不捕获输出**、直接继承控制台句柄，
     这样 mt_cleanup 的机器可读结论行（MT_CLEANUP_RESULT:）以原始字节透传，

@@ -12,7 +12,7 @@
     pwsh -File scripts/test/mt_preflight.ps1 --all
 
 .NOTES
-    对应源文件（迁移前）：scripts/test/mt_preflight.py。
+    迁移前源文件 scripts/test/mt_preflight.py（该原件已在 92fbeaf「工具链收敛为纯 pwsh」删除，取回：`git show 92fbeaf^:scripts/test/mt_preflight.py`）。
 
     依赖 `lib/Mt.Win32.psm1`（输入语言的 Win32 平台层；python 侧对应 mt_ime 的
     `langid_of_thread` / `en_us_available` / `describe` / `KLID_EN_US`）。

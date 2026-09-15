@@ -17,7 +17,7 @@
 用法：
   pwsh -File scripts/verify/verify_chip_acquisition.ps1 [-Root <仓库根>]
 
-—— PowerShell 移植版:1:1 对应 scripts/verify/verify_chip_acquisition.py(原 .py 保留不删)。
+—— PowerShell 移植版:1:1 对应 scripts/verify/verify_chip_acquisition.py（原 .py 已在 92fbeaf 删除；取回：`git show 92fbeaf^:scripts/verify/verify_chip_acquisition.py`）。
 #>
 [CmdletBinding()]
 param(

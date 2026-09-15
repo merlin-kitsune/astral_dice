@@ -22,7 +22,7 @@
   (pwsh -File scripts/verify/verify_chip_recipes.ps1)引用。改动前先确认双版本 ModRecipeProvider.java
   的真实内容,勿仅凭此表推断。
 
-—— PowerShell 移植版:1:1 对应 scripts/verify/chip_common.py(原 .py 保留不删),
+—— PowerShell 移植版:1:1 对应 scripts/verify/chip_common.py（原 .py 已在 92fbeaf 删除；取回：`git show 92fbeaf^:scripts/verify/chip_common.py`）,
    运行期完全不再依赖 python。字典一律用 Ordinal 比较器(等价 Python dict 的大小写敏感)。
 #>
 

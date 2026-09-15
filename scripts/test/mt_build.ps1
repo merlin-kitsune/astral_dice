@@ -14,7 +14,7 @@
     pwsh -File scripts/test/mt_build.ps1 --version 1.21.1 --timeout 60 --retries 3
 
 .NOTES
-    对应源文件（迁移前）：scripts/test/mt_build.sh。
+    迁移前源文件 scripts/test/mt_build.sh（该原件已在 92fbeaf「工具链收敛为纯 pwsh」删除，取回：`git show 92fbeaf^:scripts/test/mt_build.sh`）。
 
     日志拆两个文件（bash 的 `> "$LOG" 2>&1` 是单文件合并）:
       temp/mt_build_<版本>_<epoch>.log      stdout（构建结论行都在这里）

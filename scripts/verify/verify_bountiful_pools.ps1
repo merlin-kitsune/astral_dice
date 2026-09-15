@@ -18,7 +18,7 @@ Bountiful 赏金联动一致性校验（只读守门）。
 
 用法: pwsh -File scripts/verify/verify_bountiful_pools.ps1 [-Root .]
 
-—— PowerShell 移植版:1:1 对应 scripts/verify/verify_bountiful_pools.py(原 .py 保留不删)。
+—— PowerShell 移植版:1:1 对应 scripts/verify/verify_bountiful_pools.py（原 .py 已在 92fbeaf 删除；取回：`git show 92fbeaf^:scripts/verify/verify_bountiful_pools.py`）。
 #>
 [CmdletBinding()]
 param(

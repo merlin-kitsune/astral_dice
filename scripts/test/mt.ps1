@@ -18,7 +18,7 @@
     pwsh -File scripts/test/mt.ps1 --phase stop
 
 .NOTES
-    对应源文件（迁移前）：scripts/test/mt.sh。
+    迁移前源文件 scripts/test/mt.sh（该原件已在 92fbeaf「工具链收敛为纯 pwsh」删除，取回：`git show 92fbeaf^:scripts/test/mt.sh`）。
 
     退出清理（避免进程泄漏）:
       全流程会在退出前自动收停本流程进程与 Gradle 守护（正常结束 / 失败 / Ctrl-C

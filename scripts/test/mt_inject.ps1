@@ -2,7 +2,7 @@
 <#
 mt_inject.ps1 — 游戏内输入注入（阶段 C 的执行臂）。
 
-对应源文件：scripts/test/mt_inject.py（1:1 移植；python 原件保留，迁移期用于逐字节比对）。
+1:1 移植自 scripts/test/mt_inject.py（python 原件已在 92fbeaf 删除，迁移期曾用于逐字节比对；取回：`git show 92fbeaf^:scripts/test/mt_inject.py`）。
 
 ## 平台边界（关键设计）
 
