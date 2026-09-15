@@ -82,6 +82,10 @@ public class CurrentCoreChipItem extends BaseChipItem {
      */
     public static int tryFinishCooldown(Player player, long cooldownEnd, long now) {
         if (player == null || player.level().isClientSide()) return FINISH_NONE;
+        // 第二批「三态化」:主动技能仍在锁定(生效中)态时**严格禁用**本筹码——
+        // 不触发、不扣充能、不入减免池;用户可见提示由 BaseSignItem.performSkill 的锁定分支统一发出
+        // (该分支判定在冷却分支之前,故正常路径下根本走不到这里;此处仅为纵深防御)
+        if (com.merlinkitsune.astral_dice.item.sign.BaseSignItem.isSignActiveLocked(player)) return FINISH_NONE;
         if (!isEquipped(player)) return FINISH_NONE;
         long remaining = cooldownEnd - now;
         if (remaining <= 0) return FINISH_NONE;

@@ -411,8 +411,11 @@ public class ModAttachments {
         player.setData(SIGN_ACTIVE_COOLDOWN_END.get(), value);
     }
 
-    // 立牌主动技能"本次冷却实际使用的最大冷却 tick"(路线 A:起冷却时与 SIGN_ACTIVE_COOLDOWN_END 成对写入,
-    // 所有减免方一律读它作基准,不再各自重算;0 表示缺失/无冷却,减免方回退旧行为;仅服务端使用,无需同步客户端)
+    // 立牌主动技能"本次冷却实际使用的最大冷却 tick"(路线 A:所有减免方一律读它作基准,不再各自重算;
+    // 0 表示缺失/无冷却,减免方回退旧行为;仅服务端使用,无需同步客户端)。
+    // 写入时机(第二批「立牌主动技能三态化」):① 直接起冷却时与 SIGN_ACTIVE_COOLDOWN_END 成对写入;
+    // ② 进入"锁定(生效中)"态时先写入基准(锁定期间减免方照旧读它并累加进 SIGN_ACTIVE_REDUCTION_POOL),
+    //    冷却起点火时再改写为扣池后的实际冷却 effective = max(0, 基准 − 池)。
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> SIGN_ACTIVE_MAX_COOLDOWN =
             ATTACHMENTS.register("sign_active_max_cooldown", () -> AttachmentType.builder(() -> 0L)
                     .serialize(Codec.LONG)
@@ -424,6 +427,86 @@ public class ModAttachments {
 
     public static void setSignActiveMaxCooldown(net.minecraft.world.entity.player.Player player, long value) {
         player.setData(SIGN_ACTIVE_MAX_COOLDOWN.get(), value);
+    }
+
+    // ===== 立牌主动技能"三态化"(可用 / 锁定-生效中 / 冷却)的玩家级状态 =====
+    // 2026-09-25 用户裁决(第二批):主动技能施加的"带时长效果/自身计时器"跑完之前处于**锁定(生效中)**态,
+    // 期间按键无效;锁定结束**必起冷却**(无空档)。全部键仅服务端使用(判定只在服务端 performSkill /
+    // 各减免方 / 玩家级 tick),故一律不 .sync()(客户端 tooltip 不显示"生效中",保持零客户端改动)。
+
+    // 锁定态标记:正在生效中的主动所属立牌的**物品注册 id**("" = 未锁定)。判定见 BaseSignItem#isSignActiveLocked
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<String>> SIGN_ACTIVE_LOCK_SIGN =
+            ATTACHMENTS.register("sign_active_lock_sign", () -> AttachmentType.builder(() -> "")
+                    .serialize(Codec.STRING)
+                    .build());
+
+    // 锁定态的硬上界:触发时刻算定的"本技能施加的全部计时器到期刻取 max"
+    // (0 = 无自身计时器,仅忍者使用——其锁定跟随出牌周期,由周期完全重置结束)
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> SIGN_ACTIVE_LOCK_END =
+            ATTACHMENTS.register("sign_active_lock_end", () -> AttachmentType.builder(() -> 0L)
+                    .serialize(Codec.LONG)
+                    .build());
+
+    // 锁定期间累计的冷却减免池(tick):锁定结束起冷却时一次性抵扣并归零
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> SIGN_ACTIVE_REDUCTION_POOL =
+            ATTACHMENTS.register("sign_active_reduction_pool", () -> AttachmentType.builder(() -> 0L)
+                    .serialize(Codec.LONG)
+                    .build());
+
+    // 忍者立牌专用:宽限到期刻(触发主动时刻 + 1:00;0 = 宽限已失效/不适用)
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> SIGN_ACTIVE_LOCK_GRACE_END =
+            ATTACHMENTS.register("sign_active_lock_grace_end", () -> AttachmentType.builder(() -> 0L)
+                    .serialize(Codec.LONG)
+                    .build());
+
+    // 忍者立牌专用:本次锁定/宽限期内是否已出过任何效果牌(true = 宽限保险失效,遵循出牌周期)
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Boolean>> SIGN_ACTIVE_LOCK_PLAYED =
+            ATTACHMENTS.register("sign_active_lock_played", () -> AttachmentType.builder(() -> false)
+                    .serialize(Codec.BOOL)
+                    .build());
+
+    public static String getSignActiveLockSign(net.minecraft.world.entity.player.Player player) {
+        return player.getData(SIGN_ACTIVE_LOCK_SIGN.get());
+    }
+
+    public static void setSignActiveLockSign(net.minecraft.world.entity.player.Player player, String value) {
+        player.setData(SIGN_ACTIVE_LOCK_SIGN.get(), value == null ? "" : value);
+    }
+
+    public static long getSignActiveLockEnd(net.minecraft.world.entity.player.Player player) {
+        return player.getData(SIGN_ACTIVE_LOCK_END.get());
+    }
+
+    public static void setSignActiveLockEnd(net.minecraft.world.entity.player.Player player, long value) {
+        player.setData(SIGN_ACTIVE_LOCK_END.get(), value);
+    }
+
+    public static long getSignActiveReductionPool(net.minecraft.world.entity.player.Player player) {
+        return player.getData(SIGN_ACTIVE_REDUCTION_POOL.get());
+    }
+
+    public static void setSignActiveReductionPool(net.minecraft.world.entity.player.Player player, long value) {
+        player.setData(SIGN_ACTIVE_REDUCTION_POOL.get(), Math.max(0L, value));
+    }
+
+    public static void addSignActiveReductionPool(net.minecraft.world.entity.player.Player player, long delta) {
+        setSignActiveReductionPool(player, player.getData(SIGN_ACTIVE_REDUCTION_POOL.get()) + delta);
+    }
+
+    public static long getSignActiveLockGraceEnd(net.minecraft.world.entity.player.Player player) {
+        return player.getData(SIGN_ACTIVE_LOCK_GRACE_END.get());
+    }
+
+    public static void setSignActiveLockGraceEnd(net.minecraft.world.entity.player.Player player, long value) {
+        player.setData(SIGN_ACTIVE_LOCK_GRACE_END.get(), value);
+    }
+
+    public static boolean getSignActiveLockPlayed(net.minecraft.world.entity.player.Player player) {
+        return player.getData(SIGN_ACTIVE_LOCK_PLAYED.get());
+    }
+
+    public static void setSignActiveLockPlayed(net.minecraft.world.entity.player.Player player, boolean value) {
+        player.setData(SIGN_ACTIVE_LOCK_PLAYED.get(), value);
     }
 
     // 末影骰子:不死图腾效果冷却结束时刻(玩家级,0 表示未进入冷却)

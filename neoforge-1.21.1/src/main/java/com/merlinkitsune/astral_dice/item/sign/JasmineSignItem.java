@@ -70,6 +70,21 @@ public class JasmineSignItem extends BaseSignItem {
         return InteractionResultHolder.success(stack);
     }
 
+    // 第二批「三态化」:主动施加 "清扫" 2 分钟(随机附加的抗性提升/力量同长)⇒ 进入锁定(生效中)态
+    @Override
+    protected boolean startActiveLockOnUse(Player player, long now) {
+        net.minecraft.world.effect.MobEffectInstance instance = player.getEffect(ModEffects.JASMINE_SWEEP);
+        if (instance == null) return false;
+        beginActiveLock(player, "astral_dice:jasmine_sign", now + instance.getDuration());
+        return true;
+    }
+
+    // 门控效果实例仍在:效果被外力提前移除时锁定提前结束(硬上界不延长)
+    @Override
+    protected boolean isGateEffectActive(Player player) {
+        return player.hasEffect(ModEffects.JASMINE_SWEEP);
+    }
+
     // === 被动:加急加快联动(扫地机立牌被动追加) ===
 
     // 玩家是否佩戴扫地机立牌
@@ -86,13 +101,19 @@ public class JasmineSignItem extends BaseSignItem {
         if (player == null || player.level().isClientSide()) return;
         if (!isEquipped(player)) return;
         long now = player.level().getGameTime();
+        long maxCooldown = ModAttachments.getSignActiveMaxCooldown(player);
+        if (maxCooldown <= 0) {
+            maxCooldown = GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS;
+        }
+        // 第二批「三态化」:主动仍在锁定(生效中)态时冷却尚未起算 ⇒ 把同一减半量累加进锁定减免池,
+        // 由锁定结束起冷却时一次性抵扣(不在这里改任何冷却数值)
+        if (BaseSignItem.isSignActiveLocked(player)) {
+            ModAttachments.addSignActiveReductionPool(player, maxCooldown / 2);
+            return;
+        }
         long cdEnd = ModAttachments.getSignActiveCooldownEnd(player);
         // 冷却为 0(无冷却哨兵值)或已过期:视作无冷却,直接返回
         if (cdEnd > now) {
-            long maxCooldown = ModAttachments.getSignActiveMaxCooldown(player);
-            if (maxCooldown <= 0) {
-                maxCooldown = GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS;
-            }
             ModAttachments.setSignActiveCooldownEnd(player,
                     Math.max(now, cdEnd - maxCooldown / 2));
         }

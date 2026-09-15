@@ -414,6 +414,7 @@
   "msg.astral_dice.need_dice": "需要先佩戴骰子！",
   "msg.astral_dice.no_dice_equipped": "需要先佩戴骰子",
   "msg.astral_dice.sign_active_triggered": "%s：主动技能已启动！",
+  "msg.astral_dice.sign_active_in_effect": "%s:主动技能生效中!",
   "msg.astral_dice.weak_mark_kill_reward": "击杀虚弱印记目标，获得「命运的指引」！",
   "tooltip.astral_dice.amethyst_dice_proc": "远程/魔法攻击也触发战斗骰并追加骰点伤害",
   "tooltip.astral_dice.applied_stones": "已装载卡片:",

@@ -81,6 +81,21 @@ public class FenSignItem extends BaseSignItem {
         return InteractionResultHolder.success(stack);
     }
 
+    // 第二批「三态化」:主动施加 "战斗爽" 1:00(若有养精蓄锐则迅捷同为 1:00)⇒ 进入锁定(生效中)态
+    @Override
+    protected boolean startActiveLockOnUse(Player player, long now) {
+        net.minecraft.world.effect.MobEffectInstance instance = player.getEffect(ModEffects.FEN_FRENZY);
+        if (instance == null) return false;
+        beginActiveLock(player, "astral_dice:fen_sign", now + instance.getDuration());
+        return true;
+    }
+
+    // 门控效果实例仍在:效果被外力提前移除时锁定提前结束(硬上界不延长)
+    @Override
+    protected boolean isGateEffectActive(Player player) {
+        return player.hasEffect(ModEffects.FEN_FRENZY);
+    }
+
     // 玩家是否佩戴大当家立牌
     public static boolean isEquipped(Player player) {
         if (player == null) return false;

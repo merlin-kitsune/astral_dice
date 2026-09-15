@@ -1069,9 +1069,43 @@ function resetEffectCardCycle(player) {
     ModAttachments.setEffectCardPlayCount(player, 0);
     ModAttachments.setEffectCardCooldownEnd(player, 0);
     ModAttachments.setSignActiveCooldownEnd(player, 0);
+    // 立牌主动"三态化"(第二批)新增的 5 个玩家级键:必须一并归零,否则锁定态会跨用例残留、
+    // 使"按主动"走进锁定分支(读数变成顺序相关)
+    resetActiveLock(player);
     ModAttachments.setCandyChipPlayBonusActive(player, false);
     ModAttachments.setSatellitePlayBonusActive(player, false);
     ModAttachments.setLivingPageCycleBonus(player, 0);
+}
+
+/** 清空立牌主动"锁定(生效中)"态与减免池(测试脚手架;不碰主动冷却本身) */
+function resetActiveLock(player) {
+    ModAttachments.setSignActiveLockSign(player, "");
+    ModAttachments.setSignActiveLockEnd(player, 0);
+    ModAttachments.setSignActiveReductionPool(player, 0);
+    ModAttachments.setSignActiveLockGraceEnd(player, 0);
+    ModAttachments.setSignActiveLockPlayed(player, false);
+}
+
+/** 当前锁定态标记("" = 未锁定) */
+function lockSignId(player) {
+    var id = ModAttachments.getSignActiveLockSign(player);
+    return id == null ? "" : String(id);
+}
+
+/** 主动技能锁定(生效中)态剩余 tick(0 = 未锁定) */
+function lockRemaining(player) {
+    var end = ModAttachments.getSignActiveLockEnd(player);
+    var now = nowTick(player);
+    if (end <= 0 || now < 0) return 0;
+    return end - now;
+}
+
+/** 忍者宽限剩余 tick(0 = 无宽限/已失效) */
+function lockGraceRemaining(player) {
+    var end = ModAttachments.getSignActiveLockGraceEnd(player);
+    var now = nowTick(player);
+    if (end <= 0 || now < 0) return 0;
+    return end - now;
 }
 
 /** 摘下两个「临时出牌数来源」效果(附件已由 resetEffectCardCycle 归零) */
@@ -1090,7 +1124,9 @@ function signCooldownRemaining(player) {
 
 // ── 忍者:主动「一次性 +1」(仅当前出牌轮;无银行、无来源注册)──────────────
 /**
- * 正常释放:归零基线 → 按主动。断言链 = 附件 0→1、出牌上限 +1、主动冷却开始。
+ * 正常释放(第二批「三态化」新语义):归零基线 → 按主动。断言链 = 附件 0→1、出牌上限 +1、
+ * **进入锁定(生效中)态且不立即起主动冷却**(忍者的锁定跟随出牌周期,宽限 1:00 起算),
+ * 再把宽限到期刻推成过期并驱动玩家级 tick ⇒ 期内未出任何效果牌 ⇒ 强制重置出牌状态并按基准起冷却。
  * 出牌上限读数用「前后差值」而非绝对值(不依赖其它用例是否留下固定来源筹码)。
  */
 function doKomachiCast(ctx, tag) {
@@ -1111,11 +1147,24 @@ function doKomachiCast(ctx, tag) {
     var maxAfter = EffectCardPeriodClass.getMaxAllowed(p);
     var extraAfter = EffectCardPeriodClass.getBonusPlays(p);
     var cd = signCooldownRemaining(p);
+    var lockSign = lockSignId(p);
+    var graceLeft = lockGraceRemaining(p);
     send(ctx, "AP_" + tag + "_AFTER:max=" + maxAfter + ":extra=" + extraAfter
-        + ":cd=" + (cd > 0 ? 1 : 0));
+        + ":cd=" + (cd > 0 ? 1 : 0) + ":locked=" + (lockSign === KOMACHI_SIGN_ID ? 1 : 0));
     send(ctx, "AP_" + tag + "_DELTA:max=+" + (maxAfter - maxBefore)
-        + ":extra=" + extraAfter + ":cd=" + (cd > 0 ? "started" : "none"));
-    var ok = (extraAfter === 1) && (maxAfter === maxBefore + 1) && (cd > 0);
+        + ":extra=" + extraAfter + ":cd=" + (cd > 0 ? "started" : "none")
+        + ":locked=" + (lockSign === "" ? "none" : lockSign));
+    // 宽限 1:00 到点(期内未出任何效果牌)⇒ 玩家级 tick 强制重置出牌状态并起主动冷却
+    var now = nowTick(p);
+    ModAttachments.setSignActiveLockGraceEnd(p, (now > 1 ? now : 1) - 1);
+    BaseSignItemClass.tickSignActiveLock(p);
+    var cdAfterGrace = signCooldownRemaining(p);
+    var lockAfterGrace = lockSignId(p);
+    send(ctx, "AP_" + tag + "_GRACE:cd=" + (cdAfterGrace > 0 ? 1 : 0)
+        + ":locked=" + (lockAfterGrace === "" ? 0 : 1));
+    var ok = (extraAfter === 1) && (maxAfter === maxBefore + 1) && (cd === 0)
+        && (lockSign === KOMACHI_SIGN_ID) && (graceLeft > 0)
+        && (cdAfterGrace > 0) && (lockAfterGrace === "");
     send(ctx, "AP_" + tag + "_RELEASED:" + (ok ? 1 : 0));
     send(ctx, "AP_" + tag + "_DONE");
     return 1;
@@ -1123,8 +1172,9 @@ function doKomachiCast(ctx, tag) {
 
 /**
  * 本周期已生效时再按主动:不得释放,且**不得进入冷却**。
- * 构造:附件先置 1(本周期已生效),并把主动冷却结束时刻置为「已过期但非 0」——
- * 既能越过 performSkill 的冷却分支(走到 handleUse 的 used 守卫),
+ * 构造:先清掉上一条用例可能留下的**锁定(生效中)**态(新判定置于冷却分支之前,残留锁会让本用例
+ * 走进锁定分支而测不到"已授予过"的守卫);再置附件 1(本周期已生效),并把主动冷却结束时刻置为
+ * 「已过期但非 0」——既能越过 performSkill 的冷却分支(走到 handleUse 的 used 守卫),
  * 又能用「该字段是否被重新写成未来时刻」判定冷却有没有被起算。
  */
 function doKomachiRepeat(ctx, tag) {
@@ -1132,6 +1182,7 @@ function doKomachiRepeat(ctx, tag) {
     var err = equipSign(p, KOMACHI_SIGN_ID);
     if (err != null) { send(ctx, "AP_" + tag + "_ERR:" + err); return 0; }
     clearExtraPlayEffects(p);
+    resetActiveLock(p);
     var seed = 0;
     if (EffectCardPeriodClass.getBonusPlays(p) <= 0) {
         ModAttachments.setEffectCardBonusPlays(p, 1);
@@ -1275,17 +1326,20 @@ function doKomachiCap(ctx, tag) {
         send(ctx, "AP_" + tag + "_BRANCH:capped_reject");
         send(ctx, "AP_" + tag + "_AFTER:extra=" + ex + ":cd=" + (cd > 0 ? 1 : 0) + ":max=" + mx);
     } else {
-        // 未封顶的正向对照:必须释放(附件 0→1、上限 +1)且不得超过常量封顶
+        // 未封顶的正向对照:必须释放(附件 0→1、上限 +1)、**进入锁定(生效中)态且不立即起冷却**、
+        // 且不得超过常量封顶(第二批「三态化」:忍者锁定跟随出牌周期,冷却从周期完全重置那一刻开始)
         ModAttachments.setEffectCardBonusPlays(p, 0);
         ModAttachments.setSignActiveCooldownEnd(p, 0);
         BaseSignItemClass.performSkillForCurio(p);
         var ex2 = EffectCardPeriodClass.getBonusPlays(p);
         var cd2 = signCooldownRemaining(p);
+        var locked2 = (lockSignId(p) === KOMACHI_SIGN_ID) ? 1 : 0;
         var mx2 = EffectCardPeriodClass.getMaxAllowed(p);
-        capOk = (ex2 === 1 && cd2 > 0 && mx2 === fill + 1
+        capOk = (ex2 === 1 && cd2 === 0 && locked2 === 1 && mx2 === fill + 1
             && mx2 <= GameplayConstantsClass.MAX_EFFECT_CARD_PLAYS) ? 1 : 0;
         send(ctx, "AP_" + tag + "_BRANCH:uncapped_release");
-        send(ctx, "AP_" + tag + "_AFTER:extra=" + ex2 + ":cd=" + (cd2 > 0 ? 1 : 0) + ":max=" + mx2);
+        send(ctx, "AP_" + tag + "_AFTER:extra=" + ex2 + ":cd=" + (cd2 > 0 ? 1 : 0)
+            + ":locked=" + locked2 + ":max=" + mx2);
     }
     send(ctx, "AP_" + tag + "_CAP_OK:" + capOk);
     // 单行「联合判词」把三个读数绑在一起,便于用例用一条正则锁死两种合法形态

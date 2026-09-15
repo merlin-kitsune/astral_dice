@@ -189,6 +189,32 @@ public final class EffectCardPeriod {
         ModAttachments.setLivingPageCycleBonus(player, 0);
     }
 
+    /**
+     * 出牌轮"完全重置"回调(第二批「立牌主动技能三态化」第 4 条):**只**在本方法的两个调用点触发——
+     * {@link #tick} 的情形 1(冷却到期后计数归零)与 {@link #registerPlay} 的周期边界块;
+     * 情形 2/3(未打满的收尾冷却、不变量违例修复)**不构成"完全重置"**,不得调用。
+     *
+     * <p>用途:忍者立牌主动"忍术连击"的锁定跟随出牌周期,其主动冷却从"该轮出牌状态完全重置那一刻"开始
+     * (见 {@code BaseSignItem#onEffectCardRoundReset})。
+     */
+    public static void onRoundFullyReset(Player player) {
+        com.merlinkitsune.astral_dice.item.sign.BaseSignItem.onEffectCardRoundReset(player);
+    }
+
+    /**
+     * 强制重置当前出牌轮(忍者主动"宽限 1:00 内未出任何效果牌"的保险,见
+     * {@code BaseSignItem#tickSignActiveLock}):出牌数、出牌冷却与全部"每轮一次"标记一并归零
+     * (与 {@link #tick} 情形 1 / {@link #registerPlay} 周期边界同一套写法,不另列清理项)。
+     *
+     * <p>**不**回调 {@link #onRoundFullyReset}:调用方自行决定后续迁移
+     * (忍者在此之后立即让自己的主动技能进入冷却)。
+     */
+    public static void forceResetRound(Player player) {
+        ModAttachments.setEffectCardCooldownEnd(player, 0);
+        ModAttachments.setEffectCardPlayCount(player, 0);
+        clearRoundBonuses(player);
+    }
+
     // 本轮已出牌数
     public static int getPlayCount(Player player) {
         return ModAttachments.getEffectCardPlayCount(player);
@@ -269,6 +295,13 @@ public final class EffectCardPeriod {
      * 都只能提高上限,不能绕过 {@link GameplayConstants#MAX_EFFECT_CARD_PLAYS} 这一最高优先级封顶。
      */
     public static void registerPlay(Player player) {
+        // 忍者主动"锁定(生效中)"期的出牌佐证(第二批「三态化」第 4 条):期内**出过任何效果牌**即置真。
+        // 唯一置真入口(registerPlay 全仓唯一调用点 = BaseEffectCardItem 的服务端出牌路径);
+        // 该标记跨周期边界保持(不能读 play_count / bonus_plays,两者都会被周期边界归零)。
+        if (!player.level().isClientSide() && com.merlinkitsune.astral_dice.item.sign.BaseSignItem
+                .isSignActiveLocked(player)) {
+            ModAttachments.setSignActiveLockPlayed(player, true);
+        }
         long now = player.level().getGameTime();
         long cooldown = ModAttachments.getEffectCardCooldownEnd(player);
         int played = ModAttachments.getEffectCardPlayCount(player);
@@ -283,6 +316,8 @@ public final class EffectCardPeriod {
             ModAttachments.setEffectCardPlayCount(player, 0);
             // 周期归零:一次性出牌数加成 / 可口糖果 / 探天卫星 / 活体书页累计 统一清除
             clearRoundBonuses(player);
+            // 出牌轮完全重置:通知立牌主动(忍者在此刻起主动技能冷却)
+            onRoundFullyReset(player);
             cooldown = 0;
         }
         int count = ModAttachments.getEffectCardPlayCount(player) + 1;
@@ -357,6 +392,8 @@ public final class EffectCardPeriod {
         // 周期归零:一次性出牌数加成(立牌主动) / 可口糖果(每轮一次) / 探天卫星(每 1:00 一次) /
         // 活体书页本周期累计,统一清除(唯一入口,避免各处各列一遍导致残留)
         clearRoundBonuses(player);
+        // 出牌轮完全重置:通知立牌主动(忍者在此刻起主动技能冷却)
+        onRoundFullyReset(player);
         // 周期归零:解除电击手套本周期已武装的法伤扩散(下个周期可重新武装)
         com.merlinkitsune.astral_dice.item.chip.ElectricGloveChipItem.disarmAoe(player);
     }

@@ -52,6 +52,21 @@ public class PaparaSignItem extends BaseSignItem {
         com.merlinkitsune.astral_dice.combat.DiceCombatModifiers.setDefenseArmorBonus(player, "papara_def_armor", 0);
     }
 
+    // 第二批「三态化」:主动施加 "汲取" 3:00 ⇒ 进入锁定(生效中)态;锁定结束才起主动技能冷却
+    @Override
+    protected boolean startActiveLockOnUse(Player player, long now) {
+        net.minecraft.world.effect.MobEffectInstance instance = player.getEffect(ModEffects.PAPARA_BITE);
+        if (instance == null) return false;
+        beginActiveLock(player, "astral_dice:papara_sign", now + instance.getDuration());
+        return true;
+    }
+
+    // 门控效果实例仍在:效果被外力提前移除时锁定提前结束(硬上界不延长)
+    @Override
+    protected boolean isGateEffectActive(Player player) {
+        return player.hasEffect(ModEffects.PAPARA_BITE);
+    }
+
     // 吸血鬼立牌(papara)主动"汲取":受伤时恢复单次受到伤害的一半生命(取整,至少 1 点)
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public static void onPaparaBiteHurtHeal(LivingDamageEvent.Pre event) {

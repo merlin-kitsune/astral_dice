@@ -126,6 +126,23 @@ public class NancyLuSignItem extends BaseSignItem {
         return InteractionResultHolder.success(stack);
     }
 
+    // 第二批「三态化」:主动施加"完全隐身"(效果实例 + 附件 nancy_lu_hidden_until 同长 0:30)⇒ 进入锁定态。
+    // 硬上界取**本技能自己写入的附件**(而不是回读隐身实例剩余时长)——隐身是原版效果,回读会把
+    // 外部来源的隐身药水误算成本技能的计时器
+    @Override
+    protected boolean startActiveLockOnUse(Player player, long now) {
+        long hiddenUntil = ModAttachments.getNancyLuHiddenUntil(player);
+        if (hiddenUntil <= now) return false;
+        beginActiveLock(player, "astral_dice:nancy_lu_sign", hiddenUntil);
+        return true;
+    }
+
+    // 门控效果实例仍在:攻击破隐(player.removeEffect)或外力清除时锁定提前结束(硬上界不延长)
+    @Override
+    protected boolean isGateEffectActive(Player player) {
+        return player.hasEffect(net.minecraft.world.effect.MobEffects.INVISIBILITY);
+    }
+
     // 隐身状态下攻击敌对目标/玩家时调用:解除隐身,尝试消耗战斗牌并按费用*2提升攻击力
     public static void onAttackWhileHidden(Player player) {
         if (player == null || player.level().isClientSide()) return;

@@ -49,9 +49,13 @@ public class LuluSignItem extends BaseSignItem {
         }
         com.merlinkitsune.astral_dice.component.ModAttachments.setLuluLastHurtTick(player, nowTick);
         // 主动技能冷却 -10 秒(200 tick,绝对量,与最大冷却无关);
-        // 夹底取 now:cdEnd == 0 是"无冷却"哨兵值,不得写出 0
+        // 夹底取 now:cdEnd == 0 是"无冷却"哨兵值,不得写出 0。
+        // 第二批「三态化」:主动仍在锁定(生效中)态时冷却尚未起算 ⇒ 把这 200 tick 绝对量累加进锁定减免池,
+        // 由锁定结束起冷却时一次性抵扣(不在这里改任何冷却数值)
         long cdEnd = com.merlinkitsune.astral_dice.component.ModAttachments.getSignActiveCooldownEnd(player);
-        if (cdEnd > nowTick) {
+        if (BaseSignItem.isSignActiveLocked(player)) {
+            com.merlinkitsune.astral_dice.component.ModAttachments.addSignActiveReductionPool(player, 200L);
+        } else if (cdEnd > nowTick) {
             com.merlinkitsune.astral_dice.component.ModAttachments.setSignActiveCooldownEnd(player,
                     Math.max(nowTick, cdEnd - 200));
         }

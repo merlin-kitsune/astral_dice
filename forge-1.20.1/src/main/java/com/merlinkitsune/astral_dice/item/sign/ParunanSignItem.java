@@ -60,9 +60,35 @@ public class ParunanSignItem extends BaseSignItem {
         } else {
             effect = new MobEffectInstance(MobEffects.HERO_OF_THE_VILLAGE, 18000, 0, false, true); // 村庄英雄 15 分钟
         }
-        EffectTimerGuard.apply(player, effect);
+        boolean applied = EffectTimerGuard.apply(player, effect);
+        // 第二批「三态化」:只登记本次**实际施加成功**的计时器 ⇒ 进入锁定(生效中)态;锁定结束才起主动冷却。
+        // 到期刻取本次随机到的效果实例时长(不硬编码时长表);施加失败(已有更长同类效果)则不锁、立即起冷却,
+        // 也**不回读**实例剩余时长——那会把无关来源的同名效果(如袭击给的村庄英雄)误算成本技能的计时器
+        if (applied) {
+            beginActiveLock(player, "astral_dice:parunan_sign",
+                    level.getGameTime() + effect.getDuration());
+        }
 
         return InteractionResultHolder.success(stack);
+    }
+
+    // 主动施加的三选一效果(饱和/幸运/村庄英雄):锁定(生效中)态的门控效果来源
+    private static final java.util.List<net.minecraft.world.effect.MobEffect> LOCK_GATE_EFFECTS =
+            java.util.List.of(MobEffects.SATURATION, MobEffects.LUCK, MobEffects.HERO_OF_THE_VILLAGE);
+
+    // 第二批「三态化」:锁定已在 handleUse 内登记(仅当本次实际施加成功);此处只回答"是否已进入锁定"
+    @Override
+    protected boolean startActiveLockOnUse(Player player, long now) {
+        return isSignActiveLocked(player);
+    }
+
+    // 门控效果实例仍在:效果被外力提前移除(如牛奶桶)时锁定提前结束(硬上界不延长)
+    @Override
+    protected boolean isGateEffectActive(Player player) {
+        for (net.minecraft.world.effect.MobEffect effect : LOCK_GATE_EFFECTS) {
+            if (player.hasEffect(effect)) return true;
+        }
+        return false;
     }
 
     // 触发骰神赐福后立即获得 骰点*2 星光(上限由 StarLightManager 统一管理)

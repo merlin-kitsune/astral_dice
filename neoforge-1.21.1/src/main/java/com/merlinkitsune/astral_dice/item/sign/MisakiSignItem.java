@@ -44,6 +44,21 @@ public class MisakiSignItem extends BaseSignItem {
         stack.set(ModDataComponents.MISAKI_SIGN_STACKS.get(), 0);
     }
 
+    // 第二批「三态化」:主动施加 "爆发" 2:00 ⇒ 进入锁定(生效中)态;锁定结束才起主动技能冷却
+    @Override
+    protected boolean startActiveLockOnUse(Player player, long now) {
+        net.minecraft.world.effect.MobEffectInstance instance = player.getEffect(ModEffects.MISAKI_BURST);
+        if (instance == null) return false;
+        beginActiveLock(player, "astral_dice:misaki_sign", now + instance.getDuration());
+        return true;
+    }
+
+    // 门控效果实例仍在:效果被外力提前移除时锁定提前结束(硬上界不延长)
+    @Override
+    protected boolean isGateEffectActive(Player player) {
+        return player.hasEffect(ModEffects.MISAKI_BURST);
+    }
+
     // 装备护法立牌时,"名刀嘎呜切"费用降低为 3 点
     public static int getMeitoCost(Player player) {
         return hasMisakiEquipped(player) ? 3 : AppliedStone.cost("meito");

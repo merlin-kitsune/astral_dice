@@ -116,6 +116,10 @@ public class PlayerTickEvents {
         // 必须挂在玩家级 tick——原先写在各立牌 onCurioTick 里的超时清除只在立牌仍佩戴时执行,
         // 立牌离身后残留的正计时器会让该玩家任何立牌的主动技能都不再进入冷却(可无限连发)。
         BaseSignItem.tickSignReadyTimeout(player);
+        // 立牌主动技能"三态化"(第二批):锁定(生效中)态的玩家级判定——
+        // ① 忍者宽限 1:00 内未出任何效果牌 ⇒ 强制重置出牌状态并起冷却;
+        // ② 其余立牌门控计时器跑完 ⇒ 必起冷却(无空档);与立牌是否仍在饰品槽无关。
+        BaseSignItem.tickSignActiveLock(player);
     }
 
     // 计时器守卫:本模组自定义效果被成功施加时记录结束时刻(有限时长效果;无限时长效果不记录)

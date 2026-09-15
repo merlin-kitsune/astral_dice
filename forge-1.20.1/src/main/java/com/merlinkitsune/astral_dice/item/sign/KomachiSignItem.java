@@ -37,6 +37,9 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
  */
 @Mod.EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public class KomachiSignItem extends BaseSignItem {
+    /** 锁定(生效中)态的宽限时长(1:00):期内未出任何效果牌 ⇒ 强制重置出牌状态并起主动冷却 */
+    public static final int LOCK_GRACE_TICKS = 1200;
+
     public KomachiSignItem(Properties properties) {
         super(properties);
     }
@@ -82,6 +85,20 @@ public class KomachiSignItem extends BaseSignItem {
             return InteractionResultHolder.fail(stack);
         }
         return InteractionResultHolder.success(stack);
+    }
+
+    /**
+     * 第二批「三态化」第 4 条:忍者主动触发后**不立即进冷却**,锁定跟随出牌周期 ——
+     * 冷却从"该轮出牌状态完全重置那一刻"开始({@link #onEffectCardRoundReset} →
+     * {@code BaseSignItem#endLockAndStartCooldown})。宽限 1:00 从触发主动起算:
+     * 期内自始至终未出任何效果牌 ⇒ 强制重置出牌状态并起冷却(见 {@code BaseSignItem#tickSignActiveLock})。
+     * 锁定标记沿用 {@link BaseSignItem#KOMACHI_LOCK_ID},硬上界为 0(无自身计时器)。
+     */
+    @Override
+    protected boolean startActiveLockOnUse(Player player, long now) {
+        beginActiveLock(player, BaseSignItem.KOMACHI_LOCK_ID, 0L);
+        ModAttachments.setSignActiveLockGraceEnd(player, now + LOCK_GRACE_TICKS);
+        return true;
     }
 
     // 主动技能 ActionBar:出牌数+1 与剩余出牌数(注册到主动技能响应事件)
