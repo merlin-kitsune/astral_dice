@@ -101,6 +101,8 @@ When extending this workspace:
   曾因 `[47,)` 只卡到 47.0.0,导致 47.0.0~47.4.9 环境照常加载后才在 Mixin 变换阶段报错(2026-09-14 修复)。改动 `forge_version` 时两个区间自动跟随,无需手工同步。
   **同一门槛体系里的第二道硬前置 = Mixin Booster**(2026-09-15 固化,详见下方「forge-1.20.1 子项目关键差异速记」首条):Forge 1.20.1 的 FML 没有 Mixin 集成,
   缺 `mixinbooster` 时本模组**不报错、全部 Mixin 静默失效**,故必须声明为 `mandatory=true` + `versionRange="[0.1.3,)"`,未安装即在同一阶段拒绝启动。
+  ⚠️ **模板里的注释也参与 Groovy 展开(2026-09-15 实测踩坑)**:`forge-1.20.1/src/main/templates/META-INF/mods.toml` 由 Groovy `SimpleTemplateEngine` 展开,**不得出现「美元符号 + 标识符」的裸写法**(只有「美元符号 + 花括号 + 键名」合法,即 `${key}` 形式),
+  否则 `:forge-1.20.1:generateModMetadata` 以 `Missing property (xxx) for Groovy template expansion` 失败,并把 `build/generated/sources/modMetadata/META-INF/mods.toml` **截断为 0 字节**——随后 `runClient` 直接起不来(表现与"前置门槛"无关,极易误判)。改任何模板注释后**必须真跑一次 `:forge-1.20.1:build` 验证**。
 - **1.21.1(NeoForge)**:`neoforge.mods.toml` 的 `neoforge` 依赖声明为 `[21.1,21.2)`(二号位 band);`loaderVersion` 仍用 `loader_version_range=[1,)`(FML 主版本)。
 - 两侧门槛都必须在 **mods.toml 解析 / 依赖排序阶段**拒绝不合格环境(FML 会给出可读提示:语言提供者版本不符 = `fml.language.missingversion`;
   强制依赖不满足 = `Missing or unsupported mandatory dependencies:`),**不得**依赖"先加载、再在代码里检查"——mixin 变换早于 mod 构造器,那样只会得到 mixin 报错。
