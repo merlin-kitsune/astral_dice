@@ -1,7 +1,7 @@
 #Requires -Version 7.0
 <#
 .SYNOPSIS
-    mt_launch — 启动 runClient 并等待进入世界（阶段 L）。
+    mt_launch — 启动 runClient 并等待进入世界（阶段 L），并在进入世界后执行「测试前清场」。
 
 .DESCRIPTION
     就绪判据（沿用既有约定）: 基础等待 30s，随后轮询 ModernFix 加载完成日志
@@ -10,6 +10,7 @@
 
 .EXAMPLE
     pwsh -File scripts/test/mt_launch.ps1 --version 1.21.1
+    pwsh -File scripts/test/mt_launch.ps1 --version 1.20.1 --no-preclean   # 跳过清场（仅特殊取证）
 
 .NOTES
     对应源文件（迁移前）：scripts/test/mt_launch.sh。
@@ -23,6 +24,12 @@
     stderr 落在 `runclient_launch.log.err`（bash 是 `2>&1` 单文件合并）。
 
     有意的文案偏差：世界缺失时的提示原为 `mt.sh --phase env`，此处指向 `mt.ps1`。
+
+    **测试前清场（2026-09-15 用户裁决后强制；规则全文见 AGENTS.md「测试前清场」）**：
+    进入世界后自动注入 `/kill @e[type=!player,distance=..128]`（连发两次，注入通道偶发
+    丢失见 TESTING-SPEC §10-17），清掉残留靶 / 散落物 / 常驻敌对生物 —— 它们会污染
+    **世界级差值**读数：`self`（施放者 HP 原始差值，不分伤害来源）与 `bolt_delta`
+    （全局雷击生成计数器差值）。`--no-preclean` 仅用于必须保留世界实体的特殊取证。
 #>
 
 $ErrorActionPreference = 'Stop'
@@ -37,6 +44,7 @@ Initialize-MtConsole
 if ($MyInvocation.InvocationName -ne '.') {
 
     $Version = ''
+    $NoPreclean = $false
 
     $i = 0
     while ($i -lt $args.Count) {
@@ -46,6 +54,9 @@ if ($MyInvocation.InvocationName -ne '.') {
             if ($i + 1 -ge $args.Count) { Write-MtErrorLine '缺少 --version 的值'; exit $MT_EXIT_ERROR }
             $Version = [string]$args[$i + 1]
             $i += 2
+        } elseif ($key -eq 'no-preclean') {
+            $NoPreclean = $true
+            $i += 1
         } else {
             Write-MtErrorLine "未知参数 $tok"; exit $MT_EXIT_ERROR
         }
@@ -194,6 +205,30 @@ if ($MyInvocation.InvocationName -ne '.') {
     # KubeJS 脚本健康（进入世界后第一步）
     & $psExe -NoProfile -File (Join-Path $testDir 'mt_assert.ps1') kubejs --version $Version
     if ($LASTEXITCODE -ne 0) { Write-MtWarn 'KubeJS server.log 非 0 errors' }
+
+    # ── 测试前清场（2026-09-15 用户裁决后强制；规则见 AGENTS.md「测试前清场」）──────────
+    # 清掉玩家 128 格内的非玩家实体：残留靶 / 散落物 / 常驻敌对生物。它们会污染
+    # **世界级差值**读数 —— `self`（施放者 HP 原始差值，不分伤害来源）与 `bolt_delta`
+    # （全局雷击生成计数器差值）。实测 1.20.1 testworld 一只常驻蜘蛛使一次 read 内
+    # `php` 掉 6.0，一度被误判成「雷击打到自己」（TESTING-SPEC §8.2-1）。
+    # 注入通道偶发丢失（§10-17），故与收尾命令同口径：连发两次，中间等 600ms。
+    if ($NoPreclean) {
+        Write-MtWarn 'PRECLEAN: SKIPPED (--no-preclean)'
+    } else {
+        Start-Sleep -Milliseconds 1500   # 让 quickplay 的界面彻底退到游戏内再开聊天栏
+        $precleanCmd = '/kill @e[type=!player,distance=..128]'
+        $precleanRc = @()
+        foreach ($precleanAttempt in 1..2) {
+            & $psExe -NoProfile -File (Join-Path $testDir 'mt_inject.ps1') cmd --command $precleanCmd --version $Version
+            $precleanRc += $LASTEXITCODE
+            Start-Sleep -Milliseconds 600
+        }
+        if (@($precleanRc | Where-Object { $_ -ne 0 }).Count -eq 0) {
+            Write-MtInfo ("PRECLEAN: OK — {0} ×2" -f $precleanCmd)
+        } else {
+            Write-MtWarn ("PRECLEAN: WARN — 注入返回码 {0}（命令可能未送达，读数有被世界残留污染的风险）" -f ($precleanRc -join '/'))
+        }
+    }
 
     Write-MtOk 'LAUNCH' "已进入世界（quickplay=$world）"
     exit $MT_EXIT_PASS

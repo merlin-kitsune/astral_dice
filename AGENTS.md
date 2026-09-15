@@ -809,9 +809,11 @@ When extending this workspace:
 
 **时机**：每次冷启动**进入世界之后、运行任何条目之前**做一次即可（同一会话内跑多条时，只需在第一条之前做；用例之间不必重复）。
 
-**机制（二选一）**：
+**落地方式（2026-09-15 用户裁决）**：由 `mt_launch.ps1` 在检测到「已进入世界」后**自动执行** —— 默认连发两次 `/kill @e[type=!player,distance=..128]`（间隔 600ms；注入通道偶发丢失，见 `scripts/test/TESTING-SPEC.md` §10-17），并在日志打印 `MT_PRECLEAN: OK — …/SKIPPED/WARN` 供报告核对。**跳过用 `--no-preclean`**，仅限「必须保留世界实体」的特殊取证。
 
-1. **`/kill` 清场**：`/kill @e[type=!player]` —— 一次清掉世界里全部非玩家实体（残留靶、散落物、常驻敌对生物）。只想清玩家附近时用 `/kill @e[type=!player,distance=..128]`。
+手工补做（或换机制）时二选一：
+
+1. **`/kill` 清场**：`/kill @e[type=!player,distance=..128]`（清玩家 128 格内的非玩家实体：残留靶、散落物、常驻敌对生物）；去掉 `distance=..128` 即清全图。
 2. **难度切换清场**：`/difficulty peaceful` → 等 **≥1 秒**（敌对生物立即消失）→ `/difficulty <原难度>`。本仓库测试世界的难度是 **`easy`**（由 `mt_env.ps1` 生成 `server.properties` 写入），切回时不要凭记忆写别的值。
 
 **为什么必须做**：`AP_*` 读数里有两类是**世界级差值**，会被任何残留实体污染 —— `self`（施放者 HP 的原始差值，**不区分伤害来源**）与 `bolt_delta`（**全局**雷击生成计数器的差值）。实测 1.20.1 testworld 里一只**常驻蜘蛛**在 `forced_survival` 下近战玩家，使一次 read 内 `php` 掉 6 点、`self` 非 0，一度被误判成「电磁炮雷击打到自己」（见 `scripts/test/TESTING-SPEC.md` §8.2-1 与 §10-18）。
@@ -837,7 +839,7 @@ When extending this workspace:
 | `mt_preflight.ps1` | pwsh | 前置检查（分支/输入法可用性/遗留进程/注入通道 MCP 二进制/兼容栈/可写性） | 不启动任何游戏进程 |
 | `mt_build.ps1` | pwsh | Gradle 构建守护：超时、`BUILD SUCCESSFUL` 识别、产物 jar 校验、重试 | 不做部署决策 |
 | `mt_env.ps1` | pwsh | `mods` 装兼容模组 / `world` 重建世界（含原生 NBT 改写）/ `kill` 按版本精确停进程 | 不做功能断言 |
-| `mt_launch.ps1` | pwsh | 启动 `runClient`、轮询就绪日志、兼容栈信号 | 不定义测试条目 |
+| `mt_launch.ps1` | pwsh | 启动 `runClient`、轮询就绪日志、兼容栈信号、**测试前清场**（`/kill @e[type=!player,distance=..128]` ×2，`--no-preclean` 跳过） | 不定义测试条目 |
 | `mt_inject.ps1` | pwsh | 输入注入（ctypes/PostMessage）；**注入前自动切目标窗口为 en-US**；非 Windows 降级 MCP | 不做断言 |
 | `mt_ime.ps1` | pwsh | 输入法管理：列出布局、校验 en-US 可用、**按窗口线程切换输入法**（`set_window_us` / `selftest`） | 不改系统全局默认输入法 |
 | `mt_cleanup.ps1` | pwsh | **退出清理唯一实现**：收停本流程进程 + `gradlew --stop`；尊重失败取证标记 | 不杀非本流程进程 |

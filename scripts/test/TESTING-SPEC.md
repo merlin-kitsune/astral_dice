@@ -31,7 +31,7 @@
 | 可选 MCP | `computer-control-mcp`（**唯一保留的 MCP**：窗口激活 / OCR / 截图 / 输入注入的降级通道），路径写在 `mt.conf`；mineflayer bot（minecraft-mcp-server）已于 2026-09-14 彻底移除 |
 | 机器本地配置 | `scripts/test/mt.conf`（**不入库**）。缺失时回落到内置默认值；模板见 `mt.conf.example` |
 
-**测试前清场（2026-09-15 起强制）**：每次冷启动**进入世界后、跑任何条目前**先清场一次 —— `/kill @e[type=!player]`（或 `/kill @e[type=!player,distance=..128]`），或 `/difficulty peaceful` → 等 ≥1s → `/difficulty easy`。理由与禁止事项见 `AGENTS.md`「测试前清场」；本条直接对应 §8.2-1（1.20.1 常驻蜘蛛污染 `self`）与 §10-18。⚠️ 1.21.1 的命令在 tick 末才生效，清场后要 `wait ≥500ms` 再摆靶；**禁止**在用例两次 read 之间清场。
+**测试前清场（2026-09-15 起强制，工具链已自动执行）**：`mt_launch.ps1` 在「已进入世界」后自动连发两次 `/kill @e[type=!player,distance=..128]`（间隔 600ms），打印 `MT_PRECLEAN: OK — …`；`--no-preclean` 可跳过（仅限必须保留世界实体的特殊取证），跳过时打印 `MT_PRECLEAN: SKIPPED`。手工补做时的两种机制、理由与禁止事项见 `AGENTS.md`「测试前清场」；本条直接对应 §8.2-1（1.20.1 常驻蜘蛛污染 `self`）与 §10-18。⚠️ 1.21.1 的命令在 tick 末才生效，清场后要 `wait ≥500ms` 再摆靶；**禁止**在用例两次 read 之间清场。
 
 ---
 
