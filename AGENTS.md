@@ -1189,7 +1189,7 @@ pwsh -NoProfile -File scripts/test/mt_report.ps1 summary
 | 渲染兼容断言 | `SODIUM_LOADED` / `IRIS_LOADED` | dev 不适用（见阶段 E） |
 | DEBUG 标记 | `run/1.21.1/logs/debug.log` | `run/1.20.1/logs/debug.log` |
 | KubeJS | `run/1.21.1/kubejs/server_scripts/` | `run/1.20.1/kubejs/server_scripts/`（`ResourceLocation(...)` 替代 `.parse`） |
-| Mixin 差异 | MDG + refmap | Mixin Booster（运行时 Mojmap→SRG 重映射） |
+| Mixin 差异 | MDG + refmap（注解选择器翻译） | **Mixin Booster 硬前置**（Sponge Mixin 运行时）**+ refmap**：Booster 只重映射**字节码引用**、**不翻译注解选择器**，缺 refmap 时生产 reobf jar 启动即 FATAL（见「forge-1.20.1 子项目关键差异速记」） |
 
 **KubeJS 辅助命令（权威数值出口，供 `log` 断言使用）**：
 - 1.21.1 / 1.20.1：`/astraldice_ts_count <半径>`、`/astraldice_ts_present <实体id> <半径>`、`/astraldice_ts_equip <sign>`、`/astraldice_ts_clearcd`；
