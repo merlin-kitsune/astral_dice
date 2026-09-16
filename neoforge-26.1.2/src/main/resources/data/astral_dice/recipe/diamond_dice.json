@@ -2,15 +2,9 @@
   "type": "astral_dice:dice_upgrade",
   "category": "equipment",
   "key": {
-    "H": {
-      "tag": "astral_dice:dice_t1"
-    },
-    "P": {
-      "item": "astral_dice:star_plate"
-    },
-    "D": {
-      "item": "minecraft:diamond"
-    }
+    "H": "#astral_dice:dice_t1",
+    "P": "astral_dice:star_plate",
+    "D": "minecraft:diamond"
   },
   "pattern": [
     "DPD",

@@ -2,12 +2,8 @@
   "type": "minecraft:crafting_shapeless",
   "category": "misc",
   "ingredients": [
-    {
-      "item": "minecraft:book"
-    },
-    {
-      "item": "astral_dice:star_coin"
-    }
+    "minecraft:book",
+    "astral_dice:star_coin"
   ],
   "result": {
     "id": "patchouli:guide_book",

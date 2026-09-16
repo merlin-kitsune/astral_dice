@@ -1,0 +1,89 @@
+{
+  "case_id": "CHIP-RELOG-A-26.1.2",
+  "title": "26.1.2 筹码跨重登 A(准备)：装 2★ 骰子 + 放筹码 + 显式存档",
+  "version": "26.1.2",
+  "target": {
+    "type": "existing-feature",
+    "ref": "mc-26.1.2-chip-persistence"
+  },
+  "steps": [
+    {
+      "op": "note",
+      "text": "两阶段用例的准备阶段(配套 CHIP-RELOG-B-26.1.2)。动机：26.1.2 的筹码栏尺寸是**运行时**由 DiceCurioItem#applySlotCount 按骰子星级调出来的(Curios 15 的尺寸 = baseSize + Σ ADD_VALUE 修饰符)，而世界/玩家数据里也存着上一次的 Stacks/Cosmetics 尺寸——因此必须验证「装了骰子、槽里有筹码 → 退出 → 重进」之后尺寸与物品都还在(这是筹码功能在该版本能否长期使用的关键)。⚠️ `mt.ps1 --phase stop` 是强杀、不触发存档，故本阶段最后一步必须由服务端显式 saveEverything(命令 saveall)，否则测的是「未存档的进程被杀」。执行顺序：本阶段 → mt.ps1 stop → mt_launch → CHIP-RELOG-B-26.1.2。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe give \"astral_dice:emerald_dice\" 1 RA1"
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe equipslot dice \"astral_dice:emerald_dice\" RA2"
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe equipslot chip \"astral_dice:flashlight_chip\" RA3"
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe readstate RB1"
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe saveall SV1"
+    },
+    {
+      "op": "wait",
+      "ms": 2000
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_RA2_EQUIP:dice:astral_dice:emerald_dice"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_RA3_EQUIP:chip:astral_dice:flashlight_chip"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_RB1_STATE:.*chipSlots=2:chipCosmetic=2:chipItem=astral_dice:flashlight_chip"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_SV1_SAVE:ok"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_R[A-Z][0-9]_ERR|threw an exception"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "crash"
+    }
+  ],
+  "on_fail": "keep_game_running"
+}

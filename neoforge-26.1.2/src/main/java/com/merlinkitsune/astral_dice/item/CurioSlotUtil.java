@@ -138,6 +138,7 @@ public final class CurioSlotUtil {
             action.accept(player);
         }
     }
+    // 是否佩戴了任意骰子
     private static boolean hasDiceEquipped(Player player) {
         var curios = CuriosApi.getCuriosInventory(player);
         return curios.isPresent() && curios.get().findFirstCurio(DiceCurioItem::isDiceItem).isPresent();

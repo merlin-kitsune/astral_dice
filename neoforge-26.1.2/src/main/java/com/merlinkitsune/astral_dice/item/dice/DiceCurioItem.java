@@ -185,17 +185,26 @@ public class DiceCurioItem extends Item implements ICurioItem {
     //     Curios 自身 tick 循环以 getSlots()(=stackHandler 尺寸)为界,却**无保护地**读
     //     getCosmeticStacks().getStackInSlot(i)(实测 CuriosCommonEvents 行 599)→ 一旦两者不等,
     //     玩家一装备 ≥1★ 骰子(筹码栏 0→N)即抛 `Slot 0 not in valid range - [0,0)` 并**崩服**。
+    //
+    // ⚠️ 用 addPermanentModifier 而不是 addTransientModifier(2026-09-17):
+    //     permanent 会随存档保留(`CurioStacksHandler#deserialize` 逐条 addPermanentModifier;序列化键实测为
+    //     `PermanentModifiers`),于是**登录第一刻**槽位数就是目标值,而不是先按数据包尺寸(0)装载、
+    //     再由 DiceCurioItem#curioTick 在 20 tick 内补回来 —— 槽数与「玩家实际拥有的筹码栏」从登录起就一致,
+    //     也避免了登录窗口内 Curios 登录迁移(`CurioInventory#loadInventoryConfiguration`,按数据包重建默认栏位
+    //     并按新栏位槽数搬移物品)看到新旧槽数不一致而走补偿分支。
+    //     ⚠️【已知未解决缺陷】即便如此,槽内的**合法**筹码在重登后仍会被搬出到玩家背包(见
+    //     docs/compat-26.1.2-neoforge.md §7.6 与用例 CHIP-RELOG-A/B-26.1.2);已排除的因素:
+    //     标签合法性(curios:chip 内物品同样复现)、数据包尺寸 0/1、transient/permanent、本模组代码弹出(无日志)。
+    //     即该缺陷只表现为「物品被移出栏位」,槽位数本身正常(chipSlots=chipCosmetic=目标值)。
     private static void applySlotCount(ICurioStacksHandler handler, int target) {
         int wanted = Math.max(0, target);
         handler.removeModifier(CHIP_SLOT_MODIFIER);
-        // 必用 addTransientModifier:它内部会 flagUpdate();归零时若原本无修饰符则不会触发重算,
-        // 故这里先落一个 0 值修饰符强制重算,再将其移除(否则尺寸会停在旧值)。
-        handler.addTransientModifier(new AttributeModifier(CHIP_SLOT_MODIFIER, wanted,
+        // addPermanentModifier 内部先 addTransientModifier(会 flagUpdate())再登记到 persistentModifiers。
+        // 归零时也保留这个 0 值修饰符:它同时是「本模组接管该栏位尺寸」的标记,移除后无修饰符可 flagUpdate,
+        // 尺寸会停在旧值(Curios 只在被 flag 时才重算)。
+        handler.addPermanentModifier(new AttributeModifier(CHIP_SLOT_MODIFIER, wanted,
                 AttributeModifier.Operation.ADD_VALUE));
         handler.update();
-        if (wanted == 0) {
-            handler.removeModifier(CHIP_SLOT_MODIFIER);
-        }
     }
 
     // 玻璃骰子死亡惩罚:移除骰子本体(连同其 WEAPON_ENHANCEMENT 中已装备的全部卡牌),

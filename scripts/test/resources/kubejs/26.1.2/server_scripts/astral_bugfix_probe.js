@@ -383,12 +383,13 @@ function chipSlotCount(player) {
  * (2026-09-17 实测)。
  */
 function applyChipSlotCount(handler, target) {
+    // 与产品代码一致:必须 permanent(随存档保留),否则登录瞬间槽数为 0,槽内**合法**筹码会被
+    // Curios 的登录迁移弹出(数据包 chip.json 保持设计值 size=0,尺寸全由该修饰符表达)
     var wanted = Math.max(0, target);
     handler.removeModifier(Identifier.parse("astral_dice:chip_slots"));
-    handler.addTransientModifier(new AttributeModifierClass(Identifier.parse("astral_dice:chip_slots"), wanted,
+    handler.addPermanentModifier(new AttributeModifierClass(Identifier.parse("astral_dice:chip_slots"), wanted,
         AttributeModifierOperationClass.ADD_VALUE));
     handler.update();
-    if (wanted === 0) handler.removeModifier(Identifier.parse("astral_dice:chip_slots"));
 }
 
 function ensureChipSlot(player, need) {
@@ -397,7 +398,8 @@ function ensureChipSlot(player, need) {
     var handlerOpt = opt.get().getStacksHandler("chip");
     if (handlerOpt == null || !handlerOpt.isPresent()) return "no_chip_slot";
     var handler = handlerOpt.get();
-    if (handler.getSlots() !== need) applyChipSlotCount(handler, need);
+    // 语义是「**至少** need 个」:不足才补(写成 !== 会把产品按骰子星级长出来的更多槽位误缩回去)
+    if (handler.getSlots() < need) applyChipSlotCount(handler, need);
     return null;
 }
 
@@ -4012,16 +4014,219 @@ function doReadState(ctx, tag) {
     try { heal = ModAttachments.getHealingPoints(p); } catch (e1) { }
     try { pages = ModAttachments.getRinPages(p); } catch (e2) { }
     try { cd = ModAttachments.getSignActiveCooldownEnd(p); } catch (e3) { }
-    var diceSlots = -1, chipSlots = -1, chipCosmetic = -1;
+    var diceSlots = -1, chipSlots = -1, chipCosmetic = -1, chipItem = "none";
     try { var dh = curioHandler(p, "dice"); diceSlots = (dh == null) ? -1 : dh.getStacks().getSlots(); } catch (e4) { }
     try { var ch = curioHandler(p, "chip"); chipSlots = (ch == null) ? -1 : ch.getStacks().getSlots(); } catch (e5) { }
     // chipCosmetic:Curios 15 的 cosmetic 栈尺寸必须与 stacks 尺寸**始终相等** —— Curios 自身 tick
     // 循环以 getSlots() 为界却无保护地读 cosmetic.getStackInSlot(i),两者不等即崩服
     // `Slot 0 not in valid range - [0,0)`(2026-09-17 实测)。故这里一并读数,供用例做相等断言。
     try { var chc = curioHandler(p, "chip"); chipCosmetic = (chc == null) ? -1 : chc.getCosmeticStacks().getSlots(); } catch (e6) { }
+    // chipItem:筹码槽 0 号位的物品 id(重登留存断言用;无槽位 → no-slot,空槽 → none)
+    try {
+        var chi = curioHandler(p, "chip");
+        if (chi == null || chi.getStacks().getSlots() <= 0) { chipItem = "no-slot"; }
+        else {
+            var st = chi.getStacks().getStackInSlot(0);
+            chipItem = st.isEmpty() ? "none" : ("" + BuiltInRegistries.ITEM.getKey(st.getItem()));
+        }
+    } catch (e7) { chipItem = "err"; }
     send(ctx, "AP_" + tag + "_STATE:healing=" + heal + ":pages=" + pages + ":signcd=" + cd
         + ":dice=" + hasDiceEquipped26(p) + ":diceSlots=" + diceSlots + ":chipSlots=" + chipSlots
-        + ":chipCosmetic=" + chipCosmetic);
+        + ":chipCosmetic=" + chipCosmetic + ":chipItem=" + chipItem);
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  26.1.2 追加(2026-09-17):存档 / 合成配方体检 / 近战武器(长矛)判定体检
+//  1. saveall  —— 重登测试用。`mt.ps1 --phase stop` 是强杀(不触发存档),
+//                 故重登前必须先由服务端显式 saveEverything(含玩家数据)。
+//  2. recipecheck —— 26.1 把 ingredient 从 `{"item":…}` 改成字符串(见 NeoForge 26.1
+//                 Ingredients 文档),手写配方不改就整份解析失败(配方静默消失)。
+//                 本命令报「配方总数 + 指定 id 是否存在」,配合用例断言「磁盘文件数 == 装载数」。
+//  3. meleecheck —— 骰神赐福的第一道闸门 DiceCombatEvents#isMeleeWeaponAttack;
+//                 断言 26.1.2 新增的「长矛」(ItemTags.SPEARS,7 种)与剑/斧/重锤/三叉戟同为 true。
+// ════════════════════════════════════════════════════════════════════════════
+var RecipeRegistriesClass = Java.loadClass("net.minecraft.core.registries.Registries");
+var RecipeResourceKeyClass = Java.loadClass("net.minecraft.resources.ResourceKey");
+var ItemStackClass = Java.loadClass("net.minecraft.world.item.ItemStack");
+var InteractionHandClass = Java.loadClass("net.minecraft.world.InteractionHand");
+
+/** 强制整机存档(重登测试的准备步) */
+function doSaveAll(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var ok = false;
+    try { ok = p.level.getServer().saveEverything(true, true, true); } catch (e) { }
+    send(ctx, "AP_" + tag + "_SAVE:" + (ok ? "ok" : "fail"));
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+var RECIPE_CHECK_IDS = [
+    // 手写配方(2026-09-17 由 1.21.1 的 {"item":…}/{"tag":…} 改成 26.1 字符串形式)
+    "astral_dice:golden_dice", "astral_dice:glass_dice", "astral_dice:netherrack_dice",
+    "astral_dice:diamond_dice", "astral_dice:emerald_dice", "astral_dice:obsidian_dice",
+    "astral_dice:weird_dice", "astral_dice:amethyst_dice", "astral_dice:netherite_dice",
+    "astral_dice:crimson_dice", "astral_dice:ender_dice", "astral_dice:nether_star_dice",
+    "astral_dice:astral_guide",
+    // datagen 生成侧抽样(证明生成侧同样装载)
+    "astral_dice:adrenaline_high_chip", "astral_dice:star_coin_bag"
+];
+
+function recipeExists(rm, id) {
+    if (rm == null) return false;
+    try {
+        return rm.byKey(RecipeResourceKeyClass.create(RecipeRegistriesClass.RECIPE, Identifier.parse(id))).isPresent();
+    } catch (e) {
+        // 退化:遍历全部配方比较 id 文本(ResourceKey 的 toString 含完整 id)
+        try {
+            var it = rm.getRecipes().iterator();
+            while (it.hasNext()) { if (("" + it.next().id()).indexOf(id) >= 0) return true; }
+        } catch (e2) { }
+        return false;
+    }
+}
+
+/** 合成配方体检:总装载数 + 本模组装载数 + 关键 id 存在性 */
+function doRecipeCheck(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var rm = null, total = -1, mine = -1;
+    try {
+        rm = p.level.getServer().getRecipeManager();
+        total = rm.getRecipes().size();
+        // 本模组配方数:磁盘上 data/astral_dice/recipe/*.json 的文件数应与之相等
+        // (任何一份解析失败都会让装载数变小 —— 这正是 26.1 ingredient 改格式时的症状)
+        var n = 0;
+        var it = rm.getRecipes().iterator();
+        while (it.hasNext()) { if (("" + it.next().id()).indexOf("astral_dice:") >= 0) n++; }
+        mine = n;
+    } catch (e) { }
+    send(ctx, "AP_" + tag + "_RC_TOTAL:" + total);
+    send(ctx, "AP_" + tag + "_RC_MOD:" + mine);
+    var missing = [];
+    for (var i = 0; i < RECIPE_CHECK_IDS.length; i++) {
+        if (!recipeExists(rm, RECIPE_CHECK_IDS[i])) missing.push(RECIPE_CHECK_IDS[i]);
+    }
+    send(ctx, "AP_" + tag + "_RC_MISSING:" + (missing.length === 0 ? "none" : missing.join(",")));
+    send(ctx, "AP_" + tag + "_RC_DONE");
+    return 1;
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  真·合成体检(craftcheck):不只判「配方在不在」,而是**按配方自身的摆放信息
+//  造一个 CraftingInput,跑 matches() + assemble()**,确认配方真的可合成、产物正确。
+//  依据 26.1.2 的 `Recipe#placementInfo()`(PlacementInfo#ingredients + slotsToIngredientIndex)
+//  —— 26.1 起 Recipe 不再有 getIngredients(),ShapedRecipe 用 getWidth()/getHeight() 定网格。
+// ════════════════════════════════════════════════════════════════════════════
+var CraftingInputClass = Java.loadClass("net.minecraft.world.item.crafting.CraftingInput");
+
+function craftOne(rm, level, id) {
+    var holderOpt;
+    try { holderOpt = rm.byKey(RecipeResourceKeyClass.create(RecipeRegistriesClass.RECIPE, Identifier.parse(id))); }
+    catch (e) { return "no-recipe"; }
+    if (holderOpt == null || !holderOpt.isPresent()) return "no-recipe";
+    var recipe = holderOpt.get().value();
+    var pi = null;
+    try { pi = recipe.placementInfo(); } catch (e1) { return "no-placement"; }
+    if (pi == null || pi.isImpossibleToPlace()) return "impossible";
+    var ings = pi.ingredients();
+    var map = pi.slotsToIngredientIndex();
+    var n = map.size();
+    var w = 0, h = 0;
+    try { w = recipe.getWidth(); h = recipe.getHeight(); } catch (e2) { }
+    if (w <= 0 || h <= 0 || w * h !== n) { w = n; h = 1; }
+    var items = [];
+    for (var s = 0; s < n; s++) {
+        var idx = map.getInt(s);
+        if (idx < 0) { items.push(ItemStackClass.EMPTY); continue; }
+        var ing = ings.get(idx);
+        // 26.1.2 的 Ingredient 由 HolderSet<Item> 支撑(不再有 getItems())。
+        // 优先 getValues().get(0).value();退化走 items() 的迭代器
+        //(实测 Rhino 下 `items().toList()` 会抛,故不用 Stream#toList)。
+        var st = null;
+        try {
+            var hs = ing.getValues();
+            if (hs != null && hs.size() > 0) { st = new ItemStackClass(hs.get(0).value(), 1); }
+        } catch (eA) { }
+        if (st == null) {
+            try {
+                var it2 = ing.items().iterator();
+                if (it2.hasNext()) { st = new ItemStackClass(it2.next().value(), 1); }
+            } catch (eB) { return "ing-err@" + s + ":" + exText(eB); }
+        }
+        if (st == null) return "empty-ingredient@" + s;
+        items.push(st);
+    }
+    var input;
+    try { input = CraftingInputClass.of(w, h, items); } catch (e4) { return "input-err"; }
+    var matched = false;
+    try { matched = recipe.matches(input, level); } catch (e5) { return "match-err:" + exText(e5); }
+    if (!matched) return "no-match";
+    var out = null;
+    try { out = recipe.assemble(input); } catch (e6) { return "assemble-err:" + exText(e6); }
+    if (out == null || out.isEmpty()) return "empty-result";
+    return "" + BuiltInRegistries.ITEM.getKey(out.getItem()) + "x" + out.getCount();
+}
+
+/** 对手写(重写过的)配方逐个真合成 */
+var CRAFT_CHECK_IDS = [
+    "astral_dice:golden_dice", "astral_dice:glass_dice", "astral_dice:netherrack_dice",
+    "astral_dice:diamond_dice", "astral_dice:emerald_dice", "astral_dice:obsidian_dice",
+    "astral_dice:weird_dice", "astral_dice:amethyst_dice", "astral_dice:netherite_dice",
+    "astral_dice:crimson_dice", "astral_dice:ender_dice", "astral_dice:nether_star_dice",
+    "astral_dice:astral_guide"
+];
+
+function doCraftCheck(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var rm = null;
+    try { rm = p.level.getServer().getRecipeManager(); } catch (e) { }
+    var out = [];
+    for (var i = 0; i < CRAFT_CHECK_IDS.length; i++) {
+        var r;
+        try { r = craftOne(rm, p.level, CRAFT_CHECK_IDS[i]); } catch (e2) { r = "ERR:" + exText(e2); }
+        out.push(CRAFT_CHECK_IDS[i] + "=" + r);
+    }
+    send(ctx, "AP_" + tag + "_CRAFT:" + out.join("|"));
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+/** 近战武器判定体检(骰神赐福第一道闸门),含 26.1.2 新增长矛 */
+var MELEE_CHECK_ITEMS = [
+    ["spear", "minecraft:iron_spear", true],
+    ["dspear", "minecraft:diamond_spear", true],
+    ["nspear", "minecraft:netherite_spear", true],
+    ["sword", "minecraft:iron_sword", true],
+    ["axe", "minecraft:iron_axe", true],
+    ["mace", "minecraft:mace", true],
+    ["trident", "minecraft:trident", true],
+    ["stick", "minecraft:stick", false],
+    ["bow", "minecraft:bow", false]
+];
+
+function doMeleeCheck(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var DiceCombatEventsClass = Java.loadClass("com.merlinkitsune.astral_dice.combat.DiceCombatEvents");
+    var saved;
+    try { saved = p.getMainHandItem().copy(); } catch (e0) { saved = null; }
+    var out = [];
+    for (var i = 0; i < MELEE_CHECK_ITEMS.length; i++) {
+        var name = MELEE_CHECK_ITEMS[i][0];
+        var id = MELEE_CHECK_ITEMS[i][1];
+        var got = "err";
+        try {
+            var it = itemOf(id);
+            if (it == null) { got = "no-item"; }
+            else {
+                p.setItemInHand(InteractionHandClass.MAIN_HAND, new ItemStackClass(it, 1));
+                got = DiceCombatEventsClass.isMeleeWeaponAttack(p) ? "1" : "0";
+            }
+        } catch (e) { got = "ERR:" + exText(e); }
+        out.push(name + "=" + got);
+    }
+    try { if (saved != null) p.setItemInHand(InteractionHandClass.MAIN_HAND, saved); } catch (e1) { }
+    send(ctx, "AP_" + tag + "_MELEE:" + out.join(":"));
     send(ctx, "AP_" + tag + "_DONE");
     return 1;
 }
@@ -4307,5 +4512,26 @@ ServerEvents.commandRegistry(event => {
                 .then(Commands.argument("tag", StringArg.word())
                     .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
                         return doReadState(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            // ── 26.1.2 追加(2026-09-17):存档 / 合成配方体检 / 长矛近战判定体检 ──
+            .then(Commands.literal("saveall")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doSaveAll(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("recipecheck")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doRecipeCheck(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("meleecheck")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doMeleeCheck(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("craftcheck")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doCraftCheck(ctx, StringArg.getString(ctx, "tag"));
                     }))))    );
 });

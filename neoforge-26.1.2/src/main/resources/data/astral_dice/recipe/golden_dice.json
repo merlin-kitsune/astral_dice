@@ -2,15 +2,9 @@
   "type": "astral_dice:dice_upgrade",
   "category": "equipment",
   "key": {
-    "D": {
-      "tag": "astral_dice:dice_t0"
-    },
-    "S": {
-      "item": "astral_dice:star_coin"
-    },
-    "G": {
-      "item": "minecraft:gold_ingot"
-    }
+    "D": "#astral_dice:dice_t0",
+    "S": "astral_dice:star_coin",
+    "G": "minecraft:gold_ingot"
   },
   "pattern": [
     "GSG",

@@ -1,0 +1,52 @@
+{
+  "case_id": "CHIP-RELOG-B-26.1.2",
+  "title": "26.1.2 筹码跨重登 B(验证)：重登后筹码栏尺寸与筹码物品是否留存",
+  "version": "26.1.2",
+  "target": {
+    "type": "existing-feature",
+    "ref": "mc-26.1.2-chip-persistence"
+  },
+  "steps": [
+    {
+      "op": "note",
+      "text": "两阶段用例的验证阶段(前置 CHIP-RELOG-A-26.1.2 已完成装骰子 + 放筹码 + saveall，随后由 mt.ps1 stop + mt_launch 重登)。本阶段只读不写：readstate 报 chipSlots / chipCosmetic / chipItem。判据：① chipSlots 与 chipCosmetic **相等**(Curios 15 的 stacks 与 cosmetic 尺寸失配会在 tick 与登录两条路径崩服，见 docs/compat-26.1.2-neoforge.md §7.3)；② 筹码物品仍在槽内(chipItem)。⚠️【已知未解决缺陷】② 目前在 26.1.2 上**必失败**：合法筹码(已验证 astral_dice:flashlight_chip 在 curios:chip 标签内)重登后会被 Curios 的登录迁移搬出到玩家背包(chipItem=none；物品不丢、槽位数仍正确)。已排除标签合法性、chip 槽数据包尺寸 0/1、修饰符 transient/permanent、本模组代码弹出(无日志)。证据见 §7.6；**本条目保持红色即代表该缺陷仍存在**。⚠️ 测试注意：探针 `equipslot` 直接写栏位、绕过校验，必须用 `curios:chip` 标签内的物品(用 `astral_dice:blank_chip` 这类材料会制造假缺陷)。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe readstate RB2"
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_RB2_STATE:.*chipSlots=2:chipCosmetic=2"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_RB2_STATE:.*chipItem=astral_dice:flashlight_chip"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_RB2_DONE"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "Slot 0 not in valid range|threw an exception|AP_RB2_.*ERR"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "crash"
+    }
+  ],
+  "on_fail": "keep_game_running"
+}

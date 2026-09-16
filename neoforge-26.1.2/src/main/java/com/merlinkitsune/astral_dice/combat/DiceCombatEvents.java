@@ -1025,12 +1025,17 @@ public class DiceCombatEvents {
         return roll;
     }
 
-    // 近战武器攻击判定:仅允许剑/斧/重锤/三叉戟等近战武器触发骰神赐福
+    // 近战武器攻击判定:仅允许剑/斧/重锤/三叉戟/长矛等近战武器触发骰神赐福
     public static boolean isMeleeWeaponAttack(Player player) {
         ItemStack held = player.getMainHandItem();
         if (held.isEmpty()) return false;
         if (held.is(Items.SHIELD)) return false;
         return held.is(net.minecraft.tags.ItemTags.SWORDS)
+                // 26.1.2 新增「长矛」(木/石/铜/铁/金/钻石/下界合金 共 7 种):与剑/斧同属近战武器,纳入骰神赐福判定。
+                // 按 vanilla 物品标签 minecraft:spears 判定(而非逐个 Item / 按类判断):
+                // 26.1.2 的长矛**没有独立物品类**,是 `Item.Properties#spear(...)` 参数化的普通 Item,
+                // 用标签可自动覆盖后续版本新增的长矛与其它模组的长矛。
+                || held.is(net.minecraft.tags.ItemTags.SPEARS)
                 || held.getItem() instanceof AxeItem
                 || held.getItem() instanceof MaceItem
                 || held.getItem() instanceof TridentItem;

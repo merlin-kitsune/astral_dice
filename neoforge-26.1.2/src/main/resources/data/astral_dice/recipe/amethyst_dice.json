@@ -2,12 +2,8 @@
   "type": "astral_dice:dice_upgrade",
   "category": "equipment",
   "key": {
-    "A": {
-      "item": "minecraft:amethyst_block"
-    },
-    "D": {
-      "item": "astral_dice:diamond_dice"
-    }
+    "A": "minecraft:amethyst_block",
+    "D": "astral_dice:diamond_dice"
   },
   "pattern": [
     "AAA",

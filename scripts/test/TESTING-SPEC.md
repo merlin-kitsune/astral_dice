@@ -527,7 +527,52 @@ pwsh -NoProfile -File scripts/test/mt_watchdog.ps1 -Version 1.21.1 [-StallSecond
 
 ---
 
+## 13. 26.1.2 线测试计划与「1.21.1 <=> 26.1.2 功能一致性测试」（2026-09-17 用户指示纳入后续测试计划）
+
+**背景**：第三条线 `neoforge-26.1.2` 是 1.21.1 源码的整体迁移，**允许也不可避免存在平台差异**（见 `AGENTS.md` 的「第三条线规则边界」）。因此 26.1.2 线的测试目标不是「各跑各的冒烟」，而是 **同一功能在两个版本上的行为等价性**；差异必须被**显式登记**，而不是被沉默地接受。
+
+### 13.1 现状盘点（2026-09-17）
+
+| 项 | 1.21.1 | 26.1.2 |
+|---|---|---|
+| 探针 | `resources/kubejs/1.21.1/server_scripts/astral_bugfix_probe.js`（4089 行） | 同源机械移植 26.1.2 版（56 条子命令；迁移脚本 `temp/port_probe.ps1`） |
+| 用例 | 回归套件（§8） | 5 条：`MIGRATION-SMOKE-26.1.2`、`PORTED-PROBE-SMOKE-26.1.2`、`CRAFT-SMOKE-26.1.2`、`CHIP-RELOG-A/B-26.1.2` |
+| 已覆盖 | 全套 | 探针链路存活 / 物品注册 123 / Curios 装备 / 筹码栏尺寸与跨重登 / 121 份配方装载与真合成 / 长矛近战判定 |
+
+### 13.2 一致性测试的方法（「同探针 + 同用例 + 双侧读数 diff」）
+
+1. **探针同名同义**：两侧探针的**子命令名**、**读数键**与**格式**（`AP_<tag>_<KEY>:...`）逐字一致（26.1.2 侧只允许改变取值方式，不允许改变读数文本——如 `levelClass` 在 26.1.2 用两级判定但输出仍是 `net.minecraft.server.level.ServerLevel`）。
+2. **用例成对落盘**：每个功能条目写成 `xxx-1.21.1.json` 与 `xxx-26.1.2.json`，**断言模式逐字相同**，仅 `version` 不同；差异只允许出现在 note 里并写明依据。
+3. **对比流程**：同一用例 id 分别跑 `--version 1.21.1` / `--version 26.1.2` → 抽取两侧 `AP_*` 机器行 → **逐键 diff**。任何**非平台固有**的差异按缺陷登记（先复现、再交用户定夺，不得直接改断言迁就）。
+4. **读数可比性前提**（必须逐条核对，否则 diff 无意义）：时间基准统一用 `level.getLevelData().getGameTime()`；伤害口径按各版本事件语义（1.21.1 `LivingDamageEvent.Pre` 在**吸收前**、1.20.1 在**吸收后**；本线对比时需标注）；物品/实体/效果 id 两侧一致（`Identifier` vs `ResourceLocation` 只是类名差异）。
+5. **「允许差异」清单**（必须在本节维护，逐条给依据，禁止无限扩大）：
+   - 26.1.2 **无** Iron's Spells 'n Spellbooks 联动（上游无 26.1.x 构建）；
+   - 26.1.2 **有** 长矛（1.21.1 无该物品）⇒ 近战判定读数多 `spear/dspear/nspear` 三项；
+   - 权限/命令 API 形态差异导致 `opprobe` 的 `level` 读数在 26.1.2 退化为 `-1`（`getProfilePermissions(NameAndId)` 在 Rhino 下取不到），`has2` 与 `dump` 判据不受影响；
+   - Curios 主版本不同（1.21.1 为 9.x 语义、26.1.2 为 15.x）⇒ 槽位尺寸写法不同但**对外行为（槽位数、物品留存）必须等价**——这正是 `CHIP-RELOG-*` 的判据。
+6. **门控**：26.1.2 线**发布前**，一致性测试与「三线构建 + 各自冒烟」并列为必过项；未通过项必须在发布说明中列明。
+7. **排期**：① 先把 1.21.1 现有回归条目按 §13.2 成对迁移（当前只迁移了探针与 5 条冒烟）；② 双版本各跑通；③ 再补 26.1.2 独有行为的条目（长矛、26.1 数据包格式、Curios 15 尺寸/跨重登）。
+
+### 13.3 本轮已固化的 26.1.2 专属用例（同日新增）
+
+| 用例 | 判据要点 |
+|---|---|
+| `CRAFT-SMOKE-26.1.2` | ① 日志 `Couldn't parse data file` 计数 0；② `astral_dice:` 配方装载数 == 磁盘文件数（**121**）；③ 13 份手写配方按 `placementInfo` 自建 `CraftingInput` 跑 `matches()+assemble()` **真合成**；④ `meleecheck` 长矛判定 |
+| `CHIP-RELOG-A-26.1.2` | 装 2★ 骰子 + 放筹码（**必须是 `curios:chip` 标签内的物品**）+ `/astralprobe saveall`；断言槽数/cosmetic 相等且筹码在位 |
+| `CHIP-RELOG-B-26.1.2` | 强杀重登后再读：槽数/cosmetic 仍相等（**已 PASS**）；筹码仍在槽内 —— **当前 FAIL，代表 26.1.2 的「重登后筹码被移出栏位」缺陷仍在**（取证与已排除项见 `docs/compat-26.1.2-neoforge.md` §7.6） |
+
+> ⚠️ **写筹码类用例的硬规则**：探针 `equipslot` 是**直接写栏位、绕过 Curios 校验**，所以必须使用 `curios:chip` 标签内的物品；用标签外的物品（如材料 `astral_dice:blank_chip`）会得到「放进去了、重登就没了」的**假缺陷**（Curios 迁移会按标签把非法物品退回背包）。此坑已实际踩过一次。
+
+---
+
 ## 附录 A：工具链与发布工程变更记录（自 CHANGELOG 移出）
+
+**2026-09-17：26.1.2 线测试能力扩展**
+
+- 探针新增子命令（26.1.2 版 `astral_bugfix_probe.js`，共 56 条）：`recipecheck`（配方装载总数/本模组数/关键 id 存在性）、`craftcheck`（按 `Recipe#placementInfo()` 自建 `CraftingInput` 跑 `matches()+assemble()` 的**真合成**体检）、`meleecheck`（直接调用产品静态方法逐个换手物品验证近战判定，含 26.1.2 新增长矛）、`saveall`（显式 `MinecraftServer#saveEverything`，为「强杀式重登」测试提供存档点）；`readstate` 增补 `chipCosmetic`（stacks/cosmetic 尺寸恒等断言）与 `chipItem`（筹码留存断言）。
+- 新增用例 3 条：`CRAFT-SMOKE-26.1.2`、`CHIP-RELOG-A-26.1.2`、`CHIP-RELOG-B-26.1.2`（后者为两阶段「重登」流程；`mt.ps1 --phase stop` 是强杀不存档，故准备阶段必须显式 `saveall`）。
+- 修工具链踩坑：「注入命令 + 长命令链」在超时被强杀时会连带杀掉**同一进程树里的游戏客户端**（实测一次），长流程请拆成多次调用、不要把 `stop → launch → case` 串在一条命令里。
+- 探针 `equipslot`/`putInSlot` 为**绕过校验的直接写入**，与真人操作不等价；用它做「跨存档留存」类断言时必须选**校验通过**的物品（筹码 → `curios:chip` 标签内），否则会得到假缺陷。
 
 以下条目描述的是**测试工具链与发布流程**（非模组内容），自 1.2.0 的 `CHANGELOG*` 移出并归档于此：
 

@@ -2,15 +2,9 @@
   "type": "astral_dice:dice_upgrade",
   "category": "equipment",
   "key": {
-    "D": {
-      "tag": "astral_dice:dice_t2"
-    },
-    "H": {
-      "item": "astral_dice:golden_star_plate"
-    },
-    "N": {
-      "item": "minecraft:netherite_ingot"
-    }
+    "D": "#astral_dice:dice_t2",
+    "H": "astral_dice:golden_star_plate",
+    "N": "minecraft:netherite_ingot"
   },
   "pattern": [
     "NHN",
