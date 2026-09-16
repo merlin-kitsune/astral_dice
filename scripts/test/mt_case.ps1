@@ -360,7 +360,10 @@ function Test-MtCaseValid {
     }
 
     $version = Get-MtMapValue -Map $Case -Key 'version'
-    if ((Test-MtTruthyValue $version) -and (@('1.21.1', '1.20.1') -notcontains [string]$version)) {
+    # 版本白名单的唯一事实来源 = Mt.Paths.psm1 的 $script:VERSIONS
+    # (2026-09-16:此前这里硬编码 @('1.21.1','1.20.1'),第三条线 26.1.2 的条目会被判非法)
+    $validVersions = @(Get-MtVersions)
+    if ((Test-MtTruthyValue $version) -and ($validVersions -notcontains [string]$version)) {
         $errs += "version 非法：$(ConvertTo-MtPyText $version)"
     }
 

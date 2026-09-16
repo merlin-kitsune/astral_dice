@@ -4,9 +4,11 @@
     mt_launch — 启动 runClient 并等待进入世界（阶段 L），并在进入世界后执行「测试前清场」。
 
 .DESCRIPTION
-    就绪判据（沿用既有约定）: 基础等待 30s，随后轮询 ModernFix 加载完成日志
-      "Total time to load game and open world was"
-    每 15s 复检一次，180s 上限；出现崩溃报告或进程退出即判失败。
+    就绪判据（**版本相关**，基础等待 30s 后每 15s 复检一次，180s 上限）:
+      1.21.1 / 1.20.1 —— `Total time to load game and open world was`
+      26.1.2          —— `logged in with entity id` **且** `Loaded <N> advancements`
+                         （上游已删除前者那行；详见循环内的注释）
+    出现崩溃报告或进程退出即判失败。
 
 .EXAMPLE
     pwsh -File scripts/test/mt_launch.ps1 --version 1.21.1
@@ -333,7 +335,24 @@ if ($MyInvocation.InvocationName -ne '.') {
         if (Test-Path -LiteralPath $p.latest_log -PathType Leaf) {
             try { $logFresh = ((Get-Item -LiteralPath $p.latest_log).CreationTime -gt $launchStartedAt) } catch { $logFresh = $false }
         }
-        if ($logFresh -and $latest.Contains('Total time to load game and open world was')) { $entered = $true; break }
+        # 就绪判据（**版本相关**）：
+        #   1.21.1 / 1.20.1 —— 原版客户端进入世界后打印
+        #     `Total time to load game and open world was`（沿用既有口径）。
+        #   26.1.2（2026-09-16 实测）—— 该行**已从上游移除**：整个 latest.log 里搜不到
+        #     `load game` / `open world` 任何形式。改用两条**英文原版**标记同时成立：
+        #       ① `logged in with entity id`（服务端已把玩家实体放进世界，PlayerList）
+        #       ② `Loaded <N> advancements`（客户端已收到世界数据，AdvancementTree）
+        #     ⚠️ 不要用 `加入了游戏` 之类**本地化**文案（本机客户端是 zh_cn，换语言即失效），
+        #        也不要用 `Loaded ` 这种过宽的串（启动期的 `Loaded 0 entity animations` 会误命中）。
+        $ready = $false
+        if ($logFresh) {
+            if ($Version -eq '26.1.2') {
+                $ready = $latest.Contains('logged in with entity id') -and ($latest -match 'Loaded \d+ advancements')
+            } else {
+                $ready = $latest.Contains('Total time to load game and open world was')
+            }
+        }
+        if ($ready) { $entered = $true; break }
 
         # 崩溃报告出现即失败（启动期大量良性 Exception 不应中止）
         $crashes = @()
@@ -366,6 +385,12 @@ if ($MyInvocation.InvocationName -ne '.') {
     if ($Version -eq '1.21.1') {
         if ($latest.Contains('Sodium')) { Write-MtInfo 'SODIUM_LOADED=true' } else { Write-MtWarn 'SODIUM_LOADED=false' }
         if ($latest.Contains('Iris')) { Write-MtInfo 'IRIS_LOADED=true' } else { Write-MtWarn 'IRIS_LOADED=false' }
+    } elseif ($Version -eq '26.1.2') {
+        # 26.1.2 dev run 刻意不装渲染模组（见 mt_env 的 mods 子命令注释）：
+        # 这里只报「探针宿主(KubeJS/Rhino)是否装载」—— 它才是本版本测试链的硬前提。
+        if ($latest.Contains('KubeJS')) { Write-MtInfo 'KUBEJS_LOADED=true' } else { Write-MtWarn 'KUBEJS_LOADED=false' }
+        if ($latest -imatch 'Rhino') { Write-MtInfo 'RHINO_LOADED=true' } else { Write-MtWarn 'RHINO_LOADED=false' }
+        Write-MtInfo 'RENDER_MODS=none(26.1.2 dev run 预期)'
     } else {
         # -qi：bash 侧是大小写不敏感匹配
         if ($latest -imatch 'Embeddium') { Write-MtInfo 'EMBEDDIUM_LOADED=true' }

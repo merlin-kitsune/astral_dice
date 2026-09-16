@@ -1,0 +1,117 @@
+{
+  "case_id": "MIGRATION-SMOKE-26.1.2",
+  "title": "26.1.2 迁移冒烟：模组加载 / 123 物品注册 / 附件可读 / Curios 槽位与骰子装配 / /astralparty dump 可用 / OP 判据同源",
+  "version": "26.1.2",
+  "target": {
+    "type": "existing-feature",
+    "ref": "mc-26.1.2-migration"
+  },
+  "steps": [
+    {
+      "op": "note",
+      "text": "迁移期最小冒烟（1.21.1 的 4088 行完整探针尚未迁移到 26.1.2，见 docs/compat-26.1.2-neoforge.md §8）。本条目覆盖四条最容易在 26.1.2 静默失效的链路：① 注册表物品数（Item.Properties 必须带 id —— 少一个都会在加载期直接崩，但数量错位不会）；② 附件 API 可读（MapCodec/序列化改造后的附件）；③ Curios 15 槽位注册 + 装配（注册名/槽位 id 变更的高发区）；④ /astralparty dump 机器行（26.1.2 的权限模型改为 permissions()/PermissionSet，命令门槛改错会在这里暴露）。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe diag M1"
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe itemcount M2"
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe give \"astral_dice:dice\" 1 M3"
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe equipslot dice \"astral_dice:dice\" M4"
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe readstate M5"
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe dumpstate M6"
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_M1_DIAG:mod=1:att=1:eff=1:items=123"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_M1_DIAG_DONE"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_M2_ITEMCOUNT:astral_dice=123"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_M3_GIVE:astral_dice:dice:1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_M4_EQUIP:dice:astral_dice:dice"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_M5_STATE:healing=-?\\d+:pages=-?\\d+"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_M5_STATE:.*:dice=1:diceSlots=\\d+"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "APDUMP\\|LOCKRAW\\|"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_M[0-9]_ERR|AP_M[0-9]_EX|AP_OP_EX|AP_M1_DIAG:mod=0|AP_M2_ITEMCOUNT:astral_dice=(0|-1)"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "crash"
+    }
+  ],
+  "on_fail": "keep_game_running"
+}

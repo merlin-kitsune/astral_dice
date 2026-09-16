@@ -46,6 +46,27 @@ $script:NeoForgeMods = @(
     @{ Pattern = '*modernfix-neoforge*5.27.24*.jar'; Target = 'modernfix-neoforge-5.27.24+mc1.21.1.jar' }
 )
 
+# ── 26.1.2 探针运行时（仅 dev run 需要）──────────────────────────────────────
+# 26.1.2 的整合包实例里**没有** KubeJS（用户实例未装），而 KubeJS 是探针脚本的宿主，
+# 故从 KubeJS 官方 maven 拉「KubeJS + 必需前置 Rhino」到 `run/26.1.2/mods`：
+#   · **不**写进 build.gradle 依赖 —— 否则 datagen/构建也会装载 KubeJS(其自带 data
+#     provider 会污染 26.1.2 的两段式数据生成);1.21.1 侧同样采用「run/mods 直接装载」约定;
+#   · 版本取自子项目 gradle.properties 的 `kubejs_version`(单一事实来源);
+#   · 其余三个版本来自 KubeJS 26.1.2-8.0.6 的元数据/POM,均**必需**:
+#       rhino                 —— mods.toml 的 required 依赖 [2101.2.8-build.91,)
+#       better-advanced-tooltips —— POM runtime 依赖 [2601.1.0-build.9,)。
+#         实测:即使只跑**服务端**(世界生成)也必需 —— KubeJS 的 TextIcons.<clinit>
+#         无条件引用 dev.latvian.mods.betteradvancedtooltips.BATIcons,
+#         缺它会让 RegisterEvent 阶段抛 NoClassDefFoundError 直接崩服。
+#       tiny-java-server      —— POM runtime 依赖,但它是**纯 Java 库(无 mods.toml)**:
+#         放进 run/mods 会让 FML 在启动时弹「不是一个有效的模组文件」警告屏并**停在那里**
+#         (2026-09-16 实测),且它只服务 KubeJS 自带的 HTTP 面板(本测试链不使用)。
+#         ⇒ **故意不装**。若将来确实需要,应走 dev classpath 而不是 run/mods。
+#   · 下载缓存在 `temp/probe_mods/<版本>/`,幂等:目标已存在同尺寸文件即跳过。
+$script:KubejsRhinoVersion = '2101.2.8-build.91'
+$script:KubejsBatVersion = '2601.1.0-build.10'
+$script:KubejsTinyJavaServerVersion = '1.0.0-build.45'
+
 $script:TAG_BYTE = 1
 $script:TAG_SHORT = 2
 $script:TAG_INT = 3
@@ -508,6 +529,81 @@ function Invoke-MtEnvKubejs {
     return 0
 }
 
+# ══ 26.1.2 探针运行时装装（KubeJS + Rhino）══════════════════════════════════
+function Install-MtProbeRuntime {
+    <#
+    .SYNOPSIS
+        把 26.1.2 探针所需的 KubeJS + Rhino 放进 `run/26.1.2/mods`（幂等）。
+
+    .NOTES
+        为什么不用 Gradle 依赖：`runData/runServerData/runClientData` 与 runClient 共用同一
+        runtimeClasspath，把 KubeJS 写进依赖会让**数据生成**也装载它（KubeJS 自带 data
+        provider，会干扰 26.1.2 的两段式生成）。放 run/mods 是 1.21.1 侧既有的约定。
+
+        版本单一事实来源 = 子项目 gradle.properties 的 `kubejs_version`；
+        Rhino 版本取 KubeJS 26.1.2-8.0.6 的 neoforge.mods.toml 中 `required` 区间下限。
+        下载失败一律**硬失败**（退出码 14），不静默降级为「探针缺失」。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][psobject]$Paths)
+
+    if ($Paths.version -ne '26.1.2') { return 0 }
+
+    $propsPath = Join-Path (Get-MtRoot) "$($Paths.subproject)/gradle.properties"
+    if (-not (Test-Path -LiteralPath $propsPath -PathType Leaf)) {
+        Write-MtLine "MT_MODS: BLOCKED — 找不到 $propsPath（无法确定 kubejs_version）"
+        return 14
+    }
+    $kubejsVersion = ''
+    foreach ($ln in (Get-Content -LiteralPath $propsPath)) {
+        if ($ln -match '^\s*kubejs_version\s*=\s*(.+?)\s*$') { $kubejsVersion = $Matches[1]; break }
+    }
+    if (-not $kubejsVersion) {
+        Write-MtLine 'MT_MODS: BLOCKED — gradle.properties 缺少 kubejs_version'
+        return 14
+    }
+
+    $cache = Join-Path (Join-Path (Get-MtRoot) 'temp\probe_mods') $Paths.version
+    [void](New-Item -ItemType Directory -Force -Path $cache)
+
+    $specs = @(
+        @{ Name = "kubejs-neoforge-$kubejsVersion.jar"
+           Url  = "https://maven.latvian.dev/releases/dev/latvian/mods/kubejs-neoforge/$kubejsVersion/kubejs-neoforge-$kubejsVersion.jar" }
+        @{ Name = "rhino-$($script:KubejsRhinoVersion).jar"
+           Url  = "https://maven.latvian.dev/releases/dev/latvian/mods/rhino/$($script:KubejsRhinoVersion)/rhino-$($script:KubejsRhinoVersion).jar" }
+        @{ Name = "better-advanced-tooltips-$($script:KubejsBatVersion).jar"
+           Url  = "https://maven.latvian.dev/releases/dev/latvian/mods/better-advanced-tooltips/$($script:KubejsBatVersion)/better-advanced-tooltips-$($script:KubejsBatVersion).jar" }
+    )
+
+    $installed = @()
+    foreach ($spec in $specs) {
+        $cached = Join-Path $cache $spec.Name
+        if (-not (Test-Path -LiteralPath $cached -PathType Leaf)) {
+            try {
+                Write-MtLine "MT_MODS: 下载探针运行时 $($spec.Name)"
+                $ProgressPreference = 'SilentlyContinue'
+                Invoke-WebRequest -Uri $spec.Url -OutFile "$cached.part" -TimeoutSec 180 -UseBasicParsing
+                Move-Item -LiteralPath "$cached.part" -Destination $cached -Force
+            } catch {
+                Remove-Item -LiteralPath "$cached.part" -Force -ErrorAction SilentlyContinue
+                Write-MtLine "MT_MODS: BLOCKED — 下载失败 $($spec.Url) :: $($_.Exception.Message)"
+                return 14
+            }
+        }
+        $dst = Join-Path $Paths.mods_dir $spec.Name
+        $needCopy = $true
+        if (Test-Path -LiteralPath $dst -PathType Leaf) {
+            if ((Get-Item -LiteralPath $dst).Length -eq (Get-Item -LiteralPath $cached).Length) { $needCopy = $false }
+        }
+        if ($needCopy) { Copy-Item -LiteralPath $cached -Destination $dst -Force }
+        $installed += $spec.Name
+    }
+
+    Write-MtLine ("MT_MODS: OK — 探针运行时就位（KubeJS {0} / Rhino {1}）→ {2}" -f `
+            $kubejsVersion, $script:KubejsRhinoVersion, $Paths.mods_dir)
+    return 0
+}
+
 # ══ 子命令：mods ══════════════════════════════════════════════════════════
 function Invoke-MtEnvMods {
     [CmdletBinding()]
@@ -520,6 +616,16 @@ function Invoke-MtEnvMods {
 
     # 探针脚本与 mods 同批同步（都要在 launch 之前就位；此前这一步完全缺失）
     [void](Invoke-MtEnvKubejs -Version $Version)
+
+    if ($Version -eq '26.1.2') {
+        # dev run **不**装渲染模组：26.1.2 的 Sodium(Iris 尚无可用的 26.1.2 构建)在 dev
+        # (Mojmap + 无 refmap) 下的收益为零、风险非零；迁移期首轮验收要的是「可复现的最小栈」。
+        # 探针运行时(KubeJS + Rhino)必须装 —— 否则探针命令不存在，launch 的 OP 闸门会记 ERROR。
+        $rc = Install-MtProbeRuntime -Paths $p
+        if ($rc -ne 0) { return $rc }
+        Write-MtLine 'MT_MODS: OK — 26.1.2 dev run 不使用渲染模组；探针运行时就位'
+        return 0
+    }
 
     if ($Version -eq '1.20.1') {
         # dev run 不装渲染模组（Embeddium/Oculus 的 refmap 在 mojmap 下无法解析）；
