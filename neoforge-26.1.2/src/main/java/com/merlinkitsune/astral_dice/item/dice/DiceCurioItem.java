@@ -4,6 +4,8 @@ import com.merlinkitsune.astral_dice.component.ModDataComponents;
 import com.merlinkitsune.astral_dice.component.WeaponEnhancement;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import org.slf4j.Logger;
@@ -20,6 +22,8 @@ public class DiceCurioItem extends Item implements ICurioItem {
     private static final Logger LOGGER = LoggerFactory.getLogger(DiceCurioItem.class);
     // 未佩戴骰子时的筹码栏位数量(对应 curios/slots/chip.json 的 size:0,需求:必须佩戴骰子才有筹码栏)
     private static final int CHIP_NO_DICE_SLOTS = 0;
+    // 筹码栏尺寸的槽位修饰符 id(Curios 15:尺寸 = baseSize + Σ ADD_VALUE 修饰符;见 applySlotCount)
+    private static final Identifier CHIP_SLOT_MODIFIER = Identifier.fromNamespaceAndPath("astral_dice", "chip_slots");
 
     public DiceCurioItem(Properties properties) {
         super(properties);
@@ -168,9 +172,29 @@ public class DiceCurioItem extends Item implements ICurioItem {
                     }
                 }
             }
-            handler.getStacks().shrink(current - target);
-        } else if (current < target) {
-            handler.getStacks().grow(target - current);
+        }
+        applySlotCount(handler, target);
+    }
+
+    // 尺寸改写必须走 Curios 的「槽位修饰符 → update() → resize()」链路(2026-09-17 修,崩溃级)。
+    //   - Curios 15 的 ICurioStacksHandler 已**没有** grow/shrink(1.21.1 的 handler.grow/shrink 即此法,
+    //     由 CurioStacksHandler 一并调整 stacks 与 cosmeticStacks);尺寸 = baseSize + Σ(ADD_VALUE 修饰符),
+    //     由 CurioStacksHandler#update() 重算并调用其私有 resize()。
+    //   - resize() 同时调整 stackHandler / cosmeticStackHandler / renderHandler / activeStates。
+    // ⚠️ 反面写法(移植初版)直接 `handler.getStacks().grow/shrink(...)`,只改 stackHandler:
+    //     Curios 自身 tick 循环以 getSlots()(=stackHandler 尺寸)为界,却**无保护地**读
+    //     getCosmeticStacks().getStackInSlot(i)(实测 CuriosCommonEvents 行 599)→ 一旦两者不等,
+    //     玩家一装备 ≥1★ 骰子(筹码栏 0→N)即抛 `Slot 0 not in valid range - [0,0)` 并**崩服**。
+    private static void applySlotCount(ICurioStacksHandler handler, int target) {
+        int wanted = Math.max(0, target);
+        handler.removeModifier(CHIP_SLOT_MODIFIER);
+        // 必用 addTransientModifier:它内部会 flagUpdate();归零时若原本无修饰符则不会触发重算,
+        // 故这里先落一个 0 值修饰符强制重算,再将其移除(否则尺寸会停在旧值)。
+        handler.addTransientModifier(new AttributeModifier(CHIP_SLOT_MODIFIER, wanted,
+                AttributeModifier.Operation.ADD_VALUE));
+        handler.update();
+        if (wanted == 0) {
+            handler.removeModifier(CHIP_SLOT_MODIFIER);
         }
     }
 

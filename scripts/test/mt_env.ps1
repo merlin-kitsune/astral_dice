@@ -490,6 +490,25 @@ function Sync-MtEnvKubejs {
     $dstRoot = Join-Path (Get-MtPaths -Version $Version).run_dir 'kubejs'
     $copied = 0
     $total = 0
+    $removed = 0
+    # ⚠️ 2026-09-17 新增:只「拷贝」不「清理」会留下**已被模板删除的旧探针**
+    #    (实测事故:26.1.2 的最小探针 astral_probe.js 被完整探针取代后,run 目录里那份
+    #     仍在,两份都注册 `/astralprobe` ⇒ KubeJS 命令重复注册 / 读数来自旧脚本)。
+    #    故同步时顺带删除 run 侧 `server_scripts/**` 中模板已不存在的 .js。
+    $keep = @{}
+    foreach ($f in @(Get-ChildItem -LiteralPath $src -Recurse -File)) {
+        $keep[$f.FullName.Substring($src.Length).TrimStart('\', '/')] = $true
+    }
+    $dstMeta = Join-Path $dstRoot 'server_scripts'
+    if (Test-Path -LiteralPath $dstMeta -PathType Container) {
+        foreach ($f in @(Get-ChildItem -LiteralPath $dstMeta -Recurse -File -Filter '*.js')) {
+            $rel = $f.FullName.Substring($dstRoot.Length).TrimStart('\', '/')
+            if (-not $keep.ContainsKey($rel)) {
+                Remove-Item -LiteralPath $f.FullName -Force -ErrorAction SilentlyContinue
+                $removed++
+            }
+        }
+    }
     foreach ($f in @(Get-ChildItem -LiteralPath $src -Recurse -File)) {
         $rel = $f.FullName.Substring($src.Length).TrimStart('\', '/')
         $dst = Join-Path $dstRoot $rel
@@ -509,7 +528,7 @@ function Sync-MtEnvKubejs {
             $copied++
         }
     }
-    return , @($copied, $total, $true)
+    return , @($copied, $total, $true, $removed)
 }
 
 function Invoke-MtEnvKubejs {
@@ -520,6 +539,9 @@ function Invoke-MtEnvKubejs {
     if (-not $r[2]) {
         Write-MtLine ("MT_KUBEJS: SKIP — 模板目录不存在 scripts/test/resources/kubejs/{0}" -f $Version)
         return 0
+    }
+    if ($r[3] -gt 0) {
+        Write-MtLine ("MT_KUBEJS: 已清理 {0} 个模板中已不存在的旧脚本（避免重复注册 /astralprobe）" -f $r[3])
     }
     if ($r[0] -gt 0) {
         Write-MtLine ("MT_KUBEJS: OK — 已同步 {0}/{1} 个脚本到 run/{2}/kubejs（模板有更新；探针命令的改动需**冷启动**才生效）" -f $r[0], $r[1], $Version)
