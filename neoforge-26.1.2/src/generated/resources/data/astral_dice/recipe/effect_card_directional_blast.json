@@ -2,21 +2,12 @@
   "type": "minecraft:crafting_shapeless",
   "category": "misc",
   "ingredients": [
-    {
-      "item": "minecraft:spyglass"
-    },
-    {
-      "item": "minecraft:tnt"
-    },
-    {
-      "item": "minecraft:tnt"
-    },
-    {
-      "item": "astral_dice:star_plate"
-    }
+    "minecraft:spyglass",
+    "minecraft:tnt",
+    "minecraft:tnt",
+    "astral_dice:star_plate"
   ],
   "result": {
-    "count": 1,
     "id": "astral_dice:effect_card_directional_blast"
   }
 }

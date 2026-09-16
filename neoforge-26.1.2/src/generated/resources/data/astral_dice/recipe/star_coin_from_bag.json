@@ -2,9 +2,7 @@
   "type": "minecraft:crafting_shapeless",
   "category": "misc",
   "ingredients": [
-    {
-      "item": "astral_dice:star_coin_bag"
-    }
+    "astral_dice:star_coin_bag"
   ],
   "result": {
     "count": 9,

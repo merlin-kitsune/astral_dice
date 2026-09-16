@@ -2,18 +2,10 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
-    "D": {
-      "item": "minecraft:diamond"
-    },
-    "G": {
-      "item": "astral_dice:golden_star_plate"
-    },
-    "R": {
-      "item": "minecraft:redstone"
-    },
-    "T": {
-      "item": "astral_dice:moto_helmet_medium_chip"
-    }
+    "D": "minecraft:diamond",
+    "G": "astral_dice:golden_star_plate",
+    "R": "minecraft:redstone",
+    "T": "astral_dice:moto_helmet_medium_chip"
   },
   "pattern": [
     "RDR",
@@ -21,7 +13,6 @@
     "GGG"
   ],
   "result": {
-    "count": 1,
     "id": "astral_dice:moto_helmet_high_chip"
   }
 }

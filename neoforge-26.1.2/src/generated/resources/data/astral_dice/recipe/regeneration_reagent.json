@@ -2,21 +2,12 @@
   "type": "minecraft:crafting_shapeless",
   "category": "misc",
   "ingredients": [
-    {
-      "item": "minecraft:redstone"
-    },
-    {
-      "item": "minecraft:slime_ball"
-    },
-    {
-      "item": "minecraft:glistering_melon_slice"
-    },
-    {
-      "item": "minecraft:honey_bottle"
-    }
+    "minecraft:redstone",
+    "minecraft:slime_ball",
+    "minecraft:glistering_melon_slice",
+    "minecraft:honey_bottle"
   ],
   "result": {
-    "count": 1,
     "id": "astral_dice:regeneration_reagent"
   }
 }

@@ -2,18 +2,10 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
-    "B": {
-      "item": "astral_dice:star_coin"
-    },
-    "C": {
-      "item": "astral_dice:blank_chip"
-    },
-    "W": {
-      "item": "astral_dice:conductive_wire"
-    },
-    "X": {
-      "item": "minecraft:ender_pearl"
-    }
+    "B": "astral_dice:star_coin",
+    "C": "astral_dice:blank_chip",
+    "W": "astral_dice:conductive_wire",
+    "X": "minecraft:ender_pearl"
   },
   "pattern": [
     "XXX",
@@ -21,7 +13,6 @@
     "BBB"
   ],
   "result": {
-    "count": 1,
     "id": "astral_dice:warp_engine_chip"
   }
 }

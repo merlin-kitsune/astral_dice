@@ -2,21 +2,11 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
-    "B": {
-      "item": "astral_dice:blank_chip"
-    },
-    "L": {
-      "item": "minecraft:echo_shard"
-    },
-    "M": {
-      "item": "astral_dice:mark_paint"
-    },
-    "P": {
-      "item": "astral_dice:star_plate"
-    },
-    "X": {
-      "item": "minecraft:spectral_arrow"
-    }
+    "B": "astral_dice:blank_chip",
+    "L": "minecraft:echo_shard",
+    "M": "astral_dice:mark_paint",
+    "P": "astral_dice:star_plate",
+    "X": "minecraft:spectral_arrow"
   },
   "pattern": [
     "XLX",
@@ -24,7 +14,6 @@
     "PPP"
   ],
   "result": {
-    "count": 1,
     "id": "astral_dice:magic_quiver_chip"
   }
 }

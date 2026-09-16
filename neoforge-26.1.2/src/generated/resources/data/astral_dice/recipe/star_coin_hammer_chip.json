@@ -2,21 +2,11 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
-    "B": {
-      "item": "astral_dice:blank_chip"
-    },
-    "D": {
-      "item": "astral_dice:star_coin_dust"
-    },
-    "G": {
-      "item": "astral_dice:golden_star_plate"
-    },
-    "S": {
-      "item": "astral_dice:star_coin_bag"
-    },
-    "X": {
-      "item": "minecraft:mace"
-    }
+    "B": "astral_dice:blank_chip",
+    "D": "astral_dice:star_coin_dust",
+    "G": "astral_dice:golden_star_plate",
+    "S": "astral_dice:star_coin_bag",
+    "X": "minecraft:mace"
   },
   "pattern": [
     "SXS",
@@ -24,7 +14,6 @@
     "GGG"
   ],
   "result": {
-    "count": 1,
     "id": "astral_dice:star_coin_hammer_chip"
   }
 }

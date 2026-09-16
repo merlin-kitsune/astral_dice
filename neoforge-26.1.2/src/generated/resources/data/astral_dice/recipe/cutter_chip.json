@@ -2,21 +2,11 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
-    "B": {
-      "item": "astral_dice:blank_chip"
-    },
-    "L": {
-      "item": "minecraft:golden_apple"
-    },
-    "P": {
-      "item": "astral_dice:star_plate"
-    },
-    "R": {
-      "item": "astral_dice:regeneration_reagent"
-    },
-    "X": {
-      "item": "minecraft:iron_sword"
-    }
+    "B": "astral_dice:blank_chip",
+    "L": "minecraft:golden_apple",
+    "P": "astral_dice:star_plate",
+    "R": "astral_dice:regeneration_reagent",
+    "X": "minecraft:iron_sword"
   },
   "pattern": [
     "XLX",
@@ -24,7 +14,6 @@
     "PPP"
   ],
   "result": {
-    "count": 1,
     "id": "astral_dice:cutter_chip"
   }
 }

@@ -2,24 +2,12 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
-    "B": {
-      "item": "minecraft:black_dye"
-    },
-    "D": {
-      "item": "astral_dice:golden_dice"
-    },
-    "E": {
-      "item": "astral_dice:blank_sign"
-    },
-    "K": {
-      "item": "minecraft:bone_block"
-    },
-    "P": {
-      "item": "astral_dice:star_plate"
-    },
-    "R": {
-      "item": "minecraft:redstone_block"
-    }
+    "B": "minecraft:black_dye",
+    "D": "astral_dice:golden_dice",
+    "E": "astral_dice:blank_sign",
+    "K": "minecraft:bone_block",
+    "P": "astral_dice:star_plate",
+    "R": "minecraft:redstone_block"
   },
   "pattern": [
     "RPR",
@@ -27,7 +15,6 @@
     "KDK"
   ],
   "result": {
-    "count": 1,
     "id": "astral_dice:papara_sign"
   }
 }

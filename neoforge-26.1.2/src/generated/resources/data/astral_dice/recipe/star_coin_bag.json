@@ -2,9 +2,7 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
-    "C": {
-      "item": "astral_dice:star_coin"
-    }
+    "C": "astral_dice:star_coin"
   },
   "pattern": [
     "CCC",
@@ -12,7 +10,6 @@
     "CCC"
   ],
   "result": {
-    "count": 1,
     "id": "astral_dice:star_coin_bag"
   }
 }

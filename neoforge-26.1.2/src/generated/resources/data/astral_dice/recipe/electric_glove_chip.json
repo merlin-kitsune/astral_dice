@@ -2,21 +2,11 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
-    "B": {
-      "item": "astral_dice:blank_chip"
-    },
-    "L": {
-      "item": "minecraft:leather"
-    },
-    "P": {
-      "item": "astral_dice:star_plate"
-    },
-    "W": {
-      "item": "astral_dice:conductive_wire"
-    },
-    "X": {
-      "item": "minecraft:redstone"
-    }
+    "B": "astral_dice:blank_chip",
+    "L": "minecraft:leather",
+    "P": "astral_dice:star_plate",
+    "W": "astral_dice:conductive_wire",
+    "X": "minecraft:redstone"
   },
   "pattern": [
     "XLX",
@@ -24,7 +14,6 @@
     "PPP"
   ],
   "result": {
-    "count": 1,
     "id": "astral_dice:electric_glove_chip"
   }
 }

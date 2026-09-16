@@ -2,18 +2,11 @@
   "type": "minecraft:crafting_shapeless",
   "category": "misc",
   "ingredients": [
-    {
-      "item": "astral_dice:star_plate"
-    },
-    {
-      "item": "minecraft:nether_star"
-    },
-    {
-      "item": "minecraft:nether_star"
-    }
+    "astral_dice:star_plate",
+    "minecraft:nether_star",
+    "minecraft:nether_star"
   ],
   "result": {
-    "count": 1,
     "id": "astral_dice:golden_star_plate"
   }
 }

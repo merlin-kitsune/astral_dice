@@ -68,7 +68,10 @@ public class ModItemModelProvider extends ModelProvider {
         basicItem(itemModels, ModItems.FLASHLIGHT_CHIP.get());
         basicItem(itemModels, ModItems.CUTTER_CHIP.get());
         basicItem(itemModels, ModItems.CUTTER_BLADE_CHIP.get());
-        basicItem(itemModels, ModItems.STAR_COIN.get());
+        // 注意:1.21.1 的 provider 里 STAR_COIN 被登记了两次(见 1.21.1 同名文件),
+        // 那里的 NeoForge ItemModelProvider 会静默覆盖;26.1.2 改用原版 ModelProvider,
+        // 重复登记会直接抛 IllegalStateException: Duplicate model definition,
+        // 故此处只保留第 60 行那一处。
         basicItem(itemModels, ModItems.STAR_COIN_BAG.get());
         basicItem(itemModels, ModItems.MONSTER_LASER_CARD.get());
         basicItem(itemModels, ModItems.MONSTER_BRICK_CARD.get());

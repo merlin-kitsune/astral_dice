@@ -5,7 +5,8 @@
 项目基线:
 - 主线子项目 `neoforge-1.21.1`:MC 1.21.1 / NeoForge 21.1.235 / Java 21 / ModDevGradle(`net.neoforged.moddev` 2.0.141)
 - 移植子项目 `forge-1.20.1`:MC 1.20.1 / Forge 1.20.1-47.4.10 / Java 17 / ModDevGradle LegacyForge(`net.neoforged.moddev.legacyforge` 2.0.144)
-- Base package/group: com.merlinkitsune.astral_dice;两子项目产物名均为 `astral_dice-<版本>.jar`,版本号自带加载器后缀(1.21.1 带 `+neoforge_1.21.1`,1.20.1 带 `+forge_1.20.1`,下划线分隔)。
+- 第三条线 `neoforge-26.1.2`(分支 `multi-26.1.2-neoforge`):MC 26.1.2 / NeoForge 26.1.2.109 / Java 25 / ModDevGradle 2.0.147;由 1.21.1 源码整体迁移,差异见 `docs/compat-26.1.2-neoforge.md`
+- Base package/group: com.merlinkitsune.astral_dice;各子项目产物名均为 `astral_dice-<版本>.jar`,版本号自带加载器后缀(1.21.1 带 `+neoforge_1.21.1`,1.20.1 带 `+forge_1.20.1`,26.1.2 带 `+neoforge_26.1.2`,下划线分隔)。
 
 When extending this workspace:
 - Prefer editing the existing Gradle configuration before creating new files.
@@ -93,6 +94,20 @@ When extending this workspace:
 | `neoforge-26.1.2` | 本仓 `multi-26.1.2-neoforge` 分支新增（基线 = 主线 `1.2.1`/`fda8ca9` 的 `neoforge-1.21.1` 源码） | 26.1.2 | NeoForge | 25 | `1.2.1+neoforge_26.1.2` | `x.y.z[-rcN]+neoforge_26.1.2` |
 
 > 版本号各 git 分支独立（AGENTS.md 自 2026-09-15 起**已纳入版本库**，各分支各自维护一份）：`multi-1.20.1-1.21.1` 当前 = `1.2.1`；`multi-dev-next` 当前 = `2.0.0-SNAPSHOT.5`（worktree 分支 `wt/2.0.0-vnext` 同为 `2.0.0-SNAPSHOT.5`）；`multi-26.1.2-neoforge` 当前 = `1.2.1`（26.1.2 线首版号待移植完成后由用户裁决）。上表「当前版本」以主线工作分支 `multi-1.20.1-1.21.1` 为准。
+
+> **第三条线(26.1.2)的规则边界(必须遵守)**:「同步修改两个版本」只约束 `neoforge-1.21.1` + `forge-1.20.1` 的**发布线对等**;`neoforge-26.1.2` 是把 1.21.1 整体迁移到 MC 26.1.2 的**独立开发线**,同一功能先在 1.21.1 落地,再按 `docs/compat-26.1.2-neoforge.md` 的差异映射移植,两侧**允许也不可避免地存在平台差异**。三子项目的 `mod_version`/`mods.toml` 门槛各自独立。
+
+### neoforge-26.1.2 关键差异速记(相对 neoforge-1.21.1)
+
+完整清单见 `docs/compat-26.1.2-neoforge.md`;以下 5 条是**踩过坑、必须照做**的硬约束:
+
+1. **物品注册必须走 `registerItem(name, props -> new XxxItem(props…))`(2026-09-16 实测)**:26.1.2 起 `Item` 构造器经 `Item.Properties#itemIdOrThrow` 推导默认描述 id,而 `DeferredRegister.Items#register(String, Supplier)` **不注入 id** ⇒ 旧写法(`ITEMS.register(name, () -> new X(new Item.Properties()…))`)会在注册阶段直接
+   `NullPointerException: Item id not set` 让模组加载失败。属性链一律挂在传入的 `props` 上;也**不要**用 `XxxItem::new` 方法引用形式(构造器带额外参数时 `p -> …` 链会被逗号截断)。
+2. **数据生成是两段式,且两条运行的 `--output` 必须不同(2026-09-16 实测)**:26.1.2 **没有** `data` 运行类型,只有 `runClientData`(`GatherDataEvent.Client` → `assets/` 物品模型)与 `runServerData`(`GatherDataEvent.Server` → `data/` 配方/进度)。原版 `HashCache#purgeStaleAndWrite()` 会**删除输出根下不属于本次运行 provider 的一切文件**,故共用输出目录时**后跑的那次会清空前一次的全部产物**(实测 246 个物品模型 / 217 个 data 文件被互删)。本仓库因此用**双输出根**:`src/generated/resources`(server)+ `src/generated/clientResources`(client),两者都作为 `sourceSets.main.resources.srcDir`。改动资源后必须
+   `gradlew :neoforge-26.1.2:runClientData :neoforge-26.1.2:runServerData` **两个任务一起跑**,且**禁止**把两者指向同一 `--output`。
+3. **`GatherDataEvent` 在 26.1.2 是抽象类**:监听器必须注册在 `GatherDataEvent.Client` / `GatherDataEvent.Server` 上;注册到抽象父类会让模组构造期直接失败(`Cannot register listeners for abstract class …`)。客户端 provider(继承原版 `net.minecraft.client.data.models.ModelProvider`)与服务端 provider **必须分属两个类**,客户端那个还要加 `@EventBusSubscriber(value = Dist.CLIENT, …)`(服务端数据生成运行的 classpath 不含客户端类)。
+4. **`@EventBusSubscriber` 只剩 `value()`/`modid()`**(`bus = Bus.MOD` 已删除);`ExistingFileHelper`、NeoForge 的 `client.model.generators.ItemModelProvider`、Parchment 的 26.1.x 数据**均不存在**;原版 `ModelProvider` 对重复登记**抛异常**(1.21.1 侧 `ModItemModelProvider` 里 `STAR_COIN` 重复登记在旧 API 下被静默覆盖,26.1.2 已删重复行)。
+5. **Mixin 目标字符串不受编译器保护**:每次换 26.1.2.x 小版本都要按 `docs/compat-26.1.2-neoforge.md` §3 逐条对目标版本源码复核(已发现 `PiglinAi#isWearingGold→isWearingSafeArmor`、`Gui#renderEffects→extractEffects`、`EffectRenderingInventoryScreen→EffectsInInventory`;`MerchantOffer` 复制构造仍在,无需改)。该线**已删除** NeoForge 伤害容器泄漏修复 mixin(26.1.2 上游已修),该线**无 Iron's Spells 'n Spellbooks 联动**(上游无 26.1.x 构建)。
 
 **加载器版本门槛(必须遵守)**:
 - **1.20.1(Forge)**:由 `forge-1.20.1/build.gradle` 从 `gradle.properties` 的 `forge_version`(形如 `1.20.1-47.4.10`)**自动派生两个区间**,分别写入两处:

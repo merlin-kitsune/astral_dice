@@ -311,7 +311,7 @@ function Resolve-MtInjectWindow {
         $st = $null
         try { $st = Get-MtClientStatus -Paths (Get-MtPaths -Version $Version) } catch { }
         if ($st -and -not $st.Alive) {
-            Write-MtErrLine ("MT_INJECT: ERROR — {0} 客户端未在运行（无 net.minecraft.client.main.Main 进程；先跑 --phase launch）" -f $Version)
+            Write-MtErrLine ("MT_INJECT: ERROR — {0} 客户端未在运行（客户端入口进程：1.21.1/1.20.1 为 net.minecraft.client.main.Main，26.1.2 为 net.neoforged.fml.startup.Client；先跑 --phase launch）" -f $Version)
             return [long]0
         }
         Write-MtErrLine 'MT_INJECT: ERROR — 未能唯一确定本版本 Minecraft 窗口（存在多个候选客户端）'

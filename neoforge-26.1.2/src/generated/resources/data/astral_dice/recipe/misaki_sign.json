@@ -2,24 +2,12 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
-    "C": {
-      "item": "minecraft:cyan_dye"
-    },
-    "D": {
-      "item": "astral_dice:diamond_dice"
-    },
-    "E": {
-      "item": "astral_dice:blank_sign"
-    },
-    "I": {
-      "item": "minecraft:iron_sword"
-    },
-    "P": {
-      "item": "astral_dice:golden_star_plate"
-    },
-    "R": {
-      "item": "minecraft:red_dye"
-    }
+    "C": "minecraft:cyan_dye",
+    "D": "astral_dice:diamond_dice",
+    "E": "astral_dice:blank_sign",
+    "I": "minecraft:iron_sword",
+    "P": "astral_dice:golden_star_plate",
+    "R": "minecraft:red_dye"
   },
   "pattern": [
     "RPR",
@@ -27,7 +15,6 @@
     "CDC"
   ],
   "result": {
-    "count": 1,
     "id": "astral_dice:misaki_sign"
   }
 }

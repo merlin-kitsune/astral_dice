@@ -2,18 +2,10 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
-    "B": {
-      "item": "astral_dice:blank_chip"
-    },
-    "P": {
-      "item": "astral_dice:star_plate"
-    },
-    "R": {
-      "item": "astral_dice:regeneration_reagent"
-    },
-    "X": {
-      "item": "minecraft:fermented_spider_eye"
-    }
+    "B": "astral_dice:blank_chip",
+    "P": "astral_dice:star_plate",
+    "R": "astral_dice:regeneration_reagent",
+    "X": "minecraft:fermented_spider_eye"
   },
   "pattern": [
     "XXX",
@@ -21,7 +13,6 @@
     "PPP"
   ],
   "result": {
-    "count": 1,
     "id": "astral_dice:vitamin_pill_chip"
   }
 }

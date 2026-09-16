@@ -2,18 +2,10 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
-    "B": {
-      "item": "astral_dice:blank_chip"
-    },
-    "L": {
-      "item": "minecraft:iron_ingot"
-    },
-    "P": {
-      "item": "astral_dice:star_plate"
-    },
-    "X": {
-      "item": "minecraft:leather"
-    }
+    "B": "astral_dice:blank_chip",
+    "L": "minecraft:iron_ingot",
+    "P": "astral_dice:star_plate",
+    "X": "minecraft:leather"
   },
   "pattern": [
     "XXX",
@@ -21,7 +13,6 @@
     "PPP"
   ],
   "result": {
-    "count": 1,
     "id": "astral_dice:big_backpack_chip"
   }
 }

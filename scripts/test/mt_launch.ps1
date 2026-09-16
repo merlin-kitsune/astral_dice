@@ -252,7 +252,10 @@ if ($MyInvocation.InvocationName -ne '.') {
             # ⚠️ 1.20.1 的 DevLaunch 客户端命令行**不含** net.minecraft.client.main.Main
             #    （走 cpw.mods.bootstraplauncher.BootstrapLauncher），只认 Main 会漏检 →
             #    跨版本撞车照旧发生。这里同时认两种入口 + 「MC 客户端窗口标题」。
-            ($c.Contains('net.minecraft.client.main.Main') -or $c.Contains('bootstraplauncher'))
+            # ⚠️ 2026-09-16：MC 26.1.2（NeoForge 26.1.2.x）的客户端入口是
+            #    net.neoforged.fml.startup.Client，漏了它同样会漏检 26.1.2 客户端。
+            ($c.Contains('net.minecraft.client.main.Main') -or $c.Contains('bootstraplauncher') -or
+             $c.Contains('net.neoforged.fml.startup.Client'))
         })
     if ($existing.Count -gt 0) {
         $pidsText = ($existing | ForEach-Object { $_.Pid }) -join ', '

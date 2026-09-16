@@ -2,21 +2,11 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
-    "B": {
-      "item": "astral_dice:blank_chip"
-    },
-    "C": {
-      "item": "astral_dice:star_coin"
-    },
-    "L": {
-      "item": "minecraft:bamboo"
-    },
-    "M": {
-      "item": "astral_dice:mark_paint"
-    },
-    "X": {
-      "item": "minecraft:feather"
-    }
+    "B": "astral_dice:blank_chip",
+    "C": "astral_dice:star_coin",
+    "L": "minecraft:bamboo",
+    "M": "astral_dice:mark_paint",
+    "X": "minecraft:feather"
   },
   "pattern": [
     "XLX",
@@ -24,7 +14,6 @@
     "CCC"
   ],
   "result": {
-    "count": 1,
     "id": "astral_dice:hand_fan_small_chip"
   }
 }

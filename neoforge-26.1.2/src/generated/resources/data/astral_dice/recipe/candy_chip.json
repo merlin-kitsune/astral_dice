@@ -2,21 +2,11 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
-    "B": {
-      "item": "astral_dice:blank_chip"
-    },
-    "L": {
-      "item": "minecraft:cookie"
-    },
-    "P": {
-      "item": "astral_dice:star_plate"
-    },
-    "R": {
-      "item": "astral_dice:regeneration_reagent"
-    },
-    "X": {
-      "item": "minecraft:sugar"
-    }
+    "B": "astral_dice:blank_chip",
+    "L": "minecraft:cookie",
+    "P": "astral_dice:star_plate",
+    "R": "astral_dice:regeneration_reagent",
+    "X": "minecraft:sugar"
   },
   "pattern": [
     "XLX",
@@ -24,7 +14,6 @@
     "PPP"
   ],
   "result": {
-    "count": 1,
     "id": "astral_dice:candy_chip"
   }
 }

@@ -2,27 +2,13 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
-    "B": {
-      "item": "minecraft:white_concrete"
-    },
-    "F": {
-      "item": "minecraft:pink_concrete"
-    },
-    "L": {
-      "item": "astral_dice:blank_sign"
-    },
-    "P": {
-      "item": "astral_dice:star_plate"
-    },
-    "W": {
-      "item": "minecraft:black_concrete"
-    },
-    "Y": {
-      "item": "minecraft:sculk"
-    },
-    "Z": {
-      "item": "astral_dice:diamond_dice"
-    }
+    "B": "minecraft:white_concrete",
+    "F": "minecraft:pink_concrete",
+    "L": "astral_dice:blank_sign",
+    "P": "astral_dice:star_plate",
+    "W": "minecraft:black_concrete",
+    "Y": "minecraft:sculk",
+    "Z": "astral_dice:diamond_dice"
   },
   "pattern": [
     "YFY",
@@ -30,7 +16,6 @@
     "PZP"
   ],
   "result": {
-    "count": 1,
     "id": "astral_dice:nancy_lu_sign"
   }
 }

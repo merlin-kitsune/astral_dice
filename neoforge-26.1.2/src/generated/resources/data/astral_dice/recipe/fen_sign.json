@@ -2,21 +2,11 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
-    "D": {
-      "item": "astral_dice:diamond_dice"
-    },
-    "E": {
-      "item": "astral_dice:blank_sign"
-    },
-    "G": {
-      "item": "astral_dice:golden_star_plate"
-    },
-    "P": {
-      "item": "minecraft:gold_block"
-    },
-    "R": {
-      "item": "minecraft:redstone_block"
-    }
+    "D": "astral_dice:diamond_dice",
+    "E": "astral_dice:blank_sign",
+    "G": "astral_dice:golden_star_plate",
+    "P": "minecraft:gold_block",
+    "R": "minecraft:redstone_block"
   },
   "pattern": [
     "RPR",
@@ -24,7 +14,6 @@
     "GDG"
   ],
   "result": {
-    "count": 1,
     "id": "astral_dice:fen_sign"
   }
 }

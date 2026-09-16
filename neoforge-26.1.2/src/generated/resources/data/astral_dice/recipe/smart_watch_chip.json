@@ -2,21 +2,11 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
-    "B": {
-      "item": "astral_dice:blank_chip"
-    },
-    "G": {
-      "item": "minecraft:redstone"
-    },
-    "L": {
-      "item": "minecraft:clock"
-    },
-    "P": {
-      "item": "astral_dice:star_plate"
-    },
-    "X": {
-      "item": "minecraft:gold_ingot"
-    }
+    "B": "astral_dice:blank_chip",
+    "G": "minecraft:redstone",
+    "L": "minecraft:clock",
+    "P": "astral_dice:star_plate",
+    "X": "minecraft:gold_ingot"
   },
   "pattern": [
     "XLX",
@@ -24,7 +14,6 @@
     "PPP"
   ],
   "result": {
-    "count": 1,
     "id": "astral_dice:smart_watch_chip"
   }
 }

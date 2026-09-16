@@ -2,18 +2,10 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
-    "O": {
-      "item": "astral_dice:adrenaline_low_chip"
-    },
-    "P": {
-      "item": "astral_dice:golden_star_plate"
-    },
-    "R": {
-      "item": "minecraft:redstone"
-    },
-    "Z": {
-      "item": "minecraft:diamond"
-    }
+    "O": "astral_dice:adrenaline_low_chip",
+    "P": "astral_dice:golden_star_plate",
+    "R": "minecraft:redstone",
+    "Z": "minecraft:diamond"
   },
   "pattern": [
     "RZR",
@@ -21,7 +13,6 @@
     "PPP"
   ],
   "result": {
-    "count": 1,
     "id": "astral_dice:adrenaline_high_chip"
   }
 }

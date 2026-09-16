@@ -11,9 +11,10 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 /**
  * 抑制「层数递减类」效果(治愈 / 标记 / 弱点识破 / 赋能)在客户端的「即将到期」闪烁。
  *
- * <p><b>闪烁来源(原版)</b>:{@code net.minecraft.client.gui.Gui#renderEffects}
- * (1.21.1 反编译源码 {@code net/minecraft/client/gui/Gui.java} 第 548~553 行)对 HUD 效果图标
- * 做即将到期脉冲:
+ * <p><b>闪烁来源(原版)</b>:26.1.2 的 {@code net.minecraft.client.gui.Gui#extractEffects}
+ * (1.21.1 同名逻辑叫 {@code renderEffects};26.1.2 反编译源码 {@code net/minecraft/client/gui/Gui.java}
+ * 第 521 行起,层注册见同文件 :242 {@code layerManager.add(EFFECTS, this::extractEffects, guiVisible)})
+ * 对 HUD 效果图标做即将到期脉冲:
  * <pre>
  * if (mobeffectinstance.endsWithin(200)) {          // 实例剩余时长 &lt;= 200 tick(10 秒)
  *     int k = mobeffectinstance.getDuration();
@@ -49,7 +50,7 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 @Mixin(Gui.class)
 public abstract class GuiMixin {
 
-    @Redirect(method = "renderEffects",
+    @Redirect(method = "extractEffects",
             at = @At(value = "INVOKE",
                     target = "Lnet/minecraft/world/effect/MobEffectInstance;endsWithin(I)Z"))
     private boolean astralDice$suppressExpiryFlash(MobEffectInstance instance, int duration) {

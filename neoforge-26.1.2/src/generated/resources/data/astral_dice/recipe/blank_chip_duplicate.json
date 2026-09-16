@@ -2,15 +2,9 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
-    "B": {
-      "item": "astral_dice:blank_chip"
-    },
-    "C": {
-      "item": "minecraft:iron_block"
-    },
-    "S": {
-      "item": "astral_dice:star_coin"
-    }
+    "B": "astral_dice:blank_chip",
+    "C": "minecraft:iron_block",
+    "S": "astral_dice:star_coin"
   },
   "pattern": [
     "SBS",

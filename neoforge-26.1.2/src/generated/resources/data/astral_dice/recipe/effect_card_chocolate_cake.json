@@ -2,21 +2,12 @@
   "type": "minecraft:crafting_shapeless",
   "category": "misc",
   "ingredients": [
-    {
-      "item": "minecraft:cocoa_beans"
-    },
-    {
-      "item": "minecraft:egg"
-    },
-    {
-      "item": "minecraft:sugar"
-    },
-    {
-      "item": "astral_dice:star_coin"
-    }
+    "minecraft:cocoa_beans",
+    "minecraft:egg",
+    "minecraft:sugar",
+    "astral_dice:star_coin"
   ],
   "result": {
-    "count": 1,
     "id": "astral_dice:effect_card_chocolate_cake"
   }
 }

@@ -2,21 +2,11 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
-    "D": {
-      "item": "astral_dice:golden_dice"
-    },
-    "E": {
-      "item": "astral_dice:blank_sign"
-    },
-    "T": {
-      "item": "minecraft:terracotta"
-    },
-    "W": {
-      "item": "minecraft:wither_skeleton_skull"
-    },
-    "Y": {
-      "item": "minecraft:yellow_dye"
-    }
+    "D": "astral_dice:golden_dice",
+    "E": "astral_dice:blank_sign",
+    "T": "minecraft:terracotta",
+    "W": "minecraft:wither_skeleton_skull",
+    "Y": "minecraft:yellow_dye"
   },
   "pattern": [
     "WYW",
@@ -24,7 +14,6 @@
     "TDT"
   ],
   "result": {
-    "count": 1,
     "id": "astral_dice:padman_sign"
   }
 }

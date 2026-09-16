@@ -2,24 +2,12 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
-    "B": {
-      "item": "minecraft:black_dye"
-    },
-    "D": {
-      "item": "astral_dice:diamond_dice"
-    },
-    "E": {
-      "item": "astral_dice:blank_sign"
-    },
-    "F": {
-      "item": "minecraft:feather"
-    },
-    "I": {
-      "item": "minecraft:echo_shard"
-    },
-    "L": {
-      "item": "minecraft:dispenser"
-    }
+    "B": "minecraft:black_dye",
+    "D": "astral_dice:diamond_dice",
+    "E": "astral_dice:blank_sign",
+    "F": "minecraft:feather",
+    "I": "minecraft:echo_shard",
+    "L": "minecraft:dispenser"
   },
   "pattern": [
     "FIF",
@@ -27,7 +15,6 @@
     "LDL"
   ],
   "result": {
-    "count": 1,
     "id": "astral_dice:komachi_sign"
   }
 }
