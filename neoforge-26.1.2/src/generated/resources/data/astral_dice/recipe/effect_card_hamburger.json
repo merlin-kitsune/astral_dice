@@ -1,0 +1,22 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "minecraft:bread"
+    },
+    {
+      "item": "minecraft:cooked_beef"
+    },
+    {
+      "item": "astral_dice:star_coin"
+    },
+    {
+      "item": "astral_dice:star_coin"
+    }
+  ],
+  "result": {
+    "count": 1,
+    "id": "astral_dice:effect_card_hamburger"
+  }
+}

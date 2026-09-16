@@ -1,0 +1,17 @@
+{
+  "name": "item.astral_dice.effect_card_monster_brick",
+  "category": "astral_dice:cards_effect",
+  "icon": "astral_dice:effect_card_monster_brick",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:effect_card_monster_brick",
+      "text": "astral_dice.guide.entry.effect_card_monster_brick.1"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:effect_card_monster_brick"
+    }
+  ],
+  "sortnum": 11
+}

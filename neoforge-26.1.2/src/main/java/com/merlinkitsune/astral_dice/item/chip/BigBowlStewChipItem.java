@@ -1,0 +1,100 @@
+package com.merlinkitsune.astral_dice.item.chip;
+
+import com.merlinkitsune.astral_dice.event.EventTargetCollector;
+import com.merlinkitsune.astral_dice.item.HealingManager;
+import com.merlinkitsune.astral_dice.item.ModItems;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.TamableAnimal;
+import net.minecraft.world.entity.animal.Pig;
+import net.minecraft.world.entity.animal.horse.AbstractHorse;
+import net.minecraft.world.entity.monster.Strider;
+import net.minecraft.world.entity.player.Player;
+import top.theillusivec4.curios.api.CuriosApi;
+
+/**
+ * 大碗炖肉筹码:骰神赐福效果结束后,使 16 格范围内所有友方目标获得 1 点治愈并恢复 2 点生命值
+ * (由 {@link #onBlessingEnd} 在赐福结束时调用)。
+ *
+ * <p>友方判定:
+ * <ul>
+ *   <li>玩家:自身 + 队友(已加入队伍时 = 同队在线玩家;未加入任何队伍时 = 全服在线玩家,经
+ *       {@link EventTargetCollector#collectTeamPlayers}),且距离不超过 {@link #RANGE} 格;
+ *       玩家获得治愈点数并回血。</li>
+ *   <li>非玩家友方(治愈点数是玩家级资源,生物只回血):仅「已驯服且主人为自己或同队玩家」的宠物与坐骑
+ *       (排除野生坐骑与他人宠物),以及无归属的被动生物(猪/炽足兽)。</li>
+ * </ul>
+ * 筹码拥有者已死亡(死亡清场)时不发放。
+ */
+public class BigBowlStewChipItem extends BaseChipItem {
+    /** 作用范围(格) */
+    public static final double RANGE = 16.0;
+    /** 赐福结束后给予的治愈点数 */
+    public static final int HEALING_POINTS = 1;
+    /** 赐福结束后恢复的生命值(♥) */
+    public static final float HEAL_AMOUNT = 2f;
+
+    public BigBowlStewChipItem(Properties properties) {
+        super(properties);
+    }
+
+    // 玩家是否佩戴本筹码
+    public static boolean isEquipped(Player player) {
+        if (player == null) return false;
+        var curios = CuriosApi.getCuriosInventory(player);
+        return curios.isPresent() && curios.get().findFirstCurio(s -> s.is(ModItems.BIG_BOWL_STEW_CHIP.get())).isPresent();
+    }
+
+    /**
+     * 骰神赐福结束时调用:范围内友方玩家 +{@link #HEALING_POINTS} 治愈、恢复 {@link #HEAL_AMOUNT} 生命值;
+     * 范围内非玩家友方恢复 {@link #HEAL_AMOUNT} 生命值。
+     */
+    public static void onBlessingEnd(Player player) {
+        if (player.level().isClientSide()) return;
+        if (!isEquipped(player)) return;
+        if (player.isDeadOrDying()) return;
+        if (!(player.level() instanceof ServerLevel serverLevel)) return;
+
+        double rangeSqr = RANGE * RANGE;
+        java.util.List<Player> allies = EventTargetCollector.collectTeamPlayers(player);
+        for (ServerPlayer sp : serverLevel.players()) {
+            if (sp != player && !allies.contains(sp)) continue;
+            if (sp.distanceToSqr(player) > rangeSqr) continue;
+            HealingManager.add(sp, HEALING_POINTS);
+            sp.heal(HEAL_AMOUNT);
+        }
+
+        // 非玩家友方(驯服宠物/可骑乘生物):仅回血(治愈点数为玩家级资源)
+        for (LivingEntity entity : serverLevel.getEntitiesOfClass(LivingEntity.class,
+                player.getBoundingBox().inflate(RANGE),
+                e -> !(e instanceof Player) && isFriendlyMob(e, player))) {
+            entity.heal(HEAL_AMOUNT);
+        }
+    }
+
+    // 判定非玩家友方目标:仅自己/同队的已驯服宠物与坐骑,以及无归属的被动生物
+    private static boolean isFriendlyMob(LivingEntity entity, Player owner) {
+        // 已驯服的宠物(狼/猫/鹦鹉等):必须已驯服且主人是自己或同队玩家(排除他人宠物)
+        if (entity instanceof TamableAnimal tame) {
+            return tame.isTame() && isOwnedByAlly(tame.getOwnerUUID(), owner);
+        }
+        // 坐骑(马/驴/骡/羊驼/骆驼等):野生(未驯服)不计入,已驯服的同样要求主人是自己或同队玩家
+        if (entity instanceof AbstractHorse horse) {
+            return horse.isTamed() && isOwnedByAlly(horse.getOwnerUUID(), owner);
+        }
+        // 无归属的被动生物:猪/炽足兽/骆驼(骆驼属坐骑,已在上面处理)视为友方
+        return entity instanceof Pig || entity instanceof Strider;
+    }
+
+    // 目标主人是否为自己或同队玩家(主人离线时按非友方处理,避免给他人离线宠物加血)
+    private static boolean isOwnedByAlly(java.util.UUID ownerId, Player owner) {
+        if (ownerId == null) return false;
+        if (ownerId.equals(owner.getUUID())) return true;
+        var server = owner.getServer();
+        if (server == null) return false;
+        Player petOwner = server.getPlayerList().getPlayer(ownerId);
+        if (petOwner == null) return false;
+        return owner.getTeam() != null && owner.getTeam() == petOwner.getTeam();
+    }
+}

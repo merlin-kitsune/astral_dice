@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": {
+      "item": "astral_dice:blank_chip"
+    },
+    "C": {
+      "item": "astral_dice:star_coin"
+    },
+    "L": {
+      "item": "minecraft:leather"
+    },
+    "S": {
+      "item": "minecraft:sponge"
+    }
+  },
+  "pattern": [
+    "SSS",
+    "LBL",
+    "CCC"
+  ],
+  "result": {
+    "count": 1,
+    "id": "astral_dice:boxing_gloves_low_chip"
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_hand_fan_small": {
+      "conditions": {
+        "items": [
+          {
+            "items": "astral_dice:hand_fan_small_chip"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "has_the_recipe": {
+      "conditions": {
+        "recipe": "astral_dice:hand_fan_big_chip"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    }
+  },
+  "requirements": [
+    [
+      "has_the_recipe",
+      "has_hand_fan_small"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "astral_dice:hand_fan_big_chip"
+    ]
+  }
+}

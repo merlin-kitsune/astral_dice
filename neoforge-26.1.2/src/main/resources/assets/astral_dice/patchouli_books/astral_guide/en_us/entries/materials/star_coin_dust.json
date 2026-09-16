@@ -1,0 +1,17 @@
+{
+  "name": "item.astral_dice.star_coin_dust",
+  "category": "astral_dice:materials",
+  "icon": "astral_dice:star_coin_dust",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:star_coin_dust",
+      "text": "astral_dice.guide.entry.star_coin_dust.1"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:star_coin_dust"
+    }
+  ],
+  "sortnum": 8
+}

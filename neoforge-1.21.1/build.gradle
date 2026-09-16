@@ -310,9 +310,11 @@ tasks.register('pushToRootBuild') {
         if (!rootBuildLibsDir.exists()) {
             rootBuildLibsDir.mkdirs()
         }
-        // 只清理本加载器(neoforge)旧产物,避免误删 forge 版本 jar
+        // 只清理**本子项目**(neoforge 1.21.1)旧产物,避免误删 forge 版本 jar。
+        // ⚠️ 必须带完整后缀 `+neoforge_1.21.1`:自 multi-26.1.2-neoforge 分支起仓库有**两个** neoforge
+        //    产物(`+neoforge_1.21.1` 与 `+neoforge_26.1.2`),宽泛的 `+neoforge_` 会把 26.1.2 的 jar 一并删掉。
         def stale = rootBuildLibsDir.listFiles().findAll { File f ->
-            f.isFile() && f.name.startsWith('astral_dice-') && f.name.endsWith('.jar') && f.name.contains('+neoforge_')
+            f.isFile() && f.name.startsWith('astral_dice-') && f.name.endsWith('.jar') && f.name.contains('+neoforge_1.21.1')
         }
         stale.each { it.delete() }
         def target = new File(rootBuildLibsDir, jarFile.name)

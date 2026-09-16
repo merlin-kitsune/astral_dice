@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "G": {
+      "item": "minecraft:gold_ingot"
+    },
+    "L": {
+      "item": "minecraft:lapis_lazuli"
+    },
+    "P": {
+      "item": "astral_dice:star_plate"
+    },
+    "T": {
+      "item": "astral_dice:moto_helmet_low_chip"
+    }
+  },
+  "pattern": [
+    "LGL",
+    "GTG",
+    "PPP"
+  ],
+  "result": {
+    "count": 1,
+    "id": "astral_dice:moto_helmet_medium_chip"
+  }
+}

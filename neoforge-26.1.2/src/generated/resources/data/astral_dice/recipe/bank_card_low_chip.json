@@ -1,0 +1,30 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": {
+      "item": "astral_dice:blank_chip"
+    },
+    "C": {
+      "item": "astral_dice:star_coin"
+    },
+    "D": {
+      "item": "astral_dice:star_coin_dust"
+    },
+    "L": {
+      "item": "minecraft:gold_block"
+    },
+    "X": {
+      "item": "minecraft:gold_ingot"
+    }
+  },
+  "pattern": [
+    "XLX",
+    "DBD",
+    "CCC"
+  ],
+  "result": {
+    "count": 1,
+    "id": "astral_dice:bank_card_low_chip"
+  }
+}

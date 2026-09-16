@@ -1,0 +1,17 @@
+{
+  "name": "item.astral_dice.effect_card_express_delivery",
+  "category": "astral_dice:cards_effect",
+  "icon": "astral_dice:effect_card_express_delivery",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:effect_card_express_delivery",
+      "text": "astral_dice.guide.entry.effect_card_express_delivery.1"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:effect_card_express_delivery"
+    }
+  ],
+  "sortnum": 8
+}

@@ -1,0 +1,30 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": {
+      "item": "astral_dice:blank_chip"
+    },
+    "C": {
+      "item": "astral_dice:star_coin"
+    },
+    "L": {
+      "item": "minecraft:shield"
+    },
+    "R": {
+      "item": "astral_dice:regeneration_reagent"
+    },
+    "X": {
+      "item": "minecraft:diamond"
+    }
+  },
+  "pattern": [
+    "XLX",
+    "RBR",
+    "CCC"
+  ],
+  "result": {
+    "count": 1,
+    "id": "astral_dice:buffer_shield_chip"
+  }
+}

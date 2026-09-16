@@ -1,0 +1,37 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": {
+      "item": "astral_dice:blank_chip"
+    },
+    "P": {
+      "item": "astral_dice:star_plate"
+    },
+    "R": {
+      "item": "astral_dice:regeneration_reagent"
+    },
+    "X": {
+      "item": "minecraft:enchanted_golden_apple"
+    },
+    "Z": {
+      "type": "neoforge:components",
+      "components": {
+        "minecraft:potion_contents": {
+          "potion": "minecraft:healing"
+        }
+      },
+      "items": "minecraft:potion",
+      "strict": true
+    }
+  },
+  "pattern": [
+    "ZXZ",
+    "RBR",
+    "PPP"
+  ],
+  "result": {
+    "count": 1,
+    "id": "astral_dice:friendship_badge_chip"
+  }
+}

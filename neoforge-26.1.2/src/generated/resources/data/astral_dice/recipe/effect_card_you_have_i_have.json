@@ -1,0 +1,22 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "minecraft:emerald"
+    },
+    {
+      "item": "minecraft:emerald"
+    },
+    {
+      "item": "astral_dice:star_coin"
+    },
+    {
+      "item": "astral_dice:star_coin"
+    }
+  ],
+  "result": {
+    "count": 1,
+    "id": "astral_dice:effect_card_you_have_i_have"
+  }
+}

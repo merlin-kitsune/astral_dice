@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "D": {
+      "item": "minecraft:diamond"
+    },
+    "G": {
+      "item": "astral_dice:golden_star_plate"
+    },
+    "R": {
+      "item": "minecraft:redstone"
+    },
+    "T": {
+      "item": "astral_dice:cutter_chip"
+    }
+  },
+  "pattern": [
+    "RDR",
+    "DTD",
+    "GGG"
+  ],
+  "result": {
+    "count": 1,
+    "id": "astral_dice:cutter_blade_chip"
+  }
+}

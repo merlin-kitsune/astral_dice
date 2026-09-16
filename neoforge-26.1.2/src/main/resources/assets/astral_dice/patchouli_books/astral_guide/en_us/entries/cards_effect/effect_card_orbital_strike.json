@@ -1,0 +1,17 @@
+{
+  "name": "item.astral_dice.effect_card_orbital_strike",
+  "category": "astral_dice:cards_effect",
+  "icon": "astral_dice:effect_card_orbital_strike",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:effect_card_orbital_strike",
+      "text": "astral_dice.guide.entry.effect_card_orbital_strike.1"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:effect_card_orbital_strike"
+    }
+  ],
+  "sortnum": 12
+}

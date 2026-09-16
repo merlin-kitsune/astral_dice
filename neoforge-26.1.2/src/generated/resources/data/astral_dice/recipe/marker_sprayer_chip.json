@@ -1,0 +1,30 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": {
+      "item": "astral_dice:blank_chip"
+    },
+    "C": {
+      "item": "astral_dice:star_coin"
+    },
+    "L": {
+      "item": "minecraft:lapis_lazuli"
+    },
+    "M": {
+      "item": "astral_dice:mark_paint"
+    },
+    "X": {
+      "item": "minecraft:nether_wart"
+    }
+  },
+  "pattern": [
+    "XLX",
+    "MBM",
+    "CCC"
+  ],
+  "result": {
+    "count": 1,
+    "id": "astral_dice:marker_sprayer_chip"
+  }
+}

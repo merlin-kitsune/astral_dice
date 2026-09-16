@@ -1,0 +1,30 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": {
+      "item": "astral_dice:blank_chip"
+    },
+    "D": {
+      "item": "astral_dice:star_coin_dust"
+    },
+    "L": {
+      "item": "minecraft:yellow_stained_glass"
+    },
+    "P": {
+      "item": "astral_dice:star_plate"
+    },
+    "X": {
+      "item": "minecraft:redstone_lamp"
+    }
+  },
+  "pattern": [
+    "XLX",
+    "DBD",
+    "PPP"
+  ],
+  "result": {
+    "count": 1,
+    "id": "astral_dice:flashlight_chip"
+  }
+}

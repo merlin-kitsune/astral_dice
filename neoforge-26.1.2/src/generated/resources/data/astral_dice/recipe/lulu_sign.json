@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": {
+      "item": "astral_dice:blank_sign"
+    },
+    "D": {
+      "item": "astral_dice:golden_dice"
+    },
+    "S": {
+      "item": "minecraft:slime_ball"
+    },
+    "Z": {
+      "item": "astral_dice:star_coin"
+    }
+  },
+  "pattern": [
+    "SZS",
+    "ZCZ",
+    "SDS"
+  ],
+  "result": {
+    "count": 1,
+    "id": "astral_dice:lulu_sign"
+  }
+}

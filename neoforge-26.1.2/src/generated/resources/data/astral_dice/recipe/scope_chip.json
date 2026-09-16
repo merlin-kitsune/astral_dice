@@ -1,0 +1,30 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": {
+      "item": "astral_dice:blank_chip"
+    },
+    "L": {
+      "item": "minecraft:copper_ingot"
+    },
+    "M": {
+      "item": "astral_dice:mark_paint"
+    },
+    "P": {
+      "item": "astral_dice:star_plate"
+    },
+    "X": {
+      "item": "minecraft:amethyst_shard"
+    }
+  },
+  "pattern": [
+    "XLX",
+    "MBM",
+    "PPP"
+  ],
+  "result": {
+    "count": 1,
+    "id": "astral_dice:scope_chip"
+  }
+}
