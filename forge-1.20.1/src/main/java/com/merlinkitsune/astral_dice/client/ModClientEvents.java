@@ -19,8 +19,8 @@ import net.minecraftforge.client.gui.overlay.ForgeGui;
 import net.minecraftforge.client.gui.overlay.IGuiOverlay;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
+import com.mojang.math.Axis;
 import org.joml.Matrix4f;
-import org.joml.Quaternionf;
 import org.joml.Vector4f;
 
 @Mod.EventBusSubscriber(modid = AstralDiceMod.MODID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.MOD)
@@ -90,8 +90,20 @@ public class ModClientEvents {
                     (float)(pos.z - camPos.z),
                     1.0f
                 );
-                var rot = new Quaternionf(camera.rotation()).conjugate();
-                var viewMatrix = new Matrix4f().rotation(rot);
+                // 视矩阵必须与**本版本原版的世界渲染**同构(1.20.1 GameRenderer#renderLevel:1127-1128):
+                //     poseStack.mulPose(Axis.XP.rotationDegrees(camera.getXRot()));
+                //     poseStack.mulPose(Axis.YP.rotationDegrees(camera.getYRot() + 180.0F));
+                // ⚠️ 禁止照搬 1.21.1 的写法 `new Matrix4f().rotation(camera.rotation().conjugate())`:
+                //    1.21.1 原版确实用该式(neoforge 源 GameRenderer#renderLevel:1272-1273),
+                //    但 1.20.1 原版的视图旋转与它**相差绕 Y 的 180° 与 pitch 符号**
+                //    (1.20.1 相机四元数是 rotationYXZ(-yRot, xRot, 0),不等于该式的逆)。
+                //    照搬的后果:正前方的目标算出 w<0,被下面的「相机背后」分支整段丢弃,
+                //    伤害数字**永远**不绘制(生产环境实测:正前方 3 格目标 w=-3.0,1064 次 skip / 0 次 draw)。
+                // 说明:ComputeCameraAngles 的 roll 只存在于事件对象里(相机不保存),正常为 0,故不参与;
+                //      FOV 取 options.fov() 原值(原版 getFov(...,true) 为 private,冲刺激活时会有极小偏差)。
+                var viewMatrix = new Matrix4f()
+                        .rotate(Axis.XP.rotationDegrees(camera.getXRot()))
+                        .rotate(Axis.YP.rotationDegrees(camera.getYRot() + 180.0F));
                 double fov = mc.options.fov().get();
                 var projMatrix = mc.gameRenderer.getProjectionMatrix(fov);
                 var mvp = new Matrix4f(projMatrix);

@@ -81,6 +81,13 @@ public class ModClientEvents {
                     (float)(pos.z - camPos.z),
                     1.0f
                 );
+                // 视矩阵必须与**本版本原版的世界渲染**同构:1.21.1 的 GameRenderer#renderLevel 正是
+                //     Quaternionf q = camera.rotation().conjugate(new Quaternionf());
+                //     Matrix4f view = new Matrix4f().rotation(q);
+                // (neoforge 源 GameRenderer#renderLevel:1272-1273),故此处写法正确。
+                // ⚠️ **禁止**把 1.20.1 侧的写法(`Axis.XP/Ry(yRot+180)`)「同步」到这里,也禁止把本式
+                //    复制到 1.20.1:1.20.1 原版的视图旋转与此式相差绕 Y 的 180° 与 pitch 符号,
+                //    照搬会让正前方目标的 w<0、被当作「相机背后」丢弃(伤害数字永不显示)。
                 var rot = new Quaternionf(camera.rotation()).conjugate();
                 var viewMatrix = new Matrix4f().rotation(rot);
                 double fov = mc.options.fov().get();
