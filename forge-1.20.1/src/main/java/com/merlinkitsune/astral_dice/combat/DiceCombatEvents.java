@@ -312,8 +312,12 @@ public class DiceCombatEvents {
         boolean fenSplashArmed = false;
         if (!player.level().isClientSide() && diceStack != null && !player.hasEffect(ModEffects.DICE_BLESSING.get())
                 && isBlessingTarget(target, player)) {
+            // 六参构造:visible=false 禁用粒子,showIcon=true 让赐福图标(含剩余时间)在 HUD 效果栏正常显示。
+            // ⚠️ 五参构造 (…, ambient, visible) 内部等价于 showIcon=visible ⇒ 传 false 会把 HUD 图标一并隐藏
+            // (物品栏效果面板不读 showIcon,故只在物品栏可见)——与本模组其它状态效果(充能/赋能/弱点识破/治愈)
+            // 一律用 (…, false, false, true) 的口径保持一致,不得改回五参。
             player.addEffect(new MobEffectInstance(ModEffects.DICE_BLESSING.get(),
-                    GameplayConstants.DICE_BLESSING_DURATION_TICKS, 0, false, false));
+                    GameplayConstants.DICE_BLESSING_DURATION_TICKS, 0, false, false, true));
             triggeredBlessing = true;
             // 新赐福周期:重置“防御牌已消耗”标记,确保本次赐福期间最多消耗一次防御牌耐久
             ModAttachments.setDefenseCardConsumedThisBlessing(player, false);
@@ -325,8 +329,9 @@ public class DiceCombatEvents {
                 if (targetCurios.isPresent()) {
                     var targetDiceResult = targetCurios.get().findFirstCurio(DiceCurioItem::isDiceItem);
                     if (targetDiceResult.isPresent() && !targetPlayer.hasEffect(ModEffects.DICE_BLESSING.get())) {
+                        // 同主分支:六参构造保持 HUD 图标可见(粒子仍由 visible=false 关闭)
                         targetPlayer.addEffect(new MobEffectInstance(ModEffects.DICE_BLESSING.get(),
-                                GameplayConstants.DICE_BLESSING_DURATION_TICKS, 0, false, false));
+                                GameplayConstants.DICE_BLESSING_DURATION_TICKS, 0, false, false, true));
                         ModAttachments.setDefenseCardConsumedThisBlessing(targetPlayer, false);
                         ModAttachments.setCursedSwordBlessingTriggered(targetPlayer, false);
                     }
