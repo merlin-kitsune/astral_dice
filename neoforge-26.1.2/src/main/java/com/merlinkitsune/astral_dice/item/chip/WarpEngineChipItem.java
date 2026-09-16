@@ -67,7 +67,7 @@ public class WarpEngineChipItem extends BaseChipItem {
 
     private static void grantTeleportReward(Player player) {
         ChargeManager.addStacks(player, STACK_GAIN);
-        EffectTimerGuard.apply(player, new MobEffectInstance(MobEffects.MOVEMENT_SPEED,
+        EffectTimerGuard.apply(player, new MobEffectInstance(MobEffects.SPEED,
                 SPEED_DURATION_TICKS, 0, false, true));
     }
 

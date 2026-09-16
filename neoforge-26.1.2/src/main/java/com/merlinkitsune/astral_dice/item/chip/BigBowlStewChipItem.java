@@ -7,8 +7,8 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.TamableAnimal;
-import net.minecraft.world.entity.animal.Pig;
-import net.minecraft.world.entity.animal.horse.AbstractHorse;
+import net.minecraft.world.entity.animal.pig.Pig;
+import net.minecraft.world.entity.animal.equine.AbstractHorse;
 import net.minecraft.world.entity.monster.Strider;
 import net.minecraft.world.entity.player.Player;
 import top.theillusivec4.curios.api.CuriosApi;
@@ -77,11 +77,14 @@ public class BigBowlStewChipItem extends BaseChipItem {
     private static boolean isFriendlyMob(LivingEntity entity, Player owner) {
         // 已驯服的宠物(狼/猫/鹦鹉等):必须已驯服且主人是自己或同队玩家(排除他人宠物)
         if (entity instanceof TamableAnimal tame) {
-            return tame.isTame() && isOwnedByAlly(tame.getOwnerUUID(), owner);
+            // 26.1.2:TamableAnimal 不再有 getOwnerUUID(),改取 getOwner()
+            var tameOwner = tame.getOwner();
+            return tame.isTame() && isOwnedByAlly(tameOwner == null ? null : tameOwner.getUUID(), owner);
         }
         // 坐骑(马/驴/骡/羊驼/骆驼等):野生(未驯服)不计入,已驯服的同样要求主人是自己或同队玩家
         if (entity instanceof AbstractHorse horse) {
-            return horse.isTamed() && isOwnedByAlly(horse.getOwnerUUID(), owner);
+            var horseOwner = horse.getOwner();
+            return horse.isTamed() && isOwnedByAlly(horseOwner == null ? null : horseOwner.getUUID(), owner);
         }
         // 无归属的被动生物:猪/炽足兽/骆驼(骆驼属坐骑,已在上面处理)视为友方
         return entity instanceof Pig || entity instanceof Strider;
@@ -91,7 +94,7 @@ public class BigBowlStewChipItem extends BaseChipItem {
     private static boolean isOwnedByAlly(java.util.UUID ownerId, Player owner) {
         if (ownerId == null) return false;
         if (ownerId.equals(owner.getUUID())) return true;
-        var server = owner.getServer();
+        var server = owner.level().getServer();
         if (server == null) return false;
         Player petOwner = server.getPlayerList().getPlayer(ownerId);
         if (petOwner == null) return false;

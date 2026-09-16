@@ -30,7 +30,7 @@ import com.merlinkitsune.astral_dice.item.sign.LuluSignItem;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -51,7 +51,6 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.item.ProjectileWeaponItem;
 import net.minecraft.world.item.AxeItem;
 import net.minecraft.world.item.MaceItem;
-import net.minecraft.world.item.SwordItem;
 import net.minecraft.world.item.TridentItem;
 
 import net.neoforged.bus.api.EventPriority;
@@ -69,7 +68,7 @@ import net.neoforged.neoforge.event.entity.player.ItemTooltipEvent;
 import net.neoforged.neoforge.event.entity.ProjectileImpactEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
-import net.neoforged.neoforge.network.PacketDistributor;
+import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import top.theillusivec4.curios.api.CuriosApi;
 import vazkii.patchouli.common.item.ItemModBook;
 import top.theillusivec4.curios.api.type.inventory.ICurioStacksHandler;
@@ -230,7 +229,7 @@ public class PlayerLifecycleHandler {
         if (!GameplayConstants.GIVE_GUIDE_BOOK_ON_FIRST_JOIN) return;
         if (ModAttachments.isGuideBookGiven(player)) return;
         if (!ModList.get().isLoaded("patchouli")) return;
-        ItemStack book = ItemModBook.forBook(ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID, "astral_guide"));
+        ItemStack book = ItemModBook.forBook(Identifier.fromNamespaceAndPath(AstralDiceMod.MODID, "astral_guide")).create();
         if (!player.getInventory().add(book)) {
             player.drop(book, false);
         }

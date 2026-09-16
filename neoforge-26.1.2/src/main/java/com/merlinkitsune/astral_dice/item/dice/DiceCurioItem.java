@@ -2,6 +2,7 @@ package com.merlinkitsune.astral_dice.item.dice;
 
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
 import com.merlinkitsune.astral_dice.component.WeaponEnhancement;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -53,14 +54,14 @@ public class DiceCurioItem extends Item implements ICurioItem {
     }
 
     @Override
-    public net.minecraft.world.InteractionResultHolder<ItemStack> use(net.minecraft.world.level.Level level,
+    public InteractionResult use(net.minecraft.world.level.Level level,
                                                                       Player player, net.minecraft.world.InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
         // 下蹲右键:自动装备到"dice"饰品栏
         if (player.isShiftKeyDown()) {
             return CurioSlotUtil.tryAutoEquip(player, stack, "dice");
         }
-        return net.minecraft.world.InteractionResultHolder.pass(stack);
+        return net.minecraft.world.InteractionResult.PASS;
     }
 
     @Override
@@ -167,9 +168,9 @@ public class DiceCurioItem extends Item implements ICurioItem {
                     }
                 }
             }
-            handler.shrink(current - target);
+            handler.getStacks().shrink(current - target);
         } else if (current < target) {
-            handler.grow(target - current);
+            handler.getStacks().grow(target - current);
         }
     }
 
@@ -184,7 +185,7 @@ public class DiceCurioItem extends Item implements ICurioItem {
                     diceHandler.getStacks().setStackInSlot(0, ItemStack.EMPTY);
                     handler.getStacksHandler("chip").ifPresent(chip ->
                             setChipSlotCount(player, chip, CHIP_NO_DICE_SLOTS, true));
-                    LOGGER.info("[Astral Dice] 玻璃骰子死亡丢失: {} 的玻璃骰子及其卡牌已移除", player.getGameProfile().getName());
+                    LOGGER.info("[Astral Dice] 玻璃骰子死亡丢失: {} 的玻璃骰子及其卡牌已移除", player.getGameProfile().name());
                 }
             });
         });

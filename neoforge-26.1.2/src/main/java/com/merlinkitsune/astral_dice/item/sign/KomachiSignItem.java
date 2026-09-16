@@ -2,7 +2,7 @@ package com.merlinkitsune.astral_dice.item.sign;
 
 import com.merlinkitsune.astral_dice.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
-import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
@@ -64,27 +64,27 @@ public class KomachiSignItem extends BaseSignItem {
     }
 
     @Override
-    protected InteractionResultHolder<ItemStack> handleUse(Level level, Player player, ItemStack stack) {
-        if (level.isClientSide) {
-            return InteractionResultHolder.success(stack);
+    protected InteractionResult handleUse(Level level, Player player, ItemStack stack) {
+        if (level.isClientSide()) {
+            return InteractionResult.SUCCESS;
         }
         // 主动(忍术连击):一次性 —— 仅当前出牌轮 +1 张出牌数。释放前置见类注释(三条)。
         // 效果牌冷却中(本周期已打满并进入 30 秒冷却)时不释放:此时 +1 已无意义。
         if (EffectCardPeriod.isCooldownActive(player)) {
             sendSignActionBar(player, "msg.astral_dice.komachi_active_cooldown");
-            return InteractionResultHolder.fail(stack);
+            return InteractionResult.FAIL;
         }
         if (EffectCardPeriod.getMaxAllowed(player) >= GameplayConstants.MAX_EFFECT_CARD_PLAYS) {
             sendSignActionBar(player, "msg.astral_dice.komachi_active_capped",
                     GameplayConstants.MAX_EFFECT_CARD_PLAYS);
-            return InteractionResultHolder.fail(stack);
+            return InteractionResult.FAIL;
         }
         // 一次性授予:本轮已授予过则不再释放(不消耗主动技能冷却)
         if (!EffectCardPeriod.grantBonusPlay(player)) {
             sendSignActionBar(player, "msg.astral_dice.komachi_active_used");
-            return InteractionResultHolder.fail(stack);
+            return InteractionResult.FAIL;
         }
-        return InteractionResultHolder.success(stack);
+        return InteractionResult.SUCCESS;
     }
 
     /**

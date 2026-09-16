@@ -17,25 +17,29 @@ import com.merlinkitsune.astral_dice.item.HealingManager;
 import com.merlinkitsune.astral_dice.item.sign.FenSignItem;
 
 public class ModAttachments {
+    // ⚠️ 26.1.2 迁移:NeoForge 的 AttachmentType.Builder#serialize 已**只接受 MapCodec<T> 或
+    // IAttachmentSerializer<T>**(旧的 Codec<T> 重载被删),故本文件所有 `.serialize(<codec>)` 一律包成
+    // `<codec>.fieldOf("value")` —— 序列化形状由「裸值」变为「{value: <值>}」。
+    // 26.1.2 是新版本线,不存在需要兼容的旧存档;1.21.1 侧写法保持原样(两侧不共享源码)。
     public static final DeferredRegister<AttachmentType<?>> ATTACHMENTS =
             DeferredRegister.create(NeoForgeRegistries.ATTACHMENT_TYPES, AstralDiceMod.MODID);
 
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> PLAYER_STARLIGHT =
             ATTACHMENTS.register("player_starlight", () -> AttachmentType.builder(() -> 0)
-                    .serialize(Codec.INT)
+                    .serialize(Codec.INT.fieldOf("value"))
                     .sync(ByteBufCodecs.INT)
                     .build());
 
     // 八面骰筹码:骰神赐福触发时累计的骰点总和(每满 8 点 +1 星光,达到 32 星光后归 0)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> EIGHT_SIDED_ROLL_ACCUM =
             ATTACHMENTS.register("eight_sided_roll_accum", () -> AttachmentType.builder(() -> 0)
-                    .serialize(Codec.INT)
+                    .serialize(Codec.INT.fieldOf("value"))
                     .build());
 
     // 效果牌:当前周期内已连续出牌数
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> EFFECT_CARD_PLAY_COUNT =
             ATTACHMENTS.register("effect_card_play_count", () -> AttachmentType.builder(() -> 0)
-                    .serialize(Codec.INT)
+                    .serialize(Codec.INT.fieldOf("value"))
                     .sync(ByteBufCodecs.INT)
                     .build());
 
@@ -44,7 +48,7 @@ public class ModAttachments {
     // 立牌装卸不影响(授予即已消耗)。授予入口见 EffectCardPeriod#grantBonusPlay。
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> EFFECT_CARD_BONUS_PLAYS =
             ATTACHMENTS.register("effect_card_bonus_plays", () -> AttachmentType.builder(() -> 0)
-                    .serialize(Codec.INT)
+                    .serialize(Codec.INT.fieldOf("value"))
                     .sync(ByteBufCodecs.VAR_INT)
                     .build());
 
@@ -61,7 +65,7 @@ public class ModAttachments {
     // 注意:与"调查员已用页数"(rin_pages,永久、无上限)无关,不可复用后者做本周期计数。
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> LIVING_PAGE_CYCLE_BONUS =
             ATTACHMENTS.register("living_page_cycle_bonus", () -> AttachmentType.builder(() -> 0)
-                    .serialize(Codec.INT)
+                    .serialize(Codec.INT.fieldOf("value"))
                     .sync(ByteBufCodecs.VAR_INT)
                     .build());
 
@@ -77,14 +81,14 @@ public class ModAttachments {
     // 效果牌公共冷却结束时刻(-1 表示待定冷却=伤害效果牌效果等待中;0 表示无)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> EFFECT_CARD_COOLDOWN_END =
             ATTACHMENTS.register("effect_card_cooldown_end", () -> AttachmentType.builder(() -> 0L)
-                    .serialize(Codec.LONG)
+                    .serialize(Codec.LONG.fieldOf("value"))
                     .sync(ByteBufCodecs.VAR_LONG)
                     .build());
 
     // 史莱姆立牌:上次受击获得治愈的游戏时刻(限制受击 +1 的频率,防止围攻时点数暴涨)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> LULU_LAST_HURT_TICK =
             ATTACHMENTS.register("lulu_last_hurt_tick", () -> AttachmentType.builder(() -> 0L)
-                    .serialize(Codec.LONG)
+                    .serialize(Codec.LONG.fieldOf("value"))
                     .build());
 
     public static long getLuluLastHurtTick(net.minecraft.world.entity.player.Player player) {
@@ -100,7 +104,7 @@ public class ModAttachments {
     // 触发骰神赐福时按当前治愈点×2 回血,赐福结束时治愈点减半(向下取整)。
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> HEALING_POINTS =
             ATTACHMENTS.register("healing_points", () -> AttachmentType.builder(() -> 0)
-                    .serialize(Codec.INT)
+                    .serialize(Codec.INT.fieldOf("value"))
                     .sync(ByteBufCodecs.INT)
                     .build());
 
@@ -116,7 +120,7 @@ public class ModAttachments {
     // 仅服务端使用,无需同步)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Boolean>> HEALING_PREV_BLESSING =
             ATTACHMENTS.register("healing_prev_blessing", () -> AttachmentType.builder(() -> false)
-                    .serialize(Codec.BOOL)
+                    .serialize(Codec.BOOL.fieldOf("value"))
                     .build());
 
     public static boolean isHealingPrevBlessing(net.minecraft.world.entity.player.Player player) {
@@ -130,7 +134,7 @@ public class ModAttachments {
     // 治愈:独立 30 秒计时器结束 tick(服务端使用;0 表示无计时器)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> HEALING_TIMER_END =
             ATTACHMENTS.register("healing_timer_end", () -> AttachmentType.builder(() -> 0L)
-                    .serialize(Codec.LONG)
+                    .serialize(Codec.LONG.fieldOf("value"))
                     .build());
 
     public static long getHealingTimerEnd(net.minecraft.world.entity.player.Player player) {
@@ -145,33 +149,33 @@ public class ModAttachments {
     // 魔法秘典筹码:效果牌使用计数(每使用 3 张复制最后一张)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> MAGIC_TOME_USE_COUNT =
             ATTACHMENTS.register("magic_tome_use_count", () -> AttachmentType.builder(() -> 0)
-                    .serialize(Codec.INT)
+                    .serialize(Codec.INT.fieldOf("value"))
                     .sync(ByteBufCodecs.INT)
                     .build());
 
     // 魔法秘典筹码:最后一张使用的效果牌类型(king_power/berserk/unwavering)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<String>> MAGIC_TOME_LAST_CARD =
             ATTACHMENTS.register("magic_tome_last_card", () -> AttachmentType.builder(() -> "")
-                    .serialize(Codec.STRING)
+                    .serialize(Codec.STRING.fieldOf("value"))
                     .build());
 
     // 忍者立牌(komachi):效果牌使用计数(独立于魔法秘典与周期计数,每使用 3 张复制最后一张)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> KOMACHI_USE_COUNT =
             ATTACHMENTS.register("komachi_use_count", () -> AttachmentType.builder(() -> 0)
-                    .serialize(Codec.INT)
+                    .serialize(Codec.INT.fieldOf("value"))
                     .sync(ByteBufCodecs.INT)
                     .build());
 
     // 忍者立牌(komachi):最后一张使用的效果牌类型
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<String>> KOMACHI_LAST_CARD =
             ATTACHMENTS.register("komachi_last_card", () -> AttachmentType.builder(() -> "")
-                    .serialize(Codec.STRING)
+                    .serialize(Codec.STRING.fieldOf("value"))
                     .build());
 
     // 忍者立牌(komachi):效果牌伤害增益(每使用 3 张效果牌 +1,无上限,卸下立牌重置;死亡重生保留)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> KOMACHI_DAMAGE_BONUS =
             ATTACHMENTS.register("komachi_damage_bonus", () -> AttachmentType.builder(() -> 0)
-                    .serialize(Codec.INT)
+                    .serialize(Codec.INT.fieldOf("value"))
                     .sync(ByteBufCodecs.INT)
                     .copyOnDeath()
                     .build());
@@ -179,7 +183,7 @@ public class ModAttachments {
     // 小猪存钱罐筹码:效果牌使用计数(每使用 2 张获得 3 星币;卸下筹码重置)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> PIGGY_BANK_USE_COUNT =
             ATTACHMENTS.register("piggy_bank_use_count", () -> AttachmentType.builder(() -> 0)
-                    .serialize(Codec.INT)
+                    .serialize(Codec.INT.fieldOf("value"))
                     .build());
 
     public static int getPiggyBankUseCount(net.minecraft.world.entity.player.Player player) {
@@ -193,7 +197,7 @@ public class ModAttachments {
     // 手电筒-强光筹码:已发放过星光的敌对目标 UUID(逗号分隔;同一目标仅 +1 层星光)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<String>> FLASHLIGHT_GRANTED_TARGETS =
             ATTACHMENTS.register("flashlight_granted_targets", () -> AttachmentType.builder(() -> "")
-                    .serialize(Codec.STRING)
+                    .serialize(Codec.STRING.fieldOf("value"))
                     .build());
 
     public static String getFlashlightGrantedTargets(net.minecraft.world.entity.player.Player player) {
@@ -246,7 +250,7 @@ public class ModAttachments {
     // 命运的指引激活截止时刻(gameTime 毫秒? 否:tick)。使用后写入 now+6000;功能检查用 now < until
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> FATE_ACTIVE_UNTIL =
             ATTACHMENTS.register("fate_active_until", () -> AttachmentType.builder(() -> 0L)
-                    .serialize(Codec.LONG)
+                    .serialize(Codec.LONG.fieldOf("value"))
                     .build());
 
     public static long getFateActiveUntil(net.minecraft.world.entity.player.Player player) {
@@ -275,7 +279,7 @@ public class ModAttachments {
     // 调查员立牌(rin):已使用的活体书页数量(活体书页伤害永久+1 的来源,移除立牌后重置;死亡重生保留)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> RIN_PAGES =
             ATTACHMENTS.register("rin_pages", () -> AttachmentType.builder(() -> 0)
-                    .serialize(Codec.INT)
+                    .serialize(Codec.INT.fieldOf("value"))
                     .sync(ByteBufCodecs.INT)
                     .copyOnDeath()
                     .build());
@@ -285,7 +289,7 @@ public class ModAttachments {
     // 保证"同一玩家发出的同一 ID 事件"只给一次牌。
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<String>> RIN_GIFT_SIGNATURE =
             ATTACHMENTS.register("rin_gift_signature", () -> AttachmentType.builder(() -> "")
-                    .serialize(Codec.STRING)
+                    .serialize(Codec.STRING.fieldOf("value"))
                     .build());
 
     public static String getRinGiftSignature(net.minecraft.world.entity.player.Player player) {
@@ -299,7 +303,7 @@ public class ModAttachments {
     // 调查员立牌(rin):记录 RIN_GIFT_SIGNATURE 对应的游戏时刻(去重窗口判定用)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> RIN_GIFT_TICK =
             ATTACHMENTS.register("rin_gift_tick", () -> AttachmentType.builder(() -> 0L)
-                    .serialize(Codec.LONG)
+                    .serialize(Codec.LONG.fieldOf("value"))
                     .build());
 
     public static long getRinGiftTick(net.minecraft.world.entity.player.Player player) {
@@ -313,7 +317,7 @@ public class ModAttachments {
     // 虚弱印记来源:施加该印记的玩家 UUID(仅该玩家获得击杀后奖励,印记结束/目标死亡后清除)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Optional<UUID>>> WEAK_MARK_SOURCE =
             ATTACHMENTS.register("weak_mark_source", () -> AttachmentType.<Optional<UUID>>builder(Optional::empty)
-                    .serialize(UUIDUtil.CODEC.optionalFieldOf("id").codec())
+                    .serialize(UUIDUtil.CODEC.optionalFieldOf("id").codec().fieldOf("value"))
                     .build());
 
     public static Optional<UUID> getWeakMarkSource(net.minecraft.world.entity.LivingEntity entity) {
@@ -327,25 +331,25 @@ public class ModAttachments {
     // 隐匿调查来源:施加"隐匿调查"的玩家 UUID(击杀该目标触发调查阶段事件时,奖励归属施加者)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Optional<UUID>>> UNDERCOVER_SOURCE =
             ATTACHMENTS.register("undercover_source", () -> AttachmentType.<Optional<UUID>>builder(Optional::empty)
-                    .serialize(UUIDUtil.CODEC.optionalFieldOf("id").codec())
+                    .serialize(UUIDUtil.CODEC.optionalFieldOf("id").codec().fieldOf("value"))
                     .build());
 
     // 调查阶段进度:1=调查阶段I 2=II 3=III 4=真相揭露(进度归属施加"隐匿调查"的玩家)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> INVESTIGATION_STAGE =
             ATTACHMENTS.register("investigation_stage", () -> AttachmentType.builder(() -> 1)
-                    .serialize(Codec.INT)
+                    .serialize(Codec.INT.fieldOf("value"))
                     .build());
 
     // 破绽(枪匠立牌 Moses)期间,目标是否已被攻击方获得过弱点识破(每段破绽一次)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Boolean>> MOSES_BROKEN_ATTACK_REWARDED =
             ATTACHMENTS.register("moses_broken_attack_rewarded", () -> AttachmentType.builder(() -> false)
-                    .serialize(Codec.BOOL)
+                    .serialize(Codec.BOOL.fieldOf("value"))
                     .build());
 
     // 枪匠立牌 Moses:目标是否已因闪避/反击获得过弱点识破(每个目标一次,不依赖破绽)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Boolean>> MOSES_DODGE_COUNTER_REWARDED =
             ATTACHMENTS.register("moses_dodge_counter_rewarded", () -> AttachmentType.builder(() -> false)
-                    .serialize(Codec.BOOL)
+                    .serialize(Codec.BOOL.fieldOf("value"))
                     .build());
 
     public static boolean isMosesBrokenAttackRewarded(net.minecraft.world.entity.LivingEntity entity) {
@@ -399,7 +403,7 @@ public class ModAttachments {
     // 立牌主动技能冷却结束时刻(玩家级,不受立牌装卸影响;0 表示无冷却)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> SIGN_ACTIVE_COOLDOWN_END =
             ATTACHMENTS.register("sign_active_cooldown_end", () -> AttachmentType.builder(() -> 0L)
-                    .serialize(Codec.LONG)
+                    .serialize(Codec.LONG.fieldOf("value"))
                     .sync(ByteBufCodecs.VAR_LONG)
                     .build());
 
@@ -418,7 +422,7 @@ public class ModAttachments {
     //    冷却起点火时再改写为扣池后的实际冷却 effective = max(0, 基准 − 池)。
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> SIGN_ACTIVE_MAX_COOLDOWN =
             ATTACHMENTS.register("sign_active_max_cooldown", () -> AttachmentType.builder(() -> 0L)
-                    .serialize(Codec.LONG)
+                    .serialize(Codec.LONG.fieldOf("value"))
                     .build());
 
     public static long getSignActiveMaxCooldown(net.minecraft.world.entity.player.Player player) {
@@ -437,32 +441,32 @@ public class ModAttachments {
     // 锁定态标记:正在生效中的主动所属立牌的**物品注册 id**("" = 未锁定)。判定见 BaseSignItem#isSignActiveLocked
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<String>> SIGN_ACTIVE_LOCK_SIGN =
             ATTACHMENTS.register("sign_active_lock_sign", () -> AttachmentType.builder(() -> "")
-                    .serialize(Codec.STRING)
+                    .serialize(Codec.STRING.fieldOf("value"))
                     .build());
 
     // 锁定态的硬上界:触发时刻算定的"本技能施加的全部计时器到期刻取 max"
     // (0 = 无自身计时器,仅忍者使用——其锁定跟随出牌周期,由周期完全重置结束)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> SIGN_ACTIVE_LOCK_END =
             ATTACHMENTS.register("sign_active_lock_end", () -> AttachmentType.builder(() -> 0L)
-                    .serialize(Codec.LONG)
+                    .serialize(Codec.LONG.fieldOf("value"))
                     .build());
 
     // 锁定期间累计的冷却减免池(tick):锁定结束起冷却时一次性抵扣并归零
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> SIGN_ACTIVE_REDUCTION_POOL =
             ATTACHMENTS.register("sign_active_reduction_pool", () -> AttachmentType.builder(() -> 0L)
-                    .serialize(Codec.LONG)
+                    .serialize(Codec.LONG.fieldOf("value"))
                     .build());
 
     // 忍者立牌专用:宽限到期刻(触发主动时刻 + 1:00;0 = 宽限已失效/不适用)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> SIGN_ACTIVE_LOCK_GRACE_END =
             ATTACHMENTS.register("sign_active_lock_grace_end", () -> AttachmentType.builder(() -> 0L)
-                    .serialize(Codec.LONG)
+                    .serialize(Codec.LONG.fieldOf("value"))
                     .build());
 
     // 忍者立牌专用:本次锁定/宽限期内是否已出过任何效果牌(true = 宽限保险失效,遵循出牌周期)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Boolean>> SIGN_ACTIVE_LOCK_PLAYED =
             ATTACHMENTS.register("sign_active_lock_played", () -> AttachmentType.builder(() -> false)
-                    .serialize(Codec.BOOL)
+                    .serialize(Codec.BOOL.fieldOf("value"))
                     .build());
 
     public static String getSignActiveLockSign(net.minecraft.world.entity.player.Player player) {
@@ -512,7 +516,7 @@ public class ModAttachments {
     // 末影骰子:不死图腾效果冷却结束时刻(玩家级,0 表示未进入冷却)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> ENDER_DIE_TOTEM_COOLDOWN_END =
             ATTACHMENTS.register("ender_die_totem_cooldown_end", () -> AttachmentType.builder(() -> 0L)
-                    .serialize(Codec.LONG)
+                    .serialize(Codec.LONG.fieldOf("value"))
                     .sync(ByteBufCodecs.VAR_LONG)
                     .build());
 
@@ -527,7 +531,7 @@ public class ModAttachments {
     // 跃迁引擎:传送门/Waystone 传送获得充能的共享冷却结束时刻(玩家级,0 表示无冷却;仅服务端使用)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> WARP_ENGINE_PORTAL_COOLDOWN_END =
             ATTACHMENTS.register("warp_engine_portal_cooldown_end", () -> AttachmentType.builder(() -> 0L)
-                    .serialize(Codec.LONG)
+                    .serialize(Codec.LONG.fieldOf("value"))
                     .build());
 
     public static long getWarpEnginePortalCooldownEnd(net.minecraft.world.entity.player.Player player) {
@@ -541,14 +545,14 @@ public class ModAttachments {
     // 立牌主动技能"等待目标释放"状态类型:1=占星师(虚弱印记) 2=秘密侦探(隐匿调查);0=无等待
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> SIGN_READY_TYPE =
             ATTACHMENTS.register("sign_ready_type", () -> AttachmentType.builder(() -> 0)
-                    .serialize(Codec.INT)
+                    .serialize(Codec.INT.fieldOf("value"))
                     .sync(ByteBufCodecs.INT)
                     .build());
 
     // 立牌主动技能等待到期时刻(0 表示无等待)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> SIGN_READY_EXPIRE =
             ATTACHMENTS.register("sign_ready_expire", () -> AttachmentType.builder(() -> 0L)
-                    .serialize(Codec.LONG)
+                    .serialize(Codec.LONG.fieldOf("value"))
                     .sync(ByteBufCodecs.VAR_LONG)
                     .build());
 
@@ -598,112 +602,112 @@ public class ModAttachments {
     // 魔法箭袋筹码:是否已记录"第一张使用的效果牌"(一次触发周期内)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Boolean>> MAGIC_QUIVER_TRACKING =
             ATTACHMENTS.register("magic_quiver_tracking", () -> AttachmentType.builder(() -> false)
-                    .serialize(Codec.BOOL)
+                    .serialize(Codec.BOOL.fieldOf("value"))
                     .build());
 
     // 魔法箭袋筹码:记录的第一张使用的效果牌类型(king_power/berserk/unwavering)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<String>> MAGIC_QUIVER_FIRST_CARD =
             ATTACHMENTS.register("magic_quiver_first_card", () -> AttachmentType.builder(() -> "")
-                    .serialize(Codec.STRING)
+                    .serialize(Codec.STRING.fieldOf("value"))
                     .build());
 
     // 魔法箭袋筹码:触发冷却结束时刻(1 分钟;0 表示无冷却)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> MAGIC_QUIVER_COOLDOWN_END =
             ATTACHMENTS.register("magic_quiver_cooldown_end", () -> AttachmentType.builder(() -> 0L)
-                    .serialize(Codec.LONG)
+                    .serialize(Codec.LONG.fieldOf("value"))
                     .build());
 
     // 缓冲盾牌筹码:触发冷却结束时刻(1 分钟;0 表示无冷却)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> BUFFER_SHIELD_COOLDOWN_END =
             ATTACHMENTS.register("buffer_shield_cooldown_end", () -> AttachmentType.builder(() -> 0L)
-                    .serialize(Codec.LONG)
+                    .serialize(Codec.LONG.fieldOf("value"))
                     .build());
 
     // 星币锤筹码:本次骰神赐福的攻击力加成(进入赐福时设置,赐福结束/卸下清除)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> STAR_COIN_HAMMER_BONUS =
             ATTACHMENTS.register("star_coin_hammer_bonus", () -> AttachmentType.builder(() -> 0)
-                    .serialize(Codec.INT)
+                    .serialize(Codec.INT.fieldOf("value"))
                     .build());
 
     // 诅咒之剑筹码:累计击杀不少于 20 血的敌对目标获得的攻击力加成(移除筹码/死亡清除)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> CURSED_SWORD_BONUS =
             ATTACHMENTS.register("cursed_sword_bonus", () -> AttachmentType.builder(() -> 0)
-                    .serialize(Codec.INT)
+                    .serialize(Codec.INT.fieldOf("value"))
                     .sync(ByteBufCodecs.INT)
                     .build());
 
     // 诅咒之剑筹码:当前骰神赐福期间是否已触发过击杀加成(每个赐福周期最多一次)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Boolean>> CURSED_SWORD_BLESSING_TRIGGERED =
             ATTACHMENTS.register("cursed_sword_blessing_triggered", () -> AttachmentType.builder(() -> false)
-                    .serialize(Codec.BOOL)
+                    .serialize(Codec.BOOL.fieldOf("value"))
                     .build());
 
     // 可口糖果筹码:当前效果牌出牌轮次是否已触发过"满血时出牌数+1"(每个轮次最多一次)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Boolean>> CANDY_CHIP_PLAY_BONUS =
             ATTACHMENTS.register("candy_chip_play_bonus", () -> AttachmentType.builder(() -> false)
-                    .serialize(Codec.BOOL)
+                    .serialize(Codec.BOOL.fieldOf("value"))
                     .sync(ByteBufCodecs.BOOL)
                     .build());
 
     // 探天卫星筹码:补充轨道炮冷却结束时刻
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> SATELLITE_GIVE_COOLDOWN_END =
             ATTACHMENTS.register("satellite_give_cooldown_end", () -> AttachmentType.builder(() -> 0L)
-                    .serialize(Codec.LONG)
+                    .serialize(Codec.LONG.fieldOf("value"))
                     .build());
 
     // 探天卫星筹码:当前效果牌出牌轮次是否已触发过"使用轨道炮后出牌数+1"(每轮最多一次;
     // 触发时机受 SATELLITE_PLAY_BONUS_COOLDOWN_END 限制,每 1:00 至多触发一次)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Boolean>> SATELLITE_PLAY_BONUS =
             ATTACHMENTS.register("satellite_play_bonus", () -> AttachmentType.builder(() -> false)
-                    .serialize(Codec.BOOL)
+                    .serialize(Codec.BOOL.fieldOf("value"))
                     .sync(ByteBufCodecs.BOOL)
                     .build());
 
     // 探天卫星筹码:"使用轨道炮后出牌数+1"的触发冷却结束时刻(每 1:00 至多触发一次;0 表示无冷却)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> SATELLITE_PLAY_BONUS_COOLDOWN_END =
             ATTACHMENTS.register("satellite_play_bonus_cooldown_end", () -> AttachmentType.builder(() -> 0L)
-                    .serialize(Codec.LONG)
+                    .serialize(Codec.LONG.fieldOf("value"))
                     .sync(ByteBufCodecs.VAR_LONG)
                     .build());
 
     // 骇客立牌:被动类型(0=无,1=攻击,2=防御)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> NANCY_LU_PASSIVE_TYPE =
             ATTACHMENTS.register("nancy_lu_passive_type", () -> AttachmentType.builder(() -> 0)
-                    .serialize(Codec.INT)
+                    .serialize(Codec.INT.fieldOf("value"))
                     .sync(ByteBufCodecs.INT)
                     .build());
 
     // 骇客立牌:主动"远程侵入"攻击力加成数值
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> NANCY_LU_ACTIVE_BONUS =
             ATTACHMENTS.register("nancy_lu_active_bonus", () -> AttachmentType.builder(() -> 0)
-                    .serialize(Codec.INT)
+                    .serialize(Codec.INT.fieldOf("value"))
                     .sync(ByteBufCodecs.INT)
                     .build());
 
     // 骇客立牌:主动攻击力加成结束时刻
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> NANCY_LU_ACTIVE_BONUS_UNTIL =
             ATTACHMENTS.register("nancy_lu_active_bonus_until", () -> AttachmentType.builder(() -> 0L)
-                    .serialize(Codec.LONG)
+                    .serialize(Codec.LONG.fieldOf("value"))
                     .build());
 
     // 骇客立牌:主动"完全隐身"结束时刻
     // (同步到客户端:client/NancyLuClientEvents 据此在隐身期间取消自身渲染)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> NANCY_LU_HIDDEN_UNTIL =
             ATTACHMENTS.register("nancy_lu_hidden_until", () -> AttachmentType.builder(() -> 0L)
-                    .serialize(Codec.LONG)
+                    .serialize(Codec.LONG.fieldOf("value"))
                     .sync(ByteBufCodecs.VAR_LONG)
                     .build());
 
     // 看板立牌:被动"主动技能返还"累计的战斗牌数量(每累计 25 张返还战斗牌获得一个随机筹码)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> MIMI_RETURNED_CARD_COUNT =
             ATTACHMENTS.register("mimi_returned_card_count", () -> AttachmentType.builder(() -> 0)
-                    .serialize(Codec.INT)
+                    .serialize(Codec.INT.fieldOf("value"))
                     .build());
 
     // 骇客立牌:末影珍珠传送伤害免疫结束时刻
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> NANCY_LU_ENDER_PEARL_IMMUNE_UNTIL =
             ATTACHMENTS.register("nancy_lu_ender_pearl_immune_until", () -> AttachmentType.builder(() -> 0L)
-                    .serialize(Codec.LONG)
+                    .serialize(Codec.LONG.fieldOf("value"))
                     .build());
 
     public static boolean getMagicQuiverTracking(net.minecraft.world.entity.player.Player player) {
@@ -847,14 +851,14 @@ public class ModAttachments {
     // 养精蓄锐层数(玩家级,上限见 FenSignItem.MAX_RECHARGE)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> FEN_RECHARGE =
             ATTACHMENTS.register("fen_recharge", () -> AttachmentType.builder(() -> 0)
-                    .serialize(Codec.INT)
+                    .serialize(Codec.INT.fieldOf("value"))
                     .sync(ByteBufCodecs.INT)
                     .build());
 
     // 上次触发骰神赐福的时刻(用于"1 分钟未触发赐福 → 养精蓄锐 +1 层")
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> FEN_LAST_BLESSING_TICK =
             ATTACHMENTS.register("fen_last_blessing_tick", () -> AttachmentType.builder(() -> 0L)
-                    .serialize(Codec.LONG)
+                    .serialize(Codec.LONG.fieldOf("value"))
                     .build());
 
     // 注:"战斗爽·溅射"已改为被动单次效果,由 DiceCombatEvents 的局部变量承载,不再需要附件
@@ -878,7 +882,7 @@ public class ModAttachments {
     // 以毒攻毒:记录生命恢复 II 的触发时刻(中毒 8 秒后)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> FIGHT_POISON_WITH_POISON_REGEN_AT =
             ATTACHMENTS.register("fight_poison_with_poison_regen_at", () -> AttachmentType.builder(() -> 0L)
-                    .serialize(Codec.LONG)
+                    .serialize(Codec.LONG.fieldOf("value"))
                     .build());
 
     public static long getFightPoisonWithPoisonRegenAt(net.minecraft.world.entity.player.Player player) {
@@ -892,7 +896,7 @@ public class ModAttachments {
     // 防御牌是否已在当前骰神赐福期间消耗过耐久(怪物近战攻击触发,每个赐福期间最多一次)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Boolean>> DEFENSE_CARD_CONSUMED_BLESSING =
             ATTACHMENTS.register("defense_card_consumed_blessing", () -> AttachmentType.builder(() -> false)
-                    .serialize(Codec.BOOL)
+                    .serialize(Codec.BOOL.fieldOf("value"))
                     .build());
 
     public static boolean isDefenseCardConsumedThisBlessing(net.minecraft.world.entity.player.Player player) {
@@ -906,7 +910,7 @@ public class ModAttachments {
     // 肉弹战车立牌(pandaman)被动:吃汉堡累计的生命值上限加成(卸下立牌时清除)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> PANDAMAN_MAX_HEALTH_BONUS =
             ATTACHMENTS.register("pandaman_max_health_bonus", () -> AttachmentType.builder(() -> 0)
-                    .serialize(Codec.INT)
+                    .serialize(Codec.INT.fieldOf("value"))
                     .sync(ByteBufCodecs.INT)
                     .build());
 
@@ -921,7 +925,7 @@ public class ModAttachments {
     // 嘲讽来源:肉弹战车立牌(pandaman)主动施加"嘲讽"的玩家 UUID
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Optional<UUID>>> PANDAMAN_TAUNT_SOURCE =
             ATTACHMENTS.register("pandaman_taunt_source", () -> AttachmentType.<Optional<UUID>>builder(Optional::empty)
-                    .serialize(UUIDUtil.CODEC.optionalFieldOf("id").codec())
+                    .serialize(UUIDUtil.CODEC.optionalFieldOf("id").codec().fieldOf("value"))
                     .build());
 
     public static Optional<UUID> getPandamanTauntSource(net.minecraft.world.entity.LivingEntity entity) {
@@ -938,7 +942,7 @@ public class ModAttachments {
     // 而发放挂在 PlayerLoggedInEvent ⇒ 下次登录必再发一本(实测缺陷,且 keepInventory 下书仍在背包)。
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Boolean>> GUIDE_BOOK_GIVEN =
             ATTACHMENTS.register("guide_book_given", () -> AttachmentType.builder(() -> false)
-                    .serialize(Codec.BOOL)
+                    .serialize(Codec.BOOL.fieldOf("value"))
                     .copyOnDeath()
                     .build());
 
@@ -959,7 +963,7 @@ public class ModAttachments {
                             com.merlinkitsune.astral_dice.event.EffectTimerGuard.TimerEntry>>builder(
                                     () -> new HashMap<>())
                             .serialize(Codec.unboundedMap(Codec.STRING,
-                                    com.merlinkitsune.astral_dice.event.EffectTimerGuard.TimerEntry.CODEC))
+                                    com.merlinkitsune.astral_dice.event.EffectTimerGuard.TimerEntry.CODEC).fieldOf("value"))
                             .build());
 
     // === 新筹码:原初核心 / 电击手套 / 安全气囊 ===
@@ -967,28 +971,28 @@ public class ModAttachments {
     /** 赋能:下一层递减的到期时刻(gameTime;0 表示无计时器) */
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> EMPOWER_DECAY_AT =
             ATTACHMENTS.register("empower_decay_at", () -> AttachmentType.builder(() -> 0L)
-                    .serialize(Codec.LONG)
+                    .serialize(Codec.LONG.fieldOf("value"))
                     .sync(ByteBufCodecs.VAR_LONG)
                     .build());
 
     /** 电击手套:本效果牌周期内是否已武装法伤扩散(触发后/周期结束清除) */
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Boolean>> ELECTRIC_GLOVE_AOE =
             ATTACHMENTS.register("electric_glove_aoe", () -> AttachmentType.builder(() -> false)
-                    .serialize(Codec.BOOL)
+                    .serialize(Codec.BOOL.fieldOf("value"))
                     .sync(ByteBufCodecs.BOOL)
                     .build());
 
     /** 安全气囊:触发冷却结束时刻(1:00;0 表示无冷却) */
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> AIRBAG_COOLDOWN_END =
             ATTACHMENTS.register("airbag_cooldown_end", () -> AttachmentType.builder(() -> 0L)
-                    .serialize(Codec.LONG)
+                    .serialize(Codec.LONG.fieldOf("value"))
                     .sync(ByteBufCodecs.VAR_LONG)
                     .build());
 
     /** 电磁炮:雷击触发冷却结束时刻(1:00;0 表示无冷却;仅第二能力雷击,不影响充能攻击力加成) */
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> RAILGUN_COOLDOWN_END =
             ATTACHMENTS.register("railgun_cooldown_end", () -> AttachmentType.builder(() -> 0L)
-                    .serialize(Codec.LONG)
+                    .serialize(Codec.LONG.fieldOf("value"))
                     .sync(ByteBufCodecs.VAR_LONG)
                     .build());
 

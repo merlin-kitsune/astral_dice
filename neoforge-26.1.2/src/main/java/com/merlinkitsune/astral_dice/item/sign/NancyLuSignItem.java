@@ -9,7 +9,7 @@ import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.card.RandomCardHandler;
-import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
@@ -29,7 +29,7 @@ import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
 import net.neoforged.neoforge.event.entity.player.AttackEntityEvent;
 import net.neoforged.neoforge.event.entity.ProjectileImpactEvent;
 import net.minecraft.world.damagesource.DamageTypes;
-import net.minecraft.world.entity.projectile.ThrownEnderpearl;
+import net.minecraft.world.entity.projectile.throwableitemprojectile.ThrownEnderpearl;
 import net.neoforged.bus.api.SubscribeEvent;
 
 /**
@@ -104,9 +104,9 @@ public class NancyLuSignItem extends BaseSignItem {
     }
 
     @Override
-    protected InteractionResultHolder<ItemStack> handleUse(Level level, Player player, ItemStack stack) {
-        if (level.isClientSide) {
-            return InteractionResultHolder.success(stack);
+    protected InteractionResult handleUse(Level level, Player player, ItemStack stack) {
+        if (level.isClientSide()) {
+            return InteractionResult.SUCCESS;
         }
         long now = level.getGameTime();
 
@@ -121,7 +121,7 @@ public class NancyLuSignItem extends BaseSignItem {
         // 清除附近已经锁定该玩家的生物目标,确保“绝对无法被生物索敌”
         clearNearbyMobTargets(player);
 
-        return InteractionResultHolder.success(stack);
+        return InteractionResult.SUCCESS;
     }
 
     // 第二批「三态化」:主动施加"完全隐身"(效果实例 + 附件 nancy_lu_hidden_until 同长 0:30)⇒ 进入锁定态。
@@ -250,7 +250,7 @@ public class NancyLuSignItem extends BaseSignItem {
     private static ItemStack findAndConsumeRandomBattleCard(Player player) {
         List<ItemStack> candidates = new ArrayList<>();
         // 仅主物品栏(平衡调整:不再从末影箱/精妙背包等容器能力中消耗)
-        for (ItemStack stack : player.getInventory().items) {
+        for (ItemStack stack : player.getInventory().getNonEquipmentItems()) {
             if (!stack.isEmpty() && CardRegistry.itemToType(stack) != null) {
                 candidates.add(stack);
             }
@@ -292,7 +292,7 @@ public class NancyLuSignItem extends BaseSignItem {
     // 骇客立牌:末影珍珠落地时记录短时免疫窗口,免疫随后的传送摔落伤害
     @SubscribeEvent
     public static void onNancyLuEnderPearlImpact(ProjectileImpactEvent event) {
-        if (event.getProjectile() instanceof net.minecraft.world.entity.projectile.ThrownEnderpearl pearl
+        if (event.getProjectile() instanceof net.minecraft.world.entity.projectile.throwableitemprojectile.ThrownEnderpearl pearl
                 && pearl.getOwner() instanceof Player player
                 && NancyLuSignItem.isEquipped(player)) {
             ModAttachments.setNancyLuEnderPearlImmuneUntil(player,

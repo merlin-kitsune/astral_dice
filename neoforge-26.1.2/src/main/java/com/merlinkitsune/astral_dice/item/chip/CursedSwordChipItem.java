@@ -8,7 +8,7 @@ import com.merlinkitsune.astral_dice.event.ModEffectRemoval;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -32,10 +32,10 @@ import net.minecraft.world.entity.LivingEntity;
  */
 @EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public class CursedSwordChipItem extends BaseChipItem {
-    // "千咒刻印"诅咒附魔的资源键(静态缓存,避免每 tick 重新构造 ResourceLocation/ResourceKey)
+    // "千咒刻印"诅咒附魔的资源键(静态缓存,避免每 tick 重新构造 Identifier/ResourceKey)
     private static final ResourceKey<Enchantment> CURSE_MARKER_KEY =
             ResourceKey.create(Registries.ENCHANTMENT,
-                    ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID, "curse_marker"));
+                    Identifier.fromNamespaceAndPath(AstralDiceMod.MODID, "curse_marker"));
 
     public CursedSwordChipItem(Properties properties) {
         super(properties);

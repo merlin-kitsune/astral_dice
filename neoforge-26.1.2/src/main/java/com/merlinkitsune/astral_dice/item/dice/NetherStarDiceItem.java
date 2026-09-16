@@ -3,7 +3,7 @@ package com.merlinkitsune.astral_dice.item.dice;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
 import com.merlinkitsune.astral_dice.component.WeaponEnhancement;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
@@ -81,7 +81,7 @@ public class NetherStarDiceItem extends DiceCurioItem {
     private static void setAttackBonus(Player player, double amount) {
         AttributeInstance attr = player.getAttribute(Attributes.ATTACK_DAMAGE);
         if (attr == null) return;
-        ResourceLocation id = ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID, ATTACK_MODIFIER_KEY);
+        Identifier id = Identifier.fromNamespaceAndPath(AstralDiceMod.MODID, ATTACK_MODIFIER_KEY);
         var existing = attr.getModifier(id);
         if (amount <= 0) {
             if (existing != null) attr.removeModifier(id);

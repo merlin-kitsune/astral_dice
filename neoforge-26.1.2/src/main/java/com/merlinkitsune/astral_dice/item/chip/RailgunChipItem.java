@@ -162,9 +162,9 @@ public class RailgunChipItem extends BaseChipItem {
     // 由 LightningBolt#tick 内 !visualOnly 分支独立驱动,与伤害值无关。
     // 标记为"电磁炮雷击"后,EntityThunderHitMixin 会把这份伤害换成真伤(无视护甲值/盔甲韧性)。
     private static void strike(ServerLevel level, Vec3 pos, ServerPlayer cause, float damage) {
-        LightningBolt bolt = EntityType.LIGHTNING_BOLT.create(level);
+        LightningBolt bolt = EntityType.LIGHTNING_BOLT.create(level, net.minecraft.world.entity.EntitySpawnReason.MOB_SUMMONED);
         if (bolt == null) return;
-        bolt.moveTo(pos);
+        bolt.snapTo(pos);
         bolt.setVisualOnly(false);
         bolt.setDamage(damage);
         bolt.setCause(cause);

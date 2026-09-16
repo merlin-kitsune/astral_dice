@@ -1,7 +1,7 @@
 package com.merlinkitsune.astral_dice.item.chip;
 
 import net.minecraft.world.InteractionHand;
-import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
@@ -46,13 +46,13 @@ public abstract class BaseChipItem extends Item implements ICurioItem {
     }
 
     @Override
-    public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
+    public InteractionResult use(Level level, Player player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
         // 下蹲右键:自动装备到"chip"饰品栏
         if (player.isShiftKeyDown()) {
             return CurioSlotUtil.tryAutoEquip(player, stack, "chip");
         }
-        return InteractionResultHolder.pass(stack);
+        return InteractionResult.PASS;
     }
 
     @Override
@@ -63,10 +63,10 @@ public abstract class BaseChipItem extends Item implements ICurioItem {
      * 生成唯一的属性修饰器 id(按本物品注册名派生)。
      * 同一属性在不同筹码间必须使用不同修饰器 id,否则 Curios 应用属性时后装者会覆盖先装者。
      */
-    protected net.minecraft.resources.ResourceLocation attributeModifierId(String suffix) {
-        net.minecraft.resources.ResourceLocation key =
+    protected net.minecraft.resources.Identifier attributeModifierId(String suffix) {
+        net.minecraft.resources.Identifier key =
                 net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(this);
-        return net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(
+        return net.minecraft.resources.Identifier.fromNamespaceAndPath(
                 com.merlinkitsune.astral_dice.AstralDiceMod.MODID,
                 "chip_" + key.getPath() + "_" + suffix);
     }

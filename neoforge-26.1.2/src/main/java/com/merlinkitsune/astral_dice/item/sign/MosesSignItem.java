@@ -11,7 +11,7 @@ import com.merlinkitsune.astral_dice.event.ModEffectRemoval;
 import com.merlinkitsune.astral_dice.event.WeirdDiceHandler;
 import com.merlinkitsune.astral_dice.item.ChargeManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
-import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
@@ -86,16 +86,16 @@ public class MosesSignItem extends BaseSignItem {
     }
 
     @Override
-    protected InteractionResultHolder<ItemStack> handleUse(Level level, Player player, ItemStack stack) {
-        if (level.isClientSide) {
-            return InteractionResultHolder.success(stack);
+    protected InteractionResult handleUse(Level level, Player player, ItemStack stack) {
+        if (level.isClientSide()) {
+            return InteractionResult.SUCCESS;
         }
         // 主动:进入等待期(玩家级状态),等待攻击敌对目标释放"破绽"
         ModAttachments.setSignReadyType(player, READY_TYPE);
         ModAttachments.setSignReadyExpire(player,
                 level.getGameTime() + GameplayConstants.SKILL_WAIT_SECONDS * 20L);
         player.addEffect(new MobEffectInstance(ModEffects.MOSES_READY, Integer.MAX_VALUE, 0, false, false, true));
-        return InteractionResultHolder.success(stack);
+        return InteractionResult.SUCCESS;
     }
 
     // 玩家是否佩戴枪匠立牌

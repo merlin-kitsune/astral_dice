@@ -1,7 +1,7 @@
 package com.merlinkitsune.astral_dice.effect;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectCategory;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
@@ -15,10 +15,10 @@ public class JasmineSweepEffect extends MobEffect {
     public JasmineSweepEffect() {
         super(MobEffectCategory.BENEFICIAL, 0x87CEEB);
         this.addAttributeModifier(Attributes.MOVEMENT_SPEED,
-                ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID, "jasmine_sweep_speed"),
+                Identifier.fromNamespaceAndPath(AstralDiceMod.MODID, "jasmine_sweep_speed"),
                 0.2, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL);
         this.addAttributeModifier(Attributes.ARMOR,
-                ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID, "jasmine_sweep_armor"),
+                Identifier.fromNamespaceAndPath(AstralDiceMod.MODID, "jasmine_sweep_armor"),
                 -0.3, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL);
     }
 }

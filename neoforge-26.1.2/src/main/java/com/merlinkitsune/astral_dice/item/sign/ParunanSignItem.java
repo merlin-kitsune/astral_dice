@@ -3,7 +3,7 @@ package com.merlinkitsune.astral_dice.item.sign;
 import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
 
 import com.merlinkitsune.astral_dice.component.GameplayConstants;
-import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.player.Player;
@@ -29,14 +29,14 @@ public class ParunanSignItem extends BaseSignItem {
         }
     }
 
-    protected InteractionResultHolder<ItemStack> handleUse(Level level, Player player, ItemStack stack) {
-        if (level.isClientSide) {
-            return InteractionResultHolder.success(stack);
+    protected InteractionResult handleUse(Level level, Player player, ItemStack stack) {
+        if (level.isClientSide()) {
+            return InteractionResult.SUCCESS;
         }
 
         int starlight = StarLightManager.get(player);
         if (starlight <= 0) {
-            return InteractionResultHolder.fail(stack);
+            return InteractionResult.FAIL;
         }
 
         // 每 2 点星光返还 1 个星币(转化比例集中管理,余数部分保留)。
@@ -47,7 +47,7 @@ public class ParunanSignItem extends BaseSignItem {
         int gained = ResourceConversion.starlightToStarCoins(player, -1);
         if (gained <= 0) {
             sendSignActionBar(player, "msg.astral_dice.parunan_active_no_starlight");
-            return InteractionResultHolder.fail(stack);
+            return InteractionResult.FAIL;
         }
 
         // 主动技能:随机获得以下任一效果
@@ -69,7 +69,7 @@ public class ParunanSignItem extends BaseSignItem {
                     level.getGameTime() + effect.getDuration());
         }
 
-        return InteractionResultHolder.success(stack);
+        return InteractionResult.SUCCESS;
     }
 
     // 主动施加的三选一效果(饱和/幸运/村庄英雄):锁定(生效中)态的门控效果来源

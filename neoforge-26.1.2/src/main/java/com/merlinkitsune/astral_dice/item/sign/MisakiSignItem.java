@@ -4,7 +4,7 @@ import com.merlinkitsune.astral_dice.component.AppliedStone;
 import com.merlinkitsune.astral_dice.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
-import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -21,8 +21,8 @@ public class MisakiSignItem extends BaseSignItem {
     }
 
     @Override
-    protected InteractionResultHolder<ItemStack> handleUse(Level level, Player player, ItemStack stack) {
-        if (!level.isClientSide) {
+    protected InteractionResult handleUse(Level level, Player player, ItemStack stack) {
+        if (!level.isClientSide()) {
             // 主动技能:获得"爆发"效果 2:00(visible=true 使效果图标在 HUD 正常显示)
             player.addEffect(new MobEffectInstance(ModEffects.MISAKI_BURST, 2400, 0, false, true, true));
 
@@ -34,7 +34,7 @@ public class MisakiSignItem extends BaseSignItem {
                 VitaminPillChipItem.giveCard(player, meito);
             }
         }
-        return InteractionResultHolder.success(stack);
+        return InteractionResult.SUCCESS;
     }
 
     @Override

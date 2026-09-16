@@ -86,7 +86,7 @@ public class SatelliteChipItem extends BaseChipItem {
     // 统计物品栏中轨道炮总数
     private static int countOrbitalStrike(Player player) {
         int count = 0;
-        for (ItemStack stack : player.getInventory().items) {
+        for (ItemStack stack : player.getInventory().getNonEquipmentItems()) {
             if (!stack.isEmpty() && stack.is(ModItems.ORBITAL_STRIKE_CARD.get())) {
                 count += stack.getCount();
             }

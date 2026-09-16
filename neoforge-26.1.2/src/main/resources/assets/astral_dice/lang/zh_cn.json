@@ -390,7 +390,7 @@
   "itemGroup.astral_dice": "星之骰戏",
   "key.astral_dice.activate_sign": "激活立牌技能",
   "key.astral_dice.open_card_inventory": "打开卡牌栏",
-  "key.categories.astral_dice": "星之骰戏",
+  "key.category.astral_dice.main": "星之骰戏",
   "msg.astral_dice.bonnie_ready": "秘密侦探立牌：主动技能已激活，攻击符合骰神赐福触发条件的目标向其施加「隐匿调查」",
   "msg.astral_dice.moses_ready": "枪匠立牌：主动技能已激活，攻击普通敌对目标向其施加「破绽」",
   "msg.astral_dice.moses_apply": "枪匠立牌：已施加「破绽」",

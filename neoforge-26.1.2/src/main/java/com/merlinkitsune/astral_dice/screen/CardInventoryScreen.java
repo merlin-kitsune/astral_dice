@@ -2,17 +2,38 @@ package com.merlinkitsune.astral_dice.screen;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Inventory;
-import net.minecraft.world.inventory.ClickType;
+import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.List;
 
+/**
+ * 卡牌栏界面。
+ *
+ * <p><b>26.1.2 迁移说明</b>(GUI 全面改为「extract → render state」模型):
+ * <ul>
+ *   <li>{@code imageWidth/imageHeight} 变为 {@code protected final},只能经
+ *       {@code super(menu, inv, title, width, height)} 传入;</li>
+ *   <li>{@code renderBg(...)} → {@code extractBackground(GuiGraphicsExtractor, int, int, float)},
+ *       {@code renderLabels(...)} → {@code extractLabels(GuiGraphicsExtractor, int, int)},
+ *       {@code render(...)} → {@code extractRenderState(GuiGraphicsExtractor, int, int, float)}
+ *       (tooltip 已由父类在 extractRenderState 内处理,不再手动调用 renderTooltip);</li>
+ *   <li>{@code renderItem/renderItemDecorations} → {@code item/itemDecorations};</li>
+ *   <li>{@code blit(Identifier, ...)} 需要 {@code RenderPipeline} 首参(原版 GUI 一律
+ *       {@code RenderPipelines.GUI_TEXTURED});</li>
+ *   <li>{@code mouseClicked(double,double,int)} → {@code mouseClicked(MouseButtonEvent, boolean)}
+ *       —— 坐标与按键从事件对象取({@code MouseButtonEvent#x()/y()/button()}),Shift 状态走
+ *       {@code event.hasShiftDown()}。</li>
+ * </ul>
+ */
 public class CardInventoryScreen extends AbstractContainerScreen<CardInventoryMenu> {
     private static final int GUI_WIDTH = 168;
     private static final int GUI_HEIGHT = 124;
@@ -51,24 +72,22 @@ public class CardInventoryScreen extends AbstractContainerScreen<CardInventoryMe
     private static final int SELECTOR_COL_SPACING = 18;
 
     public CardInventoryScreen(CardInventoryMenu menu, Inventory inventory, Component title) {
-        super(menu, inventory, title);
-        this.imageWidth = GUI_WIDTH;
-        this.imageHeight = GUI_HEIGHT;
+        super(menu, inventory, title, GUI_WIDTH, GUI_HEIGHT);
         this.titleLabelX = -10000;
         this.titleLabelY = -10000;
         this.inventoryLabelY = -10000;
     }
 
     @Override
-    protected void renderBg(GuiGraphics guiGraphics, float partialTick, int mouseX, int mouseY) {
+    public void extractBackground(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
         int x = this.leftPos;
         int y = this.topPos;
 
         // 按当前骰子星级(0-3,超出取最近档)选择界面背景
         int star = Math.max(0, Math.min(3, this.menu.getStarLevel()));
-        ResourceLocation texture = ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID,
+        Identifier texture = Identifier.fromNamespaceAndPath(AstralDiceMod.MODID,
                 GUI_TEXTURES_BY_STAR[star]);
-        guiGraphics.blit(texture, x, y, 0, 0.0F, 0.0F, GUI_WIDTH, GUI_HEIGHT, GUI_WIDTH, GUI_HEIGHT);
+        guiGraphics.blit(RenderPipelines.GUI_TEXTURED, texture, x, y, 0.0F, 0.0F, GUI_WIDTH, GUI_HEIGHT, GUI_WIDTH, GUI_HEIGHT);
 
         // 费用点数:按当前骰子星级对应的最大点数显示
         int atkMax = Math.max(0, this.menu.getMaxAttackCost());
@@ -80,9 +99,9 @@ public class CardInventoryScreen extends AbstractContainerScreen<CardInventoryMe
         blitCost(guiGraphics, x + COST_DEFENSE_X, y + COST_Y, costTexture("defense", defMax, defUsed), costWidth(defMax));
 
         // 总攻击/防御力范围:右侧,红/蓝区分,与格子水平居中
-        guiGraphics.drawString(this.font, this.menu.getDisplayAttackMin() + "-" + this.menu.getDisplayAttackMax(),
+        guiGraphics.text(this.font, this.menu.getDisplayAttackMin() + "-" + this.menu.getDisplayAttackMax(),
                 x + TOTAL_ATTACK_X, y + TOTAL_ATTACK_Y, ATTACK_TEXT_COLOR, true);
-        guiGraphics.drawString(this.font, this.menu.getDisplayDefenseMin() + "-" + this.menu.getDisplayDefenseMax(),
+        guiGraphics.text(this.font, this.menu.getDisplayDefenseMin() + "-" + this.menu.getDisplayDefenseMax(),
                 x + TOTAL_DEFENSE_X, y + TOTAL_DEFENSE_Y, DEFENSE_TEXT_COLOR, true);
 
         // 卡牌选择器:攻击左列 / 防御右列,按物品栏顺序,不堆叠,支持滚动
@@ -92,25 +111,28 @@ public class CardInventoryScreen extends AbstractContainerScreen<CardInventoryMe
     }
 
     @Override
-    protected void renderLabels(GuiGraphics guiGraphics, int mouseX, int mouseY) {
+    protected void extractLabels(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY) {
         // 新界面不绘制标题/物品栏文字,避免遮挡贴图
     }
 
     @Override
-    public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-        super.render(guiGraphics, mouseX, mouseY, partialTick);
-        this.renderTooltip(guiGraphics, mouseX, mouseY);
+    public void extractRenderState(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
+        // 父类内部会依次走 extractBackground / extractSlots / extractLabels / extractTooltip
+        super.extractRenderState(guiGraphics, mouseX, mouseY, partialTick);
         // 骰神赐福期间卡牌栏锁定:界面下方(选择区域以外)显示红色提醒文字
         if (this.minecraft.player != null && this.minecraft.player.hasEffect(ModEffects.DICE_BLESSING)) {
             Component msg = Component.translatable("gui.astral_dice.card_inventory.locked");
             int textWidth = this.font.width(msg);
-            guiGraphics.drawString(this.font, msg,
+            guiGraphics.text(this.font, msg,
                     this.leftPos + (GUI_WIDTH - textWidth) / 2, this.topPos + GUI_HEIGHT - 11, 0xFFFF5555, true);
         }
     }
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        double mouseX = event.x();
+        double mouseY = event.y();
+        int button = event.button();
         // 骰神赐福期间禁止插入/移除卡牌(与服务端锁定一致,客户端直接忽略点击)
         if (this.minecraft.player != null && this.minecraft.player.hasEffect(ModEffects.DICE_BLESSING)) {
             return true;
@@ -120,7 +142,7 @@ public class CardInventoryScreen extends AbstractContainerScreen<CardInventoryMe
         if (!this.menu.getCarried().isEmpty() && isInSelectorArea(mouseX, mouseY)) {
             Slot empty = this.menu.getFirstEmptyInventorySlot();
             if (empty != null) {
-                this.slotClicked(empty, empty.index, 0, ClickType.PICKUP);
+                this.slotClicked(empty, empty.index, 0, ContainerInput.PICKUP);
                 return true;
             }
         }
@@ -129,7 +151,7 @@ public class CardInventoryScreen extends AbstractContainerScreen<CardInventoryMe
         if (button == 1 && !this.menu.getCarried().isEmpty()) {
             Slot empty = this.menu.getFirstEmptyInventorySlot();
             if (empty != null) {
-                this.slotClicked(empty, empty.index, 0, ClickType.PICKUP);
+                this.slotClicked(empty, empty.index, 0, ContainerInput.PICKUP);
                 return true;
             }
         }
@@ -137,12 +159,12 @@ public class CardInventoryScreen extends AbstractContainerScreen<CardInventoryMe
         if (button == 0 || button == 1) {
             Slot selectorSlot = getSelectorSlotAt(mouseX, mouseY);
             if (selectorSlot != null) {
-                ClickType type = hasShiftDown() ? ClickType.QUICK_MOVE : ClickType.PICKUP;
+                ContainerInput type = event.hasShiftDown() ? ContainerInput.QUICK_MOVE : ContainerInput.PICKUP;
                 this.slotClicked(selectorSlot, selectorSlot.index, button, type);
                 return true;
             }
         }
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.mouseClicked(event, doubleClick);
     }
 
     @Override
@@ -155,7 +177,7 @@ public class CardInventoryScreen extends AbstractContainerScreen<CardInventoryMe
     }
 
     // 3 列网格:同一侧(攻击/防御)的卡牌按 3 列排布,按行滚动
-    private void renderSelectorGrid(GuiGraphics guiGraphics, int guiX, int guiY, List<Slot> slots, int offset, int colStartX) {
+    private void renderSelectorGrid(GuiGraphicsExtractor guiGraphics, int guiX, int guiY, List<Slot> slots, int offset, int colStartX) {
         for (int i = 0; i < slots.size(); i++) {
             int row = i / SELECTOR_COLUMNS - offset;
             if (row < 0 || row >= SELECTOR_VISIBLE_ROWS) continue;
@@ -164,8 +186,9 @@ public class CardInventoryScreen extends AbstractContainerScreen<CardInventoryMe
             int sy = guiY + SELECTOR_ROW_Y + row * SELECTOR_ROW_SPACING;
             ItemStack stack = slots.get(i).getItem();
             if (!stack.isEmpty()) {
-                guiGraphics.renderItem(stack, sx, sy);
-                guiGraphics.renderItemDecorations(this.font, stack, sx, sy);
+                // 26.1.2:renderItem/renderItemDecorations → item/itemDecorations
+                guiGraphics.item(stack, sx, sy);
+                guiGraphics.itemDecorations(this.font, stack, sx, sy);
             }
         }
     }
@@ -195,8 +218,8 @@ public class CardInventoryScreen extends AbstractContainerScreen<CardInventoryMe
         return null;
     }
 
-    private void blitCost(GuiGraphics guiGraphics, int x, int y, ResourceLocation texture, int width) {
-        guiGraphics.blit(texture, x, y, 0, 0.0f, 0.0f, width, COST_HEIGHT, width, COST_HEIGHT);
+    private void blitCost(GuiGraphicsExtractor guiGraphics, int x, int y, Identifier texture, int width) {
+        guiGraphics.blit(RenderPipelines.GUI_TEXTURED, texture, x, y, 0.0F, 0.0F, width, COST_HEIGHT, width, COST_HEIGHT);
     }
 
     private int costWidth(int maxCost) {
@@ -208,8 +231,8 @@ public class CardInventoryScreen extends AbstractContainerScreen<CardInventoryMe
         };
     }
 
-    private ResourceLocation costTexture(String side, int maxCost, int used) {
-        return ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID,
+    private Identifier costTexture(String side, int maxCost, int used) {
+        return Identifier.fromNamespaceAndPath(AstralDiceMod.MODID,
                 "textures/gui/cost/cost_" + side + "_" + maxCost + "_" + used + ".png");
     }
 }

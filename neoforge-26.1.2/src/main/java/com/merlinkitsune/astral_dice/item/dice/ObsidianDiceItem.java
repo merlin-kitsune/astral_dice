@@ -4,7 +4,7 @@ import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.ai.attributes.Attribute;
@@ -36,7 +36,7 @@ public class ObsidianDiceItem extends DiceCurioItem {
 
     @Override
     public Multimap<Holder<Attribute>, AttributeModifier> getAttributeModifiers(
-            SlotContext slotContext, ResourceLocation id, ItemStack stack) {
+            SlotContext slotContext, Identifier id, ItemStack stack) {
         Multimap<Holder<Attribute>, AttributeModifier> map = HashMultimap.create();
         map.put(Attributes.ARMOR,
                 new AttributeModifier(modifierId("armor"), ARMOR_BONUS,
@@ -49,10 +49,10 @@ public class ObsidianDiceItem extends DiceCurioItem {
         return source.is(DamageTypeTags.IS_FIRE);
     }
 
-    private static ResourceLocation modifierId(String suffix) {
-        ResourceLocation key = BuiltInRegistries.ITEM.getKey(
+    private static Identifier modifierId(String suffix) {
+        Identifier key = BuiltInRegistries.ITEM.getKey(
                 com.merlinkitsune.astral_dice.item.ModItems.OBSIDIAN_DICE.get());
-        return ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID,
+        return Identifier.fromNamespaceAndPath(AstralDiceMod.MODID,
                 "dice_" + key.getPath() + "_" + suffix);
     }
 }

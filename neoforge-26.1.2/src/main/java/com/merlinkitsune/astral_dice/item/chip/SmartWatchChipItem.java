@@ -57,7 +57,7 @@ public class SmartWatchChipItem extends BaseChipItem {
     // 统计物品栏(主背包)中本模组卡牌总数
     private static int countCards(Player player) {
         int count = 0;
-        for (ItemStack stack : player.getInventory().items) {
+        for (ItemStack stack : player.getInventory().getNonEquipmentItems()) {
             if (!stack.isEmpty() && ModItems.isCardItem(stack)) {
                 count += stack.getCount();
             }

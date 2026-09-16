@@ -3,7 +3,7 @@ package com.merlinkitsune.astral_dice.item.sign;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.card.RandomCardHandler;
-import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
@@ -47,9 +47,9 @@ public class MimiSignItem extends BaseSignItem {
     }
 
     @Override
-    protected InteractionResultHolder<ItemStack> handleUse(Level level, Player player, ItemStack stack) {
-        if (level.isClientSide) {
-            return InteractionResultHolder.success(stack);
+    protected InteractionResult handleUse(Level level, Player player, ItemStack stack) {
+        if (level.isClientSide()) {
+            return InteractionResult.SUCCESS;
         }
         // 回收物品栏中所有卡牌(含专属牌),返还 N+1 张随机卡牌(不含专属)
         int recycled = recycleAllCards(player);
@@ -67,13 +67,13 @@ public class MimiSignItem extends BaseSignItem {
         // 主动技能 ActionBar:新卡牌数(回收数+1)与被动触发的星币数
         sendSignActionBar(player, "msg.astral_dice.mimi_active",
                 recycled + 1, countStarCoins(player) - coinsBefore);
-        return InteractionResultHolder.success(stack);
+        return InteractionResult.SUCCESS;
     }
 
     // 统计物品栏中的星币数量
     private static int countStarCoins(Player player) {
         int count = 0;
-        for (ItemStack s : player.getInventory().items) {
+        for (ItemStack s : player.getInventory().getNonEquipmentItems()) {
             if (s.is(ModItems.STAR_COIN.get())) {
                 count += s.getCount();
             }
@@ -84,7 +84,7 @@ public class MimiSignItem extends BaseSignItem {
     // 统计物品栏中的战斗牌数量
     private static int countBattleCards(Player player) {
         int count = 0;
-        for (ItemStack s : player.getInventory().items) {
+        for (ItemStack s : player.getInventory().getNonEquipmentItems()) {
             if (!s.isEmpty() && com.merlinkitsune.astral_dice.combat.CardRegistry.itemToType(s) != null) {
                 count += s.getCount();
             }
@@ -130,8 +130,8 @@ public class MimiSignItem extends BaseSignItem {
     // 回收物品栏中所有卡牌(包括专属牌),返回回收数量
     private static int recycleAllCards(Player player) {
         int count = 0;
-        for (int i = 0; i < player.getInventory().items.size(); i++) {
-            ItemStack stack = player.getInventory().items.get(i);
+        for (int i = 0; i < player.getInventory().getNonEquipmentItems().size(); i++) {
+            ItemStack stack = player.getInventory().getNonEquipmentItems().get(i);
             if (stack.isEmpty()) continue;
             if (ModItems.isCardItem(stack)) {
                 count += stack.getCount();

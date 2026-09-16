@@ -5,14 +5,14 @@ import io.netty.buffer.ByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
 import net.neoforged.neoforge.network.PacketDistributor;
 
 public record DamageNumberPayload(int entityId, int bonusDamage, int color) implements CustomPacketPayload {
     public static final CustomPacketPayload.Type<DamageNumberPayload> TYPE =
-            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID, "damage_number"));
+            new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath(AstralDiceMod.MODID, "damage_number"));
 
     public static final StreamCodec<ByteBuf, DamageNumberPayload> STREAM_CODEC = StreamCodec.composite(
             ByteBufCodecs.VAR_INT, DamageNumberPayload::entityId,

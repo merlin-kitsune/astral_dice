@@ -34,7 +34,7 @@ import com.merlinkitsune.astral_dice.item.sign.LuluSignItem;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -54,7 +54,6 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.item.ProjectileWeaponItem;
 import net.minecraft.world.item.AxeItem;
 import net.minecraft.world.item.MaceItem;
-import net.minecraft.world.item.SwordItem;
 import net.minecraft.world.item.TridentItem;
 
 import net.neoforged.bus.api.EventPriority;
@@ -156,7 +155,7 @@ public class DiceCombatEvents {
 
     // 检测玩家是否佩戴了七咒之戒(按物品 ID 识别,未安装该模组时返回 false)
     public static boolean hasEnigmaticCurse(Player player) {
-        Item ring = BuiltInRegistries.ITEM.get(ResourceLocation.parse(ENIGMATIC_CURSED_RING));
+        Item ring = BuiltInRegistries.ITEM.get(Identifier.parse(ENIGMATIC_CURSED_RING)).map(net.minecraft.core.Holder::value).orElse(null);
         if (ring == Items.AIR) return false;
         var curios = CuriosApi.getCuriosInventory(player);
         return curios.isPresent() && curios.get().findFirstCurio(s -> s.is(ring)).isPresent();
@@ -164,7 +163,7 @@ public class DiceCombatEvents {
 
     // 检测玩家是否手持指定神秘遗物+ 物品(如启示之证)
     public static boolean isHoldingEnigmaticItem(Player player, String itemId) {
-        Item item = BuiltInRegistries.ITEM.get(ResourceLocation.parse(itemId));
+        Item item = BuiltInRegistries.ITEM.get(Identifier.parse(itemId)).map(net.minecraft.core.Holder::value).orElse(null);
         if (item == Items.AIR) return false;
         return player.getMainHandItem().is(item) || player.getOffhandItem().is(item);
     }
@@ -699,7 +698,7 @@ public class DiceCombatEvents {
                                 ex, ey, ez, 1, 0.0, 0.0, 0.0, 0.0);
                         serverLevel.playSound(null, ex, ey, ez, net.minecraft.sounds.SoundEvents.GENERIC_EXPLODE,
                                 net.minecraft.sounds.SoundSource.BLOCKS, 4.0F,
-                                (1.0F + (serverLevel.random.nextFloat() - serverLevel.random.nextFloat()) * 0.2F) * 0.7F);
+                                (1.0F + (serverLevel.getRandom().nextFloat() - serverLevel.getRandom().nextFloat()) * 0.2F) * 0.7F);
                     }
                 }
             } finally {
@@ -1031,7 +1030,7 @@ public class DiceCombatEvents {
         ItemStack held = player.getMainHandItem();
         if (held.isEmpty()) return false;
         if (held.is(Items.SHIELD)) return false;
-        return held.getItem() instanceof SwordItem
+        return held.is(net.minecraft.tags.ItemTags.SWORDS)
                 || held.getItem() instanceof AxeItem
                 || held.getItem() instanceof MaceItem
                 || held.getItem() instanceof TridentItem;
@@ -1056,7 +1055,7 @@ public class DiceCombatEvents {
 
     // dummmmmmy 训练人偶识别:实体注册 id 命名空间为 dummmmmmy,或类名包含 dummy(兼容不同版本/命名)
     private static boolean isTrainingDummy(LivingEntity target) {
-        ResourceLocation id = BuiltInRegistries.ENTITY_TYPE.getKey(target.getType());
+        Identifier id = BuiltInRegistries.ENTITY_TYPE.getKey(target.getType());
         if ("dummmmmmy".equals(id.getNamespace())) return true;
         String name = target.getClass().getSimpleName().toLowerCase(Locale.ROOT);
         return name.contains("dummy");
@@ -1252,7 +1251,7 @@ public class DiceCombatEvents {
         double best = 1.0;
         for (ItemStack stack : new ItemStack[]{player.getMainHandItem(), player.getOffhandItem()}) {
             if (stack.isEmpty()) continue;
-            for (var entry : stack.getItem().getDefaultAttributeModifiers().modifiers()) {
+            for (var entry : stack.getItem().getDefaultAttributeModifiers(stack).modifiers()) {
                 if (entry.slot().test(net.minecraft.world.entity.EquipmentSlot.MAINHAND)
                         && entry.attribute().is(Attributes.ATTACK_DAMAGE)
                         && entry.modifier().operation()

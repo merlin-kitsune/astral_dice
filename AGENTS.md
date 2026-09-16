@@ -90,8 +90,9 @@ When extending this workspace:
 |---|---|---|---|---|---|---|
 | `neoforge-1.21.1` | `1.21.1-main` | 1.21.1 | NeoForge | 21 | `1.2.1+neoforge_1.21.1` | `x.y.z[-rcN]+neoforge_1.21.1` |
 | `forge-1.20.1` | `1.20.1-forge` | 1.20.1 | Forge | 17 | `1.2.1+forge_1.20.1` | `x.y.z[-rcN|preN]+forge_1.20.1` |
+| `neoforge-26.1.2` | 本仓 `multi-26.1.2-neoforge` 分支新增（基线 = 主线 `1.2.1`/`fda8ca9` 的 `neoforge-1.21.1` 源码） | 26.1.2 | NeoForge | 25 | `1.2.1+neoforge_26.1.2` | `x.y.z[-rcN]+neoforge_26.1.2` |
 
-> 版本号各 git 分支独立（AGENTS.md 自 2026-09-15 起**已纳入版本库**，各分支各自维护一份）：`multi-1.20.1-1.21.1` 当前 = `1.2.1`；`multi-dev-next` 当前 = `2.0.0-SNAPSHOT.5`（worktree 分支 `wt/2.0.0-vnext` 同为 `2.0.0-SNAPSHOT.5`）。上表「当前版本」以主线工作分支 `multi-1.20.1-1.21.1` 为准。
+> 版本号各 git 分支独立（AGENTS.md 自 2026-09-15 起**已纳入版本库**，各分支各自维护一份）：`multi-1.20.1-1.21.1` 当前 = `1.2.1`；`multi-dev-next` 当前 = `2.0.0-SNAPSHOT.5`（worktree 分支 `wt/2.0.0-vnext` 同为 `2.0.0-SNAPSHOT.5`）；`multi-26.1.2-neoforge` 当前 = `1.2.1`（26.1.2 线首版号待移植完成后由用户裁决）。上表「当前版本」以主线工作分支 `multi-1.20.1-1.21.1` 为准。
 
 **加载器版本门槛(必须遵守)**:
 - **1.20.1(Forge)**:由 `forge-1.20.1/build.gradle` 从 `gradle.properties` 的 `forge_version`(形如 `1.20.1-47.4.10`)**自动派生两个区间**,分别写入两处:
@@ -772,16 +773,18 @@ When extending this workspace:
 
 各子项目 `build.gradle` 已内置分发任务，`gradlew build` **构建后自动触发**，无需手动指定任务。部署目标按子项目区分：
 
-**编译产物集中规则(必须遵守)**:任何版本的编译产物统一复制到**仓库根目录 `build/libs/`**(任务 `pushToRootBuild`,随各子项目 build 自动触发;按加载器后缀清理本版本旧产物,与另一版本互不误删)。根目录 `build/libs/` 为双版本产物的统一交付目录。
+**编译产物集中规则(必须遵守)**:任何版本的编译产物统一复制到**仓库根目录 `build/libs/`**(任务 `pushToRootBuild`,随各子项目 build 自动触发;按**本子项目完整版本后缀**清理旧产物,与其他版本互不误删)。根目录 `build/libs/` 为全部版本产物的统一交付目录。
+⚠️ **后缀必须写全(2026-09 三线并存后为硬需求)**:自 `multi-26.1.2-neoforge` 分支起仓库同时存在 `+neoforge_1.21.1` 与 `+neoforge_26.1.2` 两个 neoforge 产物,`pushToRootBuild` 的过滤条件因此从 `contains('+neoforge_')` 收紧为 `contains('+neoforge_1.21.1')` / `contains('+neoforge_26.1.2')`——宽泛前缀会让两个 neoforge 版本**互相删除** jar。
 
 | 子项目 | 项目测试环境(pushToDevRun) | 整合包/用户测试环境(pushToGame) | pushToGame 触发条件 |
 |---|---|---|---|
 | `neoforge-1.21.1` | `run/1.21.1/mods`（仓库根 run/） | `D:\.minecraft\versions\狐の航空学 Voxy Edition\mods` | 随 build 自动触发（默认） |
 | `forge-1.20.1` | `run/1.20.1/mods`（仓库根 run/） | `D:\.minecraft\versions\1.20.1 模组测试\mods` | 随 build 自动触发（默认） |
+| `neoforge-26.1.2` | `run/26.1.2/mods`（仓库根 run/） | `D:\.minecraft\versions\26.1.2-NeoForge_26.1.2.109\mods` | 随 build 自动触发（默认） |
 
 规则要点：
 1. **推送随 build 自动触发**：`-PdeployToPack` 已不再被任何任务读取（源码中仅存注释）；`pushToDevRun`/`pushToRootBuild`/`pushToGame` 三个推送任务均由 `finalizedBy` 随 build 无条件触发。
-2. 推送时**先删除、后复制**:`pushToDevRun`/`pushToGame`/`pushToRootBuild` 三个任务均先清空目标目录中的旧产物、再复制新 jar,各目录只保留本次构建产物。清理匹配范围(**实测**,勿按"都会按后缀过滤"理解):forge-1.20.1 三个任务统一用 `/astral_dice-.+\+forge_1\.20\.1\.jar/`(仅带 `+forge_1.20.1` 后缀);neoforge-1.21.1 仅 `pushToRootBuild` 带 `contains('+neoforge_')` 过滤(根目录 `build/libs/` 双版本共存,不会误删 forge 产物),而 `pushToDevRun`/`pushToGame` 匹配**任意** `astral_dice-*.jar`(这两个目标目录本身只放单一版本,故无需过滤,同时也保证旧版本号残留会被清掉)。
+2. 推送时**先删除、后复制**:`pushToDevRun`/`pushToGame`/`pushToRootBuild` 三个任务均先清空目标目录中的旧产物、再复制新 jar,各目录只保留本次构建产物。清理匹配范围(**实测**,勿按"都会按后缀过滤"理解):forge-1.20.1 三个任务统一用 `/astral_dice-.+\+forge_1\.20\.1\.jar/`(仅带 `+forge_1.20.1` 后缀);`neoforge-1.21.1` 与 `neoforge-26.1.2` 仅 `pushToRootBuild` 带**各自完整后缀**过滤(`contains('+neoforge_1.21.1')` / `contains('+neoforge_26.1.2')`,根目录 `build/libs/` 多版本共存,不得写成宽泛的 `+neoforge_`),而各自的 `pushToDevRun`/`pushToGame` 匹配**任意** `astral_dice-*.jar`(这两个目标目录本身只放单一版本,故无需过滤,同时也保证旧版本号残留会被清掉)。
 3. 整合包根目录不存在时（如 CI 环境）`pushToGame` 自动跳过并仅输出警告，不影响构建。
 4. forge-1.20.1 子项目产物分两级：`pushToDevRun` 取 `build/devlibs` 未重混淆 jar（dev 环境 Mojmap 名），`pushToGame` 取 `build/libs` 重混淆 jar（生产 SRG 名），推错方向会 `NoSuchFieldError`——不要改动该取值逻辑。
 5. **禁止自动启动 runClient / 冒烟测试（自动化测试流程子配置例外）**：无流程的手动 runClient / 冒烟测试一律禁止，游戏内验证默认由用户手动运行；**仅当经「自动化测试流程（Automated Testing）」子配置（见下方章节）启动的自动化 runClient 允许**，且必须按该流程执行并产出报告。

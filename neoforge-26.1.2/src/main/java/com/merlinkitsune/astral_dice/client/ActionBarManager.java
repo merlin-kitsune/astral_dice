@@ -3,7 +3,7 @@ package com.merlinkitsune.astral_dice.client;
 import com.merlinkitsune.astral_dice.component.GameplayConstants;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 
 /**
@@ -29,7 +29,7 @@ public final class ActionBarManager {
         return mc.level != null ? mc.level.getGameTime() : 0;
     }
 
-    public static void render(GuiGraphics guiGraphics, DeltaTracker deltaTracker) {
+    public static void render(GuiGraphicsExtractor guiGraphics, DeltaTracker deltaTracker) {
         if (message == null) return;
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null || mc.font == null) {
@@ -46,6 +46,6 @@ public final class ActionBarManager {
         int x = guiGraphics.guiWidth() / 2 - mc.font.width(message) / 2;
         int y = guiGraphics.guiHeight() - 58;
         int color = (alpha << 24) | 0xFFFFFF;
-        guiGraphics.drawString(mc.font, message, x, y, color, true);
+        guiGraphics.text(mc.font, message, x, y, color, true);
     }
 }

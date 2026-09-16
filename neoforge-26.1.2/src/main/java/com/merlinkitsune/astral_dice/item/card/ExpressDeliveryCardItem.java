@@ -33,6 +33,6 @@ public class ExpressDeliveryCardItem extends BaseEffectCardItem {
 
     @Override
     protected void applyEffect(Level level, Player user, LivingEntity applyTo, ItemStack stack) {
-        EffectTimerGuard.apply(applyTo, new MobEffectInstance(MobEffects.MOVEMENT_SPEED, DURATION_TICKS, 1, false, true));
+        EffectTimerGuard.apply(applyTo, new MobEffectInstance(MobEffects.SPEED, DURATION_TICKS, 1, false, true));
     }
 }

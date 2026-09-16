@@ -2,7 +2,7 @@ package com.merlinkitsune.astral_dice.trade;
 
 import com.merlinkitsune.astral_dice.item.ModItems;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.npc.Villager;
+import net.minecraft.world.entity.npc.villager.Villager;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.trading.ItemCost;
@@ -83,7 +83,8 @@ public final class EmeraldDiceTrade {
         if (!hasEmeraldDice(player)) return;
         MerchantOffers offers = merchant.getOffers();
         if (offers == null || offers.isEmpty()) return;
-        int level = merchant instanceof Villager villager ? villager.getVillagerData().getLevel() : 1;
+        // 26.1.2:VillagerData 已是 record,getLevel() -> level()
+        int level = merchant instanceof Villager villager ? villager.getVillagerData().level() : 1;
         player.sendMerchantOffers(player.containerMenu.containerId, offers, level,
                 merchant.getVillagerXp(), merchant.showProgressBar(), merchant.canRestock());
     }

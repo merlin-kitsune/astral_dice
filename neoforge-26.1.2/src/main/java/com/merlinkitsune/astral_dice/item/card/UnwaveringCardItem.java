@@ -39,6 +39,6 @@ public class UnwaveringCardItem extends BaseEffectCardItem {
         int newDuration = existing != null ? Math.max(existing.getDuration(), 3600) : 3600;
         applyTo.addEffect(new MobEffectInstance(ModEffects.UNWAVERING, newDuration, newAmp, false, false, true));
         // 抗性提升 II:固定 amplifier 1(不随层数提高),随重复使用刷新 3:00
-        EffectTimerGuard.apply(applyTo, new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE, 3600, 1, false, true));
+        EffectTimerGuard.apply(applyTo, new MobEffectInstance(MobEffects.RESISTANCE, 3600, 1, false, true));
     }
 }

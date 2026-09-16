@@ -30,7 +30,7 @@ import com.merlinkitsune.astral_dice.item.sign.LuluSignItem;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -51,7 +51,6 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.item.ProjectileWeaponItem;
 import net.minecraft.world.item.AxeItem;
 import net.minecraft.world.item.MaceItem;
-import net.minecraft.world.item.SwordItem;
 import net.minecraft.world.item.TridentItem;
 
 import net.neoforged.bus.api.EventPriority;
@@ -68,7 +67,7 @@ import net.neoforged.neoforge.event.entity.player.ItemTooltipEvent;
 import net.neoforged.neoforge.event.entity.ProjectileImpactEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
-import net.neoforged.neoforge.network.PacketDistributor;
+import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import top.theillusivec4.curios.api.CuriosApi;
 import top.theillusivec4.curios.api.type.inventory.ICurioStacksHandler;
 
@@ -268,7 +267,7 @@ public class ModTooltipHandler {
 
     // 立牌主动技能按键显示名(客户端取实际映射,服务端/异常回退 "J")
     private static String signKeyName() {
-        if (net.neoforged.fml.loading.FMLEnvironment.dist == net.neoforged.api.distmarker.Dist.CLIENT) {
+        if (net.neoforged.fml.loading.FMLEnvironment.getDist() == net.neoforged.api.distmarker.Dist.CLIENT) {
             try {
                 return com.merlinkitsune.astral_dice.client.KeyBindingSetup.ACTIVATE_SIGN_KEY
                         .getTranslatedKeyMessage().getString();
@@ -280,7 +279,7 @@ public class ModTooltipHandler {
 
     // 卡牌栏按键显示名(客户端取实际映射,服务端/异常回退 "H")
     private static String cardInventoryKeyName() {
-        if (net.neoforged.fml.loading.FMLEnvironment.dist == net.neoforged.api.distmarker.Dist.CLIENT) {
+        if (net.neoforged.fml.loading.FMLEnvironment.getDist() == net.neoforged.api.distmarker.Dist.CLIENT) {
             try {
                 return com.merlinkitsune.astral_dice.client.KeyBindingSetup.OPEN_CARD_INVENTORY_KEY
                         .getTranslatedKeyMessage().getString();
@@ -1210,9 +1209,7 @@ public class ModTooltipHandler {
             if (net.neoforged.fml.ModList.get().isLoaded("enigmaticlegacyplus")) {
                 addSignNoteLines(tooltip, "tooltip.astral_dice.card.fate_curse_mitigation");
             }
-            if (net.neoforged.fml.ModList.get().isLoaded("irons_spellbooks")) {
-                addSignNoteLines(tooltip, "tooltip.astral_dice.card.fate_spell_mana");
-            }
+            // 注:Iron's Spells 'n Spellbooks 的魔力消耗联动条目在 26.1.2 线移除(上游无 26.1.x 构建)
             addEffectCardPlayCountTooltip(tooltip, player);
             tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown",
                             effectCardCooldownSeconds(player))

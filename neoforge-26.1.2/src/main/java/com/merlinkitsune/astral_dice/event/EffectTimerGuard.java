@@ -6,7 +6,7 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.LivingEntity;
@@ -97,7 +97,7 @@ public final class EffectTimerGuard {
         Map<String, TimerEntry> map = player.getData(ModAttachments.EFFECT_TIMER_ENDS.get());
         if (map == null || map.isEmpty()) return;
         long now = player.level().getGameTime();
-        Registry<MobEffect> registry = player.level().registryAccess().registryOrThrow(Registries.MOB_EFFECT);
+        Registry<MobEffect> registry = player.level().registryAccess().lookupOrThrow(Registries.MOB_EFFECT);
         Map<String, TimerEntry> updated = new HashMap<>(map);
         boolean dirty = false;
         var it = updated.entrySet().iterator();
@@ -105,7 +105,7 @@ public final class EffectTimerGuard {
             var e = it.next();
             String key = e.getKey();
             TimerEntry timer = e.getValue();
-            var holderOpt = registry.getHolder(ResourceLocation.parse(key));
+            var holderOpt = registry.get(Identifier.parse(key));
             if (holderOpt.isEmpty()) {
                 it.remove();
                 dirty = true;

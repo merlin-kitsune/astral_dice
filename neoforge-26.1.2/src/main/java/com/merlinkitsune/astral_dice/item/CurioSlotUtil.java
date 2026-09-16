@@ -1,7 +1,7 @@
 package com.merlinkitsune.astral_dice.item;
 
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -46,9 +46,9 @@ public final class CurioSlotUtil {
     }
 
     // 下蹲右键自动装备:将手中物品放入指定饰品栏的第一个空槽位(仅服务端执行)
-    public static InteractionResultHolder<ItemStack> tryAutoEquip(Player player, ItemStack stack, String slotId) {
+    public static InteractionResult tryAutoEquip(Player player, ItemStack stack, String slotId) {
         if (player.level().isClientSide()) {
-            return InteractionResultHolder.success(stack);
+            return InteractionResult.SUCCESS;
         }
         // 立牌/筹码需要先佩戴骰子
         if (!"dice".equals(slotId) && !hasDiceEquipped(player)) {
@@ -57,30 +57,30 @@ public final class CurioSlotUtil {
                         new ActionBarPayload(Component.translatable("msg.astral_dice.need_dice")
                                 .withStyle(ChatFormatting.RED), GameplayConstants.ACTIONBAR_DURATION_TICKS));
             }
-            return InteractionResultHolder.fail(stack);
+            return InteractionResult.FAIL;
         }
 
         // 重复装备限制:同类型饰品已装备时不允许自动装备
         if (hasSameItemEquipped(player, stack)) {
-            return InteractionResultHolder.fail(stack);
+            return InteractionResult.FAIL;
         }
         var curios = CuriosApi.getCuriosInventory(player);
         if (curios.isEmpty()) {
-            return InteractionResultHolder.pass(stack);
+            return InteractionResult.PASS;
         }
         var handlerOpt = curios.get().getStacksHandler(slotId);
         if (handlerOpt.isEmpty()) {
-            return InteractionResultHolder.pass(stack);
+            return InteractionResult.PASS;
         }
         var handler = handlerOpt.get();
         for (int i = 0; i < handler.getSlots(); i++) {
             if (handler.getStacks().getStackInSlot(i).isEmpty()) {
                 handler.getStacks().setStackInSlot(i, stack.copy());
                 stack.shrink(1);
-                return InteractionResultHolder.success(stack);
+                return InteractionResult.SUCCESS;
             }
         }
-        return InteractionResultHolder.pass(stack);
+        return InteractionResult.PASS;
     }
 
     // 是否为"玩家/系统真实移除该饰品"(2026-09-15 用户裁决:仅真实移除才清理,

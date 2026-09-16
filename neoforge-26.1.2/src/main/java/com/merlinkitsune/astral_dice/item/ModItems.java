@@ -100,10 +100,10 @@ public class ModItems {
     public static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(AstralDiceMod.MODID);
 
     private static final net.minecraft.tags.TagKey<Item> COMBAT_CARDS_TAG =
-            net.minecraft.tags.ItemTags.create(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(
+            net.minecraft.tags.ItemTags.create(net.minecraft.resources.Identifier.fromNamespaceAndPath(
                     AstralDiceMod.MODID, "combat_cards"));
     private static final net.minecraft.tags.TagKey<Item> EFFECT_CARDS_TAG =
-            net.minecraft.tags.ItemTags.create(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(
+            net.minecraft.tags.ItemTags.create(net.minecraft.resources.Identifier.fromNamespaceAndPath(
                     AstralDiceMod.MODID, "effect_cards"));
 
     // ═══════════════════════════════════════════════════════════════════════════

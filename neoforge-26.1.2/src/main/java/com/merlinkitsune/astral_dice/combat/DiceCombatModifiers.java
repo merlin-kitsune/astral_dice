@@ -22,7 +22,7 @@ import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.sign.PadmanSignItem;
 import com.merlinkitsune.astral_dice.item.BossEntityUtil;
 import com.merlinkitsune.astral_dice.item.StarLightManager;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
@@ -164,7 +164,7 @@ public final class DiceCombatModifiers {
         if (player == null || player.level().isClientSide()) return;
         AttributeInstance attr = player.getAttribute(Attributes.ARMOR);
         if (attr == null) return;
-        ResourceLocation id = ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID, modifierKey);
+        Identifier id = Identifier.fromNamespaceAndPath(AstralDiceMod.MODID, modifierKey);
         double armor = defensePoints * 2.0;
         var existing = attr.getModifier(id);
         if (armor <= 0) {
@@ -208,7 +208,7 @@ public final class DiceCombatModifiers {
             return ap;
         });
         registerAttackModifier((ctx, ap) -> {
-            var strength = ctx.attacker.getEffect(MobEffects.DAMAGE_BOOST);
+            var strength = ctx.attacker.getEffect(MobEffects.STRENGTH);
             if (strength != null) {
                 ap += (strength.getAmplifier() + 1) * 2;
             }
@@ -508,7 +508,7 @@ public final class DiceCombatModifiers {
         });
 
         // === 内置:受击侧伤害修饰器 —— 末影骰子「雨中/水下受伤 +40%」(A3) ===
-        // 判定口径**原样复用**原实现:佩戴末影骰子 + isInWaterRainOrBubble()(雨/水/气泡柱)。
+        // 判定口径**原样复用**原实现:佩戴末影骰子 + isInWaterOrRain()(雨/水/气泡柱)。
         // 以"实时谓词"注册、不落地任何状态 ⇒ 脱下末影骰子或离开雨/水后该倍率立即失效。
         // 唯一应用点是 applyVictimDamageModifiers(EnderDiceHandler@HIGH 调用):覆盖环境/怪物/弹射物/
         // 非赐福攻击等全部来源;骰战路径只搬运 instanceVictimFactor,不再二次消费(见 applyVictimDamageModifiers 注释)。
@@ -516,7 +516,7 @@ public final class DiceCombatModifiers {
             if (victim.level().isClientSide()) return 1.0;
             if (!(victim instanceof Player player)) return 1.0;
             if (!com.merlinkitsune.astral_dice.event.EnderDiceHandler.hasEnderDie(player)) return 1.0;
-            if (!player.isInWaterRainOrBubble()) return 1.0;
+            if (!player.isInWaterOrRain()) return 1.0;
             return com.merlinkitsune.astral_dice.event.EnderDiceHandler.RAIN_WATER_DAMAGE_MULTIPLIER;
         });
     }

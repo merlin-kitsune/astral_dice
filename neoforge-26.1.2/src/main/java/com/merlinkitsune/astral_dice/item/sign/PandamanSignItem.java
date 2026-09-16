@@ -8,9 +8,9 @@ import com.merlinkitsune.astral_dice.item.HealingManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.chip.FriendshipBadgeChipItem;
 import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.InteractionResult;
 import net.neoforged.neoforge.event.entity.living.MobEffectEvent;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.LivingEntity;
@@ -87,9 +87,9 @@ public class PandamanSignItem extends BaseSignItem {
     }
 
     @Override
-    protected InteractionResultHolder<ItemStack> handleUse(Level level, Player player, ItemStack stack) {
-        if (level.isClientSide) {
-            return InteractionResultHolder.success(stack);
+    protected InteractionResult handleUse(Level level, Player player, ItemStack stack) {
+        if (level.isClientSide()) {
+            return InteractionResult.SUCCESS;
         }
         // 1. 获得随机治疗类效果牌
         ItemStack randomHealingCard = switch (ThreadLocalRandom.current().nextInt(3)) {
@@ -113,7 +113,7 @@ public class PandamanSignItem extends BaseSignItem {
                 mob.setTarget(player);
             }
         }
-        return InteractionResultHolder.success(stack);
+        return InteractionResult.SUCCESS;
     }
 
     // 主动技能 ActionBar 反馈
@@ -190,7 +190,7 @@ public class PandamanSignItem extends BaseSignItem {
         AttributeInstance attr = player.getAttribute(Attributes.MAX_HEALTH);
         if (attr == null) return;
         int bonus = ModAttachments.getPandamanMaxHealthBonus(player);
-        ResourceLocation id = ResourceLocation.fromNamespaceAndPath(
+        Identifier id = Identifier.fromNamespaceAndPath(
                 AstralDiceMod.MODID, MAX_HEALTH_MODIFIER_KEY);
         AttributeModifier existing = attr.getModifier(id);
         if (bonus <= 0) {

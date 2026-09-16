@@ -3,7 +3,7 @@ package com.merlinkitsune.astral_dice.client;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.item.sign.NancyLuSignItem;
 import net.minecraft.client.Minecraft;
-import net.minecraft.world.entity.player.Player;
+import net.minecraft.client.player.LocalPlayer;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -35,17 +35,24 @@ public class NancyLuClientEvents {
     }
 
     @SubscribeEvent
-    public static void onRenderPlayer(RenderPlayerEvent.Pre event) {
-        Player player = event.getEntity();
-        if (player != Minecraft.getInstance().player) return;
-        if (NancyLuSignItem.isHiddenClient(player)) {
+    public static void onRenderPlayer(RenderPlayerEvent.Pre<?> event) {
+        // 26.1.2:渲染全面改为「render state」模型,RenderPlayerEvent.Pre 不再持有实体
+        // (旧的 getEntity() 已删除),改为经 getRenderState() 取本次渲染的状态对象。
+        // ⚠️ 形参必须写成 `Pre<?>`(通配符):裸 `Pre` 会连**父类**的类型参数一起擦除,
+        //    getRenderState() 退化成 LivingEntityRenderState,取不到 AvatarRenderState#id。
+        // AvatarRenderState#id 由原版 AvatarRenderer 写入 = entity.getId()(AvatarRenderer.java:198),
+        // 故用它与本机玩家 id 比对即可精确锁定「本机玩家」。
+        LocalPlayer self = Minecraft.getInstance().player;
+        if (self == null) return;
+        if (event.getRenderState().id != self.getId()) return;
+        if (NancyLuSignItem.isHiddenClient(self)) {
             event.setCanceled(true);
         }
     }
 
     @SubscribeEvent
     public static void onRenderHand(RenderHandEvent event) {
-        Player player = Minecraft.getInstance().player;
+        LocalPlayer player = Minecraft.getInstance().player;
         if (player != null && NancyLuSignItem.isHiddenClient(player)) {
             event.setCanceled(true);
         }

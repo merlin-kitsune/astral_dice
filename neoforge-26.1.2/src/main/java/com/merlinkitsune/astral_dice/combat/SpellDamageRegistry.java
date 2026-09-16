@@ -7,12 +7,12 @@ import com.merlinkitsune.astral_dice.item.MarkManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.damagesource.DamageType;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.projectile.AbstractArrow;
+import net.minecraft.world.entity.projectile.arrow.AbstractArrow;
 import net.minecraft.world.entity.projectile.ThrowableProjectile;
 
 import java.util.ArrayList;
@@ -153,7 +153,7 @@ public final class SpellDamageRegistry {
 
     private static ResourceKey<DamageType> key(String namespace, String path) {
         return ResourceKey.create(Registries.DAMAGE_TYPE,
-                ResourceLocation.fromNamespaceAndPath(namespace, path));
+                Identifier.fromNamespaceAndPath(namespace, path));
     }
 
     static {

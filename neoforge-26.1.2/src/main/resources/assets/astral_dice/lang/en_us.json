@@ -390,7 +390,7 @@
   "itemGroup.astral_dice": "Astral Dice Play",
   "key.astral_dice.activate_sign": "Activate Sign Skill",
   "key.astral_dice.open_card_inventory": "Open Card Inventory",
-  "key.categories.astral_dice": "Astral Dice Play",
+  "key.category.astral_dice.main": "Astral Dice Play",
   "msg.astral_dice.bonnie_ready": "Detective sign: active skill activated — hit a target matching the Dice Blessing trigger condition to apply Undercover Investigation",
   "msg.astral_dice.moses_ready": "Gunsmith sign: active skill activated — attack a normal hostile to apply Broken",
   "msg.astral_dice.moses_apply": "Gunsmith sign: Broken applied",

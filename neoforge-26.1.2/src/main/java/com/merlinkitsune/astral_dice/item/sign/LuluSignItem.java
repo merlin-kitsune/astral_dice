@@ -4,14 +4,14 @@ import com.merlinkitsune.astral_dice.combat.HostileTargets;
 import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
 
 import com.merlinkitsune.astral_dice.component.GameplayConstants;
-import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.TamableAnimal;
-import net.minecraft.world.entity.animal.Pig;
+import net.minecraft.world.entity.animal.pig.Pig;
 import net.minecraft.world.entity.animal.camel.Camel;
-import net.minecraft.world.entity.animal.horse.AbstractHorse;
+import net.minecraft.world.entity.animal.equine.AbstractHorse;
 import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.monster.Strider;
 import net.minecraft.world.entity.player.Player;
@@ -63,15 +63,15 @@ public class LuluSignItem extends BaseSignItem {
         HealingManager.add(player, 1);
     }
 
-    protected InteractionResultHolder<ItemStack> handleUse(Level level, Player player, ItemStack stack) {
-        if (level.isClientSide) {
-            return InteractionResultHolder.success(stack);
+    protected InteractionResult handleUse(Level level, Player player, ItemStack stack) {
+        if (level.isClientSide()) {
+            return InteractionResult.SUCCESS;
         }
         // 主动技能:自身获得 3 点"治愈"(上限为玩家最大生命值的一半,即 ♥ 数)
         HealingManager.add(player, 3);
 
         // 自身获得瞬间治疗 1
-        player.addEffect(new MobEffectInstance(MobEffects.HEAL, 1, 0, false, true));
+        player.addEffect(new MobEffectInstance(MobEffects.INSTANT_HEALTH, 1, 0, false, true));
 
         AABB aabb = player.getBoundingBox().inflate(GameplayConstants.LULU_ACTIVE_RANGE);
         List<LivingEntity> nearby = level.getEntitiesOfClass(LivingEntity.class, aabb,
@@ -80,17 +80,17 @@ public class LuluSignItem extends BaseSignItem {
         for (LivingEntity entity : nearby) {
             if (HostileTargets.isHostile(player, entity)) {
                 // 敌对生物:缓慢 60 秒
-                EffectTimerGuard.apply(entity, new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, 1200, 0, false, true));
+                EffectTimerGuard.apply(entity, new MobEffectInstance(MobEffects.SLOWNESS, 1200, 0, false, true));
             } else if (isHealTarget(entity, player)) {
                 // 玩家/宠物/可骑乘生物:瞬间治疗 1
-                entity.addEffect(new MobEffectInstance(MobEffects.HEAL, 1, 0, false, true));
+                entity.addEffect(new MobEffectInstance(MobEffects.INSTANT_HEALTH, 1, 0, false, true));
                 // 友情徽章:对友方玩家施加治疗时,双方各获得 2 点治愈
                 if (entity instanceof Player targetPlayer) {
                     FriendshipBadgeChipItem.onHealApplied(player, targetPlayer);
                 }
             }
         }
-        return InteractionResultHolder.success(stack);
+        return InteractionResult.SUCCESS;
     }
 
     // 判定可治疗的友好目标:玩家、玩家驯服的宠物、可骑乘生物(马/驴/骡等、猪、炽足兽、骆驼)

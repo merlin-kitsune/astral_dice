@@ -166,7 +166,7 @@ public final class EffectCardPeriod {
     private static String pendingSourceId(EffectPendingSource source, int index) {
         Holder<MobEffect> effect = source.effect();
         if (effect != null) {
-            return effect.unwrapKey().map(key -> key.location().getPath()).orElse("source_" + index);
+            return effect.unwrapKey().map(key -> key.identifier().getPath()).orElse("source_" + index);
         }
         return "source_" + index;
     }

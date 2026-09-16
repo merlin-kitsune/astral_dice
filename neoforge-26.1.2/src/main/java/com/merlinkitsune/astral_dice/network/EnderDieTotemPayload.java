@@ -5,7 +5,7 @@ import io.netty.buffer.ByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
 import net.neoforged.neoforge.network.PacketDistributor;
@@ -16,7 +16,7 @@ import net.neoforged.neoforge.network.PacketDistributor;
  */
 public record EnderDieTotemPayload(int entityId) implements CustomPacketPayload {
     public static final CustomPacketPayload.Type<EnderDieTotemPayload> TYPE =
-            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID, "ender_die_totem"));
+            new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath(AstralDiceMod.MODID, "ender_die_totem"));
 
     public static final StreamCodec<ByteBuf, EnderDieTotemPayload> STREAM_CODEC = StreamCodec.composite(
             ByteBufCodecs.VAR_INT, EnderDieTotemPayload::entityId,

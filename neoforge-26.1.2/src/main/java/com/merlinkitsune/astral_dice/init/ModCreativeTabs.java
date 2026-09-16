@@ -7,7 +7,7 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.CreativeModeTabs;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import vazkii.patchouli.common.item.ItemModBook;
@@ -26,7 +26,7 @@ public class ModCreativeTabs {
             .displayItems((params, output) -> {
                 // 恋的规则书（帕秋莉手册，置顶）
                 if (ModList.get().isLoaded("patchouli")) {
-                    output.accept(ItemModBook.forBook(ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID, "astral_guide")));
+                    output.accept(ItemModBook.forBook(Identifier.fromNamespaceAndPath(AstralDiceMod.MODID, "astral_guide")).create());
                 }
                 // 材料（最前端）
                 output.accept(ModItems.STAR_COIN.get());

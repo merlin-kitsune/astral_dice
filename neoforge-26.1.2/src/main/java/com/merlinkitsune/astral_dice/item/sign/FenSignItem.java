@@ -4,7 +4,7 @@ import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
 
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
-import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.player.Player;
@@ -62,9 +62,9 @@ public class FenSignItem extends BaseSignItem {
     }
 
     @Override
-    protected InteractionResultHolder<ItemStack> handleUse(Level level, Player player, ItemStack stack) {
-        if (level.isClientSide) {
-            return InteractionResultHolder.success(stack);
+    protected InteractionResult handleUse(Level level, Player player, ItemStack stack) {
+        if (level.isClientSide()) {
+            return InteractionResult.SUCCESS;
         }
         // 主动"战斗爽":攻击力 +3,持续 1:00(visible=true 使效果图标在 HUD 正常显示)
         player.addEffect(new MobEffectInstance(ModEffects.FEN_FRENZY,
@@ -74,11 +74,11 @@ public class FenSignItem extends BaseSignItem {
         // 若拥有养精蓄锐:恢复 6 点血量并获得迅捷 1:00
         if (stacks > 0) {
             player.heal(ACTIVE_HEAL);
-            EffectTimerGuard.apply(player, new MobEffectInstance(MobEffects.MOVEMENT_SPEED,
+            EffectTimerGuard.apply(player, new MobEffectInstance(MobEffects.SPEED,
                     FRENZY_DURATION_TICKS, 0, false, true));
         }
         // 注:"战斗爽·溅射"已移至被动(触发骰神赐福且满层时消耗 2 层),主动不再消耗层数
-        return InteractionResultHolder.success(stack);
+        return InteractionResult.SUCCESS;
     }
 
     // 第二批「三态化」:主动施加 "战斗爽" 1:00(若有养精蓄锐则迅捷同为 1:00)⇒ 进入锁定(生效中)态

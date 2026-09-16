@@ -9,7 +9,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.neoforge.event.level.BlockEvent;
+import net.neoforged.neoforge.event.level.block.BreakBlockEvent;
 import top.theillusivec4.curios.api.CuriosApi;
 
 /**
@@ -42,7 +42,7 @@ public final class NetherrackDiceHandler {
     }
 
     @SubscribeEvent
-    public static void onOreMined(BlockEvent.BreakEvent event) {
+    public static void onOreMined(BreakBlockEvent event) {
         if (!(event.getLevel() instanceof ServerLevel level)) return;
         Player player = event.getPlayer();
         if (player == null || player.isSpectator()) return;

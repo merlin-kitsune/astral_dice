@@ -7,7 +7,7 @@ import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.item.ModItems;
-import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.player.Player;
@@ -56,18 +56,18 @@ public class JasmineSignItem extends BaseSignItem {
     }
 
     @Override
-    protected InteractionResultHolder<ItemStack> handleUse(Level level, Player player, ItemStack stack) {
-        if (!level.isClientSide) {
+    protected InteractionResult handleUse(Level level, Player player, ItemStack stack) {
+        if (!level.isClientSide()) {
             // 主动:获得"清扫"效果 2 分钟(迅捷 + 护甲 -30%)
             player.addEffect(new MobEffectInstance(ModEffects.JASMINE_SWEEP, 2400, 0, false, false, true));
             // 随机获得以下任一效果(时长与主动技能同步 2 分钟)
             if (ThreadLocalRandom.current().nextBoolean()) {
-                EffectTimerGuard.apply(player, new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE, 2400, 0, false, true)); // 抗性提升 2 分钟
+                EffectTimerGuard.apply(player, new MobEffectInstance(MobEffects.RESISTANCE, 2400, 0, false, true)); // 抗性提升 2 分钟
             } else {
-                EffectTimerGuard.apply(player, new MobEffectInstance(MobEffects.DAMAGE_BOOST, 2400, 0, false, true)); // 力量 2 分钟
+                EffectTimerGuard.apply(player, new MobEffectInstance(MobEffects.STRENGTH, 2400, 0, false, true)); // 力量 2 分钟
             }
         }
-        return InteractionResultHolder.success(stack);
+        return InteractionResult.SUCCESS;
     }
 
     // 第二批「三态化」:主动施加 "清扫" 2 分钟(随机附加的抗性提升/力量同长)⇒ 进入锁定(生效中)态

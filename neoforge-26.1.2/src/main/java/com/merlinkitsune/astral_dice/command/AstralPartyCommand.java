@@ -90,8 +90,14 @@ import java.util.Optional;
  */
 @EventBusSubscriber(modid = AstralDiceMod.MODID)
 public final class AstralPartyCommand {
-    /** 仅 OP:权限级 2 */
-    private static final int REQUIRED_PERMISSION_LEVEL = 2;
+    /**
+     * 仅 OP 命令所需权限。
+     * <p><b>26.1.2 迁移</b>:数字权限等级(int)被 {@code PermissionSet}/{@code Permission} 取代,
+     * 原「权限级 2」= {@code PermissionLevel.GAMEMASTERS},对应
+     * {@code Permissions.COMMANDS_GAMEMASTER}。
+     */
+    private static final net.minecraft.server.permissions.Permission REQUIRED_PERMISSION =
+            net.minecraft.server.permissions.Permissions.COMMANDS_GAMEMASTER;
     /** 可选的目标参数名 */
     private static final String ARG_TARGETS = "targets";
 
@@ -176,7 +182,7 @@ public final class AstralPartyCommand {
     }
 
     private static boolean hasPermission(CommandSourceStack source) {
-        return source.hasPermission(REQUIRED_PERMISSION_LEVEL);
+        return source.permissions().hasPermission(REQUIRED_PERMISSION);
     }
 
     /** 作用于一批玩家目标的子命令实现 */
@@ -317,7 +323,7 @@ public final class AstralPartyCommand {
     private static List<String> buildDumpLines(ServerPlayer player) {
         List<String> lines = new ArrayList<>();
         lines.add(DUMP_PREFIX + DUMP_SEP + DUMP_GROUP_HEAD + DUMP_SEP
-                + player.getGameProfile().getName() + "=" + player.getUUID());
+                + player.getGameProfile().name() + "=" + player.getUUID());
         appendLockRaw(lines, player);
         appendLockDerived(lines, player);
         appendSign(lines, player);
@@ -438,7 +444,7 @@ public final class AstralPartyCommand {
 
     /** 效果注册 id(全限定,如 {@code astral_dice:berserk});取不到时退化为固定占位符 */
     private static String effectId(Holder<MobEffect> effect) {
-        return effect.unwrapKey().map(key -> key.location().toString()).orElse("astral_dice:unknown");
+        return effect.unwrapKey().map(key -> key.identifier().toString()).orElse("astral_dice:unknown");
     }
 
     /**

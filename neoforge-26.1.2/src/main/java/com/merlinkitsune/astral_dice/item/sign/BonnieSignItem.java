@@ -5,7 +5,7 @@ import com.merlinkitsune.astral_dice.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.event.ModEffectRemoval;
-import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -89,16 +89,16 @@ public class BonnieSignItem extends BaseSignItem {
     }
 
     @Override
-    protected InteractionResultHolder<ItemStack> handleUse(Level level, Player player, ItemStack stack) {
-        if (level.isClientSide) {
-            return InteractionResultHolder.success(stack);
+    protected InteractionResult handleUse(Level level, Player player, ItemStack stack) {
+        if (level.isClientSide()) {
+            return InteractionResult.SUCCESS;
         }
         // 主动:进入等待期(玩家级状态),等待攻击目标释放"隐匿调查";施加"待命"效果提示玩家
         ModAttachments.setSignReadyType(player, READY_TYPE);
         ModAttachments.setSignReadyExpire(player,
                 level.getGameTime() + GameplayConstants.SKILL_WAIT_SECONDS * 20L);
         player.addEffect(new MobEffectInstance(ModEffects.BONNIE_READY, Integer.MAX_VALUE, 0, false, false, true));
-        return InteractionResultHolder.success(stack);
+        return InteractionResult.SUCCESS;
     }
 
     // 被动 2(击杀钩子,由 BaseSignItem.invokeKillHooks 分发):

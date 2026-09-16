@@ -7,7 +7,7 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.SimpleMenuProvider;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
@@ -15,7 +15,7 @@ import top.theillusivec4.curios.api.CuriosApi;
 
 public record OpenCardInventoryPayload() implements CustomPacketPayload {
     public static final CustomPacketPayload.Type<OpenCardInventoryPayload> TYPE =
-            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID, "open_card_inventory"));
+            new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath(AstralDiceMod.MODID, "open_card_inventory"));
 
     public static final StreamCodec<FriendlyByteBuf, OpenCardInventoryPayload> STREAM_CODEC = StreamCodec.of(
             (buf, payload) -> {},
@@ -32,7 +32,7 @@ public record OpenCardInventoryPayload() implements CustomPacketPayload {
             if (context.player() instanceof ServerPlayer serverPlayer) {
                 var curios = CuriosApi.getCuriosInventory(serverPlayer);
                 if (curios.isEmpty() || curios.get().findFirstCurio(DiceCurioItem::isDiceItem).isEmpty()) {
-                    serverPlayer.displayClientMessage(Component.translatable("msg.astral_dice.no_dice_equipped"), true);
+                    serverPlayer.sendOverlayMessage(Component.translatable("msg.astral_dice.no_dice_equipped"));
                     return;
                 }
                 serverPlayer.openMenu(new SimpleMenuProvider(

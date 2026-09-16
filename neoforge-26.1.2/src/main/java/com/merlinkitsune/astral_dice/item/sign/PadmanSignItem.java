@@ -2,7 +2,7 @@ package com.merlinkitsune.astral_dice.item.sign;
 
 import com.merlinkitsune.astral_dice.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
-import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
@@ -32,15 +32,15 @@ public class PadmanSignItem extends BaseSignItem {
     }
 
     @Override
-    protected InteractionResultHolder<ItemStack> handleUse(Level level, Player player, ItemStack stack) {
-        if (level.isClientSide) {
-            return InteractionResultHolder.success(stack);
+    protected InteractionResult handleUse(Level level, Player player, ItemStack stack) {
+        if (level.isClientSide()) {
+            return InteractionResult.SUCCESS;
         }
         // 主动:重置被动计数器,本次攻击/防御点数取最大值(4/4)
         stack.set(ModDataComponents.PADMAN_ATK_BONUS.get(), 4);
         stack.set(ModDataComponents.PADMAN_DEF_BONUS.get(), 4);
         stack.set(ModDataComponents.PADMAN_LAST_REFRESH.get(), player.level().getGameTime());
-        return InteractionResultHolder.success(stack);
+        return InteractionResult.SUCCESS;
     }
 
     @Override

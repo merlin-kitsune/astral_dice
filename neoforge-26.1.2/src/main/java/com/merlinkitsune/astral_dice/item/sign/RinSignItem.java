@@ -3,7 +3,7 @@ package com.merlinkitsune.astral_dice.item.sign;
 import com.merlinkitsune.astral_dice.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
-import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
@@ -36,9 +36,9 @@ public class RinSignItem extends BaseSignItem {
     }
 
     @Override
-    protected InteractionResultHolder<ItemStack> handleUse(Level level, Player player, ItemStack stack) {
-        if (level.isClientSide) {
-            return InteractionResultHolder.success(stack);
+    protected InteractionResult handleUse(Level level, Player player, ItemStack stack) {
+        if (level.isClientSide()) {
+            return InteractionResult.SUCCESS;
         }
         // 主动:获得一张"活体书页"(专属牌,绑定获得者);若使用前物品栏中无活体书页则共获得两张
         int giveCount = countLivingPages(player) == 0 ? 2 : 1;
@@ -47,13 +47,13 @@ public class RinSignItem extends BaseSignItem {
             ExclusiveCardUtil.setOwner(page, player);
             VitaminPillChipItem.giveCard(player, page);
         }
-        return InteractionResultHolder.success(stack);
+        return InteractionResult.SUCCESS;
     }
 
     // 统计物品栏中的活体书页数量
     private static int countLivingPages(Player player) {
         int count = 0;
-        for (ItemStack s : player.getInventory().items) {
+        for (ItemStack s : player.getInventory().getNonEquipmentItems()) {
             if (!s.isEmpty() && s.is(ModItems.LIVING_PAGE.get())) {
                 count += s.getCount();
             }

@@ -63,7 +63,9 @@ public final class RailgunBolts {
         ServerPlayer cause = bolt == null ? null : bolt.getCause();
         if (!HostileTargets.isHostile(cause, target)) return false;
         if (target instanceof OwnableEntity ownable) {
-            if (cause != null && cause.getUUID().equals(ownable.getOwnerUUID())) return false;
+            // 26.1.2:OwnableEntity 不再暴露 getOwnerUUID(),改为 getOwner()/getOwnerReference()
+            var owner = ownable.getOwner();
+            if (cause != null && owner != null && cause.getUUID().equals(owner.getUUID())) return false;
         }
         return true;
     }

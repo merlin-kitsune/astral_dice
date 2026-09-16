@@ -10,22 +10,34 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
-import net.neoforged.neoforge.network.PacketDistributor;
+import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import org.lwjgl.glfw.GLFW;
 
 public class KeyBindingSetup {
+    /**
+     * 按键分类。
+     * <p><b>26.1.2 迁移</b>:1.21.1 的 {@code KeyMapping} 构造器接受**字符串**分类名(配合
+     * {@code key.categories.astral_dice} 翻译键);26.1.2 改为 {@code KeyMapping.Category} 记录类型,
+     * 其 {@code label()} = {@code Component.translatable(id.toLanguageKey("key.category"))} ⇒
+     * 翻译键为 {@code key.category.<namespace>.<path>},故本模组注册 {@code astral_dice:main},
+     * 语言文件使用 {@code key.category.astral_dice.main}。
+     */
+    public static final KeyMapping.Category CATEGORY =
+            KeyMapping.Category.register(
+                    net.minecraft.resources.Identifier.fromNamespaceAndPath(AstralDiceMod.MODID, "main"));
+
     public static final KeyMapping ACTIVATE_SIGN_KEY = new KeyMapping(
             "key.astral_dice.activate_sign",
             InputConstants.Type.KEYSYM,
             GLFW.GLFW_KEY_J,
-            "key.categories.astral_dice"
+            CATEGORY
     );
 
     public static final KeyMapping OPEN_CARD_INVENTORY_KEY = new KeyMapping(
             "key.astral_dice.open_card_inventory",
             InputConstants.Type.KEYSYM,
             GLFW.GLFW_KEY_H,
-            "key.categories.astral_dice"
+            CATEGORY
     );
 
     @EventBusSubscriber(modid = AstralDiceMod.MODID, value = Dist.CLIENT)
@@ -36,10 +48,10 @@ public class KeyBindingSetup {
             if (player == null) return;
 
             while (ACTIVATE_SIGN_KEY.consumeClick()) {
-                PacketDistributor.sendToServer(new SignActivatePayload());
+                ClientPacketDistributor.sendToServer(new SignActivatePayload());
             }
             while (OPEN_CARD_INVENTORY_KEY.consumeClick()) {
-                PacketDistributor.sendToServer(new OpenCardInventoryPayload());
+                ClientPacketDistributor.sendToServer(new OpenCardInventoryPayload());
             }
         }
     }

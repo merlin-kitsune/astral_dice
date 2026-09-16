@@ -5,7 +5,7 @@ import net.minecraft.network.chat.Component;
 
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.LivingEntity;
@@ -134,14 +134,14 @@ public abstract class BaseEffectCardItem extends Item {
     }
 
     @Override
-    public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
+    public InteractionResult use(Level level, Player player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
 
-        if (level.isClientSide) {
+        if (level.isClientSide()) {
             // 客户端预检:出牌状态附件已同步到客户端,判定与服务端一致;
             // 被阻止时直接失败——不消耗、不播放使用动画,避免"消耗了却没效果"的错位
             if (isBlockedOnClient(player, stack)) {
-                return InteractionResultHolder.fail(stack);
+                return InteractionResult.FAIL;
             }
         } else {
             // 决定实际受益目标:下蹲+右键且允许对他人使用时,选择面前玩家;否则为自己
@@ -155,11 +155,11 @@ public abstract class BaseEffectCardItem extends Item {
 
             // 服务端权威判定 + 完整出牌流程
             if (!tryUseCard(level, player, applyTo, stack)) {
-                return InteractionResultHolder.fail(stack);
+                return InteractionResult.FAIL;
             }
         }
         stack.consume(1, player);
-        return InteractionResultHolder.sidedSuccess(stack, level.isClientSide());
+        return (level.isClientSide() ? InteractionResult.SUCCESS : InteractionResult.SUCCESS_SERVER);
     }
 
     @Override
@@ -168,7 +168,7 @@ public abstract class BaseEffectCardItem extends Item {
         if (!canUseOnOtherPlayers()) {
             return InteractionResult.PASS;
         }
-        if (player.level().isClientSide) {
+        if (player.level().isClientSide()) {
             // 客户端预检(同上):被阻止时不消耗、不返回成功
             if (isBlockedOnClient(player, stack)) {
                 return InteractionResult.FAIL;
@@ -190,8 +190,8 @@ public abstract class BaseEffectCardItem extends Item {
         if (exclusiveBlocked) return true;
         if (EffectCardPeriod.isBurstFull(player)) {
             int seconds = EffectCardPeriod.getRemainingBlockSeconds(player);
-            player.displayClientMessage(
-                    Component.translatable("msg.astral_dice.effect_card_burst_full", seconds), true);
+            player.sendOverlayMessage(
+                    Component.translatable("msg.astral_dice.effect_card_burst_full", seconds));
             return true;
         }
         return EffectCardPeriod.isBlocked(player);

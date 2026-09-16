@@ -13,7 +13,7 @@ import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
-import net.minecraft.world.inventory.ClickType;
+import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.inventory.DataSlot;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
@@ -76,7 +76,7 @@ public class CardInventoryMenu extends AbstractContainerMenu {
             addSlot(new DefenseCardSlot(attackSlots + i, CARD_SLOT_X_START + i * CARD_SLOT_SPACING, CARD_SLOT_DEFENSE_Y));
         }
 
-        for (int i = 0; i < playerInventory.items.size(); i++) {
+        for (int i = 0; i < playerInventory.getNonEquipmentItems().size(); i++) {
             Slot slot = new Slot(playerInventory, i, HIDDEN_X, HIDDEN_Y);
             addSlot(slot);
         }
@@ -231,8 +231,8 @@ public class CardInventoryMenu extends AbstractContainerMenu {
 
     private List<Slot> getSelectorSlots(boolean defense) {
         List<Slot> result = new ArrayList<>();
-        for (int i = 0; i < playerInventory.items.size(); i++) {
-            ItemStack stack = playerInventory.items.get(i);
+        for (int i = 0; i < playerInventory.getNonEquipmentItems().size(); i++) {
+            ItemStack stack = playerInventory.getNonEquipmentItems().get(i);
             String type = CardRegistry.itemToType(stack);
             if (type == null) continue;
             if (CardRegistry.isDefense(type) == defense) {
@@ -386,7 +386,7 @@ public class CardInventoryMenu extends AbstractContainerMenu {
 
         // 骰神赐福期间卡牌栏锁定:禁止插入/移除卡牌(服务端权威;客户端同逻辑避免操作闪烁)
         @Override
-        public void clicked(int slotId, int button, ClickType clickType, Player player) {
+        public void clicked(int slotId, int button, ContainerInput clickType, Player player) {
             if (player.hasEffect(ModEffects.DICE_BLESSING)) {
                 return;
             }

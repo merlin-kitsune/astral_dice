@@ -1,7 +1,7 @@
 package com.merlinkitsune.astral_dice.effect;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectCategory;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
@@ -19,7 +19,7 @@ public class UnwaveringEffect extends MobEffect {
     public UnwaveringEffect() {
         super(MobEffectCategory.BENEFICIAL, 0x4A90D9);
         this.addAttributeModifier(Attributes.ARMOR,
-                ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID, "unwavering_armor"),
+                Identifier.fromNamespaceAndPath(AstralDiceMod.MODID, "unwavering_armor"),
                 AttributeModifier.Operation.ADD_VALUE,
                 amp -> 8.0 * (amp + 1));
     }

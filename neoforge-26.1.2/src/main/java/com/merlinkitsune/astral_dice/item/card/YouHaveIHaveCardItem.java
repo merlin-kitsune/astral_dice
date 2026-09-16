@@ -2,7 +2,7 @@ package com.merlinkitsune.astral_dice.item.card;
 
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -36,9 +36,9 @@ public class YouHaveIHaveCardItem extends BaseEffectCardItem {
     }
 
     @Override
-    public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
+    public InteractionResult use(Level level, Player player, InteractionHand hand) {
         // 仅能对其他玩家使用,不能对自己使用
-        return InteractionResultHolder.fail(player.getItemInHand(hand));
+        return InteractionResult.FAIL;
     }
 
     @Override

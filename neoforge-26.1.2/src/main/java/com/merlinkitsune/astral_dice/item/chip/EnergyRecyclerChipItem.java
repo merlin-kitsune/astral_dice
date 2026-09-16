@@ -2,7 +2,7 @@ package com.merlinkitsune.astral_dice.item.chip;
 
 import com.merlinkitsune.astral_dice.item.ChargeManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
@@ -74,7 +74,7 @@ public class EnergyRecyclerChipItem extends BaseChipItem {
     private void updateSpeedBonus(Player player) {
         AttributeInstance attr = player.getAttribute(Attributes.MOVEMENT_SPEED);
         if (attr == null) return;
-        ResourceLocation id = attributeModifierId(SPEED_MODIFIER_SUFFIX);
+        Identifier id = attributeModifierId(SPEED_MODIFIER_SUFFIX);
         var existing = attr.getModifier(id);
         if (ChargeManager.getStacks(player) < SPEED_BONUS_CHARGE_REQUIRED) {
             if (existing != null) attr.removeModifier(id);

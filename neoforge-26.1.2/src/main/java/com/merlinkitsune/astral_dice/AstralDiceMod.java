@@ -25,7 +25,6 @@ import org.slf4j.LoggerFactory;
 import top.theillusivec4.curios.api.CuriosApi;
 import top.theillusivec4.curios.api.type.capability.ICurioItem;
 import com.merlinkitsune.astral_dice.combat.CardRegistry;
-import com.merlinkitsune.astral_dice.event.IronSpellbooksCompat;
 
 @Mod(AstralDiceMod.MODID)
 public class AstralDiceMod {
@@ -44,14 +43,12 @@ public class AstralDiceMod {
         backupOldConfigIfNeeded("astral_dice-common.toml", ModCommonConfig.CONFIG_VERSION);
         modContainer.registerConfig(ModConfig.Type.COMMON, ModCommonConfig.SPEC);
         modEventBus.register(this);
-        // Iron 的法术与魔法书联动:仅在模组加载时注册其事件处理器(类引用只在加载条件下触发)
-        if (net.neoforged.fml.ModList.get().isLoaded("irons_spellbooks")) {
-            net.neoforged.neoforge.common.NeoForge.EVENT_BUS
-                    .register(com.merlinkitsune.astral_dice.event.IronSpellbooksCompat.class);
-        }
+        // 注:Iron's Spells 'n Spellbooks 联动**在 26.1.2 不移植**——该模组在 Modrinth 上最高只发布到
+        //    1.21.1,没有 26.1.x 构建,故 IronSpellbooksCompat 与本子项目一并移除(见 docs/compat-26.1.2-neoforge.md)。
+        //    魔力消耗减半等联动行为随之在 26.1.2 线不可用。
         // Waystones 传送联动:仅在模组加载时反射注册事件,未安装时静默跳过
         com.merlinkitsune.astral_dice.event.WaystoneWarpCompat.init();
-        if (FMLEnvironment.dist == Dist.CLIENT) {
+        if (FMLEnvironment.getDist() == Dist.CLIENT) {
             modEventBus.addListener(this::registerScreens);
         }
     }

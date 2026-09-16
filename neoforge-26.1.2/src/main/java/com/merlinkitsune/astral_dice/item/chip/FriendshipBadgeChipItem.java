@@ -78,7 +78,7 @@ public class FriendshipBadgeChipItem extends BaseChipItem {
         if (!(event.getEntity() instanceof Player target)) return;
         MobEffectInstance effect = event.getEffectInstance();
         if (effect == null) return;
-        if (effect.getEffect().value() != MobEffects.HEAL.value()
+        if (effect.getEffect().value() != MobEffects.INSTANT_HEALTH.value()
                 && effect.getEffect().value() != MobEffects.REGENERATION.value()) return;
         Player healer = resolvePlayerSource(event.getEffectSource());
         if (healer == null || healer == target) return;

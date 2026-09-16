@@ -8,7 +8,7 @@ import com.merlinkitsune.astral_dice.event.ModEffectRemoval;
 import net.minecraft.ChatFormatting;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -108,8 +108,8 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
         // 2. 等待状态检查:存在等待目标释放的主动技能时按键无效
         if (isSkillWaiting(player)) return;
         // 3. 触发主动技能
-        InteractionResultHolder<ItemStack> result = sign.handleUse(player.level(), player, stack);
-        if (result.getResult() != InteractionResult.SUCCESS) return;
+        InteractionResult result = sign.handleUse(player.level(), player, stack);
+        if (!result.consumesAction()) return;
         // 4. 手持风扇-大筹码:使用主动技能后,获得一张随机效果牌(不含专属),并对周围范围内敌对目标施加标记
         FanBigChipItem.applyAfterSignSkill(player);
         FanSmallChipItem.applyAfterSignSkill(player);
@@ -253,9 +253,9 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
 
     // 按立牌注册 id 取回立牌实例(锁定态判定需要回调具体立牌覆写的"门控效果仍在")
     private static BaseSignItem lockSignItem(String signId) {
-        net.minecraft.resources.ResourceLocation id = net.minecraft.resources.ResourceLocation.tryParse(signId);
+        net.minecraft.resources.Identifier id = net.minecraft.resources.Identifier.tryParse(signId);
         if (id == null) return null;
-        net.minecraft.world.item.Item item = net.minecraft.core.registries.BuiltInRegistries.ITEM.get(id);
+        net.minecraft.world.item.Item item = net.minecraft.core.registries.BuiltInRegistries.ITEM.get(id).map(net.minecraft.core.Holder::value).orElse(null);
         return item instanceof BaseSignItem sign ? sign : null;
     }
 
@@ -354,14 +354,14 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
     }
 
     @Override
-    public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
+    public InteractionResult use(Level level, Player player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
         // 下蹲右键:自动装备到"stand"饰品栏
         if (player.isShiftKeyDown()) {
             return CurioSlotUtil.tryAutoEquip(player, stack, "stand");
         }
         // 右键行为仅为装备:主动技能统一由快捷键(立牌栏)触发,手持右键不触发任何技能
-        return InteractionResultHolder.fail(stack);
+        return InteractionResult.FAIL;
     }
 
     // 立牌被移除时:清除该立牌获得的增益/计数器/累计值,防止反复更换立牌实现效果叠加。
@@ -429,5 +429,5 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
         });
     }
 
-    protected abstract InteractionResultHolder<ItemStack> handleUse(Level level, Player player, ItemStack stack);
+    protected abstract InteractionResult handleUse(Level level, Player player, ItemStack stack);
 }

@@ -15,7 +15,7 @@
   ],
   "client": [
     "client.AstralUseItemGuardMixin",
-    "client.EffectRenderingInventoryScreenMixin",
+    "client.EffectsInInventoryMixin",
     "client.GuiMixin"
   ],
   "injectors": {

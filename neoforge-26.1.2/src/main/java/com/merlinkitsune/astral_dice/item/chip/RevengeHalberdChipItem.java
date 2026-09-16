@@ -33,8 +33,8 @@ public class RevengeHalberdChipItem extends BaseChipItem {
     // 是否拥有任意攻击触发效果
     public static boolean hasAttackTriggerEffect(Player player) {
         return player.hasEffect(MobEffects.WEAKNESS)
-                || player.hasEffect(MobEffects.MOVEMENT_SLOWDOWN)
-                || player.hasEffect(MobEffects.DIG_SLOWDOWN)
+                || player.hasEffect(MobEffects.SLOWNESS)
+                || player.hasEffect(MobEffects.MINING_FATIGUE)
                 || player.hasEffect(MobEffects.BLINDNESS)
                 || player.hasEffect(MobEffects.DARKNESS)
                 || player.hasEffect(MobEffects.WIND_CHARGED)
@@ -47,7 +47,7 @@ public class RevengeHalberdChipItem extends BaseChipItem {
     // 是否拥有任意防御触发效果
     public static boolean hasDefenseTriggerEffect(Player player) {
         return player.hasEffect(MobEffects.HUNGER)
-                || player.hasEffect(MobEffects.CONFUSION)
+                || player.hasEffect(MobEffects.NAUSEA)
                 || player.hasEffect(MobEffects.POISON)
                 || player.hasEffect(MobEffects.WITHER)
                 || player.hasEffect(MobEffects.RAID_OMEN)
