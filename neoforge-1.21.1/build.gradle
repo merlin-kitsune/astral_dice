@@ -29,8 +29,6 @@ repositories {
     maven { url = uri('https://maven.neoforged.net/releases') }
     // Curios API is resolved from the Modrinth maven.
     maven { url 'https://api.modrinth.com/maven' }
-    // Cloth Config(配置 GUI + AutoConfig)官方 maven
-    maven { url 'https://maven.shedaniel.me/' }
     // KubeJS + Rhino are resolved from the KubeJS maven.
     maven { url 'https://maven.latvian.dev/releases' }
     // KubeJS transitive dependency Architectury
@@ -174,11 +172,6 @@ dependencies {
     // 因此用 implementation 而非 modImplementation(net.neoforged.moddev 不提供后者)。
     implementation "${starengine_lib_group}:starengine_lib-neoforge-1.21.1:${starengine_lib_version}"
     implementation 'maven.modrinth:curios:yohfFbgD'
-    // Cloth Config(必须前置,见 neoforge.mods.toml):配置文件读写 + GUI + AutoConfig 全由它接管,
-    // schema 在 starengine_lib 的 StarEngineCommonConfig 里。
-    // 库虽然也依赖它,但库发布的是普通 jar,implementation 依赖不传递,故此处显式声明。
-    // 该版本为官方映射(实测 SRG 形态方法名 0 处),NeoForge 编译/生产同命名空间,无需重映射。
-    implementation "me.shedaniel.cloth:cloth-config-neoforge:${cloth_config_version}"
     // JEI(配方查看,测试环境用);19.39 系仍兼容本项目 neoforge 21.1.235(19.42+ 要求 ≥21.1.238)
     implementation "mezz.jei:jei-1.21.1-neoforge:19.39.0.372"
     // Mixin:NeoForge 运行时自带 Mixin,编译期仅需注解类;NeoForge 编译/运行同为 Mojmap,无需 refmap。
@@ -204,7 +197,6 @@ var generateModMetadata = tasks.register("generateModMetadata", ProcessResources
             mod_license            : mod_license,
             mod_version            : mod_version,
             starengine_lib_version_range: starengine_lib_version_range,
-            cloth_config_version_range: cloth_config_version_range,
     ]
     inputs.properties replaceProperties
     expand replaceProperties

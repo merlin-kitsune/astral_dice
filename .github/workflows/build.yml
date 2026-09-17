@@ -105,14 +105,14 @@ jobs:
 
       - name: Create/Update GitHub Release (tag push only, both JARs)
         # 打 tag(如 1.1.3)后自动发布:附件 = 1.21.1 与 1.20.1 两个 jar。
-        # 玩家还需要对应的前置:starengine_lib 与 cloth_config(见仓库 README)。
+        # 玩家还需要对应的前置:starengine_lib(见仓库 README)。
         if: startsWith(github.ref, 'refs/tags/')
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           TAG="${GITHUB_REF#refs/tags/}"
           LIB=$(grep '^starengine_lib_version=' neoforge-1.21.1/gradle.properties | cut -d'=' -f2)
-          NOTES="Astral Dice $TAG — 1.21.1 (NeoForge) + 1.20.1 (Forge)"$'\n\n'"Requires: starengine_lib $LIB (https://github.com/merlin-kitsune/starengine_lib/releases) and Cloth Config."
+          NOTES="Astral Dice $TAG — 1.21.1 (NeoForge) + 1.20.1 (Forge)"$'\n\n'"Requires: starengine_lib $LIB (https://github.com/merlin-kitsune/starengine_lib/releases)."
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release edit "$TAG" --title "Astral Dice $TAG" --notes "$NOTES"
           else

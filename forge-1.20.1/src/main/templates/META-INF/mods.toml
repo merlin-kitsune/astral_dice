@@ -102,13 +102,3 @@ config="${mod_id}.mixins.json"
     versionRange="${starengine_lib_version_range}"
     ordering="AFTER"
     side="BOTH"
-
-# Cloth Config(必须前置):配置文件读写与配置 GUI 全部由它的 AutoConfig 接管,
-# 配置 schema 位于 starengine_lib 的 StarEngineCommonConfig;缺失将导致 NoClassDefFoundError。
-# 两侧版本:1.20.1 用 11.x,1.21.1 用 15.x(两版核心 API 已实测逐字节一致)。
-[[dependencies.${mod_id}]]
-    modId="cloth_config"
-    mandatory=true
-    versionRange="${cloth_config_version_range}"
-    ordering="AFTER"
-    side="BOTH"
