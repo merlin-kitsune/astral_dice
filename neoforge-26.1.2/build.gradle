@@ -245,6 +245,29 @@ idea {
 def devRunModsDir = rootProject.file('run/26.1.2/mods')
 def packModsDir = file('D:/.minecraft/versions/26.1.2 模组测试/mods')
 
+//
+// ⚠️ 约定(2026-09-12 起,同日修订为白名单):**只有发布线分支推送整合包。**
+//   判定依据是当前 git 分支(读 .git/HEAD,兼容普通仓库与 worktree),规则:
+//     · 分支出现在 packPushBranches(**白名单**)中 → 允许 pushToGame
+//     · 分支不在白名单 / 无法确定分支(detached HEAD/无 .git,如 CI) → 跳过,只打日志,不算失败
+//     · 传 -PdeployToPack 或 -PpackPush    → 强制推送,覆盖上述判定(手动出包用)
+//   理由:整合包是玩家手测环境,开发分支(如 `multi-dev-next` / `wt/*`)的产物会把不匹配的
+//   组合灌进测试包,表现为启动期报错或行为与源码不符。本线(26.1.2)不依赖前置库
+//   starengine_lib,故没有「库 jar 与 mod jar 成对匹配」自检(另两线有)。
+//   **白名单优于黑名单**:新开的分支(含 DSH/WorkBuddy 自动建的 `wt/*` worktree 分支)
+//   默认落在"不推送"一侧,不会因为忘了把分支名登记进黑名单而误推、误删整合包里的正式 jar。
+//   需要推送时:把分支加进白名单;或单次用 -PdeployToPack 强制。
+//
+// --- 整合包推送的 git 分支守卫(配合上方约定;与 neoforge-1.21.1 / forge-1.20.1 同形同文案) ---
+// 分支判定放在**执行期**(见 pushToGame 的 doLast),不做配置期求值:
+//   ① 每次构建都读当时的 .git/HEAD,切分支后立即生效,不存在配置缓存陈旧问题;
+//   ② 不把 Provider/闭包塞进 configuration-cache,避免缓存序列化限制与行为漂移。
+// dotGitEntry 是配置期算好的 File(可序列化),执行期读它即可 —— 普通仓库这里就是
+// .git 目录;worktree 下它是**文件**,内容为 `gitdir: <path>`,真正的 HEAD 在 gitdir 下。
+// 【白名单】只有列在这里的分支允许把 jar 推进整合包;其余分支(含 worktree 的 `wt/*`)一律跳过。
+def packPushBranches = ['multi-1.20.1-1.21.1']
+def forcePackPush = project.hasProperty('deployToPack') || project.hasProperty('packPush')
+def dotGitEntry = rootProject.file('.git')
 def jarArchiveProvider = tasks.named('jar').flatMap { it.archiveFile }
 
 tasks.register('pushToDevRun') {
@@ -275,9 +298,44 @@ tasks.register('pushToDevRun') {
 // 默认随 build 推送到整合包 mods 目录
 tasks.register('pushToGame') {
     group = 'build'
-    description = 'Copy the built mod jar to the bound game pack mods folder and remove old versions.'
+    description = 'Copy the built mod jar to the bound game pack mods folder and remove old versions. Only the release branch (see packPushBranches) pushes; force with -PdeployToPack.'
     dependsOn tasks.named('jar')
     doLast {
+        // --- 约定:只有发布线分支推送整合包(白名单,见文件顶部「编译产物分发规则」) ---
+        if (!forcePackPush) {
+            // 执行期读取当前分支:普通仓库 .git 是目录;worktree 的 .git 是文件,内容记录 gitdir
+            def readGitBranch = { File dotGit ->
+                File headFile = null
+                if (dotGit.isDirectory()) {
+                    def hf = new File(dotGit, 'HEAD')
+                    headFile = hf.isFile() ? hf : null
+                } else if (dotGit.isFile()) {
+                    def m = dotGit.text.trim() =~ /^gitdir:\s*(.+)$/
+                    if (m.find()) {
+                        def gd = new File(m.group(1).trim())
+                        if (!gd.isAbsolute()) {
+                            gd = new File(dotGit.parentFile, m.group(1).trim())
+                        }
+                        def hf = new File(gd, 'HEAD')
+                        headFile = hf.isFile() ? hf : null
+                    }
+                }
+                if (headFile == null) {
+                    return ''
+                }
+                def s = headFile.text.trim()
+                s.startsWith('ref: refs/heads/') ? s.substring('ref: refs/heads/'.length()) : ''
+            }
+            def branch = readGitBranch(dotGitEntry)
+            if (branch.isEmpty()) {
+                logger.lifecycle('pushToGame: skipped — 无法确定当前 git 分支(detached HEAD 或无 .git);如需强制推送请加 -PdeployToPack')
+                return
+            }
+            if (!packPushBranches.contains(branch)) {
+                logger.lifecycle("pushToGame: skipped — 分支 '${branch}' 不在整合包推送白名单 ${packPushBranches} 内;如需强制推送请加 -PdeployToPack")
+                return
+            }
+        }
         def jarFile = jarArchiveProvider.get().asFile
         if (!jarFile.exists()) {
             logger.warn("pushToGame: built jar not found, skipped: ${jarFile}")
