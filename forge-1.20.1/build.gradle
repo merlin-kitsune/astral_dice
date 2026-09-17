@@ -242,6 +242,46 @@ dependencies {
     // (原 `mezz.jei:jei-1.20.1-forge:15.56.0.205` 走官方 maven;CF 文件 8778011 = `jei-1.20.1-forge-15.56.0.205.jar`,1778129 字节)
     modImplementation "curse.maven:jei-238222:8778011"
 
+    // 优化类模组(2026-09-17 用户要求:所有测试环境加装 ImmediatelyFast + FerriteCore 做兼容性验证)
+    // ⚠️ **1.20.1 必须走 modImplementation,不能像另两线那样由 mt_env 下载进 run/mods**:
+    //    Modrinth/CF 提供的是**生产(SRG)字节码**的 Forge 1.20.1 jar,而 dev 环境是 Mojmap 命名 ——
+    //    手工放进 run/mods 不会被重映射,直接抛
+    //      java.lang.NoSuchMethodError: 'it.unimi.dsi.fastutil.Hash$Strategy net.minecraft.Util.m_137583_()'
+    //      at malte0811.ferritecore.fastmap.PropertyIndexer.<clinit>
+    //    (FerriteCore 6.0.1 实测,2026-09-17:vanilla `Bootstrap.bootStrap` 阶段直接 FATAL,runClient BUILD FAILED);
+    //    这与 Embeddium/Oculus 不能放进 1.20.1 dev run 是**同一类限制**。
+    //    ⇒ 由 MDG 在解析期重映射(modImplementation),与上面 collective/superflat/JEI 同一机制;
+    //      同时 `mt_env.ps1 mods --version 1.20.1` 会跳过对应下载并清理 run/mods 里的历史副本,避免重复模组。
+    // ImmediatelyFast：**1.20.1 dev run 装不了**（2026-09-17 复测三个版本，根因已定位到字节码级）：
+    //   · `1.5.5+1.20.4`（Modrinth 最新、game_versions 也声明 1.20.1，但产物是 1.20.4 的）→ 启动即
+    //     `MixinApplyError: Mixin [immediatelyfast-common.mixins…]` → `InvalidInjectionException`；
+    //   · `1.2.4+1.20.1` / `1.2.3+1.20.1`（Modrinth 上 1.20.1 的 Forge 构建**只有** 1.2.0~1.2.4，
+    //     经本 build.gradle 重映射）→ 能过 mixin/bootstrap，但**在模组构造期硬崩**：
+    //       [ImmediatelyFast]: Loading ImmediatelyFast 1.2.3+1.20.1
+    //       [ImmediatelyFast]: Found Oculus 1.8.0. Enabling compatibility.
+    //       [ImmediatelyFast]: Failed to initialize Iris compatibility. …
+    //       java.lang.ClassNotFoundException: net.coderbot.iris.vertices.ImmediateState
+    //         at forge.net.raphimc.immediatelyfast.compat.IrisCompat.init(IrisCompat.java:41)
+    //         at forge.net.raphimc.immediatelyfast.forge.ImmediatelyFastForge.<init>(…:32)
+    //         at net.minecraftforge.fml.javafmlmod.FMLModContainer.constructMod(FMLModContainer.java:77)
+    //       ⇒ `:forge-1.20.1:runClient` 立即 `finished with non-zero exit value -1`（11s，无崩溃报告、无 hs_err）。
+    //   · **根因（javap 取证，非猜测）**：IF 1.2.x 的 `IrisCompat.init()` 第 0 条指令就
+    //     `Class.forName("net.coderbot.iris.vertices.ImmediateState")` / `…ExtendingBufferBuilder` ——
+    //     那是 **Iris 1.6 的包名**；而 1.20.1 的光影加载器 Oculus 1.8.0 基于 Iris 1.7+，包名已改为
+    //     `net.irisshaders.iris`。`ImmediatelyFastForge.<init>` 只是 `Optional.ifPresent(→ IrisCompat.init())`，
+    //     **没有任何配置项能跳过**（探测到 oculus 就调用），且 init 开头就置 `IRIS_LOADED=true`，
+    //     故「配置关掉兼容」这条路不存在。
+    //   ⇒ 1.20.1 线上 **Oculus 1.8 = 光影硬需求**与 **IF 1.2.x = 只认 Iris 1.6** 互斥：二选一。
+    //     当前取舍 = 保光影（用户硬性要求「光影包默认启用」），IF 只在 1.21.1 / 26.1.2 两线装。
+    //     ※ 若要反过来，唯一可行改法是**把 Oculus 降级到 1.7.0**（Iris 1.6 包名）——但那会同时改动
+    //       已验证通过的光影栈，须先取得用户裁决，且要复跑 SHADER-VISION 用例确认光影仍生效。
+    //     如需复测：取消下面一行注释并重建（`gradlew :forge-1.20.1:build`）。
+    // modImplementation "maven.modrinth:immediatelyfast:NJ17fqEK"   // ImmediatelyFast 1.2.4+1.20.1
+    // FerriteCore:6.0.1-forge(DG5Fn9Sz,game_versions = 1.20 / 1.20.1)——
+    //   经本 build.gradle 重映射后**可正常工作**（2026-09-17 实测：vanilla bootstrap 不再报
+    //   `NoSuchMethodError … Util.m_137583_()`，客户端正常进入世界）。
+    modImplementation "maven.modrinth:ferrite-core:DG5Fn9Sz"
+
     // Mixin:编译期注解类 + **注解处理器(生成 refmap)**。
     // ⚠️ 2026-09-16 生产事故校正(必须理解,**禁止再删**):
     //   此前这里写着「Mixin Booster 会自动重映射,故不需要 refmap/注解处理器」—— **该前提是错的**。

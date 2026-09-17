@@ -2,15 +2,23 @@
 
 > This file contains the English changelog only. Chinese version: [`CHANGELOG_ZH.md`](CHANGELOG_ZH.md).
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
-
-## Unreleased (2.0.0-SNAPSHOT.5)
-
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
+
+## Unreleased (2.0.0-SNAPSHOT.10)
+
+<!-- To record: entries for 2.0.0-SNAPSHOT.10 start here (any change made after the version bump goes into this section). -->
+
+## 2.0.0-SNAPSHOT.5
 
 ### Content & Balance
 
 #### Signs & Skills
 - **The Astrologer / Undercover Detective / Gunsmith signs' target selection is now a "pre-gate": pressing the active key only opens the selection session, and every other feedback is deferred until the target is confirmed**: previously the key press **immediately** ran the rest of the original flow - dealing the Hand Fan (Large/Small) effect card and firing the sign-active response event (the Astrologer and Undercover Detective showed the default "<sign>: Active skill started!" message, the Gunsmith showed "select a hostile target to apply Broken") - and cancelling the selection or failing to confirm within **30 seconds** did not take any of that back (a free effect card plus an "activated" message with nothing actually happening). Now the key press **only** opens the target-selection session (the window still comes from `GameplayConstants.SKILL_WAIT_SECONDS` and is not hard-coded), and the card, the active-skill response message, the player-level cooldown/lock, the Current Core Charge and the skill effect are **all** deferred until **a legal target is confirmed** - the release writes the cooldown and Charge at that moment, and the recovery point then deals the cards and posts the sign-active response event; cancelling / timing out (window unchanged) / the session being replaced by a new one / logging out / dying clears the pending record, so that active counts as "not used": no card, no message, no cooldown, no Current Core Charge. The Gunsmith's "select a hostile target to apply Broken" prompt now fires when the **session starts** (on the key press) instead of on the post-confirm response event (which would otherwise ask you to pick a target after Broken was already applied). Every sign outside these three, the effect cards and the demo `test_echo_*` actions are unchanged (both loaders).
+
+### Bug Fixes
+
+#### Signs & Skills
+- **Fixed the 1.21.1 build crashing while loading the mod (never reaching the game)** (diagnosed in-game on 2026-09-17): after the "pre-gate" rework of the Gunsmith sign's target selection, `MosesSignItem` no longer registers any event-subscriber method, yet the class still carried the loader's automatic-subscriber annotation — on 1.21.1 NeoForge a class annotated as a subscriber with **no** subscriber method throws during **mod construction** (`class … has no @SubscribeEvent methods, but register was called anyway`), which escalates to `Failed to register automatic subscribers` → `Failed to wait for future Mod Construction` and makes the whole mod refuse to load (the symptom is a startup that stops at a failed `Mod Construction`, unrelated to gameplay). The stale annotation is removed, with a comment recording that this class **must not** carry a subscriber annotation again (regression guard); the equivalent dead annotation on the 1.20.1 side was cleaned up as well (Forge does not throw in this case, so it never surfaced there, but it was just as dead). Verified after the fix: a cold 1.21.1 launch enters the world normally (`MT_LAUNCH: OK (45s)`, KubeJS probe `server.log` 0 errors).
 
 ## 1.2.1
 

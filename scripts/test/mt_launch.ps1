@@ -289,6 +289,17 @@ if ($MyInvocation.InvocationName -ne '.') {
             exit $MT_EXIT_BLOCKED
         }
     }
+    # ③ debug.log 也要清零（2026-09-17 新增）：**1.20.1 的「模组是否已加载」判据只存在于
+    #    `logs/debug.log`**（Forge 不打印 NeoForge 那种 `显示名 版本 (modId)` 清单行，实测把
+    #    已装载的史莱姆压制模组判成缺失、硬失败）。留着上一轮的 debug.log 会让三个模组闸门
+    #    把**本轮没装**的模组判成已装载 —— 与 latest.log 的假阳性是同一类。
+    #    即使删不掉也不阻塞：Forge 的 log4j2 配置带 `OnStartupTriggeringPolicy`，启动时会把旧
+    #    debug.log 卷走（`debug-%i.log.gz`），故本文件读完必然是**本轮**内容。
+    $dbgLogPath = Join-Path $p.logs_dir 'debug.log'
+    if (Test-Path -LiteralPath $dbgLogPath -PathType Leaf) {
+        Remove-Item -LiteralPath $dbgLogPath -Force -ErrorAction SilentlyContinue
+    }
+
     # 服务端权威通道（KubeJS 探针追加写）必须每次运行清零，否则上一轮标记会污染本轮断言
     if (Test-Path -LiteralPath $p.probe_log -PathType Leaf) {
         Remove-Item -LiteralPath $p.probe_log -Force -ErrorAction SilentlyContinue
@@ -430,6 +441,41 @@ if ($MyInvocation.InvocationName -ne '.') {
     # 需要截图/注入的工具各自按「当前前台窗口」工作，不依赖这个搬移结果；故移除后流程不受影响。
 
     $latest = Read-MtSharedText -Path $p.latest_log
+
+    # ── 「模组是否已加载」的统一判据（三条线日志格式**不同**，2026-09-17 实测校准）────────────
+    # NeoForge（1.21.1 / 26.1.2）：latest.log 里有已加载模组清单行 `显示名 版本 (modId)`
+    #   ⇒ 判据 = **括号里的 modId**。
+    # Forge（1.20.1）：**没有那一行**（实测 latest.log 里 `Collective` 只有一行 modloading-worker
+    #   日志，其余全无）。Forge 的模组清单只出现在 `logs/debug.log` / 启动控制台里的
+    #   `Found valid mod file <file> with {modId,…} mods - versions {…}` ⇒ 判据 = **花括号里的 modId**。
+    #   ⚠️ 2026-09-17 踩坑：1.20.1 沿用 `\(modId\)` 判据 ⇒ 史莱姆压制闸门硬失败
+    #   （`未检测到「Superflat World No Slimes」模组`），而 debug.log 里它明明已装载。
+    # 两种格式都**只认清单行**、不认裸名字：存档 `level.dat` 记着上次带着这些模组跑过时，加载器
+    #   会打印 `<modId> (version X -> MISSING)` —— 只搜名字会把「缺失」误判成「已加载」（踩过）。
+    $loadedModIds = @()
+    if ($Version -eq '1.20.1') {
+        # 两个来源取并集：debug.log（Forge 权威清单）+ 启动控制台日志（同一批行，冗余兜底）。
+        $scanTargets = @((Join-Path $p.logs_dir 'debug.log'), (Join-Path $p.run_dir 'runclient_launch.log'))
+        $ids = New-Object System.Collections.Generic.HashSet[string]
+        foreach ($t in $scanTargets) {
+            if (-not (Test-Path -LiteralPath $t -PathType Leaf)) { continue }
+            foreach ($m in (Select-String -LiteralPath $t -Pattern 'Found valid mod file .* with \{([^}]*)\} mods' -AllMatches)) {
+                foreach ($g in $m.Matches) {
+                    foreach ($id in ($g.Groups[1].Value -split ',')) {
+                        $id = $id.Trim()
+                        if ($id) { [void]$ids.Add($id) }
+                    }
+                }
+            }
+        }
+        $loadedModIds = @($ids)
+    }
+    function Test-MtModLoaded {
+        param([Parameter(Mandatory)][string] $ModId)
+        if ($Version -eq '1.20.1') { return ($loadedModIds -contains $ModId) }
+        return [bool]($latest -imatch ('\(' + [regex]::Escape($ModId) + '\)'))
+    }
+
     # 兼容性信号（1.21.1: Sodium/Iris；1.20.1: Embeddium/Oculus）
     if ($Version -eq '1.21.1') {
         if ($latest.Contains('Sodium')) { Write-MtInfo 'SODIUM_LOADED=true' } else { Write-MtWarn 'SODIUM_LOADED=false' }
@@ -442,14 +488,15 @@ if ($MyInvocation.InvocationName -ne '.') {
         if ($latest -imatch 'Rhino') { Write-MtInfo 'RHINO_LOADED=true' } else { Write-MtWarn 'RHINO_LOADED=false' }
         if ($latest -imatch 'Sodium') { Write-MtInfo 'SODIUM_LOADED=true' } else { Write-MtWarn 'SODIUM_LOADED=false' }
         if ($latest -imatch 'Iris') { Write-MtInfo 'IRIS_LOADED=true' } else { Write-MtWarn 'IRIS_LOADED=false' }
-        # 优化类模组（2026-09-17 用户要求：ImmediatelyFast + ModernFix 兼容性验证）。判据同样取
-        # **已加载模组列表行**里的括号 modId（`(immediatelyfast)` / `(modernfix)`），避免把存档里
-        # 「MISSING」的旧模组记录误判成已加载（2026-09-17 在史莱姆压制闸门上踩过这个坑）。
+        # 优化类模组（2026-09-17 用户要求：ImmediatelyFast + ModernFix 兼容性验证）。判据统一走
+        # `Test-MtModLoaded`（**版本相关**：NeoForge 读 latest.log 的 `(modId)` 清单行，Forge 读
+        # debug.log 的 `{modId}` 清单行），只认**清单行**、不认裸名字，避免把存档里「MISSING」的
+        # 旧模组记录误判成已加载（2026-09-17 在史莱姆压制闸门上踩过这个坑）。
         # 这两条**不**做硬失败（与 Sodium/Iris 一致）：它们是兼容性验证对象，缺装载时给出 WARN 即可，
         # 但要看得见 —— 否则「验证」会静默地什么都没验证。
-        if ($latest -imatch '\(immediatelyfast\)') { Write-MtInfo 'IMMEDIATELYFAST_LOADED=true' } else { Write-MtWarn 'IMMEDIATELYFAST_LOADED=false(优化模组兼容性验证未生效)' }
-        if ($latest -imatch '\(modernfix\)') { Write-MtInfo 'MODERNFIX_LOADED=true' } else { Write-MtWarn 'MODERNFIX_LOADED=false(优化模组兼容性验证未生效)' }
-        if ($latest -imatch '\(ferritecore\)') { Write-MtInfo 'FERRITECORE_LOADED=true' } else { Write-MtWarn 'FERRITECORE_LOADED=false(优化模组兼容性验证未生效)' }
+        if (Test-MtModLoaded 'immediatelyfast') { Write-MtInfo 'IMMEDIATELYFAST_LOADED=true' } else { Write-MtWarn 'IMMEDIATELYFAST_LOADED=false(优化模组兼容性验证未生效)' }
+        if (Test-MtModLoaded 'modernfix') { Write-MtInfo 'MODERNFIX_LOADED=true' } else { Write-MtWarn 'MODERNFIX_LOADED=false(优化模组兼容性验证未生效)' }
+        if (Test-MtModLoaded 'ferritecore') { Write-MtInfo 'FERRITECORE_LOADED=true' } else { Write-MtWarn 'FERRITECORE_LOADED=false(优化模组兼容性验证未生效)' }
         # 光影状态：以 config/iris.properties 为准（而不是「日志里有没有出现过 shaderpack 字样」）。
         # 默认 enableShaders=false —— 26.1.2 上启用光影会崩（见 mt_env 的 Install-MtRenderStack 注释），
         # 故默认不启用是**正常状态**，不该报 WARN；启用时才用日志确认包真的加载成功。
@@ -480,6 +527,21 @@ if ($MyInvocation.InvocationName -ne '.') {
         else { Write-MtInfo 'OCULUS_LOADED=false(dev run 预期)' }
     }
 
+    # ── 光影读数（**1.20.1 / 1.21.1**；26.1.2 已在上面的分支里按 `config/iris.properties` 判定）──────
+    # 用户硬性要求（2026-09-17）：光影包必须存在且**默认启用**。判据取 Iris/Oculus 的
+    # `Using shaderpack: <包名>` 行。⚠️ 该行**出现在进入世界之后**（1.20.1 实测：启动第 12s 先打印
+    # 「Shaders are disabled because no valid shaderpack is selected」，进世界后第 36s 才
+    # 「Using shaderpack: ComplementaryUnbound_r5.9.3.zip」）⇒ 必须在本闸门（已进世界）读 latest.log，
+    # 放到启动早期判定必然误报。不做硬失败（与 Sodium/Iris/优化类模组同口径）：缺该行给 WARN，但要看得见。
+    if ($Version -ne '26.1.2') {
+        if ($latest -imatch '(?i)Using shaderpack:\s*(\S+)') {
+            Write-MtInfo ("SHADERS=enabled pack={0}" -f $Matches[1])
+            Write-MtInfo 'SHADERPACK_LOADED=true'
+        } else {
+            Write-MtWarn ("SHADERPACK_LOADED=false(未见 `Using shaderpack:` 行；确认 run\{0}\shaderpacks 里有包且已在光影加载器配置里启用)" -f $Version)
+        }
+    }
+
     # ── 优化类模组 + 超平坦史莱姆压制：**三条线统一**（2026-09-17 用户要求）──────────────
     # 用户两轮原话：「1.21.1 环境缺少没有史莱姆的超平坦世界模组，这是必需的模组，没有会使史莱姆
     # 干扰测试，补全该模组然后重新运行 1.21.1 测试」+「所有测试环境增加 ImmediatelyFast、FerriteCore
@@ -489,27 +551,30 @@ if ($MyInvocation.InvocationName -ne '.') {
         # 判据取**已加载模组列表行**里的括号 modId（`(immediatelyfast)` / `(ferritecore)`），
         # 避免把存档里 `… -> MISSING` 的旧记录误判成已加载（2026-09-17 踩过这个坑）。
         # 与 Sodium/Iris 一致**不做硬失败**：它们是被验证对象，缺装载给 WARN 但要看得见。
-        if ($latest -imatch '\(immediatelyfast\)') { Write-MtInfo 'IMMEDIATELYFAST_LOADED=true' } else { Write-MtWarn 'IMMEDIATELYFAST_LOADED=false(优化模组兼容性验证未生效)' }
-        if ($latest -imatch '\(ferritecore\)') { Write-MtInfo 'FERRITECORE_LOADED=true' } else { Write-MtWarn 'FERRITECORE_LOADED=false(优化模组兼容性验证未生效)' }
+        if (Test-MtModLoaded 'immediatelyfast') { Write-MtInfo 'IMMEDIATELYFAST_LOADED=true' } else { Write-MtWarn 'IMMEDIATELYFAST_LOADED=false(优化模组兼容性验证未生效)' }
+        if (Test-MtModLoaded 'ferritecore') { Write-MtInfo 'FERRITECORE_LOADED=true' } else { Write-MtWarn 'FERRITECORE_LOADED=false(优化模组兼容性验证未生效)' }
         if ($Version -eq '1.21.1') {
-            if ($latest -imatch '\(modernfix\)') { Write-MtInfo 'MODERNFIX_LOADED=true' } else { Write-MtWarn 'MODERNFIX_LOADED=false(优化模组兼容性验证未生效)' }
+            if (Test-MtModLoaded 'modernfix') { Write-MtInfo 'MODERNFIX_LOADED=true' } else { Write-MtWarn 'MODERNFIX_LOADED=false(优化模组兼容性验证未生效)' }
         }
     }
 
     # 超平坦世界史莱姆压制（2026-09-17 用户硬性要求，**三条线统一**）：测试环境**必须**装载，
     # 否则超平坦世界 y<40 的史莱姆区块会持续刷怪、污染实体类读数。缺装载 ⇒ 硬失败（ERROR），
     # 而不是带着会被史莱姆污染的现场继续跑用例。
-    # 装载判据 = 启动日志里**「已加载模组列表」**那一行 `显示名 版本 (modId)`，即匹配**括号里的
-    # modId**（`(superflatworldnoslimes)` / `(collective)`）。
-    # ⚠️ 不能只搜 `superflatworldnoslimes`（2026-09-17 实测踩坑）：存档 `level.dat` 记着上次带着
+    # 装载判据 = `Test-MtModLoaded`（**版本相关**，见函数上方注释）：NeoForge 匹配 latest.log 里
+    # 「已加载模组列表」行的 `显示名 版本 (modId)`，即**括号里的 modId**
+    # （`(superflatworldnoslimes)` / `(collective)`）；Forge 1.20.1 改用 debug.log 的
+    # `Found valid mod file … with {modId} mods`，即**花括号里的 modId** —— Forge **没有**括号清单行，
+    # 2026-09-17 沿用括号判据导致本闸门把**已装载**的模组判成缺失、硬失败（实测踩坑）。
+    # ⚠️ 两个格式都只认清单行、不能只搜 `superflatworldnoslimes`：存档 `level.dat` 记着上次带着
     #    这些模组跑过，缺少时加载器会打印 `<modId> (version X -> MISSING)` —— 只搜名字会把
     #    「**缺失**」误判成「已加载」，闸门形同虚设（实测那次把已移出的对照实验误报成
-    #    SLIMEGUARD_LOADED=true）。带括号的 modId 只出现在已加载列表里，故用它。
+    #    SLIMEGUARD_LOADED=true）。
     # 来源（三条线不同，见 mt_env 的 $script:SlimeGuardByVersion）：26.1.2 / 1.21.1 由 mt_env 从
     # Modrinth Maven 下载；**1.20.1 由 forge-1.20.1/build.gradle 的 modImplementation 提供**
     # （再往 run/1.20.1/mods 放一份会被 FML 判重复模组）。
-    $slimeGuard = ($latest -imatch '\(superflatworldnoslimes\)')
-    $collective = ($latest -imatch '\(collective\)')
+    $slimeGuard = (Test-MtModLoaded 'superflatworldnoslimes')
+    $collective = (Test-MtModLoaded 'collective')
     if (-not $slimeGuard) {
         # 唯一的例外：**故意**测「没有该模组时史莱姆会不会干扰」的对照实验。
         # 必须是显式开关，且会留下 WARN 痕迹 —— 默认永远是硬失败。
