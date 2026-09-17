@@ -83,6 +83,17 @@ public final class TargetSelectionManager {
     }
 
     /**
+     * 测试辅助:当前会话 token（无会话返回 {@code -1}）。
+     *
+     * <p>供自动化测试/探针在服务端直接驱动确认路径 —— {@link #confirm} 必须携带与会话一致的 token，
+     * 而 token 只存在于 {@code SESSIONS} 内部；本方法只把它读出来，**不做任何状态变更**。
+     */
+    public static int sessionTokenForTests(Player player) {
+        Session session = (player == null) ? null : SESSIONS.get(player.getUUID());
+        return session == null ? -1 : session.token;
+    }
+
+    /**
      * 触发目标选择模式（服务端）。
      *
      * @return 是否成功进入选择模式（动作未注册/目标不可用返回 false）

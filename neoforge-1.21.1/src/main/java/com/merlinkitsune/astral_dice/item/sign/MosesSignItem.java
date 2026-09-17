@@ -16,12 +16,10 @@ import com.merlinkitsune.astral_dice.target.TargetSelectionManager;
 import com.merlinkitsune.starenginelib.target.TargetSelectionRegistry;
 import com.merlinkitsune.starenginelib.target.TargetType;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.Level;
 import net.neoforged.fml.common.EventBusSubscriber;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -113,19 +111,6 @@ public class MosesSignItem extends BaseSignItem {
     @Override
     protected String selectorActionId() {
         return "moses_apply_broken";
-    }
-
-    @Override
-    protected InteractionResultHolder<ItemStack> handleUse(Level level, Player player, ItemStack stack) {
-        if (level.isClientSide) {
-            return InteractionResultHolder.success(stack);
-        }
-        if (!(player instanceof ServerPlayer serverPlayer)) {
-            return InteractionResultHolder.fail(stack);
-        }
-        // 主动:进入目标选择模式(服务端权威;确认时施加"破绽"并开始冷却,取消/超时不冷却)
-        boolean started = TargetSelectionManager.start(serverPlayer, "moses_apply_broken");
-        return started ? InteractionResultHolder.success(stack) : InteractionResultHolder.fail(stack);
     }
 
     // 玩家是否佩戴枪匠立牌

@@ -17,12 +17,10 @@ import com.merlinkitsune.astral_dice.target.TargetSelectionManager;
 import com.merlinkitsune.starenginelib.target.TargetSelectionRegistry;
 import com.merlinkitsune.starenginelib.target.TargetType;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.Level;
 import net.minecraftforge.fml.common.Mod;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -83,15 +81,6 @@ public class MosesSignItem extends BaseSignItem {
         super(properties);
     }
 
-    // 目标选择器前置门控(2026-09-17):本立牌主动为选择器类 —— 按下主动键只开启目标选择会话,
-    // 会话时长取自 GameplayConstants.SKILL_WAIT_SECONDS(秒),此处不写死数字;
-    // 确认合法目标后才继续原流程(风扇筹码发牌 + 立牌主动响应事件;冷却与电流核心充能由
-    // 本类注册的 TargetSelectionAction#apply 在确认时写入)。
-    @Override
-    protected String selectorActionId() {
-        return "moses_apply_broken";
-    }
-
     @Override
     protected void onCurioTick(SlotContext slotContext, ItemStack stack) {
         if (!(slotContext.entity() instanceof Player player)) return;
@@ -117,17 +106,13 @@ public class MosesSignItem extends BaseSignItem {
         DiceCombatModifiers.setDefenseArmorBonus(player, "moses_weakness_armor", 0);
     }
 
+    // 目标选择器前置门控(2026-09-17):本立牌主动为选择器类 —— 按下主动键只开启目标选择会话,
+    // 会话时长取自 GameplayConstants.SKILL_WAIT_SECONDS(秒),此处不写死数字;
+    // 确认合法目标后才继续原流程(风扇筹码发牌 + 立牌主动响应事件;冷却与电流核心充能由
+    // 本类注册的 TargetSelectionAction#apply 在确认时写入)。
     @Override
-    protected InteractionResultHolder<ItemStack> handleUse(Level level, Player player, ItemStack stack) {
-        if (level.isClientSide) {
-            return InteractionResultHolder.success(stack);
-        }
-        if (!(player instanceof ServerPlayer serverPlayer)) {
-            return InteractionResultHolder.fail(stack);
-        }
-        // 主动:进入目标选择模式(服务端权威;确认时施加"破绽"并开始冷却,取消/超时不冷却)
-        boolean started = TargetSelectionManager.start(serverPlayer, "moses_apply_broken");
-        return started ? InteractionResultHolder.success(stack) : InteractionResultHolder.fail(stack);
+    protected String selectorActionId() {
+        return "moses_apply_broken";
     }
 
     // 玩家是否佩戴枪匠立牌

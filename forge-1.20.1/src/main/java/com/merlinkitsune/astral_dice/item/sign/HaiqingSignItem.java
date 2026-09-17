@@ -19,13 +19,11 @@ import com.merlinkitsune.astral_dice.item.chip.CurrentCoreChipItem;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.Level;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
@@ -93,19 +91,6 @@ public class HaiqingSignItem extends BaseSignItem {
     @Override
     protected String selectorActionId() {
         return "haiqing_weak_mark";
-    }
-
-    @Override
-    protected InteractionResultHolder<ItemStack> handleUse(Level level, Player player, ItemStack stack) {
-        if (level.isClientSide) {
-            return InteractionResultHolder.success(stack);
-        }
-        if (!(player instanceof ServerPlayer serverPlayer)) {
-            return InteractionResultHolder.fail(stack);
-        }
-        // 主动:进入目标选择模式(服务端权威;确认时施加,取消/超时不冷却)
-        boolean started = TargetSelectionManager.start(serverPlayer, "haiqing_weak_mark");
-        return started ? InteractionResultHolder.success(stack) : InteractionResultHolder.fail(stack);
     }
 
     // 被动 2:带"虚弱印记"的目标被击杀时,释放该印记的占星师获得 3 星币;

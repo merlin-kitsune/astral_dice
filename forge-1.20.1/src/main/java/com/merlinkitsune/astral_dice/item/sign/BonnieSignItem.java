@@ -21,13 +21,11 @@ import com.merlinkitsune.astral_dice.item.chip.CurrentCoreChipItem;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.Level;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
@@ -99,15 +97,6 @@ public class BonnieSignItem extends BaseSignItem {
         super(properties);
     }
 
-    // 目标选择器前置门控(2026-09-17):本立牌主动为选择器类 —— 按下主动键只开启目标选择会话,
-    // 会话时长取自 GameplayConstants.SKILL_WAIT_SECONDS(秒),此处不写死数字;
-    // 确认合法目标后才继续原流程(风扇筹码发牌 + 立牌主动响应事件;冷却与电流核心充能由
-    // 本类注册的 TargetSelectionAction#apply 在确认时写入)。
-    @Override
-    protected String selectorActionId() {
-        return "bonnie_undercover";
-    }
-
     @Override
     protected void clearSignData(Player player, ItemStack stack) {
         super.clearSignData(player, stack);
@@ -116,17 +105,13 @@ public class BonnieSignItem extends BaseSignItem {
         ModEffectRemoval.remove(player, ModEffects.INVESTIGATION_BONUS.get());
     }
 
+    // 目标选择器前置门控(2026-09-17):本立牌主动为选择器类 —— 按下主动键只开启目标选择会话,
+    // 会话时长取自 GameplayConstants.SKILL_WAIT_SECONDS(秒),此处不写死数字;
+    // 确认合法目标后才继续原流程(风扇筹码发牌 + 立牌主动响应事件;冷却与电流核心充能由
+    // 本类注册的 TargetSelectionAction#apply 在确认时写入)。
     @Override
-    protected InteractionResultHolder<ItemStack> handleUse(Level level, Player player, ItemStack stack) {
-        if (level.isClientSide) {
-            return InteractionResultHolder.success(stack);
-        }
-        if (!(player instanceof ServerPlayer serverPlayer)) {
-            return InteractionResultHolder.fail(stack);
-        }
-        // 主动:进入目标选择模式(服务端权威;确认时施加,取消/超时不冷却)
-        boolean started = TargetSelectionManager.start(serverPlayer, "bonnie_undercover");
-        return started ? InteractionResultHolder.success(stack) : InteractionResultHolder.fail(stack);
+    protected String selectorActionId() {
+        return "bonnie_undercover";
     }
 
     // 被动 2(击杀钩子,由 BaseSignItem.invokeKillHooks 分发):

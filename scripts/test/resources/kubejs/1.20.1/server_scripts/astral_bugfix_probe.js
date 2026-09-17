@@ -1316,6 +1316,96 @@ function doKomachiRepeat(ctx, tag) {
     return 1;
 }
 
+// ════════════════════════════════════════════════════════════════════════════
+//  2026-09-17(t18 门控收口):目标选择器类立牌「前置门控」三态读数
+//    · 门控态(按下主动键):只开启选择会话 + 登记待执行记录;不发牌 / 不进冷却 / 不施效
+//    · 取消(未选)态      :会话与待执行记录一并清除 ⇒ 该次主动等同「未使用」(同上三项皆无)
+//    · 确认(合法目标)态  :效果 + 玩家级冷却 + 电流核心充能 + 风扇筹码发牌(恢复点)
+//  入口与生产同路:按主动 = BaseSignItem.performSkillForCurio;确认/取消 = TargetSelectionManager
+//  {confirm,cancel}(即两个网络载荷处理器的同一入口);不依赖客户端按键与选择 UI。
+// ════════════════════════════════════════════════════════════════════════════
+var MOSES_SIGN_ID = "astral_dice:moses_sign";
+var HAND_FAN_BIG_CHIP_ID = "astral_dice:hand_fan_big_chip";
+var TargetSelectionManagerClass = Java.loadClass("com.merlinkitsune.astral_dice.target.TargetSelectionManager");
+var SignSelectionGateClass = Java.loadClass("com.merlinkitsune.astral_dice.target.SignSelectionGate");
+var EffectCardUtilClass = Java.loadClass("com.merlinkitsune.astral_dice.item.card.EffectCardUtil");
+
+/** 背包内「随机效果牌池」的卡牌总数 —— 发牌(FanBigChip)的唯一观测口径,池取自生产同一入口 */
+function countEffectCards(p) {
+    var inv = p.getInventory();
+    var pool = EffectCardUtilClass.getRandomEffectCardPool();
+    var n = 0;
+    for (var i = 0; i < inv.getContainerSize(); i++) {
+        var st = inv.getItem(i);
+        if (st.isEmpty()) continue;
+        for (var j = 0; j < pool.size(); j++) {
+            if (st.is(pool.get(j).getItem())) { n += st.getCount(); break; }
+        }
+    }
+    return n;
+}
+
+/**
+ * 枪匠(选择器类)立牌门控三态一条龙:门控 → 取消 → 确认。
+ * 断言读数(AP_<tag>_…):GATED{ session=1, cd=0, cards_delta=0, armed=1 }、
+ * CANCEL{ session=0, cd=0, cards_delta=0, armed=0 }、
+ * CONFIRM{ mob=1, session=0, broken=1, cd=1, cards_delta=1, armed=0 } ⇒ VERDICT:1。
+ */
+function doSignGate(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    clearCurioSlots(p, "chip");
+    resetEffectCardCycle(p);                 // 主动冷却 + 锁定(生效中)态 + 出牌周期附件归零
+    var slotErr = ensureChipSlot(p, 1);      // chip 槽 base=0(尺寸由骰子星级给出):测试脚手架直接给 1 格
+    if (slotErr != null) { send(ctx, "AP_" + tag + "_ERR:" + slotErr); return 0; }
+    var signErr = equipSign(p, MOSES_SIGN_ID);
+    if (signErr != null) { send(ctx, "AP_" + tag + "_ERR:" + signErr); return 0; }
+    var chipErr = putInSlot(p, "chip", new ItemStack(resolveItem(HAND_FAN_BIG_CHIP_ID)), 0);
+    if (chipErr != null) { send(ctx, "AP_" + tag + "_ERR:" + chipErr); return 0; }
+    var cards0 = countEffectCards(p);
+    send(ctx, "AP_" + tag + "_PREP:chipSlots=" + chipSlotCount(p) + ":cards=" + cards0);
+
+    // ① 门控态:按下主动键 —— 只开启会话 + 登记待执行记录
+    BaseSignItemClass.performSkillForCurio(p);
+    var gSession = TargetSelectionManagerClass.isSelecting(p) ? 1 : 0;
+    var gArmed = SignSelectionGateClass.isArmed(p) ? 1 : 0;
+    var gCd = signCooldownRemaining(p) > 0 ? 1 : 0;
+    var gCards = countEffectCards(p) - cards0;
+    send(ctx, "AP_" + tag + "_GATED:session=" + gSession + ":cd=" + gCd
+        + ":cards_delta=" + gCards + ":armed=" + gArmed);
+
+    // ② 取消(未选)⇒ 等同「未使用」:会话与记录都被清掉,冷却/发牌/施效一个都没有
+    var token1 = TargetSelectionManagerClass.sessionTokenForTests(p);
+    TargetSelectionManagerClass.cancel(p, token1);
+    var cSession = TargetSelectionManagerClass.isSelecting(p) ? 1 : 0;
+    var cArmed = SignSelectionGateClass.isArmed(p) ? 1 : 0;
+    var cCd = signCooldownRemaining(p) > 0 ? 1 : 0;
+    var cCards = countEffectCards(p) - cards0;
+    send(ctx, "AP_" + tag + "_CANCEL:token_seen=" + (token1 > 0 ? 1 : 0) + ":session=" + cSession
+        + ":cd=" + cCd + ":cards_delta=" + cCards + ":armed=" + cArmed);
+
+    // ③ 确认合法敌对目标 ⇒ 施效 + 冷却 + 发牌(恢复点)
+    BaseSignItemClass.performSkillForCurio(p);
+    var mob = spawnDummy(p, "minecraft:zombie", 3);
+    var mobId = (mob == null) ? -1 : mob.getId();
+    TargetSelectionManagerClass.confirm(p, TargetSelectionManagerClass.sessionTokenForTests(p), mobId);
+    var kSession = TargetSelectionManagerClass.isSelecting(p) ? 1 : 0;
+    var kArmed = SignSelectionGateClass.isArmed(p) ? 1 : 0;
+    var kBroken = (mob == null) ? -1 : (mob.hasEffect(ModEffects.MOSES_BROKEN.get()) ? 1 : 0);
+    var kCd = signCooldownRemaining(p);
+    var kCards = countEffectCards(p) - cards0;
+    send(ctx, "AP_" + tag + "_CONFIRM:mob=" + (mobId > 0 ? 1 : 0) + ":session=" + kSession
+        + ":broken=" + kBroken + ":cd=" + (kCd > 0 ? 1 : 0) + ":cards_delta=" + kCards
+        + ":armed=" + kArmed);
+
+    var ok = (gSession === 1) && (gArmed === 1) && (gCd === 0) && (gCards === 0)
+        && (cSession === 0) && (cArmed === 0) && (cCd === 0) && (cCards === 0)
+        && (mobId > 0) && (kSession === 0) && (kArmed === 0) && (kBroken === 1)
+        && (kCd > 0) && (kCards === 1);
+    send(ctx, "AP_" + tag + "_VERDICT:" + (ok ? 1 : 0));
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
 // 可选脚手架:注册一个「常态关闭」的临时出牌数来源,用来把出牌上限真正推到封顶 9。
 // 只有在 Rhino 能实现该接口(JavaAdapter)且预检通过时才注册 —— 预检不通过就完全不注册,
 // 绝不把可能抛错的实现放进全局来源表(那会污染后续所有出牌判定)。
@@ -4149,6 +4239,12 @@ ServerEvents.commandRegistry(event => {
                 .then(Commands.argument("tag", StringArg.word())
                     .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
                         return doGuidebook(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            // ── 2026-09-17(t18 门控收口)：选择器立牌「前置门控」门控 / 取消 / 确认三态读数 ──
+            .then(Commands.literal("sggate")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doSignGate(ctx, StringArg.getString(ctx, "tag"));
                     }))))
     );
 });

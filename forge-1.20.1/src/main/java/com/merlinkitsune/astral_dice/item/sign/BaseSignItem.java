@@ -166,8 +166,13 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
      * 目标选择**确认成功**后的恢复点(由 {@code TargetSelectionManager#confirm} 在 action.apply 之后调用)。
      *
      * <p>只对「由立牌门控登记的会话」生效:非立牌会话(如 {@code test_echo_*})没有待执行记录 ⇒ 直接返回,
-     * 原有行为不受影响。恢复的是原 performSkill 的第 4/5 步(风扇筹码发牌 + 立牌主动响应事件/默认提示);
+     * 原有行为不受影响。恢复的是原 performSkill 的第 4/5 步(风扇筹码发牌 + 立牌主动响应事件);
      * **不**重复写玩家级冷却/锁定与电流核心充能 —— 那两件事已由各 TargetSelectionAction#apply 完成。
+     *
+     * <p>⚠️ 事件本身照旧抛出(订阅方行为不变),但**不再**补发默认「主动技能已启动」提示(2026-09-17
+     * 用户裁决 O1):本方法只由门控路径到达,而 {@code TargetSelectionManager#confirm} 在调用本方法后
+     * **同一 tick** 立即发送 {@code msg.astral_dice.target_select.applied};ActionBar 后发者覆盖先发者
+     * ⇒ 那条默认提示玩家根本看不到,属纯冗余。非门控立牌的原流程(performSkill 第 5 步)仍保留默认提示。
      */
     public static void resumeGatedActiveSkill(Player player, String actionId) {
         com.merlinkitsune.astral_dice.target.SignSelectionGate.Pending pending =
@@ -177,13 +182,11 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
         // 4. 手持风扇-大/小筹码:确认释放后才发牌(未确认绝不发牌)
         FanBigChipItem.applyAfterSignSkill(player);
         FanSmallChipItem.applyAfterSignSkill(player);
-        // 5. 立牌主动技能响应事件:立牌类订阅本事件注册自身 ActionBar 反馈;无处理器时发默认提示
+        // 5. 立牌主动技能响应事件:立牌类订阅本事件注册自身 ActionBar 反馈。
+        //    默认「主动技能已启动」提示**有意不补发**(见方法 javadoc:会被同 tick 的 applied 覆盖)。
         com.merlinkitsune.starenginelib.event.SignActiveTriggeredEvent triggered =
                 new com.merlinkitsune.starenginelib.event.SignActiveTriggeredEvent(player, stack);
         net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(triggered);
-        if (!triggered.isHandled()) {
-            notifyActionBar(player, "msg.astral_dice.sign_active_triggered", stack.getHoverName(), ChatFormatting.YELLOW);
-        }
     }
 
     // 立牌主动技能反馈统一发送入口(黄色;供立牌类注册的 SignActiveTriggeredEvent 处理器与 handleUse 调用)
@@ -211,8 +214,10 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
     // + 三个立牌的 *_ready 提示效果)在本分支已被 target/TargetSelectionManager + TargetSelectionAction
     // 的目标选择器整体替换:占星师/秘密侦探/枪匠按下主动键即进入目标选择会话,确认目标后**即时释放**
     // (取消/超时不消耗冷却),不再"进入待命 → 等下一次攻击命中时释放"。
-    // 故此处不再保留 isSkillWaiting / tickSignReadyTimeout;冷却门槛见 performSkill 第 6 步
-    // (依据"是否已进入选择会话"判定)。三态化(锁定 - 生效中)与之**共存**:
+    // 故此处不再保留 isSkillWaiting / tickSignReadyTimeout。**冷却门槛分两类(2026-09-17 门控收口)**:
+    // 「目标选择器类」立牌(覆写 selectorActionId() 非 null 者)已在第 2.5 步只开会话并 return ⇒
+    // 冷却与充能由确认时的 TargetSelectionAction#apply 写入(取消/超时 ⇒ 该次主动不进冷却);
+    // 其余立牌照旧在第 6 步立即起玩家级冷却。三态化(锁定 - 生效中)与之**共存**:
     // 选择器决定"何时释放",锁定决定"释放后的生效期是否算作冷却空档"。
     // 脚本侧读数 astraldice_ts_* 只反映选择器会话;旧的 sign_ready_type / sign_ready_expire
     // 附件已废弃(dev-next 侧无任何写入方)。
@@ -441,5 +446,19 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
         });
     }
 
-    protected abstract InteractionResultHolder<ItemStack> handleUse(Level level, Player player, ItemStack stack);
+    /**
+     * 非门控立牌主动技能的实际效果(子类覆写;返回 {@code SUCCESS} 才算触发成功)。
+     *
+     * <p>默认实现 = {@code fail}:「目标选择器类」立牌的主动已被 {@link #performSkill} 第 2.5 步的前置门控
+     * 接管 —— 门控分支末尾直接 {@code return},**永远走不到本方法** ⇒ 覆写 {@link #selectorActionId()}
+     * 的立牌(占星师 / 秘密侦探 / 枪匠)不再需要、也不再保留一份"进入目标选择模式"的重复实现
+     * (那等于第二处 {@code TargetSelectionManager.start} 入口;2026-09-17 用户裁决 O2 已删除)。
+     * 其余立牌**必须**覆写本方法,否则其主动无任何效果(返回 fail ⇒ 不发牌、不进冷却);
+     * 为弥补由 {@code abstract} 改为默认实现后失去的编译期约束,未覆写时会打一条 WARN。
+     */
+    protected InteractionResultHolder<ItemStack> handleUse(Level level, Player player, ItemStack stack) {
+        LOGGER.warn("[Astral Dice][SignSkill] handleUse 未被覆写: item={} —— 该立牌主动无效果"
+                + "(目标选择器类立牌走 performSkill 第 2.5 步门控,不会到达这里)", stack);
+        return InteractionResultHolder.fail(stack);
+    }
 }

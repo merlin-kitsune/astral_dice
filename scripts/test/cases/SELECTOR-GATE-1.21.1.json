@@ -1,0 +1,67 @@
+{
+  "case_id": "SELECTOR-GATE-1.21.1",
+  "title": "目标选择器类立牌「前置门控」三态：按下主动键只开启选择会话（不发牌 / 不进冷却 / 不施效），取消等同「未使用」，确认合法敌对目标后才 效果+冷却+发牌",
+  "version": "1.21.1",
+  "target": {
+    "type": "bugfix",
+    "ref": "selector-gate-followup"
+  },
+  "steps": [
+    {
+      "op": "note",
+      "text": "被测语义(2026-09-17 用户裁决;枪匠立牌为代表,三个选择器类立牌同构):①**门控态** —— 按下主动键只开启目标选择会话(TargetSelectionManager.start + SignSelectionGate.arm)并立即返回:不发放风扇筹码、不抛 SignActiveTriggeredEvent、不进玩家级冷却、不施加「破绽」;②**取消/超时** ⇒ 该次主动**等同未使用**(会话与待执行记录一并清除 ⇒ 不发牌 / 不进冷却 / 不施效);③**确认合法敌对目标** ⇒ 由 TargetSelectionAction#apply 施加「破绽」+ 写玩家级冷却 + 电流核心充能,再由恢复点 resumeGatedActiveSkill 走「风扇筹码发牌 + 立牌主动响应事件」。证据口径(全部经聊天栏 AP_G1_…):入口与生产同路 —— 「按主动」= BaseSignItem.performSkillForCurio(与客户端按键 SignActivatePayload 的服务端处理同一入口)、「取消/确认」= TargetSelectionManager.cancel/confirm(两个网络载荷处理器的同一入口),不依赖客户端按键与选择 UI。读数:session = TargetSelectionManager.isSelecting、armed = SignSelectionGate.isArmed、cd = sign_active_cooldown_end 未到期、cards_delta = 背包内「随机效果牌池」卡牌数增量(发牌口径,池取自 EffectCardUtil.getRandomEffectCardPool 生产入口)、broken = 靶子是否带 astral_dice:moses_broken。⚠️ 探针改动必须**冷启动**(stop → launch)才生效;/kubejs reload server-scripts 不会重绑已注册命令的 lambda。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe sggate G1"
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_G1_PREP:chipSlots=[1-9]\\d*:cards=\\d+"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_G1_GATED:session=1:cd=0:cards_delta=0:armed=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_G1_CANCEL:token_seen=1:session=0:cd=0:cards_delta=0:armed=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_G1_CONFIRM:mob=1:session=0:broken=1:cd=1:cards_delta=1:armed=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_G1_VERDICT:1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_G1_DONE"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_G1_ERR|AP_G1_EX|AP_G1_VERDICT:0"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "crash"
+    }
+  ],
+  "on_fail": "keep_game_running"
+}

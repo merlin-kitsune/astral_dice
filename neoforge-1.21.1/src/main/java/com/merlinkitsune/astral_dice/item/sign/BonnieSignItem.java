@@ -20,13 +20,11 @@ import com.merlinkitsune.astral_dice.item.chip.CurrentCoreChipItem;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.Level;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
@@ -114,19 +112,6 @@ public class BonnieSignItem extends BaseSignItem {
     @Override
     protected String selectorActionId() {
         return "bonnie_undercover";
-    }
-
-    @Override
-    protected InteractionResultHolder<ItemStack> handleUse(Level level, Player player, ItemStack stack) {
-        if (level.isClientSide) {
-            return InteractionResultHolder.success(stack);
-        }
-        if (!(player instanceof ServerPlayer serverPlayer)) {
-            return InteractionResultHolder.fail(stack);
-        }
-        // 主动:进入目标选择模式(服务端权威;确认时施加,取消/超时不冷却)
-        boolean started = TargetSelectionManager.start(serverPlayer, "bonnie_undercover");
-        return started ? InteractionResultHolder.success(stack) : InteractionResultHolder.fail(stack);
     }
 
     // 被动 2(击杀钩子,由 BaseSignItem.invokeKillHooks 分发):

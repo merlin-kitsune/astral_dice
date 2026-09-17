@@ -703,7 +703,11 @@ When extending this workspace:
 - **配置**：`target_select_radius`（默认 16 格，范围 1..32，公共配置 `ModCommonConfig`）；`GameplayConstants.TARGET_SELECT_RADIUS` 运行时读取；服务端确认距离校验一律用配置值（上限 32 不可突破）。
 - **调试 LOGGER（必须）**：目标选择器相关代码统一 `[Astral Dice][TargetSelection*]` 前缀（Manager/Client/Registry/Mixin/Overlay/测试命令），标记见自动化测试流程子配置的断言清单；dev run 已 `logLevel=DEBUG`。
 - **接入方式**：动作注册后即可被任何立牌/效果牌调用；当前已注册：演示动作 `test_echo_player/enemy/living`（`/astral_dice targetselect <player|enemy|living>`，OP 权限，不施加玩法效果）、**占星师立牌 `haiqing_weak_mark`**、**秘密侦探立牌 `bonnie_undercover`**（均为 ENEMY_OR_RIVAL）。新增真实动作时在对应立牌/效果牌类中注册并调用 `TargetSelectionManager.start`；调用方必须自行处理冷却/出牌锁等前置校验。
-- **立牌选择器类主动的冷却约定**：进入选择模式时**不开始**立牌玩家级冷却（`BaseSignItem.performSkill` 经 `TargetSelectionManager.isSelecting` 判断）；确认目标后由动作 `apply` 内调用 `ModAttachments.setSignActiveCooldownEnd` 开始冷却；取消/超时不冷却。旧等待器附件 `SIGN_READY_TYPE/EXPIRE` 已废弃(定义保留,禁止新代码读写)。
+- **立牌选择器类主动的「前置门控」与冷却约定（2026-09-17 用户裁决，取代旧「经 `isSelecting` 判断」表述）**：占星师 / 秘密侦探 / 枪匠三个立牌的主动技能在 `BaseSignItem.performSkill` 的**第 2.5 步**（第 2 步 `isSelecting` 守卫之后、第 3 步 `handleUse` 之前）做前置门控 —— 按下主动键**只开启目标选择会话**（`TargetSelectionManager.start` 成功后 `SignSelectionGate.arm` 登记待执行记录）并立即 `return`：**不发牌、不抛 `SignActiveTriggeredEvent`、不写玩家级冷却/锁定、不施加效果、不计电流核心充能**。选择窗口取 `GameplayConstants.SKILL_WAIT_SECONDS`（秒；`expireTick = gameTime + SKILL_WAIT_SECONDS * 20L`，不写死数字）。
+  - **确认合法目标后才继续原流程**：`TargetSelectionManager#confirm` 通过 token / 时效 / 目标存活 / 类型 / 距离校验后调用 `TargetSelectionAction#apply`（施加效果 + 玩家级冷却 + 电流核心充能由各动作自行写入），再由恢复点 `BaseSignItem.resumeGatedActiveSkill` 执行「风扇筹码发牌 + 抛 `SignActiveTriggeredEvent`（订阅方行为不变）」；门控路径**不再**补发默认「主动技能已启动」提示（同一 tick 会被紧随其后的 `msg.astral_dice.target_select.applied` 覆盖 ⇒ 玩家本就看不到，2026-09-17 用户裁决 O1）。
+  - **未选（取消 / 超时 / 会话被替换 / 登出 / 死亡）⇒ 该次主动等同「未使用」**：待执行记录被清除，**不发牌、不进冷却、不施效、不充能**。这三个立牌因此**不再保留**自己的 `handleUse`（门控分支在其之前 `return` ⇒ 原覆写不可达，且其体内是第二处 `TargetSelectionManager.start` 入口；2026-09-17 用户裁决 O2 已删除），`BaseSignItem#handleUse` 默认实现返回 `fail` 并打一条 WARN（弥补去掉 `abstract` 后失去的编译期约束）。
+  - **边界（必须守住）**：只作用于**这三个**覆写 `selectorActionId()` 返回非 `null` 的立牌；其余立牌与效果牌的主动路径**逐字不变**（`selectorActionId()` 缺省 `null` ⇒ 不进第 2.5 步，走原流程立即执行并在第 5 步照旧发默认提示）。
+  - **新增门控立牌时**：只覆写 `selectorActionId()` 返回自己的 action id（效果 / 冷却 / 充能写进对应 `TargetSelectionAction#apply`），**不要**再写 `handleUse`；两发布线同构实现（`neoforge-1.21.1` + `forge-1.20.1`），26.1.2 线无目标选择器。旧等待器附件 `SIGN_READY_TYPE/EXPIRE` 已废弃（定义保留，禁止新代码读写）。
 
 ## 立牌 tooltip 格式规范（Sign Tooltip Format）— 必须遵守
 
