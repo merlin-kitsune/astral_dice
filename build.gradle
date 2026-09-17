@@ -14,7 +14,9 @@ tasks.named('wrapper', Wrapper).configure {
     distributionType = Wrapper.DistributionType.BIN
 }
 
-// `gradlew build` 会按名字在所有子项目上执行 build 任务(即同时构建两个版本);
+// `gradlew build` 会按名字在**全部三个**子项目上执行 build 任务(即同时构建 1.21.1 + 1.20.1 + 26.1.2);
+// 三条线构建规则完全一致(同一套 pushToDevRun / pushToRootBuild / pushToGame,均 finalizedBy build);
 // 也可以显式指定单个子项目:
-//   ./gradlew :neoforge-1.21.1:build   # 1.21.1 NeoForge
-//   ./gradlew :forge-1.20.1:build      # 1.20.1 Forge
+//   ./gradlew :neoforge-1.21.1:build     # 1.21.1 NeoForge
+//   ./gradlew :forge-1.20.1:build        # 1.20.1 Forge
+//   ./gradlew :neoforge-26.1.2:build     # 26.1.2 NeoForge

@@ -75,11 +75,12 @@ When extending this workspace:
 5. 推荐使用本地脚本 `scripts/test/mt_build.ps1` 执行(已内置超时强退与「日志 + 产物」双重验证):
    `pwsh -NoProfile -File scripts/test/mt_build.ps1 --version 1.21.1 [--timeout 60] [--retries 3]`。
    该脚本同时是「自动化测试流程」阶段 B 的实现；单独构建时也可直接调用。
-6. 常用构建入口(在仓库根目录执行):
+6. 常用构建入口(在仓库根目录执行;**三条线规则完全一致**,26.1.2 与另两线同规则、同产物去向):
    - `./gradlew :neoforge-1.21.1:build` — 仅构建 1.21.1 NeoForge;
    - `./gradlew :forge-1.20.1:build` — 仅构建 1.20.1 Forge;
-   - `./gradlew build` — 两个子项目全部构建(部署任务随各子项目 build 触发)。
-7. **数据生成(runData)前必须移开 run 目录中的旧产物 jar**:`run/1.21.1/mods/astral_dice-*.jar`(forge 同理 `run/1.20.1/mods/`)会与 `build/classes/java/main` 同时被加载,**遮蔽刚编译的 dev 类**,导致 `runData` 用旧代码生成资源却**不报任何错误**(表现为"改了 Provider 但生成结果没变")。执行 `:neoforge-1.21.1:runData` / `:forge-1.20.1:runData` 前先把该 jar 移出(如 `temp/shadow_jars/`),生成后再 `gradlew build` 重新推回。判定是否被遮蔽:比对 `build/classes/.../ModRecipeProvider.class` 中是否含新增字面量(如新筹码模式串),同时确认生成文件时间戳已更新(不要只看日志的 `written: N`)。
+   - `./gradlew :neoforge-26.1.2:build` — 仅构建 26.1.2 NeoForge;
+   - `./gradlew build` — 三个子项目全部构建(部署任务随各子项目 build 触发)。
+7. **数据生成(runData)前必须移开 run 目录中的旧产物 jar**:`run/1.21.1/mods/astral_dice-*.jar`(forge 同理 `run/1.20.1/mods/`,26.1.2 同理 `run/26.1.2/mods/`)会与 `build/classes/java/main` 同时被加载,**遮蔽刚编译的 dev 类**,导致 `runData` 用旧代码生成资源却**不报任何错误**(表现为"改了 Provider 但生成结果没变")。执行 `:neoforge-1.21.1:runData` / `:forge-1.20.1:runData`(26.1.2 为**两段式**:`:neoforge-26.1.2:runClientData :neoforge-26.1.2:runServerData`,且 `run/26.1.2/mods` 里的探针运行时 KubeJS/Rhino/BAT 也要一并移出,见下方 26.1.2 速记第 6 条)前先把该 jar 移出(如 `temp/shadow_jars/`),生成后再 `gradlew build` 重新推回。判定是否被遮蔽:比对 `build/classes/.../ModRecipeProvider.class` 中是否含新增字面量(如新筹码模式串),同时确认生成文件时间戳已更新(不要只看日志的 `written: N`)。
    - **`run/<版本>/mods` 里的 jar 是 dev/未重混淆产物,与 `build/libs` 的发货 jar 不同字节但**是同一程序**(2026-09-15 实测取证;禁止改动产物来源)**:1.20.1 侧 `build/libs/astral_dice-*+forge_1.20.1.jar` 是 **reobf(SRG 名,如 `m_82127_`)** 产物,而 `run/1.20.1/mods/` 里那份是 **dev/未 reobf(Mojmap 名,如 `literal`/`players`)** 产物(与 `forge-1.20.1/build/devlibs/` 那份**哈希完全相同**)。两者条目清单 1118:1118**零增删**、`META-INF/mods.toml` 与 `MANIFEST.MF` 逐字节相同;266 个 class 虽全部字节不同,但按方法切分并把分支目标/异常表偏移换算为指令序号后 **266/266 控制流+操作数完全等价**,差异仅为 173 处 `ldc`↔`ldc_w` 宽度与由此的偏移重编号。**这是有意设计**:`forge-1.20.1/build.gradle` 的 `pushToDevRun` 明确推 dev jar(SRG 版会让 `runClient` 报 `NoSuchFieldError(f_256929_)` **直接崩**)⇒ **禁止**把该任务的产物来源改成 reobfJar。**1.21.1 无 reobf 环节**,只有一个 `jar` 产物,故三处同哈希。**两个整合包目标与 CI 均正确命中 reobfJar**,发货产物不受影响。⚠️ **测试可信度**:`runClient` 实测**确定性加载 `run/<版本>/mods` 的 jar 并遮蔽 `build/classes`**(FML `UniqueModListBuilder` 只按版本号排序,版本相同则靠 locator 顺序,mods 目录先于 exploded dir)⇒ 游戏内测试跑的是 **dev jar 而非发货字节码**(因已证同程序,故 B1/B2 结论有效);**但「只 compileJava/classes 而未重新 jar 就跑 runClient」会跑旧代码且不报错** —— 与本规则第 7 条是同一类陷阱。取证全文见本地文档 `docs/batch3/forge-run-jar-investigation.md`。
 8. **`fileHashes.lock` 拒绝访问(守护进程占锁)**:构建报 `Could not create service of type FileHasher ... .gradle/<ver>/fileHashes/fileHashes.lock (拒绝访问)` 并非编译错误,而是**上一个 Gradle 守护进程仍占锁**(日志首行常见 `1 busy and N stopped Daemons`;`./gradlew --stop` 可能停不掉 busy 守护进程)。处置:列出 java 进程,只终止 `gradlew` wrapper(`-Dorg.gradle.appname=gradlew`)与 Gradle daemon(`--add-opens=java.base/...`)两类,**绝不可误杀 Minecraft 客户端**(`net.minecraft.client.main.Main`)或用户其它 Java 程序,然后重跑构建。
 
@@ -192,7 +193,7 @@ When extending this workspace:
   - `1.21.1`：客户端进入 NeoForge 的「连接已丢失 / Connection Lost」**模组版本不匹配**屏幕，表格「通道名称」列出本模组的载荷 id、「原因」为「模组网络通道 "Astral Dice" 连接失败：…版本…」（同一失配原因的多条通道会合并为一行 + `[+N more]`）。⚠️ **已知 NeoForge 自身文案缺陷**：`NetworkComponentNegotiator` 传参为 `(服务端版本, 客户端版本)`，而语言文件把第一个占位符写成「客户端期望」——两个版本号本身正确，但角色标签是反的；这是上游措辞问题，不要为此放弃原生门槛。
   - `1.20.1`：客户端显示 Forge 的**模组不匹配**屏幕（`fml.modmismatchscreen.mismatchedmods` + 表格「模组名称 / 你拥有 / 服务端拥有」），列出模组名与**两端完整 `mod_version`**，并明确提示「安装与服务端相同版本的这些模组以加入此服务器」。
   - 两侧服务端日志都会留痕（NeoForge 协商失败原因 / Forge `Channels [...] rejected their client side version number`）。
-- **不得破坏单机与开发环境**：单人游戏的「内嵌服务端」与客户端来自**同一构建**，互通号必然相同，照常可玩；`scripts/test` 的自动化流程依赖该能力。改动本规则后必须复跑双版本构建与冒烟流程。
+- **不得破坏单机与开发环境**：单人游戏的「内嵌服务端」与客户端来自**同一构建**，互通号必然相同，照常可玩；`scripts/test` 的自动化流程依赖该能力。改动本规则后必须复跑**三线**构建与冒烟流程(版本互通门槛在三个子项目各有一份实现,26.1.2 与另两线同规则)。
 - **兜底顺序**：`VersionGate` 先读构建期资源，读不到才回退到加载器元数据（`ModList` → `IModInfo#getVersion()`）；两者都失败时互通号退化为固定值并打印 ERROR 日志（只为不崩游戏，正常构建绝不会走到）。改动本规则时**必须保留**「读不到就退化」的行为，不得改成抛异常启动失败。
 
 ## 更新日志约定 — 必须遵守
@@ -737,7 +738,7 @@ When extending this workspace:
 - **lang 值中的字面百分号必须写成 `%%`**:单个 `%` 经 `I18n.get`/`String.format` 会抛异常并显示 `Format error: ...`(帕秋莉手册文本即走此路径;`Component.translatable` 路径则静默回退原文)。`check_lang_sync.ps1` 会对未转义的单 `%` 输出 WARN。
 - 新增/删除 lang key 时两侧必须同步新增/删除;禁止只改一侧。
 - **两子项目的 lang 默认保持一致**(便于对照维护);唯一允许的差异是**某条描述依赖版本专有的原版内容**时在 1.20.1 侧删减该部分——当前唯一登记项为复仇之戟 `revenge_halberd_chip`(1.20.1 缺 6 个 1.21 新增效果),见「筹码一览 → 无流派 → 复仇之戟」;新增差异必须同步登记到 AGENTS.md,禁止随手分叉。
-- 修改后必须运行同步检查:`pwsh -NoProfile -File tools/check_lang_sync.ps1 -LangDir <子项目>/src/main/resources/assets/astral_dice/lang`(对被修改的子项目执行;key 不一致退出码非 0);CI(build.yml)在构建前也会自动对两个子项目执行该检查,key 不一致会导致 CI 失败。
+- 修改后必须运行同步检查:`pwsh -NoProfile -File tools/check_lang_sync.ps1 -LangDir <子项目>/src/main/resources/assets/astral_dice/lang`(对被修改的子项目执行;key 不一致退出码非 0);CI(build.yml)在构建前也会自动对**三个子项目**(`neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2`,三线各一步)执行该检查,key 不一致会导致 CI 失败。
 - **默认自动本地提交、不推送 GitHub**:每次改动完成后由代理自动执行本地提交(见「子项目修改默认规则」),但**不执行 `git push`**。
 
 ## 骰子槽位与配置规范（Dice Slots & Config）— 必须遵守
@@ -863,7 +864,7 @@ When extending this workspace:
 4. forge-1.20.1 子项目产物分两级：`pushToDevRun` 取 `build/devlibs` 未重混淆 jar（dev 环境 Mojmap 名），`pushToGame` 取 `build/libs` 重混淆 jar（生产 SRG 名），推错方向会 `NoSuchFieldError`——不要改动该取值逻辑。
 5. **禁止自动启动 runClient / 冒烟测试（自动化测试流程子配置例外）**：无流程的手动 runClient / 冒烟测试一律禁止，游戏内验证默认由用户手动运行；**仅当经「自动化测试流程（Automated Testing）」子配置（见下方章节）启动的自动化 runClient 允许**，且必须按该流程执行并产出报告。
 6. **自动本地提交 + 禁止自动推送 GitHub**：每次改动完成（含构建部署）后由代理**自动执行本地提交**；但所有 `git push` 必须由用户手动执行（`deploy.ps1` 需显式 `-Push` 才推送），不得自动推送远程。
-7. **编译后必须先清除 `run/mods` 中旧的本模组 jar,再置入新产物(必须遵守)**:每次执行版本编译(`gradlew :neoforge-1.21.1:build` / `:forge-1.20.1:build` / `build`)后,对每个 `run/<版本>/mods`(即 `run/1.21.1/mods`、`run/1.20.1/mods`)按**先删除、后复制**的固定顺序处理:
+7. **编译后必须先清除 `run/mods` 中旧的本模组 jar,再置入新产物(必须遵守)**:每次执行版本编译(`gradlew :neoforge-1.21.1:build` / `:forge-1.20.1:build` / `:neoforge-26.1.2:build` / `build`)后,对每个 `run/<版本>/mods`(即 `run/1.21.1/mods`、`run/1.20.1/mods`、`run/26.1.2/mods`)按**先删除、后复制**的固定顺序处理:
    1. 先删除该目录下本模组的**全部**旧 jar——匹配任意 `astral_dice-*.jar`(含版本号不同/旧 `-rcN`/旧后缀的残留),不按后缀过滤;
    2. 确认目录内已无本模组 jar 后,再把本次构建的新产物复制进去。
    **禁止"直接覆盖式复制"**(旧版本号 jar 与新产品并存时游戏会同时加载两个本模组副本,导致行为异常甚至 `NoSuchFieldError`)。判定通过:该目录内本模组 jar **有且仅有一个**,且文件名版本号与 `build/libs` 本次产物一致、修改时间不早于本次构建。
@@ -877,12 +878,12 @@ When extending this workspace:
 1. 更新两个更新日志文件（`CHANGELOG_ZH.md` + `CHANGELOG.md`，条目一一对应）；
 2. 递增**两个**子项目 `gradle.properties` 的 `mod_version`（`deploy.ps1 -Target neoforge|forge` 可自动递增 `x.y-SNAPSHOT.N` / `x.y.z-rcN` / `x.y.z`，或用 `-Version` 显式指定；两版本保持同号，后缀各自为 `+neoforge_1.21.1` / `+forge_1.20.1`）；
 3. 若改过 lang 文件，分别对**两个**子项目跑 `pwsh -NoProfile -File tools/check_lang_sync.ps1 -LangDir <子项目>/src/main/resources/assets/astral_dice/lang`；
-4. `gradlew build` 同时编译并部署两个版本——`pushToDevRun` / `pushToRootBuild` / `pushToGame`(整合包) 均默认随 build 自动触发（失败则回滚版本号，不提交）；
+4. `gradlew build` 同时编译并部署**三个**版本(26.1.2 与另两线同规则)——`pushToDevRun` / `pushToRootBuild` / `pushToGame`(整合包) 均默认随 build 自动触发（失败则回滚版本号，不提交）；
 5. **自动本地提交**（`deploy.ps1` 自动提交 `release: v<版本>`，或手工 `chore: bump version to X.Y.Z` 等），**默认不执行 `git push`**。
 
 ## 自动化测试流程（Automated Testing）— 必须遵守（子配置）
 
-针对**两个子项目**（`neoforge-1.21.1` 优先、`forge-1.20.1` 随后）的客户端渲染/输入类功能，以及任意**新增内容**与**用户指定内容**的真实游戏自动化验证。经本流程启动的自动化 `runClient` 属于「编译产物上传规则」第 5 条的**例外**；无流程的手动冒烟仍禁止。
+针对**三个子项目**（`neoforge-1.21.1` 优先、`forge-1.20.1` 随后、`neoforge-26.1.2` 最后）的客户端渲染/输入类功能，以及任意**新增内容**与**用户指定内容**的真实游戏自动化验证。经本流程启动的自动化 `runClient` 属于「编译产物上传规则」第 5 条的**例外**；无流程的手动冒烟仍禁止。
 
 - **测试分支（唯一）**：`multi-1.20.1-1.21.1`。前置检查会对当前分支做强断言；在其它分支（如旧 `dev-targetselector`）上运行本流程将被拒绝。
 - **脚本语言**：全流程为纯 **PowerShell 7（pwsh）**，不使用 bash / python。平台特异的输入注入集中在 `mt_inject.ps1` / `mt_ime.ps1` 内以 P/Invoke 实现，工具链为 Windows-only（历史上的 bash + python 版本已于 2026-09-12 全部移除；旧脚本归档包见 `docs/archive/legacy_scripts_20260912.zip`）。
