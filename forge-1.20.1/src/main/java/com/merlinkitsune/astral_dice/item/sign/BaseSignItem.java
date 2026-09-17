@@ -103,6 +103,21 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
         }
         // 2. 目标选择会话检查:已处于目标选择模式时按键无效(防重复进入;客户端按 J 会先取消,此处为服务端兜底)
         if (com.merlinkitsune.astral_dice.target.TargetSelectionManager.isSelecting(player)) return;
+        // 2.5 「目标选择器类」立牌的前置门控(2026-09-17 用户裁决):按下主动键**只**开启目标选择会话并立即返回。
+        //     本次主动的效果、玩家级冷却/锁定、电流核心充能、风扇筹码发牌与立牌主动响应事件(含默认提示)
+        //     **全部推迟到确认合法目标之后**(恢复点见 resumeGatedActiveSkill);效果与冷却/充能由各
+        //     TargetSelectionAction#apply 负责,恢复流程不重复写一次。
+        //     GameplayConstants.SKILL_WAIT_SECONDS(秒)内未选择或取消 ⇒ 记录被清除,
+        //     该次主动等同「未使用」(不发牌/不进冷却/不施效果)。
+        //     actionId 为 null 的立牌(其余全部立牌)不走本分支,下方原流程逐字不变。
+        String gatedActionId = sign.selectorActionId();
+        if (gatedActionId != null) {
+            if (!(player instanceof net.minecraft.server.level.ServerPlayer serverPlayer)) return;
+            if (com.merlinkitsune.astral_dice.target.TargetSelectionManager.start(serverPlayer, gatedActionId)) {
+                com.merlinkitsune.astral_dice.target.SignSelectionGate.arm(player, gatedActionId, stack);
+            }
+            return;
+        }
         // 3. 触发主动技能
         InteractionResultHolder<ItemStack> result = sign.handleUse(player.level(), player, stack);
         if (result.getResult() != InteractionResult.SUCCESS) return;
@@ -133,6 +148,41 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
             }
             // 电流核心筹码:主动技能实际生效时充能 +1(进入锁定时同样计一次;与是否立即起冷却无关)
             com.merlinkitsune.astral_dice.item.chip.CurrentCoreChipItem.onActiveSkillUsed(player);
+        }
+    }
+
+    /**
+     * 「目标选择器类」立牌的主动技能 action id(默认 null = 非选择器类立牌,按原流程即时执行)。
+     *
+     * <p>返回非 null 时 {@link #performSkill} 会把该次主动**门控**在目标选择会话之后:
+     * 按下主动键只开启选择会话并立即返回(不发牌、不抛事件、不进冷却、不施效果),
+     * 确认合法目标后由 {@link #resumeGatedActiveSkill} 恢复原流程的剩余步骤。
+     */
+    protected String selectorActionId() {
+        return null;
+    }
+
+    /**
+     * 目标选择**确认成功**后的恢复点(由 {@code TargetSelectionManager#confirm} 在 action.apply 之后调用)。
+     *
+     * <p>只对「由立牌门控登记的会话」生效:非立牌会话(如 {@code test_echo_*})没有待执行记录 ⇒ 直接返回,
+     * 原有行为不受影响。恢复的是原 performSkill 的第 4/5 步(风扇筹码发牌 + 立牌主动响应事件/默认提示);
+     * **不**重复写玩家级冷却/锁定与电流核心充能 —— 那两件事已由各 TargetSelectionAction#apply 完成。
+     */
+    public static void resumeGatedActiveSkill(Player player, String actionId) {
+        com.merlinkitsune.astral_dice.target.SignSelectionGate.Pending pending =
+                com.merlinkitsune.astral_dice.target.SignSelectionGate.take(player, actionId);
+        if (pending == null) return;
+        ItemStack stack = pending.stack();
+        // 4. 手持风扇-大/小筹码:确认释放后才发牌(未确认绝不发牌)
+        FanBigChipItem.applyAfterSignSkill(player);
+        FanSmallChipItem.applyAfterSignSkill(player);
+        // 5. 立牌主动技能响应事件:立牌类订阅本事件注册自身 ActionBar 反馈;无处理器时发默认提示
+        com.merlinkitsune.starenginelib.event.SignActiveTriggeredEvent triggered =
+                new com.merlinkitsune.starenginelib.event.SignActiveTriggeredEvent(player, stack);
+        net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(triggered);
+        if (!triggered.isHandled()) {
+            notifyActionBar(player, "msg.astral_dice.sign_active_triggered", stack.getHoverName(), ChatFormatting.YELLOW);
         }
     }
 

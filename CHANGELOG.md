@@ -7,6 +7,11 @@
 
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+### Content & Balance
+
+#### Signs & Skills
+- **The Astrologer / Undercover Detective / Gunsmith signs' target selection is now a "pre-gate": pressing the active key only opens the selection session, and every other feedback is deferred until the target is confirmed**: previously the key press **immediately** ran the rest of the original flow - dealing the Hand Fan (Large/Small) effect card and firing the sign-active response event (the Astrologer and Undercover Detective showed the default "<sign>: Active skill started!" message, the Gunsmith showed "select a hostile target to apply Broken") - and cancelling the selection or failing to confirm within **30 seconds** did not take any of that back (a free effect card plus an "activated" message with nothing actually happening). Now the key press **only** opens the target-selection session (the window still comes from `GameplayConstants.SKILL_WAIT_SECONDS` and is not hard-coded), and the card, the active-skill response message, the player-level cooldown/lock, the Current Core Charge and the skill effect are **all** deferred until **a legal target is confirmed** - the release writes the cooldown and Charge at that moment, and the recovery point then deals the cards and posts the sign-active response event; cancelling / timing out (window unchanged) / the session being replaced by a new one / logging out / dying clears the pending record, so that active counts as "not used": no card, no message, no cooldown, no Current Core Charge. The Gunsmith's "select a hostile target to apply Broken" prompt now fires when the **session starts** (on the key press) instead of on the post-confirm response event (which would otherwise ask you to pick a target after Broken was already applied). Every sign outside these three, the effect cards and the demo `test_echo_*` actions are unchanged (both loaders).
+
 ## 1.2.1
 
 ### New Content

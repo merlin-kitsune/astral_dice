@@ -99,6 +99,15 @@ public class BonnieSignItem extends BaseSignItem {
         super(properties);
     }
 
+    // 目标选择器前置门控(2026-09-17):本立牌主动为选择器类 —— 按下主动键只开启目标选择会话,
+    // 会话时长取自 GameplayConstants.SKILL_WAIT_SECONDS(秒),此处不写死数字;
+    // 确认合法目标后才继续原流程(风扇筹码发牌 + 立牌主动响应事件;冷却与电流核心充能由
+    // 本类注册的 TargetSelectionAction#apply 在确认时写入)。
+    @Override
+    protected String selectorActionId() {
+        return "bonnie_undercover";
+    }
+
     @Override
     protected void clearSignData(Player player, ItemStack stack) {
         super.clearSignData(player, stack);

@@ -78,6 +78,7 @@ public final class TargetSelectionManager {
     public static void cancelSessionForTests(Player player) {
         if (player != null) {
             SESSIONS.remove(player.getUUID());
+            SignSelectionGate.clear(player);
         }
     }
 
@@ -97,6 +98,9 @@ public final class TargetSelectionManager {
         long expireTick = player.level().getGameTime() + (long) GameplayConstants.SKILL_WAIT_SECONDS * 20L;
         Session session = new Session(token, actionId, action.targetType(), radius, expireTick);
         SESSIONS.put(player.getUUID(), session);
+        // 会话被替换:旧会话可能留下的「立牌门控待执行记录」必须一并清除(防跨会话误触发);
+        // 新记录由调用方(立牌 performSkill)在 start 成功后 arm。
+        SignSelectionGate.clear(player);
         action.onStarted(player);
 
         LOGGER.debug("[Astral Dice][TargetSelection] start player={} action={} token={} type={} radius={} expire={}",
@@ -118,6 +122,8 @@ public final class TargetSelectionManager {
         }
         if (player.level().getGameTime() >= session.expireTick) {
             SESSIONS.remove(player.getUUID());
+            // 确认时已过期 ⇒ 该次主动等同未使用:门控记录一并清除
+            SignSelectionGate.clear(player);
             LOGGER.warn("[Astral Dice][TargetSelection] confirm FAIL: expired player={} token={}",
                     player.getName().getString(), token);
             notifyActionBar(player, "msg.astral_dice.target_select.action_missing", ChatFormatting.RED);
@@ -148,6 +154,8 @@ public final class TargetSelectionManager {
         SESSIONS.remove(player.getUUID());
         TargetSelectionAction action = TargetSelectionRegistry.get(session.actionId);
         if (action == null) {
+            // 动作不可用 ⇒ 该次主动无法恢复:丢弃门控记录(等同未使用)
+            SignSelectionGate.clear(player);
             LOGGER.warn("[Astral Dice][TargetSelection] confirm FAIL: action_missing player={} token={} action={}",
                     player.getName().getString(), token, session.actionId);
             notifyActionBar(player, "msg.astral_dice.target_select.no_valid_action", ChatFormatting.RED);
@@ -157,6 +165,9 @@ public final class TargetSelectionManager {
         LOGGER.debug("[Astral Dice][TargetSelection] confirm token={} target={}({}) dist={} action={} -> SUCCESS",
                 token, targetId, target.getName().getString(), Math.sqrt(distSq), session.actionId);
         action.apply(player, target);
+        // 立牌主动技能前置门控(2026-09-17):由立牌登记的会话在**确认成功**后才恢复原流程剩余步骤
+        // (风扇筹码发牌 + 立牌主动响应事件/默认提示);非立牌会话(test_echo_* 等)无记录 ⇒ 空操作。
+        com.merlinkitsune.astral_dice.item.sign.BaseSignItem.resumeGatedActiveSkill(player, session.actionId);
         notifyActionBar(player, "msg.astral_dice.target_select.applied", ChatFormatting.YELLOW, target.getDisplayName());
     }
 
@@ -170,6 +181,8 @@ public final class TargetSelectionManager {
             return;
         }
         SESSIONS.remove(player.getUUID());
+        // 取消 ⇒ 该次主动等同未使用:门控记录一并清除
+        SignSelectionGate.clear(player);
         LOGGER.debug("[Astral Dice][TargetSelection] cancel token={} player={}", token, player.getName().getString());
     }
 
@@ -180,6 +193,8 @@ public final class TargetSelectionManager {
         if (session == null) return;
         if (player.level().getGameTime() >= session.expireTick) {
             SESSIONS.remove(player.getUUID());
+            // 超时(选择窗口内未确认)⇒ 该次主动等同未使用:门控记录一并清除
+            SignSelectionGate.clear(player);
             LOGGER.debug("[Astral Dice][TargetSelection] expired token={} player={}", session.token, player.getName().getString());
         }
     }
@@ -194,6 +209,7 @@ public final class TargetSelectionManager {
         Player player = event.getEntity();
         if (player == null || player.level().isClientSide()) return;
         Session session = SESSIONS.remove(player.getUUID());
+        SignSelectionGate.clear(player);
         if (session != null) {
             LOGGER.debug("[Astral Dice][TargetSelection] cleared player={} token={} reason=logout",
                     player.getName().getString(), session.token);
@@ -204,6 +220,7 @@ public final class TargetSelectionManager {
     public static void onPlayerDeath(LivingDeathEvent event) {
         if (!(event.getEntity() instanceof Player player) || player.level().isClientSide()) return;
         Session session = SESSIONS.remove(player.getUUID());
+        SignSelectionGate.clear(player);
         if (session != null) {
             LOGGER.debug("[Astral Dice][TargetSelection] cleared player={} token={} reason=death",
                     player.getName().getString(), session.token);

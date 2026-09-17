@@ -23,7 +23,6 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,6 +60,12 @@ public class MosesSignItem extends BaseSignItem {
             }
 
             @Override
+            public void onStarted(ServerPlayer player) {
+                // 进入选择模式瞬间的「请选择敌对目标」提示(门控后提示点 = 会话开始,而非确认之后)
+                sendReadyPrompt(player);
+            }
+
+            @Override
             public void apply(ServerPlayer player, LivingEntity target) {
                 // 施加"破绽"2:00;目标已带破绽时不重复施加,此时不消耗冷却
                 if (!applyBroken(player, target)) return;
@@ -78,6 +83,15 @@ public class MosesSignItem extends BaseSignItem {
         super(properties);
     }
 
+    // 目标选择器前置门控(2026-09-17):本立牌主动为选择器类 —— 按下主动键只开启目标选择会话,
+    // 会话时长取自 GameplayConstants.SKILL_WAIT_SECONDS(秒),此处不写死数字;
+    // 确认合法目标后才继续原流程(风扇筹码发牌 + 立牌主动响应事件;冷却与电流核心充能由
+    // 本类注册的 TargetSelectionAction#apply 在确认时写入)。
+    @Override
+    protected String selectorActionId() {
+        return "moses_apply_broken";
+    }
+
     @Override
     protected void onCurioTick(SlotContext slotContext, ItemStack stack) {
         if (!(slotContext.entity() instanceof Player player)) return;
@@ -87,19 +101,11 @@ public class MosesSignItem extends BaseSignItem {
                 isEquipped(player) ? WeaknessRevealEffect.getStacks(player) : 0);
     }
 
-    // 发送"请选择目标"ActionBar 提示(进入选择模式瞬间)
+    // 发送"请选择目标"ActionBar 提示:门控后本提示由注册动作的 onStarted 在**会话开始**(按下主动键)时发送,
+    // 不再挂在 SignActiveTriggeredEvent 上 —— 该事件现已推迟到确认成功之后,彼时再提示"请选择目标"与事实冲突。
     public static void sendReadyPrompt(Player player) {
         if (player instanceof ServerPlayer) {
             sendSignActionBar(player, "msg.astral_dice.moses_ready");
-        }
-    }
-
-    // 主动技能自带 ActionBar 反馈:注册到主动技能响应事件,阻止默认提示
-    @SubscribeEvent
-    public static void onSignActiveTriggered(com.merlinkitsune.starenginelib.event.SignActiveTriggeredEvent event) {
-        if (event.getSignStack().is(ModItems.MOSES_SIGN.get())) {
-            sendReadyPrompt(event.getPlayer());
-            event.setHandled();
         }
     }
 
