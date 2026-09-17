@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": "astral_dice:blank_chip",
+    "G": "astral_dice:golden_star_plate",
+    "L": "minecraft:cooked_beef",
+    "R": "astral_dice:regeneration_reagent",
+    "X": "minecraft:bowl"
+  },
+  "pattern": [
+    "XLX",
+    "RBR",
+    "GGG"
+  ],
+  "result": {
+    "id": "astral_dice:big_bowl_stew_chip"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": "astral_dice:blank_chip",
+    "C": "astral_dice:star_coin",
+    "M": "astral_dice:mark_paint",
+    "X": "minecraft:target"
+  },
+  "pattern": [
+    "XXX",
+    "MBM",
+    "CCC"
+  ],
+  "result": {
+    "id": "astral_dice:target_chip"
+  }
+}

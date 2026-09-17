@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": "astral_dice:blank_chip",
+    "G": "astral_dice:effect_card_orbital_strike",
+    "P": "astral_dice:golden_star_plate",
+    "R": "minecraft:redstone_block"
+  },
+  "pattern": [
+    "RGR",
+    "GCG",
+    "PPP"
+  ],
+  "result": {
+    "id": "astral_dice:satellite_chip"
+  }
+}

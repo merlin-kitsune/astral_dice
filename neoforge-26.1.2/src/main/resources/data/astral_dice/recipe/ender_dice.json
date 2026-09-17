@@ -1,0 +1,18 @@
+{
+  "type": "astral_dice:dice_upgrade",
+  "category": "equipment",
+  "key": {
+    "Z": "minecraft:ender_pearl",
+    "Y": "minecraft:ender_eye",
+    "D": "astral_dice:netherite_dice"
+  },
+  "pattern": [
+    "ZYZ",
+    "YDY",
+    "ZYZ"
+  ],
+  "result": {
+    "count": 1,
+    "id": "astral_dice:ender_dice"
+  }
+}

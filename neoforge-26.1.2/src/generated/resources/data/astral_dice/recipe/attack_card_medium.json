@@ -1,0 +1,11 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    "minecraft:iron_sword",
+    "astral_dice:star_coin"
+  ],
+  "result": {
+    "id": "astral_dice:attack_card_medium"
+  }
+}

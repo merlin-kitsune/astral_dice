@@ -46,6 +46,123 @@ $script:NeoForgeMods = @(
     @{ Pattern = '*modernfix-neoforge*5.27.24*.jar'; Target = 'modernfix-neoforge-5.27.24+mc1.21.1.jar' }
 )
 
+# ── 26.1.2 探针运行时（仅 dev run 需要）──────────────────────────────────────
+# 26.1.2 的整合包实例里**没有** KubeJS（用户实例未装），而 KubeJS 是探针脚本的宿主，
+# 故从 KubeJS 官方 maven 拉「KubeJS + 必需前置 Rhino」到 `run/26.1.2/mods`：
+#   · **不**写进 build.gradle 依赖 —— 否则 datagen/构建也会装载 KubeJS(其自带 data
+#     provider 会污染 26.1.2 的两段式数据生成);1.21.1 侧同样采用「run/mods 直接装载」约定;
+#   · 版本取自子项目 gradle.properties 的 `kubejs_version`(单一事实来源);
+#   · 其余三个版本来自 KubeJS 26.1.2-8.0.6 的元数据/POM,均**必需**:
+#       rhino                 —— mods.toml 的 required 依赖 [2101.2.8-build.91,)
+#       better-advanced-tooltips —— POM runtime 依赖 [2601.1.0-build.9,)。
+#         实测:即使只跑**服务端**(世界生成)也必需 —— KubeJS 的 TextIcons.<clinit>
+#         无条件引用 dev.latvian.mods.betteradvancedtooltips.BATIcons,
+#         缺它会让 RegisterEvent 阶段抛 NoClassDefFoundError 直接崩服。
+#       tiny-java-server      —— POM runtime 依赖,但它是**纯 Java 库(无 mods.toml)**:
+#         放进 run/mods 会让 FML 在启动时弹「不是一个有效的模组文件」警告屏并**停在那里**
+#         (2026-09-16 实测),且它只服务 KubeJS 自带的 HTTP 面板(本测试链不使用)。
+#         ⇒ **故意不装**。若将来确实需要,应走 dev classpath 而不是 run/mods。
+#   · 下载缓存在 `temp/probe_mods/<版本>/`,幂等:目标已存在同尺寸文件即跳过。
+$script:KubejsRhinoVersion = '2101.2.8-build.91'
+$script:KubejsBatVersion = '2601.1.0-build.10'
+$script:KubejsTinyJavaServerVersion = '1.0.0-build.45'
+
+# ── 26.1.2 渲染栈（Sodium + Iris）与光影（2026-09-17 用户要求：光影兼容性测试）──
+# 来源一律走 **Modrinth Maven**（`https://api.modrinth.com/maven`，本子项目 build.gradle 第 40 行已声明该仓库，
+# 与 Curios 同源），**不使用** CDN/GitHub 直链。Maven 坐标为 `maven.modrinth:<slug>:<version>`：
+#   maven.modrinth:sodium:mc26.1.2-0.9.1-neoforge
+#   maven.modrinth:iris:1.11.4+26.1-neoforge          ← 硬依赖 Sodium（required），必须同装
+#   maven.modrinth:complementary-unbound:r5.9.3       ← 光影包同样由 Modrinth Maven 提供（已验证 200）
+# 落地方式仍是「下载进 run/26.1.2/mods 与 shaderpacks/」而不是写进 build.gradle 依赖，理由与 KubeJS 相同：
+#   两段式数据生成（runClientData/runServerData）与 runClient 共用同一 runtimeClasspath，把**纯客户端**模组
+#   写进依赖会让服务端数据生成也装载它们（直接崩）。1.21.1 侧同样是「只放进 run/mods」的约定。
+# 版本均为 release、且均声明支持 26.1.2（该线此前注释写「Iris 尚无可用的 26.1.2 构建」——已过期）。
+# ⚠️ 这些是纯客户端模组：`mt_env world` 起专用服务器前必须移出（Invoke-MtEnvWorld 已覆盖 sodium/iris），
+#   两段式数据生成前也必须移出。
+$script:RenderMods2612 = @(
+    @{ Name = 'sodium-neoforge-0.9.1+mc26.1.2.jar'
+       Coord = 'maven.modrinth:sodium:mc26.1.2-0.9.1-neoforge'
+       Url  = 'https://api.modrinth.com/maven/maven/modrinth/sodium/mc26.1.2-0.9.1-neoforge/sodium-neoforge-0.9.1+mc26.1.2.jar'
+       Sha1 = 'f369407251bdeb3b91d3e67fbbc133263b0c9078'
+       Size = 1185970 }
+    @{ Name = 'iris-neoforge-1.11.4+mc26.1.2.jar'
+       Coord = 'maven.modrinth:iris:1.11.4+26.1-neoforge'
+       Url  = 'https://api.modrinth.com/maven/maven/modrinth/iris/1.11.4+26.1-neoforge/iris-neoforge-1.11.4+mc26.1.2.jar'
+       Sha1 = '15ac52fe7b35c66bb799f0f13021f549bf302c3c'
+       Size = 2756643 }
+)
+
+# ── 优化类模组（2026-09-17 用户要求：进一步验证优化类模组的兼容性）──────────────
+# 来源同样走 **Modrinth Maven**（与渲染栈/史莱姆压制同规则）：
+#   maven.modrinth:immediatelyfast:adbrNJLm （1.15.3+26.1-neoforge，`environment=client_only`）
+#   maven.modrinth:modernfix:j7EoxpYe       （5.27.22+mc26.1.2，`client_or_server_prefers_both`）
+# ⚠️ 两者的「侧别」不同，处理必须分开：
+#   · **ImmediatelyFast 是纯客户端**（即时渲染缓冲/符号图集等客户端优化）⇒ 必须进
+#     `Invoke-MtEnvWorld` 的移出名单（否则专用服务器会加载客户端模组；同规则也适用于
+#     两段式数据生成 runClientData/runServerData 前的手工移出）。
+#   · **ModernFix 两侧皆可**（它同时优化客户端与服务端的启动/内存/资源加载）⇒ 生成世界时
+#     **保留**，服务端也能拿到它的启动期优化。
+# 注：1.21.1 线早已集成 ModernFix（`install_test_mods.ps1` 复制进 run/1.21.1/mods，launch 亦校验其
+# 加载完成日志）；本清单是 26.1.2 线的对应实现。
+$script:PerfMods2612 = @(
+    @{ Name = 'ImmediatelyFast-NeoForge-1.15.3+26.1.jar'
+       Coord = 'maven.modrinth:immediatelyfast:adbrNJLm'
+       Url  = 'https://api.modrinth.com/maven/maven/modrinth/immediatelyfast/adbrNJLm/ImmediatelyFast-NeoForge-1.15.3%2B26.1.jar'
+       Sha1 = 'bb10bdde4199da3cb7a2a64f9e3274a46218c9f1'
+       Size = 312276 }
+    @{ Name = 'modernfix-neoforge-5.27.22+mc26.1.2.jar'
+       Coord = 'maven.modrinth:modernfix:j7EoxpYe'
+       Url  = 'https://api.modrinth.com/maven/maven/modrinth/modernfix/j7EoxpYe/modernfix-neoforge-5.27.22%2Bmc26.1.2.jar'
+       Sha1 = '334500dd0c94a552005a432114fae32fe6c518fc'
+       Size = 505496 }
+)
+
+# 注：**没有**全局的「族前缀表」—— 清理前缀由每次 `Install-MtSpecList` 调用**按族显式传入**
+# （渲染栈 `sodium-`/`iris-`、史莱姆压制 `superflatworldnoslimes-`/`collective-`、
+# 优化模组 `immediatelyfast-`/`modernfix-`）。旧版本清理的必要性：`Install-MtRemoteMod` 只负责
+# 「放新文件」，不做「删旧文件」⇒ 换版本后新旧 jar 会**同时存在**，FML 报重复模组
+# （`Duplicate mods:` / `Found duplicate mod …`）拒绝启动，看起来像「新版本装坏了」。
+# 前缀带连字符，故不会误删 `reeses-sodium-options-*` 这类名字含关键字、注册 id 不同的模组。
+# ⚠️ 第一版曾用一张全局前缀表，结果「装史莱姆压制」那一趟把上一趟刚装好的 Sodium/Iris 删掉了
+# （每趟只知道自己的 `$installed`）—— 故清理范围必须跟着调用走，见 `Install-MtSpecList` 注释。
+
+# ── 超平坦测试世界的「史莱姆压制」模组（2026-09-17 用户硬性要求）──────────────
+# 用户原话：「测试环境强制要求加入 Superflat world no slimes 模组，否则因为超平坦世界
+# 生成的史莱姆会严重干扰测试流程」。测试世界是超平坦（`mt_env world` 生成 + quickplay 直进），
+# 超平坦下方 y<40 处处是史莱姆区块 ⇒ 测试期间会持续刷出史莱姆，干扰实体类断言
+# （`/kill @e[type=!player]` 只在 launch 前清一次，测试过程中新刷的照样存在）。
+# 来源同样走 **Modrinth Maven**（与渲染栈同规则，不使用 CDN/GitHub 直链）：
+#   maven.modrinth:superflat-world-no-slimes:Onb8latt （26.1.2-3.6，`environment=server_only`）
+#   maven.modrinth:collective:iXqgYZEw               （26.1.2-8.32；上者的 **required** 前置库）
+# ⚠️ 两条重要性质（决定了它不能被当成「客户端模组」处理）：
+#   1. 史莱姆压制模组在 Modrinth 上标为 `server_only` ⇒ **必须留在大世界生成用的专用服务器**里，
+#      故 `Invoke-MtEnvWorld` 的「纯客户端模组移出」名单（imblocker/sodium/iris/embeddium/oculus）
+#      **不得**加入它们（现在的匹配是子串命中，两个文件名都不含这些子串 ⇒ 天然安全）。
+#   2. 它是**运行时刷怪逻辑**（取消超平坦世界的史莱姆自然生成），不是世界生成特性 ⇒ 世界已生成
+#      也照样生效，无需重建世界。
+$script:SlimeGuard2612 = @(
+    @{ Name = 'superflatworldnoslimes-26.1.2-3.6.jar'
+       Coord = 'maven.modrinth:superflat-world-no-slimes:Onb8latt'
+       Url  = 'https://api.modrinth.com/maven/maven/modrinth/superflat-world-no-slimes/Onb8latt/superflatworldnoslimes-26.1.2-3.6.jar'
+       Sha1 = 'd47af65db00db70a47f29390386a52290cf93481'
+       Size = 28935 }
+    @{ Name = 'collective-26.1.2-8.32.jar'
+       Coord = 'maven.modrinth:collective:iXqgYZEw'
+       Url  = 'https://api.modrinth.com/maven/maven/modrinth/collective/iXqgYZEw/collective-26.1.2-8.32.jar'
+       Sha1 = '13887a5d78938c6ce55c15bcbd1352db625e84e1'
+       Size = 1054031 }
+)
+
+# Complementary Shaders - Unbound（用户指定用于光影兼容性测试）
+# `maven.modrinth:complementary-unbound:r5.9.3`；落位 `run/<版本>/shaderpacks/`，并在 Iris 配置里选中它。
+$script:ShaderPack2612 = @{
+    Name  = 'ComplementaryUnbound_r5.9.3.zip'
+    Coord = 'maven.modrinth:complementary-unbound:r5.9.3'
+    Url   = 'https://api.modrinth.com/maven/maven/modrinth/complementary-unbound/r5.9.3/ComplementaryUnbound_r5.9.3.zip'
+    Sha1  = '2ee08300e1d6f039e63eae8484dddf57b3aaaf67'
+    Size  = 553400
+}
+
 $script:TAG_BYTE = 1
 $script:TAG_SHORT = 2
 $script:TAG_INT = 3
@@ -469,6 +586,25 @@ function Sync-MtEnvKubejs {
     $dstRoot = Join-Path (Get-MtPaths -Version $Version).run_dir 'kubejs'
     $copied = 0
     $total = 0
+    $removed = 0
+    # ⚠️ 2026-09-17 新增:只「拷贝」不「清理」会留下**已被模板删除的旧探针**
+    #    (实测事故:26.1.2 的最小探针 astral_probe.js 被完整探针取代后,run 目录里那份
+    #     仍在,两份都注册 `/astralprobe` ⇒ KubeJS 命令重复注册 / 读数来自旧脚本)。
+    #    故同步时顺带删除 run 侧 `server_scripts/**` 中模板已不存在的 .js。
+    $keep = @{}
+    foreach ($f in @(Get-ChildItem -LiteralPath $src -Recurse -File)) {
+        $keep[$f.FullName.Substring($src.Length).TrimStart('\', '/')] = $true
+    }
+    $dstMeta = Join-Path $dstRoot 'server_scripts'
+    if (Test-Path -LiteralPath $dstMeta -PathType Container) {
+        foreach ($f in @(Get-ChildItem -LiteralPath $dstMeta -Recurse -File -Filter '*.js')) {
+            $rel = $f.FullName.Substring($dstRoot.Length).TrimStart('\', '/')
+            if (-not $keep.ContainsKey($rel)) {
+                Remove-Item -LiteralPath $f.FullName -Force -ErrorAction SilentlyContinue
+                $removed++
+            }
+        }
+    }
     foreach ($f in @(Get-ChildItem -LiteralPath $src -Recurse -File)) {
         $rel = $f.FullName.Substring($src.Length).TrimStart('\', '/')
         $dst = Join-Path $dstRoot $rel
@@ -488,7 +624,7 @@ function Sync-MtEnvKubejs {
             $copied++
         }
     }
-    return , @($copied, $total, $true)
+    return , @($copied, $total, $true, $removed)
 }
 
 function Invoke-MtEnvKubejs {
@@ -500,6 +636,9 @@ function Invoke-MtEnvKubejs {
         Write-MtLine ("MT_KUBEJS: SKIP — 模板目录不存在 scripts/test/resources/kubejs/{0}" -f $Version)
         return 0
     }
+    if ($r[3] -gt 0) {
+        Write-MtLine ("MT_KUBEJS: 已清理 {0} 个模板中已不存在的旧脚本（避免重复注册 /astralprobe）" -f $r[3])
+    }
     if ($r[0] -gt 0) {
         Write-MtLine ("MT_KUBEJS: OK — 已同步 {0}/{1} 个脚本到 run/{2}/kubejs（模板有更新；探针命令的改动需**冷启动**才生效）" -f $r[0], $r[1], $Version)
     } else {
@@ -508,7 +647,390 @@ function Invoke-MtEnvKubejs {
     return 0
 }
 
+# ══ 26.1.2 探针运行时装装（KubeJS + Rhino）══════════════════════════════════
+function Install-MtProbeRuntime {
+    <#
+    .SYNOPSIS
+        把 26.1.2 探针所需的 KubeJS + Rhino 放进 `run/26.1.2/mods`（幂等）。
+
+    .NOTES
+        为什么不用 Gradle 依赖：`runData/runServerData/runClientData` 与 runClient 共用同一
+        runtimeClasspath，把 KubeJS 写进依赖会让**数据生成**也装载它（KubeJS 自带 data
+        provider，会干扰 26.1.2 的两段式生成）。放 run/mods 是 1.21.1 侧既有的约定。
+
+        版本单一事实来源 = 子项目 gradle.properties 的 `kubejs_version`；
+        Rhino 版本取 KubeJS 26.1.2-8.0.6 的 neoforge.mods.toml 中 `required` 区间下限。
+        下载失败一律**硬失败**（退出码 14），不静默降级为「探针缺失」。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][psobject]$Paths)
+
+    if ($Paths.version -ne '26.1.2') { return 0 }
+
+    $propsPath = Join-Path (Get-MtRoot) "$($Paths.subproject)/gradle.properties"
+    if (-not (Test-Path -LiteralPath $propsPath -PathType Leaf)) {
+        Write-MtLine "MT_MODS: BLOCKED — 找不到 $propsPath（无法确定 kubejs_version）"
+        return 14
+    }
+    $kubejsVersion = ''
+    foreach ($ln in (Get-Content -LiteralPath $propsPath)) {
+        if ($ln -match '^\s*kubejs_version\s*=\s*(.+?)\s*$') { $kubejsVersion = $Matches[1]; break }
+    }
+    if (-not $kubejsVersion) {
+        Write-MtLine 'MT_MODS: BLOCKED — gradle.properties 缺少 kubejs_version'
+        return 14
+    }
+
+    $cache = Join-Path (Join-Path (Get-MtRoot) 'temp\probe_mods') $Paths.version
+    [void](New-Item -ItemType Directory -Force -Path $cache)
+
+    $specs = @(
+        @{ Name = "kubejs-neoforge-$kubejsVersion.jar"
+           Url  = "https://maven.latvian.dev/releases/dev/latvian/mods/kubejs-neoforge/$kubejsVersion/kubejs-neoforge-$kubejsVersion.jar" }
+        @{ Name = "rhino-$($script:KubejsRhinoVersion).jar"
+           Url  = "https://maven.latvian.dev/releases/dev/latvian/mods/rhino/$($script:KubejsRhinoVersion)/rhino-$($script:KubejsRhinoVersion).jar" }
+        @{ Name = "better-advanced-tooltips-$($script:KubejsBatVersion).jar"
+           Url  = "https://maven.latvian.dev/releases/dev/latvian/mods/better-advanced-tooltips/$($script:KubejsBatVersion)/better-advanced-tooltips-$($script:KubejsBatVersion).jar" }
+    )
+
+    $installed = @()
+    foreach ($spec in $specs) {
+        $cached = Join-Path $cache $spec.Name
+        if (-not (Test-Path -LiteralPath $cached -PathType Leaf)) {
+            try {
+                Write-MtLine "MT_MODS: 下载探针运行时 $($spec.Name)"
+                $ProgressPreference = 'SilentlyContinue'
+                Invoke-WebRequest -Uri $spec.Url -OutFile "$cached.part" -TimeoutSec 180 -UseBasicParsing
+                Move-Item -LiteralPath "$cached.part" -Destination $cached -Force
+            } catch {
+                Remove-Item -LiteralPath "$cached.part" -Force -ErrorAction SilentlyContinue
+                Write-MtLine "MT_MODS: BLOCKED — 下载失败 $($spec.Url) :: $($_.Exception.Message)"
+                return 14
+            }
+        }
+        $dst = Join-Path $Paths.mods_dir $spec.Name
+        $needCopy = $true
+        if (Test-Path -LiteralPath $dst -PathType Leaf) {
+            if ((Get-Item -LiteralPath $dst).Length -eq (Get-Item -LiteralPath $cached).Length) { $needCopy = $false }
+        }
+        if ($needCopy) { Copy-Item -LiteralPath $cached -Destination $dst -Force }
+        $installed += $spec.Name
+    }
+
+    Write-MtLine ("MT_MODS: OK — 探针运行时就位（KubeJS {0} / Rhino {1}）→ {2}" -f `
+            $kubejsVersion, $script:KubejsRhinoVersion, $Paths.mods_dir)
+    return 0
+}
+
 # ══ 子命令：mods ══════════════════════════════════════════════════════════
+function Install-MtRemoteMod {
+    <#
+    .SYNOPSIS
+        下载/校验/落位**单个** Modrinth Maven 模组规格（幂等：尺寸 + sha1 命中即跳过）。
+
+    .NOTES
+        从 `Install-MtRenderStack` 的内联循环提取（2026-09-17），供渲染栈与史莱姆压制模组共用 ——
+        两处的语义必须完全一致：缓存在 `temp/probe_mods/<版本>/`，命中判据 = 目标文件存在且**尺寸一致**
+        （有 sha1 时再校验 sha1）；下载走 `<缓存>.part` 再原子改名；任何尺寸/sha1 不符都**硬报 14**，
+        不静默降级。返回 0 = 就位，14 = 下载或校验失败。
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][psobject]$Paths,
+        [Parameter(Mandatory)]$Spec,
+        [Parameter(Mandatory)][string]$Cache,
+        [string]$Label = '模组'
+    )
+
+    $cached = Join-Path $Cache $Spec.Name
+    $ok = $false
+    if (Test-Path -LiteralPath $cached -PathType Leaf) {
+        $ci = Get-Item -LiteralPath $cached
+        $ok = ($ci.Length -eq $Spec.Size)
+        if ($ok -and $Spec.Sha1) {
+            $ok = ((Get-FileHash -LiteralPath $cached -Algorithm SHA1).Hash.ToLowerInvariant() -eq $Spec.Sha1)
+        }
+        if (-not $ok) { Remove-Item -LiteralPath $cached -Force -ErrorAction SilentlyContinue }
+    }
+    if (-not $ok) {
+        try {
+            Write-MtLine "MT_MODS: 下载$Label $($Spec.Name) ← $($Spec.Coord)"
+            Invoke-WebRequest -Uri $Spec.Url -OutFile "$cached.part" -TimeoutSec 300 -UseBasicParsing
+            Move-Item -LiteralPath "$cached.part" -Destination $cached -Force
+        } catch {
+            Remove-Item -LiteralPath "$cached.part" -Force -ErrorAction SilentlyContinue
+            Write-MtLine "MT_MODS: BLOCKED — $Label下载失败 [Modrinth Maven] $($Spec.Coord) $($Spec.Url) :: $($_.Exception.Message)"
+            return 14
+        }
+        $got = Get-Item -LiteralPath $cached
+        if ($got.Length -ne $Spec.Size) {
+            Write-MtLine "MT_MODS: BLOCKED — $($Spec.Name) 尺寸不符（期望 $($Spec.Size)，实得 $($got.Length)）"
+            return 14
+        }
+        if ($Spec.Sha1 -and ((Get-FileHash -LiteralPath $cached -Algorithm SHA1).Hash.ToLowerInvariant() -ne $Spec.Sha1)) {
+            Write-MtLine "MT_MODS: BLOCKED — $($Spec.Name) sha1 校验失败"
+            return 14
+        }
+    }
+    $dst = Join-Path $Paths.mods_dir $Spec.Name
+    $needCopy = $true
+    if (Test-Path -LiteralPath $dst -PathType Leaf) {
+        if ((Get-Item -LiteralPath $dst).Length -eq (Get-Item -LiteralPath $cached).Length) { $needCopy = $false }
+    }
+    if ($needCopy) { Copy-Item -LiteralPath $cached -Destination $dst -Force }
+    return 0
+}
+
+function Install-MtSpecList {
+    <#
+    .SYNOPSIS
+        按规格清单逐个下载/校验/落位（`Install-MtRemoteMod` 的批量包装），并按 `-Prefixes` 清掉**同族旧版本**。
+
+    .NOTES
+        为什么把「装 + 清」绑在一起（2026-09-17）：只装不清会让新旧版本 jar 并存 ⇒ FML 判重复模组
+        拒绝启动；调用方若忘了清理就会得到「看起来像新版本装坏了」的假象。
+
+        ⚠️ **清理范围必须由调用方按族显式给出（`-Prefixes`），不得用「全局族前缀表」** ——
+        2026-09-17 实测踩坑：第一版用全局前缀表，于是「装史莱姆压制」那一趟把**上一趟刚装好的
+        Sodium/Iris 当成不在本次规格里的文件删掉了**（每趟调用只知道自己的 `$installed`），
+        结果 run/mods 里渲染栈凭空消失，看起来像下载失败。按族传入前缀后，各趟互不干扰。
+
+        前缀用大小写不敏感 `-like "$pre*"` 匹配（`ImmediatelyFast-…` 要能被 `immediatelyfast-` 命中），
+        且带连字符，故不会误删 `reeses-sodium-options-*` 这类名字里含关键字、注册 id 不同的模组。
+        返回 0 = 全部就位，其它 = `Install-MtRemoteMod` 的错误码（14 = 下载/校验失败，直接透传）。
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][psobject]$Paths,
+        [Parameter(Mandatory)]$Specs,
+        [Parameter(Mandatory)][string]$Cache,
+        [Parameter(Mandatory)][string]$Label,
+        [string[]]$Prefixes = @()
+    )
+
+    $installed = @()
+    foreach ($spec in $Specs) {
+        $rc = Install-MtRemoteMod -Paths $Paths -Spec $spec -Cache $Cache -Label $Label
+        if ($rc -ne 0) { return $rc }
+        $installed += $spec.Name
+    }
+    if ($Prefixes.Count -gt 0) {
+        foreach ($f in @(Get-ChildItem -LiteralPath $Paths.mods_dir -File -Filter '*.jar')) {
+            $isFamily = $false
+            foreach ($pre in $Prefixes) {
+                if ($f.Name -like "$pre*") { $isFamily = $true; break }
+            }
+            if (-not $isFamily) { continue }
+            if ($installed -contains $f.Name) { continue }
+            Remove-Item -LiteralPath $f.FullName -Force -ErrorAction SilentlyContinue
+            Write-MtLine ("MT_MODS: 清理旧版本{0} {1}" -f $Label, $f.Name)
+        }
+    }
+    return 0
+}
+
+function Install-MtPerfMods {
+    <#
+    .SYNOPSIS
+        装优化类模组（ImmediatelyFast + ModernFix）到 run/<版本>/mods（幂等）。
+
+    .NOTES
+        用户要求（2026-09-17）：「增加 ImmediatelyFast 和 ModernFix 模组以进一步验证优化类模组
+        兼容性」。侧别差异见 `$script:PerfMods2612` 的注释（ImmediatelyFast 纯客户端、必须移出
+        专用服务器；ModernFix 两侧皆可、保留）；本函数只对 26.1.2 生效（当前自动化测试线）。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][psobject]$Paths)
+
+    if ($Paths.version -ne '26.1.2') { return 0 }
+
+    $cache = Join-Path (Join-Path (Get-MtRoot) 'temp\probe_mods') $Paths.version
+    [void](New-Item -ItemType Directory -Force -Path $cache)
+    [void](New-Item -ItemType Directory -Force -Path $Paths.mods_dir)
+
+    $rc = Install-MtSpecList -Paths $Paths -Specs $script:PerfMods2612 -Cache $cache -Label '优化模组' -Prefixes @('immediatelyfast-', 'modernfix-')
+    if ($rc -ne 0) { return $rc }
+    $names = ($script:PerfMods2612 | ForEach-Object { $_.Name }) -join ' / '
+    Write-MtLine ("MT_MODS: OK — 优化类模组就位（{0}）；ImmediatelyFast 为纯客户端，生成世界时会被移出" -f $names)
+    return 0
+}
+
+function Install-MtSlimeGuard {
+    <#
+    .SYNOPSIS
+        把「超平坦世界无史莱姆」模组（+ 其必需前置 Collective）放进 run/<版本>/mods（幂等）。
+
+    .NOTES
+        · 用户硬性要求，见 $script:SlimeGuard2612 的注释（超平坦世界刷史莱姆会干扰测试流程）；
+        · 只对 26.1.2 生效（本线是当前自动化测试线；1.21.1 侧 run/mods 由用户整合包按文件名
+          复制，1.20.1 侧 dev run 不使用 run/mods 装载渲染/工具类模组 —— 如需在这两条线同样强制，
+          应先补它们的下载规格，不要只改这里）；
+        · 两者都是**服务端/运行期**模组，专用服务器生成世界时**保留**（见 $script:SlimeGuard2612 注释）。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][psobject]$Paths)
+
+    if ($Paths.version -ne '26.1.2') { return 0 }
+
+    $cache = Join-Path (Join-Path (Get-MtRoot) 'temp\probe_mods') $Paths.version
+    [void](New-Item -ItemType Directory -Force -Path $cache)
+    [void](New-Item -ItemType Directory -Force -Path $Paths.mods_dir)
+
+    $installed = @()
+    $rc = Install-MtSpecList -Paths $Paths -Specs $script:SlimeGuard2612 -Cache $cache -Label '史莱姆压制模组' -Prefixes @('superflatworldnoslimes-', 'collective-')
+    if ($rc -ne 0) { return $rc }
+    $installed = @($script:SlimeGuard2612 | ForEach-Object { $_.Name })
+    Write-MtLine ("MT_MODS: OK — 超平坦世界史莱姆压制就位（{0}；运行时生效，无需重建世界）" -f ($installed -join ' / '))
+    return 0
+}
+
+function Install-MtRenderStack {
+    <#
+    .SYNOPSIS
+        把 26.1.2 的渲染栈（Sodium + Iris）与光影包放进 run/<版本>/（幂等）。
+
+    .NOTES
+        · 来源 = **Modrinth Maven**（`https://api.modrinth.com/maven`，坐标见 $script:RenderMods2612 / $script:ShaderPack2612
+          的 `Coord` 字段，形如 `maven.modrinth:sodium:mc26.1.2-0.9.1-neoforge`）；**不使用** CDN/GitHub 直链。
+        · mods 落位 `run/26.1.2/mods`；光影包落位 `run/26.1.2/shaderpacks/`；
+        · 缓存在 `temp/probe_mods/26.1.2/`（与探针运行时同一缓存目录，便于整体清理）；
+        · 命中判据 = 目标文件存在且**尺寸一致**，下载后按固定 sha1 校验，失败硬报 14，不静默降级；
+        · 顺带把 Iris 的选中光影写进 `config/iris.properties`（`shaderPack=<包名>`）。
+
+        ⚠️ **`enableShaders` 默认写 false（2026-09-17 二次更正）**：默认关闭只是「测试不需要光影 + 省性能」，
+        **不是因为崩**。经用户点出并用两轮实测确认：26.1.2 上「开光影即崩 `IllegalStateException: Missing
+        sampler Sampler1`（`GlCommandEncoder.trySetup`）」的元凶是 **Sodium 0.9.2**；把它降到**整合包同款的
+        0.9.1**（本函数当前的规格）后，Iris 1.11.4 + Complementary Unbound r5.9.3 **正常工作** ——
+        `SHADER-VISION-26.1.2` 用例由 FAIL（0.9.2：`Using shaderpack:` 后立即崩 + 新增崩溃报告）转
+        **PASS**（光影渲染正常、无崩溃报告；视觉读数：原版方块云 → 光影体积云/大气散射/色调映射）。
+        更早那条「属上游无解缺陷、与版本无关」的结论**作废**（当时的对照只换了光影包、没换 Sodium 版本）。
+        ⇒ 改动 Sodium/Iris/光影包版本后**必须复跑** `SHADER-VISION-26.1.2`；换版本号时注意本函数末尾的
+        「旧版本清理」，否则新旧 Sodium 并存会被 FML 判重复模组。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][psobject]$Paths)
+
+    if ($Paths.version -ne '26.1.2') { return 0 }
+
+    $cache = Join-Path (Join-Path (Get-MtRoot) 'temp\probe_mods') $Paths.version
+    [void](New-Item -ItemType Directory -Force -Path $cache)
+    [void](New-Item -ItemType Directory -Force -Path $Paths.mods_dir)
+
+    $progressBak = $ProgressPreference
+    $ProgressPreference = 'SilentlyContinue'
+    try {
+        # 1) 渲染模组 → run/<版本>/mods（含同族旧版本清理，见 Install-MtSpecList）
+        $rc = Install-MtSpecList -Paths $Paths -Specs $script:RenderMods2612 -Cache $cache -Label '渲染模组' -Prefixes @('sodium-', 'iris-')
+        if ($rc -ne 0) { return $rc }
+        $installed = @($script:RenderMods2612 | ForEach-Object { $_.Name })
+
+        # 2) 光影包 → run/<版本>/shaderpacks
+        $sp = $script:ShaderPack2612
+        $spDir = Join-Path $Paths.run_dir 'shaderpacks'
+        [void](New-Item -ItemType Directory -Force -Path $spDir)
+        $spCache = Join-Path $cache $sp.Name
+        $spOk = (Test-Path -LiteralPath $spCache -PathType Leaf) -and ((Get-Item -LiteralPath $spCache).Length -eq $sp.Size)
+        if (-not $spOk) {
+            if (Test-Path -LiteralPath $spCache) { Remove-Item -LiteralPath $spCache -Force -ErrorAction SilentlyContinue }
+            try {
+                Write-MtLine "MT_MODS: 下载光影包 $($sp.Name) ← $($sp.Coord)"
+                Invoke-WebRequest -Uri $sp.Url -OutFile "$spCache.part" -TimeoutSec 300 -UseBasicParsing
+                Move-Item -LiteralPath "$spCache.part" -Destination $spCache -Force
+            } catch {
+                Remove-Item -LiteralPath "$spCache.part" -Force -ErrorAction SilentlyContinue
+                Write-MtLine "MT_MODS: BLOCKED — 光影包下载失败 [Modrinth Maven] $($sp.Coord) $($sp.Url) :: $($_.Exception.Message)"
+                return 14
+            }
+            if ((Get-Item -LiteralPath $spCache).Length -ne $sp.Size) {
+                Write-MtLine "MT_MODS: BLOCKED — 光影包尺寸不符（期望 $($sp.Size)）"
+                return 14
+            }
+            if ($sp.Sha1 -and ((Get-FileHash -LiteralPath $spCache -Algorithm SHA1).Hash.ToLowerInvariant() -ne $sp.Sha1)) {
+                Write-MtLine 'MT_MODS: BLOCKED — 光影包 sha1 校验失败'
+                return 14
+            }
+        }
+        $spDst = Join-Path $spDir $sp.Name
+        if (-not (Test-Path -LiteralPath $spDst -PathType Leaf) -or
+            ((Get-Item -LiteralPath $spDst).Length -ne (Get-Item -LiteralPath $spCache).Length)) {
+            Copy-Item -LiteralPath $spCache -Destination $spDst -Force
+        }
+
+        # 3) Iris 配置：选中该光影并开启光影（Iris 1.11.x 的 config/iris.properties）
+        $irisCfg = Join-Path (Join-Path $Paths.run_dir 'config') 'iris.properties'
+        [void](New-Item -ItemType Directory -Force -Path (Split-Path $irisCfg))
+        $lines = @()
+        if (Test-Path -LiteralPath $irisCfg -PathType Leaf) { $lines = @(Get-Content -LiteralPath $irisCfg) }
+        $set = @{ 'shaderPack' = $sp.Name; 'enableShaders' = 'false' }
+        foreach ($k in $set.Keys) {
+            $found = $false
+            for ($i = 0; $i -lt $lines.Count; $i++) {
+                if ($lines[$i] -match "^\s*$([regex]::Escape($k))\s*=") { $lines[$i] = "$k=$($set[$k])"; $found = $true; break }
+            }
+            if (-not $found) { $lines += "$k=$($set[$k])" }
+        }
+        Set-Content -LiteralPath $irisCfg -Value $lines -Encoding utf8
+
+        Write-MtLine ("MT_MODS: OK — 渲染栈就位（{0}）＋ 光影 {1}；Iris 已选中该光影" -f `
+                ($installed -join ' / '), $sp.Name)
+        return 0
+    } finally {
+        $ProgressPreference = $progressBak
+    }
+}
+
+function Invoke-MtEnvShaders {
+    <#
+    .SYNOPSIS
+        读写 `config/iris.properties` 的 `enableShaders`（`--state off|on|status`），**不触碰 mods/缓存、不联网**。
+
+    .NOTES
+        为什么需要它（2026-09-17 实测踩坑）：`Install-MtRenderStack` 只在 `mt_env mods` 时把
+        `enableShaders` 写回 false；而**游戏内的光影开关会持久化该键**（Iris 的 K 键
+        `iris.keybind.toggleShaders` 与光影界面 Apply 都会写 `config/iris.properties`）。
+        于是一次「光影开启」验证跑完（客户端按 K 打开光影）会把该键留在 `true`，
+        **下一次冷启动会在进入世界的第一帧就崩**（launch 阶段报
+        `MT_LAUNCH: ERROR — 进入世界后立即崩溃`）——这是真实的现场，但会让后续任何用例
+        都跑不起来。故把「把光影状态摆回已知值」做成一条**显式、幂等、可复现**的命令：
+        `pwsh -File scripts/test/mt_env.ps1 shaders --version 26.1.2 --state off`。
+        光影回归 (`SHADER-VISION-26.1.2`) 的前置就该是它 + 冷启动。
+
+        只改这一行，保留文件里其它键（shaderPack / 调过的设置）不动；缺文件时按 `status`
+        报 BLOCKED（不臆造配置）。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$Version, [string]$State = 'status')
+
+    $Paths = Get-MtPaths -Version $Version
+    $irisCfg = Join-Path (Join-Path $Paths.run_dir 'config') 'iris.properties'
+    if (-not (Test-Path -LiteralPath $irisCfg -PathType Leaf)) {
+        Write-MtBlocked 'shaders' ("未找到 {0}（先跑 mt_env.ps1 mods --version {1}）" -f $irisCfg, $Version)
+        return $MT_EXIT_BLOCKED
+    }
+
+    $lines = @(Get-Content -LiteralPath $irisCfg)
+    $current = '(未设置)'
+    $idx = -1
+    for ($i = 0; $i -lt $lines.Count; $i++) {
+        if ($lines[$i] -match '^\s*enableShaders\s*=\s*(.*)$') { $current = $Matches[1].Trim(); $idx = $i; break }
+    }
+
+    if ($State -eq 'status') {
+        Write-MtLine ("MT_SHADERS: {0} (enableShaders={1}, {2})" -f $current, $current, $irisCfg)
+        return $MT_EXIT_PASS
+    }
+    if ($State -notin @('off', 'on')) {
+        Write-MtErrorLine ("非法 --state {0}（可选：off on status）" -f $State)
+        return $MT_EXIT_ERROR
+    }
+
+    $want = if ($State -eq 'on') { 'true' } else { 'false' }
+    if ($idx -ge 0) { $lines[$idx] = "enableShaders=$want" } else { $lines += "enableShaders=$want" }
+    Set-Content -LiteralPath $irisCfg -Value $lines -Encoding utf8
+    Write-MtLine ("MT_SHADERS: {0} → {1} (enableShaders={2})" -f $current, $State, $want)
+    return $MT_EXIT_PASS
+}
+
 function Invoke-MtEnvMods {
     [CmdletBinding()]
     param([Parameter(Mandatory)][string]$Version)
@@ -520,6 +1042,26 @@ function Invoke-MtEnvMods {
 
     # 探针脚本与 mods 同批同步（都要在 launch 之前就位；此前这一步完全缺失）
     [void](Invoke-MtEnvKubejs -Version $Version)
+
+    if ($Version -eq '26.1.2') {
+        # 探针运行时(KubeJS + Rhino)必须装 —— 否则探针命令不存在，launch 的 OP 闸门会记 ERROR。
+        $rc = Install-MtProbeRuntime -Paths $p
+        if ($rc -ne 0) { return $rc }
+        # 渲染栈 + 光影（2026-09-17 用户要求：Sodium/Iris 最新版 + Complementary Unbound，用于光影兼容性测试）。
+        # 该线此前**不装**渲染模组，理由是「26.1.2 的 Iris 尚无可用的构建」——该理由已过期
+        # （实测 Modrinth 已有 sodium 0.9.1 / iris 1.11.4 的 26.1.2 release 构建；0.9.1 是用户要求的、与整合包一致的版本）。
+        $rc = Install-MtRenderStack -Paths $p
+        if ($rc -ne 0) { return $rc }
+        # 超平坦世界史莱姆压制（2026-09-17 用户硬性要求，见 $script:SlimeGuard2612 注释）
+        $rc = Install-MtSlimeGuard -Paths $p
+        if ($rc -ne 0) { return $rc }
+        # 优化类模组（2026-09-17 用户要求：ImmediatelyFast + ModernFix 兼容性验证）
+        $rc = Install-MtPerfMods -Paths $p
+        if ($rc -ne 0) { return $rc }
+        Write-MtLine 'MT_MODS: OK — 26.1.2 dev run：探针运行时 + Sodium/Iris + Complementary Unbound 光影 + 超平坦史莱姆压制 + 优化模组(ImmediatelyFast/ModernFix)'
+        Write-MtLine 'MT_MODS: 注意 — Sodium/Iris/ImmediatelyFast 为纯客户端模组：`mt_env world` 起专用服务器会自动移出，但**两段式数据生成（runClientData/runServerData）前必须手动移出** run/26.1.2/mods（与探针运行时同规则）'
+        return 0
+    }
 
     if ($Version -eq '1.20.1') {
         # dev run 不装渲染模组（Embeddium/Oculus 的 refmap 在 mojmap 下无法解析）；
@@ -712,7 +1254,7 @@ function Invoke-MtEnvWorld {
         foreach ($f in @(Get-ChildItem -LiteralPath $p.mods_dir -File -Filter '*.jar')) {
             $lower = $f.Name.ToLowerInvariant()
             $isClientOnly = $false
-            foreach ($k in @('imblocker', 'sodium', 'iris', 'embeddium', 'oculus')) {
+            foreach ($k in @('imblocker', 'sodium', 'iris', 'embeddium', 'oculus', 'immediatelyfast')) {
                 if ($lower.Contains($k)) { $isClientOnly = $true; break }
             }
             if (-not $isClientOnly) { continue }
@@ -803,6 +1345,7 @@ if ($MyInvocation.InvocationName -ne '.') {
     $Version = ''
     $SeedFlag = $false
     $TimeoutSec = 180
+    $ShaderState = 'status'
 
     $i = 0
     while ($i -lt $args.Count) {
@@ -818,6 +1361,10 @@ if ($MyInvocation.InvocationName -ne '.') {
             $i += 2
         } elseif ($key -eq 'seed') {
             $SeedFlag = $true; $i++
+        } elseif ($key -eq 'state') {
+            if ($i + 1 -ge $args.Count) { Write-MtErrorLine '缺少 --state 的值'; exit $MT_EXIT_ERROR }
+            $ShaderState = ([string]$args[$i + 1]).ToLowerInvariant()
+            $i += 2
         } elseif ($key -eq 'timeout') {
             if ($i + 1 -ge $args.Count) { Write-MtErrorLine '缺少 --timeout 的值'; exit $MT_EXIT_ERROR }
             $TimeoutSec = [int]$args[$i + 1]
@@ -827,8 +1374,8 @@ if ($MyInvocation.InvocationName -ne '.') {
         }
     }
 
-    if ($Cmd -notin @('mods', 'world', 'kill', 'kubejs')) {
-        Write-MtErrorLine '必须指定子命令 mods / world / kill / kubejs'
+    if ($Cmd -notin @('mods', 'world', 'kill', 'kubejs', 'shaders')) {
+        Write-MtErrorLine '必须指定子命令 mods / world / kill / kubejs / shaders'
         exit $MT_EXIT_ERROR
     }
     if (-not $Version) {
@@ -841,6 +1388,7 @@ if ($MyInvocation.InvocationName -ne '.') {
         'mods' { exit (Invoke-MtEnvMods -Version $Version) }
         'kubejs' { exit (Invoke-MtEnvKubejs -Version $Version) }
         'world' { exit (Invoke-MtEnvWorld -Version $Version -Seed $SeedFlag -Timeout $TimeoutSec) }
+        'shaders' { exit (Invoke-MtEnvShaders -Version $Version -State $ShaderState) }
         'kill' {
             [void](Stop-MtVersionProcesses -Paths (Get-MtPaths -Version $Version))
             exit $MT_EXIT_PASS

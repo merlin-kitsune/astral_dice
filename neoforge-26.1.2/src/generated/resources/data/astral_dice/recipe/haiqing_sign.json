@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": "minecraft:spyglass",
+    "D": "astral_dice:diamond_dice",
+    "E": "astral_dice:blank_sign",
+    "G": "minecraft:gold_ingot",
+    "L": "minecraft:prismarine_crystals"
+  },
+  "pattern": [
+    "GCG",
+    "LEL",
+    "GDG"
+  ],
+  "result": {
+    "id": "astral_dice:haiqing_sign"
+  }
+}

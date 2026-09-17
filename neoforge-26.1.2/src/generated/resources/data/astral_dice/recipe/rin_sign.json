@@ -1,0 +1,20 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": "minecraft:writable_book",
+    "C": "minecraft:clock",
+    "D": "astral_dice:diamond_dice",
+    "E": "astral_dice:blank_sign",
+    "P": "astral_dice:golden_star_plate",
+    "S": "astral_dice:star_coin"
+  },
+  "pattern": [
+    "SCS",
+    "BEB",
+    "PDP"
+  ],
+  "result": {
+    "id": "astral_dice:rin_sign"
+  }
+}

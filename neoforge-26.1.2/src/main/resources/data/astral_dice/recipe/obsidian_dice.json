@@ -1,0 +1,17 @@
+{
+  "type": "astral_dice:dice_upgrade",
+  "category": "equipment",
+  "key": {
+    "O": "minecraft:obsidian",
+    "D": "astral_dice:diamond_dice"
+  },
+  "pattern": [
+    "OOO",
+    "ODO",
+    "OOO"
+  ],
+  "result": {
+    "count": 1,
+    "id": "astral_dice:obsidian_dice"
+  }
+}

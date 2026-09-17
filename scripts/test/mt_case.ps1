@@ -360,7 +360,10 @@ function Test-MtCaseValid {
     }
 
     $version = Get-MtMapValue -Map $Case -Key 'version'
-    if ((Test-MtTruthyValue $version) -and (@('1.21.1', '1.20.1') -notcontains [string]$version)) {
+    # 版本白名单的唯一事实来源 = Mt.Paths.psm1 的 $script:VERSIONS
+    # (2026-09-16:此前这里硬编码 @('1.21.1','1.20.1'),第三条线 26.1.2 的条目会被判非法)
+    $validVersions = @(Get-MtVersions)
+    if ((Test-MtTruthyValue $version) -and ($validVersions -notcontains [string]$version)) {
         $errs += "version 非法：$(ConvertTo-MtPyText $version)"
     }
 
@@ -1010,6 +1013,13 @@ function Invoke-MtCaseRun {
             -StepTotal $steps.Count -Op 'done' -Detail $worst)
 
     # ── 收尾状态校验：崩溃报告 / 客户端中途死亡 → 归因到本用例（而不是留给后续用例猜谜）────
+    # ⚠️ 例外（2026-09-17 新增 `expect_crash`）：**被验证的就是「会不会崩」**的用例
+    #   （如 SHADER-VISION-26.1.2：开启光影后客户端必然崩，崩=缺陷仍在），此时把
+    #   `$worst` 强行改写成 ERROR 会把「产品缺陷仍在」伪装成「工具链故障」，且会白白
+    #   消耗一次自动重启预算去重跑一条注定崩溃的用例。声明 `"expect_crash": true` 后：
+    #   本块只**如实回显**崩溃报告（证据保留），判定完全交给用例自己的断言
+    #   （`absent` + `crash` 两条），也不自动重启。
+    $expectCrash = Test-MtTruthyValue (Get-MtMapValue -Map $case -Key 'expect_crash' -Default $false)
     if ($needsClient -and $null -ne $clientStart) {
         $clientEnd = Get-MtCaseClientStatus -Version $Version
         $newCrash = ($null -ne $clientEnd) -and ($clientEnd.CrashCount -gt $clientStart.CrashCount)
@@ -1023,12 +1033,16 @@ function Invoke-MtCaseRun {
             } else {
                 Write-MtErrLine ("MT_CASE: ERROR — {0} 执行期间客户端退出（进程消失且无新崩溃报告）" -f $caseId)
             }
-            if ($RestartBudget -gt 0) {
-                if (Restart-MtCaseClient -Version $Version -Reason $(if ($newCrash) { '本用例执行期间客户端崩溃' } else { '本用例执行期间客户端退出' })) {
-                    return (Invoke-MtCaseRun -Version $Version -CaseFile $CaseFile -RunId $RunId -RestartBudget ($RestartBudget - 1))
+            if ($expectCrash) {
+                Write-MtLine ("MT_CASE_CRASH_EXPECTED: {0} 声明 expect_crash=true ⇒ 崩溃属被测行为，判定交由断言，不自动重启" -f $caseId)
+            } else {
+                if ($RestartBudget -gt 0) {
+                    if (Restart-MtCaseClient -Version $Version -Reason $(if ($newCrash) { '本用例执行期间客户端崩溃' } else { '本用例执行期间客户端退出' })) {
+                        return (Invoke-MtCaseRun -Version $Version -CaseFile $CaseFile -RunId $RunId -RestartBudget ($RestartBudget - 1))
+                    }
                 }
+                $worst = 'ERROR'
             }
-            $worst = 'ERROR'
         }
     }
     Write-MtLine ("MT_CASE_RESULT: {0} = {1}" -f $caseId, $worst)
@@ -1039,7 +1053,9 @@ function Invoke-MtCaseRun {
     # ⑥-1 例外：**TIMEOUT 不置位**这个标记 —— 超时后要**继续跑下一条用例**（置位会让
     # mt_cleanup 拒绝收停、整套流程再无人清理），且超时的现场价值由 mt_watchdog 的尾部
     # 诊断替代（见 TESTING-SPEC §12）。
-    if (@('FAIL', 'ERROR') -contains $worst -and (Get-MtMapValue -Map $case -Key 'on_fail') -eq 'keep_game_running') {
+    # 同样例外：`expect_crash` —— 现场就是「客户端已崩」，没有可保留的运行态，
+    # 置位只会让后续 `--phase stop` 静默跳过清理，徒增一次 `--force`。
+    if (@('FAIL', 'ERROR') -contains $worst -and (-not $expectCrash) -and (Get-MtMapValue -Map $case -Key 'on_fail') -eq 'keep_game_running') {
         $dir = [System.IO.Path]::GetDirectoryName($script:KeepAlive)
         if (-not (Test-Path -LiteralPath $dir)) { [void](New-Item -ItemType Directory -Force -Path $dir) }
         $stamp = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss', [cultureinfo]::InvariantCulture)

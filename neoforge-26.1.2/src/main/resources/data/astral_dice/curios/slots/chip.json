@@ -1,0 +1,6 @@
+{
+  "size": 0,
+  "order": 300,
+  "icon": "astral_dice:slot/empty_chip_slot",
+  "validators": ["curios:tag"]
+}

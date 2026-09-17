@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": "astral_dice:blank_chip",
+    "G": "astral_dice:golden_star_plate",
+    "L": "minecraft:redstone_block",
+    "M": "astral_dice:mark_paint",
+    "X": "minecraft:netherite_ingot"
+  },
+  "pattern": [
+    "XLX",
+    "MBM",
+    "GGG"
+  ],
+  "result": {
+    "id": "astral_dice:ninja_star_chip"
+  }
+}

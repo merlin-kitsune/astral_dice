@@ -530,10 +530,10 @@ pwsh -NoProfile -File scripts/test/mt_watchdog.ps1 -Version 1.21.1 [-StallSecond
 - **单阶段分步必须手工收尾**：单阶段默认不清理（客户端要跨 launch/cases 存活），最后一次读数之后**必须**执行上面的命令。
 - **删除范围**：`client_world`（`saves/<世界名>`）、`server_world`（`<run>/<世界名>`）、以及 `saves/` 下其它含 `level.dat` 的历史遗留世界；**不动** `run` 之外的东西、**不动** `resources/testworld-seed-<版本>.zip`。
 - **回显**：`MT_CLEANUP_SAVES: PURGED <N>`（清理条数）或 `MT_CLEANUP_SAVES: KEPT（未指定 --purge-saves）`。
-- ⚠️ **两阶段/重登类用例中途的 stop 禁止 `--purge-saves`**（要跨 stop 保留存档：`saveall` → stop → launch 读回）。故 `--phase stop` 默认保留存档，`--purge-saves` 是显式开关。
+- ⚠️ **两阶段/重登类用例（`CHIP-RELOG-*`）中途的 stop 禁止 `--purge-saves`**（要跨 stop 保留存档：`saveall` → stop → launch 读回）。故 `--phase stop` 默认保留存档，`--purge-saves` 是显式开关。
 - **失败取证优先**：`.mt_keep_alive` 存在时收停与清存档都只提示不执行；取证完用 `--phase stop --force --purge-saves` 释放。
 - **收停是异步的**：`TerminateProcess` 返回 ≠ 进程已从进程表消失，故 `mt_cleanup` 在判残留前会**最多等 20 秒**再复核（否则慢退出的客户端会被误报成 `RESIDUAL`/退出码 1）。
-- **收停范围已扩展到「专用服务端 / 数据生成 / run 任务包装器」**（2026-09-17 实测缺口）：旧判据只认**客户端入口**，于是 `mt_env world`（或两段式数据生成）起的 `runServer` 包装器与它的服务端 JVM **永远杀不掉** —— 实测跑完 env 后两者双双存活，且孙进程仍持有父进程 stdout 句柄，把 `mt.ps1 --phase env` **卡死**（子进程早已退出、父进程一直等）。现由 `Mt.Proc.psm1` 的 `Test-MtPipelineProcess` 统一判定：① 客户端（沿用最严格判定）；② 含 `gradle-wrapper.jar` **且**含 `:<子项目>:run` 选择器的包装器（**只认 run 家族**——`:neoforge-1.21.1:build` 之类的构建任务不属于测试流程，绝不能杀）；③ 入口为 `net.neoforged.devlaunch.Main` 的本版本 JVM（服务端/数据生成的命令行不含 run 目录与子项目选择器，靠「version + subproject」证据认领）。`mt_cleanup` 的「收停后自检」同步改用同一判据（否则既杀不掉也检不出）。
+- **收停范围已扩展到「专用服务端 / 数据生成 / run 任务包装器」**（2026-09-17 实测缺口）：旧判据只认**客户端入口**，于是 `mt_env world`（或两段式数据生成）起的 `runServer` 包装器与它的服务端 JVM **永远杀不掉** —— 实测跑完 env 后两者双双存活，且孙进程仍持有父进程 stdout 句柄，把 `mt.ps1 --phase env` **卡死**（子进程早已退出、父进程一直等）。现由 `Mt.Proc.psm1` 的 `Test-MtPipelineProcess` 统一判定：① 客户端（沿用最严格判定）；② 含 `gradle-wrapper.jar` **且**含 `:<子项目>:run` 选择器的包装器（**只认 run 家族**——`:neoforge-1.21.1:build` / `:neoforge-26.1.2:build` 之类的构建任务不属于测试流程，绝不能杀）；③ 入口为 `net.neoforged.devlaunch.Main` 的本版本 JVM（服务端/数据生成的命令行不含 run 目录与子项目选择器，靠「version + subproject」证据认领）。`mt_cleanup` 的「收停后自检」同步改用同一判据（否则既杀不掉也检不出）。
 
 **覆盖缺口（如实标注，勿当成已验证）**
 
@@ -543,7 +543,90 @@ pwsh -NoProfile -File scripts/test/mt_watchdog.ps1 -Version 1.21.1 [-StallSecond
 
 ---
 
+## 13. 26.1.2 线测试计划与「1.21.1 <=> 26.1.2 功能一致性测试」（2026-09-17 用户指示纳入后续测试计划）
+
+**背景**：第三条线 `neoforge-26.1.2` 是 1.21.1 源码的整体迁移，**允许也不可避免存在平台差异**（见 `AGENTS.md` 的「第三条线规则边界」）。因此 26.1.2 线的测试目标不是「各跑各的冒烟」，而是 **同一功能在两个版本上的行为等价性**；差异必须被**显式登记**，而不是被沉默地接受。
+
+### 13.1 现状盘点（2026-09-17）
+
+| 项 | 1.21.1 | 26.1.2 |
+|---|---|---|
+| 探针 | `resources/kubejs/1.21.1/server_scripts/astral_bugfix_probe.js`（4089 行） | 同源机械移植 26.1.2 版（56 条子命令；迁移脚本 `temp/port_probe.ps1`） |
+| 用例 | 回归套件（§8） | 5 条：`MIGRATION-SMOKE-26.1.2`、`PORTED-PROBE-SMOKE-26.1.2`、`CRAFT-SMOKE-26.1.2`、`CHIP-RELOG-A/B-26.1.2` |
+| 已覆盖 | 全套 | 探针链路存活 / 物品注册 123 / Curios 装备 / 筹码栏尺寸与跨重登 / 121 份配方装载与真合成 / 长矛近战判定 |
+
+### 13.2 一致性测试的方法（「同探针 + 同用例 + 双侧读数 diff」）
+
+1. **探针同名同义**：两侧探针的**子命令名**、**读数键**与**格式**（`AP_<tag>_<KEY>:...`）逐字一致（26.1.2 侧只允许改变取值方式，不允许改变读数文本——如 `levelClass` 在 26.1.2 用两级判定但输出仍是 `net.minecraft.server.level.ServerLevel`）。
+2. **用例成对落盘**：每个功能条目写成 `xxx-1.21.1.json` 与 `xxx-26.1.2.json`，**断言模式逐字相同**，仅 `version` 不同；差异只允许出现在 note 里并写明依据。
+3. **对比流程**：同一用例 id 分别跑 `--version 1.21.1` / `--version 26.1.2` → 抽取两侧 `AP_*` 机器行 → **逐键 diff**。任何**非平台固有**的差异按缺陷登记（先复现、再交用户定夺，不得直接改断言迁就）。
+4. **读数可比性前提**（必须逐条核对，否则 diff 无意义）：时间基准统一用 `level.getLevelData().getGameTime()`；伤害口径按各版本事件语义（1.21.1 `LivingDamageEvent.Pre` 在**吸收前**、1.20.1 在**吸收后**；本线对比时需标注）；物品/实体/效果 id 两侧一致（`Identifier` vs `ResourceLocation` 只是类名差异）。
+5. **「允许差异」清单**（必须在本节维护，逐条给依据，禁止无限扩大）：
+   - 26.1.2 **无** Iron's Spells 'n Spellbooks 联动（上游无 26.1.x 构建）；
+   - 26.1.2 **有** 长矛（1.21.1 无该物品）⇒ 近战判定读数多 `spear/dspear/nspear` 三项；
+   - 权限/命令 API 形态差异导致 `opprobe` 的 `level` 读数在 26.1.2 退化为 `-1`（`getProfilePermissions(NameAndId)` 在 Rhino 下取不到），`has2` 与 `dump` 判据不受影响；
+   - Curios 主版本不同（1.21.1 为 9.x 语义、26.1.2 为 15.x）⇒ 槽位尺寸写法不同但**对外行为（槽位数、物品留存）必须等价**——这正是 `CHIP-RELOG-*` 的判据。
+6. **门控**：26.1.2 线**发布前**，一致性测试与「三线构建 + 各自冒烟」并列为必过项；未通过项必须在发布说明中列明。
+7. **排期**：① 先把 1.21.1 现有回归条目按 §13.2 成对迁移（当前只迁移了探针与 5 条冒烟）；② 双版本各跑通；③ 再补 26.1.2 独有行为的条目（长矛、26.1 数据包格式、Curios 15 尺寸/跨重登）。
+
+### 13.3 本轮已固化的 26.1.2 专属用例（同日新增）
+
+| 用例 | 判据要点 |
+|---|---|
+| `CRAFT-SMOKE-26.1.2` | ① 日志 `Couldn't parse data file` 计数 0；② `astral_dice:` 配方装载数 == 磁盘文件数（**121**）；③ 13 份手写配方按 `placementInfo` 自建 `CraftingInput` 跑 `matches()+assemble()` **真合成**；④ `meleecheck` 长矛判定 |
+| `CHIP-RELOG-A-26.1.2` | 装 2★ 骰子 + 放筹码（**必须是 `curios:chip` 标签内的物品**）+ `/astralprobe saveall`；断言槽数/cosmetic 相等且筹码在位 |
+| `CHIP-RELOG-B-26.1.2` | 强杀重登后再读：槽数/cosmetic 仍相等（**已 PASS**）；筹码仍在槽内 —— **当前 FAIL，代表 26.1.2 的「重登后筹码被移出栏位」缺陷仍在**（取证与已排除项见 `docs/compat-26.1.2-neoforge.md` §7.6） |
+
+> ⚠️ **写筹码类用例的硬规则**：探针 `equipslot` 是**直接写栏位、绕过 Curios 校验**，所以必须使用 `curios:chip` 标签内的物品；用标签外的物品（如材料 `astral_dice:blank_chip`）会得到「放进去了、重登就没了」的**假缺陷**（Curios 迁移会按标签把非法物品退回背包）。此坑已实际踩过一次。
+
+---
+
 ## 附录 A：工具链与发布工程变更记录（自 CHANGELOG 移出）
+
+**2026-09-17：26.1.2 线测试能力扩展**
+
+- **新增优化类模组 ImmediatelyFast + ModernFix（用户要求「进一步验证优化类模组兼容性」）**：`mt_env.ps1 mods --version 26.1.2` 从 Modrinth Maven 装 `immediatelyfast:adbrNJLm`（**1.15.3+26.1-neoforge**，`ImmediatelyFast-NeoForge-1.15.3+26.1.jar`，sha1 `bb10bdde…`）与 `modernfix:j7EoxpYe`（**5.27.22+mc26.1.2**，`modernfix-neoforge-5.27.22+mc26.1.2.jar`，sha1 `334500dd…`），缓存 `temp/probe_mods/26.1.2/`。
+  - **侧别不同、处理分开**：ImmediatelyFast 在 Modrinth 标为 `client_only` ⇒ 已加入 `Invoke-MtEnvWorld` 的「纯客户端模组移出」子串名单（`immediatelyfast`），生成世界时移出、结束自动恢复（实测生成后文件已回归、无 `.disabled` 残留）；ModernFix 是 `client_or_server_prefers_both` ⇒ 生成世界时**保留**（服务端同样拿到启动期优化）。两段式数据生成（`runClientData`/`runServerData`）前仍须手工移出 run/mods 的纯客户端模组（含 ImmediatelyFast）。
+  - **装载可见性**：`mt_launch` 回显 `IMMEDIATELYFAST_LOADED` / `MODERNFIX_LOADED`，判据取**已加载模组列表行**里的括号 modId（`(immediatelyfast)` / `(modernfix)`）—— 与史莱姆压制闸门同一教训：只搜名字会把存档里的 `<modId> (version X -> MISSING)` 误判成「已加载」。这两条是 **WARN 级**（与 Sodium/Iris 一致，不做硬失败），但缺失时必须看得见，否则「兼容性验证」会静默地什么都没验证。
+  - **实测（2026-09-17 冷启动，两个模组均装载：`IMMEDIATELYFAST_LOADED=true` / `MODERNFIX_LOADED=true`）**：`MIGRATION-SMOKE` **27/27 PASS**、`PORTED-PROBE-SMOKE` **41/41 PASS**、`CRAFT-SMOKE` **21/21 PASS**、`SHADER-VISION` **11/11 PASS**；四例均无新增崩溃报告、KubeJS 0 错误 ⇒ ImmediatelyFast 1.15.3 + ModernFix 5.27.22 与本模组、Sodium 0.9.1、Iris 1.11.4、Complementary Unbound 光影**无冲突**（光影用例的视觉读数仍为「体积云/大气散射/色调映射 + 游戏存活」）。
+  - ⚠️ **工具链踩坑（已修，务必保持按族清理）**：为复用下载逻辑把安装抽成了 `Install-MtSpecList`，第一版给它传了**一张全局族前缀表**，于是「装史莱姆压制」那一趟把上一趟刚装好的 Sodium/Iris 当成「不在本次规格里」删掉了（每趟只知道自己的 `$installed`），run/mods 里渲染栈凭空消失、看起来像下载失败。现改为**每次调用按族显式传 `-Prefixes`**（渲染栈 `sodium-`/`iris-`、史莱姆 `superflatworldnoslimes-`/`collective-`、优化 `immediatelyfast-`/`modernfix-`），并用 `mt_env mods` 复跑确认三族 jar 共存（10 个 jar 全在）。
+
+- **【用户硬性要求】测试环境必须装「Superflat World No Slimes」——超平坦世界的史莱姆会严重干扰测试流程（已完成，含 A/B 实测）**：测试世界是超平坦、玩家常驻 `y=-60`、难度 `EASY` ⇒ y<40 的史莱姆区块持续刷怪。**A/B 实测证据（同一世界同一位置，`/astralprobe slimecheck`，128 格半径）**：
+  | 状态 | 读数 |
+  |---|---|
+  | **未装**该模组（对照，用 `MT_ALLOW_NO_SLIMEGUARD=1` 显式放行） | `slimes=103:mobs=115:radius=128:difficulty=EASY:y=-60` |
+  | **已装**（`mt_env mods` 装好） | `slimes=0:mobs=14:radius=128:difficulty=EASY:y=-60` |
+  对照行里 `mobs=115`/`mobs=14` 与 `difficulty=EASY` 一并报出，正是为了排除「整体不刷怪 / peaceful」这类假阴性 ⇒ 结论：该模组**只**压掉史莱姆，其余刷怪照常，故不能用「关掉刷怪」替代。
+  - **安装**：`mt_env.ps1 mods --version 26.1.2` 从 **Modrinth Maven** 拉 `superflat-world-no-slimes`（`maven.modrinth:superflat-world-no-slimes:Onb8latt`，`superflatworldnoslimes-26.1.2-3.6.jar`，sha1 `d47af65d…`）**及其 required 前置** `collective`（`maven.modrinth:collective:iXqgYZEw`，`collective-26.1.2-8.32.jar`，sha1 `13887a5d…`），缓存 `temp/probe_mods/26.1.2/`，与渲染栈共用新提取的 `Install-MtRemoteMod`（尺寸 + sha1 幂等，失败硬报 14，**不静默降级**）。两者都带 `META-INF/neoforge.mods.toml`（modId `superflatworldnoslimes` / `collective`），且都是**服务端/运行期**模组 ⇒ `mt_env world` 的「纯客户端模组移出」名单（imblocker/sodium/iris/embeddium/oculus 子串匹配）**不含**它们，专用服务器生成世界时照常保留。
+  - **强制闸门**：`mt_launch` 进入世界后检查启动日志的**已加载模组列表行**，缺 `(superflatworldnoslimes)` 即 `MT_LAUNCH: ERROR`（拒绝带着会被史莱姆污染的现场继续跑用例）；报 `SLIMEGUARD_LOADED=true` / `COLLECTIVE_LOADED=true|false`。确需「没有该模组」的对照实验时用 **`MT_ALLOW_NO_SLIMEGUARD=1`** 显式放行（留 WARN 痕迹）。⚠️ **判据必须匹配带括号的 modId**（`\(superflatworldnoslimes\)`）：存档 `level.dat` 记着上次带着它跑过，缺失时 NeoForge 打印 `superflatworldnoslimes (version 3.6 -> MISSING)`，只搜名字会把「缺失」误判成「已加载」——**实测踩坑**：那次对照实验被误报成 `SLIMEGUARD_LOADED=true`，闸门形同虚设。变异验证（同一构建、仅移出两个 jar）已确认修复后**双向**成立：装好 → `SLIMEGUARD_LOADED=true`；移出 → `MT_LAUNCH: ERROR — 未检测到「Superflat World No Slimes」模组…`。
+  - **取证命令**：探针新增 `/astralprobe slimecheck <tag>` → `AP_<tag>_SLIME:slimes=n:mobs=m:radius=128:difficulty=<d>:y=<y>`（只读；同时报同半径内的 `Mob` 总数与世界难度，作为「刷怪确实开着」的对照）。
+
+- **筹码重登缺陷的修复与最终验证（用户裁决 = ① 产品侧自管迁移 + ③ 上游补丁；插桩已移除）**：产品侧新增 `event/ChipSlotMigrationHandler`（`OnDatapackSyncEvent` **HIGHEST** 快照并清空筹码栏 → **LOWEST** 按骰子重算尺寸后按索引还原；放不下的交还背包；快照先于清空、按索引覆盖写、残留快照下次先交还 ⇒ 不复制不丢失），并把 `DiceCurioItem#setSlotCount` 的非强制分支从「目标瞬时读成 0 就收缩」改为「抬到最靠后非空槽位 + 1」（根除第二条弹出路径）。上游补丁在 `temp/curios_src` 分支 `fix/26.1.2-loadinv-size`（`9704c4c`，`git format-patch` 产物 `temp/curios-fix-26.1.2-loadinv-size.patch`），缺陷报告与推送/PR 命令在 `docs/upstream/curios-26.1.2-loadinventoryconfiguration.md`（本机无 token/gh，未推送）。**验证（插桩移除后的最终口径，2026-09-17 实跑）**：`CHIP-RELOG-A-26.1.2` 21/21 PASS（0 号位 `flashlight_chip` + **1 号位 `cutter_chip`**，`chipItems=[0:…x1,1:…x1]`，含 `saveall`）→ `--phase stop --force`（保留存档）→ `--phase launch` → `CHIP-RELOG-B-26.1.2` **10/10 PASS**（`chipSlots=2:chipCosmetic=2`、两个槽位筹码均在、无异常行、无新增崩溃报告）。定位期用的只读插桩 `debug/CurioSlotTrace`（`AP_CURIOTRACE|`）已按用户「完成定位后移除」的要求删除，判据改由用例断言给出；探针相应增补 `equipslotat <slotId> <index> <itemId> <tag>`（往指定索引写，多槽位留存回归必需）与 `readstate` 的 `chipItems=[索引:id,…]`（全量非空槽位，**追加在行尾**，历史断言不受影响）。
+- **按用户要求新增「光影开启」验证项 `SHADER-VISION-26.1.2`（视觉识别 + 游戏内手动开启 + 崩溃判定）**：用例 = `screenshot(crop SH_OFF)` → **vision**「是否已开启光影」→ `inject_key k`（Iris `iris.keybind.toggleShaders`，与界面 Apply 同一入口 `IrisApiV0ConfigImpl.setShadersEnabledAndApply → Iris.reload → createPipeline`）→ `wait 5s` → `assert log "Using shaderpack:.*ComplementaryUnbound"` → `screenshot(SH_ON)` → **vision**「游戏窗口是否还在/是否已呈现光影」→ `assert absent "Missing sampler Sampler1|Unreported exception thrown"` → `assert crash` → `assert kubejs`。**实测结论（2026-09-17，两轮）**：
+  - **Sodium 0.9.2 + Iris 1.11.4（首轮）**：`Using shaderpack:` 命中（开启动作确实走到建管线）→ 立即 `IllegalStateException: Missing sampler Sampler1` → 新增崩溃报告 `crash-2026-09-17_10.53.08-client.txt` ⇒ 用例 = FAIL；视觉读数 `SH_ON`（当时未带 crop，游戏窗口在第二显示器 ⇒ 抓到的是主显示器桌面）**画面里没有游戏**，与崩溃报告一致。
+  - **Sodium 0.9.1 + Iris 1.11.4（二轮，用户要求降级并与整合包对齐）**：**用例 = PASS（11/11）** —— `Using shaderpack: ComplementaryUnbound_r5.9.3.zip` 命中、`Missing sampler Sampler1|Unreported exception thrown` **未出现**、**无新增崩溃报告**、KubeJS 0 错误；视觉读数（两张都带 `crop`，相隔约 5 秒、同一机位、白天）：`SH_OFF` = 原版观感（**方块状原版云**、无阴影/无大气散射、均匀草地受光），`SH_ON` = **光影生效**（体积云 + 大气散射/地平线雾 + 色调映射），且游戏内聊天栏出现 Iris 的「光影包已切换到 ComplementaryUnbound_r5.9.3.zip！」⇒ **游戏存活并已渲染光影**。
+  ⇒ 结论更正：**Sodium 0.9.2 是 26.1.2 上「开光影即崩」的元凶**（0.9.1 正常）。首轮的「上游无解缺陷、与版本无关」判断是在**只换光影包、没换 Sodium 版本**的对照下作出的，属误判，已作废。本用例的价值因此变成**渲染栈版本的回归守卫**：任何 Sodium/Iris 版本变更都必须复跑它。
+  ⚠️ 抓图必须带 `crop: true`：游戏窗口在第二显示器，`mt_capture` 不带 crop 时抓的是主显示器整屏，只会拿到桌面（实测一次被误读成「游戏已消失」）。
+  - 工具链随之新增三项：① `mt_case` 支持用例级键 `"expect_crash": true` —— 被验证的就是「会不会崩」的用例（客户端必崩、崩=缺陷仍在）在该键下不再被收尾校验改判为 `ERROR`（原先会伪装成工具链故障并消耗一次自动重启预算去重跑），判定完全交给用例断言，且不置位 `.mt_keep_alive`；② `mt_inject` 键表新增 `k`/`o`/`r` 与语义键 `shadertoggle`/`shaderscreen`/`shaderreload`（键位取自安装 jar 字节码：`Iris#onEarlyInitialize` 里 `toggleShaders`=GLFW 75、`shaderPackSelection`=79、`reload`=82）；③ `mt_env.ps1` 新增**离线幂等**子命令 `shaders --state off|on|status`（只改 `config/iris.properties` 的 `enableShaders` 一行，不碰缓存不联网）。
+  - ⚠️ **为什么必须有 ③（实测踩坑）**：游戏内的光影开关会**持久化** `enableShaders=true` ⇒ 跑完光影验证（或手动点过 Apply）后，**下一次冷启动会在进入世界的第一帧崩**（launch 阶段 `MT_LAUNCH: ERROR — 进入世界后立即崩溃`，指向 `crash-reports/crash-2026-09-17_10.49.50-client.txt`），后续任何用例都跑不起来。故光影回归的前置与收尾都应是 `pwsh -File scripts/test/mt_env.ps1 shaders --version 26.1.2 --state off` + 冷启动。
+
+- **筹码重登缺陷定位（源码级 + 实测双证据；只读插桩，不修产品行为）**：clone Curios 源码（GitHub `TheIllusiveC4/Curios`，`26.1.2` 分支 = `8f2f132`/15.0.0，本地 `temp/curios_src`）后确认根因 = `CurioInventory#loadInventoryConfiguration()` 的搬移循环上界取「**数据包原始尺寸**」：`CurioStacksHandler#getSlots()` → `update()` 首行 `if (this.dataLoaded)`，而 `setDataLoaded()` 在方法**末尾**才调用 ⇒ 循环期间读到的是构造函数里的 `stackHandler` 尺寸（= 数据包 base），与 `copyModifiers()` 刚复制来的修饰符无关；本模组 chip 槽 `size:0` ⇒ 上界 0 ⇒ 旧内容全部进 `invalidStacks` → `handleInvalidStacks()` → `ItemHandlerHelper.giveItemToPlayer()`。
+  新增**只读插桩** `debug/CurioSlotTrace`（`AP_CURIOTRACE|` 前缀；订阅 `OnDatapackSyncEvent` `HIGHEST`=迁移前 / `LOWEST`=迁移后、`PlayerLoggedInEvent` 与随后 1/2/3/10/20/40 tick、`CurioCanEquipEvent` 仅在迁移窗口内记录；开关 `-Dastral_dice.curioTrace`，默认「开发环境开、生产关」；**只读、不抛异常、不改状态**，关闭时为空操作），并在 `DiceCurioItem#applySlotCount` 增只读打点 `NOTE|applySlotCount`。判据性证据：迁移期间**只出现 `slot=dice` 的 `CAN_EQUIP`，`slot=chip` 一次都没有**（⇒ 不是校验器/标签挡下）＋ `SYNC_AFTER` 的 `chipSlots=4`、`chipStacks` 全空、`invChips=[2:astral_dice:flashlight_chipx1]`、`groundChips=[]`。另发现两条同源事实：① `size_shift` 使登录瞬间筹码栏 4 格（几 tick 后由 `CuriosCommonEvents:613 clearCachedSlotModifiers()` 抹回 2）；② 本模组 `curioTick` 在迁移当拍把目标读成 0 而防御式收缩到 0 → **第二条独立弹出路径**。
+  探针新增只读命令 `/astralprobe invdump <tag>`（主物品栏 + 副手 + 16 格内地面掉落物里的筹码），用于区分「交还背包 / 掉地上 / 被销毁」。用例 `CHIP-RELOG-B-26.1.2` 保持红色（缺陷仍在），其 note 与 `AGENTS.md` 已写入根因与三条候选修法（自管迁移 stash&restore / 数据包 base 改 1 / 上游修复）。
+
+- **新增「测试后收尾」能力（用户规则：测试任务完成后关闭测试端、清理旧存档数据、避免进程长时间驻留）**：`mt_cleanup.ps1` 新增 `--purge-saves`（收停进程**之后**删除 `run/<版本>/saves/<世界名>`、`run/<版本>/<世界名>` 及 `saves/` 下其它含 `level.dat` 的历史遗留世界，回显 `MT_CLEANUP_SAVES: PURGED <N>` / `KEPT`）；`mt_stop.ps1` 与 `mt.ps1 --phase stop` 逐层透传，`mt.ps1` 的全流程退出清理**默认**带 `--purge-saves`。`--phase stop` 默认**不**清（重登类用例要跨 stop 保留存档：`saveall` → stop → launch），失败取证标记 `.mt_keep_alive` 在场时收停与清存档一并 SKIP。
+
+- 探针新增子命令（26.1.2 版 `astral_bugfix_probe.js`，共 56 条）：`recipecheck`（配方装载总数/本模组数/关键 id 存在性）、`craftcheck`（按 `Recipe#placementInfo()` 自建 `CraftingInput` 跑 `matches()+assemble()` 的**真合成**体检）、`meleecheck`（直接调用产品静态方法逐个换手物品验证近战判定，含 26.1.2 新增长矛）、`saveall`（显式 `MinecraftServer#saveEverything`，为「强杀式重登」测试提供存档点）；`readstate` 增补 `chipCosmetic`（stacks/cosmetic 尺寸恒等断言）与 `chipItem`（筹码留存断言）。
+- 新增用例 3 条：`CRAFT-SMOKE-26.1.2`、`CHIP-RELOG-A-26.1.2`、`CHIP-RELOG-B-26.1.2`（后者为两阶段「重登」流程；`mt.ps1 --phase stop` 是强杀不存档，故准备阶段必须显式 `saveall`）。
+- 修工具链踩坑：「注入命令 + 长命令链」在超时被强杀时会连带杀掉**同一进程树里的游戏客户端**（实测一次），长流程请拆成多次调用、不要把 `stop → launch → case` 串在一条命令里。
+- 探针 `equipslot`/`putInSlot` 为**绕过校验的直接写入**，与真人操作不等价；用它做「跨存档留存」类断言时必须选**校验通过**的物品（筹码 → `curios:chip` 标签内），否则会得到假缺陷。
+- **测试环境渲染栈（26.1.2，按用户裁决全部改走 Modrinth Maven）**：`mt_env.ps1 mods --version 26.1.2` 新增 `Install-MtRenderStack`，从 `https://api.modrinth.com/maven/maven/modrinth/<slug>/<version>/<file>` 拉取并**体积 + SHA1 双校验**（缓存 `temp/probe_mods/26.1.2/`）：**Sodium `mc26.1.2-0.9.1-neoforge`**（2026-09-17 用户要求「降到 0.9.1，与整合包一致」；见下方光影条目的更正）、Iris `1.11.4+26.1-neoforge`、光影包 Complementary Shaders - Unbound `r5.9.3`（落到 `run/26.1.2/shaderpacks/`），并写 `run/26.1.2/config/iris.properties`。**`enableShaders=false` 是刻意默认**（测试不需要光影、省性能），**不是因为崩**——Sodium 0.9.1 下开光影正常（见下）。阶段 L 回显 `SODIUM_LOADED` / `IRIS_LOADED` / `SHADERS=… pack=…` / `SHADERPACK_LOADED=…`（仅启用时才校验 `Using shaderpack:`，关闭时报 `n/a` 而非 WARN）。⚠️ 同批新增**渲染栈旧版本清理**：换了版本号以后 `Install-MtRemoteMod` 只放新文件、不删旧文件，`sodium-*`/`iris-*` 会新旧并存 ⇒ FML 报重复模组拒绝启动；故安装后按前缀 `sodium-`/`iris-` 删除不在本次规格中的 jar（前缀不带通配符，不会误删 `reeses-sodium-options-*`）。
+- **测试客户端搬到第二显示器并固定窗口尺寸（`--monitor` / `--size`，2026-09-17 用户要求「移到第二显示器，避免干扰观察」＋「窗口大小应控制在 1920x1080」）**：`lib/Mt.Win32.psm1` 新增 `Get-MtMonitors`（WinForms `Screen::AllScreens` → Index/Device/Primary/X/Y/W/H）、`Get-MtClientRect`（客户区=渲染区）与 `Move-MtWindowToMonitor`（**SW_RESTORE → SetWindowPos(居中) → 视参数 SW_MAXIMIZE**；已最大化的窗口直接 `SetWindowPos` 不会跨屏）；`mt_launch.ps1` 进入世界后（注入之前）查找窗口并搬移，默认显示器 **#1**、默认尺寸 **客户区 1920x1080**（`--monitor 0` 不搬移；`--size maximize|keep|<W>x<H>`；越界/单屏静默 `SKIP`）。`MT_WINDOW: OK` 回显「窗口矩形 + 客户区尺寸」，实测 1920x1080 客户区 ⇒ 外框 1936x1119。⚠️ **`--size` 按客户区口径**（外框 1920x1080 只会得到约 1904x1041 渲染区），边框差值由「外框 − 客户区」实测补足。⚠️ `Get-MtMonitors` 必须用 `@(...)` 接收：**不要**在函数里 `return ,$out`，那会把数组包成「一个元素」，`$mons.Count` 恒为 1、`$mons[1]` 取到整个数组（实测踩坑，已修正并有注释留痕）。
+- **就绪标记「先满足、后崩溃」的收口（2026-09-17）**：`mt_launch` 在就绪闸门之后新增一次崩溃报告复查（按 `LastWriteTime` 过滤本次启动之后的报告）。背景：26.1.2 开启光影时客户端在世界渲染首帧崩（`Missing sampler Sampler1`），而 `logged in with entity id` / `Loaded N advancements` **早已写入日志** ⇒ 旧实现会判「已就绪」并继续搬窗口/注入，下游只报出一串与真因无关的「客户端未在运行 / 注入失败」；现在直接 `MT_LAUNCH` 失败并指向具体 crash 文件。
+
+- **修正 26.1.2 侧的整合包推送目标（2026-09-17 用户要求「添加整合包目录 `D:\.minecraft\versions\26.1.2 模组测试`，遵循与其他版本同规则」）**：`neoforge-26.1.2/build.gradle` 的 `packModsDir` 原指向 `D:/.minecraft/versions/26.1.2-NeoForge_26.1.2.109/mods`，该目录在本机**并不存在** ⇒ `pushToGame` 每次都只打印 `pushToGame: pack dir not found, skipped`，整合包里的 jar 长期停留在旧时间戳（实测残留 `2026-09-17 02:44:57`）。现按 1.20.1 侧 `1.20.1 模组测试` 的同名规则改为 **`D:/.minecraft/versions/26.1.2 模组测试/mods`**，并把该任务的旧产物清理匹配从「任意 `astral_dice-*.jar`」收紧为带完整后缀 `contains('+neoforge_26.1.2')`（整合包目录属用户环境，不得误删其它分支放进去的产物）。判定依据：构建日志出现 `pushToGame: pushed astral_dice-<版本>+neoforge_26.1.2.jar -> D:\.minecraft\versions\26.1.2 模组测试\mods`，且该目录内本模组 jar 有且仅有一个、时间戳等于本次构建。⚠️ 教训：`pushToGame` **静默跳过**是最容易发生的形态，只看 `BUILD SUCCESSFUL` 无法发现「其实没部署」，必须核对 `pushed` 行（已写入 `AGENTS.md` 的「编译产物上传规则」第 3 条）。
+
+- **光影崩溃的上游定性复核（2026-09-17，用户问「为何启用光影立即崩、是否用了最新 Sodium/Iris」）**：⚠️ **本条结论已被同日后续实测推翻，保留作为方法与教训记录** —— 真正的元凶是 **Sodium 0.9.2**（见「按用户要求新增『光影开启』验证项」条目的二轮结果：降到整合包同款 0.9.1 后光影正常）。本条当时的判断是「已是最新版本、属上游 Iris/Sodium 未修缺陷、与版本无关」，错在**对照只换了光影包、没换 Sodium 版本**。保留下来的部分仍然成立且有用：① **版本核对方法**（Modrinth API 实测）：Sodium 在 `26.1.2` 的最新发布是 `mc26.1.2-0.9.2-neoforge`（release，2026-09-11），Iris 最新为 `1.11.4+26.1-neoforge`（release，2026-09-13），其 Modrinth 前置声明 `version_id=zg4YQ9EL` 指向 Sodium `mc26.1.2-0.9.2-neoforge`（**注意：Modrinth 的依赖只是「构建时对齐」，FML 元数据里 Iris 的 sodium 区间是宽松的 `[0.6,)` ⇒ 装 0.9.1 不会被依赖闸门拒绝**，这也是降级可行的前提）。② **崩点源码**（本地 `minecraft-patched-26.1.2.109-sources.jar` 实读）：`GlCommandEncoder#trySetup` 第 526~532 行要求 `renderPass.pipeline.program()` 里每个 `Uniform.Sampler` 都能在本次 draw 的 `renderPass.samplers` 里找到同名绑定，否则 `IllegalStateException: Missing sampler Sampler1`（`Sampler1` 是原版管线的自动命名）——崩在**启用后的第一帧 draw**，而不是建管线时；这正是「Sodium 版本换了以后采样器绑定表不再一一对应」的表现。③ **为什么「立即」崩**：本机两次崩溃调用链分别是 `GuiRenderer.executeDraw`（点 Apply 那帧）与 `LevelRenderer.addMainPass → MultiBufferSource.endBatch → RenderType.draw`；上游 Iris 同刻自报 `[Iris/FATAL]: Missing program minecraft:pipeline/gui_text in override list. This is likely an Iris bug!!!`（`gui`/`gui_textured`/`panorama`/`blur/0..5` 同样缺失）。④ 上游同类 issue：Iris [#3314「26.1.2 Game Crash」](https://github.com/IrisShaders/Iris/issues/3314)（open，2026-08-31，报告者用的是 **Iris 1.11.3 + Sodium 0.9.1** —— 与我们的二轮组合不同，故**不能**据此推断 0.9.1 一定有问题；当时把它当成「0.9.1 也崩」的证据是**过度外推**）、[#3182](https://github.com/IrisShaders/Iris/issues/3182)、[#2719](https://github.com/IrisShaders/Iris/issues/2719)。⑤ 次要发现（**不是**崩溃原因）：`Failed to resolve uniform inSulfurCaves, reason: Unknown variable: BIOME_SULFUR_CAVES` —— Complementary Unbound r5.9.3 的自定义 uniform 引用了 Iris 1.11.4 不认识的地物常量。（原第 ⑥ 条「维持 `enableShaders=false`、光影测试阻塞于上游」已作废：现在光影可用，默认关闭只是「测试不需要 + 省性能」。）
 
 以下条目描述的是**测试工具链与发布流程**（非模组内容），自 1.2.0 的 `CHANGELOG*` 移出并归档于此：
 

@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": "astral_dice:blank_chip",
+    "L": "minecraft:golden_apple",
+    "P": "astral_dice:star_plate",
+    "R": "astral_dice:regeneration_reagent",
+    "X": "minecraft:iron_sword"
+  },
+  "pattern": [
+    "XLX",
+    "RBR",
+    "PPP"
+  ],
+  "result": {
+    "id": "astral_dice:cutter_chip"
+  }
+}

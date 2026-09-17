@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": "astral_dice:blank_chip",
+    "C": "astral_dice:star_coin",
+    "D": "astral_dice:star_coin_dust",
+    "X": "minecraft:gold_ingot"
+  },
+  "pattern": [
+    "XXX",
+    "DBD",
+    "CCC"
+  ],
+  "result": {
+    "id": "astral_dice:atm_chip"
+  }
+}

@@ -70,13 +70,18 @@ Initialize-MtConsole
 # 注：`$script:DryRun` 在下方参数解析之后才赋值（见「入口」段）
 
 # ── 扫描码表（美式布局；注入前由 mt_ime 把目标窗口线程切到 en-US）────────
+# 2026-09-17 新增 k/o/r：供「光影开关」回归使用（键位取自安装 jar 的字节码，
+# Iris#onEarlyInitialize 里 `iris.keybind.toggleShaders`=GLFW 75('k')、
+# `iris.keybind.shaderPackSelection`=GLFW 79('o')、`iris.keybind.reload`=GLFW 82('r')）。
 $script:Scan = @{
     't' = 0x14; 'enter' = 0x1C; 'escape' = 0x01; 'e' = 0x12; 'j' = 0x24
     'h' = 0x23; 'w' = 0x11; 'f2' = 0x3C; 'f3' = 0x3D; 'slash' = 0x35; 'tab' = 0x0F
+    'k' = 0x25; 'o' = 0x18; 'r' = 0x13
 }
 $script:Vk = @{
     't' = 0x54; 'enter' = 0x0D; 'escape' = 0x1B; 'e' = 0x45; 'j' = 0x4A
     'h' = 0x48; 'w' = 0x57; 'f2' = 0x71; 'f3' = 0x72; 'slash' = 0xBF; 'tab' = 0x09
+    'k' = 0x4B; 'o' = 0x4F; 'r' = 0x52
 }
 for ($i = 1; $i -le 9; $i++) {
     $digit = [string]$i
@@ -89,6 +94,8 @@ $script:KeyAlias = @{
     'chat' = 't'; 'skill' = 'j'; 'cancel' = 'escape'
     'confirm' = 'enter'; 'screenshot' = 'f2'
     'debug' = 'f3'; 'inventory' = 'e'; 'card' = 'h'
+    # 光影（Iris）语义键：开关 / 光影选择界面 / 重载光影
+    'shadertoggle' = 'k'; 'shaderscreen' = 'o'; 'shaderreload' = 'r'
 }
 
 $script:WM_KEYDOWN = 0x0100
@@ -311,7 +318,7 @@ function Resolve-MtInjectWindow {
         $st = $null
         try { $st = Get-MtClientStatus -Paths (Get-MtPaths -Version $Version) } catch { }
         if ($st -and -not $st.Alive) {
-            Write-MtErrLine ("MT_INJECT: ERROR — {0} 客户端未在运行（无 net.minecraft.client.main.Main 进程；先跑 --phase launch）" -f $Version)
+            Write-MtErrLine ("MT_INJECT: ERROR — {0} 客户端未在运行（客户端入口进程：1.21.1/1.20.1 为 net.minecraft.client.main.Main，26.1.2 为 net.neoforged.fml.startup.Client；先跑 --phase launch）" -f $Version)
             return [long]0
         }
         Write-MtErrLine 'MT_INJECT: ERROR — 未能唯一确定本版本 Minecraft 窗口（存在多个候选客户端）'

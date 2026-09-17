@@ -359,8 +359,14 @@ function Test-MtClientProcess {
     #   `net.minecraft.client.main.Main`（走 `cpw.mods.bootstraplauncher.BootstrapLauncher`，
     #   且不含 `:forge-1.20.1:` / `run\1.20.1` 任一 marker）——只认 Main + marker 的旧判定
     #   对 1.20.1 恒为「未在运行」，连带 `mt_stop --version 1.20.1` 静默杀 0 个进程。
+    #   ⚠️ 2026-09-16 补充：MC 26.1.2 的 NeoForge 客户端入口是
+    #   `net.neoforged.fml.startup.Client`（不再是 `net.minecraft.client.main.Main`），
+    #   必须一并识别，否则 26.1.2 客户端的兜底判定恒为 false。
+    #   注意用**全限定名**匹配：`net.neoforged.fml.startup.DataClient`（datagen 运行）
+    #   不含该子串，不会被误认成客户端。
     $isClientEntry = $CommandLine.Contains('net.minecraft.client.main.Main') -or
-                     $CommandLine.Contains('bootstraplauncher')
+                     $CommandLine.Contains('bootstraplauncher') -or
+                     $CommandLine.Contains('net.neoforged.fml.startup.Client')
     if (-not $isClientEntry) { return $false }
 
     foreach ($m in @(Get-MtProcessMarkers -Paths $Paths)) {
@@ -390,7 +396,8 @@ function Test-MtPipelineProcess {
         **且** 命中下列任一「本流程产物」：
           ① 客户端 —— 直接复用 `Test-MtClientProcess`（含窗口标题回退，最严格）；
           ② 本版本的 **run/runData 任务包装器**：命令行含 `gradle-wrapper.jar` 且含
-             `:<子项目>:run` 选择器。⚠️ 只认 `run` 家族：`:neoforge-1.21.1:build` 之类的
+             `:<子项目>:run` 选择器。⚠️ 只认 `run` 家族：`:neoforge-1.21.1:build` /
+             `:neoforge-26.1.2:build` 之类的
              **构建任务不属于测试流程，绝不能杀**（否则构建中途被收停会毁产物）；
           ③ 本版本的 **dev-launch JVM**：入口 `net.neoforged.devlaunch.Main`。专用服务端与
              两段式数据生成的命令行**不含** run 目录与子项目选择器（2026-09-17 实测：

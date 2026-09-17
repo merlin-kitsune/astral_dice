@@ -144,6 +144,9 @@ namespace Mt.Win32
         public static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
 
         [DllImport("user32.dll", SetLastError = true)]
+        public static extern bool GetClientRect(IntPtr hWnd, out RECT lpRect);
+
+        [DllImport("user32.dll", SetLastError = true)]
         public static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
 
         [DllImport("user32.dll")]
@@ -287,6 +290,14 @@ namespace Mt.Win32
         {
             RECT r;
             if (!GetWindowRect(hWnd, out r)) return new int[] { 0, 0, 0, 0 };
+            return new int[] { r.Left, r.Top, r.Right, r.Bottom };
+        }
+
+        // [left, top, right, bottom]，left/top 恒为 0；宽度 = 客户区（渲染区）宽
+        public static int[] GetClientRectArray(IntPtr hWnd)
+        {
+            RECT r;
+            if (!GetClientRect(hWnd, out r)) return new int[] { 0, 0, 0, 0 };
             return new int[] { r.Left, r.Top, r.Right, r.Bottom };
         }
 
@@ -657,6 +668,27 @@ function Get-MtWindowRect {
     param([Parameter(Mandatory)][long]$Hwnd)
 
     $r = [Mt.Win32.Native]::GetWindowRectArray([IntPtr]::new($Hwnd))
+    return [pscustomobject]@{
+        Left   = [int]$r[0]
+        Top    = [int]$r[1]
+        Right  = [int]$r[2]
+        Bottom = [int]$r[3]
+        Width  = [int]($r[2] - $r[0])
+        Height = [int]($r[3] - $r[1])
+    }
+}
+
+function Get-MtClientRect {
+    <#
+    .SYNOPSIS
+        客户区矩形（= 游戏**渲染区**，不含边框与标题栏）。left/top 恒为 0。
+    .OUTPUTS
+        PSCustomObject：Left / Top / Right / Bottom / Width / Height。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][long]$Hwnd)
+
+    $r = [Mt.Win32.Native]::GetClientRectArray([IntPtr]::new($Hwnd))
     return [pscustomobject]@{
         Left   = [int]$r[0]
         Top    = [int]$r[1]
@@ -1167,18 +1199,117 @@ function Set-MtRealFocus {
     }
 }
 
+# ══ 多显示器：把测试客户端搬到第二显示器（2026-09-17 用户要求，避免干扰观察）══════
+
+function Get-MtMonitors {
+    <#
+    .SYNOPSIS
+        枚举显示器（**物理像素**口径，与 SetWindowPos 的坐标系一致）。
+
+    .NOTES
+        调用方应已执行 Set-MtThreadDpiAwareness —— 进程非 DPI 感知时 WinForms 返回的是
+        被系统缩放后的逻辑坐标，搬到混合 DPI 的多屏环境会偏移。
+    .OUTPUTS
+        PSCustomObject 数组：Index / Device / Primary / X / Y / Width / Height。
+        取不到时返回空数组（调用方据此静默跳过，不要让测试流程失败）。
+        ⚠️ 调用方**必须**用 `@(Get-MtMonitors)` 包一层：PowerShell 会把返回值展开，
+        单显示器时直接赋值得到的是**单个对象**（`.Count` 为 $null）。
+        不要在本函数里用 `return ,$out` 兜底 —— 那样反而把数组包成**一个元素**，
+        `$mons.Count` 恒为 1、`$mons[1]` 取到的是整个数组（2026-09-17 实测踩坑）。
+    #>
+    [CmdletBinding()]
+    param()
+
+    $out = @()
+    try {
+        Add-Type -AssemblyName System.Windows.Forms -ErrorAction Stop
+        $i = 0
+        foreach ($s in [System.Windows.Forms.Screen]::AllScreens) {
+            $out += [pscustomobject]@{
+                Index = $i; Device = $s.DeviceName; Primary = [bool]$s.Primary
+                X = [int]$s.Bounds.X; Y = [int]$s.Bounds.Y
+                Width = [int]$s.Bounds.Width; Height = [int]$s.Bounds.Height
+            }
+            $i++
+        }
+    } catch {
+        return
+    }
+    return $out
+}
+
+function Move-MtWindowToMonitor {
+    <#
+    .SYNOPSIS
+        把窗口搬到指定序号的显示器，并按需设定尺寸（默认最大化）。
+
+    .NOTES
+        · 必须先 SW_RESTORE：**已最大化的窗口直接 SetWindowPos 不会跨屏**（仍留在原显示器）；
+        · 顺序 = 还原 → SetWindowPos 到目标显示器（居中） → 视参数决定是否 SW_MAXIMIZE；
+        · 目标序号不存在（单显示器 / 越界）时返回 $false，调用方应静默跳过 —— 单屏机器上不该因此中断；
+        · **`-Width`/`-Height` 是「客户区（渲染区）」尺寸，不是外框**：外框 = 客户区 + 边框/标题栏，
+          由当前窗口实测差值补足（等价于 AdjustWindowRect）。游戏分辨率看的是客户区，
+          直接用 SetWindowPos 写 1920x1080 会得到约 1904x1041 的渲染区（2026-09-17 用户口径：
+          窗口大小控制在 1920x1080 ⇒ 客户区 1920x1080）。
+        · 数值常量沿用本模块既有惯例：9 = SW_RESTORE、3 = SW_MAXIMIZE、0x0014 = SWP_NOZORDER|SWP_NOACTIVATE。
+    .OUTPUTS
+        bool：是否完成搬移。
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][long]$Hwnd,
+        [int]$MonitorIndex = 1,
+        [int]$Width = 0,
+        [int]$Height = 0,
+        [switch]$Maximize,
+        [switch]$KeepSize
+    )
+
+    if ($Hwnd -eq 0) { return $false }
+    $mons = @(Get-MtMonitors)
+    if ($mons.Count -le $MonitorIndex) { return $false }
+    $m = $mons[$MonitorIndex]
+
+    [void](Invoke-MtShowWindow -Hwnd $Hwnd -CmdShow 9)                                  # SW_RESTORE
+
+    if ($Width -gt 0 -and $Height -gt 0) {
+        # 客户区精确尺寸：外框 = 目标 + (外框 − 客户区) 实测差值
+        $wr = Get-MtWindowRect -Hwnd $Hwnd
+        $cr = Get-MtClientRect -Hwnd $Hwnd
+        $cx = $Width + ($wr.Width - $cr.Width)
+        $cy = $Height + ($wr.Height - $cr.Height)
+    } elseif ($KeepSize) {
+        $wr = Get-MtWindowRect -Hwnd $Hwnd
+        $cx = $wr.Width
+        $cy = $wr.Height
+    } else {
+        $cx = $m.Width
+        $cy = $m.Height
+    }
+
+    $x = $m.X + [int](($m.Width - $cx) / 2)     # 目标显示器上居中
+    $y = $m.Y + [int](($m.Height - $cy) / 2)
+    $ok = Set-MtWindowPos -Hwnd $Hwnd -InsertAfter 0 -X $x -Y $y -Cx $cx -Cy $cy -Flags 0x0014
+    # 只有「未指定尺寸且未要求保持原尺寸」时才最大化（指定尺寸 = 明确要固定窗口大小）
+    if ($ok -and $Maximize -and -not $KeepSize -and -not ($Width -gt 0 -and $Height -gt 0)) {
+        [void](Invoke-MtShowWindow -Hwnd $Hwnd -CmdShow 3)                              # SW_MAXIMIZE
+    }
+    return [bool]$ok
+}
+
 Export-ModuleMember -Function @(
     'Get-MtModuleHandle', 'Set-MtThreadDpiAwareness', 'Get-MtScreenSize',
     'Get-MtKeyboardLayouts', 'Test-MtEnUsLayoutAvailable', 'Get-MtLangIdOfThread',
     'Get-MtLayoutDescription', 'Wait-MtLangId', 'Invoke-MtLayoutSwitch', 'Set-MtWindowUs',
     'Get-MtTopLevelWindows', 'Test-MtWindowVisible', 'Get-MtWindowTitleLength',
     'Get-MtWindowTitle', 'Get-MtThreadOfWindow',
-    'Get-MtWindowProcessId', 'Get-MtWindowRect', 'Send-MtPostMessage',
+    'Get-MtWindowProcessId', 'Get-MtWindowRect', 'Get-MtClientRect', 'Send-MtPostMessage',
     'Invoke-MtShowWindow', 'Set-MtWindowPos', 'Invoke-MtBringWindowToTop',
     'Get-MtForegroundWindow', 'Set-MtForegroundWindow', 'Set-MtAttachThreadInput',
     'Get-MtCurrentThreadId', 'Register-MtMessageClass', 'New-MtMessageWindow',
     'Unregister-MtMessageClass', 'Remove-MtWindow', 'Invoke-MtPumpMessages',
     'Test-MtPidIsJava', 'Find-MtMinecraftWindow',
+    'Get-MtMonitors', 'Move-MtWindowToMonitor',
     'Send-MtRealKey', 'Send-MtRealText', 'Set-MtRealCursorPosition', 'Send-MtRealMouse',
     'Get-MtRealFocus', 'Set-MtRealFocus'
 )

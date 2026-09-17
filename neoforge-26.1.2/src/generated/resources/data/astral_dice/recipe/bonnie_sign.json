@@ -1,0 +1,20 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "A": "minecraft:golden_apple",
+    "C": "minecraft:beacon",
+    "D": "astral_dice:netherite_dice",
+    "E": "astral_dice:blank_sign",
+    "P": "astral_dice:golden_star_plate",
+    "T": "minecraft:spyglass"
+  },
+  "pattern": [
+    "PCP",
+    "TET",
+    "ADA"
+  ],
+  "result": {
+    "id": "astral_dice:bonnie_sign"
+  }
+}

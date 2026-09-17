@@ -1,0 +1,13 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    "minecraft:golden_carrot",
+    "minecraft:glistering_melon_slice",
+    "astral_dice:star_coin",
+    "astral_dice:star_coin"
+  ],
+  "result": {
+    "id": "astral_dice:effect_card_luxury_feast"
+  }
+}

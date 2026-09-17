@@ -1,0 +1,57 @@
+{
+  "case_id": "CHIP-RELOG-B-26.1.2",
+  "title": "26.1.2 筹码跨重登 B(验证)：重登后筹码栏尺寸与筹码物品是否留存",
+  "version": "26.1.2",
+  "target": {
+    "type": "existing-feature",
+    "ref": "mc-26.1.2-chip-persistence"
+  },
+  "steps": [
+    {
+      "op": "note",
+      "text": "两阶段用例的验证阶段(前置 CHIP-RELOG-A-26.1.2 已完成装骰子 + 放 2 个筹码 + saveall，随后由 mt.ps1 stop + mt_launch 重登)。本阶段只读不写：readstate 报 chipSlots / chipCosmetic / chipItem / chipItems。判据：① chipSlots 与 chipCosmetic **相等**(Curios 15 的 stacks 与 cosmetic 尺寸失配会在 tick 与登录两条路径崩服，见 docs/compat-26.1.2-neoforge.md §7.3)；② 筹码物品仍在槽内、且 **0 号位与 1 号位都在**(chipItems 全量断言)。\n\n【2026-09-17 根因结论】Curios 15.0.0 的登录迁移 `CurioInventory#loadInventoryConfiguration()` 的搬移循环上界取的是「**数据包原始尺寸**」——`getSlots()` 首行 `if (this.dataLoaded)` 在 `setDataLoaded()`(方法末尾才调用)之前不触发 `update()`，因此与我们经修饰符给出的运行时尺寸无关；本模组 chip 槽数据包写死 `size:0` ⇒ 上界为 0 ⇒ 一次都不搬，旧内容全部进 `invalidStacks` 并交还玩家背包(物品不丢；实测落在主物品栏，`groundChips=[]`、`offhand=empty`)。插桩读数(AP_CURIOTRACE)另证迁移期间**只对 dice 调用过校验、chip 一次都没有**，故与标签/校验器无关。同源副作用：`size_shift` 让登录瞬间筹码栏变 4 格(几 tick 后由 Curios 自己清掉回到 2)；此外本模组 `curioTick` 在迁移当拍会把目标读成 0 而防御式收缩到 0，是**第二条独立弹出路径**。\n\n【修法 ① 已实施，本用例是它的回归】本模组自管筹码槽迁移(`event/ChipSlotMigrationHandler`)：在 `OnDatapackSyncEvent` 的 **HIGHEST**(早于 Curios 自己的 NORMAL 处理器)先 `stashAndClear` 把筹码栏内容快照并清空(避免被 Curios 判为非法栈交还)，在 **LOWEST** 再 `refreshChipSlotCount` + 按索引还原。故本用例现在**应转绿**；仍红即代表修复失效(或上游 Curios 换了搬移上界口径)。⚠️ 测试注意：探针 `equipslot`/`equipslotat` 直接写栏位、绕过校验，必须用 `curios:chip` 标签内的物品(用 `astral_dice:blank_chip` 这类材料会制造假缺陷)。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe readstate RB2"
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_RB2_STATE:.*chipSlots=2:chipCosmetic=2"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_RB2_STATE:.*chipItem=astral_dice:flashlight_chip"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_RB2_STATE:.*chipItems=\\[0:astral_dice:flashlight_chipx1,1:astral_dice:cutter_chipx1\\]"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_RB2_DONE"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "Slot 0 not in valid range|threw an exception|AP_RB2_.*ERR"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "crash"
+    }
+  ],
+  "on_fail": "keep_game_running"
+}

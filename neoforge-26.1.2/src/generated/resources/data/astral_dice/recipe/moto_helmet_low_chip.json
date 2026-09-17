@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": "astral_dice:blank_chip",
+    "C": "astral_dice:star_coin",
+    "G": "minecraft:glass_pane",
+    "I": "minecraft:iron_ingot",
+    "L": "minecraft:leather_helmet"
+  },
+  "pattern": [
+    "GLG",
+    "IBI",
+    "CCC"
+  ],
+  "result": {
+    "id": "astral_dice:moto_helmet_low_chip"
+  }
+}

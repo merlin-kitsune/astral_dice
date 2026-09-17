@@ -26,9 +26,12 @@ Get-MtProcessMarkers / Get-MtShots / Add-MtShot / Get-MtCurrentShots。
 Import-Module (Join-Path $PSScriptRoot 'Mt.Conf.psm1')
 
 # ── 版本表（与 paths.sh / mt_paths.py 必须一致）──────────────────────────
-$script:VERSIONS = @('1.21.1', '1.20.1')
-$script:LOADER = @{ '1.21.1' = 'neoforge'; '1.20.1' = 'forge' }
-$script:SUBPROJECT = @{ '1.21.1' = 'neoforge-1.21.1'; '1.20.1' = 'forge-1.20.1' }
+# 26.1.2 = 第三条线(multi-26.1.2-neoforge 分支新增;MC 26.1.2 / NeoForge 26.1.2.x / Java 25)。
+# 顺序有意保持「1.21.1 在前」:mt.ps1 的门控流程以 1.21.1 → 1.20.1 的既有顺序为准,
+# 新版本追加在末尾,不改变原有咬合关系。
+$script:VERSIONS = @('1.21.1', '1.20.1', '26.1.2')
+$script:LOADER = @{ '1.21.1' = 'neoforge'; '1.20.1' = 'forge'; '26.1.2' = 'neoforge' }
+$script:SUBPROJECT = @{ '1.21.1' = 'neoforge-1.21.1'; '1.20.1' = 'forge-1.20.1'; '26.1.2' = 'neoforge-26.1.2' }
 $script:WORLD_NAME = 'testworld'
 $script:SHOTS_MANIFEST = '.mt_shots.json'
 
@@ -46,6 +49,7 @@ $script:RUNS_FILE = Join-Path (Join-Path $script:TEST_DIR 'cases') '.mt_active_r
 $script:DEFAULT_PACK_MODS = @{
     '1.21.1' = 'D:\.minecraft\versions\狐の航空学 Voxy Edition\mods'
     '1.20.1' = 'D:\.minecraft\versions\1.20.1 模组测试\mods'
+    '26.1.2' = 'D:\.minecraft\versions\26.1.2-NeoForge_26.1.2.109\mods'
 }
 
 $script:CONF = Get-MtConf -Path $script:CONF_FILE
@@ -92,7 +96,12 @@ function Get-MtPaths {
     $logsDir = Join-Path $runDir 'logs'
     $shopsDir = Join-Path $runDir 'screenshots'
 
-    $confKey = if ($Version -eq '1.21.1') { 'MT_PACK_MODS_NEOFORGE' } else { 'MT_PACK_MODS_FORGE' }
+    # 26.1.2 用独立配置键 MT_PACK_MODS_NEOFORGE_26_1_2(不改动既有两键的语义)
+    $confKey = switch ($Version) {
+        '1.21.1' { 'MT_PACK_MODS_NEOFORGE' }
+        '26.1.2' { 'MT_PACK_MODS_NEOFORGE_26_1_2' }
+        default  { 'MT_PACK_MODS_FORGE' }
+    }
     $rawPack = if ($script:CONF.ContainsKey($confKey)) { $script:CONF[$confKey] } else { $script:DEFAULT_PACK_MODS[$Version] }
     # pathlib 在 Windows 上会把 '/' 归一成 '\'；这里复刻该归一化
     $packModsDir = $rawPack -replace '/', '\'

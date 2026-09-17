@@ -1,0 +1,14 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    "astral_dice:attack_card_large",
+    "astral_dice:attack_card_large",
+    "astral_dice:star_coin",
+    "astral_dice:star_coin",
+    "astral_dice:star_coin"
+  ],
+  "result": {
+    "id": "astral_dice:attack_card_epic"
+  }
+}

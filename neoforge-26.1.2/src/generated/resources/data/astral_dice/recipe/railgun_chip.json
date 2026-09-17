@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": "astral_dice:blank_chip",
+    "C": "minecraft:end_crystal",
+    "G": "astral_dice:golden_star_plate",
+    "R": "minecraft:redstone_block",
+    "W": "astral_dice:conductive_wire"
+  },
+  "pattern": [
+    "RCR",
+    "WBW",
+    "GGG"
+  ],
+  "result": {
+    "id": "astral_dice:railgun_chip"
+  }
+}

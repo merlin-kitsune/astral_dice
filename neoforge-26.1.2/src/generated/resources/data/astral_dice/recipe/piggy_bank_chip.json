@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": "astral_dice:blank_chip",
+    "C": "astral_dice:star_coin",
+    "G": "minecraft:brick",
+    "L": "minecraft:porkchop",
+    "X": "minecraft:gold_ingot"
+  },
+  "pattern": [
+    "XLX",
+    "GBG",
+    "CCC"
+  ],
+  "result": {
+    "id": "astral_dice:piggy_bank_chip"
+  }
+}

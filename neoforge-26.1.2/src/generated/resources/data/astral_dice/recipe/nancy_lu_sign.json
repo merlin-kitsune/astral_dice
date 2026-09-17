@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": "minecraft:white_concrete",
+    "F": "minecraft:pink_concrete",
+    "L": "astral_dice:blank_sign",
+    "P": "astral_dice:star_plate",
+    "W": "minecraft:black_concrete",
+    "Y": "minecraft:sculk",
+    "Z": "astral_dice:diamond_dice"
+  },
+  "pattern": [
+    "YFY",
+    "BLW",
+    "PZP"
+  ],
+  "result": {
+    "id": "astral_dice:nancy_lu_sign"
+  }
+}

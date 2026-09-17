@@ -1,0 +1,17 @@
+{
+  "type": "astral_dice:dice_upgrade",
+  "category": "equipment",
+  "key": {
+    "N": "minecraft:nether_brick",
+    "T": "astral_dice:golden_dice"
+  },
+  "pattern": [
+    "NNN",
+    "NTN",
+    "NNN"
+  ],
+  "result": {
+    "count": 1,
+    "id": "astral_dice:netherrack_dice"
+  }
+}

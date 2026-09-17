@@ -1,0 +1,17 @@
+{
+  "name": "item.astral_dice.eagle_scope_chip",
+  "category": "astral_dice:chips_mark",
+  "icon": "astral_dice:eagle_scope_chip",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:eagle_scope_chip",
+      "text": "astral_dice.guide.entry.eagle_scope_chip.1"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:eagle_scope_chip"
+    }
+  ],
+  "sortnum": 1
+}

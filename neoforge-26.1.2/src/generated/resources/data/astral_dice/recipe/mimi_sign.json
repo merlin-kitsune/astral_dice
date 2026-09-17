@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": "minecraft:blue_dye",
+    "D": "astral_dice:dice",
+    "E": "astral_dice:blank_sign",
+    "S": "astral_dice:star_coin",
+    "W": "minecraft:white_dye"
+  },
+  "pattern": [
+    "WWW",
+    "SES",
+    "BDB"
+  ],
+  "result": {
+    "id": "astral_dice:mimi_sign"
+  }
+}

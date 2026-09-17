@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "D": "minecraft:diamond",
+    "L": "minecraft:string",
+    "R": "minecraft:redstone"
+  },
+  "pattern": [
+    "DLD",
+    "DLD",
+    "RRR"
+  ],
+  "result": {
+    "id": "astral_dice:conductive_wire"
+  }
+}

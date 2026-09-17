@@ -5,7 +5,8 @@
 项目基线:
 - 主线子项目 `neoforge-1.21.1`:MC 1.21.1 / NeoForge 21.1.235 / Java 21 / ModDevGradle(`net.neoforged.moddev` 2.0.141)
 - 移植子项目 `forge-1.20.1`:MC 1.20.1 / Forge 1.20.1-47.4.10 / Java 17 / ModDevGradle LegacyForge(`net.neoforged.moddev.legacyforge` 2.0.144)
-- Base package/group: com.merlinkitsune.astral_dice;两子项目产物名均为 `astral_dice-<版本>.jar`,版本号自带加载器后缀(1.21.1 带 `+neoforge_1.21.1`,1.20.1 带 `+forge_1.20.1`,下划线分隔)。
+- 第三条线 `neoforge-26.1.2`(分支 `multi-26.1.2-neoforge`):MC 26.1.2 / NeoForge 26.1.2.109 / Java 25 / ModDevGradle 2.0.147;由 1.21.1 源码整体迁移,差异见 `docs/compat-26.1.2-neoforge.md`
+- Base package/group: com.merlinkitsune.astral_dice;各子项目产物名均为 `astral_dice-<版本>.jar`,版本号自带加载器后缀(1.21.1 带 `+neoforge_1.21.1`,1.20.1 带 `+forge_1.20.1`,26.1.2 带 `+neoforge_26.1.2`,下划线分隔)。
 
 When extending this workspace:
 - Prefer editing the existing Gradle configuration before creating new files.
@@ -90,8 +91,51 @@ When extending this workspace:
 |---|---|---|---|---|---|---|
 | `neoforge-1.21.1` | `1.21.1-main` | 1.21.1 | NeoForge | 21 | `1.2.1+neoforge_1.21.1` | `x.y.z[-rcN]+neoforge_1.21.1` |
 | `forge-1.20.1` | `1.20.1-forge` | 1.20.1 | Forge | 17 | `1.2.1+forge_1.20.1` | `x.y.z[-rcN|preN]+forge_1.20.1` |
+| `neoforge-26.1.2` | 本仓 `multi-26.1.2-neoforge` 分支新增（基线 = 主线 `1.2.1`/`fda8ca9` 的 `neoforge-1.21.1` 源码） | 26.1.2 | NeoForge | 25 | `1.2.1+neoforge_26.1.2` | `x.y.z[-rcN]+neoforge_26.1.2` |
 
-> 版本号各 git 分支独立（AGENTS.md 自 2026-09-15 起**已纳入版本库**，各分支各自维护一份）：`multi-1.20.1-1.21.1` 当前 = `1.2.1`；`multi-dev-next` 当前 = `2.0.0-SNAPSHOT.5`（worktree 分支 `wt/2.0.0-vnext` 同为 `2.0.0-SNAPSHOT.5`）。上表「当前版本」以主线工作分支 `multi-1.20.1-1.21.1` 为准。
+> 版本号各 git 分支独立（AGENTS.md 自 2026-09-15 起**已纳入版本库**，各分支各自维护一份）：`multi-1.20.1-1.21.1` 当前 = `1.2.1`；`multi-dev-next` 当前 = `2.0.0-SNAPSHOT.5`（worktree 分支 `wt/2.0.0-vnext` 同为 `2.0.0-SNAPSHOT.5`）；`multi-26.1.2-neoforge` 当前 = `1.2.1`（26.1.2 线首版号待移植完成后由用户裁决）。上表「当前版本」以主线工作分支 `multi-1.20.1-1.21.1` 为准。
+
+> **第三条线(26.1.2)的规则边界(必须遵守)**:「同步修改两个版本」只约束 `neoforge-1.21.1` + `forge-1.20.1` 的**发布线对等**;`neoforge-26.1.2` 是把 1.21.1 整体迁移到 MC 26.1.2 的**独立开发线**,同一功能先在 1.21.1 落地,再按 `docs/compat-26.1.2-neoforge.md` 的差异映射移植,两侧**允许也不可避免地存在平台差异**。三子项目的 `mod_version`/`mods.toml` 门槛各自独立。
+
+### neoforge-26.1.2 关键差异速记(相对 neoforge-1.21.1)
+
+完整清单见 `docs/compat-26.1.2-neoforge.md`;以下 5 条是**踩过坑、必须照做**的硬约束:
+
+1. **物品注册必须走 `registerItem(name, props -> new XxxItem(props…))`(2026-09-16 实测)**:26.1.2 起 `Item` 构造器经 `Item.Properties#itemIdOrThrow` 推导默认描述 id,而 `DeferredRegister.Items#register(String, Supplier)` **不注入 id** ⇒ 旧写法(`ITEMS.register(name, () -> new X(new Item.Properties()…))`)会在注册阶段直接
+   `NullPointerException: Item id not set` 让模组加载失败。属性链一律挂在传入的 `props` 上;也**不要**用 `XxxItem::new` 方法引用形式(构造器带额外参数时 `p -> …` 链会被逗号截断)。
+2. **数据生成是两段式,且两条运行的 `--output` 必须不同(2026-09-16 实测)**:26.1.2 **没有** `data` 运行类型,只有 `runClientData`(`GatherDataEvent.Client` → `assets/` 物品模型)与 `runServerData`(`GatherDataEvent.Server` → `data/` 配方/进度)。原版 `HashCache#purgeStaleAndWrite()` 会**删除输出根下不属于本次运行 provider 的一切文件**,故共用输出目录时**后跑的那次会清空前一次的全部产物**(实测 246 个物品模型 / 217 个 data 文件被互删)。本仓库因此用**双输出根**:`src/generated/resources`(server)+ `src/generated/clientResources`(client),两者都作为 `sourceSets.main.resources.srcDir`。改动资源后必须
+   `gradlew :neoforge-26.1.2:runClientData :neoforge-26.1.2:runServerData` **两个任务一起跑**,且**禁止**把两者指向同一 `--output`。
+3. **`GatherDataEvent` 在 26.1.2 是抽象类**:监听器必须注册在 `GatherDataEvent.Client` / `GatherDataEvent.Server` 上;注册到抽象父类会让模组构造期直接失败(`Cannot register listeners for abstract class …`)。客户端 provider(继承原版 `net.minecraft.client.data.models.ModelProvider`)与服务端 provider **必须分属两个类**,客户端那个还要加 `@EventBusSubscriber(value = Dist.CLIENT, …)`(服务端数据生成运行的 classpath 不含客户端类)。
+4. **`@EventBusSubscriber` 只剩 `value()`/`modid()`**(`bus = Bus.MOD` 已删除);`ExistingFileHelper`、NeoForge 的 `client.model.generators.ItemModelProvider`、Parchment 的 26.1.x 数据**均不存在**;原版 `ModelProvider` 对重复登记**抛异常**(1.21.1 侧 `ModItemModelProvider` 里 `STAR_COIN` 重复登记在旧 API 下被静默覆盖,26.1.2 已删重复行)。
+5. **Mixin 目标字符串不受编译器保护**:每次换 26.1.2.x 小版本都要按 `docs/compat-26.1.2-neoforge.md` §3 逐条对目标版本源码复核(已发现 `PiglinAi#isWearingGold→isWearingSafeArmor`、`Gui#renderEffects→extractEffects`、`EffectRenderingInventoryScreen→EffectsInInventory`;`MerchantOffer` 复制构造仍在,无需改)。该线**已删除** NeoForge 伤害容器泄漏修复 mixin(26.1.2 上游已修),该线**无 Iron's Spells 'n Spellbooks 联动**(上游无 26.1.x 构建)。
+6. **26.1.2 的游戏内验证必须走本仓库 `scripts/test` 工具链,且已按 26.1.2 适配(2026-09-17 实跑 PASS)**:`computer_control` 的合成点击**进不去 GLFW 窗口**(实测主菜单点不动),键鼠注入只能用 `mt_inject`。四条已固化的事实:
+   - **就绪判据**:26.1.2 **没有** `Total time to load game and open world was`;`mt_launch` 改用 `logged in with entity id` **且** `Loaded <N> advancements`(都取英文原版行,禁用本地化文案如「加入了游戏」)。
+   - **探针运行时装装**:26.1.2 整合包**没有** KubeJS,由 `mt_env.ps1 mods --version 26.1.2` 从 KubeJS maven 拉 `kubejs-neoforge`(版本取 `gradle.properties:kubejs_version`,注意 maven 版本**不带** `+neoforge` 后缀)+ `rhino` + `better-advanced-tooltips`(后者是**硬前置**,即使只跑服务端;缺它 runServer 在 RegisterEvent 阶段 `NoClassDefFoundError`),缓存于 `temp/probe_mods/26.1.2/`;**`tiny-java-server` 是纯 Java 库,禁止放进 `run/mods`**(FML 会弹「不是有效的模组文件」并停在警告屏)。**不**把 KubeJS 写进 build.gradle 依赖(否则 datagen 也会装载它)。
+   - **探针 API 形态**(详见 `compat-26.1.2-neoforge.md` §7.2):权限用 `permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER)`;`Level#dimension` 在 Rhino 下是**属性**;**禁止**用 Curios `findFirstCurio(...)`(KubeJS 8 的 `ItemWrapper` 会按 `findFirstCurio(Item)` 重载解析并抛 `KubeRuntimeException`,**连 `guard` 都捕不到** ⇒ 读数全无)。
+   - **Brigadier 的 `executes` 处理器必须返回 `int`(2026-09-17 实测)**:26.1.2 的 `Commands#performPrefixedCommand` 返回 **void**(1.21.1 返回 int),移植后的探针用 `execP()` 返回 `"rc=ok"`/`"ERR:…"` 字符串 ⇒ 凡是把该字符串 `return` 给 Brigadier 的处理器(如 `dumpState` 末尾的 `return rc;`)都会抛
+     `dev.latvian.mods.rhino.EvaluatorException: Cannot convert rc=ok to int`,**该异常同样逃出 `guard`/`try-catch`**,日志里只有 Brigadier 一行 `threw an exception`,表现为该子命令**后续读数整段缺失**(实测 `APDUMP|LOCKRAW|` 永不出现)。移植时凡「命令体末尾 return 读数变量」都要改成 `return 1;`,读数只用于消息文本。
+   - **`runData` 前必须移出 `run/26.1.2/mods` 里的探针运行时**(KubeJS/Rhino/BAT):它们会与 `build/classes` 同载并干扰两段式数据生成,与「移出旧产物 jar」是同一类陷阱。
+   - **优化类模组（ImmediatelyFast + ModernFix，2026-09-17 用户要求「进一步验证优化类模组兼容性」）**：由 `mt_env.ps1 mods --version 26.1.2` 从 Modrinth Maven 装 `immediatelyfast:adbrNJLm`（**1.15.3+26.1-neoforge**，纯客户端）与 `modernfix:j7EoxpYe`（**5.27.22+mc26.1.2**，两侧皆可），缓存 `temp/probe_mods/26.1.2/`。⚠️ **侧别不同、处理必须分开**：ImmediatelyFast 是 `client_only` ⇒ 已加入 `Invoke-MtEnvWorld` 的「纯客户端模组移出」名单（子串 `immediatelyfast`），生成世界后自动恢复（实测无 `.disabled` 残留）；ModernFix 两侧皆可 ⇒ 生成世界时保留（服务端也拿到启动期优化）。`mt_launch` 回显 `IMMEDIATELYFAST_LOADED` / `MODERNFIX_LOADED`（判据同样取**已加载列表行**里的括号 modId `(immediatelyfast)`/`(modernfix)`，避免把存档里的 `… -> MISSING` 误判成已加载）；这两条**不**做硬失败（与 Sodium/Iris 一致），但缺装载会给 WARN，避免「兼容性验证」静默地什么都没验证。**实测（2026-09-17，两个模组均已装载）**：`MIGRATION-SMOKE` 27/27、`PORTED-PROBE-SMOKE` 41/41、`CRAFT-SMOKE` 21/21、`SHADER-VISION` 11/11 **全 PASS**，无新增崩溃报告 ⇒ 与本模组、Sodium 0.9.1、Iris 1.11.4、Complementary 光影**无冲突**。⚠️ 换版本时注意 `Install-MtSpecList` 的**按族旧版本清理**（前缀必须按调用传入：`sodium-`/`iris-`、`immediatelyfast-`/`modernfix-`、`superflatworldnoslimes-`/`collective-`）——用一张全局前缀表会让「装史莱姆压制」那趟把刚装好的 Sodium/Iris 删掉（实测踩坑）。
+   - **【测试环境硬性要求】必须装「Superflat World No Slimes」**(2026-09-17 用户要求,原话「否则因为超平坦世界生成的史莱姆会严重干扰测试流程」):测试世界是超平坦的,玩家常驻 y≈-60 且难度 EASY ⇒ y<40 的史莱姆区块持续刷怪,实测**同一位置 128 格内 103 只史莱姆**(mobs 总数 115);装上该模组后同样条件 **slimes=0**(mobs 14,EASY)——即压制的是史莱姆而**不是**整体刷怪,故不能用「关掉刷怪」代替。由 `mt_env.ps1 mods --version 26.1.2` 从 Modrinth Maven 装 `superflat-world-no-slimes`(`Onb8latt`,26.1.2-3.6)**及其 required 前置** `collective`(`iXqgYZEw`,26.1.2-8.32),缓存 `temp/probe_mods/26.1.2/`,与渲染栈同一套「尺寸 + sha1」幂等校验;两者都是**服务端/运行期**模组 ⇒ `mt_env world` 的「纯客户端模组移出」名单**不得**包含它们(文件名不含 imblocker/sodium/iris/embeddium/oculus 子串,天然安全)。`mt_launch` 在进入世界后做**硬闸门**:日志里没有已加载列表行 `(superflatworldnoslimes)` 即 `MT_LAUNCH: ERROR` 并拒绝继续(确需「无该模组」的对照实验时设 `MT_ALLOW_NO_SLIMEGUARD=1`,会留 WARN)。⚠️ **判据必须匹配带括号的 modId**:存档 `level.dat` 记着上次带这些模组跑过,缺失时 NeoForge 会打印 `<modId> (version X -> MISSING)`,只搜名字会把「缺失」误判成「已加载」(实测踩坑,那次把对照实验误报成 `SLIMEGUARD_LOADED=true`)。取证命令:`/astralprobe slimecheck <tag>` → `AP_<tag>_SLIME:slimes=n:mobs=m:radius=128:difficulty=…:y=…`(与 mobs/难度一并报出,避免「peaceful 或整体不刷怪」造成的假阴性)。
+7. **26.1.2 的 `items/*.json` 物品模型定义是硬需求**:1.21.4+ 起物品必须有模型定义文件 `assets/<ns>/items/<id>.json`(datagen 生成的 123 个由 `ModItemModelProvider` 负责);**非 `ModItems` 物品**(如帕秋莉手册 `astral_guide`)必须**手工**补一份 —— 缺失时客户端只在日志里留一行 `Missing item model for location …`,游戏照常运行,属「不崩但玩家可见」的静默回归(2026-09-17 实跑发现并修复)。
+8. **Curios 15 的饰品栏尺寸只能经「槽位修饰符 → `update()`」改写,禁止直接 `getStacks().grow/shrink`(2026-09-17 实测崩服,必须遵守)**:1.21.1 用的是 `ICurioStacksHandler#grow/shrink`(由 `CurioStacksHandler` **同时**调整 `stacks` 与 `cosmeticStacks`);Curios 15 已把这两个方法从接口移除(只留在 `IDynamicStackHandler` 上),移植时若图省事写成
+   `handler.getStacks().grow(n)`,**只改 `stackHandler`**,而 Curios 自身 tick 循环(`CuriosCommonEvents`,行 599)以 `getSlots()`(= `stackHandler` 尺寸)为循环上界、却**无保护地**读 `getCosmeticStacks().getStackInSlot(i)` ⇒ 两者不等时玩家每 tick 抛 `Slot 0 not in valid range - [0,0)` 并**崩服**(实测:装备 2★ 骰子使筹码栏 0→2 后立即崩);同一失配在**每次登录**还会让 `CurioInventory.loadInventoryConfiguration`(行 161/162,同样是 `getSlots()` 上界 + 读 cosmetic)抛同错,表现为 `Couldn't place player in world`、玩家弹回主菜单(工具链看着像 `MT_preflight-op: ERROR` 卡住),且**该存档此后每次登录都崩**——修代码救不回来,只能删 `saves/<world>/players/data/<uuid>.dat(.dat_old)`(26.1.2 玩家数据在 `players/data/`,不是旧版 `playerdata/`;地形与 `level.dat` 不动)。
+   正确写法(`DiceCurioItem#applySlotCount`):`removeModifier(id)` → **`addPermanentModifier`**(new `AttributeModifier(id, target, Operation.ADD_VALUE)`;它内部先 `addTransientModifier`(会 `flagUpdate()`)再登记到 `persistentModifiers`)→ `handler.update()`(`CuriosCommonEvents` 同级的 `CurioStacksHandler#update()` 会按 `baseSize + Σ ADD_VALUE` 重算并调用私有 `resize()`,`resize()` 同步 `stacks`/`cosmeticStacks`/`renderHandler`/`activeStates`);**归零时也要保留 0 值修饰符**(移除后无修饰符可 `flagUpdate`,尺寸会停在旧值)。`getSlots()` 的取值只由 `baseSize + 修饰符` 决定,故**直接改 NBT/直接 grow 都会被下一次 `update()` 抹掉或造成失配**。用 permanent 而非 transient 的理由:存档里带 `PermanentModifiers`(`CurioStacksHandler#deserialize` 逐条 `addPermanentModifier`),登录第一刻槽数即目标值,不必等 `curioTick` 20 tick 补回、也不让登录迁移看到新旧槽数不一致。
+   ⚠️ **【已修复(2026-09-17,用户裁决采用 ①自管迁移 + ③上游补丁)】26.1.2 上筹码在重登后被移出栏位 = Curios 15 的登录迁移只搬「数据包原始尺寸」内的槽位,而本模组 chip 槽的原始尺寸是 0**(2026-09-17 取得源码级 + 实测双证据;源码 = Curios 26.1.2 分支 8f2f132(15.0.0),已 clone 到本地 temp/curios_src):
+   - **机制**:`CurioInventory#loadInventoryConfiguration()`(每次进入世界由 `OnDatapackSyncEvent` 触发)先 `createDefaultInventory()` 造一批**新** `CurioStacksHandler`,再逐槽搬移旧内容;搬移循环的上界是 `curioStacksHandler.getSlots()`,而 `CurioStacksHandler#getSlots()` → `update()` 首行是 `if (this.dataLoaded)`,且 `setDataLoaded()` 只在**整个方法末尾**(行 206)才调用 ⇒ 循环期间 `getSlots()` 返回的是**构造函数里那个原始 `stackHandler` 尺寸**(= 数据包 base size),与刚 `copyModifiers()` 复制过来的修饰符**无关**。本模组 chip 槽数据包写死 `"size": 0`(`SlotType.Builder` 只在 size **缺省**时才默认 1,显式 0 就是 0),尺寸完全由骰子的 permanent 修饰符给出 ⇒ 循环上界 `min(0, 旧尺寸)` = **0**,**一次都不搬**;紧接的 `while (index < 旧尺寸)` 把槽内物品全部塞进 `invalidStacks`(行 160-164),再由 `CurioInventoryCapability#handleInvalidStacks()` → `ItemHandlerHelper.giveItemToPlayer()` **交还玩家背包**。
+   - **实测证据**(插桩 + 探针,均只读):`AP_CURIOTRACE||SYNC_BEFORE|…|chipSlots=2|chipBase=0|chipMods=[astral_dice:chip_slots=2.0:ADD_VALUE]|chipStacks=[0:astral_dice:flashlight_chipx1,…]` → 迁移期间**只出现 `slot=dice` 的 `CAN_EQUIP`,没有任何 `slot=chip` 的校验调用**(⇒ 搬运循环根本没执行,不是校验器/标签挡下;同一批证据里 `stackIsStackValid=true`、`inChipTag=true`、`itemSlotTypes=[chip,curio]`)→ `SYNC_AFTER|chipSlots=4|chipMods=[astral_dice:chip_slots=2.0,curios:size_shift=2.0]|chipStacks=[0:empty,1:empty,2:empty,3:empty]`,同时 `invChips=[2:astral_dice:flashlight_chipx1]`、`offhand=empty`、`groundChips=[]` ⇒ **物品既没掉地上也没被销毁,而是进了玩家背包 2 号位**(与「不丢」的旧结论一致;但旧结论「槽位数仍正确」是**错的**)。
+   - **同源副作用(尺寸瞬变)**:`defaultSize` 在 `copyModifiers()` **之前**读取(行 121)⇒ `旧尺寸(2) != 数据包尺寸(0)` 又补一个 `curios:size_shift=+2`(行 125-129),登录瞬间筹码栏变 **4** 格;随后 Curios 自己的每 tick 清理 `CuriosCommonEvents:613 clearCachedSlotModifiers()`(删 `curios:size_shift`,`CurioInventoryCapability:636`)把它抹掉,几 tick 后回到 2(插桩 4→2 完整可见)⇒ 玩家在登录瞬间会看到筹码栏多两格。
+   - **本模组侧还有一条独立弹出路径(本轮新发现)**:插桩记录到迁移当拍 `NOTE|applySlotCount|target=0`(迁移期间骰子槽内容短暂为空 ⇒ `DiceTierRegistry.get()` 为 null ⇒ 目标 0)⇒ `setSlotCount` 走「防御式收缩」把 chip 栏**缩到 0**;若此刻槽内有筹码,`resize() → loseStacks()` 会把它一并交给背包。⇒ 26.1.2 上「筹码掉出」有**两条**成因,修复必须一起处理。
+   - **候选修法(已裁决:采用 ① 自管迁移 + ③ 上游补丁(2026-09-17,已落地))**:①**自管迁移(stash & restore,推荐)**——在 `OnDatapackSyncEvent` 的 `HIGHEST` 把 chip 槽内容快照并清空(Curios 迁移因此看不到任何待搬出物品),在 `LOWEST`(Curios 之后)按骰子重算尺寸再把快照放回,并给 `curioTick` 加「迁移窗口内不得收缩」保护(保持 base 0 的现有设计,且覆盖槽位 1..N);②**数据包 base 改 1**——最小改动,但 Curios 只搬 base 尺寸内的槽位 ⇒ 槽位 1..N 的筹码仍会回背包,且老存档 BaseSize=0 会引入 size_shift 补偿差;③**上游修复**——`loadInventoryConfiguration` 的搬移上界应取「复制修饰符后的尺寸」(或先 `setDataLoaded()`),本模组侧再用 ① 兜底。
+   - 复现/取证全文见 `docs/compat-26.1.2-neoforge.md` §7.6 与用例 `CHIP-RELOG-A/B-26.1.2`(两条用例现已全绿,见下方「验证」);定位期用的只读插桩(已在定位完成后删除)见 `debug/CurioSlotTrace`(`AP_CURIOTRACE|` 前缀,开发环境默认开、生产默认关、`-Dastral_dice.curioTrace=true` 可强开;只读、不抛异常、不改任何状态);探针新增只读命令 `/astralprobe invdump <tag>`(报主物品栏 + 副手 + 地面掉落物里的筹码)。⚠️ 探针 `equipslot` 是**直接写栏位、绕过校验**,测筹码必须用 `curios:chip` 标签内的物品(用 `blank_chip` 这类材料会造出假缺陷)。
+    - **①已实现(产品侧兜底)**:`event/ChipSlotMigrationHandler` —— `OnDatapackSyncEvent` **HIGHEST**(先于 Curios 的 NORMAL 处理器)把 chip 槽(功能槽 + 装饰槽)内容快照为 `ItemStack#copy()` 并**清空**(Curios 的搬移因此既看不到待搬出物品、也不会塞进 `invalidStacks`);**LOWEST**(晚于 Curios)先 `DiceCurioItem.refreshChipSlotCount(player)` 按当前骰子重算尺寸、再按**原索引**放回;放不下或不再通过校验的交还玩家背包,**绝不静默丢弃**;快照取在清空之前、恢复按索引覆盖写、残留快照在下次 HIGHEST 先交还玩家 ⇒ 不复制也不丢失;整段 try/catch(Throwable) 只记日志,绝不让登录失败。配套:`setSlotCount` 的非强制分支不再在「目标瞬时读成 0」时收缩,而是把目标**抬到「最靠后的非空槽位 + 1」**(根除第二条弹出路径,无需额外的迁移窗口标记)。
+    - **③已实现(上游)**:`temp/curios_src` 分支 `fix/26.1.2-loadinv-size`(提交 `9704c4c`)——在 `copyModifiers()` 之后、读取 `defaultSize` 之前调用 `setDataLoaded()`,并把 `defaultSize` 的读取移到 `copyModifiers()` 之后(后者同时修掉 `size_shift` 与已复制修饰符的重复计算);补丁 `temp/curios-fix-26.1.2-loadinv-size.patch`,缺陷报告 + 推送/PR 命令见 `docs/upstream/curios-26.1.2-loadinventoryconfiguration.md`(本机无 token/gh,**未推送**)。
+    - **验证(不含插桩的最终口径)**:`CHIP-RELOG-A-26.1.2`(21/21 PASS:装 2★ 骰子 → 0 号位 `flashlight_chip`、**1 号位 `cutter_chip`** → `readstate RB1` 断言 `chipSlots=2:chipCosmetic=2:chipItems=[0:…,1:…]` → `saveall`)→ `mt.ps1 --phase stop --force`(保留存档)→ `mt.ps1 --phase launch` → `CHIP-RELOG-B-26.1.2`(**10/10 PASS**:尺寸 2/2、0/1 号位筹码都在、无异常行、无新增崩溃报告)⇒ 两个槽位跨重登完整留存。插桩 `debug/CurioSlotTrace` 已在定位完成后按用户要求**移除**,判据全部改由用例断言给出;`readstate` 增补 `chipItems=[索引:id,…]`,`equipslotat` 支持往指定索引写入。
+9. **数据包格式随 26.1 变了三处(2026-09-17 实测,配方因此曾静默全灭)**:
+   - **配方 ingredient 必须写成字符串**。26.1 起 vanilla ingredient = `"minecraft:dirt"`(物品)/`"#c:ingots"`(标签);带 `neoforge:ingredient_type` 的对象才表示**自定义** ingredient(见 NeoForge 26.1 文档 Resources/Server/Recipes/Ingredients)。1.21.1 的 `{"item":"X"}` / `{"tag":"T"}` 在 26.1 **解析失败** ⇒ 整份配方文件被丢弃、**只在日志留一行 `Couldn't parse data file …`**(不崩、不影响启动,极易漏)。本仓 13 份手写配方(12 张骰子升级 + 手册)已改写;datagen 侧(`ShapedRecipeBuilder`/`ShapelessRecipeBuilder`)本就产出字符串形式,**无需改**。**判据**:`RecipeManager#getRecipes()` 里 `astral_dice:` 命名空间的配方数必须等于磁盘上 `data/astral_dice/recipe/*.json` 的文件数(当前 **121** = 生成 108 + 手写 13)。
+   - **`data/neoforge/loot_modifiers/global_loot_modifiers.json` 索引已废除**:26.1 的 `LootModifierManager` 是扫描目录的 `SimpleJsonResourceReloadListener`(FOLDER=`loot_modifiers`,类里**没有** `global_loot_modifiers`/`entries`/`replace` 字面量)⇒ 旧的索引文件会被**当成一个 GLM 去解析**并报 `No key type in MapLike[{"replace":false,"entries":[…]}]`。**必须删除该索引文件**,14 个 `data/astral_dice/loot_modifiers/*.json` 仍会被自动扫描加载。
+   - **`minecraft:crafting_special_suspiciousstew` 序列化器已不存在**:26.1 把「特殊合成」全部数据化(vanilla 现以 `suspicious_stew_from_<花>` 的 shapeless 配方 + 结果组件 `minecraft:suspicious_stew_effects` 表达)⇒ 旧的 special 配方文件及其配方解锁 advancement 一并删除。
+10. **26.1.2 新增「长矛」已纳入骰神赐福的近战武器判定(2026-09-17)**:26.1.2 新增 7 种长矛(木/石/铜/铁/金/钻石/下界合金),**没有独立物品类**,是 `Item.Properties#spear(...)` 参数化的普通 `Item`,故只能按 vanilla 物品标签 `net.minecraft.tags.ItemTags.SPEARS`(=`minecraft:spears`,7 项)判定;`DiceCombatEvents#isMeleeWeaponAttack` 现为「剑标签 + **长矛标签** + `AxeItem` + `MaceItem` + `TridentItem`」。用标签而非逐个 Item,可自动覆盖后续新增与其它模组的长矛。⚠️ 该判定只在 26.1.2 线存在(`ItemTags.SPEARS` 是 26.1.2 才有的常量),**不得**回移到 1.21.1/1.20.1 线。
 
 **加载器版本门槛(必须遵守)**:
 - **1.20.1(Forge)**:由 `forge-1.20.1/build.gradle` 从 `gradle.properties` 的 `forge_version`(形如 `1.20.1-47.4.10`)**自动派生两个区间**,分别写入两处:
@@ -772,17 +816,19 @@ When extending this workspace:
 
 各子项目 `build.gradle` 已内置分发任务，`gradlew build` **构建后自动触发**，无需手动指定任务。部署目标按子项目区分：
 
-**编译产物集中规则(必须遵守)**:任何版本的编译产物统一复制到**仓库根目录 `build/libs/`**(任务 `pushToRootBuild`,随各子项目 build 自动触发;按加载器后缀清理本版本旧产物,与另一版本互不误删)。根目录 `build/libs/` 为双版本产物的统一交付目录。
+**编译产物集中规则(必须遵守)**:任何版本的编译产物统一复制到**仓库根目录 `build/libs/`**(任务 `pushToRootBuild`,随各子项目 build 自动触发;按**本子项目完整版本后缀**清理旧产物,与其他版本互不误删)。根目录 `build/libs/` 为全部版本产物的统一交付目录。
+⚠️ **后缀必须写全(2026-09 三线并存后为硬需求)**:自 `multi-26.1.2-neoforge` 分支起仓库同时存在 `+neoforge_1.21.1` 与 `+neoforge_26.1.2` 两个 neoforge 产物,`pushToRootBuild` 的过滤条件因此从 `contains('+neoforge_')` 收紧为 `contains('+neoforge_1.21.1')` / `contains('+neoforge_26.1.2')`——宽泛前缀会让两个 neoforge 版本**互相删除** jar。
 
 | 子项目 | 项目测试环境(pushToDevRun) | 整合包/用户测试环境(pushToGame) | pushToGame 触发条件 |
 |---|---|---|---|
 | `neoforge-1.21.1` | `run/1.21.1/mods`（仓库根 run/） | `D:\.minecraft\versions\狐の航空学 Voxy Edition\mods` | 随 build 自动触发（默认） |
 | `forge-1.20.1` | `run/1.20.1/mods`（仓库根 run/） | `D:\.minecraft\versions\1.20.1 模组测试\mods` | 随 build 自动触发（默认） |
+| `neoforge-26.1.2` | `run/26.1.2/mods`（仓库根 run/） | `D:\.minecraft\versions\26.1.2 模组测试\mods` | 随 build 自动触发（默认） |
 
 规则要点：
 1. **推送随 build 自动触发**：`-PdeployToPack` 已不再被任何任务读取（源码中仅存注释）；`pushToDevRun`/`pushToRootBuild`/`pushToGame` 三个推送任务均由 `finalizedBy` 随 build 无条件触发。
-2. 推送时**先删除、后复制**:`pushToDevRun`/`pushToGame`/`pushToRootBuild` 三个任务均先清空目标目录中的旧产物、再复制新 jar,各目录只保留本次构建产物。清理匹配范围(**实测**,勿按"都会按后缀过滤"理解):forge-1.20.1 三个任务统一用 `/astral_dice-.+\+forge_1\.20\.1\.jar/`(仅带 `+forge_1.20.1` 后缀);neoforge-1.21.1 仅 `pushToRootBuild` 带 `contains('+neoforge_')` 过滤(根目录 `build/libs/` 双版本共存,不会误删 forge 产物),而 `pushToDevRun`/`pushToGame` 匹配**任意** `astral_dice-*.jar`(这两个目标目录本身只放单一版本,故无需过滤,同时也保证旧版本号残留会被清掉)。
-3. 整合包根目录不存在时（如 CI 环境）`pushToGame` 自动跳过并仅输出警告，不影响构建。
+2. 推送时**先删除、后复制**:`pushToDevRun`/`pushToGame`/`pushToRootBuild` 三个任务均先清空目标目录中的旧产物、再复制新 jar,各目录只保留本次构建产物。清理匹配范围(**实测**,勿按"都会按后缀过滤"理解):forge-1.20.1 三个任务统一用 `/astral_dice-.+\+forge_1\.20\.1\.jar/`(仅带 `+forge_1.20.1` 后缀);`neoforge-1.21.1` 与 `neoforge-26.1.2` 的 `pushToRootBuild` 带**各自完整后缀**过滤(`contains('+neoforge_1.21.1')` / `contains('+neoforge_26.1.2')`,根目录 `build/libs/` 多版本共存,不得写成宽泛的 `+neoforge_`);`neoforge-26.1.2` 的 `pushToGame` **同样**带 `contains('+neoforge_26.1.2')`(2026-09-17 收紧:整合包目录属用户环境,不得误删其它分支放进去的产物),仅 `pushToDevRun` 与 1.21.1 侧的 `pushToGame` 匹配**任意** `astral_dice-*.jar`(这两个目标目录本身只放单一版本,故无需过滤,同时也保证旧版本号残留会被清掉)。
+3. 整合包根目录不存在时（如 CI 环境）`pushToGame` 自动跳过并仅输出警告，不影响构建。⚠️ 因此**静默不部署**是最容易发生的形态(2026-09-17 实测:26.1.2 侧的 `pushToGame` 长期指向并不存在的 `D:\.minecraft\versions\26.1.2-NeoForge_26.1.2.109`,只打印 `pack dir not found, skipped`,整合包里的 jar 一直是旧时间戳)——改动 `packModsDir` 或换机后,必须**核对构建日志里确有 `pushToGame: pushed … -> <目标>` 一行**,不得只看 `BUILD SUCCESSFUL`。
 4. forge-1.20.1 子项目产物分两级：`pushToDevRun` 取 `build/devlibs` 未重混淆 jar（dev 环境 Mojmap 名），`pushToGame` 取 `build/libs` 重混淆 jar（生产 SRG 名），推错方向会 `NoSuchFieldError`——不要改动该取值逻辑。
 5. **禁止自动启动 runClient / 冒烟测试（自动化测试流程子配置例外）**：无流程的手动 runClient / 冒烟测试一律禁止，游戏内验证默认由用户手动运行；**仅当经「自动化测试流程（Automated Testing）」子配置（见下方章节）启动的自动化 runClient 允许**，且必须按该流程执行并产出报告。
 6. **自动本地提交 + 禁止自动推送 GitHub**：每次改动完成（含构建部署）后由代理**自动执行本地提交**；但所有 `git push` 必须由用户手动执行（`deploy.ps1` 需显式 `-Push` 才推送），不得自动推送远程。
@@ -862,11 +908,11 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --version <版本> --phase stop --purg
   3. `run/<版本>/saves/` 下**其它**含 `level.dat` 的历史遗留世界目录（逐个回显后删除）。
   删除结果以机器可读行 `MT_CLEANUP_SAVES: PURGED <N>` / `MT_CLEANUP_SAVES: KEPT（未指定 --purge-saves）` 回显，便于报告核对。
 - **为什么删得起**：与阶段 E「**每次开新的自动化测试都必须重建世界**，不接受复用上一轮存档」同源——旧存档本来就必须重建，留着只会掩盖「忘了 `mt_env world`」，还白占磁盘。
-- ⚠️ **两阶段/重登类用例中途的 `stop` 禁止加 `--purge-saves`**：那类流程是 `saveall` → `stop`（**保留存档**）→ `launch` 读回，删了存档就没得读。故 `--phase stop` **默认不清理**，只有显式 `--purge-saves` 才清（`--keep-saves` 可显式写回默认）。
+- ⚠️ **两阶段/重登类用例（`CHIP-RELOG-*`）中途的 `stop` 禁止加 `--purge-saves`**：那类流程是 `saveall` → `stop`（**保留存档**）→ `launch` 读回，删了存档就没得读。故 `--phase stop` **默认不清理**，只有显式 `--purge-saves` 才清（`--keep-saves` 可显式写回默认）。
 - **失败取证优先**：`.mt_keep_alive` 标记存在时（条目 `on_fail=keep_game_running`），进程收停与存档清理**都只提示、不执行**，现场留给取证；取证完用 `--phase stop --force --purge-saves` 释放。
 - **不要在测试任务之间留着客户端**：进入世界后若长时间不再读数，游戏进程会一直驻留（占内存/显卡，且下一次 `launch` 的前置检查可能因此中止）——**任务结束即收尾**；这与「前置检查会自动收停遗留进程」是两道互补的保险，不能互相替代。
 - **收停是异步的**：`TerminateProcess` 返回 ≠ 进程已从进程表消失，故 `mt_cleanup` 在判残留前会**最多等 20 秒**再复核（否则慢退出的客户端会被误报成 `RESIDUAL`/退出码 1）。
-- **收停范围覆盖「专用服务端 / 数据生成 / run 任务包装器」（2026-09-17 实测缺口）**：旧判据只认**客户端入口** ⇒ `mt_env world`（或两段式数据生成）起的 `runServer` 包装器与服务端 JVM **永远杀不掉**；实测跑完 env 后两者双双存活，且孙进程仍持有父进程 stdout 句柄，把 `mt.ps1 --phase env` **卡死**（子进程早已退出、父进程一直等）。现由 `Mt.Proc.psm1` 的 `Test-MtPipelineProcess` 统一判定（① 客户端沿用最严格判定；② 含 `gradle-wrapper.jar` 且含 `:<子项目>:run` 的包装器；③ 入口 `net.neoforged.devlaunch.Main` 的本版本 JVM），`mt_cleanup` 的「收停后自检」也改用同一判据（否则既杀不掉也检不出）。⚠️ **只认 `run` 家族选择器**——`:neoforge-1.21.1:build` 之类的构建任务不属于测试流程，**绝不能杀**（构建中途被收停会毁产物）。
+- **收停范围覆盖「专用服务端 / 数据生成 / run 任务包装器」（2026-09-17 实测缺口）**：旧判据只认**客户端入口** ⇒ `mt_env world`（或两段式数据生成）起的 `runServer` 包装器与服务端 JVM **永远杀不掉**；实测跑完 env 后两者双双存活，且孙进程仍持有父进程 stdout 句柄，把 `mt.ps1 --phase env` **卡死**（子进程早已退出、父进程一直等）。现由 `Mt.Proc.psm1` 的 `Test-MtPipelineProcess` 统一判定（① 客户端沿用最严格判定；② 含 `gradle-wrapper.jar` 且含 `:<子项目>:run` 的包装器；③ 入口 `net.neoforged.devlaunch.Main` 的本版本 JVM），`mt_cleanup` 的「收停后自检」也改用同一判据（否则既杀不掉也检不出）。⚠️ **只认 `run` 家族选择器**——`:neoforge-1.21.1:build` / `:neoforge-26.1.2:build` 之类的构建任务不属于测试流程，**绝不能杀**（构建中途被收停会毁产物）。
 
 ### 工具链（`scripts/test/`；脚本本身入库，仅 `mt.conf`、`reports/*`、`cases/.mt_*` 为本地忽略的运行时产物）
 
@@ -1063,6 +1109,8 @@ pwsh -NoProfile -File scripts/test/mt_env.ps1 world --version 1.20.1 [--seed]
 **行为要点（必须遵守）**：
 - **1.21.1**：从整合包复制 **Sodium `sodium-neoforge-0.8.13+mc1.21.1.jar` + Iris `iris-neoforge-1.8.14-beta.1+mc1.21.1.jar` + ModernFix `modernfix-neoforge-5.27.24+mc1.21.1.jar`** 到 `run/1.21.1/mods/`（幂等，按修改时间判断是否需要复制）。ModernFix 提供启动加载时间日志，供阶段 L 判定加载完成。
 - **1.20.1**：dev run **不安装渲染模组**（Embeddium/Oculus 的 mixin refmap 在 MDG mojmap 命名下无法解析，会导致 Mixin apply failed）；本阶段只校验用户生产环境渲染栈就绪。因此 1.20.1 的渲染兼容性属**生产环境人工验证项**，不在 dev 自动化范围内。
+- **26.1.2（2026-09-17 起）**：dev run 安装**渲染栈 + 光影**用于光影兼容性测试 —— Sodium `mc26.1.2-0.9.2-neoforge` + Iris `1.11.4+26.1-neoforge` + 光影包 Complementary Shaders - Unbound `r5.9.3`（置于 `run/26.1.2/shaderpacks/`）。三者**一律经 Modrinth Maven**（`https://api.modrinth.com/maven/maven/modrinth/<slug>/<version>/<file>`）下载并做**体积 + SHA1 双校验**（缓存 `temp/probe_mods/26.1.2/`），**禁止**改用 GitHub Release/其它 CDN 直链（2026-09-17 用户裁决）。
+  ⚠️ **光影默认关闭**（`run/26.1.2/config/iris.properties` 写 `enableShaders=false`），但**这不是因为「光影不能用」** —— 2026-09-17 用户怀疑并实测确认：元凶是 **Sodium 0.9.2**；把它降到**整合包同款的 0.9.1**（`sodium-neoforge-0.9.1+mc26.1.2.jar`）后，Iris 1.11.4 + Complementary Unbound r5.9.3 **可以正常开启光影**（`SHADER-VISION-26.1.2` 用例由 FAIL 转 **PASS**；视觉读数：原版方块云 → 光影体积云/大气散射/色调映射，游戏画面正常存活）。**此前记录的「26.1.2 上启用任意光影包都会崩 `IllegalStateException: Missing sampler Sampler1`（`GlCommandEncoder.trySetup`）、属上游无解缺陷」的结论作废**（当时的对照只换了光影包、没换 Sodium 版本，属误判）。默认仍关光影只是「测试不需要 + 省性能」：`SHADERS=disabled` 是正常状态、不报 WARN；`mt_env mods` 每次会把该属性重写回 `false`。`mt_launch` 回显 `SODIUM_LOADED` / `IRIS_LOADED` / `SHADERS=… pack=…` / `SHADERPACK_LOADED=…`，`SHADER-VISION-26.1.2` 是这条经验的**回归守卫**（换 Sodium/Iris 版本后必须复跑）。
 - **世界重建**：删除旧存档 → 写 `server.properties`（超平坦/创造/`allow-cheats`/`max-players=2`）→ 取消失焦暂停 → `runServer` 生成（180 秒上限）→ 停服 → 世界迁移到 `run/<版本>/saves/testworld` → **原生 NBT 改写 `level.dat`**。
 - **测试世界规则（必须，两条路径都要满足）**：
   1. `Data.allowCommands=1`（TAG_Byte）—— 单人存档的「允许命令」由该字段决定，服务器生成的世界默认不写；
@@ -1081,7 +1129,7 @@ pwsh -NoProfile -File scripts/test/mt_env.ps1 world --version 1.20.1 [--seed]
 
 **执行命令**：
 ```bash
-pwsh -NoProfile -File scripts/test/mt_launch.ps1 --version 1.21.1 [--no-publish]
+pwsh -NoProfile -File scripts/test/mt_launch.ps1 --version 1.21.1 [--no-publish] [--monitor 1] [--size 1920x1080]
 ```
 
 **预期结果**：末行 `MT_LAUNCH: OK — 已进入世界（quickplay=testworld）`。
@@ -1089,8 +1137,10 @@ pwsh -NoProfile -File scripts/test/mt_launch.ps1 --version 1.21.1 [--no-publish]
 **就绪判据（必须遵守）**：清空 `latest.log` 与 `crash-reports` 后，基础等待 **30 秒**，随后轮询 `run/<版本>/logs/latest.log` 中 ModernFix 的加载完成日志 **`Total time to load game and open world was`**；未出现则**每 15 秒复检**，180 秒上限。出现崩溃报告或进程退出即判失败。
 
 **进入世界后同阶段完成**：
-1. 输出兼容栈信号（1.21.1：`SODIUM_LOADED` / `IRIS_LOADED`；1.20.1：`EMBEDDIUM_LOADED` / `OCULUS_LOADED`，dev run 预期为 false）；
-2. 校验 KubeJS `run/<版本>/logs/kubejs/server.log` 为 **0 errors**（进入世界后第一步）。
+1. 输出兼容栈信号（1.21.1：`SODIUM_LOADED` / `IRIS_LOADED`；26.1.2：`KUBEJS_LOADED` / `RHINO_LOADED` / `SODIUM_LOADED` / `IRIS_LOADED` / `SHADERS=… pack=…` / `SHADERPACK_LOADED=…`；1.20.1：`EMBEDDIUM_LOADED` / `OCULUS_LOADED`，dev run 预期为 false）；
+2. **把测试客户端搬到指定显示器并设定窗口尺寸**（`MT_WINDOW:` 行；2026-09-17 用户要求「移到第二显示器，避免干扰观察」＋「窗口大小应控制在 1920x1080」）：默认搬到**显示器 #1（第二屏）**，窗口在目标显示器上**居中**，**客户区（渲染区）1920x1080**（外框因边框/标题栏略大，实测 1936x1119）。参数：`--monitor <序号>`（`0` = 不搬移）、`--size <宽>x<高> | maximize | keep`（默认 `1920x1080`；`maximize` = 铺满目标显示器，`keep` = 只搬显示器保持原尺寸；非法/过小值在**启动客户端之前**即以退出码 2 拒绝）。⚠️ **`--size` 的口径是「客户区」而不是外框**（游戏分辨率看的是客户区；直接写外框 1920x1080 只会得到约 1904x1041 的渲染区）—— 实现用「外框 − 客户区」的实测差值补足边框，等价于 `AdjustWindowRect`。`MT_WINDOW: OK` 行同时回显窗口矩形与客户区尺寸便于取证。
+   由 `lib/Mt.Win32.psm1` 的 `Get-MtMonitors` / `Get-MtClientRect` / `Move-MtWindowToMonitor` 实现，顺序为 **SW_RESTORE → SetWindowPos(居中) → 视参数 SW_MAXIMIZE**（已最大化的窗口直接 `SetWindowPos` **不会跨屏**，必须先还原）。**单显示器或序号越界时静默跳过**（`MT_WINDOW: SKIP`），不得因此中断流程。⚠️ `Get-MtMonitors` 的返回值**必须**用 `@(...)` 包一层：PowerShell 会展开返回值，单屏时直接赋值得到单个对象；**不要**在函数里用 `return ,$out` 兜底（那会把数组包成「一个元素」，`$mons.Count` 恒为 1、`$mons[1]` 取到整个数组 —— 2026-09-17 实测踩坑）。
+3. 校验 KubeJS `run/<版本>/logs/kubejs/server.log` 为 **0 errors**（进入世界后第一步）。
 
 **失败处理**：`MT_LAUNCH: BLOCKED`（未在时限内进入世界）→ 查看 `run/<版本>/runclient_launch.log` 末 30 行；退出码 `11`。检测到崩溃报告 → 退出码 `2`，进 `crash-reports` 定位。
 

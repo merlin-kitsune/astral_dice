@@ -1,0 +1,11 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    "minecraft:diamond_sword",
+    "astral_dice:star_coin"
+  ],
+  "result": {
+    "id": "astral_dice:effect_card_king_power"
+  }
+}
