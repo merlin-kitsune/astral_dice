@@ -5,14 +5,14 @@
 项目基线:
 - 主线子项目 `neoforge-1.21.1`:MC 1.21.1 / NeoForge 21.1.235 / Java 21 / ModDevGradle(`net.neoforged.moddev` 2.0.141)
 - 移植子项目 `forge-1.20.1`:MC 1.20.1 / Forge 1.20.1-47.4.10 / Java 17 / ModDevGradle LegacyForge(`net.neoforged.moddev.legacyforge` 2.0.144)
-- 第三条线 `neoforge-26.1.2`(分支 `multi-26.1.2-neoforge`):MC 26.1.2 / NeoForge 26.1.2.109 / Java 25 / ModDevGradle 2.0.147;由 1.21.1 源码整体迁移,差异见 `docs/compat-26.1.2-neoforge.md`
+- 第三条线 `neoforge-26.1.2`:MC 26.1.2 / NeoForge 26.1.2.109 / Java 25 / ModDevGradle 2.0.147;由 1.21.1 源码整体迁移,差异见 `docs/compat-26.1.2-neoforge.md`。**2026-09-17 起已并入主线目录**(原独立 worktree `F:\MCProject\astral_dice_multiloader-26.1.2` / 分支 `multi-26.1.2-neoforge` 已合并进 `multi-1.20.1-1.21.1`,现行工作目录即主线根目录,三子项目同树)。
 - Base package/group: com.merlinkitsune.astral_dice;各子项目产物名均为 `astral_dice-<版本>.jar`,版本号自带加载器后缀(1.21.1 带 `+neoforge_1.21.1`,1.20.1 带 `+forge_1.20.1`,26.1.2 带 `+neoforge_26.1.2`,下划线分隔)。
 
 When extending this workspace:
 - Prefer editing the existing Gradle configuration before creating new files.
 - Keep Forge/NeoForge and Minecraft version properties synchronized in each subproject's gradle.properties and build.gradle.
 - New external Java libraries should be added as Gradle Maven dependencies in the dependencies block and, if needed, a corresponding repository should be declared in the repositories block (in the affected subproject's build.gradle).
-- If a new third-party mod dependency is required, use a Maven repository URL (for example Modrinth) and declare it in the build.gradle repositories block.
+- 新增第三方**模组**依赖:只能经 **Curse Maven**(`curse.maven:`)或 **Modrinth Maven**(`maven.modrinth:`)获取,并纳入同一套闸门——完整口径见下方「## 模组依赖添加规则(统一口径,1.20.1 + 1.21.1)— 必须遵守」;本地 jar(`fileTree`/`files`)不得作为模组来源。
 - Reuse the existing MDK-style structure instead of scaffolding a different mod layout.
 - When new source/resources are added, keep the mod metadata generation task and resource declaration intact.
 
@@ -91,11 +91,11 @@ When extending this workspace:
 |---|---|---|---|---|---|---|
 | `neoforge-1.21.1` | `1.21.1-main` | 1.21.1 | NeoForge | 21 | `1.2.1+neoforge_1.21.1` | `x.y.z[-rcN]+neoforge_1.21.1` |
 | `forge-1.20.1` | `1.20.1-forge` | 1.20.1 | Forge | 17 | `1.2.1+forge_1.20.1` | `x.y.z[-rcN|preN]+forge_1.20.1` |
-| `neoforge-26.1.2` | 本仓 `multi-26.1.2-neoforge` 分支新增（基线 = 主线 `1.2.1`/`fda8ca9` 的 `neoforge-1.21.1` 源码） | 26.1.2 | NeoForge | 25 | `1.2.1+neoforge_26.1.2` | `x.y.z[-rcN]+neoforge_26.1.2` |
+| `neoforge-26.1.2` | 本仓 `multi-26.1.2-neoforge` 分支新增（基线 = 主线 `1.2.1`/`fda8ca9` 的 `neoforge-1.21.1` 源码）；**2026-09-17 已合并进 `multi-1.20.1-1.21.1`**（与主线同目录同树，原独立 worktree 已移除） | 26.1.2 | NeoForge | 25 | `1.2.1-beta+neoforge_26.1.2` | `x.y.z[-rcN]+neoforge_26.1.2` |
 
-> 版本号各 git 分支独立（AGENTS.md 自 2026-09-15 起**已纳入版本库**，各分支各自维护一份）：`multi-1.20.1-1.21.1` 当前 = `1.2.1`；`multi-dev-next` 当前 = `2.0.0-SNAPSHOT.5`（worktree 分支 `wt/2.0.0-vnext` 同为 `2.0.0-SNAPSHOT.5`）；`multi-26.1.2-neoforge` 当前 = `1.2.1`（26.1.2 线首版号待移植完成后由用户裁决）。上表「当前版本」以主线工作分支 `multi-1.20.1-1.21.1` 为准。
+> 版本号各 git 分支独立（AGENTS.md 自 2026-09-15 起**已纳入版本库**，各分支各自维护一份）：`multi-1.20.1-1.21.1` 当前 = `1.2.1`；`multi-dev-next` 当前 = `2.0.0-SNAPSHOT.5`（worktree 分支 `wt/2.0.0-vnext` 同为 `2.0.0-SNAPSHOT.5`）；`neoforge-26.1.2` 子项目当前 = **`1.2.1-beta`**（2026-09-17 用户裁决：26.1.2 为**低优先级版本**，版本号单独加 `-beta` 与主线 `1.2.1` 的发布态区分；`multi-26.1.2-neoforge` 分支自此只作为合并前历史，不再单独开发）。上表「当前版本」以主线工作分支 `multi-1.20.1-1.21.1` 为准。
 
-> **第三条线(26.1.2)的规则边界(必须遵守)**:「同步修改两个版本」只约束 `neoforge-1.21.1` + `forge-1.20.1` 的**发布线对等**;`neoforge-26.1.2` 是把 1.21.1 整体迁移到 MC 26.1.2 的**独立开发线**,同一功能先在 1.21.1 落地,再按 `docs/compat-26.1.2-neoforge.md` 的差异映射移植,两侧**允许也不可避免地存在平台差异**。三子项目的 `mod_version`/`mods.toml` 门槛各自独立。
+> **第三条线(26.1.2)的规则边界(必须遵守)**:「同步修改两个版本」只约束 `neoforge-1.21.1` + `forge-1.20.1` 的**发布线对等**;`neoforge-26.1.2` 是把 1.21.1 整体迁移到 MC 26.1.2 的**低优先级移植线**(2026-09-17 起与主线同目录),同一功能先在 1.21.1 落地,主线内容更新**完成后**再按 `docs/compat-26.1.2-neoforge.md` 的差异映射迁移,两侧**允许也不可避免地存在平台差异**;迁移后必须做功能实现一致性测试 —— 优先级与验收口径见下方「### 模组内容更新规则(三线优先级)— 必须遵守」。三子项目的 `mod_version`/`mods.toml` 门槛各自独立。
 
 ### neoforge-26.1.2 关键差异速记(相对 neoforge-1.21.1)
 
@@ -136,6 +136,23 @@ When extending this workspace:
    - **`data/neoforge/loot_modifiers/global_loot_modifiers.json` 索引已废除**:26.1 的 `LootModifierManager` 是扫描目录的 `SimpleJsonResourceReloadListener`(FOLDER=`loot_modifiers`,类里**没有** `global_loot_modifiers`/`entries`/`replace` 字面量)⇒ 旧的索引文件会被**当成一个 GLM 去解析**并报 `No key type in MapLike[{"replace":false,"entries":[…]}]`。**必须删除该索引文件**,14 个 `data/astral_dice/loot_modifiers/*.json` 仍会被自动扫描加载。
    - **`minecraft:crafting_special_suspiciousstew` 序列化器已不存在**:26.1 把「特殊合成」全部数据化(vanilla 现以 `suspicious_stew_from_<花>` 的 shapeless 配方 + 结果组件 `minecraft:suspicious_stew_effects` 表达)⇒ 旧的 special 配方文件及其配方解锁 advancement 一并删除。
 10. **26.1.2 新增「长矛」已纳入骰神赐福的近战武器判定(2026-09-17)**:26.1.2 新增 7 种长矛(木/石/铜/铁/金/钻石/下界合金),**没有独立物品类**,是 `Item.Properties#spear(...)` 参数化的普通 `Item`,故只能按 vanilla 物品标签 `net.minecraft.tags.ItemTags.SPEARS`(=`minecraft:spears`,7 项)判定;`DiceCombatEvents#isMeleeWeaponAttack` 现为「剑标签 + **长矛标签** + `AxeItem` + `MaceItem` + `TridentItem`」。用标签而非逐个 Item,可自动覆盖后续新增与其它模组的长矛。⚠️ 该判定只在 26.1.2 线存在(`ItemTags.SPEARS` 是 26.1.2 才有的常量),**不得**回移到 1.21.1/1.20.1 线。
+
+## 模组依赖添加规则(统一口径,1.20.1 + 1.21.1)— 必须遵守
+
+**来源只剩两个**:任何第三方**模组**依赖必须经 **Curse Maven**(`https://www.cursemaven.com` → `curse.maven:<slug>-<projectId>:<fileId>`)
+或 **Modrinth Maven**(`https://api.modrinth.com/maven` → `maven.modrinth:<slug>:<versionId>`)获取,且这两个仓库必须在
+`forge-1.20.1/build.gradle` 与 `neoforge-1.21.1/build.gradle` 里**各自声明一份**(Gradle 的项目级仓库是累加的,同一文件内不得重复声明)。
+**禁止**用本地 jar(`fileTree`/`files`)、作者的官方 maven 或其它站点作为**模组**来源;**非模组库**(mixin / gson / guava / asm / sponge-mixin 等)不受此限。
+
+1. **坐标写全、版本钉死**:Curse 用 `<slug>-<projectId>:<fileId>`(fileId = CF 文件 id),Modrinth 用 `<slug>:<versionId>`(versionId 是 Modrinth 的版本 id,不是版本号字符串);**禁止** `latest.release`/`+` 之类浮动版本。
+2. **同一模组跨线同源**:同一模组在 1.20.1 与 1.21.1 必须来自同一来源(现状:Curios / Patchouli / Iron's Spellbooks / mixinbooster / modernfix → Modrinth Maven;KubeJS / Rhino / Collective / Superflat No Slimes / Embeddium / Oculus → Curse Maven)。只有目标 MC 版本在某来源确实没有构建时才允许分叉,并在 build.gradle 注释里写明理由。
+3. **dev 编译 vs 生产运行**:build.gradle 的声明只服务**开发/编译**(1.20.1 走 `modImplementation`/`modCompileOnly` 由 MDG 重映射;1.21.1 / 26.1.2 走 `implementation`/`compileOnly`,NeoForge 侧无 reobf);生产由整合包提供同一模组,**不得**把整合包 jar 复制进仓库或 `run/mods` 当依赖。
+4. **硬前置必须进同一套闸门**(与下方「加载器版本门槛」「版本互通门槛」同一体系):若某模组是**运行期硬前置**(缺失会让本模组不报错却静默失效,如 1.20.1 的 `mixinbooster`),必须
+   ① 在对应 `mods.toml`/`neoforge.mods.toml` 的依赖段声明 `mandatory=true` + **钉死 `versionRange`**(现状:1.20.1 `forge`/`minecraft`/`curios [5,6)`/`mixinbooster [0.1.3,)`;1.21.1 `neoforge [21.1,21.2)`/`curios [9,)`;26.1.2 `neoforge [26.1.0.0,26.2)`/`curios [15,)`),**并且** ② 纳入离线加载器门槛用例(`scripts/test/mt_loadergate.ps1` + `cases/LOADER-GATE-*.json`)。
+   ⚠️ **当前只有 1.20.1 有 `LOADER-GATE-FORGE-1.20.1.json`**:1.21.1 / 26.1.2 侧**新增硬前置前必须先补同形态用例**(同「离线判定器 + 断言」写法),不得只改 toml 了事。
+   ⚠️ 门槛必须在 **FML 依赖排序阶段**拒绝不合格环境,不得依赖「先加载再在代码里检查」——mixin 变换早于 mod 构造器。
+5. **守门(唯一实现)**:`pwsh -NoProfile -File tools/check_mod_sources.ps1` —— 同时挂在阶段 P(`scripts/test/mt_preflight.ps1` 的「模组来源」一项)与 `scripts/test/TESTING-SPEC.md` §9 静态守门。它检查:两个发布线都声明了两个来源仓库、模块坐标只能是 `curse.maven:`/`maven.modrinth:`、**实际命中**的本地 jar 兜底一律 FAIL、库按 `$LibraryGroups` 白名单放行;官方 maven 的模组依赖(当前 `mezz.jei`、`dev.architectury`)以**例外**形式每次运行都回显,**待用户裁决是否迁移坐标**。新增库或例外必须改脚本里的 `$LibraryGroups` / `$ModExceptions` 并写明理由。
+6. **换源必须给等价性证据**:把模组从其它来源改到 Curse/Modrinth Maven 时,必须核对新旧文件**逐字节相同**(SHA1 相等)并真跑一次依赖解析/编译。先例:1.21.1 的 Iron's Spellbooks 从 `base-mod-compile-libs/irons_spellbooks.jar` 换为 `maven.modrinth:irons-spells-n-spellbooks:RtvqnbKi`(sha1 `09907e3b4bfdabd7f1f44bfd25aa6432183f39bb`、13874139 字节,与 Modrinth 文件同哈希;`compileJava` 通过)。
 
 **加载器版本门槛(必须遵守)**:
 - **1.20.1(Forge)**:由 `forge-1.20.1/build.gradle` 从 `gradle.properties` 的 `forge_version`(形如 `1.20.1-47.4.10`)**自动派生两个区间**,分别写入两处:
@@ -200,6 +217,17 @@ When extending this workspace:
 - **单侧改动仅限用户明确要求**:只有当用户明确说“只改 1.21.1 / 先不移植”时,才允许只改一个版本;禁止擅自只改单侧或长期让两版本功能不对等。
 - 平台差异按各子项目规范实现(1.21.1 用数据组件/附件,1.20.1 用 `component/*DataKey` 与 Capability;事件、Curios 注册、Mixin、数据包目录均不同),**不得为了“看起来一致”而破坏目标平台的正确写法**。
 - 用户在任一版本测试时报告的 BUG/需求,默认在**两个版本同步修复**。
+
+### 模组内容更新规则(三线优先级)— 必须遵守
+
+自 2026-09-17 起三条线同处一个工作目录(26.1.2 已并入主线),内容更新的**优先级与顺序**固定如下,**不得**并行推进:
+
+1. **第一优先级 = `neoforge-1.21.1` + `forge-1.20.1`(发布线对)**:任何新内容/平衡调整/修复先在发布线上落地,两侧保持功能对等(先 1.21.1,再按 `docs/compat-1.20.1-forge.md` 同步 1.20.1),两份 CHANGELOG 按既有约定同步更新。
+2. **第二优先级 = `neoforge-26.1.2`(低优先级版本)**:主线内容更新**尚未完成时不得动 26.1.2**。只有当该内容在发布线上**完成**——代码落地 + 双版本构建/冒烟通过 + CHANGELOG 记录完成——之后,才把该内容**迁移**到 `neoforge-26.1.2`;迁移按 `docs/compat-26.1.2-neoforge.md` 的差异映射做,允许并**记录**平台差异(如 26.1.2 无 Iron's Spells 联动、`ItemTags.SPEARS` 只在 26.1.2 存在等)。
+3. **迁移后必须做「功能实现一致性测试」**:按 `scripts/test/TESTING-SPEC.md` §13.2 的方法(**同探针 + 同用例 + 双侧读数 diff**)在 26.1.2 上复跑 1.21.1 已通过的用例,逐条比对读数;差异要么修掉、要么作为**平台差异**登记并写明原因。**禁止**用「能启动/跑通了」代替一致性结论。
+4. **版本号与发布**:26.1.2 子项目当前版本号 = **`1.2.1-beta+neoforge_26.1.2`**(低优先级标记,与发布线 `1.2.1` 的发布态区分;改动只动 `neoforge-26.1.2/gradle.properties`,**不得**连带改 1.20.1 / 1.21.1);26.1.2 线**不发版**——CI 只对其跑构建守门(lang 同步 + 三子项目构建),不打 tag、不发 Release。
+5. **一次内容更新的验收口径**:① 1.21.1 与 1.20.1 均已落地,且各自构建/冒烟通过;② 两份 CHANGELOG 同步且条目数一致;③ **若该内容同时迁移到 26.1.2**,则 26.1.2 侧的一致性测试结论已写入 `scripts/test/TESTING-SPEC.md`(工程口径记录写§附录 A,不写玩家侧 CHANGELOG)。
+6. **优先级不得被「顺路一起改」打破**:不得以「26.1.2 顺手改更快」为由先改 26.1.2 再回头补发布线;发布线未落地前 26.1.2 的改动一律视为返工风险。
 
 ### forge-1.20.1 子项目关键差异速记(相对 neoforge-1.21.1)
 - **Mixin Booster 是硬前置:未安装 → 直接拒绝启动(2026-09-15 固化,不得删除)**:Forge 1.20.1 的 FML **没有 Mixin 集成**,Sponge Mixin 0.8.5 完全由 `mixinbooster`(Modrinth `mixinbooster`,纯 ModLauncher 服务 jar,内嵌 `fabric-mixin.jar`;模组条目与版本号由自带 `IModLocator` 读 jar 根 `mixinbooster_version.txt` 得到,实装 `0.1.3+1.20.1`,实机 debug.log:`Found valid mod file transmog-mod.jar with {mixinbooster} mods - versions {0.1.3+1.20.1}`)提供——**缺它时本模组不报任何错、全部 Mixin 静默失效**,故必须在 FML **依赖排序阶段**硬拒。三处必须同时保持:① `templates/META-INF/mods.toml` 的 `[[dependencies.${mod_id}]]` 段 `modId="mixinbooster"` + `mandatory=true` + `versionRange="[0.1.3,)"` + `ordering="AFTER"` + `side="BOTH"`(**禁止**写成 `"*"`/省略:旧版本前置同样静默失效);② `build.gradle` 的 `modImplementation "maven.modrinth:mixinbooster:rOaAYvZPZ"`(dev 运行时);③ 防回归用例 `scripts/test/mt_loadergate.ps1`(读数 `AP_LG_MB`/`AP_LG_MB_RANGE`)与 `scripts/test/cases/LOADER-GATE-FORGE-1.20.1.json`(8 断言)。拒绝文案 = FML 原生 `Missing or unsupported mandatory dependencies:` + Mod ID / Requested by / Expected range / Actual version。⚠️ **1.20.1 的依赖段不支持 `reason` 字段**(实测 `ModInfo$ModVersion` 构造器常量池只读 modId/mandatory/versionRange/ordering/side/referralUrl;`reason` 是 NeoForge 的字段),写了也不会显示给用户。

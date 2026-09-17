@@ -273,6 +273,34 @@ function Test-MtPreflightWritable {
     return , @($true, [string]$p.run_dir)
 }
 
+# ── 模组来源（统一口径闸门）──────────────────────────────────────────────
+function Test-MtPreflightModSources {
+    <#
+    .SYNOPSIS
+        模组依赖来源统一口径（AGENTS.md「模组依赖添加规则(统一口径,1.20.1 + 1.21.1)」）。返回 @(bool, detail)。
+
+    .NOTES
+        唯一实现在 `tools/check_mod_sources.ps1`（阶段 P 与 TESTING-SPEC §9 静态守门共用同一脚本，
+        不得在此另写一份判定逻辑）。判定对象是 `forge-1.20.1` / `neoforge-1.21.1` 的 build.gradle：
+        两个来源仓库是否都声明、模组坐标是否只用 curse.maven / maven.modrinth、本地 jar 兜底是否实际命中。
+        官方 maven 的模组依赖（mezz.jei / dev.architectury）以「例外」回显，不算失败。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$Root)
+
+    $gate = Join-Path (Join-Path $Root 'tools') 'check_mod_sources.ps1'
+    if (-not (Test-Path -LiteralPath $gate -PathType Leaf)) {
+        return , @($false, "缺少 $gate")
+    }
+    $r = Invoke-MtProcessFull -FilePath 'pwsh' `
+        -ArgumentList @('-NoProfile', '-File', $gate, '-Root', $Root) -TimeoutSec 120
+    $verdict = ($r.StdOut -split "`r?`n") | Where-Object { $_ -match 'MOD_SOURCE_GATE:' } | Select-Object -Last 1
+    if (-not $verdict) {
+        return , @($false, "无结论行（exit=$($r.ExitCode)；$($r.StdErr.Trim())）")
+    }
+    return , @(($r.ExitCode -eq 0), $verdict.Trim())
+}
+
 # ── 汇总 ══════════════════════════════════════════════════════════════════
 function Invoke-MtPreflightAll {
     [CmdletBinding()]
@@ -286,6 +314,7 @@ function Invoke-MtPreflightAll {
     $checks.Add([pscustomobject]@{ Name = '输入法'; Pair = (Test-MtPreflightIme) })
     $checks.Add([pscustomobject]@{ Name = '遗留进程'; Pair = (Test-MtPreflightLeftover) })
     $checks.Add([pscustomobject]@{ Name = 'MCP 二进制'; Pair = (Test-MtPreflightMcpBinary) })
+    $checks.Add([pscustomobject]@{ Name = '模组来源'; Pair = (Test-MtPreflightModSources -Root $root) })
     # 注意两点（PowerShell 的两个坑，都踩过）：
     #   1. 哈希表字面量里不能直接写 `Pair = , @(…)` —— 解析器报「参数列表中缺少参数」；
     #   2. **直接赋值**时的 `, @(a,b)` 会造出「外层 1 元素数组包着内层 2 元素数组」，

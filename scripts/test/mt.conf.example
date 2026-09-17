@@ -17,7 +17,9 @@
 MT_PACK_MODS_NEOFORGE="D:/.minecraft/versions/狐の航空学 Voxy Edition/mods"
 MT_PACK_MODS_FORGE="D:/.minecraft/versions/1.20.1 模组测试/mods"
 # 26.1.2 第三条线（MC 26.1.2 / NeoForge 26.1.2.109）；缺省时由 Mt.Paths.psm1 的内置默认值兜底
-MT_PACK_MODS_NEOFORGE_26_1_2="D:/.minecraft/versions/26.1.2-NeoForge_26.1.2.109/mods"
+# ⚠️ 必须与 `neoforge-26.1.2/build.gradle` 的 `packModsDir` 指向同一个整合包
+#    （2026-09-17 修正：旧值 `26.1.2-NeoForge_26.1.2.109` 在本机并不存在）
+MT_PACK_MODS_NEOFORGE_26_1_2="D:/.minecraft/versions/26.1.2 模组测试/mods"
 
 # 本地 MCP 二进制（前置检查用）
 MT_MCP_BIN="C:/Users/<你的用户名>/.local/bin/computer-control-mcp.exe"

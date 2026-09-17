@@ -49,7 +49,7 @@ $script:RUNS_FILE = Join-Path (Join-Path $script:TEST_DIR 'cases') '.mt_active_r
 $script:DEFAULT_PACK_MODS = @{
     '1.21.1' = 'D:\.minecraft\versions\狐の航空学 Voxy Edition\mods'
     '1.20.1' = 'D:\.minecraft\versions\1.20.1 模组测试\mods'
-    '26.1.2' = 'D:\.minecraft\versions\26.1.2-NeoForge_26.1.2.109\mods'
+    '26.1.2' = 'D:\.minecraft\versions\26.1.2 模组测试\mods'
 }
 
 $script:CONF = Get-MtConf -Path $script:CONF_FILE

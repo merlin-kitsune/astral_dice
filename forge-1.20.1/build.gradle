@@ -24,9 +24,8 @@ repositories {
     mavenCentral()
     // ModDevGradle Legacy 所需的 Forge/Minecraft 工件仓库由插件自动添加
     maven { url = uri('https://maven.neoforged.net/releases') }
-    // Curios API is resolved from the Modrinth maven.
-    maven { url 'https://api.modrinth.com/maven' }
-    // Iron's Spellbooks (compileOnly) is resolved from the Modrinth maven.
+    // 统一口径的模组来源之一:Modrinth Maven(Curios API / Iron's Spellbooks / mixinbooster / modernfix)。
+    // 同一仓库只声明一次即可(Gradle 会去重;此前这里为两条一模一样的声明,已按统一口径合并)。
     maven { url 'https://api.modrinth.com/maven' }
     // KubeJS + Rhino are resolved from the KubeJS maven.
     maven { url 'https://maven.latvian.dev/releases' }
@@ -34,7 +33,7 @@ repositories {
     maven { url 'https://maven.architectury.dev' }
     // KubeJS transitive dependency animated-gif-lib-for-java
     maven { url 'https://jitpack.io' }
-    // CurseForge Maven:collective / superflatworldnoslimes / kubejs / rhino / embeddium / oculus
+    // 统一口径的模组来源之二:Curse Maven:collective / superflatworldnoslimes / kubejs / rhino / embeddium / oculus
     // (MDG modImplementation 会在解析期把生产 SRG jar 重映射为 dev Mojmap 命名,mixin 才能加载)
     maven { url 'https://www.cursemaven.com' }
     // JEI 官方 maven(配方查看)
@@ -187,8 +186,10 @@ idea {
 
 // AutoForge: mod addon dependencies
 repositories {
+    // 本地兜底仓库(内容是 Modrinth Maven 坐标的镜像缓存)
     maven { url "${projectDir}/.oss-basemod-repo" }
-    maven { url 'https://api.modrinth.com/maven' }
+    // 统一口径的两个模组来源仓库已在文件顶部声明过一次(Gradle 的项目级仓库是累加的),
+    // 此处不再重复声明 —— 重复声明会让「统一口径」失真(由 tools/check_mod_sources.ps1 守门)。
 }
 dependencies {
     // Curios API(必须前置):1.20.1 Forge = Curios 5.x(IPQlZkz1 = 5.14.1+1.20.1 的 Modrinth 版本 id)

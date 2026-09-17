@@ -386,6 +386,7 @@ pwsh -NoProfile -File scripts/verify/verify_chip_recipes.ps1          # java / g
 pwsh -NoProfile -File scripts/verify/verify_chip_acquisition.ps1
 pwsh -NoProfile -File scripts/verify/verify_bountiful_pools.ps1
 pwsh -NoProfile -File scripts/verify/verify_bountiful_instance_exclusions.ps1
+pwsh -NoProfile -File tools/check_mod_sources.ps1                    # 模组来源统一口径(Curse/Modrinth Maven);阶段 P 的「模组来源」一项共用本脚本
 ```
 
 > ⚠️ `verify_content_library.ps1` 依赖 `docs/1.2.0-content.json`，该文件当前**被 .gitignore 排除**（详见 §11）。干净克隆下该守门脚本会因缺文件而无法运行。
@@ -582,6 +583,22 @@ pwsh -NoProfile -File scripts/test/mt_watchdog.ps1 -Version 1.21.1 [-StallSecond
 ---
 
 ## 附录 A：工具链与发布工程变更记录（自 CHANGELOG 移出）
+
+**2026-09-17：26.1.2 线并入主线 + 模组来源统一口径 + 内容更新优先级规则**
+
+- **第三条线（26.1.2）并入主线目录（用户要求「把当前 workflow 合并到主线目录，核对完整后移除」）**：在主线 worktree `F:/MCProject/astral_dice_multiloader`（分支 `multi-1.20.1-1.21.1`，合并前 `460975c`）以 `git merge --no-ff` 收编 `multi-26.1.2-neoforge`（`f29f51a`，merge-base `fda8ca9`），合并提交 **`c846f83`**（2 父提交已核），规模 **1126 文件 / +43543 / −48**（其中 1109 个新增）。
+  - **冲突 6 处全部为文档/工具链注释**：`AGENTS.md`、`scripts/test/TESTING-SPEC.md`、`scripts/test/{mt.ps1,mt_stop.ps1,mt_cleanup.ps1,lib/Mt.Proc.psm1}`；两份 CHANGELOG **无冲突**。解决口径 = **保留双方语义并统一术语**（「两阶段/重登类用例（`CHIP-RELOG-*`）」；`run` 家族默认示例同时列出 `:neoforge-1.21.1:build` 与 `:neoforge-26.1.2:build`），不删任何一侧的独有内容。
+  - **完整性硬证（四棵树集合比对，非人工目测）**：`base=2075 / ours=2075 / theirs=3184 / HEAD=3184 / union=3184`，**`lost=0`、`extra=0`**（`lost` 应等于 `(ours \ theirs) ∩ base`），`git diff --name-only --diff-filter=U` 为空；合并结果与 `theirs` 的差异**仅有**上述 6 个冲突文件（15 插入 / 12 删除）。
+  - **独立 worktree 已移除**：`git worktree remove F:/MCProject/astral_dice_multiloader-26.1.2`（无需 `--force`，退出码 0），`git worktree list` 只剩主线与 2.0.0 开发线；全仓 `git grep` 对 worktree 路径 **0 命中**（无残留引用）。**移除前先按「只补不缺」把该 worktree 的本地忽略资产迁入主线**（391 个文件：`docs/upstream/curios-26.1.2-loadinventoryconfiguration.md`、`temp/curios_src`（含上游补丁提交 `9704c4c`）、`temp/curios-fix-26.1.2-loadinv-size.patch`、`temp/probe_mods`、运行日志等）；`run/`、`build/`、`.gradle/` 属可再生未迁移。分支 `multi-26.1.2-neoforge` 未删除（保留为回滚/对照入口，其内容已完整含于 `c846f83`）。
+- **26.1.2 子项目版本号单独改为 `1.2.1-beta`（2026-09-17 用户裁决「其他支线版本号不动」）**：`neoforge-26.1.2/gradle.properties` 的 `mod_version` = **`1.2.1-beta+neoforge_26.1.2`**（按仓库硬规则「版本号自带加载器后缀」保留后缀 —— `pushToRootBuild`/`pushToGame` 的旧产物清理正是按 `contains('+neoforge_26.1.2')` 匹配，省掉后缀会留下旧 jar 并在整合包里造成同 modId 双 jar）。**判据**：`gradlew :neoforge-26.1.2:generateModMetadata` 产出的 `build/generated/sources/modMetadata/META-INF/neoforge.mods.toml` 为 `version="1.2.1-beta+neoforge_26.1.2"`（实跑通过）；`forge-1.20.1` / `neoforge-1.21.1` 的 `mod_version` 未改动。
+- **模组添加规则统一口径 + 纳入同一套闸门（用户要求，1.20.1 + 1.21.1）**：模组只能经 **Curse Maven** 或 **Modrinth Maven** 获取（新章节见 `AGENTS.md`「模组依赖添加规则(统一口径)」）。落地改动：
+  - `neoforge-1.21.1/build.gradle` **补声明 Curse Maven**（此前 1.21.1 侧没有该仓库 ⇒ 根本无法按统一口径引入 Curse Maven 模组）；`forge-1.20.1` / `neoforge-1.21.1` 各自的第二个 `repositories {}` 块里**重复声明**的 Modrinth Maven 一并去重（Gradle 项目级仓库本就累加）。
+  - **换源去本地 jar**：1.21.1 的 Iron's Spellbooks 由 `base-mod-compile-libs/irons_spellbooks.jar`（13.9 MB、随仓库入库的本地 jar）改为 `compileOnly "maven.modrinth:irons-spells-n-spellbooks:RtvqnbKi"`。**等价性实测**：原本地 jar sha1 = `09907e3b4bfdabd7f1f44bfd25aa6432183f39bb`（13874139 字节），与 Modrinth 上 `irons_spellbooks-1.21.1-3.16.2.jar`（version id `RtvqnbKi`，project `s4OWxYQQ`）**同哈希同尺寸**；Gradle 实际解析到的缓存文件 sha1 也复算为该值，`gradlew :neoforge-1.21.1:compileJava` **BUILD SUCCESSFUL**（该任务 `UP-TO-DATE`，正因 classpath 内容逐字节不变）。本地 jar 文件**未删除**（不再被任何配置引用，是否清理留待用户裁决）。
+  - **新守门脚本 `tools/check_mod_sources.ps1`（唯一实现，阶段 P 与 §9 共用）**：R1 两个发布线都必须声明 Curse + Modrinth 两个仓库且同一文件内不得重复声明；R2 模组坐标只能是 `curse.maven:` / `maven.modrinth:`，**实际命中**的本地 jar 兜底（`fileTree`/`files`）一律 FAIL，非模组库按 `$LibraryGroups` 白名单放行，官方 maven 的模组依赖（`mezz.jei`、`dev.architectury`）以**例外**每次回显（待用户裁决是否迁移坐标，不静默）；R3 未被引用的本地 jar 只作 INFO（脚本不删文件）。结论行 `MOD_SOURCE_GATE: OK|FAIL violations=N exceptions=N infos=N`。
+  - **接入闸门的实测**：`mt_preflight.ps1` 新增第 12 项检查「模组来源」（`[OK] MOD_SOURCE_GATE: OK violations=0 exceptions=4 infos=2`，`MT_PREFLIGHT: OK — 12 项全部满足（1.21.1, 1.20.1, 26.1.2）`）；`TESTING-SPEC.md` §9 静态守门清单同步加入该命令。
+- **新增「模组内容更新规则（三线优先级）」（用户要求）**：`AGENTS.md` 新章节明确 —— ① 第一优先级 = `neoforge-1.21.1` + `forge-1.20.1` 发布线对（功能对等、CHANGELOG 同步）；② 第二优先级 = `neoforge-26.1.2`（**低优先级版本**，主线内容更新未完成前不得动，完成后才按 `docs/compat-26.1.2-neoforge.md` 迁移）；③ 迁移后必须做**功能实现一致性测试**（§13.2 的「同探针 + 同用例 + 双侧读数 diff」，差异要么修掉要么作为平台差异登记）；④ 26.1.2 不发版（CI 只跑构建守门）；⑤ 内容更新的验收口径；⑥ 禁止「顺路先改 26.1.2」。
+- **测试工具链路径修正（随并入暴露）**：`scripts/test/lib/Mt.Paths.psm1` 的内置默认值与 `scripts/test/mt.conf.example` 里 26.1.2 的整合包 mods 目录一直指向**本机并不存在**的 `D:\.minecraft\versions\26.1.2-NeoForge_26.1.2.109\mods`（`neoforge-26.1.2/build.gradle` 的 `packModsDir` 早已改为 `26.1.2 模组测试`，测试侧未跟改）⇒ 两处统一改为 **`D:\.minecraft\versions\26.1.2 模组测试\mods`**；本地 `mt.conf` 补 `MT_PACK_MODS_NEOFORGE_26_1_2` 键；`deploy.ps1`（本地忽略文件）补 `-Target 26.1.2` 映射，使三条线共用同一部署入口。
+- **CHANGELOG 口径**：本批全部属**工程/工具/文档口径**变更（合并、worktree 移除、工具链路径、守则），按既有约定**不进玩家侧 CHANGELOG**（两份 CHANGELOG 本批零改动），统一归档到本附录。
 
 **2026-09-17：26.1.2 线测试能力扩展**
 

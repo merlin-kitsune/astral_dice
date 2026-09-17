@@ -26,6 +26,9 @@ repositories {
     maven { url = uri('https://maven.neoforged.net/releases') }
     // Curios API is resolved from the Modrinth maven.
     maven { url 'https://api.modrinth.com/maven' }
+    // Curse Maven:与 1.20.1 侧**同一套模组获取口径**(见 AGENTS.md「模组依赖添加规则(统一口径)」)。
+    // 1.21.1 侧此前没有声明该仓库,故无法按统一口径引入任何 Curse Maven 模组;此处补齐使两线一致。
+    maven { url 'https://www.cursemaven.com' }
     // KubeJS + Rhino are resolved from the KubeJS maven.
     maven { url 'https://maven.latvian.dev/releases' }
     // KubeJS transitive dependency Architectury
@@ -211,8 +214,10 @@ idea {
 
 // AutoForge: mod addon dependencies
 repositories {
+    // 本地兜底仓库(内容是 Modrinth Maven 坐标的镜像缓存)
     maven { url "${projectDir}/.oss-basemod-repo" }
-    maven { url 'https://api.modrinth.com/maven' }
+    // 统一口径的两个模组来源仓库已在文件顶部声明过一次(Gradle 的项目级仓库是累加的),
+    // 此处不再重复声明 —— 重复声明会让「统一口径」失真(由 tools/check_mod_sources.ps1 守门)。
 }
 dependencies {
     // 自动化测试辅助:KubeJS(运行时依赖,用于游戏内 Curios 饰品栏检查脚本)
@@ -222,7 +227,12 @@ dependencies {
     implementation 'maven.modrinth:curios:yohfFbgD'
     implementation 'maven.modrinth:patchouli:1.21.1-93-neoforge'
     implementation fileTree(dir: 'base-mod-libs', include: ['*.jar'])
-    compileOnly fileTree(dir: 'base-mod-compile-libs', include: ['*.jar'])
+    // 统一口径(见 AGENTS.md「模组依赖添加规则(统一口径)」):Iron's Spellbooks 一律经 Modrinth Maven 获取,
+    // 不再用 base-mod-compile-libs 里的本地 jar(2026-09-17 收编)。
+    // 等价性已实测:原本地 jar `base-mod-compile-libs/irons_spellbooks.jar` 的 sha1 =
+    // 09907e3b4bfdabd7f1f44bfd25aa6432183f39bb,与 Modrinth 文件 `irons_spellbooks-1.21.1-3.16.2.jar`
+    // (version id RtvqnbKi,project s4OWxYQQ,13874139 字节)逐字节相同 ⇒ 换源不改任何字节。
+    compileOnly "maven.modrinth:irons-spells-n-spellbooks:RtvqnbKi"
 }
 // AutoForge: end mod addon dependencies
 
