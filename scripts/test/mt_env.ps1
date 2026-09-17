@@ -1423,9 +1423,24 @@ function Invoke-MtEnvDebug {
     elseif (-not $pauseState) { 'on (pauseOnLostFocus=false)' } else { 'off (pauseOnLostFocus=true)' }
     Write-MtLine ("MT_DEBUG: {0} pause-lock={1}" -f $Version, $pauseText)
 
-    if ($Shaders -ne 'status' -or $PauseLock -eq 'status') {
+    if ($Shaders -ne 'status') {
         $src = Invoke-MtEnvShaders -Version $Version -State $Shaders
-        if ($src -ne $MT_EXIT_PASS -and $Shaders -ne 'status') { $rc = $src }
+        if ($src -ne $MT_EXIT_PASS) { $rc = $src }
+    } else {
+        # 只读状态：**不**调用 Invoke-MtEnvShaders —— 缺 iris.properties 时它会打一条
+        # BLOCKED 噪音（而 1.20.1 这条线本来就不装渲染栈、永远没有该文件）。直接读键。
+        $irisCfg = Join-Path (Join-Path (Get-MtPaths -Version $Version).run_dir 'config') 'iris.properties'
+        $shadersText = 'n/a(该线不装渲染栈或无 iris.properties)'
+        if (Test-Path -LiteralPath $irisCfg -PathType Leaf) {
+            $irisLines = @(Get-Content -LiteralPath $irisCfg)
+            $cur = '(未设置)'; $pack = '(未设置)'
+            foreach ($ln in $irisLines) {
+                if ($ln -match '^\s*enableShaders\s*=\s*(.*)$') { $cur = $Matches[1].Trim() }
+                if ($ln -match '^\s*shaderPack\s*=\s*(.*)$') { $pack = $Matches[1].Trim() }
+            }
+            $shadersText = ("{0} (shaderPack={1})" -f $cur, $pack)
+        }
+        Write-MtLine ("MT_DEBUG: {0} shaders={1}" -f $Version, $shadersText)
     }
     return $rc
 }
