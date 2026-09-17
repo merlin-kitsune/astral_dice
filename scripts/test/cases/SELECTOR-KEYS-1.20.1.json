@@ -14,11 +14,11 @@
     },
     {
       "op": "note",
-      "text": "证据口径(与 1.21.1 侧同形):①四种输入的区分靠固定格式调试行 `[Astral Dice][TargetSelectPrompt] key=left|right|right_sneak|esc action=…`(DEBUG ⇒ 落 **debug.log**,故 source=debug;1.20.1 的 debug.log 已实测含 3500 行 DEBUG / 其中 302 行来自本模组与前置库命名空间);②「右键不提交」由**反证**给出 —— 若右键误走确认,会话当场结束,紧随其后的左键确认会因 token 失效打出 `[TargetSelection] confirm FAIL`(1.20.1 TargetSelectionManager:125-166 六种失败分支) ⇒ 断言 absent `confirm FAIL` 且 present 左键 confirm SUCCESS;③左键确认与三次取消的服务端落账分别锚 `[TargetSelection] confirm token=.. -> SUCCESS` 与 `[TargetSelection] cancel token=.. player=`(同一 debug.log);④ESC 用例结束时再按一次 ESC 关菜单,随后以 /astralprobe diag SK 证明客户端已恢复;⑤滚轮拦截的**唯一可观测面 = 服务端选中槽位**:探针 `/astralprobe diag W0..W3` 的只读读数 `AP_<tag>_DIAG:selectedSlot=N`(source=latest)配合真实滚轮注入,由 ⑥-a 证明拦截(W1 不变)、⑥-b 作正对照(W3 必变);⑥`/astralprobe diag SK` 的「探针正常」读数用 `AP_SK_DIAG:lvlDataGGT=\\d+`(1.20.1 探针 :416 与 1.21.1 侧 :429 同一实现),并加 `absent AP_SK_DIAG:lvlDataGGT=ERR:` ⇒ 探针一旦退化为失败载荷即当场 FAIL。⚠️ `levelClass` / `getGameTime` / `reflectGGT` 三个读数在两线都恒为失败载荷(ERR:Type / no-method),**不得**用于写断言。"
+      "text": "证据口径(与 1.21.1 侧同形):①四种输入的区分靠固定格式调试行 `[Astral Dice][TargetSelectPrompt] key=left|right|right_sneak|esc action=…`(DEBUG ⇒ 落 **debug.log**,故 source=debug;1.20.1 的 debug.log 已实测含 3500 行 DEBUG / 其中 302 行来自本模组与前置库命名空间);②「右键不提交」由**反证**给出 —— 若右键误走确认,会话当场结束,紧随其后的左键确认会因 token 失效打出 `[TargetSelection] confirm FAIL`(1.20.1 TargetSelectionManager:125-166 六种失败分支) ⇒ 断言 absent `confirm FAIL` 且 present 左键 confirm SUCCESS;③左键确认与三次取消的服务端落账分别锚 `[TargetSelection] confirm token=.. -> SUCCESS` 与 `[TargetSelection] cancel token=.. player=`(同一 debug.log;**该条正则自 2026-09-18 t27 起与 1.21.1 侧逐字节同形**,含 `[Astral Dice]` 前缀);④ESC 用例结束时再按一次 ESC 关菜单,随后以 /astralprobe diag SK 证明客户端已恢复;⑤滚轮拦截的**唯一可观测面 = 服务端选中槽位**:探针 `/astralprobe diag W0..W3` 的只读读数 `AP_<tag>_DIAG:selectedSlot=N`(source=latest)配合真实滚轮注入,由 ⑥-a 证明拦截(W1 不变)、⑥-b 作正对照(W3 必变);⑥`/astralprobe diag SK` 的「探针正常」读数用 `AP_SK_DIAG:lvlDataGGT=\\d+`(1.20.1 探针 :418 与 1.21.1 侧 :429 同一实现),并加 `absent AP_SK_DIAG:lvlDataGGT=ERR:` ⇒ 探针一旦退化为失败载荷即当场 FAIL。⚠️ 异常读数口径(**2026-09-18 t27 更正**):`getGameTime` / `reflectGGT` 两线都恒为失败载荷(ERR:Type / no-method),**不得**用于写断言;而 `levelClass` 同一行代码**两线结果相反** —— 1.20.1 可取(实测 `AP_W0_DIAG:levelClass=net.minecraft.server.level.ServerLevel`),1.21.1 恒 `ERR:TypeError`,故同样只作诊断、不得跨线对比(口径见 TESTING-SPEC 第 27 项)。"
     },
     {
       "op": "note",
-      "text": "⑦「可见外框实测」已在 1.20.1 打通,故本用例**额外**断言一条 `[Astral Dice][TargetSelectBounds] entity=… baby=… collision=… model=… used=…`(source=debug):它是 t16/t17 修复的实体棱柱边框在 1.20.1 上的**自动化存在性证明**(证明走的不是「只用碰撞盒」的旧路径);读数条目的形状与 1.21.1 侧一致,唯一平台差异是 1.20.1 无 SCALE 属性 ⇒ 不含 `scale=` 字段。"
+      "text": "⑦「可见外框实测」已在 1.20.1 打通,故本用例**额外**断言一条 `[Astral Dice][TargetSelectBounds] entity=… baby=… collision=… model=… used=…`(source=debug):它是 t16/t17 修复的实体棱柱边框在 1.20.1 上的**自动化存在性证明**(证明走的不是「只用碰撞盒」的旧路径);读数条目的形状与 1.21.1 侧一致,唯一平台差异是 1.20.1 无 SCALE 属性 ⇒ 不含 `scale=` 字段(该读数行由模组行为代码打印:`forge-1.20.1` = `TargetOutlineCapture.java:197`、`neoforge-1.21.1` = `:177`,故两侧正则**不可能**同形;这是两线 `SELECTOR-KEYS` 用例**唯一**保留的口径差异,已登记于 TESTING-SPEC 第 30 项)。"
     },
     {
       "op": "note",
@@ -306,7 +306,7 @@
     {
       "type": "log",
       "source": "debug",
-      "pattern": "\\[TargetSelection\\] cancel token=\\d+ player="
+      "pattern": "\\[Astral Dice\\]\\[TargetSelection\\] cancel token=\\d+ player="
     },
     {
       "type": "log",

@@ -406,9 +406,11 @@ function doDiag(ctx, tag) {
         try { val = "" + fn(); } catch (e) { val = "ERR:" + exText(e); }
         send(ctx, "AP_" + tag + "_DIAG:" + name + "=" + val);
     }
-    // ⚠️ 已知失败读数(2026-09-18,t23/F2 复核;与 1.21.1 侧对等):`p.level.getClass()` 在 Rhino
-    // 成员查找下不可见,该读数**恒为 `ERR:Type`**。**不得**用它写断言 —— 它无法区分
-    // 「探针坏了」与「探针正常」;需要成功读数请用 lvlDataGGT / getDayTime / srvTickCount。
+    // ⚠️ 跨线读数差异（2026-09-18 t27 更正 t23 的措辞）：同一行代码**本线可取**（实测
+    // `AP_W0_DIAG:levelClass=net.minecraft.server.level.ServerLevel`，run/1.20.1/logs/latest.log:776），
+    // 而 1.21.1 侧恒抛 `ERR:TypeError: Cannot find function getClass in object ServerLevel[…]`
+    // （旧 Rhino 的成员查找差异，见 1.21.1 侧同名注释）。仍是**诊断读数**：跨线不可直接对比，
+    // **不得**用它写断言；需要两线通用的成功读数请用 lvlDataGGT / getDayTime / srvTickCount。
     probe("levelClass", function () { return p.level.getClass().getName(); });
     probe("getGameTime", function () { return p.level.getGameTime(); });
     // 2026-09-18(t23, F3;与 1.21.1 侧对等):选中热键栏位(0..8) —— 「选择期间拦截滚轮」的可观测面。
@@ -1337,10 +1339,25 @@ var TargetSelectionManagerClass = Java.loadClass("com.merlinkitsune.astral_dice.
 var SignSelectionGateClass = Java.loadClass("com.merlinkitsune.astral_dice.target.SignSelectionGate");
 var EffectCardUtilClass = Java.loadClass("com.merlinkitsune.astral_dice.item.card.EffectCardUtil");
 
+// ⚠️ 池对象**必须先复制成 java.util.ArrayList** 再做任何成员调用（2026-09-18 t27 修复 T14-F1）：
+// `RandomCardHandler.getCardPool` 的 `items.stream().map(ItemStack::new).toList()`（RandomCardHandler.java:171）
+// 在 Java 16+ 返回 JDK **包私有**内部类 `java.util.ImmutableCollections$ListN`；1.20.1 侧 Rhino
+// （rhino-forge-2001.2.3-build.10）的成员分派经 `MemberBox` 反射调用 ⇒ 对**另一模块里的包私有类**直接抛
+// `IllegalAccessException`（1.21.1 侧 rhino-2101.2.8-build.91 已修该路径，故同源代码在 1.21.1 全 PASS）。
+// 实测原文（1.20.1，`run/1.20.1/logs/latest.log:773`）：
+//   AP_G1_EX:JavaException: java.lang.IllegalAccessException: class dev.latvian.mods.rhino.MemberBox
+//   (in module rhino) cannot access a member of class java.util.ImmutableCollections$ListN
+//   (in module java.base) with modifiers "public"
+// 修法：`new ArrayList(pool)` —— 构造函数声明在**公开类** `java.util.ArrayList` 上（可访问），真正的复制
+// 由 Java 侧在构造函数内部完成（`c.toArray()`，不经 Rhino 成员分派）。**不得**改成
+// `pool.toArray()/iterator()/get()`：那些方法同样声明在包私有类上，走 Rhino 一样抛。语义不变
+// （同一池、同一元素、同一顺序；每次调用一份新副本，池只有几十项、开销可忽略）。
+var ArrayListClass = Java.loadClass("java.util.ArrayList");
+
 /** 背包内「随机效果牌池」的卡牌总数 —— 发牌(FanBigChip)的唯一观测口径,池取自生产同一入口 */
 function countEffectCards(p) {
     var inv = p.getInventory();
-    var pool = EffectCardUtilClass.getRandomEffectCardPool();
+    var pool = new ArrayListClass(EffectCardUtilClass.getRandomEffectCardPool());
     var n = 0;
     for (var i = 0; i < inv.getContainerSize(); i++) {
         var st = inv.getItem(i);

@@ -1358,10 +1358,19 @@ var TargetSelectionManagerClass = Java.loadClass("com.merlinkitsune.astral_dice.
 var SignSelectionGateClass = Java.loadClass("com.merlinkitsune.astral_dice.target.SignSelectionGate");
 var EffectCardUtilClass = Java.loadClass("com.merlinkitsune.astral_dice.item.card.EffectCardUtil");
 
+// ⚠️ 池对象**必须先复制成 java.util.ArrayList** 再做任何成员调用（2026-09-18 t27，与 1.20.1 侧同形）：
+// `RandomCardHandler.getCardPool` 的 `items.stream().map(ItemStack::new).toList()` 在 Java 16+ 返回 JDK
+// **包私有**内部类 `java.util.ImmutableCollections$ListN`。1.20.1 侧的旧 Rhino（2001.2.3-build.10）成员
+// 分派经 `MemberBox` 反射调用 ⇒ 直接抛 `IllegalAccessException`（本线 rhino-2101.2.8-build.91 已修该路径，
+// 故本线原本就 PASS）；两侧探针保持同源，故此处**同样**先复制再读。修法见 1.20.1 侧的完整注释：
+// `new ArrayList(pool)` 的构造函数声明在公开类上、复制在 Java 内部完成 ⇒ 不经 Rhino 成员分派。
+// **不得**改成 `pool.toArray()/iterator()/get()`（同样声明在包私有类上）。
+var ArrayListClass = Java.loadClass("java.util.ArrayList");
+
 /** 背包内「随机效果牌池」的卡牌总数 —— 发牌(FanBigChip)的唯一观测口径,池取自生产同一入口 */
 function countEffectCards(p) {
     var inv = p.getInventory();
-    var pool = EffectCardUtilClass.getRandomEffectCardPool();
+    var pool = new ArrayListClass(EffectCardUtilClass.getRandomEffectCardPool());
     var n = 0;
     for (var i = 0; i < inv.getContainerSize(); i++) {
         var st = inv.getItem(i);
