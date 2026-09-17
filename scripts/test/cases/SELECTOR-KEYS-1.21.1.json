@@ -6,6 +6,7 @@
     "type": "feature",
     "ref": "glue-selector-keys"
   },
+  "esc_sensitive": true,
   "steps": [
     {
       "op": "note",
@@ -16,32 +17,41 @@
       "text": "证据口径(全部经日志,无须新探针):①四种输入的区分靠固定格式调试行 `[Astral Dice][TargetSelectPrompt] key=left|right|right_sneak|esc action=…`(DEBUG ⇒ 落 **debug.log**,故 source=debug);②「右键不提交」由**反证**给出 —— 若右键误走确认,会话当场结束,紧随其后的左键确认会因 token 失效打出 `[TargetSelection] confirm FAIL` ⇒ 断言 absent `confirm FAIL` 且 present 左键 confirm SUCCESS;③左键确认与三次取消的服务端落账分别锚 `[TargetSelection] confirm token=.. -> SUCCESS` 与 `[TargetSelection] cancel token=.. player=`(同一 debug.log);④ESC 用例结束时再按一次 ESC 关菜单,随后以 /astralprobe diag SK 证明客户端已恢复(latest.log 的 AP_SK_DIAG: 行)。actionbar 文案与这些调试行的对应关系:self_unsupported→msg.astral_dice.target_select.self_unsupported、no_target→…no_target、cancelled→…cancelled、默认常驻提示→…active。"
     },
     {
-      "op": "inject_command",
-      "command": "/gamemode creative"
+      "op": "note",
+      "text": "`esc_sensitive: true`(本用例 2026-09-18 t18 新增):目标选择会话激活期间 **Esc 就是「取消选择」**，而不声明「禁止归一化 Esc」的注入会先走一次 Esc→Tab→Enter 界面归一化(mt_inject.ps1 的 Esc 归一化段；pause-lock 只对 -NoEsc 生效)，那一次真实 Esc 会当场取消会话(实测 `key=esc action=cancel`，并曾把客户端带出世界)。故本用例**全部 18 个注入步骤**都显式声明了该字段，并由 `mt_case.ps1` 的结构校验强制(缺任一注入步骤即校验失败、拒绝执行)；字段名与口径见 scripts/test/TESTING-SPEC.md。"
     },
     {
       "op": "inject_command",
-      "command": "/time set midnight"
+      "command": "/gamemode creative",
+      "no_esc": true
     },
     {
       "op": "inject_command",
-      "command": "/kill @e[type=minecraft:husk]"
+      "command": "/time set midnight",
+      "no_esc": true
     },
     {
       "op": "inject_command",
-      "command": "/tp @s ~ ~ ~ 0 0"
+      "command": "/kill @e[type=minecraft:husk]",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/tp @s ~ ~ ~ 0 0",
+      "no_esc": true
     },
     {
       "op": "note",
-      "text": "摆靶:超平坦世界 + yaw=0/pitch=0(面向 +Z 平视)后在正前方 4 格召唤**不会昼燃**的敌对生物 husk(NoAI 静止、静音、不自然消失)⇒ 准星射线命中它,与会话 targetType=ENEMY(test_echo_enemy)匹配,距离 4 ≤ 服务端半径 16。"
+      "text": "摆靶:超平坦世界 + yaw=0/pitch=0(面向 +Z 平视)后在正前方 4 格召唤**不会昼燃**的敌对生物 husk(NoAI 静止、静音、不自然消失)⇒ 准星射线命中它,与会话 targetType=ENEMY(test_echo_enemy)匹配,距离 4 ≤ 服务端半径 16。全部注入步骤均声明「禁止归一化 Esc」，注入不会先按一次 Esc。"
     },
     {
       "op": "inject_command",
-      "command": "/summon minecraft:husk ^ ^ ^4 {NoAI:1b,Silent:1b,PersistenceRequired:1b}"
+      "command": "/summon minecraft:husk ^ ^ ^4 {NoAI:1b,Silent:1b,PersistenceRequired:1b}",
+      "no_esc": true
     },
     {
       "op": "wait",
-      "ms": 1200
+      "ms": 1500
     },
     {
       "op": "note",
@@ -49,15 +59,17 @@
     },
     {
       "op": "inject_command",
-      "command": "/astral_dice targetselect enemy"
+      "command": "/astral_dice targetselect enemy",
+      "no_esc": true
     },
     {
       "op": "wait",
-      "ms": 1200
+      "ms": 1500
     },
     {
       "op": "inject_mouse",
-      "button": "right"
+      "button": "right",
+      "no_esc": true
     },
     {
       "op": "wait",
@@ -65,15 +77,21 @@
     },
     {
       "op": "inject_command",
-      "command": "/tp @s ~ ~ ~ 0 0"
-    },
-    {
-      "op": "inject_mouse",
-      "button": "left"
+      "command": "/tp @s ~ ~ ~ 0 0",
+      "no_esc": true
     },
     {
       "op": "wait",
-      "ms": 1000
+      "ms": 400
+    },
+    {
+      "op": "inject_mouse",
+      "button": "left",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1200
     },
     {
       "op": "note",
@@ -81,20 +99,22 @@
     },
     {
       "op": "inject_command",
-      "command": "/astral_dice targetselect enemy"
+      "command": "/astral_dice targetselect enemy",
+      "no_esc": true
     },
     {
       "op": "wait",
-      "ms": 1200
+      "ms": 1500
     },
     {
       "op": "inject_mouse",
       "button": "right",
-      "shift": true
+      "shift": true,
+      "no_esc": true
     },
     {
       "op": "wait",
-      "ms": 1000
+      "ms": 1200
     },
     {
       "op": "note",
@@ -102,35 +122,30 @@
     },
     {
       "op": "inject_command",
-      "command": "/astral_dice targetselect enemy"
+      "command": "/astral_dice targetselect enemy",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "inject_key",
+      "key": "j",
+      "no_esc": true
     },
     {
       "op": "wait",
       "ms": 1200
-    },
-    {
-      "op": "inject_key",
-      "key": "j"
-    },
-    {
-      "op": "wait",
-      "ms": 1000
     },
     {
       "op": "note",
-      "text": "④ ESC = 原版照常打开暂停菜单,菜单一打开即取消选择(`key=esc action=cancel`);再按一次 ESC 关菜单,并用探针命令证明客户端已恢复(菜单关掉、命令通道可用)。"
+      "text": "④ ESC = 原版照常打开暂停菜单,菜单一打开即取消选择(`key=esc action=cancel`);再按一次 ESC 关菜单,并用探针命令证明客户端已恢复(菜单关掉、命令通道可用)。这两次 `inject_key cancel` 是**用例刻意按下的真实 Esc**(即被测输入本身),该声明只表示「不要在其前再加一次归一化 Esc」。"
     },
     {
       "op": "inject_command",
-      "command": "/astral_dice targetselect enemy"
-    },
-    {
-      "op": "wait",
-      "ms": 1200
-    },
-    {
-      "op": "inject_key",
-      "key": "cancel"
+      "command": "/astral_dice targetselect enemy",
+      "no_esc": true
     },
     {
       "op": "wait",
@@ -138,7 +153,17 @@
     },
     {
       "op": "inject_key",
-      "key": "cancel"
+      "key": "cancel",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "inject_key",
+      "key": "cancel",
+      "no_esc": true
     },
     {
       "op": "wait",
@@ -146,7 +171,8 @@
     },
     {
       "op": "inject_command",
-      "command": "/astralprobe diag SK"
+      "command": "/astralprobe diag SK",
+      "no_esc": true
     },
     {
       "op": "wait",
@@ -154,7 +180,8 @@
     },
     {
       "op": "inject_command",
-      "command": "/gamemode survival"
+      "command": "/gamemode survival",
+      "no_esc": true
     },
     {
       "op": "wait",

@@ -396,7 +396,7 @@ function Assert-MtInjectForeground {
 
 function Invoke-MtInjectKeyCommand {
     [CmdletBinding()]
-    param([string]$Key, [int]$HoldMs, [string]$Version, [string]$Layout, [long]$Hwnd)
+    param([string]$Key, [int]$HoldMs, [string]$Version, [string]$Layout, [long]$Hwnd, [bool]$NoEsc = $false)
 
     $hwnd = Resolve-MtInjectWindow -Hwnd $Hwnd -Version $Version
     if (-not $hwnd) { return 2 }
@@ -415,6 +415,14 @@ function Invoke-MtInjectKeyCommand {
             return 2
         }
         Write-MtInjectLine 'MT_INJECT_FOCUS: OK'
+    }
+
+    # 2026-09-18（t18）会话期 Esc 保护：`key` 子命令**从不**做 Esc→Tab→Enter 归一化
+    # （只有 `cmd` 子命令会，见 Invoke-MtInjectCmdCommand 的归一化段），它按下的键就是调用方
+    # 要的那一个（含 `--key cancel` = 刻意按一次真实 Esc）。故这里的 `-NoEsc` 不是开关，
+    # 而是把「本步不得引入归一化 Esc」这一声明**回显出来**，让用例输出可取证（否则只能读源码）。
+    if ($NoEsc) {
+        Write-MtInjectLine 'ESC_SKIP: key 子命令无 Esc 归一化 ⇒ -NoEsc 声明成立（按下的键就是本步输入）'
     }
 
     $k = $Key.ToLowerInvariant()
@@ -466,7 +474,7 @@ function Invoke-MtInjectMouseCommand {
         「客户端未在运行」掩盖掉（任务自检项）。
     #>
     [CmdletBinding()]
-    param([string]$Button, [bool]$Shift, [int]$HoldMs, [string]$Version, [string]$Layout, [long]$Hwnd)
+    param([string]$Button, [bool]$Shift, [int]$HoldMs, [string]$Version, [string]$Layout, [long]$Hwnd, [bool]$NoEsc = $false)
 
     $b = if ($null -eq $Button) { '' } else { $Button.Trim().ToLowerInvariant() }
     if ($b -ne 'left' -and $b -ne 'right') {
@@ -491,6 +499,12 @@ function Invoke-MtInjectMouseCommand {
             return 2
         }
         Write-MtInjectLine 'MT_INJECT_FOCUS: OK'
+    }
+
+    # 2026-09-18（t18）：鼠标路径只有 shift/光标/左右键（Send-MtInjectMouseCenter），**没有**
+    # Esc 归一化 ⇒ `-NoEsc` 对它是「声明成立」的回显（理由同 key 子命令处）。
+    if ($NoEsc) {
+        Write-MtInjectLine 'ESC_SKIP: mouse 子命令无 Esc 归一化 ⇒ -NoEsc 声明成立（只发鼠标键）'
     }
 
     Send-MtInjectMouseCenter -Hwnd $hwnd -Right ($b -eq 'right') -Shift $Shift -HoldMs $HoldMs
@@ -726,7 +740,8 @@ switch ($modeName) {
             Write-MtErrorLine '缺少必填参数 --key'
             exit $MT_EXIT_ERROR
         }
-        $rc = Invoke-MtInjectKeyCommand -Key $Key -HoldMs $HoldMs -Version $Version -Layout $Layout -Hwnd $Hwnd
+        $rc = Invoke-MtInjectKeyCommand -Key $Key -HoldMs $HoldMs -Version $Version -Layout $Layout -Hwnd $Hwnd `
+            -NoEsc ([bool]$NoEsc)
     }
     'cmd' {
         if (-not $Command) {
@@ -743,7 +758,7 @@ switch ($modeName) {
         # --button 的取值校验放在 Invoke-MtInjectMouseCommand 首行（早于窗口定位），
         # 这样客户端未运行时也能得到「非法 --button 值」而不是「客户端未在运行」。
         $rc = Invoke-MtInjectMouseCommand -Button $Button -Shift ([bool]$Shift) -HoldMs $HoldMs `
-            -Version $Version -Layout $Layout -Hwnd $Hwnd
+            -Version $Version -Layout $Layout -Hwnd $Hwnd -NoEsc ([bool]$NoEsc)
     }
     default {
         if (-not $modeName) {

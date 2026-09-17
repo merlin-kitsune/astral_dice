@@ -109,7 +109,12 @@ $script:TAG_UTF8 = [System.Text.UTF8Encoding]::new($false, $false)
 # ── 封闭原语表（与 python PRIMITIVES 同键同集合）──────────────────────────
 $script:Primitives = [ordered]@{
     'inject_key'     = @('key', 'hold_ms', 'no_esc')
-    'inject_mouse'   = @('button', 'shift', 'hold_ms')
+    # 2026-09-18（t18）：`inject_mouse` 增列 `no_esc` —— 鼠标路径本身**不按 Esc**（只有
+    # shift/光标/左右键，见 mt_inject.ps1 的 Send-MtInjectMouseCenter），故该字段对它是
+    # 「声明层断言」而非开关；之所以必须可声明，是因为「会话期每一项注入都要显式表态不得按
+    # 归一化 Esc」这条结构校验（Test-MtCaseValid 末尾的 esc_sensitive 段）按统一的
+    # `inject*` 口径收取声明，且声明会一路传到注入器（ESC_SKIP 回显）以确保不是空话。
+    'inject_mouse'   = @('button', 'shift', 'hold_ms', 'no_esc')
     'inject_command' = @('command', 'no_esc')
     'kubejs_reload'  = @()
     'wait'           = @('ms')
@@ -118,6 +123,18 @@ $script:Primitives = [ordered]@{
     'note'           = @('text')
 }
 $script:AssertTypes = @('log', 'absent', 'crash', 'kubejs', 'mixin', 'vision')
+
+# ── 会话期 Esc 保护（2026-09-18 t18；口径见 TESTING-SPEC.md）──────────────────
+# 背景（实测）：目标选择会话激活期间 **Esc = 取消选择**。而 `inject_command` 只要没声明
+# `no_esc`，就会先走一次 Esc→Tab→Enter 界面归一化（mt_inject.ps1 的归一化段；pause-lock 只对
+# `-NoEsc` 生效）—— 那一次真实 Esc 会当场取消会话（日志 `key=esc action=cancel`），并曾把客户端
+# 带出世界（SELECTOR-KEYS-1.21.1 曾因此 7/11，见 temp/t11/T11-REPORT.md 的 F1）。
+# 判据：① 用例显式声明 `esc_sensitive: true`；或 ② 用例的命令命中 $script:EscSensitiveSessionCmds
+# （即「打开一个 Esc 会改语义的会话」的命令，用子串匹配）。命中后**所有注入步骤**都必须声明
+# `no_esc`（真值），缺任一项即结构校验失败、`run` 拒绝执行（不静默）。
+$script:EscSensitiveSessionCmds = @('targetselect')
+$script:NoEscField = 'no_esc'
+$script:EscSensitiveFlag = 'esc_sensitive'
 
 # 失败取证标记：存在时，流程退出清理不杀游戏客户端（见 run_case 与 mt_cleanup.ps1）
 $script:KeepAlive = Join-Path $script:CasesDir '.mt_keep_alive'
@@ -402,6 +419,35 @@ function Test-MtCaseValid {
         }
     }
 
+    # ── 会话期 Esc 保护（结构校验阶段；判据与理由见文件头 $script:EscSensitiveSessionCmds）──
+    $escSensitive = Test-MtTruthyValue (Get-MtMapValue -Map $Case -Key $script:EscSensitiveFlag)
+    $hitCmd = ''
+    if (-not $escSensitive) {
+        foreach ($s in $steps) {
+            if ([string](Get-MtMapValue -Map $s -Key 'op') -ne 'inject_command') { continue }
+            $cmdText = [string](Get-MtMapValue -Map $s -Key 'command')
+            foreach ($pat in $script:EscSensitiveSessionCmds) {
+                if ($cmdText -like ("*{0}*" -f $pat)) { $hitCmd = $cmdText; break }
+            }
+            if ($hitCmd) { break }
+        }
+    }
+    if ($escSensitive -or $hitCmd) {
+        # 触发来源写进错误文案：声明（esc_sensitive）与自动识别（命令命中）都是**显式**拦截。
+        $why = if ($escSensitive) {
+            "用例声明 $($script:EscSensitiveFlag)=true"
+        } else {
+            ("命令 '{0}' 命中会话命令表 {1}" -f $hitCmd, ($script:EscSensitiveSessionCmds -join '/'))
+        }
+        for ($i = 0; $i -lt $steps.Count; $i++) {
+            $opText = [string](Get-MtMapValue -Map $steps[$i] -Key 'op')
+            if ($opText -notlike 'inject*') { continue }
+            if (Test-MtTruthyValue (Get-MtMapValue -Map $steps[$i] -Key $script:NoEscField)) { continue }
+            $errs += ("步骤 {0}: '{1}' 缺少 {2}=true（{3} ⇒ 会话期 Esc 会取消选择，注入不得先按归一化 Esc；mt_inject.ps1 只在 -NoEsc 为真时才跳过）" -f `
+                    $i, $opText, $script:NoEscField, $why)
+        }
+    }
+
     $asserts = @(Get-MtMapValue -Map $Case -Key 'asserts' -Default @())
     for ($i = 0; $i -lt $asserts.Count; $i++) {
         $a = $asserts[$i]
@@ -626,6 +672,11 @@ function Invoke-MtCaseOp {
 
     if ($op -eq 'inject_key') {
         $argv = @('key', '--key', (ConvertTo-MtPyText (Get-MtMapValue -Map $Step -Key 'key')), '--version', $Paths.version)
+        if (Test-MtTruthyValue (Get-MtMapValue -Map $Step -Key 'no_esc')) {
+            # t18：声明层字段必须真的传到注入器 —— 否则「用例写了 no_esc」与「注入器收到
+            # -NoEsc」脱节，声明就成了一句空话（这正是 SELECTOR-KEYS 假失败能藏住的原因之一）。
+            $argv += '-NoEsc'
+        }
         if (Test-MtTruthyValue (Get-MtMapValue -Map $Step -Key 'hold_ms')) {
             # python 传 --hold-ms；PowerShell 参数名不允许内嵌连字符（见文件头第 1 条）
             $argv += @('-HoldMs', (ConvertTo-MtPyText (Get-MtMapValue -Map $Step -Key 'hold_ms')))
@@ -641,6 +692,11 @@ function Invoke-MtCaseOp {
         # 与 inject_key 同构：字段名沿用 python 侧 snake_case（button/shift/hold_ms），
         # 子脚本参数按 PowerShell 拼法传（-Shift / -HoldMs，见文件头「无法 1:1 复刻之处」第 1 条）。
         $argv = @('mouse', '--button', (ConvertTo-MtPyText (Get-MtMapValue -Map $Step -Key 'button')), '--version', $Paths.version)
+        if (Test-MtTruthyValue (Get-MtMapValue -Map $Step -Key 'no_esc')) {
+            # t18：鼠标路径本来就不按 Esc，`-NoEsc` 是「把声明送到注入器并回显 ESC_SKIP」的
+            # 显式通路（不回显就无法从用例输出证明声明生效，只能靠读源码）。
+            $argv += '-NoEsc'
+        }
         if (Test-MtTruthyValue (Get-MtMapValue -Map $Step -Key 'shift')) {
             $argv += '-Shift'
         }
