@@ -30,14 +30,41 @@ $ErrorActionPreference = 'Stop'
 $script:LibDir = Join-Path $PSScriptRoot 'lib'
 Import-Module (Join-Path $script:LibDir 'Mt.Phase.psm1')
 Import-Module (Join-Path $script:LibDir 'Mt.Paths.psm1')
+Import-Module (Join-Path $script:LibDir 'Mt.Proc.psm1')
 
 Initialize-MtConsole
 
 $script:TestDir = Get-MtTestDir
 $script:StateFile = Join-Path (Join-Path $script:TestDir 'cases') '.mt_run_state.json'
 $script:SnapshotFile = Join-Path (Join-Path $script:TestDir 'cases') '.mt_snapshot.json'
-$script:BranchName = 'multi-1.20.1-1.21.1'
+# 报告里的「分支」取**运行时的实际分支**（2026-09-17 用户裁决移除「测试分支白名单」后，
+# 报告不得再把 multi-dev-next 等分支的运行记成发布线 `multi-1.20.1-1.21.1`）；读不到时用该兜底值。
+$script:BranchNameFallback = 'unknown'
 $script:TAG_UTF8 = [System.Text.UTF8Encoding]::new($false, $false)
+
+function Get-MtReportBranchName {
+    <#
+    .SYNOPSIS
+        当前实际分支名（报告元数据用）。返回 [string]；任何失败都回落 $script:BranchNameFallback。
+
+    .NOTES
+        分支在这里**不是判定**，只作报告标注 —— 白名单强断言已于 2026-09-17 按用户裁决移除
+        （见 mt_preflight.ps1 的 Get-MtPreflightBranch）。git 缺失 / 非 git 目录 / detached HEAD
+        等情况下返回兜底值 'unknown'，不得让报告生成失败。
+    #>
+    [CmdletBinding()]
+    param()
+
+    try {
+        $r = Invoke-MtProcessFull -FilePath 'git' `
+            -ArgumentList @('-C', (Get-MtRoot), 'rev-parse', '--abbrev-ref', 'HEAD') -TimeoutSec 30
+        if ($r.ExitCode -eq 0) {
+            $name = ([string]$r.StdOut).Trim()
+            if ($name) { return $name }
+        }
+    } catch { }
+    return $script:BranchNameFallback
+}
 
 function Get-MtReportState {
     [CmdletBinding()]
@@ -338,7 +365,7 @@ function Invoke-MtReportCollect {
         '',
         "- **运行**: ``$runId``",
         "- **版本/加载器**: $Version / $($p.loader)（子项目 ``$($p.subproject)``）",
-        "- **分支**: $($script:BranchName)",
+        "- **分支**: $(Get-MtReportBranchName)",
         "- **环境**: ``$($p.run_dir)``（dev 本体，quickplay=$([System.IO.Path]::GetFileName($p.client_world))）",
         "- **生成时间**: $(Get-MtNowStamp)",
         '',
@@ -407,7 +434,7 @@ function Invoke-MtReportSummary {
         '# 自动化测试总览',
         '',
         "- **运行**: ``$runId``",
-        "- **分支**: $($script:BranchName)",
+        "- **分支**: $(Get-MtReportBranchName)",
         "- **生成时间**: $(Get-MtNowStamp)",
         '',
         '> 测试顺序：先 1.21.1，通过后才执行 1.20.1。两个版本都给出独立结论。',

@@ -36,17 +36,24 @@ Import-Module (Join-Path $script:LibDir 'Mt.Win32.psm1')
 Initialize-MtConsole
 
 $script:ExitPreflight = 10
-# 允许的分支白名单:发布线 + 26.1.2 第三条线(2026-09 起 multi-26.1.2-neoforge 亦为合法工作分支)。
-# 除这两个之外仍一律拦停,避免在开发分支上误跑生产流程。
-$script:RequiredBranches = @('multi-1.20.1-1.21.1', 'multi-26.1.2-neoforge')
+# 分支**不再是前置门槛**(2026-09-17 用户裁决:「移除二重验证白名单，允许该分支执行」)。
+# 本流程在任何分支上都可运行;这里保留一份「发布线分支」清单,只用于回显与告警标注,
+# **不参与任何判定**(判定恒为放行,见 Get-MtPreflightBranch)。
+$script:ReleaseLineBranches = @('multi-1.20.1-1.21.1')
 $script:KeepAlive = Join-Path (Join-Path (Get-MtTestDir) 'cases') '.mt_keep_alive'
 $script:KLID_EN_US = '00000409'
 
-# ── 分支 ──────────────────────────────────────────────────────────────────
-function Test-MtPreflightBranch {
+# ── 分支（信息性：回显 + 告警，不拦停）────────────────────────────────────
+function Get-MtPreflightBranch {
     <#
     .SYNOPSIS
-        当前分支必须在白名单内（multi-1.20.1-1.21.1 / multi-26.1.2-neoforge）。返回 @(bool, detail)。
+        回显当前分支（信息性检查，不再拦停）。返回 @(bool, detail)。
+
+    .NOTES
+        2026-09-17 用户裁决「移除二重验证白名单，允许该分支执行」：分支检查由**强断言**改为
+        **回显 + 告警** —— 任何分支（发布线 / 开发分支 / detached HEAD）都放行，第一项恒为 $true，
+        输出里只如实标注实际分支名；发布线分支直接回显，其它分支追加 WARN 说明。
+        连分支名都读不出来时同样不拦停（非 git 目录照常可跑），只把原因写进说明。
     #>
     [CmdletBinding()]
     param([Parameter(Mandatory)][string]$Root)
@@ -54,13 +61,17 @@ function Test-MtPreflightBranch {
     $r = Invoke-MtProcessFull -FilePath 'git' `
         -ArgumentList @('-C', $Root, 'rev-parse', '--abbrev-ref', 'HEAD') -TimeoutSec 60
     if ($r.ExitCode -ne 0) {
-        return , @($false, "无法读取分支：$($r.StdErr.Trim())")
+        return , @($true, "无法读取分支（$($r.StdErr.Trim())）—— 信息性检查，不拦停")
     }
     $branch = $r.StdOut.Trim()
-    if ($script:RequiredBranches -notcontains $branch) {
-        return , @($false, "当前分支 $branch ≠ $($script:RequiredBranches -join ' / ')")
+    if (-not $branch) {
+        return , @($true, '分支名读出为空 —— 信息性检查，不拦停')
     }
-    return , @($true, $branch)
+    if ($script:ReleaseLineBranches -contains $branch) {
+        return , @($true, "$branch（发布线分支）")
+    }
+    return , @($true, ("$branch —— WARN: 非发布线分支（发布线 $($script:ReleaseLineBranches -join ' / ')）；" +
+                '按 2026-09-17 用户裁决放行，不拦停，仅告警'))
 }
 
 # ── 输入语言 ──────────────────────────────────────────────────────────────
@@ -310,7 +321,7 @@ function Invoke-MtPreflightAll {
     $gradlewExists = Test-Path -LiteralPath (Join-Path $root 'gradlew') -PathType Leaf
 
     $checks = [System.Collections.Generic.List[object]]::new()
-    $checks.Add([pscustomobject]@{ Name = '分支'; Pair = (Test-MtPreflightBranch -Root $root) })
+    $checks.Add([pscustomobject]@{ Name = '分支'; Pair = (Get-MtPreflightBranch -Root $root) })
     $checks.Add([pscustomobject]@{ Name = '输入法'; Pair = (Test-MtPreflightIme) })
     $checks.Add([pscustomobject]@{ Name = '遗留进程'; Pair = (Test-MtPreflightLeftover) })
     $checks.Add([pscustomobject]@{ Name = 'MCP 二进制'; Pair = (Test-MtPreflightMcpBinary) })

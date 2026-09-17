@@ -3,7 +3,7 @@
 > 本文件是 `astral_dice_multiloader` 仓库**唯一**的测试流程落地规范，替代已废弃的
 > `scripts/test/FLOW_1.20.1_functional.md`（2026-09-12 删除，历史版本可 `git show` 取回）。
 > 工作区总规范见 `AGENTS.md`「自动化测试流程」一节；两者冲突时**以本文件为准**（本文件随工具链一起入库、可被 review）。
-> 适用分支：`multi-1.20.1-1.21.1`（唯一允许运行本流程的分支；前置检查会强断言）。
+> 适用分支：**任意分支** —— 2026-09-17 用户裁决「**移除二重验证白名单，允许该分支执行**」后，分支检查已由强断言改为**信息性回显 + WARN**（`multi-dev-next` 等开发分支可直接运行本流程）。发布线 `multi-1.20.1-1.21.1` 仅作提示基准：非发布线分支会在阶段 P 打印 WARN，并在报告「分支」一栏**如实标注运行时的实际分支名**。
 
 ---
 
@@ -23,7 +23,7 @@
 
 | 项 | 要求 |
 |---|---|
-| 分支 | `multi-1.20.1-1.21.1`（强断言，其它分支直接拒绝） |
+| 分支 | **任意分支**（`multi-dev-next` 等开发分支同样可运行）。阶段 P 只**回显实际分支名 + WARN**，不拦停（2026-09-17 用户裁决「移除二重验证白名单，允许该分支执行」）；发布线 `multi-1.20.1-1.21.1` 仅作提示 |
 | 脚本语言 | **纯 PowerShell 7**（`pwsh`）。2026-09-12 起 bash/python 版全部下架 |
 | 游戏环境 | dev `runClient`（`run/<版本>/`，Mojmap 命名），模组经 `modImplementation` 引入 |
 | 兼容栈 | 1.21.1：KubeJS / JEI / ModernFix /（可选）光影；1.20.1：KubeJS / JEI / ModernFix 经 build.gradle 注入 + 整合包 mods 复制 |
@@ -713,3 +713,11 @@ pwsh -NoProfile -File scripts/test/mt_watchdog.ps1 -Version 1.21.1 [-StallSecond
 - 工程:**玩家侧文案同步(手持风扇手册正文)**:两条手册条目(`astral_dice.guide.entry.hand_fan_{big,small}_chip.1`,中英 × 双线 = **8 处**)原写「需指定目标的立牌在按下进入 30 秒待命时即触发」/“(for target-waiting signs this triggers the moment you press the key to enter the 30-second standby)”,与门控后的实际行为相反 ⇒ 改为「需指定目标的立牌改为确认目标后才触发」/“(for target-waiting signs this only triggers after the target is confirmed)”。**lang 键集合零变化** ⇒ `tools/check_lang_sync.ps1` 结论不变(两条发布线各 619/619;26.1.2 622/622 未触碰);立牌自身的 tooltip/手册(「激活后进入目标选择模式……确认后向其施加……取消或超时不消耗冷却」)门控后**仍然逐字成立**,未改。
 - 工程:**验证(本轮实测)** —— `gradlew :forge-1.20.1:build :neoforge-1.21.1:build` **BUILD SUCCESSFUL**(日志 `temp/merge-t2/t15-build-both.log` / `t15-build-both2.log`;产物 `astral_dice-2.0.0-SNAPSHOT.5+neoforge_1.21.1.jar` 945703 B、`+forge_1.20.1.jar` 975785 B 均含新类 `target/SignSelectionGate.class`);`tools/check_mod_sources.ps1` → **`MOD_SOURCE_GATE: OK violations=0 exceptions=0 infos=0`**;`tools/check_lang_sync.ps1` → 三线全 OK;forge 产物内 `astral_dice.refmap.json` 仍在且 `astral_dice.mixins.json` 的 `refmap` 声明未变(12 条目);所有改动文件行尾仍为纯 CRLF(`i/lf w/crlf`)。
 - 工程:**本轮按「二轮验证冻结」口径不改 `AGENTS.md`**(其「目标选择器规范」的「立牌选择器类主动的冷却约定」仍以「`BaseSignItem.performSkill` 经 `TargetSelectionManager.isSelecting` 判断 ⇒ 进入选择模式时不开始冷却」描述,门控后改由第 2.5 步 `return` 达成同一净效果,机制表述待用户定夺后于第二轮补记;`AGENTS.md` 的白名单/守卫/门槛口径本轮一字未动)。交付报告:`temp/t16-selector-gate-report.md`。
+
+**2026-09-17：移除 `scripts/test` 的「测试分支白名单」强断言（用户裁决；为选择器门控的游戏内验证铺路）**
+
+- 工程:**用户裁决(2026-09-17)** —— 原话「**移除二重验证白名单，允许该分支执行**」。目的:让 `multi-dev-next`（以及其它工作分支）能运行 `scripts/test` 自动化流程，从而可对选择器前置门控（t15）做**游戏内行为验证（B1/R2）**；此前该分支会在阶段 P 被分支强断言直接拒绝（`MT_PREFLIGHT: FAIL`、退出码 10），根本进不到游戏。
+- 工程:**分支检查由强断言改为「信息性回显 + WARN」，且只动分支这一项**。`scripts/test/mt_preflight.ps1`：原 `:39-41` 的注释与分支白名单常量（值为发布线 `multi-1.20.1-1.21.1` + `multi-26.1.2-neoforge`；原文与标识符可用 `git show 1bd5f7f:scripts/test/mt_preflight.ps1` 取回）、原 `:46-64` 的分支检查函数（其 `:49` 的说明文字原为「当前分支必须在白名单内」，现已随函数整体删除）整段改写为 —— `$script:ReleaseLineBranches = @('multi-1.20.1-1.21.1')`（现 `:42`，**仅用于回显与告警标注、不参与任何判定**；原有的 `multi-26.1.2-neoforge` 已随该分支并入主线而不再列出）与 `Get-MtPreflightBranch`（现 `:46-75`：读分支 → 读不到/为空/非发布线一律返回 `$true`；发布线回显 `multi-1.20.1-1.21.1（发布线分支）`，非发布线回显 `multi-dev-next —— WARN: 非发布线分支（发布线 multi-1.20.1-1.21.1）；按 2026-09-17 用户裁决放行，不拦停，仅告警`）。消费点同步改名（`:324`，函数名由 `Test-*` 改为 `Get-*` 以免继续暗示「判定」）。**可失败断言数 12 → 10**，减少的两条正是该函数原有的两个 `return , @($false, …)`（白名单不符 / git 读取失败）—— 其余检查项（输入法 / 遗留进程 / MCP 二进制 / 模组来源闸门 `tools/check_mod_sources.ps1` / Gradle 包装器 / 兼容栈×版本 / run 可写×版本）与其断言**一字未改**，未删除、未放宽。
+- 工程:**报告「分支」不再写死发布线**。`scripts/test/mt_report.ps1`：删除原 `:39` 的 `$script:BranchName = 'multi-1.20.1-1.21.1'`，改为新增 `Get-MtReportBranchName`（现 `:45-67`：`git -C <root> rev-parse --abbrev-ref HEAD`，任何失败/空值回落 `$script:BranchNameFallback = 'unknown'`；为此新增 `Import-Module … Mt.Proc.psm1`，现 `:33`，复用仓库唯一的进程调用实现而不另写一份 git 封装），两处调用点 `:368`（单版本报告元数据）与 `:437`（总览元数据）改为 `$(Get-MtReportBranchName)` ⇒ `$script:BranchName` 在全仓 **0 引用**，报告不会再出现「在 dev-next 上跑却记成 `multi-1.20.1-1.21.1`」。
+- 工程:**文档四处按新口径改写并收录裁决原话**：`scripts/test/TESTING-SPEC.md:6`（「适用分支」改为**任意分支** + 裁决原话 + 信息性说明）、`:26`（§2 表格「分支」行由「强断言，其它分支直接拒绝」改为「任意分支；只回显 + WARN，不拦停」）、`AGENTS.md:897`（原「唯一测试分支…强断言…将被拒绝」的口径改为「任意分支均可 + 信息性回显 + WARN」并补「其余前置断言逐条保留」）、`AGENTS.md:1118`（失败处理表原有的「分支失败 → `git switch multi-1.20.1-1.21.1`」行改为「分支（仅告警、不拦停）| 无需处理」）。**两份玩家侧 CHANGELOG 未动**（工程/工具条目按约定只进本附录）；`AGENTS.md` 仅动上述两处，选择器门控的机制表述仍按「二轮验证冻结」口径等待用户定夺。
+- 工程:**实跑证据（本次，在 worktree `multi-dev-next`）** —— ① **改前对照**（取出 `git show HEAD:scripts/test/mt_preflight.ps1` 同目录执行同一入口）：`[FAIL] 分支: 当前分支 multi-dev-next ≠ multi-1.20.1-1.21.1 / multi-26.1.2-neoforge` ⇒ `MT_PREFLIGHT: FAIL — 1 项不满足：分支（…）`，**退出码 10**；② **改后实跑**（`pwsh -NoProfile -File scripts/test/mt_preflight.ps1`）：`[OK  ] 分支: multi-dev-next —— WARN: 非发布线分支（发布线 multi-1.20.1-1.21.1）；按 2026-09-17 用户裁决放行，不拦停，仅告警`，其余 11 项全 OK（含 `模组来源: MOD_SOURCE_GATE: OK violations=0 exceptions=0 infos=0`），`MT_PREFLIGHT: OK — 12 项全部满足（1.21.1, 1.20.1, 26.1.2）`，**退出码 0**（原始输出留档 `temp/t17/preflight-multi-dev-next.log`；**与分支无关的 FAIL 数 = 0**，无需用户裁决的遗留失败）；③ **报告侧端到端**：以沙箱 `TestDir` 调 `Invoke-MtReportSummary` ⇒ `SUMMARY.md` 元数据行实测渲染为 `- **分支**: multi-dev-next`；④ `scripts/devtools/Test-MtSyntax.ps1` → **36 文件、解析失败 0**；⑤ 全 `scripts/` 再扫 `rev-parse|symbolic-ref|分支白名单常量|BranchName|测试分支` **无第二处隐藏强断言**（`scripts/maintenance/repair-loose-refs.ps1` 的 `git rev-parse` 是松散引用修复，与分支门槛无关；另有一处**性质不同**的同名白名单 = `packPushBranches` 整合包推送守卫，位于三条线 `build.gradle`，属 t14 的推送口径，**本轮一律未动**）。交付报告：`temp/t17-branch-whitelist-removal.md`。
