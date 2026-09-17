@@ -24,19 +24,27 @@ repositories {
     mavenCentral()
     // ModDevGradle Legacy 所需的 Forge/Minecraft 工件仓库由插件自动添加
     maven { url = uri('https://maven.neoforged.net/releases') }
-    // 统一口径的模组来源之一:Modrinth Maven(Curios API / Iron's Spellbooks / mixinbooster / modernfix)。
-    // 同一仓库只声明一次即可(Gradle 会去重;此前这里为两条一模一样的声明,已按统一口径合并)。
-    maven { url 'https://api.modrinth.com/maven' }
+    // ── 模组来源硬规则(2026-09-17 用户要求)────────────────────────────────
+    // 见 AGENTS.md「模组依赖添加规则(统一口径)」:第三方**模组**(含其附属/前置模组)工件只允许来自
+    // Curse Maven 与 Modrinth Maven。`exclusiveContent` 同时做两件事:① 声明该仓库;② 把这两个 group
+    // 从**其它所有仓库**中排除 ⇒ 任何 `curse.maven:` / `maven.modrinth:` 坐标都**不可能**从别处解析。
+    // 这是依赖解析期的硬约束,与 `tools/check_mod_sources.ps1` 的静态守门(阶段 P 会跑)互补。
+    // ⚠️ 副作用:本地镜像仓库 `.oss-basemod-repo` 里镜像的 Modrinth 工件不再参与解析(离线时需联网到 api.modrinth.com)。
+    exclusiveContent {
+        forRepository { maven { url 'https://www.cursemaven.com' } }
+        filter { includeGroup 'curse.maven' }
+    }
+    exclusiveContent {
+        forRepository { maven { url 'https://api.modrinth.com/maven' } }
+        filter { includeGroup 'maven.modrinth' }
+    }
+    // 非模组库/官方工件仍从各自仓库解析(KubeJS 的传递依赖等)
     // KubeJS + Rhino are resolved from the KubeJS maven.
     maven { url 'https://maven.latvian.dev/releases' }
     // KubeJS 的传递依赖 Architectury(直接坐标已改 Curse Maven,本仓库保留给传递/可选工件解析)
     maven { url 'https://maven.architectury.dev' }
     // KubeJS transitive dependency animated-gif-lib-for-java
     maven { url 'https://jitpack.io' }
-    // 统一口径的模组来源之二:Curse Maven —— collective / superflatworldnoslimes / kubejs / rhino / embeddium / oculus
-    // 以及 2026-09-17 起并入的 jei / architectury-api
-    // (MDG modImplementation 会在解析期把生产 SRG jar 重映射为 dev Mojmap 命名,mixin 才能加载)
-    maven { url 'https://www.cursemaven.com' }
     // JEI 官方 maven:直接坐标已改 Curse Maven(2026-09-17),本仓库保留给可能的传递/可选工件与历史坐标
     maven { url 'https://maven.blamejared.com' }
 }

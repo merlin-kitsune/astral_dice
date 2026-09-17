@@ -36,11 +36,20 @@ sourceSets.main.resources {
 repositories {
     mavenCentral()
     maven { url = uri('https://maven.neoforged.net/releases') }
-    // Curios API is resolved from the Modrinth maven.
-    maven { url 'https://api.modrinth.com/maven' }
-    // 统一口径的模组来源之二:Curse Maven(2026-09-17 随「JEI 改走 Curse Maven」补齐;
-    // 1.20.1 / 1.21.1 两侧本就有,26.1.2 此前缺该仓库 ⇒ curse.maven 坐标无法解析)
-    maven { url 'https://www.cursemaven.com' }
+    // ── 模组来源硬规则(2026-09-17 用户要求)────────────────────────────────
+    // 见 AGENTS.md「模组依赖添加规则(统一口径)」:第三方**模组**(含其附属/前置模组)工件只允许来自
+    // Curse Maven 与 Modrinth Maven。`exclusiveContent` 同时声明仓库并把这两个 group 从其它所有仓库
+    // 排除 ⇒ 任何 `curse.maven:` / `maven.modrinth:` 坐标都不可能从别处解析(与阶段 P 的
+    // `tools/check_mod_sources.ps1` 静态守门互补)。
+    exclusiveContent {
+        forRepository { maven { url 'https://www.cursemaven.com' } }
+        filter { includeGroup 'curse.maven' }
+    }
+    exclusiveContent {
+        forRepository { maven { url 'https://api.modrinth.com/maven' } }
+        filter { includeGroup 'maven.modrinth' }
+    }
+    // 非模组库/官方工件仍从各自仓库解析
     // KubeJS + Rhino are resolved from the KubeJS maven.
     maven { url 'https://maven.latvian.dev/releases' }
     // KubeJS 的传递依赖 Architectury(直接坐标已改 Curse Maven,本仓库保留给传递/可选工件解析)

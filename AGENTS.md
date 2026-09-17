@@ -143,6 +143,7 @@ When extending this workspace:
 或 **Modrinth Maven**(`https://api.modrinth.com/maven` → `maven.modrinth:<slug>:<versionId>`)获取,且这两个仓库必须在
 **三条线各自的 `build.gradle`** 里声明(发布线 `forge-1.20.1` / `neoforge-1.21.1` 与 `neoforge-26.1.2` 均已声明;Gradle 的项目级仓库是累加的,同一文件内不得重复声明)。
 **禁止**用本地 jar(`fileTree`/`files`)、作者的官方 maven 或其它站点作为**模组**来源;**非模组库**(mixin / gson / guava / asm / sponge-mixin 等)不受此限。
+**Gradle 侧同时强制(2026-09-17 用户要求)**:三个子项目的 `repositories` 均以 `exclusiveContent` 把 `curse.maven` / `maven.modrinth` 两个 group **独占**给这两个 Maven —— 其它任何仓库(含本地镜像 `.oss-basemod-repo`)都不得解析这两个 group,故模组坐标不可能从别处拿到;第三方模组 jar **一律不入库**(`base-mod-libs/`、`base-mod-compile-libs/` 等目录已写入 `.gitignore`)。
 
 1. **坐标写全、版本钉死**:Curse 用 `<slug>-<projectId>:<fileId>`(fileId = CF 文件 id),Modrinth 用 `<slug>:<versionId>`(versionId 是 Modrinth 的版本 id,不是版本号字符串);**禁止** `latest.release`/`+` 之类浮动版本。
 2. **同一模组跨线同源**:同一模组在 1.20.1 与 1.21.1 必须来自同一来源(现状:Curios / Patchouli / Iron's Spellbooks / mixinbooster / modernfix → Modrinth Maven;**JEI / Architectury API / KubeJS / Rhino / Collective / Superflat No Slimes / Embeddium / Oculus → Curse Maven**)。只有目标 MC 版本在某来源确实没有构建时才允许分叉,并在 build.gradle 注释里写明理由。

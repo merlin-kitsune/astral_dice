@@ -35,10 +35,15 @@ Astral Dice is a survival expansion mod built around dice. Equip a dice and ever
 |---|---|---|---|---|---|---|
 | ✅ | `neoforge-1.21.1` | 1.21.1 | NeoForge 21.1.235 | 21 | 1.2.1 | ✅ |
 | ✅ | `forge-1.20.1` | 1.20.1 | Forge 47.4.10 | 17 | 1.2.1 | ✅ |
+| 🧪 | `neoforge-26.1.2` | 26.1.2 | NeoForge 26.1.2.109 | 25 | 1.2.1-beta | ✅ |
+
+- `neoforge-1.21.1` 与 `forge-1.20.1` 是**发布线**（功能对等，随 GitHub Release 发布两个 jar）。
+- `neoforge-26.1.2` 是**低优先级移植线**：版本号带 `-beta`、**不发布 Release**（仅随仓库提供构建产物），内容以发布线为准并在发布线完成后迁移，迁移后需通过功能一致性测试。该线**无** Iron's Spells 'n Spellbooks 联动（上游无 26.1.x 构建）。
 
 | 前置/联动 | 要求 |
 |---|---|
-| 前置模组 | Curios API（1.20.1 另需 **Mixin Booster ≥ 0.1.3**，**强制**：未安装时游戏会在 Forge 依赖排序阶段直接拒绝启动并提示缺少 `mixinbooster`；装旧版本同样会被拒） |
+| 前置模组 | Curios API（1.20.1 用 Curios 5.x；1.21.1 用 Curios 9+；**26.1.2 用 Curios 15+**，缺失时会在 NeoForge 依赖排序阶段被拒绝） |
+| 前置模组（仅 1.20.1） | **Mixin Booster ≥ 0.1.3**，**强制**：未安装时游戏会在 Forge 依赖排序阶段直接拒绝启动并提示缺少 `mixinbooster`；装旧版本同样会被拒 |
 | 可选联动 | Bountiful、帕秋莉手册 |
 
 ---
@@ -68,24 +73,32 @@ Astral Dice is a survival expansion mod built around dice. Equip a dice and ever
 |---|---|---|---|---|---|---|
 | ✅ | `neoforge-1.21.1` | 1.21.1 | NeoForge 21.1.235 | 21 | 1.2.1 | ✅ |
 | ✅ | `forge-1.20.1` | 1.20.1 | Forge 47.4.10 | 17 | 1.2.1 | ✅ |
+| 🧪 | `neoforge-26.1.2` | 26.1.2 | NeoForge 26.1.2.109 | 25 | 1.2.1-beta | ✅ |
+
+- `neoforge-1.21.1` and `forge-1.20.1` are the **release lines** (feature-parity pair; both jars are published with every GitHub Release).
+- `neoforge-26.1.2` is the **low-priority port line**: its version carries `-beta`, it **does not publish Releases** (the jar is only available from the repository), and content is ported from the release lines *after* they are done, followed by a functional-consistency test. This line has **no** Iron's Spells 'n Spellbooks integration (upstream ships no 26.1.x build).
 
 | Dependency | Requirement |
 |---|---|
-| Required | Curios API (on 1.20.1, **Mixin Booster ≥ 0.1.3** is additionally **mandatory**: when it is missing, the game refuses to start right at Forge's dependency-sorting stage and reports the missing `mixinbooster`; an outdated version is rejected the same way) |
+| Required | Curios API (Curios 5.x on 1.20.1, Curios 9+ on 1.21.1, **Curios 15+ on 26.1.2**; a missing or too-old Curios is rejected during NeoForge's dependency sorting) |
+| Required (1.20.1 only) | **Mixin Booster ≥ 0.1.3**, **mandatory**: when it is missing, the game refuses to start right at Forge's dependency-sorting stage and reports the missing `mixinbooster`; an outdated version is rejected the same way |
 | Optional | Bountiful, Patchouli |
 
 ---
 
 ## 下载 / Download
 
-- 支持平台：Minecraft 1.21.1 / NeoForge 与 1.20.1 / Forge
-- 前置：Curios API
-- 构建产物：`neoforge-1.21.1/build/libs/astral_dice-<版本>+neoforge_1.21.1.jar`、`forge-1.20.1/build/libs/astral_dice-<版本>+forge_1.20.1.jar`；GitHub Release 的 tag 使用无后缀的基础版本号（如 `1.1.3`），自动附带两个 jar
+- 支持平台：Minecraft 1.21.1 / NeoForge、1.20.1 / Forge（发布线）；Minecraft 26.1.2 / NeoForge（低优先级线，**不发 Release**）
+- 前置：Curios API（1.20.1 另需 Mixin Booster ≥ 0.1.3）
+- 构建产物：`neoforge-1.21.1/build/libs/astral_dice-<版本>+neoforge_1.21.1.jar`、`forge-1.20.1/build/libs/astral_dice-<版本>+forge_1.20.1.jar`、`neoforge-26.1.2/build/libs/astral_dice-<版本>+neoforge_26.1.2.jar`；GitHub Release 的 tag 使用无后缀的基础版本号（如 `1.1.3`），自动附带发布线的两个 jar
 
 ## 构建 / Build
 
 ```bash
-./gradlew build                    # 构建全部子项目（两个版本）
+./gradlew build                    # 构建全部子项目（三个版本）
 ./gradlew :neoforge-1.21.1:build   # 仅构建 1.21.1 NeoForge
 ./gradlew :forge-1.20.1:build      # 仅构建 1.20.1 Forge
+./gradlew :neoforge-26.1.2:build   # 仅构建 26.1.2 NeoForge（低优先级线）
 ```
+
+- **模组依赖来源有硬规则**：所有第三方模组（含前置/附属模组）只允许经 **Curse Maven**（`curse.maven:`）或 **Modrinth Maven**（`maven.modrinth:`）获取，并由 `build.gradle` 的 `exclusiveContent` 在依赖解析期强制、由 `tools/check_mod_sources.ps1` 静态守门（细则见 `AGENTS.md`「模组依赖添加规则(统一口径)」）。第三方模组 jar **不入库**（`base-mod-*` 目录已在 `.gitignore` 中排除）。

@@ -24,18 +24,28 @@ sourceSets.main.resources {
 repositories {
     mavenCentral()
     maven { url = uri('https://maven.neoforged.net/releases') }
-    // Curios API is resolved from the Modrinth maven.
-    maven { url 'https://api.modrinth.com/maven' }
-    // Curse Maven:与 1.20.1 侧**同一套模组获取口径**(见 AGENTS.md「模组依赖添加规则(统一口径)」)。
-    // 1.21.1 侧此前没有声明该仓库,故无法按统一口径引入任何 Curse Maven 模组;此处补齐使两线一致。
-    maven { url 'https://www.cursemaven.com' }
+    // ── 模组来源硬规则(2026-09-17 用户要求)────────────────────────────────
+    // 见 AGENTS.md「模组依赖添加规则(统一口径)」:第三方**模组**(含其附属/前置模组)工件只允许来自
+    // Curse Maven 与 Modrinth Maven。`exclusiveContent` 同时声明仓库并把这两个 group 从其它所有仓库
+    // 排除 ⇒ 任何 `curse.maven:` / `maven.modrinth:` 坐标都不可能从别处解析(与阶段 P 的
+    // `tools/check_mod_sources.ps1` 静态守门互补)。
+    // ⚠️ 副作用:本地镜像仓库 `.oss-basemod-repo` 里镜像的 Modrinth 工件不再参与解析。
+    exclusiveContent {
+        forRepository { maven { url 'https://www.cursemaven.com' } }
+        filter { includeGroup 'curse.maven' }
+    }
+    exclusiveContent {
+        forRepository { maven { url 'https://api.modrinth.com/maven' } }
+        filter { includeGroup 'maven.modrinth' }
+    }
+    // 非模组库/官方工件仍从各自仓库解析
     // KubeJS + Rhino are resolved from the KubeJS maven.
     maven { url 'https://maven.latvian.dev/releases' }
     // KubeJS transitive dependency Architectury
     maven { url 'https://maven.architectury.dev' }
     // KubeJS transitive dependency animated-gif-lib-for-java
     maven { url 'https://jitpack.io' }
-    // JEI 官方 maven(配方查看)
+    // JEI 官方 maven:直接坐标已改 Curse Maven(2026-09-17),本仓库保留给可能的传递/可选工件与历史坐标
     maven { url 'https://maven.blamejared.com' }
 }
 
