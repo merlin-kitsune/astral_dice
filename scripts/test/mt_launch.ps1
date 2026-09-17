@@ -440,7 +440,21 @@ if ($MyInvocation.InvocationName -ne '.') {
     # 同时删除了 `--monitor` / `--size` 两个参数与 `Mt.Win32` 的导入（本文件不再需要窗口搬运能力）。
     # 需要截图/注入的工具各自按「当前前台窗口」工作，不依赖这个搬移结果；故移除后流程不受影响。
 
-    $latest = Read-MtSharedText -Path $p.latest_log
+    # ── 跨零点日切兜底（2026-09-18 t20）────────────────────────────────────────────
+    # 只读 latest.log 会在「跨零点冷启动」时假阴性：latest.log 被 log4j 按日期日切后，会话启动期写下的
+    # 「已加载模组清单」（`Mod List:` 与括号 modId 行）整块留在 `logs/<yyyy-MM-dd>-<n>.log.gz` 里
+    # （实测 `run/1.21.1/logs/2026-09-17-1.log.gz`，mtime 00:00:00，内含 23:59:53 的 `Mod List:` 与
+    # `Superflat World No Slimes 3.5 (superflatworldnoslimes)`），而新 latest.log 从 00:00:01 起写。
+    # 环境/装载类判据改读 `$latestSession`（= latest.log + **本次启动之后**被日切出去的同会话片段，
+    # 由 `Read-MtLogWithRotation` 按 mtime ≥ $launchStartedAt 挑选 ⇒ 不会串到上一会话）。
+    # ⚠️ **就绪判据不在此列**：`$latest`（第 368 行那次读取）必须只认本次会话写进 latest.log 的
+    #    「进入世界」行，回退到轮转日志会把上一会话的进入世界行当成本轮就绪。
+    # 判据强度不变：下面用的仍是原来的正则/匹配口径，只是文本多了「同会话被切走的那一段」。
+    $latestSession = Read-MtLogWithRotation -Path $p.latest_log -LogsDir $p.logs_dir -Since $launchStartedAt
+    # 下方「环境/装载」类读数一律改用本会话文本（含日切片段）：覆盖
+    # `Test-MtModLoaded`（史莱姆压制硬闸门 + 优化类模组）与 Sodium/Iris/KubeJS/Rhino/Embeddium/Oculus/
+    # `Using shaderpack` 全部读数 —— 只此一行，各判据的匹配口径（含**带括号 modId**）一字未改。
+    $latest = $latestSession
 
     # ── 「模组是否已加载」的统一判据（三条线日志格式**不同**，2026-09-17 实测校准）────────────
     # NeoForge（1.21.1 / 26.1.2）：latest.log 里有已加载模组清单行 `显示名 版本 (modId)`

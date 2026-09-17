@@ -225,6 +225,75 @@ function Read-MtSharedText {
     }
 }
 
+function Read-MtLogWithRotation {
+    <#
+    .SYNOPSIS
+        读「本次会话的日志」= `latest.log` + **同一会话跨零点被 log4j 日切出去的那一段**。
+
+    .NOTES
+        为什么需要（2026-09-18 t20 实测）：`logs/latest.log` 的 log4j 配置带日期 filePattern
+        （`logs/%d{yyyy-MM-dd}-%i.log.gz`）⇒ **跨零点时活动文件被日切**：会话启动期写下的
+        「已加载模组清单」（`Mod List:` 与 `显示名 版本 (modId)` 行）会整块留在
+        `logs/2026-09-17-1.log.gz` 里，而 00:00:01 起新建的 `latest.log` **一条括号清单行都没有**。
+        mt_launch 又在启动前删除 `latest.log`（保证只读本轮），故只读 `latest.log` 的判据
+        （史莱姆压制硬闸门、Sodium/Iris/KubeJS/优化类模组读数、`Using shaderpack`）在
+        **跨零点冷启动**时全部假阴性 —— 实测 23:59:50 启动的会话：Mod List 写在 23:59:53，
+        00:00:00 日切，`latest.log` 里查不到 ⇒ 硬闸门 ERROR「未检测到…模组」，重跑即 OK。
+
+        **只补「同一会话被切走的那一段」，绝不回退到别的会话**：候选轮转文件必须满足
+        `LastWriteTime -ge -Since`（`-Since` 传本次 launch 的时刻）。依据：mt_launch 在启动前
+        会拒绝「全机已存在客户端进程」（TESTING-SPEC §10 第 10 条）⇒ 启动窗口内只有本会话在写
+        日志，「日切发生在本次启动之后」等价于「该片段属于本会话」；上一会话的轮转文件其
+        `LastWriteTime` 早于 `-Since`，被排除。**这条边界是判据强度的一部分**：若不过滤，
+        「上一会话装过该模组、本会话已移除」会被误判成已加载（正是本判据要防的假阳性）。
+
+        只认 **latest 家族的轮转名**（`<yyyy-MM-dd>-<n>.log.gz` / `.log`），不碰 `debug-*.log.gz`：
+        1.20.1 的模组清单读 `debug.log`，而它的 filePattern 是 `debug-%i`（**无日期**）⇒ 只在
+        启动时轮转、不跨零点日切，故 1.20.1 侧不存在同类假阴性，也不需要放宽。
+
+        读取容错与 `Read-MtSharedText` 一致（`FileShare::ReadWrite` / UTF-8 容错 / 读不到返回 ''）。
+        **本函数不判定任何语义**：调用方拿到的仍是原始文本，判据（如带括号 modId 的正则）不变。
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$Path,
+        [Parameter(Mandatory)][string]$LogsDir,
+        [Parameter(Mandatory)][datetime]$Since,
+        # 最多补几段轮转（正常跨零点只会切 1 段；留少量余量，避免误把多个历史文件并进来）
+        [int]$MaxRotated = 4
+    )
+
+    $text = Read-MtSharedText -Path $Path
+    if (-not (Test-Path -LiteralPath $LogsDir -PathType Container)) { return $text }
+
+    $candidates = @(Get-ChildItem -LiteralPath $LogsDir -File -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -match '^\d{4}-\d{2}-\d{2}-\d+\.log(\.gz)?$' -and $_.LastWriteTime -ge $Since } |
+        Sort-Object LastWriteTime -Descending |
+        Select-Object -First $MaxRotated)
+
+    foreach ($c in $candidates) {
+        $part = ''
+        if ($c.Extension -eq '.gz') {
+            $fs = $null; $gz = $null; $sr = $null
+            try {
+                $fs = [System.IO.File]::Open($c.FullName, [System.IO.FileMode]::Open,
+                    [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
+                $gz = New-Object System.IO.Compression.GZipStream($fs, [System.IO.Compression.CompressionMode]::Decompress)
+                $sr = [System.IO.StreamReader]::new($gz, [System.Text.UTF8Encoding]::new($false, $false))
+                $part = $sr.ReadToEnd()
+            } catch {
+                $part = ''
+            } finally {
+                if ($null -ne $sr) { $sr.Dispose() } elseif ($null -ne $gz) { $gz.Dispose() } elseif ($null -ne $fs) { $fs.Dispose() }
+            }
+        } else {
+            $part = Read-MtSharedText -Path $c.FullName
+        }
+        if ($part) { $text += "`n" + $part }
+    }
+    return $text
+}
+
 function ConvertTo-MtStartArgs {
     <#
     .SYNOPSIS
@@ -534,6 +603,6 @@ function Get-MtClientStatus {
 Export-ModuleMember -Function @(
     'ConvertFrom-MtBytes', 'Invoke-MtProcess', 'Invoke-MtProcessFull',
     'Stop-MtProcessTree', 'Get-JavaProcesses', 'Get-GradleDaemonProcesses',
-    'Read-MtSharedText', 'ConvertTo-MtStartArgs', 'Start-MtProcessToFile',
+    'Read-MtSharedText', 'Read-MtLogWithRotation', 'ConvertTo-MtStartArgs', 'Start-MtProcessToFile',
     'Stop-MtVersionProcesses', 'Get-MtClientStatus', 'Test-MtClientProcess', 'Test-MtPipelineProcess'
 )
