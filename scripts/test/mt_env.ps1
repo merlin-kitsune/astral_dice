@@ -5,7 +5,9 @@
 
 .DESCRIPTION
     职责（只做环境的建立与拆除，不做任何功能断言）:
-      mods    安装兼容模组（1.21.1 Sodium/Iris/ModernFix；1.20.1 校验生产环境渲染栈）
+      mods    安装兼容模组（三条线：优化类 ImmediatelyFast/FerriteCore；1.21.1 另装探针宿主 KubeJS/Rhino/
+              Architectury + 史莱姆压制；1.20.1 另装优化类并校验生产环境渲染栈；26.1.2 另装探针运行时/
+              渲染栈/光影/史莱姆压制）
       world   重建 testworld（超平坦/创造/允许命令），支持种子快恢复
       kill    按版本精确停止游戏进程（不误杀无关 java 进程）
 
@@ -44,6 +46,24 @@ $script:NeoForgeMods = @(
     @{ Pattern = '*sodium-neoforge*0.8.13*.jar'; Target = 'sodium-neoforge-0.8.13+mc1.21.1.jar' }
     @{ Pattern = '*iris-neoforge*1.8.14*.jar'; Target = 'iris-neoforge-1.8.14-beta.1+mc1.21.1.jar' }
     @{ Pattern = '*modernfix-neoforge*5.27.24*.jar'; Target = 'modernfix-neoforge-5.27.24+mc1.21.1.jar' }
+)
+
+# ── 1.21.1 探针宿主（KubeJS + Rhino + Architectury API）──────────────────────
+# `neoforge-1.21.1/build.gradle` **故意不依赖 KubeJS**（其 L249-252 注释写明：2026-09 起改由
+# dev run 的 `run/mods` 目录直接装载整合包同版 kubejs(2101.7.2-build.374)，因为 KubeJS 自带
+# data provider，写进依赖会让 **datagen 也装载它**）。但 `mt_env mods` 此前**没有**这一步 ⇒
+# 新克隆 / dev-next 工作树的 `run/1.21.1/mods` 里**没有 KubeJS**，于是 launch 的
+# `MT_ASSERT_KUBEJS` 恒为 `BLOCKED — 未找到 KubeJS server.log`、`/astralprobe` 命令不存在，
+# 后续所有探针用例与 `MT_preflight-op` 闸门都无法通过（2026-09-17 在 dev-next 上实测暴露；
+# 主线工作树的 run 目录里是**手工**放进去的，故从未暴露这条缺口）。
+# 现改为**按整合包复制**（与 Sodium/Iris/ModernFix 同一套「文件名匹配 + 时间戳幂等」）。
+# 三个 jar 缺一不可：KubeJS 的 required 前置 = Rhino + Architectury API（1.21.1 线还**不**需要
+# better-advanced-tooltips —— 那是 26.1.2 的 KubeJS 8 才有的硬前置，见 Install-MtProbeRuntime）。
+# `Match` 是「剥掉整合包文件名里的中文方括号前缀」后的正则：整合包那份叫 `[犀牛] rhino-….jar`。
+$script:ProbeHostMods1211 = @(
+    @{ Pattern = 'kubejs-neoforge-*.jar'; Match = '^kubejs-neoforge-' }
+    @{ Pattern = '*rhino-*.jar'; Match = '^rhino-' }
+    @{ Pattern = 'architectury-*-neoforge.jar'; Match = '^architectury-' }
 )
 
 # ── 26.1.2 探针运行时（仅 dev run 需要）──────────────────────────────────────
@@ -115,6 +135,14 @@ $script:PerfMods2612 = @(
        Url  = 'https://api.modrinth.com/maven/maven/modrinth/modernfix/j7EoxpYe/modernfix-neoforge-5.27.22%2Bmc26.1.2.jar'
        Sha1 = '334500dd0c94a552005a432114fae32fe6c518fc'
        Size = 505496 }
+    # FerriteCore（2026-09-17 用户要求：所有测试环境都要带上它做优化类模组兼容性验证）。
+    # `environment` = client/server 皆 optional（方块状态/模型去重的内存优化），故**两侧都保留**，
+    # 不进 `Invoke-MtEnvWorld` 的纯客户端移出名单。
+    @{ Name = 'ferritecore-9.0.0-neoforge.jar'
+       Coord = 'maven.modrinth:ferrite-core:LtVvw4uS'
+       Url  = 'https://api.modrinth.com/maven/maven/modrinth/ferrite-core/LtVvw4uS/ferritecore-9.0.0-neoforge.jar'
+       Sha1 = 'b8bfb14ba6ce7068aae08c3a132ca40bda6bd143'
+       Size = 71947 }
 )
 
 # 注：**没有**全局的「族前缀表」—— 清理前缀由每次 `Install-MtSpecList` 调用**按族显式传入**
@@ -152,6 +180,78 @@ $script:SlimeGuard2612 = @(
        Sha1 = '13887a5d78938c6ce55c15bcbd1352db625e84e1'
        Size = 1054031 }
 )
+
+# ── 优化类模组 / 史莱姆压制：**按版本**清单（2026-09-17 用户要求，三条线一致）──────
+# 用户原话（两轮）：「1.21.1 环境缺少没有史莱姆的超平坦世界模组，这是必需的模组，没有会使史莱姆
+# 干扰测试，补全该模组然后重新运行 1.21.1 测试」+「所有测试环境增加 ImmediatelyFast、FerriteCore
+# 模组，用于优化模组兼容性测试」。
+#
+# ⚠️ 与 26.1.2 的关键差别（决定「哪条线从哪来」）：1.20.1 的 `forge-1.20.1/build.gradle` **已经**
+#    用 `modImplementation` 声明了 `collective`(curse 7148968 = collective-1.20.1-8.13) 与
+#    `superflat-world-no-slimes`(curse 6184996 = superflatworldnoslimes-1.20.1-3.5) —— 它们由
+#    Gradle 提供 dev 运行时，**再往 `run/1.20.1/mods` 放一份就会被 FML 判为重复模组**
+#    （`Duplicate mods:` / `Found duplicate mod`，表现为「装完反而起不来」）。
+#    ⇒ 1.20.1 的史莱姆压制**故意不在本表里**（`$script:SlimeGuardByVersion` 无该键 = 跳过安装，
+#      并在 `Install-MtSlimeGuard` 里打印来源说明）。
+#    ImmediatelyFast / FerriteCore 三条线**都**不在 build.gradle 里（已核对全部 mod 依赖），
+#    故一律由本表下载进 `run/<版本>/mods`，不会重复。
+$script:PerfModsByVersion = @{
+    '1.20.1' = @(
+        # environment: client=required, server=unsupported ⇒ 纯客户端，生成世界时会被移出
+        @{ Name = 'ImmediatelyFast-Forge-1.5.5+1.20.4.jar'
+           Coord = 'maven.modrinth:immediatelyfast:rvsLEEZU'
+           Url  = 'https://api.modrinth.com/maven/maven/modrinth/immediatelyfast/rvsLEEZU/ImmediatelyFast-Forge-1.5.5%2B1.20.4.jar'
+           Sha1 = '9eacd407b7dea636d375dc47335d92f616484ea2'
+           Size = 532063 }
+        @{ Name = 'ferritecore-6.0.1-forge.jar'
+           Coord = 'maven.modrinth:ferrite-core:DG5Fn9Sz'
+           Url  = 'https://api.modrinth.com/maven/maven/modrinth/ferrite-core/DG5Fn9Sz/ferritecore-6.0.1-forge.jar'
+           Sha1 = '417fb6ce8f52abf40bd9d0390371790f9576f8ba'
+           Size = 123034 }
+    )
+    '1.21.1' = @(
+        @{ Name = 'ImmediatelyFast-NeoForge-1.6.14+1.21.1.jar'
+           Coord = 'maven.modrinth:immediatelyfast:OUpXxw4n'
+           Url  = 'https://api.modrinth.com/maven/maven/modrinth/immediatelyfast/OUpXxw4n/ImmediatelyFast-NeoForge-1.6.14%2B1.21.1.jar'
+           Sha1 = 'fee59af2f39c66d09c4c09f441c799e76af70f97'
+           Size = 365195 }
+        @{ Name = 'ferritecore-7.0.3-neoforge.jar'
+           Coord = 'maven.modrinth:ferrite-core:x7kQWVju'
+           Url  = 'https://api.modrinth.com/maven/maven/modrinth/ferrite-core/x7kQWVju/ferritecore-7.0.3-neoforge.jar'
+           Sha1 = '9563692efb708b6b568df27a01ec52f6311928ef'
+           Size = 121559 }
+    )
+    # 26.1.2 沿用原清单（ImmediatelyFast + ModernFix），已在上面补入 FerriteCore
+    '26.1.2' = $script:PerfMods2612
+}
+
+# 清理前缀**跟着版本走**（不是全局表）：1.21.1/1.20.1 的 ModernFix 由整合包复制（`$script:NeoForgeMods`），
+# 若在这里也用 `modernfix-` 前缀清理，会把复制来的那份删掉、再被复制回来 —— 徒增抖动，
+# 故这两条线的优化模组前缀**只含** immediatelyfast- / ferritecore-。
+$script:PerfPrefixesByVersion = @{
+    '1.20.1' = @('immediatelyfast-', 'ferritecore-')
+    '1.21.1' = @('immediatelyfast-', 'ferritecore-')
+    '26.1.2' = @('immediatelyfast-', 'modernfix-', 'ferritecore-')
+}
+
+$script:SlimeGuardByVersion = @{
+    '1.21.1' = @(
+        # 用户硬性要求：1.21.1 测试环境此前**缺**这个模组（2026-09-17 实测 run/1.21.1/mods 里没有），
+        # 超平坦世界 y<40 的史莱姆区块会持续刷怪污染实体类读数。
+        @{ Name = 'superflatworldnoslimes-1.21.1-3.5.jar'
+           Coord = 'maven.modrinth:superflat-world-no-slimes:5VtNIDJA'
+           Url  = 'https://api.modrinth.com/maven/maven/modrinth/superflat-world-no-slimes/5VtNIDJA/superflatworldnoslimes-1.21.1-3.5.jar'
+           Sha1 = '9989735bf3518c4e16f1c3df1e83c43b24179d18'
+           Size = 25651 }
+        @{ Name = 'collective-1.21.1-8.39.jar'
+           Coord = 'maven.modrinth:collective:4XRlrKGN'
+           Url  = 'https://api.modrinth.com/maven/maven/modrinth/collective/4XRlrKGN/collective-1.21.1-8.39.jar'
+           Sha1 = 'b1153f03c97bccaa6bc11d6199f07f16ef4318ff'
+           Size = 1061931 }
+    )
+    # 1.20.1 **故意缺省**：已由 `forge-1.20.1/build.gradle` 的 modImplementation 提供（见上）
+    '26.1.2' = $script:SlimeGuard2612
+}
 
 # Complementary Shaders - Unbound（用户指定用于光影兼容性测试）
 # `maven.modrinth:complementary-unbound:r5.9.3`；落位 `run/<版本>/shaderpacks/`，并在 Iris 配置里选中它。
@@ -829,28 +929,81 @@ function Install-MtSpecList {
     return 0
 }
 
+function Install-MtProbeHost {
+    <#
+    .SYNOPSIS
+        把 1.21.1 的探针宿主（KubeJS + Rhino + Architectury API）从整合包复制进 `run/1.21.1/mods`。
+
+    .NOTES
+        · 为什么必须由工具链来做：`neoforge-1.21.1/build.gradle` 故意不依赖 KubeJS（会让 datagen
+          也装载它），约定「dev run 直接从 run/mods 装载整合包同版 kubejs」——此前只靠**手工**复制，
+          新工作树必然缺（2026-09-17 在 dev-next 上实测：launch 的 MT_ASSERT_KUBEJS=BLOCKED）。
+        · 只对 1.21.1 生效（1.20.1 的 KubeJS 走 build.gradle；26.1.2 走 Install-MtProbeRuntime 下载）。
+        · 判据 = 目标文件存在、尺寸一致、且不旧于整合包那份（与 `$script:NeoForgeMods` 同一口径）；
+          整合包那份缺失即 BLOCKED（返回 11），不静默降级 —— 缺 KubeJS 时所有探针用例都跑不起来。
+        · 文件名里的中文方括号前缀（整合包的 `[犀牛] rhino-….jar`）在落位时剥掉，保持 run/mods 纯 ASCII。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][psobject]$Paths)
+
+    if ($Paths.version -ne '1.21.1') { return 0 }
+    if (-not (Test-Path -LiteralPath $Paths.pack_mods_dir -PathType Container)) {
+        Write-MtLine "MT_MODS: BLOCKED — 整合包目录不存在 $($Paths.pack_mods_dir)"
+        return 11
+    }
+
+    $copied = @(); $kept = @(); $missing = @()
+    foreach ($spec in $script:ProbeHostMods1211) {
+        $src = @(Get-ChildItem -LiteralPath $Paths.pack_mods_dir -File -Filter $spec.Pattern |
+                Where-Object { ($_.Name -replace '^\[[^\]]+\]\s*', '') -match $spec.Match } |
+                Sort-Object Name | Select-Object -First 1)
+        if ($src.Count -eq 0) { $missing += $spec.Pattern; continue }
+
+        $name = $src[0].Name -replace '^\[[^\]]+\]\s*', ''
+        $dst = Join-Path $Paths.mods_dir $name
+        if (Test-Path -LiteralPath $dst -PathType Leaf) {
+            $di = Get-Item -LiteralPath $dst
+            if ($di.Length -eq $src[0].Length -and $di.LastWriteTimeUtc -ge $src[0].LastWriteTimeUtc) { $kept += $name; continue }
+        }
+        Copy-Item -LiteralPath $src[0].FullName -Destination $dst -Force
+        $copied += $name
+    }
+
+    if ($missing.Count -gt 0) {
+        Write-MtLine "MT_MODS: BLOCKED — 整合包缺少 1.21.1 探针宿主 $($missing -join ', ')（KubeJS 是探针宿主，缺它所有探针用例与 MT_preflight-op 都会失败）"
+        return 11
+    }
+    $detail = if ($copied.Count -gt 0) { "新装 $($copied.Count) 个" } else { '已是最新' }
+    Write-MtLine ("MT_MODS: OK — 1.21.1 探针宿主 $detail（{0}）" -f (@($copied) + @($kept) -join ' / '))
+    return 0
+}
+
 function Install-MtPerfMods {
     <#
     .SYNOPSIS
         装优化类模组（ImmediatelyFast + ModernFix）到 run/<版本>/mods（幂等）。
 
     .NOTES
-        用户要求（2026-09-17）：「增加 ImmediatelyFast 和 ModernFix 模组以进一步验证优化类模组
-        兼容性」。侧别差异见 `$script:PerfMods2612` 的注释（ImmediatelyFast 纯客户端、必须移出
-        专用服务器；ModernFix 两侧皆可、保留）；本函数只对 26.1.2 生效（当前自动化测试线）。
+        用户要求（2026-09-17）：「所有测试环境增加 ImmediatelyFast、FerriteCore 模组，用于优化模组
+        兼容性测试」（26.1.2 侧此前已装 ImmediatelyFast + ModernFix，本轮补 FerriteCore）。
+        **三条线都装**（1.20.1 / 1.21.1 / 26.1.2），清单与来源见 `$script:PerfModsByVersion`；
+        侧别差异：ImmediatelyFast 纯客户端（生成世界时移出）、FerriteCore 与 ModernFix 两侧皆可（保留）。
+        三个 jar 均**不在**任何 `build.gradle` 的依赖里 ⇒ 放进 run/mods 不会造成重复模组。
     #>
     [CmdletBinding()]
     param([Parameter(Mandatory)][psobject]$Paths)
 
-    if ($Paths.version -ne '26.1.2') { return 0 }
+    $specs = $script:PerfModsByVersion[$Paths.version]
+    if (-not $specs) { return 0 }
 
     $cache = Join-Path (Join-Path (Get-MtRoot) 'temp\probe_mods') $Paths.version
     [void](New-Item -ItemType Directory -Force -Path $cache)
     [void](New-Item -ItemType Directory -Force -Path $Paths.mods_dir)
 
-    $rc = Install-MtSpecList -Paths $Paths -Specs $script:PerfMods2612 -Cache $cache -Label '优化模组' -Prefixes @('immediatelyfast-', 'modernfix-')
+    $prefixes = $script:PerfPrefixesByVersion[$Paths.version]
+    $rc = Install-MtSpecList -Paths $Paths -Specs $specs -Cache $cache -Label '优化模组' -Prefixes $prefixes
     if ($rc -ne 0) { return $rc }
-    $names = ($script:PerfMods2612 | ForEach-Object { $_.Name }) -join ' / '
+    $names = ($specs | ForEach-Object { $_.Name }) -join ' / '
     Write-MtLine ("MT_MODS: OK — 优化类模组就位（{0}）；ImmediatelyFast 为纯客户端，生成世界时会被移出" -f $names)
     return 0
 }
@@ -861,25 +1014,35 @@ function Install-MtSlimeGuard {
         把「超平坦世界无史莱姆」模组（+ 其必需前置 Collective）放进 run/<版本>/mods（幂等）。
 
     .NOTES
-        · 用户硬性要求，见 $script:SlimeGuard2612 的注释（超平坦世界刷史莱姆会干扰测试流程）；
-        · 只对 26.1.2 生效（本线是当前自动化测试线；1.21.1 侧 run/mods 由用户整合包按文件名
-          复制，1.20.1 侧 dev run 不使用 run/mods 装载渲染/工具类模组 —— 如需在这两条线同样强制，
-          应先补它们的下载规格，不要只改这里）；
+        · 用户硬性要求，见 `$script:SlimeGuardByVersion` 的注释（超平坦世界刷史莱姆会干扰测试流程）；
+        · **三条线统一**（2026-09-17 用户裁决：「1.21.1 环境缺少没有史莱姆的超平坦世界模组，这是
+          必需的模组……补全该模组然后重新运行 1.21.1 测试」）：
+            26.1.2 → 本表（Modrinth Maven 下载，原有实现）
+            1.21.1 → 本表（Modrinth Maven 下载，本轮补全）
+            1.20.1 → **不在本表**：已由 `forge-1.20.1/build.gradle` 的 `modImplementation`
+                     （collective-1.20.1-8.13 / superflatworldnoslimes-1.20.1-3.5）提供，
+                     再放一份进 run/mods 会被 FML 判重复模组；
         · 两者都是**服务端/运行期**模组，专用服务器生成世界时**保留**（见 $script:SlimeGuard2612 注释）。
     #>
     [CmdletBinding()]
     param([Parameter(Mandatory)][psobject]$Paths)
 
-    if ($Paths.version -ne '26.1.2') { return 0 }
+    $specs = $script:SlimeGuardByVersion[$Paths.version]
+    if (-not $specs) {
+        if ($Paths.version -eq '1.20.1') {
+            Write-MtLine 'MT_MODS: SKIP — 1.20.1 的史莱姆压制由 build.gradle 的 modImplementation 提供（collective / superflat-world-no-slimes），不再放入 run/mods（避免重复模组）'
+        }
+        return 0
+    }
 
     $cache = Join-Path (Join-Path (Get-MtRoot) 'temp\probe_mods') $Paths.version
     [void](New-Item -ItemType Directory -Force -Path $cache)
     [void](New-Item -ItemType Directory -Force -Path $Paths.mods_dir)
 
     $installed = @()
-    $rc = Install-MtSpecList -Paths $Paths -Specs $script:SlimeGuard2612 -Cache $cache -Label '史莱姆压制模组' -Prefixes @('superflatworldnoslimes-', 'collective-')
+    $rc = Install-MtSpecList -Paths $Paths -Specs $specs -Cache $cache -Label '史莱姆压制模组' -Prefixes @('superflatworldnoslimes-', 'collective-')
     if ($rc -ne 0) { return $rc }
-    $installed = @($script:SlimeGuard2612 | ForEach-Object { $_.Name })
+    $installed = @($specs | ForEach-Object { $_.Name })
     Write-MtLine ("MT_MODS: OK — 超平坦世界史莱姆压制就位（{0}；运行时生效，无需重建世界）" -f ($installed -join ' / '))
     return 0
 }
@@ -1075,6 +1238,12 @@ function Invoke-MtEnvMods {
         if ($imblocker) {
             Write-MtLine "MT_WARN: 生产环境仍含 IMBlocker（$($imblocker.Name)），需移入 __disabled__"
         }
+        # 优化类模组（2026-09-17 用户要求：所有测试环境装 ImmediatelyFast + FerriteCore）。
+        # 史莱姆压制**不在这里装** —— 1.20.1 由 build.gradle 的 modImplementation 提供（见 Install-MtSlimeGuard）。
+        $rc = Install-MtSlimeGuard -Paths $p   # 该版本走 SKIP 分支，打印来源说明
+        if ($rc -ne 0) { return $rc }
+        $rc = Install-MtPerfMods -Paths $p
+        if ($rc -ne 0) { return $rc }
         Write-MtLine 'MT_MODS: OK — 1.20.1 dev run 不使用渲染模组；生产环境已校验'
         return 0
     }
@@ -1104,6 +1273,18 @@ function Invoke-MtEnvMods {
     }
     $detail = if ($copied.Count -gt 0) { "新装 $($copied.Count) 个" } else { '已是最新' }
     Write-MtLine "MT_MODS: OK — Sodium/Iris/ModernFix $detail"
+
+    # 1.21.1 独有：探针宿主（KubeJS/Rhino/Architectury）+ 史莱姆压制 + 优化类模组（2026-09-17 用户要求）。
+    # 顺序说明：放在「从整合包复制 Sodium/Iris/ModernFix」**之后**，避免复制循环看到半装的 mods 目录；
+    # 各族的清理前缀互不相交（superflatworldnoslimes-/collective- vs immediatelyfast-/ferritecore-），
+    # 且都不与整合包文件名冲突，故先后不影响结果。
+    $rc = Install-MtProbeHost -Paths $p
+    if ($rc -ne 0) { return $rc }
+    $rc = Install-MtSlimeGuard -Paths $p
+    if ($rc -ne 0) { return $rc }
+    $rc = Install-MtPerfMods -Paths $p
+    if ($rc -ne 0) { return $rc }
+    Write-MtLine 'MT_MODS: 提示 — ImmediatelyFast 为纯客户端：`mt_env world` 起专用服务器会自动移出；FerriteCore 两侧皆可，保留'
     return 0
 }
 

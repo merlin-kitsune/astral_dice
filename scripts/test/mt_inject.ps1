@@ -501,12 +501,26 @@ function Invoke-MtInjectCmdCommand {
     # 代价：无界面时每条命令走一次「开菜单→关菜单」，日志多一条 Saving and pausing 并伴一次存盘
     # （几十毫秒）。这是换取「任意起始状态都能注入」的代价，属**预期行为**——不要再把
     # Saving and pausing 当作「暂停菜单被顶开」的故障信号（那条旧判据已作废）。
-    Send-MtInjectKey -Hwnd $hwnd -Vk $script:Vk['escape'] -Scan $script:Scan['escape']
-    Start-MtInjectPause -Milliseconds 350
-    Send-MtInjectKey -Hwnd $hwnd -Vk $script:Vk['tab'] -Scan $script:Scan['tab']
-    Start-MtInjectPause -Milliseconds 150
-    Send-MtInjectKey -Hwnd $hwnd -Vk $script:Vk['enter'] -Scan $script:Scan['enter']
-    Start-MtInjectPause -Milliseconds 450
+    # ── 2026-09-17 全局测试规则：pause-lock 生效时**删除这段不必要的 Esc 按键** ─────────────
+    # 用户裁决原文：「如检测到已使用禁止失焦ESC菜单命令，则从测试流程中删除不必要的ESC按键操作」。
+    # 判据 = `run/<版本>/options.txt` 的 `pauseOnLostFocus:false`（mt_launch 每次冷启动前强制写入，
+    # 见 `mt_env.ps1 debug --pause-lock status`）。`-NoEsc` 表示调用方明确要求本次注入不要动 Esc
+    # （例如目标选择会话：Esc 会取消选择）。两者同时成立 ⇒ 跳过整段 Esc→Tab→Enter 归一化：
+    # 它存在的唯一理由是清掉「失焦自动弹出的暂停菜单」，而 pause-lock 已让该菜单不再自动出现；
+    # 终端状态由每条命令末尾的 Enter 保证为「无界面」。⚠️ 真正需要清空**容器/聊天**界面的场景
+    # （唯一必须按 Esc 的情形，见上方穷举）请显式去掉 -NoEsc 或用 `--esc-normalize`，行为不变。
+    $pauseLocked = $false
+    try { $pauseLocked = ((Get-MtPauseOnLostFocus -Paths (Get-MtPaths -Version $Version)) -eq $false) } catch { $pauseLocked = $false }
+    if ($NoEsc -and $pauseLocked) {
+        Write-MtInjectLine 'ESC_SKIP: pause-lock 生效 + -NoEsc ⇒ 跳过 Esc→Tab→Enter 归一化（失焦不再打开 ESC 暂停菜单）'
+    } else {
+        Send-MtInjectKey -Hwnd $hwnd -Vk $script:Vk['escape'] -Scan $script:Scan['escape']
+        Start-MtInjectPause -Milliseconds 350
+        Send-MtInjectKey -Hwnd $hwnd -Vk $script:Vk['tab'] -Scan $script:Scan['tab']
+        Start-MtInjectPause -Milliseconds 150
+        Send-MtInjectKey -Hwnd $hwnd -Vk $script:Vk['enter'] -Scan $script:Scan['enter']
+        Start-MtInjectPause -Milliseconds 450
+    }
 
     Send-MtInjectKey -Hwnd $hwnd -Vk $script:Vk['t'] -Scan $script:Scan['t']
     Start-MtInjectPause -Milliseconds 800

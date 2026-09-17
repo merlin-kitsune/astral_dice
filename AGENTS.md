@@ -1163,7 +1163,7 @@ pwsh -NoProfile -File scripts/test/mt_env.ps1 world --version 1.20.1 [--seed]
 
 **执行命令**：
 ```bash
-pwsh -NoProfile -File scripts/test/mt_launch.ps1 --version 1.21.1 [--no-publish] [--monitor 1] [--size 1920x1080]
+pwsh -NoProfile -File scripts/test/mt_launch.ps1 --version 1.21.1 [--no-publish] [--no-preclean]
 ```
 
 **预期结果**：末行 `MT_LAUNCH: OK — 已进入世界（quickplay=testworld）`。
@@ -1172,8 +1172,30 @@ pwsh -NoProfile -File scripts/test/mt_launch.ps1 --version 1.21.1 [--no-publish]
 
 **进入世界后同阶段完成**：
 1. 输出兼容栈信号（1.21.1：`SODIUM_LOADED` / `IRIS_LOADED`；26.1.2：`KUBEJS_LOADED` / `RHINO_LOADED` / `SODIUM_LOADED` / `IRIS_LOADED` / `SHADERS=… pack=…` / `SHADERPACK_LOADED=…`；1.20.1：`EMBEDDIUM_LOADED` / `OCULUS_LOADED`，dev run 预期为 false）；
-2. **把测试客户端搬到指定显示器并设定窗口尺寸**（`MT_WINDOW:` 行；2026-09-17 用户要求「移到第二显示器，避免干扰观察」＋「窗口大小应控制在 1920x1080」）：默认搬到**显示器 #1（第二屏）**，窗口在目标显示器上**居中**，**客户区（渲染区）1920x1080**（外框因边框/标题栏略大，实测 1936x1119）。参数：`--monitor <序号>`（`0` = 不搬移）、`--size <宽>x<高> | maximize | keep`（默认 `1920x1080`；`maximize` = 铺满目标显示器，`keep` = 只搬显示器保持原尺寸；非法/过小值在**启动客户端之前**即以退出码 2 拒绝）。⚠️ **`--size` 的口径是「客户区」而不是外框**（游戏分辨率看的是客户区；直接写外框 1920x1080 只会得到约 1904x1041 的渲染区）—— 实现用「外框 − 客户区」的实测差值补足边框，等价于 `AdjustWindowRect`。`MT_WINDOW: OK` 行同时回显窗口矩形与客户区尺寸便于取证。
-   由 `lib/Mt.Win32.psm1` 的 `Get-MtMonitors` / `Get-MtClientRect` / `Move-MtWindowToMonitor` 实现，顺序为 **SW_RESTORE → SetWindowPos(居中) → 视参数 SW_MAXIMIZE**（已最大化的窗口直接 `SetWindowPos` **不会跨屏**，必须先还原）。**单显示器或序号越界时静默跳过**（`MT_WINDOW: SKIP`），不得因此中断流程。⚠️ `Get-MtMonitors` 的返回值**必须**用 `@(...)` 包一层：PowerShell 会展开返回值，单屏时直接赋值得到单个对象；**不要**在函数里用 `return ,$out` 兜底（那会把数组包成「一个元素」，`$mons.Count` 恒为 1、`$mons[1]` 取到整个数组 —— 2026-09-17 实测踩坑）。
+2. **窗口搬移规则已全局移除（2026-09-17 用户裁决：「全局移除移动游戏窗口到第二屏幕的规则」）**：此前本步骤会把测试客户端搬到**显示器 #1（第二屏）**并把客户区固定成 **1920x1080**（`MT_WINDOW:` 行；由 `--monitor` / `--size` 两个参数控制），现**不再**做任何搬移或改尺寸 —— 客户端窗口的位置与大小完全由系统与游戏自身决定。随之删除：`mt_launch.ps1` 的这两个参数、搬移代码块与对 `lib/Mt.Win32.psm1` 的导入；`lib/Mt.Win32.psm1` 的 `Get-MtMonitors` / `Move-MtWindowToMonitor` 两个函数及其导出项（它们只服务该规则，仓库内已无调用方）。日志里不再有 `MT_WINDOW:` 读数。
+   需要窗口矩形的工具不受影响：`mt_capture` 的 `crop` 与 `mt_inject` 的坐标映射继续用保留的 `Find-MtMinecraftWindow` / `Get-MtWindowRect` / `Get-MtClientRect`。**禁止把该规则（含「默认搬到第二屏」的隐式默认）加回来。**
+
+### 全局测试规则（测试环境硬性要求，2026-09-17 用户裁决）— 必须遵守
+
+> 本节四条规则对**三条线**（1.21.1 / 1.20.1 / 26.1.2）同时生效，由 `scripts/test` 工具链强制执行；
+> 任一条不满足时该轮测试**无效**（`MT_MODS: BLOCKED` / `MT_LAUNCH: ERROR`），**禁止**静默降级或手工绕过。
+
+1. **测试环境必须装齐「反干扰 + 优化 + 探针宿主」三类模组**（`pwsh -File scripts/test/mt_env.ps1 mods --version <V>` 幂等落位）：
+   - **史莱姆压制（服务端/运行期，硬闸门）**：`superflat-world-no-slimes` + 其 required 前置 `collective`。超平坦测试世界 y<40 处处是史莱姆区块（实测同一位置 128 格内 103 只史莱姆）⇒ 会污染实体类读数。**1.20.1 例外**：它由 `forge-1.20.1/build.gradle` 的 `modImplementation` 提供，**不得**再放进 `run/1.20.1/mods`（会被 FML 判重复模组）。launch 侧判据 = 已加载列表行里的括号 modId `(superflatworldnoslimes)` / `(collective)`，缺则 `MT_LAUNCH: ERROR`（确需对照实验时设 `MT_ALLOW_NO_SLIMEGUARD=1`）。
+   - **优化类（兼容性验证对象）**：`ImmediatelyFast` + `FerriteCore`（26.1.2 另有 `ModernFix`）；三条线全装，坐标一律 Modrinth Maven 且版本 id 钉死。`mt_launch` 回显 `IMMEDIATELYFAST_LOADED` / `FERRITECORE_LOADED` / `MODERNFIX_LOADED`（缺装载只 WARN，但要看得见）。
+   - **探针宿主（1.21.1）**：`KubeJS` + `Rhino` + `Architectury API`（由 `mt_env` 从整合包复制；1.20.1 的 KubeJS 走 build.gradle，26.1.2 的走 `Install-MtProbeRuntime` 下载）。**缺 KubeJS ⇒ `MT_ASSERT_KUBEJS: BLOCKED`、`/astralprobe` 不存在、`MT_preflight-op` ERROR** —— 这是「探针脚本已改但读数全无」的根因形态。
+2. **光影包必须就位且默认启用**（2026-09-17 用户要求「游戏环境缺少光影包，添加光影包并设置默认启用」）：`mt_env.ps1 mods` 把 `ComplementaryUnbound_r5.9.3.zip` 落位 `run/<V>/shaderpacks/`，并把 `config/iris.properties` 写成 `shaderPack=ComplementaryUnbound_r5.9.3.zip` + **`enableShaders=true`**。1.21.1 / 26.1.2 生效；**1.20.1 的 dev run 不装渲染栈**（Embeddium/Oculus 的 refmap 在 mojmap 下无法解析）⇒ 该线回显 SKIP。需要「关光影冷启动」的用例（`SHADER-VISION-26.1.2` 步骤 0）必须自己显式执行 `mt_env.ps1 shaders --state off`，不依赖默认值。
+3. **禁止游戏失焦打开 ESC 菜单**（2026-09-17 用户裁决）：`mt_launch` 在**每次冷启动之前**强制把 `run/<V>/options.txt` 的 `pauseOnLostFocus` 写成 `false` 并回显 `PAUSE_LOCK: on` —— 失焦暂停会让后台注入（`mt_inject`）与截图（`mt_capture`）全部失效，还会把暂停菜单顶在画面上。统一查询/手改入口 = **新增的全局调试命令** `pwsh -File scripts/test/mt_env.ps1 debug --version <V> [--pause-lock on|off|status] [--shaders on|off|status]`（不带开关即回显两项目前状态）。**据本条删除测试流程里不必要的 Esc 按键**：`mt_inject` 的 `Esc→Tab→Enter` 归一化在「pause-lock 生效 + `-NoEsc`」时**一律跳过**并回显 `ESC_SKIP: …`；只有真正需要清空**容器/聊天**界面时才去掉 `-NoEsc`（Esc 是唯一能关容器的安全键，该场景行为不变）。
+4. **游戏进程捕获/等待时长必须严格受控**（2026-09-17 用户裁决「严格控制系统进程捕获时长」）：所有等待都有硬上限且**必须回显耗时**，禁止无限等待 ——
+   | 环节 | 硬上限 | 回显 |
+   |---|---|---|
+   | 进入世界就绪（launch） | 180s（`MT_LAUNCH_READY_TIMEOUT_SEC` 覆写，≥30） | `READY_WAIT: budget=…` + `MT_TIMING: world-ready=…s` |
+   | launch 子进程终态标记 | 180s（`MT_LAUNCH_TIMEOUT_SEC`）；日志 90s 零增长即判 STALL | `CHILD: STALL` / `CHILD: TIMEOUT` |
+   | env / build / preflight | 240s / 300s / 120s | 同上 |
+   | 单条用例 | 180s（`--case-timeout`） | 该条记 TIMEOUT 后继续跑下一条 |
+   **取消固定空等**：launch 就绪等待不再先 `Start-Sleep 30`，改为**立即 3s 轮询**（实测省下约 30s 纯等待；读日志是纯文件读）。
+   **调用方约定**：长驻阶段（launch）若被外层管道捕获（如 `| Select-Object`）必须改成文件重定向（`*> 文件`）——否则整条链路要等长驻子进程放开 stdout 句柄，表现为「launch 早已 `MT_LAUNCH: OK`，命令行却迟迟不返回」。
+
 3. 校验 KubeJS `run/<版本>/logs/kubejs/server.log` 为 **0 errors**（进入世界后第一步）。
 
 **失败处理**：`MT_LAUNCH: BLOCKED`（未在时限内进入世界）→ 查看 `run/<版本>/runclient_launch.log` 末 30 行；退出码 `11`。检测到崩溃报告 → 退出码 `2`，进 `crash-reports` 定位。
