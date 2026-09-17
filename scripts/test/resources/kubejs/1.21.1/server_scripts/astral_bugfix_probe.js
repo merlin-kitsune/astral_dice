@@ -1359,8 +1359,19 @@ function countEffectCards(p) {
     for (var i = 0; i < inv.getContainerSize(); i++) {
         var st = inv.getItem(i);
         if (st.isEmpty()) continue;
+        // ⚠️ 池内物品比对**必须走注册名**，禁止写 `st.is(pool.get(j).getItem())`：
+        // ItemStack 有 5 个同元 `is(...)` 重载（ItemStack.java:339 is(TagKey) / :343 is(Item) /
+        // :347 is(Predicate) / :351 is(Holder) / :355 is(HolderSet)），Rhino 得靠 JS 侧类型信息挑一个，
+        // 实测在 `is(HolderSet)` 与 `is(Item)` 之间判不出来 ⇒
+        // `InternalError: The choice of Java method ItemStack.is matching JavaScript argument types
+        // (com.merlinkitsune.astral_dice.item.card.EffectCardItem) is ambiguous`，
+        // 该函数一抛，整段 AP_G1_* 读数缺失（SELECTOR-GATE-1.21.1 曾 9 断言仅 2 PASS；归因见
+        // TESTING-SPEC 附录 A）。注册表 key 与 item 一一对应，故「同名」等价于
+        // `is(Item)`（其方法体就是 `this.getItem() == item`，ItemStack.java:343-345）；
+        // itemIdOf 是本文件既有工具（:182），比较的是字符串 ⇒ 零重载、零歧义。
+        var stId = itemIdOf(st);
         for (var j = 0; j < pool.size(); j++) {
-            if (st.is(pool.get(j).getItem())) { n += st.getCount(); break; }
+            if (stId === itemIdOf(pool.get(j))) { n += st.getCount(); break; }
         }
     }
     return n;

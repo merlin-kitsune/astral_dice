@@ -1340,8 +1340,17 @@ function countEffectCards(p) {
     for (var i = 0; i < inv.getContainerSize(); i++) {
         var st = inv.getItem(i);
         if (st.isEmpty()) continue;
+        // ⚠️ 池内物品比对**必须走注册名**，禁止写 `st.is(pool.get(j).getItem())`（与 1.21.1 同源缺陷）：
+        // 1.20.1 的 ItemStack 有 4 个同元 `is(...)` 重载（ItemStack.java:230 is(TagKey) / :234 is(Item) /
+        // :238 is(Predicate) / :242 is(Holder)），Rhino 得靠 JS 侧类型信息挑一个 ⇒ 在 `is(Item)` 与
+        // 另一个可接受候选（此处接口参数候选是 `is(Holder)`；1.21.1 侧实测报的是 `is(HolderSet)`）
+        // 之间判不出来即抛 `The choice of Java method ItemStack.is … is ambiguous`，会让
+        // SELECTOR-GATE-1.20.1 的 AP_G1_* 读数整段缺失。注册表 key 与 item 一一对应，故「同名」
+        // 等价于 `is(Item)`（其方法体就是 `this.getItem() == item`，ItemStack.java:234-236）；
+        // itemIdOf 是本文件既有工具（:171），比较的是字符串 ⇒ 零重载、零歧义。
+        var stId = itemIdOf(st);
         for (var j = 0; j < pool.size(); j++) {
-            if (st.is(pool.get(j).getItem())) { n += st.getCount(); break; }
+            if (stId === itemIdOf(pool.get(j))) { n += st.getCount(); break; }
         }
     }
     return n;
