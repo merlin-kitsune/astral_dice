@@ -75,6 +75,7 @@
 //    /astralprobe dumpstate <tag>                     只读:转调 /astralparty dump(B6 ③)
 //    /astralprobe equipslot <slotId> <itemId> <tag>
 //    /astralprobe equipslotat <slotId> <index> <itemId> <tag>   写入指定索引(多槽位留存回归用)
+//    /astralprobe slimecheck <tag>                    只读:周围 128 格史莱姆/生物数 + 难度(超平坦史莱姆压制取证)
 //    /astralprobe attack <entityTypeId> <tag>         生成靶子并真实近战命中(仍被 NANCY-LU-CLOAK 复用)
 //    /astralprobe railguncd <tag>
 //    /astralprobe railgunfriendly|railgunfriendlyread|railgunfriendlyend <tag>
@@ -4094,9 +4095,41 @@ var RecipeResourceKeyClass = Java.loadClass("net.minecraft.resources.ResourceKey
 var ItemStackClass = Java.loadClass("net.minecraft.world.item.ItemStack");
 var InteractionHandClass = Java.loadClass("net.minecraft.world.InteractionHand");
 
-/** 强制整机存档(重登测试的准备步) */
-function doSaveAll(ctx, tag) {
+/**
+ * `slimecheck <tag>` —— 只读:统计玩家周围(默认 128 格)的史莱姆数量与生物总数 + 难度。
+ *
+ *   动机(2026-09-17 用户硬性要求):测试世界是**超平坦**世界,y<40 的史莱姆区块处处都有,
+ *   史莱姆会持续刷出并干扰实体类断言/注入。工具链用「Superflat World No Slimes」模组压制,
+ *   本命令是该压制**是否真的生效**的读数入口(而不是只看「文件在 run/mods 里」):
+ *     · `slimes` = 玩家 128 格内 `Slime` 实体数(压制生效时应长期为 0);
+ *     · `mobs`   = 同范围内 `Mob` 总数(对照:若整体刷怪也被关掉,这条会一起为 0 ⇒ slimes=0 不成立为证据);
+ *     · `difficulty` = 世界难度(对照: peaceful 也会让 slimes=0,故必须一并报出)。
+ *   只读,不改变任何状态。
+ */
+function doSlimeCheck(ctx, tag) {
     var p = ctx.source.getPlayerOrException();
+    var R = 128.0;
+    var slimes = -1, mobs = -1;
+    try {
+        var SlimeClass = Java.loadClass("net.minecraft.world.entity.monster.Slime");
+        var MobClass = Java.loadClass("net.minecraft.world.entity.Mob");
+        var box = p.getBoundingBox().inflate(R);
+        slimes = p.level.getEntitiesOfClass(SlimeClass, box).size();
+        mobs = p.level.getEntitiesOfClass(MobClass, box).size();
+    } catch (e) {
+        send(ctx, "AP_" + tag + "_SLIME_ERR:" + e);
+        return 0;
+    }
+    var diff = "unknown";
+    try { diff = "" + p.level.getDifficulty(); } catch (e2) { }
+    send(ctx, "AP_" + tag + "_SLIME:slimes=" + slimes + ":mobs=" + mobs + ":radius=" + R
+        + ":difficulty=" + diff + ":y=" + Math.round(p.getY()));
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+/** 强制整机存档(重登测试的准备步) */
+function doSaveAll(ctx, tag) {    var p = ctx.source.getPlayerOrException();
     var ok = false;
     try { ok = p.level.getServer().saveEverything(true, true, true); } catch (e) { }
     send(ctx, "AP_" + tag + "_SAVE:" + (ok ? "ok" : "fail"));
@@ -4626,6 +4659,11 @@ ServerEvents.commandRegistry(event => {
                 .then(Commands.argument("tag", StringArg.word())
                     .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
                         return doSaveAll(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("slimecheck")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doSlimeCheck(ctx, StringArg.getString(ctx, "tag"));
                     }))))
             .then(Commands.literal("invdump")
                 .then(Commands.argument("tag", StringArg.word())

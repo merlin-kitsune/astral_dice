@@ -470,6 +470,32 @@ if ($MyInvocation.InvocationName -ne '.') {
         if ($latest -imatch 'Rhino') { Write-MtInfo 'RHINO_LOADED=true' } else { Write-MtWarn 'RHINO_LOADED=false' }
         if ($latest -imatch 'Sodium') { Write-MtInfo 'SODIUM_LOADED=true' } else { Write-MtWarn 'SODIUM_LOADED=false' }
         if ($latest -imatch 'Iris') { Write-MtInfo 'IRIS_LOADED=true' } else { Write-MtWarn 'IRIS_LOADED=false' }
+        # 超平坦世界史莱姆压制（2026-09-17 用户硬性要求：测试环境**必须**装载，否则超平坦世界刷出的
+        # 史莱姆会严重干扰测试流程）。装载判据取**模组自身在模组列表里的显示名/描述**（`Superflat World
+        # No Slimes` / `Collective`）—— NeoForge 会把每个模组的 displayName 打进日志的模组列表；
+        # 这是「真的加载了」而不是「文件在 run/mods 里」的证据。缺任一个都按**硬失败**处理：
+        # 让 launch 以 ERROR 结束，而不是带着会被史莱姆污染的现场继续跑用例。
+        # 装载判据 = NeoForge 启动日志里**「已加载模组列表」**那一行 `显示名 版本 (modId)`，即
+        # 匹配 `(superflatworldnoslimes)` / `(collective)` 这种**括号里的 modId**。
+        # ⚠️ 不能只搜 `superflatworldnoslimes`（2026-09-17 实测踩坑）：存档 `level.dat` 记着上次
+        #    带着这些模组跑过，缺少时 NeoForge 会打印 `<modId> (version X -> MISSING)` ——
+        #    只搜名字会把「**缺失**」误判成「已加载」，闸门形同虚设（实测那次把已移出的对照实验
+        #    误报成 SLIMEGUARD_LOADED=true）。带括号的 modId 只出现在已加载列表里，故用它。
+        $slimeGuard = ($latest -imatch '\(superflatworldnoslimes\)')
+        $collective = ($latest -imatch '\(collective\)')
+        if (-not $slimeGuard) {
+            # 唯一的例外：**故意**测「没有该模组时史莱姆会不会干扰」的对照实验。
+            # 必须是显式开关，且会留下 WARN 痕迹 —— 默认永远是硬失败。
+            if ($env:MT_ALLOW_NO_SLIMEGUARD -eq '1') {
+                Write-MtWarn 'SLIMEGUARD_LOADED=false — 已按 MT_ALLOW_NO_SLIMEGUARD=1 显式放行（对照实验用；此时超平坦世界的史莱姆**不受压制**）'
+            } else {
+                Write-MtErrLine 'MT_LAUNCH: ERROR — 未检测到「Superflat World No Slimes」模组（测试环境硬性要求：超平坦世界的史莱姆会干扰测试流程）；先执行 pwsh -File scripts/test/mt_env.ps1 mods --version 26.1.2（如确需对照实验，设 MT_ALLOW_NO_SLIMEGUARD=1）'
+                exit $MT_EXIT_ERROR
+            }
+        } else {
+            Write-MtInfo 'SLIMEGUARD_LOADED=true'
+            if ($collective) { Write-MtInfo 'COLLECTIVE_LOADED=true' } else { Write-MtWarn 'COLLECTIVE_LOADED=false(Collective 前置缺失？史莱姆压制可能未生效)' }
+        }
         # 光影状态：以 config/iris.properties 为准（而不是「日志里有没有出现过 shaderpack 字样」）。
         # 默认 enableShaders=false —— 26.1.2 上启用光影会崩（见 mt_env 的 Install-MtRenderStack 注释），
         # 故默认不启用是**正常状态**，不该报 WARN；启用时才用日志确认包真的加载成功。

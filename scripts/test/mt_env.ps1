@@ -92,6 +92,33 @@ $script:RenderMods2612 = @(
        Size = 2756643 }
 )
 
+# ── 超平坦测试世界的「史莱姆压制」模组（2026-09-17 用户硬性要求）──────────────
+# 用户原话：「测试环境强制要求加入 Superflat world no slimes 模组，否则因为超平坦世界
+# 生成的史莱姆会严重干扰测试流程」。测试世界是超平坦（`mt_env world` 生成 + quickplay 直进），
+# 超平坦下方 y<40 处处是史莱姆区块 ⇒ 测试期间会持续刷出史莱姆，干扰实体类断言
+# （`/kill @e[type=!player]` 只在 launch 前清一次，测试过程中新刷的照样存在）。
+# 来源同样走 **Modrinth Maven**（与渲染栈同规则，不使用 CDN/GitHub 直链）：
+#   maven.modrinth:superflat-world-no-slimes:Onb8latt （26.1.2-3.6，`environment=server_only`）
+#   maven.modrinth:collective:iXqgYZEw               （26.1.2-8.32；上者的 **required** 前置库）
+# ⚠️ 两条重要性质（决定了它不能被当成「客户端模组」处理）：
+#   1. 史莱姆压制模组在 Modrinth 上标为 `server_only` ⇒ **必须留在大世界生成用的专用服务器**里，
+#      故 `Invoke-MtEnvWorld` 的「纯客户端模组移出」名单（imblocker/sodium/iris/embeddium/oculus）
+#      **不得**加入它们（现在的匹配是子串命中，两个文件名都不含这些子串 ⇒ 天然安全）。
+#   2. 它是**运行时刷怪逻辑**（取消超平坦世界的史莱姆自然生成），不是世界生成特性 ⇒ 世界已生成
+#      也照样生效，无需重建世界。
+$script:SlimeGuard2612 = @(
+    @{ Name = 'superflatworldnoslimes-26.1.2-3.6.jar'
+       Coord = 'maven.modrinth:superflat-world-no-slimes:Onb8latt'
+       Url  = 'https://api.modrinth.com/maven/maven/modrinth/superflat-world-no-slimes/Onb8latt/superflatworldnoslimes-26.1.2-3.6.jar'
+       Sha1 = 'd47af65db00db70a47f29390386a52290cf93481'
+       Size = 28935 }
+    @{ Name = 'collective-26.1.2-8.32.jar'
+       Coord = 'maven.modrinth:collective:iXqgYZEw'
+       Url  = 'https://api.modrinth.com/maven/maven/modrinth/collective/iXqgYZEw/collective-26.1.2-8.32.jar'
+       Sha1 = '13887a5d78938c6ce55c15bcbd1352db625e84e1'
+       Size = 1054031 }
+)
+
 # Complementary Shaders - Unbound（用户指定用于光影兼容性测试）
 # `maven.modrinth:complementary-unbound:r5.9.3`；落位 `run/<版本>/shaderpacks/`，并在 Iris 配置里选中它。
 $script:ShaderPack2612 = @{
@@ -662,6 +689,95 @@ function Install-MtProbeRuntime {
 }
 
 # ══ 子命令：mods ══════════════════════════════════════════════════════════
+function Install-MtRemoteMod {
+    <#
+    .SYNOPSIS
+        下载/校验/落位**单个** Modrinth Maven 模组规格（幂等：尺寸 + sha1 命中即跳过）。
+
+    .NOTES
+        从 `Install-MtRenderStack` 的内联循环提取（2026-09-17），供渲染栈与史莱姆压制模组共用 ——
+        两处的语义必须完全一致：缓存在 `temp/probe_mods/<版本>/`，命中判据 = 目标文件存在且**尺寸一致**
+        （有 sha1 时再校验 sha1）；下载走 `<缓存>.part` 再原子改名；任何尺寸/sha1 不符都**硬报 14**，
+        不静默降级。返回 0 = 就位，14 = 下载或校验失败。
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][psobject]$Paths,
+        [Parameter(Mandatory)]$Spec,
+        [Parameter(Mandatory)][string]$Cache,
+        [string]$Label = '模组'
+    )
+
+    $cached = Join-Path $Cache $Spec.Name
+    $ok = $false
+    if (Test-Path -LiteralPath $cached -PathType Leaf) {
+        $ci = Get-Item -LiteralPath $cached
+        $ok = ($ci.Length -eq $Spec.Size)
+        if ($ok -and $Spec.Sha1) {
+            $ok = ((Get-FileHash -LiteralPath $cached -Algorithm SHA1).Hash.ToLowerInvariant() -eq $Spec.Sha1)
+        }
+        if (-not $ok) { Remove-Item -LiteralPath $cached -Force -ErrorAction SilentlyContinue }
+    }
+    if (-not $ok) {
+        try {
+            Write-MtLine "MT_MODS: 下载$Label $($Spec.Name) ← $($Spec.Coord)"
+            Invoke-WebRequest -Uri $Spec.Url -OutFile "$cached.part" -TimeoutSec 300 -UseBasicParsing
+            Move-Item -LiteralPath "$cached.part" -Destination $cached -Force
+        } catch {
+            Remove-Item -LiteralPath "$cached.part" -Force -ErrorAction SilentlyContinue
+            Write-MtLine "MT_MODS: BLOCKED — $Label下载失败 [Modrinth Maven] $($Spec.Coord) $($Spec.Url) :: $($_.Exception.Message)"
+            return 14
+        }
+        $got = Get-Item -LiteralPath $cached
+        if ($got.Length -ne $Spec.Size) {
+            Write-MtLine "MT_MODS: BLOCKED — $($Spec.Name) 尺寸不符（期望 $($Spec.Size)，实得 $($got.Length)）"
+            return 14
+        }
+        if ($Spec.Sha1 -and ((Get-FileHash -LiteralPath $cached -Algorithm SHA1).Hash.ToLowerInvariant() -ne $Spec.Sha1)) {
+            Write-MtLine "MT_MODS: BLOCKED — $($Spec.Name) sha1 校验失败"
+            return 14
+        }
+    }
+    $dst = Join-Path $Paths.mods_dir $Spec.Name
+    $needCopy = $true
+    if (Test-Path -LiteralPath $dst -PathType Leaf) {
+        if ((Get-Item -LiteralPath $dst).Length -eq (Get-Item -LiteralPath $cached).Length) { $needCopy = $false }
+    }
+    if ($needCopy) { Copy-Item -LiteralPath $cached -Destination $dst -Force }
+    return 0
+}
+
+function Install-MtSlimeGuard {
+    <#
+    .SYNOPSIS
+        把「超平坦世界无史莱姆」模组（+ 其必需前置 Collective）放进 run/<版本>/mods（幂等）。
+
+    .NOTES
+        · 用户硬性要求，见 $script:SlimeGuard2612 的注释（超平坦世界刷史莱姆会干扰测试流程）；
+        · 只对 26.1.2 生效（本线是当前自动化测试线；1.21.1 侧 run/mods 由用户整合包按文件名
+          复制，1.20.1 侧 dev run 不使用 run/mods 装载渲染/工具类模组 —— 如需在这两条线同样强制，
+          应先补它们的下载规格，不要只改这里）；
+        · 两者都是**服务端/运行期**模组，专用服务器生成世界时**保留**（见 $script:SlimeGuard2612 注释）。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][psobject]$Paths)
+
+    if ($Paths.version -ne '26.1.2') { return 0 }
+
+    $cache = Join-Path (Join-Path (Get-MtRoot) 'temp\probe_mods') $Paths.version
+    [void](New-Item -ItemType Directory -Force -Path $cache)
+    [void](New-Item -ItemType Directory -Force -Path $Paths.mods_dir)
+
+    $installed = @()
+    foreach ($spec in $script:SlimeGuard2612) {
+        $rc = Install-MtRemoteMod -Paths $Paths -Spec $spec -Cache $cache -Label '史莱姆压制模组'
+        if ($rc -ne 0) { return $rc }
+        $installed += $spec.Name
+    }
+    Write-MtLine ("MT_MODS: OK — 超平坦世界史莱姆压制就位（{0}；运行时生效，无需重建世界）" -f ($installed -join ' / '))
+    return 0
+}
+
 function Install-MtRenderStack {
     <#
     .SYNOPSIS
@@ -702,42 +818,8 @@ function Install-MtRenderStack {
         # 1) 渲染模组 → run/<版本>/mods
         $installed = @()
         foreach ($spec in $script:RenderMods2612) {
-            $cached = Join-Path $cache $spec.Name
-            $ok = $false
-            if (Test-Path -LiteralPath $cached -PathType Leaf) {
-                $ci = Get-Item -LiteralPath $cached
-                $ok = ($ci.Length -eq $spec.Size)
-                if ($ok -and $spec.Sha1) {
-                    $ok = ((Get-FileHash -LiteralPath $cached -Algorithm SHA1).Hash.ToLowerInvariant() -eq $spec.Sha1)
-                }
-                if (-not $ok) { Remove-Item -LiteralPath $cached -Force -ErrorAction SilentlyContinue }
-            }
-            if (-not $ok) {
-                try {
-                    Write-MtLine "MT_MODS: 下载渲染模组 $($spec.Name) ← $($spec.Coord)"
-                    Invoke-WebRequest -Uri $spec.Url -OutFile "$cached.part" -TimeoutSec 300 -UseBasicParsing
-                    Move-Item -LiteralPath "$cached.part" -Destination $cached -Force
-                } catch {
-                    Remove-Item -LiteralPath "$cached.part" -Force -ErrorAction SilentlyContinue
-                    Write-MtLine "MT_MODS: BLOCKED — 渲染模组下载失败 [Modrinth Maven] $($spec.Coord) $($spec.Url) :: $($_.Exception.Message)"
-                    return 14
-                }
-                $got = Get-Item -LiteralPath $cached
-                if ($got.Length -ne $spec.Size) {
-                    Write-MtLine "MT_MODS: BLOCKED — $($spec.Name) 尺寸不符（期望 $($spec.Size)，实得 $($got.Length)）"
-                    return 14
-                }
-                if ($spec.Sha1 -and ((Get-FileHash -LiteralPath $cached -Algorithm SHA1).Hash.ToLowerInvariant() -ne $spec.Sha1)) {
-                    Write-MtLine "MT_MODS: BLOCKED — $($spec.Name) sha1 校验失败"
-                    return 14
-                }
-            }
-            $dst = Join-Path $Paths.mods_dir $spec.Name
-            $needCopy = $true
-            if (Test-Path -LiteralPath $dst -PathType Leaf) {
-                if ((Get-Item -LiteralPath $dst).Length -eq (Get-Item -LiteralPath $cached).Length) { $needCopy = $false }
-            }
-            if ($needCopy) { Copy-Item -LiteralPath $cached -Destination $dst -Force }
+            $rc = Install-MtRemoteMod -Paths $Paths -Spec $spec -Cache $cache -Label '渲染模组'
+            if ($rc -ne 0) { return $rc }
             $installed += $spec.Name
         }
 
@@ -871,7 +953,10 @@ function Invoke-MtEnvMods {
         # （实测 Modrinth 已有 sodium 0.9.2 / iris 1.11.4 的 26.1.2 release 构建）。
         $rc = Install-MtRenderStack -Paths $p
         if ($rc -ne 0) { return $rc }
-        Write-MtLine 'MT_MODS: OK — 26.1.2 dev run：探针运行时 + Sodium/Iris + Complementary Unbound 光影'
+        # 超平坦世界史莱姆压制（2026-09-17 用户硬性要求，见 $script:SlimeGuard2612 注释）
+        $rc = Install-MtSlimeGuard -Paths $p
+        if ($rc -ne 0) { return $rc }
+        Write-MtLine 'MT_MODS: OK — 26.1.2 dev run：探针运行时 + Sodium/Iris + Complementary Unbound 光影 + 超平坦史莱姆压制'
         Write-MtLine 'MT_MODS: 注意 — Sodium/Iris 为纯客户端模组：`mt_env world` 起专用服务器会自动移出，但**两段式数据生成（runClientData/runServerData）前必须手动移出** run/26.1.2/mods（与探针运行时同规则）'
         return 0
     }
