@@ -37,8 +37,8 @@ Astral Dice is a survival expansion mod built around dice. Equip a dice and ever
 | ✅ | `forge-1.20.1` | 1.20.1 | Forge 47.4.10 | 17 | 1.2.1 | ✅ |
 | 🧪 | `neoforge-26.1.2` | 26.1.2 | NeoForge 26.1.2.109 | 25 | 1.2.1-beta | ✅ |
 
-- `neoforge-1.21.1` 与 `forge-1.20.1` 是**发布线**（功能对等，随 GitHub Release 发布两个 jar）。
-- `neoforge-26.1.2` 是**低优先级移植线**：版本号带 `-beta`、**不发布 Release**（仅随仓库提供构建产物），内容以发布线为准并在发布线完成后迁移，迁移后需通过功能一致性测试。该线**无** Iron's Spells 'n Spellbooks 联动（上游无 26.1.x 构建）。
+- `neoforge-1.21.1` 与 `forge-1.20.1` 是**发布线**（功能对等，两者的 jar 随每个 GitHub Release 发布）。
+- `neoforge-26.1.2` 是**低优先级移植线**：版本号带 `-beta`、**不单独打 tag / 发 Release**，但其 jar 已作为**第三个附件随发布线的 Release 一并发布**（CI 三线同批构建，见 `.github/workflows/build.yml`）；内容以发布线为准并在发布线完成后迁移，迁移后需通过功能一致性测试。该线**无** Iron's Spells 'n Spellbooks 联动（上游无 26.1.x 构建）。
 
 | 前置/联动 | 要求 |
 |---|---|
@@ -76,7 +76,7 @@ Astral Dice is a survival expansion mod built around dice. Equip a dice and ever
 | 🧪 | `neoforge-26.1.2` | 26.1.2 | NeoForge 26.1.2.109 | 25 | 1.2.1-beta | ✅ |
 
 - `neoforge-1.21.1` and `forge-1.20.1` are the **release lines** (feature-parity pair; both jars are published with every GitHub Release).
-- `neoforge-26.1.2` is the **low-priority port line**: its version carries `-beta`, it **does not publish Releases** (the jar is only available from the repository), and content is ported from the release lines *after* they are done, followed by a functional-consistency test. This line has **no** Iron's Spells 'n Spellbooks integration (upstream ships no 26.1.x build).
+- `neoforge-26.1.2` is the **low-priority port line**: its version carries `-beta`, it **never gets its own tag or Release**, but its jar is shipped as a **third attachment on the release lines' Releases** (CI builds all three lines together, see `.github/workflows/build.yml`); content is ported from the release lines *after* they are done, followed by a functional-consistency test. This line has **no** Iron's Spells 'n Spellbooks integration (upstream ships no 26.1.x build).
 
 | Dependency | Requirement |
 |---|---|
@@ -88,9 +88,9 @@ Astral Dice is a survival expansion mod built around dice. Equip a dice and ever
 
 ## 下载 / Download
 
-- 支持平台：Minecraft 1.21.1 / NeoForge、1.20.1 / Forge（发布线）；Minecraft 26.1.2 / NeoForge（低优先级线，**不发 Release**）
+- 支持平台：Minecraft 1.21.1 / NeoForge、1.20.1 / Forge（发布线）；Minecraft 26.1.2 / NeoForge（低优先级线，不单独发 Release，jar 随发布线 Release 附带）
 - 前置：Curios API（1.20.1 另需 Mixin Booster ≥ 0.1.3）
-- 构建产物：`neoforge-1.21.1/build/libs/astral_dice-<版本>+neoforge_1.21.1.jar`、`forge-1.20.1/build/libs/astral_dice-<版本>+forge_1.20.1.jar`、`neoforge-26.1.2/build/libs/astral_dice-<版本>+neoforge_26.1.2.jar`；GitHub Release 的 tag 使用无后缀的基础版本号（如 `1.1.3`），自动附带发布线的两个 jar
+- 构建产物：`neoforge-1.21.1/build/libs/astral_dice-<版本>+neoforge_1.21.1.jar`、`forge-1.20.1/build/libs/astral_dice-<版本>+forge_1.20.1.jar`、`neoforge-26.1.2/build/libs/astral_dice-<版本>+neoforge_26.1.2.jar`；GitHub Release 的 tag 使用无后缀的基础版本号（如 `1.1.3`），自动附带**三个** jar（发布线两个 + 26.1.2 的 `-beta` jar，版本号各自独立）
 
 ## 构建 / Build
 

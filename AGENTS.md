@@ -172,7 +172,7 @@ When extending this workspace:
 - 两侧门槛都必须在 **mods.toml 解析 / 依赖排序阶段**拒绝不合格环境(FML 会给出可读提示:语言提供者版本不符 = `fml.language.missingversion`;
   强制依赖不满足 = `Missing or unsupported mandatory dependencies:`),**不得**依赖"先加载、再在代码里检查"——mixin 变换早于 mod 构造器,那样只会得到 mixin 报错。
 
-发布规范:GitHub **Release tag 使用无后缀的基础版本号**(如 `1.1.3`,禁止 `v` 前缀与 `+加载器` 后缀),tag 推送即触发 CI 自动构建并发布两个 jar(1.21.1 + 1.20.1);main 分支推送时 CI 会从 `mod_version` 剥离 `-rc/-pre` 与后缀自动打 tag。
+发布规范:GitHub **Release tag 使用无后缀的基础版本号**(如 `1.1.3`,禁止 `v` 前缀与 `+加载器` 后缀),tag 推送即触发 CI 自动构建并发布**三个 jar**(1.21.1 + 1.20.1 + 26.1.2,第三个是 26.1.2 的低优先级 `-beta` jar);发布线分支 `multi-1.20.1-1.21.1` 推送时 CI 会从 `mod_version` 剥离 `-rc/-pre` 与后缀自动打 tag。**26.1.2 永远只作为附件随发布线 Release 发布,不生成自己的 tag/Release**(其 `1.2.1-beta` 不是裸 `x.y.z`);CI 侧实现见 `.github/workflows/build.yml` 的 `Create/Update GitHub Release (three JARs)`。
 
 ## 版本互通门槛（Version Gate）— 必须遵守
 
@@ -228,7 +228,7 @@ When extending this workspace:
 1. **第一优先级 = `neoforge-1.21.1` + `forge-1.20.1`(发布线对)**:任何新内容/平衡调整/修复先在发布线上落地,两侧保持功能对等(先 1.21.1,再按 `docs/compat-1.20.1-forge.md` 同步 1.20.1),两份 CHANGELOG 按既有约定同步更新。
 2. **第二优先级 = `neoforge-26.1.2`(低优先级版本)**:主线内容更新**尚未完成时不得动 26.1.2**。只有当该内容在发布线上**完成**——代码落地 + 双版本构建/冒烟通过 + CHANGELOG 记录完成——之后,才把该内容**迁移**到 `neoforge-26.1.2`;迁移按 `docs/compat-26.1.2-neoforge.md` 的差异映射做,允许并**记录**平台差异(如 26.1.2 无 Iron's Spells 联动、`ItemTags.SPEARS` 只在 26.1.2 存在等)。
 3. **迁移后必须做「功能实现一致性测试」**:按 `scripts/test/TESTING-SPEC.md` §13.2 的方法(**同探针 + 同用例 + 双侧读数 diff**)在 26.1.2 上复跑 1.21.1 已通过的用例,逐条比对读数;差异要么修掉、要么作为**平台差异**登记并写明原因。**禁止**用「能启动/跑通了」代替一致性结论。
-4. **版本号与发布**:26.1.2 子项目当前版本号 = **`1.2.1-beta+neoforge_26.1.2`**(低优先级标记,与发布线 `1.2.1` 的发布态区分;改动只动 `neoforge-26.1.2/gradle.properties`,**不得**连带改 1.20.1 / 1.21.1);26.1.2 线**不发版**——CI 只对其跑构建守门(lang 同步 + 三子项目构建),不打 tag、不发 Release。
+4. **版本号与发布**:26.1.2 子项目当前版本号 = **`1.2.1-beta+neoforge_26.1.2`**(低优先级标记,与发布线 `1.2.1` 的发布态区分;改动只动 `neoforge-26.1.2/gradle.properties`,**不得**连带改 1.20.1 / 1.21.1);26.1.2 线**不单独发版**——CI 对其跑 lang 同步 + 三子项目构建,并把它**已构建出的 jar 作为第三个附件附到发布线的 Release**(2026-09-17 用户要求「将 26.1.2 加入 Action 和 Release」),但**不打自己的 tag、不建自己的 Release**(版本号 `1.2.1-beta` 不是裸 `x.y.z`,不满足打 tag 门槛);tag/Release 的创建仍只在发布线分支触发。
 5. **一次内容更新的验收口径**:① 1.21.1 与 1.20.1 均已落地,且各自构建/冒烟通过;② 两份 CHANGELOG 同步且条目数一致;③ **若该内容同时迁移到 26.1.2**,则 26.1.2 侧的一致性测试结论已写入 `scripts/test/TESTING-SPEC.md`(工程口径记录写§附录 A,不写玩家侧 CHANGELOG)。
 6. **优先级不得被「顺路一起改」打破**:不得以「26.1.2 顺手改更快」为由先改 26.1.2 再回头补发布线;发布线未落地前 26.1.2 的改动一律视为返工风险。
 

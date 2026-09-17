@@ -6,8 +6,10 @@ on:
       # 发布线分支(本仓已无 main 分支;origin/HEAD 默认分支即此分支)。
       # 原先写的 `main` 是不存在的分支 → push 过滤与下方自动打 tag 永远不生效。
       - 'multi-1.20.1-1.21.1'
-      # 26.1.2 第三条线:也跑构建守门(lang 同步 + 三子项目构建),但**不发版**——
-      # 下方打 tag / 发 Release 两步仍只在发布线分支触发。
+      # 26.1.2 第三条线:2026-09-17 起已与发布线同树(该分支保留为历史/回滚入口)。
+      # 它同样跑 lang 同步 + 三子项目构建,并且它的 jar 会**一并附到发布线的 Release**(见文末三 jar 步骤);
+      # 打 tag / 建 Release 这两步仍**只在发布线分支**(multi-1.20.1-1.21.1)触发 —— 26.1.2 的版本号
+      # 形如 `1.2.1-beta+neoforge_26.1.2`,不是裸 x.y.z,按发布规范不会(也不应)生成独立 tag。
       - 'multi-26.1.2-neoforge'
     tags:
       # 发布规范:tag 使用不含后缀的基础版本号(如 1.1.3),禁止 v 前缀与 +加载器后缀
@@ -108,8 +110,9 @@ jobs:
           # 交给下一步发布 Release(同 job:tag 已保证存在)
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
-      - name: Create/Update GitHub Release (both JARs)
-        # 发布 Release 的两种来源(同一 job 内完成,附件 = 刚构建的 1.21.1 与 1.20.1 两个 jar):
+      - name: Create/Update GitHub Release (three JARs)
+        # 发布 Release 的两种来源(同一 job 内完成,附件 = 刚构建的三个 jar:
+        #   1.21.1 NeoForge + 1.20.1 Forge(发布线)+ 26.1.2 NeoForge(低优先级移植线,版本号带 -beta)):
         #   ① 发布线分支 push:用上一步新建/已存在的 tag(已在库内,无需再触发 workflow);
         #   ② ref 本身就是 tag(tag push,或对 tag 手动 workflow_dispatch 补发):直接用 GITHUB_REF 的 tag。
         # 已存在同名 Release 时改为「编辑说明 + --clobber 覆盖附件」,保证重复发布幂等、附件与最新构建一致。
@@ -123,14 +126,21 @@ jobs:
             TAG="${{ steps.tag.outputs.tag }}"
           fi
           echo "publishing release for tag: $TAG"
-          JARS=(neoforge-1.21.1/build/libs/astral_dice-*.jar forge-1.20.1/build/libs/astral_dice-*.jar)
+          # ⚠️ 三个 glob 都必须至少命中一个文件,否则 bash 会把未展开的模式原样传给 gh 并报错(故意让它失败)。
+          JARS=(neoforge-1.21.1/build/libs/astral_dice-*.jar forge-1.20.1/build/libs/astral_dice-*.jar neoforge-26.1.2/build/libs/astral_dice-*.jar)
+          NOTES="Astral Dice $TAG — 1.21.1 (NeoForge) + 1.20.1 (Forge)
+
+          **附件 / Attachments**
+          - \`astral_dice-$TAG+neoforge_1.21.1.jar\` — Minecraft 1.21.1 / NeoForge 21.1(发布线)
+          - \`astral_dice-$TAG+forge_1.20.1.jar\` — Minecraft 1.20.1 / Forge 47.4.10(发布线,需 Mixin Booster ≥ 0.1.3)
+          - \`astral_dice-*-beta+neoforge_26.1.2.jar\` — Minecraft 26.1.2 / NeoForge 26.1.2.109(**低优先级移植线,版本号带 \`-beta\`,与发布线功能对等但不随发布线发版**)"
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release edit "$TAG" --title "Astral Dice $TAG" --notes "Astral Dice $TAG — 1.21.1 (NeoForge) + 1.20.1 (Forge)"
+            gh release edit "$TAG" --title "Astral Dice $TAG" --notes "$NOTES"
             gh release upload "$TAG" "${JARS[@]}" --clobber
           else
             gh release create "$TAG" \
               "${JARS[@]}" \
               --title "Astral Dice $TAG" \
-              --notes "Astral Dice $TAG — 1.21.1 (NeoForge) + 1.20.1 (Forge)" \
+              --notes "$NOTES" \
               --latest
           fi
