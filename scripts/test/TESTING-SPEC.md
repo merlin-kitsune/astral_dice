@@ -583,6 +583,12 @@ pwsh -NoProfile -File scripts/test/mt_watchdog.ps1 -Version 1.21.1 [-StallSecond
 
 **2026-09-17：26.1.2 线测试能力扩展**
 
+- **新增优化类模组 ImmediatelyFast + ModernFix（用户要求「进一步验证优化类模组兼容性」）**：`mt_env.ps1 mods --version 26.1.2` 从 Modrinth Maven 装 `immediatelyfast:adbrNJLm`（**1.15.3+26.1-neoforge**，`ImmediatelyFast-NeoForge-1.15.3+26.1.jar`，sha1 `bb10bdde…`）与 `modernfix:j7EoxpYe`（**5.27.22+mc26.1.2**，`modernfix-neoforge-5.27.22+mc26.1.2.jar`，sha1 `334500dd…`），缓存 `temp/probe_mods/26.1.2/`。
+  - **侧别不同、处理分开**：ImmediatelyFast 在 Modrinth 标为 `client_only` ⇒ 已加入 `Invoke-MtEnvWorld` 的「纯客户端模组移出」子串名单（`immediatelyfast`），生成世界时移出、结束自动恢复（实测生成后文件已回归、无 `.disabled` 残留）；ModernFix 是 `client_or_server_prefers_both` ⇒ 生成世界时**保留**（服务端同样拿到启动期优化）。两段式数据生成（`runClientData`/`runServerData`）前仍须手工移出 run/mods 的纯客户端模组（含 ImmediatelyFast）。
+  - **装载可见性**：`mt_launch` 回显 `IMMEDIATELYFAST_LOADED` / `MODERNFIX_LOADED`，判据取**已加载模组列表行**里的括号 modId（`(immediatelyfast)` / `(modernfix)`）—— 与史莱姆压制闸门同一教训：只搜名字会把存档里的 `<modId> (version X -> MISSING)` 误判成「已加载」。这两条是 **WARN 级**（与 Sodium/Iris 一致，不做硬失败），但缺失时必须看得见，否则「兼容性验证」会静默地什么都没验证。
+  - **实测（2026-09-17 冷启动，两个模组均装载：`IMMEDIATELYFAST_LOADED=true` / `MODERNFIX_LOADED=true`）**：`MIGRATION-SMOKE` **27/27 PASS**、`PORTED-PROBE-SMOKE` **41/41 PASS**、`CRAFT-SMOKE` **21/21 PASS**、`SHADER-VISION` **11/11 PASS**；四例均无新增崩溃报告、KubeJS 0 错误 ⇒ ImmediatelyFast 1.15.3 + ModernFix 5.27.22 与本模组、Sodium 0.9.1、Iris 1.11.4、Complementary Unbound 光影**无冲突**（光影用例的视觉读数仍为「体积云/大气散射/色调映射 + 游戏存活」）。
+  - ⚠️ **工具链踩坑（已修，务必保持按族清理）**：为复用下载逻辑把安装抽成了 `Install-MtSpecList`，第一版给它传了**一张全局族前缀表**，于是「装史莱姆压制」那一趟把上一趟刚装好的 Sodium/Iris 当成「不在本次规格里」删掉了（每趟只知道自己的 `$installed`），run/mods 里渲染栈凭空消失、看起来像下载失败。现改为**每次调用按族显式传 `-Prefixes`**（渲染栈 `sodium-`/`iris-`、史莱姆 `superflatworldnoslimes-`/`collective-`、优化 `immediatelyfast-`/`modernfix-`），并用 `mt_env mods` 复跑确认三族 jar 共存（10 个 jar 全在）。
+
 - **【用户硬性要求】测试环境必须装「Superflat World No Slimes」——超平坦世界的史莱姆会严重干扰测试流程（已完成，含 A/B 实测）**：测试世界是超平坦、玩家常驻 `y=-60`、难度 `EASY` ⇒ y<40 的史莱姆区块持续刷怪。**A/B 实测证据（同一世界同一位置，`/astralprobe slimecheck`，128 格半径）**：
   | 状态 | 读数 |
   |---|---|

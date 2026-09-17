@@ -92,13 +92,39 @@ $script:RenderMods2612 = @(
        Size = 2756643 }
 )
 
-# 渲染栈的「旧版本清理」前缀：安装后把 run/<版本>/mods 里**不属于本次规格**的同族 jar 删掉。
-# 为什么必须有（2026-09-17 用户要求把 Sodium 降到 0.9.1 时暴露）：`Install-MtRemoteMod` 只负责
-# 「放新文件」，不做「删旧文件」⇒ 换版本后 0.9.2 与 0.9.1 会**同时存在**，FML 直接报
-# 重复模组（`Duplicate mods:` / `Found duplicate mod …`）而拒绝启动，看起来像「新版本装坏了」。
-# 前缀写作 `sodium-`/`iris-`（注意**不带**通配符前缀），故不会误删 `reeses-sodium-options-*` 这类
-# 名字里含 sodium 但注册 id 不同的模组。
-$script:RenderModPrefixes2612 = @('sodium-', 'iris-')
+# ── 优化类模组（2026-09-17 用户要求：进一步验证优化类模组的兼容性）──────────────
+# 来源同样走 **Modrinth Maven**（与渲染栈/史莱姆压制同规则）：
+#   maven.modrinth:immediatelyfast:adbrNJLm （1.15.3+26.1-neoforge，`environment=client_only`）
+#   maven.modrinth:modernfix:j7EoxpYe       （5.27.22+mc26.1.2，`client_or_server_prefers_both`）
+# ⚠️ 两者的「侧别」不同，处理必须分开：
+#   · **ImmediatelyFast 是纯客户端**（即时渲染缓冲/符号图集等客户端优化）⇒ 必须进
+#     `Invoke-MtEnvWorld` 的移出名单（否则专用服务器会加载客户端模组；同规则也适用于
+#     两段式数据生成 runClientData/runServerData 前的手工移出）。
+#   · **ModernFix 两侧皆可**（它同时优化客户端与服务端的启动/内存/资源加载）⇒ 生成世界时
+#     **保留**，服务端也能拿到它的启动期优化。
+# 注：1.21.1 线早已集成 ModernFix（`install_test_mods.ps1` 复制进 run/1.21.1/mods，launch 亦校验其
+# 加载完成日志）；本清单是 26.1.2 线的对应实现。
+$script:PerfMods2612 = @(
+    @{ Name = 'ImmediatelyFast-NeoForge-1.15.3+26.1.jar'
+       Coord = 'maven.modrinth:immediatelyfast:adbrNJLm'
+       Url  = 'https://api.modrinth.com/maven/maven/modrinth/immediatelyfast/adbrNJLm/ImmediatelyFast-NeoForge-1.15.3%2B26.1.jar'
+       Sha1 = 'bb10bdde4199da3cb7a2a64f9e3274a46218c9f1'
+       Size = 312276 }
+    @{ Name = 'modernfix-neoforge-5.27.22+mc26.1.2.jar'
+       Coord = 'maven.modrinth:modernfix:j7EoxpYe'
+       Url  = 'https://api.modrinth.com/maven/maven/modrinth/modernfix/j7EoxpYe/modernfix-neoforge-5.27.22%2Bmc26.1.2.jar'
+       Sha1 = '334500dd0c94a552005a432114fae32fe6c518fc'
+       Size = 505496 }
+)
+
+# 注：**没有**全局的「族前缀表」—— 清理前缀由每次 `Install-MtSpecList` 调用**按族显式传入**
+# （渲染栈 `sodium-`/`iris-`、史莱姆压制 `superflatworldnoslimes-`/`collective-`、
+# 优化模组 `immediatelyfast-`/`modernfix-`）。旧版本清理的必要性：`Install-MtRemoteMod` 只负责
+# 「放新文件」，不做「删旧文件」⇒ 换版本后新旧 jar 会**同时存在**，FML 报重复模组
+# （`Duplicate mods:` / `Found duplicate mod …`）拒绝启动，看起来像「新版本装坏了」。
+# 前缀带连字符，故不会误删 `reeses-sodium-options-*` 这类名字含关键字、注册 id 不同的模组。
+# ⚠️ 第一版曾用一张全局前缀表，结果「装史莱姆压制」那一趟把上一趟刚装好的 Sodium/Iris 删掉了
+# （每趟只知道自己的 `$installed`）—— 故清理范围必须跟着调用走，见 `Install-MtSpecList` 注释。
 
 # ── 超平坦测试世界的「史莱姆压制」模组（2026-09-17 用户硬性要求）──────────────
 # 用户原话：「测试环境强制要求加入 Superflat world no slimes 模组，否则因为超平坦世界
@@ -755,6 +781,80 @@ function Install-MtRemoteMod {
     return 0
 }
 
+function Install-MtSpecList {
+    <#
+    .SYNOPSIS
+        按规格清单逐个下载/校验/落位（`Install-MtRemoteMod` 的批量包装），并按 `-Prefixes` 清掉**同族旧版本**。
+
+    .NOTES
+        为什么把「装 + 清」绑在一起（2026-09-17）：只装不清会让新旧版本 jar 并存 ⇒ FML 判重复模组
+        拒绝启动；调用方若忘了清理就会得到「看起来像新版本装坏了」的假象。
+
+        ⚠️ **清理范围必须由调用方按族显式给出（`-Prefixes`），不得用「全局族前缀表」** ——
+        2026-09-17 实测踩坑：第一版用全局前缀表，于是「装史莱姆压制」那一趟把**上一趟刚装好的
+        Sodium/Iris 当成不在本次规格里的文件删掉了**（每趟调用只知道自己的 `$installed`），
+        结果 run/mods 里渲染栈凭空消失，看起来像下载失败。按族传入前缀后，各趟互不干扰。
+
+        前缀用大小写不敏感 `-like "$pre*"` 匹配（`ImmediatelyFast-…` 要能被 `immediatelyfast-` 命中），
+        且带连字符，故不会误删 `reeses-sodium-options-*` 这类名字里含关键字、注册 id 不同的模组。
+        返回 0 = 全部就位，其它 = `Install-MtRemoteMod` 的错误码（14 = 下载/校验失败，直接透传）。
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][psobject]$Paths,
+        [Parameter(Mandatory)]$Specs,
+        [Parameter(Mandatory)][string]$Cache,
+        [Parameter(Mandatory)][string]$Label,
+        [string[]]$Prefixes = @()
+    )
+
+    $installed = @()
+    foreach ($spec in $Specs) {
+        $rc = Install-MtRemoteMod -Paths $Paths -Spec $spec -Cache $Cache -Label $Label
+        if ($rc -ne 0) { return $rc }
+        $installed += $spec.Name
+    }
+    if ($Prefixes.Count -gt 0) {
+        foreach ($f in @(Get-ChildItem -LiteralPath $Paths.mods_dir -File -Filter '*.jar')) {
+            $isFamily = $false
+            foreach ($pre in $Prefixes) {
+                if ($f.Name -like "$pre*") { $isFamily = $true; break }
+            }
+            if (-not $isFamily) { continue }
+            if ($installed -contains $f.Name) { continue }
+            Remove-Item -LiteralPath $f.FullName -Force -ErrorAction SilentlyContinue
+            Write-MtLine ("MT_MODS: 清理旧版本{0} {1}" -f $Label, $f.Name)
+        }
+    }
+    return 0
+}
+
+function Install-MtPerfMods {
+    <#
+    .SYNOPSIS
+        装优化类模组（ImmediatelyFast + ModernFix）到 run/<版本>/mods（幂等）。
+
+    .NOTES
+        用户要求（2026-09-17）：「增加 ImmediatelyFast 和 ModernFix 模组以进一步验证优化类模组
+        兼容性」。侧别差异见 `$script:PerfMods2612` 的注释（ImmediatelyFast 纯客户端、必须移出
+        专用服务器；ModernFix 两侧皆可、保留）；本函数只对 26.1.2 生效（当前自动化测试线）。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][psobject]$Paths)
+
+    if ($Paths.version -ne '26.1.2') { return 0 }
+
+    $cache = Join-Path (Join-Path (Get-MtRoot) 'temp\probe_mods') $Paths.version
+    [void](New-Item -ItemType Directory -Force -Path $cache)
+    [void](New-Item -ItemType Directory -Force -Path $Paths.mods_dir)
+
+    $rc = Install-MtSpecList -Paths $Paths -Specs $script:PerfMods2612 -Cache $cache -Label '优化模组' -Prefixes @('immediatelyfast-', 'modernfix-')
+    if ($rc -ne 0) { return $rc }
+    $names = ($script:PerfMods2612 | ForEach-Object { $_.Name }) -join ' / '
+    Write-MtLine ("MT_MODS: OK — 优化类模组就位（{0}）；ImmediatelyFast 为纯客户端，生成世界时会被移出" -f $names)
+    return 0
+}
+
 function Install-MtSlimeGuard {
     <#
     .SYNOPSIS
@@ -777,11 +877,9 @@ function Install-MtSlimeGuard {
     [void](New-Item -ItemType Directory -Force -Path $Paths.mods_dir)
 
     $installed = @()
-    foreach ($spec in $script:SlimeGuard2612) {
-        $rc = Install-MtRemoteMod -Paths $Paths -Spec $spec -Cache $cache -Label '史莱姆压制模组'
-        if ($rc -ne 0) { return $rc }
-        $installed += $spec.Name
-    }
+    $rc = Install-MtSpecList -Paths $Paths -Specs $script:SlimeGuard2612 -Cache $cache -Label '史莱姆压制模组' -Prefixes @('superflatworldnoslimes-', 'collective-')
+    if ($rc -ne 0) { return $rc }
+    $installed = @($script:SlimeGuard2612 | ForEach-Object { $_.Name })
     Write-MtLine ("MT_MODS: OK — 超平坦世界史莱姆压制就位（{0}；运行时生效，无需重建世界）" -f ($installed -join ' / '))
     return 0
 }
@@ -821,25 +919,10 @@ function Install-MtRenderStack {
     $progressBak = $ProgressPreference
     $ProgressPreference = 'SilentlyContinue'
     try {
-        # 1) 渲染模组 → run/<版本>/mods
-        $installed = @()
-        foreach ($spec in $script:RenderMods2612) {
-            $rc = Install-MtRemoteMod -Paths $Paths -Spec $spec -Cache $cache -Label '渲染模组'
-            if ($rc -ne 0) { return $rc }
-            $installed += $spec.Name
-        }
-        # 1b) 旧版本清理：删掉同族但不在本次规格里的 jar（换了版本号以后**必须**做，
-        #     否则新旧 Sodium/Iris 同时在场 ⇒ FML 重复模组拒绝启动；见 $script:RenderModPrefixes2612 注释）。
-        foreach ($f in @(Get-ChildItem -LiteralPath $Paths.mods_dir -File -Filter '*.jar')) {
-            $isFamily = $false
-            foreach ($pre in $script:RenderModPrefixes2612) {
-                if ($f.Name.StartsWith($pre)) { $isFamily = $true; break }
-            }
-            if (-not $isFamily) { continue }
-            if ($installed -contains $f.Name) { continue }
-            Remove-Item -LiteralPath $f.FullName -Force -ErrorAction SilentlyContinue
-            Write-MtLine ("MT_MODS: 清理旧版本渲染模组 {0}" -f $f.Name)
-        }
+        # 1) 渲染模组 → run/<版本>/mods（含同族旧版本清理，见 Install-MtSpecList）
+        $rc = Install-MtSpecList -Paths $Paths -Specs $script:RenderMods2612 -Cache $cache -Label '渲染模组' -Prefixes @('sodium-', 'iris-')
+        if ($rc -ne 0) { return $rc }
+        $installed = @($script:RenderMods2612 | ForEach-Object { $_.Name })
 
         # 2) 光影包 → run/<版本>/shaderpacks
         $sp = $script:ShaderPack2612
@@ -972,8 +1055,11 @@ function Invoke-MtEnvMods {
         # 超平坦世界史莱姆压制（2026-09-17 用户硬性要求，见 $script:SlimeGuard2612 注释）
         $rc = Install-MtSlimeGuard -Paths $p
         if ($rc -ne 0) { return $rc }
-        Write-MtLine 'MT_MODS: OK — 26.1.2 dev run：探针运行时 + Sodium/Iris + Complementary Unbound 光影 + 超平坦史莱姆压制'
-        Write-MtLine 'MT_MODS: 注意 — Sodium/Iris 为纯客户端模组：`mt_env world` 起专用服务器会自动移出，但**两段式数据生成（runClientData/runServerData）前必须手动移出** run/26.1.2/mods（与探针运行时同规则）'
+        # 优化类模组（2026-09-17 用户要求：ImmediatelyFast + ModernFix 兼容性验证）
+        $rc = Install-MtPerfMods -Paths $p
+        if ($rc -ne 0) { return $rc }
+        Write-MtLine 'MT_MODS: OK — 26.1.2 dev run：探针运行时 + Sodium/Iris + Complementary Unbound 光影 + 超平坦史莱姆压制 + 优化模组(ImmediatelyFast/ModernFix)'
+        Write-MtLine 'MT_MODS: 注意 — Sodium/Iris/ImmediatelyFast 为纯客户端模组：`mt_env world` 起专用服务器会自动移出，但**两段式数据生成（runClientData/runServerData）前必须手动移出** run/26.1.2/mods（与探针运行时同规则）'
         return 0
     }
 
@@ -1168,7 +1254,7 @@ function Invoke-MtEnvWorld {
         foreach ($f in @(Get-ChildItem -LiteralPath $p.mods_dir -File -Filter '*.jar')) {
             $lower = $f.Name.ToLowerInvariant()
             $isClientOnly = $false
-            foreach ($k in @('imblocker', 'sodium', 'iris', 'embeddium', 'oculus')) {
+            foreach ($k in @('imblocker', 'sodium', 'iris', 'embeddium', 'oculus', 'immediatelyfast')) {
                 if ($lower.Contains($k)) { $isClientOnly = $true; break }
             }
             if (-not $isClientOnly) { continue }

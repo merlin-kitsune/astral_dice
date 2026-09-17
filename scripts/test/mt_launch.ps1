@@ -471,6 +471,13 @@ if ($MyInvocation.InvocationName -ne '.') {
         if ($latest -imatch 'Rhino') { Write-MtInfo 'RHINO_LOADED=true' } else { Write-MtWarn 'RHINO_LOADED=false' }
         if ($latest -imatch 'Sodium') { Write-MtInfo 'SODIUM_LOADED=true' } else { Write-MtWarn 'SODIUM_LOADED=false' }
         if ($latest -imatch 'Iris') { Write-MtInfo 'IRIS_LOADED=true' } else { Write-MtWarn 'IRIS_LOADED=false' }
+        # 优化类模组（2026-09-17 用户要求：ImmediatelyFast + ModernFix 兼容性验证）。判据同样取
+        # **已加载模组列表行**里的括号 modId（`(immediatelyfast)` / `(modernfix)`），避免把存档里
+        # 「MISSING」的旧模组记录误判成已加载（2026-09-17 在史莱姆压制闸门上踩过这个坑）。
+        # 这两条**不**做硬失败（与 Sodium/Iris 一致）：它们是兼容性验证对象，缺装载时给出 WARN 即可，
+        # 但要看得见 —— 否则「验证」会静默地什么都没验证。
+        if ($latest -imatch '\(immediatelyfast\)') { Write-MtInfo 'IMMEDIATELYFAST_LOADED=true' } else { Write-MtWarn 'IMMEDIATELYFAST_LOADED=false(优化模组兼容性验证未生效)' }
+        if ($latest -imatch '\(modernfix\)') { Write-MtInfo 'MODERNFIX_LOADED=true' } else { Write-MtWarn 'MODERNFIX_LOADED=false(优化模组兼容性验证未生效)' }
         # 超平坦世界史莱姆压制（2026-09-17 用户硬性要求：测试环境**必须**装载，否则超平坦世界刷出的
         # 史莱姆会严重干扰测试流程）。装载判据取**模组自身在模组列表里的显示名/描述**（`Superflat World
         # No Slimes` / `Collective`）—— NeoForge 会把每个模组的 displayName 打进日志的模组列表；
