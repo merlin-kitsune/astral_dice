@@ -109,6 +109,16 @@ public final class TargetSelectionClient {
         return Collections.unmodifiableList(nearbyTargets);
     }
 
+    /**
+     * 该实体是否属于当前会话的可见目标集合（命中 / 命中不可选 / 半径内其它）。
+     *
+     * <p>供 {@link TargetOutlineCapture} 判断要不要替它实测可见外框 —— 只为真正要画框的实体付费。
+     */
+    public static boolean isTracked(LivingEntity entity) {
+        if (entity == null || !isActive()) return false;
+        return entity == currentTarget || entity == rejectedTarget || nearbyTargets.contains(entity);
+    }
+
     public static int highlightColor(LivingEntity target) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player != null && isFriendly(mc.player, target)) return COLOR_FRIENDLY;

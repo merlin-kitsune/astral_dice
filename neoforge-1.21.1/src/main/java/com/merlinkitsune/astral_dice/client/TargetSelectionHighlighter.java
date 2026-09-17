@@ -38,7 +38,9 @@ import java.util.List;
  *       —— 恒亮光照下法线不参与着色，取值仅按口径固定；</li>
  *   <li>渲染 stage = {@code AFTER_ENTITIES}（Sodium 不整体替换 {@code LevelRenderer.renderLevel}、
  *       Iris 保留事件点，与既有验证一致）；</li>
- *   <li>线宽三档：命中目标 1/16、命中但不可选 1/24、半径内其它可选目标 1/64（取最近 ≤24 个）。</li>
+ *   <li>线宽三档：命中目标 1/16、命中但不可选 1/24、半径内其它可选目标 1/64（取最近 ≤24 个）；</li>
+ *   <li>框所套的盒 = **可见外框**（碰撞盒 ∪ {@link TargetOutlineCapture} 实测的模型外框）再外扩半线宽
+ *       —— 不直接用碰撞盒（1.21.1 无覆盖模型外框的原版 API，详见 {@link TargetOutlineCapture} 的根因说明）。</li>
  * </ul>
  *
  * <p>配色保留旧口径：友方 {@code 0x55FF55} / 敌对 {@code 0xFF5555} / 中立 {@code 0xFFFF55}。
@@ -87,7 +89,10 @@ public final class TargetSelectionHighlighter {
         LivingEntity target = TargetSelectionClient.currentTarget();
         LivingEntity rejected = TargetSelectionClient.rejectedTarget();
         List<LivingEntity> nearby = TargetSelectionClient.nearbyTargets();
-        if (target == null && rejected == null && nearby.isEmpty()) return;
+        if (target == null && rejected == null && nearby.isEmpty()) {
+            TargetOutlineCapture.clearIfIdle();
+            return;
+        }
 
         poseStack.pushPose();
         Vec3 cam = event.getCamera().getPosition();
@@ -98,19 +103,29 @@ public final class TargetSelectionHighlighter {
         VertexConsumer consumer = buffers.getBuffer(PRISM);
 
         if (target != null && isPresent(mc, target)) {
-            emitPrismBorder(consumer, pose, target.getBoundingBox(), WIDTH_HIT, colorOf(target));
+            emitPrismBorder(consumer, pose, borderBox(target, WIDTH_HIT), WIDTH_HIT, colorOf(target));
         }
         if (rejected != null && rejected != target && isPresent(mc, rejected)) {
-            emitPrismBorder(consumer, pose, rejected.getBoundingBox(), WIDTH_HIT_REJECTED, colorOf(rejected));
+            emitPrismBorder(consumer, pose, borderBox(rejected, WIDTH_HIT_REJECTED), WIDTH_HIT_REJECTED, colorOf(rejected));
         }
         for (LivingEntity other : nearby) {
             if (other == target || other == rejected) continue;
             if (!isPresent(mc, other)) continue;
-            emitPrismBorder(consumer, pose, other.getBoundingBox(), WIDTH_NEARBY, colorOf(other));
+            emitPrismBorder(consumer, pose, borderBox(other, WIDTH_NEARBY), WIDTH_NEARBY, colorOf(other));
         }
 
         buffers.endBatch(PRISM);
         poseStack.popPose();
+    }
+
+    /**
+     * 边框中心线所走的盒：**可见外框**（碰撞盒 ∪ 本帧实测模型外框，见 {@link TargetOutlineCapture}）
+     * 再按半线宽外扩 —— 于是棱柱内表面正好贴在可见外框上（生物任何可见部位都不会穿过边框），
+     * 外表面在可见外框之外半个线宽以上。**只外扩、绝不内缩**（旧实现直接用碰撞盒，导致
+     * 僵尸双臂 / 蜘蛛八条腿 / 马颈头跑到边框之外，即本次修复的缺陷）。
+     */
+    private static AABB borderBox(LivingEntity entity, float lineWidth) {
+        return TargetOutlineCapture.outlineOf(entity).inflate(lineWidth / 2.0D);
     }
 
     /** 实体仍在当前世界内（避免拿上一 tick 的引用渲染已移除实体） */
