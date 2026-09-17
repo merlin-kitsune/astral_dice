@@ -818,12 +818,12 @@ When extending this workspace:
 |---|---|---|---|
 | `neoforge-1.21.1` | `run/1.21.1/mods`（仓库根 run/） | `D:\.minecraft\versions\狐の航空学 Voxy Edition\mods` | 随 build 自动触发（默认） |
 | `forge-1.20.1` | `run/1.20.1/mods`（仓库根 run/） | `D:\.minecraft\versions\1.20.1 模组测试\mods` | 随 build 自动触发（默认） |
-| `neoforge-26.1.2` | `run/26.1.2/mods`（仓库根 run/） | `D:\.minecraft\versions\26.1.2-NeoForge_26.1.2.109\mods` | 随 build 自动触发（默认） |
+| `neoforge-26.1.2` | `run/26.1.2/mods`（仓库根 run/） | `D:\.minecraft\versions\26.1.2 模组测试\mods` | 随 build 自动触发（默认） |
 
 规则要点：
 1. **推送随 build 自动触发**：`-PdeployToPack` 已不再被任何任务读取（源码中仅存注释）；`pushToDevRun`/`pushToRootBuild`/`pushToGame` 三个推送任务均由 `finalizedBy` 随 build 无条件触发。
-2. 推送时**先删除、后复制**:`pushToDevRun`/`pushToGame`/`pushToRootBuild` 三个任务均先清空目标目录中的旧产物、再复制新 jar,各目录只保留本次构建产物。清理匹配范围(**实测**,勿按"都会按后缀过滤"理解):forge-1.20.1 三个任务统一用 `/astral_dice-.+\+forge_1\.20\.1\.jar/`(仅带 `+forge_1.20.1` 后缀);`neoforge-1.21.1` 与 `neoforge-26.1.2` 仅 `pushToRootBuild` 带**各自完整后缀**过滤(`contains('+neoforge_1.21.1')` / `contains('+neoforge_26.1.2')`,根目录 `build/libs/` 多版本共存,不得写成宽泛的 `+neoforge_`),而各自的 `pushToDevRun`/`pushToGame` 匹配**任意** `astral_dice-*.jar`(这两个目标目录本身只放单一版本,故无需过滤,同时也保证旧版本号残留会被清掉)。
-3. 整合包根目录不存在时（如 CI 环境）`pushToGame` 自动跳过并仅输出警告，不影响构建。
+2. 推送时**先删除、后复制**:`pushToDevRun`/`pushToGame`/`pushToRootBuild` 三个任务均先清空目标目录中的旧产物、再复制新 jar,各目录只保留本次构建产物。清理匹配范围(**实测**,勿按"都会按后缀过滤"理解):forge-1.20.1 三个任务统一用 `/astral_dice-.+\+forge_1\.20\.1\.jar/`(仅带 `+forge_1.20.1` 后缀);`neoforge-1.21.1` 与 `neoforge-26.1.2` 的 `pushToRootBuild` 带**各自完整后缀**过滤(`contains('+neoforge_1.21.1')` / `contains('+neoforge_26.1.2')`,根目录 `build/libs/` 多版本共存,不得写成宽泛的 `+neoforge_`);`neoforge-26.1.2` 的 `pushToGame` **同样**带 `contains('+neoforge_26.1.2')`(2026-09-17 收紧:整合包目录属用户环境,不得误删其它分支放进去的产物),仅 `pushToDevRun` 与 1.21.1 侧的 `pushToGame` 匹配**任意** `astral_dice-*.jar`(这两个目标目录本身只放单一版本,故无需过滤,同时也保证旧版本号残留会被清掉)。
+3. 整合包根目录不存在时（如 CI 环境）`pushToGame` 自动跳过并仅输出警告，不影响构建。⚠️ 因此**静默不部署**是最容易发生的形态(2026-09-17 实测:26.1.2 侧的 `pushToGame` 长期指向并不存在的 `D:\.minecraft\versions\26.1.2-NeoForge_26.1.2.109`,只打印 `pack dir not found, skipped`,整合包里的 jar 一直是旧时间戳)——改动 `packModsDir` 或换机后,必须**核对构建日志里确有 `pushToGame: pushed … -> <目标>` 一行**,不得只看 `BUILD SUCCESSFUL`。
 4. forge-1.20.1 子项目产物分两级：`pushToDevRun` 取 `build/devlibs` 未重混淆 jar（dev 环境 Mojmap 名），`pushToGame` 取 `build/libs` 重混淆 jar（生产 SRG 名），推错方向会 `NoSuchFieldError`——不要改动该取值逻辑。
 5. **禁止自动启动 runClient / 冒烟测试（自动化测试流程子配置例外）**：无流程的手动 runClient / 冒烟测试一律禁止，游戏内验证默认由用户手动运行；**仅当经「自动化测试流程（Automated Testing）」子配置（见下方章节）启动的自动化 runClient 允许**，且必须按该流程执行并产出报告。
 6. **自动本地提交 + 禁止自动推送 GitHub**：每次改动完成（含构建部署）后由代理**自动执行本地提交**；但所有 `git push` 必须由用户手动执行（`deploy.ps1` 需显式 `-Push` 才推送），不得自动推送远程。

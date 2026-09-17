@@ -225,9 +225,12 @@ idea {
 // === 编译产物分发规则 ===
 // 默认行为:每次构建完成后自动推送到仓库根 run/26.1.2/mods(本机 runClient 调试)、
 // 仓库根目录 build/libs,并推送到整合包 mods 目录(删除旧版后复制新版)。
-// 整合包位置:D:/.minecraft/versions/26.1.2-NeoForge_26.1.2.109/mods
+// 整合包位置:D:/.minecraft/versions/26.1.2 模组测试/mods
+// (2026-09-17 修正:原指向 `26.1.2-NeoForge_26.1.2.109`,该目录在本机**并不存在**,
+//  于是 pushToGame 每次都只打印 "pack dir not found, skipped" 而静默不部署;
+//  现按 1.20.1 侧 `1.20.1 模组测试` 的同名规则改为 `26.1.2 模组测试`。)
 def devRunModsDir = rootProject.file('run/26.1.2/mods')
-def packModsDir = file('D:/.minecraft/versions/26.1.2-NeoForge_26.1.2.109/mods')
+def packModsDir = file('D:/.minecraft/versions/26.1.2 模组测试/mods')
 
 def jarArchiveProvider = tasks.named('jar').flatMap { it.archiveFile }
 
@@ -277,7 +280,9 @@ tasks.register('pushToGame') {
             packModsDir.mkdirs()
         }
         def stale = packModsDir.listFiles().findAll { File f ->
-            f.isFile() && f.name.startsWith('astral_dice-') && f.name.endsWith('.jar')
+            // ⚠️ 与 pushToRootBuild 同一口径:必须带完整后缀 `+neoforge_26.1.2`,
+            //    否则会把三线并存时用户放进同一目录的其它版本产物误删。
+            f.isFile() && f.name.startsWith('astral_dice-') && f.name.endsWith('.jar') && f.name.contains('+neoforge_26.1.2')
         }
         stale.each { it.delete() }
         def target = new File(packModsDir, jarFile.name)
