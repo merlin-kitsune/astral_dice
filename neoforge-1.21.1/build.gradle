@@ -252,7 +252,8 @@ dependencies {
     // implementation "dev.latvian.mods:kubejs-neoforge:${kubejs_version}"
     implementation 'maven.modrinth:curios:yohfFbgD'
     implementation 'maven.modrinth:patchouli:1.21.1-93-neoforge'
-    implementation fileTree(dir: 'base-mod-libs', include: ['*.jar'])
+    // base-mod-libs 本地 jar 兜底已删除(2026-09-17):模组只能经 Curse Maven / Modrinth Maven 获取
+    // (见 AGENTS.md「模组依赖添加规则(统一口径)」);该目录内的 jar 不得静默进入 classpath。
     // 统一口径(见 AGENTS.md「模组依赖添加规则(统一口径)」):Iron's Spellbooks 一律经 Modrinth Maven 获取,
     // 不再用 base-mod-compile-libs 里的本地 jar(2026-09-17 收编)。
     // 等价性已实测:原本地 jar `base-mod-compile-libs/irons_spellbooks.jar` 的 sha1 =

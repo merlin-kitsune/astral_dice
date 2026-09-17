@@ -8,6 +8,8 @@
 .DESCRIPTION
     用法:
         pwsh -NoProfile -File tools/check_lang_sync.ps1 [-LangDir <assets/astral_dice/lang>]
+        #  未传 -LangDir(默认):在仓库根目录跑时检查三线全部子项目的 lang 目录;
+        #  在子项目目录内跑时回退为相对默认 src/main/resources/assets/astral_dice/lang。
 
     规则:
     - zh_cn.json 与 en_us.json 的 key 集合必须完全一致(新增/删除 key 必须同步两侧)。
@@ -381,6 +383,12 @@ function Sort-Ordinal {
 # 主流程(与 check_lang_sync.py 的 main() 一一对应)
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# 单个 lang 目录的检查(返回退出码:0 通过 / 1 不一致或读失败 / 2 未捕获异常)
+# ---------------------------------------------------------------------------
+function Invoke-LangDirCheck {
+    param([Parameter(Mandatory = $true)][string]$LangDir)
+
 $zhPath = Join-Path $LangDir 'zh_cn.json'
 $enPath = Join-Path $LangDir 'en_us.json'
 
@@ -389,19 +397,19 @@ if (-not $zh.Ok) {
     if ($zh.Kind -eq 'fatal') {
         # CPython 未捕获异常:stdout 为空,异常打到 stderr,退出码 1
         Write-Stderr $zh.Message
-        exit 1
+        return 1
     }
     Write-Stdout "[FAIL] 无法读取/解析语言文件: $($zh.Message)"
-    exit 1
+    return 1
 }
 $en = Read-LangJson $enPath
 if (-not $en.Ok) {
     if ($en.Kind -eq 'fatal') {
         Write-Stderr $en.Message
-        exit 1
+        return 1
     }
     Write-Stdout "[FAIL] 无法读取/解析语言文件: $($en.Message)"
-    exit 1
+    return 1
 }
 
 $zhSet = New-OrdinalSet $zh.Keys
@@ -428,7 +436,7 @@ $common = Sort-Ordinal ([string[]]@($zhSet | Where-Object { $enSet.Contains($_) 
 if ($common.Count -gt 0 -and (-not $zh.IsObject -or -not $en.IsObject)) {
     $which = if (-not $zh.IsObject) { $zh } else { $en }
     Write-Stderr $which.SubscriptError
-    exit 1
+    return 1
 }
 
 foreach ($key in $common) {
@@ -472,7 +480,33 @@ foreach ($key in $common) {
 
 if ($errors) {
     Write-Stdout "`n语言文件未同步:请把 zh_cn.json 的手动修改同步至 en_us.json(同一 key 中英对应)后再提交。"
-    exit 1
+    return 1
 }
 Write-Stdout "OK: zh_cn.json($($zhSet.Count) keys) 与 en_us.json($($enSet.Count) keys) key 完全一致。"
-exit 0
+return 0
+}
+
+# ---------------------------------------------------------------------------
+# 目标选择
+#   显式 -LangDir:只检查该目录(CI 的三步显式调用、以及在子项目目录内的手工调用都走这里)。
+#   未传参:默认检查三线**全部**子项目的 lang 目录 —— 仓库根目录一次跑完
+#   (`pwsh -NoProfile -File tools/check_lang_sync.ps1`),与 CI 的显式三步等价。
+# ---------------------------------------------------------------------------
+$targetDirs = [System.Collections.Generic.List[string]]::new()
+if ($PSBoundParameters.ContainsKey('LangDir')) {
+    $targetDirs.Add($LangDir)
+} else {
+    foreach ($proj in @('neoforge-1.21.1', 'forge-1.20.1', 'neoforge-26.1.2')) {
+        $cand = Join-Path $proj 'src/main/resources/assets/astral_dice/lang'
+        if (Test-Path -LiteralPath $cand -PathType Container) { $targetDirs.Add($cand) }
+    }
+    if ($targetDirs.Count -eq 0) { $targetDirs.Add($LangDir) }   # 回退:在子项目目录内直接运行时用相对默认
+}
+
+$exitCode = 0
+foreach ($dir in $targetDirs) {
+    if ($targetDirs.Count -gt 1) { Write-Stdout "--- $dir" }
+    $rc = Invoke-LangDirCheck -LangDir $dir
+    if ($rc -ne 0) { $exitCode = $rc }
+}
+exit $exitCode
