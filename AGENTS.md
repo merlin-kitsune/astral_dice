@@ -842,6 +842,32 @@ When extending this workspace:
 - 1.21.1 的命令在 **tick 末**才生效（1.20.1 立即生效）：清场后必须 `wait ≥500ms` 再摆靶 / 读基线，且**不要**在同一 tick 里「清场 + 摆靶」。
 - 用难度切换法时**必须切回原难度**（`easy`），否则会改变敌对生物伤害与刷新行为，污染后续用例。
 
+### 测试后收尾（Post-Test Teardown：关闭测试端 + 清理旧存档）— 必须遵守
+
+> **2026-09-17 用户规则**：测试任务完成后**关闭测试端**并**清理旧存档数据**，**避免游戏进程长时间驻留**。
+
+**标准收尾命令（分步执行路线的必做动作）**：
+
+```bash
+pwsh -NoProfile -File scripts/test/mt.ps1 --version <版本> --phase stop --purge-saves
+```
+
+等价直调：`mt_cleanup.ps1 run --version <版本> --purge-saves`（或 `mt_stop.ps1 --version <版本> --purge-saves`）。
+
+- **全流程**（`mt.ps1 --version <版本>`，不带 `--phase`）**已自动收尾**：退出清理走 `mt_cleanup.ps1 run --quiet --purge-saves`，即「收停本流程进程 + 清掉测试存档」一步到位，无需手工补命令。
+- **分步执行**（`--phase launch` / `--phase cases` …）：单阶段默认**不**清理（客户端要跨阶段存活），故**最后一次读数之后必须显式跑上面的收尾命令**——这是硬性纪律，不是建议。
+- **清理范围**（只动 `run/<版本>/` 内的世界目录，绝不碰 `run` 之外、也绝不碰种子包 `resources/testworld-seed-<版本>.zip`）：
+  1. `run/<版本>/saves/<世界名>`（客户端读取位置，`Mt.Paths.client_world`）；
+  2. `run/<版本>/<世界名>`（`runServer` 生成世界的中间位置，`Mt.Paths.server_world`）；
+  3. `run/<版本>/saves/` 下**其它**含 `level.dat` 的历史遗留世界目录（逐个回显后删除）。
+  删除结果以机器可读行 `MT_CLEANUP_SAVES: PURGED <N>` / `MT_CLEANUP_SAVES: KEPT（未指定 --purge-saves）` 回显，便于报告核对。
+- **为什么删得起**：与阶段 E「**每次开新的自动化测试都必须重建世界**，不接受复用上一轮存档」同源——旧存档本来就必须重建，留着只会掩盖「忘了 `mt_env world`」，还白占磁盘。
+- ⚠️ **两阶段/重登类用例中途的 `stop` 禁止加 `--purge-saves`**：那类流程是 `saveall` → `stop`（**保留存档**）→ `launch` 读回，删了存档就没得读。故 `--phase stop` **默认不清理**，只有显式 `--purge-saves` 才清（`--keep-saves` 可显式写回默认）。
+- **失败取证优先**：`.mt_keep_alive` 标记存在时（条目 `on_fail=keep_game_running`），进程收停与存档清理**都只提示、不执行**，现场留给取证；取证完用 `--phase stop --force --purge-saves` 释放。
+- **不要在测试任务之间留着客户端**：进入世界后若长时间不再读数，游戏进程会一直驻留（占内存/显卡，且下一次 `launch` 的前置检查可能因此中止）——**任务结束即收尾**；这与「前置检查会自动收停遗留进程」是两道互补的保险，不能互相替代。
+- **收停是异步的**：`TerminateProcess` 返回 ≠ 进程已从进程表消失，故 `mt_cleanup` 在判残留前会**最多等 20 秒**再复核（否则慢退出的客户端会被误报成 `RESIDUAL`/退出码 1）。
+- **收停范围覆盖「专用服务端 / 数据生成 / run 任务包装器」（2026-09-17 实测缺口）**：旧判据只认**客户端入口** ⇒ `mt_env world`（或两段式数据生成）起的 `runServer` 包装器与服务端 JVM **永远杀不掉**；实测跑完 env 后两者双双存活，且孙进程仍持有父进程 stdout 句柄，把 `mt.ps1 --phase env` **卡死**（子进程早已退出、父进程一直等）。现由 `Mt.Proc.psm1` 的 `Test-MtPipelineProcess` 统一判定（① 客户端沿用最严格判定；② 含 `gradle-wrapper.jar` 且含 `:<子项目>:run` 的包装器；③ 入口 `net.neoforged.devlaunch.Main` 的本版本 JVM），`mt_cleanup` 的「收停后自检」也改用同一判据（否则既杀不掉也检不出）。⚠️ **只认 `run` 家族选择器**——`:neoforge-1.21.1:build` 之类的构建任务不属于测试流程，**绝不能杀**（构建中途被收停会毁产物）。
+
 ### 工具链（`scripts/test/`；脚本本身入库，仅 `mt.conf`、`reports/*`、`cases/.mt_*` 为本地忽略的运行时产物）
 
 #### 脚本职责

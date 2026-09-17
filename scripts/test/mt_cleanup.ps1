@@ -19,6 +19,17 @@
     该标记存在时本模块**不杀客户端也不停守护进程**（守护进程可能是客户端的父进程），
     只打印提示 —— 否则「自动清理」会在失败瞬间销毁现场，让取证变得不可能。
 
+    存档清理（`--purge-saves`，2026-09-17 用户规则「测试任务完成后关闭测试端并清理旧存档数据，
+    避免游戏进程长时间驻留」）：
+      · 删 `<run>/saves/<世界名>`（客户端读取位置）与 `<run>/<世界名>`（runServer 生成位置），
+        以及 `<run>/saves/` 下**其它**含 level.dat 的历史遗留世界目录（逐个回显后删除）；
+      · 只动 `run/<版本>/` 内的世界目录，绝不碰 `run` 之外、也不碰种子包 resources/testworld-seed-*.zip；
+      · 删完即「下次必须先 `mt_env world` 重建世界」—— 与全局规则「每次开新的自动化测试都必须
+        重建世界，不接受复用上一轮存档」一致，留着旧存档反而会掩盖「忘了重建」；
+      · `.mt_keep_alive` 存在时整个清理（含本步骤）一律 SKIP，先取证再 `--force`。
+      · ⚠️ **两阶段/重登类用例不得用它**：那类流程必须 `saveall` → stop（**保留存档**）→ launch 读回，
+        故 `--phase stop` 默认**不**清理存档，只有显式 `--purge-saves` 或全流程退出清理才清。
+
 .PARAMETER Cmd
     status | run
 
@@ -31,6 +42,10 @@
 .PARAMETER KeepDaemon
     保留 Gradle 守护进程（构建热态）
 
+.PARAMETER PurgeSaves
+    收停后清理测试存档（旧存档数据）：`<run>/saves/<世界名>`、`<run>/<世界名>` 及 saves 下其它
+    含 level.dat 的历史遗留世界。默认关闭（两阶段/重登类用例要跨 stop 保留存档）。
+
 .PARAMETER Quiet
     只输出机器可读结论行
 
@@ -39,6 +54,7 @@
     pwsh -File scripts/test/mt_cleanup.ps1 run --quiet
     pwsh -File scripts/test/mt_cleanup.ps1 run --version 1.21.1
     pwsh -File scripts/test/mt_cleanup.ps1 run --force
+    pwsh -File scripts/test/mt_cleanup.ps1 run --purge-saves     # 收停 + 清理旧存档
 
 .NOTES
     迁移前源文件 scripts/test/mt_cleanup.py（该原件已在 92fbeaf「工具链收敛为纯 pwsh」删除，取回：`git show 92fbeaf^:scripts/test/mt_cleanup.py`）。CLI 保持 `--version / --force /
@@ -71,23 +87,24 @@ function Get-MtPipelineProcs {
     .NOTES
         Versions 为空时扫描全部版本；否则只保留指定版本（用于
         `mt_stop.ps1 --version X` 这类「只收停某版本」的调用）。
+
+        2026-09-17：成员判定从「命令行命中 marker」改为 `Test-MtPipelineProcess` ——
+        与收停用**同一个判据**，否则「收停后自检」会漏掉 marker 里没有、但确实属于本流程的
+        进程（实测：`runServer` 的 dev-launch JVM 命令行不含 run 目录/子项目选择器，
+        旧判据既杀不掉也检不出）。
     #>
     [CmdletBinding()]
     param([string[]]$Versions)
 
     $wanted = if ($null -ne $Versions -and $Versions.Count -gt 0) { @($Versions) } else { @(Get-MtVersions) }
-    $markers = [ordered]@{}
-    foreach ($v in $wanted) { $markers[$v] = @(Get-MtProcessMarkers -Paths (Get-MtPaths -Version $v)) }
+    $pathsByVersion = [ordered]@{}
+    foreach ($v in $wanted) { $pathsByVersion[$v] = Get-MtPaths -Version $v }
 
     $out = @()
     foreach ($p in Get-JavaProcesses) {
         $cmd = [string]$p.CommandLine
-        foreach ($v in @($markers.Keys)) {
-            $hit = $false
-            foreach ($m in $markers[$v]) {
-                if ($m -and $cmd.Contains([string]$m)) { $hit = $true; break }
-            }
-            if ($hit) {
+        foreach ($v in @($pathsByVersion.Keys)) {
+            if (Test-MtPipelineProcess -Paths $pathsByVersion[$v] -ProcessId ([int]$p.Pid) -CommandLine $cmd) {
                 $out += [pscustomobject]@{ Version = $v; Pid = [int]$p.Pid; CommandLine = $cmd }
                 break
             }
@@ -141,6 +158,60 @@ function Get-MtPreview {
     return $Text.Substring(0, 160)
 }
 
+# ══ 存档清理（--purge-saves）══════════════════════════════════════════════
+function Remove-MtSaveTree {
+    <#
+    .SYNOPSIS
+        删目录树（尽力而为；与 mt_env.ps1 的同名局部助手同实现，刻意不复用共享模块，
+        以免跨版本分支移植时牵动 Mt.Paths）。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$Path)
+
+    if (Test-Path -LiteralPath $Path) {
+        Remove-Item -LiteralPath $Path -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+function Remove-MtSaveData {
+    <#
+    .SYNOPSIS
+        清理本次测试流程的存档数据（旧存档），返回「已删除路径」数组。
+
+    .NOTES
+        只扫 `run/<版本>/` 内的世界目录，且 `<run>/saves` 下的额外目录必须含 `level.dat`
+        才删（避免误删用户手放的其它文件）。世界名由 Mt.Paths 的 `client_world` 派生，
+        不硬编码 'testworld'。
+    #>
+    [CmdletBinding()]
+    param([string[]]$Versions)
+
+    $removed = @()
+    $targets = if ($null -ne $Versions -and $Versions.Count -gt 0) { @($Versions) } else { @(Get-MtVersions) }
+    foreach ($v in $targets) {
+        $p = Get-MtPaths -Version $v
+        $worldName = Split-Path -Leaf $p.client_world
+        foreach ($w in @($p.client_world, $p.server_world)) {   # saves/<name> 与 run/<name>
+            if (Test-Path -LiteralPath $w) {
+                Remove-MtSaveTree -Path $w
+                if (-not (Test-Path -LiteralPath $w)) { $removed += $w }
+            }
+        }
+        if (Test-Path -LiteralPath $p.saves_dir -PathType Container) {
+            foreach ($d in @(Get-ChildItem -LiteralPath $p.saves_dir -Directory -ErrorAction SilentlyContinue)) {
+                if ($d.Name -eq $worldName) { continue }
+                if (-not (Test-Path -LiteralPath (Join-Path $d.FullName 'level.dat') -PathType Leaf)) { continue }
+                Remove-MtSaveTree -Path $d.FullName
+                if (-not (Test-Path -LiteralPath $d.FullName)) { $removed += $d.FullName }
+            }
+        }
+    }
+    # ⚠️ 不要写 `return , $removed`：调用方是 `@(Remove-MtSaveData …)`，再包一层会让
+    # 返回的数组变成「一个元素」（`$gone.Count` 恒为 1、`$gone[0]` 是整个数组）——
+    # 2026-09-17 实测：删了 2 个世界却报 `PURGED 1` 且两个路径挤在同一行。
+    return $removed
+}
+
 # ══ status ════════════════════════════════════════════════════════════════
 function Invoke-MtCleanupStatus {
     [CmdletBinding()]
@@ -185,7 +256,8 @@ function Invoke-MtRunCleanup {
         [bool]$Force = $false,
         [bool]$KeepDaemon = $false,
         [double]$DaemonTimeout = 90.0,
-        [bool]$Quiet = $false
+        [bool]$Quiet = $false,
+        [bool]$PurgeSaves = $false
     )
 
     $hasVersions = ($null -ne $Versions -and $Versions.Count -gt 0)
@@ -236,7 +308,29 @@ function Invoke-MtRunCleanup {
         } catch { }
     }
 
+    # 存档清理必须**在进程收停之后**（世界文件被客户端句柄占用时删不干净）。
+    # 只删 run/<版本>/ 内的世界目录；`.mt_keep_alive` 存在时已在上面整个 SKIP。
+    if ($PurgeSaves) {
+        $gone = @(Remove-MtSaveData -Versions $targets)
+        if (-not $Quiet) {
+            foreach ($g in $gone) { Write-MtLine ("MT_CLEANUP: 已清理旧存档 $g") }
+        }
+        Write-MtLine ("MT_CLEANUP_SAVES: PURGED {0}" -f $gone.Count)
+    } else {
+        Write-MtLine 'MT_CLEANUP_SAVES: KEPT（未指定 --purge-saves）'
+    }
+
     $left = @(Get-MtPipelineProcs -Versions $targets)
+    # 收停是异步的（TerminateProcess 返回 ≠ 进程已消失，实测客户端被杀后仍会短暂存在于
+    # 进程表里）：2026-09-17 起**先等它退出**再判残留，否则「测试后收尾」这条强制纪律
+    # 会被慢退出的客户端误报成 RESIDUAL/退出码 1。上限 20s，超时仍按残留如实报。
+    if ($left.Count -gt 0) {
+        $settleDeadline = (Get-Date).AddSeconds(20)
+        while ($left.Count -gt 0 -and (Get-Date) -lt $settleDeadline) {
+            Start-Sleep -Milliseconds 500
+            $left = @(Get-MtPipelineProcs -Versions $targets)
+        }
+    }
     $ldaemon = @(Get-MtDaemonProcs)
     if (-not $Quiet) {
         $scope = if ($hasVersions) { '（范围：' + ($targets -join ', ') + '）' } else { '' }
@@ -265,6 +359,7 @@ $Cmd = ''
 $VersionArgs = @()
 $ForceFlag = $false
 $KeepDaemonFlag = $false
+$PurgeSavesFlag = $false
 $DaemonTimeoutSec = 90.0
 $QuietFlag = $false
 
@@ -284,6 +379,8 @@ while ($i -lt $args.Count) {
         $ForceFlag = $true; $i++
     } elseif ($key -eq 'keep-daemon') {
         $KeepDaemonFlag = $true; $i++
+    } elseif ($key -eq 'purge-saves') {
+        $PurgeSavesFlag = $true; $i++
     } elseif ($key -eq 'daemon-timeout') {
         if ($i + 1 -ge $args.Count) { Write-MtErrorLine '缺少 --daemon-timeout 的值'; exit $MT_EXIT_ERROR }
         $DaemonTimeoutSec = [double]$args[$i + 1]
@@ -301,7 +398,8 @@ if ($Cmd -eq 'status') {
 }
 if ($Cmd -eq 'run') {
     $rc = Invoke-MtRunCleanup -Versions $VersionArgs -Force $ForceFlag `
-        -KeepDaemon $KeepDaemonFlag -DaemonTimeout $DaemonTimeoutSec -Quiet $QuietFlag
+        -KeepDaemon $KeepDaemonFlag -DaemonTimeout $DaemonTimeoutSec -Quiet $QuietFlag `
+        -PurgeSaves $PurgeSavesFlag
     exit $rc
 }
 

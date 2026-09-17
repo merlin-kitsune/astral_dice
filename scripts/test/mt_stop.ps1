@@ -22,11 +22,17 @@
 .PARAMETER Force
     忽略失败取证标记（.mt_keep_alive）强制收停
 
+.PARAMETER PurgeSaves
+    收停后**清理测试存档**（旧存档数据，2026-09-17 用户规则「测试任务完成后关闭测试端、
+    清理旧存档数据、避免游戏进程长时间驻留」）。默认关闭：两阶段/重登类用例要跨
+    `stop` 保留存档，只在测试任务**收尾**时才加该开关。
+
 .EXAMPLE
     pwsh -File scripts/test/mt_stop.ps1 --version 1.21.1
     pwsh -File scripts/test/mt_stop.ps1 --all
     pwsh -File scripts/test/mt_stop.ps1 --all --keep-daemon
     pwsh -File scripts/test/mt_stop.ps1 --all --force
+    pwsh -File scripts/test/mt_stop.ps1 --all --purge-saves     # 收尾：收停 + 清旧存档
 
 .NOTES
     迁移前源文件 scripts/test/mt_stop.sh（该原件已在 92fbeaf「工具链收敛为纯 pwsh」删除，取回：`git show 92fbeaf^:scripts/test/mt_stop.sh`）。
@@ -48,6 +54,7 @@ $Targets = @()
 $Mode = ''
 $ForceFlag = $false
 $KeepDaemonFlag = $false
+$PurgeSavesFlag = $false
 
 $i = 0
 while ($i -lt $args.Count) {
@@ -64,6 +71,8 @@ while ($i -lt $args.Count) {
         $ForceFlag = $true; $i++
     } elseif ($key -eq 'keep-daemon') {
         $KeepDaemonFlag = $true; $i++
+    } elseif ($key -eq 'purge-saves') {
+        $PurgeSavesFlag = $true; $i++
     } else {
         Write-MtErrorLine "未知参数 $tok"; exit $MT_EXIT_ERROR
     }
@@ -77,6 +86,7 @@ if (-not $Mode) {
 $cleanupArgs = @('run')
 if ($ForceFlag) { $cleanupArgs += '--force' }
 if ($KeepDaemonFlag) { $cleanupArgs += '--keep-daemon' }
+if ($PurgeSavesFlag) { $cleanupArgs += '--purge-saves' }
 if ($Mode -eq 'version') { foreach ($v in $Targets) { $cleanupArgs += @('--version', $v) } }
 
 Start-MtPhase 'stop'

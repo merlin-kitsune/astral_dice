@@ -347,7 +347,7 @@ function Invoke-MtAutoCleanup {
     Write-MtLine ''
     Start-MtPhase 'cleanup (auto)'
 
-    $argv = @('-NoProfile', '-File', (Join-Path $script:TestDir 'mt_cleanup.ps1'), 'run', '--quiet')
+    $argv = @('-NoProfile', '-File', (Join-Path $script:TestDir 'mt_cleanup.ps1'), 'run', '--quiet', '--purge-saves')
     $r = Invoke-MtProcessFull -FilePath $script:PsExe -ArgumentList $argv -TimeoutSec (Get-MtPhaseBudget 'cleanup')
 
     foreach ($ln in (Get-MtCleanupDisplayLines -Text $r.StdOut)) { Write-MtLine $ln }
@@ -454,6 +454,10 @@ $GenSpec = ''
 $CleanupMode = ''          # '' = 按场景默认；1 = 强制开启；0 = 强制关闭
 $StopForce = $false
 $StopKeepDaemon = $false
+# stop 阶段是否顺带清理测试存档（旧存档数据）。默认 **否**：两阶段/重登类用例要跨 stop
+# 保留存档；测试任务**收尾**时显式加 --purge-saves（全流程退出清理则默认就清，见
+# Invoke-MtAutoCleanup 的 --purge-saves）。
+$StopPurgeSaves = $false
 # B6 ⑥-2：全流程全局超时（秒）。**2026-09-16 起默认 2700s（45 分钟）而不是「0 = 不限」**——
 # 「不限」正是那次「launch 之后 cases 空转 7 分 45 秒、人只能干等」能发生的前提。
 # 覆写：环境变量 MT_RUN_TIMEOUT_SEC 或 --run-timeout <秒>。
@@ -502,6 +506,10 @@ while ($i -lt $args.Count) {
         $StopForce = $true; $i++
     } elseif ($key -eq 'keep-daemon') {
         $StopKeepDaemon = $true; $i++
+    } elseif ($key -eq 'purge-saves') {
+        $StopPurgeSaves = $true; $i++
+    } elseif ($key -eq 'keep-saves') {
+        $StopPurgeSaves = $false; $i++
     } elseif ($key -eq 'h' -or $key -eq 'help') {
         $ShowHelp = $true; $i++
     } else {
@@ -510,8 +518,9 @@ while ($i -lt $args.Count) {
 }
 
 if ($ShowHelp) {
-    # 对应 bash 的 `sed -n '2,23p' "$0"`
-    foreach ($ln in @(Get-Content -LiteralPath $PSCommandPath | Select-Object -Skip 1 -First 22)) {
+    # 对应 bash 的 `sed -n '2,23p' "$0"`；2026-09-17 起示例多一行（--phase stop --purge-saves），
+    # 故窗口由 22 行放宽到 24 行（= 文件第 2..25 行，正好到 .EXAMPLE 块结束）。
+    foreach ($ln in @(Get-Content -LiteralPath $PSCommandPath | Select-Object -Skip 1 -First 24)) {
         Write-MtLine ([string]$ln)
     }
     exit 0
@@ -544,12 +553,15 @@ try {
     }
 
     # ── stop 阶段独立可用 ───────────────────────────────────────────────
-    # --force / --keep-daemon 在此阶段透传给 mt_cleanup（本身不参与阶段编排）。
+    # --force / --keep-daemon / --purge-saves 在此阶段透传给 mt_cleanup（本身不参与阶段编排）。
+    # 测试任务**收尾**用：`--phase stop --purge-saves`（收停测试端 + 清掉旧存档，
+    # 避免游戏进程与旧世界长期驻留）。中途的 stop（重登/两阶段用例）**不要**加该开关。
     if ($Phase -eq 'stop') {
         $stopArgs = @()
         if ($Version) { $stopArgs = @('--version', $Version) } else { $stopArgs = @('--all') }
         if ($StopForce) { $stopArgs += '--force' }
         if ($StopKeepDaemon) { $stopArgs += '--keep-daemon' }
+        if ($StopPurgeSaves) { $stopArgs += '--purge-saves' }
         exit (Invoke-MtChild -Script 'mt_stop.ps1' -ScriptArgs $stopArgs)
     }
 

@@ -518,6 +518,22 @@ pwsh -NoProfile -File scripts/test/mt_watchdog.ps1 -Version 1.21.1 [-StallSecond
 | `temp/` 会话期探针与验证脚本 | 一次性 | 可删（2026-09-15 已整体清空；旧脚本归档包已移至 `docs/archive/legacy_scripts_20260912.zip`） |
 | **KubeJS 探针、测试世界种子包、回归条目 JSON** | **用例可复现性依赖** | **必须入库，禁止删除** |
 | `run/<版本>/mods`、`run/<版本>/kubejs` | 下一次运行的现成环境 | 保留 |
+| **测试世界**（`run/<版本>/saves/<世界名>`、`run/<版本>/<世界名>`） | 全局规则要求**每轮重建**（见阶段 E），旧存档只会掩盖「忘了重建」 | **测试任务收尾必须清理**（2026-09-17 用户规则，见下） |
+
+**测试后收尾（关闭测试端 + 清理旧存档，2026-09-17 用户规则）**
+
+> 规则原文：测试任务完成后，关闭测试端，清理旧存档数据，避免游戏进程长时间驻留。
+
+- **标准收尾命令**：`pwsh -File scripts/test/mt.ps1 --version <版本> --phase stop --purge-saves`
+  （`--purge-saves` 透传链：`mt.ps1` → `mt_stop.ps1` → `mt_cleanup.ps1`）。
+- **全流程自动**：`mt.ps1 --version <V>`（不带 `--phase`）退出清理已带 `--quiet --purge-saves`，无需手工补命令。
+- **单阶段分步必须手工收尾**：单阶段默认不清理（客户端要跨 launch/cases 存活），最后一次读数之后**必须**执行上面的命令。
+- **删除范围**：`client_world`（`saves/<世界名>`）、`server_world`（`<run>/<世界名>`）、以及 `saves/` 下其它含 `level.dat` 的历史遗留世界；**不动** `run` 之外的东西、**不动** `resources/testworld-seed-<版本>.zip`。
+- **回显**：`MT_CLEANUP_SAVES: PURGED <N>`（清理条数）或 `MT_CLEANUP_SAVES: KEPT（未指定 --purge-saves）`。
+- ⚠️ **两阶段/重登类用例中途的 stop 禁止 `--purge-saves`**（要跨 stop 保留存档：`saveall` → stop → launch 读回）。故 `--phase stop` 默认保留存档，`--purge-saves` 是显式开关。
+- **失败取证优先**：`.mt_keep_alive` 存在时收停与清存档都只提示不执行；取证完用 `--phase stop --force --purge-saves` 释放。
+- **收停是异步的**：`TerminateProcess` 返回 ≠ 进程已从进程表消失，故 `mt_cleanup` 在判残留前会**最多等 20 秒**再复核（否则慢退出的客户端会被误报成 `RESIDUAL`/退出码 1）。
+- **收停范围已扩展到「专用服务端 / 数据生成 / run 任务包装器」**（2026-09-17 实测缺口）：旧判据只认**客户端入口**，于是 `mt_env world`（或两段式数据生成）起的 `runServer` 包装器与它的服务端 JVM **永远杀不掉** —— 实测跑完 env 后两者双双存活，且孙进程仍持有父进程 stdout 句柄，把 `mt.ps1 --phase env` **卡死**（子进程早已退出、父进程一直等）。现由 `Mt.Proc.psm1` 的 `Test-MtPipelineProcess` 统一判定：① 客户端（沿用最严格判定）；② 含 `gradle-wrapper.jar` **且**含 `:<子项目>:run` 选择器的包装器（**只认 run 家族**——`:neoforge-1.21.1:build` 之类的构建任务不属于测试流程，绝不能杀）；③ 入口为 `net.neoforged.devlaunch.Main` 的本版本 JVM（服务端/数据生成的命令行不含 run 目录与子项目选择器，靠「version + subproject」证据认领）。`mt_cleanup` 的「收停后自检」同步改用同一判据（否则既杀不掉也检不出）。
 
 **覆盖缺口（如实标注，勿当成已验证）**
 
