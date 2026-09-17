@@ -59,7 +59,7 @@ public class ModClientEvents {
     public static void registerKeyMappings(RegisterKeyMappingsEvent event) {
         event.register(KeyBindingSetup.ACTIVATE_SIGN_KEY);
         event.register(KeyBindingSetup.OPEN_CARD_INVENTORY_KEY);
-        event.register(KeyBindingSetup.CONFIRM_TARGET_KEY);
+        // 目标选择器不注册键盘确认键：确认 = 鼠标左键、取消 = 右键+潜行 / ESC 菜单（强力胶式语义）
     }
 
     public static class DamageNumberOverlay implements IGuiOverlay {

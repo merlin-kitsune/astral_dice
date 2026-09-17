@@ -1,0 +1,360 @@
+{
+  "case_id": "SELECTOR-KEYS-1.20.1",
+  "title": "目标选择器强力胶式按键语义(1.20.1 Forge 移植)：左键=确认 / 右键=自用不可用提示(不提交) / 右键+潜行=取消 / ESC 菜单=取消 / J=取消(保留)，选择期间滚轮拦截与 ChatScreen 豁免不变",
+  "version": "1.20.1",
+  "target": {
+    "type": "feature",
+    "ref": "glue-selector-keys"
+  },
+  "esc_sensitive": true,
+  "steps": [
+    {
+      "op": "note",
+      "text": "被测语义(2026-09-17 用户裁决,Create 强力胶式交互;本模组全部技能不开放自身使用),与 1.21.1 用例 **SELECTOR-KEYS-1.21.1 逐条对等**,1.20.1 侧同一套实现:①左键 = 确认目标(发 ModNetwork.TargetSelectConfirmMessage);②右键 = 对自身使用 ⇒ 只弹 actionbar「该技能无法对自己使用」,**不提交选择**(会话保留);③右键+潜行 = 取消;④ESC = 原版照常打开暂停菜单,ScreenEvent.Opening 收到 PauseScreen 即取消;⑤J(主动技能键)= 取消(保留);⑥选择期间滚轮拦截、ChatScreen 豁免(命令注入)均保留 —— 「滚轮拦截」用 ⑥-a/⑥-b 正反对照自动化(注入原语 + 探针只读读数 selectedSlot)。旧口径(Enter 确认键 CONFIRM_TARGET_KEY / 键盘白名单 isAllowedInputKey / cancelByEscape / KeyboardHandlerMixin)在 1.20.1 侧**同样已删除**;该线那个 Mixin 还带一段「Esc KEYUP 吞键时间窗」补丁,随整个类一并删除(ESC 现在本就该打开菜单 ⇒ 补丁失去意义)。"
+    },
+    {
+      "op": "note",
+      "text": "证据口径(与 1.21.1 侧同形):①四种输入的区分靠固定格式调试行 `[Astral Dice][TargetSelectPrompt] key=left|right|right_sneak|esc action=…`(DEBUG ⇒ 落 **debug.log**,故 source=debug;1.20.1 的 debug.log 已实测含 3500 行 DEBUG / 其中 302 行来自本模组与前置库命名空间);②「右键不提交」由**反证**给出 —— 若右键误走确认,会话当场结束,紧随其后的左键确认会因 token 失效打出 `[TargetSelection] confirm FAIL`(1.20.1 TargetSelectionManager:125-166 六种失败分支) ⇒ 断言 absent `confirm FAIL` 且 present 左键 confirm SUCCESS;③左键确认与三次取消的服务端落账分别锚 `[TargetSelection] confirm token=.. -> SUCCESS` 与 `[TargetSelection] cancel token=.. player=`(同一 debug.log);④ESC 用例结束时再按一次 ESC 关菜单,随后以 /astralprobe diag SK 证明客户端已恢复;⑤滚轮拦截的**唯一可观测面 = 服务端选中槽位**:探针 `/astralprobe diag W0..W3` 的只读读数 `AP_<tag>_DIAG:selectedSlot=N`(source=latest)配合真实滚轮注入,由 ⑥-a 证明拦截(W1 不变)、⑥-b 作正对照(W3 必变);⑥`/astralprobe diag SK` 的「探针正常」读数用 `AP_SK_DIAG:lvlDataGGT=\\d+`(1.20.1 探针 :416 与 1.21.1 侧 :429 同一实现),并加 `absent AP_SK_DIAG:lvlDataGGT=ERR:` ⇒ 探针一旦退化为失败载荷即当场 FAIL。⚠️ `levelClass` / `getGameTime` / `reflectGGT` 三个读数在两线都恒为失败载荷(ERR:Type / no-method),**不得**用于写断言。"
+    },
+    {
+      "op": "note",
+      "text": "⑦「可见外框实测」已在 1.20.1 打通,故本用例**额外**断言一条 `[Astral Dice][TargetSelectBounds] entity=… baby=… collision=… model=… used=…`(source=debug):它是 t16/t17 修复的实体棱柱边框在 1.20.1 上的**自动化存在性证明**(证明走的不是「只用碰撞盒」的旧路径);读数条目的形状与 1.21.1 侧一致,唯一平台差异是 1.20.1 无 SCALE 属性 ⇒ 不含 `scale=` 字段。"
+    },
+    {
+      "op": "note",
+      "text": "`esc_sensitive: true`:目标选择会话激活期间 **Esc 就是「取消选择」**,而不声明「禁止归一化 Esc」的注入会先走一次 Esc→Tab→Enter 界面归一化(mt_inject.ps1 的 Esc 归一化段;pause-lock 只对 -NoEsc 生效),那一次真实 Esc 会当场取消会话。故本用例**全部 26 个注入步骤**都显式声明了 `no_esc: true`,并由 `mt_case.ps1` 的结构校验强制(缺任一注入步骤即校验失败、拒绝执行)。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode creative",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/time set midnight",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/kill @e[type=minecraft:husk]",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/tp @s ~ ~ ~ 0 0",
+      "no_esc": true
+    },
+    {
+      "op": "note",
+      "text": "摆靶:超平坦世界 + yaw=0/pitch=0(面向 +Z 平视)后在正前方 4 格召唤**不会昼燃**的敌对生物 husk(NoAI 静止、静音、不自然消失)⇒ 准星射线命中它,与会话 targetType=ENEMY(test_echo_enemy)匹配,距离 4 ≤ 服务端半径 16。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/summon minecraft:husk ^ ^ ^4 {NoAI:1b,Silent:1b,PersistenceRequired:1b}",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "note",
+      "text": "① 右键(不潜行)= 自用不可用提示、**不提交**;随后用一条聊天命令重新瞄准(顺带证明选择期间 ChatScreen 豁免),再左键确认。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astral_dice targetselect enemy",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "inject_mouse",
+      "button": "right",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "note",
+      "text": "⑥-a 选择期间滚轮拦截:会话仍激活时先用热键 `3` 把选中槽位置到 2(读数 W0 = 2),再滚**一档真实滚轮**(`inject_mouse wheel` ⇒ `mt_inject.ps1` 的 `SendInput(MOUSEEVENTF_WHEEL)`),随后读数 W1 必须**仍是 2** ⇒ 拦截生效(1.20.1 侧由 `InputEvent.MouseScrollingEvent` 取消实现)。若拦截缺失,滚轮会即刻把槽位 +1 变成 3(W1≠2)= FAIL;W0 先置位则是**前置正对照**。"
+    },
+    {
+      "op": "inject_key",
+      "key": "3",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe diag W0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_mouse",
+      "button": "wheel",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe diag W1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/tp @s ~ ~ ~ 0 0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_mouse",
+      "button": "left",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "note",
+      "text": "② 右键+潜行 = 取消(服务端 `cancel token=.. player=`)。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astral_dice targetselect enemy",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "inject_mouse",
+      "button": "right",
+      "shift": true,
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "note",
+      "text": "③ J(主动技能键)= 取消(保留项;走 KeyMapping 消费,不再需要键盘拦截 Mixin)。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astral_dice targetselect enemy",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "inject_key",
+      "key": "j",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "note",
+      "text": "④ ESC = 原版照常打开暂停菜单(键盘 Mixin 已删除,ESC 不再被模组吞掉),菜单一打开即取消选择(`key=esc action=cancel`);再按一次 ESC 关菜单,并用探针命令证明客户端已恢复。这两次 `inject_key cancel` 是**用例刻意按下的真实 Esc**(即被测输入本身),`no_esc` 只表示「不要在其前再加一次归一化 Esc」。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astral_dice targetselect enemy",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "inject_key",
+      "key": "cancel",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "inject_key",
+      "key": "cancel",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe diag SK",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "note",
+      "text": "⑥-b 取消之后滚轮恢复(**正对照**,与 ⑥-a 成对):会话已取消,同样先按 `3` 置槽位 2(读数 W2 = 2),再滚一档滚轮 ⇒ 读数 W3 必须变成 **3**。这条证明「滚轮注入本身有效」:若滚轮注入在环境里无效,⑥-a 的「W1 仍为 2」就可能是假阳性,W3 不变会当场把这种情况暴露为 FAIL。"
+    },
+    {
+      "op": "inject_key",
+      "key": "3",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe diag W2",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_mouse",
+      "button": "wheel",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe diag W3",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode survival",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "debug",
+      "pattern": "\\[Astral Dice\\]\\[TargetSelectPrompt\\] key=right action=self_unsupported"
+    },
+    {
+      "type": "log",
+      "source": "debug",
+      "pattern": "\\[Astral Dice\\]\\[TargetSelectPrompt\\] key=left action=confirm"
+    },
+    {
+      "type": "log",
+      "source": "debug",
+      "pattern": "\\[Astral Dice\\]\\[TargetSelection\\] confirm token=\\d+ target=\\d+\\(.*\\) dist=[\\d.]+ action=test_echo_enemy -> SUCCESS"
+    },
+    {
+      "type": "log",
+      "source": "debug",
+      "pattern": "\\[Astral Dice\\]\\[TargetSelectPrompt\\] key=right_sneak action=cancel"
+    },
+    {
+      "type": "log",
+      "source": "debug",
+      "pattern": "\\[Astral Dice\\]\\[TargetSelectPrompt\\] key=j action=cancel"
+    },
+    {
+      "type": "log",
+      "source": "debug",
+      "pattern": "\\[Astral Dice\\]\\[TargetSelectPrompt\\] key=esc action=cancel"
+    },
+    {
+      "type": "log",
+      "source": "debug",
+      "pattern": "\\[TargetSelection\\] cancel token=\\d+ player="
+    },
+    {
+      "type": "log",
+      "source": "debug",
+      "pattern": "\\[Astral Dice\\]\\[TargetSelectBounds\\] entity=\\S+ baby=\\S+ collision=\\[.*\\] model=\\[.*\\] used=\\[.*\\]"
+    },
+    {
+      "type": "absent",
+      "source": "debug",
+      "pattern": "\\[TargetSelection\\] confirm FAIL"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_W0_DIAG:selectedSlot=2"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_W1_DIAG:selectedSlot=2"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_W2_DIAG:selectedSlot=2"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_W3_DIAG:selectedSlot=3"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_SK_DIAG:lvlDataGGT=\\d+"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_SK_DIAG:lvlDataGGT=ERR:"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "crash"
+    }
+  ],
+  "evidence": [],
+  "on_fail": "keep_game_running"
+}
