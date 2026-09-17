@@ -1,0 +1,17 @@
+{
+  "type": "astral_dice:dice_upgrade",
+  "category": "equipment",
+  "key": {
+    "G": "minecraft:glass",
+    "T": "astral_dice:golden_dice"
+  },
+  "pattern": [
+    "GGG",
+    "GTG",
+    "GGG"
+  ],
+  "result": {
+    "count": 1,
+    "id": "astral_dice:glass_dice"
+  }
+}

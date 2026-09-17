@@ -109,13 +109,20 @@ import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
 /**
  * 物品 tooltip 统一染色规则（权威副本；可读版见 docs/tooltip-color-rules.md）。
  *
- * <p>基调：组件基础色为灰 {@code §7}（普通文本），它同时是「值结束后回落」的复位色。
- * 颜色即语义 —— 黄只出现在数值上，蓝只出现在时间上。行级 {@code withStyle(...)}（标题金、负面行红、
- * 骰子词条各行语义色）与本规则并行，互不覆盖。
+ * <p>基调：普通文本用灰 {@code §7}；行级 {@code withStyle(...)} 可为整行指定语义底色（标题金、负面行红、
+ * 骰子词条各行语义色），与行内规则并行、互不覆盖。颜色即语义 —— 黄只出现在数值上，蓝只出现在时间上。
+ *
+ * <p><b>规则 0（回落码 = 本行底色码）</b>：行内高亮值结束后，必须用「本行底色」的色码回落，禁止用
+ * {@code §r}。tooltip 每一行都经 {@code Tooltip.splitTooltip -> Font.split(component, 170)} 渲染，其
+ * defaultStyle 传的是 {@code Style.EMPTY}（{@code Font.java:328} → {@code StringSplitter.java:259} →
+ * {@code StringDecomposer.java:114}），因此 {@code §r} 复位为「无颜色 = 白」、{@code §7} 复位为灰，两者都
+ * 不等于本行底色。底色码：灰 {@code §7}、金 {@code §6}、粉 {@code §d}、青 {@code §b}、蓝 {@code §9}、
+ * 红 {@code §c}、绿 {@code §a}、深绿 {@code §2}、黄 {@code §e}、白 {@code §f}（如金底 {@code 冷却 §95:00§6）}、
+ * 粉底 {@code 瞬移到 §e16§d 格内}）。值串末尾无后续文本的回落码不影响显示，保持原样即可。
  *
  * <p><b>规则 1（非时间数值 -&gt; 黄 {@code §e}）</b>：所有非时间数值（点数/层数/次数/格数/区间/百分比/
  * 星级/倍率/距离/费用/兑换比例）一律黄色，并连同其前后紧邻的符号一起染色（{@code +3}、{@code -2}、
- * {@code 50%}、{@code ×2}、{@code ★3}、{@code 1~10}、{@code 2:1}）；值后一律接 {@code §7} 回落灰色正文。
+ * {@code 50%}、{@code ×2}、{@code ★3}、{@code 1~10}、{@code 2:1}）；值后按规则 0 回落本行底色。
  *
  * <p><b>规则 2（时间 -&gt; 蓝 {@code §9}）</b>：所有时间值一律蓝色，形态为 {@code M:SS} 与 {@code N 秒} /
  * {@code Ns} / {@code N seconds}，同样包含其前后符号（{@code -10秒}、{@code 180 秒}）。秒数格式化统一走
@@ -124,17 +131,25 @@ import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
  * <p><b>规则 3（效果条目 -&gt; 整段蓝）</b>：文本形如 {@code 效果名 (时间)}（含无空格写法
  * {@code 效果名(时间)}）时，名称与时间必须同色、整段蓝色；禁止「名称灰 + 时间蓝」的割裂写法。
  *
+ * <p><b>规则 4（含 {@code %} 的文案必须走 {@code tt(...)}）</b>：{@code Component.translatable} 会经
+ * {@code TranslatableContents.decomposeTemplate}（{@code TranslatableContents.java:124-171}）把 {@code %%}
+ * 拆成独立的无样式 {@code TEXT_PERCENT} 片段，落在高亮区内的 {@code %} 会掉成行底色（灰）；
+ * {@link #translationString(String, Object...)} 先用 {@code String.format} 把 {@code %%} 收成 {@code %}，
+ * 再整体放进 {@code Component.literal}，颜色才不会丢。故凡 lang 值内含 {@code %%} 的行必须用
+ * {@code tt(...)}，不得直接用 {@code Component.translatable(...)}。
+ *
  * <p><b>例外（优先级：例外 &gt; 规则 3 &gt; 规则 2 &gt; 规则 1）</b>：
  * <ol>
  *   <li>条目已用 {@code §c} 的保持红色（负面效果条目、负面数值、状态警示行、名称类红色），规则 1/2/3 不再改写；</li>
  *   <li>行级 {@code withStyle(...)} 语义色不作为改写对象，行内数值/时间照常着色；</li>
- *   <li>现有 {@code §r}（重置为白）保持原样，不做 {@code §r -> §7} 规范化；</li>
+ *   <li>行内回落码一律按规则 0 处理（{@code §r} / {@code §7} 都不是「恢复本行底色」）；仅值串末尾、
+ *       后面没有任何文本（含 {@code \n} 之后的文本）的回落码不做规范化；</li>
  *   <li>{@code §f} 仅用于 {@code sign.key_hint}（白色行）；</li>
  *   <li>列表序号（{@code 1.}）与标签序号（{@code 第一诅咒} / {@code Curse 1} / {@code T4}）不染色；</li>
  *   <li>连接词性质的 {@code +}（如 {@code §e+3§7 + §9黑暗 (0:03)§7} 中间那个）保持灰色。</li>
  * </ol>
  *
- * <p>审计：{@code python scripts/audit/tooltip_color_audit.py}（退出码 0 = 无违规）。
+ * <p>审计：{@code pwsh -NoProfile -File scripts/audit/tooltip_color_audit.ps1}（退出码 0 = 无违规）。
  */
 @EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public class ModTooltipHandler {
@@ -246,6 +261,11 @@ public class ModTooltipHandler {
         return String.format("§9%d:%02d§7", seconds / 60, seconds % 60);
     }
 
+    // 秒数 → 纯 M:SS 文本(不含染色码,由所在组件的样式着色;如 60 → 1:00)
+    private static String formatMmSs(int seconds) {
+        return String.format(java.util.Locale.ROOT, "%d:%02d", seconds / 60, seconds % 60);
+    }
+
     // 立牌主动技能按键显示名(客户端取实际映射,服务端/异常回退 "J")
     private static String signKeyName() {
         if (net.neoforged.fml.loading.FMLEnvironment.dist == net.neoforged.api.distmarker.Dist.CLIENT) {
@@ -297,7 +317,7 @@ public class ModTooltipHandler {
         if (p.hasEffect(ModEffects.ORBITAL_STRIKE)) bonus += 8 + cardBonus;
         if (p.hasEffect(ModEffects.DIRECTIONAL_BLAST)) bonus += 5 + cardBonus;
         if (p.hasEffect(ModEffects.LIVING_PAGE)) {
-            int pages = ModAttachments.getRinPages(p);
+            int pages = com.merlinkitsune.astral_dice.combat.SpellDamageRegistry.livingPageBonusPages(p);
             bonus += 2 + pages + cardBonus;
         }
         tooltip.add(tt("tooltip.astral_dice.card.active_damage_bonus", bonus)
@@ -335,7 +355,7 @@ public class ModTooltipHandler {
             tooltip.add(Component.empty()
                     .append(tt("tooltip.astral_dice.dice_desc_prefix").withStyle(ChatFormatting.GOLD))
                     .append(tt("tooltip.astral_dice.dice_desc_blessing",
-                            GameplayConstants.DICE_BLESSING_DURATION_SECONDS).withStyle(ChatFormatting.BLUE))
+                            formatMmSs(GameplayConstants.DICE_BLESSING_DURATION_SECONDS)).withStyle(ChatFormatting.BLUE))
                     .append(tt("tooltip.astral_dice.dice_desc_middle").withStyle(ChatFormatting.GRAY))
                     .append(Component.literal(cardInventoryKeyName()).withStyle(ChatFormatting.YELLOW))
                     .append(tt("tooltip.astral_dice.dice_desc_suffix").withStyle(ChatFormatting.GRAY)));
@@ -353,12 +373,15 @@ public class ModTooltipHandler {
                 tooltip.add(tt("tooltip.astral_dice.card.upgrade_hint", starLevel, starLevel + 1, req)
                         .withStyle(ChatFormatting.YELLOW));
             }
-            String cost = usedCost + "/" + maxCost;
-            tooltip.add(tt("tooltip.astral_dice.cost", cost)
-                    .withStyle(ChatFormatting.GRAY));
-            String defCost = usedDefenseCost + "/" + maxDefenseCost;
-            tooltip.add(tt("tooltip.astral_dice.defense_cost", defCost)
-                    .withStyle(ChatFormatting.GRAY));
+            // 下界之星骰子(T4):卡牌栏与费用上限恒为最高档、不随星级变化 → 不显示星级费用行
+            if (!stack.is(ModItems.NETHER_STAR_DICE.get())) {
+                String cost = usedCost + "/" + maxCost;
+                tooltip.add(tt("tooltip.astral_dice.cost", cost)
+                        .withStyle(ChatFormatting.GRAY));
+                String defCost = usedDefenseCost + "/" + maxDefenseCost;
+                tooltip.add(tt("tooltip.astral_dice.defense_cost", defCost)
+                        .withStyle(ChatFormatting.GRAY));
+            }
             if (!stones.isEmpty()) {
                 tooltip.add(tt("tooltip.astral_dice.applied_stones")
                         .withStyle(ChatFormatting.GREEN));
@@ -451,8 +474,6 @@ public class ModTooltipHandler {
             if (stack.is(ModItems.NETHER_STAR_DICE.get())) {
                 tooltip.add(tt("tooltip.astral_dice.nether_star_dice_maxcard")
                         .withStyle(ChatFormatting.LIGHT_PURPLE));
-                tooltip.add(tt("tooltip.astral_dice.nether_star_dice_chip")
-                        .withStyle(ChatFormatting.AQUA));
                 tooltip.add(tt("tooltip.astral_dice.nether_star_dice_starattr")
                         .withStyle(ChatFormatting.GOLD));
             }
@@ -565,28 +586,28 @@ public class ModTooltipHandler {
             tooltip.add(Component.empty());
             tooltip.add(Component.translatable("tooltip.astral_dice.card.king_power").withStyle(ChatFormatting.GRAY));
             addEffectCardPlayCountTooltip(tooltip, player);
-            tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown", GameplayConstants.EFFECT_CARD_COOLDOWN_SECONDS).withStyle(ChatFormatting.RED));
+            tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown", effectCardCooldownSeconds(player)).withStyle(ChatFormatting.RED));
         }
         if (stack.is(ModItems.EFFECT_CARD_BERSERK.get())) {
             tooltip.add(Component.empty());
             tooltip.add(Component.translatable("effect.astral_dice.berserk.description")
                     .withStyle(ChatFormatting.GRAY));
             addEffectCardPlayCountTooltip(tooltip, player);
-            tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown", GameplayConstants.EFFECT_CARD_COOLDOWN_SECONDS).withStyle(ChatFormatting.RED));
+            tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown", effectCardCooldownSeconds(player)).withStyle(ChatFormatting.RED));
         }
         if (stack.is(ModItems.EFFECT_CARD_UNWAVERING.get())) {
             tooltip.add(Component.empty());
             tooltip.add(Component.translatable("effect.astral_dice.unwavering.description")
                     .withStyle(ChatFormatting.GRAY));
             addEffectCardPlayCountTooltip(tooltip, player);
-            tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown", GameplayConstants.EFFECT_CARD_COOLDOWN_SECONDS).withStyle(ChatFormatting.RED));
+            tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown", effectCardCooldownSeconds(player)).withStyle(ChatFormatting.RED));
         }
         if (stack.is(ModItems.EFFECT_CARD_FIGHT_POISON_WITH_POISON.get())) {
             tooltip.add(Component.empty());
             tooltip.add(Component.translatable("effect.astral_dice.fight_poison_with_poison.description")
                     .withStyle(ChatFormatting.GRAY));
             addEffectCardPlayCountTooltip(tooltip, player);
-            tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown", GameplayConstants.EFFECT_CARD_COOLDOWN_SECONDS).withStyle(ChatFormatting.RED));
+            tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown", effectCardCooldownSeconds(player)).withStyle(ChatFormatting.RED));
         }
         if (stack.is(ModItems.BLANK_SIGN.get())) {
             tooltip.add(Component.empty());
@@ -695,8 +716,12 @@ public class ModTooltipHandler {
             addSignPassiveTitle(tooltip, "复制者");
             addSignLines(tooltip, "tooltip.astral_dice.sign.komachi_passive");
             if (event.getEntity() instanceof Player p) {
+                addSignCounter(tooltip, "tooltip.astral_dice.sign.komachi_effect_count",
+                        ModAttachments.getKomachiUseCount(p));
+                // 伤害增益只在**佩戴立牌**时生效(2026-09-15 裁决):死亡保留的值不因"牌不在身上"而显示为加成
                 addSignCounter(tooltip, "tooltip.astral_dice.sign.komachi_damage_bonus",
-                        ModAttachments.getKomachiDamageBonus(p));
+                        com.merlinkitsune.astral_dice.item.sign.KomachiSignItem.isEquipped(p)
+                                ? ModAttachments.getKomachiDamageBonus(p) : 0);
             }
             addSignCooldownRemaining(tooltip, event.getEntity() instanceof Player p ? p : null);
         }
@@ -773,6 +798,10 @@ public class ModTooltipHandler {
             tooltip.add(Component.empty());
             tooltip.add(Component.translatable("tooltip.astral_dice.chip.magic_tome")
                     .withStyle(ChatFormatting.GRAY));
+            if (event.getEntity() instanceof Player p) {
+                addSignCounter(tooltip, "tooltip.astral_dice.chip.magic_tome_count",
+                        ModAttachments.getMagicTomeUseCount(p));
+            }
         }
         if (stack.is(ModItems.BIG_BACKPACK_CHIP.get())) {
             tooltip.add(Component.empty());
@@ -897,7 +926,9 @@ public class ModTooltipHandler {
         }
         if (stack.is(ModItems.STAR_COIN_HAMMER.get())) {
             tooltip.add(Component.empty());
-            tooltip.add(Component.translatable("tooltip.astral_dice.chip.star_coin_hammer")
+            // 必须走 tt():值内含 "%%",Component.translatable 会经 TranslatableContents.decomposeTemplate
+            // 把 "%%" 拆成独立的无样式片段,落在黄色区间里的 % 会掉成行底色(灰)。
+            tooltip.add(tt("tooltip.astral_dice.chip.star_coin_hammer")
                     .withStyle(ChatFormatting.GRAY));
             if (event.getEntity() instanceof Player p) {
                 addSignCounter(tooltip, "tooltip.astral_dice.chip.starlight",
@@ -1064,7 +1095,7 @@ public class ModTooltipHandler {
             addSignPassiveTitle(tooltip, "调查发现");
             addSignLines(tooltip, "tooltip.astral_dice.sign.rin_passive", 32);
             if (event.getEntity() instanceof Player p) {
-                int pages = ModAttachments.getRinPages(p);
+                int pages = com.merlinkitsune.astral_dice.combat.SpellDamageRegistry.livingPageBonusPages(p);
                 addSignCounter(tooltip, "tooltip.astral_dice.sign.rin_bonus", pages);
             }
             addSignCooldownRemaining(tooltip, event.getEntity() instanceof Player p ? p : null);
@@ -1073,7 +1104,8 @@ public class ModTooltipHandler {
             tooltip.add(Component.empty());
             if (event.getEntity() instanceof Player p) {
                 // 活体书页伤害 = 基础 2 + 调查员(rin)已使用数量 + 伤害效果牌统一加成(忍者立牌效果牌伤害增益 + 书签)
-                int pages = ModAttachments.getRinPages(p);
+                // 两项都只在**佩戴对应立牌**时生效(2026-09-15 裁决),故一律走 SpellDamageRegistry 的判定入口
+                int pages = com.merlinkitsune.astral_dice.combat.SpellDamageRegistry.livingPageBonusPages(p);
                 // 组件基础色为灰(普通文本);行内颜色码:数值=黄 §e、时间=蓝 §9
                 tooltip.add(Component.translatable("tooltip.astral_dice.card.living_page",
                                 2 + pages + com.merlinkitsune.astral_dice.combat.SpellDamageRegistry
@@ -1086,7 +1118,7 @@ public class ModTooltipHandler {
             addEffectCardPlayCountTooltip(tooltip, player);
             addActiveDamageBonusTooltip(tooltip, player);
             tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown",
-                            GameplayConstants.EFFECT_CARD_COOLDOWN_SECONDS)
+                            effectCardCooldownSeconds(player))
                     .withStyle(ChatFormatting.RED));
             tooltip.add(Component.translatable("tooltip.astral_dice.card.exclusive_owner")
                     .withStyle(ChatFormatting.DARK_PURPLE));
@@ -1110,7 +1142,7 @@ public class ModTooltipHandler {
             addEffectCardPlayCountTooltip(tooltip, player);
             addActiveDamageBonusTooltip(tooltip, player);
             tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown",
-                            GameplayConstants.EFFECT_CARD_COOLDOWN_SECONDS)
+                            effectCardCooldownSeconds(player))
                     .withStyle(ChatFormatting.RED));
         }
         // === 新效果牌(治疗/互动) ===
@@ -1120,7 +1152,7 @@ public class ModTooltipHandler {
                     .withStyle(ChatFormatting.GRAY));
             addEffectCardPlayCountTooltip(tooltip, player);
             tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown",
-                            GameplayConstants.EFFECT_CARD_COOLDOWN_SECONDS)
+                            effectCardCooldownSeconds(player))
                     .withStyle(ChatFormatting.RED));
         }
         if (stack.is(ModItems.HAMBURGER.get())) {
@@ -1129,7 +1161,7 @@ public class ModTooltipHandler {
                     .withStyle(ChatFormatting.GRAY));
             addEffectCardPlayCountTooltip(tooltip, player);
             tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown",
-                            GameplayConstants.EFFECT_CARD_COOLDOWN_SECONDS)
+                            effectCardCooldownSeconds(player))
                     .withStyle(ChatFormatting.RED));
         }
         if (stack.is(ModItems.LUXURY_FEAST.get())) {
@@ -1138,7 +1170,7 @@ public class ModTooltipHandler {
                     .withStyle(ChatFormatting.GRAY));
             addEffectCardPlayCountTooltip(tooltip, player);
             tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown",
-                            GameplayConstants.EFFECT_CARD_COOLDOWN_SECONDS)
+                            effectCardCooldownSeconds(player))
                     .withStyle(ChatFormatting.RED));
         }
         if (stack.is(ModItems.YOU_HAVE_I_HAVE.get())) {
@@ -1147,7 +1179,7 @@ public class ModTooltipHandler {
                     .withStyle(ChatFormatting.GRAY));
             addEffectCardPlayCountTooltip(tooltip, player);
             tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown",
-                            GameplayConstants.EFFECT_CARD_COOLDOWN_SECONDS)
+                            effectCardCooldownSeconds(player))
                     .withStyle(ChatFormatting.RED));
         }
         if (stack.is(ModItems.EXPRESS_DELIVERY.get())) {
@@ -1156,7 +1188,7 @@ public class ModTooltipHandler {
                     .withStyle(ChatFormatting.GRAY));
             addEffectCardPlayCountTooltip(tooltip, player);
             tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown",
-                            GameplayConstants.EFFECT_CARD_COOLDOWN_SECONDS)
+                            effectCardCooldownSeconds(player))
                     .withStyle(ChatFormatting.RED));
         }
         if (stack.is(ModItems.HAIQING_SIGN.get())) {
@@ -1183,7 +1215,7 @@ public class ModTooltipHandler {
             }
             addEffectCardPlayCountTooltip(tooltip, player);
             tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown",
-                            GameplayConstants.EFFECT_CARD_COOLDOWN_SECONDS)
+                            effectCardCooldownSeconds(player))
                     .withStyle(ChatFormatting.RED));
             tooltip.add(Component.translatable("tooltip.astral_dice.card.exclusive_owner")
                     .withStyle(ChatFormatting.DARK_PURPLE));
@@ -1269,6 +1301,15 @@ public class ModTooltipHandler {
             }
             addSignCooldownRemaining(tooltip, event.getEntity() instanceof Player p ? p : null);
         }
+    }
+
+    /** 效果牌冷却显示:按玩家当前实际冷却取值(含充能的 -20% 减免),结果向下取整为秒 */
+    private static long effectCardCooldownSeconds(Player player) {
+        long baseTicks = GameplayConstants.EFFECT_CARD_COOLDOWN_SECONDS * 20L;
+        long ticks = player != null
+                ? com.merlinkitsune.astral_dice.item.ChargeManager.cooldownTicks(player, baseTicks)
+                : baseTicks;
+        return Math.max(1L, ticks / 20L);
     }
 
 }

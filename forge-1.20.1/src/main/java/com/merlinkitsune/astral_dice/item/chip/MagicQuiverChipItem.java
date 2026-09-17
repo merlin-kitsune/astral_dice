@@ -15,7 +15,7 @@ import com.merlinkitsune.astral_dice.item.card.BaseEffectCardItem;
  * 魔法箭袋筹码:若使用过效果牌,且对具有"标记"的目标造成了法伤(远程+魔法),
  * 则对该目标施加一层标记并返还第一张使用的效果牌。每分钟仅能触发一次。
  *
- * <p>追踪流程:使用效果牌(参与复制计数的功能效果牌)时由 {@link #onEffectCardUsed}
+ * <p>追踪流程:使用效果牌(全部效果牌均参与复制计数)时由 {@link #onEffectCardUsed}
  * 记录第一张使用的效果牌;法伤命中带标记目标时由 {@link #tryProc} 触发返还并进入 1 分钟冷却。
  */
 public class MagicQuiverChipItem extends BaseChipItem {
@@ -34,7 +34,7 @@ public class MagicQuiverChipItem extends BaseChipItem {
     }
 
     /**
-     * 使用效果牌时调用(仅参与复制计数的功能效果牌):
+     * 使用效果牌时调用(全部效果牌均参与复制计数):
      * 佩戴箭袋且冷却已结束时,记录第一张使用的效果牌类型。
      */
     public static void onEffectCardUsed(Player player, String cardType) {

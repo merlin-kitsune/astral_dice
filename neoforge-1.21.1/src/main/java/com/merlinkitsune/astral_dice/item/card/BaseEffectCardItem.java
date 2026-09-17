@@ -33,8 +33,8 @@ import com.merlinkitsune.astral_dice.item.sign.KomachiSignItem;
  *    被阻止时直接失败——不消耗、不播放动画,杜绝"消耗了却没效果"的错位);
  * 2. 服务端权威判定(专属校验 → 出牌锁,见 {@link EffectCardPeriod#isBlocked});
  * 3. 调用子类的 {@link #applyEffect}(服务端,施加实际效果);
- * 4. 出牌登记(统一开始/重置冷却,见 {@link EffectCardPeriod#registerPlay});
- * 5. 复制计数钩子(忍者立牌/魔法秘典/魔法箭袋,见 {@link #countsForCopy()} 与 {@link #cardTypeId()});
+ * 4. 出牌登记(出牌数达到上限时才开始冷却,见 {@link EffectCardPeriod#registerPlay});
+ * 5. 复制计数钩子(忍者立牌/魔法秘典/魔法箭袋,见 {@link #cardTypeId()};计数范围为全部效果牌,无类型过滤);
  * 6. 消耗一张。
  *
  * 子类二选一实现效果:

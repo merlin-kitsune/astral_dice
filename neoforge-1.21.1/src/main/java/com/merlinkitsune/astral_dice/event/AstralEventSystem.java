@@ -5,9 +5,6 @@ import com.merlinkitsune.starenginelib.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.item.card.ExclusiveCardUtil;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
-import net.minecraft.ChatFormatting;
-import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
@@ -21,20 +18,12 @@ import com.merlinkitsune.starenginelib.event.AstralEventType;
 import com.merlinkitsune.starenginelib.event.EventContext;
 import com.merlinkitsune.starenginelib.event.EventTargetCollector;
 /**
- * 事件系统:触发事件并应用立牌增益。
- * 立牌可注册事件类型,并可通过 trigger 触发事件;触发后为持有特定立牌的玩家提供特定增益。
+ * 事件系统:事件触发后的统一附加效果。
+ * 事件本体由各立牌自行实现(大侦探主动的随机事件、秘密侦探击杀「隐匿调查」目标触发的调查阶段);
+ * 本类只负责在事件触发后应用立牌增益(大侦探 +3 星币)与调查员立牌被动(活体书页)。
  */
 public final class AstralEventSystem {
     private AstralEventSystem() {
-    }
-
-    // 触发事件:收集目标 → 应用事件效果 → 触发提示 → 应用立牌增益
-    public static void trigger(Player player, AstralEventType type) {
-        if (player.level().isClientSide()) return;
-        EventContext context = new EventContext(player, EventTargetCollector.collectTargets(player));
-        type.trigger(context);
-        notifyEventTriggered(player, type.id());
-        onEventTriggered(player, type.id().getPath());
     }
 
     // 事件触发后的统一附加效果:立牌被动(如大侦探 +3 星币)与调查员立牌联动
@@ -42,26 +31,6 @@ public final class AstralEventSystem {
         if (triggerer.level().isClientSide()) return;
         applySignBuffs(triggerer);
         applyRinSignPassive(triggerer, eventId);
-    }
-
-    // 自定义 actionbar(5s+1s淡出):xxx玩家触发了:xxx事件
-    private static void notifyEventTriggered(Player triggerer, ResourceLocation eventId) {
-        if (!(triggerer instanceof net.minecraft.server.level.ServerPlayer serverPlayer)) return;
-        Component msg = Component.translatable("msg.astral_dice.event_triggered",
-                triggerer.getDisplayName(),
-                Component.translatable("event.astral_dice." + eventId.getPath()))
-                .withStyle(ChatFormatting.YELLOW);
-        com.merlinkitsune.astral_dice.network.ActionBarPayload payload =
-                new com.merlinkitsune.astral_dice.network.ActionBarPayload(msg,
-                        GameplayConstants.ACTIONBAR_DURATION_TICKS);
-        net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(serverPlayer, payload);
-    }
-
-    // 通过 modid 命名空间下的 ID 触发事件
-    public static void trigger(Player player, String eventId) {
-        Optional<AstralEventType> type = Optional.ofNullable(
-                AstralEvents.get(ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID, eventId)));
-        type.ifPresent(t -> trigger(player, t));
     }
 
     // 调查阶段事件触发时的附加效果(该事件属于事件系统):大侦探立牌 +3 星币、调查员立牌被动
@@ -75,11 +44,10 @@ public final class AstralEventSystem {
         if (holdsSign(player, ModItems.FANNY_SIGN.get())) {
             giveStarCoins(player, 3);
         }
-        // TODO: 其他立牌增益
     }
 
     // 调查员立牌被动:自身触发事件(击杀"隐匿调查"目标),或受到事件影响
-    // (大侦探触发事件影响到调查员 / 周围 32 格或团队/友方内有人触发"调查阶段")后,
+    // (本人触发、周围 32 格内或同队/友方范围内有人触发"调查阶段";触发者未加入队伍时按全服玩家判定)后,
     // 佩戴调查员立牌的玩家获得一张"活体书页"。
     // 影响范围 32 格为硬编码;团队/友方判定走统一收集(触发者无队伍时全服在线玩家视为友方)。
     // 兼容入口:未指定事件 ID 时按默认签名去重(供外部直接调用)。

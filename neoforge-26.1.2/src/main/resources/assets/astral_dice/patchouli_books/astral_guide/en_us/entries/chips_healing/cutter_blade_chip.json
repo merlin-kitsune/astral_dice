@@ -1,0 +1,17 @@
+{
+  "name": "item.astral_dice.cutter_blade_chip",
+  "category": "astral_dice:chips_healing",
+  "icon": "astral_dice:cutter_blade_chip",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:cutter_blade_chip",
+      "text": "astral_dice.guide.entry.cutter_blade_chip.1"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:cutter_blade_chip"
+    }
+  ],
+  "sortnum": 4
+}

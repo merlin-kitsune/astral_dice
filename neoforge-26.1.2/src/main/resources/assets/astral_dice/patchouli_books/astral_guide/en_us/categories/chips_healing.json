@@ -1,0 +1,7 @@
+{
+  "name": "astral_dice.guide.category.chips_healing",
+  "description": "astral_dice.guide.category.chips_healing.desc",
+  "icon": "astral_dice:medkit_emergency_chip",
+  "sortnum": 42,
+  "parent": "astral_dice:chips"
+}

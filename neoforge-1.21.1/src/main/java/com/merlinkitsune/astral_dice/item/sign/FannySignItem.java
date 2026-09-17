@@ -50,9 +50,11 @@ public class FannySignItem extends BaseSignItem {
     }
 
     private static void applyEvent(Player player, int roll) {
+        long now = player.level().getGameTime();
+        long lockEnd = 0L;
         switch (roll) {
-            case 1 -> EffectTimerGuard.apply(player, new MobEffectInstance(MobEffects.REGENERATION, 600, 0, false, true)); // 生命恢复 0:30
-            case 2 -> EffectTimerGuard.apply(player, new MobEffectInstance(MobEffects.DAMAGE_BOOST, 600, 0, false, true)); // 力量 0:30
+            case 1 -> lockEnd = applyTimed(player, MobEffects.REGENERATION, 600); // 生命恢复 0:30
+            case 2 -> lockEnd = applyTimed(player, MobEffects.DAMAGE_BOOST, 600); // 力量 0:30
             case 3 -> giveItem(player, new ItemStack(ModItems.ATTACK_CARD_EPIC.get())); // 攻击-特大
             case 4 -> { // 随机效果牌(不含专属)+3星币
                 giveRandomEffectCard(player);
@@ -60,24 +62,61 @@ public class FannySignItem extends BaseSignItem {
             }
             case 5 -> { // 滋养 2:00(农夫乐事) + 饱和 0:30
                 giveNourishment(player);
-                EffectTimerGuard.apply(player, new MobEffectInstance(MobEffects.SATURATION, 600, 0, false, true));
+                lockEnd = applyTimed(player, MobEffects.SATURATION, 600);
             }
-            case 6 -> EffectTimerGuard.apply(player, new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 600, 0, false, true)); // 迅捷 0:30
-            case 7 -> EffectTimerGuard.apply(player, new MobEffectInstance(MobEffects.HARM, 1, 0, false, true)); // 瞬间伤害
-            case 8 -> EffectTimerGuard.apply(player, new MobEffectInstance(MobEffects.POISON, 300, 0, false, true)); // 中毒 0:15
+            case 6 -> lockEnd = applyTimed(player, MobEffects.MOVEMENT_SPEED, 600); // 迅捷 0:30
+            case 7 -> lockEnd = applyTimed(player, MobEffects.HARM, 1); // 瞬间伤害(1 tick,等同不锁)
+            case 8 -> lockEnd = applyTimed(player, MobEffects.POISON, 300); // 中毒 0:15
             case 9 -> { // 饥饿 0:30 + 反胃 0:07
-                EffectTimerGuard.apply(player, new MobEffectInstance(MobEffects.HUNGER, 600, 0, false, true));
-                EffectTimerGuard.apply(player, new MobEffectInstance(MobEffects.CONFUSION, 140, 0, false, true));
+                lockEnd = Math.max(applyTimed(player, MobEffects.HUNGER, 600),
+                        applyTimed(player, MobEffects.CONFUSION, 140));
             }
             case 10 -> { // 凋灵 0:07 + 黑暗 0:05
-                EffectTimerGuard.apply(player, new MobEffectInstance(MobEffects.WITHER, 140, 0, false, true));
-                EffectTimerGuard.apply(player, new MobEffectInstance(MobEffects.DARKNESS, 100, 0, false, true));
+                lockEnd = Math.max(applyTimed(player, MobEffects.WITHER, 140),
+                        applyTimed(player, MobEffects.DARKNESS, 100));
             }
             case 11 -> { // 虚弱 0:15 + 挖掘疲劳 0:30
-                EffectTimerGuard.apply(player, new MobEffectInstance(MobEffects.WEAKNESS, 300, 0, false, true));
-                EffectTimerGuard.apply(player, new MobEffectInstance(MobEffects.DIG_SLOWDOWN, 600, 0, false, true));
+                lockEnd = Math.max(applyTimed(player, MobEffects.WEAKNESS, 300),
+                        applyTimed(player, MobEffects.DIG_SLOWDOWN, 600));
             }
         }
+        // 第二批「三态化」:只登记本次**实际施加成功**的计时器(取 max)⇒ 进入锁定(生效中)态;
+        // 只发物品的分支(3/4,分支内不登记任何效果)与未施加成功时都不锁 ⇒ 由 performSkill 立即起冷却。
+        // 判据用"实际施加结果"而不是回读实例剩余时长:后者会把无关来源的同名效果(如金苹果的生命恢复)算进来
+        if (lockEnd > now) {
+            beginActiveLock(player, "astral_dice:fanny_sign", lockEnd);
+        }
+    }
+
+    // 施加一个带时长效果(经计时器守卫)并返回其到期刻(0 = 未施加成功,不构成门控计时器)
+    private static long applyTimed(Player player, net.minecraft.core.Holder<net.minecraft.world.effect.MobEffect> effect,
+                                   int durationTicks) {
+        boolean applied = EffectTimerGuard.apply(player,
+                new MobEffectInstance(effect, durationTicks, 0, false, true));
+        return applied ? player.level().getGameTime() + durationTicks : 0L;
+    }
+
+    // 11 项随机事件里会施加到自身的带时长效果(3/4 两项只发物品,不在此列):锁定态的门控效果来源。
+    // 门控只用于"提前结束"(效果被外力清除),硬上界由 applyEvent 按**实际施加**的时长登记
+    private static final java.util.List<net.minecraft.core.Holder<net.minecraft.world.effect.MobEffect>> LOCK_GATE_EFFECTS =
+            List.of(MobEffects.REGENERATION, MobEffects.DAMAGE_BOOST, MobEffects.MOVEMENT_SPEED,
+                    MobEffects.HARM, MobEffects.POISON, MobEffects.HUNGER, MobEffects.CONFUSION,
+                    MobEffects.WITHER, MobEffects.DARKNESS, MobEffects.WEAKNESS, MobEffects.DIG_SLOWDOWN,
+                    MobEffects.SATURATION);
+
+    // 第二批「三态化」:锁定已在 applyEvent 内登记(仅当本次实际施加成功);此处只回答"是否已进入锁定"
+    @Override
+    protected boolean startActiveLockOnUse(Player player, long now) {
+        return isSignActiveLocked(player);
+    }
+
+    // 门控效果实例仍在:效果被外力提前移除时锁定提前结束(硬上界不延长)
+    @Override
+    protected boolean isGateEffectActive(Player player) {
+        for (net.minecraft.core.Holder<net.minecraft.world.effect.MobEffect> effect : LOCK_GATE_EFFECTS) {
+            if (player.hasEffect(effect)) return true;
+        }
+        return false;
     }
 
     // 随机一张功能效果牌(通过随机黑名单排除专属效果牌,如活体书页)

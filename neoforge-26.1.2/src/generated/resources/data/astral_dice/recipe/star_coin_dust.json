@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    "astral_dice:star_coin",
+    "minecraft:quartz",
+    "minecraft:glowstone_dust"
+  ],
+  "result": {
+    "id": "astral_dice:star_coin_dust"
+  }
+}

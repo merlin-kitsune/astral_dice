@@ -1,5 +1,6 @@
 package com.merlinkitsune.astral_dice.item.chip;
 
+import com.merlinkitsune.astral_dice.combat.HostileTargets;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.item.ChargeManager;
 import com.merlinkitsune.starenginelib.item.CuriosCompat;
@@ -75,8 +76,9 @@ public class ElectricSwordChipItem extends BaseChipItem {
     public static void onLivingDeath(LivingDeathEvent event) {
         if (event.isCanceled()) return;
         if (event.getEntity().level().isClientSide()) return;
-        if (!(event.getEntity() instanceof Enemy)) return;
+        // 先取击杀者再判定敌对:视者 = 击杀者(全局敌对玩家规则)
         if (!(event.getSource().getEntity() instanceof Player killer)) return;
+        if (!HostileTargets.isHostile(killer, event.getEntity())) return;
         onHostileKilled(killer);
     }
 }

@@ -43,7 +43,6 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.animal.Animal;
 import net.minecraft.world.entity.boss.wither.WitherBoss;
-import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.entity.monster.warden.Warden;
 import net.minecraft.world.entity.player.Player;
@@ -63,6 +62,7 @@ import net.neoforged.neoforge.event.AnvilUpdateEvent;
 import net.neoforged.neoforge.event.LootTableLoadEvent;
 import net.neoforged.neoforge.event.entity.living.LivingChangeTargetEvent;
 import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
+import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
 import net.neoforged.neoforge.event.entity.living.LivingDropsEvent;
 import net.neoforged.neoforge.event.entity.living.MobEffectEvent;
 import net.neoforged.neoforge.event.entity.player.ItemTooltipEvent;
@@ -128,12 +128,28 @@ public class DiceCombatEvents {
      * {@code onLivingDamagePre} 的 targetDiceResult.isEmpty() 分支内。
      */
     private static final boolean PLAYER_DODGE_ENABLED = false;
-    // 大当家立牌“战斗爽·扩散”递归保护:防止群体伤害再次触发扩散造成无限递归
-    private static boolean cleaveProcessing = false;
     // AOE(顺劈/溅射)波及伤害处理中:被波及目标不再进入骰战结算
     static boolean aoeProcessing = false;
-    // 反击伤害注入进行中(防止注入的反击伤害再次进入骰战结算/递归触发)
-    private static boolean counterProcessing = false;
+    // 反击链深度(替代原单层布尔 counterProcessing,结构性阻止"反击→闪避→反击"递归):
+    //   >0 表示当前正处于「injectCounterDamage → attacker.hurt(...)」的同步调用链中。
+    //   ① 用"深度"而不是布尔:嵌套注入时内层 finally 只把深度减回 1,而不会把守卫整体清零,
+    //      外层剩余的注入过程始终受保护(原 boolean 会被内层 finally 提前复位 = 守卫失效);
+    //   ② 增减包在 try/finally 内:异常/提前返回都会复位,守卫不会卡死;
+    //   ③ 所有能绕回 injectCounterDamage 的入口(骰战结算 / 破绽闪避 / 嘲讽反击 / 肾上腺素闪避)
+    //      都先判定 isInCounterChain(),injectCounterDamage 自身也拒绝再入 →
+    //      反击链内不可能再发起一次反击,递归在结构上不成立(不是"限制递归层数")。
+    private static int counterDepth = 0;
+
+    // 当前是否处于反击链中(供骰战结算 / 闪避 / 反击入口判定)
+    public static boolean isInCounterChain() {
+        return counterDepth > 0;
+    }
+
+    // 当前是否处于本模组内部 AOE(顺劈/溅射/法伤波及)结算窗口。
+    // 语义化只读入口:供受击记录等外部判定区分"主动攻击"与"内部波及"(禁止复制该标志)。
+    public static boolean isInternalAoe() {
+        return aoeProcessing;
+    }
 
 
     // 检测玩家是否佩戴了七咒之戒(按物品 ID 识别,未安装该模组时返回 false)
@@ -175,22 +191,29 @@ public class DiceCombatEvents {
         Entity directEntity = source.getDirectEntity();
 
         LivingEntity target = event.getEntity();
+        // A3:先把本次伤害实例的受击侧倍率固化到局部变量(前置 HIGH 监听器已登记)——
+        // 后续若发生**嵌套**伤害实例(溅射/AOE/反击注入等),登记槽会被那些实例刷新,
+        // 此处先取值可保证骰战路径搬运的仍是"本实例"的倍率(仅同一受害者的登记才会被读取)。
+        double victimFactor = DiceCombatModifiers.instanceVictimFactor(target);
 
         // 立牌受击钩子分发(史莱姆立牌等受击类被动由各立牌 onHurt 实现,不再在此硬编码)
         if (!target.level().isClientSide() && target instanceof Player targetPlayer) {
             BaseSignItem.invokeHurtHooks(targetPlayer, event.getNewDamage());
-            // 缓冲盾牌筹码:受到攻击时 +2 治愈 +3 星币(每分钟一次)
+            // 缓冲盾牌筹码:受到攻击时 +2 治愈 +3 星币(每 15 秒一次)
             com.merlinkitsune.astral_dice.item.chip.BufferShieldChipItem.onHurt(targetPlayer, event.getNewDamage());
         }
 
         // AOE(顺劈/溅射)波及的目标不进入骰战结算,避免二次吃到完整骰战;
-        // 反击伤害注入:注入伤害不进入骰战结算(已按反击公式自算)
-        if (aoeProcessing || counterProcessing) return;
+        // 反击链中的伤害不进入骰战结算(已按反击公式自算),同时结构性阻止反击递归
+        if (aoeProcessing || counterDepth > 0) return;
         if (!(directEntity instanceof Player player)) return;
         if (target == player) return;
 
-        // 电磁炮筹码:对敌对目标发起攻击时消耗 6 层充能,延迟 1 秒对目标 3 格内敌对目标降下雷击
-        com.merlinkitsune.astral_dice.item.chip.RailgunChipItem.onAttack(player, target);
+        // 电磁炮筹码:对敌对目标发起攻击时消耗 6 层充能,延迟 1 秒对目标 3 格内敌对目标降下雷击。
+        // 雷击伤害 = 本次攻击伤害的 50%:此处骰战尚未结算,先按即时伤害兜底登记,
+        // 骰战最终伤害确定后(下方 setNewDamage 之后)回填。
+        var railgunStrike = com.merlinkitsune.astral_dice.item.chip.RailgunChipItem.onAttack(
+                player, target, event.getNewDamage());
 
         // 骰神赐福仅能由近战武器攻击触发与生效:直接伤害来源必须为玩家(已排除弓/弩/三叉戟投掷等远程),
         // 主手必须持有近战武器(排除空手/盾牌/非近战类武器)
@@ -221,10 +244,16 @@ public class DiceCombatEvents {
 
         // 本次攻击是否触发了骰神赐福(与赐福触发逻辑一致:仅在未拥有赐福时触发;同一挥击命中多目标也仅触发一次)
         boolean triggeredBlessing = false;
+        // 大当家立牌被动"战斗爽·溅射":满层赐福触发时置位,本次攻击伤害定稿后立即引爆一次
+        boolean fenSplashArmed = false;
         if (!player.level().isClientSide() && diceStack != null && !player.hasEffect(ModEffects.DICE_BLESSING)
                 && isBlessingTarget(target, player)) {
+            // 六参构造:visible=false 禁用粒子,showIcon=true 让赐福图标(含剩余时间)在 HUD 效果栏正常显示。
+            // ⚠️ 五参构造 (…, ambient, visible) 内部等价于 showIcon=visible ⇒ 传 false 会把 HUD 图标一并隐藏
+            // (物品栏效果面板不读 showIcon,故只在物品栏可见)——与本模组其它状态效果(充能/赋能/弱点识破/治愈)
+            // 一律用 (…, false, false, true) 的口径保持一致,不得改回五参。
             player.addEffect(new MobEffectInstance(ModEffects.DICE_BLESSING,
-                    GameplayConstants.DICE_BLESSING_DURATION_TICKS, 0, false, false));
+                    GameplayConstants.DICE_BLESSING_DURATION_TICKS, 0, false, false, true));
             triggeredBlessing = true;
             // 新赐福周期:重置“防御牌已消耗”标记,确保本次赐福期间最多消耗一次防御牌耐久
             ModAttachments.setDefenseCardConsumedThisBlessing(player, false);
@@ -236,8 +265,9 @@ public class DiceCombatEvents {
                 if (targetCurios.isPresent()) {
                     var targetDiceResult = targetCurios.get().findFirstCurio(DiceCurioItem::isDiceItem);
                     if (targetDiceResult.isPresent() && !targetPlayer.hasEffect(ModEffects.DICE_BLESSING)) {
+                        // 同主分支:六参构造保持 HUD 图标可见(粒子仍由 visible=false 关闭)
                         targetPlayer.addEffect(new MobEffectInstance(ModEffects.DICE_BLESSING,
-                                GameplayConstants.DICE_BLESSING_DURATION_TICKS, 0, false, false));
+                                GameplayConstants.DICE_BLESSING_DURATION_TICKS, 0, false, false, true));
                         ModAttachments.setDefenseCardConsumedThisBlessing(targetPlayer, false);
                         ModAttachments.setCursedSwordBlessingTriggered(targetPlayer, false);
                     }
@@ -253,7 +283,8 @@ public class DiceCombatEvents {
                             (net.minecraft.server.level.ServerLevel) player.level();
                     for (net.minecraft.world.entity.Entity entity : serverLevel.getEntities().getAll()) {
                         if (entity instanceof net.minecraft.world.entity.LivingEntity living
-                                && living instanceof net.minecraft.world.entity.monster.Enemy && living.isAlive()) {
+                                // 上下文重载:攻击者"视谁为敌"(全局规则,含曾主动攻击过攻击者的非同队玩家)
+                                && HostileTargets.isHostile(player, living) && living.isAlive()) {
                             double distSqr = living.distanceToSqr(player);
                             if (distSqr < nearestDistSqr) {
                                 nearestDistSqr = distSqr;
@@ -279,8 +310,8 @@ public class DiceCombatEvents {
             AdvancedPeripheralsChipItem.onBlessingStart(player);
             // 会员推荐信筹码:触发骰神赐福时,获得一张随机卡牌
             com.merlinkitsune.astral_dice.item.chip.MemberRecommendationChipItem.onBlessingStart(player);
-            // 大当家立牌:触发骰神赐福 → 养精蓄锐 -1 层并记录触发时刻;"战斗爽·扩散"待命则本次赐福启用
-            com.merlinkitsune.astral_dice.item.sign.FenSignItem.onBlessingTriggered(player);
+            // 大当家立牌:触发骰神赐福 → 记录触发时刻;养精蓄锐满层则消耗 2 层并置位本次攻击的溅射
+            fenSplashArmed = com.merlinkitsune.astral_dice.item.sign.FenSignItem.onBlessingTriggered(player);
             // 治愈体系:触发骰神赐福 → 医疗箱加点(先)+ 按当前治愈点×2 回血(后)。
             // 置于触发块末尾,确保晚于本事件内所有影响治愈点数量的效果(立牌受击钩子/缓冲盾牌在前部已执行)
             com.merlinkitsune.astral_dice.item.HealingManager.onBlessingTriggered(player);
@@ -381,23 +412,14 @@ public class DiceCombatEvents {
                     }
                 }
                 int starlight = StarLightManager.get(player);
-                if (starlight < StarLightManager.getCap()) {
-                    int accum = ModAttachments.getEightSidedAccum(player) + roll;
-                    while (accum >= 8 && starlight < StarLightManager.getCap()) {
-                        accum -= 8;
-                        starlight++;
-                    }
-                    if (starlight >= StarLightManager.getCap()) {
-                        ModAttachments.setEightSidedAccum(player, 0);
-                        StarLightManager.set(player, StarLightManager.getCap());
-                    } else {
-                        ModAttachments.setEightSidedAccum(player, accum);
-                        StarLightManager.set(player, starlight);
-                    }
-                } else {
-                    // 星光已满,不再累计
-                    ModAttachments.setEightSidedAccum(player, 0);
+                int accum = ModAttachments.getEightSidedAccum(player) + roll;
+                while (accum >= 8 && starlight < StarLightManager.getCap()) {
+                    accum -= 8;
+                    starlight++;
                 }
+                // 星光已满时**保留**累计点数(不清零),待星光回落后继续换算
+                ModAttachments.setEightSidedAccum(player, accum);
+                StarLightManager.set(player, Math.min(starlight, StarLightManager.getCap()));
             }
         }
 
@@ -515,9 +537,11 @@ public class DiceCombatEvents {
                         + ctx.defenseCardSum;
             }
 
-            // Padman sign: attack dice == 6 bypass — ignore all defense except defense cards
+            // 上班族立牌:攻击骰为 6 时无视目标防御力——按本模组「目标防御力」口径
+            // (与贯穿之铳同一公式:2 + 护甲÷2 + 1.4×韧性;护甲已包含由防御力折算而来的部分)
+            // 整项不计入防御,但保留目标的防御骰与防御牌加成。
             if (ctx.padmanDefBypass && !skipDefense) {
-                defensePower = ctx.defenseCardSum;
+                defensePower = defenseBaseDice + ctx.defenseCardSum;
             }
 
             finalDmg = Math.max(1, attackPower - defensePower);
@@ -544,8 +568,19 @@ public class DiceCombatEvents {
             finalDmg = factor.modify(player, target, finalDmg);
         }
 
+        // A3:受击侧伤害修饰器(末影骰子雨中/水下 +40% 等)**只搬运、不二次消费** ——
+        // 骰战以 setNewDamage 覆盖式写入自算的最终伤害,前置 HIGH 监听器(修饰器唯一应用点)乘出的那份值
+        // 会被整段替换(见 docs/interaction-audit-1.2.1.md 的 A3);若此处再消费一次修饰器,
+        // 同一次伤害就会经过两套独立计算(把"丢弃"变成"重复"×1.96)。
+        // instanceVictimFactor(target) 取回**同一伤害实例**由前置监听器登记的倍率(仅同一受害者有效),
+        // 故整条链上修饰器只求值一次、倍率只落在最终落地的这个值上(恰好 ×1.4 一次)。
+        // 用处理器开头固化的局部变量:避免被后续嵌套伤害实例刷新的登记槽影响。
+        finalDmg *= victimFactor;
+
         event.setNewDamage((float) finalDmg);
         sendDamageNumber(event.getEntity(), (int) finalDmg);
+        // 电磁炮:以本次骰战最终伤害回填雷击伤害(50%)
+        com.merlinkitsune.astral_dice.item.chip.RailgunChipItem.applyFinalDamage(railgunStrike, (float) finalDmg);
 
         // 玩家对玩家:被攻击方若佩戴骰子且处于骰神赐福,则每个赐福期间消耗一次防御牌耐久
         if (!player.level().isClientSide() && target instanceof Player targetDefender
@@ -553,33 +588,68 @@ public class DiceCombatEvents {
             consumeDefenseCardDurabilityOnce(targetDefender);
         }
 
-        // 大当家立牌(战斗爽·扩散):本次赐福期间,每次攻击将总伤害的 80% 施加给目标 6 格内其他敌对目标
-        // 使用递归保护:扩散造成的伤害不会再触发二次扩散,避免多目标互炸导致栈溢出
-        if (!player.level().isClientSide() && !cleaveProcessing && com.merlinkitsune.astral_dice.item.sign.FenSignItem.isCleaveActive(player)) {
-            cleaveProcessing = true;
+        // 大当家立牌被动(战斗爽·溅射):本次攻击触发骰神赐福且养精蓄锐满层时,触发块已置位;
+        // 这里在本次攻击伤害定稿后**立即引爆一次**(单次效果:不再等待下一次赐福,也没有持续期),
+        // 并在此刻才扣除养精蓄锐代价(攻击被取消时不会白扣)。
+        // 伤害 = 本次攻击伤害的 88%(**下限 5 点**),范围为**目标及其 6 格范围内**(含主目标)的敌对目标,
+        // 伤害类型为**真伤**(astral_dice:true_damage,登记于 minecraft:bypasses_armor →
+        // 无视护甲值与盔甲韧性;保护附魔与抗性提升不在此口径内,仍会减免);
+        // 只打敌对目标(**无友伤**)、不破坏方块,命中仍附带爆炸粒子与音效(视觉表现与伤害类型无关)。
+        // 递归保护:溅射伤害不进入骰战结算(aoeProcessing 统一闸门),避免二次触发赐福/互相引爆。
+        if (!player.level().isClientSide() && fenSplashArmed) {
+            com.merlinkitsune.astral_dice.item.sign.FenSignItem.consumeSplashCost(player);
             aoeProcessing = true;
             try {
-                double cleaveDmg = finalDmg * com.merlinkitsune.astral_dice.item.sign.FenSignItem.CLEAVE_RATIO;
-                if (cleaveDmg > 0) {
-                    net.minecraft.world.phys.AABB cleaveBox =
-                            target.getBoundingBox().inflate(com.merlinkitsune.astral_dice.item.sign.FenSignItem.CLEAVE_RANGE);
-                    var nearby = target.level().getEntitiesOfClass(
-                            net.minecraft.world.entity.LivingEntity.class, cleaveBox,
-                            e -> e != target && e instanceof net.minecraft.world.entity.monster.Enemy && e.isAlive());
-                    var cleaveSource = com.merlinkitsune.astral_dice.damage.ModDamageTypes
-                            .diceDamage(target.level(), player);
-                    for (var e : nearby) {
-                        e.hurt(cleaveSource, (float) cleaveDmg);
-                        sendDamageNumber(e, (int) cleaveDmg);
+                // 下限取立牌常量(5 点),高于全局"按比例不足 1 时按 1 计"的兜底
+                float splashDmg = (float) Math.max(
+                        com.merlinkitsune.astral_dice.item.sign.FenSignItem.SPLASH_DAMAGE_MIN,
+                        finalDmg * com.merlinkitsune.astral_dice.item.sign.FenSignItem.SPLASH_RATIO);
+                net.minecraft.world.phys.AABB splashBox = target.getBoundingBox()
+                        .inflate(com.merlinkitsune.astral_dice.item.sign.FenSignItem.SPLASH_RANGE);
+                var splashVictims = target.level().getEntitiesOfClass(
+                        net.minecraft.world.entity.LivingEntity.class, splashBox,
+                        // 上下文重载:施放者"视谁为敌" —— 溅射现在也会命中「非同队伍且曾主动攻击过施放者的玩家」
+                        e -> HostileTargets.isHostile(player, e) && e.isAlive());
+                if (!splashVictims.isEmpty()) {
+                    // 真伤伤害源:直接伤害实体为空、击杀归属玩家(与旧 explosion(null, player) 同形状,
+                    // 不会被本模组或其它模组再当成一次"玩家的直接攻击"重走命中判定,同时保留击杀归属);
+                    // 类型 astral_dice:true_damage 登记于 minecraft:bypasses_armor → 无视护甲值与盔甲韧性。
+                    var splashSource = com.merlinkitsune.astral_dice.damage.ModDamageTypes.trueDamage(
+                            target.level(), player);
+                    for (var victim : splashVictims) {
+                        // 主目标此刻正处在**自己这次攻击的伤害事件内部**:原版 LivingEntity#hurt 先写
+                        // lastHurt/invulnerableTime(用的是**骰战结算前**的武器伤害),再进 actuallyHurt →
+                        // 本事件;于是"无敌帧内不更低的伤害被丢弃"规则会把溅射整段吞掉(实测主靶只掉近战
+                        // 那 3 点、5 点溅射凭空消失)。这里只对主目标临时清零无敌帧,让溅射照常结算;
+                        // 其余目标没有在飞的伤害,不动。
+                        boolean isMainTarget = victim == target;
+                        int savedInvulnerable = isMainTarget ? victim.invulnerableTime : 0;
+                        try {
+                            if (isMainTarget) victim.invulnerableTime = 0;
+                            victim.hurt(splashSource, splashDmg);
+                            sendDamageNumber(victim, (int) splashDmg);
+                        } finally {
+                            if (isMainTarget) victim.invulnerableTime = savedInvulnerable;
+                        }
+                    }
+                    // 爆炸视觉效果:只发粒子与音效,不改动世界(不破坏方块)
+                    if (target.level() instanceof net.minecraft.server.level.ServerLevel serverLevel) {
+                        double ex = target.getX();
+                        double ey = target.getY(0.5);
+                        double ez = target.getZ();
+                        serverLevel.sendParticles(net.minecraft.core.particles.ParticleTypes.EXPLOSION_EMITTER,
+                                ex, ey, ez, 1, 0.0, 0.0, 0.0, 0.0);
+                        serverLevel.playSound(null, ex, ey, ez, net.minecraft.sounds.SoundEvents.GENERIC_EXPLODE,
+                                net.minecraft.sounds.SoundSource.BLOCKS, 4.0F,
+                                (1.0F + (serverLevel.random.nextFloat() - serverLevel.random.nextFloat()) * 0.2F) * 0.7F);
                     }
                 }
             } finally {
-                cleaveProcessing = false;
                 aoeProcessing = false;
             }
         }
 
-        // 吸血鬼立牌(papara)主动"嘬一口":攻击时恢复骰神赐福最终伤害的一半生命(取整,至少 1 点)
+        // 吸血鬼立牌(papara)主动"汲取":攻击时恢复骰神赐福最终伤害的一半生命(取整,至少 1 点)
         if (!player.level().isClientSide() && player.hasEffect(ModEffects.PAPARA_BITE)) {
             player.heal(Math.max(1, (int) finalDmg / 2));
         }
@@ -594,14 +664,8 @@ public class DiceCombatEvents {
             consumeAttackCardDurabilityOnce(player, diceStack, enhancement);
         }
 
-        // Flashlight chip: 攻击单个敌对目标时 +1 星光(每个目标仅增加 1 点,不超过上限)
-        if (!player.level().isClientSide() && target instanceof Enemy && attackerCurios.isPresent()) {
-            var flashlightResult = attackerCurios.get().findFirstCurio(s -> s.is(ModItems.FLASHLIGHT_CHIP.get()));
-            if (flashlightResult.isPresent()) {
-                // 手电筒:攻击单个敌对目标时 +1 星光(上限由 StarLightManager 统一管理)
-                StarLightManager.add(player, 1);
-            }
-        }
+        // 手电筒筹码:攻击敌对目标时 +1 星光(同一目标仅 +1 层,去重记录见 FlashlightChipItem)
+        com.merlinkitsune.astral_dice.item.chip.FlashlightChipItem.onAttack(player, target);
     }
 
 
@@ -755,8 +819,6 @@ public class DiceCombatEvents {
         com.merlinkitsune.astral_dice.item.chip.BankCardUnlimitedChipItem.onBlessingEnd(player);
         // 大碗炖肉筹码:赐福结束后,16 格范围内所有友方目标 +1 治愈并恢复 2 点生命值
         com.merlinkitsune.astral_dice.item.chip.BigBowlStewChipItem.onBlessingEnd(player);
-        // 大当家立牌:赐福结束清除"战斗爽·扩散"生效状态
-        com.merlinkitsune.astral_dice.item.sign.FenSignItem.onBlessingEnd(player);
         // 骇客立牌:赐福结束刷新被动(攻击/防御,覆盖旧类型)
         NancyLuSignItem.onDiceBlessingEnded(player);
         // 枪匠立牌:赐福结束弱点识破减少 1 层
@@ -924,7 +986,7 @@ public class DiceCombatEvents {
         if (target instanceof Player other) {
             return other.getTeam() == null || other.getTeam() != player.getTeam();
         }
-        if (target instanceof Enemy) return true;
+        if (HostileTargets.isHostile(target)) return true;
         if (target instanceof Mob mob) {
             // Boss 允许触发;其余生物仅在被激怒/正在攻击玩家时允许
             if (com.merlinkitsune.starenginelib.item.BossEntityUtil.isBossEntity(target)) return true;
@@ -962,20 +1024,58 @@ public class DiceCombatEvents {
         com.merlinkitsune.astral_dice.network.DamageNumberPayload.send(target, bonusDamage, color);
     }
 
+    // === 闪避统一取消入口(必须在伤害判定最前置处"取消") ===
+    // 为什么必须"取消"而不是"把伤害改成 0":
+    //  - 派发点:NeoForge 的 LivingIncomingDamageEvent 由 CommonHooks.onEntityIncomingDamage
+    //    在 LivingEntity.hurt 压入 DamageContainer 之后立即派发
+    //    (neoforge 21.1.235 LivingEntity.java:1152-1153;位于 isInvulnerableTo / isDeadOrDying
+    //    之后,无敌帧与全部伤害处理之前),setCanceled(true) 后 hurt 直接 return false。
+    //  - 只有在这一层取消,攻击方 Mob#doHurtTarget 才拿到 false(1.21.1 Mob.java:1498-1519),
+    //    从而不再执行"命中后附加效果"。原版尸壳 Husk#doHurtTarget 为:
+    //      boolean flag = super.doHurtTarget(entity);
+    //      if (flag && this.getMainHandItem().isEmpty() && entity instanceof LivingEntity)
+    //          ((LivingEntity)entity).addEffect(new MobEffectInstance(MobEffects.HUNGER, 140 * (int)f), this);
+    //    (1.21.1 Husk.java:56-64)flag 为 false 时饥饿不会被施加。
+    //  - 同时不产生受伤反馈:hurt 在赋值 invulnerableTime / hurtDuration / hurtTime、
+    //    broadcastDamageEvent、markHurt、knockback、indicateDamage(ClientboundHurtAnimationPacket)、
+    //    playHurtSound 之前就已经返回。
+    // 旧实现只在伤害阶段 setNewDamage(0):此时 hurt 早已走完全部流程并返回 true,
+    // 所以命中附加效果与红屏/晃动/受伤音效照旧发生。
+    public static void applyDodgeCancel(LivingIncomingDamageEvent event) {
+        LivingEntity target = event.getEntity();
+        // 先取消:立牌 onHurt / 缓冲盾牌等受击联动即使抛异常,也不得让"闪避"退化成命中
+        event.setCanceled(true);
+        // 保留旧实现(伤害阶段)下的受击联动:旧代码只把伤害改成 0,hurt 仍走完全流程,
+        // LivingDamageEvent.Pre 照常派发,因此 BaseSignItem.invokeHurtHooks 与
+        // BufferShieldChipItem.onHurt 在"被闪避的那一击"上依然会触发。上移到最前置处后,
+        // 取消会跳过整段伤害处理,故在此显式补发一次(取消后伤害阶段不再派发 → 不会重复触发)。
+        // 注:此处传入的是减伤前原始值;两个钩子实现都不读取该数值(仅用于"是否受击"判定)。
+        if (!target.level().isClientSide() && target instanceof Player player) {
+            BaseSignItem.invokeHurtHooks(player, event.getAmount());
+            com.merlinkitsune.astral_dice.item.chip.BufferShieldChipItem.onHurt(player, event.getAmount());
+        }
+    }
+
     // === 枪匠立牌(Moses)破绽闪避/反击 ===
+    // 破绽持续 2:00,期间**每一次**目标攻击都会被闪避并触发反击(不再被"每目标已发放"标记拦掉);
+    // 「弱点识破」层数的"每目标每段破绽只 +1"限制由 MosesSignItem.onDodgeCounter 内部判定。
+    // 闪避改在伤害判定最前置处"取消"(LivingIncomingDamageEvent)而不是在伤害阶段把伤害改成 0:
+    // 只有前者能让攻击方 Mob#doHurtTarget 拿到 hurt()==false,从而不施加尸壳饥饿等命中附加效果、
+    // 也不产生红屏/屏幕震动/受伤音效与击退同步。详见 applyDodgeCancel 的注释。
     @SubscribeEvent
-    public static void onMosesBrokenDodge(LivingDamageEvent.Pre event) {
+    public static void onMosesBrokenDodge(LivingIncomingDamageEvent event) {
         LivingEntity victim = event.getEntity();
         if (victim.level().isClientSide()) return;
         if (!(victim instanceof Player player)) return;
         if (!MosesSignItem.isEquipped(player)) return;
+        // 反击链中的伤害不参与破绽闪避/反击判定(结构性递归截断):
+        // 否则 A/B 双方各自都带破绽时会 A 闪避 B → 反击注入 B → B 闪避 → 反击注入 A → ... 无限互相递归
+        if (isInCounterChain()) return;
         if (!(event.getSource().getEntity() instanceof LivingEntity attacker)) return;
-        if (!(attacker instanceof net.minecraft.world.entity.monster.Enemy)) return;
         if (!attacker.hasEffect(ModEffects.MOSES_BROKEN)) return;
-        if (ModAttachments.isMosesDodgeCounterRewarded(attacker)) return;
-        // 闪避本次伤害
-        event.setNewDamage(0);
-        // 获得弱点识破并标记该目标已闪避
+        // 闪避本次攻击(最前置取消)
+        applyDodgeCancel(event);
+        // 获得弱点识破并标记该目标已闪避(每目标每段破绽最多 1 层)
         MosesSignItem.onDodgeCounter(player, attacker);
         // 单次反击伤害注入(不进入反击效果/层数体系)
         injectCounterDamage(player, attacker);
@@ -987,11 +1087,13 @@ public class DiceCombatEvents {
     public static void onPandamanTauntCounter(LivingDamageEvent.Pre event) {
         LivingEntity victim = event.getEntity();
         if (victim.level().isClientSide()) return;
-        if (counterProcessing) return;
+        // 反击链中不再触发嘲讽反击(与破绽闪避共用同一结构性递归截断)
+        if (isInCounterChain()) return;
         if (!(victim instanceof Player player)) return;
         if (!player.isAlive()) return;
         if (!(event.getSource().getEntity() instanceof LivingEntity attacker)) return;
-        if (!(attacker instanceof Enemy)) return;
+        // 视者 = 被攻击的玩家(player):被嘲讽目标若为"曾主动攻击过本玩家的非同队玩家"同样计入敌对
+        if (!HostileTargets.isHostile(player, attacker)) return;
         if (!attacker.hasEffect(ModEffects.PANDAMAN_TAUNT)) return;
         Optional<UUID> tauntSource = ModAttachments.getPandamanTauntSource(attacker);
         if (tauntSource.isEmpty() || !tauntSource.get().equals(player.getUUID())) return;
@@ -1004,16 +1106,24 @@ public class DiceCombatEvents {
     // 不登记反噬目标、不持续返还。
 
     // 对当前目标注入一次反击伤害(视为玩家伤害来源,不进入骰战结算/不递归触发)
+    // 结构性递归截断:本方法自身拒绝在反击链中再入——即使将来新增调用点忘记加守卫,
+    // 反击链也不可能自我递归(而不是"限制递归层数"这类可被绕过的软限制)。
     private static void injectCounterDamage(Player player, LivingEntity attacker) {
-        double dmg = computeCounterDamage(player, attacker);
-        if (dmg <= 0) return;
-        counterProcessing = true;
+        if (isInCounterChain()) return;
+        // 整个「反击伤害计算 + 注入」都必须落在反击链内:计算过程本身也会造成伤害——
+        // computeCounterDamage → rollCombatDie → CrimsonDiceHandler.rollD6 掷出 1 时会对掷骰者
+        // 本人施加 6 点 astral_dice:dice_damage(CrimsonDiceHandler.java:63-65)。若把计算留在
+        // 守卫之外,这份自伤仍可能再次进入破绽闪避/反击判定,构成第二条(概率性、无上界的)递归路径。
+        counterDepth++;
         try {
+            double dmg = computeCounterDamage(player, attacker);
+            if (dmg <= 0) return;
             attacker.hurt(com.merlinkitsune.astral_dice.damage.ModDamageTypes.diceDamage(attacker.level(), player),
                     (float) dmg);
             sendDamageNumber(attacker, (int) dmg);
         } finally {
-            counterProcessing = false;
+            // try/finally:异常/提前返回都会复位;计数器只减不置零 → 嵌套同样安全
+            counterDepth--;
         }
     }
 

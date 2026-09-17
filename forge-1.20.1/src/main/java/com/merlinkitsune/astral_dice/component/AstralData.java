@@ -2,6 +2,7 @@ package com.merlinkitsune.astral_dice.component;
 
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.common.capabilities.Capability;
 import net.minecraftforge.common.capabilities.ICapabilitySerializable;
@@ -14,7 +15,8 @@ import javax.annotation.Nullable;
 
 /**
  * 玩家附件数据承载(1.20.1):单一 Capability,内部为 NBT compound,
- * 由 {@link AttachedDataKey} 按名读写。持久化随玩家 NBT;死亡不复制(与 1.21 附件默认行为一致)。
+ * 由 {@link AttachedDataKey} 按名读写。持久化随玩家 NBT;维度切换复制全部数据,
+ * 死亡重生**只复制显式标记为随死亡保留的键**(见 {@link #onPlayerClone}),其余与 1.21 附件默认行为一致。
  */
 public class AstralData implements INBTSerializable<CompoundTag> {
     private CompoundTag persistent = new CompoundTag();
@@ -60,16 +62,40 @@ public class AstralData implements INBTSerializable<CompoundTag> {
         }
     }
 
-    /** 维度切换时保留数据(死亡不保留,对应 1.21 附件无 copyOnDeath 的行为)。 */
+    /**
+     * 维度切换:复制全部数据。死亡重生:只复制**随死亡保留**的键
+     * ({@code rin_pages} / {@code komachi_damage_bonus} / {@code guide_book_given}),与 1.21.1 侧
+     * {@code AttachmentType.Builder#copyOnDeath()} 的键集合一一对应;
+     * 其余键与 1.21 附件默认行为一致——死亡不复制。
+     *
+     * <p>注意:死亡清理({@code LivingDeathEvent})在**旧实体**上执行且刻意不清除这些键,
+     * 因此此处仍能从旧数据中读到值;若将来在死亡清理里加了清除调用,本保留逻辑会失效。
+     */
     public static void onPlayerClone(PlayerEvent.Clone event) {
-        if (event.isWasDeath()) {
-            return;
-        }
         event.getOriginal().reviveCaps();
         AstralData oldData = event.getOriginal().getCapability(ModCapabilities.ASTRAL_DATA).orElse(null);
         if (oldData != null) {
-            event.getEntity().getCapability(ModCapabilities.ASTRAL_DATA).ifPresent(newData ->
-                    newData.deserializeNBT(oldData.serializeNBT()));
+            if (event.isWasDeath()) {
+                String[] kept = {
+                        ModAttachments.RIN_PAGES.name(),
+                        ModAttachments.KOMACHI_DAMAGE_BONUS.name(),
+                        // 2026-09-15 用户裁决:赠书守卫必须随死亡保留,否则重登会再发一本(对应 1.21.1 的 .copyOnDeath())
+                        ModAttachments.GUIDE_BOOK_GIVEN.name()
+                };
+                event.getEntity().getCapability(ModCapabilities.ASTRAL_DATA).ifPresent(newData -> {
+                    CompoundTag src = oldData.persistentStore();
+                    CompoundTag dst = newData.persistentStore();
+                    for (String key : kept) {
+                        Tag tag = src.get(key);
+                        if (tag != null) {
+                            dst.put(key, tag.copy());
+                        }
+                    }
+                });
+            } else {
+                event.getEntity().getCapability(ModCapabilities.ASTRAL_DATA).ifPresent(newData ->
+                        newData.deserializeNBT(oldData.serializeNBT()));
+            }
         }
         event.getOriginal().invalidateCaps();
     }

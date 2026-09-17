@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": "astral_dice:blank_chip",
+    "L": "minecraft:cookie",
+    "P": "astral_dice:star_plate",
+    "R": "astral_dice:regeneration_reagent",
+    "X": "minecraft:sugar"
+  },
+  "pattern": [
+    "XLX",
+    "RBR",
+    "PPP"
+  ],
+  "result": {
+    "id": "astral_dice:candy_chip"
+  }
+}

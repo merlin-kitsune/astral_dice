@@ -27,15 +27,28 @@ repositories {
     mavenLocal()
     mavenCentral()
     maven { url = uri('https://maven.neoforged.net/releases') }
-    // Curios API is resolved from the Modrinth maven.
-    maven { url 'https://api.modrinth.com/maven' }
+    // ── 模组来源硬规则(2026-09-17 用户要求)────────────────────────────────
+    // 见 AGENTS.md「模组依赖添加规则(统一口径)」:第三方**模组**(含其附属/前置模组)工件只允许来自
+    // Curse Maven 与 Modrinth Maven。`exclusiveContent` 同时声明仓库并把这两个 group 从其它所有仓库
+    // 排除 ⇒ 任何 `curse.maven:` / `maven.modrinth:` 坐标都不可能从别处解析(与阶段 P 的
+    // `tools/check_mod_sources.ps1` 静态守门互补)。
+    // ⚠️ 副作用:本地镜像仓库 `.oss-basemod-repo` 里镜像的 Modrinth 工件不再参与解析。
+    exclusiveContent {
+        forRepository { maven { url 'https://www.cursemaven.com' } }
+        filter { includeGroup 'curse.maven' }
+    }
+    exclusiveContent {
+        forRepository { maven { url 'https://api.modrinth.com/maven' } }
+        filter { includeGroup 'maven.modrinth' }
+    }
+    // 非模组库/官方工件仍从各自仓库解析
     // KubeJS + Rhino are resolved from the KubeJS maven.
     maven { url 'https://maven.latvian.dev/releases' }
     // KubeJS transitive dependency Architectury
     maven { url 'https://maven.architectury.dev' }
     // KubeJS transitive dependency animated-gif-lib-for-java
     maven { url 'https://jitpack.io' }
-    // JEI 官方 maven(配方查看)
+    // JEI 官方 maven:直接坐标已改 Curse Maven(2026-09-17),本仓库保留给可能的传递/可选工件与历史坐标
     maven { url 'https://maven.blamejared.com' }
 }
 
@@ -81,23 +94,11 @@ neoForge {
             programArgument '1920'
             programArgument '--height'
             programArgument '1080'
-
-            // Comma-separated list of namespaces to load gametests from. Empty = all namespaces.
-            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
         }
 
         server {
             server()
             programArgument '--nogui'
-            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
-        }
-
-        // This run config launches GameTestServer and runs all registered gametests, then exits.
-        // By default, the server will crash when no gametests are provided.
-        // The gametest system is also enabled by default for other run configs under the /test command.
-        gameTestServer {
-            type = "gameTestServer"
-            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
         }
 
         data {
@@ -173,7 +174,9 @@ dependencies {
     implementation "${starengine_lib_group}:starengine_lib-neoforge-1.21.1:${starengine_lib_version}"
     implementation 'maven.modrinth:curios:yohfFbgD'
     // JEI(配方查看,测试环境用);19.39 系仍兼容本项目 neoforge 21.1.235(19.42+ 要求 ≥21.1.238)
-    implementation "mezz.jei:jei-1.21.1-neoforge:19.39.0.372"
+    // 2026-09-17 起按统一口径改走 Curse Maven(原 `mezz.jei:jei-1.21.1-neoforge:19.39.0.372` 走官方 maven;
+    // CF 文件 8512040 = `jei-1.21.1-neoforge-19.39.0.372.jar`,1572695 字节,与官方 maven 产物同尺寸)
+    implementation "curse.maven:jei-238222:8512040"
     // Mixin:NeoForge 运行时自带 Mixin,编译期仅需注解类;NeoForge 编译/运行同为 Mojmap,无需 refmap。
     compileOnly 'org.spongepowered:mixin:0.8.5'
 }
@@ -237,8 +240,10 @@ idea {
 
 // AutoForge: mod addon dependencies
 repositories {
+    // 本地兜底仓库(内容是 Modrinth Maven 坐标的镜像缓存)
     maven { url "${projectDir}/.oss-basemod-repo" }
-    maven { url 'https://api.modrinth.com/maven' }
+    // 统一口径的两个模组来源仓库已在文件顶部声明过一次(Gradle 的项目级仓库是累加的),
+    // 此处不再重复声明 —— 重复声明会让「统一口径」失真(由 tools/check_mod_sources.ps1 守门)。
 }
 dependencies {
     // 自动化测试辅助:KubeJS(运行时依赖,用于游戏内 Curios 饰品栏检查脚本)
@@ -248,7 +253,12 @@ dependencies {
     implementation 'maven.modrinth:curios:yohfFbgD'
     implementation 'maven.modrinth:patchouli:1.21.1-93-neoforge'
     implementation fileTree(dir: 'base-mod-libs', include: ['*.jar'])
-    compileOnly fileTree(dir: 'base-mod-compile-libs', include: ['*.jar'])
+    // 统一口径(见 AGENTS.md「模组依赖添加规则(统一口径)」):Iron's Spellbooks 一律经 Modrinth Maven 获取,
+    // 不再用 base-mod-compile-libs 里的本地 jar(2026-09-17 收编)。
+    // 等价性已实测:原本地 jar `base-mod-compile-libs/irons_spellbooks.jar` 的 sha1 =
+    // 09907e3b4bfdabd7f1f44bfd25aa6432183f39bb,与 Modrinth 文件 `irons_spellbooks-1.21.1-3.16.2.jar`
+    // (version id RtvqnbKi,project s4OWxYQQ,13874139 字节)逐字节相同 ⇒ 换源不改任何字节。
+    compileOnly "maven.modrinth:irons-spells-n-spellbooks:RtvqnbKi"
 }
 // AutoForge: end mod addon dependencies
 
@@ -415,9 +425,11 @@ tasks.register('pushToRootBuild') {
         if (!rootBuildLibsDir.exists()) {
             rootBuildLibsDir.mkdirs()
         }
-        // 只清理本加载器(neoforge)旧产物,避免误删 forge 版本 jar
+        // 只清理**本子项目**(neoforge 1.21.1)旧产物,避免误删 forge 版本 jar。
+        // ⚠️ 必须带完整后缀 `+neoforge_1.21.1`:自 multi-26.1.2-neoforge 分支起仓库有**两个** neoforge
+        //    产物(`+neoforge_1.21.1` 与 `+neoforge_26.1.2`),宽泛的 `+neoforge_` 会把 26.1.2 的 jar 一并删掉。
         def stale = rootBuildLibsDir.listFiles().findAll { File f ->
-            f.isFile() && f.name.startsWith('astral_dice-') && f.name.endsWith('.jar') && f.name.contains('+neoforge_')
+            f.isFile() && f.name.startsWith('astral_dice-') && f.name.endsWith('.jar') && f.name.contains('+neoforge_1.21.1')
         }
         stale.each { it.delete() }
         def target = new File(rootBuildLibsDir, jarFile.name)

@@ -1,0 +1,133 @@
+{
+  "case_id": "HOSTILE-TARGET-NEUTRAL-1.20.1",
+  "title": "「敌对目标」判定纳入被激怒的中立生物：被激怒的北极熊（NeutralMob#isAngry，AngerTime>0）必须被电磁炮雷击命中（统一入口 combat/HostileTargets.isHostile）",
+  "version": "1.20.1",
+  "target": {
+    "type": "bugfix",
+    "ref": "hostile-target-neutral"
+  },
+  "steps": [
+    {
+      "op": "note",
+      "text": "被测口径（AGENTS「敌对目标」唯一入口）：敌对目标 = 敌对生物(Enemy) ∪ 已被激怒的中立生物(NeutralMob 实例且 isAngry()=getRemainingPersistentAngerTime()>0)。北极熊**不是** Enemy，只有 AngerTime>0 时才应被视为敌对目标。判据链：RailgunChipItem#onAttack/executeStrike 与 RailgunBolts.isValidLightningTarget 都只经 HostileTargets.isHostile —— 没有裸 instanceof Enemy 的旁路。"
+    },
+    {
+      "op": "note",
+      "text": "复用 railgunfriendly 探针（与 RAILGUN-AOE-SCOPE 同一条命令）：清天气 → 强制生存 → 装备电磁炮 + 恰好 6 层充能 → 摆 4 只靶（蜘蛛=敌方、北极熊=中立、已驯服狼=友方、海龟/村民=覆写类）→ 把北极熊与狼的 AngerTime 置 1200（NoAI 下 anger 不递减）→ 真实近战命中蜘蛛触发赐福 → 20 tick 后落雷。北极熊摆在落点约 1.5 格处（雷击判定箱 ±3 格内）。"
+    },
+    {
+      "op": "note",
+      "text": "取证环境防污染（2026-09-15 实测必需）：① `gamerule doFireTick false` + 把脚下 y-1 那一层草方块替换为石头（`fill`）—— 否则落雷在玩家周围点燃地面，**玩家自己的掉血读数会混入火焰伤害**（实测 1.20.1 self=4.83~18.83 全部来自火焰、与雷击无关；石头地面 + 关火焰蔓延后 self=0）；**2026-09-15 B6 ②** 起这两条命令**折叠进探针**（`/astralprobe railgunfriendly` 内用 `runCmd` 直接跑：`performPrefixedCommand` 同进程、无键盘注入，省两条 ≥2.65 s/条的注入），证据行 `AP_<tag>_PREP:rule=…:fill=…`。② 读/清命令只注入**一次**（**B6 ①** 删掉了冗余的第二次重试）：原写法是「注入两次兜冷启动丢注入」，而读/清相位远在冷启动 + 多次成功注入之后，第一次必然送达；复跑稳定性由本轮全量回归背书（断言数不变）。③ 只读相位同时调 **`/astralparty dump`**（只读）：原始值行 `APDUMP|LOCKRAW|` / `APDUMP|SIGN|` 落 latest.log，断言直接锚定它们；调用成功由 tag 唯一的 `AP_<tag>_DUMP:rc=1` 证明，失败另落 `AP_<tag>_DUMP_ERR`（用例对其做 absent 断言 ⇒ **绝不静默降级**）。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe railgunfriendly HN"
+    },
+    {
+      "op": "wait",
+      "ms": 2500
+    },
+    {
+      "op": "note",
+      "text": "怒气前置条件取证（2026-09-15 B2 修时序）：探针自报的 `nAngry` 读数不可当判据（Rhino 侧 `NeutralMob#isAngry()` 取值失真）；判据用**原版 NBT 回读**证明北极熊确实带着 AngerTime>0（`data get entity … AngerTime` 的输出会进聊天栏 → 落 latest.log）。⚠️ 该回读**由探针在近战之前自己跑**（`/astralprobe railgunfriendly` 内的 `AP_<tag>_ANGER_NBT` 步，同一条原版命令、同一句输出文本），用例侧**不再**注入这条命令：注入器每条命令的固定按键序列约 2.5–3 s，而臂装步的近战会立刻触发赐福、落雷 ~1 s 后就把 30 HP 的北极熊劈死并从世界移除 ⇒ 用例侧那条 `/data get` 只会回「未找到实体」，断言在时序上**永远不可达**（B1 在 1.21.1 实测 25/26，唯一失守就是它）。断言文本保持不变（没有弱化）。"
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe railgunfriendlyread HN"
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe railgunfriendlyend HN"
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_HN_BEFORE:.*:charge=6:mode=forced_survival:weather=clear"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "北极熊拥有以下实体数据：\\d+"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_HN_ARMED"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_HN_AFTER:.*:neutral=[\\d.]+:friendly=0:.*bolt_delta=[1-9]"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_HN_VERDICT:.*:enemy=1:neutral=1:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_HN_RESTORE:creative"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_HN_ERR|AP_HN_EX:|AP_HN_DUMP_ERR"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_HN_VERDICT:.*:neutral=0|AP_HN_DUMP_ERR"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "crash"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_HN_PREP:rule=rc=(undefined|[0-9]+):fill=rc=(undefined|[0-9]+)"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_HN_DUMP:rc="
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "APDUMP\\|LOCKRAW\\|"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "APDUMP\\|SIGN\\|sign_active_cooldown_end="
+    }
+  ],
+  "evidence": [],
+  "on_fail": "keep_game_running"
+}

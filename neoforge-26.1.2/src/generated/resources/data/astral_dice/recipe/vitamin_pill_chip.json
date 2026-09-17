@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": "astral_dice:blank_chip",
+    "P": "astral_dice:star_plate",
+    "R": "astral_dice:regeneration_reagent",
+    "X": "minecraft:fermented_spider_eye"
+  },
+  "pattern": [
+    "XXX",
+    "RBR",
+    "PPP"
+  ],
+  "result": {
+    "id": "astral_dice:vitamin_pill_chip"
+  }
+}

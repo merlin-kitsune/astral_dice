@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": "astral_dice:blank_sign",
+    "G": "minecraft:crossbow",
+    "P": "astral_dice:star_plate",
+    "T": "minecraft:redstone_block",
+    "Z": "astral_dice:diamond_dice"
+  },
+  "pattern": [
+    "GPG",
+    "TCT",
+    "PZP"
+  ],
+  "result": {
+    "id": "astral_dice:moses_sign"
+  }
+}

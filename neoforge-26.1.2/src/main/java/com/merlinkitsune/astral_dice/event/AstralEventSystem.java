@@ -1,0 +1,101 @@
+package com.merlinkitsune.astral_dice.event;
+
+import com.merlinkitsune.astral_dice.item.card.ExclusiveCardUtil;
+import com.merlinkitsune.astral_dice.item.ModItems;
+import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import top.theillusivec4.curios.api.CuriosApi;
+
+/**
+ * 事件系统:事件触发后的统一附加效果。
+ * 事件本体由各立牌自行实现(大侦探主动的随机事件、秘密侦探击杀「隐匿调查」目标触发的调查阶段);
+ * 本类只负责在事件触发后应用立牌增益(大侦探 +3 星币)与调查员立牌被动(活体书页)。
+ */
+public final class AstralEventSystem {
+    private AstralEventSystem() {
+    }
+
+    // 事件触发后的统一附加效果:立牌被动(如大侦探 +3 星币)与调查员立牌联动
+    public static void onEventTriggered(Player triggerer, String eventId) {
+        if (triggerer.level().isClientSide()) return;
+        applySignBuffs(triggerer);
+        applyRinSignPassive(triggerer, eventId);
+    }
+
+    // 调查阶段事件触发时的附加效果(该事件属于事件系统):大侦探立牌 +3 星币、调查员立牌被动
+    public static void triggerInvestigationEvent(Player triggerer) {
+        onEventTriggered(triggerer, "investigation");
+    }
+
+    // 立牌增益挂钩:触发事件后,持有特定立牌的玩家获得特定增益。
+    private static void applySignBuffs(Player player) {
+        // 大侦探立牌:自身触发事件后获得 3 星币
+        if (holdsSign(player, ModItems.FANNY_SIGN.get())) {
+            giveStarCoins(player, 3);
+        }
+    }
+
+    // 调查员立牌被动:自身触发事件(击杀"隐匿调查"目标),或受到事件影响
+    // (本人触发、周围 32 格内或同队/友方范围内有人触发"调查阶段";触发者未加入队伍时按全服玩家判定)后,
+    // 佩戴调查员立牌的玩家获得一张"活体书页"。
+    // 影响范围 32 格为硬编码;团队/友方判定走统一收集(触发者无队伍时全服在线玩家视为友方)。
+    // 兼容入口:未指定事件 ID 时按默认签名去重(供外部直接调用)。
+    public static void applyRinSignPassive(Player triggerer) {
+        applyRinSignPassive(triggerer, "sign_effect");
+    }
+
+    /**
+     * 带事件 ID 的被动触发。
+     *
+     * <p>去重规则:同一玩家(触发者)发出的同一事件 ID,在 2 tick 窗口内被重复分发时
+     * (如多立牌槽导致 onKill 多次调用),每个佩戴调查员立牌的玩家只获得一次"活体书页",
+     * 避免"1 次事件导致重复给牌"。不同事件 ID / 不同触发者 / 超过窗口的真实重复不受影响。
+     */
+    public static void applyRinSignPassive(Player triggerer, String eventId) {
+        if (!(triggerer.level() instanceof ServerLevel serverLevel)) return;
+        long now = serverLevel.getGameTime();
+        // 团队/友方目标:若触发者未加入任何队伍,collectTeamPlayers 会返回全服在线玩家
+        java.util.List<Player> teamPlayers = EventTargetCollector.collectTeamPlayers(triggerer);
+        String signature = triggerer.getUUID() + "|" + eventId;
+        for (ServerPlayer sp : serverLevel.players()) {
+            if (!holdsSign(sp, ModItems.RIN_SIGN.get())) continue;
+            // 范围 32 格(硬编码)
+            boolean inRange = sp.distanceToSqr(triggerer) <= 32 * 32;
+            // 团队判定:走统一收集(MC/FTB/OPAC;无队伍时全服在线玩家视为友方)
+            boolean team = teamPlayers.contains(sp);
+            if (sp == triggerer || inRange || team) {
+                // 同一事件 2 tick 窗口内已给过 → 跳过(防多槽重复分发)
+                if (signature.equals(com.merlinkitsune.astral_dice.component.ModAttachments.getRinGiftSignature(sp))
+                        && now - com.merlinkitsune.astral_dice.component.ModAttachments.getRinGiftTick(sp) <= 2) {
+                    continue;
+                }
+                com.merlinkitsune.astral_dice.component.ModAttachments.setRinGiftSignature(sp, signature);
+                com.merlinkitsune.astral_dice.component.ModAttachments.setRinGiftTick(sp, now);
+                // 活体书页为专属牌,绑定获得者
+                ItemStack page = new ItemStack(ModItems.LIVING_PAGE.get());
+                ExclusiveCardUtil.setOwner(page, sp);
+                giveItem(sp, page);
+            }
+        }
+    }
+
+    private static boolean holdsSign(Player player, net.minecraft.world.item.Item signItem) {
+        var curios = CuriosApi.getCuriosInventory(player);
+        return curios.isPresent() && curios.get().findFirstCurio(s -> s.is(signItem)).isPresent();
+    }
+
+    private static void giveStarCoins(Player player, int count) {
+        giveItem(player, new ItemStack(ModItems.STAR_COIN.get(), count));
+    }
+
+    private static void giveItem(Player player, ItemStack item) {
+        if (ModItems.isCardItem(item)) {
+            VitaminPillChipItem.giveCard(player, item);
+        } else if (!player.getInventory().add(item)) {
+            player.drop(item, false);
+        }
+    }
+}

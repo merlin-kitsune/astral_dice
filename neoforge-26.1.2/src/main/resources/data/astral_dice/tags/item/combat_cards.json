@@ -1,0 +1,14 @@
+{
+  "values": [
+    "astral_dice:attack_card_medium",
+    "astral_dice:attack_card_large",
+    "astral_dice:attack_card_epic",
+    "astral_dice:attack_card_shadow_strike",
+    "astral_dice:attack_card_meito",
+    "astral_dice:attack_card_charge",
+    "astral_dice:attack_card_full_power",
+    "astral_dice:defense_card_medium",
+    "astral_dice:defense_card_large",
+    "astral_dice:defense_card_epic"
+  ]
+}

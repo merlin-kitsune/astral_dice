@@ -22,8 +22,8 @@ import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
  * - {@link #canEquip}:仅允许放入 "chip" 饰品栏,并禁止重复装备相同筹码(服务端校验;客户端放行避免误判);
  * - {@link #use}:下蹲右键自动装备到 "chip" 饰品栏;
  * - {@link #curioTick}:默认空实现,子类可覆写;
- * - {@link #onUnequip}:默认处理"卸下时清理"的钩子 {@link #onChipUnequip}(子类可覆写),并调用
- *   {@link CurioSlotUtil#onChipUnequip} 完成通用清理(如八面骰累计点清空、魔法秘典计数重置等)。
+ * - {@link #onUnequip}:仅在"玩家有意卸除"时调用清理钩子 {@link #onChipUnequip}(子类覆写实现自身清理,
+ *   如八面骰累计点清空、魔法秘典计数重置、手电筒已发放目标清空等)。
  *
  * 新增筹码时:
  * 1. 继承本类,覆写业务钩子(如 {@link #curioTick} / {@link #onChipEquip} / {@link #onChipUnequip});
@@ -77,10 +77,13 @@ public abstract class BaseChipItem extends Item implements ICurioItem {
     }
 
     @Override
-    public void onUnequip(SlotContext slotContext, ItemStack curio, ItemStack newStack) {
+    public void onUnequip(SlotContext slotContext, ItemStack newStack, ItemStack stack) {
         if (!(slotContext.entity() instanceof Player player)) return;
         if (player.level().isClientSide()) return;
-        // 通用清理:排除 Curios 重载场景(from=to 同一物品仍在槽位),仅在真正卸下时调用
-        CurioSlotUtil.runOnRealUnequip(slotContext, curio, player, p -> onChipUnequip(p, curio));
+        // Curios 官方签名:第 2 参 newStack = 将要占用槽位的栈(玩家真正卸下时为 EMPTY,换装时为新放入的那件),
+        // 第 3 参 stack = **被卸下的那件饰品**;旧实现误把第 2 参当成了被卸下的物品。
+        // 通用清理:仅"玩家有意卸除"时调用(排除 Curios 自身重载 from=to 同一物品仍在槽位),
+        // 并把被卸下的那个栈(第 3 参)交给清理钩子。
+        CurioSlotUtil.runOnIntentionalUnequip(newStack, stack, player, p -> onChipUnequip(p, stack));
     }
 }

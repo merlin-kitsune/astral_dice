@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": "astral_dice:blank_chip",
+    "L": "minecraft:white_wool",
+    "P": "astral_dice:star_plate",
+    "W": "astral_dice:conductive_wire",
+    "X": "minecraft:leather"
+  },
+  "pattern": [
+    "XLX",
+    "WBW",
+    "PPP"
+  ],
+  "result": {
+    "id": "astral_dice:airbag_chip"
+  }
+}

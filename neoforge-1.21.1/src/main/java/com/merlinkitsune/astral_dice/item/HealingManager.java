@@ -240,6 +240,11 @@ public final class HealingManager {
         if (existing != null && existing.getAmplifier() == total - 1 && existing.getDuration() > 20) {
             return;
         }
+        // 层级下降(治愈点被减半/消耗)时必须先移除旧实例:原版 MobEffectInstance#update 只接受
+        // 更高的 amplifier,直接 addEffect 低层实例会被忽略(只进 hiddenEffect),HUD 等级会停在旧值。
+        if (existing != null && existing.getAmplifier() > total - 1) {
+            ModEffectRemoval.remove(player, ModEffects.HEALING);
+        }
         // amplifier = 层数 - 1(1 层显示 I 级);visible=true 使效果在 HUD 正常显示
         player.addEffect(new MobEffectInstance(ModEffects.HEALING, remain, total - 1, false, false, true));
     }

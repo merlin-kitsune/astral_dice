@@ -15,7 +15,10 @@ import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 public class ModPayloads {
     @SubscribeEvent
     public static void register(RegisterPayloadHandlersEvent event) {
-        PayloadRegistrar registrar = event.registrar("1");
+        // 版本互通门槛(见 AGENTS.md):注册器的网络版本号 = mod_version 的 major.minor(自动派生,禁止硬编码)。
+        // NeoForge 在配置阶段逐通道比较两端版本号,不等即握手失败 → 1.1.X 客户端无法加入 1.2.0 服务端;
+        // 同二号位的 1.2.x ↔ 1.2.y 版本号字符串相同,照常放行。
+        PayloadRegistrar registrar = event.registrar(VersionGate.interopVersion());
         registrar.playToClient(
                 DamageNumberPayload.TYPE,
                 DamageNumberPayload.STREAM_CODEC,

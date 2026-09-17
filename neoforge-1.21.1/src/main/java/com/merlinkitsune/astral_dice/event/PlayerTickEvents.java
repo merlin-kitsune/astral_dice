@@ -113,6 +113,13 @@ public class PlayerTickEvents {
         Player player = event.getEntity();
         if (player.level().isClientSide()) return;
         EffectTimerGuard.tick(player);
+        // 立牌"待命"等待器已随目标选择器并入而移除(2026-09-17:主线 → dev-next 合并裁决),原先在此的
+        // BaseSignItem.tickSignReadyTimeout(player) 不再存在;立牌主动的冷却门槛改由
+        // BaseSignItem#performSkill 第 6 步按"是否已进入目标选择会话"判定。
+        // 立牌主动技能"三态化"(第二批):锁定(生效中)态的玩家级判定——
+        // ① 忍者宽限 1:00 内未出任何效果牌 ⇒ 强制重置出牌状态并起冷却;
+        // ② 其余立牌门控计时器跑完 ⇒ 必起冷却(无空档);与立牌是否仍在饰品槽无关。
+        BaseSignItem.tickSignActiveLock(player);
     }
 
     // 计时器守卫:本模组自定义效果被成功施加时记录结束时刻(有限时长效果;无限时长效果不记录)
@@ -134,8 +141,6 @@ public class PlayerTickEvents {
         if (player.tickCount % 20 != 0) return;
         // 赋能:每 0:30 减少 1 层(剩余 1 层时直接归 0)
         com.merlinkitsune.astral_dice.item.EmpowerManager.tick(player);
-        // 事件系统:护甲惩罚到期移除
-        ArmorPenaltyHandler.tick(player);
         // 效果牌出牌周期计时
         com.merlinkitsune.astral_dice.item.card.EffectCardPeriod.tick(player);
         // 以毒攻毒:中毒结束后给予隐藏图标的生命恢复 II
@@ -145,7 +150,7 @@ public class PlayerTickEvents {
 
     }
 
-    // 美工刀-初级/锋利状态效果:佩戴对应筹码且生命值 ≥60% 或处于"嘬一口"状态时显示效果图标,否则移除
+    // 美工刀-初级/锋利状态效果:佩戴对应筹码且生命值 ≥60% 或处于"汲取"状态时显示效果图标,否则移除
     private static void updateCutterEffect(Player player) {
         var curios = CuriosApi.getCuriosInventory(player);
         boolean hasCutter = false;

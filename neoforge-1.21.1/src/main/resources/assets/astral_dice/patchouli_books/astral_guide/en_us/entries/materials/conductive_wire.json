@@ -7,6 +7,10 @@
       "type": "patchouli:spotlight",
       "item": "astral_dice:conductive_wire",
       "text": "astral_dice.guide.entry.conductive_wire.1"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:conductive_wire"
     }
   ],
   "sortnum": 7

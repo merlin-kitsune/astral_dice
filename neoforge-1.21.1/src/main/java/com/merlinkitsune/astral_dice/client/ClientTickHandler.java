@@ -18,5 +18,7 @@ public class ClientTickHandler {
     public static void onClientTick(ClientTickEvent.Post event) {
         ClientDamageNumbers.tick();
         TargetSelectionClient.tick();
+        // 效果牌「一次按下只出一张」:松开右键即复位长按标记(见 EffectCardUseGuard;主线带入)
+        EffectCardUseGuard.onClientTick();
     }
 }

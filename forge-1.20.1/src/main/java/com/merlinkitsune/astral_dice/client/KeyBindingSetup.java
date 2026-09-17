@@ -41,6 +41,9 @@ public class KeyBindingSetup {
         @SubscribeEvent
         public static void onClientTick(TickEvent.ClientTickEvent event) {
             if (event.phase != TickEvent.Phase.END) return;
+            // ⚠️ 此处**不得**再调 ClientDamageNumbers.tick():它是「每客户端 tick 恰好一次」的状态推进,
+            // 唯一调用点在 ClientTickHandler(END 相位)。历史上这两处同时调用导致 1.20.1 的
+            // 伤害数字淡出速度为 1.21.1 的 3 倍(见 AGENTS.md「客户端 tick 状态推进」)。
             var player = Minecraft.getInstance().player;
             if (player == null) return;
 

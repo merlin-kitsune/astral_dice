@@ -12,7 +12,6 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.damagesource.DamageType;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.projectile.AbstractArrow;
 import net.minecraft.world.entity.projectile.ThrowableProjectile;
 
@@ -133,8 +132,23 @@ public final class SpellDamageRegistry {
      */
     public static int effectCardDamageBonus(net.minecraft.world.entity.player.Player attacker) {
         if (attacker == null) return 0;
-        return ModAttachments.getKomachiDamageBonus(attacker)
+        // 忍者立牌的伤害增益只在**佩戴立牌**时生效(2026-09-15 裁决):死亡保留的累计值不因
+        // "立牌死亡掉落、尚未重新装备"而继续加成。故此处统一按佩戴判定,勿在别处直接读原值。
+        int komachi = com.merlinkitsune.astral_dice.item.sign.KomachiSignItem.isEquipped(attacker)
+                ? ModAttachments.getKomachiDamageBonus(attacker) : 0;
+        return komachi
                 + com.merlinkitsune.astral_dice.item.chip.BookmarkChipItem.damageBonus(attacker);
+    }
+
+    /**
+     * 活体书页的**有效**累计页数:只在佩戴调查员立牌时计入(2026-09-15 裁决,与
+     * {@link #effectCardDamageBonus} 同一口径)。伤害结算与 tooltip 显示统一走本方法,
+     * 禁止在别处直接读 {@code rin_pages} 原值来做加成或显示加成。
+     */
+    public static int livingPageBonusPages(net.minecraft.world.entity.player.Player attacker) {
+        if (attacker == null) return 0;
+        return com.merlinkitsune.astral_dice.item.sign.RinSignItem.isEquipped(attacker)
+                ? ModAttachments.getRinPages(attacker) : 0;
     }
 
     private static ResourceKey<DamageType> key(String namespace, String path) {
@@ -169,7 +183,7 @@ public final class SpellDamageRegistry {
 
             @Override
             public double apply(SpellDamageContext ctx, double bonus) {
-                int pages = ModAttachments.getRinPages(ctx.attacker);
+                int pages = livingPageBonusPages(ctx.attacker);
                 return bonus + 2 + pages + effectCardDamageBonus(ctx.attacker);
             }
 
@@ -232,16 +246,18 @@ public final class SpellDamageRegistry {
                 net.minecraft.world.phys.AABB aabb = ctx.target.getBoundingBox().inflate(6);
                 var nearby = ctx.target.level().getEntitiesOfClass(
                         net.minecraft.world.entity.LivingEntity.class, aabb,
-                        e -> e instanceof net.minecraft.world.entity.monster.Enemy
+                        e -> HostileTargets.isHostile(ctx.attacker, e)
                                 && e != ctx.target && e.isAlive());
                 var blastSource = com.merlinkitsune.astral_dice.damage.ModDamageTypes
-                        .diceDamage(ctx.target.level(), ctx.attacker);
+                        .trueDamage(ctx.target.level(), ctx.attacker);   // 真伤:效果牌范围波及伤害同样无视护甲值/盔甲韧性
+                // AOE 造成与主目标「同样的伤害」:基础 5 + 效果牌伤害加成(与主目标一致,不吃忍者/书签加成之外的其它修饰器)
+                int aoeDamage = (int) Math.max(1.0, 5 + effectCardDamageBonus(ctx.attacker));
                 // AOE 波及伤害不进入骰战结算(见 DiceCombatEvents.aoeProcessing)
                 DiceCombatEvents.aoeProcessing = true;
                 try {
                     for (var e : nearby) {
-                        e.hurt(blastSource, 5);
-                        sendAoeDamageNumber(e, 5, 0x7CFC00);
+                        e.hurt(blastSource, aoeDamage);
+                        sendAoeDamageNumber(e, aoeDamage, 0x7CFC00);
                     }
                 } finally {
                     DiceCombatEvents.aoeProcessing = false;
@@ -270,7 +286,7 @@ public final class SpellDamageRegistry {
             @Override
             public boolean isActive(SpellDamageContext ctx) {
                 if (!ctx.hasCurio(ModItems.PIERCING_GUN.get())) return false;
-                if (!(ctx.target instanceof Enemy)) return false;
+                if (!HostileTargets.isHostile(ctx.attacker, ctx.target)) return false;
                 return ctx.attacker.hasEffect(ModEffects.LIVING_PAGE)
                         || ctx.attacker.hasEffect(ModEffects.MONSTER_LASER)
                         || ctx.attacker.hasEffect(ModEffects.MONSTER_BRICK)
@@ -283,7 +299,7 @@ public final class SpellDamageRegistry {
                 return bonus + PiercingGunChipItem.getTargetDefense(ctx.target);
             }
         });
-        // 标记喷灌:对目标造成远程或魔法伤害后,使目标获得一层"标记"
+        // 标记喷罐:对目标造成远程或魔法伤害后,使目标获得一层"标记"
         registerModifier(new SpellDamageModifier() {
             @Override
             public double apply(SpellDamageContext ctx, double bonus) {
@@ -351,9 +367,9 @@ public final class SpellDamageRegistry {
                 net.minecraft.world.phys.AABB aabb = ctx.target.getBoundingBox()
                         .inflate(com.merlinkitsune.astral_dice.item.chip.ElectricGloveChipItem.AOE_RADIUS);
                 var nearby = ctx.target.level().getEntitiesOfClass(LivingEntity.class, aabb,
-                        e -> e instanceof Enemy && e != ctx.target && e.isAlive());
+                        e -> HostileTargets.isHostile(ctx.attacker, e) && e != ctx.target && e.isAlive());
                 var source = com.merlinkitsune.astral_dice.damage.ModDamageTypes
-                        .diceDamage(ctx.target.level(), ctx.attacker);
+                        .trueDamage(ctx.target.level(), ctx.attacker);   // 真伤:效果牌范围波及伤害同样无视护甲值/盔甲韧性
                 // AOE 波及伤害不进入骰战结算(见 DiceCombatEvents.aoeProcessing)
                 DiceCombatEvents.aoeProcessing = true;
                 try {

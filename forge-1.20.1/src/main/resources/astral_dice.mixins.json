@@ -1,9 +1,12 @@
 {
   "required": true,
   "minVersion": "0.8",
+  "refmap": "astral_dice.refmap.json",
   "package": "com.merlinkitsune.astral_dice.mixin",
   "compatibilityLevel": "JAVA_17",
   "mixins": [
+    "EntityThunderHitMixin",
+    "LightningBoltStrikeScopeMixin",
     "PiglinAiMixin",
     "trade.MerchantContainerMixin",
     "trade.MerchantMenuMixin",
@@ -12,7 +15,9 @@
     "trade.ServerPlayerMixin"
   ],
   "client": [
+    "client.AstralUseItemGuardMixin",
     "client.EffectRenderingInventoryScreenMixin",
+    "client.GuiMixin",
     "client.KeyboardHandlerMixin"
   ],
   "injectors": {

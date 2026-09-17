@@ -7,6 +7,10 @@
       "type": "patchouli:spotlight",
       "item": "astral_dice:big_bowl_stew_chip",
       "text": "astral_dice.guide.entry.big_bowl_stew_chip.1"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:big_bowl_stew_chip"
     }
   ],
   "sortnum": 8

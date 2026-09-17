@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": "astral_dice:blank_chip",
+    "G": "minecraft:flint",
+    "L": "minecraft:grindstone",
+    "P": "astral_dice:star_plate",
+    "X": "minecraft:netherite_ingot"
+  },
+  "pattern": [
+    "XLX",
+    "GBG",
+    "PPP"
+  ],
+  "result": {
+    "id": "astral_dice:whetstone_chip"
+  }
+}

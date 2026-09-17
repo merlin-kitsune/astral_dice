@@ -1,0 +1,13 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    "minecraft:redstone_block",
+    "astral_dice:star_plate",
+    "astral_dice:star_plate",
+    "astral_dice:star_plate"
+  ],
+  "result": {
+    "id": "astral_dice:attack_card_charge"
+  }
+}

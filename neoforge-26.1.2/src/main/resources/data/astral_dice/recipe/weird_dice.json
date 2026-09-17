@@ -1,0 +1,18 @@
+{
+  "type": "astral_dice:dice_upgrade",
+  "category": "equipment",
+  "key": {
+    "C": "minecraft:twisting_vines",
+    "J": "minecraft:warped_fungus",
+    "D": "astral_dice:diamond_dice"
+  },
+  "pattern": [
+    "CJC",
+    "JDJ",
+    "CJC"
+  ],
+  "result": {
+    "count": 1,
+    "id": "astral_dice:weird_dice"
+  }
+}

@@ -22,20 +22,26 @@ public final class ResourceConversion {
      * 星光 → 星币(按 2:1 比例)。
      *
      * @param player 玩家
-     * @param amount 用于兑换的星光数;-1 = 消耗全部星光(余数保留);其他 = 最多消耗 amount 点
+     * @param amount 用于兑换的星光数;-1 = 消耗全部可支配星光(余数保留);其他 = 最多消耗 amount 点。
+     *               仅「当前值超过基础值」的部分可被兑换(银行卡等提供的下限不可兑换出去),无实际扣除则阻止兑换
      * @return 实际获得的星币数
      */
     public static int starlightToStarCoins(Player player, int amount) {
         if (player.level().isClientSide()) return 0;
-        int starlight = StarLightManager.get(player);
-        int use = amount < 0 ? starlight : Math.min(amount, starlight);
+        // 可自由支配的星光 = 当前值 − 基础值(银行卡等提供的"下限"不可被兑换出去)。
+        // 否则 spend 的扣除会被 set() 的下限抬回,出现"净扣 0 仍按请求量发币"的白嫖路径。
+        int spendable = Math.max(0, StarLightManager.get(player) - StarLightManager.getBasePoints(player));
+        int use = amount < 0 ? spendable : Math.min(amount, spendable);
         int coins = use / STARLIGHT_PER_COIN;
         if (coins <= 0) return 0;
-        int spent = StarLightManager.spend(player, coins * STARLIGHT_PER_COIN);
-        int gained = spent / STARLIGHT_PER_COIN;
+        // 按「实际扣除量」发币;若实际没有任何扣除(理论上不可达),阻止兑换
+        int before = StarLightManager.get(player);
+        StarLightManager.spend(player, coins * STARLIGHT_PER_COIN);
+        int gained = Math.max(0, before - StarLightManager.get(player)) / STARLIGHT_PER_COIN;
         // ATM机筹码:使用星光兑换星币时,兑换量(星币产出)增加 40%
+        // 百分比加成统一采用「下限为 1」策略:收益率截断后不足 1 时至少 +1(避免小额兑换加成为 0)
         if (AtmChipItem.isEquipped(player)) {
-            gained += (int) (gained * 0.4);
+            gained += Math.max(1, (int) (gained * 0.4));
         }
         if (gained > 0) {
             giveItem(player, new ItemStack(ModItems.STAR_COIN.get(), gained));

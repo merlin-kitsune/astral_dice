@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "G": "minecraft:gold_ingot",
+    "L": "minecraft:lapis_lazuli",
+    "P": "astral_dice:star_plate",
+    "T": "astral_dice:speed_skates_low_chip"
+  },
+  "pattern": [
+    "LGL",
+    "GTG",
+    "PPP"
+  ],
+  "result": {
+    "id": "astral_dice:speed_skates_medium_chip"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "D": "astral_dice:dice",
+    "E": "astral_dice:blank_sign",
+    "I": "minecraft:iron_ingot",
+    "S": "minecraft:sugar_cane"
+  },
+  "pattern": [
+    "SIS",
+    "IEI",
+    "SDS"
+  ],
+  "result": {
+    "id": "astral_dice:jasmine_sign"
+  }
+}

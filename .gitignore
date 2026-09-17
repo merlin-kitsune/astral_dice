@@ -41,20 +41,34 @@ repo/
 
 temp/
 "temp/
-scripts/test/
+
+### 脚本目录:脚本本身入库,**运行时产物不入库** (2026-09-12 起;原先整目录排除 scripts/) ###
+scripts/**/__pycache__/
+scripts/temp/
+scripts/devtools/tmp/
+scripts/test/reports/*
+!scripts/test/reports/_template.md
+scripts/test/cases/.mt_*
+scripts/test/mt.conf
+scripts/test/mt.conf.bak
 
 ### 项目级排除(用户要求,与原 astra_dice 仓库一致) ###
 agents/
 build/
 docs/
 run/
-scripts/
 temp/
 images/
-AGENTS.md
 deploy.ps1
 .zcode/
 .workbuddy/
 
 ### CI 前置库检出目录(见 .github/workflows/build.yml) ###
 .ci/
+.dsh/
+### base-mod 本地 jar 目录(2026-09-17 用户要求排除):模组一律经 Curse Maven / Modrinth Maven 获取,
+### 不再把第三方模组 jar 放进版本库(见 AGENTS.md「模组依赖添加规则(统一口径)」)。
+### 无斜杠前缀 ⇒ 三个子项目下的同名目录一并生效。
+base-mod-libs/
+base-mod-compile-libs/
+### AGENTS.md 自 2026-09-15 起纳入版本库(用户要求),不再排除 ###

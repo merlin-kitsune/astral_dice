@@ -32,13 +32,6 @@ public class ModAttachments {
                     .serialize(Codec.INT)
                     .build());
 
-    // 伤害效果牌:当前生效的远程/魔法攻击追加伤害数值(由伤害效果牌使用后设置)
-    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> DAMAGE_EFFECT_BONUS =
-            ATTACHMENTS.register("damage_effect_bonus", () -> AttachmentType.builder(() -> 0)
-                    .serialize(Codec.INT)
-                    .sync(ByteBufCodecs.INT)
-                    .build());
-
     // 效果牌:当前周期内已连续出牌数
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> EFFECT_CARD_PLAY_COUNT =
             ATTACHMENTS.register("effect_card_play_count", () -> AttachmentType.builder(() -> 0)
@@ -46,20 +39,39 @@ public class ModAttachments {
                     .sync(ByteBufCodecs.INT)
                     .build());
 
-    // 忍者立牌(komachi)主动:效果牌出牌数+1 累积银行(按实际出牌消耗;跨周期保留至用尽,
-    // 不受出牌进度/冷却/满额影响,确保主动技能在任何情况下均生效)
-    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> KOMACHI_EXTRA_PLAYS =
-            ATTACHMENTS.register("komachi_extra_plays", () -> AttachmentType.builder(() -> 0)
+    // 出牌轮一次性追加的出牌数(0/1):由立牌主动技能(忍者「忍术连击」)授予,**仅当前出牌轮有效**——
+    // 不是可累积、可跨轮保留的"出牌银行";周期结束时由 EffectCardPeriod 统一清除,
+    // 立牌装卸不影响(授予即已消耗)。授予入口见 EffectCardPeriod#grantBonusPlay。
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> EFFECT_CARD_BONUS_PLAYS =
+            ATTACHMENTS.register("effect_card_bonus_plays", () -> AttachmentType.builder(() -> 0)
                     .serialize(Codec.INT)
                     .sync(ByteBufCodecs.VAR_INT)
                     .build());
 
-    public static int getKomachiExtraPlays(net.minecraft.world.entity.player.Player player) {
-        return player.getData(KOMACHI_EXTRA_PLAYS.get());
+    public static int getEffectCardBonusPlays(net.minecraft.world.entity.player.Player player) {
+        return player.getData(EFFECT_CARD_BONUS_PLAYS.get());
     }
 
-    public static void setKomachiExtraPlays(net.minecraft.world.entity.player.Player player, int value) {
-        player.setData(KOMACHI_EXTRA_PLAYS.get(), value);
+    public static void setEffectCardBonusPlays(net.minecraft.world.entity.player.Player player, int value) {
+        player.setData(EFFECT_CARD_BONUS_PLAYS.get(), Math.max(0, value));
+    }
+
+    // 活体书页(effect_card_living_page):本周期活体书页累计的出牌数加成(0,1,2,…)。
+    // 每次使用活体书页 +1(可累计;不是"效果存在即 +1"的开关式),周期归零时由 EffectCardPeriod 清除。
+    // 注意:与"调查员已用页数"(rin_pages,永久、无上限)无关,不可复用后者做本周期计数。
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> LIVING_PAGE_CYCLE_BONUS =
+            ATTACHMENTS.register("living_page_cycle_bonus", () -> AttachmentType.builder(() -> 0)
+                    .serialize(Codec.INT)
+                    .sync(ByteBufCodecs.VAR_INT)
+                    .build());
+
+    public static int getLivingPageCycleBonus(net.minecraft.world.entity.player.Player player) {
+        return player.getData(LIVING_PAGE_CYCLE_BONUS.get());
+    }
+
+    // 计数器只增不减(归零由周期清理负责),此处仅钳制非负
+    public static void setLivingPageCycleBonus(net.minecraft.world.entity.player.Player player, int value) {
+        player.setData(LIVING_PAGE_CYCLE_BONUS.get(), Math.max(0, value));
     }
 
     // 效果牌公共冷却结束时刻(-1 表示待定冷却=伤害效果牌效果等待中;0 表示无)
@@ -67,12 +79,6 @@ public class ModAttachments {
             ATTACHMENTS.register("effect_card_cooldown_end", () -> AttachmentType.builder(() -> 0L)
                     .serialize(Codec.LONG)
                     .sync(ByteBufCodecs.VAR_LONG)
-                    .build());
-
-    // 事件系统:护甲 -30% 惩罚结束时刻(0 表示未生效)
-    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> ARMOR_PENALTY_END =
-            ATTACHMENTS.register("armor_penalty_end", () -> AttachmentType.builder(() -> 0L)
-                    .serialize(Codec.LONG)
                     .build());
 
     // 史莱姆立牌:上次受击获得治愈的游戏时刻(限制受击 +1 的频率,防止围攻时点数暴涨)
@@ -140,6 +146,7 @@ public class ModAttachments {
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> MAGIC_TOME_USE_COUNT =
             ATTACHMENTS.register("magic_tome_use_count", () -> AttachmentType.builder(() -> 0)
                     .serialize(Codec.INT)
+                    .sync(ByteBufCodecs.INT)
                     .build());
 
     // 魔法秘典筹码:最后一张使用的效果牌类型(king_power/berserk/unwavering)
@@ -152,6 +159,7 @@ public class ModAttachments {
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> KOMACHI_USE_COUNT =
             ATTACHMENTS.register("komachi_use_count", () -> AttachmentType.builder(() -> 0)
                     .serialize(Codec.INT)
+                    .sync(ByteBufCodecs.INT)
                     .build());
 
     // 忍者立牌(komachi):最后一张使用的效果牌类型
@@ -160,11 +168,12 @@ public class ModAttachments {
                     .serialize(Codec.STRING)
                     .build());
 
-    // 忍者立牌(komachi):效果牌伤害增益(每使用 3 张效果牌 +1,无上限,卸下立牌重置)
+    // 忍者立牌(komachi):效果牌伤害增益(每使用 3 张效果牌 +1,无上限,卸下立牌重置;死亡重生保留)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> KOMACHI_DAMAGE_BONUS =
             ATTACHMENTS.register("komachi_damage_bonus", () -> AttachmentType.builder(() -> 0)
                     .serialize(Codec.INT)
                     .sync(ByteBufCodecs.INT)
+                    .copyOnDeath()
                     .build());
 
     // 小猪存钱罐筹码:效果牌使用计数(每使用 2 张获得 3 星币;卸下筹码重置)
@@ -179,6 +188,20 @@ public class ModAttachments {
 
     public static void setPiggyBankUseCount(net.minecraft.world.entity.player.Player player, int value) {
         player.setData(PIGGY_BANK_USE_COUNT.get(), Math.max(0, value));
+    }
+
+    // 手电筒-强光筹码:已发放过星光的敌对目标 UUID(逗号分隔;同一目标仅 +1 层星光)
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<String>> FLASHLIGHT_GRANTED_TARGETS =
+            ATTACHMENTS.register("flashlight_granted_targets", () -> AttachmentType.builder(() -> "")
+                    .serialize(Codec.STRING)
+                    .build());
+
+    public static String getFlashlightGrantedTargets(net.minecraft.world.entity.player.Player player) {
+        return player.getData(FLASHLIGHT_GRANTED_TARGETS.get());
+    }
+
+    public static void setFlashlightGrantedTargets(net.minecraft.world.entity.player.Player player, String value) {
+        player.setData(FLASHLIGHT_GRANTED_TARGETS.get(), value == null ? "" : value);
     }
 
     public static int getMagicTomeUseCount(net.minecraft.world.entity.player.Player player) {
@@ -249,10 +272,12 @@ public class ModAttachments {
         player.setData(DICE_CURSE_RATIO.get(), value);
     }
 
-    // 调查员立牌(rin):已使用的活体书页数量(活体书页伤害永久+1 的来源,移除立牌后重置)
+    // 调查员立牌(rin):已使用的活体书页数量(活体书页伤害永久+1 的来源,移除立牌后重置;死亡重生保留)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> RIN_PAGES =
             ATTACHMENTS.register("rin_pages", () -> AttachmentType.builder(() -> 0)
                     .serialize(Codec.INT)
+                    .sync(ByteBufCodecs.INT)
+                    .copyOnDeath()
                     .build());
 
     // 调查员立牌(rin):最近一次获得活体书页的事件签名(触发者 UUID + "|" + 事件 ID)。
@@ -371,14 +396,6 @@ public class ModAttachments {
         player.setData(EIGHT_SIDED_ROLL_ACCUM.get(), value);
     }
 
-    public static int getDamageEffectBonus(net.minecraft.world.entity.player.Player player) {
-        return player.getData(DAMAGE_EFFECT_BONUS.get());
-    }
-
-    public static void setDamageEffectBonus(net.minecraft.world.entity.player.Player player, int value) {
-        player.setData(DAMAGE_EFFECT_BONUS.get(), value);
-    }
-
     // 立牌主动技能冷却结束时刻(玩家级,不受立牌装卸影响;0 表示无冷却)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> SIGN_ACTIVE_COOLDOWN_END =
             ATTACHMENTS.register("sign_active_cooldown_end", () -> AttachmentType.builder(() -> 0L)
@@ -392,6 +409,104 @@ public class ModAttachments {
 
     public static void setSignActiveCooldownEnd(net.minecraft.world.entity.player.Player player, long value) {
         player.setData(SIGN_ACTIVE_COOLDOWN_END.get(), value);
+    }
+
+    // 立牌主动技能"本次冷却实际使用的最大冷却 tick"(路线 A:所有减免方一律读它作基准,不再各自重算;
+    // 0 表示缺失/无冷却,减免方回退旧行为;仅服务端使用,无需同步客户端)。
+    // 写入时机(第二批「立牌主动技能三态化」):① 直接起冷却时与 SIGN_ACTIVE_COOLDOWN_END 成对写入;
+    // ② 进入"锁定(生效中)"态时先写入基准(锁定期间减免方照旧读它并累加进 SIGN_ACTIVE_REDUCTION_POOL),
+    //    冷却起点火时再改写为扣池后的实际冷却 effective = max(0, 基准 − 池)。
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> SIGN_ACTIVE_MAX_COOLDOWN =
+            ATTACHMENTS.register("sign_active_max_cooldown", () -> AttachmentType.builder(() -> 0L)
+                    .serialize(Codec.LONG)
+                    .build());
+
+    public static long getSignActiveMaxCooldown(net.minecraft.world.entity.player.Player player) {
+        return player.getData(SIGN_ACTIVE_MAX_COOLDOWN.get());
+    }
+
+    public static void setSignActiveMaxCooldown(net.minecraft.world.entity.player.Player player, long value) {
+        player.setData(SIGN_ACTIVE_MAX_COOLDOWN.get(), value);
+    }
+
+    // ===== 立牌主动技能"三态化"(可用 / 锁定-生效中 / 冷却)的玩家级状态 =====
+    // 2026-09-25 用户裁决(第二批):主动技能施加的"带时长效果/自身计时器"跑完之前处于**锁定(生效中)**态,
+    // 期间按键无效;锁定结束**必起冷却**(无空档)。全部键仅服务端使用(判定只在服务端 performSkill /
+    // 各减免方 / 玩家级 tick),故一律不 .sync()(客户端 tooltip 不显示"生效中",保持零客户端改动)。
+
+    // 锁定态标记:正在生效中的主动所属立牌的**物品注册 id**("" = 未锁定)。判定见 BaseSignItem#isSignActiveLocked
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<String>> SIGN_ACTIVE_LOCK_SIGN =
+            ATTACHMENTS.register("sign_active_lock_sign", () -> AttachmentType.builder(() -> "")
+                    .serialize(Codec.STRING)
+                    .build());
+
+    // 锁定态的硬上界:触发时刻算定的"本技能施加的全部计时器到期刻取 max"
+    // (0 = 无自身计时器,仅忍者使用——其锁定跟随出牌周期,由周期完全重置结束)
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> SIGN_ACTIVE_LOCK_END =
+            ATTACHMENTS.register("sign_active_lock_end", () -> AttachmentType.builder(() -> 0L)
+                    .serialize(Codec.LONG)
+                    .build());
+
+    // 锁定期间累计的冷却减免池(tick):锁定结束起冷却时一次性抵扣并归零
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> SIGN_ACTIVE_REDUCTION_POOL =
+            ATTACHMENTS.register("sign_active_reduction_pool", () -> AttachmentType.builder(() -> 0L)
+                    .serialize(Codec.LONG)
+                    .build());
+
+    // 忍者立牌专用:宽限到期刻(触发主动时刻 + 1:00;0 = 宽限已失效/不适用)
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> SIGN_ACTIVE_LOCK_GRACE_END =
+            ATTACHMENTS.register("sign_active_lock_grace_end", () -> AttachmentType.builder(() -> 0L)
+                    .serialize(Codec.LONG)
+                    .build());
+
+    // 忍者立牌专用:本次锁定/宽限期内是否已出过任何效果牌(true = 宽限保险失效,遵循出牌周期)
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Boolean>> SIGN_ACTIVE_LOCK_PLAYED =
+            ATTACHMENTS.register("sign_active_lock_played", () -> AttachmentType.builder(() -> false)
+                    .serialize(Codec.BOOL)
+                    .build());
+
+    public static String getSignActiveLockSign(net.minecraft.world.entity.player.Player player) {
+        return player.getData(SIGN_ACTIVE_LOCK_SIGN.get());
+    }
+
+    public static void setSignActiveLockSign(net.minecraft.world.entity.player.Player player, String value) {
+        player.setData(SIGN_ACTIVE_LOCK_SIGN.get(), value == null ? "" : value);
+    }
+
+    public static long getSignActiveLockEnd(net.minecraft.world.entity.player.Player player) {
+        return player.getData(SIGN_ACTIVE_LOCK_END.get());
+    }
+
+    public static void setSignActiveLockEnd(net.minecraft.world.entity.player.Player player, long value) {
+        player.setData(SIGN_ACTIVE_LOCK_END.get(), value);
+    }
+
+    public static long getSignActiveReductionPool(net.minecraft.world.entity.player.Player player) {
+        return player.getData(SIGN_ACTIVE_REDUCTION_POOL.get());
+    }
+
+    public static void setSignActiveReductionPool(net.minecraft.world.entity.player.Player player, long value) {
+        player.setData(SIGN_ACTIVE_REDUCTION_POOL.get(), Math.max(0L, value));
+    }
+
+    public static void addSignActiveReductionPool(net.minecraft.world.entity.player.Player player, long delta) {
+        setSignActiveReductionPool(player, player.getData(SIGN_ACTIVE_REDUCTION_POOL.get()) + delta);
+    }
+
+    public static long getSignActiveLockGraceEnd(net.minecraft.world.entity.player.Player player) {
+        return player.getData(SIGN_ACTIVE_LOCK_GRACE_END.get());
+    }
+
+    public static void setSignActiveLockGraceEnd(net.minecraft.world.entity.player.Player player, long value) {
+        player.setData(SIGN_ACTIVE_LOCK_GRACE_END.get(), value);
+    }
+
+    public static boolean getSignActiveLockPlayed(net.minecraft.world.entity.player.Player player) {
+        return player.getData(SIGN_ACTIVE_LOCK_PLAYED.get());
+    }
+
+    public static void setSignActiveLockPlayed(net.minecraft.world.entity.player.Player player, boolean value) {
+        player.setData(SIGN_ACTIVE_LOCK_PLAYED.get(), value);
     }
 
     // 末影骰子:不死图腾效果冷却结束时刻(玩家级,0 表示未进入冷却)
@@ -479,14 +594,6 @@ public class ModAttachments {
         player.setData(EFFECT_CARD_COOLDOWN_END.get(), value);
     }
 
-    public static long getArmorPenaltyEnd(net.minecraft.world.entity.player.Player player) {
-        return player.getData(ARMOR_PENALTY_END.get());
-    }
-
-    public static void setArmorPenaltyEnd(net.minecraft.world.entity.player.Player player, long value) {
-        player.setData(ARMOR_PENALTY_END.get(), value);
-    }
-
     public static int getRinPages(net.minecraft.world.entity.player.Player player) {
         return player.getData(RIN_PAGES.get());
     }
@@ -572,6 +679,7 @@ public class ModAttachments {
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> NANCY_LU_PASSIVE_TYPE =
             ATTACHMENTS.register("nancy_lu_passive_type", () -> AttachmentType.builder(() -> 0)
                     .serialize(Codec.INT)
+                    .sync(ByteBufCodecs.INT)
                     .build());
 
     // 骇客立牌:主动"远程侵入"攻击力加成数值
@@ -587,16 +695,12 @@ public class ModAttachments {
                     .serialize(Codec.LONG)
                     .build());
 
-    // 骇客立牌:主动无敌结束时刻
-    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> NANCY_LU_INVULNERABLE_UNTIL =
-            ATTACHMENTS.register("nancy_lu_invulnerable_until", () -> AttachmentType.builder(() -> 0L)
-                    .serialize(Codec.LONG)
-                    .build());
-
     // 骇客立牌:主动"完全隐身"结束时刻
+    // (同步到客户端:client/NancyLuClientEvents 据此在隐身期间取消自身渲染)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> NANCY_LU_HIDDEN_UNTIL =
             ATTACHMENTS.register("nancy_lu_hidden_until", () -> AttachmentType.builder(() -> 0L)
                     .serialize(Codec.LONG)
+                    .sync(ByteBufCodecs.VAR_LONG)
                     .build());
 
     // 看板立牌:被动"主动技能返还"累计的战斗牌数量(每累计 25 张返还战斗牌获得一个随机筹码)
@@ -723,14 +827,6 @@ public class ModAttachments {
         player.setData(NANCY_LU_ACTIVE_BONUS_UNTIL.get(), Math.max(0, value));
     }
 
-    public static long getNancyLuInvulnerableUntil(net.minecraft.world.entity.player.Player player) {
-        return player.getData(NANCY_LU_INVULNERABLE_UNTIL.get());
-    }
-
-    public static void setNancyLuInvulnerableUntil(net.minecraft.world.entity.player.Player player, long value) {
-        player.setData(NANCY_LU_INVULNERABLE_UNTIL.get(), Math.max(0, value));
-    }
-
     public static long getNancyLuHiddenUntil(net.minecraft.world.entity.player.Player player) {
         return player.getData(NANCY_LU_HIDDEN_UNTIL.get());
     }
@@ -770,17 +866,7 @@ public class ModAttachments {
                     .serialize(Codec.LONG)
                     .build());
 
-    // 战斗爽·扩散待命:主动消耗 2 层养精蓄锐后置位,下次骰神赐福期间启用
-    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Boolean>> FEN_CLEAVE_PENDING =
-            ATTACHMENTS.register("fen_cleave_pending", () -> AttachmentType.builder(() -> false)
-                    .serialize(Codec.BOOL)
-                    .build());
-
-    // 战斗爽·扩散生效:本次骰神赐福期间,每次攻击将总伤害的 80% 扩散给目标 6 格内敌对目标,赐福结束清除
-    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Boolean>> FEN_CLEAVE_ACTIVE =
-            ATTACHMENTS.register("fen_cleave_active", () -> AttachmentType.builder(() -> false)
-                    .serialize(Codec.BOOL)
-                    .build());
+    // 注:"战斗爽·溅射"已改为被动单次效果,由 DiceCombatEvents 的局部变量承载,不再需要附件
 
     public static int getFenRecharge(net.minecraft.world.entity.player.Player player) {
         return player.getData(FEN_RECHARGE.get());
@@ -796,22 +882,6 @@ public class ModAttachments {
 
     public static void setFenLastBlessingTick(net.minecraft.world.entity.player.Player player, long value) {
         player.setData(FEN_LAST_BLESSING_TICK.get(), value);
-    }
-
-    public static boolean isFenCleavePending(net.minecraft.world.entity.player.Player player) {
-        return player.getData(FEN_CLEAVE_PENDING.get());
-    }
-
-    public static void setFenCleavePending(net.minecraft.world.entity.player.Player player, boolean value) {
-        player.setData(FEN_CLEAVE_PENDING.get(), value);
-    }
-
-    public static boolean isFenCleaveActive(net.minecraft.world.entity.player.Player player) {
-        return player.getData(FEN_CLEAVE_ACTIVE.get());
-    }
-
-    public static void setFenCleaveActive(net.minecraft.world.entity.player.Player player, boolean value) {
-        player.setData(FEN_CLEAVE_ACTIVE.get(), value);
     }
 
     // 以毒攻毒:记录生命恢复 II 的触发时刻(中毒 8 秒后)
@@ -846,6 +916,7 @@ public class ModAttachments {
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> PANDAMAN_MAX_HEALTH_BONUS =
             ATTACHMENTS.register("pandaman_max_health_bonus", () -> AttachmentType.builder(() -> 0)
                     .serialize(Codec.INT)
+                    .sync(ByteBufCodecs.INT)
                     .build());
 
     public static int getPandamanMaxHealthBonus(net.minecraft.world.entity.player.Player player) {
@@ -871,9 +942,13 @@ public class ModAttachments {
     }
 
     // 恋的规则书:是否已在当前世界为玩家发放过首次加入的规则书(仅服务端持久化,无需同步)
+    // 「死亡重生保留」(2026-09-15 用户裁决,必须遵守):口径是「仅在玩家第一次进入世界发放一次,
+    // 此后任何情况下都不再自动发放」⇒ 本键**必须随死亡复制**:否则死亡后新实体回默认 false,
+    // 而发放挂在 PlayerLoggedInEvent ⇒ 下次登录必再发一本(实测缺陷,且 keepInventory 下书仍在背包)。
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Boolean>> GUIDE_BOOK_GIVEN =
             ATTACHMENTS.register("guide_book_given", () -> AttachmentType.builder(() -> false)
                     .serialize(Codec.BOOL)
+                    .copyOnDeath()
                     .build());
 
     public static boolean isGuideBookGiven(net.minecraft.world.entity.player.Player player) {
@@ -919,6 +994,13 @@ public class ModAttachments {
                     .sync(ByteBufCodecs.VAR_LONG)
                     .build());
 
+    /** 电磁炮:雷击触发冷却结束时刻(1:00;0 表示无冷却;仅第二能力雷击,不影响充能攻击力加成) */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> RAILGUN_COOLDOWN_END =
+            ATTACHMENTS.register("railgun_cooldown_end", () -> AttachmentType.builder(() -> 0L)
+                    .serialize(Codec.LONG)
+                    .sync(ByteBufCodecs.VAR_LONG)
+                    .build());
+
     public static long getEmpowerDecayAt(net.minecraft.world.entity.player.Player player) {
         return player.getData(EMPOWER_DECAY_AT.get());
     }
@@ -941,5 +1023,13 @@ public class ModAttachments {
 
     public static void setAirbagCooldownEnd(net.minecraft.world.entity.player.Player player, long value) {
         player.setData(AIRBAG_COOLDOWN_END.get(), Math.max(0, value));
+    }
+
+    public static long getRailgunCooldownEnd(net.minecraft.world.entity.player.Player player) {
+        return player.getData(RAILGUN_COOLDOWN_END.get());
+    }
+
+    public static void setRailgunCooldownEnd(net.minecraft.world.entity.player.Player player, long value) {
+        player.setData(RAILGUN_COOLDOWN_END.get(), Math.max(0, value));
     }
 }

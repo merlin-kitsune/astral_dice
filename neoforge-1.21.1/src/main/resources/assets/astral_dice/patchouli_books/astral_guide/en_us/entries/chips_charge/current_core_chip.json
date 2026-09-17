@@ -11,6 +11,10 @@
     {
       "type": "patchouli:text",
       "text": "astral_dice.guide.entry.current_core_chip.2"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:current_core_chip"
     }
   ],
   "sortnum": 4

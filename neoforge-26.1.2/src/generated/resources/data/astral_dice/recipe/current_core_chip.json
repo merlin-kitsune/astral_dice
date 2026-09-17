@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": "astral_dice:blank_chip",
+    "E": "minecraft:lightning_rod",
+    "P": "astral_dice:star_plate",
+    "U": "minecraft:comparator",
+    "W": "astral_dice:conductive_wire"
+  },
+  "pattern": [
+    "UEU",
+    "WCW",
+    "PPP"
+  ],
+  "result": {
+    "id": "astral_dice:current_core_chip"
+  }
+}

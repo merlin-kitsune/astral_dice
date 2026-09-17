@@ -1,0 +1,28 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": "astral_dice:blank_chip",
+    "D": "minecraft:wither_rose",
+    "P": "astral_dice:star_plate",
+    "X": "minecraft:nether_star",
+    "Z": {
+      "neoforge:ingredient_type": "neoforge:components",
+      "components": {
+        "minecraft:potion_contents": {
+          "potion": "minecraft:regeneration"
+        }
+      },
+      "items": "minecraft:potion",
+      "strict": true
+    }
+  },
+  "pattern": [
+    "ZXZ",
+    "DCD",
+    "PPP"
+  ],
+  "result": {
+    "id": "astral_dice:adrenaline_low_chip"
+  }
+}

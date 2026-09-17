@@ -1,0 +1,88 @@
+package com.merlinkitsune.astral_dice.item.chip;
+
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import top.theillusivec4.curios.api.SlotContext;
+import top.theillusivec4.curios.api.type.capability.ICurioItem;
+import com.merlinkitsune.astral_dice.combat.SpellDamageRegistry;
+import com.merlinkitsune.astral_dice.item.card.EffectCardPeriod;
+import com.merlinkitsune.astral_dice.AstralDiceMod;
+import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
+import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
+
+/**
+ * 筹码基类:统一全部筹码的公共模板,新增筹码只需继承本类并实现业务钩子。
+ *
+ * 公共行为(所有筹码一致):
+ * - {@link #canEquip}:仅允许放入 "chip" 饰品栏,并禁止重复装备相同筹码(服务端校验;客户端放行避免误判);
+ * - {@link #use}:下蹲右键自动装备到 "chip" 饰品栏;
+ * - {@link #curioTick}:默认空实现,子类可覆写;
+ * - {@link #onUnequip}:仅在"玩家有意卸除"时调用清理钩子 {@link #onChipUnequip}(子类覆写实现自身清理,
+ *   如八面骰累计点清空、魔法秘典计数重置、手电筒已发放目标清空等)。
+ *
+ * 新增筹码时:
+ * 1. 继承本类,覆写业务钩子(如 {@link #curioTick} / {@link #onChipEquip} / {@link #onChipUnequip});
+ * 2. 战斗/资源加成统一注册到对应修饰器注册表(DiceCombatModifiers / SpellDamageRegistry / EffectCardPeriod),
+ *    不要散落硬编码在事件类中。
+ */
+public abstract class BaseChipItem extends Item implements ICurioItem {
+
+    public BaseChipItem(Properties properties) {
+        super(properties);
+    }
+
+    @Override
+    public boolean canEquip(SlotContext slotContext, ItemStack stack) {
+        // 筹码只能放入"chip"饰品栏
+        if (!"chip".equals(slotContext.identifier())) return false;
+        // 禁止重复装备相同的筹码(服务端校验;客户端直接放行避免误判)
+        if (slotContext.entity().level().isClientSide()) return true;
+        return !CurioSlotUtil.hasSameItemEquipped(slotContext.entity(), stack);
+    }
+
+    @Override
+    public InteractionResult use(Level level, Player player, InteractionHand hand) {
+        ItemStack stack = player.getItemInHand(hand);
+        // 下蹲右键:自动装备到"chip"饰品栏
+        if (player.isShiftKeyDown()) {
+            return CurioSlotUtil.tryAutoEquip(player, stack, "chip");
+        }
+        return InteractionResult.PASS;
+    }
+
+    @Override
+    public void curioTick(SlotContext slotContext, ItemStack stack) {
+    }
+
+    /**
+     * 生成唯一的属性修饰器 id(按本物品注册名派生)。
+     * 同一属性在不同筹码间必须使用不同修饰器 id,否则 Curios 应用属性时后装者会覆盖先装者。
+     */
+    protected net.minecraft.resources.Identifier attributeModifierId(String suffix) {
+        net.minecraft.resources.Identifier key =
+                net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(this);
+        return net.minecraft.resources.Identifier.fromNamespaceAndPath(
+                com.merlinkitsune.astral_dice.AstralDiceMod.MODID,
+                "chip_" + key.getPath() + "_" + suffix);
+    }
+
+    // 卸下时通用清理(空实现;子类若需在真正卸下时清理自身数据可覆写)
+    protected void onChipUnequip(Player player, ItemStack stack) {
+    }
+
+    @Override
+    public void onUnequip(SlotContext slotContext, ItemStack newStack, ItemStack stack) {
+        if (!(slotContext.entity() instanceof Player player)) return;
+        if (player.level().isClientSide()) return;
+        // Curios 官方签名:第 2 参 newStack = 将要占用槽位的栈(玩家真正卸下时为 EMPTY,换装时为新放入的那件),
+        // 第 3 参 stack = **被卸下的那件饰品**;旧实现误把第 2 参当成了被卸下的物品。
+        // 通用清理:仅"玩家有意卸除"时调用(排除 Curios 自身重载 from=to 同一物品仍在槽位),
+        // 并把被卸下的那个栈(第 3 参)交给清理钩子。
+        CurioSlotUtil.runOnIntentionalUnequip(newStack, stack, player, p -> onChipUnequip(p, stack));
+    }
+}

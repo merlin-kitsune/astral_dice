@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": "minecraft:gold_block",
+    "C": "astral_dice:blank_chip",
+    "G": "astral_dice:golden_star_plate",
+    "L": "astral_dice:conductive_wire",
+    "N": "minecraft:nether_star"
+  },
+  "pattern": [
+    "BNB",
+    "LCL",
+    "GGG"
+  ],
+  "result": {
+    "id": "astral_dice:perpetual_motion_chip"
+  }
+}

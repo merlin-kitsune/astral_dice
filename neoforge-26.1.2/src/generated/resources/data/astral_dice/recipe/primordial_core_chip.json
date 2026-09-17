@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": "astral_dice:blank_chip",
+    "G": "astral_dice:golden_star_plate",
+    "H": "minecraft:dragon_head",
+    "W": "astral_dice:conductive_wire",
+    "X": "minecraft:echo_shard"
+  },
+  "pattern": [
+    "XHX",
+    "WBW",
+    "GGG"
+  ],
+  "result": {
+    "id": "astral_dice:primordial_core_chip"
+  }
+}

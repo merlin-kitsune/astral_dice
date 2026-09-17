@@ -100,17 +100,24 @@ public class HaiqingSignItem extends BaseSignItem {
         return started ? InteractionResultHolder.success(stack) : InteractionResultHolder.fail(stack);
     }
 
-    // 被动 2:带"虚弱印记"的目标被击杀时,仅释放该印记的玩家(占星师)获得 3 星币与一张"命运的指引"(绑定获得者)。
-    // 由 HaiqingSignItem.onWeakMarkKill 事件分发(任何玩家击杀都触发,奖励归属印记释放者)。
-    public static void grantWeakMarkKillReward(Player applier) {
+    // 被动 2:带"虚弱印记"的目标被击杀时,释放该印记的占星师获得 3 星币;
+    // 「命运的指引」归**击杀者**(击杀者可能是占星师自己,也可能不是玩家——非玩家击杀时不发牌)。
+    public static void grantWeakMarkKillReward(Player applier, Player killer) {
         if (applier == null || applier.level().isClientSide()) return;
         ItemStack coinStack = new ItemStack(ModItems.STAR_COIN.get(), 3);
         if (!applier.getInventory().add(coinStack)) {
             applier.drop(coinStack, false);
         }
-        ItemStack card = new ItemStack(ModItems.FATE_GUIDANCE_CARD.get());
-        ExclusiveCardUtil.setOwner(card, applier);
-        VitaminPillChipItem.giveCard(applier, card);
+        if (killer != null) {
+            ItemStack card = new ItemStack(ModItems.FATE_GUIDANCE_CARD.get());
+            ExclusiveCardUtil.setOwner(card, killer);
+            VitaminPillChipItem.giveCard(killer, card);
+            if (killer != applier && killer instanceof ServerPlayer killerSp) {
+                PacketDistributor.sendToPlayer(killerSp,
+                        new ActionBarPayload(Component.translatable("msg.astral_dice.weak_mark_kill_reward")
+                                .withStyle(ChatFormatting.YELLOW), GameplayConstants.ACTIONBAR_DURATION_TICKS));
+            }
+        }
         if (applier instanceof ServerPlayer sp) {
             PacketDistributor.sendToPlayer(sp,
                     new ActionBarPayload(Component.translatable("msg.astral_dice.weak_mark_kill_reward")
@@ -126,7 +133,9 @@ public class HaiqingSignItem extends BaseSignItem {
         Optional<UUID> source = ModAttachments.getWeakMarkSource(target);
         if (source.isEmpty()) return;
         if (target.level().getPlayerByUUID(source.get()) instanceof Player applier) {
-            HaiqingSignItem.grantWeakMarkKillReward(applier);
+            // 只判定击杀者:非玩家击杀(如其它生物)时不发放「命运的指引」
+            Player killer = event.getSource().getEntity() instanceof Player k ? k : null;
+            HaiqingSignItem.grantWeakMarkKillReward(applier, killer);
         }
     }
 

@@ -1,0 +1,17 @@
+{
+  "name": "item.astral_dice.ninja_star_chip",
+  "category": "astral_dice:chips_mark",
+  "icon": "astral_dice:ninja_star_chip",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:ninja_star_chip",
+      "text": "astral_dice.guide.entry.ninja_star_chip.1"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:ninja_star_chip"
+    }
+  ],
+  "sortnum": 4
+}

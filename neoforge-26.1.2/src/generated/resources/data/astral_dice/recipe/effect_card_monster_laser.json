@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    "minecraft:paper",
+    "minecraft:redstone",
+    "astral_dice:star_coin"
+  ],
+  "result": {
+    "id": "astral_dice:effect_card_monster_laser"
+  }
+}

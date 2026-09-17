@@ -1,0 +1,17 @@
+{
+  "name": "item.astral_dice.vitamin_pill_chip",
+  "category": "astral_dice:chips_healing",
+  "icon": "astral_dice:vitamin_pill_chip",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:vitamin_pill_chip",
+      "text": "astral_dice.guide.entry.vitamin_pill_chip.1"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:vitamin_pill_chip"
+    }
+  ],
+  "sortnum": 2
+}

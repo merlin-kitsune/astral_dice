@@ -21,12 +21,16 @@ import com.merlinkitsune.astral_dice.item.ModItems;
  * <ul>
  *   <li>拥有养精蓄锐(层数 &gt; 0)时,攻击力 +2、防御力 +2(DiceCombatModifiers 修饰器,动态判断);</li>
  *   <li>1 分钟内没有触发骰神赐福 → 养精蓄锐 +1 层(tick 驱动);</li>
- *   <li>触发骰神赐福 → 养精蓄锐 -1 层;</li>
+ *   <li>触发骰神赐福 → 养精蓄锐 -1 层;若触发时已满 {@value #MAX_RECHARGE} 层,则改为
+ *       **消耗 {@value #SPLASH_COST} 层**,并在**本次攻击结算时立即**引爆一次
+ *       "战斗爽·溅射"(**单次效果**):对目标及其 {@value #SPLASH_RANGE} 格范围内的敌对目标
+ *       (**含主目标**)造成本次攻击伤害 88%(**下限 5 点**)的**真实伤害**
+ *       (伤害类型 {@code astral_dice:true_damage},登记于 {@code minecraft:bypasses_armor}
+ *       → 无视护甲值与盔甲韧性);</li>
  *   <li>使用治疗类效果牌 → 养精蓄锐 +1 层(BaseEffectCardItem 钩子)。</li>
  * </ul>
- * <p>主动"战斗爽"(1:00):攻击力 +3;若拥有养精蓄锐则恢复 6 点血量并获得迅捷 1:00;
- * 若养精蓄锐已达 5 层,消耗 2 层,并在下次骰神赐福期间将每次攻击造成的总伤害的 80%
- * 施加给目标 6 格范围内其他敌对目标(战斗爽·扩散),持续到本次骰神赐福结束。
+ * <p>主动"战斗爽"(1:00):攻击力 +3;若拥有养精蓄锐则恢复 6 点血量并获得迅捷 1:00。
+ * <p>旧的"主动消耗 2 层 → 下次骰神赐福期间持续扩散"已移除:溅射改为**被动触发 + 单次生效**。
  */
 public class FenSignItem extends BaseSignItem {
     /** 养精蓄锐上限 */
@@ -35,10 +39,14 @@ public class FenSignItem extends BaseSignItem {
     public static final int FRENZY_DURATION_TICKS = 1200;
     /** 主动恢复生命值 */
     public static final int ACTIVE_HEAL = 6;
-    /** 扩散范围(格) */
-    public static final double CLEAVE_RANGE = 6.0;
-    /** 扩散伤害比例(每次攻击总伤害的 80%) */
-    public static final double CLEAVE_RATIO = 0.8;
+    /** 战斗爽·溅射消耗的养精蓄锐层数(满层触发时替代常规的 -1 层) */
+    public static final int SPLASH_COST = 2;
+    /** 溅射范围(格):目标及其附近,含主目标本身 */
+    public static final double SPLASH_RANGE = 6.0;
+    /** 溅射伤害比例(本次攻击伤害的 88%) */
+    public static final double SPLASH_RATIO = 0.88;
+    /** 溅射伤害下限(点):本次攻击伤害过低时按此值结算(高于全局"不足 1 按 1"的兜底) */
+    public static final double SPLASH_DAMAGE_MIN = 5.0;
 
     public FenSignItem(Properties properties) {
         super(properties);
@@ -69,12 +77,23 @@ public class FenSignItem extends BaseSignItem {
             EffectTimerGuard.apply(player, new MobEffectInstance(MobEffects.MOVEMENT_SPEED,
                     FRENZY_DURATION_TICKS, 0, false, true));
         }
-        // 若养精蓄锐已达 5 层:消耗 2 层,下次骰神赐福期间触发"战斗爽·扩散"
-        if (stacks >= MAX_RECHARGE) {
-            ModAttachments.setFenRecharge(player, stacks - 2);
-            ModAttachments.setFenCleavePending(player, true);
-        }
+        // 注:"战斗爽·溅射"已移至被动(触发骰神赐福且满层时消耗 2 层),主动不再消耗层数
         return InteractionResultHolder.success(stack);
+    }
+
+    // 第二批「三态化」:主动施加 "战斗爽" 1:00(若有养精蓄锐则迅捷同为 1:00)⇒ 进入锁定(生效中)态
+    @Override
+    protected boolean startActiveLockOnUse(Player player, long now) {
+        net.minecraft.world.effect.MobEffectInstance instance = player.getEffect(ModEffects.FEN_FRENZY);
+        if (instance == null) return false;
+        beginActiveLock(player, "astral_dice:fen_sign", now + instance.getDuration());
+        return true;
+    }
+
+    // 门控效果实例仍在:效果被外力提前移除时锁定提前结束(硬上界不延长)
+    @Override
+    protected boolean isGateEffectActive(Player player) {
+        return player.hasEffect(ModEffects.FEN_FRENZY);
     }
 
     // 玩家是否佩戴大当家立牌
@@ -93,23 +112,43 @@ public class FenSignItem extends BaseSignItem {
     }
 
     /**
-     * 触发骰神赐福时调用(DiceCombatEvents triggeredBlessing 块):
-     * 记录触发时刻;佩戴立牌时养精蓄锐 -1 层(下限 0);
-     * 若"战斗爽·扩散"待命,则本次赐福启用(持续到赐福结束)。
+     * 触发骰神赐福时调用(DiceCombatEvents triggeredBlessing 块):记录触发时刻;
+     * 佩戴立牌时养精蓄锐 -1 层(下限 0);**已满 {@value #MAX_RECHARGE} 层时返回 true 且不在此扣层**,
+     * 表示本次攻击应在伤害定稿后立即引爆一次溅射——代价由 {@link #consumeSplashCost} 在
+     * 溅射真正生效时扣除(攻击若在结算前被取消,例如 PvP 闪避导致事件提前 return,层数不会被白扣)。
+     *
+     * <p>返回值由调用方(DiceCombatEvents)保存在**本次事件的局部变量**里,不落附件:
+     * 溅射天生只属于"触发它的这一次攻击",用局部变量表达"单次效果"最直接,
+     * 也不会出现跨攻击残留(旧实现的"待命/生效"两个附件已删除)。
+     *
+     * @return 本次攻击是否应引爆"战斗爽·溅射"
      */
-    public static void onBlessingTriggered(Player player) {
-        if (player.level().isClientSide()) return;
+    public static boolean onBlessingTriggered(Player player) {
+        if (player.level().isClientSide()) return false;
         long now = player.level().getGameTime();
         ModAttachments.setFenLastBlessingTick(player, now);
-        if (!isEquipped(player)) return;
+        if (!isEquipped(player)) return false;
         int stacks = ModAttachments.getFenRecharge(player);
+        if (stacks >= MAX_RECHARGE) {
+            return true;
+        }
         if (stacks > 0) {
             ModAttachments.setFenRecharge(player, stacks - 1);
         }
-        if (ModAttachments.isFenCleavePending(player)) {
-            ModAttachments.setFenCleavePending(player, false);
-            ModAttachments.setFenCleaveActive(player, true);
-        }
+        return false;
+    }
+
+    /**
+     * 扣除"战斗爽·溅射"的养精蓄锐代价({@value #SPLASH_COST} 层,下限 0),
+     * 由 DiceCombatEvents 在**真正引爆溅射之前**调用。
+     *
+     * <p>与 {@link #onBlessingTriggered} 分开的原因与电磁炮一致:只有效果真正发生才付代价——
+     * 攻击若在结算前被取消(如 PvP 闪避提前 return),层数不会被白白扣掉。
+     */
+    public static void consumeSplashCost(Player player) {
+        if (player == null || player.level().isClientSide()) return;
+        int stacks = ModAttachments.getFenRecharge(player);
+        ModAttachments.setFenRecharge(player, Math.max(0, stacks - SPLASH_COST));
     }
 
     /**
@@ -133,16 +172,5 @@ public class FenSignItem extends BaseSignItem {
         ModAttachments.setFenRecharge(player, ModAttachments.getFenRecharge(player) + 1);
         // 重新计时
         ModAttachments.setFenLastBlessingTick(player, now);
-    }
-
-    // 骰神赐福结束时调用(DiceCombatEvents.onDiceBlessingExpired):清除"战斗爽·扩散"生效状态
-    public static void onBlessingEnd(Player player) {
-        if (player.level().isClientSide()) return;
-        ModAttachments.setFenCleaveActive(player, false);
-    }
-
-    // "战斗爽·扩散"是否在本次赐福期间生效(玩家级附件驱动,不随卸下立牌失效)
-    public static boolean isCleaveActive(Player player) {
-        return player != null && ModAttachments.isFenCleaveActive(player);
     }
 }

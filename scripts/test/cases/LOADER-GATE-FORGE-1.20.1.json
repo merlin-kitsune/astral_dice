@@ -1,0 +1,91 @@
+{
+  "case_id": "LOADER-GATE-FORGE-1.20.1",
+  "title": "1.20.1 Forge 加载器门槛（离线）：低于 47.4.10 必须在 FML 依赖排序阶段被拒 —— 旧区间 [47,) 接纳 47.0.0（BUG 复现），新区间 [47.4.10,48) 拒绝 47.0.0/47.4.9 且接纳 47.4.10+；Mixin Booster 强前置（无对应 Mixin 集成时缺它=全部 mixin 静默失效）必须在模板/生成资源/产物三段声明 mandatory=true 且区间 [0.1.3,) 接纳实装版本 0.1.3+1.20.1、拒绝更低版本",
+  "version": "1.20.1",
+  "target": {
+    "type": "bugfix",
+    "ref": "loader-gate-forge"
+  },
+  "steps": [
+    {
+      "op": "note",
+      "text": "⚠️ 本条目是**纯离线**用例，不需要 runClient：它没有 inject_*/screenshot 步骤，mt_case 的 needsClient 判定为 false（同 SMOKE-TOOLCHAIN 的做法）。读数由 `pwsh -NoProfile -File scripts/test/mt_loadergate.ps1 --version 1.20.1` 写入 `run/1.20.1/logs/loadergate.log`（mt_assert 的 source=loadergate 通道，本批新增）。先跑该脚本、再跑本条目（mt_case.ps1 run --case LOADER-GATE-FORGE-1.20.1）；因为脚本会整文件重写该日志，所以断言一律用 scope=whole 读全文件。"
+    },
+    {
+      "op": "note",
+      "text": "步骤 1/6（取回区间来源）：`forge-1.20.1/gradle.properties` 的 forge_version=1.20.1-47.4.10 → build.gradle 第 131-135 行派生两处区间（loaderVersion=[<major>,<major+1)>；modId=\"forge\" 依赖=[<forge_version>,<major+1>)）。脚本同时从**生成资源**（build/generated/sources/modMetadata/META-INF/mods.toml）与**构建产物**（build/libs/astral_dice-*+forge_1.20.1.jar!/META-INF/mods.toml）双向读取，来源必须一致 → AP_LG_SRC(_GEN/_JAR)。"
+    },
+    {
+      "op": "note",
+      "text": "步骤 2/6（Mixin Booster 强前置声明）：Forge 1.20.1 的 FML **没有 Mixin 集成**——Sponge Mixin 0.8.5 是由 `mixinbooster` 这个纯 ModLauncher 服务 jar 提供的（缓存物 `maven.modrinth:mixinbooster:rOaAYvPZ` → `mixinbooster-rOaAYvPZ.jar`；它自己没有 mods.toml，模组条目与版本由自带 IModLocator 读 jar 根 `mixinbooster_version.txt` 得到，实机 debug.log 原文：`Found valid mod file transmog-mod.jar with {mixinbooster} mods - versions {0.1.3+1.20.1}`）。缺它或旧它时本模组**不报错**、全部 mixin 静默失效，所以它必须是 mandatory=true 的硬前置：脚本核对**模板/生成资源/产物**三段的 modId/mandatory/versionRange/ordering/side 全部一致，并断言 build.gradle 仍以 modImplementation 装配它 → AP_LG_MB。"
+    },
+    {
+      "op": "note",
+      "text": "步骤 3/6（核对 FML 同一实现）：判据实现是 `fmlloader-1.20.1-47.4.10.jar` 内 `ModSorter#modVersionNotContained` → `VersionSupportMatrix#testVersionSupportMatrix` → `VersionRange#containsVersion(ArtifactVersion)`；`VersionRange` 来自 fmlloader 自己 POM 声明的 `org.apache.maven:maven-artifact`（脚本从缓存的 POM 取版本号，并做字节码常量池扫描列出所有引用 VersionRange 的类）→ AP_LG_IMPL。"
+    },
+    {
+      "op": "note",
+      "text": "步骤 4/6（编译离线判定器）：由本用例的执行体 `scripts/test/mt_loadergate.ps1` 在运行时生成到 `temp/loadergate/LoaderGateProbe.java`，再用**同一个 maven-artifact jar**（+ 同一 POM 声明的 commons-lang3，DefaultArtifactVersion#tryParseInt 依赖它）编译；判定式逐字复刻 modVersionNotContained，含 VersionSupportMatrix 的 `mod.forge → 47.1.79` 别名覆盖项 → AP_LG_COMPILE。"
+    },
+    {
+      "op": "note",
+      "text": "步骤 5-6/6（BUG 复现 + 两道门槛结论）：旧区间 `[47,)` 接纳 47.0.0/47.4.9（= 修复前 BUG 复现，环境会照常加载后才在 Mixin 变换阶段报错）；新区间 `[47.4.10,48)` 拒绝 47.0.0/47.4.9、接纳 47.4.10/47.4.11/47.5.0、拒绝 48.0.0；loaderVersion `[47,48)`（javafml 语言提供者版本 = Forge 主系列号 47）接纳 47 拒绝 48 → AP_LG_OLD / AP_LG_NEW / AP_LG_ALIAS / AP_LG_LOADER。**Mixin Booster 区间**用产物里真实声明的 versionRange 对前置 jar 内真实版本 `0.1.3+1.20.1` 判定：必须 accept，且 `0.1.3`（下限闭合）accept、`0.1.2`/`0.1.0` reject（旧前置同样逃不过门槛）；注意它**不在** VersionSupportMatrix 的 overrideVersions 里，判定退化为纯 containsVersion（脚本为此单独用 `vb()`，不套 forge 别名）→ AP_LG_MB_RANGE + AP_LG_VERDICT。"
+    },
+    {
+      "op": "note",
+      "text": "拒绝时用户看到什么：FML 在**依赖排序阶段**抛出 `Missing or unsupported mandatory dependencies:` 并列出 Mod ID / Requested by / Expected range / Actual version（ModSorter 常量池实测字符串），游戏不会进入主界面。⚠️ Forge 1.20.1 的依赖段**不支持 `reason` 字段**（实测 `ModInfo$ModVersion` 构造器只读 modId/mandatory/versionRange/ordering/side/referralUrl，`reason` 是 NeoForge 的字段），所以「为什么需要这个前置」的说明只能写在模组页面/文档里；脚本用 `reason_key=none` 断言模板里不得出现未注释的 reason= 行（避免后来者以为写了就能显示给用户）。"
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "loadergate",
+      "scope": "whole",
+      "pattern": "AP_LG_SRC:forge_version=1\\.20\\.1-47\\.4\\.10:derived_loader=\\[47,48\\):derived_forge=\\[47\\.4\\.10,48\\):loaderVersion=\\[47,48\\):forgeRange=\\[47\\.4\\.10,48\\):src=gen\\+jar"
+    },
+    {
+      "type": "log",
+      "source": "loadergate",
+      "scope": "whole",
+      "pattern": "AP_LG_MB:src=template\\+gen\\+jar:modId=mixinbooster:mandatory=true:range=\\[0\\.1\\.3,\\):ordering=AFTER:side=BOTH:present=1:artifact_version=0\\.1\\.3\\+1\\.20\\.1:build_dep=present:reason_key=none"
+    },
+    {
+      "type": "log",
+      "source": "loadergate",
+      "scope": "whole",
+      "pattern": "AP_LG_IMPL:fmlloader=fmlloader-1\\.20\\.1-47\\.4\\.10\\.jar:maven_artifact=3\\.8\\.5:commons_lang3=[0-9.]+:jar=maven-artifact-3\\.8\\.5\\.jar:version_range_refs=.*ModSorter.*VersionSupportMatrix"
+    },
+    {
+      "type": "log",
+      "source": "loadergate",
+      "scope": "whole",
+      "pattern": "AP_LG_OLD:range=\\[47,\\):v47\\.0\\.0=accept:v47\\.4\\.9=accept:.*bug_repro=1"
+    },
+    {
+      "type": "log",
+      "source": "loadergate",
+      "scope": "whole",
+      "pattern": "AP_LG_NEW:range=\\[47\\.4\\.10,48\\):v47\\.0\\.0=reject:v47\\.4\\.9=reject:v47\\.4\\.10=accept:v47\\.4\\.11=accept:v47\\.5\\.0=accept:v48\\.0\\.0=reject:gate_ok=1"
+    },
+    {
+      "type": "log",
+      "source": "loadergate",
+      "scope": "whole",
+      "pattern": "AP_LG_LOADER:range=\\[47,48\\):javafml47=accept:javafml48=reject:alias_key=languageloader\\.javafml:loader_ok=1"
+    },
+    {
+      "type": "log",
+      "source": "loadergate",
+      "scope": "whole",
+      "pattern": "AP_LG_MB_RANGE:range=\\[0\\.1\\.3,\\):artifact=0\\.1\\.3\\+1\\.20\\.1:v0\\.1\\.0=reject:v0\\.1\\.2=reject:v0\\.1\\.3=accept:v0\\.1\\.3\\+1\\.20\\.1=accept:v0\\.1\\.4=accept:v0\\.2\\.0=accept:gate_ok=1"
+    },
+    {
+      "type": "log",
+      "source": "loadergate",
+      "scope": "whole",
+      "pattern": "AP_LG_VERDICT:bug_repro=1:gate_ok=1:loader_ok=1:mb_ok=1:fail=:fml_stage=dependency_sorting:msg=Missing or unsupported mandatory dependencies:overall=1"
+    }
+  ],
+  "evidence": [],
+  "on_fail": "keep_game_running"
+}

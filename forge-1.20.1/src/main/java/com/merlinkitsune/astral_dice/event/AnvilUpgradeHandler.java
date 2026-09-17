@@ -108,9 +108,13 @@ public class AnvilUpgradeHandler {
         ItemStack left = event.getLeft();
         ItemStack right = event.getRight();
 
+        // 升星白名单覆盖全部 13 种骰子(基础/黄金/玻璃/下界岩/钻石/绿宝石/黑曜石/诡异/紫晶/下界合金/绯红/末影/下界之星)
         if (left.is(ModItems.DICE.get()) || left.is(ModItems.GOLDEN_DICE.get()) || left.is(ModItems.DIAMOND_DICE.get())
                 || left.is(ModItems.NETHERITE_DICE.get()) || left.is(ModItems.EMERALD_DICE.get())
-                || left.is(ModItems.GLASS_DICE.get())) {
+                || left.is(ModItems.GLASS_DICE.get()) || left.is(ModItems.NETHERRACK_DICE.get())
+                || left.is(ModItems.OBSIDIAN_DICE.get()) || left.is(ModItems.WEIRD_DICE.get())
+                || left.is(ModItems.AMETHYST_DICE.get()) || left.is(ModItems.CRIMSON_DICE.get())
+                || left.is(ModItems.ENDER_DICE.get()) || left.is(ModItems.NETHER_STAR_DICE.get())) {
             if (!right.is(ModItems.STAR_COIN.get())) return;
             WeaponEnhancement enhancement = ModDataComponents.WEAPON_ENHANCEMENT.getOrDefault(left, WeaponEnhancement.EMPTY);
             if (enhancement.starLevel() >= 3) return;

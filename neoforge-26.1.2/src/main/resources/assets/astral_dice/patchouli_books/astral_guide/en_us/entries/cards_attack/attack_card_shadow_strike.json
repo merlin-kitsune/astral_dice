@@ -1,0 +1,17 @@
+{
+  "name": "item.astral_dice.attack_card_shadow_strike",
+  "category": "astral_dice:cards_attack",
+  "icon": "astral_dice:attack_card_shadow_strike",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:attack_card_shadow_strike",
+      "text": "astral_dice.guide.entry.attack_card_shadow_strike.1"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:attack_card_shadow_strike"
+    }
+  ],
+  "sortnum": 3
+}

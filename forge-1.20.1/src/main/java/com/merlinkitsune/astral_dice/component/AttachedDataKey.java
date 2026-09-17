@@ -91,6 +91,15 @@ public final class AttachedDataKey<T> {
         return store != null && store.contains(name) ? store.get(name) : null;
     }
 
+    /**
+     * 默认值的原始 tag(全量快照对**缺失键下发显式默认值**用)。
+     * 键在服务端不存在时必须下发,否则客户端会保留上一会话/上一个世界的残留缓存值。
+     * 编码失败返回 null(调用方跳过该键)。
+     */
+    public Tag defaultRawTag() {
+        return codec.encodeStart(net.minecraft.nbt.NbtOps.INSTANCE, defaultValue.get()).result().orElse(null);
+    }
+
     public static final class Builder<T> {
         private final String name;
         private final Codec<T> codec;

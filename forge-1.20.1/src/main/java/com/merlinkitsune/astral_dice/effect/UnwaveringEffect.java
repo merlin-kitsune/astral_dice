@@ -6,17 +6,27 @@ import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 
 /**
- * 岿然不动:效果期间护甲值 +8(ADD_VALUE,对应骰战防御力 +4,按"防御 = 2 + 护甲÷2"折算),
+ * 岿然不动:效果期间每层护甲值 +8(ADDITION,对应骰战防御力 +4,按"防御 = 2 + 护甲÷2"折算),
  * 由骰战防御修饰器迁移而来——真实护甲与骰战均正确生效,避免双重计算。
  *
  * 注意:1.20.1 的 addAttributeModifier(Attribute, String, ...) 要求 UUID 字符串
  * (内部 UUID.fromString),不能像 1.21.1 那样传 ResourceLocation 路径;此处使用
  * 与语义名绑定的确定性 UUID(astral_dice:unwavering_armor 的 UUIDv5)。
+ *
+ * 修饰器随 amplifier 线性放大(1.20.1/Forge):MobEffect#addAttributeModifiers(LivingEntity, AttributeMap, int)
+ * 逐个调用可覆写的 MobEffect#getAttributeModifierValue(int amplifier, AttributeModifier modifier) 取值
+ * (vanilla 默认即 amount × (amplifier + 1)),此处显式覆写以固定"每层护甲 +8":
+ * amplifier 0 → +8、1 → +16、2 → +24(上限由 UnwaveringCardItem 控制,最多 3 层)。
  */
 public class UnwaveringEffect extends MobEffect {
     public UnwaveringEffect() {
         super(MobEffectCategory.BENEFICIAL, 0x4A90D9);
         this.addAttributeModifier(Attributes.ARMOR, "a941d5ed-605a-55c2-834c-4cf3ba28dab0",
                 8.0, AttributeModifier.Operation.ADDITION);
+    }
+
+    @Override
+    public double getAttributeModifierValue(int amplifier, AttributeModifier modifier) {
+        return 8.0 * (amplifier + 1);
     }
 }

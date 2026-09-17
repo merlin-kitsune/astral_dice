@@ -33,7 +33,10 @@ public class MagicTomeChipItem extends BaseChipItem {
         ModAttachments.setMagicTomeLastCard(player, cardType);
         updateCountEffect(player);
         if (count >= 3) {
-            ItemStack card = BaseEffectCardItem.cardByTypeId(cardType);
+            // 读回附件中的「最后一张效果牌」记录作为唯一来源(方法参数仅作兜底)
+            String lastCardType = ModAttachments.getMagicTomeLastCard(player);
+            if (lastCardType == null || lastCardType.isEmpty()) lastCardType = cardType;
+            ItemStack card = BaseEffectCardItem.cardByTypeId(lastCardType);
             // 复制的专属效果牌绑定获得者
             if (ExclusiveCardUtil.isExclusive(card)) {
                 ExclusiveCardUtil.setOwner(card, player);

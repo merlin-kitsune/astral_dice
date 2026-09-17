@@ -8,6 +8,11 @@ on:
       - 'multi-1.20.1-1.21.1'
       # 合并后的开发主线（原 dev-targetselector 重命名而来）
       - 'multi-dev-next'
+      # 26.1.2 第三条线:2026-09-17 起已与发布线同树(该分支保留为历史/回滚入口)。
+      # 它同样跑 lang 同步 + 三子项目构建,并且它的 jar 会**一并附到发布线的 Release**(见文末三 jar 步骤);
+      # 打 tag / 建 Release 这两步仍**只在发布线分支**(multi-1.20.1-1.21.1)触发 —— 26.1.2 的版本号
+      # 形如 `1.2.1-beta+neoforge_26.1.2`,不是裸 x.y.z,按发布规范不会(也不应)生成独立 tag。
+      - 'multi-26.1.2-neoforge'
     tags:
       # 发布规范:tag 使用不含后缀的基础版本号(如 1.1.3),禁止 v 前缀与 +加载器后缀
       - '[0-9]*'
@@ -38,17 +43,31 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
+      - name: Setup JDK 25 (26.1.2 NeoForge)
+        # MC 26.1.2 的 javaVersion = java-runtime-epsilon / majorVersion 25(1.21.1 为 21),
+        # 故第三子项目的 toolchain 必须是 25;若本步未提供,根项目 foojay 解析器会自行下载。
+        uses: actions/setup-java@v4
+        with:
+          java-version: '25'
+          distribution: 'temurin'
+
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
       - name: Checkout StarEngine Lib (required prerequisite)
         # 前置库 starengine_lib 只在 mavenLocal 发布(无远程 maven),CI 上必须先从源码构建。
-        # 注意:ref 固定 main 且与 neoforge-1.21.1/gradle.properties 的 starengine_lib_version 强耦合
-        # —— 库版本 bump 后本文件所在的消费方必须同步 bump,否则断在依赖解析。
+        # ⚠️ ref **不得**停在浮动的 main(2026-09-17 修正):main 每推一个提交都向前走,而消费方在这里
+        # 构建出的库必须**恰好**是 `starengine_lib_version` 指定的那一版 —— 浮动 main 会让
+        # 「区间下界 [1.0.0-SNAPSHOT.<n>,2.0)」与「CI 实际 publishToMavenLocal 出的版本」脱钩,
+        # 一旦库在两次 CI 之间 bump 或改动坐标,断在依赖解析(本地不可复现,只在 CI 暴露)。
+        # 现固定为 `starengine_lib_version=1.0.0-SNAPSHOT.4` 对应的固定提交(库仓库该提交的
+        # 三个平台 mod_version 均为 1.0.0-SNAPSHOT.4;库侧当前无 tag,故用提交 SHA 钉死)。
+        # **库版本 bump 时本行必须同步更新**(与 neoforge-1.21.1 / forge-1.20.1 的
+        # gradle.properties 的 starengine_lib_version 同一提交里一起改),且该提交需已推送到远端。
         uses: actions/checkout@v4
         with:
           repository: merlin-kitsune/starengine_lib
-          ref: main
+          ref: a2f70ea7948f51838565cefff4d5f922f022da40   # = 1.0.0-SNAPSHOT.4
           path: .ci/starengine_lib
           fetch-depth: 1
 
@@ -57,12 +76,15 @@ jobs:
         run: ./gradlew publishToMavenLocal
 
       - name: Check lang sync (neoforge-1.21.1)
-        run: python3 tools/check_lang_sync.py --lang-dir neoforge-1.21.1/src/main/resources/assets/astral_dice/lang
+        run: pwsh -NoProfile -File tools/check_lang_sync.ps1 -LangDir neoforge-1.21.1/src/main/resources/assets/astral_dice/lang
 
       - name: Check lang sync (forge-1.20.1)
-        run: python3 tools/check_lang_sync.py --lang-dir forge-1.20.1/src/main/resources/assets/astral_dice/lang
+        run: pwsh -NoProfile -File tools/check_lang_sync.ps1 -LangDir forge-1.20.1/src/main/resources/assets/astral_dice/lang
 
-      - name: Build with Gradle (both targets)
+      - name: Check lang sync (neoforge-26.1.2)
+        run: pwsh -NoProfile -File tools/check_lang_sync.ps1 -LangDir neoforge-26.1.2/src/main/resources/assets/astral_dice/lang
+
+      - name: Build with Gradle (all targets)
         run: ./gradlew build
 
       - name: Upload Astral Dice JARs
@@ -72,21 +94,32 @@ jobs:
           path: |
             neoforge-1.21.1/build/libs/astral_dice-*.jar
             forge-1.20.1/build/libs/astral_dice-*.jar
+            neoforge-26.1.2/build/libs/astral_dice-*.jar
 
       - name: Read base version
         id: version
         run: |
           VERSION=$(grep '^mod_version=' neoforge-1.21.1/gradle.properties | cut -d'=' -f2)
-          BASE=${VERSION%%-*}
+          # tag = 基础版本号:先剥掉 +加载器 后缀(1.2.0+neoforge_1.21.1 → 1.2.0),再剥 -rc/-pre。
+          # ⚠️ 必须两条都剥:只剥 '-' 时,`1.2.0+neoforge_1.21.1` 不含 '-' → tag 会原样带上 '+后缀'。
+          BASE=${VERSION%%+*}
+          BASE=${BASE%%-*}
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "base=$BASE" >> "$GITHUB_OUTPUT"
+          # 守门:base 必须是裸 x.y.z,否则不打 tag(避免再次出现不合规 tag)
+          if [[ "$BASE" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "skip_tag=0" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::base version '$BASE' is not a bare x.y.z — tag creation skipped"
+            echo "skip_tag=1" >> "$GITHUB_OUTPUT"
+          fi
 
-      - name: Create Git tag (release branch push only, stable versions only)
+      - name: Create Git tag (release branch push only)
+        id: tag
         # 仅在发布线分支(multi-1.20.1-1.21.1)自动打 tag:tag = 基础版本号(去掉 -rc/-pre 与 +后缀),如 1.1.3。
-        # 守卫:版本号含 '-'(即 SNAPSHOT/rc/pre)时不打 tag —— 否则 2.0.0-SNAPSHOT.5
-        # 会被截成 "2.0.0" 并自动打出正式 tag,把未定型的快照误标为发布。
-        # ⚠️ 该分支推送时若 mod_version 不含 '-',会自动建 tag 并触发下面一步发布 Release。
-        if: github.event_name == 'push' && github.ref == 'refs/heads/multi-1.20.1-1.21.1'
+        # ⚠️ 该分支推送时若 mod_version 不含 '-',会自动建 tag;Release 由**同一 job 的下一步**直接发布。
+        # 不再依赖「tag push 触发 Release」:GITHUB_TOKEN 推送的 tag 不会再触发本 workflow。
+        if: github.event_name == 'push' && github.ref == 'refs/heads/multi-1.20.1-1.21.1' && steps.version.outputs.skip_tag == '0'
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           if [[ "$VERSION" == *-* ]]; then
@@ -102,24 +135,67 @@ jobs:
             git tag -a "$TAG" -m "Release $TAG"
             git push origin "$TAG"
           fi
+          # 交给下一步发布 Release(同 job:tag 已保证存在)
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
-      - name: Create/Update GitHub Release (tag push only, both JARs)
-        # 打 tag(如 1.1.3)后自动发布:附件 = 1.21.1 与 1.20.1 两个 jar。
-        # 玩家还需要对应的前置:starengine_lib(见仓库 README)。
-        if: startsWith(github.ref, 'refs/tags/')
+      - name: Create/Update GitHub Release (three JARs, notes from release/<tag>/)
+        # 发布 Release 的两种来源(同一 job 内完成,附件 = 刚构建的三个 jar:
+        #   1.21.1 NeoForge + 1.20.1 Forge(发布线)+ 26.1.2 NeoForge(低优先级移植线,版本号带 -beta)):
+        #   ① 发布线分支 push:用上一步新建/已存在的 tag(已在库内,无需再触发 workflow);
+        #   ② ref 本身就是 tag(tag push,或对 tag 手动 workflow_dispatch 补发):直接用 GITHUB_REF 的 tag。
+        # 说明正文取自**玩家侧发布说明** `release/<tag>/PLAYER_CHANGELOG_ZH.md` + `PLAYER_CHANGELOG.md`
+        # (中文在前、英文在后,中间插一条 `---`);两个文件都不存在时退回「附件清单」兜底并留 ::warning::。
+        # 已存在同名 Release 时改为「编辑说明 + --clobber 覆盖附件」,保证重复发布幂等、附件与最新构建一致。
+        if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'push' && github.ref == 'refs/heads/multi-1.20.1-1.21.1' && steps.tag.outputs.tag != '')
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="${GITHUB_REF#refs/tags/}"
-          LIB=$(grep '^starengine_lib_version=' neoforge-1.21.1/gradle.properties | cut -d'=' -f2)
-          NOTES="Astral Dice $TAG — 1.21.1 (NeoForge) + 1.20.1 (Forge)"$'\n\n'"Requires: starengine_lib $LIB (https://github.com/merlin-kitsune/starengine_lib/releases)."
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            TAG="${GITHUB_REF#refs/tags/}"
+          else
+            TAG="${{ steps.tag.outputs.tag }}"
+          fi
+          echo "publishing release for tag: $TAG"
+          # ⚠️ 三个 glob 都必须至少命中一个文件,否则 bash 会把未展开的模式原样传给 gh 并报错(故意让它失败)。
+          JARS=(neoforge-1.21.1/build/libs/astral_dice-*.jar forge-1.20.1/build/libs/astral_dice-*.jar neoforge-26.1.2/build/libs/astral_dice-*.jar)
+          # 说明正文拼成一个临时文件后用 `--notes-file` 传入 —— 玩家侧发布说明可达数十 KB,
+          # 经 `--notes "$(...)"` 内联会踩长度与引号问题(旧的内联单行写法已废弃)。
+          NOTES_ZH="release/$TAG/PLAYER_CHANGELOG_ZH.md"
+          NOTES_EN="release/$TAG/PLAYER_CHANGELOG.md"
+          NOTES_FILE="$RUNNER_TEMP/astral-dice-release-notes-$TAG.md"
+          : > "$NOTES_FILE"
+          HAVE_NOTES=0
+          if [[ -f "$NOTES_ZH" ]]; then
+            cat "$NOTES_ZH" >> "$NOTES_FILE"
+            HAVE_NOTES=1
+          else
+            echo "::warning::player changelog not found: $NOTES_ZH"
+          fi
+          if [[ -f "$NOTES_EN" ]]; then
+            # 中英两份之间插水平分隔线(仅当前面已写入内容时)
+            if [[ $HAVE_NOTES -eq 1 ]]; then printf '\n---\n\n' >> "$NOTES_FILE"; fi
+            cat "$NOTES_EN" >> "$NOTES_FILE"
+            HAVE_NOTES=1
+          else
+            echo "::warning::player changelog not found: $NOTES_EN"
+          fi
+          if [[ $HAVE_NOTES -eq 0 ]]; then
+            # 兜底(不阻断发布):该版本尚未提供玩家侧发布说明时,至少列出本次构建的三个附件
+            {
+              printf 'Astral Dice %s\n\n' "$TAG"
+              printf '**附件 / Attachments**\n'
+              for j in "${JARS[@]}"; do printf -- '- `%s`\n' "${j##*/}"; done
+            } >> "$NOTES_FILE"
+            echo "::warning::no release/$TAG/PLAYER_CHANGELOG*.md found — falling back to an attachment list"
+          fi
+          echo "release notes: $(wc -c < "$NOTES_FILE") bytes"
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release edit "$TAG" --title "Astral Dice $TAG" --notes "$NOTES"
+            gh release edit "$TAG" --title "Astral Dice $TAG" --notes-file "$NOTES_FILE"
+            gh release upload "$TAG" "${JARS[@]}" --clobber
           else
             gh release create "$TAG" \
-              neoforge-1.21.1/build/libs/astral_dice-*.jar \
-              forge-1.20.1/build/libs/astral_dice-*.jar \
+              "${JARS[@]}" \
               --title "Astral Dice $TAG" \
-              --notes "$NOTES" \
+              --notes-file "$NOTES_FILE" \
               --latest
           fi

@@ -13,6 +13,7 @@ import net.minecraft.world.level.Level;
  * 使用:调查员已使用数量 +1(无上限),进入"活体书页"效果 60 秒:
  * 效果期间对所有敌对目标造成的远程/魔法伤害增加(基础 2 + 调查员已使用数量)点,并施加 1 层标记
  * (法伤加成结算在 SpellDamageRegistry)。
+ * 同时在本出牌周期内累计 +1 出牌数上限(每次使用 +1、可叠加,周期归零时由 EffectCardPeriod 清除)。
  */
 public class LivingPageItem extends BaseEffectCardItem {
     public LivingPageItem(Properties properties) {
@@ -31,8 +32,19 @@ public class LivingPageItem extends BaseEffectCardItem {
 
     @Override
     protected void applyEffect(Level level, Player user, LivingEntity applyTo, ItemStack stack) {
-        // 调查员(rin)已使用数量 +1(无上限);活体书页效果期间提供临时出牌数 +1(效果驱动)
+        // 专属牌:绑定获得者(发放路径已绑定本人;指令/创造栏等未绑定副本在此兜底,首位使用者即获得者)
+        ExclusiveCardUtil.bindIfAbsent(stack, user);
+        // 调查员(rin)已使用数量 +1(永久、无上限;用于法伤 = 2 + 已用页数);这是累计页数,不是本周期出牌数
         ModAttachments.setRinPages(user, ModAttachments.getRinPages(user) + 1);
+        // 活体书页:每次使用在本出牌周期内累计 +1 出牌数上限(不是"效果存在即 +1"的开关式);
+        // 仅当前周期有效,周期归零时由 EffectCardPeriod 清除
+        // 本周期出牌数加成每次使用 +1(可叠加),但上限只需把出牌数推到封顶 9 即可 ——
+        // 加个封顶避免无界累加(长按连发/周期长期不结算时曾可无限增长)
+        int nextCycleBonus = ModAttachments.getLivingPageCycleBonus(user) + 1;
+        if (nextCycleBonus > com.merlinkitsune.starenginelib.component.GameplayConstants.MAX_EFFECT_CARD_PLAYS) {
+            nextCycleBonus = com.merlinkitsune.starenginelib.component.GameplayConstants.MAX_EFFECT_CARD_PLAYS;
+        }
+        ModAttachments.setLivingPageCycleBonus(user, nextCycleBonus);
         // 获得活体书页效果 60 秒
         user.addEffect(new MobEffectInstance(ModEffects.LIVING_PAGE.get(), 1200, 0, false, true));
     }

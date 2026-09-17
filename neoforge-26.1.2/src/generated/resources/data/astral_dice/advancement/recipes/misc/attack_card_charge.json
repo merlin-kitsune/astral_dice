@@ -1,0 +1,32 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_star_plate": {
+      "conditions": {
+        "items": [
+          {
+            "items": "astral_dice:star_plate"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "has_the_recipe": {
+      "conditions": {
+        "recipe": "astral_dice:attack_card_charge"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    }
+  },
+  "requirements": [
+    [
+      "has_the_recipe",
+      "has_star_plate"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "astral_dice:attack_card_charge"
+    ]
+  }
+}

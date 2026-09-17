@@ -1,0 +1,16 @@
+{
+  "case_id": "SMOKE-TOOLCHAIN",
+  "title": "工具链自检（不依赖游戏）",
+  "version": "1.21.1",
+  "target": {"type": "existing-feature", "ref": "mt-toolchain"},
+  "steps": [
+    {"op": "note", "text": "本条目只验证执行器与断言链路，无需 runClient"},
+    {"op": "wait", "ms": 200}
+  ],
+  "asserts": [
+    {"type": "absent", "pattern": "MT_SMOKE_NEVER_APPEARS_.*", "source": "latest"},
+    {"type": "mixin"}
+  ],
+  "evidence": [],
+  "on_fail": "keep_game_running"
+}

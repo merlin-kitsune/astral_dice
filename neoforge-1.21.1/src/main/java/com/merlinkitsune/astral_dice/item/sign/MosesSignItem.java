@@ -144,13 +144,15 @@ public class MosesSignItem extends BaseSignItem {
     }
 
     /**
-     * 对普通敌对目标施加"破绽"(持续 2:00)。
-     * 若目标已带破绽则不再重复施加,并保持原有每段标记。
+     * 对符合骰神赐福触发条件的目标施加"破绽"(持续 2:00)。
+     * 若目标已带破绽则不再重复施加;重新施加时重置该目标的"每段破绽奖励"标记,
+     * 使新一段破绽可以重新获得一次弱点识破层数。
      */
     public static boolean applyBroken(Player player, LivingEntity target) {
         if (target == null || target.level().isClientSide()) return false;
         if (target.hasEffect(ModEffects.MOSES_BROKEN)) return false;
         ModAttachments.setMosesBrokenAttackRewarded(target, false);
+        ModAttachments.setMosesDodgeCounterRewarded(target, false);
         target.addEffect(new MobEffectInstance(ModEffects.MOSES_BROKEN,
                 MosesBrokenEffect.DURATION_TICKS, 0, false, true));
         sendSignActionBar(player, "msg.astral_dice.moses_apply");

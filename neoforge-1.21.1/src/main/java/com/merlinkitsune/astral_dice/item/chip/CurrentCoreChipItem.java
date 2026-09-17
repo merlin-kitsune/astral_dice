@@ -18,8 +18,9 @@ import top.theillusivec4.curios.api.CuriosApi;
  *       并立即使主动技能冷却完成(不直接释放技能,需再次按键使用)。</li>
  * </ul>
  *
- * <p>消耗档位:剩余冷却 ÷ {@link #MAX_COOLDOWN_SECONDS}(180 秒)得到占比,按占比切成
- * {@link #MAX_COOLDOWN_COST} 档(每档 1/6),向上取整后钳制在 1~6 点。
+ * <p>消耗档位:剩余冷却 ÷ 本次冷却实际使用的最大冷却(路线 A:起冷却时记录的
+ * {@code sign_active_max_cooldown} 附件;记录缺失时回退 {@link #MAX_COOLDOWN_SECONDS}(180 秒))
+ * 得到占比,按占比切成 {@link #MAX_COOLDOWN_COST} 档(每档 1/6),向上取整后钳制在 1~6 点。
  */
 public class CurrentCoreChipItem extends BaseChipItem {
     /** 每次使用主动技能获得的充能层数 */
@@ -59,12 +60,16 @@ public class CurrentCoreChipItem extends BaseChipItem {
     }
 
     /**
-     * 立即完成冷却所需的充能点数:按剩余时长占 {@link #MAX_COOLDOWN_SECONDS} 的比例切成
+     * 立即完成冷却所需的充能点数:按剩余时长占"本次冷却实际使用的最大冷却"的比例切成
      * {@link #MAX_COOLDOWN_COST} 档(向上取整),最低 1 点、最高 {@link #MAX_COOLDOWN_COST} 点。
+     *
+     * @param maxCooldownTicks 本次冷却实际使用的最大冷却 tick(≤0 表示记录缺失,回退
+     *                         {@link #MAX_COOLDOWN_SECONDS} 的旧行为)
      */
-    public static int instantCooldownCost(long remainingTicks) {
+    public static int instantCooldownCost(long remainingTicks, long maxCooldownTicks) {
         if (remainingTicks <= 0) return 0;
-        double ratio = Math.min(1.0, remainingTicks / (double) (MAX_COOLDOWN_SECONDS * 20L));
+        long base = maxCooldownTicks > 0 ? maxCooldownTicks : MAX_COOLDOWN_SECONDS * 20L;
+        double ratio = Math.min(1.0, remainingTicks / (double) base);
         int cost = (int) Math.ceil(ratio * MAX_COOLDOWN_COST);
         return Math.max(1, Math.min(MAX_COOLDOWN_COST, cost));
     }
@@ -77,10 +82,15 @@ public class CurrentCoreChipItem extends BaseChipItem {
      */
     public static int tryFinishCooldown(Player player, long cooldownEnd, long now) {
         if (player == null || player.level().isClientSide()) return FINISH_NONE;
+        // 第二批「三态化」:主动技能仍在锁定(生效中)态时**严格禁用**本筹码——
+        // 不触发、不扣充能、不入减免池;用户可见提示由 BaseSignItem.performSkill 的锁定分支统一发出
+        // (该分支判定在冷却分支之前,故正常路径下根本走不到这里;此处仅为纵深防御)
+        if (com.merlinkitsune.astral_dice.item.sign.BaseSignItem.isSignActiveLocked(player)) return FINISH_NONE;
         if (!isEquipped(player)) return FINISH_NONE;
         long remaining = cooldownEnd - now;
         if (remaining <= 0) return FINISH_NONE;
-        int cost = instantCooldownCost(remaining);
+        // 路线 A:档位分母取起冷却时记录的"本次冷却实际使用的最大冷却"(记录缺失时回退硬编码 180 秒)
+        int cost = instantCooldownCost(remaining, ModAttachments.getSignActiveMaxCooldown(player));
         if (ChargeManager.getStacks(player) < cost) {
             sendActionBar(player, "hud.astral_dice.current_core_not_enough", cost);
             return FINISH_NOT_ENOUGH;
@@ -88,8 +98,9 @@ public class CurrentCoreChipItem extends BaseChipItem {
         for (int i = 0; i < cost; i++) {
             ChargeManager.consumeOne(player);
         }
-        // 立即完成冷却:结束时刻置为当前时刻(后续判定 now < cdEnd 不再成立)
+        // 立即完成冷却:结束时刻置为当前时刻(后续判定 now < cdEnd 不再成立),并让"本次最大冷却"记录随冷却一起失效
         ModAttachments.setSignActiveCooldownEnd(player, now);
+        ModAttachments.setSignActiveMaxCooldown(player, 0);
         sendActionBar(player, "hud.astral_dice.current_core_finish", cost);
         return FINISH_DONE;
     }

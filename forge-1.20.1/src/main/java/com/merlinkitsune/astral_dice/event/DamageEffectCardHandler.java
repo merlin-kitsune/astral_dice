@@ -10,7 +10,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.event.entity.living.LivingHurtEvent;
+import net.minecraftforge.event.entity.living.LivingDamageEvent;
 import com.merlinkitsune.astral_dice.network.ModNetwork.DamageNumberMessage;
 
 /**
@@ -21,8 +21,21 @@ import com.merlinkitsune.astral_dice.network.ModNetwork.DamageNumberMessage;
 @Mod.EventBusSubscriber(modid = AstralDiceMod.MODID)
 public class DamageEffectCardHandler {
 
+    /** 真伤加成结算的**重入闸门**:真伤伤害源会再次进入本处理器(伤害事件对每一次 hurt 都会触发),
+     *  若将来某个作用域 matcher 把它判为法伤就会无限递归;闸门只覆盖"本处理器自己发起的那一次真伤结算"。 */
+    private static final ThreadLocal<Boolean> APPLYING_TRUE_BONUS = ThreadLocal.withInitial(() -> Boolean.FALSE);
+
+    // ⚠️ 事件时机必须与 1.21.1 对齐(2026-09-15 用户裁决修补 KI-5「电击手套 AOE 基准跨版本」):
+    // 1.21.1 挂在 LivingDamageEvent.Pre(**护甲/附魔减免之后**),而 1.20.1 原先挂 LivingHurtEvent
+    // (**护甲前**,LivingEntity.java:1665 早于 :1667-1668 的护甲减免)⇒ 同一发法伤在 1.20.1 上
+    // 会以「护甲前原始值」为基准做 3 格 AOE 波及,带甲目标周围多打一截。
+    // 按 AGENTS.md「伤害事件映射」的既定口径(LivingDamageEvent.Pre ↔ 1.20.1 LivingDamageEvent,
+    // 即**护甲之后**),此处改挂 LivingDamageEvent;`SpellDamageContext.event` 的类型随之同步。
+    // 残余(平台固有,已在 AGENTS.md 记录):1.20.1 的 LivingDamageEvent 在**吸收结算之后**
+    // (吸收 :1669-1670 早于派发 :1680),1.21.1 的 Pre 在**吸收之前**(:1789 早于 :1790-1792),
+    // 故目标带吸收(黄心)时两版本基准仍会有差异——普通目标无吸收,实际影响可忽略。
     @SubscribeEvent
-    public static void onLivingDamagePre(LivingHurtEvent event) {
+    public static void onLivingDamagePre(LivingDamageEvent event) {
         LivingEntity target = event.getEntity();
         if (target.level().isClientSide()) return;
         DamageSource source = event.getSource();
@@ -46,9 +59,20 @@ public class DamageEffectCardHandler {
             }
         }
 
-        // 应用加成并跳数字
-        if (bonus > 0) {
-            event.setAmount(event.getAmount() + (float) bonus);
+        // 应用加成并跳数字。
+        // **法伤加成按「真伤」独立结算**(2026-09-14 用户裁决):不再并进本次伤害事件——
+        // 并进去的话这份加成会连同武器伤害一起吃护甲值/盔甲韧性/保护附魔的减免,与
+        // 「伤害效果牌伤害纳入真伤机制」的口径不符;改走 ModDamageTypes.trueDamage(...)
+        // 独立结算:直接伤害实体为空 + 击杀归属施法者(与旧 explosion(null, player) 同形状,
+        // 不会被本模组或其它模组当成"玩家的直接攻击"重走骰战)。
+        if (bonus > 0 && !APPLYING_TRUE_BONUS.get()) {
+            APPLYING_TRUE_BONUS.set(true);
+            try {
+                target.hurt(com.merlinkitsune.astral_dice.damage.ModDamageTypes
+                        .trueDamage(target.level(), player), (float) bonus);
+            } finally {
+                APPLYING_TRUE_BONUS.set(false);
+            }
             sendBonusDamageNumber(target, (int) bonus);
         }
 

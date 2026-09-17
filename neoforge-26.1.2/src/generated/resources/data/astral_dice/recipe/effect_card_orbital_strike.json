@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    "minecraft:paper",
+    "minecraft:spyglass",
+    "astral_dice:star_plate"
+  ],
+  "result": {
+    "id": "astral_dice:effect_card_orbital_strike"
+  }
+}

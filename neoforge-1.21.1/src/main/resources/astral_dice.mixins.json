@@ -4,6 +4,8 @@
   "package": "com.merlinkitsune.astral_dice.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
+    "EntityThunderHitMixin",
+    "LightningBoltStrikeScopeMixin",
     "trade.MerchantContainerMixin",
     "trade.MerchantMenuMixin",
     "trade.MerchantOfferMixin",
@@ -12,7 +14,9 @@
     "PiglinAiMixin"
   ],
   "client": [
+    "client.AstralUseItemGuardMixin",
     "client.EffectRenderingInventoryScreenMixin",
+    "client.GuiMixin",
     "client.KeyboardHandlerMixin"
   ],
   "injectors": {

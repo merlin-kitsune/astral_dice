@@ -1,0 +1,108 @@
+{
+  "case_id": "CRAFT-SMOKE-26.1.2",
+  "title": "26.1.2 合成冒烟：配方全量装载(121)+ 手写配方真合成 + 长矛纳入骰神赐福判定",
+  "version": "26.1.2",
+  "target": {
+    "type": "existing-feature",
+    "ref": "mc-26.1.2-recipes"
+  },
+  "steps": [
+    {
+      "op": "note",
+      "text": "背景(2026-09-17)：26.1 起 ingredient 的 JSON 形态由对象 `{\"item\":\"X\"}` / `{\"tag\":\"T\"}` 改为**字符串** `\"X\"` / `\"#T\"`(依据 NeoForge 26.1 文档 Resources/Server/Recipes/Ingredients：字符串=vanilla ingredient，带 `neoforge:ingredient_type` 的对象=自定义 ingredient)。本仓 13 份手写配方(12 张骰子升级 + 手册)未随之改写，导致 `No key neoforge:ingredient_type in MapLike[...]` 整份解析失败——**配方静默消失**(不崩、不报用例错)，本次已全部改写。本条目的判据：① 装载数必须等于磁盘文件数(任何一份解析失败都会让它变小)；② 不只判「配方在不在」，而是按配方自身的 placementInfo 造 CraftingInput 跑 matches()+assemble()(真合成)；③ 26.1.2 新增的 7 种「长矛」必须与剑/斧/重锤/三叉戟同为近战武器(骰神赐福第一道闸门 DiceCombatEvents#isMeleeWeaponAttack)。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe recipecheck RC1"
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe craftcheck CC1"
+    },
+    {
+      "op": "wait",
+      "ms": 2500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe meleecheck MC1"
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_RC1_RC_MOD:121"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_RC1_RC_MISSING:none"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_RC1_RC_DONE"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CC1_CRAFT:astral_dice:golden_dice="
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "astral_dice:emerald_dice=astral_dice:emerald_dicex1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "astral_dice:nether_star_dice=astral_dice:nether_star_dicex1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "astral_dice:astral_guide=patchouli:guide_bookx1"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_CC1_CRAFT:.*(no-recipe|no-match|impossible|empty-result|empty-ingredient|no-placement|-err|ERR:)"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CC1_DONE"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_MC1_MELEE:spear=1:dspear=1:nspear=1:sword=1:axe=1:mace=1:trident=1:stick=0:bow=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_MC1_DONE"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_RC1_ERR|AP_CC1_EX|AP_MC1_MELEE:.*ERR:|threw an exception"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "crash"
+    }
+  ],
+  "on_fail": "keep_game_running"
+}

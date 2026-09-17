@@ -26,6 +26,10 @@
     {
       "type": "patchouli:text",
       "text": "astral_dice.guide.entry.playstyles.6"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.playstyles.7"
     }
   ],
   "sortnum": 3

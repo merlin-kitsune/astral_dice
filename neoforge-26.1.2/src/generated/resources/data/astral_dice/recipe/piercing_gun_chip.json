@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": "astral_dice:blank_chip",
+    "H": "minecraft:echo_shard",
+    "P": "astral_dice:golden_star_plate",
+    "S": "minecraft:conduit",
+    "X": "minecraft:netherite_ingot"
+  },
+  "pattern": [
+    "XSX",
+    "HCH",
+    "PPP"
+  ],
+  "result": {
+    "id": "astral_dice:piercing_gun_chip"
+  }
+}

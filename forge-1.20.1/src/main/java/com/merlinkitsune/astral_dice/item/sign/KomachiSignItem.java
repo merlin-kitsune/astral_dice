@@ -1,16 +1,16 @@
 package com.merlinkitsune.astral_dice.item.sign;
 import com.merlinkitsune.starenginelib.item.CuriosCompat;
 
+import com.merlinkitsune.starenginelib.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.starenginelib.event.ModEffectRemoval;
 import net.minecraft.world.InteractionResultHolder;
-import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import top.theillusivec4.curios.api.CuriosApi;
 import com.merlinkitsune.astral_dice.item.card.BaseEffectCardItem;
+import com.merlinkitsune.astral_dice.item.card.EffectCardPeriod;
 import com.merlinkitsune.astral_dice.item.card.ExclusiveCardUtil;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
@@ -23,12 +23,25 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
  * - 复制最后一张使用的效果牌并返回到物品栏;
  * - 主动技能冷却时间立即减少 30%;
  * - 伤害类效果牌伤害加成 +1(计数器"效果牌伤害增益",无上限,卸下立牌重置)。
- * 计数期间显示"忍者立牌"效果图标,等级 = 当前第几张;第 3 张触发后计数归 0。
- * 主动:本轮出牌数 +1(累积到出牌数银行,按实际出牌消耗;跨周期保留至用尽,不随周期归零清除,
- * 不受出牌进度/冷却/满额影响;银行存储上限见 GameplayConstants.KOMACHI_EXTRA_PLAYS_CAP)。
+ * 被动计数只保存在附件 {@code komachi_use_count} 中,<b>不再用任何效果承载/显示</b>
+ * (原「忍者立牌出牌」计数效果 komachi_count 已删除)。
+ *
+ * <p>主动(忍术连击)= <b>一次性</b>:只把<b>当前出牌轮</b>的可出牌数 +1
+ * ({@link EffectCardPeriod#grantBonusPlay});不累积、不跨轮保留、不产生任何常驻状态,
+ * 周期结束时由 {@link EffectCardPeriod} 的出牌轮清理统一归零。释放前置(任一不满足即不释放,
+ * 且<b>不消耗</b>主动技能冷却 —— performSkill 以 SUCCESS 判定是否起冷却):
+ * <ol>
+ *   <li>效果牌已进入冷却({@link EffectCardPeriod#isCooldownActive})→ 拒绝;</li>
+ *   <li>出牌数上限已达封顶 {@link GameplayConstants#MAX_EFFECT_CARD_PLAYS} → 拒绝(+1 无意义,且不得绕过封顶);</li>
+ *   <li>本轮已授予过这次 +1 → 拒绝(一次性;同一轮内不叠加)。</li>
+ * </ol>
+ * 主动技能自身冷却中的拒绝仍由 {@link BaseSignItem#performSkillForCurio} 统一处理。
  */
 @Mod.EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public class KomachiSignItem extends BaseSignItem {
+    /** 锁定(生效中)态的宽限时长(1:00):期内未出任何效果牌 ⇒ 强制重置出牌状态并起主动冷却 */
+    public static final int LOCK_GRACE_TICKS = 1200;
+
     public KomachiSignItem(Properties properties) {
         super(properties);
     }
@@ -36,11 +49,20 @@ public class KomachiSignItem extends BaseSignItem {
     @Override
     protected void clearSignData(Player player, ItemStack stack) {
         super.clearSignData(player, stack);
-        // 卸下立牌:重置效果牌计数、效果牌伤害增益、移除计数效果与临时出牌数+1 标记
+        // 卸下立牌:重置被动计数与效果牌伤害增益(计数只存附件,无效果需要移除)。
+        // 注意:出牌轮的一次性 +1 属于**出牌轮状态**(授予即已消耗),不随立牌装卸回收——
+        // 若在此清除,会造成"上限在周期中途下降"的不变量违例(见 EffectCardPeriod#tick)。
         ModAttachments.setKomachiUseCount(player, 0);
         ModAttachments.setKomachiDamageBonus(player, 0);
-        ModAttachments.setKomachiExtraPlays(player, 0);
-        ModEffectRemoval.remove(player, ModEffects.KOMACHI_COUNT.get());
+    }
+
+    /**
+     * 是否佩戴本立牌(饰品槽)。死亡保留的累计值只在佩戴时作为加成生效(2026-09-15 裁决)——
+     * 判定入口统一在 {@code SpellDamageRegistry},禁止在别处直接读原附件值做加成或显示加成。
+     */
+    public static boolean isEquipped(Player player) {
+        var curios = CuriosCompat.getCuriosInventory(player);
+        return curios.isPresent() && curios.get().findFirstCurio(s -> s.is(ModItems.KOMACHI_SIGN.get())).isPresent();
     }
 
     @Override
@@ -48,12 +70,37 @@ public class KomachiSignItem extends BaseSignItem {
         if (level.isClientSide) {
             return InteractionResultHolder.success(stack);
         }
-        // 主动:效果牌出牌数 +1(累积到出牌数银行,按实际出牌消耗;不受出牌进度/冷却/满额影响;
-        // 银行存储上限为独立常量,与效果牌出牌上限无关)
-        ModAttachments.setKomachiExtraPlays(player,
-                Math.min(ModAttachments.getKomachiExtraPlays(player) + 1,
-                        com.merlinkitsune.starenginelib.component.GameplayConstants.KOMACHI_EXTRA_PLAYS_CAP));
+        // 主动(忍术连击):一次性 —— 仅当前出牌轮 +1 张出牌数。释放前置见类注释(三条)。
+        // 效果牌冷却中(本周期已打满并进入 30 秒冷却)时不释放:此时 +1 已无意义。
+        if (EffectCardPeriod.isCooldownActive(player)) {
+            sendSignActionBar(player, "msg.astral_dice.komachi_active_cooldown");
+            return InteractionResultHolder.fail(stack);
+        }
+        if (EffectCardPeriod.getMaxAllowed(player) >= GameplayConstants.MAX_EFFECT_CARD_PLAYS) {
+            sendSignActionBar(player, "msg.astral_dice.komachi_active_capped",
+                    GameplayConstants.MAX_EFFECT_CARD_PLAYS);
+            return InteractionResultHolder.fail(stack);
+        }
+        // 一次性授予:本轮已授予过则不再释放(不消耗主动技能冷却)
+        if (!EffectCardPeriod.grantBonusPlay(player)) {
+            sendSignActionBar(player, "msg.astral_dice.komachi_active_used");
+            return InteractionResultHolder.fail(stack);
+        }
         return InteractionResultHolder.success(stack);
+    }
+
+    /**
+     * 第二批「三态化」第 4 条:忍者主动触发后**不立即进冷却**,锁定跟随出牌周期 ——
+     * 冷却从"该轮出牌状态完全重置那一刻"开始({@link #onEffectCardRoundReset} →
+     * {@code BaseSignItem#endLockAndStartCooldown})。宽限 1:00 从触发主动起算:
+     * 期内自始至终未出任何效果牌 ⇒ 强制重置出牌状态并起冷却(见 {@code BaseSignItem#tickSignActiveLock})。
+     * 锁定标记沿用 {@link BaseSignItem#KOMACHI_LOCK_ID},硬上界为 0(无自身计时器)。
+     */
+    @Override
+    protected boolean startActiveLockOnUse(Player player, long now) {
+        beginActiveLock(player, BaseSignItem.KOMACHI_LOCK_ID, 0L);
+        ModAttachments.setSignActiveLockGraceEnd(player, now + LOCK_GRACE_TICKS);
+        return true;
     }
 
     // 主动技能 ActionBar:出牌数+1 与剩余出牌数(注册到主动技能响应事件)
@@ -79,10 +126,12 @@ public class KomachiSignItem extends BaseSignItem {
         int count = ModAttachments.getKomachiUseCount(player) + 1;
         ModAttachments.setKomachiUseCount(player, count);
         ModAttachments.setKomachiLastCard(player, cardType);
-        updateCountEffect(player);
         if (count >= 3) {
             // 1. 复制最后一张使用的效果牌并返回到物品栏
-            ItemStack card = BaseEffectCardItem.cardByTypeId(cardType);
+            // 读回附件中的「最后一张效果牌」记录作为唯一来源(方法参数仅作兜底),保证跨周期/跨会话一致
+            String lastCardType = ModAttachments.getKomachiLastCard(player);
+            if (lastCardType == null || lastCardType.isEmpty()) lastCardType = cardType;
+            ItemStack card = BaseEffectCardItem.cardByTypeId(lastCardType);
             // 复制的专属效果牌绑定获得者(忍者)
             if (ExclusiveCardUtil.isExclusive(card)) {
                 ExclusiveCardUtil.setOwner(card, player);
@@ -96,7 +145,6 @@ public class KomachiSignItem extends BaseSignItem {
             ModAttachments.setKomachiDamageBonus(player,
                     ModAttachments.getKomachiDamageBonus(player) + 1);
             ModAttachments.setKomachiUseCount(player, 0);
-            updateCountEffect(player);
         }
     }
 
@@ -112,14 +160,4 @@ public class KomachiSignItem extends BaseSignItem {
         }
     }
 
-    // 刷新计数效果:等级 = 当前计数(第几张);计数归 0 时移除效果
-    public static void updateCountEffect(Player player) {
-        if (player.level().isClientSide()) return;
-        int count = ModAttachments.getKomachiUseCount(player);
-        if (count <= 0) {
-            ModEffectRemoval.remove(player, ModEffects.KOMACHI_COUNT.get());
-            return;
-        }
-        player.addEffect(new MobEffectInstance(ModEffects.KOMACHI_COUNT.get(), 10000, count - 1, false, true, true));
-    }
 }

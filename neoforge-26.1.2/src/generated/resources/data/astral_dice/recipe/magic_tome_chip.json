@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": "astral_dice:blank_chip",
+    "G": "minecraft:experience_bottle",
+    "L": "minecraft:echo_shard",
+    "P": "astral_dice:star_plate",
+    "X": "minecraft:writable_book"
+  },
+  "pattern": [
+    "XLX",
+    "GBG",
+    "PPP"
+  ],
+  "result": {
+    "id": "astral_dice:magic_tome_chip"
+  }
+}

@@ -24,6 +24,8 @@ import com.merlinkitsune.starenginelib.effect.PaparaBiteEffect;
 import com.merlinkitsune.starenginelib.effect.RevengeHalberdEffect;
 import com.merlinkitsune.starenginelib.effect.UndercoverInvestigationEffect;
 import com.merlinkitsune.starenginelib.effect.WeakMarkEffect;
+import java.util.Collection;
+
 public class ModEffects {
     public static final DeferredRegister<MobEffect> EFFECTS =
             DeferredRegister.create(Registries.MOB_EFFECT, AstralDiceMod.MODID);
@@ -62,7 +64,7 @@ public class ModEffects {
     public static final DeferredHolder<MobEffect, MobEffect> FATE_GUIDANCE =
             EFFECTS.register("fate_guidance", FateGuidanceEffect::new);
 
-    // 嘬一口(吸血鬼立牌 papara 主动):攻击与受伤时按骰神赐福最终伤害/受到伤害的一半恢复生命
+    // 汲取(吸血鬼立牌 papara 主动):攻击与受伤时按骰神赐福最终伤害/受到伤害的一半恢复生命
     public static final DeferredHolder<MobEffect, MobEffect> PAPARA_BITE =
             EFFECTS.register("papara_bite", PaparaBiteEffect::new);
 
@@ -101,10 +103,6 @@ public class ModEffects {
     // 定向爆破:远程和魔法伤害 +5,并对目标周围 6 格敌对目标造成同样伤害
     public static final DeferredHolder<MobEffect, MobEffect> DIRECTIONAL_BLAST =
             EFFECTS.register("directional_blast", () -> new RangedBoostEffect(0xFF8C00));
-
-    // 忍者立牌(komachi):出牌计数(等级 = 当前第几张效果牌)
-    public static final DeferredHolder<MobEffect, MobEffect> KOMACHI_COUNT =
-            EFFECTS.register("komachi_count", () -> new CounterEffect(0x9C27B0));
 
     // 魔法秘典:出牌计数(等级 = 当前第几张效果牌)
     public static final DeferredHolder<MobEffect, MobEffect> MAGIC_TOME_COUNT =
@@ -148,4 +146,14 @@ public class ModEffects {
     // 嘲讽(肉弹战车立牌 pandaman 主动):目标只能攻击对其施加嘲讽的玩家
     public static final DeferredHolder<MobEffect, MobEffect> PANDAMAN_TAUNT =
             EFFECTS.register("pandaman_taunt", PandamanTauntEffect::new);
+
+    /**
+     * 本模组已注册的全部效果的**只读**视图(调试命令 {@code /astralparty cleareffect} 用)。
+     *
+     * <p>直接派生自 {@link #EFFECTS} 的注册条目视图——NeoForge 的 {@code getEntries()} 返回
+     * {@code Collections.unmodifiableSet(entries.keySet())} 的**活视图**,故新增效果会自动纳入,
+     * 不存在「忘记往清单里补一个」的漂移风险;同时**不改变任何既有注册语义**
+     * (不新增、不重排、不延迟任何注册调用)。
+     */
+    public static final Collection<DeferredHolder<MobEffect, ? extends MobEffect>> ALL = EFFECTS.getEntries();
 }

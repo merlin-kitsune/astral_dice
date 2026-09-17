@@ -9,7 +9,6 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.TamableAnimal;
 import net.minecraft.world.entity.animal.Pig;
-import net.minecraft.world.entity.animal.camel.Camel;
 import net.minecraft.world.entity.animal.horse.AbstractHorse;
 import net.minecraft.world.entity.monster.Strider;
 import net.minecraft.world.entity.player.Player;
@@ -74,12 +73,28 @@ public class BigBowlStewChipItem extends BaseChipItem {
         }
     }
 
-    // 判定非玩家友方目标:玩家驯服的宠物、可骑乘生物(与史莱姆立牌主动的治疗目标一致)
+    // 判定非玩家友方目标:仅自己/同队的已驯服宠物与坐骑,以及无归属的被动生物
     private static boolean isFriendlyMob(LivingEntity entity, Player owner) {
-        if (entity instanceof TamableAnimal tame && tame.isOwnedBy(owner)) return true;
-        return entity instanceof AbstractHorse
-                || entity instanceof Pig
-                || entity instanceof Strider
-                || entity instanceof Camel;
+        // 已驯服的宠物(狼/猫/鹦鹉等):必须已驯服且主人是自己或同队玩家(排除他人宠物)
+        if (entity instanceof TamableAnimal tame) {
+            return tame.isTame() && isOwnedByAlly(tame.getOwnerUUID(), owner);
+        }
+        // 坐骑(马/驴/骡/羊驼/骆驼等):野生(未驯服)不计入,已驯服的同样要求主人是自己或同队玩家
+        if (entity instanceof AbstractHorse horse) {
+            return horse.isTamed() && isOwnedByAlly(horse.getOwnerUUID(), owner);
+        }
+        // 无归属的被动生物:猪/炽足兽视为友方(骆驼属坐骑,已在上面处理)
+        return entity instanceof Pig || entity instanceof Strider;
+    }
+
+    // 目标主人是否为自己或同队玩家(主人离线时按非友方处理,避免给他人离线宠物加血)
+    private static boolean isOwnedByAlly(java.util.UUID ownerId, Player owner) {
+        if (ownerId == null) return false;
+        if (ownerId.equals(owner.getUUID())) return true;
+        var server = owner.getServer();
+        if (server == null) return false;
+        Player petOwner = server.getPlayerList().getPlayer(ownerId);
+        if (petOwner == null) return false;
+        return owner.getTeam() != null && owner.getTeam() == petOwner.getTeam();
     }
 }

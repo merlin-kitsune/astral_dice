@@ -4,10 +4,10 @@ import com.merlinkitsune.astral_dice.config.ModCommonConfig;
 import com.merlinkitsune.starenginelib.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.effect.ModEnchantments;
-import com.merlinkitsune.astral_dice.event.AstralEvents;
 import com.merlinkitsune.astral_dice.init.ModCreativeTabs;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.network.ModNetwork;
+import com.merlinkitsune.astral_dice.network.VersionGate;
 import com.merlinkitsune.astral_dice.recipe.ModRecipeSerializers;
 import com.merlinkitsune.astral_dice.screen.ModMenuTypes;
 import net.minecraftforge.common.MinecraftForge;
@@ -37,13 +37,21 @@ public class AstralDiceMod {
         ModRecipeSerializers.RECIPE_SERIALIZERS.register(modEventBus);
         ModCreativeTabs.CREATIVE_TABS.register(modEventBus);
         ModMenuTypes.MENU_TYPES.register(modEventBus);
-        AstralEvents.init();
+        // 全局战利品修饰符序列化器:1.20.1 的 Forge 自带注册表里**没有任何内置项**
+        // (没有 forge:add_table),必须由本模组注册 astral_dice:add_table,
+        // 否则 data/astral_dice/loot_modifiers/*.json 全部解码失败(详见 loot/AstralLootModifiers)
+        com.merlinkitsune.astral_dice.loot.AstralLootModifiers.SERIALIZERS.register(modEventBus);
         modEventBus.register(this);
         // 配置:配置项定义、TOML 读写与配置 GUI 全部留在本模组(见 config/ModCommonConfig)。
         // 旧版本配置文件先备份,再由 Forge 继承旧值写入新配置(仅公共配置;client 配置已移除)。
         backupOldConfigIfNeeded("astral_dice-common.toml", ModCommonConfig.CONFIG_VERSION);
-        ModLoadingContext.get().registerConfig(net.minecraftforge.fml.config.ModConfig.Type.COMMON,
-                ModCommonConfig.SPEC);
+        net.minecraftforge.fml.ModLoadingContext.get().registerConfig(net.minecraftforge.fml.config.ModConfig.Type.COMMON, ModCommonConfig.SPEC);
+        // 版本互通门槛(见 AGENTS.md):多人生服列表的「兼容」标记按 mod_version 的 major.minor 判定,
+        // 与 SimpleChannel 的握手门槛同一判据。Forge 默认的 MATCH_VERSION 要求完整版本号完全相同,
+        // 会把 1.2.0 ↔ 1.2.1 这类同二号位组合误标为不兼容,故显式注册本判据。
+        net.minecraftforge.fml.ModLoadingContext.get().registerDisplayTest(
+                VersionGate::interopVersion,
+                (remoteVersion, isFromServer) -> VersionGate.accepts(remoteVersion));
         // Iron 的法术与魔法书联动:仅在模组加载时注册其事件处理器(类引用只在加载条件下触发)
         if (net.minecraftforge.fml.ModList.get().isLoaded("irons_spellbooks")) {
             MinecraftForge.EVENT_BUS.register(com.merlinkitsune.astral_dice.event.IronSpellbooksCompat.class);
