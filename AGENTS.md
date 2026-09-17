@@ -220,7 +220,7 @@ When extending this workspace:
 
 ### 子项目修改默认规则 — 必须遵守
 - **功能/修复默认同步修改两个版本**:所有功能、修复、平衡性调整一律在 `neoforge-1.21.1` 与 `forge-1.20.1` **同时实施**,两侧保持功能对等。实施顺序:先在 `neoforge-1.21.1` 完成并以其为准,再按 `docs/compat-1.20.1-forge.md` 记录的 API 差异同步到 `forge-1.20.1`。
-- **每次改动完成后自动执行下述收尾(无需用户逐项指示)**:① 同步两个 CHANGELOG 文件 → ② 构建两个版本 → ③ **自动部署到整合包**(随 `gradlew build` 触发的 `pushToGame`)→ ④ **自动本地提交**。全程**不执行 `git push`**。
+- **每次改动完成后自动执行下述收尾(无需用户逐项指示)**:① 同步两个 CHANGELOG 文件 → ② 构建两个版本 → ③ **自动部署到整合包**(随 `gradlew build` 触发的 `pushToGame`;**仅发布线分支 `multi-1.20.1-1.21.1` 会真正推送,其它分支严格执行「不推整合包」——见「编译产物上传规则」的分支口径**)→ ④ **自动本地提交**。全程**不执行 `git push`**。
 - **单侧改动仅限用户明确要求**:只有当用户明确说“只改 1.21.1 / 先不移植”时,才允许只改一个版本;禁止擅自只改单侧或长期让两版本功能不对等。
 - 平台差异按各子项目规范实现(1.21.1 用数据组件/附件,1.20.1 用 `component/*DataKey` 与 Capability;事件、Curios 注册、Mixin、数据包目录均不同),**不得为了“看起来一致”而破坏目标平台的正确写法**。
 - 用户在任一版本测试时报告的 BUG/需求,默认在**两个版本同步修复**。
@@ -851,17 +851,23 @@ When extending this workspace:
 
 各子项目 `build.gradle` 已内置分发任务，`gradlew build` **构建后自动触发**，无需手动指定任务。部署目标按子项目区分：
 
+> **整合包推送的分支口径（2026-09-17 用户裁决，必须遵守）** — 用户原话：「**该分支内所有内容均不推送整合包(严格),只推送到游戏测试目录。除非用户另行规定。**」据此的三项口径：
+> ① **严格不推整合包**：`multi-dev-next` 上不向任何整合包目录写入任何内容 —— `pushToGame` 在**执行期**判定当前分支不在白名单即 `return`，只打印 `pushToGame: skipped — 分支 '…' 不在整合包推送白名单 …`；
+> ② **只推游戏测试目录**：本仓库根 `run/<版本>/mods`（`pushToDevRun`）与仓库根 `build/libs`（`pushToRootBuild`）**保留**、照常随 `build` 触发，不受分支限制；
+> ③ **需要时由用户另行规定**：仅当用户显式要求时才出包 —— 用 `-PdeployToPack` / `-PpackPush` 手动强推（跳过白名单），或把目标分支加入 `packPushBranches` 白名单；两种方式都属**用户另行规定**，代理不得自行启用。
+
 **编译产物集中规则(必须遵守)**:任何版本的编译产物统一复制到**仓库根目录 `build/libs/`**(任务 `pushToRootBuild`,随各子项目 build 自动触发;按**本子项目完整版本后缀**清理旧产物,与其他版本互不误删)。根目录 `build/libs/` 为全部版本产物的统一交付目录。
 ⚠️ **后缀必须写全(2026-09 三线并存后为硬需求)**:自 `multi-26.1.2-neoforge` 分支起仓库同时存在 `+neoforge_1.21.1` 与 `+neoforge_26.1.2` 两个 neoforge 产物,`pushToRootBuild` 的过滤条件因此从 `contains('+neoforge_')` 收紧为 `contains('+neoforge_1.21.1')` / `contains('+neoforge_26.1.2')`——宽泛前缀会让两个 neoforge 版本**互相删除** jar。
 
 | 子项目 | 项目测试环境(pushToDevRun) | 整合包/用户测试环境(pushToGame) | pushToGame 触发条件 |
 |---|---|---|---|
-| `neoforge-1.21.1` | `run/1.21.1/mods`（仓库根 run/） | `D:\.minecraft\versions\狐の航空学 Voxy Edition\mods` | 随 build 自动触发（默认） |
-| `forge-1.20.1` | `run/1.20.1/mods`（仓库根 run/） | `D:\.minecraft\versions\1.20.1 模组测试\mods` | 随 build 自动触发（默认） |
-| `neoforge-26.1.2` | `run/26.1.2/mods`（仓库根 run/） | `D:\.minecraft\versions\26.1.2 模组测试\mods` | 随 build 自动触发（默认） |
+| `neoforge-1.21.1` | `run/1.21.1/mods`（仓库根 run/） | `D:\.minecraft\versions\狐の航空学 Voxy Edition\mods` | 随 build 触发；**仅发布线分支 `multi-1.20.1-1.21.1` 会真正推送整合包**，其它分支（含 `multi-dev-next`）**严格跳过**并只打印 `pushToGame: skipped — 分支 '…' 不在整合包推送白名单 …` |
+| `forge-1.20.1` | `run/1.20.1/mods`（仓库根 run/） | `D:\.minecraft\versions\1.20.1 模组测试\mods` | 随 build 触发；**仅发布线分支 `multi-1.20.1-1.21.1` 会真正推送整合包**，其它分支（含 `multi-dev-next`）**严格跳过**并只打印 `pushToGame: skipped — 分支 '…' 不在整合包推送白名单 …` |
+| `neoforge-26.1.2` | `run/26.1.2/mods`（仓库根 run/） | `D:\.minecraft\versions\26.1.2 模组测试\mods` | 随 build 触发；**仅发布线分支 `multi-1.20.1-1.21.1` 会真正推送整合包**，其它分支（含 `multi-dev-next`）**严格跳过**并只打印 `pushToGame: skipped — 分支 '…' 不在整合包推送白名单 …` |
 
 规则要点：
-1. **推送随 build 自动触发**：`-PdeployToPack` 已不再被任何任务读取（源码中仅存注释）；`pushToDevRun`/`pushToRootBuild`/`pushToGame` 三个推送任务均由 `finalizedBy` 随 build 无条件触发。
+1. **推送任务随 build 触发，但整合包推送受分支白名单限制**：`pushToDevRun`/`pushToRootBuild`/`pushToGame` 三个任务均由 `finalizedBy` 随 build 触发；**`pushToGame` 在 `doLast` 里先做执行期分支判定** —— 分支不在白名单 `packPushBranches = ['multi-1.20.1-1.21.1']` 内（或无法确定分支，如 detached HEAD / 无 `.git`）时只打印 `pushToGame: skipped — 分支 '…' 不在整合包推送白名单 …` 并 `return`，**不写整合包目录**（`multi-dev-next` 即属此类，见上方「整合包推送的分支口径」）。**`-PdeployToPack` / `-PpackPush` 仍被任务读取**（三条线 `build.gradle` 均有 `def forcePackPush = project.hasProperty('deployToPack') || project.hasProperty('packPush')`，并在 `pushToGame` 的 `doLast` 里以 `if (!forcePackPush) { … }` 包裹上述白名单判定）—— 作用 = **跳过白名单手动强推整合包**（手动出包通道，保留）；强推时同时会触发「库 jar 与 mod jar 成对自检」的告警（1.21.1 / 1.20.1 原有，26.1.2 自 2026-09-17 接入库后同形）。
+   ⚠️ **原文档此处曾称「该参数不再被任何任务读取（源码中仅存注释）」，与代码矛盾，已于 2026-09-17 以代码为准更正**（三线定义行/使用行：`neoforge-1.21.1/build.gradle:295`+`:335`、`forge-1.20.1/build.gradle:333`+`:381`、`neoforge-26.1.2/build.gradle:277`+`:314`）。
 2. 推送时**先删除、后复制**:`pushToDevRun`/`pushToGame`/`pushToRootBuild` 三个任务均先清空目标目录中的旧产物、再复制新 jar,各目录只保留本次构建产物。清理匹配范围(**实测**,勿按"都会按后缀过滤"理解):forge-1.20.1 三个任务统一用 `/astral_dice-.+\+forge_1\.20\.1\.jar/`(仅带 `+forge_1.20.1` 后缀);`neoforge-1.21.1` 与 `neoforge-26.1.2` 的 `pushToRootBuild` 带**各自完整后缀**过滤(`contains('+neoforge_1.21.1')` / `contains('+neoforge_26.1.2')`,根目录 `build/libs/` 多版本共存,不得写成宽泛的 `+neoforge_`);`neoforge-26.1.2` 的 `pushToGame` **同样**带 `contains('+neoforge_26.1.2')`(2026-09-17 收紧:整合包目录属用户环境,不得误删其它分支放进去的产物),仅 `pushToDevRun` 与 1.21.1 侧的 `pushToGame` 匹配**任意** `astral_dice-*.jar`(这两个目标目录本身只放单一版本,故无需过滤,同时也保证旧版本号残留会被清掉)。
 3. 整合包根目录不存在时（如 CI 环境）`pushToGame` 自动跳过并仅输出警告，不影响构建。⚠️ 因此**静默不部署**是最容易发生的形态(2026-09-17 实测:26.1.2 侧的 `pushToGame` 长期指向并不存在的 `D:\.minecraft\versions\26.1.2-NeoForge_26.1.2.109`,只打印 `pack dir not found, skipped`,整合包里的 jar 一直是旧时间戳)——改动 `packModsDir` 或换机后,必须**核对构建日志里确有 `pushToGame: pushed … -> <目标>` 一行**,不得只看 `BUILD SUCCESSFUL`。
 4. forge-1.20.1 子项目产物分两级：`pushToDevRun` 取 `build/devlibs` 未重混淆 jar（dev 环境 Mojmap 名），`pushToGame` 取 `build/libs` 重混淆 jar（生产 SRG 名），推错方向会 `NoSuchFieldError`——不要改动该取值逻辑。
@@ -873,7 +879,7 @@ When extending this workspace:
    **禁止"直接覆盖式复制"**(旧版本号 jar 与新产品并存时游戏会同时加载两个本模组副本,导致行为异常甚至 `NoSuchFieldError`)。判定通过:该目录内本模组 jar **有且仅有一个**,且文件名版本号与 `build/libs` 本次产物一致、修改时间不早于本次构建。
    `pushToDevRun` 已内置该"先删后拷"逻辑(见上表第 2 条),本规则为**代理侧的强制复核要求**——自动推送失败后手工补推、或临时手工部署时同样必须遵守该顺序。
 
-> 「发送到整合包」即上表 `pushToGame`：**随 `gradlew build` 默认自动触发**，无需额外参数；这是每次更新的默认收尾动作。
+> 「发送到整合包」即上表 `pushToGame`：**随 `gradlew build` 触发**，无需额外参数 —— **但只有发布线分支 `multi-1.20.1-1.21.1` 会真正推送整合包**；其它分支（含 `multi-dev-next`）**严格跳过**，只打印 `pushToGame: skipped — 分支 '…' 不在整合包推送白名单 [multi-1.20.1-1.21.1] 内`，整合包目录不被写入、旧 jar 也不会被删。开发分支每次更新的默认落点是 `run/<版本>/mods`（`pushToDevRun`）与仓库根 `build/libs`（`pushToRootBuild`）。
 
 ### 新版本发布流程（自动本地提交）
 
@@ -881,7 +887,7 @@ When extending this workspace:
 1. 更新两个更新日志文件（`CHANGELOG_ZH.md` + `CHANGELOG.md`，条目一一对应）；
 2. 递增**两个**子项目 `gradle.properties` 的 `mod_version`（`deploy.ps1 -Target neoforge|forge` 可自动递增 `x.y-SNAPSHOT.N` / `x.y.z-rcN` / `x.y.z`，或用 `-Version` 显式指定；两版本保持同号，后缀各自为 `+neoforge_1.21.1` / `+forge_1.20.1`）；
 3. 若改过 lang 文件，分别对**两个**子项目跑 `pwsh -NoProfile -File tools/check_lang_sync.ps1 -LangDir <子项目>/src/main/resources/assets/astral_dice/lang`；
-4. `gradlew build` 同时编译并部署**三个**版本(26.1.2 与另两线同规则)——`pushToDevRun` / `pushToRootBuild` / `pushToGame`(整合包) 均默认随 build 自动触发（失败则回滚版本号，不提交）；
+4. `gradlew build` 同时编译并部署**三个**版本(26.1.2 与另两线同规则)——`pushToDevRun` / `pushToRootBuild` / `pushToGame`(整合包) 均默认随 build 自动触发（整合包推送仅发布线分支执行，本流程即运行在发布线上；失败则回滚版本号，不提交）；
 5. **自动本地提交**（`deploy.ps1` 自动提交 `release: v<版本>`，或手工 `chore: bump version to X.Y.Z` 等），**默认不执行 `git push`**。
 
 ## 自动化测试流程（Automated Testing）— 必须遵守（子配置）
