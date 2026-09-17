@@ -22,6 +22,7 @@
     pwsh -File scripts/test/mt.ps1 --version 1.21.1 --case cases/X.json
     pwsh -File scripts/test/mt.ps1 --version 1.21.1 --new ember_chip
     pwsh -File scripts/test/mt.ps1 --phase stop
+    pwsh -File scripts/test/mt.ps1 --version 1.21.1 --phase stop --purge-saves   # 收尾：收停 + 清旧存档
 
 .NOTES
     迁移前源文件 scripts/test/mt.sh（该原件已在 92fbeaf「工具链收敛为纯 pwsh」删除，取回：`git show 92fbeaf^:scripts/test/mt.sh`）。
@@ -33,6 +34,14 @@
       加 --cleanup-on-exit，或用 --no-cleanup-on-exit 关闭全流程的自动清理。
       若条目失败且 on_fail=keep_game_running，会落 .mt_keep_alive 标记，
       此时自动清理只提示不杀进程，保留现场供取证（取证完用 --phase stop --force）。
+
+    **测试任务收尾（2026-09-17 用户规则，必须遵守）**：测试任务完成后要**关闭测试端并清理
+    旧存档数据**，不让游戏进程与旧世界长期驻留 ——
+      · 全流程：退出清理**已自动**做（`mt_cleanup.ps1 run --quiet --purge-saves`）；
+      · 分步执行（`--phase launch` / `--phase cases` 等）：最后一次读数后**必须**执行
+        `pwsh -File scripts/test/mt.ps1 --version <V> --phase stop --purge-saves`；
+      · `--phase stop` 默认**不**清存档（重登类用例 CHIP-RELOG 要跨 stop 保留存档），
+        只有显式 `--purge-saves` 才清；`.mt_keep_alive` 存在时两者都只提示、保留现场。
 
     子进程启动方式（B6 ⑥ 修订）: **一律不用 `Start-Process -Wait`**。它等的是**整棵进程
     树**（本机最小复现：子进程 0.4s 退出、父进程 12.4s 才返回 = 孙进程 ping 的时长），而
@@ -347,7 +356,7 @@ function Invoke-MtAutoCleanup {
     Write-MtLine ''
     Start-MtPhase 'cleanup (auto)'
 
-    $argv = @('-NoProfile', '-File', (Join-Path $script:TestDir 'mt_cleanup.ps1'), 'run', '--quiet')
+    $argv = @('-NoProfile', '-File', (Join-Path $script:TestDir 'mt_cleanup.ps1'), 'run', '--quiet', '--purge-saves')
     $r = Invoke-MtProcessFull -FilePath $script:PsExe -ArgumentList $argv -TimeoutSec (Get-MtPhaseBudget 'cleanup')
 
     foreach ($ln in (Get-MtCleanupDisplayLines -Text $r.StdOut)) { Write-MtLine $ln }
@@ -454,6 +463,10 @@ $GenSpec = ''
 $CleanupMode = ''          # '' = 按场景默认；1 = 强制开启；0 = 强制关闭
 $StopForce = $false
 $StopKeepDaemon = $false
+# stop 阶段是否顺带清理测试存档（旧存档数据）。默认 **否**：重登类用例（CHIP-RELOG）要跨
+# stop 保留存档；测试任务**收尾**时显式加 --purge-saves（全流程退出清理则默认就清，见
+# Invoke-MtAutoCleanup 的 --purge-saves）。
+$StopPurgeSaves = $false
 # B6 ⑥-2：全流程全局超时（秒）。**2026-09-16 起默认 2700s（45 分钟）而不是「0 = 不限」**——
 # 「不限」正是那次「launch 之后 cases 空转 7 分 45 秒、人只能干等」能发生的前提。
 # 覆写：环境变量 MT_RUN_TIMEOUT_SEC 或 --run-timeout <秒>。
@@ -502,6 +515,10 @@ while ($i -lt $args.Count) {
         $StopForce = $true; $i++
     } elseif ($key -eq 'keep-daemon') {
         $StopKeepDaemon = $true; $i++
+    } elseif ($key -eq 'purge-saves') {
+        $StopPurgeSaves = $true; $i++
+    } elseif ($key -eq 'keep-saves') {
+        $StopPurgeSaves = $false; $i++
     } elseif ($key -eq 'h' -or $key -eq 'help') {
         $ShowHelp = $true; $i++
     } else {
@@ -510,8 +527,9 @@ while ($i -lt $args.Count) {
 }
 
 if ($ShowHelp) {
-    # 对应 bash 的 `sed -n '2,23p' "$0"`
-    foreach ($ln in @(Get-Content -LiteralPath $PSCommandPath | Select-Object -Skip 1 -First 22)) {
+    # 对应 bash 的 `sed -n '2,23p' "$0"`；2026-09-17 起示例多一行（--phase stop --purge-saves），
+    # 故窗口由 22 行放宽到 24 行（= 文件第 2..25 行，正好到 .EXAMPLE 块结束）。
+    foreach ($ln in @(Get-Content -LiteralPath $PSCommandPath | Select-Object -Skip 1 -First 24)) {
         Write-MtLine ([string]$ln)
     }
     exit 0
@@ -544,12 +562,15 @@ try {
     }
 
     # ── stop 阶段独立可用 ───────────────────────────────────────────────
-    # --force / --keep-daemon 在此阶段透传给 mt_cleanup（本身不参与阶段编排）。
+    # --force / --keep-daemon / --purge-saves 在此阶段透传给 mt_cleanup（本身不参与阶段编排）。
+    # 测试任务**收尾**用：`--phase stop --purge-saves`（收停测试端 + 清掉旧存档，
+    # 避免游戏进程与旧世界长期驻留）。中途的 stop（重登类用例）**不要**加该开关。
     if ($Phase -eq 'stop') {
         $stopArgs = @()
         if ($Version) { $stopArgs = @('--version', $Version) } else { $stopArgs = @('--all') }
         if ($StopForce) { $stopArgs += '--force' }
         if ($StopKeepDaemon) { $stopArgs += '--keep-daemon' }
+        if ($StopPurgeSaves) { $stopArgs += '--purge-saves' }
         exit (Invoke-MtChild -Script 'mt_stop.ps1' -ScriptArgs $stopArgs)
     }
 

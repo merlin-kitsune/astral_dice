@@ -518,6 +518,20 @@ pwsh -NoProfile -File scripts/test/mt_watchdog.ps1 -Version 1.21.1 [-StallSecond
 | `temp/` 会话期探针与验证脚本 | 一次性 | 可删（2026-09-15 已整体清空；旧脚本归档包已移至 `docs/archive/legacy_scripts_20260912.zip`） |
 | **KubeJS 探针、测试世界种子包、回归条目 JSON** | **用例可复现性依赖** | **必须入库，禁止删除** |
 | `run/<版本>/mods`、`run/<版本>/kubejs` | 下一次运行的现成环境 | 保留 |
+| **测试世界**（`run/<版本>/saves/<世界名>`、`run/<版本>/<世界名>`） | 全局规则要求**每轮重建**（见 §阶段 E），旧存档只会掩盖「忘了重建」 | **测试任务收尾必须清理**（2026-09-17 用户规则，见下） |
+
+**测试后收尾（关闭测试端 + 清理旧存档，2026-09-17 用户规则）**
+
+> 规则原文：测试任务完成后，关闭测试端，清理旧存档数据，避免游戏进程长时间驻留。
+
+- **标准收尾命令**：`pwsh -File scripts/test/mt.ps1 --version <版本> --phase stop --purge-saves`
+  （`--purge-saves` 透传链：`mt.ps1` → `mt_stop.ps1` → `mt_cleanup.ps1`）。
+- **全流程自动**：`mt.ps1 --version <V>`（不带 `--phase`）退出清理已带 `--quiet --purge-saves`，无需手工补命令。
+- **单阶段分步必须手工收尾**：单阶段默认不清理（客户端要跨 launch/cases 存活），最后一次读数之后**必须**执行上面的命令。
+- **删除范围**：`client_world`（`saves/<世界名>`）、`server_world`（`<run>/<世界名>`）、以及 `saves/` 下其它含 `level.dat` 的历史遗留世界；**不动** `run` 之外的东西、**不动** `resources/testworld-seed-<版本>.zip`。
+- **回显**：`MT_CLEANUP_SAVES: PURGED <N>`（清理条数）或 `MT_CLEANUP_SAVES: KEPT（未指定 --purge-saves）`。
+- ⚠️ **重登类用例（`CHIP-RELOG-*`）中途的 stop 禁止 `--purge-saves`**（要跨 stop 保留存档：`saveall` → stop → launch 读回）。故 `--phase stop` 默认保留存档，`--purge-saves` 是显式开关。
+- **失败取证优先**：`.mt_keep_alive` 存在时收停与清存档都只提示不执行；取证完用 `--phase stop --force --purge-saves` 释放。
 
 **覆盖缺口（如实标注，勿当成已验证）**
 
@@ -568,6 +582,8 @@ pwsh -NoProfile -File scripts/test/mt_watchdog.ps1 -Version 1.21.1 [-StallSecond
 ## 附录 A：工具链与发布工程变更记录（自 CHANGELOG 移出）
 
 **2026-09-17：26.1.2 线测试能力扩展**
+
+- **新增「测试后收尾」能力（用户规则：测试任务完成后关闭测试端、清理旧存档数据、避免进程长时间驻留）**：`mt_cleanup.ps1` 新增 `--purge-saves`（收停进程**之后**删除 `run/<版本>/saves/<世界名>`、`run/<版本>/<世界名>` 及 `saves/` 下其它含 `level.dat` 的历史遗留世界，回显 `MT_CLEANUP_SAVES: PURGED <N>` / `KEPT`）；`mt_stop.ps1` 与 `mt.ps1 --phase stop` 逐层透传，`mt.ps1` 的全流程退出清理**默认**带 `--purge-saves`。`--phase stop` 默认**不**清（重登类用例要跨 stop 保留存档：`saveall` → stop → launch），失败取证标记 `.mt_keep_alive` 在场时收停与清存档一并 SKIP。
 
 - 探针新增子命令（26.1.2 版 `astral_bugfix_probe.js`，共 56 条）：`recipecheck`（配方装载总数/本模组数/关键 id 存在性）、`craftcheck`（按 `Recipe#placementInfo()` 自建 `CraftingInput` 跑 `matches()+assemble()` 的**真合成**体检）、`meleecheck`（直接调用产品静态方法逐个换手物品验证近战判定，含 26.1.2 新增长矛）、`saveall`（显式 `MinecraftServer#saveEverything`，为「强杀式重登」测试提供存档点）；`readstate` 增补 `chipCosmetic`（stacks/cosmetic 尺寸恒等断言）与 `chipItem`（筹码留存断言）。
 - 新增用例 3 条：`CRAFT-SMOKE-26.1.2`、`CHIP-RELOG-A-26.1.2`、`CHIP-RELOG-B-26.1.2`（后者为两阶段「重登」流程；`mt.ps1 --phase stop` 是强杀不存档，故准备阶段必须显式 `saveall`）。

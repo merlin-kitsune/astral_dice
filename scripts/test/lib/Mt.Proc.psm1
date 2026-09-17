@@ -380,6 +380,58 @@ function Test-MtClientProcess {
     return $false
 }
 
+function Test-MtPipelineProcess {
+    <#
+    .SYNOPSIS
+        该 java 进程是否属于**本版本的测试流程**（客户端 **或** 专用服务端 / 数据生成 / run 任务包装器）。
+
+    .NOTES
+        2026-09-17 新增（用户规则「测试任务完成后关闭测试端…避免游戏进程长时间驻留」暴露的缺口）：
+        收停路径此前只认**客户端入口**（`Test-MtClientProcess`），于是一台由 `mt_env world`
+        或 `runServerData` 起起来的**专用服务端**永远杀不掉 —— 实测 `mt_env world` 跑完后
+        `:neoforge-26.1.2:runServer` 的 Gradle 包装器与它的服务端 JVM 双双存活，
+        还因为孙进程仍持有父进程的 stdout 句柄，把 `mt.ps1 --phase env` 卡在等待里。
+
+        判定 = **版本证据**（marker 或 version+subproject，口径与 `Test-MtClientProcess` 完全一致）
+        **且** 命中下列任一「本流程产物」：
+          ① 客户端 —— 直接复用 `Test-MtClientProcess`（含窗口标题回退，最严格）；
+          ② 本版本的 **run/runData 任务包装器**：命令行含 `gradle-wrapper.jar` 且含
+             `:<子项目>:run` 选择器。⚠️ 只认 `run` 家族：`:neoforge-26.1.2:build` 之类的
+             **构建任务不属于测试流程，绝不能杀**（否则构建中途被收停会毁产物）；
+          ③ 本版本的 **dev-launch JVM**：入口 `net.neoforged.devlaunch.Main`。专用服务端与
+             两段式数据生成的命令行**不含** run 目录与子项目选择器（2026-09-17 实测：
+             `:neoforge-26.1.2:`/`run\26.1.2` 均为 false，只有 `-Dfml.modFolders=…\neoforge-26.1.2\build\…`），
+             故必须靠「version + subproject」这条证据认领。
+
+        客户端存活判定（`Get-MtClientStatus`）**仍然只用** `Test-MtClientProcess`：
+        服务端在跑 ≠ 客户端在跑，这个区别必须保持。
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][psobject]$Paths,
+        [Parameter(Mandatory)][int]$ProcessId,
+        [Parameter(Mandatory)][AllowEmptyString()][string]$CommandLine
+    )
+
+    if (Test-MtClientProcess -Paths $Paths -ProcessId $ProcessId -CommandLine $CommandLine) { return $true }
+
+    $evidence = $false
+    foreach ($m in @(Get-MtProcessMarkers -Paths $Paths)) {
+        if ($m -and $CommandLine.Contains([string]$m)) { $evidence = $true; break }
+    }
+    if (-not $evidence) {
+        $evidence = $CommandLine.Contains([string]$Paths.version) -and $CommandLine.Contains([string]$Paths.subproject)
+    }
+    if (-not $evidence) { return $false }
+
+    if ($CommandLine.Contains('gradle-wrapper.jar') -and
+        $CommandLine.Contains((':{0}:run' -f [string]$Paths.subproject))) { return $true }
+
+    if ($CommandLine.Contains('net.neoforged.devlaunch.Main')) { return $true }
+
+    return $false
+}
+
 function Stop-MtVersionProcesses {
     <#
     .SYNOPSIS
@@ -397,6 +449,11 @@ function Stop-MtVersionProcesses {
         旧判定导致 `mt_stop --version X` **静默杀 0 个**，而「杀不掉」会直接
         毒化下一次 mt_launch 的日志窗口（读到他人/上一轮的 latest.log）。
         窗口标题路径同样**只认本版本号**，不会退化成「按 java 名全杀」。
+
+        2026-09-17：判定改为 `Test-MtPipelineProcess` —— 在客户端之上**补上专用服务端、
+        数据生成与 run 任务包装器**（见该函数的注释：`mt_env world` 起的 runServer 此前
+        永远杀不掉，还会把 `--phase env` 卡住）。客户端存活判定不受影响（仍用
+        `Test-MtClientProcess`）。
     #>
     [CmdletBinding()]
     param(
@@ -406,7 +463,7 @@ function Stop-MtVersionProcesses {
 
     $killed = 0
     foreach ($p in Get-JavaProcesses) {
-        if (-not (Test-MtClientProcess -Paths $Paths -ProcessId $p.Pid -CommandLine ([string]$p.CommandLine))) {
+        if (-not (Test-MtPipelineProcess -Paths $Paths -ProcessId $p.Pid -CommandLine ([string]$p.CommandLine))) {
             continue
         }
         [void](Invoke-MtProcess -FilePath 'taskkill' `
@@ -468,5 +525,5 @@ Export-ModuleMember -Function @(
     'ConvertFrom-MtBytes', 'Invoke-MtProcess', 'Invoke-MtProcessFull',
     'Stop-MtProcessTree', 'Get-JavaProcesses', 'Get-GradleDaemonProcesses',
     'Read-MtSharedText', 'ConvertTo-MtStartArgs', 'Start-MtProcessToFile',
-    'Stop-MtVersionProcesses', 'Get-MtClientStatus', 'Test-MtClientProcess'
+    'Stop-MtVersionProcesses', 'Get-MtClientStatus', 'Test-MtClientProcess', 'Test-MtPipelineProcess'
 )
