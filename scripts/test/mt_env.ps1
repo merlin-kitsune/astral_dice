@@ -112,6 +112,16 @@ $script:RenderMods2612 = @(
        Size = 2756643 }
 )
 
+# 渲染模组**按版本**（2026-09-17 用户要求「游戏环境缺少光影包，添加光影包并设置默认启用」）：
+#   · 26.1.2：Sodium/Iris 由本工具链从 Modrinth Maven 下载（见上）；
+#   · 1.21.1：Sodium/Iris **由整合包复制**（`$script:NeoForgeMods`）⇒ 这里**故意为空**，
+#     只补「光影包 + Iris 配置」两件事（见 Install-MtRenderStack）；
+#   · 1.20.1：dev run 不装渲染栈（Embeddium/Oculus 的 refmap 在 mojmap 下无法解析）⇒ 光影不可用。
+$script:RenderModsByVersion = @{
+    '1.21.1' = @()
+    '26.1.2' = $script:RenderMods2612
+}
+
 # ── 优化类模组（2026-09-17 用户要求：进一步验证优化类模组的兼容性）──────────────
 # 来源同样走 **Modrinth Maven**（与渲染栈/史莱姆压制同规则）：
 #   maven.modrinth:immediatelyfast:adbrNJLm （1.15.3+26.1-neoforge，`environment=client_only`）
@@ -1050,18 +1060,19 @@ function Install-MtSlimeGuard {
 function Install-MtRenderStack {
     <#
     .SYNOPSIS
-        把 26.1.2 的渲染栈（Sodium + Iris）与光影包放进 run/<版本>/（幂等）。
+        把渲染栈（Sodium + Iris，26.1.2 从 Maven 装 / 1.21.1 由整合包复制）与**光影包**放进
+        `run/<版本>/`，并让 Iris **默认选中并启用**该光影（幂等）。
 
     .NOTES
         · 来源 = **Modrinth Maven**（`https://api.modrinth.com/maven`，坐标见 $script:RenderMods2612 / $script:ShaderPack2612
           的 `Coord` 字段，形如 `maven.modrinth:sodium:mc26.1.2-0.9.1-neoforge`）；**不使用** CDN/GitHub 直链。
-        · mods 落位 `run/26.1.2/mods`；光影包落位 `run/26.1.2/shaderpacks/`；
-        · 缓存在 `temp/probe_mods/26.1.2/`（与探针运行时同一缓存目录，便于整体清理）；
+        · mods 落位 `run/<版本>/mods`；光影包落位 `run/<版本>/shaderpacks/`；
+        · 缓存在 `temp/probe_mods/<版本>/`（与探针运行时同一缓存目录，便于整体清理）；
         · 命中判据 = 目标文件存在且**尺寸一致**，下载后按固定 sha1 校验，失败硬报 14，不静默降级；
-        · 顺带把 Iris 的选中光影写进 `config/iris.properties`（`shaderPack=<包名>`）。
+        · 顺带把 Iris 的选中光影与开关写进 `config/iris.properties`（`shaderPack=<包名>` + `enableShaders=true`）。
 
-        ⚠️ **`enableShaders` 默认写 false（2026-09-17 二次更正）**：默认关闭只是「测试不需要光影 + 省性能」，
-        **不是因为崩**。经用户点出并用两轮实测确认：26.1.2 上「开光影即崩 `IllegalStateException: Missing
+        ⚠️ **`enableShaders` 自 2026-09-17 起默认写 true**（用户要求「添加光影包并设置默认启用」）；
+        此前默认 false 只是「测试不需要光影 + 省性能」，**不是因为崩**。经用户点出并用两轮实测确认：26.1.2 上「开光影即崩 `IllegalStateException: Missing
         sampler Sampler1`（`GlCommandEncoder.trySetup`）」的元凶是 **Sodium 0.9.2**；把它降到**整合包同款的
         0.9.1**（本函数当前的规格）后，Iris 1.11.4 + Complementary Unbound r5.9.3 **正常工作** ——
         `SHADER-VISION-26.1.2` 用例由 FAIL（0.9.2：`Using shaderpack:` 后立即崩 + 新增崩溃报告）转
@@ -1073,7 +1084,10 @@ function Install-MtRenderStack {
     [CmdletBinding()]
     param([Parameter(Mandatory)][psobject]$Paths)
 
-    if ($Paths.version -ne '26.1.2') { return 0 }
+    if ($Paths.version -notin @('1.21.1', '26.1.2')) {
+        Write-MtLine ("MT_MODS: SKIP — {0} 的 dev run 不装渲染栈（Embeddium/Oculus 的 refmap 在 mojmap 下无法解析）⇒ 光影同样不可用" -f $Paths.version)
+        return 0
+    }
 
     $cache = Join-Path (Join-Path (Get-MtRoot) 'temp\probe_mods') $Paths.version
     [void](New-Item -ItemType Directory -Force -Path $cache)
@@ -1083,9 +1097,14 @@ function Install-MtRenderStack {
     $ProgressPreference = 'SilentlyContinue'
     try {
         # 1) 渲染模组 → run/<版本>/mods（含同族旧版本清理，见 Install-MtSpecList）
-        $rc = Install-MtSpecList -Paths $Paths -Specs $script:RenderMods2612 -Cache $cache -Label '渲染模组' -Prefixes @('sodium-', 'iris-')
-        if ($rc -ne 0) { return $rc }
-        $installed = @($script:RenderMods2612 | ForEach-Object { $_.Name })
+        #    26.1.2 = 从 Modrinth Maven 下载；1.21.1 = 规格为空（Sodium/Iris 由整合包复制）
+        $specs = $script:RenderModsByVersion[$Paths.version]
+        $installed = @()
+        if ($specs -and @($specs).Count -gt 0) {
+            $rc = Install-MtSpecList -Paths $Paths -Specs $specs -Cache $cache -Label '渲染模组' -Prefixes @('sodium-', 'iris-')
+            if ($rc -ne 0) { return $rc }
+            $installed = @($specs | ForEach-Object { $_.Name })
+        }
 
         # 2) 光影包 → run/<版本>/shaderpacks
         $sp = $script:ShaderPack2612
@@ -1119,12 +1138,15 @@ function Install-MtRenderStack {
             Copy-Item -LiteralPath $spCache -Destination $spDst -Force
         }
 
-        # 3) Iris 配置：选中该光影并开启光影（Iris 1.11.x 的 config/iris.properties）
+        # 3) Iris 配置：选中该光影**并默认启用**（Iris 的 config/iris.properties）
+        #    2026-09-17 用户要求「添加光影包并设置默认启用」⇒ enableShaders 默认写 true。
+        #    ⚠️ 需要「关光影冷启动」的用例（SHADER-VISION-26.1.2 的步骤 0）仍显式执行
+        #    `mt_env.ps1 shaders --version <V> --state off` —— 那是用例自己的前置，不靠这里的默认值。
         $irisCfg = Join-Path (Join-Path $Paths.run_dir 'config') 'iris.properties'
         [void](New-Item -ItemType Directory -Force -Path (Split-Path $irisCfg))
         $lines = @()
         if (Test-Path -LiteralPath $irisCfg -PathType Leaf) { $lines = @(Get-Content -LiteralPath $irisCfg) }
-        $set = @{ 'shaderPack' = $sp.Name; 'enableShaders' = 'false' }
+        $set = @{ 'shaderPack' = $sp.Name; 'enableShaders' = 'true' }
         foreach ($k in $set.Keys) {
             $found = $false
             for ($i = 0; $i -lt $lines.Count; $i++) {
@@ -1134,8 +1156,9 @@ function Install-MtRenderStack {
         }
         Set-Content -LiteralPath $irisCfg -Value $lines -Encoding utf8
 
-        Write-MtLine ("MT_MODS: OK — 渲染栈就位（{0}）＋ 光影 {1}；Iris 已选中该光影" -f `
-                ($installed -join ' / '), $sp.Name)
+        $modsText = if ($installed.Count -gt 0) { $installed -join ' / ' } else { '（渲染模组由整合包复制，见 NeoForgeMods）' }
+        Write-MtLine ("MT_MODS: OK — 渲染栈就位（{0}）＋ 光影 {1}；Iris 已选中该光影并默认启用（enableShaders=true）" -f `
+                $modsText, $sp.Name)
         return 0
     } finally {
         $ProgressPreference = $progressBak
@@ -1221,8 +1244,9 @@ function Invoke-MtEnvMods {
         # 优化类模组（2026-09-17 用户要求：ImmediatelyFast + ModernFix 兼容性验证）
         $rc = Install-MtPerfMods -Paths $p
         if ($rc -ne 0) { return $rc }
-        Write-MtLine 'MT_MODS: OK — 26.1.2 dev run：探针运行时 + Sodium/Iris + Complementary Unbound 光影 + 超平坦史莱姆压制 + 优化模组(ImmediatelyFast/ModernFix)'
+        Write-MtLine 'MT_MODS: OK — 26.1.2 dev run：探针运行时 + Sodium/Iris + Complementary Unbound 光影(默认启用) + 超平坦史莱姆压制 + 优化模组(ImmediatelyFast/ModernFix/FerriteCore)'
         Write-MtLine 'MT_MODS: 注意 — Sodium/Iris/ImmediatelyFast 为纯客户端模组：`mt_env world` 起专用服务器会自动移出，但**两段式数据生成（runClientData/runServerData）前必须手动移出** run/26.1.2/mods（与探针运行时同规则）'
+        [void](Invoke-MtPauseLockEnforce -Paths $p)
         return 0
     }
 
@@ -1245,6 +1269,7 @@ function Invoke-MtEnvMods {
         $rc = Install-MtPerfMods -Paths $p
         if ($rc -ne 0) { return $rc }
         Write-MtLine 'MT_MODS: OK — 1.20.1 dev run 不使用渲染模组；生产环境已校验'
+        [void](Invoke-MtPauseLockEnforce -Paths $p)
         return 0
     }
 
@@ -1284,7 +1309,12 @@ function Invoke-MtEnvMods {
     if ($rc -ne 0) { return $rc }
     $rc = Install-MtPerfMods -Paths $p
     if ($rc -ne 0) { return $rc }
+    # 光影包 + Iris 默认启用（2026-09-17 用户要求「游戏环境缺少光影包，添加光影包并设置默认启用」）。
+    # 1.21.1 的 Sodium/Iris 由上面的整合包复制提供，本调用只补「光影包 + config/iris.properties」。
+    $rc = Install-MtRenderStack -Paths $p
+    if ($rc -ne 0) { return $rc }
     Write-MtLine 'MT_MODS: 提示 — ImmediatelyFast 为纯客户端：`mt_env world` 起专用服务器会自动移出；FerriteCore 两侧皆可，保留'
+    [void](Invoke-MtPauseLockEnforce -Paths $p)
     return 0
 }
 
@@ -1313,20 +1343,106 @@ function Remove-MtTree {
 function Disable-MtPauseOnLostFocus {
     <#
     .SYNOPSIS
-        失焦暂停会让后台注入失效，必须关闭。
+        失焦暂停会让后台注入失效，必须关闭（= 全局测试规则「禁止游戏失焦打开 ESC 菜单」）。
+
+    .NOTES
+        2026-09-17 起实现下沉到 `lib/Mt.Paths.psm1` 的 `Set-MtPauseOnLostFocus`（mt_launch 也要用同一实现
+        在每次冷启动前强制），本函数保留为兼容包装。
     #>
     [CmdletBinding()]
     param([Parameter(Mandatory)][psobject]$Paths)
 
-    $opt = Join-Path $Paths.run_dir 'options.txt'
-    $lines = @()
-    if (Test-Path -LiteralPath $opt -PathType Leaf) {
-        $lines = @(Get-Content -LiteralPath $opt -Encoding UTF8 -ErrorAction SilentlyContinue |
-                Where-Object { -not ([string]$_).StartsWith('pauseOnLostFocus:') })
+    [void](Set-MtPauseOnLostFocus -Paths $Paths -Enabled $false)
+}
+
+function Invoke-MtPauseLockEnforce {
+    <#
+    .SYNOPSIS
+        全局测试规则「禁止游戏失焦打开 ESC 菜单」的唯一落地点：写 `options.txt` 的
+        `pauseOnLostFocus:false` 并回显 `MT_PAUSE_LOCK: on`（幂等）。
+
+    .NOTES
+        为什么是全局规则（2026-09-17 用户裁决）：失焦暂停会让后台注入（mt_inject）与截图（mt_capture）
+        全部失效，并且暂停菜单会顶在画面上——历史上正是为了关掉这个菜单才在流程里塞进多余的
+        Esc 按键。现在由工具链在 env/launch 两处强制关闭，测试流程里不再需要那些 Esc。
+        查询入口：`mt_env.ps1 debug --version <V> --pause-lock status`。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][psobject]$Paths)
+
+    $on = Set-MtPauseOnLostFocus -Paths $Paths -Enabled $false
+    Write-MtLine ("MT_PAUSE_LOCK: on — 禁止失焦打开 ESC 菜单（pauseOnLostFocus=false，{0}）" -f `
+            (Join-Path $Paths.run_dir 'options.txt'))
+    return $on
+}
+
+function Invoke-MtEnvDebug {
+    <#
+    .SYNOPSIS
+        全局调试/测试环境开关子命令（三条线同一入口）：
+        `mt_env.ps1 debug --version <V> [--pause-lock on|off|status] [--shaders on|off|status]`。
+
+    .DESCRIPTION
+        2026-09-17 用户要求「添加全局调试命令，禁止游戏失焦打开 ESC 菜单」。本子命令是这些
+        **测试环境开关**的统一入口（只读写 run 目录里的配置，不联网、不碰 mods）：
+          · `--pause-lock on`  → `options.txt` `pauseOnLostFocus:false`（**默认期望值**：禁止失焦弹 ESC 菜单）
+            `--pause-lock off` → 写回 true（对照实验用；会明确 WARN，因为之后注入/截图可能失效）
+          · `--shaders on|off|status` → 透传到 `Invoke-MtEnvShaders`（config/iris.properties）
+        不带任何开关时只**回显当前状态**（等效于两个都 status）。
+
+    .NOTES
+        ⚠️ 游戏退出时会重写 `options.txt`，故 pause-lock 必须在**冷启动之前**设置；
+        mt_launch 每次启动前也会自动强制一次，本命令用于「先设好、再手工启动」或事后核对。
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$Version,
+        [string]$PauseLock = 'status',
+        [string]$Shaders = 'status'
+    )
+
+    $Paths = Get-MtPaths -Version $Version
+    $rc = 0
+    $pauseState = Get-MtPauseOnLostFocus -Paths $Paths
+
+    if ($PauseLock -in @('on', 'off')) {
+        $wantEnabled = ($PauseLock -eq 'off')   # pause-lock on ⇒ pauseOnLostFocus=false
+        [void](Set-MtPauseOnLostFocus -Paths $Paths -Enabled $wantEnabled)
+        $pauseState = $wantEnabled
+        if ($PauseLock -eq 'on') {
+            Write-MtLine 'MT_DEBUG: PAUSE_LOCK=on — 失焦不再打开 ESC 暂停菜单（测试流程据此删除多余的 Esc 按键）'
+        } else {
+            Write-MtWarn 'MT_DEBUG: PAUSE_LOCK=off — 已允许失焦暂停：后台注入/截图可能被 ESC 菜单挡住（仅对照实验用）'
+        }
+    } elseif ($PauseLock -ne 'status') {
+        Write-MtErrorLine ("非法 --pause-lock {0}（可选：on off status）" -f $PauseLock)
+        return $MT_EXIT_ERROR
     }
-    $lines += 'pauseOnLostFocus:false'
-    # python 用 ascii 编码写回；这里显式用 ASCII（无 BOM、无 CRLF）
-    [System.IO.File]::WriteAllText($opt, (($lines -join "`n") + "`n"), [System.Text.Encoding]::ASCII)
+
+    $pauseText = if ($null -eq $pauseState) { '(未设置/options.txt 不存在)' }
+    elseif (-not $pauseState) { 'on (pauseOnLostFocus=false)' } else { 'off (pauseOnLostFocus=true)' }
+    Write-MtLine ("MT_DEBUG: {0} pause-lock={1}" -f $Version, $pauseText)
+
+    if ($Shaders -ne 'status') {
+        $src = Invoke-MtEnvShaders -Version $Version -State $Shaders
+        if ($src -ne $MT_EXIT_PASS) { $rc = $src }
+    } else {
+        # 只读状态：**不**调用 Invoke-MtEnvShaders —— 缺 iris.properties 时它会打一条
+        # BLOCKED 噪音（而 1.20.1 这条线本来就不装渲染栈、永远没有该文件）。直接读键。
+        $irisCfg = Join-Path (Join-Path (Get-MtPaths -Version $Version).run_dir 'config') 'iris.properties'
+        $shadersText = 'n/a(该线不装渲染栈或无 iris.properties)'
+        if (Test-Path -LiteralPath $irisCfg -PathType Leaf) {
+            $irisLines = @(Get-Content -LiteralPath $irisCfg)
+            $cur = '(未设置)'; $pack = '(未设置)'
+            foreach ($ln in $irisLines) {
+                if ($ln -match '^\s*enableShaders\s*=\s*(.*)$') { $cur = $Matches[1].Trim() }
+                if ($ln -match '^\s*shaderPack\s*=\s*(.*)$') { $pack = $Matches[1].Trim() }
+            }
+            $shadersText = ("{0} (shaderPack={1})" -f $cur, $pack)
+        }
+        Write-MtLine ("MT_DEBUG: {0} shaders={1}" -f $Version, $shadersText)
+    }
+    return $rc
 }
 
 function Restore-MtSeed {
@@ -1527,6 +1643,8 @@ if ($MyInvocation.InvocationName -ne '.') {
     $SeedFlag = $false
     $TimeoutSec = 180
     $ShaderState = 'status'
+    # 全局调试子命令的开关（2026-09-17）：pause-lock = 禁止失焦打开 ESC 菜单（见 Invoke-MtEnvDebug）
+    $PauseLockState = 'status'
 
     $i = 0
     while ($i -lt $args.Count) {
@@ -1546,6 +1664,10 @@ if ($MyInvocation.InvocationName -ne '.') {
             if ($i + 1 -ge $args.Count) { Write-MtErrorLine '缺少 --state 的值'; exit $MT_EXIT_ERROR }
             $ShaderState = ([string]$args[$i + 1]).ToLowerInvariant()
             $i += 2
+        } elseif ($key -eq 'pause-lock') {
+            if ($i + 1 -ge $args.Count) { Write-MtErrorLine '缺少 --pause-lock 的值'; exit $MT_EXIT_ERROR }
+            $PauseLockState = ([string]$args[$i + 1]).ToLowerInvariant()
+            $i += 2
         } elseif ($key -eq 'timeout') {
             if ($i + 1 -ge $args.Count) { Write-MtErrorLine '缺少 --timeout 的值'; exit $MT_EXIT_ERROR }
             $TimeoutSec = [int]$args[$i + 1]
@@ -1555,8 +1677,8 @@ if ($MyInvocation.InvocationName -ne '.') {
         }
     }
 
-    if ($Cmd -notin @('mods', 'world', 'kill', 'kubejs', 'shaders')) {
-        Write-MtErrorLine '必须指定子命令 mods / world / kill / kubejs / shaders'
+    if ($Cmd -notin @('mods', 'world', 'kill', 'kubejs', 'shaders', 'debug')) {
+        Write-MtErrorLine '必须指定子命令 mods / world / kill / kubejs / shaders / debug'
         exit $MT_EXIT_ERROR
     }
     if (-not $Version) {
@@ -1570,6 +1692,7 @@ if ($MyInvocation.InvocationName -ne '.') {
         'kubejs' { exit (Invoke-MtEnvKubejs -Version $Version) }
         'world' { exit (Invoke-MtEnvWorld -Version $Version -Seed $SeedFlag -Timeout $TimeoutSec) }
         'shaders' { exit (Invoke-MtEnvShaders -Version $Version -State $ShaderState) }
+        'debug' { exit (Invoke-MtEnvDebug -Version $Version -PauseLock $PauseLockState -Shaders $ShaderState) }
         'kill' {
             [void](Stop-MtVersionProcesses -Paths (Get-MtPaths -Version $Version))
             exit $MT_EXIT_PASS
