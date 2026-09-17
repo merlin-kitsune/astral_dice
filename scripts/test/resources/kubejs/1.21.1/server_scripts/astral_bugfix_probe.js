@@ -86,7 +86,8 @@ var ItemStack = Java.loadClass("net.minecraft.world.item.ItemStack");
 var CuriosApi = Java.loadClass("top.theillusivec4.curios.api.CuriosApi");
 var ModAttachments = Java.loadClass("com.merlinkitsune.astral_dice.component.ModAttachments");
 var ModEffects = Java.loadClass("com.merlinkitsune.astral_dice.effect.ModEffects");
-var ModEffectRemoval = Java.loadClass("com.merlinkitsune.astral_dice.event.ModEffectRemoval");
+var ModEffectRemoval = Java.loadClass(// 2026-09-17 前置库下沉:本模组效果移除通道已迁到 StarEngine Lib(消费方副本已删),故改引用库包名。
+"com.merlinkitsune.starenginelib.event.ModEffectRemoval");
 var EmpowerManager = Java.loadClass("com.merlinkitsune.astral_dice.item.EmpowerManager");
 
 var DESC_EMPOWER = "effect.astral_dice.empower";
@@ -1113,7 +1114,8 @@ function doAnvilClose(ctx, tag) {
 //    · 「主动不释放」的可观测结果是「附件不变 + 不进入主动冷却」;主动本身不消耗任何资源。
 // ════════════════════════════════════════════════════════════════════════════
 
-var GameplayConstantsClass = Java.loadClass("com.merlinkitsune.astral_dice.component.GameplayConstants");
+var GameplayConstantsClass = Java.loadClass(// 2026-09-17 前置库下沉:共享常量已迁到 StarEngine Lib(消费方副本已删),故改引用库包名。
+"com.merlinkitsune.starenginelib.component.GameplayConstants");
 var EffectCardPeriodClass = Java.loadClass("com.merlinkitsune.astral_dice.item.card.EffectCardPeriod");
 var BaseSignItemClass = Java.loadClass("com.merlinkitsune.astral_dice.item.sign.BaseSignItem");
 var NancyLuSignItemClass = Java.loadClass("com.merlinkitsune.astral_dice.item.sign.NancyLuSignItem");

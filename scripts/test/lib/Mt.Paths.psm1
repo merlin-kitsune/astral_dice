@@ -429,11 +429,69 @@ function Get-MtProgress {
     }
 }
 
+function Get-MtPauseOnLostFocus {
+    <#
+    .SYNOPSIS
+        读 `run/<版本>/options.txt` 的 `pauseOnLostFocus`（当前是否「失焦即打开 ESC 暂停菜单」）。
+
+    .OUTPUTS
+        $true / $false / $null（未设置）。$null 表示 options.txt 里还没有该键（游戏首次启动会写默认 true）。
+
+    .NOTES
+        「禁止游戏失焦打开 ESC 菜单」是 2026-09-17 用户裁决的**全局测试规则**：工具链每次 launch
+        前强制把该键写成 false，并提供唯一查询入口 `mt_env.ps1 debug --version <V> --pause-lock status`。
+        为什么必须落到 options.txt：失焦暂停会让后台注入（mt_inject）与截图（mt_capture）全部失效，
+        且暂停菜单会顶在游戏画面上 —— 那正是「不必要的 Esc 按键」被写进测试流程的历史原因。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][psobject]$Paths)
+
+    $opt = Join-Path $Paths.run_dir 'options.txt'
+    if (-not (Test-Path -LiteralPath $opt -PathType Leaf)) { return $null }
+    foreach ($ln in @(Get-Content -LiteralPath $opt -Encoding UTF8 -ErrorAction SilentlyContinue)) {
+        if ([string]$ln -match '^\s*pauseOnLostFocus\s*:\s*(.+?)\s*$') {
+            return ($Matches[1] -ieq 'true')
+        }
+    }
+    return $null
+}
+
+function Set-MtPauseOnLostFocus {
+    <#
+    .SYNOPSIS
+        写 `run/<版本>/options.txt` 的 `pauseOnLostFocus`（幂等；-Enabled $false = 禁止失焦开暂停菜单）。
+
+    .NOTES
+        · 只动这一个键，保留文件里其它设置与行序；文件不存在时同样写入该键（游戏下次启动读取）；
+        · 编码/换行沿用既有实现（ASCII、`\n`、无 BOM）；
+        · 返回写入后的值（bool），供调用方回显 `PAUSE_LOCK=`；
+        · ⚠️ 游戏**退出时会重写 options.txt**，故本写入必须发生在**冷启动之前**（mt_launch 已强制）；
+          客户端存活期间写没有意义（会被覆盖）。
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][psobject]$Paths,
+        [Parameter(Mandatory)][bool]$Enabled
+    )
+
+    $want = if ($Enabled) { 'true' } else { 'false' }
+    $opt = Join-Path $Paths.run_dir 'options.txt'
+    $lines = @()
+    if (Test-Path -LiteralPath $opt -PathType Leaf) {
+        $lines = @(Get-Content -LiteralPath $opt -Encoding UTF8 -ErrorAction SilentlyContinue |
+                Where-Object { -not ([string]$_).StartsWith('pauseOnLostFocus:') })
+    }
+    $lines += "pauseOnLostFocus:$want"
+    [System.IO.File]::WriteAllText($opt, (($lines -join "`n") + "`n"), [System.Text.Encoding]::ASCII)
+    return $Enabled
+}
+
 Export-ModuleMember -Function @(
     'Get-MtVersions', 'Get-MtTestDir', 'Get-MtRoot', 'Get-MtConfFile', 'Get-MtRunsFile',
     'Get-MtConf', 'Get-MtWorldName', 'Assert-MtVersion', 'Get-MtPaths',
     'Get-MtProcessMarkers', 'Get-MtShotsManifest', 'Get-MtShots', 'Add-MtShot',
     'Get-MtCurrentShots', 'New-MtRunId', 'Get-MtActiveRunId', 'Get-MtRunStartTs',
     'Get-MtReportsDir', 'ConvertTo-MtJson',
-    'Get-MtProgressFile', 'Set-MtProgress', 'Get-MtProgress'
+    'Get-MtProgressFile', 'Set-MtProgress', 'Get-MtProgress',
+    'Get-MtPauseOnLostFocus', 'Set-MtPauseOnLostFocus'
 )

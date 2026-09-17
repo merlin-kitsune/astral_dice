@@ -1,6 +1,5 @@
 package com.merlinkitsune.astral_dice.item.sign;
 
-import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
 import com.merlinkitsune.starenginelib.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
@@ -20,7 +19,6 @@ import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.fml.common.EventBusSubscriber;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import top.theillusivec4.curios.api.CuriosApi;
@@ -38,7 +36,10 @@ import top.theillusivec4.curios.api.SlotContext;
  * 主动为"目标选择器"类技能:触发后经 {@link TargetSelectionManager} 进入选择模式,
  * 确认时由 {@link TargetSelectionAction#apply} 施加效果并开始玩家级冷却;取消/超时不冷却。
  */
-@EventBusSubscriber(modid = AstralDiceMod.MODID)
+// 本类不注册任何 @SubscribeEvent(「请选择目标」提示改由注册动作的 onStarted 发送,见下方 sendReadyPrompt 注释),
+// 故**不得**标注 @EventBusSubscriber —— NeoForge 21.1 对「无 @SubscribeEvent 方法的订阅者类」直接抛
+// IllegalArgumentException(class ... has no @SubscribeEvent methods, but register was called anyway),
+// 进而 Failed to register automatic subscribers 让模组构造失败(2026-09-17 实测崩线)。
 public class MosesSignItem extends BaseSignItem {
     private static final Logger LOGGER = LoggerFactory.getLogger(MosesSignItem.class);
 

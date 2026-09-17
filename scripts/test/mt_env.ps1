@@ -5,7 +5,9 @@
 
 .DESCRIPTION
     职责（只做环境的建立与拆除，不做任何功能断言）:
-      mods    安装兼容模组（1.21.1 Sodium/Iris/ModernFix；1.20.1 校验生产环境渲染栈）
+      mods    安装兼容模组（三条线：优化类 ImmediatelyFast/FerriteCore；1.21.1 另装探针宿主 KubeJS/Rhino/
+              Architectury + 史莱姆压制；1.20.1 另装优化类并校验生产环境渲染栈；26.1.2 另装探针运行时/
+              渲染栈/光影/史莱姆压制）
       world   重建 testworld（超平坦/创造/允许命令），支持种子快恢复
       kill    按版本精确停止游戏进程（不误杀无关 java 进程）
 
@@ -44,6 +46,24 @@ $script:NeoForgeMods = @(
     @{ Pattern = '*sodium-neoforge*0.8.13*.jar'; Target = 'sodium-neoforge-0.8.13+mc1.21.1.jar' }
     @{ Pattern = '*iris-neoforge*1.8.14*.jar'; Target = 'iris-neoforge-1.8.14-beta.1+mc1.21.1.jar' }
     @{ Pattern = '*modernfix-neoforge*5.27.24*.jar'; Target = 'modernfix-neoforge-5.27.24+mc1.21.1.jar' }
+)
+
+# ── 1.21.1 探针宿主（KubeJS + Rhino + Architectury API）──────────────────────
+# `neoforge-1.21.1/build.gradle` **故意不依赖 KubeJS**（其 L249-252 注释写明：2026-09 起改由
+# dev run 的 `run/mods` 目录直接装载整合包同版 kubejs(2101.7.2-build.374)，因为 KubeJS 自带
+# data provider，写进依赖会让 **datagen 也装载它**）。但 `mt_env mods` 此前**没有**这一步 ⇒
+# 新克隆 / dev-next 工作树的 `run/1.21.1/mods` 里**没有 KubeJS**，于是 launch 的
+# `MT_ASSERT_KUBEJS` 恒为 `BLOCKED — 未找到 KubeJS server.log`、`/astralprobe` 命令不存在，
+# 后续所有探针用例与 `MT_preflight-op` 闸门都无法通过（2026-09-17 在 dev-next 上实测暴露；
+# 主线工作树的 run 目录里是**手工**放进去的，故从未暴露这条缺口）。
+# 现改为**按整合包复制**（与 Sodium/Iris/ModernFix 同一套「文件名匹配 + 时间戳幂等」）。
+# 三个 jar 缺一不可：KubeJS 的 required 前置 = Rhino + Architectury API（1.21.1 线还**不**需要
+# better-advanced-tooltips —— 那是 26.1.2 的 KubeJS 8 才有的硬前置，见 Install-MtProbeRuntime）。
+# `Match` 是「剥掉整合包文件名里的中文方括号前缀」后的正则：整合包那份叫 `[犀牛] rhino-….jar`。
+$script:ProbeHostMods1211 = @(
+    @{ Pattern = 'kubejs-neoforge-*.jar'; Match = '^kubejs-neoforge-' }
+    @{ Pattern = '*rhino-*.jar'; Match = '^rhino-' }
+    @{ Pattern = 'architectury-*-neoforge.jar'; Match = '^architectury-' }
 )
 
 # ── 26.1.2 探针运行时（仅 dev run 需要）──────────────────────────────────────
@@ -92,6 +112,16 @@ $script:RenderMods2612 = @(
        Size = 2756643 }
 )
 
+# 渲染模组**按版本**（2026-09-17 用户要求「游戏环境缺少光影包，添加光影包并设置默认启用」）：
+#   · 26.1.2：Sodium/Iris 由本工具链从 Modrinth Maven 下载（见上）；
+#   · 1.21.1：Sodium/Iris **由整合包复制**（`$script:NeoForgeMods`）⇒ 这里**故意为空**，
+#     只补「光影包 + Iris 配置」两件事（见 Install-MtRenderStack）；
+#   · 1.20.1：dev run 不装渲染栈（Embeddium/Oculus 的 refmap 在 mojmap 下无法解析）⇒ 光影不可用。
+$script:RenderModsByVersion = @{
+    '1.21.1' = @()
+    '26.1.2' = $script:RenderMods2612
+}
+
 # ── 优化类模组（2026-09-17 用户要求：进一步验证优化类模组的兼容性）──────────────
 # 来源同样走 **Modrinth Maven**（与渲染栈/史莱姆压制同规则）：
 #   maven.modrinth:immediatelyfast:adbrNJLm （1.15.3+26.1-neoforge，`environment=client_only`）
@@ -115,6 +145,14 @@ $script:PerfMods2612 = @(
        Url  = 'https://api.modrinth.com/maven/maven/modrinth/modernfix/j7EoxpYe/modernfix-neoforge-5.27.22%2Bmc26.1.2.jar'
        Sha1 = '334500dd0c94a552005a432114fae32fe6c518fc'
        Size = 505496 }
+    # FerriteCore（2026-09-17 用户要求：所有测试环境都要带上它做优化类模组兼容性验证）。
+    # `environment` = client/server 皆 optional（方块状态/模型去重的内存优化），故**两侧都保留**，
+    # 不进 `Invoke-MtEnvWorld` 的纯客户端移出名单。
+    @{ Name = 'ferritecore-9.0.0-neoforge.jar'
+       Coord = 'maven.modrinth:ferrite-core:LtVvw4uS'
+       Url  = 'https://api.modrinth.com/maven/maven/modrinth/ferrite-core/LtVvw4uS/ferritecore-9.0.0-neoforge.jar'
+       Sha1 = 'b8bfb14ba6ce7068aae08c3a132ca40bda6bd143'
+       Size = 71947 }
 )
 
 # 注：**没有**全局的「族前缀表」—— 清理前缀由每次 `Install-MtSpecList` 调用**按族显式传入**
@@ -152,6 +190,78 @@ $script:SlimeGuard2612 = @(
        Sha1 = '13887a5d78938c6ce55c15bcbd1352db625e84e1'
        Size = 1054031 }
 )
+
+# ── 优化类模组 / 史莱姆压制：**按版本**清单（2026-09-17 用户要求，三条线一致）──────
+# 用户原话（两轮）：「1.21.1 环境缺少没有史莱姆的超平坦世界模组，这是必需的模组，没有会使史莱姆
+# 干扰测试，补全该模组然后重新运行 1.21.1 测试」+「所有测试环境增加 ImmediatelyFast、FerriteCore
+# 模组，用于优化模组兼容性测试」。
+#
+# ⚠️ 与 26.1.2 的关键差别（决定「哪条线从哪来」）：1.20.1 的 `forge-1.20.1/build.gradle` **已经**
+#    用 `modImplementation` 声明了 `collective`(curse 7148968 = collective-1.20.1-8.13) 与
+#    `superflat-world-no-slimes`(curse 6184996 = superflatworldnoslimes-1.20.1-3.5) —— 它们由
+#    Gradle 提供 dev 运行时，**再往 `run/1.20.1/mods` 放一份就会被 FML 判为重复模组**
+#    （`Duplicate mods:` / `Found duplicate mod`，表现为「装完反而起不来」）。
+#    ⇒ 1.20.1 的史莱姆压制**故意不在本表里**（`$script:SlimeGuardByVersion` 无该键 = 跳过安装，
+#      并在 `Install-MtSlimeGuard` 里打印来源说明）。
+#    ImmediatelyFast / FerriteCore 三条线**都**不在 build.gradle 里（已核对全部 mod 依赖），
+#    故一律由本表下载进 `run/<版本>/mods`，不会重复。
+$script:PerfModsByVersion = @{
+    '1.20.1' = @(
+        # environment: client=required, server=unsupported ⇒ 纯客户端，生成世界时会被移出
+        @{ Name = 'ImmediatelyFast-Forge-1.5.5+1.20.4.jar'
+           Coord = 'maven.modrinth:immediatelyfast:rvsLEEZU'
+           Url  = 'https://api.modrinth.com/maven/maven/modrinth/immediatelyfast/rvsLEEZU/ImmediatelyFast-Forge-1.5.5%2B1.20.4.jar'
+           Sha1 = '9eacd407b7dea636d375dc47335d92f616484ea2'
+           Size = 532063 }
+        @{ Name = 'ferritecore-6.0.1-forge.jar'
+           Coord = 'maven.modrinth:ferrite-core:DG5Fn9Sz'
+           Url  = 'https://api.modrinth.com/maven/maven/modrinth/ferrite-core/DG5Fn9Sz/ferritecore-6.0.1-forge.jar'
+           Sha1 = '417fb6ce8f52abf40bd9d0390371790f9576f8ba'
+           Size = 123034 }
+    )
+    '1.21.1' = @(
+        @{ Name = 'ImmediatelyFast-NeoForge-1.6.14+1.21.1.jar'
+           Coord = 'maven.modrinth:immediatelyfast:OUpXxw4n'
+           Url  = 'https://api.modrinth.com/maven/maven/modrinth/immediatelyfast/OUpXxw4n/ImmediatelyFast-NeoForge-1.6.14%2B1.21.1.jar'
+           Sha1 = 'fee59af2f39c66d09c4c09f441c799e76af70f97'
+           Size = 365195 }
+        @{ Name = 'ferritecore-7.0.3-neoforge.jar'
+           Coord = 'maven.modrinth:ferrite-core:x7kQWVju'
+           Url  = 'https://api.modrinth.com/maven/maven/modrinth/ferrite-core/x7kQWVju/ferritecore-7.0.3-neoforge.jar'
+           Sha1 = '9563692efb708b6b568df27a01ec52f6311928ef'
+           Size = 121559 }
+    )
+    # 26.1.2 沿用原清单（ImmediatelyFast + ModernFix），已在上面补入 FerriteCore
+    '26.1.2' = $script:PerfMods2612
+}
+
+# 清理前缀**跟着版本走**（不是全局表）：1.21.1/1.20.1 的 ModernFix 由整合包复制（`$script:NeoForgeMods`），
+# 若在这里也用 `modernfix-` 前缀清理，会把复制来的那份删掉、再被复制回来 —— 徒增抖动，
+# 故这两条线的优化模组前缀**只含** immediatelyfast- / ferritecore-。
+$script:PerfPrefixesByVersion = @{
+    '1.20.1' = @('immediatelyfast-', 'ferritecore-')
+    '1.21.1' = @('immediatelyfast-', 'ferritecore-')
+    '26.1.2' = @('immediatelyfast-', 'modernfix-', 'ferritecore-')
+}
+
+$script:SlimeGuardByVersion = @{
+    '1.21.1' = @(
+        # 用户硬性要求：1.21.1 测试环境此前**缺**这个模组（2026-09-17 实测 run/1.21.1/mods 里没有），
+        # 超平坦世界 y<40 的史莱姆区块会持续刷怪污染实体类读数。
+        @{ Name = 'superflatworldnoslimes-1.21.1-3.5.jar'
+           Coord = 'maven.modrinth:superflat-world-no-slimes:5VtNIDJA'
+           Url  = 'https://api.modrinth.com/maven/maven/modrinth/superflat-world-no-slimes/5VtNIDJA/superflatworldnoslimes-1.21.1-3.5.jar'
+           Sha1 = '9989735bf3518c4e16f1c3df1e83c43b24179d18'
+           Size = 25651 }
+        @{ Name = 'collective-1.21.1-8.39.jar'
+           Coord = 'maven.modrinth:collective:4XRlrKGN'
+           Url  = 'https://api.modrinth.com/maven/maven/modrinth/collective/4XRlrKGN/collective-1.21.1-8.39.jar'
+           Sha1 = 'b1153f03c97bccaa6bc11d6199f07f16ef4318ff'
+           Size = 1061931 }
+    )
+    # 1.20.1 **故意缺省**：已由 `forge-1.20.1/build.gradle` 的 modImplementation 提供（见上）
+    '26.1.2' = $script:SlimeGuard2612
+}
 
 # Complementary Shaders - Unbound（用户指定用于光影兼容性测试）
 # `maven.modrinth:complementary-unbound:r5.9.3`；落位 `run/<版本>/shaderpacks/`，并在 Iris 配置里选中它。
@@ -829,28 +939,81 @@ function Install-MtSpecList {
     return 0
 }
 
+function Install-MtProbeHost {
+    <#
+    .SYNOPSIS
+        把 1.21.1 的探针宿主（KubeJS + Rhino + Architectury API）从整合包复制进 `run/1.21.1/mods`。
+
+    .NOTES
+        · 为什么必须由工具链来做：`neoforge-1.21.1/build.gradle` 故意不依赖 KubeJS（会让 datagen
+          也装载它），约定「dev run 直接从 run/mods 装载整合包同版 kubejs」——此前只靠**手工**复制，
+          新工作树必然缺（2026-09-17 在 dev-next 上实测：launch 的 MT_ASSERT_KUBEJS=BLOCKED）。
+        · 只对 1.21.1 生效（1.20.1 的 KubeJS 走 build.gradle；26.1.2 走 Install-MtProbeRuntime 下载）。
+        · 判据 = 目标文件存在、尺寸一致、且不旧于整合包那份（与 `$script:NeoForgeMods` 同一口径）；
+          整合包那份缺失即 BLOCKED（返回 11），不静默降级 —— 缺 KubeJS 时所有探针用例都跑不起来。
+        · 文件名里的中文方括号前缀（整合包的 `[犀牛] rhino-….jar`）在落位时剥掉，保持 run/mods 纯 ASCII。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][psobject]$Paths)
+
+    if ($Paths.version -ne '1.21.1') { return 0 }
+    if (-not (Test-Path -LiteralPath $Paths.pack_mods_dir -PathType Container)) {
+        Write-MtLine "MT_MODS: BLOCKED — 整合包目录不存在 $($Paths.pack_mods_dir)"
+        return 11
+    }
+
+    $copied = @(); $kept = @(); $missing = @()
+    foreach ($spec in $script:ProbeHostMods1211) {
+        $src = @(Get-ChildItem -LiteralPath $Paths.pack_mods_dir -File -Filter $spec.Pattern |
+                Where-Object { ($_.Name -replace '^\[[^\]]+\]\s*', '') -match $spec.Match } |
+                Sort-Object Name | Select-Object -First 1)
+        if ($src.Count -eq 0) { $missing += $spec.Pattern; continue }
+
+        $name = $src[0].Name -replace '^\[[^\]]+\]\s*', ''
+        $dst = Join-Path $Paths.mods_dir $name
+        if (Test-Path -LiteralPath $dst -PathType Leaf) {
+            $di = Get-Item -LiteralPath $dst
+            if ($di.Length -eq $src[0].Length -and $di.LastWriteTimeUtc -ge $src[0].LastWriteTimeUtc) { $kept += $name; continue }
+        }
+        Copy-Item -LiteralPath $src[0].FullName -Destination $dst -Force
+        $copied += $name
+    }
+
+    if ($missing.Count -gt 0) {
+        Write-MtLine "MT_MODS: BLOCKED — 整合包缺少 1.21.1 探针宿主 $($missing -join ', ')（KubeJS 是探针宿主，缺它所有探针用例与 MT_preflight-op 都会失败）"
+        return 11
+    }
+    $detail = if ($copied.Count -gt 0) { "新装 $($copied.Count) 个" } else { '已是最新' }
+    Write-MtLine ("MT_MODS: OK — 1.21.1 探针宿主 $detail（{0}）" -f (@($copied) + @($kept) -join ' / '))
+    return 0
+}
+
 function Install-MtPerfMods {
     <#
     .SYNOPSIS
         装优化类模组（ImmediatelyFast + ModernFix）到 run/<版本>/mods（幂等）。
 
     .NOTES
-        用户要求（2026-09-17）：「增加 ImmediatelyFast 和 ModernFix 模组以进一步验证优化类模组
-        兼容性」。侧别差异见 `$script:PerfMods2612` 的注释（ImmediatelyFast 纯客户端、必须移出
-        专用服务器；ModernFix 两侧皆可、保留）；本函数只对 26.1.2 生效（当前自动化测试线）。
+        用户要求（2026-09-17）：「所有测试环境增加 ImmediatelyFast、FerriteCore 模组，用于优化模组
+        兼容性测试」（26.1.2 侧此前已装 ImmediatelyFast + ModernFix，本轮补 FerriteCore）。
+        **三条线都装**（1.20.1 / 1.21.1 / 26.1.2），清单与来源见 `$script:PerfModsByVersion`；
+        侧别差异：ImmediatelyFast 纯客户端（生成世界时移出）、FerriteCore 与 ModernFix 两侧皆可（保留）。
+        三个 jar 均**不在**任何 `build.gradle` 的依赖里 ⇒ 放进 run/mods 不会造成重复模组。
     #>
     [CmdletBinding()]
     param([Parameter(Mandatory)][psobject]$Paths)
 
-    if ($Paths.version -ne '26.1.2') { return 0 }
+    $specs = $script:PerfModsByVersion[$Paths.version]
+    if (-not $specs) { return 0 }
 
     $cache = Join-Path (Join-Path (Get-MtRoot) 'temp\probe_mods') $Paths.version
     [void](New-Item -ItemType Directory -Force -Path $cache)
     [void](New-Item -ItemType Directory -Force -Path $Paths.mods_dir)
 
-    $rc = Install-MtSpecList -Paths $Paths -Specs $script:PerfMods2612 -Cache $cache -Label '优化模组' -Prefixes @('immediatelyfast-', 'modernfix-')
+    $prefixes = $script:PerfPrefixesByVersion[$Paths.version]
+    $rc = Install-MtSpecList -Paths $Paths -Specs $specs -Cache $cache -Label '优化模组' -Prefixes $prefixes
     if ($rc -ne 0) { return $rc }
-    $names = ($script:PerfMods2612 | ForEach-Object { $_.Name }) -join ' / '
+    $names = ($specs | ForEach-Object { $_.Name }) -join ' / '
     Write-MtLine ("MT_MODS: OK — 优化类模组就位（{0}）；ImmediatelyFast 为纯客户端，生成世界时会被移出" -f $names)
     return 0
 }
@@ -861,25 +1024,35 @@ function Install-MtSlimeGuard {
         把「超平坦世界无史莱姆」模组（+ 其必需前置 Collective）放进 run/<版本>/mods（幂等）。
 
     .NOTES
-        · 用户硬性要求，见 $script:SlimeGuard2612 的注释（超平坦世界刷史莱姆会干扰测试流程）；
-        · 只对 26.1.2 生效（本线是当前自动化测试线；1.21.1 侧 run/mods 由用户整合包按文件名
-          复制，1.20.1 侧 dev run 不使用 run/mods 装载渲染/工具类模组 —— 如需在这两条线同样强制，
-          应先补它们的下载规格，不要只改这里）；
+        · 用户硬性要求，见 `$script:SlimeGuardByVersion` 的注释（超平坦世界刷史莱姆会干扰测试流程）；
+        · **三条线统一**（2026-09-17 用户裁决：「1.21.1 环境缺少没有史莱姆的超平坦世界模组，这是
+          必需的模组……补全该模组然后重新运行 1.21.1 测试」）：
+            26.1.2 → 本表（Modrinth Maven 下载，原有实现）
+            1.21.1 → 本表（Modrinth Maven 下载，本轮补全）
+            1.20.1 → **不在本表**：已由 `forge-1.20.1/build.gradle` 的 `modImplementation`
+                     （collective-1.20.1-8.13 / superflatworldnoslimes-1.20.1-3.5）提供，
+                     再放一份进 run/mods 会被 FML 判重复模组；
         · 两者都是**服务端/运行期**模组，专用服务器生成世界时**保留**（见 $script:SlimeGuard2612 注释）。
     #>
     [CmdletBinding()]
     param([Parameter(Mandatory)][psobject]$Paths)
 
-    if ($Paths.version -ne '26.1.2') { return 0 }
+    $specs = $script:SlimeGuardByVersion[$Paths.version]
+    if (-not $specs) {
+        if ($Paths.version -eq '1.20.1') {
+            Write-MtLine 'MT_MODS: SKIP — 1.20.1 的史莱姆压制由 build.gradle 的 modImplementation 提供（collective / superflat-world-no-slimes），不再放入 run/mods（避免重复模组）'
+        }
+        return 0
+    }
 
     $cache = Join-Path (Join-Path (Get-MtRoot) 'temp\probe_mods') $Paths.version
     [void](New-Item -ItemType Directory -Force -Path $cache)
     [void](New-Item -ItemType Directory -Force -Path $Paths.mods_dir)
 
     $installed = @()
-    $rc = Install-MtSpecList -Paths $Paths -Specs $script:SlimeGuard2612 -Cache $cache -Label '史莱姆压制模组' -Prefixes @('superflatworldnoslimes-', 'collective-')
+    $rc = Install-MtSpecList -Paths $Paths -Specs $specs -Cache $cache -Label '史莱姆压制模组' -Prefixes @('superflatworldnoslimes-', 'collective-')
     if ($rc -ne 0) { return $rc }
-    $installed = @($script:SlimeGuard2612 | ForEach-Object { $_.Name })
+    $installed = @($specs | ForEach-Object { $_.Name })
     Write-MtLine ("MT_MODS: OK — 超平坦世界史莱姆压制就位（{0}；运行时生效，无需重建世界）" -f ($installed -join ' / '))
     return 0
 }
@@ -887,18 +1060,19 @@ function Install-MtSlimeGuard {
 function Install-MtRenderStack {
     <#
     .SYNOPSIS
-        把 26.1.2 的渲染栈（Sodium + Iris）与光影包放进 run/<版本>/（幂等）。
+        把渲染栈（Sodium + Iris，26.1.2 从 Maven 装 / 1.21.1 由整合包复制）与**光影包**放进
+        `run/<版本>/`，并让 Iris **默认选中并启用**该光影（幂等）。
 
     .NOTES
         · 来源 = **Modrinth Maven**（`https://api.modrinth.com/maven`，坐标见 $script:RenderMods2612 / $script:ShaderPack2612
           的 `Coord` 字段，形如 `maven.modrinth:sodium:mc26.1.2-0.9.1-neoforge`）；**不使用** CDN/GitHub 直链。
-        · mods 落位 `run/26.1.2/mods`；光影包落位 `run/26.1.2/shaderpacks/`；
-        · 缓存在 `temp/probe_mods/26.1.2/`（与探针运行时同一缓存目录，便于整体清理）；
+        · mods 落位 `run/<版本>/mods`；光影包落位 `run/<版本>/shaderpacks/`；
+        · 缓存在 `temp/probe_mods/<版本>/`（与探针运行时同一缓存目录，便于整体清理）；
         · 命中判据 = 目标文件存在且**尺寸一致**，下载后按固定 sha1 校验，失败硬报 14，不静默降级；
-        · 顺带把 Iris 的选中光影写进 `config/iris.properties`（`shaderPack=<包名>`）。
+        · 顺带把 Iris 的选中光影与开关写进 `config/iris.properties`（`shaderPack=<包名>` + `enableShaders=true`）。
 
-        ⚠️ **`enableShaders` 默认写 false（2026-09-17 二次更正）**：默认关闭只是「测试不需要光影 + 省性能」，
-        **不是因为崩**。经用户点出并用两轮实测确认：26.1.2 上「开光影即崩 `IllegalStateException: Missing
+        ⚠️ **`enableShaders` 自 2026-09-17 起默认写 true**（用户要求「添加光影包并设置默认启用」）；
+        此前默认 false 只是「测试不需要光影 + 省性能」，**不是因为崩**。经用户点出并用两轮实测确认：26.1.2 上「开光影即崩 `IllegalStateException: Missing
         sampler Sampler1`（`GlCommandEncoder.trySetup`）」的元凶是 **Sodium 0.9.2**；把它降到**整合包同款的
         0.9.1**（本函数当前的规格）后，Iris 1.11.4 + Complementary Unbound r5.9.3 **正常工作** ——
         `SHADER-VISION-26.1.2` 用例由 FAIL（0.9.2：`Using shaderpack:` 后立即崩 + 新增崩溃报告）转
@@ -910,7 +1084,10 @@ function Install-MtRenderStack {
     [CmdletBinding()]
     param([Parameter(Mandatory)][psobject]$Paths)
 
-    if ($Paths.version -ne '26.1.2') { return 0 }
+    if ($Paths.version -notin @('1.21.1', '26.1.2')) {
+        Write-MtLine ("MT_MODS: SKIP — {0} 的 dev run 不装渲染栈（Embeddium/Oculus 的 refmap 在 mojmap 下无法解析）⇒ 光影同样不可用" -f $Paths.version)
+        return 0
+    }
 
     $cache = Join-Path (Join-Path (Get-MtRoot) 'temp\probe_mods') $Paths.version
     [void](New-Item -ItemType Directory -Force -Path $cache)
@@ -920,9 +1097,14 @@ function Install-MtRenderStack {
     $ProgressPreference = 'SilentlyContinue'
     try {
         # 1) 渲染模组 → run/<版本>/mods（含同族旧版本清理，见 Install-MtSpecList）
-        $rc = Install-MtSpecList -Paths $Paths -Specs $script:RenderMods2612 -Cache $cache -Label '渲染模组' -Prefixes @('sodium-', 'iris-')
-        if ($rc -ne 0) { return $rc }
-        $installed = @($script:RenderMods2612 | ForEach-Object { $_.Name })
+        #    26.1.2 = 从 Modrinth Maven 下载；1.21.1 = 规格为空（Sodium/Iris 由整合包复制）
+        $specs = $script:RenderModsByVersion[$Paths.version]
+        $installed = @()
+        if ($specs -and @($specs).Count -gt 0) {
+            $rc = Install-MtSpecList -Paths $Paths -Specs $specs -Cache $cache -Label '渲染模组' -Prefixes @('sodium-', 'iris-')
+            if ($rc -ne 0) { return $rc }
+            $installed = @($specs | ForEach-Object { $_.Name })
+        }
 
         # 2) 光影包 → run/<版本>/shaderpacks
         $sp = $script:ShaderPack2612
@@ -956,12 +1138,15 @@ function Install-MtRenderStack {
             Copy-Item -LiteralPath $spCache -Destination $spDst -Force
         }
 
-        # 3) Iris 配置：选中该光影并开启光影（Iris 1.11.x 的 config/iris.properties）
+        # 3) Iris 配置：选中该光影**并默认启用**（Iris 的 config/iris.properties）
+        #    2026-09-17 用户要求「添加光影包并设置默认启用」⇒ enableShaders 默认写 true。
+        #    ⚠️ 需要「关光影冷启动」的用例（SHADER-VISION-26.1.2 的步骤 0）仍显式执行
+        #    `mt_env.ps1 shaders --version <V> --state off` —— 那是用例自己的前置，不靠这里的默认值。
         $irisCfg = Join-Path (Join-Path $Paths.run_dir 'config') 'iris.properties'
         [void](New-Item -ItemType Directory -Force -Path (Split-Path $irisCfg))
         $lines = @()
         if (Test-Path -LiteralPath $irisCfg -PathType Leaf) { $lines = @(Get-Content -LiteralPath $irisCfg) }
-        $set = @{ 'shaderPack' = $sp.Name; 'enableShaders' = 'false' }
+        $set = @{ 'shaderPack' = $sp.Name; 'enableShaders' = 'true' }
         foreach ($k in $set.Keys) {
             $found = $false
             for ($i = 0; $i -lt $lines.Count; $i++) {
@@ -971,8 +1156,9 @@ function Install-MtRenderStack {
         }
         Set-Content -LiteralPath $irisCfg -Value $lines -Encoding utf8
 
-        Write-MtLine ("MT_MODS: OK — 渲染栈就位（{0}）＋ 光影 {1}；Iris 已选中该光影" -f `
-                ($installed -join ' / '), $sp.Name)
+        $modsText = if ($installed.Count -gt 0) { $installed -join ' / ' } else { '（渲染模组由整合包复制，见 NeoForgeMods）' }
+        Write-MtLine ("MT_MODS: OK — 渲染栈就位（{0}）＋ 光影 {1}；Iris 已选中该光影并默认启用（enableShaders=true）" -f `
+                $modsText, $sp.Name)
         return 0
     } finally {
         $ProgressPreference = $progressBak
@@ -1058,8 +1244,9 @@ function Invoke-MtEnvMods {
         # 优化类模组（2026-09-17 用户要求：ImmediatelyFast + ModernFix 兼容性验证）
         $rc = Install-MtPerfMods -Paths $p
         if ($rc -ne 0) { return $rc }
-        Write-MtLine 'MT_MODS: OK — 26.1.2 dev run：探针运行时 + Sodium/Iris + Complementary Unbound 光影 + 超平坦史莱姆压制 + 优化模组(ImmediatelyFast/ModernFix)'
+        Write-MtLine 'MT_MODS: OK — 26.1.2 dev run：探针运行时 + Sodium/Iris + Complementary Unbound 光影(默认启用) + 超平坦史莱姆压制 + 优化模组(ImmediatelyFast/ModernFix/FerriteCore)'
         Write-MtLine 'MT_MODS: 注意 — Sodium/Iris/ImmediatelyFast 为纯客户端模组：`mt_env world` 起专用服务器会自动移出，但**两段式数据生成（runClientData/runServerData）前必须手动移出** run/26.1.2/mods（与探针运行时同规则）'
+        [void](Invoke-MtPauseLockEnforce -Paths $p)
         return 0
     }
 
@@ -1075,7 +1262,14 @@ function Invoke-MtEnvMods {
         if ($imblocker) {
             Write-MtLine "MT_WARN: 生产环境仍含 IMBlocker（$($imblocker.Name)），需移入 __disabled__"
         }
+        # 优化类模组（2026-09-17 用户要求：所有测试环境装 ImmediatelyFast + FerriteCore）。
+        # 史莱姆压制**不在这里装** —— 1.20.1 由 build.gradle 的 modImplementation 提供（见 Install-MtSlimeGuard）。
+        $rc = Install-MtSlimeGuard -Paths $p   # 该版本走 SKIP 分支，打印来源说明
+        if ($rc -ne 0) { return $rc }
+        $rc = Install-MtPerfMods -Paths $p
+        if ($rc -ne 0) { return $rc }
         Write-MtLine 'MT_MODS: OK — 1.20.1 dev run 不使用渲染模组；生产环境已校验'
+        [void](Invoke-MtPauseLockEnforce -Paths $p)
         return 0
     }
 
@@ -1104,6 +1298,23 @@ function Invoke-MtEnvMods {
     }
     $detail = if ($copied.Count -gt 0) { "新装 $($copied.Count) 个" } else { '已是最新' }
     Write-MtLine "MT_MODS: OK — Sodium/Iris/ModernFix $detail"
+
+    # 1.21.1 独有：探针宿主（KubeJS/Rhino/Architectury）+ 史莱姆压制 + 优化类模组（2026-09-17 用户要求）。
+    # 顺序说明：放在「从整合包复制 Sodium/Iris/ModernFix」**之后**，避免复制循环看到半装的 mods 目录；
+    # 各族的清理前缀互不相交（superflatworldnoslimes-/collective- vs immediatelyfast-/ferritecore-），
+    # 且都不与整合包文件名冲突，故先后不影响结果。
+    $rc = Install-MtProbeHost -Paths $p
+    if ($rc -ne 0) { return $rc }
+    $rc = Install-MtSlimeGuard -Paths $p
+    if ($rc -ne 0) { return $rc }
+    $rc = Install-MtPerfMods -Paths $p
+    if ($rc -ne 0) { return $rc }
+    # 光影包 + Iris 默认启用（2026-09-17 用户要求「游戏环境缺少光影包，添加光影包并设置默认启用」）。
+    # 1.21.1 的 Sodium/Iris 由上面的整合包复制提供，本调用只补「光影包 + config/iris.properties」。
+    $rc = Install-MtRenderStack -Paths $p
+    if ($rc -ne 0) { return $rc }
+    Write-MtLine 'MT_MODS: 提示 — ImmediatelyFast 为纯客户端：`mt_env world` 起专用服务器会自动移出；FerriteCore 两侧皆可，保留'
+    [void](Invoke-MtPauseLockEnforce -Paths $p)
     return 0
 }
 
@@ -1132,20 +1343,91 @@ function Remove-MtTree {
 function Disable-MtPauseOnLostFocus {
     <#
     .SYNOPSIS
-        失焦暂停会让后台注入失效，必须关闭。
+        失焦暂停会让后台注入失效，必须关闭（= 全局测试规则「禁止游戏失焦打开 ESC 菜单」）。
+
+    .NOTES
+        2026-09-17 起实现下沉到 `lib/Mt.Paths.psm1` 的 `Set-MtPauseOnLostFocus`（mt_launch 也要用同一实现
+        在每次冷启动前强制），本函数保留为兼容包装。
     #>
     [CmdletBinding()]
     param([Parameter(Mandatory)][psobject]$Paths)
 
-    $opt = Join-Path $Paths.run_dir 'options.txt'
-    $lines = @()
-    if (Test-Path -LiteralPath $opt -PathType Leaf) {
-        $lines = @(Get-Content -LiteralPath $opt -Encoding UTF8 -ErrorAction SilentlyContinue |
-                Where-Object { -not ([string]$_).StartsWith('pauseOnLostFocus:') })
+    [void](Set-MtPauseOnLostFocus -Paths $Paths -Enabled $false)
+}
+
+function Invoke-MtPauseLockEnforce {
+    <#
+    .SYNOPSIS
+        全局测试规则「禁止游戏失焦打开 ESC 菜单」的唯一落地点：写 `options.txt` 的
+        `pauseOnLostFocus:false` 并回显 `MT_PAUSE_LOCK: on`（幂等）。
+
+    .NOTES
+        为什么是全局规则（2026-09-17 用户裁决）：失焦暂停会让后台注入（mt_inject）与截图（mt_capture）
+        全部失效，并且暂停菜单会顶在画面上——历史上正是为了关掉这个菜单才在流程里塞进多余的
+        Esc 按键。现在由工具链在 env/launch 两处强制关闭，测试流程里不再需要那些 Esc。
+        查询入口：`mt_env.ps1 debug --version <V> --pause-lock status`。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][psobject]$Paths)
+
+    $on = Set-MtPauseOnLostFocus -Paths $Paths -Enabled $false
+    Write-MtLine ("MT_PAUSE_LOCK: on — 禁止失焦打开 ESC 菜单（pauseOnLostFocus=false，{0}）" -f `
+            (Join-Path $Paths.run_dir 'options.txt'))
+    return $on
+}
+
+function Invoke-MtEnvDebug {
+    <#
+    .SYNOPSIS
+        全局调试/测试环境开关子命令（三条线同一入口）：
+        `mt_env.ps1 debug --version <V> [--pause-lock on|off|status] [--shaders on|off|status]`。
+
+    .DESCRIPTION
+        2026-09-17 用户要求「添加全局调试命令，禁止游戏失焦打开 ESC 菜单」。本子命令是这些
+        **测试环境开关**的统一入口（只读写 run 目录里的配置，不联网、不碰 mods）：
+          · `--pause-lock on`  → `options.txt` `pauseOnLostFocus:false`（**默认期望值**：禁止失焦弹 ESC 菜单）
+            `--pause-lock off` → 写回 true（对照实验用；会明确 WARN，因为之后注入/截图可能失效）
+          · `--shaders on|off|status` → 透传到 `Invoke-MtEnvShaders`（config/iris.properties）
+        不带任何开关时只**回显当前状态**（等效于两个都 status）。
+
+    .NOTES
+        ⚠️ 游戏退出时会重写 `options.txt`，故 pause-lock 必须在**冷启动之前**设置；
+        mt_launch 每次启动前也会自动强制一次，本命令用于「先设好、再手工启动」或事后核对。
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$Version,
+        [string]$PauseLock = 'status',
+        [string]$Shaders = 'status'
+    )
+
+    $Paths = Get-MtPaths -Version $Version
+    $rc = 0
+    $pauseState = Get-MtPauseOnLostFocus -Paths $Paths
+
+    if ($PauseLock -in @('on', 'off')) {
+        $wantEnabled = ($PauseLock -eq 'off')   # pause-lock on ⇒ pauseOnLostFocus=false
+        [void](Set-MtPauseOnLostFocus -Paths $Paths -Enabled $wantEnabled)
+        $pauseState = $wantEnabled
+        if ($PauseLock -eq 'on') {
+            Write-MtLine 'MT_DEBUG: PAUSE_LOCK=on — 失焦不再打开 ESC 暂停菜单（测试流程据此删除多余的 Esc 按键）'
+        } else {
+            Write-MtWarn 'MT_DEBUG: PAUSE_LOCK=off — 已允许失焦暂停：后台注入/截图可能被 ESC 菜单挡住（仅对照实验用）'
+        }
+    } elseif ($PauseLock -ne 'status') {
+        Write-MtErrorLine ("非法 --pause-lock {0}（可选：on off status）" -f $PauseLock)
+        return $MT_EXIT_ERROR
     }
-    $lines += 'pauseOnLostFocus:false'
-    # python 用 ascii 编码写回；这里显式用 ASCII（无 BOM、无 CRLF）
-    [System.IO.File]::WriteAllText($opt, (($lines -join "`n") + "`n"), [System.Text.Encoding]::ASCII)
+
+    $pauseText = if ($null -eq $pauseState) { '(未设置/options.txt 不存在)' }
+    elseif (-not $pauseState) { 'on (pauseOnLostFocus=false)' } else { 'off (pauseOnLostFocus=true)' }
+    Write-MtLine ("MT_DEBUG: {0} pause-lock={1}" -f $Version, $pauseText)
+
+    if ($Shaders -ne 'status' -or $PauseLock -eq 'status') {
+        $src = Invoke-MtEnvShaders -Version $Version -State $Shaders
+        if ($src -ne $MT_EXIT_PASS -and $Shaders -ne 'status') { $rc = $src }
+    }
+    return $rc
 }
 
 function Restore-MtSeed {
@@ -1346,6 +1628,8 @@ if ($MyInvocation.InvocationName -ne '.') {
     $SeedFlag = $false
     $TimeoutSec = 180
     $ShaderState = 'status'
+    # 全局调试子命令的开关（2026-09-17）：pause-lock = 禁止失焦打开 ESC 菜单（见 Invoke-MtEnvDebug）
+    $PauseLockState = 'status'
 
     $i = 0
     while ($i -lt $args.Count) {
@@ -1365,6 +1649,10 @@ if ($MyInvocation.InvocationName -ne '.') {
             if ($i + 1 -ge $args.Count) { Write-MtErrorLine '缺少 --state 的值'; exit $MT_EXIT_ERROR }
             $ShaderState = ([string]$args[$i + 1]).ToLowerInvariant()
             $i += 2
+        } elseif ($key -eq 'pause-lock') {
+            if ($i + 1 -ge $args.Count) { Write-MtErrorLine '缺少 --pause-lock 的值'; exit $MT_EXIT_ERROR }
+            $PauseLockState = ([string]$args[$i + 1]).ToLowerInvariant()
+            $i += 2
         } elseif ($key -eq 'timeout') {
             if ($i + 1 -ge $args.Count) { Write-MtErrorLine '缺少 --timeout 的值'; exit $MT_EXIT_ERROR }
             $TimeoutSec = [int]$args[$i + 1]
@@ -1374,8 +1662,8 @@ if ($MyInvocation.InvocationName -ne '.') {
         }
     }
 
-    if ($Cmd -notin @('mods', 'world', 'kill', 'kubejs', 'shaders')) {
-        Write-MtErrorLine '必须指定子命令 mods / world / kill / kubejs / shaders'
+    if ($Cmd -notin @('mods', 'world', 'kill', 'kubejs', 'shaders', 'debug')) {
+        Write-MtErrorLine '必须指定子命令 mods / world / kill / kubejs / shaders / debug'
         exit $MT_EXIT_ERROR
     }
     if (-not $Version) {
@@ -1389,6 +1677,7 @@ if ($MyInvocation.InvocationName -ne '.') {
         'kubejs' { exit (Invoke-MtEnvKubejs -Version $Version) }
         'world' { exit (Invoke-MtEnvWorld -Version $Version -Seed $SeedFlag -Timeout $TimeoutSec) }
         'shaders' { exit (Invoke-MtEnvShaders -Version $Version -State $ShaderState) }
+        'debug' { exit (Invoke-MtEnvDebug -Version $Version -PauseLock $PauseLockState -Shaders $ShaderState) }
         'kill' {
             [void](Stop-MtVersionProcesses -Paths (Get-MtPaths -Version $Version))
             exit $MT_EXIT_PASS
