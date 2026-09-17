@@ -155,7 +155,9 @@
 - 取舍理由：两者是同一功能的两种实现，**不能并存**（否则同一按键存在两条释放路径）；dev-next 的选择器
   已是三线共享库的一部分，且 2.0.0 的界面、文案与服务端校验都按它书写。故合并方向 = **选择器胜出**，
   主线的等待器代码与其专属效果一并移除；`SIGN_READY_TYPE` / `SIGN_READY_EXPIRE` 附件保留为**废弃键**
-  （已无任何写入方），待库侧过渡符号清理任务一并删除。
+  （已无任何写入方）。⚠️ 原「待库侧过渡符号清理任务一并删除」的预期已被实测**更正**：这两个键定义在
+  **消费方**（三线各自的 `component/ModAttachments`），且三线仍有 22 处引用 ⇒ 去留见 **KI-M4②**，
+  **不得静默删除**。
 - **对脚本侧读数的影响（重要）**：自动化用例的 `astraldice_ts_*` 读数**只反映选择器会话**
   （`TargetSelectionManager` 的状态），`sign_ready_type` / `sign_ready_expire` 恒为 `0` / `0`；
   任何断言「按主动键后 `sign_ready_type > 0`」「等待窗口 30 秒内不进入冷却」的旧用例**必然失效**，
@@ -176,15 +178,49 @@
   生效期内可被再次触发（或缺少与主线等待器等价的保护），需按各自效果时长补 `startActiveLockOnUse`
   覆写并加对应用例 —— **本轮合并只保证编译与既有语义不被破坏，未做该补强**。
 
-### KI-M3 ＝ 合并后仍需在游戏内复核/由后续任务收口的三项（未实施）
+### KI-M3 ＝ 合并后仍需在游戏内复核的两项（未实施）+ 库侧过渡符号清理（**已实施**，2026-09-17）
 
 1. 选择器类立牌的**冷却与锁定**实际表现（见 KI-M2 的已知取舍）。
 2. `moses_ready.png` / `komachi_count.png` 等随主线/本分支删除的贴图是否有残留引用
    （2026-09-17 静态核验：0 处；游戏内未复核）。
-3. 库侧过渡符号在合并后已**无消费方**（静态核验 0 处引用），由库侧清理任务删除：
-   `GameplayConstants.EVENT_RANGE` / `EVENT_APPLY_MAID` / `KOMACHI_EXTRA_PLAYS_CAP`、
-   `EventTargetCollector.collectTargets` + 女仆收集、`event/AstralEventType|EventContext|EventEffect`、
-   `ReadyEffect`（清单见 `temp/sink-manifest-20260917.md` §6）。
+3. **库侧过渡符号清理 —— 已实施（2026-09-17）**。（旧结论「合并后已无消费方、静态核验无任何引用」**不准确**，已更正为下方实测口径。）
+   - **引用口径（实测）**：消费方共 **2 处未使用 import**（按符号计 = 库的 `event/AstralEventType` 与
+     `event/EventContext`；两侧各 2 行、合计 4 行：`neoforge-1.21.1` 第 17-18 行、`forge-1.20.1` 第 15-16 行，
+     两侧文件内均 0 使用），**已于 `7dc64cb` 清除**；清除后**三条线对这几个符号 0 处实际使用**：
+     `git grep -E 'GameplayConstants\.(EVENT_RANGE|EVENT_APPLY_MAID|KOMACHI_EXTRA_PLAYS_CAP)|starenginelib\.(event\.(AstralEventType|EventContext|EventEffect)|effect\.ReadyEffect)|EventTargetCollector\.(collectTargets|collectMaids|isMaidOwnedBy)'`
+     逐线命中均为 **0**。
+     ⚠️ 两处「形似命中」不要误判：`item/card/RandomCardHandler.collectTargets` 是本模组**自己的同名方法**
+     （与库的收集链无关）；`neoforge-26.1.2/effect/ReadyEffect.java` 是该线**自带的本地类**
+     （26.1.2 不依赖 starengine_lib，属既知平台差异，不在本次清理范围）。
+   - **实施结果**：库提交 **`d5b0776`（main）**，版本 **`1.0.0-SNAPSHOT.5`**；mavenLocal 已重新发布
+     （2026-09-17 19:22，三个平台 jar）；开包核对：事件框架三件套与 `ReadyEffect` 已不在 jar 内
+     （仅剩在用的 `CutterReadyEffect` 与 `EventTargetCollector`）。消费方 `ce583a9` 已把 CI 库检出 ref
+     对齐到该提交（见 **KI-M4①**），消费方 `starengine_lib_version` = `1.0.0-SNAPSHOT.5`。
+   - **实际删除**：`effect/ReadyEffect`；事件框架**三件套** `event/AstralEventType` / `event/EventContext` /
+     `event/EventEffect`（`d5b0776`）；**收集链** `EventTargetCollector.collectTargets` / `collectTeamTargets` /
+     `collectMaids` / `isMaidOwnedBy`；**三个事件常量** `GameplayConstants.EVENT_RANGE` / `EVENT_APPLY_MAID` /
+     `KOMACHI_EXTRA_PLAYS_CAP`（收集链与三个常量在 `7e0046d`）。
+   - **保留（仍在使用，勿删）**：`GameplayConstants.SKILL_WAIT_SECONDS`、`TARGET_SELECT_RADIUS`、
+     `EVENT_APPLY_MC_TEAM` / `EVENT_APPLY_FTB_TEAM` / `EVENT_APPLY_OPAC` 与
+     `EventTargetCollector.collectTeamPlayers`（清单原件见 `temp/sink-manifest-20260917.md` §6）。
+
+### KI-M4 ＝ 待用户裁决 / 待办的两项开放项（2026-09-17 登记）
+
+1. **库仓库未 push ⇒ CI 的前置库 checkout 在推送前必然失败。** 消费方 `.github/workflows/build.yml`
+   已把检出 ref 钉到 `d5b077692058ebca752e9ef68ef18ffcc18e5fa2`（= `1.0.0-SNAPSHOT.5` 终态，改动提交
+   `ce583a9`），但库仓库 `merlin-kitsune/starengine_lib` 的 `main` 本地**领先 `origin/main` 8 个提交**
+   （实测 `git rev-list --left-right --count origin/main...main` = `0  8`；`d5b0776` 尚未推送）
+   ⇒ **库推送之前 CI 的该步必然 `checkout` 失败**（本机无 token / `gh`，按用户裁决不代推送、不监视 CI）。
+   **待办**：用户推送库 `main` 后本条即闭环；若希望推送前 CI 也能跑，可把 ref 临时退回已推送的
+   `1.0.0-SNAPSHOT.4` 对应提交 —— **须由用户裁决**（本清单不改上游仓库、不改 CI 配置）。
+2. **消费方 `SIGN_READY_TYPE` / `SIGN_READY_EXPIRE` 废弃键的去留（待裁决，不得静默删除）。**
+   这两个附件键是旧「待命等待器」的载体（见 KI-M1），等待器已在合并中由目标选择器取代、**无任何写入方**，
+   但**三线仍在引用**：实测 `git grep -E 'SIGN_READY_TYPE|SIGN_READY_EXPIRE' -- '*.java'` 命中 **22 处**，
+   全部落在三条线各自的 `component/ModAttachments`（键定义 + `get/set` 包装器；`1.20.1` 8 处 /
+   `1.21.1` 8 处 / `26.1.2` 6 处，其中 1.20.1 还有 `SYNCED_KEYS` 登记，属同步协议面）。
+   **候选**：(a) 三线同步删除（注意 1.20.1 的同步协议面与老存档里的废弃键残留）；
+   (b) 保留为「废弃但可用」的占位键（**现状**），仅在注释里标注废弃；
+   (c) 其它（如仅在下一大版本随存档迁移一起清）。**裁决前维持现状（b）。**
 
 ## 7. 变更记录
 
@@ -195,3 +231,4 @@
 | 2026-09-16 | 追加 A（《恋的规则书》赠书守卫随死亡保留）**闭环**：1.21.1 首登 + 重登两轮用例各 7/7 PASS；追加 B（双版本死亡保留集合一致性）核为一致 |
 | 2026-09-16 | 新增「测试工具链」纪律（见 `AGENTS.md` / `scripts/test/TESTING-SPEC.md` §12）：严格分层硬预算、`MT_WAIT` 心跳、进度信标 `cases/.mt_progress.json`、看门狗语义判据、探针自动同步、点火入口 `mt_fire.ps1`（根治「长驻孙进程持有调用方管道 ⇒ 命令早已结束却看起来永不返回」） |
 | 2026-09-17 | 主线 `multi-1.20.1-1.21.1`(8f68482)→ `multi-dev-next` 合并:旧「待命等待器」由目标选择器取代(见 §6 KI-M1)、三态化与选择器共存(KI-M2);登记选择器类立牌锁定保护的待修项与库侧过渡符号清理项(KI-M3) |
+| 2026-09-17 | 库侧过渡符号清理**完成**（库 `d5b0776` / `1.0.0-SNAPSHOT.5`：删 `ReadyEffect`、事件框架三件套 `AstralEventType`/`EventContext`/`EventEffect`、收集链、三个事件常量；**保留** `SKILL_WAIT_SECONDS` / `TARGET_SELECT_RADIUS` / `EVENT_APPLY_MC_TEAM|FTB|OPAC` / `collectTeamPlayers`）；消费方 2 处未使用 import 已由 `7dc64cb` 清除、三线 0 处实际使用；KNOWN-ISSUES 据此更正 **KI-M3 第 3 条**（旧「无消费方 / 未实施」结论 → 实测口径 + 已实施），并登记 **KI-M4** 两条开放项（① 库未 push ⇒ CI 钉住的 ref `d5b0776…` 在推送前必然 checkout 失败；② 消费方 `SIGN_READY_TYPE`/`SIGN_READY_EXPIRE` 废弃键去留待裁决，三线 22 处引用不得静默删除） |
