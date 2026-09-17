@@ -74,6 +74,7 @@
 //    /astralprobe opprobe                             只读:打印 hasPermissions(2) 实测值(B6 ④)
 //    /astralprobe dumpstate <tag>                     只读:转调 /astralparty dump(B6 ③)
 //    /astralprobe equipslot <slotId> <itemId> <tag>
+//    /astralprobe equipslotat <slotId> <index> <itemId> <tag>   写入指定索引(多槽位留存回归用)
 //    /astralprobe attack <entityTypeId> <tag>         生成靶子并真实近战命中(仍被 NANCY-LU-CLOAK 复用)
 //    /astralprobe railguncd <tag>
 //    /astralprobe railgunfriendly|railgunfriendlyread|railgunfriendlyend <tag>
@@ -611,6 +612,30 @@ function doEquipSlot(ctx, slotId, itemId, tag) {
     var err = putInSlot(p, slotId, new ItemStack(item), 0);
     if (err != null) { send(ctx, "AP_" + tag + "_ERR:" + err); return 0; }
     send(ctx, "AP_" + tag + "_EQUIP:" + slotId + ":" + itemId);
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+/**
+ * `equipslotat <slotId> <index> <itemId> <tag>` —— 写入指定索引(2026-09-17 新增)。
+ *
+ * 动机:筹码栏可以有多个槽位(骰子星级决定,最多 7),而 `equipslot` 只写 0 号位。
+ * 验证「重登后槽位 1..N 的筹码是否留存」必须能往 1 号位放东西 —— Curios 的登录迁移
+ * 只搬「数据包原始尺寸」内的槽位,本模组用自管迁移兜底,本命令就是它的回归入口。
+ * 与 `equipslot` 一样是**直接写栏位、绕过校验**,故必须用 `curios:chip` 标签内的物品。
+ */
+function doEquipSlotAt(ctx, slotId, index, itemId, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var item = resolveItem(itemId);
+    if (item == null) { send(ctx, "AP_" + tag + "_ERR:unknown_item:" + itemId); return 0; }
+    if (slotId === "chip") {
+        var need = index + 1;
+        var slotErr = ensureChipSlot(p, need);
+        if (slotErr != null) { send(ctx, "AP_" + tag + "_ERR:" + slotErr); return 0; }
+    }
+    var err = putInSlot(p, slotId, new ItemStack(item), index);
+    if (err != null) { send(ctx, "AP_" + tag + "_ERR:" + err); return 0; }
+    send(ctx, "AP_" + tag + "_EQUIP:" + slotId + ":" + index + ":" + itemId);
     send(ctx, "AP_" + tag + "_DONE");
     return 1;
 }
@@ -4030,9 +4055,26 @@ function doReadState(ctx, tag) {
             chipItem = st.isEmpty() ? "none" : ("" + BuiltInRegistries.ITEM.getKey(st.getItem()));
         }
     } catch (e7) { chipItem = "err"; }
+    // chipItems:筹码栏**全部非空槽位**的 `索引:id` 列表(2026-09-17 新增)。
+    // 为什么需要:`chipItem` 只覆盖 0 号位,而 Curios 15 的登录迁移把「数据包原始尺寸(=0)」
+    // 之外的槽位全部当非法栈交还 —— 只断言 0 号位无法证明 1..N 号位是否留存。
+    // 追加在行尾,**不改动既有字段**,故历史用例的 `.*chipItem=…` 式断言不受影响。
+    var chipItems = [];
+    try {
+        var chl = curioHandler(p, "chip");
+        if (chl != null) {
+            for (var ci = 0; ci < chl.getStacks().getSlots(); ci++) {
+                var cst = chl.getStacks().getStackInSlot(ci);
+                if (cst != null && !cst.isEmpty()) {
+                    chipItems.push(ci + ":" + ("" + BuiltInRegistries.ITEM.getKey(cst.getItem())) + "x" + cst.getCount());
+                }
+            }
+        }
+    } catch (e8) { chipItems.push("err"); }
     send(ctx, "AP_" + tag + "_STATE:healing=" + heal + ":pages=" + pages + ":signcd=" + cd
         + ":dice=" + hasDiceEquipped26(p) + ":diceSlots=" + diceSlots + ":chipSlots=" + chipSlots
-        + ":chipCosmetic=" + chipCosmetic + ":chipItem=" + chipItem);
+        + ":chipCosmetic=" + chipCosmetic + ":chipItem=" + chipItem
+        + ":chipItems=[" + chipItems.join(",") + "]");
     send(ctx, "AP_" + tag + "_DONE");
     return 1;
 }
@@ -4358,6 +4400,16 @@ ServerEvents.commandRegistry(event => {
                                 return doEquipSlot(ctx, StringArg.getString(ctx, "slot"),
                                     StringArg.getString(ctx, "item"), StringArg.getString(ctx, "tag"));
                             }))))))
+            .then(Commands.literal("equipslotat")
+                .then(Commands.argument("slot", StringArg.word())
+                    .then(Commands.argument("index", IntegerArg.integer(0))
+                        .then(Commands.argument("item", StringArg.string())
+                            .then(Commands.argument("tag", StringArg.word())
+                                .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                                    return doEquipSlotAt(ctx, StringArg.getString(ctx, "slot"),
+                                        IntegerArg.getInteger(ctx, "index"),
+                                        StringArg.getString(ctx, "item"), StringArg.getString(ctx, "tag"));
+                                })))))))
             .then(Commands.literal("attack")
                 .then(Commands.argument("type", StringArg.string())
                     .then(Commands.argument("tag", StringArg.word())

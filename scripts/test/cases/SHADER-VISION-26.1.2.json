@@ -1,0 +1,68 @@
+{
+  "case_id": "SHADER-VISION-26.1.2",
+  "title": "26.1.2 光影开启验证(视觉识别 + 游戏内手动开启 + 崩溃判定)",
+  "version": "26.1.2",
+  "target": {
+    "type": "existing-feature",
+    "ref": "mc-26.1.2-shader-enable"
+  },
+  "steps": [
+    {
+      "op": "note",
+      "text": "【目的(2026-09-17 用户要求)】用**视觉识别**确认游戏内光影是否已开启；若未开启，则**在游戏内操作开启**，然后检查游戏是否仍然崩溃。\n\n【前置】本用例要求客户端以 `config/iris.properties` 的 `enableShaders=false` **冷启动**。**驱动方式(2026-09-17 新增专用子命令，不联网、幂等)**：先 `pwsh -File scripts/test/mt_env.ps1 shaders --version 26.1.2 --state off`（可选 `--state status` 只读回显），再 `mt.ps1 --phase launch`。为什么必须有这一步：**游戏内的光影开关会持久化该键** —— 本用例按 K 之后（以及光影界面点 Apply 之后）`enableShaders` 就留在 `true`，下一次冷启动会在**进入世界的第一帧**崩掉（launch 阶段报 `MT_LAUNCH: ERROR — 进入世界后立即崩溃`），后续用例全部跑不起来；跑完本用例请再执行一次 `--state off`。步骤 2/3 的视觉读数则是对这个前置的**显式确认**；若视觉判定为「已有光影」，说明前置不成立，此时按 K 只会把光影**关掉**，步骤 6 的 `Using shaderpack:` 断言会以「未进入建管线」失败——不会给出假绿。\n\n【「在游戏内开启」怎么操作】用注入按键 **K** = Iris 的 `iris.keybind.toggleShaders`，与光影界面里点 Apply 走的是**同一入口** `IrisApiV0ConfigImpl.setShadersEnabledAndApply → Iris.reload → createPipeline`（本机崩溃堆栈里两者都能看到这一帧）。键位取自安装 jar 的字节码（`Iris#onEarlyInitialize`：`toggleShaders`=GLFW 75='k'、`shaderPackSelection`=79='o'、`reload`=82='r'），已加入 `mt_inject.ps1` 的键表（语义键 `shadertoggle`/`shaderscreen`/`shaderreload`）。\n\n【为什么这样判】崩点不在建管线而在**启用后的第一帧 draw**：原版 `GlCommandEncoder#trySetup`(26.1.2 源码 526~532 行)要求 `renderPass.pipeline.program()` 里每个 `Uniform.Sampler` 都能在本次 draw 的 `renderPass.samplers` 里找到同名绑定，找不到即 `IllegalStateException: Missing sampler Sampler1`。故判据 = ① `Using shaderpack:` 出现(开启动作真的走到了建管线) ② `Missing sampler Sampler1` / `Unreported exception thrown` 不出现 ③ 无新增崩溃报告；再补一张崩溃后的抓拍做视觉留痕(游戏已死时 `mt_capture` 会退化为抓桌面，不会报错)。\n\n【当前预期 = 红】上游 Iris/Sodium 在 26.1.x 上的未修缺陷(见 `scripts/test/TESTING-SPEC.md` 附录 A 的同日条目与 Iris issues #3314/#3182/#2719)：步骤 9/10 必失败 = 缺陷仍在。**上游修好后本用例应自动转绿**，且步骤 7/8 的视觉读数会变成「画面已呈现光影效果」。\n\n【注意】本用例会让客户端**崩溃退出**(这正是被验证的行为)，故必须单独跑；`expect_crash: true` 声明了这一点 —— 否则 `mt_case` 的收尾校验会把「用例期间新增崩溃报告」强行改判为 `ERROR`（= 伪装成工具链故障）并尝试自动重启去重跑（2026-09-17 实测；该键为本用例新增）。抓图口径：`SH_OFF` 带 `crop: true`（按窗口矩形裁剪，拿到的才是游戏画面）；`SH_ON` **不带** crop —— 客户端已死时 `mt_capture` 会退化为抓整屏并只 WARN，正好留下「游戏窗口已消失」的视觉证据。跑完用 `mt.ps1 --phase stop --force` 释放。"
+    },
+    {
+      "op": "screenshot",
+      "tag": "SH_OFF",
+      "mode": "window",
+      "crop": true
+    },
+    {
+      "op": "assert",
+      "type": "vision",
+      "image": "SH_OFF",
+      "question": "这是客户端进入测试世界后的窗口抓拍(启用光影之前)。请判定画面是否为**无光影的原版观感**(无方向性阴影、无水面/屏幕空间反射、无体积光、天空与雾效为原版)。回答『无光影』或『已有光影』，并用一句话给出可见依据(例如阴影/反射/色调特征)。"
+    },
+    {
+      "op": "inject_key",
+      "key": "k"
+    },
+    {
+      "op": "wait",
+      "ms": 5000
+    },
+    {
+      "op": "assert",
+      "type": "log",
+      "source": "latest",
+      "pattern": "Using shaderpack:.*ComplementaryUnbound"
+    },
+    {
+      "op": "screenshot",
+      "tag": "SH_ON",
+      "mode": "window"
+    },
+    {
+      "op": "assert",
+      "type": "vision",
+      "image": "SH_ON",
+      "question": "这是按下光影开关(K)约 5 秒后的窗口抓拍。请判定：(a) 画面里是否还有正在运行的 Minecraft 游戏画面？(b) 若有，是否已呈现光影包效果(明显阴影/反射/体积光/色调映射)？(c) 若已没有游戏画面，抓到的是什么(桌面/其它窗口/崩溃提示)？"
+    },
+    {
+      "op": "assert",
+      "type": "absent",
+      "source": "latest",
+      "pattern": "Missing sampler Sampler1|Unreported exception thrown"
+    },
+    {
+      "op": "assert",
+      "type": "crash"
+    },
+    {
+      "op": "assert",
+      "type": "kubejs"
+    }
+  ],
+  "on_fail": "keep_game_running",
+  "expect_crash": true
+}

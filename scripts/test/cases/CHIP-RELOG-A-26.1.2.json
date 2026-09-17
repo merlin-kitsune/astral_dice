@@ -9,7 +9,7 @@
   "steps": [
     {
       "op": "note",
-      "text": "两阶段用例的准备阶段(配套 CHIP-RELOG-B-26.1.2)。动机：26.1.2 的筹码栏尺寸是**运行时**由 DiceCurioItem#applySlotCount 按骰子星级调出来的(Curios 15 的尺寸 = baseSize + Σ ADD_VALUE 修饰符)，而世界/玩家数据里也存着上一次的 Stacks/Cosmetics 尺寸——因此必须验证「装了骰子、槽里有筹码 → 退出 → 重进」之后尺寸与物品都还在(这是筹码功能在该版本能否长期使用的关键)。⚠️ `mt.ps1 --phase stop` 是强杀、不触发存档，故本阶段最后一步必须由服务端显式 saveEverything(命令 saveall)，否则测的是「未存档的进程被杀」。执行顺序：本阶段 → mt.ps1 stop → mt_launch → CHIP-RELOG-B-26.1.2。"
+      "text": "两阶段用例的准备阶段(配套 CHIP-RELOG-B-26.1.2)。动机：26.1.2 的筹码栏尺寸是**运行时**由 DiceCurioItem#applySlotCount 按骰子星级调出来的(Curios 15 的尺寸 = baseSize + Σ ADD_VALUE 修饰符)，而世界/玩家数据里也存着上一次的 Stacks/Cosmetics 尺寸——因此必须验证「装了骰子、槽里有筹码 → 退出 → 重进」之后尺寸与物品都还在(这是筹码功能在该版本能否长期使用的关键)。**放两个筹码(0 号位 flashlight / 1 号位 cutter)**：Curios 15 的登录迁移只搬「数据包原始尺寸(=0)」以内的槽位，只断言 0 号位无法证明 1..N 号位是否被交还背包，故 B 阶段对 `chipItems` 全量断言。⚠️ `mt.ps1 --phase stop` 是强杀、不触发存档，故本阶段最后一步必须由服务端显式 saveEverything(命令 saveall)，否则测的是「未存档的进程被杀」。执行顺序：本阶段 → mt.ps1 stop → mt_launch → CHIP-RELOG-B-26.1.2。"
     },
     {
       "op": "inject_command",
@@ -30,6 +30,14 @@
     {
       "op": "inject_command",
       "command": "/astralprobe equipslot chip \"astral_dice:flashlight_chip\" RA3"
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe equipslotat chip 1 \"astral_dice:cutter_chip\" RA4"
     },
     {
       "op": "wait",
@@ -66,7 +74,12 @@
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_RB1_STATE:.*chipSlots=2:chipCosmetic=2:chipItem=astral_dice:flashlight_chip"
+      "pattern": "AP_RA4_EQUIP:chip:1:astral_dice:cutter_chip"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_RB1_STATE:.*chipSlots=2:chipCosmetic=2:chipItem=astral_dice:flashlight_chip:chipItems=\\[0:astral_dice:flashlight_chipx1,1:astral_dice:cutter_chipx1\\]"
     },
     {
       "type": "log",

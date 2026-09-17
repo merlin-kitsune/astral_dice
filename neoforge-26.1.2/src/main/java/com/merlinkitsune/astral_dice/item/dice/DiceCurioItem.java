@@ -137,25 +137,53 @@ public class DiceCurioItem extends Item implements ICurioItem {
         setSlotCount(player, handler, target, forceRemove);
     }
 
+    /**
+     * 按**当前佩戴的骰子**重算并应用筹码栏尺寸（供登录迁移的恢复阶段调用）。
+     *
+     * <p>迁移刚结束时 Curios 才重建完栏位、骰子的 {@code onEquip} 还没跑，
+     * 故必须由这里主动把尺寸调到「应有的值」再往栏内放物品 —— 否则 0 格的栏位放不下任何东西，
+     * 筹码又会被交还到背包（等于没修）。
+     */
+    public static void refreshChipSlotCount(Player player) {
+        if (player == null || player.level().isClientSide()) return;
+        CuriosApi.getCuriosInventory(player).ifPresent(inventory -> {
+            ICurioStacksHandler chip = inventory.getStacksHandler("chip").orElse(null);
+            if (chip == null) return;
+            int target = CHIP_NO_DICE_SLOTS;
+            ItemStack dice = inventory.getStacksHandler("dice")
+                    .map(handler -> handler.getStacks().getStackInSlot(0)).orElse(ItemStack.EMPTY);
+            if (!dice.isEmpty()) {
+                target = targetChipSlots(dice);
+                // 看板立牌被动:装备时筹码栏位 +1
+                if (MimiSignItem.isEquipped(player)) {
+                    target += 1;
+                }
+            }
+            setSlotCount(player, chip, target, false);
+        });
+    }
+
     // 通用槽位调整:
     // forceRemove=true(佩戴/卸下骰子时):收缩前把将被移除槽位中的物品归还玩家物品栏;
-    // forceRemove=false(每 tick 维持):被移除槽位有物品时不收缩,避免误弹出合法装备
+    // forceRemove=false(每 tick 维持 / 登录迁移后恢复):**不缩掉仍在使用的槽位**——
+    //   目标值可能来自「骰子槽内容瞬时为空」的读数(迁移当拍就会发生),若照收会把还在使用的
+    //   槽位连同物品一起交给背包;故把目标值抬到「最靠后的非空槽位 + 1」,只允许增长或保持。
     private static void setSlotCount(Player player, ICurioStacksHandler handler, int target, boolean forceRemove) {
         int current = handler.getSlots();
         if (current > target) {
             if (!forceRemove) {
-                // 防御模式:被移除的槽位(索引 target..current-1)中有物品时跳过收缩
-                boolean hasItems = false;
-                for (int i = target; i < current; i++) {
+                int highestOccupied = 0;
+                for (int i = 0; i < current; i++) {
                     try {
                         if (!handler.getStacks().getStackInSlot(i).isEmpty()) {
-                            hasItems = true;
-                            break;
+                            highestOccupied = i + 1;
                         }
                     } catch (Exception ignored) {
                     }
                 }
-                if (hasItems) return;
+                if (highestOccupied > target) {
+                    target = highestOccupied;
+                }
             } else {
                 // 主动调整:将被移除槽位中的物品归还玩家物品栏
                 for (int i = target; i < current; i++) {
@@ -192,10 +220,15 @@ public class DiceCurioItem extends Item implements ICurioItem {
     //     再由 DiceCurioItem#curioTick 在 20 tick 内补回来 —— 槽数与「玩家实际拥有的筹码栏」从登录起就一致,
     //     也避免了登录窗口内 Curios 登录迁移(`CurioInventory#loadInventoryConfiguration`,按数据包重建默认栏位
     //     并按新栏位槽数搬移物品)看到新旧槽数不一致而走补偿分支。
-    //     ⚠️【已知未解决缺陷】即便如此,槽内的**合法**筹码在重登后仍会被搬出到玩家背包(见
-    //     docs/compat-26.1.2-neoforge.md §7.6 与用例 CHIP-RELOG-A/B-26.1.2);已排除的因素:
-    //     标签合法性(curios:chip 内物品同样复现)、数据包尺寸 0/1、transient/permanent、本模组代码弹出(无日志)。
-    //     即该缺陷只表现为「物品被移出栏位」,槽位数本身正常(chipSlots=chipCosmetic=目标值)。
+    //     ⚠️ 槽内**合法**筹码在重登后被搬出到玩家背包的缺陷已定位并修复（2026-09-17）：
+    //     根因在 Curios 15.0.0 的登录迁移 `CurioInventory#loadInventoryConfiguration()` ——
+    //     其搬移循环上界取 `curioStacksHandler.getSlots()`，而 `CurioStacksHandler#getSlots()`
+    //     → `update()` 首行是 `if (this.dataLoaded)`，`setDataLoaded()` 又只在该方法**末尾**
+    //     才调用 ⇒ 循环期间读到的是构造函数里的**数据包原始尺寸**（本模组 chip 槽写死 0），
+    //     于是上界为 0、一次都不搬，旧内容全部进 `invalidStacks` 并被交还玩家背包。
+    //     本模组的对策见 `event/ChipSlotMigrationHandler`（数据包同步 HIGHEST 快照并清空 /
+    //     LOWEST 重算尺寸后按索引还原）；上游修法见 `docs/upstream/` 的补丁与缺陷报告。
+    //     回归用例：`scripts/test/cases/CHIP-RELOG-{A,B}-26.1.2.json`（两个槽位都要留存）。
     private static void applySlotCount(ICurioStacksHandler handler, int target) {
         int wanted = Math.max(0, target);
         handler.removeModifier(CHIP_SLOT_MODIFIER);
@@ -205,10 +238,6 @@ public class DiceCurioItem extends Item implements ICurioItem {
         handler.addPermanentModifier(new AttributeModifier(CHIP_SLOT_MODIFIER, wanted,
                 AttributeModifier.Operation.ADD_VALUE));
         handler.update();
-        // 只读打点(2026-09-17,诊断「重登掉筹码」):记录本次改写后的真实规模与修饰符集合,
-        // 用于与 Curios 登录迁移(CurioInventory#loadInventoryConfiguration)的动作区分。
-        // 插桩关闭时是空操作,不改变任何行为;实现见 debug/CurioSlotTrace。
-        com.merlinkitsune.astral_dice.debug.CurioSlotTrace.noteSlotCount("applySlotCount", handler, wanted);
     }
 
     // 玻璃骰子死亡惩罚:移除骰子本体(连同其 WEAPON_ENHANCEMENT 中已装备的全部卡牌),

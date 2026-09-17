@@ -798,6 +798,58 @@ function Install-MtRenderStack {
     }
 }
 
+function Invoke-MtEnvShaders {
+    <#
+    .SYNOPSIS
+        读写 `config/iris.properties` 的 `enableShaders`（`--state off|on|status`），**不触碰 mods/缓存、不联网**。
+
+    .NOTES
+        为什么需要它（2026-09-17 实测踩坑）：`Install-MtRenderStack` 只在 `mt_env mods` 时把
+        `enableShaders` 写回 false；而**游戏内的光影开关会持久化该键**（Iris 的 K 键
+        `iris.keybind.toggleShaders` 与光影界面 Apply 都会写 `config/iris.properties`）。
+        于是一次「光影开启」验证跑完（客户端按 K 后必崩）会把该键留在 `true`，
+        **下一次冷启动会在进入世界的第一帧就崩**（launch 阶段报
+        `MT_LAUNCH: ERROR — 进入世界后立即崩溃`）——这是真实的现场，但会让后续任何用例
+        都跑不起来。故把「把光影状态摆回已知值」做成一条**显式、幂等、可复现**的命令：
+        `pwsh -File scripts/test/mt_env.ps1 shaders --version 26.1.2 --state off`。
+        光影回归 (`SHADER-VISION-26.1.2`) 的前置就该是它 + 冷启动。
+
+        只改这一行，保留文件里其它键（shaderPack / 调过的设置）不动；缺文件时按 `status`
+        报 BLOCKED（不臆造配置）。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$Version, [string]$State = 'status')
+
+    $Paths = Get-MtPaths -Version $Version
+    $irisCfg = Join-Path (Join-Path $Paths.run_dir 'config') 'iris.properties'
+    if (-not (Test-Path -LiteralPath $irisCfg -PathType Leaf)) {
+        Write-MtBlocked 'shaders' ("未找到 {0}（先跑 mt_env.ps1 mods --version {1}）" -f $irisCfg, $Version)
+        return $MT_EXIT_BLOCKED
+    }
+
+    $lines = @(Get-Content -LiteralPath $irisCfg)
+    $current = '(未设置)'
+    $idx = -1
+    for ($i = 0; $i -lt $lines.Count; $i++) {
+        if ($lines[$i] -match '^\s*enableShaders\s*=\s*(.*)$') { $current = $Matches[1].Trim(); $idx = $i; break }
+    }
+
+    if ($State -eq 'status') {
+        Write-MtLine ("MT_SHADERS: {0} (enableShaders={1}, {2})" -f $current, $current, $irisCfg)
+        return $MT_EXIT_PASS
+    }
+    if ($State -notin @('off', 'on')) {
+        Write-MtErrorLine ("非法 --state {0}（可选：off on status）" -f $State)
+        return $MT_EXIT_ERROR
+    }
+
+    $want = if ($State -eq 'on') { 'true' } else { 'false' }
+    if ($idx -ge 0) { $lines[$idx] = "enableShaders=$want" } else { $lines += "enableShaders=$want" }
+    Set-Content -LiteralPath $irisCfg -Value $lines -Encoding utf8
+    Write-MtLine ("MT_SHADERS: {0} → {1} (enableShaders={2})" -f $current, $State, $want)
+    return $MT_EXIT_PASS
+}
+
 function Invoke-MtEnvMods {
     [CmdletBinding()]
     param([Parameter(Mandatory)][string]$Version)
@@ -1106,6 +1158,7 @@ if ($MyInvocation.InvocationName -ne '.') {
     $Version = ''
     $SeedFlag = $false
     $TimeoutSec = 180
+    $ShaderState = 'status'
 
     $i = 0
     while ($i -lt $args.Count) {
@@ -1121,6 +1174,10 @@ if ($MyInvocation.InvocationName -ne '.') {
             $i += 2
         } elseif ($key -eq 'seed') {
             $SeedFlag = $true; $i++
+        } elseif ($key -eq 'state') {
+            if ($i + 1 -ge $args.Count) { Write-MtErrorLine '缺少 --state 的值'; exit $MT_EXIT_ERROR }
+            $ShaderState = ([string]$args[$i + 1]).ToLowerInvariant()
+            $i += 2
         } elseif ($key -eq 'timeout') {
             if ($i + 1 -ge $args.Count) { Write-MtErrorLine '缺少 --timeout 的值'; exit $MT_EXIT_ERROR }
             $TimeoutSec = [int]$args[$i + 1]
@@ -1130,8 +1187,8 @@ if ($MyInvocation.InvocationName -ne '.') {
         }
     }
 
-    if ($Cmd -notin @('mods', 'world', 'kill', 'kubejs')) {
-        Write-MtErrorLine '必须指定子命令 mods / world / kill / kubejs'
+    if ($Cmd -notin @('mods', 'world', 'kill', 'kubejs', 'shaders')) {
+        Write-MtErrorLine '必须指定子命令 mods / world / kill / kubejs / shaders'
         exit $MT_EXIT_ERROR
     }
     if (-not $Version) {
@@ -1144,6 +1201,7 @@ if ($MyInvocation.InvocationName -ne '.') {
         'mods' { exit (Invoke-MtEnvMods -Version $Version) }
         'kubejs' { exit (Invoke-MtEnvKubejs -Version $Version) }
         'world' { exit (Invoke-MtEnvWorld -Version $Version -Seed $SeedFlag -Timeout $TimeoutSec) }
+        'shaders' { exit (Invoke-MtEnvShaders -Version $Version -State $ShaderState) }
         'kill' {
             [void](Stop-MtVersionProcesses -Paths (Get-MtPaths -Version $Version))
             exit $MT_EXIT_PASS
