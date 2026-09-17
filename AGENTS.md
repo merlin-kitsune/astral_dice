@@ -1072,6 +1072,8 @@ pwsh -NoProfile -File scripts/test/mt_env.ps1 world --version 1.20.1 [--seed]
 **行为要点（必须遵守）**：
 - **1.21.1**：从整合包复制 **Sodium `sodium-neoforge-0.8.13+mc1.21.1.jar` + Iris `iris-neoforge-1.8.14-beta.1+mc1.21.1.jar` + ModernFix `modernfix-neoforge-5.27.24+mc1.21.1.jar`** 到 `run/1.21.1/mods/`（幂等，按修改时间判断是否需要复制）。ModernFix 提供启动加载时间日志，供阶段 L 判定加载完成。
 - **1.20.1**：dev run **不安装渲染模组**（Embeddium/Oculus 的 mixin refmap 在 MDG mojmap 命名下无法解析，会导致 Mixin apply failed）；本阶段只校验用户生产环境渲染栈就绪。因此 1.20.1 的渲染兼容性属**生产环境人工验证项**，不在 dev 自动化范围内。
+- **26.1.2（2026-09-17 起）**：dev run 安装**渲染栈 + 光影**用于光影兼容性测试 —— Sodium `mc26.1.2-0.9.2-neoforge` + Iris `1.11.4+26.1-neoforge` + 光影包 Complementary Shaders - Unbound `r5.9.3`（置于 `run/26.1.2/shaderpacks/`）。三者**一律经 Modrinth Maven**（`https://api.modrinth.com/maven/maven/modrinth/<slug>/<version>/<file>`）下载并做**体积 + SHA1 双校验**（缓存 `temp/probe_mods/26.1.2/`），**禁止**改用 GitHub Release/其它 CDN 直链（2026-09-17 用户裁决）。
+  ⚠️ **光影默认关闭**（`run/26.1.2/config/iris.properties` 写 `enableShaders=false`）：26.1.2 上**启用任意光影包**都会在世界渲染期崩 `java.lang.IllegalStateException: Missing sampler Sampler1`（`GlCommandEncoder.trySetup`），已用**两个互不相关的光影包**复现（Complementary Unbound r5.9.3 与 MakeUp Ultra Fast 9.5e），属上游 Iris/Sodium 缺陷（Iris #3182 / #2719），**不是**本模组或本工具链问题。故 `SHADERS=disabled` 是**正常状态、不报 WARN**；要手工试光影就把该属性改成 `true`（`mt_env mods` 每次都会重写回 `false`）。`mt_launch` 会回显 `SODIUM_LOADED` / `IRIS_LOADED` / `SHADERS=… pack=…` / `SHADERPACK_LOADED=…`。
 - **世界重建**：删除旧存档 → 写 `server.properties`（超平坦/创造/`allow-cheats`/`max-players=2`）→ 取消失焦暂停 → `runServer` 生成（180 秒上限）→ 停服 → 世界迁移到 `run/<版本>/saves/testworld` → **原生 NBT 改写 `level.dat`**。
 - **测试世界规则（必须，两条路径都要满足）**：
   1. `Data.allowCommands=1`（TAG_Byte）—— 单人存档的「允许命令」由该字段决定，服务器生成的世界默认不写；
@@ -1090,7 +1092,7 @@ pwsh -NoProfile -File scripts/test/mt_env.ps1 world --version 1.20.1 [--seed]
 
 **执行命令**：
 ```bash
-pwsh -NoProfile -File scripts/test/mt_launch.ps1 --version 1.21.1 [--no-publish]
+pwsh -NoProfile -File scripts/test/mt_launch.ps1 --version 1.21.1 [--no-publish] [--monitor 1] [--size 1920x1080]
 ```
 
 **预期结果**：末行 `MT_LAUNCH: OK — 已进入世界（quickplay=testworld）`。
@@ -1098,8 +1100,10 @@ pwsh -NoProfile -File scripts/test/mt_launch.ps1 --version 1.21.1 [--no-publish]
 **就绪判据（必须遵守）**：清空 `latest.log` 与 `crash-reports` 后，基础等待 **30 秒**，随后轮询 `run/<版本>/logs/latest.log` 中 ModernFix 的加载完成日志 **`Total time to load game and open world was`**；未出现则**每 15 秒复检**，180 秒上限。出现崩溃报告或进程退出即判失败。
 
 **进入世界后同阶段完成**：
-1. 输出兼容栈信号（1.21.1：`SODIUM_LOADED` / `IRIS_LOADED`；1.20.1：`EMBEDDIUM_LOADED` / `OCULUS_LOADED`，dev run 预期为 false）；
-2. 校验 KubeJS `run/<版本>/logs/kubejs/server.log` 为 **0 errors**（进入世界后第一步）。
+1. 输出兼容栈信号（1.21.1：`SODIUM_LOADED` / `IRIS_LOADED`；26.1.2：`KUBEJS_LOADED` / `RHINO_LOADED` / `SODIUM_LOADED` / `IRIS_LOADED` / `SHADERS=… pack=…` / `SHADERPACK_LOADED=…`；1.20.1：`EMBEDDIUM_LOADED` / `OCULUS_LOADED`，dev run 预期为 false）；
+2. **把测试客户端搬到指定显示器并设定窗口尺寸**（`MT_WINDOW:` 行；2026-09-17 用户要求「移到第二显示器，避免干扰观察」＋「窗口大小应控制在 1920x1080」）：默认搬到**显示器 #1（第二屏）**，窗口在目标显示器上**居中**，**客户区（渲染区）1920x1080**（外框因边框/标题栏略大，实测 1936x1119）。参数：`--monitor <序号>`（`0` = 不搬移）、`--size <宽>x<高> | maximize | keep`（默认 `1920x1080`；`maximize` = 铺满目标显示器，`keep` = 只搬显示器保持原尺寸；非法/过小值在**启动客户端之前**即以退出码 2 拒绝）。⚠️ **`--size` 的口径是「客户区」而不是外框**（游戏分辨率看的是客户区；直接写外框 1920x1080 只会得到约 1904x1041 的渲染区）—— 实现用「外框 − 客户区」的实测差值补足边框，等价于 `AdjustWindowRect`。`MT_WINDOW: OK` 行同时回显窗口矩形与客户区尺寸便于取证。
+   由 `lib/Mt.Win32.psm1` 的 `Get-MtMonitors` / `Get-MtClientRect` / `Move-MtWindowToMonitor` 实现，顺序为 **SW_RESTORE → SetWindowPos(居中) → 视参数 SW_MAXIMIZE**（已最大化的窗口直接 `SetWindowPos` **不会跨屏**，必须先还原）。**单显示器或序号越界时静默跳过**（`MT_WINDOW: SKIP`），不得因此中断流程。⚠️ `Get-MtMonitors` 的返回值**必须**用 `@(...)` 包一层：PowerShell 会展开返回值，单屏时直接赋值得到单个对象；**不要**在函数里用 `return ,$out` 兜底（那会把数组包成「一个元素」，`$mons.Count` 恒为 1、`$mons[1]` 取到整个数组 —— 2026-09-17 实测踩坑）。
+3. 校验 KubeJS `run/<版本>/logs/kubejs/server.log` 为 **0 errors**（进入世界后第一步）。
 
 **失败处理**：`MT_LAUNCH: BLOCKED`（未在时限内进入世界）→ 查看 `run/<版本>/runclient_launch.log` 末 30 行；退出码 `11`。检测到崩溃报告 → 退出码 `2`，进 `crash-reports` 定位。
 

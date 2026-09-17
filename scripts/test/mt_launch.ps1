@@ -40,6 +40,10 @@ $script:LibDir = Join-Path $PSScriptRoot 'lib'
 Import-Module (Join-Path $script:LibDir 'Mt.Phase.psm1')
 Import-Module (Join-Path $script:LibDir 'Mt.Paths.psm1')
 Import-Module (Join-Path $script:LibDir 'Mt.Proc.psm1')
+# Mt.Win32 仅用于「把客户端搬到第二显示器」（Find-MtMinecraftWindow + Get-MtMonitors
+# + Move-MtWindowToMonitor）。模块自身在非 Windows 上无法导入，但本仓工具链本就是
+# Windows-only（mt_preflight/mt_inject/mt_capture 均如此），故不另做平台分支。
+Import-Module (Join-Path $script:LibDir 'Mt.Win32.psm1')
 
 Initialize-MtConsole
 
@@ -210,6 +214,13 @@ if ($MyInvocation.InvocationName -ne '.') {
 
     $Version = ''
     $NoPreclean = $false
+    # 测试客户端落在哪个显示器（0=主屏、1=第二屏…）。默认 1 = 第二显示器，见文件末尾的搬移步骤。
+    $MonitorIndex = 1
+    # 窗口尺寸口径（2026-09-17 用户要求「窗口大小应控制在 1920x1080」）：
+    #   <宽>x<高>（默认 1920x1080）= **客户区/渲染区**精确尺寸，窗口在目标显示器居中；
+    #   maximize = 铺满目标显示器；keep = 只搬显示器、保持当前尺寸。
+    $SizeSpec = '1920x1080'
+    $WinW = 0; $WinH = 0; $DoMaximize = $false; $KeepSize = $false
 
     $i = 0
     while ($i -lt $args.Count) {
@@ -218,6 +229,14 @@ if ($MyInvocation.InvocationName -ne '.') {
         if ($key -eq 'version') {
             if ($i + 1 -ge $args.Count) { Write-MtErrorLine '缺少 --version 的值'; exit $MT_EXIT_ERROR }
             $Version = [string]$args[$i + 1]
+            $i += 2
+        } elseif ($key -eq 'monitor') {
+            if ($i + 1 -ge $args.Count) { Write-MtErrorLine '缺少 --monitor 的值'; exit $MT_EXIT_ERROR }
+            $MonitorIndex = [int]$args[$i + 1]
+            $i += 2
+        } elseif ($key -eq 'size') {
+            if ($i + 1 -ge $args.Count) { Write-MtErrorLine '缺少 --size 的值'; exit $MT_EXIT_ERROR }
+            $SizeSpec = ([string]$args[$i + 1]).Trim().ToLowerInvariant()
             $i += 2
         } elseif ($key -eq 'no-preclean') {
             $NoPreclean = $true
@@ -229,6 +248,18 @@ if ($MyInvocation.InvocationName -ne '.') {
 
     if (-not $Version) { Write-MtErrorLine '必须指定 --version'; exit $MT_EXIT_ERROR }
     if (-not (Assert-MtVersion -Version $Version)) { exit $MT_EXIT_ERROR }
+
+    # --size 在**启动客户端之前**校验，避免为非法参数白等一次完整启动
+    if ($SizeSpec -match '^(\d+)x(\d+)$') {
+        $WinW = [int]$Matches[1]; $WinH = [int]$Matches[2]
+        if ($WinW -lt 320 -or $WinH -lt 240) { Write-MtErrorLine "--size 过小：$SizeSpec（最小 320x240）"; exit $MT_EXIT_ERROR }
+    } elseif ($SizeSpec -eq 'maximize' -or $SizeSpec -eq 'max') {
+        $DoMaximize = $true
+    } elseif ($SizeSpec -eq 'keep') {
+        $KeepSize = $true
+    } else {
+        Write-MtErrorLine "--size 取值非法：$SizeSpec（应为 <宽>x<高> / maximize / keep）"; exit $MT_EXIT_ERROR
+    }
 
     $p = Get-MtPaths -Version $Version
     $root = Get-MtRoot
@@ -380,17 +411,87 @@ if ($MyInvocation.InvocationName -ne '.') {
         exit $MT_EXIT_BLOCKED
     }
 
+    # 就绪标记可能「先满足、后崩溃」（2026-09-17 实测）：26.1.2 开启光影时客户端在
+    # 世界渲染首帧崩 `Missing sampler Sampler1`，而 `logged in with entity id` 早已写入日志
+    # ⇒ 若不在标记满足后再查一次崩溃报告，就会带着「已就绪」的假象继续搬窗口/注入，
+    # 下游只会报出一串与真因无关的「客户端未在运行 / 注入失败」。
+    $postCrashes = @()
+    if (Test-Path -LiteralPath $p.crash_dir -PathType Container) {
+        $postCrashes = @(Get-ChildItem -LiteralPath $p.crash_dir -File -Filter '*.txt' |
+            Where-Object { $_.LastWriteTime -gt $launchStartedAt })
+    }
+    if ($postCrashes.Count -gt 0) {
+        Write-MtError 'launch' ("进入世界后立即崩溃，见 crash-reports/{0}" -f $postCrashes[0].Name)
+        exit $MT_EXIT_ERROR
+    }
+
+    # 把测试客户端搬到指定显示器并设定尺寸（默认第二屏 + 客户区 1920x1080；
+    # 2026-09-17 用户要求「移到第二显示器，避免干扰观察」＋「窗口大小应控制在 1920x1080」）。
+    # 放在注入步骤之前，使后续 mt_inject 的按键都落在搬移后的窗口上。
+    # 单显示器 / 序号越界时 Move-MtWindowToMonitor 返回 $false → 静默跳过，不影响流程。
+    if ($MonitorIndex -gt 0) {
+        # DPI 感知：非感知进程下 Get-MtMonitors 返回被系统缩放后的逻辑坐标，
+        # 搬到混合 DPI 多屏会偏移（与 mt_capture 同一处理）。
+        $oldDpi = Set-MtThreadDpiAwareness -Context -4
+        try {
+            $monHwnd = [long]0
+            $monDeadline = (Get-Date).AddSeconds(20)
+            while ($monHwnd -eq 0 -and (Get-Date) -lt $monDeadline) {
+                $monHwnd = [long](Find-MtMinecraftWindow -Version $Version)
+                if ($monHwnd -eq 0) { Start-Sleep -Milliseconds 500 }
+            }
+            if ($monHwnd -eq 0) {
+                Write-MtWarn 'MT_WINDOW: 未找到客户端窗口，跳过显示器搬移'
+            } elseif (Move-MtWindowToMonitor -Hwnd $monHwnd -MonitorIndex $MonitorIndex `
+                        -Width $WinW -Height $WinH -Maximize:$DoMaximize -KeepSize:$KeepSize) {
+                $mons = @(Get-MtMonitors)
+                $wr = Get-MtWindowRect -Hwnd $monHwnd
+                $cr = Get-MtClientRect -Hwnd $monHwnd
+                Write-MtInfo ("MT_WINDOW: OK — 显示器 #{0} {1}（{2}）；窗口 {3}x{4} @({5},{6})，客户区(渲染区) {7}x{8}" -f `
+                    $MonitorIndex, $mons[$MonitorIndex].Device, $SizeSpec, $wr.Width, $wr.Height, $wr.Left, $wr.Top, $cr.Width, $cr.Height)
+            } else {
+                Write-MtInfo ("MT_WINDOW: SKIP — 显示器 #{0} 不存在（单屏环境），保持原位" -f $MonitorIndex)
+            }
+        } finally {
+            [void](Set-MtThreadDpiAwareness -Context $oldDpi)
+        }
+    }
+
     $latest = Read-MtSharedText -Path $p.latest_log
     # 兼容性信号（1.21.1: Sodium/Iris；1.20.1: Embeddium/Oculus）
     if ($Version -eq '1.21.1') {
         if ($latest.Contains('Sodium')) { Write-MtInfo 'SODIUM_LOADED=true' } else { Write-MtWarn 'SODIUM_LOADED=false' }
         if ($latest.Contains('Iris')) { Write-MtInfo 'IRIS_LOADED=true' } else { Write-MtWarn 'IRIS_LOADED=false' }
     } elseif ($Version -eq '26.1.2') {
-        # 26.1.2 dev run 刻意不装渲染模组（见 mt_env 的 mods 子命令注释）：
-        # 这里只报「探针宿主(KubeJS/Rhino)是否装载」—— 它才是本版本测试链的硬前提。
+        # 26.1.2 dev run 自 2026-09-17 起也带渲染栈（Sodium + Iris + Complementary Unbound 光影，
+        # 见 mt_env 的 Install-MtRenderStack）：既报探针宿主(KubeJS/Rhino)是否装载（本版本测试链的硬前提），
+        # 也报渲染栈/光影是否真的加载。
         if ($latest.Contains('KubeJS')) { Write-MtInfo 'KUBEJS_LOADED=true' } else { Write-MtWarn 'KUBEJS_LOADED=false' }
         if ($latest -imatch 'Rhino') { Write-MtInfo 'RHINO_LOADED=true' } else { Write-MtWarn 'RHINO_LOADED=false' }
-        Write-MtInfo 'RENDER_MODS=none(26.1.2 dev run 预期)'
+        if ($latest -imatch 'Sodium') { Write-MtInfo 'SODIUM_LOADED=true' } else { Write-MtWarn 'SODIUM_LOADED=false' }
+        if ($latest -imatch 'Iris') { Write-MtInfo 'IRIS_LOADED=true' } else { Write-MtWarn 'IRIS_LOADED=false' }
+        # 光影状态：以 config/iris.properties 为准（而不是「日志里有没有出现过 shaderpack 字样」）。
+        # 默认 enableShaders=false —— 26.1.2 上启用光影会崩（见 mt_env 的 Install-MtRenderStack 注释），
+        # 故默认不启用是**正常状态**，不该报 WARN；启用时才用日志确认包真的加载成功。
+        $irisCfg = Join-Path (Join-Path $p.run_dir 'config') 'iris.properties'
+        $irisEnabled = $false
+        $irisPack = ''
+        if (Test-Path -LiteralPath $irisCfg -PathType Leaf) {
+            foreach ($ln in (Get-Content -LiteralPath $irisCfg)) {
+                if ($ln -match '^\s*enableShaders\s*=\s*(.+?)\s*$') { $irisEnabled = ($Matches[1] -ieq 'true') }
+                if ($ln -match '^\s*shaderPack\s*=\s*(.+?)\s*$') { $irisPack = $Matches[1] }
+            }
+        }
+        if (-not $irisEnabled) {
+            Write-MtInfo ("SHADERS=disabled(iris.properties){0}" -f $(if ($irisPack) { " pack=$irisPack" } else { '' }))
+            Write-MtInfo 'SHADERPACK_LOADED=n/a(光影未启用)'
+        } elseif ($latest -imatch '(?i)Using shaderpack:\s*\S+') {
+            Write-MtInfo 'SHADERS=enabled'
+            Write-MtInfo 'SHADERPACK_LOADED=true'
+        } else {
+            Write-MtInfo 'SHADERS=enabled'
+            Write-MtWarn 'SHADERPACK_LOADED=false(已启用光影但日志中没有 Using shaderpack 行)'
+        }
     } else {
         # -qi：bash 侧是大小写不敏感匹配
         if ($latest -imatch 'Embeddium') { Write-MtInfo 'EMBEDDIUM_LOADED=true' }

@@ -67,6 +67,41 @@ $script:KubejsRhinoVersion = '2101.2.8-build.91'
 $script:KubejsBatVersion = '2601.1.0-build.10'
 $script:KubejsTinyJavaServerVersion = '1.0.0-build.45'
 
+# ── 26.1.2 渲染栈（Sodium + Iris）与光影（2026-09-17 用户要求：光影兼容性测试）──
+# 来源一律走 **Modrinth Maven**（`https://api.modrinth.com/maven`，本子项目 build.gradle 第 40 行已声明该仓库，
+# 与 Curios 同源），**不使用** CDN/GitHub 直链。Maven 坐标为 `maven.modrinth:<slug>:<version>`：
+#   maven.modrinth:sodium:mc26.1.2-0.9.2-neoforge
+#   maven.modrinth:iris:1.11.4+26.1-neoforge          ← 硬依赖 Sodium（required），必须同装
+#   maven.modrinth:complementary-unbound:r5.9.3       ← 光影包同样由 Modrinth Maven 提供（已验证 200）
+# 落地方式仍是「下载进 run/26.1.2/mods 与 shaderpacks/」而不是写进 build.gradle 依赖，理由与 KubeJS 相同：
+#   两段式数据生成（runClientData/runServerData）与 runClient 共用同一 runtimeClasspath，把**纯客户端**模组
+#   写进依赖会让服务端数据生成也装载它们（直接崩）。1.21.1 侧同样是「只放进 run/mods」的约定。
+# 版本均为 release、且均声明支持 26.1.2（该线此前注释写「Iris 尚无可用的 26.1.2 构建」——已过期）。
+# ⚠️ 这些是纯客户端模组：`mt_env world` 起专用服务器前必须移出（Invoke-MtEnvWorld 已覆盖 sodium/iris），
+#   两段式数据生成前也必须移出。
+$script:RenderMods2612 = @(
+    @{ Name = 'sodium-neoforge-0.9.2+mc26.1.2.jar'
+       Coord = 'maven.modrinth:sodium:mc26.1.2-0.9.2-neoforge'
+       Url  = 'https://api.modrinth.com/maven/maven/modrinth/sodium/mc26.1.2-0.9.2-neoforge/sodium-neoforge-0.9.2+mc26.1.2.jar'
+       Sha1 = 'e03e21bf6553fc517241d59c2c116b8e5cc882f8'
+       Size = 1260562 }
+    @{ Name = 'iris-neoforge-1.11.4+mc26.1.2.jar'
+       Coord = 'maven.modrinth:iris:1.11.4+26.1-neoforge'
+       Url  = 'https://api.modrinth.com/maven/maven/modrinth/iris/1.11.4+26.1-neoforge/iris-neoforge-1.11.4+mc26.1.2.jar'
+       Sha1 = '15ac52fe7b35c66bb799f0f13021f549bf302c3c'
+       Size = 2756643 }
+)
+
+# Complementary Shaders - Unbound（用户指定用于光影兼容性测试）
+# `maven.modrinth:complementary-unbound:r5.9.3`；落位 `run/<版本>/shaderpacks/`，并在 Iris 配置里选中它。
+$script:ShaderPack2612 = @{
+    Name  = 'ComplementaryUnbound_r5.9.3.zip'
+    Coord = 'maven.modrinth:complementary-unbound:r5.9.3'
+    Url   = 'https://api.modrinth.com/maven/maven/modrinth/complementary-unbound/r5.9.3/ComplementaryUnbound_r5.9.3.zip'
+    Sha1  = '2ee08300e1d6f039e63eae8484dddf57b3aaaf67'
+    Size  = 553400
+}
+
 $script:TAG_BYTE = 1
 $script:TAG_SHORT = 2
 $script:TAG_INT = 3
@@ -627,6 +662,142 @@ function Install-MtProbeRuntime {
 }
 
 # ══ 子命令：mods ══════════════════════════════════════════════════════════
+function Install-MtRenderStack {
+    <#
+    .SYNOPSIS
+        把 26.1.2 的渲染栈（Sodium + Iris）与光影包放进 run/<版本>/（幂等）。
+
+    .NOTES
+        · 来源 = **Modrinth Maven**（`https://api.modrinth.com/maven`，坐标见 $script:RenderMods2612 / $script:ShaderPack2612
+          的 `Coord` 字段，形如 `maven.modrinth:sodium:mc26.1.2-0.9.2-neoforge`）；**不使用** CDN/GitHub 直链。
+        · mods 落位 `run/26.1.2/mods`；光影包落位 `run/26.1.2/shaderpacks/`；
+        · 缓存在 `temp/probe_mods/26.1.2/`（与探针运行时同一缓存目录，便于整体清理）；
+        · 命中判据 = 目标文件存在且**尺寸一致**，下载后按固定 sha1 校验，失败硬报 14，不静默降级；
+        · 顺带把 Iris 的选中光影写进 `config/iris.properties`（`shaderPack=<包名>`）。
+
+        ⚠️ **`enableShaders` 默认写 false（2026-09-17 实测结论）**：在本机 dev 环境下（Sodium 0.9.2 + Iris 1.11.4 +
+        MC 26.1.2）**一旦启用光影，渲染世界时必崩**：
+            java.lang.IllegalStateException: Missing sampler Sampler1
+              at com.mojang.blaze3d.opengl.GlCommandEncoder.trySetup(GlCommandEncoder.java:531)
+          崩点上的两条 mixin 分别是 sodium 的 `core.GlCommandEncoderAccessor` 与 iris 的 `MixinGlCommandEncoder`；
+        **两个互不相关的光影包（Complementary Unbound r5.9.3 与 MakeUp Ultra Fast 9.5e）复现完全相同的崩溃**，
+        而 `enableShaders=false` 时进世界、工具链（注入/探针/用例）全部正常 ⇒ 属 Iris/Sodium 侧在 26.1.2 的着色器
+        管线缺陷（上游同类 issue：IrisShaders/Iris #3182「Compatibility issues with sodium in version 26.1.2」、
+        #2719「Game crash due to missing sampler」），**与本模组无关**。
+        要做光影兼容性测试时把 `run/26.1.2/config/iris.properties` 的 `enableShaders` 改成 `true` 即可复现；
+        该文件由本函数每次 `mt_env mods` 重写为 false，避免默认环境变成「一进世界就崩」。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][psobject]$Paths)
+
+    if ($Paths.version -ne '26.1.2') { return 0 }
+
+    $cache = Join-Path (Join-Path (Get-MtRoot) 'temp\probe_mods') $Paths.version
+    [void](New-Item -ItemType Directory -Force -Path $cache)
+    [void](New-Item -ItemType Directory -Force -Path $Paths.mods_dir)
+
+    $progressBak = $ProgressPreference
+    $ProgressPreference = 'SilentlyContinue'
+    try {
+        # 1) 渲染模组 → run/<版本>/mods
+        $installed = @()
+        foreach ($spec in $script:RenderMods2612) {
+            $cached = Join-Path $cache $spec.Name
+            $ok = $false
+            if (Test-Path -LiteralPath $cached -PathType Leaf) {
+                $ci = Get-Item -LiteralPath $cached
+                $ok = ($ci.Length -eq $spec.Size)
+                if ($ok -and $spec.Sha1) {
+                    $ok = ((Get-FileHash -LiteralPath $cached -Algorithm SHA1).Hash.ToLowerInvariant() -eq $spec.Sha1)
+                }
+                if (-not $ok) { Remove-Item -LiteralPath $cached -Force -ErrorAction SilentlyContinue }
+            }
+            if (-not $ok) {
+                try {
+                    Write-MtLine "MT_MODS: 下载渲染模组 $($spec.Name) ← $($spec.Coord)"
+                    Invoke-WebRequest -Uri $spec.Url -OutFile "$cached.part" -TimeoutSec 300 -UseBasicParsing
+                    Move-Item -LiteralPath "$cached.part" -Destination $cached -Force
+                } catch {
+                    Remove-Item -LiteralPath "$cached.part" -Force -ErrorAction SilentlyContinue
+                    Write-MtLine "MT_MODS: BLOCKED — 渲染模组下载失败 [Modrinth Maven] $($spec.Coord) $($spec.Url) :: $($_.Exception.Message)"
+                    return 14
+                }
+                $got = Get-Item -LiteralPath $cached
+                if ($got.Length -ne $spec.Size) {
+                    Write-MtLine "MT_MODS: BLOCKED — $($spec.Name) 尺寸不符（期望 $($spec.Size)，实得 $($got.Length)）"
+                    return 14
+                }
+                if ($spec.Sha1 -and ((Get-FileHash -LiteralPath $cached -Algorithm SHA1).Hash.ToLowerInvariant() -ne $spec.Sha1)) {
+                    Write-MtLine "MT_MODS: BLOCKED — $($spec.Name) sha1 校验失败"
+                    return 14
+                }
+            }
+            $dst = Join-Path $Paths.mods_dir $spec.Name
+            $needCopy = $true
+            if (Test-Path -LiteralPath $dst -PathType Leaf) {
+                if ((Get-Item -LiteralPath $dst).Length -eq (Get-Item -LiteralPath $cached).Length) { $needCopy = $false }
+            }
+            if ($needCopy) { Copy-Item -LiteralPath $cached -Destination $dst -Force }
+            $installed += $spec.Name
+        }
+
+        # 2) 光影包 → run/<版本>/shaderpacks
+        $sp = $script:ShaderPack2612
+        $spDir = Join-Path $Paths.run_dir 'shaderpacks'
+        [void](New-Item -ItemType Directory -Force -Path $spDir)
+        $spCache = Join-Path $cache $sp.Name
+        $spOk = (Test-Path -LiteralPath $spCache -PathType Leaf) -and ((Get-Item -LiteralPath $spCache).Length -eq $sp.Size)
+        if (-not $spOk) {
+            if (Test-Path -LiteralPath $spCache) { Remove-Item -LiteralPath $spCache -Force -ErrorAction SilentlyContinue }
+            try {
+                Write-MtLine "MT_MODS: 下载光影包 $($sp.Name) ← $($sp.Coord)"
+                Invoke-WebRequest -Uri $sp.Url -OutFile "$spCache.part" -TimeoutSec 300 -UseBasicParsing
+                Move-Item -LiteralPath "$spCache.part" -Destination $spCache -Force
+            } catch {
+                Remove-Item -LiteralPath "$spCache.part" -Force -ErrorAction SilentlyContinue
+                Write-MtLine "MT_MODS: BLOCKED — 光影包下载失败 [Modrinth Maven] $($sp.Coord) $($sp.Url) :: $($_.Exception.Message)"
+                return 14
+            }
+            if ((Get-Item -LiteralPath $spCache).Length -ne $sp.Size) {
+                Write-MtLine "MT_MODS: BLOCKED — 光影包尺寸不符（期望 $($sp.Size)）"
+                return 14
+            }
+            if ($sp.Sha1 -and ((Get-FileHash -LiteralPath $spCache -Algorithm SHA1).Hash.ToLowerInvariant() -ne $sp.Sha1)) {
+                Write-MtLine 'MT_MODS: BLOCKED — 光影包 sha1 校验失败'
+                return 14
+            }
+        }
+        $spDst = Join-Path $spDir $sp.Name
+        if (-not (Test-Path -LiteralPath $spDst -PathType Leaf) -or
+            ((Get-Item -LiteralPath $spDst).Length -ne (Get-Item -LiteralPath $spCache).Length)) {
+            Copy-Item -LiteralPath $spCache -Destination $spDst -Force
+        }
+
+        # 3) Iris 配置：选中该光影并开启光影（Iris 1.11.x 的 config/iris.properties）
+        $irisCfg = Join-Path (Join-Path $Paths.run_dir 'config') 'iris.properties'
+        [void](New-Item -ItemType Directory -Force -Path (Split-Path $irisCfg))
+        $lines = @()
+        if (Test-Path -LiteralPath $irisCfg -PathType Leaf) { $lines = @(Get-Content -LiteralPath $irisCfg) }
+        # enableShaders 固定写 false：见本函数 .NOTES —— 26.1.2 上启用光影必崩（两个包均复现），
+        # 默认环境必须可用；要复现/做光影测试请手动把该键改成 true。
+        $set = @{ 'shaderPack' = $sp.Name; 'enableShaders' = 'false' }
+        foreach ($k in $set.Keys) {
+            $found = $false
+            for ($i = 0; $i -lt $lines.Count; $i++) {
+                if ($lines[$i] -match "^\s*$([regex]::Escape($k))\s*=") { $lines[$i] = "$k=$($set[$k])"; $found = $true; break }
+            }
+            if (-not $found) { $lines += "$k=$($set[$k])" }
+        }
+        Set-Content -LiteralPath $irisCfg -Value $lines -Encoding utf8
+
+        Write-MtLine ("MT_MODS: OK — 渲染栈就位（{0}）＋ 光影 {1}；Iris 已选中该光影" -f `
+                ($installed -join ' / '), $sp.Name)
+        return 0
+    } finally {
+        $ProgressPreference = $progressBak
+    }
+}
+
 function Invoke-MtEnvMods {
     [CmdletBinding()]
     param([Parameter(Mandatory)][string]$Version)
@@ -640,12 +811,16 @@ function Invoke-MtEnvMods {
     [void](Invoke-MtEnvKubejs -Version $Version)
 
     if ($Version -eq '26.1.2') {
-        # dev run **不**装渲染模组：26.1.2 的 Sodium(Iris 尚无可用的 26.1.2 构建)在 dev
-        # (Mojmap + 无 refmap) 下的收益为零、风险非零；迁移期首轮验收要的是「可复现的最小栈」。
         # 探针运行时(KubeJS + Rhino)必须装 —— 否则探针命令不存在，launch 的 OP 闸门会记 ERROR。
         $rc = Install-MtProbeRuntime -Paths $p
         if ($rc -ne 0) { return $rc }
-        Write-MtLine 'MT_MODS: OK — 26.1.2 dev run 不使用渲染模组；探针运行时就位'
+        # 渲染栈 + 光影（2026-09-17 用户要求：Sodium/Iris 最新版 + Complementary Unbound，用于光影兼容性测试）。
+        # 该线此前**不装**渲染模组，理由是「26.1.2 的 Iris 尚无可用的构建」——该理由已过期
+        # （实测 Modrinth 已有 sodium 0.9.2 / iris 1.11.4 的 26.1.2 release 构建）。
+        $rc = Install-MtRenderStack -Paths $p
+        if ($rc -ne 0) { return $rc }
+        Write-MtLine 'MT_MODS: OK — 26.1.2 dev run：探针运行时 + Sodium/Iris + Complementary Unbound 光影'
+        Write-MtLine 'MT_MODS: 注意 — Sodium/Iris 为纯客户端模组：`mt_env world` 起专用服务器会自动移出，但**两段式数据生成（runClientData/runServerData）前必须手动移出** run/26.1.2/mods（与探针运行时同规则）'
         return 0
     }
 
