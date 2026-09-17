@@ -256,38 +256,50 @@ function Send-MtInjectMouseCenter {
         [int]$HoldMs = 0
     )
 
-    if ($Shift) {
-        Send-MtInjectKeyDown -Hwnd $Hwnd -Vk $script:VK_SHIFT -Scan 0x2A
-        Start-MtInjectPause -Milliseconds 120
-    }
-
-    $rect = Get-MtWindowRect -Hwnd $Hwnd
-    $x = [int](($rect.Right - $rect.Left) / 2)
-    $y = [int](($rect.Bottom - $rect.Top) / 2)
-    $hold = if ($HoldMs -gt 0) { $HoldMs } else { 100 }
-
-    if ($script:Transport -eq 'sendinput') {
-        # 真实鼠标：先把光标移到窗口中心（屏幕坐标），再发真实左右键
-        if (-not $script:DryRun) {
-            [void](Set-MtRealCursorPosition -X ($rect.Left + $x) -Y ($rect.Top + $y))
-            Start-MtInjectPause -Milliseconds 80
-            [void](Send-MtRealMouse -Right $Right -Up $false)
-            Start-MtInjectPause -Milliseconds $hold
-            [void](Send-MtRealMouse -Right $Right -Up $true)
+    # ── 修饰键（SHIFT）必须**同通道成对**且异常路径也复位（2026-09-18 t21 实测修复）──────────
+    # 缺陷（修复前）：按下走 `Send-MtInjectKeyDown`（sendinput 通道 ⇒ 真实 `SendInput`），
+    # 抬起却直接写 `Send-MtInjectMessage … WM_KEYUP`（**PostMessage**）—— 通道不一致导致
+    # OS 级 SHIFT 逻辑键状态**常驻按下**（实测 `GetAsyncKeyState(VK_SHIFT)` 的 0x8000 位在
+    # 20/20 次 `mouse --right -Shift` 后仍为按下；不带 -Shift 的对照组 0/20）。
+    # 现在：抬起改走 `Send-MtInjectKeyUp`（与按下同一个分发函数 ⇒ 两条通道各自自洽），
+    # 并用 try/finally 保证「按下过就一定会抬起」（鼠标段抛异常也不留残留）。
+    # 不引入任何全局状态：`$shiftDown` 只是本函数内的局部标志。
+    $shiftDown = $false
+    try {
+        if ($Shift) {
+            Send-MtInjectKeyDown -Hwnd $Hwnd -Vk $script:VK_SHIFT -Scan 0x2A
+            $shiftDown = $true
+            Start-MtInjectPause -Milliseconds 120
         }
-    } else {
-        $lp = ($y -shl 16) -bor ($x -band 0xFFFF)
-        $down = if ($Right) { $script:WM_RBUTTONDOWN } else { $script:WM_LBUTTONDOWN }
-        $up = if ($Right) { $script:WM_RBUTTONUP } else { $script:WM_LBUTTONUP }
-        Send-MtInjectMessage -Hwnd $Hwnd -Msg $down -WParam 1 -LParam $lp
-        Start-MtInjectPause -Milliseconds $hold
-        Send-MtInjectMessage -Hwnd $Hwnd -Msg $up -WParam 0 -LParam $lp
-    }
 
-    if ($Shift) {
-        Start-MtInjectPause -Milliseconds 100
-        Send-MtInjectMessage -Hwnd $Hwnd -Msg $script:WM_KEYUP -WParam $script:VK_SHIFT `
-            -LParam ((1 -shl 30) -bor (1 -shl 14) -bor (0x2A -shl 16))
+        $rect = Get-MtWindowRect -Hwnd $Hwnd
+        $x = [int](($rect.Right - $rect.Left) / 2)
+        $y = [int](($rect.Bottom - $rect.Top) / 2)
+        $hold = if ($HoldMs -gt 0) { $HoldMs } else { 100 }
+
+        if ($script:Transport -eq 'sendinput') {
+            # 真实鼠标：先把光标移到窗口中心（屏幕坐标），再发真实左右键
+            if (-not $script:DryRun) {
+                [void](Set-MtRealCursorPosition -X ($rect.Left + $x) -Y ($rect.Top + $y))
+                Start-MtInjectPause -Milliseconds 80
+                [void](Send-MtRealMouse -Right $Right -Up $false)
+                Start-MtInjectPause -Milliseconds $hold
+                [void](Send-MtRealMouse -Right $Right -Up $true)
+            }
+        } else {
+            $lp = ($y -shl 16) -bor ($x -band 0xFFFF)
+            $down = if ($Right) { $script:WM_RBUTTONDOWN } else { $script:WM_LBUTTONDOWN }
+            $up = if ($Right) { $script:WM_RBUTTONUP } else { $script:WM_LBUTTONUP }
+            Send-MtInjectMessage -Hwnd $Hwnd -Msg $down -WParam 1 -LParam $lp
+            Start-MtInjectPause -Milliseconds $hold
+            Send-MtInjectMessage -Hwnd $Hwnd -Msg $up -WParam 0 -LParam $lp
+        }
+    } finally {
+        if ($shiftDown) {
+            Start-MtInjectPause -Milliseconds 100
+            # 与按下同一分发（sendinput ⇒ SendInput；postmessage ⇒ 同 lParam 的 WM_KEYUP）
+            Send-MtInjectKeyUp -Hwnd $Hwnd -Vk $script:VK_SHIFT -Scan 0x2A
+        }
     }
 }
 
