@@ -60,14 +60,15 @@ jobs:
         # 构建出的库必须**恰好**是 `starengine_lib_version` 指定的那一版 —— 浮动 main 会让
         # 「区间下界 [1.0.0-SNAPSHOT.<n>,2.0)」与「CI 实际 publishToMavenLocal 出的版本」脱钩,
         # 一旦库在两次 CI 之间 bump 或改动坐标,断在依赖解析(本地不可复现,只在 CI 暴露)。
-        # 现固定为 `starengine_lib_version=1.0.0-SNAPSHOT.4` 对应的固定提交(库仓库该提交的
-        # 三个平台 mod_version 均为 1.0.0-SNAPSHOT.4;库侧当前无 tag,故用提交 SHA 钉死)。
+        # 现固定为 `starengine_lib_version=1.0.0-SNAPSHOT.5` 对应的固定提交(库仓库该提交的
+        # 三个平台 mod_version 均为 1.0.0-SNAPSHOT.5;库侧当前无 tag,故用提交 SHA 钉死)。
         # **库版本 bump 时本行必须同步更新**(与 neoforge-1.21.1 / forge-1.20.1 的
-        # gradle.properties 的 starengine_lib_version 同一提交里一起改),且该提交需已推送到远端。
+        # gradle.properties 的 starengine_lib_version 同一提交里一起改;`.5` 即与库提交
+        # 7e0046d 同批更新),且该提交需已推送到远端 —— 库仓库尚未 push 前,本 ref 不可被 CI 检出。
         uses: actions/checkout@v4
         with:
           repository: merlin-kitsune/starengine_lib
-          ref: a2f70ea7948f51838565cefff4d5f922f022da40   # = 1.0.0-SNAPSHOT.4
+          ref: 7e0046db278a2a396982ef90cc273bce4361446a   # = 1.0.0-SNAPSHOT.5
           path: .ci/starengine_lib
           fetch-depth: 1
 
