@@ -157,7 +157,9 @@ dependencies {
 
     implementation 'maven.modrinth:curios:yohfFbgD'
     // JEI(配方查看,测试环境用);19.39 系仍兼容本项目 neoforge 21.1.235(19.42+ 要求 ≥21.1.238)
-    implementation "mezz.jei:jei-1.21.1-neoforge:19.39.0.372"
+    // 2026-09-17 起按统一口径改走 Curse Maven(原 `mezz.jei:jei-1.21.1-neoforge:19.39.0.372` 走官方 maven;
+    // CF 文件 8512040 = `jei-1.21.1-neoforge-19.39.0.372.jar`,1572695 字节,与官方 maven 产物同尺寸)
+    implementation "curse.maven:jei-238222:8512040"
     // Mixin:NeoForge 运行时自带 Mixin,编译期仅需注解类;NeoForge 编译/运行同为 Mojmap,无需 refmap。
     compileOnly 'org.spongepowered:mixin:0.8.5'
 }

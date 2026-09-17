@@ -141,18 +141,20 @@ When extending this workspace:
 
 **来源只剩两个**:任何第三方**模组**依赖必须经 **Curse Maven**(`https://www.cursemaven.com` → `curse.maven:<slug>-<projectId>:<fileId>`)
 或 **Modrinth Maven**(`https://api.modrinth.com/maven` → `maven.modrinth:<slug>:<versionId>`)获取,且这两个仓库必须在
-`forge-1.20.1/build.gradle` 与 `neoforge-1.21.1/build.gradle` 里**各自声明一份**(Gradle 的项目级仓库是累加的,同一文件内不得重复声明)。
+**三条线各自的 `build.gradle`** 里声明(发布线 `forge-1.20.1` / `neoforge-1.21.1` 与 `neoforge-26.1.2` 均已声明;Gradle 的项目级仓库是累加的,同一文件内不得重复声明)。
 **禁止**用本地 jar(`fileTree`/`files`)、作者的官方 maven 或其它站点作为**模组**来源;**非模组库**(mixin / gson / guava / asm / sponge-mixin 等)不受此限。
 
 1. **坐标写全、版本钉死**:Curse 用 `<slug>-<projectId>:<fileId>`(fileId = CF 文件 id),Modrinth 用 `<slug>:<versionId>`(versionId 是 Modrinth 的版本 id,不是版本号字符串);**禁止** `latest.release`/`+` 之类浮动版本。
-2. **同一模组跨线同源**:同一模组在 1.20.1 与 1.21.1 必须来自同一来源(现状:Curios / Patchouli / Iron's Spellbooks / mixinbooster / modernfix → Modrinth Maven;KubeJS / Rhino / Collective / Superflat No Slimes / Embeddium / Oculus → Curse Maven)。只有目标 MC 版本在某来源确实没有构建时才允许分叉,并在 build.gradle 注释里写明理由。
+2. **同一模组跨线同源**:同一模组在 1.20.1 与 1.21.1 必须来自同一来源(现状:Curios / Patchouli / Iron's Spellbooks / mixinbooster / modernfix → Modrinth Maven;**JEI / Architectury API / KubeJS / Rhino / Collective / Superflat No Slimes / Embeddium / Oculus → Curse Maven**)。只有目标 MC 版本在某来源确实没有构建时才允许分叉,并在 build.gradle 注释里写明理由。
 3. **dev 编译 vs 生产运行**:build.gradle 的声明只服务**开发/编译**(1.20.1 走 `modImplementation`/`modCompileOnly` 由 MDG 重映射;1.21.1 / 26.1.2 走 `implementation`/`compileOnly`,NeoForge 侧无 reobf);生产由整合包提供同一模组,**不得**把整合包 jar 复制进仓库或 `run/mods` 当依赖。
 4. **硬前置必须进同一套闸门**(与下方「加载器版本门槛」「版本互通门槛」同一体系):若某模组是**运行期硬前置**(缺失会让本模组不报错却静默失效,如 1.20.1 的 `mixinbooster`),必须
    ① 在对应 `mods.toml`/`neoforge.mods.toml` 的依赖段声明 `mandatory=true` + **钉死 `versionRange`**(现状:1.20.1 `forge`/`minecraft`/`curios [5,6)`/`mixinbooster [0.1.3,)`;1.21.1 `neoforge [21.1,21.2)`/`curios [9,)`;26.1.2 `neoforge [26.1.0.0,26.2)`/`curios [15,)`),**并且** ② 纳入离线加载器门槛用例(`scripts/test/mt_loadergate.ps1` + `cases/LOADER-GATE-*.json`)。
    ⚠️ **当前只有 1.20.1 有 `LOADER-GATE-FORGE-1.20.1.json`**:1.21.1 / 26.1.2 侧**新增硬前置前必须先补同形态用例**(同「离线判定器 + 断言」写法),不得只改 toml 了事。
    ⚠️ 门槛必须在 **FML 依赖排序阶段**拒绝不合格环境,不得依赖「先加载再在代码里检查」——mixin 变换早于 mod 构造器。
-5. **守门(唯一实现)**:`pwsh -NoProfile -File tools/check_mod_sources.ps1` —— 同时挂在阶段 P(`scripts/test/mt_preflight.ps1` 的「模组来源」一项)与 `scripts/test/TESTING-SPEC.md` §9 静态守门。它检查:两个发布线都声明了两个来源仓库、模块坐标只能是 `curse.maven:`/`maven.modrinth:`、**实际命中**的本地 jar 兜底一律 FAIL、库按 `$LibraryGroups` 白名单放行;官方 maven 的模组依赖(当前 `mezz.jei`、`dev.architectury`)以**例外**形式每次运行都回显,**待用户裁决是否迁移坐标**。新增库或例外必须改脚本里的 `$LibraryGroups` / `$ModExceptions` 并写明理由。
-6. **换源必须给等价性证据**:把模组从其它来源改到 Curse/Modrinth Maven 时,必须核对新旧文件**逐字节相同**(SHA1 相等)并真跑一次依赖解析/编译。先例:1.21.1 的 Iron's Spellbooks 从 `base-mod-compile-libs/irons_spellbooks.jar` 换为 `maven.modrinth:irons-spells-n-spellbooks:RtvqnbKi`(sha1 `09907e3b4bfdabd7f1f44bfd25aa6432183f39bb`、13874139 字节,与 Modrinth 文件同哈希;`compileJava` 通过)。
+5. **守门(唯一实现)**:`pwsh -NoProfile -File tools/check_mod_sources.ps1` —— 同时挂在阶段 P(`scripts/test/mt_preflight.ps1` 的「模组来源」一项)与 `scripts/test/TESTING-SPEC.md` §9 静态守门。它检查:**R1** 两个发布线都声明了 Curse + Modrinth 两个仓库且同一文件内不得重复声明;**R1b(对三条线全部生效)** 用了 `curse.maven:` / `maven.modrinth:` 坐标就必须声明对应仓库(2026-09-17 实测踩坑:26.1.2 缺 Curse Maven 仓库时用它取 JEI 直接 `BUILD FAILED`);**R2** 模组坐标只能是这两个来源、**实际命中**的本地 jar 兜底一律 FAIL、库按 `$LibraryGroups` 白名单放行;**R3** 未被引用的本地 jar 只回显。**官方 maven 的模组例外当前为空**(`$ModExceptions = @{}`;原 `mezz.jei` / `dev.architectury` 已于 2026-09-17 迁到 Curse Maven);将来若必须临时用官方 maven,须在 `$ModExceptions` 登记(每轮以 `[EXC]` 行回显,不允许静默),新增库同理登记到 `$LibraryGroups` 并写明理由。
+6. **换源必须给等价性证据**:把模组从其它来源改到 Curse/Modrinth Maven 时,必须给出**可核验的等价性证据**并真跑一次依赖解析/编译:
+   - 官方 maven **与 CF/Modrinth 提供同一个文件**时 → 直接比 `SHA1`(逐字节相同)。先例:JEI 三个版本(1.20.1 / 1.21.1 / 26.1.2)改 Curse Maven 后解析到的 jar sha1 与官方 maven 逐一相同(`7f64b7f8…` / `6e703a82…` / `2c3ee3d2…`);1.21.1 的 Iron's Spellbooks 由 `base-mod-compile-libs/irons_spellbooks.jar` 换成 `maven.modrinth:irons-spells-n-spellbooks:RtvqnbKi`(sha1 `09907e3b4bfdabd7f1f44bfd25aa6432183f39bb`、13874139 字节,同哈希)。
+   - 双方提供的是**不同形态的产物**(如 CF 生产 jar ↔ 官方 maven dev jar)时 → 必须证明 **MDG 重映射后的产物等价**:Architectury API 由 `dev.architectury:architectury-forge:9.2.14` 改为 `curse.maven:architectury-api-419699:5137938` 后,两个来源经 MDG 重映射得到的 jar **482/482 条目逐条 CRC32 相同、382 个 class 名集合零差异**,且 `:forge-1.20.1:compileJava` 保持 `UP-TO-DATE`(编译期 ABI 指纹未变)。
 
 **加载器版本门槛(必须遵守)**:
 - **1.20.1(Forge)**:由 `forge-1.20.1/build.gradle` 从 `gradle.properties` 的 `forge_version`(形如 `1.20.1-47.4.10`)**自动派生两个区间**,分别写入两处:

@@ -38,13 +38,16 @@ repositories {
     maven { url = uri('https://maven.neoforged.net/releases') }
     // Curios API is resolved from the Modrinth maven.
     maven { url 'https://api.modrinth.com/maven' }
+    // 统一口径的模组来源之二:Curse Maven(2026-09-17 随「JEI 改走 Curse Maven」补齐;
+    // 1.20.1 / 1.21.1 两侧本就有,26.1.2 此前缺该仓库 ⇒ curse.maven 坐标无法解析)
+    maven { url 'https://www.cursemaven.com' }
     // KubeJS + Rhino are resolved from the KubeJS maven.
     maven { url 'https://maven.latvian.dev/releases' }
-    // KubeJS transitive dependency Architectury
+    // KubeJS 的传递依赖 Architectury(直接坐标已改 Curse Maven,本仓库保留给传递/可选工件解析)
     maven { url 'https://maven.architectury.dev' }
     // KubeJS transitive dependency animated-gif-lib-for-java
     maven { url 'https://jitpack.io' }
-    // JEI 官方 maven(配方查看)
+    // JEI 官方 maven:直接坐标已改 Curse Maven(2026-09-17),本仓库保留给可能的传递/可选工件与历史坐标
     maven { url 'https://maven.blamejared.com' }
     // Mixin:26.1.2 的 NeoForge 运行时带的是 **Fabric 分支** net.fabricmc:sponge-mixin:0.17.3+mixin.0.8.7
     // (不再是 21.1 时代的 org.spongepowered:mixin:0.8.5),编译期注解类从 Fabric maven 取。
@@ -160,7 +163,8 @@ dependencies {
     // 帕秋莉手册(可选):26.1-94-beta(Modrinth version id 2CsnFLom)
     implementation 'maven.modrinth:patchouli:2CsnFLom'
     // JEI(配方查看,测试环境用);26.1.2 线 29.37.0.99
-    implementation "mezz.jei:jei-26.1.2-neoforge:29.37.0.99"
+    // 2026-09-17 起按统一口径改走 Curse Maven(CF 文件 8886511 = `jei-26.1.2-neoforge-29.37.0.99.jar`,1908683 字节)
+    implementation "curse.maven:jei-238222:8886511"
     // Mixin:26.1.2 的 NeoForge 运行时自带 Mixin(Fabric 分支 0.17.3+mixin.0.8.7),
     // 编译期仅需注解类;NeoForge 编译/运行同为 Mojmap,无需 refmap。
     compileOnly 'net.fabricmc:sponge-mixin:0.17.3+mixin.0.8.7'

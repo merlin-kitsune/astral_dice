@@ -62,10 +62,10 @@ $script:LibraryGroups = @(
 
 # R2：已知例外（**官方 maven 提供的模组依赖**）。每次运行都回显；是否迁移到 Curse/Modrinth Maven
 #     由用户裁决（迁移需要目标 Maven 的版本 id/fileId，且必须重跑依赖解析验证）。
-$script:ModExceptions = @{
-    'mezz.jei'        = 'JEI 官方 maven（maven.blamejared.com）'
-    'dev.architectury' = 'Architectury 官方 maven（maven.architectury.dev）——KubeJS 前置库模组'
-}
+#     2026-09-17：原两条例外（`mezz.jei` / `dev.architectury`）已按用户裁决迁到 **Curse Maven**，
+#     故当前**无例外**。此处保留机制（空表）：将来若必须临时使用官方 maven 的模组依赖，
+#     在此登记键名 + 理由，脚本每轮都会把它打印成 [EXC] 行，不允许静默存在。
+$script:ModExceptions = @{}
 
 # R3：可能残留本地模组 jar 的目录（只回显，不删）
 $script:LocalJarDirs = @('base-mod-libs', 'base-mod-compile-libs')
@@ -123,6 +123,8 @@ function Test-ModSourceFile {
 
     $seenRepos = @{}
     $declaredRepos = [System.Collections.Generic.List[string]]::new()
+    $usedCurse = $false
+    $usedModrinth = $false
 
     for ($i = 0; $i -lt $lines.Count; $i++) {
         $raw = $lines[$i]
@@ -145,8 +147,8 @@ function Test-ModSourceFile {
         $kind, $coord = Get-DependencyCoordinate -Rest $dm.Groups[2].Value
         switch ($kind) {
             'none' { }
-            'curse' { }
-            'modrinth' { }
+            'curse' { $usedCurse = $true }
+            'modrinth' { $usedModrinth = $true }
             'library' { }
             'local-jar' {
                 # 只有「实际命中某个存在的 jar」才算违规；指向空目录/不存在的目录只是死配置（INFO）。
@@ -192,6 +194,16 @@ function Test-ModSourceFile {
                 $script:Violations.Add("$Project R1 缺少统一的模组来源仓库：$req（两个发布线子项目必须声明同一组来源）")
             }
         }
+    }
+
+    # ── R1b：坐标 ↔ 仓库一致性（**对所有线生效**，含第三条线）──────────
+    # 用了某个来源的坐标却没声明对应仓库 → 解析期必然失败（Gradle 只会报 "Could not find …"）。
+    # 2026-09-17 实测踩坑：26.1.2 侧此前没有声明 Curse Maven，改用它取 JEI 时直接 BUILD FAILED。
+    if ($usedCurse -and -not $seenRepos.ContainsKey($script:RequiredRepos[0])) {
+        $script:Violations.Add("$Project R1b 使用了 curse.maven 坐标但未声明 Curse Maven 仓库（$($script:RequiredRepos[0])）")
+    }
+    if ($usedModrinth -and -not $seenRepos.ContainsKey($script:RequiredRepos[1])) {
+        $script:Violations.Add("$Project R1b 使用了 maven.modrinth 坐标但未声明 Modrinth Maven 仓库（$($script:RequiredRepos[1])）")
     }
 
     # ── R3：本地模组 jar 残留（只回显）────────────────────────────────

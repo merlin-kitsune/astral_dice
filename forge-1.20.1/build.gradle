@@ -29,14 +29,15 @@ repositories {
     maven { url 'https://api.modrinth.com/maven' }
     // KubeJS + Rhino are resolved from the KubeJS maven.
     maven { url 'https://maven.latvian.dev/releases' }
-    // KubeJS transitive dependency Architectury
+    // KubeJS 的传递依赖 Architectury(直接坐标已改 Curse Maven,本仓库保留给传递/可选工件解析)
     maven { url 'https://maven.architectury.dev' }
     // KubeJS transitive dependency animated-gif-lib-for-java
     maven { url 'https://jitpack.io' }
-    // 统一口径的模组来源之二:Curse Maven:collective / superflatworldnoslimes / kubejs / rhino / embeddium / oculus
+    // 统一口径的模组来源之二:Curse Maven —— collective / superflatworldnoslimes / kubejs / rhino / embeddium / oculus
+    // 以及 2026-09-17 起并入的 jei / architectury-api
     // (MDG modImplementation 会在解析期把生产 SRG jar 重映射为 dev Mojmap 命名,mixin 才能加载)
     maven { url 'https://www.cursemaven.com' }
-    // JEI 官方 maven(配方查看)
+    // JEI 官方 maven:直接坐标已改 Curse Maven(2026-09-17),本仓库保留给可能的传递/可选工件与历史坐标
     maven { url 'https://maven.blamejared.com' }
 }
 
@@ -205,15 +206,19 @@ dependencies {
     // 通过 curse maven modImplementation 引入,MDG 会将其重映射为 dev 命名,可在 dev 环境正常加载 mixin。
     modImplementation "curse.maven:kubejs-238086:8020595"        // kubejs-forge-2001.6.5-build.26
     modImplementation "curse.maven:rhino-416294:6186971"         // rhino-forge-2001.2.3-build.10
-    modImplementation "dev.architectury:architectury-forge:9.2.14" // architectury-9.2.14-forge(官方 maven)
+    // Architectury API(KubeJS 前置库模组):2026-09-17 起按统一口径改走 Curse Maven
+    // (原 `dev.architectury:architectury-forge:9.2.14` 走官方 maven;CF 文件 5137938 = `architectury-9.2.14-forge.jar`,
+    //  [Forge 1.20(.1)] v9.2.14 —— 与官方 maven 坐标同版本同功能,产物为**生产(SRG)jar**,由 MDG modImplementation 重映射)
+    modImplementation "curse.maven:architectury-api-419699:5137938"
 
     // 与 1.20.1 整合包一致的运行时模组(curse maven,dev 重映射后加载)
     modImplementation "curse.maven:collective-342584:7148968"    // collective-1.20.1-8.13
     modImplementation "curse.maven:superflat-world-no-slimes-344185:6184996" // superflatworldnoslimes-1.20.1-3.5
     modImplementation "curse.maven:embeddium-908741:5681725"     // embeddium-0.3.31+mc1.20.1
     modImplementation "curse.maven:oculus-581495:6020952"        // oculus-mc1.20.1-1.8.0(curse 最新 1.20.1 版;本地 1.8.1 未上 curse)
-    // JEI(配方查看,测试环境用)
-    modImplementation "mezz.jei:jei-1.20.1-forge:15.56.0.205"
+    // JEI(配方查看,测试环境用):2026-09-17 起按统一口径改走 Curse Maven
+    // (原 `mezz.jei:jei-1.20.1-forge:15.56.0.205` 走官方 maven;CF 文件 8778011 = `jei-1.20.1-forge-15.56.0.205.jar`,1778129 字节)
+    modImplementation "curse.maven:jei-238222:8778011"
 
     // Mixin:编译期注解类 + **注解处理器(生成 refmap)**。
     // ⚠️ 2026-09-16 生产事故校正(必须理解,**禁止再删**):
