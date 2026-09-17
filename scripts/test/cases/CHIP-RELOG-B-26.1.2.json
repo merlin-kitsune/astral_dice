@@ -9,7 +9,7 @@
   "steps": [
     {
       "op": "note",
-      "text": "两阶段用例的验证阶段(前置 CHIP-RELOG-A-26.1.2 已完成装骰子 + 放筹码 + saveall，随后由 mt.ps1 stop + mt_launch 重登)。本阶段只读不写：readstate 报 chipSlots / chipCosmetic / chipItem。判据：① chipSlots 与 chipCosmetic **相等**(Curios 15 的 stacks 与 cosmetic 尺寸失配会在 tick 与登录两条路径崩服，见 docs/compat-26.1.2-neoforge.md §7.3)；② 筹码物品仍在槽内(chipItem)。⚠️【已知未解决缺陷】② 目前在 26.1.2 上**必失败**：合法筹码(已验证 astral_dice:flashlight_chip 在 curios:chip 标签内)重登后会被 Curios 的登录迁移搬出到玩家背包(chipItem=none；物品不丢、槽位数仍正确)。已排除标签合法性、chip 槽数据包尺寸 0/1、修饰符 transient/permanent、本模组代码弹出(无日志)。证据见 §7.6；**本条目保持红色即代表该缺陷仍存在**。⚠️ 测试注意：探针 `equipslot` 直接写栏位、绕过校验，必须用 `curios:chip` 标签内的物品(用 `astral_dice:blank_chip` 这类材料会制造假缺陷)。"
+      "text": "两阶段用例的验证阶段(前置 CHIP-RELOG-A-26.1.2 已完成装骰子 + 放筹码 + saveall，随后由 mt.ps1 stop + mt_launch 重登)。本阶段只读不写：readstate 报 chipSlots / chipCosmetic / chipItem。判据：① chipSlots 与 chipCosmetic **相等**(Curios 15 的 stacks 与 cosmetic 尺寸失配会在 tick 与登录两条路径崩服，见 docs/compat-26.1.2-neoforge.md §7.3)；② 筹码物品仍在槽内(chipItem)。⚠️【缺陷已定位，修法待裁决】② 目前在 26.1.2 上**必失败**：Curios 15 的登录迁移 `CurioInventory#loadInventoryConfiguration()` 的搬移循环上界取的是「**数据包原始尺寸**」——`getSlots()` 在 `setDataLoaded()`(方法末尾才调用)之前不触发 `update()`，因此与我们经修饰符给出的运行时尺寸无关；本模组 chip 槽数据包写死 `size:0` ⇒ 上界为 0 ⇒ 一次都不搬，旧内容全部进 `invalidStacks` 并交还玩家背包(物品不丢；实测落在主物品栏，`groundChips=[]`、`offhand=empty`)。插桩读数(AP_CURIOTRACE)另证迁移期间**只对 dice 调用过校验、chip 一次都没有**，故与标签/校验器无关。同源副作用：`size_shift` 让登录瞬间筹码栏变 4 格(几 tick 后由 Curios 自己清掉回到 2)；此外本模组 `curioTick` 在迁移当拍会把目标读成 0 而防御式收缩到 0，是**第二条独立弹出路径**。全文见 §7.6 与 AGENTS.md；**本条目保持红色即代表该缺陷仍存在**。⚠️ 测试注意：探针 `equipslot` 直接写栏位、绕过校验，必须用 `curios:chip` 标签内的物品(用 `astral_dice:blank_chip` 这类材料会制造假缺陷)。"
     },
     {
       "op": "inject_command",

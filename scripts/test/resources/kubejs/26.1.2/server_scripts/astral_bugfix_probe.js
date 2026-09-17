@@ -4062,6 +4062,62 @@ function doSaveAll(ctx, tag) {
     return 1;
 }
 
+/**
+ * 玩家物品栏 + 饰品槽全量读数(2026-09-17 新增,诊断「重登后筹码去哪了」)。
+ *
+ *   `AP_<tag>_INV:main=[0:astral_dice:flashlight_chipx1,...]:offhand=…:armor=…`
+ *   `AP_<tag>_CURIO:chipSlots=n:chip=[0:…,1:…]:dice=[0:…]`
+ *
+ * 为什么需要它:`readstate` 只报「筹码槽 0 号位」,无法回答 Curios 的登录迁移把筹码
+ * **交还到背包**了、**掉在地上**了、还是**被销毁**了 —— 而这三者的严重级别完全不同。
+ * 只读,不改变任何状态。
+ */
+function doInventoryDump(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var inv = p.getInventory();
+    var main = [];
+    var size = 0;
+    try { size = inv.getContainerSize(); } catch (e) { size = 0; }
+    for (var i = 0; i < size; i++) {
+        try {
+            var st = inv.getItem(i);
+            if (st != null && !st.isEmpty()) {
+                main.push(i + ":" + ("" + BuiltInRegistries.ITEM.getKey(st.getItem())) + "x" + st.getCount());
+            }
+        } catch (e) { }
+    }
+    var offhand = "empty";
+    try {
+        var oh = p.getOffhandItem();
+        if (oh != null && !oh.isEmpty()) offhand = ("" + BuiltInRegistries.ITEM.getKey(oh.getItem())) + "x" + oh.getCount();
+    } catch (e) { }
+    send(ctx, "AP_" + tag + "_INV:size=" + size + ":main=[" + main.join(",") + "]:offhand=" + offhand);
+
+    var chipSlots = -1, chip = [], dice = [];
+    try {
+        var ch = curioHandler(p, "chip");
+        if (ch != null) {
+            chipSlots = ch.getStacks().getSlots();
+            for (var j = 0; j < chipSlots; j++) {
+                var s = ch.getStacks().getStackInSlot(j);
+                if (s != null && !s.isEmpty()) chip.push(j + ":" + ("" + BuiltInRegistries.ITEM.getKey(s.getItem())) + "x" + s.getCount());
+            }
+        }
+    } catch (e) { }
+    try {
+        var dh = curioHandler(p, "dice");
+        if (dh != null) {
+            for (var k = 0; k < dh.getStacks().getSlots(); k++) {
+                var d = dh.getStacks().getStackInSlot(k);
+                if (d != null && !d.isEmpty()) dice.push(k + ":" + ("" + BuiltInRegistries.ITEM.getKey(d.getItem())) + "x" + d.getCount());
+            }
+        }
+    } catch (e) { }
+    send(ctx, "AP_" + tag + "_CURIO:chipSlots=" + chipSlots + ":chip=[" + chip.join(",") + "]:dice=[" + dice.join(",") + "]");
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
 var RECIPE_CHECK_IDS = [
     // 手写配方(2026-09-17 由 1.21.1 的 {"item":…}/{"tag":…} 改成 26.1 字符串形式)
     "astral_dice:golden_dice", "astral_dice:glass_dice", "astral_dice:netherrack_dice",
@@ -4518,6 +4574,11 @@ ServerEvents.commandRegistry(event => {
                 .then(Commands.argument("tag", StringArg.word())
                     .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
                         return doSaveAll(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("invdump")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doInventoryDump(ctx, StringArg.getString(ctx, "tag"));
                     }))))
             .then(Commands.literal("recipecheck")
                 .then(Commands.argument("tag", StringArg.word())

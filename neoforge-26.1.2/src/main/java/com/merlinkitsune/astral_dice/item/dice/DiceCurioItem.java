@@ -205,6 +205,10 @@ public class DiceCurioItem extends Item implements ICurioItem {
         handler.addPermanentModifier(new AttributeModifier(CHIP_SLOT_MODIFIER, wanted,
                 AttributeModifier.Operation.ADD_VALUE));
         handler.update();
+        // 只读打点(2026-09-17,诊断「重登掉筹码」):记录本次改写后的真实规模与修饰符集合,
+        // 用于与 Curios 登录迁移(CurioInventory#loadInventoryConfiguration)的动作区分。
+        // 插桩关闭时是空操作,不改变任何行为;实现见 debug/CurioSlotTrace。
+        com.merlinkitsune.astral_dice.debug.CurioSlotTrace.noteSlotCount("applySlotCount", handler, wanted);
     }
 
     // 玻璃骰子死亡惩罚:移除骰子本体(连同其 WEAPON_ENHANCEMENT 中已装备的全部卡牌),
