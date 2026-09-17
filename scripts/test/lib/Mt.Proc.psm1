@@ -287,7 +287,15 @@ function Start-MtProcessToFile {
             FilePath     = $FilePath
             ArgumentList = (ConvertTo-MtStartArgs -ArgumentList $argv)
             PassThru     = $true
-            NoNewWindow  = $true
+            # ⚠️ **必须新建控制台（-WindowStyle Hidden），不得用 `-NoNewWindow`**（2026-09-17 实测根因）：
+            #    「构建只要 4~5 秒，命令却几分钟不返回」的元凶不是构建，而是**进程收尾**——
+            #    `-NoNewWindow` 让子进程链（cmd → gradlew → Gradle 守护进程 / 游戏客户端）与父 pwsh
+            #    **共用同一个控制台**；长驻子进程一直持有它 ⇒ 父 pwsh 走完 `exit` 后卡在**控制台拆卸**上
+            #    （取证：脚本已打印 `MT_BUILD: OK (4s)`、进程 CPU 仅 0.44s，却存活 20+ 分钟，
+            #     且其子进程里挂着一个 `conhost.exe`；调用方走 `| Select-Object` 时永远等不到 EOF）。
+            #    隐藏窗口只作用于**控制台窗口**本身：日志仍由 `> 文件 2>&1` 落盘（抓取口径不变），
+            #    游戏窗口由 GLFW 自建、与这里无关（`mt_launch` 实测进入世界正常）。
+            WindowStyle  = 'Hidden'
         }
         if ($WorkingDirectory) { $spMerge['WorkingDirectory'] = $WorkingDirectory }
         $procM = Start-Process @spMerge
@@ -300,7 +308,8 @@ function Start-MtProcessToFile {
         RedirectStandardOutput = $LogPath
         RedirectStandardError  = "$LogPath.err"
         PassThru               = $true
-        NoNewWindow            = $true
+        # 同 `-MergeStderr` 分支：新建（隐藏）控制台，避免长驻子进程与父 pwsh 共用控制台导致收尾阻塞
+        WindowStyle            = 'Hidden'
     }
     if ($WorkingDirectory) { $sp['WorkingDirectory'] = $WorkingDirectory }
 

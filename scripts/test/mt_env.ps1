@@ -116,7 +116,9 @@ $script:RenderMods2612 = @(
 #   · 26.1.2：Sodium/Iris 由本工具链从 Modrinth Maven 下载（见上）；
 #   · 1.21.1：Sodium/Iris **由整合包复制**（`$script:NeoForgeMods`）⇒ 这里**故意为空**，
 #     只补「光影包 + Iris 配置」两件事（见 Install-MtRenderStack）；
-#   · 1.20.1：dev run 不装渲染栈（Embeddium/Oculus 的 refmap 在 mojmap 下无法解析）⇒ 光影不可用。
+#   · 1.20.1：渲染栈（Embeddium + Oculus）由 `forge-1.20.1/build.gradle` 的 `modImplementation` 提供
+#     ⇒ 本表无该键（不进 run/mods）；**光影可用**（2026-09-17 实测 `Using shaderpack: …`，
+#     仅「下载渲染模组」这一步 SKIP，光影包与 iris.properties 照常落位）。
 $script:RenderModsByVersion = @{
     '1.21.1' = @()
     '26.1.2' = $script:RenderMods2612
@@ -203,22 +205,26 @@ $script:SlimeGuard2612 = @(
 #    （`Duplicate mods:` / `Found duplicate mod`，表现为「装完反而起不来」）。
 #    ⇒ 1.20.1 的史莱姆压制**故意不在本表里**（`$script:SlimeGuardByVersion` 无该键 = 跳过安装，
 #      并在 `Install-MtSlimeGuard` 里打印来源说明）。
-#    ImmediatelyFast / FerriteCore 三条线**都**不在 build.gradle 里（已核对全部 mod 依赖），
-#    故一律由本表下载进 `run/<版本>/mods`，不会重复。
+#    ImmediatelyFast / FerriteCore：1.21.1 与 26.1.2 由本表下载进 `run/<版本>/mods`（这两条线的 dev
+#    运行能直接加载生产 jar）；**1.20.1 例外** —— 它由 `forge-1.20.1/build.gradle` 的 `modImplementation`
+#    提供（生产 SRG jar 必须经 MDG 重映射，详见该表 1.20.1 键的注释）。
 $script:PerfModsByVersion = @{
-    '1.20.1' = @(
-        # environment: client=required, server=unsupported ⇒ 纯客户端，生成世界时会被移出
-        @{ Name = 'ImmediatelyFast-Forge-1.5.5+1.20.4.jar'
-           Coord = 'maven.modrinth:immediatelyfast:rvsLEEZU'
-           Url  = 'https://api.modrinth.com/maven/maven/modrinth/immediatelyfast/rvsLEEZU/ImmediatelyFast-Forge-1.5.5%2B1.20.4.jar'
-           Sha1 = '9eacd407b7dea636d375dc47335d92f616484ea2'
-           Size = 532063 }
-        @{ Name = 'ferritecore-6.0.1-forge.jar'
-           Coord = 'maven.modrinth:ferrite-core:DG5Fn9Sz'
-           Url  = 'https://api.modrinth.com/maven/maven/modrinth/ferrite-core/DG5Fn9Sz/ferritecore-6.0.1-forge.jar'
-           Sha1 = '417fb6ce8f52abf40bd9d0390371790f9576f8ba'
-           Size = 123034 }
-    )
+    # 1.20.1 **故意为空**（2026-09-17 实测，三个独立结论）：
+    #   ① 来源限制（对**两个**模组都成立）：Modrinth/CF 提供的是**生产(SRG)字节码**的 Forge 1.20.1
+    #      jar，而 dev 环境是 Mojmap 命名 —— 手工放进 run/mods **不会被重映射**，FerriteCore 6.0.1
+    #      实测在 vanilla `Bootstrap.bootStrap` 阶段直接 `NoSuchMethodError: 'it.unimi.dsi.fastutil.
+    #      Hash$Strategy net.minecraft.Util.m_137583_()'`（`malte0811.ferritecore.fastmap.PropertyIndexer.<clinit>`）。
+    #      这与「Embeddium/Oculus 无法进 1.20.1 dev run」是同一类限制。
+    #   ② FerriteCore ⇒ **改由 build.gradle 的 `modImplementation` 提供**（MDG 解析期重映射，与
+    #      collective/superflat/JEI 同一机制），实测正常加载（`FERRITECORE_LOADED=true`）。
+    #   ③ ImmediatelyFast ⇒ **1.20.1 上无解，不是重映射问题**（2026-09-17 javap 取证的硬结论，
+    #      1.2.3 / 1.2.4 两个 1.20.1 构建 + 1.5.5+1.20.4 全部复测）：见 build.gradle 里那段注释 ——
+    #      IF 1.2.x 的 `IrisCompat.init()` 只认 **Iris 1.6 的包名** `net.coderbot.iris.*`，而 1.20.1 的
+    #      光影加载器 Oculus 1.8.0 基于 Iris 1.7+（包名 `net.irisshaders.iris`）⇒ 它在**模组构造期**
+    #      `ClassNotFoundException` 直接终止客户端（`runClient` exit -1）。两个 User 硬性要求
+    #      （「光影包默认启用」与「装 ImmediatelyFast」）在 1.20.1 上互斥，当前取舍 = 保光影。
+    #   ⇒ 本表 1.20.1 为空；该函数在该版本只做「跳过下载 + 清理 run/mods 里的历史副本」。
+    '1.20.1' = @()
     '1.21.1' = @(
         @{ Name = 'ImmediatelyFast-NeoForge-1.6.14+1.21.1.jar'
            Coord = 'maven.modrinth:immediatelyfast:OUpXxw4n'
@@ -996,15 +1002,34 @@ function Install-MtPerfMods {
     .NOTES
         用户要求（2026-09-17）：「所有测试环境增加 ImmediatelyFast、FerriteCore 模组，用于优化模组
         兼容性测试」（26.1.2 侧此前已装 ImmediatelyFast + ModernFix，本轮补 FerriteCore）。
-        **三条线都装**（1.20.1 / 1.21.1 / 26.1.2），清单与来源见 `$script:PerfModsByVersion`；
-        侧别差异：ImmediatelyFast 纯客户端（生成世界时移出）、FerriteCore 与 ModernFix 两侧皆可（保留）。
-        三个 jar 均**不在**任何 `build.gradle` 的依赖里 ⇒ 放进 run/mods 不会造成重复模组。
+        清单与来源见 `$script:PerfModsByVersion`；侧别差异：ImmediatelyFast 纯客户端（生成世界时移出）、
+        FerriteCore 与 ModernFix 两侧皆可（保留）。
+        ⚠️ **1.20.1 例外（本表该版本为空数组）**：FerriteCore 由 `forge-1.20.1/build.gradle` 的
+        `modImplementation` 提供（生产 SRG jar 必须在 MDG 解析期重映射，手工放 run/mods 会
+        `NoSuchMethodError … Util.m_137583_()`）；**ImmediatelyFast 在 1.20.1 上装不了**（IF 1.2.x 只认
+        Iris 1.6 的 `net.coderbot.iris` 包名，与 Oculus 1.8 = Iris 1.7+ 冲突，模组构造期即
+        `ClassNotFoundException` 终止客户端）⇒ 本函数对该版本只**清理历史副本**并回显来源，不下载。
     #>
     [CmdletBinding()]
     param([Parameter(Mandatory)][psobject]$Paths)
 
     $specs = $script:PerfModsByVersion[$Paths.version]
-    if (-not $specs) { return 0 }
+    if (-not $specs -or @($specs).Count -eq 0) {
+        if ($Paths.version -eq '1.20.1') {
+            Write-MtLine 'MT_MODS: SKIP — 1.20.1 的 FerriteCore 由 build.gradle 的 modImplementation 提供（6.0.1-forge；生产 SRG jar 必须经 MDG 重映射）；ImmediatelyFast 在 1.20.1 上无解（IF 1.2.x 只认 Iris 1.6 包名，与 Oculus 1.8 冲突，见 build.gradle 注释）'
+            # 清理历史上被本函数下载进来的副本：classpath 上已由 Gradle 提供同一模组，
+            # run/mods 再放一份会被 FML 判「重复模组」而拒绝启动。
+            if (Test-Path -LiteralPath $Paths.mods_dir -PathType Container) {
+                foreach ($pat in @('immediatelyfast-*', 'ferritecore-*')) {
+                    foreach ($f in @(Get-ChildItem -LiteralPath $Paths.mods_dir -File -Filter $pat -ErrorAction SilentlyContinue)) {
+                        Remove-Item -LiteralPath $f.FullName -Force -ErrorAction SilentlyContinue
+                        if (-not (Test-Path -LiteralPath $f.FullName)) { Write-MtLine ("MT_MODS: 清理历史副本 {0}（改为 Gradle modImplementation 提供）" -f $f.Name) }
+                    }
+                }
+            }
+        }
+        return 0
+    }
 
     $cache = Join-Path (Join-Path (Get-MtRoot) 'temp\probe_mods') $Paths.version
     [void](New-Item -ItemType Directory -Force -Path $cache)
@@ -1057,6 +1082,26 @@ function Install-MtSlimeGuard {
     return 0
 }
 
+function Get-MtIrisConfigFile {
+    <#
+    .SYNOPSIS
+        返回该线**光影加载器实际读写**的配置文件路径（1.20.1 = Oculus，其余 = Iris）。
+
+    .NOTES
+        2026-09-17 实测（必须按版本取，否则写了个没人读的文件）：
+          · 1.21.1 / 26.1.2 用 Iris ⇒ `run/<V>/config/iris.properties`；
+          · **1.20.1 的加载器是 Oculus（Iris 的 Forge 移植），它读写的是 `config/oculus.properties`** ——
+            实测 `run/1.20.1/config/` 下只有 `oculus.properties`（内含 `shaderPack=…` + `enableShaders=true`），
+            **没有** `iris.properties`；旧代码一律写 `iris.properties` ⇒ 1.20.1 的「默认启用光影」
+            其实只是被 Oculus 自身默认值兜住，并没有被工具链真正设定过。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][psobject]$Paths)
+
+    $name = if ($Paths.version -eq '1.20.1') { 'oculus.properties' } else { 'iris.properties' }
+    return (Join-Path (Join-Path $Paths.run_dir 'config') $name)
+}
+
 function Install-MtRenderStack {
     <#
     .SYNOPSIS
@@ -1069,7 +1114,7 @@ function Install-MtRenderStack {
         · mods 落位 `run/<版本>/mods`；光影包落位 `run/<版本>/shaderpacks/`；
         · 缓存在 `temp/probe_mods/<版本>/`（与探针运行时同一缓存目录，便于整体清理）；
         · 命中判据 = 目标文件存在且**尺寸一致**，下载后按固定 sha1 校验，失败硬报 14，不静默降级；
-        · 顺带把 Iris 的选中光影与开关写进 `config/iris.properties`（`shaderPack=<包名>` + `enableShaders=true`）。
+        · 顺带把光影加载器选中的光影与开关写进它的配置（`shaderPack=<包名>` + `enableShaders=true`）——**路径按版本取**：Iris 线是 `config/iris.properties`，**1.20.1 是 Oculus 的 `config/oculus.properties`**（见 Get-MtIrisConfigFile）。
 
         ⚠️ **`enableShaders` 自 2026-09-17 起默认写 true**（用户要求「添加光影包并设置默认启用」）；
         此前默认 false 只是「测试不需要光影 + 省性能」，**不是因为崩**。经用户点出并用两轮实测确认：26.1.2 上「开光影即崩 `IllegalStateException: Missing
@@ -1085,7 +1130,15 @@ function Install-MtRenderStack {
     param([Parameter(Mandatory)][psobject]$Paths)
 
     if ($Paths.version -notin @('1.21.1', '26.1.2')) {
-        Write-MtLine ("MT_MODS: SKIP — {0} 的 dev run 不装渲染栈（Embeddium/Oculus 的 refmap 在 mojmap 下无法解析）⇒ 光影同样不可用" -f $Paths.version)
+        # 1.20.1 **渲染栈本身可用**（2026-09-17 实测复验）：Embeddium 0.3.31 + Oculus 1.8.0 由
+        # `forge-1.20.1/build.gradle` 的 `modImplementation` 提供（MDG 解析期重映射，与 FerriteCore /
+        # collective / superflat 同一机制），dev run 实测 `EMBEDDIUM_LOADED=true` / `OCULUS_LOADED=true`
+        # 且进世界后打印 `Using shaderpack: ComplementaryUnbound_r5.9.3.zip`。
+        # 这里 SKIP 的只是**本函数的「下载渲染模组」一步**（生产 SRG jar 手工放进 run/mods 不会被重映射）。
+        # ⚠️ 旧文案曾写「1.20.1 不装渲染栈 ⇒ 光影不可用」——**该说法已作废**（当时的结论来自「手工放
+        # run/mods」那条错路；改走 modImplementation 后光影正常）。光影包与 iris.properties 的写入
+        # 由本函数更早的 `Install-MtRenderStack` 步骤完成，1.20.1 同样生效。
+        Write-MtLine ("MT_MODS: SKIP(下载渲染模组) — {0} 的 Embeddium/Oculus 由 forge-1.20.1/build.gradle 的 modImplementation 提供（生产 SRG jar 必须经 MDG 重映射）；光影包与 iris.properties 已在前面落位，1.20.1 光影**可用**" -f $Paths.version)
         return 0
     }
 
@@ -1138,11 +1191,12 @@ function Install-MtRenderStack {
             Copy-Item -LiteralPath $spCache -Destination $spDst -Force
         }
 
-        # 3) Iris 配置：选中该光影**并默认启用**（Iris 的 config/iris.properties）
+        # 3) 光影加载器配置：选中该光影**并默认启用**（Iris 的 config/iris.properties；
+        #    **1.20.1 是 Oculus，配置文件名不同** ⇒ 一律经 Get-MtIrisConfigFile 取，别写死）
         #    2026-09-17 用户要求「添加光影包并设置默认启用」⇒ enableShaders 默认写 true。
         #    ⚠️ 需要「关光影冷启动」的用例（SHADER-VISION-26.1.2 的步骤 0）仍显式执行
         #    `mt_env.ps1 shaders --version <V> --state off` —— 那是用例自己的前置，不靠这里的默认值。
-        $irisCfg = Join-Path (Join-Path $Paths.run_dir 'config') 'iris.properties'
+        $irisCfg = Get-MtIrisConfigFile -Paths $Paths
         [void](New-Item -ItemType Directory -Force -Path (Split-Path $irisCfg))
         $lines = @()
         if (Test-Path -LiteralPath $irisCfg -PathType Leaf) { $lines = @(Get-Content -LiteralPath $irisCfg) }
@@ -1157,8 +1211,8 @@ function Install-MtRenderStack {
         Set-Content -LiteralPath $irisCfg -Value $lines -Encoding utf8
 
         $modsText = if ($installed.Count -gt 0) { $installed -join ' / ' } else { '（渲染模组由整合包复制，见 NeoForgeMods）' }
-        Write-MtLine ("MT_MODS: OK — 渲染栈就位（{0}）＋ 光影 {1}；Iris 已选中该光影并默认启用（enableShaders=true）" -f `
-                $modsText, $sp.Name)
+        Write-MtLine ("MT_MODS: OK — 渲染栈就位（{0}）＋ 光影 {1}；光影加载器已选中该光影并默认启用（enableShaders=true @ {2}）" -f `
+                $modsText, $sp.Name, (Split-Path -Leaf $irisCfg))
         return 0
     } finally {
         $ProgressPreference = $progressBak
@@ -1168,12 +1222,12 @@ function Install-MtRenderStack {
 function Invoke-MtEnvShaders {
     <#
     .SYNOPSIS
-        读写 `config/iris.properties` 的 `enableShaders`（`--state off|on|status`），**不触碰 mods/缓存、不联网**。
+        读写光影加载器配置的 `enableShaders`（`--state off|on|status`），**不触碰 mods/缓存、不联网**。路径按版本取：Iris 线 = `config/iris.properties`，1.20.1 = Oculus 的 `config/oculus.properties`（Get-MtIrisConfigFile）。
 
     .NOTES
         为什么需要它（2026-09-17 实测踩坑）：`Install-MtRenderStack` 只在 `mt_env mods` 时把
         `enableShaders` 写回 false；而**游戏内的光影开关会持久化该键**（Iris 的 K 键
-        `iris.keybind.toggleShaders` 与光影界面 Apply 都会写 `config/iris.properties`）。
+        `iris.keybind.toggleShaders` 与光影界面 Apply 都会写该配置文件（1.20.1 上 Oculus 写的是 `oculus.properties`））。
         于是一次「光影开启」验证跑完（客户端按 K 打开光影）会把该键留在 `true`，
         **下一次冷启动会在进入世界的第一帧就崩**（launch 阶段报
         `MT_LAUNCH: ERROR — 进入世界后立即崩溃`）——这是真实的现场，但会让后续任何用例
@@ -1188,7 +1242,7 @@ function Invoke-MtEnvShaders {
     param([Parameter(Mandatory)][string]$Version, [string]$State = 'status')
 
     $Paths = Get-MtPaths -Version $Version
-    $irisCfg = Join-Path (Join-Path $Paths.run_dir 'config') 'iris.properties'
+    $irisCfg = Get-MtIrisConfigFile -Paths $Paths
     if (-not (Test-Path -LiteralPath $irisCfg -PathType Leaf)) {
         Write-MtBlocked 'shaders' ("未找到 {0}（先跑 mt_env.ps1 mods --version {1}）" -f $irisCfg, $Version)
         return $MT_EXIT_BLOCKED
@@ -1268,7 +1322,7 @@ function Invoke-MtEnvMods {
         if ($rc -ne 0) { return $rc }
         $rc = Install-MtPerfMods -Paths $p
         if ($rc -ne 0) { return $rc }
-        Write-MtLine 'MT_MODS: OK — 1.20.1 dev run 不使用渲染模组；生产环境已校验'
+        Write-MtLine 'MT_MODS: OK — 1.20.1 渲染栈（Embeddium/Oculus）与 FerriteCore 由 build.gradle 的 modImplementation 提供、光影包与光影加载器配置已落位（2026-09-17 实测：EMBEDDIUM_LOADED/OCULUS_LOADED=true + `Using shaderpack: ComplementaryUnbound_r5.9.3.zip`）；生产环境目录已校验'
         [void](Invoke-MtPauseLockEnforce -Paths $p)
         return 0
     }
@@ -1310,7 +1364,7 @@ function Invoke-MtEnvMods {
     $rc = Install-MtPerfMods -Paths $p
     if ($rc -ne 0) { return $rc }
     # 光影包 + Iris 默认启用（2026-09-17 用户要求「游戏环境缺少光影包，添加光影包并设置默认启用」）。
-    # 1.21.1 的 Sodium/Iris 由上面的整合包复制提供，本调用只补「光影包 + config/iris.properties」。
+    # 1.21.1 的 Sodium/Iris 由上面的整合包复制提供，本调用只补「光影包 + 光影加载器配置（iris.properties / 1.20.1 为 oculus.properties）」。
     $rc = Install-MtRenderStack -Paths $p
     if ($rc -ne 0) { return $rc }
     Write-MtLine 'MT_MODS: 提示 — ImmediatelyFast 为纯客户端：`mt_env world` 起专用服务器会自动移出；FerriteCore 两侧皆可，保留'
@@ -1387,7 +1441,7 @@ function Invoke-MtEnvDebug {
         **测试环境开关**的统一入口（只读写 run 目录里的配置，不联网、不碰 mods）：
           · `--pause-lock on`  → `options.txt` `pauseOnLostFocus:false`（**默认期望值**：禁止失焦弹 ESC 菜单）
             `--pause-lock off` → 写回 true（对照实验用；会明确 WARN，因为之后注入/截图可能失效）
-          · `--shaders on|off|status` → 透传到 `Invoke-MtEnvShaders`（config/iris.properties）
+          · `--shaders on|off|status` → 透传到 `Invoke-MtEnvShaders`（路径按版本取：Iris 线 = config/iris.properties，1.20.1 = Oculus 的 config/oculus.properties）
         不带任何开关时只**回显当前状态**（等效于两个都 status）。
 
     .NOTES
@@ -1427,10 +1481,10 @@ function Invoke-MtEnvDebug {
         $src = Invoke-MtEnvShaders -Version $Version -State $Shaders
         if ($src -ne $MT_EXIT_PASS) { $rc = $src }
     } else {
-        # 只读状态：**不**调用 Invoke-MtEnvShaders —— 缺 iris.properties 时它会打一条
-        # BLOCKED 噪音（而 1.20.1 这条线本来就不装渲染栈、永远没有该文件）。直接读键。
-        $irisCfg = Join-Path (Join-Path (Get-MtPaths -Version $Version).run_dir 'config') 'iris.properties'
-        $shadersText = 'n/a(该线不装渲染栈或无 iris.properties)'
+        # 只读状态：**不**调用 Invoke-MtEnvShaders —— 缺配置文件时它会打一条
+        # BLOCKED 噪音。直接读键，路径按版本取（1.20.1 = Oculus 的 oculus.properties）。
+        $irisCfg = Get-MtIrisConfigFile -Paths $Paths
+        $shadersText = 'n/a(该线无光影加载器配置)'
         if (Test-Path -LiteralPath $irisCfg -PathType Leaf) {
             $irisLines = @(Get-Content -LiteralPath $irisCfg)
             $cur = '(未设置)'; $pack = '(未设置)'
