@@ -412,7 +412,8 @@ if ($MyInvocation.InvocationName -ne '.') {
     }
 
     # 就绪标记可能「先满足、后崩溃」（2026-09-17 实测）：26.1.2 开启光影时客户端在
-    # 世界渲染首帧崩 `Missing sampler Sampler1`，而 `logged in with entity id` 早已写入日志
+    # 世界渲染首帧崩 `Missing sampler Sampler1`（2026-09-17 复现；**同日已定性为 Sodium 0.9.2 引起**：
+    # 降到整合包同款 0.9.1 后光影正常，见 mt_env 的 Install-MtRenderStack .NOTES），而 `logged in with entity id` 早已写入日志
     # ⇒ 若不在标记满足后再查一次崩溃报告，就会带着「已就绪」的假象继续搬窗口/注入，
     # 下游只会报出一串与真因无关的「客户端未在运行 / 注入失败」。
     $postCrashes = @()

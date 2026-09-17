@@ -70,7 +70,7 @@ $script:KubejsTinyJavaServerVersion = '1.0.0-build.45'
 # ── 26.1.2 渲染栈（Sodium + Iris）与光影（2026-09-17 用户要求：光影兼容性测试）──
 # 来源一律走 **Modrinth Maven**（`https://api.modrinth.com/maven`，本子项目 build.gradle 第 40 行已声明该仓库，
 # 与 Curios 同源），**不使用** CDN/GitHub 直链。Maven 坐标为 `maven.modrinth:<slug>:<version>`：
-#   maven.modrinth:sodium:mc26.1.2-0.9.2-neoforge
+#   maven.modrinth:sodium:mc26.1.2-0.9.1-neoforge
 #   maven.modrinth:iris:1.11.4+26.1-neoforge          ← 硬依赖 Sodium（required），必须同装
 #   maven.modrinth:complementary-unbound:r5.9.3       ← 光影包同样由 Modrinth Maven 提供（已验证 200）
 # 落地方式仍是「下载进 run/26.1.2/mods 与 shaderpacks/」而不是写进 build.gradle 依赖，理由与 KubeJS 相同：
@@ -80,17 +80,25 @@ $script:KubejsTinyJavaServerVersion = '1.0.0-build.45'
 # ⚠️ 这些是纯客户端模组：`mt_env world` 起专用服务器前必须移出（Invoke-MtEnvWorld 已覆盖 sodium/iris），
 #   两段式数据生成前也必须移出。
 $script:RenderMods2612 = @(
-    @{ Name = 'sodium-neoforge-0.9.2+mc26.1.2.jar'
-       Coord = 'maven.modrinth:sodium:mc26.1.2-0.9.2-neoforge'
-       Url  = 'https://api.modrinth.com/maven/maven/modrinth/sodium/mc26.1.2-0.9.2-neoforge/sodium-neoforge-0.9.2+mc26.1.2.jar'
-       Sha1 = 'e03e21bf6553fc517241d59c2c116b8e5cc882f8'
-       Size = 1260562 }
+    @{ Name = 'sodium-neoforge-0.9.1+mc26.1.2.jar'
+       Coord = 'maven.modrinth:sodium:mc26.1.2-0.9.1-neoforge'
+       Url  = 'https://api.modrinth.com/maven/maven/modrinth/sodium/mc26.1.2-0.9.1-neoforge/sodium-neoforge-0.9.1+mc26.1.2.jar'
+       Sha1 = 'f369407251bdeb3b91d3e67fbbc133263b0c9078'
+       Size = 1185970 }
     @{ Name = 'iris-neoforge-1.11.4+mc26.1.2.jar'
        Coord = 'maven.modrinth:iris:1.11.4+26.1-neoforge'
        Url  = 'https://api.modrinth.com/maven/maven/modrinth/iris/1.11.4+26.1-neoforge/iris-neoforge-1.11.4+mc26.1.2.jar'
        Sha1 = '15ac52fe7b35c66bb799f0f13021f549bf302c3c'
        Size = 2756643 }
 )
+
+# 渲染栈的「旧版本清理」前缀：安装后把 run/<版本>/mods 里**不属于本次规格**的同族 jar 删掉。
+# 为什么必须有（2026-09-17 用户要求把 Sodium 降到 0.9.1 时暴露）：`Install-MtRemoteMod` 只负责
+# 「放新文件」，不做「删旧文件」⇒ 换版本后 0.9.2 与 0.9.1 会**同时存在**，FML 直接报
+# 重复模组（`Duplicate mods:` / `Found duplicate mod …`）而拒绝启动，看起来像「新版本装坏了」。
+# 前缀写作 `sodium-`/`iris-`（注意**不带**通配符前缀），故不会误删 `reeses-sodium-options-*` 这类
+# 名字里含 sodium 但注册 id 不同的模组。
+$script:RenderModPrefixes2612 = @('sodium-', 'iris-')
 
 # ── 超平坦测试世界的「史莱姆压制」模组（2026-09-17 用户硬性要求）──────────────
 # 用户原话：「测试环境强制要求加入 Superflat world no slimes 模组，否则因为超平坦世界
@@ -785,23 +793,21 @@ function Install-MtRenderStack {
 
     .NOTES
         · 来源 = **Modrinth Maven**（`https://api.modrinth.com/maven`，坐标见 $script:RenderMods2612 / $script:ShaderPack2612
-          的 `Coord` 字段，形如 `maven.modrinth:sodium:mc26.1.2-0.9.2-neoforge`）；**不使用** CDN/GitHub 直链。
+          的 `Coord` 字段，形如 `maven.modrinth:sodium:mc26.1.2-0.9.1-neoforge`）；**不使用** CDN/GitHub 直链。
         · mods 落位 `run/26.1.2/mods`；光影包落位 `run/26.1.2/shaderpacks/`；
         · 缓存在 `temp/probe_mods/26.1.2/`（与探针运行时同一缓存目录，便于整体清理）；
         · 命中判据 = 目标文件存在且**尺寸一致**，下载后按固定 sha1 校验，失败硬报 14，不静默降级；
         · 顺带把 Iris 的选中光影写进 `config/iris.properties`（`shaderPack=<包名>`）。
 
-        ⚠️ **`enableShaders` 默认写 false（2026-09-17 实测结论）**：在本机 dev 环境下（Sodium 0.9.2 + Iris 1.11.4 +
-        MC 26.1.2）**一旦启用光影，渲染世界时必崩**：
-            java.lang.IllegalStateException: Missing sampler Sampler1
-              at com.mojang.blaze3d.opengl.GlCommandEncoder.trySetup(GlCommandEncoder.java:531)
-          崩点上的两条 mixin 分别是 sodium 的 `core.GlCommandEncoderAccessor` 与 iris 的 `MixinGlCommandEncoder`；
-        **两个互不相关的光影包（Complementary Unbound r5.9.3 与 MakeUp Ultra Fast 9.5e）复现完全相同的崩溃**，
-        而 `enableShaders=false` 时进世界、工具链（注入/探针/用例）全部正常 ⇒ 属 Iris/Sodium 侧在 26.1.2 的着色器
-        管线缺陷（上游同类 issue：IrisShaders/Iris #3182「Compatibility issues with sodium in version 26.1.2」、
-        #2719「Game crash due to missing sampler」），**与本模组无关**。
-        要做光影兼容性测试时把 `run/26.1.2/config/iris.properties` 的 `enableShaders` 改成 `true` 即可复现；
-        该文件由本函数每次 `mt_env mods` 重写为 false，避免默认环境变成「一进世界就崩」。
+        ⚠️ **`enableShaders` 默认写 false（2026-09-17 二次更正）**：默认关闭只是「测试不需要光影 + 省性能」，
+        **不是因为崩**。经用户点出并用两轮实测确认：26.1.2 上「开光影即崩 `IllegalStateException: Missing
+        sampler Sampler1`（`GlCommandEncoder.trySetup`）」的元凶是 **Sodium 0.9.2**；把它降到**整合包同款的
+        0.9.1**（本函数当前的规格）后，Iris 1.11.4 + Complementary Unbound r5.9.3 **正常工作** ——
+        `SHADER-VISION-26.1.2` 用例由 FAIL（0.9.2：`Using shaderpack:` 后立即崩 + 新增崩溃报告）转
+        **PASS**（光影渲染正常、无崩溃报告；视觉读数：原版方块云 → 光影体积云/大气散射/色调映射）。
+        更早那条「属上游无解缺陷、与版本无关」的结论**作废**（当时的对照只换了光影包、没换 Sodium 版本）。
+        ⇒ 改动 Sodium/Iris/光影包版本后**必须复跑** `SHADER-VISION-26.1.2`；换版本号时注意本函数末尾的
+        「旧版本清理」，否则新旧 Sodium 并存会被 FML 判重复模组。
     #>
     [CmdletBinding()]
     param([Parameter(Mandatory)][psobject]$Paths)
@@ -821,6 +827,18 @@ function Install-MtRenderStack {
             $rc = Install-MtRemoteMod -Paths $Paths -Spec $spec -Cache $cache -Label '渲染模组'
             if ($rc -ne 0) { return $rc }
             $installed += $spec.Name
+        }
+        # 1b) 旧版本清理：删掉同族但不在本次规格里的 jar（换了版本号以后**必须**做，
+        #     否则新旧 Sodium/Iris 同时在场 ⇒ FML 重复模组拒绝启动；见 $script:RenderModPrefixes2612 注释）。
+        foreach ($f in @(Get-ChildItem -LiteralPath $Paths.mods_dir -File -Filter '*.jar')) {
+            $isFamily = $false
+            foreach ($pre in $script:RenderModPrefixes2612) {
+                if ($f.Name.StartsWith($pre)) { $isFamily = $true; break }
+            }
+            if (-not $isFamily) { continue }
+            if ($installed -contains $f.Name) { continue }
+            Remove-Item -LiteralPath $f.FullName -Force -ErrorAction SilentlyContinue
+            Write-MtLine ("MT_MODS: 清理旧版本渲染模组 {0}" -f $f.Name)
         }
 
         # 2) 光影包 → run/<版本>/shaderpacks
@@ -860,8 +878,6 @@ function Install-MtRenderStack {
         [void](New-Item -ItemType Directory -Force -Path (Split-Path $irisCfg))
         $lines = @()
         if (Test-Path -LiteralPath $irisCfg -PathType Leaf) { $lines = @(Get-Content -LiteralPath $irisCfg) }
-        # enableShaders 固定写 false：见本函数 .NOTES —— 26.1.2 上启用光影必崩（两个包均复现），
-        # 默认环境必须可用；要复现/做光影测试请手动把该键改成 true。
         $set = @{ 'shaderPack' = $sp.Name; 'enableShaders' = 'false' }
         foreach ($k in $set.Keys) {
             $found = $false
@@ -889,7 +905,7 @@ function Invoke-MtEnvShaders {
         为什么需要它（2026-09-17 实测踩坑）：`Install-MtRenderStack` 只在 `mt_env mods` 时把
         `enableShaders` 写回 false；而**游戏内的光影开关会持久化该键**（Iris 的 K 键
         `iris.keybind.toggleShaders` 与光影界面 Apply 都会写 `config/iris.properties`）。
-        于是一次「光影开启」验证跑完（客户端按 K 后必崩）会把该键留在 `true`，
+        于是一次「光影开启」验证跑完（客户端按 K 打开光影）会把该键留在 `true`，
         **下一次冷启动会在进入世界的第一帧就崩**（launch 阶段报
         `MT_LAUNCH: ERROR — 进入世界后立即崩溃`）——这是真实的现场，但会让后续任何用例
         都跑不起来。故把「把光影状态摆回已知值」做成一条**显式、幂等、可复现**的命令：
@@ -950,7 +966,7 @@ function Invoke-MtEnvMods {
         if ($rc -ne 0) { return $rc }
         # 渲染栈 + 光影（2026-09-17 用户要求：Sodium/Iris 最新版 + Complementary Unbound，用于光影兼容性测试）。
         # 该线此前**不装**渲染模组，理由是「26.1.2 的 Iris 尚无可用的构建」——该理由已过期
-        # （实测 Modrinth 已有 sodium 0.9.2 / iris 1.11.4 的 26.1.2 release 构建）。
+        # （实测 Modrinth 已有 sodium 0.9.1 / iris 1.11.4 的 26.1.2 release 构建；0.9.1 是用户要求的、与整合包一致的版本）。
         $rc = Install-MtRenderStack -Paths $p
         if ($rc -ne 0) { return $rc }
         # 超平坦世界史莱姆压制（2026-09-17 用户硬性要求，见 $script:SlimeGuard2612 注释）
