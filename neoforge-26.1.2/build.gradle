@@ -34,6 +34,9 @@ sourceSets.main.resources {
 }
 
 repositories {
+    // 前置库 StarEngine Lib 走本地 Maven(库仓库执行 ./gradlew publishToMavenLocal 后即可解析)。
+    // 置于首位:该 group 不在任何远程仓库中,不会误命中同名远程工件。
+    mavenLocal()
     mavenCentral()
     maven { url = uri('https://maven.neoforged.net/releases') }
     // ── 模组来源硬规则(2026-09-17 用户要求)────────────────────────────────
@@ -166,6 +169,10 @@ configurations {
 }
 
 dependencies {
+    // StarEngine Lib(必须前置):效果/事件/通用组件等共享逻辑所在库。
+    // NeoForge 侧发布的是普通 Mojmap jar(NeoForge 1.20.5+ 编译与生产同为 Mojmap,无重映射),
+    // 因此用 implementation 而非 modImplementation(net.neoforged.moddev 不提供后者)。
+    implementation "${starengine_lib_group}:starengine_lib-neoforge-26.1.2:${starengine_lib_version}"
     // Curios API(必须的前置):15.0.0+26.1.2(Modrinth version id dRnRThvD)
     // 其 mods.toml 声明 neoforge [26.1.0.0,),故本模组的 curios 门槛同步升至 [15,)
     implementation 'maven.modrinth:curios:dRnRThvD'
@@ -193,6 +200,7 @@ var generateModMetadata = tasks.register("generateModMetadata", ProcessResources
             neo_version_range      : neo_version_range,
             loader_version_range   : loader_version_range,
             curios_version_range   : curios_version_range,
+            starengine_lib_version_range: starengine_lib_version_range,
             mod_id                 : mod_id,
             mod_name               : mod_name,
             mod_license            : mod_license,
@@ -252,8 +260,8 @@ def packModsDir = file('D:/.minecraft/versions/26.1.2 模组测试/mods')
 //     · 分支不在白名单 / 无法确定分支(detached HEAD/无 .git,如 CI) → 跳过,只打日志,不算失败
 //     · 传 -PdeployToPack 或 -PpackPush    → 强制推送,覆盖上述判定(手动出包用)
 //   理由:整合包是玩家手测环境,开发分支(如 `multi-dev-next` / `wt/*`)的产物会把不匹配的
-//   组合灌进测试包,表现为启动期报错或行为与源码不符。本线(26.1.2)不依赖前置库
-//   starengine_lib,故没有「库 jar 与 mod jar 成对匹配」自检(另两线有)。
+//   组合灌进测试包,表现为启动期报错或行为与源码不符。本线(26.1.2)自 2026-09-17 迁移起同样
+//   依赖前置库 starengine_lib,故与另两线一样带「库 jar 与 mod jar 成对匹配」自检(只告警)。
 //   **白名单优于黑名单**:新开的分支(含 DSH/WorkBuddy 自动建的 `wt/*` worktree 分支)
 //   默认落在"不推送"一侧,不会因为忘了把分支名登记进黑名单而误推、误删整合包里的正式 jar。
 //   需要推送时:把分支加进白名单;或单次用 -PdeployToPack 强制。
@@ -268,6 +276,7 @@ def packModsDir = file('D:/.minecraft/versions/26.1.2 模组测试/mods')
 def packPushBranches = ['multi-1.20.1-1.21.1']
 def forcePackPush = project.hasProperty('deployToPack') || project.hasProperty('packPush')
 def dotGitEntry = rootProject.file('.git')
+def libVersionLocked = project.findProperty('starengine_lib_version')?.toString()
 def jarArchiveProvider = tasks.named('jar').flatMap { it.archiveFile }
 
 tasks.register('pushToDevRun') {
@@ -361,6 +370,24 @@ tasks.register('pushToGame') {
             jarFile.withInputStream { inp -> inp.transferTo(out) }
         }
         logger.lifecycle("pushToGame: pushed ${jarFile.name} -> ${packModsDir}")
+
+        // --- 成对匹配自检:整合包内前置库 jar 必须与 mod 锁定的库版本一致 ---
+        // 迁移(2026-09-17)后本线同样依赖 starengine_lib。强推本 mod 时最容易踩的坑:库 jar 没跟着更新
+        // (或反过来),两者版本区间对不上,表现为启动期 NoClassDefFoundError / "缺必需前置"。此处只告警,不阻断构建。
+        if (libVersionLocked) {
+            def libJars = packModsDir.listFiles()?.findAll { File f ->
+                f.isFile() && f.name.startsWith('starengine_lib-') && f.name.endsWith('.jar')
+            } ?: []
+            if (libJars.isEmpty()) {
+                logger.warn("pushToGame: 整合包内没有 starengine_lib-*.jar —— 本 mod 把它声明为必需前置,缺失会导致整合包拒绝启动")
+            } else {
+                def mismatched = libJars.findAll { !it.name.contains(libVersionLocked) }
+                if (mismatched) {
+                    logger.warn("pushToGame: 整合包内的前置库 jar 与 starengine_lib_version=${libVersionLocked} 不一致: " +
+                            "${mismatched*.name} —— 请到 starengine_lib 仓库同步推送库 jar")
+                }
+            }
+        }
     }
 }
 

@@ -1,8 +1,8 @@
 package com.merlinkitsune.astral_dice.network;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
-import com.merlinkitsune.astral_dice.client.ActionBarManager;
-import com.merlinkitsune.astral_dice.client.ClientDamageNumbers;
+import com.merlinkitsune.starenginelib.client.ActionBarManager;
+import com.merlinkitsune.starenginelib.client.ClientDamageNumbers;
 import com.merlinkitsune.astral_dice.client.EnderDieTotemAnimator;
 import net.minecraft.network.chat.Component;
 import net.neoforged.bus.api.SubscribeEvent;

@@ -7,6 +7,24 @@ import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
 import java.util.Collection;
+import com.merlinkitsune.starenginelib.effect.BerserkEffect;
+import com.merlinkitsune.starenginelib.effect.CounterEffect;
+import com.merlinkitsune.starenginelib.effect.CutterReadyEffect;
+import com.merlinkitsune.starenginelib.effect.DiceBlessingEffect;
+import com.merlinkitsune.starenginelib.effect.FateGuidanceEffect;
+import com.merlinkitsune.starenginelib.effect.HealingEffect;
+import com.merlinkitsune.starenginelib.effect.InvestigationBonusEffect;
+import com.merlinkitsune.starenginelib.effect.KingPowerEffect;
+import com.merlinkitsune.starenginelib.effect.LivingPageEffect;
+import com.merlinkitsune.starenginelib.effect.MarkedEffect;
+import com.merlinkitsune.starenginelib.effect.MisakiBurstEffect;
+import com.merlinkitsune.starenginelib.effect.MosesBrokenEffect;
+import com.merlinkitsune.starenginelib.effect.NancyLuHackEffect;
+import com.merlinkitsune.starenginelib.effect.PandamanTauntEffect;
+import com.merlinkitsune.starenginelib.effect.PaparaBiteEffect;
+import com.merlinkitsune.starenginelib.effect.RevengeHalberdEffect;
+import com.merlinkitsune.starenginelib.effect.UndercoverInvestigationEffect;
+import com.merlinkitsune.starenginelib.effect.WeakMarkEffect;
 
 public class ModEffects {
     public static final DeferredRegister<MobEffect> EFFECTS =

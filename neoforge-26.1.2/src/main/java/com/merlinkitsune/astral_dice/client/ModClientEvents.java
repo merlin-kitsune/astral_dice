@@ -18,6 +18,8 @@ import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
 import org.joml.Matrix4f;
 import org.joml.Vector4f;
+import com.merlinkitsune.starenginelib.client.ActionBarManager;
+import com.merlinkitsune.starenginelib.client.ClientDamageNumbers;
 
 @EventBusSubscriber(modid = AstralDiceMod.MODID, value = Dist.CLIENT)
 public class ModClientEvents {

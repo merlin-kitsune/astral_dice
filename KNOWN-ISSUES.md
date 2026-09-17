@@ -222,6 +222,21 @@
    (b) 保留为「废弃但可用」的占位键（**现状**），仅在注释里标注废弃；
    (c) 其它（如仅在下一大版本随存档迁移一起清）。**裁决前维持现状（b）。**
 
+### KI-M5 ＝ 26.1.2 接入 starengine_lib 后的两项开放项（2026-09-17 登记）
+
+1. **三个整合包目录目前都没有 `starengine_lib-*.jar` ⇒ 迁移后把 26.1.2 产物推入整合包会被 FML 拒绝启动。**
+   26.1.2 自 2026-09-17 起接入前置库，其 `neoforge.mods.toml` 已声明 `starengine_lib` 为 `required`
+   （`versionRange="[1.0.0-SNAPSHOT.5,2.0)"`）；实测 `D:/.minecraft/versions/26.1.2 模组测试/mods`、
+   `狐の航空学 Voxy Edition/mods`（1.21.1）、`1.20.1 模组测试/mods` **三个目录都没有库 jar**，
+   而 1.21.1 / 1.20.1 两条*已接入库*的线的整合包同样缺库 jar（属既有缺口，非本次迁移引入）。
+   **待裁决**：(a) 推整合包时成对放入 `starengine_lib-<平台>-1.0.0-SNAPSHOT.5.jar`；
+   (b) 暂不推该线产物（现状）。推送守卫未改动：`multi-dev-next` 上 `pushToGame` 仍为 skipped，
+   仅 `-PdeployToPack` 可强推；`pushToGame` 已按另两线同形补**纯防御**的「库 jar 成对自检」（只告警，不阻断）。
+2. **`effect/ReadyEffect` 是本线唯一保留的本地重复类（库内已按 KI-M3 删除）。**
+   保留理由：本线的旧「待命等待器」仍在用（`ModEffects` 的三处注册 `haiqing_ready`/`bonnie_ready`/`moses_ready`），
+   而库 `.5` 已删除该符号 —— 若改为库引用会引用库中不存在的类，若删本地副本则三处注册编译失败。
+   **禁止**为它复活库中已删符号、**禁止** bump 库版本、**禁止**改 CI 的库检出 ref（均属用户已明确暂缓事项）。
+   若将来把 26.1.2 的内容迁到目标选择器（AGENTS「三线优先级」），这三处注册与本副本应随另两线一并删除。
 ## 7. 变更记录
 
 | 日期 | 变更 |
@@ -232,3 +247,4 @@
 | 2026-09-16 | 新增「测试工具链」纪律（见 `AGENTS.md` / `scripts/test/TESTING-SPEC.md` §12）：严格分层硬预算、`MT_WAIT` 心跳、进度信标 `cases/.mt_progress.json`、看门狗语义判据、探针自动同步、点火入口 `mt_fire.ps1`（根治「长驻孙进程持有调用方管道 ⇒ 命令早已结束却看起来永不返回」） |
 | 2026-09-17 | 主线 `multi-1.20.1-1.21.1`(8f68482)→ `multi-dev-next` 合并:旧「待命等待器」由目标选择器取代(见 §6 KI-M1)、三态化与选择器共存(KI-M2);登记选择器类立牌锁定保护的待修项与库侧过渡符号清理项(KI-M3) |
 | 2026-09-17 | 库侧过渡符号清理**完成**（库 `d5b0776` / `1.0.0-SNAPSHOT.5`：删 `ReadyEffect`、事件框架三件套 `AstralEventType`/`EventContext`/`EventEffect`、收集链、三个事件常量；**保留** `SKILL_WAIT_SECONDS` / `TARGET_SELECT_RADIUS` / `EVENT_APPLY_MC_TEAM|FTB|OPAC` / `collectTeamPlayers`）；消费方 2 处未使用 import 已由 `7dc64cb` 清除、三线 0 处实际使用；KNOWN-ISSUES 据此更正 **KI-M3 第 3 条**（旧「无消费方 / 未实施」结论 → 实测口径 + 已实施），并登记 **KI-M4** 两条开放项（① 库未 push ⇒ CI 钉住的 ref `d5b0776…` 在推送前必然 checkout 失败；② 消费方 `SIGN_READY_TYPE`/`SIGN_READY_EXPIRE` 废弃键去留待裁决，三线 22 处引用不得静默删除） |
+| 2026-09-17 | **26.1.2 接入 starengine_lib**：构建/元数据接线（`mavenLocal()` + `implementation` 库坐标 + 三个版本键 + `starengine_lib` required 依赖段）+ 删 26 个库已提供的本地副本并改写引用（83 处 FQN/import 就地改写、27 条同包补 import、配置缝改走 `applyConfig(GameplayConfigValues)`）；唯一保留本地副本 `effect/ReadyEffect`；旧「待命等待器」与 33 个效果注册**行为未变**；三线构建 + 模组来源闸门 + lang 同步全绿。登记 **KI-M5** 两项开放项（整合包缺库 jar、ReadyEffect 本地副本例外） |

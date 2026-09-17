@@ -1,10 +1,11 @@
 package com.merlinkitsune.astral_dice.config;
 
+import com.merlinkitsune.starenginelib.component.GameplayConfigValues;
 import net.neoforged.neoforge.common.ModConfigSpec;
 
 /**
  * 公共配置:仅保留少量仍允许玩家调整的选项。
- * 其余玩法数值已固定为 {@link com.merlinkitsune.astral_dice.component.GameplayConstants} 常量,
+ * 其余玩法数值已固定为 {@link com.merlinkitsune.starenginelib.component.GameplayConstants} 常量,
  * 不再写入配置文件。
  * <b>配置版本号规则:只有修改了配置项(增/删/改)时才 +1</b>,`CONFIG_VERSION` 是旧配置自动备份的判据。
  * v2 已用于「移除事件范围与女仆开关」;本次「移除星光上限/标记上限/效果牌公共冷却/功能效果牌叠层上限/手持风扇-大范围
@@ -48,6 +49,22 @@ public final class ModCommonConfig {
         builder.pop();
 
         SPEC = builder.build();
+    }
+
+    /**
+     * 把当前配置值打成快照,供库的 {@code GameplayConstants.applyConfig(GameplayConfigValues)} 使用。
+     *
+     * <p>调用前必须已完成配置注册({@code modContainer.registerConfig(...)}),
+     * 否则各 {@code ConfigValue#get()} 会因配置尚未加载而抛异常。
+     */
+    public static GameplayConfigValues snapshot() {
+        return new GameplayConfigValues(
+                GIVE_GUIDE_BOOK_ON_FIRST_JOIN.get(),
+                EVENT_APPLY_MC_TEAM.get(),
+                EVENT_APPLY_FTB_TEAM.get(),
+                EVENT_APPLY_OPAC.get(),
+                ACTIONBAR_DURATION_TICKS.get(),
+                ACTIONBAR_FADE_TICKS.get());
     }
 
     private ModCommonConfig() {

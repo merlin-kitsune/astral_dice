@@ -118,7 +118,7 @@ public class PandamanSignItem extends BaseSignItem {
 
     // 主动技能 ActionBar 反馈
     @SubscribeEvent
-    public static void onSignActiveTriggered(com.merlinkitsune.astral_dice.event.SignActiveTriggeredEvent event) {
+    public static void onSignActiveTriggered(com.merlinkitsune.starenginelib.event.SignActiveTriggeredEvent event) {
         if (event.getSignStack().is(ModItems.PANDAMAN_SIGN.get())) {
             sendSignActionBar(event.getPlayer(), "msg.astral_dice.pandaman_active_used");
             event.setHandled();

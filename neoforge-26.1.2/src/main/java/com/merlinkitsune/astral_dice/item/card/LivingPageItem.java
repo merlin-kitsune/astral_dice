@@ -41,8 +41,8 @@ public class LivingPageItem extends BaseEffectCardItem {
         // 本周期出牌数加成每次使用 +1(可叠加),但上限只需把出牌数推到封顶 9 即可 ——
         // 加个封顶避免无界累加(长按连发/周期长期不结算时曾可无限增长)
         int nextCycleBonus = ModAttachments.getLivingPageCycleBonus(user) + 1;
-        if (nextCycleBonus > com.merlinkitsune.astral_dice.component.GameplayConstants.MAX_EFFECT_CARD_PLAYS) {
-            nextCycleBonus = com.merlinkitsune.astral_dice.component.GameplayConstants.MAX_EFFECT_CARD_PLAYS;
+        if (nextCycleBonus > com.merlinkitsune.starenginelib.component.GameplayConstants.MAX_EFFECT_CARD_PLAYS) {
+            nextCycleBonus = com.merlinkitsune.starenginelib.component.GameplayConstants.MAX_EFFECT_CARD_PLAYS;
         }
         ModAttachments.setLivingPageCycleBonus(user, nextCycleBonus);
         // 获得活体书页效果 60 秒
