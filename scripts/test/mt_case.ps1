@@ -26,7 +26,7 @@
     python**，改为调同名 pwsh 脚本，参数名与顺序逐项对应：
 
         mt_assert.py  → mt_assert.ps1    log/absent/crash/kubejs/mixin
-        mt_inject.py  → mt_inject.ps1    key/cmd
+        mt_inject.py  → mt_inject.ps1    key/cmd（+ pwsh 侧新增 `mouse` 子命令，python 无对应）
         mt_capture.py → mt_capture.ps1   capture
 
     ## 有意为之的等价点（不是偏差，是为了逐字节一致的显式复刻）
@@ -109,6 +109,7 @@ $script:TAG_UTF8 = [System.Text.UTF8Encoding]::new($false, $false)
 # ── 封闭原语表（与 python PRIMITIVES 同键同集合）──────────────────────────
 $script:Primitives = [ordered]@{
     'inject_key'     = @('key', 'hold_ms', 'no_esc')
+    'inject_mouse'   = @('button', 'shift', 'hold_ms')
     'inject_command' = @('command', 'no_esc')
     'kubejs_reload'  = @()
     'wait'           = @('ms')
@@ -636,6 +637,23 @@ function Invoke-MtCaseOp {
         return (New-MtPair $oc (Get-MtTail -Text $text -FromTextMode))
     }
 
+    if ($op -eq 'inject_mouse') {
+        # 与 inject_key 同构：字段名沿用 python 侧 snake_case（button/shift/hold_ms），
+        # 子脚本参数按 PowerShell 拼法传（-Shift / -HoldMs，见文件头「无法 1:1 复刻之处」第 1 条）。
+        $argv = @('mouse', '--button', (ConvertTo-MtPyText (Get-MtMapValue -Map $Step -Key 'button')), '--version', $Paths.version)
+        if (Test-MtTruthyValue (Get-MtMapValue -Map $Step -Key 'shift')) {
+            $argv += '-Shift'
+        }
+        if (Test-MtTruthyValue (Get-MtMapValue -Map $Step -Key 'hold_ms')) {
+            $argv += @('-HoldMs', (ConvertTo-MtPyText (Get-MtMapValue -Map $Step -Key 'hold_ms')))
+        }
+        $r = Invoke-MtCaseChild -Script 'mt_inject.ps1' -ScriptArgs $argv
+        $text = if ($r.StdOut) { [string]$r.StdOut } else { [string]$r.StdErr }
+        # ⑥-1：子进程被超时强杀 ⇒ TIMEOUT（不是 ERROR：跑不起来；也不是 FAIL：断言不满足）
+        $oc = if ($r.TimedOut) { 'TIMEOUT' } elseif ($r.ExitCode -eq 0) { 'PASS' } else { 'ERROR' }
+        return (New-MtPair $oc (Get-MtTail -Text $text -FromTextMode))
+    }
+
     if ($op -eq 'inject_command') {
         $argv = @('cmd', '--command', (ConvertTo-MtPyText (Get-MtMapValue -Map $Step -Key 'command')), '--version', $Paths.version)
         if (Test-MtTruthyValue (Get-MtMapValue -Map $Step -Key 'no_esc')) {
@@ -875,7 +893,8 @@ function Invoke-MtCaseRun {
     Write-MtLine ''
     Write-MtLine ("--- MT_CASE: {0} — {1} ---" -f $caseId, (Get-MtMapValue -Map $case -Key 'title'))
     # ── 状态校验（2026-09-13 新增；此前完全没有，客户端崩掉后仍会刷一屏 PASS）──────────
-    # 是否需要客户端：由步骤 op 自动判定（inject_* / screenshot），SMOKE-TOOLCHAIN 之类无客户端用例不受影响。
+    # 是否需要客户端：由步骤 op 自动判定（`inject*` = inject_key / inject_mouse / inject_command
+    # 三个注入原语，通配符一并覆盖；再加 screenshot），SMOKE-TOOLCHAIN 之类无客户端用例不受影响。
     $rawSteps = @(Get-MtMapValue -Map $case -Key 'steps' -Default @())
     $needsClient = @($rawSteps | Where-Object {
             $o = [string](Get-MtMapValue -Map $_ -Key 'op')

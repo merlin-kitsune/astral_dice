@@ -23,10 +23,13 @@ mt_inject.ps1 — 游戏内输入注入（阶段 C 的执行臂）。
   mt_inject.ps1 cmd -Command "/astral_dice targetselect enemy"
   mt_inject.ps1 cmd -Command "/give @s minecraft:stone" -NoEsc
   mt_inject.ps1 cmd -Command "/give Dev x" -Layout as-is     # 排查用：不切语言
+  mt_inject.ps1 mouse -Button left                 # 窗口中心左键（目标选择器「确认」）
+  mt_inject.ps1 mouse -Button right -Shift         # 窗口中心右键 + 潜行（「自用」提示 / 取消）
+  mt_inject.ps1 mouse -Button right -HoldMs 3000   # 按住右键 3 秒（长按/自动重复类回归）
 
 ## 退出码（与 python 版一致）
 
-  0 = 注入完成；2 = 未找到窗口 / 语言未就绪 / 未知按键 / 参数错误。
+  0 = 注入完成；2 = 未找到窗口 / 语言未就绪 / 未知按键 / 非法 `--button` 值 / 参数错误。
 
 ## 与 python 版的差异（逐条）
 
@@ -54,6 +57,13 @@ mt_inject.ps1 — 游戏内输入注入（阶段 C 的执行臂）。
    `--hold-ms` / `-HoldMs` 等价，两种调用风格都能吃下。
 6. `-Hwnd` / `-DryRun` 是**上面第 2 条那两个扩展参数**（python 版没有）：
    接受 `--hwnd` / `--dry-run` 与 `-Hwnd` / `-DryRun` 两种拼写。
+7. **`mouse` 子命令是 pwsh 侧新增**（python 只有 `key` / `cmd`；鼠标此前只能经 `key` 的
+   `attack` / `rclick` / `shift-rclick` 别名触达）。它**不新造注入路径**：内部直接调
+   `Send-MtInjectMouseCenter`（与上述别名同一个函数、同一坐标口径）。`--button` 必填且
+   只接受 `left|right`（其它值 ⇒ `MT_ERROR: 非法 --button 值 …` + rc=2，在定位窗口**之前**
+   校验，故客户端没跑也能得到可读报错）；`--shift` 与 `--hold-ms` 与 `key` 子命令同义。
+   `--version` / `--hwnd` / `--layout` 与 `key` 子命令同形，输出行前缀为 `MT_INJECT_MOUSE:`
+   （与 `MT_INJECT_KEY:` / `MT_INJECT_CMD:` 同一族）。
 #>
 
 $ErrorActionPreference = 'Stop'
@@ -90,9 +100,12 @@ for ($i = 1; $i -le 9; $i++) {
 }
 
 # 语义键 → 实际按键
+# 2026-09-17：删除 `'confirm' = 'enter'`（全仓 grep 确认无任何用例/脚本引用该别名）——
+# 「确认」在目标选择器语义下改为**鼠标左键**（走 `mouse --button left`），不再用 Enter；
+# 确需 Enter 的场合直接写 `-Key enter` 即可（上面扫描码表里 enter 一直在）。
 $script:KeyAlias = @{
     'chat' = 't'; 'skill' = 'j'; 'cancel' = 'escape'
-    'confirm' = 'enter'; 'screenshot' = 'f2'
+    'screenshot' = 'f2'
     'debug' = 'f3'; 'inventory' = 'e'; 'card' = 'h'
     # 光影（Iris）语义键：开关 / 光影选择界面 / 重载光影
     'shadertoggle' = 'k'; 'shaderscreen' = 'o'; 'shaderreload' = 'r'
@@ -436,6 +449,57 @@ function Invoke-MtInjectKeyCommand {
     return 0
 }
 
+function Invoke-MtInjectMouseCommand {
+    <#
+    .SYNOPSIS
+        `mouse` 子命令：在窗口中心投递一次鼠标按键（左键 / 右键[+潜行]）。
+
+    .NOTES
+        为什么需要：目标选择器的按键语义里「确认」= **左键**、「自用/取消」= **右键**
+        （或右键 + 潜行），而此前的 `key` 子命令只有 `attack` / `rclick` / `shift-rclick`
+        三个语义别名 —— 没有可读的「左键」写法，也没有独立的鼠标入口。本函数把
+        `Send-MtInjectMouseCenter` 暴露成子命令，**不新造第二条注入路径**（同一函数、
+        同一坐标口径、同一 sendinput/postmessage 分支）。
+
+        `--button` 在**定位窗口之前**校验：客户端未运行 / 未启动时，非法值仍给出可读的
+        `MT_ERROR: 非法 --button 值 <x>（可选：left right）` + rc=2，而不是被
+        「客户端未在运行」掩盖掉（任务自检项）。
+    #>
+    [CmdletBinding()]
+    param([string]$Button, [bool]$Shift, [int]$HoldMs, [string]$Version, [string]$Layout, [long]$Hwnd)
+
+    $b = if ($null -eq $Button) { '' } else { $Button.Trim().ToLowerInvariant() }
+    if ($b -ne 'left' -and $b -ne 'right') {
+        Write-MtErrorLine ("非法 --button 值 {0}（可选：left right）" -f $Button)
+        return 2
+    }
+
+    $hwnd = Resolve-MtInjectWindow -Hwnd $Hwnd -Version $Version
+    if (-not $hwnd) { return 2 }
+
+    if (-not $script:DryRun) {
+        $r = Get-MtInjectLayoutReady -Hwnd $hwnd -Layout $Layout
+        $tag = if ($r.Ok) { 'OK' } else { 'FAIL' }
+        Write-MtInjectLine ('MT_INJECT_LAYOUT: {0} — {1}' -f $tag, $r.Message)
+        if (-not $r.Ok) {
+            Write-MtErrLine ('MT_INJECT: ERROR — 输入语言未就绪，拒绝注入（{0}）' -f $r.Message)
+            return 2
+        }
+        if (-not (Assert-MtInjectForeground -Hwnd $hwnd)) {
+            Write-MtInjectLine 'MT_INJECT_FOCUS: FAIL — 目标窗口无法置前台，鼠标会被游戏忽略'
+            Write-MtErrLine 'MT_INJECT: ERROR — 目标窗口未取得前台，拒绝注入（失焦时 GLFW 会丢弃按键）'
+            return 2
+        }
+        Write-MtInjectLine 'MT_INJECT_FOCUS: OK'
+    }
+
+    Send-MtInjectMouseCenter -Hwnd $hwnd -Right ($b -eq 'right') -Shift $Shift -HoldMs $HoldMs
+    $shiftTag = if ($Shift) { ' +shift' } else { '' }
+    $held = if ($HoldMs -gt 0) { " 按住 ${HoldMs}ms" } else { '' }
+    Write-MtInjectLine ('MT_INJECT_MOUSE: {0}{1} (窗口中心){2}' -f $b, $shiftTag, $held)
+    return 0
+}
+
 function Invoke-MtInjectCmdCommand {
     [CmdletBinding()]
     param([string]$Command, [bool]$NoEsc, [string]$Version, [string]$Layout, [long]$Hwnd)
@@ -569,6 +633,8 @@ function ConvertTo-MtArgLong {
 
 $Mode = ''
 $Key = ''
+$Button = ''
+$Shift = $false
 $HoldMs = 0
 $Command = ''
 $NoEsc = $false
@@ -597,6 +663,12 @@ while ($i -lt $args.Count) {
     if ($optName -eq 'key') {
         if ($i + 1 -ge $args.Count) { Write-MtErrorLine '缺少 --key 的值'; exit $MT_EXIT_ERROR }
         $Key = [string]$args[$i + 1]; $i += 2
+    } elseif ($optName -eq 'button') {
+        if ($i + 1 -ge $args.Count) { Write-MtErrorLine '缺少 --button 的值'; exit $MT_EXIT_ERROR }
+        $Button = [string]$args[$i + 1]; $i += 2
+    } elseif ($optName -eq 'shift') {
+        # 标志位（与 --no-esc / --esc-normalize 同形）：只对 mouse 子命令有意义
+        $Shift = $true; $i++
     } elseif ($optName -eq 'command') {
         if ($i + 1 -ge $args.Count) { Write-MtErrorLine '缺少 --command 的值'; exit $MT_EXIT_ERROR }
         $Command = [string]$args[$i + 1]; $i += 2
@@ -663,11 +735,21 @@ switch ($modeName) {
         }
         $rc = Invoke-MtInjectCmdCommand -Command $Command -NoEsc ([bool]$NoEsc) -Version $Version -Layout $Layout -Hwnd $Hwnd
     }
+    'mouse' {
+        if (-not $Button) {
+            Write-MtErrorLine '缺少必填参数 --button（可选：left right）'
+            exit $MT_EXIT_ERROR
+        }
+        # --button 的取值校验放在 Invoke-MtInjectMouseCommand 首行（早于窗口定位），
+        # 这样客户端未运行时也能得到「非法 --button 值」而不是「客户端未在运行」。
+        $rc = Invoke-MtInjectMouseCommand -Button $Button -Shift ([bool]$Shift) -HoldMs $HoldMs `
+            -Version $Version -Layout $Layout -Hwnd $Hwnd
+    }
     default {
         if (-not $modeName) {
-            Write-MtErrorLine '缺少子命令（可选：key cmd）'
+            Write-MtErrorLine '缺少子命令（可选：key cmd mouse）'
         } else {
-            Write-MtErrorLine ("未知子命令 {0}（可选：key cmd）" -f $modeName)
+            Write-MtErrorLine ("未知子命令 {0}（可选：key cmd mouse）" -f $modeName)
         }
         exit $MT_EXIT_ERROR
     }
