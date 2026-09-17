@@ -6,7 +6,11 @@
 
 ## Unreleased (2.0.0-SNAPSHOT.10)
 
-<!-- To record: entries for 2.0.0-SNAPSHOT.10 start here (any change made after the version bump goes into this section). -->
+### New Content
+
+#### Signs & Skills
+- **Target selection now uses "Super Glue"-style controls: left click confirms, right click reports that a skill cannot be self-cast, right click + sneak cancels**: with a target selected - **left click = confirm** (if the crosshair is not on a legal target you only get a "no valid target" message and nothing is submitted); **right click = use on yourself**, and since no skill in this mod can be self-cast you only get a one-line "this skill cannot be used on yourself" message - the selection is **not** submitted and the session stays open so you can keep aiming at something else; **right click + sneak = cancel**; **Esc** still opens the vanilla pause menu, which cancels the selection as soon as it opens; **J** (the active skill key) still cancels at any time. At the same time the **Enter confirm key** and the old behaviour of "swallowing keyboard input while selecting" are gone - movement, F3, the inventory, chat and other mods' keys all work normally while selecting; only the left/right mouse buttons and the scroll wheel are taken over, and the command chat window still works (the automated tests rely on that channel too).
+- **The target selection box is redrawn as a translucent prism that hugs the creature's actual visible shape**: previously the border was drawn from the collision box alone, so a zombie's outstretched arms, a spider's eight legs or a horse's head and neck stuck out of it; it is now **collision box ∪ the model shape measured every frame**, plus half the line width of margin ⇒ the border **can only be slightly larger than the creature, never smaller** (model animation and baby scaling follow along). Colours and widths are unchanged: green for friendly / red for hostile / yellow for neutral, with the thickest line (1/16 block) on the target under the crosshair, a thinner one (1/24) when the crosshair is on something you cannot select, and the thinnest (1/64) for other selectable targets in range; it is still **rendered locally only** - other players cannot see your selection box in multiplayer.
 
 ## 2.0.0-SNAPSHOT.5
 
