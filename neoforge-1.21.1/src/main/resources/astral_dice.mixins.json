@@ -16,8 +16,7 @@
   "client": [
     "client.AstralUseItemGuardMixin",
     "client.EffectRenderingInventoryScreenMixin",
-    "client.GuiMixin",
-    "client.KeyboardHandlerMixin"
+    "client.GuiMixin"
   ],
   "injectors": {
     "defaultRequire": 1

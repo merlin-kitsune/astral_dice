@@ -3,9 +3,13 @@ package com.merlinkitsune.astral_dice.client;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.network.TargetSelectCancelPayload;
 import com.merlinkitsune.astral_dice.network.TargetSelectConfirmPayload;
+import com.merlinkitsune.starenginelib.client.ActionBarManager;
 import com.merlinkitsune.starenginelib.target.TargetType;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.ChatScreen;
+import net.minecraft.client.gui.screens.PauseScreen;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.OwnableEntity;
@@ -26,15 +30,31 @@ import org.lwjgl.glfw.GLFW;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+
 /**
- * 目标选择器客户端状态机（第一人称 UX）。
+ * 目标选择器客户端状态机（第一人称 UX，**Create 强力胶式按键语义**）。
  *
- * 职责：
- * - 接收服务端 {@code TargetSelectStartPayload} 进入选择模式（HUD 提示、输入接管、高亮）；
- * - 每 tick 沿准星射线（{@code player.pick(radius,...)}）计算当前有效目标（按会话 targetType 过滤）；
- * - 右键 / Enter 确认（发送 {@link TargetSelectConfirmPayload}），Esc / 再按主动技能键 / 第三方界面打开取消；
- * - 选择期间拦截鼠标操作（左键攻击、右键原使用、滚轮），键盘拦截由
- *   {@code KeyboardHandlerMixin} 完成（本类提供白名单判定 {@link #isAllowedInputKey}）。
+ * 按键口径（2026-09-17 用户裁决，“强力胶式”交互；本模组全部技能不开放自身使用）：
+ * <ul>
+ *   <li><b>左键</b> = 确认目标（发送 {@link TargetSelectConfirmPayload}）；</li>
+ *   <li><b>右键</b> = 对自身使用 —— 本模组无任何技能可对自身使用，故只弹 actionbar 提示
+ *       {@code msg.astral_dice.target_select.self_unsupported}，**不提交选择**（会话保留）；</li>
+ *   <li><b>右键 + 潜行</b> = 取消选择；</li>
+ *   <li><b>ESC</b> = 原版照常打开暂停菜单，菜单一打开（{@code ScreenEvent.Opening}）即取消选择；</li>
+ *   <li><b>J</b>（主动技能键）= 取消选择（保留）；</li>
+ *   <li>选择期间滚轮拦截、{@link ChatScreen} 豁免（命令聊天/自动化注入命令）均保留。</li>
+ * </ul>
+ *
+ * 与旧实现的差异：删除了 Enter 键盘确认键与其 10 tick 就绪门槛、键盘白名单判定，
+ * 以及客户端键盘拦截 Mixin（mixin 配置与匹配条目一并移除）—— 强力胶式语义下确认/取消全部
+ * 由鼠标（左键/右键[+潜行]）与 ESC 菜单承担，键盘不再被模组吞掉（J 仍作取消，走 KeyMapping 消费）。
+ *
+ * 提示分工：中央 HUD 只画「目标名 + 距离」一行（见 {@link TargetSelectOverlay}），其余提示
+ * 一律走 actionbar（每 tick 刷新，见 {@link #refreshActionBarPrompt}）。
  */
 @EventBusSubscriber(modid = AstralDiceMod.MODID, value = Dist.CLIENT)
 public final class TargetSelectionClient {
@@ -45,6 +65,11 @@ public final class TargetSelectionClient {
     public static final int COLOR_HOSTILE = 0xFF5555;
     public static final int COLOR_NEUTRAL = 0xFFFF55;
 
+    /** actionbar 提示刷新时长（tick）：每 tick 续期 ⇒ 会话期间提示常驻 */
+    private static final int ACTIONBAR_TICKS = 40;
+    /** 半径内其它可选目标的渲染上限（取最近的若干个） */
+    private static final int NEARBY_TARGET_LIMIT = 24;
+
     private static boolean active;
     private static int token;
     private static TargetType targetType = TargetType.LIVING;
@@ -52,33 +77,36 @@ public final class TargetSelectionClient {
     private static long expireTick;
     private static String actionId = "";
     private static LivingEntity currentTarget;
-    private static long noTargetFlashUntil;
-    // 激活后的 tick 计数:选择激活前 0.5 秒(10 tick)内忽略 Enter 键盘确认,
-    // 避免聊天命令发送的 Enter 残留 KeyMapping.click 在选择刚激活瞬间误确认(真实 UX 修复)
-    private static int activeTicks;
+    /** 准星命中但**不可选**的实体（类型不符 / 超出半径）：1/24 细边 + rejected 提示 */
+    private static LivingEntity rejectedTarget;
+    /** 半径内其它可选目标（1/64 细边，最多 {@link #NEARBY_TARGET_LIMIT} 个），每 tick 重建 */
+    private static final List<LivingEntity> nearbyTargets = new ArrayList<>();
+    /** 瞬态 actionbar 提示（优先于默认提示）；到期后恢复默认提示 */
+    private static Component transientPrompt;
+    private static long transientPromptUntil;
 
     private TargetSelectionClient() {
     }
 
-    // === 状态查询（Overlay / Mixin / KeyBindingSetup 共用） ===
+    // === 状态查询（Overlay / Highlighter / KeyBindingSetup 共用） ===
 
     public static boolean isActive() {
         Minecraft mc = Minecraft.getInstance();
         return active && mc.player != null && mc.level != null;
     }
 
-    /** 键盘确认(Enter)是否已就绪:选择激活 10 tick(0.5s)后才接受,防残留点击误确认 */
-    public static boolean isConfirmReady() {
-        return activeTicks >= 10;
-    }
-
     public static LivingEntity currentTarget() {
         return currentTarget;
     }
 
-    public static boolean noTargetFlash() {
-        Minecraft mc = Minecraft.getInstance();
-        return mc.level != null && mc.level.getGameTime() < noTargetFlashUntil;
+    /** 准星命中但不可选的实体（渲染层用它画 1/24 细边） */
+    public static LivingEntity rejectedTarget() {
+        return rejectedTarget;
+    }
+
+    /** 半径内其它可选目标（渲染层用它画 1/64 细边）；只读视图，按距离由近到远 */
+    public static List<LivingEntity> nearbyTargets() {
+        return Collections.unmodifiableList(nearbyTargets);
     }
 
     public static int highlightColor(LivingEntity target) {
@@ -102,27 +130,6 @@ public final class TargetSelectionClient {
         return false;
     }
 
-    /**
-     * 键盘白名单（由 {@code KeyboardHandlerMixin} 调用）：移动键 + 确认键 + 主动技能键 + 命令聊天键(/)放行，
-     * 其余键盘按键在选择期间全部拦截（含 F3/E/T(普通聊天)/H 与第三方模组按键）。
-     * 放行 keyCommand(/)是刻意的:选择期间允许玩家打开命令聊天(输指令/自动化测试注入命令),
-     * 普通聊天(T)与物品栏(E)等仍被拦截。
-     */
-    public static boolean isAllowedInputKey(int key, int scanCode) {
-        Minecraft mc = Minecraft.getInstance();
-        if (mc.options == null) return false;
-        return mc.options.keyUp.matches(key, scanCode)
-                || mc.options.keyDown.matches(key, scanCode)
-                || mc.options.keyLeft.matches(key, scanCode)
-                || mc.options.keyRight.matches(key, scanCode)
-                || mc.options.keyJump.matches(key, scanCode)
-                || mc.options.keyShift.matches(key, scanCode)
-                || mc.options.keySprint.matches(key, scanCode)
-                || mc.options.keyCommand.matches(key, scanCode)
-                || KeyBindingSetup.CONFIRM_TARGET_KEY.matches(key, scanCode)
-                || KeyBindingSetup.ACTIVATE_SIGN_KEY.matches(key, scanCode);
-    }
-
     // === 会话生命周期 ===
 
     /** 服务端下发选择会话开始（TargetSelectStartPayload 处理器调用，主线程） */
@@ -136,15 +143,18 @@ public final class TargetSelectionClient {
         actionId = newActionId;
         active = true;
         currentTarget = null;
-        noTargetFlashUntil = 0;
-        activeTicks = 0;
+        rejectedTarget = null;
+        nearbyTargets.clear();
+        transientPrompt = null;
+        transientPromptUntil = 0;
         // 清除遗留的左键按下状态：选择期间攻击键被接管，避免进入前长按导致持续攻击
         mc.options.keyAttack.setDown(false);
         LOGGER.debug("[Astral Dice][TargetSelectionClient] start token={} type={} radius={} expire={} action={}",
                 token, targetType, radius, expireTick, actionId);
+        refreshActionBarPrompt(mc);
     }
 
-    /** 客户端主循环 tick（由 ClientTickHandler 驱动）：射线目标更新 + 超时取消 */
+    /** 客户端主循环 tick（由 ClientTickHandler 驱动）：射线目标更新 + actionbar 提示续期 + 超时取消 */
     public static void tick() {
         if (!isActive()) return;
         Minecraft mc = Minecraft.getInstance();
@@ -153,19 +163,37 @@ public final class TargetSelectionClient {
             cancel("expired");
             return;
         }
-        activeTicks++;
         updateRaycastTarget(mc);
+        refreshActionBarPrompt(mc);
     }
 
-    /** 右键 / Enter 确认：向服务端发送确认包并退出选择模式 */
-    public static void confirm() {
+    /**
+     * 左键 = 确认目标（强力胶式语义的确认键）。
+     *
+     * <p>无有效目标时**不提交**，只弹 actionbar `no_target` 提示（等价旧实现的「没有可指定的目标」闪烁）。
+     */
+    public static void confirmByPrimaryClick() {
         if (!isActive()) return;
         if (currentTarget == null) {
-            Minecraft mc = Minecraft.getInstance();
-            noTargetFlashUntil = mc.level.getGameTime() + 40;
             LOGGER.debug("[Astral Dice][TargetSelectionClient] confirm ignored: no valid target (token={})", token);
+            logPrompt("left", "no_target");
+            showPrompt(Component.translatable("msg.astral_dice.target_select.no_target"));
             return;
         }
+        logPrompt("left", "confirm");
+        confirm();
+    }
+
+    /** 右键 = 对自身使用：本模组全部技能不开放自身使用 ⇒ 只提示，不提交选择（会话保留） */
+    public static void useOnSelfBySecondaryClick() {
+        if (!isActive()) return;
+        logPrompt("right", "self_unsupported");
+        showPrompt(Component.translatable("msg.astral_dice.target_select.self_unsupported"));
+    }
+
+    /** 确认：向服务端发送确认包并退出选择模式（调用方保证 currentTarget 有效） */
+    public static void confirm() {
+        if (!isActive() || currentTarget == null) return;
         int targetId = currentTarget.getId();
         LOGGER.debug("[Astral Dice][TargetSelectionClient] confirm sent token={} target={}({})",
                 token, targetId, currentTarget.getName().getString());
@@ -173,31 +201,79 @@ public final class TargetSelectionClient {
         deactivate();
     }
 
-    /** 取消选择（Esc 由 Mixin 转发到这里；再按主动技能键 / 第三方界面打开由事件转发） */
+    /** 取消选择（右键+潜行 / J / ESC 菜单 / 第三方界面打开时调用） */
     public static void cancel(String reason) {
         if (!isActive()) return;
         LOGGER.debug("[Astral Dice][TargetSelectionClient] cancel token={} ({})", token, reason);
         PacketDistributor.sendToServer(new TargetSelectCancelPayload(token));
         deactivate();
+        if (isUserCancel(reason)) {
+            showPrompt(Component.translatable("msg.astral_dice.target_select.cancelled"));
+        }
     }
 
-    /** Esc 专用入口（KeyboardHandlerMixin 在 keyPress HEAD 调用；取消且不打开暂停界面） */
-    public static void cancelByEscape() {
-        cancel("esc");
+    /** 用户主动取消（区别于超时/第三方界面）：给一条 `cancelled` actionbar 反馈 */
+    private static boolean isUserCancel(String reason) {
+        return "right_sneak".equals(reason) || "key".equals(reason) || "esc".equals(reason);
     }
 
     private static void deactivate() {
         active = false;
         currentTarget = null;
+        rejectedTarget = null;
+        nearbyTargets.clear();
         Minecraft mc = Minecraft.getInstance();
         if (mc.options != null) {
             mc.options.keyAttack.setDown(false);
         }
     }
 
+    // === 提示（actionbar） ===
+
+    /**
+     * 强化胶式提示：每 tick 续期一次 actionbar（`ActionBarManager.show(component, 40)`）。
+     *
+     * <p>瞬态提示（自用不可用 / 无目标 / 目标不可选 / 已取消）在窗口期内优先，避免被默认
+     * 「选择目标中」提示在同一 tick 内覆盖掉；窗口期过后自动回到默认提示。
+     *
+     * <p>注入点说明：`ActionBarManager` 正是服务端 {@code ActionBarPayload} 在客户端侧的落点
+     * （见 `network/ModPayloads` 的处理器），故本客户端提示与服务端提示渲染在同一层、同一位置，
+     * 不需要为一 tick 一次的本机提示绕一圈服务端网络。
+     */
+    private static void refreshActionBarPrompt(Minecraft mc) {
+        if (mc.level == null) return;
+        long now = mc.level.getGameTime();
+        Component prompt;
+        if (transientPrompt != null && now < transientPromptUntil) {
+            prompt = transientPrompt;
+        } else {
+            transientPrompt = null;
+            transientPromptUntil = 0;
+            prompt = Component.translatable("msg.astral_dice.target_select.active");
+        }
+        ActionBarManager.show(prompt, ACTIONBAR_TICKS);
+    }
+
+    /** 显示一条瞬态 actionbar 提示（ACTIONBAR_TICKS 内不被默认提示覆盖） */
+    private static void showPrompt(Component prompt) {
+        transientPrompt = prompt;
+        Minecraft mc = Minecraft.getInstance();
+        transientPromptUntil = (mc.level == null ? 0L : mc.level.getGameTime()) + ACTIONBAR_TICKS;
+        ActionBarManager.show(prompt, ACTIONBAR_TICKS);
+    }
+
+    /** 四种选中输入的调试输出（供日志/用例断言区分；格式固定，勿改） */
+    public static void logPrompt(String key, String action) {
+        LOGGER.debug("[Astral Dice][TargetSelectPrompt] key={} action={}", key, action);
+    }
+
+    // === 射线目标 ===
+
     private static void updateRaycastTarget(Minecraft mc) {
         if (!(mc.player instanceof LocalPlayer player)) {
             currentTarget = null;
+            rejectedTarget = null;
+            nearbyTargets.clear();
             return;
         }
         // 实体射线:注意 1.21.1 的 Entity.pick() 只做方块射线(永不返回 EntityHitResult),
@@ -216,13 +292,17 @@ public final class TargetSelectionClient {
                 e -> !e.isSpectator() && e.isPickable(), entityLimitSq);
 
         LivingEntity newTarget = null;
+        LivingEntity newRejected = null;
         if (entityHit != null
                 && entityHit.getEntity() instanceof LivingEntity living
                 && living != player
-                && living.isAlive()
-                && targetType.matches(player, living)
-                && player.distanceToSqr(living) <= radius * radius) {
-            newTarget = living;
+                && living.isAlive()) {
+            if (targetType.matches(player, living) && player.distanceToSqr(living) <= radius * radius) {
+                newTarget = living;
+            } else {
+                // 命中但不可选（会话目标类型不符 / 超出半径）：走 1/24 细边 + rejected 提示
+                newRejected = living;
+            }
         }
         if (newTarget != currentTarget) {
             if (newTarget != null) {
@@ -232,32 +312,60 @@ public final class TargetSelectionClient {
             } else {
                 LOGGER.debug("[Astral Dice][TargetSelectionClient] target=none");
             }
-            currentTarget = newTarget;
+        }
+        currentTarget = newTarget;
+        rejectedTarget = newRejected;
+        if (newRejected != null) {
+            showPrompt(Component.translatable("msg.astral_dice.target_select.rejected"));
+        }
+        updateNearbyTargets(player);
+    }
+
+    /** 半径内其它可选目标（渲染 1/64 细边）：按距离升序取最近 {@link #NEARBY_TARGET_LIMIT} 个 */
+    private static void updateNearbyTargets(LocalPlayer player) {
+        nearbyTargets.clear();
+        AABB search = player.getBoundingBox().inflate(radius);
+        List<LivingEntity> found = new ArrayList<>();
+        for (Entity entity : player.level().getEntities(player, search)) {
+            if (!(entity instanceof LivingEntity living) || living == player) continue;
+            if (!living.isAlive() || living.isSpectator()) continue;
+            if (!targetType.matches(player, living)) continue;
+            if (player.distanceToSqr(living) > radius * radius) continue;
+            found.add(living);
+        }
+        found.sort(Comparator.comparingDouble((LivingEntity living) -> player.distanceToSqr(living)));
+        for (int i = 0; i < found.size() && i < NEARBY_TARGET_LIMIT; i++) {
+            nearbyTargets.add(found.get(i));
         }
     }
 
     // === 输入事件（游戏总线，仅客户端） ===
 
-    /** 键盘确认键(默认 Enter)物理按下时确认。
-     *  用 InputEvent.Key 而非 KeyMapping.click 队列:聊天框打开时按 Enter 发送命令会被
-     *  ChatScreen 消费(键盘事件提前 return,不触发本事件),故聊天注入命令不会误确认目标;
-     *  仅游戏画面下物理按下 Enter 才确认(且须确认就绪,防触发瞬间残留)。 */
-    @SubscribeEvent
-    public static void onKey(InputEvent.Key event) {
-        if (!isActive() || event.getAction() != GLFW.GLFW_PRESS) return;
-        if (!isConfirmReady()) return;
-        if (KeyBindingSetup.CONFIRM_TARGET_KEY.matches(event.getKey(), event.getScanCode())) {
-            confirm();
-        }
-    }
-
-    /** 选择期间接管鼠标：右键=确认，其余按钮（左键攻击/中键）全部拦截 */
+    /**
+     * 选择期间接管鼠标（强力胶式按键语义）：
+     * 左键 = 确认目标；右键 = 对自身使用（只提示，不提交）；右键 + 潜行 = 取消。
+     *
+     * <p>用 `InputEvent.MouseButton.Pre` 而非 KeyMapping：选择期间必须**先于原版**截住左键攻击
+     * 与右键使用，原版逻辑与其它模组的鼠标绑定都不应生效（事件一律取消）。
+     */
     @SubscribeEvent
     public static void onMouseButton(InputEvent.MouseButton.Pre event) {
         if (!isActive()) return;
-        if (event.getButton() == GLFW.GLFW_MOUSE_BUTTON_RIGHT && event.getAction() == GLFW.GLFW_PRESS) {
-            confirm();
+        if (event.getAction() == GLFW.GLFW_PRESS) {
+            if (event.getButton() == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
+                confirmByPrimaryClick();
+            } else if (event.getButton() == GLFW.GLFW_MOUSE_BUTTON_RIGHT) {
+                Minecraft mc = Minecraft.getInstance();
+                boolean sneaking = mc.player != null && mc.player.isShiftKeyDown();
+                if (sneaking) {
+                    logPrompt("right_sneak", "cancel");
+                    cancel("right_sneak");
+                } else {
+                    useOnSelfBySecondaryClick();
+                }
+            }
         }
+        // 选择期间接管鼠标:所有按键（左键攻击/右键原使用/中键）都不进原版逻辑
         event.setCanceled(true);
     }
 
@@ -269,13 +377,26 @@ public final class TargetSelectionClient {
         }
     }
 
-    /** 防御：任何第三方界面被打开时取消选择（聊天框 ChatScreen 除外——命令聊天是白名单放行的，
-     *  选择期间允许输指令/测试注入，不应取消选择；正常情况下其他键盘/鼠标已被拦截不会走到这里） */
+    /**
+     * 任何界面被打开即取消选择。
+     *
+     * <p>两类例外/特例：
+     * <ul>
+     *   <li>{@link ChatScreen} 豁免 —— 命令聊天是刻意保留的通道（输指令 / 自动化测试注入命令），
+     *       打开聊天不应取消选择；</li>
+     *   <li>{@link PauseScreen}（ESC 菜单）—— 键盘 ESC 不再被模组拦截（键盘 Mixin 已删除），
+     *       原版照常打开暂停菜单，本事件即取消时机（`key=esc action=cancel`）。</li>
+     * </ul>
+     */
     @SubscribeEvent
     public static void onScreenOpening(ScreenEvent.Opening event) {
-        if (isActive() && event.getScreen() != null
-                && !(event.getScreen() instanceof net.minecraft.client.gui.screens.ChatScreen)) {
-            cancel("screen");
+        if (!isActive() || event.getScreen() == null) return;
+        if (event.getScreen() instanceof ChatScreen) return;
+        if (event.getScreen() instanceof PauseScreen) {
+            logPrompt("esc", "cancel");
+            cancel("esc");
+            return;
         }
+        cancel("screen");
     }
 }
