@@ -436,6 +436,17 @@ pwsh -NoProfile -File tools/check_mod_sources.ps1                    # 模组来
     **判据**：以**自动清理阶段**的结论为准，并用 `Get-Process java` 复核（两轮实测均无 java 残留）。原因是 JVM 收到终止请求到真正退出存在数百毫秒的窗口，`stop` 相位不等它。
     **不要**据此认为「没停干净」而手工 `taskkill`（会误伤其它 java 程序，见 §12 的安全红线）。
 
+25. **目标选择器边框的「可见外框」是逐帧实测，两处退化属**已登记边界**（2026-09-18 t23 登记，**不改代码**）**：`TargetOutlineCapture.outlineOf(entity)` = 碰撞盒 ∪ **本帧实测**模型外框（`RenderLivingEvent.Post` 里把该实体当前姿态的模型画进「只记坐标」的 `VertexConsumer` 探针取 min/max，天然含部位动画旋转、幼年体内缩放与 `SCALE` 属性），边框再 `inflate(线宽/2)` ⇒ **正常（准星命中 / 该实体已被渲染过至少一帧）时绝不小于可见模型，绝不内缩**。两处退化：① 渲染器各自覆写的 `scale()` / `setupRotations()` 分支（充能苦力怕 2× 脉冲、死亡/睡眠/旋转攻击姿态等）无法在该类里重放 ⇒ 取「碰撞盒 ∪ 实测外框」；② **从未被渲染**的实体（视锥外 / 被其它模组取消渲染）没有实测值 ⇒ 退化为碰撞盒（此时该实体自己也**不在画面上**）。**判定口径**：看到「旁侧未渲染目标的框小于其模型」**不要**当同类缺陷重开 —— 先确认该实体是否曾被渲染；外框逐帧更新，实体进入画面即恢复。源码内注释见 `TargetOutlineCapture.java:52-55`、`:93-94`；口径文档同步写在 `AGENTS.md`「目标选择器规范 → 现行口径」第 11 条。
+
+26. **「选择期间滚轮拦截」已自动化（2026-09-18 t23/F3 落地，选项①「补自动化」；不再只作代码复核）**：该语义此前只有源码级复核（`TargetSelectionClient` 的 `InputEvent.MouseScrollingEvent` 分支），本轮补上**端到端**验证，三件套齐备：
+    - **注入原语**：`mt_inject.ps1 mouse --button wheel [--notches n]`（缺省 `-1` = 向下滚一格，`|n| ≤ 32`、不得为 0）。`sendinput` 通道走**真实** `SendInput(MOUSEEVENTF_WHEEL, mouseData = 格数 × 120)`；`postmessage` 通道走 `PostMessage(WM_MOUSEWHEEL, HIWORD = 带符号 delta, lParam = 窗口中心)`（干跑可逐行比对）。`mt_case.ps1` 的 `inject_mouse` 字段表本就按名放行 `button` 并**原样转发**，故用例直接写 `{"op":"inject_mouse","button":"wheel"}` 即可，**不需要**改 `mt_case.ps1`。
+    - **读数**：探针（两线同构）新增只读 `selectedSlot` = `player.getInventory().selected`（0..8），即「滚轮是否被拦下」的**唯一可观测面**（拦截是纯客户端行为，不产生任何调试日志）。原版语义：会话外向下滚一格 ⇒ 槽位 **+1**（`MouseHandler.onScroll` → `swapPaint`，缺省 `notches=-1`/`sensitivity=1`）；会话内被取消 ⇒ 槽位不变。
+    - **用例与断言**：`cases/SELECTOR-KEYS-1.21.1.json` 的 **⑥-a**（会话激活：热键 `3` 置位 ⇒ `AP_W0_DIAG:selectedSlot=2`，滚一档 ⇒ `AP_W1_DIAG:selectedSlot=2` = 拦截成立）与 **⑥-b**（会话已取消的**正对照**：`3` ⇒ `AP_W2_DIAG:selectedSlot=2`，滚一档 ⇒ `AP_W3_DIAG:selectedSlot=3` = 滚轮恢复生效），四条均为 `type=log` + `source=latest`。**为何必须两侧成对**：单看 W1「没变」无法区分「拦截生效」与「滚轮注入根本没进游戏」（假阳性）⇒ W3 必须变；W0/W2 是**前置置位断言**，排除「槽位本来恰好就是 2」这种巧合证据。⑥-a 插在 `/tp` 之前，原「`/tp` + 左键确认」次序保持不变。
+    - **结构校验**：本用例 `esc_sensitive: true` ⇒ **全部 26 个注入步骤**（含该轮新增的 8 个对照步骤）都必须声明 `no_esc`，`pwsh -File scripts/test/mt_case.ps1 validate --case cases/SELECTOR-KEYS-1.21.1.json` → `MT_VALIDATE: OK`。
+
+27. **「探针正常」类断言必须用能区分成功/失败的读数（2026-09-18 t23/F2 口径）**：断言只写前缀（如 `AP_SK_DIAG:levelClass=`）时，读数**退化为失败载荷**也一样 PASS ⇒ 该断言名存实亡，**禁止**再用这种写法证明「探针/客户端可用」。现行口径（`SELECTOR-KEYS-1.21.1` 已按此收紧）：正断言 `AP_SK_DIAG:lvlDataGGT=\d+`（拿得到数值才算正常）+ 反断言 `absent AP_SK_DIAG:lvlDataGGT=ERR:`（探针一旦失败即当场 FAIL）。
+    ⚠️ **本环境已实测「恒为失败载荷」的读数（禁止用于断言）**：`levelClass`（`p.level.getClass()` 在 Rhino 成员查找下不可见 ⇒ `ERR:Type`；改 `java.lang.Object#getClass` 反射句柄亦拿不到 ⇒ `no-method`）、`getGameTime`（`ERR:TypeError: Cannot find function getGameTime in object ServerLevel[testworld].`）、`reflectGGT`（`no-method`）。它们**保留在探针里**（源码内已加 ⚠️ 注释），因为其失败本身是「Rhino 类过滤器/成员可见性」的证据；但**不得**作为任何 pass 条件。可用的同级成功读数：`lvlDataGGT` / `getDayTime` / `srvTickCount` / `nowTickVal`(+`nowTickSrc`)。
+
 ---
 
 ## 12. 超时机制与看门狗（2026-09-15 B6 ⑥；**2026-09-16 收紧为严格预算**，长流程必须遵守）

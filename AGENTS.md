@@ -687,9 +687,11 @@ When extending this workspace:
 - **获得/消耗来源(已接入)**:详见「筹码一览 → 充能类」的 10 个筹码(跃迁引擎 +2 / 能量回收器 每 150 米 +1 / 电流剑 每 10 击杀 +2 / 高级外设 赐福 -1 / 电流核心 每次使用主动技能 +1 / 电击手套 每次使用效果牌 +1 / 安全气囊 致命伤害 -6 / 永动机 赐福 +6 / 电磁炮 攻击敌对目标 -6 / 原初核心 消耗充能转赋能)。赐福类钩子在 `combat/DiceCombatEvents` 骰神赐福**新周期开始处**;攻击力加成在 `combat/DiceCombatModifiers`;**消耗**类(电流核心立即完成立牌主动冷却)在 `BaseSignItem.performSkill` 的冷却分支。新增来源一律调用 `ChargeManager.addStacks/consumeOne`。
 - **跨版本一致**:两子项目共用同一套 `ChargeManager`/`ChargeEffect` 语义(类名、常量名、调用点一致),仅底层存储与属性修饰器写法按平台差异实现(1.20.1 无数据组件/附件 API,走 `component/AttachedDataKey` Capability)。
 
-## 目标选择器规范（Target Selector）— **历史设计记录（`dev-targetselector` 分支已不存在）**
+## 目标选择器规范（Target Selector）— **现行口径（以 `multi-dev-next` 实装为准）**
 
-> **历史设计记录**:本节所记 `dev-targetselector` 分支已不存在(现存 dev 线为 `multi-dev-next` / `wt/2.0.0-vnext`,版本 `2.0.0-SNAPSHOT.5`);该分支 mod 内 `target/` 包在现存 dev 线**只剩 `TargetSelectionManager`**,`TargetType`/`TargetSelectionAction`/`TargetSelectionRegistry` 已下沉到共享库 `com.merlinkitsune.starenginelib.target`;现存 dev 线另有 `client/TargetSelectionHighlighter`、`network/TargetSelect{Start,Confirm,Cancel}Payload`、`event/TargetSelectionTestCommand`。主线仍无 `target/` 包、仍用「待命」等待器(见「已统一命名的效果/数据」)。该节仅作设计沿革参考,不作为现行执行依据。
+> **沿用与边界**:本节上半部分是历史沿革（`dev-targetselector` 分支已不存在,现存 dev 线为 `multi-dev-next` / `wt/2.0.0-vnext`,版本 `2.0.0-SNAPSHOT.5`);该分支 mod 内 `target/` 包在现存 dev 线**只剩 `TargetSelectionManager`**,`TargetType`/`TargetSelectionAction`/`TargetSelectionRegistry` 已下沉到共享库 `com.merlinkitsune.starenginelib.target`;现存 dev 线另有 `client/TargetSelectionHighlighter`、`client/TargetOutlineCapture`、`network/TargetSelect{Start,Confirm,Cancel}Payload`、`event/TargetSelectionTestCommand`。主线仍无 `target/` 包、仍用「待命」等待器(见「已统一命名的效果/数据」)。
+>
+> ⚠️ **下半部分（`### 现行口径`）是移植的唯一依据**:`forge-1.20.1` / `neoforge-26.1.2` 的移植**必须**按它实现 —— 上半部分若干条目是**已删除的旧行为**（Enter 确认键、客户端键盘拦截 Mixin、`LevelRenderer.renderLineBox` 描边），按上半部分照搬会把刚移除的行为带回来（见 `### 现行口径` 末尾的「禁止回归」）。
 
 目标选择器为**通用第一人称指定目标框架**：立牌主动技能 / 效果牌可注册 `TargetSelectionAction` 到 `TargetSelectionRegistry`（现存 dev 线二者已移至共享库 `com.merlinkitsune.starenginelib.target`），再调用 `TargetSelectionManager.start(ServerPlayer, actionId)` 进入选择模式；玩家准星瞄准目标、确认后由服务端对该目标施加动作效果。
 
@@ -698,12 +700,33 @@ When extending this workspace:
   - `TargetSelectionAction`（现存 dev 线位于共享库 `com.merlinkitsune.starenginelib.target`）：`id()/targetType()/radius()/apply(player,target)`；动作自行负责前置校验（如立牌冷却 / 效果牌出牌锁）。
   - `target/TargetSelectionManager`：服务端会话（每玩家一个，token 随机），start/confirm/cancel/过期/登出·死亡清理；确认时二次校验 token、时效、目标存活、类型、距离。
   - `client/TargetSelectionClient`：客户端状态机（准星 `player.pick(radius,...)` 射线、确认/取消、输入接管）。
-  - `client/TargetSelectOverlay`：常驻 HUD（状态行 + 目标名/距离按敌我着色 + 操作提示），注册于 CROSSHAIR 之上。
-- **确认 / 取消**：确认 = 鼠标右键（默认）或 `CONFIRM_TARGET_KEY`（默认 Enter，可改绑）；取消 = Esc（不打开暂停界面）或再次按立牌主动技能键（J）。
-- **输入锁定（必须）**：选择期间接管攻击/使用、拦截滚轮；键盘经 `mixin/client/KeyboardHandlerMixin`（`KeyboardHandler.keyPress` HEAD）拦截除 移动键(WSAD/跳跃/潜行/疾跑)/Enter/J/Esc 外的全部按键（含 F3/E/T/H 与 Xaero/FTB 等第三方模组按键），RELEASE 一律放行；`InputEvent.MouseButton.Pre` 右键=确认、左/中键拦截；`InputEvent.MouseScrollingEvent` 拦截；`ScreenEvent.Opening` 防御性取消。
-- **高亮渲染（Sodium/Iris 兼容）**：`RenderLevelStageEvent.Stage.AFTER_ENTITIES` + `LevelRenderer.renderLineBox` 描边 AABB；颜色 友方绿 `0x55FF55` / 敌对红 `0xFF5555` / 中立黄 `0xFFFF55`，仅本地渲染（单向）。敌我判定：同队玩家 / `OwnableEntity`(owner=选择者) = 友方；`net.minecraft.world.entity.monster.Enemy` = 敌对（**该行口径已过时**：按现行「敌对目标」判定规范，应为 `Enemy` **或**已被激怒的 `NeutralMob`，见下方「「敌对目标」判定规范」一节）；其余中立。整合包 Sodium 0.8.13 + Iris 1.8.14-beta.1 下须保持正常（自动化测试 TC11 验证）。
+  - `client/TargetSelectOverlay`：中央 HUD **只画一行**「目标名 + 距离」（`Component` 经 `guiGraphics.drawString`，注册于 CROSSHAIR 之上）；其余提示一律走 actionbar（见 `### 现行口径`）。
+- **确认 / 取消（❌ 旧口径已作废）**：~~确认 = 鼠标右键（默认）或 `CONFIRM_TARGET_KEY`（默认 Enter，可改绑）；取消 = Esc（不打开暂停界面）~~ ⇒ 见下方 `### 现行口径` 第 1–5 条（左键确认 / 右键仅提示 / 右键+潜行取消 / ESC 菜单取消 / J 取消）。
+- **输入锁定（❌ 旧口径已作废）**：~~键盘经 `mixin/client/KeyboardHandlerMixin`（`KeyboardHandler.keyPress` HEAD）拦截除 移动键(WSAD/跳跃/潜行/疾跑)/Enter/J/Esc 外的全部按键…；`InputEvent.MouseButton.Pre` 右键=确认~~ ⇒ 该 Mixin **已删除**、键盘不再被模组吞掉、右键不再作确认；现行输入锁定口径见下方 `### 现行口径` 第 6 条。
+- **高亮渲染（❌ 旧口径已作废）**：~~`RenderLevelStageEvent.Stage.AFTER_ENTITIES` + `LevelRenderer.renderLineBox` 描边 AABB~~ ⇒ 现为**公开 API 构造的实体棱柱边框** + **可见外框包围盒**，见下方 `### 现行口径` 第 7–8 条；颜色 友方绿 `0x55FF55` / 敌对红 `0xFF5555` / 中立黄 `0xFFFF55`、仅本地渲染（单向）不变。敌我判定：同队玩家 / `OwnableEntity`(owner=选择者) = 友方；`net.minecraft.world.entity.monster.Enemy` = 敌对（**该行口径已过时**：按现行「敌对目标」判定规范，应为 `Enemy` **或**已被激怒的 `NeutralMob`，见下方「「敌对目标」判定规范」一节）；其余中立。整合包 Sodium 0.8.13 + Iris 1.8.14-beta.1 下须保持正常（自动化测试 TC11 验证）。
+
+### 现行口径（移植依据 · 2026-09-18 起，`multi-dev-next` 实装）
+
+> 逐条 = 现实现事实（含代码锚点，可直接核对）。移植 `forge-1.20.1` / `neoforge-26.1.2` 时**按本节实现**，上方的历史条目只作沿革参考。
+
+1. **左键 = 确认**：准星命中合法目标即提交（`TargetSelectConfirmPayload`）；**无有效目标时不提交**，只弹 actionbar `msg.astral_dice.target_select.no_target`（`client/TargetSelectionClient.java:186-196`，DEBUG 行 `[Astral Dice][TargetSelectPrompt] key=left action=confirm|no_target`）。
+2. **右键（不潜行）= 对自身使用 ⇒ 仅提示、不提交**：本模组无任何可对自身使用的技能，故只弹 actionbar `msg.astral_dice.target_select.self_unsupported`，**不发包、会话保留**（`TargetSelectionClient.java:198-201`，DEBUG 行 `key=right action=self_unsupported`）。
+3. **右键 + 潜行 = 取消**（`TargetSelectionClient.java:367-376`，DEBUG 行 `key=right_sneak action=cancel`）。
+4. **ESC = 原版照常打开暂停菜单，菜单一打开即取消**：键盘 ESC 不再被模组拦截（键盘 Mixin 已删除），取消时机在 `ScreenEvent.Opening` 收到 `PauseScreen` 时（`TargetSelectionClient.java:401-411`，DEBUG 行 `key=esc action=cancel`）。⚠️ 会打开菜单是**现行为**，不再是旧口径的「不打开暂停界面」。
+5. **J（主动技能键 `ACTIVATE_SIGN_KEY`，默认 J）= 取消**：走 `KeyMapping#consumeClick` 消费（`client/KeyBindingSetup.java:41-49`），**不是**键盘拦截；DEBUG 行 `key=j action=cancel`。
+6. **输入锁定（鼠标 + 滚轮 + 界面）**：
+   - `InputEvent.MouseButton.Pre`：选择期间按下左键=确认、右键=自用提示/取消，随后**一律 `setCanceled(true)`**（原版攻击/使用/中键都不生效；`TargetSelectionClient.java:361-380`）；
+   - `InputEvent.MouseScrollingEvent`：选择期间**拦截滚轮**（防切栏/缩放；`TargetSelectionClient.java:383-388`）；
+   - `ScreenEvent.Opening`：打开任意界面即取消；**两处例外/特例** —— `ChatScreen` **豁免**（命令聊天是刻意保留的通道，含自动化注入命令）、`PauseScreen` = 上面的 ESC 取消时机（`TargetSelectionClient.java:401-411`）；
+   - **键盘不再被模组吞掉**：移动键/F3/E/T/H/第三方模组按键全部照常工作。
+7. **边框渲染 = 公开 API 构造的实体棱柱**（`client/TargetSelectionHighlighter.java:59-70`、`:145-249`）：`RenderLevelStageEvent.Stage.AFTER_ENTITIES` + `RenderType.create("astral_dice_target_prism", DefaultVertexFormat.NEW_ENTITY, VertexFormat.Mode.QUADS, 256, false, false)` + `RENDERTYPE_ENTITY_SOLID_SHADER` + 半透明关闭/`LEQUAL_DEPTH_TEST`/`COLOR_DEPTH_WRITE`/`CULL`/`LIGHTMAP`/`OVERLAY` + 纯白纹理 `assets/astral_dice/textures/special/blank.png`（新增 16×16 全不透明，颜色完全由顶点色给出）+ 12 条边各 4 个侧面四边形（半宽 = 线宽/2、`FULL_BRIGHT`、`NO_OVERLAY`、UV(0,0)、法线 (0,1,0)），`buffers.endBatch(PRISM)` 收尾。**不是** `LevelRenderer.renderLineBox`、**不是** `RenderType.lines()`（该路径已删除）。
+8. **框盒 = 可见外框包围盒（只外扩、绝不内缩）**：`TargetOutlineCapture.outlineOf(entity)` = **碰撞盒 ∪ 逐帧实测模型外框**，再 `inflate(线宽/2)`（`TargetSelectionHighlighter.java:127-128`、`client/TargetOutlineCapture.java:92-105`）。实测外框来自 `RenderLivingEvent.Post` 里把该实体当前姿态的模型画进「只记坐标」的 `VertexConsumer` 探针取 min/max，天然包含模型几何、部位动画旋转、幼年体模型内缩放与 `SCALE` 属性。线宽：命中目标 1/16、准星命中但不可选 1/24、半径内其它可选 1/64；着色 友方绿 `0x55FF55` / 敌对红 `0xFF5555` / 中立黄 `0xFFFF55`。
+9. **提示分工**：中央 HUD **只有一行**「目标名 + 距离」（`client/TargetSelectOverlay.java:45-49`）；其余提示（默认常驻 `...target_select.active`、`self_unsupported`、`no_target`、`cancelled`）**每 tick 经 `ActionBarManager.show(component, 40)` 走 actionbar**（`TargetSelectionClient.java:244-270`）。
+10. **禁止回归（移植时逐条守住）**：已删除的 Enter 确认键 `CONFIRM_TARGET_KEY`（与其 10 tick 就绪门槛、键盘白名单判定）与客户端键盘拦截 Mixin（`mixin/client/KeyboardHandlerMixin`，含 `astral_dice.mixins.json` 的 `client` 数组条目）**不得再被引入**；`LevelRenderer.renderLineBox` 描边路径同样不得再引入（边框一律走第 7 条的实体棱柱）。
+11. **可见外框捕获的已知边界（2026-09-18 t23 登记）**：渲染器各自覆写的 `scale()` / `setupRotations()` 分支（充能苦力怕 2× 脉冲、死亡/睡眠/旋转攻击姿态、`CreeperRenderer#scale` 等）**无法**在 `TargetOutlineCapture.measure` 里重放；这类姿态以及**从未被渲染**的实体（视锥外/被其它模组取消渲染）会退化为**碰撞盒**（`TargetOutlineCapture.java:52-55`、`:93-94`）。⇒ 判定口径：**正常（准星命中/已被渲染过至少一帧）情况下边框绝不小于可见模型**；只有当实体自己不在画面上时才可能退化为碰撞盒 —— 这属**已登记边界**，不要当作「边框小于模型」的同类缺陷重开（若目标重新进入画面并渲染一帧，实测外框立即恢复）。
+
 - **配置**：`target_select_radius`（默认 16 格，范围 1..32，公共配置 `ModCommonConfig`）；`GameplayConstants.TARGET_SELECT_RADIUS` 运行时读取；服务端确认距离校验一律用配置值（上限 32 不可突破）。
-- **调试 LOGGER（必须）**：目标选择器相关代码统一 `[Astral Dice][TargetSelection*]` 前缀（Manager/Client/Registry/Mixin/Overlay/测试命令），标记见自动化测试流程子配置的断言清单；dev run 已 `logLevel=DEBUG`。
+- **调试 LOGGER（必须）**：目标选择器相关代码统一 `[Astral Dice][TargetSelection*]` 前缀 —— 现有前缀：`[TargetSelectPrompt]`（按键语义，`TargetSelectionClient#logPrompt`）、`[TargetSelection]`（服务端会话落账，`TargetSelectionManager`）、`[TargetSelectBounds]`（可见外框读数，`TargetOutlineCapture`）；标记见自动化测试流程子配置的断言清单；dev run 已 `logLevel=DEBUG`。（**已删除**的客户端键盘拦截 Mixin 不再出现在任何前缀清单里。）
 - **接入方式**：动作注册后即可被任何立牌/效果牌调用；当前已注册：演示动作 `test_echo_player/enemy/living`（`/astral_dice targetselect <player|enemy|living>`，OP 权限，不施加玩法效果）、**占星师立牌 `haiqing_weak_mark`**、**秘密侦探立牌 `bonnie_undercover`**（均为 ENEMY_OR_RIVAL）。新增真实动作时在对应立牌/效果牌类中注册并调用 `TargetSelectionManager.start`；调用方必须自行处理冷却/出牌锁等前置校验。
 - **立牌选择器类主动的「前置门控」与冷却约定（2026-09-17 用户裁决，取代旧「经 `isSelecting` 判断」表述）**：占星师 / 秘密侦探 / 枪匠三个立牌的主动技能在 `BaseSignItem.performSkill` 的**第 2.5 步**（第 2 步 `isSelecting` 守卫之后、第 3 步 `handleUse` 之前）做前置门控 —— 按下主动键**只开启目标选择会话**（`TargetSelectionManager.start` 成功后 `SignSelectionGate.arm` 登记待执行记录）并立即 `return`：**不发牌、不抛 `SignActiveTriggeredEvent`、不写玩家级冷却/锁定、不施加效果、不计电流核心充能**。选择窗口取 `GameplayConstants.SKILL_WAIT_SECONDS`（秒；`expireTick = gameTime + SKILL_WAIT_SECONDS * 20L`，不写死数字）。
   - **确认合法目标后才继续原流程**：`TargetSelectionManager#confirm` 通过 token / 时效 / 目标存活 / 类型 / 距离校验后调用 `TargetSelectionAction#apply`（施加效果 + 玩家级冷却 + 电流核心充能由各动作自行写入），再由恢复点 `BaseSignItem.resumeGatedActiveSkill` 执行「风扇筹码发牌 + 抛 `SignActiveTriggeredEvent`（订阅方行为不变）」；门控路径**不再**补发默认「主动技能已启动」提示（同一 tick 会被紧随其后的 `msg.astral_dice.target_select.applied` 覆盖 ⇒ 玩家本就看不到，2026-09-17 用户裁决 O1）。

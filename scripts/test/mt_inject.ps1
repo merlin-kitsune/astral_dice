@@ -26,10 +26,13 @@ mt_inject.ps1 — 游戏内输入注入（阶段 C 的执行臂）。
   mt_inject.ps1 mouse -Button left                 # 窗口中心左键（目标选择器「确认」）
   mt_inject.ps1 mouse -Button right -Shift         # 窗口中心右键 + 潜行（「自用」提示 / 取消）
   mt_inject.ps1 mouse -Button right -HoldMs 3000   # 按住右键 3 秒（长按/自动重复类回归）
+  mt_inject.ps1 mouse -Button wheel                # 向下滚一格（默认 notches=-1；「滚轮拦截」回归）
+  mt_inject.ps1 mouse -Button wheel -Notches 2     # 向上滚两格
+  mt_inject.ps1 mouse -Button wheel -Transport postmessage   # 排查：WM_MOUSEWHEEL 直投
 
 ## 退出码（与 python 版一致）
 
-  0 = 注入完成；2 = 未找到窗口 / 语言未就绪 / 未知按键 / 非法 `--button` 值 / 参数错误。
+  0 = 注入完成；2 = 未找到窗口 / 语言未就绪 / 未知按键 / 非法 `--button`·`--notches` 值 / 参数错误。
 
 ## 与 python 版的差异（逐条）
 
@@ -60,10 +63,17 @@ mt_inject.ps1 — 游戏内输入注入（阶段 C 的执行臂）。
 7. **`mouse` 子命令是 pwsh 侧新增**（python 只有 `key` / `cmd`；鼠标此前只能经 `key` 的
    `attack` / `rclick` / `shift-rclick` 别名触达）。它**不新造注入路径**：内部直接调
    `Send-MtInjectMouseCenter`（与上述别名同一个函数、同一坐标口径）。`--button` 必填且
-   只接受 `left|right`（其它值 ⇒ `MT_ERROR: 非法 --button 值 …` + rc=2，在定位窗口**之前**
+   接受 `left|right|wheel`（其它值 ⇒ `MT_ERROR: 非法 --button 值 …` + rc=2，在定位窗口**之前**
    校验，故客户端没跑也能得到可读报错）；`--shift` 与 `--hold-ms` 与 `key` 子命令同义。
    `--version` / `--hwnd` / `--layout` 与 `key` 子命令同形，输出行前缀为 `MT_INJECT_MOUSE:`
    （与 `MT_INJECT_KEY:` / `MT_INJECT_CMD:` 同一族）。
+8. **`--button wheel` + `--notches` 是 2026-09-18（t23, F3）新增的滚轮原语**：`postmessage`
+   通道走 `PostMessage(WM_MOUSEWHEEL, HIGHWORD=delta, lParam=窗口中心)`，`sendinput` 通道走
+   **真实** `SendInput(MOUSEEVENTF_WHEEL)`（`mouseData = notches × 120`）；`--notches` 缺省 -1
+   （向下滚一格），取值非 0 且 |n| ≤ 32，`wheel` 与 `--shift` 组合直接报错（不静默忽略）。
+   存在理由：目标选择器「选择期间拦截滚轮」此前**零自动化断言**（用例没有滚轮步骤、注入器没有
+   滚轮原语、探针没有选中栏位读数），该原语 + 探针 `selectedSlot` 读数把这条语义变成可跑的两步
+   断言（会话中不变 / 取消后变化）。
 #>
 
 $ErrorActionPreference = 'Stop'
@@ -118,6 +128,12 @@ $script:WM_LBUTTONDOWN = 0x0201
 $script:WM_LBUTTONUP = 0x0202
 $script:WM_RBUTTONDOWN = 0x0204
 $script:WM_RBUTTONUP = 0x0205
+# 滚轮（2026-09-18 t23 新增，F3「滚轮拦截」自动化）：WM_MOUSEWHEEL 的**高位字**是
+# 带符号的滚动量（一格 = WHEEL_DELTA = 120）；GLFW 的窗口过程按 `(SHORT)HIWORD(wParam)/WHEEL_DELTA`
+# 转成 scroll 回调 ⇒ 与真实滚轮等价。低位字 lParam 是**屏幕坐标**（文档如此），但 GLFW/MC 的
+# 滚轮处理只读 wParam ⇒ 这里沿用既有 lParam 口径（窗口矩形中心）并注明，不另造坐标来源。
+$script:WM_MOUSEWHEEL = 0x020A
+$script:WHEEL_DELTA = 120
 $script:VK_SHIFT = 0xA0
 
 # 投递通道（2026-09-13）：
@@ -303,6 +319,114 @@ function Send-MtInjectMouseCenter {
     }
 }
 
+# ══ 滚轮注入（2026-09-18 t23 新增；F3「滚轮拦截」自动化）══════════════════════
+#
+# 为什么要有它：目标选择器会话激活期间**拦截滚轮**（`InputEvent.MouseScrollingEvent` 取消，
+# 防切栏/缩放），但此前的工具链没有任何滚轮注入原语 ⇒ 该语义在全链路**零自动化断言**
+# （t12 的 F3）。这里补上原语，配合探针的 `selectedSlot` 读数就能做出「会话中滚一格 ⇒
+# selectedSlot 不变；取消后再滚一格 ⇒ selectedSlot 变化（正对照）」两步断言。
+#
+# 两条通道都给：
+#   postmessage —— `PostMessage(WM_MOUSEWHEEL, (delta shl 16), lParam)`（与既有鼠标路径同渠道）；
+#   sendinput   —— 真实 `SendInput(MOUSEEVENTF_WHEEL, mouseData = delta)`（默认通道；游戏侧
+#                  GLFW 收到的就是真实滚轮）。`Mt.Win32.psm1` 的 `Mt.RealInput` 只暴露了
+#                  左右键，没有「带标志的鼠标」入口，而该模块不在本任务 inScope ⇒ 这里在
+#                  mt_inject 内部用**本脚本自己的**最小 P/Invoke（独立类型名，不与 Mt.RealInput 冲突）。
+if (-not ('Mt.Inject.WheelInput' -as [type])) {
+    Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+
+namespace Mt.Inject
+{
+    public static class WheelInput
+    {
+        [StructLayout(LayoutKind.Sequential)]
+        private struct MOUSEINPUT
+        {
+            public int dx;
+            public int dy;
+            public uint mouseData;
+            public uint dwFlags;
+            public uint time;
+            public IntPtr dwExtraInfo;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct INPUT
+        {
+            public uint type;
+            public MOUSEINPUT mi;
+        }
+
+        private const uint INPUT_MOUSE = 0;
+        private const uint MOUSEEVENTF_WHEEL = 0x0800;
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
+
+        /// <summary>真实滚轮：delta = 格数 × WHEEL_DELTA（正 = 向上/远离用户，负 = 向下）。</summary>
+        public static bool Wheel(int delta)
+        {
+            INPUT input = new INPUT();
+            input.type = INPUT_MOUSE;
+            input.mi.dwFlags = MOUSEEVENTF_WHEEL;
+            input.mi.mouseData = (uint)delta;
+            INPUT[] batch = new INPUT[] { input };
+            return SendInput(1, batch, Marshal.SizeOf(typeof(INPUT))) == 1;
+        }
+    }
+}
+'@
+}
+
+function Send-MtInjectWheel {
+    <#
+    .SYNOPSIS
+        在目标窗口触发一次滚轮（`-Notches` 格，正 = 向上滚，默认 -1 = 向下滚一格）。
+
+    .NOTES
+        与 `Send-MtInjectMouseCenter` 同一纪律：**同一通道成对自洽**（不存在按下/抬起，
+        但 sendinput 走真实 SendInput、postmessage 走 PostMessage，二者不混用）；
+        `-DryRun` 只打印将投递的元组，不真的注入（与既有 key/mouse 干跑口径一致）。
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][long]$Hwnd,
+        [int]$Notches = -1
+    )
+
+    $delta = $Notches * $script:WHEEL_DELTA
+    $rect = Get-MtWindowRect -Hwnd $Hwnd
+    $x = [int](($rect.Right - $rect.Left) / 2)
+    $y = [int](($rect.Bottom - $rect.Top) / 2)
+    $lp = ($y -shl 16) -bor ($x -band 0xFFFF)
+
+    if ($script:Transport -eq 'sendinput') {
+        if ($script:DryRun) {
+            # 干跑：与 postmessage 同形地打印一条元组（msg 用 WM_MOUSEWHEEL 便于逐行比对），
+            # 另加一行标明真实通道调用，确保「干跑不撒谎」。
+            Write-MtInjectDryTuple -Hwnd $Hwnd -Msg $script:WM_MOUSEWHEEL `
+                -WParam (([long]($delta -band 0xFFFF)) -shl 16) -LParam $lp
+            Write-MtInjectDryTuple -Hwnd $Hwnd -Msg 0xFFFF -WParam $delta -LParam 0
+            return
+        }
+        [void](Set-MtRealCursorPosition -X ($rect.Left + $x) -Y ($rect.Top + $y))
+        Start-MtInjectPause -Milliseconds 60
+        [void][Mt.Inject.WheelInput]::Wheel($delta)
+        return
+    }
+
+    # ⚠️ 负数要按 16 位截断后再左移 16：(-120 -band 0xFFFF) = 0xFF88 ⇒ 0xFF880000
+    # （GLFW 按 (SHORT)HIWORD 取回 -120；直接算 -120 << 16 会得到负数的高位垃圾）。
+    $w = [long](([long]($delta -band 0xFFFF)) -shl 16)
+    if ($script:DryRun) {
+        Write-MtInjectDryTuple -Hwnd $Hwnd -Msg $script:WM_MOUSEWHEEL -WParam $w -LParam $lp
+        return
+    }
+    Send-MtInjectMessage -Hwnd $Hwnd -Msg $script:WM_MOUSEWHEEL -WParam $w -LParam $lp
+}
+
 # ══ 注入前的输入语言准备 ═════════════════════════════════════════════════
 
 function Get-MtInjectLayoutReady {
@@ -472,7 +596,7 @@ function Invoke-MtInjectKeyCommand {
 function Invoke-MtInjectMouseCommand {
     <#
     .SYNOPSIS
-        `mouse` 子命令：在窗口中心投递一次鼠标按键（左键 / 右键[+潜行]）。
+        `mouse` 子命令：在窗口中心投递一次鼠标输入（左键 / 右键[+潜行] / 滚轮）。
 
     .NOTES
         为什么需要：目标选择器的按键语义里「确认」= **左键**、「自用/取消」= **右键**
@@ -481,17 +605,32 @@ function Invoke-MtInjectMouseCommand {
         `Send-MtInjectMouseCenter` 暴露成子命令，**不新造第二条注入路径**（同一函数、
         同一坐标口径、同一 sendinput/postmessage 分支）。
 
+        `--button wheel`（2026-09-18 t23 新增）走 `Send-MtInjectWheel`：`-Notches` 格、
+        正 = 向上滚、缺省 -1 = 向下滚一格。用途 = 验证「选择期间滚轮拦截」——配合探针
+        `AP_<tag>_DIAG:selectedSlot=` 读数做「会话中不变 / 取消后变化」两步断言（t12 F3）。
+        wheel 不接受 `--shift`（无意义的组合，宁可报错也不要静默忽略）。
+
         `--button` 在**定位窗口之前**校验：客户端未运行 / 未启动时，非法值仍给出可读的
-        `MT_ERROR: 非法 --button 值 <x>（可选：left right）` + rc=2，而不是被
+        `MT_ERROR: 非法 --button 值 <x>（可选：left right wheel）` + rc=2，而不是被
         「客户端未在运行」掩盖掉（任务自检项）。
     #>
     [CmdletBinding()]
-    param([string]$Button, [bool]$Shift, [int]$HoldMs, [string]$Version, [string]$Layout, [long]$Hwnd, [bool]$NoEsc = $false)
+    param([string]$Button, [bool]$Shift, [int]$HoldMs, [string]$Version, [string]$Layout, [long]$Hwnd, [bool]$NoEsc = $false, [int]$Notches = -1)
 
     $b = if ($null -eq $Button) { '' } else { $Button.Trim().ToLowerInvariant() }
-    if ($b -ne 'left' -and $b -ne 'right') {
-        Write-MtErrorLine ("非法 --button 值 {0}（可选：left right）" -f $Button)
+    if ($b -ne 'left' -and $b -ne 'right' -and $b -ne 'wheel') {
+        Write-MtErrorLine ("非法 --button 值 {0}（可选：left right wheel）" -f $Button)
         return 2
+    }
+    if ($b -eq 'wheel') {
+        if ($Shift) {
+            Write-MtErrorLine 'wheel 不接受 --shift（滚轮无修饰键语义；要潜行请用 left/right）'
+            return 2
+        }
+        if ($Notches -eq 0 -or $Notches -lt -32 -or $Notches -gt 32) {
+            Write-MtErrorLine ("非法 --notches 值 {0}（非 0 且 |n| ≤ 32）" -f $Notches)
+            return 2
+        }
     }
 
     $hwnd = Resolve-MtInjectWindow -Hwnd $Hwnd -Version $Version
@@ -517,6 +656,12 @@ function Invoke-MtInjectMouseCommand {
     # Esc 归一化 ⇒ `-NoEsc` 对它是「声明成立」的回显（理由同 key 子命令处）。
     if ($NoEsc) {
         Write-MtInjectLine 'ESC_SKIP: mouse 子命令无 Esc 归一化 ⇒ -NoEsc 声明成立（只发鼠标键）'
+    }
+
+    if ($b -eq 'wheel') {
+        Send-MtInjectWheel -Hwnd $hwnd -Notches $Notches
+        Write-MtInjectLine ('MT_INJECT_MOUSE: wheel notches={0}{1} (窗口中心)' -f $Notches, $(if ($script:Transport -eq 'sendinput') { ' transport=sendinput' } else { ' transport=postmessage' }))
+        return 0
     }
 
     Send-MtInjectMouseCenter -Hwnd $hwnd -Right ($b -eq 'right') -Shift $Shift -HoldMs $HoldMs
@@ -662,6 +807,7 @@ $Key = ''
 $Button = ''
 $Shift = $false
 $HoldMs = 0
+$Notches = -1
 $Command = ''
 $NoEsc = $false
 $Version = ''
@@ -701,6 +847,10 @@ while ($i -lt $args.Count) {
     } elseif ($optName -eq 'holdms') {
         if ($i + 1 -ge $args.Count) { Write-MtErrorLine '缺少 --hold-ms 的值'; exit $MT_EXIT_ERROR }
         $HoldMs = [int](ConvertTo-MtArgLong -Raw ([string]$args[$i + 1]) -Name '--hold-ms'); $i += 2
+    } elseif ($optName -eq 'notches') {
+        # 滚轮格数（2026-09-18 t23）：正 = 向上滚、负 = 向下滚；只对 mouse --button wheel 有意义
+        if ($i + 1 -ge $args.Count) { Write-MtErrorLine '缺少 --notches 的值'; exit $MT_EXIT_ERROR }
+        $Notches = [int](ConvertTo-MtArgLong -Raw ([string]$args[$i + 1]) -Name '--notches'); $i += 2
     } elseif ($optName -eq 'version') {
         if ($i + 1 -ge $args.Count) { Write-MtErrorLine '缺少 --version 的值'; exit $MT_EXIT_ERROR }
         $Version = [string]$args[$i + 1]; $i += 2
@@ -764,13 +914,13 @@ switch ($modeName) {
     }
     'mouse' {
         if (-not $Button) {
-            Write-MtErrorLine '缺少必填参数 --button（可选：left right）'
+            Write-MtErrorLine '缺少必填参数 --button（可选：left right wheel）'
             exit $MT_EXIT_ERROR
         }
         # --button 的取值校验放在 Invoke-MtInjectMouseCommand 首行（早于窗口定位），
         # 这样客户端未运行时也能得到「非法 --button 值」而不是「客户端未在运行」。
         $rc = Invoke-MtInjectMouseCommand -Button $Button -Shift ([bool]$Shift) -HoldMs $HoldMs `
-            -Version $Version -Layout $Layout -Hwnd $Hwnd -NoEsc ([bool]$NoEsc)
+            -Version $Version -Layout $Layout -Hwnd $Hwnd -NoEsc ([bool]$NoEsc) -Notches $Notches
     }
     default {
         if (-not $modeName) {

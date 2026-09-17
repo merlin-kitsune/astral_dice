@@ -417,8 +417,15 @@ function doDiag(ctx, tag) {
         try { val = "" + fn(); } catch (e) { val = "ERR:" + exText(e); }
         send(ctx, "AP_" + tag + "_DIAG:" + name + "=" + val);
     }
+    // ⚠️ 已知失败读数(2026-09-18,t23/F2 复核):`p.level.getClass()` 在 Rhino 成员查找下不可见,
+    // 该读数**恒为 `ERR:Type`**(改 java.lang.Object#getClass 反射句柄亦拿不到 ⇒ `no-method`,
+    // 实测两轮日志一致)。**不得**用它写断言 —— 它无法区分「探针坏了」与「探针正常」。
+    // 需要「服务端层级可访问性」的成功读数请用 lvlDataGGT / getDayTime / srvTickCount。
     probe("levelClass", function () { return p.level.getClass().getName(); });
     probe("getGameTime", function () { return p.level.getGameTime(); });
+    // 2026-09-18(t23, F3):选中热键栏位(0..8)。「选择期间拦截滚轮」的**唯一可观测面** ——
+    // 拦截生效时滚轮不会改它;取消后滚轮会改它(正对照,见 SELECTOR-KEYS-1.21.1)。
+    probe("selectedSlot", function () { return p.getInventory().selected; });
     probe("lvlDataGGT", function () { return p.level.getLevelData().getGameTime(); });
     probe("getDayTime", function () { return p.level.getDayTime(); });
     probe("reflectGGT", function () {

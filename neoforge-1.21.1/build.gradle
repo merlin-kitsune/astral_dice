@@ -178,12 +178,10 @@ dependencies {
     // CF 文件 8512040 = `jei-1.21.1-neoforge-19.39.0.372.jar`,1572695 字节,与官方 maven 产物同尺寸)
     implementation "curse.maven:jei-238222:8512040"
     // Mixin:NeoForge 运行时自带 Mixin,编译期仅需注解类;NeoForge 编译/运行同为 Mojmap,无需 refmap。
-    compileOnly 'org.spongepowered:mixin:0.8.5'
-}
-
-// 目标选择器:键盘输入锁定 Mixin(KeyboardHandlerMixin)。NeoForge 运行时自带 Mixin,
-// 编译期仅需注解类;NeoForge 编译/运行同为 Mojmap,无需 refmap。
-dependencies {
+    // （2026-09-18 t23 清理:此处下方原有一个**重复**的 `dependencies { compileOnly 'org.spongepowered:mixin:0.8.5' }`
+    //   块,其注释还引用着已删除的 `KeyboardHandlerMixin`(目标选择器键盘拦截 Mixin,t10 已删)。
+    //   两条声明本就是**同一坐标、同一配置** ⇒ 删掉重复块不改变依赖解析;保留这一条即可。
+    //   目标选择器现在**不依赖任何 Mixin** —— 输入接管走 NeoForge 事件,见 AGENTS.md「目标选择器规范 → 现行口径」第 6 条。)
     compileOnly 'org.spongepowered:mixin:0.8.5'
 }
 

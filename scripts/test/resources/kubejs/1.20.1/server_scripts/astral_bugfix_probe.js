@@ -406,8 +406,13 @@ function doDiag(ctx, tag) {
         try { val = "" + fn(); } catch (e) { val = "ERR:" + exText(e); }
         send(ctx, "AP_" + tag + "_DIAG:" + name + "=" + val);
     }
+    // ⚠️ 已知失败读数(2026-09-18,t23/F2 复核;与 1.21.1 侧对等):`p.level.getClass()` 在 Rhino
+    // 成员查找下不可见,该读数**恒为 `ERR:Type`**。**不得**用它写断言 —— 它无法区分
+    // 「探针坏了」与「探针正常」;需要成功读数请用 lvlDataGGT / getDayTime / srvTickCount。
     probe("levelClass", function () { return p.level.getClass().getName(); });
     probe("getGameTime", function () { return p.level.getGameTime(); });
+    // 2026-09-18(t23, F3;与 1.21.1 侧对等):选中热键栏位(0..8) —— 「选择期间拦截滚轮」的可观测面。
+    probe("selectedSlot", function () { return p.getInventory().selected; });
     probe("lvlDataGGT", function () { return p.level.getLevelData().getGameTime(); });
     probe("getDayTime", function () { return p.level.getDayTime(); });
     probe("reflectGGT", function () {
