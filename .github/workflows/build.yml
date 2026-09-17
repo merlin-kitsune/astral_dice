@@ -110,11 +110,13 @@ jobs:
           # 交给下一步发布 Release(同 job:tag 已保证存在)
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
-      - name: Create/Update GitHub Release (three JARs)
+      - name: Create/Update GitHub Release (three JARs, notes from release/<tag>/)
         # 发布 Release 的两种来源(同一 job 内完成,附件 = 刚构建的三个 jar:
         #   1.21.1 NeoForge + 1.20.1 Forge(发布线)+ 26.1.2 NeoForge(低优先级移植线,版本号带 -beta)):
         #   ① 发布线分支 push:用上一步新建/已存在的 tag(已在库内,无需再触发 workflow);
         #   ② ref 本身就是 tag(tag push,或对 tag 手动 workflow_dispatch 补发):直接用 GITHUB_REF 的 tag。
+        # 说明正文取自**玩家侧发布说明** `release/<tag>/PLAYER_CHANGELOG_ZH.md` + `PLAYER_CHANGELOG.md`
+        # (中文在前、英文在后,中间插一条 `---`);两个文件都不存在时退回「附件清单」兜底并留 ::warning::。
         # 已存在同名 Release 时改为「编辑说明 + --clobber 覆盖附件」,保证重复发布幂等、附件与最新构建一致。
         if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'push' && github.ref == 'refs/heads/multi-1.20.1-1.21.1' && steps.tag.outputs.tag != '')
         env:
@@ -128,19 +130,44 @@ jobs:
           echo "publishing release for tag: $TAG"
           # ⚠️ 三个 glob 都必须至少命中一个文件,否则 bash 会把未展开的模式原样传给 gh 并报错(故意让它失败)。
           JARS=(neoforge-1.21.1/build/libs/astral_dice-*.jar forge-1.20.1/build/libs/astral_dice-*.jar neoforge-26.1.2/build/libs/astral_dice-*.jar)
-          NOTES="Astral Dice $TAG — 1.21.1 (NeoForge) + 1.20.1 (Forge)
-
-          **附件 / Attachments**
-          - \`astral_dice-$TAG+neoforge_1.21.1.jar\` — Minecraft 1.21.1 / NeoForge 21.1(发布线)
-          - \`astral_dice-$TAG+forge_1.20.1.jar\` — Minecraft 1.20.1 / Forge 47.4.10(发布线,需 Mixin Booster ≥ 0.1.3)
-          - \`astral_dice-*-beta+neoforge_26.1.2.jar\` — Minecraft 26.1.2 / NeoForge 26.1.2.109(**低优先级移植线,版本号带 \`-beta\`,与发布线功能对等但不随发布线发版**)"
+          # 说明正文拼成一个临时文件后用 `--notes-file` 传入 —— 玩家侧发布说明可达数十 KB,
+          # 经 `--notes "$(...)"` 内联会踩长度与引号问题(旧的内联单行写法已废弃)。
+          NOTES_ZH="release/$TAG/PLAYER_CHANGELOG_ZH.md"
+          NOTES_EN="release/$TAG/PLAYER_CHANGELOG.md"
+          NOTES_FILE="$RUNNER_TEMP/astral-dice-release-notes-$TAG.md"
+          : > "$NOTES_FILE"
+          HAVE_NOTES=0
+          if [[ -f "$NOTES_ZH" ]]; then
+            cat "$NOTES_ZH" >> "$NOTES_FILE"
+            HAVE_NOTES=1
+          else
+            echo "::warning::player changelog not found: $NOTES_ZH"
+          fi
+          if [[ -f "$NOTES_EN" ]]; then
+            # 中英两份之间插水平分隔线(仅当前面已写入内容时)
+            if [[ $HAVE_NOTES -eq 1 ]]; then printf '\n---\n\n' >> "$NOTES_FILE"; fi
+            cat "$NOTES_EN" >> "$NOTES_FILE"
+            HAVE_NOTES=1
+          else
+            echo "::warning::player changelog not found: $NOTES_EN"
+          fi
+          if [[ $HAVE_NOTES -eq 0 ]]; then
+            # 兜底(不阻断发布):该版本尚未提供玩家侧发布说明时,至少列出本次构建的三个附件
+            {
+              printf 'Astral Dice %s\n\n' "$TAG"
+              printf '**附件 / Attachments**\n'
+              for j in "${JARS[@]}"; do printf -- '- `%s`\n' "${j##*/}"; done
+            } >> "$NOTES_FILE"
+            echo "::warning::no release/$TAG/PLAYER_CHANGELOG*.md found — falling back to an attachment list"
+          fi
+          echo "release notes: $(wc -c < "$NOTES_FILE") bytes"
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release edit "$TAG" --title "Astral Dice $TAG" --notes "$NOTES"
+            gh release edit "$TAG" --title "Astral Dice $TAG" --notes-file "$NOTES_FILE"
             gh release upload "$TAG" "${JARS[@]}" --clobber
           else
             gh release create "$TAG" \
               "${JARS[@]}" \
               --title "Astral Dice $TAG" \
-              --notes "$NOTES" \
+              --notes-file "$NOTES_FILE" \
               --latest
           fi

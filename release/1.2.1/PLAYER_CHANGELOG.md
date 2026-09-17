@@ -1,6 +1,7 @@
 # Astral Dice 1.2.1 — Player Changelog
 
 > Applies to **1.2.0 → 1.2.1**, for both 1.21.1 (NeoForge) and 1.20.1 (Forge). Build suffixes: `+neoforge_1.21.1` / `+forge_1.20.1`.
+> The GitHub Release also ships the third line's **26.1.2 (NeoForge)** build, suffix `+neoforge_26.1.2` (low-priority port line; its version carries `-beta` and it is feature-parity with the release lines).
 > This is the player-facing release note; it maps one-to-one onto the 1.2.1 section of `CHANGELOG.md` (no engineering / tooling entries).
 
 **In one line:** an `/astralparty` admin debug command; the Railgun and spell damage now deal true damage and the "hostile target" rule is unified everywhere; sign active skills became a "ready → in effect → cooldown" three-state machine; plus a batch of fixes for permanently locked card plays, the Ninja's old play bank, tooltips stuck at 0 and more.
@@ -110,6 +111,7 @@
 ## 📌 Requirements
 
 - **Required**: Curios API (**1.20.1 additionally requires Mixin Booster**).
+- **26.1.2 line**: requires Curios API **15+**; it is a low-priority port and has **no Iron's Spells 'n Spellbooks integration**.
 - **Optional integrations**: Patchouli (guidebook), Bountiful.
 - **Version gate (multiplayer)**: the client and server must share the same **major.minor version** (`1.2.x` ↔ `1.2.y` interoperate). Cross-version connections are **refused with a clear message** instead of failing silently.
 - Upgrading from **1.2.0**: **just swap the jar**. This release removed **5 config options** (their values are now built-in fixed constants); those 5 stale keys are dropped from an existing config file by the loader. If your config file version is older than the current config version, it is backed up to `.bak` on startup (this release did **not** increment the config version, which stays **2**).

@@ -173,7 +173,9 @@ When extending this workspace:
 - 两侧门槛都必须在 **mods.toml 解析 / 依赖排序阶段**拒绝不合格环境(FML 会给出可读提示:语言提供者版本不符 = `fml.language.missingversion`;
   强制依赖不满足 = `Missing or unsupported mandatory dependencies:`),**不得**依赖"先加载、再在代码里检查"——mixin 变换早于 mod 构造器,那样只会得到 mixin 报错。
 
-发布规范:GitHub **Release tag 使用无后缀的基础版本号**(如 `1.1.3`,禁止 `v` 前缀与 `+加载器` 后缀),tag 推送即触发 CI 自动构建并发布**三个 jar**(1.21.1 + 1.20.1 + 26.1.2,第三个是 26.1.2 的低优先级 `-beta` jar);发布线分支 `multi-1.20.1-1.21.1` 推送时 CI 会从 `mod_version` 剥离 `-rc/-pre` 与后缀自动打 tag。**26.1.2 永远只作为附件随发布线 Release 发布,不生成自己的 tag/Release**(其 `1.2.1-beta` 不是裸 `x.y.z`);CI 侧实现见 `.github/workflows/build.yml` 的 `Create/Update GitHub Release (three JARs)`。
+发布规范:GitHub **Release tag 使用无后缀的基础版本号**(如 `1.1.3`,禁止 `v` 前缀与 `+加载器` 后缀),tag 推送即触发 CI 自动构建并发布**三个 jar**(1.21.1 + 1.20.1 + 26.1.2,第三个是 26.1.2 的低优先级 `-beta` jar);发布线分支 `multi-1.20.1-1.21.1` 推送时 CI 会从 `mod_version` 剥离 `-rc/-pre` 与后缀自动打 tag。**26.1.2 永远只作为附件随发布线 Release 发布,不生成自己的 tag/Release**(其 `1.2.1-beta` 不是裸 `x.y.z`);CI 侧实现见 `.github/workflows/build.yml` 的 `Create/Update GitHub Release (three JARs, notes from release/<tag>/)`。
+**Release 正文取自玩家侧发布说明**(2026-09-17 起,用户要求):`release/<tag>/PLAYER_CHANGELOG_ZH.md` + `release/<tag>/PLAYER_CHANGELOG.md`,中文在前、中间插 `---`、英文在后,经 `gh release ... --notes-file` 整文件传入(不再用内联单行 `--notes`);两份文件都不存在时只打 `::warning::` 并退回「附件清单」兜底,**不阻断发布**。⇒ 发布前必须确认该版本目录的两份文件已存在且与 `CHANGELOG_(ZH|EN).md` 同步(见「更新日志约定」)。
+**CI / Actions 状态由用户自行观察(2026-09-17 用户裁决,必须遵守)**:本机无 GitHub token、不安装 `gh`,因此**代理不得监视、轮询或尝试查询** GitHub Actions / Release 状态(不跑 `gh run view|list`、不装 CLI、不改用 API 轮询)。推送后代理只在交付说明里列明**预期结果**与失败时的排查入口(远端 job 日志),由用户到 Actions 页面自行核对;禁止把「本机看不到 CI」写成未完成事项反复追问。
 
 ## 版本互通门槛（Version Gate）— 必须遵守
 
@@ -209,7 +211,7 @@ When extending this workspace:
   （emoji `##` 小节:`✨ 新增内容 / ⚖️ 平衡与体验调整 / 🐛 问题修复 / 📌 安装要求`;英文 `✨ New Content / ⚖️ Balance & Quality-of-Life / 🐛 Bug Fixes / 📌 Requirements`;内部用**话题式 `###` 分组**）。
   要求:① 条目一条不少（与 CHANGELOG 该版本玩家侧条目数一致）;② 数字、时长、层数、范围、概率、条件**逐字不改**;
   ③ 去掉实现细节（类名/方法名/附件键/文件路径/mixin/NBT/commit 编号）;④ **不含**工程与测试条目;
-  ⑤ 中英两份逐条一一对应;⑥ 安装要求里 **1.20.1 的 Mixin Booster 硬前置必须在列**。现有先例:`release/1.2.0/`。
+  ⑤ 中英两份逐条一一对应;⑥ 安装要求里 **1.20.1 的 Mixin Booster 硬前置必须在列**。现有先例:`release/1.2.0/`、`release/1.2.1/`(两版均含 26.1.2 第三附件与 Curios 15+ 说明)。**CI 直接以这一对文件作为 GitHub Release 正文**(整文件 `--notes-file`,中文在前 + `---` + 英文在后),故缺文件时 Release 只会退化为「附件清单」——发布前必须核对本目录。
 - **合并约定(1.2.0-rc1 起)**:对当前(未发布)版本已记录条目的后续改动,直接合并进原条目,仅保留改动后的最终版本;禁止追加“再次修改/后续调整”类条目。
 - **自动更新约定**:每次增加/修改任何新内容(物品/配方/机制/平衡/修复/版本号等)都必须同步更新两个 CHANGELOG 文件的对应小节;若后续存在重复修改、回滚或删除(如恢复被删物品、配方回滚、数值改回旧值),对应条目也必须按**最新变化**合并改写或删除,禁止保留已失效的旧描述。
 - 开新版本:先升 gradle.properties 的 `mod_version`,再在两个文件顶部各新建 `未发布(<版本号>)` / `Unreleased (<版本号>)` 小节,后续改动记录到该节。
