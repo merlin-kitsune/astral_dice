@@ -238,7 +238,46 @@
    而库 `.5` 已删除该符号 —— 若改为库引用会引用库中不存在的类，若删本地副本则三处注册编译失败。
    **禁止**为它复活库中已删符号、**禁止** bump 库版本、**禁止**改 CI 的库检出 ref（均属用户已明确暂缓事项）。
    若将来把 26.1.2 的内容迁到目标选择器（AGENTS「三线优先级」），这三处注册与本副本应随另两线一并删除。
-## 7. 变更记录
+## 7. D 组 — 平台 / 第三方冲突（2026-09-18 起）
+
+> 本组登记**不属于本模组缺陷**、但在本仓测试环境里会真实发生的问题。处置口径 = **记录 + 规避 +（可选）上报上游**，
+> **不以改本模组代码的方式去「修」**；若曾被误判为本模组缺陷，须把「被排除的过程与证据」一并写清，避免重复劳动。
+
+### KI-D1 ＝ 26.1.2 + 光影（Iris + Complementary Unbound）+ ImmediatelyFast ⇒ `Missing sampler Sampler1` 崩溃（**已确证与本模组无关**）
+
+**现象**（2026-09-18 用户实测 1 次 + 自动化复现 3 次）：26.1.2 线装 Sodium + Iris + Complementary Unbound（HIGH）+ ImmediatelyFast 后，游戏进行中（约 1–3 分钟内）渲染线程抛 `java.lang.IllegalStateException: Missing sampler Sampler1` 并崩溃。用户最初把它归因于「击杀被施加虚弱印记的目标」，**该因果不成立**（见下方对照组）。
+
+**崩溃栈（三份崩溃报告逐帧相同）**：
+```
+GlCommandEncoder.trySetup(:531) ← GlCommandEncoder.executeDraw(:406) ← GlRenderPass.drawIndexed(:145)
+ ← RenderPass.drawIndexed(:95) ← RenderType.draw(:112) ← MultiBufferSource$BufferSource.endBatch(:99)
+ ← ImmediatelyFast BatchableBufferSource.drawDirect(:178) / endBatch(:148) / endBatch(:138)
+ ← LevelRenderer.lambda$addMainPass$0(LevelRenderer.java:707)      ← 原版主通道的 bufferSource.endBatch()
+```
+三份报告内 **`com.merlinkitsune.*` 帧数 = 0**（`astral_dice` 字样只出现在「资源包 / 模组清单」行）。
+
+**定案证据（对照组）**：同环境、同召唤物、同 45 s 用例，**唯一差别 = 去掉「进入目标选择器」这一步**（`SELECTOR-PRISM-CONTROL-26.1.2` 不执行 `/astral_dice targetselect …`）——
+`capture hook active` = **0**、`astral_dice:pipeline/target_prism` = **0**、`TargetOutlineCapture` = **0**，**客户端照旧崩在同一行**。
+⇒ 本模组的自定义几何**一次都没提交**、外框捕获路径**一次都没进入**，崩溃照样发生 ⇒ 与本模组无关。
+
+**归因**：**Iris × ImmediatelyFast × 26.1.2 新管线/采样器体系**。`GlCommandEncoder.trySetup` 校验的是 **program 侧** uniform，而在 Iris 下 `program()` 被光影包的覆盖程序替换；ImmediatelyFast 又正好在 `LevelRenderer:707` 的批处理刷新路径上直批（栈里它是直接调用者）。Iris 自身在崩溃后连打 `Missing program … in override list. **This is likely an Iris bug!!!**`（`panorama` / `blur/0..5` / `pipeline/gui_textured` / `pipeline/gui` / `pipeline/gui_text` 等，含**原版**管线）。
+
+**排除本模组嫌疑的两条（含被否决的方案，防止后人重走）**：
+1. 「复用原版 entity 管线（`RenderPipelines.ENTITY_SOLID` 声明 `Sampler1`）导致缺绑定」——**不成立**：`RenderSetup.getTextures()`（`:83-118`）里 `Sampler1` = overlay 纹理、`Sampler2` = lightmap，而 `RenderTypes.entitySolid(tex)`（`RenderTypes.java:435-437`）本身就带 `useOverlay()/useLightmap()` ⇒ 该 RenderType 绑定的是三 sampler 的**超集**（最安全）。
+2. 「自建仅 `Sampler0` 的管线以规避」——**已实测反而引入新问题并回退**：Iris 对非 `minecraft:` 位置的新管线打 `Missing program astral_dice:pipeline/target_prism in override list`，并在 `getOrCompilePipeline` 抛 `Throwable`（`temp/t48/A-if-on/debug.log:3530`）；且枚举显示原版无任何管线与本类渲染状态逐项对齐 ⇒ 等价性未证。该方案（提交 `2596ec2` 中的 Fix 2 部分）已按裁决回退，保留原 `entitySolid`。
+
+**规避（当前口径）**：在 26.1.2 上使用光影时**不要同时装 ImmediatelyFast**（或反之）。⚠️ 该建议目前**由崩溃栈 + 对照组推断**得出，**尚未取得「IF 关 ⇒ 不崩」的干净 A/B 读数**（未完成项见下）。
+
+**未完成项（如实登记）**：`SELECTOR-PRISM-*` 系列的「IF 开 / IF 关」A/B **尚未成立**，两次尝试都被工具链破坏 ——
+① 把 `ImmediatelyFast-*.jar` 改名为 `.disabled` 后，`mt.ps1 --phase env` 会调 `mt_env mods`（`mt.ps1:396`）**把它装回来**（目录里出现同哈希 `.jar` 与 `.jar.disabled` 并存，游戏加载 `.jar`）；
+② `gradlew runClient` 按**工作区源码**重编译 ⇒「修复前构建」跑不到（铁证：pre-fix 源码里 `capture rejected`/`target_prism` 命中数为 0，而那次会话两者都出现）。
+**可行路径已定**：B 组**绕过 `mt.ps1`、直接驱动 `mt_launch.ps1`**（改名放在 `env`/`world` 之后），启动后用两条硬证据确认 —— `run/26.1.2/mods` 里 IF **只有 `.disabled` 一份且无新 `.jar`**、已加载清单**无 `(immediatelyfast)`**；缺任一即该组无效。若 B 组仍崩 ⇒ 转第三组（关光影）定位 Iris。
+
+**证据归档**：`temp/t48/`（A / A2 / C1 / EXTREME 四组日志 + `jar-prefix` 与 `jar-fixed` 两份 jar + 报告 `26.1.2-prism-crash-fix-verify.md`）；定案报告 = `temp/t48/C1-if-on-control/crash-2026-09-18_21.16.52-client.txt`。原始现场另有 `temp/t47-crash-2bugs/`（用户实测那次：crash report + latest.log + debug.log，均带 sha256）。
+
+**上报材料（可选，未执行）**：Iris `1.11.4+mc26.1.2` + ImmediatelyFast `1.15.3+26.1` 在 MC 26.1.2 上，`Missing sampler Sampler1` @ `GlCommandEncoder.trySetup:531`，调用链见上；Iris 日志自证 `Missing program … in override list`。
+
+## 8. 变更记录
 
 | 日期 | 变更 |
 |---|---|
@@ -249,3 +288,4 @@
 | 2026-09-17 | 主线 `multi-1.20.1-1.21.1`(8f68482)→ `multi-dev-next` 合并:旧「待命等待器」由目标选择器取代(见 §6 KI-M1)、三态化与选择器共存(KI-M2);登记选择器类立牌锁定保护的待修项与库侧过渡符号清理项(KI-M3) |
 | 2026-09-17 | 库侧过渡符号清理**完成**（库 `d5b0776` / `1.0.0-SNAPSHOT.5`：删 `ReadyEffect`、事件框架三件套 `AstralEventType`/`EventContext`/`EventEffect`、收集链、三个事件常量；**保留** `SKILL_WAIT_SECONDS` / `TARGET_SELECT_RADIUS` / `EVENT_APPLY_MC_TEAM|FTB|OPAC` / `collectTeamPlayers`）；消费方 2 处未使用 import 已由 `7dc64cb` 清除、三线 0 处实际使用；KNOWN-ISSUES 据此更正 **KI-M3 第 3 条**（旧「无消费方 / 未实施」结论 → 实测口径 + 已实施），并登记 **KI-M4** 两条开放项（① 库未 push ⇒ CI 钉住的 ref `d5b0776…` 在推送前必然 checkout 失败；② 消费方 `SIGN_READY_TYPE`/`SIGN_READY_EXPIRE` 废弃键去留待裁决，三线 22 处引用不得静默删除） |
 | 2026-09-17 | **26.1.2 接入 starengine_lib**：构建/元数据接线（`mavenLocal()` + `implementation` 库坐标 + 三个版本键 + `starengine_lib` required 依赖段）+ 删 26 个库已提供的本地副本并改写引用（83 处 FQN/import 就地改写、27 条同包补 import、配置缝改走 `applyConfig(GameplayConfigValues)`）；唯一保留本地副本 `effect/ReadyEffect`；旧「待命等待器」与 33 个效果注册**行为未变**；三线构建 + 模组来源闸门 + lang 同步全绿。登记 **KI-M5** 两项开放项（整合包缺库 jar、ReadyEffect 本地副本例外） |
+| 2026-09-18 | 新增 **§7 D 组（平台/第三方冲突）** 与 **KI-D1**：26.1.2 + 光影（Complementary/Iris）+ ImmediatelyFast 的 `Missing sampler Sampler1` 崩溃，经**对照组**（不执行选择器仍崩、`capture hook active`/`target_prism` 均 0、崩溃报告内本模组帧数 0）确证**与本模组无关**；同时登记「复用 entitySolid 缺 Sampler1」假设**被证伪**、「自建仅 Sampler0 管线」方案**被实测否决并回退**；IF 开/关 A/B 因工具链限制**未完成**（可行路径已写明） |
