@@ -492,6 +492,18 @@ public final class TargetSelectionClient {
                 LOGGER.debug("[Astral Dice][TargetSelectionClient] target=none");
             }
         }
+        // 四态②（红字「对准错误目标」）的可断言读数（2026-09-19 用户裁决「补，仅 DEBUG，三条线对等」）：
+        // 此前 rejectedTarget 只赋值、不打日志 ⇒ ②态只能靠人眼判、无法进自动化用例。
+        // 与上面的 target 读数同口径：**只在变化时打印**（按前值去重），每 tick 至多一条，不刷屏。
+        if (newRejected != rejectedTarget) {
+            if (newRejected != null) {
+                LOGGER.debug("[Astral Dice][TargetSelectionClient] rejected={}({}) hostile={} friendly={}",
+                        newRejected.getId(), newRejected.getName().getString(),
+                        isHostile(newRejected), isFriendly(player, newRejected));
+            } else {
+                LOGGER.debug("[Astral Dice][TargetSelectionClient] rejected=none");
+            }
+        }
         currentTarget = newTarget;
         rejectedTarget = newRejected;
         updateNearbyTargets(player);

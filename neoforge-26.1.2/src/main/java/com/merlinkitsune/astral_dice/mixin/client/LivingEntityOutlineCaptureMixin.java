@@ -93,6 +93,12 @@ public abstract class LivingEntityOutlineCaptureMixin {
                                                   SubmitNodeCollector submitNodeCollector,
                                                   CameraRenderState camera,
                                                   CallbackInfo ci) {
-        TargetOutlineCapture.onSubmit(state, poseStack, this.model);
+        // 相机状态下传（2026-09-19 用户裁决「实施并复跑外框读数用例」）：
+        // 此前这里把已经收到的 camera 参数丢掉了，TargetOutlineCapture 改用
+        // gameRenderer.getMainCamera() —— 而 poseStack 是世界坐标减去**本通道**相机后得到的，
+        // 两者在非主通道（Iris 阴影通道、GuiEntityRenderer 自建 CameraRenderState 的 GUI 实体预览）
+        // 不同源 ⇒ 还原出的盒整体平移，只能靠锚点/尺寸启发式门兜住（实测 478 / 10755 次丢弃）。
+        // 传本帧 camera 后还原与 poseStack 同源，那道门退化为「纯计数」性质的安全网。
+        TargetOutlineCapture.onSubmit(state, poseStack, this.model, camera);
     }
 }
