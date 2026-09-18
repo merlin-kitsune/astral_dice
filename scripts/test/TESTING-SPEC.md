@@ -670,6 +670,24 @@ pwsh -NoProfile -File scripts/test/mt_watchdog.ps1 -Version 1.21.1 [-StallSecond
 - 工程:**实测回显（`temp/t18-verify.ps1` / `temp/t18-verify.log`，全程无游戏客户端）**：① 正式用例 `MT_VALIDATE: OK` rc=0；② 反例 A（声明 `esc_sensitive` 但 1 个 `inject_command` 漏 `no_esc`）→ `MT_VALIDATE: FAIL — 1 项` + `步骤 3: 'inject_command' 缺少 no_esc=true（用例声明 esc_sensitive=true …）` rc=1；③ 反例 B（去掉声明后仍由**自动识别**触发）→ `FAIL — 18 项`，文案为 `命令 '/astral_dice targetselect enemy' 命中会话命令表 targetselect`；④ 反例 C（对缺 `no_esc` 的用例走 `run`）→ `MT_CASE: ERROR — … 校验失败` + `MT_CASES_SUMMARY: NEG-A-missing-no-esc=ERROR`，**rc=2 且未触达游戏**；⑤ 无假阳性：`cases/` 下**48 个真实用例**（`Get-MtCaseFiles` 会排除 `.mt_*.json` 状态文件）全部 `MT_VALIDATE: OK`；⑥ 传递证明（dot-source `mt_case.ps1` 后给 `Invoke-MtCaseChild` 打桩，打印真实 argv）：`key --key j --version 1.21.1 -NoEsc` / `mouse --button right --version 1.21.1 -NoEsc` / `mouse --button right --version 1.21.1 -NoEsc -Shift` / `cmd --command /time set midnight --version 1.21.1 -NoEsc`，而**不声明时不追加**（`key --key j --version 1.21.1`、`mouse --button right --version 1.21.1`、`cmd … --version 1.21.1`）；⑦ `mt_inject` 侧接受性：`key/mouse/cmd … -NoEsc` 均通过参数解析（报「客户端未在运行」而非「未知参数」），而 `--bogus-flag` 仍 `MT_ERROR: 未知参数`（无回归）。
 - 工程:**口径入档**：本条规则写入 `TESTING-SPEC.md` §7（条目 schema 段，「会话期注入必须 `no_esc`」）。玩家侧两份 CHANGELOG **零改动**（纯测试工件/工具链，按约定只进本附录）。用例正式复跑由 t17 执行（本轮只做自证：与已验证基线逐字段等价 + 校验器正反例回显）。
 - 工程:**顺带登记（本轮未改，留给工具链后续任务）**：`mt_inject.ps1` 的 `Send-MtInjectMouseCenter` 在 `-Shift` 时，**shift 按下**走 `Send-MtInjectKeyDown`（sendinput ⇒ 真实 `SendInput`），而**shift 抬起**走 `Send-MtInjectMessage` ⇒ `PostMessage(WM_KEYUP)`（`:287-291` 与 `:179`）—— 两条通路的投递方式不一致（真实按下 / 消息抬键），是「注入 shift+右键后客户端退到标题画面」现象的**待查疑点**（t16 取证时两次复现，隔离实验证明与本模组改动无关）。本轮**不修**（不在 t18 的修复范围，且改注入通路会影响所有 shift 类用例），只登记并与 key/mouse 的 `ESC_SKIP` 回显一起留待专项处理。
+**2026-09-18：筹码栏「装备骰子偶发不增加」修复交付到发布线 + 版本号升位（`1.2.1-hotfix` / `1.2.1-beta.2`）**
+
+- **范围与来源**：本次修复先在开发线 `multi-dev-next` 落地并完成游戏内验证（1.21.1 / 1.20.1 各 **54 PASS / 0 FAIL**，26.1.2 的 `CHIP-EQUIP`、`PORTED-PROBE-SMOKE`、`CHIP-RELOG-A/B` 全 PASS；用例、探针改动与判据全文记在开发线工作区的 `TESTING-SPEC.md` 附录 A 与 `AGENTS.md` 的「骰子槽位与配置规范」）。随后把**仅该修复**移植到发布线 `multi-1.20.1-1.21.1`，共 **5 个文件**：3 个 `item/dice/DiceCurioItem.java`（1.21.1 / 1.20.1 / 26.1.2）+ 2 个 `event/PlayerLifecycleHandler.java`（各新增 3 个对账钩子：`PlayerLoggedInEvent`、`OnDatapackSyncEvent`(LOWEST)、`PlayerEvent.Clone`(LOWEST)）。移植时**刻意不带**开发线独有的其它差异（`starenginelib` 包引用、额外的 effect 移除行等），发布线其余内容保持原样。
+- **版本号**：`1.2.1+neoforge_1.21.1` → **`1.2.1-hotfix+neoforge_1.21.1`**；`1.2.1+forge_1.20.1` → **`1.2.1-hotfix+forge_1.20.1`**；`1.2.1-beta+neoforge_26.1.2` → **`1.2.1-beta.2+neoforge_26.1.2`**。
+- **Tag / Release 口径（重要）**：CI 的剥离规则是「先剥 `+后缀`，再剥第一个 `-` 之后的一切」（`BASE=${VERSION%%+*}; BASE=${BASE%%-*}`）⇒ `1.2.1-hotfix` 解析出的 tag 是**裸 `1.2.1`**，而该 tag 已存在 ⇒ 本次推送**不新建 tag、不新建 Release**，而是走 `gh release edit` + `gh release upload --clobber` **刷新同一个 1.2.1 Release**（三个附件一并替换、正文取自 `release/1.2.1/`）。
+- **构建与产物核验（三线各跑 `scripts/test/mt_build.ps1 --version <V> --timeout 60 --retries 3`，三条全部 `MT_BUILD: OK`）**：
+
+  | 线 | 产物 | 字节 | 装载器元数据 `version=` |
+  |---|---|---|---|
+  | 1.21.1 | `astral_dice-1.2.1-hotfix+neoforge_1.21.1.jar` | 936567 | `1.2.1-hotfix+neoforge_1.21.1` |
+  | 1.20.1 | `astral_dice-1.2.1-hotfix+forge_1.20.1.jar` | 982006 | `1.2.1-hotfix+forge_1.20.1` |
+  | 26.1.2 | `astral_dice-1.2.1-beta.2+neoforge_26.1.2.jar` | 967218 | `1.2.1-beta.2+neoforge_26.1.2` |
+
+  - 三份 jar 内的 `astral_dice_version.properties` 的 `mod_version` 与上表同值；三份 `DiceCurioItem.class` 经 `ZipFile` 抽取 + 常量池 ASCII 扫描，均含 `refreshChipSlotCount` / `clearChipSlotCount` / `applySlotCount` 三个方法名（即**发货字节码确实带本次修复**，不是「只看构建成功」）。
+  - 产物去向四条一致：子项目 `build/libs`、根 `build/libs`（3 个 jar 齐全）、`run/<版本>/mods`、三个本地整合包 `mods` 目录；每个目录**恰有 1 个**本模组 jar（旧版本 jar 已由 `pushTo*` 的按后缀清理规则删除）。
+- **互通号未变**：`VersionGate.majorMinor("1.2.1-hotfix+neoforge_1.21.1")` 在首个 `-`/`+` 处截断后取前两段数字 ⇒ 仍为 **`1.2`**，故 `1.2.1` ↔ `1.2.1-hotfix` 客户端/服务端**继续双向互通**（`README.md` 中英两表与 `AGENTS.md` 的版本矩阵已同步为新版本号）。
+- **玩家侧文档**：两份 CHANGELOG 顶部新增 `## 1.2.1-hotfix` 小节（各 **1 条**，分类均为「物品、筹码与交易」/「Items, Chips & Trading」）；`release/1.2.1/PLAYER_CHANGELOG_ZH.md` + `PLAYER_CHANGELOG.md` 同步新增 `### 饰品栏与筹码栏（1.2.1-hotfix）` / `### Curios bar and chip slots (1.2.1-hotfix)`，文件头的适用范围改为 `1.2.0 → 1.2.1 → 1.2.1-hotfix`（CI 以这一对文件作为 Release 正文，故必须同步，否则正文会与 CHANGELOG 脱节）。
+- **发布线游戏内回归的边界（如实写明，不作为已完成的验证）**：发布线工作区的 `scripts/test` 目前**没有**本批探针命令（`chipstate` / `chipreset` / `chiptiming`）与三条 `CHIP-EQUIP-*` 用例（只有 26.1.2 的 `CHIP-RELOG-A/B`）。因此发布线本批只做了「构建 + 产物 / 元数据 / 字节码」核验，游戏内行为结论沿用开发线上**同一份修复代码**的读数（见首条）。若需要发布线自有读数，应按 §13.2 把探针子命令与三条用例成对移植到发布线后单独跑一轮，并把结果补记到本条。
 
 **2026-09-17：26.1.2 线并入主线 + 模组来源统一口径 + 内容更新优先级规则**
 

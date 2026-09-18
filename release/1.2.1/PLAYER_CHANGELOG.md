@@ -1,8 +1,8 @@
 # Astral Dice 1.2.1 — Player Changelog
 
-> Applies to **1.2.0 → 1.2.1**, for both 1.21.1 (NeoForge) and 1.20.1 (Forge). Build suffixes: `+neoforge_1.21.1` / `+forge_1.20.1`.
+> Applies to **1.2.0 → 1.2.1 → 1.2.1-hotfix**, for both 1.21.1 (NeoForge) and 1.20.1 (Forge). Build suffixes: `+neoforge_1.21.1` / `+forge_1.20.1` (`1.2.1-hotfix` is a patch on `1.2.1`; on GitHub it refreshes the **same 1.2.1 Release**).
 > The GitHub Release also ships the third line's **26.1.2 (NeoForge)** build, suffix `+neoforge_26.1.2` (low-priority port line; its version carries `-beta` and it is feature-parity with the release lines).
-> This is the player-facing release note; it maps one-to-one onto the 1.2.1 section of `CHANGELOG.md` (no engineering / tooling entries).
+> This is the player-facing release note; it maps one-to-one onto the 1.2.1 and 1.2.1-hotfix sections of `CHANGELOG.md` (no engineering / tooling entries).
 
 **In one line:** an `/astralparty` admin debug command; the Railgun and spell damage now deal true damage and the "hostile target" rule is unified everywhere; sign active skills became a "ready → in effect → cooldown" three-state machine; plus a batch of fixes for permanently locked card plays, the Ninja's old play bank, tooltips stuck at 0 and more.
 
@@ -68,6 +68,10 @@
 ---
 
 ## 🐛 Bug Fixes
+
+### Curios bar and chip slots (1.2.1-hotfix)
+
+- **Fixed chip slots occasionally not increasing when a dice is equipped** (it only appeared about a second later, if at all): the "equip a dice → immediately gain the matching number of chip slots" step never actually took effect - the chip bar was only filled in by a once-per-second fallback check, so at the moment you equipped the dice (or the instant you opened the curio screen) it still showed 0 slots and only appeared a second later, which read as "sometimes it doesn't increase"; quitting within that second even saved 0 as this character's chip-slot count. Equipping a dice now grants the chip slots **immediately**, according to the dice's tier and star level, and the count is reconciled again on **entering the world / reloading data packs / respawning after death**; the chip-slot count is now declared outright by this mod instead of being adjusted by relative increments, so **leftovers in old saves, a curio inventory reset by an admin or a lost sync** all recover to the correct size within a second - no more "it should be 2 but stays 0" or "the count keeps growing". Swapping dice **never** ejects chips you already placed because of a momentary empty reading (an occupied bar keeps the slots it needs until you take the chips out yourself).
 
 ### Damage and lifesaving
 

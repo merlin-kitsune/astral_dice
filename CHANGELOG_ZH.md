@@ -36,6 +36,10 @@
 #### 立牌与技能
 - 修复**1.21.1 版加载模组时直接崩溃、根本进不去游戏**（2026-09-17 实机定位）：枪匠立牌（`MosesSignItem`）在「目标选择前置门控」改造后**不再注册任何事件订阅方法**，但类上残留了加载器的自动订阅标注 —— 1.21.1 的 NeoForge 对「标注为订阅者却没有任何订阅方法的类」会在**模组构造阶段**直接抛异常（`class … has no @SubscribeEvent methods, but register was called anyway`），继而 `Failed to register automatic subscribers` → `Failed to wait for future Mod Construction`，整个模组被拒绝加载（表现为启动即停在 `Mod Construction` 失败，与玩法无关）。现删除该残留标注，并在原处加注释说明本类**不得**再标注订阅者以免回归；1.20.1 侧同源的空标注一并清理（Forge 对该情形不抛异常，故此前从未暴露，但同属死标注）。修复后 1.21.1 实机冷启动正常进入世界（`MT_LAUNCH: OK (45s)`，KubeJS 探针 `server.log` 0 errors）。
 
+## 1.2.1-hotfix
+
+
+
 ## 1.2.1
 
 ### 新内容
