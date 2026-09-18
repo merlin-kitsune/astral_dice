@@ -4,6 +4,7 @@ import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.network.ModNetwork;
 import com.merlinkitsune.starenginelib.client.ActionBarManager;
 import com.merlinkitsune.starenginelib.target.TargetType;
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.ChatScreen;
 import net.minecraft.client.gui.screens.PauseScreen;
@@ -39,7 +40,9 @@ import java.util.List;
  * <p>按键口径（2026-09-17 用户裁决，"强力胶式"交互；本模组全部技能不开放自身使用），与 1.21.1 逐条对等：
  * <ul>
  *   <li><b>左键</b> = 确认目标（发送 {@link ModNetwork.TargetSelectConfirmMessage}）；</li>
- *   <li><b>右键</b> = 对自身使用 —— 本模组无任何技能可对自身使用，故只弹 actionbar 提示
+ *   <li><b>右键</b> = 对自身使用 —— 会话允许自身目标（{@link #allowSelf()}）时提交对自身的确认；
+ *       否则（**当前全部动作**的取值，无任何动作实现
+ *       {@code target/SelfTargetable}）只弹 actionbar 提示
  *       {@code msg.astral_dice.target_select.self_unsupported}，**不提交选择**（会话保留）；</li>
  *   <li><b>右键 + 潜行</b> = 取消选择；</li>
  *   <li><b>ESC</b> = 原版照常打开暂停菜单，菜单一打开（{@link ScreenEvent.Opening}）即取消选择；</li>
@@ -53,8 +56,9 @@ import java.util.List;
  * （{@code astral_dice.mixins.json} 的客户端清单里对应条目一并移除）—— 强力胶式语义下确认/取消全部
  * 由鼠标（左键/右键[+潜行]）与 ESC 菜单承担，键盘不再被模组吞掉（J 仍作取消，走 KeyMapping 消费）。
  *
- * <p>提示分工：中央 HUD 只画「目标名 + 距离」一行（见 {@link TargetSelectOverlay}），其余提示
- * 一律走 actionbar（每 tick 刷新，见 {@link #refreshActionBarPrompt}）。
+ * <p>提示分工：中央 HUD 只画一行「目标名 + 距离 + 类型标签」（见 {@link TargetSelectOverlay}），其余提示
+ * 一律走 actionbar —— 每 tick 刷新的**四态**稳态提示（未命中 / 可自身 / 正确目标 / 错误目标，
+ * 末尾追加黄色剩余时间，见 {@link #steadyPrompt()}）与瞬态反馈（见 {@link #showPrompt}）。
  */
 @Mod.EventBusSubscriber(modid = AstralDiceMod.MODID, value = Dist.CLIENT)
 public final class TargetSelectionClient {
@@ -84,6 +88,11 @@ public final class TargetSelectionClient {
     /** 瞬态 actionbar 提示（优先于默认提示）；到期后恢复默认提示 */
     private static Component transientPrompt;
     private static long transientPromptUntil;
+    /**
+     * 本次会话是否允许对自身使用（服务端随会话下发；消费方接口
+     * {@code target/SelfTargetable#allowSelf()} 的取值，当前无任何动作实现 ⇒ 恒 false）。
+     */
+    private static boolean allowSelf;
 
     private TargetSelectionClient() {
     }
@@ -126,6 +135,47 @@ public final class TargetSelectionClient {
         return COLOR_NEUTRAL;
     }
 
+    /**
+     * 会话剩余秒数（{@code ceil((expireTick - level.getGameTime()) / 20)}，最小 0）。
+     *
+     * <p>与超时判据（{@link #tick()} 的 {@code gameTime >= expireTick}）同源：归零即会话超时。
+     * 供 actionbar 的「（剩余 N 秒）」与 HUD/测试复用；无世界（未进游戏）时返回 0。
+     */
+    public static int remainingSeconds() {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null) return 0;
+        long remainingTicks = expireTick - mc.level.getGameTime();
+        if (remainingTicks <= 0L) return 0;
+        return (int) Math.ceil(remainingTicks / 20.0);
+    }
+
+    /** 本次会话是否允许对自身使用（服务端下发；当前无任何动作实现 ⇒ 恒 false） */
+    public static boolean allowSelf() {
+        return allowSelf;
+    }
+
+    /**
+     * HUD 类型标签的 lang 键后缀（{@code hostile} / {@code teammate} / {@code pet} /
+     * {@code neutral} / {@code player}），键名 = {@code hud.astral_dice.target_select.tag.<后缀>}。
+     *
+     * <p>推导口径与 {@link #highlightColor}/{@link #isFriendly}/{@link #isHostile} 同源：
+     * 玩家 → 同队（{@link #isFriendly}）为 {@code teammate}、非同队为 {@code player}；
+     * 其它生物中，选择者自己拥有的（{@link OwnableEntity#getOwnerUUID()} 等于选择者）为
+     * {@code pet}，敌对（{@link #isHostile}）为 {@code hostile}，其余为 {@code neutral}。
+     */
+    public static String targetTagKey(LivingEntity entity) {
+        Minecraft mc = Minecraft.getInstance();
+        Player selector = mc.player;
+        if (entity instanceof Player) {
+            return selector != null && isFriendly(selector, entity) ? "teammate" : "player";
+        }
+        if (selector != null && entity instanceof OwnableEntity ownable
+                && selector.getUUID().equals(ownable.getOwnerUUID())) {
+            return "pet";
+        }
+        return isHostile(entity) ? "hostile" : "neutral";
+    }
+
     public static boolean isHostile(LivingEntity entity) {
         return entity instanceof Enemy;
     }
@@ -143,7 +193,8 @@ public final class TargetSelectionClient {
     // === 会话生命周期 ===
 
     /** 服务端下发选择会话开始（TargetSelectStartMessage 处理器调用，主线程） */
-    public static void start(int newToken, int targetTypeOrd, double newRadius, int durationTicks, String newActionId) {
+    public static void start(int newToken, int targetTypeOrd, double newRadius, int durationTicks, String newActionId,
+                             boolean newAllowSelf) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.level == null) return;
         token = newToken;
@@ -151,6 +202,7 @@ public final class TargetSelectionClient {
         radius = Math.max(1.0, newRadius);
         expireTick = mc.level.getGameTime() + Math.max(1, durationTicks);
         actionId = newActionId;
+        allowSelf = newAllowSelf;
         active = true;
         currentTarget = null;
         rejectedTarget = null;
@@ -159,8 +211,8 @@ public final class TargetSelectionClient {
         transientPromptUntil = 0;
         // 清除遗留的左键按下状态：选择期间攻击键被接管，避免进入前长按导致持续攻击
         mc.options.keyAttack.setDown(false);
-        LOGGER.debug("[Astral Dice][TargetSelectionClient] start token={} type={} radius={} expire={} action={}",
-                token, targetType, radius, expireTick, actionId);
+        LOGGER.debug("[Astral Dice][TargetSelectionClient] start token={} type={} radius={} expire={} action={} allowSelf={}",
+                token, targetType, radius, expireTick, actionId, allowSelf);
         refreshActionBarPrompt(mc);
     }
 
@@ -194,9 +246,25 @@ public final class TargetSelectionClient {
         confirm();
     }
 
-    /** 右键 = 对自身使用：本模组全部技能不开放自身使用 ⇒ 只提示，不提交选择（会话保留） */
+    /**
+     * 右键 = 对自身使用。
+     *
+     * <p>会话允许自身目标（{@link #allowSelf()}）时提交对自身的确认包并退出选择模式；
+     * 否则（当前**全部**动作的取值）只弹 actionbar {@code self_unsupported} 提示，
+     * **不提交选择**、会话保留。
+     */
     public static void useOnSelfBySecondaryClick() {
         if (!isActive()) return;
+        if (allowSelf()) {
+            Minecraft mc = Minecraft.getInstance();
+            if (mc.player == null) return;
+            int selfId = mc.player.getId();
+            LOGGER.debug("[Astral Dice][TargetSelectionClient] self-confirm sent token={} target={}(self)",
+                    token, selfId);
+            ModNetwork.sendToServer(new ModNetwork.TargetSelectConfirmMessage(token, selfId));
+            deactivate();
+            return;
+        }
         logPrompt("right", "self_unsupported");
         showPrompt(Component.translatable("msg.astral_dice.target_select.self_unsupported"));
     }
@@ -232,6 +300,7 @@ public final class TargetSelectionClient {
         currentTarget = null;
         rejectedTarget = null;
         nearbyTargets.clear();
+        allowSelf = false;
         Minecraft mc = Minecraft.getInstance();
         if (mc.options != null) {
             mc.options.keyAttack.setDown(false);
@@ -243,8 +312,8 @@ public final class TargetSelectionClient {
     /**
      * 强力胶式提示：每 tick 续期一次 actionbar（`ActionBarManager.show(component, 40)`）。
      *
-     * <p>瞬态提示（自用不可用 / 无目标 / 目标不可选 / 已取消）在窗口期内优先，避免被默认
-     * 「选择目标中」提示在同一 tick 内覆盖掉；窗口期过后自动回到默认提示。
+     * <p>瞬态提示（无目标左键 / 自用不可用 / 已取消）在 40 tick 窗口期内优先，避免被稳态提示
+     * 在同一 tick 内覆盖掉；窗口期过后自动回到稳态提示（{@link #steadyPrompt()}）。
      *
      * <p>注入点说明：`ActionBarManager` 正是服务端 `ActionBarMessage` 在客户端侧的落点
      * （见 `network/ModNetwork` 的处理器），故本客户端提示与服务端提示渲染在同一层、同一位置，
@@ -259,9 +328,60 @@ public final class TargetSelectionClient {
         } else {
             transientPrompt = null;
             transientPromptUntil = 0;
-            prompt = Component.translatable("msg.astral_dice.target_select.active");
+            prompt = steadyPrompt();
         }
         ActionBarManager.show(prompt, ACTIONBAR_TICKS);
+    }
+
+    /**
+     * 稳态提示（2026-09-18 用户裁决的四态口径，与 1.21.1 逐条对等）：主文案随
+     * 「准星目标 / 准星命中但不可选 / 未命中（分是否允许自身）」四态着色，末尾统一追加
+     * **黄色**的「（剩余 N 秒）」。
+     *
+     * <p>四态优先级：① 有有效目标 → 绿 {@code prompt.valid}；② 否则准星命中但不可选 →
+     * 红 {@code prompt.rejected}（参数 = 本次会话 {@link TargetType} 对应的有效目标名）；
+     * ③ 否则 → 白 {@code prompt.no_target_self}（{@link #allowSelf()} 为真）或
+     * {@code prompt.no_target}（为假），参数 = 技能名。
+     */
+    private static Component steadyPrompt() {
+        Component main;
+        if (currentTarget != null) {
+            main = Component.translatable("msg.astral_dice.target_select.prompt.valid")
+                    .withStyle(ChatFormatting.GREEN);
+        } else if (rejectedTarget != null) {
+            main = Component.translatable("msg.astral_dice.target_select.prompt.rejected", validTargetName())
+                    .withStyle(ChatFormatting.RED);
+        } else if (allowSelf()) {
+            main = Component.translatable("msg.astral_dice.target_select.prompt.no_target_self", skillName())
+                    .withStyle(ChatFormatting.WHITE);
+        } else {
+            main = Component.translatable("msg.astral_dice.target_select.prompt.no_target", skillName())
+                    .withStyle(ChatFormatting.WHITE);
+        }
+        Component time = Component.translatable("msg.astral_dice.target_select.time", remainingSeconds())
+                .withStyle(ChatFormatting.YELLOW);
+        return Component.empty().append(main).append(time);
+    }
+
+    /**
+     * 技能名（按会话 actionId 取 lang）。
+     *
+     * <p>用 {@code translatableWithFallback}：未登记的 actionId（演示/测试动作如
+     * {@code test_echo_*}）回退显示 actionId 本身，而不是裸的 lang 键名。
+     */
+    private static Component skillName() {
+        return Component.translatableWithFallback("msg.astral_dice.target_select.skill." + actionId, actionId);
+    }
+
+    /**
+     * 本次会话有效目标名（按 {@link TargetType} 枚举名取 lang）。
+     *
+     * <p>用 {@code translatableWithFallback}，fallback = 枚举名 ⇒ 将来新增 {@link TargetType}
+     * 而 lang 尚未补齐时只会显示枚举名，不会显示裸键。
+     */
+    private static Component validTargetName() {
+        String name = targetType.name();
+        return Component.translatableWithFallback("msg.astral_dice.target_select.valid_target." + name, name);
     }
 
     /** 显示一条瞬态 actionbar 提示（ACTIONBAR_TICKS 内不被默认提示覆盖） */
@@ -312,7 +432,9 @@ public final class TargetSelectionClient {
             if (targetType.matches(player, living) && player.distanceToSqr(living) <= radius * radius) {
                 newTarget = living;
             } else {
-                // 命中但不可选（会话目标类型不符 / 超出半径）：走 1/24 细边 + rejected 提示
+                // 命中但不可选（会话目标类型不符 / 超出半径）：走 1/24 细边；
+                // 「对准错误目标」的提示自 2026-09-18 起是**稳态红字**（见 steadyPrompt），
+                // 不再在此处抛瞬态 showPrompt —— 否则每 tick 都会与稳态文案来回跳。
                 newRejected = living;
             }
         }
@@ -327,9 +449,6 @@ public final class TargetSelectionClient {
         }
         currentTarget = newTarget;
         rejectedTarget = newRejected;
-        if (newRejected != null) {
-            showPrompt(Component.translatable("msg.astral_dice.target_select.rejected"));
-        }
         updateNearbyTargets(player);
     }
 

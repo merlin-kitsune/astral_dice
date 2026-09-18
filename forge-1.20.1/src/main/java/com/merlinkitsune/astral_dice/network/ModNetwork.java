@@ -255,13 +255,21 @@ public final class ModNetwork {
         private final double radius;
         private final int durationTicks;
         private final String actionId;
+        /**
+         * 本次会话是否允许对自身使用(消费方接口
+         * com.merlinkitsune.astral_dice.target.SelfTargetable#allowSelf() 的取值;
+         * 当前无任何动作实现该接口 ⇒ 恒 false)。
+         */
+        private final boolean allowSelf;
 
-        public TargetSelectStartMessage(int token, int targetType, double radius, int durationTicks, String actionId) {
+        public TargetSelectStartMessage(int token, int targetType, double radius, int durationTicks, String actionId,
+                                        boolean allowSelf) {
             this.token = token;
             this.targetType = targetType;
             this.radius = radius;
             this.durationTicks = durationTicks;
             this.actionId = actionId;
+            this.allowSelf = allowSelf;
         }
 
         public static void encode(TargetSelectStartMessage msg, FriendlyByteBuf buf) {
@@ -270,17 +278,18 @@ public final class ModNetwork {
             buf.writeDouble(msg.radius);
             buf.writeVarInt(msg.durationTicks);
             buf.writeUtf(msg.actionId);
+            buf.writeBoolean(msg.allowSelf);
         }
 
         public static TargetSelectStartMessage decode(FriendlyByteBuf buf) {
             return new TargetSelectStartMessage(buf.readVarInt(), buf.readVarInt(), buf.readDouble(),
-                    buf.readVarInt(), buf.readUtf());
+                    buf.readVarInt(), buf.readUtf(), buf.readBoolean());
         }
 
         public static void handle(TargetSelectStartMessage msg, Supplier<NetworkEvent.Context> ctx) {
             ctx.get().enqueueWork(() ->
                     com.merlinkitsune.astral_dice.client.TargetSelectionClient.start(
-                            msg.token, msg.targetType, msg.radius, msg.durationTicks, msg.actionId));
+                            msg.token, msg.targetType, msg.radius, msg.durationTicks, msg.actionId, msg.allowSelf));
             ctx.get().setPacketHandled(true);
         }
     }

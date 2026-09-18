@@ -50,13 +50,23 @@ public final class TargetSelectionManager {
         public final TargetType targetType;
         public final double radius;
         public final long expireTick;
+        /**
+         * 本次会话是否允许对自身使用（{@link SelfTargetable#allowSelf()} 的取值，启动时快照）。
+         *
+         * <p>随 {@code ModNetwork.TargetSelectStartMessage} 一起下发，客户端据此决定 actionbar
+         * 口径与右键行为；服务端留存该标志是为了将来校验自身目标（当前 {@link TargetType#matches}
+         * 仍排除自身，故本标志暂时只影响客户端提示/提交路径）。
+         */
+        public final boolean allowSelf;
 
-        Session(int token, String actionId, TargetType targetType, double radius, long expireTick) {
+        Session(int token, String actionId, TargetType targetType, double radius, long expireTick,
+                boolean allowSelf) {
             this.token = token;
             this.actionId = actionId;
             this.targetType = targetType;
             this.radius = radius;
             this.expireTick = expireTick;
+            this.allowSelf = allowSelf;
         }
     }
 
@@ -103,18 +113,20 @@ public final class TargetSelectionManager {
         int token = ThreadLocalRandom.current().nextInt(1, Integer.MAX_VALUE);
         double radius = Math.max(1.0, Math.min(action.radius(), GameplayConstants.TARGET_SELECT_RADIUS));
         long expireTick = player.level().getGameTime() + (long) GameplayConstants.SKILL_WAIT_SECONDS * 20L;
-        Session session = new Session(token, actionId, action.targetType(), radius, expireTick);
+        // 对自身使用的唯一来源（消费方侧接口，不改前置库）：本次无任何动作实现 SelfTargetable ⇒ 恒 false。
+        boolean allowSelf = action instanceof SelfTargetable selfTargetable && selfTargetable.allowSelf();
+        Session session = new Session(token, actionId, action.targetType(), radius, expireTick, allowSelf);
         SESSIONS.put(player.getUUID(), session);
         // 会话被替换:旧会话可能留下的「立牌门控待执行记录」必须一并清除(防跨会话误触发);
         // 新记录由调用方(立牌 performSkill)在 start 成功后 arm。
         SignSelectionGate.clear(player);
         action.onStarted(player);
 
-        LOGGER.debug("[Astral Dice][TargetSelection] start player={} action={} token={} type={} radius={} expire={}",
-                player.getName().getString(), actionId, token, action.targetType(), radius, expireTick);
+        LOGGER.debug("[Astral Dice][TargetSelection] start player={} action={} token={} type={} radius={} expire={} allowSelf={}",
+                player.getName().getString(), actionId, token, action.targetType(), radius, expireTick, allowSelf);
         ModNetwork.sendToPlayer(player, new ModNetwork.TargetSelectStartMessage(
                 token, action.targetType().ordinal(), radius,
-                (int) Math.max(1, expireTick - player.level().getGameTime()), actionId));
+                (int) Math.max(1, expireTick - player.level().getGameTime()), actionId, allowSelf));
         return true;
     }
 
