@@ -277,6 +277,11 @@ GlCommandEncoder.trySetup(:531) ← GlCommandEncoder.executeDraw(:406) ← GlRen
 
 **上报材料（可选，未执行）**：Iris `1.11.4+mc26.1.2` + ImmediatelyFast `1.15.3+26.1` 在 MC 26.1.2 上，`Missing sampler Sampler1` @ `GlCommandEncoder.trySetup:531`，调用链见上；Iris 日志自证 `Missing program … in override list`。
 
+**源码取证（用户 2026-09-18 提供仓库地址，后续按源码分析）**：
+- **ImmediatelyFast 源码仓库**：<https://github.com/RaphiMC/ImmediatelyFast> —— 按本仓「第三方模组源码核验规则」（`AGENTS.md`）取源：**克隆到本仓之外**（如 `F:\MCProject\temp_immediatelyfast\26.1`）、经代理 `http://127.0.0.1:7897`、按版本定位（目标 = 本仓 `run\26.1.2\mods` 内的 `ImmediatelyFast-NeoForge-1.15.3+26.1.jar`），结论须给「分支 + commit + 版本号」与 `文件:行号 + 原文片段`；**不得**用 `javap` 反汇编或旧版本源码副本代替。
+- **待复核的 IF 侧直接嫌疑**（由崩溃栈本身点出，非推测）：IF 有两个 mixin 注入 `GlCommandEncoder`（`immediatelyfast-common.mixins.json:avoid_redundant_framebuffer_switching.MixinGlCommandEncoder`、`fix_slow_buffer_upload_on_apple_gpu.MixinGlCommandEncoder`），而异常正是在 `GlCommandEncoder.trySetup:531` 抛出；调用链上还有 `BatchableBufferSource.drawDirect(:178)`/`endBatch(:148,138)`。⇒ 要回答的问题：**IF 在「切换 render pass / framebuffer」之后，是否重建了 pipeline 却没有重绑 sampler**（对照原版 `RenderSetup.getTextures()` → `RenderPass.bindTexture("Sampler1", …)` 的绑定时机）。
+- **Iris 侧**同规则自行取源：<https://github.com/IrisShaders/Iris>（崩溃栈含其 `MixinGlCommandEncoder`；`trySetup` 的 sampler 校验被 Iris 的覆盖程序替换，故它是「校验方」）。
+
 ## 8. 变更记录
 
 | 日期 | 变更 |
