@@ -87,10 +87,38 @@ public final class TargetOutlineCapture {
     /** 缓存上限（会话结束会清空，这里再加一道保险，绝不无界增长） */
     private static final int MAX_ENTRIES = 64;
 
+    // === 上下文一致性校验（W1 / Bug 1「对准空地出现大面积红框」修复）===
+    //
+    // 注入点 {@code LivingEntityRenderer#submit} 在**所有渲染上下文**都会被调用，而 {@link #onSubmit}
+    // 的坐标系还原（{@code local.move(cameraPos)}）只在**主通道**成立：26.1.2 的实体提交由
+    // {@code EntityRenderDispatcher#submit} 平移「实体坐标 − 该通道相机坐标」，那个相机来自
+    // {@code LevelRenderer#submitEntities} 传入的 {@code levelRenderState.cameraRenderState}；
+    // 而本类取的是 {@code gameRenderer.getMainCamera()}。Iris 阴影通道（Iris 复用同一
+    // {@code LevelRenderer#addMainPass}）、GUI 内实体预览等上下文里「该通道相机 ≠ 主相机」
+    // ⇒ 还原出的盒整体平移一个 (主相机 − 该通道相机) 的偏差 ⇒ 与实体本体脱锚 ⇒ 画成巨框。
+    //
+    // 2026-09-18 崩溃现场取证（{@code temp\t47-crash-2bugs\debug.log}，解析脚本 temp\t48_parse_bug1.py）：
+    // 43 条 {@code TargetSelectBounds} 读数中 **43/43 全部脱锚**（对齐阈值 0.35 格），
+    // 「model 盒中心 − 碰撞盒中心」最大分量 2.343 ~ 16.910 格（中位 9.042），
+    // {@code used} 盒相对碰撞盒最大膨胀 30.25 倍 ⇒ 与「对准空地仍出现大面积红框」的现象一致。
+    //
+    // ⇒ 存盒前做**双条件**校验，任一不成立即**丢弃本次采集**（不写 {@link #CAPTURED}）。
+    //    容差**不硬编码魔数**，全部由碰撞盒自身尺寸派生：
+    /** 锚点容差余量（格）：容纳「模型外框天然略大于碰撞盒」的四肢/头颈外扩，以及渲染插值与当前 tick 的位移差 */
+    private static final double ANCHOR_SLACK = 1.0D;
+    /** 尺寸倍数上限：模型外框任一轴不得超过碰撞盒对应轴的该倍数 */
+    private static final double SIZE_GROWTH = 3.0D;
+    /** 尺寸固定余量（格）：让极小碰撞盒（如 0.25 格的幼体）也有绝对外扩余量 */
+    private static final double SIZE_SLACK = 1.0D;
+
     private static long loggedLines;
     private static boolean logCapReported;
     /** 一次性「钩子已生效」INFO 标记（见 {@link #onSubmit}；供用例断言，不刷屏） */
     private static boolean hookActiveLogged;
+    /** 本次会话被丢弃的采集次数（上下文不一致）：供 {@link #clearIfIdle()} 打一条会话汇总 */
+    private static long rejectedCount;
+    /** 本次会话是否已为「首次丢弃」打过即时日志（**每会话至多 2 条**：首次即时一条 + 会话结束汇总一条） */
+    private static boolean rejectionLogged;
 
     private TargetOutlineCapture() {
     }
@@ -122,7 +150,68 @@ public final class TargetOutlineCapture {
         if (local == null) return;
 
         Vec3 cameraPos = Minecraft.getInstance().gameRenderer.getMainCamera().position();
-        store(entity, local.move(cameraPos), state);
+        AABB world = local.move(cameraPos);
+
+        // 上下文一致性校验：不通过即丢弃本次采集（不写 CAPTURED，保留上一帧的良好值 / 退化为碰撞盒）
+        String mismatch = contextMismatch(entity, world);
+        if (mismatch != null) {
+            rejectCapture(entity, mismatch, local, world);
+            return;
+        }
+
+        store(entity, world, state);
+    }
+
+    /**
+     * 采集上下文一致性校验（**纯函数、无副作用**，便于数值 harness 复算）。
+     *
+     * <p>以实体**自身碰撞盒**为唯一基准，两个条件**任一**不成立即判为「上下文不一致」：
+     * <ol>
+     *   <li><b>锚点</b>：{@code |world.center[i] − collision.center[i]| <= collision.size[i] + ANCHOR_SLACK}
+     *       （逐轴）。推导：模型外框画在实体渲染位置处，其中心与碰撞盒中心的偏差只来自
+     *       ① 模型相对碰撞盒的几何外扩（四肢/头颈，逐轴不超过一个碰撞盒尺寸量级）
+     *       ② 渲染插值位置与当前 tick 碰撞盒位置的差（≤ 一 tick 位移）；
+     *       两者之和远小于 {@code size + 1.0}，而实测脱锚读数的最小值为 2.343 格 —— 分离度充足。</li>
+     *   <li><b>尺寸</b>：{@code world.size[i] <= collision.size[i] * SIZE_GROWTH + SIZE_SLACK}（逐轴）。
+     *       推导：模型外框尺寸对普通生物约为碰撞盒的 1~2 倍（蜘蛛腿/僵尸臂最宽），
+     *       {@code 3× + 1.0} 留足余量；而「不同空间」的探针盒会以完全不同的尺度出现。</li>
+     * </ol>
+     *
+     * @return {@code null} = 通过；否则返回人类可读的失败原因（逐轴读数，供日志）
+     */
+    private static String contextMismatch(LivingEntity entity, AABB world) {
+        AABB collision = entity.getBoundingBox();
+        double[] cs = {collision.getXsize(), collision.getYsize(), collision.getZsize()};
+        double[] ws = {world.getXsize(), world.getYsize(), world.getZsize()};
+        double[] cc = {collision.getCenter().x, collision.getCenter().y, collision.getCenter().z};
+        double[] wc = {world.getCenter().x, world.getCenter().y, world.getCenter().z};
+        String[] axis = {"x", "y", "z"};
+        for (int i = 0; i < 3; i++) {
+            double anchorLimit = cs[i] + ANCHOR_SLACK;
+            double offset = Math.abs(wc[i] - cc[i]);
+            if (offset > anchorLimit) {
+                return String.format("anchor-%s offset=%.3f > limit=%.3f (collision.size[%s]=%.3f, slack=%.3f)",
+                        axis[i], offset, anchorLimit, axis[i], cs[i], ANCHOR_SLACK);
+            }
+            double sizeLimit = cs[i] * SIZE_GROWTH + SIZE_SLACK;
+            if (ws[i] > sizeLimit) {
+                return String.format("size-%s model=%.3f > limit=%.3f (collision.size[%s]=%.3f, growth=%.1f, slack=%.1f)",
+                        axis[i], ws[i], sizeLimit, axis[i], cs[i], SIZE_GROWTH, SIZE_SLACK);
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 丢弃本次采集并计数。**每会话至多 2 条日志**：首次丢弃即时一条（含原因与读数，便于定位上下文），
+     * 会话结束由 {@link #clearIfIdle()} 补一条带**总数**的汇总 —— 绝不每帧刷屏。
+     */
+    private static void rejectCapture(LivingEntity entity, String mismatch, AABB local, AABB world) {
+        rejectedCount++;
+        if (rejectionLogged) return;
+        rejectionLogged = true;
+        LOGGER.debug("[Astral Dice][TargetSelectBounds] capture rejected: context mismatch (1) entity={} reason={} local={} world={} collision={}",
+                entity.getType().toShortString(), mismatch, boxText(local), boxText(world), boxText(entity.getBoundingBox()));
     }
 
     /**
@@ -164,15 +253,32 @@ public final class TargetOutlineCapture {
         return measured == null ? collision : collision.minmax(measured);
     }
 
-    /** 会话结束清空缓存（由后续批次的描边层在无目标可画时调用；本批无消费者也保留此语义） */
+    /**
+     * 会话结束清空缓存（由描边层在无目标可画时调用；见 {@code TargetSelectionHighlighter}）。
+     *
+     * <p>W1 起附带：若本会话曾丢弃过采集，这里补**一条**带总数的汇总日志（供用例断言
+     * 「非主通道确实触发过、且已被挡」），随后复位计数（下个会话重新计数）。
+     */
     public static void clearIfIdle() {
         if (TargetSelectionClient.isActive()) return;
-        if (!CAPTURED.isEmpty() || !LOGGED.isEmpty() || loggedLines != 0 || logCapReported) {
+        if (rejectedCount > 0) {
+            LOGGER.debug("[Astral Dice][TargetSelectBounds] capture rejected: context mismatch ({}) — 会话累计（非主通道采集已全部丢弃）",
+                    rejectedCount);
+        }
+        if (!CAPTURED.isEmpty() || !LOGGED.isEmpty() || loggedLines != 0 || logCapReported
+                || rejectedCount != 0 || rejectionLogged) {
             CAPTURED.clear();
             LOGGED.clear();
             loggedLines = 0;
             logCapReported = false;
+            rejectedCount = 0;
+            rejectionLogged = false;
         }
+    }
+
+    /** 本会话累计丢弃的采集次数（只读，供测试探针/诊断；每次 {@link #clearIfIdle()} 归零） */
+    public static long rejectedCount() {
+        return rejectedCount;
     }
 
     /**

@@ -1,12 +1,17 @@
 package com.merlinkitsune.astral_dice.client;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
+import com.mojang.blaze3d.pipeline.DepthStencilState;
+import com.mojang.blaze3d.pipeline.RenderPipeline;
+import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.rendertype.RenderSetup;
 import net.minecraft.client.renderer.rendertype.RenderType;
-import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.LightCoordsUtil;
@@ -16,6 +21,7 @@ import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.client.event.RegisterRenderPipelinesEvent;
 import net.neoforged.neoforge.client.event.SubmitCustomGeometryEvent;
 
 import java.util.List;
@@ -26,13 +32,13 @@ import java.util.List;
  *
  * <p>渲染口径（2026-09-17 用户裁决；只做边框，**不复刻胶面效果**：无棋盘纹 / 无簇高亮 / 无余辉）：
  * <ul>
- *   <li>通道 = 原版 {@code RenderTypes.entitySolid(BLANK_TEXTURE)}
- *       （26.1.2 的 {@code RenderType} 由原版集中构造：{@code RenderPipelines.ENTITY_SOLID} + Sampler0 纹理 +
- *       lightmap + overlay，**无混合（不透明）**）—— 等价于 1.21.1 侧用公开 API 手搓的
- *       {@code NEW_ENTITY + QUADS + 256 + false,false + ENTITY_SOLID shader + NO_TRANSPARENCY +
+ *   <li>通道 = **自建** {@code RenderType}（{@link #prism()}），底层为本类自建的
+ *       {@link #PRISM_PIPELINE}，**声明的 sampler 集合恰好 = {Sampler0}**
+ *       （26.1.2 的 {@code RenderType} 由「{@code RenderPipeline} + {@code RenderSetup}」两段构成）。
+ *       逐项对齐 1.21.1 侧手搓的 {@code NEW_ENTITY + QUADS + ENTITY_SOLID shader + NO_TRANSPARENCY +
  *       LEQUAL_DEPTH_TEST + COLOR_DEPTH_WRITE + CULL + LIGHTMAP + OVERLAY}；
  *       纹理 = 16×16 不透明白色纹理 {@code assets/astral_dice/textures/special/blank.png}
- *       （颜色完全由顶点色给出）；</li>
+ *       （颜色完全由顶点色给出）。**W1 变更说明见 {@link #PRISM_PIPELINE} 的「归因强度」段**；</li>
  *   <li>每条边 = 一个棱柱，每棱柱 4 个侧面四边形（半宽 = 线宽/2，不含端面）；12 条边共 48 面；</li>
  *   <li>顶点：{@code FULL_BRIGHT} + {@code NO_OVERLAY}，UV 取 0,0，法线 (0,1,0)
  *       —— 恒亮光照下法线不参与着色，取值仅按口径固定；</li>
@@ -50,9 +56,11 @@ import java.util.List;
  * <ol>
  *   <li><b>渲染通道</b>：1.21.1 用 {@code RenderType.create(...)} + {@code RenderStateShard}
  *       （{@code RenderStateShard} 在 26.1.2 <b>已删除</b>，{@code RenderType} 也已<b>迁移</b>到
- *       {@code net.minecraft.client.renderer.rendertype} 包）⇒ 改为原版现成的
- *       {@code RenderTypes.entitySolid(Identifier)}；两者底层的 {@code RenderPipeline} 是同一个
- *       {@code RenderPipelines.ENTITY_SOLID}，顶点格式 / 混合 / 深度 / 剔除逐项等价（见类注释上方各条）。</li>
+ *       {@code net.minecraft.client.renderer.rendertype} 包，且改为「{@code RenderPipeline} +
+ *       {@code RenderSetup}」两段式）⇒ 本类**自建** {@link #PRISM_PIPELINE} 与 {@link #prism()}，
+ *       状态逐项对齐（QUADS / 无混合 / LEQUAL + 写深度 / CULL / {@code DefaultVertexFormat.ENTITY}）。
+ *       W1 起不再复用原版 entity 实体通道（其 {@code withSampler("Sampler1")} 使声明集合为
+ *       {Sampler0, Sampler1, Sampler2}）；**归因强度见 {@link #PRISM_PIPELINE}**。</li>
  *   <li><b>提交方式</b>：1.21.1 是「立即模式」——{@code mc.renderBuffers().bufferSource()}
  *       {@code getBuffer(PRISM)} 直接写顶点 + {@code endBatch(PRISM)}；26.1.2 改为两相渲染，
  *       {@code MultiBufferSource} 的立即写路径不参与本阶段 ⇒ 改为
@@ -82,7 +90,88 @@ public final class TargetSelectionHighlighter {
      */
     private static final double BOTTOM_LIFT = 0.02D;
 
+    /**
+     * 棱柱专用渲染管线（W1 / Bug 2 配套改动，2026-09-18）——**声明的 sampler 集合恰好 = {Sampler0}**。
+     *
+     * <h2>构造依据（逐条落到 26.1.2 真实源码，不依赖文档猜测）</h2>
+     * <ul>
+     *   <li>{@code MATRICES_FOG_LIGHT_DIR_SNIPPET}（{@code RenderPipelines.java:33-35}）提供
+     *       {@code DynamicTransforms}/{@code Projection}/{@code Fog}/{@code Lighting} 四个 uniform，
+     *       与原版 {@code ENTITY_SNIPPET} 的矩阵底座一致（{@code :52}）。</li>
+     *   <li>顶点/片元着色器用原版 {@code core/entity}；两个 shader define 决定 sampler 集合
+     *       （实测 {@code assets/minecraft/shaders/core/entity.vsh}：{@code #ifndef NO_OVERLAY uniform sampler2D Sampler1;}
+     *       / {@code #ifndef EMISSIVE uniform sampler2D Sampler2;}；{@code .fsh} 同构）：
+     *       {@code NO_OVERLAY} 去掉 Sampler1、{@code EMISSIVE} 去掉 Sampler2
+     *       ⇒ 只声明 {@code Sampler0}。</li>
+     *   <li>状态逐项对齐 1.21.1 的手搓口径：{@code withVertexFormat(DefaultVertexFormat.ENTITY, Mode.QUADS)}、
+     *       不设 {@code withColorTargetState(...)}（默认 {@code ColorTargetState.DEFAULT} = **无混合**，
+     *       {@code ColorTargetState.java:20}）、{@code withDepthStencilState(DepthStencilState.DEFAULT)}
+     *       （= {@code LESS_THAN_OR_EQUAL} + 写深度，{@code DepthStencilState.java:9}）、
+     *       {@code withCull(true)}（与 {@code Builder#build()} 的 {@code cull.orElse(true)} 同值，
+     *       显式写出以免依赖默认）。</li>
+     *   <li>两个 shader define **对本类顶点数据是可证的空操作**：顶点恒为 {@code FULL_BRIGHT}
+     *       （UV2 = 15728880 ⇒ lightmap 最亮纹理元 = 白色）与 {@code NO_OVERLAY}
+     *       （UV1 的 overlay 纹理元 alpha = 0 ⇒ {@code mix(overlay, color, 0)} 不改变颜色）
+     *       ⇒ 去掉这两次采样与保留它们**输出逐位相同**。</li>
+     * </ul>
+     *
+     * <h2>归因强度（**必须如实登记，禁止写成「修好了崩溃」**）</h2>
+     * <p>崩溃 {@code Missing sampler Sampler1} 的**触发者至今未定**（用户 2026-09-18 已撤回
+     * 「复用原版 entity 实体通道导致缺 Sampler1」的归因）。本改动定位为**纯降风险**：
+     * 让本通道少两次纹理绑定（不再在绘制期取 {@code gameRenderer.overlayTexture()}/{@code lightmap()}），
+     * **并非**已证修复。反向考量（同一份证据的另一面）：
+     * {@code GlCommandEncoder.trySetup(:526-532)} 校验的是
+     * {@code renderPass.pipeline.program().getUniforms()}（**着色器程序的** sampler），
+     * 而绑定集来自 {@code RenderSetup.getTextures()}；在 Iris 下 {@code program()} 是
+     * **光影包覆盖程序**（崩溃栈里的 {@code GlDevice.handler$zbp000$iris$redirectIrisProgram}）
+     * ⇒ 「少声明」只会**减少**绑定，理论上无法消除「程序要而没绑」的缺 sampler 错误。
+     * 故本改动的取舍必须在 W2 的 A/B 中检验；未证前不得计入修复。</p>
+     */
+    public static final RenderPipeline PRISM_PIPELINE = RenderPipeline.builder(RenderPipelines.MATRICES_FOG_LIGHT_DIR_SNIPPET)
+            .withLocation(Identifier.fromNamespaceAndPath(AstralDiceMod.MODID, "pipeline/target_prism"))
+            .withVertexShader("core/entity")
+            .withFragmentShader("core/entity")
+            .withShaderDefine("NO_OVERLAY")
+            .withShaderDefine("EMISSIVE")
+            .withSampler("Sampler0")
+            .withVertexFormat(DefaultVertexFormat.ENTITY, VertexFormat.Mode.QUADS)
+            .withDepthStencilState(DepthStencilState.DEFAULT)
+            .withCull(true)
+            .build();
+
+    /** 惰性构造的棱柱 RenderType（**不用**静态字段初始化，避免类加载期触达纹理/客户端单例） */
+    private static volatile RenderType prism;
+
     private TargetSelectionHighlighter() {
+    }
+
+    /** 注册自建管线（{@code RegisterRenderPipelinesEvent} 是模组总线事件，见 NeoForge {@code :24-39}） */
+    @SubscribeEvent
+    public static void registerRenderPipelines(RegisterRenderPipelinesEvent event) {
+        event.registerPipeline(PRISM_PIPELINE);
+    }
+
+    /**
+     * 取棱柱通道（**Sampler0 only**）：{@code RenderSetup} 只挂 {@code Sampler0}，
+     * **不调** {@code useLightmap()}/{@code useOverlay()}（那会分别绑定 Sampler2/Sampler1）。
+     * 首次调用构造，之后复用（同实例 ⇒ {@code BufferSource} 分批稳定）。
+     */
+    private static RenderType prism() {
+        RenderType local = prism;
+        if (local == null) {
+            synchronized (TargetSelectionHighlighter.class) {
+                local = prism;
+                if (local == null) {
+                    local = RenderType.create("astral_dice_target_prism",
+                            RenderSetup.builder(PRISM_PIPELINE)
+                                    .withTexture("Sampler0", BLANK_TEXTURE)
+                                    .bufferSize(256)
+                                    .createRenderSetup());
+                    prism = local;
+                }
+            }
+        }
+        return local;
     }
 
     /**
@@ -113,8 +202,8 @@ public final class TargetSelectionHighlighter {
         if (poseStack == null) return;
         SubmitNodeCollector collector = event.getSubmitNodeCollector();
         if (collector == null) return;
-        // 惰性取通道：只在真的要画时才触发 RenderTypes 的对应构造（1.21.1 侧是类加载期静态字段）
-        RenderType prism = RenderTypes.entitySolid(BLANK_TEXTURE);
+        // 惰性取通道：只在真的要画时才构造（1.21.1 侧是类加载期静态字段）
+        RenderType prism = prism();
 
         Vec3 cam = mc.gameRenderer.getMainCamera().position();
         // 26.1.2 的提交姿态栈是**单位阵**（LevelRenderer 每帧 new PoseStack()，实体由
