@@ -51,6 +51,8 @@ public class ModClientEvents {
 
         @Override
         public void render(ForgeGui gui, GuiGraphics guiGraphics, float partialTick, int width, int height) {
+            // F1（隐藏 HUD）守卫:本线原版已整块跳过 gui.render,此处显式守一遍只为与 1.21.1 同形。
+            if (Minecraft.getInstance().options.hideGui) return;
             ActionBarManager.render(guiGraphics, partialTick);
         }
     }

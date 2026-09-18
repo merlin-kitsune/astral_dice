@@ -37,6 +37,12 @@ public final class TargetSelectOverlay implements LayeredDraw.Layer {
     @Override
     public void render(GuiGraphics guiGraphics, DeltaTracker deltaTracker) {
         Minecraft mc = Minecraft.getInstance();
+        // F1（隐藏 HUD）守卫:1.20.1 原版 GameRenderer 在 hideGui 时整块跳过 gui.render
+        // （forge 源 GameRenderer#render:949-953），该线的 overlay 天然不画;1.21.1 原版无此整块跳过
+        // （neoforge 源 GameRenderer#render:1075-1079 只包住 renderItemActivationAnimation）
+        // ⇒ 必须自行守,否则两发布线在 F1 下行为不一致（2026-09-18 t46,用户裁决「加守卫对齐 1.20.1」）。
+        // 同一守卫在 1.20.1 侧冗余,但两线保持同形。
+        if (mc.options.hideGui) return;
         boolean active = TargetSelectionClient.isActive();
         if (active != wasActive) {
             LOGGER.debug("[Astral Dice][TargetSelectOverlay] overlay {}", active ? "active" : "inactive");
