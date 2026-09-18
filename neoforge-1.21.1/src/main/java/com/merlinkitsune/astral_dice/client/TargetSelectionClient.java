@@ -3,6 +3,7 @@ package com.merlinkitsune.astral_dice.client;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.network.TargetSelectCancelPayload;
 import com.merlinkitsune.astral_dice.network.TargetSelectConfirmPayload;
+import com.merlinkitsune.astral_dice.target.SelectorTargets;
 import com.merlinkitsune.starenginelib.client.ActionBarManager;
 import com.merlinkitsune.starenginelib.target.TargetType;
 import net.minecraft.ChatFormatting;
@@ -436,7 +437,7 @@ public final class TargetSelectionClient {
                 && entityHit.getEntity() instanceof LivingEntity living
                 && living != player
                 && living.isAlive()) {
-            if (targetType.matches(player, living) && player.distanceToSqr(living) <= radius * radius) {
+            if (SelectorTargets.matches(targetType, player, living) && player.distanceToSqr(living) <= radius * radius) {
                 newTarget = living;
             } else {
                 // 命中但不可选（会话目标类型不符 / 超出半径）：走 1/24 细边；
@@ -467,7 +468,7 @@ public final class TargetSelectionClient {
         for (Entity entity : player.level().getEntities(player, search)) {
             if (!(entity instanceof LivingEntity living) || living == player) continue;
             if (!living.isAlive() || living.isSpectator()) continue;
-            if (!targetType.matches(player, living)) continue;
+            if (!SelectorTargets.matches(targetType, player, living)) continue;
             if (player.distanceToSqr(living) > radius * radius) continue;
             found.add(living);
         }

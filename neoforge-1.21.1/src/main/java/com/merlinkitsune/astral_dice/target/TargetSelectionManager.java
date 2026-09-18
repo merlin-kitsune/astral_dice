@@ -158,7 +158,7 @@ public final class TargetSelectionManager {
             notifyActionBar(player, "msg.astral_dice.target_select.invalid_target", ChatFormatting.RED);
             return;
         }
-        if (!session.targetType.matches(player, target)) {
+        if (!SelectorTargets.matches(session.targetType, player, target)) {
             LOGGER.warn("[Astral Dice][TargetSelection] confirm FAIL: target_type_mismatch player={} token={} target={}({})",
                     player.getName().getString(), token, targetId, target.getName().getString());
             notifyActionBar(player, "msg.astral_dice.target_select.invalid_target", ChatFormatting.RED);
