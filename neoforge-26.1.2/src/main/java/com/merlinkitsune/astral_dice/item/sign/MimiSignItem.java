@@ -17,7 +17,7 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.bus.api.SubscribeEvent;
 
 /**
- * 看板立牌(mimi)。
+ * 看板娘立牌(mimi)。
  *
  * <p>被动:
  * - 合成或返还卡牌时,每获得一张战斗牌,增加 1 星币;
@@ -100,7 +100,7 @@ public class MimiSignItem extends BaseSignItem {
         }
     }
 
-    // 玩家是否佩戴看板立牌
+    // 玩家是否佩戴看板娘立牌
     public static boolean isEquipped(Player player) {
         if (player == null) return false;
         var curios = CuriosApi.getCuriosInventory(player);

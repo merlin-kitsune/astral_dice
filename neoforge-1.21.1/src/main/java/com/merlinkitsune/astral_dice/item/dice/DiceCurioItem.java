@@ -156,7 +156,7 @@ public class DiceCurioItem extends Item implements ICurioItem {
                 target = CHIP_NO_DICE_SLOTS;
                 if (!dice.isEmpty()) {
                     target = targetChipSlots(dice);
-                    // 看板立牌被动:装备骰子时筹码栏位 +1;未佩戴骰子时不给,维持「必须佩戴骰子才有筹码栏」
+                    // 看板娘立牌被动:装备骰子时筹码栏位 +1;未佩戴骰子时不给,维持「必须佩戴骰子才有筹码栏」
                     if (MimiSignItem.isEquipped(player)) {
                         target += 1;
                     }

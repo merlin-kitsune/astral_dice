@@ -184,7 +184,7 @@ public final class RandomCardHandler {
     public static void giveCardTo(Player receiver, CardCategory category) {
         ItemStack card = randomCard(category);
         if (card.isEmpty()) return;
-        // 维生素药丸发牌统一入口(治愈联动;看板立牌被动不再随奖励/复制/返还触发,仅合成与主动返还显式触发)
+        // 维生素药丸发牌统一入口(治愈联动;看板娘立牌被动不再随奖励/复制/返还触发,仅合成与主动返还显式触发)
         VitaminPillChipItem.giveCard(receiver, card);
     }
 

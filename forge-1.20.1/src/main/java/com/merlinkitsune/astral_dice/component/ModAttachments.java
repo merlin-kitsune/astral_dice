@@ -614,7 +614,7 @@ public class ModAttachments {
     public static final AttachedDataKey<Long> NANCY_LU_HIDDEN_UNTIL =
             register(AttachedDataKey.builder("nancy_lu_hidden_until", Codec.LONG, () -> 0L).sync().build());
 
-    // 看板立牌:被动"主动技能返还"累计的战斗牌数量(每累计 25 张返还战斗牌获得一个随机筹码)
+    // 看板娘立牌:被动"主动技能返还"累计的战斗牌数量(每累计 25 张返还战斗牌获得一个随机筹码)
     public static final AttachedDataKey<Integer> MIMI_RETURNED_CARD_COUNT =
             register(AttachedDataKey.builder("mimi_returned_card_count", Codec.INT, () -> 0).build());
 

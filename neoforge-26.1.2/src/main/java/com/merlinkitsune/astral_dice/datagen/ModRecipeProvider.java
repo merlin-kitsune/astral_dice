@@ -142,7 +142,7 @@ public class ModRecipeProvider extends RecipeProvider {
                 .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
                 .save(output);
 
-        // T2 中:看板立牌(3 白色染料 + 2 蓝色染料 + 骰子×1 + 星币×2,有序,空白立牌置中,骰子置中下)
+        // T2 中:看板娘立牌(3 白色染料 + 2 蓝色染料 + 骰子×1 + 星币×2,有序,空白立牌置中,骰子置中下)
         ShapedRecipeBuilder.shaped(items, RecipeCategory.MISC, ModItems.MIMI_SIGN.get())
                 .pattern("WWW")
                 .pattern("SES")

@@ -698,7 +698,7 @@ public class ModAttachments {
                     .sync(ByteBufCodecs.VAR_LONG)
                     .build());
 
-    // 看板立牌:被动"主动技能返还"累计的战斗牌数量(每累计 25 张返还战斗牌获得一个随机筹码)
+    // 看板娘立牌:被动"主动技能返还"累计的战斗牌数量(每累计 25 张返还战斗牌获得一个随机筹码)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> MIMI_RETURNED_CARD_COUNT =
             ATTACHMENTS.register("mimi_returned_card_count", () -> AttachmentType.builder(() -> 0)
                     .serialize(Codec.INT.fieldOf("value"))

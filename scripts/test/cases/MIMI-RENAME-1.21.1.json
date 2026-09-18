@@ -1,0 +1,76 @@
+{
+  "case_id": "MIMI-RENAME-1.21.1",
+  "title": "看板娘立牌改名游戏内核对:装备 mimi 立牌后按主动技能键,actionbar 应显示新名「看板娘立牌」",
+  "version": "1.21.1",
+  "target": {
+    "type": "bugfix",
+    "ref": "mimi-sign-rename-kanban-musume"
+  },
+  "steps": [
+    {
+      "op": "note",
+      "text": "目的(2026-09-25 用户裁决「看板立牌 → 看板娘立牌,仅 tooltip 调整,id 不变,同步多语言」):把「玩家可见名称已改名」这件事留一条**游戏内可复核**的证据。\n做法:探针 `/astralprobe equipslot stand astral_dice:mimi_sign MIMI`(直接写 stand 饰品槽、绕过校验;id 与改名无关,仍是 `mimi_sign`)→ 按主动技能键 `j`(客户端 KeyMapping 发 SignActivatePayload → `BaseSignItem.performSkillForCurio` → `MimiSignItem#handleUse`)→ actionbar 会出现**带立牌名**的提示,两种分支都是本次改名的直接证据:① 冷却已过 → `MimiSignItem#handleUse` 内无条件发 `msg.astral_dice.mimi_active`「**看板娘立牌**:已获得N张新卡片,并获得了M枚星币」;② 冷却中 → `BaseSignItem.performSkill` 第 1 步发 `hud.astral_dice.sign_active_cooldown`「**看板娘立牌**:主动技能冷却中!」。两条都把**物品名**（`stack.getHoverName()`）填进文案 ⇒ 名称前缀就是改名生效的证据（物品名 = tooltip 标题行与帕秋莉条目标题共用的 `item.astral_dice.mimi_sign`）。⚠️ 立牌主动冷却默认 **180 s**（`GameplayConstants.SIGN_ACTIVE_COOLDOWN_SECONDS`）且随玩家数据存档 ⇒ 同一存档重复跑本用例通常落在「冷却中」分支（2026-09-25 两张截图正是该分支）;要取 `mimi_active` 版本请在**冷却已过**的存档上跑。\n判据:①`AP_MIMI_EQUIP:stand:astral_dice:mimi_sign` 证明立牌确实进了 stand 槽(否则 actionbar 根本不会出现);②`absent AP_MIMI_ERR`;③**截图内容人工判读** —— actionbar 必须是「**看板娘立牌**:」而不是旧名「看板立牌:」(actionbar 文本不进服务端日志,故不做机器断言)。\n⚠️ 截图前等 12 s 让聊天 HUD 淡出(聊天行会压在 actionbar 那一行上);截图步带 `crop: true`(按游戏窗口矩形裁剪)。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe equipslot stand \"astral_dice:mimi_sign\" MIMI",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe equipslot stand \"astral_dice:mimi_sign\" MIMI",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 12000
+    },
+    {
+      "op": "inject_key",
+      "key": "j",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "screenshot",
+      "tag": "mimi_rename_actionbar",
+      "mode": "window",
+      "crop": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_MIMI_EQUIP:stand:astral_dice:mimi_sign"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_MIMI_DONE"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_MIMI_ERR|AP_MIMI_EX"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "crash"
+    }
+  ],
+  "on_fail": "keep_game_running"
+}
