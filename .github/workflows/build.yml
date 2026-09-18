@@ -60,20 +60,21 @@ jobs:
         # 构建出的库必须**恰好**是 `starengine_lib_version` 指定的那一版 —— 浮动 main 会让
         # 「区间下界 [1.0.0-SNAPSHOT.<n>,2.0)」与「CI 实际 publishToMavenLocal 出的版本」脱钩,
         # 一旦库在两次 CI 之间 bump 或改动坐标,断在依赖解析(本地不可复现,只在 CI 暴露)。
-        # 现固定为 `starengine_lib_version=1.0.0-SNAPSHOT.6` 的**终态**提交(该提交里三平台
-        # mod_version 均为 1.0.0-SNAPSHOT.6,并已修复「**库自身被 FML 拒载**」的根因:1.21.1 的
-        # loaderVersion 槽曾误填 NeoForge 版本带 [21.1,21.2),而该槽比的是 javafml 语言提供者
-        # 版本(本机报 4.0.42)⇒ 改回语言区间 [1,);forge-1.20.1 的 loaderVersion 同时由 [47,)
-        # 收敛为 [47,48)、其 forge 依赖改用从 forge_version 派生的精确区间 [47.4.10,48)。
-        # 库侧当前无 tag,故用提交 SHA 钉死)。
+        # 现固定为 `starengine_lib_version=1.0.0-SNAPSHOT.10` 的**终态**提交(该提交里三平台
+        # mod_version 均为 1.0.0-SNAPSHOT.10,同时带着此前两批修复:**库自身被 FML 拒载**的根因修复
+        # —— 1.21.1 的 loaderVersion 槽曾误填 NeoForge 版本带 [21.1,21.2),而该槽比的是 javafml
+        # 语言提供者版本(本机报 4.0.42)⇒ 改回语言区间 [1,),forge-1.20.1 的 loaderVersion 同时由
+        # [47,) 收敛为 [47,48)、其 forge 依赖改用从 forge_version 派生的精确区间 [47.4.10,48);
+        # 以及 forge-1.20.1 缺失的 `pack.mcmeta`(缺它时 Forge 加载界面告警且该模组资源包不注册)。
+        # 库侧 `.7` 只发布过 mavenLocal、从未入库,故它并入 `.10`;库侧当前无 tag,用提交 SHA 钉死)。
         # **库版本 bump 时本行必须同步更新**(与 neoforge-1.21.1 / forge-1.20.1 / neoforge-26.1.2
         # 的 gradle.properties 的 starengine_lib_version 同一提交里一起改;`.5` 旧钉值为库提交
-        # d5b0776,`.6` 终态即库提交 716f976),且该提交需已推送到远端 —— 库仓库尚未 push 前,
-        # 本 ref 不可被 CI 检出(见 KNOWN-ISSUES KI-M4①,状态不变)。
+        # d5b0776,`.6` 为 716f976,`.10` 终态即库提交 ec28415),且该提交需已推送到远端 ——
+        # 库仓库尚未 push 前,本 ref 不可被 CI 检出(见 KNOWN-ISSUES KI-M4①,状态不变)。
         uses: actions/checkout@v4
         with:
           repository: merlin-kitsune/starengine_lib
-          ref: 716f9767538703f131db91e12e7218158d12b048   # = 1.0.0-SNAPSHOT.6(终态,已修 loaderVersion 拒载)
+          ref: ec284157a16a257b4870dd37795fb6a2e3b24821   # = 1.0.0-SNAPSHOT.10(终态:loaderVersion 拒载修复 + forge pack.mcmeta)
           path: .ci/starengine_lib
           fetch-depth: 1
 
