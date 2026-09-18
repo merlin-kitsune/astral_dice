@@ -38,10 +38,11 @@ public final class TargetSelectOverlay implements IGuiOverlay {
     @Override
     public void render(ForgeGui gui, GuiGraphics guiGraphics, float partialTick, int width, int height) {
         Minecraft mc = Minecraft.getInstance();
-        // F1（隐藏 HUD）守卫:本线原版 GameRenderer 在 hideGui 时整块跳过 gui.render
-        // （forge 源 GameRenderer#render:949-953）⇒ 本 overlay 天然不画;此处显式守一遍是为了与
-        // 1.21.1 保持同形（1.21.1 原版无该整块跳过,必须自行守,见该线同文件注释）。
-        if (mc.options.hideGui) return;
+        // F1（隐藏 HUD）守卫:本线原版门槛是 `!hideGui || screen != null`（forge 源 GameRenderer#render:949-953）
+        // ⇒ 本 overlay 仅在 `hideGui && screen == null` 时天然不画,与之同条件的守卫是**逐例 no-op**;
+        // 写成裸 `hideGui` 会在「F1 + 界面打开」时多隐藏一层、与本线原行为不符（R2-04）。此处的意义
+        // 只是与 1.21.1 保持同形（1.21.1 原版无该整块跳过、模组层不被 `!hideGui` 包裹,必须自行守）。
+        if (mc.options.hideGui && mc.screen == null) return;
         boolean active = TargetSelectionClient.isActive();
         if (active != wasActive) {
             LOGGER.debug("[Astral Dice][TargetSelectOverlay] overlay {}", active ? "active" : "inactive");

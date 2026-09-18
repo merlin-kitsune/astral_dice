@@ -37,12 +37,13 @@ public final class TargetSelectOverlay implements LayeredDraw.Layer {
     @Override
     public void render(GuiGraphics guiGraphics, DeltaTracker deltaTracker) {
         Minecraft mc = Minecraft.getInstance();
-        // F1（隐藏 HUD）守卫:1.20.1 原版 GameRenderer 在 hideGui 时整块跳过 gui.render
-        // （forge 源 GameRenderer#render:949-953），该线的 overlay 天然不画;1.21.1 原版无此整块跳过
-        // （neoforge 源 GameRenderer#render:1075-1079 只包住 renderItemActivationAnimation）
-        // ⇒ 必须自行守,否则两发布线在 F1 下行为不一致（2026-09-18 t46,用户裁决「加守卫对齐 1.20.1」）。
-        // 同一守卫在 1.20.1 侧冗余,但两线保持同形。
-        if (mc.options.hideGui) return;
+        // F1（隐藏 HUD）守卫:条件取 `hideGui && screen == null`,精确镜像 1.20.1 原版的绘制门槛
+        // `if (!hideGui || screen != null) { … gui.render(…) }`（forge 源 GameRenderer#render:949-953）
+        // ⇒ 该线行为逐例不变（守卫对它是彻底的 no-op）;而 1.21.1 原版**不**整块跳过 gui.render
+        // （neoforge 源 :1075-1079 只包住 renderItemActivationAnimation），且 GuiLayerManager 摊平时
+        // 只把**原版层**包进 `!hideGui`、模组层不包裹 ⇒ 必须自行守,否则按 F1 时本模组 overlay 仍显示、
+        // 两发布线不一致（2026-09-18 t46 用户裁决「加守卫对齐 1.20.1」;t46b 按 R2-04 补 `screen == null`）。
+        if (mc.options.hideGui && mc.screen == null) return;
         boolean active = TargetSelectionClient.isActive();
         if (active != wasActive) {
             LOGGER.debug("[Astral Dice][TargetSelectOverlay] overlay {}", active ? "active" : "inactive");

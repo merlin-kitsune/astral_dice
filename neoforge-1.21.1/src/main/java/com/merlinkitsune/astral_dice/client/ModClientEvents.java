@@ -43,9 +43,10 @@ public class ModClientEvents {
 
         @Override
         public void render(GuiGraphics guiGraphics, DeltaTracker deltaTracker) {
-            // F1（隐藏 HUD）守卫:与 TargetSelectOverlay 同源。1.21.1 原版不整体跳过 gui.render,
-            // 不自行守会让本模组的 actionbar 提示在 F1 下仍然显示（1.20.1 侧原版已整块跳过）⇒ 两线不一致。
-            if (Minecraft.getInstance().options.hideGui) return;
+            // F1（隐藏 HUD）守卫:与 TargetSelectOverlay 同源（条件与理由见该文件注释）——
+            // 1.21.1 原版不整体跳过 gui.render、模组层也不被 `!hideGui` 包裹 ⇒ 必须自行守。
+            Minecraft mc = Minecraft.getInstance();
+            if (mc.options.hideGui && mc.screen == null) return;
             ActionBarManager.render(guiGraphics, deltaTracker);
         }
     }

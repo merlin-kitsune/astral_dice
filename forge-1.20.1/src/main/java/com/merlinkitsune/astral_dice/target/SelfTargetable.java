@@ -23,7 +23,9 @@ package com.merlinkitsune.astral_dice.target;
  * {@code targetType.matches(player, target)} 为准拒绝。故本接口单独存在时只影响客户端提示与
  * 提交路径，不构成「已支持自身目标」的完整实现。
  *
- * <p>与 1.21.1 侧的 {@code target/SelfTargetable} **逐字节相同**（纯接口，无平台 API）。
+ * <p>与 1.21.1 侧的 {@code target/SelfTargetable} **接口语义一致**（纯接口，无平台 API；{@code default}
+ * 实现逐字相同）。两线**并非逐字节相同** —— 类 javadoc 里对下行包类名的平台指涉不同
+ * （本线为 {@code ModNetwork.TargetSelectStartMessage}，1.21.1 为 {@code TargetSelectStartPayload}）；
  */
 public interface SelfTargetable {
     /** 本次选择会话是否允许把技能用在选择者自己身上（缺省 false = 不允许）。 */
