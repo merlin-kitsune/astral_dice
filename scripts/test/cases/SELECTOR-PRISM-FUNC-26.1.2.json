@@ -1,0 +1,247 @@
+{
+  "case_id": "SELECTOR-PRISM-FUNC-26.1.2",
+  "title": "26.1.2 目标选择器功能验证（稳定环境：光影关 + ImmediatelyFast 停用）",
+  "version": "26.1.2",
+  "target": {
+    "type": "existing-feature",
+    "ref": "mc-26.1.2-target-selector-w1"
+  },
+  "steps": [
+    {
+      "op": "note",
+      "text": "【目的（2026-09-18 W2 第 3 步）】在**已验证稳定**的环境里跑目标选择器的功能验收，用来替代原「等用户游戏内验证」的一部分。\n\n【为什么本用例跑在「光影关 + ImmediatelyFast 停用」环境】W2 实测：光影开时 Iris（无论 IF 开或关）会在 `LevelRenderer:707` 抛 `Missing sampler Sampler1` 把客户端打死（A 组 = IF 开崩、B 组 = IF 关仍崩、第三组 = 光影关不崩）⇒ **只有关掉光影客户端才能活到用例结束**。本用例的全部断言都是「选择器功能」的判据，与光影无关；光影相关的观感属「仅人眼可判」清单。\n\n【覆盖的四态 actionbar】源码 `TargetSelectionClient#steadyPrompt`（L385-403）定义四态：① 有有效目标 → 绿 `prompt.valid`；② 准星命中但不可选 → 红 `prompt.rejected`；③ 否则 → 白 `prompt.no_target`（`allowSelf()` 为真时为 `no_target_self`）。**本用例能断言到哪些、断言不到哪些，逐条说明**：\n· ① **可断言**：`currentTarget` 变化时打 DEBUG `[TargetSelectionClient] target=<id>(<名字>) hostile=true friendly=false`（L488）。\n· ③ **可断言**：目标消失时打 DEBUG `target=none`（L492）。注意它**只在 `newTarget != currentTarget` 时打印**，故必须「先有目标、再让它消失」才能触发。\n· ② **不可用 DEBUG 断言**：`rejectedTarget` 变化**没有**任何日志行（L479-484 只赋值，不打日志）⇒ 只能靠视觉判读。本用例仍会召唤一只非敌对实体（村民）制造该态、并抓图，但**不设**断言，避免把「准星是否命中」这种不可控因素写成假绿/假红。\n· ④ **当前不可达（平台事实，非缺陷）**：`TargetSelectionManager` 注释（L133-134）明确「本次无任何动作实现 `SelfTargetable` ⇒ `allowSelf` 恒 false」，故 `prompt.no_target_self` 分支在 26.1.2 现网不可达；本用例不作断言，并在报告里登记。\n\n【输入限制】`mt_inject` 只能注入**按键/鼠标按键**，**不能移动视角** ⇒ 无法精确瞄准。因此本用例用「召唤/击杀实体」来控制准星命中，而不是靠转视角。\n\n【关于 `capture rejected` 的判据口径（重要）】本环境**光影关闭** ⇒ Iris 阴影通道不存在 ⇒ 「非主通道采集」这一污染源**预期不再出现**，故本用例把 `capture rejected` 断言为**不应出现**（`absent`），而不是 `≥1`。这一条不是放宽断言，而是**更严的、可被证伪的断言**：若关光影后仍出现 `capture rejected`，说明还有**另一个**非主通道上下文在污染捕获，必须查（这本身就是有价值的结论）。而「`capture rejected` 计数 > 0」这一验收项已由**光影开启**的实测满足并留档：`temp/t48/EXTREME/debug.log` L3483/L3545/L3559/L3645 给出 `(1)` / 会话累计 `478` / `(1)` / 会话累计 `10755`。\n\n【断言不到的东西单独交回】棱柱可见性 / 颜色 / 居中位置 / 线宽三档观感 —— 这些只能人眼判，已单列清单（本用例只抓图留证，不做模型判读，避免把观感问题写成假绿）。\n\n【demo 命令】`/astral_dice targetselect <player|enemy|living>` 是测试钩子（demo 动作 `test_echo_*`，确认后仅回显目标名，无玩法效果），走的是与立牌完全相同的 `TargetSelectionManager.start` → `TargetSelectStartPayload` → `TargetSelectionClient.start` 链路；立牌主动触发（道具 + 右键/按键 + `SignSelectionGate`）本轮未覆盖，见报告未覆盖项。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/kill @e[type=!minecraft:player]",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "inject_command",
+      "command": "/astral_dice targetselect enemy",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "inject_mouse",
+      "button": "left",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "screenshot",
+      "tag": "FUNC_STATE3_NO_TARGET",
+      "mode": "window",
+      "crop": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/summon minecraft:zombie ~ ~ ~4",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 4000
+    },
+    {
+      "op": "screenshot",
+      "tag": "FUNC_STATE1_VALID",
+      "mode": "window",
+      "crop": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/kill @e[type=minecraft:zombie]",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1800
+    },
+    {
+      "op": "inject_mouse",
+      "button": "left",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1000
+    },
+    {
+      "op": "inject_mouse",
+      "button": "right",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1000
+    },
+    {
+      "op": "inject_mouse",
+      "button": "right",
+      "shift": true,
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1000
+    },
+    {
+      "op": "inject_command",
+      "command": "/summon minecraft:villager ~ ~ ~4",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 2000
+    },
+    {
+      "op": "screenshot",
+      "tag": "FUNC_STATE2_REJECTED_TRY",
+      "mode": "window",
+      "crop": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/astral_dice targetselect enemy",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "inject_command",
+      "command": "/summon minecraft:zombie ~1 ~ ~4",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 2500
+    },
+    {
+      "op": "inject_mouse",
+      "button": "left",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "inject_command",
+      "command": "/kill @e[type=!minecraft:player]",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "scope": "whole",
+      "pattern": "\\(iris\\)"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "scope": "whole",
+      "pattern": "\\(sodium\\)"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "scope": "whole",
+      "pattern": "\\(superflatworldnoslimes\\)"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "scope": "whole",
+      "pattern": "\\(immediatelyfast\\)"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "scope": "whole",
+      "pattern": "Using shaderpack:"
+    },
+    {
+      "type": "log",
+      "source": "debug",
+      "pattern": "TargetSelectionClient\\] start token="
+    },
+    {
+      "type": "log",
+      "source": "debug",
+      "pattern": "TargetSelectionClient\\] target=\\d+\\(.*\\) hostile=true"
+    },
+    {
+      "type": "log",
+      "source": "debug",
+      "pattern": "TargetSelectionClient\\] target=none"
+    },
+    {
+      "type": "log",
+      "source": "debug",
+      "pattern": "TargetSelectPrompt\\] key=left action=no_target"
+    },
+    {
+      "type": "log",
+      "source": "debug",
+      "pattern": "TargetSelectionClient\\] confirm ignored: no valid target"
+    },
+    {
+      "type": "log",
+      "source": "debug",
+      "pattern": "TargetSelectPrompt\\] key=right action=self_unsupported"
+    },
+    {
+      "type": "log",
+      "source": "debug",
+      "pattern": "TargetSelectPrompt\\] key=right_sneak action=cancel"
+    },
+    {
+      "type": "log",
+      "source": "debug",
+      "pattern": "TargetSelectPrompt\\] key=left action=confirm"
+    },
+    {
+      "type": "log",
+      "source": "debug",
+      "pattern": "TargetSelectionClient\\] confirm sent token="
+    },
+    {
+      "type": "log",
+      "source": "debug",
+      "pattern": "TargetSelectBounds\\] entity=zombie"
+    },
+    {
+      "type": "absent",
+      "source": "debug",
+      "pattern": "capture rejected"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "Missing sampler|Unreported exception thrown"
+    },
+    {
+      "type": "crash"
+    }
+  ],
+  "on_fail": "keep_game_running"
+}

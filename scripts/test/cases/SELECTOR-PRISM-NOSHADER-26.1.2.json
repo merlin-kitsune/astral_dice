@@ -1,0 +1,92 @@
+{
+  "case_id": "SELECTOR-PRISM-NOSHADER-26.1.2",
+  "title": "26.1.2 目标选择器棱柱 · 第三组【光影关闭 + ImmediatelyFast 停用】（不进选择器）",
+  "version": "26.1.2",
+  "target": {
+    "type": "existing-feature",
+    "ref": "mc-26.1.2-target-selector-w1"
+  },
+  "steps": [
+    {
+      "op": "note",
+      "text": "【第三组定位】相对 B 组**只改「光影」一个变量**（B = 光影开 + IF 关；本组 = 光影关 + IF 关），用于判定 `Missing sampler Sampler1` 是否依赖 Iris/光影管线。\n\n【A/B 单变量】本用例是 SELECTOR-PRISM-CONTROL-26.1.2 的 **IF-OFF（B 组）** 版本：与 A 组唯一差别 = `(immediatelyfast)` 由「必须出现」改为「必须不出现」。其余步骤、环境、构建、光影全部相同。\n\n【对照目的】W2 实测中，修复后（仅 Sampler0 自建管线）的构建在 Iris+ImmediatelyFast 下**仍然**崩 `Missing sampler Sampler1`，崩点 `LevelRenderer.lambda$addMainPass$0(LevelRenderer.java:707)` = `bufferSource.endBatch()`。该 `BufferSource` 里同时装着**原版实体几何**与本模组 `submitCustomGeometry` 的棱柱 ⇒ 仅凭堆栈**无法**判定缺 Sampler1 的那次 draw 是不是我们的。\n\n【本对照做什么】完全相同的环境、相同的召唤物、相同的时长，**唯独不执行** `/astral_dice targetselect enemy`：\n· 选择器未激活 ⇒ `TargetOutlineCapture.onSubmit` 在第 1 行 `!TargetSelectionClient.isActive()` 即早退；\n· `TargetSelectionHighlighter` 无目标 ⇒ 不发任何 `submitCustomGeometry` ⇒ 本模组的自定义几何 draw **一次都不发生**。\n\n【判读】若本对照**也崩** ⇒ 崩溃与本模组的自定义几何**无关**（缺 Sampler1 的 draw 属于原版/Iris/ImmediatelyFast 一侧），W1 的 Fix 2 既不是修复也不是必要条件；若本对照**不崩**而选择器组崩 ⇒ 崩溃**依赖**本模组那次 draw，Fix 2 的因果需要继续查（因为 Fix 2 之后仍然崩）。两种结果都如实入报告，不预设结论。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/summon minecraft:zombie ~ ~ ~4",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "inject_command",
+      "command": "/summon minecraft:zombie ~3 ~ ~4",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "wait",
+      "ms": 45000
+    },
+    {
+      "op": "inject_command",
+      "command": "/kill @e[type=!minecraft:player]",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "scope": "whole",
+      "pattern": "\\(iris\\)"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "scope": "whole",
+      "pattern": "\\(sodium\\)"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "scope": "whole",
+      "pattern": "\\(immediatelyfast\\)"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "scope": "whole",
+      "pattern": "\\(superflatworldnoslimes\\)"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "scope": "whole",
+      "pattern": "Using shaderpack:"
+    },
+    {
+      "type": "absent",
+      "source": "debug",
+      "pattern": "capture hook active"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "Missing sampler|Unreported exception thrown"
+    },
+    {
+      "type": "crash"
+    }
+  ],
+  "on_fail": "keep_game_running"
+}
