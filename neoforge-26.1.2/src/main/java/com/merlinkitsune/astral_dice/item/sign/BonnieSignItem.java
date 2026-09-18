@@ -15,6 +15,13 @@ import com.merlinkitsune.astral_dice.item.MarkManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
 import com.merlinkitsune.astral_dice.network.ActionBarPayload;
+import com.merlinkitsune.starenginelib.target.TargetSelectionAction;
+import com.merlinkitsune.astral_dice.target.TargetSelectionManager;
+import com.merlinkitsune.starenginelib.target.TargetSelectionRegistry;
+import com.merlinkitsune.starenginelib.target.TargetType;
+import com.merlinkitsune.astral_dice.event.WeirdDiceHandler;
+import com.merlinkitsune.astral_dice.item.chip.CurrentCoreChipItem;
+import java.util.Optional;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
@@ -24,6 +31,8 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
 import net.minecraft.world.entity.LivingEntity;
 import net.neoforged.bus.api.SubscribeEvent;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * 秘密侦探立牌(命名:bonnie)。
@@ -31,14 +40,63 @@ import net.neoforged.bus.api.SubscribeEvent;
  * 1. 攻击带有"标记"的目标时攻击力+3;
  * 2. 击杀带有"标记"的敌对目标后获得一张随机攻击牌;
  * (击杀"隐匿调查"目标触发调查阶段事件已由 InvestigationEventUtil 全局处理)
- * 主动:下次攻击的第一个目标被施加"隐匿调查"(永久,直到目标死亡/消失);若目标带"标记",按标记层数获得 标记层数*2 星币。
- * 主动为"等待目标释放"类技能:等待状态保存在玩家级(ModAttachments),激活后进入等待期(默认 30 秒),
- * 攻击目标即释放;超时或立牌被移除则中断等待。
+ * 主动:使用目标选择器选择目标并施加"隐匿调查"(永久,直到目标死亡/消失);若目标带"标记",
+ * 按标记层数获得 标记层数*2 星币(选择器目标规则:敌对生物或非队友玩家,
+ * 选择者无队伍时对所有玩家生效;不符合规则的目标不可选中)。
+ *
+ * 主动为"目标选择器"类技能:触发后经 {@link TargetSelectionManager} 进入选择模式,
+ * 确认时由 {@link TargetSelectionAction#apply} 施加效果并开始玩家级冷却;取消/超时不冷却。
  */
 @EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public class BonnieSignItem extends BaseSignItem {
+    private static final Logger LOGGER = LoggerFactory.getLogger(BonnieSignItem.class);
+
     // 玩家级等待状态类型:秘密侦探=2
     public static final int READY_TYPE = 2;
+
+    // 目标选择动作注册(26.1.2 移植 B2b,2026-09-18):语义基准 = 1.21.1
+    // `neoforge-1.21.1/.../item/sign/BonnieSignItem.java` 第 57-94 行(静态块)**逐字移植**,
+    // 只改平台 API 形态。注册时机与基准一致(类初始化时执行静态块)。
+    // 注册的 id 与下方 selectorActionId() 的返回值逐字相同(见 BaseSignItem 门控分支)。
+    static {
+        TargetSelectionRegistry.register(new TargetSelectionAction() {
+            @Override
+            public String id() {
+                return "bonnie_undercover";
+            }
+
+            @Override
+            public TargetType targetType() {
+                return TargetType.ENEMY_OR_RIVAL;
+            }
+
+            @Override
+            public void apply(ServerPlayer player, LivingEntity target) {
+                // 施加"隐匿调查"(永久,直到目标死亡/消失),记录施加者(击杀触发调查阶段事件)
+                ModAttachments.setUndercoverSource(target, Optional.of(player.getUUID()));
+                target.addEffect(new MobEffectInstance(ModEffects.UNDERCOVER_INVESTIGATION,
+                        Integer.MAX_VALUE, 0, false, true));
+                // 目标带"标记"时:按标记层数 ×2 获得星币
+                int markLevel = MarkManager.getLevel(target);
+                if (markLevel > 0) {
+                    ItemStack coinStack = new ItemStack(ModItems.STAR_COIN.get(), markLevel * 2);
+                    if (!player.getInventory().add(coinStack)) {
+                        player.drop(coinStack, false);
+                    }
+                }
+                // 主动成功施加:开始玩家级冷却(统一经 signCooldownTicks:含诡异骰子 -50% 与充能递减)
+                ModAttachments.setSignActiveCooldownEnd(player,
+                        player.level().getGameTime() + WeirdDiceHandler.signCooldownTicks(player));
+                // 电流核心筹码:主动技能实际生效时充能 +1
+                CurrentCoreChipItem.onActiveSkillUsed(player);
+                PacketDistributor.sendToPlayer(player, new ActionBarPayload(
+                        Component.translatable("msg.astral_dice.bonnie_undercover_applied", target.getDisplayName())
+                                .withStyle(ChatFormatting.YELLOW), GameplayConstants.ACTIONBAR_DURATION_TICKS));
+                LOGGER.debug("[Astral Dice][TargetSelection] bonnie_undercover applied to {}({}) by {} markLevel={}",
+                        target.getId(), target.getName().getString(), player.getName().getString(), markLevel);
+            }
+        });
+    }
 
     public BonnieSignItem(Properties properties) {
         super(properties);

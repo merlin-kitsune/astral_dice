@@ -11,6 +11,12 @@ import com.merlinkitsune.starenginelib.event.ModEffectRemoval;
 import com.merlinkitsune.astral_dice.event.WeirdDiceHandler;
 import com.merlinkitsune.astral_dice.item.ChargeManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
+import com.merlinkitsune.astral_dice.item.chip.CurrentCoreChipItem;
+import com.merlinkitsune.starenginelib.target.TargetSelectionAction;
+import com.merlinkitsune.astral_dice.target.TargetSelectionManager;
+import com.merlinkitsune.starenginelib.target.TargetSelectionRegistry;
+import com.merlinkitsune.starenginelib.target.TargetType;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.LivingEntity;
@@ -19,6 +25,8 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import top.theillusivec4.curios.api.CuriosApi;
 import top.theillusivec4.curios.api.SlotContext;
 
@@ -27,15 +35,60 @@ import top.theillusivec4.curios.api.SlotContext;
  *
  * 弱点识破:每层攻击/防御 +1、骰点最低数 +1,骰神赐福结束减 1 层,最多 4 层。
  * 被动「精密技巧」:装备时主动冷却减为 120 秒。
- * 主动「弱点反击」:等待 30 秒,攻击普通敌对目标后施加「破绽」2:00。
+ * 主动「弱点反击」:使用目标选择器选择普通敌对目标并施加「破绽」2:00
+ * (选择器目标规则:仅 vanilla {@link net.minecraft.world.entity.monster.Enemy} 敌对生物)。
  * 破绽:目标与枪匠交战时骰点只能为 0,会被枪匠闪避;闪避后自动反击。
+ *
+ * 主动为"目标选择器"类技能:触发后经 {@link TargetSelectionManager} 进入选择模式,
+ * 确认时由 {@link TargetSelectionAction#apply} 施加效果并开始玩家级冷却;取消/超时不冷却。
  */
 @EventBusSubscriber(modid = AstralDiceMod.MODID)
 public class MosesSignItem extends BaseSignItem {
+    private static final Logger LOGGER = LoggerFactory.getLogger(MosesSignItem.class);
+
     /** 玩家级等待状态类型:枪匠=3 */
     public static final int READY_TYPE = 3;
     /** 主动冷却基础秒数(被动:120 秒) */
     public static final int ACTIVE_COOLDOWN_SECONDS = 120;
+
+    // 目标选择动作注册(26.1.2 移植 B2b,2026-09-18):语义基准 = 1.21.1
+    // `neoforge-1.21.1/.../item/sign/MosesSignItem.java` 第 50-79 行(静态块)**逐字移植**,
+    // 只改平台 API 形态。注册时机与基准一致(类初始化时执行静态块)。
+    // 注册的 id 与下方 selectorActionId() 的返回值逐字相同(见 BaseSignItem 门控分支)。
+    // ⚠️ 本类在 26.1.2 侧**仍保留** @EventBusSubscriber 与既有 onSignActiveTriggered(@SubscribeEvent),
+    //   故不采用 1.21.1 基准「本类不得标注 @EventBusSubscriber」的处理(那是 1.21.1 删掉旧提示
+    //   订阅器后的形态);该差异属平台/批次差异,见 B2b 报告。
+    static {
+        TargetSelectionRegistry.register(new TargetSelectionAction() {
+            @Override
+            public String id() {
+                return "moses_apply_broken";
+            }
+
+            @Override
+            public TargetType targetType() {
+                return TargetType.ENEMY;
+            }
+
+            @Override
+            public void onStarted(ServerPlayer player) {
+                // 进入选择模式瞬间的「请选择敌对目标」提示(门控后提示点 = 会话开始,而非确认之后)
+                sendReadyPrompt(player);
+            }
+
+            @Override
+            public void apply(ServerPlayer player, LivingEntity target) {
+                // 施加"破绽"2:00;目标已带破绽时不重复施加,此时不消耗冷却
+                if (!applyBroken(player, target)) return;
+                // 主动成功施加:开始玩家级冷却(被动「精密技巧」120 秒)并计入「电流核心」充能
+                ModAttachments.setSignActiveCooldownEnd(player,
+                        player.level().getGameTime() + signCooldownTicks(player));
+                CurrentCoreChipItem.onActiveSkillUsed(player);
+                LOGGER.debug("[Astral Dice][TargetSelection] moses_apply_broken applied to {}({}) by {}",
+                        target.getId(), target.getName().getString(), player.getName().getString());
+            }
+        });
+    }
 
     public MosesSignItem(Properties properties) {
         super(properties);
