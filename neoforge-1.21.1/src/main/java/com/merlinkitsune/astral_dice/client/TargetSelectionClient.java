@@ -40,15 +40,19 @@ import java.util.List;
 /**
  * 目标选择器客户端状态机（第一人称 UX，**Create 强力胶式按键语义**）。
  *
- * 按键口径（2026-09-17 用户裁决，“强力胶式”交互；本模组全部技能不开放自身使用）：
+ * 按键口径（2026-09-17 用户裁决，"强力胶式"交互；能否对自身使用由各动作的 {@code allowSelf} 决定 ——
+ * 2026-09-25 当前为 true 的动作 = 游戏大师立牌「熊孩子特权」与加急加快 / 奢华大餐 / 狂暴三张效果牌）：
  * <ul>
  *   <li><b>左键</b> = 确认目标（发送 {@link TargetSelectConfirmPayload}）；</li>
  *   <li><b>右键</b> = 对自身使用 —— 会话允许自身目标（{@link #allowSelf()}）时提交对自身的确认；
- *       否则（{@code allowSelf=false} 的动作，如 bonnie / haiqing / moses 三个立牌动作）只弹 actionbar 提示
+ *       否则（{@code allowSelf=false} 的动作：bonnie / haiqing / moses 三个立牌动作，以及「你有我有」you_have_i_have）只弹 actionbar 提示
  *       {@code msg.astral_dice.target_select.self_unsupported}，**不提交选择**（会话保留）；</li>
  *   <li><b>右键 + 潜行</b> = 取消选择；</li>
- *   <li><b>ESC</b> = 原版照常打开暂停菜单，菜单一打开（{@code ScreenEvent.Opening}）即取消选择；</li>
+ *   <li><b>ESC</b> = 原版照常打开暂停菜单，菜单一打开（{@code ScreenEvent.Opening}）即取消选择
+ *       （**手持即选择类会话例外**：开着菜单也保留会话，见 {@link #onScreenOpening}）；</li>
  *   <li><b>J</b>（主动技能键）= 取消选择（保留）；</li>
+ *   <li><b>移出主手</b> = 手持即选择类会话（四张效果牌）的收官方式：物品离开主手即退出选择
+ *       （{@code reason=released}，无瞬态提示），此类会话**没有倒计时**、提示里也不出现剩余时间；</li>
  *   <li>选择期间滚轮拦截、{@link ChatScreen} 豁免（命令聊天/自动化注入命令）均保留。</li>
  * </ul>
  *
@@ -90,9 +94,19 @@ public final class TargetSelectionClient {
     private static long transientPromptUntil;
     /**
      * 本次会话是否允许对自身使用（服务端随会话下发；消费方接口
-     * {@code target/SelfTargetable#allowSelf()} 的取值；{@code ren_privilege} 为 true，其余动作 false）。
+     * {@code target/SelfTargetable#allowSelf()} 的取值；{@code ren_privilege} 与三张可自用效果牌（express_delivery / luxury_feast / berserk）为 true，其余动作 false）。
      */
     private static boolean allowSelf;
+    /**
+     * 本会话是否由「主手手持物品」驱动且**没有倒计时**（服务端随会话下发；消费方接口
+     * {@code target/HoldToSelect} 的取值，当前 = 四张效果牌动作 express_delivery / luxury_feast /
+     * you_have_i_have / berserk）。
+     *
+     * <p>为真时：① {@link #remainingSeconds()} 不参与提示（不显示「（剩余 N 秒）」）；
+     * ② {@link #tick()} 改为校验主手物品是否仍是该动作对应的牌，离开主手即自行退出选择模式；
+     * ③ 打开界面（背包等）**不取消**会话（玩家仍握着牌）。
+     */
+    private static boolean holdToSelect;
 
     private TargetSelectionClient() {
     }
@@ -143,13 +157,13 @@ public final class TargetSelectionClient {
      */
     public static int remainingSeconds() {
         Minecraft mc = Minecraft.getInstance();
-        if (mc.level == null) return 0;
+        if (mc.level == null || holdToSelect) return 0;
         long remainingTicks = expireTick - mc.level.getGameTime();
         if (remainingTicks <= 0L) return 0;
         return (int) Math.ceil(remainingTicks / 20.0);
     }
 
-    /** 本次会话是否允许对自身使用（服务端下发；{@code ren_privilege}=true，其余动作 false） */
+    /** 本次会话是否允许对自身使用（服务端下发；ren_privilege 与三张可自用效果牌为 true，其余 false） */
     public static boolean allowSelf() {
         return allowSelf;
     }
@@ -198,13 +212,16 @@ public final class TargetSelectionClient {
 
     /** 服务端下发选择会话开始（TargetSelectStartPayload 处理器调用，主线程） */
     public static void start(int newToken, int targetTypeOrd, double newRadius, int durationTicks, String newActionId,
-                             boolean newAllowSelf) {
+                             boolean newAllowSelf, boolean newHoldToSelect) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.level == null) return;
         token = newToken;
         targetType = TargetType.values()[Math.max(0, Math.min(targetTypeOrd, TargetType.values().length - 1))];
         radius = Math.max(1.0, newRadius);
-        expireTick = mc.level.getGameTime() + Math.max(1, durationTicks);
+        // 手持即选择类会话没有倒计时(服务端传 durationTicks=0):expireTick 写 Long.MAX_VALUE,
+        // 超时判定永不成立,收官一律走「主手物品校验」(见 tick())
+        holdToSelect = newHoldToSelect;
+        expireTick = newHoldToSelect ? Long.MAX_VALUE : mc.level.getGameTime() + Math.max(1, durationTicks);
         actionId = newActionId;
         allowSelf = newAllowSelf;
         active = true;
@@ -215,22 +232,53 @@ public final class TargetSelectionClient {
         transientPromptUntil = 0;
         // 清除遗留的左键按下状态：选择期间攻击键被接管，避免进入前长按导致持续攻击
         mc.options.keyAttack.setDown(false);
-        LOGGER.debug("[Astral Dice][TargetSelectionClient] start token={} type={} radius={} expire={} action={} allowSelf={}",
-                token, targetType, radius, expireTick, actionId, allowSelf);
+        LOGGER.debug("[Astral Dice][TargetSelectionClient] start token={} type={} radius={} expire={} action={} allowSelf={} hold={}",
+                token, targetType, radius, expireTick, actionId, allowSelf, holdToSelect);
         refreshActionBarPrompt(mc);
     }
 
-    /** 客户端主循环 tick（由 ClientTickHandler 驱动）：射线目标更新 + actionbar 提示续期 + 超时取消 */
+    /**
+     * 客户端主循环 tick（由 ClientTickHandler 驱动）：射线目标更新 + actionbar 提示续期 + 收官判定。
+     *
+     * <p>收官两条口径：① 手持即选择类会话 —— 主手物品不再是该动作对应的效果牌 ⇒ 立即取消
+     * （reason=released，无瞬态提示：松手是玩家主动动作）；② 其余会话 —— 选择窗口超时即取消。
+     */
     public static void tick() {
         if (!isActive()) return;
         Minecraft mc = Minecraft.getInstance();
-        if (mc.level.getGameTime() >= expireTick) {
+        if (holdToSelect) {
+            if (!holdsCardForAction(mc)) {
+                releaseByHeldItem();
+                return;
+            }
+        } else if (mc.level.getGameTime() >= expireTick) {
             LOGGER.debug("[Astral Dice][TargetSelectionClient] cancel (expired) token={}", token);
             cancel("expired");
             return;
         }
         updateRaycastTarget(mc);
         refreshActionBarPrompt(mc);
+    }
+
+    /**
+     * 手持即选择:物品离开主手 ⇒ **本地**退出选择模式。
+     *
+     * <p>刻意**不**发取消包 —— 服务端 {@code TargetSelectionManager.tick} 有同源判定
+     * （{@code HoldToSelect#stillHeld}）会自行收尾，两条路径抢着关同一会话只会让服务端日志从
+     * `reason=released` 变成 `cancel`、并多写一条无意义的抑制闩（`hold suppressed`）。
+     * 客户端先退出的窗口内服务端会话仍在，但此时玩家手里已经没有该牌，不可能再发出确认/自用包。
+     */
+    private static void releaseByHeldItem() {
+        LOGGER.debug("[Astral Dice][TargetSelectionClient] cancel (released) token={} action={}", token, actionId);
+        deactivate();
+    }
+
+    /** 主手是否仍持有本会话动作对应的选择器类效果牌（手持即选择类的收官判据，与服务端同源） */
+    private static boolean holdsCardForAction(Minecraft mc) {
+        if (mc.player == null) return false;
+        return mc.player.getMainHandItem().getItem()
+                instanceof com.merlinkitsune.astral_dice.item.card.BaseEffectCardItem card
+                && actionId != null && actionId.equals(card.selectorActionId());
     }
 
     /**
@@ -254,7 +302,7 @@ public final class TargetSelectionClient {
      * 右键 = 对自身使用。
      *
      * <p>会话允许自身目标（{@link #allowSelf()}）时提交对自身的确认包并退出选择模式；
-     * 否则（当前**全部**动作的取值）只弹 actionbar {@code self_unsupported} 提示，
+     * 否则（{@code allowSelf=false} 的动作，如 bonnie / haiqing / moses 与 you_have_i_have）只弹 actionbar {@code self_unsupported} 提示，
      * **不提交选择**、会话保留。
      */
     public static void useOnSelfBySecondaryClick() {
@@ -305,6 +353,7 @@ public final class TargetSelectionClient {
         rejectedTarget = null;
         nearbyTargets.clear();
         allowSelf = false;
+        holdToSelect = false;
         Minecraft mc = Minecraft.getInstance();
         if (mc.options != null) {
             mc.options.keyAttack.setDown(false);
@@ -338,28 +387,42 @@ public final class TargetSelectionClient {
     }
 
     /**
-     * 稳态提示（2026-09-18 用户裁决的四态口径）：主文案随「准星目标 / 准星命中但不可选 /
-     * 未命中（分是否允许自身）」四态着色，末尾统一追加**黄色**的「（剩余 N 秒）」。
+     * 稳态提示（2026-09-18 四态口径 + 2026-09-25「手持即选择」两套文案）：主文案随
+     * 「准星目标 / 准星命中但不可选 / 未命中（分是否允许自身）」四态着色。
      *
-     * <p>四态优先级：① 有有效目标 → 绿 {@code prompt.valid}；② 否则准星命中但不可选 →
-     * 红 {@code prompt.rejected}（参数 = 本次会话 {@link TargetType} 对应的有效目标名）；
-     * ③ 否则 → 白 {@code prompt.no_target_self}（{@link #allowSelf()} 为真）或
-     * {@code prompt.no_target}（为假），参数 = 技能名。
+     * <p>退出/取消指引与时间后缀按会话类型分叉：
+     * <ul>
+     *   <li><b>手持即选择类</b>（{@link #holdToSelect}，四张效果牌）—— 用
+     *       {@code msg.astral_dice.target_select.prompt.hold.*} 四键，指引「移出手持即退出选择」，
+     *       **不追加剩余时间**（这类会话没有倒计时）；</li>
+     *   <li><b>其余</b>（立牌主动）—— 用原四键，指引「下蹲+右键 退出选择」，末尾追加**黄色**
+     *       「（剩余 N 秒）」，口径与改动前逐字一致。</li>
+     * </ul>
+     *
+     * <p>四态优先级：① 有有效目标 → 绿 {@code .valid}；② 否则准星命中但不可选 →
+     * 红 {@code .rejected}（参数 = 本次会话 {@link TargetType} 对应的有效目标名）；
+     * ③ 否则 → 白 {@code .no_target_self}（{@link #allowSelf()} 为真）或
+     * {@code .no_target}（为假），参数 = 技能名。
      */
     private static Component steadyPrompt() {
+        String base = holdToSelect ? "msg.astral_dice.target_select.prompt.hold" : "msg.astral_dice.target_select.prompt";
         Component main;
         if (currentTarget != null) {
-            main = Component.translatable("msg.astral_dice.target_select.prompt.valid")
+            main = Component.translatable(base + ".valid")
                     .withStyle(ChatFormatting.GREEN);
         } else if (rejectedTarget != null) {
-            main = Component.translatable("msg.astral_dice.target_select.prompt.rejected", validTargetName())
+            main = Component.translatable(base + ".rejected", validTargetName())
                     .withStyle(ChatFormatting.RED);
         } else if (allowSelf()) {
-            main = Component.translatable("msg.astral_dice.target_select.prompt.no_target_self", skillName())
+            main = Component.translatable(base + ".no_target_self", skillName())
                     .withStyle(ChatFormatting.WHITE);
         } else {
-            main = Component.translatable("msg.astral_dice.target_select.prompt.no_target", skillName())
+            main = Component.translatable(base + ".no_target", skillName())
                     .withStyle(ChatFormatting.WHITE);
+        }
+        if (holdToSelect) {
+            // 无倒计时 ⇒ 不拼「（剩余 N 秒）」
+            return main;
         }
         Component time = Component.translatable("msg.astral_dice.target_select.time", remainingSeconds())
                 .withStyle(ChatFormatting.YELLOW);
@@ -528,20 +591,22 @@ public final class TargetSelectionClient {
     }
 
     /**
-     * 任何界面被打开即取消选择。
+     * 界面打开时的处理。
      *
-     * <p>两类例外/特例：
+     * <p>三类口径：
      * <ul>
-     *   <li>{@link ChatScreen} 豁免 —— 命令聊天是刻意保留的通道（输指令 / 自动化测试注入命令），
-     *       打开聊天不应取消选择；</li>
-     *   <li>{@link PauseScreen}（ESC 菜单）—— 键盘 ESC 不再被模组拦截（键盘 Mixin 已删除），
-     *       原版照常打开暂停菜单，本事件即取消时机（`key=esc action=cancel`）。</li>
+     *   <li>{@link ChatScreen} 一律豁免 —— 命令聊天是刻意保留的通道（输指令 / 自动化测试注入命令）；</li>
+     *   <li><b>手持即选择类会话一律不取消</b>（2026-09-25「手持即选择」）—— 玩家仍握着牌，开背包 /
+     *       按 ESC 只是暂时盖住提示，关掉界面后提示照常；收官只由「物品离开主手」触发；</li>
+     *   <li>其余会话（立牌主动）—— {@link PauseScreen}（ESC 菜单）即取消（{@code key=esc action=cancel}），
+     *       其它界面（背包等）也取消（{@code reason=screen}），口径与改动前逐字一致。</li>
      * </ul>
      */
     @SubscribeEvent
     public static void onScreenOpening(ScreenEvent.Opening event) {
         if (!isActive() || event.getScreen() == null) return;
         if (event.getScreen() instanceof ChatScreen) return;
+        if (holdToSelect) return;
         if (event.getScreen() instanceof PauseScreen) {
             logPrompt("esc", "cancel");
             cancel("esc");

@@ -4269,6 +4269,118 @@ function doRenActive(ctx, tag) {
     return 1;
 }
 
+// ── 效果牌 → 目标选择器(2026-09-25)只读读数 ─────────────────────────────────
+/**
+ * 四张效果牌(加急加快 express_delivery / 奢华大餐 luxury_feast / 狂暴 berserk /
+ * 你有我有 you_have_i_have)自 2026-09-25 起改走**目标选择器**(与立牌主动同一套
+ * TargetSelectionManager + SignSelectionGate,取代旧的「右键自身 / 下蹲右键其他玩家 /
+ * 点击玩家实体」)。本组命令把该流程里**截图与聊天都判不出**的服务端事实报全,
+ * 供 CARD-SELECTOR-* 用例断言:
+ *   · hand / handn —— 主手物品 id 与「该 id 在主背包内的总数」(卡牌是否被消耗的判据)
+ *   · cards        —— 主背包全部卡牌数(「你有我有」给自身发牌的判据)
+ *   · sel / token  —— 是否处于目标选择会话(TargetSelectionManager 的测试钩子;无会话 token=-1)
+ *   · speed / berserk —— 迅捷 / 狂暴 的「等级/剩余tick」("-" = 当前无该效果)
+ *   · hp / dhp     —— 当前生命/上限,以及相对最近一次 cardprep 的差值(治疗卡(奢华大餐)的
+ *                    直接判据:先 /effect give instant_damage 受伤,确认后 dhp>0;无治疗则 dhp=0)
+ *   · plays / max / blocked —— 出牌周期计数/上限/是否被出牌锁挡住(EffectCardPeriod)
+ *
+ * 会话的 action / type / radius / allowSelf 由服务端 DEBUG 行给出
+ * (`[Astral Dice][TargetSelection] start ... action=... allowSelf=...`,落 logs/debug.log),
+ * 客户端提示与「对自身使用」的按键口径由截图给出 —— 本读数不重复报这两类。
+ *
+ * 只读口径:cardread 一字不写;cardprep 只做出牌周期归零 + 清主背包 + 发 1 张(测试基线);
+ * cardself 只调 TargetSelectionManager.confirm 的对自身确认入口(与客户端右键同路)。
+ * **取消/超时/被拒绝均不消耗卡牌 ⇒ handn 与 plays 是这条红线的机器判据。**
+ */
+var DESC_BERSERK_CARD = "effect.astral_dice.berserk";
+
+/** 最近一次 cardprep 时的生命值(供 cardread 的 "dhp" 报治疗差值;-1 = 本次未 prep) */
+var cardHpBefore = -1;
+
+/** 效果实例 → "等级/剩余tick"(无该效果 = "-") */
+function effectAmpDur(inst) {
+    if (inst == null) return "-";
+    try { return inst.getAmplifier() + "/" + inst.getDuration(); } catch (e) { return "?"; }
+}
+
+/** 效果牌选择器读数(单行机器格式) */
+function cardState(p) {
+    var hand = itemIdOf(p.getMainHandItem());
+    var handn = 0;
+    var inv = p.getInventory();
+    for (var i = 0; i < inv.getContainerSize(); i++) {
+        var st = inv.getItem(i);
+        if (st.isEmpty()) continue;
+        if (itemIdOf(st) === hand) handn += st.getCount();
+    }
+    return "hand=" + hand + ":handn=" + handn + ":cards=" + countAllCards(p)
+        + ":sel=" + (TargetSelectionManagerClass.isSelecting(p) ? 1 : 0)
+        + ":token=" + TargetSelectionManagerClass.sessionTokenForTests(p)
+        + ":speed=" + effectAmpDur(findEffect(p, DESC_SPEED))
+        + ":berserk=" + effectAmpDur(findEffect(p, DESC_BERSERK_CARD))
+        + ":hp=" + Math.round(p.getHealth() * 10) / 10 + "/" + Math.round(p.getMaxHealth() * 10) / 10
+        + ":dhp=" + (cardHpBefore < 0 ? "-" : Math.round((p.getHealth() - cardHpBefore) * 10) / 10)
+        + ":plays=" + EffectCardPeriodClass.getPlayCount(p)
+        + ":max=" + EffectCardPeriodClass.getMaxAllowed(p)
+        + ":blocked=" + (EffectCardPeriodClass.isBlocked(p) ? 1 : 0);
+}
+
+/**
+ * 从同一基线起测:出牌周期归零 + 清空全部原版状态效果 + 清空主背包 + 把 1 张目标卡牌放进**主手**。
+ * 用 `/item replace entity @s weapon.mainhand` 而不是「服务端改 selected 再 give」:selected 由客户端
+ * 上报、服务端单方面改写不会同步回客户端,会出现「服务端以为在手里、客户端显示别的槽」的错位
+ * (读数里的 hand= 会直接暴露这种错位)。
+ *
+ * ⚠️ 2026-09-25「手持即选择」后本命令会**顺带触发**服务端自动开局(下一个 tick):`_PREP` 那一行读的是
+ * 命令生效前的状态,断言一律落在其后独立调用的 `<tag>_READ` 上。
+ */
+function doCardPrep(ctx, tag, itemId) {
+    var p = ctx.source.getPlayerOrException();
+    if (resolveItem(itemId) == null) {
+        send(ctx, "AP_" + tag + "_ERR:unknown_item:" + itemId);
+        return 1;
+    }
+    cardHpBefore = p.getHealth();
+    resetEffectCardCycle(p);
+    // 必须一并清掉状态效果:出牌锁的第三态是「上一张效果牌的效果仍在生效」
+    // (EffectCardPeriod.isBlocked → isEffectPending,如 3 分钟的狂暴)⇒ 不清就会让各区块基线互相污染
+    // (⚠️ /effect clear 只能清原版效果:本模组效果被 ModEffectEvents#onModEffectRemovalPrevented 保护)
+    runCmd(ctx, "effect clear @s");
+    runCmd(ctx, "clear @s");
+    // 放进**主手**(weapon.mainhand):不能用 hotbar.<selected> —— selected 由客户端上报,
+    // 服务端单方面改写不同步回客户端,会出现「服务端以为在手里、客户端显示别的槽」的错位
+    runCmd(ctx, "item replace entity @s weapon.mainhand with " + itemId + " 1");
+    send(ctx, "AP_" + tag + "_PREP:" + cardState(p));
+    return 1;
+}
+
+/** 选择器读数(只读,不写任何状态) */
+function doCardRead(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    send(ctx, "AP_" + tag + "_READ:" + cardState(p));
+    return 1;
+}
+
+/**
+ * 服务端直接提交「对自身」确认(与客户端右键同路,但绕开「准星下必须有合法目标」这一客户端前提)。
+ * 单人测试环境没有第二个玩家,故:① 客户端左键确认(瞄准其他玩家)无法在此环境复现;
+ * ② 「确认时卡牌已不在身上」这类门控只能用本入口驱动。confirm 是 void,失败原因在服务端日志
+ * (`[TargetSelection] confirm FAIL: ...`)与读数(sel / handn / plays)里判。
+ */
+function doCardSelf(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var token = TargetSelectionManagerClass.sessionTokenForTests(p);
+    var called = 0, err = "";
+    try {
+        TargetSelectionManagerClass.confirm(p, token, p.getId());
+        called = 1;
+    } catch (e2) {
+        err = exText(e2);
+    }
+    send(ctx, "AP_" + tag + "_SELF:called=" + called + ":token=" + token
+        + (err ? ":err=" + err : "") + ":" + cardState(p));
+    return 1;
+}
 ServerEvents.commandRegistry(event => {
     var Commands = event.commands;
     event.register(
@@ -4282,6 +4394,23 @@ ServerEvents.commandRegistry(event => {
                 .then(Commands.argument("tag", StringArg.word())
                     .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
                         return dumpState(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("cardprep")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("item", StringArg.string())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doCardPrep(ctx, StringArg.getString(ctx, "tag"),
+                                StringArg.getString(ctx, "item"));
+                        })))))
+            .then(Commands.literal("cardread")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doCardRead(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("cardself")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doCardSelf(ctx, StringArg.getString(ctx, "tag"));
                     }))))
             .then(Commands.literal("glovebase")
                 .then(Commands.argument("tag", StringArg.word())

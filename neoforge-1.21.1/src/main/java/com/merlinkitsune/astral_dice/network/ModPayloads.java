@@ -52,7 +52,8 @@ public class ModPayloads {
                 TargetSelectStartPayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(() ->
                         TargetSelectionClient.start(payload.token(), payload.targetType(),
-                                payload.radius(), payload.durationTicks(), payload.actionId(), payload.allowSelf()))
+                                payload.radius(), payload.durationTicks(), payload.actionId(), payload.allowSelf(),
+                                payload.holdToSelect()))
         );
         registrar.playToServer(
                 TargetSelectConfirmPayload.TYPE,
