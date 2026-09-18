@@ -4,6 +4,13 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 1.2.1-hotfix
+
+### Bug Fixes
+
+#### Items, Chips & Trading
+- **Fixed chip slots occasionally not increasing when a dice is equipped** (it only appeared about a second later, if at all): the "equip a dice → immediately gain the matching number of chip slots" step never actually took effect - the chip bar was only filled in by a once-per-second fallback check, so at the moment you equipped the dice (or the instant you opened the curio screen) it still showed 0 slots and only appeared a second later, which read as "sometimes it doesn't increase"; quitting within that second even saved 0 as this character's chip-slot count. Equipping a dice now grants the chip slots **immediately**, according to the dice's tier and star level, and the count is reconciled again on **entering the world / reloading data packs / respawning after death**; the chip-slot count is now declared outright by this mod instead of being adjusted by relative increments, so **leftovers in old saves, a curio inventory reset by an admin or a lost sync** all recover to the correct size within a second - no more "it should be 2 but stays 0" or "the count keeps growing". Swapping dice **never** ejects chips you already placed because of a momentary empty reading (an occupied bar keeps the slots it needs until you take the chips out yourself).
+
 ## 1.2.1
 
 ### New Content

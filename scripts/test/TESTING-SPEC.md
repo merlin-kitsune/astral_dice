@@ -584,6 +584,25 @@ pwsh -NoProfile -File scripts/test/mt_watchdog.ps1 -Version 1.21.1 [-StallSecond
 
 ## 附录 A：工具链与发布工程变更记录（自 CHANGELOG 移出）
 
+**2026-09-18：筹码栏「装备骰子偶发不增加」修复交付到发布线 + 版本号升位（`1.2.1-hotfix` / `1.2.1-beta.2`）**
+
+- **范围与来源**：本次修复先在开发线 `multi-dev-next` 落地并完成游戏内验证（1.21.1 / 1.20.1 各 **54 PASS / 0 FAIL**，26.1.2 的 `CHIP-EQUIP`、`PORTED-PROBE-SMOKE`、`CHIP-RELOG-A/B` 全 PASS；用例、探针改动与判据全文记在开发线工作区的 `TESTING-SPEC.md` 附录 A 与 `AGENTS.md` 的「骰子槽位与配置规范」）。随后把**仅该修复**移植到发布线 `multi-1.20.1-1.21.1`，共 **5 个文件**：3 个 `item/dice/DiceCurioItem.java`（1.21.1 / 1.20.1 / 26.1.2）+ 2 个 `event/PlayerLifecycleHandler.java`（各新增 3 个对账钩子：`PlayerLoggedInEvent`、`OnDatapackSyncEvent`(LOWEST)、`PlayerEvent.Clone`(LOWEST)）。移植时**刻意不带**开发线独有的其它差异（`starenginelib` 包引用、额外的 effect 移除行等），发布线其余内容保持原样。
+- **版本号**：`1.2.1+neoforge_1.21.1` → **`1.2.1-hotfix+neoforge_1.21.1`**；`1.2.1+forge_1.20.1` → **`1.2.1-hotfix+forge_1.20.1`**；`1.2.1-beta+neoforge_26.1.2` → **`1.2.1-beta.2+neoforge_26.1.2`**。
+- **Tag / Release 口径（重要）**：CI 的剥离规则是「先剥 `+后缀`，再剥第一个 `-` 之后的一切」（`BASE=${VERSION%%+*}; BASE=${BASE%%-*}`）⇒ `1.2.1-hotfix` 解析出的 tag 是**裸 `1.2.1`**，而该 tag 已存在 ⇒ 本次推送**不新建 tag、不新建 Release**，而是走 `gh release edit` + `gh release upload --clobber` **刷新同一个 1.2.1 Release**（三个附件一并替换、正文取自 `release/1.2.1/`）。
+- **构建与产物核验（三线各跑 `scripts/test/mt_build.ps1 --version <V> --timeout 60 --retries 3`，三条全部 `MT_BUILD: OK`）**：
+
+  | 线 | 产物 | 字节 | 装载器元数据 `version=` |
+  |---|---|---|---|
+  | 1.21.1 | `astral_dice-1.2.1-hotfix+neoforge_1.21.1.jar` | 936567 | `1.2.1-hotfix+neoforge_1.21.1` |
+  | 1.20.1 | `astral_dice-1.2.1-hotfix+forge_1.20.1.jar` | 982006 | `1.2.1-hotfix+forge_1.20.1` |
+  | 26.1.2 | `astral_dice-1.2.1-beta.2+neoforge_26.1.2.jar` | 967218 | `1.2.1-beta.2+neoforge_26.1.2` |
+
+  - 三份 jar 内的 `astral_dice_version.properties` 的 `mod_version` 与上表同值；三份 `DiceCurioItem.class` 经 `ZipFile` 抽取 + 常量池 ASCII 扫描，均含 `refreshChipSlotCount` / `clearChipSlotCount` / `applySlotCount` 三个方法名（即**发货字节码确实带本次修复**，不是「只看构建成功」）。
+  - 产物去向四条一致：子项目 `build/libs`、根 `build/libs`（3 个 jar 齐全）、`run/<版本>/mods`、三个本地整合包 `mods` 目录；每个目录**恰有 1 个**本模组 jar（旧版本 jar 已由 `pushTo*` 的按后缀清理规则删除）。
+- **互通号未变**：`VersionGate.majorMinor("1.2.1-hotfix+neoforge_1.21.1")` 在首个 `-`/`+` 处截断后取前两段数字 ⇒ 仍为 **`1.2`**，故 `1.2.1` ↔ `1.2.1-hotfix` 客户端/服务端**继续双向互通**（`README.md` 中英两表与 `AGENTS.md` 的版本矩阵已同步为新版本号）。
+- **玩家侧文档**：两份 CHANGELOG 顶部新增 `## 1.2.1-hotfix` 小节（各 **1 条**，分类均为「物品、筹码与交易」/「Items, Chips & Trading」）；`release/1.2.1/PLAYER_CHANGELOG_ZH.md` + `PLAYER_CHANGELOG.md` 同步新增 `### 饰品栏与筹码栏（1.2.1-hotfix）` / `### Curios bar and chip slots (1.2.1-hotfix)`，文件头的适用范围改为 `1.2.0 → 1.2.1 → 1.2.1-hotfix`（CI 以这一对文件作为 Release 正文，故必须同步，否则正文会与 CHANGELOG 脱节）。
+- **发布线游戏内回归的边界（如实写明，不作为已完成的验证）**：发布线工作区的 `scripts/test` 目前**没有**本批探针命令（`chipstate` / `chipreset` / `chiptiming`）与三条 `CHIP-EQUIP-*` 用例（只有 26.1.2 的 `CHIP-RELOG-A/B`）。因此发布线本批只做了「构建 + 产物 / 元数据 / 字节码」核验，游戏内行为结论沿用开发线上**同一份修复代码**的读数（见首条）。若需要发布线自有读数，应按 §13.2 把探针子命令与三条用例成对移植到发布线后单独跑一轮，并把结果补记到本条。
+
 **2026-09-17：26.1.2 线并入主线 + 模组来源统一口径 + 内容更新优先级规则**
 
 - **第三条线（26.1.2）并入主线目录（用户要求「把当前 workflow 合并到主线目录，核对完整后移除」）**：在主线 worktree `F:/MCProject/astral_dice_multiloader`（分支 `multi-1.20.1-1.21.1`，合并前 `460975c`）以 `git merge --no-ff` 收编 `multi-26.1.2-neoforge`（`f29f51a`，merge-base `fda8ca9`），合并提交 **`c846f83`**（2 父提交已核），规模 **1126 文件 / +43543 / −48**（其中 1109 个新增）。

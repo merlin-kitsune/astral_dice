@@ -14,6 +14,7 @@ import top.theillusivec4.curios.api.CuriosApi;
 import top.theillusivec4.curios.api.SlotContext;
 import top.theillusivec4.curios.api.type.capability.ICurioItem;
 import top.theillusivec4.curios.api.type.inventory.ICurioStacksHandler;
+import top.theillusivec4.curios.api.type.capability.ICuriosItemHandler;
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.sign.MimiSignItem;
@@ -69,16 +70,18 @@ public class DiceCurioItem extends Item implements ICurioItem {
     }
 
     @Override
-    public void onEquip(SlotContext slotContext, ItemStack curio, ItemStack prevStack) {
-        if (!curio.has(ModDataComponents.WEAPON_ENHANCEMENT.get())) {
-            curio.set(ModDataComponents.WEAPON_ENHANCEMENT.get(), WeaponEnhancement.EMPTY);
+    public void onEquip(SlotContext slotContext, ItemStack prevStack, ItemStack stack) {
+        // Curios 官方签名:第 2 参 prevStack = **槽位原内容**(普通装备时是空栈),第 3 参 stack = 刚装上的骰子。
+        // 旧实现把第 2 参当骰子用 ⇒ targetChipSlots(EMPTY) 恒为 0、「装备即加筹码栏」整条路径是空操作,
+        // 只能等 curioTick 每 20 tick(≈1 秒)补上 —— 与 1.21.1/1.20.1 侧同源同形的缺陷(2026-09-18 三线统一修)。
+        if (!stack.isEmpty() && !stack.has(ModDataComponents.WEAPON_ENHANCEMENT.get())) {
+            stack.set(ModDataComponents.WEAPON_ENHANCEMENT.get(), WeaponEnhancement.EMPTY);
         }
-        if (!slotContext.entity().level().isClientSide()) {
-            // 防御式调整(forceRemove=false):Curios 重载/进入世界等场景 onEquip 触发时,
-            // target 槽位数可能被瞬时计算错误,强制收缩会移出 chip 等槽位的合法物品(弹出 bug)。
-            // 槽位只会 grow 或按需收缩;有物品的槽位保持不动,物品安全。
+        if (slotContext.entity() instanceof Player player && !player.level().isClientSide()) {
+            // 防御式调整(forceRemove=false):目标值在「骰子槽瞬时为空」的读数下会算成 0,
+            // 强制收缩会移出 chip 等槽位的合法物品(弹出 bug);有物品的槽位保持不动,物品安全。
             // 立牌栏固定 1(stand.json size=1),不做动态调整。
-            tryApplyChipBonus(slotContext, curio, false);
+            refreshChipSlotCount(player);
         }
     }
 
@@ -94,23 +97,65 @@ public class DiceCurioItem extends Item implements ICurioItem {
     @Override
     public void curioTick(SlotContext slotContext, ItemStack stack) {
         if (slotContext.entity().level().isClientSide()) return;
-        // 每 20 tick 维持一次筹码槽位数;防御模式:被移除槽位有物品时不收缩,避免战斗等场景误弹出合法装备
+        // 每 20 tick 对账一次(兜底:/curios reset、同步包丢失、旧存档漂移);
+        // 正常路径(装备/卸下/登录迁移恢复)已即时生效,不再依赖这条 20 tick 轮询。
         if (slotContext.entity().tickCount % 20 != 0) return;
-        tryApplyChipBonus(slotContext, stack, false);
+        if (slotContext.entity() instanceof Player player) {
+            refreshChipSlotCount(player, null, false, true);
+        }
     }
 
     // === 筹码栏位 ===
-    private void tryApplyChipBonus(SlotContext slotContext, ItemStack stack, boolean forceRemove) {
-        if (!(slotContext.entity() instanceof Player player)) return;
-        int target = targetChipSlots(stack);
-        // 看板立牌被动:装备时筹码栏位 +1
-        if (MimiSignItem.isEquipped(player)) {
-            target += 1;
-        }
-        int finalTarget = target;
-        CuriosApi.getCuriosInventory(player)
-                .flatMap(h -> h.getStacksHandler("chip"))
-                .ifPresent(handler -> setChipSlotCount(player, handler, finalTarget, forceRemove));
+
+    /**
+     * 骰子已离开槽位:目标固定为 0。
+     *
+     * <p>不在 {@code onUnequip} 里回读 dice 栏 —— 该回调发生时那件骰子可能还没从栏位里摘掉,
+     * 读数会把它算进去,导致筹码栏不归零。
+     */
+    private static void clearChipSlotCount(Player player, boolean forceRemove) {
+        refreshChipSlotCount(player, CHIP_NO_DICE_SLOTS, forceRemove, false);
+    }
+
+    /**
+     * @param forcedTarget  非 null 时直接使用该目标值;null 表示按当前 dice 栏内容推算
+     * @param throttledWarn true 时节流「chip 处理器缺失」的告警(供每 20 tick 的 tick 路径使用)
+     */
+    private static void refreshChipSlotCount(Player player, Integer forcedTarget, boolean forceRemove, boolean throttledWarn) {
+        if (player == null || player.level().isClientSide()) return;
+        CuriosApi.getCuriosInventory(player).ifPresent(inventory -> {
+            ICurioStacksHandler chip = inventory.getStacksHandler("chip").orElse(null);
+            if (chip == null) {
+                warnMissingChipHandler(player, inventory, throttledWarn);
+                return;
+            }
+            int target;
+            if (forcedTarget != null) {
+                target = forcedTarget;
+            } else {
+                ItemStack dice = inventory.getStacksHandler("dice")
+                        .map(handler -> handler.getStacks().getStackInSlot(0))
+                        .orElse(ItemStack.EMPTY);
+                target = CHIP_NO_DICE_SLOTS;
+                if (!dice.isEmpty()) {
+                    target = targetChipSlots(dice);
+                    // 看板立牌被动:装备骰子时筹码栏位 +1;未佩戴骰子时不给,维持「必须佩戴骰子才有筹码栏」
+                    if (MimiSignItem.isEquipped(player)) {
+                        target += 1;
+                    }
+                }
+            }
+            setSlotCount(player, chip, target, forceRemove);
+        });
+    }
+
+    // 找不到 chip 栏位处理器时不能静默:旧实现直接 return,这种情况什么都不做、日志里也没有痕迹。
+    // 该支(Curios 时序 / 槽位表问题)与「有 chip 但尺寸没长」(本模组逻辑问题)的修复方向完全不同,
+    // 必须能一眼区分,故带上当前 curiosKeys。
+    private static void warnMissingChipHandler(Player player, ICuriosItemHandler inventory, boolean throttled) {
+        if (throttled && player.tickCount % 200 != 0) return;
+        LOGGER.warn("[Astral Dice][chip] 未找到 chip 槽位处理器,筹码栏位未调整:player={}, curiosKeys={}",
+                player.getGameProfile().name(), inventory.getCurios().keySet());
     }
 
     private static int targetChipSlots(ItemStack stack) {
@@ -126,41 +171,21 @@ public class DiceCurioItem extends Item implements ICurioItem {
 
     private void tryRemoveChipBonus(SlotContext slotContext, ItemStack stack) {
         if (!(slotContext.entity() instanceof Player player)) return;
-        // 取下骰子后筹码栏归零,必须佩戴骰子饰品才能拥有筹码栏。
-        // 同样使用防御式收缩(forceRemove=false)防止 Curios 重载场景下筹码被移出(弹出 bug)。
-        CuriosApi.getCuriosInventory(player)
-                .flatMap(h -> h.getStacksHandler("chip"))
-                .ifPresent(handler -> setChipSlotCount(player, handler, CHIP_NO_DICE_SLOTS, false));
-    }
-
-    private static void setChipSlotCount(Player player, ICurioStacksHandler handler, int target, boolean forceRemove) {
-        setSlotCount(player, handler, target, forceRemove);
+        // 骰子已卸下(或即将离开槽位):目标 0。仍走防御式收缩 —— 栏内还有筹码时保持占用它的那些槽位,
+        // 不会像强制收缩那样把合法筹码交给背包。
+        clearChipSlotCount(player, false);
     }
 
     /**
-     * 按**当前佩戴的骰子**重算并应用筹码栏尺寸（供登录迁移的恢复阶段调用）。
+     * 按**当前佩戴的骰子**重算并应用筹码栏尺寸（供登录迁移的恢复阶段 {@code ChipSlotMigrationHandler#restore}
+     * 与登录/数据包同步后的对账调用）。
      *
      * <p>迁移刚结束时 Curios 才重建完栏位、骰子的 {@code onEquip} 还没跑，
      * 故必须由这里主动把尺寸调到「应有的值」再往栏内放物品 —— 否则 0 格的栏位放不下任何东西，
      * 筹码又会被交还到背包（等于没修）。
      */
     public static void refreshChipSlotCount(Player player) {
-        if (player == null || player.level().isClientSide()) return;
-        CuriosApi.getCuriosInventory(player).ifPresent(inventory -> {
-            ICurioStacksHandler chip = inventory.getStacksHandler("chip").orElse(null);
-            if (chip == null) return;
-            int target = CHIP_NO_DICE_SLOTS;
-            ItemStack dice = inventory.getStacksHandler("dice")
-                    .map(handler -> handler.getStacks().getStackInSlot(0)).orElse(ItemStack.EMPTY);
-            if (!dice.isEmpty()) {
-                target = targetChipSlots(dice);
-                // 看板立牌被动:装备时筹码栏位 +1
-                if (MimiSignItem.isEquipped(player)) {
-                    target += 1;
-                }
-            }
-            setSlotCount(player, chip, target, false);
-        });
+        refreshChipSlotCount(player, null, false, false);
     }
 
     // 通用槽位调整:
@@ -231,6 +256,12 @@ public class DiceCurioItem extends Item implements ICurioItem {
     //     回归用例：`scripts/test/cases/CHIP-RELOG-{A,B}-26.1.2.json`（两个槽位都要留存）。
     private static void applySlotCount(ICurioStacksHandler handler, int target) {
         int wanted = Math.max(0, target);
+        // ⚠️ 本线**不做**「值未变就早退」的优化(1.21.1/1.20.1 侧做了):Curios 15 的
+        //    `getSlots()` = `stackHandler.getSlots()`,而 `update()` 只在 `this.update` 脏标记为真时
+        //    才重算并 `resize()`;实测(2026-09-18)经 `/curios reset` 重建后的 handler 会出现
+        //    「修饰符已写入(2)但 stackHandler 仍为 0」的失配,此时只有再写一次(remove+add → flagUpdate)
+        //    才能把它拉回一致。故本线保持**无条件写入**(每 20 tick 一次,tick 路径不早退也只会
+        //    在尺寸真的一致时多推一次同步包,代价可接受;判据与实测见 TESTING-SPEC 附录 A 的 t34 条)。
         handler.removeModifier(CHIP_SLOT_MODIFIER);
         // addPermanentModifier 内部先 addTransientModifier(会 flagUpdate())再登记到 persistentModifiers。
         // 归零时也保留这个 0 值修饰符:它同时是「本模组接管该栏位尺寸」的标记,移除后无修饰符可 flagUpdate,
@@ -250,7 +281,7 @@ public class DiceCurioItem extends Item implements ICurioItem {
                 if (!dice.isEmpty() && dice.is(ModItems.GLASS_DICE.get())) {
                     diceHandler.getStacks().setStackInSlot(0, ItemStack.EMPTY);
                     handler.getStacksHandler("chip").ifPresent(chip ->
-                            setChipSlotCount(player, chip, CHIP_NO_DICE_SLOTS, true));
+                            setSlotCount(player, chip, CHIP_NO_DICE_SLOTS, true));
                     LOGGER.info("[Astral Dice] 玻璃骰子死亡丢失: {} 的玻璃骰子及其卡牌已移除", player.getGameProfile().name());
                 }
             });

@@ -218,6 +218,40 @@ public class PlayerLifecycleHandler {
         com.merlinkitsune.astral_dice.component.DeathPreservedBonuses.restoreAfterDeath(player);
     }
 
+    // 筹码栏位对账(2026-09-17):登录 / 数据包同步 / 复活克隆后按当前佩戴的骰子重算尺寸。
+    // 背景:Curios 的 onEquip 第 2 参是 prevStack(普通装备时为空栈),旧实现把它当骰子 ⇒ 目标恒为 0,
+    // 「装备即加筹码栏」整条路径是空操作,只能靠 curioTick 每 20 tick 兜底;而尺寸是存档里的修饰符,
+    // 一旦漂移(/curios reset 清掉修饰符、同步包丢失、旧存档残值)不会自愈,故必须主动对账。
+    @SubscribeEvent
+    public static void onPlayerLoggedInRefreshChipSlots(PlayerEvent.PlayerLoggedInEvent event) {
+        Player player = event.getEntity();
+        if (player == null || player.level().isClientSide()) return;
+        DiceCurioItem.refreshChipSlotCount(player);
+    }
+
+    // 数据包同步(进入世界 / 数据包重载):Curios 自己的处理器在 NORMAL 重建/同步栏位,
+    // 这里用 LOWEST 保证晚于它执行,看到的是同步完成后的最终状态。
+    @SubscribeEvent(priority = EventPriority.LOWEST)
+    public static void onDatapackSyncRefreshChipSlots(
+            net.minecraftforge.event.OnDatapackSyncEvent event) {
+        if (event.getPlayer() != null) {
+            DiceCurioItem.refreshChipSlotCount(event.getPlayer());
+            return;
+        }
+        for (ServerPlayer player : event.getPlayerList().getPlayers()) {
+            DiceCurioItem.refreshChipSlotCount(player);
+        }
+    }
+
+    // 复活/换维度克隆:Curios 在 playerClone 里把旧档案交给新实体(保留筹码栏的永久修饰符),
+    // 此处再按当前骰子对账一次,覆盖「克隆期间骰子槽瞬时为空」等状态。
+    @SubscribeEvent(priority = EventPriority.LOWEST)
+    public static void onPlayerCloneRefreshChipSlots(PlayerEvent.Clone event) {
+        Player player = event.getEntity();
+        if (player == null || player.level().isClientSide()) return;
+        DiceCurioItem.refreshChipSlotCount(player);
+    }
+
     // 首次加入世界:若配置开启且玩家尚未领过,赠送《恋的规则书》(每个玩家在每个世界只发一次)
     private static void giveGuideBookOnFirstJoin(Player player) {
         if (!GameplayConstants.GIVE_GUIDE_BOOK_ON_FIRST_JOIN) return;

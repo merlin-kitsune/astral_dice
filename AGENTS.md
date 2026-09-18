@@ -91,11 +91,11 @@ When extending this workspace:
 
 | 子项目 | 来源分支(原 astra_dice 仓库) | MC | 加载器 | Java | 当前版本 | 版本号格式 |
 |---|---|---|---|---|---|---|
-| `neoforge-1.21.1` | `1.21.1-main` | 1.21.1 | NeoForge | 21 | `1.2.1+neoforge_1.21.1` | `x.y.z[-rcN]+neoforge_1.21.1` |
-| `forge-1.20.1` | `1.20.1-forge` | 1.20.1 | Forge | 17 | `1.2.1+forge_1.20.1` | `x.y.z[-rcN|preN]+forge_1.20.1` |
-| `neoforge-26.1.2` | 本仓 `multi-26.1.2-neoforge` 分支新增（基线 = 主线 `1.2.1`/`fda8ca9` 的 `neoforge-1.21.1` 源码）；**2026-09-17 已合并进 `multi-1.20.1-1.21.1`**（与主线同目录同树，原独立 worktree 已移除） | 26.1.2 | NeoForge | 25 | `1.2.1-beta+neoforge_26.1.2` | `x.y.z[-rcN]+neoforge_26.1.2` |
+| `neoforge-1.21.1` | `1.21.1-main` | 1.21.1 | NeoForge | 21 | `1.2.1-hotfix+neoforge_1.21.1` | `x.y.z[-rcN|hotfix]+neoforge_1.21.1` |
+| `forge-1.20.1` | `1.20.1-forge` | 1.20.1 | Forge | 17 | `1.2.1-hotfix+forge_1.20.1` | `x.y.z[-rcN|preN|hotfix]+forge_1.20.1` |
+| `neoforge-26.1.2` | 本仓 `multi-26.1.2-neoforge` 分支新增（基线 = 主线 `1.2.1`/`fda8ca9` 的 `neoforge-1.21.1` 源码）；**2026-09-17 已合并进 `multi-1.20.1-1.21.1`**（与主线同目录同树，原独立 worktree 已移除） | 26.1.2 | NeoForge | 25 | `1.2.1-beta.2+neoforge_26.1.2` | `x.y.z[-rcN]+neoforge_26.1.2` |
 
-> 版本号各 git 分支独立（AGENTS.md 自 2026-09-15 起**已纳入版本库**，各分支各自维护一份）：`multi-1.20.1-1.21.1` 当前 = `1.2.1`；`multi-dev-next` 当前 = `2.0.0-SNAPSHOT.5`（worktree 分支 `wt/2.0.0-vnext` 同为 `2.0.0-SNAPSHOT.5`）；`neoforge-26.1.2` 子项目当前 = **`1.2.1-beta`**（2026-09-17 用户裁决：26.1.2 为**低优先级版本**，版本号单独加 `-beta` 与主线 `1.2.1` 的发布态区分；`multi-26.1.2-neoforge` 分支自此只作为合并前历史，不再单独开发）。上表「当前版本」以主线工作分支 `multi-1.20.1-1.21.1` 为准。
+> 版本号各 git 分支独立（AGENTS.md 自 2026-09-15 起**已纳入版本库**，各分支各自维护一份）：`multi-1.20.1-1.21.1` 当前 = `1.2.1-hotfix`（`1.2.1` 的修补版，2026-09-18 筹码栏修复；按发布规范 tag 仍解析为裸版本 **`1.2.1`**，故 Release 1.2.1 为**刷新**而非新建）；`multi-dev-next` 当前 = `2.0.0-SNAPSHOT.5`（worktree 分支 `wt/2.0.0-vnext` 同为 `2.0.0-SNAPSHOT.5`）；`neoforge-26.1.2` 子项目当前 = **`1.2.1-beta.2`**（2026-09-17 用户裁决：26.1.2 为**低优先级版本**，版本号单独加 `-beta` 与主线 `1.2.1` 的发布态区分；2026-09-18 随同批修复升为 `-beta.2`；`multi-26.1.2-neoforge` 分支自此只作为合并前历史，不再单独开发）。上表「当前版本」以主线工作分支 `multi-1.20.1-1.21.1` 为准。
 
 > **第三条线(26.1.2)的规则边界(必须遵守)**:「同步修改两个版本」只约束 `neoforge-1.21.1` + `forge-1.20.1` 的**发布线对等**;`neoforge-26.1.2` 是把 1.21.1 整体迁移到 MC 26.1.2 的**低优先级移植线**(2026-09-17 起与主线同目录),同一功能先在 1.21.1 落地,主线内容更新**完成后**再按 `docs/compat-26.1.2-neoforge.md` 的差异映射迁移,两侧**允许也不可避免地存在平台差异**;迁移后必须做功能实现一致性测试 —— 优先级与验收口径见下方「### 模组内容更新规则(三线优先级)— 必须遵守」。三子项目的 `mod_version`/`mods.toml` 门槛各自独立。
 
@@ -174,7 +174,7 @@ When extending this workspace:
 - 两侧门槛都必须在 **mods.toml 解析 / 依赖排序阶段**拒绝不合格环境(FML 会给出可读提示:语言提供者版本不符 = `fml.language.missingversion`;
   强制依赖不满足 = `Missing or unsupported mandatory dependencies:`),**不得**依赖"先加载、再在代码里检查"——mixin 变换早于 mod 构造器,那样只会得到 mixin 报错。
 
-发布规范:GitHub **Release tag 使用无后缀的基础版本号**(如 `1.1.3`,禁止 `v` 前缀与 `+加载器` 后缀),tag 推送即触发 CI 自动构建并发布**三个 jar**(1.21.1 + 1.20.1 + 26.1.2,第三个是 26.1.2 的低优先级 `-beta` jar);发布线分支 `multi-1.20.1-1.21.1` 推送时 CI 会从 `mod_version` 剥离 `-rc/-pre` 与后缀自动打 tag。**26.1.2 永远只作为附件随发布线 Release 发布,不生成自己的 tag/Release**(其 `1.2.1-beta` 不是裸 `x.y.z`);CI 侧实现见 `.github/workflows/build.yml` 的 `Create/Update GitHub Release (three JARs, notes from release/<tag>/)`。
+发布规范:GitHub **Release tag 使用无后缀的基础版本号**(如 `1.1.3`,禁止 `v` 前缀与 `+加载器` 后缀),tag 推送即触发 CI 自动构建并发布**三个 jar**(1.21.1 + 1.20.1 + 26.1.2,第三个是 26.1.2 的低优先级 `-beta` jar);发布线分支 `multi-1.20.1-1.21.1` 推送时 CI 会从 `mod_version` 剥离 `-rc/-pre` 与后缀自动打 tag。⚠️ **剥离规则是「先剥 `+后缀`,再剥第一个 `-` 之后的一切」**(`BASE=${VERSION%%+*}; BASE=${BASE%%-*}`)⇒ **`1.2.1-hotfix` 打出的 tag 是裸版本 `1.2.1`**(2026-09-18 实测确认),tag 已存在时 CI 会走 `gh release edit` + `gh release upload --clobber` **刷新同一个 Release**,不会再建新 tag/Release。**26.1.2 永远只作为附件随发布线 Release 发布,不生成自己的 tag/Release**(其 `1.2.1-beta.2` 不是裸 `x.y.z`);CI 侧实现见 `.github/workflows/build.yml` 的 `Create/Update GitHub Release (three JARs, notes from release/<tag>/)`。
 **Release 正文取自玩家侧发布说明**(2026-09-17 起,用户要求):`release/<tag>/PLAYER_CHANGELOG_ZH.md` + `release/<tag>/PLAYER_CHANGELOG.md`,中文在前、中间插 `---`、英文在后,经 `gh release ... --notes-file` 整文件传入(不再用内联单行 `--notes`);两份文件都不存在时只打 `::warning::` 并退回「附件清单」兜底,**不阻断发布**。⇒ 发布前必须确认该版本目录的两份文件已存在且与 `CHANGELOG_(ZH|EN).md` 同步(见「更新日志约定」)。
 **CI / Actions 状态由用户自行观察(2026-09-17 用户裁决,必须遵守)**:本机无 GitHub token、不安装 `gh`,因此**代理不得监视、轮询或尝试查询** GitHub Actions / Release 状态(不跑 `gh run view|list`、不装 CLI、不改用 API 轮询)。推送后代理只在交付说明里列明**预期结果**与失败时的排查入口(远端 job 日志),由用户到 Actions 页面自行核对;禁止把「本机看不到 CI」写成未完成事项反复追问。
 
@@ -232,7 +232,7 @@ When extending this workspace:
 1. **第一优先级 = `neoforge-1.21.1` + `forge-1.20.1`(发布线对)**:任何新内容/平衡调整/修复先在发布线上落地,两侧保持功能对等(先 1.21.1,再按 `docs/compat-1.20.1-forge.md` 同步 1.20.1),两份 CHANGELOG 按既有约定同步更新。
 2. **第二优先级 = `neoforge-26.1.2`(低优先级版本)**:主线内容更新**尚未完成时不得动 26.1.2**。只有当该内容在发布线上**完成**——代码落地 + 双版本构建/冒烟通过 + CHANGELOG 记录完成——之后,才把该内容**迁移**到 `neoforge-26.1.2`;迁移按 `docs/compat-26.1.2-neoforge.md` 的差异映射做,允许并**记录**平台差异(如 26.1.2 无 Iron's Spells 联动、`ItemTags.SPEARS` 只在 26.1.2 存在等)。
 3. **迁移后必须做「功能实现一致性测试」**:按 `scripts/test/TESTING-SPEC.md` §13.2 的方法(**同探针 + 同用例 + 双侧读数 diff**)在 26.1.2 上复跑 1.21.1 已通过的用例,逐条比对读数;差异要么修掉、要么作为**平台差异**登记并写明原因。**禁止**用「能启动/跑通了」代替一致性结论。
-4. **版本号与发布**:26.1.2 子项目当前版本号 = **`1.2.1-beta+neoforge_26.1.2`**(低优先级标记,与发布线 `1.2.1` 的发布态区分;改动只动 `neoforge-26.1.2/gradle.properties`,**不得**连带改 1.20.1 / 1.21.1);26.1.2 线**不单独发版**——CI 对其跑 lang 同步 + 三子项目构建,并把它**已构建出的 jar 作为第三个附件附到发布线的 Release**(2026-09-17 用户要求「将 26.1.2 加入 Action 和 Release」),但**不打自己的 tag、不建自己的 Release**(版本号 `1.2.1-beta` 不是裸 `x.y.z`,不满足打 tag 门槛);tag/Release 的创建仍只在发布线分支触发。
+4. **版本号与发布**:26.1.2 子项目当前版本号 = **`1.2.1-beta.2+neoforge_26.1.2`**(低优先级标记,与发布线 `1.2.1` 的发布态区分;改动只动 `neoforge-26.1.2/gradle.properties`,**不得**连带改 1.20.1 / 1.21.1);26.1.2 线**不单独发版**——CI 对其跑 lang 同步 + 三子项目构建,并把它**已构建出的 jar 作为第三个附件附到发布线的 Release**(2026-09-17 用户要求「将 26.1.2 加入 Action 和 Release」),但**不打自己的 tag、不建自己的 Release**(版本号 `1.2.1-beta.2` 不是裸 `x.y.z`,不满足打 tag 门槛);tag/Release 的创建仍只在发布线分支触发。
 5. **一次内容更新的验收口径**:① 1.21.1 与 1.20.1 均已落地,且各自构建/冒烟通过;② 两份 CHANGELOG 同步且条目数一致;③ **若该内容同时迁移到 26.1.2**,则 26.1.2 侧的一致性测试结论已写入 `scripts/test/TESTING-SPEC.md`(工程口径记录写§附录 A,不写玩家侧 CHANGELOG)。
 6. **优先级不得被「顺路一起改」打破**:不得以「26.1.2 顺手改更快」为由先改 26.1.2 再回头补发布线;发布线未落地前 26.1.2 的改动一律视为返工风险。
 
