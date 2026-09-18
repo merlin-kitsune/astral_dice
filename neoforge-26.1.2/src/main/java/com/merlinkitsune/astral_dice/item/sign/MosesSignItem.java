@@ -85,6 +85,20 @@ public class MosesSignItem extends BaseSignItem {
         DiceCombatModifiers.setDefenseArmorBonus(player, "moses_weakness_armor", 0);
     }
 
+    // 目标选择器前置门控(26.1.2 移植 B1+B2,2026-09-18):本立牌主动为选择器类 —— 按下主动键只开启
+    // 目标选择会话,会话时长取自 GameplayConstants.SKILL_WAIT_SECONDS(秒),此处不写死数字;
+    // 确认合法目标后才继续原流程(风扇筹码发牌 + 立牌主动响应事件;冷却与电流核心充能由
+    // moses_apply_broken 动作的 apply 在确认时写入)。
+    // 语义基准 = 1.21.1 `MosesSignItem.java` 第 108-115 行(逐字同形,纯平台无关代码)。
+    // ⚠️ 本批次为**叠加**门控:下方 READY_TYPE / sign_ready_type 旧待命等待器机制按用户要求保持原样,
+    //    门控生效后本类 handleUse 不再被 performSkill 到达(该次主动改由 moses_apply_broken 的 apply 施加)。
+    //    1.21.1 侧「请选择敌对目标」提示由注册动作的 onStarted 发送(见 1.21.1 MosesSignItem.sendReadyPrompt
+    //    注释);26.1.2 侧动作注册属后续批次,本批次不搬,故 moses_ready 仍由旧路径的 sendReadyPrompt 发送。
+    @Override
+    protected String selectorActionId() {
+        return "moses_apply_broken";
+    }
+
     @Override
     protected InteractionResult handleUse(Level level, Player player, ItemStack stack) {
         if (level.isClientSide()) {

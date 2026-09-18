@@ -17,6 +17,10 @@ public class ClientTickHandler {
     @SubscribeEvent
     public static void onClientTick(ClientTickEvent.Post event) {
         ClientDamageNumbers.tick();
+        // 目标选择器客户端状态机(26.1.2 移植 B2):射线目标更新 + 四态 actionbar 提示续期 + 超时取消。
+        // 与 1.21.1 基准 `neoforge-1.21.1/.../client/ClientTickHandler.java` 第 20 行位置一致(在
+        // ClientDamageNumbers 之后、EffectCardUseGuard 之前)。
+        TargetSelectionClient.tick();
         // 效果牌「一次按下只出一张」:松开右键即复位长按标记(见 EffectCardUseGuard)
         EffectCardUseGuard.onClientTick();
     }

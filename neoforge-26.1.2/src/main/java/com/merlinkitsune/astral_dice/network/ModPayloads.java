@@ -4,6 +4,7 @@ import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.starenginelib.client.ActionBarManager;
 import com.merlinkitsune.starenginelib.client.ClientDamageNumbers;
 import com.merlinkitsune.astral_dice.client.EnderDieTotemAnimator;
+import com.merlinkitsune.astral_dice.client.TargetSelectionClient;
 import net.minecraft.network.chat.Component;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -45,6 +46,27 @@ public class ModPayloads {
                 OpenCardInventoryPayload.TYPE,
                 OpenCardInventoryPayload.STREAM_CODEC,
                 OpenCardInventoryPayload::handle
+        );
+        // === 目标选择器(26.1.2 移植 B1+B2:服务端 + 网络 + 客户端状态机;无渲染 API)===
+        // 与 1.21.1 基准 `neoforge-1.21.1/.../network/ModPayloads.java` 第 50-66 行**同序同形**:
+        // Start(S→C) + Confirm/Cancel(C→S) 三条通道,处理器逐字一致。
+        // 通道注册器版本号仍取 VersionGate.interopVersion()(版本互通门槛,见上方注释与 AGENTS.md)。
+        registrar.playToClient(
+                TargetSelectStartPayload.TYPE,
+                TargetSelectStartPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() ->
+                        TargetSelectionClient.start(payload.token(), payload.targetType(),
+                                payload.radius(), payload.durationTicks(), payload.actionId(), payload.allowSelf()))
+        );
+        registrar.playToServer(
+                TargetSelectConfirmPayload.TYPE,
+                TargetSelectConfirmPayload.STREAM_CODEC,
+                TargetSelectConfirmPayload::handle
+        );
+        registrar.playToServer(
+                TargetSelectCancelPayload.TYPE,
+                TargetSelectCancelPayload.STREAM_CODEC,
+                TargetSelectCancelPayload::handle
         );
     }
 }

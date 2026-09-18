@@ -40,6 +40,10 @@ public class KeyBindingSetup {
             CATEGORY
     );
 
+    // 目标选择器无独立键盘确认键：确认 = 鼠标左键、取消 = 右键+潜行 / ESC 菜单
+    // （Create 强力胶式语义；旧的 Enter 确认键与客户端键盘拦截 Mixin 已删除）
+    // 26.1.2 移植 B2：选择期间 J 键改为「取消选择」、H 键被吞（见下方 ClientEvents）。
+
     @EventBusSubscriber(modid = AstralDiceMod.MODID, value = Dist.CLIENT)
     public static class ClientEvents {
         @SubscribeEvent
@@ -48,10 +52,18 @@ public class KeyBindingSetup {
             if (player == null) return;
 
             while (ACTIVATE_SIGN_KEY.consumeClick()) {
-                ClientPacketDistributor.sendToServer(new SignActivatePayload());
+                if (TargetSelectionClient.isActive()) {
+                    // 目标选择期间再次按下主动技能键 = 取消选择(不触发立牌技能)
+                    TargetSelectionClient.logPrompt("j", "cancel");
+                    TargetSelectionClient.cancel("key");
+                } else {
+                    ClientPacketDistributor.sendToServer(new SignActivatePayload());
+                }
             }
             while (OPEN_CARD_INVENTORY_KEY.consumeClick()) {
-                ClientPacketDistributor.sendToServer(new OpenCardInventoryPayload());
+                if (!TargetSelectionClient.isActive()) {
+                    ClientPacketDistributor.sendToServer(new OpenCardInventoryPayload());
+                }
             }
         }
     }

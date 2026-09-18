@@ -107,6 +107,31 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
         }
         // 2. 等待状态检查:存在等待目标释放的主动技能时按键无效
         if (isSkillWaiting(player)) return;
+        // 2.5 「目标选择器类」立牌的前置门控(26.1.2 移植 B1+B2,2026-09-18)。
+        //     ★ 语义基准 = 1.21.1 的 `neoforge-1.21.1/.../item/sign/BaseSignItem.java` 第 104-120 行
+        //       (「会话检查 + selectorActionId 门控」两段),按 26.1.2 的 API 形态重写(未 cherry-pick)。
+        //     按下主动键**只**开启目标选择会话并立即返回:本次主动的效果、玩家级冷却/锁定、
+        //     电流核心充能、风扇筹码发牌与立牌主动响应事件(含默认提示)全部推迟到确认合法目标之后
+        //     (恢复点见 resumeGatedActiveSkill);效果与冷却/充能由各 TargetSelectionAction#apply 负责。
+        //     GameplayConstants.SKILL_WAIT_SECONDS(秒)内未选择或取消 ⇒ 记录被清除,该次主动等同「未使用」。
+        //     actionId 为 null 的立牌(其余全部立牌)不走本分支,下方原流程逐字不变。
+        //     ⚠️ 26.1.2 平台差异(与 1.21.1 的分叉点,禁止 cherry-pick):
+        //       1) 本文件第 111 行 handleUse 返回 InteractionResult(1.21.1 返回 InteractionResultHolder<ItemStack>),
+        //          门控分支因此**不**依赖 handleUse 的返回值,只在门控分支内 return;
+        //       2) 本行**之前**第 108-109 行的「旧待命等待器」判据保持原样(26.1.2 仍有
+        //          isSkillWaiting/sign_ready_type/sign_ready_expire 机制,本批次不删除、不改写),
+        //          门控只作**叠加**:门控生效的立牌走不到旧等待器,其余立牌行为逐字不变。
+        //       3) 会话检查(isSelecting)在 26.1.2 侧是**新增守卫**(1.21.1 基准把该检查合并在门控分支之前),
+        //          用于防止「已在选择会话中再次按主动键」重复进入(客户端 J 键会先取消,此处为服务端兜底)。
+        if (com.merlinkitsune.astral_dice.target.TargetSelectionManager.isSelecting(player)) return;
+        String gatedActionId = sign.selectorActionId();
+        if (gatedActionId != null) {
+            if (!(player instanceof net.minecraft.server.level.ServerPlayer serverPlayer)) return;
+            if (com.merlinkitsune.astral_dice.target.TargetSelectionManager.start(serverPlayer, gatedActionId)) {
+                com.merlinkitsune.astral_dice.target.SignSelectionGate.arm(player, gatedActionId, stack);
+            }
+            return;
+        }
         // 3. 触发主动技能
         InteractionResult result = sign.handleUse(player.level(), player, stack);
         if (!result.consumesAction()) return;
@@ -143,6 +168,51 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
             // 电流核心筹码:主动技能实际生效时充能 +1(进入锁定时同样计一次;与是否立即起冷却无关)
             com.merlinkitsune.astral_dice.item.chip.CurrentCoreChipItem.onActiveSkillUsed(player);
         }
+    }
+
+    /**
+     * 「目标选择器类」立牌的主动技能 action id(默认 null = 非选择器类立牌,按原流程即时执行)。
+     *
+     * <p>返回非 null 时 {@link #performSkill} 会把该次主动**门控**在目标选择会话之后:
+     * 按下主动键只开启选择会话并立即返回(不发牌、不抛事件、不进冷却、不施效果),
+     * 确认合法目标后由 {@link #resumeGatedActiveSkill} 恢复原流程的剩余步骤。
+     *
+     * <p>26.1.2 移植 B1+B2(2026-09-18):与 1.21.1 基准
+     * `neoforge-1.21.1/.../item/sign/BaseSignItem.java` 第 154-163 行逐字同形(纯平台无关代码)。
+     */
+    protected String selectorActionId() {
+        return null;
+    }
+
+    /**
+     * 目标选择**确认成功**后的恢复点(由 {@code TargetSelectionManager#confirm} 在 action.apply 之后调用)。
+     *
+     * <p>只对「由立牌门控登记的会话」生效:非立牌会话(如 {@code test_echo_*})没有待执行记录 ⇒ 直接返回,
+     * 原有行为不受影响。恢复的是原 performSkill 的第 4/5 步(风扇筹码发牌 + 立牌主动响应事件);
+     * **不**重复写玩家级冷却/锁定与电流核心充能 —— 那两件事已由各 TargetSelectionAction#apply 完成。
+     *
+     * <p>⚠️ 事件本身照旧抛出(订阅方行为不变),但**不再**补发默认「主动技能已启动」提示(2026-09-17
+     * 用户裁决 O1):本方法只由门控路径到达,而 {@code TargetSelectionManager#confirm} 在调用本方法后
+     * **同一 tick** 立即发送 {@code msg.astral_dice.target_select.applied};ActionBar 后发者覆盖先发者
+     * ⇒ 那条默认提示玩家根本看不到,属纯冗余。非门控立牌的原流程(performSkill 第 5 步)仍保留默认提示。
+     *
+     * <p>26.1.2 移植 B1+B2(2026-09-18):与 1.21.1 基准
+     * `neoforge-1.21.1/.../item/sign/BaseSignItem.java` 第 165-190 行逐字同形
+     * ({@code NeoForge.EVENT_BUS} 与 {@code SignActiveTriggeredEvent} 在 26.1.2 均逐字可用)。
+     */
+    public static void resumeGatedActiveSkill(Player player, String actionId) {
+        com.merlinkitsune.astral_dice.target.SignSelectionGate.Pending pending =
+                com.merlinkitsune.astral_dice.target.SignSelectionGate.take(player, actionId);
+        if (pending == null) return;
+        ItemStack stack = pending.stack();
+        // 4. 手持风扇-大/小筹码:确认释放后才发牌(未确认绝不发牌)
+        FanBigChipItem.applyAfterSignSkill(player);
+        FanSmallChipItem.applyAfterSignSkill(player);
+        // 5. 立牌主动技能响应事件:立牌类订阅本事件注册自身 ActionBar 反馈。
+        //    默认「主动技能已启动」提示**有意不补发**(见方法 javadoc:会被同 tick 的 applied 覆盖)。
+        com.merlinkitsune.starenginelib.event.SignActiveTriggeredEvent triggered =
+                new com.merlinkitsune.starenginelib.event.SignActiveTriggeredEvent(player, stack);
+        net.neoforged.neoforge.common.NeoForge.EVENT_BUS.post(triggered);
     }
 
     // 立牌主动技能反馈统一发送入口(黄色;供立牌类注册的 SignActiveTriggeredEvent 处理器与 handleUse 调用)
