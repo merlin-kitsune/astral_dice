@@ -246,6 +246,70 @@ function chipSlotCount(player) {
 }
 
 /**
+ * 筹码栏状态的**决定性**读数:槽数 + 槽位修饰符归属 + 槽内物品 + gameTime。
+ *
+ * 生产侧筹码栏尺寸 = Curios 的 baseSize(本模组 chip 槽经 IMC 注册为 0)+ Σ槽位修饰符,而修饰符可能来自两个写入者:
+ *   - `a5d1c9e2-6f34-4b7a-8c21-0e5d9b3f7a64`(1.21.1 侧是 `astral_dice:chip_slots`):
+ *     本模组 2026-09-18 起的**绝对**修饰符(写入即覆盖,幂等、可自愈);
+ *   - `0b0eabbd-4220-4e9f-bafb-34100da2bd7e`(= Curios 的 CurioStacksHandler.LEGACY_UUID):
+ *     Curios `grow/shrink` 的**相对累加器**,旧实现与测试脚手架 ensureChipSlot 用它。
+ * 只看槽数**无法区分「这些槽是谁给的」**(换实现前后都可能是 2),故这里把 id=amount 一并报出 ——
+ * 修饰符归属是「装备骰子偶发不加筹码栏」这次修复的决定性证据。
+ */
+function chipStateText(player) {
+    try {
+        var opt = CuriosApi.getCuriosInventory(player);
+        if (opt == null || !opt.isPresent()) return "no_curios";
+        var handlerOpt = opt.resolve().get().getStacksHandler("chip");
+        if (handlerOpt == null || !handlerOpt.isPresent()) return "no_chip_slot";
+        var h = handlerOpt.get();
+        var mods = [];
+        var m = h.getModifiers();
+        var it = m.keySet().iterator();
+        while (it.hasNext()) {
+            var k = it.next();
+            var mod = m.get(k);
+            var amt = "?";
+            // 1.21.1 的 AttributeModifier 是 record(amount()),1.20.1 是 getAmount();两者都容错
+            try { amt = mod.amount(); } catch (e1) {
+                try { amt = mod.getAmount(); } catch (e2) {
+                    try { amt = mod.amount; } catch (e3) { amt = "?"; }
+                }
+            }
+            mods.push("" + k + "=" + amt);
+        }
+        mods.sort();
+        var stacks = h.getStacks();
+        var items = [];
+        for (var i = 0; i < stacks.getSlots(); i++) {
+            var s = stacks.getStackInSlot(i);
+            if (!s.isEmpty()) items.push(i + ":" + itemIdOf(s) + "x" + s.getCount());
+        }
+        // ⚠️ 不要用 player.level.getGameTime():Rhino 在本版本派发不到该继承方法(1.21.1 实测
+        //    `TypeError: Cannot find function getGameTime in object ServerLevel[...]`),
+        //    必须走已在通过用例里验证过的 lvlDataGGT 路径(Level#getLevelData().getGameTime())。
+        var gt = "?";
+        try { gt = player.level.getLevelData().getGameTime(); }
+        catch (e1) { try { gt = nowTick(player); } catch (e2) { gt = "?"; } }
+        // 一并报出 dice 栏当前内容:筹码栏尺寸**只**由佩戴的骰子决定,复位/迁移后「0 格」到底是
+        // 「没有骰子」还是「有骰子但没算出来」必须能一眼区分(二者修复方向完全相反)。
+        var dice = "no_slot";
+        try {
+            var diceOpt = opt.resolve().get().getStacksHandler("dice");
+            dice = (diceOpt != null && diceOpt.isPresent())
+                ? itemIdOf(diceOpt.get().getStacks().getStackInSlot(0)) : "no_slot";
+        } catch (e3) { dice = "<err>"; }
+        return "gameTime=" + gt
+            + ":slots=" + stacks.getSlots()
+            + ":mods=[" + mods.join(",") + "]"
+            + ":items=[" + items.join(",") + "]"
+            + ":dice=" + dice;
+    } catch (e) {
+        return "<err:" + e + ">";
+    }
+}
+
+/**
  * 保证 chip 槽至少有 need 个槽位。
  *
  * 生产机制:chip 槽注册为 size=0,装备骰子时由 DiceCurioItem#tryApplyChipBonus
@@ -470,14 +534,50 @@ function doDiag(ctx, tag) {
 function doEquipSlot(ctx, slotId, itemId, tag) {
     var p = ctx.source.getPlayerOrException();
     var item = resolveItem(itemId);
-    if (item == null) { send(ctx, "AP_" + tag + "_ERR:unknown_item:" + itemId); return 0; }
+    // 清空槽位:`resolveItem("minecraft:air")` 恒为 null —— 其自检用 itemIdOf(new ItemStack(AIR)),
+    // 而 itemIdOf 对空栈返回 "empty"(不是 "minecraft:air")。故 air/empty 走显式清空分支,
+    // 写 ItemStack.EMPTY(等价于 putInSlot 里 new ItemStack(AIR))。回显改用 _CLEAR 以区分「装备」。
+    var clearing = (item == null) && (itemId === "minecraft:air" || itemId === "air" || itemId === "empty");
+    if (item == null && !clearing) { send(ctx, "AP_" + tag + "_ERR:unknown_item:" + itemId); return 0; }
     if (slotId === "chip") {
         var slotErr = ensureChipSlot(p, CHIP_SLOT_MIN);
         if (slotErr != null) { send(ctx, "AP_" + tag + "_ERR:" + slotErr); return 0; }
     }
-    var err = putInSlot(p, slotId, new ItemStack(item), 0);
+    var err = putInSlot(p, slotId, clearing ? ItemStack.EMPTY : new ItemStack(item), 0);
     if (err != null) { send(ctx, "AP_" + tag + "_ERR:" + err); return 0; }
-    send(ctx, "AP_" + tag + "_EQUIP:" + slotId + ":" + itemId);
+    if (clearing) {
+        send(ctx, "AP_" + tag + "_CLEAR:" + slotId);
+    } else {
+        send(ctx, "AP_" + tag + "_EQUIP:" + slotId + ":" + itemId);
+    }
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+/** 只读:打印筹码栏状态(槽数 + 槽位修饰符归属 + 槽内物品 + gameTime),见 chipStateText */
+function doChipState(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    send(ctx, "AP_" + tag + "_CHIPSTATE:" + chipStateText(p));
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+/**
+ * 主动调用 `/curios reset <自己>`(等价于管理员在 Curios 界面外重置饰品栏):它会**丢弃全部槽位修饰符**
+ * —— `CurioStacksHandler#reset()` 只按数据包 base size 重建 handler,不复制修饰符。
+ * 这是验证「修饰符被抹掉后能否自愈」的唯一入口:复位后由生产侧 curioTick(≤20 tick)对账恢复尺寸。
+ * 本命令本身只发复位 + 前后两次读数,不写入任何尺寸。
+ */
+function doChipReset(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var name = "" + p.getGameProfile().getName();
+    var rc = runCmd(ctx, "curios reset " + name);
+    send(ctx, "AP_" + tag + "_RESET:" + rc);
+    // ⚠️ 这行是**时机不确定**的快照,不得作为断言落点(平台差异,2026-09-18 两线各测一次):
+    //    1.21.1 紧接 runCmd 之后的读数仍是**复位前**状态(复位效果要到下一次读数才可见);
+    //    1.20.1 同一次读数**已经**是复位后状态(同步可见)。故标签取中性的 _SNAPSHOT,
+    //    「复位后到底剩什么」一律以下一条独立的 chipstate 读数为准(两线都确定)。
+    send(ctx, "AP_" + tag + "_SNAPSHOT:" + chipStateText(p));
     send(ctx, "AP_" + tag + "_DONE");
     return 1;
 }
@@ -4076,6 +4176,16 @@ ServerEvents.commandRegistry(event => {
                                 return doEquipSlot(ctx, StringArg.getString(ctx, "slot"),
                                     StringArg.getString(ctx, "item"), StringArg.getString(ctx, "tag"));
                             }))))))
+            .then(Commands.literal("chipstate")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doChipState(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("chipreset")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doChipReset(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
             .then(Commands.literal("attack")
                 .then(Commands.argument("type", StringArg.string())
                     .then(Commands.argument("tag", StringArg.word())
