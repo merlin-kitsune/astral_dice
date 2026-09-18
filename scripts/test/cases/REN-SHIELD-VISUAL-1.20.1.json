@@ -1,0 +1,231 @@
+{
+  "case_id": "REN-SHIELD-VISUAL-1.20.1",
+  "title": "游戏大师立牌(ren)鼠鼠护盾外观取证(1.20.1 Forge):第三人称能量球可见(更大 / 更深 / 发光 / 动态涌动)与打空后消失",
+  "version": "1.20.1",
+  "target": {
+    "type": "bugfix",
+    "ref": "ren-shield-visual"
+  },
+  "steps": [
+    {
+      "op": "note",
+      "text": "目的(2026-09-25 用户反馈后,与 1.21.1 用例对等):为「更大 / 更深 / 加色发光壳 / 动态涌动」的能量球护盾留下**可复核的截图证据**,并同时确认「黄心打空后外观消失」。\n取值口径:外观是可选项,故本用例**不等 5 分钟被动**,直接用 rengrant 立即上盾(与被动/主动同一入口,护盾效果即渲染条件);F5 切第三人称后,渲染器对**相机实体**照画(只有第一人称自己才跳过)。\n平台差异:1.20.1 的 `ADDITIVE_TRANSPARENCY` 是 `protected` ⇒ 经 `States extends RenderStateShard` 再导出(与本体通道同一手法);探针取效果用 `.get()`。\n判据:①`AP_VIS_GRANT:...after[shield=1:absorb=10:counter=1` 证明截图上确实是「带盾状态」;②截图 tag=renshield_third / renshield_voided —— **外观本身由截图人工判读**,本用例不把它写成自动断言;③打空后 renread 必须 shield=0。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe renprep VIS",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe renprep VIS",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe rengrant VIS",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe rengrant VIS",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "inject_key",
+      "key": "thirdperson",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1600
+    },
+    {
+      "op": "screenshot",
+      "tag": "renshield_third",
+      "mode": "window",
+      "crop": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_key",
+      "key": "thirdperson",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_key",
+      "key": "thirdperson",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe renvoid VIS",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe renvoid VIS",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe renread VIS",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe renread VIS",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "note",
+      "text": "F8 专属提示取证（2026-09-25 用户裁决）：确认目标后，屏幕下方 actionbar 应显示**动作专属**文案「熊孩子特权：已对 <玩家名> 施加 1 张卡牌与鼠鼠护盾」，而**不是**通用「已对 <玩家名> 施加效果」——客户端 actionbar 由 ActionBarManager 单槽位承载（show() 直接覆盖，同 tick 后发者覆盖先发者），故通用提示必须在 action.apply 之前发出。⚠️ **必须走客户端路径**（`inject_key j` 开会话 → `inject_mouse right` 自用确认）：探针 `/astralprobe renactive` 是服务端直调 confirm，客户端不会 deactivate ⇒ 它每 tick 刷新的「请对准…（剩余 N 秒）」指引会把这条一次性提示盖掉（2026-09-25 实测：探针路径的截图里只剩指引行）。文案本身由人工核对（actionbar 文本不进服务端日志），但两条链路可机器断言：客户端 DEBUG `self-confirm sent token=… target=…(self)`、服务端 DEBUG `action=ren_privilege … allowSelf=true`；再由 `renread ACT` 的 `AP_ACT_STATE:shield=1:absorb=10:counter=1:res=1…counterfx=1` 证明这次客户端主动确实生效。截图开 `crop: true`（按游戏窗口矩形裁剪，避免把桌面其它窗口拍进去）。"
+    },
+    {
+      "op": "note",
+      "text": "⚠️ 先等 **12 s** 让聊天 HUD 自然淡出：前面每一步探针读数都会在聊天栏留行，而聊天行是从屏幕底部往上排的，正好会压在 actionbar 那一行上（2026-09-25 实测：不等待时截图上「熊孩子特权：已对 …」的前半被聊天行盖住）。actionbar 自身只显示约 5 s，所以必须在淡出之后、确认之后的 1 s 内截图。"
+    },
+    {
+      "op": "wait",
+      "ms": 12000
+    },
+    {
+      "op": "inject_key",
+      "key": "j",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_mouse",
+      "button": "right",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "screenshot",
+      "tag": "renshield_f8_actionbar",
+      "mode": "window",
+      "crop": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe renread ACT",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe renread ACT",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_VIS_GRANT:.*:after\\[shield=1:absorb=10:counter=1.*counterfx=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_VIS_VOIDHIT:api="
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_VIS_STATE:shield=0:absorb=0:counter=0:res=0.*counterfx=0"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_VIS_ERR|AP_VIS_EX"
+    },
+    {
+      "type": "log",
+      "source": "debug",
+      "pattern": "\\[TargetSelectionClient\\] self-confirm sent token=\\d+ target=\\d+\\(self\\)"
+    },
+    {
+      "type": "log",
+      "source": "debug",
+      "pattern": "action=ren_privilege.*allowSelf=true"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_ACT_STATE:shield=1:absorb=10:counter=1:res=1.*counterfx=1"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_ACT_ERR|AP_ACT_EX"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "crash"
+    }
+  ],
+  "on_fail": "keep_game_running"
+}

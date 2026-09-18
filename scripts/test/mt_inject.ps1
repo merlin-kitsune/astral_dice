@@ -108,6 +108,14 @@ for ($i = 1; $i -le 9; $i++) {
     $script:Vk[$digit] = 0x30 + $i
     $script:Scan[$digit] = 0x02 + ($i - 1)
 }
+# 功能键 F1..F12（2026-09-25 新增）：护盾这类**世界空间特效**的取证必须切第三人称
+# （第一人称下相机在球内、外壳会糊满整屏，渲染端有意跳过自己那一个）⇒ 需要能按 F5。
+# VK 连续 F1=0x70..F12=0x7B；扫描码 F1..F10 = 0x3B..0x44 连续，F11/F12 = 0x57/0x58（不连续）。
+for ($i = 1; $i -le 12; $i++) {
+    $fn = "f$i"
+    $script:Vk[$fn] = 0x6F + $i
+    $script:Scan[$fn] = if ($i -le 10) { 0x3A + $i } else { 0x57 + ($i - 11) }
+}
 
 # 语义键 → 实际按键
 # 2026-09-17：删除 `'confirm' = 'enter'`（全仓 grep 确认无任何用例/脚本引用该别名）——
@@ -119,6 +127,8 @@ $script:KeyAlias = @{
     'debug' = 'f3'; 'inventory' = 'e'; 'card' = 'h'
     # 光影（Iris）语义键：开关 / 光影选择界面 / 重载光影
     'shadertoggle' = 'k'; 'shaderscreen' = 'o'; 'shaderreload' = 'r'
+    # 视角：原版 F5 在 第一人称 → 第三人称背面 → 第三人称正面 之间循环
+    'thirdperson' = 'f5'
 }
 
 $script:WM_KEYDOWN = 0x0100

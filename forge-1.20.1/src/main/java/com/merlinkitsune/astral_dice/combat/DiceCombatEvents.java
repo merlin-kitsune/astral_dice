@@ -10,6 +10,7 @@ import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
 import com.merlinkitsune.astral_dice.component.WeaponEnhancement;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
+import com.merlinkitsune.astral_dice.item.RenShieldManager;
 import com.merlinkitsune.astral_dice.item.sign.ParunanSignItem;
 import com.merlinkitsune.astral_dice.item.sign.BaseSignItem;
 import com.merlinkitsune.astral_dice.item.sign.MosesSignItem;
@@ -1115,6 +1116,34 @@ public class DiceCombatEvents {
         Optional<UUID> tauntSource = ModAttachments.getPandamanTauntSource(attacker);
         if (tauntSource.isEmpty() || !tauntSource.get().equals(player.getUUID())) return;
         injectCounterDamage(player, attacker);
+    }
+
+    // 游戏大师立牌(ren)「鼠鼠护盾」自带的一次性反击:带盾玩家被攻击时消耗 1 层,对攻击者注入一次
+    // 现有反击伤害(沿用同一公式)。1.20.1 的 LivingDamageEvent 派发于吸收结算**之后**,
+    // 但它同样只是「伤害已确认」的钩子,与是否被吸收无关 ⇒ **被黄心完全吃掉的一击同样触发**;
+    // 若这一击正好打空黄心,护盾的清空由 RenShieldManager 的每 tick 轮询在稍后完成(先反击、后破盾)。
+    @SubscribeEvent
+    public static void onRenShieldCounter(LivingDamageEvent event) {
+        LivingEntity victim = event.getEntity();
+        if (victim.level().isClientSide()) return;
+        // 反击链中不再触发(与破绽闪避 / 嘲讽反击共用同一结构性递归截断)
+        if (isInCounterChain()) return;
+        if (!(victim instanceof Player player)) return;
+        if (!player.isAlive()) return;
+        if (!player.hasEffect(ModEffects.REN_SHIELD.get())) return;
+        if (ModAttachments.getRenCounterCharges(player) <= 0) return;
+        if (!(event.getSource().getEntity() instanceof LivingEntity attacker)) return;
+        if (attacker == player) return;
+        // 一次性充能:先消耗层数(并同步摘掉「反击」图标),再注入伤害
+        ModAttachments.setRenCounterCharges(player, 0);
+        RenShieldManager.refreshCounterEffect(player);
+        injectCounterDamage(player, attacker);
+        if (player instanceof ServerPlayer sp) {
+            ModNetwork.sendToPlayer(sp, new ModNetwork.ActionBarMessage(
+                    Component.translatable("msg.astral_dice.ren_counter_fired")
+                            .withStyle(ChatFormatting.YELLOW),
+                    GameplayConstants.ACTIONBAR_DURATION_TICKS));
+        }
     }
 
     // === 反击伤害注入(Counterattack Damage Injection) ===

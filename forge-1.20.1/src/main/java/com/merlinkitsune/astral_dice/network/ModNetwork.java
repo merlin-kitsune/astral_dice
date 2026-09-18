@@ -258,7 +258,7 @@ public final class ModNetwork {
         /**
          * 本次会话是否允许对自身使用(消费方接口
          * com.merlinkitsune.astral_dice.target.SelfTargetable#allowSelf() 的取值;
-         * 当前无任何动作实现该接口 ⇒ 恒 false)。
+         * 当前唯一实现者 {@code ren_privilege}=true，其余动作 false)。
          */
         private final boolean allowSelf;
 

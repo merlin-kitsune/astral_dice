@@ -44,8 +44,7 @@ import java.util.List;
  * <ul>
  *   <li><b>左键</b> = 确认目标（发送 {@link TargetSelectConfirmPayload}）；</li>
  *   <li><b>右键</b> = 对自身使用 —— 会话允许自身目标（{@link #allowSelf()}）时提交对自身的确认；
- *       否则（**当前全部动作**的取值，无任何动作实现
- *       {@code target/SelfTargetable}）只弹 actionbar 提示
+ *       否则（{@code allowSelf=false} 的动作，如 bonnie / haiqing / moses 三个立牌动作）只弹 actionbar 提示
  *       {@code msg.astral_dice.target_select.self_unsupported}，**不提交选择**（会话保留）；</li>
  *   <li><b>右键 + 潜行</b> = 取消选择；</li>
  *   <li><b>ESC</b> = 原版照常打开暂停菜单，菜单一打开（{@code ScreenEvent.Opening}）即取消选择；</li>
@@ -91,7 +90,7 @@ public final class TargetSelectionClient {
     private static long transientPromptUntil;
     /**
      * 本次会话是否允许对自身使用（服务端随会话下发；消费方接口
-     * {@code target/SelfTargetable#allowSelf()} 的取值，当前无任何动作实现 ⇒ 恒 false）。
+     * {@code target/SelfTargetable#allowSelf()} 的取值；{@code ren_privilege} 为 true，其余动作 false）。
      */
     private static boolean allowSelf;
 
@@ -150,7 +149,7 @@ public final class TargetSelectionClient {
         return (int) Math.ceil(remainingTicks / 20.0);
     }
 
-    /** 本次会话是否允许对自身使用（服务端下发；当前无任何动作实现 ⇒ 恒 false） */
+    /** 本次会话是否允许对自身使用（服务端下发；{@code ren_privilege}=true，其余动作 false） */
     public static boolean allowSelf() {
         return allowSelf;
     }

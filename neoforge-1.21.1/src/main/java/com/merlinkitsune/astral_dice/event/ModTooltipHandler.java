@@ -1301,6 +1301,15 @@ public class ModTooltipHandler {
             }
             addSignCooldownRemaining(tooltip, event.getEntity() instanceof Player p ? p : null);
         }
+        if (stack.is(ModItems.REN_SIGN.get())) {
+            tooltip.add(Component.empty());
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "熊孩子特权");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.ren_active");
+            addSignPassiveTitle(tooltip, "鼠鼠救我");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.ren_passive");
+            addSignCooldownRemaining(tooltip, event.getEntity() instanceof Player p ? p : null);
+        }
     }
 
     /** 效果牌冷却显示:按玩家当前实际冷却取值(含充能的 -20% 减免),结果向下取整为秒 */

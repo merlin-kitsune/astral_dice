@@ -880,6 +880,34 @@ public class ModAttachments {
     public static final AttachedDataKey<Long> RAILGUN_COOLDOWN_END =
             register(AttachedDataKey.builder("railgun_cooldown_end", Codec.LONG, () -> 0L).sync().build());
 
+    /**
+     * 游戏大师立牌(ren):最后一次「持有鼠鼠护盾」的世界时刻 —— 被动「鼠鼠救我」的 5 分钟计时基准。
+     * 玩家级、**非同步**(仅服务端使用);跨重登继续累加(persisted 于 level.dat 的 Time)。
+     */
+    public static final AttachedDataKey<Long> REN_SHIELD_LAST_SEEN_TICK =
+            register(AttachedDataKey.builder("ren_shield_last_seen_tick", Codec.LONG, () -> 0L).build());
+
+    /**
+     * 游戏大师立牌(ren):授予护盾时玩家已有的吸收值(基线)。护盾只在此基础上 +20(10 黄心),
+     * 清空时也只回收这 20 ⇒ 不吞掉金苹果/不死图腾等外部来源的吸收。
+     */
+    public static final AttachedDataKey<Float> REN_SHIELD_BASELINE_ABSORPTION =
+            register(AttachedDataKey.builder("ren_shield_baseline_absorption", Codec.FLOAT, () -> 0.0f).build());
+
+    /**
+     * 游戏大师立牌(ren):当前那份「抗性提升」是否由本护盾施加(放大器 0 且带此标记才在清空时移除,
+     * 玩家的药水或更高等级一律保留)。玩家级、非同步。
+     */
+    public static final AttachedDataKey<Boolean> REN_SHIELD_OWN_RESISTANCE =
+            register(AttachedDataKey.builder("ren_shield_own_resistance", Codec.BOOL, () -> false).build());
+
+    /**
+     * 游戏大师立牌(ren):一次性反击层数(0/1)。获得鼠鼠护盾时 +1,被攻击时消耗 1 层并对攻击者
+     * 注入一次现有反击伤害;护盾清空时归零。
+     */
+    public static final AttachedDataKey<Integer> REN_COUNTER_CHARGES =
+            register(AttachedDataKey.builder("ren_counter_charges", Codec.INT, () -> 0).build());
+
     public static long getEmpowerDecayAt(net.minecraft.world.entity.player.Player player) {
         return EMPOWER_DECAY_AT.get(player);
     }
@@ -949,6 +977,38 @@ public class ModAttachments {
             SYNCED_KEYS.add(NANCY_LU_PASSIVE_TYPE);
         }
         return SYNCED_KEYS;
+    }
+
+    public static long getRenShieldLastSeenTick(net.minecraft.world.entity.player.Player player) {
+        return REN_SHIELD_LAST_SEEN_TICK.get(player);
+    }
+
+    public static void setRenShieldLastSeenTick(net.minecraft.world.entity.player.Player player, long value) {
+        REN_SHIELD_LAST_SEEN_TICK.set(player, Math.max(0L, value));
+    }
+
+    public static float getRenShieldBaselineAbsorption(net.minecraft.world.entity.player.Player player) {
+        return REN_SHIELD_BASELINE_ABSORPTION.get(player);
+    }
+
+    public static void setRenShieldBaselineAbsorption(net.minecraft.world.entity.player.Player player, float value) {
+        REN_SHIELD_BASELINE_ABSORPTION.set(player, Math.max(0.0F, value));
+    }
+
+    public static boolean isRenShieldOwnResistance(net.minecraft.world.entity.player.Player player) {
+        return REN_SHIELD_OWN_RESISTANCE.get(player);
+    }
+
+    public static void setRenShieldOwnResistance(net.minecraft.world.entity.player.Player player, boolean value) {
+        REN_SHIELD_OWN_RESISTANCE.set(player, value);
+    }
+
+    public static int getRenCounterCharges(net.minecraft.world.entity.player.Player player) {
+        return REN_COUNTER_CHARGES.get(player);
+    }
+
+    public static void setRenCounterCharges(net.minecraft.world.entity.player.Player player, int value) {
+        REN_COUNTER_CHARGES.set(player, Math.max(0, value));
     }
 
     private ModAttachments() {

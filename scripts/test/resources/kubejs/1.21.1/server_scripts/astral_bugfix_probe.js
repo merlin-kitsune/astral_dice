@@ -4039,6 +4039,236 @@ function doGloveBase(ctx, tag) {
     return 1;
 }
 
+// ══════════════════════════════════════════════════════════════════════════════
+// === 游戏大师立牌(ren)「鼠鼠护盾」:REN-SHIELD-1.21.1 ===
+// 被测语义:①被动「鼠鼠救我」= 佩戴 ren 且超过 5 分钟没有护盾 ⇒ 自动补一个(仅佩戴者本人);
+// ②护盾 = 10 黄心(20 点吸收)+ 抗性提升 + 1 层一次性反击;③黄心被打空 ⇒ ≤1 tick 内清空;
+// ④带盾被攻击 ⇒ 消耗 1 层并对攻击者注入一次现有反击伤害;⑤主动「熊孩子特权」= 选择器选
+//   任意玩家或自身 ⇒ 目标 +1 张随机卡牌 + 鼠鼠护盾,且**确认前不进冷却**(前置门控)。
+// 计时口径:rentimer 把「最后一次持有护盾」的时刻**回拨 6000 tick**,等价于"已过去 5 分钟",
+// 免去真实等待(计时基准 = 玩家级附件 + level.getGameTime,回拨即同一语义)。
+// ══════════════════════════════════════════════════════════════════════════════
+var REN_SIGN_ID = "astral_dice:ren_sign";
+var REN_PASSIVE_INTERVAL = 6000;
+var RenSignItemClass = Java.loadClass("com.merlinkitsune.astral_dice.item.sign.RenSignItem");
+var RenShieldManagerClass = Java.loadClass("com.merlinkitsune.astral_dice.item.RenShieldManager");
+var RenModItemsClass = Java.loadClass("com.merlinkitsune.astral_dice.item.ModItems");
+
+function renEffectHolder() {
+    return ModEffects.REN_SHIELD;
+}
+
+/** 「反击」层数图标(ren_counter):层数附件的可见镜像,用于断言图标与层数严格同步 */
+function renCounterHolder() {
+    return ModEffects.REN_COUNTER;
+}
+
+function round2(v) {
+    return Math.round(v * 100) / 100;
+}
+
+/**
+ * 施加一次伤害(本地自足版:`sourceOf`/`applyDamage` 都是 doTrueDmg 内部的嵌套函数,不可跨命令复用)。
+ * 1.21.1 实测 `LivingEntity#attack(DamageSource,float)` 在 Rhino 下可用,`damage(amount, source)` 为备选。
+ */
+function renApplyDamage(ent, src, amount) {
+    try { ent.attack(src, amount); return "attack"; } catch (ea) { /* 试下一个 */ }
+    try { ent.damage(amount, src); return "damage"; } catch (eb) { /* 试下一个 */ }
+    return "none";
+}
+
+/** 护盾全量读数:shield/absorb/counter/res/base/last/now/counterfx(反击图标) */
+function renState(p) {
+    var shield = -1;
+    try { shield = p.hasEffect(renEffectHolder()) ? 1 : 0; } catch (e) { shield = -1; }
+    var res = -1;
+    try {
+        var ri = p.getEffect(MobEffectsClass.DAMAGE_RESISTANCE);
+        res = (ri == null) ? 0 : (1 + ri.getAmplifier());
+    } catch (e) { res = -1; }
+    var absorb = -1;
+    try { absorb = round2(p.getAbsorptionAmount()); } catch (e) { absorb = -1; }
+    var counter = -1, base = -1, last = -1, now = -1, ctrfx = -1;
+    try { ctrfx = p.hasEffect(renCounterHolder()) ? 1 : 0; } catch (e) { ctrfx = -1; }
+    try { counter = ModAttachments.getRenCounterCharges(p); } catch (e) { /* 忽略 */ }
+    try { base = round2(ModAttachments.getRenShieldBaselineAbsorption(p)); } catch (e) { /* 忽略 */ }
+    try { last = ModAttachments.getRenShieldLastSeenTick(p); } catch (e) { /* 忽略 */ }
+    try { now = nowTick(p); } catch (e) { /* 忽略 */ }
+    return "shield=" + shield + ":absorb=" + absorb + ":counter=" + counter
+        + ":res=" + res + ":base=" + base + ":last=" + last + ":now=" + now + ":counterfx=" + ctrfx;
+}
+
+/** 把玩家拉回「从未持有护盾」的干净基线(护盾效果若因移除拦截残留,会在下一 tick 被黄心轮询自愈) */
+function renReset(p) {
+    // ⚠️ 护盾/抗性/反击图标都是 astral_dice:* 效果,`removeAllEffects()` 会被模组的移除拦截器**取消**
+    //   (实测残留:上一会话的护盾会活到 renprep 之后,读数出现 shield=1、absorb 也是旧的基线 + 10)
+    //   ⇒ 必须走产品的唯一清空入口 voidShield 才能回到确定基线。
+    try { RenShieldManagerClass.voidShield(p, "probe_reset"); } catch (e) { /* 忽略 */ }
+    try { ModAttachments.setRenShieldLastSeenTick(p, 0); } catch (e) { /* 忽略 */ }
+    try { ModAttachments.setRenCounterCharges(p, 0); } catch (e) { /* 忽略 */ }
+    try { ModAttachments.setRenShieldOwnResistance(p, false); } catch (e) { /* 忽略 */ }
+    try { ModAttachments.setRenShieldBaselineAbsorption(p, 0.0); } catch (e) { /* 忽略 */ }
+    try { ModAttachments.setSignActiveCooldownEnd(p, 0); } catch (e) { /* 忽略 */ }
+    try { p.setAbsorptionAmount(0.0); } catch (e) { /* 忽略 */ }
+    try { p.removeAllEffects(); } catch (e) { /* 忽略 */ }
+    try { p.setHealth(p.getMaxHealth()); } catch (e) { /* 忽略 */ }
+    try { p.setGameMode(GameTypeClass.SURVIVAL); } catch (e) { /* 忽略 */ }
+}
+
+/** 背包内「卡牌」总数(战斗牌 + 效果牌,经生产入口 ModItems#isCardItem) */
+function countAllCards(p) {
+    var inv = p.getInventory();
+    var n = 0;
+    for (var i = 0; i < inv.getContainerSize(); i++) {
+        var st = inv.getItem(i);
+        if (st.isEmpty()) continue;
+        try { if (RenModItemsClass.isCardItem(st)) n += st.getCount(); } catch (e) { /* 忽略 */ }
+    }
+    return n;
+}
+
+function doRenPrep(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    clearCurioSlots(p, "chip");
+    renReset(p);
+    // 清空主背包:被动「鼠鼠救我」现在会发 1 张随机卡牌,读卡数必须从未持有卡牌起算
+    runCmd(ctx, "clear @s");
+    var err = equipSign(p, REN_SIGN_ID);
+    if (err != null) { send(ctx, "AP_" + tag + "_ERR:" + err); return 1; }
+    send(ctx, "AP_" + tag + "_PREP:armed=" + (RenSignItemClass.isEquipped(p) ? 1 : 0) + ":" + renState(p));
+    return 1;
+}
+
+function doRenUnequip(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var slotErr = clearCurioSlots(p, "stand");
+    renReset(p);
+    send(ctx, "AP_" + tag + "_UNEQUIP:armed=" + (RenSignItemClass.isEquipped(p) ? 1 : 0)
+        + (slotErr ? ":slot_err=" + slotErr : "") + ":" + renState(p));
+    return 1;
+}
+
+/**
+ * 把「最后一次持有护盾」的世界时刻回拨 ticks(默认 6000 = 5 分钟),等价于「已过去 ticks tick」。
+ * 边界取证用:传 3000(不足 5 分钟)与 6000(恰好 5 分钟)各测一次,可把「间隔常量」证伪/证实。
+ * ⚠️ **前提:世界时钟 gameTime 必须大于 ticks**(否则 now - ticks <= 0,会被产品按「从未持有」重置);
+ * 用例 `REN-SHIELD-BOUNDARY-*` 用读数里的 `:now=` 把该前提写成硬断言,环境不满足即 FAIL(不假通过)。
+ */
+function doRenTimer(ctx, tag, ticksText) {
+    var p = ctx.source.getPlayerOrException();
+    var ticks = REN_PASSIVE_INTERVAL;
+    if (ticksText != null && ticksText !== "") {
+        var parsed = parseInt(ticksText, 10);
+        if (!isNaN(parsed) && parsed > 0) ticks = parsed;
+    }
+    var now = nowTick(p);
+    try {
+        ModAttachments.setRenShieldLastSeenTick(p, now - ticks);
+    } catch (e) {
+        send(ctx, "AP_" + tag + "_ERR:" + exText(e));
+        return 1;
+    }
+    send(ctx, "AP_" + tag + "_TIMER:armed=" + (RenSignItemClass.isEquipped(p) ? 1 : 0)
+        + ":rewound=" + ticks + ":" + renState(p));
+    return 1;
+}
+
+function doRenRead(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    // cards = 主背包内「卡牌」总数(战斗牌 + 效果牌):被动追加发牌后用它断言「卡牌确实到手」
+    send(ctx, "AP_" + tag + "_STATE:" + renState(p) + ":cards=" + countAllCards(p));
+    return 1;
+}
+
+/** 重复授予(补满、不叠加):总量必须仍为「基线 + 20」且反击层 ≤ 1 */
+function doRenGrant(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var before = renState(p);
+    try {
+        RenShieldManagerClass.grantShield(p);
+    } catch (e) {
+        send(ctx, "AP_" + tag + "_ERR:" + exText(e));
+        return 1;
+    }
+    send(ctx, "AP_" + tag + "_GRANT:before[" + before + "]:after[" + renState(p) + "]");
+    return 1;
+}
+
+/** 带盾被敌对生物攻击一次:反击层 1→0,且攻击者掉血(反击伤害 > 0) */
+function doRenHit(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    try { p.setGameMode(GameTypeClass.SURVIVAL); } catch (e) { /* 忽略 */ }
+    try { p.setHealth(p.getMaxHealth()); } catch (e) { /* 忽略 */ }
+    var dummy = spawnDummy(p, "minecraft:zombie", 4.0);
+    if (dummy == null) { send(ctx, "AP_" + tag + "_ERR:no_dummy"); return 1; }
+    try {
+        var hp0 = rghp(dummy);
+        var before = renState(p);
+        var src = p.level.damageSources().mobAttack(dummy);
+        var api = renApplyDamage(p, src, 6.0);
+        var hp1 = rghp(dummy);
+        var dealt = (hp0 < 0 || hp1 < 0) ? -1 : round2(hp0 - hp1);
+        send(ctx, "AP_" + tag + "_HIT:api=" + api + ":atk_hp=" + hp0 + "->" + hp1
+            + ":counter_dmg=" + dealt + ":before[" + before + "]:after[" + renState(p) + "]");
+    } catch (e) {
+        send(ctx, "AP_" + tag + "_ERR:" + exText(e));
+    }
+    return 1;
+}
+
+/** 一击打空黄心(16 点 generic 伤害;抗性提升后仍 ≥ 13 ⇒ 10 点吸收被吃光、玩家不会死) */
+function doRenVoid(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    try { p.setGameMode(GameTypeClass.SURVIVAL); } catch (e) { /* 忽略 */ }
+    try { p.setHealth(p.getMaxHealth()); } catch (e) { /* 忽略 */ }
+    var before = renState(p);
+    var api = "none";
+    try {
+        api = renApplyDamage(p, p.level.damageSources().generic(), 16.0);
+    } catch (e) {
+        send(ctx, "AP_" + tag + "_ERR:" + exText(e));
+        return 1;
+    }
+    send(ctx, "AP_" + tag + "_VOIDHIT:api=" + api + ":hp=" + round2(p.getHealth())
+        + ":before[" + before + "]:after[" + renState(p) + "]");
+    return 1;
+}
+
+/**
+ * 主动「熊孩子特权」全链路:按主动(只开会话) → 自选目标确认 ⇒ 目标(自己)获得 1 张卡牌 + 鼠鼠护盾,
+ * 冷却写在确认之后。allowSelf=true 由服务端 DEBUG 行
+ * `[TargetSelection] start ... action=ren_privilege ... allowSelf=true` 断言(与 t48 同一取证口径)。
+ */
+function doRenActive(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    renReset(p);
+    // 清空主物品栏:发牌读数用「卡牌数量差值」,必须先把已有卡牌清零(背包满时 giveCardTo 会掉落到地上)
+    runCmd(ctx, "clear @s");
+    var err = equipSign(p, REN_SIGN_ID);
+    if (err != null) { send(ctx, "AP_" + tag + "_ERR:" + err); return 1; }
+    var cards0 = countAllCards(p);
+    var cdBefore = signCooldownRemaining(p);
+    BaseSignItemClass.performSkillForCurio(p);
+    var session = TargetSelectionManagerClass.isSelecting(p) ? 1 : 0;
+    var token = TargetSelectionManagerClass.sessionTokenForTests(p);
+    var cdGated = signCooldownRemaining(p);
+    var confirmed = 0, confirmErr = "";
+    try {
+        TargetSelectionManagerClass.confirm(p, token, p.getId());
+        confirmed = 1;
+    } catch (e) {
+        confirmErr = exText(e);
+    }
+    var cards1 = countAllCards(p);
+    var cdAfter = signCooldownRemaining(p);
+    send(ctx, "AP_" + tag + "_ACTIVE:session=" + session + ":token_seen=" + (token > 0 ? 1 : 0)
+        + ":cd_before=" + (cdBefore > 0 ? 1 : 0) + ":cd_gated=" + (cdGated > 0 ? 1 : 0)
+        + ":confirmed=" + confirmed + ":cards_delta=" + (cards1 - cards0)
+        + ":cd_after=" + (cdAfter > 0 ? 1 : 0) + ":" + renState(p)
+        + (confirmErr ? ":err=" + confirmErr : ""));
+    return 1;
+}
+
 ServerEvents.commandRegistry(event => {
     var Commands = event.commands;
     event.register(
@@ -4318,6 +4548,52 @@ ServerEvents.commandRegistry(event => {
                 .then(Commands.argument("tag", StringArg.word())
                     .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
                         return doSignGate(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            // ── 2026-09-25：游戏大师立牌(ren)「鼠鼠护盾」读数（REN-SHIELD-1.21.1）──
+            .then(Commands.literal("renprep")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doRenPrep(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("renunequip")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doRenUnequip(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("rentimer")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doRenTimer(ctx, StringArg.getString(ctx, "tag"), "");
+                    }))
+                    .then(Commands.argument("ticks", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doRenTimer(ctx, StringArg.getString(ctx, "tag"),
+                                StringArg.getString(ctx, "ticks"));
+                        })))))
+            .then(Commands.literal("rengrant")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doRenGrant(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("renhit")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doRenHit(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("renvoid")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doRenVoid(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("renactive")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doRenActive(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("renread")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doRenRead(ctx, StringArg.getString(ctx, "tag"));
                     }))))
     );
 });

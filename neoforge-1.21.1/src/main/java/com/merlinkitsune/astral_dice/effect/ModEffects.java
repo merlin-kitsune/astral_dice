@@ -147,6 +147,16 @@ public class ModEffects {
     public static final DeferredHolder<MobEffect, MobEffect> PANDAMAN_TAUNT =
             EFFECTS.register("pandaman_taunt", PandamanTauntEffect::new);
 
+    // 鼠鼠护盾(游戏大师立牌 ren):5 黄心(10 点吸收)+ 抗性提升;黄心被打空即清空。
+    // 本效果同时是「是否持有护盾」的唯一真值(客户端球形渲染以原生效果同步为条件源),
+    // 并在 1.21.1 侧自带 MAX_ABSORPTION 修饰器(该版本 setAbsorptionAmount 会被属性钳制)。
+    public static final DeferredHolder<MobEffect, MobEffect> REN_SHIELD =
+            EFFECTS.register("ren_shield", RenShieldEffect::new);
+
+    /** 「反击」:鼠鼠护盾那 1 层一次性反击的可见载体(层数镜像到 HUD 图标;图标 = images/反击.png) */
+    public static final DeferredHolder<MobEffect, MobEffect> REN_COUNTER =
+            EFFECTS.register("ren_counter", RenCounterEffect::new);
+
     /**
      * 本模组已注册的全部效果的**只读**视图(调试命令 {@code /astralparty cleareffect} 用)。
      *

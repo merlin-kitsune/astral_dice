@@ -98,6 +98,7 @@ public class ModCreativeTabs {
                 output.accept(ModItems.PAPARA_SIGN.get());
                 output.accept(ModItems.NANCY_LU_SIGN.get());
                 output.accept(ModItems.MOSES_SIGN.get());
+                output.accept(ModItems.REN_SIGN.get());
                 // 传奇 UNCOMMON
                 output.accept(ModItems.MISAKI_SIGN.get());
                 output.accept(ModItems.RIN_SIGN.get());

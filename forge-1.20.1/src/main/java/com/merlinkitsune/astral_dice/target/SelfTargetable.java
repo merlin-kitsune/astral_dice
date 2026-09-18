@@ -10,18 +10,13 @@ package com.merlinkitsune.astral_dice.target;
  * 客户端据此在 actionbar 上给出「或按下 鼠标右键 对自身使用」的那一条口径，
  * 并在右键时改为提交对自身的确认。
  *
- * <p><b>本次仅铺设管线</b>：本模组**没有任何**动作实现本接口（三个立牌动作
- * {@code bonnie_undercover} / {@code haiqing_weak_mark} / {@code moses_apply_broken}
- * 与演示动作 {@code test_echo_*} 都不实现）⇒ {@link #allowSelf()} 在所有现有会话中恒为
- * {@code false}，玩家可见行为与改动前逐字一致。
- *
- * <p><b>将来真正启用自身目标时还需同时放宽目标类型校验</b>：目标类型的权威判定在
- * {@link com.merlinkitsune.starenginelib.target.TargetType#matches}
- * （{@code PLAYER} / {@code LIVING} 显式排除选择者自身，{@code ENEMY} / {@code ENEMY_OR_RIVAL}
- * 本就不会命中自身），而该枚举位于前置库 {@code starengine_lib} —— 只实现本接口并**不会**让
- * 服务端接受自身目标：{@link TargetSelectionManager#confirm} 仍会以
- * {@code targetType.matches(player, target)} 为准拒绝。故本接口单独存在时只影响客户端提示与
- * 提交路径，不构成「已支持自身目标」的完整实现。
+ * <p><b>实现者与放行口径（2026-09-25 起）</b>：目前唯一实现者是游戏大师立牌 ren 的主动「熊孩子特权」
+ * （{@code ren_privilege}，返回 {@code true}）；{@code bonnie_undercover} / {@code haiqing_weak_mark} /
+ * {@code moses_apply_broken} 与演示动作 {@code test_echo_*} 均未实现 ⇒ 它们的会话中恒为 {@code false}，
+ * 玩家可见行为与改动前逐字一致。放行做在**消费方**而不动前置库 ——
+ * {@link SelectorTargets#matches(TargetType, Player, LivingEntity, boolean)} 这一重载只在
+ * 「会话允许自身 + 目标就是选择者」时放行，{@link TargetSelectionManager#confirm} 会把
+ * {@code Session.allowSelf} 交给它。故无需放宽 {@code TargetType#matches}（该枚举仍在库里排除自身）。
  *
  * <p>与 1.21.1 侧的 {@code target/SelfTargetable} **接口语义一致**（纯接口，无平台 API；{@code default}
  * 实现逐字相同）。两线**并非逐字节相同** —— 类 javadoc 里对下行包类名的平台指涉不同

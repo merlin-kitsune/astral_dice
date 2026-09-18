@@ -169,10 +169,12 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
      * 原有行为不受影响。恢复的是原 performSkill 的第 4/5 步(风扇筹码发牌 + 立牌主动响应事件);
      * **不**重复写玩家级冷却/锁定与电流核心充能 —— 那两件事已由各 TargetSelectionAction#apply 完成。
      *
-     * <p>⚠️ 事件本身照旧抛出(订阅方行为不变),但**不再**补发默认「主动技能已启动」提示(2026-09-17
-     * 用户裁决 O1):本方法只由门控路径到达,而 {@code TargetSelectionManager#confirm} 在调用本方法后
-     * **同一 tick** 立即发送 {@code msg.astral_dice.target_select.applied};ActionBar 后发者覆盖先发者
-     * ⇒ 那条默认提示玩家根本看不到,属纯冗余。非门控立牌的原流程(performSkill 第 5 步)仍保留默认提示。
+     * <p>⚠️ 事件本身照旧抛出(订阅方行为不变),但**有意不补发**默认「主动技能已启动」提示(2026-09-17
+     * 用户裁决 O1,结论不变):本方法只由门控路径到达,而该 tick 已经发过反馈 —— 通用「已确认」提示由
+     * {@code TargetSelectionManager#confirm} 在 {@code action.apply} **之前**发出,各动作的专属提示又在
+     * {@code apply} 里发出;客户端 actionbar 是**单槽位**(starenginelib 的 {@code ActionBarManager#show}
+     * 直接覆盖,同 tick 后发者覆盖先发者)⇒ 若在此补发,它反而会成为玩家唯一看到的那条,而这不是期望反馈。
+     * 非门控立牌的原流程(performSkill 第 5 步)仍保留默认提示。
      */
     public static void resumeGatedActiveSkill(Player player, String actionId) {
         com.merlinkitsune.astral_dice.target.SignSelectionGate.Pending pending =
@@ -183,7 +185,8 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
         FanBigChipItem.applyAfterSignSkill(player);
         FanSmallChipItem.applyAfterSignSkill(player);
         // 5. 立牌主动技能响应事件:立牌类订阅本事件注册自身 ActionBar 反馈。
-        //    默认「主动技能已启动」提示**有意不补发**(见方法 javadoc:会被同 tick 的 applied 覆盖)。
+        //    默认「主动技能已启动」提示**有意不补发**(见方法 javadoc:该 tick 已由通用提示与动作专属
+        //    提示反馈过,再补发它会成为唯一可见的那条)。
         com.merlinkitsune.starenginelib.event.SignActiveTriggeredEvent triggered =
                 new com.merlinkitsune.starenginelib.event.SignActiveTriggeredEvent(player, stack);
         net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(triggered);

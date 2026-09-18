@@ -35,7 +35,10 @@ import com.merlinkitsune.starenginelib.target.TargetType;
  * 1. 触发方调用 {@link #start}（自身前置校验由调用方完成）→ 创建会话并下发
  *    {@link TargetSelectStartPayload} 给客户端进入选择模式；
  * 2. 客户端确认 → {@link TargetSelectConfirmPayload} → {@link #confirm}：
- *    token/时效/目标类型/距离全部通过后调用 {@link TargetSelectionAction#apply} 施加效果；
+ *    token/时效/目标类型/距离全部通过后**先发通用「已确认」提示**
+ *    （{@code msg.astral_dice.target_select.applied}），再调用 {@link TargetSelectionAction#apply}
+ *    施加效果 —— 客户端 actionbar 只有一槽位、同 tick 内后发者覆盖先发者，故动作自带的专属提示
+ *    才是玩家实际看到的那条（无专属提示的动作仍显示通用提示；顺序说明见 {@link #confirm} 内注释）；
  *    距离/类型失败保留会话允许重新瞄准，token 失效/目标消失则清除会话；
  * 3. 客户端取消 → {@link TargetSelectCancelPayload} → {@link #cancel} 立即清除（便于重触发）；
  * 4. 会话过期（{@link PlayerTickEvent.Post}）、玩家登出/死亡自动清除。
@@ -58,8 +61,10 @@ public final class TargetSelectionManager {
          * 本次会话是否允许对自身使用（{@link SelfTargetable#allowSelf()} 的取值，启动时快照）。
          *
          * <p>随 {@link TargetSelectStartPayload} 一起下发，客户端据此决定 actionbar 口径与右键行为；
-         * 服务端留存该标志是为了将来校验自身目标（当前 {@link TargetType#matches} 仍排除自身，
-         * 故本标志暂时只影响客户端提示/提交路径）。
+         * 服务端在 {@link #confirm} 里把它交给
+         * {@link SelectorTargets#matches(TargetType, Player, LivingEntity, boolean)} —— 该重载只在
+         * 「会话允许自身 + 目标就是选择者」时放行（前置库 {@link TargetType#matches} 始终排除自身，
+         * 故放行必须发生在消费方；当前唯一实现者为游戏大师立牌 ren 的主动「熊孩子特权」）。
          */
         public final boolean allowSelf;
 
@@ -117,7 +122,8 @@ public final class TargetSelectionManager {
         int token = ThreadLocalRandom.current().nextInt(1, Integer.MAX_VALUE);
         double radius = Math.max(1.0, Math.min(action.radius(), GameplayConstants.TARGET_SELECT_RADIUS));
         long expireTick = player.level().getGameTime() + (long) GameplayConstants.SKILL_WAIT_SECONDS * 20L;
-        // 对自身使用的唯一来源（消费方侧接口，不改前置库）：本次无任何动作实现 SelfTargetable ⇒ 恒 false。
+        // 对自身使用的唯一来源（消费方侧接口，不改前置库）：实现 SelfTargetable 的动作才为 true
+        // （当前唯一实现者 = 游戏大师立牌 ren 的 ren_privilege；其余动作缺省 false）。
         boolean allowSelf = action instanceof SelfTargetable selfTargetable && selfTargetable.allowSelf();
         Session session = new Session(token, actionId, action.targetType(), radius, expireTick, allowSelf);
         SESSIONS.put(player.getUUID(), session);
@@ -158,7 +164,7 @@ public final class TargetSelectionManager {
             notifyActionBar(player, "msg.astral_dice.target_select.invalid_target", ChatFormatting.RED);
             return;
         }
-        if (!SelectorTargets.matches(session.targetType, player, target)) {
+        if (!SelectorTargets.matches(session.targetType, player, target, session.allowSelf)) {
             LOGGER.warn("[Astral Dice][TargetSelection] confirm FAIL: target_type_mismatch player={} token={} target={}({})",
                     player.getName().getString(), token, targetId, target.getName().getString());
             notifyActionBar(player, "msg.astral_dice.target_select.invalid_target", ChatFormatting.RED);
@@ -187,11 +193,15 @@ public final class TargetSelectionManager {
 
         LOGGER.debug("[Astral Dice][TargetSelection] confirm token={} target={}({}) dist={} action={} -> SUCCESS",
                 token, targetId, target.getName().getString(), Math.sqrt(distSq), session.actionId);
+        // 通用「已确认」提示**必须**在施效之前发出(2026-09-25 F8 修复):客户端 actionbar 只有一格
+        // (starenginelib 的 ActionBarManager 为单槽位,show() 直接覆盖),同一 tick 内**后发者覆盖先发者**;
+        // 而各动作的专属提示(bonnie_undercover_applied / haiqing_weak_mark_applied / ren_privilege_applied 等)
+        // 都在 apply 里发出 ⇒ 只有让通用提示先发,玩家才看得到专属提示;无专属提示的动作照旧显示通用提示。
+        notifyActionBar(player, "msg.astral_dice.target_select.applied", ChatFormatting.YELLOW, target.getDisplayName());
         action.apply(player, target);
         // 立牌主动技能前置门控(2026-09-17):由立牌登记的会话在**确认成功**后才恢复原流程剩余步骤
         // (风扇筹码发牌 + 立牌主动响应事件/默认提示);非立牌会话(test_echo_* 等)无记录 ⇒ 空操作。
         com.merlinkitsune.astral_dice.item.sign.BaseSignItem.resumeGatedActiveSkill(player, session.actionId);
-        notifyActionBar(player, "msg.astral_dice.target_select.applied", ChatFormatting.YELLOW, target.getDisplayName());
     }
 
     /** 客户端取消（由 {@link TargetSelectCancelPayload} 调用；token 不匹配时忽略） */
