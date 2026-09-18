@@ -56,6 +56,12 @@ public final class TargetSelectionHighlighter {
     private static final float WIDTH_HIT_REJECTED = 1.0F / 24.0F;
     private static final float WIDTH_NEARBY = 1.0F / 64.0F;
 
+    /**
+     * 底部抬升余量（格）：下棱最低点抬到可见外框底面（≈ 脚底 / 地面方块顶面）之上，
+     * 避免下棱柱嵌进地面方块并与之共面造成深度测试打架（2026-09-18 用户要求「外框底部向上抬升」）。
+     */
+    private static final double BOTTOM_LIFT = 0.02D;
+
     /** 实体棱柱描边通道（公开 API 构造；`endBatch(PRISM)` 收尾） */
     private static final RenderType PRISM = RenderType.create(
             "astral_dice_target_prism",
@@ -123,9 +129,20 @@ public final class TargetSelectionHighlighter {
      * 再按半线宽外扩 —— 于是棱柱内表面正好贴在可见外框上（生物任何可见部位都不会穿过边框），
      * 外表面在可见外框之外半个线宽以上。**只外扩、绝不内缩**（旧实现直接用碰撞盒，导致
      * 僵尸双臂 / 蜘蛛八条腿 / 马颈头跑到边框之外，即本次修复的缺陷）。
+     *
+     * <p><b>底面单独抬升（2026-09-18 用户要求「外框底部向上抬升，避免嵌入地面造成闪烁」）</b>：
+     * 站在地面上的实体，其可见外框底面 ≈ 脚底 ≈ 地面方块顶面；若照旧按半线宽外扩，下棱柱占据
+     * {@code [minY-h, minY+h]}，下半段会**嵌进地面方块顶面并与之共面** ⇒ 深度测试打架（画面闪烁）。
+     * 故下棱中心改为 {@code minY + h + BOTTOM_LIFT}：下棱最低点 = {@code minY + BOTTOM_LIFT}，严格位于
+     * 脚底平面之上，整根下棱柱离地；左右 / 前后 / 顶部仍按半线宽外扩，贴肉关系逐条不变。
      */
     private static AABB borderBox(LivingEntity entity, float lineWidth) {
-        return TargetOutlineCapture.outlineOf(entity).inflate(lineWidth / 2.0D);
+        double h = lineWidth / 2.0D;
+        AABB outline = TargetOutlineCapture.outlineOf(entity);
+        // Math.min(..., outline.maxY + h) 兜底：退化盒（零高）时不得产生 minY > maxY 的非法 AABB
+        double bottom = Math.min(outline.minY + h + BOTTOM_LIFT, outline.maxY + h);
+        return new AABB(outline.minX - h, bottom, outline.minZ - h,
+                outline.maxX + h, outline.maxY + h, outline.maxZ + h);
     }
 
     /** 实体仍在当前世界内（避免拿上一 tick 的引用渲染已移除实体） */
