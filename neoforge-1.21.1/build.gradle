@@ -16,7 +16,12 @@ sourceSets.main.resources {
 
     // Exclude common development only resources from finalized outputs
     exclude("**/*.bbmodel") // BlockBench project files
-    exclude("src/generated/**/.cache") // datagen cache files
+    // datagen 的 HashCache 文件写在 src/generated/resources/.cache/ 下,只服务增量生成,不得进产物。
+    // ⚠️ 旧写法 `exclude("src/generated/**/.cache")` 是**仓库相对路径**写法,而本块的模式是
+    //    **相对 sourceDir 根**(src/generated/resources)解析的 ⇒ 永远不命中(本线当前恰好没有
+    //    .cache 目录才没暴露;forge-1.20.1 侧已实测把 .cache/ 打进发货 jar)。正确写法与
+    //    neoforge-26.1.2 一致,统一为相对模式 `**/.cache`(2026-09-18 核查产物一致性时修正)。
+    exclude("**/.cache") // datagen cache files
     exclude("INSTRUCTIONS.md")
     exclude("mc-src/**")
 }

@@ -584,6 +584,32 @@ pwsh -NoProfile -File scripts/test/mt_watchdog.ps1 -Version 1.21.1 [-StallSecond
 
 ## 附录 A：工具链与发布工程变更记录（自 CHANGELOG 移出）
 
+**2026-09-18：CurseForge「1.20.1 forge 产物与 26.1.2 内容一致」报告的核查 + 1.20.1 重新签发 + `.cache` 泄漏缺陷修复**
+
+- **核查结论**：本仓的构建 / 分发链路**不会**把 26.1.2 的内容写成 1.20.1 的名字。判据（全部实测，非目测）：
+  1. **全盘哈希清单**：`F:\MCProject`、`D:\.minecraft`、`D:\`、下载与桌面共扫到 **73 个** `astral_dice-*.jar`，按 SHA256 分组；所有名字里带 `+forge_1.20.1` 的文件内容都**互不相同**，且**没有任何**一个 forge 命名文件的哈希等于 26.1.2 产物（26.1.2 本轮 = `2E57B191…`，967218 B）。
+  2. **三线判别特征**（每份产物逐项核过）：装载器元数据文件名（forge = `META-INF/mods.toml`；两条 neoforge = `META-INF/neoforge.mods.toml`）、**class 文件主版本**（1.20.1 = **61** / Java 17、1.21.1 = **65** / Java 21、26.1.2 = **69** / Java 25）、资源布局（1.20.1 与 1.21.1 用 `data/astral_dice/recipes/`；26.1.2 用 `recipe/` 且额外带 `assets/astral_dice/items/`）、`astral_dice.refmap.json`（只有 forge 有）、`MANIFEST.MF` 的 `MixinConfigs`（只有 forge 有）。
+  3. **reobf 取证**：`forge-1.20.1/build/libs` 发货 jar 的 266 个 mod class 里含 **1152** 处 SRG 引用（`m_NNN_`），`run/1.20.1/mods` 的 dev jar 为 **0** 处 ⇒ 与 `AGENTS.md`「reobf/dev 双产物」口径一致，两边都没有混装。
+  4. **GitHub Release 侧的既有样本**：`temp/release_check/` 里 2026-09-16 下载的 `astral_dice-1.2.1+forge_1.20.1.jar`（967543 B）经同一套判别 = `mods.toml` + `version="1.2.1+forge_1.20.1"` + class 主版本 61 + `recipes/` + refmap ⇒ **当时 Release 上的 1.20.1 附件内容正确**。
+  5. **本机无法核验的部分（如实写明）**：GitHub Release 现资产与 CurseForge 侧文件均不可从本机查询（无 token / 不装 `gh`，见 `AGENTS.md` 的「CI/Actions 状态由用户自行观察」），故「上传到 CF 的那份文件到底是哪一份」只能由用户用下面的一行自检确认。
+- **发现并修掉的真实缺陷（本轮核查的主要产出）**：`forge-1.20.1/build.gradle` 与 `neoforge-1.21.1/build.gradle` 的 `sourceSets.main.resources` 里，datagen 缓存排除写成 `exclude("src/generated/**/.cache")` —— 该区块的模式是**相对每个 srcDir 根**（`src/generated/resources`）解析的，带 `src/generated/` 前缀**永远不命中**。实测后果：
+  - 本地 `forge-1.20.1/build/libs/astral_dice-1.2.1-hotfix+forge_1.20.1.jar`（982006 B / 1119 条目）根目录里带着 **`.cache/`**（3 条目 / 33544 B 未压缩 / +12727 B 压缩），dev jar（`build/devlibs` 与 `run/1.20.1/mods`）同样带；
+  - CI 新鲜检出时 `src/generated/resources/.cache/` 被 `.gitignore`（`**/src/generated/**/.cache/`）排除、产物干净（对照：2026-09-16 的 CI 产物 1116 条目、无 `.cache`）⇒ **同一版本本地与 CI 的 jar 字节不一致**，正是「哪份才是真的」这类混淆的温床；`neoforge-1.21.1` 同写法同样无效，仅因该线当前恰好没有 `.cache` 目录而未暴露；`neoforge-26.1.2` 用的相对模式 `exclude("**/.cache")` 正确（其产物 1231 条目、无 `.cache`）。
+  - **修复**：两条线统一改为相对模式 **`exclude("**/.cache")`**（与 26.1.2 一致，`build.gradle` 内附注释说明为何旧模式无效）。**防回归判据**：`jar tf <产物>.jar` 中不得出现任何 `.cache/` 条目（`build/libs` 与 `build/devlibs` 两份都查）。
+- **1.20.1 重新签发（本次交付物）**：`gradlew :forge-1.20.1:clean`（顺带清掉 `build/libs` 里滞留的上一版 `1.2.1+forge_1.20.1.jar`）→ `mt_build.ps1 --version 1.20.1 --timeout 60 --retries 3`（`MT_BUILD: OK (4s)`）。新产物核验：
+
+  | 项 | 值 |
+  |---|---|
+  | 文件 | `astral_dice-1.2.1-hotfix+forge_1.20.1.jar` |
+  | 大小 / 条目 | **969960 B** / **1116**（与 2026-09-16 的 CI 产物条目数一致） |
+  | SHA-256 / SHA-1 | `B459536551137BA3F1325A3EB002E6A7DDA6CF5A622A9B0746491E9272722B37` / `3ED4C261E807C3BFAC82A429B8FDE5110129B1A4` |
+  | 元数据 | `META-INF/mods.toml`：`modLoader="javafml"`、`version="1.2.1-hotfix+forge_1.20.1"`、`forge [47.4.10,48)`、`minecraft [1.20.1]`、`curios [5,6)`、`mixinbooster [0.1.3,)` |
+  | 打包完整性 | `MANIFEST.MF` 含 `MixinConfigs: astral_dice.mixins.json`；`astral_dice.mixins.json` 的 `refmap = astral_dice.refmap.json` 且该文件在包内；`DiceCurioItem.class` 主版本 **61** 且含 `onEquip`/`refreshChipSlotCount`/`clearChipSlotCount`/`applySlotCount`；**无任何 `.cache/` 条目** |
+  | 分发去向 | 子项目 `build/libs`（清理后仅此一份）、根 `build/libs`、`D:\...\1.20.1 模组测试\mods` 三处 **同一 SHA256**；`run/1.20.1/mods` 为 dev jar（952328 B，SRG 0 处，同样已无 `.cache`） |
+  | 交付暂存 | `temp/reissue-1.2.1-hotfix/`（jar + `SHA256SUMS.txt` + `SHA1SUMS.txt` + `VERIFY.md` 自检说明） |
+
+- **未做（需用户明确授权）**：不执行 `git push`（按默认规则），因此 GitHub Release 上的既有附件不会被刷新；若需要用 CI 重新产出/覆盖 Release 附件，需用户明确要求后再推送（tag 仍解析为 `1.2.1`，CI 走 `gh release edit` + `--clobber` 刷新同一 Release）。
+
 **2026-09-18：筹码栏「装备骰子偶发不增加」修复交付到发布线 + 版本号升位（`1.2.1-hotfix` / `1.2.1-beta.2`）**
 
 - **范围与来源**：本次修复先在开发线 `multi-dev-next` 落地并完成游戏内验证（1.21.1 / 1.20.1 各 **54 PASS / 0 FAIL**，26.1.2 的 `CHIP-EQUIP`、`PORTED-PROBE-SMOKE`、`CHIP-RELOG-A/B` 全 PASS；用例、探针改动与判据全文记在开发线工作区的 `TESTING-SPEC.md` 附录 A 与 `AGENTS.md` 的「骰子槽位与配置规范」）。随后把**仅该修复**移植到发布线 `multi-1.20.1-1.21.1`，共 **5 个文件**：3 个 `item/dice/DiceCurioItem.java`（1.21.1 / 1.20.1 / 26.1.2）+ 2 个 `event/PlayerLifecycleHandler.java`（各新增 3 个对账钩子：`PlayerLoggedInEvent`、`OnDatapackSyncEvent`(LOWEST)、`PlayerEvent.Clone`(LOWEST)）。移植时**刻意不带**开发线独有的其它差异（`starenginelib` 包引用、额外的 effect 移除行等），发布线其余内容保持原样。

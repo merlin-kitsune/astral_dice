@@ -15,7 +15,13 @@ sourceSets.main.resources {
 
     // Exclude common development only resources from finalized outputs
     exclude("**/*.bbmodel") // BlockBench project files
-    exclude("src/generated/**/.cache") // datagen cache files
+    // datagen 的 HashCache 文件写在 src/generated/resources/.cache/ 下,只服务增量生成,不得进产物。
+    // ⚠️ 旧写法 `exclude("src/generated/**/.cache")` 是**仓库相对路径**写法,而本块的模式是
+    //    **相对 sourceDir 根**(src/generated/resources)解析的 ⇒ 永远不命中。实测后果:本地
+    //    `astral_dice-1.2.1-hotfix+forge_1.20.1.jar` 根目录里带着 `.cache/`(3 条目 / 33.5 KB 未压缩 /
+    //    +12.7 KB 压缩),而 CI 新鲜检出时 .cache 被 .gitignore 排除、产物干净 ⇒ **同版本本地与 CI
+    //    产物字节不一致**(2026-09-18 核查 CurseForge 报告时发现)。正确写法与 neoforge-26.1.2 一致。
+    exclude("**/.cache") // datagen cache files
     exclude("INSTRUCTIONS.md")
     exclude("mc-src/**")
 }
