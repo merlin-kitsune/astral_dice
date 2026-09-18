@@ -243,7 +243,7 @@
 > 本组登记**不属于本模组缺陷**、但在本仓测试环境里会真实发生的问题。处置口径 = **记录 + 规避 +（可选）上报上游**，
 > **不以改本模组代码的方式去「修」**；若曾被误判为本模组缺陷，须把「被排除的过程与证据」一并写清，避免重复劳动。
 
-### KI-D1 ＝ 26.1.2 + 光影（Iris + Complementary Unbound）+ ImmediatelyFast ⇒ `Missing sampler Sampler1` 崩溃（**已确证与本模组无关**）
+### KI-D1 ＝ 26.1.2 + 光影（Iris + Complementary Unbound）⇒ `Missing sampler Sampler1` 崩溃（**已确证与本模组无关；A/B 三组已排除 ImmediatelyFast**）
 
 **现象**（2026-09-18 用户实测 1 次 + 自动化复现 3 次）：26.1.2 线装 Sodium + Iris + Complementary Unbound（HIGH）+ ImmediatelyFast 后，游戏进行中（约 1–3 分钟内）渲染线程抛 `java.lang.IllegalStateException: Missing sampler Sampler1` 并崩溃。用户最初把它归因于「击杀被施加虚弱印记的目标」，**该因果不成立**（见下方对照组）。
 
@@ -254,33 +254,42 @@ GlCommandEncoder.trySetup(:531) ← GlCommandEncoder.executeDraw(:406) ← GlRen
  ← ImmediatelyFast BatchableBufferSource.drawDirect(:178) / endBatch(:148) / endBatch(:138)
  ← LevelRenderer.lambda$addMainPass$0(LevelRenderer.java:707)      ← 原版主通道的 bufferSource.endBatch()
 ```
+⚠️ 上栈是 **A 组（IF 开）** 的形态。**B 组（IF 关）** 的栈在 `MultiBufferSource$BufferSource.endBatch(:99)` 与 `LevelRenderer.lambda$addMainPass$0:707` 之间**没有任何 ImmediatelyFast 帧**，其余逐帧相同（`temp/t48/ab-if-off/latest.log:539` 起）——即去掉 IF 的批处理层后崩溃**照旧复现**。
+
 三份报告内 **`com.merlinkitsune.*` 帧数 = 0**（`astral_dice` 字样只出现在「资源包 / 模组清单」行）。
 
 **定案证据（对照组）**：同环境、同召唤物、同 45 s 用例，**唯一差别 = 去掉「进入目标选择器」这一步**（`SELECTOR-PRISM-CONTROL-26.1.2` 不执行 `/astral_dice targetselect …`）——
 `capture hook active` = **0**、`astral_dice:pipeline/target_prism` = **0**、`TargetOutlineCapture` = **0**，**客户端照旧崩在同一行**。
 ⇒ 本模组的自定义几何**一次都没提交**、外框捕获路径**一次都没进入**，崩溃照样发生 ⇒ 与本模组无关。
 
-**归因**：**Iris × ImmediatelyFast × 26.1.2 新管线/采样器体系**。`GlCommandEncoder.trySetup` 校验的是 **program 侧** uniform，而在 Iris 下 `program()` 被光影包的覆盖程序替换；ImmediatelyFast 又正好在 `LevelRenderer:707` 的批处理刷新路径上直批（栈里它是直接调用者）。Iris 自身在崩溃后连打 `Missing program … in override list. **This is likely an Iris bug!!!**`（`panorama` / `blur/0..5` / `pipeline/gui_textured` / `pipeline/gui` / `pipeline/gui_text` 等，含**原版**管线）。
+**归因（2026-09-19 A/B 三组定案）**：**光影（Iris）是该崩溃的必要条件；ImmediatelyFast 不是。** 三组实测（同一客户端、同一世界，只改这一个变量）：
+
+| 组 | 变量 | 结果 | 硬证据 |
+|---|---|---|---|
+| A | IF 开 + **光影开** | **崩** | 崩栈含 `BatchableBufferSource.drawDirect:178 / endBatch:148,138` |
+| B | **IF 关** + 光影开 | **仍崩**（同一异常、同一调用链） | `run/26.1.2/mods` 里 IF `.jar`=0 / `.disabled`=1；本组 `latest.log` 内 `(immediatelyfast)`=**0**、`ImmediatelyFast`=**0**、`BatchableBufferSource`=**0** |
+| 第三组 | IF 关 + **光影关** | **不崩**，用例 16/16 PASS，客户端存活 | `SHADERS=disabled(iris.properties)`、`Using shaderpack:`=**0**；IF 仍只有 `.disabled` |
+
+⇒ 只把「光影」这一个变量翻面即由崩转不崩 ⇒ **必要条件落在光影/Iris 一侧**。崩溃机制描述（待 Iris 源码取证确认或推翻）：`GlCommandEncoder.trySetup` 校验的是 **program 侧** sampler 声明与本次 draw 的绑定表是否一一对应，而在 Iris 下该 program 会被光影包的覆盖程序替换；Iris 自身在崩溃后连打 `Missing program … in override list. **This is likely an Iris bug!!!**`（`panorama` / `blur/0..5` / `pipeline/gui_textured` / `pipeline/gui` / `pipeline/gui_text` 等，含**原版**管线）。
+
+⚠️ **口径更正（勿再沿用旧说法）**：① 本文件与 `scripts/test/TESTING-SPEC.md` 早前的「光影可用、只是默认关掉省性能」结论**只覆盖启动期**，而本崩溃可在进入世界后 **1–3 分钟内**出现（用户实测 1 次 + 自动化 3 次）⇒ 应以「26.1.2 开光影长时间运行会崩」为准。② 「IF 是栈里的直接调用者 ⇒ IF 有嫌疑」已被 B 组实测**排除**（去掉 IF 后调用链只是少一层批处理帧，异常与崩点不变）。
 
 **排除本模组嫌疑的两条（含被否决的方案，防止后人重走）**：
 1. 「复用原版 entity 管线（`RenderPipelines.ENTITY_SOLID` 声明 `Sampler1`）导致缺绑定」——**不成立**：`RenderSetup.getTextures()`（`:83-118`）里 `Sampler1` = overlay 纹理、`Sampler2` = lightmap，而 `RenderTypes.entitySolid(tex)`（`RenderTypes.java:435-437`）本身就带 `useOverlay()/useLightmap()` ⇒ 该 RenderType 绑定的是三 sampler 的**超集**（最安全）。
 2. 「自建仅 `Sampler0` 的管线以规避」——**已实测反而引入新问题并回退**：Iris 对非 `minecraft:` 位置的新管线打 `Missing program astral_dice:pipeline/target_prism in override list`，并在 `getOrCompilePipeline` 抛 `Throwable`（`temp/t48/A-if-on/debug.log:3530`）；且枚举显示原版无任何管线与本类渲染状态逐项对齐 ⇒ 等价性未证。该方案（提交 `2596ec2` 中的 Fix 2 部分）已按裁决回退，保留原 `entitySolid`。
 
-**规避（当前口径）**：在 26.1.2 上使用光影时**不要同时装 ImmediatelyFast**（或反之）。⚠️ 该建议目前**由崩溃栈 + 对照组推断**得出，**尚未取得「IF 关 ⇒ 不崩」的干净 A/B 读数**（未完成项见下）。
+**规避（2026-09-19 更正，旧口径作废）**：26.1.2 上**只要启用光影就有触发风险，与装不装 ImmediatelyFast 无关**（B 组实测）⇒ 当前有效规避只有两条：① **在该线关闭光影**（第三组实测不崩，可用 `mt_env.ps1 debug --version 26.1.2 --shaders off`）；② 接受风险并在崩溃后立即归档现场。**本模组侧没有任何规避手段**（对照组证明崩溃不依赖本模组的自定义几何）。⚠️ 旧建议「用光影时不要同时装 ImmediatelyFast」**已作废**（它基于「IF 关就不崩」的推断，而该推断被 B 组实测否定）。
 
-**未完成项（如实登记）**：`SELECTOR-PRISM-*` 系列的「IF 开 / IF 关」A/B **尚未成立**，两次尝试都被工具链破坏 ——
-① 把 `ImmediatelyFast-*.jar` 改名为 `.disabled` 后，`mt.ps1 --phase env` 会调 `mt_env mods`（`mt.ps1:396`）**把它装回来**（目录里出现同哈希 `.jar` 与 `.jar.disabled` 并存，游戏加载 `.jar`）；
-② `gradlew runClient` 按**工作区源码**重编译 ⇒「修复前构建」跑不到（铁证：pre-fix 源码里 `capture rejected`/`target_prism` 命中数为 0，而那次会话两者都出现）。
-**可行路径已定**：B 组**绕过 `mt.ps1`、直接驱动 `mt_launch.ps1`**（改名放在 `env`/`world` 之后），启动后用两条硬证据确认 —— `run/26.1.2/mods` 里 IF **只有 `.disabled` 一份且无新 `.jar`**、已加载清单**无 `(immediatelyfast)`**；缺任一即该组无效。若 B 组仍崩 ⇒ 转第三组（关光影）定位 Iris。
+**A/B 三组（原「未完成项」，2026-09-19 已完成）**：曾在工具链上失败两次 —— ① 把 `ImmediatelyFast-*.jar` 改名 `.disabled` 后，`mt.ps1 --phase env` 会调 `mt_env mods`（`mt.ps1:396`）**把它装回来**（同哈希 `.jar` 与 `.jar.disabled` 并存，游戏加载 `.jar`）；② `gradlew runClient` 按**工作区源码**重编译 ⇒「修复前构建」跑不到。**已由「绕过 `mt.ps1`、直接驱动 `mt_launch.ps1`（改名放在 `env`/`world` 之后）」解决，两轮实测都保住了停用状态，且未改任何工具脚本、未新增开关。** 每组都先过两条硬证据（`run/26.1.2/mods` 里 IF 只有 `.disabled` 且无新 `.jar`；`latest.log` 已加载清单无 `(immediatelyfast)`），缺任一即判该组无效。第三组另加 `SHADERS=disabled` + `Using shaderpack:` 0 命中的光影关机证据。
 
-**证据归档**：`temp/t48/`（A / A2 / C1 / EXTREME 四组日志 + `jar-prefix` 与 `jar-fixed` 两份 jar + 报告 `26.1.2-prism-crash-fix-verify.md`）；定案报告 = `temp/t48/C1-if-on-control/crash-2026-09-18_21.16.52-client.txt`。原始现场另有 `temp/t47-crash-2bugs/`（用户实测那次：crash report + latest.log + debug.log，均带 sha256）。
+**证据归档**：`temp/t48/`（A / A2 / C1 / EXTREME 四组日志 + `jar-prefix` 与 `jar-fixed` 两份 jar + 报告 `26.1.2-prism-crash-fix-verify.md`）；**A/B 三组**（`temp/t48/ab-if-off/`＝B 组 IF 关、`temp/t48/ab3-noshader/`＝第三组 IF 关 + 光影关、`temp/t48/revert/`＝Fix 2 回退与构建）与**选择器功能验证**全部归档于 `temp/t49/26.1.2-prism-ab3-and-func-verify.md`（报告 sha256 `729B22C0B71FF27C1C311AD5DAC3A659CEF4C16F07877439B71666FBEC5B83A2`）；定案报告 = `temp/t48/C1-if-on-control/crash-2026-09-18_21.16.52-client.txt`，B 组崩溃栈副本 = `temp/t48/ab-if-off/latest.log:539` 起（该组 crash-report txt 已被下一次 launch 的 `mt_launch.ps1:307-308` 启动清空行为删除，属工具链既有行为、非人为删除）。原始现场另有 `temp/t47-crash-2bugs/`（用户实测那次：crash report + latest.log + debug.log，均带 sha256）。
 
-**上报材料（可选，未执行）**：Iris `1.11.4+mc26.1.2` + ImmediatelyFast `1.15.3+26.1` 在 MC 26.1.2 上，`Missing sampler Sampler1` @ `GlCommandEncoder.trySetup:531`，调用链见上；Iris 日志自证 `Missing program … in override list`。
+**上报材料（目标已由 A/B 锁定为 Iris；仍未执行）**：**Iris `1.11.4+mc26.1.2`**（环境 = MC 26.1.2 + Sodium `0.9.1+mc26.1.2` + Complementary Unbound `r5.9.3`，`enableShaders=true`），进入世界后 **1–3 分钟内**抛 `Missing sampler Sampler1` @ `GlCommandEncoder.trySetup:531`，调用链见上；**A/B 已实测与 ImmediatelyFast 无关**（去掉 IF 后同一异常、同一崩点照旧复现，且该组 `latest.log` 内 `ImmediatelyFast` / `BatchableBufferSource` / `(immediatelyfast)` 命中均为 **0**）、**与本模组无关**（对照组不画任何自定义几何也崩）；Iris 日志自证 `Missing program … in override list. This is likely an Iris bug!!!`。
 
-**源码取证（用户 2026-09-18 提供仓库地址，后续按源码分析）**：
-- **ImmediatelyFast 源码仓库**：<https://github.com/RaphiMC/ImmediatelyFast> —— 按本仓「第三方模组源码核验规则」（`AGENTS.md`）取源：**克隆到本仓之外**（如 `F:\MCProject\temp_immediatelyfast\26.1`）、经代理 `http://127.0.0.1:7897`、按版本定位（目标 = 本仓 `run\26.1.2\mods` 内的 `ImmediatelyFast-NeoForge-1.15.3+26.1.jar`），结论须给「分支 + commit + 版本号」与 `文件:行号 + 原文片段`；**不得**用 `javap` 反汇编或旧版本源码副本代替。
-- **待复核的 IF 侧直接嫌疑**（由崩溃栈本身点出，非推测）：IF 有两个 mixin 注入 `GlCommandEncoder`（`immediatelyfast-common.mixins.json:avoid_redundant_framebuffer_switching.MixinGlCommandEncoder`、`fix_slow_buffer_upload_on_apple_gpu.MixinGlCommandEncoder`），而异常正是在 `GlCommandEncoder.trySetup:531` 抛出；调用链上还有 `BatchableBufferSource.drawDirect(:178)`/`endBatch(:148,138)`。⇒ 要回答的问题：**IF 在「切换 render pass / framebuffer」之后，是否重建了 pipeline 却没有重绑 sampler**（对照原版 `RenderSetup.getTextures()` → `RenderPass.bindTexture("Sampler1", …)` 的绑定时机）。
-- **Iris 侧**同规则自行取源：<https://github.com/IrisShaders/Iris>（崩溃栈含其 `MixinGlCommandEncoder`；`trySetup` 的 sampler 校验被 Iris 的覆盖程序替换，故它是「校验方」）。
+**源码取证（用户 2026-09-18 提供 IF 仓库地址，后续按源码分析；2026-09-19 依 A/B 结果把主体改为 Iris）**：
+- **Iris（主嫌，必要条件方）**：<https://github.com/IrisShaders/Iris> —— 按本仓「第三方模组源码核验规则」（`AGENTS.md`）取源：**克隆到本仓之外**（如 `F:\MCProject\temp_iris\26.1`）、经代理 `http://127.0.0.1:7897`、按版本定位（**目标 = 本仓 `run\26.1.2\mods` 内的 `iris-neoforge-1.11.4+mc26.1.2.jar`**，2 756 643 B），结论须给「分支/tag + commit + 二进制版本」三件套与 `文件:行号 + 原文片段`；**不得**用 `javap` 反汇编或旧版本源码副本代替，且须用该 jar 内的 mixin 配置与 `META-INF/neoforge.mods.toml` 做**源码↔二进制交叉核验**（证明源码即现场二进制）。
+  - **待回答**：在加载光影包时，为什么走**原版** `RenderType.draw:112` 这条链会到达一个「声明需要 `Sampler1` 的管线」而此刻没有绑定 `Sampler1`？重点看 Iris 对 shader pipeline 的覆盖机制，以及它是否在替换 program 后跳过了 sampler 重绑。已观测到的直接线索：`temp/t48/A-if-on/debug.log:1712` = `mixins.iris.json:MixinShaderManager_Overrides from mod iris->@Inject::redirectIrisProgram(Lcom/mojang/blaze3d/pipeline/RenderPipeline;…)`。
+- **ImmediatelyFast（已由 A/B 实测排除，降级为附录）**：<https://github.com/RaphiMC/ImmediatelyFast> —— 克隆点 `F:\MCProject\temp_immediatelyfast\26.1`，已按版本钉到 **tag `v1.15.3` / commit `c010c5d5`**（对应现场 `ImmediatelyFast-NeoForge-1.15.3+26.1.jar`，312 276 B）。其既有分析**不得**作为崩溃成因引用；只在「为何 A 组栈里多一层 `BatchableBufferSource` 帧」这类旁证语境下使用（IF 自身确有两个 `GlCommandEncoder` mixin：`immediatelyfast-common.mixins.json:avoid_redundant_framebuffer_switching.MixinGlCommandEncoder`、`fix_slow_buffer_upload_on_apple_gpu.MixinGlCommandEncoder` —— 但 B 组证明没有它们**照样崩**）。
 
 ## 8. 变更记录
 
@@ -294,3 +303,4 @@ GlCommandEncoder.trySetup(:531) ← GlCommandEncoder.executeDraw(:406) ← GlRen
 | 2026-09-17 | 库侧过渡符号清理**完成**（库 `d5b0776` / `1.0.0-SNAPSHOT.5`：删 `ReadyEffect`、事件框架三件套 `AstralEventType`/`EventContext`/`EventEffect`、收集链、三个事件常量；**保留** `SKILL_WAIT_SECONDS` / `TARGET_SELECT_RADIUS` / `EVENT_APPLY_MC_TEAM|FTB|OPAC` / `collectTeamPlayers`）；消费方 2 处未使用 import 已由 `7dc64cb` 清除、三线 0 处实际使用；KNOWN-ISSUES 据此更正 **KI-M3 第 3 条**（旧「无消费方 / 未实施」结论 → 实测口径 + 已实施），并登记 **KI-M4** 两条开放项（① 库未 push ⇒ CI 钉住的 ref `d5b0776…` 在推送前必然 checkout 失败；② 消费方 `SIGN_READY_TYPE`/`SIGN_READY_EXPIRE` 废弃键去留待裁决，三线 22 处引用不得静默删除） |
 | 2026-09-17 | **26.1.2 接入 starengine_lib**：构建/元数据接线（`mavenLocal()` + `implementation` 库坐标 + 三个版本键 + `starengine_lib` required 依赖段）+ 删 26 个库已提供的本地副本并改写引用（83 处 FQN/import 就地改写、27 条同包补 import、配置缝改走 `applyConfig(GameplayConfigValues)`）；唯一保留本地副本 `effect/ReadyEffect`；旧「待命等待器」与 33 个效果注册**行为未变**；三线构建 + 模组来源闸门 + lang 同步全绿。登记 **KI-M5** 两项开放项（整合包缺库 jar、ReadyEffect 本地副本例外） |
 | 2026-09-18 | 新增 **§7 D 组（平台/第三方冲突）** 与 **KI-D1**：26.1.2 + 光影（Complementary/Iris）+ ImmediatelyFast 的 `Missing sampler Sampler1` 崩溃，经**对照组**（不执行选择器仍崩、`capture hook active`/`target_prism` 均 0、崩溃报告内本模组帧数 0）确证**与本模组无关**；同时登记「复用 entitySolid 缺 Sampler1」假设**被证伪**、「自建仅 Sampler0 管线」方案**被实测否决并回退**；IF 开/关 A/B 因工具链限制**未完成**（可行路径已写明） |
+| 2026-09-19 | **KI-D1 归因更正（A/B 三组实测完成）**：A（IF 开 + 光影开）崩、B（**IF 关** + 光影开）**仍崩且日志内无任何 IF 帧**、第三组（IF 关 + **光影关**）**不崩** ⇒ **排除 ImmediatelyFast**、必要条件锁定为**光影/Iris**；旧的规避建议「用光影时不要同时装 IF」**作废**，改为「26.1.2 开光影即有风险，规避 = 关光影（或接受风险）」；前序「0.9.1 下光影正常」的口径更正为**仅覆盖启动期**（本崩溃在进入世界 1–3 分钟内出现）。源码取证主体由 IF 改为 **Iris 1.11.4+mc26.1.2**（IF 已钉 `v1.15.3`/`c010c5d5` 并降级为附录） |
