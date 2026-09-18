@@ -186,7 +186,8 @@ public final class TargetSelectionHighlighter {
     private static AABB borderBox(LivingEntity entity, float lineWidth) {
         double h = lineWidth / 2.0D;
         AABB outline = TargetOutlineCapture.outlineOf(entity);
-        // Math.min(..., outline.maxY + h) 兜底：退化盒（零高）时不得产生 minY > maxY 的非法 AABB
+        // 兜底：盒高小于 BOTTOM_LIFT 时把下棱中心夹到上棱中心以内，避免盒被上下翻转
+        // （普通实体盒高远大于 BOTTOM_LIFT，此分支不可达；t39 验证：阈值 0.0199999999999889，仅零高盒退化）
         double bottom = Math.min(outline.minY + h + BOTTOM_LIFT, outline.maxY + h);
         return new AABB(outline.minX - h, bottom, outline.minZ - h,
                 outline.maxX + h, outline.maxY + h, outline.maxZ + h);

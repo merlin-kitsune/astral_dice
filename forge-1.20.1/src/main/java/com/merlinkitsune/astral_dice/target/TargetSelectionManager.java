@@ -29,7 +29,7 @@ import com.merlinkitsune.starenginelib.target.TargetType;
  *
  * 每名玩家至多一个选择会话（token 随机、可被新会话替换）。流程：
  * 1. 触发方调用 {@link #start}（自身前置校验由调用方完成）→ 创建会话并下发
- *    {@link TargetSelectStartPayload} 给客户端进入选择模式；
+ *    {@code ModNetwork.TargetSelectStartMessage} 给客户端进入选择模式；
  * 2. 客户端确认 → {@link TargetSelectConfirmPayload} → {@link #confirm}：
  *    token/时效/目标类型/距离全部通过后调用 {@link TargetSelectionAction#apply} 施加效果；
  *    距离/类型失败保留会话允许重新瞄准，token 失效/目标消失则清除会话；
