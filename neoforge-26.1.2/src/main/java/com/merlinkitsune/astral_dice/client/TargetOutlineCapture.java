@@ -8,7 +8,6 @@ import net.minecraft.client.model.EntityModel;
 import net.minecraft.client.model.Model;
 import net.minecraft.client.renderer.entity.state.EntityRenderState;
 import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
-import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.LightCoordsUtil;
@@ -94,15 +93,9 @@ public final class TargetOutlineCapture {
     // 的坐标系还原（{@code local.move(cameraPos)}）只在**主通道**成立：26.1.2 的实体提交由
     // {@code EntityRenderDispatcher#submit} 平移「实体坐标 − 该通道相机坐标」，那个相机来自
     // {@code LevelRenderer#submitEntities} 传入的 {@code levelRenderState.cameraRenderState}；
-    // 而 2026-09-18 当时的实现取的是 {@code gameRenderer.getMainCamera()}。Iris 阴影通道（Iris 复用同一
-    // {@code LevelRenderer#addMainPass}）、GUI 内实体预览（{@code GuiEntityRenderer} 自建
-    // {@code CameraRenderState}）等上下文里「该通道相机 ≠ 主相机」
+    // 而本类取的是 {@code gameRenderer.getMainCamera()}。Iris 阴影通道（Iris 复用同一
+    // {@code LevelRenderer#addMainPass}）、GUI 内实体预览等上下文里「该通道相机 ≠ 主相机」
     // ⇒ 还原出的盒整体平移一个 (主相机 − 该通道相机) 的偏差 ⇒ 与实体本体脱锚 ⇒ 画成巨框。
-    //
-    // ✅ **2026-09-19 根因修复（用户裁决「实施并复跑外框读数用例」）**：mixin 收到的**本帧** {@code camera}
-    //    现原样下传，还原改用 {@code camera.pos} ⇒ 与 {@code poseStack} 同源同帧，脱锚成因消除。
-    //    因此下面的双条件校验**不再是承重门**，而是「纯计数」性质的安全网：主通道应恒为 0 次丢弃，
-    //    若仍有丢弃即说明还存在未识别的非主通道上下文，必须按 rejectCapture 的读数继续查。
     //
     // 2026-09-18 崩溃现场取证（{@code temp\t47-crash-2bugs\debug.log}，解析脚本 temp\t48_parse_bug1.py）：
     // 43 条 {@code TargetSelectBounds} 读数中 **43/43 全部脱锚**（对齐阈值 0.35 格），
@@ -140,13 +133,8 @@ public final class TargetOutlineCapture {
      * @param state     本帧活体渲染状态（实体身份从 {@link #ENTITY_KEY} 取）
      * @param poseStack 原版算好的最终模型变换（相机相对空间，纯平移）
      * @param model     目标渲染器的模型（mixin 以 {@code @Shadow} 取 {@code protected M model}）
-     * @param camera    **本帧**的相机渲染状态（由 {@code LivingEntityOutlineCaptureMixin} 下传；
-     *                  2026-09-19 加固）。世界坐标还原必须用 {@code camera.pos} —— 它是本通道的相机，
-     *                  与 {@code poseStack} 同源同帧；{@code gameRenderer.getMainCamera()} 只在主通道
-     *                  成立（见上方「上下文一致性校验」段的取证）。{@code null} / 未初始化时回退主相机
      */
-    public static void onSubmit(LivingEntityRenderState state, PoseStack poseStack, EntityModel<?> model,
-                                CameraRenderState camera) {
+    public static void onSubmit(LivingEntityRenderState state, PoseStack poseStack, EntityModel<?> model) {
         if (!TargetSelectionClient.isActive()) return;
         if (state == null || poseStack == null || model == null) return;
         LivingEntity entity = state.getRenderData(ENTITY_KEY);
@@ -161,14 +149,7 @@ public final class TargetOutlineCapture {
         AABB local = probe.toBox();
         if (local == null) return;
 
-        // 2026-09-19 加固：用**本帧、本通道**的相机（mixin 下传）而不是主相机 —— 与 poseStack 同源同帧。
-        // 取不到（camera 为 null 或未初始化）时退回主相机，保持加固前的行为，绝不因加固而漏采。
-        Vec3 cameraPos;
-        if (camera != null && camera.initialized) {
-            cameraPos = camera.pos;
-        } else {
-            cameraPos = Minecraft.getInstance().gameRenderer.getMainCamera().position();
-        }
+        Vec3 cameraPos = Minecraft.getInstance().gameRenderer.getMainCamera().position();
         AABB world = local.move(cameraPos);
 
         // 上下文一致性校验：不通过即丢弃本次采集（不写 CAPTURED，保留上一帧的良好值 / 退化为碰撞盒）
