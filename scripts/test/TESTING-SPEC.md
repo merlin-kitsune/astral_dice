@@ -937,6 +937,8 @@ pwsh -NoProfile -File scripts/test/mt_watchdog.ps1 -Version 1.21.1 [-StallSecond
 
 **2026-09-19：26.1.2 棱柱 Fix 2 回退 + 「光影 / ImmediatelyFast」A/B 三组定位 + 选择器功能验证（t49；改动只落 dev 工作树 `multi-dev-next`）**
 
+> ⚠️ **本节及下一节的游戏内读数取自「未禁用生物 AI」的流程** ⇒ 按 2026-09-18 用户裁决（本文件同日最后一节）**不能原样作为验收依据**：其中的「选择器功能验证」已在该闸门下复跑取代（结论一致），**A/B 三组仍待按该闸门重取读数**（其结论建立在崩/不崩与模组清单证据上，对生物 AI 不敏感，但按新规仍须重取）。
+
 - 工程:**Fix 2 回退（提交 `49ca6eb`，父 `4a8799f`）**：用 `git show 2596ec2 -- <TargetSelectionHighlighter>` 生成补丁后 `git apply -R`（**未** reset、**未**改写历史），Fix 1 的 `TargetOutlineCapture.java` **零差异**。自证（源码 + 产物 + 全 jar 字节扫三道）：源码 `entitySolid` 3 命中（真调用点 `TargetSelectionHighlighter.java:117 RenderType prism = RenderTypes.entitySolid(BLANK_TEXTURE);`）、`target_prism|PRISM_PIPELINE|registerRenderPipelines` **0**；产物 `javap -c -p` 内 `target_prism` 0 / `entitySolid` 1、`PRISM_PIPELINE` 与 `registerRenderPipelines` 各 0；**全 jar 逐 `.class` 字节扫 `target_prism` 得空列表**；Fix 1 仍在产物（`contextMismatch` 1 / `rejectedCount` 2）。构建 `MT_BUILD: OK (3s)`，jar `1003954` B / sha256 `2742230A79F6867F…`（`run/26.1.2/mods` 同哈希）。
 - 工程:**A/B 三组（本轮的核心结论；`KNOWN-ISSUES` §7 KI-D1 已据此更正归因）**：同一客户端、同一世界，只翻一个变量 ——
   | 组 | 变量 | 结果 | 关键证据 |
@@ -954,6 +956,8 @@ pwsh -NoProfile -File scripts/test/mt_watchdog.ps1 -Version 1.21.1 [-StallSecond
 - 工程:**报告勘误两条（队长复核时发现并更正，原始行未改动）**：① t49 报告 §3.2 把 `L3453/L3457/L3463/L3464` 标为 `func-confirm.log`，实际该文件只有 **43 行**；这四行出自 **`confirm-debug.log`**（3467 行）的同号行（内容逐字一致），§3.2 末尾的 `L3445/L3446 cancel (expired)` 同属 **`confirm-debug.log:3445-3446`**（`func-debug.log` 仅 3444 行，不存在 L3445）。② §3.1 表头「46/48 PASS」与日志实况的换算口径应写明：`func.log` 里 `[ PASS]` **45** 行 + `[ FAIL]` **2** 行（= 43/44 两条确认路径），「48」是**用例步数**而非结果行数 —— 结论不变（两条未过项已由补测用例覆盖），但引用时必须用「45 PASS / 2 FAIL / 共 48 步」。
 
 **2026-09-19：主线 `1.2.1-hotfix` 收编进 `multi-dev-next`（`--no-ff`，合并提交 `03c1169`）+ 四态②可断言化 + 26.1.2 外框相机透传（含**实测否证**）**
+
+> ⚠️ **本节的光影开实测（丢弃计数、贴体度）同样取自「未禁用生物 AI」的流程** —— 结论本身对生物 AI 不敏感（属渲染路径读数的计数与几何），但按 2026-09-18 裁决应随 A/B 三组一并重取；四态②与 `FUNC`/`CONFIRM` 部分已在同日最后一节的闸门下复跑。
 
 - 工程:**合并（用户指示「本轮 26.1.2 移植与功能验证结束后合并主线版本更新」）**：`git merge --no-ff --no-commit d9c2a102639b59c0ffc22dc3d61ae6877e70c466`（**钉住 sha** 而非分支名，避免并发会话在合并期间追加提交改变被合并内容）。闸门：主线独有 5 提交 / dev 独有 88 提交；回滚点 = 主线 `d9c2a10` / dev `be80450` / base `8f68482`。合并提交 `03c1169` **2 个 parent**（`be80450` + `d9c2a10`）。
 - 工程:**8 个冲突文件的解法（逐类，可复现）**：① **双 CHANGELOG**（`CHANGELOG.md` / `CHANGELOG_ZH.md`）按「保留双方全部条目 + 归一化去重」解析（本次各丢弃 3 条真重复：`### Bug Fixes` / `#### Items, Chips & Trading` / 「筹码栏偶发不增加」条目），解析后中英条目数 **344 : 344** 对称、`1.2.1-hotfix`（主线）与 `未发布（2.0.0-SNAPSHOT.10）`（dev）小节**并存**；② `scripts/test/TESTING-SPEC.md`（3 块，双方各有一段 2026-09-18 筹码栏记录）同样「保留双方」；③ **`scripts/test/mt_launch.ps1` 取 dev 侧**：冲突块双方只差一行（dev = 跨零点日切兜底 `Read-MtLogWithRotation` + `$latest = $latestSession`；主线 = `$latest = Read-MtSharedText`），dev 侧是严格改进；④ **`forge-1.20.1/build.gradle` 取 dev 侧**（双方同为 ImmediatelyFast/FerriteCore 注释块，dev 版更全且含注释掉的可复测坐标，功能行 `modImplementation "maven.modrinth:ferrite-core:DG5Fn9Sz"` 相同）；⑤ **两个 `gradle.properties` 取 dev 侧**（冲突只有 `mod_version`；dev 线版本号 `2.0.0-SNAPSHOT.10` 必须保留，主线的 `1.2.1-hotfix` 只属发布线）；⑥ `AGENTS.md` 两块分别取「dev + 主线」（版本号段保留 dev 的 `.10`/`wt/2.0.0-vnext` 历史，同时并入主线的 `1.2.1-hotfix` 与 `1.2.1-beta.2` 事实；全局测试规则第 2 条取主线版，因其多了 `Get-MtIrisConfigFile` 的**按版本取配置路径**说明）。解析后全仓冲突标记 **0**、8 个文件 UTF-8 严格解码通过。
