@@ -373,6 +373,83 @@ function chipSlotCount(player) {
 }
 
 /**
+ * 筹码栏状态读数:槽数 + 槽位修饰符 + 槽内物品 + dice 栏内容 + tickCount。
+ *
+ * ⚠️ 本线（26.1.2 / Curios 15）与 1.21.1/1.20.1 的**判据差异**:测试脚手架 {@code applyChipSlotCount}
+ * 与产品代码 {@code DiceCurioItem#applySlotCount} **用同一个修饰符 id**（{@code astral_dice:chip_slots}），
+ * 故 `mods=[…]` 在修复前后相同、不具区分度（发布线可以靠 id 区分 Curios 的 legacy 累加器与自有修饰符）。
+ * 本线的决定性判据是**时序**，见 {@code /astralprobe chiptiming}（+2 tick 内是否已长到目标值）。
+ */
+function chipStateText(player) {
+    try {
+        var opt = CuriosApi.getCuriosInventory(player);
+        if (opt == null || !opt.isPresent()) return "no_curios";
+        var handlerOpt = opt.get().getStacksHandler("chip");
+        if (handlerOpt == null || !handlerOpt.isPresent()) return "no_chip_slot";
+        var h = handlerOpt.get();
+        var mods = [];
+        var m = h.getModifiers();
+        var it = m.keySet().iterator();
+        while (it.hasNext()) {
+            var k = it.next();
+            var mod = m.get(k);
+            var amt = "?";
+            // 1.21.1/26.1.2 的 AttributeModifier 是 record(amount()),1.20.1 是 getAmount();两者都容错
+            try { amt = mod.amount(); } catch (e1) {
+                try { amt = mod.getAmount(); } catch (e2) {
+                    try { amt = mod.amount; } catch (e3) { amt = "?"; }
+                }
+            }
+            mods.push("" + k + "=" + amt);
+        }
+        mods.sort();
+        var stacks = h.getStacks();
+        var items = [];
+        for (var i = 0; i < stacks.getSlots(); i++) {
+            var s = stacks.getStackInSlot(i);
+            if (!s.isEmpty()) items.push(i + ":" + itemIdOf(s) + "x" + s.getCount());
+        }
+        var dice = "no_slot";
+        try {
+            var diceOpt = opt.get().getStacksHandler("dice");
+            dice = (diceOpt != null && diceOpt.isPresent())
+                ? itemIdOf(diceOpt.get().getStacks().getStackInSlot(0)) : "no_slot";
+        } catch (e3) { dice = "<err>"; }
+        // 诊断三项(2026-09-18 为定位「修饰符已写入但槽数没长」而加,长期保留):
+        //   base   = getBaseSize()(数据包基础尺寸,chip 应为 0)
+        //   adds   = getModifiersByOperation(ADD_VALUE) 的数值集合 —— 尺寸重算**只**遍历这个索引,
+        //            与 mods 用的 `getModifiers()` 是两个不同的视图,两者不一致就是失配的根因
+        //   slotsH = 接口方法 getSlots()(它内部会调 update();与 getStacks().getSlots() 应恒等)
+        var base = "?", adds = [], slotsH = -1;
+        try { base = h.getBaseSize(); } catch (e4) { base = "?"; }
+        try { slotsH = h.getSlots(); } catch (e5) { slotsH = -1; }
+        try {
+            var col = h.getModifiersByOperation(AttributeModifierOperationClass.ADD_VALUE);
+            var cIt = col.iterator();
+            while (cIt.hasNext()) {
+                var am = cIt.next();
+                var a2 = "?";
+                try { a2 = am.amount(); } catch (e6) {
+                    try { a2 = am.getAmount(); } catch (e7) { a2 = "?"; }
+                }
+                adds.push(a2);
+            }
+        } catch (e8) { adds.push("err"); }
+        adds.sort();
+        return "tickCount=" + player.tickCount
+            + ":slots=" + stacks.getSlots()
+            + ":slotsH=" + slotsH
+            + ":base=" + base
+            + ":adds=[" + adds.join(",") + "]"
+            + ":mods=[" + mods.join(",") + "]"
+            + ":items=[" + items.join(",") + "]"
+            + ":dice=" + dice;
+    } catch (e) {
+        return "<err:" + e + ">";
+    }
+}
+
+/**
  * 保证 chip 槽至少有 need 个槽位。
  *
  * 生产机制:chip 槽注册为 size=0,装备骰子时由 DiceCurioItem#tryApplyChipBonus
@@ -606,17 +683,115 @@ function doDiag(ctx, tag) {
 function doEquipSlot(ctx, slotId, itemId, tag) {
     var p = ctx.source.getPlayerOrException();
     var item = resolveItem(itemId);
-    if (item == null) { send(ctx, "AP_" + tag + "_ERR:unknown_item:" + itemId); return 0; }
+    // 清空槽位:`resolveItem("minecraft:air")` 恒为 null —— 其自检用 itemIdOf(new ItemStack(AIR)),
+    // 而 itemIdOf 对空栈返回 "empty"(不是 "minecraft:air")。故 air/empty 走显式清空分支,
+    // 写 ItemStack.EMPTY(等价于 putInSlot 里 new ItemStack(AIR))。回显改用 _CLEAR 以区分「装备」。
+    var clearing = (item == null) && (itemId === "minecraft:air" || itemId === "air" || itemId === "empty");
+    if (item == null && !clearing) { send(ctx, "AP_" + tag + "_ERR:unknown_item:" + itemId); return 0; }
     if (slotId === "chip") {
         var slotErr = ensureChipSlot(p, CHIP_SLOT_MIN);
         if (slotErr != null) { send(ctx, "AP_" + tag + "_ERR:" + slotErr); return 0; }
     }
-    var err = putInSlot(p, slotId, new ItemStack(item), 0);
+    var err = putInSlot(p, slotId, clearing ? ItemStack.EMPTY : new ItemStack(item), 0);
     if (err != null) { send(ctx, "AP_" + tag + "_ERR:" + err); return 0; }
-    send(ctx, "AP_" + tag + "_EQUIP:" + slotId + ":" + itemId);
+    if (clearing) {
+        send(ctx, "AP_" + tag + "_CLEAR:" + slotId);
+    } else {
+        send(ctx, "AP_" + tag + "_EQUIP:" + slotId + ":" + itemId);
+    }
     send(ctx, "AP_" + tag + "_DONE");
     return 1;
 }
+
+/** 只读:打印筹码栏状态(槽数 + 槽位修饰符 + 槽内物品 + dice 栏 + tickCount),见 chipStateText */
+function doChipState(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    send(ctx, "AP_" + tag + "_CHIPSTATE:" + chipStateText(p));
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+/**
+ * 主动调用 `/curios reset <自己>`(等价于管理员重置饰品栏):Curios 15 的 `CurioInventory#init()`
+ * **既不复制槽位修饰符、也不保留栏内物品**(骰子因此一并消失)⇒ 复位后筹码栏 0 格、`mods=[]`、`dice=empty`
+ * 都是**正确**结果。
+ *
+ * ⚠️⚠️ **本线不要用它来「确定化基线」**(1.21.1/1.20.1 侧可以):实测(2026-09-18)经 `/curios reset`
+ * 重建后的 chip handler 会进入「修饰符已写入(2)但 `getSlots()`/`stackHandler` 尺寸停在 0」的失配状态,
+ * 该会话内尺寸**再也不会增长**(`putInSlot` 报 `slot_overflow:chip:0`)—— 属上游 Curios 15 的限制,
+ * 不是本模组缺陷。需要干净基线时改用「清空 dice 栏 + 全新世界」,见用例 CHIP-EQUIP-26.1.2 的说明。
+ * 本命令仅保留作取证用途(复位当拍/复位后的读数)。
+ *
+ * ⚠️ 快照行**时机不确定、不得作断言落点**(平台差异,2026-09-18 实测):1.21.1 紧接 runCmd 之后仍是
+ * 复位前状态,1.20.1 已是复位后状态;本线同样只把它当作证据行,复位后状态以下一条独立 chipstate 为准。
+ */
+function doChipReset(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var name = "" + p.getGameProfile().name();
+    var rc = runCmd(ctx, "curios reset " + name);
+    send(ctx, "AP_" + tag + "_RESET:" + rc);
+    send(ctx, "AP_" + tag + "_SNAPSHOT:" + chipStateText(p));
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+// ── 筹码栏「装备即生效」时序判据(2026-09-18,**本线专用**)────────────────────────
+// 为什么本线必须用时序:测试脚手架 applyChipSlotCount 与产品代码**共用同一个修饰符 id**
+// (astral_dice:chip_slots) ⇒ `mods=[…]` 无法区分修复前后(发布线可以)。
+// 卡尺:等到 `tickCount % 20 === 1`(本 tick 的 curioTick 维护刚过,下一次在 19 tick 之后)再写 dice 栏,
+// 之后 +2 tick 与 +22 tick 各读一次:
+//   - 修复后:onEquip 回读骰子并**当拍**写入目标值 ⇒ T2 就该是 2 格;
+//   - 修复前(onEquip 把 prevStack=空栈当骰子):当拍写入 0 ⇒ T2 必为 0 格(下一次维护在 19 tick 后)。
+// 相位选择是判据成立的前提,故 WRITE 行把 tickCount 与相位一并落盘,便于复核。
+var chipTimingPlayer = null, chipTimingTag = "", chipTimingItem = null;
+var chipTimingStage = 0, chipTimingWrittenAt = 0;
+
+function doChipTiming(ctx, itemId, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var item = resolveItem(itemId);
+    if (item == null) { send(ctx, "AP_" + tag + "_ERR:unknown_item:" + itemId); return 0; }
+    chipTimingPlayer = p; chipTimingTag = tag; chipTimingItem = item;
+    chipTimingStage = 0;
+    send(ctx, "AP_" + tag + "_ARMED:" + itemId + ":tickCount=" + p.tickCount
+        + ":phase=" + (p.tickCount % 20));
+    return 1;
+}
+
+function chipTimingTickBody() {
+    if (chipTimingStage >= 3) return;
+    if (chipTimingPlayer == null) { chipTimingStage = 4; return; }
+    if (chipTimingStage === 0) {
+        if (chipTimingPlayer.tickCount % 20 !== 1) return;
+        var err = putInSlot(chipTimingPlayer, "dice", new ItemStack(chipTimingItem), 0);
+        chipTimingWrittenAt = chipTimingPlayer.tickCount;
+        emitTo(chipTimingPlayer, "AP_" + chipTimingTag + "_WRITE:tickCount=" + chipTimingWrittenAt
+            + ":phase=" + (chipTimingWrittenAt % 20) + ":err=" + err);
+        chipTimingStage = 1;
+        return;
+    }
+    if (chipTimingStage === 1 && chipTimingPlayer.tickCount >= chipTimingWrittenAt + 2) {
+        emitTo(chipTimingPlayer, "AP_" + chipTimingTag + "_T2:" + chipStateText(chipTimingPlayer));
+        chipTimingStage = 2;
+        return;
+    }
+    if (chipTimingStage === 2 && chipTimingPlayer.tickCount >= chipTimingWrittenAt + 22) {
+        emitTo(chipTimingPlayer, "AP_" + chipTimingTag + "_T22:" + chipStateText(chipTimingPlayer));
+        chipTimingStage = 3;
+        chipTimingPlayer = null;
+    }
+}
+
+// 独立于珍珠观察窗的 tick 回调,非活跃时零开销(与 pearlTickBody 同款结构)
+ServerEvents.tick(event => {
+    if (chipTimingStage >= 3) return;
+    try {
+        chipTimingTickBody();
+    } catch (e) {
+        try { emitTo(chipTimingPlayer, "AP_TICKDIAG:chiptiming:" + exText(e)); } catch (e2) { /* 忽略 */ }
+        chipTimingStage = 3;
+        chipTimingPlayer = null;
+    }
+});
 
 /**
  * `equipslotat <slotId> <index> <itemId> <tag>` —— 写入指定索引(2026-09-17 新增)。
@@ -4445,6 +4620,23 @@ ServerEvents.commandRegistry(event => {
                                         IntegerArg.getInteger(ctx, "index"),
                                         StringArg.getString(ctx, "item"), StringArg.getString(ctx, "tag"));
                                 })))))))
+            .then(Commands.literal("chipstate")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doChipState(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("chipreset")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doChipReset(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("chiptiming")
+                .then(Commands.argument("item", StringArg.string())
+                    .then(Commands.argument("tag", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doChipTiming(ctx, StringArg.getString(ctx, "item"),
+                                StringArg.getString(ctx, "tag"));
+                        })))))
             .then(Commands.literal("attack")
                 .then(Commands.argument("type", StringArg.string())
                     .then(Commands.argument("tag", StringArg.word())

@@ -1,0 +1,222 @@
+{
+  "case_id": "CHIP-EQUIP-26.1.2",
+  "title": "装备骰子即时获得筹码栏（26.1.2 线决定性判据：写入 dice 栏后 +2 tick 内已是 2 格，修复前该相位下必为 0 格）+ 换 0★ 骰不弹出筹码、取走筹码后归零且保留 0 值修饰符、换回 2 格骰恢复",
+  "version": "26.1.2",
+  "target": {
+    "type": "bugfix",
+    "ref": "chip-slot-on-equip-param-order"
+  },
+  "steps": [
+    {
+      "op": "note",
+      "text": "被测语义（2026-09-18 三线统一修，本线为移植）：DiceCurioItem#onEquip 的官方签名是 onEquip(SlotContext, ItemStack prevStack, ItemStack stack) —— 第 2 参是**槽位原内容**、第 3 参才是刚装上的骰子（Curios 15 同一契约）。旧实现把第 2 参当骰子 ⇒ 往空骰子槽装备时 prevStack=EMPTY ⇒ DiceTierRegistry.get(EMPTY)=null ⇒ 目标 0 ⇒ 「装备即加筹码栏」整条路径是空操作，只能等 curioTick 每 20 tick（≈1 秒）补上，即玩家反馈的「偶发不增加筹码栏位」。"
+    },
+    {
+      "op": "note",
+      "text": "【决定性判据为何与本线之外不同】1.21.1/1.20.1 侧靠**修饰符归属**判定（旧实现写 Curios 的 legacy 累加器、新实现写自有 id）；但本线的测试脚手架 applyChipSlotCount 与产品代码 @applySlotCount **共用同一个修饰符 id**（astral_dice:chip_slots）⇒ `mods=[…]` 修复前后相同、不具区分度。故本线改用**时序卡尺**（/astralprobe chiptiming）：等 tickCount%20==1（该 tick 的 curioTick 维护刚过、下一次在 19 tick 之后）才写入 dice 栏，随后 +2 tick 与 +22 tick 各读一次 —— 修复后 onEquip 回读骰子并**当拍**写入目标值 ⇒ CT_T2 就该是 2 格；修复前当拍写入 0 ⇒ CT_T2 必为 0 格。CT_WRITE 行落盘 tickCount 与相位，判据前提可复核。"
+    },
+    {
+      "op": "note",
+      "text": "【开局确定化：本线**不使用** /curios reset】实测（2026-09-18）Curios 15 经 `/curios reset` 重建后的 chip handler 会出现「修饰符已写入但 stackHandler 尺寸停在 0」的失配（`getSlots()`=0 而 `mods=[astral_dice:chip_slots=2]`），该会话内尺寸再也不会增长 —— 属上游限制、非本模组缺陷，故本用例只做「清空 dice 栏」（equipslot 不支持删物品，写 minecraft:air 即空栈，探针有显式清空分支、回显 _CLEAR），基线依赖**每次全流程都会重建世界**（mt_env world ⇒ 全新玩家数据 ⇒ chip 栏 base 0、无修饰符）。若该基线断言失败，说明世界未重建（先跑 `--phase stop --purge-saves` 再跑本用例）。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe equipslot dice \"minecraft:air\" D0P"
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe chipstate B0"
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe chiptiming \"astral_dice:emerald_dice\" CT"
+    },
+    {
+      "op": "wait",
+      "ms": 3500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe chipstate B1"
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe equipslot chip \"astral_dice:flashlight_chip\" C1"
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe chipstate B2"
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "note",
+      "text": "换上一枚 0★ 基础骰（筹码栏加成 s ⇒ 目标 0）：防御式收缩必须把目标抬到『最靠后的非空槽位 + 1』，即槽 0 里的筹码不能被弹出 —— B3 应为 slots=1、修饰符 astral_dice:chip_slots=1（这条同时覆盖『有物品就不缩到 0』的物品安全线）。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe equipslot dice \"astral_dice:dice\" D0"
+    },
+    {
+      "op": "wait",
+      "ms": 2000
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe chipstate B3"
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe equipslot chip \"minecraft:air\" Z1"
+    },
+    {
+      "op": "wait",
+      "ms": 2000
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe chipstate B4"
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe equipslot dice \"astral_dice:emerald_dice\" E2"
+    },
+    {
+      "op": "wait",
+      "ms": 2000
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe chipstate B5"
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_D0P_CLEAR:dice"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_B0_CHIPSTATE:.*slots=0:.*mods=\\[\\]:items=\\[\\]:dice=empty"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CT_ARMED:astral_dice:emerald_dice"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CT_WRITE:.*phase=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CT_T2:.*slots=2:.*mods=\\[astral_dice:chip_slots=2(\\.0)?\\].*dice=astral_dice:emerald_dice"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CT_T22:.*slots=2:.*mods=\\[astral_dice:chip_slots=2(\\.0)?\\]"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_B1_CHIPSTATE:.*slots=2:.*mods=\\[astral_dice:chip_slots=2(\\.0)?\\]"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_C1_EQUIP:chip:astral_dice:flashlight_chip"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_B2_CHIPSTATE:.*slots=2:.*mods=\\[astral_dice:chip_slots=2(\\.0)?\\]:items=\\[0:astral_dice:flashlight_chipx1\\]"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_D0_EQUIP:dice:astral_dice:dice"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_B3_CHIPSTATE:.*slots=1:.*mods=\\[astral_dice:chip_slots=1(\\.0)?\\]:items=\\[0:astral_dice:flashlight_chipx1\\]"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_B4_CHIPSTATE:.*slots=0:.*mods=\\[astral_dice:chip_slots=0(\\.0)?\\]:items=\\[\\]"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_E2_EQUIP:dice:astral_dice:emerald_dice"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_B5_CHIPSTATE:.*slots=2:.*mods=\\[astral_dice:chip_slots=2(\\.0)?\\]"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_B5_DONE"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_.*_(ERR|EX):"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_.*_CHIPSTATE:<err:"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_TICKDIAG:chiptiming"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "crash"
+    }
+  ],
+  "on_fail": "keep_game_running"
+}
