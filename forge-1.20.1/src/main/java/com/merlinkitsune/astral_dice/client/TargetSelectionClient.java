@@ -162,6 +162,10 @@ public final class TargetSelectionClient {
      * 玩家 → 同队（{@link #isFriendly}）为 {@code teammate}、非同队为 {@code player}；
      * 其它生物中，选择者自己拥有的（{@link OwnableEntity#getOwnerUUID()} 等于选择者）为
      * {@code pet}，敌对（{@link #isHostile}）为 {@code hostile}，其余为 {@code neutral}。
+     *
+     * <p>口径裁决（2026-09-18 用户裁决，维持现状）：{@code hostile} 取原版 {@code Enemy} 标记接口
+     * ⇒ 野生狼 / 北极熊 / 蜜蜂等「中立但可敌对」的生物显示「中立」（与框色黄同源）。**不得**改成
+     * 「会主动攻击我的生物」——那会与 {@link #highlightColor} 的框色口径脱节（红框配中立标签）。
      */
     public static String targetTagKey(LivingEntity entity) {
         Minecraft mc = Minecraft.getInstance();
@@ -384,7 +388,13 @@ public final class TargetSelectionClient {
         return Component.translatableWithFallback("msg.astral_dice.target_select.valid_target." + name, name);
     }
 
-    /** 显示一条瞬态 actionbar 提示（ACTIONBAR_TICKS 内不被默认提示覆盖） */
+    /**
+     * 显示一条瞬态 actionbar 提示（{@code ACTIONBAR_TICKS} 内不被常驻提示覆盖）。
+     *
+     * <p>口径裁决（2026-09-18 用户裁决，维持现状）：瞬态提示**刻意不追加剩余时间** ——
+     * 「（剩余 N 秒）」只出现在四态常驻提示里（见 {@link #steadyPrompt}）。瞬态是点击反馈，
+     * 与常驻倒计时拼在同一条上会出现时间跳变的观感。
+     */
     private static void showPrompt(Component prompt) {
         transientPrompt = prompt;
         Minecraft mc = Minecraft.getInstance();
