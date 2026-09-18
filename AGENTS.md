@@ -41,6 +41,18 @@ When extending this workspace:
 - 若远程操作因代理失败，先检查代理进程（如 Clash/`127.0.0.1:7897` 端口）是否在运行，再排查网络；不要绕过代理直连 GitHub。
 - **默认不执行 `git push`**(见「编译产物上传规则」第 6 条);每次更新由代理自动完成本地提交,推送仅在用户明确要求时执行,且须经上述代理。
 
+## 第三方模组源码核验规则（必须遵守）
+
+核验任何**第三方模组**（Curios / KubeJS / Sodium / Iris / ModernFix / Patchouli 等）的**行为**时，必须以**该模组自己的 GitHub 源码**为准，并**自行前往其 GitHub 页面查找** —— 不要等用户提供，也不要凭记忆、凭缓存产物或凭反汇编下结论：
+
+1. **取源**：先在该模组的 GitHub 仓库按版本定位 tag / commit（版本号取自本仓 `gradle.properties`、或目标 jar 内 `META-INF/mods.toml` / `neoforge.mods.toml` / `MANIFEST.MF`），再经上方 Git 代理克隆到**本模组仓库之外**，例如：
+   `git -c http.proxy=http://127.0.0.1:7897 -c https.proxy=http://127.0.0.1:7897 clone https://github.com/TheIllusiveC4/Curios F:\MCProject\temp_curios\v9`
+   克隆目录**不得**放进模组仓库（避免污染/误提交），也**不得** `git push`。
+2. **不得替代**：Gradle 缓存里的编译产物（`javap` 反汇编）、**旧版本或其它 MC 版本的源码副本**都不能代替目标版本的源码。`javap` 只可用于确认方法签名/常量，**不得**据此推断逻辑。
+3. **取不到就说取不到**：仓库不可达或没有对应 tag 时，取最近 tag 并**显式写出偏差**，把「未能验证」的部分标出来，不得用推测填空。
+4. **结论形式**：每条结论附 `文件:行号 + 原文片段`，并写明**精确版本号**（如 `Curios 5.14.1+1.20.1` / `9.5.1+1.21.1`），使他人可独立复算。
+5. **现有克隆（只读，可直接复用）**：`F:\MCProject\temp_curios\v5` = Curios **1.20.1 线**（`origin/1.20.x` @ `a91da6ba`，提交主题 `5.14.1`，`gradle.properties: version_mc=1.20.1`）；`F:\MCProject\temp_curios\v9` = Curios **1.21.1 线**（`origin/1.21.1` @ `6b122c8a`，提交主题 `9.5.1`，`gradle.properties: version=9.5.1+1.21.1`）；`F:\MCProject\astral_dice_multiloader\temp\curios_src` = Curios **26.1.2 分支**（另含本仓提交的上游补丁分支 `fix/26.1.2-loadinv-size`）。⚠️ 实测该仓库这些版本**没有打 tag**，克隆点落在**分支尖端**上 —— 引用时必须写成「分支 + commit + 提交主题/版本号」三者，不能只说 tag。Curios 仓库地址：<https://github.com/TheIllusiveC4/Curios>。
+
 ## 嵌套松散引用“消失”（Loose Ref Disappearance）— 结论已修订，见下
 
 **现象**:`git` 刚写完 `.git/refs/heads/<含斜杠的分支名>/<引用>` 之后,该松散引用**连同其父目录**查不到;随后 `HEAD` 看起来无法解析,分支像“消失”。
