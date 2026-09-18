@@ -29,6 +29,11 @@ public class ModClientEvents {
         event.registerAbove(VanillaGuiLayers.CROSSHAIR,
                 Identifier.fromNamespaceAndPath(AstralDiceMod.MODID, "damage_number"),
                 DamageNumberOverlay.INSTANCE);
+        // 目标选择器中央 HUD:注册 id / 锚点与两发布线逐字对齐
+        // （1.21.1 `client/ModClientEvents.java:33-35`,锚点 CROSSHAIR,id `target_select`）
+        event.registerAbove(VanillaGuiLayers.CROSSHAIR,
+                Identifier.fromNamespaceAndPath(AstralDiceMod.MODID, "target_select"),
+                TargetSelectOverlay.INSTANCE);
         event.registerAbove(VanillaGuiLayers.AIR_LEVEL,
                 Identifier.fromNamespaceAndPath(AstralDiceMod.MODID, "action_bar"),
                 ActionBarOverlay.INSTANCE);
@@ -39,6 +44,11 @@ public class ModClientEvents {
 
         @Override
         public void render(GuiGraphicsExtractor guiGraphics, DeltaTracker deltaTracker) {
+            // F1（隐藏 HUD）守卫:与 TargetSelectOverlay 同源（条件与理由见该文件注释）——
+            // 26.1.2 原版只把**原版层**包进 `guiVisible`、模组层不被包裹（GuiLayerManager.java:36-39）
+            // ⇒ 必须自行守,否则按 F1 时本模组 actionbar 提示仍显示。
+            Minecraft mc = Minecraft.getInstance();
+            if (mc.options.hideGui && mc.screen == null) return;
             ActionBarManager.render(guiGraphics, deltaTracker);
         }
     }

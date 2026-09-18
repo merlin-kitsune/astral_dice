@@ -642,6 +642,7 @@
   "hud.astral_dice.target_select.tag.pet": "Pet",
   "hud.astral_dice.target_select.tag.neutral": "Neutral",
   "hud.astral_dice.target_select.tag.player": "Player",
+  "hud.astral_dice.target_select.target": "Target: %s (%s blocks)",
   "msg.astral_dice.target_select.self_unsupported": "This skill cannot be used on yourself",
   "msg.astral_dice.target_select.no_target": "No valid target",
   "msg.astral_dice.target_select.cancelled": "Target selection cancelled",

@@ -642,6 +642,7 @@
   "hud.astral_dice.target_select.tag.pet": "宠物",
   "hud.astral_dice.target_select.tag.neutral": "中立",
   "hud.astral_dice.target_select.tag.player": "玩家",
+  "hud.astral_dice.target_select.target": "目标：%s（%s 格）",
   "msg.astral_dice.target_select.self_unsupported": "该技能无法对自己使用",
   "msg.astral_dice.target_select.no_target": "没有可指定的目标",
   "msg.astral_dice.target_select.cancelled": "已取消目标选择",
