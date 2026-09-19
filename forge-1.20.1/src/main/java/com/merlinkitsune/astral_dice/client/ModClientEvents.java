@@ -132,7 +132,8 @@ public class ModClientEvents {
                 int color = (alpha << 24) | (number.color & 0xFFFFFF);
                 int yOffset = -(int) (progress * 30);
 
-                String text = "+" + number.damage;
+                // 数显只给数值、不加 "+" 前缀(2026-09-19 用户要求:攻击伤与法伤一并移除)
+                String text = Integer.toString(number.damage);
                 int textWidth = mc.font.width(text);
                 poseStack.pushPose();
                 poseStack.translate(x - textWidth / 2.0f, y + yOffset, 0);
