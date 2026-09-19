@@ -1301,6 +1301,7 @@ function Invoke-MtEnvMods {
         Write-MtLine 'MT_MODS: OK — 26.1.2 dev run：探针运行时 + Sodium/Iris + Complementary Unbound 光影(默认启用) + 超平坦史莱姆压制 + 优化模组(ImmediatelyFast/ModernFix/FerriteCore)'
         Write-MtLine 'MT_MODS: 注意 — Sodium/Iris/ImmediatelyFast 为纯客户端模组：`mt_env world` 起专用服务器会自动移出，但**两段式数据生成（runClientData/runServerData）前必须手动移出** run/26.1.2/mods（与探针运行时同规则）'
         [void](Invoke-MtPauseLockEnforce -Paths $p)
+    [void](Invoke-MtKeyBindingEnforce -Paths $p)
         return 0
     }
 
@@ -1324,6 +1325,7 @@ function Invoke-MtEnvMods {
         if ($rc -ne 0) { return $rc }
         Write-MtLine 'MT_MODS: OK — 1.20.1 渲染栈（Embeddium/Oculus）与 FerriteCore 由 build.gradle 的 modImplementation 提供、光影包与光影加载器配置已落位（2026-09-17 实测：EMBEDDIUM_LOADED/OCULUS_LOADED=true + `Using shaderpack: ComplementaryUnbound_r5.9.3.zip`）；生产环境目录已校验'
         [void](Invoke-MtPauseLockEnforce -Paths $p)
+    [void](Invoke-MtKeyBindingEnforce -Paths $p)
         return 0
     }
 
@@ -1369,6 +1371,7 @@ function Invoke-MtEnvMods {
     if ($rc -ne 0) { return $rc }
     Write-MtLine 'MT_MODS: 提示 — ImmediatelyFast 为纯客户端：`mt_env world` 起专用服务器会自动移出；FerriteCore 两侧皆可，保留'
     [void](Invoke-MtPauseLockEnforce -Paths $p)
+    [void](Invoke-MtKeyBindingEnforce -Paths $p)
     return 0
 }
 
@@ -1430,11 +1433,40 @@ function Invoke-MtPauseLockEnforce {
     return $on
 }
 
+function Invoke-MtKeyBindingEnforce {
+    <#
+    .SYNOPSIS
+        测试环境按键绑定不变量：把 `Get-MtTestKeyBindings` 里的一对（潜行/冲刺）幂等改回期望值，
+        并回显 `MT_KEYBINDS: OK` / `MT_KEYBINDS: REPAIRED …`。
+
+    .NOTES
+        2026-09-19 实测踩坑：`run/1.21.1/options.txt` 的 sneak/sprint 被换绑后，
+        「右键 + 潜行 = 取消」用例（SELECTOR-KEYS）注入的 LEFT SHIFT 被游戏当成**冲刺**，
+        客户端始终走「右键 = 自用提示」分支 ⇒ 断言 `key=right_sneak action=cancel` 稳定失败，
+        而与工具链无关的 1.20.1（绑定未变）同一用例全绿 —— 这类环境漂移**只能靠不变量挡住**。
+        查询入口：`mt_env.ps1 debug --version <V> --keybinds status`。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][psobject]$Paths)
+
+    $fixed = @(Repair-MtTestKeyBindings -Paths $Paths)
+    $path = Join-Path $Paths.run_dir 'options.txt'
+    if ($fixed.Count -eq 0) {
+        Write-MtLine ("MT_KEYBINDS: OK — 潜行/冲刺绑定未被改动（{0}）" -f $path)
+    } else {
+        $detail = ($fixed | ForEach-Object {
+                '{0}:{1}→{2}' -f $_.Key, $(if ($null -eq $_.From -or $_.From -eq '') { '(缺失)' } else { $_.From }), $_.To
+            }) -join '; '
+        Write-MtWarn ("MT_KEYBINDS: REPAIRED — 测试环境按键绑定被改动过，已改回期望值：{0}（{1}）" -f $detail, $path)
+    }
+    return $fixed
+}
+
 function Invoke-MtEnvDebug {
     <#
     .SYNOPSIS
         全局调试/测试环境开关子命令（三条线同一入口）：
-        `mt_env.ps1 debug --version <V> [--pause-lock on|off|status] [--shaders on|off|status]`。
+        `mt_env.ps1 debug --version <V> [--pause-lock on|off|status] [--shaders on|off|status] [--keybinds status|repair]`。
 
     .DESCRIPTION
         2026-09-17 用户要求「添加全局调试命令，禁止游戏失焦打开 ESC 菜单」。本子命令是这些
@@ -1442,17 +1474,20 @@ function Invoke-MtEnvDebug {
           · `--pause-lock on`  → `options.txt` `pauseOnLostFocus:false`（**默认期望值**：禁止失焦弹 ESC 菜单）
             `--pause-lock off` → 写回 true（对照实验用；会明确 WARN，因为之后注入/截图可能失效）
           · `--shaders on|off|status` → 透传到 `Invoke-MtEnvShaders`（路径按版本取：Iris 线 = config/iris.properties，1.20.1 = Oculus 的 config/oculus.properties）
-        不带任何开关时只**回显当前状态**（等效于两个都 status）。
+          · `--keybinds status|repair` → 潜行/冲刺绑定不变量（2026-09-19 新增）：`status` 只读回显
+            「当前值 vs 期望值」，`repair` 幂等改回期望值；env 阶段每次都会自动 repair
+        不带任何开关时只**回显当前状态**（等效于都给 status）。
 
     .NOTES
-        ⚠️ 游戏退出时会重写 `options.txt`，故 pause-lock 必须在**冷启动之前**设置；
-        mt_launch 每次启动前也会自动强制一次，本命令用于「先设好、再手工启动」或事后核对。
+        ⚠️ 游戏退出时会重写 `options.txt`，故 pause-lock / keybinds 必须在**冷启动之前**设置；
+        mt_launch 每次启动前也会自动强制 pause-lock，本命令用于「先设好、再手工启动」或事后核对。
     #>
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][string]$Version,
         [string]$PauseLock = 'status',
-        [string]$Shaders = 'status'
+        [string]$Shaders = 'status',
+        [string]$Keybinds = 'status'
     )
 
     $Paths = Get-MtPaths -Version $Version
@@ -1476,6 +1511,27 @@ function Invoke-MtEnvDebug {
     $pauseText = if ($null -eq $pauseState) { '(未设置/options.txt 不存在)' }
     elseif (-not $pauseState) { 'on (pauseOnLostFocus=false)' } else { 'off (pauseOnLostFocus=true)' }
     Write-MtLine ("MT_DEBUG: {0} pause-lock={1}" -f $Version, $pauseText)
+
+    if ($Keybinds -eq 'repair') {
+        [void](Invoke-MtKeyBindingEnforce -Paths $Paths)
+    } elseif ($Keybinds -eq 'status') {
+        $drift = @()
+        foreach ($k in @((Get-MtTestKeyBindings).Keys)) {
+            $want = [string](Get-MtTestKeyBindings)[$k]
+            $have = Get-MtKeyBinding -Paths $Paths -Key $k
+            $haveText = if ($null -eq $have -or $have -eq '') { '(未设置)' } else { $have }
+            if ($have -ne $want) { $drift += ('{0}:{1}（期望 {2}）' -f $k, $haveText, $want) }
+        }
+        if ($drift.Count -eq 0) {
+            Write-MtLine ("MT_DEBUG: {0} keybinds=OK（潜行/冲刺绑定为期望值）" -f $Version)
+        } else {
+            Write-MtWarn ("MT_DEBUG: {0} keybinds=DRIFT — {1}；用 `--keybinds repair` 或重跑 `mt_env world/mods` 改回" -f `
+                    $Version, ($drift -join '; '))
+        }
+    } else {
+        Write-MtErrorLine ("非法 --keybinds {0}（可选：status repair）" -f $Keybinds)
+        return $MT_EXIT_ERROR
+    }
 
     if ($Shaders -ne 'status') {
         $src = Invoke-MtEnvShaders -Version $Version -State $Shaders
@@ -1699,6 +1755,8 @@ if ($MyInvocation.InvocationName -ne '.') {
     $ShaderState = 'status'
     # 全局调试子命令的开关（2026-09-17）：pause-lock = 禁止失焦打开 ESC 菜单（见 Invoke-MtEnvDebug）
     $PauseLockState = 'status'
+    # 测试环境按键绑定不变量（2026-09-19）：潜行/冲刺绑定漂移会让 `--shift` 注入语义错位
+    $KeybindState = 'status'
 
     $i = 0
     while ($i -lt $args.Count) {
@@ -1721,6 +1779,10 @@ if ($MyInvocation.InvocationName -ne '.') {
         } elseif ($key -eq 'pause-lock') {
             if ($i + 1 -ge $args.Count) { Write-MtErrorLine '缺少 --pause-lock 的值'; exit $MT_EXIT_ERROR }
             $PauseLockState = ([string]$args[$i + 1]).ToLowerInvariant()
+            $i += 2
+        } elseif ($key -eq 'keybinds') {
+            if ($i + 1 -ge $args.Count) { Write-MtErrorLine '缺少 --keybinds 的值'; exit $MT_EXIT_ERROR }
+            $KeybindState = ([string]$args[$i + 1]).ToLowerInvariant()
             $i += 2
         } elseif ($key -eq 'timeout') {
             if ($i + 1 -ge $args.Count) { Write-MtErrorLine '缺少 --timeout 的值'; exit $MT_EXIT_ERROR }
@@ -1746,7 +1808,7 @@ if ($MyInvocation.InvocationName -ne '.') {
         'kubejs' { exit (Invoke-MtEnvKubejs -Version $Version) }
         'world' { exit (Invoke-MtEnvWorld -Version $Version -Seed $SeedFlag -Timeout $TimeoutSec) }
         'shaders' { exit (Invoke-MtEnvShaders -Version $Version -State $ShaderState) }
-        'debug' { exit (Invoke-MtEnvDebug -Version $Version -PauseLock $PauseLockState -Shaders $ShaderState) }
+        'debug' { exit (Invoke-MtEnvDebug -Version $Version -PauseLock $PauseLockState -Shaders $ShaderState -Keybinds $KeybindState) }
         'kill' {
             [void](Stop-MtVersionProcesses -Paths (Get-MtPaths -Version $Version))
             exit $MT_EXIT_PASS

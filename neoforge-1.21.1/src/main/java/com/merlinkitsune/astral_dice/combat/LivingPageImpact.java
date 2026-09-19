@@ -1,5 +1,6 @@
 package com.merlinkitsune.astral_dice.combat;
 
+import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.damage.ModDamageTypes;
 import com.merlinkitsune.astral_dice.item.MarkManager;
 import com.merlinkitsune.astral_dice.item.card.EffectCardPeriod;
@@ -15,14 +16,17 @@ import net.minecraft.world.entity.LivingEntity;
  * <ol>
  *   <li><b>先读</b>目标当前标记层数({@code markBefore}) —— 连续出牌判定的口径是「本次命中施加 1 层**之前**」
  *       的层数(用户裁决 A:从 0 层起需第 4 次命中才首次触发);</li>
- *   <li>算本次伤害 = {@link SpellDamageRegistry#livingPageImpactDamage} = 基础 2 + 调查员已用页数
- *       + 伤害效果牌统一加成(忍者立牌 + 书签);本次使用已在出牌时把页数 +1 ⇒ 该值**自含本次**;</li>
+ *   <li>算本次伤害 = {@link SpellDamageRegistry#livingPageImpactDamage} = 基础 2 + **此前已命中**的页数
+ *       + 伤害效果牌统一加成(忍者立牌 + 书签);⚠️ 本次使用带来的那一页**不在其中**
+ *       (2026-09-19 用户裁决「先执行伤害,后施加标记,最后使活体书页伤害+1」⇒ 首张固定 2,其后 3/4/…);</li>
  *   <li>以 {@link ModDamageTypes#cardSpell} **登记为法伤**结算基础值:命中
  *       {@code event/DamageEffectCardHandler} 的作用域判定后,自动跑**完整**法伤修饰器链
  *       (忍术飞镖 +目标标记层数 / 贯穿之铳 +目标防御力 / 紫晶骰子 +d6 / 标记喷罐 onHit 加层 /
  *       魔法箭袋 onHit 触发 / 忍者立牌 + 书签效果牌加成);加成部分仍按既有口径以**独立真伤**结算;</li>
  *   <li>跳命中伤害数字(**法伤绿**,与加成跳字同色;见 {@link #SPELL_DAMAGE_COLOR});</li>
  *   <li>施加本牌自带的 1 层标记(标记类筹码的 onHit 加层照旧额外生效,与旧口径一致);</li>
+ *   <li><b>最后</b>补记「调查员已用页数」+1({@code ModAttachments#setRinPages}) —— 本次的 +1 只影响
+ *       **后续**命中;未命中(目标中途死亡/失效/换维度/超龄)不计页数;</li>
  *   <li>仅当 {@code markBefore >= 3} 时补记本出牌周期出牌数 +1
  *       ({@link EffectCardPeriod#grantLivingPageCycleBonus},内部已含跨轮保护与全局封顶 9)。</li>
  * </ol>
@@ -73,7 +77,11 @@ public final class LivingPageImpact {
         com.merlinkitsune.astral_dice.network.DamageNumberPayload.send(target, base, SPELL_DAMAGE_COLOR);
         // 5. 命中施加 1 层标记
         MarkManager.apply(target);
-        // 6. 连续出牌:仅命中前已 ≥3 层标记的目标
+        // 6. ★ 最后补记「调查员已用页数」+1(2026-09-19 用户裁决「先执行伤害,后施加标记,最后使活体书页伤害+1」):
+        //    本次伤害在第 2 步算完时**不含**这一页 ⇒ 首张命中固定 2(与 tooltip 显示一致),
+        //    这一页只让**后续**命中 +1。补记放在命中结算的最后,故未命中的书页不计页数。
+        ModAttachments.setRinPages(caster, ModAttachments.getRinPages(caster) + 1);
+        // 7. 连续出牌:仅命中前已 ≥3 层标记的目标
         if (markBefore >= 3) {
             EffectCardPeriod.grantLivingPageCycleBonus(caster);
         }

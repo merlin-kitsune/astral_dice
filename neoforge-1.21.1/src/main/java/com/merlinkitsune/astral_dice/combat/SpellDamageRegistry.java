@@ -171,7 +171,8 @@ public final class SpellDamageRegistry {
      *
      * <p><b>伤害结算与 tooltip 显示统一走本方法</b>(与 {@code effectCardDamageBonus} 同一口径):
      * 命中结算见 {@link LivingPageImpact#resolve},tooltip 见 {@code event/ModTooltipHandler}。
-     * 页数在**使用书页时**就已 +1 ⇒ 本值自含本次使用。
+     * 页数在**命中结算的最后**才 +1(2026-09-19 用户裁决「先执行伤害,后施加标记,最后使活体书页伤害+1」)
+     * ⇒ <b>本值不含本次使用</b>:首张命中 = 2,tooltip 与实际命中数值一致。
      */
     public static int livingPageImpactDamage(net.minecraft.world.entity.player.Player attacker) {
         if (attacker == null) return LivingPageImpact.BASE_DAMAGE;

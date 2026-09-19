@@ -612,12 +612,19 @@ public final class TargetSelectionClient {
                 Component.translatable("msg.astral_dice.effect_card_burst_full", seconds), true);
     }
 
-    /** 选择期间拦截滚轮（防切栏/缩放等） */
+    /**
+     * 选择期间拦截滚轮(防切栏/缩放等) —— **「手持即选择」类会话例外**(2026-09-19 用户报告并裁决)。
+     *
+     * <p>立牌主动的会话是「按键开局」的:拦滚轮可避免换槽顺手把会话弄没。
+     * 但效果牌走的是「手持即选择」——主手拿着牌就自动开会话,此时**滚轮必须可用**:
+     * 玩家正是靠滚轮换到别的槽位把牌换下主手来收官(见 {@code target/HoldToSelect#stillHeld}),
+     * 拦滚轮等于把牌焊在手上(用户报告:可释放时滚轮不可用)。
+     */
     @SubscribeEvent
     public static void onMouseScroll(InputEvent.MouseScrollingEvent event) {
-        if (isActive()) {
-            event.setCanceled(true);
-        }
+        if (!isActive()) return;
+        if (holdToSelect) return;
+        event.setCanceled(true);
     }
 
     /**

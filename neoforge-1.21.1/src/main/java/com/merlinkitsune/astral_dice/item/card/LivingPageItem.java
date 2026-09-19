@@ -63,8 +63,11 @@ public class LivingPageItem extends BaseEffectCardItem {
     protected void applyEffect(Level level, Player user, LivingEntity applyTo, ItemStack stack) {
         // 专属牌:绑定获得者(发放路径已绑定本人;指令/创造栏等未绑定副本在此兜底,首位使用者即获得者)
         ExclusiveCardUtil.bindIfAbsent(stack, user);
-        // 调查员(rin)已使用数量 +1(永久、无上限;用于命中伤害 = 2 + 已用页数);这是累计页数,不是本周期出牌数
-        ModAttachments.setRinPages(user, ModAttachments.getRinPages(user) + 1);
+        // ⚠️ 「调查员已用页数」**不在这里 +1**(2026-09-19 用户裁决「先执行伤害,后施加标记,最后使活体书页伤害+1」):
+        //    出牌时就 +1 会让**本次命中**把这一页算进伤害(实测首张 = 3 而非 2,且 tooltip 显示的 2 与实际不符)。
+        //    现改为在命中结算的**最后**由 {@code combat/LivingPageImpact#resolve} 补记 ⇒
+        //    本次伤害只含「此前已命中」的页数,本次的 +1 留给后续命中(首张固定 2,其后 3/4/…)。
+        //    副作用(有意):未命中的书页(目标中途死亡/失效)不计页数。
         // ⚠️ 本牌**不给玩家任何效果**(2026-09-19 用户裁决「不应该有持续效果,应转换为及时伤害,移除所有原本效果器」):
         //    曾用的 1:00 「活体书页」标记效果已整段移除(也不再作为忍术飞镖/贯穿之铳/出牌锁的判据 ——
         //    前者改判本次伤害类型 `astral_dice:card_spell`,后者无需等待任何持续效果)。

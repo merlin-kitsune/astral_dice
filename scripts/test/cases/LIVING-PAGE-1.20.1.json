@@ -624,6 +624,63 @@
     {
       "op": "wait",
       "ms": 900
+    },
+    {
+      "op": "note",
+      "text": "回归钉子 C(滚轮不得锁死;2026-09-19 用户报告并裁决):效果牌是「手持即选择」—— 主手拿着牌就自动开会话,此时**滚轮必须可用**(玩家靠滚轮换槽把牌换下主手来收官)。做法:先用 `inject_key 1` 把选中槽位定到 0,`lpprep` 把牌放进主手(会话自动开启),`diag` 读得 `selectedSlot=0`;再注入**一档真实滚轮**(`inject_mouse wheel`,向下 = 槽位 +1)⇒ 读数必须变成 **1**,且会话按「移出手持」自行收官(debug 落 `cancel (released)`)。⚠️ 对照:立牌主动(按键开局)会话仍**拦**滚轮,由 `SELECTOR-KEYS-*` 的 ⑥-a/⑥-b 覆盖,本次未改动该分支。"
+    },
+    {
+      "op": "inject_key",
+      "key": "1"
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe lpprep SW0 \"minecraft:spider\" 6 0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe diag SW1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_mouse",
+      "button": "wheel",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe diag SW2",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe lpclean SW9",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
     }
   ],
   "asserts": [
@@ -760,12 +817,12 @@
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_LI2_READ:.*:dummy=hp=13(\\.0)?:max=16(\\.0)?:mark=1:dmg=3(\\.0)?:"
+      "pattern": "AP_LI2_READ:.*:dummy=hp=14(\\.0)?:max=16(\\.0)?:mark=1:dmg=2(\\.0)?:"
     },
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_LI3_READ:.*:dummy=hp=12(\\.0)?:max=16(\\.0)?:mark=1:dmg=4(\\.0)?:"
+      "pattern": "AP_LI3_READ:.*:dummy=hp=13(\\.0)?:max=16(\\.0)?:mark=1:dmg=3(\\.0)?:"
     },
     {
       "type": "log",
@@ -846,6 +903,21 @@
       "type": "log",
       "source": "latest",
       "pattern": "AP_LZ8_CLEAN:discarded=1:unbuilt=\\d+:sel=0:credit=0:plays=0:cards=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_SW1_DIAG:selectedSlot=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_SW2_DIAG:selectedSlot=1"
+    },
+    {
+      "type": "log",
+      "source": "debug",
+      "pattern": "\\[Astral Dice\\]\\[TargetSelectionClient\\] cancel \\(released\\) token=\\d+"
     },
     {
       "type": "absent",
