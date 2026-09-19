@@ -41,12 +41,20 @@ import com.merlinkitsune.starenginelib.target.TargetType;
  *    移出即取消且**无倒计时**；其余动作（立牌主动）按选择窗口超时取消（{@link TickEvent.PlayerTickEvent}）。
  *    玩家登出 / 死亡一律自动清除。
  *
- * 距离上限一律取配置 {@link GameplayConstants#TARGET_SELECT_RADIUS}（默认 16，配置范围 1..32），
- * 客户端射线半径仅用于 UX，服务端确认时按配置值二次校验。
+ * 距离上限:动作可通过 {@link TargetSelectionAction#radius()} 声明自己的锁定范围,未声明者取配置
+ * {@link GameplayConstants#TARGET_SELECT_RADIUS}（默认 16，配置范围 1..32）;两者一律按前置库契约的
+ * **32 格上限**夹取（配置上限不可突破），且**含垂直高度差**（用 {@link ServerPlayer#distanceToSqr} 的三维距离）。
+ * 客户端射线半径仅用于 UX，服务端确认时按**本会话实际授予的半径**二次校验。
  */
 @Mod.EventBusSubscriber(modid = AstralDiceMod.MODID)
 public final class TargetSelectionManager {
     private static final Logger LOGGER = LoggerFactory.getLogger(TargetSelectionManager.class);
+
+    /**
+     * 选择半径的**契约上限**（格）。前置库 {@code TargetSelectionAction#radius()} 的契约写明
+     * 「配置上限 32 不可突破」，故显式声明更大范围的动作用本值夹取；配置值仍是**缺省**范围。
+     */
+    private static final double MAX_SELECT_RADIUS = 32.0D;
 
     /** 选择会话（纯内存，瞬态） */
     public static final class Session {
@@ -154,7 +162,10 @@ public final class TargetSelectionManager {
             return false;
         }
         int token = ThreadLocalRandom.current().nextInt(1, Integer.MAX_VALUE);
-        double radius = Math.max(1.0, Math.min(action.radius(), GameplayConstants.TARGET_SELECT_RADIUS));
+        // 该会话的锁定范围 = 动作声明的范围(缺省 = 配置值),按契约上限 32 格夹取。
+        // ⚠️ 这里**不能**再用配置值当硬上限:配置是「缺省范围」,而活体书页显式声明 32 格
+        // (2026-09-19 用户要求),若仍按配置默认 16 夹取,声明的 32 会被静默截半。
+        double radius = Math.max(1.0, Math.min(action.radius(), MAX_SELECT_RADIUS));
         // 对自身使用的唯一来源（消费方侧接口，不改前置库）：实现 SelfTargetable 的动作才为 true
         // （当前 allowSelf=true 的动作 = ren_privilege 与三张可自用效果牌 express_delivery / luxury_feast / berserk；其余动作缺省 false）。
         boolean allowSelf = action instanceof SelfTargetable selfTargetable && selfTargetable.allowSelf();
@@ -210,7 +221,10 @@ public final class TargetSelectionManager {
             return;
         }
         double distSq = player.distanceToSqr(target);
-        double maxDist = GameplayConstants.TARGET_SELECT_RADIUS;
+        // 服务端确认校验按**本会话实际授予的半径**（= 动作声明值夹取后的结果）执行；
+        // 取 max(配置, 会话半径) ⇒ 对既有动作**绝不比改动前更严**（旧写法恒用配置值），
+        // 同时让「活体书页 32 格」在确认这一步不被配置默认值 16 拦下（2026-09-19）。
+        double maxDist = Math.max(GameplayConstants.TARGET_SELECT_RADIUS, session.radius);
         if (distSq > maxDist * maxDist) {
             LOGGER.warn("[Astral Dice][TargetSelection] confirm FAIL: target_too_far player={} token={} target={}({}) dist={} max={}",
                     player.getName().getString(), token, targetId, target.getName().getString(),

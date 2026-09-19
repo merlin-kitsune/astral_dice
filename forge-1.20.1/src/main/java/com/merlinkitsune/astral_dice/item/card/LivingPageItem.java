@@ -19,7 +19,7 @@ import net.minecraft.world.level.Level;
  * 走既有「手持即选择」约定:主手手持即自动进入选择会话、**无倒计时**、移出手持即关闭、
  * 未确认不消耗卡牌(见 {@link BaseEffectCardItem#tickHeldSelector});确认目标后:
  * <ol>
- *   <li>调查员已使用数量 +1(永久、无上限;命中伤害基数 = 2 + 该计数);</li>
+ *   <li>调查员已使用数量 +1(永久累计;命中伤害基数 = 2 + 该计数,作为加成生效时静默上限 120);</li>
  *   <li>登记一次飞行打击({@link LivingPageFlightScheduler}):书页以箭矢 4/5 的速度飞向目标,
  *       逐 tick 跟踪修正航线、必定命中、可穿透方块;</li>
  *   <li>命中:造成 2 + 调查员已用页数 点伤害(**登记为法伤**,受全部法伤加成影响)并施加 1 层标记;
@@ -35,9 +35,18 @@ public class LivingPageItem extends BaseEffectCardItem {
     /** 目标选择器动作 id(与效果注册 id 一致;actionbar 技能名键 = `msg.astral_dice.target_select.skill.living_page`) */
     private static final String ACTION_ID = "living_page";
 
+    /**
+     * 锁定范围(格)= **32**,三维距离(**含垂直高度差**,不是水平圆盘)。
+     *
+     * <p>2026-09-19 用户要求「增加活体书页锁定范围,增加到 32 格(包括垂直距离)」。该值一次性决定
+     * 客户端的准星射线长度、半径内高亮范围与服务端「距目标多远还能确认」的上限(三处同一 radius);
+     * 服务端 {@code target/TargetSelectionManager} 会按前置库契约夹取(上限 32),故此处直接取契约上限。
+     */
+    private static final double LOCK_RANGE = 32.0D;
+
     static {
-        // 敌对目标选择器(2026-09-25):仅敌对目标可选,不可对自己使用
-        registerSelectorAction(ACTION_ID, TargetType.ENEMY, false);
+        // 敌对目标选择器(2026-09-25):仅敌对目标可选,不可对自己使用;锁定范围 32 格(2026-09-19)
+        registerSelectorAction(ACTION_ID, TargetType.ENEMY, false, LOCK_RANGE);
     }
 
     public LivingPageItem(Properties properties) {

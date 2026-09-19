@@ -136,6 +136,24 @@ public final class SpellDamageRegistry {
     }
 
     /**
+     * 立牌「效果牌伤害加成」的**静默安全上限**(2026-09-19 用户要求「增加忍者立牌和调查员立牌的
+     * 效果牌伤害加成上限,设置为 120,**不说明不提示**」)。
+     *
+     * <p>只做**数值夹取**,不新增任何 UI 文案 / actionbar 提示 / tooltip 说明 / lang 键:超过该值后
+     * 继续按 {@value #SIGN_DAMAGE_BONUS_CAP} 计入,玩家侧只看到数值不再增长。
+     * 覆盖两个来源:忍者立牌 {@code komachi_damage_bonus}(见 {@link #effectCardDamageBonus})与
+     * 调查员立牌累计页数 {@code rin_pages}(见 {@link #livingPageBonusPages});
+     * 书签筹码的固定加成**不在**此列(用户只点名两个立牌)。
+     * ⚠️ tooltip 显示与伤害结算同源(两处都走上面两个方法),故显示值同样是夹取后的值 —— 两处始终一致。
+     */
+    public static final int SIGN_DAMAGE_BONUS_CAP = 120;
+
+    /** 把**立牌来源**的伤害加成夹到 {@link #SIGN_DAMAGE_BONUS_CAP} 以内(负值按 0;只读、无副作用) */
+    public static int cappedSignDamageBonus(int raw) {
+        return Math.max(0, Math.min(raw, SIGN_DAMAGE_BONUS_CAP));
+    }
+
+    /**
      * 伤害效果牌的统一伤害加成(不含各牌自身基础值):
      * 忍者立牌「效果牌伤害增益」计数(附件 {@code komachi_damage_bonus})
      * + 书签筹码固定 +{@link com.merlinkitsune.astral_dice.item.chip.BookmarkChipItem#DAMAGE_BONUS}(装备时)。
@@ -147,8 +165,10 @@ public final class SpellDamageRegistry {
         if (attacker == null) return 0;
         // 忍者立牌的伤害增益只在**佩戴立牌**时生效(2026-09-15 裁决):死亡保留的累计值不因
         // "立牌死亡掉落、尚未重新装备"而继续加成。故此处统一按佩戴判定,勿在别处直接读原值。
-        int komachi = com.merlinkitsune.astral_dice.item.sign.KomachiSignItem.isEquipped(attacker)
-                ? ModAttachments.getKomachiDamageBonus(attacker) : 0;
+        // 超过 {@link #SIGN_DAMAGE_BONUS_CAP} 的部分不生效(静默夹取,2026-09-19)。
+        int komachi = cappedSignDamageBonus(
+                com.merlinkitsune.astral_dice.item.sign.KomachiSignItem.isEquipped(attacker)
+                        ? ModAttachments.getKomachiDamageBonus(attacker) : 0);
         return komachi
                 + com.merlinkitsune.astral_dice.item.chip.BookmarkChipItem.damageBonus(attacker);
     }
@@ -157,11 +177,13 @@ public final class SpellDamageRegistry {
      * 活体书页的**有效**累计页数:只在佩戴调查员立牌时计入(2026-09-15 裁决,与
      * {@link #effectCardDamageBonus} 同一口径)。伤害结算与 tooltip 显示统一走本方法,
      * 禁止在别处直接读 {@code rin_pages} 原值来做加成或显示加成。
+     *
+     * <p>超过 {@link #SIGN_DAMAGE_BONUS_CAP} 的部分不生效(静默夹取,2026-09-19)。
      */
     public static int livingPageBonusPages(net.minecraft.world.entity.player.Player attacker) {
         if (attacker == null) return 0;
-        return com.merlinkitsune.astral_dice.item.sign.RinSignItem.isEquipped(attacker)
-                ? ModAttachments.getRinPages(attacker) : 0;
+        return cappedSignDamageBonus(com.merlinkitsune.astral_dice.item.sign.RinSignItem.isEquipped(attacker)
+                ? ModAttachments.getRinPages(attacker) : 0);
     }
 
     /**

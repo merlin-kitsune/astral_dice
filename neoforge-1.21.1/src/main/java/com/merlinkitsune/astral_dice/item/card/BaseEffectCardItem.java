@@ -156,8 +156,10 @@ public abstract class BaseEffectCardItem extends Item {
      * 各类使用钩子与卡牌消耗全部推迟到确认目标之后**(见 {@link SelectorAction#apply});
      * 取消 / 移出手持 / 会话被替换 / 登出 / 死亡 ⇒ 待执行记录被清除,该次出牌等同「未使用」
      * (卡牌不消耗)。**目标类型由注册时传入**(见 {@link #registerSelectorAction(String, TargetType, boolean)},
-     * 缺省 {@link TargetType#PLAYER});半径取配置统一值
-     * ({@link GameplayConstants#TARGET_SELECT_RADIUS});是否允许对自身使用由 {@code allowSelf} 决定。
+     * 缺省 {@link TargetType#PLAYER});半径缺省取配置统一值
+     * ({@link GameplayConstants#TARGET_SELECT_RADIUS}),亦可由注册时显式声明(见
+     * {@link #registerSelectorAction(String, TargetType, boolean, double)});是否允许对自身使用由
+     * {@code allowSelf} 决定。
      */
     public String selectorActionId() {
         return null;
@@ -179,9 +181,26 @@ public abstract class BaseEffectCardItem extends Item {
      * <p>可选中判定统一走 {@code target/SelectorTargets#matches} ⇒ 传 {@link TargetType#ENEMY}
      * 即本模组全局的「敌对目标」口径(敌对生物 ∪ 已被激怒的中立生物,**不含玩家**),
      * 客户端准星过滤 / 半径高亮 / 服务端确认三处同一判据。
+     *
+     * <p>半径缺省 = 配置统一值({@link GameplayConstants#TARGET_SELECT_RADIUS});需要**更大**锁定范围
+     * 的牌用四参重载显式声明(上限 = 前置库契约的 32 格,见
+     * {@link #registerSelectorAction(String, TargetType, boolean, double)})。
      */
     protected static void registerSelectorAction(String actionId, TargetType targetType, boolean allowSelf) {
-        TargetSelectionRegistry.register(new SelectorAction(actionId, targetType, allowSelf));
+        TargetSelectionRegistry.register(new SelectorAction(actionId, targetType, allowSelf, -1.0D));
+    }
+
+    /**
+     * 目标选择器动作注册入口(显式目标类型 + 显式锁定范围;2026-09-19「活体书页 32 格」新增)。
+     *
+     * @param radius 该动作的锁定范围(格),{@code <= 0} = 用配置统一值。**该值同时决定**
+     *               客户端准星射线长度 / 半径高亮范围 / 「距目标多远还能确认」,且是**三维距离**
+     *               (含垂直高度差);服务端 {@code target/TargetSelectionManager} 会把它夹到
+     *               前置库契约的上限 32 格(见该类 start/confirm 的注释)。
+     */
+    protected static void registerSelectorAction(String actionId, TargetType targetType, boolean allowSelf,
+                                                 double radius) {
+        TargetSelectionRegistry.register(new SelectorAction(actionId, targetType, allowSelf, radius));
     }
 
     /**
@@ -206,11 +225,14 @@ public abstract class BaseEffectCardItem extends Item {
         private final String actionId;
         private final TargetType targetType;
         private final boolean allowSelf;
+        /** 显式声明的锁定范围(格);{@code <= 0} = 用前置库配置统一值 */
+        private final double declaredRadius;
 
-        private SelectorAction(String actionId, TargetType targetType, boolean allowSelf) {
+        private SelectorAction(String actionId, TargetType targetType, boolean allowSelf, double declaredRadius) {
             this.actionId = actionId;
             this.targetType = targetType == null ? TargetType.PLAYER : targetType;
             this.allowSelf = allowSelf;
+            this.declaredRadius = declaredRadius;
         }
 
         @Override
@@ -221,6 +243,13 @@ public abstract class BaseEffectCardItem extends Item {
         @Override
         public TargetType targetType() {
             return targetType;
+        }
+
+        @Override
+        public double radius() {
+            // 缺省（未显式声明）沿用前置库接口默认值 = 配置 TARGET_SELECT_RADIUS；
+            // 显式声明者原样返回，由 TargetSelectionManager 按契约上限 32 夹取。
+            return declaredRadius > 0.0D ? declaredRadius : TargetSelectionAction.super.radius();
         }
 
         @Override

@@ -38,7 +38,8 @@ import java.util.List;
  *       —— 恒亮光照下法线不参与着色，取值仅按口径固定；</li>
  *   <li>渲染 stage = {@code AFTER_ENTITIES}（Sodium 不整体替换 {@code LevelRenderer.renderLevel}、
  *       Iris 保留事件点，与既有验证一致）；</li>
- *   <li>线宽三档：命中目标 1/16、命中但不可选 1/24、半径内其它可选目标 1/64（取最近 ≤24 个）；</li>
+ *   <li>线宽三档：命中目标 1/16、命中但不可选 1/24、半径内其它可选目标 **1/128**（取最近 ≤24 个；
+ *       第三档于 2026-09-19 由 1/64 收细一半，加大「已指向 / 未指向」的区分度）；</li>
  *   <li>框所套的盒 = **可见外框**（碰撞盒 ∪ {@link TargetOutlineCapture} 实测的模型外框）再外扩半线宽
  *       —— 不直接用碰撞盒（1.21.1 无覆盖模型外框的原版 API，详见 {@link TargetOutlineCapture} 的根因说明）。</li>
  * </ul>
@@ -51,10 +52,10 @@ public final class TargetSelectionHighlighter {
     private static final ResourceLocation BLANK_TEXTURE =
             ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID, "textures/special/blank.png");
 
-    /** 线宽三档（半宽 = 线宽 / 2） */
+    /** 线宽三档（半宽 = 线宽 / 2）—— 2026-09-19「未指向的目标外框变细」把第三档由 1/64 收到 1/128 */
     private static final float WIDTH_HIT = 1.0F / 16.0F;
     private static final float WIDTH_HIT_REJECTED = 1.0F / 24.0F;
-    private static final float WIDTH_NEARBY = 1.0F / 64.0F;
+    private static final float WIDTH_NEARBY = 1.0F / 128.0F;
 
     /**
      * 底部抬升余量（格）：下棱最低点抬到可见外框底面（≈ 脚底 / 地面方块顶面）之上，
@@ -144,6 +145,18 @@ public final class TargetSelectionHighlighter {
         double bottom = Math.min(outline.minY + h + BOTTOM_LIFT, outline.maxY + h);
         return new AABB(outline.minX - h, bottom, outline.minZ - h,
                 outline.maxX + h, outline.maxY + h, outline.maxZ + h);
+    }
+
+    /**
+     * 「已指向」判定所用的外框盒 —— 与渲染**同一个盒**（线宽取命中档 {@link #WIDTH_HIT}）。
+     *
+     * <p>2026-09-19 用户要求「目标选择器只需指向目标外框范围即视为指向,不必完全对准目标本身」:
+     * 准星判定（{@link TargetSelectionClient}）必须与这里的描边几何**同源**,否则会出现
+     * 「看着在框里、却点不中」的观感缺陷。故把渲染用的 {@link #borderBox(LivingEntity, float)}
+     * 暴露成包内方法供判定复用。
+     */
+    static AABB hitFrameBox(LivingEntity entity) {
+        return borderBox(entity, WIDTH_HIT);
     }
 
     /** 实体仍在当前世界内（避免拿上一 tick 的引用渲染已移除实体） */

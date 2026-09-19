@@ -17,9 +17,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.OwnableEntity;
 import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.entity.projectile.ProjectileUtil;
 import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
@@ -36,6 +34,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * 目标选择器客户端状态机（第一人称 UX，**Create 强力胶式按键语义**）。
@@ -87,7 +86,7 @@ public final class TargetSelectionClient {
     private static LivingEntity currentTarget;
     /** 准星命中但**不可选**的实体（类型不符 / 超出半径）：1/24 细边 + rejected 提示 */
     private static LivingEntity rejectedTarget;
-    /** 半径内其它可选目标（1/64 细边，最多 {@link #NEARBY_TARGET_LIMIT} 个），每 tick 重建 */
+    /** 半径内其它可选目标（1/128 细边，最多 {@link #NEARBY_TARGET_LIMIT} 个），每 tick 重建 */
     private static final List<LivingEntity> nearbyTargets = new ArrayList<>();
     /** 瞬态 actionbar 提示（优先于默认提示）；到期后恢复默认提示 */
     private static Component transientPrompt;
@@ -127,7 +126,7 @@ public final class TargetSelectionClient {
         return rejectedTarget;
     }
 
-    /** 半径内其它可选目标（渲染层用它画 1/64 细边）；只读视图，按距离由近到远 */
+    /** 半径内其它可选目标（渲染层用它画 1/128 细边）；只读视图，按距离由近到远 */
     public static List<LivingEntity> nearbyTargets() {
         return Collections.unmodifiableList(nearbyTargets);
     }
@@ -478,34 +477,33 @@ public final class TargetSelectionClient {
             nearbyTargets.clear();
             return;
         }
-        // 实体射线:注意 1.21.1 的 Entity.pick() 只做方块射线(永不返回 EntityHitResult),
-        // 须参照 GameRenderer.pick 的标准做法:方块射线截断 + ProjectileUtil.getEntityHitResult 找最近实体。
         double maxDist = radius;
         Vec3 eye = player.getEyePosition(1.0F);
         Vec3 look = player.getViewVector(1.0F);
         HitResult blockHit = player.pick(maxDist, 1.0F, false); // 方块射线(Entity.pick 内部为 OUTLINE clip)
+        // 「已指向」判定（2026-09-19 用户要求「目标选择器只需指向目标外框范围即视为指向，
+        // 不必完全对准目标本身」）：判定用**外框盒**，与描边渲染同源（碰撞盒 ∪ 模型实测外框，
+        // 再按命中档半线宽外扩 —— 见 {@link TargetSelectionHighlighter#hitFrameBox}），
+        // 而不是原版 ProjectileUtil 的**碰撞盒**实体射线 —— 后者要求准星落在碰撞盒上，
+        // 僵尸抬臂 / 蜘蛛伸腿 / 马头颈这类「可见但在碰撞盒之外」的部位全都点不中。
+        // 方块射线截断照旧：准星被方块挡住时不隔墙选中（实体搜索终点截断到方块处）。
         double blockDistSq = blockHit.getLocation().distanceToSqr(eye);
-        // 有方块命中时,实体搜索终点截断到方块处(准星被方块挡住时不应隔墙选中目标)
         double entityLimitSq = blockHit.getType() != HitResult.Type.MISS ? blockDistSq : maxDist * maxDist;
         double entityLimit = Math.sqrt(entityLimitSq);
         Vec3 entityEnd = eye.add(look.x * entityLimit, look.y * entityLimit, look.z * entityLimit);
-        AABB searchBox = player.getBoundingBox().expandTowards(look.scale(entityLimit)).inflate(1.0, 1.0, 1.0);
-        EntityHitResult entityHit = ProjectileUtil.getEntityHitResult(player, eye, entityEnd, searchBox,
-                e -> !e.isSpectator() && e.isPickable(), entityLimitSq);
+        AABB searchBox = player.getBoundingBox().expandTowards(look.scale(entityLimit)).inflate(1.5D, 1.5D, 1.5D);
+        LivingEntity aimed = pickFrameTarget(player, eye, entityEnd, entityLimitSq, searchBox);
 
         LivingEntity newTarget = null;
         LivingEntity newRejected = null;
-        if (entityHit != null
-                && entityHit.getEntity() instanceof LivingEntity living
-                && living != player
-                && living.isAlive()) {
-            if (SelectorTargets.matches(targetType, player, living) && player.distanceToSqr(living) <= radius * radius) {
-                newTarget = living;
+        if (aimed != null && aimed != player && aimed.isAlive()) {
+            if (SelectorTargets.matches(targetType, player, aimed) && player.distanceToSqr(aimed) <= radius * radius) {
+                newTarget = aimed;
             } else {
                 // 命中但不可选（会话目标类型不符 / 超出半径）：走 1/24 细边；
                 // 「对准错误目标」的提示自 2026-09-18 起是**稳态红字**（见 steadyPrompt），
                 // 不再在此处抛瞬态 showPrompt —— 否则每 tick 都会与稳态文案来回跳。
-                newRejected = living;
+                newRejected = aimed;
             }
         }
         if (newTarget != currentTarget) {
@@ -534,7 +532,48 @@ public final class TargetSelectionClient {
         updateNearbyTargets(player);
     }
 
-    /** 半径内其它可选目标（渲染 1/64 细边）：按距离升序取最近 {@link #NEARBY_TARGET_LIMIT} 个 */
+    /**
+     * 准星命中判定：取**外框盒**被射线穿过且**离视线最近**的实体（与描边渲染同源）。
+     *
+     * <p>盒 = {@link TargetSelectionHighlighter#hitFrameBox}（碰撞盒 ∪ 本帧实测模型外框，再外扩半线宽）；
+     * 命中判据 = **视点已在盒内记 0 距离**，否则取线段与盒的 AABB 交点（{@link AABB#clip}），
+     * 最后取沿视线**最近**的那一个 ⇒ **指向外框范围即算指向该目标**（2026-09-19 用户要求），
+     * 与「看着在框里」的观感一致。
+     *
+     * <p>截断沿用调用方给出的射线终点：射线在方块命中处结束，墙后的实体自然选不中
+     * （{@code entityLimitSq} 同时作为最近距离的初值上界）。
+     */
+    private static LivingEntity pickFrameTarget(LocalPlayer player, Vec3 eye, Vec3 end, double entityLimitSq,
+                                                AABB searchBox) {
+        LivingEntity best = null;
+        double bestDistSq = entityLimitSq;
+        for (Entity entity : player.level().getEntities(player, searchBox)) {
+            if (!(entity instanceof LivingEntity living) || living == player) continue;
+            if (!living.isAlive() || living.isSpectator() || !living.isPickable()) continue;
+            AABB frame = TargetSelectionHighlighter.hitFrameBox(living);
+            double distSq;
+            // ⚠️ **视点落在盒内**必须单独判：vanilla `AABB#clip` 只认「严格从板外进入」的相交
+            // （`getDirection` → `clipPoint` 的 startSide < minSide 条件），起点已在盒内时**必返回 empty**；
+            // 原版 `ProjectileUtil#getEntityHitResult` 正是用 `aabb.contains(startVec)` 分支把这种情况
+            // 记为距离 0（1.21.1 `ProjectileUtil.java:77-82`、1.20.1 `:64-69`）。贴脸正对时（僵尸伸直双臂
+            // 使外框盒前伸约 0.75 格，而玩家与生物的最小中心距约 0.6 格）框会把视点整个包住 ——
+            // 省掉这一分支就会「画面里画着框、左键却只弹『没有可用的目标』」，与「指向外框即可选中」相反。
+            if (frame.contains(eye)) {
+                distSq = 0.0D;
+            } else {
+                Optional<Vec3> hit = frame.clip(eye, end);
+                if (hit.isEmpty()) continue;
+                distSq = eye.distanceToSqr(hit.get());
+            }
+            if (distSq <= bestDistSq) {
+                bestDistSq = distSq;
+                best = living;
+            }
+        }
+        return best;
+    }
+
+    /** 半径内其它可选目标（渲染 1/128 细边）：按距离升序取最近 {@link #NEARBY_TARGET_LIMIT} 个 */
     private static void updateNearbyTargets(LocalPlayer player) {
         nearbyTargets.clear();
         AABB search = player.getBoundingBox().inflate(radius);

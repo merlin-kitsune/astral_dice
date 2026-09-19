@@ -25,7 +25,8 @@ import java.util.List;
  * ① 速度 = **箭矢的 4/5**({@link #SPEED_BLOCKS_PER_TICK});② 飞行时长由目标距离推导
  * ({@code ceil(距离 / 2.4)} tick);③ 每 tick 朝目标中心重新取向量(**跟踪修正**,不是直线弹道);
  * ④ 抵达即命中(最后一步吸附到目标中心)⇒ **必定命中**;⑤ 全程**不做任何方块/碰撞判定** ⇒ 可穿透方块;
- * ⑥ 视觉 = 高速飞行的发光粒子团(每 tick 粒子,无需客户端代码);⑦ 命中结算见
+ * ⑥ 视觉 = 高速飞行的**连续**发光粒子带({@code END_ROD},每 tick 沿位移线段插值投放;2026-09-19
+ * 按要求加密并移除原先的深绿色 {@code GLOW} 粒子,见 {@link #emitTrail});⑦ 命中结算见
  * {@link LivingPageImpact}(伤害登记为法伤 + 施加 1 层标记 + 连续出牌补记)。
  *
  * <p><b>为什么挂在服务端 tick 边界上(与 {@link RailgunStrikeScheduler} 同一范式)</b>:
@@ -52,9 +53,14 @@ public final class LivingPageFlightScheduler {
     /** 超龄保护(tick):维度卸载/区块异常等极端情形下丢弃滞留条目,避免无限堆积 */
     private static final long MAX_AGE_TICKS = 400L;
 
-    /** 轨迹粒子:核心发光粒子(END_ROD)+ 光晕(GLOW) */
-    private static final int TRAIL_CORE_PARTICLES = 4;
-    private static final int TRAIL_HALO_PARTICLES = 2;
+    /** 轨迹粒子:核心发光粒子(END_ROD) —— 每 tick 沿线**插值**投放,见 {@link #emitTrail} */
+    private static final int TRAIL_PARTICLES_PER_STEP = 2;
+    /**
+     * 轨迹插值间距(格)。速度 2.4 格/tick,若只在每 tick 的采样点投放粒子,相邻两团之间会空出
+     * 2.4 格 ⇒ 肉眼可见「分段」;按本间距把本 tick 的位移线段切段逐点投放即可连成光带。
+     * 0.45 ⇒ 每 tick 至多 6 个投放点(约 12 个粒子),密度足够且开销可忽略。
+     */
+    private static final double TRAIL_SPACING = 0.45D;
     /** 命中爆发粒子 */
     private static final int IMPACT_BURST_PARTICLES = 20;
 
@@ -156,15 +162,13 @@ public final class LivingPageFlightScheduler {
         Vec3 delta = dest.subtract(p.pos);
         double remaining = delta.length();
         double step = Math.min(SPEED_BLOCKS_PER_TICK, remaining);
+        Vec3 prev = p.pos;
         if (remaining > 1.0E-4D) {
             p.pos = p.pos.add(delta.normalize().scale(step));
         }
         p.elapsed++;
-        // 轨迹粒子(服务端下发即可,不需要客户端代码);速度参数 0 ⇒ 无随机漂移,呈现「高速飞行的发光粒子团」
-        p.level.sendParticles(ParticleTypes.END_ROD,
-                p.pos.x, p.pos.y, p.pos.z, TRAIL_CORE_PARTICLES, 0.04D, 0.04D, 0.04D, 0.0D);
-        p.level.sendParticles(ParticleTypes.GLOW,
-                p.pos.x, p.pos.y, p.pos.z, TRAIL_HALO_PARTICLES, 0.12D, 0.12D, 0.12D, 0.0D);
+        // 轨迹粒子(服务端下发即可,不需要客户端代码);沿线插值投放,见 emitTrail 的说明
+        emitTrail(p, prev, p.pos);
         // 抵达判定:进入吸附阈值,或已达「由距离推导的飞行 tick 数」硬上界 ⇒ 吸附到目标中心并命中
         if (p.pos.distanceToSqr(dest) <= SNAP_DISTANCE * SNAP_DISTANCE || p.elapsed >= p.flightTicks) {
             p.pos = dest;
@@ -172,6 +176,28 @@ public final class LivingPageFlightScheduler {
             return;                                    // 已结算 ⇒ 不再放回队列
         }
         PENDING.add(p);                                // 仍在飞行
+    }
+
+    /**
+     * 沿本 tick 的位移线段**插值投放**轨迹粒子(2026-09-19 用户要求「增加飞行粒子密度和流畅度,
+     * 避免视觉上有可视分段」)。
+     *
+     * <p>旧写法每个服务端 tick 只在**采样点**放一次粒子,而速度是 {@value #SPEED_BLOCKS_PER_TICK} 格/tick
+     * ⇒ 相邻两团之间空出 2.4 格,肉眼能看到明显「分段」。现按 {@link #TRAIL_SPACING} 把线段切成
+     * 若干段逐点投放(段间无空档);粒子速度参数仍为 0(无随机漂移),整体呈连续高速光带。
+     *
+     * <p>⚠️ 只发 {@code END_ROD}(白/发光),**不再发 {@code GLOW}** —— 用户报告「使用活体书页出现了
+     * 未预期的深绿色粒子」,而本调度器一共只发过三种粒子(END_ROD / GLOW / FLASH),其中 GLOW 是
+     * 发光鱿鱼墨那种**深青绿**小点 ⇒ 即该报告的来源,2026-09-19 一并移除。
+     */
+    private static void emitTrail(Pending p, Vec3 from, Vec3 to) {
+        double length = from.distanceTo(to);
+        int steps = Math.max(1, (int) Math.ceil(length / TRAIL_SPACING));
+        for (int i = 1; i <= steps; i++) {
+            Vec3 at = from.lerp(to, (double) i / (double) steps);
+            p.level.sendParticles(ParticleTypes.END_ROD,
+                    at.x, at.y, at.z, TRAIL_PARTICLES_PER_STEP, 0.03D, 0.03D, 0.03D, 0.0D);
+        }
     }
 
     /** 飞行是否仍可继续(目标与施法者都在、且都在同一维度) */

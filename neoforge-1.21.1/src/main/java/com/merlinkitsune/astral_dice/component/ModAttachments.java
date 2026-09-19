@@ -58,7 +58,7 @@ public class ModAttachments {
 
     // 活体书页(effect_card_living_page):本周期活体书页累计的出牌数加成(0,1,2,…)。
     // 每次使用活体书页 +1(可累计;不是"效果存在即 +1"的开关式),周期归零时由 EffectCardPeriod 清除。
-    // 注意:与"调查员已用页数"(rin_pages,永久、无上限)无关,不可复用后者做本周期计数。
+    // 注意:与"调查员已用页数"(rin_pages,永久累计;作为加成生效时静默上限 120)无关,不可复用后者做本周期计数。
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> LIVING_PAGE_CYCLE_BONUS =
             ATTACHMENTS.register("living_page_cycle_bonus", () -> AttachmentType.builder(() -> 0)
                     .serialize(Codec.INT)
@@ -168,7 +168,7 @@ public class ModAttachments {
                     .serialize(Codec.STRING)
                     .build());
 
-    // 忍者立牌(komachi):效果牌伤害增益(每使用 3 张效果牌 +1,无上限,卸下立牌重置;死亡重生保留)
+    // 忍者立牌(komachi):效果牌伤害增益(每使用 3 张效果牌 +1,累计无上限;作为加成生效时静默上限 120,卸下立牌重置;死亡重生保留)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> KOMACHI_DAMAGE_BONUS =
             ATTACHMENTS.register("komachi_damage_bonus", () -> AttachmentType.builder(() -> 0)
                     .serialize(Codec.INT)

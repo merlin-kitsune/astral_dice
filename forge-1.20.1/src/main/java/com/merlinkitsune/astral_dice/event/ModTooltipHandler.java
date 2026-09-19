@@ -716,9 +716,11 @@ public class ModTooltipHandler {
                 addSignCounter(tooltip, "tooltip.astral_dice.sign.komachi_effect_count",
                         ModAttachments.getKomachiUseCount(player));
                 // 伤害增益只在**佩戴立牌**时生效(2026-09-15 裁决):死亡保留的值不因"牌不在身上"而显示为加成
+                // 并与伤害结算同源做静默上限夹取(2026-09-19,SpellDamageRegistry#SIGN_DAMAGE_BONUS_CAP)
                 addSignCounter(tooltip, "tooltip.astral_dice.sign.komachi_damage_bonus",
-                        com.merlinkitsune.astral_dice.item.sign.KomachiSignItem.isEquipped(player)
-                                ? ModAttachments.getKomachiDamageBonus(player) : 0);
+                        com.merlinkitsune.astral_dice.combat.SpellDamageRegistry.cappedSignDamageBonus(
+                                com.merlinkitsune.astral_dice.item.sign.KomachiSignItem.isEquipped(player)
+                                        ? ModAttachments.getKomachiDamageBonus(player) : 0));
             }
             addSignCooldownRemaining(tooltip, event.getEntity());
         }
