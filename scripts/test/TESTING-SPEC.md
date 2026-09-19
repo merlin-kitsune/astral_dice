@@ -17,6 +17,24 @@
 
 不在本规范内：纯静态校验（见 §9 守门脚本）、性能压测、多人联机双端测试（当前**无覆盖**，见 §11）。
 
+### 1.1 变更分级与验证口径（2026-09-19 用户裁决）— 必须遵守
+
+**非核心功能修改不执行冒烟测试** —— 不为这类改动启动游戏，也不跑本规范的阶段 L / 阶段 C 或 `mt.ps1` 全流程。
+
+| 级别 | 覆盖范围 | 必需验证 | 不执行 |
+|---|---|---|---|
+| **非核心** | `scripts/**`、`tools/**`（工具链 / 脚本）；`**/lang/*.json`、tooltip 文案与帕秋莉手册内容（`**/patchouli_books/**`）；`*.md` 与 `docs/**`；代码注释 / javadoc；测试夹具 `scripts/test/resources/**`、`scripts/test/cases/**` | 受影响子项目 `gradlew build` + 相关静态闸门（`scripts/devtools/Test-MtSyntax.ps1`；改过 lang 必跑 `tools/check_lang_sync.ps1`）+ 自动本地提交 | 阶段 L（`--phase launch`）/ 阶段 C（`--phase cases`）/ `mt.ps1` 全流程 |
+| **核心** | 玩法逻辑与数值；网络与协议；存档/同步；注册表与数据组件；mixin；客户端渲染与输入；**数据包内容 `src/main/resources/data/**`**（配方 / 伤害类型 / 标签 / 战利品 / 进度）；`build.gradle` 的行为性改动 | 构建 + 本规范全流程（§4 顺序与门控；已迁移 26.1.2 的内容另需 §13.2 一致性测试） | — |
+
+**判定与边界**：
+
+- **判据是「是否触及运行期行为」，不是文件扩展名**：`assets/**/lang/*.json` 与 `**/patchouli_books/**` 属非核心（玩家可见**文本**），`src/main/resources/data/**` 属核心（直接改玩法）。
+- **同一批（同一 commit）以最高级别为准**：非核心与核心混在同一批时整批按**核心**处理。
+- **拿不准的一律按核心处理**。
+- **tooltip 属非核心**（用户明确列入）；但 tooltip 若是**用户指定要验证**的内容，按「用户指定内容」走本规范流程。
+- **免冒烟 ≠ 免验证**：仍必须**构建通过 + §9 静态闸门全绿**；不得据此跳过 CHANGELOG 同步与三线对等约定。
+- **自查入口**：`pwsh -NoProfile -File scripts/test/mt_scope.ps1`（缺省读工作区变更，另有 `--staged` / `--paths <相对路径…>`；**只读、只建议、退出码恒 0**）。与 `AGENTS.md` 的「变更分级与验证口径」冲突时**以 `AGENTS.md` 为准**。
+
 ---
 
 ## 2. 机器与环境前提
@@ -377,6 +395,8 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --phase <p> --version <v>
 ---
 
 ## 9. 静态守门（每次改动后必须全绿）
+
+> **适用范围（2026-09-19 用户裁决，见 §1.1）**：本节是**全部改动**的最低门槛；对**非核心功能修改**（脚本 / 文本 / tooltip / 文档 / 注释 / 测试夹具）本节就是**唯一必需**的测试 —— 这类改动免冒烟（不跑阶段 L / 阶段 C / `mt.ps1` 全流程）。核心改动则在本节之上**另需**游戏内自动化验证。
 
 ```powershell
 pwsh -NoProfile -File tools/check_lang_sync.ps1 -LangDir neoforge-1.21.1/src/main/resources/assets/astral_dice/lang
@@ -1084,4 +1104,13 @@ pwsh -NoProfile -File scripts/test/mt_watchdog.ps1 -Version 1.21.1 [-StallSecond
 - 工程:**修正 ③（`run/` 已被 `.gitignore` 忽略、不入库）三个 `Start-*.bat`**：ⓐ 失败提示里的修复命令由**仓库根相对路径**（双击用户无法照抄执行）改为绝对路径 `pwsh -NoProfile -File "%~dp0..\scripts\devtools\Start-SelfTest.ps1" -Version <版本>`；ⓑ「期望本 bat 位于 `<repo>\run\<版本>\` 下」更正为 `<repo>\run\`（脚本本来就用 `%~dp0..` 反推仓库根，原提示与实际路径推导自相矛盾）。⚠️ 这两个文件不在版本库内，**换机器/清空 `run/` 后需按本条重做**。
 - 工程:**验证（本轮实跑）**：三条线成对部署 `Start-SelfTest.ps1 -Version {1.21.1,1.20.1}` + `-Version 26.1.2 -SkipBuild` 全部 `OK`（`temp/t33/selftest2-<版本>.log`），`run/<版本>/mods` 现为 `astral_dice-<mod_version>.jar` + `starengine_lib-<artifact>-1.0.0-SNAPSHOT.11.jar`；三个 bat `-DryRun` 均 **exit 0** 且打印「mods 成对且版本一致」；`mt_preflight.ps1 --all` = **15 项全部 OK**；新闸门**负向测试**：把 1.21.1 的库 jar 暂改名为 `…-SNAPSHOT.9.jar` ⇒ 该检查 `[FAIL]` 且整体 `MT_PREFLIGHT: FAIL`（exit 10，含修复命令），改回后恢复 OK（环境已还原）。bat 的引号改写用 `run\` 下的临时微测试确认 `set "FIXCMD=… "%~dp0..\…" …"` 在 `if ( … echo %FIXCMD% )` 块内正确展开，并用打印出的命令实跑 `-DryRun`（仓库根解析正确）；`scripts/devtools/Test-MtSyntax.ps1` = 38 个文件 0 解析失败。补做一次**真机启动烟测**（`--phase env` → `--phase launch`）：`MT_LAUNCH: OK (42s)`（已进入世界），`latest.log` 加载 `StarEngine Lib 1.0.0-SNAPSHOT.11+neoforge_1.21.1`、`UniqueModListBuilder` 只选出 `.11`，`NoSuchFieldError`/`NoSuchMethodError`/缺前置依赖各 0 条；随后 `--phase stop --purge-saves` 收停并清档（`temp/t33/{launch2-after-fix-1.21.1,stop-after-fix}.log`、`temp/mt_detached/mt_launch_20260919-132058.log`）。
 - 工程:**澄清（不影响既有结论）**：旧的 `.10` 库 jar **并未污染**任何读数 —— 1.20.1 `debug.log` 的 `UniqueModListBuilder` 记录 `Found 3 mods for first modid starengine_lib, selecting most recent based on version data` → `Selected file …SNAPSHOT.11.jar`；1.21.1 `latest.log` 同样为 `StarEngine Lib 1.0.0-SNAPSHOT.11+neoforge_1.21.1`。即 FML 按版本取**最新**，Gradle runtimeClasspath 的 `.11` 实际生效；本批活体书页两线验证结论不变。
+
+**2026-09-19（续 2）：测试规则修改 —— 非核心功能修改免冒烟（变更分级与验证口径）**
+
+- 工程:**用户裁决（原话）**：「非核心功能修改（如修改脚本、文本、tooltip等）不执行冒烟测试」。
+- 工程:**落地（三处同口径）**：① `AGENTS.md`「自动化测试流程」下新增 **`### 变更分级与验证口径（2026-09-19 用户裁决）— 必须遵守`**（非核心 / 核心两级表 + 7 条边界），并在「模组内容更新规则」的验收口径第 5 条加交叉引用；② 本文档新增 **§1.1 变更分级与验证口径**（挂在 §1 之下，避免全文重编号），并给 §9 静态守门加「适用范围」说明；③ 新增只读自查脚本 `scripts/test/mt_scope.ps1`（缺省读工作区变更，另有 `--staged` / `--paths <相对路径…>` / `--root <路径>`；输出 `MT_SCOPE:` / `MT_SCOPE_RESULT:` / `MT_SCOPE_REQUIRED:` / `MT_SCOPE_SKIP:`，**退出码恒 0**、只建议不拦停）。
+- 工程:**口径要点**：判据是「是否触及**运行期行为**」而**不是扩展名** —— `assets/**/lang/*.json` 与 `**/patchouli_books/**` 属非核心（玩家可见文本），`src/main/resources/data/**` 属核心（配方 / 伤害类型 / 标签 / 掉落 / 进度）；**同一批（同一 commit）以最高级别为准**；**拿不准按核心**；tooltip 属非核心，但「用户指定要验证」的内容例外；**免冒烟 ≠ 免验证**（仍须构建通过 + §9 静态闸门全绿，且不得跳过 CHANGELOG 同步与三线对等约定）；非核心批次**不得**再把「未做游戏内验证」写成遗留项。
+- 工程:**验证**：`Test-MtSyntax.ps1` 覆盖新脚本（38 → **39 个文件，0 解析失败**）；`mt_scope.ps1` 四种模式实跑 —— 全非核心（`AGENTS.md` + `TESTING-SPEC.md` + `lang/zh_cn.json`）⇒ `级别 = 非核心`；混入核心（java + `data/**/card_spell.json` + `patchouli_books/**`）⇒ `级别 = 核心`（patchouli 判非核心、data 判核心）；缺省工作区模式 ⇒ 8 个路径全非核心；`--staged` 空暂存区 ⇒ 提示无变更。⚠️ **参数解析教训**：本仓 `--` 风格参数在 `[CmdletBinding()] param()` 下只会绑定**一个**值、其余落入位置参数并报错（实测 `--paths a b c` 报「找不到接受自变量」），故该脚本与 `mt_preflight.ps1` 同法**手工解析 `$args`**。
+- 工程:**配套（DSH 用户级配置，不入库）**：`$DSH_HOME/skills/mc-two-round-verification/SKILL.md` 的「不触发」补上「非核心功能修改」一条并指向 `mt_scope.ps1`（该 skill 本就有「与 `AGENTS.md` 冲突时以 `AGENTS.md` 为准」的条款）。
+
 
