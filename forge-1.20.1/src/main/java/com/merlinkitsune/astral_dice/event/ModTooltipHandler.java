@@ -312,10 +312,8 @@ public class ModTooltipHandler {
         if (player.hasEffect(ModEffects.MONSTER_BRICK.get())) bonus += 6 + cardBonus;
         if (player.hasEffect(ModEffects.ORBITAL_STRIKE.get())) bonus += 8 + cardBonus;
         if (player.hasEffect(ModEffects.DIRECTIONAL_BLAST.get())) bonus += 5 + cardBonus;
-        if (player.hasEffect(ModEffects.LIVING_PAGE.get())) {
-            int pages = com.merlinkitsune.astral_dice.combat.SpellDamageRegistry.livingPageBonusPages(player);
-            bonus += 2 + pages + cardBonus;
-        }
+        // 活体书页不再提供「效果期间的被动法伤加成」(2026-09-25 重写):其伤害是一次**命中结算**,
+        // 不再叠加到其它远程/魔法伤害上 ⇒ 本行不再计入,否则会把一次性命中当成全周期增益重复显示。
         tooltip.add(tt("tooltip.astral_dice.card.active_damage_bonus", bonus)
                 .withStyle(ChatFormatting.GRAY));
     }
@@ -1101,14 +1099,18 @@ public class ModTooltipHandler {
         }
         if (stack.is(ModItems.LIVING_PAGE.get())) {
             tooltip.add(Component.empty());
+            // 目标选择器类(敌对)效果牌:两行式(2026-09-25 用户裁决)——
+            //   第一行 = 精简用法「对敌对目标使用 活体书页」(通用键 + 牌名,便于后续同类型牌复用)
+            //   第二行 = 该牌本身的效果(含实时伤害数值 = 基础 2 + 调查员已用页数 + 伤害效果牌加成)
+            tooltip.add(Component.translatable("tooltip.astral_dice.card.use_on_enemy",
+                            Component.translatable("item.astral_dice.effect_card_living_page"))
+                    .withStyle(ChatFormatting.GRAY));
             if (event.getEntity() != null) {
-                // 活体书页伤害 = 基础 2 + 调查员(rin)已使用数量 + 伤害效果牌统一加成(忍者立牌效果牌伤害增益 + 书签)
+                // 活体书页命中伤害 = 基础 2 + 调查员(rin)已使用数量 + 伤害效果牌统一加成(忍者立牌效果牌伤害增益 + 书签)
                 // 两项都只在**佩戴对应立牌**时生效(2026-09-15 裁决),故一律走 SpellDamageRegistry 的判定入口
-                int pages = com.merlinkitsune.astral_dice.combat.SpellDamageRegistry.livingPageBonusPages(player);
                 // 组件基础色为灰(普通文本);行内颜色码:数值=黄 §e、时间=蓝 §9
                 tooltip.add(Component.translatable("tooltip.astral_dice.card.living_page",
-                                2 + pages + com.merlinkitsune.astral_dice.combat.SpellDamageRegistry
-                                        .effectCardDamageBonus(player))
+                                com.merlinkitsune.astral_dice.combat.SpellDamageRegistry.livingPageImpactDamage(player))
                         .withStyle(ChatFormatting.GRAY));
             } else {
                 tooltip.add(Component.translatable("tooltip.astral_dice.card.living_page", "?")

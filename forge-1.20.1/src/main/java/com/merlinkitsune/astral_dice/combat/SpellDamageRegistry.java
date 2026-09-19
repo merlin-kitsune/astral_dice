@@ -32,7 +32,8 @@ import com.merlinkitsune.astral_dice.item.chip.PiercingGunChipItem;
  * 4. 诡厄巫法(goety):summon/shock/freeze/hellfire/magic_fire/magic_fireball/magic_bolt 等法术伤害类型
  *    (排除近战类 goety:sword);
  * 5. Iron 的法术与魔法书(irons_spellbooks):fire_magic/ice_magic/lightning_magic/holy_magic/ender_magic/
- *    blood_magic/evocation_magic/eldritch_magic/nature_magic 等。
+ *    blood_magic/evocation_magic/eldritch_magic/nature_magic 等;
+ * 6. 本模组「活体书页」命中伤害(astral_dice:card_spell,2026-09-25 起;见 {@link LivingPageImpact})。
  * 排除:枪械/炮弹/炸药/火箭等军火类(tacZ、维克斯的武器、卓越前线、气动工艺、机械动力:火炮、通用机械:武器、
  * 沉浸工程等)——其弹丸实体不属于白名单,黑名单关键词仅作"弹丸继承原生类"场景的保险。
  */
@@ -151,6 +152,20 @@ public final class SpellDamageRegistry {
                 ? ModAttachments.getRinPages(attacker) : 0;
     }
 
+    /**
+     * 「活体书页」命中伤害 = {@link LivingPageImpact#BASE_DAMAGE 基础 2}
+     * + {@link #livingPageBonusPages 调查员已用页数}(仅佩戴 rin 立牌时计入)
+     * + {@link #effectCardDamageBonus 伤害效果牌统一加成}(忍者立牌 + 书签)。
+     *
+     * <p><b>伤害结算与 tooltip 显示统一走本方法</b>(与 {@code effectCardDamageBonus} 同一口径):
+     * 命中结算见 {@link LivingPageImpact#resolve},tooltip 见 {@code event/ModTooltipHandler}。
+     * 页数在**使用书页时**就已 +1 ⇒ 本值自含本次使用。
+     */
+    public static int livingPageImpactDamage(net.minecraft.world.entity.player.Player attacker) {
+        if (attacker == null) return LivingPageImpact.BASE_DAMAGE;
+        return LivingPageImpact.BASE_DAMAGE + livingPageBonusPages(attacker) + effectCardDamageBonus(attacker);
+    }
+
     private static ResourceKey<DamageType> key(String namespace, String path) {
         return ResourceKey.create(Registries.DAMAGE_TYPE,
                 new ResourceLocation(namespace, path));
@@ -172,26 +187,15 @@ public final class SpellDamageRegistry {
             }
             return false;
         });
+        // 4. 本模组「活体书页」命中伤害(astral_dice:card_spell,2026-09-25 活体书页重写):
+        //    该伤害必须登记为法伤,才能原样跑完整修饰器链(见 LivingPageImpact 的结算说明)。
+        //    注意:这里**不**依赖任何"效果存在"的开关 —— 书页命中本身就是一次法伤事件。
+        registerMatcher((source, direct) -> source.is(ModDamageTypes.CARD_SPELL));
 
         // === 内置修饰器 ===
-        // 活体书页:对敌对目标远程/魔法伤害增加(基础 2 + 调查员(rin)已使用数量 + 忍者立牌效果牌伤害增益,均无上限),并施加 1 层标记
-        registerModifier(new SpellDamageModifier() {
-            @Override
-            public boolean isActive(SpellDamageContext ctx) {
-                return ctx.attacker.hasEffect(ModEffects.LIVING_PAGE.get());
-            }
-
-            @Override
-            public double apply(SpellDamageContext ctx, double bonus) {
-                int pages = livingPageBonusPages(ctx.attacker);
-                return bonus + 2 + pages + effectCardDamageBonus(ctx.attacker);
-            }
-
-            @Override
-            public void onHit(SpellDamageContext ctx, double bonus) {
-                MarkManager.apply(ctx.target);
-            }
-        });
+        // (活体书页原有的「效果期间远程/魔法伤害 +2+页数」修饰器已于 2026-09-25 删除:
+        //  该牌已改为「飞向目标并必定命中」的打击牌,伤害在命中时经 LivingPageImpact 登记为
+        //  astral_dice:card_spell 结算,不再附着于其它远程/魔法伤害之上。)
         // 对怪激光:远程和魔法伤害 +4(+忍者立牌效果牌伤害增益)
         registerModifier(new SpellDamageModifier() {
             @Override

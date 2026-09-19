@@ -50,7 +50,7 @@ import com.merlinkitsune.starenginelib.target.TargetType;
  *
  * <p><b>释放方式二选一</b>:
  * <ul>
- *   <li><b>目标选择器类</b>(覆写 {@link #selectorActionId()} 返回非 null;加急加快 / 奢华大餐 / 你有我有 / 狂暴):
+ *   <li><b>目标选择器类</b>(覆写 {@link #selectorActionId()} 返回非 null;加急加快 / 奢华大餐 / 你有我有 / 狂暴 / 活体书页):
  *       **主手手持该牌即自动进入目标选择会话**(2026-09-25 用户裁决「变更效果牌触发方式:
  *       当玩家手持该卡牌时(仅限主手),自动打开目标选择器,玩家移出手持则关闭目标选择器」,
  *       由 {@link #tickHeldSelector} 每 tick 驱动;**仅主手**,物品一离开主手立即退出选择),
@@ -154,16 +154,33 @@ public abstract class BaseEffectCardItem extends Item {
      * (会话已存在时直接失败,不会重复开局)。专属校验与出牌锁先判一次,**效果、出牌登记、
      * 各类使用钩子与卡牌消耗全部推迟到确认目标之后**(见 {@link SelectorAction#apply});
      * 取消 / 移出手持 / 会话被替换 / 登出 / 死亡 ⇒ 待执行记录被清除,该次出牌等同「未使用」
-     * (卡牌不消耗)。目标类型固定玩家,半径取配置统一值
+     * (卡牌不消耗)。**目标类型由注册时传入**(见 {@link #registerSelectorAction(String, TargetType, boolean)},
+     * 缺省 {@link TargetType#PLAYER});半径取配置统一值
      * ({@link GameplayConstants#TARGET_SELECT_RADIUS});是否允许对自身使用由 {@code allowSelf} 决定。
      */
     public String selectorActionId() {
         return null;
     }
 
-    /** 目标选择器动作注册入口(由各选择器类效果牌的静态块调用,保证类加载即注册)。 */
+    /**
+     * 目标选择器动作注册入口(由各选择器类效果牌的静态块调用,保证类加载即注册)。
+     *
+     * <p>两参重载保留给「可对他人使用」的既有四张牌(加急加快 / 奢华大餐 / 你有我有 / 狂暴):
+     * 目标类型逐字为 {@link TargetType#PLAYER}(排除选择者自身,能否自用由 {@code allowSelf} 决定)。
+     */
     protected static void registerSelectorAction(String actionId, boolean allowSelf) {
-        TargetSelectionRegistry.register(new SelectorAction(actionId, allowSelf));
+        registerSelectorAction(actionId, TargetType.PLAYER, allowSelf);
+    }
+
+    /**
+     * 目标选择器动作注册入口(显式目标类型;2026-09-25「活体书页」改敌对目标选择器时新增)。
+     *
+     * <p>可选中判定统一走 {@code target/SelectorTargets#matches} ⇒ 传 {@link TargetType#ENEMY}
+     * 即本模组全局的「敌对目标」口径(敌对生物 ∪ 已被激怒的中立生物,**不含玩家**),
+     * 客户端准星过滤 / 半径高亮 / 服务端确认三处同一判据。
+     */
+    protected static void registerSelectorAction(String actionId, TargetType targetType, boolean allowSelf) {
+        TargetSelectionRegistry.register(new SelectorAction(actionId, targetType, allowSelf));
     }
 
     /**
@@ -178,18 +195,20 @@ public abstract class BaseEffectCardItem extends Item {
     }
 
     /**
-     * 目标选择器动作:目标类型固定 {@link TargetType#PLAYER}(选择者自身由 {@code allowSelf} 决定),
-     * 确认后取回按下时登记的待执行记录、按物品找回仍在身上的那张牌并出牌,最后消耗一张。
+     * 目标选择器动作:目标类型取注册时传入的值(缺省 {@link TargetType#PLAYER},选择者自身由
+     * {@code allowSelf} 决定),确认后取回按下时登记的待执行记录、按物品找回仍在身上的那张牌并出牌,最后消耗一张。
      *
      * <p>同时实现 {@link HoldToSelect}:该动作由**主手手持卡牌**触发、**无倒计时** —— 服务端每 tick
      * 用 {@link #stillHeld} 判定,物品离开主手即关闭会话。
      */
     private static final class SelectorAction implements TargetSelectionAction, SelfTargetable, HoldToSelect {
         private final String actionId;
+        private final TargetType targetType;
         private final boolean allowSelf;
 
-        private SelectorAction(String actionId, boolean allowSelf) {
+        private SelectorAction(String actionId, TargetType targetType, boolean allowSelf) {
             this.actionId = actionId;
+            this.targetType = targetType == null ? TargetType.PLAYER : targetType;
             this.allowSelf = allowSelf;
         }
 
@@ -200,7 +219,7 @@ public abstract class BaseEffectCardItem extends Item {
 
         @Override
         public TargetType targetType() {
-            return TargetType.PLAYER;
+            return targetType;
         }
 
         @Override

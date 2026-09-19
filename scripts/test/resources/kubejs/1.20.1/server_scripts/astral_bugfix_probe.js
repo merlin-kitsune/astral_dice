@@ -4438,6 +4438,361 @@ function doCardSelf(ctx, tag) {
         + (err ? ":err=" + err : "") + ":" + cardState(p));
     return 1;
 }
+
+// ════════════════════════════════════════════════════════════════════════════
+// 活体书页重写(2026-09-25 用户裁决):敌对目标选择器 + 飞行命中法伤 + 连续出牌规则修正
+//   被测语义:
+//     ① 仅敌对目标可选(ENEMY = 敌对生物 ∪ 已被激怒的中立生物;不含玩家、不可自用);
+//     ② 使用后书页以箭矢 4/5(2.4 格/tick)飞向目标、逐 tick 跟踪修正、必定命中、可穿透方块;
+//     ③ 命中伤害 = 基础 2 + 调查员已用页数(登记为法伤 ⇒ 受全部法伤加成影响),并施加 1 层标记;
+//     ④ 仅命中**前**已有 ≥3 层标记的目标才补记本周期出牌数 +1,严格封顶 9。
+//   命令(读数行一律 AP_<tag>_ 前缀;除测试基线重置外全部只读):
+//     /astralprobe lpprep <tag> <type> <dist> <layers>  基线 + 摆靶 + 预置标记层数 + 牌进主手
+//     /astralprobe lpnonhostile <tag>                   基线 + 摆被动生物 + 牌进主手(确认应被类型校验拒绝)
+//     /astralprobe lpwall <tag> <dist>                  基线 + 摆敌对靶 + 中间砌墙 + 牌进主手(穿透方块)
+//     /astralprobe lpshoot <tag>                        服务端确认当前靶(与客户端左键确认同路)
+//     /astralprobe lpread <tag>                         只读读数(靶血/伤害/标记/出牌数/在飞)
+//     /astralprobe lpcredit <tag> <value>               预置本周期活体书页出牌数加成(封顶用例)
+//     /astralprobe lprin <tag> <value>                  预置「调查员已用页数」rin_pages(伤害口径用例)
+//     /astralprobe lpchain <tag> <hits> <dist>          同一靶上连续出牌 hits 次(标记累积 → 首次补记)
+//     /astralprobe lpclean <tag>                        收尾:取消会话 + 清靶/拆墙 + 清主手 + 周期归零
+//   ⚠️ 改探针后必须冷启动才生效。
+//   ⚠️ **`type` 参数是 `StringArg.string()`(QUOTABLE_PHRASE),用例里必须加引号**:
+//      `/astralprobe lpprep T "minecraft:spider" 6 0` —— 不加引号时 Brigadier 直接拒收(参数后应为空格),
+//      命令整条不执行、读数行**一条都不会出现**(与 `equipslot` 的 `item` 参数同一坑,见 MIMI-RENAME 用例)。
+//   ⚠️ **靶子选型**:白天地表会点燃僵尸(无 AI 也一样烧,实测 1.4 s 掉 4 血 ⇒ 污染 `dmg` 读数)。
+//      用例统一用 **`minecraft:spider`**(非亡灵、不烧,最大生命 16)并先 `/time set midnight`。
+//      `lpshoot` 另会在确认前把靶子回满血并重取基线,使 `dmg` 只反映本次书页命中。
+//   ⚠️ **背包/方块一律走 API,不要用 `runCmd`**(2026-09-19 实测取证):
+//      在**同一条探针命令内部**用 `runCmd` 改玩家背包(`/clear`、`/item replace`)或方块(`/fill`)时,
+//      本命令内的读数与后续动作**都还看不到改动**;改动要到**下一个 tick**(即下一条注入命令)才生效。
+//      取证:run 2 的 `AP_LP0_PREP` 里 `hand=` 仍是改动前的旧物(`patchouli:guide_book`),
+//      而 900 ms 后的下一条命令读到的是 `astral_dice:effect_card_living_page`;
+//      同一轮 `/fill` 后**同命令内**读方块仍是 `minecraft:air`(`LP_LW0_WALL:wall_block=minecraft:air`)。
+//      ⇒ 需要「立即生效」的一律走 `lpSetHand` / `lpClearInventory` / `lpFillBox`(纯 API,同步),
+//      命令只留给「晚一 tick 也无所谓」的世界/效果类操作(`/effect clear`)。
+// ════════════════════════════════════════════════════════════════════════════
+
+/** 活体书页飞行调度器(两发布线同名同包;取不到时读数退化为 na) */
+function loadLivingPageFlightScheduler() {
+    try { return Java.loadClass("com.merlinkitsune.astral_dice.event.LivingPageFlightScheduler"); }
+    catch (e) { return null; }
+}
+
+/** 效果牌基类(用于直接驱动「手持即选择」入口;取不到时 lpchain 会报 ok=0) */
+function loadBaseEffectCardItemClass() {
+    try { return Java.loadClass("com.merlinkitsune.astral_dice.item.card.BaseEffectCardItem"); }
+    catch (e) { return null; }
+}
+
+var LivingPageFlightSchedulerClass = loadLivingPageFlightScheduler();
+var LivingPageBaseCardClass = loadBaseEffectCardItemClass();
+
+/** 活体书页探针状态(跨命令保持;lpclean 置空) */
+var lpState = null;
+
+function lpCardId() { return "astral_dice:effect_card_living_page"; }
+
+/** 主手牌读数 + 背包内活体书页总数(判「确认后才消耗」:handn 1 → 0) */
+function lpHandState(p) {
+    return "hand=" + itemIdOf(p.getMainHandItem()) + ":handn=" + lpCardCount(p);
+}
+
+function lpCardCount(p) {
+    var n = 0;
+    try {
+        var inv = p.getInventory();
+        var id = lpCardId();
+        for (var i = 0; i < inv.getContainerSize(); i++) {
+            var st = inv.getItem(i);
+            if (!st.isEmpty() && itemIdOf(st) === id) n += st.getCount();
+        }
+    } catch (e) { return -1; }
+    return n;
+}
+
+function lpMaxHp(d) { try { return Math.round(d.getMaxHealth() * 100) / 100; } catch (e) { return -1; } }
+
+/**
+ * 把一张牌放进主手(itemId 为空 ⇒ 清空主手)。**纯 API,同 tick 立即生效**;
+ * 为什么不能用 `runCmd("item replace ...")` 见本段顶部「背包/方块一律走 API」。
+ */
+function lpSetHand(p, itemId) {
+    try {
+        var InteractionHandClass = Java.loadClass("net.minecraft.world.InteractionHand");
+        var stack = (itemId == null || itemId === "") ? ItemStack.EMPTY : new ItemStack(resolveItem(itemId));
+        p.setItemInHand(InteractionHandClass.MAIN_HAND, stack);
+        return 1;
+    } catch (e) { return "ERR:" + exText(e); }
+}
+
+/** 清空玩家**原版**背包(API;含护甲/副手,不含 Curios 饰品栏)。返回清掉的槽位数,-1 = 整体失败。 */
+function lpClearInventory(p) {
+    var n = 0;
+    try {
+        var inv = p.getInventory();
+        for (var i = 0; i < inv.getContainerSize(); i++) {
+            try { inv.setItem(i, ItemStack.EMPTY); n = n + 1; } catch (e1) { /* 单槽失败不影响其余 */ }
+        }
+    } catch (e) { return -1; }
+    return n;
+}
+
+/**
+ * 用 API 把一块长方体区域填成 blockId(纯 API,同 tick 立即生效;`/fill` 在本命令内读不到)。
+ * 返回写入的方块数,失败返回 `ERR:...`。
+ */
+function lpFillBox(p, x1, y1, z1, x2, y2, z2, blockId) {
+    var n = 0;
+    try {
+        var BlockPosClass = Java.loadClass("net.minecraft.core.BlockPos");
+        var state = BuiltInRegistries.BLOCK.get(ResourceLocation.parse(blockId)).defaultBlockState();
+        for (var x = x1; x <= x2; x++) {
+            for (var y = y1; y <= y2; y++) {
+                for (var z = z1; z <= z2; z++) {
+                    try { p.level.setBlock(new BlockPosClass(x, y, z), state, 3); n = n + 1; }
+                    catch (e1) { /* 单块失败不影响其余 */ }
+                }
+            }
+        }
+    } catch (e) { return "ERR:" + exText(e); }
+    return n;
+}
+
+/**
+ * 该坐标方块的注册 id(只读)——「穿透方块」用例**必须**用它取证:
+ * `/fill` 的返回值经 Rhino 读出来是 `undefined`(实测),不能当判据;
+ * 直接读方块状态才是「墙真的建好了」的硬证据。
+ */
+function lpBlockId(p, x, y, z) {
+    try {
+        var BlockPosClass = Java.loadClass("net.minecraft.core.BlockPos");
+        var state = p.level.getBlockState(new BlockPosClass(x, y, z));
+        return "" + BuiltInRegistries.BLOCK.getKey(state.getBlock());
+    } catch (e) { return "err:" + exText(e); }
+}
+function lpMark(d) { try { return "" + MarkManagerClass.getLevel(d); } catch (e) { return "err"; } }
+function lpCredit(p) { try { return "" + ModAttachments.getLivingPageCycleBonus(p); } catch (e) { return "err"; } }
+function lpPlays(p) { try { return "" + EffectCardPeriodClass.getPlayCount(p); } catch (e) { return "err"; } }
+function lpMaxPlays(p) { try { return "" + EffectCardPeriodClass.getMaxAllowed(p); } catch (e) { return "err"; } }
+function lpBlocked(p) { try { return EffectCardPeriodClass.isBlocked(p) ? 1 : 0; } catch (e) { return "err"; } }
+function lpSel(p) { try { return TargetSelectionManagerClass.isSelecting(p) ? 1 : 0; } catch (e) { return "err"; } }
+function lpToken(p) { try { return TargetSelectionManagerClass.sessionTokenForTests(p); } catch (e) { return -1; } }
+
+/** 靶读数:hp/最大血量 + 当前标记层数 */
+function lpDummyState(d) {
+    if (d == null) return "hp=-:max=-:mark=-";
+    return "hp=" + rghp(d) + ":max=" + lpMaxHp(d) + ":mark=" + lpMark(d);
+}
+
+/** 在飞读数:数量/最早剩余 tick(-1 = 无;na = 类不可用) */
+function lpFlight(p) {
+    if (LivingPageFlightSchedulerClass == null) return "na";
+    try {
+        return "" + LivingPageFlightSchedulerClass.pendingCount(p.level)
+            + "/" + LivingPageFlightSchedulerClass.pendingRemainingTicks(p.level);
+    } catch (e) { return "err:" + exText(e); }
+}
+
+/** 活体书页相关全部原始值读数(单行机器格式) */
+function lpReadout(p, d, dmg) {
+    return lpHandState(p)
+        + ":sel=" + lpSel(p) + ":token=" + lpToken(p)
+        + ":dummy=" + lpDummyState(d) + ":dmg=" + dmg
+        + ":credit=" + lpCredit(p) + ":plays=" + lpPlays(p)
+        + ":max=" + lpMaxPlays(p) + ":blocked=" + lpBlocked(p)
+        + ":flight=" + lpFlight(p);
+}
+
+/** 活体书页用例统一基线:出牌周期归零 + 清原版效果 + 摘掉「已使用伤害效果牌」标记 + 清空背包 */
+function lpBaseline(ctx, p) {
+    resetEffectCardCycle(p);
+    runCmd(ctx, "effect clear @s");
+    // 清背包走 API(立即生效);`/clear @s` 在本命令内读到的是旧背包,会把 PREP 读数与连续出牌带偏
+    lpClearInventory(p);
+    // 活体书页效果(1:00)会锁住出牌轮 ⇒ 脚手架显式摘掉(生产路径靠效果自然到期)
+    try { clearExtraPlayEffects(p); } catch (e) { /* 忽略 */ }
+}
+
+/** 基线 + 摆靶(可选预置标记层数)+ 把 1 张活体书页放进主手 */
+function doLpPrep(ctx, tag, typeId, distText, layersText) {
+    var p = ctx.source.getPlayerOrException();
+    var dist = 6, layers = 0;
+    var pd = parseInt(distText, 10); if (!isNaN(pd) && pd > 0) dist = pd;
+    var pl = parseInt(layersText, 10); if (!isNaN(pl) && pl > 0) layers = pl;
+    lpBaseline(ctx, p);
+    var d = spawnDummy(p, typeId, dist);
+    if (d == null) { send(ctx, "AP_" + tag + "_ERR:spawn_failed:" + typeId); return 1; }
+    try { d.setHealth(d.getMaxHealth()); } catch (e1) { /* 忽略 */ }
+    try { d.setNoAi(true); } catch (e2) { /* 忽略 */ }
+    var seeded = 0;
+    for (var i = 0; i < layers; i++) {
+        try { MarkManagerClass.apply(d); seeded = seeded + 1; } catch (e3) { break; }
+    }
+    var set = lpSetHand(p, lpCardId());
+    lpState = { tag: tag, player: p, dummy: d, hpBefore: rghp(d) };
+    send(ctx, "AP_" + tag + "_PREP:type=" + typeId + ":dist=" + dist + ":seed=" + seeded
+        + ":set=" + set + ":" + lpReadout(p, d, "-"));
+    return 1;
+}
+
+/** 被动生物版基线(确认应被 ENEMY 类型校验拒绝:会话保留、卡牌不消耗) */
+function doLpNonHostile(ctx, tag) {
+    return doLpPrep(ctx, tag, "minecraft:cow", "4", "0");
+}
+
+/** 基线 + 摆敌对靶 + 玩家与靶之间砌一堵实心墙(书页飞行不做方块碰撞 ⇒ 仍须命中) */
+function doLpWall(ctx, tag, distText) {
+    var p = ctx.source.getPlayerOrException();
+    var dist = 8;
+    var pd = parseInt(distText, 10); if (!isNaN(pd) && pd > 3) dist = pd;
+    lpBaseline(ctx, p);
+    // 靶子同 lpprep:统一用蜘蛛(非亡灵不烧,最大生命 16)
+    var d = spawnDummy(p, "minecraft:spider", dist);
+    if (d == null) { send(ctx, "AP_" + tag + "_ERR:spawn_failed:spider"); return 1; }
+    try { d.setHealth(d.getMaxHealth()); } catch (e1) { /* 忽略 */ }
+    try { d.setNoAi(true); } catch (e2) { /* 忽略 */ }
+    var x1 = Math.floor(p.getX()) - 1, y1 = Math.floor(p.getY()), z1 = Math.floor(p.getZ() + dist / 2.0);
+    var x2 = Math.floor(p.getX()) + 1, y2 = y1 + 2, z2 = z1;
+    // 墙走 API:同命令内即可读回方块(硬证据),`/fill` 在本命令内读到的仍是 air
+    var placed = lpFillBox(p, x1, y1, z1, x2, y2, z2, "minecraft:obsidian");
+    var set = lpSetHand(p, lpCardId());
+    lpState = {
+        tag: tag, player: p, dummy: d, hpBefore: rghp(d),
+        wall: [x1, y1, z1, x2, y2, z2]
+    };
+    send(ctx, "AP_" + tag + "_WALL:dist=" + dist + ":wall=" + x1 + "," + y1 + "," + z1
+        + ":wall_block=" + lpBlockId(p, x1, y1, z1)
+        + ":blocks=" + placed + ":set=" + set + ":" + lpReadout(p, d, "-"));
+    return 1;
+}
+
+/** 服务端确认当前靶(与客户端左键确认同路;失败原因看服务端日志的 confirm FAIL 行) */
+function doLpShoot(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    if (lpState == null || lpState.dummy == null) { send(ctx, "AP_" + tag + "_ERR:no_dummy"); return 1; }
+    var d = lpState.dummy;
+    var token = lpToken(p);
+    // 命中前把靶子回满血并重取基线:**本次 dmg 只反映书页命中**,
+    // 与"靶子在使用前已被环境/其它来源掉过血"解耦(否则读数不可判)。
+    try { d.setHealth(d.getMaxHealth()); } catch (e0) { /* 忽略 */ }
+    lpState.hpBefore = rghp(d);
+    var called = 0, err = "";
+    try {
+        TargetSelectionManagerClass.confirm(p, token, d.getId());
+        called = 1;
+    } catch (e) { err = exText(e); }
+    // mark_before = 命中**前**的标记层数(飞行尚未抵达,故此刻读到的就是判定用值)
+    // 有墙的用例把**确认这一刻**的墙方块一并报出:证明"命中时墙确实存在"而不是建墙失败后的假命中
+    var wall = "";
+    if (lpState.wall != null) {
+        wall = ":wall_block=" + lpBlockId(p, lpState.wall[0], lpState.wall[1], lpState.wall[2]);
+    }
+    send(ctx, "AP_" + tag + "_SHOOT:called=" + called + ":token=" + token
+        + ":mark_before=" + lpMark(d) + ":" + lpReadout(p, d, "-") + wall
+        + (err ? ":err=" + err : ""));
+    return 1;
+}
+
+/** 只读读数:dmg = 基线血量 - 当前血量(命中造成的基础值;法伤加成另有绿色跳字) */
+function doLpRead(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var d = lpState == null ? null : lpState.dummy;
+    var dmg = "-";
+    if (d != null && lpState.hpBefore != null && lpState.hpBefore >= 0) {
+        dmg = Math.round((lpState.hpBefore - rghp(d)) * 100) / 100;
+    }
+    send(ctx, "AP_" + tag + "_READ:" + lpReadout(p, d, dmg));
+    return 1;
+}
+
+/** 预置本周期活体书页出牌数加成(封顶 9 用例) */
+function doLpCredit(ctx, tag, valueText) {
+    var p = ctx.source.getPlayerOrException();
+    var v = parseInt(valueText, 10); if (isNaN(v) || v < 0) v = 0;
+    var err = "";
+    try { ModAttachments.setLivingPageCycleBonus(p, v); } catch (e) { err = exText(e); }
+    send(ctx, "AP_" + tag + "_CREDIT:set=" + v + ":credit=" + lpCredit(p)
+        + ":plays=" + lpPlays(p) + ":max=" + lpMaxPlays(p) + (err ? ":err=" + err : ""));
+    return 1;
+}
+
+/**
+ * 同一靶上**连续出牌** hits 次(端到端验证标记累积与「首次 ≥3 层才补记」)。
+ * 每次出牌前把出牌轮与「已使用伤害效果牌」标记恢复干净(脚手架;生产路径由 1:00 效果与冷却控制节奏),
+ * 并直接调用生产侧的「手持即选择」入口 `BaseEffectCardItem#tickHeldSelector`(省去等一个 tick 的自动开局)。
+ *
+ * <p>牌进主手走 **API**(`lpSetHand`):用 `runCmd("item replace ...")` 时改动到下一 tick 才生效,
+ * 而本函数在同一条命令里连做 hits 次 ⇒ 手牌永远读成空、`tickHeldSelector` 静默不开局(2026-09-19 实测)。
+ * `ok` 只统计**确认后卡牌真的被消耗**的次数(确认失败时卡牌留在手里 ⇒ 记入 `miss`)。
+ */
+function doLpChain(ctx, tag, hitsText, distText) {
+    var p = ctx.source.getPlayerOrException();
+    var hits = 4, dist = 6;
+    var ph = parseInt(hitsText, 10); if (!isNaN(ph) && ph > 0) hits = ph;
+    var pd = parseInt(distText, 10); if (!isNaN(pd) && pd > 0) dist = pd;
+    lpBaseline(ctx, p);
+    // 与 lpprep 统一用蜘蛛(非亡灵不烧,最大生命 16)
+    var d = spawnDummy(p, "minecraft:spider", dist);
+    if (d == null) { send(ctx, "AP_" + tag + "_ERR:spawn_failed:spider"); return 1; }
+    try { d.setHealth(d.getMaxHealth()); } catch (e1) { /* 忽略 */ }
+    try { d.setNoAi(true); } catch (e2) { /* 忽略 */ }
+    var ok = 0, miss = 0, errs = "";
+    for (var i = 0; i < hits; i++) {
+        try {
+            resetEffectCardCycle(p);
+            try { clearExtraPlayEffects(p); } catch (e3) { /* 忽略 */ }
+            lpSetHand(p, lpCardId());
+            LivingPageBaseCardClass.tickHeldSelector(p);
+            TargetSelectionManagerClass.confirm(p,
+                TargetSelectionManagerClass.sessionTokenForTests(p), d.getId());
+            if (lpCardCount(p) === 0) ok = ok + 1; else miss = miss + 1;
+        } catch (e4) { miss = miss + 1; errs = errs + "[" + i + "]" + exText(e4) + " "; }
+    }
+    lpState = { tag: tag, player: p, dummy: d, hpBefore: rghp(d) };
+    send(ctx, "AP_" + tag + "_CHAIN:hits=" + hits + ":ok=" + ok + ":miss=" + miss
+        + ":" + lpReadout(p, d, "-")
+        + (errs !== "" ? ":err=" + errs : ""));
+    return 1;
+}
+
+/** 收尾:取消会话 + 清靶/拆墙 + 主手清空 + 周期归零 */
+function doLpClean(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var err = "";
+    try { TargetSelectionManagerClass.cancel(p, lpToken(p)); } catch (e) { err = exText(e); }
+    var discarded = 0;
+    if (lpState != null && lpState.dummy != null) {
+        try { lpState.dummy.discard(); discarded = 1; } catch (e2) { err = err + " discard:" + exText(e2); }
+    }
+    var unbuilt = 0;
+    if (lpState != null && lpState.wall != null) {
+        var w = lpState.wall;
+        // 拆墙同样走 API(立即生效),`/fill ... air` 在下一 tick 才生效会污染后续用例的方块读数
+        unbuilt = lpFillBox(p, w[0], w[1], w[2], w[3], w[4], w[5], "minecraft:air");
+    }
+    lpState = null;
+    resetEffectCardCycle(p);
+    lpSetHand(p, null);
+    runCmd(ctx, "effect clear @s");
+    try { clearExtraPlayEffects(p); } catch (e3) { /* 忽略 */ }
+    send(ctx, "AP_" + tag + "_CLEAN:discarded=" + discarded + ":unbuilt=" + unbuilt + ":sel=" + lpSel(p)
+        + ":credit=" + lpCredit(p) + ":plays=" + lpPlays(p) + ":cards=" + lpCardCount(p)
+        + (err !== "" ? ":err=" + err : ""));
+    return 1;
+}
+
+/** 预置「调查员已用页数」rin_pages(测试专用改写入口;命中伤害口径用例用它把加成归零,避免依赖历史出牌数) */
+function doLpRin(ctx, tag, valueText) {
+    var p = ctx.source.getPlayerOrException();
+    var v = parseInt(valueText, 10); if (isNaN(v) || v < 0) v = 0;
+    var err = "";
+    var read = "err";
+    try { ModAttachments.setRinPages(p, v); read = "" + ModAttachments.getRinPages(p); }
+    catch (e) { err = exText(e); }
+    send(ctx, "AP_" + tag + "_RIN:set=" + v + ":rin=" + read + (err ? ":err=" + err : ""));
+    return 1;
+}
 /**
  * 充能冷却读数(只读)。2026-09-25 改口径:拥有充能时把**基础值**封顶 ——
  * 立牌主动至多 160 秒(sign=3200 tick,基础 3600)、效果牌至多 20 秒(card=400,基础 600);
@@ -4534,6 +4889,68 @@ ServerEvents.commandRegistry(event => {
                 .then(Commands.argument("tag", StringArg.word())
                     .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
                         return doCardSelf(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            // ── 2026-09-25:活体书页重写(敌对目标选择器 + 飞行命中法伤 + 连续出牌规则)──
+            .then(Commands.literal("lpprep")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("type", StringArg.string())
+                        .then(Commands.argument("dist", StringArg.word())
+                            .then(Commands.argument("layers", StringArg.word())
+                                .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                                    return doLpPrep(ctx, StringArg.getString(ctx, "tag"),
+                                        StringArg.getString(ctx, "type"),
+                                        StringArg.getString(ctx, "dist"),
+                                        StringArg.getString(ctx, "layers"));
+                                })))))))
+            .then(Commands.literal("lpnonhostile")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doLpNonHostile(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("lpwall")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("dist", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doLpWall(ctx, StringArg.getString(ctx, "tag"),
+                                StringArg.getString(ctx, "dist"));
+                        })))))
+            .then(Commands.literal("lpshoot")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doLpShoot(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("lpread")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doLpRead(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("lpcredit")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("value", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doLpCredit(ctx, StringArg.getString(ctx, "tag"),
+                                StringArg.getString(ctx, "value"));
+                        })))))
+            .then(Commands.literal("lprin")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("value", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doLpRin(ctx, StringArg.getString(ctx, "tag"),
+                                StringArg.getString(ctx, "value"));
+                        })))))
+            .then(Commands.literal("lpchain")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("hits", StringArg.word())
+                        .then(Commands.argument("dist", StringArg.word())
+                            .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                                return doLpChain(ctx, StringArg.getString(ctx, "tag"),
+                                    StringArg.getString(ctx, "hits"),
+                                    StringArg.getString(ctx, "dist"));
+                            }))))))
+            .then(Commands.literal("lpclean")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doLpClean(ctx, StringArg.getString(ctx, "tag"));
                     }))))
             .then(Commands.literal("glovebase")
                 .then(Commands.argument("tag", StringArg.word())

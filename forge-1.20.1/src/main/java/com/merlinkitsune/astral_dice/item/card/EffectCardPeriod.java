@@ -22,8 +22,9 @@ import com.merlinkitsune.astral_dice.item.ModItems;
  * 规则(冷却与效果判定分离):
  * - 基础出牌数固定为 1(游戏设计决定,不可配置)。
  * - 固定出牌数加成(佩戴即提供,不卸载一直有效):大背包 +1、忍术飞镖 +1。
- * - 临时出牌数加成(仅当前出牌周期有效,周期归零时清除):活体书页每次使用累计 +1(可叠加,
- *   非"效果存在即 +1"的开关式)、命运的指引效果存在即 +1(覆盖式,不累计)、可口糖果满血触发 +1
+ * - 临时出牌数加成(仅当前出牌周期有效,周期归零时清除):活体书页**命中前已有 ≥3 层标记**的目标时
+ *   累计 +1(可叠加,非"效果存在即 +1"的开关式;补记入口 {@link #grantLivingPageCycleBonus})、
+ *   命运的指引效果存在即 +1(覆盖式,不累计)、可口糖果满血触发 +1
  *   (每周期一次)、探天卫星轨道炮触发 +1(每 1:00 一次)、
  *   立牌主动技能一次性 +1({@link #grantBonusPlay},同样只作用于当前出牌轮)。
  * - 出牌数上限:min(1 + 固定 + 临时, {@link GameplayConstants#MAX_EFFECT_CARD_PLAYS})
@@ -211,7 +212,8 @@ public final class EffectCardPeriod {
         for (ExtraPlaySource source : TEMPORARY_SOURCES) {
             if (source.isActive(player)) extra += source.amount();
         }
-        // 活体书页:每次使用在本周期内累计 +1(仅当前周期,周期归零时清除;可叠加,非"效果存在即 +1"的开关式)
+        // 活体书页:命中(前)已有 ≥3 层标记的目标时在本周期内累计 +1(仅当前周期,周期归零时清除;
+        // 可叠加,非"效果存在即 +1"的开关式;补记入口 = grantLivingPageCycleBonus,且该入口自身封顶 9)
         extra += ModAttachments.getLivingPageCycleBonus(player);
         // 立牌主动技能一次性追加(仅当前出牌轮有效,周期结束由 clearRoundBonuses 清除)
         extra += getBonusPlays(player);
@@ -242,6 +244,33 @@ public final class EffectCardPeriod {
     public static boolean grantBonusPlay(Player player) {
         if (getBonusPlays(player) > 0) return false;
         ModAttachments.setEffectCardBonusPlays(player, 1);
+        return true;
+    }
+
+    /**
+     * 活体书页「连续出牌」补记:命中**前**已有 ≥3 层标记的目标时,本出牌周期出牌数 +1。
+     *
+     * <p><b>用户裁决(2026-09-25)</b>:仅当命中标记层数 ≥ 3 才应用出牌数 +1,且严格遵守
+     * 「单轮出牌数封顶 {@link GameplayConstants#MAX_EFFECT_CARD_PLAYS}」的全局规则。
+     * 判定用的层数由调用方({@code combat/LivingPageImpact#resolve})在**施加本次 1 层标记之前**读取。
+     *
+     * <p><b>跨轮保护</b>:本方法在**命中时**才被调用(飞行结束),与出牌不在同一 tick;
+     * 若该出牌轮已归零(忍者宽限强重置等),不得把这次补记漏记到新一轮里 ⇒ 以
+     * {@link #getPlayCount} > 0(本轮仍存活)为前提。正常路径下飞行期间活体书页效果仍在生效
+     * ({@link #registerEffectPendingSource}),出牌轮不可能归零。
+     *
+     * <p>与 {@link #grantBonusPlay} 的区别:后者是立牌主动技能的**一次性**授予(同一轮只成功一次),
+     * 本方法每次满足条件的命中都可累加,但累加值本身也封顶
+     * {@link GameplayConstants#MAX_EFFECT_CARD_PLAYS}(避免周期长期不结算时无界增长)。
+     *
+     * @return true = 本次补记成功(+1);false = 未补记(本轮已归零或已达封顶)
+     */
+    public static boolean grantLivingPageCycleBonus(Player player) {
+        if (player == null) return false;
+        if (getPlayCount(player) <= 0) return false;
+        int current = ModAttachments.getLivingPageCycleBonus(player);
+        if (current >= GameplayConstants.MAX_EFFECT_CARD_PLAYS) return false;
+        ModAttachments.setLivingPageCycleBonus(player, current + 1);
         return true;
     }
 
