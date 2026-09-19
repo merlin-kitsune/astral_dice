@@ -484,7 +484,22 @@ if (-not $modJar) {
 if (-not $SkipBuild -and $modJar) {
     $jarTime = (Get-Item -LiteralPath $modJar).LastWriteTime
     if ($jarTime -lt $startedAt.AddSeconds(-5)) {
-        Fail "本模组 jar 时间戳早于本次构建开始（可能未真正重建）：$modJar ($jarTime)" @('检查 build 日志；必要时先 clean')
+        # ⚠️ Gradle 的 UP-TO-DATE 是**合法**结果，不是「没真正重建」：
+        #    输入（源码/资源）内容未变时 Gradle 不重写 jar，时间戳自然保持旧值，而该文件仍是
+        #    本次输入的正确产物 —— 且 Gradle 的判定基于**输出内容哈希快照**，比时间戳更强。
+        #    2026-09-19 实测踩坑：只改了 javadoc 注释 ⇒ 类字节不变 ⇒ `Task :…:jar UP-TO-DATE`
+        #    ⇒ 旧判据一律 Fail、部署被自己挡住（run/<版本>/mods 因此长期停在旧库 jar 上，
+        #    Start-<版本>.bat 的前置检查于是拒绝启动）。故此处按日志放行 UP-TO-DATE，
+        #    只在**日志里也没有 UP-TO-DATE 证据**时才判为「未真正重建」。
+        $jarTaskRe = [regex]::Escape("$($line.GradlePath):jar") + '\s+UP-TO-DATE'
+        if ($logText -match $jarTaskRe) {
+            Write-Warn2 "本模组 jar 时间戳未更新（$jarTime）：构建日志显示 $($line.GradlePath):jar UP-TO-DATE —— Gradle 已按内容哈希确认该产物与本次输入一致，放行部署"
+        } else {
+            Fail "本模组 jar 时间戳早于本次构建开始，且构建日志里没有 $($line.GradlePath):jar UP-TO-DATE 证据（可能未真正重建）：$modJar ($jarTime)" @(
+                "检查 build 日志：$buildLog",
+                '必要时先 clean 再构建（gradlew.bat clean ' + $line.GradlePath + ':build）'
+            )
+        }
     }
     Write-Ok "产物验证：$([System.IO.Path]::GetFileName($modJar))  ($jarTime)"
 }

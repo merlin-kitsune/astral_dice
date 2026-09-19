@@ -1061,7 +1061,7 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --version <版本> --phase stop --purg
 | `lib/Mt.Paths.psm1` | pwsh | 唯一路径/版本来源；**截图世代清单**读写；**进程判据**单点；含 `mt.conf` 解析（`Mt.Conf.psm1`） | 无副作用 |
 | `lib/Mt.Proc.psm1` | pwsh | 外部命令执行助手：原始字节取回 + UTF-8 容错解码；后台进程/日志重定向；按版本精确收停 | 不含流程逻辑 |
 | `lib/Mt.Win32.psm1` | pwsh | Win32 API 封装(窗口/前台/输入) | 不含流程逻辑 |
-| `mt_preflight.ps1` | pwsh | 前置检查（分支/输入法可用性/遗留进程/注入通道 MCP 二进制/兼容栈/可写性） | 不启动任何游戏进程 |
+| `mt_preflight.ps1` | pwsh | 前置检查（分支/输入法可用性/遗留进程/注入通道 MCP 二进制/模组来源口径/Gradle 包装器/兼容栈/可写性/**前置库配对**） | 不启动任何游戏进程 |
 | `mt_build.ps1` | pwsh | Gradle 构建守护：超时、`BUILD SUCCESSFUL` 识别、产物 jar 校验、重试 | 不做部署决策 |
 | `mt_env.ps1` | pwsh | `mods` 装兼容模组 / `world` 重建世界（含原生 NBT 改写）/ `kill` 按版本精确停进程 | 不做功能断言 |
 | `mt_launch.ps1` | pwsh | 启动 `runClient`、轮询就绪日志、兼容栈信号、**测试前清场**（`/kill @e[type=!player,distance=..128]` ×2，`--no-preclean` 跳过） | 不定义测试条目 |
@@ -1188,7 +1188,9 @@ pwsh -NoProfile -File scripts/test/mt.ps1                              # 全流�
 pwsh -NoProfile -File scripts/test/mt_preflight.ps1 --all            # 单独执行
 ```
 
-**预期结果**：逐项打印 `[OK  ]`，末行 `MT_PREFLIGHT: OK — N 项全部满足`。检查项共 9 项：当前分支、输入法（**en-US 布局是否可用**，非「当前是否已是 en-US」）、遗留进程、注入通道 MCP 二进制、`gradlew` 是否存在，以及两个版本各自的兼容栈与 run 目录可写性。
+**预期结果**：逐项打印 `[OK  ]`，末行 `MT_PREFLIGHT: OK — N 项全部满足`。检查项 = **6 个全局项**（当前分支、输入法（**en-US 布局是否可用**，非「当前是否已是 en-US」）、遗留进程、注入通道 MCP 二进制、模组来源统一口径、`gradlew` 是否存在）+ **每个版本 3 项**（兼容栈、run 目录可写性、**前置库配对**）⇒ 单版本 **9 项**、`--all`（三条线）**15 项**。
+
+**「前置库配对」一项（2026-09-19 新增，与 `run/Start-<版本>.bat` 同口径，必须遵守）**：`run/<版本>/mods` 内的 `starengine_lib-*.jar` 必须**恰 1 份**且文件名以 `-<该线 gradle.properties 的 starengine_lib_version>.jar` 结尾；**缺 jar 放行**（dev 运行的库由 Gradle `implementation` 放进 runtimeClasspath，`run/mods` 那份只为人手启动路径自足），**版本不一致一律 FAIL**（exit 10）并回显修复命令。原因：本批实测出现过「库版本由 `.10` 升到 `.11`、`run/mods` 仍是 `.10`」的漂移 —— 三个 `Start-*.bat` 因此拒绝启动，而工具链零感知、照常跑测试（实测 FML 的 `UniqueModListBuilder` 按版本取**最新**，故旧 jar 未污染读数，但环境已不一致）。**库版本一升就必须重新成对部署**：`pwsh -NoProfile -File scripts/devtools/Start-SelfTest.ps1 -Version <版本>`（该脚本的时间戳闸门已支持 Gradle 的合法 `…:jar UP-TO-DATE`，见 `scripts/test/TESTING-SPEC.md` 附录 A「2026-09-19（续）」条）。
 
 **「遗留进程」一项的判定边界（区分两类，不能混为一谈）**：
 

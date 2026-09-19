@@ -284,6 +284,65 @@ function Test-MtPreflightWritable {
     return , @($true, [string]$p.run_dir)
 }
 
+# ── 前置库配对（run/<版本>/mods 的库 jar 与本线引脚一致）──────────────────
+function Get-MtGradleProperty {
+    <#
+    .SYNOPSIS
+        读取某子项目 gradle.properties 的单个键（键不存在返回 $null）。仅供本文件的前置检查使用。
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$File,
+        [Parameter(Mandatory)][string]$Key
+    )
+    if (-not (Test-Path -LiteralPath $File -PathType Leaf)) { return $null }
+    $m = Select-String -LiteralPath $File -Pattern ('^\s*' + [regex]::Escape($Key) + '\s*=(.*)$') | Select-Object -First 1
+    if (-not $m) { return $null }
+    return $m.Matches[0].Groups[1].Value.Trim()
+}
+
+function Test-MtPreflightLibPairing {
+    <#
+    .SYNOPSIS
+        run/<版本>/mods 内的 starengine_lib 库 jar 必须与本线 gradle.properties 的
+        starengine_lib_version **一致**（缺失可接受）。返回 @(bool, detail)。
+
+    .NOTES
+        2026-09-19 实测：库版本由 `.10` 提到 `.11` 后，`run/<版本>/mods` 仍留着旧的 `.10` 库 jar，
+        于是 `run/Start-<版本>.bat` 的前置检查一律拒绝启动（「库 jar 名与本线 starengine_lib_version
+        不一致」）—— 而工具链自身没有这道闸门，自动化测试照常运行，环境因此处于
+        「人手启动被拒、自动化照跑」的不一致状态。本检查与 `Start-*.bat` **同口径**，
+        把不一致暴露在最前面并给出可照做的修复命令（唯一修复入口 = Start-SelfTest 的成对部署）。
+
+        缺 jar **不**判失败：dev 运行的库由 Gradle `implementation` 放进 runtimeClasspath
+        （见 `scripts/devtools/Start-SelfTest.ps1` 的说明），`run/mods` 里那份只是让人手启动路径自足。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$Version)
+
+    $p = Get-MtPaths -Version $Version
+    $props = Join-Path (Join-Path $p.root $p.subproject) 'gradle.properties'
+    $pin = Get-MtGradleProperty -File $props -Key 'starengine_lib_version'
+    if (-not $pin) {
+        return , @($false, "$props 里读不到 starengine_lib_version")
+    }
+    if (-not (Test-Path -LiteralPath $p.mods_dir -PathType Container)) {
+        return , @($true, "无 mods 目录（库由 Gradle runtimeClasspath 提供 $pin）")
+    }
+    $libs = @(Get-ChildItem -LiteralPath $p.mods_dir -Filter 'starengine_lib-*.jar' -File -ErrorAction SilentlyContinue)
+    if ($libs.Count -eq 0) {
+        return , @($true, "mods 内无库 jar（由 Gradle runtimeClasspath 提供 $pin）")
+    }
+    if ($libs.Count -gt 1) {
+        return , @($false, "mods 内 starengine_lib-*.jar 有 $($libs.Count) 份（应恰 1 份）：$(($libs | ForEach-Object { $_.Name }) -join ' / ')")
+    }
+    $name = [string]$libs[0].Name
+    if ($name -notlike "*-$pin.jar") {
+        return , @($false, "库 jar 与本线引脚不一致：实际 $name ；期望 *-$pin.jar ⟹ 照做：pwsh -NoProfile -File scripts/devtools/Start-SelfTest.ps1 -Version $Version")
+    }
+    return , @($true, "$name（与 starengine_lib_version=$pin 一致）")
+}
+
 # ── 模组来源（统一口径闸门）──────────────────────────────────────────────
 function Test-MtPreflightModSources {
     <#
@@ -338,6 +397,7 @@ function Invoke-MtPreflightAll {
     foreach ($v in $Versions) {
         $checks.Add([pscustomobject]@{ Name = "兼容栈 $v"; Pair = (Test-MtPreflightCompatStack -Version $v) })
         $checks.Add([pscustomobject]@{ Name = "run 可写 $v"; Pair = (Test-MtPreflightWritable -Version $v) })
+        $checks.Add([pscustomobject]@{ Name = "前置库配对 $v"; Pair = (Test-MtPreflightLibPairing -Version $v) })
     }
 
     $failed = @()
