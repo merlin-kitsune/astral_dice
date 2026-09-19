@@ -11,7 +11,10 @@
         ⇒ 必需：受影响子项目 `gradlew build` + 静态闸门（`Test-MtSyntax`；改过 lang 另跑 `check_lang_sync`）
         ⇒ **不执行**：冒烟测试（阶段 L `--phase launch` / 阶段 C `--phase cases` / `mt.ps1` 全流程）
       · 核心（玩法逻辑与数值 / 网络 / 存档同步 / 注册表 / mixin / 渲染输入 / `data/**` 数据包 / build.gradle 行为项）
-        ⇒ 必需：构建 + 自动化测试流程（1.21.1 → 1.20.1 门控；已迁移 26.1.2 另需一致性测试）
+        ⇒ 必需：构建 + **定向最小冒烟**（只跑与该改动直接相关的用例；`mt_launch` 固有启动期硬闸门不得跳过）
+        ⇒ **不执行**：与改动无直接关系的模块用例（默认取消并在附录 A 登记；确需者登记为推迟）
+        ⇒ 命中「完整冒烟」五种情形（发版批次 / 跨模块公共路径 / 门槛类规则自身改动 / 用户显式要求 /
+          26.1.2 迁移与一致性验收批次）时**必须跑全清单**（阶段 L + 阶段 C，三线各一遍）
 
     ⚠️ 本脚本**不做任何写入**，退出码**恒为 0**（它是建议，不是闸门）。
     判定为「核心」时只代表「未命中非核心白名单」；**拿不准的一律按核心处理**。
@@ -131,9 +134,10 @@ Write-Host ''
 Write-Host "MT_SCOPE_RESULT: 非核心 $($nonCore.Count) 个 / 核心 $($core.Count) 个"
 
 if ($core.Count -gt 0) {
-    Write-Host 'MT_SCOPE: 级别 = 核心（同一批以最高级别为准；未命中非核心白名单即按核心处理）'
-    Write-Host 'MT_SCOPE_REQUIRED: 构建 + 自动化测试流程（TESTING-SPEC §4 顺序与门控：1.21.1 判定 PASS 才跑 1.20.1；已迁移 26.1.2 的内容另需 §13.2 一致性测试）'
-    Write-Host 'MT_SCOPE_SKIP: （无 —— 核心改动不得免冒烟）'
+    Write-Host 'MT_SCOPE: 级别 = 核心（同一批以最高级别为准；未命中非核心白名单即按核心处理）→ 默认执行「定向最小冒烟」'
+    Write-Host 'MT_SCOPE_REQUIRED: 构建 + 只跑与本改动直接相关的用例（映射与举证见 AGENTS.md「变更分级与验证口径」第 7 条）+ mt_launch 固有启动期硬闸门（noai / 史莱姆压制 / preflight，不得跳过）'
+    Write-Host 'MT_SCOPE_SKIP: 与改动无直接关系的模块用例（本批取消，登记在附录 A；确需者登记为推迟并写明触发条件）'
+    Write-Host 'MT_SCOPE_ESCALATE: 命中以下任一情形必须跑完整清单（阶段 L + 阶段 C 全清单，三线各一遍）—— ① 发版/Release 批次 ② 跨模块公共路径（共享库 starengine_lib / 注册表与数据组件结构 / 网络协议 / 存档读档结构 / 全局伤害结算出入口）③ 门槛类规则自身改动（版本互通门槛 / 加载器门槛 / mixin 目标串 / 依赖区间）④ 用户显式要求 ⑤ 26.1.2 迁移与一致性验收批次'
 } else {
     Write-Host 'MT_SCOPE: 级别 = 非核心（脚本 / 文本 / tooltip / 文档 / 注释 / 测试夹具）'
     Write-Host 'MT_SCOPE_REQUIRED: 受影响子项目 gradlew build + 静态闸门（pwsh -NoProfile -File scripts/devtools/Test-MtSyntax.ps1；改过 lang 另跑 tools/check_lang_sync.ps1）+ 自动本地提交'
