@@ -14,7 +14,10 @@ import java.util.UUID;
  * <p>层数存储于 {@link ChargeEffect}(amplifier = 层数-1,上限见
  * {@link GameplayConstants#CHARGE_MAX_STACKS})。
  * 流派固定效果(与层数多少无关):拥有至少 1 层充能时,
- * 立牌主动/效果牌冷却时间 -20%(无防御力/护甲加成)。
+ * 立牌主动冷却至多 160 秒、效果牌冷却至多 20 秒 —— 把**基础值**封顶
+ * (2026-09-25 改口径,取代旧的「-20% 比例减免」);封顶之后再由调用方叠加
+ * 其它减免(诡异骰子 -50% 等)。已在进行的倒计时不受影响(只在开始冷却时取值)。
+ * 无防御力/护甲加成。
  */
 public final class ChargeManager {
     /** 死亡时暂存的充能层数:等待重生后恢复(仅内存态,用于跨死亡实体转移) */
@@ -60,11 +63,27 @@ public final class ChargeManager {
         ChargeEffect.removeAll(player);
     }
 
-    /** 返回经过充能减冷却后的 tick 数(拥有充能时 -20%,最少 1 tick) */
-    public static long cooldownTicks(Player player, long baseTicks) {
+    /**
+     * 立牌主动技能冷却 tick:拥有充能时把**基础值**封顶为 160 秒
+     * ({@link GameplayConstants#CHARGE_SIGN_COOLDOWN_CAP_SECONDS})。
+     *
+     * <p>2026-09-25 改口径:取代旧的「有充能即 -20%」比例减免。封顶只作用于**基础值**,
+     * 之后由调用方继续叠加其它减免(诡异骰子 -50%、枪匠「精密技巧」的 120 秒基础值等);
+     * 基础值本就低于上限时保持原值。**已在进行的倒计时不受影响** —— 本方法只在开始冷却时取值。
+     */
+    public static long signCooldownTicks(Player player, long baseTicks) {
+        return capByCharge(player, baseTicks, GameplayConstants.CHARGE_SIGN_COOLDOWN_CAP_SECONDS);
+    }
+
+    /** 效果牌公共冷却 tick:拥有充能时把**基础值**封顶为 20 秒(2026-09-25 改口径,同上) */
+    public static long effectCardCooldownTicks(Player player, long baseTicks) {
+        return capByCharge(player, baseTicks, GameplayConstants.CHARGE_EFFECT_CARD_COOLDOWN_CAP_SECONDS);
+    }
+
+    /** 有充能时按上限封顶;无充能、基础值 ≤1 tick 或本就更低时原样返回 */
+    private static long capByCharge(Player player, long baseTicks, int capSeconds) {
         if (baseTicks <= 1 || !hasCharge(player)) return baseTicks;
-        double reduced = baseTicks * (1.0 - GameplayConstants.CHARGE_COOLDOWN_REDUCTION);
-        return Math.max(1, (long) Math.ceil(reduced));
+        return Math.min(baseTicks, capSeconds * 20L);
     }
 
     /** 玩家死亡前调用:暂存当前充能层数,供重生后恢复(死亡不丢失充能) */

@@ -411,7 +411,7 @@ public final class EffectCardPeriod {
         // 不变(什么都不写);仅当没有冷却在跑(为 0 或已到期)时才写入 now + cooldownTicks。
         // 正常打满路径(无冷却在跑)与改动前逐字等价。
         if (count >= getMaxAllowed(player)) {
-            long cooldownTicks = ChargeManager.cooldownTicks(player,
+            long cooldownTicks = ChargeManager.effectCardCooldownTicks(player,
                     GameplayConstants.EFFECT_CARD_COOLDOWN_SECONDS * 20L);
             if (cooldown <= now) {
                 ModAttachments.setEffectCardCooldownEnd(player, now + cooldownTicks);
@@ -428,7 +428,7 @@ public final class EffectCardPeriod {
      *   <li><b>未打满的一轮在计时器全部结束后收尾(2026-09-15 用户裁决)</b>:出牌数未达上限、
      *       但本轮的"剩余被锁时长"({@link #getRemainingBlockTicks},由 {@code EFFECT_PENDING_SOURCES}
      *       的效果自动推导,不硬编码效果列表)已归 0 时,同样启动一轮 30 秒冷却(时长与"打满上限"复用
-     *       同一 {@code ChargeManager.cooldownTicks} 口径)。判据:{@code played > 0 &&
+     *       同一 {@code ChargeManager.effectCardCooldownTicks} 口径)。判据:{@code played > 0 &&
      *       played < getMaxAllowed(player)} 且 {@code getRemainingBlockTicks(player) <= 0};
      *       仍有计时器在跑时继续等待(即正常累积中)。
      *       <b>最终语义(2026-09-15 用户裁决)</b>:未打满的一轮在所有计时器结束后也会进入一轮冷却,
@@ -462,7 +462,7 @@ public final class EffectCardPeriod {
                 // 冷却到期后计数归零。
                 if (getRemainingBlockTicks(player) > 0) return;
             }
-            long recoverTicks = ChargeManager.cooldownTicks(player,
+            long recoverTicks = ChargeManager.effectCardCooldownTicks(player,
                     GameplayConstants.EFFECT_CARD_COOLDOWN_SECONDS * 20L);
             ModAttachments.setEffectCardCooldownEnd(player, now + recoverTicks);
             return;

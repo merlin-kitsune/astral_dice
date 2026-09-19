@@ -32,13 +32,13 @@ public final class WeirdDiceHandler {
                 .orElse(false);
     }
 
-    /** 立牌主动技能冷却 tick:佩戴诡异骰子时减半;拥有充能时再 -20% */
+    /** 立牌主动技能冷却 tick:拥有充能时先把基础值封顶(180→160 秒),再按诡异骰子减半 */
     public static int signCooldownTicks(Player player) {
-        int ticks = GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS;
+        int ticks = (int) ChargeManager.signCooldownTicks(player, GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS);
         if (hasWeirdDice(player)) {
             ticks = Math.max(1, ticks / 2);
         }
-        return (int) ChargeManager.cooldownTicks(player, ticks);
+        return ticks;
     }
 
     /**

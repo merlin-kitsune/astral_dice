@@ -1312,11 +1312,11 @@ public class ModTooltipHandler {
         }
     }
 
-    /** 效果牌冷却显示:按玩家当前实际冷却取值(含充能的 -20% 减免),结果向下取整为秒 */
+    /** 效果牌冷却显示:按玩家当前实际冷却取值(有充能时基础值封顶为 20 秒),结果向下取整为秒 */
     private static long effectCardCooldownSeconds(Player player) {
         long baseTicks = GameplayConstants.EFFECT_CARD_COOLDOWN_SECONDS * 20L;
         long ticks = player != null
-                ? com.merlinkitsune.astral_dice.item.ChargeManager.cooldownTicks(player, baseTicks)
+                ? com.merlinkitsune.astral_dice.item.ChargeManager.effectCardCooldownTicks(player, baseTicks)
                 : baseTicks;
         return Math.max(1L, ticks / 20L);
     }

@@ -4351,6 +4351,8 @@ var DESC_BERSERK_CARD = "effect.astral_dice.berserk";
 
 /** 最近一次 cardprep 时的生命值(供 cardread 的 "dhp" 报治疗差值;-1 = 本次未 prep) */
 var cardHpBefore = -1;
+// 充能冷却读数用:上一次读到的效果牌冷却到期 tick(判「进行中的倒计时是否被改动」)
+var chargeLastCardEnd = -1;
 
 /** 效果实例 → "等级/剩余tick"(无该效果 = "-") */
 function effectAmpDur(inst) {
@@ -4436,6 +4438,50 @@ function doCardSelf(ctx, tag) {
         + (err ? ":err=" + err : "") + ":" + cardState(p));
     return 1;
 }
+/**
+ * 充能冷却读数(只读)。2026-09-25 改口径:拥有充能时把**基础值**封顶 ——
+ * 立牌主动至多 160 秒(sign=3200 tick,基础 3600)、效果牌至多 20 秒(card=400,基础 600);
+ * 无充能时返回基础值(3600 / 600);佩戴诡异骰子再减半(有充能时 sign=1600)。
+ * capSign / capCard 直接读共享库常量,避免把口径写死在用例里。
+ */
+function doChargeCd(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var Charge = Java.loadClass("com.merlinkitsune.astral_dice.item.ChargeManager");
+    var Weird = Java.loadClass("com.merlinkitsune.astral_dice.event.WeirdDiceHandler");
+    var GC = Java.loadClass("com.merlinkitsune.starenginelib.component.GameplayConstants");
+    var now = nowTick(p);
+    var cardBase = GC.EFFECT_CARD_COOLDOWN_SECONDS * 20;
+    var cardEnd = ModAttachments.getEffectCardCooldownEnd(p);
+    var cardEndSame = (chargeLastCardEnd >= 0 && (chargeLastCardEnd - cardEnd) === 0) ? 1 : 0;
+    chargeLastCardEnd = cardEnd;
+    var signEnd = ModAttachments.getSignActiveCooldownEnd(p);
+    send(ctx, "AP_" + tag + "_CD:stacks=" + Charge.getStacks(p)
+        + ":has=" + (Charge.hasCharge(p) ? 1 : 0)
+        + ":weird=" + (Weird.hasWeirdDice(p) ? 1 : 0)
+        + ":signBase=" + GC.SIGN_ACTIVE_COOLDOWN_TICKS
+        + ":sign=" + Weird.signCooldownTicks(p)
+        + ":card=" + Charge.effectCardCooldownTicks(p, cardBase)
+        + ":capSign=" + GC.CHARGE_SIGN_COOLDOWN_CAP_SECONDS
+        + ":capCard=" + GC.CHARGE_EFFECT_CARD_COOLDOWN_CAP_SECONDS
+        + ":signEnd=" + signEnd
+        + ":signMax=" + ModAttachments.getSignActiveMaxCooldown(p)
+        + ":cardEnd=" + cardEnd
+        + ":cardEndSame=" + cardEndSame
+        + ":cardRemain=" + Math.max(0, cardEnd - now));
+    return 1;
+}
+
+/** 设置充能层数(0 = 清空),随后打印同一份冷却读数(同一 tag) */
+function doChargeSet(ctx, tag, n) {
+    var p = ctx.source.getPlayerOrException();
+    var Charge = Java.loadClass("com.merlinkitsune.astral_dice.item.ChargeManager");
+    Charge.removeAll(p);
+    if (n > 0) {
+        Charge.addStacks(p, n);
+    }
+    return doChargeCd(ctx, tag);
+}
+
 ServerEvents.commandRegistry(event => {
     var Commands = event.commands;
     event.register(
@@ -4450,6 +4496,18 @@ ServerEvents.commandRegistry(event => {
 
     })))
 
+            .then(Commands.literal("chargeset")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("n", IntegerArg.integer(0, 20))
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doChargeSet(ctx, StringArg.getString(ctx, "tag"),
+                                IntegerArg.getInteger(ctx, "n"));
+                        })))))
+            .then(Commands.literal("chargecd")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doChargeCd(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
 .then(Commands.literal("dumpstate")
 
     .then(Commands.argument("tag", StringArg.word())

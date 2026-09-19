@@ -1,0 +1,193 @@
+{
+  "case_id": "CHARGE-COOLDOWN-1.21.1",
+  "title": "充能冷却改口径：有充能时立牌主动封顶 160 秒(3200 tick)、效果牌封顶 20 秒(400 tick)，诡异骰子先封顶后减半，且不触碰进行中的倒计时",
+  "version": "1.21.1",
+  "target": {
+    "type": "feature",
+    "ref": "charge-cooldown-cap"
+  },
+  "steps": [
+    {
+      "op": "note",
+      "text": "充能冷却改口径(2026-09-25 用户裁决):拥有充能时把**基础值**封顶 —— 立牌主动 180 秒→160 秒(3600→3200 tick)、效果牌 30 秒→20 秒(600→400 tick);之后诡异骰子 -50% 照旧(有充能时 1600 tick);**已在进行的倒计时不得被改动**(cardEndSame=1)。capSign/capCard 直读共享库常量。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode survival"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe chargeset CC0 0"
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe chargeset CC1 5"
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe chargecd CC2"
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe equipslot dice \"astral_dice:weird_dice\" CCW"
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe chargeset CC3 5"
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe equipslot dice \"minecraft:air\" CCU"
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe chargeset CC4 0"
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe cardprep CC5 \"astral_dice:effect_card_express_delivery\""
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe cardread CC5"
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe cardself CC5"
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe chargecd CC6"
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe chargeset CC7 5"
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe chargecd CC8"
+    },
+    {
+      "op": "wait",
+      "ms": 300
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CC0_CD:stacks=0:has=0:weird=0:signBase=3600:sign=3600:card=600:capSign=160:capCard=20"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CC1_CD:stacks=5:has=1:weird=0:signBase=3600:sign=3200:card=400:capSign=160:capCard=20"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CC2_CD:stacks=5:has=1:weird=0:.*sign=3200:card=400:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CCW_EQUIP:dice:astral_dice:weird_dice"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CC3_CD:stacks=5:has=1:weird=1:.*sign=1600:card=400:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CCU_CLEAR:dice"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CC5_READ:hand=astral_dice:effect_card_express_delivery:handn=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CC5_SELF:called=1:.*plays=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CC6_CD:stacks=0:has=0:weird=0:.*card=600:.*cardRemain=[1-6][0-9][0-9]"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CC7_CD:stacks=5:has=1:.*card=400:.*cardEndSame=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CC8_CD:stacks=5:has=1:.*cardEndSame=1"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_CC\\d+_ERR|AP_CC\\d+_EX|AP_CC\\d+_CD:ERR|AP_CCW_ERR|AP_CCW_EX|AP_CCU_ERR|AP_CCU_EX|AP_TICK_EX|AP_CC\\d+_CD:.*sign=ERR|AP_CC\\d+_CD:.*card=ERR"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "crash"
+    }
+  ],
+  "evidence": [],
+  "on_fail": "keep_game_running"
+}
