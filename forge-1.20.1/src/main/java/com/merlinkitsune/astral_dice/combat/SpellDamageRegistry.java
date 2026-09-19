@@ -3,6 +3,7 @@ import com.merlinkitsune.astral_dice.network.ModNetwork;
 
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
+import com.merlinkitsune.starenginelib.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.item.MarkManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import net.minecraft.core.registries.Registries;
@@ -36,6 +37,8 @@ import com.merlinkitsune.astral_dice.item.chip.PiercingGunChipItem;
  * 6. 本模组「活体书页」命中伤害(astral_dice:card_spell,2026-09-25 起;见 {@link LivingPageImpact})。
  * 排除:枪械/炮弹/炸药/火箭等军火类(tacZ、维克斯的武器、卓越前线、气动工艺、机械动力:火炮、通用机械:武器、
  * 沉浸工程等)——其弹丸实体不属于白名单,黑名单关键词仅作"弹丸继承原生类"场景的保险。
+ * 该排除由公共配置 {@code allow_firearm_damage} 控制(**默认 false 即默认继续排除**);设为 true 时,
+ * 弹丸实体类名或伤害类型关键词命中的军火类伤害也会进入下方白名单 matcher 判定。
  */
 public final class SpellDamageRegistry {
 
@@ -113,10 +116,14 @@ public final class SpellDamageRegistry {
     }
 
     /**
-     * 作用域判定:先排除军火类(保险),再按白名单 matcher 依次判定。
+     * 作用域判定:先按公共配置 {@code allow_firearm_damage} 决定是否排除军火类(保险),
+     * 再按白名单 matcher 依次判定。
+     *
+     * <p>军火类排除默认生效({@code allow_firearm_damage = false}),即与既有行为一致;
+     * 仅当显式开启该配置时,弹丸/伤害类型关键词命中的军火类伤害才会继续走白名单判定。
      */
     public static boolean isSpellDamage(DamageSource source, Entity direct) {
-        if (isFirearmDamage(source)) return false;
+        if (!GameplayConstants.ALLOW_FIREARM_DAMAGE && isFirearmDamage(source)) return false;
         for (SpellDamageMatcher matcher : MATCHERS) {
             if (matcher.matches(source, direct)) return true;
         }

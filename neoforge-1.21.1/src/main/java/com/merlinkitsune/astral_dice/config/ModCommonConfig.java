@@ -17,13 +17,15 @@ import net.neoforged.neoforge.common.ModConfigSpec;
  * <b>配置版本号规则:只有修改了配置项(增/删/改)时才 +1</b>,`CONFIG_VERSION` 是旧配置自动备份的判据。
  * v2 已用于「移除事件范围与女仆开关」;本次「移除星光上限/标记上限/效果牌公共冷却/功能效果牌叠层上限/手持风扇-大范围
  * (全部回归 GameplayConstants 常量)」**按用户裁决不递增版本号**(当前版本不修改)。
+ * v3 用于「新增 `allow_firearm_damage`(枪弹/炮弹类伤害是否计入法伤)」。
  */
 public final class ModCommonConfig {
-    public static final int CONFIG_VERSION = 2;
+    public static final int CONFIG_VERSION = 3;
 
     public static final ModConfigSpec SPEC;
 
     public static final ModConfigSpec.BooleanValue GIVE_GUIDE_BOOK_ON_FIRST_JOIN;
+    public static final ModConfigSpec.BooleanValue ALLOW_FIREARM_DAMAGE;
     public static final ModConfigSpec.BooleanValue EVENT_APPLY_MC_TEAM;
     public static final ModConfigSpec.BooleanValue EVENT_APPLY_FTB_TEAM;
     public static final ModConfigSpec.BooleanValue EVENT_APPLY_OPAC;
@@ -37,6 +39,12 @@ public final class ModCommonConfig {
 
         GIVE_GUIDE_BOOK_ON_FIRST_JOIN = builder.comment("是否在玩家第一次加入世界时给予《恋的规则书》(默认：true; 每个玩家每个世界只发放一次)")
                 .define("give_guide_book_on_first_join", true);
+
+        // 枪弹/炮弹类伤害是否计入法伤(默认 false 即维持既有行为:军火类伤害一律不计入法伤)。
+        ALLOW_FIREARM_DAMAGE = builder.comment("是否允许枪弹/炮弹类伤害计入法伤(默认：false)",
+                        "false = 屏蔽枪弹/炮弹等军火类伤害,不计入法伤(与既有行为一致);",
+                        "true = 允许伤害类型或弹丸类名关键词命中的军火类伤害进入法伤白名单判定")
+                .define("allow_firearm_damage", false);
 
         builder.push("event_system").comment("=== 事件系统 ===");
         EVENT_APPLY_MC_TEAM = builder.comment("事件是否作用于 Minecraft 同队玩家")
@@ -75,6 +83,7 @@ public final class ModCommonConfig {
                 EVENT_APPLY_FTB_TEAM.get(),
                 EVENT_APPLY_OPAC.get(),
                 ACTIONBAR_DURATION_TICKS.get(),
-                ACTIONBAR_FADE_TICKS.get());
+                ACTIONBAR_FADE_TICKS.get(),
+                ALLOW_FIREARM_DAMAGE.get());
     }
 }
