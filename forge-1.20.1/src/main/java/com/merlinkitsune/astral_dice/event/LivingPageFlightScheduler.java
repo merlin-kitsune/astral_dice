@@ -32,9 +32,15 @@ public final class LivingPageFlightScheduler {
 
     private static final int IMPACT_BURST_PARTICLES = 20;
 
+    private static final double LAUNCH_FORWARD_OFFSET = 1.0D;
+
+    private static final double EYE_CLEAR_RADIUS = 1.25D;
+
     private static final Logger LOGGER = LoggerFactory.getLogger(LivingPageFlightScheduler.class);
 
     private static final List<Pending> PENDING = new ArrayList<>();
+
+    private static double lastFlightMinEyeDistance = -1.0D;
 
     private static final class Pending {
         private final ServerLevel level;
@@ -61,11 +67,21 @@ public final class LivingPageFlightScheduler {
 
     public static boolean launch(ServerLevel level, ServerPlayer caster, LivingEntity target) {
         if (level == null || caster == null || target == null) return false;
-        Vec3 start = caster.getEyePosition();
+        Vec3 start = launchOrigin(caster, target);
+        lastFlightMinEyeDistance = -1.0D;
         double distance = start.distanceTo(target.getBoundingBox().getCenter());
         int flightTicks = (int) Math.max(1L, (long) Math.ceil(distance / SPEED_BLOCKS_PER_TICK));
         PENDING.add(new Pending(level, caster, target, start, flightTicks));
         return true;
+    }
+
+    private static Vec3 launchOrigin(ServerPlayer caster, LivingEntity target) {
+        Vec3 eye = caster.getEyePosition();
+        Vec3 delta = target.getBoundingBox().getCenter().subtract(eye);
+        double distance = delta.length();
+        if (distance <= 1.0E-4D) return eye;
+        double offset = Math.min(LAUNCH_FORWARD_OFFSET, distance * 0.5D);
+        return eye.add(delta.scale(offset / distance));
     }
 
     public static int pendingCount(ServerLevel level) {
@@ -85,6 +101,10 @@ public final class LivingPageFlightScheduler {
             best = Math.min(best, Math.max(0L, (long) p.flightTicks - p.elapsed));
         }
         return best == Long.MAX_VALUE ? -1L : best;
+    }
+
+    public static double lastFlightMinEyeDistance() {
+        return lastFlightMinEyeDistance;
     }
 
     @SubscribeEvent
@@ -140,8 +160,25 @@ public final class LivingPageFlightScheduler {
         int steps = Math.max(1, (int) Math.ceil(length / TRAIL_SPACING));
         for (int i = 1; i <= steps; i++) {
             Vec3 at = from.lerp(to, (double) i / (double) steps);
+            if (insideEyeClear(p.level, at)) continue;
             p.level.sendParticles(ParticleTypes.END_ROD,
                     at.x, at.y, at.z, TRAIL_PARTICLES_PER_STEP, 0.03D, 0.03D, 0.03D, 0.0D);
+            trackEyeDistance(p, at);
+        }
+    }
+
+    private static boolean insideEyeClear(ServerLevel level, Vec3 at) {
+        double radiusSqr = EYE_CLEAR_RADIUS * EYE_CLEAR_RADIUS;
+        for (ServerPlayer player : level.players()) {
+            if (player.getEyePosition().distanceToSqr(at) < radiusSqr) return true;
+        }
+        return false;
+    }
+
+    private static void trackEyeDistance(Pending p, Vec3 at) {
+        double distance = at.distanceTo(p.caster.getEyePosition());
+        if (lastFlightMinEyeDistance < 0.0D || distance < lastFlightMinEyeDistance) {
+            lastFlightMinEyeDistance = distance;
         }
     }
 
@@ -153,10 +190,12 @@ public final class LivingPageFlightScheduler {
     }
 
     private static void impact(Pending p, Vec3 center) {
-        p.level.sendParticles(ParticleTypes.END_ROD,
-                center.x, center.y, center.z, IMPACT_BURST_PARTICLES, 0.25D, 0.25D, 0.25D, 0.02D);
-        p.level.sendParticles(ParticleTypes.FLASH,
-                center.x, center.y, center.z, 1, 0.0D, 0.0D, 0.0D, 0.0D);
+        if (!insideEyeClear(p.level, center)) {
+            p.level.sendParticles(ParticleTypes.END_ROD,
+                    center.x, center.y, center.z, IMPACT_BURST_PARTICLES, 0.25D, 0.25D, 0.25D, 0.02D);
+            p.level.sendParticles(ParticleTypes.FLASH,
+                    center.x, center.y, center.z, 1, 0.0D, 0.0D, 0.0D, 0.0D);
+        }
         LivingPageImpact.resolve(p.level, p.caster, p.target);
     }
 }

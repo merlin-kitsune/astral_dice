@@ -4873,6 +4873,17 @@ function lpFlight(p) {
     } catch (e) { return "err:" + exText(e); }
 }
 
+/** 最近一次飞行的「离施法者眼位最近的已发射粒子」距离(格;-1 = 本次未发射;na/err 同 lpFlight) */
+function lpMinEye(p) {
+    if (LivingPageFlightSchedulerClass == null) return "na";
+    try {
+        var v = LivingPageFlightSchedulerClass.lastFlightMinEyeDistance();
+        if (v < 0) return "-1";
+        var n = Math.round(v * 100);
+        return Math.floor(n / 100) + "." + ("00" + (n % 100)).slice(-2);
+    } catch (e) { return "err"; }
+}
+
 /** 活体书页相关全部原始值读数(单行机器格式) */
 function lpReadout(p, d, dmg) {
     return lpHandState(p)
@@ -4884,7 +4895,10 @@ function lpReadout(p, d, dmg) {
         // 而「魔法箭袋」触发会**返还**第一张使用的效果牌 ⇒ 用它可以判定返还确实到手
         // (无箭袋/未触发时读数恒为 0,触发后为 1)。
         + ":cards=" + lpCardCount(p)
-        + ":flight=" + lpFlight(p);
+        + ":flight=" + lpFlight(p)
+        // mineye = 最近一次飞行里「离施法者眼位最近的**已发射**拖尾粒子」距离(格;-1 = 本次未发射);
+        // 判定用户要求「第一人称发射粒子不遮挡视野」:期望恒 >= 调度器 EYE_CLEAR_RADIUS(1.25)
+        + ":mineye=" + lpMinEye(p);
 }
 
 /** 活体书页用例统一基线:出牌周期归零 + 清原版效果 + 摘掉「已使用伤害效果牌」标记 + 清空背包 */
