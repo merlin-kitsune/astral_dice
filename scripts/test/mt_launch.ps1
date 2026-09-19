@@ -158,6 +158,11 @@ function Invoke-MtLaunchOpPreflight {
         [Parameter(Mandatory)][psobject]$Paths
     )
 
+    if ($env:MT_ASSETS_ABSENT -eq '1') {
+        Write-MtWarn 'PREFLIGHT_OP: SKIPPED — MT_ASSETS_ABSENT=1（2026-09-20 测试资产清零期降级，S2）：探针已删除，跳过 opprobe / APDUMP 闸门；该模式下任何输出不构成验收证据'
+        return [pscustomobject]@{ Code = 'OK'; Detail = 'skipped (MT_ASSETS_ABSENT=1)' }
+    }
+
     $rcs = @()
     for ($attempt = 1; $attempt -le 2; $attempt++) {
         & $PsExe -NoProfile -File (Join-Path $TestDir 'mt_inject.ps1') cmd `
@@ -589,6 +594,54 @@ if ($MyInvocation.InvocationName -ne '.') {
         if ($collective) { Write-MtInfo 'COLLECTIVE_LOADED=true' } else { Write-MtWarn 'COLLECTIVE_LOADED=false(Collective 前置缺失？史莱姆压制可能未生效)' }
     }
 
+    # ── 禁用生物 AI 硬闸门（2026-09-18 用户裁决「测试流程未禁用生物 AI，这是严重失误」）────
+    # 规则：测试环境**必须**禁用生物 AI。此前只有「进入世界后清场一次 + 探针靶子自设 noAi」，
+    # 自然刷新的生物仍带 AI —— 会主动接近/攻击/推挤玩家、投掷弹射物、踩压力板、引爆苦力怕，
+    # 污染「世界级差值」读数（`self` 施放者 HP、`bolt_delta` 全局雷击计数、实体计数），
+    # 甚至把玩家打死 ⇒ 用例随机失败或拿到假读数。这是**流程缺陷**，不是被测行为。
+    # 实施：`scripts/test/resources/kubejs/<ver>/server_scripts/astral_test_noai.js`
+    #   —— 由 `mt_env` 的 kubejs 子命令同步（env 阶段自动做），每 2 tick 横扫玩家周围 128 格内
+    #   的 Mob 强制 `setNoAi(true)`，并在 `EntityEvents.spawned` 上即时生效；前 30 秒每 5 秒
+    #   回报一行 `AP_NOAI:mobs=<n>:noai=<n>:radius=<r>:forced=<n>:total=<n>:tick=<t>`。
+    # 判据：latest.log 里读到 `AP_NOAI:` 行 **且** `mobs == noai`（该半径内不存在仍带 AI 的 Mob）；
+    #   取不到读数（脚本未同步 / 未生效 / 取不到 server）一律**硬失败**，绝不带着会被 AI 污染的
+    #   现场继续跑用例。唯一例外：显式设 `MT_ALLOW_MOB_AI=1`（对照实验用，留 WARN 痕迹）。
+    # ⚠️ 本闸门**只**禁 AI、不禁刷怪：史莱姆由上面的 SLIMEGUARD 闸门负责，且**禁止**用
+    #    `/gamerule doMobSpawning false` 代替 —— 那会让 `/astralprobe slimecheck` 的对照读数恒为 0。
+    if ($env:MT_ASSETS_ABSENT -eq '1') {
+        Write-MtWarn 'NOAI_ENFORCED=SKIPPED — MT_ASSETS_ABSENT=1（2026-09-20 测试资产清零期降级，S2）：astral_test_noai.js 已删除，跳过禁AI硬闸门；world-level 读数有被自然刷怪 AI 污染的风险'
+    } elseif ($env:MT_ALLOW_MOB_AI -eq '1') {
+        Write-MtWarn 'NOAI_ENFORCED=false — 已按 MT_ALLOW_MOB_AI=1 显式放行（此时自然刷新的生物仍带 AI，world-level 差值读数有被污染的风险）'
+    } else {
+        $noAiLine = ''
+        $noAiOk = $false
+        $noAiDeadline = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds() + 30
+        while ([DateTimeOffset]::UtcNow.ToUnixTimeSeconds() -lt $noAiDeadline) {
+            $latest = Read-MtSharedText -Path $p.latest_log
+            $noAiLine = ''
+            foreach ($ln in ($latest -split "`r?`n")) {
+                if ($ln -match 'AP_NOAI:ERR:') { $noAiLine = $ln.Trim(); break }
+                $mNoAi = [regex]::Match($ln, 'AP_NOAI:mobs=(\d+):noai=(\d+):radius=(\d+):forced=(\d+)')
+                if ($mNoAi.Success) {
+                    $noAiLine = $mNoAi.Value
+                    $noAiOk = ([int]$mNoAi.Groups[1].Value -eq [int]$mNoAi.Groups[2].Value)
+                    break
+                }
+            }
+            if ($noAiLine -ne '') { break }
+            Start-Sleep -Seconds 1
+        }
+        if ($noAiOk) {
+            Write-MtInfo ("NOAI_ENFORCED=true — {0}" -f $noAiLine)
+        } else {
+            $why = if ($noAiLine -match 'AP_NOAI:ERR:') { "脚本报错：$noAiLine" }
+                   elseif ($noAiLine -ne '') { "读到 $noAiLine（仍有 Mob 带 AI）" }
+                   else { '30s 内未读到 AP_NOAI 行（脚本未同步 / 未生效）' }
+            Write-MtErrLine ("MT_LAUNCH: ERROR — 未确认「生物 AI 已禁用」（测试环境硬性要求）：{0}；先执行 pwsh -File scripts/test/mt_env.ps1 kubejs --version {1} 同步脚本后**冷启动**（如确需带 AI 的对照实验，设 MT_ALLOW_MOB_AI=1）" -f $why, $Version)
+            exit $MT_EXIT_ERROR
+        }
+    }
+
     # KubeJS 脚本健康（进入世界后第一步）
     & $psExe -NoProfile -File (Join-Path $testDir 'mt_assert.ps1') kubejs --version $Version
     if ($LASTEXITCODE -ne 0) { Write-MtWarn 'KubeJS server.log 非 0 errors' }
@@ -637,6 +690,21 @@ if ($MyInvocation.InvocationName -ne '.') {
     # 静默沿用上一轮的日志字节偏移，把确实存在的 AP_ 行判成「未命中」→ **假 FAIL**
     # （实测：第一轮 RAILGUN-PET-EXCLUDE 因此 26/26 里的 tame 行未命中，复跑才 PASS）。
     # 现在快照动作放进 launch 自己的收尾：全流程与分步路线共用同一处，调用方不必再手工补
+    # 清场生效证据（2026-09-20 S7：双语判据 + 回显）：原版反馈「杀死了N个实体 / 未找到实体」
+    # （中文 locale）或「Killed N entities / No entity was found」（英文 locale）。此前只按注入
+    # 返回码判 OK/WARN，命令未被执行时无法自证；此处补读反馈行，读不到仅 WARN 不硬失败。
+    $precleanEv = 'not-found'
+    $evText = ''
+    try { $evText = Read-MtSharedText -Path $p.latest_log } catch { $evText = '' }
+    if ($evText -match '杀死了(\d+)个实体') { $precleanEv = "zh:killed=$($Matches[1])" }
+    elseif ($evText -match '未找到实体') { $precleanEv = 'zh:none' }
+    elseif ($evText -match 'Killed (\d+) entities') { $precleanEv = "en:killed=$($Matches[1])" }
+    elseif ($evText -match 'No entity was found') { $precleanEv = 'en:none' }
+    if ($precleanEv -eq 'not-found') {
+        Write-MtWarn ("PRECLEAN_EVIDENCE: not-found — 未读到清场原版反馈（双语判据均未命中，注入返回码 {0}）；清场是否真执行无法自证" -f ($precleanRc -join '/'))
+    } else {
+        Write-MtInfo ("PRECLEAN_EVIDENCE: {0}" -f $precleanEv)
+    }
     # （覆盖 preclean 之后的所有行 —— preclean 是 launch 自己的动作，不属于任何用例的增量）。
     #
     # B7：这里必须显式写 `--window launch` —— 它将同一组偏移**冻结**成 `launch_offsets`，

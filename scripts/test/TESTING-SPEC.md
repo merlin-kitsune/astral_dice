@@ -1,9 +1,28 @@
 # astral_dice 自动化测试规范（TESTING SPEC）
+## ⚠️ 测试资产已全部清零（2026-09-20 用户指令）— 现行状态，先读本节
+
+> 用户指令原文：「执行项目与AGENTS自检：清理所有测试项，已进行或未进行的测试项全部作废并删除，删除所有插针和测试项脚本，包括游戏环境中插入的kubejs脚本。保留测试规则，由用户对测试流程和规则进行核验，将完整的测试流程和规则向用户完整展示。」
+
+**已删除（主树 `multi-1.20.1-1.21.1` 与工作树 `multi-dev-next` 两处同步执行）**
+
+- 全部测试条目：`scripts/test/cases/*.json`（含 `.mt_active_run` / `.mt_run_state.json` / `.mt_progress.json` / `.mt_snapshot.json` / `.mt_keep_alive` 运行态）——**当前在册用例 0 条**；
+- 全部探针与测试脚本（源码侧）：`scripts/test/resources/kubejs/<版本>/server_scripts/astral_*.js`（含主探针 `astral_bugfix_probe.js`、禁 AI 脚本 `astral_test_noai.js` 与既有观测脚本）；
+- 游戏环境内已注入的副本：`run/<版本>/kubejs/{server_scripts,startup_scripts}/astral_*.js`（KubeJS 自身的 README/config/example 未动）；
+- 历史测试报告：`scripts/test/reports/<运行id>/`（保留模板 `_template.md`）；
+- 会话期测试证据：`temp/` 下的测试证据目录与日志（保留第三方源码快照、依赖/产物盘点、库与迁移/合并工程记录、`temp/probe_mods` 等非测试材料）。删除清单：`temp/cleanup-manifest-20260920-*.txt`。
+
+**结论效力**：2026-09-20 之前的一切自动化 / 游戏内测试结论（含历史 run、各批次 PASS/FAIL 计数、冻结件）**全部作废**，不得作为功能、修复或发布的验收依据。本文件下文与 `TESTING-SPEC.md` §6/§8/§13、`docs/batch*`、`docs/scan2`、`docs/audit-slices`、`KNOWN-ISSUES.md` 中出现的**用例名、探针命令与读数一律只作历史记录**（对应文件已不存在），不得据以复跑。
+
+**保留（供用户核验）**：测试流程实现 `scripts/test/mt*.ps1` + `lib/` + `scripts/devtools/`；规则文本 `scripts/test/TESTING-SPEC.md` 与本节。用户核验通过并**重新授权**后，才可按新口径重建用例与探针。
+
+**当前可运行性**：用例目录为空 ⇒ `--phase cases` 无可执行条目，**任何「全绿」结论都不可能成立**；探针已删 ⇒ 依赖探针读数的闸门（`APDUMP|…`、`opprobe`）与「禁用生物 AI」硬闸门（`AP_NOAI:`）都取不到读数，`--phase launch` 预期以 `ERROR` 结束（对照实验可临时设 `MT_ALLOW_MOB_AI=1`，见「全局测试规则」）。**重建测试资产前，不得把本流程的任何输出当作验收证据。**
+
+**完整展示**：`scripts/test/TESTING-RULES-OVERVIEW.md`（测试流程与规则总览，2026-09-20 生成）。
 
 > 本文件是 `astral_dice_multiloader` 仓库**唯一**的测试流程落地规范，替代已废弃的
 > `scripts/test/FLOW_1.20.1_functional.md`（2026-09-12 删除，历史版本可 `git show` 取回）。
 > 工作区总规范见 `AGENTS.md`「自动化测试流程」一节；两者冲突时**以本文件为准**（本文件随工具链一起入库、可被 review）。
-> 适用分支：`multi-1.20.1-1.21.1`（唯一允许运行本流程的分支；前置检查会强断言）。
+> 适用分支：`multi-1.20.1-1.21.1`（发布线；2026-09-20 起两树 preflight 统一口径：发布线 OK，非发布线 WARN 放行并回显分支名）。
 
 ---
 
@@ -23,7 +42,7 @@
 
 | 项 | 要求 |
 |---|---|
-| 分支 | `multi-1.20.1-1.21.1`（强断言，其它分支直接拒绝） |
+| 分支 | `multi-1.20.1-1.21.1`（发布线；非发布线 WARN 放行并回显分支名，2026-09-20 两树统一） |
 | 脚本语言 | **纯 PowerShell 7**（`pwsh`）。2026-09-12 起 bash/python 版全部下架 |
 | 游戏环境 | dev `runClient`（`run/<版本>/`，Mojmap 命名），模组经 `modImplementation` 引入 |
 | 兼容栈 | 1.21.1：KubeJS / JEI / ModernFix /（可选）光影；1.20.1：KubeJS / JEI / ModernFix 经 build.gradle 注入 + 整合包 mods 复制 |
@@ -34,6 +53,16 @@
 **测试前清场（2026-09-15 起强制，工具链已自动执行）**：`mt_launch.ps1` 在「已进入世界」后自动连发两次 `/kill @e[type=!player,distance=..128]`（间隔 600ms），打印 `MT_PRECLEAN: OK — …`；`--no-preclean` 可跳过（仅限必须保留世界实体的特殊取证），跳过时打印 `MT_PRECLEAN: SKIPPED`。手工补做时的两种机制、理由与禁止事项见 `AGENTS.md`「测试前清场」；本条直接对应 §8.2-1（1.20.1 常驻蜘蛛污染 `self`）与 §10-18。⚠️ 1.21.1 的命令在 tick 末才生效，清场后要 `wait ≥500ms` 再摆靶；**禁止**在用例两次 read 之间清场。
 
 **清场生效判据（2026-09-15 实机验证）**：客户端 locale 是**中文**，原版反馈为 `杀死了N个实体` / `未找到实体`（英文 locale 才是 `Killed N entities` / `No entity was found`）—— 判「清场真的执行了」就看这一行，别拿英文串去 grep。本次实测：1.20.1 清场 `杀死了94个实体`（该世界 128 格内当时**堆了 94 个非玩家实体** —— 这正是 `self`/`bolt_delta` 被污染的来源），1.21.1 两次分别为 `9` / `6`。两次注入中**可能只有一次落地**（§10-17 的注入丢失同族），所以双发是必要的冗余，不是装饰。
+
+**禁用生物 AI（2026-09-18 起强制，工具链自动执行 + 硬闸门）**：清场只解决「已经存在」的实体，**不解决「之后刷新出来的生物」** —— 它们在清场后照样带着 AI 刷出并行动（接近/攻击/推挤玩家、投掷弹射物、踩压力板、引爆苦力怕），污染世界级差值读数（`self`、`bolt_delta`、实体计数），甚至把玩家打死。故工具链现在**默认禁用生物 AI**：
+- 实施物 = `scripts/test/resources/kubejs/<版本>/server_scripts/astral_test_noai.js`（由 `mt_env` 的 `kubejs` 子命令 / env 阶段同步到 `run/<版本>/kubejs/server_scripts/`）：每 **2 tick** 横扫每个玩家周围 **128 格**内的所有 Mob 强制 `setNoAi(true)`（按 UUID 去重、幂等），并在 `EntityEvents.spawned` 上即时生效（新刷生物在第一次行动前就被停住）。
+- **两种读数行**（都走玩家聊天通道 → `logs/latest.log`，判据取 `[CHAT]` 后的原文）：
+  - `AP_NOAI:mobs=<n>:noai=<n>:radius=128:forced=<n>:total=<n>:tick=<t>` —— 心跳：前 30 秒每 5 秒一行（闸门取样窗口），之后**整个会话**每 30 秒一行（收尾审计窗口；**不能**只对刚进世界那 30 秒取样 —— 那时世界通常还是白天、且刚清过场，晚刷的生物会整轮漏过去）。
+  - `AP_NOAI_FORCED:new=<n>:mobs=<n>:noai=<n>:total=<n>:tick=<t>` —— **正面对照**：真的存在带 AI 的自然刷怪、且本脚本把它停住了（同一事件最快 1 秒一次，不刷屏）。
+- **进入世界硬闸门**（`mt_launch`）：进入世界后 30 秒内必须读到 `AP_NOAI:` 行**且 `mobs == noai`**，否则 `MT_LAUNCH: ERROR` 并拒绝继续；通过时打印 `NOAI_ENFORCED=true — AP_NOAI:…`。唯一例外 = 显式设 `MT_ALLOW_MOB_AI=1`（对照实验用，会留 WARN 痕迹）。
+- **整轮收尾审计**（`mt_report collect`）：扫描整轮 `latest.log` 的全部两类读数行，任一 `mobs != noai`、任何 `AP_NOAI:ERR:`、或一行心跳都没有 ⇒ `MT_REPORT: ERROR`（非 0 退出码，该轮判不合格），并把审计小节写进 `report.md`。**证据强度分级（不得含混）**：读到 `AP_NOAI_FORCED:` ⇒ 有正面对照（`MT_NOAI_AUDIT: PASS`）；只有 `mobs=0` 的心跳 ⇒ 只证明「现场干净」，打印 `MT_NOAI_AUDIT: PASS(无正面对照)` 且**不得**据此宣称强制逻辑已被实测触发。
+- 脚本属 KubeJS，**改动需冷启动才生效**（`/kubejs reload server-scripts` 只重载脚本，已注册命令的 lambda 不重绑）。
+- ⚠️ **本规则只禁 AI，不改刷怪规则**：史莱姆仍由「Superflat World No Slimes」模组负责；**禁止**用 `/gamerule doMobSpawning false` 代替 —— 它会让 `/astralprobe slimecheck` 的 A/B 对照读数（未装 `slimes=103` / 已装 `slimes=0`）恒为 0，把「刷怪压制」硬闸门变成假证。
 
 ---
 
@@ -97,6 +126,7 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --phase <p> --version <v>
 ---
 
 ## 6. KubeJS 探针（服务端权威读数）
+> ⚠️ **2026-09-20 资产清零（现行状态，S1）**：本节所列探针文件（`resources/kubejs/**/astral_*.js`）已全部删除；下表仅作**重建时的历史规格参考**，不得据以复跑或据此宣称覆盖。
 
 回归套件依赖探针提供的服务端读数（如 `AP_K1_AFTER`、`AP_F1_WINDOW`、`AP_P2_PEARL`）。
 
@@ -171,6 +201,7 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --phase <p> --version <v>
 ---
 
 ## 8. 回归套件清单（1.2.0）
+> ⚠️ **2026-09-20 资产清零（S1）**：本节用例文件已全部删除；清单降级为**重建时的历史规格参考**，重建须按文件首公告与 `TESTING-RULES-OVERVIEW.md` 的授权前提执行。
 
 | 用例（双版本各一份） | 目的 | 规模 | 关键断言 |
 |---|---|---|---|
@@ -415,7 +446,7 @@ pwsh -NoProfile -File tools/check_mod_sources.ps1                    # 模组来
     - **历史处置（已废止）**：当初把 8 个探针用例的 `railgunfriendlyread` / `railgunfriendlyend` 统一改为**连续注入两次**（中间 `wait`）兜冷启动丢注入。
     - **现行处置（2026-09-15 B6 ①，已实跑回归）**：**删掉这些第二次注入**（共 16 次，≈42 s）。依据：这两个相位位于该用例第 4～7 次注入之后，冷启动期早已过去；且 `mt_inject.ps1` 每次注入前都做 `Esc→Tab→Enter` 状态归一化 + 强制前台（`:497-502`、`Assert-MtInjectForeground`），冷启动丢注入的前提（界面未收敛 / 窗口未获焦）此时不成立。`railgunfriendlyread` 通篇只有读 + `send`（幂等）；`railgunfriendlyend` 第二次进入时 `rgfState` 已置 `null`，只剩重复清场与重复报 `RESTORE`/`DONE`，无增量副作用。
     - **不要再按"一律注入两次"写新用例**：重复注入只对**真正处于冷启动窗口**的首批命令有意义；其余位置重复只是白花 ≥2.65 s/次。
-    - 同族：**在同一会话内重跑同一用例会误伤 `absent` 断言**（快照按 launch 建立，粒度是会话不是用例）—— 重跑前先 `stop` → `launch` 重置快照。
+    - 同族（**2026-09-20 复核更新，S8**）：`scope=case`（缺省）断言的窗口由 `mt_case.ps1` 在**每条用例开始处**自动刷新（`snapshot --window case`）⇒ 单条重跑（`--case`）**无需** stop → launch；仍受会话历史影响的是 `scope=whole/launch` 断言与「前序用例的同文本喂饱 `case` 窗口」场景——重跑涉及这类断言时仍先冷启动。
     - 同族实测（2026-09-15，`mt_launch` 的测试前清场）：`MT_INJECT_CMD` 打印了**两次**，而 `latest.log` 里只有**一条** `/kill` 反馈（1.20.1 = `杀死了94个实体`；1.21.1 两次都在 = `9` / `6`）—— 即「注入函数跑完并打印」**不等于**「命令一定被客户端执行」。凡结论依赖「某条命令确实执行过」的场景，要么读原版反馈行，要么双发。
 18. **`RAILGUN-AOE-SCOPE` 的断言集缺「防误伤 / 范围」项（2026-09-15 复核断言集时发现；同日用户裁决「方案①」，已实施并**经冷启动复跑确认**，见本项末）**：该用例名叫「电磁炮雷击命中范围取证」，但 13 条断言里只有 `AP_RG_VERDICT:.*:enemy=1:` + `absent …:enemy=0:` 覆盖「敌对标确实被劈」，**没有** `friendly`/`turtle`/`villager` 为 0 的断言，也没有 `SCOPE_OK:1`。后果很实在：**设计万一失效（雷击波及落点箱内全部实体），本用例照样 PASS** —— 实测出现过 `self=2→6:friendly=12:turtle=12:villager=12:SCOPE_OK:0` 而本用例断言全绿（当时把它当成「产品疑点」排查，其实是断言没覆盖）。补强方案（改完需一次冷启动复跑）：① 补正断言 `AP_RG_AFTER:.*:friendly=0:turtle=0:villager=0:valive=1:talive=1`（`friendly`→`talive` 在 AFTER 行里本就相邻，无需插 `.*`）、补 `AP_RG_VERDICT:.*:neutral=1:`，并照抄 `RAILGUN-OVERRIDE-CLASS` 的反断言写法；② 在 ① 之上再给 1.21.1 追加 `AP_RG_SCOPE_OK:1` 与反断言 `AP_RG_VERDICT:.*:self=[1-9]`。**1.20.1 不建议直接断言 `self=0` / `SCOPE_OK:1`**：`self` 是**施放者 HP 的原始差值**（`dealt(st.php, php)`，不区分伤害来源），测试世界里常驻的敌对生物（实测蜘蛛近战使 `php −6.0`，同期 `bolt_delta` 未变）会让它偶发非 0 —— 那是环境脏，不是产品白名单问题。若要让两版都能断言 `self`，须先三选一：把 `spider` 加进 setup 的**既有**敌对生物清场（⚠️ 1.21.1 命令延迟到 tick 末生效，清场必须排在自己摆靶之前的**不同 tick**，否则会清掉自己刚摆的靶，旧伤见 `6479603`）、或给探针自持靶打 tag 后用 `tag=!…` 反选清场、或把该用例挪到无怪世界运行。
    - ✅ **2026-09-15 用户裁决「方案①」并已实施**：1.20.1 断言 13→15、1.21.1 断言 13→16 —— 两版新增正断言 `AP_RG_AFTER:.*:friendly=0:turtle=0:villager=0:valive=1:talive=1` 与 `AP_RG_VERDICT:.*:neutral=1:`，反断言扩为 `…:enemy=0:|…:friendly=[1-9]|…:turtle=[1-9]|…:villager=[1-9]|…:valive=0|…:talive=0`；1.21.1 另加 `AP_RG_SCOPE_OK:1` + 反断言 `AP_RG_SCOPE_OK:0|AP_RG_VERDICT:.*:self=[1-9]`，1.20.1 侧则按上面的理由**刻意不**断言 `self`/`SCOPE_OK`（用例 note 已写明「施放者不自伤」由 1.21.1 同名用例承担）。**离线预检（把新正则喂给上一轮绿色批次的原始行）**：新正断言全部命中、新反断言 0 命中；再把那轮「箱内全体被劈」的异常读数喂进去 → 正断言不命中、反断言命中 ⇒ 两个方向都符合预期。改断言属测试资产变更，**仍需一次冷启动复跑**才算了结 —— **复跑确认（同 HEAD `09a34e5`，12:39 / 12:41 双版本各冷启动一次）**：1.20.1 15/15 PASS、1.21.1 16/16 PASS（0 FAIL / 0 ERROR），新正断言全部命中、新反断言 0 命中；读数 `self=0`、`friendly`/`turtle`/`villager` 全 0、`SCOPE_OK:1`、`bolt_delta` 1.20.1=`3`（两次 read 均 3）/1.21.1=`2`（两次 read 均 2）。⚠️ 1.20.1 本轮 `self=0` 只说明**该轮没有生物来打玩家**，不等于该版 `self` 已可断言 —— §8.2-1 那只常驻蜘蛛的间歇性并未消除。
@@ -435,6 +466,7 @@ pwsh -NoProfile -File tools/check_mod_sources.ps1                    # 模组来
 ---
 
 ## 12. 超时机制与看门狗（2026-09-15 B6 ⑥；**2026-09-16 收紧为严格预算**，长流程必须遵守）
+> 📌 **2026-09-20 登记（S6）**：下表预算沿用清零前数值，**未随用例重建重新标定**。重建后必须：先跑 1–2 条代表性用例实测单条耗时 → 按 `90s×条数+90s` 复核 cases 预算与全局 2700s → 把标定结果回写本节；在此之前不得把预算数值当作已验证结论。
 
 > **2026-09-16 用户裁决：「现有情况下不允许长时间等待，请重写控制脚本，严格控制等待时间，并完善监视器」。**
 > 触发事故（实测）：一次 `--phase cases` 在 launch 正常结束后**零输出空转 7 分 45 秒**，期间
@@ -508,6 +540,7 @@ pwsh -NoProfile -File scripts/test/mt_watchdog.ps1 -Version 1.21.1 [-StallSecond
 ---
 
 ## 11. 清理规范与覆盖缺口
+> ⚠️ **2026-09-20 资产清零（S1）**：本节「判定依据」表中「必须入库、禁止删除」各项在清零后**当前为空**；该判定自资产重建完成之时起恢复效力。
 
 **判定依据（可删 / 必须留）**
 
@@ -517,7 +550,7 @@ pwsh -NoProfile -File scripts/test/mt_watchdog.ps1 -Version 1.21.1 [-StallSecond
 | 空目录 / IDE 生成物（`.vscode/launch.json`、`build/`） | 不参与发布、可再生成 | 可删/忽略 |
 | 历史运行报告 `reports/<旧运行id>/` | 证据价值随时间衰减 | 保留最近一次 + 模板，其余可删 |
 | `temp/` 会话期探针与验证脚本 | 一次性 | 可删（2026-09-15 已整体清空；旧脚本归档包已移至 `docs/archive/legacy_scripts_20260912.zip`） |
-| **KubeJS 探针、测试世界种子包、回归条目 JSON** | **用例可复现性依赖** | **必须入库，禁止删除** |
+| **KubeJS 探针、测试世界种子包、回归条目 JSON** | **用例可复现性依赖** | **重建后必须入库、禁止删除（⚠️ 2026-09-20 资产清零后当前为空，见文件首公告）** |
 | `run/<版本>/mods`、`run/<版本>/kubejs` | 下一次运行的现成环境 | 保留 |
 | **测试世界**（`run/<版本>/saves/<世界名>`、`run/<版本>/<世界名>`） | 全局规则要求**每轮重建**（见阶段 E），旧存档只会掩盖「忘了重建」 | **测试任务收尾必须清理**（2026-09-17 用户规则，见下） |
 

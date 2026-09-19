@@ -886,6 +886,25 @@ When extending this workspace:
 5. **自动本地提交**（`deploy.ps1` 自动提交 `release: v<版本>`，或手工 `chore: bump version to X.Y.Z` 等），**默认不执行 `git push`**。
 
 ## 自动化测试流程（Automated Testing）— 必须遵守（子配置）
+### ⚠️ 测试资产已全部清零（2026-09-20 用户指令）— 现行状态，先读本节
+
+> 用户指令原文：「执行项目与AGENTS自检：清理所有测试项，已进行或未进行的测试项全部作废并删除，删除所有插针和测试项脚本，包括游戏环境中插入的kubejs脚本。保留测试规则，由用户对测试流程和规则进行核验，将完整的测试流程和规则向用户完整展示。」
+
+**已删除（主树 `multi-1.20.1-1.21.1` 与工作树 `multi-dev-next` 两处同步执行）**
+
+- 全部测试条目：`scripts/test/cases/*.json`（含 `.mt_*` 运行态）——**当前在册用例 0 条**；
+- 全部探针与测试脚本（源码侧）：`scripts/test/resources/kubejs/<版本>/server_scripts/astral_*.js`；
+- 游戏环境内已注入的副本：`run/<版本>/kubejs/{server_scripts,startup_scripts}/astral_*.js`；
+- 历史测试报告：`scripts/test/reports/<运行id>/`（保留模板 `_template.md`）；
+- 会话期测试证据：`temp/` 下的测试证据目录与日志。删除清单：`temp/cleanup-manifest-20260920-*.txt`。
+
+**结论效力**：2026-09-20 之前的一切自动化 / 游戏内测试结论**全部作废**，不得作为验收依据；本文件下文与 `TESTING-SPEC.md` 中出现的用例名、探针命令与读数一律只作历史记录。
+
+**保留（供用户核验）**：测试流程实现与规则文本原样保留；用户核验通过并重新授权后才可重建用例与探针。
+
+**当前可运行性**：用例目录为空 ⇒ `--phase cases` 无可执行条目；探针已删 ⇒ `--phase launch` 预期 ERROR。**重建测试资产前，不得把本流程的任何输出当作验收证据。**
+
+**完整展示**：`scripts/test/TESTING-RULES-OVERVIEW.md`（2026-09-20 生成）。
 
 针对**三个子项目**（`neoforge-1.21.1` 优先、`forge-1.20.1` 随后、`neoforge-26.1.2` 最后）的客户端渲染/输入类功能，以及任意**新增内容**与**用户指定内容**的真实游戏自动化验证。经本流程启动的自动化 `runClient` 属于「编译产物上传规则」第 5 条的**例外**；无流程的手动冒烟仍禁止。
 
@@ -894,6 +913,7 @@ When extending this workspace:
 - **「长按」类回归必须真的按住，且必须有对照步（2026-09-14 实测教训，必须遵守）**：`mt_inject.ps1 key -Key rclick -HoldMs N` 曾**静默忽略** `-HoldMs`（始终 down→100ms→up 的单击），于是「长按右键」类用例走不到原版 4 tick 自动重复分支，用**单击也能"通过"**——判据形同虚设。现已按 `w` 键同口径实现按住语义（`-HoldMs 0` 保留旧行为，输出行回显按住时长）。凡结论依赖"重复触发"的用例，必须附一条**对照步**证明重复真的发生（如生存模式投 16 枚鸡蛋长按 3 秒后必须只剩 1 枚；创造模式下物品不消耗，**不能**用作对照）。
 
 ### 测试顺序（必须遵守）
+> 📌 2026-09-20 登记（S9）：开发线工作树的 AGENTS.md 另有「变更分级与验证口径（2026-09-19 用户裁决）」节为本线专属，本文件未收录；规则文件对等性证据见 `temp/rules-parity-20260920.md`。
 
 | 顺序 | 版本 | 子项目 | 执行条件 | 结论要求 |
 |---|---|---|---|---|
@@ -1517,3 +1537,45 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --new <注册id>
 ## 版本历史与发布记录
 
 历史功能/平衡性/BUG 修复记录见 `CHANGELOG_ZH.md`(中文)与 `CHANGELOG.md`(英文),两文件按版本号一一对应、条目数一致;配方细节以 `datagen/ModRecipeProvider.java` 实际生成内容为准。
+
+## 待办交接：fengshui-sign 批（2026-09-20，更新：测试资产已清零）
+
+> **来源**：本批由 agent team `fengshui-sign` 实施；2026-09-20 用户指令终止剩余任务并解散团队（未完成项移交本文件），同日指令「完全删除所有 agent team」⇒ 团队与全部归档状态已删除。
+> **工作树**：产品改动全部在 `F:\MCProject\astral_dice_multiloader-next`（分支 `multi-dev-next`）；**已于 2026-09-20 按用户指令「提交所有更改」本地 commit（未 push）**。⚠️ 提交时本批**仍无游戏内证据**（测试资产已清零、探针与用例全删）。
+> **⚠️ 测试资产已清零（2026-09-20 用户指令）**：本批的 4 条用例（`ZHAO-SIGN-*` / `HUO-CURSE-1.21.1` / `ZHAO-BLESSING-1.21.1`）与全部探针改动已随全仓测试项一并删除作废；历史 run1–run3 与冻结件已删除且结论全部作废。只剩产品与文档待办。
+
+### A. 产品与文档待办（按优先级）
+
+| # | 事项 | 状态 | 入口 / 判据 |
+|---|---|---|---|
+| A2 | **移除符卡-祸「禁止丢弃」（含 1.20.1 镜像）** | **✅ 已完成（2026-09-20 用户指令：整套清空；改动落在 -next 工作树）** | 三通道 + 潜影盒/收纳袋限制 + 两个 lang 键 + 手册半句 + tooltip 行 + 注释全部删除；落点与判据见 §C |
+| A5 | 文档同步 | 未做 | 规格 §3.3/§14.1、`TESTING-SPEC.md` 探针/通道描述、两份 CHANGELOG（裁决 C 玩家侧条目 + 弃置移除条目） |
+| A6 | 本批提交（**禁止 `git push`**，除用户明确要求） | **✅ 已完成（2026-09-20 用户指令「提交所有更改」）** | 本地 commit 已落地、未 push；⚠️ 本批仍**没有**游戏内证据（探针与用例已全删），重建用例后须按 §13.2 复跑 |
+
+### B. 用户待决（3 项，**不要自行拍板**）
+
+1. **裁决 C 的纳入清单是否含活体书页**：当前两线实现为 `fuCycle>0 || livingPageCycle>0 ⇒ return`。若只限符卡-福，改 `EffectCardPeriod.tick` 一行判据 + CHANGELOG 收窄。
+2. ~~**「禁止丢弃」的移除范围**~~ **已执行（2026-09-20 用户指令）：整套清空（含潜影盒/收纳袋限制）** —— `onDroppedByPlayer` 拒绝、`ItemTossEvent` 兜底退还 + `refundToContainerSlot`、`canFitInsideContainerItems`（1.21.1 ×2 / 1.20.1 ×1）全部删除。本项关闭。
+3. **H5 口径**（重建用例时适用）：若修复后伤害读数仍低于 5，断言基准改「伤害事件额」还是维持「HP 差值」。
+
+### C. A2 的落点清单（已侦察，含「无 mixin」结论）
+
+> ✅ **2026-09-20 用户指令：以下落点全部删除，A2 完成** —— 本清单转为**已执行的删除记录**；B2（潜影盒/收纳袋限制）一并删除。⚠️ 早前此处登记的「用户裁决：保留、不移除」与本次指令相反，经复核该登记**无来源可考**（判定为过期/失实记录），已按本次指令覆盖。本树无该批产品代码（全部在 -next 工作树），故删除只在 -next 落地。
+> 执行前复核（实测）：三通道两线**均实存**（1.21.1 `HuoCardItem.java:260-268` / `:277-285` / `:296-323`；1.20.1 `:260-269` / `:331-334` / `:280-307`），lang 4 文件相关键齐全 ⇒ 「是否已实施」= **是**，据此按指令删除。
+
+- **产品（两线，已删）**：`item/card/HuoCardItem.java` 的 `#onDroppedByPlayer`、`#onItemToss` + `#refundToContainerSlot`、`canFitInsideContainerItems`（1.21.1 两个重载 / 1.20.1 一个），以及仅供其注册用的 `@EventBusSubscriber` / `@Mod.EventBusSubscriber` 类注解、随之失效的 import 与 `LOGGER` 字段。
+- **⚠️ 无 mixin**：三线的 mixin 配置与源码里不存在实现该限制的 mixin ⇒ 「mixin 一并删除」不适用，勿再重复检索。
+- **文案（已删/已改）**：`msg.astral_dice.huo_card_no_drop` 与 `tooltip.astral_dice.huo_card_no_drop` 两个键（zh_cn + en_us × 两线 = 4 文件全部删除，`ModTooltipHandler` 两处 `tooltip.add` 同时移除）；`astral_dice.guide.entry.huo_card.2`（中英）改写为「存入容器后不再计入厄运与周期伤害」；`ExclusiveCardUtil` / `RandomCardHandler` / `ModItems` 注释里的「禁止丢弃」表述已清理；两份 CHANGELOG 的对应句子同批改写。
+- **测试流程（已清零，待用户重新授权后重建）**：移除已执行 ⇒ 旧口径作废。重建时 `_TOSS` 类断言应写成**丢弃成功的正向证明**（手持 -1、地面 +1），并删除「`canFitInsideContainerItems` 拒绝收纳」相关断言。
+
+### D. 实测状态（2026-09-20 已作废）
+
+原「run3 = 254 PASS / 35 FAIL」等记录与冻结件已删除并作废，不得引用。当前唯一有效机器证据 = 两线 `mt_build` 均 `MT_BUILD: OK`（含裁决 C 的 Java 改动）；游戏内行为未验证。
+
+### E. 已登记但未处置（低优先）
+
+- 【2026-09-20 复核（S4）：未复现，登记过期】历史登记「`mt.ps1` 对 `MT_LAUNCH: ` 的大小写敏感判定会把 launch 被挡误落成 rc=2」——当前两树 `mt_launch.ps1` 终态输出均为大写，`mt.ps1:232` 的 marker 可正常匹配 ⇒ 本条不再成立；保留作「登记须复核」样例。
+- `scripts/verify/verify_probe_case_args.ps1`（探针↔用例参数离线校验）：输入对象已随清零删除，当前无输入可用；待用户裁决删除或保留待重建。
+- 文档内 55 处未来日期（09-25×38 / 09-26×17）待裁决；本批口径已统一为 2026-09-19/20。
+- `neoforge-26.1.2` 线冻结：本批功能与裁决 C 待按 `docs/compat-26.1.2-neoforge.md` 迁移。⚠️ **迁移时不得带上「禁止丢弃」（2026-09-20 已删除）**：即 26.1.2 侧的 `HuoCardItem` 只需 `tick` 镜像 + 周期伤害与选择器发牌路径，**不要**移植 `onDroppedByPlayer` / `onItemToss` / `canFitInsideContainerItems` / `msg.astral_dice.huo_card_no_drop` / `tooltip.astral_dice.huo_card_no_drop`（两线已删，26.1.2 从一开始就不该有）。
+- 用户已知边界（接受、仅记录）：裁决 C 下「弃打的一轮」不再自动收尾（+1 保留到被用掉 / 死亡 / `forceResetRound`）；停滞期间 `onRoundFullyReset` 不触发 ⇒ 忍者立牌主动冷却不起步。

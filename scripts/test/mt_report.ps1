@@ -302,6 +302,61 @@ function Get-MtCrashSplit {
     return , @($old, $new)
 }
 
+function Get-MtNoAiAudit {
+    <#
+    .SYNOPSIS
+        收尾审计「生物 AI 已禁用」硬性要求（2026-09-18 用户裁决）：整轮 latest.log 的 AP_NOAI 心跳与正面对照行。
+
+    .NOTES
+        `mt_launch` 的硬闸门只在**刚进世界那 30 秒**取样 —— 那时世界通常是白天且刚清过场（mobs 常为 0），
+        晚刷的生物漏过去就查不出来。这里改为对**整轮**做收尾审计：
+          · 任一心跳出现 `mobs != noai` ⇒ 该半径内仍有带 AI 的 Mob，审计 FAIL；
+          · 任何 `AP_NOAI:ERR:` ⇒ 脚本运行期出错，审计 FAIL；
+          · 一行心跳都没有 ⇒ 脚本未同步/未生效，审计 FAIL；
+          · `AP_NOAI_FORCED:` 行 = **正面对照证据**（真的停住过带 AI 的自然刷怪）。没有它只说明
+            「本轮没遇到带 AI 的生物」，属 WARN，**不得**当成机制生效的证据。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][psobject]$Paths)
+
+    $beats = @(); $forced = @(); $errs = @()
+    $path = [string]$Paths.latest_log
+    $text = ''
+    if (Test-Path -LiteralPath $path -PathType Leaf) {
+        try {
+            $fs = [System.IO.File]::Open($path, [System.IO.FileMode]::Open,
+                [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
+            try {
+                $sr = [System.IO.StreamReader]::new($fs, [System.Text.UTF8Encoding]::new($false, $false))
+                $text = $sr.ReadToEnd()
+                $sr.Dispose()
+            } finally { $fs.Dispose() }
+        } catch { $text = '' }
+    }
+
+    foreach ($ln in ($text -split "`r?`n")) {
+        if ($ln -match 'AP_NOAI:ERR:') { $errs += $ln.Trim(); continue }
+        $m = [regex]::Match($ln, 'AP_NOAI:mobs=(\d+):noai=(\d+):radius=(\d+):forced=(\d+):total=(\d+)')
+        if ($m.Success) {
+            $beats += [pscustomobject]@{
+                mobs = [int]$m.Groups[1].Value; noai = [int]$m.Groups[2].Value
+                forced = [int]$m.Groups[4].Value; total = [int]$m.Groups[5].Value
+            }
+            continue
+        }
+        $mf = [regex]::Match($ln, 'AP_NOAI_FORCED:new=(\d+):mobs=(\d+):noai=(\d+):total=(\d+)')
+        if ($mf.Success) {
+            $forced += [pscustomobject]@{
+                new = [int]$mf.Groups[1].Value; mobs = [int]$mf.Groups[2].Value
+                noai = [int]$mf.Groups[3].Value; total = [int]$mf.Groups[4].Value
+            }
+        }
+    }
+    $bad = @($beats | Where-Object { $_.mobs -ne $_.noai })
+    $bad += @($forced | Where-Object { $_.mobs -ne $_.noai })
+    return , @($beats, $forced, $errs, $bad)
+}
+
 function Invoke-MtReportCollect {
     [CmdletBinding()]
     param([Parameter(Mandatory)][string]$Version, [string]$Verdict = '')
@@ -322,6 +377,12 @@ function Invoke-MtReportCollect {
 
     $crashPair = Get-MtCrashSplit -Paths $p
     $baselineCrashes = @($crashPair[0]); $newCrashes = @($crashPair[1])
+
+    $noaiPair = Get-MtNoAiAudit -Paths $p
+    $noaiBeats = @($noaiPair[0]); $noaiForced = @($noaiPair[1])
+    $noaiErrs = @($noaiPair[2]); $noaiBad = @($noaiPair[3])
+    $noaiWithMobs = @($noaiBeats | Where-Object { $_.mobs -gt 0 })
+    $noaiTotal = if ($noaiBeats.Count -gt 0) { [int]$noaiBeats[$noaiBeats.Count - 1].total } else { 0 }
 
     $phases = if ($vs.Contains('phases') -and $null -ne $vs['phases']) { $vs['phases'] } else { [ordered]@{} }
     $cases = if ($vs.Contains('cases') -and $null -ne $vs['cases']) { $vs['cases'] } else { [ordered]@{} }
@@ -380,6 +441,22 @@ function Invoke-MtReportCollect {
     }
     $lines += "- kubejs server.log: $(if (Test-Path -LiteralPath $p.kubejs_log -PathType Leaf) { '存在' } else { '缺失' })"
 
+    $lines += @('', '## 生物 AI 禁用审计（测试环境硬性要求）', '')
+    if ($noaiBeats.Count -eq 0) {
+        $lines += '- ❌ **未读到任何 `AP_NOAI:` 心跳** —— 脚本未同步 / 未生效（`mt_launch` 的进入世界闸门本应已拦下）'
+    } else {
+        $lines += "- 心跳 $($noaiBeats.Count) 行；其中 ``mobs>0`` 的 $($noaiWithMobs.Count) 行（半径内确实有生物）"
+        if ($noaiForced.Count -gt 0) {
+            $lines += "- **正面对照 ✅**：实际停住过带 AI 的自然刷怪 $($noaiForced.Count) 次，累计 ``total=$noaiTotal``"
+        } else {
+            $lines += '- **正面对照 ⚠️ 缺失**：本轮读数里 ``mobs`` 全为 0，未遇到带 AI 的生物 —— 只能证明「现场干净」，**不能**当作机制生效的证据'
+        }
+        $lines += "- 心跳/对照行中 ``mobs != noai`` 的次数：$($noaiBad.Count)$(if ($noaiBad.Count -gt 0) { ' ❌（该半径内仍有带 AI 的 Mob）' } else { ' ✅' })"
+        if ($noaiErrs.Count -gt 0) {
+            $lines += "- ❌ ``AP_NOAI:ERR`` 报错 $($noaiErrs.Count) 行，最后一行：``$($noaiErrs[$noaiErrs.Count - 1])``"
+        }
+    }
+
     $lines += @('', '## 证据', '')
     $lines += if ($copied.Count -gt 0) { @($copied | ForEach-Object { "- ``$_``" }) } else { @('- （无）') }
 
@@ -391,6 +468,18 @@ function Invoke-MtReportCollect {
     $reportPath = Join-Path $dest 'report.md'
     [System.IO.File]::WriteAllText($reportPath, (($lines -join "`n") + "`n"), $script:TAG_UTF8)
     Write-MtLine "MT_REPORT: OK — $reportPath（结论 $verdict）"
+
+    # 生物 AI 禁用审计：整轮都不能出现带 AI 的 Mob（2026-09-18 硬性要求），未达标一律 ERROR。
+    # 报告已先落盘（证据保留），随后以非 0 退出码把这一轮判为不合格。
+    if ($noaiBeats.Count -eq 0 -or $noaiBad.Count -gt 0 -or $noaiErrs.Count -gt 0) {
+        Write-MtErrLine ("MT_REPORT: ERROR — 生物 AI 禁用审计未通过（测试环境硬性要求）：心跳 {0} 行 / 失配 {1} 次 / AP_NOAI:ERR {2} 行；本轮读数可能已被生物 AI 污染" -f $noaiBeats.Count, $noaiBad.Count, $noaiErrs.Count)
+        return $MT_EXIT_ERROR
+    }
+    if ($noaiForced.Count -gt 0) {
+        Write-MtLine "MT_NOAI_AUDIT: PASS — heartbeats=$($noaiBeats.Count) withMobs=$($noaiWithMobs.Count) mismatch=0 正面对照=forced $($noaiForced.Count) 次（total=$noaiTotal）"
+    } else {
+        Write-MtWarn "MT_NOAI_AUDIT: PASS(无正面对照) — heartbeats=$($noaiBeats.Count) mismatch=0，但本轮 mobs 全为 0：只证明现场干净，未实测触发过强制逻辑"
+    }
     return 0
 }
 

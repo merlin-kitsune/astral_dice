@@ -36,9 +36,9 @@ Import-Module (Join-Path $script:LibDir 'Mt.Win32.psm1')
 Initialize-MtConsole
 
 $script:ExitPreflight = 10
-# 允许的分支白名单:发布线 + 26.1.2 第三条线(2026-09 起 multi-26.1.2-neoforge 亦为合法工作分支)。
-# 除这两个之外仍一律拦停,避免在开发分支上误跑生产流程。
-$script:RequiredBranches = @('multi-1.20.1-1.21.1', 'multi-26.1.2-neoforge')
+# 分支口径（2026-09-20 S3 与 -next 工作树统一；依据 -next SPEC 所载 2026-09-17 用户裁决「移除二重验证白名单」）：
+# 发布线 = multi-1.20.1-1.21.1；非发布线分支 WARN 放行（回显分支名）。原白名单含已并入主线的 multi-26.1.2-neoforge。
+$script:ReleaseLineBranches = @('multi-1.20.1-1.21.1')
 $script:KeepAlive = Join-Path (Join-Path (Get-MtTestDir) 'cases') '.mt_keep_alive'
 $script:KLID_EN_US = '00000409'
 
@@ -46,7 +46,7 @@ $script:KLID_EN_US = '00000409'
 function Test-MtPreflightBranch {
     <#
     .SYNOPSIS
-        当前分支必须在白名单内（multi-1.20.1-1.21.1 / multi-26.1.2-neoforge）。返回 @(bool, detail)。
+        分支口径：发布线 multi-1.20.1-1.21.1 ⇒ OK；其它分支 ⇒ WARN 放行（回显分支名）。返回 @(bool, detail)。
     #>
     [CmdletBinding()]
     param([Parameter(Mandatory)][string]$Root)
@@ -57,10 +57,10 @@ function Test-MtPreflightBranch {
         return , @($false, "无法读取分支：$($r.StdErr.Trim())")
     }
     $branch = $r.StdOut.Trim()
-    if ($script:RequiredBranches -notcontains $branch) {
-        return , @($false, "当前分支 $branch ≠ $($script:RequiredBranches -join ' / ')")
+    if ($script:ReleaseLineBranches -contains $branch) {
+        return , @($true, "$branch（发布线分支）")
     }
-    return , @($true, $branch)
+    return , @($true, ("$branch —— WARN: 非发布线分支（发布线 {0}）" -f ($script:ReleaseLineBranches -join ' / ')))
 }
 
 # ── 输入语言 ──────────────────────────────────────────────────────────────
