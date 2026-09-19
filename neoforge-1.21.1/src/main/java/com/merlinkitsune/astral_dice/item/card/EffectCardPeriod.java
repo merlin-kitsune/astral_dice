@@ -179,7 +179,7 @@ public final class EffectCardPeriod {
         // 临时来源(仅当前出牌周期有效,周期归零时清除):
         // 活体书页已改为"每次使用累计 +1"的本周期计数(见 getMaxAllowed 的 LIVING_PAGE_CYCLE_BONUS),
         // 不再注册为"效果存在即 +1"的开关式临时来源(否则会与累计计数重复计算);
-        // 活体书页效果本身仍作为效果待定来源注册(registerEffectPendingSource),与出牌数无关。
+        // 2026-09-19 起该牌为纯即时伤害、不给玩家任何效果 ⇒ 也不再作为"效果待定"来源(见下方注释)。
         registerTemporarySource(p -> p.hasEffect(ModEffects.FATE_GUIDANCE));     // 命运的指引效果(存在即 +1,覆盖式,不累计)
         registerTemporarySource(p -> ModAttachments.isCandyChipPlayBonusActive(p)); // 可口糖果:满血使用效果牌触发(每轮一次)
         registerTemporarySource(p -> ModAttachments.isSatellitePlayBonusActive(p)); // 探天卫星:使用轨道炮后触发(每 1:00 一次)
@@ -187,7 +187,8 @@ public final class EffectCardPeriod {
         // 直接由 EffectCardPeriod 的出牌轮自有字段承载,见 getMaxAllowed 的 EFFECT_CARD_BONUS_PLAYS。
 
         // 效果待定来源(全部效果牌统一注册;新增效果牌在此追加或调用 registerEffectPendingSource)
-        registerEffectPendingSource(ModEffects.LIVING_PAGE);
+        // ⚠️ 活体书页**不在此列**(2026-09-19 用户裁决「移除所有原本效果器」):它已改为纯即时伤害、
+        //    不给玩家任何效果,出牌轮只由出牌数/冷却推进,不存在"等它的效果结束"这一步。
         registerEffectPendingSource(ModEffects.MONSTER_LASER);
         registerEffectPendingSource(ModEffects.MONSTER_BRICK);
         registerEffectPendingSource(ModEffects.ORBITAL_STRIKE);

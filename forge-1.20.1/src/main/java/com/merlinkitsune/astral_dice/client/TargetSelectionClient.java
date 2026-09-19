@@ -566,7 +566,15 @@ public final class TargetSelectionClient {
      */
     @SubscribeEvent
     public static void onMouseButton(InputEvent.MouseButton.Pre event) {
-        if (!isActive()) return;
+        if (!isActive()) {
+            // 未在选择中:手里拿着**选择器类效果牌**时,左键(确认键)也要给出「效果牌冷却/出牌数已满」提示 ——
+            // 否则本轮冷却期间持牌毫无反馈(2026-09-19 用户要求:按下左键同样要有冷却提示)。
+            // 文案与判据同自身牌(BaseEffectCardItem#isBlockedOnClient)。
+            if (event.getAction() == GLFW.GLFW_PRESS && event.getButton() == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
+                notifyHeldSelectorBlocked();
+            }
+            return;
+        }
         if (event.getAction() == GLFW.GLFW_PRESS) {
             if (event.getButton() == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
                 confirmByPrimaryClick();
@@ -583,6 +591,28 @@ public final class TargetSelectionClient {
         }
         // 选择期间接管鼠标:所有按键（左键攻击/右键原使用/中键）都不进原版逻辑
         event.setCanceled(true);
+    }
+
+    /**
+     * 手持**选择器类效果牌**但本轮被锁(出牌数已满 / 冷却中)时的左键提示。
+     *
+     * <p>文案与判据和自身牌 {@code BaseEffectCardItem#isBlockedOnClient} 完全一致(同一个 lang 键
+     * {@code msg.astral_dice.effect_card_burst_full},含剩余秒数),只在本地显示、不发包。
+     * 未选中目标时的左键原本完全静默,玩家只会觉得"牌没反应"。
+     */
+    private static void notifyHeldSelectorBlocked() {
+        Minecraft mc = Minecraft.getInstance();
+        LocalPlayer player = mc.player;
+        if (player == null) return;
+        if (!(player.getMainHandItem().getItem()
+                instanceof com.merlinkitsune.astral_dice.item.card.BaseEffectCardItem card)
+                || card.selectorActionId() == null) {
+            return;
+        }
+        if (!com.merlinkitsune.astral_dice.item.card.EffectCardPeriod.isBlocked(player)) return;
+        int seconds = com.merlinkitsune.astral_dice.item.card.EffectCardPeriod.getRemainingBlockSeconds(player);
+        player.displayClientMessage(
+                Component.translatable("msg.astral_dice.effect_card_burst_full", seconds), true);
     }
 
     /** 选择期间拦截滚轮（防切栏/缩放等） */

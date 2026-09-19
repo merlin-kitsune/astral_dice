@@ -124,6 +124,18 @@ public final class SpellDamageRegistry {
     }
 
     /**
+     * 本次法伤是否来自「活体书页」的**即时命中**。
+     *
+     * <p>2026-09-19 用户裁决「活体书页不应该有持续效果,应转换为及时伤害,移除所有原本效果器」之后,该牌
+     * **不再给玩家施加任何效果** ⇒ 原先靠 `hasEffect(ModEffects.LIVING_PAGE)` 判定的「使用了伤害效果牌」
+     * 改由**伤害类型本身**识别(`astral_dice:card_spell`)。这样忍术飞镖/贯穿之铳对书页自身的命中照旧生效
+     * (它们本就是"伤害效果牌生效期间的加成"),又不引入任何玩家可见状态或额外字段。
+     */
+    private static boolean isLivingPageImpact(SpellDamageContext ctx) {
+        return ctx != null && ctx.source != null && ctx.source.is(ModDamageTypes.CARD_SPELL);
+    }
+
+    /**
      * 伤害效果牌的统一伤害加成(不含各牌自身基础值):
      * 忍者立牌「效果牌伤害增益」计数(附件 {@code komachi_damage_bonus})
      * + 书签筹码固定 +{@link com.merlinkitsune.astral_dice.item.chip.BookmarkChipItem#DAMAGE_BONUS}(装备时)。
@@ -268,12 +280,12 @@ public final class SpellDamageRegistry {
                 }
             }
         });
-        // 忍术飞镖:已使用伤害效果牌(任一效果生效)且造成远程/魔法伤害时,获得目标标记层数的伤害加成
+        // 忍术飞镖:已使用伤害效果牌(任一效果生效,**或本次就是活体书页的即时法伤**)且造成远程/魔法伤害时,获得目标标记层数的伤害加成
         registerModifier(new SpellDamageModifier() {
             @Override
             public boolean isActive(SpellDamageContext ctx) {
                 if (!ctx.hasCurio(ModItems.NINJA_STAR_CHIP.get())) return false;
-                return ctx.attacker.hasEffect(ModEffects.LIVING_PAGE)
+                return isLivingPageImpact(ctx)
                         || ctx.attacker.hasEffect(ModEffects.MONSTER_LASER)
                         || ctx.attacker.hasEffect(ModEffects.MONSTER_BRICK)
                         || ctx.attacker.hasEffect(ModEffects.ORBITAL_STRIKE)
@@ -285,13 +297,13 @@ public final class SpellDamageRegistry {
                 return bonus + MarkManager.getLevel(ctx.target);
             }
         });
-        // 贯穿之铳:伤害效果牌生效时,对敌对目标远程/魔法伤害额外增加目标防御力点数
+        // 贯穿之铳:伤害效果牌生效时(同上,含活体书页的即时法伤),对敌对目标远程/魔法伤害额外增加目标防御力点数
         registerModifier(new SpellDamageModifier() {
             @Override
             public boolean isActive(SpellDamageContext ctx) {
                 if (!ctx.hasCurio(ModItems.PIERCING_GUN.get())) return false;
                 if (!HostileTargets.isHostile(ctx.attacker, ctx.target)) return false;
-                return ctx.attacker.hasEffect(ModEffects.LIVING_PAGE)
+                return isLivingPageImpact(ctx)
                         || ctx.attacker.hasEffect(ModEffects.MONSTER_LASER)
                         || ctx.attacker.hasEffect(ModEffects.MONSTER_BRICK)
                         || ctx.attacker.hasEffect(ModEffects.ORBITAL_STRIKE)

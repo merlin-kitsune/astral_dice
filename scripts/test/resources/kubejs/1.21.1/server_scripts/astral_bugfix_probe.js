@@ -4617,6 +4617,9 @@ function doLpShoot(ctx, tag) {
     var p = ctx.source.getPlayerOrException();
     if (lpState == null || lpState.dummy == null) { send(ctx, "AP_" + tag + "_ERR:no_dummy"); return 1; }
     var d = lpState.dummy;
+    // stale = 1:本次 tag 与当前 lpState 不匹配 ⇒ **上一条 prep 命令没落地**(注入丢键/chat 未提交),
+    // 若不报出来,读数会指向上一只靶并伪装成「血量/最大血量不对」的假缺陷(2026-09-19 实测:lpnonhostile 丢了一条)
+    var stale = (lpState.tag === tag) ? 0 : 1;
     var token = lpToken(p);
     // 命中前把靶子回满血并重取基线:**本次 dmg 只反映书页命中**,
     // 与"靶子在使用前已被环境/其它来源掉过血"解耦(否则读数不可判)。
@@ -4635,6 +4638,7 @@ function doLpShoot(ctx, tag) {
     }
     send(ctx, "AP_" + tag + "_SHOOT:called=" + called + ":token=" + token
         + ":mark_before=" + lpMark(d) + ":" + lpReadout(p, d, "-") + wall
+        + ":stale=" + stale
         + (err ? ":err=" + err : ""));
     return 1;
 }
@@ -4643,11 +4647,12 @@ function doLpShoot(ctx, tag) {
 function doLpRead(ctx, tag) {
     var p = ctx.source.getPlayerOrException();
     var d = lpState == null ? null : lpState.dummy;
+    var stale = (lpState == null) ? 1 : ((lpState.tag === tag) ? 0 : 1);
     var dmg = "-";
     if (d != null && lpState.hpBefore != null && lpState.hpBefore >= 0) {
         dmg = Math.round((lpState.hpBefore - rghp(d)) * 100) / 100;
     }
-    send(ctx, "AP_" + tag + "_READ:" + lpReadout(p, d, dmg));
+    send(ctx, "AP_" + tag + "_READ:" + lpReadout(p, d, dmg) + ":stale=" + stale);
     return 1;
 }
 

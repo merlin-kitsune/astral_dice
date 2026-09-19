@@ -21,7 +21,7 @@ import net.minecraft.world.entity.LivingEntity;
  *       {@code event/DamageEffectCardHandler} 的作用域判定后,自动跑**完整**法伤修饰器链
  *       (忍术飞镖 +目标标记层数 / 贯穿之铳 +目标防御力 / 紫晶骰子 +d6 / 标记喷罐 onHit 加层 /
  *       魔法箭袋 onHit 触发 / 忍者立牌 + 书签效果牌加成);加成部分仍按既有口径以**独立真伤**结算;</li>
- *   <li>跳基础值伤害数字(标准红),加成部分由统一管线跳绿色数字;</li>
+ *   <li>跳命中伤害数字(**法伤绿**,与加成跳字同色;见 {@link #SPELL_DAMAGE_COLOR});</li>
  *   <li>施加本牌自带的 1 层标记(标记类筹码的 onHit 加层照旧额外生效,与旧口径一致);</li>
  *   <li>仅当 {@code markBefore >= 3} 时补记本出牌周期出牌数 +1
  *       ({@link EffectCardPeriod#grantLivingPageCycleBonus},内部已含跨轮保护与全局封顶 9)。</li>
@@ -37,8 +37,14 @@ public final class LivingPageImpact {
     /** 基础伤害(所有加成之外的固定值) */
     public static final int BASE_DAMAGE = 2;
 
-    /** 基础值伤害数字颜色(标准伤害红,与 {@code DiceCombatEvents} 的普通伤害数字一致) */
-    private static final int BASE_DAMAGE_COLOR = 0xFF5555;
+    /**
+     * 命中伤害数字颜色 = **法伤绿**(与 {@code DamageEffectCardHandler} 的法伤加成跳字、电击手套 AOE 同色 0x7CFC00)。
+     *
+     * <p>为什么不是普通伤害红 0xFF5555(2026-09-19 用户裁决):本牌命中**整体**登记为法伤
+     * ({@code astral_dice:card_spell} 跑完整法伤修饰器链),数值颜色必须与既有法伤口径一致;
+     * 跳红字会与紧随其后的绿色加成跳字混色,让人误读成「物理伤害 + 法伤加成」两段伤害。
+     */
+    public static final int SPELL_DAMAGE_COLOR = 0x7CFC00;
 
     private LivingPageImpact() {
     }
@@ -63,8 +69,8 @@ public final class LivingPageImpact {
         } finally {
             DiceCombatEvents.aoeProcessing = false;
         }
-        // 4. 基础值跳字
-        com.merlinkitsune.astral_dice.network.ModNetwork.DamageNumberMessage.send(target, base, BASE_DAMAGE_COLOR);
+        // 4. 命中跳字(法伤绿,见 SPELL_DAMAGE_COLOR 的说明)
+        com.merlinkitsune.astral_dice.network.ModNetwork.DamageNumberMessage.send(target, base, SPELL_DAMAGE_COLOR);
         // 5. 命中施加 1 层标记
         MarkManager.apply(target);
         // 6. 连续出牌:仅命中前已 ≥3 层标记的目标
