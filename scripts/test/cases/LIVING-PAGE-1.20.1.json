@@ -692,7 +692,7 @@
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_LP0_PREP:.*:dummy=hp=16(\\.0)?:max=16(\\.0)?:mark=0:dmg=-:credit=0:plays=0:max=1:blocked=0:flight=0/-1"
+      "pattern": "AP_LP0_PREP:.*:dummy=hp=16(\\.0)?:max=16(\\.0)?:mark=0:dmg=-:credit=0:plays=0:max=1:blocked=0:cards=\\d+:flight=0/-1"
     },
     {
       "type": "log",
@@ -727,7 +727,7 @@
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_LP0_READ:.*:dummy=hp=14(\\.0)?:max=16(\\.0)?:mark=1:dmg=2(\\.0)?:credit=0:plays=1:max=1:blocked=1:flight=0/-1"
+      "pattern": "AP_LP0_READ:.*:dummy=hp=14(\\.0)?:max=16(\\.0)?:mark=1:dmg=2(\\.0)?:credit=0:plays=1:max=1:blocked=1:cards=\\d+:flight=0/-1"
     },
     {
       "type": "log",
@@ -747,7 +747,7 @@
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_LN0_READ:.*:dummy=hp=\\d+(\\.\\d+)?:max=10(\\.0)?:mark=0:dmg=0(\\.0)?:.*:plays=0:max=1:blocked=0:flight=0/-1"
+      "pattern": "AP_LN0_READ:.*:dummy=hp=\\d+(\\.\\d+)?:max=10(\\.0)?:mark=0:dmg=0(\\.0)?:.*:plays=0:max=1:blocked=0:cards=\\d+:flight=0/-1"
     },
     {
       "type": "log",

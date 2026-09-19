@@ -481,7 +481,7 @@
   "tooltip.astral_dice.card.full_power": "攻击力 §e+6§7，本次攻击的最终攻击力 §e+50%%§7 | 剩余次数：§e%s§r",
   "tooltip.astral_dice.card.hamburger": "使用后恢复 §e40%%§7 最大生命值",
   "tooltip.astral_dice.card.king_power": "受到 §e8§7 点伤害，攻击力 §e+5§7/层（最多叠 §e3§7 层），持续 §93:00§7（重复使用叠加层数并刷新时长）",
-  "tooltip.astral_dice.card.living_page": "飞向目标（必定命中，可穿透方块），造成 §e%s§7 点法术伤害（受全部法伤加成影响）并施加 §e1§7 层标记；命中已有 §e3§7 层及以上标记的目标时，本出牌周期出牌数 §e+1§7",
+  "tooltip.astral_dice.card.living_page": "瞄准敌对目标使用，对目标造成 §e%s§7 点法术伤害，并施加一层“标记”。命中已有 §e3§7 层及以上标记的目标时，本出牌周期出牌数 §e+1§7",
   "tooltip.astral_dice.card.luxury_feast": "§e左键§7 对准其他玩家使用，§e右键§7 对自身使用\n治疗目标及周围 §e6§7 格内的友方玩家（已加入队伍时仅同队成员；未加入任何队伍时为全体玩家），各恢复使用者最大生命值 §e30%%§7",
   "tooltip.astral_dice.card.meito": "攻击力 §e1~20§7（取§e2§7次最大值）| 剩余次数：§e%s§r",
   "tooltip.astral_dice.card.monster_brick": "使对敌对目标造成的远程和魔法伤害增加 §e%s§7 点，持续 §91:00§r",

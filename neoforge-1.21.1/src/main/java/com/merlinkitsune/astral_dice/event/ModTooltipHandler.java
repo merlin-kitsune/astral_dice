@@ -1105,21 +1105,12 @@ public class ModTooltipHandler {
         }
         if (stack.is(ModItems.LIVING_PAGE.get())) {
             tooltip.add(Component.empty());
-            // 目标选择器类(敌对)效果牌:两行式(2026-09-25 用户裁决)——
-            //   第一行 = 精简用法「对敌对目标使用 活体书页」(通用键 + 牌名,便于后续同类型牌复用)
-            //   第二行 = 该牌本身的效果(含实时伤害数值 = 基础 2 + 调查员已用页数 + 伤害效果牌加成)
-            tooltip.add(Component.translatable("tooltip.astral_dice.card.use_on_enemy",
-                            Component.translatable("item.astral_dice.effect_card_living_page"))
-                    .withStyle(ChatFormatting.GRAY));
             if (event.getEntity() instanceof Player p) {
-                // 活体书页命中伤害 = 基础 2 + 调查员(rin)已使用数量 + 伤害效果牌统一加成(忍者立牌效果牌伤害增益 + 书签)
-                // 两项都只在**佩戴对应立牌**时生效(2026-09-15 裁决),故一律走 SpellDamageRegistry 的判定入口
-                // 组件基础色为灰(普通文本);行内颜色码:数值=黄 §e、时间=蓝 §9
-                tooltip.add(Component.translatable("tooltip.astral_dice.card.living_page",
+                tooltip.add(tt("tooltip.astral_dice.card.living_page",
                                 com.merlinkitsune.astral_dice.combat.SpellDamageRegistry.livingPageImpactDamage(p))
                         .withStyle(ChatFormatting.GRAY));
             } else {
-                tooltip.add(Component.translatable("tooltip.astral_dice.card.living_page", "?")
+                tooltip.add(tt("tooltip.astral_dice.card.living_page", "?")
                         .withStyle(ChatFormatting.GRAY));
             }
             addEffectCardPlayCountTooltip(tooltip, player);

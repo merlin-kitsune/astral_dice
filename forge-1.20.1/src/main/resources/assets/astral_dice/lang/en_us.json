@@ -481,7 +481,7 @@
   "tooltip.astral_dice.card.full_power": "Attack §e+6§7, final attack §e+50%%§7 | Uses: §e%s§r",
   "tooltip.astral_dice.card.hamburger": "Restores §e40%%§7 of max HP on use",
   "tooltip.astral_dice.card.king_power": "Take §e8§7 damage, Attack §e+5§7 per stack (max §e3§7 stacks), lasts §93:00§7 (re-use adds a stack and refreshes the duration)",
-  "tooltip.astral_dice.card.living_page": "Flies at the target (always hits, passes through blocks), dealing §e%s§7 spell damage (affected by all spell-damage bonuses) and applying §e1§7 Mark layer; when it hits a target that already had §e3§7 or more Mark layers, play count §e+1§7 for this card round",
+  "tooltip.astral_dice.card.living_page": "Aim at a hostile target: deals §e%s§7 spell damage and applies one Mark layer. When it hits a target that already had §e3§7 or more Mark layers, play count §e+1§7 for this card round",
   "tooltip.astral_dice.card.luxury_feast": "§eLeft click§7 to use on another player, §eright click§7 to use on yourself\nHeals the target and friendly players within §e6§7 blocks (teammates when you are on a team; all players when you are not) for §e30%%§7 of the user's max HP",
   "tooltip.astral_dice.card.meito": "Attack §e1~20§7 (max of §e2§7 rolls) | Uses: §e%s§r",
   "tooltip.astral_dice.card.monster_brick": "Use: all ranged/magic damage to hostiles §e+%s§7, lasts §91:00§r",
