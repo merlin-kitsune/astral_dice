@@ -4455,6 +4455,7 @@ function doCardSelf(ctx, tag) {
 //     /astralprobe lpcredit <tag> <value>               预置本周期活体书页出牌数加成(封顶用例)
 //     /astralprobe lprin <tag> <value>                  预置「调查员已用页数」rin_pages(伤害口径用例)
 //     /astralprobe lpchain <tag> <hits> <dist>          同一靶上连续出牌 hits 次(标记累积 → 首次补记)
+//     /astralprobe lpreset <tag>                        归零出牌轮 + 牌回主手,**保留当前靶**(跨轮累积标记)
 //     /astralprobe lpclean <tag>                        收尾:取消会话 + 清靶/拆墙 + 清主手 + 周期归零
 //   ⚠️ 改探针后必须冷启动才生效。
 //   ⚠️ **`type` 参数是 `StringArg.string()`(QUOTABLE_PHRASE),用例里必须加引号**:
@@ -4711,6 +4712,26 @@ function doLpRead(ctx, tag) {
     return 1;
 }
 
+/**
+ * 活体书页**分隔出牌**脚手架:归零出牌轮(等价于「冷却到期后的新一轮」)+ 把 1 张牌放回主手,
+ * **保留当前靶** ⇒ 靶身上的标记**跨轮累积**。
+ *
+ * <p>用途:复现玩家真实节奏(每轮一张、间隔若干秒)下「第 4 次命中时命中前已有 3 层标记」的
+ * 连续出牌判定。`lpchain` 是**同一 tick 连打**(同一出牌轮内多次确认),覆盖不到这条路径 ——
+ * 两者在「出牌轮是否已归零」上完全不同,而补记入口正是以「本轮仍存活(`getPlayCount > 0`)」为前提。
+ */
+function doLpReset(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    if (lpState == null || lpState.dummy == null) { send(ctx, "AP_" + tag + "_ERR:no_dummy"); return 1; }
+    var d = lpState.dummy;
+    resetEffectCardCycle(p);
+    var set = lpSetHand(p, lpCardId());
+    lpState.tag = tag;
+    lpState.hpBefore = rghp(d);
+    send(ctx, "AP_" + tag + "_RESET:set=" + set + ":" + lpReadout(p, d, "-"));
+    return 1;
+}
+
 /** 预置本周期活体书页出牌数加成(封顶 9 用例) */
 function doLpCredit(ctx, tag, valueText) {
     var p = ctx.source.getPlayerOrException();
@@ -4928,6 +4949,11 @@ ServerEvents.commandRegistry(event => {
                 .then(Commands.argument("tag", StringArg.word())
                     .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
                         return doLpRead(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("lpreset")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doLpReset(ctx, StringArg.getString(ctx, "tag"));
                     }))))
             .then(Commands.literal("lpcredit")
                 .then(Commands.argument("tag", StringArg.word())

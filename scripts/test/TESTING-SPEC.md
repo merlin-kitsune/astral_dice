@@ -1113,4 +1113,14 @@ pwsh -NoProfile -File scripts/test/mt_watchdog.ps1 -Version 1.21.1 [-StallSecond
 - 工程:**验证**：`Test-MtSyntax.ps1` 覆盖新脚本（38 → **39 个文件，0 解析失败**）；`mt_scope.ps1` 四种模式实跑 —— 全非核心（`AGENTS.md` + `TESTING-SPEC.md` + `lang/zh_cn.json`）⇒ `级别 = 非核心`；混入核心（java + `data/**/card_spell.json` + `patchouli_books/**`）⇒ `级别 = 核心`（patchouli 判非核心、data 判核心）；缺省工作区模式 ⇒ 8 个路径全非核心；`--staged` 空暂存区 ⇒ 提示无变更。⚠️ **参数解析教训**：本仓 `--` 风格参数在 `[CmdletBinding()] param()` 下只会绑定**一个**值、其余落入位置参数并报错（实测 `--paths a b c` 报「找不到接受自变量」），故该脚本与 `mt_preflight.ps1` 同法**手工解析 `$args`**。
 - 工程:**配套（DSH 用户级配置，不入库）**：`$DSH_HOME/skills/mc-two-round-verification/SKILL.md` 的「不触发」补上「非核心功能修改」一条并指向 `mt_scope.ps1`（该 skill 本就有「与 `AGENTS.md` 冲突时以 `AGENTS.md` 为准」的条款）。
 
+**2026-09-19（续 3）：活体书页「出牌数 +1 未触发」核查 —— 结论：判定与增层均无误；补两条回归断言钉死顺序与门槛**
+
+- 工程:**用户报告**：「对拥有 3 层标记的目标使用书页未触发出牌数 +1 效果，请验证是增加标记层数有误，还是判断有误」。核查两个候选点：① 增层 `MarkManager#apply`（`min(amplifier + 1, MAX_MARKER - 1)`，`MAX_MARKER = 32`，两线逐字相同）；② 判定 `LivingPageImpact#resolve` 的 `markBefore >= 3`（`markBefore` 取自 `MarkManager#getLevel` = `amplifier + 1`，在**伤害与增层之前**读取）。**静态看两点自洽**，故补游戏内取证。
+- 工程:**新增探针命令 `lpreset <tag>`（两线同构）**：归零出牌轮（等价于「冷却到期后的新一轮」）+ 把 1 张牌放回主手，**保留当前靶** ⇒ 标记**跨轮累积**。既有 `lpchain` 是**同一 tick 连打**（同一出牌轮内多次确认），覆盖不到「跨轮累积」，而补记入口恰以「本轮仍存活（`EffectCardPeriod#getPlayCount > 0`）」为前提 —— 这是本轮唯一未被既有用例覆盖的路径。
+- 工程:**新增断言（两线各 15 条，用例步 `LK0/LK1/LK2/LK9` + `LS1..LS4/LZ8`）**：`LK` 组带**忍术飞镖**筹码（其加成 = `bonus + MarkManager.getLevel(ctx.target)`）⇒ 命中前 0 层 `dmg=2`、2 层 `dmg=4`（若「先加标记再算伤害」则分别会是 3 / 5）—— 把「先算伤害、后加标记」钉死；`LS` 组按**每轮一张**的节奏在同一只靶上打 4 次，第 4 次命中前恰 3 层 ⇒ `credit=1:max=2:blocked=0` —— 把 ≥3 门槛与补记钉死。另把 `_ERR` 反向断言的字符类由 `[PNWEFGHIJZ]` 扩到 `[PNWEFGHIJKSZ]`，让新标签的报错同样被抓。
+- 工程:**实机结论（两发布线，2026-09-19 各一轮全流程）**：`LIVING-PAGE-1.21.1` = **PASS**、`LIVING-PAGE-1.20.1` = **PASS**（证据 `temp/t34/ls-{1.21.1,1.20.1}.log`）。关键读数（两线数值一致）：`AP_LK1_SHOOT:mark_before=0` → `AP_LK1_READ:mark=1:dmg=2`；`AP_LK2_SHOOT:mark_before=2` → `AP_LK2_READ:mark=3:dmg=4`；`AP_LS3_SHOOT:mark_before=2` → `AP_LS3_READ:mark=3:credit=0`；`AP_LS4_SHOOT:mark_before=3` → `AP_LS4_READ:mark=4:dmg=2:credit=1:plays=1:max=2:blocked=0`。⇒ **增层无误（3 → 4）、判定无误（命中前 3 层即 +1，且补记后上限 1 → 2、不再被拦）**，两候选点均**不是**缺陷。
+- 工程:**鉴别点（登记进 `AGENTS.md` 口径，避免再次误判）**：判定基准是**命中前**层数 —— **把目标打到 3 层的那一次本身不触发**（`LS3`：`mark_before=2 → credit=0`，命中后显示 3 层）。若观察者读的是「命中后」的层数，会误判为「3 层却没 +1」。
+- 工程:**环境侧可能原因（可核查，未改产品代码）**：`multi-dev-next` 分支**不推整合包**（`pushToGame` 分支白名单），整合包 `D:\.minecraft\versions\狐の航空学 Voxy Edition\mods\astral_dice-1.2.1-hotfix+neoforge_1.21.1.jar`（`mods.toml version="1.2.1-hotfix+neoforge_1.21.1"`）里**没有** `LivingPageImpact.class` / `LivingPageFlightScheduler.class`（只有旧 `LivingPageEffect.class`）⇒ 该环境跑的是**发布线旧卡**（60 秒被动法伤增益），**根本没有「≥3 层补记出牌数」这条规则**。若在整合包内测试，本行为属预期。
+
+
 

@@ -431,6 +431,199 @@
     {
       "op": "wait",
       "ms": 900
+    },
+    {
+      "op": "note",
+      "text": "回归钉子 A(结算顺序):带**忍术飞镖**筹码(其加成 = `bonus + MarkManager.getLevel(ctx.target)`)时,命中伤害必须按**命中前**层数结算,标记在伤害结算**之后**才 +1 ⇒ 0 层时 `dmg=2`(若「先加标记再算伤害」则为 3)、2 层时 `dmg=4`(若先加则为 5)。\n回归钉子 B(≥3 层门槛 · 玩家真实节奏):同一只靶上按**每轮一张**的节奏打 3 次(每轮之间用 `lpreset` 归零出牌轮,靶保留 ⇒ 标记跨轮累积),第 4 次命中时命中前恰有 3 层 ⇒ 补记出牌数 +1(`credit=1:max=2`)。⚠️ 既有 `lpchain` 是**同一 tick 连打**(同一出牌轮内多次确认),覆盖不到「跨轮累积」这条路径,而补记入口以「本轮仍存活(`getPlayCount > 0`)」为前提。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe equipslot chip \"astral_dice:ninja_star_chip\" LK0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe lpprep LK1 \"minecraft:spider\" 4 0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe lpshoot LK1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe lpread LK1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe lpprep LK2 \"minecraft:spider\" 4 2",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe lpshoot LK2",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe lpread LK2",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe equipslot chip \"minecraft:air\" LK9",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe lpprep LS1 \"minecraft:spider\" 6 0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe lpshoot LS1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe lpread LS1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe lpreset LS2",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe lpshoot LS2",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe lpread LS2",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe lpreset LS3",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe lpshoot LS3",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe lpread LS3",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe lpreset LS4",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe lpshoot LS4",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe lpread LS4",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe lpclean LZ8",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
     }
   ],
   "asserts": [
@@ -590,6 +783,71 @@
       "pattern": "AP_LZ7_CLEAN:discarded=1:unbuilt=\\d+:sel=0:credit=0:plays=0:cards=0"
     },
     {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_LK0_EQUIP:chip:astral_dice:ninja_star_chip"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_LK1_SHOOT:called=1:token=\\d+:mark_before=0:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_LK1_READ:.*:dummy=hp=14(\\.0)?:max=16(\\.0)?:mark=1:dmg=2(\\.0)?:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_LK2_PREP:.*:seed=2:.*:dummy=hp=16(\\.0)?:max=16(\\.0)?:mark=2:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_LK2_SHOOT:called=1:token=\\d+:mark_before=2:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_LK2_READ:.*:dummy=hp=12(\\.0)?:max=16(\\.0)?:mark=3:dmg=4(\\.0)?:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_LK9_CLEAR:chip"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_LS1_READ:.*:dummy=hp=14(\\.0)?:max=16(\\.0)?:mark=1:dmg=2(\\.0)?:credit=0:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_LS2_READ:.*:dummy=hp=14(\\.0)?:max=16(\\.0)?:mark=2:dmg=2(\\.0)?:credit=0:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_LS3_READ:.*:dummy=hp=14(\\.0)?:max=16(\\.0)?:mark=3:dmg=2(\\.0)?:credit=0:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_LS4_SHOOT:called=1:token=\\d+:mark_before=3:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_LS4_READ:.*:dummy=hp=14(\\.0)?:max=16(\\.0)?:mark=4:dmg=2(\\.0)?:credit=1:plays=1:max=2:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_LZ8_CLEAN:discarded=1:unbuilt=\\d+:sel=0:credit=0:plays=0:cards=0"
+    },
+    {
       "type": "absent",
       "source": "debug",
       "pattern": "\\[Astral Dice\\]\\[TargetSelection\\] expired token=\\d+"
@@ -597,7 +855,7 @@
     {
       "type": "absent",
       "source": "latest",
-      "pattern": "AP_L[PNWEFGHIJZ]\\d+_ERR"
+      "pattern": "AP_L[PNWEFGHIJKSZ]\\d+_ERR"
     },
     {
       "type": "kubejs"
