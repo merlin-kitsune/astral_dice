@@ -51,12 +51,15 @@ public class ModPayloads {
         // 与 1.21.1 基准 `neoforge-1.21.1/.../network/ModPayloads.java` 第 50-66 行**同序同形**:
         // Start(S→C) + Confirm/Cancel(C→S) 三条通道,处理器逐字一致。
         // 通道注册器版本号仍取 VersionGate.interopVersion()(版本互通门槛,见上方注释与 AGENTS.md)。
+        // 2026-09-25「手持即选择」批次:Start 载荷新增第 7 个字段 holdToSelect,此处随之下传
+        // (1.21.1 基准:`... payload.allowSelf(), payload.holdToSelect()))`)。
         registrar.playToClient(
                 TargetSelectStartPayload.TYPE,
                 TargetSelectStartPayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(() ->
                         TargetSelectionClient.start(payload.token(), payload.targetType(),
-                                payload.radius(), payload.durationTicks(), payload.actionId(), payload.allowSelf()))
+                                payload.radius(), payload.durationTicks(), payload.actionId(), payload.allowSelf(),
+                                payload.holdToSelect()))
         );
         registrar.playToServer(
                 TargetSelectConfirmPayload.TYPE,

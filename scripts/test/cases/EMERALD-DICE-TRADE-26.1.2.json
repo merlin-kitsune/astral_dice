@@ -1,0 +1,103 @@
+{
+  "case_id": "EMERALD-DICE-TRADE-26.1.2",
+  "title": "【26.1.2 移植版:与 1.21.1 同用例同读数,逐行同构(2026-09-19 三线一致性测试)】绿宝石骰子交易：客户端报价必须显示星币（本体仍是绿宝石）、成交后立即重发报价刷新经验",
+  "version": "26.1.2",
+  "target": {
+    "type": "bugfix",
+    "ref": "emerald-dice-trade"
+  },
+  "steps": [
+    {
+      "op": "note",
+      "text": "复现 2026-09-13 报告：交易列表未显示星币（实际扣款用星币）+ 使用绿宝石骰子时职业经验不立即更新。断言链：戴上骰子 → 造流浪商人（天生带绿宝石报价）→ 本体报价仍为绿宝石 → 交换窗口内 copy() 得到的『客户端那一份』已是星币 → 成交后 resendOffers 成功 → 打开真实交易界面（走被修复的 sendMerchantOffers）供截图取证"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe emeraldtrade E1"
+    },
+    {
+      "op": "wait",
+      "ms": 1800
+    },
+    {
+      "op": "note",
+      "text": "截图取证（人工核对）：交易列表左侧费用图标应为星币而非绿宝石"
+    },
+    {
+      "op": "screenshot",
+      "crop": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe tradeclose E1C"
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_E1_HASDICE:1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_E1_DICE:astral_dice:emerald_dice"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_E1_OFFERS:\\d+:idx=\\d+"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_E1_SERVER_A:minecraft:emerald:\\d+"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_E1_CLIENT_A:astral_dice:star_coin:\\d+"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_E1_XP:-?\\d+:-?\\d+:offerxp=-?\\d+"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_E1_RESEND:ok"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_E1_OPEN:ok"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_E1_DONE"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_E1C_CLOSE:(closeContainer|menuRemoved|unavailable)"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_E1_ERR|AP_E1_EX|AP_E1C_EX|AP_TICK_EX"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "crash"
+    }
+  ],
+  "on_fail": "keep_game_running"
+}

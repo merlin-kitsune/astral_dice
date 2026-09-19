@@ -11,7 +11,6 @@ import com.merlinkitsune.astral_dice.network.DamageNumberPayload;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.item.sign.ParunanSignItem;
 import com.merlinkitsune.astral_dice.item.sign.BaseSignItem;
-import com.merlinkitsune.astral_dice.item.sign.BonnieSignItem;
 import com.merlinkitsune.astral_dice.item.sign.MosesSignItem;
 import com.merlinkitsune.astral_dice.item.sign.PandamanSignItem;
 import com.merlinkitsune.astral_dice.effect.WeaknessRevealEffect;
@@ -19,7 +18,6 @@ import com.merlinkitsune.starenginelib.item.BossEntityUtil;
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
 import com.merlinkitsune.astral_dice.item.dice.DiceCurioItem;
 import com.merlinkitsune.astral_dice.item.card.ExclusiveCardUtil;
-import com.merlinkitsune.astral_dice.item.sign.HaiqingSignItem;
 import com.merlinkitsune.astral_dice.item.HealingManager;
 import com.merlinkitsune.astral_dice.item.InvestigationEventUtil;
 import com.merlinkitsune.astral_dice.item.MarkManager;
@@ -108,11 +106,11 @@ import com.merlinkitsune.astral_dice.item.chip.FriendshipBadgeChipItem;
 import com.merlinkitsune.astral_dice.item.chip.RevengeHalberdChipItem;
 import com.merlinkitsune.astral_dice.item.chip.SatelliteChipItem;
 import com.merlinkitsune.astral_dice.item.chip.CurrentCoreChipItem;
+import com.merlinkitsune.astral_dice.item.RenShieldManager;
 import com.merlinkitsune.astral_dice.item.sign.NancyLuSignItem;
 import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
 import com.merlinkitsune.astral_dice.item.card.FateGuidanceCardItem;
 import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
-import com.merlinkitsune.starenginelib.event.ModEffectRemoval;
 
 @EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public class DiceCombatEvents {
@@ -232,68 +230,13 @@ public class DiceCombatEvents {
             }
         }
 
-        // 占星师立牌主动:对本次攻击的第一个目标施加"虚弱印记"5:00(须符合骰神赐福触发条件)+ 虚弱效果。
-        // 印记持续生效至目标被击杀或计时结束;记录释放者,击杀后仅释放者获得奖励。
+        // 占星师/秘密侦探立牌主动已迁移至目标选择器(TargetSelectionManager + HaiqingSignItem/BonnieSignItem 的
+        // TargetSelectionAction.apply),不再于攻击时自动释放,此处无攻击释放逻辑。
+        // 枪匠立牌主动同样已迁移至目标选择器(见 MosesSignItem 注册的 TargetSelectionAction),此处仅保留其被动:
         if (!player.level().isClientSide() && attackerCurios.isPresent() && isBlessingTarget(target, player)) {
-            var haiqingResult = attackerCurios.get().findFirstCurio(s -> s.is(ModItems.HAIQING_SIGN.get()));
-            if (haiqingResult.isPresent() && ModAttachments.getSignReadyType(player) == HaiqingSignItem.READY_TYPE) {
-                ModAttachments.setSignReadyType(player, 0);
-                ModAttachments.setSignReadyExpire(player, 0);
-                ModAttachments.setWeakMarkSource(target, Optional.of(player.getUUID()));
-                target.addEffect(new MobEffectInstance(ModEffects.WEAK_MARK, 6000, 0, false, true));
-                EffectTimerGuard.apply(target, new MobEffectInstance(MobEffects.WEAKNESS, 6000, 0, false, true));
-                // 主动成功施加:移除"待命"提示效果并开始玩家级冷却
-                ModEffectRemoval.remove(player, ModEffects.HAIQING_READY);
-                int signCooldownTicks = WeirdDiceHandler.signCooldownTicks(player);
-                ModAttachments.setSignActiveCooldownEnd(player,
-                        player.level().getGameTime() + signCooldownTicks);
-                // 路线 A:记录本次冷却实际使用的最大冷却值,所有减免方一律读它(不再各自重算基准)
-                ModAttachments.setSignActiveMaxCooldown(player, signCooldownTicks);
-                CurrentCoreChipItem.onActiveSkillUsed(player);
-            }
-            // 秘密侦探立牌主动:对本次攻击的第一个目标施加"隐匿调查"(永久,直到目标死亡/消失);若目标带"标记",按标记层数*2 获得星币
-            var bonnieResult = attackerCurios.get().findFirstCurio(s -> s.is(ModItems.BONNIE_SIGN.get()));
-            if (bonnieResult.isPresent() && ModAttachments.getSignReadyType(player) == BonnieSignItem.READY_TYPE) {
-                ModAttachments.setSignReadyType(player, 0);
-                ModAttachments.setSignReadyExpire(player, 0);
-                ModAttachments.setUndercoverSource(target, Optional.of(player.getUUID()));
-                target.addEffect(new MobEffectInstance(ModEffects.UNDERCOVER_INVESTIGATION,
-                        Integer.MAX_VALUE, 0, false, true));
-                int markLevel = MarkManager.getLevel(target);
-                if (markLevel > 0) {
-                    ItemStack coinStack = new ItemStack(ModItems.STAR_COIN.get(), markLevel * 2);
-                    if (!player.getInventory().add(coinStack)) {
-                        player.drop(coinStack, false);
-                    }
-                }
-                // 主动成功施加:移除"待命"提示效果并开始玩家级冷却
-                ModEffectRemoval.remove(player, ModEffects.BONNIE_READY);
-                int signCooldownTicks = WeirdDiceHandler.signCooldownTicks(player);
-                ModAttachments.setSignActiveCooldownEnd(player,
-                        player.level().getGameTime() + signCooldownTicks);
-                // 路线 A:记录本次冷却实际使用的最大冷却值,所有减免方一律读它(不再各自重算基准)
-                ModAttachments.setSignActiveMaxCooldown(player, signCooldownTicks);
-                CurrentCoreChipItem.onActiveSkillUsed(player);
-            }
-            // 枪匠立牌主动:对本次攻击的第一个目标施加"破绽"2:00(已带破绽则不重复施加)。
+            // 枪匠立牌被动:攻击已带"破绽"的目标,每段破绽获得 1 层弱点识破
             // 触发条件与骰神赐福完全一致:近战武器(外层已判定)+ isBlessingTarget(外层已判定),
             // 因此不再额外限制"普通敌对生物"。
-            var mosesResult = attackerCurios.get().findFirstCurio(s -> s.is(ModItems.MOSES_SIGN.get()));
-            if (mosesResult.isPresent()
-                    && ModAttachments.getSignReadyType(player) == MosesSignItem.READY_TYPE) {
-                if (MosesSignItem.applyBroken(player, target)) {
-                    ModAttachments.setSignReadyType(player, 0);
-                    ModAttachments.setSignReadyExpire(player, 0);
-                    ModEffectRemoval.remove(player, ModEffects.MOSES_READY);
-                    int signCooldownTicks = MosesSignItem.signCooldownTicks(player);
-                    ModAttachments.setSignActiveCooldownEnd(player,
-                            player.level().getGameTime() + signCooldownTicks);
-                    // 路线 A:记录本次冷却实际使用的最大冷却值,所有减免方一律读它(不再各自重算基准)
-                    ModAttachments.setSignActiveMaxCooldown(player, signCooldownTicks);
-                    CurrentCoreChipItem.onActiveSkillUsed(player);
-                }
-            }
-            // 枪匠立牌被动:攻击已带"破绽"的目标,每段破绽获得 1 层弱点识破
             if (MosesSignItem.isEquipped(player) && target.hasEffect(ModEffects.MOSES_BROKEN)) {
                 MosesSignItem.onAttackBrokenTarget(player, target);
             }
@@ -1160,6 +1103,34 @@ public class DiceCombatEvents {
         Optional<UUID> tauntSource = ModAttachments.getPandamanTauntSource(attacker);
         if (tauntSource.isEmpty() || !tauntSource.get().equals(player.getUUID())) return;
         injectCounterDamage(player, attacker);
+    }
+
+    // 游戏大师立牌(ren)「鼠鼠护盾」自带的一次性反击:带盾玩家被攻击时消耗 1 层,对攻击者注入一次
+    // 现有反击伤害(沿用同一公式)。事件与肉弹嘲讽同源(LivingDamageEvent.Pre,位于吸收结算之前),
+    // 该钩子只表示「伤害已确认」,与吸收数值无关 ⇒ **被黄心完全吃掉的一击同样触发**;
+    // 若这一击正好打空黄心,护盾的清空由 RenShieldManager 的每 tick 轮询在稍后完成(先反击、后破盾)。
+    @SubscribeEvent
+    public static void onRenShieldCounter(LivingDamageEvent.Pre event) {
+        LivingEntity victim = event.getEntity();
+        if (victim.level().isClientSide()) return;
+        // 反击链中不再触发(与破绽闪避 / 嘲讽反击共用同一结构性递归截断)
+        if (isInCounterChain()) return;
+        if (!(victim instanceof Player player)) return;
+        if (!player.isAlive()) return;
+        if (!player.hasEffect(ModEffects.REN_SHIELD)) return;
+        if (ModAttachments.getRenCounterCharges(player) <= 0) return;
+        if (!(event.getSource().getEntity() instanceof LivingEntity attacker)) return;
+        if (attacker == player) return;
+        // 一次性充能:先消耗层数(并同步摘掉「反击」图标),再注入伤害
+        ModAttachments.setRenCounterCharges(player, 0);
+        RenShieldManager.refreshCounterEffect(player);
+        injectCounterDamage(player, attacker);
+        if (player instanceof net.minecraft.server.level.ServerPlayer sp) {
+            PacketDistributor.sendToPlayer(sp, new ActionBarPayload(
+                    Component.translatable("msg.astral_dice.ren_counter_fired")
+                            .withStyle(ChatFormatting.YELLOW),
+                    GameplayConstants.ACTIONBAR_DURATION_TICKS));
+        }
     }
 
     // === 反击伤害注入(Counterattack Damage Injection) ===

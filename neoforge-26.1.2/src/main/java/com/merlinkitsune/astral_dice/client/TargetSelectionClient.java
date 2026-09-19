@@ -17,9 +17,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.OwnableEntity;
 import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.entity.projectile.ProjectileUtil;
 import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
@@ -36,27 +34,32 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * 目标选择器客户端状态机（第一人称 UX，**Create 强力胶式按键语义**）。
  *
- * 按键口径（2026-09-17 用户裁决，"强力胶式"交互；本模组全部技能不开放自身使用）：
+ * 按键口径（2026-09-17 用户裁决，"强力胶式"交互；能否对自身使用由各动作的 {@code allowSelf} 决定 ——
+ * 2026-09-25 当前为 true 的动作 = 游戏大师立牌「熊孩子特权」、加急加快 / 奢华大餐 / 狂暴三张效果牌
+ * 与史莱姆立牌「治愈粘液」）：
  * <ul>
  *   <li><b>左键</b> = 确认目标（发送 {@link TargetSelectConfirmPayload}）；</li>
  *   <li><b>右键</b> = 对自身使用 —— 会话允许自身目标（{@link #allowSelf()}）时提交对自身的确认；
- *       否则（**当前全部动作**的取值，无任何动作实现
- *       {@code target/SelfTargetable}）只弹 actionbar 提示
+ *       否则（{@code allowSelf=false} 的动作：bonnie / haiqing / moses 三个立牌动作，以及「你有我有」you_have_i_have）只弹 actionbar 提示
  *       {@code msg.astral_dice.target_select.self_unsupported}，**不提交选择**（会话保留）；</li>
  *   <li><b>右键 + 潜行</b> = 取消选择；</li>
- *   <li><b>ESC</b> = 原版照常打开暂停菜单，菜单一打开（{@code ScreenEvent.Opening}）即取消选择；</li>
+ *   <li><b>ESC</b> = 原版照常打开暂停菜单，菜单一打开（{@code ScreenEvent.Opening}）即取消选择
+ *       （**手持即选择类会话例外**：开着菜单也保留会话，见 {@link #onScreenOpening}）；</li>
  *   <li><b>J</b>（主动技能键）= 取消选择（保留）；</li>
- *   <li>选择期间滚轮拦截、{@link ChatScreen} 豁免（命令聊天/自动化注入命令）均保留。</li>
+ *   <li><b>移出主手</b> = 手持即选择类会话（四张效果牌）的收官方式：物品离开主手即退出选择
+ *       （{@code reason=released}，无瞬态提示），此类会话**没有倒计时**、提示里也不出现剩余时间；</li>
+ *   <li>选择期间滚轮拦截（**手持即选择类会话例外**，见 {@link #onMouseScroll}）、
+ *       {@link ChatScreen} 豁免（命令聊天/自动化注入命令）均保留。</li>
  * </ul>
  *
- * 提示分工：中央 HUD 的「目标名 + 距离 + 类型标签」一行由后续批次的 {@code TargetSelectOverlay}
- * 负责（**本批次不移植**）；本批次只做 actionbar —— 每 tick 刷新的**四态**稳态提示
- * （未命中 / 可自身 / 正确目标 / 错误目标，末尾追加黄色剩余时间，见 {@link #steadyPrompt()}）
- * 与瞬态反馈（见 {@link #showPrompt}）。
+ * 提示分工：中央 HUD 只画一行「目标名 + 距离 + 类型标签」（见 {@link TargetSelectOverlay}），其余提示
+ * 一律走 actionbar —— 每 tick 刷新的**四态**稳态提示（未命中 / 可自身 / 正确目标 / 错误目标，
+ * 末尾追加黄色剩余时间，见 {@link #steadyPrompt()}）与瞬态反馈（见 {@link #showPrompt}）。
  *
  * <h2>26.1.2 移植说明（相对 {@code neoforge-1.21.1} 基准的平台改写点）</h2>
  * <ul>
@@ -67,38 +70,47 @@ import java.util.List;
  *   <li><b>{@code OwnableEntity#getOwnerUUID()} → {@code getOwnerReference()}</b>：26.1.2 的
  *       {@code OwnableEntity} 只有 {@code getOwnerReference()/getOwner()/getRootOwner()}，
  *       {@code getOwnerUUID()} 已删除。本类两处（{@link #targetTagKey}、{@link #isFriendly}）改用
- *       {@code getOwnerReference().getUUID()} 与选择者 UUID 比较 —— 这是与 1.21.1 **语义最接近**的
- *       改写：{@code getOwner()} 需要把引用解析成实体（未加载时返回 null，宠物在远处会退化为中立），
- *       而引用里直接带着 UUID（{@code EntityReference#getUUID()} 对已存实体与纯 UUID 两种形态都成立），
- *       故不引入解析副作用。</li>
+ *       {@code isOwner(...)} 读 {@code getOwnerReference().getUUID()} 与选择者 UUID 比较 —— 这是与
+ *       1.21.1 **语义最接近**的改写：{@code getOwner()} 需要把引用解析成实体（未加载时返回 null，
+ *       宠物在远处会退化为中立），而引用里直接带着 UUID（{@code EntityReference#getUUID()} 对已存实体
+ *       与纯 UUID 两种形态都成立），故不引入解析副作用。</li>
+ *   <li><b>客户端本地 actionbar 文案</b>用 {@code Player#sendOverlayMessage(Component)}
+ *       （1.21.1 的 {@code displayClientMessage(text, true)} 在 26.1.2 已改名）。</li>
  *   <li>{@code @EventBusSubscriber(modid = …, value = Dist.CLIENT)} 在 26.1.2 逐字可用（{@code bus=} 已删，
  *       本类本来也没有）。</li>
  *   <li>其余全部逐字可用：{@code InputEvent.MouseButton.Pre} / {@code InputEvent.MouseScrollingEvent} /
  *       {@code GLFW.GLFW_PRESS|GLFW_MOUSE_BUTTON_LEFT|_RIGHT} / {@code event.setCanceled(true)} /
  *       {@code ScreenEvent.Opening#getScreen()} / {@code Minecraft.getInstance().options.keyAttack.setDown(false)} /
- *       {@code Entity#pick(double,float,boolean)} / {@code ProjectileUtil#getEntityHitResult(Entity,Vec3,Vec3,AABB,Predicate,double)} /
+ *       {@code Entity#pick(double,float,boolean)} / {@code AABB#contains(Vec3)} / {@code AABB#clip(Vec3,Vec3)} /
  *       {@code AABB#expandTowards(Vec3)} / {@code AABB#inflate(double,double,double)} /
  *       {@code Component.translatableWithFallback(String,String)} / {@code Level#getEntities(Entity,AABB)} /
  *       {@code ActionBarManager.show(Component,int)}。</li>
  * </ul>
  *
- * <p><b>零渲染约束（本批次红线）</b>：本类**不得**引用任何渲染类
- * （{@code RenderType}/{@code VertexConsumer}/{@code PoseStack}/{@code GuiGraphics*}/
- * {@code RenderLevelStageEvent}/…）；原 1.21.1 类注释里对 {@code TargetSelectOverlay} 与
- * {@code TargetOutlineCapture} 的 javadoc 链接已改为纯文本，避免引入渲染类的类字面量引用。
+ * <h2>本批（2026-09-25「手持即选择」+ 2026-09-19「指向外框即算指向」）相对 26.1.2 旧版的变化</h2>
+ * <ol>
+ *   <li>新增 {@link #holdToSelect} 会话标志与 {@link #releaseByHeldItem}/{@link #holdsCardForAction}：
+ *       手持即选择类会话**无倒计时**（{@code expireTick = Long.MAX_VALUE}），收官改为「主手物品校验」；</li>
+ *   <li>准星判定由原版 {@code ProjectileUtil#getEntityHitResult}（碰撞盒射线）改为
+ *       {@link #pickFrameTarget}（**外框盒**射线，含「视点已在盒内 ⇒ 距离 0」分支）——
+ *       与描边几何同源，实现「指向外框即算指向」；</li>
+ *   <li>新增 {@link #notifyHeldSelectorBlocked}：未在选择中且主手持有选择器类效果牌时，
+ *       左键给出与自身牌同源的「出牌数已满 / 冷却中」提示；</li>
+ *   <li>滚轮与界面打开在手持即选择类会话下**不再拦截/取消**（玩家正是靠滚轮换槽把牌换下主手）。</li>
+ * </ol>
  */
 @EventBusSubscriber(modid = AstralDiceMod.MODID, value = Dist.CLIENT)
 public final class TargetSelectionClient {
     private static final Logger LOGGER = LoggerFactory.getLogger(TargetSelectionClient.class);
 
-    /** 高亮颜色：友方绿 / 敌对红 / 中立黄（供后续批次的描边/HUD 复用） */
+    /** 高亮颜色：友方绿 / 敌对红 / 中立黄 */
     public static final int COLOR_FRIENDLY = 0x55FF55;
     public static final int COLOR_HOSTILE = 0xFF5555;
     public static final int COLOR_NEUTRAL = 0xFFFF55;
 
     /** actionbar 提示刷新时长（tick）：每 tick 续期 ⇒ 会话期间提示常驻 */
     private static final int ACTIONBAR_TICKS = 40;
-    /** 半径内其它可选目标的渲染上限（取最近的若干个；本批次只维护集合，不绘制） */
+    /** 半径内其它可选目标的渲染上限（取最近的若干个） */
     private static final int NEARBY_TARGET_LIMIT = 24;
 
     private static boolean active;
@@ -108,23 +120,34 @@ public final class TargetSelectionClient {
     private static long expireTick;
     private static String actionId = "";
     private static LivingEntity currentTarget;
-    /** 准星命中但**不可选**的实体（类型不符 / 超出半径）：rejected 提示 */
+    /** 准星命中但**不可选**的实体（类型不符 / 超出半径）：1/24 细边 + rejected 提示 */
     private static LivingEntity rejectedTarget;
-    /** 半径内其它可选目标（最多 {@link #NEARBY_TARGET_LIMIT} 个），每 tick 重建 */
+    /** 半径内其它可选目标（1/128 细边，最多 {@link #NEARBY_TARGET_LIMIT} 个），每 tick 重建 */
     private static final List<LivingEntity> nearbyTargets = new ArrayList<>();
     /** 瞬态 actionbar 提示（优先于默认提示）；到期后恢复默认提示 */
     private static Component transientPrompt;
     private static long transientPromptUntil;
     /**
      * 本次会话是否允许对自身使用（服务端随会话下发；消费方接口
-     * {@code target/SelfTargetable#allowSelf()} 的取值，当前无任何动作实现 ⇒ 恒 false）。
+     * {@code target/SelfTargetable#allowSelf()} 的取值；{@code ren_privilege}、三张可自用效果牌
+     * （express_delivery / luxury_feast / berserk）与史莱姆立牌 {@code lulu_healing_slime} 为 true，其余动作 false）。
      */
     private static boolean allowSelf;
+    /**
+     * 本会话是否由「主手手持物品」驱动且**没有倒计时**（服务端随会话下发；消费方接口
+     * {@code target/HoldToSelect} 的取值，当前 = 四张效果牌动作 express_delivery / luxury_feast /
+     * you_have_i_have / berserk）。
+     *
+     * <p>为真时：① {@link #remainingSeconds()} 不参与提示（不显示「（剩余 N 秒）」）；
+     * ② {@link #tick()} 改为校验主手物品是否仍是该动作对应的牌，离开主手即自行退出选择模式；
+     * ③ 打开界面（背包等）**不取消**会话（玩家仍握着牌）；④ 滚轮不被拦截（换槽是收官手段）。
+     */
+    private static boolean holdToSelect;
 
     private TargetSelectionClient() {
     }
 
-    // === 状态查询（后续批次的 Overlay / Highlighter / KeyBindingSetup 共用） ===
+    // === 状态查询（Overlay / Highlighter / KeyBindingSetup 共用） ===
 
     public static boolean isActive() {
         Minecraft mc = Minecraft.getInstance();
@@ -135,12 +158,12 @@ public final class TargetSelectionClient {
         return currentTarget;
     }
 
-    /** 准星命中但不可选的实体（后续批次渲染层用它画 1/24 细边） */
+    /** 准星命中但不可选的实体（渲染层用它画 1/24 细边） */
     public static LivingEntity rejectedTarget() {
         return rejectedTarget;
     }
 
-    /** 半径内其它可选目标（后续批次渲染层用它画 1/64 细边）；只读视图，按距离由近到远 */
+    /** 半径内其它可选目标（渲染层用它画 1/128 细边）；只读视图，按距离由近到远 */
     public static List<LivingEntity> nearbyTargets() {
         return Collections.unmodifiableList(nearbyTargets);
     }
@@ -148,7 +171,7 @@ public final class TargetSelectionClient {
     /**
      * 该实体是否属于当前会话的可见目标集合（命中 / 命中不可选 / 半径内其它）。
      *
-     * <p>供后续批次的可见外框实测判断要不要替它付费。
+     * <p>供 {@link TargetOutlineCapture} 判断要不要替它实测可见外框 —— 只为真正要画框的实体付费。
      */
     public static boolean isTracked(LivingEntity entity) {
         if (entity == null || !isActive()) return false;
@@ -166,17 +189,18 @@ public final class TargetSelectionClient {
      * 会话剩余秒数（{@code ceil((expireTick - level.getGameTime()) / 20)}，最小 0）。
      *
      * <p>与超时判据（{@link #tick()} 的 {@code gameTime >= expireTick}）同源：归零即会话超时。
-     * 供 actionbar 的「（剩余 N 秒）」与后续批次的 HUD/测试复用；无世界（未进游戏）时返回 0。
+     * 供 actionbar 的「（剩余 N 秒）」与 HUD/测试复用；无世界（未进游戏）时返回 0。
+     * **手持即选择类会话恒为 0**（这类会话没有倒计时）。
      */
     public static int remainingSeconds() {
         Minecraft mc = Minecraft.getInstance();
-        if (mc.level == null) return 0;
+        if (mc.level == null || holdToSelect) return 0;
         long remainingTicks = expireTick - mc.level.getGameTime();
         if (remainingTicks <= 0L) return 0;
         return (int) Math.ceil(remainingTicks / 20.0);
     }
 
-    /** 本次会话是否允许对自身使用（服务端下发；当前无任何动作实现 ⇒ 恒 false） */
+    /** 本次会话是否允许对自身使用（服务端下发；ren_privilege、三张可自用效果牌与 lulu_healing_slime 为 true，其余 false） */
     public static boolean allowSelf() {
         return allowSelf;
     }
@@ -187,8 +211,8 @@ public final class TargetSelectionClient {
      *
      * <p>推导口径与 {@link #highlightColor}/{@link #isFriendly}/{@link #isHostile} 同源：
      * 玩家 → 同队（{@link #isFriendly}）为 {@code teammate}、非同队为 {@code player}；
-     * 其它生物中，选择者自己拥有的（{@code OwnableEntity} 的拥有者 UUID 等于选择者）为
-     * {@code pet}，敌对（{@link #isHostile}）为 {@code hostile}，其余为 {@code neutral}。
+     * 其它生物中，选择者自己拥有的（{@link #isOwner}）为 {@code pet}，敌对（{@link #isHostile}）为
+     * {@code hostile}，其余为 {@code neutral}。
      *
      * <p>口径裁决（2026-09-18 用户裁决，维持现状）：{@code hostile} 取原版 {@code Enemy} 标记接口
      * ⇒ 野生狼 / 北极熊 / 蜜蜂等「中立但可敌对」的生物显示「中立」（与框色黄同源）。**不得**改成
@@ -232,15 +256,22 @@ public final class TargetSelectionClient {
 
     // === 会话生命周期 ===
 
-    /** 服务端下发选择会话开始（TargetSelectStartPayload 处理器调用，主线程） */
+    /**
+     * 服务端下发选择会话开始（TargetSelectStartPayload 处理器调用，主线程）。
+     *
+     * @param newHoldToSelect 手持即选择类会话（无倒计时；收官 = 主手物品离开）
+     */
     public static void start(int newToken, int targetTypeOrd, double newRadius, int durationTicks, String newActionId,
-                             boolean newAllowSelf) {
+                             boolean newAllowSelf, boolean newHoldToSelect) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.level == null) return;
         token = newToken;
         targetType = TargetType.values()[Math.max(0, Math.min(targetTypeOrd, TargetType.values().length - 1))];
         radius = Math.max(1.0, newRadius);
-        expireTick = mc.level.getGameTime() + Math.max(1, durationTicks);
+        // 手持即选择类会话没有倒计时(服务端传 durationTicks=0):expireTick 写 Long.MAX_VALUE,
+        // 超时判定永不成立,收官一律走「主手物品校验」(见 tick())
+        holdToSelect = newHoldToSelect;
+        expireTick = newHoldToSelect ? Long.MAX_VALUE : mc.level.getGameTime() + Math.max(1, durationTicks);
         actionId = newActionId;
         allowSelf = newAllowSelf;
         active = true;
@@ -251,22 +282,53 @@ public final class TargetSelectionClient {
         transientPromptUntil = 0;
         // 清除遗留的左键按下状态：选择期间攻击键被接管，避免进入前长按导致持续攻击
         mc.options.keyAttack.setDown(false);
-        LOGGER.debug("[Astral Dice][TargetSelectionClient] start token={} type={} radius={} expire={} action={} allowSelf={}",
-                token, targetType, radius, expireTick, actionId, allowSelf);
+        LOGGER.debug("[Astral Dice][TargetSelectionClient] start token={} type={} radius={} expire={} action={} allowSelf={} hold={}",
+                token, targetType, radius, expireTick, actionId, allowSelf, holdToSelect);
         refreshActionBarPrompt(mc);
     }
 
-    /** 客户端主循环 tick（由 ClientTickHandler 驱动）：射线目标更新 + actionbar 提示续期 + 超时取消 */
+    /**
+     * 客户端主循环 tick（由 ClientTickHandler 驱动）：射线目标更新 + actionbar 提示续期 + 收官判定。
+     *
+     * <p>收官两条口径：① 手持即选择类会话 —— 主手物品不再是该动作对应的效果牌 ⇒ 立即取消
+     * （reason=released，无瞬态提示：松手是玩家主动动作）；② 其余会话 —— 选择窗口超时即取消。
+     */
     public static void tick() {
         if (!isActive()) return;
         Minecraft mc = Minecraft.getInstance();
-        if (mc.level.getGameTime() >= expireTick) {
+        if (holdToSelect) {
+            if (!holdsCardForAction(mc)) {
+                releaseByHeldItem();
+                return;
+            }
+        } else if (mc.level.getGameTime() >= expireTick) {
             LOGGER.debug("[Astral Dice][TargetSelectionClient] cancel (expired) token={}", token);
             cancel("expired");
             return;
         }
         updateRaycastTarget(mc);
         refreshActionBarPrompt(mc);
+    }
+
+    /**
+     * 手持即选择:物品离开主手 ⇒ **本地**退出选择模式。
+     *
+     * <p>刻意**不**发取消包 —— 服务端 {@code TargetSelectionManager.tick} 有同源判定
+     * （{@code HoldToSelect#stillHeld}）会自行收尾，两条路径抢着关同一会话只会让服务端日志从
+     * `reason=released` 变成 `cancel`、并多写一条无意义的抑制闩（`hold suppressed`）。
+     * 客户端先退出的窗口内服务端会话仍在，但此时玩家手里已经没有该牌，不可能再发出确认/自用包。
+     */
+    private static void releaseByHeldItem() {
+        LOGGER.debug("[Astral Dice][TargetSelectionClient] cancel (released) token={} action={}", token, actionId);
+        deactivate();
+    }
+
+    /** 主手是否仍持有本会话动作对应的选择器类效果牌（手持即选择类的收官判据，与服务端同源） */
+    private static boolean holdsCardForAction(Minecraft mc) {
+        if (mc.player == null) return false;
+        return mc.player.getMainHandItem().getItem()
+                instanceof com.merlinkitsune.astral_dice.item.card.BaseEffectCardItem card
+                && actionId != null && actionId.equals(card.selectorActionId());
     }
 
     /**
@@ -290,7 +352,7 @@ public final class TargetSelectionClient {
      * 右键 = 对自身使用。
      *
      * <p>会话允许自身目标（{@link #allowSelf()}）时提交对自身的确认包并退出选择模式；
-     * 否则（当前**全部**动作的取值）只弹 actionbar {@code self_unsupported} 提示，
+     * 否则（{@code allowSelf=false} 的动作，如 bonnie / haiqing / moses 与 you_have_i_have）只弹 actionbar {@code self_unsupported} 提示，
      * **不提交选择**、会话保留。
      */
     public static void useOnSelfBySecondaryClick() {
@@ -341,6 +403,7 @@ public final class TargetSelectionClient {
         rejectedTarget = null;
         nearbyTargets.clear();
         allowSelf = false;
+        holdToSelect = false;
         Minecraft mc = Minecraft.getInstance();
         if (mc.options != null) {
             mc.options.keyAttack.setDown(false);
@@ -350,7 +413,7 @@ public final class TargetSelectionClient {
     // === 提示（actionbar） ===
 
     /**
-     * 强力胶式提示：每 tick 续期一次 actionbar（`ActionBarManager.show(component, 40)`）。
+     * 强化胶式提示：每 tick 续期一次 actionbar（`ActionBarManager.show(component, 40)`）。
      *
      * <p>瞬态提示（无目标左键 / 自用不可用 / 已取消）在 40 tick 窗口期内优先，避免被稳态提示
      * 在同一 tick 内覆盖掉；窗口期过后自动回到稳态提示（{@link #steadyPrompt()}）。
@@ -374,28 +437,42 @@ public final class TargetSelectionClient {
     }
 
     /**
-     * 稳态提示（2026-09-18 用户裁决的四态口径）：主文案随「准星目标 / 准星命中但不可选 /
-     * 未命中（分是否允许自身）」四态着色，末尾统一追加**黄色**的「（剩余 N 秒）」。
+     * 稳态提示（2026-09-18 四态口径 + 2026-09-25「手持即选择」两套文案）：主文案随
+     * 「准星目标 / 准星命中但不可选 / 未命中（分是否允许自身）」四态着色。
      *
-     * <p>四态优先级：① 有有效目标 → 绿 {@code prompt.valid}；② 否则准星命中但不可选 →
-     * 红 {@code prompt.rejected}（参数 = 本次会话 {@link TargetType} 对应的有效目标名）；
-     * ③ 否则 → 白 {@code prompt.no_target_self}（{@link #allowSelf()} 为真）或
-     * {@code prompt.no_target}（为假），参数 = 技能名。
+     * <p>退出/取消指引与时间后缀按会话类型分叉：
+     * <ul>
+     *   <li><b>手持即选择类</b>（{@link #holdToSelect}，四张效果牌）—— 用
+     *       {@code msg.astral_dice.target_select.prompt.hold.*} 四键，指引「移出手持即退出选择」，
+     *       **不追加剩余时间**（这类会话没有倒计时）；</li>
+     *   <li><b>其余</b>（立牌主动）—— 用原四键，指引「下蹲+右键 退出选择」，末尾追加**黄色**
+     *       「（剩余 N 秒）」，口径与改动前逐字一致。</li>
+     * </ul>
+     *
+     * <p>四态优先级：① 有有效目标 → 绿 {@code .valid}；② 否则准星命中但不可选 →
+     * 红 {@code .rejected}（参数 = 本次会话 {@link TargetType} 对应的有效目标名）；
+     * ③ 否则 → 白 {@code .no_target_self}（{@link #allowSelf()} 为真）或
+     * {@code .no_target}（为假），参数 = 技能名。
      */
     private static Component steadyPrompt() {
+        String base = holdToSelect ? "msg.astral_dice.target_select.prompt.hold" : "msg.astral_dice.target_select.prompt";
         Component main;
         if (currentTarget != null) {
-            main = Component.translatable("msg.astral_dice.target_select.prompt.valid")
+            main = Component.translatable(base + ".valid")
                     .withStyle(ChatFormatting.GREEN);
         } else if (rejectedTarget != null) {
-            main = Component.translatable("msg.astral_dice.target_select.prompt.rejected", validTargetName())
+            main = Component.translatable(base + ".rejected", validTargetName())
                     .withStyle(ChatFormatting.RED);
         } else if (allowSelf()) {
-            main = Component.translatable("msg.astral_dice.target_select.prompt.no_target_self", skillName())
+            main = Component.translatable(base + ".no_target_self", skillName())
                     .withStyle(ChatFormatting.WHITE);
         } else {
-            main = Component.translatable("msg.astral_dice.target_select.prompt.no_target", skillName())
+            main = Component.translatable(base + ".no_target", skillName())
                     .withStyle(ChatFormatting.WHITE);
+        }
+        if (holdToSelect) {
+            // 无倒计时 ⇒ 不拼「（剩余 N 秒）」
+            return main;
         }
         Component time = Component.translatable("msg.astral_dice.target_select.time", remainingSeconds())
                 .withStyle(ChatFormatting.YELLOW);
@@ -451,36 +528,33 @@ public final class TargetSelectionClient {
             nearbyTargets.clear();
             return;
         }
-        // 实体射线:注意 Entity.pick() 只做方块射线(永不返回 EntityHitResult),
-        // 须参照 GameRenderer.pick 的标准做法:方块射线截断 + ProjectileUtil.getEntityHitResult 找最近实体。
-        // 26.1.2 已核对:Entity#pick(double,float,boolean) 与
-        // ProjectileUtil#getEntityHitResult(Entity,Vec3,Vec3,AABB,Predicate,double) 与该写法逐字匹配。
         double maxDist = radius;
         Vec3 eye = player.getEyePosition(1.0F);
         Vec3 look = player.getViewVector(1.0F);
         HitResult blockHit = player.pick(maxDist, 1.0F, false); // 方块射线(Entity.pick 内部为 OUTLINE clip)
+        // 「已指向」判定（2026-09-19 用户要求「目标选择器只需指向目标外框范围即视为指向，
+        // 不必完全对准目标本身」）：判定用**外框盒**，与描边渲染同源（碰撞盒 ∪ 模型实测外框，
+        // 再按命中档半线宽外扩 —— 见 {@link TargetSelectionHighlighter#hitFrameBox}），
+        // 而不是原版 ProjectileUtil 的**碰撞盒**实体射线 —— 后者要求准星落在碰撞盒上，
+        // 僵尸抬臂 / 蜘蛛伸腿 / 马头颈这类「可见但在碰撞盒之外」的部位全都点不中。
+        // 方块射线截断照旧：准星被方块挡住时不隔墙选中（实体搜索终点截断到方块处）。
         double blockDistSq = blockHit.getLocation().distanceToSqr(eye);
-        // 有方块命中时,实体搜索终点截断到方块处(准星被方块挡住时不应隔墙选中目标)
         double entityLimitSq = blockHit.getType() != HitResult.Type.MISS ? blockDistSq : maxDist * maxDist;
         double entityLimit = Math.sqrt(entityLimitSq);
         Vec3 entityEnd = eye.add(look.x * entityLimit, look.y * entityLimit, look.z * entityLimit);
-        AABB searchBox = player.getBoundingBox().expandTowards(look.scale(entityLimit)).inflate(1.0, 1.0, 1.0);
-        EntityHitResult entityHit = ProjectileUtil.getEntityHitResult(player, eye, entityEnd, searchBox,
-                e -> !e.isSpectator() && e.isPickable(), entityLimitSq);
+        AABB searchBox = player.getBoundingBox().expandTowards(look.scale(entityLimit)).inflate(1.5D, 1.5D, 1.5D);
+        LivingEntity aimed = pickFrameTarget(player, eye, entityEnd, entityLimitSq, searchBox);
 
         LivingEntity newTarget = null;
         LivingEntity newRejected = null;
-        if (entityHit != null
-                && entityHit.getEntity() instanceof LivingEntity living
-                && living != player
-                && living.isAlive()) {
-            if (SelectorTargets.matches(targetType, player, living) && player.distanceToSqr(living) <= radius * radius) {
-                newTarget = living;
+        if (aimed != null && aimed != player && aimed.isAlive()) {
+            if (SelectorTargets.matches(targetType, player, aimed) && player.distanceToSqr(aimed) <= radius * radius) {
+                newTarget = aimed;
             } else {
-                // 命中但不可选（会话目标类型不符 / 超出半径）：走 1/24 细边（后续批次渲染）；
+                // 命中但不可选（会话目标类型不符 / 超出半径）：走 1/24 细边；
                 // 「对准错误目标」的提示自 2026-09-18 起是**稳态红字**（见 steadyPrompt），
                 // 不再在此处抛瞬态 showPrompt —— 否则每 tick 都会与稳态文案来回跳。
-                newRejected = living;
+                newRejected = aimed;
             }
         }
         if (newTarget != currentTarget) {
@@ -509,7 +583,48 @@ public final class TargetSelectionClient {
         updateNearbyTargets(player);
     }
 
-    /** 半径内其它可选目标（后续批次渲染 1/64 细边）：按距离升序取最近 {@link #NEARBY_TARGET_LIMIT} 个 */
+    /**
+     * 准星命中判定：取**外框盒**被射线穿过且**离视线最近**的实体（与描边渲染同源）。
+     *
+     * <p>盒 = {@link TargetSelectionHighlighter#hitFrameBox}（碰撞盒 ∪ 本帧实测模型外框，再外扩半线宽）；
+     * 命中判据 = **视点已在盒内记 0 距离**，否则取线段与盒的 AABB 交点（{@link AABB#clip}），
+     * 最后取沿视线**最近**的那一个 ⇒ **指向外框范围即算指向该目标**（2026-09-19 用户要求），
+     * 与「看着在框里」的观感一致。
+     *
+     * <p>截断沿用调用方给出的射线终点：射线在方块命中处结束，墙后的实体自然选不中
+     * （{@code entityLimitSq} 同时作为最近距离的初值上界）。
+     */
+    private static LivingEntity pickFrameTarget(LocalPlayer player, Vec3 eye, Vec3 end, double entityLimitSq,
+                                                AABB searchBox) {
+        LivingEntity best = null;
+        double bestDistSq = entityLimitSq;
+        for (Entity entity : player.level().getEntities(player, searchBox)) {
+            if (!(entity instanceof LivingEntity living) || living == player) continue;
+            if (!living.isAlive() || living.isSpectator() || !living.isPickable()) continue;
+            AABB frame = TargetSelectionHighlighter.hitFrameBox(living);
+            double distSq;
+            // ⚠️ **视点落在盒内**必须单独判：vanilla `AABB#clip` 只认「严格从板外进入」的相交
+            // （`getDirection` → `clipPoint` 的 startSide < minSide 条件），起点已在盒内时**必返回 empty**；
+            // 原版 `ProjectileUtil#getEntityHitResult` 正是用 `aabb.contains(startVec)` 分支把这种情况
+            // 记为距离 0（1.21.1 `ProjectileUtil.java:77-82`、1.20.1 `:64-69`）。贴脸正对时（僵尸伸直双臂
+            // 使外框盒前伸约 0.75 格，而玩家与生物的最小中心距约 0.6 格）框会把视点整个包住 ——
+            // 省掉这一分支就会「画面里画着框、左键却只弹『没有可用的目标』」，与「指向外框即可选中」相反。
+            if (frame.contains(eye)) {
+                distSq = 0.0D;
+            } else {
+                Optional<Vec3> hit = frame.clip(eye, end);
+                if (hit.isEmpty()) continue;
+                distSq = eye.distanceToSqr(hit.get());
+            }
+            if (distSq <= bestDistSq) {
+                bestDistSq = distSq;
+                best = living;
+            }
+        }
+        return best;
+    }
+
+    /** 半径内其它可选目标（渲染 1/128 细边）：按距离升序取最近 {@link #NEARBY_TARGET_LIMIT} 个 */
     private static void updateNearbyTargets(LocalPlayer player) {
         nearbyTargets.clear();
         AABB search = player.getBoundingBox().inflate(radius);
@@ -538,7 +653,15 @@ public final class TargetSelectionClient {
      */
     @SubscribeEvent
     public static void onMouseButton(InputEvent.MouseButton.Pre event) {
-        if (!isActive()) return;
+        if (!isActive()) {
+            // 未在选择中:手里拿着**选择器类效果牌**时,左键(确认键)也要给出「效果牌冷却/出牌数已满」提示 ——
+            // 否则本轮冷却期间持牌毫无反馈(2026-09-19 用户要求:按下左键同样要有冷却提示)。
+            // 文案与判据同自身牌(见 BaseEffectCardItem#isBlockedOnClient)。
+            if (event.getAction() == GLFW.GLFW_PRESS && event.getButton() == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
+                notifyHeldSelectorBlocked();
+            }
+            return;
+        }
         if (event.getAction() == GLFW.GLFW_PRESS) {
             if (event.getButton() == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
                 confirmByPrimaryClick();
@@ -557,29 +680,62 @@ public final class TargetSelectionClient {
         event.setCanceled(true);
     }
 
-    /** 选择期间拦截滚轮（防切栏/缩放等） */
-    @SubscribeEvent
-    public static void onMouseScroll(InputEvent.MouseScrollingEvent event) {
-        if (isActive()) {
-            event.setCanceled(true);
+    /**
+     * 手持**选择器类效果牌**但本轮被锁(出牌数已满 / 冷却中)时的左键提示。
+     *
+     * <p>文案与判据和自身牌 {@code BaseEffectCardItem#isBlockedOnClient} 完全一致(同一个 lang 键
+     * {@code msg.astral_dice.effect_card_burst_full},含剩余秒数),只在本地显示、不发包。
+     * 未选中目标时的左键原本完全静默,玩家只会觉得"牌没反应"。
+     *
+     * <p>26.1.2 平台改写：{@code Player#displayClientMessage(text, true)} → {@code Player#sendOverlayMessage(Component)}。
+     */
+    private static void notifyHeldSelectorBlocked() {
+        Minecraft mc = Minecraft.getInstance();
+        LocalPlayer player = mc.player;
+        if (player == null) return;
+        if (!(player.getMainHandItem().getItem()
+                instanceof com.merlinkitsune.astral_dice.item.card.BaseEffectCardItem card)
+                || card.selectorActionId() == null) {
+            return;
         }
+        if (!com.merlinkitsune.astral_dice.item.card.EffectCardPeriod.isBlocked(player)) return;
+        int seconds = com.merlinkitsune.astral_dice.item.card.EffectCardPeriod.getRemainingBlockSeconds(player);
+        player.sendOverlayMessage(
+                Component.translatable("msg.astral_dice.effect_card_burst_full", seconds));
     }
 
     /**
-     * 任何界面被打开即取消选择。
+     * 选择期间拦截滚轮(防切栏/缩放等) —— **「手持即选择」类会话例外**(2026-09-19 用户报告并裁决)。
      *
-     * <p>两类例外/特例：
+     * <p>立牌主动的会话是「按键开局」的:拦滚轮可避免换槽顺手把会话弄没。
+     * 但效果牌走的是「手持即选择」——主手拿着牌就自动开会话,此时**滚轮必须可用**:
+     * 玩家正是靠滚轮换到别的槽位把牌换下主手来收官(见 {@code target/HoldToSelect#stillHeld}),
+     * 拦滚轮等于把牌焊在手上(用户报告:可释放时滚轮不可用)。
+     */
+    @SubscribeEvent
+    public static void onMouseScroll(InputEvent.MouseScrollingEvent event) {
+        if (!isActive()) return;
+        if (holdToSelect) return;
+        event.setCanceled(true);
+    }
+
+    /**
+     * 界面打开时的处理。
+     *
+     * <p>三类口径：
      * <ul>
-     *   <li>{@link ChatScreen} 豁免 —— 命令聊天是刻意保留的通道（输指令 / 自动化测试注入命令），
-     *       打开聊天不应取消选择；</li>
-     *   <li>{@link PauseScreen}（ESC 菜单）—— 键盘 ESC 不再被模组拦截，原版照常打开暂停菜单，
-     *       本事件即取消时机（`key=esc action=cancel`）。</li>
+     *   <li>{@link ChatScreen} 一律豁免 —— 命令聊天是刻意保留的通道（输指令 / 自动化测试注入命令）；</li>
+     *   <li><b>手持即选择类会话一律不取消</b>（2026-09-25「手持即选择」）—— 玩家仍握着牌，开背包 /
+     *       按 ESC 只是暂时盖住提示，关掉界面后提示照常；收官只由「物品离开主手」触发；</li>
+     *   <li>其余会话（立牌主动）—— {@link PauseScreen}（ESC 菜单）即取消（{@code key=esc action=cancel}），
+     *       其它界面（背包等）也取消（{@code reason=screen}），口径与改动前逐字一致。</li>
      * </ul>
      */
     @SubscribeEvent
     public static void onScreenOpening(ScreenEvent.Opening event) {
         if (!isActive() || event.getScreen() == null) return;
         if (event.getScreen() instanceof ChatScreen) return;
+        if (holdToSelect) return;
         if (event.getScreen() instanceof PauseScreen) {
             logPrompt("esc", "cancel");
             cancel("esc");

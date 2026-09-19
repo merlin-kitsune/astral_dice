@@ -283,6 +283,22 @@ function nowTick(p) {
     return p == null ? -1 : nowTickLevel(p.level);
 }
 
+/**
+ * 只读取关卡游戏刻(不写 nowTickSource,避免污染 diag 的时基诊断)。
+ *
+ * 用途:26.1.2 的 `NeutralMob` 把「剩余愤怒时长」改成**绝对结束时刻**
+ * (`setPersistentAngerEndTime(long)`,NeutralMob.java 行 18-24),探针若走这条 API
+ * 必须自己算 `now + ticks`。时基必须与 `NeutralMob#isAngry()` 同源(它用
+ * `this.level().getGameTime()`,行 113),故只取关卡本身的时间,绝不退回 tickCount。
+ * 全部取不到时返回 -1(调用方据此改走不需要 now 的那条 API,绝不静默用错时基)。
+ */
+function nowTickRaw(level) {
+    if (level == null) return -1;
+    try { return level.getLevelData().getGameTime(); } catch (e1) { /* 试下一个 */ }
+    try { return level.getGameTime(); } catch (e2) { /* 试下一个 */ }
+    return -1;
+}
+
 // 修复后新增 API:防御式加载,缺失时返回 null(旧 jar 上脚本仍可用,只是相关指标退化为 -1)
 function loadScheduler() {
     try { return Java.loadClass("com.merlinkitsune.astral_dice.event.RailgunStrikeScheduler"); }
@@ -628,6 +644,12 @@ function doDiag(ctx, tag) {
     // 26.1.2:Rhino 不暴露 getClass();改用 serverLevelKind() 两级判定,读数文本不变
     probe("levelClass", function () { return serverLevelKind(p.level); });
     probe("getGameTime", function () { return p.level.getGameTime(); });
+    // 选中热键栏位(0..8)。「选择期间拦截滚轮」的**唯一可观测面** ——
+    // 拦截生效时滚轮不会改它;取消后滚轮会改它(正对照,见 LIVING-PAGE/SELECTOR-KEYS)。
+    // 26.1.2:`Inventory` 的公开字段 `selected` 已改为方法 `getSelectedSlot()`
+    // (javap 实测 26.1.2 只有 getSelectedSlot/setSelectedSlot,无 `selected` 字段;
+    //  1.21.1 侧写的是 `p.getInventory().selected`),读数字段名与含义不变。
+    probe("selectedSlot", function () { return p.getInventory().getSelectedSlot(); });
     probe("lvlDataGGT", function () { return p.level.getLevelData().getGameTime(); });
     probe("getDayTime", function () { return p.level.getDayTime(); });
     probe("reflectGGT", function () {
@@ -2533,6 +2555,41 @@ function playerUuid(p) {
     return { ok: false, value: null, src: "none" };
 }
 
+/**
+ * 只读回读:实体记录的 owner 是否**就是**该玩家(用于「已驯服宠物」判据的取证)。
+ *
+ * 为什么不用 `/data get entity … Owner` 的聊天栏回显做判据:那条回显是客户端按
+ * `options.txt:lang` 渲染的本地化文案(`commands.data.entity.query` =「%s拥有以下实体数据：%s」),
+ * 判据会随语言设置变化 —— 与 AGENTS「测试判据取英文原版行、禁用本地化文案」冲突。
+ * 这里直接读实体侧数据,且**判的比原回显更强**:原回显只证明「Owner 这个键存在且是整型数组」,
+ * 本读数证明「owner 的 UUID 与玩家 UUID 逐字相同」。
+ *
+ * Rhino 可见性:实测 `ServerPlayer#getUUID` 不可见(走 `p.uuid` 字段,见 playerUuid),
+ * 故这里给两条路径 —— ① `TamableAnimal#getOwnerReference()`(TamableAnimal.java 行 159)
+ * 取 `EntityReference#getUUID()`;② `OwnableEntity#getOwner()`(OwnableEntity.java 行 13)
+ * 取解析出的实体,与玩家对象比 `toString()`(ServerPlayer 的 toString 含名字 + UUID,
+ * 同一对象逐字相同)。两条都读不到 → `ERR:…`(显式失败,不静默当成 0)。
+ */
+function ownerMatchesPlayer(e, p) {
+    if (e == null || p == null) return "0";
+    var pu = playerUuid(p);
+    if (!pu.ok) return "nouuid";
+    var pStr = "" + pu.value;
+    var pObj = "" + p;
+    try {
+        var ref = e.getOwnerReference();
+        if (ref != null) {
+            var s = "" + ref.getUUID();
+            return (s === pStr || s === pObj) ? "1" : "0";
+        }
+    } catch (e1) { /* 落到路径 ② */ }
+    try {
+        var o = e.getOwner();
+        if (o != null) { return (("" + o) === pObj) ? "1" : "0"; }
+    } catch (e2) { return "ERR:" + exText(e2); }
+    return "0";
+}
+
 // ════════════════════════════════════════════════════════════════════════════
 //  效果牌出牌状态机「永久锁死」回归(2026-09-14 严重 BUG 的外部汇报)
 //    /astralprobe eccardlock <tag>
@@ -2582,17 +2639,38 @@ function doRailgunFriendly(ctx, tag) {
 
     // ── B6 ②(2026-09-15):原先由**用例注入**的两条原版准备命令改在探针内跑 ────────────
     //    `runCmd` 走 `performPrefixedCommand`(同进程、无键盘注入),每条省 ≥2.65 s。
-    //    ① `gamerule doFireTick false` + ② 把脚下 y-1 那一层换成石头 —— 否则落雷点燃地面,
+    //    ① `gamerule fire_spread_radius_around_player 0` + ② 把脚下 y-1 那一层换成石头 —— 否则落雷点燃地面,
     //    **玩家自己的掉血读数会混入火焰伤害**(2026-09-15 实测 1.20.1 self=4.83~18.83 全部
     //    来自火焰、与雷击无关;石头地面 + 关火焰蔓延后 self=0)。
+    //    ⚠️ 26.1.2 已**删除** `doFireTick`:原版 datafix `GameRuleRegistryFix`(源码 jar
+    //    net/minecraft/util/datafix/fixes/GameRuleRegistryFix.java 行 26-39)把
+    //    `doFireTick=false` 折算成整数规则 `fire_spread_radius_around_player` 的值 **0**;
+    //    该规则注册域为 `-1..Integer.MAX_VALUE`(`GameRules.java` 行 39-41,默认 128),
+    //    `ServerLevel#canSpreadFireAround` 对 `0` 恒为 false(半径必须 `距离 < 0` 才为真)
+    //    ⇒ 语义与 1.21.1 的 `doFireTick=false` 等价。沿用旧名会被 Brigadier 拒绝,读数成 `ERR:`。
     //    两条都在**摆靶之前**下发;`fill` 只动 y-1 那一层地面,不碰摆在同一水平面的靶子。
-    var prepRule = runCmd(ctx, "gamerule doFireTick false");
+    var prepRule = runCmd(ctx, "gamerule fire_spread_radius_around_player 0");
     var prepFill = runCmd(ctx, "fill ~-8 ~-1 ~-6 ~8 ~-1 ~14 minecraft:stone");
     send(ctx, "AP_" + tag + "_PREP:rule=" + prepRule + ":fill=" + prepFill);
 
+    // ── 26.1.2:天气 API 上移(2026-09-19 实测取证)──────────────────────────────
+    //   1.21.1 的 `ServerLevel#setWeatherParameters(int,int,boolean,boolean)` **已删除**;
+    //   26.1.2 的天气改由**服务端级**的 `WeatherData`(SavedData)承载,同签名的
+    //   `setWeatherParameters(clearTime, rainTime, raining, thundering)` 挂在
+    //   `MinecraftServer`(源码 jar `server/MinecraftServer.java` 行 1821-1828),
+    //   `Level#getServer()` 是 public(Level.java 行 168)。
+    //   实测:沿用 `p.level.setWeatherParameters(...)` 抛异常 ⇒ 旧读数 `weather=err`
+    //   (2026-09-19 26.1.2 运行日志 `AP_HN_BEFORE:…:weather=err`)。
     var weather = "skip";
-    try { p.level.setWeatherParameters(6000, 0, false, false); weather = "clear"; }
-    catch (e0) { weather = "err"; }
+    try { p.level.getServer().setWeatherParameters(6000, 0, false, false); weather = "clear"; }
+    catch (e0) { weather = "ERR:" + exText(e0); }
+    //   立即生效层:`ServerLevel#advanceWeatherCycle` 每 tick 只把 rainLevel/thunderLevel
+    //   朝 WeatherData 靠 0.01(ServerLevel.java 行 764-779),若进入时**正在下雨**,
+    //   单靠上面那条要 ≈100 tick 才真正停,而落雷只等 20 tick ⇒ 必须把两层的插值值
+    //   直接归零(`Level#setRainLevel(float)` 行 922 / `#setThunderLevel(float)` 行 912,
+    //   两版都有)。该步失败只影响视觉层,不改判定,故单独 try、不污染 weather 读数。
+    try { p.level.setRainLevel(0); p.level.setThunderLevel(0); }
+    catch (e0b) { /* 只影响视觉层,不参与判定 */ }
     // 生存模式:创造模式下玩家对雷击免伤,读不到「雷击是否打到自己」
     var mode = "already_survival";
     try { p.setGameMode(GameTypeClass.SURVIVAL); mode = "forced_survival"; } catch (e1) { /* 忽略 */ }
@@ -2642,18 +2720,39 @@ function doRailgunFriendly(ctx, tag) {
     try { placeAt(friendly, p.getX() - 2.8, p.getY(), p.getZ() + 2.0); } catch (e4) { /* 忽略 */ }
     try { placeAt(turtle, p.getX() + 2.5, p.getY(), p.getZ() + 2.0); } catch (e4b) { /* 忽略 */ }
     try { placeAt(villager, p.getX() - 2.5, p.getY(), p.getZ() + 2.0); } catch (e4c) { /* 忽略 */ }
+    // ── 26.1.2:驯服与 owner 的写入口已换形态(2026-09-19 源码级取证)───────────────
+    //   `TamableAnimal#setOwnerUUID(UUID)` **已删除** —— 26.1.2 的 owner 存在
+    //   `DATA_OWNERUUID_ID = Optional<EntityReference<LivingEntity>>`
+    //   (`TamableAnimal.java` 行 42-44),写入口只剩:
+    //     ① `#setOwner(LivingEntity)`(行 163)
+    //     ② `#setOwnerReference(EntityReference)`(行 167)
+    //     ③ `#tame(Player)`(行 171 = setTame(true,true) + setOwner(player))
+    //   实测:旧写法在 Rhino 下抛
+    //   `TypeError: Cannot find function setOwnerUUID in object Wolf[…]`
+    //   (2026-09-19 26.1.2 运行日志 `AP_HN_TAME:tame=1:owner=ERR:TypeError: …setOwnerUUID…:src=2`)
+    //   —— 顺带证明 `setTame(true,true)` 本身在 26.1.2 仍然可用(tame=1)。
+    //   ⚠️ 该失败有**连带副作用**,不只是读数为 ERR:失败后 owner 为空,而后面 anger 的
+    //   `data merge` 合并基(`NbtPredicate.getEntityTagToCompare`)里没有 `Owner`,
+    //   回写时 `readAdditionalSaveData` 走 `EntityReference.readWithOldOwnerConversion`
+    //   得 null ⇒ `setTame(false, true)` ⇒ `Wolf#applyTamingSideEffects` 把
+    //   MAX_HEALTH 从 40 打回 8(Wolf.java 行 428/431)⇒ 血量被夹到 8,
+    //   读数伪装成「狼掉了 32 点血」(实测 `fhp=40 → 8`,而实际**一点雷击伤害都没吃**)。
     var tameState = "skip";
     var ownerState = "skip";
+    var tamePath = "none";
+    var puuid = playerUuid(p);
     try { friendly.setTame(true, true); tameState = "1"; }
     catch (e5) { tameState = "ERR:" + exText(e5); }
-    var puuid = playerUuid(p);
-    if (puuid.ok) {
-        try { friendly.setOwnerUUID(puuid.value); ownerState = "1"; }
-        catch (e6) { ownerState = "ERR:" + exText(e6); }
-    } else {
-        ownerState = "0";
+    try { friendly.setOwner(p); ownerState = "1"; tamePath = "setOwner(player)"; }
+    catch (e6) {
+        try { friendly.tame(p); tameState = "1"; ownerState = "1"; tamePath = "tame(player)"; }
+        catch (e7) { ownerState = "ERR:" + exText(e6) + " | " + exText(e7); }
     }
-    send(ctx, "AP_" + tag + "_TAME:tame=" + tameState + ":owner=" + ownerState + ":src=" + puuid.src);
+    //  只读回读(判据落点):狼记录的 owner UUID 是否与玩家 UUID 逐字相同。
+    //  `src=` 改为报告实际生效的**驯服路径**(不再是 UUID 取值器序号),`uuid_src=` 保留原诊断。
+    var owneqTame = ownerMatchesPlayer(friendly, p);
+    send(ctx, "AP_" + tag + "_TAME:tame=" + tameState + ":owner=" + ownerState
+        + ":src=" + tamePath + ":owneq=" + owneqTame + ":uuid_src=" + puuid.src);
     // 激怒两只中立生物:北极熊(非 Enemy)→ 应被计入敌对目标;已驯服狼(主人=攻击者)→ 应被排除。
     // NoAI 下 NeutralMob 的 anger 计时不会递减,足够撑到 1 秒后的落雷。
     //
@@ -2663,17 +2762,50 @@ function doRailgunFriendly(ctx, tag) {
     //    nAngry=true,而新摆的熊不可能自带愤怒),残留者又落在雷击判定箱内额外各生成一道雷击。
     //    第一轮改用 `e.getStringUUID()` 在**两个版本**都被 Rhino 拒绝
     //    (Cannot find function getStringUUID;同 playerUuid 注释里记的 getUUID 可见性问题),
-    //    于是激怒步在两版都没执行。现在直接调 **Java API**(NeutralMob#setRemainingPersistentAngerTime
-    //    —— 同一接口的 isAngry() 本文件一直在用,可见性没问题),不依赖选择器也不依赖 UUID;
-    //    仅在 API 失败时回退到按类型选择器的命令,并把实际路径暴露在读数里
-    //    (api / cmd:… / ERR:…)以免"取不到就当没驯服"式的静默降级。
+    //    于是激怒步在两版都没执行。现在直接调 **Java API**(同一接口的 isAngry() 本文件一直在用,
+    //    可见性没问题),不依赖选择器也不依赖 UUID;仅在 API 失败时回退到按类型选择器的命令,
+    //    并把**实际生效的路径与失败原因**都暴露在读数里(`api(…)` / `cmd:rc=…` / `ERR:…`),
+    //    以免"取不到就当没激怒"式的静默降级。
+    //
+    // ── 26.1.2:anger 的存储形态已整体改写(2026-09-19 源码级 + 实测取证)──────────────
+    //   ① 旧 API `setRemainingPersistentAngerTime(int)` **已删除**:26.1.2 只剩
+    //      `get/setPersistentAngerEndTime(long)`(NeutralMob.java 行 18-24,由
+    //      PolarBear.java 行 132-139 / Wolf.java 行 549-556 具体实现)与
+    //      默认方法 `setTimeToRemainAngry(long)`(行 20-22,内部用
+    //      `level().getGameTime() + remainingTime` 自己算绝对时刻);
+    //      `isAngry()` = `endTime > 0 && endTime - level().getGameTime() > 0`(行 110-118)。
+    //   ② 旧 NBT 键 `AngerTime` **不再是持久键**:`addPersistentAngerSaveData` 写的是
+    //      `anger_end_time`(绝对结束时刻,行 14 + 行 35),`AngerTime` 只在
+    //      `readPersistentAngerSaveData` 的**旧存档迁移**分支里读一次(行 44-46)——
+    //      而 `/data merge` 的合并基 `EntityDataAccessor#getData` 就是实体的实时序列化
+    //      (`NbtPredicate.getEntityTagToCompare`,EntityDataAccessor.java 行 63-64),
+    //      里面**总是**带着 `anger_end_time`(未激怒时 = -1,行 35 无条件写)
+    //      ⇒ `getLong("anger_end_time")` 命中,`else` 分支永不进入,
+    //      走命令回退只会把 anger **重置为 -1**。
+    //      实测(2026-09-19 26.1.2):`ANGER_POST:mergeN=cmd:rc=ok:mergeF=cmd:rc=ok:nAngry=false`
+    //      且四例 railgun 用例的 `bolt_delta` 全为 **1** —— 即 `RailgunChipItem#executeStrike`
+    //      收集到的可命中目标只剩蜘蛛(唯一的 Enemy),中立/友方两个靶全程没被选上。
+    //   ③ 故本条**必须走 Java API**(与 1.21.1 基准的 `mergeN=api:mergeF=api` 同形态),
+    //      命令仅作最后兜底,且兜底键必须换成新的 `anger_end_time`(long,绝对值)。
     function angerCmd(e, typeId, ticks) {
         if (e == null) { return "null_entity"; }
-        try { e.setRemainingPersistentAngerTime(ticks); return "api"; }
-        catch (e9) {
-            try { return "cmd:" + runCmd(ctx, "data merge entity @e[type=" + typeId + ",limit=1] {AngerTime:" + ticks + "}"); }
-            catch (e10) { return "ERR:" + exText(e9); }
+        var tried = [];
+        // 路径①:默认方法,内部用与 isAngry() 同一时基算绝对时刻 —— 不需要探针侧取 gameTime
+        try { e.setTimeToRemainAngry(ticks); return "api(remain)"; }
+        catch (e1) { tried.push("setTimeToRemainAngry:" + exText(e1)); }
+        // 路径②:具体实现方法(两个类都实现了),自己算 now + ticks
+        var now = nowTickRaw(p.level);
+        if (now >= 0) {
+            try { e.setPersistentAngerEndTime(now + ticks); return "api(end=" + (now + ticks) + ")"; }
+            catch (e2) { tried.push("setPersistentAngerEndTime:" + exText(e2)); }
+        } else {
+            tried.push("setPersistentAngerEndTime:no_gametime");
         }
+        // 路径③:命令兜底 —— 键必须是 26.1.2 的 `anger_end_time`(LongTag,绝对结束时刻)。
+        //   用远未来值而不是 now+ticks:命令侧拿不到可靠时基,而 isAngry() 只要求 end > gameTime。
+        try { return "cmd:" + runCmd(ctx, "data merge entity @e[type=" + typeId + ",limit=1] {anger_end_time:2147483647L}"); }
+        catch (e3) { tried.push("cmd:" + exText(e3)); }
+        return "ERR:" + tried.join(" | ");
     }
     angerCmd(neutral, "minecraft:polar_bear", 1200);
     angerCmd(friendly, "minecraft:wolf", 1200);
@@ -2692,14 +2824,32 @@ function doRailgunFriendly(ctx, tag) {
     // ── C0（2026-09-15 B2）：怒气前置的**原版 NBT 回读**必须在触发赐福/落雷**之前**取下 ──
     // 用例侧原先在臂装步之后注入同一条命令，但注入器每条命令的固定按键序列约 2.5–3 s，
     // 而本命令的 `meleeHit` 会立刻触发骰神赐福、落雷只等 ~1 s 就结算，30 HP 的北极熊
-    // 在窗口内 hp 30→0 并从世界消失 ⇒ 那条 `/data get` 永远回「未找到实体」，
-    // 断言 `北极熊拥有以下实体数据：\d+` **在时序上不可达**（B1 实测 25/26）。
-    // 这里由探针**自己**在近战之前跑同一条原版命令：输出同样进聊天栏 → 落 latest.log，
-    // 断言文本一字未改（不是弱化断言，也不是换成探针私有读数），只是把取证时刻前移。
-    // 命令走 performPrefixedCommand，1.21.1 上延迟到本 tick 末执行，而落雷在 20 tick 后，
-    // 故读数必然作用在**仍存活**的靶上。
-    var angerNbt = runCmd(ctx, "data get entity @e[type=minecraft:polar_bear,limit=1] AngerTime");
+    // 在窗口内 hp 30→0 并从世界消失 ⇒ 那条 `/data get` 永远回「未找到实体」。
+    // 这里由探针**自己**在近战之前跑同一条原版命令：输出同样进聊天栏 → 落 latest.log。
+    // 命令走 performPrefixedCommand，落雷在 20 tick 后，故读数必然作用在**仍存活**的靶上。
+    //
+    // ⚠️ 2026-09-19 26.1.2 移植修正两处：
+    //   ① 回读键 `AngerTime` → `anger_end_time`。26.1.2 的持久键就是后者
+    //      (NeutralMob.java 行 14，每 tick 由 addPersistentAngerSaveData 无条件写入)，
+    //      旧键只在存档迁移分支里被读一次；实测沿用旧键得到的是
+    //      **失败回显**「没有与AngerTime相匹配的元素」（2026-09-19 26.1.2 日志），
+    //      于是用例那条依赖该回显的断言必然落空。
+    //   ② 该回显**只作为证据保留、不再当判据**：它是客户端按 options.txt 的 lang 渲染的
+    //      本地化文案（`commands.data.entity.query` =「%s拥有以下实体数据：%s」），
+    //      与 AGENTS「测试判据取英文原版行、禁用本地化文案」冲突。判据改由下面这行
+    //      **探针私有 ASCII 读数**给出，且判定力更强：原回显只证明「该 NBT 路径存在且是个数字」，
+    //      下面直接报出 `isAngry()`（产品侧 HostileTargets 用的就是它）所依赖的
+    //      `end/now/rem` 三个原始数值与 `isAngry()` 本身。
+    var angerNbt = runCmd(ctx, "data get entity @e[type=minecraft:polar_bear,limit=1] anger_end_time");
     send(ctx, "AP_" + tag + "_ANGER_NBT:" + angerNbt);
+    var angerState = "?";
+    try {
+        var endT = neutral.getPersistentAngerEndTime();
+        var nowT = nowTickRaw(p.level);
+        angerState = "end=" + endT + ":now=" + nowT + ":rem=" + (endT - nowT)
+            + ":angry=" + (neutral.isAngry() ? 1 : 0);
+    } catch (eN) { angerState = "ERR:" + exText(eN); }
+    send(ctx, "AP_" + tag + "_ANGER_STATE:" + angerState);
     var php = rghp(p), ehp = rghp(enemy), nhp = rghp(neutral), fhp = rghp(friendly);
     var thp = rghp(turtle), vhp = rghp(villager);
     send(ctx, "AP_" + tag + "_BEFORE:php=" + php + ":ehp=" + ehp + ":nhp=" + nhp + ":fhp=" + fhp
@@ -2727,16 +2877,20 @@ function doRailgunFriendlyRead(ctx, tag) {
     // B6 ③:只读相位同时调 dump(只读) —— 出牌锁/立牌原始值由 LOCKRAW 与 SIGN 组给出。
     // B6 ②:原用例注入的 `/data get entity @e[type=minecraft:wolf,limit=1] Owner` 折叠到
     //   探针内(省一条 ≥2.65 s 的键盘注入)。`performPrefixedCommand` **不抑制输出**,
-    //   同一条原版命令的同一句回显(「狼拥有以下实体数据：[I; …]」)照旧落 latest.log,
-    //   用例断言文本一字未改(本文件上游 `data get … AngerTime` 已有同样的既成事实)。
+    //   同一条原版命令的同一句回显(「狼拥有以下实体数据：[I; …]」)照旧落 latest.log
+    //   —— 2026-09-19 起它**只作证据**,判据改由 `ownerMatchesPlayer()` 给出的
+    //   `owneq=1`(与语言无关,且从「键的形状」升级为「UUID 逐字相等」)。
     dumpState(ctx, tag);
-    //   ⚠️ 只在 PET-EXCLUDE(tag=PE)下跑这条回读:它的回显文本(「狼拥有以下实体数据：[I; …]」)
-    //   是 PET-EXCLUDE 的断言落点,而断言窗口跨用例共享 —— 若四条 railgun 用例都跑这条回读,
-    //   按名字序先跑的 railgun-aoe / railgun-override 就会先把该断言**喂饱** ⇒ 等于把
+    //   ⚠️ 只在 PET-EXCLUDE(tag=PE)下跑这条回读:`AP_<tag>_OWNER` 是本用例的判据落点,
+    //   而断言窗口跨用例共享 —— 若四条 railgun 用例都发这一行,按名字序先跑的
+    //   railgun-aoe / railgun-override 就会先把该断言**喂饱** ⇒ 等于把
     //   PET-EXCLUDE 的这条断言弱化成"任何一轮都能过"。故按 tag 收口,不做无差别折叠。
     if (tag === "PE") {
         var ownerRead = runCmd(ctx, "data get entity @e[type=minecraft:wolf,limit=1] Owner");
-        send(ctx, "AP_" + tag + "_OWNER:" + ownerRead);
+        // 语言无关的判据落点:狼记录的 owner 是否**就是**该玩家(见 ownerMatchesPlayer 注释)。
+        // `/data get` 的本地化回显只作证据保留在同一行里,不再当判据。
+        send(ctx, "AP_" + tag + "_OWNER:" + ownerRead
+            + ":owneq=" + ownerMatchesPlayer(st.friendly, st.player));
     }
     var ChargeManagerClass = Java.loadClass("com.merlinkitsune.astral_dice.item.ChargeManager");
     function dealt(before, now) {
@@ -3643,7 +3797,12 @@ function doGloveRound(ctx, tag) {
 function enderGlowReset(p) {
     try { ModEffectRemoval.remove(p, fxMarked()); } catch (e0) { /* 忽略 */ }
     try { p.removeEffect(MobEffectsClass.GLOWING); } catch (e1) { /* 忽略 */ }
-    try { p.removeEffect(MobEffectsClass.MOVEMENT_SPEED); } catch (e2) { /* 忽略 */ }
+    // ⚠️ 26.1.2 平台差异(既有探针缺陷,2026-09-19 修正):`MobEffects` 的迅捷在本版叫 **SPEED**
+    //    (1.21.1/1.20.1 的 `MOVEMENT_SPEED` 在 26.1.2 已不存在;javap 实测 26.1.2 只有
+    //     SPEED/SLOWNESS/INSTANT_HEALTH/INSTANT_DAMAGE/RESISTANCE…,产品侧同源)。
+    //    旧写法读不到该常量 ⇒ 这一行静默无效(本行在 try 内),`endertotem` 的
+    //    「速度效果被保命流程清掉」这条基线因此从未真正建立。读数字段名不变。
+    try { p.removeEffect(MobEffectsClass.SPEED); } catch (e2) { /* 忽略 */ }
     try { ModAttachments.setEnderDieTotemCooldownEnd(p, 0); } catch (e3) { /* 忽略 */ }
     try { p.setHealth(p.getMaxHealth()); } catch (e4) { /* 忽略 */ }
     resetHurtFeedback(p);
@@ -3802,7 +3961,10 @@ function enderPrep(ctx, tag, p, phase) {
     }
     try { p.addEffect(new MobEffectInstanceClass(MobEffectsClass.GLOWING, 2400, 0)); }
     catch (e4) { send(ctx, "AP_" + tag + "_ERR:add_glow:" + exText(e4)); return 0; }
-    try { p.addEffect(new MobEffectInstanceClass(MobEffectsClass.MOVEMENT_SPEED, 2400, 0)); }
+    // ⚠️ 26.1.2 平台差异(既有探针缺陷,2026-09-19 修正):同上,迅捷常量是 **SPEED** 而非
+    //    `MOVEMENT_SPEED`。旧写法会在**非静默**分支落 `AP_<tag>_ERR:add_speed:...` 并 `return 0`
+    //    ⇒ 整个 `endertotem` 相位后续读数整段缺失(当时无 26.1.2 用例覆盖,故未被发现)。
+    try { p.addEffect(new MobEffectInstanceClass(MobEffectsClass.SPEED, 2400, 0)); }
     catch (e5) { send(ctx, "AP_" + tag + "_ERR:add_speed:" + exText(e5)); return 0; }
     lastLethalBypass = -2;
     enderLastApi[phase] = "n/a";
@@ -4585,6 +4747,1206 @@ function doChargeSet(ctx, tag, n) {
     return doChargeCd(ctx, tag);
 }
 
+// ════════════════════════════════════════════════════════════════════════════
+//  26.1.2 测试资产移植(2026-09-19;移植自 1.21.1 线,供 §13.2 一致性 diff 用)
+//
+//  本节的读数字段名 / 字段顺序 / 命令名与参数顺序一律与 1.21.1 版**逐字一致**
+//  (这是「同探针 + 同用例 + 读数 diff」成立的前提);只有平台形态不同,
+//  差异逐条标 `26.1.2:` 注释。对应 1.21.1 探针位置见各块头注:
+//    ① 效果牌目标选择器读数(cardprep / cardread / cardself)   ← 1.21.1 :4573-:4663
+//    ② 史莱姆立牌主动(luluprep / luluactive / luluanchor)      ← 1.21.1 :4294-:4548
+//    ③ 活体书页(lpprep…lpclean;读数 cards= / mineye=)          ← 1.21.1 :4700-:5062
+//    ④ 魔法箭袋只读读数(quiver)                                ← 1.21.1 :5064-:5089
+//    ⑤ 游戏大师立牌(ren)鼠鼠护盾(ren*)                        ← 1.21.1 :4044-:4272
+// ════════════════════════════════════════════════════════════════════════════
+
+// ── ①/②/③/④ 共用的类句柄 ─────────────────────────────────────────────────
+var TargetSelectionManagerClass = Java.loadClass("com.merlinkitsune.astral_dice.target.TargetSelectionManager");
+var EffectCardUtilClass = Java.loadClass("com.merlinkitsune.astral_dice.item.card.EffectCardUtil");
+// 26.1.2:「卡牌」判定走同一个产品入口(1.21.1 探针 :4057 的 RenModItemsClass 是同一个类)
+var RenModItemsClass = Java.loadClass("com.merlinkitsune.astral_dice.item.ModItems");
+// ⚠️ 池对象**必须先复制成 java.util.ArrayList** 再做任何成员调用(与 1.21.1/1.20.1 侧同形):
+// `RandomCardHandler.getCardPool` 的 `items.stream().map(ItemStack::new).toList()` 返回 JDK
+// **包私有**内部类 `java.util.ImmutableCollections$ListN`,成员分派可能落 `IllegalAccessException`;
+// `new ArrayList(pool)` 的构造函数声明在公开类上 ⇒ 不经 Rhino 成员分派。
+var ArrayListClass = Java.loadClass("java.util.ArrayList");
+// 前置库(StarEngine Lib)的选择器动作注册表:26.1.2 库 jar 同名同签名(get(String) / apply(ServerPlayer, LivingEntity))
+var TargetSelectionRegistryClass = Java.loadClass("com.merlinkitsune.starenginelib.target.TargetSelectionRegistry");
+// 魔法箭袋(只读读数用;对应 1.21.1 探针 :93)
+var MagicQuiverChipItemClass = Java.loadClass("com.merlinkitsune.astral_dice.item.chip.MagicQuiverChipItem");
+
+// ════════════════════════════════════════════════════════════════════════════
+//  ① 效果牌 → 目标选择器(手持即选择)只读读数
+//
+//  四张效果牌(加急加快 express_delivery / 奢华大餐 luxury_feast / 狂暴 berserk /
+//  你有我有 you_have_i_have)走**目标选择器**,本组命令把该流程里**截图与聊天都判不出**的
+//  服务端事实报全,供 CARD-SELECTOR-* 用例断言:
+//    · hand / handn —— 主手物品 id 与「该 id 在主背包内的总数」(卡牌是否被消耗的判据)
+//    · cards        —— 主背包全部卡牌数(「你有我有」给自身发牌的判据)
+//    · sel / token  —— 是否处于目标选择会话(TargetSelectionManager 的测试钩子;无会话 token=-1)
+//    · speed / berserk —— 迅捷 / 狂暴 的「等级/剩余tick」("-" = 当前无该效果)
+//    · hp / dhp     —— 当前生命/上限,以及相对最近一次 cardprep 的差值(治疗卡的直接判据)
+//    · plays / max / blocked —— 出牌周期计数/上限/是否被出牌锁挡住(EffectCardPeriod)
+//  会话的 action / type / radius / allowSelf 由服务端 DEBUG 行给出
+//  (`[Astral Dice][TargetSelection] start ... action=... allowSelf=...`,落 logs/debug.log),
+//  客户端提示与「对自身使用」的按键口径由截图给出 —— 本读数不重复报这两类。
+//
+//  只读口径:cardread 一字不写;cardprep 只做出牌周期归零 + 清主背包 + 发 1 张(测试基线);
+//  cardself 只调 TargetSelectionManager.confirm 的对自身确认入口(与客户端右键同路)。
+//  **取消/超时/被拒绝均不消耗卡牌 ⇒ handn 与 plays 是这条红线的机器判据。**
+// ════════════════════════════════════════════════════════════════════════════
+
+/**
+ * 背包内「随机效果牌池」的卡牌总数 —— 发牌(FanBigChip)的唯一观测口径,池取自生产同一入口。
+ *
+ * ⚠️ 池内物品比对**必须走注册名**,禁止写 `st.is(pool.get(j).getItem())`:
+ * `ItemStack#is(...)` 有 5 个同元重载(TagKey / Item / Predicate / Holder / HolderSet),
+ * Rhino 挑不出唯一重载 ⇒ ambiguous,该函数一抛、整段读数缺失(TESTING-SPEC 附录 A 有归因)。
+ * 注册表 key 与 item 一一对应,故「同名」等价于 `is(Item)`;itemIdOf(:298) 比较字符串 ⇒ 零重载。
+ */
+function countEffectCards(p) {
+    var inv = p.getInventory();
+    var pool = new ArrayListClass(EffectCardUtilClass.getRandomEffectCardPool());
+    var n = 0;
+    for (var i = 0; i < inv.getContainerSize(); i++) {
+        var st = inv.getItem(i);
+        if (st.isEmpty()) continue;
+        var stId = itemIdOf(st);
+        for (var j = 0; j < pool.size(); j++) {
+            if (stId === itemIdOf(pool.get(j))) { n += st.getCount(); break; }
+        }
+    }
+    return n;
+}
+
+/** 背包内「卡牌」总数(战斗牌 + 效果牌,经生产入口 ModItems#isCardItem) */
+function countAllCards(p) {
+    var inv = p.getInventory();
+    var n = 0;
+    for (var i = 0; i < inv.getContainerSize(); i++) {
+        var st = inv.getItem(i);
+        if (st.isEmpty()) continue;
+        try { if (RenModItemsClass.isCardItem(st)) n += st.getCount(); } catch (e) { /* 忽略 */ }
+    }
+    return n;
+}
+
+/** 狂暴效果牌的描述 id(读数用;与 1.21.1 同字面量) */
+var DESC_BERSERK_CARD = "effect.astral_dice.berserk";
+
+/** 最近一次 cardprep 时的生命值(供 cardread 的 "dhp" 报治疗差值;-1 = 本次未 prep) */
+var cardHpBefore = -1;
+
+/** 效果实例 → "等级/剩余tick"(无该效果 = "-") */
+function effectAmpDur(inst) {
+    if (inst == null) return "-";
+    try { return inst.getAmplifier() + "/" + inst.getDuration(); } catch (e) { return "?"; }
+}
+
+/** 效果牌选择器读数(单行机器格式) */
+function cardState(p) {
+    var hand = itemIdOf(p.getMainHandItem());
+    var handn = 0;
+    var inv = p.getInventory();
+    for (var i = 0; i < inv.getContainerSize(); i++) {
+        var st = inv.getItem(i);
+        if (st.isEmpty()) continue;
+        if (itemIdOf(st) === hand) handn += st.getCount();
+    }
+    return "hand=" + hand + ":handn=" + handn + ":cards=" + countAllCards(p)
+        + ":sel=" + (TargetSelectionManagerClass.isSelecting(p) ? 1 : 0)
+        + ":token=" + TargetSelectionManagerClass.sessionTokenForTests(p)
+        + ":speed=" + effectAmpDur(findEffect(p, DESC_SPEED))
+        + ":berserk=" + effectAmpDur(findEffect(p, DESC_BERSERK_CARD))
+        + ":hp=" + Math.round(p.getHealth() * 10) / 10 + "/" + Math.round(p.getMaxHealth() * 10) / 10
+        + ":dhp=" + (cardHpBefore < 0 ? "-" : Math.round((p.getHealth() - cardHpBefore) * 10) / 10)
+        + ":plays=" + EffectCardPeriodClass.getPlayCount(p)
+        + ":max=" + EffectCardPeriodClass.getMaxAllowed(p)
+        + ":blocked=" + (EffectCardPeriodClass.isBlocked(p) ? 1 : 0);
+}
+
+/**
+ * 从同一基线起测:出牌周期归零 + 清空全部原版状态效果 + 清空主背包 + 把 1 张目标卡牌放进**主手**。
+ * 用 `/item replace entity @s weapon.mainhand` 而不是「服务端改 selected 再 give」:selected 由客户端
+ * 上报、服务端单方面改写不会同步回客户端,会出现「服务端以为在手里、客户端显示别的槽」的错位
+ * (读数里的 hand= 会直接暴露这种错位)。
+ *
+ * ⚠️ 「手持即选择」后本命令会**顺带触发**服务端自动开局(下一个 tick):`_PREP` 那一行读的是
+ * 命令生效前的状态,断言一律落在其后独立调用的 `<tag>_READ` 上。
+ */
+function doCardPrep(ctx, tag, itemId) {
+    var p = ctx.source.getPlayerOrException();
+    if (resolveItem(itemId) == null) {
+        send(ctx, "AP_" + tag + "_ERR:unknown_item:" + itemId);
+        return 1;
+    }
+    cardHpBefore = p.getHealth();
+    resetEffectCardCycle(p);
+    // 必须一并清掉状态效果:出牌锁的第三态是「上一张效果牌的效果仍在生效」
+    // (EffectCardPeriod.isBlocked → isEffectPending,如 3 分钟的狂暴)⇒ 不清就会让各区块基线互相污染
+    // (⚠️ /effect clear 只能清原版效果:本模组效果被 ModEffectEvents#onModEffectRemovalPrevented 保护)
+    runCmd(ctx, "effect clear @s");
+    runCmd(ctx, "clear @s");
+    // 放进**主手**(weapon.mainhand):不能用 hotbar.<selected> —— selected 由客户端上报,
+    // 服务端单方面改写不同步回客户端,会出现「服务端以为在手里、客户端显示别的槽」的错位
+    runCmd(ctx, "item replace entity @s weapon.mainhand with " + itemId + " 1");
+    send(ctx, "AP_" + tag + "_PREP:" + cardState(p));
+    return 1;
+}
+
+/** 选择器读数(只读,不写任何状态) */
+function doCardRead(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    send(ctx, "AP_" + tag + "_READ:" + cardState(p));
+    return 1;
+}
+
+/**
+ * 服务端直接提交「对自身」确认(与客户端右键同路,但绕开「准星下必须有合法目标」这一客户端前提)。
+ * 单人测试环境没有第二个玩家,故:① 客户端左键确认(瞄准其他玩家)无法在此环境复现;
+ * ② 「确认时卡牌已不在身上」这类门控只能用本入口驱动。confirm 是 void,失败原因在服务端日志
+ * (`[TargetSelection] confirm FAIL: ...`)与读数(sel / handn / plays)里判。
+ */
+function doCardSelf(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var token = TargetSelectionManagerClass.sessionTokenForTests(p);
+    var called = 0, err = "";
+    try {
+        TargetSelectionManagerClass.confirm(p, token, p.getId());
+        called = 1;
+    } catch (e2) {
+        err = exText(e2);
+    }
+    send(ctx, "AP_" + tag + "_SELF:called=" + called + ":token=" + token
+        + (err ? ":err=" + err : "") + ":" + cardState(p));
+    return 1;
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  ①b 目标选择器类立牌「前置门控」三态(移植自 1.21.1 探针 :1457-:1557)
+//
+//  被测语义(枪匠立牌为代表,三个选择器类立牌同构):
+//    ① **门控态** —— 按下主动键只开启目标选择会话(TargetSelectionManager.start +
+//       SignSelectionGate.arm)并立即返回:不发风扇筹码、不进玩家级冷却、不施加「破绽」;
+//    ② **取消** ⇒ 该次主动**等同未使用**(会话与待执行记录一并清除);
+//    ③ **确认合法敌对目标** ⇒ 由 TargetSelectionAction#apply 施效 + 写冷却,再由恢复点
+//       resumeGatedActiveSkill 走「风扇筹码发牌 + 立牌主动响应事件」。
+//  入口与生产同路:「按主动」= BaseSignItem#performSkillForCurio,
+//  「取消/确认」= TargetSelectionManager.cancel/confirm(两个网络载荷处理器的同一入口),
+//  不依赖客户端按键与选择 UI。
+// ════════════════════════════════════════════════════════════════════════════
+
+var MOSES_SIGN_ID = "astral_dice:moses_sign";
+var HAND_FAN_BIG_CHIP_ID = "astral_dice:hand_fan_big_chip";
+var SignSelectionGateClass = Java.loadClass("com.merlinkitsune.astral_dice.target.SignSelectionGate");
+
+/**
+ * 枪匠(选择器类)立牌门控三态一条龙:门控 → 取消 → 确认。
+ * 断言读数(AP_<tag>_…):GATED{ session=1, cd=0, cards_delta=0, armed=1 }、
+ * CANCEL{ session=0, cd=0, cards_delta=0, armed=0 }、
+ * CONFIRM{ mob=1, session=0, broken=1, cd=1, cards_delta=1, armed=0 } ⇒ VERDICT:1。
+ */
+function doSignGate(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    clearCurioSlots(p, "chip");
+    resetEffectCardCycle(p);                 // 主动冷却 + 锁定(生效中)态 + 出牌周期附件归零
+    var slotErr = ensureChipSlot(p, 1);      // chip 槽 base=0(尺寸由骰子星级给出):测试脚手架直接给 1 格
+    if (slotErr != null) { send(ctx, "AP_" + tag + "_ERR:" + slotErr); return 0; }
+    var signErr = equipSign(p, MOSES_SIGN_ID);
+    if (signErr != null) { send(ctx, "AP_" + tag + "_ERR:" + signErr); return 0; }
+    var chipErr = putInSlot(p, "chip", new ItemStack(resolveItem(HAND_FAN_BIG_CHIP_ID)), 0);
+    if (chipErr != null) { send(ctx, "AP_" + tag + "_ERR:" + chipErr); return 0; }
+    var cards0 = countEffectCards(p);
+    send(ctx, "AP_" + tag + "_PREP:chipSlots=" + chipSlotCount(p) + ":cards=" + cards0);
+
+    // ① 门控态:按下主动键 —— 只开启会话 + 登记待执行记录
+    BaseSignItemClass.performSkillForCurio(p);
+    var gSession = TargetSelectionManagerClass.isSelecting(p) ? 1 : 0;
+    var gArmed = SignSelectionGateClass.isArmed(p) ? 1 : 0;
+    var gCd = signCooldownRemaining(p) > 0 ? 1 : 0;
+    var gCards = countEffectCards(p) - cards0;
+    send(ctx, "AP_" + tag + "_GATED:session=" + gSession + ":cd=" + gCd
+        + ":cards_delta=" + gCards + ":armed=" + gArmed);
+
+    // ② 取消(未选)⇒ 等同「未使用」:会话与记录都被清掉,冷却/发牌/施效一个都没有
+    var token1 = TargetSelectionManagerClass.sessionTokenForTests(p);
+    TargetSelectionManagerClass.cancel(p, token1);
+    var cSession = TargetSelectionManagerClass.isSelecting(p) ? 1 : 0;
+    var cArmed = SignSelectionGateClass.isArmed(p) ? 1 : 0;
+    var cCd = signCooldownRemaining(p) > 0 ? 1 : 0;
+    var cCards = countEffectCards(p) - cards0;
+    send(ctx, "AP_" + tag + "_CANCEL:token_seen=" + (token1 > 0 ? 1 : 0) + ":session=" + cSession
+        + ":cd=" + cCd + ":cards_delta=" + cCards + ":armed=" + cArmed);
+
+    // ③ 确认合法敌对目标 ⇒ 施效 + 冷却 + 发牌(恢复点)
+    BaseSignItemClass.performSkillForCurio(p);
+    var mob = spawnDummy(p, "minecraft:zombie", 3);
+    var mobId = (mob == null) ? -1 : mob.getId();
+    TargetSelectionManagerClass.confirm(p, TargetSelectionManagerClass.sessionTokenForTests(p), mobId);
+    var kSession = TargetSelectionManagerClass.isSelecting(p) ? 1 : 0;
+    var kArmed = SignSelectionGateClass.isArmed(p) ? 1 : 0;
+    var kBroken = (mob == null) ? -1 : (mob.hasEffect(ModEffects.MOSES_BROKEN) ? 1 : 0);
+    var kCd = signCooldownRemaining(p);
+    var kCards = countEffectCards(p) - cards0;
+    send(ctx, "AP_" + tag + "_CONFIRM:mob=" + (mobId > 0 ? 1 : 0) + ":session=" + kSession
+        + ":broken=" + kBroken + ":cd=" + (kCd > 0 ? 1 : 0) + ":cards_delta=" + kCards
+        + ":armed=" + kArmed);
+
+    var ok = (gSession === 1) && (gArmed === 1) && (gCd === 0) && (gCards === 0)
+        && (cSession === 0) && (cArmed === 0) && (cCd === 0) && (cCards === 0)
+        && (mobId > 0) && (kSession === 0) && (kArmed === 0) && (kBroken === 1)
+        && (kCd > 0) && (kCards === 1);
+    send(ctx, "AP_" + tag + "_VERDICT:" + (ok ? 1 : 0));
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  ② 史莱姆立牌「治愈粘液」主动(目标选择器)
+//
+//  「自身段」(`luluactive`):按主动(门控)→ 对自身确认 → 读门控/冷却/光环;
+//  生命值走**延迟读数**(瞬间治疗效果同 tick 读不到 —— 见 LULU_SETTLE_TICKS 注释)。
+//  「锚点段」(`luluanchor`):把治疗靶(猪)放 24 格外,在**猪旁 4 格**放一只蜘蛛、
+//  在**玩家旁 4 格**放另一只,然后直接调用注册表里的 `TargetSelectionAction#apply(player, 猪)`:
+//    · 猪旁蜘蛛被缓慢      = 范围以**被指向的目标**为中心 ★决定性
+//    · 玩家旁蜘蛛**没有**缓慢 = 范围**不是**仍以施放者为中心 ★决定性
+//    · 猪被瞬间治疗(主体效果落在目标上)、玩家治愈点数不变(猪不是玩家 ⇒ 主体 +3 不加给施放者)
+// ════════════════════════════════════════════════════════════════════════════
+
+var LULU_SIGN_ID = "astral_dice:lulu_sign";
+var LULU_ACTION_ID = "lulu_healing_slime";
+
+/** 治愈点数(读不到报 -1,便于用例区分「0 点」与「读失败」) */
+function luluHealPoints(p) { try { return HealingManagerClass.getPoints(p); } catch (e) { return -1; } }
+
+/** 生命值(保留两位;命中/治疗差值判据用) */
+function luluHpR(e) { try { return Math.round(e.getHealth() * 100) / 100; } catch (e2) { return -1; } }
+
+/**
+ * 效果读数,与既有读数同格式:"放大等级/剩余tick";无该效果 = "-",读失败 = "?"。
+ *
+ * 26.1.2:`MobEffects` 的常量在本版已改名(与产品侧同源)—— 缓慢是 `SLOWNESS`
+ * (1.21.1/1.20.1 的 `MOVEMENT_SLOWDOWN` 在 26.1.2 的 `MobEffects` 里**不存在**,
+ *  javap 实测:26.1.2 只有 SPEED / SLOWNESS / INSTANT_HEALTH / RESISTANCE …)。
+ */
+function luluFx(e, fx) {
+    try {
+        var inst = e.getEffect(fx);
+        return inst == null ? "-" : (inst.getAmplifier() + "/" + inst.getDuration());
+    } catch (e3) { return "?"; }
+}
+
+/**
+ * 瞬间效果的**结算延迟**(2026-09-19 现场取证确立的读数口径)。
+ *
+ * <p>瞬间治疗效果(INSTANT_HEALTH)经 {@code LivingEntity#addEffect} 只把实例放进 activeEffects,
+ * 真正回血发生在**下一 tick** 的 {@code MobEffectInstance#tick → MobEffect#applyEffectTick}
+ * (原版 {@code InstantenousMobEffect#shouldApplyEffectTickThisTick = duration >= 1};
+ * 原版 {@code /effect give} 走的也是这条路径 —— 产品侧 addEffect 里没有 instant 分支)。
+ * 故**同 tick** 读生命值必然读到旧值 ⇒ 「瞬间治疗是否落到目标」必须**延后读数**。
+ */
+var LULU_SETTLE_TICKS = 2;
+
+/** 待读队列;无待读项时 tick 回调零开销 */
+var luluAfter = [];
+
+/**
+ * 最近一次 {@code luluprep} 放下的判据靶句柄(**跨命令复用**)。
+ *
+ * <p><b>为什么不让 active 段自己按类型搜</b>:实机两轮实测 —— 同一 ±8 盒内
+ * {@code getEntitiesOfClass} 取到的实体本身是对的(旁证:清场成功、诊断字段 {@code scan8}
+ * 报出真实条数),但**按类型串取靶**会取到施放者自己;两轮读数与该解释完全一致
+ * ⇒ 取靶改为**由 prep 发布句柄**,搜索只留作诊断。
+ */
+var luluState = null;
+
+/** 两点距离(保留两位;异常 -1)。锚点距离**实测**,不再硬编码字面量 */
+function luluDistTo(a, b) {
+    try { return Math.round(a.position().distanceTo(b.position()) * 100) / 100; }
+    catch (e) { return -1; }
+}
+
+/** 实体是否仍存活于世界(1/0;异常 -1)。负对照必须带存在性读数,否则「空句柄/没进世界」会被读成「无效果」而假过 */
+function luluPresent(e) {
+    if (e == null) return 0;
+    try { return e.isAlive() ? 1 : 0; } catch (e2) { return -1; }
+}
+
+/** 排一次延迟读数(kind = "self" / "anchor") */
+function luluLater(kind, st) { st.kind = kind; st.left = LULU_SETTLE_TICKS; luluAfter.push(st); }
+
+/**
+ * 按类型在 AABB 内取第一只句柄 —— **只允许在 apply 之前**用。
+ * 现场实测:apply 之后在同一位置、同一 tick 再按 AABB 搜索会搜不到蜘蛛(猪能搜到),
+ * 原因未定 ⇒ 判据一律走句柄读数,施放后的搜索只作诊断字段(scan8/scan_err)。
+ */
+function luluFindOne(p, typeId, diameter) {
+    try {
+        var aabb = AABBClass.ofSize(p.position(), diameter, diameter, diameter);
+        var list = p.level.getEntitiesOfClass(LivingEntityClass, aabb);
+        for (var i = 0; i < list.size(); i++) {
+            if (typeIdOf(list.get(i)) === typeId) return list.get(i);
+        }
+    } catch (e) { /* 取不到 ⇒ null,读数显式报 n/a */ }
+    return null;
+}
+
+/** 延迟读数驱动(独立于珍珠观察窗的 tick 回调) */
+function luluAfterTick() {
+    if (luluAfter.length === 0) return;
+    var keep = [];
+    for (var i = 0; i < luluAfter.length; i++) {
+        var st = luluAfter[i];
+        st.left = st.left - 1;
+        if (st.left > 0) { keep.push(st); continue; }
+        try {
+            var p = st.player, tag = st.tag;
+            if (st.kind === "self") {
+                emitTo(p, "AP_" + tag + "_AFTER:delay=" + LULU_SETTLE_TICKS
+                    + ":hp=" + st.hp0 + "->" + luluHpR(p)
+                    + ":pig_hp=" + (st.pig == null ? "n/a" : st.pigHp0 + "->" + luluHpR(st.pig))
+                    + ":spider_slow=" + (st.spider == null ? "n/a" : luluFx(st.spider, MobEffectsClass.SLOWNESS))
+                    + ":cd_after=" + (signCooldownRemaining(p) > 0 ? 1 : 0));
+            } else {
+                emitTo(p, "AP_" + tag + "_AFTER:delay=" + LULU_SETTLE_TICKS
+                    + ":anchor_dist=" + st.anchorDist
+                    + ":pig_hp=" + st.pigHp0 + "->" + luluHpR(st.pig)
+                    + ":spider_by_pig=" + (st.spiderByPig == null ? "?" : luluFx(st.spiderByPig, MobEffectsClass.SLOWNESS))
+                    + ":spider_by_pig_present=" + luluPresent(st.spiderByPig)
+                    + ":spider_by_player=" + (st.spiderByPlayer == null ? "?" : luluFx(st.spiderByPlayer, MobEffectsClass.SLOWNESS))
+                    + ":spider_by_player_present=" + luluPresent(st.spiderByPlayer)
+                    + ":caster_heal=" + st.heal0 + "->" + luluHealPoints(p));
+            }
+        } catch (e) { emitTo(st.player, "AP_" + st.tag + "_AFTER_EX:" + exText(e)); }
+    }
+    luluAfter = keep;
+}
+
+ServerEvents.tick(event => { try { luluAfterTick(); } catch (e) { /* 忽略 */ } });
+
+/** 在 anchor 的相对偏移处生成一只无 AI 生物(纯 API;不用 runCmd,避免「下一 tick 才生效」) */
+function luluSpawnAt(anchor, typeId, dx, dz) {
+    // 26.1.2:注册表返回 Optional<Holder> ⇒ 走 entityTypeOf(:145);create 需 EntitySpawnReason ⇒ 走 createEntity(:151)
+    var type = entityTypeOf(typeId);
+    var mob = createEntity(type, anchor.level);
+    if (mob == null) return null;
+    placeAt(mob, anchor.getX() + dx, anchor.getY(), anchor.getZ() + dz);
+    try { mob.setNoAi(true); } catch (e1) { /* 忽略 */ }
+    try { mob.setPersistenceRequired(); } catch (e2) { /* 忽略 */ }
+    anchor.level.addFreshEntity(mob);
+    return mob;
+}
+
+/** 丢弃半径内全部非玩家实体(基线归零;两参 getEntitiesOfClass + JS 侧过滤,与既有探针同写法)
+ *  ⚠️ `AABB.ofSize` 传的是**直径** ⇒ 这里显式乘 2 才是「±radius 格」的半轴(与 countLightning 同口径) */
+function luluDiscardNearby(p, radius) {
+    var n = 0;
+    try {
+        var aabb = AABBClass.ofSize(p.position(), radius * 2, radius * 2, radius * 2);
+        var list = p.level.getEntitiesOfClass(LivingEntityClass, aabb);
+        for (var i = 0; i < list.size(); i++) {
+            var e = list.get(i);
+            if (e == p) continue;
+            try { e.discard(); n = n + 1; } catch (e2) { /* 忽略 */ }
+        }
+    } catch (e3) { /* 忽略 */ }
+    return n;
+}
+
+/** 基线 + 摆「自身段」判据靶 */
+function doLuluPrep(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    try { HealingManagerClass.clear(p); } catch (e0) { /* 忽略 */ }
+    try { ModAttachments.setSignActiveCooldownEnd(p, 0); } catch (e1) { /* 忽略 */ }
+    try { ModAttachments.setSignActiveMaxCooldown(p, 0); } catch (e2) { /* 忽略 */ }
+    // 清掉可能残留的选择会话:残留会让 performSkillForCurio 走「已在选择中」分支(⇒ session=0 假 FAIL)
+    try { TargetSelectionManagerClass.cancelSessionForTests(p); } catch (e2b) { /* 忽略 */ }
+    var err = equipSign(p, LULU_SIGN_ID);
+    if (err != null) { send(ctx, "AP_" + tag + "_ERR:" + err); return 1; }
+    luluDiscardNearby(p, 48);
+    // 自身先扣到 12 血:主体瞬间治疗(INSTANT_HEALTH I = 4 点)可读
+    try { p.setHealth(12); } catch (e3) { /* 忽略 */ }
+    var pig = luluSpawnAt(p, "minecraft:pig", 0, 6);
+    var spider = luluSpawnAt(p, "minecraft:spider", 0, 4);
+    if (pig == null || spider == null) { send(ctx, "AP_" + tag + "_ERR:spawn_failed"); return 1; }
+    try { pig.setHealth(6); } catch (e4) { /* 忽略 */ }   // 猪受损 ⇒ 范围治疗可读(上限 10)
+    // 发布句柄给 active 段(见 luluState 注释:按类型搜索不可靠)
+    luluState = { pig: pig, spider: spider, tag: tag };
+    send(ctx, "AP_" + tag + "_PREP:heal=" + luluHealPoints(p) + ":hp=" + luluHpR(p)
+        + ":pig_hp=" + luluHpR(pig) + ":spider_slow=" + luluFx(spider, MobEffectsClass.SLOWNESS)
+        + ":cd=" + (signCooldownRemaining(p) > 0 ? 1 : 0)
+        + ":pig_eid=" + pig.getId() + ":spider_eid=" + spider.getId() + ":p_eid=" + p.getId());
+    return 1;
+}
+
+/**
+ * 「自身段」:按主动(门控)→ 对自身确认 → 读门控/冷却/光环;**生命值走延迟读数**。
+ *
+ * <p>靶子句柄必须在**技能施放前**取({@link luluFindOne});本命令只报**同步可读**的项
+ * (会话/令牌/冷却/治愈点/句柄上的缓慢),生命值与光环治疗结果由 {@code AP_<tag>_AFTER} 在
+ * {@link LULU_SETTLE_TICKS} tick 后给出 —— 同 tick 读生命值只会得到假 FAIL。
+ */
+function doLuluActive(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    // 靶子句柄优先取 luluprep 留下的(见 luluState 注释);句柄已失效时才退回按类型搜
+    var pig = null, spider = null;
+    if (luluState != null && luluPresent(luluState.pig) === 1 && luluPresent(luluState.spider) === 1) {
+        pig = luluState.pig;
+        spider = luluState.spider;
+    } else {
+        pig = luluFindOne(p, "minecraft:pig", 16);
+        spider = luluFindOne(p, "minecraft:spider", 16);
+    }
+    var heal0 = luluHealPoints(p);
+    var hp0 = luluHpR(p);
+    var pigHp0 = pig == null ? -1 : luluHpR(pig);
+    var cdBefore = signCooldownRemaining(p);
+    var session = 0, token = -1, cdGated = -1, confirmed = 0, confirmErr = "";
+    try {
+        BaseSignItemClass.performSkillForCurio(p);
+        session = TargetSelectionManagerClass.isSelecting(p) ? 1 : 0;
+        token = TargetSelectionManagerClass.sessionTokenForTests(p);
+        cdGated = signCooldownRemaining(p);
+        TargetSelectionManagerClass.confirm(p, token, p.getId());
+        confirmed = 1;
+    } catch (e5) { confirmErr = exText(e5); }
+    // 诊断(不参与判定):施放后的同位置 AABB 搜索;值为 -2 表示搜索本身抛异常,此时附 scan_err
+    var scan8 = -1, scanErr = "";
+    try {
+        scan8 = p.level.getEntitiesOfClass(LivingEntityClass,
+            AABBClass.ofSize(p.position(), 16, 16, 16)).size();
+    } catch (e6) { scan8 = -2; scanErr = exText(e6); }
+    // 诊断(不参与判定):盒内每个实体的「类型串@血量」原样报出(见 luluState 注释)
+    var census = "";
+    try {
+        var list0 = p.level.getEntitiesOfClass(LivingEntityClass, AABBClass.ofSize(p.position(), 16, 16, 16));
+        for (var k = 0; k < list0.size() && k < 6; k++) {
+            census = census + (k > 0 ? "|" : "") + typeIdOf(list0.get(k)) + "@" + luluHpR(list0.get(k));
+        }
+        if (census === "") census = "-";
+    } catch (e7) { census = "<err>"; }
+    send(ctx, "AP_" + tag + "_SELF:session=" + session + ":token_seen=" + (token > 0 ? 1 : 0)
+        + ":cd_before=" + (cdBefore > 0 ? 1 : 0) + ":cd_gated=" + (cdGated > 0 ? 1 : 0)
+        + ":confirmed=" + confirmed
+        + ":heal=" + heal0 + "->" + luluHealPoints(p)
+        + ":spider_slow=" + (spider == null ? "n/a" : luluFx(spider, MobEffectsClass.SLOWNESS))
+        + ":pig_eid=" + (pig == null ? -1 : pig.getId())
+        + ":spider_eid=" + (spider == null ? -1 : spider.getId()) + ":p_eid=" + p.getId()
+        + ":pig_present=" + luluPresent(pig) + ":spider_present=" + luluPresent(spider)
+        + ":scan8=" + scan8
+        + ":census=" + census
+        + ":cd_after=" + (signCooldownRemaining(p) > 0 ? 1 : 0)
+        + (scanErr ? ":scan_err=" + scanErr : "")
+        + (confirmErr ? ":err=" + confirmErr : ""));
+    luluLater("self", { player: p, tag: tag, hp0: hp0, pig: pig, pigHp0: pigHp0, spider: spider });
+    return 1;
+}
+
+/** 「锚点段」:直接 apply(锚点 = 24 格外的一只猪),验两项范围能力是否跟着目标走 */
+function doLuluAnchor(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    luluDiscardNearby(p, 48);
+    var pig = luluSpawnAt(p, "minecraft:pig", 0, 24);
+    if (pig == null) { send(ctx, "AP_" + tag + "_ERR:spawn_failed:anchor"); return 1; }
+    try { pig.setHealth(6); } catch (e1) { /* 忽略 */ }
+    var spiderByPig = luluSpawnAt(pig, "minecraft:spider", 0, 4);
+    var spiderByPlayer = luluSpawnAt(p, "minecraft:spider", 0, 4);
+    var heal0 = luluHealPoints(p);
+    var pigHp0 = luluHpR(pig);
+    var anchorDist = luluDistTo(p, pig);   // 实测距离(取代硬编码 24)
+    var err = "";
+    try {
+        var action = TargetSelectionRegistryClass.get(LULU_ACTION_ID);
+        action.apply(p, pig);
+    } catch (e2) { err = exText(e2); }
+    send(ctx, "AP_" + tag + "_ANCHOR:anchor_dist=" + anchorDist + ":pig_hp=" + pigHp0 + "->" + luluHpR(pig)
+        + ":spider_by_pig=" + (spiderByPig == null ? "?" : luluFx(spiderByPig, MobEffectsClass.SLOWNESS))
+        + ":spider_by_player=" + (spiderByPlayer == null ? "?" : luluFx(spiderByPlayer, MobEffectsClass.SLOWNESS))
+        + ":caster_heal=" + heal0 + "->" + luluHealPoints(p)
+        + (err ? ":err=" + err : ""));
+    // 主体瞬间治疗落在**目标(猪)**上:同 tick 读不到 ⇒ 延迟读数;两只蜘蛛各带存在性读数,
+    // 杜绝「对象创建了却没进世界 ⇒ 读数 - 也算通过」的负对照假过
+    luluLater("anchor", { player: p, tag: tag, pig: pig, pigHp0: pigHp0, heal0: heal0,
+        spiderByPig: spiderByPig, spiderByPlayer: spiderByPlayer, anchorDist: anchorDist });
+    return 1;
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  ③ 活体书页(移植自 1.21.1 探针 :4665-:5062)────────────────────────────────
+//   被测语义:
+//     ① 仅敌对目标可选(ENEMY = 敌对生物 ∪ 已被激怒的中立生物;不含玩家、不可自用);
+//     ② 使用后书页以箭矢 4/5(2.4 格/tick)飞向目标、逐 tick 跟踪修正、必定命中、可穿透方块;
+//     ③ 命中伤害 = 基础 2 + 调查员已用页数(登记为法伤 ⇒ 受全部法伤加成影响),并施加 1 层标记;
+//     ④ 仅命中**前**已有 ≥3 层标记的目标才补记本周期出牌数 +1,严格封顶 9。
+//   命令(读数行一律 AP_<tag>_ 前缀;除测试基线重置外全部只读):
+//     /astralprobe lpprep <tag> <type> <dist> <layers>  基线 + 摆靶 + 预置标记层数 + 牌进主手
+//     /astralprobe lpnonhostile <tag>                   基线 + 摆被动生物 + 牌进主手(确认应被类型校验拒绝)
+//     /astralprobe lpwall <tag> <dist>                  基线 + 摆敌对靶 + 中间砌墙 + 牌进主手(穿透方块)
+//     /astralprobe lpshoot <tag>                        服务端确认当前靶(与客户端左键确认同路)
+//     /astralprobe lpread <tag>                         只读读数(靶血/伤害/标记/出牌数/在飞)
+//     /astralprobe lpcredit <tag> <value>               预置本周期活体书页出牌数加成(封顶用例)
+//     /astralprobe lprin <tag> <value>                  预置「调查员已用页数」rin_pages(伤害口径用例)
+//     /astralprobe lpchain <tag> <hits> <dist>          同一靶上连续出牌 hits 次(标记累积 → 首次补记)
+//     /astralprobe lpreset <tag>                        归零出牌轮 + 牌回主手,**保留当前靶**(跨轮累积标记)
+//     /astralprobe lpclean <tag>                        收尾:取消会话 + 清靶/拆墙 + 清主手 + 周期归零
+//   ⚠️ 改探针后必须冷启动才生效。
+//   ⚠️ **`type` 参数是 `StringArg.string()`(QUOTABLE_PHRASE),用例里必须加引号**:
+//      `/astralprobe lpprep T "minecraft:spider" 6 0` —— 不加引号时 Brigadier 直接拒收,
+//      命令整条不执行、读数行**一条都不会出现**(与 `equipslot` 的 `item` 参数同一坑)。
+//   ⚠️ **靶子选型**:白天地表会点燃僵尸(无 AI 也一样烧,实测 1.4 s 掉 4 血 ⇒ 污染 `dmg` 读数)。
+//      用例统一用 **`minecraft:spider`**(非亡灵、不烧,最大生命 16)并先 `/time set midnight`。
+//      `lpshoot` 另会在确认前把靶子回满血并重取基线,使 `dmg` 只反映本次书页命中。
+//   ⚠️ **背包/方块一律走 API,不要用 `runCmd`**(2026-09-19 实测取证):
+//      在**同一条探针命令内部**用 `runCmd` 改玩家背包(`/clear`、`/item replace`)或方块(`/fill`)时,
+//      本命令内的读数与后续动作**都还看不到改动**;改动要到**下一个 tick** 才生效。
+//      ⇒ 需要「立即生效」的一律走 `lpSetHand` / `lpClearInventory` / `lpFillBox`(纯 API,同步),
+//      命令只留给「晚一 tick 也无所谓」的世界/效果类操作(`/effect clear`)。
+// ════════════════════════════════════════════════════════════════════════════
+
+/** 活体书页飞行调度器(两发布线同名同包;取不到时读数退化为 na) */
+function loadLivingPageFlightScheduler() {
+    try { return Java.loadClass("com.merlinkitsune.astral_dice.event.LivingPageFlightScheduler"); }
+    catch (e) { return null; }
+}
+
+/** 效果牌基类(用于直接驱动「手持即选择」入口;取不到时 lpchain 会报 ok=0) */
+function loadBaseEffectCardItemClass() {
+    try { return Java.loadClass("com.merlinkitsune.astral_dice.item.card.BaseEffectCardItem"); }
+    catch (e) { return null; }
+}
+
+var LivingPageFlightSchedulerClass = loadLivingPageFlightScheduler();
+var LivingPageBaseCardClass = loadBaseEffectCardItemClass();
+
+/** 活体书页探针状态(跨命令保持;lpclean 置空) */
+var lpState = null;
+
+function lpCardId() { return "astral_dice:effect_card_living_page"; }
+
+/** 主手牌读数 + 背包内活体书页总数(判「确认后才消耗」:handn 1 → 0) */
+function lpHandState(p) {
+    return "hand=" + itemIdOf(p.getMainHandItem()) + ":handn=" + lpCardCount(p);
+}
+
+function lpCardCount(p) {
+    var n = 0;
+    try {
+        var inv = p.getInventory();
+        var id = lpCardId();
+        for (var i = 0; i < inv.getContainerSize(); i++) {
+            var st = inv.getItem(i);
+            if (!st.isEmpty() && itemIdOf(st) === id) n += st.getCount();
+        }
+    } catch (e) { return -1; }
+    return n;
+}
+
+function lpMaxHp(d) { try { return Math.round(d.getMaxHealth() * 100) / 100; } catch (e) { return -1; } }
+
+/**
+ * 把一张牌放进主手(itemId 为空 ⇒ 清空主手)。**纯 API,同 tick 立即生效**;
+ * 为什么不能用 `runCmd("item replace ...")` 见本段顶部「背包/方块一律走 API」。
+ */
+function lpSetHand(p, itemId) {
+    try {
+        var InteractionHandClass = Java.loadClass("net.minecraft.world.InteractionHand");
+        var stack = (itemId == null || itemId === "") ? ItemStack.EMPTY : new ItemStack(resolveItem(itemId));
+        p.setItemInHand(InteractionHandClass.MAIN_HAND, stack);
+        return 1;
+    } catch (e) { return "ERR:" + exText(e); }
+}
+
+/** 清空玩家**原版**背包(API;含护甲/副手,不含 Curios 饰品栏)。返回清掉的槽位数,-1 = 整体失败。 */
+function lpClearInventory(p) {
+    var n = 0;
+    try {
+        var inv = p.getInventory();
+        for (var i = 0; i < inv.getContainerSize(); i++) {
+            try { inv.setItem(i, ItemStack.EMPTY); n = n + 1; } catch (e1) { /* 单槽失败不影响其余 */ }
+        }
+    } catch (e) { return -1; }
+    return n;
+}
+
+/**
+ * 用 API 把一块长方体区域填成 blockId(纯 API,同 tick 立即生效;`/fill` 在本命令内读不到)。
+ * 返回写入的方块数,失败返回 `ERR:...`。
+ *
+ * 26.1.2:注册表返回 Optional<Holder.Reference> ⇒ 经 holderValue(:133) 取值(1.21.1 直接返回值对象)。
+ */
+function lpFillBox(p, x1, y1, z1, x2, y2, z2, blockId) {
+    var n = 0;
+    try {
+        var BlockPosClass = Java.loadClass("net.minecraft.core.BlockPos");
+        var state = holderValue(BuiltInRegistries.BLOCK.get(Identifier.parse(blockId))).defaultBlockState();
+        for (var x = x1; x <= x2; x++) {
+            for (var y = y1; y <= y2; y++) {
+                for (var z = z1; z <= z2; z++) {
+                    try { p.level.setBlock(new BlockPosClass(x, y, z), state, 3); n = n + 1; }
+                    catch (e1) { /* 单块失败不影响其余 */ }
+                }
+            }
+        }
+    } catch (e) { return "ERR:" + exText(e); }
+    return n;
+}
+
+/**
+ * 该坐标方块的注册 id(只读)——「穿透方块」用例**必须**用它取证:
+ * `/fill` 的返回值经 Rhino 读出来是 `undefined`(实测),不能当判据;
+ * 直接读方块状态才是「墙真的建好了」的硬证据。
+ */
+function lpBlockId(p, x, y, z) {
+    try {
+        var BlockPosClass = Java.loadClass("net.minecraft.core.BlockPos");
+        var state = p.level.getBlockState(new BlockPosClass(x, y, z));
+        return "" + BuiltInRegistries.BLOCK.getKey(state.getBlock());
+    } catch (e) { return "err:" + exText(e); }
+}
+function lpMark(d) { try { return "" + MarkManagerClass.getLevel(d); } catch (e) { return "err"; } }
+function lpCredit(p) { try { return "" + ModAttachments.getLivingPageCycleBonus(p); } catch (e) { return "err"; } }
+function lpPlays(p) { try { return "" + EffectCardPeriodClass.getPlayCount(p); } catch (e) { return "err"; } }
+function lpMaxPlays(p) { try { return "" + EffectCardPeriodClass.getMaxAllowed(p); } catch (e) { return "err"; } }
+function lpBlocked(p) { try { return EffectCardPeriodClass.isBlocked(p) ? 1 : 0; } catch (e) { return "err"; } }
+function lpSel(p) { try { return TargetSelectionManagerClass.isSelecting(p) ? 1 : 0; } catch (e) { return "err"; } }
+function lpToken(p) { try { return TargetSelectionManagerClass.sessionTokenForTests(p); } catch (e) { return -1; } }
+
+/** 靶读数:hp/最大血量 + 当前标记层数 */
+function lpDummyState(d) {
+    if (d == null) return "hp=-:max=-:mark=-";
+    return "hp=" + rghp(d) + ":max=" + lpMaxHp(d) + ":mark=" + lpMark(d);
+}
+
+/** 在飞读数:数量/最早剩余 tick(-1 = 无;na = 类不可用) */
+function lpFlight(p) {
+    if (LivingPageFlightSchedulerClass == null) return "na";
+    try {
+        return "" + LivingPageFlightSchedulerClass.pendingCount(p.level)
+            + "/" + LivingPageFlightSchedulerClass.pendingRemainingTicks(p.level);
+    } catch (e) { return "err:" + exText(e); }
+}
+
+/** 最近一次飞行的「离施法者眼位最近的已发射粒子」距离(格;-1 = 本次未发射;na/err 同 lpFlight) */
+function lpMinEye(p) {
+    if (LivingPageFlightSchedulerClass == null) return "na";
+    try {
+        var v = LivingPageFlightSchedulerClass.lastFlightMinEyeDistance();
+        if (v < 0) return "-1";
+        var n = Math.round(v * 100);
+        return Math.floor(n / 100) + "." + ("00" + (n % 100)).slice(-2);
+    } catch (e) { return "err"; }
+}
+
+/** 活体书页相关全部原始值读数(单行机器格式) */
+function lpReadout(p, d, dmg) {
+    return lpHandState(p)
+        + ":sel=" + lpSel(p) + ":token=" + lpToken(p)
+        + ":dummy=" + lpDummyState(d) + ":dmg=" + dmg
+        + ":credit=" + lpCredit(p) + ":plays=" + lpPlays(p)
+        + ":max=" + lpMaxPlays(p) + ":blocked=" + lpBlocked(p)
+        // cards = 主背包内**活体书页**张数(2026-09-19 追加):效果牌确认时会消耗手牌,
+        // 而「魔法箭袋」触发会**返还**第一张使用的效果牌 ⇒ 用它可以判定返还确实到手
+        // (无箭袋/未触发时读数恒为 0,触发后为 1)。
+        + ":cards=" + lpCardCount(p)
+        + ":flight=" + lpFlight(p)
+        // mineye = 最近一次飞行里「离施法者眼位最近的**已发射**拖尾粒子」距离(格;-1 = 本次未发射);
+        // 判定用户要求「第一人称发射粒子不遮挡视野」:期望恒 >= 调度器 EYE_CLEAR_RADIUS(1.25)
+        + ":mineye=" + lpMinEye(p);
+}
+
+/** 活体书页用例统一基线:出牌周期归零 + 清原版效果 + 摘掉「已使用伤害效果牌」标记 + 清空背包 */
+function lpBaseline(ctx, p) {
+    resetEffectCardCycle(p);
+    runCmd(ctx, "effect clear @s");
+    // 清背包走 API(立即生效);`/clear @s` 在本命令内读到的是旧背包,会把 PREP 读数与连续出牌带偏
+    lpClearInventory(p);
+    // 活体书页效果(1:00)会锁住出牌轮 ⇒ 脚手架显式摘掉(生产路径靠效果自然到期)
+    try { clearExtraPlayEffects(p); } catch (e) { /* 忽略 */ }
+}
+
+/** 基线 + 摆靶(可选预置标记层数)+ 把 1 张活体书页放进主手 */
+function doLpPrep(ctx, tag, typeId, distText, layersText) {
+    var p = ctx.source.getPlayerOrException();
+    var dist = 6, layers = 0;
+    var pd = parseInt(distText, 10); if (!isNaN(pd) && pd > 0) dist = pd;
+    var pl = parseInt(layersText, 10); if (!isNaN(pl) && pl > 0) layers = pl;
+    lpBaseline(ctx, p);
+    var d = spawnDummy(p, typeId, dist);
+    if (d == null) { send(ctx, "AP_" + tag + "_ERR:spawn_failed:" + typeId); return 1; }
+    try { d.setHealth(d.getMaxHealth()); } catch (e1) { /* 忽略 */ }
+    try { d.setNoAi(true); } catch (e2) { /* 忽略 */ }
+    var seeded = 0;
+    for (var i = 0; i < layers; i++) {
+        try { MarkManagerClass.apply(d); seeded = seeded + 1; } catch (e3) { break; }
+    }
+    var set = lpSetHand(p, lpCardId());
+    lpState = { tag: tag, player: p, dummy: d, hpBefore: rghp(d) };
+    send(ctx, "AP_" + tag + "_PREP:type=" + typeId + ":dist=" + dist + ":seed=" + seeded
+        + ":set=" + set + ":" + lpReadout(p, d, "-"));
+    return 1;
+}
+
+/** 被动生物版基线(确认应被 ENEMY 类型校验拒绝:会话保留、卡牌不消耗) */
+function doLpNonHostile(ctx, tag) {
+    return doLpPrep(ctx, tag, "minecraft:cow", "4", "0");
+}
+
+/** 基线 + 摆敌对靶 + 玩家与靶之间砌一堵实心墙(书页飞行不做方块碰撞 ⇒ 仍须命中) */
+function doLpWall(ctx, tag, distText) {
+    var p = ctx.source.getPlayerOrException();
+    var dist = 8;
+    var pd = parseInt(distText, 10); if (!isNaN(pd) && pd > 3) dist = pd;
+    lpBaseline(ctx, p);
+    // 靶子同 lpprep:统一用蜘蛛(非亡灵不烧,最大生命 16)
+    var d = spawnDummy(p, "minecraft:spider", dist);
+    if (d == null) { send(ctx, "AP_" + tag + "_ERR:spawn_failed:spider"); return 1; }
+    try { d.setHealth(d.getMaxHealth()); } catch (e1) { /* 忽略 */ }
+    try { d.setNoAi(true); } catch (e2) { /* 忽略 */ }
+    var x1 = Math.floor(p.getX()) - 1, y1 = Math.floor(p.getY()), z1 = Math.floor(p.getZ() + dist / 2.0);
+    var x2 = Math.floor(p.getX()) + 1, y2 = y1 + 2, z2 = z1;
+    // 墙走 API:同命令内即可读回方块(硬证据),`/fill` 在本命令内读到的仍是 air
+    var placed = lpFillBox(p, x1, y1, z1, x2, y2, z2, "minecraft:obsidian");
+    var set = lpSetHand(p, lpCardId());
+    lpState = {
+        tag: tag, player: p, dummy: d, hpBefore: rghp(d),
+        wall: [x1, y1, z1, x2, y2, z2]
+    };
+    send(ctx, "AP_" + tag + "_WALL:dist=" + dist + ":wall=" + x1 + "," + y1 + "," + z1
+        + ":wall_block=" + lpBlockId(p, x1, y1, z1)
+        + ":blocks=" + placed + ":set=" + set + ":" + lpReadout(p, d, "-"));
+    return 1;
+}
+
+/** 服务端确认当前靶(与客户端左键确认同路;失败原因看服务端日志的 confirm FAIL 行) */
+function doLpShoot(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    if (lpState == null || lpState.dummy == null) { send(ctx, "AP_" + tag + "_ERR:no_dummy"); return 1; }
+    var d = lpState.dummy;
+    // stale = 1:本次 tag 与当前 lpState 不匹配 ⇒ **上一条 prep 命令没落地**(注入丢键/chat 未提交),
+    // 若不报出来,读数会指向上一只靶并伪装成「血量/最大血量不对」的假缺陷
+    var stale = (lpState.tag === tag) ? 0 : 1;
+    var token = lpToken(p);
+    // 命中前把靶子回满血并重取基线:**本次 dmg 只反映书页命中**,
+    // 与"靶子在使用前已被环境/其它来源掉过血"解耦(否则读数不可判)。
+    try { d.setHealth(d.getMaxHealth()); } catch (e0) { /* 忽略 */ }
+    lpState.hpBefore = rghp(d);
+    var called = 0, err = "";
+    try {
+        TargetSelectionManagerClass.confirm(p, token, d.getId());
+        called = 1;
+    } catch (e) { err = exText(e); }
+    // mark_before = 命中**前**的标记层数(飞行尚未抵达,故此刻读到的就是判定用值)
+    // 有墙的用例把**确认这一刻**的墙方块一并报出:证明"命中时墙确实存在"而不是建墙失败后的假命中
+    var wall = "";
+    if (lpState.wall != null) {
+        wall = ":wall_block=" + lpBlockId(p, lpState.wall[0], lpState.wall[1], lpState.wall[2]);
+    }
+    send(ctx, "AP_" + tag + "_SHOOT:called=" + called + ":token=" + token
+        + ":mark_before=" + lpMark(d) + ":" + lpReadout(p, d, "-") + wall
+        + ":stale=" + stale
+        + (err ? ":err=" + err : ""));
+    return 1;
+}
+
+/** 只读读数:dmg = 基线血量 - 当前血量(命中造成的基础值;法伤加成另有绿色跳字) */
+function doLpRead(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var d = lpState == null ? null : lpState.dummy;
+    var stale = (lpState == null) ? 1 : ((lpState.tag === tag) ? 0 : 1);
+    var dmg = "-";
+    if (d != null && lpState.hpBefore != null && lpState.hpBefore >= 0) {
+        dmg = Math.round((lpState.hpBefore - rghp(d)) * 100) / 100;
+    }
+    send(ctx, "AP_" + tag + "_READ:" + lpReadout(p, d, dmg) + ":stale=" + stale);
+    return 1;
+}
+
+/**
+ * 活体书页**分隔出牌**脚手架:归零出牌轮(等价于「冷却到期后的新一轮」)+ 把 1 张牌放回主手,
+ * **保留当前靶** ⇒ 靶身上的标记**跨轮累积**。
+ *
+ * <p>用途:复现玩家真实节奏(每轮一张、间隔若干秒)下「第 4 次命中时命中前已有 3 层标记」的
+ * 连续出牌判定。`lpchain` 是**同一 tick 连打**(同一出牌轮内多次确认),覆盖不到这条路径 ——
+ * 两者在「出牌轮是否已归零」上完全不同,而补记入口正是以「本轮仍存活(`getPlayCount > 0`)」为前提。
+ */
+function doLpReset(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    if (lpState == null || lpState.dummy == null) { send(ctx, "AP_" + tag + "_ERR:no_dummy"); return 1; }
+    var d = lpState.dummy;
+    resetEffectCardCycle(p);
+    var set = lpSetHand(p, lpCardId());
+    lpState.tag = tag;
+    lpState.hpBefore = rghp(d);
+    send(ctx, "AP_" + tag + "_RESET:set=" + set + ":" + lpReadout(p, d, "-"));
+    return 1;
+}
+
+/** 预置本周期活体书页出牌数加成(封顶 9 用例) */
+function doLpCredit(ctx, tag, valueText) {
+    var p = ctx.source.getPlayerOrException();
+    var v = parseInt(valueText, 10); if (isNaN(v) || v < 0) v = 0;
+    var err = "";
+    try { ModAttachments.setLivingPageCycleBonus(p, v); } catch (e) { err = exText(e); }
+    send(ctx, "AP_" + tag + "_CREDIT:set=" + v + ":credit=" + lpCredit(p)
+        + ":plays=" + lpPlays(p) + ":max=" + lpMaxPlays(p) + (err ? ":err=" + err : ""));
+    return 1;
+}
+
+/**
+ * 同一靶上**连续出牌** hits 次(端到端验证标记累积与「首次 ≥3 层才补记」)。
+ * 每次出牌前把出牌轮与「已使用伤害效果牌」标记恢复干净(脚手架;生产路径由 1:00 效果与冷却控制节奏),
+ * 并直接调用生产侧的「手持即选择」入口 `BaseEffectCardItem#tickHeldSelector`(省去等一个 tick 的自动开局)。
+ *
+ * <p>牌进主手走 **API**(`lpSetHand`):用 `runCmd("item replace ...")` 时改动到下一 tick 才生效,
+ * 而本函数在同一条命令里连做 hits 次 ⇒ 手牌永远读成空、`tickHeldSelector` 静默不开局。
+ * `ok` 只统计**确认后卡牌真的被消耗**的次数(确认失败时卡牌留在手里 ⇒ 记入 `miss`)。
+ */
+function doLpChain(ctx, tag, hitsText, distText) {
+    var p = ctx.source.getPlayerOrException();
+    var hits = 4, dist = 6;
+    var ph = parseInt(hitsText, 10); if (!isNaN(ph) && ph > 0) hits = ph;
+    var pd = parseInt(distText, 10); if (!isNaN(pd) && pd > 0) dist = pd;
+    lpBaseline(ctx, p);
+    // 与 lpprep 统一用蜘蛛(非亡灵不烧,最大生命 16)
+    var d = spawnDummy(p, "minecraft:spider", dist);
+    if (d == null) { send(ctx, "AP_" + tag + "_ERR:spawn_failed:spider"); return 1; }
+    try { d.setHealth(d.getMaxHealth()); } catch (e1) { /* 忽略 */ }
+    try { d.setNoAi(true); } catch (e2) { /* 忽略 */ }
+    var ok = 0, miss = 0, errs = "";
+    for (var i = 0; i < hits; i++) {
+        try {
+            resetEffectCardCycle(p);
+            try { clearExtraPlayEffects(p); } catch (e3) { /* 忽略 */ }
+            lpSetHand(p, lpCardId());
+            LivingPageBaseCardClass.tickHeldSelector(p);
+            TargetSelectionManagerClass.confirm(p,
+                TargetSelectionManagerClass.sessionTokenForTests(p), d.getId());
+            if (lpCardCount(p) === 0) ok = ok + 1; else miss = miss + 1;
+        } catch (e4) { miss = miss + 1; errs = errs + "[" + i + "]" + exText(e4) + " "; }
+    }
+    lpState = { tag: tag, player: p, dummy: d, hpBefore: rghp(d) };
+    send(ctx, "AP_" + tag + "_CHAIN:hits=" + hits + ":ok=" + ok + ":miss=" + miss
+        + ":" + lpReadout(p, d, "-")
+        + (errs !== "" ? ":err=" + errs : ""));
+    return 1;
+}
+
+/** 收尾:取消会话 + 清靶/拆墙 + 主手清空 + 周期归零 */
+function doLpClean(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var err = "";
+    try { TargetSelectionManagerClass.cancel(p, lpToken(p)); } catch (e) { err = exText(e); }
+    var discarded = 0;
+    if (lpState != null && lpState.dummy != null) {
+        try { lpState.dummy.discard(); discarded = 1; } catch (e2) { err = err + " discard:" + exText(e2); }
+    }
+    var unbuilt = 0;
+    if (lpState != null && lpState.wall != null) {
+        var w = lpState.wall;
+        // 拆墙同样走 API(立即生效),`/fill ... air` 在下一 tick 才生效会污染后续用例的方块读数
+        unbuilt = lpFillBox(p, w[0], w[1], w[2], w[3], w[4], w[5], "minecraft:air");
+    }
+    lpState = null;
+    resetEffectCardCycle(p);
+    lpSetHand(p, null);
+    runCmd(ctx, "effect clear @s");
+    try { clearExtraPlayEffects(p); } catch (e3) { /* 忽略 */ }
+    send(ctx, "AP_" + tag + "_CLEAN:discarded=" + discarded + ":unbuilt=" + unbuilt + ":sel=" + lpSel(p)
+        + ":credit=" + lpCredit(p) + ":plays=" + lpPlays(p) + ":cards=" + lpCardCount(p)
+        + (err !== "" ? ":err=" + err : ""));
+    return 1;
+}
+
+/** 预置「调查员已用页数」rin_pages(测试专用改写入口;命中伤害口径用例用它把加成归零,避免依赖历史出牌数) */
+function doLpRin(ctx, tag, valueText) {
+    var p = ctx.source.getPlayerOrException();
+    var v = parseInt(valueText, 10); if (isNaN(v) || v < 0) v = 0;
+    var err = "";
+    var read = "err";
+    try { ModAttachments.setRinPages(p, v); read = "" + ModAttachments.getRinPages(p); }
+    catch (e) { err = exText(e); }
+    send(ctx, "AP_" + tag + "_RIN:set=" + v + ":rin=" + read + (err ? ":err=" + err : ""));
+    return 1;
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  ④ 魔法箭袋读数(只读;移植自 1.21.1 探针 :5064-:5089)
+//
+//  <p>字段：`equipped` = 是否佩戴箭袋筹码(`MagicQuiverChipItem#isEquipped`)；
+//  `tracking` = `MAGIC_QUIVER_TRACKING` 是否已武装(使用效果牌时置位、触发时清除)；
+//  `cd` = 距 `MAGIC_QUIVER_COOLDOWN_END` 的**剩余 tick**(0 = 可触发)；
+//  `first` = 记录的第一张效果牌类型(触发时按它返还；空串 = 未记录)；
+//  `mark` = 当前靶(`lpprep` 摆的那只)身上的标记层数。
+//
+//  <p>为什么需要它：箭袋的**触发**在伤害事件里一次性完成(标记 +1、返还卡牌、进入冷却、清追踪)，
+//  只看靶子层数无法区分「箭袋触发」与「书页自己那一层」；`tracking`/`cd`/`first`/`cards` 四条合起来
+//  才能把「已武装但未触发」「已触发」与「被冷却挡住」三种状态分开。
+// ════════════════════════════════════════════════════════════════════════════
+
+function doQuiverRead(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var equipped = "err", tracking = "err", cd = "err", first = "err";
+    try { equipped = MagicQuiverChipItemClass.isEquipped(p) ? 1 : 0; } catch (e1) { equipped = "err:" + exText(e1); }
+    try { tracking = ModAttachments.getMagicQuiverTracking(p) ? 1 : 0; } catch (e2) { tracking = "err:" + exText(e2); }
+    try { cd = Math.max(0, ModAttachments.getMagicQuiverCooldownEnd(p) - nowTick(p)); } catch (e3) { cd = "err:" + exText(e3); }
+    try { first = "" + ModAttachments.getMagicQuiverFirstCard(p); } catch (e4) { first = "err:" + exText(e4); }
+    var d = lpState == null ? null : lpState.dummy;
+    send(ctx, "AP_" + tag + "_QUIVER:equipped=" + equipped + ":tracking=" + tracking
+        + ":cd=" + cd + ":first=" + first + ":mark=" + (d == null ? "-" : lpMark(d))
+        + ":cards=" + lpCardCount(p));
+    return 1;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// === 游戏大师立牌(ren)「鼠鼠护盾」:REN-SHIELD-26.1.2 ===
+// 移植基准 = 1.21.1 探针 :4044-:4272(**逐字同形**;只有平台形态不同,差异逐条标 `26.1.2:` 并给依据)。
+// 被测语义:①被动「鼠鼠救我」= 佩戴 ren 且超过 5 分钟没有护盾 ⇒ 自动补一个(仅佩戴者本人);
+// ②护盾 = 5 黄心(10 点吸收)+ 抗性提升 + 1 层一次性反击;③黄心被打空 ⇒ ≤1 tick 内清空;
+// ④带盾被攻击 ⇒ 消耗 1 层并对攻击者注入一次现有反击伤害;⑤主动「熊孩子特权」= 选择器选
+//   任意玩家或自身 ⇒ 目标 +1 张随机卡牌 + 鼠鼠护盾,且**确认前不进冷却**(前置门控)。
+// 计时口径:rentimer 把「最后一次持有护盾」的时刻**回拨 6000 tick**,等价于"已过去 5 分钟",
+// 免去真实等待(计时基准 = 玩家级附件 + level.getGameTime,回拨即同一语义)。
+//
+// 读数字段名 / 字段顺序 / 命令名与参数顺序与 1.21.1 版**逐字一致**(§13.2 同探针 diff 前提)。
+//
+// ── 26.1.2 平台差异(逐条给依据;语义零差异)──────────────────────────────────
+//  ① `MobEffects.DAMAGE_RESISTANCE` → `MobEffects.RESISTANCE`
+//     依据:26.1.2 反编译源码 `net/minecraft/world/effect/MobEffects.java:59`
+//     只有 `RESISTANCE`(全文件无 `DAMAGE_RESISTANCE`);产品侧同源改名
+//     `item/RenShieldManager.java:299,317`;探针既有同名族先例 `:3807` 的
+//     `MobEffectsClass.SPEED`(1.21.1 的 MOVEMENT_SPEED)。
+//  ② `RenModItemsClass` 与 `countAllCards` **复用本文件既有定义**(`:4766` / `:4822`,
+//     供 CARD-SELECTOR 用;与 1.21.1 探针 `:4057` / `:4121` 是同一个产品类与同一份实现)
+//     ⇒ 本节**不再重复声明**。重复声明虽在 Rhino 下被后者覆盖,但会把 CARD-SELECTOR 段的
+//     隐式前提悄悄换成 ren 段副本,属无谓风险。
+//  ③ 伤害施加链 `ent.attack(src, amount)` → 回退 `ent.damage(amount, src)` 逐字同形。
+//     依据:26.1.2 探针既有先例 `:3105-:3106`(doTrueDmg)与 `:3396-:3397`(spell)。
+//  ④ 伤害源 `p.level.damageSources().mobAttack(dummy)` / `.generic()` 逐字同形。
+//     依据:26.1.2 反编译源码 `net/minecraft/world/damagesource/DamageSources.java:195`
+//     (`public DamageSource mobAttack(LivingEntity)`)与 `:147`(`public DamageSource generic()`);
+//     探针既有先例 `:3861`(enderLethalSource)。
+//  ⑤ 执行体一律 `return 1;`。依据:26.1.2 的 Brigadier `executes` 处理器必须返回 int
+//     (performPrefixedCommand 返回 void;返回读数串会抛 `Cannot convert rc=ok to int` 且**逃出
+//     guard** ⇒ 该子命令后续读数整段缺失)—— 见本文件 `:6056-6058` 与 AGENTS「26.1.2 速记」。
+//  ⑥ `runCmd(ctx, "clear @s")` 不带前导斜杠:本文件 `runCmd`(`:2977`)→ `execP`(`:172`)
+//     内部走 `dispatcher.parse` + `performPrefixedCommand`,两版本同形。
+// ══════════════════════════════════════════════════════════════════════════════
+var REN_SIGN_ID = "astral_dice:ren_sign";
+var REN_PASSIVE_INTERVAL = 6000;
+var RenSignItemClass = Java.loadClass("com.merlinkitsune.astral_dice.item.sign.RenSignItem");
+var RenShieldManagerClass = Java.loadClass("com.merlinkitsune.astral_dice.item.RenShieldManager");
+// 26.1.2:`RenModItemsClass` 见 `:4766`(本节不重复声明,理由见头注 ②)。
+
+function renEffectHolder() {
+    return ModEffects.REN_SHIELD;
+}
+
+/** 「反击」层数图标(ren_counter):层数附件的可见镜像,用于断言图标与层数严格同步 */
+function renCounterHolder() {
+    return ModEffects.REN_COUNTER;
+}
+
+function round2(v) {
+    return Math.round(v * 100) / 100;
+}
+
+/**
+ * 施加一次伤害(本地自足版:`sourceOf`/`applyDamage` 都是 doTrueDmg 内部的嵌套函数,不可跨命令复用)。
+ * 26.1.2:与 1.21.1 逐字同形 —— `LivingEntity#attack(DamageSource,float)` 在 Rhino 下可用,
+ * `damage(amount, source)` 为备选(探针既有先例 `:3105-:3106` / `:3396-:3397`)。
+ */
+function renApplyDamage(ent, src, amount) {
+    try { ent.attack(src, amount); return "attack"; } catch (ea) { /* 试下一个 */ }
+    try { ent.damage(amount, src); return "damage"; } catch (eb) { /* 试下一个 */ }
+    return "none";
+}
+
+/** 护盾全量读数:shield/absorb/counter/res/base/last/now/counterfx(反击图标) */
+function renState(p) {
+    var shield = -1;
+    try { shield = p.hasEffect(renEffectHolder()) ? 1 : 0; } catch (e) { shield = -1; }
+    var res = -1;
+    try {
+        // 26.1.2:MobEffects.RESISTANCE(1.21.1 的 DAMAGE_RESISTANCE 已改名;见头注 ①)
+        var ri = p.getEffect(MobEffectsClass.RESISTANCE);
+        res = (ri == null) ? 0 : (1 + ri.getAmplifier());
+    } catch (e) { res = -1; }
+    var absorb = -1;
+    try { absorb = round2(p.getAbsorptionAmount()); } catch (e) { absorb = -1; }
+    var counter = -1, base = -1, last = -1, now = -1, ctrfx = -1;
+    try { ctrfx = p.hasEffect(renCounterHolder()) ? 1 : 0; } catch (e) { ctrfx = -1; }
+    try { counter = ModAttachments.getRenCounterCharges(p); } catch (e) { /* 忽略 */ }
+    try { base = round2(ModAttachments.getRenShieldBaselineAbsorption(p)); } catch (e) { /* 忽略 */ }
+    try { last = ModAttachments.getRenShieldLastSeenTick(p); } catch (e) { /* 忽略 */ }
+    try { now = nowTick(p); } catch (e) { /* 忽略 */ }
+    return "shield=" + shield + ":absorb=" + absorb + ":counter=" + counter
+        + ":res=" + res + ":base=" + base + ":last=" + last + ":now=" + now + ":counterfx=" + ctrfx;
+}
+
+/** 把玩家拉回「从未持有护盾」的干净基线(护盾效果若因移除拦截残留,会在下一 tick 被黄心轮询自愈) */
+function renReset(p) {
+    // ⚠️ 护盾/抗性/反击图标都是 astral_dice:* 效果,`removeAllEffects()` 会被模组的移除拦截器**取消**
+    //   (实测残留:上一会话的护盾会活到 renprep 之后,读数出现 shield=1、absorb 也是旧的基线 + 10)
+    //   ⇒ 必须走产品的唯一清空入口 voidShield 才能回到确定基线。
+    try { RenShieldManagerClass.voidShield(p, "probe_reset"); } catch (e) { /* 忽略 */ }
+    try { ModAttachments.setRenShieldLastSeenTick(p, 0); } catch (e) { /* 忽略 */ }
+    try { ModAttachments.setRenCounterCharges(p, 0); } catch (e) { /* 忽略 */ }
+    try { ModAttachments.setRenShieldOwnResistance(p, false); } catch (e) { /* 忽略 */ }
+    try { ModAttachments.setRenShieldBaselineAbsorption(p, 0.0); } catch (e) { /* 忽略 */ }
+    try { ModAttachments.setSignActiveCooldownEnd(p, 0); } catch (e) { /* 忽略 */ }
+    try { p.setAbsorptionAmount(0.0); } catch (e) { /* 忽略 */ }
+    try { p.removeAllEffects(); } catch (e) { /* 忽略 */ }
+    try { p.setHealth(p.getMaxHealth()); } catch (e) { /* 忽略 */ }
+    try { p.setGameMode(GameTypeClass.SURVIVAL); } catch (e) { /* 忽略 */ }
+}
+
+// 26.1.2:背包内「卡牌」总数 `countAllCards` 见 `:4822`(经产品入口 ModItems#isCardItem;
+//         本节不重复声明,理由见头注 ②)。
+
+function doRenPrep(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    clearCurioSlots(p, "chip");
+    renReset(p);
+    // 清空主背包:被动「鼠鼠救我」现在会发 1 张随机卡牌,读卡数必须从未持有卡牌起算
+    runCmd(ctx, "clear @s");
+    var err = equipSign(p, REN_SIGN_ID);
+    if (err != null) { send(ctx, "AP_" + tag + "_ERR:" + err); return 1; }
+    send(ctx, "AP_" + tag + "_PREP:armed=" + (RenSignItemClass.isEquipped(p) ? 1 : 0) + ":" + renState(p));
+    return 1;
+}
+
+function doRenUnequip(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var slotErr = clearCurioSlots(p, "stand");
+    renReset(p);
+    send(ctx, "AP_" + tag + "_UNEQUIP:armed=" + (RenSignItemClass.isEquipped(p) ? 1 : 0)
+        + (slotErr ? ":slot_err=" + slotErr : "") + ":" + renState(p));
+    return 1;
+}
+
+/**
+ * 把「最后一次持有护盾」的世界时刻回拨 ticks(默认 6000 = 5 分钟),等价于「已过去 ticks tick」。
+ * 边界取证用:传 3000(不足 5 分钟)与 6000(恰好 5 分钟)各测一次,可把「间隔常量」证伪/证实。
+ * ⚠️ **前提:世界时钟 gameTime 必须大于 ticks**(否则 now - ticks <= 0,会被产品按「从未持有」重置);
+ * 用例 `REN-SHIELD-BOUNDARY-26.1.2` 用读数里的 `:now=` 把该前提写成硬断言,环境不满足即 FAIL(不假通过)。
+ */
+function doRenTimer(ctx, tag, ticksText) {
+    var p = ctx.source.getPlayerOrException();
+    var ticks = REN_PASSIVE_INTERVAL;
+    if (ticksText != null && ticksText !== "") {
+        var parsed = parseInt(ticksText, 10);
+        if (!isNaN(parsed) && parsed > 0) ticks = parsed;
+    }
+    var now = nowTick(p);
+    try {
+        ModAttachments.setRenShieldLastSeenTick(p, now - ticks);
+    } catch (e) {
+        send(ctx, "AP_" + tag + "_ERR:" + exText(e));
+        return 1;
+    }
+    send(ctx, "AP_" + tag + "_TIMER:armed=" + (RenSignItemClass.isEquipped(p) ? 1 : 0)
+        + ":rewound=" + ticks + ":" + renState(p));
+    return 1;
+}
+
+function doRenRead(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    // cards = 主背包内「卡牌」总数(战斗牌 + 效果牌):被动追加发牌后用它断言「卡牌确实到手」
+    send(ctx, "AP_" + tag + "_STATE:" + renState(p) + ":cards=" + countAllCards(p));
+    return 1;
+}
+
+/** 重复授予(补满、不叠加):总量必须仍为「基线 + 10」且反击层 ≤ 1 */
+function doRenGrant(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var before = renState(p);
+    try {
+        RenShieldManagerClass.grantShield(p);
+    } catch (e) {
+        send(ctx, "AP_" + tag + "_ERR:" + exText(e));
+        return 1;
+    }
+    send(ctx, "AP_" + tag + "_GRANT:before[" + before + "]:after[" + renState(p) + "]");
+    return 1;
+}
+
+/** 带盾被敌对生物攻击一次:反击层 1→0,且攻击者掉血(反击伤害 > 0) */
+function doRenHit(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    try { p.setGameMode(GameTypeClass.SURVIVAL); } catch (e) { /* 忽略 */ }
+    try { p.setHealth(p.getMaxHealth()); } catch (e) { /* 忽略 */ }
+    var dummy = spawnDummy(p, "minecraft:zombie", 4.0);
+    if (dummy == null) { send(ctx, "AP_" + tag + "_ERR:no_dummy"); return 1; }
+    try {
+        var hp0 = rghp(dummy);
+        var before = renState(p);
+        var src = p.level.damageSources().mobAttack(dummy);
+        var api = renApplyDamage(p, src, 6.0);
+        var hp1 = rghp(dummy);
+        var dealt = (hp0 < 0 || hp1 < 0) ? -1 : round2(hp0 - hp1);
+        send(ctx, "AP_" + tag + "_HIT:api=" + api + ":atk_hp=" + hp0 + "->" + hp1
+            + ":counter_dmg=" + dealt + ":before[" + before + "]:after[" + renState(p) + "]");
+    } catch (e) {
+        send(ctx, "AP_" + tag + "_ERR:" + exText(e));
+    }
+    return 1;
+}
+
+/** 一击打空黄心(16 点 generic 伤害;抗性提升后仍 ≥ 13 ⇒ 10 点吸收被吃光、玩家不会死) */
+function doRenVoid(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    try { p.setGameMode(GameTypeClass.SURVIVAL); } catch (e) { /* 忽略 */ }
+    try { p.setHealth(p.getMaxHealth()); } catch (e) { /* 忽略 */ }
+    var before = renState(p);
+    var api = "none";
+    try {
+        api = renApplyDamage(p, p.level.damageSources().generic(), 16.0);
+    } catch (e) {
+        send(ctx, "AP_" + tag + "_ERR:" + exText(e));
+        return 1;
+    }
+    send(ctx, "AP_" + tag + "_VOIDHIT:api=" + api + ":hp=" + round2(p.getHealth())
+        + ":before[" + before + "]:after[" + renState(p) + "]");
+    return 1;
+}
+
+/**
+ * 主动「熊孩子特权」全链路:按主动(只开会话) → 自选目标确认 ⇒ 目标(自己)获得 1 张卡牌 + 鼠鼠护盾,
+ * 冷却写在确认之后。allowSelf=true 由服务端 DEBUG 行
+ * `[TargetSelection] start ... action=ren_privilege ... allowSelf=true` 断言(与 t48 同一取证口径;
+ * 该值由 `TargetSelectionManager#start` 按「动作是否实现 SelfTargetable」动态求得 —— 26.1.2 源码
+ * `target/TargetSelectionManager.java:192`,产品 `RenSignItem.RenPrivilegeAction#allowSelf()` 返回 true)。
+ */
+function doRenActive(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    renReset(p);
+    // 清空主物品栏:发牌读数用「卡牌数量差值」,必须先把已有卡牌清零(背包满时 giveCardTo 会掉落到地上)
+    runCmd(ctx, "clear @s");
+    var err = equipSign(p, REN_SIGN_ID);
+    if (err != null) { send(ctx, "AP_" + tag + "_ERR:" + err); return 1; }
+    var cards0 = countAllCards(p);
+    var cdBefore = signCooldownRemaining(p);
+    BaseSignItemClass.performSkillForCurio(p);
+    var session = TargetSelectionManagerClass.isSelecting(p) ? 1 : 0;
+    var token = TargetSelectionManagerClass.sessionTokenForTests(p);
+    var cdGated = signCooldownRemaining(p);
+    var confirmed = 0, confirmErr = "";
+    try {
+        TargetSelectionManagerClass.confirm(p, token, p.getId());
+        confirmed = 1;
+    } catch (e) {
+        confirmErr = exText(e);
+    }
+    var cards1 = countAllCards(p);
+    var cdAfter = signCooldownRemaining(p);
+    send(ctx, "AP_" + tag + "_ACTIVE:session=" + session + ":token_seen=" + (token > 0 ? 1 : 0)
+        + ":cd_before=" + (cdBefore > 0 ? 1 : 0) + ":cd_gated=" + (cdGated > 0 ? 1 : 0)
+        + ":confirmed=" + confirmed + ":cards_delta=" + (cards1 - cards0)
+        + ":cd_after=" + (cdAfter > 0 ? 1 : 0) + ":" + renState(p)
+        + (confirmErr ? ":err=" + confirmErr : ""));
+    return 1;
+}
+
 ServerEvents.commandRegistry(event => {
     var Commands = event.commands;
     event.register(
@@ -4937,5 +6299,172 @@ ServerEvents.commandRegistry(event => {
                 .then(Commands.argument("tag", StringArg.word())
                     .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
                         return doCraftCheck(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            // ════════════════════════════════════════════════════════════════
+            //  26.1.2 测试资产移植(2026-09-19)新增子命令
+            //  命令名 / 参数名 / 参数顺序与 1.21.1 版**逐字一致**(§13.2 diff 前提;
+            //  1.21.1 侧注册处见该文件 commandRegistry 内 card* / lulu* / lp* / quiver)。
+            //  ⚠️ 执行体一律 `return 1;`:26.1.2 的 Brigadier `executes` 处理器必须返回 int
+            //     (performPrefixedCommand 返回 void;返回字符串会抛 Cannot convert … to int,
+            //      且该异常逃出 guard ⇒ 该子命令后续读数整段缺失)。
+            // ════════════════════════════════════════════════════════════════
+            // ── ① 效果牌目标选择器(CARD-SELECTOR-*)──
+            .then(Commands.literal("cardprep")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("item", StringArg.string())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doCardPrep(ctx, StringArg.getString(ctx, "tag"),
+                                StringArg.getString(ctx, "item"));
+                        })))))
+            .then(Commands.literal("cardread")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doCardRead(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("cardself")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doCardSelf(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            // ── ①b 选择器类立牌前置门控三态(SELECTOR-GATE-*)──
+            .then(Commands.literal("sggate")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doSignGate(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            // ── ② 史莱姆立牌主动(LULU-SIGN-*)──
+            .then(Commands.literal("luluprep")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doLuluPrep(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("luluactive")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doLuluActive(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("luluanchor")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doLuluAnchor(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            // ── ③ 活体书页(LIVING-PAGE-* / QUIVER-LIVING-PAGE-*)──
+            .then(Commands.literal("lpprep")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("type", StringArg.string())
+                        .then(Commands.argument("dist", StringArg.word())
+                            .then(Commands.argument("layers", StringArg.word())
+                                .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                                    return doLpPrep(ctx, StringArg.getString(ctx, "tag"),
+                                        StringArg.getString(ctx, "type"), StringArg.getString(ctx, "dist"),
+                                        StringArg.getString(ctx, "layers"));
+                                })))))))
+            .then(Commands.literal("lpnonhostile")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doLpNonHostile(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("lpwall")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("dist", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doLpWall(ctx, StringArg.getString(ctx, "tag"),
+                                StringArg.getString(ctx, "dist"));
+                        })))))
+            .then(Commands.literal("lpshoot")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doLpShoot(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("lpread")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doLpRead(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("lpreset")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doLpReset(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("lpcredit")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("value", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doLpCredit(ctx, StringArg.getString(ctx, "tag"),
+                                StringArg.getString(ctx, "value"));
+                        })))))
+            .then(Commands.literal("lprin")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("value", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doLpRin(ctx, StringArg.getString(ctx, "tag"),
+                                StringArg.getString(ctx, "value"));
+                        })))))
+            .then(Commands.literal("lpchain")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("hits", StringArg.word())
+                        .then(Commands.argument("dist", StringArg.word())
+                            .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                                return doLpChain(ctx, StringArg.getString(ctx, "tag"),
+                                    StringArg.getString(ctx, "hits"), StringArg.getString(ctx, "dist"));
+                            }))))))
+            .then(Commands.literal("lpclean")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doLpClean(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            // ── ④ 魔法箭袋(QUIVER-LIVING-PAGE-*)──
+            .then(Commands.literal("quiver")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doQuiverRead(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            // ── ⑤ 游戏大师立牌(ren)「鼠鼠护盾」(REN-SHIELD-* / REN-SHIELD-BOUNDARY-* /
+            //      REN-SHIELD-VISUAL-*):prep / unequip / timer [ticks] / grant / hit / void /
+            //      active / read。命令名、参数名与顺序与 1.21.1 探针 :5516-:5560 **逐字一致**。
+            .then(Commands.literal("renprep")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doRenPrep(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("renunequip")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doRenUnequip(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("rentimer")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doRenTimer(ctx, StringArg.getString(ctx, "tag"), "");
+                    }))
+                    .then(Commands.argument("ticks", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doRenTimer(ctx, StringArg.getString(ctx, "tag"),
+                                StringArg.getString(ctx, "ticks"));
+                        })))))
+            .then(Commands.literal("rengrant")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doRenGrant(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("renhit")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doRenHit(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("renvoid")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doRenVoid(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("renactive")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doRenActive(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("renread")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doRenRead(ctx, StringArg.getString(ctx, "tag"));
                     }))))    );
 });

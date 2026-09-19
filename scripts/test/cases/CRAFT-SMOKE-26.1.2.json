@@ -1,6 +1,6 @@
 {
   "case_id": "CRAFT-SMOKE-26.1.2",
-  "title": "26.1.2 合成冒烟：配方全量装载(121)+ 手写配方真合成 + 长矛纳入骰神赐福判定",
+  "title": "26.1.2 合成冒烟：配方全量装载(122 = 生成 109 + 手写 13)+ 手写配方真合成 + 长矛纳入骰神赐福判定",
   "version": "26.1.2",
   "target": {
     "type": "existing-feature",
@@ -9,7 +9,7 @@
   "steps": [
     {
       "op": "note",
-      "text": "背景(2026-09-17)：26.1 起 ingredient 的 JSON 形态由对象 `{\"item\":\"X\"}` / `{\"tag\":\"T\"}` 改为**字符串** `\"X\"` / `\"#T\"`(依据 NeoForge 26.1 文档 Resources/Server/Recipes/Ingredients：字符串=vanilla ingredient，带 `neoforge:ingredient_type` 的对象=自定义 ingredient)。本仓 13 份手写配方(12 张骰子升级 + 手册)未随之改写，导致 `No key neoforge:ingredient_type in MapLike[...]` 整份解析失败——**配方静默消失**(不崩、不报用例错)，本次已全部改写。本条目的判据：① 装载数必须等于磁盘文件数(任何一份解析失败都会让它变小)；② 不只判「配方在不在」，而是按配方自身的 placementInfo 造 CraftingInput 跑 matches()+assemble()(真合成)；③ 26.1.2 新增的 7 种「长矛」必须与剑/斧/重锤/三叉戟同为近战武器(骰神赐福第一道闸门 DiceCombatEvents#isMeleeWeaponAttack)。"
+      "text": "背景(2026-09-17)：26.1 起 ingredient 的 JSON 形态由对象 `{\"item\":\"X\"}` / `{\"tag\":\"T\"}` 改为**字符串** `\"X\"` / `\"#T\"`(依据 NeoForge 26.1 文档 Resources/Server/Recipes/Ingredients：字符串=vanilla ingredient，带 `neoforge:ingredient_type` 的对象=自定义 ingredient)。本仓 13 份手写配方(12 张骰子升级 + 手册)未随之改写，导致 `No key neoforge:ingredient_type in MapLike[...]` 整份解析失败——**配方静默消失**(不崩、不报用例错)，本次已全部改写。本条目的判据：① 装载数必须等于磁盘文件数(任何一份解析失败都会让它变小)；② 不只判「配方在不在」，而是按配方自身的 placementInfo 造 CraftingInput 跑 matches()+assemble()(真合成)；③ 26.1.2 新增的 7 种「长矛」必须与剑/斧/重锤/三叉戟同为近战武器(骰神赐福第一道闸门 DiceCombatEvents#isMeleeWeaponAttack)。 ⚠️ **2026-09-19 装载数算式（三线逐文件核对，禁止再当魔法数字）**：生成侧 = **109** 份，且三线**逐名完全相同**（`neoforge-1.21.1/src/generated/resources/data/astral_dice/recipe`、`forge-1.20.1/src/generated/resources/data/astral_dice/recipes`、`neoforge-26.1.2/src/generated/resources/data/astral_dice/recipe` 三者 Compare-Object 零差异，含本会话新移植的游戏大师立牌 `ren_sign.json`）；手写侧 26.1.2 = **13** 份（`src/main/resources/data/astral_dice/recipe/`：12 张骰子升级 + `astral_guide`），1.21.1 / 1.20.1 = **14** 份（多一份 `suspicious_stew.json` —— 26.1 已把「特殊合成」数据化，该配方在本线删除）。⇒ 26.1.2 应有 **109 + 13 = 122**（实测 `AP_RC1_RC_MOD:122`），1.21.1 / 1.20.1 应有 **109 + 14 = 123**。断言同时收紧为词边界 `\\b`（避免 `1220` 之类误命中）：它与 `AP_RC1_RC_MISSING:none` 合起来仍然同时卡住「少装载」与「多装载」，属**期望值修正 + 收紧**，不是放宽。"
     },
     {
       "op": "inject_command",
@@ -40,7 +40,7 @@
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_RC1_RC_MOD:121"
+      "pattern": "AP_RC1_RC_MOD:122\\b"
     },
     {
       "type": "log",

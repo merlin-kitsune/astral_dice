@@ -174,8 +174,6 @@ public class PlayerLifecycleHandler {
             }
         });
         player.removeEffect(ModEffects.DICE_BLESSING);
-        player.removeEffect(ModEffects.HAIQING_READY);
-        player.removeEffect(ModEffects.BONNIE_READY);
         player.removeEffect(ModEffects.INVESTIGATION_BONUS);
         player.removeEffect(ModEffects.FATE_GUIDANCE);
         player.removeEffect(ModEffects.FEN_FRENZY);

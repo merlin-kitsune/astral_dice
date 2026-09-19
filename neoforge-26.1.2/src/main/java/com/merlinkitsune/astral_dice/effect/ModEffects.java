@@ -76,14 +76,6 @@ public class ModEffects {
     public static final DeferredHolder<MobEffect, MobEffect> INVESTIGATION_BONUS =
             EFFECTS.register("investigation_bonus", InvestigationBonusEffect::new);
 
-    // 占星师立牌主动待命:主动已激活,攻击目标后施加"虚弱印记"
-    public static final DeferredHolder<MobEffect, MobEffect> HAIQING_READY =
-            EFFECTS.register("haiqing_ready", () -> new ReadyEffect(0x4B0082));
-
-    // 秘密侦探立牌主动待命:主动已激活,攻击目标后施加"隐匿调查"
-    public static final DeferredHolder<MobEffect, MobEffect> BONNIE_READY =
-            EFFECTS.register("bonnie_ready", () -> new ReadyEffect(0x8B4513));
-
     // 治愈:显示当前治愈点数(等级=层数,时长=距下次结算);由史莱姆立牌等维护
     public static final DeferredHolder<MobEffect, MobEffect> HEALING =
             EFFECTS.register("healing", HealingEffect::new);
@@ -151,13 +143,19 @@ public class ModEffects {
     public static final DeferredHolder<MobEffect, MobEffect> MOSES_BROKEN =
             EFFECTS.register("moses_broken", MosesBrokenEffect::new);
 
-    // 枪匠立牌主动待命:主动已激活,攻击敌对目标后施加"破绽"
-    public static final DeferredHolder<MobEffect, MobEffect> MOSES_READY =
-            EFFECTS.register("moses_ready", () -> new ReadyEffect(0x8B5A2B));
-
     // 嘲讽(肉弹战车立牌 pandaman 主动):目标只能攻击对其施加嘲讽的玩家
     public static final DeferredHolder<MobEffect, MobEffect> PANDAMAN_TAUNT =
             EFFECTS.register("pandaman_taunt", PandamanTauntEffect::new);
+
+    // 鼠鼠护盾(游戏大师立牌 ren):5 黄心(10 点吸收)+ 抗性提升;黄心被打空即清空。
+    // 本效果同时是「是否持有护盾」的唯一真值(客户端球形渲染以原生效果同步为条件源),
+    // 并自带 MAX_ABSORPTION 修饰器(该版本 setAbsorptionAmount 会被属性钳制)。
+    public static final DeferredHolder<MobEffect, MobEffect> REN_SHIELD =
+            EFFECTS.register("ren_shield", RenShieldEffect::new);
+
+    /** 「反击」:鼠鼠护盾那 1 层一次性反击的可见载体(层数镜像到 HUD 图标;图标 = images/反击.png) */
+    public static final DeferredHolder<MobEffect, MobEffect> REN_COUNTER =
+            EFFECTS.register("ren_counter", RenCounterEffect::new);
 
     /**
      * 本模组已注册的全部效果的**只读**视图(调试命令 {@code /astralparty cleareffect} 用)。

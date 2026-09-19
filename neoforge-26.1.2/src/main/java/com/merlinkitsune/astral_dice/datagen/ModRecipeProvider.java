@@ -1240,6 +1240,19 @@ public class ModRecipeProvider extends RecipeProvider {
                 .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
                 .save(output);
 
+        // 游戏大师立牌(ren,稀有):PSP/SES/PDP(P=纸,S=星币,E=空白立牌,D=基础骰子);
+        // 空白立牌居中、骰子中下且仅 1 个、对称填充 → 基础骰子档 = 稀有(RARE)
+        ShapedRecipeBuilder.shaped(items, RecipeCategory.MISC, ModItems.REN_SIGN.get())
+                .pattern("PSP")
+                .pattern("SES")
+                .pattern("PDP")
+                .define('P', Items.PAPER)
+                .define('S', ModItems.STAR_COIN.get())
+                .define('E', ModItems.BLANK_SIGN.get())
+                .define('D', ModItems.DICE.get())
+                .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
+                .save(output);
+
         // === 合成材料(1.2.0) ===
         // 再生试剂:红石粉 + 粘液球 + 金西瓜片 + 蜂蜜瓶(无序)
         ShapelessRecipeBuilder.shapeless(items, RecipeCategory.MISC, ModItems.REGENERATION_REAGENT.get())

@@ -1,8 +1,7 @@
 package com.merlinkitsune.astral_dice.network;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
-import io.netty.buffer.ByteBuf;
-import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.Identifier;
@@ -13,28 +12,44 @@ import net.minecraft.resources.Identifier;
  * （准星过滤、射线距离、HUD 提示），token 用于确认/取消回传校验；
  * {@code allowSelf} = 本次会话是否允许对自身使用（消费方接口
  * {@code com.merlinkitsune.astral_dice.target.SelfTargetable#allowSelf()} 的取值，
- * 当前无任何动作实现该接口 ⇒ 恒 false），客户端据此选择 actionbar 口径与右键行为。
+ * 当前 {@code ren_privilege}、三张可自用效果牌动作（express_delivery / luxury_feast / berserk）
+ * 与 {@code lulu_healing_slime} 为 true，其余动作 false），客户端据此选择 actionbar 口径与右键行为；
+ * {@code holdToSelect} = 本会话由**主手手持物品**驱动且**没有倒计时**（消费方接口
+ * {@code com.merlinkitsune.astral_dice.target.HoldToSelect} 的取值，当前 = 四张效果牌动作）——
+ * 为真时 {@code durationTicks} 恒为 0，客户端不显示「（剩余 N 秒）」、提示口径改为「移出手持退出选择」，
+ * 并在物品离开主手时自行退出选择模式。
  *
  * <p><b>26.1.2 平台改写点</b>：1.21.1 的 {@code net.minecraft.resources.ResourceLocation}
  * 在 26.1.2 改名为 {@code net.minecraft.resources.Identifier}（{@code fromNamespaceAndPath} 同名同签名）。
- * {@code StreamCodec.composite}（6 元重载）、{@code ByteBufCodecs.VAR_INT/DOUBLE/STRING_UTF8/BOOL}
- * 与 {@code ByteBuf} 作 codec 泛型参数在 26.1.2 逐字可用（同版本既有 {@code ActionBarPayload} 即用
- * {@code StreamCodec<ByteBuf, …>}）。
+ * 7 个字段超过 {@code StreamCodec.composite} 的重载上限（6）⇒ 与 1.21.1 基准一样手写
+ * {@code StreamCodec.of(encoder, decoder)}；缓冲区类型必须是 {@link FriendlyByteBuf}
+ * （{@code writeVarInt/readVarInt/writeDouble/readDouble/writeUtf/readUtf/writeBoolean/readBoolean}
+ * 都是它的方法，netty {@code ByteBuf} 没有）。26.1.2 的 {@link FriendlyByteBuf} 仍在、且是
+ * {@code RegistryFriendlyByteBuf} 的父类，故 {@code playToClient} 的签名照旧成立
+ * （同版本既有 {@code OpenCardInventoryPayload} / {@code SignActivatePayload} 就是这种
+ * 手写 {@code StreamCodec.of} + {@code FriendlyByteBuf} 形态）。
  */
 public record TargetSelectStartPayload(int token, int targetType, double radius, int durationTicks, String actionId,
-                                      boolean allowSelf)
+                                      boolean allowSelf, boolean holdToSelect)
         implements CustomPacketPayload {
     public static final CustomPacketPayload.Type<TargetSelectStartPayload> TYPE =
             new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath(AstralDiceMod.MODID, "target_select_start"));
 
-    public static final StreamCodec<ByteBuf, TargetSelectStartPayload> STREAM_CODEC = StreamCodec.composite(
-            ByteBufCodecs.VAR_INT, TargetSelectStartPayload::token,
-            ByteBufCodecs.VAR_INT, TargetSelectStartPayload::targetType,
-            ByteBufCodecs.DOUBLE, TargetSelectStartPayload::radius,
-            ByteBufCodecs.VAR_INT, TargetSelectStartPayload::durationTicks,
-            ByteBufCodecs.STRING_UTF8, TargetSelectStartPayload::actionId,
-            ByteBufCodecs.BOOL, TargetSelectStartPayload::allowSelf,
-            TargetSelectStartPayload::new
+    // ⚠️ 7 个字段超过 StreamCodec.composite 的重载上限(6)⇒ 手写 of(encoder, decoder);
+    //    缓冲区类型必须是 FriendlyByteBuf(writeVarInt/readVarInt 是它的方法,netty ByteBuf 没有),
+    //    它也是 RegistryFriendlyByteBuf 的父类 ⇒ playToClient 的签名照旧成立。
+    public static final StreamCodec<FriendlyByteBuf, TargetSelectStartPayload> STREAM_CODEC = StreamCodec.of(
+            (buf, payload) -> {
+                buf.writeVarInt(payload.token());
+                buf.writeVarInt(payload.targetType());
+                buf.writeDouble(payload.radius());
+                buf.writeVarInt(payload.durationTicks());
+                buf.writeUtf(payload.actionId());
+                buf.writeBoolean(payload.allowSelf());
+                buf.writeBoolean(payload.holdToSelect());
+            },
+            buf -> new TargetSelectStartPayload(buf.readVarInt(), buf.readVarInt(), buf.readDouble(),
+                    buf.readVarInt(), buf.readUtf(), buf.readBoolean(), buf.readBoolean())
     );
 
     @Override

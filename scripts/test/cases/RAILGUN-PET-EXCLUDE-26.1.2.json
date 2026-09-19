@@ -1,0 +1,134 @@
+{
+  "case_id": "RAILGUN-PET-EXCLUDE-26.1.2",
+  "title": "【26.1.2 移植版:与 1.21.1 同用例同读数,逐行同构(2026-09-19 三线一致性测试)】电磁炮雷击排除施放者自己拥有的宠物：已驯服狼（owner=攻击者）即使被激怒也不吃自己的雷击（RailgunBolts.isValidLightningTarget 的 OwnableEntity owner==bolt.cause 分支）",
+  "version": "26.1.2",
+  "target": {
+    "type": "bugfix",
+    "ref": "railgun-pet-exclude"
+  },
+  "steps": [
+    {
+      "op": "note",
+      "text": "被测口径：Electromagnetic 雷击的目标筛选 = HostileTargets.isHostile(target) **且** 目标若是 OwnableEntity 则其 ownerUUID ≠ 闪电 cause(施放者)。被激怒的已驯服狼同时满足「是 NeutralMob 且 isAngry()=true」→ 会被包进雷击白名单；必须由第二条（owner 排除）挡住。注意「不被命中」的判据是 AP_<tag>_AFTER 里 friendly 掉血 = 0（雷击实体是否在宠物位置落下不参与判定）。"
+    },
+    {
+      "op": "note",
+      "text": "复用 railgunfriendly 探针（2026-09-19 按 26.1.2 的实际 API 形态移植）：**26.1.2 已删除 `TamableAnimal#setOwnerUUID(UUID)`**（owner 改存 `Optional<EntityReference<LivingEntity>>`，`TamableAnimal.java:42-44`），写入口只剩 `#setOwner(LivingEntity)`（:163）/`#setOwnerReference(EntityReference)`（:167）/`#tame(Player)`（:171）⇒ 探针改走 `friendly.setTame(true,true)` + `friendly.setOwner(攻击者)`（失败再退 `tame(player)`），并把**实际生效的驯服路径**报在 `AP_<tag>_TAME:src=`（`setOwner(player)` / `tame(player)` / `none`），UUID 取值器诊断降级为 `uuid_src=`。旧写法实测抛 `TypeError: Cannot find function setOwnerUUID`（2026-09-19 26.1.2 日志 `AP_PE_TAME:tame=1:owner=ERR:TypeError: …setOwnerUUID…:src=2`）。owner 是否真是本玩家由**只读回读** `AP_<tag>_OWNER:…:owneq=1` 给出（见文件末尾断言）；未取到则 `owneq=nouuid`，该情形下本用例的排除判据不成立，必须记不可判定。狼与北极熊的怒气都置 1200 tick（26.1.2 走 `setTimeToRemainAngry` / `setPersistentAngerEndTime`，见下方 NOTE），狼同样落在落点 ±3 格箱内。"
+    },
+    {
+      "op": "note",
+      "text": "取证环境防污染（2026-09-15 实测必需）：① `gamerule fire_spread_radius_around_player 0`（⚠️ 26.1.2 已**删除** `doFireTick`：原版 datafix `GameRuleRegistryFix` 把 `doFireTick=false` 折算成该整数规则的值 `0`，语义等价；旧名会被 Brigadier 拒绝、读数成 `ERR:`）+ 把脚下 y-1 那一层草方块替换为石头（`fill`）—— 否则落雷在玩家周围点燃地面，**玩家自己的掉血读数会混入火焰伤害**（实测 1.20.1 self=4.83~18.83 全部来自火焰、与雷击无关；石头地面 + 关火焰蔓延后 self=0）；**2026-09-15 B6 ②** 起这两条命令**折叠进探针**（`/astralprobe railgunfriendly` 内用 `runCmd` 直接跑：`performPrefixedCommand` 同进程、无键盘注入，省两条 ≥2.65 s/条的注入），证据行 `AP_<tag>_PREP:rule=…:fill=…`。② 读/清命令只注入**一次**（**B6 ①** 删掉了冗余的第二次重试）：原写法是「注入两次兜冷启动丢注入」，而读/清相位远在冷启动 + 多次成功注入之后，第一次必然送达；复跑稳定性由本轮全量回归背书（断言数不变）。③ 只读相位同时调 **`/astralparty dump`**（只读）：原始值行 `APDUMP|LOCKRAW|` / `APDUMP|SIGN|` 落 latest.log，断言直接锚定它们；调用成功由 tag 唯一的 `AP_<tag>_DUMP:rc=1` 证明，失败另落 `AP_<tag>_DUMP_ERR`（用例对其做 absent 断言 ⇒ **绝不静默降级**）。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe railgunfriendly PE"
+    },
+    {
+      "op": "wait",
+      "ms": 2500
+    },
+    {
+      "op": "note",
+      "text": "⚠️ 2026-09-15 实测标定（**必须保留这段说明，否则读数会被误读**）：旧几何把狼摆在距落点 **1.5 格**，那正落在**玩家近战横扫（sweep）判定盒**（目标 AABB 外扩 1.0 格）里 → 狼掉的血其实是**横扫伤害，不是雷击**（实测：落雷之前狼已掉 11 点、落雷之后不再掉；狼的 `Fire` NBT 全程为 -1 ⇒ 从未被雷击点燃 ⇒ 从未走 thunderHit）。探针已把中立/友方移到 **2.8 格**（横扫盒之外、雷击判定箱 ±3 格之内），本轮读数才可归因。Owner 用原版 NBT 回读取证（与玩家 UUID 逐字相同）。探针自报的 `nAngry/fAngry=false` 是 Rhino 侧取值失真，不作判据。 **2026-09-15 B6 ②**：本条的 `/data get entity @e[type=minecraft:wolf,limit=1] Owner` 已折叠进探针 （`railgunfriendlyread` 内 `runCmd`，**仅 tag=PE 时执行**——否则按名字序先跑的 railgun-aoe / railgun-override 会先把下面那条「狼拥有以下实体数据」断言喂饱，等于弱化它）。 ⚠️ **2026-09-19 26.1.2 改判据落点**：那条「狼拥有以下实体数据：[I; …」是 `/data get` 的**本地化聊天回显**（客户端按 `options.txt:lang` 渲染 `commands.data.entity.query`），与 AGENTS「测试判据取英文原版行、禁用本地化文案」冲突，且它只证明「Owner 键存在且是整型数组」，**没有**证明 owner 就是攻击者本人。现换成探针的 ASCII 只读读数 `AP_PE_OWNER:…:owneq=1`（`ownerMatchesPlayer()`：先比 `TamableAnimal#getOwnerReference()` 的 UUID 与玩家 UUID，退路是比 `OwnableEntity#getOwner()` 与玩家对象），即「owner 的 UUID 与玩家 UUID **逐字相同**」⇒ 判定力**更强**（从『形状』升级为『取值恒等』），且与语言无关。原版 `/data get entity @e[type=minecraft:wolf,limit=1] Owner` 仍然跑、回显仍在同一行里作为证据保留。同一行上的 `AP_PE_OWNER:rc=` 断言保留不变。 ⚠️ **同批 26.1.2 怒气 API 差异（本用例的排除分支只有在「狼确实被激怒」时才非空转）**：`NeutralMob#setRemainingPersistentAngerTime(int)` 在 26.1.2 **已删除**，只剩 `get/setPersistentAngerEndTime(long)`（`NeutralMob.java:18-24`；实现见 `Wolf.java:549-556` / `PolarBear.java:132-139`）与默认方法 `setTimeToRemainAngry(long)`（:20-22），且**旧 NBT 键 `AngerTime` 不再是持久键**（`addPersistentAngerSaveData` 写的是 `anger_end_time`，:14 + :35；`AngerTime` 只在 `readPersistentAngerSaveData` 的旧存档迁移分支里读一次，:44-46 —— 而 `/data merge` 的合并基 `EntityDataAccessor#getData` 就是实体实时序列化（`EntityDataAccessor.java:63-64`），**总是**带着 `anger_end_time`（未激怒时 -1），故该 else 分支永不进入，走命令回退只会把怒气**重置为 -1**）。探针因此改走 Java API（与 1.21.1 基准的 `mergeN=api:mergeF=api` 同形态），命令仅作最后兜底且键改为 `anger_end_time`。实测旧写法：`ANGER_POST:mergeN=cmd:rc=ok:…:nAngry=false`，四例 railgun 用例 `bolt_delta` 全为 **1**（只剩蜘蛛一个 Enemy 被选为目标），狼既不挨雷击也谈不上「被排除」——那是**空转通过**，正是本用例要防的。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe railgunfriendlyread PE"
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe railgunfriendlyend PE"
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_PE_TAME:tame=1:owner=1:src="
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_PE_OWNER:.*:owneq=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_PE_AFTER:.*bolt_delta=[1-9]"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_PE_AFTER:.*:neutral=[\\d.]+:friendly=0:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_PE_VERDICT:.*:friendly=0:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_PE_RESTORE:creative"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_PE_ERR|AP_PE_EX:|AP_PE_DUMP_ERR"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_PE_VERDICT:.*:friendly=[1-9]|AP_PE_DUMP_ERR"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "crash"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_PE_PREP:rule=rc=(undefined|[0-9]+|ok):fill=rc=(undefined|[0-9]+|ok)"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_PE_DUMP:rc="
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "APDUMP\\|LOCKRAW\\|"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "APDUMP\\|SIGN\\|sign_active_cooldown_end="
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_PE_OWNER:rc="
+    }
+  ],
+  "evidence": [],
+  "on_fail": "keep_game_running"
+}

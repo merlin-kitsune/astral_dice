@@ -21,8 +21,9 @@ import com.merlinkitsune.astral_dice.item.ModItems;
  * 规则(冷却与效果判定分离):
  * - 基础出牌数固定为 1(游戏设计决定,不可配置)。
  * - 固定出牌数加成(佩戴即提供,不卸载一直有效):大背包 +1、忍术飞镖 +1。
- * - 临时出牌数加成(仅当前出牌周期有效,周期归零时清除):活体书页每次使用累计 +1(可叠加,
- *   非"效果存在即 +1"的开关式)、命运的指引效果存在即 +1(覆盖式,不累计)、可口糖果满血触发 +1
+ * - 临时出牌数加成(仅当前出牌周期有效,周期归零时清除):活体书页**命中前已有 ≥3 层标记**的目标时
+ *   累计 +1(可叠加,非"效果存在即 +1"的开关式;补记入口 {@link #grantLivingPageCycleBonus})、
+ *   命运的指引效果存在即 +1(覆盖式,不累计)、可口糖果满血触发 +1
  *   (每周期一次)、探天卫星轨道炮触发 +1(每 1:00 一次)、
  *   立牌主动技能一次性 +1({@link #grantBonusPlay},同样只作用于当前出牌轮)。
  * - 出牌数上限:min(1 + 固定 + 临时, {@link GameplayConstants#MAX_EFFECT_CARD_PLAYS})
@@ -178,7 +179,7 @@ public final class EffectCardPeriod {
         // 临时来源(仅当前出牌周期有效,周期归零时清除):
         // 活体书页已改为"每次使用累计 +1"的本周期计数(见 getMaxAllowed 的 LIVING_PAGE_CYCLE_BONUS),
         // 不再注册为"效果存在即 +1"的开关式临时来源(否则会与累计计数重复计算);
-        // 活体书页效果本身仍作为效果待定来源注册(registerEffectPendingSource),与出牌数无关。
+        // 2026-09-19 起该牌为纯即时伤害、不给玩家任何效果 ⇒ 也不再作为"效果待定"来源(见下方注释)。
         registerTemporarySource(p -> p.hasEffect(ModEffects.FATE_GUIDANCE));     // 命运的指引效果(存在即 +1,覆盖式,不累计)
         registerTemporarySource(p -> ModAttachments.isCandyChipPlayBonusActive(p)); // 可口糖果:满血使用效果牌触发(每轮一次)
         registerTemporarySource(p -> ModAttachments.isSatellitePlayBonusActive(p)); // 探天卫星:使用轨道炮后触发(每 1:00 一次)
@@ -186,7 +187,8 @@ public final class EffectCardPeriod {
         // 直接由 EffectCardPeriod 的出牌轮自有字段承载,见 getMaxAllowed 的 EFFECT_CARD_BONUS_PLAYS。
 
         // 效果待定来源(全部效果牌统一注册;新增效果牌在此追加或调用 registerEffectPendingSource)
-        registerEffectPendingSource(ModEffects.LIVING_PAGE);
+        // ⚠️ 活体书页**不在此列**(2026-09-19 用户裁决「移除所有原本效果器」):它已改为纯即时伤害、
+        //    不给玩家任何效果,出牌轮只由出牌数/冷却推进,不存在"等它的效果结束"这一步。
         registerEffectPendingSource(ModEffects.MONSTER_LASER);
         registerEffectPendingSource(ModEffects.MONSTER_BRICK);
         registerEffectPendingSource(ModEffects.ORBITAL_STRIKE);
@@ -206,7 +208,8 @@ public final class EffectCardPeriod {
         for (ExtraPlaySource source : TEMPORARY_SOURCES) {
             if (source.isActive(player)) extra += source.amount();
         }
-        // 活体书页:每次使用在本周期内累计 +1(仅当前周期,周期归零时清除;可叠加,非"效果存在即 +1"的开关式)
+        // 活体书页:命中(前)已有 ≥3 层标记的目标时在本周期内累计 +1(仅当前周期,周期归零时清除;
+        // 可叠加,非"效果存在即 +1"的开关式;补记入口 = grantLivingPageCycleBonus,且该入口自身封顶 9)
         extra += ModAttachments.getLivingPageCycleBonus(player);
         // 立牌主动技能一次性追加(仅当前出牌轮有效,周期结束由 clearRoundBonuses 清除)
         extra += getBonusPlays(player);
@@ -237,6 +240,33 @@ public final class EffectCardPeriod {
     public static boolean grantBonusPlay(Player player) {
         if (getBonusPlays(player) > 0) return false;
         ModAttachments.setEffectCardBonusPlays(player, 1);
+        return true;
+    }
+
+    /**
+     * 活体书页「连续出牌」补记:命中**前**已有 ≥3 层标记的目标时,本出牌周期出牌数 +1。
+     *
+     * <p><b>用户裁决(2026-09-25)</b>:仅当命中标记层数 ≥ 3 才应用出牌数 +1,且严格遵守
+     * 「单轮出牌数封顶 {@link GameplayConstants#MAX_EFFECT_CARD_PLAYS}」的全局规则。
+     * 判定用的层数由调用方({@code combat/LivingPageImpact#resolve})在**施加本次 1 层标记之前**读取。
+     *
+     * <p><b>跨轮保护</b>:本方法在**命中时**才被调用(飞行结束),与出牌不在同一 tick;
+     * 若该出牌轮已归零(忍者宽限强重置等),不得把这次补记漏记到新一轮里 ⇒ 以
+     * {@link #getPlayCount} > 0(本轮仍存活)为前提。正常路径下飞行期间活体书页效果仍在生效
+     * ({@link #registerEffectPendingSource}),出牌轮不可能归零。
+     *
+     * <p>与 {@link #grantBonusPlay} 的区别:后者是立牌主动技能的**一次性**授予(同一轮只成功一次),
+     * 本方法每次满足条件的命中都可累加,但累加值本身也封顶
+     * {@link GameplayConstants#MAX_EFFECT_CARD_PLAYS}(避免周期长期不结算时无界增长)。
+     *
+     * @return true = 本次补记成功(+1);false = 未补记(本轮已归零或已达封顶)
+     */
+    public static boolean grantLivingPageCycleBonus(Player player) {
+        if (player == null) return false;
+        if (getPlayCount(player) <= 0) return false;
+        int current = ModAttachments.getLivingPageCycleBonus(player);
+        if (current >= GameplayConstants.MAX_EFFECT_CARD_PLAYS) return false;
+        ModAttachments.setLivingPageCycleBonus(player, current + 1);
         return true;
     }
 

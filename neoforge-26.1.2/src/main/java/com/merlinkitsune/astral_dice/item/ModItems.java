@@ -43,6 +43,7 @@ import com.merlinkitsune.astral_dice.item.card.LuxuryFeastCardItem;
 import com.merlinkitsune.astral_dice.item.chip.AtmChipItem;
 import com.merlinkitsune.astral_dice.item.chip.BankCardChipItem;
 import com.merlinkitsune.astral_dice.item.sign.RinSignItem;
+import com.merlinkitsune.astral_dice.item.sign.RenSignItem;
 import com.merlinkitsune.astral_dice.item.dice.DiceTierRegistry;
 import com.merlinkitsune.astral_dice.item.card.HamburgerCardItem;
 import com.merlinkitsune.astral_dice.item.chip.TargetChipItem;
@@ -875,6 +876,13 @@ public class ModItems {
             props -> new PandamanSignItem(props
                     .stacksTo(1)
                     .rarity(Rarity.RARE)));
+
+    // 游戏大师立牌(命名:ren,史诗):鼠鼠救我被动(5:00 无盾自动补「1 张随机卡牌 + 护盾」)
+    // + 熊孩子特权主动(选任意玩家或自身);盾 = 5 黄心 + 抗性提升 + 1 层反击;配方=基础骰子(纸×4 + 星币×3) → 史诗
+    public static final DeferredItem<Item> REN_SIGN = registerItem("ren_sign",
+            props -> new RenSignItem(props
+                    .stacksTo(1)
+                    .rarity(Rarity.EPIC)));
 
     /**
      * 注册物品。

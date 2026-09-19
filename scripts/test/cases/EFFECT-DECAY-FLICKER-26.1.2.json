@@ -1,0 +1,115 @@
+{
+  "case_id": "EFFECT-DECAY-FLICKER-26.1.2",
+  "title": "【26.1.2 移植版:与 1.21.1 同用例同读数,逐行同构(2026-09-19 三线一致性测试)】层数递减类效果（治愈/标记/弱点识破/赋能）客户端 HUD 不再闪烁：闪烁窗口状态可机器构造 + GuiMixin 应用行可断言（闪烁本身由截图人工核对，视觉半自动）",
+  "version": "26.1.2",
+  "target": {
+    "type": "bugfix",
+    "ref": "effect-decay-flicker"
+  },
+  "steps": [
+    {
+      "op": "note",
+      "text": "被测修复(2026-09-13):消除『层数递减类』效果在客户端 HUD 的『即将到期』闪烁。根因:原版 Gui#renderEffects 对『非 ambient 且 endsWithin(200)』的效果图标按 cos 做 alpha 脉冲,而治愈/标记/弱点识破/赋能**以层数递减为机制**,每周期末段必然落入该窗口;修复为客户端 mixin mixin/client/GuiMixin(@Redirect 注入 Gui#renderEffects 内的 endsWithin 调用),四类效果返回 false。**视觉半自动**:『图标是否还在闪』无法用机器判定,故本用例只做两件可机器判定的事 + 一张人工核对截图:①F1 decayflash 让治愈(3 层)/标记(2 层)/赋能(3 层)三个效果实例**同时**处于原版闪烁条件内(非 ambient + endsWithin(200),探针用与 Gui#renderEffects 同一表达式直接求值 → _WINDOW:1),此时若不修复就会看到三个图标一起闪;②debug.log 的 Mixing 应用行证明 client.GuiMixin 已注入 net.minecraft.client.gui.Gui(启动期行,按 §7 用 scope=whole;失败面另有增量区间的 mixin 断言兜底)。截图作人工核对证据(三个效果图标应恒定不闪),不写 vision 断言。注意:debug.log **不随每次运行清空**,故『Mixing 行存在』只说明本机曾成功应用过该 mixin,必须与 mixin 断言(增量区间无应用失败)合看。⚠️ 探针改动必须**冷启动**才生效(stop → launch):/kubejs reload server-scripts 不会重绑已注册命令的 lambda,只能确认脚本语法。"
+    },
+    {
+      "op": "note",
+      "text": "前置清理(2026-09-15 实测定案)：① `/effect clear @s` 只能清原版效果 —— 本模组效果(astral_dice:*)的移除会被 `ModEffectEvents#onModEffectRemovalPrevented`(EventPriority.HIGH)取消,探针里的直接 `p.removeEffect(...)` 同样被取消,只有 `ModEffectRemoval`(内部标志)/`EffectTimerGuard`(强制标志)/死亡三条通道放行;② 骰神赐福一旦在场,`HealingManager#updateEffect` 会把治愈图标时长写成**赐福剩余时长**(实测 `blessed_before=1` 时 heal `dur=119943`,>200) → `_WINDOW:0`,与本模组修复无关;③ 探针现于武装窗口前用 `ModEffectRemoval.remove(...)` 清掉赐福,并在 `AP_F1_SETUP` 回报 `blessed_before=`,本用例前置才可靠;`decayclear` 仍需先行(它清治愈点数/计时器/三类效果)。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe decayclear X0"
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe decayflash F1"
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe decayflash F1"
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "screenshot",
+      "tag": "decay_flash",
+      "mode": "window",
+      "crop": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe decayclear F2"
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "debug",
+      "pattern": "Mixing client\\.GuiMixin from astral_dice\\.mixins\\.json into net\\.minecraft\\.client\\.gui\\.Gui",
+      "scope": "whole"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_F1_SETUP:heal=ok:mark=ok:emp=ok"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_F1_STATE:heal=amp=2:dur=\\d+:amb=0:vis=0\\|mark=amp=1:dur=\\d+:amb=0:vis=1\\|emp=amp=2:dur=\\d+:amb=0:vis=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_F1_WINDOW:1:200"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_F1_DONE"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_F2_STATE:heal=absent\\|mark=absent\\|emp=absent"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_F2_DONE"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_F1_ERR|AP_F1_EX|AP_F2_ERR|AP_F2_EX|AP_TICK_EX"
+    },
+    {
+      "type": "mixin"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "crash"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_X0_CLEAR:rc="
+    }
+  ],
+  "on_fail": "keep_game_running"
+}

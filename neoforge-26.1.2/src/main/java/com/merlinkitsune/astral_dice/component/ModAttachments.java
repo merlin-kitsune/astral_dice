@@ -542,32 +542,41 @@ public class ModAttachments {
         player.setData(WARP_ENGINE_PORTAL_COOLDOWN_END.get(), value);
     }
 
-    // 立牌主动技能"等待目标释放"状态类型:1=占星师(虚弱印记) 2=秘密侦探(隐匿调查);0=无等待
+    // @Deprecated 已废弃:立牌主动技能"等待目标释放"机制已被目标选择器(TargetSelectionManager 会话)替代,
+    // 占星师/秘密侦探不再读写本附件。定义保留(已 serialize 持久化)以避免旧存档附件数据异常,禁止新代码使用。
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> SIGN_READY_TYPE =
             ATTACHMENTS.register("sign_ready_type", () -> AttachmentType.builder(() -> 0)
                     .serialize(Codec.INT.fieldOf("value"))
                     .sync(ByteBufCodecs.INT)
                     .build());
 
-    // 立牌主动技能等待到期时刻(0 表示无等待)
+    // @Deprecated 已废弃:见 SIGN_READY_TYPE
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> SIGN_READY_EXPIRE =
             ATTACHMENTS.register("sign_ready_expire", () -> AttachmentType.builder(() -> 0L)
                     .serialize(Codec.LONG.fieldOf("value"))
                     .sync(ByteBufCodecs.VAR_LONG)
                     .build());
 
+    /** @deprecated 已废弃,由目标选择器会话替代;禁止新代码使用 */
+    @Deprecated
     public static int getSignReadyType(net.minecraft.world.entity.player.Player player) {
         return player.getData(SIGN_READY_TYPE.get());
     }
 
+    /** @deprecated 已废弃,由目标选择器会话替代;禁止新代码使用 */
+    @Deprecated
     public static void setSignReadyType(net.minecraft.world.entity.player.Player player, int value) {
         player.setData(SIGN_READY_TYPE.get(), value);
     }
 
+    /** @deprecated 已废弃,由目标选择器会话替代;禁止新代码使用 */
+    @Deprecated
     public static long getSignReadyExpire(net.minecraft.world.entity.player.Player player) {
         return player.getData(SIGN_READY_EXPIRE.get());
     }
 
+    /** @deprecated 已废弃,由目标选择器会话替代;禁止新代码使用 */
+    @Deprecated
     public static void setSignReadyExpire(net.minecraft.world.entity.player.Player player, long value) {
         player.setData(SIGN_READY_EXPIRE.get(), value);
     }
@@ -996,6 +1005,42 @@ public class ModAttachments {
                     .sync(ByteBufCodecs.VAR_LONG)
                     .build());
 
+    /**
+     * 游戏大师立牌(ren):最后一次「持有鼠鼠护盾」的世界时刻 —— 被动「鼠鼠救我」的 5 分钟计时基准。
+     * 玩家级、**非同步**(仅服务端使用);跨重登继续累加(persisted 于 level.dat 的 Time)。
+     */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> REN_SHIELD_LAST_SEEN_TICK =
+            ATTACHMENTS.register("ren_shield_last_seen_tick", () -> AttachmentType.builder(() -> 0L)
+                    .serialize(Codec.LONG.fieldOf("value"))
+                    .build());
+
+    /**
+     * 游戏大师立牌(ren):授予护盾时玩家已有的吸收值(基线)。护盾只在此基础上 +20(10 黄心),
+     * 清空时也只回收这 20 ⇒ 不吞掉金苹果/不死图腾等外部来源的吸收。
+     */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Float>> REN_SHIELD_BASELINE_ABSORPTION =
+            ATTACHMENTS.register("ren_shield_baseline_absorption", () -> AttachmentType.builder(() -> 0.0F)
+                    .serialize(Codec.FLOAT.fieldOf("value"))
+                    .build());
+
+    /**
+     * 游戏大师立牌(ren):当前那份「抗性提升」是否由本护盾施加(放大器 0 且带此标记才在清空时移除,
+     * 玩家的药水或更高等级一律保留)。玩家级、非同步。
+     */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Boolean>> REN_SHIELD_OWN_RESISTANCE =
+            ATTACHMENTS.register("ren_shield_own_resistance", () -> AttachmentType.builder(() -> false)
+                    .serialize(Codec.BOOL.fieldOf("value"))
+                    .build());
+
+    /**
+     * 游戏大师立牌(ren):一次性反击层数(0/1)。获得鼠鼠护盾时 +1,被攻击时消耗 1 层并对攻击者
+     * 注入一次现有反击伤害;护盾清空时归零。
+     */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> REN_COUNTER_CHARGES =
+            ATTACHMENTS.register("ren_counter_charges", () -> AttachmentType.builder(() -> 0)
+                    .serialize(Codec.INT.fieldOf("value"))
+                    .build());
+
     public static long getEmpowerDecayAt(net.minecraft.world.entity.player.Player player) {
         return player.getData(EMPOWER_DECAY_AT.get());
     }
@@ -1026,5 +1071,37 @@ public class ModAttachments {
 
     public static void setRailgunCooldownEnd(net.minecraft.world.entity.player.Player player, long value) {
         player.setData(RAILGUN_COOLDOWN_END.get(), Math.max(0, value));
+    }
+
+    public static long getRenShieldLastSeenTick(net.minecraft.world.entity.player.Player player) {
+        return player.getData(REN_SHIELD_LAST_SEEN_TICK.get());
+    }
+
+    public static void setRenShieldLastSeenTick(net.minecraft.world.entity.player.Player player, long value) {
+        player.setData(REN_SHIELD_LAST_SEEN_TICK.get(), Math.max(0L, value));
+    }
+
+    public static float getRenShieldBaselineAbsorption(net.minecraft.world.entity.player.Player player) {
+        return player.getData(REN_SHIELD_BASELINE_ABSORPTION.get());
+    }
+
+    public static void setRenShieldBaselineAbsorption(net.minecraft.world.entity.player.Player player, float value) {
+        player.setData(REN_SHIELD_BASELINE_ABSORPTION.get(), Math.max(0.0F, value));
+    }
+
+    public static boolean isRenShieldOwnResistance(net.minecraft.world.entity.player.Player player) {
+        return player.getData(REN_SHIELD_OWN_RESISTANCE.get());
+    }
+
+    public static void setRenShieldOwnResistance(net.minecraft.world.entity.player.Player player, boolean value) {
+        player.setData(REN_SHIELD_OWN_RESISTANCE.get(), value);
+    }
+
+    public static int getRenCounterCharges(net.minecraft.world.entity.player.Player player) {
+        return player.getData(REN_COUNTER_CHARGES.get());
+    }
+
+    public static void setRenCounterCharges(net.minecraft.world.entity.player.Player player, int value) {
+        player.setData(REN_COUNTER_CHARGES.get(), Math.max(0, value));
     }
 }

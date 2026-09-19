@@ -17,7 +17,39 @@
     },
     {
       "op": "note",
-      "text": "【开局确定化：本线**不使用** /curios reset】实测（2026-09-18）Curios 15 经 `/curios reset` 重建后的 chip handler 会出现「修饰符已写入但 stackHandler 尺寸停在 0」的失配（`getSlots()`=0 而 `mods=[astral_dice:chip_slots=2]`），该会话内尺寸再也不会增长 —— 属上游限制、非本模组缺陷，故本用例只做「清空 dice 栏」（equipslot 不支持删物品，写 minecraft:air 即空栈，探针有显式清空分支、回显 _CLEAR），基线依赖**每次全流程都会重建世界**（mt_env world ⇒ 全新玩家数据 ⇒ chip 栏 base 0、无修饰符）。若该基线断言失败，说明世界未重建（先跑 `--phase stop --purge-saves` 再跑本用例）。"
+      "text": "【开局基线：本线**不使用** /curios reset，也不能依赖「世界是新的」】(1) 为什么不能像 1.21.1/1.20.1 那样用 `/curios reset` 确定化基线：Curios 15 的 `CurioInventory#resetInventory()`（源码 jar `curios-dRnRThvD-sources.jar` → `top/theillusivec4/curios/common/capability/CurioInventory.java:74-84`）只重建新 handler、**从不**调用 `setDataLoaded()`（全仓唯一调用点在同文件 `loadInventoryConfiguration()` 末尾 `:206`），而 `CurioStacksHandler#update()` 首行是 `if (this.dataLoaded)`（`top/theillusivec4/curios/common/inventory/CurioStacksHandler.java:462`；`getSlots()` 入口 `:280-283`）⇒ 复位后 `getSlots()` 永久停在数据包 base 尺寸 0，写多少修饰符都长不回来（2026-09-18 实测：`mods=[astral_dice:chip_slots=2]` 而 `slots=0`）—— 即 1.21.1/1.20.1 的 `chipreset P0` 手段在本线**不可用**（Curios 9 无此门控，故发布线可复现出 slots=0:mods=[]）。(2) 为什么不能依赖「每次全流程重建世界」：2026-09-19 实测（`temp/t64/f-case-CHIP-EQUIP-26.1.2.log` 第 30 条断言 FAIL），`f` 批次同一会话内的前一条用例 QUIVER-LIVING-PAGE-26.1.2 的 `equipslot chip` 会经测试脚手架 `ensureChipSlot(p, CHIP_SLOT_MIN=1)` 写入 `astral_dice:chip_slots=1`（`astral_bugfix_probe.js:195` 定义常量、`:465-483` 实现、`:697-700` 调用），而它**与产品代码 `DiceCurioItem#applySlotCount` 共用同一个修饰符 id**；dice 栏为空时产品**没有任何重算入口**（`curioTick` 要求骰子在栏内，`DiceCurioItem.java:97-106`）⇒ 残留 1 格不自愈，B0 读到 `slots=1:slotsH=1:base=0:adds=[1]:mods=[astral_dice:chip_slots=1]:items=[]:dice=empty`。(3) 故本用例**自建基线**（不依赖会话是否干净、不依赖世界是否新建）：先清空 stand 槽（隔离看板娘立牌被动的 +1，`DiceCurioItem.java:143-145`）与筹码栏 0 号位，再装一枚 0★ 基础骰 `astral_dice:dice`（`ModItems.java:208-209` 的 `s -> s` ⇒ 0★ 目标 0 格），由产品当拍写 `astral_dice:chip_slots=0` 并把尺寸归零（P1 断言；语义等价于 1.21.1 的 B4「归零时保留 0 值修饰符」），随后清空 dice 栏 ⇒ B0 在任何会话里都稳定为 slots=0。⚠️ `mods=[]` 只可能出现在「本模组从未写过该修饰符」的全新世界（或 1.21.1 线 reset 掉修饰符之后），本线不得作为基线断言：0 值修饰符是本模组接管该栏位尺寸的标记，见 AGENTS 26.1.2 速记第 8 条。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe equipslot stand \"minecraft:air\" S0"
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe equipslot chip \"minecraft:air\" Z0"
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe equipslot dice \"astral_dice:dice\" P0"
+    },
+    {
+      "op": "wait",
+      "ms": 2000
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe chipstate P1"
+    },
+    {
+      "op": "wait",
+      "ms": 600
     },
     {
       "op": "inject_command",
@@ -129,7 +161,27 @@
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_B0_CHIPSTATE:.*slots=0:.*mods=\\[\\]:items=\\[\\]:dice=empty"
+      "pattern": "AP_S0_CLEAR:stand"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_Z0_CLEAR:chip"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_P0_EQUIP:dice:astral_dice:dice"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_P1_CHIPSTATE:.*slots=0:.*mods=\\[astral_dice:chip_slots=0(\\.0)?\\]:items=\\[\\]:dice=astral_dice:dice"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_B0_CHIPSTATE:.*slots=0:.*mods=\\[astral_dice:chip_slots=0(\\.0)?\\]:items=\\[\\]:dice=empty"
     },
     {
       "type": "log",

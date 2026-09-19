@@ -676,6 +676,232 @@ function Set-MtKeepInventory {
     return $true
 }
 
+# ══ 26.1.2：gamerule 独立文件（level.dat 不再是存储位置）════════════════════
+#
+# 背景（2026-09-19 本机实测 + 反编译源码双证据）:
+#   MC 26.1 起 gamerule 整体搬出 level.dat，改由 SavedData 承载:
+#     · 路径  <世界目录>/data/minecraft/game_rules.dat   （gzip 压缩的 NBT）
+#     · 负载  { data: { "minecraft:keep_inventory": 0b, … }, DataVersion: <int> }
+#     · 键名  蛇形 + `minecraft:` 命名空间前缀；布尔值是 **TAG_Byte**(0/1)，不是旧版 TAG_String
+#   实测（run/26.1.2/saves/testworld/data/minecraft/game_rules.dat，解压后 2000 字节）:
+#     minecraft:keep_inventory = 0b(false)  ← 与 AGENTS「测试世界必须死亡不掉落」冲突
+#     minecraft:natural_health_regeneration = 0b、mob_griefing = 1b、spawn_mobs = 1b、
+#     immediate_respawn = 0b、fire_spread_radius_around_player = 128(TAG_Int)
+#   同一世界的 level.dat 里**没有** GameRules 键：`Set-MtKeepInventory` 写进去的那份既没有
+#   任何读者（26.1.2 只从**文件**读规则），又会在游戏自己保存 level.dat 时被丢弃；且 26.1.2 的
+#   file fix（LevelDatToSavedDataFileFix）只认 level.dat 的 `game_rules` 键，**不认** `GameRules`。
+#   ⇒ 在该版本上旧写法等于「写入无人读的数据 + 拿自己刚写的数据自我复核」= **假通过**。
+#
+#   源码依据（neoforge-26.1.2/build/moddev/artifacts/minecraft-patched-26.1.2.109-sources.jar）:
+#     · GameRuleMap.TYPE = new SavedDataType(Identifier.withDefaultNamespace("game_rules"), …)
+#     · SavedDataStorage#getDataFile  → `<dataFolder>/<namespace>/<path>.dat`
+#     · SavedDataStorage#encodeUnchecked → `tag.put("data", payload)` + addCurrentDataVersion
+#     · SavedDataStorage#readSavedData   → 只读 `data` 负载；文件缺失 ⇒ GameRuleMap.of()（空表）
+#     · GameRules 构造器对**缺失的规则**调用 GameRuleMap#reset(默认值)
+#       ⇒ 文件里少写的键由游戏补默认值（不会 NPE），且 reset→set→setDirty() 会让游戏下次保存
+#         把整份规则写全（既有非默认值不会因此丢失）。
+#   ⇒ 只需精确改写 `minecraft:keep_inventory` 一个键，其余既有键**逐键原样保留**。
+#
+#   ⚠️ 只有 26.1.2 走这条路：1.20.1 / 1.21.1 的 gamerule 仍在 level.dat（TAG_String），
+#      它们的产物与行为由下面的 `$Version -ne $script:MtGameRuleFileVersion` 早退保证不变。
+$script:MtGameRuleFileVersion = '26.1.2'
+$script:MtKeepInventoryRuleKey = 'minecraft:keep_inventory'
+
+function Get-MtGameRulesFile {
+    <#
+    .SYNOPSIS
+        26.1.2 的 gamerule 存储文件：<世界目录>/data/minecraft/game_rules.dat。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$WorldDir)
+
+    return (Join-Path (Join-Path (Join-Path $WorldDir 'data') 'minecraft') 'game_rules.dat')
+}
+
+function Read-MtGameRuleKeepInventoryFile {
+    <#
+    .SYNOPSIS
+        从 game_rules.dat **真实读回** minecraft:keep_inventory 的值。
+    .OUTPUTS
+        $null = 文件不存在 / 不可解析 / 无该键 / 类型不是 TAG_Byte；否则 [int] 0 或 1。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$WorldDir)
+
+    $file = Get-MtGameRulesFile -WorldDir $WorldDir
+    if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { return $null }
+    try { $nbt = Read-MtNbt -Path $file } catch { return $null }
+    if ($nbt.TagId -ne $script:TAG_COMPOUND -or -not $nbt.Payload.Contains('data')) { return $null }
+    $data = $nbt.Payload['data'][1]
+    if (-not ($data -is [System.Collections.IDictionary])) { return $null }
+    if (-not $data.Contains($script:MtKeepInventoryRuleKey)) { return $null }
+    $pair = $data[$script:MtKeepInventoryRuleKey]
+    if ([int]$pair[0] -ne $script:TAG_BYTE) { return $null }
+    return [int][sbyte]$pair[1]
+}
+
+function Test-MtGameRuleKeepInventoryFile {
+    <#
+    .SYNOPSIS
+        26.1.2 的 keepInventory 硬闸门：game_rules.dat 里 minecraft:keep_inventory 必须读回 1。
+    .NOTES
+        刻意重新从磁盘解析（不复用刚写进内存的对象）—— 这正是旧实现假通过的根因。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$WorldDir)
+
+    return ((Read-MtGameRuleKeepInventoryFile -WorldDir $WorldDir) -eq 1)
+}
+
+function Read-MtLevelDataVersion {
+    <#
+    .SYNOPSIS
+        读 level.dat 的 Data.DataVersion（新建 game_rules.dat 时用作其 DataVersion）。
+    .OUTPUTS
+        [int] 版本号；读不到返回 0。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$LevelDat)
+
+    try {
+        $nbt = Read-MtNbt -Path $LevelDat
+        if ($nbt.TagId -eq $script:TAG_COMPOUND -and $nbt.Payload.Contains('Data')) {
+            $data = $nbt.Payload['Data'][1]
+            if (($data -is [System.Collections.IDictionary]) -and $data.Contains('DataVersion')) {
+                return [int]$data['DataVersion'][1]
+            }
+        }
+    } catch { return 0 }
+    return 0
+}
+
+function Set-MtGameRuleKeepInventoryFile {
+    <#
+    .SYNOPSIS
+        26.1.2：把 <世界>/data/minecraft/game_rules.dat 的 minecraft:keep_inventory 置为 1b。
+
+    .DESCRIPTION
+        只改这一个键，其余既有规则（natural_health_regeneration / mob_griefing / …）逐键原样保留；
+        不整份重建、不引入任何第三方依赖（复用文件顶部的 New-MtPair / Read-MtNbt / Write-MtNbt）。
+        文件不存在时按 vanilla 形态新建最小文件 { data: {…}, DataVersion }（缺失键由游戏补默认值）。
+        已经是 1 时**不重写**（幂等：不制造 mtime 抖动，也不给并发读方留半截文件的窗口）。
+        对已存在的世界同样有效（把 0 纠正为 1）。
+
+    .OUTPUTS
+        $true = 已就位或写入成功；$false = 机制性失败（调用方负责 BLOCKED）。
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$WorldDir,
+        [Parameter(Mandatory)][string]$LevelDat
+    )
+
+    $file = Get-MtGameRulesFile -WorldDir $WorldDir
+
+    # 世界目录都不存在时**绝不**代为创建（否则会凭空造出一个假世界目录）；
+    # 调用链上 Set-MtKeepInventory 已先要求 level.dat 存在，这里是显式兜底。
+    if (-not (Test-Path -LiteralPath $WorldDir -PathType Container)) {
+        Write-MtErrorLine "世界目录不存在，拒绝创建 game_rules.dat：$WorldDir"
+        return $false
+    }
+
+    # 已就位 ⇒ 幂等返回，不重写
+    if ((Read-MtGameRuleKeepInventoryFile -WorldDir $WorldDir) -eq 1) { return $true }
+
+    $payload = $null
+    $rootName = ''
+    if (Test-Path -LiteralPath $file -PathType Leaf) {
+        try { $nbt = Read-MtNbt -Path $file } catch {
+            Write-MtErrorLine "解析 game_rules.dat 失败：$($_.Exception.Message)"
+            return $false
+        }
+        if ($nbt.TagId -ne $script:TAG_COMPOUND -or -not ($nbt.Payload -is [System.Collections.IDictionary])) {
+            Write-MtErrorLine 'game_rules.dat 结构异常（根不是复合标签）'
+            return $false
+        }
+        $payload = $nbt.Payload
+        $rootName = $nbt.Name
+    } else {
+        # 世界已建但该文件还没落盘（首次保存前）⇒ 按 vanilla 形态新建，键数最小
+        $payload = [System.Collections.Specialized.OrderedDictionary]::new([System.StringComparer]::Ordinal)
+    }
+
+    $data = $null
+    if ($payload.Contains('data')) {
+        $cand = $payload['data'][1]
+        if ($cand -is [System.Collections.IDictionary]) { $data = $cand }
+    }
+    if ($null -eq $data) {
+        $data = [System.Collections.Specialized.OrderedDictionary]::new([System.StringComparer]::Ordinal)
+        $payload['data'] = (New-MtPair $script:TAG_COMPOUND $data)
+    }
+
+    $data[$script:MtKeepInventoryRuleKey] = (New-MtPair $script:TAG_BYTE 1)
+
+    # DataVersion：沿用文件里已有的（保证数据修复链是 no-op），缺失才从 level.dat 取
+    if (-not $payload.Contains('DataVersion')) {
+        $dv = Read-MtLevelDataVersion -LevelDat $LevelDat
+        if ($dv -gt 0) {
+            $payload['DataVersion'] = (New-MtPair $script:TAG_INT $dv)
+        } else {
+            Write-MtErrorLine '警告：无法确定 DataVersion（level.dat 里读不到），game_rules.dat 将不带该键'
+        }
+    }
+
+    $dir = Split-Path -Parent $file
+    if (-not (Test-Path -LiteralPath $dir -PathType Container)) {
+        [void](New-Item -ItemType Directory -Force -Path $dir)
+    }
+
+    try {
+        Write-MtNbt -Path $file -TagId $script:TAG_COMPOUND -Name $rootName -Payload $payload
+    } catch {
+        Write-MtErrorLine "写回 game_rules.dat 失败：$($_.Exception.Message)"
+        return $false
+    }
+    return $true
+}
+
+function Set-MtWorldKeepInventory {
+    <#
+    .SYNOPSIS
+        落地并**读回复核**「测试世界必须 keepInventory=true」，供种子快恢复与世界重建两条路径复用。
+
+    .OUTPUTS
+        $null = 已就位且复核通过；否则返回应接在 `MT_WORLD: BLOCKED — ` 之后的**原因文案**。
+    .NOTES
+        ⚠️ 1.20.1 / 1.21.1 走 `$Version -ne $script:MtGameRuleFileVersion` 早退：只调用原有的
+        `Set-MtKeepInventory`（level.dat，TAG_String），原因文案与被调用的写函数均未变 ⇒
+        这两个版本的成功/失败输出**逐字节不变**，也不产生新文件。
+        26.1.2 追加独立文件的写入 + 从磁盘读回复核（见 Set-MtGameRuleKeepInventoryFile）。
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$Version,
+        [Parameter(Mandatory)][psobject]$Paths
+    )
+
+    $level = Join-Path $Paths.client_world 'level.dat'
+    if (-not (Set-MtKeepInventory -LevelDat $level)) {
+        return 'level.dat 的 GameRules.keepInventory 未能设置'
+    }
+    if ($Version -ne $script:MtGameRuleFileVersion) { return $null }
+
+    # ── 26.1.2：真正的存储在独立文件里 ──────────────────────────────────────
+    $rulesFile = Get-MtGameRulesFile -WorldDir $Paths.client_world
+    if (-not (Set-MtGameRuleKeepInventoryFile -WorldDir $Paths.client_world -LevelDat $level)) {
+        return ("game_rules.dat 的 {0} 未能写入（{1}）" -f $script:MtKeepInventoryRuleKey, $rulesFile)
+    }
+    $readBack = Read-MtGameRuleKeepInventoryFile -WorldDir $Paths.client_world
+    if ($readBack -ne 1) {
+        $shown = '读不到（文件缺失 / 无该键 / 类型不符）'
+        if ($null -ne $readBack) { $shown = "$readBack" }
+        return ("game_rules.dat 的 {0} 读回复核不为 1b：{1}（{2}）" -f $script:MtKeepInventoryRuleKey, $shown, $rulesFile)
+    }
+    Write-MtLine ("MT_WORLD: keepInventory 落地于 {0}（{1}=1b，读回复核通过）" -f $rulesFile, $script:MtKeepInventoryRuleKey)
+    return $null
+}
+
 # ══ 子命令：kubejs（探针脚本同步）══════════════════════════════════════════
 function Sync-MtEnvKubejs {
     <#
@@ -1618,9 +1844,12 @@ function Invoke-MtEnvWorld {
             Write-MtLine 'MT_WORLD: BLOCKED — level.dat 的 AllowCommands 未能设置'
             return 11
         }
-        # 测试规则：新建/恢复的世界必须 keepInventory=true（见 Set-MtKeepInventory）
-        if (-not (Set-MtKeepInventory -LevelDat (Join-Path $p.client_world 'level.dat'))) {
-            Write-MtLine 'MT_WORLD: BLOCKED — level.dat 的 GameRules.keepInventory 未能设置'
+        # 测试规则：新建/恢复的世界必须 keepInventory=true（见 Set-MtKeepInventory）；
+        # 26.1.2 追加：真正存储在 data/minecraft/game_rules.dat，写后**从文件读回**校验
+        # （见 Set-MtWorldKeepInventory）。1.20.1/1.21.1 的文案与产物不变。
+        $kinvErr = Set-MtWorldKeepInventory -Version $Version -Paths $p
+        if ($null -ne $kinvErr) {
+            Write-MtLine "MT_WORLD: BLOCKED — $kinvErr"
             return 11
         }
         Write-MtLine "MT_WORLD: OK — 种子快恢复（allowCommands=1, keepInventory=true） $($p.client_world)"
@@ -1734,9 +1963,12 @@ function Invoke-MtEnvWorld {
         Write-MtErrLine 'MT_WORLD: BLOCKED — level.dat 的 AllowCommands 未能设置'
         return 11
     }
-    # 测试规则：新建/恢复的世界必须 keepInventory=true（见 Set-MtKeepInventory）
-    if (-not (Set-MtKeepInventory -LevelDat $level)) {
-        Write-MtErrLine 'MT_WORLD: BLOCKED — level.dat 的 GameRules.keepInventory 未能设置'
+    # 测试规则：新建/恢复的世界必须 keepInventory=true（见 Set-MtKeepInventory）；
+    # 26.1.2 追加：真正存储在 data/minecraft/game_rules.dat，写后**从文件读回**校验
+    # （见 Set-MtWorldKeepInventory）。1.20.1/1.21.1 的文案与产物不变。
+    $kinvErr = Set-MtWorldKeepInventory -Version $Version -Paths $p
+    if ($null -ne $kinvErr) {
+        Write-MtErrLine "MT_WORLD: BLOCKED — $kinvErr"
         return 11
     }
     Write-MtLine "MT_WORLD: OK — 世界重建（allowCommands=1, keepInventory=true） $($p.client_world)"

@@ -1,0 +1,139 @@
+{
+  "case_id": "ENDER-DICE-TOTEM-GLOWING-26.1.2",
+  "title": "【26.1.2 移植版:与 1.21.1 同用例同读数,逐行同构(2026-09-19 三线一致性测试)】末影骰「保命清 GLOWING」门控：带本模组 MARKED 时保命必须同时移除 MARKED 与 GLOWING、保留增益；无 MARKED 时保命必须保留 GLOWING",
+  "version": "26.1.2",
+  "target": {
+    "type": "bugfix",
+    "ref": "ender-dice-totem-glowing-gate"
+  },
+  "steps": [
+    {
+      "op": "note",
+      "text": "被测口径：EnderDiceHandler#onLivingDeath 的保命清除集合 = HARMFUL ∪ {GLOWING，**仅当**玩家确实带着本模组 MARKED}，绝不用 removeAllEffects（用 removeEffectsCuredBy(PROTECTED_BY_TOTEM) 会连增益一起清掉）。必须补 GLOWING 的原因：MARKED 是 HARMFUL 会被清，而与它一同施加、同寿命的 GLOWING 是 NEUTRAL，只清 HARMFUL 会留下残留的发光轮廓。必须**门控**的原因：GLOWING 也可能来自原版光灵箭等其它来源，那种发光不属于本模组，不能顺手清掉。"
+    },
+    {
+      "op": "note",
+      "text": "取证方式（2026-09-15 B3 改为分步命令）：`prep<N>` 造相位初态（生存 + 装备末影骰 + 清其它饰品槽 + 干净基线 + 相位效果）并读 BEFORE；`hit<N>` 施加致死；`read<N>` 读 AFTER 并判定；`done` 收尾。P1 = 本模组 MARKED + GLOWING + 增益速度 ⇒ 断言 MARKED 与 GLOWING 均被移除、增益仍在、保命确已触发（fired=1）；P2 对照 = 只有 GLOWING（**无** MARKED）⇒ 断言 GLOWING **被保留**、增益保留、保命同样确已触发。"
+    },
+    {
+      "op": "note",
+      "text": "致死注入：**不用 `/kill`** —— `/kill` = minecraft:generic_kill，属 `DamageTypeTags.BYPASSES_INVULNERABILITY`（该标签 1.21.1 只含 out_of_world / generic_kill），而 EnderDiceHandler.java:165 与原版不死图腾一致地**故意跳过**这类伤害源 ⇒ 用它只会直接打死玩家、打不出末影骰保命（AIRBAG 用例用 `/kill` 是另一条口径：气囊改成了「连绕过无敌的伤害也拦」）。本用例改用**同一条直连原版入口**的注入、伤害源换成不在该标签内的 `minecraft:generic`：探针按 causeFallDamage → damage(amount,src) → kjs$damage → attack(src,amount) → kjs$attack → 原版 `/damage @a 1000 minecraft:generic` 的顺序逐条尝试，任一条让保命触发即停（避免对冷却中的玩家再补一刀），实际生效的那条写进 `api=`；`bypass=0` 是「该伤害源确实不绕过无敌」的直接读数校验，`fired=1` 证明保命冷却确被写入。**不再用** `p.hurt` —— Rhino 把 `hurt` 解析成 `Player#isHurt()` 的 bean 属性（TypeError: not a function），也不用旧版的 `p.damage(src, n)`（KubeJS 的 `damage` 参数顺序是 (amount, source)，旧写法让数字落进 DamageSource 形参 ⇒ 探针侧 Rhino 异常）。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe endertotem ET prep1"
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe endertotem ET hit1"
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe endertotem ET read1"
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe endertotem ET prep2"
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe endertotem ET hit2"
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe endertotem ET read2"
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe endertotem ET done"
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_ET_P1_BEFORE:mode=(forced_survival|already_survival):marked=1:glow=1:speed=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_ET_P1_AFTER:marked=0:glow=0:speed=1:.*:bypass=0:fired=1:api=(fall|damage|kjs_damage|attack|kjs_attack|cmd)"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_ET_P1_OK:1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_ET_P2_BEFORE:marked=0:glow=1:speed=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_ET_P2_AFTER:marked=0:glow=1:speed=1:.*:bypass=0:fired=1:api=(fall|damage|kjs_damage|attack|kjs_attack|cmd)"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_ET_P2_OK:1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_ET_VERDICT:gated_clear=1:control_keep=1:marked_cleared=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_ET_RESTORE:creative:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_ET_DONE"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_ET_ERR|AP_ET_EX:|AP_TICK_EX"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "crash"
+    }
+  ],
+  "evidence": [],
+  "on_fail": "keep_game_running"
+}

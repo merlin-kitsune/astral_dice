@@ -239,11 +239,11 @@
    (b) 暂不推该线产物（现状）。推送守卫未改动：`multi-dev-next` 上 `pushToGame` 仍为 skipped，
    仅 `-PdeployToPack` 可强推；`pushToGame` 已按另两线同形补**纯防御**的「库 jar 成对自检」（只告警，不阻断）。
    **限域（2026-09-17 用户裁决补记）**：本风险**在 `multi-dev-next` 上不会触发** —— 用户裁决「该分支内所有内容均不推送整合包（严格），只推送到游戏测试目录。除非用户另行规定。」该分支上 `pushToGame` 在**执行期**即因分支不在白名单而 `skipped`（实测三线均为 skipped；本次未跑 Gradle，证据引自 t12 报告 §5 与 `temp/merge-t2/t12-verify-build-*.log`），整合包目录不会被写入、旧 jar 也不会被删。
-   只有当**发布线 `multi-1.20.1-1.21.1`**（或用户显式 `-PdeployToPack` 强推）真正推送整合包时，才必须把**库 jar 与本模组 jar 成对推送** —— 即 `starengine_lib-<平台>-1.0.0-SNAPSHOT.5.jar` 与 `astral_dice-*.jar` 同批放入同一个 `mods` 目录，否则 FML 在依赖排序阶段以「缺必需前置」拒绝启动。2. **`effect/ReadyEffect` 是本线唯一保留的本地重复类（库内已按 KI-M3 删除）。**
+   只有当**发布线 `multi-1.20.1-1.21.1`**（或用户显式 `-PdeployToPack` 强推）真正推送整合包时，才必须把**库 jar 与本模组 jar 成对推送** —— 即 `starengine_lib-<平台>-1.0.0-SNAPSHOT.5.jar` 与 `astral_dice-*.jar` 同批放入同一个 `mods` 目录，否则 FML 在依赖排序阶段以「缺必需前置」拒绝启动。2. **【2026-09-19 已关闭】`effect/ReadyEffect` 是本线唯一保留的本地重复类（库内已按 KI-M3 删除）** —— 波次 2b（立牌主动前置门控收口移植）已把该线的立牌主动收口到发布线形态，本副本与三处注册**已实际删除**（见下方保留理由段的关闭说明）。
    保留理由：本线的旧「待命等待器」仍在用（`ModEffects` 的三处注册 `haiqing_ready`/`bonnie_ready`/`moses_ready`），
    而库 `.5` 已删除该符号 —— 若改为库引用会引用库中不存在的类，若删本地副本则三处注册编译失败。
    **禁止**为它复活库中已删符号、**禁止** bump 库版本、**禁止**改 CI 的库检出 ref（均属用户已明确暂缓事项）。
-   若将来把 26.1.2 的内容迁到目标选择器（AGENTS「三线优先级」），这三处注册与本副本应随另两线一并删除。
+   **已于 2026-09-19 执行（本条关闭）**：26.1.2 的立牌主动已随波次 2b 迁到目标选择器（`BaseSignItem.handleUse` 由 `abstract` 改为发布线同款「默认实现 + WARN」、删 `isSkillWaiting`/`tickSignReadyTimeout`），`effect/ReadyEffect.java` 与 `ModEffects` 的 `haiqing_ready`/`bonnie_ready`/`moses_ready` 三处注册随另两线一并删除（该线效果注册数 **33→32**，与两个发布线 id 集合逐项一致），并一并删掉该线多出的 3 个 `effect.astral_dice.*_ready` lang 键与 3 张 `mob_effect/*_ready.png`（lang 686→683、贴图 35→32）。上面那四条「禁止」中只有后三条仍适用（属库侧政策：不为库复活已删符号、不 bump 库版本、不改 CI 检出 ref）；「禁止删本地副本」一条随本副本删除而失效。
 ## 7. D 组 — 平台 / 第三方冲突（2026-09-18 起）
 
 > 本组登记**不属于本模组缺陷**、但在本仓测试环境里会真实发生的问题。处置口径 = **记录 + 规避 +（可选）上报上游**，

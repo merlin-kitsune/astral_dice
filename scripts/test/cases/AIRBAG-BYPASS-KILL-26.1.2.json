@@ -1,0 +1,137 @@
+{
+  "case_id": "AIRBAG-BYPASS-KILL-26.1.2",
+  "title": "【26.1.2 移植版:与 1.21.1 同用例同读数,逐行同构(2026-09-19 三线一致性测试)】安全气囊：无视无敌的致死伤害（/kill = generic_kill）被拦下——玩家存活、血量不变、充能 6→0、进入 1:00 冷却；同构造对照证明该伤害源在本局内确实致命",
+  "version": "26.1.2",
+  "target": {
+    "type": "bugfix",
+    "ref": "airbag-bypass-invulnerability"
+  },
+  "steps": [
+    {
+      "op": "note",
+      "text": "被测语义(2026-09-15 用户裁决「阻止无视无敌的效果穿透安全气囊,使其始终保持有效」):`event/ChipDamageHandler` 的伤害阶段**不再**按 `DamageTypeTags.BYPASSES_INVULNERABILITY` 排除伤害源 —— 气囊现在连 `/kill`(generic_kill)、虚空伤害与其它模组真伤一起拦。原版依据(源码摘录,1.21.1 `LivingEntity#kill` L301-304)= `hurt(this.damageSources().genericKill(), Float.MAX_VALUE)`;`actuallyHurt` L1786 的 `if (!isInvulnerableTo(source))` 对生存玩家为真(Entity#isInvulnerableTo 只在 `invulnerable` 为真时短路,生存玩家为假),L1789 照常派发伤害事件,气囊把 `newDamage` 置 0 后 L1799 `if (f1 != 0.0F)` 为假 → L1801 不扣血。证据链:①`airbagprep A` 造初态(强制生存 + 装备 `airbag_chip` + 清充能后加满 6 层 + 冷却归零 + 满血),读数 `AP_A_PREP` 必须 charge=6/equipped=1/chip=astral_dice:airbag_chip/cd_end=0;②`airbagkill A` 走**与 /kill 完全同一条原版代码路径**(`player.kill()`,退化为显式 generic_kill 伤害源时读数 path 字段会写 hurt:generic_kill)并**同一函数内立刻复读**:`hp_before` 与 `health` 必须**逐字相等**(血量不变)、alive=1、charge 6→0、cd_left ∈ (0,1200](即 cd_end = gametime+1200);③`airbaglethal B` 同构造对照 —— 用**同一个 kill() 调用**打一只新生成的猪(气囊实现上只对 Player 生效),`hp_before=10/hp_after=0/alive=0` **必须真的死**:它证明本局内 generic_kill 确实致命,排除「伤害根本没生效」的伪阳性(否则②的“存活”毫无意义);④`airbagnocharge C` 把充能清零并把冷却置 0(不施加伤害,只固化「充能 < 6 时气囊不应生效」的前置状态),读数 charge=0;⑤`airbagreset Z` 收尾:清充能/冷却、回满血、切回创造。⚠️ 覆盖缺口(必须如实记录,见 `TESTING-SPEC.md` §10):「充能不足 / 冷却进行中时玩家**真会死**」这条玩家侧对照**不在本用例内** —— 玩家死亡会停在死亡界面,后续注入命令全部失效(工具链无自动重生),故该分支目前只有代码层结论(`tryNegateFatal` 在 charge<6 或 `isOnCooldown` 时返回 false);另有「绕过 `die()` 直接 `remove(KILLED)` 的致死救不回来」这一死亡兜底边界,同样只有代码层结论。⚠️ 探针改动必须**冷启动**才生效(stop → launch):已注册命令的 lambda 不会在 /kubejs reload 后重绑。⚠️ 本用例会在玩家附近生成一只猪(阶段 B),已由 `mt_launch` 的测试前清场兜底,阶段 Z 无需额外清理。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe airbagprep A"
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe airbagkill A"
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe airbagread A"
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe airbaglethal B"
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe airbagnocharge C"
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe airbagreset Z"
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_A_PREP:mode=forced_survival:health=\\d+(\\.\\d+)?:alive=1:equipped=1:chip=astral_dice:airbag_chip:charge=6:cd_end=0:cd_left=-\\d+"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_A_KILL:path=(kill|hurt:generic_kill):hp_before=(\\d+(?:\\.\\d+)?):health=\\2:alive=1:equipped=1:chip=astral_dice:airbag_chip:charge=0:cd_end=\\d+:cd_left=(1200|1[01]\\d{2})"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_A_STATE:health=\\d+(\\.\\d+)?:alive=1:equipped=1:chip=astral_dice:airbag_chip:charge=0:cd_end=\\d+:cd_left=(1[01]\\d{2}|1200)"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_B_LETHAL:path=(kill|hurt:generic_kill):hp_before=10:hp_after=0:alive=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_C_NOCHARGE:health=\\d+(\\.\\d+)?:alive=1:equipped=1:chip=astral_dice:airbag_chip:charge=0:cd_end=0:cd_left=-\\d+"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_Z_RESET:mode=creative:health=\\d+(\\.\\d+)?:alive=1:equipped=1:chip=astral_dice:airbag_chip:charge=0:cd_end=0:cd_left=-\\d+"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_A_DONE"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_B_DONE"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_C_DONE"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_Z_DONE"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_A_ERR|AP_A_EX|AP_B_ERR|AP_B_EX|AP_C_ERR|AP_C_EX|AP_Z_ERR|AP_Z_EX|AP_TICK_EX|path=ERR|AP_B_LETHAL:.*alive=1|AP_A_DUMP_ERR"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "crash"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_A_DUMP:rc="
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "APDUMP\\|LOCKRAW\\|"
+    }
+  ],
+  "on_fail": "keep_game_running"
+}

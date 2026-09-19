@@ -603,6 +603,52 @@ if ($MyInvocation.InvocationName -ne '.') {
         if ($collective) { Write-MtInfo 'COLLECTIVE_LOADED=true' } else { Write-MtWarn 'COLLECTIVE_LOADED=false(Collective 前置缺失？史莱姆压制可能未生效)' }
     }
 
+    # ── 禁用生物 AI 硬闸门（2026-09-18 用户裁决「测试流程未禁用生物 AI，这是严重失误」）────
+    # 规则：测试环境**必须**禁用生物 AI。此前只有「进入世界后清场一次 + 探针靶子自设 noAi」，
+    # 自然刷新的生物仍带 AI —— 会主动接近/攻击/推挤玩家、投掷弹射物、踩压力板、引爆苦力怕，
+    # 污染「世界级差值」读数（`self` 施放者 HP、`bolt_delta` 全局雷击计数、实体计数），
+    # 甚至把玩家打死 ⇒ 用例随机失败或拿到假读数。这是**流程缺陷**，不是被测行为。
+    # 实施：`scripts/test/resources/kubejs/<ver>/server_scripts/astral_test_noai.js`
+    #   —— 由 `mt_env` 的 kubejs 子命令同步（env 阶段自动做），每 2 tick 横扫玩家周围 128 格内
+    #   的 Mob 强制 `setNoAi(true)`，并在 `EntityEvents.spawned` 上即时生效；前 30 秒每 5 秒
+    #   回报一行 `AP_NOAI:mobs=<n>:noai=<n>:radius=<r>:forced=<n>:total=<n>:tick=<t>`。
+    # 判据：latest.log 里读到 `AP_NOAI:` 行 **且** `mobs == noai`（该半径内不存在仍带 AI 的 Mob）；
+    #   取不到读数（脚本未同步 / 未生效 / 取不到 server）一律**硬失败**，绝不带着会被 AI 污染的
+    #   现场继续跑用例。唯一例外：显式设 `MT_ALLOW_MOB_AI=1`（对照实验用，留 WARN 痕迹）。
+    # ⚠️ 本闸门**只**禁 AI、不禁刷怪：史莱姆由上面的 SLIMEGUARD 闸门负责，且**禁止**用
+    #    `/gamerule doMobSpawning false` 代替 —— 那会让 `/astralprobe slimecheck` 的对照读数恒为 0。
+    if ($env:MT_ALLOW_MOB_AI -eq '1') {
+        Write-MtWarn 'NOAI_ENFORCED=false — 已按 MT_ALLOW_MOB_AI=1 显式放行（此时自然刷新的生物仍带 AI，world-level 差值读数有被污染的风险）'
+    } else {
+        $noAiLine = ''
+        $noAiOk = $false
+        $noAiDeadline = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds() + 30
+        while ([DateTimeOffset]::UtcNow.ToUnixTimeSeconds() -lt $noAiDeadline) {
+            $latest = Read-MtSharedText -Path $p.latest_log
+            $noAiLine = ''
+            foreach ($ln in ($latest -split "`r?`n")) {
+                if ($ln -match 'AP_NOAI:ERR:') { $noAiLine = $ln.Trim(); break }
+                $mNoAi = [regex]::Match($ln, 'AP_NOAI:mobs=(\d+):noai=(\d+):radius=(\d+):forced=(\d+)')
+                if ($mNoAi.Success) {
+                    $noAiLine = $mNoAi.Value
+                    $noAiOk = ([int]$mNoAi.Groups[1].Value -eq [int]$mNoAi.Groups[2].Value)
+                    break
+                }
+            }
+            if ($noAiLine -ne '') { break }
+            Start-Sleep -Seconds 1
+        }
+        if ($noAiOk) {
+            Write-MtInfo ("NOAI_ENFORCED=true — {0}" -f $noAiLine)
+        } else {
+            $why = if ($noAiLine -match 'AP_NOAI:ERR:') { "脚本报错：$noAiLine" }
+                   elseif ($noAiLine -ne '') { "读到 $noAiLine（仍有 Mob 带 AI）" }
+                   else { '30s 内未读到 AP_NOAI 行（脚本未同步 / 未生效）' }
+            Write-MtErrLine ("MT_LAUNCH: ERROR — 未确认「生物 AI 已禁用」（测试环境硬性要求）：{0}；先执行 pwsh -File scripts/test/mt_env.ps1 kubejs --version {1} 同步脚本后**冷启动**（如确需带 AI 的对照实验，设 MT_ALLOW_MOB_AI=1）" -f $why, $Version)
+            exit $MT_EXIT_ERROR
+        }
+    }
+
     # KubeJS 脚本健康（进入世界后第一步）
     & $psExe -NoProfile -File (Join-Path $testDir 'mt_assert.ps1') kubejs --version $Version
     if ($LASTEXITCODE -ne 0) { Write-MtWarn 'KubeJS server.log 非 0 errors' }

@@ -315,10 +315,8 @@ public class ModTooltipHandler {
         if (p.hasEffect(ModEffects.MONSTER_BRICK)) bonus += 6 + cardBonus;
         if (p.hasEffect(ModEffects.ORBITAL_STRIKE)) bonus += 8 + cardBonus;
         if (p.hasEffect(ModEffects.DIRECTIONAL_BLAST)) bonus += 5 + cardBonus;
-        if (p.hasEffect(ModEffects.LIVING_PAGE)) {
-            int pages = com.merlinkitsune.astral_dice.combat.SpellDamageRegistry.livingPageBonusPages(p);
-            bonus += 2 + pages + cardBonus;
-        }
+        // 活体书页不再提供「效果期间的被动法伤加成」(2026-09-25 重写):其伤害是一次**命中结算**,
+        // 不再叠加到其它远程/魔法伤害上 ⇒ 本行不再计入,否则会把一次性命中当成全周期增益重复显示。
         tooltip.add(tt("tooltip.astral_dice.card.active_damage_bonus", bonus)
                 .withStyle(ChatFormatting.GRAY));
     }
@@ -589,6 +587,9 @@ public class ModTooltipHandler {
         }
         if (stack.is(ModItems.EFFECT_CARD_BERSERK.get())) {
             tooltip.add(Component.empty());
+            // 第一行 = 精简用法(左键对其他玩家 / 右键对自身),第二行 = 效果本身(2026-09-25 用户裁决)
+            tooltip.add(Component.translatable("tooltip.astral_dice.card.berserk")
+                    .withStyle(ChatFormatting.GRAY));
             tooltip.add(Component.translatable("effect.astral_dice.berserk.description")
                     .withStyle(ChatFormatting.GRAY));
             addEffectCardPlayCountTooltip(tooltip, player);
@@ -718,9 +719,11 @@ public class ModTooltipHandler {
                 addSignCounter(tooltip, "tooltip.astral_dice.sign.komachi_effect_count",
                         ModAttachments.getKomachiUseCount(p));
                 // 伤害增益只在**佩戴立牌**时生效(2026-09-15 裁决):死亡保留的值不因"牌不在身上"而显示为加成
+                // 并与伤害结算同源做静默上限夹取(2026-09-19,SpellDamageRegistry#SIGN_DAMAGE_BONUS_CAP)
                 addSignCounter(tooltip, "tooltip.astral_dice.sign.komachi_damage_bonus",
-                        com.merlinkitsune.astral_dice.item.sign.KomachiSignItem.isEquipped(p)
-                                ? ModAttachments.getKomachiDamageBonus(p) : 0);
+                        com.merlinkitsune.astral_dice.combat.SpellDamageRegistry.cappedSignDamageBonus(
+                                com.merlinkitsune.astral_dice.item.sign.KomachiSignItem.isEquipped(p)
+                                        ? ModAttachments.getKomachiDamageBonus(p) : 0));
             }
             addSignCooldownRemaining(tooltip, event.getEntity() instanceof Player p ? p : null);
         }
@@ -1102,16 +1105,11 @@ public class ModTooltipHandler {
         if (stack.is(ModItems.LIVING_PAGE.get())) {
             tooltip.add(Component.empty());
             if (event.getEntity() instanceof Player p) {
-                // 活体书页伤害 = 基础 2 + 调查员(rin)已使用数量 + 伤害效果牌统一加成(忍者立牌效果牌伤害增益 + 书签)
-                // 两项都只在**佩戴对应立牌**时生效(2026-09-15 裁决),故一律走 SpellDamageRegistry 的判定入口
-                int pages = com.merlinkitsune.astral_dice.combat.SpellDamageRegistry.livingPageBonusPages(p);
-                // 组件基础色为灰(普通文本);行内颜色码:数值=黄 §e、时间=蓝 §9
-                tooltip.add(Component.translatable("tooltip.astral_dice.card.living_page",
-                                2 + pages + com.merlinkitsune.astral_dice.combat.SpellDamageRegistry
-                                        .effectCardDamageBonus(p))
+                tooltip.add(tt("tooltip.astral_dice.card.living_page",
+                                com.merlinkitsune.astral_dice.combat.SpellDamageRegistry.livingPageImpactDamage(p))
                         .withStyle(ChatFormatting.GRAY));
             } else {
-                tooltip.add(Component.translatable("tooltip.astral_dice.card.living_page", "?")
+                tooltip.add(tt("tooltip.astral_dice.card.living_page", "?")
                         .withStyle(ChatFormatting.GRAY));
             }
             addEffectCardPlayCountTooltip(tooltip, player);
@@ -1296,6 +1294,15 @@ public class ModTooltipHandler {
                         HealingManager.getPoints(p), HealingManager.getCap(p))
                         .withStyle(ChatFormatting.GRAY));
             }
+            addSignCooldownRemaining(tooltip, event.getEntity() instanceof Player p ? p : null);
+        }
+        if (stack.is(ModItems.REN_SIGN.get())) {
+            tooltip.add(Component.empty());
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "熊孩子特权");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.ren_active");
+            addSignPassiveTitle(tooltip, "鼠鼠救我");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.ren_passive");
             addSignCooldownRemaining(tooltip, event.getEntity() instanceof Player p ? p : null);
         }
     }
