@@ -93,7 +93,7 @@ public final class TargetSelectionClient {
     private static long transientPromptUntil;
     /**
      * 本次会话是否允许对自身使用（服务端随会话下发；消费方接口
-     * {@code target/SelfTargetable#allowSelf()} 的取值；{@code ren_privilege} 与三张可自用效果牌（express_delivery / luxury_feast / berserk）为 true，其余动作 false）。
+     * {@code target/SelfTargetable#allowSelf()} 的取值；{@code ren_privilege}、三张可自用效果牌（express_delivery / luxury_feast / berserk）与史莱姆立牌 {@code lulu_healing_slime}（2026-09-19 追加）为 true，其余动作 false）。
      */
     private static boolean allowSelf;
     /**

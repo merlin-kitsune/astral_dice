@@ -58,7 +58,7 @@ public final class SelectorTargets {
      * <p>三处调用点里只有**服务端确认**需要本重载:前置库 {@link TargetType#matches} 始终排除选择者
      * 自身,故「右键对自身使用」必须由消费方放行 —— 仅当本次会话确实允许自身目标
      * ({@code allowSelf},来自 {@link SelfTargetable#allowSelf()} 的启动时快照)且目标就是选择者时
-     * 才放行,其余情况逐字沿用三参方法(既有的三个选择器类立牌 `allowSelf=false` ⇒ 行为不变)。
+     * 才放行,其余情况逐字沿用三参方法(占星师/秘密侦探/枪匠三个选择器类立牌 `allowSelf=false` ⇒ 行为不变)。
      *
      * @param allowSelf 本次会话是否允许对自身使用(会话启动时快照)
      */

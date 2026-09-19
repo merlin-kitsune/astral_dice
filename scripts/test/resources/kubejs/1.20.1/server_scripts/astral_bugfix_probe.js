@@ -4326,6 +4326,282 @@ function doRenActive(ctx, tag) {
     return 1;
 }
 
+// ── 史莱姆立牌(lulu):主动「治愈粘液」→ 目标选择器(2026-09-19 重写)─────────────
+/**
+ * 史莱姆立牌主动技能的游戏内取证(luluprep → luluactive → luluanchor 三条命令串成一条判据链):
+ *
+ * <p><b>luluprep</b>:基线(装 lulu 立牌 / 清治愈点 / 清主动冷却 / 丢弃附近实体)+ 摆两个判据靶:
+ * 玩家自身先扣到 12 血(主体瞬间治疗可读)、6 格外一只**受损的猪**(可骑乘 ⇒ 范围治疗可读)、
+ * 4 格外一只蜘蛛(范围缓慢可读)。
+ *
+ * <p><b>luluactive</b>(真实按键路径):按主动(= {@code BaseSignItem.performSkillForCurio},门控:只开会话)
+ * → 读会话/令牌 → **对自身**确认 ⇒ 主体「+3 治愈 + 瞬间治疗」落在自己身上;两项范围能力以**自己**为中心
+ * (猪被治疗、蜘蛛被缓慢);门控路径自己写冷却(cd_after=1)。
+ *
+ * <p><b>luluanchor</b>(**路由**判据,回答「另外 2 项范围能力是否作用于被指向的目标」):单人环境没有
+ * 第二名玩家、而本技能的目标类型是 `PLAYER` ⇒ 按键路径无法选中「别的玩家」;故把治疗靶(猪)放
+ * 24 格外,在**猪旁 4 格**放一只蜘蛛、在**玩家旁 4 格**放另一只,然后直接调用注册表里的
+ * `TargetSelectionAction#apply(player, 猪)`:
+ *   · 猪旁蜘蛛被缓慢      = 范围以**被指向的目标**为中心 ★决定性
+ *   · 玩家旁蜘蛛**没有**缓慢 = 范围**不是**仍以施放者为中心 ★决定性
+ *   · 猪被瞬间治疗(主体效果落在目标上)、玩家治愈点数不变(猪不是玩家 ⇒ 主体 +3 不加给施放者)
+ */
+var LULU_SIGN_ID = "astral_dice:lulu_sign";
+var LULU_ACTION_ID = "lulu_healing_slime";
+var TargetSelectionRegistryClass = Java.loadClass("com.merlinkitsune.starenginelib.target.TargetSelectionRegistry");
+
+/** 治愈点数(读不到报 -1,便于用例区分「0 点」与「读失败」) */
+function luluHealPoints(p) { try { return HealingManagerClass.getPoints(p); } catch (e) { return -1; } }
+
+/** 生命值(保留两位;命中/治疗差值判据用) */
+function luluHpR(e) { try { return Math.round(e.getHealth() * 100) / 100; } catch (e2) { return -1; } }
+
+/** 效果读数,与既有读数同格式:"放大等级/剩余tick";无该效果 = "-",读失败 = "?" */
+function luluFx(e, fx) {
+    try {
+        var inst = e.getEffect(fx);
+        return inst == null ? "-" : (inst.getAmplifier() + "/" + inst.getDuration());
+    } catch (e3) { return "?"; }
+}
+
+/**
+ * 瞬间效果的**结算延迟**(2026-09-19 现场取证确立的读数口径)。
+ *
+ * <p>瞬间治疗效果(HEAL)经 {@code LivingEntity#addEffect} 只把实例放进 activeEffects,
+ * 真正回血发生在**下一 tick** 的 {@code MobEffectInstance#tick → MobEffect#applyEffectTick}
+ * (原版 {@code InstantenousMobEffect#shouldApplyEffectTickThisTick = duration >= 1};
+ * 原版 {@code /effect give} 走的也是这条路径 —— NeoForge 的 addEffect 里没有 instant 分支)。
+ * 故**同 tick** 读生命值必然读到旧值:现场实测施放前 {@code Dev 12.0f}、施放同 tick 仍 12.0f、
+ * 下一 tick 才变 16.0f(猪 6.0f → 10.0f)。⇒ 「瞬间治疗是否落到目标」必须**延后读数**,
+ * 否则用例只会拿到假 FAIL。
+ */
+var LULU_SETTLE_TICKS = 2;
+
+/** 待读队列;无待读项时 tick 回调零开销 */
+var luluAfter = [];
+
+/**
+ * 最近一次 {@code luluprep} 放下的判据靶句柄(**跨命令复用**)。
+ *
+ * <p><b>为什么不让 active 段自己按类型搜</b>:2026-09-19 实机两轮实测 —— 同一 ±8 盒内
+ * {@code getEntitiesOfClass} 取到的实体本身是对的(旁证:`luluDiscardNearby` 靠它清场成功、
+ * 诊断字段 {@code scan8} 报出真实条数 3),但**按 {@code typeIdOf(entity) === "minecraft:pig"} 取靶
+ * 却取到了施放者自己**(读数 `pig_hp=12->16` = 玩家血量,而 prep 的猪是 6),且 `"minecraft:spider"`
+ * 一条都匹配不到。两轮读数与该「按类型匹配不可靠」的解释完全一致 ⇒ 取靶改为**由 prep 发布句柄**,
+ * 搜索只留作诊断({@code census} 字段把盒内每个实体的「类型串@血量」原样报出,便于日后定位)。
+ */
+var luluState = null;
+
+/** 两点距离(保留两位;异常 -1)。锚点距离**实测**,不再硬编码字面量 */
+function luluDistTo(a, b) {
+    try { return Math.round(a.position().distanceTo(b.position()) * 100) / 100; }
+    catch (e) { return -1; }
+}
+
+/** 实体是否仍存活于世界(1/0;异常 -1)。负对照必须带存在性读数,否则「空句柄/没进世界」会被读成「无效果」而假过 */
+function luluPresent(e) {
+    if (e == null) return 0;
+    try { return e.isAlive() ? 1 : 0; } catch (e2) { return -1; }
+}
+
+/** 排一次延迟读数(kind = "self" / "anchor") */
+function luluLater(kind, st) { st.kind = kind; st.left = LULU_SETTLE_TICKS; luluAfter.push(st); }
+
+/**
+ * 按类型在 AABB 内取第一只句柄 —— **只允许在 apply 之前**用。
+ * 现场实测(2026-09-19):apply 之后在同一位置、同一 tick 再按 AABB 搜索会搜不到蜘蛛
+ * (猪能搜到),原因未定 ⇒ 判据一律走句柄读数,施放后的搜索只作诊断字段(scan8/scan_err)。
+ */
+function luluFindOne(p, typeId, diameter) {
+    try {
+        var aabb = AABBClass.ofSize(p.position(), diameter, diameter, diameter);
+        var list = p.level.getEntitiesOfClass(LivingEntityClass, aabb);
+        for (var i = 0; i < list.size(); i++) {
+            if (typeIdOf(list.get(i)) === typeId) return list.get(i);
+        }
+    } catch (e) { /* 取不到 ⇒ null,读数显式报 n/a */ }
+    return null;
+}
+
+/** 延迟读数驱动(独立于珍珠观察窗的 tick 回调) */
+function luluAfterTick() {
+    if (luluAfter.length === 0) return;
+    var keep = [];
+    for (var i = 0; i < luluAfter.length; i++) {
+        var st = luluAfter[i];
+        st.left = st.left - 1;
+        if (st.left > 0) { keep.push(st); continue; }
+        try {
+            var p = st.player, tag = st.tag;
+            if (st.kind === "self") {
+                emitTo(p, "AP_" + tag + "_AFTER:delay=" + LULU_SETTLE_TICKS
+                    + ":hp=" + st.hp0 + "->" + luluHpR(p)
+                    + ":pig_hp=" + (st.pig == null ? "n/a" : st.pigHp0 + "->" + luluHpR(st.pig))
+                    + ":spider_slow=" + (st.spider == null ? "n/a" : luluFx(st.spider, MobEffectsClass.MOVEMENT_SLOWDOWN))
+                    + ":cd_after=" + (signCooldownRemaining(p) > 0 ? 1 : 0));
+            } else {
+                emitTo(p, "AP_" + tag + "_AFTER:delay=" + LULU_SETTLE_TICKS
+                    + ":anchor_dist=" + st.anchorDist
+                    + ":pig_hp=" + st.pigHp0 + "->" + luluHpR(st.pig)
+                    + ":spider_by_pig=" + (st.spiderByPig == null ? "?" : luluFx(st.spiderByPig, MobEffectsClass.MOVEMENT_SLOWDOWN))
+                    + ":spider_by_pig_present=" + luluPresent(st.spiderByPig)
+                    + ":spider_by_player=" + (st.spiderByPlayer == null ? "?" : luluFx(st.spiderByPlayer, MobEffectsClass.MOVEMENT_SLOWDOWN))
+                    + ":spider_by_player_present=" + luluPresent(st.spiderByPlayer)
+                    + ":caster_heal=" + st.heal0 + "->" + luluHealPoints(p));
+            }
+        } catch (e) { emitTo(st.player, "AP_" + st.tag + "_AFTER_EX:" + exText(e)); }
+    }
+    luluAfter = keep;
+}
+
+ServerEvents.tick(event => { try { luluAfterTick(); } catch (e) { /* 忽略 */ } });
+
+/** 在 anchor 的相对偏移处生成一只无 AI 生物(纯 API;不用 runCmd,避免「下一 tick 才生效」) */
+function luluSpawnAt(anchor, typeId, dx, dz) {
+    var type = BuiltInRegistries.ENTITY_TYPE.get(ResourceLocation.parse(typeId));
+    var mob = type.create(anchor.level);
+    if (mob == null) return null;
+    placeAt(mob, anchor.getX() + dx, anchor.getY(), anchor.getZ() + dz);
+    try { mob.setNoAi(true); } catch (e1) { /* 忽略 */ }
+    try { mob.setPersistenceRequired(); } catch (e2) { /* 忽略 */ }
+    anchor.level.addFreshEntity(mob);
+    return mob;
+}
+
+/** 丢弃半径内全部非玩家实体(基线归零;两参 getEntitiesOfClass + JS 侧过滤,与既有探针同写法)
+ *  ⚠️ `AABB.ofSize` 传的是**直径** ⇒ 这里显式乘 2 才是「±radius 格」的半轴(与 countLightning 同口径) */
+function luluDiscardNearby(p, radius) {
+    var n = 0;
+    try {
+        var aabb = AABBClass.ofSize(p.position(), radius * 2, radius * 2, radius * 2);
+        var list = p.level.getEntitiesOfClass(LivingEntityClass, aabb);
+        for (var i = 0; i < list.size(); i++) {
+            var e = list.get(i);
+            if (e == p) continue;
+            try { e.discard(); n = n + 1; } catch (e2) { /* 忽略 */ }
+        }
+    } catch (e3) { /* 忽略 */ }
+    return n;
+}
+
+/** 基线 + 摆「自身段」判据靶:see 函数头注释 */
+function doLuluPrep(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    try { HealingManagerClass.clear(p); } catch (e0) { /* 忽略 */ }
+    try { ModAttachments.setSignActiveCooldownEnd(p, 0); } catch (e1) { /* 忽略 */ }
+    try { ModAttachments.setSignActiveMaxCooldown(p, 0); } catch (e2) { /* 忽略 */ }
+    // 清掉可能残留的选择会话:残留会让 performSkillForCurio 走「已在选择中」分支(⇒ session=0 假 FAIL)
+    try { TargetSelectionManagerClass.cancelSessionForTests(p); } catch (e2b) { /* 忽略 */ }
+    var err = equipSign(p, LULU_SIGN_ID);
+    if (err != null) { send(ctx, "AP_" + tag + "_ERR:" + err); return 1; }
+    luluDiscardNearby(p, 48);
+    // 自身先扣到 12 血:主体瞬间治疗(HEAL I = 4 点)可读
+    try { p.setHealth(12); } catch (e3) { /* 忽略 */ }
+    var pig = luluSpawnAt(p, "minecraft:pig", 0, 6);
+    var spider = luluSpawnAt(p, "minecraft:spider", 0, 4);
+    if (pig == null || spider == null) { send(ctx, "AP_" + tag + "_ERR:spawn_failed"); return 1; }
+    try { pig.setHealth(6); } catch (e4) { /* 忽略 */ }   // 猪受损 ⇒ 范围治疗可读(上限 10)
+    // 发布句柄给 active 段(见 luluState 注释:按类型搜索不可靠)
+    luluState = { pig: pig, spider: spider, tag: tag };
+    send(ctx, "AP_" + tag + "_PREP:heal=" + luluHealPoints(p) + ":hp=" + luluHpR(p)
+        + ":pig_hp=" + luluHpR(pig) + ":spider_slow=" + luluFx(spider, MobEffectsClass.MOVEMENT_SLOWDOWN)
+        + ":cd=" + (signCooldownRemaining(p) > 0 ? 1 : 0)
+        + ":pig_eid=" + pig.getId() + ":spider_eid=" + spider.getId() + ":p_eid=" + p.getId());
+    return 1;
+}
+
+/**
+ * 「自身段」:按主动(门控)→ 对自身确认 → 读门控/冷却/光环;**生命值走延迟读数**。
+ *
+ * <p>靶子句柄必须在**技能施放前**取(见 {@link luluFindOne});本命令只报**同步可读**的项
+ * (会话/令牌/冷却/治愈点/句柄上的缓慢),生命值与光环治疗结果由 {@code AP_<tag>_AFTER} 在
+ * {@link LULU_SETTLE_TICKS} tick 后给出 —— 同 tick 读生命值只会得到假 FAIL。
+ */
+function doLuluActive(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    // 靶子句柄优先取 luluprep 留下的(见 luluState 注释);句柄已失效时才退回按类型搜
+    var pig = null, spider = null;
+    if (luluState != null && luluPresent(luluState.pig) === 1 && luluPresent(luluState.spider) === 1) {
+        pig = luluState.pig;
+        spider = luluState.spider;
+    } else {
+        pig = luluFindOne(p, "minecraft:pig", 16);
+        spider = luluFindOne(p, "minecraft:spider", 16);
+    }
+    var heal0 = luluHealPoints(p);
+    var hp0 = luluHpR(p);
+    var pigHp0 = pig == null ? -1 : luluHpR(pig);
+    var cdBefore = signCooldownRemaining(p);
+    var session = 0, token = -1, cdGated = -1, confirmed = 0, confirmErr = "";
+    try {
+        BaseSignItemClass.performSkillForCurio(p);
+        session = TargetSelectionManagerClass.isSelecting(p) ? 1 : 0;
+        token = TargetSelectionManagerClass.sessionTokenForTests(p);
+        cdGated = signCooldownRemaining(p);
+        TargetSelectionManagerClass.confirm(p, token, p.getId());
+        confirmed = 1;
+    } catch (e5) { confirmErr = exText(e5); }
+    // 诊断(不参与判定):施放后的同位置 AABB 搜索;值为 -2 表示搜索本身抛异常,此时附 scan_err
+    var scan8 = -1, scanErr = "";
+    try {
+        scan8 = p.level.getEntitiesOfClass(LivingEntityClass,
+            AABBClass.ofSize(p.position(), 16, 16, 16)).size();
+    } catch (e6) { scan8 = -2; scanErr = exText(e6); }
+    // 诊断(不参与判定):盒内每个实体的「类型串@血量」原样报出(见 luluState 注释)
+    var census = "";
+    try {
+        var list0 = p.level.getEntitiesOfClass(LivingEntityClass, AABBClass.ofSize(p.position(), 16, 16, 16));
+        for (var k = 0; k < list0.size() && k < 6; k++) {
+            census = census + (k > 0 ? "|" : "") + typeIdOf(list0.get(k)) + "@" + luluHpR(list0.get(k));
+        }
+        if (census === "") census = "-";
+    } catch (e7) { census = "<err>"; }
+    send(ctx, "AP_" + tag + "_SELF:session=" + session + ":token_seen=" + (token > 0 ? 1 : 0)
+        + ":cd_before=" + (cdBefore > 0 ? 1 : 0) + ":cd_gated=" + (cdGated > 0 ? 1 : 0)
+        + ":confirmed=" + confirmed
+        + ":heal=" + heal0 + "->" + luluHealPoints(p)
+        + ":spider_slow=" + (spider == null ? "n/a" : luluFx(spider, MobEffectsClass.MOVEMENT_SLOWDOWN))
+        + ":pig_eid=" + (pig == null ? -1 : pig.getId())
+        + ":spider_eid=" + (spider == null ? -1 : spider.getId()) + ":p_eid=" + p.getId()
+        + ":pig_present=" + luluPresent(pig) + ":spider_present=" + luluPresent(spider)
+        + ":scan8=" + scan8
+        + ":census=" + census
+        + ":cd_after=" + (signCooldownRemaining(p) > 0 ? 1 : 0)
+        + (scanErr ? ":scan_err=" + scanErr : "")
+        + (confirmErr ? ":err=" + confirmErr : ""));
+    luluLater("self", { player: p, tag: tag, hp0: hp0, pig: pig, pigHp0: pigHp0, spider: spider });
+    return 1;
+}
+
+/** 「锚点段」:直接 apply(锚点 = 24 格外的一只猪),验两项范围能力是否跟着目标走 */
+function doLuluAnchor(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    luluDiscardNearby(p, 48);
+    var pig = luluSpawnAt(p, "minecraft:pig", 0, 24);
+    if (pig == null) { send(ctx, "AP_" + tag + "_ERR:spawn_failed:anchor"); return 1; }
+    try { pig.setHealth(6); } catch (e1) { /* 忽略 */ }
+    var spiderByPig = luluSpawnAt(pig, "minecraft:spider", 0, 4);
+    var spiderByPlayer = luluSpawnAt(p, "minecraft:spider", 0, 4);
+    var heal0 = luluHealPoints(p);
+    var pigHp0 = luluHpR(pig);
+    var anchorDist = luluDistTo(p, pig);   // 实测距离(取代硬编码 24)
+    var err = "";
+    try {
+        var action = TargetSelectionRegistryClass.get(LULU_ACTION_ID);
+        action.apply(p, pig);
+    } catch (e2) { err = exText(e2); }
+    send(ctx, "AP_" + tag + "_ANCHOR:anchor_dist=" + anchorDist + ":pig_hp=" + pigHp0 + "->" + luluHpR(pig)
+        + ":spider_by_pig=" + (spiderByPig == null ? "?" : luluFx(spiderByPig, MobEffectsClass.MOVEMENT_SLOWDOWN))
+        + ":spider_by_player=" + (spiderByPlayer == null ? "?" : luluFx(spiderByPlayer, MobEffectsClass.MOVEMENT_SLOWDOWN))
+        + ":caster_heal=" + heal0 + "->" + luluHealPoints(p)
+        + (err ? ":err=" + err : ""));
+    // 主体瞬间治疗落在**目标(猪)**上:同 tick 读不到 ⇒ 延迟读数;两只蜘蛛各带存在性读数,
+    // 杜绝「对象创建了却没进世界 ⇒ 读数 - 也算通过」的负对照假过
+    luluLater("anchor", { player: p, tag: tag, pig: pig, pigHp0: pigHp0, heal0: heal0,
+        spiderByPig: spiderByPig, spiderByPlayer: spiderByPlayer, anchorDist: anchorDist });
+    return 1;
+}
+
 // ── 效果牌 → 目标选择器(2026-09-25)只读读数 ─────────────────────────────────
 /**
  * 四张效果牌(加急加快 express_delivery / 奢华大餐 luxury_feast / 狂暴 berserk /
@@ -5337,6 +5613,22 @@ ServerEvents.commandRegistry(event => {
                 .then(Commands.argument("tag", StringArg.word())
                     .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
                         return doRenRead(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            // 史莱姆立牌主动「治愈粘液」→ 目标选择器(2026-09-19 重写):prep / active / anchor 三连
+            .then(Commands.literal("luluprep")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doLuluPrep(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("luluactive")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doLuluActive(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("luluanchor")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doLuluAnchor(ctx, StringArg.getString(ctx, "tag"));
                     }))))
     );
 });

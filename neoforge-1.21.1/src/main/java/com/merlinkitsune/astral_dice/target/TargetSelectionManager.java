@@ -171,7 +171,8 @@ public final class TargetSelectionManager {
         // (2026-09-19 用户要求),若仍按配置默认 16 夹取,声明的 32 会被静默截半。
         double radius = Math.max(1.0, Math.min(action.radius(), MAX_SELECT_RADIUS));
         // 对自身使用的唯一来源（消费方侧接口，不改前置库）：实现 SelfTargetable 的动作才为 true
-        // （当前 allowSelf=true 的动作 = ren_privilege 与三张可自用效果牌 express_delivery / luxury_feast / berserk；其余动作缺省 false）。
+        // （当前 allowSelf=true 的动作 = ren_privilege、三张可自用效果牌 express_delivery / luxury_feast / berserk
+        //  与 lulu_healing_slime(2026-09-19 追加)；其余动作缺省 false）。
         boolean allowSelf = action instanceof SelfTargetable selfTargetable && selfTargetable.allowSelf();
         // 「手持即选择」（2026-09-25 用户裁决）：实现 HoldToSelect 的动作**没有倒计时** —— expireTick 写 0，
         // 结算一律走 Session.holdToSelect 分支（每 tick 校验物品是否仍在主手）。

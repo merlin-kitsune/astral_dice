@@ -177,6 +177,12 @@
   `startActiveLockOnUse` / `isGateEffectActive`，故它们不会进入锁定态；若游戏内实测发现这三者的主动在
   生效期内可被再次触发（或缺少与主线等待器等价的保护），需按各自效果时长补 `startActiveLockOnUse`
   覆写并加对应用例 —— **本轮合并只保证编译与既有语义不被破坏，未做该补强**。
+- **已知缺陷（2026-09-19 登记，待修）**：门控路径**漏写 `sign_active_max_cooldown`** —— 现有四个门控立牌
+  （游戏大师 `RenSignItem` / 秘密侦探 `BonnieSignItem` / 占星师 `HaiqingSignItem` / 枪匠 `MosesSignItem`，两发布线同）
+  的 `TargetSelectionAction#apply` 里都只调 `ModAttachments#setSignActiveCooldownEnd`。非门控路径（`BaseSignItem` 第 6 步）
+  与 `ModAttachments` 的注释口径都是**成对写入**，而电流核心 `CurrentCoreChipItem` 的消耗档位分母读的正是
+  `sign_active_max_cooldown`（缺失时回退 180 s）⇒ 这四个立牌的档位定价会偏。2026-09-19 新增/重写的史莱姆立牌
+  （`LuluSignItem`）**已按正确口径成对写入**，可直接照抄；补修时两发布线同改并加对应用例。
 
 ### KI-M3 ＝ 合并后仍需在游戏内复核的两项（未实施）+ 库侧过渡符号清理（**已实施**，2026-09-17）
 
@@ -298,7 +304,40 @@ GlCommandEncoder.trySetup(:531) ← GlCommandEncoder.executeDraw(:406) ← GlRen
   - **已回答（2026-09-19）**：见上方「机制（源码级确认）」段 —— 根因不是「Iris 跳过重绑」，而是 **Iris 用顶点格式推出 overlay 需求（`Sampler1`）并替换了 program，而通道侧仍只按原版 `RenderSetup.useOverlay` 绑 sampler**。已观测到的直接线索 `temp/t48/A-if-on/debug.log:1712` = `mixins.iris.json:MixinShaderManager_Overrides from mod iris->@Inject::redirectIrisProgram(…RenderPipeline;…)` 正是该替换点。
 - **ImmediatelyFast（已由 A/B 实测排除，降级为附录）**：<https://github.com/RaphiMC/ImmediatelyFast> —— 克隆点 `F:\MCProject\temp_immediatelyfast\26.1`，已按版本钉到 **tag `v1.15.3` / commit `c010c5d5`**（对应现场 `ImmediatelyFast-NeoForge-1.15.3+26.1.jar`，312 276 B）。其既有分析**不得**作为崩溃成因引用；只在「为何 A 组栈里多一层 `BatchableBufferSource` 帧」这类旁证语境下使用（IF 自身确有两个 `GlCommandEncoder` mixin：`immediatelyfast-common.mixins.json:avoid_redundant_framebuffer_switching.MixinGlCommandEncoder`、`fix_slow_buffer_upload_on_apple_gpu.MixinGlCommandEncoder` —— 但 B 组证明没有它们**照样崩**）。
 
-## 8. 变更记录
+## 8. E 组 — 测试工具链与探针口径（2026-09-19 起）
+
+### KI-E1 ＝ `AP_NOAI` 心跳/闸门读数恒为 `mobs=0`（**假阴性 ⇒ 进入世界那道「禁用生物 AI」闸门形同空洞**）
+
+- **现象（2026-09-19 实测，只读取证）**：同一测试世界里**确有**2 只靶生物（`luluprep` 放的无 AI 猪与蜘蛛；用原版
+  `/execute as @e[type=!player,distance=..16] run data get entity @s Pos` 逐只打印坐标确认：猪 `[7.5,-60,1.5]`、
+  蜘蛛 `[7.5,-60,-0.5]`，玩家 `[7.5,-60,-4.5]`），而 `run/1.21.1/logs/latest.log` 里连续 6 条心跳一律为
+  `AP_NOAI:mobs=0:noai=0:radius=128:forced=0:total=0:tick=…`。
+- **后果**：`mt_launch` 的硬闸门判据是「读到 `AP_NOAI:` 且 `mobs == noai`」⇒ `0 == 0` **恒成立**，该闸门不提供任何保护；
+  同时「每 2 tick 强制 `setNoAi(true)`」这条清扫本身是否命中过任何生物也无法由该读数证明。
+- **嫌疑（未定；需在 `astral_test_noai.js` 侧定位，不属本模组产品代码）**：`noaiSweep` 取 `level.players()` 为空 ⇒ `continue`；
+  或 `getEntitiesOfClass(Java.loadClass("net.minecraft.world.entity.Mob"), AABB.ofSize(...))` 的**类过滤**在 KubeJS/Rhino 下不匹配
+  （同位置、同写法的 `LivingEntity` 过滤在探针里**可用** —— `luluDiscardNearby` 实测清掉了旧靶 ⇒ 差别只在类对象）。
+- **规避**：涉及「世界级差值」的用例不要依赖该闸门的通过与否；本轮 lulu 用例改走**句柄读数** ＋ 靶自设 `setNoAi(true)`。
+- ⚠️ 该文件属**另一会话的改动范围**（本轮未改它）；登记于此只为不丢失证据。
+
+### KI-E2 ＝ 探针的 `typeIdOf(entity)` 对**所有**实体返回同一类型串 ⇒ 按类型取靶/计数不可用（**已改走句柄；根因未定**）
+
+- **现象（2026-09-19 实测，同一轮内取证）**：`luluactive` 打印的诊断普查
+  `census=minecraft:pig@12|minecraft:pig@6|minecraft:pig@16` —— 同一 ±8 盒内的三条 `LivingEntity`
+  分别是**施放者（12 血）/ 那只猪（6 血）/ 那只蜘蛛（16 血）**（血量与 prep 布置逐条吻合，`pig_eid=1058` /
+  `spider_eid=1059` / `p_eid=1` 三者互不相同），但 `typeIdOf(entity)` 对三者返回**同一个** `minecraft:pig`。
+  ⇒ 同一实体的**身份与血量读数都是对的**，只有**类型串**是常量。
+- **后果**：任何 `typeIdOf(x) == minecraft:xxx` 的取靶/计数都不可用 —— 前一轮 `luluprep` + `luluactive` 因此
+  「按 `minecraft:pig` 取靶取到了施放者自己」（读数 `pig_hp=12->16` = 玩家血量）、`minecraft:spider` 一条也匹配不到。
+  ⚠️ **前序解释的更正**：把症状解释为「技能 `apply` 之后按 AABB 搜索搜不到实体」**不成立** —— 同一轮诊断字段
+  `scan8=3` 与 `census` 三条实体全部正确，搜索本身正常；**唯一的故障点就是类型匹配**。
+- **可能成因（未定，嫌疑按序）**：Rhino / KubeJS 对 `entity.getType()`（或 `Registry#getKey(T)`）的方法分派缓存了
+  **首次调用**的结果（本会话里 `BuiltInRegistries.ENTITY_TYPE.get(...)` 的首次调用 = `luluSpawnAt` 造猪）。
+- **处置（本仓已实施）**：探针取靶改为由 setup 命令**发布句柄**（`luluprep` → 全局 `luluState` → `luluactive`
+  跨命令沿用），判据一律读句柄；类型匹配只留在诊断字段里。⇒ **不要**再用 `typeIdOf` 写新判据；依赖它的既有命令
+  （如 `countLightning` 的通用回退分支、`slimecheck` 等）需一并复核。
+
+## 9. 变更记录
 
 | 日期 | 变更 |
 |---|---|
@@ -312,3 +351,4 @@ GlCommandEncoder.trySetup(:531) ← GlCommandEncoder.executeDraw(:406) ← GlRen
 | 2026-09-18 | 新增 **§7 D 组（平台/第三方冲突）** 与 **KI-D1**：26.1.2 + 光影（Complementary/Iris）+ ImmediatelyFast 的 `Missing sampler Sampler1` 崩溃，经**对照组**（不执行选择器仍崩、`capture hook active`/`target_prism` 均 0、崩溃报告内本模组帧数 0）确证**与本模组无关**；同时登记「复用 entitySolid 缺 Sampler1」假设**被证伪**、「自建仅 Sampler0 管线」方案**被实测否决并回退**；IF 开/关 A/B 因工具链限制**未完成**（可行路径已写明） |
 | 2026-09-19 | **KI-D1 归因更正（A/B 三组实测完成）**：A（IF 开 + 光影开）崩、B（**IF 关** + 光影开）**仍崩且日志内无任何 IF 帧**、第三组（IF 关 + **光影关**）**不崩** ⇒ **排除 ImmediatelyFast**、必要条件锁定为**光影/Iris**；旧的规避建议「用光影时不要同时装 IF」**作废**，改为「26.1.2 开光影即有风险，规避 = 关光影 / dev 加 `-Dneoforge.disableGlValidation=true` / 接受风险」；前序「0.9.1 下光影正常」的口径更正为**仅覆盖启动期**（本崩溃在进入世界 1–3 分钟内出现）。源码取证主体由 IF 改为 **Iris 1.11.4+mc26.1.2**（IF 已钉 `v1.15.3`/`c010c5d5` 并降级为附录） |
 | 2026-09-19 | **KI-D1 源码级定案 = Iris 侧缺陷 + 两处旧记载更正**：Iris 26.1 线 commit `bff1e69c…`（无 tag，用三重替代证据补强，jar sha256 `32D672A8…22BE5`）。机制链确认：Iris 用**顶点格式**推出 overlay 需求（`ExtendedShader.java:119-121` + `IrisVertexFormats.java:52`）并**替换 item 管线的 program**（`IrisPipelines.java:36-37`/`:188-222`、`MixinShaderManager_Overrides.java:53-66`），而通道侧只按原版 `RenderSetup.useOverlay` 绑 sampler（`RenderPipelines.java:75-82`、`RenderTypes.java:151-174`）⇒ 只有这次替换会索要 `Sampler1`，由**原版**校验 `GlCommandEncoder.java:526-532` 抛出。**更正①**：「`trySetup` 被 Iris 替换」不成立（Iris 仅在 HEAD 对自定义通道条件性 cancel、RETURN 追加状态，对 `samplers` 表只读不写）。**更正②**：「`getOrCompilePipeline` 抛 `Throwable`」不成立（`MixinShaderManager_Overrides.java:67-72` 只打日志，返回 `null` 回落原版 program）。**新增定性**：该断言 **dev-only**（`GlRenderPass.java:25` 的 `VALIDATION`，生产只 `continue`），故玩家侧影响面小；上游 issue 英文草稿已备（`temp/t50/iris-sampler1-source-analysis.md` §4.2），未提交 |
+| 2026-09-19 | 新增 **§8 E 组（测试工具链与探针口径）**：**KI-E1** = `AP_NOAI` 心跳/闸门读数在确有靶生物时恒为 `mobs=0`（假阴性 ⇒ 「禁用生物 AI」硬闸门 `mobs == noai` 恒成立、形同空洞；嫌疑在 `astral_test_noai.js` 侧，未改该文件）；**KI-E2** = 探针 `typeIdOf(entity)` 对**所有**实体返回同一类型串（实测 `census=minecraft:pig@12\|minecraft:pig@6\|minecraft:pig@16` ⇒ 三条实体的身份/血量全对、只有类型串是常量），按类型取靶因此不可用 —— 探针已改为「setup 发布句柄 + 判据只读句柄」，并**更正**前序把症状解释为「`apply` 之后搜不到实体」的误判（`scan8=3` 证明搜索正常）。KI-M2 补登既有缺陷：四个门控立牌（ren/bonnie/haiqing/moses）**漏写 `sign_active_max_cooldown`**（电流核心档位分母偏），史莱姆立牌已按正确口径成对写入 |
