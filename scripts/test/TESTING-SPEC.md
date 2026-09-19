@@ -44,7 +44,7 @@
 | 分支 | **任意分支**（`multi-dev-next` 等开发分支同样可运行）。阶段 P 只**回显实际分支名 + WARN**，不拦停（2026-09-17 用户裁决「移除二重验证白名单，允许该分支执行」）；发布线 `multi-1.20.1-1.21.1` 仅作提示 |
 | 脚本语言 | **纯 PowerShell 7**（`pwsh`）。2026-09-12 起 bash/python 版全部下架 |
 | 游戏环境 | dev `runClient`（`run/<版本>/`，Mojmap 命名），模组经 `modImplementation` 引入 |
-| 兼容栈 | 1.21.1：KubeJS / JEI / ModernFix /（可选）光影；1.20.1：KubeJS / JEI / ModernFix 经 build.gradle 注入 + 整合包 mods 复制 |
+| 兼容栈 | 1.21.1：KubeJS / JEI / **Jade** / ModernFix /（可选）光影；1.20.1：KubeJS / JEI / **Jade** / ModernFix 经 build.gradle 注入 + 整合包 mods 复制；26.1.2：KubeJS / JEI / **Jade** / FerriteCore / ModernFix / 渲染栈。**JEI + Jade 三条线全装（2026-09-19 用户要求「所有测试环境增加 jei 和 jade 模组，用于用户侧物品和效果检查」）**：均为**测试环境依赖、不进发货产物**，一律走各线 `build.gradle`（1.20.1 必须 `modImplementation`），版本与各线整合包内现有 jar **同版**，详见 `AGENTS.md`「全局测试规则」第 1 条 |
 | 输入注入 | 需系统已安装「英语(美国)」键盘（KLID 00000409）：`mt_ime` 在注入前**按窗口线程**切换，不改系统默认 |
 | 可选 MCP | `computer-control-mcp`（**唯一保留的 MCP**：窗口激活 / OCR / 截图 / 输入注入的降级通道），路径写在 `mt.conf`；mineflayer bot（minecraft-mcp-server）已于 2026-09-14 彻底移除 |
 | 机器本地配置 | `scripts/test/mt.conf`（**不入库**）。缺失时回落到内置默认值；模板见 `mt.conf.example` |
@@ -1121,6 +1121,16 @@ pwsh -NoProfile -File scripts/test/mt_watchdog.ps1 -Version 1.21.1 [-StallSecond
 - 工程:**实机结论（两发布线，2026-09-19 各一轮全流程）**：`LIVING-PAGE-1.21.1` = **PASS**、`LIVING-PAGE-1.20.1` = **PASS**（证据 `temp/t34/ls-{1.21.1,1.20.1}.log`）。关键读数（两线数值一致）：`AP_LK1_SHOOT:mark_before=0` → `AP_LK1_READ:mark=1:dmg=2`；`AP_LK2_SHOOT:mark_before=2` → `AP_LK2_READ:mark=3:dmg=4`；`AP_LS3_SHOOT:mark_before=2` → `AP_LS3_READ:mark=3:credit=0`；`AP_LS4_SHOOT:mark_before=3` → `AP_LS4_READ:mark=4:dmg=2:credit=1:plays=1:max=2:blocked=0`。⇒ **增层无误（3 → 4）、判定无误（命中前 3 层即 +1，且补记后上限 1 → 2、不再被拦）**，两候选点均**不是**缺陷。
 - 工程:**鉴别点（登记进 `AGENTS.md` 口径，避免再次误判）**：判定基准是**命中前**层数 —— **把目标打到 3 层的那一次本身不触发**（`LS3`：`mark_before=2 → credit=0`，命中后显示 3 层）。若观察者读的是「命中后」的层数，会误判为「3 层却没 +1」。
 - 工程:**环境侧可能原因（可核查，未改产品代码）**：`multi-dev-next` 分支**不推整合包**（`pushToGame` 分支白名单），整合包 `D:\.minecraft\versions\狐の航空学 Voxy Edition\mods\astral_dice-1.2.1-hotfix+neoforge_1.21.1.jar`（`mods.toml version="1.2.1-hotfix+neoforge_1.21.1"`）里**没有** `LivingPageImpact.class` / `LivingPageFlightScheduler.class`（只有旧 `LivingPageEffect.class`）⇒ 该环境跑的是**发布线旧卡**（60 秒被动法伤增益），**根本没有「≥3 层补记出牌数」这条规则**。若在整合包内测试，本行为属预期。
+
+**2026-09-19（续 4）：所有测试环境加装 JEI + Jade（用户侧物品与效果检查）**
+
+- 工程:**用户要求（原话）**：「所有测试环境增加jei和jade模组，用于用户侧物品和效果检查」。
+- 工程:**现状盘点**：JEI 三条线本来就已通过各线 `build.gradle` 进 dev run（1.21.1 `curse.maven:jei-238222:8512040` / 1.20.1 `8778011` / 26.1.2 `8886511`），实测日志已装载（1.21.1 `Just Enough Items 19.39.0.372 (jei)`、26.1.2 `29.37.0.99 (jei)`、1.20.1 `Found valid mod file jei-238222-8778011.jar with {jei} mods`）；**Jade 三条线的 dev run 都没有**（只有整合包里有）。
+- 工程:**新增依赖（三条线同源 = Modrinth Maven，且版本与各线整合包内现有 jar 同版，避免 dev run 与整合包行为不一致）**：1.21.1 `implementation "maven.modrinth:jade:eYz2YBGT"`（`Jade-1.21.1-NeoForge-15.10.6.jar`，726853 B）；1.20.1 **`modImplementation "maven.modrinth:jade:xJQHCmWJ"`**（`Jade-1.20.1-Forge-11.13.3.jar`，553487 B —— 1.20.1 必须走 `modImplementation` 由 MDG 在解析期重映射，直接塞原版坐标系 jar 会崩）；26.1.2 `implementation "maven.modrinth:jade:5jKeKXwB"`（`Jade-mc26.1-NeoForge-26.1.11.jar`，1030012 B 的 primary 文件；game_versions 含 26.1.2；该 version 另有 `-sources.jar` 次文件）。**机制选型**：与 JEI 一致走 `build.gradle`（测试环境依赖、**不进发货产物**、不进 `mods.toml` 依赖段），**不放** `run/<版本>/mods`（避免与 `Start-*.bat` 的「mods 成对」前置检查、`mt_env` 的兼容栈清单互相干扰）。
+- 工程:**为什么 Jade 不进「纯客户端移出」名单**：Modrinth API 实测 Jade 的 `client_side` / `server_side` **均为 `optional`** ⇒ 不是纯客户端模组，`Invoke-MtEnvWorld` 生成世界时**不需要**移出（与 ImmediatelyFast 相反）；JEI/Jade 也都**不是**硬前置，未纳入任何加载器门槛用例。
+- 工程:**验证（本轮实跑）**：`tools/check_mod_sources.ps1` = `MOD_SOURCE_GATE: OK violations=0 exceptions=0`；三线 `mt_build` 全 OK（`temp/t35/build-<版本>.log`）；三线各跑一轮 `--phase env → --phase launch → --phase stop --purge-saves` 全部 **exit 0**，`MT_LAUNCH: OK (36~45s)`、`SHADERPACK_LOADED=true`（无回归）。Jade 装载证据：1.21.1 `Jade 15.10.6+neoforge (jade)`、26.1.2 `Jade 26.1.11+neoforge (jade)`（latest.log 括号清单行）、1.20.1 `logs/debug.log` 的 `Found valid mod file jade-xJQHCmWJ.jar with {jade} mods - versions {…}`。
+- 工程:**整合包侧补齐（用户环境，一次性动作、不入库）**：三个测试实例的 Jade 均已存在且与 dev run 同版；**26.1.2 实例此前没有 JEI**，已把同源产物 `jei-238222-8886511.jar`（1908683 B，取自 Gradle 缓存 `curse.maven\jei-238222\8886511\…`）补进 `D:\.minecraft\versions\26.1.2 模组测试\mods\`；1.21.1 / 1.20.1 实例本来就 JEI + Jade 齐备，**未改动**。
+
 
 
 

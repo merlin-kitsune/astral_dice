@@ -241,6 +241,12 @@ dependencies {
     // JEI(配方查看,测试环境用):2026-09-17 起按统一口径改走 Curse Maven
     // (原 `mezz.jei:jei-1.20.1-forge:15.56.0.205` 走官方 maven;CF 文件 8778011 = `jei-1.20.1-forge-15.56.0.205.jar`,1778129 字节)
     modImplementation "curse.maven:jei-238222:8778011"
+    // Jade(方块/实体信息 HUD;2026-09-19 用户要求「所有测试环境增加 jei 和 jade 模组,用于用户侧物品和效果检查」):
+    // 测试环境用,不进发货产物。**1.20.1 必须走 modImplementation**(与上面 JEI/Embeddium/Oculus 同一机制:
+    // MDG LegacyForge 在解析期重映射,直接塞 dev/Mojmap 不识别的 forge 坐标系会崩)。
+    // Modrinth Maven 的 version id xJQHCmWJ = `Jade-1.20.1-Forge-11.13.3.jar`(553487 B),
+    // 与本线整合包内现有 `[玉 🔍] Jade-1.20.1-Forge-11.13.3.jar` **同版**。
+    modImplementation "maven.modrinth:jade:xJQHCmWJ"
 
     // 优化类模组(2026-09-17 用户要求:所有测试环境加装 ImmediatelyFast + FerriteCore 做兼容性验证)
     // ⚠️ **1.20.1 必须走 modImplementation,不能像另两线那样由 mt_env 下载进 run/mods**:

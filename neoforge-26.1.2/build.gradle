@@ -181,6 +181,11 @@ dependencies {
     // JEI(配方查看,测试环境用);26.1.2 线 29.37.0.99
     // 2026-09-17 起按统一口径改走 Curse Maven(CF 文件 8886511 = `jei-26.1.2-neoforge-29.37.0.99.jar`,1908683 字节)
     implementation "curse.maven:jei-238222:8886511"
+    // Jade(方块/实体信息 HUD;2026-09-19 用户要求「所有测试环境增加 jei 和 jade 模组,用于用户侧物品和效果检查」):
+    // 测试环境用,不进发货产物。Modrinth Maven 的 version id 5jKeKXwB = `Jade-mc26.1-NeoForge-26.1.11.jar`
+    // (1030012 B 的 primary 文件;game_versions = 26.1/26.1.1/26.1.2),与本线整合包内现有
+    // `[玉 🔍] Jade-mc26.1-NeoForge-26.1.11.jar` **同版**。⚠️ 该 version 另有 `-sources.jar` 次文件,坐标为 primary。
+    implementation "maven.modrinth:jade:5jKeKXwB"
     // Mixin:26.1.2 的 NeoForge 运行时自带 Mixin(Fabric 分支 0.17.3+mixin.0.8.7),
     // 编译期仅需注解类;NeoForge 编译/运行同为 Mojmap,无需 refmap。
     compileOnly 'net.fabricmc:sponge-mixin:0.17.3+mixin.0.8.7'

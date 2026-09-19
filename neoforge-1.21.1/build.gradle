@@ -177,6 +177,10 @@ dependencies {
     // 2026-09-17 起按统一口径改走 Curse Maven(原 `mezz.jei:jei-1.21.1-neoforge:19.39.0.372` 走官方 maven;
     // CF 文件 8512040 = `jei-1.21.1-neoforge-19.39.0.372.jar`,1572695 字节,与官方 maven 产物同尺寸)
     implementation "curse.maven:jei-238222:8512040"
+    // Jade(方块/实体信息 HUD;2026-09-19 用户要求「所有测试环境增加 jei 和 jade 模组,用于用户侧物品和效果检查」):
+    // 测试环境用,不进发货产物。Modrinth Maven 的 version id eYz2YBGT = `Jade-1.21.1-NeoForge-15.10.6.jar`
+    // (726853 B),与本线整合包内现有 `[玉 🔍] Jade-1.21.1-NeoForge-15.10.6.jar` **同版**,避免 dev run 与整合包行为不一致。
+    implementation "maven.modrinth:jade:eYz2YBGT"
     // Mixin:NeoForge 运行时自带 Mixin,编译期仅需注解类;NeoForge 编译/运行同为 Mojmap,无需 refmap。
     // （2026-09-18 t23 清理:此处下方原有一个**重复**的 `dependencies { compileOnly 'org.spongepowered:mixin:0.8.5' }`
     //   块,其注释还引用着已删除的 `KeyboardHandlerMixin`(目标选择器键盘拦截 Mixin,t10 已删)。
