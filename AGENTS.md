@@ -585,7 +585,7 @@ When extending this workspace:
 | 忍术飞镖 | `ninja_star_chip` | 金 | 效果牌出牌数 +1(固定来源);伤害效果牌生效期间远程/魔法伤害获得目标标记层数加成 |
 | 手持风扇-小 | `hand_fan_small_chip` | 蓝 | 使用主动技能后,对周围 16 格敌对目标施加标记 |
 | 手持风扇-大 | `hand_fan_big_chip` | 紫 | 使用主动技能后,获得一张随机效果牌(不含专属)并对周围范围内敌对目标施加标记 |
-| 魔法箭袋 | `magic_quiver_chip` | 紫 | 使用效果牌后对带标记目标造成法伤 → 施加一层标记并返还第一张使用的效果牌(每分钟一次;追踪附件 `magic_quiver_tracking`/`magic_quiver_first_card`,冷却 `magic_quiver_cooldown_end`;**卸下筹码清除追踪记录**) |
+| 魔法箭袋 | `magic_quiver_chip` | 紫 | 使用效果牌后对带标记目标造成法伤 → 施加一层标记并返还第一张使用的效果牌(每分钟一次;追踪附件 `magic_quiver_tracking`/`magic_quiver_first_card`,冷却 `magic_quiver_cooldown_end`;**卸下筹码清除追踪记录**)。⚠️ **「带标记」按命中那一刻判定**:修饰器的 `isActive` 在全部 `onHit` 之前统一求值,而活体书页自己那一层是在 `hurt` 返回**之后**才施加 ⇒ **首次打干净目标不触发**(需先用标记喷罐/上一发书页留下标记);2026-09-19 两线实机验证见 `TESTING-SPEC.md` 附录 A「（续 7）」 |
 
 ### 充能类（Charge）
 
@@ -639,7 +639,7 @@ When extending this workspace:
 - **防御力口径(必须遵守)**:面向玩家的文案一律写「防御力」并保持设计数值;护甲值(原版 `Attributes.ARMOR`)只在**代码层**按 `1 防御力 = 2 护甲值` 换算(`MotoHelmetChipItem.ARMOR_PER_DEFENSE`、`DiceCombatModifiers.setDefenseArmorBonus`),禁止在文案里直接写护甲值;攻击/防御加点统一经 `DiceCombatModifiers` 注册。
 - **攻击/防御类筹码加成的生效窗口**:所有经 `DiceCombatModifiers` 注册的攻击/防御修饰器(拳击手套/标靶/手电筒/电流剑/高级外设/夹心饼干-美味/肾上腺素/磨刀石/复仇之戟/鹰眼瞄具)只在**骰神赐福期间的骰战**里结算(`DiceCombatEvents` 在无赐福时提前 return);文案惯例是仅在措辞本身需要区分时标注「骰神赐福期间」(如拳击手套),其余条目按条目自身语义书写。
 - **筹码配方分两档且互不越界（必须遵守）**：非进阶筹码走统一规范，**进阶筹码（15 个）一律遵循「通用升级」模板**（蓝→紫 `LGL/GTG/PPP`、紫→金 `RDR/DTD/GGG`），任何筹码配方统一/生成工作**只作用于非进阶筹码**、不得改写进阶筹码；肾上腺素-高效同样沿用通用紫→金模板，**无例外**。完整规则与模板表见「筹码一览 → 筹码配方规范」。
-- 魔法箭袋追踪在**任意效果牌**使用后开启(当前实现不做效果牌类型过滤——原 `countsForCopy()` 过滤已在重构中移除,`BaseEffectCardItem` 对全部效果牌统一调用忍者/魔法秘典/魔法箭袋计数);返还卡类型映射见 `MagicQuiverChipItem.effectCardByType`。
+- 魔法箭袋追踪在**任意效果牌**使用后开启(当前实现不做效果牌类型过滤——原 `countsForCopy()` 过滤已在重构中移除,`BaseEffectCardItem` 对全部效果牌统一调用忍者/魔法秘典/魔法箭袋计数);返还卡类型映射见 `BaseEffectCardItem.cardByTypeId(String)`(1.21.1 `:93` / 1.20.1 `:92`;旧文档里的 `MagicQuiverChipItem.effectCardByType` 已不存在,2026-09-19 修正)。
 - 星币锤/银行卡-用不完的赐福开始/结束钩子位于 `combat/DiceCombatEvents.onLivingDamagePre`(triggeredBlessing 块)与 `DiceCombatEvents.onDiceBlessingExpired`(顶部,早于骰子检查);会员推荐信走同一赐福触发块(`onBlessingStart`),大碗炖肉走 `onDiceBlessingExpired`(`onBlessingEnd`)。
 - **「效果牌伤害加成」只有一个汇总出口(必须遵守)**:忍者立牌「效果牌伤害增益」(`komachi_damage_bonus`)与书签筹码等任何新增的伤害效果牌加成,**一律**经 `combat/SpellDamageRegistry.effectCardDamageBonus(Player)` 汇总后计入法伤(激光/板砖/轨道炮/定向爆破/活体书页),禁止在各筹码/牌内自行叠加或另开出口;tooltip 同样按观看者实时读取该汇总值,保证显示与结算一致。
 - **立牌伤害加成的静默安全上限 = 120(2026-09-19 用户要求,必须遵守)**:忍者立牌「效果牌伤害增益」与调查员立牌累计页数(`rin_pages`,只作用于活体书页命中伤害)**各自的加成上限为 `SpellDamageRegistry.SIGN_DAMAGE_BONUS_CAP = 120`**,由唯一入口 `SpellDamageRegistry#cappedSignDamageBonus(int)` 夹取(`effectCardDamageBonus` 夹忍者那一项、`livingPageBonusPages` 夹页数那一项);书签筹码的固定加成**不在**此列。⚠️ **口径是「不说明不提示」**:不得为此新增任何 tooltip 文案 / actionbar 提示 / lang 键或配置项(玩家侧只表现为数值不再增长);存储值本身仍继续累计(不做写入侧截断),夹取只发生在读取出口 ⇒ 换牌/卸下再戴回不会丢进度。`ModTooltipHandler` 的忍者计数行也走同一入口,故 tooltip 与结算**恒一致**。

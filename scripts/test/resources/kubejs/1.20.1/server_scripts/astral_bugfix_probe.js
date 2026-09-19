@@ -78,6 +78,8 @@ var ModEffects = Java.loadClass("com.merlinkitsune.astral_dice.effect.ModEffects
 var ModEffectRemoval = Java.loadClass(// 2026-09-17 前置库下沉:本模组效果移除通道已迁到 StarEngine Lib(消费方副本已删),故改引用库包名。
 "com.merlinkitsune.starenginelib.event.ModEffectRemoval");
 var EmpowerManager = Java.loadClass("com.merlinkitsune.astral_dice.item.EmpowerManager");
+// 魔法箭袋(2026-09-19 验证「箭袋 × 活体书页」)：只读读取其佩戴/追踪/冷却/记录牌
+var MagicQuiverChipItemClass = Java.loadClass("com.merlinkitsune.astral_dice.item.chip.MagicQuiverChipItem");
 
 var DESC_EMPOWER = "effect.astral_dice.empower";
 var BOLT_TYPE_ID = "minecraft:lightning_bolt";
@@ -4602,6 +4604,10 @@ function lpReadout(p, d, dmg) {
         + ":dummy=" + lpDummyState(d) + ":dmg=" + dmg
         + ":credit=" + lpCredit(p) + ":plays=" + lpPlays(p)
         + ":max=" + lpMaxPlays(p) + ":blocked=" + lpBlocked(p)
+        // cards = 主背包内**活体书页**张数(2026-09-19 追加)：效果牌确认时会消耗手牌,
+        // 而「魔法箭袋」触发会**返还**第一张使用的效果牌 ⇒ 用它可以判定返还确实到手
+        // (无箭袋/未触发时读数恒为 0,触发后为 1)。
+        + ":cards=" + lpCardCount(p)
         + ":flight=" + lpFlight(p);
 }
 
@@ -4819,6 +4825,33 @@ function doLpRin(ctx, tag, valueText) {
     send(ctx, "AP_" + tag + "_RIN:set=" + v + ":rin=" + read + (err ? ":err=" + err : ""));
     return 1;
 }
+
+/**
+ * 魔法箭袋读数(只读;2026-09-19 验证「箭袋 × 活体书页」)。
+ *
+ * <p>字段：`equipped` = 是否佩戴箭袋筹码(`MagicQuiverChipItem#isEquipped`)；
+ * `tracking` = `MAGIC_QUIVER_TRACKING` 是否已武装(使用效果牌时置位、触发时清除)；
+ * `cd` = 距 `MAGIC_QUIVER_COOLDOWN_END` 的**剩余 tick**(0 = 可触发)；
+ * `first` = 记录的第一张效果牌类型(触发时按它返还；空串 = 未记录)；
+ * `mark` = 当前靶(`lpprep` 摆的那只)身上的标记层数。
+ *
+ * <p>为什么需要它：箭袋的**触发**在伤害事件里一次性完成(标记 +1、返还卡牌、进入冷却、清追踪)，
+ * 只看靶子层数无法区分「箭袋触发」与「书页自己那一层」；`tracking`/`cd`/`first`/`cards` 四条合起来
+ * 才能把「已武装但未触发」「已触发」与「被冷却挡住」三种状态分开。
+ */
+function doQuiverRead(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var equipped = "err", tracking = "err", cd = "err", first = "err";
+    try { equipped = MagicQuiverChipItemClass.isEquipped(p) ? 1 : 0; } catch (e1) { equipped = "err:" + exText(e1); }
+    try { tracking = ModAttachments.getMagicQuiverTracking(p) ? 1 : 0; } catch (e2) { tracking = "err:" + exText(e2); }
+    try { cd = Math.max(0, ModAttachments.getMagicQuiverCooldownEnd(p) - nowTick(p)); } catch (e3) { cd = "err:" + exText(e3); }
+    try { first = "" + ModAttachments.getMagicQuiverFirstCard(p); } catch (e4) { first = "err:" + exText(e4); }
+    var d = lpState == null ? null : lpState.dummy;
+    send(ctx, "AP_" + tag + "_QUIVER:equipped=" + equipped + ":tracking=" + tracking
+        + ":cd=" + cd + ":first=" + first + ":mark=" + (d == null ? "-" : lpMark(d))
+        + ":cards=" + lpCardCount(p));
+    return 1;
+}
 /**
  * 充能冷却读数(只读)。2026-09-25 改口径:拥有充能时把**基础值**封顶 ——
  * 立牌主动至多 160 秒(sign=3200 tick,基础 3600)、效果牌至多 20 秒(card=400,基础 600);
@@ -4982,6 +5015,11 @@ ServerEvents.commandRegistry(event => {
                 .then(Commands.argument("tag", StringArg.word())
                     .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
                         return doLpClean(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("quiver")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doQuiverRead(ctx, StringArg.getString(ctx, "tag"));
                     }))))
             .then(Commands.literal("glovebase")
                 .then(Commands.argument("tag", StringArg.word())
