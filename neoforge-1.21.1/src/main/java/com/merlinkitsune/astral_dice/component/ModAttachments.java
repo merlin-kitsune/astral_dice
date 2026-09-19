@@ -74,6 +74,28 @@ public class ModAttachments {
         player.setData(LIVING_PAGE_CYCLE_BONUS.get(), Math.max(0, value));
     }
 
+    // 「符卡-福」(风水师立牌专属牌,2026-09-26 用户裁决 B)本周期专属出牌数计数器:
+    // 语义 = **本出牌周期内打出符卡-福的次数**,每次打出 +1(按次累加,不是"每轮一次"的开关式),
+    // 与忍者立牌主动的一次性槽位(EFFECT_CARD_BONUS_PLAYS)**彻底解耦** —— 两者可叠加。
+    // 由 EffectCardPeriod#grantFuCardBonusPlay 写入、getMaxAllowed 计入 extra(受 min(9, 1+extra) 封顶)、
+    // clearRoundBonuses 周期归零;**不复用** LIVING_PAGE_CYCLE_BONUS(那是活体书页的计数)。
+    // .sync 依据:客户端预检 BaseEffectCardItem#isBlockedOnClient → EffectCardPeriod#isBurstFull
+    // → getMaxAllowed 需要在本轮上限上看到同一份额外出牌数(否则客户端会误判"已打满"),
+    // 与 EFFECT_CARD_BONUS_PLAYS / LIVING_PAGE_CYCLE_BONUS 两个同级计数器同址同步。
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> FU_CARD_CYCLE_BONUS =
+            ATTACHMENTS.register("fu_card_cycle_bonus", () -> AttachmentType.builder(() -> 0)
+                    .serialize(Codec.INT)
+                    .sync(ByteBufCodecs.VAR_INT)
+                    .build());
+
+    public static int getFuCardCycleBonus(net.minecraft.world.entity.player.Player player) {
+        return player.getData(FU_CARD_CYCLE_BONUS.get());
+    }
+
+    public static void setFuCardCycleBonus(net.minecraft.world.entity.player.Player player, int value) {
+        player.setData(FU_CARD_CYCLE_BONUS.get(), Math.max(0, value));
+    }
+
     // 效果牌公共冷却结束时刻(-1 表示待定冷却=伤害效果牌效果等待中;0 表示无)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> EFFECT_CARD_COOLDOWN_END =
             ATTACHMENTS.register("effect_card_cooldown_end", () -> AttachmentType.builder(() -> 0L)
@@ -1099,5 +1121,155 @@ public class ModAttachments {
 
     public static void setRenCounterCharges(net.minecraft.world.entity.player.Player player, int value) {
         player.setData(REN_COUNTER_CHARGES.get(), Math.max(0, value));
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    //  风水师立牌(zhao)/符卡-福·祸 本批新增的玩家级状态(2026-09-26)
+    //  键名与口径 = docs/features/fengshui-sign-spec.md §9.1(**冻结**)。
+    //  同步策略:五个键一律**只** .serialize(...),**不** .sync(...) —— 它们的读取方全在服务端
+    //  (玩家级 tick 的状态机/周期伤害、骰战攻击修饰器),玩家可见载体是**效果实例**(由原版效果
+    //  同步包呈现),故不额外写包(同口径先例:healing_prev_blessing 的"仅服务端使用,无需同步")。
+    // ══════════════════════════════════════════════════════════════════════════
+
+    /**
+     * 「白泽赐福」是否处于**生效期**(状态机真值,§4.4)。
+     *
+     * <p>与"效果实例是否存在"是两件事:效果实例是玩家可见载体(图标/时长),本键是服务端状态机的
+     * 真值 —— 例如断线重登时效果被强制移除而本键被显式复位(§4.7),两者靠玩家级 tick 的自检对齐。
+     */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Boolean>> ZHAO_BLESSING_ACTIVE =
+            ATTACHMENTS.register("zhao_blessing_active", () -> AttachmentType.builder(() -> false)
+                    .serialize(Codec.BOOL)
+                    .build());
+
+    public static boolean isZhaoBlessingActive(net.minecraft.world.entity.player.Player player) {
+        return player.getData(ZHAO_BLESSING_ACTIVE.get());
+    }
+
+    public static void setZhaoBlessingActive(net.minecraft.world.entity.player.Player player, boolean value) {
+        player.setData(ZHAO_BLESSING_ACTIVE.get(), value);
+    }
+
+    /**
+     * 「白泽赐福」待跳过的骰神赐福**结束次数**(0/1;§4.5 两分支)。
+     *
+     * <p>语义(需求文本「持续到下一次骰神赐福结束」):
+     * <ul>
+     *   <li>施加时目标**不在**骰神赐福 ⇒ 写 0:待其触发骰神赐福、该次进度**结束后**移除赐福;</li>
+     *   <li>施加时目标**已在**骰神赐福 ⇒ 写 1:**跳过当前这次**结束,等**下一次**骰神赐福结束后移除。</li>
+     * </ul>
+     * 由玩家级 tick 的**下降沿**每读到一次骰神赐福结束就读一次(§4.4):&gt;0 则减 1 并保留,否则移除。
+     */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> ZHAO_BLESSING_SKIP_CYCLES =
+            ATTACHMENTS.register("zhao_blessing_skip_cycles", () -> AttachmentType.builder(() -> 0)
+                    .serialize(Codec.INT)
+                    .build());
+
+    public static int getZhaoBlessingSkipCycles(net.minecraft.world.entity.player.Player player) {
+        return player.getData(ZHAO_BLESSING_SKIP_CYCLES.get());
+    }
+
+    public static void setZhaoBlessingSkipCycles(net.minecraft.world.entity.player.Player player, int value) {
+        player.setData(ZHAO_BLESSING_SKIP_CYCLES.get(), Math.max(0, value));
+    }
+
+    /**
+     * **上一 tick**是否处于骰神赐福(下降沿检测专用;§4.4 冻结决定)。
+     *
+     * <p>为什么不用 {@code MobEffectEvent.Expired}:该事件在"效果被外力移除(ModEffectRemoval /
+     * 其它 mod / 死亡 / 重连清场)"时**不触发**(先例 {@code item/HealingManager} 明确不可依赖);
+     * 而"上一 tick 有、这一 tick 没有"的下降沿把**两条结束路径统一**,且不会像同时订阅 Expired 那样
+     * **重复消费**跳过计数。本键只有服务端 tick 读写,不显示,故不 .sync()。
+     */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Boolean>> ZHAO_PREV_BLESSING =
+            ATTACHMENTS.register("zhao_prev_blessing", () -> AttachmentType.builder(() -> false)
+                    .serialize(Codec.BOOL)
+                    .build());
+
+    public static boolean isZhaoPrevBlessing(net.minecraft.world.entity.player.Player player) {
+        return player.getData(ZHAO_PREV_BLESSING.get());
+    }
+
+    public static void setZhaoPrevBlessing(net.minecraft.world.entity.player.Player player, boolean value) {
+        player.setData(ZHAO_PREV_BLESSING.get(), value);
+    }
+
+    /**
+     * 「白泽赐福」期间由**溢出治疗**等量转化而来的攻击力加成(**整数**,§5.2/§5.3)。
+     *
+     * <p>写入方 = {@code item/sign/ZhaoSignItem#onLivingHeal}(溢出量 = 请求治疗量 − 实际恢复量,
+     * 溢出 ≤ 0 时不写);读取方 = {@code combat/DiceCombatModifiers} 的攻击修饰器(加算项);
+     * **唯一的回收点** = 「白泽赐福」被移除/复位时归 0 —— 不留残留,也不影响任何其它来源的攻击力。
+     *
+     * <p><b>取整余数</b>:溢出量按 {@code (int) Math.floor(...)} 整数化写入本键,余数留在
+     * {@link #ZHAO_OVERFLOW_REMAINDER} 的浮点累加器里继续累积(§5.2「禁止无声丢数」的选项一)。
+     */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> ZHAO_OVERFLOW_BONUS =
+            ATTACHMENTS.register("zhao_overflow_bonus", () -> AttachmentType.builder(() -> 0)
+                    .serialize(Codec.INT)
+                    .build());
+
+    /** 溢出治疗取整后的**余数累加器**(&lt; 1 的尾数;见 {@link #ZHAO_OVERFLOW_BONUS}) */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Float>> ZHAO_OVERFLOW_REMAINDER =
+            ATTACHMENTS.register("zhao_overflow_remainder", () -> AttachmentType.builder(() -> 0.0F)
+                    .serialize(Codec.FLOAT)
+                    .build());
+
+    public static int getZhaoOverflowBonus(net.minecraft.world.entity.player.Player player) {
+        return player.getData(ZHAO_OVERFLOW_BONUS.get());
+    }
+
+    public static void setZhaoOverflowBonus(net.minecraft.world.entity.player.Player player, int value) {
+        player.setData(ZHAO_OVERFLOW_BONUS.get(), Math.max(0, value));
+    }
+
+    public static float getZhaoOverflowRemainder(net.minecraft.world.entity.player.Player player) {
+        return player.getData(ZHAO_OVERFLOW_REMAINDER.get());
+    }
+
+    public static void setZhaoOverflowRemainder(net.minecraft.world.entity.player.Player player, float value) {
+        player.setData(ZHAO_OVERFLOW_REMAINDER.get(), Math.max(0.0F, value));
+    }
+
+    /**
+     * 把一次**溢出治疗量**累加进攻击力加成:整数部分进 {@link #ZHAO_OVERFLOW_BONUS},
+     * 小数部分留在 {@link #ZHAO_OVERFLOW_REMAINDER}(下一次溢出可能与余数凑成新的整数点)
+     * ⇒ 逐次治疗不会因反复向下取整而无声丢数。
+     */
+    public static void addZhaoOverflowBonus(net.minecraft.world.entity.player.Player player, float overflow) {
+        if (overflow <= 0.0F) return;
+        float total = getZhaoOverflowRemainder(player) + overflow;
+        int whole = (int) Math.floor(total);
+        setZhaoOverflowRemainder(player, total - whole);
+        if (whole > 0) {
+            setZhaoOverflowBonus(player, getZhaoOverflowBonus(player) + whole);
+        }
+    }
+
+    /** 一次性清空溢出治疗加成的两个键(整数部分 + 余数累加器) */
+    public static void clearZhaoOverflowBonus(net.minecraft.world.entity.player.Player player) {
+        setZhaoOverflowBonus(player, 0);
+        setZhaoOverflowRemainder(player, 0.0F);
+    }
+
+    /**
+     * 「厄运」(符卡-祸 的镜像效果)下一次周期伤害的**绝对结算刻**(gameTime;0 = 未起算)。
+     *
+     * <p><b>计时器与结算分离</b>(验收第 6 条):该键只在「持有张数 0 → &gt;0」时起算一次,此后
+     * **只由结算推进**(每次结算后 += 2:00),持卡张数在 &gt;0 区间内的增减**一律不写本键**
+     * —— 所以张数变化不会重置/推迟计时器,而每次结算造成的伤害取「**结算时刻**的当前张数」。
+     * 张数归 0 时属于"整段清除"(同时移除厄运效果),此时把本键一并归 0(§9.2)。
+     */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> HUO_CARD_NEXT_DAMAGE_TICK =
+            ATTACHMENTS.register("huo_card_next_damage_tick", () -> AttachmentType.builder(() -> 0L)
+                    .serialize(Codec.LONG)
+                    .build());
+
+    public static long getHuoCardNextDamageTick(net.minecraft.world.entity.player.Player player) {
+        return player.getData(HUO_CARD_NEXT_DAMAGE_TICK.get());
+    }
+
+    public static void setHuoCardNextDamageTick(net.minecraft.world.entity.player.Player player, long value) {
+        player.setData(HUO_CARD_NEXT_DAMAGE_TICK.get(), Math.max(0L, value));
     }
 }

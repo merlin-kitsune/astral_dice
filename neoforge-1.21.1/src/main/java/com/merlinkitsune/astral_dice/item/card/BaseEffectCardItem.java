@@ -107,6 +107,10 @@ public abstract class BaseEffectCardItem extends Item {
             case "you_have_i_have" -> new ItemStack(ModItems.YOU_HAVE_I_HAVE.get());
             case "express_delivery" -> new ItemStack(ModItems.EXPRESS_DELIVERY.get());
             case "fate_guidance" -> new ItemStack(ModItems.FATE_GUIDANCE_CARD.get());
+            // 风水师立牌专属两张符卡(2026-09-26):复制/返还路径必须能按 cardTypeId 找回本体,
+            // 否则会静默回退成"王之力"(专属牌一旦被复制就会串味)
+            case "fu_card" -> new ItemStack(ModItems.FU_CARD.get());
+            case "huo_card" -> new ItemStack(ModItems.HUO_CARD.get());
             default -> new ItemStack(ModItems.EFFECT_CARD_KING_POWER.get());
         };
     }

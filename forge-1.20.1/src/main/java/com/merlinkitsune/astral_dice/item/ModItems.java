@@ -61,6 +61,9 @@ import com.merlinkitsune.astral_dice.item.card.YouHaveIHaveCardItem;
 import com.merlinkitsune.astral_dice.item.card.OrbitalStrikeCardItem;
 import com.merlinkitsune.astral_dice.item.card.EffectCardItem;
 import com.merlinkitsune.astral_dice.item.card.CardItem;
+import com.merlinkitsune.astral_dice.item.card.FuCardItem;
+import com.merlinkitsune.astral_dice.item.card.HuoCardItem;
+import com.merlinkitsune.astral_dice.item.sign.ZhaoSignItem;
 import com.merlinkitsune.astral_dice.item.chip.MotoHelmetChipItem;
 import com.merlinkitsune.astral_dice.item.chip.BoxingGlovesChipItem;
 import com.merlinkitsune.astral_dice.item.sign.BonnieSignItem;
@@ -884,6 +887,28 @@ public class ModItems {
             () -> new RenSignItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(Rarity.EPIC)));
+
+    // 风水师立牌(全局命名:zhao,金=传奇):被动「福祸相倚」(骰点 1 → 符卡-祸 / 6 → 符卡-福)
+    // + 被动「完美帮手」(对装备大当家立牌者施白泽赐福 ⇒ 其养精蓄锐 +1 层)
+    // + 主动「白泽赐福」(目标选择器,可选玩家/自身;溢出治疗转攻击力;持续到下次骰神赐福结束)
+    public static final RegistryObject<Item> ZHAO_SIGN = registerItem("zhao_sign",
+            () -> new ZhaoSignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.UNCOMMON)));
+
+    // 符卡-福(风水师立牌专属效果牌,传奇=UNCOMMON):目标选择器(任意玩家或自身)⇒ 目标治疗 2 点 + 本出牌轮出牌数 +1;
+    // 专属绑定(仅获得者可用)。命名按用户裁决保持卡牌自身命名(fu_card)。
+    public static final RegistryObject<Item> FU_CARD = registerItem("fu_card",
+            () -> new FuCardItem(new Item.Properties()
+                    .stacksTo(64)
+                    .rarity(Rarity.UNCOMMON)));
+
+    // 符卡-祸(风水师立牌专属效果牌,传奇=UNCOMMON):目标选择器(敌对目标,含非同队玩家)⇒ 1 点真实伤害;
+    // 持有 N 张时「厄运」层数 == N,每 2:00 按当前张数结算伤害。
+    public static final RegistryObject<Item> HUO_CARD = registerItem("huo_card",
+            () -> new HuoCardItem(new Item.Properties()
+                    .stacksTo(64)
+                    .rarity(Rarity.UNCOMMON)));
 
     public static <T extends Item> RegistryObject<T> registerItem(String name, Supplier<T> itemSupplier) {
         return ITEMS.register(name, itemSupplier);

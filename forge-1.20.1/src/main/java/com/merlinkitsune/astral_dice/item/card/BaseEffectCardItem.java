@@ -106,6 +106,9 @@ public abstract class BaseEffectCardItem extends Item {
             case "you_have_i_have" -> new ItemStack(ModItems.YOU_HAVE_I_HAVE.get());
             case "express_delivery" -> new ItemStack(ModItems.EXPRESS_DELIVERY.get());
             case "fate_guidance" -> new ItemStack(ModItems.FATE_GUIDANCE_CARD.get());
+            // 风水师立牌(zhao)专属符卡:两张都参与复制计数(忍者立牌/魔法秘典/魔法箭袋)
+            case "fu_card" -> new ItemStack(ModItems.FU_CARD.get());
+            case "huo_card" -> new ItemStack(ModItems.HUO_CARD.get());
             default -> new ItemStack(ModItems.EFFECT_CARD_KING_POWER.get());
         };
     }
@@ -433,6 +436,11 @@ public abstract class BaseEffectCardItem extends Item {
         }
 
         // 施加效果(子类实现)
+        // ⚠️ **顺序不可颠倒(2026-09-26 用户/架构裁决,t6 §14.2)**:符卡-福 的「出牌数 +1」
+        // 在 applyEffect 内经 EffectCardPeriod.grantBonusPlay 授予当前出牌轮的一次性加成;
+        // 它必须在下面 registerPlay 之前生效 —— 否则 registerPlay 里
+        // `count >= getMaxAllowed(player)` 会以**旧上限(仍为 1)**成立 ⇒ 该次出牌被判定为"已打满",
+        // 立即进入 30 秒冷却,净效果「消耗 1 张 / 返还 1 次出牌」彻底不成立。
         applyEffect(level, player, applyTo, stack);
 
         // 出牌登记:立即开始/重置冷却倒计时(冷却与效果分离计算)

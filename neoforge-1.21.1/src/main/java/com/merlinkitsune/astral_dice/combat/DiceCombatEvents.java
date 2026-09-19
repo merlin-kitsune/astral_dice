@@ -380,6 +380,18 @@ public class DiceCombatEvents {
             }
         }
 
+        // 风水师立牌(zhao)被动「福祸相倚」:骰点定稿后判定 —— 结果为 1 ⇒ 获得 1 张符卡-祸;
+        // 为 6 ⇒ 获得 1 张符卡-福(卡牌在发放那一刻绑定获得者)。
+        // ⚠️ 挂点必须在本处(骰点**已被全部修正方改写之后**):上班族立牌的"骰点为 1 则下次必为 6"
+        // 会把 baseDice 直接改写成 6,挂在它之前会读到被覆盖掉的旧值。
+        // ⚠️ 「一次结算一次判定」:同一挥击命中多目标会多次进入本事件 ⇒ 由
+        // ZhaoSignItem#tryClaimDiceJudgment 的**实例内**标记(纯静态槽位,不写附件、不跨实例持久化,
+        // 同 DiceCombatModifiers#instanceVictim 口径)防重复发牌。
+        if (!player.level().isClientSide()
+                && com.merlinkitsune.astral_dice.item.sign.ZhaoSignItem.tryClaimDiceJudgment(player)) {
+            com.merlinkitsune.astral_dice.item.sign.ZhaoSignItem.onDiceRollResult(player, baseDice);
+        }
+
         // 经商立牌(parunan):触发骰神赐福后立即获得 触发时骰点*2 的星光
         if (triggeredBlessing && attackerCurios.isPresent()) {
             var parunanResult = attackerCurios.get().findFirstCurio(s -> s.is(ModItems.PARUNAN_SIGN.get()));

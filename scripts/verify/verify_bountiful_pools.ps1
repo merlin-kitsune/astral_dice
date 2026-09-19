@@ -7,6 +7,12 @@ Bountiful 赏金联动一致性校验（只读守门）。
   2. astral_objs = 非传奇骰子 + 货币(star_coin / star_coin_bag / star_plate / golden_star_plate)；
   3. astral_rews = astral_objs ∪ 卡牌(全部) ∪ 非传奇筹码 ∪ 非传奇立牌
      （**传奇=物品层 Rarity.UNCOMMON，数据层 LEGENDARY**：传奇骰子/筹码/立牌不进 rews；卡牌不受限）；
+     「卡牌」判据 = **与生产线同一判据**：id 前缀(attack_card_/defense_card_/effect_card_)
+     **∪ 本模组卡牌标签**(`data/<ns>/tags/{item|items}/{combat_cards,effect_cards}.json`，即 `ModItems.isCardItem`)。
+     ⚠️ **2026-09-26 修正（消除失明区）**：此前只用 id 前缀 ⇒ 不以前缀命名的卡牌
+     （`fu_card` / `huo_card`，实为 `effect_cards` 标签成员）被归入 materials
+     ⇒ **闸门对「这两张卡是否入池」完全失明**（实测：加入池前后分类都是 cards 25 / materials 8，条数不变）。
+     该盲区正是「守门看不见规则违反」的实例：分类判据与生产线不一致时，闸门给出的是**假绿**。
   4. 集合相等（0 缺失 / 0 多余），且数据层 rarity 与物品品质映射一致
      （RARE→RARE、EPIC→EPIC、UNCOMMON→LEGENDARY）；
   5. 双版本四份文件逐字节一致（md5）；
@@ -162,14 +168,59 @@ function Get-ParsedItems {
 }
 
 
+# 卡牌标签目录名按线不同(1.21.1: tags/item;1.20.1: tags/items) —— 与 compat 差异表一致
+$TAG_DIR = [ordered]@{ 'neoforge-1.21.1' = 'item'; 'forge-1.20.1' = 'items' }
+$CARD_TAGS = @('combat_cards.json', 'effect_cards.json')
+# 专属效果牌标签(与 CARD_TAGS 同目录/同线差异)。用户 2026-09-26 裁决:
+# **专属效果牌严禁经立牌以外的任何途径获得 ⇒ 不得进入任何赏金池**。
+$EXCLUSIVE_TAG = 'is_exclusive.json'
+# 「专属牌却在池内」的**既有**条目白名单:**已按用户 2026-09-26 裁决清空** ——
+# 用户裁定 `effect_card_living_page` / `effect_card_fate_guidance` 与符卡-福/祸同属专属效果牌,
+# **一并清出**(见规格 §14.8)。故此处不再有任何例外:任何专属 id 出现在池内一律**致命偏差**。
+# (该变量保留为空数组,便于将来确需登记例外时显式写入并在评审中可见。)
+$LEGACY_POOL_EXCEPTIONS = @()
+
+# 读取本模组「卡牌标签」里的物品 id(裸 id,去掉命名空间前缀)。
+# 判据与生产线完全一致:ModItems.isCardItem = COMBAT_CARDS_TAG ∪ EFFECT_CARDS_TAG。
+# 为何必须读标签:id 前缀规则(attack_card_/defense_card_/effect_card_)看不见 fu_card/huo_card
+# 这类不以前缀命名的卡牌,会把它们当成材料 ⇒ 闸门对「它们是否入池」失明(2026-09-26 实测)。
+# 标签文件缺失时只 WARN 并退回前缀判据(不得静默把卡牌当材料)。
+function Get-TaggedCards {
+    param([string]$rootPrefix, [string]$ver, [string[]]$files)
+    if (-not $files) { $files = $CARD_TAGS }
+    $set = New-StrSet
+    $sub = $TAG_DIR[$ver]
+    if (-not $sub) { $sub = 'item' }
+    foreach ($f in $files) {
+        $p = $rootPrefix + $ver + '/src/main/resources/data/' + $NS + '/tags/' + $sub + '/' + $f
+        if (-not (Test-Path -LiteralPath $p)) {
+            Add-Warn ('标签缺失(该线相关集合退回 id 前缀判据): ' + $ver + '/tags/' + $sub + '/' + $f)
+            continue
+        }
+        $d = ConvertFrom-Json -InputObject (Read-RawText $p) -AsHashtable
+        if (-not $d.Contains('values')) { continue }
+        foreach ($v in @($d['values'])) {
+            if ($v -isnot [string]) { continue }
+            $id = [string]$v
+            if ($id.Contains(':')) { $id = $id.Substring($id.IndexOf(':') + 1) }
+            [void]$set.Add($id)
+        }
+    }
+    return , $set
+}
+
+
 function Get-Classified {
-    param($items)
+    param($items, $tagCards)
     $c = New-Map
     foreach ($k in @('dice', 'money', 'cards', 'signs', 'chips', 'materials')) { $c[$k] = New-StrSet }
     foreach ($k in $items.Keys) {
+        # 卡牌判据 = id 前缀 ∪ 卡牌标签成员(单行计算,避免跨行 elseif 的解析歧义)
+        $isCard = $k.StartsWith('attack_card_') -or $k.StartsWith('defense_card_') -or $k.StartsWith('effect_card_')
+        if ((-not $isCard) -and ($null -ne $tagCards)) { $isCard = $tagCards.Contains($k) }
         if ($DICE -contains $k) { [void]$c['dice'].Add($k) }
         elseif ($MONEY -contains $k) { [void]$c['money'].Add($k) }
-        elseif ($k.StartsWith('attack_card_') -or $k.StartsWith('defense_card_') -or $k.StartsWith('effect_card_')) { [void]$c['cards'].Add($k) }
+        elseif ($isCard) { [void]$c['cards'].Add($k) }
         elseif ($k.EndsWith('_sign') -and $k -cne 'blank_sign') { [void]$c['signs'].Add($k) }
         elseif ($k.EndsWith('_chip') -and $k -cne 'blank_chip') { [void]$c['chips'].Add($k) }
         else { [void]$c['materials'].Add($k) }
@@ -179,7 +230,7 @@ function Get-Classified {
 
 
 function Get-Expected {
-    param($items, $c)
+    param($items, $c, $exclusive)
     $objs = New-StrSet
     foreach ($k in $c['dice']) { if ($items[$k] -cne $LEGEND) { [void]$objs.Add($k) } }
     foreach ($k in $c['money']) { [void]$objs.Add($k) }
@@ -187,6 +238,11 @@ function Get-Expected {
     foreach ($k in $c['cards']) { [void]$rews.Add($k) }
     foreach ($k in $c['signs']) { if ($items[$k] -cne $LEGEND) { [void]$rews.Add($k) } }
     foreach ($k in $c['chips']) { if ($items[$k] -cne $LEGEND) { [void]$rews.Add($k) } }
+    # 专属效果牌从**所有**池的期望集合中剔除(用户 2026-09-26 裁决:严禁经立牌以外的任何途径获得)。
+    # 剔除后,若这些 id 仍出现在池文件里,下面的 extra 差集就会把它们逐个报出来 —— 这正是我们要的强制力。
+    if ($null -ne $exclusive) {
+        foreach ($k in $exclusive) { [void]$objs.Remove($k); [void]$rews.Remove($k) }
+    }
     return , @($objs, $rews)
 }
 
@@ -243,8 +299,23 @@ if (-not $sameItems) {
     Add-Err ('双版本 ModItems 不一致：仅 ' + $VERSIONS[1] + '=' + (ConvertTo-PyRepr $only_b))
 }
 $items = $a
-$c = Get-Classified $items
-$ex = Get-Expected $items $c
+$tagCards = Get-TaggedCards $pre $VERSIONS[0]
+$tagCardsOther = Get-TaggedCards $pre $VERSIONS[1]
+$tagOnlyA = Sort-Ordinal (Get-SetDiff $tagCards $tagCardsOther)
+$tagOnlyB = Sort-Ordinal (Get-SetDiff $tagCardsOther $tagCards)
+if ((@($tagOnlyA).Count -gt 0) -or (@($tagOnlyB).Count -gt 0)) {
+    Add-Warn ('双版本卡牌标签不一致：仅 ' + $VERSIONS[0] + '=' + (ConvertTo-PyRepr $tagOnlyA) + '；仅 ' + $VERSIONS[1] + '=' + (ConvertTo-PyRepr $tagOnlyB))
+}
+$c = Get-Classified $items $tagCards
+$exclusive = Get-TaggedCards $pre $VERSIONS[0] @($EXCLUSIVE_TAG)
+$exclusiveOther = Get-TaggedCards $pre $VERSIONS[1] @($EXCLUSIVE_TAG)
+$exclOnlyA = Sort-Ordinal (Get-SetDiff $exclusive $exclusiveOther)
+$exclOnlyB = Sort-Ordinal (Get-SetDiff $exclusiveOther $exclusive)
+if ((@($exclOnlyA).Count -gt 0) -or (@($exclOnlyB).Count -gt 0)) {
+    Add-Warn ('双版本专属牌标签不一致：仅 ' + $VERSIONS[0] + '=' + (ConvertTo-PyRepr $exclOnlyA) + '；仅 ' + $VERSIONS[1] + '=' + (ConvertTo-PyRepr $exclOnlyB))
+}
+Write-Out ('专属效果牌(禁止进入任何赏金池): ' + $exclusive.Count + ' 项')
+$ex = Get-Expected $items $c $exclusive
 $eo = $ex[0]
 $er = $ex[1]
 $counts = New-Map
@@ -268,13 +339,23 @@ foreach ($ver in $VERSIONS) {
         $content = $pr[0]
         $actual = ConvertTo-StrSet @($content.Keys)
         $miss = Sort-Ordinal (Get-SetDiff $exp $actual)
-        $extra = Sort-Ordinal (Get-SetDiff $actual $exp)
+        $extraAll = Sort-Ordinal (Get-SetDiff $actual $exp)
+        # 把「既有专属牌仍在池内」与「本批/新引入的违规」拆开:前者登记为具名 WARN(待用户裁决),
+        # 后者照旧致命 —— 两者都不得静默。
+        $extraLegacy = @()
+        $extra = @()
+        foreach ($k in $extraAll) {
+            if ($LEGACY_POOL_EXCEPTIONS -contains $k) { $extraLegacy += $k } else { $extra += $k }
+        }
         $tag = $ver + '/' + $pool
         if (@($miss).Count -gt 0) {
             Add-Err ($tag + ' 缺失条目(' + @($miss).Count + '): ' + (ConvertTo-PyRepr $miss))
         }
         if (@($extra).Count -gt 0) {
             Add-Err ($tag + ' 多余/应排除条目(' + @($extra).Count + '): ' + (ConvertTo-PyRepr $extra))
+        }
+        if (@($extraLegacy).Count -gt 0) {
+            Add-Warn ($tag + ' 专属效果牌仍在池内(既有状态,待用户裁决)(' + @($extraLegacy).Count + '): ' + (ConvertTo-PyRepr $extraLegacy))
         }
         if ((@($miss).Count -eq 0) -and (@($extra).Count -eq 0)) {
             Write-Out ('OK  ' + $tag.PadRight(40) + ' 条目 ' + $actual.Count + ' 与规则一致')

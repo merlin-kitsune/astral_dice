@@ -952,6 +952,7 @@ public class ModAttachments {
             SYNCED_KEYS.add(EFFECT_CARD_PLAY_COUNT);
             SYNCED_KEYS.add(EFFECT_CARD_BONUS_PLAYS);
             SYNCED_KEYS.add(LIVING_PAGE_CYCLE_BONUS);
+            SYNCED_KEYS.add(FU_CARD_CYCLE_BONUS);
             SYNCED_KEYS.add(EFFECT_CARD_COOLDOWN_END);
             SYNCED_KEYS.add(HEALING_POINTS);
             SYNCED_KEYS.add(KOMACHI_DAMAGE_BONUS);
@@ -1009,6 +1010,157 @@ public class ModAttachments {
 
     public static void setRenCounterCharges(net.minecraft.world.entity.player.Player player, int value) {
         REN_COUNTER_CHARGES.set(player, Math.max(0, value));
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 风水师立牌(zhao)+ 两张符卡(fu_card / huo_card)
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /**
+     * 「白泽赐福」状态机**真值**:是否处于生效期(附件与效果实例两处一致,由玩家级 tick 维持)。
+     *
+     * <p>与 1.21.1 侧同名同型(规格 §9.1 冻结名)。仅服务端使用(可见载体是效果实例,客户端由原生效果同步),
+     * 故不 {@code .sync()}、不加入 {@code SYNCED_KEYS}。
+     */
+    public static final AttachedDataKey<Boolean> ZHAO_BLESSING_ACTIVE =
+            register(AttachedDataKey.builder("zhao_blessing_active", Codec.BOOL, () -> false).build());
+
+    public static boolean isZhaoBlessingActive(net.minecraft.world.entity.player.Player player) {
+        return ZHAO_BLESSING_ACTIVE.get(player);
+    }
+
+    public static void setZhaoBlessingActive(net.minecraft.world.entity.player.Player player, boolean value) {
+        ZHAO_BLESSING_ACTIVE.set(player, value);
+    }
+
+    /**
+     * 「白泽赐福」的时序计数器:**仍需跳过的「骰神赐福结束」次数**(0 或 1)。
+     *
+     * <p>两种分支(与 1.21.1 逐条等价,规格 §4.5):
+     * <ul>
+     *   <li>施放时<b>不在</b>骰神赐福中 ⇒ 写 0 ⇒ **下一次**赐福结束即移除「白泽赐福」;</li>
+     *   <li>施放时<b>已在</b>骰神赐福中 ⇒ 写 1 ⇒ **跳过当前这次**赐福结束,下一次赐福结束后移除。</li>
+     * </ul>
+     * 仅由玩家级 tick 的下降沿消费({@code ZhaoSignItem#tickBlessing});仅服务端使用,故不 {@code .sync()}。
+     */
+    public static final AttachedDataKey<Integer> ZHAO_BLESSING_SKIP_CYCLES =
+            register(AttachedDataKey.builder("zhao_blessing_skip_cycles", Codec.INT, () -> 0).build());
+
+    public static int getZhaoBlessingSkipCycles(net.minecraft.world.entity.player.Player player) {
+        return ZHAO_BLESSING_SKIP_CYCLES.get(player);
+    }
+
+    public static void setZhaoBlessingSkipCycles(net.minecraft.world.entity.player.Player player, int value) {
+        ZHAO_BLESSING_SKIP_CYCLES.set(player, Math.max(0, value));
+    }
+
+    /**
+     * 上一拍的「骰神赐福存在性」(下降沿检测的**基准**;仅服务端,每 tick 读取)。
+     *
+     * <p>不 {@code .sync()}:同步会让每 tick 都写包(同口径先例:{@code healing_prev_blessing})。
+     */
+    public static final AttachedDataKey<Boolean> ZHAO_PREV_BLESSING =
+            register(AttachedDataKey.builder("zhao_prev_blessing", Codec.BOOL, () -> false).build());
+
+    public static boolean isZhaoPrevBlessing(net.minecraft.world.entity.player.Player player) {
+        return ZHAO_PREV_BLESSING.get(player);
+    }
+
+    public static void setZhaoPrevBlessing(net.minecraft.world.entity.player.Player player, boolean value) {
+        ZHAO_PREV_BLESSING.set(player, value);
+    }
+
+    /**
+     * 风水师立牌「白泽赐福」期间**溢出治疗等量转化的攻击力加成**(整数部分)。
+     *
+     * <p>写入方 = {@code item/sign/ZhaoSignItem#onLivingHeal} 经 {@link #addZhaoOverflowBonus}(整数化 +
+     * 余数留档,禁止无声丢数);读取方 = {@code combat/DiceCombatModifiers} 的攻击力修饰器;
+     * **唯一回收动作** = {@link #clearZhaoOverflowBonus}(整数 + 余数一并归零,幂等)。
+     * 仅服务端使用,故不 {@code .sync()}(与 1.21.1 侧同名同型)。
+     */
+    public static final AttachedDataKey<Integer> ZHAO_OVERFLOW_BONUS =
+            register(AttachedDataKey.builder("zhao_overflow_bonus", Codec.INT, () -> 0).build());
+
+    /** 溢出治疗取整后的**余数累加器**(< 1 的尾数;见 {@link #ZHAO_OVERFLOW_BONUS}) */
+    public static final AttachedDataKey<Float> ZHAO_OVERFLOW_REMAINDER =
+            register(AttachedDataKey.builder("zhao_overflow_remainder", Codec.FLOAT, () -> 0.0F).build());
+
+    public static int getZhaoOverflowBonus(net.minecraft.world.entity.player.Player player) {
+        return ZHAO_OVERFLOW_BONUS.get(player);
+    }
+
+    public static void setZhaoOverflowBonus(net.minecraft.world.entity.player.Player player, int value) {
+        ZHAO_OVERFLOW_BONUS.set(player, Math.max(0, value));
+    }
+
+    public static float getZhaoOverflowRemainder(net.minecraft.world.entity.player.Player player) {
+        return ZHAO_OVERFLOW_REMAINDER.get(player);
+    }
+
+    public static void setZhaoOverflowRemainder(net.minecraft.world.entity.player.Player player, float value) {
+        ZHAO_OVERFLOW_REMAINDER.set(player, Math.max(0.0F, value));
+    }
+
+    /**
+     * 把一次**溢出治疗量**累加进攻击力加成:整数部分进 {@link #ZHAO_OVERFLOW_BONUS},
+     * 小数部分留在 {@link #ZHAO_OVERFLOW_REMAINDER}(下一次溢出可能与余数凑成新的整数点)
+     * —— 规格 §5.2「禁止无声丢数」的选项一(余数也存进附件),与 1.21.1 逐字同形。
+     */
+    public static void addZhaoOverflowBonus(net.minecraft.world.entity.player.Player player, float overflow) {
+        if (overflow <= 0.0F) return;
+        float total = getZhaoOverflowRemainder(player) + overflow;
+        int whole = (int) Math.floor(total);
+        setZhaoOverflowRemainder(player, total - whole);
+        if (whole > 0) {
+            setZhaoOverflowBonus(player, getZhaoOverflowBonus(player) + whole);
+        }
+    }
+
+    /** 溢出加成的**唯一回收动作**(整数 + 余数一并归零;幂等) */
+    public static void clearZhaoOverflowBonus(net.minecraft.world.entity.player.Player player) {
+        setZhaoOverflowBonus(player, 0);
+        setZhaoOverflowRemainder(player, 0.0F);
+    }
+
+    /**
+     * 「厄运」(符卡-祸 的镜像效果)下一次周期伤害的**绝对结算刻**(gameTime;0 = 未起算)。
+     *
+     * <p><b>计时器与结算分离</b>:该键只在「持有张数 0 → &gt;0」时起算一次,此后**只由结算推进**
+     * (每次结算后 += 2:00),持卡张数的增减**一律不写本键** ⇒ 张数变化不会重置/推迟计时器,
+     * 而每次结算造成的伤害取「**结算时刻**的当前张数」。仅服务端使用,故不 {@code .sync()}。
+     */
+    public static final AttachedDataKey<Long> HUO_CARD_NEXT_DAMAGE_TICK =
+            register(AttachedDataKey.builder("huo_card_next_damage_tick", Codec.LONG, () -> 0L).build());
+
+    public static long getHuoCardNextDamageTick(net.minecraft.world.entity.player.Player player) {
+        return HUO_CARD_NEXT_DAMAGE_TICK.get(player);
+    }
+
+    public static void setHuoCardNextDamageTick(net.minecraft.world.entity.player.Player player, long value) {
+        HUO_CARD_NEXT_DAMAGE_TICK.set(player, Math.max(0L, value));
+    }
+
+    /**
+     * 「符卡-福」本出牌周期累计的出牌数加成(0,1,2,…):**每打出一次 +1**(可累计,不是"每轮一次"的开关)。
+     *
+     * <p>与活体书页的 {@link #LIVING_PAGE_CYCLE_BONUS} 同级、同址清理:
+     * 计入 {@code EffectCardPeriod#getMaxAllowed} 的 extra(受 {@code min(9, 1+extra)} 全局封顶),
+     * 由 {@code EffectCardPeriod#clearRoundBonuses} 在周期归零时清除。
+     *
+     * <p><b>必须同步</b>:客户端预检 {@code BaseEffectCardItem#isBlockedOnClient} →
+     * {@code EffectCardPeriod#isBurstFull} → {@code getMaxAllowed} 会在客户端读本键;
+     * 不同步会让客户端按较低的上限误判"本轮已打满"(与 {@code living_page_cycle_bonus} 的处理一致)。
+     */
+    public static final AttachedDataKey<Integer> FU_CARD_CYCLE_BONUS =
+            register(AttachedDataKey.builder("fu_card_cycle_bonus", Codec.INT, () -> 0).sync().build());
+
+    public static int getFuCardCycleBonus(net.minecraft.world.entity.player.Player player) {
+        return FU_CARD_CYCLE_BONUS.get(player);
+    }
+
+    // 计数器只增不减(归零由周期清理负责),此处仅钳制非负
+    public static void setFuCardCycleBonus(net.minecraft.world.entity.player.Player player, int value) {
+        FU_CARD_CYCLE_BONUS.set(player, Math.max(0, value));
     }
 
     private ModAttachments() {

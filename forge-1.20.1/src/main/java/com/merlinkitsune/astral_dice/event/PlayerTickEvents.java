@@ -143,6 +143,11 @@ public class PlayerTickEvents {
         if (player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
             com.merlinkitsune.astral_dice.item.card.BaseEffectCardItem.tickHeldSelector(serverPlayer);
         }
+        // 风水师立牌「白泽赐福」状态机:**每 tick** 做骰神赐福的下降沿检测 + 自检 + 效果续期
+        // (不用 MobEffectEvent.Expired:该事件在外力移除/死亡/重连清场时不触发,会漏掉"赐福结束";
+        //  下降沿把两条结束路径统一,且不会重复消费跳过计数 —— 见 ZhaoSignItem#tickBlessing)
+        // ⚠️ Forge 每 tick 派发 START+END 两次,tickBlessing 内部靠 prev 落值保证重复调用幂等
+        com.merlinkitsune.astral_dice.item.sign.ZhaoSignItem.tickBlessing(player);
         if (player.tickCount % 20 != 0) return;
         // 赋能:每 0:30 减少 1 层(剩余 1 层时直接归 0)
         com.merlinkitsune.astral_dice.item.EmpowerManager.tick(player);
@@ -152,6 +157,9 @@ public class PlayerTickEvents {
         com.merlinkitsune.astral_dice.item.card.FightPoisonWithPoisonCardItem.tick(player);
         // 大当家立牌:1 分钟内没有触发骰神赐福 → 养精蓄锐 +1 层
         com.merlinkitsune.astral_dice.item.sign.FenSignItem.tick(player);
+        // 符卡-祸「厄运」:层数镜像 == 当前持有张数 + 每 2:00 按结算时刻张数的周期伤害
+        // (计时器只在首次持有时起算一次,张数增减不改写它 —— 计时器与结算分离)
+        com.merlinkitsune.astral_dice.item.card.HuoCardItem.tick(player);
 
     }
 

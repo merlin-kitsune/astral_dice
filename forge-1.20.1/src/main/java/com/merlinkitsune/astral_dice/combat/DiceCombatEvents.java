@@ -384,6 +384,18 @@ public class DiceCombatEvents {
             }
         }
 
+        // 风水师立牌(zhao)被动「福祸相倚」:骰点定稿后判定 —— 结果为 1 ⇒ 获得 1 张符卡-祸;
+        // 为 6 ⇒ 获得 1 张符卡-福(卡牌在发放那一刻绑定获得者)。
+        // ⚠️ 挂点必须在本处(骰点**已被全部修正方改写之后**):上班族立牌的"骰点为 1 则下次必为 6"
+        // 会把 baseDice 直接改写成 6,挂在它之前会读到被覆盖掉的旧值。
+        // ⚠️ 「一次结算一次判定」:同一挥击命中多目标会多次进入本事件 ⇒ 由
+        // ZhaoSignItem#tryClaimDiceJudgment 的**实例内**标记(纯静态槽位,不写附件、不跨实例持久化,
+        // 同 DiceCombatModifiers#instanceVictim 口径)防重复发牌。
+        if (!player.level().isClientSide()
+                && com.merlinkitsune.astral_dice.item.sign.ZhaoSignItem.tryClaimDiceJudgment(player)) {
+            com.merlinkitsune.astral_dice.item.sign.ZhaoSignItem.onDiceRollResult(player, baseDice);
+        }
+
         // 经商立牌(parunan):触发骰神赐福后立即获得 触发时骰点*2 的星光
         if (triggeredBlessing && attackerCurios.isPresent()) {
             var parunanResult = attackerCurios.get().findFirstCurio(s -> s.is(ModItems.PARUNAN_SIGN.get()));
@@ -826,6 +838,10 @@ public class DiceCombatEvents {
         NancyLuSignItem.onDiceBlessingEnded(player);
         // 枪匠立牌:赐福结束弱点识破减少 1 层
         MosesSignItem.onDiceBlessingEnded(player);
+        // 风水师立牌(zhao)的「白泽赐福」两分支收尾**不在这里**,也**不**订阅本 Expired 事件:
+        // 判定入口 = 玩家级 tick 的下降沿(ZhaoSignItem#tickBlessing,由 PlayerTickEvents 每 tick 驱动;
+        // 规格 §4.4 冻结口径)。理由:Expired 在"效果被外力移除 / 死亡 / 重连清场"时不触发会漏掉结束,
+        // 且与下降沿同时订阅会重复消费 skip 计数。本处理器对骰神赐福自身的语义保持原样。
 
         var curios = CuriosCompat.getCuriosInventory(player);
         if (curios.isEmpty()) return;
@@ -868,6 +884,10 @@ public class DiceCombatEvents {
     }
 
     // 标记效果自然结束时:每分钟减少 1 层标记(层数>1 时重新施加并重置计时,否则标记消失)
+
+    // 风水师立牌(zhao)「白泽赐福」的溢出治疗转攻击力**不在这里**:它由
+    // ZhaoSignItem#onLivingHeal 自己挂在 Forge 的 LivingHealEvent 上(与 1.21.1 侧同一形状:
+    // 处理逻辑与状态归立牌类所有,骰战类只保留"骰点定稿后发放符卡"这一处挂点)。
 
     // 伤害放大须先于 ChipDamageHandler(安全气囊,LOWEST)执行,故用 LOW
     @SubscribeEvent(priority = EventPriority.LOW)

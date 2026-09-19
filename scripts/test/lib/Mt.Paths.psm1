@@ -122,9 +122,6 @@ function Get-MtPaths {
         # （工作目录 = run_dir）。独立于客户端渲染/聊天与 SLF4J 配置，因此
         # 「客户端卡死 / logger 被过滤」都不影响断言取证（source=probe）。
         probe_log       = Join-Path $runDir 'astral_probe.log'
-        # 纯离线用例的读数通道：由 scripts/test/mt_loadergate.ps1 写（不经过游戏客户端）。
-        # 现存唯一使用者是 LOADER-GATE-FORGE（1.20.1 FML 依赖排序门槛）。
-        loadergate_log  = Join-Path $logsDir 'loadergate.log'
         crash_dir       = Join-Path $runDir 'crash-reports'
         shot_dir        = $shopsDir
         client_world    = Join-Path (Join-Path $runDir 'saves') $script:WORLD_NAME

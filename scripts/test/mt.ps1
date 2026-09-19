@@ -70,6 +70,9 @@
       · 全局 `--run-timeout <秒>`（**默认 2700s**；旧默认「0 = 不限」已废除 —— 那正是
         「7 分 45 秒静默空转、人只能干等」能发生的前提）⇒ 超时走 `--phase stop --force`
         收停、报告写 TIMEOUT、退出码 12（与 FAIL=1 区分）；
+      · 汇总折码（t34，规则 14 收严版）：`mt_report summary` 的「无效运行（MT_USER_TERMINATED）」
+        中断码 `MT_EXIT_ERROR`(2) **原样传出**，不再折成 `MT_EXIT_FAIL`(1) ⇒ 端到端退出码可区分
+        「无效运行(2) / 产品断言失败(1) / 超时(12) / 前置不足(11) / 全通过(0)」；
       · 长流程包裹用 `mt_watchdog.ps1`（独立脚本，见 TESTING-SPEC §12；判据已从「日志
         mtime」改为**语义标记 + 进度信标**）；阶段/用例/步骤级进度写在
         `cases/.mt_progress.json`，监视器与事后取证共读这一个文件即可定位卡点。
@@ -703,7 +706,15 @@ try {
 
     Start-MtPhase 'summary'
     $summaryRc = Invoke-MtChild -Script 'mt_report.ps1' -ScriptArgs @('summary')
-    if ($summaryRc -ne 0) { $overall = $MT_EXIT_FAIL }
+    # t34（规则 14 收严版）折码修复：`mt_report summary` 在「无效运行（MT_USER_TERMINATED）」上返回
+    # `MT_EXIT_ERROR`(2) —— 该中断码必须**原样传出**，不再像以前那样折成 `MT_EXIT_FAIL`(1)；
+    # 否则端到端退出码分不清「被用户终止的无效运行」与「产品断言失败」（TESTING-SPEC §12.3 第 5 条）。
+    # 语义保持：任何非 0 汇总码仍保证端到端非 0（FAIL(1) 语义不变），只是把中断码单列出来。
+    # 无效运行优先于 FAIL：即使某版本已判 FAIL，只要汇总结论是「无效运行」就以中断码收尾
+    # （规则 14：该次运行的全部结果无效；真实失败串已在 SUMMARY.md 里如实并列，供重新执行时复验）。
+    if ($summaryRc -ne 0) {
+        $overall = if ($summaryRc -eq $MT_EXIT_ERROR) { $MT_EXIT_ERROR } else { $MT_EXIT_FAIL }
+    }
 
     # 退出清理走在这里（早于最终判定行），finally 只是兜底（Ctrl-C / 异常退出）
     [void](Invoke-MtAutoCleanup)
@@ -717,6 +728,10 @@ if ($overall -eq 0) {
     else { Write-MtLine "MT_RUN: PASS — $Version 通过（--version 指定单版本，未执行跨版本门控）" }
 } elseif ($overall -eq $MT_EXIT_TIMEOUT) {
     Write-MtLine "MT_RUN: TIMEOUT — 见 reports/$runId/SUMMARY.md（超时与 FAIL 是两种结论）"
+} elseif ($overall -eq $MT_EXIT_ERROR) {
+    # t34：无效运行（规则 14 收严版）—— 与产品 FAIL 是两种结论，退出码 2 ≠ 1
+    Write-MtLine "MT_RUN: 无效运行（MT_USER_TERMINATED）— 本次测试结果全部无效，需重新执行测试验证（与 FAIL 是两种结论）"
+    Write-MtLine "MT_RUN: INVALID reason=USER_TERMINATED exit=$MT_EXIT_ERROR — 见 reports/$runId/SUMMARY.md"
 } else {
     Write-MtLine "MT_RUN: FAIL — 见 reports/$runId/SUMMARY.md"
 }

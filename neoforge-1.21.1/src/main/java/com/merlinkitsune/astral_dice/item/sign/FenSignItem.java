@@ -33,6 +33,8 @@ import com.merlinkitsune.astral_dice.item.ModItems;
  * <p>旧的"主动消耗 2 层 → 下次骰神赐福期间持续扩散"已移除:溅射改为**被动触发 + 单次生效**。
  */
 public class FenSignItem extends BaseSignItem {
+    private static final org.slf4j.Logger LOGGER = org.slf4j.LoggerFactory.getLogger(FenSignItem.class);
+
     /** 养精蓄锐上限 */
     public static final int MAX_RECHARGE = 5;
     /** 战斗爽持续时长(tick) */
@@ -66,7 +68,14 @@ public class FenSignItem extends BaseSignItem {
         if (level.isClientSide) {
             return InteractionResultHolder.success(stack);
         }
-        // 主动"战斗爽":攻击力 +3,持续 1:00(visible=true 使效果图标在 HUD 正常显示)
+        // 主动"战斗爽":攻击力 +3,持续 1:00。
+        // ⚠️ 实参语义(事实陈述,勿读错):HUD 效果图标由第 6 参 showIcon 决定,**与第 5 参 visible 无关**
+        // —— visible 只控制"是否产生漂浮粒子"。
+        // ✅ 本处 visible=true 为**有意为之**(用户 2026-09-19 裁决,原话「战斗爽不去除粒子(及时效果,
+        // 不属于计数器类)」):战斗爽是**即时类效果**,粒子属预期表现,**不得**因为"上面写着 visible
+        // 只管粒子"就把它当遗留 bug 改掉(对照:同方法里「养精蓄锐 → 迅捷」那一处按裁决已改
+        // visible=false —— 两处口径不同是**有意**的)。
+        // 正向锁定:两条线用例 ZHAO-SIGN-{1.21.1,1.20.1} 的 FS1 断言把 `frenzy_visible=1` 写成期望值。
         player.addEffect(new MobEffectInstance(ModEffects.FEN_FRENZY,
                 FRENZY_DURATION_TICKS, 0, false, true, true));
 
@@ -74,8 +83,20 @@ public class FenSignItem extends BaseSignItem {
         // 若拥有养精蓄锐:恢复 6 点血量并获得迅捷 1:00
         if (stacks > 0) {
             player.heal(ACTIVE_HEAL);
+            // 2026-09-19 用户修正「大当家立牌养精蓄锐效果,不应该存在漂浮粒子」:迅捷实例显式
+            // ambient=false, visible=false, showIcon=true —— **HUD 图标由 showIcon 决定、与 visible
+            // 无关**(旧实参只写到第 5 参 `visible=true`,把图标开关误当成了 visible,于是平白产生
+            // 漂浮粒子,玩家把它归因于养精蓄锐)。战斗爽那一处按用户裁决**有意保留粒子**(见上方注释)。
             EffectTimerGuard.apply(player, new MobEffectInstance(MobEffects.MOVEMENT_SPEED,
-                    FRENZY_DURATION_TICKS, 0, false, true));
+                    FRENZY_DURATION_TICKS, 0, false, false, true));
+        }
+        // 被动「心意相连」(风水师立牌 zhao):本立牌**使用主动技能**时,同队中装备风水师立牌的玩家
+        // 各获得 1 张符卡-福;**未组队时不生效**(判定全部在 ZhaoSignItem#onAllyActiveSkill 内,
+        // 这里只负责在"主动技能真正成功"之后调用;门控/冷却/充能仍由本类既有流程负责)。
+        int linked = ZhaoSignItem.onAllyActiveSkill(player);
+        if (linked > 0) {
+            LOGGER.debug("[Astral Dice][Fen][心意相连] 主动技能为 {} 名同队风水师立牌佩戴者发放符卡-福",
+                    linked);
         }
         // 注:"战斗爽·溅射"已移至被动(触发骰神赐福且满层时消耗 2 层),主动不再消耗层数
         return InteractionResultHolder.success(stack);
@@ -105,10 +126,24 @@ public class FenSignItem extends BaseSignItem {
 
     // 使用治疗类效果牌时调用(佩戴立牌且未满上限时):养精蓄锐 +1 层
     public static void onHealingCardUsed(Player player) {
-        if (player.level().isClientSide()) return;
+        if (player == null || player.level().isClientSide()) return;
         if (!isEquipped(player)) return;
-        if (ModAttachments.getFenRecharge(player) >= MAX_RECHARGE) return;
-        ModAttachments.setFenRecharge(player, ModAttachments.getFenRecharge(player) + 1);
+        addRecharge(player, 1);
+    }
+
+    /**
+     * 养精蓄锐 +{@code layers} 层(封顶 {@value #MAX_RECHARGE};唯一写入入口)。
+     *
+     * <p>调用方:① 本类"使用治疗类效果牌"(BaseEffectCardItem 钩子);
+     * ② 风水师立牌被动「完美帮手」—— 对**装备本立牌**的玩家施加白泽赐福时给 1 层
+     * ({@code item/sign/ZhaoSignItem#applyBlessing})。两条路径共用同一附件计数,不新建效果。
+     */
+    public static void addRecharge(Player player, int layers) {
+        if (player == null || player.level().isClientSide()) return;
+        if (layers <= 0) return;
+        int current = ModAttachments.getFenRecharge(player);
+        if (current >= MAX_RECHARGE) return;
+        ModAttachments.setFenRecharge(player, Math.min(MAX_RECHARGE, current + layers));
     }
 
     /**

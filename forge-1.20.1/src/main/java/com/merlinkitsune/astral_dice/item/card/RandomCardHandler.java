@@ -99,6 +99,8 @@ public final class RandomCardHandler {
         // 当前专属效果牌(注册引用,运行时解析,避免静态初始化 .get())
         registerExclusiveCard(ModItems.LIVING_PAGE);   // 活体书页(调查员立牌专属-伤害)
         registerExclusiveCard(ModItems.FATE_GUIDANCE_CARD); // 命运的指引(专属-功能)
+        registerExclusiveCard(ModItems.FU_CARD);       // 符卡-福(风水师立牌专属:绑定获得者)
+        registerExclusiveCard(ModItems.HUO_CARD);      // 符卡-祸(风水师立牌专属:绑定获得者)
         // 未来专属战斗牌(撕咬/龙之咆哮等)在此注册
     }
 

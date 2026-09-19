@@ -29,7 +29,9 @@ public final class ExclusiveCardUtil {
 
     // 是否为专属效果牌
     public static boolean isExclusive(ItemStack stack) {
-        return stack.is(ModItems.LIVING_PAGE.get()) || stack.is(ModItems.FATE_GUIDANCE_CARD.get());
+        return stack.is(ModItems.LIVING_PAGE.get()) || stack.is(ModItems.FATE_GUIDANCE_CARD.get())
+                // 风水师立牌(zhao)的两张符卡:同样是绑定获得者的专属牌
+                || stack.is(ModItems.FU_CARD.get()) || stack.is(ModItems.HUO_CARD.get());
     }
 
     // 无所有者时绑定为当前使用者

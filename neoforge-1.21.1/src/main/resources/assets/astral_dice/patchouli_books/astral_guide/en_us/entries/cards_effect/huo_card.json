@@ -1,0 +1,17 @@
+{
+  "name": "item.astral_dice.huo_card",
+  "category": "astral_dice:cards_effect",
+  "icon": "astral_dice:huo_card",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:huo_card",
+      "text": "astral_dice.guide.entry.huo_card.1"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.huo_card.2"
+    }
+  ],
+  "sortnum": 16
+}

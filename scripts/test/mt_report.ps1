@@ -40,6 +40,20 @@
 
     文案偏差：报告里的「复跑命令」由 `bash scripts/test/mt.sh …`（旧 bash 版脚本已在 92fbeaf 删除）改为
     `pwsh -File scripts/test/mt.ps1 …`（同一入口的新名字）。
+
+    ## 规则 14（收严版，2026-09-19 用户裁决）：`USER_TERMINATED` = **第三类「无效运行」**
+
+    原文：「被用户主动终止的游戏进程一律视为作废。此次测试产生的任何结果都必须视为无效。
+    需要重新执行测试进行验证。」
+
+    · 判定：本轮 `versions.<V>.cases.<条目>` 任一为 `USER_TERMINATED`（`mt_case.ps1` 的唯一写入口
+      `mark --case … --result USER_TERMINATED`）⇒ 该次运行标「无效运行（MT_USER_TERMINATED）」；
+      报告层**覆盖**调用方传入的 `--verdict`（编排侧只能折出 PASS/TIMEOUT/FAIL 三种，无法表达第三类）。
+    · 处置：**不计入通过率**、**不作为缺陷依据**、不与产品 `❌ FAIL` 混淆；`report.md` 的条目表与
+      `SUMMARY.md` 的版本结论**逐条如实并列**全部结果串（含并存的真实失败串）供审计。
+    · 退出码：沿用**既有**非 0 中断码 `MT_EXIT_ERROR(2)`（与用例级 `USER_TERMINATED` 同一数值，不新造）。
+    · 收集阶段命中时会**提前返回**（早于生物 AI 审计的 ERROR 归因）——否则用户杀进程导致的心跳缺失
+      会被误读成「读数被生物 AI 污染」，与该规则冲突。
 #>
 
 $ErrorActionPreference = 'Stop'
@@ -538,7 +552,29 @@ function Invoke-MtReportCollect {
     $cases = if ($vs.Contains('cases') -and $null -ne $vs['cases']) { $vs['cases'] } else { [ordered]@{} }
 
     $verdict = $Verdict
-    if (-not $verdict) {
+    # 记下**调用方传入的** verdict（PowerShell 变量名不区分大小写 ⇒ `$verdict` 与形参 `$Verdict` 是同一个
+    # 变量；下面一旦把 $verdict 覆写成 'INVALID'，形参里的原始值就没了 —— 标记行要报告的是"调用方要求什么"）。
+    $verdictArg = [string]$Verdict
+    # ── 规则 14（收严版，2026-09-19 用户裁决）：无效运行（第三类）────────────────────────────
+    # 原文：「被用户主动终止的游戏进程一律视为作废。此次测试产生的任何结果都必须视为无效。
+    #         需要重新执行测试进行验证。」
+    # 因此 `USER_TERMINATED` **既不是产品 PASS 也不是产品 FAIL**：它必须被当**第三类**处置 ——
+    # 整轮标「无效运行」、不计入通过率、不作为缺陷依据、不与 `❌ FAIL` 混淆；
+    # 退出码沿用**既有**非 0 中断码 MT_EXIT_ERROR(2)（与 mt_case.ps1 用例级 `USER_TERMINATED`
+    # 的 switch 分支同一数值，不新造数值）。
+    # 判据只读**既有**状态源：本轮 `versions.<V>.cases.<条目>` 的结论串（`mark --case` 是本轮唯一
+    # 写入口），外加防御性地看一眼阶段结论串（当前无写入方会把阶段记为 USER_TERMINATED，
+    # 故对现有行为零影响；保留它是为「客户端在首个用例之前就被杀」这类将来场景兜底）。
+    $userTerminatedCases = @($cases.Keys | Where-Object { [string]$cases[$_] -eq 'USER_TERMINATED' })
+    $userTerminatedPhases = @($phases.Keys | Where-Object {
+            $phases[$_] -and $phases[$_].Contains('result') -and [string]$phases[$_]['result'] -eq 'USER_TERMINATED'
+        })
+    $invalidRun = ($userTerminatedCases.Count -gt 0 -or $userTerminatedPhases.Count -gt 0)
+    if ($invalidRun) {
+        # 无效运行**优先于**调用方传入的 `--verdict`：编排侧（mt.ps1:690）只能把 cases 阶段退出码
+        # 折成 PASS/TIMEOUT/FAIL 三种，无法表达「无效运行」这一第三类 ⇒ 报告层必须自己收口。
+        $verdict = 'INVALID'
+    } elseif (-not $verdict) {
         $allPass = ($cases.Count -gt 0)
         foreach ($k in $cases.Keys) { if ($cases[$k] -ne 'PASS') { $allPass = $false } }
         $verdict = if ($allPass) { 'PASS' } else { 'FAIL' }
@@ -564,8 +600,26 @@ function Invoke-MtReportCollect {
         '',
         '## 结论',
         '',
-        "**$Version`: $(if ($verdict -eq 'PASS') { '✅ PASS（通过）' } else { '❌ FAIL（未通过）' })**",
-        '',
+        "**$Version`: $(if ($verdict -eq 'INVALID') { '⛔ 无效运行（MT_USER_TERMINATED）' } elseif ($verdict -eq 'PASS') { '✅ PASS（通过）' } else { '❌ FAIL（未通过）' })**",
+        ''
+    )
+
+    # 规则 14：无效运行必须**显式**写明「结果全部无效、需重新执行」，并说明不并入 ❌ / 不计通过率 /
+    # 不作缺陷依据；条目表（下面那节）仍逐条保留全部结果串供审计。
+    if ($invalidRun) {
+        $utCaseNames = if ($userTerminatedCases.Count -gt 0) { @($userTerminatedCases | Sort-Object) -join ', ' } else { '（阶段级：' + (@($userTerminatedPhases | Sort-Object) -join ', ') + '）' }
+        $lines += @(
+            '> ### ⛔ 无效运行（MT_USER_TERMINATED）',
+            '> **本次测试结果全部无效，需重新执行测试验证。**',
+            '> 依据（规则 14 收严版）：「被用户主动终止的游戏进程一律视为作废。此次测试产生的任何结果都必须视为无效。需要重新执行测试进行验证。」',
+            "> 触发条目：``$utCaseNames``（结论 ``USER_TERMINATED`` —— 疑似用户手动终止，判定见 ``mt_case.ps1`` 的 ``MT_USER_TERMINATED``）。",
+            '> 处置：**不计入通过率**、**不作为缺陷依据**，也不与产品 `❌ FAIL` 混淆；下方条目表逐条如实保留全部结果串（含其它失败串）供审计。',
+            "> 退出码：沿用既有非 0 中断码 ``MT_EXIT_ERROR($MT_EXIT_ERROR)``（与用例级 ``USER_TERMINATED`` 同一数值，未新造）。",
+            ''
+        )
+    }
+
+    $lines += @(
         '## 阶段结果',
         '',
         '| 阶段 | 结果 |',
@@ -630,6 +684,18 @@ function Invoke-MtReportCollect {
     [System.IO.File]::WriteAllText($reportPath, (($lines -join "`n") + "`n"), $script:TAG_UTF8)
     Write-MtLine "MT_REPORT: OK — $reportPath（结论 $verdict）"
 
+    # 规则 14：无效运行在此**提前收口**（早于生物 AI 审计的 ERROR 归因）——否则用户杀进程导致的
+    # 心跳缺失会被误读成「读数被生物 AI 污染」（错误归因，且与「不作缺陷依据」冲突）。
+    # 退出码沿用既有 MT_EXIT_ERROR(2)；审计结论一并作废并显式标注。
+    if ($invalidRun) {
+        Write-MtLine ("MT_INVALID_RUN: version={0} result=INVALID reason=USER_TERMINATED cases={1} verdict_arg={2} exit={3}" -f `
+                $Version, $utCaseNames, $(if ($verdictArg) { $verdictArg } else { '(none)' }), $MT_EXIT_ERROR)
+        Write-MtErrLine ('MT_INVALID_RUN: 本次测试结果全部无效，需重新执行测试验证 —— 无效运行（MT_USER_TERMINATED）：' + `
+                "不计入通过率、不作为缺陷依据、不与产品 FAIL 混淆（version=$Version）")
+        Write-MtLine "MT_NOAI_AUDIT: SKIPPED — 本轮为无效运行（MT_USER_TERMINATED）；生物 AI 审计结论一并作废，不作为缺陷依据"
+        return $MT_EXIT_ERROR
+    }
+
     # 生物 AI 禁用审计：整轮都不能出现带 AI 的 Mob（2026-09-18 硬性要求），未达标一律 ERROR。
     # 报告已先落盘（证据保留），随后以非 0 退出码把这一轮判为不合格。
     if ($noaiBeats.Count -eq 0 -or $noaiBad.Count -gt 0 -or $noaiErrs.Count -gt 0) {
@@ -684,7 +750,8 @@ function Invoke-MtReportSummary {
         '',
         '> 测试顺序：先 1.21.1，通过后才执行 1.20.1。两个版本都给出独立结论。',
         '> `mt.ps1 --version <V>` 指定单版本时只跑该版本、不做跨版本门控，总览也只列实际执行过的版本。',
-        '> 条目判定口径未变：`PASS`/`SKIP` 之外（FAIL/TIMEOUT/BLOCKED/ERROR/GATED）一律计入 ❌ 并让退出码非 0。',
+        '> 条目判定口径（规则 14 收严版）：`PASS`/`SKIP` 之外（FAIL/TIMEOUT/BLOCKED/ERROR/GATED）一律计入 ❌ 并让退出码非 0；',
+        '> 但 `USER_TERMINATED` 是**第三类 —— 无效运行**：该次运行的全部结果无效（不计入通过率、不作为缺陷依据），不与 ❌ FAIL 混淆，退出码沿用既有中断码 MT_EXIT_ERROR(2)。',
         '',
         '## 版本结论',
         '',
@@ -703,6 +770,12 @@ function Invoke-MtReportSummary {
     }
 
     $overallPass = $true
+    # 规则 14（收严版）：只要**任一**版本本轮出现 `USER_TERMINATED`，整轮即为**无效运行**
+    # （$overallInvalid）—— 该次运行的全部结果无效，不计通过率、不作缺陷依据。
+    # `$anyRealFailure` 只用于在综合结论里如实提示「无效运行之外还并存真实失败串」，不改变判定级别。
+    $overallInvalid = $false
+    $invalidVersions = @()
+    $anyRealFailure = $false
     $idx = 0
     foreach ($v in $summaryVersions) {
         $idx++
@@ -719,38 +792,64 @@ function Invoke-MtReportSummary {
             # 不是"断言不满足"（FAIL），也不是"跑不起来"（ERROR）。
             $bad = @()
             $timeouts = @()
+            $ut = @()
             foreach ($k in $cases.Keys) {
                 $res = [string]$cases[$k]
                 if (@('PASS', 'SKIP') -notcontains $res) {
                     $bad += ("{0}={1}" -f $k, $res)
                     if ($res -eq 'TIMEOUT') { $timeouts += $k }
+                    if ($res -eq 'USER_TERMINATED') { $ut += $k }
                 }
             }
-            if ($bad.Count -eq 0) {
+            if ($ut.Count -gt 0) {
+                # 规则 14：本版本本次运行＝**无效运行**（第三类）。条目表**如实并列全部结果串**
+                # （$bad 里既有 USER_TERMINATED 也可能有其它失败串），既不判 PASS 也不判产品 FAIL。
+                $verdict = "⛔ 无效运行（MT_USER_TERMINATED：$($bad -join ', ')）"
+                $overallInvalid = $true
+                $invalidVersions += $v
+                if (@($bad | Where-Object { $_ -notlike '*=USER_TERMINATED' }).Count -gt 0) { $anyRealFailure = $true }
+            } elseif ($bad.Count -eq 0) {
                 $verdict = '✅ PASS'
             } elseif ($timeouts.Count -gt 0 -and $timeouts.Count -eq $bad.Count) {
                 $verdict = "⏱ TIMEOUT（$($bad -join ', ')）"
             } else {
                 $verdict = "❌ FAIL（$($bad -join ', ')）"
             }
-            if ($bad.Count -gt 0) { $overallPass = $false }
+            if ($bad.Count -gt 0 -and $ut.Count -eq 0) { $overallPass = $false }
         }
         $lines += "| $idx | $v | $verdict | $($cases.Count) |"
     }
 
     $lines += @('', '## 综合结论', '')
-    $lines += "**$(if ($overallPass) { '✅ 全部通过' } else { '❌ 未全部通过' })**"
+    if ($overallInvalid) {
+        $lines += '**⛔ 无效运行（MT_USER_TERMINATED）—— 本次测试结果全部无效，需重新执行测试验证**'
+        $lines += ''
+        $lines += "> 涉及版本：$($invalidVersions -join ', ')。依据（规则 14 收严版）：「被用户主动终止的游戏进程一律视为作废。此次测试产生的任何结果都必须视为无效。需要重新执行测试进行验证。」"
+        $lines += '> **不计入通过率**、**不作为缺陷依据**、不与产品 `❌ FAIL` 混淆；各版本 `report.md` 的条目表已逐条如实保留全部结果串（含其它失败串）供重新执行时对照。'
+        if ($anyRealFailure) {
+            $lines += '> 注：本轮**另有真实失败串**（见上方版本结论与各版本 `report.md` 条目表）——整轮仍按无效运行处置；这些失败项待重新执行后复验，**当前不作为缺陷依据**。'
+        }
+    } else {
+        $lines += "**$(if ($overallPass) { '✅ 全部通过' } else { '❌ 未全部通过' })**"
+    }
     $lines += @('', '各版本详细报告见对应子目录 `report.md`。')
 
     $summaryPath = Join-Path $dest 'SUMMARY.md'
     [System.IO.File]::WriteAllText($summaryPath, (($lines -join "`n") + "`n"), $script:TAG_UTF8)
     Write-MtLine "MT_REPORT: OK — $summaryPath"
     Write-MtLine ("MT_ROUND: 本轮 {0} 结算（{1}）；汇总只统计本轮标记" -f `
-            $roundGen, $(if ($overallPass) { '全部通过' } else { '未全部通过' }))
+            $roundGen, $(if ($overallInvalid) { '无效运行（MT_USER_TERMINATED）' } elseif ($overallPass) { '全部通过' } else { '未全部通过' }))
+    if ($overallInvalid) {
+        Write-MtLine ("MT_INVALID_RUN: 本轮 result=INVALID reason=USER_TERMINATED versions={0} exit={1}" -f ($invalidVersions -join ','), $MT_EXIT_ERROR)
+        Write-MtErrLine "MT_INVALID_RUN: 本次测试结果全部无效，需重新执行测试验证 —— 无效运行（MT_USER_TERMINATED）：不计入通过率、不作为缺陷依据、不与产品 FAIL 混淆"
+    }
     # t22（B9）：结算本轮 —— 下一条标记（任何阶段/条目）由此判定为「新一轮」的起点。
     # 放在**判定之后**：即使这里写盘失败，也已经返回了正确的退出码（不因状态文件影响结论）。
     $state['closed_at'] = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
     try { Save-MtReportState -State $state } catch { Write-MtWarn "MT_ROUND: 结算标记写盘失败（$($_.Exception.Message)）；下一轮仍会按世代/结算判据开新轮" }
+    # 规则 14：无效运行返回**既有**非 0 中断码 MT_EXIT_ERROR(2)（与用例级 USER_TERMINATED 一致），
+    # 不与「未全部通过」的既有返回码 1 混同。
+    if ($overallInvalid) { return $MT_EXIT_ERROR }
     if ($overallPass) { return 0 }
     return 1
 }

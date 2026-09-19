@@ -44,6 +44,9 @@ import com.merlinkitsune.astral_dice.item.chip.AtmChipItem;
 import com.merlinkitsune.astral_dice.item.chip.BankCardChipItem;
 import com.merlinkitsune.astral_dice.item.sign.RinSignItem;
 import com.merlinkitsune.astral_dice.item.sign.RenSignItem;
+import com.merlinkitsune.astral_dice.item.sign.ZhaoSignItem;
+import com.merlinkitsune.astral_dice.item.card.FuCardItem;
+import com.merlinkitsune.astral_dice.item.card.HuoCardItem;
 import com.merlinkitsune.astral_dice.item.dice.DiceTierRegistry;
 import com.merlinkitsune.astral_dice.item.card.HamburgerCardItem;
 import com.merlinkitsune.astral_dice.item.chip.TargetChipItem;
@@ -883,6 +886,30 @@ public class ModItems {
             () -> new RenSignItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(Rarity.EPIC)));
+
+    // 风水师立牌(命名:zhao,传奇):被动「福祸相倚」(骰点 1→符卡-祸 / 6→符卡-福)
+    // + 被动「完美帮手」(对装备大当家立牌者施加白泽赐福时给 1 层养精蓄锐)
+    // + 主动「白泽赐福」(目标选择器;溢出治疗等量转攻击力;持续到下一次骰神赐福结束;
+    //   施法者得 1 张符卡-福并把自身全部符卡-祸转为符卡-福)。
+    // 传奇品质 = Rarity.UNCOMMON(本模组「金=传奇」映射,见本类顶部的稀有度标准)。
+    public static final DeferredItem<Item> ZHAO_SIGN = registerItem("zhao_sign",
+            () -> new ZhaoSignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.UNCOMMON)));
+
+    // 符卡-福(专属功能效果牌,风水师立牌专属):出牌数 +1;对玩家(不限队伍)或自身使用 ⇒ 恢复 2 点生命值。
+    // 专属绑定:获得即绑定获得者(ModDataComponents.OWNER_UUID),他人无法使用。
+    public static final DeferredItem<Item> FU_CARD = registerItem("fu_card",
+            () -> new FuCardItem(new Item.Properties()
+                    .stacksTo(64)
+                    .rarity(Rarity.UNCOMMON)));
+
+    // 符卡-祸(专属伤害效果牌,风水师立牌专属):只能对敌对目标(含非同队玩家)使用 ⇒ 1 点伤害;
+    // 持有者每 2:00 按当前张数受伤(厄运层数 == 持有张数)。
+    public static final DeferredItem<Item> HUO_CARD = registerItem("huo_card",
+            () -> new HuoCardItem(new Item.Properties()
+                    .stacksTo(64)
+                    .rarity(Rarity.UNCOMMON)));
 
     public static <T extends Item> DeferredItem<T> registerItem(String name, Supplier<T> itemSupplier) {
         return ITEMS.register(name, itemSupplier);

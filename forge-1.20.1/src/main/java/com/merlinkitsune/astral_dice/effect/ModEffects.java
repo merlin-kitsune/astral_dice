@@ -156,6 +156,17 @@ public class ModEffects {
     public static final RegistryObject<MobEffect> REN_COUNTER =
             EFFECTS.register("ren_counter", RenCounterEffect::new);
 
+    // 白泽赐福(风水师立牌 zhao 主动):溢出治疗转攻击力的有效期载体;
+    // 无限时长施加,由「下次骰神赐福结束」驱动移除(两种分支见 ZhaoSignItem)。
+    // 图标按需求复用风水师立牌贴图(images/风水师立牌.png → textures/mob_effect/zhao_blessing.png)。
+    public static final RegistryObject<MobEffect> ZHAO_BLESSING =
+            EFFECTS.register("zhao_blessing", ZhaoBlessingEffect::new);
+
+    // 厄运:持有「符卡-祸」的层数镜像(层数 = 张数);每 2:00 按当前张数结算一次伤害。
+    // 图标 = images/厄运.png(实装路径 textures/mob_effect/misfortune.png)。
+    public static final RegistryObject<MobEffect> MISFORTUNE =
+            EFFECTS.register("misfortune", MisfortuneEffect::new);
+
     /**
      * 本模组已注册的全部效果的**只读**视图(调试命令 {@code /astralparty cleareffect} 用)。
      *

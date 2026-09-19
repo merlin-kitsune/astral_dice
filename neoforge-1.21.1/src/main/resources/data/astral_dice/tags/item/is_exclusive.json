@@ -1,6 +1,8 @@
 {
   "values": [
     "astral_dice:effect_card_living_page",
-    "astral_dice:effect_card_fate_guidance"
+    "astral_dice:effect_card_fate_guidance",
+    "astral_dice:fu_card",
+    "astral_dice:huo_card"
   ]
 }

@@ -158,6 +158,22 @@ public class ModEffects {
             EFFECTS.register("ren_counter", RenCounterEffect::new);
 
     /**
+     * 「白泽赐福」(风水师立牌 zhao 主动):常驻时长的状态载体,持续到**下一次**骰神赐福结束才移除
+     * (由玩家级 tick 的下降沿状态机判定)。无属性修饰符、无粒子;溢出治疗转化的攻击力另存玩家附件
+     * ({@code ModAttachments#ZHAO_OVERFLOW_BONUS},余数在 {@code #ZHAO_OVERFLOW_REMAINDER})。
+     * 图标 = {@code images/风水师立牌.png}(实装路径 {@code textures/mob_effect/zhao_blessing.png})。
+     */
+    public static final DeferredHolder<MobEffect, MobEffect> ZHAO_BLESSING =
+            EFFECTS.register("zhao_blessing", ZhaoBlessingEffect::new);
+
+    /**
+     * 「厄运」(符卡-祸的层数镜像效果):层数 == 持有者当前符卡-祸张数(主物品栏口径);张数归 0 即移除。
+     * 图标 = {@code images/厄运.png}(实装路径 {@code textures/mob_effect/misfortune.png})。
+     */
+    public static final DeferredHolder<MobEffect, MobEffect> MISFORTUNE =
+            EFFECTS.register("misfortune", MisfortuneEffect::new);
+
+    /**
      * 本模组已注册的全部效果的**只读**视图(调试命令 {@code /astralparty cleareffect} 用)。
      *
      * <p>直接派生自 {@link #EFFECTS} 的注册条目视图——NeoForge 的 {@code getEntries()} 返回

@@ -1246,6 +1246,9 @@ public class ModTooltipHandler {
             addSignLines(tooltip, "tooltip.astral_dice.sign.fen_active");
             addSignPassiveTitle(tooltip, "养精蓄锐");
             addSignLines(tooltip, "tooltip.astral_dice.sign.fen_passive");
+            // 新风被动「心意相连」(2026-09-26):与风水师立牌联动,置于备注区(紫色,无标题)
+            tooltip.add(Component.empty());
+            addSignNoteLines(tooltip, "tooltip.astral_dice.sign.fen_xinyi");
             if (event.getEntity() instanceof Player p) {
                 addSignCounter(tooltip, "tooltip.astral_dice.sign.fen_recharge",
                         ModAttachments.getFenRecharge(p),
@@ -1307,6 +1310,49 @@ public class ModTooltipHandler {
             addSignPassiveTitle(tooltip, "鼠鼠救我");
             addSignLines(tooltip, "tooltip.astral_dice.sign.ren_passive");
             addSignCooldownRemaining(tooltip, event.getEntity() instanceof Player p ? p : null);
+        }
+        // 风水师立牌(zhao):被动「福祸相倚」+「完美帮手」,主动「白泽赐福」
+        if (stack.is(ModItems.ZHAO_SIGN.get())) {
+            tooltip.add(Component.empty());
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "白泽赐福");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.zhao_active");
+            addSignPassiveTitle(tooltip, "福祸相倚");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.zhao_passive");
+            if (event.getEntity() instanceof Player p) {
+                addSignCounter(tooltip, "tooltip.astral_dice.sign.zhao_cards",
+                        com.merlinkitsune.astral_dice.item.card.FuCardItem.countFu(p),
+                        com.merlinkitsune.astral_dice.item.card.HuoCardItem.count(p));
+            }
+            addSignCooldownRemaining(tooltip, event.getEntity() instanceof Player p ? p : null);
+        }
+        // 符卡-福 / 符卡-祸(风水师立牌专属效果牌);键名 = 规格 §2.6 冻结值
+        // (tooltip.astral_dice.fu_card / tooltip.astral_dice.huo_card)
+        if (stack.is(ModItems.FU_CARD.get())) {
+            tooltip.add(Component.empty());
+            tooltip.add(tt("tooltip.astral_dice.fu_card",
+                            com.merlinkitsune.astral_dice.item.card.FuCardItem.HEAL_AMOUNT)
+                    .withStyle(ChatFormatting.GRAY));
+            addEffectCardPlayCountTooltip(tooltip, player);
+            tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown",
+                            effectCardCooldownSeconds(player))
+                    .withStyle(ChatFormatting.RED));
+            tooltip.add(Component.translatable("tooltip.astral_dice.card.exclusive_owner")
+                    .withStyle(ChatFormatting.DARK_PURPLE));
+        }
+        if (stack.is(ModItems.HUO_CARD.get())) {
+            tooltip.add(Component.empty());
+            tooltip.add(tt("tooltip.astral_dice.huo_card",
+                            (int) com.merlinkitsune.astral_dice.item.card.HuoCardItem.DAMAGE)
+                    .withStyle(ChatFormatting.GRAY));
+            tooltip.add(tt("tooltip.astral_dice.huo_card_curse")
+                    .withStyle(ChatFormatting.GRAY));
+            addEffectCardPlayCountTooltip(tooltip, player);
+            tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown",
+                            effectCardCooldownSeconds(player))
+                    .withStyle(ChatFormatting.RED));
+            tooltip.add(Component.translatable("tooltip.astral_dice.card.exclusive_owner")
+                    .withStyle(ChatFormatting.DARK_PURPLE));
         }
     }
 
