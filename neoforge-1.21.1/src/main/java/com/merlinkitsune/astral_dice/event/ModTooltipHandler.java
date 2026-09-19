@@ -590,6 +590,9 @@ public class ModTooltipHandler {
         }
         if (stack.is(ModItems.EFFECT_CARD_BERSERK.get())) {
             tooltip.add(Component.empty());
+            // 第一行 = 精简用法(左键对其他玩家 / 右键对自身),第二行 = 效果本身(2026-09-25 用户裁决)
+            tooltip.add(Component.translatable("tooltip.astral_dice.card.berserk")
+                    .withStyle(ChatFormatting.GRAY));
             tooltip.add(Component.translatable("effect.astral_dice.berserk.description")
                     .withStyle(ChatFormatting.GRAY));
             addEffectCardPlayCountTooltip(tooltip, player);
