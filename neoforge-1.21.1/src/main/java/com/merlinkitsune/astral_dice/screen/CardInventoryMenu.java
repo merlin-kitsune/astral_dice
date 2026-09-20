@@ -9,6 +9,7 @@ import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.component.WeaponEnhancement;
 import com.merlinkitsune.astral_dice.item.dice.DiceCurioItem;
 import com.merlinkitsune.astral_dice.item.ModItems;
+import com.merlinkitsune.astral_dice.item.card.ExclusiveCardUtil;
 import com.merlinkitsune.astral_dice.item.card.TemporaryCardPermissiveSlot;
 import com.merlinkitsune.astral_dice.item.card.TemporaryCardUtil;
 import net.minecraft.world.SimpleContainer;
@@ -457,6 +458,8 @@ public class CardInventoryMenu extends AbstractContainerMenu {
         public boolean mayPlace(ItemStack stack) {
             String type = itemToStoneType(stack);
             if (type == null || isDefenseType(type)) return false;
+            // 专属牌守门(撕咬/龙之咆哮等):非获得者不得装备(无主时放行并首次绑定,与效果牌同语义)
+            if (ExclusiveCardUtil.isExclusive(stack) && !ExclusiveCardUtil.canUse(player, stack)) return false;
             int slotCost = stoneCost(type);
             int usedWithoutThis = 0;
             for (int i = 0; i < attackSlots; i++) {
@@ -485,6 +488,8 @@ public class CardInventoryMenu extends AbstractContainerMenu {
         public boolean mayPlace(ItemStack stack) {
             String type = itemToStoneType(stack);
             if (type == null || !isDefenseType(type)) return false;
+            // 专属牌守门(同攻击牌槽;当前专属战斗牌均为攻击牌,防御槽此行为纵深防御)
+            if (ExclusiveCardUtil.isExclusive(stack) && !ExclusiveCardUtil.canUse(player, stack)) return false;
             int slotCost = stoneCost(type);
             int usedWithoutThis = 0;
             for (int i = attackSlots; i < cardSlots; i++) {

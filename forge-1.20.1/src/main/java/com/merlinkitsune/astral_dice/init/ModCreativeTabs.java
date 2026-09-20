@@ -61,6 +61,9 @@ public class ModCreativeTabs {
                 output.accept(ModItems.ATTACK_CARD_MEITO.get());
                 output.accept(ModItems.ATTACK_CARD_CHARGE.get());
                 output.accept(ModItems.ATTACK_CARD_FULL_POWER.get());
+                // 蛟龙立牌(mamushi)专属战斗牌(紧随攻击牌段;专属绑定获得者,无配方)
+                output.accept(ModItems.ATTACK_CARD_BITE.get());
+                output.accept(ModItems.ATTACK_CARD_DRAGON_ROAR.get());
                 // 防御牌
                 output.accept(ModItems.DEFENSE_CARD_MEDIUM.get());
                 output.accept(ModItems.DEFENSE_CARD_LARGE.get());

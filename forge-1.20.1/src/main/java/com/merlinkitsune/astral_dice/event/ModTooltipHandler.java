@@ -1353,6 +1353,53 @@ public class ModTooltipHandler {
             addSignLines(tooltip, "tooltip.astral_dice.sign.nardis_passive");
             addSignCooldownRemaining(tooltip, event.getEntity());
         }
+        // 蛟龙立牌(mamushi):主动「连锁反应」(12 格内友方队友 / 真龙形态取消范围限制,同维度全体;
+        // 强制 1:00 冷却不可减免) + 被动「湖沼之王」(觉醒层数 / 单次 3 层 / 8 层真龙形态 /
+        // 牌转换 / 死亡不重置)。动态计数行照大当家立牌 fen_recharge 的 addSignCounter 写法;
+        // 觉醒层数经 mamushi_awakening 同步到客户端(tooltip 需要读)。
+        // 键的文案在 lang 里是**静态文案**(无占位符)⇒ addSignLines 不传 args;
+        // 计数行走 addSignCounter(mamushi_awaken 是 "%s/%s" 两参)。
+        if (stack.is(ModItems.MAMUSHI_SIGN.get())) {
+            tooltip.add(Component.empty());
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "连锁反应");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.mamushi_active");
+            addSignPassiveTitle(tooltip, "湖沼之王");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.mamushi_passive");
+            if (event.getEntity() != null) {
+                addSignCounter(tooltip, "tooltip.astral_dice.sign.mamushi_awaken",
+                        com.merlinkitsune.astral_dice.item.sign.MamushiSignItem.getAwakening(player),
+                        com.merlinkitsune.astral_dice.item.sign.MamushiSignItem.AWAKEN_MAX);
+            }
+            // 真龙形态标注行(仅锁存态成立时显示;金色,与「觉醒已达 8 层」的语义对应)
+            if (com.merlinkitsune.astral_dice.item.sign.MamushiSignItem.isDragonForm(player)) {
+                tooltip.add(Component.translatable("tooltip.astral_dice.sign.mamushi_dragon_form")
+                        .withStyle(ChatFormatting.GOLD));
+            }
+            addSignCooldownRemaining(tooltip, event.getEntity());
+        }
+        // 蛟龙立牌(mamushi)专属战斗牌:撕咬(费用 2 / 耐久 1 / 定值 +3)与
+        // 龙之咆哮(费用 3 / 耐久 5 / 定值 +3;命中施加 缓慢 III 1:00 + 破防 1:00)。
+        // 费用行 = 既有战斗牌的既有写法;描述行走规格 §4 冻结键 tooltip.astral_dice.card.bite / .dragon_roar
+        // (专属说明已内联在描述文案里,不再追加 tooltip.astral_dice.card.exclusive_owner)。
+        if (stack.is(ModItems.ATTACK_CARD_BITE.get())) {
+            tooltip.add(Component.empty());
+            tooltip.add(Component.literal("Cost: " + "⨀".repeat(
+                            com.merlinkitsune.astral_dice.combat.CardRegistry.cost("bite", player)))
+                    .withStyle(ChatFormatting.YELLOW));
+            int uses = ModDataComponents.CARD_USES.getOrDefault(stack, AppliedStone.defaultUses("bite"));
+            tooltip.add(tt("tooltip.astral_dice.card.bite", uses)
+                    .withStyle(ChatFormatting.GRAY));
+        }
+        if (stack.is(ModItems.ATTACK_CARD_DRAGON_ROAR.get())) {
+            tooltip.add(Component.empty());
+            tooltip.add(Component.literal("Cost: " + "⨀".repeat(
+                            com.merlinkitsune.astral_dice.combat.CardRegistry.cost("dragon_roar", player)))
+                    .withStyle(ChatFormatting.YELLOW));
+            int uses = ModDataComponents.CARD_USES.getOrDefault(stack, AppliedStone.defaultUses("dragon_roar"));
+            tooltip.add(tt("tooltip.astral_dice.card.dragon_roar", uses)
+                    .withStyle(ChatFormatting.GRAY));
+        }
         // 符卡-福 / 符卡-祸(风水师立牌专属效果牌)
         if (stack.is(ModItems.FU_CARD.get())) {
             tooltip.add(Component.empty());

@@ -24,6 +24,7 @@ import com.merlinkitsune.astral_dice.item.InvestigationEventUtil;
 import com.merlinkitsune.astral_dice.item.MarkManager;
 import com.merlinkitsune.astral_dice.item.StarLightManager;
 import com.merlinkitsune.astral_dice.item.sign.MisakiSignItem;
+import com.merlinkitsune.astral_dice.item.sign.MamushiSignItem;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.event.WeirdDiceHandler;
 import com.merlinkitsune.astral_dice.event.CrimsonDiceHandler;
@@ -313,6 +314,10 @@ public class DiceCombatEvents {
             com.merlinkitsune.astral_dice.item.chip.MemberRecommendationChipItem.onBlessingStart(player);
             // 大当家立牌:触发骰神赐福 → 记录触发时刻;养精蓄锐满层则消耗 2 层并置位本次攻击的溅射
             fenSplashArmed = com.merlinkitsune.astral_dice.item.sign.FenSignItem.onBlessingTriggered(player);
+            // 蛟龙立牌(mamushi)「撕咬」:装备的每张撕咬 +1 层觉醒并锁存撕咬加成(赐福结束时清锁存)。
+            // 必须置于本触发块内(即位于下方攻击力修饰器链求值之前):锁存置位与层数增长都要在
+            // 本次攻击生效范围内(裁决 4:加成实时取 min(觉醒,4))。
+            MamushiSignItem.onDiceBlessingTriggered(player);
             // 治愈体系:触发骰神赐福 → 医疗箱加点(先)+ 按当前治愈点×2 回血(后)。
             // 置于触发块末尾,确保晚于本事件内所有影响治愈点数量的效果(立牌受击钩子/缓冲盾牌在前部已执行)
             com.merlinkitsune.astral_dice.item.HealingManager.onBlessingTriggered(player);
@@ -592,6 +597,12 @@ public class DiceCombatEvents {
 
         event.setNewDamage((float) finalDmg);
         sendDamageNumber(event.getEntity(), (int) finalDmg);
+        // 蛟龙立牌(mamushi)「龙之咆哮」:命中时对**本次伤害的受击者**施加 缓慢 III 1:00 +
+        // 破防(ARMOR -8 = 减 4 点防御)1:00;重复命中刷新时长、不叠层(D8)。
+        // 条件 = 攻击方骰子卡牌栏装备了任意张 dragon_roar(与赐福触发块同源口径)。
+        if (!player.level().isClientSide() && MamushiSignItem.countEquippedType(player, "dragon_roar") > 0) {
+            MamushiSignItem.applyRoarDebuff(target);
+        }
         // 电磁炮:以本次骰战最终伤害回填雷击伤害(50%)
         com.merlinkitsune.astral_dice.item.chip.RailgunChipItem.applyFinalDamage(railgunStrike, (float) finalDmg);
 
@@ -839,6 +850,8 @@ public class DiceCombatEvents {
         NancyLuSignItem.onDiceBlessingEnded(player);
         // 枪匠立牌:赐福结束弱点识破减少 1 层
         MosesSignItem.onDiceBlessingEnded(player);
+        // 蛟龙立牌(mamushi)「撕咬」:赐福结束清除撕咬加成锁存(加成 = min(觉醒,4) 至此失效)
+        MamushiSignItem.onDiceBlessingEnded(player);
 
         var curios = CuriosApi.getCuriosInventory(player);
         if (curios.isEmpty()) return;

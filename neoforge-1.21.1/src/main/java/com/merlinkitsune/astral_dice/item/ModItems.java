@@ -293,6 +293,25 @@ public class ModItems {
                     .rarity(Rarity.UNCOMMON)
                     .component(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("full_power")), "full_power"));
 
+    // 撕咬(蛟龙立牌 mamushi 专属战斗牌):费用 2 / 耐久 1 / 定值攻击 +3(对齐暗影突袭)。
+    // 专属绑定:获得者由 ExclusiveCardUtil 绑定(owner_uuid),非获得者无法放入骰子卡牌栏;
+    // 装备且触发骰神赐福时每张 +1 层觉醒并锁存撕咬加成(见 MamushiSignItem)。
+    // 无配方、不进任何随机池/赏金池。
+    public static final DeferredItem<Item> ATTACK_CARD_BITE = registerItem("attack_card_bite",
+            () -> new CardItem(new Item.Properties()
+                    .stacksTo(64)
+                    .rarity(Rarity.UNCOMMON)
+                    .component(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("bite")), "bite"));
+
+    // 龙之咆哮(蛟龙立牌 mamushi 专属战斗牌):费用 3 / 耐久 5 / 定值攻击 +3。
+    // 命中使目标 缓慢 III 1:00 并减 4 点防御 1:00(见 MamushiSignItem.applyRoarDebuff);
+    // 只能由处于真龙形态的蛟龙立牌佩戴者获得(主动发放 / 撕咬转换),无配方、不进任何池。
+    public static final DeferredItem<Item> ATTACK_CARD_DRAGON_ROAR = registerItem("attack_card_dragon_roar",
+            () -> new CardItem(new Item.Properties()
+                    .stacksTo(64)
+                    .rarity(Rarity.UNCOMMON)
+                    .component(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("dragon_roar")), "dragon_roar"));
+
     public static final DeferredItem<Item> DEFENSE_CARD_MEDIUM = registerItem("defense_card_medium",
             () -> new CardItem(new Item.Properties()
                     .stacksTo(64)

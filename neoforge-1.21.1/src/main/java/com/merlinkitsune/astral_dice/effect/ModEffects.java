@@ -199,6 +199,26 @@ public class ModEffects {
             EFFECTS.register("nardis_privilege", NardisPrivilegeEffect::new);
 
     /**
+     * 「真龙形态」(蛟龙立牌 mamushi 的**锁存态**可见载体):{@code 佩戴立牌 && 觉醒 >= 8} 时常驻显示
+     * (图标 = 立牌贴图),由 {@code MamushiSignItem#onCurioTick} 每 tick {@link MamushiDragonEffect#refresh}
+     * 续期、条件不再成立时 {@link MamushiDragonEffect#remove} 移除。
+     *
+     * <p>时长 = {@link Integer#MAX_VALUE}(常驻),**不参与** {@code EffectTimerGuard} 的计时守卫
+     * (守卫本身按 {@code INFINITE_THRESHOLD} 跳过无限时长效果,故无需任何登记;口径同 zhao 赐福 / teru 降神)。
+     */
+    public static final DeferredHolder<MobEffect, MobEffect> MAMUSHI_DRAGON =
+            EFFECTS.register("mamushi_dragon", MamushiDragonEffect::new);
+
+    /**
+     * 「破防」(蛟龙立牌 mamushi 的专属战斗牌「龙之咆哮」命中时施加):护甲 {@code -8}
+     * (1 防御 = 2 护甲 ⇒ 减 4 点防御),时长 {@code 1200}(1:00);重复命中只刷新时长、不叠层(D8)。
+     *
+     * <p>属性修饰器见 {@link DragonRoarBreakEffect}(与「岿然不动」{@code +8} 的正值版取负,同源写法)。
+     */
+    public static final DeferredHolder<MobEffect, MobEffect> DRAGON_ROAR_BREAK =
+            EFFECTS.register("dragon_roar_break", DragonRoarBreakEffect::new);
+
+    /**
      * 本模组已注册的全部效果的**只读**视图(调试命令 {@code /astralparty cleareffect} 用)。
      *
      * <p>直接派生自 {@link #EFFECTS} 的注册条目视图——NeoForge 的 {@code getEntries()} 返回

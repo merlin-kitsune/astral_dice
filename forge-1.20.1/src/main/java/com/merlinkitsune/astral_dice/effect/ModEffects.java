@@ -190,6 +190,29 @@ public class ModEffects {
             EFFECTS.register("nardis_privilege", NardisPrivilegeEffect::new);
 
     /**
+     * 「真龙形态」(蛟龙立牌 mamushi 的锁存态载体,2026-09-27)。
+     *
+     * <p>常驻效果({@code Integer.MAX_VALUE}),由立牌 tick 每 tick {@code refresh}、
+     * 判据不成立时 {@code remove} —— 与 {@code zhao_blessing} 同一写法。
+     * **不登记 {@code EffectTimerGuard}**:它没有自己的倒计时,移除时机完全由层数与佩戴判定驱动
+     * (规格 §1 效果表 + §2.2)。图标 = {@code images/蛟龙立牌.png}
+     * (实装路径 {@code textures/mob_effect/mamushi_dragon.png},与立牌贴图逐字节相同)。
+     *
+     * <p>⚠️ 1.20.1 是 {@code RegistryObject} ⇒ 全部引用处必须 {@code .get()}。
+     */
+    public static final RegistryObject<MobEffect> MAMUSHI_DRAGON =
+            EFFECTS.register("mamushi_dragon", MamushiDragonEffect::new);
+
+    /**
+     * 「破防」(龙之咆哮命中):{@code HARMFUL},携带 {@code ARMOR -8}(= 减 4 点防御,1 防御 = 2 护甲)。
+     * 时长 {@code DragonRoarBreakEffect.DURATION_TICKS} = 1:00,重复命中**刷新时长、不叠层**。
+     * 图标 = {@code images/龙之咆哮.png}(实装路径 {@code textures/mob_effect/dragon_roar_break.png},
+     * 与战斗牌贴图逐字节相同)。
+     */
+    public static final RegistryObject<MobEffect> DRAGON_ROAR_BREAK =
+            EFFECTS.register("dragon_roar_break", DragonRoarBreakEffect::new);
+
+    /**
      * 本模组已注册的全部效果的**只读**视图(调试命令 {@code /astralparty cleareffect} 用)。
      *
      * <p>直接派生自 {@link #EFFECTS} 的注册条目视图——Forge 的 {@code getEntries()} 返回

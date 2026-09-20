@@ -3,6 +3,8 @@
     "astral_dice:effect_card_living_page",
     "astral_dice:effect_card_fate_guidance",
     "astral_dice:fu_card",
-    "astral_dice:huo_card"
+    "astral_dice:huo_card",
+    "astral_dice:attack_card_bite",
+    "astral_dice:attack_card_dragon_roar"
   ]
 }

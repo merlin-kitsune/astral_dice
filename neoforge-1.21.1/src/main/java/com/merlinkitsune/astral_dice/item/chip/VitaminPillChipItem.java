@@ -34,8 +34,24 @@ public class VitaminPillChipItem extends BaseChipItem {
      * 背包满则掉落,但不会在拾取时触发(防止丢弃/拾取刷治愈点)。
      * 注意:此路径不触发看板娘立牌(mimi)被动(奖励/复制/返还等发放不再计星币,
      * mimi 仅由合成与主动返还两条显式路径触发)。
+     *
+     * <p>本重载等价于 {@code giver = null}(发牌者未知)⇒ 不触发蛟龙立牌(mamushi)被动
+     * 「湖沼之王」的觉醒计数。已知发牌者的路径必须走
+     * {@link #giveCard(Player, Player, ItemStack)}(见 §3.1 发牌漏斗)。
      */
     public static void giveCard(Player player, ItemStack card) {
+        giveCard(null, player, card);
+    }
+
+    /**
+     * 发放一张卡牌(**带发牌者**):蛟龙立牌被动「湖沼之王」的唯一漏斗 ——
+     * 成功入包且 {@code giver != receiver} 时按受益人去重 +1 层觉醒(单次事件封顶 3 层)。
+     *
+     * @param giver    发牌者;{@code null} 表示未知(奖励/返还等路径,不计觉醒)
+     * @param player   收牌者(实际入包玩家)
+     * @param card     待发放卡牌
+     */
+    public static void giveCard(Player giver, Player player, ItemStack card) {
         if (player == null || player.level().isClientSide()) return;
         if (card == null || card.isEmpty()) return;
         int amount = card.getCount();
@@ -48,6 +64,10 @@ public class VitaminPillChipItem extends BaseChipItem {
             onCardGained(player, amount);
             if (attackCard) {
                 com.merlinkitsune.astral_dice.item.sign.TeruSignItem.onAttackCardCount(player, amount);
+            }
+            // 蛟龙立牌被动「湖沼之王」:佩戴者使其他角色获得卡牌时累计觉醒层数(自己给自己不计)。
+            if (giver != null) {
+                com.merlinkitsune.astral_dice.item.sign.MamushiSignItem.onCardGivenToOther(giver, player);
             }
         }
     }

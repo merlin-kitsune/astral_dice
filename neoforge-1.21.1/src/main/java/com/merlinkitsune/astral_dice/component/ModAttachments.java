@@ -1511,4 +1511,82 @@ public class ModAttachments {
     public static void setTeruEquipWatermark(net.minecraft.world.entity.player.Player player, String value) {
         player.setData(TERU_EQUIP_WATERMARK.get(), value == null ? "" : value);
     }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    //  蛟龙立牌(mamushi)「湖沼之王 / 真龙形态」(2026-09-27)
+    //
+    //  键名 / 类型 / 同步 / 死亡策略 = docs/features/mamushi-sign-spec.md §1(冻结):
+    //  - mamushi_awakening:int,.sync()(客户端 tooltip 要读觉醒层数)+ .copyOnDeath()
+    //    (死亡不重置;与 rin_pages 同口径,另在 DeathPreservedBonuses 存第 3 槽位兜底
+    //     —— 死亡时立牌先掉出 ⇒ Curios 轮询先触发 clearSignData 清零,早于克隆复制);
+    //  - mamushi_bite_bonus_active:boolean,**不**同步(判定与消费全在服务端骰战链路);
+    //  - mamushi_forced_cooldown_until:long,**不**同步(服务端强制冷却硬闸门,客户端不显示)。
+    // ══════════════════════════════════════════════════════════════════════════
+
+    /**
+     * 蛟龙立牌「觉醒」层数(0 起;{@code >= MamushiSignItem.AWAKEN_MAX} 且佩戴 ⇒ 真龙形态锁存态)。
+     *
+     * <p>写入方 = {@code item/sign/MamushiSignItem}(给他人发牌按受益人去重计层 / 撕咬触发赐福时
+     * 每张 +1 层);读取方 = 本类同步视图(客户端 tooltip 的「觉醒：x/8」与真龙形态标注行)、
+     * 骰战攻击修饰器(撕咬加成 {@code min(觉醒,4)} 与真龙形态 +5)。
+     */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> MAMUSHI_AWAKENING =
+            ATTACHMENTS.register("mamushi_awakening", () -> AttachmentType.builder(() -> 0)
+                    .serialize(Codec.INT)
+                    .sync(ByteBufCodecs.INT)
+                    .copyOnDeath()
+                    .build());
+
+    /**
+     * 撕咬加成锁存位:本次骰神赐福触发时**装备过撕咬**(且佩戴蛟龙立牌)即置 true,
+     * 赐福结束时清除(或由立牌 tick 的兜底自检清除)。
+     *
+     * <p><b>为什么必须锁存</b>:撕咬耐久 1 ⇒ 同一击稍后就会被 {@code consumeAttackCardDurabilityOnce}
+     * 消耗掉,若加成条件写成"撕咬仍在装备中",加成会在同一击内立刻失效(规格 §2.6)。
+     * 仅服务端读写,故不 {@code .sync()}。
+     */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Boolean>> MAMUSHI_BITE_BONUS_ACTIVE =
+            ATTACHMENTS.register("mamushi_bite_bonus_active", () -> AttachmentType.builder(() -> false)
+                    .serialize(Codec.BOOL)
+                    .build());
+
+    /**
+     * 蛟龙立牌主动「连锁反应」的**强制冷却**截止刻(绝对 gameTime;0 = 无)。
+     *
+     * <p>这是**独立于** {@link #SIGN_ACTIVE_COOLDOWN_END} 的硬闸门(规格 §3.4):诡异骰子 / 充能 /
+     * 命运的指引 / 电流核心筹码等**一切**减免都不得缩短它;释放当刻由
+     * {@code MamushiSignItem#handleUse} 写 {@code now + 1200}。仅服务端判定,故不 {@code .sync()}。
+     */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> MAMUSHI_FORCED_COOLDOWN_UNTIL =
+            ATTACHMENTS.register("mamushi_forced_cooldown_until", () -> AttachmentType.builder(() -> 0L)
+                    .serialize(Codec.LONG)
+                    .build());
+
+    /** 觉醒层数(缺省 0;不设上限:D4「不消耗、不回落,继续累加」) */
+    public static int getMamushiAwakening(net.minecraft.world.entity.player.Player player) {
+        return player.getData(MAMUSHI_AWAKENING.get());
+    }
+
+    /** 写入觉醒层数(仅钳制非负;上限由读取方语义决定,见 {@link #MAMUSHI_AWAKENING}) */
+    public static void setMamushiAwakening(net.minecraft.world.entity.player.Player player, int value) {
+        player.setData(MAMUSHI_AWAKENING.get(), Math.max(0, value));
+    }
+
+    /** 撕咬加成是否处于锁存态(见 {@link #MAMUSHI_BITE_BONUS_ACTIVE}) */
+    public static boolean isMamushiBiteBonusActive(net.minecraft.world.entity.player.Player player) {
+        return player.getData(MAMUSHI_BITE_BONUS_ACTIVE.get());
+    }
+
+    public static void setMamushiBiteBonusActive(net.minecraft.world.entity.player.Player player, boolean value) {
+        player.setData(MAMUSHI_BITE_BONUS_ACTIVE.get(), value);
+    }
+
+    /** 强制冷却截止刻(绝对 gameTime;0 = 无强制冷却) */
+    public static long getMamushiForcedCooldownUntil(net.minecraft.world.entity.player.Player player) {
+        return player.getData(MAMUSHI_FORCED_COOLDOWN_UNTIL.get());
+    }
+
+    public static void setMamushiForcedCooldownUntil(net.minecraft.world.entity.player.Player player, long value) {
+        player.setData(MAMUSHI_FORCED_COOLDOWN_UNTIL.get(), Math.max(0L, value));
+    }
 }

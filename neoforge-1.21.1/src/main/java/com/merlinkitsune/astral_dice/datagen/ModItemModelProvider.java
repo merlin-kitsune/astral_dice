@@ -96,6 +96,9 @@ public class ModItemModelProvider extends ItemModelProvider {
         basicItem(ModItems.MAMUSHI_SIGN.get());
         basicItem(ModItems.FU_CARD.get());
         basicItem(ModItems.HUO_CARD.get());
+        // 蛟龙立牌(mamushi)专属战斗牌(2026-09-27)
+        basicItem(ModItems.ATTACK_CARD_BITE.get());
+        basicItem(ModItems.ATTACK_CARD_DRAGON_ROAR.get());
         basicItem(ModItems.CHOCOLATE_CAKE.get());
         basicItem(ModItems.HAMBURGER.get());
         basicItem(ModItems.LUXURY_FEAST.get());

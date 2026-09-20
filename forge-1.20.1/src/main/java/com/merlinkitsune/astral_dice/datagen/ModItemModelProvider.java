@@ -33,6 +33,8 @@ public class ModItemModelProvider extends ItemModelProvider {
         basicItem(ModItems.ATTACK_CARD_MEITO.get());
         basicItem(ModItems.ATTACK_CARD_CHARGE.get());
         basicItem(ModItems.ATTACK_CARD_FULL_POWER.get());
+        basicItem(ModItems.ATTACK_CARD_BITE.get());
+        basicItem(ModItems.ATTACK_CARD_DRAGON_ROAR.get());
         basicItem(ModItems.DEFENSE_CARD_MEDIUM.get());
         basicItem(ModItems.DEFENSE_CARD_LARGE.get());
         basicItem(ModItems.DEFENSE_CARD_EPIC.get());

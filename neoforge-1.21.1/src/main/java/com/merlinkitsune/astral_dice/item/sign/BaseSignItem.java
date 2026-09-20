@@ -90,6 +90,13 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
         }
         // 1. 玩家级冷却检查:冷却中按键默认无效,并明确提示"<立牌名>冷却中"(修复:触发成功与冷却拒绝的反馈混淆)
         //    电流核心筹码:冷却中按下主动技能键 → 按剩余冷却占比消耗充能并立即使冷却完成(佩戴且充能足够时)
+        //    ⚠️ 强制冷却硬闸门(规格 §3.4,蛟龙立牌 mamushi):优先级**高于**电流核心筹码 ——
+        //       窗口内无条件早退,连"消耗充能立即完成冷却"都不允许触发(不扣充能、不发电流核心文案)。
+        long forcedUntil = sign.forcedCooldownUntil(player);
+        if (forcedUntil > 0 && now < forcedUntil) {
+            notifyActionBar(player, "hud.astral_dice.sign_active_cooldown", signName, ChatFormatting.RED);
+            return;
+        }
         long cdEnd = ModAttachments.getSignActiveCooldownEnd(player);
         if (cdEnd > 0 && now < cdEnd) {
             int coreResult = com.merlinkitsune.astral_dice.item.chip.CurrentCoreChipItem
@@ -139,7 +146,13 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
         // 6. 冷却:目标选择器类技能(已进入选择会话)待确认目标后在 apply 中开始冷却;其余立牌立即开始玩家级冷却
         if (!com.merlinkitsune.astral_dice.target.TargetSelectionManager.isSelecting(player)) {
             // 诡异骰子:立牌主动冷却 -50%
-            int signCooldownTicks = com.merlinkitsune.astral_dice.event.WeirdDiceHandler.signCooldownTicks(player);
+            // 强制冷却(规格 §3.4):{@code forcedActiveCooldownTicks() > 0} 的立牌(蛟龙立牌 mamushi)
+            // **直接使用该值**,完全不经过 WeirdDiceHandler.signCooldownTicks ⇒ 诡异骰子的 -50%、
+            // 充能封顶、命运的指引及其它任何减免一律无效(硬闸门同时在冷却判定侧生效)。
+            int forcedCooldown = sign.forcedActiveCooldownTicks();
+            int signCooldownTicks = forcedCooldown > 0
+                    ? forcedCooldown
+                    : com.merlinkitsune.astral_dice.event.WeirdDiceHandler.signCooldownTicks(player);
             if (sign.startActiveLockOnUse(player, now)) {
                 // ★ 本主动施加了"带时长效果/自身计时器"⇒ 进入锁定(生效中)态。
                 //   锁定期间**不写** sign_active_cooldown_end:冷却要等锁定结束才起(第 13 条:无空档);
@@ -313,6 +326,33 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
      */
     protected boolean startActiveLockOnUse(Player player, long now) {
         return false;
+    }
+
+    /**
+     * 本立牌主动技能的**强制冷却**时长(tick)。
+     *
+     * <p>返回 {@code > 0} 时,{@link #performSkill} 第 6 步(冷却入账;规格 §3.4 记作第⑧步)
+     * **直接使用该值**,**不经过** {@code WeirdDiceHandler.signCooldownTicks} ⇒ 诡异骰子(-50%)、
+     * 充能封顶、命运的指引及其它任何减免一律无效(规格 §3.4 冻结口径;当前实现者:蛟龙立牌 mamushi = 1200)。
+     *
+     * <p>缺省 0 = 无强制冷却(其余立牌走原流程,行为逐字不变)。
+     */
+    protected int forcedActiveCooldownTicks() {
+        return 0;
+    }
+
+    /**
+     * 本立牌主动技能的**强制冷却截止刻**(绝对 gameTime;0 = 无)。
+     *
+     * <p>{@link #performSkill} 第 1 步(冷却判定;规格 §3.4 记作第②步)会先读本值:
+     * {@code now < forcedCooldownUntil(player)} 时**无条件**视为冷却中并早退(提示既有冷却文案),
+     * 优先级**高于** {@code CurrentCoreChipItem.tryFinishCooldown} —— 即强制冷却窗口内电流核心筹码
+     * 也无法"消耗充能立即完成冷却"(规格 §3.4)。
+     *
+     * <p>缺省 0 = 无强制冷却(其余立牌行为逐字不变)。
+     */
+    protected long forcedCooldownUntil(Player player) {
+        return 0L;
     }
 
     /** 进入锁定态:写锁定标记与硬上界(宽限/减免池归零,避免跨技能残留) */

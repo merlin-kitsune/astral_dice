@@ -68,6 +68,9 @@ public final class CardRegistry {
             case "meito" -> 5;
             case "charge" -> 1;
             case "full_power" -> 5;
+            // 蛟龙立牌(mamushi)专属战斗牌(撕咬 1 / 龙之咆哮 5);缺此分支会静默回退 10
+            case "bite" -> 1;
+            case "dragon_roar" -> 5;
             default -> {
                 CardType t = BY_ID.get(typeId);
                 yield t != null ? t.defaultUses() : 10;
@@ -128,6 +131,8 @@ public final class CardRegistry {
             case "meito" -> 20;
             case "charge" -> 5;
             case "full_power" -> 6;
+            // 蛟龙立牌专属战斗牌:定值 3(与 roller 同值;供卡牌栏 "最低/最高" 显示与闪避失败上限结算)
+            case "bite", "dragon_roar" -> 3;
             default -> 0;
         };
     }
@@ -135,7 +140,7 @@ public final class CardRegistry {
     /** 卡牌点数下限(固定伤害牌返回其固定值,随机骰牌返回 1) */
     public static int minRoll(String typeId) {
         return switch (typeId) {
-            case "shadow_strike" -> 3;
+            case "shadow_strike", "bite", "dragon_roar" -> 3;
             case "charge" -> 5;
             case "full_power" -> 6;
             default -> 1;
@@ -216,6 +221,15 @@ public final class CardRegistry {
                     ctx.hasFullPower = true;
                     return 6;
                 }));
+
+        // 蛟龙立牌(mamushi)专属战斗牌:攻击贡献为**定值 3**(撕咬 / 龙之咆哮同值)。
+        // 两张牌不入任何随机池(RandomCardHandler.attackCards 不含它们),只能由真龙形态主动技发放或撕咬转换获得。
+        register(new CardType("bite", false, 1, 2,
+                com.merlinkitsune.astral_dice.item.ModItems.ATTACK_CARD_BITE.get(),
+                ctx -> 3));
+        register(new CardType("dragon_roar", false, 5, 3,
+                com.merlinkitsune.astral_dice.item.ModItems.ATTACK_CARD_DRAGON_ROAR.get(),
+                ctx -> 3));
 
         // 防御牌
         register(new CardType("defense_medium", true, 10, 1,

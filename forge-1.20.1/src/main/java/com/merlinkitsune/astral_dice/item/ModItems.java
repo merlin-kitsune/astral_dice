@@ -294,6 +294,22 @@ public class ModItems {
                     .rarity(Rarity.UNCOMMON)
                     , "full_power"));
 
+    // 蛟龙立牌(mamushi)专属战斗牌「撕咬」(传奇=UNCOMMON):费用 2 / 耐久 1 / 攻击贡献定值 +3(对齐暗影突袭)。
+    // 触发骰神赐福时按**装备张数**各 +1 层觉醒;专属绑定获得者(仅获得者可装备),不入随机池、无配方。
+    public static final RegistryObject<Item> ATTACK_CARD_BITE = registerItem("attack_card_bite",
+            () -> new CardItem(new Item.Properties()
+                    .stacksTo(64)
+                    .rarity(Rarity.UNCOMMON)
+                    , "bite"));
+
+    // 蛟龙立牌(mamushi)专属战斗牌「龙之咆哮」(传奇=UNCOMMON):费用 3 / 耐久 5 / 攻击贡献定值 +3;
+    // 命中使目标缓慢 III 1:00 + 破防(-4 防御)1:00。仅真龙形态(觉醒 ≥ 8)可获得;专属绑定获得者。
+    public static final RegistryObject<Item> ATTACK_CARD_DRAGON_ROAR = registerItem("attack_card_dragon_roar",
+            () -> new CardItem(new Item.Properties()
+                    .stacksTo(64)
+                    .rarity(Rarity.UNCOMMON)
+                    , "dragon_roar"));
+
     public static final RegistryObject<Item> DEFENSE_CARD_MEDIUM = registerItem("defense_card_medium",
             () -> new CardItem(new Item.Properties()
                     .stacksTo(64)

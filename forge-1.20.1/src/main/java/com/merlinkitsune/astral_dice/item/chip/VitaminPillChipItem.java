@@ -37,18 +37,32 @@ public class VitaminPillChipItem extends BaseChipItem {
      * mimi 仅由合成与主动返还两条显式路径触发)。
      */
     public static void giveCard(Player player, ItemStack card) {
-        if (player == null || player.level().isClientSide()) return;
+        giveCard(null, player, card);
+    }
+
+    /**
+     * 发放一张卡牌(带**发放者**):成功放入背包时触发维生素药丸,并把发放者透传给立牌被动。
+     *
+     * <p>蛟龙立牌(mamushi)被动「湖沼之王」:佩戴者使**其他**角色获得卡牌时按受益人去重计觉醒层数
+     * (唯一漏斗即本方法;{@code giver == null} 的路径等价于"无发放者",不会误计其它立牌的给牌)。
+     */
+    public static void giveCard(Player giver, Player receiver, ItemStack card) {
+        if (receiver == null || receiver.level().isClientSide()) return;
         if (card == null || card.isEmpty()) return;
         int amount = card.getCount();
         // 教主立牌「狐光」:经本模组发牌漏斗**成功入包**的攻击牌 +1 层/张(掉落不计)。
         // ⚠️ 必须在 add(...) 之前判定/取数:add 会把传入栈清空;且拾取路径**刻意不挂钩**(防刷,见 TeruSignItem)。
         boolean attackCard = com.merlinkitsune.astral_dice.item.sign.TeruSignItem.isAttackCard(card);
-        if (!player.getInventory().add(card)) {
-            player.drop(card, false);
+        if (!receiver.getInventory().add(card)) {
+            receiver.drop(card, false);
         } else {
-            onCardGained(player, amount);
+            onCardGained(receiver, amount);
             if (attackCard) {
-                com.merlinkitsune.astral_dice.item.sign.TeruSignItem.onAttackCardCount(player, amount);
+                com.merlinkitsune.astral_dice.item.sign.TeruSignItem.onAttackCardCount(receiver, amount);
+            }
+            // 蛟龙立牌(mamushi)被动:仅"使其他角色获得卡牌"才计层(giver == receiver 时由立牌侧自行判空)
+            if (giver != null) {
+                com.merlinkitsune.astral_dice.item.sign.MamushiSignItem.onCardGivenToOther(giver, receiver);
             }
         }
     }

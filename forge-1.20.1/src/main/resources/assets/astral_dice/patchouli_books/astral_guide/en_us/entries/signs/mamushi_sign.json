@@ -4,6 +4,19 @@
   "icon": "astral_dice:mamushi_sign",
   "pages": [
     {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:mamushi_sign",
+      "text": "astral_dice.guide.entry.mamushi_sign.1"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.mamushi_sign.2"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.mamushi_sign.3"
+    },
+    {
       "type": "patchouli:crafting",
       "recipe": "astral_dice:mamushi_sign"
     }

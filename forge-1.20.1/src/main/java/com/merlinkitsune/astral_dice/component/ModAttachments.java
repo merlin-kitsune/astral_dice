@@ -960,6 +960,71 @@ public class ModAttachments {
         RAILGUN_COOLDOWN_END.set(player, Math.max(0, value));
     }
 
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 蛟龙立牌(mamushi):觉醒层数 / 撕咬加成锁存 / 强制冷却硬闸门(2026-09-27)
+    //
+    // 与 1.21.1 侧**同名同型、同语义**(先例见上方「白泽赐福」「教主立牌」两段):
+    // 只有 mamushi_awakening 是 Tooltip 需要读取的显示值 ⇒ 唯一登记进 SYNCED_KEYS 的键;
+    // 另两键纯服务端判定,一律不 .sync()。三个键都**不** .inMemory()(随玩家 NBT 持久化)。
+    // ⚠️ mamushi_awakening 需**跨死亡保留**,1.20.1 没有 copyOnDeath():必须加入
+    // component/AstralData#onPlayerClone 死亡分支白名单(对应 1.21.1 的 .copyOnDeath()),
+    // 并且作为第 3 槽位进入 component/DeathPreservedBonuses(立牌掉落导致的卸载会先清零)。
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /**
+     * 蛟龙立牌(mamushi)「觉醒」层数(0..{@code MamushiSignItem.AWAKEN_MAX} 之后继续累加,不回落)。
+     *
+     * <p>**同步**:立牌 tooltip 的计数行({@code tooltip.astral_dice.sign.mamushi_awaken})要读它,
+     * 与 {@code fen_recharge} 同一口径 ⇒ 必须进 {@code SYNCED_KEYS}。
+     * **跨死亡保留** ⇒ 同时进 {@link AstralData#onPlayerClone} 白名单与
+     * {@link DeathPreservedBonuses} 第 3 槽位(两层缺一不可,理由同 {@code rin_pages})。
+     */
+    public static final AttachedDataKey<Integer> MAMUSHI_AWAKENING =
+            register(AttachedDataKey.builder("mamushi_awakening", Codec.INT, () -> 0).sync().build());
+
+    /**
+     * 撕咬加成**锁存**(纯服务端):触发骰神赐福当刻装备了撕咬 ⇒ 置 true;赐福结束时清除。
+     *
+     * <p>为什么必须锁存:撕咬耐久 1,同一击稍后就会被消耗掉;若不锁存,"加成需要撕咬仍在装备中"
+     * 会在加成本该生效的那一刻立即失效(规格 §2.6)。
+     * 不 {@code .sync()}、不加入 {@code SYNCED_KEYS}(客户端不参与该判定)。
+     */
+    public static final AttachedDataKey<Boolean> MAMUSHI_BITE_BONUS_ACTIVE =
+            register(AttachedDataKey.builder("mamushi_bite_bonus_active", Codec.BOOL, () -> false).build());
+
+    /**
+     * 强制冷却**硬闸门**(纯服务端):释放当刻写 {@code now + MamushiSignItem.ACTIVE_FORCED_COOLDOWN_TICKS}。
+     *
+     * <p>与 {@code sign_active_cooldown_end} 并存但语义不同:后者可被诡异骰子/电流核心等减免,
+     * 前者**不接受任何减免**(规格 §3.4)。不 {@code .sync()}、不加入 {@code SYNCED_KEYS}。
+     */
+    public static final AttachedDataKey<Long> MAMUSHI_FORCED_COOLDOWN_UNTIL =
+            register(AttachedDataKey.builder("mamushi_forced_cooldown_until", Codec.LONG, () -> 0L).build());
+
+    public static int getMamushiAwakening(net.minecraft.world.entity.player.Player player) {
+        return MAMUSHI_AWAKENING.get(player);
+    }
+
+    public static void setMamushiAwakening(net.minecraft.world.entity.player.Player player, int value) {
+        MAMUSHI_AWAKENING.set(player, Math.max(0, value));
+    }
+
+    public static boolean getMamushiBiteBonusActive(net.minecraft.world.entity.player.Player player) {
+        return MAMUSHI_BITE_BONUS_ACTIVE.get(player);
+    }
+
+    public static void setMamushiBiteBonusActive(net.minecraft.world.entity.player.Player player, boolean value) {
+        MAMUSHI_BITE_BONUS_ACTIVE.set(player, value);
+    }
+
+    public static long getMamushiForcedCooldownUntil(net.minecraft.world.entity.player.Player player) {
+        return MAMUSHI_FORCED_COOLDOWN_UNTIL.get(player);
+    }
+
+    public static void setMamushiForcedCooldownUntil(net.minecraft.world.entity.player.Player player, long value) {
+        MAMUSHI_FORCED_COOLDOWN_UNTIL.set(player, Math.max(0L, value));
+    }
+
     /** synced 键快照发送(登录/重生/切维度时)。 */
     public static void sendSyncSnapshot(ServerPlayer player) {
         com.merlinkitsune.astral_dice.network.ModNetwork.syncSnapshot(player, syncedKeys());
@@ -996,6 +1061,8 @@ public class ModAttachments {
             SYNCED_KEYS.add(RIN_PAGES);
             SYNCED_KEYS.add(PANDAMAN_MAX_HEALTH_BONUS);
             SYNCED_KEYS.add(NANCY_LU_PASSIVE_TYPE);
+            // 蛟龙立牌(mamushi):仅觉醒层数需客户端可见(tooltip 计数行);另两键纯服务端
+            SYNCED_KEYS.add(MAMUSHI_AWAKENING);
         }
         return SYNCED_KEYS;
     }

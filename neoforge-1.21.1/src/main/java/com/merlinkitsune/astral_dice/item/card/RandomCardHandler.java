@@ -22,7 +22,7 @@ import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
  * - 卡牌类别:{@link CardCategory#ALL}(全部)/ {@link CardCategory#BATTLE}(仅战斗牌:攻击+防御)/
  *   {@link CardCategory#EFFECT}(仅效果牌:功能+伤害)。
  * - 专属牌强制排除:通过 {@link #registerExclusiveCard} 注册的卡牌不会出现在任何随机池中
- *   (当前:活体书页、命运的指引;未来:撕咬、龙之咆哮等专属战斗牌)。
+ *   (当前:活体书页、命运的指引、符卡-福/祸、撕咬、龙之咆哮)。
  * - 发放逻辑:统一走 {@link #giveCards},作用域(范围/团队/发放人数/是否含自己)由
  *   {@link GiveoutScope} 描述;后续角色/卡牌能力(如蛟龙立牌赠卡)复用本类。
  */
@@ -70,9 +70,23 @@ public final class RandomCardHandler {
         public static GiveoutScope aroundWithTeam(double range) {
             return new GiveoutScope(range, false, true, -1);
         }
+
+        /** 指定范围内的玩家与团队队友(不含自己,**最多最近 N 人**;N<0 表示不限) */
+        public static GiveoutScope aroundWithTeam(double range, int maxTargets) {
+            return new GiveoutScope(range, false, true, maxTargets);
+        }
+
+        /**
+         * 同维度全体玩家与团队队友(不含自己,**最多最近 N 人**;N<0 表示不限)。
+         * 真龙形态的「连锁反应」用此作用域:范围不再限制 ⇒ {@code range = -1}(全维度在线玩家),
+         * 团队判定仍生效(有队伍时队友优先并入),人数上限与次序照 {@link #collectTargets}(距离升序)。
+         */
+        public static GiveoutScope wholeDimensionWithTeam(int maxTargets) {
+            return new GiveoutScope(-1, false, true, maxTargets);
+        }
     }
 
-    // 专属牌注册表:随机发放强制排除(活体书页/命运的指引/未来的撕咬、龙之咆哮等)
+    // 专属牌注册表:随机发放强制排除(活体书页/命运的指引/符卡-福祸/撕咬/龙之咆哮)
     // 存储 DeferredItem 引用,isExclusive 时延迟解析——避免静态初始化阶段调用 .get()
     private static final Set<net.neoforged.neoforge.registries.DeferredItem<net.minecraft.world.item.Item>> EXCLUSIVE_CARDS =
             new HashSet<>();
@@ -102,7 +116,9 @@ public final class RandomCardHandler {
         // 风水师立牌专属两张符卡(2026-09-26):只由立牌被动/主动与「心意相连」发放,不进任何随机池
         registerExclusiveCard(ModItems.FU_CARD);       // 符卡-福
         registerExclusiveCard(ModItems.HUO_CARD);      // 符卡-祸
-        // 未来专属战斗牌(撕咬/龙之咆哮等)在此注册
+        // 蛟龙立牌专属战斗牌(2026-09-27):只能由真龙形态的蛟龙立牌佩戴者发放/转换获得
+        registerExclusiveCard(ModItems.ATTACK_CARD_BITE);        // 撕咬
+        registerExclusiveCard(ModItems.ATTACK_CARD_DRAGON_ROAR); // 龙之咆哮
     }
 
     // === 卡牌池 ===
@@ -183,15 +199,27 @@ public final class RandomCardHandler {
 
     // === 发放逻辑 ===
 
-    // 给指定玩家随机一张卡(背包满则掉落)
+    // 给指定玩家随机一张卡(背包满则掉落)。两参版等价于 giver = null(发牌者未知 ⇒ 不计蛟龙立牌觉醒)。
     public static void giveCardTo(Player receiver, CardCategory category) {
+        giveCardTo(null, receiver, category);
+    }
+
+    // 给指定玩家随机一张卡(**带发牌者**:蛟龙立牌被动「湖沼之王」按 giver 计觉醒;背包满则掉落)
+    public static void giveCardTo(Player giver, Player receiver, CardCategory category) {
         ItemStack card = randomCard(category);
         if (card.isEmpty()) return;
         // 维生素药丸发牌统一入口(治愈联动;看板娘立牌被动不再随奖励/复制/返还触发,仅合成与主动返还显式触发)
-        VitaminPillChipItem.giveCard(receiver, card);
+        VitaminPillChipItem.giveCard(giver, receiver, card);
     }
 
-    // 收集发放目标:范围玩家 + (可选)团队队友;排除自己(按作用域);人数上限随机抽样
+    /**
+     * 收集发放目标:范围玩家 + (可选)团队队友;排除自己(按作用域)。
+     *
+     * <p><b>人数上限语义(2026-09-27 变更)</b>:{@code maxTargets >= 0} 时按**距离升序取最近 N 人**
+     * (旧实现是 {@code Collections.shuffle} 随机抽样,全仓零调用;蛟龙立牌「连锁反应」需要
+     * 「最近的 N 人」这一确定性次序)。距离用 {@code distanceToSqr}(同维度/同 level,不会返回 NaN),
+     * 平局按 UUID 稳定排序,团队队友一并参与同一排序。
+     */
     public static List<Player> collectTargets(Player giver, GiveoutScope scope) {
         if (giver.level().isClientSide()) return List.of();
         List<Player> targets = new ArrayList<>();
@@ -212,17 +240,19 @@ public final class RandomCardHandler {
         List<Player> distinct = targets.stream().distinct().filter(Player::isAlive).toList();
         if (scope.maxTargets >= 0 && distinct.size() > scope.maxTargets) {
             List<Player> copy = new ArrayList<>(distinct);
-            Collections.shuffle(copy);
+            copy.sort(java.util.Comparator
+                    .comparingDouble((Player p) -> p.distanceToSqr(giver))
+                    .thenComparing((Player p) -> p.getUUID().toString()));
             return copy.subList(0, scope.maxTargets);
         }
         return distinct;
     }
 
-    // 按作用域向玩家发放随机卡(返回实际发放数量)
+    // 按作用域向玩家发放随机卡(返回实际发放数量;**giver 透传**到发牌漏斗)
     public static int giveCards(Player giver, CardCategory category, GiveoutScope scope) {
         List<Player> targets = collectTargets(giver, scope);
         for (Player target : targets) {
-            giveCardTo(target, category);
+            giveCardTo(giver, target, category);
         }
         return targets.size();
     }

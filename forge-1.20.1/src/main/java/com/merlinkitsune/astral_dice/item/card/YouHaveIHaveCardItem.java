@@ -44,8 +44,8 @@ public class YouHaveIHaveCardItem extends BaseEffectCardItem {
     protected void applyEffect(Level level, Player user, LivingEntity applyTo, ItemStack stack) {
         if (!(applyTo instanceof Player target)) return;
         if (target == user) return;
-        // 自身以及目标玩家各获得一张随机卡牌
-        RandomCardHandler.giveCardTo(user, RandomCardHandler.CardCategory.ALL);
-        RandomCardHandler.giveCardTo(target, RandomCardHandler.CardCategory.ALL);
+        // 自身以及目标玩家各获得一张随机卡牌(发放者 = 使用者,供立牌被动计数)
+        RandomCardHandler.giveCardTo(user, user, RandomCardHandler.CardCategory.ALL);
+        RandomCardHandler.giveCardTo(user, target, RandomCardHandler.CardCategory.ALL);
     }
 }

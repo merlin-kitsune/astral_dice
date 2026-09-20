@@ -90,6 +90,15 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
         }
         // 1. 玩家级冷却检查:冷却中按键默认无效,并明确提示"<立牌名>冷却中"(修复:触发成功与冷却拒绝的反馈混淆)
         //    电流核心筹码:冷却中按下主动技能键 → 按剩余冷却占比消耗充能并立即使冷却完成(佩戴且充能足够时)
+        //    ===== 强制冷却硬闸门(规格 §3.4,2026-09-27 蛟龙立牌)=====
+        //    优先级**高于**下方普通冷却分支与电流核心:钩子返回的绝对到期刻未过 ⇒ 无条件视为冷却中,
+        //    既不调用 CurrentCoreChipItem.tryFinishCooldown(不扣充能、不被绕过),也不做任何减免,
+        //    只复用既有冷却文案早退。缺省实现恒为 0 ⇒ 其余立牌走与原流程逐字相同的分支。
+        long forcedUntil = sign.forcedCooldownUntil(player);
+        if (forcedUntil > 0 && now < forcedUntil) {
+            notifyActionBar(player, "hud.astral_dice.sign_active_cooldown", signName, ChatFormatting.RED);
+            return;
+        }
         long cdEnd = ModAttachments.getSignActiveCooldownEnd(player);
         if (cdEnd > 0 && now < cdEnd) {
             int coreResult = com.merlinkitsune.astral_dice.item.chip.CurrentCoreChipItem
@@ -140,6 +149,15 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
         if (!com.merlinkitsune.astral_dice.target.TargetSelectionManager.isSelecting(player)) {
             // 诡异骰子:立牌主动冷却 -50%
             int signCooldownTicks = com.merlinkitsune.astral_dice.event.WeirdDiceHandler.signCooldownTicks(player);
+            // ★ 强制冷却(规格 §3.4,2026-09-27 蛟龙立牌):forced > 0 时**直接使用该值**,
+            //   既不读也不写诡异骰子的减免结果(不可被任何减免绕过);同时把 forced 写进
+            //   sign_active_max_cooldown,使电流核心的档位分母与实际冷却一致(但它对 forced
+            //   时长本身无效 —— 闸门由第 1 步的 forcedCooldownUntil 覆盖,不依赖本笔入账)。
+            //   缺省实现恒为 0 ⇒ 其余立牌逐字走原流程。
+            int forced = sign.forcedActiveCooldownTicks();
+            if (forced > 0) {
+                signCooldownTicks = forced;
+            }
             if (sign.startActiveLockOnUse(player, now)) {
                 // ★ 本主动施加了"带时长效果/自身计时器"⇒ 进入锁定(生效中)态。
                 //   锁定期间**不写** sign_active_cooldown_end:冷却要等锁定结束才起(第 13 条:无空档);
@@ -313,6 +331,42 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
      */
     protected boolean startActiveLockOnUse(Player player, long now) {
         return false;
+    }
+
+    /**
+     * 「不可被减免的强制冷却」时长(tick)。返回 {@code > 0} 时 {@link #performSkill} 第 ⑧ 步
+     * **直接使用该值**作为本次玩家级冷却,**不经过** {@code WeirdDiceHandler.signCooldownTicks}
+     * 的减免计算(2026-09-27 蛟龙立牌规格 §3.4)。
+     *
+     * <p>缺省 0 = 无强制 ⇒ 其余立牌走与原流程逐字相同的分支(减免机制照常生效)。
+     * 覆写者还应当同时覆写 {@link #forcedCooldownUntil(Player)}(那是真正拦住重复释放的**硬闸门**:
+     * 本方法只负责把冷却"入账",而闸门在冷却判定之前、且不受电流核心筹码影响)。
+     *
+     * @return 强制冷却 tick 数;0 = 无强制(缺省)
+     */
+    protected int forcedActiveCooldownTicks() {
+        return 0;
+    }
+
+    /**
+     * 「强制冷却硬闸门」的绝对到期刻(gameTime)。{@code now < 返回值} 时 {@link #performSkill} 第 ② 步
+     * **无条件视为冷却中**并立即早退(提示既有冷却文案),优先级**高于**普通冷却分支与
+     * {@code CurrentCoreChipItem.tryFinishCooldown}(即:电流核心无法用充能绕过它,规格 §3.4)。
+     *
+     * <p>与 {@link #forcedActiveCooldownTicks()} 的分工:
+     * <ul>
+     *   <li>{@code forcedActiveCooldownTicks} = 释放成功时的**入账值**(写冷却与冷却上限);</li>
+     *   <li>本方法 = 每次按键时的**判定值**(由立牌自己在释放当刻写入附件)。
+     *       两者并存的原因:入账值会被外部路径改写(锁定-冷却迁移、电流核心清零等),
+     *       而硬闸门必须独立成立。</li>
+     * </ul>
+     * 缺省 0 = 无强制 ⇒ 其余立牌行为不变。
+     *
+     * @param player 触发主动的玩家(服务端)
+     * @return 绝对到期刻;0 或过去时刻 = 无强制(缺省)
+     */
+    protected long forcedCooldownUntil(Player player) {
+        return 0L;
     }
 
     /** 进入锁定态:写锁定标记与硬上界(宽限/减免池归零,避免跨技能残留) */

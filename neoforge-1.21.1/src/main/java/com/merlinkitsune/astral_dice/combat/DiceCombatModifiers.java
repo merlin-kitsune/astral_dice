@@ -18,6 +18,7 @@ import com.merlinkitsune.astral_dice.item.sign.MosesSignItem;
 import com.merlinkitsune.astral_dice.effect.WeaknessRevealEffect;
 import com.merlinkitsune.astral_dice.item.sign.JasmineSignItem;
 import com.merlinkitsune.astral_dice.item.sign.NardisSignItem;
+import com.merlinkitsune.astral_dice.item.sign.MamushiSignItem;
 import com.merlinkitsune.astral_dice.item.MarkManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.sign.PadmanSignItem;
@@ -46,7 +47,7 @@ import java.util.concurrent.ThreadLocalRandom;
  * - 效果类加成(王之力/狂暴/力量 / 抗性);
  * - 卡牌掷骰(攻击/防御);
  * - 全部立牌与筹码的战斗加成(护法 misaki/扫地机 jasmine/吸血鬼 papara/秘密侦探 bonnie/
- *   上班族 padman/调查阶段,以及美工刀/瞄具/标靶/手电筒等筹码)。
+ *   上班族 padman/调查阶段/蛟龙 mamushi,以及美工刀/瞄具/标靶/手电筒等筹码)。
  *
  * 防御力规范(必须遵守):**仅战斗牌(防御牌)参与骰战防御修饰器**(只有防御牌数值是区间变动,
  * 由 {@link CardRegistry} 掷骰);效果牌/立牌/筹码提供的防御力一律折算为真实护甲
@@ -532,6 +533,23 @@ public final class DiceCombatModifiers {
             if (ctx.attacker.level().isClientSide()) return ap;
             return ap + com.merlinkitsune.astral_dice.item.sign.TeruSignItem
                     .consumeHuguangForNewTarget(ctx.attacker, ctx.target);
+        });
+
+        // === 内置:蛟龙立牌(mamushi)攻击力加成(2026-09-27) ===
+        // 全部走 MamushiSignItem 的冻结查询方法,**实时谓词**、不落地任何状态:
+        // ① 真龙形态(觉醒 ≥ 8 且佩戴立牌)⇒ 攻击力 +5;
+        // ② 撕咬锁存(bite_bonus_active,由「触发骰神赐福且装备撕咬」置位、赐福结束清除)
+        //    且**仍有骰神赐福** ⇒ +min(觉醒层数, 4)(裁决 4:层数变化即时体现)。
+        registerAttackModifier((ctx, ap) -> {
+            if (ctx.attacker.level().isClientSide()) return ap;
+            if (MamushiSignItem.isDragonForm(ctx.attacker)) {
+                ap += MamushiSignItem.DRAGON_FORM_ATTACK_BONUS;
+            }
+            if (MamushiSignItem.getBiteBonusActive(ctx.attacker)
+                    && ctx.attacker.hasEffect(ModEffects.DICE_BLESSING)) {
+                ap += Math.min(MamushiSignItem.getAwakening(ctx.attacker), MamushiSignItem.BITE_BONUS_CAP);
+            }
+            return ap;
         });
 
         // === 内置:防御卡掷骰(收集结果写入上下文;目标无骰子时 targetEnhancement 为 null,结果 0)。

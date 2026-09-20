@@ -64,8 +64,9 @@ public class AstralData implements INBTSerializable<CompoundTag> {
 
     /**
      * 维度切换:复制全部数据。死亡重生:只复制**随死亡保留**的键
-     * ({@code rin_pages} / {@code komachi_damage_bonus} / {@code guide_book_given}),与 1.21.1 侧
-     * {@code AttachmentType.Builder#copyOnDeath()} 的键集合一一对应;
+     * ({@code rin_pages} / {@code komachi_damage_bonus} / {@code guide_book_given} /
+     * {@code teru_huguang_layers} / {@code teru_equip_watermark} / {@code mamushi_awakening}),
+     * 与 1.21.1 侧 {@code AttachmentType.Builder#copyOnDeath()} 的键集合一一对应;
      * 其余键与 1.21 附件默认行为一致——死亡不复制。
      *
      * <p>注意:死亡清理({@code LivingDeathEvent})在**旧实体**上执行且刻意不清除这些键,
@@ -85,7 +86,12 @@ public class AstralData implements INBTSerializable<CompoundTag> {
                         // 若死亡归 0 就能靠「死一次 → 再装备一次」重新领取同装备张数的一份层数。
                         // 两者在 1.21.1 侧都是 AttachmentType.Builder#copyOnDeath() 键,此处一一对应。
                         ModAttachments.TERU_HUGUANG_LAYERS.name(),
-                        ModAttachments.TERU_EQUIP_WATERMARK.name()
+                        ModAttachments.TERU_EQUIP_WATERMARK.name(),
+                        // 2026-09-27 蛟龙立牌(mamushi):觉醒层数需求为「死亡不重置、只有卸下立牌才归零」
+                        // (规格 §2.5)。与 RIN_PAGES 同构:死亡时立牌从饰品槽掉出,Curios 的 tick 轮询
+                        // 会先触发 onUnequip → clearSignData 清零,**早于**克隆复制 ⇒ 除本白名单外
+                        // 还需要 DeathPreservedBonuses 的第 3 槽位暂存/回写(两层缺一不可)。
+                        ModAttachments.MAMUSHI_AWAKENING.name()
                 };
                 event.getEntity().getCapability(ModCapabilities.ASTRAL_DATA).ifPresent(newData -> {
                     CompoundTag src = oldData.persistentStore();

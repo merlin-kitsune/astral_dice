@@ -536,6 +536,26 @@ public final class DiceCombatModifiers {
                     .consumeHuguangForNewTarget(ctx.attacker, ctx.target);
         });
 
+        // === 内置:蛟龙立牌(mamushi)「真龙形态」—— 觉醒 ≥ 8 层且佩戴立牌 ⇒ 攻击力 +5 ===
+        // 实时谓词:判据 = isEquipped(p) && getAwakening(p) >= AWAKEN_MAX,不落地任何状态
+        // (卸下立牌/觉醒归零当刻立即失效)。
+        registerAttackModifier((ctx, ap) -> {
+            if (ctx.attacker.level().isClientSide()) return ap;
+            if (!com.merlinkitsune.astral_dice.item.sign.MamushiSignItem.isDragonForm(ctx.attacker)) return ap;
+            return ap + com.merlinkitsune.astral_dice.item.sign.MamushiSignItem.DRAGON_FORM_ATTACK_BONUS;
+        });
+
+        // === 内置:蛟龙立牌(mamushi)「撕咬」—— 赐福期间按**当前觉醒层数**加攻(实时,上限 4) ===
+        // 锁存口径:触发赐福时有装备撕咬(bite_bonus_active)且此刻仍在骰神赐福内 ⇒ +min(觉醒, 4);
+        // 层数变化立即体现、赐福结束即失效(清锁存在 onDiceBlessingExpired / 立牌 tick 兜底)。
+        registerAttackModifier((ctx, ap) -> {
+            if (ctx.attacker.level().isClientSide()) return ap;
+            if (!com.merlinkitsune.astral_dice.item.sign.MamushiSignItem.getBiteBonusActive(ctx.attacker)) return ap;
+            if (!ctx.attacker.hasEffect(ModEffects.DICE_BLESSING.get())) return ap;
+            int awakening = com.merlinkitsune.astral_dice.item.sign.MamushiSignItem.getAwakening(ctx.attacker);
+            return ap + Math.min(awakening, com.merlinkitsune.astral_dice.item.sign.MamushiSignItem.BITE_BONUS_CAP);
+        });
+
         // === 内置:防御卡掷骰(收集结果写入上下文;目标无骰子时 targetEnhancement 为 null,结果 0)。
         // 防御力规范:骰战防御修饰器仅保留战斗防御牌(区间变动);效果牌/立牌/筹码的防御力
         // 统一折算为真实护甲(1 防御力 = 2 护甲值),由各自 tick 经 setDefenseArmorBonus 挂到 ARMOR 属性,
