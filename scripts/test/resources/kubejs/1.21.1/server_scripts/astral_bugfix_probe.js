@@ -7449,7 +7449,11 @@ function doZhaoClearAll(ctx, tag) {
 // ════════════════════════════════════════════════════════════════════════════
 //  绿洲女王立牌(nardis)主动「女王特权」+ 被动「威压」游戏内取证(2026-09-27)
 //
-//  冻结规格:docs/features/nardis-sign-spec.md §7.1(命令表)/ §7.2(断言清单)/ §7.3(覆盖边界)
+//  规格:docs/features/nardis-sign-spec.md §7.1(命令表)/ §7.2(断言清单)/ §7.3(覆盖边界)。
+//  ⚠️ 2026-09-27 用户**二次裁决**：主动不再进入冻结(无「使用中」锁定态)、再次释放**叠加**新牌
+//     并**重置**效果时长为 3:00、「牌用光」**不再**提前结束效果。本文件的注释已按新语义改写；
+//     旧冻结机制的读数(N1–N8)与用例已作废，现行断言契约见 spec §7.4 的 **M1–M8**
+//     (M8 = 临时牌上限 9 张)。
 //
 //  命令一览(读数前缀 AP_<tag>_;读数一律**单行**、字段顺序固定,用例按子串断言):
 //     /astralprobe nardiprep <tag> [clear] [name]     装绿洲女王立牌 + 骰子(**curios `dice` 槽**,见注 1)
@@ -8207,7 +8211,7 @@ function domMakeTempCard(itemId) {
 }
 
 /**
- * 往骰子装配栏塞一颗 `temporary = true` 的卡牌石(spec §6.1 冻结方案第 3 分量的探针侧可测性)。
+ * 往骰子装配栏塞一颗 `temporary = true` 的卡牌石(spec §6.1 方案第 3 分量的探针侧可测性)。
  *
  * 生产侧的实际入口是卡牌栏 UI(`CardInventoryMenu#saveToDice`),GUI 鼠标操作无法注入,
  * 故此处**直接构造** AppliedStone 三参构造器并写回组件 —— 断言口径 = 「到期清理能否过滤 `temporary()`
@@ -8265,7 +8269,9 @@ function domCool(p) {
     } catch (e) { return -1; }
 }
 
-/** 复位立牌主动态:玩家级冷却 + 锁定(生效中)态(基线用;不碰效果) */
+/** 复位立牌主动态:玩家级冷却 + 锁定键(基线用;不碰效果)。
+ *  ⚠️ nardis 新语义下**不再使用锁定态**(`lock`/`lock_end` 应恒为 0)⇒ 本函数对 nardis 实际只清冷却;
+ *  叠加类用例(M2)请优先用作用域更小的 `nardicd`(只写冷却)。 */
 function domResetActive(p) {
     try { ModAttachments.setSignActiveCooldownEnd(p, 0); } catch (e1) { /* 忽略 */ }
     try { resetActiveLock(p); } catch (e2) { /* 忽略 */ }
@@ -8319,16 +8325,29 @@ function domStateRead(p) {
         + ":teru=" + teru
         + ":foil=" + domFoil(p.getMainHandItem())
         + ":cool=" + domCool(p)
-        // ── 2026-09-27 新语义(冻结/解冻/安全门/N1 分类计数)所需的追加字段。
+        // ── 新语义(安全门 / 临时牌分类计数 / 锁定读数)所需的追加字段。
+        //    锁定字段(`lock`/`lock_end`)在 nardis 新语义下**应恒为 0** —— 冻结机械已撤回,
+        //    这里保留只读读数是为了让「无锁定」成为**可断言**的事实(而不是靠"没有这个字段")。
         //    ⚠️ **一律追加在末尾**:前面所有字段的顺序与含义保持不变,旧断言(子串/前缀)不受影响。
         + ":lock=" + domBool(function () { return BaseSignItemClass.isSignActiveLocked(p); })
         + ":lock_end=" + domNum(function () { return ModAttachments.getSignActiveLockEnd(p); })
         + ":cd_end=" + domNum(function () { return ModAttachments.getSignActiveCooldownEnd(p); })
         + ":free=" + domFreeSlots(p)
-        + ":t_battle=" + br.battle + ":t_effect=" + br.effect + ":t_excl=" + br.excl;
+        + ":t_battle=" + br.battle + ":t_effect=" + br.effect + ":t_excl=" + br.excl
+        // 锁定标记**串**原始值(`sign_active_lock_sign`):空串用 `[]` 包裹 ⇒「空」与「非空」
+        // 在子串断言里**无歧义**(直接写 `lock_sign=` 会被非空值前缀命中而假绿)。
+        + ":lock_sign=[" + domLockSign(p) + "]";
 }
 
-/** 主物品栏 0..35 的可用空槽数(安全门 N6 的判据;产品 `countFreeSlots` 同口径) */
+/** 锁定标记串(`sign_active_lock_sign` 原始值;读不到返回 `?`;Java null 归一成空串) */
+function domLockSign(p) {
+    var v = "?";
+    try { v = "" + ModAttachments.getSignActiveLockSign(p); } catch (e) { v = "?"; }
+    if (v === "null") v = "";
+    return v;
+}
+
+/** 主物品栏 0..35 的可用空槽数(安全门 M6 的判据;产品 `countFreeSlots` 同口径) */
 function domFreeSlots(p) {
     var free = 0;
     try {
@@ -8548,18 +8567,19 @@ function doNardiArmClear(ctx, tag) {
 
 /**
  * **真实主动**:`BaseSignItem.performSkillForCurio`(客户端按键的服务端同一入口)。
- * 读数:`granted`(本次净增的临时牌张数,含被清空的旧牌 ⇒ 裁决③「先清空再发」的直接证据)、
- * `n_temp`、`fx_dur`(效果剩余 tick)、`cool`(冷却剩余 tick)。
+ * 读数:`granted`(本次**净增**的临时牌张数)、`n_temp`、`fx_dur`(效果剩余 tick)、`cool`(冷却剩余 tick)。
  *
- * <p>**参数签名(2026-09-20 冻结)**:`nardicast <tag> [name] [reset]`
+ * <p>**参数签名(2026-09-20 固定)**:`nardicast <tag> [name] [reset]`
  * —— 第 2 参是**玩家名位**(缺省/`self` = 自己),第 3 参才是 `reset`。
- * ⚠️ 上一轮用例把第 2 参当成了 `reset` 开关(`/astralprobe nardicast TRIGW reset`),
+ * ⚠️ 曾把第 2 参当成 `reset` 开关(`/astralprobe nardicast TRIGW reset`),
  * 于是 `reset` 被当成玩家名去找 ⇒ `AP_TRIGW_CAST:found=0:who=reset`(实测)。
- * 第 3 参写 `reset` ⇒ **先复位玩家级主动冷却**再走同一条真实入口。为什么必须有这一档:
- * 本主动刻意**不**起「锁定(生效中)」态(见 `NardisSignItem` 类注),触发成功即起 180 s 冷却;
- * 裁决③「效果生效中再次释放」在生产里只有**冷却被减免**(诡异骰子 -50% / 充能递减 /
- * 电流核心立即完成)才可达 ⇒ 探针要复现该状态,只能把冷却这一项前置条件归零,
- * `handleUse` 本体(先清空再发 3 张 + 刷新效果)仍然**逐字走产品代码**。
+ * 第 3 参写 `reset` ⇒ **先复位玩家级主动冷却**(顺带清锁定键)再走同一条真实入口。
+ *
+ * <p>**2026-09-27 二次裁决后的语义(本文件注释已按此改写)**:主动**不进入冻结**(无「使用中」锁定态),
+ * 效果生效期间**可以再次释放**,只受**冷却**限制;再次释放**不清空旧临时牌**(新牌**叠加**)、
+ * 并把效果有效期**重置为 3:00**。⇒ 本命令的 `reset` 档现在只用于「把冷却这一项前置条件归零」,
+ * 而**叠加/重置**类用例(M2)按契约要求改用**最小作用域**的 `nardicd <tag>`(只写冷却,
+ * 不碰锁定键/效果/临时牌),以免 `reset` 的附带清理污染读数。
  */
 /** 异常 → 纯字符串(本段内的**公开别名**,名字里不含 `dom` 前缀以便与共享段区分) */
 function domExecText(e) { return domExText(e); }
@@ -8656,7 +8676,7 @@ function domEnsureEffect(p) {
     } catch (e1) { return -1; }
 }
 
-/** `NardisPrivilegeEffect.DURATION_TICKS`(读不到时退回 spec 冻结的 3600) */
+/** `NardisPrivilegeEffect.DURATION_TICKS`(读不到时退回 spec 固定的 3600) */
 function NardisPrivilegeDurationTicks() {
     try {
         var d = NardisPrivilegeEffectClass.DURATION_TICKS;
@@ -9171,8 +9191,8 @@ function doNardiEquip(ctx, tag, whatText) {
  * `/astralprobe nardiinv <tag> <fill|clear> [reserve]` —— 控制**主物品栏 0..35** 的可用格数。
  *
  * <p>`fill`(缺省 reserve=2)用 `minecraft:stone` 把空槽填到**恰好剩 `reserve` 格**;
- * `clear` 直接清空主物品栏。用途(= N6 安全门的三个对照态,**阈值已由产品放宽为
- * `TemporaryCardUtil.MIN_FREE_SLOTS_TO_CAST = 2`**,即「可用格 &lt; 2 才拒绝」):
+ * `clear` 直接清空主物品栏。用途(= **M6** 安全门的三个对照态,阈值
+ * `TemporaryCardUtil.MIN_FREE_SLOTS_TO_CAST = 2`,即「可用格 &lt; 2 才拒绝」):
  * <ul>
  *   <li>`fill 1` ⇒ 可用格 1 (**&lt; 2**) ⇒ **拒绝释放**且零消耗;</li>
  *   <li>`fill 2` ⇒ 可用格 2 (**= 2**) ⇒ **允许释放**(边界组:实发 2 或 3 张,见用例说明);</li>
@@ -9210,29 +9230,67 @@ function doNardiInv(ctx, tag, modeText, reserveText) {
 }
 
 /**
- * `/astralprobe nardiuseup <tag>` —— 把身上的临时牌**当作被用光**(脚手架)。
+ * `/astralprobe nardicd <tag>` —— **只复位玩家级主动冷却**（`sign_active_cooldown_end = 0`），别的一概不碰。
  *
- * <p>为什么用它:新语义 N3/N5 要求「3 张临时牌被消耗到 0 ⇒ 立刻解冻且效果被移除」。从 JS 无法真实
- * 逐张「使用」卡牌(战斗牌要装备、效果牌要走各自的使用逻辑),而产品侧只观测**张数**:
- * 只要张数归零,产品的双向收口(「无牌 ⇒ 移除效果并解冻」)就应当触发。本命令因此只做
- * 「移除全部临时牌」(`TemporaryCardUtil#purgeAll`,与产品清理同一入口),**不碰效果**,
- * 让随后的 tick 去证明解冻逻辑。
+ * <p>为什么需要它（新语义 **M2**「叠加再发」）：效果生效期间再次释放**只受冷却限制**，
+ * 而探针要把「冷却」这一项前置条件归零才不会误判成「被冷却拒绝」。可选的两条路：
+ * <ul>
+ *   <li>`nardicast <tag> self reset` —— 走 `domResetActive`，会**同时**清冷却与锁定键
+ *       （经共享段的 `resetActiveLock`）⇒ 作用域过大，可能顺带改掉与本用例无关的状态；</li>
+ *   <li>**本命令** —— 只写 `sign_active_cooldown_end`，不碰锁定键 / 效果 / 临时牌，
+ *       使 M2 的读数**只反映产品行为**（契约明确要求「用脚手架复位冷却后再释放，**不要传 reset**」）。</li>
+ * </ul>
+ * 读数：`cd_before`/`cd_after`/`cleared`。
+ */
+function doNardiCd(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var before = domNum(function () { return ModAttachments.getSignActiveCooldownEnd(p); });
+    var err = "";
+    try { ModAttachments.setSignActiveCooldownEnd(p, 0); } catch (e1) { err = domExText(e1); }
+    var after = domNum(function () { return ModAttachments.getSignActiveCooldownEnd(p); });
+    send(ctx, "AP_" + tag + "_CD:cd_before=" + before + ":cd_after=" + after
+        + ":cleared=" + ((after === 0) ? 1 : 0)
+        + (err === "" ? "" : ":err=" + err)
+        + ":" + domStateRead(p));
+    return 1;
+}
+
+/**
+ * `/astralprobe nardiuseup <tag> [drive]` —— 把身上的临时牌**清到 0**（脚手架）。
+ *
+ * <p>**语义澄清（回答主代理的问题）**：本命令是**「清空」而非「逐张消耗」** ——
+ * 它调产品的 `TemporaryCardUtil#purgeAll(player)`（与产品清理同一入口），一次性移除
+ * **主物品栏 0..35 + 副手 + 骰子 `weapon_enhancement` 里 `temporary=true` 的已装配项**。
+ * 从 JS **无法**真实逐张「使用」卡牌（战斗牌要装备进骰子、效果牌要走各自的使用逻辑并结算），
+ * 而契约只观测**张数**（`n_temp` / `n_temp_eq`），故「清空到 0」与「用光」在读数上等价。
+ *
+ * <p>为什么新语义下还需要它（**M3**「牌用光不再结束效果」）：产品本轮已把「无牌 ⇒ 移除效果」
+ * 这条收口**删除**，只保留「无效果 ⇒ 清牌」⇒ 本命令正是验证「清到 0 之后**效果仍在**」的手段。
+ *
+ * <p>mode：
+ * <ul>
+ *   <li>缺省（`drive=0`）—— 只 `purgeAll`，**不碰效果**；随后由**自然 tick** 证明效果不被移除（M3 主判据）；</li>
+ *   <li>`drive=1` —— 额外**显式驱动**产品自己的 `TemporaryCardUtil#tick`（双向收口入口，
+ *       与玩家 tick 事件调的是同一份代码），把「产品自检在 0 张时**不得**移除效果」变成**同一行**的直接读数；
+ *       再驱动 `BaseSignItem#tickSignActiveLock`（本主动已无锁定态，此调用是空操作，仅保证与玩家 tick 同形）。</li>
+ * </ul>
+ * 读数：`purged`（实际移除张数）、`temp_before`/`temp_after`、`temp_eq_*`、`fx_on_before`/`fx_on_after`、
+ * `n_fx_after`、`cd_before_purge`/`cd_after`（清牌**不得**动冷却）、`lock_before`/`lock_after`（应恒为 0）。
  */
 function doNardiUseUp(ctx, tag, modeText) {
     var p = ctx.source.getPlayerOrException();
     var drive = ("" + modeText) === "drive" ? 1 : 0;
     var before = domCountTemp(p);
     var beforeEq = domCountTempEquipped(p);
-    // 解冻前的冷却/锁定/效果快照(N5「解冻不追加新冷却」的对照侧)
+    // 清牌前的冷却/锁定/效果快照(用于证明「清牌」这一步不越界改别的状态)
     var cd0 = domNum(function () { return ModAttachments.getSignActiveCooldownEnd(p); });
     var lock0 = domBool(function () { return BaseSignItemClass.isSignActiveLocked(p); });
     var fx0 = domFx(p);
     var purged = domClearTemp(p);
-    // `drive` 模式:显式驱动**产品自己的两个 tick 入口**(与玩家 tick 事件调的是同一份代码,
-    // 只是同步跑在命令里),从而把「解冻后的 cooldown_end」与「解冻前」放进**同一行**读数 ——
-    // 跨行比较在用例断言里做不到,这是唯一能让 N5 的「不追加」成为**单行等式**的办法。
-    //   · TemporaryCardUtil#tick = 双向收口(无牌 + 有/无效果)⇒ 走「无牌 ⇒ 移除效果并解冻」;
-    //   · BaseSignItem#tickSignActiveLock = 锁定→冷却迁移(nardis 走 cooldownAlreadyRunning 分支)。
+    // `drive` 模式:显式驱动**产品自己的**两个 tick 入口(与玩家 tick 事件调的是同一份代码,
+    // 只是同步跑在命令里)⇒ 把「产品自检面对 0 张时的行为」放进**同一行**读数。
+    //   · TemporaryCardUtil#tick = 双向收口;**新语义下**「无牌」**不得**再移除效果(只保留「无效果 ⇒ 清牌」);
+    //   · BaseSignItem#tickSignActiveLock = 锁定→冷却迁移(本主动已无锁定态 ⇒ 空操作)。
     if (drive === 1) {
         try { NardisTemporaryCardUtilClass.tick(p); } catch (eD1) { /* 交给读数 */ }
         try { BaseSignItemClass.tickSignActiveLock(p); } catch (eD2) { /* 交给读数 */ }
@@ -9242,47 +9300,134 @@ function doNardiUseUp(ctx, tag, modeText) {
     var fx1 = domFx(p);
     send(ctx, "AP_" + tag + "_USEUP:drive=" + drive
         + ":purged=" + purged
-        + ":temp_before=" + before + ":temp_eq_before=" + beforeEq
+        + ":temp_before=" + before + ":temp_after=" + domCountTemp(p)
+        + ":temp_eq_before=" + beforeEq + ":temp_eq_after=" + domCountTempEquipped(p)
         + ":n_temp=" + domCountTemp(p) + ":n_temp_eq=" + domCountTempEquipped(p)
-        + ":cd_before_purge=" + cd0 + ":cd_after_thaw=" + cd1
-        + ":cd_thaw_unchanged=" + ((cd0 >= 0 && cd1 >= 0 && cd0 === cd1) ? 1 : 0)
-        + ":cd_thaw_not_increased=" + ((cd0 >= 0 && cd1 >= 0 && cd1 <= cd0) ? 1 : 0)
+        + ":cd_before_purge=" + cd0 + ":cd_after=" + cd1
+        + ":cd_unchanged=" + ((cd0 >= 0 && cd1 >= 0 && cd0 === cd1) ? 1 : 0)
         + ":lock_before=" + lock0 + ":lock_after=" + lock1
         + ":fx_on_before=" + fx0.on + ":fx_on_after=" + fx1.on
-        + ":n_fx_after=" + fx1.dur
+        + ":n_fx_before=" + fx0.dur + ":n_fx_after=" + fx1.dur
         + ":" + domStateRead(p));
     return 1;
 }
 
 // ══════════════════════════════════════════════════════════════════════════
-//  ⑪b nardilockback —— N8（F1 修复回归：冻结分歧重对齐）
+//  ⑪c nardirecast —— M2「叠加再发 + 时长重置可见」的一键取证(含 +5/+10 tick 持续检查)
 // ══════════════════════════════════════════════════════════════════════════
 
 /**
- * `/astralprobe nardilockback <tag> [mode]` —— 直接构造「锁定硬上界 与 门控效果」的分歧态（N8）。
+ * M2 的**待检**状态(由下面的 `ServerEvents.tick` 消费)。
+ * 为什么需要它:契约要求「重置必须**看得出来是重置**」—— 不仅释放**当刻**要读到 3600,
+ * 还要证明**其后若干 tick 没有被 `EffectTimerGuard` 的 CLAMP(`CLAMP_TOLERANCE = 20`)裁回旧值**。
+ * 跨行比较在断言层做不到,故把「+5 / +10 tick 时的效果剩余」直接落成**独立读数行**。
+ */
+var nardisRecastPending = null;
+
+/**
+ * tick 侧消费:在重发后第 5 / 第 10 个服务端 tick 各报一次读数(无命令上下文 ⇒ 走 `emitTo`)。
+ * 只在 `nardisRecastPending != null` 时工作(平时是一条早退,零开销);异常自愈(清空待检)。
+ */
+ServerEvents.tick(event => {
+    var pend = nardisRecastPending;
+    if (pend == null) return;
+    try {
+        pend.elapsed = pend.elapsed + 1;
+        if (pend.elapsed === 5 || pend.elapsed === 10) {
+            var p = pend.player;
+            var fx = domFx(p);
+            emitTo(p, "AP_" + pend.tag + "_RECASTT" + pend.elapsed
+                + ":elapsed=" + pend.elapsed
+                + ":n_fx=" + fx.dur + ":n_fx_on=" + fx.on
+                + ":n_temp=" + domCountTemp(p) + ":n_temp_eq=" + domCountTempEquipped(p)
+                + ":now=" + (nowTick(p) - 0));
+        }
+        if (pend.elapsed >= 10) nardisRecastPending = null;
+    } catch (e) {
+        nardisRecastPending = null;
+    }
+});
+
+/**
+ * `/astralprobe nardirecast <tag>` —— M2 一键取证:读旧值 → **只复位冷却** → 真实释放 → 读新值。
  *
- * <p>**为什么必须用脚手架**：单机测试世界里停客户端 = 停服务器 ⇒ `gameTime` 不推进，
- * 「多人在线离线跨越剩余冻结时长后重登」这条路径**无法**自然复现。产品 F1 修复
- * （`BaseSignItem#realignLockEndToGateEffect`）的判据正是「`sign_active_lock_end` 已到 **且** 门控效果仍在」，
- * 所以只要能在游戏里**人为制造这两个条件**，单机也能取证。
+ * <p>为什么要合成一条命令(而不是「`nardicd` + `nardicast` + 两次 `nardiread`」):
+ * 「重置」的判据是**旧剩余与新剩余的关系**(`fx_after_cast` 必须回到满值、且**跳变幅度** `fx_jump` 显著为正),
+ * 而跨行比较在用例断言层无法做;把两侧放**同一行**后,M2 的「看得出来是重置」就是一条**单行等式/不等式**。
  *
- * <p>本命令只做两件事：
+ * <p>契约要求复位冷却时**不要传 `reset`** ⇒ 这里只写 `sign_active_cooldown_end = 0`
+ * (不碰锁定键 / 效果 / 临时牌),等价于内联一次最小作用域的 `nardicd`。
+ *
+ * <p>读数:`fx_before`(旧剩余)、`fx_after_cast`(**必须 = 3600**)、`fx_jump`(= 新 − 旧,必须为正)、
+ * `temp_before`/`temp_after`(叠加)、`temp_eq_*`、`cd_before`/`cd_after`、`lock_*`。
+ * 随后由上面的 tick 钩子产出 `AP_<tag>_RECASTT5` / `_RECASTT10`(证明重置**持续**有效、未被 CLAMP 裁回)。
+ */
+function doNardiRecast(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var now0 = nowTick(p) - 0;
+    var fx0 = domFx(p);
+    var temp0 = domCountTemp(p);
+    var eq0 = domCountTempEquipped(p);
+    var cd0 = domNum(function () { return ModAttachments.getSignActiveCooldownEnd(p); });
+    var cdErr = "";
+    try { ModAttachments.setSignActiveCooldownEnd(p, 0); } catch (e0) { cdErr = domExText(e0); }
+    var lock0 = domBool(function () { return BaseSignItemClass.isSignActiveLocked(p); });
+    var err = "";
+    try { BaseSignItemClass.performSkillForCurio(p); } catch (e1) { err = domExText(e1); }
+    var fx1 = domFx(p);
+    var temp1 = domCountTemp(p);
+    var eq1 = domCountTempEquipped(p);
+    // 挂上持续检查(第 5 / 10 tick 各一行读数)
+    nardisRecastPending = { player: p, tag: tag, elapsed: 0 };
+    send(ctx, "AP_" + tag + "_RECAST:now=" + now0
+        + ":fx_before=" + fx0.dur + ":fx_on_before=" + fx0.on
+        + ":fx_after_cast=" + fx1.dur + ":fx_on_after=" + fx1.on
+        + ":fx_jump=" + (((fx0.dur >= 0) && (fx1.dur >= 0)) ? (fx1.dur - fx0.dur) : -9999)
+        + ":temp_before=" + temp0 + ":temp_after=" + temp1
+        + ":temp_eq_before=" + eq0 + ":temp_eq_after=" + eq1
+        + ":cd_before=" + cd0 + ":cd_after=" + domNum(function () { return ModAttachments.getSignActiveCooldownEnd(p); })
+        + ":lock_before=" + lock0
+        + ":lock_after=" + domBool(function () { return BaseSignItemClass.isSignActiveLocked(p); })
+        + (cdErr === "" ? "" : ":cd_err=" + cdErr)
+        + (err === "" ? "" : ":err=" + err)
+        + ":" + domStateRead(p));
+    return 1;
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+//  ⑪b nardilockback —— **当前无任何用例使用**（保留的通用锁定态脚手架）
+// ══════════════════════════════════════════════════════════════════════════
+
+/**
+ * `/astralprobe nardilockback <tag> [keep|noeffect]` —— 通用「锁定硬上界」脚手架。
+ *
+ * <p>⚠️ **状态：当前无用例使用（有意保留，不删）**。
+ * 它原本是 nardis 「冻结（使用中）」机制的 **N8 / F1 重对齐**回归工具；2026-09-27 用户二次裁决
+ * **撤回了 nardis 的整台冻结机械**（含 F1 的 `gateEffectRemainingTicks` / `realignLockEndToGateEffect`），
+ * 故 N8 组已从 `NARDIS-SIGN-{1.21.1,1.20.1}.json` **整组删除**。
+ *
+ * <p>**保留理由**：本命令**不含任何 nardis 专属语义** —— 它只写**通用**的 `sign_active_lock_end`
+ * 并驱动**通用**的 `BaseSignItem#tickSignActiveLock`，对任何使用 `sign_active_lock_*` 的立牌
+ * （komachi / fen / jasmine 等）都成立；本条需求在本会话内已被**两次**推翻/重立，
+ * 下一个「锁定硬上界」类回归（例如离线跨越、宽限期保险）仍然需要同一套手法，
+ * 而删掉它要再付一次「探针改动 ⇒ 冷启动」的全量代价。保留成本 = 0（命令按需求值，用例不调用即不执行）。
+ *
+ * <p>本命令做两件事：
  * <ol>
  *   <li>把 `sign_active_lock_end` 写到**过去**（`max(1, now-200)`）—— **只改这一项**：
- *       `sign_active_lock_sign` / `grace_end` / `played` 与 `sign_active_cooldown_end` 一概不动
- *       （与 `domResetActive` 那种「整组清锁定键」的手法**不同**，后者会顺带解开冻结）；</li>
- *   <li>显式驱动产品自己的 `BaseSignItem#tickSignActiveLock`（与玩家 tick 事件调的是同一份代码），
- *       让「是否重新对齐」在同一行读数里可判。</li>
+ *       `sign_active_lock_sign` / `grace_end` / `played` 与 `sign_active_cooldown_end` 一概不动；</li>
+ *   <li>按 `mode` 可选地先移除门控效果（`noeffect`），再显式驱动
+ *       `BaseSignItem#tickSignActiveLock`（与玩家 tick 事件调的是同一份代码），
+ *       让「硬上界已过时产品怎么处理」在同一行读数里可判。</li>
  * </ol>
  *
  * <p>mode（缺省 `keep`）：
  * <ul>
- *   <li><b>`keep`</b>（N8 主组）—— 效果与临时牌都保持不动 ⇒ **必须仍冻结**：
- *       `lock_after=1` 且 `lock_end_after &gt; now`（上界被对齐为 `now + 效果剩余时长`）、
- *       `cd_unchanged=1`、`temp_after == temp_before`、`fx_on_after=1`（不免费刷新、不提前清牌）；</li>
- *   <li><b>`noeffect`</b>（N8 对照组）—— 先用内部通道 `ModEffectRemoval` 移除 `nardis_privilege`
- *       （与 3:00 到期同一条路）、再驱动 `TemporaryCardUtil#tick` 清牌，然后才写 `lock_end` 到过去并 tick
- *       ⇒ 前提（效果仍在）不成立 ⇒ **不得重新对齐**，走既有解冻路径（`lock_after=0`、`lock_end_after=0`）。</li>
+ *   <li><b>`keep`</b> —— 效果与临时牌都保持不动；若产品侧存在「按门控效果剩余时长重对齐硬上界」
+ *       的机制，则应观测到 `realigned=1` / `lock_end_after &gt; now`。</li>
+ *   <li><b>`noeffect`</b> —— 先用内部通道 `ModEffectRemoval` 移除效果（与 3:00 到期同一条路）、
+ *       再驱动 `TemporaryCardUtil#tick` 清牌，然后才写 `lock_end` 到过去并 tick
+ *       ⇒ 用作任何「重对齐需要门控效果仍在」类断言的**对照侧**。</li>
  * </ul>
  */
 function doNardiLockBack(ctx, tag, modeText) {
@@ -9295,8 +9440,8 @@ function doNardiLockBack(ctx, tag, modeText) {
     var fx0 = domFx(p);
     var temp0 = domCountTemp(p);
     var eq0 = domCountTempEquipped(p);
-    // ⚠️ 必须写在**正数**的过去刻:realignLockEndToGateEffect 首行 `lockEnd <= 0` 直接返回
-    //    （`<= 0` = 「无硬上界」，忍者语义）⇒ 写成 0/负数会退化成「没有硬上界」而不是「上界已过」。
+    // ⚠️ 必须写在**正数**的过去刻:任何「硬上界已过」判定通常以 `lockEnd <= 0` 表示「无硬上界」
+    //    （忍者语义）⇒ 写成 0/负数会退化成「没有硬上界」而不是「上界已过」。本命令与 nardis 无关。
     var past = now - 200;
     if (past < 1) past = 1;
     var wrote = -1, err = "";
@@ -10088,13 +10233,28 @@ ServerEvents.commandRegistry(event => {
                     .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
                         return doNardiClearAll(ctx, StringArg.getString(ctx, "tag"));
                     }))))
-            // ── 2026-09-27 新语义 N3/N5/N6/N8 专用脚手架(见 impl 块同名函数):
-            //    nardiuseup = 把身上临时牌「当作被用光」(只 purgeAll,**不碰效果**)⇒ 让产品 tick
-            //                 自己证明「无牌 ⇒ 移除效果并解冻」;
-            //    nardiinv   = 主物品栏填充到「恰好剩 reserve 格」/ 清空 ⇒ 安全门前置
+            // ── 新语义脚手架(M2/M3/M6;见 impl 块同名函数):
+            //    nardicd    = **只**复位玩家级主动冷却(不碰锁定键/效果/临时牌)⇒ M2/M8 的前置
+            //                 (契约要求复位冷却时**不要传 `reset`**,故用它而不是 `nardicast … self reset`);
+            //    nardirecast = M2 一键取证:读旧剩余 → 内联复位冷却 → 真实释放 → 读新剩余,两侧同**一行**,
+            //                 并挂 +5/+10 tick 的持续检查(`AP_<tag>_RECASTT5/T10`,证明重置未被 CLAMP 裁回);
+            //    nardiuseup = 把身上临时牌**清到 0**(purgeAll;含装配栏)但**不碰效果** ⇒ M3 主判据
+            //                 (新语义下「牌用光」**不得**再结束效果);`drive` 档额外显式驱动产品自检;
+            //    nardiinv   = 主物品栏填充到「恰好剩 reserve 格」/ 清空 ⇒ M6 安全门前置
             //                 (阈值 = TemporaryCardUtil.MIN_FREE_SLOTS_TO_CAST = 2:
             //                  可用格 < 2 ⇒ 拒绝;= 2 ⇒ 允许;clear ⇒ 腾空后立刻可释放);
-            //    nardilockback = 把 sign_active_lock_end 写到过去(只改这一项)后 tick ⇒ N8 冻结分歧重对齐。
+            //    nardilockback = 通用锁定硬上界脚手架 —— **当前无用例使用**(冻结机械已撤回),
+            //                 保留给其它立牌/后续锁定类回归,详见 impl 块的函数注释。
+            .then(Commands.literal("nardicd")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doNardiCd(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("nardirecast")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doNardiRecast(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
             .then(Commands.literal("nardiuseup")
                 .then(Commands.argument("tag", StringArg.word())
                     .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {

@@ -142,16 +142,9 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
             int signCooldownTicks = com.merlinkitsune.astral_dice.event.WeirdDiceHandler.signCooldownTicks(player);
             if (sign.startActiveLockOnUse(player, now)) {
                 // ★ 本主动施加了"带时长效果/自身计时器"⇒ 进入锁定(生效中)态。
-                //   默认:锁定期间**不写** sign_active_cooldown_end:冷却要等锁定结束才起(第 13 条:无空档);
+                //   锁定期间**不写** sign_active_cooldown_end:冷却要等锁定结束才起(第 13 条:无空档);
                 //   但先把本次冷却基准写进 sign_active_max_cooldown,供锁定期间各减免方读它并累加进减免池。
-                //   ⚠️ {@link #cooldownRunsDuringLock(Player)} 返回 true 的立牌(nardis 女王特权)例外:
-                //   按 2026-09-27 用户裁决④「释放那一刻就开始冷却」,**在进入锁定的同时**就把
-                //   cooldown_end 写出来,锁定期间冷却照常流逝;解锁迁移不得再追加一份新冷却
-                //   (见 {@link #endLockAndStartCooldown(Player)})。
                 ModAttachments.setSignActiveMaxCooldown(player, signCooldownTicks);
-                if (sign.cooldownRunsDuringLock(player)) {
-                    ModAttachments.setSignActiveCooldownEnd(player, now + signCooldownTicks);
-                }
             } else {
                 ModAttachments.setSignActiveCooldownEnd(player, now + signCooldownTicks);
                 // 路线 A:记录本次冷却实际使用的最大冷却值,所有减免方一律读它(不再各自重算基准)
@@ -312,28 +305,6 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
     }
 
     /**
-     * 本主动"门控效果"实例的**剩余 tick**(默认 {@code -1} = 本立牌的锁定**不**跟随效果剩余时长,
-     * 完全按 {@code sign_active_lock_end} 硬上界判定 ⇒ 与改动前逐字一致)。
-     *
-     * <p>返回 {@code > 0} 的立牌(当前唯一实现:绿洲女王立牌 nardis 的「女王特权」)声明:其冻结/锁定的
-     * **真值就是效果实例本身**,硬上界只是"触发时刻算定的绝对 gameTime 上界",两者在多人服务器上会漂移 ——
-     * 服务器 gameTime 在玩家**离线期间照常前进**({@code ServerLevel#tickTime} 与在线玩家无关),
-     * 而效果实例的剩余时长在离线期间**冻结**(登出时 {@code PlayerList#remove} →
-     * {@code ServerLevel#removePlayerImmediately} 把 ServerPlayer 实体移出世界 ⇒
-     * {@code LivingEntity#tickEffects} 不再跑;效果随玩家数据存档保存)。玩家离线超过剩余冻结时长后重登,
-     * 就会出现"硬上界与冷却结束刻双双已过,而效果实例与临时牌都还在"⇒ 冻结被**离线期间流逝的墙钟**
-     * 单方面提前结束。故本方法返回 {@code > 0} 时,{@link #tickSignActiveLock} 会在**硬上界已过而效果仍在**
-     * 时把硬上界按该剩余时长**重新对齐**({@code lock_end = now + 剩余}),使冻结只由"临时牌被全部用光"
-     * 或"效果有效期结束"这两件事结束(用户裁决的冻结契约;先到者)。
-     *
-     * <p>⚠️ 返回 {@code > 0} **蕴含**门控效果实例仍在(读的就是 {@link #isGateEffectActive} 所判的同一个
-     * 实例的剩余时长);重新对齐处仍会**再验一次** {@link #isGateEffectActive} 作为纵深防御。
-     */
-    protected int gateEffectRemainingTicks(Player player) {
-        return -1;
-    }
-
-    /**
      * 各立牌覆写:本次主动触发成功时登记"本技能施加的计时器"(写 {@code sign_active_lock_end}),
      * 返回 true = 需要进入锁定(生效中)态(而非立即起冷却)。默认 false(无计时器 ⇒ 与改动前逐字一致)。
      *
@@ -341,23 +312,6 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
      * 不新增全局注册表、不硬编码时长表。
      */
     protected boolean startActiveLockOnUse(Player player, long now) {
-        return false;
-    }
-
-    /**
-     * 锁定(生效中)期间冷却是否**并行流逝**(默认 {@code false} = 既有语义:锁定期间不写
-     * {@code sign_active_cooldown_end},冷却等锁定结束才起,与锁定**串行**、"无空档")。
-     *
-     * <p>返回 {@code true} 的立牌(当前唯一实现:绿洲女王立牌 nardis 的「女王特权」,
-     * 2026-09-27 用户裁决④):{@link #performSkill} 在**进入锁定的同一刻**就写
-     * {@code cooldown_end = now + 基准},锁定期间冷却照常流逝;解锁迁移
-     * ({@link #tickSignActiveLock} → {@link #endLockAndStartCooldown})**不得再追加一份新冷却**,
-     * 只把锁定期间新累加的减免池从**剩余**冷却里抵扣一次
-     * ({@code remain' = max(0, remain − pool)} —— 与"减免在获得当刻即生效"完全等价,
-     * 两者都是从同一个 {@code cooldown_end} 上做纯减法)。
-     * ⇒ 解冻时冷却若已过完,必须**立刻**可再次释放;若未过完,则继续等剩余部分。
-     */
-    protected boolean cooldownRunsDuringLock(Player player) {
         return false;
     }
 
@@ -375,32 +329,14 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
      * {@code effective = max(0, 基准 − 池)};写 {@code sign_active_cooldown_end = now + effective}
      * 并把 {@code sign_active_max_cooldown} 改写为 {@code effective}(电流核心档位分母取抵扣后的实际冷却),
      * 随后清空全部锁定键。锁定态下{@code cooldown_end} 为 0,故本方法一执行即"无空档"地进入冷却。
-     *
-     * <p>例外({@link #cooldownRunsDuringLock(Player)} 为 true 的立牌):冷却自释放那一刻起就在跑 ⇒
-     * 本方法**不追加**新的冷却,只把减免池从剩余冷却里抵扣一次;当前锁定立牌由
-     * {@code sign_active_lock_sign} 反查物品注册表解析(与 {@link #isSignActiveLocked} 同一条路径),
-     * 解析不到时按默认(false)处理,行为与改动前逐字一致。
      */
     private static void endLockAndStartCooldown(Player player) {
-        BaseSignItem locked = lockSignItem(getSignActiveLockSignId(player));
-        endLockAndStartCooldown(player, locked != null && locked.cooldownRunsDuringLock(player));
-    }
-
-    private static void endLockAndStartCooldown(Player player, boolean cooldownAlreadyRunning) {
         long now = player.level().getGameTime();
         long base = ModAttachments.getSignActiveMaxCooldown(player);
         long pool = ModAttachments.getSignActiveReductionPool(player);
-        if (cooldownAlreadyRunning) {
-            // 裁决④:冷却在锁定期间已经跑了一段 ⇒ **不得**再追加一份新冷却(否则等于把整个冻结时长
-            // 又等一遍)。当前冷却结束刻保持不动,只把锁定期间累计的减免池从**剩余**里抵扣一次。
-            long remaining = Math.max(0L, ModAttachments.getSignActiveCooldownEnd(player) - now);
-            ModAttachments.setSignActiveCooldownEnd(player, now + Math.max(0L, remaining - pool));
-            ModAttachments.setSignActiveMaxCooldown(player, Math.max(0L, base - pool));
-        } else {
-            long effective = Math.max(0L, base - pool);
-            ModAttachments.setSignActiveCooldownEnd(player, now + effective);
-            ModAttachments.setSignActiveMaxCooldown(player, effective);
-        }
+        long effective = Math.max(0L, base - pool);
+        ModAttachments.setSignActiveCooldownEnd(player, now + effective);
+        ModAttachments.setSignActiveMaxCooldown(player, effective);
         ModAttachments.setSignActiveReductionPool(player, 0L);
         ModAttachments.setSignActiveLockSign(player, "");
         ModAttachments.setSignActiveLockEnd(player, 0L);
@@ -409,46 +345,7 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
     }
 
     /**
-     * 把锁定硬上界按**门控效果的剩余时长**重新对齐(唯一调用点:{@link #tickSignActiveLock};
-     * 默认立牌**空操作** ⇒ 除 nardis 外的立牌一律不受影响)。
-     *
-     * <p>生效条件(任一不满足即直接返回:不读效果之外的状态、**不写任何附件**):
-     * <ol>
-     *   <li>{@code lockEnd > 0 && now >= lockEnd} —— 硬上界**已过**。未过时是本方法的常态早退点
-     *       (锁定期的绝大多数 tick 都走这里),也是"同一 tick 内被第二次调用"的早退点;</li>
-     *   <li>立牌实例解析成功;</li>
-     *   <li>{@link #gateEffectRemainingTicks} 返回 {@code > 0} —— 默认实现恒为 {@code -1}
-     *       ⇒ **除 nardis 外的任何立牌都在此短路**,硬上界不被改写、后续控制流与改动前逐字相同;</li>
-     *   <li>{@link #isGateEffectActive} 仍为真(纵深防御;nardis 的两个判据读的是同一个效果实例,
-     *       正常情况下与上一条同真同假)。</li>
-     * </ol>
-     *
-     * <p><b>单调/幂等(不抖动、不反复写附件)</b>:进入本方法的前提是 {@code lockEnd <= now},
-     * 而写出的值 {@code now + remaining} 因 {@code remaining > 0} 必然 {@code > now}
-     * ⇒ 新值**严格大于**旧值(上界只会向后对齐、永不回撤,不会前后搬动)。写完后即 {@code now < lockEnd},
-     * 同一 tick 的第二次调用(START/END 两阶段)在第 1 条早退;此后效果剩余时长与 gameTime 同以
-     * 1 tick/tick 流逝 ⇒ 上界与效果**持续保持同步**,直到效果结束前不再有任何写入(连续多 tick 也只写一次)。
-     * 效果真正结束或被移除时 {@code remaining} 回到 {@code -1}(或 hard bound 已过且效果不在),
-     * 本方法不再介入 ⇒ 照旧由既有解冻路径({@link #isSignActiveLocked} → {@link #endLockAndStartCooldown})
-     * 结束冻结并处理剩余临时牌。
-     */
-    private static void realignLockEndToGateEffect(Player player, String signId, long now) {
-        long lockEnd = ModAttachments.getSignActiveLockEnd(player);
-        if (lockEnd <= 0 || now < lockEnd) return;
-        BaseSignItem sign = lockSignItem(signId);
-        if (sign == null) return;
-        int remaining = sign.gateEffectRemainingTicks(player);
-        if (remaining <= 0) return;
-        if (!sign.isGateEffectActive(player)) return;
-        ModAttachments.setSignActiveLockEnd(player, now + remaining);
-    }
-
-    /**
-     * 玩家级 tick(幂等):0. 硬上界与门控效果剩余时长重新对齐(nardis);
-     * 1. 忍者宽限保险;2. 其余立牌锁定结束时必起冷却。
-     *
-     * <p>第 0 步是本次 F1 修复(离线期间流逝的墙钟不得单方面结束冻结):见
-     * {@link #realignLockEndToGateEffect} / {@link #gateEffectRemainingTicks}(默认立牌空操作)。
+     * 玩家级 tick(幂等):1. 忍者宽限保险;2. 其余立牌锁定结束时必起冷却。
      *
      * <p>为什么挂在**玩家级 tick**(见 {@code event/PlayerTickEvents}):
      * 判定必须与立牌是否仍在饰品槽无关;并且玩家离线时不 tick ⇒ 锁定结束那一刻离线的话,
@@ -457,10 +354,6 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
      * <p>幂等性:本方法随 {@code TickEvent.PlayerTickEvent} 的 START/END 两个阶段**每 tick 被调用两次**,
      * 首行按"是否仍在锁定"早退,真正的迁移只发生一次(迁移后锁定标记被清空,第二次执行直接返回),
      * 与旧的玩家级状态迁移同构。
-     *
-     * <p>⚠️ 迁移的冷却口径分两种(见 {@link #endLockAndStartCooldown(Player)}):
-     * 默认立牌 = 锁定结束才起冷却(串行、无空档);{@link #cooldownRunsDuringLock(Player)} 为 true 的立牌
-     * (nardis 女王特权)冷却早已在释放那一刻起跑 ⇒ 本次迁移**不追加**新冷却(用户裁决④)。
      */
     public static void tickSignActiveLock(Player player) {
         if (player == null) return;
@@ -483,9 +376,6 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
             endLockAndStartCooldown(player);
             return;
         }
-        // 0. 硬上界已过但门控效果实例仍在 ⇒ 上界只是被"离线期间流逝的墙钟"甩下(nardis 场景),
-        //    按效果剩余时长重新对齐;默认立牌的钩子返回 -1 ⇒ 本调用是空操作(见 realignLockEndToGateEffect)。
-        realignLockEndToGateEffect(player, signId, now);
         if (isSignActiveLocked(player)) return;   // 门控计时器仍在跑:保持锁定
         endLockAndStartCooldown(player);          // 锁定结束:必起冷却(第 13 条,无空档)
     }
