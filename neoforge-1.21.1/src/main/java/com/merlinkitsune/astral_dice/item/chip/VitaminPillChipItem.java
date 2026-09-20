@@ -39,10 +39,16 @@ public class VitaminPillChipItem extends BaseChipItem {
         if (player == null || player.level().isClientSide()) return;
         if (card == null || card.isEmpty()) return;
         int amount = card.getCount();
+        // 教主立牌「狐光」:经本模组发牌漏斗**成功入包**的攻击牌 +1 层/张(掉落不计)。
+        // ⚠️ 必须在 add(...) 之前判定/取数:add 会把传入栈清空;且拾取路径**刻意不挂钩**(防刷,见 TeruSignItem)。
+        boolean attackCard = com.merlinkitsune.astral_dice.item.sign.TeruSignItem.isAttackCard(card);
         if (!player.getInventory().add(card)) {
             player.drop(card, false);
         } else {
             onCardGained(player, amount);
+            if (attackCard) {
+                com.merlinkitsune.astral_dice.item.sign.TeruSignItem.onAttackCardCount(player, amount);
+            }
         }
     }
 

@@ -5,7 +5,9 @@
       "conditions": {
         "items": [
           {
-            "items": "astral_dice:blank_sign"
+            "items": [
+              "astral_dice:blank_sign"
+            ]
           }
         ]
       },
@@ -13,20 +15,21 @@
     },
     "has_the_recipe": {
       "conditions": {
-        "recipe": "astral_dice:zhao_sign"
+        "recipe": "astral_dice:teru_sign"
       },
       "trigger": "minecraft:recipe_unlocked"
     }
   },
   "requirements": [
     [
-      "has_the_recipe",
-      "has_blank_sign"
+      "has_blank_sign",
+      "has_the_recipe"
     ]
   ],
   "rewards": {
     "recipes": [
-      "astral_dice:zhao_sign"
+      "astral_dice:teru_sign"
     ]
-  }
+  },
+  "sends_telemetry_event": false
 }

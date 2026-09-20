@@ -80,7 +80,12 @@ public class AstralData implements INBTSerializable<CompoundTag> {
                         ModAttachments.RIN_PAGES.name(),
                         ModAttachments.KOMACHI_DAMAGE_BONUS.name(),
                         // 2026-09-15 用户裁决:赠书守卫必须随死亡保留,否则重登会再发一本(对应 1.21.1 的 .copyOnDeath())
-                        ModAttachments.GUIDE_BOOK_GIVEN.name()
+                        ModAttachments.GUIDE_BOOK_GIVEN.name(),
+                        // 2026-09-27 教主立牌(teru):狐光层数需求上跨死亡保留;装备水位是防刷守卫,
+                        // 若死亡归 0 就能靠「死一次 → 再装备一次」重新领取同装备张数的一份层数。
+                        // 两者在 1.21.1 侧都是 AttachmentType.Builder#copyOnDeath() 键,此处一一对应。
+                        ModAttachments.TERU_HUGUANG_LAYERS.name(),
+                        ModAttachments.TERU_EQUIP_WATERMARK.name()
                 };
                 event.getEntity().getCapability(ModCapabilities.ASTRAL_DATA).ifPresent(newData -> {
                     CompoundTag src = oldData.persistentStore();

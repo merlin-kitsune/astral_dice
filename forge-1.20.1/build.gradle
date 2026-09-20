@@ -15,7 +15,10 @@ sourceSets.main.resources {
 
     // Exclude common development only resources from finalized outputs
     exclude("**/*.bbmodel") // BlockBench project files
-    exclude("src/generated/**/.cache") // datagen cache files
+    // ⚠️ exclude 模式**相对每个 srcDir 根**解析:`src/generated/**/.cache`(仓库路径写法)永远不命中,
+    //    会让 datagen 缓存 `.cache/` 进产物 jar(本地与 CI 产物字节不一致)。
+    //    必须写成相对模式 `**/.cache`(与 neoforge-26.1.2 既有写法一致)。
+    exclude("**/.cache") // datagen cache files
     exclude("INSTRUCTIONS.md")
     exclude("mc-src/**")
 }

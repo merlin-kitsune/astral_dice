@@ -1323,6 +1323,21 @@ public class ModTooltipHandler {
             }
             addSignCooldownRemaining(tooltip, event.getEntity());
         }
+        // 教主立牌(teru):被动「狐光」(层数资源 + 两条防刷守卫) + 主动「降神」(只能选其它玩家)
+        if (stack.is(ModItems.TERU_SIGN.get())) {
+            tooltip.add(Component.empty());
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "降神");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.teru_active");
+            addSignPassiveTitle(tooltip, "狐光");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.teru_passive");
+            if (event.getEntity() != null) {
+                addSignCounter(tooltip, "tooltip.astral_dice.sign.teru_layers",
+                        com.merlinkitsune.astral_dice.item.sign.TeruSignItem.getLayers(player),
+                        com.merlinkitsune.astral_dice.item.sign.TeruSignItem.MAX_HUGUANG);
+            }
+            addSignCooldownRemaining(tooltip, event.getEntity());
+        }
         // 符卡-福 / 符卡-祸(风水师立牌专属效果牌)
         if (stack.is(ModItems.FU_CARD.get())) {
             tooltip.add(Component.empty());

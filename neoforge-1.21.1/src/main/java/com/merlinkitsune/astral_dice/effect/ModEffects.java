@@ -174,6 +174,23 @@ public class ModEffects {
             EFFECTS.register("misfortune", MisfortuneEffect::new);
 
     /**
+     * 「降神」(教主立牌 teru 主动):施加在**被指定目标**身上的状态载体,持续到**该目标的下一次骰神赐福结束**
+     * 才移除(由玩家级 tick 的下降沿状态机判定,见 {@code TeruSignItem#tick})。无属性修饰符;
+     * 给施法者的 50% 攻防加成与狐光攻击基数另存目标侧附件。
+     * 图标 = {@code images/教主立牌.png}(实装路径 {@code textures/mob_effect/teru_descent.png})。
+     */
+    public static final DeferredHolder<MobEffect, MobEffect> TERU_DESCENT =
+            EFFECTS.register("teru_descent", TeruDescentEffect::new);
+
+    /**
+     * 「狐光」(教主立牌 teru 的资源层数镜像):层数 == 施法者附件 {@code TERU_HUGUANG_LAYERS}(上限 20);
+     * 层数归 0 即移除。增层带两条防刷守卫(拾取不计层 + 装备按历史水位去重),见 {@code TeruSignItem}。
+     * 图标 = {@code images/狐光.png}(实装路径 {@code textures/mob_effect/teru_huguang.png})。
+     */
+    public static final DeferredHolder<MobEffect, MobEffect> TERU_HUGUANG =
+            EFFECTS.register("teru_huguang", HuguangEffect::new);
+
+    /**
      * 本模组已注册的全部效果的**只读**视图(调试命令 {@code /astralparty cleareffect} 用)。
      *
      * <p>直接派生自 {@link #EFFECTS} 的注册条目视图——NeoForge 的 {@code getEntries()} 返回

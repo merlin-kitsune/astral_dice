@@ -302,6 +302,18 @@ public class CardInventoryMenu extends AbstractContainerMenu {
         int actualStar = ModDataComponents.WEAPON_ENHANCEMENT.getOrDefault(dice,  WeaponEnhancement.EMPTY).starLevel();
         ModDataComponents.WEAPON_ENHANCEMENT.set(dice, 
                 new WeaponEnhancement(totalAttackCost, maxAttackCost, totalDefenseCost, maxDefenseCost, actualStar, stones));
+
+        // 教主立牌「狐光」装备计层(**守卫 ②:历史同时装备水位去重**)。
+        // 只传"本次实际装备的攻击牌 类型→张数";是否计层由 TeruSignItem 按该玩家的历史水位判定
+        // ⇒ 同一批牌「插入 → 卸除 → 再插入」一层都刷不到(详见 TeruSignItem#onAttackCardsEquipped)。
+        // 注意必须落在 stones 计算之后:装备会**销毁卡牌物品栈**,卸除时由 loadFromDice 重建全新栈,
+        // 任何物品级标记都不可能在"插入→卸除→再插入"之间存活。
+        java.util.Map<String, Integer> equippedAttackCards = new java.util.LinkedHashMap<>();
+        for (AppliedStone stone : stones) {
+            if (stone == null || stone.type() == null || isDefenseType(stone.type())) continue;
+            equippedAttackCards.merge(stone.type(), 1, Integer::sum);
+        }
+        com.merlinkitsune.astral_dice.item.sign.TeruSignItem.onAttackCardsEquipped(player, equippedAttackCards);
     }
 
     public ItemStack getCardItem(int slotIndex) {

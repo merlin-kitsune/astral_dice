@@ -1792,3 +1792,34 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --new <注册id>
 - 文档内 55 处未来日期（09-25×38 / 09-26×17）待裁决；本批口径已统一为 2026-09-19/20。
 - `neoforge-26.1.2` 线冻结：本批功能与裁决 C 待按 `docs/compat-26.1.2-neoforge.md` 迁移。⚠️ **迁移时不得带上「禁止丢弃」（2026-09-20 已删除）**：即 26.1.2 侧的 `HuoCardItem` 只需 `tick` 镜像 + 周期伤害与选择器发牌路径，**不要**移植 `onDroppedByPlayer` / `onItemToss` / `canFitInsideContainerItems` / `msg.astral_dice.huo_card_no_drop` / `tooltip.astral_dice.huo_card_no_drop`（两线已删，26.1.2 从一开始就不该有）。
 - 用户已知边界（接受、仅记录）：裁决 C 下「弃打的一轮」不再自动收尾（+1 保留到被用掉 / 死亡 / `forceResetRound`）；停滞期间 `onRoundFullyReset` 不触发 ⇒ 忍者立牌主动冷却不起步。
+
+## 待办交接：teru-sign 批（教主立牌 / 降神 · 狐光，2026-09-27）
+
+> **工作树**：`F:\MCProject\astral_dice_multiloader-next`（分支 `multi-dev-next`）。规格文档 = `docs/features/teru-sign-spec.md`（id 表 / 注册点 / 状态机 / 防刷守卫 / 生命周期 / 26.1.2 待迁移 / 验收）。
+> **范围**：发布线双版本（`neoforge-1.21.1` + `forge-1.20.1`）功能对等；`neoforge-26.1.2` **零改动**（只登记待迁移）。
+
+### 关键口径（实现按此，勿再改）
+
+1. **主动「降神」**：`TargetType.PLAYER` + **不实现 `SelfTargetable`** ⇒ 只能选**其它玩家**（排除生物与自身）。锁定目标 `⌊攻击力×0.5⌋` / `⌊防御力×0.5⌋` 给施法者（施法瞬间快照）；狐光攻击基数 `B = ⌊施法前施法者攻击力⌋ + ⌊目标攻击力×0.5⌋`；目标**每攻击一个新目标**消耗 1 层狐光并按 `B + 消耗后剩余层数` 追加**骰战攻击力**（层数 0 ⇒ 不消耗不加成；施法者离线 ⇒ 不加成不消耗）。
+2. **结束锚点 = 被指定目标自己的下一次骰神赐福结束**（下降沿状态机，与 `ZhaoSignItem#tickBlessing` 逐字同语义：施加时目标已在赐福 ⇒ `skip=1` 跳过当前这一次）。**生效中拒绝重复施放**：新增门控钩子 `BaseSignItem#canBeginSelectorSession`（缺省 `true`，只有 teru 覆写）⇒ 只提示、不开会话、不进冷却、不发牌、不充能。
+3. **真值归属**：降神 7 键**全在目标身上**（含状态机三键与「已攻击目标集」），施法者侧只有「层数 + 目标指针 + 攻击加成镜像缓存」⇒ 施法者死亡/登出**不影响**目标身上的降神，回来后由每 tick `resolveTarget` **自愈重建**；只有「目标效果结束 / 死亡 / 登出 / 重登」才真正移除（`endDescent` 唯一收敛点）。
+4. **防刷（2026-09-27 用户指令，两条守卫，缺一不可）**：
+   - ① **拾取不计层** —— `TeruSignItem` **刻意不订阅任何拾取事件**（源码里不出现 `ItemEntityPickupEvent` / `EntityItemPickupEvent` / `PlayerEvent.ItemPickupEvent`）⇒「丢弃→捡起」零收益；
+   - ② **装备计层按「历史同时装备水位」去重** —— `teru_equip_watermark`（只升不降、跨死亡保留）⇒「插入→卸除→再插入」零收益。**为什么不能用物品级标记**：`CardInventoryMenu#saveToDice` 只把卡牌写成 `AppliedStone(type,uses)` 并销毁物品栈，卸除时由 `loadFromDice` 经 `CardRegistry.typeToItem` **重建全新栈**，标记必被抹掉（见规格 §4.2）。
+5. **跨死亡保留**：`teru_huguang_layers` 与 `teru_equip_watermark` 在 1.21.1 为 `.copyOnDeath()`（该线 copyOnDeath 键 3 → **5**），在 1.20.1 已加入 `component/AstralData#onPlayerClone` 死亡白名单（3 → **5**）。
+6. **跨维度链接解析必须用** `getServer().getPlayerList().getPlayer(uuid)`，**不得**用 `level.getPlayerByUUID`（只查本维度 ⇒ 跨维度会误判"链接失效"并错误清零）。
+7. **1.20.1 每 tick 派发 START+END 两次** ⇒ `TeruSignItem#tick` 必须幂等（下降沿第一次调用即落 `prev=false`，第二次不再消费 `skip`）。
+8. **`consumeHuguangForNewTarget` 的自目标防护必须保留**（`if (victim == attacker) return 0`）：显示/快照路径（`DiceCombatModifiers#getDisplayAttackRange` 与 `TeruSignItem#attackPowerOf`）都以 `ctx.target == attacker` 复用同一套攻击修饰器链 ⇒ 少了这一行，「打开卡牌栏看一眼攻击力」或「施法瞬间快照」都会**误消耗 1 层狐光**并把施法者自己写进已攻击目标集。真实骰战链路 `target == player` 直接 return，故实战零影响。
+9. **每 tick 调用的代价已收敛**：`resolveTarget` 的"全服扫描自愈"只在「佩戴立牌 或 仍有攻击加成缓存」时发生（否则 N 个玩家 = 每 tick O(N²)）；`teru_prev_blessing` 等镜像写入一律**同值不写**（避免附件脏化）。
+
+### 状态（实现完成，待用户授权游戏内验证）
+
+| 项 | 状态 | 判据 |
+|---|---|---|
+| 1.21.1 实现 + 构建 + datagen | ✅ | `MT_BUILD: OK`；jar 含 3 新类 + 3 贴图 + 手册 + 模型 + 配方 |
+| 1.20.1 实现 + 构建 + datagen | ✅ | 同上（平台写法差异见规格 §2.2） |
+| 语言键 15 个 × 4 文件 | ✅ | `tools/check_lang_sync.ps1` 退出 0（三线各自「zh_cn ↔ en_us key 完全一致」） |
+| 文档 | ✅ | `docs/features/teru-sign-spec.md`、两份 CHANGELOG（各 +1 条，同一分类） |
+| **游戏内行为验证** | ⏳ **未做** | `scripts/test/cases` 已清零（0 文件）；**重建测试资产需用户单独授权**，恢复后必须补两条**防刷用例**（丢弃捡起重获层数不变 / 插入卸除循环层数不变）+ 结束锚点两分支 |
+| 顺带修复（**drive-by**） | ✅ | 本树两线 `build.gradle` 的 `exclude("src/generated/**/.cache")` 改为相对模式 `exclude("**/.cache")`（原写法永不命中 ⇒ 产物 jar 带 3 条 `.cache` 条目、本地与 CI 字节不一致）；修复后两线 `build/libs/*.jar` 的 `.cache` 条目 = **0** |
+| 26.1.2 迁移 | ⏳ 登记 | 该线**连 zhao 批次都还没迁**（`entries/signs` 17 vs 18）⇒ 迁移顺序必须「先补 zhao、再补 teru」；不得回移该线专有差异（如 `ItemTags.SPEARS`） |

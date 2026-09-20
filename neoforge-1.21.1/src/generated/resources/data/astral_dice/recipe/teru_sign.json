@@ -27,7 +27,7 @@
     "ZPZ"
   ],
   "result": {
-    "item": "astral_dice:zhao_sign"
-  },
-  "show_notification": true
+    "count": 1,
+    "id": "astral_dice:teru_sign"
+  }
 }

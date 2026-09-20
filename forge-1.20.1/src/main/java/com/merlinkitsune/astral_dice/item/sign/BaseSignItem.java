@@ -112,6 +112,10 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
         //     actionId 为 null 的立牌(其余全部立牌)不走本分支,下方原流程逐字不变。
         String gatedActionId = sign.selectorActionId();
         if (gatedActionId != null) {
+            // 2.4 「选择器类」立牌的**前置拒绝**钩子(2026-09-27 新增,为教主立牌「降神生效中不可重复施放」):
+            //     返回 false ⇒ 只发提示并立即返回 —— 不开选择会话、不发牌、不进冷却/锁定、不充能。
+            //     缺省实现恒为 true ⇒ 其余立牌走与原流程逐字相同的分支。
+            if (!sign.canBeginSelectorSession(player)) return;
             if (!(player instanceof net.minecraft.server.level.ServerPlayer serverPlayer)) return;
             if (com.merlinkitsune.astral_dice.target.TargetSelectionManager.start(serverPlayer, gatedActionId)) {
                 com.merlinkitsune.astral_dice.target.SignSelectionGate.arm(player, gatedActionId, stack);
@@ -160,6 +164,20 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
      */
     protected String selectorActionId() {
         return null;
+    }
+
+    /**
+     * 「选择器类」立牌开启选择会话前的**前置拒绝**钩子(缺省恒为 {@code true} = 照原流程开会话)。
+     *
+     * <p>返回 {@code false} 时 {@link #performSkill} 的 2.5 分支只负责提示并立即返回:
+     * 不开选择会话、不发牌、不进冷却/锁定、不充能 —— 即该次按键**等同未使用**
+     * (适用场景:教主立牌 {@code teru} 的「降神生效中不可重复施放」)。
+     *
+     * @param player 触发主动技能的玩家(服务端)
+     * @return true = 允许开启选择会话(缺省);false = 本次主动被拒绝
+     */
+    protected boolean canBeginSelectorSession(Player player) {
+        return true;
     }
 
     /**

@@ -45,6 +45,7 @@ import com.merlinkitsune.astral_dice.item.chip.BankCardChipItem;
 import com.merlinkitsune.astral_dice.item.sign.RinSignItem;
 import com.merlinkitsune.astral_dice.item.sign.RenSignItem;
 import com.merlinkitsune.astral_dice.item.sign.ZhaoSignItem;
+import com.merlinkitsune.astral_dice.item.sign.TeruSignItem;
 import com.merlinkitsune.astral_dice.item.card.FuCardItem;
 import com.merlinkitsune.astral_dice.item.card.HuoCardItem;
 import com.merlinkitsune.astral_dice.item.dice.DiceTierRegistry;
@@ -894,6 +895,15 @@ public class ModItems {
     // 传奇品质 = Rarity.UNCOMMON(本模组「金=传奇」映射,见本类顶部的稀有度标准)。
     public static final DeferredItem<Item> ZHAO_SIGN = registerItem("zhao_sign",
             () -> new ZhaoSignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.UNCOMMON)));
+
+    // 教主立牌(命名:teru,传奇):被动「狐光」(层数资源;合成/获得/装备攻击牌 +1 层,带防刷守卫)
+    // + 主动「降神」(目标选择器,只能选**其他玩家**:锁定目标 50% 攻防给自己,持续到目标下一次骰神赐福结束;
+    //   目标每攻击一个新目标消耗 1 层狐光,按「狐光攻击基数 + 剩余层数」追加骰战攻击力)。
+    // 传奇品质 = Rarity.UNCOMMON(本模组「金=传奇」映射,见本类顶部的稀有度标准)。
+    public static final DeferredItem<Item> TERU_SIGN = registerItem("teru_sign",
+            () -> new TeruSignItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(Rarity.UNCOMMON)));
 

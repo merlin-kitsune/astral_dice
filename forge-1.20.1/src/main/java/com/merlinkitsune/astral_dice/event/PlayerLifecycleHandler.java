@@ -173,6 +173,9 @@ public class PlayerLifecycleHandler {
         //   ③ 状态机三键(玩家级 tick 每 tick 读取)+「厄运」计时器。
         // 厄运效果同样移除(其真值"持有张数"不在触发死亡时清空,重登时由 tick 重新镜像)。
         com.merlinkitsune.astral_dice.item.sign.ZhaoSignItem.onOwnerDeathCleanup(player);
+        // 教主立牌「降神」:与 DICE_BLESSING **同段**清理 —— 本人是降神目标 ⇒ 结束降神;本人是施法者 ⇒
+        // 派生值清零。狐光层数与装备水位经 AstralData#onPlayerClone 白名单跨死亡保留。
+        com.merlinkitsune.astral_dice.item.sign.TeruSignItem.onOwnerDeathCleanup(player);
         player.removeEffect(ModEffects.INVESTIGATION_BONUS.get());
         player.removeEffect(ModEffects.FATE_GUIDANCE.get());
         player.removeEffect(ModEffects.FEN_FRENZY.get());
@@ -207,6 +210,8 @@ public class PlayerLifecycleHandler {
         // 风水师立牌「白泽赐福」(规格 §4.7):与骰神赐福同口径"不跨会话残留" —— 移除效果实例 + 复位
         // active/prev(防止重登被误判为一次赐福结束)+ 回收溢出治疗转化的攻击力(否则无赐福仍吃加成)。
         com.merlinkitsune.astral_dice.item.sign.ZhaoSignItem.onOwnerRelogin(player);
+        // 教主立牌「降神」:目标重登 ⇒ 不跨会话残留(与白泽赐福同口径);施法者重登 ⇒ 保留并重建链接与镜像缓存。
+        com.merlinkitsune.astral_dice.item.sign.TeruSignItem.onOwnerRelogin(player);
         // 重连后刷新治愈体系(上限收缩/效果显示;赐福边沿 prev 标记初始 false,不会误触发减半)
         HealingManager.tick(player);
         // 首次加入世界赠送《恋的规则书》(开关见 common 配置)

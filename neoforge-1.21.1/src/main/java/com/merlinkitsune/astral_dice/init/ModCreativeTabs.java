@@ -105,6 +105,7 @@ public class ModCreativeTabs {
                 output.accept(ModItems.BONNIE_SIGN.get());
                 output.accept(ModItems.FEN_SIGN.get());
                 output.accept(ModItems.ZHAO_SIGN.get());
+                output.accept(ModItems.TERU_SIGN.get());
                 // 专属符卡(风水师立牌专属:符卡-福 / 符卡-祸)
                 output.accept(ModItems.FU_CARD.get());
                 output.accept(ModItems.HUO_CARD.get());

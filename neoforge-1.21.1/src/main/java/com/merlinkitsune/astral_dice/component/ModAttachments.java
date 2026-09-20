@@ -1272,4 +1272,222 @@ public class ModAttachments {
     public static void setHuoCardNextDamageTick(net.minecraft.world.entity.player.Player player, long value) {
         player.setData(HUO_CARD_NEXT_DAMAGE_TICK.get(), Math.max(0L, value));
     }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    //  教主立牌(teru):主动「降神」+ 被动「狐光」(2026-09-27)
+    //
+    //  真值划分(见 docs/features/teru-sign-spec.md §2):
+    //  - 降神的状态**真值全部在「被指定目标」身上**(caster UUID + 三个快照值 + 状态机三键 + 已攻击目标集);
+    //  - 施法者侧只有「狐光层数」「当前目标指针」「攻击加成镜像缓存」三个派生/持有值
+    //    ⇒ 施法者死亡/重登后由玩家级 tick 从目标记录**自动重建**加成,只有「目标效果结束/目标死亡/目标登出」
+    //      才会真正移除(需求:「施法者的加成只能在目标效果结束时移除」);
+    //  - 施法者加成走派生缓存(而不是每次攻击扫描在线玩家),攻击修饰器只读一个整数。
+    //
+    //  全部键均**不 .sync()**:可见载体是效果实例(降神/狐光的图标由原版效果同步呈现),
+    //  其余值只在服务端 tick 与骰战链路读写(同 zhao_* 五键口径,见上行注释)。
+    // ══════════════════════════════════════════════════════════════════════════
+
+    /**
+     * 降神**施加者**的 UUID(挂在被指定目标身上)。
+     *
+     * <p><b>降神是否生效的唯一真值</b>:非空 ⇒ 生效中;清空 ⇒ 已结束。目标死亡/登出/重登一律走
+     * {@code item/sign/TeruSignItem#endDescent} 收敛(移除效果 + 清记录 + 清施法者缓存)。
+     */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Optional<UUID>>> TERU_DESCENT_CASTER =
+            ATTACHMENTS.register("teru_descent_caster", () -> AttachmentType.<Optional<UUID>>builder(Optional::empty)
+                    .serialize(UUIDUtil.CODEC.optionalFieldOf("id").codec())
+                    .build());
+
+    public static Optional<UUID> getTeruDescentCaster(net.minecraft.world.entity.player.Player player) {
+        return player.getData(TERU_DESCENT_CASTER.get());
+    }
+
+    public static void setTeruDescentCaster(net.minecraft.world.entity.player.Player player, Optional<UUID> value) {
+        player.setData(TERU_DESCENT_CASTER.get(), value);
+    }
+
+    /** 降神给施法者的**攻击力加成快照** = ⌊目标攻击力 × 50%⌋(施法瞬间锁定,后续目标成长不计入) */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> TERU_DESCENT_ATK_BONUS =
+            ATTACHMENTS.register("teru_descent_atk_bonus", () -> AttachmentType.builder(() -> 0)
+                    .serialize(Codec.INT)
+                    .build());
+
+    public static int getTeruDescentAtkBonus(net.minecraft.world.entity.player.Player player) {
+        return player.getData(TERU_DESCENT_ATK_BONUS.get());
+    }
+
+    public static void setTeruDescentAtkBonus(net.minecraft.world.entity.player.Player player, int value) {
+        player.setData(TERU_DESCENT_ATK_BONUS.get(), Math.max(0, value));
+    }
+
+    /** 降神给施法者的**防御力加成快照** = ⌊目标防御力 × 50%⌋(消费点 = setDefenseArmorBonus,1 防御 = 2 护甲) */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> TERU_DESCENT_DEF_BONUS =
+            ATTACHMENTS.register("teru_descent_def_bonus", () -> AttachmentType.builder(() -> 0)
+                    .serialize(Codec.INT)
+                    .build());
+
+    public static int getTeruDescentDefBonus(net.minecraft.world.entity.player.Player player) {
+        return player.getData(TERU_DESCENT_DEF_BONUS.get());
+    }
+
+    public static void setTeruDescentDefBonus(net.minecraft.world.entity.player.Player player, int value) {
+        player.setData(TERU_DESCENT_DEF_BONUS.get(), Math.max(0, value));
+    }
+
+    /**
+     * **狐光攻击基数** {@code B = ⌊施法前施法者攻击力⌋ + ⌊目标攻击力 × 50%⌋}(施法瞬间快照)。
+     *
+     * <p>目标攻击新目标时的额外攻击 = {@code B + 消耗 1 层后剩余狐光层数},作为骰战**攻击力**加算。
+     */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> TERU_DESCENT_ATTACK_BASE =
+            ATTACHMENTS.register("teru_descent_attack_base", () -> AttachmentType.builder(() -> 0)
+                    .serialize(Codec.INT)
+                    .build());
+
+    public static int getTeruDescentAttackBase(net.minecraft.world.entity.player.Player player) {
+        return player.getData(TERU_DESCENT_ATTACK_BASE.get());
+    }
+
+    public static void setTeruDescentAttackBase(net.minecraft.world.entity.player.Player player, int value) {
+        player.setData(TERU_DESCENT_ATTACK_BASE.get(), Math.max(0, value));
+    }
+
+    /**
+     * 降神待跳过的**骰神赐福结束次数**(0/1;挂在被指定目标身上,语义与 {@link #ZHAO_BLESSING_SKIP_CYCLES} 逐字相同):
+     * 施法时目标已在骰神赐福 ⇒ 1(跳过当前这次,等下一次结束才移除);否则 0。
+     */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> TERU_DESCENT_SKIP_CYCLES =
+            ATTACHMENTS.register("teru_descent_skip_cycles", () -> AttachmentType.builder(() -> 0)
+                    .serialize(Codec.INT)
+                    .build());
+
+    public static int getTeruDescentSkipCycles(net.minecraft.world.entity.player.Player player) {
+        return player.getData(TERU_DESCENT_SKIP_CYCLES.get());
+    }
+
+    public static void setTeruDescentSkipCycles(net.minecraft.world.entity.player.Player player, int value) {
+        player.setData(TERU_DESCENT_SKIP_CYCLES.get(), Math.max(0, value));
+    }
+
+    /**
+     * **上一 tick**被指定目标是否处于骰神赐福(下降沿检测专用;挂在目标身上)。
+     *
+     * <p>为什么不用 {@code MobEffectEvent.Expired}:该事件在外力移除/死亡/重连清场时不触发
+     * (先例 {@code item/HealingManager} 已写明),下降沿把两条结束路径统一且不会重复消费跳过计数。
+     */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Boolean>> TERU_PREV_BLESSING =
+            ATTACHMENTS.register("teru_prev_blessing", () -> AttachmentType.builder(() -> false)
+                    .serialize(Codec.BOOL)
+                    .build());
+
+    public static boolean isTeruPrevBlessing(net.minecraft.world.entity.player.Player player) {
+        return player.getData(TERU_PREV_BLESSING.get());
+    }
+
+    public static void setTeruPrevBlessing(net.minecraft.world.entity.player.Player player, boolean value) {
+        player.setData(TERU_PREV_BLESSING.get(), value);
+    }
+
+    /**
+     * **本次降神期间已被该目标攻击过的目标 UUID 集**(逗号分隔;效果结束时清空)。
+     *
+     * <p>「攻击一个新目标」= 该 UUID 不在本集中;首次命中即登记并消耗 1 层狐光。
+     * 写法沿用 {@link #FLASHLIGHT_GRANTED_TARGETS} 的字符串集口径。
+     */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<String>> TERU_DESCENT_NEW_TARGETS =
+            ATTACHMENTS.register("teru_descent_new_targets", () -> AttachmentType.builder(() -> "")
+                    .serialize(Codec.STRING)
+                    .build());
+
+    public static String getTeruDescentNewTargets(net.minecraft.world.entity.player.Player player) {
+        return player.getData(TERU_DESCENT_NEW_TARGETS.get());
+    }
+
+    public static void setTeruDescentNewTargets(net.minecraft.world.entity.player.Player player, String value) {
+        player.setData(TERU_DESCENT_NEW_TARGETS.get(), value == null ? "" : value);
+    }
+
+    /**
+     * 狐光层数(0..{@code TeruSignItem.MAX_HUGUANG} = 20;持有者 = 施法者自身)。
+     *
+     * <p><b>为什么是第 4 个 {@code .copyOnDeath()} 键</b>:需求明确「狐光层数跨死亡/重登保留」;
+     * 而 1.21.1 的非 copyOnDeath 附件在重生后的**新实体**上回默认值
+     * (口径见 {@code event/PlayerLifecycleHandler} 的 S4-C6 注释)⇒ 不加这一条就会在死亡时静默清零。
+     */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> TERU_HUGUANG_LAYERS =
+            ATTACHMENTS.register("teru_huguang_layers", () -> AttachmentType.builder(() -> 0)
+                    .serialize(Codec.INT)
+                    .copyOnDeath()
+                    .build());
+
+    public static int getTeruHuguangLayers(net.minecraft.world.entity.player.Player player) {
+        return player.getData(TERU_HUGUANG_LAYERS.get());
+    }
+
+    public static void setTeruHuguangLayers(net.minecraft.world.entity.player.Player player, int value) {
+        player.setData(TERU_HUGUANG_LAYERS.get(), Math.max(0, value));
+    }
+
+    /**
+     * 施法者侧**当前降神目标**指针(拒绝重复施放的判据;失效可由玩家级 tick 自愈重建)。
+     *
+     * <p>注意:真正生效判据仍是「目标身上 {@link #TERU_DESCENT_CASTER} == 我」——本键只是指针缓存,
+     * 找不到目标时扫描在线玩家(reason: 施法者死亡/重登会丢失本键,而目标记录仍在)。
+     */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Optional<UUID>>> TERU_DESCENT_TARGET =
+            ATTACHMENTS.register("teru_descent_target", () -> AttachmentType.<Optional<UUID>>builder(Optional::empty)
+                    .serialize(UUIDUtil.CODEC.optionalFieldOf("id").codec())
+                    .build());
+
+    public static Optional<UUID> getTeruDescentTarget(net.minecraft.world.entity.player.Player player) {
+        return player.getData(TERU_DESCENT_TARGET.get());
+    }
+
+    public static void setTeruDescentTarget(net.minecraft.world.entity.player.Player player, Optional<UUID> value) {
+        player.setData(TERU_DESCENT_TARGET.get(), value);
+    }
+
+    /**
+     * 施法者侧**攻击力加成镜像缓存**(每 tick 由目标记录派生写入;攻击修饰器唯一读取方)。
+     *
+     * <p>派生而非独立真值:目标记录消失(效果结束/目标死亡/登出)时同 tick 归 0,
+     * 因此不存在「效果已结束却仍吃加成」的残留。
+     */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> TERU_ATK_BONUS_CACHE =
+            ATTACHMENTS.register("teru_atk_bonus_cache", () -> AttachmentType.builder(() -> 0)
+                    .serialize(Codec.INT)
+                    .build());
+
+    public static int getTeruAtkBonusCache(net.minecraft.world.entity.player.Player player) {
+        return player.getData(TERU_ATK_BONUS_CACHE.get());
+    }
+
+    public static void setTeruAtkBonusCache(net.minecraft.world.entity.player.Player player, int value) {
+        player.setData(TERU_ATK_BONUS_CACHE.get(), Math.max(0, value));
+    }
+
+    /**
+     * **装备计层防刷水位**(挂在**行为者**身上):`类型=历史最大同时装备张数;…`(只升不降)。
+     *
+     * <p>为什么去重必须落在玩家侧、而不是卡牌物品上的标记:{@code screen/CardInventoryMenu} 的
+     * {@code saveToDice} 只把卡牌写成 {@code AppliedStone(type, uses)} 并**销毁物品栈**,
+     * 再次打开卡牌栏由 {@code loadFromDice} 经 {@code CardRegistry.typeToItem} **重建全新 ItemStack**
+     * ⇒ 任何物品级标记都会被这一轮销毁+重建抹掉,只有玩家侧持久水位能跨「插入→卸除→再插入」存活。
+     *
+     * <p><b>为什么也 {@code .copyOnDeath()}</b>:水位若在死亡时归 0,玩家就能靠「死一次 → 再装备一次」
+     * 刷层(每次死亡后可重新领取同装备张数的一份),故与 {@link #TERU_HUGUANG_LAYERS} 同口径跨死亡保留。
+     */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<String>> TERU_EQUIP_WATERMARK =
+            ATTACHMENTS.register("teru_equip_watermark", () -> AttachmentType.builder(() -> "")
+                    .serialize(Codec.STRING)
+                    .copyOnDeath()
+                    .build());
+
+    public static String getTeruEquipWatermark(net.minecraft.world.entity.player.Player player) {
+        return player.getData(TERU_EQUIP_WATERMARK.get());
+    }
+
+    public static void setTeruEquipWatermark(net.minecraft.world.entity.player.Player player, String value) {
+        player.setData(TERU_EQUIP_WATERMARK.get(), value == null ? "" : value);
+    }
 }

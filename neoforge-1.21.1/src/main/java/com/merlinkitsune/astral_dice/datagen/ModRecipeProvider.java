@@ -1310,6 +1310,20 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('P', ModItems.GOLDEN_STAR_PLATE.get())
                 .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
                 .save(output);
+        // 教主立牌(teru,传奇):GCG/RER/ZPZ(G=金锭,C=指南针,E=空白立牌,R=红石块,
+        // Z=钻石骰子,P=黄金星盘);与「风水师立牌」同档同样式(钻石骰子 + 黄金星盘) → 传奇(UNCOMMON)
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.TERU_SIGN.get())
+                .pattern("GCG")
+                .pattern("RER")
+                .pattern("ZPZ")
+                .define('G', Items.GOLD_INGOT)
+                .define('C', Items.COMPASS)
+                .define('E', ModItems.BLANK_SIGN.get())
+                .define('R', Items.REDSTONE_BLOCK)
+                .define('Z', ModItems.DIAMOND_DICE.get())
+                .define('P', ModItems.GOLDEN_STAR_PLATE.get())
+                .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
+                .save(output);
         // 符卡-福 / 符卡-祸:**无配方**(专属牌,仅由风水师立牌的被动「福祸相倚」与主动「白泽赐福」
         // 及「心意相连」发放,与活体书页/命运的指引等专属牌同一口径:不进随机池、不进合成表)。
     }

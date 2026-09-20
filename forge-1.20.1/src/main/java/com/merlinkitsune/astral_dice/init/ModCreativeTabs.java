@@ -108,6 +108,7 @@ public class ModCreativeTabs {
                 output.accept(ModItems.BONNIE_SIGN.get());
                 output.accept(ModItems.FEN_SIGN.get());
                 output.accept(ModItems.ZHAO_SIGN.get());
+                output.accept(ModItems.TERU_SIGN.get());
                 // 筹码
                 // === 星光类 ===
                 output.accept(ModItems.FLASHLIGHT_CHIP.get());

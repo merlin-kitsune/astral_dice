@@ -147,6 +147,10 @@ public class PlayerTickEvents {
         // (不用 MobEffectEvent.Expired:该事件在外力移除/死亡/重连清场时不触发,会漏掉"赐福结束";
         //  下降沿把两条结束路径统一,且不会重复消费跳过计数 —— 见 ZhaoSignItem#tickBlessing)
         com.merlinkitsune.astral_dice.item.sign.ZhaoSignItem.tickBlessing(player);
+        // 教主立牌「降神 / 狐光」:**每 tick** 驱动 —— 施法者侧派生加成缓存与护甲折算、目标侧骰神赐福下降沿
+        // 状态机、狐光层数镜像为 HUD 效果(见 TeruSignItem#tick)。必须放在 tickCount % 20 早退之前:
+        // 下降沿检测一旦漏 tick 就会错过"赐福结束"这一拍。
+        com.merlinkitsune.astral_dice.item.sign.TeruSignItem.tick(player);
         if (player.tickCount % 20 != 0) return;
         // 赋能:每 0:30 减少 1 层(剩余 1 层时直接归 0)
         com.merlinkitsune.astral_dice.item.EmpowerManager.tick(player);
