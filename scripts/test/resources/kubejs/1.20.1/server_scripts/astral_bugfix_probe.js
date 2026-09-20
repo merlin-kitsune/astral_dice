@@ -5206,6 +5206,12 @@ function doChargeSet(ctx, tag, n) {
 //     /astralprobe terureg <tag>                         注册与冻结数值读数(物品/标签/效果/常量)
 //     /astralprobe terucast <tag>                        主动门控与目标校验(自身/生物必须被拒)
 //     /astralprobe terucastfake <tag>                    对 FakePlayer 走**真实施法**:快照 50% 与 +3 层
+//     /astralprobe terubot <tag> <name>                  只读:真实玩家(Carpet `/player` bot)是否在线 + 身份读数
+//     /astralprobe teruequipbot <tag> <name>             给真实玩家(bot)装骰子(curios dice 槽;骰战链硬前提)
+//     /astralprobe terublessreal <tag> <give|clear> <name>  给/撤真实玩家(bot)的骰神赐福(骰战链硬前提)
+//     /astralprobe terucastreal <tag> <name>             真实施法指向**真实在线玩家**(Carpet bot):快照 + 双侧读数
+//     /astralprobe terureadreal <tag> <phase> <name>     跨 tick 读双侧(链接存续 / 目标离线后的同 tick 自愈)
+//     /astralprobe teruendreal <tag> <name>              endDescent(真实目标)并立刻读双侧归零
 //     /astralprobe terulink <tag> <atk> <def> <base> <skip> <blessed> <layers> <wm>
 //                                                        单人脚手架:把「自身」写成降神目标以驱动目标侧状态机
 //     /astralprobe terubless <tag> <give|clear>          骰神赐福 施加/移除(驱动下降沿)
@@ -5214,6 +5220,7 @@ function doChargeSet(ctx, tag, n) {
 //     /astralprobe teruguard <tag>                       自目标防护:显示/快照路径不得消耗狐光
 //     /astralprobe terudummy <tag> <d1|d2> <type> <dist> <hp>   摆一只高血量靶(句柄跨命令复用)
 //     /astralprobe teruhit <tag> <d1|d2> <times>         真实近战(骰战链):读层数消耗与追加伤害
+//     /astralprobe teruhitreal <tag> <d1|d2> <times> <name>   真实近战但**攻击者 = 真实玩家(bot)**
 //     /astralprobe terucard <tag> <attack|defense|other|attack_drop> <n>   发牌漏斗计层(含掉落不计)
 //     /astralprobe terudrop <tag>                        守卫①:地面攻击牌(拾取不计层)
 //     /astralprobe teruequip <tag> <first|unequip|again> 守卫②:真实卡牌栏 插入/卸除/再插入
@@ -5224,6 +5231,11 @@ function doChargeSet(ctx, tag, n) {
 //   ⚠️ FakePlayer **不在玩家列表**里 ⇒ 施法者侧指针的 tick 自愈解析必然失败(会被同 tick 清零):
 //      因此 terucastfake 的读数全部取在**施法同一次调用内**,随后调用 endDescent 收尾;
 //      「施法者侧加成随链接存续/失效」这条由 terulink(自身=目标,链接可解析)覆盖。
+//   ✅ **2026-09-27 起单人边界被 Carpet: NeoForged 打破**(用户要求向 1.21.1/1.20.1 测试端插入该模组):
+//      `/player <name> spawn` 造出的是**真 ServerPlayer**(在玩家列表里、参与 tick、可被选为目标、
+//      死亡走 disconnect) ⇒ `terucastreal/terureadreal/teruendreal/terubot` 用真目标覆盖:
+//      双人真实联动、跨 tick 链接存续、以及「目标离线 ⇒ 施法者侧同 tick 自愈归零」。
+//      用例:`cases/BOT-2P-<版本>.json`(bot 生命周期 + 上述四条);命令面见 AGENTS.md 的 Carpet 段。
 //   ⚠️ 参数里的 type 是 StringArg.string():用例里必须加引号。
 //   ⚠️ 改探针后必须**冷启动**(stop → launch):/kubejs reload server-scripts 不会重绑已注册命令。
 // ════════════════════════════════════════════════════════════════════════════
@@ -5664,6 +5676,245 @@ function doTeruCastFake(ctx, tag) {
 }
 
 /**
+ * 解析**真实在线玩家**（Carpet 的 `/player` bot 也是真 ServerPlayer ⇒ 同一入口）。
+ * 只用 PlayerList API；Rhino 下 `ServerPlayer#getUUID`/`getClass` 不可用（见本文件既有踩坑），
+ * 故不碰它们。取不到返回 null，由调用方给出可归因读数（**不**静默当成「没人」）。
+ */
+function teruFindPlayer(ctx, nameText) {
+    var p = ctx.source.getPlayerOrException();
+    var want = "" + nameText;
+    var list = null;
+    try { list = p.level.getServer().getPlayerList(); } catch (e0) { list = null; }
+    if (list == null) return null;
+    try {
+        var byName = list.getPlayerByName(want);
+        if (byName != null) return byName;
+    } catch (e1) { /* 退到遍历 */ }
+    try {
+        var all = list.getPlayers();
+        for (var i = 0; i < all.size(); i++) {
+            var q = all.get(i);
+            var qn = "";
+            try { qn = "" + q.getName().getString(); }
+            catch (e2) { try { qn = "" + q.getGameProfile().getName(); } catch (e3) { qn = ""; } }
+            if (qn === want) return q;
+        }
+    } catch (e4) { /* 忽略 */ }
+    return null;
+}
+
+/**
+ * 玩家身份读数（只读）：在线与否 / 名字 / 连接类型（Carpet bot?）/ 维度 / 坐标 / 血量 / 游戏模式
+ * + **在线名单**（用于断言「2 人及以上」的现场）。
+ * ⚠️ 判定 bot 用 `"" + target.connection`（toString 里含 `NetHandlerPlayServerFake`）——
+ *    Rhino 下 `obj.getClass()` 不可用（既有踩坑），toString 不抛且是稳定判据。
+ */
+function teruPlayerRead(ctx, target, wanted) {
+    var p = ctx.source.getPlayerOrException();
+    var listSize = -1, names = "-";
+    try {
+        var all = p.level.getServer().getPlayerList().getPlayers();
+        listSize = all.size();
+        var acc = "";
+        for (var i = 0; i < all.size(); i++) {
+            var q = all.get(i);
+            var qn = "";
+            try { qn = "" + q.getName().getString(); } catch (e1) { qn = "?"; }
+            acc = (i === 0) ? qn : (acc + "," + qn);
+        }
+        names = (acc === "") ? "-" : acc;
+    } catch (e2) { names = "?"; }
+
+    if (target == null) {
+        return "found=0:want=" + wanted + ":list=" + listSize + ":names=" + names;
+    }
+    var uuidInfo = playerUuid(target);
+    var conn = "";
+    try { conn = "" + target.connection; } catch (e3) { conn = "<err>"; }
+    var isBot = conn.indexOf("NetHandlerPlayServerFake") >= 0 ? 1 : 0;
+    var health = -1, pos = "-", dim = "-", mode = "-", name = "";
+    try { health = teruR1(target.getHealth()); } catch (e4) { health = -1; }
+    try { pos = teruR1(target.getX()) + "," + teruR1(target.getY()) + "," + teruR1(target.getZ()); }
+    catch (e5) { pos = "-"; }
+    try { dim = "" + target.level.dimension().location(); }
+    catch (e6) { try { dim = "" + target.level.dimension; } catch (e7) { dim = "-"; } }
+    try { mode = "" + target.gameMode.getGameModeForPlayer(); } catch (e8) { mode = "-"; }
+    try { name = "" + target.getName().getString(); } catch (e9) { name = wanted; }
+    return "found=1:want=" + wanted + ":name=" + name + ":bot=" + isBot
+        + ":conn=" + (isBot ? "fake" : "real") + ":uuid_src=" + uuidInfo.src
+        + ":health=" + health + ":pos=" + pos + ":dim=" + dim + ":mode=" + mode
+        + ":list=" + listSize + ":names=" + names;
+}
+
+/**
+ * **目标侧**读数（只读）：降神写在「那个玩家身上」的值与派生值。
+ * 单人环境的 FakePlayer 路径无法跨 tick（不在玩家列表），故这一组读数只有真实玩家/bot 才有意义。
+ */
+function teruTargetRead(t) {
+    var out = "t_target=" + (ModAttachments.getTeruDescentTarget(t).isPresent() ? 1 : 0)
+        + ":t_caster=" + (ModAttachments.getTeruDescentCaster(t).isPresent() ? 1 : 0);
+    try { out += ":t_atkbonus=" + ModAttachments.getTeruDescentAtkBonus(t); } catch (e1) { out += ":t_atkbonus=?"; }
+    try { out += ":t_defbonus=" + ModAttachments.getTeruDescentDefBonus(t); } catch (e2) { out += ":t_defbonus=?"; }
+    try { out += ":t_base=" + ModAttachments.getTeruDescentAttackBase(t); } catch (e3) { out += ":t_base=?"; }
+    try { out += ":t_skip=" + ModAttachments.getTeruDescentSkipCycles(t); } catch (e4) { out += ":t_skip=?"; }
+    try { out += ":t_prev=" + (ModAttachments.isTeruPrevBlessing(t) ? 1 : 0); } catch (e5) { out += ":t_prev=?"; }
+    try { out += ":t_newt=" + teruSetSize(ModAttachments.getTeruDescentNewTargets(t)); } catch (e6) { out += ":t_newt=?"; }
+    try { out += ":t_fx_d=" + teruFx(t, DESC_TERU_DESCENT) + ":t_fx_d_on=" + teruFxOn(t, DESC_TERU_DESCENT); }
+    catch (e7) { out += ":t_fx_d=?"; }
+    try { out += ":t_fx_h_on=" + teruFxOn(t, DESC_TERU_HUGUANG); } catch (e8) { out += ":t_fx_h_on=?"; }
+    try { out += ":t_bless=" + (t.hasEffect(teruBlessing()) ? 1 : 0); } catch (e9) { out += ":t_bless=?"; }
+    try { out += ":t_ap=" + TeruDiceCombatModifiersClass.attackPowerOf(t); } catch (e10) { out += ":t_ap=?"; }
+    try { out += ":t_dp=" + TeruDiceCombatModifiersClass.defensePowerOf(t); } catch (e11) { out += ":t_dp=?"; }
+    try { out += ":t_armor=" + t.getArmorValue(); } catch (e12) { out += ":t_armor=?"; }
+    try { out += ":t_health=" + teruR1(t.getHealth()); } catch (e13) { out += ":t_health=?"; }
+    return out;
+}
+
+/** 只读：解析真实玩家（Carpet bot）并给出身份读数 —— 断言「bot 在线／已退出」「在线人数」 */
+function doTeruBot(ctx, tag, nameText) {
+    var t = teruFindPlayer(ctx, nameText);
+    send(ctx, "AP_" + tag + "_BOT:" + teruPlayerRead(ctx, t, "" + nameText));
+    return 1;
+}
+
+/**
+ * 给指定真实玩家（bot）装骰子（curios 的 `dice` 槽）。
+ * 骰战链（含狐光追加攻击）的三条硬前提：**主手近战武器**（用例用 `/item replace` 给）、
+ * **骰神赐福**（`terublessreal`）、**骰子**（本命令）—— 缺骰子时 `DiceCombatEvents` 在
+ * `diceStack == null` 处直接 return，额外攻击永远不会被消费（读数为「没反应」的假阴性）。
+ */
+function doTeruEquipBot(ctx, tag, nameText) {
+    var t = teruFindPlayer(ctx, nameText);
+    if (t == null) { send(ctx, "AP_" + tag + "_ERR:no_player:" + nameText); return 1; }
+    var dice = resolveItem(TERU_DICE_ID);
+    if (dice == null) { send(ctx, "AP_" + tag + "_ERR:no_item:" + TERU_DICE_ID); return 1; }
+    var err = "";
+    try { err = putInSlot(t, "dice", new ItemStack(dice), 0); } catch (e1) { err = exText(e1); }
+    if (err == null) err = "";
+    var hand = "-";
+    try { hand = itemIdOf(t.getMainHandItem()); } catch (e2) { hand = "?"; }
+    send(ctx, "AP_" + tag + "_EQUIPBOT:name=" + nameText + ":dice_ok=" + (err === "" ? 1 : 0)
+        + ":hand=" + hand + (err === "" ? "" : ":err=" + err));
+    return 1;
+}
+
+/**
+ * 给/撤指定真实玩家（bot）的**骰神赐福**（骰战链的硬前提之一）。
+ * `give` 用 6000 tick 的长时长：骰战链在攻击瞬间还会自动补一次**短时长**赐福
+ * （`DiceCombatEvents` 的 `!hasEffect` 分支），长时长可避免用例中途出现下降沿把降神提前收敛。
+ */
+function doTeruBlessReal(ctx, tag, mode, nameText) {
+    var t = teruFindPlayer(ctx, nameText);
+    if (t == null) { send(ctx, "AP_" + tag + "_ERR:no_player:" + nameText); return 1; }
+    var how = "clear";
+    if (("" + mode) === "give") {
+        try { t.addEffect(new MobEffectInstanceClass(teruBlessing(), 6000, 0, false, false, true)); how = "give"; }
+        catch (e1) { how = "give_ex:" + exText(e1); }
+    } else {
+        try { ModEffectRemoval.remove(t, teruBlessing()); } catch (e2) { how = "clear_ex:" + exText(e2); }
+    }
+    send(ctx, "AP_" + tag + "_BLESSREAL:" + how + ":" + teruTargetRead(t));
+    return 1;
+}
+
+/**
+ * **真实双人**施法：`castDescent(自身 → 指定真实玩家 / Carpet bot)`。
+ * 与 terucastfake 的关键差别：目标在**玩家列表**里 ⇒ 施法者侧指针的 tick 解析成功、降神**跨 tick 存续**
+ * ⇒ 本命令**不**在末尾 endDescent（收尾交给 teruendreal，或由用例杀掉 bot 触发「链接目标离线」自愈路径）。
+ */
+function doTeruCastReal(ctx, tag, nameText) {
+    var p = ctx.source.getPlayerOrException();
+    try { resetEffectCardCycle(p); } catch (e0) { /* 忽略 */ }
+    try { TargetSelectionManagerClass.cancelSessionForTests(p); } catch (e1) { /* 忽略 */ }
+    var t = teruFindPlayer(ctx, nameText);
+    if (t == null) { send(ctx, "AP_" + tag + "_ERR:no_player:" + nameText); return 1; }
+    teruClearState(p);
+    teruClearState(t);
+
+    var note = "";
+    try {
+        var Attrs = Java.loadClass("net.minecraft.world.entity.ai.attributes.Attributes");
+        var atk = t.getAttribute(Attrs.ATTACK_DAMAGE);
+        if (atk != null) atk.setBaseValue(20.0);
+        var arm = t.getAttribute(Attrs.ARMOR);
+        if (arm != null) arm.setBaseValue(20.0);
+        var tou = t.getAttribute(Attrs.ARMOR_TOUGHNESS);
+        if (tou != null) tou.setBaseValue(0.0);
+    } catch (e2) { note = note + "|attr:" + exText(e2); }
+
+    var aT = -1, dT = -1, aC = -1, armorBefore = -1;
+    try { aT = TeruDiceCombatModifiersClass.attackPowerOf(t); } catch (e3) { aT = -1; }
+    try { dT = TeruDiceCombatModifiersClass.defensePowerOf(t); } catch (e4) { dT = -1; }
+    try { aC = TeruDiceCombatModifiersClass.attackPowerOf(p); } catch (e5) { aC = -1; }
+    try { armorBefore = p.getArmorValue(); } catch (e6) { armorBefore = -1; }
+
+    var ok = -1;
+    try { ok = TeruSignItemClass.castDescent(p, t) ? 1 : 0; }
+    catch (e7) { ok = -2; note = note + "|cast:" + exText(e7); }
+
+    var bonusAtk = 0, bonusDef = 0, base = 0, layersAfter = 0, cache = 0, armorAfter = 0, newt = -1;
+    try { bonusAtk = ModAttachments.getTeruDescentAtkBonus(t); } catch (e8) { bonusAtk = -1; }
+    try { bonusDef = ModAttachments.getTeruDescentDefBonus(t); } catch (e9) { bonusDef = -1; }
+    try { base = ModAttachments.getTeruDescentAttackBase(t); } catch (e10) { base = -1; }
+    try { layersAfter = TeruSignItemClass.getLayers(p); } catch (e11) { layersAfter = -1; }
+    try { cache = ModAttachments.getTeruAtkBonusCache(p); } catch (e12) { cache = -1; }
+    try { armorAfter = p.getArmorValue(); } catch (e13) { armorAfter = -1; }
+    try { newt = teruSetSize(ModAttachments.getTeruDescentNewTargets(t)); } catch (e14) { newt = -1; }
+
+    var expAtk = Math.floor(aT * 0.5), expDef = Math.floor(dT * 0.5);
+    var expBase = Math.max(0, aC) + expAtk;
+    send(ctx, "AP_" + tag + "_CASTREAL:cast=" + ok + ":target=" + nameText
+        + ":A_t=" + aT + ":D_t=" + dT + ":A_c=" + aC
+        + ":bonus_atk=" + bonusAtk + ":bonus_def=" + bonusDef + ":base=" + base
+        + ":exp_atk=" + expAtk + ":exp_def=" + expDef + ":exp_base=" + expBase
+        + ":atk_ok=" + (bonusAtk === expAtk ? 1 : 0)
+        + ":def_ok=" + (bonusDef === expDef ? 1 : 0)
+        + ":base_ok=" + (base === expBase ? 1 : 0)
+        + ":layers=" + layersAfter + ":layers_ok=" + (layersAfter === 3 ? 1 : 0)
+        + ":cache=" + cache + ":cache_ok=" + (cache === expAtk ? 1 : 0)
+        + ":armor=" + armorBefore + ">" + armorAfter
+        + ":armor_ok=" + ((armorAfter - armorBefore) === (expDef * 2) ? 1 : 0)
+        + ":newt=" + newt
+        + (note === "" ? "" : ":note=" + note));
+    send(ctx, "AP_" + tag + "_CASTREAL_T:" + teruTargetRead(t));
+    send(ctx, "AP_" + tag + "_CASTREAL_BOT:" + teruPlayerRead(ctx, t, "" + nameText));
+    return 1;
+}
+
+/**
+ * 跨 tick 读双侧（只读）：施法者侧（链接是否存续 ⇒ cache / 护甲折算还在不在）+ 目标侧。
+ * **目标离线（bot 被 kill/登出）后 tickCasterSide 必须同 tick 自愈归零** —— 这一条正是单人环境
+ * （FakePlayer 不在玩家列表）无法覆盖的。
+ */
+function doTeruReadReal(ctx, tag, phase, nameText) {
+    var p = ctx.source.getPlayerOrException();
+    var t = teruFindPlayer(ctx, nameText);
+    send(ctx, "AP_" + tag + "_" + phase + ":" + teruStateRead(p));
+    if (t == null) {
+        send(ctx, "AP_" + tag + "_" + phase + "_T:found=0:want=" + nameText);
+    } else {
+        send(ctx, "AP_" + tag + "_" + phase + "_T:found=1:" + teruTargetRead(t));
+        send(ctx, "AP_" + tag + "_" + phase + "_BOT:" + teruPlayerRead(ctx, t, "" + nameText));
+    }
+    return 1;
+}
+
+/** 收尾：`endDescent(真实目标)` 并立刻读双侧归零（施法者在线 ⇒ 镜像缓存/护甲折算同 tick 清零） */
+function doTeruEndReal(ctx, tag, nameText) {
+    var p = ctx.source.getPlayerOrException();
+    var t = teruFindPlayer(ctx, nameText);
+    if (t == null) { send(ctx, "AP_" + tag + "_ERR:no_player:" + nameText); return 1; }
+    var err = "";
+    try { TeruSignItemClass.endDescent(t); } catch (e1) { err = exText(e1); }
+    send(ctx, "AP_" + tag + "_ENDREAL:called=" + (err === "" ? 1 : 0) + (err === "" ? "" : ":err=" + err));
+    send(ctx, "AP_" + tag + "_ENDREAL_C:" + teruStateRead(p));
+    send(ctx, "AP_" + tag + "_ENDREAL_T:" + teruTargetRead(t));
+    try { teruClearState(p); } catch (e2) { /* 忽略 */ }
+    try { teruClearState(t); } catch (e3) { /* 忽略 */ }
+    return 1;
+}
+
+/**
  * **单人脚手架**:把「自身」写成降神目标(施法者 = 自身),驱动目标侧状态机与骰战追加攻击。
  * 逐项与 castDescent 的写入口径一一对应(快照值由参数直接给定,故本命令不验证施法算术)。
  * @param wm 水位字符串(如 `medium=1`);`-` = 保持原值
@@ -5903,6 +6154,42 @@ function doTeruHit(ctx, tag, whichText, timesText) {
     }
     out = out + ":" + teruStateRead(p);
     send(ctx, "AP_" + tag + "_HIT:" + out);
+    return 1;
+}
+
+/**
+ * 真实近战,**攻击者 = 指定真实玩家（Carpet bot）** —— 用于「降神目标(被指定者)攻击**新目标** ⇒
+ * 消耗 1 层狐光 + 追加攻击力」的真实双人验证（单人脚手架里攻击者只能是施法者自身）。
+ * 复用 `meleeHit`（`Player#attack` ⇒ 与真人左键同源）；施法者侧层数由随后的 `terureadreal` 给出
+ * （本读数里的 state 属于**攻击者**，bot 没有教主立牌 ⇒ layers=0 是预期值）。
+ */
+function doTeruHitReal(ctx, tag, whichText, timesText, nameText) {
+    var t = teruFindPlayer(ctx, nameText);
+    if (t == null) { send(ctx, "AP_" + tag + "_ERR:no_player:" + nameText); return 1; }
+    var which = ("" + whichText) === "d2" ? "d2" : "d1";
+    var mob = (teruState == null) ? null : (which === "d2" ? teruState.d2 : teruState.d1);
+    if (mob == null) { send(ctx, "AP_" + tag + "_ERR:no_dummy:" + which); return 1; }
+    var times = teruInt(timesText, 1);
+    var alive = 0;
+    try { alive = mob.isAlive() ? 1 : 0; } catch (e0) { alive = -1; }
+    var out = "attacker=" + nameText + ":which=" + which + ":eid=" + mob.getId()
+        + ":type=" + typeIdOf(mob) + ":alive=" + alive
+        + ":hand=" + itemIdOf(t.getMainHandItem())
+        + ":t_newt0=" + teruSetSize(ModAttachments.getTeruDescentNewTargets(t));
+    for (var i = 0; i < times; i++) {
+        var hp0 = -1, hp1 = -1, dmg = -1, api = "-", err = "";
+        try { hp0 = mob.getHealth(); } catch (e1) { hp0 = -1; }
+        var r = null;
+        try { r = meleeHit(t, mob); } catch (e3) { err = exText(e3); }
+        try { hp1 = mob.getHealth(); } catch (e4) { hp1 = -1; }
+        if (r != null) { dmg = teruR1(r.dealt); api = "" + r.api; }
+        out = out + ":h" + i + "_hp=" + teruR1(hp0) + ">" + teruR1(hp1)
+            + ":h" + i + "_dmg=" + dmg + ":h" + i + "_api=" + api
+            + (err === "" ? "" : ":h" + i + "_err=" + err);
+    }
+    out = out + ":t_newt=" + teruSetSize(ModAttachments.getTeruDescentNewTargets(t))
+        + ":" + teruTargetRead(t);
+    send(ctx, "AP_" + tag + "_HITREAL:" + out);
     return 1;
 }
 
@@ -6603,6 +6890,52 @@ ServerEvents.commandRegistry(event => {
                     .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
                         return doTeruCastFake(ctx, StringArg.getString(ctx, "tag"));
                     }))))
+            .then(Commands.literal("terubot")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("name", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doTeruBot(ctx, StringArg.getString(ctx, "tag"),
+                                StringArg.getString(ctx, "name"));
+                        })))))
+            .then(Commands.literal("teruequipbot")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("name", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doTeruEquipBot(ctx, StringArg.getString(ctx, "tag"),
+                                StringArg.getString(ctx, "name"));
+                        })))))
+            .then(Commands.literal("terublessreal")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("mode", StringArg.word())
+                        .then(Commands.argument("name", StringArg.word())
+                            .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                                return doTeruBlessReal(ctx, StringArg.getString(ctx, "tag"),
+                                    StringArg.getString(ctx, "mode"),
+                                    StringArg.getString(ctx, "name"));
+                            }))))))
+            .then(Commands.literal("terucastreal")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("name", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doTeruCastReal(ctx, StringArg.getString(ctx, "tag"),
+                                StringArg.getString(ctx, "name"));
+                        })))))
+            .then(Commands.literal("terureadreal")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("phase", StringArg.word())
+                        .then(Commands.argument("name", StringArg.word())
+                            .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                                return doTeruReadReal(ctx, StringArg.getString(ctx, "tag"),
+                                    StringArg.getString(ctx, "phase"),
+                                    StringArg.getString(ctx, "name"));
+                            }))))))
+            .then(Commands.literal("teruendreal")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("name", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doTeruEndReal(ctx, StringArg.getString(ctx, "tag"),
+                                StringArg.getString(ctx, "name"));
+                        })))))
             .then(Commands.literal("terulink")
                 .then(Commands.argument("tag", StringArg.word())
                     .then(Commands.argument("atk", StringArg.word())
@@ -6671,6 +7004,17 @@ ServerEvents.commandRegistry(event => {
                                     StringArg.getString(ctx, "which"),
                                     StringArg.getString(ctx, "times"));
                             }))))))
+            .then(Commands.literal("teruhitreal")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("which", StringArg.word())
+                        .then(Commands.argument("times", StringArg.word())
+                            .then(Commands.argument("name", StringArg.word())
+                                .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                                    return doTeruHitReal(ctx, StringArg.getString(ctx, "tag"),
+                                        StringArg.getString(ctx, "which"),
+                                        StringArg.getString(ctx, "times"),
+                                        StringArg.getString(ctx, "name"));
+                                })))))))
             .then(Commands.literal("terucard")
                 .then(Commands.argument("tag", StringArg.word())
                     .then(Commands.argument("kind", StringArg.word())

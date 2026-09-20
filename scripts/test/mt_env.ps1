@@ -269,6 +269,40 @@ $script:SlimeGuardByVersion = @{
     '26.1.2' = $script:SlimeGuard2612
 }
 
+# ── Carpet: NeoForged（玩家 bot：`/player <name> spawn` / `/player <name> kill`）──────────
+# 用户要求（2026-09-27 原话）：「向 1.21.1 和 1.20.1 测试端插入 Carpet: NeoForged 模组（Fabric
+# Carpet 的 Forge/NeoForge 移植，https://github.com/chililisoup/neoforge-carpet）……在测试脚本中，
+# 插入 /player 命令用于创建玩家 bot，该 bot 可被用作测试 2 人及更多玩家的联动功能；使用 /kill
+# 命令击杀 bot 玩家可使其退出（建议阅读源代码以掌握该模组全部指令）。」
+# 用途：单人测试世界此前**没有第二名真实玩家** ⇒ teru 降神的「另一名玩家」只能用 FakePlayer/
+# 自身脚手架（见探针 teru 段注释）；Carpet 的 bot 是**真 ServerPlayer**（在玩家列表里、参与 tick、
+# 可被攻击/被选为目标、死亡走 disconnect），因此能覆盖「真实双人联动」「目标中途离线的链接自愈」。
+# 来源：**Modrinth Maven**（`maven.modrinth:neoforge-carpet:<versionId>`，project_id = XqqOkvZz），
+# 与渲染栈/史莱姆压制同规则（不走 CDN/GitHub 直链）。
+# 侧别：`environment = server_only_client_optional` ⇒ 专用服务器（生成世界）与客户端都可保留
+# （`/player` 是服务端命令，集成服务器必须装载；客户端侧只有 Carpet 的 GUI 可选）。文件名不含
+# imblocker/sodium/iris/embeddium/oculus 子串 ⇒ 不会被 `Invoke-MtEnvWorld` 的纯客户端移出名单误删。
+#
+# ⚠️ 两条线的**装配机制不同**，不要照抄同一套：
+#   · **1.21.1 → 本表**（放进 `run/1.21.1/mods`）：NeoForge 1.21.1 无 reobf，生产 jar 本身就是
+#     Mojmap 命名，dev run 可直接加载（与 ImmediatelyFast/FerriteCore/史莱姆压制同一机制）。
+#   · **1.20.1 → 故意不在本表**：Forge 1.20.1 的生产 jar 是 **SRG 字节码 + SRG refmap**，手工放进
+#     `run/1.20.1/mods` 既不会被重映射、refmap 也不会被改写（mixin 静默失效，见本仓既有取证：
+#     `NoSuchMethodError … Util.m_137583_()`）⇒ 改由 `forge-1.20.1/build.gradle` 的
+#     `modImplementation` 提供（MDG 解析期重映射，与 KubeJS/JEI/collective/superflat/FerriteCore
+#     同一机制）；再往 run/mods 放一份会被 FML 判「重复模组」。
+#   · **26.1.2 不使用本模组**（用户裁决 2026-09-27：「26.1.2 版本不使用该模组，Mojang 在高版本加入了
+#     可以创建 bot 的管理员指令，后续再进行学习」）⇒ 本表无该键 = `Install-MtCarpet` 走 SKIP 分支。
+$script:CarpetByVersion = @{
+    '1.21.1' = @(
+        @{ Name = 'neoforge-carpet-1.21.1-1.0.8+v251027.jar'
+           Coord = 'maven.modrinth:neoforge-carpet:lnOeoKcQ'
+           Url  = 'https://api.modrinth.com/maven/maven/modrinth/neoforge-carpet/lnOeoKcQ/neoforge-carpet-1.21.1-1.0.8%2Bv251027.jar'
+           Sha1 = 'fffcc899d13b25c808d4d906cafa41de8cffc861'
+           Size = 1498683 }
+    )
+}
+
 # Complementary Shaders - Unbound（用户指定用于光影兼容性测试）
 # `maven.modrinth:complementary-unbound:r5.9.3`；落位 `run/<版本>/shaderpacks/`，并在 Iris 配置里选中它。
 $script:ShaderPack2612 = @{
@@ -1308,6 +1342,52 @@ function Install-MtSlimeGuard {
     return 0
 }
 
+function Install-MtCarpet {
+    <#
+    .SYNOPSIS
+        把 Carpet: NeoForged（玩家 bot 模组）放进 `run/<版本>/mods`（幂等；1.20.1/26.1.2 走 SKIP 分支）。
+
+    .NOTES
+        · 用户要求见 `$script:CarpetByVersion` 的注释（`/player <name> spawn` 造 bot，用于 2 人及以上
+          联动的游戏内测试；`/player <name> kill` 或 `/kill <name>` 使其退出）；
+        · **1.21.1 → Modrinth Maven 下载**（NeoForge 1.21.1 无 reobf，生产 jar 即 Mojmap 命名）；
+        · **1.20.1 → SKIP + 清理历史副本**：改由 `forge-1.20.1/build.gradle` 的 modImplementation 提供
+          （生产 SRG jar + SRG refmap 必须经 MDG 重映射；手工放 run/mods 会静默失效）；
+        · **26.1.2 → SKIP**：用户裁决该线不使用 Carpet（Mojang 自带 bot 管理指令，后续再学）；
+        · 侧别 `server_only_client_optional` ⇒ 专用服务器生成世界时**保留**（不会被移出名单命中）。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][psobject]$Paths)
+
+    $specs = $script:CarpetByVersion[$Paths.version]
+    if (-not $specs -or @($specs).Count -eq 0) {
+        if ($Paths.version -eq '1.20.1') {
+            Write-MtLine 'MT_MODS: SKIP — 1.20.1 的 Carpet 由 build.gradle 的 modImplementation 提供（forge-carpet-1.20.1-1.0.8；生产 SRG jar + SRG refmap 必须经 MDG 重映射，手工放 run/mods 会让 mixin 静默失效）'
+            # 清理历史上被本函数下载进来的副本：classpath 上已由 Gradle 提供同一模组，
+            # run/mods 再放一份会被 FML 判「重复模组」而拒绝启动。
+            if (Test-Path -LiteralPath $Paths.mods_dir -PathType Container) {
+                foreach ($f in @(Get-ChildItem -LiteralPath $Paths.mods_dir -File -Filter 'forge-carpet-*' -ErrorAction SilentlyContinue)) {
+                    Remove-Item -LiteralPath $f.FullName -Force -ErrorAction SilentlyContinue
+                    if (-not (Test-Path -LiteralPath $f.FullName)) { Write-MtLine ("MT_MODS: 清理历史副本 {0}（改为 Gradle modImplementation 提供）" -f $f.Name) }
+                }
+            }
+        } elseif ($Paths.version -eq '26.1.2') {
+            Write-MtLine 'MT_MODS: SKIP — 26.1.2 不使用 Carpet（用户裁决：该线用 Mojang 自带 bot 管理指令，后续再学）'
+        }
+        return 0
+    }
+
+    $cache = Join-Path (Join-Path (Get-MtRoot) 'temp\probe_mods') $Paths.version
+    [void](New-Item -ItemType Directory -Force -Path $cache)
+    [void](New-Item -ItemType Directory -Force -Path $Paths.mods_dir)
+
+    $rc = Install-MtSpecList -Paths $Paths -Specs $specs -Cache $cache -Label 'Carpet 玩家 bot' -Prefixes @('neoforge-carpet-', 'forge-carpet-')
+    if ($rc -ne 0) { return $rc }
+    $names = @($specs | ForEach-Object { $_.Name }) -join ' / '
+    Write-MtLine ("MT_MODS: OK — Carpet(NeoForged) 就位（{0}）；`/player <name> spawn 建 bot、`/player <name> kill 或 `/kill <name> 使其退出" -f $names)
+    return 0
+}
+
 function Get-MtIrisConfigFile {
     <#
     .SYNOPSIS
@@ -1524,6 +1604,11 @@ function Invoke-MtEnvMods {
         # 优化类模组（2026-09-17 用户要求：ImmediatelyFast + ModernFix 兼容性验证）
         $rc = Install-MtPerfMods -Paths $p
         if ($rc -ne 0) { return $rc }
+        # Carpet：玩家 bot（2026-09-27 用户要求）。**26.1.2 走 SKIP 分支** —— 用户裁决该线不使用
+        # 本模组（Mojang 自带 bot 管理指令，后续再学）；这里显式调用只为在 env 日志里留一行可见的
+        # 「为什么不装」，避免后来者以为漏了。
+        $rc = Install-MtCarpet -Paths $p
+        if ($rc -ne 0) { return $rc }
         Write-MtLine 'MT_MODS: OK — 26.1.2 dev run：探针运行时 + Sodium/Iris + Complementary Unbound 光影(默认启用) + 超平坦史莱姆压制 + 优化模组(ImmediatelyFast/ModernFix/FerriteCore)'
         Write-MtLine 'MT_MODS: 注意 — Sodium/Iris/ImmediatelyFast 为纯客户端模组：`mt_env world` 起专用服务器会自动移出，但**两段式数据生成（runClientData/runServerData）前必须手动移出** run/26.1.2/mods（与探针运行时同规则）'
         [void](Invoke-MtPauseLockEnforce -Paths $p)
@@ -1548,6 +1633,10 @@ function Invoke-MtEnvMods {
         $rc = Install-MtSlimeGuard -Paths $p   # 该版本走 SKIP 分支，打印来源说明
         if ($rc -ne 0) { return $rc }
         $rc = Install-MtPerfMods -Paths $p
+        if ($rc -ne 0) { return $rc }
+        # Carpet：玩家 bot（2026-09-27 用户要求）。1.20.1 走 SKIP 分支 —— 由 build.gradle 的
+        # modImplementation 提供（生产 SRG jar 必须经 MDG 重映射），本调用只回显来源并清理历史副本。
+        $rc = Install-MtCarpet -Paths $p
         if ($rc -ne 0) { return $rc }
         Write-MtLine 'MT_MODS: OK — 1.20.1 渲染栈（Embeddium/Oculus）与 FerriteCore 由 build.gradle 的 modImplementation 提供、光影包与光影加载器配置已落位（2026-09-17 实测：EMBEDDIUM_LOADED/OCULUS_LOADED=true + `Using shaderpack: ComplementaryUnbound_r5.9.3.zip`）；生产环境目录已校验'
         [void](Invoke-MtPauseLockEnforce -Paths $p)
@@ -1590,6 +1679,11 @@ function Invoke-MtEnvMods {
     $rc = Install-MtSlimeGuard -Paths $p
     if ($rc -ne 0) { return $rc }
     $rc = Install-MtPerfMods -Paths $p
+    if ($rc -ne 0) { return $rc }
+    # Carpet：玩家 bot（2026-09-27 用户要求，`/player <name> spawn`；见 $script:CarpetByVersion）。
+    # 放在这里（复制循环之后）与其它「按族清理」的调用并列：前缀 neoforge-carpet- 不与整合包
+    # 文件名（sodium/iris/modernfix）相交，故无顺序依赖。
+    $rc = Install-MtCarpet -Paths $p
     if ($rc -ne 0) { return $rc }
     # 光影包 + Iris 默认启用（2026-09-17 用户要求「游戏环境缺少光影包，添加光影包并设置默认启用」）。
     # 1.21.1 的 Sodium/Iris 由上面的整合包复制提供，本调用只补「光影包 + 光影加载器配置（iris.properties / 1.20.1 为 oculus.properties）」。

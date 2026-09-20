@@ -608,6 +608,33 @@ if ($MyInvocation.InvocationName -ne '.') {
         if ($collective) { Write-MtInfo 'COLLECTIVE_LOADED=true' } else { Write-MtWarn 'COLLECTIVE_LOADED=false(Collective 前置缺失？史莱姆压制可能未生效)' }
     }
 
+    # ── Carpet: NeoForged（玩家 bot）硬闸门（2026-09-27 用户要求）──────────────────────────
+    # 用户原话：「向 1.21.1 和 1.20.1 测试端插入 Carpet: NeoForged 模组……在测试脚本中，插入
+    # /player 命令用于创建玩家 bot，该 bot 可被用作测试 2 人及更多玩家的联动功能；使用 /kill 命令
+    # 击杀 bot 玩家可使其退出」。⇒ 该模组是**双人联动用例的硬前提**：缺装载时 bot 建不出来，
+    # cases/BOT-2P-* 会整批失败（更糟的是「看起来只是用例写错」）。故与史莱姆压制同口径：**硬失败**，
+    # 唯一例外 = 显式 `MT_ALLOW_NO_CARPET=1`（对照实验，留 WARN 痕迹）。
+    # 判据 = `Test-MtModLoaded 'carpet'`（版本相关：NeoForge 读 latest.log 的 `(carpet)` 清单行，
+    # Forge 读 debug.log 的 `Found valid mod file … with {carpet} mods`）—— 只认清单行，
+    # 不认裸名字，避免把存档里 `carpet (version X -> MISSING)` 的缺失记录误判成已加载。
+    # 来源（两条线不同，见 mt_env 的 $script:CarpetByVersion）：
+    #   1.21.1 → Modrinth Maven 下载进 run/1.21.1/mods；
+    #   1.20.1 → forge-1.20.1/build.gradle 的 modImplementation（生产 SRG jar + SRG refmap 必须经
+    #            MDG 重映射；手工放 run/mods 会让 mixin 静默失效）。
+    # 26.1.2 **不使用**该模组（用户裁决：该线用 Mojang 自带 bot 管理指令，后续再学）⇒ 不设闸门。
+    if ($Version -ne '26.1.2') {
+        if (-not (Test-MtModLoaded 'carpet')) {
+            if ($env:MT_ALLOW_NO_CARPET -eq '1') {
+                Write-MtWarn 'CARPET_LOADED=false — 已按 MT_ALLOW_NO_CARPET=1 显式放行（对照实验用；此时 `/player` 不存在，双人联动用例不可跑）'
+            } else {
+                Write-MtErrLine ("MT_LAUNCH: ERROR — 未检测到 Carpet（玩家 bot 模组，测试环境硬性要求：`/player <name> spawn` 用于 2 人及以上联动用例）；先执行 pwsh -File scripts/test/mt_env.ps1 mods --version {0}（如确需对照实验，设 MT_ALLOW_NO_CARPET=1）" -f $Version)
+                exit $MT_EXIT_ERROR
+            }
+        } else {
+            Write-MtInfo 'CARPET_LOADED=true'
+        }
+    }
+
     # ── 禁用生物 AI 硬闸门（2026-09-18 用户裁决「测试流程未禁用生物 AI，这是严重失误」）────
     # 规则：测试环境**必须**禁用生物 AI。此前只有「进入世界后清场一次 + 探针靶子自设 noAi」，
     # 自然刷新的生物仍带 AI —— 会主动接近/攻击/推挤玩家、投掷弹射物、踩压力板、引爆苦力怕，
