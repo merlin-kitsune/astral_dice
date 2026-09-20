@@ -191,6 +191,14 @@ public class ModEffects {
             EFFECTS.register("teru_huguang", HuguangEffect::new);
 
     /**
+     * 「女王特权」(绿洲女王立牌 nardis 主动):**有限时长 3:00(3600 tick)** 的状态载体。
+     * 它同时是「临时牌是否仍在有效期」的**唯一真值**(玩家级 tick 自检:有临时牌但无本效果 ⇒ 清空),
+     * 并直接充当 HUD 计时器与图标(`showIcon=true`,图标 = 立牌贴图,见 {@link NardisPrivilegeEffect})。
+     */
+    public static final DeferredHolder<MobEffect, MobEffect> NARDIS_PRIVILEGE =
+            EFFECTS.register("nardis_privilege", NardisPrivilegeEffect::new);
+
+    /**
      * 本模组已注册的全部效果的**只读**视图(调试命令 {@code /astralparty cleareffect} 用)。
      *
      * <p>直接派生自 {@link #EFFECTS} 的注册条目视图——NeoForge 的 {@code getEntries()} 返回

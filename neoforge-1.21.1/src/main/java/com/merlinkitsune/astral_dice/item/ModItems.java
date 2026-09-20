@@ -46,6 +46,7 @@ import com.merlinkitsune.astral_dice.item.sign.RinSignItem;
 import com.merlinkitsune.astral_dice.item.sign.RenSignItem;
 import com.merlinkitsune.astral_dice.item.sign.ZhaoSignItem;
 import com.merlinkitsune.astral_dice.item.sign.TeruSignItem;
+import com.merlinkitsune.astral_dice.item.sign.NardisSignItem;
 import com.merlinkitsune.astral_dice.item.card.FuCardItem;
 import com.merlinkitsune.astral_dice.item.card.HuoCardItem;
 import com.merlinkitsune.astral_dice.item.dice.DiceTierRegistry;
@@ -906,6 +907,15 @@ public class ModItems {
             () -> new TeruSignItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(Rarity.UNCOMMON)));
+
+    // 绿洲女王立牌(命名:nardis,稀有):被动「威压」(每装配 1 张攻击牌攻击力 +1 / 每装配 1 张防御牌防御力 +1)
+    // + 主动「女王特权」(立即获得 3 张随机临时牌,有效期 3:00;临时牌只能装备与使用,
+    //   不可丢弃/不可放入其它容器,到期连同已装配的一并清除;效果 HUD 计时器图标 = 立牌贴图)。
+    // 稀有品质 = Rarity.RARE;配方 = 黄金骰子(无星盘)档(同史莱姆 lulu / 上班族 padman)。
+    public static final DeferredItem<Item> NARDIS_SIGN = registerItem("nardis_sign",
+            () -> new NardisSignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.RARE)));
 
     // 符卡-福(专属功能效果牌,风水师立牌专属):出牌数 +1;对玩家(不限队伍)或自身使用 ⇒ 恢复 2 点生命值。
     // 专属绑定:获得即绑定获得者(ModDataComponents.OWNER_UUID),他人无法使用。

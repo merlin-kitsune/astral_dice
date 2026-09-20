@@ -73,6 +73,20 @@ public class ModDataComponents {
                             .persistent(Codec.INT)
                             .networkSynchronized(ByteBufCodecs.INT));
 
+    /**
+     * 临时牌标记(绿洲女王 nardis 主动「女王特权」):带此组件的卡牌为「临时牌」——
+     * 只有 3:00 有效期、不可丢弃、不可移入其它容器、带附魔光效,效果结束即整体清空。
+     *
+     * <p>装备进骰子后**不会**丢失临时性:装配会销毁物品栈,标记改由
+     * {@link AppliedStone#temporary()} 承载,两者由 {@code screen/CardInventoryMenu} 双向透传
+     * (见 {@link AppliedStone} 的类注释)。
+     */
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<Boolean>> TEMPORARY_CARD =
+            DATA_COMPONENTS.registerComponentType("temporary_card",
+                    builder -> builder
+                            .persistent(Codec.BOOL)
+                            .networkSynchronized(ByteBufCodecs.BOOL));
+
     // 专属效果牌:获得者 UUID(空表示尚未绑定,首次使用时绑定)
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<Optional<UUID>>> OWNER_UUID =
             DATA_COMPONENTS.registerComponentType("owner_uuid",

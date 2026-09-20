@@ -1341,6 +1341,19 @@ public class ModTooltipHandler {
             }
             addSignCooldownRemaining(tooltip, event.getEntity() instanceof Player p ? p : null);
         }
+        // 绿洲女王立牌(nardis):主动「女王特权」(3:00 随机临时牌;只写冻结键
+        // tooltip.astral_dice.sign.nardis_active)+ 被动「威压」(每装备一张攻击牌攻击力 +1、
+        // 每装备一张防御牌防御力 +1;键 tooltip.astral_dice.sign.nardis_passive)。
+        // 两个键的文案在 lang 里是**静态文案**(无占位符)⇒ addSignLines 不传 args。
+        if (stack.is(ModItems.NARDIS_SIGN.get())) {
+            tooltip.add(Component.empty());
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "女王特权");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.nardis_active");
+            addSignPassiveTitle(tooltip, "威压");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.nardis_passive");
+            addSignCooldownRemaining(tooltip, event.getEntity() instanceof Player p ? p : null);
+        }
         // 符卡-福 / 符卡-祸(风水师立牌专属效果牌);键名 = 规格 §2.6 冻结值
         // (tooltip.astral_dice.fu_card / tooltip.astral_dice.huo_card)
         if (stack.is(ModItems.FU_CARD.get())) {

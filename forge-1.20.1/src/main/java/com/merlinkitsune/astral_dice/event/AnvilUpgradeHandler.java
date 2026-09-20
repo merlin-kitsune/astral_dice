@@ -132,6 +132,8 @@ public class AnvilUpgradeHandler {
                             enhancement.usedDefenseCost(),
                             GameplayConstants.cardCostForStar(enhancement.starLevel() + 1),
                             enhancement.starLevel() + 1,
+                            // ⚠️ appliedStones 必须**原样透传**(不重建):临时牌(绿洲女王 nardis)的
+                            // temporary 分量存在 AppliedStone 里,重建/拷贝时丢标记 = 该牌到期清不掉。
                             enhancement.appliedStones()
                     ));
             event.setOutput(output);

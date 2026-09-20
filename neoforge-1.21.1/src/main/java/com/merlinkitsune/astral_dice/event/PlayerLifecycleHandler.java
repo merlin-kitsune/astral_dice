@@ -99,6 +99,7 @@ import com.merlinkitsune.astral_dice.combat.DiceCombatContext;
 import com.merlinkitsune.astral_dice.damage.ModDamageTypes;
 import com.merlinkitsune.astral_dice.item.sign.FenSignItem;
 import com.merlinkitsune.astral_dice.item.card.EffectCardPeriod;
+import com.merlinkitsune.astral_dice.item.card.TemporaryCardUtil;
 import com.merlinkitsune.astral_dice.item.chip.BankCardUnlimitedChipItem;
 import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
 import com.merlinkitsune.astral_dice.item.chip.CursedSwordChipItem;
@@ -192,6 +193,19 @@ public class PlayerLifecycleHandler {
         player.removeEffect(ModEffects.FEN_FRENZY);
         player.removeEffect(ModEffects.PAPARA_BITE);
         player.removeEffect(ModEffects.MAGIC_TOME_COUNT);
+        // 绿洲女王立牌(nardis)「女王特权」:清空全部临时牌(物品栏 + 副手 + 骰子已装配的)。
+        // **时序结论(已实测,不必新增订阅)**:
+        //   · 本处理器订阅的是 LivingDeathEvent(优先级 LOWEST,只为晚于"保命方"的取消)——
+        //     而该事件在 NeoForge 侧于 **`ServerPlayer#die` 的第一行**抛出
+        //     (`CommonHooks.onLivingDeath`,实测 `ServerPlayer.java:687`),**远早于**
+        //     `dropAllDeathLoot`(实测 `ServerPlayer.java:725`);事件的全部处理器(含 LOWEST)
+        //     都在 `onLivingDeath` 返回之前跑完 ⇒ 挂在这里一定**早于掉落**。
+        //   · 因此**不需要**再新增一个默认优先级的 LivingDeathEvent 订阅(那只会是同一事件的第二份重复清理)。
+        //   · 死亡路径与玩家级 tick 自检都幂等(见 TemporaryCardUtil#purgeAll / #tick),重复调用无副作用。
+        TemporaryCardUtil.purgeAll(player);
+        // 效果实例本身也一并移除(状态迁移表「死亡 ⇒ 效果移除 + 清空」):宠物模式/规则保留效果时,
+        // 只清牌不清效果会留下「HUD 还在倒计时、牌却没了」的不一致状态。
+        player.removeEffect(ModEffects.NARDIS_PRIVILEGE);
     }
 
     // 死亡重生克隆:恢复"死亡保留"的数据(充能层数 + 调查员/忍者累计加成)。

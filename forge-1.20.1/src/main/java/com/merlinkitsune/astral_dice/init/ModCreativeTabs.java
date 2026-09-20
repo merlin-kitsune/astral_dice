@@ -94,6 +94,7 @@ public class ModCreativeTabs {
                 output.accept(ModItems.LULU_SIGN.get());
                 output.accept(ModItems.PADMAN_SIGN.get());
                 output.accept(ModItems.PANDAMAN_SIGN.get());
+                output.accept(ModItems.NARDIS_SIGN.get());
                 // 史诗 EPIC
                 output.accept(ModItems.KOMACHI_SIGN.get());
                 output.accept(ModItems.FANNY_SIGN.get());

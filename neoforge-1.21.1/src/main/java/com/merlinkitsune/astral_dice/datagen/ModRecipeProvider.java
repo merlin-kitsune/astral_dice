@@ -1324,6 +1324,20 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('P', ModItems.GOLDEN_STAR_PLATE.get())
                 .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
                 .save(output);
+        // 绿洲女王立牌(nardis,稀有):WYW/TET/TDT(W=凋灵骷髅头,Y=黄色染料,T=陶瓦,
+        // E=空白立牌,D=黄金骰子);「黄金骰子(无星盘)」档,材料与形状照上班族立牌 padman(:229-239)
+        // 同档同样式 → 稀有(RARE);立牌置中、骰子固定中下,无占位洞。
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.NARDIS_SIGN.get())
+                .pattern("WYW")
+                .pattern("TET")
+                .pattern("TDT")
+                .define('W', Items.WITHER_SKELETON_SKULL)
+                .define('Y', Items.YELLOW_DYE)
+                .define('T', Items.TERRACOTTA)
+                .define('E', ModItems.BLANK_SIGN.get())
+                .define('D', ModItems.GOLDEN_DICE.get())
+                .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
+                .save(output);
         // 符卡-福 / 符卡-祸:**无配方**(专属牌,仅由风水师立牌的被动「福祸相倚」与主动「白泽赐福」
         // 及「心意相连」发放,与活体书页/命运的指引等专属牌同一口径:不进随机池、不进合成表)。
     }

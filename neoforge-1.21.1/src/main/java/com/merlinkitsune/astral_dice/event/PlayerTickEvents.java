@@ -96,6 +96,7 @@ import com.merlinkitsune.astral_dice.combat.DiceCombatContext;
 import com.merlinkitsune.astral_dice.damage.ModDamageTypes;
 import com.merlinkitsune.astral_dice.item.sign.FenSignItem;
 import com.merlinkitsune.astral_dice.item.card.EffectCardPeriod;
+import com.merlinkitsune.astral_dice.item.card.TemporaryCardUtil;
 import com.merlinkitsune.astral_dice.item.chip.BankCardUnlimitedChipItem;
 import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
 import com.merlinkitsune.astral_dice.item.chip.CursedSwordChipItem;
@@ -151,6 +152,11 @@ public class PlayerTickEvents {
         // 状态机、狐光层数镜像为 HUD 效果(见 TeruSignItem#tick)。必须放在 tickCount % 20 早退之前:
         // 下降沿检测一旦漏 tick 就会错过"赐福结束"这一拍。
         com.merlinkitsune.astral_dice.item.sign.TeruSignItem.tick(player);
+        // 绿洲女王立牌(nardis)「女王特权」:临时牌自检(**幂等**)——真值 = 原生效果实例;
+        // 「身上/骰子里还有临时牌,但玩家已没有 nardis_privilege 效果」⇒ 清空全部临时牌
+        // (效果自然到期 / 被 /effect clear / 离线到期后重登 / 异常残留,四条路径都走这一条)。
+        // 必须放在 tickCount % 20 早退**之前**:漏 tick 就会让"效果已结束而临时牌还在"多挂一拍。
+        TemporaryCardUtil.tick(player);
         if (player.tickCount % 20 != 0) return;
         // 赋能:每 0:30 减少 1 层(剩余 1 层时直接归 0)
         com.merlinkitsune.astral_dice.item.EmpowerManager.tick(player);
