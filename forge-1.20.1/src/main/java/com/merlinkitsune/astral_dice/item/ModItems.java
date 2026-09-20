@@ -66,6 +66,7 @@ import com.merlinkitsune.astral_dice.item.card.HuoCardItem;
 import com.merlinkitsune.astral_dice.item.sign.ZhaoSignItem;
 import com.merlinkitsune.astral_dice.item.sign.TeruSignItem;
 import com.merlinkitsune.astral_dice.item.sign.NardisSignItem;
+import com.merlinkitsune.astral_dice.item.sign.MamushiSignItem;
 import com.merlinkitsune.astral_dice.item.chip.MotoHelmetChipItem;
 import com.merlinkitsune.astral_dice.item.chip.BoxingGlovesChipItem;
 import com.merlinkitsune.astral_dice.item.sign.BonnieSignItem;
@@ -914,6 +915,15 @@ public class ModItems {
             () -> new NardisSignItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(Rarity.RARE)));
+
+    // 蛟龙立牌(命名:mamushi,传奇):**技能(主动/被动)待用户裁决** —— 本批只落资产与注册,
+    // 物品类未覆写 handleUse ⇒ 主动暂无任何效果(契约兜底会打 WARN,见 MamushiSignItem 类 javadoc);
+    // 技能定稿后在此补技能注释并在物品类内实现。
+    // 传奇品质 = Rarity.UNCOMMON(本模组「金=传奇」映射);配方 = 钻石骰子 + 黄金星盘档(照大当家立牌 fen)。
+    public static final RegistryObject<Item> MAMUSHI_SIGN = registerItem("mamushi_sign",
+            () -> new MamushiSignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.UNCOMMON)));
 
     // 符卡-福(风水师立牌专属效果牌,传奇=UNCOMMON):目标选择器(任意玩家或自身)⇒ 目标治疗 2 点 + 本出牌轮出牌数 +1;
     // 专属绑定(仅获得者可用)。命名按用户裁决保持卡牌自身命名(fu_card)。

@@ -2,6 +2,9 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
+    "C": {
+      "item": "minecraft:cactus"
+    },
     "D": {
       "item": "astral_dice:golden_dice"
     },
@@ -11,15 +14,12 @@
     "T": {
       "item": "minecraft:terracotta"
     },
-    "W": {
-      "item": "minecraft:wither_skeleton_skull"
-    },
     "Y": {
       "item": "minecraft:yellow_dye"
     }
   },
   "pattern": [
-    "WYW",
+    "CYC",
     "TET",
     "TDT"
   ],

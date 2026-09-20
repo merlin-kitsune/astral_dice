@@ -1,0 +1,12 @@
+{
+  "name": "item.astral_dice.mamushi_sign",
+  "category": "astral_dice:signs",
+  "icon": "astral_dice:mamushi_sign",
+  "pages": [
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:mamushi_sign"
+    }
+  ],
+  "sortnum": 20
+}

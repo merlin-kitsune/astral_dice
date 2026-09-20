@@ -47,6 +47,7 @@ import com.merlinkitsune.astral_dice.item.sign.RenSignItem;
 import com.merlinkitsune.astral_dice.item.sign.ZhaoSignItem;
 import com.merlinkitsune.astral_dice.item.sign.TeruSignItem;
 import com.merlinkitsune.astral_dice.item.sign.NardisSignItem;
+import com.merlinkitsune.astral_dice.item.sign.MamushiSignItem;
 import com.merlinkitsune.astral_dice.item.card.FuCardItem;
 import com.merlinkitsune.astral_dice.item.card.HuoCardItem;
 import com.merlinkitsune.astral_dice.item.dice.DiceTierRegistry;
@@ -916,6 +917,15 @@ public class ModItems {
             () -> new NardisSignItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(Rarity.RARE)));
+
+    // 蛟龙立牌(命名:mamushi,传奇):**技能(主动/被动)待用户裁决** —— 本批只落资产与注册,
+    // 物品类未覆写 handleUse ⇒ 主动暂无任何效果(契约兜底会打 WARN,见 MamushiSignItem 类 javadoc);
+    // 技能定稿后在此补技能注释并在物品类内实现。
+    // 传奇品质 = Rarity.UNCOMMON(本模组「金=传奇」映射);配方 = 钻石骰子 + 黄金星盘档(照大当家立牌 fen)。
+    public static final DeferredItem<Item> MAMUSHI_SIGN = registerItem("mamushi_sign",
+            () -> new MamushiSignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.UNCOMMON)));
 
     // 符卡-福(专属功能效果牌,风水师立牌专属):出牌数 +1;对玩家(不限队伍)或自身使用 ⇒ 恢复 2 点生命值。
     // 专属绑定:获得即绑定获得者(ModDataComponents.OWNER_UUID),他人无法使用。

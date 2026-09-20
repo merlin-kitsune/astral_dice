@@ -11,11 +11,11 @@
     "G": {
       "item": "minecraft:gold_ingot"
     },
+    "L": {
+      "item": "minecraft:glowstone_dust"
+    },
     "P": {
       "item": "astral_dice:golden_star_plate"
-    },
-    "R": {
-      "item": "minecraft:redstone_block"
     },
     "Z": {
       "item": "astral_dice:diamond_dice"
@@ -23,7 +23,7 @@
   },
   "pattern": [
     "GCG",
-    "RER",
+    "LEL",
     "ZPZ"
   ],
   "result": {

@@ -15,7 +15,7 @@
     },
     "has_the_recipe": {
       "conditions": {
-        "recipe": "astral_dice:nardis_sign"
+        "recipe": "astral_dice:mamushi_sign"
       },
       "trigger": "minecraft:recipe_unlocked"
     }
@@ -28,7 +28,7 @@
   ],
   "rewards": {
     "recipes": [
-      "astral_dice:nardis_sign"
+      "astral_dice:mamushi_sign"
     ]
   },
   "sends_telemetry_event": false
