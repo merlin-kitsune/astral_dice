@@ -1,0 +1,183 @@
+{
+  "case_id": "LOCK-OFFLINE-RELOG-A-1.21.1",
+  "title": "立牌锁定「离线时钟漂移」修复 —— **跨重登持久化 A 相**：`sign_active_lock_last_seen` 必须是持久化的**陈值**。这是修复成立的**前提**：只有基准真的跨重登留存（而不是每次登录被重置成 0/当前刻），重登后的第一拍才能算出正确的离线 `gap` 并把锁定上界对称后移。A 相做三件事：① `signprep`+`signcast` 让 parunan 进入锁定态；② `signstate` 与 `/astralparty dump` 两条通道都读到`sign_active_lock_last_seen > 0`；③ `/save-all flush` 显式存档（`mt.ps1 --phase stop` 是**强杀不存档**）。⚠️ 本用例**必须**与 `LOCK-OFFLINE-RELOG-B-<版本>` 成对跑，中间手动 `stop`（**保留存档**）→ `launch`：   `launch → cases --case A → stop（不带 --purge-saves）→ launch → cases --case B`。   **不得**用 `mt.ps1 --case`（全流程）跑本用例 —— 全流程退出清理带 `--purge-saves`，会把刚存的档清掉。⚠️ dump 断言依赖产品在 `/astralparty dump` 的 SIGN 分组新增 `sign_active_lock_last_seen` 行（实现方已批准）。   落地前该断言会红；探针侧只读通道（`signstate` 的 `last_seen`）不依赖该行，可单独判读。",
+  "version": "1.21.1",
+  "target": {
+    "type": "feature",
+    "ref": "sign-active-lock-offline-clock-drift"
+  },
+  "on_fail": "keep_game_running",
+  "steps": [
+    {
+      "op": "note",
+      "text": "A 相：构造 parunan 锁定态 → 两条通道读 last_seen（须 > 0）→ 显式存档，交由 B 相跨重登复核。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode survival",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear @s",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe signreset RA0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe signprep RA1 \"astral_dice:parunan_sign\" 10",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe signcast RA2",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "note",
+      "text": "读通道①(探针只读):`signstate RA3 mark` —— 锁定中且 `last_seen > 0`(等于 beginActiveLock 落笔的那一拍)。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe signstate RA3 mark",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "note",
+      "text": "读通道②(产品诊断面):`dumpstate RA4` = `/astralparty dump` —— 断言 SIGN 分组含 `sign_active_lock_last_seen` 且非 0。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe dumpstate RA4",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "note",
+      "text": "显式存档:`--phase stop` 是强杀不存档,故必须先 `/save-all flush`(B 相才能读回同一份玩家数据)。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/save-all flush",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 2000
+    },
+    {
+      "op": "note",
+      "text": "A 相结束时**刻意保持锁定态**(不调 signreset):B 相要读回它。"
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_RA0_SIGNRESET:.*ls_wrote=0:ls_after=0:.*:sign=\\[\\]:lock=0:lock_end=0:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_RA1_SIGNPREP:sign=astral_dice:parunan_sign:sign_err=:stand=1:.*star=[1-9][0-9]*:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_RA2_SIGNCAST:sign_before=\\[\\]:.*:sign_after=\\[astral_dice:parunan_sign\\]:lock_after=1:lock_end=[1-9][0-9]*:grace_end=0:cd_after=0:gate_on=1:last_seen=[1-9][0-9]*:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_RA3_SIGNSTATE:mark=1:.*:sign=\\[astral_dice:parunan_sign\\]:lock=1:lock_end=[1-9][0-9]*:.*last_seen=[1-9][0-9]*:.*ls_api=accessor:getSignActiveLockLastSeen"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "APDUMP\\|HEAD\\|"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "APDUMP\\|SIGN\\|sign_active_lock_last_seen=[1-9][0-9]*"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "APDUMP\\|SIGN\\|sign_active_lock_sign=astral_dice:parunan_sign"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_[A-Z0-9]+_ERR"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_[A-Z0-9]+_EX:"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": ":err="
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "Unknown or incomplete command"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "redeclaration of var"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "ls_api=none"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_RA4_DUMP_ERR:"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "crash"
+    }
+  ],
+  "evidence": []
+}

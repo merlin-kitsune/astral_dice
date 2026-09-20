@@ -466,6 +466,26 @@ public class ModAttachments {
         SIGN_ACTIVE_LOCK_PLAYED.set(player, value);
     }
 
+    // 锁定态的"离线补偿基准":本方法最后一次见到该玩家的 gameTime(0 = 无锁定/宽限计时,不参与补偿)。
+    // 为什么需要它:两个时钟在多人服务器上不同步 —— 门控效果的剩余时长只在 LivingEntity#tickEffects
+    // 里递减(玩家离线期间**冻结**),而 SIGN_ACTIVE_LOCK_END / SIGN_ACTIVE_LOCK_GRACE_END 是**绝对
+    // gameTime**(服务器只要在跑就照常推进)⇒ 「离线时长 > 上界剩余」后重登会看到"上界已过而效果仍在",
+    // BaseSignItem#isSignActiveLocked 一过界即判未锁定 ⇒ 锁定被墙钟单方面提前结束。
+    // BaseSignItem#tickSignActiveLock 用本键算出两次结算之间错过的间隔 gap,把锁定自己的两个截止刻
+    // **整体后移** gap,使两个时钟对称(等效"离线期间锁定不走"),**不读任何效果实例**。
+    // 仅服务端使用(与上面 5 个锁定键同性质),故一律不 .sync()、不加入 SYNCED_KEYS;
+    // 未 .inMemory() ⇒ 落 AstralData 的 persistent compound,随玩家 NBT(players/<uuid>.dat)保存。
+    public static final AttachedDataKey<Long> SIGN_ACTIVE_LOCK_LAST_SEEN =
+            register(AttachedDataKey.builder("sign_active_lock_last_seen", Codec.LONG, () -> 0L).build());
+
+    public static long getSignActiveLockLastSeen(net.minecraft.world.entity.player.Player player) {
+        return SIGN_ACTIVE_LOCK_LAST_SEEN.get(player);
+    }
+
+    public static void setSignActiveLockLastSeen(net.minecraft.world.entity.player.Player player, long value) {
+        SIGN_ACTIVE_LOCK_LAST_SEEN.set(player, value);
+    }
+
     // 末影骰子:不死图腾效果冷却结束时刻(玩家级,0 表示未进入冷却)
     public static final AttachedDataKey<Long> ENDER_DIE_TOTEM_COOLDOWN_END =
             register(AttachedDataKey.builder("ender_die_totem_cooldown_end", Codec.LONG, () -> 0L).sync().build());

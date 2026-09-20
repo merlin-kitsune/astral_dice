@@ -1333,6 +1333,11 @@ function resetActiveLock(player) {
     ModAttachments.setSignActiveReductionPool(player, 0);
     ModAttachments.setSignActiveLockGraceEnd(player, 0);
     ModAttachments.setSignActiveLockPlayed(player, false);
+    // [SIGNLOCK-BASE-P1] 第 6 个键(2026-09-27 离线补偿):必须一并归零 ——
+    // 否则「合成脚手架」直接写 sign_active_lock_end(不经 beginActiveLock)时,上一用例留下的
+    // 陈值 lastSeen 会被下一拍当成一次离线 gap 误补偿,把上界凭空后移(假红/假绿)。
+    // 真实施放路径不受影响(beginActiveLock 必写 now;endLockAndStartCooldown 必清 0)。
+    ModAttachments.setSignActiveLockLastSeen(player, 0);
 }
 
 /** 当前锁定态标记("" = 未锁定) */
@@ -1406,6 +1411,9 @@ function doKomachiCast(ctx, tag) {
     // 宽限 1:00 到点(期内未出任何效果牌)⇒ 玩家级 tick 强制重置出牌状态并起主动冷却
     var now = nowTick(p);
     ModAttachments.setSignActiveLockGraceEnd(p, (now > 1 ? now : 1) - 1);
+    // [SIGNLOCK-BASE-P2] 把宽限写进过去前,先刷新离线补偿基准(保持「没有离线」的语义);
+    // 真实离线补偿路径不经过本脚手架,故不改变被测语义。
+    ModAttachments.setSignActiveLockLastSeen(p, now > 1 ? now : 1);
     BaseSignItemClass.tickSignActiveLock(p);
     var cdAfterGrace = signCooldownRemaining(p);
     var lockAfterGrace = lockSignId(p);
@@ -3490,6 +3498,8 @@ function doGloveRound(ctx, tag) {
     ModAttachments.setSignActiveLockEnd(p, 0);
     ModAttachments.setSignActiveLockGraceEnd(p, (nowD > 1 ? nowD : 1) - 1);
     ModAttachments.setSignActiveLockPlayed(p, false);
+    // [SIGNLOCK-BASE-P3] 同上:合成锁定态的脚手架一并落笔补偿基准(见 resetActiveLock 注释)
+    ModAttachments.setSignActiveLockLastSeen(p, nowD > 1 ? nowD : 1);
     // 测试脚手架:`endLockAndStartCooldown` 的基准读 `sign_active_max_cooldown`
     // (= "本次冷却实际使用的最大冷却",正常由各立牌释放主动时写定,如忍者 180 秒)。
     // 本相位不调 performSkillForCurio,故显式写一个非 0 基准,让"强重置后**确实起了冷却**"
@@ -9447,6 +9457,10 @@ function doNardiLockBack(ctx, tag, modeText) {
     var wrote = -1, err = "";
     try { ModAttachments.setSignActiveLockEnd(p, past); wrote = past; }
     catch (e1) { err = domExText(e1); }
+    // 要求 2(2026-09-27):所有「直接把 sign_active_lock_end 写成合成值」的脚手架,都必须顺手把
+    // **离线补偿基准**写成本刻 —— 否则上一用例把 lastSeen 写到过去之后,本命令构造的锁定态会被
+    // 下一拍当成一次离线 gap 误补偿(把上界凭空后移 ⇒ 假红/假绿)。真实施放路径不受影响。
+    try { ModAttachments.setSignActiveLockLastSeen(p, now); } catch (e1b) { err = err + "|seen:" + domExText(e1b); }
     if (mode === "noeffect") {
         try { ModEffectRemoval.remove(p, domEffectHolder()); } catch (e2) { err = err + "|fx:" + domExText(e2); }
         try { NardisTemporaryCardUtilClass.tick(p); } catch (e3) { err = err + "|purge:" + domExText(e3); }
@@ -9501,6 +9515,685 @@ function doNardiClearAll(ctx, tag) {
         + (err === "" ? "" : ":err=" + err)
         + (invErr === "" ? "" : ":inv_err=" + invErr)
         + ":" + domStateRead(p));
+    return 1;
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+//  ⑬ 立牌锁定 · 离线时钟漂移补偿（signlag 套件）—— 2026-09-27 新增
+// ══════════════════════════════════════════════════════════════════════════
+//
+//  【本轮取证对象】产品侧「锁定态离线时钟漂移」修复:
+//    `sign_active_lock_end` / `sign_active_lock_grace_end` 是**绝对 gameTime**(离线照走),
+//    而门控效果的剩余时长**离线冻结** ⇒ 多人服务器上「离线时长 > 上界剩余」后重登,
+//    上界已过而效果仍在 ⇒ 锁定提前结束、主动技能提前可用(parunan 15 分钟村庄英雄最严重)。
+//    修法:新增**服务端专用、不同步**的玩家附件 `sign_active_lock_last_seen`,
+//    在 `tickSignActiveLock` **最前面**(早于锁定判定与任何早退)补偿:
+//      gap = now − last_seen;仅当 gap > 1 时把 lock_end 与 grace_end(各自 >0 时)都 += gap;
+//      随后把 last_seen 更新为 now(无锁定时置 0)。
+//    ⚠️ **不读任何效果实例**(避免把袭击给的村庄英雄/别人泼的虚弱误算成本技能计时器)、
+//    **不碰 `sign_active_cooldown_end`**(冷却照旧离线也流逝)、**无 per-sign 代码**。
+//
+//  【为什么写 / 为何 write 与 drive 必须在**同一次命令执行**内】
+//    真实玩家的 `PlayerTickEvents` 每个 game tick 都会调 `tickSignActiveLock`。
+//    若把「把 last_seen 写到过去」与「驱动 tick」拆成两条命令(相隔 ≥1 tick),
+//    中间那些**真实 tick** 会先把补偿吃干(并刷新 last_seen)⇒ 读数无法归因。
+//    ⇒ `signlag` 一律「写 → 驱动 → 读」压在一次执行里(服务端命令不与 tick 交错)。
+//
+//  【last_seen 附件访问:候选名自动绑定】
+//    本体实现落地前无法确定访问器命名,故按候选表**运行时探测**并缓存,读数里回显
+//    `ls_api=`(哪条绑上了),绑不上时 `ls_api=none` —— 用例据此**显式 FAIL**,而不是静默读到 -1。
+//      · 方案 A(访问器): `ModAttachments.get|setSignActiveLockLastSeen[(Tick)]`
+//      · 方案 B(附件常量): `ModAttachments.SIGN_ACTIVE_LOCK_LAST_SEEN[( _TICK)]` + `p.getData/setData`
+//    `ins` = 候选绑定失败的原因文本(便于直接定位是命名不符还是附件缺失)。
+//
+//  【判据标签 L1–L7 与本段命令的对应】
+//    L1 补偿生效      → `signlag <tag> 6000`          (lock_end_delta/grace_end_delta = 6000)
+//    L1b 阈值边界     → `signlag <tag> 1` / `signlag <tag> 2`   (gap==1 不补 / gap==2 补 2)
+//    L2 正常 tick 不动 → `signlag <tag> 1 triple`     (triple_stable=1)
+//    L3 同 tick 幂等   → `signlag <tag> 6000 double`  (idem=1)
+//    L4 不碰冷却      → 上述三条读数里的 `cd_unchanged=1`
+//    L5 锁定仍会结束   → `signend <tag>`(内部通道移除门控效果 + 驱动 tick)
+//    L6 忍者宽限同补偿 → `signprep … komachi_sign` → `signcast` → `signlag <tag> 6000`
+//                        (lock_end_delta=0 且 grace_end_delta=6000)
+//    L7 两线一致      → 两线跑同一用例后比对读数
+
+/** 星光管理器(parunan 主动的前置;类缺失时静默降级为 null,读数里以 -1 体现) */
+var SignLagStarLightClass = null;
+try { SignLagStarLightClass = Java.loadClass("com.merlinkitsune.astral_dice.item.StarLightManager"); }
+catch (eSl) { SignLagStarLightClass = null; }
+
+/** last_seen 附件绑定的候选名(先访问器、后附件常量) */
+var SIGNLAG_GETTERS = ["getSignActiveLockLastSeen", "getSignActiveLockLastSeenTick"];
+var SIGNLAG_SETTERS = ["setSignActiveLockLastSeen", "setSignActiveLockLastSeenTick"];
+var SIGNLAG_HOLDERS = ["SIGN_ACTIVE_LOCK_LAST_SEEN", "SIGN_ACTIVE_LOCK_LAST_SEEN_TICK"];
+/** 绑定结果缓存(整个脚本只探测一次) */
+var signLagBindCache = { tried: false, how: "none", get: "", set: "", holder: null, note: "", ins: "" };
+
+/**
+ * 探测 `sign_active_lock_last_seen` 的读写通道。
+ * 返回缓存对象:`how` ∈ `accessor:<名>` | `attachment:<常量名>` | `none`。
+ */
+function signLagBind() {
+    if (signLagBindCache.tried) return signLagBindCache;
+    signLagBindCache.tried = true;
+    // 方案 A:成对的 get/set 访问器
+    for (var i = 0; i < SIGNLAG_GETTERS.length; i++) {
+        var g = SIGNLAG_GETTERS[i], s = SIGNLAG_SETTERS[i];
+        var okG = false, okS = false;
+        try { okG = (typeof ModAttachments[g] === "function"); } catch (eG) { okG = false; }
+        try { okS = (typeof ModAttachments[s] === "function"); } catch (eS) { okS = false; }
+        if (okG && okS) {
+            signLagBindCache.how = "accessor:" + g;
+            signLagBindCache.get = g; signLagBindCache.set = s;
+            return signLagBindCache;
+        }
+        signLagBindCache.ins = signLagBindCache.ins + "|no:" + g;
+    }
+    // 方案 B:附件常量 + 通用 getData/setData(与产品内 `player.getData(XXX.get())` 同形)
+    for (var j = 0; j < SIGNLAG_HOLDERS.length; j++) {
+        var hn = SIGNLAG_HOLDERS[j];
+        try {
+            var holder = ModAttachments[hn];
+            if (holder != null) {
+                signLagBindCache.how = "attachment:" + hn;
+                signLagBindCache.holder = holder;
+                return signLagBindCache;
+            }
+        } catch (eH) { signLagBindCache.ins = signLagBindCache.ins + "|holder_ex:" + domExText(eH); }
+        signLagBindCache.ins = signLagBindCache.ins + "|no:" + hn;
+    }
+    signLagBindCache.how = "none";
+    return signLagBindCache;
+}
+
+/** `sign_active_lock_last_seen` 读(-1 = 读不到;绑定失败时把原因记进 note) */
+function domLastSeen(p) {
+    var b = signLagBind();
+    try {
+        if (b.how.indexOf("accessor:") === 0) return ModAttachments[b.get](p) - 0;
+        if (b.how.indexOf("attachment:") === 0) return p.getData(b.holder.get()) - 0;
+    } catch (e1) { signLagBindCache.note = domExText(e1); return -1; }
+    return -1;
+}
+
+/** `sign_active_lock_last_seen` 写(0 = 成功;-1 = 失败) */
+function domSetLastSeen(p, v) {
+    var b = signLagBind();
+    try {
+        if (b.how.indexOf("accessor:") === 0) { ModAttachments[b.set](p, v); return 0; }
+        if (b.how.indexOf("attachment:") === 0) { p.setData(b.holder.get(), v); return 0; }
+    } catch (e1) { signLagBindCache.note = domExText(e1); return -1; }
+    return -1;
+}
+
+/** 忍者宽限刻(`sign_active_lock_grace_end`;-1 = 读不到) */
+function domGraceEnd(p) {
+    return domNum(function () { return ModAttachments.getSignActiveLockGraceEnd(p); });
+}
+
+/** 锁定减免池(`sign_active_reduction_pool`) */
+function domReductionPool(p) {
+    return domNum(function () { return ModAttachments.getSignActiveReductionPool(p); });
+}
+
+/** 本次冷却基准(`sign_active_max_cooldown`) */
+function domMaxCooldown(p) {
+    return domNum(function () { return ModAttachments.getSignActiveMaxCooldown(p); });
+}
+
+/** 忍者「宽限期内出过效果牌」标记(`sign_active_lock_played`) */
+function domLockPlayed(p) {
+    return domBool(function () { return ModAttachments.getSignActiveLockPlayed(p) ? 1 : 0; });
+}
+
+/**
+ * 取一个 `MobEffects` 常量(**跨线命名安全**)。
+ * ⚠️ 两线共用同一份探针源,而原版效果常量在 1.20.5+ 有改名(`CONFUSION`→`NAUSEA`、
+ *    `DIG_SLOWDOWN`→`MINING_FATIGUE`)。本探针**不得**假定某个名字两线都存在:
+ *    取不到(抛错或 `null`)一律返回 `null`,由调用方过滤掉 ⇒ 表退化为「该效果不参与清理」,
+ *    绝不会让整条读数链因一个常量名而崩掉(与「新 jar 未落地时读数退化为 -1」同一策略)。
+ */
+function signLagHold(name) {
+    try {
+        var v = MobEffectsClass[name];
+        return (v == null) ? null : v;
+    } catch (e) { return null; }
+}
+
+/** 过滤掉取不到的 holder(保留顺序) */
+function signLagCompact(list) {
+    var out = [];
+    for (var i = 0; i < list.length; i++) { if (list[i] != null) out.push(list[i]); }
+    return out;
+}
+
+/**
+ * 各锁定类立牌的**门控效果**表(逐条读产品源码得来;探针侧脚手架,产品无此表)。
+ * 用途:`signend`(L5)走内部通道移除门控效果 ⇒ 下一拍锁定应结束;
+ *        `signcast` / `signstate` 的 `gate_on` 读数。
+ * ⚠️ 表是 `signId → 效果 holder 列表`;`komachi` 无门控效果(锁定只跟随出牌周期)。
+ *
+ * 来源(1.21.1):
+ *   parunan  ParunanSignItem.java:76-77   SATURATION / LUCK / HERO_OF_THE_VILLAGE
+ *   jasmine  JasmineSignItem.java:86      ModEffects.JASMINE_SWEEP
+ *   fen      FenSignItem.java:117         ModEffects.FEN_FRENZY
+ *   fanny    FannySignItem.java:101-105   12 个原版效果(再生/力量/迅捷/瞬间伤害/中毒/饥饿/反胃/凋零/黑暗/虚弱/挖掘疲劳/饱和)
+ *   misaki   MisakiSignItem.java:59       ModEffects.MISAKI_BURST
+ *   papara   PaparaSignItem.java:67       ModEffects.PAPARA_BITE
+ *   nancy_lu NancyLuSignItem.java:141     MobEffects.INVISIBILITY
+ *   komachi  —(无)
+ *
+ * ⚠️ **本用例只对 parunan / jasmine 实跑**;其余条目是「同一条共享代码路径」的登记,
+ *    表本身按产品源码逐条核对(行号如上),但**未经实机双验**(见用例说明的覆盖清单)。
+ *    fanny 的表项经 `signLagHold` 跨线安全取值(`CONFUSION`/`DIG_SLOWDOWN` 两线命名有别)。
+ */
+function signGateHolders(signId) {
+    var id = "" + signId;
+    try {
+        if (id === "astral_dice:parunan_sign") {
+            return signLagCompact([signLagHold("SATURATION"), signLagHold("LUCK"), signLagHold("HERO_OF_THE_VILLAGE")]);
+        }
+        if (id === "astral_dice:jasmine_sign") return [ModEffects.JASMINE_SWEEP];
+        if (id === "astral_dice:fen_sign") return [ModEffects.FEN_FRENZY];
+        if (id === "astral_dice:misaki_sign") return [ModEffects.MISAKI_BURST];
+        if (id === "astral_dice:papara_sign") return [ModEffects.PAPARA_BITE];
+        if (id === "astral_dice:nancy_lu_sign") return signLagCompact([signLagHold("INVISIBILITY")]);
+        if (id === "astral_dice:fanny_sign") {
+            return signLagCompact([signLagHold("REGENERATION"), signLagHold("DAMAGE_BOOST"),
+                signLagHold("MOVEMENT_SPEED"), signLagHold("HARM"), signLagHold("POISON"),
+                signLagHold("HUNGER"), signLagHold("CONFUSION"), signLagHold("WITHER"),
+                signLagHold("DARKNESS"), signLagHold("WEAKNESS"),
+                signLagHold("DIG_SLOWDOWN"), signLagHold("SATURATION")]);
+        }
+    } catch (eT) { return []; }
+    return [];   // komachi 与未登记立牌
+}
+
+/** 当前门控效果是否仍在(表内任一在册即为 1;表为空时返回 0 ⇒ 表外立牌不参与该读数) */
+function domGateOn(p, signId) {
+    var hs = signGateHolders(signId);
+    var n = 0;
+    for (var i = 0; i < hs.length; i++) {
+        try { if (p.hasEffect(hs[i])) n++; } catch (eH) { /* 忽略 */ }
+    }
+    return n > 0 ? 1 : 0;
+}
+
+/** 表内门控效果的「仍在」计数(用于 signend 后确认已清干净) */
+function domGateCount(p, signId) {
+    var hs = signGateHolders(signId);
+    var n = 0;
+    for (var i = 0; i < hs.length; i++) {
+        try { if (p.hasEffect(hs[i])) n++; } catch (eH) { /* 忽略 */ }
+    }
+    return n;
+}
+
+/**
+ * 走**内部通道**(`ModEffectRemoval`)移除某立牌的全部门控效果。
+ * ⚠️ 必须走内部通道:产品 `ModEffectEvents#onModEffectRemovalPrevented` 会拦掉一切**外部**
+ *    移除(`/effect clear` 对本模组效果无效,已实测);放行的只有内部移除 / EffectTimerGuard / 死亡。
+ * 返回「实际尝试移除的条数」;失败原因写进 `errOut`(对象,按引用回填)。
+ */
+function signClearGateEffects(p, signId, errOut) {
+    var hs = signGateHolders(signId);
+    var n = 0;
+    for (var i = 0; i < hs.length; i++) {
+        try { ModEffectRemoval.remove(p, hs[i]); n++; } catch (eR) { if (errOut) errOut.err = errOut.err + "|rm:" + domExText(eR); }
+    }
+    return n;
+}
+
+/** 清掉全部**已登记**立牌的门控效果(基线用:避免上一个立牌的效果让当前立牌误判为「仍在锁定」) */
+function signClearAllGateEffects(p) {
+    var ids = ["astral_dice:parunan_sign", "astral_dice:jasmine_sign", "astral_dice:fen_sign",
+        "astral_dice:fanny_sign", "astral_dice:misaki_sign", "astral_dice:papara_sign",
+        "astral_dice:nancy_lu_sign"];
+    var n = 0;
+    for (var i = 0; i < ids.length; i++) {
+        var hs = signGateHolders(ids[i]);
+        for (var j = 0; j < hs.length; j++) {
+            try { ModEffectRemoval.remove(p, hs[j]); n++; } catch (eA) { /* 忽略 */ }
+        }
+    }
+    return n;
+}
+
+/**
+ * 锁定态全量只读快照(**单行**,字段顺序固定;用例按子串断言)。
+ * 字段:`now,sign,lock,lock_end,grace_end,cd_end,max_cd,pool,played,gate_on,gate_n,last_seen,ls_api,stand`
+ */
+function domLockStateRead(p) {
+    var signId = domLockSign(p);
+    var stand = 0;
+    try { stand = domSignEquipped(p); } catch (eS) { stand = -1; }
+    return "now=" + (nowTick(p) - 0)
+        + ":sign=[" + signId + "]"
+        + ":lock=" + domBool(function () { return BaseSignItemClass.isSignActiveLocked(p); })
+        + ":lock_end=" + domNum(function () { return ModAttachments.getSignActiveLockEnd(p); })
+        + ":grace_end=" + domGraceEnd(p)
+        + ":cd_end=" + domNum(function () { return ModAttachments.getSignActiveCooldownEnd(p); })
+        + ":max_cd=" + domMaxCooldown(p)
+        + ":pool=" + domReductionPool(p)
+        + ":played=" + domLockPlayed(p)
+        + ":gate_on=" + domGateOn(p, signId)
+        + ":gate_n=" + domGateCount(p, signId)
+        + ":last_seen=" + domLastSeen(p)
+        + ":ls_api=" + signLagBind().how
+        + ":stand=" + stand;
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+//  signreset —— 锁定态归零(每条 L 组从同一基线起测)
+// ──────────────────────────────────────────────────────────────────────────
+/**
+ * 归零:stand 槽清空 + 出牌周期/主动冷却/全部锁定键归零(产品既有 5 键,经 `resetEffectCardCycle`)
+ * + `last_seen` 置 0(**与产品「无锁定时置 0」同口径**) + 清掉全部已登记立牌的门控效果。
+ * 读数:`gate_cleared,ls_wrote,ls_after,ls_api` + `domLockStateRead`。
+ */
+function doSignReset(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var err = "";
+    var lsWrote = -1, lsAfter = -1, gateCleared = 0;
+    try { clearCurioSlots(p, "stand"); } catch (e0) { err = err + "|stand:" + domExText(e0); }
+    try { resetEffectCardCycle(p); } catch (e1) { err = err + "|cycle:" + domExText(e1); }
+    gateCleared = signClearAllGateEffects(p);
+    lsWrote = domSetLastSeen(p, 0);
+    lsAfter = domLastSeen(p);
+    send(ctx, "AP_" + tag + "_SIGNRESET:gate_cleared=" + gateCleared
+        + ":ls_wrote=" + lsWrote + ":ls_after=" + lsAfter
+        + ":ls_api=" + signLagBind().how
+        + (signLagBind().ins === "" ? "" : ":ls_ins=" + signLagBind().ins)
+        + (signLagBind().note === "" ? "" : ":ls_note=" + signLagBind().note)
+        + (err === "" ? "" : ":err=" + err)
+        + ":" + domLockStateRead(p));
+    return 1;
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+//  signprep —— 装指定立牌 + 基线(按 **sign id 参数化**,无 per-sign 分支)
+// ──────────────────────────────────────────────────────────────────────────
+/**
+ * 基线:stand 槽清空 → 出牌周期/主动冷却/锁定键归零 → 清全部已登记门控效果 →
+ * `last_seen` 置 0 → 装**参数指定的**立牌 → 可选写星光(第 3 参)。
+ *
+ * 参数契约:`signprep <tag> <signId> [starlight]`
+ *   · `signId` 用 `StringArgumentType.string()`(含冒号 ⇒ 用例侧必须带引号);
+ *   · `starlight` 缺省 = 不写;给了数值就 `StarLightManager.set(p, n)` ——
+ *     这是为了 parunan(主动要求星光 > 0 才生效)**不把 per-sign 逻辑写进探针**:
+ *     前置条件由用例显式给,探针只提供通用的「写星光」能力。
+ * 读数:`sign,stand,gate_cleared,star,ls_api` + `domLockStateRead`。
+ */
+function doSignPrep(ctx, tag, signIdText, starText) {
+    var p = ctx.source.getPlayerOrException();
+    var signId = "" + signIdText;
+    var err = "";
+    try { clearCurioSlots(p, "stand"); } catch (e0) { err = err + "|stand:" + domExText(e0); }
+    try { resetEffectCardCycle(p); } catch (e1) { err = err + "|cycle:" + domExText(e1); }
+    var gateCleared = signClearAllGateEffects(p);
+    var lsWrote = domSetLastSeen(p, 0);
+    var signErr = "";
+    try { signErr = equipSign(p, signId); } catch (e2) { signErr = domExText(e2); }
+    var star = -1;
+    if (("" + starText) !== "") {
+        if (SignLagStarLightClass == null) { star = -2; }
+        else {
+            try { SignLagStarLightClass.set(p, starText - 0); star = SignLagStarLightClass.get(p) - 0; }
+            catch (e3) { star = -1; err = err + "|star:" + domExText(e3); }
+        }
+    }
+    var stand = -1;
+    try { stand = domSignEquipped(p); } catch (e4) { stand = -1; }
+    send(ctx, "AP_" + tag + "_SIGNPREP:sign=" + signId
+        + ":sign_err=" + (signErr === null ? "" : signErr)
+        + ":stand=" + stand
+        + ":gate_cleared=" + gateCleared
+        + ":star=" + star
+        + ":ls_wrote=" + lsWrote + ":ls_after=" + domLastSeen(p)
+        + ":ls_api=" + signLagBind().how
+        + (err === "" ? "" : ":err=" + err)
+        + ":" + domLockStateRead(p));
+    return 1;
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+//  signcast —— 走**真实主动路径**释放当前 stand 槽立牌的主动
+// ──────────────────────────────────────────────────────────────────────────
+/**
+ * 真实主动:`BaseSignItem.performSkillForCurio`(客户端按键的服务端同一入口;门控顺序 =
+ * 锁定态 → 冷却 → 选择会话 → 选择器门控)。本命令**不**做任何 per-sign 前置(由 `signprep` 备好)。
+ * 读数:`sign_before,cd_before,lock_before,gate_before,sign_after,lock_after,lock_end,grace_end,cd_end,
+ *       cd_started,gate_on,last_seen,err` + `domLockStateRead`。
+ */
+function doSignCast(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var sign0 = domLockSign(p);
+    var lock0 = domBool(function () { return BaseSignItemClass.isSignActiveLocked(p); });
+    var cd0 = domNum(function () { return ModAttachments.getSignActiveCooldownEnd(p); });
+    var gate0 = domGateOn(p, sign0);
+    var ls0 = domLastSeen(p);
+    var err = "";
+    try { BaseSignItemClass.performSkillForCurio(p); } catch (e1) { err = domExText(e1); }
+    var sign1 = domLockSign(p);
+    var lock1 = domBool(function () { return BaseSignItemClass.isSignActiveLocked(p); });
+    var cd1 = domNum(function () { return ModAttachments.getSignActiveCooldownEnd(p); });
+    var lockEnd = domNum(function () { return ModAttachments.getSignActiveLockEnd(p); });
+    var gateOn = domGateOn(p, sign1);
+    send(ctx, "AP_" + tag + "_SIGNCAST:sign_before=[" + sign0 + "]"
+        + ":lock_before=" + lock0 + ":cd_before=" + cd0 + ":gate_before=" + gate0
+        + ":sign_after=[" + sign1 + "]"
+        + ":lock_after=" + lock1
+        + ":lock_end=" + lockEnd
+        + ":grace_end=" + domGraceEnd(p)
+        + ":cd_after=" + cd1
+        + ":cd_started=" + ((cd1 > 0 && (nowTick(p) - 0) < cd1) ? 1 : 0)
+        + ":gate_on=" + gateOn
+        + ":last_seen_before=" + ls0 + ":last_seen=" + domLastSeen(p)
+        + ":ls_api=" + signLagBind().how
+        + (err === "" ? "" : ":err=" + err)
+        + ":" + domLockStateRead(p));
+    return 1;
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+//  signlag —— 离线时钟补偿的一键取证（L1 / L1b / L2 / L3 / L4）
+// ──────────────────────────────────────────────────────────────────────────
+/**
+ * **write → drive → read 压在一次执行内**(理由见段头「为什么」)。
+ *
+ * 参数契约:`signlag <tag> <ticks> [mode]`
+ *   · `ticks`  = 把 `last_seen` 写到 `max(1, now − ticks)`(ticks=0 ⇒ 写到 now,即「刚见过」);
+ *   · `mode`   = `once`(缺省,写 1 次 + 驱动 1 次)
+ *              | `double`(写 1 次 + 驱动 2 次,报 `idem`=第二拍是否与第一拍相同 ⇒ L3)
+ *              | `triple`(写 1 次 + 驱动 3 次,报 `triple_stable` ⇒ L2;配合 `ticks=0` 即
+ *                「基准刚被刷成 now ⇒ 连续三拍都不得移动」,**确定性**不依赖真实 tick 相位)
+ *              | `nowrite`(不写 + 驱动 1 次,纯自然拍快照;慎用:真实 tick 相位会让 gap ∈ {0,1})。
+ *
+ * 读数(字段顺序固定,不得重排):
+ *   `mode,ticks,sign,now,last_seen_before,wrote,gap,
+ *    lock_end_before,lock_end_mid,lock_end_after,lock_end_delta,
+ *    grace_end_before,grace_end_mid,grace_end_after,grace_end_delta,
+ *    cd_before,cd_after,cd_unchanged,
+ *    lock_before,lock_after,lock_sign_after,lock_sign_unchanged,
+ *    last_seen_after,delta_eq_gap,grace_delta_eq_gap,seen_refreshed,idem,triple_stable,drives,tick_ran,ls_api` + `domLockStateRead`
+ *
+ * `gap` = `now − wrote`(**与产品同式**,便于直接对照「仅当 gap > 1 才补偿」的阈值)。
+ * `delta_eq_gap` = 上界位移**恰好等于** gap(0/1,探针算);`seen_refreshed` = 驱动后基准已刷新成 `now`。
+ * 这两条是**跨重登取证**(RELOG-B:不写基准、直接驱动那一拍)的主判据 —— 断言层无算术能力。
+ */
+function doSignLag(ctx, tag, ticksText, modeText) {
+    var p = ctx.source.getPlayerOrException();
+    var mode = ("" + modeText) === "" ? "once" : ("" + modeText);
+    var ticks = ticksText - 0;
+    if (isNaN(ticks) || ticks < 0) ticks = 0;
+    var now = nowTick(p) - 0;
+    var sign0 = domLockSign(p);
+    var lsBefore = domLastSeen(p);
+    var lockEnd0 = domNum(function () { return ModAttachments.getSignActiveLockEnd(p); });
+    var grace0 = domGraceEnd(p);
+    var cd0 = domNum(function () { return ModAttachments.getSignActiveCooldownEnd(p); });
+    var lock0 = domBool(function () { return BaseSignItemClass.isSignActiveLocked(p); });
+    var err = "";
+    // ① 写 last_seen 到过去(仅 nowrite 不写;triple 配合 ticks=0 = 「刚见过」的确定性基准)
+    var wrote = lsBefore;
+    var doWrite = (mode !== "nowrite");
+    if (doWrite) {
+        var target = now - ticks;
+        if (target < 1) target = 1;
+        var w = domSetLastSeen(p, target);
+        if (w === 0) wrote = target; else err = err + "|write:" + (signLagBind().note === "" ? "fail" : signLagBind().note);
+    }
+    var lockEndMid = -1, graceMid = -1;
+    // ② 驱动产品 tick(与玩家 tick 事件调的是同一份代码)
+    var drives = 1, tickRan = 1;
+    if (mode === "double") drives = 2;
+    if (mode === "triple") drives = 3;
+    for (var d = 1; d <= drives; d++) {
+        try { BaseSignItemClass.tickSignActiveLock(p); }
+        catch (eT) { tickRan = 0; err = err + "|tick" + d + ":" + domExText(eT); }
+        if (d === 1) {
+            lockEndMid = domNum(function () { return ModAttachments.getSignActiveLockEnd(p); });
+            graceMid = domGraceEnd(p);
+        }
+    }
+    // ③ 读回
+    var lockEnd1 = domNum(function () { return ModAttachments.getSignActiveLockEnd(p); });
+    var grace1 = domGraceEnd(p);
+    var cd1 = domNum(function () { return ModAttachments.getSignActiveCooldownEnd(p); });
+    var lock1 = domBool(function () { return BaseSignItemClass.isSignActiveLocked(p); });
+    var sign1 = domLockSign(p);
+    var gap = now - wrote;
+    var lockDelta = ((lockEnd0 < 0 || lockEnd1 < 0) ? -999 : (lockEnd1 - lockEnd0));
+    var graceDelta = ((grace0 < 0 || grace1 < 0) ? -999 : (grace1 - grace0));
+    // 「补偿量 == gap」与「基准被刷新成 now」都由探针算成 0/1 标志(断言层无算术、正则也不能比较两行数值)。
+    // `delta_eq_gap` 是**跨重登取证**(RELOG-B:不写基准、直接驱动那一拍)的主判据。
+    var deltaEqGap = ((lockEnd0 > 0 && gap > 1 && lockDelta === gap) ? 1 : 0);
+    var graceDeltaEqGap = ((grace0 > 0 && gap > 1 && graceDelta === gap) ? 1 : 0);
+    var seenAfter = domLastSeen(p);
+    var seenRefreshed = (seenAfter === now) ? 1 : 0;
+    // 三拍稳定(仅 triple 有意义):三拍之间是否**逐拍不变**
+    var tripleStable = ((lockEnd0 === lockEndMid) && (lockEndMid === lockEnd1)) ? 1 : 0;
+    if (mode !== "triple") tripleStable = -1;
+    // 同 tick 幂等(仅 double 有意义):第二拍是否**没有再动**
+    var idem = ((lockEndMid === lockEnd1) && (graceMid === grace1)) ? 1 : 0;
+    if (mode !== "double") idem = -1;
+    send(ctx, "AP_" + tag + "_SIGNLAG:mode=" + mode + ":ticks=" + ticks
+        + ":sign=[" + sign0 + "]:now=" + now
+        + ":last_seen_before=" + lsBefore + ":wrote=" + wrote + ":gap=" + gap
+        + ":lock_end_before=" + lockEnd0 + ":lock_end_mid=" + lockEndMid + ":lock_end_after=" + lockEnd1
+        + ":lock_end_delta=" + lockDelta
+        + ":grace_end_before=" + grace0 + ":grace_end_mid=" + graceMid + ":grace_end_after=" + grace1
+        + ":grace_end_delta=" + graceDelta
+        + ":cd_before=" + cd0 + ":cd_after=" + cd1
+        + ":cd_unchanged=" + ((cd0 >= 0 && cd0 === cd1) ? 1 : 0)
+        + ":lock_before=" + lock0 + ":lock_after=" + lock1
+        + ":lock_sign_after=[" + sign1 + "]"
+        + ":lock_sign_unchanged=" + ((sign0 === sign1) ? 1 : 0)
+        + ":last_seen_after=" + seenAfter
+        + ":delta_eq_gap=" + deltaEqGap
+        + ":grace_delta_eq_gap=" + graceDeltaEqGap
+        + ":seen_refreshed=" + seenRefreshed
+        + ":idem=" + idem + ":triple_stable=" + tripleStable
+        + ":drives=" + drives + ":tick_ran=" + tickRan
+        + ":ls_api=" + signLagBind().how
+        + (err === "" ? "" : ":err=" + err)
+        + ":" + domLockStateRead(p));
+    return 1;
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+//  signend —— L5:门控效果消失 ⇒ 锁定应正常结束并迁移到冷却
+// ──────────────────────────────────────────────────────────────────────────
+/**
+ * 步骤:读基线 → 走**内部通道**移除当前立牌的全部门控效果 → 驱动产品 tick → 读回。
+ * 期望(非忍者):`isSignActiveLocked` 转 false ⇒ `endLockAndStartCooldown` ⇒
+ *   锁定标记清空、`lock_end=0`、`grace_end=0`、`cd_end = now + max(0, max_cd − pool) > 0`。
+ * 判据用**探针算出的标志**表达(正则不能比较数值):`ended` = 锁定标记已空 且 `lock_after=0`;
+ *   `cd_started` = `cd_after > now`;`cd_delta` = `cd_after − cd_before`。
+ * 读数:`sign_before,gate_before,removed,gate_after,sign_after,lock_before,lock_after,lock_end_after,
+ *       grace_after,cd_before,cd_after,cd_started,max_cd,pool,ended,tick_ran,err`。
+ */
+function doSignEnd(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var now = nowTick(p) - 0;
+    var sign0 = domLockSign(p);
+    var gate0 = domGateOn(p, sign0);
+    var lock0 = domBool(function () { return BaseSignItemClass.isSignActiveLocked(p); });
+    var cd0 = domNum(function () { return ModAttachments.getSignActiveCooldownEnd(p); });
+    var errBox = { err: "" };
+    var removed = signClearGateEffects(p, sign0, errBox);
+    var tickRan = 1;
+    try { BaseSignItemClass.tickSignActiveLock(p); }
+    catch (e1) { tickRan = 0; errBox.err = errBox.err + "|tick:" + domExText(e1); }
+    var sign1 = domLockSign(p);
+    var lock1 = domBool(function () { return BaseSignItemClass.isSignActiveLocked(p); });
+    var lockEnd1 = domNum(function () { return ModAttachments.getSignActiveLockEnd(p); });
+    var grace1 = domGraceEnd(p);
+    var cd1 = domNum(function () { return ModAttachments.getSignActiveCooldownEnd(p); });
+    var cdStarted = (cd1 > now) ? 1 : 0;
+    var ended = ((sign1 === "") && (lock1 === 0)) ? 1 : 0;
+    send(ctx, "AP_" + tag + "_SIGNEND:sign_before=[" + sign0 + "]"
+        + ":gate_before=" + gate0 + ":gate_removed=" + removed + ":gate_after=" + domGateCount(p, sign0)
+        + ":sign_after=[" + sign1 + "]"
+        + ":lock_before=" + lock0 + ":lock_after=" + lock1
+        + ":lock_end_after=" + lockEnd1 + ":grace_after=" + grace1
+        + ":cd_before=" + cd0 + ":cd_after=" + cd1
+        + ":cd_started=" + cdStarted
+        + ":max_cd=" + domMaxCooldown(p) + ":pool=" + domReductionPool(p)
+        + ":ended=" + ended + ":tick_ran=" + tickRan
+        + ":now=" + now
+        + (errBox.err === "" ? "" : ":err=" + errBox.err)
+        + ":" + domLockStateRead(p));
+    return 1;
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+//  signstate / signplayed —— 只读快照 / 忍者出牌标记
+// ──────────────────────────────────────────────────────────────────────────
+/** `signstate … mark` 存下的基线(供下一次 `signstate` 算差值;正则无法比较两行数值,故由探针算) */
+var signLagMark = null;
+
+/**
+ * 纯只读快照(零写入)。
+ *
+ * 参数契约:`signstate <tag> [mark]`
+ *   · 带 `mark` ⇒ 把当前 `lock_end/grace_end/cd_end/lock_sign` 存为**基线**;
+ *   · 每次都对比基线并报差值:`lock_end_vs_mark/grace_end_vs_mark/cd_vs_mark/lock_sign_same`
+ *     (`-999` = 无基线或读不到)。
+ *
+ * <p>**为什么需要它**:L2 的「正常 tick 不得移动上界」若只用 `signlag` 手动驱动,测的是
+ * 「我把同一份代码调 3 次」;而**真实玩家 tick**(生产路径 `PlayerTickEvents`)在两条命令之间
+ * 已经跑了 ~N 拍 —— 用本命令在两拍之间取值判等,才是对**生产路径**的直接取证
+ * (`lock_end_vs_mark=0` 同时覆盖「首拍不得凭空补偿」这一初始化边界)。
+ */
+function doSignState(ctx, tag, markText) {
+    var p = ctx.source.getPlayerOrException();
+    var lockEnd = domNum(function () { return ModAttachments.getSignActiveLockEnd(p); });
+    var grace = domGraceEnd(p);
+    var cd = domNum(function () { return ModAttachments.getSignActiveCooldownEnd(p); });
+    var sign = domLockSign(p);
+    var isMark = (("" + markText) !== "") ? 1 : 0;
+    var dLockEnd = -999, dGrace = -999, dCd = -999, signSame = -999;
+    if (signLagMark != null) {
+        if (lockEnd >= 0 && signLagMark.lockEnd >= 0) dLockEnd = lockEnd - signLagMark.lockEnd;
+        if (grace >= 0 && signLagMark.grace >= 0) dGrace = grace - signLagMark.grace;
+        if (cd >= 0 && signLagMark.cd >= 0) dCd = cd - signLagMark.cd;
+        signSame = (sign === signLagMark.sign) ? 1 : 0;
+    }
+    if (isMark === 1) {
+        signLagMark = { lockEnd: lockEnd, grace: grace, cd: cd, sign: sign, now: nowTick(p) - 0 };
+    }
+    send(ctx, "AP_" + tag + "_SIGNSTATE:mark=" + isMark
+        + ":lock_end_vs_mark=" + dLockEnd
+        + ":grace_end_vs_mark=" + dGrace
+        + ":cd_vs_mark=" + dCd
+        + ":lock_sign_same=" + signSame
+        + (signLagMark == null ? "" : ":mark_now=" + signLagMark.now)
+        + ":" + domLockStateRead(p));
+    return 1;
+}
+
+/**
+ * 写忍者「宽限期内出过效果牌」标记(`sign_active_lock_played`)+ 读回。
+ * 用于 L6 的两条出口:宽限到期时 `played=0` ⇒ 强制重置出牌状态并起冷却(锁定结束);
+ * `played=1` ⇒ 只清宽限刻、**保持锁定**(等出牌周期完全重置)。
+ * 参数:`signplayed <tag> <0|1>`。
+ */
+function doSignPlayed(ctx, tag, valText) {
+    var p = ctx.source.getPlayerOrException();
+    var want = ("" + valText) === "1" ? true : false;
+    var err = "";
+    try { ModAttachments.setSignActiveLockPlayed(p, want); }
+    catch (e1) { err = domExText(e1); }
+    send(ctx, "AP_" + tag + "_SIGNPLAYED:wrote=" + (want ? 1 : 0)
+        + ":played=" + domLockPlayed(p)
+        + ":now=" + (nowTick(p) - 0)
+        + ":grace_end=" + domGraceEnd(p)
+        + (err === "" ? "" : ":err=" + err)
+        + ":" + domLockStateRead(p));
+    return 1;
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+//  signroundreset —— 忍者「出牌周期完全重置」出口(L6 第三出口 / 非忍者负控)
+// ──────────────────────────────────────────────────────────────────────────
+/**
+ * 走产品的**真实回调入口** `EffectCardPeriod.onRoundFullyReset`(内部只调
+ * `BaseSignItem.onEffectCardRoundReset`)⇒ 忍者应**结束锁定并起冷却**;
+ * 非忍者(如 parunan)在该回调里**首行早退** ⇒ 锁定必须**原样不动**(负控,证明无 per-sign 泄漏)。
+ * 注意:`EffectCardPeriod.forceResetRound`(宽限期满用的强重置)**刻意不**回调本入口
+ * (产品注释:`不回调 onRoundFullyReset:调用方自行决定后续迁移`),故两条路径分开取证。
+ * 读数:`sign_before,gate_on,cd_before,sign_after,lock_after,grace_after,cd_after,cd_started,ended,
+ *       sign_unchanged,tick_ran,err`。
+ */
+function doSignRoundReset(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var now = nowTick(p) - 0;
+    var sign0 = domLockSign(p);
+    var cd0 = domNum(function () { return ModAttachments.getSignActiveCooldownEnd(p); });
+    var err = "";
+    var called = 0;
+    try { EffectCardPeriodClass.onRoundFullyReset(p); called = 1; }
+    catch (e1) { err = domExText(e1); }
+    var tickRan = 1;
+    try { BaseSignItemClass.tickSignActiveLock(p); } catch (e2) { tickRan = 0; err = err + "|tick:" + domExText(e2); }
+    var sign1 = domLockSign(p);
+    var lock1 = domBool(function () { return BaseSignItemClass.isSignActiveLocked(p); });
+    var grace1 = domGraceEnd(p);
+    var cd1 = domNum(function () { return ModAttachments.getSignActiveCooldownEnd(p); });
+    send(ctx, "AP_" + tag + "_SIGNROUNDRST:sign_before=[" + sign0 + "]"
+        + ":gate_on=" + domGateOn(p, sign0)
+        + ":called=" + called
+        + ":sign_after=[" + sign1 + "]"
+        + ":sign_unchanged=" + ((sign0 === sign1) ? 1 : 0)
+        + ":lock_after=" + lock1
+        + ":grace_after=" + grace1
+        + ":cd_before=" + cd0 + ":cd_after=" + cd1 + ":cd_started=" + ((cd1 > now) ? 1 : 0)
+        + ":ended=" + (((sign1 === "") && (grace1 === 0)) ? 1 : 0)
+        + ":now=" + now + ":tick_ran=" + tickRan
+        + (err === "" ? "" : ":err=" + err)
+        + ":" + domLockStateRead(p));
+    return 1;
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+//  signexpiregrace —— 把忍者宽限刻推到「已过期」(L6 两条出口的构造)
+// ──────────────────────────────────────────────────────────────────────────
+/**
+ * 把 `grace_end` 写成 `max(1, now − 1)`(**正数**的过去刻:0 会被当成「无宽限」而早退,
+ * 与 `nardilockback` 同一个坑),随后驱动产品 tick,读回两条出口的可观测结果:
+ *   · `played=0` ⇒ `forceResetRound` + `endLockAndStartCooldown` ⇒ 锁定清空 + 冷却起算;
+ *   · `played=1` ⇒ 只把 `grace_end` 清 0,锁定标记**保持不变**(等周期完全重置)。
+ * 参数:`signexpiregrace <tag>`。
+ */
+function doSignExpireGrace(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var now = nowTick(p) - 0;
+    var past = now - 1;
+    if (past < 1) past = 1;
+    var sign0 = domLockSign(p);
+    var played0 = domLockPlayed(p);
+    var cd0 = domNum(function () { return ModAttachments.getSignActiveCooldownEnd(p); });
+    var err = "";
+    try { ModAttachments.setSignActiveLockGraceEnd(p, past); } catch (e1) { err = domExText(e1); }
+    // 直接把宽限写进过去之前,先把**离线补偿基准**刷成 now(要求 2:所有「合成锁定态」的脚手架
+    // 都要保持「没有离线」的语义)。否则上一用例留下的陈值会被本拍当成一次离线 gap 误补偿。
+    try { ModAttachments.setSignActiveLockLastSeen(p, now); } catch (e1b) { err = err + "|seen:" + domExText(e1b); }
+    var tickRan = 1;
+    try { BaseSignItemClass.tickSignActiveLock(p); } catch (e2) { tickRan = 0; err = err + "|tick:" + domExText(e2); }
+    var sign1 = domLockSign(p);
+    var grace1 = domGraceEnd(p);
+    var cd1 = domNum(function () { return ModAttachments.getSignActiveCooldownEnd(p); });
+    send(ctx, "AP_" + tag + "_SIGNGRACE:sign_before=[" + sign0 + "]:played=" + played0
+        + ":wrote_grace=" + past + ":now=" + now
+        + ":sign_after=[" + sign1 + "]"
+        + ":grace_after=" + grace1
+        + ":cd_before=" + cd0 + ":cd_after=" + cd1 + ":cd_started=" + ((cd1 > now) ? 1 : 0)
+        + ":ended=" + (((sign1 === "") && (grace1 === 0)) ? 1 : 0)
+        + ":still_locked=" + ((sign1 === "") ? 0 : 1)
+        + ":tick_ran=" + tickRan
+        + (err === "" ? "" : ":err=" + err)
+        + ":" + domLockStateRead(p));
     return 1;
 }
 
@@ -10300,6 +10993,84 @@ ServerEvents.commandRegistry(event => {
                     .then(Commands.argument("what", StringArg.word())
                         .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
                             return doNardiEquip(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "what"));
+                        })))))
+            // ── 2026-09-27(第二批):立牌锁定「离线时钟漂移」修复的取证套件(signlag)──
+            //    产品:新增服务端专用附件 `sign_active_lock_last_seen`,在 `tickSignActiveLock`
+            //    最前面做 `gap = now − last_seen` 补偿(仅 gap>1;lock_end/grace_end 各自 >0 时才加),
+            //    不读效果实例、不碰冷却、无 per-sign 代码。
+            //      signreset  = 锁定态全量归零 + `last_seen` 置 0(基线;也是「无锁定时置 0」的显式构造);
+            //      signprep   = **按 sign id 参数化**装立牌 + 基线(第 3 参可选写星光,供 parunan 前置,
+            //                   探针内**不做** per-sign 分支);
+            //      signcast   = 真实主动路径 `performSkillForCurio` + 锁定态读回(含 `gate_on`);
+            //      signlag    = 核心:**写 last_seen → 驱动 tick → 读回**压在一次执行内(拆开会撞真实 tick);
+            //                   mode = once(缺省) | double(同 tick 幂等) | triple(正常拍不漂移) | nowrite;
+            //      signend    = 内部通道移除门控效果 ⇒ 锁定应正常结束并起冷却(L5);
+            //      signexpiregrace = 把忍者宽限刻推到已过期 ⇒ 走两条既有出口(L6);
+            //      signplayed = 写忍者「宽限期内出过效果牌」标记(L6 出口二);
+            //      signstate  = 纯只读快照(等待真实 tick 后复查用)。
+            .then(Commands.literal("signreset")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doSignReset(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("signprep")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("signId", StringArg.string())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doSignPrep(ctx, StringArg.getString(ctx, "tag"),
+                                StringArg.getString(ctx, "signId"), "");
+                        }))
+                        .then(Commands.argument("starlight", StringArg.word())
+                            .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                                return doSignPrep(ctx, StringArg.getString(ctx, "tag"),
+                                    StringArg.getString(ctx, "signId"), StringArg.getString(ctx, "starlight"));
+                            }))))))
+            .then(Commands.literal("signcast")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doSignCast(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("signlag")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("ticks", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doSignLag(ctx, StringArg.getString(ctx, "tag"),
+                                StringArg.getString(ctx, "ticks"), "");
+                        }))
+                        .then(Commands.argument("mode", StringArg.word())
+                            .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                                return doSignLag(ctx, StringArg.getString(ctx, "tag"),
+                                    StringArg.getString(ctx, "ticks"), StringArg.getString(ctx, "mode"));
+                            }))))))
+            .then(Commands.literal("signend")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doSignEnd(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("signroundreset")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doSignRoundReset(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("signexpiregrace")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doSignExpireGrace(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("signplayed")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("val", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doSignPlayed(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "val"));
+                        })))))
+            .then(Commands.literal("signstate")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doSignState(ctx, StringArg.getString(ctx, "tag"), "");
+                    }))
+                    .then(Commands.argument("mark", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doSignState(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "mark"));
                         })))))
             // NARDIS-DISP-END(插入器用)
             // ── 2026-09-27:风水师立牌(zhao)+ 符卡-福/祸 游戏内取证(双人用 Carpet /player bot)──

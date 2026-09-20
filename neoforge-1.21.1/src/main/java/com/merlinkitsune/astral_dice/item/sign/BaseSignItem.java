@@ -322,6 +322,9 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
         ModAttachments.setSignActiveLockGraceEnd(player, 0L);
         ModAttachments.setSignActiveLockPlayed(player, false);
         ModAttachments.setSignActiveReductionPool(player, 0L);
+        // 离线补偿基准必须在此一并落笔:上一次锁定可能早已结束(lastSeen 陈值/0),若留到 tick 里首次
+        // 写入,则"上一次锁定结束时的 lastSeen"与"本次触发时刻"之间会被误判成一次离线 gap,把上界凭空后移。
+        ModAttachments.setSignActiveLockLastSeen(player, player.level().getGameTime());
     }
 
     /**
@@ -342,27 +345,71 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
         ModAttachments.setSignActiveLockEnd(player, 0L);
         ModAttachments.setSignActiveLockGraceEnd(player, 0L);
         ModAttachments.setSignActiveLockPlayed(player, false);
+        // 解锁即清零离线补偿基准:下一次锁定由 beginActiveLock 重新落笔,避免"本次锁定结束刻"被
+        // 之后某次 tick 当成离线起点算出巨大 gap(冷却是墙钟语义,不参与补偿,故此处一并归零)。
+        ModAttachments.setSignActiveLockLastSeen(player, 0L);
     }
 
     /**
-     * 玩家级 tick(幂等):1. 忍者宽限保险;2. 其余立牌锁定结束时必起冷却。
+     * 玩家级 tick(幂等):0. 离线补偿;1. 忍者宽限保险;2. 其余立牌锁定结束时必起冷却。
      *
      * <p>为什么挂在**玩家级 tick**(见 {@code event/PlayerTickEvents}):
      * 判定必须与立牌是否仍在饰品槽无关;并且玩家离线时不 tick ⇒ 锁定结束那一刻离线的话,
      * 由上线后的第一次判定迁移到冷却(等效"离线期间冷却不走")。
      *
-     * <p>幂等性(forge 侧 {@code TickEvent.PlayerTickEvent} 每 tick 触发两次):首行按"是否仍在锁定"早退,
-     * 真正的迁移只发生一次(迁移后锁定标记被清空,第二次执行直接返回),与旧的玩家级状态迁移同构。
+     * <p><b>步骤 0 = 让上面这条本意对"硬上界"也成立</b>:门控效果的剩余时长只在
+     * {@code LivingEntity#tickEffects} 里递减(玩家离线期间冻结),而 {@code sign_active_lock_end} /
+     * {@code sign_active_lock_grace_end} 是**绝对 gameTime**(服务器在跑就照常推进)⇒ 多人服务器上
+     * 「离线时长 &gt; 上界剩余」后重登会看到"上界已过、效果却还在",{@link #isSignActiveLocked} 一过界即判
+     * 未锁定 ⇒ 锁定被墙钟单方面提前结束。补偿**不读任何效果实例**,只把玩家错过的 gameTime 间隔 gap
+     * 整体后移锁定自己的两个截止刻,使两个时钟对称。冷却({@code sign_active_cooldown_end})**刻意不补偿**:
+     * 冷却照旧离线也流逝(既有预期)。
+     *
+     * <p>幂等性(forge 线 {@code TickEvent.PlayerTickEvent} 每 tick 触发两次 = START/END):
+     * ① 首行按"是否仍在锁定"早退,真正的迁移只发生一次(迁移后锁定标记被清空,第二次执行直接返回);
+     * ② 步骤 0 的补偿只在 {@code gap > 1} 时执行 —— 正常在线时相邻两拍 gap 恰为 1(同 tick 内第二拍
+     * gap == 0)⇒ 一次都不动;补偿过的第一拍已把 lastSeen 写成 now ⇒ 同 tick 第二拍 gap == 0 不再补偿。
      */
     public static void tickSignActiveLock(Player player) {
         if (player == null) return;
         if (player.level().isClientSide()) return;
+        long now = player.level().getGameTime();
+
+        // ===== 步骤 0:离线补偿(必须在任何早退/分支之前,含 isSignActiveLocked 判定)=====
+        // seen = 上一次结算时刻的 gameTime。0 = 无锁定/宽限计时(或旧存档/探针未写该键)⇒ 不补偿。
+        long seen = ModAttachments.getSignActiveLockLastSeen(player);
+        if (seen > 0) {
+            long gap = now - seen;
+            // gap > 1 才补偿:正常在线相邻两拍 = 1 ⇒ 一次都不动(否则每 tick 自我延长,锁定永不解)。
+            if (gap > 1) {
+                long lockEnd = ModAttachments.getSignActiveLockEnd(player);
+                if (lockEnd > 0) {
+                    ModAttachments.setSignActiveLockEnd(player, lockEnd + gap);
+                }
+                long graceEnd = ModAttachments.getSignActiveLockGraceEnd(player);
+                if (graceEnd > 0) {
+                    ModAttachments.setSignActiveLockGraceEnd(player, graceEnd + gap);
+                }
+            }
+        }
+        // 每拍刷新 lastSeen:仍在硬上界/宽限计时内 ⇒ now(离线检测基准必须每 tick 都是新的);
+        // 两者都不在(含忍者的宽限已被"出过效果牌"清掉、只剩周期出口)⇒ 0。
+        // 只在取值真的变化时才写:无锁定期间(0 → 0)一次都不写,不做无谓的附件写入;
+        // 锁定期间 now 每 tick 递增 ⇒ 每拍照写,基准始终是最新值(否则离线检测失效)。
+        // 陈值自愈:锁定结束后的第一拍就把陈值写成 0,此后不再写。
+        long lockEndNow = ModAttachments.getSignActiveLockEnd(player);
+        long graceEndNow = ModAttachments.getSignActiveLockGraceEnd(player);
+        long desiredSeen = (lockEndNow > 0 || graceEndNow > 0) ? now : 0L;
+        if (desiredSeen != seen) {
+            ModAttachments.setSignActiveLockLastSeen(player, desiredSeen);
+        }
+
         String signId = getSignActiveLockSignId(player);
         if (signId.isEmpty()) return;
-        long now = player.level().getGameTime();
         if (KOMACHI_LOCK_ID.equals(signId)) {
             // 忍者:锁定跟随出牌周期,本方法只负责"宽限 1:00 内自始至终未出任何效果牌"的保险。
             // 其余出口是出牌周期完全重置(EffectCardPeriod -> onEffectCardRoundReset)。
+            // 宽限刻已在步骤 0 一并按 gap 后移 ⇒ 1:00 宽限与门控效果同为"在线才走"的时钟。
             long graceEnd = ModAttachments.getSignActiveLockGraceEnd(player);
             if (graceEnd <= 0 || now < graceEnd) return;
             if (ModAttachments.getSignActiveLockPlayed(player)) {

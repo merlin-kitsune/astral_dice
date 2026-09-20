@@ -380,6 +380,10 @@ public final class AstralPartyCommand {
                 ModAttachments.getSignActiveLockGraceEnd(player)));
         lines.add(row(DUMP_GROUP_SIGN, "sign_active_lock_played",
                 ModAttachments.getSignActiveLockPlayed(player)));
+        // 锁定态的"离线补偿基准"(最后一次见到该玩家的 gameTime;0 = 无锁定/宽限计时)。只读:
+        // 用于实测取证该附件跨重登持久化(dump → saveall → 重登 → 再 dump,值应等于重登前那一拍)。
+        lines.add(row(DUMP_GROUP_SIGN, "sign_active_lock_last_seen",
+                ModAttachments.getSignActiveLockLastSeen(player)));
         lines.add(row(DUMP_GROUP_SIGN, "sign_active_cooldown_end",
                 ModAttachments.getSignActiveCooldownEnd(player)));
         lines.add(row(DUMP_GROUP_SIGN, "sign_active_max_cooldown",
