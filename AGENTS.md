@@ -290,7 +290,7 @@ When extending this workspace:
 8. **7 个玩家附件键**(与 1.21.1 逐字同名同型):`zhao_blessing_active` / `zhao_blessing_skip_cycles` / `zhao_prev_blessing` / `zhao_overflow_bonus`(Int) / `zhao_overflow_remainder`(Float) / `huo_card_next_damage_tick`(Long) / `fu_card_cycle_bonus`(**唯一需 `.sync`**)。26.1.2 与 1.21.1 同用 `AttachmentType`,写法照 1.21.1 内联 `.sync` 即可。
 9. **行为代码(10 个文件,按 1.21.1 为语义基准抄写 + 差异映射)**:`item/sign/ZhaoSignItem`(主动 `TargetSelectionAction` + `SelfTargetable`、下降沿状态机、溢出回收、福祸相倚、心意相连)、`item/card/FuCardItem` / `HuoCardItem`、`item/sign/FenSignItem`(`addRecharge` + 心意相连调用)、`event/PlayerTickEvents`(每 tick `tickBlessing` + 每 20 tick `HuoCardItem#tick`)、`event/PlayerLifecycleHandler`(死亡段 / 重登段)、`event/ModTooltipHandler`(三块 tooltip)、`combat/DiceCombatEvents`(骰点定稿后的挂点 + `tryClaimDiceJudgment` 守卫)、`combat/DiceCombatModifiers`(溢出攻击力加算项)、`item/card/EffectCardPeriod`(`grantFuCardBonusPlay` + `getMaxAllowed` 的 `extra` + `clearRoundBonuses` 归零)、`item/card/{RandomCardHandler,ExclusiveCardUtil}`(专属注册与拒绝)。
 10. **数据与文案**:lang 新增键(**每条发布线各 32 键 × 2 语言** = 本批功能 31 键 + 1 条探针辅助文案 `command.astral_dice.astralparty.dump.summary`;31 键的分布 = `item.*` 3 / `effect.*` 4(含 2 条 `.description`) / `msg.*` 9(含 3 条 `target_select.skill.*` 技能名) / `tooltip.*` 8 / `astral_dice.guide.entry.*` 7)、帕秋莉手册 `entries/{signs/zhao_sign,cards_effect/{fu_card,huo_card}}.json`、以及**赏金池同口径**(`astral_rews.json` 两张既有专属牌出池、`zhao_sign`/`fu_card`/`huo_card` 不入池 —— 迁移后必须复跑 `scripts/verify/verify_bountiful_pools.ps1 -Root <该线工作树>`)。
-11. **测试资产**:探针 `zhao*` 段(26.1.2 侧必须按该线的 Rhino/Brigadier 口径适配 —— 凡命令体末尾 `return` 读数变量的处理器都要改成 `return 1;`,否则 `Cannot convert rc=ok to int` 且异常逃出 `guard`)+ 用例 26.1.2 twin(`ZHAO-SIGN` / `ZHAO-BLESSING` / `HUO-CURSE`,并按 §13.2 做三侧读数 diff;注意本批两条发布线的探针命令集**本就不同**,迁移时以 1.21.1 那套 19 条为基准)。
+11. **测试资产**:探针 `zhao*` 段 **25 条命令**(`zhauprep/zhauread/zhaureg/zhaogive/zhaosethuo/zhaoclear/zhaocast/zhaogate/zhaobless/zhaosign/zhaodice/zhaodedup/zhaoheal/zhaoseq/zhaofu/zhaohuotick/zhaohuobox/zhaodrop/zhaocard/zhaoplay/zhaohand/zhaofx/zhaolife/zhaolink/zhaonuclear`;两条发布线的该段**逐字节相同**,迁移时照抄即可)+ 用例 26.1.2 twin(发布线本批为两条:**`ZHAO-SIGN` = 142 步/50 断言**、**`FUHUO-CARD` = 137 步/46 断言**;按 §13.2 做三侧读数 diff)。⚠️ 26.1.2 侧适配三件事(详见 `AGENTS.md` 的《风水师立牌（zhao）…双人测试流程》段踩坑 1–3):① 凡命令体末尾 `return` 读数变量的处理器都要改成 `return 1;`,否则 `Cannot convert rc=ok to int` 且异常逃出 `guard`;② 顶层 `var`/`function` 不得与既有声明重名(重复声明 ⇒ 整脚本加载失败、命令全无);③ 效果判定用 `findEffect(p, "<id>")` 字符串匹配,禁用 `hasEffect(ModEffects.X)`(该线注册表强转异常连 `guard` 都捕不到);④ 实例方法必须调在实例上(`stack.getItem().playFromSelector(...)`)。
 12. **未对齐项一并带上**:t4 的 VER-01(两线英文卡名分歧:冻结值 = `Blessing / Misfortune Talisman`,1.20.1 现为 `Fortune / Misfortune Talisman Card`)、VER-02(1.20.1 手册缺半句)、VER-03(`countFu` 是否含副手)、VER-04(1.20.1 丢弃被拒无 actionbar 反馈)在解冻前若未在发布线统一,**迁移时必须按统一后的口径落线**;若仍不统一,则按平台差异逐条登记理由(见 `AGENTS.md` 实现契约第 12 条与附录 A 续 25)。
 
 1. **实施方式：代码修改一律走 subagent，三个版本并行（用户 2026-09-19 裁决，必须遵守）**：① 每次代码修改**必须创建 subagent**；② **三个版本各一个 subagent**（`v121` / `v120` / `v2612`）**并行实施**同一语义改动；③ 批次较大时再在**每条线内**按子系统拆更多 subagent；④ **同一文件同一时间只能有一个 owner**：共享文件（`lang/*.json`、`ModTooltipHandler`、注册表类、探针脚本等）由主 agent 预先指派唯一 owner，其余 subagent 只**报告**自己需要的改动，不得同时写同一文件；⑤ 跨文件接口（新方法签名、新 lang 键、新探针读数格式）由主 agent 在派活前**先固定并写进各 subagent 的任务描述**。
@@ -1892,3 +1892,68 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --new <注册id>
 4. `terucastreal` 内部的 `teruClearState(目标)` 会**清掉目标身上的骰神赐福**（脚手架归一化）⇒ 施法读数里 `t_bless=0:t_skip=0:t_prev=0` 是预期值；骰战链在 bot 首次攻击时自动补赐福（`HR1` 读数可见 `t_bless=1`）。
 5. 降神效果实例是**无限时长**（`t_fx_d=0/2147483647`）⇒ `teruTargetRead` 的 `t_fx_d` 断言只写 `[0-9]+/[0-9]+`，不比精确值。
 6. 骰战链（含狐光追加攻击）的三条硬前提：**主手近战武器** + **骰神赐福** + **curios `dice` 槽有骰子**（`DiceCombatEvents` 在 `diceStack == null` 处直接 return）⇒ 少一条，额外攻击永远不会被消费，读数是「没反应」的假阴性。
+
+---
+
+## 风水师立牌（zhao）+ 符卡-福 / 符卡-祸 —— 双人测试流程 — 2026-09-27
+
+用户要求（原话）：「创建新测试流程，测试风水师立牌以及关联的符卡-福和符卡-祸。使用 carpet 完成双人测试。」
+
+**范围**：本批**只做测试资产**（探针 zhao 段 + 4 条用例），**产品代码零改动** —— `zhao_sign` / `fu_card` / `huo_card` 的功能在 2026-09-26 批次已落地。语义契约 = 冻结件 `docs/features/fengshui-sign-spec.md`（§14 的 Q1–Q4 裁决、§14.5–§14.12 已回填），用例只对该契约取证；本批未新增/修改任何 CHANGELOG 条目。
+
+### 资产（两线同步）
+
+| 资产 | 路径 | 规模 |
+|---|---|---|
+| 探针 zhao 段 | `scripts/test/resources/kubejs/{1.21.1,1.20.1}/server_scripts/astral_bugfix_probe.js` | 两线**逐字节相同**的 1081 行块（插在 `ServerEvents.commandRegistry(...)` 之前：1.21.1 自 ≈6354 行起）＋ 分发表 25 条（插在 `teruclear` 分发块之后） |
+| 立牌用例 | `scripts/test/cases/ZHAO-SIGN-{1.21.1,1.20.1}.json` | 142 步 / 50 断言 |
+| 符卡用例 | `scripts/test/cases/FUHUO-CARD-{1.21.1,1.20.1}.json` | 137 步 / 46 断言 |
+
+⚠️ **改探针必须冷启动**：KubeJS 的 `/kubejs reload` **不重绑 Brigadier 命令** ⇒「`--case` 复用在线客户端」只在**探针未改动**时成立；动过探针就要重新 `--phase launch`。
+
+### 探针命令（25 条，两线同名同参；读数行前缀 `AP_<tag>_`，除基线/脚手架外全部只读）
+
+| 组 | 命令 |
+|---|---|
+| 基线/归一化 | `zhauprep <tag> [clear]`（给自身 风水师立牌 + 骰子 + 铁剑，清卡/状态/效果/计时器/出牌轮）、`zhaoclear <tag> [name]`、`zhaosign <tag> <name> <zhao\|fen\|none>`（给真实玩家/bot 装备或卸下立牌） |
+| 发牌/归属 | `zhaogive <tag> <fu\|huo> <n> [name]`（给**受赠者**，绑定非获得者）、`zhaosethuo <tag> <n> [name]`（张数设 n + 立即镜像厄运 + 计时器解耦证据） |
+| 只读 | `zhauread <tag> <phase> [name]`（全量状态）、`zhaureg <tag>`（注册/冻结数值/标签/cardByTypeId） |
+| 施法与门控 | `zhaocast <tag> <self\|name\|mob> [name]`（服务端权威 `applyBlessing`）、`zhaogate <tag> <self\|name> [name]`（真实选择器路径 `performSkillForCurio` → `confirm`） |
+| 骰点被动 | `zhaodice <tag> <1\|6> <times>`、`zhaodedup <tag> <1\|6>`（同 tick 两次判定 ⇒ `tryClaimDiceJudgment` 去重） |
+| 效果/溢出 | `zhaobless <tag> <give\|clear> [name]`（骰神赐福：施加走原版 `/effect give`、移除走**内部通道** ModEffectRemoval）、`zhaoheal <tag> <amount> <gap> [name]`、`zhaoseq <tag> [name]`（溢出链整跑 10/0、6/4、0.5/0、0.5/0、4/4 收进**一条**读数）、`zhaofx <tag> [name]`（外力移除白泽赐福 → 下一 tick 自检） |
+| 符卡 | `zhaocard <tag> <fu\|huo> <self\|name\|mob> [name] [owner]`（主手 → `tickHeldSelector` → confirm **会话路径**）、`zhaoplay <tag> <fu\|huo> <self\|name\|mob> [name] [owner]`（直接 `playFromSelector` 权威路径）、`zhaohand <tag> <fu\|huo> <main\|off>`（§14.11）、`zhaofu <tag> <times>`（连用 n 次，逐次 `ok/play/max/fubonus/cool`）、`zhaohuotick <tag> <now\|force> [name]`、`zhaohuobox <tag> <main\|off\|ender> [name]`、`zhaodrop <tag>`（真 `ServerPlayer#drop`） |
+| 生命周期/收尾 | `zhaolife <tag> <die\|relogin> [name]`、`zhaolink <tag> <read\|call>`（心意相连）、`zhaonuclear <tag>`（清卡/效果/状态/计时器 + 卸立牌 + 清主手） |
+
+### 双人怎么造（复用上一节的五行）
+
+`/carpet allowSpawningOfflinePlayers true` → `/player Bot1 spawn at ~3 ~ ~1` → `/clear Bot1` → 断言登录行 → 收尾 `/player Bot1 kill`（或 vanilla `/kill Bot1`）→ 断言 `Bot1 lost connection: Killed`。**本批新增的归一化要求**：bot 的 **curios `stand` 槽 + 7 个 zhao 附件跨轮保留**，所以每条用例开头都必须先 `zhauprep` / `zhaoclear`（同时清背包**与地面**的卡、清白泽/厄运/骰神赐福、回满血、把 bot 拉回主手位），否则上一轮残留会直接污染 `z_fu`/`z_huo` 计数。
+
+### 覆盖（4 条用例；两线各跑一次，均 PASS）
+
+- **`ZHAO-SIGN`**：注册冻结值（物品 id / 动作 id / `HEAL_AMOUNT=2` `DAMAGE=1.0` `CURSE_PERIOD_TICKS=2400` `DURATION_TICKS=MAX_VALUE` `MAX_RECHARGE=5` / `astral_dice:signs` + `curios:stand` 标签）；`zhaocast` 门控（**生物被拒 / 自身放行**）；双人施法 + **完美帮手**（断言用 `t_fen_delta=1`，**不比 `z_fen` 绝对值** —— 大当家立牌会被动积累养精蓄锐）；**心意相连**（team 0→1、`granted=1`）；结束判定的**下降沿**（已带骰神赐福 ⇒ `skip=1` 跳过本次，随后真结束）；`zhaoseq` 溢出链 + 结束归零**无残留**；`zhaofx` 外力移除后下一 tick 自检（`active=0`）；`zhaolife die/relogin`；**`/effect clear` 拦截证明**（外部移除被取消 ⇒ bot 仍 `z_bless=1`）；收尾真实 `/kill Bot1`。
+- **`FUHUO-CARD`**：符卡-福 对 bot **+2** 治疗；`zhaofu 10` 净 0（消耗 1 / 返回 1）+ `min(9,1+extra)` 封顶 + 专属拒绝链；专属牌在**选择器开局与服务端权威两处都被拒**；§14.11 主手唤起 / 副手不唤起；符卡-祸 对 敌对/同队/自身/生物；厄运层数 = 主物品栏 **+ 副手**（**末影箱不计**）；2400 tick 结算按**结算时刻**张数；`timer_same=1`（计时器与张数解耦）；**丢弃必须成功**（`dropped=1:inv=1>0:ground=0>1`）；骰点被动 1/6 与同 tick 去重、卸下装备后 no-op。
+  ⚠️ 「符卡-祸 禁止丢弃」已于 **2026-09-20 按用户裁决整体移除** ⇒ 用例断言的是**丢弃成功**；冻结规格 §3.3 / §14.1 里那句已过期。
+
+### 实测（2026-09-27，两线各 7/7 PASS）
+
+- 逐条：`ZHAO-SIGN`（192 步 / 142 步 + 50 断言 / **0 FAIL**）、`FUHUO-CARD`（183 步 / 137 + 46 / **0 FAIL**）＋ 5 条回归 `BOT-2P`、`LULU-SIGN`、`TERU-EXTRA-ATTACK`、`TERU-HUGUANG-ANTIFARM`、`TERU-SIGN` 全 **PASS**；两线收尾闸门一致：`CARPET_LOADED=true`、`MT_ASSERT_KUBEJS: PASS — server.log 0 errors`、`MT_ASSERT_CRASH: PASS — 无 crash-reports`。
+- 报告：`scripts/test/reports/20260920-114651/1.21.1/report.md` 与 `.../1.20.1/report.md`，结论均 **✅ PASS**。
+- ⚠️ **「全目录跑」与报告自动判定互相打架（本批实测踩到，两条工具层坑）**：
+  1. `--phase cases`（不带 `--case`，即 run-dir）会给**另一版本**的条目写 `SKIP` 记账；而 `report.md` 的自动判定是「`cases` 字典里非 `PASS` 即 ❌」（`mt_report.ps1` 的 `$allPass` 只判 `-ne 'PASS'`），`SKIP` 因此把整版判失败（`SUMMARY.md` 侧判据反而容忍 `SKIP` —— 两处口径不一致）。实测形态：`phases` 为空、7 条真用例全 `PASS`，`report.md` 仍给 ❌。**混用「全目录跑」与「`--case` 单跑」后**用编排器接口重算并留痕：`pwsh -File scripts/test/mt_report.ps1 collect --version <V> --verdict PASS`（本批 1.21.1 即按此重算；单跑 `--case` 不写 `SKIP`，所以 1.20.1 走自动路径就是 PASS）。
+  2. 全目录跑的**预算公式是固定的 `90 + 90×用例数`（7 条 = 720s）**，`MT_CASES_TIMEOUT_SEC` 只影响外层阶段预算、**管不到内层**该公式；7 条重用例（实测 ≈140s/条）必然超预算被截断，**剩余用例直接不再执行**（本批实测两次，都在第 5 条之后被杀，`TERU-SIGN`/`ZHAO-SIGN` 从未轮到）⇒ 复核请逐条 `--case` 单跑。
+
+### 未覆盖（如实登记）
+
+`zhaogate` 的**真实按键会话路径**（`performSkillForCurio` → `confirm`）本批**未进用例** —— 立牌的「按键 → 会话」接线与其余选择器立牌共用 `BaseSignItem` / `TargetSelectionManager`，该共享路径已由 `LULU-SIGN` / `TERU-SIGN` 覆盖；本批的立牌门控改从**服务端权威入口**取证（生物被拒 / 自身放行）。另：跨维度选择、26.1.2 一致性测试均未覆盖（26.1.2 本批**零改动**，解冻后按 `TESTING-SPEC.md` §13.2 做三侧读数 diff）。
+
+### 踩坑（本批实测，写用例必看）
+
+1. **Rhino 同作用域重复 `var` / `function` 声明 ⇒ 整个探针脚本加载失败**（`TypeError: redeclaration of var …`，表现为 `/astralprobe` **一条命令都没有**、launch 闸门报 61 条 KubeJS 错误）。本批因 `EffectCardPeriodClass` 与既有声明重名踩过一次 ⇒ 给探针加段前先扫「顶层名是否与既有重复」（探针里已有该自检）。
+2. **实例方法必须调在实例上**：`stack.getItem().playFromSelector(...)`。对类调用（`SomeItemClass.playFromSelector(...)`）会抛 `InternalError: Java class "…" has no public instance field or method named "playFromSelector"`。
+3. **1.20.1 的 `ModEffects.X` 是 Forge `RegistryObject`**：`p.hasEffect(ModEffects.X)` / `new MobEffectInstance(ModEffects.X, …)` 会触发 KubeJS 的注册表强转（`RegistryInfo.wrap` → `UtilsJS.getMCID`），抛 `ResourceLocationException` / `NPE: No such element with id null in registry minecraft:mob_effect`，**且该异常逃出 JS `try/catch`**（`guard` / `zhaoBool` 都捕不到）⇒ 判效果一律用 `findEffect(p, "<id>")` **字符串匹配**；施加骰神赐福用 `/effect give`，移除用内部通道（本批 1.20.1 客户端中途退出即因此）。
+4. **断言正则必须按实际字段顺序**：`zhaoStateRead` 的顺序 = `z_fu, z_huo, z_equipped, z_active, z_skip, z_prev, z_fx, z_fx_on, z_over, z_rem, z_ap, z_mis, z_mis_on, z_mis_fx, z_next_delta, z_play, z_max, z_bonus, z_fubonus, z_cool, z_fen, z_team, z_links, z_hp, z_maxhp, z_bless, z_alive, z_hand, z_off`（`z_mis` 系列在 `z_hp` **之前**；`z_fx` 在 `z_fx_on` 之前）。`zhaocard` 行的 `owner=…` 与 `can_use` 之间**夹着** `hand=…`；`zhaocard` 的 `play/max/fubonus/cool` 是 `before>after` **成对**，`zhaoplay` 是**单值**。本批 17→16→4→1 条断言 FAIL 全部是这类字段序/形态问题。
+5. **单用例注入步骤多 ⇒ 会撞默认 180s 闸门**（实测分别在 107/201、118/186 处超时）⇒ 合并步骤（5 次治疗 → `zhaoseq`、10 次出牌 → `zhaofu`）+ 压缩等待，并以 `MT_CASE_TIMEOUT_SEC=300` 跑（全目录 `MT_CASES_TIMEOUT_SEC=2400`）。
+6. `zhaoclear` 会**回满血并复位养精蓄锐** ⇒ `zhaoheal` 的 `hp0` 必须读在压血之后、断言读 `heal` 之后（clamp 后值）；`zhaoheal` 与 `zhaoclear` 之间不要插别的读数步骤。
+7. **用例 JSON 里的 `{` 必须写成 `\\{`**：断言文本含 `{` 时写单反斜杠会让整份 JSON 解析失败（`--- JSON …` 报 invalid escape）。
+8. **参数位写错会让该步静默不产出读数**：`zhaocard` / `zhaoplay` 的尾部是 `[name] [owner]` 两个位置参数，本批误写成 `… Bot1 - Bot1`（多一个 `-`）导致该步零读数、无任何报错。
+9. 1.20.1 的 `zhaohuobox ender` 计时器要到**下一个 tick** 才清 ⇒ 该断言要么等一拍、要么只断言张数与效果。

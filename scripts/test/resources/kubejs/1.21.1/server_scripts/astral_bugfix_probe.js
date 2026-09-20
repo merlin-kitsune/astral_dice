@@ -6344,6 +6344,1095 @@ function doTeruClear(ctx, tag) {
     send(ctx, "AP_" + tag + "_CLEAR:cleared=1:" + teruStateRead(p));
     return 1;
 }
+// ════════════════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════════════════
+//  风水师立牌(zhao)+ 符卡-福/祸 游戏内取证(2026-09-27;双人用 Carpet /player bot)
+//   被测语义(冻结件 docs/features/fengshui-sign-spec.md;§14 裁决已回填):
+//     ① 主动「白泽赐福」(action id = zhao_blessing):选 16 格内**玩家或自身** ⇒ 目标获得白泽赐福;
+//        施法者 +1 符卡-福 并把自身全部符卡-祸**就地转成符卡-福**;目标装备大当家立牌 ⇒ +1 层养精蓄锐
+//        (完美帮手);非玩家目标(敌对生物)必须被拒;
+//     ② 结束判定 = 玩家级 tick 的**下降沿**(施加时目标已在骰神赐福 ⇒ skip=1,跳过当前这一次结束);
+//        效果被外力移除 ⇒ 下一 tick 自检复位真值并回收溢出加成;
+//     ③ 溢出治疗 → 攻击力:赐福期内 heal() 的溢出量累加进攻击力(整数化 + 余数留档),
+//        溢出 ≤ 0 不增加;结束/死亡/重登/外力移除 ⇒ 一并归零(不留残留);
+//     ④ 被动「福祸相倚」:骰点 1 ⇒ +1 符卡-祸(厄运层数立即跟上);骰点 6 ⇒ +1 符卡-福;
+//        同一 tick 的第二次判定必须被 tryClaimDiceJudgment 挡下(一次结算一次发牌);
+//     ⑤ 符卡-福:主手手持即开启选择器(PLAYER + allowSelf),目标回复 2 点;
+//        出牌数「消耗 1 / 返回 1」净 0(fu_card_cycle_bonus 计入 getMaxAllowed,受 min(9,1+extra) 封顶);
+//        专属牌:非获得者使用时**选择器开局与服务端权威两处都被拒**;countFu() = 主物品栏口径(不含副手);
+//     ⑥ 符卡-祸:选择器仅 ENEMY_OR_RIVAL(敌对生物 ∪ 非同队玩家,**不可自用**),命中 1 点真伤;
+//        厄运层数 = count() = 主物品栏 **+ 副手**;每 2400 tick 按**结算时刻张数**受伤;计时器与张数解耦
+//        (张数在 >0 区间内变化不重新起算);张数归 0 一并清效果与计时器;放进末影箱等容器不计;
+//        **「禁止丢弃」已按用户指令整体移除** ⇒ 丢弃必须成功(ServerPlayer#drop 走 onDroppedByPlayer 真路径);
+//     ⑦ 心意相连:大当家立牌主动时,同队且装备风水师立牌者各得 1 张符卡-福;未组队整体不生效;
+//     ⑧ 注册冻结值:物品 id / 动作 id / 常量(HEAL_AMOUNT=2、DAMAGE=1.0、CURSE_PERIOD_TICKS=2400、
+//        DURATION_TICKS=MAX_VALUE、MAX_RECHARGE=5)/ 标签(astral_dice:signs、curios:stand)/ cardByTypeId。
+//
+//   命令(读数行一律 AP_<tag>_ 前缀;除基线/脚手架外全部只读):
+//     /astralprobe zhauprep <tag> [clear]               基线:风水师立牌+骰子+铁剑,清卡/状态/效果/计时器/出牌轮
+//     /astralprobe zhauread <tag> <phase> [name]        只读全量读数(缺省=自身;可指真实玩家/bot)
+//     /astralprobe zhaureg <tag>                        注册与冻结数值(物品/常量/效果/选择器动作/标签/byType)
+//     /astralprobe zhaogive <tag> <fu|huo> <n> [name]   给自身/指定真实玩家 n 张(绑定受赠者)
+//     /astralprobe zhaosethuo <tag> <n> [name]          符卡-祸张数设为 n(先全清后给)+ 立即镜像厄运 + 计时器解耦证据
+//     /astralprobe zhaoclear <tag> [name]               清卡/白泽/厄运/计时器 + 复位出牌轮与养精蓄锐(脚手架)
+//     /astralprobe zhaocast <tag> <self|name|mob> [name] 服务端权威入口 applyBlessing(自身/真实玩家/生物)
+//     /astralprobe zhaogate <tag> <self|name> [name]    真实选择器路径:performSkillForCurio → confirm
+//     /astralprobe zhaobless <tag> <give|clear> [name]  骰神赐福 施加(原版 /effect give)/移除(内部通道)
+//     /astralprobe zhaosign <tag> <name> <zhao|fen|none> 给真实玩家(bot)装备风水师/大当家立牌或卸下
+//     /astralprobe zhaodice <tag> <1|6> <times>         福祸相倚:直接走 onDiceRollResult
+//     /astralprobe zhaodedup <tag> <1|6>                同一 tick 两次判定(tryClaimDiceJudgment 去重)
+//     /astralprobe zhaoheal <tag> <amount> <gap> [name] 把 HP 压到 max-gap 再 heal(溢出→攻击力)
+//     /astralprobe zhaoseq <tag> [name]                 溢出链整跑:10/0、6/4、0.5/0、0.5/0、4/4(一条读数)
+//     /astralprobe zhaofu <tag> <times>                 符卡-福连用 times 次(逐次 ok/play/max/fubonus/cool)
+//     /astralprobe zhaohuotick <tag> <now|force> [name] 立即跑一次 HuoCardItem#tick(起算 / 结算)
+//     /astralprobe zhaohuobox <tag> <main|off|ender> [name] 把全部符卡-祸挪到 主手 / 副手 / 末影箱
+//     /astralprobe zhaodrop <tag>                       符卡-祸丢弃(真 ServerPlayer#drop;必须成功)
+//     /astralprobe zhaocard <tag> <fu|huo> <self|name|mob> [name] [owner] 主手→tickHeldSelector→confirm
+//     /astralprobe zhaoplay <tag> <fu|huo> <self|name|mob> [name] [owner] 直接 playFromSelector(服务端权威)
+//     /astralprobe zhaohand <tag> <fu|huo> <main|off>   §14.11:主手唤起选择器 / 副手不唤起
+//     /astralprobe zhaofx <tag> [name]                  外力移除白泽赐福效果(下一 tick 自检路径)
+//     /astralprobe zhaolife <tag> <die|relogin> [name]  死亡清场 / 重登复位(产品同一入口)
+//     /astralprobe zhaolink <tag> <read|call>           心意相连:只读候选集 / 调 onAllyActiveSkill
+//     /astralprobe zhaonuclear <tag>                    收尾:清卡/效果/状态/计时器 + 卸立牌 + 清主手
+//
+//   ⚠️ 改探针后必须**冷启动**(mt.ps1 --phase stop → --phase launch):
+//      /kubejs reload server-scripts 不会重绑已注册的 Brigadier 命令。
+//   ⚠️ 两线(1.21.1 / 1.20.1)本段逐字一致:只允许用两线同名 API(已核对访问器 14:14、常量 6:6、
+//      类路径 11:11 全等;1.20.1 的 FenSignItem#addRecharge 形参名不同但签名相同)。
+//   ⚠️ Rhino 白名单坑(本段已规避,勿改回):`ItemStack#is(TagKey)` 重载歧义 ⇒ 改读 Holder#tags();
+//      `ItemEntity#setPickupDelay` 不可见 ⇒ 丢弃一律走 ServerPlayer#drop(boolean) 的原版路径。
+// ════════════════════════════════════════════════════════════════════════════
+
+function zhaoLoadCls(name) {
+    try { return Java.loadClass(name); } catch (e) { return null; }
+}
+
+var ZhaoSignItemClass = zhaoLoadCls("com.merlinkitsune.astral_dice.item.sign.ZhaoSignItem");
+var FuCardItemClass = zhaoLoadCls("com.merlinkitsune.astral_dice.item.card.FuCardItem");
+var HuoCardItemClass = zhaoLoadCls("com.merlinkitsune.astral_dice.item.card.HuoCardItem");
+var ZhaoBlessingEffectClass = zhaoLoadCls("com.merlinkitsune.astral_dice.effect.ZhaoBlessingEffect");
+var MisfortuneEffectClass = zhaoLoadCls("com.merlinkitsune.astral_dice.effect.MisfortuneEffect");
+var BaseEffectCardItemClass = zhaoLoadCls("com.merlinkitsune.astral_dice.item.card.BaseEffectCardItem");
+var ExclusiveCardUtilClass = zhaoLoadCls("com.merlinkitsune.astral_dice.item.card.ExclusiveCardUtil");
+// ⚠️ `EffectCardPeriodClass` 已由本文件 :1228(1.20.1 :1209)声明 —— **不得**在此重复声明:
+//    Rhino 对同一作用域的重复 `var` 抛 `TypeError: redeclaration of var`(整脚本加载失败、命令全无)。
+var FenSignItemClass = zhaoLoadCls("com.merlinkitsune.astral_dice.item.sign.FenSignItem");
+var ZhaoHandClass = zhaoLoadCls("net.minecraft.world.InteractionHand");
+
+var ZHAO_SIGN_ID = "astral_dice:zhao_sign";
+var ZHAO_FU_ID = "astral_dice:fu_card";
+var ZHAO_HUO_ID = "astral_dice:huo_card";
+var ZHAO_DICE_ID = "astral_dice:dice";
+var ZHAO_FEN_SIGN_ID = "astral_dice:fen_sign";
+var DESC_ZHAO_BLESSING = "effect.astral_dice.zhao_blessing";
+var DESC_MISFORTUNE = "effect.astral_dice.misfortune";
+// 骰神赐福 = 下降沿状态机的输入源(施加/移除见 doZhaoBless:走原版 /effect 命令)
+var DESC_DICE_BLESSING = "effect.astral_dice.dice_blessing";
+
+/** 数值容错取值(读不到给 -9;不抛) */
+function zhaoNum(fn) {
+    try { return fn(); } catch (e) { return -9; }
+}
+
+/** 布尔 → 1/0(读不到给 -9) */
+function zhaoBool(fn) {
+    try { return fn() ? 1 : 0; } catch (e) { return -9; }
+}
+
+/** 主背包(0..35)+ 副手里指定物品的张数(-1 = 读不到) */
+function zhaoCountInvAndOff(p, itemId) {
+    var n = 0;
+    try {
+        var inv = p.getInventory();
+        for (var i = 0; i < 36; i++) {
+            var st = inv.getItem(i);
+            if (!st.isEmpty() && itemIdOf(st) === itemId) n = n + st.getCount();
+        }
+        var off = p.getOffhandItem();
+        if (!off.isEmpty() && itemIdOf(off) === itemId) n = n + off.getCount();
+    } catch (e) { return -1; }
+    return n;
+}
+
+/**
+ * 目标侧/自方统一全量读数(**单行**,字段顺序固定;用例按子串断言)。
+ * 同时适用于自身、真实玩家与 Carpet bot(都是真 ServerPlayer ⇒ 每 tick 事件照跑)。
+ */
+function zhaoStateRead(p) {
+    var fu = zhaoNum(function () { return FuCardItemClass.countFu(p); });
+    var huo = zhaoNum(function () { return HuoCardItemClass.count(p); });
+    var equipped = zhaoBool(function () { return ZhaoSignItemClass.isEquipped(p); });
+    var active = zhaoBool(function () { return ModAttachments.isZhaoBlessingActive(p); });
+    var skip = zhaoNum(function () { return ModAttachments.getZhaoBlessingSkipCycles(p); });
+    var prev = zhaoBool(function () { return ModAttachments.isZhaoPrevBlessing(p); });
+    var fx = effectAmpDur(findEffect(p, DESC_ZHAO_BLESSING));
+    var fxOn = zhaoBool(function () { return ZhaoBlessingEffectClass.has(p); });
+    var over = zhaoNum(function () { return ModAttachments.getZhaoOverflowBonus(p); });
+    var rem = zhaoNum(function () { return ModAttachments.getZhaoOverflowRemainder(p); });
+    var ap = zhaoNum(function () { return TeruDiceCombatModifiersClass.attackPowerOf(p); });
+    var mis = zhaoNum(function () { return MisfortuneEffectClass.getStacks(p); });
+    // ⚠️ `p.hasEffect(ModEffects.X)` 在 1.20.1 上会触发 KubeJS 注册表强转并抛异常(逃出 try/catch)
+    //    ⇒ 一律用 findEffect(按 descriptionId 字符串匹配,两条线同源)。
+    var misOn = (findEffect(p, DESC_MISFORTUNE) != null) ? 1 : 0;
+    var misFx = effectAmpDur(findEffect(p, DESC_MISFORTUNE));
+    var next = zhaoNum(function () { return ModAttachments.getHuoCardNextDamageTick(p); });
+    var now = nowTickLevel(p.level);
+    var nextDelta = (next > 0 && now > 0) ? (next - now) : -1;
+    var play = zhaoNum(function () { return EffectCardPeriodClass.getPlayCount(p); });
+    var max = zhaoNum(function () { return EffectCardPeriodClass.getMaxAllowed(p); });
+    var bonus = zhaoNum(function () { return EffectCardPeriodClass.getBonusPlays(p); });
+    var fuBonus = zhaoNum(function () { return ModAttachments.getFuCardCycleBonus(p); });
+    var cool = zhaoBool(function () { return EffectCardPeriodClass.isCooldownActive(p); });
+    var fen = zhaoNum(function () { return ModAttachments.getFenRecharge(p); });
+    var team = zhaoBool(function () { return ZhaoSignItemClass.teamGateOpen(p); });
+    var links = zhaoNum(function () { return ZhaoSignItemClass.linkedReceiverIds(p).size(); });
+    var hp = zhaoNum(function () { return teruR1(p.getHealth()); });
+    var maxHp = zhaoNum(function () { return teruR1(p.getMaxHealth()); });
+    return "z_fu=" + fu + ":z_huo=" + huo + ":z_equipped=" + equipped
+        + ":z_active=" + active + ":z_skip=" + skip + ":z_prev=" + prev
+        + ":z_fx=" + fx + ":z_fx_on=" + fxOn
+        + ":z_over=" + over + ":z_rem=" + teruR1(rem) + ":z_ap=" + ap
+        + ":z_mis=" + mis + ":z_mis_on=" + misOn + ":z_mis_fx=" + misFx
+        + ":z_next_delta=" + nextDelta
+        + ":z_play=" + play + ":z_max=" + max + ":z_bonus=" + bonus + ":z_fubonus=" + fuBonus + ":z_cool=" + cool
+        + ":z_fen=" + fen + ":z_team=" + team + ":z_links=" + links
+        + ":z_hp=" + hp + ":z_maxhp=" + maxHp
+        + ":z_bless=" + ((findEffect(p, DESC_DICE_BLESSING) != null) ? 1 : 0)
+        + ":z_alive=" + zhaoBool(function () { return p.isAlive(); })
+        + ":z_hand=" + itemIdOf(p.getMainHandItem()) + ":z_off=" + itemIdOf(p.getOffhandItem());
+}
+
+/** 全清主背包(0..35)+ 副手里的指定物品;返回移除张数(-1 = 读不到) */
+function zhaoClearItem(p, itemId) {
+    var removed = 0;
+    try {
+        var inv = p.getInventory();
+        for (var i = 0; i < 36; i++) {
+            var st = inv.getItem(i);
+            if (!st.isEmpty() && itemIdOf(st) === itemId) { removed = removed + st.getCount(); inv.setItem(i, ItemStack.EMPTY); }
+        }
+        var off = p.getOffhandItem();
+        if (!off.isEmpty() && itemIdOf(off) === itemId) {
+            removed = removed + off.getCount();
+            p.setItemInHand(ZhaoHandClass.OFF_HAND, ItemStack.EMPTY);
+        }
+    } catch (e) { return -1; }
+    return removed;
+}
+
+/** 把 n 张指定物品放进**主手**(先清掉主背包+副手里的同物品,保证"手里只有这一叠") */
+function zhaoHoldItem(p, itemId, n) {
+    try { zhaoClearItem(p, itemId); } catch (e0) { /* 忽略 */ }
+    var item = resolveItem(itemId);
+    if (item == null) return "unknown_item:" + itemId;
+    try { p.setItemInHand(ZhaoHandClass.MAIN_HAND, new ItemStack(item, n)); } catch (e1) { return exText(e1); }
+    return "";
+}
+
+/** 装备/卸下 curios `stand` 槽(空 itemId = 卸下);返回 "" = 成功(复用既有 putInSlot/clearCurioSlots) */
+function zhaoSetStand(p, itemId) {
+    if (itemId == null || itemId === "") {
+        var r = clearCurioSlots(p, "stand");
+        return r == null ? "" : r;
+    }
+    var item = resolveItem(itemId);
+    if (item == null) return "unknown_item:" + itemId;
+    var r2 = putInSlot(p, "stand", new ItemStack(item), 0);
+    return r2 == null ? "" : r2;
+}
+
+/**
+ * 把主背包里**已存在**的那一叠指定物品整叠搬到主手选中槽(保留数据组件/获得者绑定)。
+ * ⚠️ 必须搬**原栈**:新建 `new ItemStack(item)` 会丢掉专属牌的获得者组件,「非获得者被拒」就测不出来了。
+ */
+function zhaoMoveToMainHand(p, itemId) {
+    try {
+        var inv = p.getInventory();
+        var keep = null;
+        for (var i = 0; i < 36; i++) {
+            var st = inv.getItem(i);
+            if (!st.isEmpty() && itemIdOf(st) === itemId) { keep = st.copy(); break; }
+        }
+        if (keep == null) return "card_not_found:" + itemId;
+        for (var j = 0; j < 36; j++) {
+            var s2 = inv.getItem(j);
+            if (!s2.isEmpty() && itemIdOf(s2) === itemId) inv.setItem(j, ItemStack.EMPTY);
+        }
+        p.setItemInHand(ZhaoHandClass.MAIN_HAND, keep);
+        return "";
+    } catch (e) { return exText(e); }
+}
+
+/** 清指定玩家的卡与白泽/厄运/骰神赐福 + 回满血(脚手架;不动立牌装备与出牌轮) */
+function zhaoClearState(p) {
+    var err = "";
+    try { zhaoClearItem(p, ZHAO_FU_ID); } catch (e1) { err = err + "|fu:" + exText(e1); }
+    try { zhaoClearItem(p, ZHAO_HUO_ID); } catch (e2) { err = err + "|huo:" + exText(e2); }
+    try { ModAttachments.setZhaoBlessingActive(p, false); } catch (e3) { /* 忽略 */ }
+    try { ModAttachments.setZhaoBlessingSkipCycles(p, 0); } catch (e4) { /* 忽略 */ }
+    try { ModAttachments.setZhaoPrevBlessing(p, false); } catch (e5) { /* 忽略 */ }
+    try { ModAttachments.clearZhaoOverflowBonus(p); } catch (e6) { /* 忽略 */ }
+    try { ModAttachments.setHuoCardNextDamageTick(p, 0); } catch (e7) { /* 忽略 */ }
+    try { ZhaoBlessingEffectClass.remove(p); } catch (e8) { /* 忽略 */ }
+    try { MisfortuneEffectClass.clear(p); } catch (e9) { /* 忽略 */ }
+    // 骰神赐福(下降沿的输入)与血量也必须回到基线,否则读数会依赖前序用例残留
+    try { ModEffectRemoval.remove(p, teruBlessing()); } catch (e10) { /* 忽略 */ }
+    try { p.setHealth(p.getMaxHealth()); } catch (e11) { /* 忽略 */ }
+    return err;
+}
+
+/** 出牌轮 + 风水师状态的统一基线复位(与生产侧 clearRoundBonuses 逐项对齐;见用例前置) */
+function zhaoResetRound(p) {
+    try { resetEffectCardCycle(p); } catch (e1) { /* 忽略 */ }
+    try { EffectCardPeriodClass.forceResetRound(p); } catch (e2) { /* 忽略 */ }
+    try { ModAttachments.setFuCardCycleBonus(p, 0); } catch (e3) { /* 忽略 */ }
+}
+
+/** 给指定玩家 n 张(绑定 owner) */
+function zhaoGiveCard(receiver, owner, kind, n) {
+    if (kind === "huo") { HuoCardItemClass.give(receiver, owner, n); return; }
+    FuCardItemClass.give(receiver, owner, n);
+}
+
+/** 把玩家 HP 压到 max - gap(gap <= 0 则回满;下界 1 点,避免判死) */
+function zhaoSetGap(p, gap) {
+    try {
+        var maxHp = p.getMaxHealth();
+        var target = gap > 0 ? (maxHp - gap) : maxHp;
+        if (target < 1.0) target = 1.0;
+        p.setHealth(target);
+    } catch (e) { /* 忽略 */ }
+}
+
+/** 玩家 UUID 文本(只用本文件既有的多重容错取值器) */
+function zhaoUuidText(p) {
+    var u = playerUuid(p);
+    return u.ok ? ("" + u.value) : "<no_uuid>";
+}
+
+/** 在线玩家名单(双人现场证据:list= 里应含施法者与 bot) */
+function zhaoOnlineNames(ctx) {
+    var p = ctx.source.getPlayerOrException();
+    var out = "-";
+    try {
+        var all = p.level.getServer().getPlayerList().getPlayers();
+        var acc = "";
+        for (var i = 0; i < all.size(); i++) {
+            var qn = "?";
+            try { qn = "" + all.get(i).getName().getString(); } catch (e1) { qn = "?"; }
+            acc = (i === 0) ? qn : (acc + "," + qn);
+        }
+        out = (acc === "") ? "-" : acc;
+    } catch (e2) { out = "?"; }
+    return out;
+}
+
+/** 类门禁:任一产品类缺失 ⇒ 报 ERR(负向断言会立刻抓出) */
+function zhaoClassGate(ctx, tag) {
+    var miss = "";
+    if (ZhaoSignItemClass == null) miss = miss + "|ZhaoSignItem";
+    if (FuCardItemClass == null) miss = miss + "|FuCardItem";
+    if (HuoCardItemClass == null) miss = miss + "|HuoCardItem";
+    if (ZhaoBlessingEffectClass == null) miss = miss + "|ZhaoBlessingEffect";
+    if (MisfortuneEffectClass == null) miss = miss + "|MisfortuneEffect";
+    if (EffectCardPeriodClass == null) miss = miss + "|EffectCardPeriod";
+    if (FenSignItemClass == null) miss = miss + "|FenSignItem";
+    if (ExclusiveCardUtilClass == null) miss = miss + "|ExclusiveCardUtil";
+    if (miss !== "") { send(ctx, "AP_" + tag + "_ERR:no_class:" + miss); return false; }
+    return true;
+}
+
+/** 找到目标玩家(自身 / 真实玩家 / bot);找不到时报 ERR 并返回 null */
+function zhaoResolve(ctx, tag, p, nameText, what) {
+    if (nameText == null || nameText === "" || nameText === "-") return p;
+    var t = teruFindPlayer(ctx, nameText);
+    if (t == null) { send(ctx, "AP_" + tag + "_ERR:" + (what == null ? "no_player" : what) + ":" + nameText); return null; }
+    return t;
+}
+
+/** 基线:装风水师立牌 + 骰子 + 主手铁剑;清卡/白泽/厄运/计时器/出牌轮 */
+function doZhaoPrep(ctx, tag, clearText) {
+    if (!zhaoClassGate(ctx, tag)) return 1;
+    var p = ctx.source.getPlayerOrException();
+    try { TargetSelectionManagerClass.cancelSessionForTests(p); } catch (e0) { /* 忽略 */ }
+    zhaoResetRound(p);
+    var err = zhaoClearState(p);
+    var signErr = equipSign(p, ZHAO_SIGN_ID);
+    var diceErr = "unknown_item:" + ZHAO_DICE_ID;
+    var diceItem = resolveItem(ZHAO_DICE_ID);
+    if (diceItem != null) diceErr = putInSlot(p, "dice", new ItemStack(diceItem), 0);
+    var swordErr = "";
+    try { p.setItemInHand(ZhaoHandClass.MAIN_HAND, new ItemStack(resolveItem("minecraft:iron_sword"))); }
+    catch (e1) { swordErr = exText(e1); }
+    try { ModAttachments.setFenRecharge(p, 0); } catch (e2) { /* 忽略 */ }
+    send(ctx, "AP_" + tag + "_PREP:sign_err=" + (signErr == null ? "" : signErr)
+        + ":dice_err=" + (diceErr == null ? "" : diceErr)
+        + (swordErr === "" ? "" : ":sword_err=" + swordErr)
+        + ":clear=" + (("" + clearText) === "clear" ? 1 : 0)
+        + ":nmobs=" + zhaoNum(function () { return p.level.getEntitiesOfClass(LivingEntityClass, AABBClass.ofSize(p.position(), 64, 64, 64)).size(); })
+        + ":online=" + zhaoOnlineNames(ctx) + ":" + zhaoStateRead(p));
+    return 1;
+}
+
+/** 只读全量读数(缺省自身;给名字则读那个真实玩家/bot;找不到 ⇒ found=0,不报 ERR) */
+function doZhaoRead(ctx, tag, phase, nameText) {
+    if (!zhaoClassGate(ctx, tag)) return 1;
+    var p = ctx.source.getPlayerOrException();
+    var listN = zhaoOnlineNames(ctx).split(",").length;
+    var t = p;
+    if (nameText != null && nameText !== "" && nameText !== "-") {
+        t = teruFindPlayer(ctx, nameText);
+        if (t == null) {
+            send(ctx, "AP_" + tag + "_" + phase + ":found=0:who=" + nameText
+                + ":list=" + listN + ":online=" + zhaoOnlineNames(ctx));
+            return 1;
+        }
+    }
+    send(ctx, "AP_" + tag + "_" + phase + ":found=1:who=" + (t === p ? "self" : nameText)
+        + ":uuid=" + zhaoUuidText(t) + ":list=" + listN
+        + ":online=" + zhaoOnlineNames(ctx) + ":" + zhaoStateRead(t));
+    return 1;
+}
+
+/** 注册与冻结数值(物品/常量/效果/选择器动作/标签/cardByTypeId) */
+function doZhaoReg(ctx, tag) {
+    if (!zhaoClassGate(ctx, tag)) return 1;
+    var p = ctx.source.getPlayerOrException();
+    var signItem = resolveItem(ZHAO_SIGN_ID);
+    var fuItem = resolveItem(ZHAO_FU_ID);
+    var huoItem = resolveItem(ZHAO_HUO_ID);
+    var items = ":zhao_item=" + (signItem == null ? "MISSING" : "ok")
+        + ":fu_item=" + (fuItem == null ? "MISSING" : "ok")
+        + ":huo_item=" + (huoItem == null ? "MISSING" : "ok");
+
+    var cls = ":zhao_is=" + ((signItem != null && (signItem instanceof ZhaoSignItemClass)) ? 1 : 0)
+        + ":fu_is=" + ((fuItem != null && (fuItem instanceof FuCardItemClass)) ? 1 : 0)
+        + ":huo_is=" + ((huoItem != null && (huoItem instanceof HuoCardItemClass)) ? 1 : 0);
+
+    // ⚠️ 标签判定不得走 ItemStack#is(TagKey)(Rhino 重载歧义)⇒ 读 Holder#tags() 按 location() 比字符串
+    var tags = "", tagErr = "";
+    try {
+        var arr = BuiltInRegistries.ITEM.wrapAsHolder(signItem).tags().toArray();
+        var signs = 0, stand = 0;
+        for (var i = 0; i < arr.length; i++) {
+            var loc = "" + arr[i].location();
+            if (loc === "astral_dice:signs") signs = 1;
+            if (loc === "curios:stand") stand = 1;
+        }
+        tags = ":signs_tag=" + signs + ":curios_stand_tag=" + stand;
+    } catch (e1) { tags = ":tag_err=" + exText(e1); tagErr = exText(e1); }
+
+    var byType = "", byTypeErr = "";
+    try {
+        var fuByType = BaseEffectCardItemClass.cardByTypeId("fu_card");
+        var huoByType = BaseEffectCardItemClass.cardByTypeId("huo_card");
+        // 反证:未识别类型必须回退成王之力 ⇒ 上面两条命中说明两张符卡已真正接入映射表(不是回退值)
+        var unknownByType = BaseEffectCardItemClass.cardByTypeId("no_such_card_type");
+        byType = ":byType_fu=" + itemIdOf(fuByType) + ":byType_huo=" + itemIdOf(huoByType)
+            + ":byType_unknown=" + itemIdOf(unknownByType);
+    } catch (e2) { byType = ":byType_err=" + exText(e2); byTypeErr = exText(e2); }
+
+    var acts = "", actErr = "";
+    try {
+        var a1 = TargetSelectionRegistryClass.get(ZhaoSignItemClass.ACTION_ID);
+        var a2 = TargetSelectionRegistryClass.get("fu_card");
+        var a3 = TargetSelectionRegistryClass.get("huo_card");
+        acts = ":zhao_type=" + ("" + a1.targetType()) + ":zhao_self=" + zhaoBool(function () { return a1.allowSelf(); })
+            + ":zhao_r=" + teruR1(a1.radius())
+            + ":fu_type=" + ("" + a2.targetType()) + ":fu_self=" + zhaoBool(function () { return a2.allowSelf(); })
+            + ":fu_r=" + teruR1(a2.radius())
+            + ":huo_type=" + ("" + a3.targetType()) + ":huo_self=" + zhaoBool(function () { return a3.allowSelf(); })
+            + ":huo_r=" + teruR1(a3.radius());
+    } catch (e3) { acts = ":act_err=" + exText(e3); actErr = exText(e3); }
+
+    send(ctx, "AP_" + tag + "_REG:zhao_id=" + ZhaoSignItemClass.SIGN_ID
+        + ":zhao_action=" + ZhaoSignItemClass.ACTION_ID
+        + ":fu_action=" + FuCardItemClass.ACTION_ID + ":fu_heal=" + FuCardItemClass.HEAL_AMOUNT
+        + ":huo_action=" + HuoCardItemClass.ACTION_ID + ":huo_dmg=" + HuoCardItemClass.DAMAGE
+        + ":huo_period=" + HuoCardItemClass.CURSE_PERIOD_TICKS
+        + ":zhao_fx=" + DESC_ZHAO_BLESSING + ":mis_fx=" + DESC_MISFORTUNE
+        + ":zhao_dur=" + ZhaoBlessingEffectClass.DURATION_TICKS + ":mis_dur=" + MisfortuneEffectClass.DURATION_TICKS
+        + ":fen_max=" + FenSignItemClass.MAX_RECHARGE
+        + items + cls + tags + byType + acts
+        + (tagErr === "" ? "" : ":tag_ex=1")
+        + (byTypeErr === "" ? "" : ":bytype_ex=1")
+        + (actErr === "" ? "" : ":act_ex=1")
+        + ":" + zhaoStateRead(p));
+    return 1;
+}
+
+/** 给自身/指定真实玩家 n 张(绑定受赠者) */
+function doZhaoGive(ctx, tag, kindText, nText, nameText) {
+    if (!zhaoClassGate(ctx, tag)) return 1;
+    var p = ctx.source.getPlayerOrException();
+    var kind = ("" + kindText) === "huo" ? "huo" : "fu";
+    var n = teruInt(nText, 1);
+    var t = zhaoResolve(ctx, tag, p, nameText, "no_player");
+    if (t == null) return 1;
+    var id = kind === "huo" ? ZHAO_HUO_ID : ZHAO_FU_ID;
+    var before = zhaoCountInvAndOff(t, id);
+    zhaoGiveCard(t, t, kind, n);
+    send(ctx, "AP_" + tag + "_GIVE:kind=" + kind + ":who=" + (t === p ? "self" : nameText) + ":n=" + n
+        + ":count=" + before + ">" + zhaoCountInvAndOff(t, id) + ":" + zhaoStateRead(t));
+    return 1;
+}
+
+/**
+ * 符卡-祸张数设为 n(主栏 + 副手全清后再给,并立即镜像厄运)。
+ * 同时给出**计时器解耦**证据:`timer=<改前>><改后>` 与 `timer_same=1`(张数在 >0 区间内变化,
+ * 周期伤害计时器必须原值不动 —— 起算/推进只由 HuoCardItem#tick 负责)。
+ */
+function doZhaoSetHuo(ctx, tag, nText, nameText) {
+    if (!zhaoClassGate(ctx, tag)) return 1;
+    var p = ctx.source.getPlayerOrException();
+    var t = zhaoResolve(ctx, tag, p, nameText, "no_player");
+    if (t == null) return 1;
+    var n = teruInt(nText, 0);
+    var timer0 = zhaoNum(function () { return ModAttachments.getHuoCardNextDamageTick(t); });
+    var removed = zhaoClearItem(t, ZHAO_HUO_ID);
+    if (n > 0) HuoCardItemClass.give(t, t, n);
+    HuoCardItemClass.refreshCurseState(t);
+    var timer1 = zhaoNum(function () { return ModAttachments.getHuoCardNextDamageTick(t); });
+    send(ctx, "AP_" + tag + "_SETHUO:removed=" + removed + ":want=" + n
+        + ":count=" + zhaoCountInvAndOff(t, ZHAO_HUO_ID) + ":who=" + (t === p ? "self" : nameText)
+        + ":timer=" + timer0 + ">" + timer1 + ":timer_same=" + (timer0 === timer1 ? 1 : 0)
+        + ":" + zhaoStateRead(t));
+    return 1;
+}
+
+/** 清指定玩家的卡 + 白泽/厄运状态 + 计时器 + 出牌轮 + 养精蓄锐(脚手架:把该玩家拉回同一基线) */
+function doZhaoClear(ctx, tag, nameText) {
+    if (!zhaoClassGate(ctx, tag)) return 1;
+    var p = ctx.source.getPlayerOrException();
+    var t = zhaoResolve(ctx, tag, p, nameText, "no_player");
+    if (t == null) return 1;
+    var err = zhaoClearState(t);
+    zhaoResetRound(t);
+    try { ModAttachments.setFenRecharge(t, 0); } catch (e0) { /* 忽略 */ }
+    send(ctx, "AP_" + tag + "_CLEAR:who=" + (t === p ? "self" : nameText)
+        + (err === "" ? "" : ":err=" + err) + ":" + zhaoStateRead(t));
+    return 1;
+}
+
+/**
+ * 目标解析:`self` = 自身;`mob` = 现造一只敌对生物(spider);其余 = 玩家名。
+ * 支持两种写法:`zhaocast <tag> <self|mob>` 与 `zhaocast <tag> <玩家名>`(第二参直接当目标名,
+ * 因为 Brigadier 的 name 是可选参数,2 参写法下该位置必然是目标名)。返回 {t, label, isMob}。
+ */
+function zhaoResolveCastTarget(ctx, tag, p, modeText, nameText) {
+    var mode = "" + modeText;
+    var who = (nameText == null) ? "" : ("" + nameText);
+    if (mode === "self") return { t: p, label: "self", isMob: false };
+    if (mode === "mob") {
+        var m = spawnDummy(p, "minecraft:spider", 3);
+        return { t: m, label: "mob", isMob: true };
+    }
+    if (who === "") who = mode;   // 2 参写法:`zhaocast <tag> Bot1`
+    var t = zhaoResolve(ctx, tag, p, who, "no_player");
+    return { t: t, label: (t == null ? "-" : who), isMob: false };
+}
+
+/**
+ * 服务端权威入口 applyBlessing(自身 / 真实玩家 / 生物)。
+ * self ⇒ ok=1(自选放行);玩家名 ⇒ ok=1(真实第二名玩家);mob ⇒ ok=0(非玩家必须被拒)。
+ * 完美帮手判据用 `t_fen_delta`(调用前后差值)而非绝对值 —— 大当家立牌的被动层数会自行增长。
+ */
+function doZhaoCast(ctx, tag, modeText, nameText) {
+    if (!zhaoClassGate(ctx, tag)) return 1;
+    var p = ctx.source.getPlayerOrException();
+    var tt = zhaoResolveCastTarget(ctx, tag, p, modeText, nameText);
+    if (tt.t == null) return 1;
+    var target = tt.t;
+    var fu0 = zhaoNum(function () { return FuCardItemClass.countFu(p); });
+    var huo0 = zhaoNum(function () { return HuoCardItemClass.count(p); });
+    var t0 = "", fen0 = -1;
+    if (!tt.isMob) {
+        t0 = zhaoStateRead(target);
+        fen0 = zhaoNum(function () { return ModAttachments.getFenRecharge(target); });
+    }
+    var ok = -1, err = "";
+    try { ok = ZhaoSignItemClass.applyBlessing(p, target) ? 1 : 0; } catch (e1) { ok = -2; err = exText(e1); }
+    send(ctx, "AP_" + tag + "_CAST:mode=" + tt.label + ":ok=" + ok
+        + ":caster_fu=" + fu0 + ">" + zhaoNum(function () { return FuCardItemClass.countFu(p); })
+        + ":caster_huo=" + huo0 + ">" + zhaoNum(function () { return HuoCardItemClass.count(p); })
+        + (err === "" ? "" : ":err=" + err) + ":self={" + zhaoStateRead(p) + "}");
+    if (!tt.isMob && target !== p) {
+        send(ctx, "AP_" + tag + "_CAST_T:mode=" + tt.label
+            + ":t_fen_delta=" + (zhaoNum(function () { return ModAttachments.getFenRecharge(target); }) - fen0)
+            + ":before={" + t0 + "}:after={" + zhaoStateRead(target) + "}");
+    }
+    if (tt.isMob) { try { target.discard(); } catch (e2) { /* 忽略 */ } }
+    return 1;
+}
+
+/**
+ * 真实主动键路径:performSkillForCurio(只开启选择会话)→ confirm(目标)。
+ * 目标写法同 {@link doZhaoCast}(`self` / 玩家名)。两次调用之间取消会话,保证干净。
+ */
+function doZhaoGate(ctx, tag, modeText, nameText) {
+    if (!zhaoClassGate(ctx, tag)) return 1;
+    var p = ctx.source.getPlayerOrException();
+    var tt = zhaoResolveCastTarget(ctx, tag, p, modeText, nameText);
+    if (tt.t == null) return 1;
+    try { TargetSelectionManagerClass.cancelSessionForTests(p); } catch (e0) { /* 忽略 */ }
+    var session = 0, token = -1, confirmErr = "";
+    try {
+        BaseSignItemClass.performSkillForCurio(p);
+        session = TargetSelectionManagerClass.isSelecting(p) ? 1 : 0;
+        token = TargetSelectionManagerClass.sessionTokenForTests(p);
+        TargetSelectionManagerClass.confirm(p, token, tt.t.getId());
+    } catch (e1) { confirmErr = exText(e1); }
+    var tAfter = "";
+    if (!tt.isMob && tt.t !== p) {
+        tAfter = ":t_after={" + zhaoStateRead(tt.t) + "}";
+    }
+    send(ctx, "AP_" + tag + "_GATE:mode=" + tt.label + ":session=" + session + ":token_seen=" + (token > 0 ? 1 : 0)
+        + (confirmErr === "" ? "" : ":confirm_err=" + confirmErr)
+        + ":self={" + zhaoStateRead(p) + "}" + tAfter);
+    if (tt.isMob) { try { tt.t.discard(); } catch (e2) { /* 忽略 */ } }
+    return 1;
+}
+
+/** 骰神赐福 施加/移除(下降沿驱动源;name 缺省=自身)
+ *
+ *  ① 施加:走**原版命令** `/effect give <name> astral_dice:dice_blessing 6000 0`(经 runCmdP)——
+ *     不得改用 `new MobEffectInstance(ModEffects.X, …)`:1.20.1 上 `ModEffects.X` 是 Forge
+ *     `RegistryObject`,KubeJS 会对它做**注册表强转**(`RegistryInfo.wrap` → `UtilsJS.getMCID`)
+ *     并抛 `ResourceLocationException` / `NPE: No such element with id null in registry
+ *     minecraft:mob_effect` —— 该异常**逃出** JS 的 try/catch(2026-09-20 实测:整条读数丢失、
+ *     命令报 Brigadier 异常),`guard`/`zhaoBool` 都兜不住。
+ *  ② 移除:必须走**内部通道** `ModEffectRemoval.remove`(前置库)。实测产品侧
+ *     `event/ModEffectEvents#onModEffectRemovalPrevented`(HIGH)会把一切**外部**移除
+ *     `astral_dice:*` 效果的事件 `setCanceled(true)`(牛奶 / `/effect clear` 都清不掉)⇒
+ *     `/effect clear` 在本模组效果上恒为空操作。该拦截本身由用例另行断言(读数仍 =1)。
+ *  ③ 读数一律用 `findEffect(p, descId)`(纯字符串匹配):`p.hasEffect(ModEffects.X)` 在 1.20.1
+ *     上会踩同一个注册表强转坑。
+ */
+function doZhaoBless(ctx, tag, modeText, nameText) {
+    if (!zhaoClassGate(ctx, tag)) return 1;
+    var p = ctx.source.getPlayerOrException();
+    var t = zhaoResolve(ctx, tag, p, nameText, "no_player");
+    if (t == null) return 1;
+    var who = "?";
+    try { who = "" + t.getName().getString(); } catch (e0) { who = "?"; }
+    var mode = ("" + modeText) === "give" ? "give" : "clear";
+    var how = mode, rc = "";
+    if (mode === "give") {
+        // 原版命令通道(读回的 rc=rc=1 是 runCmdP 自带前缀 + performPrefixedCommand 返回值)
+        try { rc = "" + runCmdP(p, "effect give " + who + " astral_dice:dice_blessing 6000 0"); }
+        catch (e1) { how = "give_ex:" + exText(e1); }
+    } else {
+        // 内部移除通道(外部 /effect clear 会被产品拦截器取消,见上方注释)
+        try { ModEffectRemoval.remove(t, teruBlessing()); }
+        catch (e2) { how = "clear_ex:" + exText(e2); }
+    }
+    send(ctx, "AP_" + tag + "_BLESS:how=" + how + ":who=" + (t === p ? "self" : nameText)
+        + ":rc=" + rc + ":" + zhaoStateRead(t));
+    return 1;
+}
+
+/** 给真实玩家(bot)装备风水师立牌 / 大当家立牌 / 卸下 stand 槽 */
+function doZhaoSign(ctx, tag, nameText, modeText) {
+    if (!zhaoClassGate(ctx, tag)) return 1;
+    var p = ctx.source.getPlayerOrException();
+    var t = zhaoResolve(ctx, tag, p, nameText, "no_player");
+    if (t == null) return 1;
+    var mode = "" + modeText;
+    var itemId = mode === "zhao" ? ZHAO_SIGN_ID : (mode === "fen" ? ZHAO_FEN_SIGN_ID : "");
+    var itemErr = "";
+    if (itemId !== "" && resolveItem(itemId) == null) itemErr = "unknown_item:" + itemId;
+    var err = itemErr === "" ? zhaoSetStand(t, itemId) : itemErr;
+    if (err == null) err = "";
+    var zhaoEq = zhaoBool(function () { return ZhaoSignItemClass.isEquipped(t); });
+    var fenEq = zhaoBool(function () { return FenSignItemClass.isEquipped(t); });
+    send(ctx, "AP_" + tag + "_SIGN:who=" + nameText + ":mode=" + mode
+        + (err === "" ? "" : ":err=" + err)
+        + ":zhao_eq=" + zhaoEq + ":fen_eq=" + fenEq + ":" + zhaoStateRead(t));
+    return 1;
+}
+
+/** 福祸相倚:直接走 onDiceRollResult(骰点 1/6)times 次(每次之间隔 1 个 tick 由用例的 wait 保证) */
+function doZhaoDice(ctx, tag, diceText, timesText) {
+    if (!zhaoClassGate(ctx, tag)) return 1;
+    var p = ctx.source.getPlayerOrException();
+    var dice = teruInt(diceText, 1);
+    var times = teruInt(timesText, 1);
+    var fu0 = zhaoNum(function () { return FuCardItemClass.countFu(p); });
+    var huo0 = zhaoNum(function () { return HuoCardItemClass.count(p); });
+    var granted = "", err = "";
+    for (var i = 0; i < times; i++) {
+        var r = "null";
+        try {
+            // ⚠️ 生产链路在发牌前会先 tryClaimDiceJudgment(一次结算一次判定);此处逐次判定 ⇒ 每次都要重新占位,
+            //    否则连续调用会被"同一 tick 去重"挡下(那是 zhaodedup 要测的语义,不能混进本命令)。
+            ZhaoSignItemClass.tryClaimDiceJudgment(p);
+            r = "" + ZhaoSignItemClass.onDiceRollResult(p, dice);
+        } catch (e1) { r = "ex:" + exText(e1); err = exText(e1); }
+        granted = granted + (i === 0 ? "" : ",") + r;
+    }
+    send(ctx, "AP_" + tag + "_DICE:dice=" + dice + ":times=" + times + ":granted=" + granted
+        + ":fu=" + fu0 + ">" + zhaoNum(function () { return FuCardItemClass.countFu(p); })
+        + ":huo=" + huo0 + ">" + zhaoNum(function () { return HuoCardItemClass.count(p); })
+        + (err === "" ? "" : ":err=" + err) + ":" + zhaoStateRead(p));
+    return 1;
+}
+
+/** 同一 tick 两次判定:第一次 tryClaimDiceJudgment=true,第二次必须 false(不再发牌) */
+function doZhaoDedup(ctx, tag, diceText) {
+    if (!zhaoClassGate(ctx, tag)) return 1;
+    var p = ctx.source.getPlayerOrException();
+    var dice = teruInt(diceText, 1);
+    var fu0 = zhaoNum(function () { return FuCardItemClass.countFu(p); });
+    var huo0 = zhaoNum(function () { return HuoCardItemClass.count(p); });
+    var c1 = -1, c2 = -1, g1 = "-", g2 = "-", err = "";
+    try {
+        c1 = ZhaoSignItemClass.tryClaimDiceJudgment(p) ? 1 : 0;
+        if (c1 === 1) g1 = "" + ZhaoSignItemClass.onDiceRollResult(p, dice);
+    } catch (e1) { g1 = "ex:" + exText(e1); err = exText(e1); }
+    try {
+        c2 = ZhaoSignItemClass.tryClaimDiceJudgment(p) ? 1 : 0;
+        if (c2 === 1) g2 = "" + ZhaoSignItemClass.onDiceRollResult(p, dice);
+    } catch (e2) { g2 = "ex:" + exText(e2); err = err + "|" + exText(e2); }
+    send(ctx, "AP_" + tag + "_DEDUP:dice=" + dice + ":claim1=" + c1 + ":claim2=" + c2
+        + ":g1=" + g1 + ":g2=" + g2
+        + ":fu=" + fu0 + ">" + zhaoNum(function () { return FuCardItemClass.countFu(p); })
+        + ":huo=" + huo0 + ">" + zhaoNum(function () { return HuoCardItemClass.count(p); })
+        + (err === "" ? "" : ":err=" + err) + ":" + zhaoStateRead(p));
+    return 1;
+}
+
+/**
+ * 溢出治疗 → 攻击力:把 HP 压到 max-gap,再 heal(amount)。
+ * exp_over = floor(max(0, amount - min(amount, 缺口)))(单次期望;余数由累加器跨次凑整,见 §14.6)。
+ */
+function doZhaoHeal(ctx, tag, amountText, gapText, nameText) {
+    if (!zhaoClassGate(ctx, tag)) return 1;
+    var p = ctx.source.getPlayerOrException();
+    var t = zhaoResolve(ctx, tag, p, nameText, "no_player");
+    if (t == null) return 1;
+    var amount = Number("" + amountText);
+    if (isNaN(amount)) amount = 0;
+    var gap = Number("" + gapText);
+    if (isNaN(gap)) gap = 0;
+    zhaoSetGap(t, gap);
+    var hp0 = teruR1(t.getHealth());
+    var over0 = zhaoNum(function () { return ModAttachments.getZhaoOverflowBonus(t); });
+    var rem0 = zhaoNum(function () { return ModAttachments.getZhaoOverflowRemainder(t); });
+    var ap0 = zhaoNum(function () { return TeruDiceCombatModifiersClass.attackPowerOf(t); });
+    var err = "";
+    try { t.heal(amount); } catch (e1) { err = exText(e1); }
+    var expOver = -1;
+    try {
+        var missing = Math.max(0, t.getMaxHealth() - hp0);
+        var actual = Math.min(amount, missing);
+        expOver = Math.floor(Math.max(0, amount - actual));
+    } catch (e2) { expOver = -1; }
+    var over1 = zhaoNum(function () { return ModAttachments.getZhaoOverflowBonus(t); });
+    var rem1 = zhaoNum(function () { return ModAttachments.getZhaoOverflowRemainder(t); });
+    var ap1 = zhaoNum(function () { return TeruDiceCombatModifiersClass.attackPowerOf(t); });
+    send(ctx, "AP_" + tag + "_HEAL:who=" + (t === p ? "self" : nameText)
+        + ":amount=" + amount + ":gap=" + gap + ":hp=" + hp0 + ">" + teruR1(t.getHealth())
+        + ":exp_over=" + expOver
+        + ":over=" + over0 + ">" + over1 + ":rem=" + teruR1(rem0) + ">" + teruR1(rem1)
+        + ":ap=" + ap0 + ">" + ap1 + ":ap_delta=" + (ap1 - ap0)
+        + (err === "" ? "" : ":err=" + err));
+    return 1;
+}
+
+/**
+ * 溢出治疗 → 攻击力**整条链**一次跑完(把 5 次事件压进一条命令,读数逐项可比):
+ *   s1 = 满血 heal(10)      ⇒ 溢出 10(整数 +10)
+ *   s2 = 缺口 4 时 heal(6)  ⇒ 溢出 2(只算超出缺口的部分)
+ *   s3 = 满血 heal(0.5)     ⇒ 溢出 0.5 →余数 0.5(整数不动)
+ *   s4 = 满血 heal(0.5)     ⇒ 余数凑整 ⇒ 整数 +1、余数归 0(§14.6 余数累加器)
+ *   s5 = 缺口 4 时 heal(4)  ⇒ 刚好回满、溢出 0 ⇒ 不增加
+ * 每项格式 `i:over:rem:ap_delta:exp_over`;末尾附目标全量读数。
+ */
+function doZhaoSeq(ctx, tag, nameText) {
+    if (!zhaoClassGate(ctx, tag)) return 1;
+    var p = ctx.source.getPlayerOrException();
+    var t = zhaoResolve(ctx, tag, p, nameText, "no_player");
+    if (t == null) return 1;
+    var gaps = [0, 4, 0, 0, 4];
+    var amounts = [10, 6, 0.5, 0.5, 4];
+    var seq = "", err = "";
+    for (var k = 0; k < 5; k++) {
+        zhaoSetGap(t, gaps[k]);
+        var hp0 = teruR1(t.getHealth());
+        var over0 = zhaoNum(function () { return ModAttachments.getZhaoOverflowBonus(t); });
+        var ap0 = zhaoNum(function () { return TeruDiceCombatModifiersClass.attackPowerOf(t); });
+        try { t.heal(amounts[k]); } catch (e1) { err = err + "|s" + (k + 1) + ":" + exText(e1); }
+        var exp = -1;
+        try {
+            var missing = Math.max(0, t.getMaxHealth() - hp0);
+            exp = Math.floor(Math.max(0, amounts[k] - Math.min(amounts[k], missing)));
+        } catch (e2) { exp = -1; }
+        var ap1 = zhaoNum(function () { return TeruDiceCombatModifiersClass.attackPowerOf(t); });
+        seq = seq + (k === 0 ? "" : ",") + (k + 1) + ":"
+            + zhaoNum(function () { return ModAttachments.getZhaoOverflowBonus(t); }) + ":"
+            + teruR1(zhaoNum(function () { return ModAttachments.getZhaoOverflowRemainder(t); })) + ":"
+            + (ap1 - ap0) + ":" + exp;
+    }
+    send(ctx, "AP_" + tag + "_SEQ:who=" + (t === p ? "self" : nameText) + ":seq=" + seq
+        + (err === "" ? "" : ":err=" + err) + ":" + zhaoStateRead(t));
+    return 1;
+}
+
+/**
+ * 符卡-福连续使用 times 次(每轮都重新发一张自绑定的牌,再走**服务端权威**入口 playFromSelector)。
+ * 逐次读数 `ok/play/max/fubonus/cool` 串成一行 ⇒ 「消耗 1 / 返回 1」净 0、以及打满
+ * `min(9, 1+extra)` 后进冷却、再多用必被拒,全部可在**一条读数**里核对。
+ */
+function doZhaoFuLoop(ctx, tag, timesText) {
+    if (!zhaoClassGate(ctx, tag)) return 1;
+    var p = ctx.source.getPlayerOrException();
+    var times = teruInt(timesText, 1);
+    if (times < 1) times = 1;
+    if (times > 15) times = 15;
+    var seq = "", err = "";
+    for (var i = 0; i < times; i++) {
+        var ready = zhaoReadyCard(p, "fu", p);
+        var ok = -1;
+        try { ok = p.getMainHandItem().getItem().playFromSelector(p, p, p.getMainHandItem()) ? 1 : 0; }
+        catch (e1) { ok = -2; err = err + "|i" + (i + 1) + ":" + exText(e1); }
+        seq = seq + (i === 0 ? "" : ",") + (i + 1) + ":ok" + ok
+            + "/p" + zhaoNum(function () { return EffectCardPeriodClass.getPlayCount(p); })
+            + "/m" + zhaoNum(function () { return EffectCardPeriodClass.getMaxAllowed(p); })
+            + "/f" + zhaoNum(function () { return ModAttachments.getFuCardCycleBonus(p); })
+            + "/c" + zhaoBool(function () { return EffectCardPeriodClass.isCooldownActive(p); })
+            + (ready === "" ? "" : "/r!" + ready);
+    }
+    send(ctx, "AP_" + tag + "_FULOOP:times=" + times + ":who=self:seq=" + seq
+        + (err === "" ? "" : ":err=" + err) + ":" + zhaoStateRead(p));
+    return 1;
+}
+
+/** 立即跑一次 HuoCardItem#tick(now = 原样;force = 先把到期刻推到上一刻以触发结算) */
+function doZhaoHuoTick(ctx, tag, modeText, nameText) {
+    if (!zhaoClassGate(ctx, tag)) return 1;
+    var p = ctx.source.getPlayerOrException();
+    var t = zhaoResolve(ctx, tag, p, nameText, "no_player");
+    if (t == null) return 1;
+    var mode = "" + modeText;
+    var now = nowTickLevel(t.level);
+    var next0 = zhaoNum(function () { return ModAttachments.getHuoCardNextDamageTick(t); });
+    if (mode === "force") {
+        try { ModAttachments.setHuoCardNextDamageTick(t, now - 1); } catch (e1) { /* 忽略 */ }
+    }
+    var hp0 = teruR1(t.getHealth());
+    var err = "";
+    try { HuoCardItemClass.tick(t); } catch (e2) { err = exText(e2); }
+    var next1 = zhaoNum(function () { return ModAttachments.getHuoCardNextDamageTick(t); });
+    send(ctx, "AP_" + tag + "_HUOTICK:mode=" + mode + ":who=" + (t === p ? "self" : nameText)
+        + ":now=" + now + ":next=" + next0 + ">" + next1 + ":next_delta=" + (next1 > 0 ? (next1 - now) : -1)
+        + ":hp=" + hp0 + ">" + teruR1(t.getHealth()) + ":dmg=" + teruR1(hp0 - t.getHealth())
+        + (err === "" ? "" : ":err=" + err) + ":" + zhaoStateRead(t));
+    return 1;
+}
+
+/** 把全部符卡-祸挪到 主手 / 副手 / 末影箱(容器口径实测) */
+function doZhaoHuoBox(ctx, tag, modeText, nameText) {
+    if (!zhaoClassGate(ctx, tag)) return 1;
+    var p = ctx.source.getPlayerOrException();
+    var t = zhaoResolve(ctx, tag, p, nameText, "no_player");
+    if (t == null) return 1;
+    var removed = zhaoClearItem(t, ZHAO_HUO_ID);
+    var n = removed > 0 ? removed : 1;
+    var mode = "" + modeText;
+    var where = "", err = "";
+    try {
+        var item = resolveItem(ZHAO_HUO_ID);
+        if (item == null) { err = "unknown_item"; }
+        else if (mode === "off") {
+            t.setItemInHand(ZhaoHandClass.OFF_HAND, new ItemStack(item, n));
+            where = "offhand";
+        } else if (mode === "ender") {
+            t.getEnderChestInventory().setItem(0, new ItemStack(item, n));
+            where = "enderchest";
+        } else {
+            t.setItemInHand(ZhaoHandClass.MAIN_HAND, new ItemStack(item, n));
+            where = "mainhand";
+        }
+    } catch (e1) { err = exText(e1); }
+    HuoCardItemClass.refreshCurseState(t);
+    send(ctx, "AP_" + tag + "_HUOBOX:mode=" + mode + ":moved=" + removed + ":where=" + where
+        + ":who=" + (t === p ? "self" : nameText)
+        + (err === "" ? "" : ":err=" + err) + ":" + zhaoStateRead(t));
+    return 1;
+}
+
+/**
+ * 符卡-祸丢弃 —— 「禁止丢弃」已按用户指令整体移除 ⇒ **必须成功**。
+ * 走 `ServerPlayer#drop(boolean)`(原版丢弃路径,内部正是 `selected.onDroppedByPlayer(this)` 的判定点):
+ * 返回 true = 该次丢弃被放行,主手 −1、地面 +1(拾取延迟 40 tick,读数在同一命令内完成)。
+ */
+function doZhaoDrop(ctx, tag) {
+    if (!zhaoClassGate(ctx, tag)) return 1;
+    var p = ctx.source.getPlayerOrException();
+    var hand0 = itemIdOf(p.getMainHandItem());
+    var inv0 = zhaoCountInvAndOff(p, ZHAO_HUO_ID);
+    var ground0 = teruGroundCount(p, ZHAO_HUO_ID, 8);
+    var err = "";
+    if (hand0 !== ZHAO_HUO_ID) { err = zhaoHoldItem(p, ZHAO_HUO_ID, 1); }
+    var dropped = -1;
+    if (err === "") {
+        try { dropped = p.drop(true) ? 1 : 0; } catch (e1) { err = exText(e1); }
+    }
+    send(ctx, "AP_" + tag + "_DROP:hand_before=" + hand0 + ":inv=" + inv0 + ">" + zhaoCountInvAndOff(p, ZHAO_HUO_ID)
+        + ":ground=" + ground0 + ">" + teruGroundCount(p, ZHAO_HUO_ID, 8)
+        + ":dropped=" + dropped + (err === "" ? "" : ":err=" + err) + ":" + zhaoStateRead(p));
+    return 1;
+}
+
+/** 选择器出牌前把牌备到主手(绑 owner;搬**原栈**以保留获得者组件);返回 "" = 就绪 */
+function zhaoReadyCard(p, kind, owner) {
+    var itemId = kind === "huo" ? ZHAO_HUO_ID : ZHAO_FU_ID;
+    try { zhaoClearItem(p, itemId); } catch (e0) { /* 忽略 */ }
+    if (kind === "huo") HuoCardItemClass.give(p, owner, 1); else FuCardItemClass.give(p, owner, 1);
+    return zhaoMoveToMainHand(p, itemId);
+}
+
+/**
+ * 出牌目标解析:`self` = 自身;`mob` = 现造一只敌对生物(spider,默认 16 血);其余 = 真实玩家/bot。
+ * 返回 { t, label, isMob }(找不到玩家时 t = null)。
+ */
+function zhaoResolveTarget(ctx, tag, p, targetText, nameText) {
+    var tt = "" + targetText;
+    if (tt === "self") return { t: p, label: "self", isMob: false };
+    if (tt === "mob") {
+        var m = spawnDummy(p, "minecraft:spider", 3);
+        return { t: m, label: "mob", isMob: true };
+    }
+    var t = zhaoResolve(ctx, tag, p, nameText, "no_player");
+    return { t: t, label: (t == null ? "-" : "" + nameText), isMob: false };
+}
+
+/** 出牌 owner 解析(self = 自己;其余 = 真实玩家) */
+function zhaoResolveOwner(ctx, tag, p, ownerText) {
+    if (ownerText == null || ownerText === "" || ownerText === "self") return { o: p, label: "self" };
+    var o = zhaoResolve(ctx, tag, p, ownerText, "no_owner");
+    return { o: o, label: (o == null ? "-" : "" + ownerText) };
+}
+
+/**
+ * 真实出牌路径:主手放牌 ⇒ tickHeldSelector(手持即开局)⇒ confirm(目标)。
+ * owner 非本人 = 「非获得者使用」⇒ 开局前即被 ExclusiveCardUtil.canUse 拒(session=0、无治疗/伤害)。
+ */
+function doZhaoCard(ctx, tag, kindText, targetText, nameText, ownerText) {
+    if (!zhaoClassGate(ctx, tag)) return 1;
+    var p = ctx.source.getPlayerOrException();
+    var kind = ("" + kindText) === "huo" ? "huo" : "fu";
+    var tt = zhaoResolveTarget(ctx, tag, p, targetText, nameText);
+    if (tt.t == null) return 1;
+    var target = tt.t;
+    var oo = zhaoResolveOwner(ctx, tag, p, ownerText);
+    if (oo.o == null) { if (tt.isMob) { try { target.discard(); } catch (e0) { /* 忽略 */ } } return 1; }
+    var ready = zhaoReadyCard(p, kind, oo.o);
+    var hand = itemIdOf(p.getMainHandItem());
+    var canUse = zhaoBool(function () { return ExclusiveCardUtilClass.canUse(p, p.getMainHandItem()); });
+    var play0 = zhaoNum(function () { return EffectCardPeriodClass.getPlayCount(p); });
+    var max0 = zhaoNum(function () { return EffectCardPeriodClass.getMaxAllowed(p); });
+    var fuB0 = zhaoNum(function () { return ModAttachments.getFuCardCycleBonus(p); });
+    var cool0 = zhaoBool(function () { return EffectCardPeriodClass.isCooldownActive(p); });
+    var hp0 = teruR1(target.getHealth());
+    var fu0 = zhaoNum(function () { return FuCardItemClass.countFu(p); });
+    var huo0 = zhaoNum(function () { return HuoCardItemClass.count(p); });
+    var tState0 = tt.isMob ? "" : ("t0={" + zhaoStateRead(target) + "}");
+    try { TargetSelectionManagerClass.cancelSessionForTests(p); } catch (e1) { /* 忽略 */ }
+    var session = 0, token = -1, confirmErr = "";
+    try {
+        BaseEffectCardItemClass.tickHeldSelector(p);
+        session = TargetSelectionManagerClass.isSelecting(p) ? 1 : 0;
+        token = TargetSelectionManagerClass.sessionTokenForTests(p);
+        TargetSelectionManagerClass.confirm(p, token, target.getId());
+    } catch (e2) { confirmErr = exText(e2); }
+    var tState1 = tt.isMob ? "" : (":t_after={" + zhaoStateRead(target) + "}");
+    send(ctx, "AP_" + tag + "_CARD:kind=" + kind + ":target=" + tt.label + ":owner=" + oo.label
+        + ":hand=" + hand + ":can_use=" + canUse + (ready === "" ? "" : ":ready_err=" + ready)
+        + ":session=" + session + ":token_seen=" + (token > 0 ? 1 : 0)
+        + (confirmErr === "" ? "" : ":confirm_err=" + confirmErr)
+        + ":t_hp=" + hp0 + ">" + teruR1(target.getHealth()) + ":t_alive=" + zhaoBool(function () { return target.isAlive(); })
+        + ":fu=" + fu0 + ">" + zhaoNum(function () { return FuCardItemClass.countFu(p); })
+        + ":huo=" + huo0 + ">" + zhaoNum(function () { return HuoCardItemClass.count(p); })
+        + ":play=" + play0 + ">" + zhaoNum(function () { return EffectCardPeriodClass.getPlayCount(p); })
+        + ":max=" + max0 + ">" + zhaoNum(function () { return EffectCardPeriodClass.getMaxAllowed(p); })
+        + ":fubonus=" + fuB0 + ">" + zhaoNum(function () { return ModAttachments.getFuCardCycleBonus(p); })
+        + ":cool=" + cool0 + ">" + zhaoBool(function () { return EffectCardPeriodClass.isCooldownActive(p); })
+        + ":hand_after=" + itemIdOf(p.getMainHandItem())
+        + (tState0 === "" ? "" : ":" + tState0) + tState1
+        + ":self={" + zhaoStateRead(p) + "}");
+    if (tt.isMob) { try { target.discard(); } catch (e3) { /* 忽略 */ } }
+    return 1;
+}
+
+/**
+ * 服务端权威出牌入口 `BaseEffectCardItem#playFromSelector`(不开会话、直连产物判定):
+ * 专属校验 → 出牌锁 → 效果 → 出牌登记。非获得者 ⇒ ok=0 且目标无任何变化。
+ */
+function doZhaoPlay(ctx, tag, kindText, targetText, nameText, ownerText) {
+    if (!zhaoClassGate(ctx, tag)) return 1;
+    var p = ctx.source.getPlayerOrException();
+    var kind = ("" + kindText) === "huo" ? "huo" : "fu";
+    var tt = zhaoResolveTarget(ctx, tag, p, targetText, nameText);
+    if (tt.t == null) return 1;
+    var target = tt.t;
+    var oo = zhaoResolveOwner(ctx, tag, p, ownerText);
+    if (oo.o == null) { if (tt.isMob) { try { target.discard(); } catch (e0) { /* 忽略 */ } } return 1; }
+    var ready = zhaoReadyCard(p, kind, oo.o);
+    var stack = p.getMainHandItem();
+    var canUse = zhaoBool(function () { return ExclusiveCardUtilClass.canUse(p, stack); });
+    var hp0 = teruR1(target.getHealth());
+    var play0 = zhaoNum(function () { return EffectCardPeriodClass.getPlayCount(p); });
+    var tState0 = tt.isMob ? "" : ("t0={" + zhaoStateRead(target) + "}");
+    var ok = -1, err = "";
+    // ⚠️ playFromSelector 是**实例**方法:必须经物品实例调用 —— 在类对象上调用会抛
+    //    `InternalError: Java class "BaseEffectCardItem" has no public instance field or method named "playFromSelector"`
+    //    (Rhino 只在类对象上查 static 方法)。
+    try { ok = stack.getItem().playFromSelector(p, target, stack) ? 1 : 0; } catch (e1) { ok = -2; err = exText(e1); }
+    send(ctx, "AP_" + tag + "_PLAY:kind=" + kind + ":target=" + tt.label + ":owner=" + oo.label
+        + ":hand=" + itemIdOf(stack) + ":can_use=" + canUse + (ready === "" ? "" : ":ready_err=" + ready)
+        + ":ok=" + ok
+        + ":t_hp=" + hp0 + ">" + teruR1(target.getHealth())
+        + ":play=" + play0 + ">" + zhaoNum(function () { return EffectCardPeriodClass.getPlayCount(p); })
+        + ":max=" + zhaoNum(function () { return EffectCardPeriodClass.getMaxAllowed(p); })
+        + ":fubonus=" + zhaoNum(function () { return ModAttachments.getFuCardCycleBonus(p); })
+        + ":cool=" + zhaoBool(function () { return EffectCardPeriodClass.isCooldownActive(p); })
+        + (err === "" ? "" : ":err=" + err)
+        + (tState0 === "" ? "" : ":" + tState0)
+        + (tt.isMob ? "" : (":t_after={" + zhaoStateRead(target) + "}")));
+    if (tt.isMob) { try { target.discard(); } catch (e2) { /* 忽略 */ } }
+    return 1;
+}
+
+/** §14.11:主手唤起选择器 / 副手不唤起(成对读数;末尾复位会话与手持) */
+function doZhaoHand(ctx, tag, kindText, handText) {
+    if (!zhaoClassGate(ctx, tag)) return 1;
+    var p = ctx.source.getPlayerOrException();
+    var kind = ("" + kindText) === "huo" ? "huo" : "fu";
+    var itemId = kind === "huo" ? ZHAO_HUO_ID : ZHAO_FU_ID;
+    var hand = ("" + handText) === "off" ? "off" : "main";
+    try { TargetSelectionManagerClass.cancelSessionForTests(p); } catch (e0) { /* 忽略 */ }
+    var err = "", ready = "";
+    try {
+        zhaoClearItem(p, itemId);
+        if (hand === "off") {
+            p.setItemInHand(ZhaoHandClass.MAIN_HAND, ItemStack.EMPTY);
+            p.setItemInHand(ZhaoHandClass.OFF_HAND, new ItemStack(resolveItem(itemId)));
+        } else {
+            ready = zhaoHoldItem(p, itemId, 1);
+        }
+    } catch (e1) { err = exText(e1); }
+    // 副手局:先把牌握在副手,**再**跑手持判定(主手为空 ⇒ 不应开局)
+    var session = 0;
+    try {
+        BaseEffectCardItemClass.tickHeldSelector(p);
+        session = TargetSelectionManagerClass.isSelecting(p) ? 1 : 0;
+    } catch (e2) { err = err + "|tick:" + exText(e2); }
+    send(ctx, "AP_" + tag + "_HAND:kind=" + kind + ":hand=" + hand
+        + ":main=" + itemIdOf(p.getMainHandItem()) + ":off=" + itemIdOf(p.getOffhandItem())
+        + ":session=" + session + (ready === "" ? "" : ":ready_err=" + ready)
+        + (err === "" ? "" : ":err=" + err) + ":" + zhaoStateRead(p));
+    try { TargetSelectionManagerClass.cancelSessionForTests(p); } catch (e3) { /* 忽略 */ }
+    try { zhaoClearItem(p, itemId); } catch (e4) { /* 忽略 */ }
+    return 1;
+}
+
+/**
+ * 外力移除白泽赐福效果(模拟 `/effect clear`)。
+ * 效果被摘掉后,**下一 tick** 玩家级 tickBlessing 的自检分支应复位 active/skip 并回收溢出加成
+ * (该 tick 由生产侧 PlayerTickEvents 驱动,探针不做任何补写 ⇒ 读数取自真实 tick 路径)。
+ */
+function doZhaoFx(ctx, tag, nameText) {
+    if (!zhaoClassGate(ctx, tag)) return 1;
+    var p = ctx.source.getPlayerOrException();
+    var t = zhaoResolve(ctx, tag, p, nameText, "no_player");
+    if (t == null) return 1;
+    var err = "";
+    try { ZhaoBlessingEffectClass.remove(t); } catch (e1) { err = exText(e1); }
+    send(ctx, "AP_" + tag + "_FX:who=" + (t === p ? "self" : nameText) + ":removed=" + (err === "" ? 1 : 0)
+        + ":fx_on_now=" + zhaoBool(function () { return ZhaoBlessingEffectClass.has(t); })
+        + (err === "" ? "" : ":err=" + err) + ":" + zhaoStateRead(t));
+    return 1;
+}
+
+/** 死亡清场 / 重登复位(产品同一入口;bot 的真实死亡另由用例 `/kill` 覆盖) */
+function doZhaoLife(ctx, tag, modeText, nameText) {
+    if (!zhaoClassGate(ctx, tag)) return 1;
+    var p = ctx.source.getPlayerOrException();
+    var t = zhaoResolve(ctx, tag, p, nameText, "no_player");
+    if (t == null) return 1;
+    var mode = "" + modeText;
+    var err = "";
+    try {
+        if (mode === "relogin") ZhaoSignItemClass.onOwnerRelogin(t);
+        else ZhaoSignItemClass.onOwnerDeathCleanup(t);
+    } catch (e1) { err = exText(e1); }
+    send(ctx, "AP_" + tag + "_LIFE:mode=" + mode + ":who=" + (t === p ? "self" : nameText)
+        + ":called=" + (err === "" ? 1 : 0) + (err === "" ? "" : ":err=" + err) + ":" + zhaoStateRead(t));
+    return 1;
+}
+
+/**
+ * 心意相连:read = 只读候选集(未组队必须是 0);call = 调 onAllyActiveSkill(返回实际发牌人数)。
+ * name 缺省 = 自身(施法者侧);给名字则把该真实玩家当作大当家立牌持有者。
+ */
+function doZhaoLink(ctx, tag, modeText, nameText) {
+    if (!zhaoClassGate(ctx, tag)) return 1;
+    var p = ctx.source.getPlayerOrException();
+    var owner = zhaoResolve(ctx, tag, p, nameText, "no_player");
+    if (owner == null) return 1;
+    var mode = ("" + modeText) === "call" ? "call" : "read";
+    var gate = zhaoBool(function () { return ZhaoSignItemClass.teamGateOpen(owner); });
+    var ids = [];
+    try { ids = ZhaoSignItemClass.linkedReceiverIds(owner); } catch (e1) { ids = []; }
+    var granted = -1, err = "";
+    if (mode === "call") {
+        try { granted = ZhaoSignItemClass.onAllyActiveSkill(owner); } catch (e2) { granted = -2; err = exText(e2); }
+    }
+    // 只读:把候选 UUID 映射成在线玩家名
+    var nameList = "-";
+    try {
+        var all = p.level.getServer().getPlayerList().getPlayers();
+        var acc = "";
+        for (var i = 0; i < all.size(); i++) {
+            var q = all.get(i);
+            var qid = zhaoUuidText(q);
+            for (var j = 0; j < ids.size(); j++) {
+                if (("" + ids.get(j)) === qid) {
+                    var qn = "?";
+                    try { qn = "" + q.getName().getString(); } catch (e3) { qn = "?"; }
+                    acc = (acc === "") ? qn : (acc + "," + qn);
+                }
+            }
+        }
+        if (acc !== "") nameList = acc;
+    } catch (e4) { nameList = "?"; }
+    send(ctx, "AP_" + tag + "_LINK:mode=" + mode + ":who=" + (owner === p ? "self" : nameText)
+        + ":team_gate=" + gate + ":links=" + ids.size() + ":link_names=" + nameList
+        + ":granted=" + granted + (err === "" ? "" : ":err=" + err) + ":" + zhaoStateRead(owner));
+    return 1;
+}
+
+/** 收尾:清卡/效果/状态/计时器 + 卸立牌 + 清主手 + 复位出牌轮 */
+function doZhaoClearAll(ctx, tag) {
+    if (!zhaoClassGate(ctx, tag)) return 1;
+    var p = ctx.source.getPlayerOrException();
+    var err = zhaoClearState(p);
+    var standErr = zhaoSetStand(p, "");
+    try { TargetSelectionManagerClass.cancelSessionForTests(p); } catch (e1) { /* 忽略 */ }
+    zhaoResetRound(p);
+    try { ModAttachments.setFenRecharge(p, 0); } catch (e2) { /* 忽略 */ }
+    try { p.setItemInHand(ZhaoHandClass.MAIN_HAND, ItemStack.EMPTY); } catch (e3) { /* 忽略 */ }
+    send(ctx, "AP_" + tag + "_CLEARALL:cleared=1" + (err === "" ? "" : ":err=" + err)
+        + (standErr === "" ? "" : ":stand_err=" + standErr) + ":" + zhaoStateRead(p));
+    return 1;
+}
 ServerEvents.commandRegistry(event => {
     var Commands = event.commands;
     event.register(
@@ -6970,6 +8059,233 @@ ServerEvents.commandRegistry(event => {
                 .then(Commands.argument("tag", StringArg.word())
                     .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
                         return doTeruClear(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            // ── 2026-09-27:风水师立牌(zhao)+ 符卡-福/祸 游戏内取证(双人用 Carpet /player bot)──
+            .then(Commands.literal("zhauprep")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doZhaoPrep(ctx, StringArg.getString(ctx, "tag"), "");
+                    }))
+                    .then(Commands.argument("clear", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doZhaoPrep(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "clear"));
+                        })))))
+            .then(Commands.literal("zhauread")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("phase", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doZhaoRead(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "phase"), "");
+                        }))
+                        .then(Commands.argument("name", StringArg.word())
+                            .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                                return doZhaoRead(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "phase"), StringArg.getString(ctx, "name"));
+                            }))))))
+            .then(Commands.literal("zhaureg")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doZhaoReg(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("zhaogive")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("kind", StringArg.word())
+                        .then(Commands.argument("n", StringArg.word())
+                            .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                                return doZhaoGive(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "kind"), StringArg.getString(ctx, "n"), "");
+                            }))
+                            .then(Commands.argument("name", StringArg.word())
+                                .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                                    return doZhaoGive(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "kind"), StringArg.getString(ctx, "n"), StringArg.getString(ctx, "name"));
+                                })))))))
+            .then(Commands.literal("zhaosethuo")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("n", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doZhaoSetHuo(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "n"), "");
+                        }))
+                        .then(Commands.argument("name", StringArg.word())
+                            .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                                return doZhaoSetHuo(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "n"), StringArg.getString(ctx, "name"));
+                            }))))))
+            .then(Commands.literal("zhaoclear")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doZhaoClear(ctx, StringArg.getString(ctx, "tag"), "");
+                    }))
+                    .then(Commands.argument("name", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doZhaoClear(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "name"));
+                        })))))
+            .then(Commands.literal("zhaocast")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("mode", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doZhaoCast(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "mode"), "");
+                        }))
+                        .then(Commands.argument("name", StringArg.word())
+                            .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                                return doZhaoCast(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "mode"), StringArg.getString(ctx, "name"));
+                            }))))))
+            .then(Commands.literal("zhaogate")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("mode", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doZhaoGate(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "mode"), "");
+                        }))
+                        .then(Commands.argument("name", StringArg.word())
+                            .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                                return doZhaoGate(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "mode"), StringArg.getString(ctx, "name"));
+                            }))))))
+            .then(Commands.literal("zhaobless")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("mode", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doZhaoBless(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "mode"), "");
+                        }))
+                        .then(Commands.argument("name", StringArg.word())
+                            .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                                return doZhaoBless(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "mode"), StringArg.getString(ctx, "name"));
+                            }))))))
+            .then(Commands.literal("zhaosign")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("name", StringArg.word())
+                        .then(Commands.argument("mode", StringArg.word())
+                            .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                                return doZhaoSign(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "name"), StringArg.getString(ctx, "mode"));
+                            }))))))
+            .then(Commands.literal("zhaodice")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("dice", StringArg.word())
+                        .then(Commands.argument("times", StringArg.word())
+                            .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                                return doZhaoDice(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "dice"), StringArg.getString(ctx, "times"));
+                            }))))))
+            .then(Commands.literal("zhaodedup")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("dice", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doZhaoDedup(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "dice"));
+                        })))))
+            .then(Commands.literal("zhaoheal")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("amount", StringArg.word())
+                        .then(Commands.argument("gap", StringArg.word())
+                            .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                                return doZhaoHeal(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "amount"), StringArg.getString(ctx, "gap"), "");
+                            }))
+                            .then(Commands.argument("name", StringArg.word())
+                                .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                                    return doZhaoHeal(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "amount"), StringArg.getString(ctx, "gap"), StringArg.getString(ctx, "name"));
+                                })))))))
+            .then(Commands.literal("zhaohuotick")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("mode", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doZhaoHuoTick(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "mode"), "");
+                        }))
+                        .then(Commands.argument("name", StringArg.word())
+                            .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                                return doZhaoHuoTick(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "mode"), StringArg.getString(ctx, "name"));
+                            }))))))
+            .then(Commands.literal("zhaohuobox")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("mode", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doZhaoHuoBox(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "mode"), "");
+                        }))
+                        .then(Commands.argument("name", StringArg.word())
+                            .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                                return doZhaoHuoBox(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "mode"), StringArg.getString(ctx, "name"));
+                            }))))))
+            .then(Commands.literal("zhaodrop")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doZhaoDrop(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("zhaocard")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("kind", StringArg.word())
+                        .then(Commands.argument("target", StringArg.word())
+                            .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                                return doZhaoCard(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "kind"), StringArg.getString(ctx, "target"), "", "");
+                            }))
+                            .then(Commands.argument("name", StringArg.word())
+                                .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                                    return doZhaoCard(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "kind"), StringArg.getString(ctx, "target"), StringArg.getString(ctx, "name"), "");
+                                }))
+                                .then(Commands.argument("owner", StringArg.word())
+                                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                                        return doZhaoCard(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "kind"), StringArg.getString(ctx, "target"), StringArg.getString(ctx, "name"), StringArg.getString(ctx, "owner"));
+                                    }))))))))
+            .then(Commands.literal("zhaoplay")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("kind", StringArg.word())
+                        .then(Commands.argument("target", StringArg.word())
+                            .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                                return doZhaoPlay(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "kind"), StringArg.getString(ctx, "target"), "", "");
+                            }))
+                            .then(Commands.argument("name", StringArg.word())
+                                .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                                    return doZhaoPlay(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "kind"), StringArg.getString(ctx, "target"), StringArg.getString(ctx, "name"), "");
+                                }))
+                                .then(Commands.argument("owner", StringArg.word())
+                                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                                        return doZhaoPlay(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "kind"), StringArg.getString(ctx, "target"), StringArg.getString(ctx, "name"), StringArg.getString(ctx, "owner"));
+                                    }))))))))
+            .then(Commands.literal("zhaohand")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("kind", StringArg.word())
+                        .then(Commands.argument("hand", StringArg.word())
+                            .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                                return doZhaoHand(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "kind"), StringArg.getString(ctx, "hand"));
+                            }))))))
+            .then(Commands.literal("zhaofx")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doZhaoFx(ctx, StringArg.getString(ctx, "tag"), "");
+                    }))
+                    .then(Commands.argument("name", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doZhaoFx(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "name"));
+                        })))))
+            .then(Commands.literal("zhaolife")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("mode", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doZhaoLife(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "mode"), "");
+                        }))
+                        .then(Commands.argument("name", StringArg.word())
+                            .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                                return doZhaoLife(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "mode"), StringArg.getString(ctx, "name"));
+                            }))))))
+            .then(Commands.literal("zhaolink")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("mode", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doZhaoLink(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "mode"), "");
+                        }))
+                        .then(Commands.argument("name", StringArg.word())
+                            .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                                return doZhaoLink(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "mode"), StringArg.getString(ctx, "name"));
+                            }))))))
+            .then(Commands.literal("zhaoseq")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doZhaoSeq(ctx, StringArg.getString(ctx, "tag"), "");
+                    }))
+                    .then(Commands.argument("name", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doZhaoSeq(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "name"));
+                        })))))
+            .then(Commands.literal("zhaofu")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("times", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doZhaoFuLoop(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "times"));
+                        })))))
+            .then(Commands.literal("zhaonuclear")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doZhaoClearAll(ctx, StringArg.getString(ctx, "tag"));
                     }))))
     );
 });
