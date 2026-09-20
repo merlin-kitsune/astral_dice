@@ -337,8 +337,21 @@ function ensureChipSlot(player, need) {
     if (handlerOpt == null || !handlerOpt.isPresent()) return "no_chip_slot";
     var handler = handlerOpt.get();
     var cur = handler.getStacks().getSlots();
-    if (cur < need) handler.grow(need - cur);
-    return null;
+    if (cur >= need) return null;
+    // ⚠️ 不要用 `handler.grow(n)`:Curios 15 已把 grow/shrink 从 ICurioStacksHandler 移除
+    //    (实测 `Cannot find function grow`)⇒ 抛错后整条 `/astralprobe equipslot chip …`
+    //    **一行读数都不出**(静默故障,极难定位;2026-09-20 实测)。
+    //    改走**产品自己的公开入口**:它内部就是「removeModifier → addPermanentModifier → update()」,
+    //    并且用**产品自己的修饰符 id** ⇒ 不会与产品每 tick 的尺寸重算叠加(用探针自有 id 会让尺寸翻倍)。
+    try {
+        Java.loadClass("com.merlinkitsune.astral_dice.item.dice.DiceCurioItem").refreshChipSlotCount(player);
+    } catch (e0) {
+        return "chip_slot_refresh:" + exText(e0);
+    }
+    var h2 = null;
+    try { h2 = curioHandler(player, "chip"); } catch (e1) { h2 = null; }
+    cur = (h2 == null) ? cur : h2.getStacks().getSlots();
+    return cur >= need ? null : ("chip_slot_insufficient:" + cur + "/" + need);
 }
 
 /** 统计附近雷击实体数(辅助信号;主判据见 boltSpawnCount —— 实体存活仅数 tick,单点采样必漏) */
@@ -7433,6 +7446,1837 @@ function doZhaoClearAll(ctx, tag) {
         + (standErr === "" ? "" : ":stand_err=" + standErr) + ":" + zhaoStateRead(p));
     return 1;
 }
+// ════════════════════════════════════════════════════════════════════════════
+//  绿洲女王立牌(nardis)主动「女王特权」+ 被动「威压」游戏内取证(2026-09-27)
+//
+//  冻结规格:docs/features/nardis-sign-spec.md §7.1(命令表)/ §7.2(断言清单)/ §7.3(覆盖边界)
+//
+//  命令一览(读数前缀 AP_<tag>_;读数一律**单行**、字段顺序固定,用例按子串断言):
+//     /astralprobe nardiprep <tag> [clear] [name]     装绿洲女王立牌 + 骰子(**curios `dice` 槽**,见注 1)
+//     /astralprobe nardiread <tag> <phase> [name]     全量只读读数
+//     /astralprobe nardiarm <tag> <atk_n> <def_n> [where]  直接写骰子 applied_stones 并读 +ap/+dp
+//                                                     (where = curio 缺省 / hand / both;atk_n<0 ⇒ 只读)
+//     /astralprobe nardiarmclear <tag>                清空骰子卡牌栏(装配 0/0;两处骰子都清)
+//     /astralprobe nardicast <tag> [name] [reset]     走**真实主动** BaseSignItem.performSkillForCurio
+//                                                     (第 2 参 = 玩家名,第 3 参 = reset;见注 5)
+//     /astralprobe nardigive <tag> <n> [name]         直接 TemporaryCardUtil.grantRandom(绕开冷却)+ 补效果
+//     /astralprobe narditemp <tag> <inv|assemble|foil> [clear]  造/清临时牌
+//                                                     (inv = 主手带标记卡;assemble = 骰子装一个 temporary 石;
+//                                                      foil = 带标记牌在手上 + 同 id 普通牌在 0 号槽,一次读出两者光效)
+//     /astralprobe nardifoil <tag>                    读主手光效真值(临时牌 1 / 普通牌 0)
+//     /astralprobe nardidrop <tag>                    ServerPlayer#drop(true)(主手为临时牌)
+//     /astralprobe nardislot <tag>                    直接验证 mixin 真身:Slot#mayPlace
+//     /astralprobe nardiexpire <tag> [name]           移除 nardis_privilege(内部通道)并驱动一次自检
+//     /astralprobe nardinuclear <tag>                 收尾:清临时牌 + 清效果 + 卸立牌 + 清主手 + 复位冷却
+//
+//  ── 立项期/本轮实测到的、**必须写进报告**的契约事实(以下均以「两线逐字节相同」为前提的规避) ──
+//   1. **骰子的唯一有效位置 = curios `dice` 槽**(2026-09-20 实测纠正上一轮的写法):
+//      两线的 `TemporaryCardUtil#findEquippedDice` / `NardisSignItem#equippedEnhancement` /
+//      `DiceCombatModifiers#attackPowerOf|defensePowerOf` / `NardisSignItem#onCurioTick`
+//      **全部、且只**查 Curios(两线都注册了独立的 curios `dice` 槽:1.21.1 走
+//      `data/astral_dice/curios/slots/*.json`,1.20.1 走 `AstralDiceMod` 的 IMC `SlotTypeMessage`)。
+//      ⇒ 上一轮把骰子放**主手**时:① 被动恒为 0(读数 `ap=1` 就是玩家属性原值);
+//      ② 探针写进主手骰子的 `weapon_enhancement` 与产品清理的 curios 骰子**不是同一份**
+//      (实测 `AP_ASM1_TEMP:asm_err=no_dice`)。⇒ 本段一律把骰子放 curios `dice` 槽
+//      (与既有树探针 `teruprep` 同法),主手只用于「光效/丢弃」这类需要手上拿着牌的用例。
+//   2. **效果判据**:一律 `findEffect(p, "effect.astral_dice.nardis_privilege")` 字符串匹配 ——
+//      1.20.1 的 `ModEffects` 是 `RegistryObject`,把常量塞进 `hasEffect(Holder)` 会抛注册表强转异常
+//      且逃出 try/catch(踩坑先例见 zhao 段)。本段把常量经 `domEffectHolder()` 归一为 `Holder`.
+//   3. 本段**不含任何分支代码**:两线差异一律靠「字符串匹配 / 反射式调用 / 逐项 try」规避。
+//   4. **物品数据键的两线形态不同,必须走双形态助手**(2026-09-27 主代理 `javap` 取证后追加):
+//      1.21.1 的 `ModDataComponents.WEAPON_ENHANCEMENT` 是 `DeferredHolder<DataComponentType<?>,…>`
+//      (组件键 = `.get()`,读法 = `ItemStack#getOrDefault(ComponentType, T)`);
+//      1.20.1 的是前置库 `ItemDataKey<WeaponEnhancement>`(**只有** `get(ItemStack)` /
+//      `getOrDefault(ItemStack,T)` / `set(ItemStack,T)` / `remove(ItemStack)`,**没有** 0 参 `get()`;
+//      1.20.1 的 `ItemStack` 也没有组件版 `getOrDefault/set(ComponentType,T)` —— 那是 1.20.5+ 的 API)。
+//      ⇒ 裸调用在 1.20.1 上会抛异常并被 try/catch 静默吞掉(读数恒 -1,断言全数失配、无任何报错线索)。
+//      故本段一律走 {@link nardiEnhOf} / {@link nardiSetEnh} 两个双形态助手,并在读数里用
+//      `set_ok=` 显式暴露写回是否成功 —— **禁止**在本段再写裸的 `.get()` / `ItemStack#set(...)`。
+//   5. **命令参数位**(2026-09-20 实测纠正):`nardicast` 的签名是 **`<tag> [name] [reset]`**
+//      —— 第 2 参是玩家名位。上一轮用例写成 `nardicast TRIGW reset` 把 `reset` 喂进了玩家名位,
+//      于是实测 `AP_TRIGW_CAST:found=0:who=reset`。凡要复位冷却须写全三参:`nardicast <tag> self reset`。
+//   6. **脚手架发牌必须自带效果**(2026-09-20 实测):产品 tick 自检口径是「有临时牌但无效果 ⇒ 清空」
+//      (spec §4.4,正确设计);`nardigive` / `narditemp ... inv|foil` 是纯脚手架、原本不发效果
+//      ⇒ 实测「给牌命令的读数里 `n_temp=3`,下一条读命令就 `n_temp=0`」。修法 = 发牌前调
+//      {@link domEnsureEffect} 补一条与产品**逐字同参**的 3:00 效果(读数 `fx_made` 显式暴露)。
+//   7. **异常文本必须纯字符串化**:共享段 `exText` 的 `"" + e` 在某些 KubeJS 异常上会**自身抛错**
+//      (消息里嵌了不可 JSON 化的记录类型)⇒ 读数只发一半、`:err=` 泄漏成 KubeJS 的
+//      `Unsure how to convert 'WeaponEnhancement[...]' to JSON!`。本段一律用 {@link domExText}。
+// ════════════════════════════════════════════════════════════════════════════
+
+var NardisSignItemClass = teruLoadCls("com.merlinkitsune.astral_dice.item.sign.NardisSignItem");
+var NardisTemporaryCardUtilClass = teruLoadCls("com.merlinkitsune.astral_dice.item.card.TemporaryCardUtil");
+var NardisPrivilegeEffectClass = teruLoadCls("com.merlinkitsune.astral_dice.effect.NardisPrivilegeEffect");
+var NardisCardItemClass = teruLoadCls("com.merlinkitsune.astral_dice.item.card.CardItem");
+var NardisCardRegistryClass = teruLoadCls("com.merlinkitsune.astral_dice.combat.CardRegistry");
+var NardisModDataComponentsClass = teruLoadCls("com.merlinkitsune.astral_dice.component.ModDataComponents");
+var NardisWeaponEnhancementClass = teruLoadCls("com.merlinkitsune.astral_dice.component.WeaponEnhancement");
+var NardisAppliedStoneClass = teruLoadCls("com.merlinkitsune.astral_dice.component.AppliedStone");
+var NardisSlotClass = teruLoadCls("net.minecraft.world.inventory.Slot");
+var NardisInventoryClass = teruLoadCls("net.minecraft.world.entity.player.Inventory");
+var NardisSimpleContainerClass = teruLoadCls("net.minecraft.world.SimpleContainer");
+var NardiHandClass = teruLoadCls("net.minecraft.world.InteractionHand");
+/** 效果时长守卫(与产品 `NardisSignItem#handleUse` 同一入口);读不到时退回裸 `player.addEffect` */
+var NardiEffectTimerGuardClass = teruLoadCls("com.merlinkitsune.astral_dice.event.EffectTimerGuard");
+/**
+ * `DataComponentPatch` / `DataComponentPatch.Builder` —— **写组件的唯一可用通道**。
+ *
+ * <p>⚠️ 为什么不能直接 `stack.set(key, value)`(2026-09-20 实测,证据见 `nardidbg`):
+ * KubeJS 给 `ItemStack` 注册了一个**扩展方法 `set`**(签名 `(Context, DataComponentType, Object)`),
+ * Rhino 在解析 `dice.set(key, 我的WeaponEnhancement)` 时会优先命中它,进而在
+ * `kjs$set` 里对值做「Java 对象 → JSON」转换 —— 本模组的 `WeaponEnhancement` 是自研 record、
+ * 不可 JSON 化 ⇒ 抛 `KubeRuntimeException: Unsure how to convert 'WeaponEnhancement[...]' to JSON!`,
+ * 表现为 `set_ok=0` 且读数没有任何可归因信息(整个读数行还会被 KubeJS 重新包装)。
+ * **产品代码不受影响**(Java 里 `ItemStack#set` 是直接调用,不经 Rhino)。
+ * `applyComponents(DataComponentPatch)` 没有扩展方法覆盖,是干净通道。
+ */
+var NardisDataComponentPatchClass = teruLoadCls("net.minecraft.core.component.DataComponentPatch");
+/** `CompoundTag` / `ListTag`:可 JSON 化的组件值形态(用于绕开 KubeJS 的 Java→JSON 转换失败) */
+var NardisCompoundTagClass = teruLoadCls("net.minecraft.nbt.CompoundTag");
+var NardisListTagClass = teruLoadCls("net.minecraft.nbt.ListTag");
+/** R1/R2 回归取证(`nardiguard`)需要现场放一个真实潜影盒 */
+var NardisBlockPosClass = teruLoadCls("net.minecraft.core.BlockPos");
+var NardisDirectionClass = teruLoadCls("net.minecraft.core.Direction");
+var NardisBlocksClass = teruLoadCls("net.minecraft.world.level.block.Blocks");
+/** 专属牌判据(产品提供;N1「全部非专属」断言用) */
+var NardisRandomCardHandlerClass = teruLoadCls("com.merlinkitsune.astral_dice.item.card.RandomCardHandler");
+
+var NARDIS_SIGN_ID = "astral_dice:nardis_sign";
+var NARDIS_DICE_ID = "astral_dice:dice";
+var NARDIS_ATK_CARD_ID = "astral_dice:attack_card_medium";
+var NARDIS_DEF_CARD_ID = "astral_dice:defense_card_medium";
+/** R1/R2 回归取证用的**效果牌**(R1/R2 只在效果牌上暴露) */
+var NARDIS_EFFECT_CARD_ID = "astral_dice:effect_card_king_power";
+var NARDIS_PILL_CHIP_ID = "astral_dice:vitamin_pill_chip";
+var NARDIS_TERU_SIGN_ID = "astral_dice:teru_sign";
+/** 女王特权效果(唯一真值)的描述 id —— 只做字符串匹配 */
+var DESC_NARDIS_PRIVILEGE = "effect.astral_dice.nardis_privilege";
+/** 装配临时牌用的**真实**卡类型(已核对 CardRegistry 两线同名:`medium` / `defense_medium`) */
+var NARDIS_TEMP_TYPE = "medium";
+/** 装配栏「另一个」临时石用的人造类型名(未注册 ⇒ CardRegistry.cost 回退 1) */
+var NARDIS_TEMP_TYPE2 = "nardis_probe_temp";
+/** 立牌主动冷却键名(spec §6.2:玩家级 sign_active_cooldown_end) */
+var NARDIS_SIGN_ID_TEXT = "astral_dice:nardis_sign";
+
+/** 逐项 try 的数值读数("-1" = 该访问器在本线不可用,不冒充 0) */
+function domNum(fn) {
+    try { return fn(); } catch (e) { return -1; }
+}
+
+/** 逐项 try 的布尔读数(0/1) */
+function domBool(fn) {
+    try { return fn() ? 1 : 0; } catch (e) { return -1; }
+}
+
+/**
+ * 异常 → **纯字符串**(与共享段 `exText` 的差别:本函数**保证**返回 string,绝不把异常对象泄漏给调用方)。
+ *
+ * <p>为什么必须是**纯的**:共享段 `exText` 是 `var msg; try { msg = "" + e } catch (x) { msg = "<unprintable>" }`
+ * —— 若某个异常对象的 `toString()` **自身抛错**(KubeJS 的 `KubeRuntimeException` 在消息里嵌了不可 JSON 化的
+ * 记录类型时会走这条),`"" + e` 抛出 ⇒ 整个 `exText` 抛出 ⇒ `doNardiArm` 的 `catch (e1) { err = domExText(e1); }`
+ * **再次抛出**,读数只发到一半(`set_ok=` 还没拼进去),异常逃到 `send()` 里被 KubeJS 重新包装成
+ * `Unsure how to convert 'WeaponEnhancement[...]' to JSON!`(2026-09-20 实测:1.21.1 的 `AP_ARM1_ARM`
+ * 只发了 `:sign=1:err=JavaException: …KubeRuntimeException: Unsure how to convert …` 就断了,
+ * `set_ok=`/`before=`/`after=` 全缺 ⇒ `/:err=/` 的 absent 断言被误伤)。
+ */
+function domExText(e) {
+    if (e === null || e === undefined) return "null";
+    var msg = "<unprintable>";
+    var s = null;
+    try { s = "" + e; } catch (x) { s = null; }
+    if (s !== null && s !== undefined) { msg = "" + s; }
+    var cls = "";
+    try { var c = e.getClass(); if (c != null) cls = "" + c.getName(); } catch (x2) { cls = ""; }
+    try {
+        if (typeof e.getStackTrace === "function") {
+            var st = e.getStackTrace();
+            var n = st.length < 3 ? st.length : 3;
+            for (var i = 0; i < n; i++) msg += " @ " + st[i];
+        }
+    } catch (x3) { /* 栈不可得就只留消息 */ }
+    return ("[" + cls + "] " + msg).replace(/[\r\n\t]+/g, " ").substring(0, 600);
+}
+
+/** Curios `dice` 槽里的骰子栈(空栈返回 null;**只查 Curios**,与产品 `findEquippedDice` 同源) */
+function domCurioDice(p) {
+    if (p == null) return null;
+    var h = null;
+    try { h = curioHandler(p, "dice"); } catch (e0) { return null; }
+    if (h == null) return null;
+    try {
+        var st = h.getStacks().getStackInSlot(0);
+        if (st == null || st.isEmpty()) return null;
+        return st;
+    } catch (e1) { return null; }
+}
+
+/** 主手骰子栈(空栈返回 null) */
+function domHandDice(p) {
+    try {
+        var st = p.getMainHandItem();
+        if (st == null || st.isEmpty()) return null;
+        return itemIdOf(st) === NARDIS_DICE_ID ? st : null;
+    } catch (e) { return null; }
+}
+
+/** 读某个骰子栈的 enhancement(双形态容错;失败返回 null) */
+function domEnhOf(dice) {
+    if (dice == null || NardisModDataComponentsClass == null || NardisWeaponEnhancementClass == null) return null;
+    return nardiEnhOf(dice);
+}
+
+/** `domStateRead` 的 `n_stones` 字段就是从这里算的 —— 显式暴露「读的是哪一份骰子」 */
+function domEnhSrc(p) {
+    if (domHandDice(p) != null) return "hand";
+    if (domCurioDice(p) != null) return "curio";
+    return "none";
+}
+
+/**
+ * 读骰子上的 `weapon_enhancement` —— **双形态容错**(两线逐字节相同的前提)。
+ *
+ * <p>为什么不能用裸调用:两线的「物品数据键」形态根本不同,而探针段不许分线分支 ——
+ * <ul>
+ *   <li>1.21.1:`WEAPON_ENHANCEMENT` 是 `DeferredHolder<DataComponentType<?>,…>`,组件键 = `…get()`,
+ *       读法是 `ItemStack#getOrDefault(ComponentType, T)`;</li>
+ *   <li>1.20.1:`WEAPON_ENHANCEMENT` 是前置库的 `ItemDataKey<WeaponEnhancement>`
+ *       (**只有** `get(ItemStack)` / `getOrDefault(ItemStack,T)` / `set(ItemStack,T)` / `remove(ItemStack)`,
+ *       **没有** 0 参 `get()`),且 1.20.1 的 `ItemStack` 也没有组件版 `getOrDefault(ComponentType,T)`
+ *       (那是 1.20.5+ 的 API)。</li>
+ * </ul>
+ * 故依次试两种形态,任一成功即返回;都失败返回 null(由调用方给出可归因读数,不静默)。
+ */
+function nardiEnhOf(dice) {
+    var out = null;
+    try { out = dice.getOrDefault(NardisModDataComponentsClass.WEAPON_ENHANCEMENT.get(), NardisWeaponEnhancementClass.EMPTY); }
+    catch (e1) { out = null; }
+    if (out == null) {
+        try { out = NardisModDataComponentsClass.WEAPON_ENHANCEMENT.getOrDefault(dice, NardisWeaponEnhancementClass.EMPTY); }
+        catch (e2) { out = null; }
+    }
+    return out;
+}
+
+/**
+ * 把 `WeaponEnhancement` 序列化成**可 JSON 化的 JS 对象**(字段名 = 组件 CODEC 的 snake_case 键)。
+ *
+ * <p>为什么必须是这个形态见 {@link nardiSetEnh} 的注释。
+ */
+function domEnhToJs(enh) {
+    var stones = [];
+    try {
+        var list = enh.appliedStones();
+        if (list != null) {
+            for (var i = 0; i < list.size(); i++) {
+                var s = list.get(i);
+                if (s == null) continue;
+                stones.push({
+                    type: "" + s.type(),
+                    uses: (s.uses() - 0),
+                    temporary: (s.temporary() ? true : false)
+                });
+            }
+        }
+    } catch (eS) { /* 拿不到就当空表(由调用方的 set_ok/读数暴露) */ }
+    return {
+        used_cost: (enh.usedCost() - 0),
+        max_cost: (enh.maxCost() - 0),
+        used_defense_cost: (enh.usedDefenseCost() - 0),
+        max_defense_cost: (enh.maxDefenseCost() - 0),
+        star_level: (enh.starLevel() - 0),
+        applied_stones: stones
+    };
+}
+
+/**
+ * 写回骰子的 `weapon_enhancement` —— 双形态容错,**成功返回 true**(失败不静默:读数里的
+ * `set_ok` / `enh_curio` / `n_stones` 会同时暴露)。
+ *
+ * <p>⚠️⚠️ **1.21.1 侧必须传「JS 对象」而不是 Java `WeaponEnhancement` 实例**(2026-09-20 逐项取证):
+ * KubeJS 给 `ItemStack` 注册了一个**扩展方法 `set(Context, DataComponentType, Object)`**,
+ * Rhino 在解析 `dice.set(key.get(), 我的record)` 时优先命中它,进而在 `kjs$set` 内部做
+ * 「Java 对象 → JSON」转换 —— 本模组自研 record 不可 JSON 化 ⇒
+ * `KubeRuntimeException: Unsure how to convert 'WeaponEnhancement[...]' to JSON!`。
+ * 实测对照(`/astralprobe nardidbg <tag>` 的读数):
+ * <ul>
+ *   <li>`dice.set(key.get(), record)` ⇒ 抛该 KubeRuntimeException;</li>
+ *   <li>`dice.set(key, record)`(key 不 `.get()`)⇒ 同错;</li>
+ *   <li>`WEAPON_ENHANCEMENT.set(dice, record)` ⇒ `Cannot find function set`(DeferredHolder 上没有);</li>
+ *   <li>`dice.kjs$set(...)` ⇒ `Cannot find function kjs$set`(Rhino 不暴露带 `$` 的方法名);</li>
+ *   <li>`DataComponentPatch.Builder.set(...)` ⇒ 同 KubeRuntimeException(`set` 这个名字被劫持);</li>
+ *   <li>`CompoundTag` 作值 ⇒ `Unsure how to convert '0' to JSON!`(int 也不能转);</li>
+ *   <li><b>`dice.set(key.get(), {used_cost:…, applied_stones:[…]})` ⇒ **成功**</b>
+ *       (KubeJS 把 JS 对象转 JSON 后按组件 CODEC 解码,写出真组件;实测 `read_back=used=1/n=0`)。</li>
+ * </ul>
+ * 结论:**产品代码不受影响**(Java 侧 `ItemStack#set` 是直接调用、不经 Rhino;已核对
+ * `DiceCombatEvents:328/716/749/865`、`TemporaryCardUtil:284`、`AnvilUpgradeHandler:133` 全是直接调用),
+ * 这是「KubeJS 探针写组件」的通道限制,与本模组功能无关。
+ *
+ * <p>1.20.1 侧照旧走 `ItemDataKey#set(ItemStack, T)`(纯 Java、无 JSON 转换);
+ * 该分支上 0 参 `.get()` 不存在会先抛错,自然落到第二条。
+ */
+function nardiSetEnh(dice, enh) {
+    if (dice == null || enh == null) return false;
+    // ① 1.21.1:`ItemStack#set(ComponentType, <JS 对象>)` —— 唯一实测可用的写通道
+    try { dice.set(NardisModDataComponentsClass.WEAPON_ENHANCEMENT.get(), domEnhToJs(enh)); return true; }
+    catch (e1) { /* 落到 1.20.1 形态 */ }
+    // ② 1.20.1:`ItemDataKey#set(ItemStack, T)`
+    try { NardisModDataComponentsClass.WEAPON_ENHANCEMENT.set(dice, enh); return true; }
+    catch (e2) { return false; }
+}
+
+/** 该玩家主手是否拿着骰子(读数里显式给出,替代「骰子到底在不在 curios 槽」的猜测) */
+function domDiceInHand(p) {
+    try { return itemIdOf(p.getMainHandItem()) === NARDIS_DICE_ID ? 1 : 0; } catch (e) { return -1; }
+}
+
+/**
+ * 读取**产品语义上的**骰子栈:`Curios` 的 `dice` 槽优先(唯一退路 = 主手)。
+ *
+ * <p>⚠️ 为什么必须 **curio 优先**(2026-09-20 实测,上一轮探针的致命错误):
+ * 两线的 `TemporaryCardUtil#findEquippedDice` / `NardisSignItem#equippedEnhancement` /
+ * `DiceCombatModifiers#attackPowerOf|defensePowerOf` **全部只查 Curios**(1.20.1 的
+ * `CuriosCompat.getCuriosInventory` 不是「主手」——两线都注册了独立的 curios `dice` 槽);
+ * 把骰子放在**主手**时这些入口一律读不到(实测基线 `ap=1`=玩家属性原值、`n_stones` 恒 0),
+ * 更糟的是探针写进主手骰子的 `weapon_enhancement` 与产品清理的 curios 骰子**根本不是同一份**
+ * ⇒ 上一轮 `AP_ASM1_TEMP` 的 `asm_err=no_dice` 即由此而来(不是产品缺陷)。
+ * 主手只作退路:让「骰子不在 curios 时的读数」仍然可归因,不静默变成 -1。
+ */
+function domDiceStack(p) {
+    var c = domCurioDice(p);
+    if (c != null && itemIdOf(c) === NARDIS_DICE_ID) return c;
+    return domHandDice(p);
+}
+
+/** 骰子上当前的武器强化(WEAPON_ENHANCEMENT;缺失 = EMPTY 语义) */
+function domEnh(p) {
+    return domEnhOf(domDiceStack(p));
+}
+
+/** 已装配卡牌数(攻击 / 防御),全部从骰子组件现算(与产品同源) */
+function domStoneCounts(p) {
+    var enh = domEnh(p);
+    var a = 0, d = 0, t = 0;
+    if (enh == null || NardisCardRegistryClass == null) return { atk: -1, def: -1, total: -1, temp: -1 };
+    try {
+        var stones = enh.appliedStones();
+        if (stones != null) {
+            for (var i = 0; i < stones.size(); i++) {
+                var s = stones.get(i);
+                if (s == null || s.type() == null) continue;
+                var defense = false;
+                try { defense = NardisCardRegistryClass.isDefense(s.type()); } catch (e1) { defense = false; }
+                if (defense) { d = d + 1; } else { a = a + 1; }
+                var tmp = false;
+                try { tmp = s.temporary(); } catch (e2) { tmp = false; }
+                if (tmp) t = t + 1;
+            }
+        }
+    } catch (e) { return { atk: -1, def: -1, total: -1, temp: -1 }; }
+    return { atk: a, def: d, total: a + d, temp: t };
+}
+
+/** 骰子装配栏当前费用(攻击 used_cost / 防御 used_defense_cost) */
+function domUsedCost(p) {
+    var enh = domEnh(p);
+    if (enh == null) return { atk: -1, def: -1 };
+    try { return { atk: enh.usedCost(), def: enh.usedDefenseCost() }; } catch (e) { return { atk: -1, def: -1 }; }
+}
+
+/** 把 ModEffects 常量归一为 `Holder<MobEffect>`(1.21.1 = DeferredHolder 自身;1.20.1 = RegistryObject#get) */
+function domEffectHolder() {
+    var c = ModEffects.NARDIS_PRIVILEGE;
+    try { var g = c.get(); if (g != null) return g; } catch (e1) { /* 落到下面 */ }
+    return c;
+}
+
+/** 女王特权效果的「在不在 / 剩余 tick」(只读;判据 = 描述 id 字符串匹配) */
+function domFx(p) {
+    var inst = findEffect(p, DESC_NARDIS_PRIVILEGE);
+    if (inst == null) return { on: 0, dur: -1 };
+    try { return { on: 1, dur: inst.getDuration() }; } catch (e) { return { on: 1, dur: -1 }; }
+}
+
+/** 身上(主物品栏 0..35 + 副手)带临时标记的卡牌总张数 */
+function domCountTemp(p) {
+    var n = 0;
+    try {
+        var items = p.getInventory().items;
+        for (var i = 0; i < items.size(); i++) {
+            var st = items.get(i);
+            if (st == null || st.isEmpty()) continue;
+            if (NardisTemporaryCardUtilClass != null && NardisTemporaryCardUtilClass.isTemporary(st)) n = n + st.getCount();
+        }
+        var off = p.getInventory().offhand;
+        for (var j = 0; j < off.size(); j++) {
+            var st2 = off.get(j);
+            if (st2 == null || st2.isEmpty()) continue;
+            if (NardisTemporaryCardUtilClass != null && NardisTemporaryCardUtilClass.isTemporary(st2)) n = n + st2.getCount();
+        }
+    } catch (e) { return -1; }
+    return n;
+}
+
+/**
+ * 玩家 8 格范围内的**临时牌地面掉落物**数(N1「地面掉落物 0」的主判据)。
+ *
+ * <p>口径与既有的 `teruGroundCount`(teru 段,本文件之外)逐字一致,只把过滤条件换成
+ * {@code TemporaryCardUtil.isTemporary(栈)} ——因为临时牌的 id 是**随机**的(9 张攻击 /
+ * 若干防御 / 效果),按 id 逐个查不可行。
+ *
+ * <p>`ItemEntityClass` / `AABBClass` 是 teru 段在**同一脚本文件顶层**建立的全局类引用
+ * (函数体在命令触发时才求值,顶层赋值早已完成)⇒ 这里直接用;为防将来段序调整,缺引用时返回
+ * {@code -1}(读数里显式可见,不会被误当 0)。
+ */
+function domGroundTemp(p) {
+    if (typeof ItemEntityClass === "undefined" || typeof AABBClass === "undefined") return -1;
+    if (NardisTemporaryCardUtilClass == null) return -1;
+    var n = 0;
+    try {
+        var list = p.level.getEntitiesOfClass(ItemEntityClass,
+            AABBClass.ofSize(p.position(), 8, 8, 8));
+        for (var i = 0; i < list.size(); i++) {
+            var st = null;
+            try { st = list.get(i).getItem(); } catch (e1) { st = null; }
+            if (st == null || st.isEmpty()) continue;
+            if (NardisTemporaryCardUtilClass.isTemporary(st)) n = n + st.getCount();
+        }
+    } catch (e) { return -1; }
+    return n;
+}
+
+/** 骰子装配栏里的临时牌张数(产品侧现算) */
+function domCountTempEquipped(p) {
+    if (NardisTemporaryCardUtilClass == null) return -1;
+    try { return NardisTemporaryCardUtilClass.countTemporaryEquipped(p); } catch (e) { return -1; }
+}
+
+/** 清空 curios `dice` 槽(返回错误串或 "") */
+function domClearCurioDice(p) {
+    var h = null;
+    try { h = curioHandler(p, "dice"); } catch (e0) { return "curio_dice:" + domExText(e0); }
+    if (h == null) return "no_slot:dice";
+    try { h.getStacks().setStackInSlot(0, ItemStack.EMPTY); } catch (e1) { return "curio_dice_set:" + domExText(e1); }
+    return "";
+}
+
+/** 把一张骰子放进 curios `dice` 槽(返回错误串或 "") */
+function domPutDiceInCurio(p, diceItem) {
+    var h = null;
+    try { h = curioHandler(p, "dice"); } catch (e0) { return "curio_dice:" + domExText(e0); }
+    if (h == null) return "no_slot:dice";
+    try {
+        h.getStacks().setStackInSlot(0, ItemStack.EMPTY);
+        h.getStacks().setStackInSlot(0, new ItemStack(diceItem, 1));
+    } catch (e1) { return "curio_dice_set:" + domExText(e1); }
+    return "";
+}
+
+/**
+ * 把 `enh` 写进指定位置的骰子。
+ *
+ * <p>`where`:`curio`(缺省,**产品语义上的「已装备/已佩戴」**)/ `hand`(对照:证明「主手骰子对产品不可见」)/
+ * `both`(两处都写,防线漂移)。
+ *
+ * <p>⚠️ 两个必须做对的地方(2026-09-20 实测各踩一次):
+ * <ol>
+ *   <li>**curios 槽必须先取出来改、再 `setStackInSlot` 写回** —— `getStacks().getStackInSlot(0)`
+ *       在 Curios 的 handler 上拿到的是**副本**(直接 `.set()` 只改副本,写回丢失),
+ *       实测表现为 `set_ok_curio=0`、`n_stones` 恒 0、被动恒不生效;</li>
+ *   <li>**写之前先清空另一处同 id 的骰子** —— 否则两份带 enhancement 的骰子并存,
+ *       读数读哪一份取决于产品内部顺序 ⇒ 断言变成顺序相关。</li>
+ * </ol>
+ * 返回 `{curio, hand, err}`:1 = 写成功,0 = 尝试过但失败,-1 = 未尝试 / 该处没有骰子。
+ */
+function domWriteEnh(p, where, enh) {
+    var diceItem = resolveItem(NARDIS_DICE_ID);
+    var out = { curio: -1, hand: -1, err: "" };
+    if (diceItem == null) { out.err = "unknown_item:" + NARDIS_DICE_ID; return out; }
+    var wantCurio = (where === "curio" || where === "both");
+    var wantHand = (where === "hand" || where === "both");
+    if (!wantCurio) {
+        var ec = domClearCurioDice(p);
+        if (ec !== "" && ec !== "no_slot:dice") out.err = out.err + "|" + ec;
+    }
+    if (!wantHand) {
+        try { if (itemIdOf(p.getMainHandItem()) === NARDIS_DICE_ID) p.setItemInHand(NardiHandClass.MAIN_HAND, ItemStack.EMPTY); } catch (e1) { out.err = out.err + "|hand_clear:" + domExText(e1); }
+    }
+    if (wantCurio) {
+        try {
+            var h = curioHandler(p, "dice");
+            if (h == null) { out.curio = -1; out.err = out.err + "|no_slot:dice"; }
+            else {
+                var stacks = h.getStacks();
+                var c = stacks.getStackInSlot(0);
+                if (c == null || c.isEmpty() || itemIdOf(c) !== NARDIS_DICE_ID) {
+                    var ep = domPutDiceInCurio(p, diceItem);
+                    if (ep !== "") { out.err = out.err + "|" + ep; }
+                    c = stacks.getStackInSlot(0);
+                }
+                if (c == null || c.isEmpty() || itemIdOf(c) !== NARDIS_DICE_ID) { out.curio = 0; }
+                else {
+                    var okC = nardiSetEnh(c, enh);
+                    stacks.setStackInSlot(0, c); // ★ 关键:改完必须写回槽位(副本语义)
+                    out.curio = okC ? 1 : 0;
+                }
+            }
+        } catch (e2) { out.curio = 0; out.err = out.err + "|curio_write:" + domExText(e2); }
+    }
+    if (wantHand) {
+        try {
+            var hd = domHandDice(p);
+            if (hd == null) { p.setItemInHand(NardiHandClass.MAIN_HAND, new ItemStack(diceItem, 1)); hd = domHandDice(p); }
+            if (hd == null) { out.hand = 0; } else { out.hand = nardiSetEnh(hd, enh) ? 1 : 0; }
+        } catch (e3) { out.hand = 0; out.err = out.err + "|hand_write:" + domExText(e3); }
+    }
+    return out;
+}
+
+/**
+ * `/astralprobe nardidbg <tag>` —— **纯只读**诊断:`weapon_enhancement` 组件的键形态与
+ * `ItemStack#set` 在 Rhino 下的实际行为(2026-09-20 定位「写回恒失败」时加入)。
+ *
+ * <p>为什么需要它:`nardiSetEnh` 的双形态 try/catch 会把**真实异常吞掉**并返回 false,
+ * 表现为 `set_ok=0` + `n_stones` 恒 0,完全看不出是哪一步失败。本命令逐项打印:
+ * `key_get`(`WEAPON_ENHANCEMENT.get()` 是否可用/是否为 null)、
+ * `key_ns`(是否也有 0 参 `get()` 之外的形态)、
+ * `has_before`/`has_after`(`ItemStack#has/get` 在写前后的真值)、
+ * `set1_ok`/`set1_err`(1.21.1 形态 `dice.set(key.get(), enh)`)、
+ * `set2_ok`/`set2_err`(1.20.1 形态 `KEY.set(dice, enh)`)、
+ * `set3_ok`/`set3_err`(`dice.set(key, enh)` —— key 不 `.get()`,用于验证 Rhino 的重载解析)。
+ */
+function doNardiDbg(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var out = [];
+    var dice = domDiceStack(p);
+    out.push("dice=" + (dice == null ? "null" : itemIdOf(dice)));
+    var keyGet = null, keyGetErr = "";
+    try { keyGet = NardisModDataComponentsClass.WEAPON_ENHANCEMENT.get(); }
+    catch (e0) { keyGetErr = domExText(e0); }
+    out.push("key_get=" + (keyGet == null ? "null" : "ok") + (keyGetErr === "" ? "" : ":key_get_err=" + keyGetErr));
+    var keyRaw = null;
+    try { keyRaw = NardisModDataComponentsClass.WEAPON_ENHANCEMENT; } catch (e1) { }
+    out.push("key_raw=" + (keyRaw == null ? "null" : "obj"));
+    if (dice == null) { send(ctx, "AP_" + tag + "_DBG:" + out.join(":")); return 1; }
+    var enhNew = new NardisWeaponEnhancementClass(1, 12, 0, 12, 3, new ArrayListClass());
+    out.push("enh_new=" + (enhNew == null ? "null" : "ok"));
+    // 写前真值
+    var hasBefore = -1, getBefore = "n/a";
+    try { hasBefore = dice.has(keyGet) ? 1 : 0; } catch (e2) { hasBefore = -2; }
+    try { var gb = dice.get(keyGet); getBefore = (gb == null ? "null" : "ok"); } catch (e3) { getBefore = "ex:" + domExText(e3); }
+    out.push("has_before=" + hasBefore + ":get_before=" + getBefore);
+    // set1:1.21.1 形态
+    var s1 = -1, s1e = "";
+    try { dice.set(keyGet, enhNew); s1 = 1; } catch (e4) { s1 = 0; s1e = domExText(e4); }
+    var hasA1 = -1;
+    try { hasA1 = dice.has(keyGet) ? 1 : 0; } catch (e5) { hasA1 = -2; }
+    out.push("set1_ok=" + s1 + ":has_after1=" + hasA1 + (s1e === "" ? "" : ":set1_err=" + s1e));
+    // set3:key 不 .get()
+    var s3 = -1, s3e = "";
+    try { dice.set(keyRaw, enhNew); s3 = 1; } catch (e6) { s3 = 0; s3e = domExText(e6); }
+    var hasA3 = -1;
+    try { hasA3 = dice.has(keyGet) ? 1 : 0; } catch (e7) { hasA3 = -2; }
+    out.push("set3_ok=" + s3 + ":has_after3=" + hasA3 + (s3e === "" ? "" : ":set3_err=" + s3e));
+    // set2:1.20.1 形态
+    var s2 = -1, s2e = "";
+    try { NardisModDataComponentsClass.WEAPON_ENHANCEMENT.set(dice, enhNew); s2 = 1; } catch (e8) { s2 = 0; s2e = domExText(e8); }
+    var hasA2 = -1;
+    try { hasA2 = dice.has(keyGet) ? 1 : 0; } catch (e9) { hasA2 = -2; }
+    out.push("set2_ok=" + s2 + ":has_after2=" + hasA2 + (s2e === "" ? "" : ":set2_err=" + s2e));
+    // set4:KubeJS 自己的 kjs$set(Context, DataComponentType, Object) —— 形参是 Object ⇒ 不会走扩展方法解析
+    var s4 = -1, s4e = "";
+    try { dice.kjs$set(null, keyGet, enhNew); s4 = 1; } catch (e10) { s4 = 0; s4e = domExText(e10); }
+    var hasA4 = -1;
+    try { hasA4 = dice.has(keyGet) ? 1 : 0; } catch (e11) { hasA4 = -2; }
+    out.push("set4_ok=" + s4 + ":has_after4=" + hasA4 + (s4e === "" ? "" : ":set4_err=" + s4e));
+    // set5:传 JS 对象(走 KubeJS 的 JSON→组件解析)
+    var s5 = -1, s5e = "";
+    try {
+        dice.kjs$set(null, keyGet, {
+            used_cost: 1, max_cost: 12, used_defense_cost: 0, max_defense_cost: 12,
+            star_level: 3, applied_stones: []
+        });
+        s5 = 1;
+    } catch (e12) { s5 = 0; s5e = domExText(e12); }
+    var hasA5 = -1;
+    try { hasA5 = dice.has(keyGet) ? 1 : 0; } catch (e13) { hasA5 = -2; }
+    out.push("set5_ok=" + s5 + ":has_after5=" + hasA5 + (s5e === "" ? "" : ":set5_err=" + s5e));
+    // 读回
+    var back = "n/a";
+    try { var rb = nardiEnhOf(dice); back = (rb == null ? "null" : ("used=" + rb.usedCost() + "/n=" + rb.appliedStones().size())); }
+    catch (e14) { back = "ex:" + domExText(e14); }
+    out.push("read_back=" + back);
+    // set6:DataComponentPatch.Builder + applyComponents(绕开被 KubeJS 扩展方法劫持的 `set`)
+    var s6 = -1, s6e = "";
+    try {
+        var pb = NardisDataComponentPatchClass.builder();
+        pb.set(keyGet, enhNew);
+        dice.applyComponents(pb.build());
+        s6 = 1;
+    } catch (e15) { s6 = 0; s6e = domExText(e15); }
+    var back6 = "n/a";
+    try { var rb6 = nardiEnhOf(dice); back6 = (rb6 == null ? "null" : ("used=" + rb6.usedCost() + "/n=" + rb6.appliedStones().size())); }
+    catch (e16) { back6 = "ex:" + domExText(e16); }
+    out.push("set6_ok=" + s6 + ":read_back6=" + back6 + (s6e === "" ? "" : ":set6_err=" + s6e));
+    // set7:值换成 **JS 对象** —— 让 KubeJS 的 kjs$set 走「JSON → 组件」的正常解析路径
+    var s7 = -1, s7e = "", back7 = "n/a";
+    try {
+        dice.set(keyGet, {
+            used_cost: 1, max_cost: 12, used_defense_cost: 0, max_defense_cost: 12,
+            star_level: 3, applied_stones: []
+        });
+        s7 = 1;
+    } catch (e17) { s7 = 0; s7e = domExText(e17); }
+    try { var rb7 = nardiEnhOf(dice); back7 = (rb7 == null ? "null" : ("used=" + rb7.usedCost() + "/n=" + rb7.appliedStones().size())); }
+    catch (e18) { back7 = "ex:" + domExText(e18); }
+    out.push("set7_ok=" + s7 + ":read_back7=" + back7 + (s7e === "" ? "" : ":set7_err=" + s7e));
+    // set8:值换成 **CompoundTag**(同样可 JSON 化;字段名 = 组件 codec 的 snake_case 键)
+    var s8 = -1, s8e = "", back8 = "n/a";
+    try {
+        var tag = new NardisCompoundTagClass();
+        tag.putInt("used_cost", 1);
+        tag.putInt("max_cost", 12);
+        tag.putInt("used_defense_cost", 0);
+        tag.putInt("max_defense_cost", 12);
+        tag.putInt("star_level", 3);
+        tag.put("applied_stones", new NardisListTagClass());
+        dice.set(keyGet, tag);
+        s8 = 1;
+    } catch (e19) { s8 = 0; s8e = domExText(e19); }
+    try { var rb8 = nardiEnhOf(dice); back8 = (rb8 == null ? "null" : ("used=" + rb8.usedCost() + "/n=" + rb8.appliedStones().size())); }
+    catch (e20) { back8 = "ex:" + domExText(e20); }
+    out.push("set8_ok=" + s8 + ":read_back8=" + back8 + (s8e === "" ? "" : ":set8_err=" + s8e));
+    out.push("curio_handler=" + (curioHandler(p, "dice") == null ? "null" : "ok"));
+    send(ctx, "AP_" + tag + "_DBG:" + out.join(":"));
+    return 1;
+}
+
+/**
+ * 主手物品的光效真值(clamp 到 0/1;-1 = 读不到)。
+ *
+ * <p>⚠️ 1.21.1 的 `ItemStack` **只有 `hasFoil()`、没有 `isFoil()`**(实测 `javap`:栈上是
+ * `hasFoil()`;`isFoil(ItemStack)` 是**物品级**方法,产品覆写的正是它)⇒ 上一轮探针写
+ * `stack.isFoil()` 直接抛错,读数恒 `-1`(表现为 `foil=-1`/`t_foil_hand=-1`/`foil_t=-1`)。
+ * 本函数逐层回退,任一可用即返回。
+ */
+function domFoil(stack) {
+    if (stack == null || stack.isEmpty()) return 0;
+    try { return stack.hasFoil() ? 1 : 0; } catch (e1) { /* 下一层 */ }
+    try { return stack.isFoil() ? 1 : 0; } catch (e2) { /* 下一层 */ }
+    var it = null;
+    try { it = stack.getItem(); } catch (e3) { it = null; }
+    if (it != null) {
+        try { return it.isFoil(stack) ? 1 : 0; } catch (e4) { /* 下一层 */ }
+        try { return it.isFoil() ? 1 : 0; } catch (e5) { /* 下一层 */ }
+    }
+    return -1;
+}
+
+/**
+ * 取玩家所在 `Level`。
+ *
+ * <p>⚠️ **Rhino 下 `Player#level()` 是属性不是方法**(实测 `Cannot call property level … It is not a function`)
+ * ⇒ 必须写 `p.level`(不带括号);本函数再退回其它访问器。
+ */
+function domLevel(p) {
+    var lv = null;
+    try { lv = p.level; } catch (e1) { lv = null; }
+    if (lv != null) return lv;
+    try { lv = p.level(); } catch (e2) { lv = null; }
+    if (lv != null) return lv;
+    try { lv = p.getCommandSenderWorld(); } catch (e3) { lv = null; }
+    return lv;
+}
+
+/**
+ * 现场放一个**真实潜影盒方块实体**并返回 `{level, pos, be}`(调用方负责读数后 `removeBlock` 还原)。
+ *
+ * <p>为什么不用 `new SimpleContainer(9)` 造人造容器(2026-09-20 实测):`SimpleContainer` 有两个
+ * 构造器 `(int)` 与 `(ItemStack...)`,Rhino 判不出目标重载会抛 `InternalError: ambiguous`,
+ * 而**该异常逃出 `guard` 的 try/catch** ⇒ 整条 `nardislot` 命令**一行读数都不出**
+ * (上一轮 `AP_S1_SLOT` 永不出现、且没有任何 `_EX`/报错线索,就是这条)。
+ * 真实潜影盒既是 `Container`、又更贴近真实入箱路径。
+ */
+function domPlaceShulker(p) {
+    var out = { level: null, pos: null, be: null, err: "" };
+    out.level = domLevel(p);
+    if (out.level == null) { out.err = "no_level"; return out; }
+    try {
+        out.pos = new NardisBlockPosClass(p.getBlockX(), p.getBlockY() + 3, p.getBlockZ());
+        out.level.setBlock(out.pos, NardisBlocksClass.SHULKER_BOX.defaultBlockState(), 3);
+        out.be = out.level.getBlockEntity(out.pos);
+        if (out.be == null) out.err = "no_block_entity";
+    } catch (e0) { out.err = "shulker:" + domExText(e0); }
+    return out;
+}
+
+/** 还原 `domPlaceShulker` 放的方块(幂等) */
+function domRemoveShulker(placed) {
+    try {
+        if (placed != null && placed.level != null && placed.pos != null) placed.level.removeBlock(placed.pos, false);
+    } catch (e) { /* 还原失败不影响读数 */ }
+    return "";
+}
+
+/** 清空身上的全部临时牌(脚手架;产品侧的清理走 purgeAll / tick 自检) */
+function domClearTemp(p) {
+    if (NardisTemporaryCardUtilClass == null) return -1;
+    try { return NardisTemporaryCardUtilClass.purgeAll(p); } catch (e) { return -1; }
+}
+
+/** 临时牌的类型构成(`t_atk`/`t_def`/`t_types`,另加 2026-09-27 新语义所需的分类计数） */
+function domTempBreakdown(p) {
+    var a = 0, d = 0, types = "", excl = 0, total = 0;
+    var scan = function (st) {
+        if (st == null || st.isEmpty()) return;
+        if (NardisTemporaryCardUtilClass == null || !NardisTemporaryCardUtilClass.isTemporary(st)) return;
+        var ty = domCardType(st);
+        if (ty === "defense") { d = d + 1; } else if (ty === "attack") { a = a + 1; }
+        types = (types === "") ? ty : (types + "," + ty);
+        total = total + 1;
+        // N1:「全部非专属」——专属牌判据由产品提供(`RandomCardHandler#isExclusive`)
+        try { if (NardisRandomCardHandlerClass != null && NardisRandomCardHandlerClass.isExclusive(st)) excl = excl + 1; } catch (eX) { /* 读不到就不计 */ }
+    };
+    try {
+        var items = p.getInventory().items;
+        for (var i = 0; i < items.size(); i++) scan(items.get(i));
+        var off = p.getInventory().offhand;
+        for (var j = 0; j < off.size(); j++) scan(off.get(j));
+    } catch (e) { return { atk: -1, def: -1, types: "?", battle: -1, effect: -1, excl: -1, total: -1 }; }
+    var battle = a + d;
+    return { atk: a, def: d, types: (types === "" ? "-" : types), battle: battle, effect: total - battle, excl: excl, total: total };
+}
+
+/** 一张卡牌物品栈的攻击/防御归属("attack" / "defense" / "other") */
+function domCardType(stack) {
+    if (stack == null || stack.isEmpty() || NardisCardRegistryClass == null) return "other";
+    try {
+        var ty = NardisCardRegistryClass.itemToType(stack);
+        if (ty == null) return "other";
+        return NardisCardRegistryClass.isDefense(ty) ? "defense" : "attack";
+    } catch (e) { return "other"; }
+}
+
+/** 骰子装配栏里是否有探针人造的那颗临时石 */
+function domHasProbeStone(p) {
+    var enh = domEnh(p);
+    if (enh == null) return 0;
+    try {
+        var stones = enh.appliedStones();
+        for (var i = 0; i < stones.size(); i++) {
+            var s = stones.get(i);
+            if (s != null && s.type() != null && s.type() === NARDIS_TEMP_TYPE2) return 1;
+        }
+    } catch (e) { return -1; }
+    return 0;
+}
+
+/** 从骰子装配栏移除探针人造的那颗临时石(幂等;用于重复 assemble 不累积) */
+function domRemoveProbeStone(p) {
+    var enh = domEnh(p);
+    if (enh == null || NardisWeaponEnhancementClass == null) return 0;
+    try {
+        var stones = enh.appliedStones();
+        var kept = new ArrayListClass();
+        var removed = 0;
+        for (var i = 0; i < stones.size(); i++) {
+            var s = stones.get(i);
+            if (s != null && s.type() != null && s.type() === NARDIS_TEMP_TYPE2) { removed = removed + 1; continue; }
+            kept.add(s);
+        }
+        if (removed <= 0) return 0;
+        var freed = removed * 1;
+        // 走 domWriteEnh(而不是裸 nardiSetEnh):curios 槽的栈是副本,必须写回槽位才生效
+        var w = domWriteEnh(p, "curio", new NardisWeaponEnhancementClass(
+            Math.max(0, enh.usedCost() - freed), enh.maxCost(),
+            enh.usedDefenseCost(), enh.maxDefenseCost(),
+            enh.starLevel(), kept));
+        return (w.curio === 1) ? removed : -1;
+    } catch (e) { return -1; }
+}
+
+/** 造一张临时牌物品栈(带标记) */
+function domMakeTempCard(itemId) {
+    var item = resolveItem(itemId);
+    if (item == null) return null;
+    var stack = new ItemStack(item, 1);
+    if (NardisTemporaryCardUtilClass != null) {
+        try { NardisTemporaryCardUtilClass.mark(stack); } catch (e) { /* 交给调用方读标记 */ }
+    }
+    return stack;
+}
+
+/**
+ * 往骰子装配栏塞一颗 `temporary = true` 的卡牌石(spec §6.1 冻结方案第 3 分量的探针侧可测性)。
+ *
+ * 生产侧的实际入口是卡牌栏 UI(`CardInventoryMenu#saveToDice`),GUI 鼠标操作无法注入,
+ * 故此处**直接构造** AppliedStone 三参构造器并写回组件 —— 断言口径 = 「到期清理能否过滤 `temporary()`
+ * 并按被移除卡重算 used_cost」,与 UI 路径共用同一条 `TemporaryCardUtil#purgeEquipped`。
+ *
+ * <p>返回 `{ok, why, enh}`:`ok=1` 只表示 record 构造成功,**写回是否成功由调用方用
+ * {@link nardiSetEnh} 单独判定并写进读数** —— 这样 1.20.1 上写回失败不会再表现为静默的 `-1`。
+ */
+function domBuildTempStone(p, typeStr) {
+    var dice = domDiceStack(p);
+    var enh = domEnh(p);
+    if (dice == null) return { ok: 0, why: "no_dice", enh: null };
+    if (enh == null) return { ok: 0, why: "no_enhancement", enh: null };
+    var cost = 1;
+    try { cost = NardisCardRegistryClass.cost(typeStr, p); } catch (eC) { cost = 1; }
+    var uses = 5;
+    try { uses = NardisCardRegistryClass.defaultUses(typeStr); } catch (eU) { uses = 5; }
+    var stone = null, err = "";
+    try {
+        stone = new NardisAppliedStoneClass(typeStr, uses, true);
+    } catch (e1) {
+        err = "new3:" + domExText(e1);
+        try {
+            stone = new NardisAppliedStoneClass(typeStr, uses);
+            err = err + "|fallback2(临时标记丢失)";
+        } catch (e2) { err = err + "|new2:" + domExText(e2); }
+    }
+    if (stone == null) return { ok: 0, why: err, enh: null };
+    try {
+        var kept = new ArrayListClass();
+        var stones = enh.appliedStones();
+        for (var i = 0; i < stones.size(); i++) kept.add(stones.get(i));
+        kept.add(stone);
+        return { ok: 1, why: err, cost: cost, enh: new NardisWeaponEnhancementClass(
+            enh.usedCost() + cost, enh.maxCost(),
+            enh.usedDefenseCost(), enh.maxDefenseCost(), enh.starLevel(), kept) };
+    } catch (e3) { return { ok: 0, why: "build:" + domExText(e3), enh: null }; }
+}
+
+/** 清空主背包 0..35(基线用;不动副手 —— 副手留给 in_hand/off 类读数) */
+function domClearMain(p) {
+    try {
+        for (var i = 0; i < 36; i++) p.getInventory().setItem(i, ItemStack.EMPTY);
+    } catch (e) { return "clear_main:" + domExText(e); }
+    return "";
+}
+
+/** 主动冷却剩余 tick(0 = 未在冷却) */
+function domCool(p) {
+    try {
+        var end = ModAttachments.getSignActiveCooldownEnd(p);
+        var now = nowTick(p);
+        if (end <= 0 || now < 0) return 0;
+        return end - now;
+    } catch (e) { return -1; }
+}
+
+/** 复位立牌主动态:玩家级冷却 + 锁定(生效中)态(基线用;不碰效果) */
+function domResetActive(p) {
+    try { ModAttachments.setSignActiveCooldownEnd(p, 0); } catch (e1) { /* 忽略 */ }
+    try { resetActiveLock(p); } catch (e2) { /* 忽略 */ }
+}
+
+/**
+ * nardis 全量只读读数(**单行**,字段顺序固定;用例按子串断言)。
+ *
+ * 字段顺序(不得重排 —— 用例的 `A.*B` 形态子串断言依赖它):
+ *   n_eq,atk_cards,def_cards,n_temp,n_temp_eq,dice_hand,n_stones,enh_src,
+ *   n_fx,n_fx_on,t_atk,t_def,t_types,t_foil_hand,
+ *   ap,dp,armor,pill,teru,foil,cool
+ */
+function domStateRead(p) {
+    var eq = 0;
+    if (NardisSignItemClass != null) eq = domBool(function () { return NardisSignItemClass.isEquipped(p); });
+    var ac = 0, dc = 0;
+    if (NardisSignItemClass != null) {
+        ac = domNum(function () { return NardisSignItemClass.equippedAttackCardCount(p); });
+        dc = domNum(function () { return NardisSignItemClass.equippedDefenseCardCount(p); });
+    } else {
+        ac = -1; dc = -1;
+    }
+    var ns = domStoneCounts(p);
+    var br = domTempBreakdown(p);
+    var fx = domFx(p);
+    var pill = -1;
+    try { pill = HealingManagerClass.getPoints(p); } catch (eP) { pill = -1; }
+    var teru = -1;
+    if (TeruSignItemClass != null) {
+        try { teru = TeruSignItemClass.getLayers(p); } catch (eT) { teru = -1; }
+    }
+    return "n_eq=" + eq
+        + ":atk_cards=" + ac
+        + ":def_cards=" + dc
+        + ":n_temp=" + domCountTemp(p)
+        + ":n_temp_eq=" + domCountTempEquipped(p)
+        + ":dice_hand=" + domDiceInHand(p)
+        + ":n_stones=" + ns.total
+        + ":enh_src=" + domEnhSrc(p)
+        + ":n_fx=" + fx.dur
+        + ":n_fx_on=" + fx.on
+        + ":t_atk=" + br.atk
+        + ":t_def=" + br.def
+        + ":t_types=" + br.types
+        + ":t_foil_hand=" + domFoil(p.getMainHandItem())
+        + ":ap=" + (TeruDiceCombatModifiersClass == null ? -1 : domNum(function () { return TeruDiceCombatModifiersClass.attackPowerOf(p); }))
+        + ":dp=" + (TeruDiceCombatModifiersClass == null ? -1 : domNum(function () { return TeruDiceCombatModifiersClass.defensePowerOf(p); }))
+        + ":armor=" + domNum(function () { return p.getArmorValue(); })
+        + ":pill=" + pill
+        + ":teru=" + teru
+        + ":foil=" + domFoil(p.getMainHandItem())
+        + ":cool=" + domCool(p)
+        // ── 2026-09-27 新语义(冻结/解冻/安全门/N1 分类计数)所需的追加字段。
+        //    ⚠️ **一律追加在末尾**:前面所有字段的顺序与含义保持不变,旧断言(子串/前缀)不受影响。
+        + ":lock=" + domBool(function () { return BaseSignItemClass.isSignActiveLocked(p); })
+        + ":lock_end=" + domNum(function () { return ModAttachments.getSignActiveLockEnd(p); })
+        + ":cd_end=" + domNum(function () { return ModAttachments.getSignActiveCooldownEnd(p); })
+        + ":free=" + domFreeSlots(p)
+        + ":t_battle=" + br.battle + ":t_effect=" + br.effect + ":t_excl=" + br.excl;
+}
+
+/** 主物品栏 0..35 的可用空槽数(安全门 N6 的判据;产品 `countFreeSlots` 同口径) */
+function domFreeSlots(p) {
+    var free = 0;
+    try {
+        var items = p.getInventory().items;
+        for (var i = 0; i < items.size(); i++) {
+            var st = items.get(i);
+            if (st == null || st.isEmpty()) free = free + 1;
+        }
+    } catch (e) { return -1; }
+    return free;
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+//  ① nardiprep —— 基线脚手架
+// ══════════════════════════════════════════════════════════════════════════
+
+/**
+ * 基线:卸掉两线所有相关槽位 → 装绿洲女王立牌(stand 槽)+ 骰子(**curios `dice` 槽**,见段头注 1)
+ * → 主手清空 + 背包 1 号位放铁剑 → `clear` 时额外清临时牌与效果、复位主动冷却。
+ *
+ * ⚠️ 本命令**不**做类存在性闸门:类缺失时相关读数自然退化为 -1/`n_eq=0`,用例据此判 FAIL,
+ * 比「命令直接不出读数」更容易定位(旧 jar 的 KubeJS 加载失败会连读数一起吞掉)。
+ */
+function doNardiPrep(ctx, tag, clearText) {
+    var p = ctx.source.getPlayerOrException();
+    var missing = "";
+    if (NardisSignItemClass == null) missing = missing + "|NardisSignItem";
+    if (NardisTemporaryCardUtilClass == null) missing = missing + "|TemporaryCardUtil";
+    if (NardisPrivilegeEffectClass == null) missing = missing + "|NardisPrivilegeEffect";
+    if (NardisCardItemClass == null) missing = missing + "|CardItem";
+    if (NardisCardRegistryClass == null) missing = missing + "|CardRegistry";
+    if (NardisModDataComponentsClass == null) missing = missing + "|ModDataComponents";
+    if (NardisWeaponEnhancementClass == null) missing = missing + "|WeaponEnhancement";
+    if (NardisAppliedStoneClass == null) missing = missing + "|AppliedStone";
+    if (NardisSlotClass == null) missing = missing + "|Slot";
+    // 两线槽位差:1.21.1 骰子是 curios `dice` 真饰品槽;1.20.1 的 curios `dice` = 手持骰子。
+    // 一律按「名字」逐项清,取不到就跳过(不抛、不静默)。
+    var slotsToClear = ["dice", "chip", "hands"];
+    for (var si = 0; si < slotsToClear.length; si++) {
+        try { clearCurioSlots(p, slotsToClear[si]); } catch (e0) { /* 该线无此槽 */ }
+    }
+    var clearAll = domBool(function () { return ("" + clearText) === "clear"; });
+    var purged = 0;
+    if (clearAll === 1) {
+        purged = domClearTemp(p);
+        try { ModEffectRemoval.remove(p, domEffectHolder()); } catch (e1) { /* 此处只做尽力清场 */ }
+        try { NardisPrivilegeEffectClass.remove(p); } catch (e2) { /* 1.20.1 名形不同则忽略 */ }
+        domResetActive(p);
+    }
+    var signErr = equipSign(p, NARDIS_SIGN_ID);
+    var diceItem = resolveItem(NARDIS_DICE_ID);
+    var diceErr = (diceItem == null) ? ("unknown_item:" + NARDIS_DICE_ID) : "";
+    var cleared = domClearMain(p);
+    var diceWhere = "none";
+    if (diceErr === "") {
+        // ⚠️ 必须放 **curios `dice` 槽**(= 产品语义上的「已佩戴」):两线的 findEquippedDice /
+        //    equippedEnhancement / attackPowerOf|defensePowerOf **只查 Curios**,放主手时
+        //    被动读不到、且探针写进主手骰子的组件与产品清理的 curios 骰子不是同一份。
+        var errCurio = domPutDiceInCurio(p, diceItem);
+        if (errCurio === "") {
+            diceWhere = "curio";
+        } else {
+            // 退路:该线没有 curios `dice` 槽时退回主手,并把失败原因显式写进读数(不静默)
+            diceErr = errCurio;
+            try { p.setItemInHand(NardiHandClass.MAIN_HAND, new ItemStack(diceItem, 1)); diceWhere = "hand"; } catch (e3) { diceErr = diceErr + "|hand:" + domExText(e3); }
+        }
+    }
+    // 主手不再放任何东西(骰子已进 curios 槽)⇒ `dice_hand=0` 是**预期基线**,不是异常
+    var sword = resolveItem("minecraft:iron_sword");
+    if (sword != null) { try { p.getInventory().setItem(1, new ItemStack(sword, 1)); } catch (e4) { /* 忽略 */ } }
+    send(ctx, "AP_" + tag + "_PREP:sign_err=" + (signErr === null ? "" : signErr)
+        + ":dice_err=" + diceErr
+        + ":dice_where=" + diceWhere
+        + ":clear=" + clearAll
+        + ":purged=" + purged
+        + ":classes=" + (missing === "" ? "ok" : missing)
+        + (cleared === "" ? "" : ":clear_err=" + cleared)
+        + ":" + domStateRead(p));
+    return 1;
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+//  ② nardiread —— 全量只读
+// ══════════════════════════════════════════════════════════════════════════
+
+function doNardiRead(ctx, tag, phaseText, nameText) {
+    var p = ctx.source.getPlayerOrException();
+    var who = ("" + nameText) === "" ? "" : ("" + nameText);
+    var target = p;
+    if (who !== "") {
+        var t = teruFindPlayer(ctx, who);
+        if (t == null) {
+            send(ctx, "AP_" + tag + "_" + phaseText + ":found=0:who=" + who);
+            return 1;
+        }
+        target = t;
+    }
+    var uuid = "-";
+    try { var u = playerUuid(target); if (u != null && u.ok) uuid = "" + u.value; } catch (e0) { uuid = "-"; }
+    send(ctx, "AP_" + tag + "_" + phaseText + ":found=1:who=" + (who === "" ? "self" : who)
+        + ":uuid=" + uuid + ":" + domStateRead(target));
+    return 1;
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+//  ③ nardiarm / nardiarmclear —— 被动「威压」的装配栏脚手架
+// ══════════════════════════════════════════════════════════════════════════
+
+/** 是否装着绿洲女王立牌(被动的前置;读数显式给出,避免「没装立牌却断言 +N」的假结论) */
+function domSignEquipped(p) {
+    if (NardisSignItemClass == null) return -1;
+    return domBool(function () { return NardisSignItemClass.isEquipped(p); });
+}
+
+/**
+ * 直接写骰子装配栏:`atk_n` 张攻击牌(`medium`,费用 1)+ `def_n` 张防御牌(`defense_medium`,费用 1)。
+ * `atk_n < 0` ⇒ **只读**(不写),用于「装立牌 ⇒ 被动生效」的严格对照。
+ *
+ * <p>写回位置由第 4 参 `where` 指定(`curio` 缺省 / `hand` / `both`),见 {@link domWriteEnh}。
+ * **写回前一律先清空两处骰子上的旧 enhancement**(不留上一轮的装配残留,读数与顺序无关)。
+ *
+ * <p>读数同时给出两处的写回结果,便于一眼分辨「产品读的是哪一份骰子」:
+ * `set_ok_curio` / `set_ok_hand` / `enh_curio`(条数:-1 = 该处无骰子,0 = EMPTY)/
+ * `enh_hand`;`set_ok` = 本次目标位置的写回结果。异常一律经 {@link domExText} **纯字符串化**
+ * (绝不把异常对象拼进读数,避免 KubeJS 二次 JSON 化把整行读数吃掉)。
+ */
+function doNardiArm(ctx, tag, atkText, defText, whereText) {
+    var p = ctx.source.getPlayerOrException();
+    var where = ("" + whereText) === "" ? "curio" : ("" + whereText);
+    var a0 = teruInt(atkText, 0);
+    var d0 = teruInt(defText, 0);
+    var before = domStateRead(p);
+    var err = "";
+    var setOk = -1, setOkCurio = -1, setOkHand = -1;
+    var enhCurio = -1, enhHand = -1;
+    if (a0 >= 0 && d0 >= 0) {
+        try {
+            var kept = new ArrayListClass();
+            for (var i = 0; i < a0; i++) kept.add(new NardisAppliedStoneClass(NARDIS_TEMP_TYPE, 10, false));
+            for (var j = 0; j < d0; j++) kept.add(new NardisAppliedStoneClass("defense_medium", 10, false));
+            var cost = 1;
+            try { cost = NardisCardRegistryClass.cost(NARDIS_TEMP_TYPE, p); } catch (eC) { cost = 1; }
+            var costD = 1;
+            try { costD = NardisCardRegistryClass.cost("defense_medium", p); } catch (eD) { costD = 1; }
+            // ⚠️ 显式转成 JS number:Rhino 下 Java int 参与 `*` 后可能仍是 Java 类型,
+            //    拼进字符串会走 KubeJS 的「Java 对象 → JSON」路径(实测炸过一次)
+            var aCost = (a0 * cost) - 0;
+            var dCost = (d0 * costD) - 0;
+            var enh = new NardisWeaponEnhancementClass(aCost, 12, dCost, 12, 3, kept);
+            var w = domWriteEnh(p, where, enh);
+            setOkCurio = w.curio;
+            setOkHand = w.hand;
+            if (where === "hand") { setOk = w.hand; }
+            else if (where === "both") { setOk = (w.curio === 1 && w.hand === 1) ? 1 : 0; }
+            else { setOk = w.curio; }
+            if (w.err !== "") err = w.err;
+        } catch (e1) { err = domExText(e1); }
+    }
+    try {
+        var s1 = domEnhOf(domCurioDice(p));
+        if (s1 != null) enhCurio = domStoneCountsOf(s1);
+    } catch (e2) { enhCurio = -1; }
+    try {
+        var s2 = domEnhOf(domHandDice(p));
+        if (s2 != null) enhHand = domStoneCountsOf(s2);
+    } catch (e3) { enhHand = -1; }
+    send(ctx, "AP_" + tag + "_ARM:atk_n=" + a0 + ":def_n=" + d0
+        + ":where=" + where
+        + ":sign=" + domSignEquipped(p)
+        + ":set_ok=" + setOk
+        + ":set_ok_curio=" + setOkCurio + ":set_ok_hand=" + setOkHand
+        + ":enh_curio=" + enhCurio + ":enh_hand=" + enhHand
+        + (err === "" ? "" : ":err=" + err)
+        + ":before={" + before + "}:after={" + domStateRead(p) + "}");
+    return 1;
+}
+
+/** 某个 enhancement 的装配牌总数(与 {@link domStoneCounts} 同口径,供 `enh_curio`/`enh_hand` 用) */
+function domStoneCountsOf(enh) {
+    if (enh == null) return -1;
+    try {
+        var stones = enh.appliedStones();
+        if (stones == null) return 0;
+        return stones.size() - 0;
+    } catch (e) { return -1; }
+}
+
+/**
+ * 清空骰子装配栏(装配 0/0,费用归零)。
+ *
+ * <p>⚠️ 只写 **curios `dice` 槽**(不要用 `both`):`domWriteEnh(..., "both")` 会顺带把骰子**搬到主手**
+ * (它要清掉另一处以保证唯一),那会让后续步骤里「往主手放临时牌」把骰子一起顶掉
+ * (2026-09-20 实测:`AP_A5_ARMCLEAR:…dice_hand=1:enh_src=hand`,紧接着 `narditemp inv` 就丢了骰子)。
+ */
+function doNardiArmClear(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var err = "";
+    var setOk = -1, setOkCurio = -1, setOkHand = -1;
+    try {
+        var enh = new NardisWeaponEnhancementClass(0, 12, 0, 12, 3, new ArrayListClass());
+        var w = domWriteEnh(p, "curio", enh);
+        setOkCurio = w.curio;
+        setOkHand = w.hand;
+        setOk = w.curio;
+        if (w.err !== "") err = w.err;
+    } catch (e1) { err = domExText(e1); }
+    send(ctx, "AP_" + tag + "_ARMCLEAR:cleared=" + (setOk === 1 ? 1 : 0)
+        + ":set_ok=" + setOk
+        + ":set_ok_curio=" + setOkCurio + ":set_ok_hand=" + setOkHand
+        + (err === "" ? "" : ":err=" + err) + ":" + domStateRead(p));
+    return 1;
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+//  ④ nardicast / nardigive —— 主动发放
+// ══════════════════════════════════════════════════════════════════════════
+
+/**
+ * **真实主动**:`BaseSignItem.performSkillForCurio`(客户端按键的服务端同一入口)。
+ * 读数:`granted`(本次净增的临时牌张数,含被清空的旧牌 ⇒ 裁决③「先清空再发」的直接证据)、
+ * `n_temp`、`fx_dur`(效果剩余 tick)、`cool`(冷却剩余 tick)。
+ *
+ * <p>**参数签名(2026-09-20 冻结)**:`nardicast <tag> [name] [reset]`
+ * —— 第 2 参是**玩家名位**(缺省/`self` = 自己),第 3 参才是 `reset`。
+ * ⚠️ 上一轮用例把第 2 参当成了 `reset` 开关(`/astralprobe nardicast TRIGW reset`),
+ * 于是 `reset` 被当成玩家名去找 ⇒ `AP_TRIGW_CAST:found=0:who=reset`(实测)。
+ * 第 3 参写 `reset` ⇒ **先复位玩家级主动冷却**再走同一条真实入口。为什么必须有这一档:
+ * 本主动刻意**不**起「锁定(生效中)」态(见 `NardisSignItem` 类注),触发成功即起 180 s 冷却;
+ * 裁决③「效果生效中再次释放」在生产里只有**冷却被减免**(诡异骰子 -50% / 充能递减 /
+ * 电流核心立即完成)才可达 ⇒ 探针要复现该状态,只能把冷却这一项前置条件归零,
+ * `handleUse` 本体(先清空再发 3 张 + 刷新效果)仍然**逐字走产品代码**。
+ */
+/** 异常 → 纯字符串(本段内的**公开别名**,名字里不含 `dom` 前缀以便与共享段区分) */
+function domExecText(e) { return domExText(e); }
+
+/** 治愈点读数(`HealingManager#getPoints`;-1 = 读不到) */
+function domPill(p) {
+    var v = -1;
+    try { v = HealingManagerClass.getPoints(p) - 0; } catch (e) { v = -1; }
+    return v;
+}
+
+function doNardiCast(ctx, tag, nameText, coolText) {
+    var p = ctx.source.getPlayerOrException();
+    var who = ("" + nameText) === "" ? "" : ("" + nameText);
+    var target = p;
+    if (who !== "" && who !== "self") {
+        var t = teruFindPlayer(ctx, who);
+        if (t == null) { send(ctx, "AP_" + tag + "_CAST:found=0:who=" + who); return 1; }
+        target = t;
+    }
+    var didReset = 0;
+    if (("" + coolText) === "reset") { domResetActive(target); didReset = 1; }
+    var before = domStateRead(target);
+    var t0 = domCountTemp(target);
+    var eq0 = domCountTempEquipped(target);
+    var pill0 = domPill(target);
+    var l0 = -1;
+    if (TeruSignItemClass != null) { try { l0 = TeruSignItemClass.getLayers(target); } catch (eL) { l0 = -1; } }
+    var err = "";
+    // 门控诊断:`performSkill` 在真正触发前有四道门(锁定态 / 玩家级冷却 / 目标选择会话 / 选择器门控),
+    // 任一被拦都会「静默无效果」—— 只读这四项才能把「没生效」归因到具体哪道门(2026-09-20 实测需要)。
+    var lockBefore = -1, cdBefore = -1, selecting = -1, nowRaw = -1;
+    try { lockBefore = BaseSignItemClass.isSignActiveLocked(target) ? 1 : 0; } catch (eG1) { lockBefore = -1; }
+    try { cdBefore = ModAttachments.getSignActiveCooldownEnd(target) - 0; } catch (eG2) { cdBefore = -1; }
+    try { selecting = com.merlinkitsune.astral_dice.target.TargetSelectionManager.isSelecting(target) ? 1 : 0; } catch (eG3) { selecting = -1; }
+    try { nowRaw = nowTick(target) - 0; } catch (eG4) { nowRaw = -1; }
+    var lockAfter = -1, cdAfter = -1, cdUnchanged = -1;
+    try { BaseSignItemClass.performSkillForCurio(target); } catch (e1) { err = domExText(e1); }
+    try { lockAfter = BaseSignItemClass.isSignActiveLocked(target) ? 1 : 0; } catch (eG5) { lockAfter = -1; }
+    try {
+        cdAfter = ModAttachments.getSignActiveCooldownEnd(target) - 0;
+        if (cdBefore >= 0 && cdAfter >= 0) cdUnchanged = (cdBefore === cdAfter) ? 1 : 0;
+    } catch (eG6) { cdAfter = -1; }
+    var t1 = domCountTemp(target);
+    var eq1 = domCountTempEquipped(target);
+    var pill1 = domPill(target);
+    var br1 = domTempBreakdown(target);
+    var l1 = -1;
+    if (TeruSignItemClass != null) { try { l1 = TeruSignItemClass.getLayers(target); } catch (eL2) { l1 = -1; } }
+    var fx = domFx(target);
+    send(ctx, "AP_" + tag + "_CAST:who=" + (who === "" ? "self" : who)
+        + ":cool_reset=" + didReset
+        + ":lock_before=" + lockBefore + ":lock_after=" + lockAfter
+        + ":cd_before=" + cdBefore + ":cd_after=" + cdAfter + ":cd_unchanged=" + cdUnchanged
+        + ":now=" + nowRaw + ":selecting=" + selecting
+        + ":temp_before=" + t0 + ":temp_eq_before=" + eq0
+        + ":granted=" + (t1 - t0)
+        + ":n_temp=" + t1 + ":n_temp_eq=" + eq1
+        + ":pill_before=" + pill0 + ":pill_after=" + pill1 + ":pill_delta=" + (pill1 - pill0)
+        + ":fx_dur=" + fx.dur + ":n_fx_on=" + fx.on
+        + ":cool=" + domCool(target)
+        + ":teru_delta=" + (l1 - l0)
+        + ":teru_eq_atk=" + (((l1 - l0) - 0) === (br1.atk - 0) ? 1 : 0)
+        + ":ground_temp=" + domGroundTemp(target)
+        + (err === "" ? "" : ":err=" + err)
+        + ":before={" + before + "}:after={" + domStateRead(target) + "}");
+    return 1;
+}
+
+/**
+ * 在产品**没有**效果时给探针自己补一条 `nardis_privilege`(3:00,与主动发放**逐字同参**:
+ * `EffectTimerGuard.apply` + 六参 `showIcon=true`)。
+ *
+ * <p>为什么需要:产品的玩家级 tick 自检(§4.4)口径是「**有临时牌但无效果 ⇒ 清空**」;
+ * 而 `nardigive` / `narditemp ... inv` 是**纯脚手架**、不发效果 ⇒ 实测「给牌命令的读数里
+ * `n_temp=3`,下一条读命令就是 `n_temp=0`」(tick 在两条命令之间清掉了它)。
+ * 这不是产品缺陷(spec §4.4 明确如此),而是「脚手架发牌」与「真实主动」的差异 ⇒
+ * 脚手架发牌时**必须**同时建立效果,否则用例断言的就不是产品语义。真实路径
+ * (`nardicast`)不调用本函数,它的效果由 `handleUse` 自己施加。
+ */
+function domEnsureEffect(p) {
+    try {
+        if (p.hasEffect(domEffectHolder())) return 0;
+    } catch (e0) { /* 落到下面照样补一次 */ }
+    var dur = NardisPrivilegeDurationTicks();
+    try {
+        var inst = new MobEffectInstanceClass(domEffectHolder(), dur, 0, false, false, true);
+        if (NardiEffectTimerGuardClass != null) {
+            NardiEffectTimerGuardClass.apply(p, inst);
+        } else {
+            p.addEffect(inst);
+        }
+        return 1;
+    } catch (e1) { return -1; }
+}
+
+/** `NardisPrivilegeEffect.DURATION_TICKS`(读不到时退回 spec 冻结的 3600) */
+function NardisPrivilegeDurationTicks() {
+    try {
+        var d = NardisPrivilegeEffectClass.DURATION_TICKS;
+        if (d != null) return d - 0;
+    } catch (e) { /* 落到 3600 */ }
+    return 3600;
+}
+
+/**
+ * 直接 `TemporaryCardUtil.grantRandom(owner, n)`(绕开冷却/门控,测「发牌本身」)。
+ *
+ * <p>⚠️ **发牌前先 {@link domEnsureEffect}**:产品 tick 自检的口径是「有临时牌但无效果 ⇒ 清空」
+ * (spec §4.4),而本命令是纯脚手架、不发效果 ⇒ 上一轮实测「`AP_G3_GIVE:…n_temp=3` 的下一条
+ * 读命令就变成 `n_temp=0`」(tick 在两条命令之间清掉了)。这不是产品缺陷:真实主动
+ * (`nardicast`)必然带效果,所以脚手架发牌也必须同时建立效果,否则断言的对象不是产品语义。
+ * 读数 `fx_made` 显式暴露本次是否补了效果(1 = 补了,0 = 本来就有,-1 = 补失败)。
+ */
+function doNardiGive(ctx, tag, nText, nameText) {
+    var p = ctx.source.getPlayerOrException();
+    var who = ("" + nameText) === "" ? "" : ("" + nameText);
+    var target = p;
+    if (who !== "") {
+        var t = teruFindPlayer(ctx, who);
+        if (t == null) { send(ctx, "AP_" + tag + "_GIVE:found=0:who=" + who); return 1; }
+        target = t;
+    }
+    var n = teruInt(nText, 3);
+    var free = -1, granted = -1, err = "";
+    try { free = NardisTemporaryCardUtilClass.countFreeSlots(target); } catch (e0) { free = -1; }
+    var fxMade = domEnsureEffect(target);
+    var t0 = domCountTemp(target);
+    var pill0 = domPill(target);
+    var l0 = -1;
+    if (TeruSignItemClass != null) { try { l0 = TeruSignItemClass.getLayers(target); } catch (eL) { l0 = -1; } }
+    try { granted = NardisTemporaryCardUtilClass.grantRandom(target, n); } catch (e1) { err = domExText(e1); }
+    var l1 = -1;
+    if (TeruSignItemClass != null) { try { l1 = TeruSignItemClass.getLayers(target); } catch (eL2) { l1 = -1; } }
+    var pill1 = domPill(target);
+    var br1 = domTempBreakdown(target);
+    send(ctx, "AP_" + tag + "_GIVE:who=" + (who === "" ? "self" : who) + ":n=" + n
+        + ":granted=" + granted + ":slots_free=" + free
+        + ":fx_made=" + fxMade
+        + ":n_temp=" + domCountTemp(target)
+        + ":pill_before=" + pill0 + ":pill_after=" + pill1 + ":pill_delta=" + (pill1 - pill0)
+        + ":t_atk=" + br1.atk + ":t_def=" + br1.def
+        + ":teru_delta=" + (l1 - l0)
+        + ":teru_eq_atk=" + (((l1 - l0) - 0) === (br1.atk - 0) ? 1 : 0)
+        + (err === "" ? "" : ":err=" + err)
+        + ":" + domStateRead(target));
+    return 1;
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+//  ⑤ narditemp —— 造/清临时牌(物品栈 / 装配栏)
+// ══════════════════════════════════════════════════════════════════════════
+
+/**
+ * `clear` ⇒ 清空身上的临时牌(不走产品清理,纯脚手架);
+ * `inv` ⇒ 主手塞一张带标记的攻击牌(同 id 普通牌由后续 `/item replace` 提供对照);
+ * `assemble` ⇒ 往**产品语义上的骰子**(curios `dice` 槽)装配栏塞一颗 `temporary = true` 的攻击牌石(费用 +1)。
+ *
+ * <p>两种造牌模式都先 {@link domEnsureEffect} 补效果:否则产品的 tick 自检会立刻清掉刚造的临时牌
+ * (「有临时牌但无效果 ⇒ 清空」,spec §4.4),读数就只剩 `n_temp=0`。
+ */
+function doNardiTemp(ctx, tag, modeText, clearText) {
+    var p = ctx.source.getPlayerOrException();
+    var mode = "" + modeText;
+    var clearMode = domBool(function () { return ("" + clearText) === "clear"; });
+    var err = "";
+    var removed = 0;
+    var cost = -1;
+    if (clearMode === 1) {
+        removed = domRemoveProbeStone(p);
+        if (removed < 0) removed = 0;
+        var purged = domClearTemp(p);
+        send(ctx, "AP_" + tag + "_TEMP:mode=clear:where=all:purged=" + purged
+            + ":probe_stone_removed=" + removed + ":" + domStateRead(p));
+        return 1;
+    }
+    if (mode === "assemble") {
+        var r0 = domRemoveProbeStone(p);
+        if (r0 < 0) err = "probe_stone_remove_failed";
+        var asm = domBuildTempStone(p, NARDIS_TEMP_TYPE2);
+        var setOk = -1, setOkCurio = -1, setOkHand = -1, w = null;
+        if (asm.ok === 1) {
+            w = domWriteEnh(p, "curio", asm.enh);
+            setOkCurio = w.curio;
+            setOkHand = w.hand;
+            setOk = w.curio;
+            if (w.err !== "") err = (err === "" ? "" : err + "|") + w.err;
+        }
+        if (asm.ok !== 1) { err = (err === "" ? "" : err + "|") + "assemble:" + asm.why; }
+        if (asm.ok === 1 && setOk !== 1) { err = (err === "" ? "" : err + "|") + "set_failed"; }
+        cost = (asm.cost === undefined ? -1 : asm.cost);
+        send(ctx, "AP_" + tag + "_TEMP:mode=assemble:where=dice"
+            + ":asm_ok=" + asm.ok + ":set_ok=" + setOk
+            + ":set_ok_curio=" + setOkCurio + ":set_ok_hand=" + setOkHand
+            + ":type=" + NARDIS_TEMP_TYPE2
+            + ((asm.why === "") ? "" : ":asm_err=" + asm.why)
+            + ":used_cost=" + domUsedCost(p).atk
+            + (err === "" ? "" : ":err=" + err)
+            + ":" + domStateRead(p));
+        return 1;
+    }
+    if (mode === "foil") {
+        // ③ 光效对照:同一 id 的「带标记牌」与「无标记牌」**同时**存在,一次性读出两者真值。
+        //    为什么要挤在一条命令里:两条命令之间会插入至少一个服务器 tick,而产品的
+        //    玩家级自检(§4.4)在「有临时牌但无效果」时会清掉它 ⇒ 分两条命令做对照会变成竞态。
+        domClearTemp(p);
+        var fx = domEnsureEffect(p);
+        var markedStack = domMakeTempCard(NARDIS_ATK_CARD_ID);
+        var plainItem = resolveItem(NARDIS_ATK_CARD_ID);
+        var plainStack = (plainItem == null) ? null : new ItemStack(plainItem, 1);
+        var invErr = "";
+        var handId = "-", plainId = "-", plainSlot = -1;
+        try { p.setItemInHand(NardiHandClass.MAIN_HAND, markedStack); } catch (e0) { invErr = "hand:" + domExText(e0); }
+        if (plainStack != null) {
+            try {
+                // ⚠️ 普通牌必须放**非手持**槽:热键栏是 0..8 且 `setItemInHand(MAIN_HAND, …)` 写的就是
+                //    当前选中格 ⇒ 普通牌固定放 **9 号槽**(热键栏之外),绝不会顶掉手上的临时牌。
+                //    (实测把普通牌写回 0 号槽会顶掉临时牌:`hand_mark=0`、`n_temp=0`,而 hand_id/plain_id
+                //     同 id ⇒ 表面看不出异常,是典型的静默假绿。)
+                var plainSlotIdx = 9;
+                p.getInventory().setItem(plainSlotIdx, plainStack);
+                plainId = itemIdOf(p.getInventory().getItem(plainSlotIdx));
+                plainSlot = plainSlotIdx;
+            } catch (e1) { invErr = invErr + "|inv_plain:" + domExText(e1); }
+        } else { invErr = invErr + "|unknown_item:" + NARDIS_ATK_CARD_ID; }
+        var handStack = null, plainRead = null;
+        try { handStack = p.getMainHandItem(); } catch (e2) { handStack = null; }
+        if (plainSlot >= 0) { try { plainRead = p.getInventory().getItem(plainSlot); } catch (e3) { plainRead = null; } }
+        handId = itemIdOf(handStack);
+        var mkHand = 0, mkPlain = 0;
+        if (NardisTemporaryCardUtilClass != null) {
+            mkHand = domBool(function () { return NardisTemporaryCardUtilClass.isTemporary(handStack); });
+            mkPlain = domBool(function () { return NardisTemporaryCardUtilClass.isTemporary(plainRead); });
+        }
+        send(ctx, "AP_" + tag + "_TEMP:mode=foil:where=hand+inv:fx_made=" + fx
+            + ":hand_id=" + handId + ":hand_n=" + ((handStack == null || handStack.isEmpty()) ? 0 : handStack.getCount())
+            + ":hand_foil=" + domFoil(handStack) + ":hand_mark=" + mkHand
+            + ":plain_slot=" + plainSlot + ":plain_id=" + plainId
+            + ":plain_n=" + ((plainRead == null || plainRead.isEmpty()) ? 0 : plainRead.getCount())
+            + ":plain_foil=" + domFoil(plainRead) + ":plain_mark=" + mkPlain
+            + (invErr === "" ? "" : ":err=" + invErr)
+            + ":" + domStateRead(p));
+        return 1;
+    }
+    // 默认 inv:主手 = 临时牌(同 id 的**普通**牌由后续 `/item replace` 提供对照)
+    domClearTemp(p);
+    var fxMade = domEnsureEffect(p);
+    var stack = domMakeTempCard(NARDIS_ATK_CARD_ID);    if (stack == null) { send(ctx, "AP_" + tag + "_TEMP:mode=inv:err=unknown_item:" + NARDIS_ATK_CARD_ID); return 1; }
+    try { p.setItemInHand(NardiHandClass.MAIN_HAND, stack); } catch (e1) { err = domExText(e1); }
+    send(ctx, "AP_" + tag + "_TEMP:mode=inv:where=hand:fx_made=" + fxMade
+        + ":hand_id=" + itemIdOf(p.getMainHandItem())
+        + ":used_cost=" + domUsedCost(p).atk
+        + (err === "" ? "" : ":err=" + err) + ":" + domStateRead(p));
+    return 1;
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+//  ⑥ nardifoil —— 光效真值(单层,用户已裁决)
+// ══════════════════════════════════════════════════════════════════════════
+
+/**
+ * 光效读的是 `Item#isFoil(ItemStack)` 的真值(产品侧由 `CardItem#isFoil` 覆写实现),
+ * **不是**截图/渲染 —— spec §7.3 明确「渲染层的可见性不做截图断言,以 hasFoil 真值 + 渲染器
+ * 以 hasFoil 为门控的代码证据覆盖」。
+ */
+function doNardiFoil(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var hand = p.getMainHandItem();
+    var marked = 0;
+    if (NardisTemporaryCardUtilClass != null) {
+        marked = domBool(function () { return NardisTemporaryCardUtilClass.isTemporary(hand); });
+    }
+    send(ctx, "AP_" + tag + "_FOIL:hand_id=" + itemIdOf(hand)
+        + ":hand_n=" + (hand == null || hand.isEmpty() ? 0 : hand.getCount())
+        + ":foil=" + domFoil(hand)
+        + ":is_card=" + domBool(function () { return hand.getItem() instanceof NardisCardItemClass; })
+        + ":temp_mark=" + marked
+        + ":" + domStateRead(p));
+    return 1;
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+//  ⑦ nardidrop —— 丢弃被拒(两重守卫)
+// ══════════════════════════════════════════════════════════════════════════
+
+/**
+ * 主手为临时牌 ⇒ `ServerPlayer#drop(true)` **必须失败**(产品侧 `CardItem#onDroppedByPlayer`
+ * 返回 false,`ServerPlayer#drop` 在移除前判定)。
+ * 读数:`dropped`(drop 的返回值)、`hand_before`/`hand_after`(主手物品 id)、
+ * `ground`(8 格内该物品的地面掉落物数 —— 必须为 0)。
+ */
+function doNardiDrop(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var item = resolveItem(NARDIS_ATK_CARD_ID);
+    if (item == null) { send(ctx, "AP_" + tag + "_ERR:unknown_item:" + NARDIS_ATK_CARD_ID); return 1; }
+    var stack = domMakeTempCard(NARDIS_ATK_CARD_ID);
+    if (stack == null) { send(ctx, "AP_" + tag + "_ERR:make_temp_failed"); return 1; }
+    try { p.setItemInHand(NardiHandClass.MAIN_HAND, stack); } catch (e0) { /* 交给读数 */ }
+    var before = itemIdOf(p.getMainHandItem());
+    var marked = 0;
+    if (NardisTemporaryCardUtilClass != null) {
+        marked = domBool(function () { return NardisTemporaryCardUtilClass.isTemporary(p.getMainHandItem()); });
+    }
+    var dropped = -1, err = "";
+    try { dropped = p.drop(true) ? 1 : 0; } catch (e1) { dropped = -1; err = domExText(e1); }
+    var after = itemIdOf(p.getMainHandItem());
+    var still = 0;
+    try { still = teruInvCount(p, NARDIS_ATK_CARD_ID); } catch (e2) { still = -1; }
+    send(ctx, "AP_" + tag + "_DROP:temp_mark=" + marked
+        + ":hand_before=" + before + ":hand_after=" + after
+        + ":dropped=" + dropped
+        + ":still_in_inv=" + still
+        + ":ground=" + teruGroundCount(p, NARDIS_ATK_CARD_ID, 8)
+        + (err === "" ? "" : ":err=" + err)
+        + ":" + domStateRead(p));
+    return 1;
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+//  ⑧ nardislot —— **直接验证 mixin 真身**(spec §7.3:GUI 鼠标点击无法注入)
+// ══════════════════════════════════════════════════════════════════════════
+
+/**
+ * **非玩家容器**上的 `Slot#mayPlace(临时牌)` ⇒ 走真实 mixin `SlotPlaceGuardMixin`,必须被拒
+ * (`blocked_container=1`);`Slot(player.getInventory(), …).mayPlace(临时牌)` ⇒ 玩家自己的槽必须放行
+ * (`allow_inventory=1`);同一张牌换成**无标记**时两处都必须放行(`plain_container` /
+ * `plain_inventory`)—— 这是「拦截只针对临时牌、不误伤普通牌」的反证。
+ *
+ * <p>⚠️ 「非玩家容器」用的是**现场放置的真实潜影盒方块实体**(`ShulkerBoxBlockEntity implements Container`),
+ * **不是** `new SimpleContainer(9)`:后者在 Rhino 下有两个构造器 `(int)` / `(ItemStack...)` 无法定序,
+ * 抛出的 `InternalError: ambiguous` **逃出 `guard` 的 try/catch** ⇒ 整条命令一行读数都不出
+ * (上一轮 `AP_S1_SLOT` 永不出现、且没有任何 `_EX` 或报错线索,就是这个原因;2026-09-20 定位)。
+ * 用真实方块实体同时更贴近「真的往箱子里放」这一入箱路径。
+ *
+ * <p>判据来源:`TemporaryCardUtil.isPlayerOwnedOrPermissive(slot)`(mixin 与本命令共用同一实现);
+ * 该静态方法在旧 jar 上缺失时退回「mixin 内的等价内联判据」,读数 `au_src` 显式给出用了哪条。
+ */
+function doNardiSlot(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var err = "";
+    var marked = domMakeTempCard(NARDIS_ATK_CARD_ID);
+    var plainItem = resolveItem(NARDIS_ATK_CARD_ID);
+    var plain = plainItem == null ? null : new ItemStack(plainItem, 1);
+    var placed = domPlaceShulker(p);
+    if (placed.err !== "") err = err + "|" + placed.err;
+    var slotC = null, slotI = null, slotC2 = null, slotI2 = null;
+    try { slotC = new NardisSlotClass(placed.be, 0, 0, 0); } catch (e1) { err = err + "|slot_container:" + domExText(e1); }
+    try { slotI = new NardisSlotClass(p.getInventory(), 0, 0, 0); } catch (e2) { err = err + "|slot_inventory:" + domExText(e2); }
+    try { slotC2 = new NardisSlotClass(placed.be, 1, 0, 0); } catch (e3) { /* 忽略 */ }
+    try { slotI2 = new NardisSlotClass(p.getInventory(), 1, 0, 0); } catch (e4) { /* 忽略 */ }
+
+    // 与 mixin 完全同源的判据
+    function owned(s) {
+        if (s == null) return -1;
+        if (NardisTemporaryCardUtilClass != null) {
+            try { return NardisTemporaryCardUtilClass.isPlayerOwnedOrPermissive(s) ? 1 : 0; } catch (e5) { /* 退回内联 */ }
+        }
+        try {
+            if (s.container instanceof NardisInventoryClass) return 1;
+        } catch (e6) { /* 忽略 */ }
+        return 0;
+    }
+    var auSrc = (NardisTemporaryCardUtilClass == null) ? "inline" : "util";
+    var oC = owned(slotC), oI = owned(slotI);
+    var blocked = -1, allowInv = -1, plainC = -1, plainI = -1, blockedMove = -1;
+    var markedFlag = 0;
+    if (NardisTemporaryCardUtilClass != null) {
+        markedFlag = domBool(function () { return NardisTemporaryCardUtilClass.isTemporary(marked); });
+    }
+    try { blocked = slotC == null || marked == null ? -1 : (slotC.mayPlace(marked) ? 0 : 1); } catch (e7) { blocked = -1; err = err + "|mayPlaceC:" + domExText(e7); }
+    try { allowInv = slotI == null || marked == null ? -1 : (slotI.mayPlace(marked) ? 1 : 0); } catch (e8) { allowInv = -1; err = err + "|mayPlaceI:" + domExText(e8); }
+    try { plainC = slotC2 == null || plain == null ? -1 : (slotC2.mayPlace(plain) ? 1 : 0); } catch (e9) { plainC = -1; }
+    try { plainI = slotI2 == null || plain == null ? -1 : (slotI2.mayPlace(plain) ? 1 : 0); } catch (e10) { plainI = -1; }
+    // 判据函数本身（mixin 与探针共用）:非玩家槽 ⇒ true(拦截),玩家槽 ⇒ false(放行)
+    if (NardisTemporaryCardUtilClass != null && marked != null) {
+        try {
+            var b1 = NardisTemporaryCardUtilClass.isPlacementBlocked(marked, oC === 1) ? 1 : 0;
+            var b2 = NardisTemporaryCardUtilClass.isPlacementBlocked(marked, oI === 1) ? 1 : 0;
+            blockedMove = (b1 === 1 && b2 === 0) ? 1 : 0;
+        } catch (e11) { blockedMove = -1; }
+    }
+    // 还原现场放置的潜影盒(幂等)
+    var cleanErr = domRemoveShulker(placed);
+    if (cleanErr !== "") err = err + "|" + cleanErr;
+    send(ctx, "AP_" + tag + "_SLOT:temp_mark=" + markedFlag
+        + ":au_src=" + auSrc
+        + ":owned_container=" + oC + ":owned_inventory=" + oI
+        + ":blocked_container=" + blocked
+        + ":allow_inventory=" + allowInv
+        + ":plain_container=" + plainC
+        + ":plain_inventory=" + plainI
+        + ":predicate_ok=" + blockedMove
+        + (err === "" ? "" : ":err=" + err)
+        + ":" + domStateRead(p));
+    return 1;
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+//  ⑨ nardiexpire —— 到期/外力移除 + 自检收口
+// ══════════════════════════════════════════════════════════════════════════
+
+/**
+ * 走**内部通道** `ModEffectRemoval.remove`(spec §7.1;产品侧 `ModEffectEvents` 会拦掉一切外部移除)
+ * 移除 `nardis_privilege`,随后**驱动一次生产侧自检**(`TemporaryCardUtil.tick`)——
+ * 「效果已不在而身上仍有临时牌 ⇒ 清空全部(含装配栏)」。
+ *
+ * 读数:`fx_before`(移除前效果剩余 tick)、`fx_on_now`(移除后立刻;0/1)、
+ * `removed`(移除调用的返回)、`purged`(自检清掉的张数)、`purge_total`(产品侧实际清空总数)、
+ * `n_temp`/`n_temp_eq`/`used_cost`(清理后的装配栏读数)。
+ */
+function doNardiExpire(ctx, tag, nameText) {
+    var p = ctx.source.getPlayerOrException();
+    var who = ("" + nameText) === "" ? "" : ("" + nameText);
+    var target = p;
+    if (who !== "") {
+        var t = teruFindPlayer(ctx, who);
+        if (t == null) { send(ctx, "AP_" + tag + "_EXPIRE:found=0:who=" + who); return 1; }
+        target = t;
+    }
+    var fx0 = domFx(target);
+    var temp0 = domCountTemp(target);
+    var eq0 = domCountTempEquipped(target);
+    var cost0 = domUsedCost(target).atk;
+    var removedBy = "none";
+    try { ModEffectRemoval.remove(target, domEffectHolder()); removedBy = "internal"; }
+    catch (e1) {
+        removedBy = "internal_ex:" + domExText(e1);
+        try { NardisPrivilegeEffectClass.remove(target); removedBy = removedBy + "|effect_class"; }
+        catch (e2) { removedBy = removedBy + "|effect_class_ex:" + domExText(e2); }
+    }
+    var fx1 = domFx(target);
+    // ⚠️ `TemporaryCardUtil#tick(Player)` 返回 **void**(1.21.1 :359 / 1.20.1 :346 两线同)
+    // ⇒ 不能当返回值读(上一轮读数恒 `tick_rc=undefined`)。这里只暴露「自检是否无异常跑过」,
+    // 真正的清理证据由 `purge_total` / `n_temp` / `n_temp_eq` 给出。
+    var tickRan = 1;
+    var err = "";
+    try { NardisTemporaryCardUtilClass.tick(target); }
+    catch (e3) { tickRan = 0; err = domExText(e3); }
+    var purgeTotal = -1;
+    try { purgeTotal = NardisTemporaryCardUtilClass.purgeAll(target); } catch (e4) { purgeTotal = -1; }
+    // ⚠️ 这里**不**补效果:本条命令的语义就是「效果已不在 ⇒ 自检清空」,补效果会让紧随其后的
+    //    `nardiread` 读到一个仍在生效的效果(与 R7_EXPIRED 的断言直接矛盾)。
+    send(ctx, "AP_" + tag + "_EXPIRE:who=" + (who === "" ? "self" : who)
+        + ":how=" + removedBy
+        + ":fx_before=" + fx0.dur + ":fx_on_before=" + fx0.on
+        + ":fx_on_now=" + fx1.on
+        + ":tick_ran=" + tickRan + ":purge_total=" + purgeTotal
+        + ":temp_before=" + temp0 + ":temp_eq_before=" + eq0
+        + ":used_cost_before=" + cost0
+        + ":n_temp=" + domCountTemp(target) + ":n_temp_eq=" + domCountTempEquipped(target)
+        + ":used_cost=" + domUsedCost(target).atk
+        + (err === "" ? "" : ":err=" + err)
+        + ":" + domStateRead(target));
+    return 1;
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+//  ⑩ nardiguard —— R1/R2 回归取证(只读;spec §7.0)
+// ══════════════════════════════════════════════════════════════════════════
+
+/**
+ * `/astralprobe nardiguard <tag> <effect|attack>` —— **只读**,对**同一 id** 的
+ * 「临时牌」与「普通牌」各给一组读数(spec §7.0)。
+ *
+ * <p>为什么需要:原 `NARDIS-SIGN` 用例全程只用 `attack_card_medium`,看不见
+ * **R1(效果牌的容器缺口)** 与 **R2(效果牌无光效)** —— 这两条只在**效果牌**上才暴露。
+ *
+ * <p>读数与判据:
+ * <ul>
+ *   <li>`foil_t=1` / `foil_n=0` —— **R2**:`ItemStack#isFoil()` 真值(临时牌发光、普通牌不发光);</li>
+ *   <li>`guard_t=0` / `guard_n=1` —— **R1(1.21.1)**:栈级钩子
+ *       `IItemStackExtension#canFitInsideContainerItems()`(五处容器入口的唯一判据);</li>
+ *   <li>`face_t=0` / `face_n=1` —— **R1 行为面**:现场放置一个**真实潜影盒方块实体**,调
+ *       `ShulkerBoxBlockEntity#canPlaceItemThroughFace(0, stack, UP)`(1.20.1 侧靠这条取证);</li>
+ *   <li>`perm_t=1` / `perm_n=1` —— **不误伤**:把同一张牌放进**玩家自身槽位**时必须放行
+ *       (`TemporaryCardUtil#isPlacementBlocked(stack, true) == false`),证明拦截是定向的、
+ *       不存在第二个拦截点。⚠️ 规格表把这一对写成「永久牌不受影响」,本实现取的判据是
+ *       「**玩家自身槽位是否放行**」(perm = permissive);`_t`/`_n` 仍分别为临时牌/普通牌。</li>
+ * </ul>
+ *
+ * <p>**只读性**:命令只**读**物品/方块实体的判定方法,唯一的状态改动是临时放置的那一个潜影盒
+ * (读数后立即 `removeBlock` 还原);不写任何物品组件、不改玩家状态。
+ */
+function doNardiGuard(ctx, tag, modeText) {
+    var p = ctx.source.getPlayerOrException();
+    var mode = ("" + modeText) === "attack" ? "attack" : "effect";
+    var cardId = (mode === "attack") ? NARDIS_ATK_CARD_ID : NARDIS_EFFECT_CARD_ID;
+    var out = ["mode=" + mode + ":card=" + cardId];
+    var item = resolveItem(cardId);
+    if (item == null) { send(ctx, "AP_" + tag + "_GUARD:err=unknown_item:" + cardId); return 1; }
+    var tempStack = domMakeTempCard(cardId);
+    var normStack = new ItemStack(item, 1);
+    out.push("mark_t=" + domBool(function () { return NardisTemporaryCardUtilClass.isTemporary(tempStack); }));
+    out.push("mark_n=" + domBool(function () { return NardisTemporaryCardUtilClass.isTemporary(normStack); }));
+    // R2:光效真值
+    out.push("foil_t=" + domFoil(tempStack));
+    out.push("foil_n=" + domFoil(normStack));
+    // R1(栈级)
+    out.push("guard_t=" + domFitsContainer(tempStack));
+    out.push("guard_n=" + domFitsContainer(normStack));
+    // R1(行为面):真实潜影盒方块实体
+    var faceT = -1, faceN = -1, faceErr = "";
+    var placed = domPlaceShulker(p);
+    if (placed.err !== "") faceErr = placed.err;
+    var be = placed.be;
+    if (be != null) {
+        try { faceT = be.canPlaceItemThroughFace(0, tempStack, NardisDirectionClass.UP) ? 1 : 0; }
+        catch (e1) { faceErr = faceErr + "|face_t:" + domExText(e1); }
+        try { faceN = be.canPlaceItemThroughFace(0, normStack, NardisDirectionClass.UP) ? 1 : 0; }
+        catch (e2) { faceErr = faceErr + "|face_n:" + domExText(e2); }
+    }
+    out.push("face_t=" + faceT);
+    out.push("face_n=" + faceN);
+    // 还原:移除临时放置的潜影盒(幂等;失败只记读数)
+    domRemoveShulker(placed);
+    // 不误伤:玩家自身槽位必须放行(perm = permissive)
+    out.push("perm_t=" + domBool(function () { return NardisTemporaryCardUtilClass.isPlacementBlocked(tempStack, true) === false; }));
+    out.push("perm_n=" + domBool(function () { return NardisTemporaryCardUtilClass.isPlacementBlocked(normStack, true) === false; }));
+    if (faceErr !== "") out.push("face_err=" + faceErr);
+    // 顺带把「玩家自身槽 mayPlace」也读一遍(与 nardislot 同源,反证不误伤)
+    var slotPermT = -1, slotPermN = -1;
+    try {
+        var invSlot = new NardisSlotClass(p.getInventory(), 2, 0, 0);
+        slotPermT = invSlot.mayPlace(tempStack) ? 1 : 0;
+        slotPermN = invSlot.mayPlace(normStack) ? 1 : 0;
+    } catch (e4) { /* 读数保持 -1 */ }
+    out.push("slotperm_t=" + slotPermT + ":slotperm_n=" + slotPermN);
+    send(ctx, "AP_" + tag + "_GUARD:" + out.join(":"));
+    return 1;
+}
+
+/**
+ * 栈级容器适配判据(逐层回退,**只读**):
+ * ① 1.21.1 栈级扩展 `stack.canFitInsideContainerItems()`;
+ * ② NeoForge 物品级 stack-aware `item.canFitInsideContainerItems(stack)`;
+ * ③ 1.20.1 类型级 `item.canFitInsideContainerItems()`。
+ * 全部不可用返回 -1(不冒充 0)。
+ */
+function domFitsContainer(stack) {
+    if (stack == null || stack.isEmpty()) return 0;
+    try { return stack.canFitInsideContainerItems() ? 1 : 0; } catch (e1) { /* 下一层 */ }
+    var it = null;
+    try { it = stack.getItem(); } catch (e2) { it = null; }
+    if (it == null) return -1;
+    try { return it.canFitInsideContainerItems(stack) ? 1 : 0; } catch (e3) { /* 下一层 */ }
+    try { return it.canFitInsideContainerItems() ? 1 : 0; } catch (e4) { return -1; }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+//  ⑩ nardiequip —— 佩戴触发器筹码/立牌(脚手架;spec §7.2 第 9 条的必需前置)
+// ══════════════════════════════════════════════════════════════════════════
+
+/**
+ * `/astralprobe nardiequip <tag> <chip|teru>` —— 把**维生素药丸筹码**(chip 槽 0)或
+ * **教主立牌**(stand 槽 0)直接写进 Curios 栏位。
+ *
+ * <p>为什么自带这条(2026-09-20 实测):
+ * <ul>
+ *   <li>`/curios replace @s chip 0 …` **静默无效** —— 本模组的 chip 槽数据包 base 尺寸是 0、
+ *       实际尺寸由骰子星级的 per-slot 修饰符给出,而原版命令按 base 尺寸校验 ⇒ 写入被丢弃
+ *       (实测 `chipstate` 的 `slots=3` 但 `items=[]`);</li>
+ *   <li>共享段 `/astralprobe equipslot` 在本轮实测中**整条命令不出任何读数**
+ *       (`doEquipSlot` 的 chip 分支调 `handler.grow(...)`,而 Curios 15 已把 `grow` 从接口移除
+ *       ⇒ 抛错后读数一行都不落),不能拿它当基线。</li>
+ * </ul>
+ * 本命令只做「写栏位」这一步(`curioHandler` + `setStackInSlot`,与本段读写骰子同一套已验证通道),
+ * **不碰任何产品状态**;读数显式回显两个槽位的实际内容,读不到就明说。
+ */
+function doNardiEquip(ctx, tag, whatText) {
+    var p = ctx.source.getPlayerOrException();
+    var what = ("" + whatText) === "teru" ? "teru" : "chip";
+    var slotId = (what === "teru") ? "stand" : "chip";
+    var itemId = (what === "teru") ? NARDIS_TERU_SIGN_ID : NARDIS_PILL_CHIP_ID;
+    var item = resolveItem(itemId);
+    var err = "";
+    if (item == null) { send(ctx, "AP_" + tag + "_EQUIP:err=unknown_item:" + itemId); return 1; }
+    var slots = -1, wrote = 0;
+    try {
+        var h = curioHandler(p, slotId);
+        if (h == null) { err = "no_slot:" + slotId; }
+        else {
+            var stacks = h.getStacks();
+            slots = stacks.getSlots() - 0;
+            if (slots <= 0) { err = "slot_size_zero:" + slotId; }
+            else {
+                stacks.setStackInSlot(0, ItemStack.EMPTY);
+                stacks.setStackInSlot(0, new ItemStack(item, 1));
+                wrote = 1;
+            }
+        }
+    } catch (e1) { err = domExecText(e1); }
+    var back = "-";
+    try {
+        var h2 = curioHandler(p, slotId);
+        if (h2 != null) back = itemIdOf(h2.getStacks().getStackInSlot(0));
+    } catch (e2) { back = "?"; }
+    send(ctx, "AP_" + tag + "_EQUIP:what=" + what + ":slot=" + slotId + ":slots=" + slots
+        + ":wrote=" + wrote + ":back=" + back
+        + (err === "" ? "" : ":err=" + err)
+        + ":" + domStateRead(p));
+    return 1;
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+//  ⑪ nardiinv / nardiuseup —— 新语义(N3/N5/N6)所需脚手架
+// ══════════════════════════════════════════════════════════════════════════
+
+/**
+ * `/astralprobe nardiinv <tag> <fill|clear> [reserve]` —— 控制**主物品栏 0..35** 的可用格数。
+ *
+ * <p>`fill`(缺省 reserve=2)用 `minecraft:stone` 把空槽填到**恰好剩 `reserve` 格**;
+ * `clear` 直接清空主物品栏。用途:N6 安全门需要「可用格 < 3」与「腾出空间后立刻可释放」两个对照态。
+ * 只动主物品栏(0..35),不碰副手/骰子/curios。
+ */
+function doNardiInv(ctx, tag, modeText, reserveText) {
+    var p = ctx.source.getPlayerOrException();
+    var mode = ("" + modeText) === "clear" ? "clear" : "fill";
+    var reserve = teruInt(reserveText, 2);
+    if (reserve < 0) reserve = 0;
+    var freeBefore = domFreeSlots(p);
+    var filler = resolveItem("minecraft:stone");
+    var err = "";
+    if (mode === "clear") {
+        try {
+            for (var i = 0; i < 36; i++) p.getInventory().setItem(i, ItemStack.EMPTY);
+        } catch (e1) { err = domExText(e1); }
+    } else {
+        if (filler == null) { send(ctx, "AP_" + tag + "_INV:err=unknown_item:minecraft:stone"); return 1; }
+        try {
+            // 先清空,再按「保留 reserve 格」填充 —— 幂等、与进入时的状态无关
+            for (var c = 0; c < 36; c++) p.getInventory().setItem(c, ItemStack.EMPTY);
+            var toFill = 36 - reserve;
+            for (var k = 0; k < toFill; k++) p.getInventory().setItem(k, new ItemStack(filler, 1));
+        } catch (e2) { err = domExText(e2); }
+    }
+    var freeAfter = domFreeSlots(p);
+    send(ctx, "AP_" + tag + "_INV:mode=" + mode + ":reserve=" + reserve
+        + ":free_before=" + freeBefore + ":free_after=" + freeAfter
+        + (err === "" ? "" : ":err=" + err)
+        + ":" + domStateRead(p));
+    return 1;
+}
+
+/**
+ * `/astralprobe nardiuseup <tag>` —— 把身上的临时牌**当作被用光**(脚手架)。
+ *
+ * <p>为什么用它:新语义 N3/N5 要求「3 张临时牌被消耗到 0 ⇒ 立刻解冻且效果被移除」。从 JS 无法真实
+ * 逐张「使用」卡牌(战斗牌要装备、效果牌要走各自的使用逻辑),而产品侧只观测**张数**:
+ * 只要张数归零,产品的双向收口(「无牌 ⇒ 移除效果并解冻」)就应当触发。本命令因此只做
+ * 「移除全部临时牌」(`TemporaryCardUtil#purgeAll`,与产品清理同一入口),**不碰效果**,
+ * 让随后的 tick 去证明解冻逻辑。
+ */
+function doNardiUseUp(ctx, tag, modeText) {
+    var p = ctx.source.getPlayerOrException();
+    var drive = ("" + modeText) === "drive" ? 1 : 0;
+    var before = domCountTemp(p);
+    var beforeEq = domCountTempEquipped(p);
+    // 解冻前的冷却/锁定/效果快照(N5「解冻不追加新冷却」的对照侧)
+    var cd0 = domNum(function () { return ModAttachments.getSignActiveCooldownEnd(p); });
+    var lock0 = domBool(function () { return BaseSignItemClass.isSignActiveLocked(p); });
+    var fx0 = domFx(p);
+    var purged = domClearTemp(p);
+    // `drive` 模式:显式驱动**产品自己的两个 tick 入口**(与玩家 tick 事件调的是同一份代码,
+    // 只是同步跑在命令里),从而把「解冻后的 cooldown_end」与「解冻前」放进**同一行**读数 ——
+    // 跨行比较在用例断言里做不到,这是唯一能让 N5 的「不追加」成为**单行等式**的办法。
+    //   · TemporaryCardUtil#tick = 双向收口(无牌 + 有/无效果)⇒ 走「无牌 ⇒ 移除效果并解冻」;
+    //   · BaseSignItem#tickSignActiveLock = 锁定→冷却迁移(nardis 走 cooldownAlreadyRunning 分支)。
+    if (drive === 1) {
+        try { NardisTemporaryCardUtilClass.tick(p); } catch (eD1) { /* 交给读数 */ }
+        try { BaseSignItemClass.tickSignActiveLock(p); } catch (eD2) { /* 交给读数 */ }
+    }
+    var cd1 = domNum(function () { return ModAttachments.getSignActiveCooldownEnd(p); });
+    var lock1 = domBool(function () { return BaseSignItemClass.isSignActiveLocked(p); });
+    var fx1 = domFx(p);
+    send(ctx, "AP_" + tag + "_USEUP:drive=" + drive
+        + ":purged=" + purged
+        + ":temp_before=" + before + ":temp_eq_before=" + beforeEq
+        + ":n_temp=" + domCountTemp(p) + ":n_temp_eq=" + domCountTempEquipped(p)
+        + ":cd_before_purge=" + cd0 + ":cd_after_thaw=" + cd1
+        + ":cd_thaw_unchanged=" + ((cd0 >= 0 && cd1 >= 0 && cd0 === cd1) ? 1 : 0)
+        + ":cd_thaw_not_increased=" + ((cd0 >= 0 && cd1 >= 0 && cd1 <= cd0) ? 1 : 0)
+        + ":lock_before=" + lock0 + ":lock_after=" + lock1
+        + ":fx_on_before=" + fx0.on + ":fx_on_after=" + fx1.on
+        + ":n_fx_after=" + fx1.dur
+        + ":" + domStateRead(p));
+    return 1;
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+//  ⑫ nardinuclear —— 收尾归零
+// ══════════════════════════════════════════════════════════════════════════
+
+/** 收尾:清临时牌 + 清效果 + 卸立牌 + 清主手 + 复位冷却(全部幂等) */
+function doNardiClearAll(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var err = "";
+    var cleared = 0;
+    try { cleared = NardisTemporaryCardUtilClass.purgeAll(p); } catch (e0) { cleared = -1; err = err + "purge:" + domExText(e0); }
+    try { ModEffectRemoval.remove(p, domEffectHolder()); } catch (e1) { /* 已不在也可 */ }
+    var standErr = "";
+    try { standErr = equipSign(p, ""); } catch (e2) { standErr = domExText(e2); }
+    try { clearCurioSlots(p, "stand"); } catch (e3) { /* 忽略 */ }
+    try { p.setItemInHand(NardiHandClass.MAIN_HAND, ItemStack.EMPTY); } catch (e4) { /* 忽略 */ }
+    var invErr = domClearMain(p);
+    domResetActive(p);
+    var signLeft = domSignEquipped(p);
+    send(ctx, "AP_" + tag + "_CLEARALL:cleared=1"
+        + ":purged=" + cleared
+        + ":sign_left=" + signLeft
+        + ":ok=" + ((signLeft === 0 && domCountTemp(p) === 0 && domCountTempEquipped(p) === 0) ? 1 : 0)
+        + (err === "" ? "" : ":err=" + err)
+        + (invErr === "" ? "" : ":inv_err=" + invErr)
+        + ":" + domStateRead(p));
+    return 1;
+}
+
+// NARDIS-IMPL-END(插入器用:重跑 build_nardi_block.ps1 时靠这一行定位旧块并整段替换)
 ServerEvents.commandRegistry(event => {
     var Commands = event.commands;
     event.register(
@@ -8060,6 +9904,149 @@ ServerEvents.commandRegistry(event => {
                     .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
                         return doTeruClear(ctx, StringArg.getString(ctx, "tag"));
                     }))))
+            // ── 2026-09-27:绿洲女王立牌(nardis)主动「女王特权」+ 被动「威压」游戏内取证 ──
+            .then(Commands.literal("nardiprep")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doNardiPrep(ctx, StringArg.getString(ctx, "tag"), "");
+                    }))
+                    .then(Commands.argument("clear", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doNardiPrep(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "clear"));
+                        })))))
+            .then(Commands.literal("nardiread")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("phase", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doNardiRead(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "phase"), "");
+                        }))
+                        .then(Commands.argument("name", StringArg.word())
+                            .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                                return doNardiRead(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "phase"), StringArg.getString(ctx, "name"));
+                            }))))))
+            .then(Commands.literal("nardiarm")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("atk_n", StringArg.word())
+                        .then(Commands.argument("def_n", StringArg.word())
+                            .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                                return doNardiArm(ctx, StringArg.getString(ctx, "tag"),
+                                    StringArg.getString(ctx, "atk_n"), StringArg.getString(ctx, "def_n"), "curio");
+                            }))
+                            .then(Commands.argument("where", StringArg.word())
+                                .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                                    return doNardiArm(ctx, StringArg.getString(ctx, "tag"),
+                                        StringArg.getString(ctx, "atk_n"), StringArg.getString(ctx, "def_n"),
+                                        StringArg.getString(ctx, "where"));
+                                })))))))
+            .then(Commands.literal("nardiarmclear")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doNardiArmClear(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("nardicast")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doNardiCast(ctx, StringArg.getString(ctx, "tag"), "", "");
+                    }))
+                    .then(Commands.argument("name", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doNardiCast(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "name"), "");
+                        }))
+                        .then(Commands.argument("cool", StringArg.word())
+                            .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                                return doNardiCast(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "name"), StringArg.getString(ctx, "cool"));
+                            }))))))
+            .then(Commands.literal("nardigive")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("n", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doNardiGive(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "n"), "");
+                        }))
+                        .then(Commands.argument("name", StringArg.word())
+                            .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                                return doNardiGive(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "n"), StringArg.getString(ctx, "name"));
+                            }))))))
+            .then(Commands.literal("narditemp")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("mode", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doNardiTemp(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "mode"), "");
+                        }))
+                        .then(Commands.argument("clear", StringArg.word())
+                            .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                                return doNardiTemp(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "mode"), StringArg.getString(ctx, "clear"));
+                            }))))))
+            .then(Commands.literal("nardifoil")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doNardiFoil(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("nardidrop")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doNardiDrop(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("nardislot")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doNardiSlot(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("nardiexpire")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doNardiExpire(ctx, StringArg.getString(ctx, "tag"), "");
+                    }))
+                    .then(Commands.argument("name", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doNardiExpire(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "name"));
+                        })))))
+            .then(Commands.literal("nardinuclear")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doNardiClearAll(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            // ── 2026-09-27 新语义 N3/N5/N6 专用脚手架(见 impl 块同名函数):
+            //    nardiuseup = 把身上临时牌「当作被用光」(只 purgeAll,**不碰效果**)⇒ 让产品 tick
+            //                 自己证明「无牌 ⇒ 移除效果并解冻」;
+            //    nardiinv   = 主物品栏填充到「恰好剩 reserve 格」/ 清空 ⇒ 安全门 N6 的前置。
+            .then(Commands.literal("nardiuseup")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doNardiUseUp(ctx, StringArg.getString(ctx, "tag"), "");
+                    }))
+                    .then(Commands.argument("mode", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doNardiUseUp(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "mode"));
+                        })))))
+            .then(Commands.literal("nardiinv")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("mode", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doNardiInv(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "mode"), "2");
+                        }))
+                        .then(Commands.argument("reserve", StringArg.word())
+                            .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                                return doNardiInv(ctx, StringArg.getString(ctx, "tag"),
+                                    StringArg.getString(ctx, "mode"), StringArg.getString(ctx, "reserve"));
+                            }))))))
+            .then(Commands.literal("nardidbg")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doNardiDbg(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("nardiguard")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("mode", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doNardiGuard(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "mode"));
+                        })))))
+            .then(Commands.literal("nardiequip")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("what", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doNardiEquip(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "what"));
+                        })))))
+            // NARDIS-DISP-END(插入器用)
             // ── 2026-09-27:风水师立牌(zhao)+ 符卡-福/祸 游戏内取证(双人用 Carpet /player bot)──
             .then(Commands.literal("zhauprep")
                 .then(Commands.argument("tag", StringArg.word())

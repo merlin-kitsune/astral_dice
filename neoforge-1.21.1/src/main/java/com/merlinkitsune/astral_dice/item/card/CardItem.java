@@ -52,6 +52,9 @@ public class CardItem extends Item {
 
     // ══════════════════════════════════════════════════════════════════════════
     //  临时牌(绿洲女王 nardis「女王特权」)的光效 / 三道保护
+    //  ⚠️ 本类与效果牌根类 {@link BaseEffectCardItem} **各覆写同一对方法**,
+    //     覆写体一律只调用 {@link TemporaryCardUtil#glint} / {@link TemporaryCardUtil#fitsInsideContainer},
+    //     判据不得写在覆写里(两处会漂移)。
     // ══════════════════════════════════════════════════════════════════════════
 
     /**
@@ -63,7 +66,7 @@ public class CardItem extends Item {
      */
     @Override
     public boolean isFoil(ItemStack stack) {
-        return super.isFoil(stack) || TemporaryCardUtil.isTemporary(stack);
+        return TemporaryCardUtil.glint(stack, super.isFoil(stack));
     }
 
     /**
@@ -86,12 +89,14 @@ public class CardItem extends Item {
      * 不可放进「物品内的容器」(潜影盒 / 收纳袋等 stack-aware 容器)。
      *
      * <p>1.21.1 的调用点实测包含 {@code ShulkerBoxBlockEntity}、{@code BundleItem}、
-     * {@code ShulkerBoxSlot},一律传**物品栈**;返回 false 时这些容器会拒绝收下临时牌。
-     * (1.20.1 没有 stack-aware 钩子,那条线由镜像 subagent 用槽位 mixin 覆盖。)
+     * {@code BundleContents}、{@code ShulkerBoxSlot}、{@code ComponentItemHandler},
+     * 一律传**物品栈**;返回 false 时这些容器会拒绝收下临时牌 —— 这**一整类**入口
+     * (GUI 槽 + 自动化面 + 收纳袋 + 组件容器)都由本覆写按**栈**拦住,与物品类别无关。
+     * 效果牌根类 {@link BaseEffectCardItem} 有**同一份**覆写
+     * (1.20.1 没有 stack-aware 钩子,那条线由槽位 mixin 覆盖)。
      */
     @Override
     public boolean canFitInsideContainerItems(ItemStack stack) {
-        if (TemporaryCardUtil.isTemporary(stack)) return false;
-        return super.canFitInsideContainerItems(stack);
+        return TemporaryCardUtil.fitsInsideContainer(stack, super.canFitInsideContainerItems(stack));
     }
 }

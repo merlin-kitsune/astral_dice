@@ -41,24 +41,35 @@ import top.theillusivec4.curios.api.SlotContext;
  *
  * <h2>主动「女王特权」</h2>
  * <ol>
- *   <li>**先清空**全部旧临时牌(物品栏 + 副手 + 骰子已装配的) —— 用户裁决③「清空重发」;</li>
- *   <li>发 3 张随机牌({@code CardCategory.ALL},专属牌由既有池逻辑自动排除),先打临时牌标记
+ *   <li>**安全门(2026-09-27 用户裁决⑦)**:主物品栏空槽 &lt; 3 ⇒ **拒绝释放**(零消耗,
+ *       只发一条 `msg.astral_dice.nardis_inventory_full` 提示),位置在冻结/冷却拒绝之后;</li>
+ *   <li>**先清空**全部旧临时牌(物品栏 + 副手 + 骰子已装配的) —— 用户裁决③「清空重发」,
+ *       正常玩法下已被冻结挡住,保留为安全网(裁决⑦第 5 条);</li>
+ *   <li>发 **2 张战斗牌 + 1 张效果牌**(战斗牌池 = {@code CardCategory.BATTLE} 攻击/防御混合随机,
+ *       两张各自独立 ⇒ 允许两张同类;效果牌池 = {@code CardCategory.EFFECT}),先打临时牌标记
  *       再走 {@link com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem#giveCard} 发牌漏斗
  *       ⇒ 维生素药丸治愈、教主立牌狐光等「获得卡牌」触发器全部照常生效;
- *       背包放不下时**少发**(最多 {@code min(3, 空槽数)} 张),**绝不落地**;</li>
+ *       背包放不下时**少发**,**绝不落地**;</li>
  *   <li>施加自身效果 {@link ModEffects#NARDIS_PRIVILEGE} **3:00**,六参且 {@code showIcon=true}
  *       ⇒ HUD 计时器 + 图标(立牌贴图)全由这条原生效果实例承担;</li>
  *   <li>ActionBar 反馈本次实际发放张数(见 {@code #onSignActiveTriggered},抑制默认提示)。</li>
  * </ol>
  *
- * <h2>为什么**不**覆写 {@code startActiveLockOnUse}(即不起「锁定/生效中」态)</h2>
- * 本主动**刻意保持默认 {@code false}**:触发成功后**立即**开始玩家级冷却。
- * 理由:用户裁决③「重复释放 = 先清空旧临时牌再发 3 张新的」只有在**冷却被减免之后**能在
- * 3:00 效果仍生效时再次释放才有意义(诡异骰子 -50% / 充能递减 / 电流核心立即完成冷却 三条路);
- * 若像 jasmine / fen / papara / teru 那样「挂了自身计时器就进锁定态」,冷却要等效果结束后才起算
- * —— 下次可释放时刻在 6:00 之后,裁决③将**永不可达**。
- * ⚠️ 这与那几张立牌的惯例**不同**,属本技能特有的取舍(已登记在
- * {@code docs/features/nardis-sign-spec.md} §6.3)。
+ * <h2>主动的「冻结(使用中)」态(2026-09-27 用户裁决②,推翻先前「刻意不起锁定态」)</h2>
+ * 复写 {@link #startActiveLockOnUse} / {@link #isGateEffectActive} 复用立牌统一的锁定态设施:
+ * <ul>
+ *   <li><b>冻结期</b>:从释放起直到"临时牌全部用光"或 3:00 到期;期间再次按键走
+ *       {@code BaseSignItem#performSkill} 第 0 步 ⇒ actionbar 提示既有的
+ *       {@code msg.astral_dice.sign_active_in_effect}(「…主动技能生效中!」),
+ *       HUD 计时器仍由 {@code nardis_privilege} 效果本身提供(用户裁决⑤:不自造新文案);</li>
+ *   <li><b>解冻 (a)</b>:临时牌剩 0 张(物品栏 0 且 骰子卡牌栏 0)⇒ {@code TemporaryCardUtil#tick}
+ *       移除效果(计时器消失)⇒ 门控效果判据变 false ⇒ 冻结结束(用户裁决 3(a));</li>
+ *   <li><b>解冻 (b)</b>:3:00 到期 ⇒ 照旧清空剩余临时牌并解冻(既有路径,未改;裁决 3(b));</li>
+ *   <li><b>冷却</b>:裁决④ —— **释放那一刻就开始冷却**(默认 180 秒,沿用玩家级冷却与减免机制),
+ *       冻结期间冷却照常流逝,解锁时**不追加**新冷却(见 {@link #cooldownRunsDuringLock}),
+ *       只把冻结期间累计的减免池从剩余冷却里抵扣一次。</li>
+ * </ul>
+ * ⇒ 裁决③「重复释放 = 先清空旧临时牌再发新的」在正常玩法下已不可达(冻结挡住),但逻辑保留为安全网。
  *
  * <p>图标 = {@code images/绿洲女王立牌.png}(实装路径 {@code textures/item/nardis_sign.png});
  * 主动效果图标复用同一张图({@code textures/mob_effect/nardis_privilege.png})。
@@ -85,17 +96,78 @@ public class NardisSignItem extends BaseSignItem {
         if (level.isClientSide) {
             return InteractionResultHolder.success(stack);
         }
-        // 1. 裁决③:先清空**全部**旧临时牌(物品栏 0..35 + 副手 + 骰子已装配的),幂等
+        // 0. 安全门(2026-09-27 用户裁决⑦):本次固定发 2 战斗 + 1 效果共 3 张 ⇒ 主物品栏空槽 < 3 时
+        //    **拒绝释放**,并且必须是**零消耗**:不开始冷却、不施加效果、不进入冻结、不发任何牌、
+        //    也不清空任何既有临时牌(玩家修好背包后立刻可以再释放)。
+        //    顺序:冻结(使用中)与冷却的既有拒绝在 {@code BaseSignItem#performSkill} 第 0/1 步、
+        //    先于本方法 ⇒ 既有拒绝优先级更高(裁决⑦第 4 条)。这里返回 fail ⇒ performSkill 第 3 步
+        //    直接 return(不发风扇筹码、不抛立牌主动事件、不进冷却/不充能)。
+        //    判据说明:`countFreeSlots` = 主物品栏(0..35)**空**槽数,与 {@code giveCard} 的入包路径同段。
+        //    ⚠️ 卡牌物品是 {@code stacksTo(64)}(可堆叠),但发牌前刚做过 purgeAll(旧临时牌已清空)、
+        //    同 id 的**普通**牌与临时牌组件不同 ⇒ 不会合并到普通牌堆上;只有本次**两张战斗牌
+        //    随机到同一张**时才会并进同一格(概率约 1/9)。⇒ 该门槛比"理论最小格数"略保守
+        //    (2 格时约 1/9 概率其实放得下 3 张),这是**有意**取的确定性口径:3 格必然放得下,
+        //    不依赖随机结果,也不会出现"发不满 3 张"。
+        if (TemporaryCardUtil.countFreeSlots(player) < TemporaryCardUtil.GRANT_COUNT) {
+            sendSignActionBar(player, "msg.astral_dice.nardis_inventory_full");
+            return InteractionResultHolder.fail(stack);
+        }
+        // 1. 裁决③(保留为安全网):先清空**全部**旧临时牌(物品栏 0..35 + 副手 + 骰子已装配的),幂等。
+        //    正常玩法下冻结已挡住重复释放 ⇒ 这条路径只在"效果被外力移除等异常情形"下生效,不要删。
         TemporaryCardUtil.purgeAll(player);
-        // 2. 发 3 张(空槽不足则少发,绝不落地);走 VitaminPillChipItem.giveCard 发牌漏斗
-        int granted = TemporaryCardUtil.grantRandom(player, TemporaryCardUtil.GRANT_COUNT);
+        // 2. 发 2 张战斗牌(攻击 + 防御混合池,允许两张同类)+ 1 张效果牌(2026-09-27 用户裁决①);
+        //    战斗牌**先发**,空槽不足则少发、绝不落地;走 VitaminPillChipItem.giveCard 发牌漏斗
+        int granted = TemporaryCardUtil.grantNardisPrivilege(player);
         // 3. 自身效果 3:00:**必须六参且 showIcon=true**(照 JasmineSignItem:63)——
-        //    HUD 计时器与立牌图标全靠这条原生效果实例;同时它是「临时牌仍在有效期」的唯一真值。
+        //    HUD 计时器与立牌图标全靠这条原生效果实例;同时它是「临时牌仍在有效期」的唯一真值,
+        //    也是冻结(使用中)态的门控效果({@link #isGateEffectActive} + {@link #startActiveLockOnUse})。
+        //    ⚠️ 顺序:发牌(第 2 步)**先于**施加效果(本步)—— 见 TemporaryCardUtil#tick 的防抖说明。
         EffectTimerGuard.apply(player, new MobEffectInstance(ModEffects.NARDIS_PRIVILEGE,
                 NardisPrivilegeEffect.DURATION_TICKS, 0, false, false, true));
         // 4. ActionBar:实际发放张数(默认「主动技能已启动」提示由 onSignActiveTriggered 抑制)
         sendSignActionBar(player, "msg.astral_dice.nardis_active", granted);
         return InteractionResultHolder.success(stack);
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    //  主动的「冻结(使用中)」态 —— 2026-09-27 用户裁决②(推翻先前「刻意不起锁定态」)
+    // ══════════════════════════════════════════════════════════════════════════
+
+    /**
+     * 进入冻结(锁定/生效中)态:硬上界 = 本次施加的 {@code nardis_privilege} 剩余时长(3:00),
+     * 与 jasmine / fen 同款(读回**刚施加的效果实例**的剩余时长,不硬编码时长表)。
+     *
+     * <p>冻结的提前出口 = 门控效果本身消失({@link #isGateEffectActive}):
+     * <ol>
+     *   <li>**临时牌被全部用光**(物品栏 0 张 且 骰子卡牌栏 0 张)⇒ {@code TemporaryCardUtil#tick}
+     *       经内部通道移除本效果 ⇒ 冻结在同一条判定链上立刻结束(用户裁决 3(a));</li>
+     *   <li>3:00 到期 ⇒ 照旧清空剩余临时牌并解冻(既有语义,未改;用户裁决 3(b))。</li>
+     * </ol>
+     */
+    @Override
+    protected boolean startActiveLockOnUse(Player player, long now) {
+        MobEffectInstance instance = player.getEffect(ModEffects.NARDIS_PRIVILEGE);
+        if (instance == null) return false;
+        beginActiveLock(player, SIGN_ID, now + instance.getDuration());
+        return true;
+    }
+
+    /** 门控效果实例仍在 = 冻结仍在(效果被移除时冻结提前结束;外部把效果刷新得更长不会延长锁定) */
+    @Override
+    protected boolean isGateEffectActive(Player player) {
+        return player.hasEffect(ModEffects.NARDIS_PRIVILEGE);
+    }
+
+    /**
+     * 冻结期间冷却**照常流逝**(2026-09-27 用户裁决④):
+     * {@code BaseSignItem#performSkill} 第 6 步在进入锁定的同时就写 {@code cooldown_end}
+     * (基准 = 玩家级冷却含诡异骰子减半),解锁迁移**不再追加**新冷却,只把冻结期间累计的减免池
+     * 从剩余冷却里抵扣一次。默认参数下冷却 180 秒 < 冻结 3:00 ⇒ 冻结结束时冷却通常已过,
+     * 解冻后立即可再次释放({@code BaseSignItem#performSkill} 第 1 步的冷却检查此时读到 now ≥ cdEnd)。
+     */
+    @Override
+    protected boolean cooldownRunsDuringLock(Player player) {
+        return true;
     }
 
     // 主动技能 ActionBar 注册:自带提示已在 handleUse 内发送,仅阻止默认提示(照 MimiSignItem:96-101)

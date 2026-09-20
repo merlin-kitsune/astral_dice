@@ -5,9 +5,12 @@ import com.merlinkitsune.astral_dice.component.ModDataComponents;
 import com.merlinkitsune.astral_dice.component.WeaponEnhancement;
 import com.merlinkitsune.astral_dice.combat.CardRegistry;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
+import com.merlinkitsune.astral_dice.effect.NardisPrivilegeEffect;
 import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
 import com.merlinkitsune.astral_dice.item.dice.DiceCurioItem;
+import com.merlinkitsune.starenginelib.event.ModEffectRemoval;
 import com.merlinkitsune.starenginelib.item.CuriosCompat;
+import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
@@ -32,9 +35,11 @@ import java.util.List;
  *
  * <h2>落点</h2>
  * <ul>
- *   <li>发放:{@link #grantRandom(Player, int)}(走 {@link VitaminPillChipItem#giveCard} 发牌漏斗,
- *       保证「获得卡牌」类触发器全部生效);</li>
- *   <li>清理:{@link #purgeAll(Player)}(幂等)与玩家级 tick 自检 {@link #tick(Player)};</li>
+ *   <li>发放:{@link #grantNardisPrivilege(Player)}(= 2 张战斗牌 + 1 张效果牌,2026-09-27 用户裁决①)
+ *       与通用的 {@link #grantRandom(Player, RandomCardHandler.CardCategory, int)}
+ *       (两者都走 {@link VitaminPillChipItem#giveCard} 发牌漏斗,保证「获得卡牌」类触发器全部生效);</li>
+ *   <li>清理:{@link #purgeAll(Player)}(幂等)与玩家级 tick 自检 {@link #tick(Player)}
+ *       (双向收口:无效果 ⇒ 清牌;无牌 ⇒ 移除效果并解冻);</li>
  *   <li>保护:不可丢弃见 {@link CardItem#onDroppedByPlayer} 与
  *       {@code event/TemporaryCardEvents};不可移入容器见 {@link #isPlacementBlocked(ItemStack, boolean)}
  *       (全部 mixin 共用这一条判据)。</li>
@@ -58,8 +63,18 @@ import java.util.List;
 public final class TemporaryCardUtil {
     private static final Logger LOGGER = LoggerFactory.getLogger(TemporaryCardUtil.class);
 
-    /** 女王特权的固定发放张数 */
+    /** 女王特权的固定发放张数 = {@value #GRANT_BATTLE_COUNT} 战斗牌 + {@value #GRANT_EFFECT_COUNT} 效果牌 */
     public static final int GRANT_COUNT = 3;
+
+    /**
+     * 其中**先**发放的战斗牌张数(2026-09-27 用户裁决①)。
+     * 池 = {@link RandomCardHandler.CardCategory#BATTLE}(攻击牌 + 防御牌**混合池**,
+     * 两张各自独立随机 ⇒ 允许两张都是攻击或都是防御)。
+     */
+    public static final int GRANT_BATTLE_COUNT = 2;
+
+    /** 战斗牌之后发放的效果牌张数(池 = {@link RandomCardHandler.CardCategory#EFFECT}) */
+    public static final int GRANT_EFFECT_COUNT = 1;
 
     private TemporaryCardUtil() {
     }
@@ -87,6 +102,36 @@ public final class TemporaryCardUtil {
     }
 
     // ══════════════════════════════════════════════════════════════════════════
+    //  物品级覆写判据(普通牌 CardItem 与效果牌 BaseEffectCardItem 共用同一份实现)
+    // ══════════════════════════════════════════════════════════════════════════
+
+    /**
+     * 「附魔光效」判据(唯一实现):临时牌常亮,其余原样交回原版判定(1.20.1 侧)。
+     *
+     * <p>牌有**两个根类**:战斗牌 {@link CardItem}(直接 {@code extends Item})与效果牌
+     * {@link BaseEffectCardItem}({@code abstract extends Item})—— 两者没有共同父类,
+     * 而「接口 default 方法被类方法优先规则压住」⇒ 无法靠接口给 {@code Item#isFoil} 提供默认实现,
+     * 只能**每个根类各覆写一次**。覆写体只允许 `return TemporaryCardUtil.glint(stack, super.isFoil(stack));`
+     * —— 判据只此一份,不允许在覆写里另写条件(否则会再次出现「普通牌有光效、效果牌没有」的漂移;
+     * 临时牌池 {@link RandomCardHandler.CardCategory#ALL} **包含效果牌**,故两处缺一不可)。
+     *
+     * @param vanillaGlint 原版判定结果({@code super.isFoil(stack)});原版实现(1.20.1 实测
+     *                     {@code Item.java:340} {@code return stack.isEnchanted();})无副作用,
+     *                     故允许先行求值
+     */
+    public static boolean glint(ItemStack stack, boolean vanillaGlint) {
+        return isTemporary(stack) || vanillaGlint;
+    }
+
+    // ⚠️ 1.21.1 另有一个**栈级**钩子 {@code Item#canFitInsideContainerItems(ItemStack)},
+    //    潜影盒/收纳袋/组件容器四类入口都汇聚到它,故 1.21.1 侧的 TemporaryCardUtil 还有一份
+    //    {@code fitsInsideContainer(stack, vanillaAllows)} 供两个牌根类覆写。
+    //    1.20.1 **没有**栈级版本(实测 {@code Item.java:452} 只有类型级
+    //    {@code canFitInsideContainerItems()},覆写它会把同 id 的**永久牌**一并挡掉),
+    //    容器拦截全部由五个 mixin 按 {@link #isPlacementBlocked} 承担(见本类「容器拦截」段),
+    //    因此这一侧**故意不提供**该判据,避免出现无人调用的死代码。
+
+    // ══════════════════════════════════════════════════════════════════════════
     //  发放(主动技能与探针共用)
     // ══════════════════════════════════════════════════════════════════════════
 
@@ -106,17 +151,51 @@ public final class TemporaryCardUtil {
      * </ol>
      */
     public static int grantRandom(Player player, int maxCount) {
+        return grantRandom(player, RandomCardHandler.CardCategory.ALL, maxCount);
+    }
+
+    /**
+     * 发放最多 {@code maxCount} 张**指定类别**的随机临时牌,返回**实际发放张数**。
+     *
+     * <p>专属牌由既有池构建逻辑({@code RandomCardHandler#getCardPool} 末尾的
+     * {@code items.removeIf(... EXCLUSIVE_CARDS ...)})自动排除,**不要**在这里另写专属牌过滤。
+     */
+    public static int grantRandom(Player player, RandomCardHandler.CardCategory category, int maxCount) {
         if (player == null || player.level().isClientSide()) return 0;
         if (maxCount <= 0) return 0;
         int toGrant = Math.min(maxCount, countFreeSlots(player));
         int granted = 0;
         for (int i = 0; i < toGrant; i++) {
-            ItemStack card = RandomCardHandler.randomCard(RandomCardHandler.CardCategory.ALL);
+            ItemStack card = RandomCardHandler.randomCard(category);
             if (card.isEmpty()) break;
             mark(card);
             VitaminPillChipItem.giveCard(player, card);
             granted++;
         }
+        return granted;
+    }
+
+    /**
+     * 女王特权主动的发放(2026-09-27 用户裁决①):**先 2 张战斗牌,再 1 张效果牌**,返回实际发放张数。
+     *
+     * <p>顺序与"只剩 N 格"的行为(硬约束,两线逐字一致):
+     * <ol>
+     *   <li>先发 {@value #GRANT_BATTLE_COUNT} 张战斗牌(池 = {@code CardCategory.BATTLE},攻击 + 防御
+     *       混合随机,两张各自独立 ⇒ 允许两张同类);</li>
+     *   <li>再发 {@value #GRANT_EFFECT_COUNT} 张效果牌(池 = {@code CardCategory.EFFECT});
+     *       ② 的可用格数是**调用时重新统计**的(战斗牌已先占格)⇒ 只剩 1 格时只发 1 张战斗牌、
+     *       效果牌因无空格而不发;0 格时一张都不发 —— **绝不落地**。正常情况下这条"少发"路径不可达
+     *       ({@code NardisSignItem#handleUse} 第 0 步的安全门已要求空槽 ≥ {@value #GRANT_COUNT}),
+     *       它只是安全网(2026-09-27 用户裁决⑦第 5 条:保留不删)。</li>
+     * </ol>
+     *
+     * <p>两张战斗牌若随机到**同一张**牌,会合并进同一个空格(卡牌 {@code stacksTo(64)},
+     * 与临时标记 NBT 相同 ⇒ {@code Inventory#add} 走合并分支)—— 不影响"发满 3 张"的语义。
+     */
+    public static int grantNardisPrivilege(Player player) {
+        if (player == null || player.level().isClientSide()) return 0;
+        int granted = grantRandom(player, RandomCardHandler.CardCategory.BATTLE, GRANT_BATTLE_COUNT);
+        granted += grantRandom(player, RandomCardHandler.CardCategory.EFFECT, GRANT_EFFECT_COUNT);
         return granted;
     }
 
@@ -305,24 +384,57 @@ public final class TemporaryCardUtil {
     /**
      * 玩家级 tick 自检(**幂等**,由 {@code event/PlayerTickEvents} 在 {@code % 20} 早退**之前**调用)。
      *
-     * <p>真值 = 原生效果实例 {@link ModEffects#NARDIS_PRIVILEGE};本方法只处理**唯一的收口条件**:
-     * 「玩家身上/骰子里还有临时牌,但该玩家**没有**女王特权效果」⇒ 清空全部临时牌。
-     * 效果自然到期、{@code /effect clear} 移除、离线到期后重登、异常残留**都会**走到这一条,
-     * 因此不需要在任何其它地方补第二套清理逻辑(死亡路径另有一次显式清理,两者都幂等)。
+     * <p>真值 = 原生效果实例 {@link ModEffects#NARDIS_PRIVILEGE};本方法处理**两个互斥的收口条件**
+     * (同一次调用内 {@code hasEffect} 与"张数"各只读一次 ⇒ 两者不可能在同拍互相触发):
+     * <ol>
+     *   <li>「玩家身上/骰子里还有临时牌,但该玩家**没有**女王特权效果」⇒ 清空全部临时牌。
+     *       效果自然到期、{@code /effect clear} 移除、离线到期后重登、异常残留**都会**走到这一条,
+     *       因此不需要在任何其它地方补第二套清理逻辑(死亡路径另有一次显式清理,两者都幂等);</li>
+     *   <li>**(2026-09-27 用户裁决 3(a))「效果还在、但一张临时牌都没有」⇒ 该效果实例
+     *       只表示"还有临时牌在有效期内",此时应立刻移除效果**(HUD 计时器随之消失),
+     *       冻结(使用中)态也随同一条判定链结束 —— 立牌的门控效果判据就是这条效果实例,
+     *       见 {@code NardisSignItem#isGateEffectActive} + {@code BaseSignItem#isSignActiveLocked},
+     *       由 {@code BaseSignItem#tickSignActiveLock} 迁移为"不追加新冷却"的解锁。</li>
+     * </ol>
+     *
+     * <p><b>防环/防抖(必读)</b>:
+     * <ul>
+     *   <li><b>不可能每 tick 反复加/删</b>:① 移除效果走 {@link ModEffectRemoval} 内部通道,
+     *       同一次 {@code MobEffectEvent.Remove} 会让 {@code ModEffectEvents#onEffectTimerForget}
+     *       调 {@code EffectTimerGuard#forget} 丢掉计时记录 —— 否则计时器守卫
+     *       ({@code EffectTimerGuard#tick},它在玩家 tick 的 Pre 阶段跑)下一 tick 会把
+     *       "缺失"的效果**重新施加回来**,与 ② 形成每 tick 删/加的死循环。
+     *       直接 {@code player.removeEffect(...)} 也不行:{@code astral_dice:*} 效果会被
+     *       {@code ModEffectEvents#onModEffectRemovalPrevented} 直接取消;</li>
+     *   <li><b>释放当刻不会误判为 0 张</b>:{@code NardisSignItem#handleUse} 的顺序是
+     *       「安全门 → 清旧牌 → 发牌 → **施加效果**」,即效果一定在牌已经进包之后才出现;
+     *       额外再加一道显式防抖 —— 效果实例剩余时长 == 满时长({@link NardisPrivilegeEffect#DURATION_TICKS})
+     *       的那一拍(施加效果的当拍)**一律不判定**,即使将来有人把"先施效果后发牌"的顺序改回去也不会自我解冻。</li>
+     * </ul>
      *
      * <p>⚠️ 1.20.1 的 {@code PlayerTickEvent} 每 tick 派发 START+END **两次** ⇒ 本方法会被调两遍。
-     * 幂等性由「无临时牌 / 有效果 ⇒ 直接 return」保证:第二遍在已清空后自然早退,不会重复扣费用。
+     * 幂等性由「两个分支都以 {@code return} 早退 / 移除本身是空操作」保证:第二遍在已清空后自然早退。
      */
     public static void tick(Player player) {
         if (player == null || player.level().isClientSide()) return;
         try {
-            if (player.hasEffect(ModEffects.NARDIS_PRIVILEGE.get())) return;
-            if (countTemporary(player) <= 0 && countTemporaryEquipped(player) <= 0) return;
-            int removed = purgeAll(player);
-            if (removed > 0) {
-                LOGGER.debug("[Astral Dice][TemporaryCard] 效果已不在,自检清空临时牌: player={} removed={}",
-                        player.getName().getString(), removed);
+            MobEffectInstance fx = player.getEffect(ModEffects.NARDIS_PRIVILEGE.get());
+            boolean hasCards = countTemporary(player) > 0 || countTemporaryEquipped(player) > 0;
+            if (fx == null) {
+                if (!hasCards) return;                       // 无效果 + 无牌:无事可做
+                int removed = purgeAll(player);
+                if (removed > 0) {
+                    LOGGER.debug("[Astral Dice][TemporaryCard] 效果已不在,自检清空临时牌: player={} removed={}",
+                            player.getName().getString(), removed);
+                }
+                return;
             }
+            if (hasCards) return;                            // 效果在 + 还有牌:正常生效期,什么都不做
+            if (fx.getDuration() >= NardisPrivilegeEffect.DURATION_TICKS) return;   // 施加当拍的防抖
+            // 「临时牌已全部用光」⇒ 移除效果(唯一真值),冻结随之结束
+            ModEffectRemoval.remove(player, ModEffects.NARDIS_PRIVILEGE.get());
+            LOGGER.debug("[Astral Dice][TemporaryCard] 临时牌已用光,移除女王特权效果并解冻: player={}",
+                    player.getName().getString());
         } catch (Throwable t) {
             LOGGER.error("[Astral Dice][TemporaryCard] tick 自检失败", t);
         }

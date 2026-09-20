@@ -142,9 +142,16 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
             int signCooldownTicks = com.merlinkitsune.astral_dice.event.WeirdDiceHandler.signCooldownTicks(player);
             if (sign.startActiveLockOnUse(player, now)) {
                 // ★ 本主动施加了"带时长效果/自身计时器"⇒ 进入锁定(生效中)态。
-                //   锁定期间**不写** sign_active_cooldown_end:冷却要等锁定结束才起(第 13 条:无空档);
+                //   默认:锁定期间**不写** sign_active_cooldown_end:冷却要等锁定结束才起(第 13 条:无空档);
                 //   但先把本次冷却基准写进 sign_active_max_cooldown,供锁定期间各减免方读它并累加进减免池。
+                //   ⚠️ {@link #cooldownRunsDuringLock(Player)} 返回 true 的立牌(nardis 女王特权)例外:
+                //   按 2026-09-27 用户裁决④「释放那一刻就开始冷却」,**在进入锁定的同时**就把
+                //   cooldown_end 写出来,锁定期间冷却照常流逝;解锁迁移不得再追加一份新冷却
+                //   (见 {@link #endLockAndStartCooldown(Player)})。
                 ModAttachments.setSignActiveMaxCooldown(player, signCooldownTicks);
+                if (sign.cooldownRunsDuringLock(player)) {
+                    ModAttachments.setSignActiveCooldownEnd(player, now + signCooldownTicks);
+                }
             } else {
                 ModAttachments.setSignActiveCooldownEnd(player, now + signCooldownTicks);
                 // 路线 A:记录本次冷却实际使用的最大冷却值,所有减免方一律读它(不再各自重算基准)
@@ -315,6 +322,23 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
         return false;
     }
 
+    /**
+     * 锁定(生效中)期间冷却是否**并行流逝**(默认 {@code false} = 既有语义:锁定期间不写
+     * {@code sign_active_cooldown_end},冷却等锁定结束才起,与锁定**串行**、"无空档")。
+     *
+     * <p>返回 {@code true} 的立牌(当前唯一实现:绿洲女王立牌 nardis 的「女王特权」,
+     * 2026-09-27 用户裁决④):{@link #performSkill} 在**进入锁定的同一刻**就写
+     * {@code cooldown_end = now + 基准},锁定期间冷却照常流逝;解锁迁移
+     * ({@link #tickSignActiveLock} → {@link #endLockAndStartCooldown})**不得再追加一份新冷却**,
+     * 只把锁定期间新累加的减免池从**剩余**冷却里抵扣一次
+     * ({@code remain' = max(0, remain − pool)} —— 与"减免在获得当刻即生效"完全等价,
+     * 两者都是从同一个 {@code cooldown_end} 上做纯减法)。
+     * ⇒ 解冻时冷却若已过完,必须**立刻**可再次释放;若未过完,则继续等剩余部分。
+     */
+    protected boolean cooldownRunsDuringLock(Player player) {
+        return false;
+    }
+
     /** 进入锁定态:写锁定标记与硬上界(宽限/减免池归零,避免跨技能残留) */
     protected static void beginActiveLock(Player player, String signId, long lockEndTick) {
         ModAttachments.setSignActiveLockSign(player, signId);
@@ -329,14 +353,32 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
      * {@code effective = max(0, 基准 − 池)};写 {@code sign_active_cooldown_end = now + effective}
      * 并把 {@code sign_active_max_cooldown} 改写为 {@code effective}(电流核心档位分母取抵扣后的实际冷却),
      * 随后清空全部锁定键。锁定态下{@code cooldown_end} 为 0,故本方法一执行即"无空档"地进入冷却。
+     *
+     * <p>例外({@link #cooldownRunsDuringLock(Player)} 为 true 的立牌):冷却自释放那一刻起就在跑 ⇒
+     * 本方法**不追加**新的冷却,只把减免池从剩余冷却里抵扣一次;当前锁定立牌由
+     * {@code sign_active_lock_sign} 反查物品注册表解析(与 {@link #isSignActiveLocked} 同一条路径),
+     * 解析不到时按默认(false)处理,行为与改动前逐字一致。
      */
     private static void endLockAndStartCooldown(Player player) {
+        BaseSignItem locked = lockSignItem(getSignActiveLockSignId(player));
+        endLockAndStartCooldown(player, locked != null && locked.cooldownRunsDuringLock(player));
+    }
+
+    private static void endLockAndStartCooldown(Player player, boolean cooldownAlreadyRunning) {
         long now = player.level().getGameTime();
         long base = ModAttachments.getSignActiveMaxCooldown(player);
         long pool = ModAttachments.getSignActiveReductionPool(player);
-        long effective = Math.max(0L, base - pool);
-        ModAttachments.setSignActiveCooldownEnd(player, now + effective);
-        ModAttachments.setSignActiveMaxCooldown(player, effective);
+        if (cooldownAlreadyRunning) {
+            // 裁决④:冷却在锁定期间已经跑了一段 ⇒ **不得**再追加一份新冷却(否则等于把整个冻结时长
+            // 又等一遍)。当前冷却结束刻保持不动,只把锁定期间累计的减免池从**剩余**里抵扣一次。
+            long remaining = Math.max(0L, ModAttachments.getSignActiveCooldownEnd(player) - now);
+            ModAttachments.setSignActiveCooldownEnd(player, now + Math.max(0L, remaining - pool));
+            ModAttachments.setSignActiveMaxCooldown(player, Math.max(0L, base - pool));
+        } else {
+            long effective = Math.max(0L, base - pool);
+            ModAttachments.setSignActiveCooldownEnd(player, now + effective);
+            ModAttachments.setSignActiveMaxCooldown(player, effective);
+        }
         ModAttachments.setSignActiveReductionPool(player, 0L);
         ModAttachments.setSignActiveLockSign(player, "");
         ModAttachments.setSignActiveLockEnd(player, 0L);
@@ -353,6 +395,10 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
      *
      * <p>幂等性(forge 侧 {@code TickEvent.PlayerTickEvent} 每 tick 触发两次):首行按"是否仍在锁定"早退,
      * 真正的迁移只发生一次(迁移后锁定标记被清空,第二次执行直接返回),与旧的玩家级状态迁移同构。
+     *
+     * <p>⚠️ 迁移的冷却口径分两种(见 {@link #endLockAndStartCooldown(Player)}):
+     * 默认立牌 = 锁定结束才起冷却(串行、无空档);{@link #cooldownRunsDuringLock(Player)} 为 true 的立牌
+     * (nardis 女王特权)冷却早已在释放那一刻起跑 ⇒ 本次迁移**不追加**新冷却(用户裁决④)。
      */
     public static void tickSignActiveLock(Player player) {
         if (player == null) return;

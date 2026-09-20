@@ -479,5 +479,32 @@ public abstract class BaseEffectCardItem extends Item {
         PiggyBankChipItem.onEffectCardUsed(player);
         return true;
     }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    //  临时牌(绿洲女王 nardis「女王特权」):光效
+    //
+    //  效果牌**不继承** {@link CardItem},所以 CardItem 上的临时牌覆写对本类完全不生效 ——
+    //  本类必须自己覆写**同一方法**,且覆写体只调用 {@link TemporaryCardUtil#glint} 这件共用判据,
+    //  不允许把条件写进覆写体(两处会漂移)。
+    //
+    //  ⚠️ 容器面**不需要**在本类补任何东西:1.20.1 没有栈级
+    //  {@code canFitInsideContainerItems(ItemStack)}(实测 {@code Item.java:452} 只有类型级版本),
+    //  拦截全部由 SlotPlaceGuardMixin / ContainerMoveGuardMixin / ShulkerBoxSlotGuardMixin /
+    //  ShulkerBoxBlockEntityGuardMixin / BundleInsertGuardMixin 按
+    //  {@link TemporaryCardUtil#isPlacementBlocked}(判据 = {@code isTemporary(stack)},**与物品类别无关**)
+    //  承担 ⇒ 临时效果牌已被拦住(1.20.1 无此缺口)。
+    // ══════════════════════════════════════════════════════════════════════════
+
+    /**
+     * 附魔光效:临时效果牌同样常亮(需求「临时牌全部添加附魔光效」)。
+     *
+     * <p>为什么必须在这里也没收一份:临时牌池是 {@link RandomCardHandler.CardCategory#ALL},
+     * **包含效果牌**(该池由攻击牌 + 防御牌 + 效果牌三段拼成),而效果牌走本类
+     * ({@code extends Item}),不经过 {@link CardItem} 的覆写。
+     */
+    @Override
+    public boolean isFoil(ItemStack stack) {
+        return TemporaryCardUtil.glint(stack, super.isFoil(stack));
+    }
 }
 

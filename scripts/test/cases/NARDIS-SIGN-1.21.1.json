@@ -1,0 +1,815 @@
+{
+  "case_id": "NARDIS-SIGN-1.21.1",
+  "title": "绿洲女王立牌主动「女王特权」新语义（2026-09-27 裁决）游戏内取证：spec §7.3 判定契约 N1–N7 + §7.2 遗留项（基线 / 被动 / 光效 / 丢弃保护 / 容器保护 / 装配存活与到期清理 / 发牌触发器）。判据 = 探针只读读数 AP_<tag>_* 的子串断言：N1 给牌构成 `granted=3:n_temp=3:t_battle=2:t_effect=1:t_excl=0:ground_temp=0`；N2 冻结期重复释放 `lock_before=1:granted=0:cd_unchanged=1`（冷却值必须不变 ⇒ 整条发牌路径未执行）；N3 牌用光 ⇒ `n_temp=0:n_temp_eq=0:n_fx=-1:n_fx_on=0:lock=0`；N4 到期 ⇒ 同一判据由 `nardiexpire` 走内部通道取证；N5 `nardiuseup <tag> drive` 单行给出 `cd_before_purge == cd_after_thaw`（`cd_thaw_unchanged=1`）⇒ 解冻**不追加**冷却；   另由释放后 9s 的读数 `cool=3[0-4][0-9][0-9]`（非 3600）证明冷却**自释放起并行流逝**；N6 主物品栏只剩 2 格 ⇒ `granted=0:cool=0:n_fx_on=0:lock_after=0`（零消耗），腾空后立刻 `granted=3`；N7 解冻后连续 3 次读数（约 1s 间隔）恒为 `n_fx=-1:n_fx_on=0:n_temp=0:lock=0` ⇒ 无增删抖动。⚠️ 冻结用例**不得**给 `nardicast` 传 `reset`：探针的 reset 会清锁定+冷却（等于绕过冻结门），   故 N1/N2 用裸 `nardicast`，只有需要「从干净态强制重发」的 N4/N5 才用 `nardicast <tag> self reset`。",
+  "version": "1.21.1",
+  "target": {
+    "type": "feature",
+    "ref": "nardis-sign-n1-n7-new-semantics"
+  },
+  "on_fail": "keep_game_running",
+  "steps": [
+    {
+      "op": "note",
+      "text": "目的：以**只读读数**取证 spec §7.3 的 N1–N7 与 §7.2 的遗留断言项（旧用例的期望值系新语义之前的静态推演，已作废）。\n前置：生存模式 + 清背包；每条需要干净态的阶段都以 `nardiprep <tag> clear` / `nardinuclear <tag>` 起手。\n只读性：除 `nardiprep/nardinuclear/nardiarm*/narditemp/nardiinv/nardiuseup`（显式脚手架）以外，所有取证命令只做判定与读取；`nardiuseup ... drive` 会驱动产品自己的两个 tick 入口（与玩家 tick 同一份代码）。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode survival",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear @s",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "note",
+      "text": "① 基线：`nardiprep R1 clear` 装立牌(stand)+骰子(curios dice 槽)并清临时牌/效果/冷却。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardiprep R1 clear",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardiread R1 BASE",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "note",
+      "text": "② 被动（spec §7.2-2）：装配 2 攻击 + 1 防御 ⇒ `ap` 相对基线 +2、`dp` +1、`armor` +2（1 防御 = 2 护甲）。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardiarm P1 2 1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1400
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardiread P1 PASSIVE",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "note",
+      "text": "② 读时现算：卸下全部装配 ⇒ `ap`/`dp`/`armor` 立即回落（不缓存）。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardiarmclear P2",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1400
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardiread P2 NOARM",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "note",
+      "text": "③ N1 给牌构成：干净态下一次真实释放（`nardicast` = `BaseSignItem.performSkillForCurio`）必须发放恰好 3 张 = 2 战斗 + 1 效果、全部非专属、0 地面掉落；并在**同一刻**写锁定与冷却（`lock_end == cd_end`）。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardinuclear Z0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardiprep N1 clear",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardicast N1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "note",
+      "text": "④ N2 冻结（使用中）：**不传 reset**（传了会清锁定 ⇒ 等于绕过冻结门）。要求 `lock_before=1`、`granted=0`、`n_temp` 不变、冷却值不变（`cd_unchanged=1`），且效果剩余时长未被刷新（`fx_dur` < 3600）⇒ 证明整条 handleUse 路径都没执行。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardicast N2",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardiread N2B FROZEN",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "note",
+      "text": "⑤ N3 解冻（裁决 3(a)）：把 3 张临时牌「当作被用光」（`nardiuseup` 只调 `TemporaryCardUtil.purgeAll`，**不碰效果**）⇒ 产品 tick 的双向收口必须在**自然 tick** 上移除效果（`n_fx=-1`）并解冻（`lock=0`）。N7 防抖：随后连续 3 次读数（各 ~1s）必须恒为同一状态，不得出现 0/1 抖动。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardiuseup N3",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 2500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardiread N3B THAW",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1000
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardiread N3C THAW2",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1000
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardiread N3D THAW3",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "note",
+      "text": "⑥ N5（裁决④）：`nardicast N5B self reset` 释放后等 9s ⇒ `cool` 必须仍 >0 且 **< 3600**（若冷却等解冻才起，此刻应恰为 3600）⇒ 冷却自释放起并行流逝。随后 `nardiuseup N5D drive` 在同一行给出 `cd_before_purge == cd_after_thaw`（`cd_thaw_unchanged=1`）⇒ 解冻迁移（`BaseSignItem#endLockAndStartCooldown` 的 cooldownAlreadyRunning 分支）**不追加**新冷却。再 `nardicast N5F`（不 reset）：解冻后仍被**冷却门**拒绝（`lock_before=0:granted=0:cd_unchanged=1`），证明解冻没有把冷却清零、也没有给出一次免费释放。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardiprep N5A clear",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardicast N5B self reset",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 9000
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardiread N5C WAIT10",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardiuseup N5D drive",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardiread N5E THAW",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardicast N5F",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "note",
+      "text": "⑦ N4 解冻（裁决 3(b)）：`nardiexpire` 走内部通道 `ModEffectRemoval` 移除女王特权效果并驱动自检（= 3:00 到期的等价路径）⇒ 剩余临时牌被清空（含装配栏）且解冻。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardiprep N4A clear",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardicast N4B self reset",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardiexpire N4",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 2500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardiread N4C EXPIRED",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "note",
+      "text": "⑧ N6 安全门（裁决⑦）：主物品栏只剩 2 格（< 3）⇒ 释放**被拒绝且零消耗**：不写冷却（`cd_before=cd_after=0`）、不施效果（`n_fx_on=0`）、不进冻结（`lock_after=0`）、不发牌（`granted=0`）。提示文案 `msg.astral_dice.nardis_inventory_full` 由 lang 静态核对（本工具链读不到 actionbar 包，见报告）。腾空后**立刻**可释放 ⇒ `granted=3`。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardiprep N6 clear",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardiinv N6A fill 2",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardiread N6A2 GATE",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardicast N6B",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardiinv N6C clear",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardicast N6D",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "note",
+      "text": "⑨ §7.2-4 光效：临时牌 `foil=1`，同 id 的**普通牌** `foil=0`（单层，用户已裁决）。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardinuclear Z1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe narditemp F1 foil",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardifoil F1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "note",
+      "text": "⑩ §7.2-5 丢弃保护：`ServerPlayer#drop(true)` 必须被 `onDroppedByPlayer` 拒绝（`dropped=0`、牌仍在、地面 0）。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardidrop D1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "note",
+      "text": "⑪ §7.2-6 容器保护：`Slot#mayPlace` mixin 在**非玩家容器**上拒绝（`blocked_container=1`），玩家自身槽放行（`allow_inventory=1`）；普通牌两处都放行（反证不误伤）。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardislot S1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "note",
+      "text": "⑫ §7.2-7：先建立效果（`nardigive X1 1`，脚手架发牌必须同时有效果，否则产品 tick 会按 §4.4 把牌清掉）⇒ `narditemp A1 assemble` 往骰子 `weapon_enhancement` 塞一个 `temporary=true` 的 `AppliedStone`：装配存活（`n_temp_eq=1`、`used_cost=1`）⇒ `nardiexpire E1` 到期清理后 `n_temp_eq=0` 且 `used_cost` 回落。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardinuclear Z2",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardigive X1 1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe narditemp A1 assemble",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1000
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardiread A1B ASM",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardiexpire E1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "note",
+      "text": "⑬ §7.2-9 触发器：佩戴**维生素药丸筹码**时 `nardigive 3` ⇒ 治愈点增量必须等于发放张数（走 `giveCard` 漏斗）；佩戴**教主立牌**时同一条发牌路径必须让狐光层数按发放的**攻击牌**张数增长（`teru_eq_atk=1` 自洽标志）。筹码栏原始尺寸为 0、由骰子星级动态给出 ⇒ 先 `nardiarm T0 0 0`（3★）造出 3 格。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardinuclear Z3",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardiprep T0 clear",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardiarm T0 0 0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardiequip T1 chip",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardigive T2 3",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardinuclear Z4",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardiprep T5 clear",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardiarm T5 0 0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardiequip T6 teru",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardigive T7 3",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "note",
+      "text": "⑭ 收尾：`nardinuclear` + 清背包 ⇒ 临时牌/效果/立牌全归零，且无异常、无未知命令、无崩溃。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardinuclear Z9",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear @s",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_R1_BASE:.*n_eq=1:atk_cards=0:def_cards=0:n_temp=0:n_temp_eq=0:.*n_stones=0:enh_src=curio:n_fx=-1:n_fx_on=0:.*t_battle=0:t_effect=0:t_excl=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_R1_BASE:.*ap=1:dp=2:armor=0:.*cool=0:lock=0:lock_end=0:cd_end=0:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_P1_ARM:atk_n=2:def_n=1:where=curio:sign=1:set_ok=1:set_ok_curio=1:.*atk_cards=2:def_cards=1:.*n_stones=3:.*ap=3:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_P1_PASSIVE:.*atk_cards=2:def_cards=1:.*n_stones=3:.*ap=3:dp=3:armor=2:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_P2_ARMCLEAR:cleared=1:.*atk_cards=0:def_cards=0:.*n_stones=0:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_P2_NOARM:.*atk_cards=0:def_cards=0:.*n_stones=0:.*ap=1:dp=2:armor=0:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_N1_CAST:who=self:cool_reset=0:lock_before=0:lock_after=1:cd_before=0:cd_after=[1-9][0-9]+:cd_unchanged=0:.*temp_before=0:temp_eq_before=0:granted=3:n_temp=3:n_temp_eq=0:.*fx_dur=3600:n_fx_on=1:cool=3600:.*ground_temp=0:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_N1_CAST:.*n_temp=3:.*n_fx=3600:n_fx_on=1:.*cool=3600:lock=1:.*t_battle=2:t_effect=1:t_excl=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_N1_CAST:.*lock=1:lock_end=[1-9][0-9]+:cd_end=[1-9][0-9]+:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_N2_CAST:who=self:cool_reset=0:lock_before=1:lock_after=1:cd_before=[1-9][0-9]+:cd_after=[1-9][0-9]+:cd_unchanged=1:.*temp_before=3:temp_eq_before=0:granted=0:n_temp=3:n_temp_eq=0:.*fx_dur=3[0-5][0-9][0-9]:n_fx_on=1:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_N2B_FROZEN:.*n_temp=3:n_temp_eq=0:.*n_fx_on=1:.*lock=1:.*t_battle=2:t_effect=1:t_excl=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_N3_USEUP:drive=0:purged=3:temp_before=3:temp_eq_before=0:n_temp=0:n_temp_eq=0:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_N3B_THAW:.*n_temp=0:n_temp_eq=0:.*n_fx=-1:n_fx_on=0:.*lock=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_N3B_THAW:.*cool=[1-9][0-9]*:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_N3C_THAW2:.*n_temp=0:n_temp_eq=0:.*n_fx=-1:n_fx_on=0:.*lock=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_N3D_THAW3:.*n_temp=0:n_temp_eq=0:.*n_fx=-1:n_fx_on=0:.*lock=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_N5B_CAST:who=self:cool_reset=1:lock_before=0:lock_after=1:.*granted=3:n_temp=3:.*fx_dur=3600:n_fx_on=1:cool=3600:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_N5C_WAIT10:.*n_temp=3:n_temp_eq=0:.*n_fx=3[0-4][0-9][0-9]:n_fx_on=1:.*cool=3[0-4][0-9][0-9]:lock=1:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_N5D_USEUP:drive=1:purged=3:temp_before=3:.*n_temp=0:n_temp_eq=0:cd_before_purge=[1-9][0-9]+:cd_after_thaw=[1-9][0-9]+:cd_thaw_unchanged=1:cd_thaw_not_increased=1:lock_before=1:lock_after=0:fx_on_before=1:fx_on_after=0:n_fx_after=-1:.*cool=[1-9][0-9]*:lock=0:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_N5E_THAW:.*n_temp=0:n_temp_eq=0:.*n_fx=-1:n_fx_on=0:.*lock=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_N5F_CAST:who=self:cool_reset=0:lock_before=0:lock_after=0:cd_before=[1-9][0-9]+:cd_after=[1-9][0-9]+:cd_unchanged=1:.*granted=0:n_temp=0:n_temp_eq=0:.*fx_dur=-1:n_fx_on=0:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_N4B_CAST:who=self:cool_reset=1:.*granted=3:n_temp=3:.*fx_dur=3600:n_fx_on=1:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_N4_EXPIRE:.*how=internal:.*fx_on_before=1:fx_on_now=0:tick_ran=1:.*temp_before=3:temp_eq_before=0:.*n_temp=0:n_temp_eq=0:.*n_fx=-1:n_fx_on=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_N4C_EXPIRED:.*n_temp=0:n_temp_eq=0:.*n_fx=-1:n_fx_on=0:.*lock=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_N6A_INV:mode=fill:reserve=2:.*free_after=2:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_N6A2_GATE:.*n_temp=0:n_temp_eq=0:.*cool=0:lock=0:lock_end=0:cd_end=0:free=2:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_N6B_CAST:who=self:cool_reset=0:lock_before=0:lock_after=0:cd_before=0:cd_after=0:cd_unchanged=1:.*temp_before=0:temp_eq_before=0:granted=0:n_temp=0:n_temp_eq=0:.*fx_dur=-1:n_fx_on=0:cool=0:.*free=2:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_N6C_INV:mode=clear:.*free_after=36:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_N6D_CAST:who=self:cool_reset=0:lock_before=0:lock_after=1:.*granted=3:n_temp=3:.*fx_dur=3600:n_fx_on=1:cool=3600:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_F1_TEMP:mode=foil:.*hand_foil=1:hand_mark=1:.*plain_foil=0:plain_mark=0:.*n_temp=1:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_F1_FOIL:.*foil=1:is_card=1:temp_mark=1:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_D1_DROP:temp_mark=1:.*dropped=0:still_in_inv=[1-9][0-9]*:ground=0:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_S1_SLOT:temp_mark=1:au_src=util:.*blocked_container=1:allow_inventory=1:plain_container=1:plain_inventory=1:predicate_ok=1:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_A1_TEMP:mode=assemble:where=dice:asm_ok=1:set_ok=1:.*used_cost=1:.*n_temp_eq=1:.*n_stones=1:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_A1B_ASM:.*n_temp_eq=1:.*n_stones=1:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_E1_EXPIRE:.*how=internal:.*fx_on_before=1:fx_on_now=0:tick_ran=1:.*temp_before=1:temp_eq_before=1:used_cost_before=1:.*n_temp=0:n_temp_eq=0:used_cost=0:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_T1_EQUIP:what=chip:slot=chip:slots=[1-9][0-9]*:wrote=1:back=astral_dice:vitamin_pill_chip:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_T2_GIVE:who=self:n=3:granted=3:.*fx_made=1:n_temp=3:.*pill_delta=3:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_T6_EQUIP:what=teru:slot=stand:.*wrote=1:back=astral_dice:teru_sign:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_T7_GIVE:who=self:n=3:granted=3:.*teru_delta=[0-9]+:teru_eq_atk=1:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_Z9_CLEARALL:cleared=1:.*sign_left=0:ok=1:.*n_eq=0:.*n_temp=0:n_temp_eq=0:.*n_fx=-1:n_fx_on=0"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_[A-Z0-9]+_ERR"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_[A-Z0-9]+_EX:"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": ":err="
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "slot_size_zero"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "Unknown or incomplete command"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "redeclaration of var"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "crash"
+    }
+  ],
+  "evidence": []
+}

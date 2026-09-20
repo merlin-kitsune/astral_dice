@@ -56,6 +56,8 @@ public class CardItem extends Item {
 
     // ══════════════════════════════════════════════════════════════════════════
     //  临时牌(绿洲女王 nardis「女王特权」)的光效 / 两道物品级保护
+    //  ⚠️ 本类与效果牌根类 {@link BaseEffectCardItem} **各覆写同一方法** {@link #isFoil(ItemStack)},
+    //     覆写体一律只调用 {@link TemporaryCardUtil#glint},判据不得写在覆写里(两处会漂移)。
     // ══════════════════════════════════════════════════════════════════════════
 
     /**
@@ -71,7 +73,7 @@ public class CardItem extends Item {
      */
     @Override
     public boolean isFoil(ItemStack stack) {
-        return super.isFoil(stack) || TemporaryCardUtil.isTemporary(stack);
+        return TemporaryCardUtil.glint(stack, super.isFoil(stack));
     }
 
     /**
@@ -101,5 +103,10 @@ public class CardItem extends Item {
     //      · mixin/container/ShulkerBoxSlotGuardMixin        → 潜影盒 GUI 槽
     //      · mixin/container/ShulkerBoxBlockEntityGuardMixin → 潜影盒自动化(漏斗)面
     //      · mixin/container/BundleInsertGuardMixin          → 收纳袋(bundle)插入
-    //    三者的判据都是 TemporaryCardUtil.isTemporary(stack),与 1.21.1 的栈级判定语义等价。
+    //      (另有 mixin/container/SlotPlaceGuardMixin → Slot#mayPlace 与
+    //       mixin/container/ContainerMoveGuardMixin → AbstractContainerMenu#moveItemStackTo,
+    //       覆盖箱子/木桶/漏斗 GUI 槽等**未覆写** mayPlace 的槽)
+    //    五个 mixin 的判据都是 TemporaryCardUtil.isTemporary(stack)(**与物品类别无关**)
+    //    ⇒ 效果牌(BaseEffectCardItem,**不继承**本类)同样被拦住,1.20.1 无「只有普通牌被拦」的缺口;
+    //    同理本类也**不得**改动容器面,以免给正常牌加出第二道拦截。
 }

@@ -599,9 +599,26 @@ public final class TargetSelectionClient {
      *
      * <p>用 `InputEvent.MouseButton.Pre` 而非 KeyMapping：选择期间必须**先于原版**截住左键攻击
      * 与右键使用，原版逻辑与其它模组的鼠标绑定都不应生效（事件一律取消）。
+     *
+     * <p><b>界面打开时必须整体放行</b>（2026-09-25 修复：手持效果牌时 ESC 暂停菜单所有按键点不动）：
+     * 本事件在**界面打开时也照常派发** —— {@code MouseHandler#onPress} 里
+     * {@code if (ClientHooks.onMouseButtonPre(...)) return;}（1.21.1 反编译源码
+     * {@code net/minecraft/client/MouseHandler.java:87}）位于
+     * {@code if (this.minecraft.screen == null) … else screen.mouseClicked(...)}（同文件 :90-106）
+     * **之前**，且它不看 `screen` 是否为空 ⇒ 取消该事件会让 `onPress` 直接 return，
+     * `Screen#mouseClicked` 根本收不到这次点击，暂停菜单 / 背包的按钮自然全部点不动。
+     * 「手持即选择」类会话在开界面时**刻意不取消**（见 {@link #onScreenOpening} 的 {@code holdToSelect} 分支），
+     * 故手持效果牌按 ESC 时该分支必然被踩中；放行的同时也不能再执行会话动作（左键确认 /
+     * 右键自用 / 右键+潜行取消）与 {@link #notifyHeldSelectorBlocked()} 的 actionbar 提示 ——
+     * 否则「点一下暂停菜单」会顺手确认一个目标或在菜单里弹提示。
+     * 界面关闭后会话状态原样保留、照旧继续（{@code holdToSelect} 的收官判据仍是「物品离开主手」）。
      */
     @SubscribeEvent
     public static void onMouseButton(InputEvent.MouseButton.Pre event) {
+        // 界面打开（ESC 菜单 / 背包 / 本模组卡牌栏 / 聊天栏）时鼠标属于界面：原版 MouseHandler 本会把
+        // 这次按下转交 `Screen#mouseClicked`，而我们取消事件会让它提前 return（源码行号见上方 javadoc），
+        // 所以这一行必须在**任何会话动作之前**。
+        if (Minecraft.getInstance().screen != null) return;
         if (!isActive()) {
             // 未在选择中:手里拿着**选择器类效果牌**时,左键(确认键)也要给出「效果牌冷却/出牌数已满」提示 ——
             // 否则本轮冷却期间持牌毫无反馈(2026-09-19 用户要求:按下左键同样要有冷却提示)。
