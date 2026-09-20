@@ -1,6 +1,6 @@
 {
   "case_id": "NARDIS-SIGN-1.20.1",
-  "title": "绿洲女王立牌主动「女王特权」新语义（2026-09-27 裁决）游戏内取证：spec §7.3 判定契约 N1–N7 + §7.2 遗留项（基线 / 被动 / 光效 / 丢弃保护 / 容器保护 / 装配存活与到期清理 / 发牌触发器）。判据 = 探针只读读数 AP_<tag>_* 的子串断言：N1 给牌构成 `granted=3:n_temp=3:t_battle=2:t_effect=1:t_excl=0:ground_temp=0`；N2 冻结期重复释放 `lock_before=1:granted=0:cd_unchanged=1`（冷却值必须不变 ⇒ 整条发牌路径未执行）；N3 牌用光 ⇒ `n_temp=0:n_temp_eq=0:n_fx=-1:n_fx_on=0:lock=0`；N4 到期 ⇒ 同一判据由 `nardiexpire` 走内部通道取证；N5 `nardiuseup <tag> drive` 单行给出 `cd_before_purge == cd_after_thaw`（`cd_thaw_unchanged=1`）⇒ 解冻**不追加**冷却；   另由释放后 9s 的读数 `cool=3[0-4][0-9][0-9]`（非 3600）证明冷却**自释放起并行流逝**；N6 主物品栏只剩 2 格 ⇒ `granted=0:cool=0:n_fx_on=0:lock_after=0`（零消耗），腾空后立刻 `granted=3`；N7 解冻后连续 3 次读数（约 1s 间隔）恒为 `n_fx=-1:n_fx_on=0:n_temp=0:lock=0` ⇒ 无增删抖动。⚠️ 冻结用例**不得**给 `nardicast` 传 `reset`：探针的 reset 会清锁定+冷却（等于绕过冻结门），   故 N1/N2 用裸 `nardicast`，只有需要「从干净态强制重发」的 N4/N5 才用 `nardicast <tag> self reset`。",
+  "title": "绿洲女王立牌主动「女王特权」新语义（2026-09-27 裁决 + 同日 F1 修复 / 安全门阈值 3→2）游戏内取证：spec §7.3 判定契约 N1–N8 + §7.2 遗留项（基线 / 被动 / 光效 / 丢弃保护 / 容器保护 / 装配存活与到期清理 / 发牌触发器）。判据 = 探针只读读数 AP_<tag>_* 的子串断言：N1 给牌构成 `granted=3:n_temp=3:t_battle=2:t_effect=1:t_excl=0:ground_temp=0`；N2 冻结期重复释放 `lock_before=1:granted=0:cd_unchanged=1`（冷却值必须不变 ⇒ 整条发牌路径未执行）；N3 牌用光 ⇒ `n_temp=0:n_temp_eq=0:n_fx=-1:n_fx_on=0:lock=0`；N4 到期 ⇒ 同一判据由 `nardiexpire` 走内部通道取证；N5 `nardiuseup <tag> drive` 单行给出 `cd_before_purge == cd_after_thaw`（`cd_thaw_unchanged=1`）⇒ 解冻**不追加**冷却；   另由释放后 9s 的读数 `cool=3[0-4][0-9][0-9]`（非 3600）证明冷却**自释放起并行流逝**；N6 安全门（阈值 `MIN_FREE_SLOTS_TO_CAST = 2`）：可用格 1 ⇒ `granted=0:cool=0:n_fx_on=0:lock_after=0`（零消耗），   腾空后立刻 `granted=3`；**边界**：可用格 2 ⇒ 允许，实发 `granted∈{2,3}`（两种合法结果枚举，理由见步骤说明）；N7 解冻后连续 3 次读数（约 1s 间隔）恒为 `n_fx=-1:n_fx_on=0:n_temp=0:lock=0` ⇒ 无增删抖动。N8 F1 修复回归：`nardilockback <tag> keep` 把 `sign_active_lock_end` 写到过去后 tick ⇒ `realigned=1`、   `lock_after=1` 且 `lock_end_after > now`、`cd_unchanged=1`、`n_temp`/`n_fx_on` 不变；   对照组 `noeffect`（先移除效果）⇒ `realigned=0`、正常解冻 + 到期清牌。⚠️ 冻结用例**不得**给 `nardicast` 传 `reset`：探针的 reset 会清锁定+冷却（等于绕过冻结门），   故 N1/N2 用裸 `nardicast`，只有需要「从干净态强制重发」的 N4/N5/N8 才用 `nardicast <tag> self reset`。",
   "version": "1.20.1",
   "target": {
     "type": "feature",
@@ -289,7 +289,7 @@
     },
     {
       "op": "note",
-      "text": "⑧ N6 安全门（裁决⑦）：主物品栏只剩 2 格（< 3）⇒ 释放**被拒绝且零消耗**：不写冷却（`cd_before=cd_after=0`）、不施效果（`n_fx_on=0`）、不进冻结（`lock_after=0`）、不发牌（`granted=0`）。提示文案 `msg.astral_dice.nardis_inventory_full` 由 lang 静态核对（本工具链读不到 actionbar 包，见报告）。腾空后**立刻**可释放 ⇒ `granted=3`。"
+      "text": "⑧ N6 安全门（裁决⑦；**阈值经用户同日裁决放宽为 `TemporaryCardUtil.MIN_FREE_SLOTS_TO_CAST = 2`**，即「主物品栏可用格 < **2** 才拒绝」）——三态对照：（a）可用格 **1**（< 2）⇒ 释放**被拒绝且零消耗**：不写冷却（`cd_before=cd_after=0`）、   不施效果（`n_fx_on=0`）、不进冻结（`lock_after=0`）、不发牌（`granted=0`）；（b）腾空（`clear`）后**立刻**可释放 ⇒ `granted=3`；（c）**边界组**：可用格 **= 2**（等于阈值）⇒ **允许释放**。提示文案 `msg.astral_dice.nardis_inventory_full` 由 lang 静态核对（本工具链读不到 actionbar 包，见报告）。⚠️ 边界组为什么写成**区间**（`granted∈[2,3]`）而不是恰好 3 张 —— **这是有意承认非确定性，不是弱化断言**：产品在可用格 2 时按「战斗牌优先、每张发牌前重新统计空槽」发牌（`grantRandom` 内 `min(maxCount, countFreeSlots)`）：两张战斗牌若随机到**同一张**（约 1/9）会因同 id + 同临时标记而**并进同一格**，余下 1 格再收下效果牌 ⇒ 实发 3 张；随机到不同牌时各占一格、效果牌无空格而不发 ⇒ 实发 2 张（`grantRandom` 的「放不下就少发、绝不落地」截断）。故断言写成「`granted ∈ {2,3}` **且** `n_temp == granted` **且** 类型自洽（1 张效果牌**当且仅当** granted=3）**且** 地面掉落 0」——把两种合法结果**枚举**成一条交替断言，比写死 3 张更强：写死会在 8/9 的概率下假红，而放成 `granted=[0-9]+` 则会把「一张都没发」也放过。"
     },
     {
       "op": "inject_command",
@@ -302,7 +302,7 @@
     },
     {
       "op": "inject_command",
-      "command": "/astralprobe nardiinv N6A fill 2",
+      "command": "/astralprobe nardiinv N6A fill 1",
       "no_esc": true
     },
     {
@@ -344,6 +344,135 @@
     {
       "op": "wait",
       "ms": 1200
+    },
+    {
+      "op": "note",
+      "text": "⑧(c) N6 边界组：可用格 2（**= 阈值**）⇒ 允许释放，实发张数按上面说明的区间取证。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardiprep N6E clear",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardiinv N6F fill 2",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardiread N6F2 GATE2",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardicast N6G",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardiread N6H BOUNDARY",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "note",
+      "text": "⑧b N8（F1 修复回归，spec §7.3 N8）：单机测试世界**无法**复现「多人在线离线跨越剩余冻结时长」（停客户端 = 停服务器 ⇒ `gameTime` 不推进）⇒ 用脚手架 `nardilockback <tag> [keep|noeffect]` **直接构造分歧**：它只改 `sign_active_lock_end` 一项（写到过去，**不碰** sign/grace/played/cooldown），再显式驱动产品的`BaseSignItem#tickSignActiveLock`（与玩家 tick 同一份代码），使「是否重新对齐」在同一行可判。主组（`keep`，效果与临时牌都保持不动）⇒ 断言：  ① **仍冻结**：`lock_after=1` 且 `lock_end_after > now`（`realigned=1`/`lock_end_after_gt_now=1`，     即上界被 `realignLockEndToGateEffect` 重对齐为 `now + nardis_privilege 剩余时长`）；  ② `cd_unchanged=1`（冷却**不得**被归零/跳跃）；  ③ `temp_before=3:temp_after=3`、`temp_eq` 0→0、`fx_on_after=1`（**不得**免费刷新、**不得**提前清牌）；  ④ 之后连读 2 拍仍为同一冻结态（`lock=1:n_temp=3:n_fx_on=1`，无抖动）。对照组（`noeffect`：先移除效果并清牌，再把 `lock_end` 写到过去并 tick）⇒ 前提「效果仍在」不成立  ⇒ **不得**重对齐（`realigned=0`、`lock_end_after=0`、`lock_after=0`），走既有解冻 + 到期清牌（`temp_after=0`、`fx_on_after=0`）。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardiinv N8Z clear",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardiprep N8 clear",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardicast N8A self reset",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardilockback N8B keep",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardiread N8C STILL",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1000
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardiread N8D STILL2",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "note",
+      "text": "⑧b 对照组：效果已移除 ⇒ 「lock_end 写到过去」不得触发重对齐，应正常解冻并清掉剩余临时牌。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardilockback N8E noeffect",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardiread N8F THAWED",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
     },
     {
       "op": "note",
@@ -692,17 +821,17 @@
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_N6A_INV:mode=fill:reserve=2:.*free_after=2:"
+      "pattern": "AP_N6A_INV:mode=fill:reserve=1:.*free_after=1:"
     },
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_N6A2_GATE:.*n_temp=0:n_temp_eq=0:.*cool=0:lock=0:lock_end=0:cd_end=0:free=2:"
+      "pattern": "AP_N6A2_GATE:.*n_temp=0:n_temp_eq=0:.*cool=0:lock=0:lock_end=0:cd_end=0:free=1:"
     },
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_N6B_CAST:who=self:cool_reset=0:lock_before=0:lock_after=0:cd_before=0:cd_after=0:cd_unchanged=1:.*temp_before=0:temp_eq_before=0:granted=0:n_temp=0:n_temp_eq=0:.*fx_dur=-1:n_fx_on=0:cool=0:.*free=2:"
+      "pattern": "AP_N6B_CAST:who=self:cool_reset=0:lock_before=0:lock_after=0:cd_before=0:cd_after=0:cd_unchanged=1:.*temp_before=0:temp_eq_before=0:granted=0:n_temp=0:n_temp_eq=0:.*fx_dur=-1:n_fx_on=0:cool=0:.*free=1:"
     },
     {
       "type": "log",
@@ -713,6 +842,61 @@
       "type": "log",
       "source": "latest",
       "pattern": "AP_N6D_CAST:who=self:cool_reset=0:lock_before=0:lock_after=1:.*granted=3:n_temp=3:.*fx_dur=3600:n_fx_on=1:cool=3600:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_N6F_INV:mode=fill:reserve=2:.*free_after=2:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_N6F2_GATE2:.*n_temp=0:n_temp_eq=0:.*cool=0:lock=0:lock_end=0:cd_end=0:free=2:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_N6G_CAST:who=self:cool_reset=0:lock_before=0:lock_after=1:.*temp_before=0:temp_eq_before=0:.*fx_dur=3600:n_fx_on=1:.*ground_temp=0:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_N6G_CAST:.*(granted=3:n_temp=3:n_temp_eq=0.*t_battle=2:t_effect=1:t_excl=0|granted=2:n_temp=2:n_temp_eq=0.*t_battle=2:t_effect=0:t_excl=0)"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_N6H_BOUNDARY:.*n_temp=[23]:n_temp_eq=0:.*n_fx_on=1:.*lock=1:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_N8A_CAST:who=self:cool_reset=1:lock_before=0:lock_after=1:.*granted=3:n_temp=3:.*fx_dur=3600:n_fx_on=1:cool=3600:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_N8B_LOCKBACK:mode=keep:now=[1-9][0-9]*:wrote_lock_end=[1-9][0-9]+:lock_end_before=[1-9][0-9]+:lock_end_after=[1-9][0-9]+:realigned=1:lock_end_after_gt_now=1:lock_before=1:lock_after=1:cd_before=[1-9][0-9]+:cd_after=[1-9][0-9]+:cd_unchanged=1:temp_before=3:temp_after=3:temp_eq_before=0:temp_eq_after=0:fx_on_before=1:fx_on_after=1:n_fx_after=3[0-5][0-9][0-9]:tick_ran=1:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_N8C_STILL:.*n_temp=3:n_temp_eq=0:.*n_fx_on=1:.*lock=1:.*t_battle=2:t_effect=1:t_excl=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_N8D_STILL2:.*n_temp=3:n_temp_eq=0:.*n_fx_on=1:.*lock=1:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_N8E_LOCKBACK:mode=noeffect:.*wrote_lock_end=[1-9][0-9]+:.*lock_end_after=0:realigned=0:lock_end_after_gt_now=0:lock_before=1:lock_after=0:cd_before=[1-9][0-9]+:cd_after=[1-9][0-9]+:cd_unchanged=1:temp_before=3:temp_after=0:temp_eq_before=0:temp_eq_after=0:fx_on_before=1:fx_on_after=0:n_fx_after=-1:tick_ran=1:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_N8F_THAWED:.*n_temp=0:n_temp_eq=0:.*n_fx=-1:n_fx_on=0:.*lock=0:lock_end=0:cd_end=[1-9][0-9]+:"
     },
     {
       "type": "log",

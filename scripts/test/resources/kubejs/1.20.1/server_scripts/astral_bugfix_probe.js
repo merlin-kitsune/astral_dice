@@ -9225,7 +9225,13 @@ function doNardiEquip(ctx, tag, whatText) {
  * `/astralprobe nardiinv <tag> <fill|clear> [reserve]` —— 控制**主物品栏 0..35** 的可用格数。
  *
  * <p>`fill`(缺省 reserve=2)用 `minecraft:stone` 把空槽填到**恰好剩 `reserve` 格**;
- * `clear` 直接清空主物品栏。用途:N6 安全门需要「可用格 < 3」与「腾出空间后立刻可释放」两个对照态。
+ * `clear` 直接清空主物品栏。用途(= N6 安全门的三个对照态,**阈值已由产品放宽为
+ * `TemporaryCardUtil.MIN_FREE_SLOTS_TO_CAST = 2`**,即「可用格 &lt; 2 才拒绝」):
+ * <ul>
+ *   <li>`fill 1` ⇒ 可用格 1 (**&lt; 2**) ⇒ **拒绝释放**且零消耗;</li>
+ *   <li>`fill 2` ⇒ 可用格 2 (**= 2**) ⇒ **允许释放**(边界组:实发 2 或 3 张,见用例说明);</li>
+ *   <li>`clear` ⇒ 腾空后**立刻可释放**。</li>
+ * </ul>
  * 只动主物品栏(0..35),不碰副手/骰子/curios。
  */
 function doNardiInv(ctx, tag, modeText, reserveText) {
@@ -9298,6 +9304,83 @@ function doNardiUseUp(ctx, tag, modeText) {
         + ":lock_before=" + lock0 + ":lock_after=" + lock1
         + ":fx_on_before=" + fx0.on + ":fx_on_after=" + fx1.on
         + ":n_fx_after=" + fx1.dur
+        + ":" + domStateRead(p));
+    return 1;
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+//  ⑪b nardilockback —— N8（F1 修复回归：冻结分歧重对齐）
+// ══════════════════════════════════════════════════════════════════════════
+
+/**
+ * `/astralprobe nardilockback <tag> [mode]` —— 直接构造「锁定硬上界 与 门控效果」的分歧态（N8）。
+ *
+ * <p>**为什么必须用脚手架**：单机测试世界里停客户端 = 停服务器 ⇒ `gameTime` 不推进，
+ * 「多人在线离线跨越剩余冻结时长后重登」这条路径**无法**自然复现。产品 F1 修复
+ * （`BaseSignItem#realignLockEndToGateEffect`）的判据正是「`sign_active_lock_end` 已到 **且** 门控效果仍在」，
+ * 所以只要能在游戏里**人为制造这两个条件**，单机也能取证。
+ *
+ * <p>本命令只做两件事：
+ * <ol>
+ *   <li>把 `sign_active_lock_end` 写到**过去**（`max(1, now-200)`）—— **只改这一项**：
+ *       `sign_active_lock_sign` / `grace_end` / `played` 与 `sign_active_cooldown_end` 一概不动
+ *       （与 `domResetActive` 那种「整组清锁定键」的手法**不同**，后者会顺带解开冻结）；</li>
+ *   <li>显式驱动产品自己的 `BaseSignItem#tickSignActiveLock`（与玩家 tick 事件调的是同一份代码），
+ *       让「是否重新对齐」在同一行读数里可判。</li>
+ * </ol>
+ *
+ * <p>mode（缺省 `keep`）：
+ * <ul>
+ *   <li><b>`keep`</b>（N8 主组）—— 效果与临时牌都保持不动 ⇒ **必须仍冻结**：
+ *       `lock_after=1` 且 `lock_end_after &gt; now`（上界被对齐为 `now + 效果剩余时长`）、
+ *       `cd_unchanged=1`、`temp_after == temp_before`、`fx_on_after=1`（不免费刷新、不提前清牌）；</li>
+ *   <li><b>`noeffect`</b>（N8 对照组）—— 先用内部通道 `ModEffectRemoval` 移除 `nardis_privilege`
+ *       （与 3:00 到期同一条路）、再驱动 `TemporaryCardUtil#tick` 清牌，然后才写 `lock_end` 到过去并 tick
+ *       ⇒ 前提（效果仍在）不成立 ⇒ **不得重新对齐**，走既有解冻路径（`lock_after=0`、`lock_end_after=0`）。</li>
+ * </ul>
+ */
+function doNardiLockBack(ctx, tag, modeText) {
+    var p = ctx.source.getPlayerOrException();
+    var mode = ("" + modeText) === "noeffect" ? "noeffect" : "keep";
+    var now = nowTick(p) - 0;
+    var lockEnd0 = domNum(function () { return ModAttachments.getSignActiveLockEnd(p); });
+    var cd0 = domNum(function () { return ModAttachments.getSignActiveCooldownEnd(p); });
+    var lock0 = domBool(function () { return BaseSignItemClass.isSignActiveLocked(p); });
+    var fx0 = domFx(p);
+    var temp0 = domCountTemp(p);
+    var eq0 = domCountTempEquipped(p);
+    // ⚠️ 必须写在**正数**的过去刻:realignLockEndToGateEffect 首行 `lockEnd <= 0` 直接返回
+    //    （`<= 0` = 「无硬上界」，忍者语义）⇒ 写成 0/负数会退化成「没有硬上界」而不是「上界已过」。
+    var past = now - 200;
+    if (past < 1) past = 1;
+    var wrote = -1, err = "";
+    try { ModAttachments.setSignActiveLockEnd(p, past); wrote = past; }
+    catch (e1) { err = domExText(e1); }
+    if (mode === "noeffect") {
+        try { ModEffectRemoval.remove(p, domEffectHolder()); } catch (e2) { err = err + "|fx:" + domExText(e2); }
+        try { NardisTemporaryCardUtilClass.tick(p); } catch (e3) { err = err + "|purge:" + domExText(e3); }
+    }
+    var tickRan = 1;
+    try { BaseSignItemClass.tickSignActiveLock(p); }
+    catch (e4) { tickRan = 0; err = err + "|tick:" + domExText(e4); }
+    var lockEnd1 = domNum(function () { return ModAttachments.getSignActiveLockEnd(p); });
+    var cd1 = domNum(function () { return ModAttachments.getSignActiveCooldownEnd(p); });
+    var lock1 = domBool(function () { return BaseSignItemClass.isSignActiveLocked(p); });
+    var fx1 = domFx(p);
+    send(ctx, "AP_" + tag + "_LOCKBACK:mode=" + mode
+        + ":now=" + now + ":wrote_lock_end=" + wrote
+        + ":lock_end_before=" + lockEnd0 + ":lock_end_after=" + lockEnd1
+        + ":realigned=" + ((lockEnd1 > now) ? 1 : 0)
+        + ":lock_end_after_gt_now=" + ((lockEnd1 > now) ? 1 : 0)
+        + ":lock_before=" + lock0 + ":lock_after=" + lock1
+        + ":cd_before=" + cd0 + ":cd_after=" + cd1
+        + ":cd_unchanged=" + ((cd0 >= 0 && cd1 >= 0 && cd0 === cd1) ? 1 : 0)
+        + ":temp_before=" + temp0 + ":temp_after=" + domCountTemp(p)
+        + ":temp_eq_before=" + eq0 + ":temp_eq_after=" + domCountTempEquipped(p)
+        + ":fx_on_before=" + fx0.on + ":fx_on_after=" + fx1.on
+        + ":n_fx_after=" + fx1.dur
+        + ":tick_ran=" + tickRan
+        + (err === "" ? "" : ":err=" + err)
         + ":" + domStateRead(p));
     return 1;
 }
@@ -10074,10 +10157,13 @@ ServerEvents.commandRegistry(event => {
                     .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
                         return doNardiClearAll(ctx, StringArg.getString(ctx, "tag"));
                     }))))
-            // ── 2026-09-27 新语义 N3/N5/N6 专用脚手架(见 impl 块同名函数):
+            // ── 2026-09-27 新语义 N3/N5/N6/N8 专用脚手架(见 impl 块同名函数):
             //    nardiuseup = 把身上临时牌「当作被用光」(只 purgeAll,**不碰效果**)⇒ 让产品 tick
             //                 自己证明「无牌 ⇒ 移除效果并解冻」;
-            //    nardiinv   = 主物品栏填充到「恰好剩 reserve 格」/ 清空 ⇒ 安全门 N6 的前置。
+            //    nardiinv   = 主物品栏填充到「恰好剩 reserve 格」/ 清空 ⇒ 安全门前置
+            //                 (阈值 = TemporaryCardUtil.MIN_FREE_SLOTS_TO_CAST = 2:
+            //                  可用格 < 2 ⇒ 拒绝;= 2 ⇒ 允许;clear ⇒ 腾空后立刻可释放);
+            //    nardilockback = 把 sign_active_lock_end 写到过去(只改这一项)后 tick ⇒ N8 冻结分歧重对齐。
             .then(Commands.literal("nardiuseup")
                 .then(Commands.argument("tag", StringArg.word())
                     .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
@@ -10098,6 +10184,15 @@ ServerEvents.commandRegistry(event => {
                                 return doNardiInv(ctx, StringArg.getString(ctx, "tag"),
                                     StringArg.getString(ctx, "mode"), StringArg.getString(ctx, "reserve"));
                             }))))))
+            .then(Commands.literal("nardilockback")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doNardiLockBack(ctx, StringArg.getString(ctx, "tag"), "keep");
+                    }))
+                    .then(Commands.argument("mode", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doNardiLockBack(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "mode"));
+                        })))))
             .then(Commands.literal("nardidbg")
                 .then(Commands.argument("tag", StringArg.word())
                     .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {

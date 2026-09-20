@@ -41,7 +41,8 @@ import top.theillusivec4.curios.api.SlotContext;
  *
  * <h2>主动「女王特权」</h2>
  * <ol>
- *   <li>**安全门(2026-09-27 用户裁决⑦)**:主物品栏空槽 &lt; 3 ⇒ **拒绝释放**(零消耗,
+ *   <li>**安全门(2026-09-27 用户裁决⑦;阈值经用户同日裁决放宽)**:主物品栏空槽
+ *       &lt; {@link TemporaryCardUtil#MIN_FREE_SLOTS_TO_CAST}(= 2)⇒ **拒绝释放**(零消耗,
  *       只发一条 `msg.astral_dice.nardis_inventory_full` 提示),位置在冻结/冷却拒绝之后;</li>
  *   <li>**先清空**全部旧临时牌(物品栏 + 副手 + 骰子已装配的) —— 用户裁决③「清空重发」,
  *       正常玩法下已被冻结挡住,保留为安全网(裁决⑦第 5 条);</li>
@@ -96,19 +97,20 @@ public class NardisSignItem extends BaseSignItem {
         if (level.isClientSide) {
             return InteractionResultHolder.success(stack);
         }
-        // 0. 安全门(2026-09-27 用户裁决⑦):本次固定发 2 战斗 + 1 效果共 3 张 ⇒ 主物品栏空槽 < 3 时
-        //    **拒绝释放**,并且必须是**零消耗**:不开始冷却、不施加效果、不进入冻结、不发任何牌、
-        //    也不清空任何既有临时牌(玩家修好背包后立刻可以再释放)。
+        // 0. 安全门(2026-09-27 用户裁决⑦;阈值经用户同日裁决放宽为
+        //    {@link TemporaryCardUtil#MIN_FREE_SLOTS_TO_CAST} = 2):本次固定发 2 战斗 + 1 效果共 3 张
+        //    ⇒ 主物品栏空槽 < 2 时**拒绝释放**,并且必须是**零消耗**:不开始冷却、不施加效果、
+        //    不进入冻结、不发任何牌、也不清空任何既有临时牌(玩家修好背包后立刻可以再释放)。
         //    顺序:冻结(使用中)与冷却的既有拒绝在 {@code BaseSignItem#performSkill} 第 0/1 步、
         //    先于本方法 ⇒ 既有拒绝优先级更高(裁决⑦第 4 条)。这里返回 fail ⇒ performSkill 第 3 步
         //    直接 return(不发风扇筹码、不抛立牌主动事件、不进冷却/不充能)。
         //    判据说明:`countFreeSlots` = 主物品栏(0..35)**空**槽数,与 {@code giveCard} 的入包路径同段。
-        //    ⚠️ 卡牌物品是 {@code stacksTo(64)}(可堆叠),但发牌前刚做过 purgeAll(旧临时牌已清空)、
-        //    同 id 的**普通**牌与临时牌组件不同 ⇒ 不会合并到普通牌堆上;只有本次**两张战斗牌
-        //    随机到同一张**时才会并进同一格(概率约 1/9)。⇒ 该门槛比"理论最小格数"略保守
-        //    (2 格时约 1/9 概率其实放得下 3 张),这是**有意**取的确定性口径:3 格必然放得下,
-        //    不依赖随机结果,也不会出现"发不满 3 张"。
-        if (TemporaryCardUtil.countFreeSlots(player) < TemporaryCardUtil.GRANT_COUNT) {
+        //    ⚠️ 为什么门槛是 2(而不是 3):卡牌物品是 {@code stacksTo(64)}(可堆叠),且发牌前刚做过
+        //    purgeAll(旧临时牌已清空)、同 id 的**普通**牌与临时牌组件不同 ⇒ 不会合并到普通牌堆上。
+        //    ⇒ 恰好 2 格时:本次两张战斗牌若随机到同一张(约 1/9)会并进同一格、余下 1 格照常收下效果牌,
+        //    3 张**全都放得下**;随机到不同牌时只是 {@code grantRandom} 的"放不下就少发、绝不落地"截断
+        //    少发一张,不落地也不报错。只有 < 2 格才必然只能发 ≤1 张,不值得消耗一次释放。
+        if (TemporaryCardUtil.countFreeSlots(player) < TemporaryCardUtil.MIN_FREE_SLOTS_TO_CAST) {
             sendSignActionBar(player, "msg.astral_dice.nardis_inventory_full");
             return InteractionResultHolder.fail(stack);
         }
@@ -156,6 +158,33 @@ public class NardisSignItem extends BaseSignItem {
     @Override
     protected boolean isGateEffectActive(Player player) {
         return player.hasEffect(ModEffects.NARDIS_PRIVILEGE);
+    }
+
+    /**
+     * 冻结的**真值 = 效果实例的剩余时长**(F1 修复):硬上界已过而效果仍在时,
+     * {@code BaseSignItem#tickSignActiveLock} 按本方法的返回值把 {@code sign_active_lock_end}
+     * 重新对齐({@code lock_end = now + 剩余})。
+     *
+     * <p>为什么本立牌必须跟随(用户裁决的冻结契约:冻结只由"临时牌被全部用光"或 3:00 有效期结束
+     * 这两件事结束,先到者):
+     * <ul>
+     *   <li>{@code sign_active_lock_end} 是**绝对 gameTime**,而服务器 gameTime 在玩家**离线期间照常前进**
+     *       (多人服务器;单人存档"停客户端 = 停服务器"故看不出问题);</li>
+     *   <li>效果实例的剩余时长在离线期间**冻结**(ServerPlayer 实体随登出被移出世界、不再 tick),
+     *       且重登时 {@code EffectTimerGuard} 的计时记录被清空({@code PlayerLoggedInEvent}),
+     *       故效果不会被守卫按绝对时刻强制到期 ⇒ 效果带着登录前的剩余时长原样回来;</li>
+     *   <li>于是"离线超过剩余冻结时长后重登"会让硬上界与 {@code cooldown_end}(同样是绝对 gameTime)
+     *       双双已过,而效果与临时牌都还在:原判定直接解冻,冷却按
+     *       {@code max(0, cdEnd − now) = 0} 归零(立即再次可释放),且该路径**不经过** 3:00 到期分支
+     *       ⇒ 剩余临时牌不被清空,等价于一次免费刷新。对齐后冻结跟随效果剩余时长,上述漂移不再发生。</li>
+     * </ul>
+     *
+     * <p>效果已不在时返回 {@code -1}(不介入):照旧由既有解冻路径结束冻结。
+     */
+    @Override
+    protected int gateEffectRemainingTicks(Player player) {
+        MobEffectInstance instance = player.getEffect(ModEffects.NARDIS_PRIVILEGE);
+        return instance == null ? -1 : instance.getDuration();
     }
 
     /**

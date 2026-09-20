@@ -67,6 +67,12 @@ public final class TemporaryCardUtil {
     /** 战斗牌之后发放的效果牌张数(池 = {@link RandomCardHandler.CardCategory#EFFECT}) */
     public static final int GRANT_EFFECT_COUNT = 1;
 
+    /** 主动技能的最低可用格数门槛(2026-09-27 用户裁决放宽为 2)。
+     *  卡牌物品可堆叠({@code stacksTo(64)}),且发牌前会先清空临时牌 ⇒ 恰好 2 格时两张战斗牌
+     *  常并进一格(同 id 同临时标记 ⇒ {@code Inventory#add} 走合并分支),效果牌仍可能放得下;
+     *  少于 2 格则必然只能发 ≤1 张,不值得消耗一次释放。 */
+    public static final int MIN_FREE_SLOTS_TO_CAST = 2;
+
     private TemporaryCardUtil() {
     }
 
@@ -160,7 +166,7 @@ public final class TemporaryCardUtil {
      *   <li>再发 {@value #GRANT_EFFECT_COUNT} 张效果牌;② 的可用格数是**调用时重新统计**的
      *       (战斗牌已先占格)⇒ 只剩 1 格时只发 1 张战斗牌、效果牌因无空格而不发;
      *       0 格时一张都不发 —— **绝不落地**。正常情况下这条"少发"路径不可达
-     *       ({@code NardisSignItem#handleUse} 第 0 步的安全门已要求空槽 ≥ {@value #GRANT_COUNT}),
+     *       ({@code NardisSignItem#handleUse} 第 0 步的安全门已要求空槽 ≥ {@value #MIN_FREE_SLOTS_TO_CAST}),
      *       它只是安全网(2026-09-27 用户裁决⑦第 5 条:保留不删)。</li>
      * </ol>
      *
