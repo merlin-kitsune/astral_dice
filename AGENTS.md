@@ -1845,6 +1845,84 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --new <注册id>
 
 ---
 
+## 待办交接：新立牌/卡牌批（nardis · mamushi · sherry · hanna + 撕咬 / 龙之咆哮）— 2026-09-27（**只纪录，未动任何代码**）
+
+用户要求（原话）：「提前计划下一步新增内容（只纪录，不动代码）：立牌：绿洲女王立牌（nardis，稀有）、蛟龙立牌（mamushi，传奇）、怪力侦探立牌（sherry，史诗）、人偶师立牌（hanna，稀有）；卡牌：撕咬（战斗牌、蛟龙专属）、龙之咆哮（战斗牌、蛟龙专属）」。
+
+> 本段只是**实施前的规划与本机侦察结论**（2026-09-27 记录）：清单、命名/注册触点、待裁决项、顺序与风险。**尚未新增任何物品/效果/配方/lang/测试资产**；待裁决项定稿后才动代码。本批属**玩家可见新内容** ⇒ 实施时两份 CHANGELOG 必须同步补条目（现在**不**写，避免未落地内容进日志）。
+
+### 0. 清单（7 件）与已定/待定字段
+
+| # | 中文名 | 拟定注册 id | 类型 | 品质（用户给定） | 物品层 `Rarity`（既有映射，冻结） | 贴图（仓库根 `images/` 已有） |
+|---|---|---|---|---|---|---|
+| 1 | 绿洲女王立牌 nardis | `nardis_sign` | 立牌 | 稀有 | `Rarity.RARE` | `绿洲女王立牌.png` ✅ |
+| 2 | 蛟龙立牌 mamushi | `mamushi_sign` | 立牌 | 传奇 | `Rarity.UNCOMMON`（**本仓「传奇」用的就是 `UNCOMMON`**，见品质表） | `蛟龙立牌.png` ✅ |
+| 3 | 怪力侦探立牌 sherry | `sherry_sign` | 立牌 | 史诗 | `Rarity.EPIC` | `怪力侦探立牌.png` ✅ |
+| 4 | 人偶师立牌 hanna | `hanna_sign` | 立牌 | 稀有 | `Rarity.RARE` | `人偶师立牌.png` ✅（另有 `人偶完成.png` / `人偶制作.png`，用途待裁决，见 §3） |
+| 5 | 撕咬 | `attack_card_bite` | **战斗牌**·蛟龙专属 | 待定 | 白=`(无)` / 蓝=`RARE` / 紫=`EPIC` / 金=`UNCOMMON` ⇒ **待裁决** | `撕咬.png` ✅ |
+| 6 | 龙之咆哮 | `attack_card_dragon_roar` | **战斗牌**·蛟龙专属 | 待定 | 同上 | `龙之咆哮.png` ✅ |
+
+**配方档（本仓规则 = 配方决定品质；同品质存在多个档位 ⇒ 逐件待裁决）**：稀有(RARE) 可选 `基础骰子`（同 经商/扫地机/看板娘/肉弹战车）或 `黄金骰子(无星盘)`（同 史莱姆/上班族）；史诗(EPIC) 可选 `基础骰子`（游戏大师先例）/`黄金骰子+星盘`（大侦探/吸血鬼）/`钻石骰子±星盘`（忍者/占星师/骇客/枪匠）；传奇(UNCOMMON) 可选 `钻石骰子+黄金星盘`（调查员/护法/大当家/风水师）或 `下界合金骰子+黄金星盘`（秘密侦探）。
+
+### 1. 命名/ID 契约（照既有惯例；用户未另行指定前不得改名）
+
+- 立牌类名 = 角色罗马音 + `SignItem`（既有 `ZhaoSignItem`/`TeruSignItem`/`LuluSignItem`… 同形）⇒ `NardisSignItem` / `MamushiSignItem` / `SherrySignItem` / `HannaSignItem`；物品 id = `<角色>_sign`。
+- 战斗牌**不新建物品类**：现有 10 张战斗牌全部是通用 `CardItem` + `typeId` 字符串（`ModItems.ATTACK_CARD_*` 逐条 `new CardItem(props.stacksTo(64).rarity(…).component(CARD_USES, AppliedStone.defaultUses("<typeId>")), "<typeId>")`）⇒ 新增两张照此写，注册 id `attack_card_<typeId>`。
+- 专属牌复用既有机制：`protected boolean isExclusive()` + `ExclusiveCardUtil` + `owner_uuid` 数据组件 + 标签 `is_exclusive.json`；**随机卡池必须排除**（`RandomCardHandler`）—— 参考既有专属牌（命运的指引 / 活体书页 / 符卡-福 / 符卡-祸）。
+- 效果/附件/文案键的命名口径沿用 zhao 批契约（`effect/ModEffects`、`component/ModAttachments`、`tooltip.astral_dice.*`、`astral_dice.guide.entry.*`）。
+
+### 2. 注册与资产触点清单（实施时逐条打勾；路径以 1.21.1 为准，1.20.1 见括号）
+
+**A. 每个新立牌**
+1. `item/sign/<X>SignItem.java`（继承 `BaseSignItem`；主动 `handleUse`、被动钩子，若为选择器类再覆写 `selectorActionId()`，必要时 `startActiveLockOnUse`）。
+2. `item/ModItems` 注册（`.rarity(<品质映射>)`）+ `init/ModCreativeTabs` 入创造栏。
+3. `datagen/ModRecipeProvider` 形状配方（立牌 + 骰子/星盘，**立牌固定中下**）+ 生成物 `recipe/<id>.json`、`advancement/recipes/misc/<id>.json`。
+4. 标签：`data/astral_dice/tags/item/signs.json`（1.20.1 为 `tags/items/signs.json`）、`data/curios/tags/item/stand.json`（1.20.1 `tags/items/stand.json`）。
+5. 贴图 `textures/item/<id>_sign.png`（自 `images/<中文名>立牌.png` 复制；两条发布线**逐字节相同**）。
+6. `datagen/ModItemModelProvider`（两发布线单根 `src/generated/resources`）+ `lang/zh_cn.json` / `lang/en_us.json`（物品名 + tooltip 键）。
+7. 手册：`assets/astral_dice/patchouli_books/astral_guide/en_us/entries/signs/<id>.json`（**手册只有 `en_us` 目录**，中英由 lang 键 `astral_dice.guide.entry.*` 承担；现有 signs 目录 19 条）。
+8. 若新建效果：`effect/ModEffects`（两线现各 34 个）+ `textures/mob_effect/<effect>.png`（无专用图时按取材规则复用载体物品图）+ lang `effect.*`。
+9. 若新增玩家附件：`component/ModAttachments`（1.21.1 视需要 `.sync()`；**1.20.1 新增同步键必须同时进 `SYNCED_KEYS`**）并更新 AGENTS.md 的附件计数（现 1.21.1 **78** / 1.20.1 **80**）。
+10. 赏金池：复跑 `pwsh -File scripts/verify/verify_bountiful_pools.ps1 -Root <该线工作树>`；明星牌入池/出池口径待裁决。
+11. AGENTS.md 三处表：**立牌技能表**、**立牌品质表**、效果/附件/数据组件清单；`neoforge-26.1.2` 冻结清单追加迁移项（见 §4）。
+
+**B. 每张战斗牌**
+1. `item/ModItems` 注册 `ATTACK_CARD_<TYPE>`（`CardItem` + `CARD_USES` 组件；品质映射见 §0）。
+2. `combat/CardRegistry`：`init()` 里注册 `new CardType("<typeId>", false, <uses>, <cost>, <item>, <roller>)`，**并且**在 `defaultUses(String)` 的 `switch` 里补分支（该方法在 `ModItems` 静态初始化阶段就被调用，`CardRegistry.init()` 更晚 ⇒ **不能**只依赖 `BY_ID`，否则耐久静默回退为 10 的既有坑）。
+3. 结算/加算落点：`combat/DiceCombatModifiers`（攻击力加算）或该牌自己的 `roller`。
+4. 标签：`data/astral_dice/tags/item/combat_cards.json`（**战斗牌汇总标签，两线各一份**）+ 专属牌另进 `is_exclusive.json`（1.20.1 同为 `tags/items/`）。
+5. tooltip 两行：费用行在最上方、黄色 `Cost: ⨀…`（费用由 `CardRegistry.cost(type, player)` 动态给），描述行 `点数 | 剩余次数: X`。
+6. lang（中英）+ 手册 `entries/cards_attack/<id>.json`（现有 `cards_attack/` 7 条）。
+7. 获取渠道：蛟龙专属 ⇒ 由蛟龙立牌技能（主动或被动）发放/回收，**具体入口与"专属绑定"时机待裁决**；若走随机发放则必须排除（§1）。
+
+**C. 两线对等与测试资产（照 zhao 批）**
+- 先 1.21.1 落地 → 按 `docs/compat-1.20.1-forge.md` 同步 1.20.1；共享文件（`lang/*.json`、`ModItems`、`CardRegistry`、探针）单一 owner。
+- 探针新增只读读数段（立牌身份/状态、两张战斗牌的费用/耐久/骰点、专属拒绝、被动触发），用例按 zhao 批形态（前置归一化 → 双人 Carpet bot → 断言 `AP_` 读数），并复用 zhao 段的 9 条踩坑 + 2 条工具层坑（见《风水师立牌（zhao）…双人测试流程》段）。
+
+### 3. 待用户裁决（**动代码前必须定稿**）
+
+1. **4 个立牌的主动/被动技能**：名称、数值、时长、冷却、是否目标选择器类（`PLAYER` / `ENEMY_OR_RIVAL` / `allowSelf`）、是否起「锁定(生效中)」态（是否施加自己的计时器）。
+2. **两张战斗牌**：费用、耐久（次数）、骰点/效果、品质色；「撕咬」「龙之咆哮」是否为纯攻击加算或有附加效果（造成真伤/多段/对带厄运目标加成等）。
+3. **专属牌的获取与回收**：蛟龙主动技能发放？被动触发？使用后是否回收/绑定 `owner_uuid`；是否入赏金池。
+4. **配方档位**：每个立牌在 §0 的同品质可选档中取哪一个。
+5. **`人偶完成.png` / `人偶制作.png`**：是「人偶师」技能的两个阶段/状态图标（⇒ 需 2 个新效果或 1 个效果 + 1 个 UI 状态），还是别的东西？这决定要不要新建效果与同步键。
+6. **英文名**：4 个立牌与 2 张战斗牌（`lang/en_us.json`）的英文命名。
+7. **是否同步 26.1.2**：该线当前**冻结**（用户裁决），预期本批**只在两条发布线**落地，26.1.2 解冻后按 `docs/compat-26.1.2-neoforge.md` 迁移（届时必须补 `src/generated/clientResources` 的 `items/*.json` 物品模型定义——26.1.4+ 硬需求）。
+
+### 4. 实施顺序（裁决后）
+
+① 1.21.1 代码（subagent 并行 + 单一 owner）→ ② 1.20.1 同步 → ③ 双线构建 + 全流程冒烟（`preflight→build→env→launch→cases→report→stop`）→ ④ 测试资产（探针 + 用例）并逐条 `--case` 单跑取 PASS（**不要**依赖全目录跑，见下）→ ⑤ 文档（AGENTS.md 三表 + `scripts/test/TESTING-SPEC.md` 附录 A 工程条目）→ ⑥ **两份 CHANGELOG 同步补玩家侧条目**（中英条目数一致）→ ⑦ 本地提交（**不 push**）→ ⑧ 26.1.2 迁移（解冻后，含三侧读数 diff 一致性测试）。
+
+### 5. 风险与照抄即可避免的坑
+
+- **Rhino 侧**（探针）：顶层 `var`/`function` 重复声明 ⇒ 整脚本加载失败；实例方法必须调在实例上；1.20.1 的 `ModEffects.X` 是 `RegistryObject`，判效果必须 `findEffect(p,"<id>")`。
+- **断言侧**：读数必须按实际字段顺序写正则；`zhaocard` 类成对读数用 `before>after`。
+- **测试工具侧**：全目录 `--phase cases` 会给另一版本条目写 `SKIP` 记账，`report.md` 自动判定把非 `PASS` 全判 ❌；且其预算是固定 `90+90×用例数`，`MT_CASES_TIMEOUT_SEC` 管不到 ⇒ 一律逐条 `--case` 单跑，必要时用 `mt_report.ps1 collect --version <V> --verdict PASS` 重算并留痕（详见 zhao 测试流程段）。
+- **数据生成**：改资源前必须按「Gradle 构建守护规则」第 7 条移开 `run/<V>/mods` 里的旧产物 jar，否则 `runData` 静默用旧代码；两发布线 `exclude("**/.cache")` 口径不得回退。
+- **26.1.2 冻结**：本批不得动该线任何文件；迁移清单必须在本批落地后追加（否则解冻时漏项）。
+
+---
+
 ## Carpet: NeoForged（玩家 bot / 双人联动测试）— 2026-09-27
 
 用户要求（原话）：「向 1.21.1 和 1.20.1 测试端插入 Carpet: NeoForged 模组（Fabric Carpet 的 Forge/NeoForge 移植，https://github.com/chililisoup/neoforge-carpet）……同时 clone 源代码到本地用于分析功能（1.21.1 为 master 分支，1.20.1 为 1.20.1 分支）……在测试脚本中，插入 `/player` 命令用于创建玩家 bot，该 bot 可被用作测试 2 人及更多玩家的联动功能；使用 `/kill` 命令击杀 bot 玩家可使其退出……26.1.2 版本不使用该模组，mojang 在高版本加入了可以创建 bot 的管理员指令。后续再进行学习。」
