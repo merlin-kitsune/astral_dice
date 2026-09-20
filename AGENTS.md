@@ -1812,7 +1812,7 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --new <注册id>
 8. **`consumeHuguangForNewTarget` 的自目标防护必须保留**（`if (victim == attacker) return 0`）：显示/快照路径（`DiceCombatModifiers#getDisplayAttackRange` 与 `TeruSignItem#attackPowerOf`）都以 `ctx.target == attacker` 复用同一套攻击修饰器链 ⇒ 少了这一行，「打开卡牌栏看一眼攻击力」或「施法瞬间快照」都会**误消耗 1 层狐光**并把施法者自己写进已攻击目标集。真实骰战链路 `target == player` 直接 return，故实战零影响。
 9. **每 tick 调用的代价已收敛**：`resolveTarget` 的"全服扫描自愈"只在「佩戴立牌 或 仍有攻击加成缓存」时发生（否则 N 个玩家 = 每 tick O(N²)）；`teru_prev_blessing` 等镜像写入一律**同值不写**（避免附件脏化）。
 
-### 状态（实现完成，待用户授权游戏内验证）
+### 状态（实现完成，游戏内验证已完成 2026-09-20）
 
 | 项 | 状态 | 判据 |
 |---|---|---|
@@ -1820,6 +1820,24 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --new <注册id>
 | 1.20.1 实现 + 构建 + datagen | ✅ | 同上（平台写法差异见规格 §2.2） |
 | 语言键 15 个 × 4 文件 | ✅ | `tools/check_lang_sync.ps1` 退出 0（三线各自「zh_cn ↔ en_us key 完全一致」） |
 | 文档 | ✅ | `docs/features/teru-sign-spec.md`、两份 CHANGELOG（各 +1 条，同一分类） |
-| **游戏内行为验证** | ⏳ **未做** | `scripts/test/cases` 已清零（0 文件）；**重建测试资产需用户单独授权**，恢复后必须补两条**防刷用例**（丢弃捡起重获层数不变 / 插入卸除循环层数不变）+ 结束锚点两分支 |
+| **游戏内行为验证** | ✅ **双侧全绿** | 3 条 teru 用例 + 1 条选择器门控回归用例，**两线各 4/4 PASS**（1.21.1：91+53+83+43 断言；1.20.1：91+53+83+43），无 `_ERR`/`_EX`、KubeJS 0 错误、无崩溃报告。命令：`pwsh -File scripts/test/mt.ps1 --version <V> --phase cases --case cases/<用例>.json` |
 | 顺带修复（**drive-by**） | ✅ | 本树两线 `build.gradle` 的 `exclude("src/generated/**/.cache")` 改为相对模式 `exclude("**/.cache")`（原写法永不命中 ⇒ 产物 jar 带 3 条 `.cache` 条目、本地与 CI 字节不一致）；修复后两线 `build/libs/*.jar` 的 `.cache` 条目 = **0** |
 | 26.1.2 迁移 | ⏳ 登记 | 该线**连 zhao 批次都还没迁**（`entries/signs` 17 vs 18）⇒ 迁移顺序必须「先补 zhao、再补 teru」；不得回移该线专有差异（如 `ItemTags.SPEARS`） |
+
+### 游戏内测试资产（2026-09-20 重建，随用例入库）
+
+| 用例 | 覆盖 | 关键读数（两线一致） |
+|---|---|---|
+| `TERU-SIGN-<V>` | 注册/冻结数值（含 `signs`+`curios:stand` 标签、两个效果 id、四个常量）、主动只能选其它玩家（自身/生物双拒 + 真实按键路径 debug 行）、对 FakePlayer **真实施法**的 50% 快照与 `+3` 层、生效中不可重复施放（门控 session=0 + 服务端二次校验）、骰神赐福下降沿两分支（`skip` 语义）、效果自检、死亡清场、**自目标防护** | `AP_F_CASTFAKE:cast=1:A_t=20:D_t=12:A_c=6:bonus_atk=10:bonus_def=6:base=16:atk_ok=1:def_ok=1:base_ok=1:layers=3:cache=10:armor=0>12:armor_ok=1`；`AP_GA_GATE:session=0:recast_other=0:layers=7>7`；`AP_G_GUARD:layers=7>7:newt=0>0`；`AP_RD1_R1:caster=0:base=0:armor=0:layers=7`；`AP_RD2_R2:skip=1→0:caster=1`；`AP_RD3_R3:caster=0:layers=5` |
+| `TERU-EXTRA-ATTACK-<V>` | 逐层消耗 + 追加攻击力 + 新目标去重 + 0 层不追加（走真实 `Player#attack` ⇒ 骰战攻击修饰器链、目标为 1000 血蜘蛛靶） | `AP_H1_HIT:layers0=5:newt0=0:h0_dmg=208:h0_api=player_attack:h0_layers=5>4:newt=1`；同一靶二次 `h0_dmg=8:h0_layers=4>4`；换靶 `h0_layers=4>3:newt=2`；0 层对照 `h0_dmg=3:h0_layers=0>0:newt=0` |
+| `TERU-HUGUANG-ANTIFARM-<V>` | 守卫②（**真实卡牌栏** 插入→卸除→再插入）、守卫①（地面牌被真实拾取但层数不变）、发牌漏斗三点计层（攻击 +2 / 防御 0 / 非卡牌 0 / 背包满走掉落分支 0）、**真死+重生后层数与水位保留** | `AP_E1_EQ:wm=->medium=1:layers=0>1:dl=1`；`AP_E2_EQ:wm=medium=1>medium=1:layers=1>1:dl=0`；`AP_E3_EQ:cards_after=…x1:inv=1>0:wm=medium=1>medium=1:layers=1>1:dl=0`（关键：真的插进去了却一层不加）；`AP_DR_DROP:added=1:ground=1` → `AP_RB5_RB5:inv_atk=2:ground_atk=0:layers=1`；`AP_C4_CARD:filled=36:inv=0>0:ground=1:dl=0`；`AP_RB7_RD:layers=1:wm=medium=1`（重生后） |
+| `LULU-SIGN-<V>`（回归） | `BaseSignItem#canBeginSelectorSession` 新增钩子后**其它选择器立牌行为不变**（lulu 的 `allowSelf=true` 自选路径 + 范围能力仍全绿） | 该用例原有 43 断言全 PASS |
+
+> **本轮新增的 KubeJS 环境坑（写探针必看，三条线通用）**：`scripts/test/resources/kubejs/**` 跑在 KubeJS Rhino 上，以下**原版方法不可见**（实测 `TypeError: Cannot find function …`），写脚手架时必须绕开或分层兜底：
+> 1. `ServerPlayer#getUUID` → 用本仓既有的容错取值器 `playerUuid(p)`（退到 KubeJS 实体包装的 `p.uuid`）；
+> 2. `ServerPlayer#closeContainer` → 它才负责「`containerMenu.removed(player)`（卡牌栏 `saveToDice` 挂在这里）+ 发 `ClientboundContainerClosePacket`」；漏了后者客户端会**一直停在卡牌栏界面**，后续注入的聊天命令全被 GUI 吃掉（**整条用例链一条读数都没有**）。探针 `teruCloseMenu` 手动补齐：`removed` + 按真实 `containerId` 发包 + 复位 `containerMenu`；
+> 3. `ItemEntity#setPickupDelay` → 必须**单独 try**（与 `addFreshEntity` 同 try 会让异常跳过添加 ⇒ 实体压根没进世界，读数 `spawn=1` 但永远捡不到）；
+> 4. `ItemStack#getOrDefault`（1.20.1 侧）→ 取不到组件就传 `null`（生产方法内部按 `WeaponEnhancement.EMPTY` 处理）；
+> 5. `EntityType#getDescriptionId/_holder`、`Item#getClass`、`AttributeInstance#getModifier(UUID)`（1.20.1）同样不可见 ⇒ **不要用 `typeIdOf()`（`getKey(getType())`）判实体类型**：`BuiltInRegistries.ENTITY_TYPE` 是 DefaultedRegistry，未知/反查失败一律回落 `minecraft:pig`（本批实跑把蜘蛛报成猪；可靠判据是 `mob instanceof Spider` 与 `type_req`）。修饰器读数同理：判据用**属性真值**（`p.getArmorValue()`）而不是修饰器对象。
+> 6. `Java.loadClass("X").cast(obj)` 不可用（属性查找落在被表示类的静态成员上）⇒ 直接传 `p.level`（Rhino 按运行时类型解析）。
+> 7. 死亡相位：`/kill @s` 后客户端会停在死亡界面并把下一次注入当「重生」点击（`GUIDE-BOOK` 用例的老办法）⇒ 新用例统一 `/gamerule doImmediateRespawn true`，死亡后紧接的读数才可信。

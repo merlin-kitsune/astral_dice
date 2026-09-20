@@ -1,0 +1,79 @@
+{
+  "case_id": "TERU-EXTRA-ATTACK-1.20.1",
+  "title": "教主立牌（teru）「狐光」逐层消耗与追加攻击：降神目标每攻击一个**新目标**消耗 1 层并追加（攻击基数 + 剩余层数）攻击力，同一目标只结算一次，层数为 0 时不追加——走真实近战（Player#attack ⇒ 骰战攻击修饰器链）",
+  "version": "1.20.1",
+  "target": { "type": "feature", "ref": "teru-sign-descent-huguang" },
+  "on_fail": "keep_game_running",
+  "steps": [
+    { "op": "note", "text": "目的（需求原文：「被指定者每攻击一个新目标，消耗 1 层狐光并追加『施加者自身攻击力 + 当前层数』的额外攻击」）：把「新目标判定 + 逐层消耗 + 追加攻击力」拆成机器判据。\n  ① **追加真的进了伤害**：狐光攻击基数 base=200、层数 5 ⇒ 命中瞬间额外攻击力 = 200 + (5−1) = 204，最终伤害 = max(1, 攻击力 − 目标防御力)（`DiceCombatEvents` 的骰战公式）⇒ 掉血读数必须 ≥ 100（对照相位 base=200、层数 0 时掉血只有个位数）。\n  ② **新目标判定**：同一只靶第二次被攻击**不再**消耗（层数不变、已攻击目标集不变）；换一只新靶才再 −1 层。\n  ③ **层数为 0**：不追加、不消耗、不登记（读数 dl=0、newt 不变）。\n\n**为什么走 `Player#attack`**：狐光的追加攻击挂在 `DiceCombatModifiers` 的**攻击修饰器链**上，只有真实近战进入骰战结算（`Player#attack` → `LivingDamageEvent.Pre` → `attackModifiers()` 求值）时才会被消费 —— 这也是 `meleeHit` 首选原版真实入口的原因（探针读 `api=player_attack` 即证明走的是这条链，而不是 `mob.hurt` 兜底）。\n\n**单人脚手架边界（如实声明）**：本用例用 `terulink` 把**自身**同时写成「降神目标」与「施法者」（测试世界没有第二名真实玩家）⇒ 消耗与追加都由同一个玩家的附件驱动，与生产环境的唯一差别是「施法者 = 目标」；层数消耗、新目标去重、攻击基数取值的**代码路径完全相同**（`TeruSignItem#consumeHuguangForNewTarget`）。施法者为第二名玩家时的行为由 `TERU-SIGN` 用例的 FakePlayer 真实施法相位覆盖。\n\n**靶子**：超平坦测试世界用蜘蛛（非亡灵、不烧）并钉死最大生命 1000（两次命中 ~410 伤害仍在生存线内），`setNoAi` 站定，避免目标走位造成漏判。" },
+    { "op": "inject_command", "command": "/gamemode survival", "no_esc": true },
+    { "op": "wait", "ms": 900 },
+    { "op": "inject_command", "command": "/gamerule naturalRegeneration false", "no_esc": true },
+    { "op": "wait", "ms": 900 },
+    { "op": "inject_command", "command": "/time set midnight", "no_esc": true },
+    { "op": "wait", "ms": 700 },
+    { "op": "inject_command", "command": "/kill @e[type=!player,distance=..64]", "no_esc": true },
+    { "op": "wait", "ms": 700 },
+    { "op": "inject_command", "command": "/tp @s ~ ~ ~ 0 0", "no_esc": true },
+    { "op": "wait", "ms": 700 },
+
+    { "op": "inject_command", "command": "/astralprobe teruprep T2 clear", "no_esc": true },
+    { "op": "wait", "ms": 1200 },
+    { "op": "inject_command", "command": "/astralprobe terudummy T2 d1 \"minecraft:spider\" 3 1000", "no_esc": true },
+    { "op": "wait", "ms": 900 },
+    { "op": "inject_command", "command": "/astralprobe terudummy T2 d2 \"minecraft:spider\" 6 1000", "no_esc": true },
+    { "op": "wait", "ms": 900 },
+
+    { "op": "note", "text": "主判据相位：base=200、层数 5、已在骰神赐福（骰战链的进入前提之一）⇒ 第 1 次命中 d1 必须 −1 层且掉血 >100。" },
+    { "op": "inject_command", "command": "/astralprobe terulink LK 0 0 200 0 1 5 -", "no_esc": true },
+    { "op": "wait", "ms": 1200 },
+    { "op": "inject_command", "command": "/astralprobe teruhit H1 d1 1", "no_esc": true },
+    { "op": "wait", "ms": 1400 },
+    { "op": "inject_command", "command": "/astralprobe teruhit H2 d1 1", "no_esc": true },
+    { "op": "wait", "ms": 1400 },
+    { "op": "inject_command", "command": "/astralprobe teruhit H3 d2 1", "no_esc": true },
+    { "op": "wait", "ms": 1400 },
+    { "op": "inject_command", "command": "/astralprobe teruhit H4 d2 1", "no_esc": true },
+    { "op": "wait", "ms": 1400 },
+
+    { "op": "note", "text": "对照相位：base 仍为 200 但层数 0 ⇒ 追加项必须为 0（掉血回到个位数）、层数不变、不登记新目标。" },
+    { "op": "inject_command", "command": "/astralprobe terulink LK0 0 0 200 0 1 0 -", "no_esc": true },
+    { "op": "wait", "ms": 1200 },
+    { "op": "inject_command", "command": "/astralprobe teruhit H5 d2 1", "no_esc": true },
+    { "op": "wait", "ms": 1400 },
+
+    { "op": "inject_command", "command": "/astralprobe teruclear Z", "no_esc": true },
+    { "op": "wait", "ms": 900 },
+    { "op": "inject_command", "command": "/kill @e[type=!player,distance=..64]", "no_esc": true },
+    { "op": "wait", "ms": 700 }
+  ],
+  "asserts": [
+    { "type": "log", "source": "latest", "pattern": "AP_T2_PREP:layers=0:.*:sign=1:hand=minecraft:iron_sword:" },
+    { "type": "log", "source": "latest", "pattern": "AP_T2_DUMMY:which=d1:.*:type_req=minecraft:spider:.*:is_spider=1:eid=[0-9]+:hp=1000:dist=3:.*:layers=0" },
+    { "type": "log", "source": "latest", "pattern": "AP_T2_DUMMY:which=d2:.*:type_req=minecraft:spider:.*:is_spider=1:eid=[0-9]+:hp=1000:dist=6:" },
+    { "type": "log", "source": "latest", "pattern": "AP_LK_LINK:layers=5:wm=-:caster=1:target=1:.*:base=200:skip=0:prev=1:newt=0:bless=1:.*:fx_d_on=1:.*:fx_h_on=1:" },
+
+    { "type": "log", "source": "latest", "pattern": "AP_H1_HIT:which=d1:eid=[0-9]+:type=[a-z_:]+:alive=1:hand=minecraft:iron_sword:layers0=5:newt0=0:h0_hp=1000>[0-9.]+:h0_dmg=[1-9][0-9]{2,}(\\.[0-9])?:h0_api=player_attack:h0_layers=5>4:layers=4:.*:newt=1:" },
+    { "type": "log", "source": "latest", "pattern": "AP_H1_HIT:.*:h0_dmg=[1-9][0-9]{2,}(\\.[0-9])?:h0_api=player_attack:" },
+
+    { "type": "log", "source": "latest", "pattern": "AP_H2_HIT:which=d1:.*:layers0=4:newt0=1:.*:h0_dmg=[0-9](\\.[0-9])?:h0_api=player_attack:h0_layers=4>4:layers=4:.*:newt=1:" },
+
+    { "type": "log", "source": "latest", "pattern": "AP_H3_HIT:which=d2:.*:layers0=4:newt0=1:.*:h0_dmg=[1-9][0-9]{2,}(\\.[0-9])?:h0_api=player_attack:h0_layers=4>3:layers=3:.*:newt=2:" },
+
+    { "type": "log", "source": "latest", "pattern": "AP_H4_HIT:which=d2:.*:layers0=3:newt0=2:.*:h0_dmg=[0-9](\\.[0-9])?:h0_api=player_attack:h0_layers=3>3:layers=3:.*:newt=2:" },
+
+    { "type": "log", "source": "latest", "pattern": "AP_LK0_LINK:layers=0:wm=-:caster=1:.*:base=200:skip=0:prev=1:newt=0:bless=1:" },
+    { "type": "log", "source": "latest", "pattern": "AP_H5_HIT:which=d2:.*:layers0=0:newt0=0:.*:h0_dmg=([0-9]|1[0-9])(\\.[0-9])?:h0_api=player_attack:h0_layers=0>0:layers=0:.*:newt=0:" },
+
+    { "type": "log", "source": "latest", "pattern": "AP_Z_CLEAR:cleared=1:layers=0:.*:sign=0:" },
+
+    { "type": "absent", "source": "latest", "pattern": "AP_[A-Z0-9]+_ERR" },
+    { "type": "absent", "source": "latest", "pattern": "AP_[A-Z0-9]+_EX:" },
+    { "type": "absent", "source": "latest", "pattern": "h0_err=" },
+    { "type": "absent", "source": "latest", "pattern": "h0_dmg=-1" },
+    { "type": "absent", "source": "latest", "pattern": "h0_api=mob_hurt" },
+    { "type": "kubejs" },
+    { "type": "crash" }
+  ],
+  "evidence": []
+}
