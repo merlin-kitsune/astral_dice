@@ -1405,7 +1405,7 @@ public class ModTooltipHandler {
             addSignLines(tooltip, "tooltip.astral_dice.sign.ren_passive");
             addSignCooldownRemaining(tooltip, event.getEntity() instanceof Player p ? p : null);
         }
-        // 风水师立牌(zhao):被动「福祸相倚」+「完美帮手」,主动「白泽赐福」
+        // 风水师立牌(zhao):被动「福祸相倚」+ 第二被动「完美帮手」(与「大当家立牌」联动),主动「白泽赐福」
         if (stack.is(ModItems.ZHAO_SIGN.get())) {
             tooltip.add(Component.empty());
             addSignKeyHint(tooltip);
@@ -1413,6 +1413,9 @@ public class ModTooltipHandler {
             addSignLines(tooltip, "tooltip.astral_dice.sign.zhao_active");
             addSignPassiveTitle(tooltip, "福祸相倚");
             addSignLines(tooltip, "tooltip.astral_dice.sign.zhao_passive");
+            // 第二被动「完美帮手」:与「大当家立牌」联动,置于备注区(紫色,无标题)
+            tooltip.add(Component.empty());
+            addSignNoteLines(tooltip, "tooltip.astral_dice.sign.zhao_wanmei_bangshou");
             if (event.getEntity() instanceof Player p) {
                 addSignCounter(tooltip, "tooltip.astral_dice.sign.zhao_cards",
                         com.merlinkitsune.astral_dice.item.card.FuCardItem.countFu(p),
@@ -1448,7 +1451,7 @@ public class ModTooltipHandler {
         // 任何近战攻击被闪避、无法使用末影珍珠) + 被动「幻想千金」(战斗骰点 = 6 ⇒ 1 星币;路过 3 格内
         // 友方玩家 ⇒ 该玩家 1 星币 + 自身 1 层「人偶制作」,自身处于魔女漂浮时该玩家改为 3 星币;
         // 「人偶制作」满 7 层 ⇒ 归零转为「人偶完成」,此后路过额外给该玩家 迅捷 II (1:00) + 3 星币;
-        // 整体每 1:00 仅触发 1 次) + 被动「挚友祝福」(路过装备「怪力侦探」立牌的玩家 ⇒ 该玩家获得
+        // 整体每 1:00 仅触发 1 次) + 第二被动「挚友祝福」(路过装备「怪力侦探」立牌的玩家 ⇒ 该玩家获得
         // 力量 II (1:00) + 抗性提升 (1:00) + 1 层「推理时间」;每 1:00 仅触发 1 次)。
         // 层数计数器读**已同步的效果层数**(客户端 tooltip 不发起 Curios 调用);
         // 键的文案在 lang 里是**静态文案**(无占位符)⇒ addSignLines 不传 args;
@@ -1460,6 +1463,9 @@ public class ModTooltipHandler {
             addSignLines(tooltip, "tooltip.astral_dice.sign.hanna_active");
             addSignPassiveTitle(tooltip, "幻想千金");
             addSignLines(tooltip, "tooltip.astral_dice.sign.hanna_passive");
+            // 第二被动「挚友祝福」:与「怪力侦探立牌」联动,置于备注区(紫色,无标题)
+            tooltip.add(Component.empty());
+            addSignNoteLines(tooltip, "tooltip.astral_dice.sign.hanna_zhishou_zhufu");
             Player hannaViewer = event.getEntity() instanceof Player hp ? hp : null;
             if (hannaViewer != null) {
                 int craftLayers = com.merlinkitsune.astral_dice.effect.HannaDollCraftEffect
@@ -1479,6 +1485,9 @@ public class ModTooltipHandler {
             addSignLines(tooltip, "tooltip.astral_dice.sign.sherry_active");
             addSignPassiveTitle(tooltip, "侦探出击");
             addSignLines(tooltip, "tooltip.astral_dice.sign.sherry_passive");
+            // 第二被动「挚友守护」:与「人偶师立牌」联动,置于备注区(紫色,无标题)
+            tooltip.add(Component.empty());
+            addSignNoteLines(tooltip, "tooltip.astral_dice.sign.sherry_zhishou_shouhu");
             Player sherryViewer = event.getEntity() instanceof Player sp ? sp : null;
             if (sherryViewer != null) {
                 int sherryLayers = com.merlinkitsune.astral_dice.effect.SherryReasoningEffect
