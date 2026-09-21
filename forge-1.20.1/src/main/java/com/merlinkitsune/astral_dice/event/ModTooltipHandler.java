@@ -1390,6 +1390,31 @@ public class ModTooltipHandler {
         // 层数计数器读**已同步的效果层数**(客户端 tooltip 不发起 Curios 调用);
         // 键的文案在 lang 里是**静态文案**(无占位符)⇒ addSignLines 不传 args;
         // 计数行走 addSignCounter(sherry_layers 是 "%s/%s" 两参)。块末尾必须调 addSignCooldownRemaining。
+        // 人偶师立牌(hanna):主动「漂浮魔法」(自身获得 魔女漂浮 1:00 —— 移速 +20%、掉落伤害 -100%、
+        // 任何近战攻击被闪避、无法使用末影珍珠) + 被动「幻想千金」(战斗骰点 = 6 ⇒ 1 星币;路过 3 格内
+        // 友方玩家 ⇒ 该玩家 1 星币 + 自身 1 层「人偶制作」,自身处于魔女漂浮时该玩家改为 3 星币;
+        // 「人偶制作」满 7 层 ⇒ 归零转为「人偶完成」,此后路过额外给该玩家 迅捷 II (1:00) + 3 星币;
+        // 整体每 1:00 仅触发 1 次) + 被动「挚友祝福」(路过装备「怪力侦探」立牌的玩家 ⇒ 该玩家获得
+        // 力量 II (1:00) + 抗性提升 (1:00) + 1 层「推理时间」;每 1:00 仅触发 1 次)。
+        // 层数计数器读**已同步的效果层数**;块末尾必须调 addSignCooldownRemaining。
+        if (stack.is(ModItems.HANNA_SIGN.get())) {
+            tooltip.add(Component.empty());
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "漂浮魔法");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.hanna_active");
+            addSignPassiveTitle(tooltip, "幻想千金");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.hanna_passive");
+            if (player != null) {
+                int craftLayers = com.merlinkitsune.astral_dice.effect.HannaDollCraftEffect
+                        .getStacks(player);
+                if (craftLayers > 0) {
+                    addSignCounter(tooltip, "tooltip.astral_dice.sign.hanna_craft_layers",
+                            craftLayers,
+                            com.merlinkitsune.astral_dice.item.sign.HannaSignItem.MAX_CRAFT);
+                }
+            }
+            addSignCooldownRemaining(tooltip, event.getEntity());
+        }
         if (stack.is(ModItems.SHERRY_SIGN.get())) {
             tooltip.add(Component.empty());
             addSignKeyHint(tooltip);

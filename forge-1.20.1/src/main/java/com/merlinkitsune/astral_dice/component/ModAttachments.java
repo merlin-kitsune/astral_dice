@@ -1050,6 +1050,68 @@ public class ModAttachments {
         SHERRY_REASONING_LAYERS.set(player, Math.max(0, value));
     }
 
+    // ══════════════════════════════════════════════════════════════════════════
+    //  人偶师立牌(hanna,2026-09-21)
+    // ══════════════════════════════════════════════════════════════════════════
+
+    /**
+     * 人偶师立牌(hanna)「人偶制作」**层数真值**(0..{@code HannaSignItem.MAX_CRAFT − 1} = 0..6;
+     * 达到 7 时由立牌**归零并转为「人偶完成」**,故本键**永不为 7**)。
+     *
+     * <p>层数的 HUD 显示走 {@code effect/HannaDollCraftEffect} 的镜像效果(层数 = {@code amplifier + 1})。
+     * <b>不 {@code .sync()}</b> —— 客户端 tooltip 的层数计数器读的是**已同步的效果实例**,不读本键。
+     *
+     * <p><b>不跨死亡保留</b>:技能原文未声明死亡保留 ⇒ 按"未声明即不保留"的既定口径处理
+     * (照「剑气」「弱点识破」),故**不**进 {@code AstralData#onPlayerClone} 白名单、
+     * 也**不**占 {@code DeathPreservedBonuses} 槽位。
+     */
+    public static final AttachedDataKey<Integer> HANNA_DOLL_CRAFT_LAYERS =
+            register(AttachedDataKey.builder("hanna_doll_craft_layers", Codec.INT, () -> 0).build());
+
+    /** 人偶师立牌(hanna)「人偶完成」状态(「人偶制作」满 7 层归零转换而来;卸下立牌时清除)。不 {@code .sync()}。 */
+    public static final AttachedDataKey<Boolean> HANNA_DOLL_COMPLETE =
+            register(AttachedDataKey.builder("hanna_doll_complete", Codec.BOOL, () -> false).build());
+
+    /** 人偶师立牌(hanna)被动「幻想千金」的 1:00 触发冷却截止刻(绝对 gameTime;骰点 6 与路过共享)。仅服务端。 */
+    public static final AttachedDataKey<Long> HANNA_FANTASY_COOLDOWN_END =
+            register(AttachedDataKey.builder("hanna_fantasy_cooldown_end", Codec.LONG, () -> 0L).build());
+
+    /** 人偶师立牌(hanna)被动「挚友祝福」的 1:00 触发冷却截止刻(与「幻想千金」各自独立)。仅服务端。 */
+    public static final AttachedDataKey<Long> HANNA_BLESSING_COOLDOWN_END =
+            register(AttachedDataKey.builder("hanna_blessing_cooldown_end", Codec.LONG, () -> 0L).build());
+
+    public static int getHannaDollCraftLayers(net.minecraft.world.entity.player.Player player) {
+        return HANNA_DOLL_CRAFT_LAYERS.get(player);
+    }
+
+    public static void setHannaDollCraftLayers(net.minecraft.world.entity.player.Player player, int value) {
+        HANNA_DOLL_CRAFT_LAYERS.set(player, Math.max(0, value));
+    }
+
+    public static boolean getHannaDollComplete(net.minecraft.world.entity.player.Player player) {
+        return HANNA_DOLL_COMPLETE.get(player);
+    }
+
+    public static void setHannaDollComplete(net.minecraft.world.entity.player.Player player, boolean value) {
+        HANNA_DOLL_COMPLETE.set(player, value);
+    }
+
+    public static long getHannaFantasyCooldownEnd(net.minecraft.world.entity.player.Player player) {
+        return HANNA_FANTASY_COOLDOWN_END.get(player);
+    }
+
+    public static void setHannaFantasyCooldownEnd(net.minecraft.world.entity.player.Player player, long value) {
+        HANNA_FANTASY_COOLDOWN_END.set(player, Math.max(0L, value));
+    }
+
+    public static long getHannaBlessingCooldownEnd(net.minecraft.world.entity.player.Player player) {
+        return HANNA_BLESSING_COOLDOWN_END.get(player);
+    }
+
+    public static void setHannaBlessingCooldownEnd(net.minecraft.world.entity.player.Player player, long value) {
+        HANNA_BLESSING_COOLDOWN_END.set(player, Math.max(0L, value));
+    }
+
     /** synced 键快照发送(登录/重生/切维度时)。 */
     public static void sendSyncSnapshot(ServerPlayer player) {
         com.merlinkitsune.astral_dice.network.ModNetwork.syncSnapshot(player, syncedKeys());

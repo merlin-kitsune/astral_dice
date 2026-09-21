@@ -231,5 +231,21 @@ public class ModEffects {
     public static final DeferredHolder<MobEffect, MobEffect> SHERRY_REASONING =
             EFFECTS.register("sherry_reasoning", SherryReasoningEffect::new);
 
+    // 人偶制作(人偶师立牌 hanna 专属资源):层数真值在附件(不跨死亡),本效果只做 HUD 镜像
+    // (层数 = amplifier + 1,上限 HannaSignItem.MAX_CRAFT = 7;图标 images/人偶制作.png)。
+    public static final DeferredHolder<MobEffect, MobEffect> HANNA_DOLL_CRAFT =
+            EFFECTS.register("hanna_doll_craft", HannaDollCraftEffect::new);
+
+    // 人偶完成(人偶师立牌 hanna):「人偶制作」满 7 层后**归零转换**而来的常驻状态(用户 2026-09-21 裁决);
+    // 无限时长、不登记 EffectTimerGuard(照 teru 狐光 / mamushi 真龙形态的口径);图标 images/人偶完成.png。
+    public static final DeferredHolder<MobEffect, MobEffect> HANNA_DOLL_COMPLETE =
+            EFFECTS.register("hanna_doll_complete", HannaDollCompleteEffect::new);
+
+    // 魔女漂浮(人偶师立牌 hanna 主动):有限时长 1:00 = 1200 tick,移速 +20%(ADD_MULTIPLIED_TOTAL);
+    // 掉落免疫 / 近战闪避 / 禁用末影珍珠三条语义在 HannaSignItem 的事件里;
+    // 图标与立牌本体同图(textures/mob_effect/hanna_float.png 逐字节复制)。
+    public static final DeferredHolder<MobEffect, MobEffect> HANNA_FLOAT =
+            EFFECTS.register("hanna_float", HannaFloatEffect::new);
+
     public static final Collection<DeferredHolder<MobEffect, ? extends MobEffect>> ALL = EFFECTS.getEntries();
 }

@@ -1371,6 +1371,24 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('D', ModItems.DIAMOND_DICE.get())
                 .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
                 .save(output::accept);
+
+        // 人偶师立牌(hanna):黄金骰子(无星盘)档。SQS/LEL/TDT
+        // (S=线、Q=白色羊毛、L=皮革、E=空白立牌、T=木棍、D=黄金骰子;空白立牌置中、骰子固定中下)
+        // 同档(黄金骰子无星盘)的 lulu 为 SZS/ZCZ/SDS、padman 为 WYW/TET/TDT、nardis 为 CYC/TET/TDT;
+        // 本配方六个填料的格位与它们(及全部其它立牌)均不复用,材料多重集亦不同 ⇒ 网格全局唯一
+        // (守门:scripts/verify/verify_crafting_recipe_uniqueness.ps1)。
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.HANNA_SIGN.get())
+                .pattern("SQS")
+                .pattern("LEL")
+                .pattern("TDT")
+                .define('E', ModItems.BLANK_SIGN.get())
+                .define('S', Items.STRING)
+                .define('Q', Items.WHITE_WOOL)
+                .define('L', Items.LEATHER)
+                .define('T', Items.STICK)
+                .define('D', ModItems.GOLDEN_DICE.get())
+                .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
+                .save(output::accept);
         // 符卡-福 / 符卡-祸:**无配方**(专属牌,仅由风水师立牌的被动「福祸相倚」与主动「白泽赐福」
         // 及「心意相连」发放,与活体书页/命运的指引等专属牌同一口径:不进随机池、不进合成表)。
     }

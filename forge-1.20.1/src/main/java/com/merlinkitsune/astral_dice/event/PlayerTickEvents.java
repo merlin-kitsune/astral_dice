@@ -162,6 +162,10 @@ public class PlayerTickEvents {
         // ⚠️ Forge 每 tick 派发 START+END 两次 ⇒ tick 会被调两遍;幂等由「有效果 / 无临时牌即早退」保证
         //    (第二遍在清空后自然早退,不会重复扣 usedCost/usedDefenseCost)。
         TemporaryCardUtil.tick(player);
+        // 人偶师立牌(hanna)「幻想千金」/「挚友祝福」:路过友方玩家的判定。
+        // 两条被动各有独立的 1:00 冷却 ⇒ 冷却内只读两个 long 即早退,每 tick 调用安全;
+        // 放在 % 20 早退**之前**,避免"擦身而过只停留几拍"被 20 tick 采样漏掉。
+        com.merlinkitsune.astral_dice.item.sign.HannaSignItem.tickPassing(player);
         if (player.tickCount % 20 != 0) return;
         // 赋能:每 0:30 减少 1 层(剩余 1 层时直接归 0)
         com.merlinkitsune.astral_dice.item.EmpowerManager.tick(player);

@@ -1,0 +1,33 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "D": {
+      "item": "astral_dice:golden_dice"
+    },
+    "E": {
+      "item": "astral_dice:blank_sign"
+    },
+    "L": {
+      "item": "minecraft:leather"
+    },
+    "Q": {
+      "item": "minecraft:white_wool"
+    },
+    "S": {
+      "item": "minecraft:string"
+    },
+    "T": {
+      "item": "minecraft:stick"
+    }
+  },
+  "pattern": [
+    "SQS",
+    "LEL",
+    "TDT"
+  ],
+  "result": {
+    "count": 1,
+    "id": "astral_dice:hanna_sign"
+  }
+}

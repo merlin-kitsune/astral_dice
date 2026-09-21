@@ -397,6 +397,14 @@ public class DiceCombatEvents {
             com.merlinkitsune.astral_dice.item.sign.ZhaoSignItem.onDiceRollResult(player, baseDice);
         }
 
+        // 人偶师立牌(hanna)「幻想千金」:战斗骰点 = 6 ⇒ 佩戴者获得 1 星币。
+        // 「每 1:00 仅触发 1 次」由立牌自己的 hanna_fantasy_cooldown_end 附件保证 ——
+        // 同一挥击命中多个目标会多次进入本处,第二次起被冷却挡下(与 zhao 的实例内 claim 同一目的,
+        // 但 hanna 用真冷却而非静态槽位,因为它的上限就是"1 分钟一次")。
+        if (!player.level().isClientSide()) {
+            com.merlinkitsune.astral_dice.item.sign.HannaSignItem.onDiceRollResult(player, baseDice);
+        }
+
         // 经商立牌(parunan):触发骰神赐福后立即获得 触发时骰点*2 的星光
         if (triggeredBlessing && attackerCurios.isPresent()) {
             var parunanResult = attackerCurios.get().findFirstCurio(s -> s.is(ModItems.PARUNAN_SIGN.get()));

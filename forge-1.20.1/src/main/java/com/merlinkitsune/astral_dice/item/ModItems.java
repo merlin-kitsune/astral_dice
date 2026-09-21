@@ -951,6 +951,18 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(Rarity.EPIC)));
 
+    // 人偶师立牌(命名:hanna,稀有):被动「幻想千金」(战斗骰点 = 6 ⇒ 1 星币;路过 3 格内友方玩家 ⇒
+    // 该玩家 1 星币 + 自身 1 层「人偶制作」,自身处于「魔女漂浮」时该玩家改为 3 星币;「人偶制作」满 7 层
+    // ⇒ 归零转为「人偶完成」,此后路过额外给该玩家 迅捷 II (1:00) + 3 星币;整体每 1:00 仅触发 1 次)
+    // + 被动「挚友祝福」(路过装备「怪力侦探」立牌的玩家 ⇒ 该玩家获得 力量 II (1:00) + 抗性提升 (1:00)
+    // + 1 层「推理时间」;每 1:00 仅触发 1 次)
+    // + 主动「漂浮魔法」(自身 魔女漂浮 1:00:移速 +20%、掉落伤害 -100%、近战攻击被闪避、禁用末影珍珠)。
+    // 稀有品质 = Rarity.RARE;配方 = 黄金骰子(无星盘)档(同 史莱姆 lulu / 上班族 padman)。
+    public static final RegistryObject<Item> HANNA_SIGN = registerItem("hanna_sign",
+            () -> new com.merlinkitsune.astral_dice.item.sign.HannaSignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.RARE)));
+
     // 符卡-福(风水师立牌专属效果牌,传奇=UNCOMMON):目标选择器(任意玩家或自身)⇒ 目标治疗 2 点 + 本出牌轮出牌数 +1;
     // 专属绑定(仅获得者可用)。命名按用户裁决保持卡牌自身命名(fu_card)。
     public static final RegistryObject<Item> FU_CARD = registerItem("fu_card",

@@ -1611,4 +1611,73 @@ public class ModAttachments {
     public static void setSherryReasoningLayers(net.minecraft.world.entity.player.Player player, int value) {
         player.setData(SHERRY_REASONING_LAYERS.get(), Math.max(0, value));
     }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    //  人偶师立牌(hanna,2026-09-21)
+    // ══════════════════════════════════════════════════════════════════════════
+
+    /**
+     * 人偶师立牌(hanna)「人偶制作」**层数真值**(0..{@code HannaSignItem.MAX_CRAFT − 1} = 0..6;
+     * 达到 7 时由立牌**归零并转为「人偶完成」**,故本键**永不为 7**)。
+     *
+     * <p>层数的 HUD 显示走 {@code effect/HannaDollCraftEffect} 的镜像效果(层数 = {@code amplifier + 1})。
+     * <b>不 {@code .sync()}</b> —— 客户端 tooltip 的层数计数器读的是**已同步的效果实例**,不读本键。
+     *
+     * <p><b>不跨死亡保留</b>:技能原文未声明死亡保留 ⇒ 按"未声明即不保留"的既定口径处理
+     * (照「剑气」「弱点识破」),故**不**加 {@code .copyOnDeath()}、也不进 1.20.1 的白名单。
+     */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> HANNA_DOLL_CRAFT_LAYERS =
+            ATTACHMENTS.register("hanna_doll_craft_layers", () -> AttachmentType.builder(() -> 0)
+                    .serialize(Codec.INT)
+                    .build());
+
+    /** 人偶师立牌(hanna)「人偶完成」状态(「人偶制作」满 7 层归零转换而来;卸下立牌时清除)。不 {@code .sync()}。 */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Boolean>> HANNA_DOLL_COMPLETE =
+            ATTACHMENTS.register("hanna_doll_complete", () -> AttachmentType.builder(() -> false)
+                    .serialize(Codec.BOOL)
+                    .build());
+
+    /** 人偶师立牌(hanna)被动「幻想千金」的 1:00 触发冷却截止刻(绝对 gameTime;骰点 6 与路过共享)。仅服务端。 */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> HANNA_FANTASY_COOLDOWN_END =
+            ATTACHMENTS.register("hanna_fantasy_cooldown_end", () -> AttachmentType.builder(() -> 0L)
+                    .serialize(Codec.LONG)
+                    .build());
+
+    /** 人偶师立牌(hanna)被动「挚友祝福」的 1:00 触发冷却截止刻(与「幻想千金」各自独立)。仅服务端。 */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> HANNA_BLESSING_COOLDOWN_END =
+            ATTACHMENTS.register("hanna_blessing_cooldown_end", () -> AttachmentType.builder(() -> 0L)
+                    .serialize(Codec.LONG)
+                    .build());
+
+    public static int getHannaDollCraftLayers(net.minecraft.world.entity.player.Player player) {
+        return player.getData(HANNA_DOLL_CRAFT_LAYERS.get());
+    }
+
+    public static void setHannaDollCraftLayers(net.minecraft.world.entity.player.Player player, int value) {
+        player.setData(HANNA_DOLL_CRAFT_LAYERS.get(), Math.max(0, value));
+    }
+
+    public static boolean getHannaDollComplete(net.minecraft.world.entity.player.Player player) {
+        return player.getData(HANNA_DOLL_COMPLETE.get());
+    }
+
+    public static void setHannaDollComplete(net.minecraft.world.entity.player.Player player, boolean value) {
+        player.setData(HANNA_DOLL_COMPLETE.get(), value);
+    }
+
+    public static long getHannaFantasyCooldownEnd(net.minecraft.world.entity.player.Player player) {
+        return player.getData(HANNA_FANTASY_COOLDOWN_END.get());
+    }
+
+    public static void setHannaFantasyCooldownEnd(net.minecraft.world.entity.player.Player player, long value) {
+        player.setData(HANNA_FANTASY_COOLDOWN_END.get(), Math.max(0L, value));
+    }
+
+    public static long getHannaBlessingCooldownEnd(net.minecraft.world.entity.player.Player player) {
+        return player.getData(HANNA_BLESSING_COOLDOWN_END.get());
+    }
+
+    public static void setHannaBlessingCooldownEnd(net.minecraft.world.entity.player.Player player, long value) {
+        player.setData(HANNA_BLESSING_COOLDOWN_END.get(), Math.max(0L, value));
+    }
 }

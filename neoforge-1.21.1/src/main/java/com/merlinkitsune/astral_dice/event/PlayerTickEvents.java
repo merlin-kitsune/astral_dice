@@ -157,6 +157,10 @@ public class PlayerTickEvents {
         // (效果自然到期 / 被 /effect clear / 离线到期后重登 / 异常残留,四条路径都走这一条)。
         // 必须放在 tickCount % 20 早退**之前**:漏 tick 就会让"效果已结束而临时牌还在"多挂一拍。
         TemporaryCardUtil.tick(player);
+        // 人偶师立牌(hanna)「幻想千金」/「挚友祝福」:路过友方玩家的判定。
+        // 两条被动各有独立的 1:00 冷却 ⇒ 冷却内只读两个 long 即早退,每 tick 调用安全;
+        // 放在 % 20 早退**之前**,避免"擦身而过只停留几拍"被 20 tick 采样漏掉。
+        com.merlinkitsune.astral_dice.item.sign.HannaSignItem.tickPassing(player);
         if (player.tickCount % 20 != 0) return;
         // 赋能:每 0:30 减少 1 层(剩余 1 层时直接归 0)
         com.merlinkitsune.astral_dice.item.EmpowerManager.tick(player);
