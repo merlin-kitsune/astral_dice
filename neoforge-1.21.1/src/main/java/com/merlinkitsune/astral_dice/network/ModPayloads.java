@@ -65,5 +65,10 @@ public class ModPayloads {
                 TargetSelectCancelPayload.STREAM_CODEC,
                 TargetSelectCancelPayload::handle
         );
+        registrar.playToServer(
+                StarCoinWalletPayload.TYPE,
+                StarCoinWalletPayload.STREAM_CODEC,
+                StarCoinWalletPayload::handle
+        );
     }
 }

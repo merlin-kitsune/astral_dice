@@ -975,6 +975,72 @@ When extending this workspace:
 - 新增骰子:在 `ModItems` 静态块注册 `DiceTier` 即可(item 参数必须传 `Supplier` 延迟解析,禁止静态初始化调用 `.get()`)。同时需在帕秋莉手册 `entries/dice/` 新增条目(见「帕秋莉手册同步规范」)。
 - 新增筹码:在 `ModItems` 注册 + `ModCreativeTabs` + `datagen/ModItemModelProvider` + `datagen/ModRecipeProvider` + `curios/tags/item/chip.json` + **`astral_dice:chips` 汇总标签（`data/astral_dice/tags/item/chips.json`）** + lang(名称/tooltip) + `ModTooltipHandler.onItemTooltip` 对应分支(无需任何"筹码类型"判定链);**品质必须按图标边框颜色确定**(蓝=稀有 `Rarity.RARE`、紫=史诗 `Rarity.EPIC`、金=传奇 `Rarity.UNCOMMON`,见「物品图标约定」);属性类筹码(速度轮滑/摩托头盔/夹心饼干)覆写 `ICurioItem.getAttributeModifiers(SlotContext, ResourceLocation, ItemStack)`,修饰器 id 用 `BaseChipItem.attributeModifierId` 按物品派生(同属性不同筹码不得共用 id,否则后装覆盖先装);同时需在帕秋莉手册 `entries/chips_*` 对应流派目录新增条目(见「帕秋莉手册同步规范」)。
 
+## 星币钱包规范（Star Coin Wallet）— 必须遵守（2026-09-21 用户裁决）
+
+### 面额与分层
+
+- **面额**：`1 星币 = 1`、`1 星币袋 = 9`（常量 `economy/StarCoinCurrency` 的
+  `STAR_COIN_VALUE` / `STAR_COIN_BAG_VALUE`）。改面额必须同时核对
+  `StarCoinHammerChipItem.COINS_PER_BAG`（星币锤拆袋）与 `ResourceConversion.STARLIGHT_PER_COIN`
+  （星光 2:1 换星币）—— 三处口径必须一致。
+- **余额账本在前置库**：`starengine_lib` 的 `economy` 包（`StarEngineEconomy` 对外 API +
+  `EconomyStorage` 平台 seam + `StarCoinCommand` + `CommandPermissionGate`）；消费方只做「物品语义」
+  （星币是物品、面额多少、物品栏怎么折算）。
+- 库**不注册任何注册表条目** ⇒ 余额落**玩家持久化 NBT**（`starengine_lib.star_coin_wallet`，离线可读），
+  由 `PlayerEvent.Clone` 显式复制 ⇒ **不受死亡掉落影响**。
+- ⚠️ 改库的 `economy` 包必须 **bump 库版本 + `publishToMavenLocal`**，并同步两版 `gradle.properties`
+  的 `starengine_lib_version` 与 `starengine_lib_version_range` **下界**（库版本不以 `-SNAPSHOT` 结尾
+  ⇒ Gradle 不当它是 changing module，不 bump 就永远解析旧 jar，运行期 `NoClassDefFoundError`）。
+  26.1.2 线仍钉旧版且**未接入**（`StarEngineEconomy` 安全降级为返回 0/false）。
+
+### 交互口径（用户裁决，勿擅自改）
+
+| 入口 | 行为 |
+|---|---|
+| 物品栏左上角**星币钱包按钮**（18×20） | 点击 = 把物品栏 36 格 + **副手**的全部星币/星币袋按面额折算存入。**「存入」只有这一个入口** |
+| **星币**按钮（13×13） | 「兑换」= **取出**：左键取 1 枚、Shift + 左键取尽可能多 |
+| **星币袋**按钮（13×13） | 同上，按袋取 |
+
+- **取出**受**双重约束**：余额可换枚数 ∩ 物品栏剩余空间（空间口径与 `Inventory#add` 一致，= 主物品栏
+  36 格，**副手不参与取出**）；取不出时**零改动**（不扣余额）并在 actionbar 说明原因。
+- **按钮基座坐标与尺寸与 Magic Coins 的同类按钮逐像素一致**，且**生存 / 创造各一套**基座
+  （相对 `guiLeft/guiTop` 的偏移）：
+
+```
+  按钮        尺寸    生存 (x, y)   创造 (x, y)
+  星币钱包    18x20   (2, -24)      (2, -74)
+  星币        13x13   (77, 7)       (127, 5)
+  星币袋      13x13   (77, 23)      (127, 21)
+```
+
+- 创造模式**只在「物品栏」标签页**显示按钮（其它标签页隐藏且不可点）；位置**每帧渲染时重算**
+  （创造栏切标签会移动 `guiLeft/guiTop`）—— 因此悬停高亮**不能**用 `isHovered()`（它在进入
+  `renderWidget` 前就按旧坐标算好了）。
+- 配置偏移叠加在上述基座之上。客户端不建独立界面：按钮注入 `InventoryScreen` /
+  `CreativeModeInventoryScreen`，点击只发 C2S **意图包**（不带数量/金额），
+  全部判定在服务端（`economy/StarCoinWalletActions`）—— 伪造包无法多拿星币。
+
+### 钩子（「获得星币直接入钱包」）
+
+- **发放路径**：唯一中央漏斗 `ResourceConversion.giveItem`（经商立牌 `ParunanSignItem` →
+  `starlightToStarCoins` 同样经过它）⇒ 新增发放路径**只要走漏斗就自动生效**，不得各自加判断。
+- **拾取路径**：`economy/StarCoinPickupHandler`（neo：`ItemEntityPickupEvent.Pre` +
+  `setCanPickup(TriState.FALSE)`；forge：`EntityItemPickupEvent` + `setCanceled(true)`），
+  顺序是**先入账、成功才**阻止拾取并 `discard()` 实体 —— 账本不可用时物品照常进物品栏，
+  **绝不出现「实体被删但钱没到账」**。
+- ⚠️ **物品栏消费口径不得改**：星币锤 `StarCoinHammerChipItem`、铁砧升级等只认物品栏/副手的
+  **实物**星币与星币袋，钱包余额**不参与**这些消耗（用户裁决）。
+
+### 配置（COMMON，7 项；`CONFIG_VERSION 3 → 4`）
+
+`enable_star_coin_wallet`（默认 true）、`deposit_star_coin_on_obtain`（默认 true，**仅在钱包启用时生效**）、
+`star_coin_wallet_offset_x/y`、`star_coin_convert_offset_x/y`、`star_coin_bag_convert_offset_x/y`。
+钱包关闭时**不创建任何按钮**，界面与改动前完全一致。
+
+### 未实现（按用户「未提及的功能一律不实现」）
+
+余额 HUD、`/starcoin pay`、钱包物品、战利品表注入、跨币种换算；**已预留**「星币掉落」的位置。
+
 ## Bountiful 赏金联动规范(可选前置)— 必须遵守
 
 - 联动为纯数据驱动(无 Java 依赖),文件位于 `src/main/resources/data/bountiful/`:

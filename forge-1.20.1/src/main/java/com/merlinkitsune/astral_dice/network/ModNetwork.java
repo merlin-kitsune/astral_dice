@@ -57,6 +57,8 @@ public final class ModNetwork {
                 TargetSelectCancelMessage::encode, TargetSelectCancelMessage::decode, TargetSelectCancelMessage::handle);
         CHANNEL.registerMessage(id++, EnderDieTotemMessage.class,
                 EnderDieTotemMessage::encode, EnderDieTotemMessage::decode, EnderDieTotemMessage::handle);
+        CHANNEL.registerMessage(id++, StarCoinWalletMessage.class,
+                StarCoinWalletMessage::encode, StarCoinWalletMessage::decode, StarCoinWalletMessage::handle);
     }
 
     // === 发送助手(对应 1.21 PacketDistributor 静态方法) ===
@@ -395,6 +397,40 @@ public final class ModNetwork {
             if (target instanceof ServerPlayer serverTarget) {
                 sendToPlayer(serverTarget, packet);
             }
+        }
+    }
+
+    // === 星币钱包按钮点击(C→S) ===
+
+    /**
+     * 客户端只表达「点了哪个按钮」,不带任何数量/金额 —— 存多少、能取多少由服务端按真实
+     * 物品栏与账本决定(见 economy/StarCoinWalletActions)。序数越界时服务端静默丢弃。
+     */
+    public static class StarCoinWalletMessage {
+        private final int action;
+
+        public StarCoinWalletMessage(int action) {
+            this.action = action;
+        }
+
+        public static void encode(StarCoinWalletMessage msg, FriendlyByteBuf buf) {
+            buf.writeVarInt(msg.action);
+        }
+
+        public static StarCoinWalletMessage decode(FriendlyByteBuf buf) {
+            return new StarCoinWalletMessage(buf.readVarInt());
+        }
+
+        public static void handle(StarCoinWalletMessage msg, Supplier<NetworkEvent.Context> ctx) {
+            ctx.get().enqueueWork(() -> {
+                ServerPlayer player = ctx.get().getSender();
+                if (player != null) {
+                    com.merlinkitsune.astral_dice.economy.StarCoinWalletActions.execute(
+                            player,
+                            com.merlinkitsune.astral_dice.economy.StarCoinWalletActions.Action.byOrdinal(msg.action));
+                }
+            });
+            ctx.get().setPacketHandled(true);
         }
     }
 }

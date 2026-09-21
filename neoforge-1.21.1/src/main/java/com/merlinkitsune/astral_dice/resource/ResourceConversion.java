@@ -1,5 +1,6 @@
 package com.merlinkitsune.astral_dice.resource;
 
+import com.merlinkitsune.astral_dice.economy.StarCoinCurrency;
 import com.merlinkitsune.astral_dice.item.chip.AtmChipItem;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.StarLightManager;
@@ -49,8 +50,18 @@ public final class ResourceConversion {
         return gained;
     }
 
-    // 发放物品(背包满则掉落)
+    /**
+     * 发放物品(背包满则掉落)。
+     *
+     * <p><b>星币钱包钩子</b>:钱包启用且「获得星币时直接入钱包」打开时,星币/星币袋在**此处**
+     * 被折算进钱包(不进物品栏)。本方法是全模组「给玩家发星币」的中央漏斗,经商立牌
+     * ({@code ParunanSignItem} → {@link #starlightToStarCoins})同样经过它 ⇒ 无需各自改道;
+     * 关闭开关时行为与改动前**逐字一致**。
+     */
     public static void giveItem(Player player, ItemStack stack) {
+        if (StarCoinCurrency.tryAbsorbIntoWallet(player, stack)) {
+            return;
+        }
         if (!player.getInventory().add(stack)) {
             player.drop(stack, false);
         }

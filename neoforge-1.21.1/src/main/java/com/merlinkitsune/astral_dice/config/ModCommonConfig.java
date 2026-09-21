@@ -18,9 +18,11 @@ import net.neoforged.neoforge.common.ModConfigSpec;
  * v2 已用于「移除事件范围与女仆开关」;本次「移除星光上限/标记上限/效果牌公共冷却/功能效果牌叠层上限/手持风扇-大范围
  * (全部回归 GameplayConstants 常量)」**按用户裁决不递增版本号**(当前版本不修改)。
  * v3 用于「新增 `allow_firearm_damage`(枪弹/炮弹类伤害是否计入法伤)」。
+ * v4 用于「新增星币钱包 7 项配置(`enable_star_coin_wallet` / `deposit_star_coin_on_obtain` +
+ * 钱包与两个兑换按钮的 x/y 偏移)」。
  */
 public final class ModCommonConfig {
-    public static final int CONFIG_VERSION = 3;
+    public static final int CONFIG_VERSION = 4;
 
     public static final ModConfigSpec SPEC;
 
@@ -31,6 +33,14 @@ public final class ModCommonConfig {
     public static final ModConfigSpec.BooleanValue EVENT_APPLY_OPAC;
     public static final ModConfigSpec.IntValue ACTIONBAR_DURATION_TICKS;
     public static final ModConfigSpec.IntValue ACTIONBAR_FADE_TICKS;
+    public static final ModConfigSpec.BooleanValue ENABLE_STAR_COIN_WALLET;
+    public static final ModConfigSpec.BooleanValue DEPOSIT_STAR_COIN_ON_OBTAIN;
+    public static final ModConfigSpec.IntValue STAR_COIN_WALLET_OFFSET_X;
+    public static final ModConfigSpec.IntValue STAR_COIN_WALLET_OFFSET_Y;
+    public static final ModConfigSpec.IntValue STAR_COIN_CONVERT_OFFSET_X;
+    public static final ModConfigSpec.IntValue STAR_COIN_CONVERT_OFFSET_Y;
+    public static final ModConfigSpec.IntValue STAR_COIN_BAG_CONVERT_OFFSET_X;
+    public static final ModConfigSpec.IntValue STAR_COIN_BAG_CONVERT_OFFSET_Y;
 
     static {
         ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
@@ -61,6 +71,34 @@ public final class ModCommonConfig {
                 .defineInRange("actionbar_duration_ticks", 60, 20, 200);
         ACTIONBAR_FADE_TICKS = builder.comment("actionbar 消息最后淡出时长(单位: tick,默认：1 秒)")
                 .defineInRange("actionbar_fade_ticks", 20, 1, 60);
+        builder.pop();
+
+        // === 星币钱包 ===
+        // 面额口径固定为「1 星币 = 1、1 星币袋 = 9」(常量在 item/StarCoinCurrency,不开放配置)。
+        // 余额本体由前置库 starengine_lib 的 economy 账本承载(玩家持久化数据,不受死亡掉落影响)。
+        builder.push("star_coin_wallet").comment("=== 星币钱包 ===");
+        ENABLE_STAR_COIN_WALLET = builder.comment("是否启用星币钱包(默认：true)",
+                        "false = 物品栏不出现钱包按钮,星币/星币袋维持普通物品行为(与改动前一致);",
+                        "true = 物品栏(生存/创造)左上角出现星币钱包按钮,点击可把物品栏与副手持有的",
+                        "       星币/星币袋全部折算存入钱包")
+                .define("enable_star_coin_wallet", true);
+        DEPOSIT_STAR_COIN_ON_OBTAIN = builder.comment("获得星币时是否直接存入钱包(默认：true)",
+                        "**仅在 enable_star_coin_wallet = true 时生效**(钱包关闭时该选项无意义);",
+                        "true = 新获得的星币/星币袋(发放、拾取)直接折算入钱包,不进物品栏;",
+                        "false = 新获得的星币/星币袋照常进物品栏")
+                .define("deposit_star_coin_on_obtain", true);
+        STAR_COIN_WALLET_OFFSET_X = builder.comment("星币钱包按钮位置偏移 X(像素,默认：0; 基座坐标由客户端按生存/创造分别取,见 StarCoinWalletButtons)")
+                .defineInRange("star_coin_wallet_offset_x", 0, -2000, 2000);
+        STAR_COIN_WALLET_OFFSET_Y = builder.comment("星币钱包按钮位置偏移 Y(像素,默认：0)")
+                .defineInRange("star_coin_wallet_offset_y", 0, -2000, 2000);
+        STAR_COIN_CONVERT_OFFSET_X = builder.comment("星币兑换(取出)按钮位置偏移 X(像素,默认：0)")
+                .defineInRange("star_coin_convert_offset_x", 0, -2000, 2000);
+        STAR_COIN_CONVERT_OFFSET_Y = builder.comment("星币兑换(取出)按钮位置偏移 Y(像素,默认：0)")
+                .defineInRange("star_coin_convert_offset_y", 0, -2000, 2000);
+        STAR_COIN_BAG_CONVERT_OFFSET_X = builder.comment("星币袋兑换(取出)按钮位置偏移 X(像素,默认：0)")
+                .defineInRange("star_coin_bag_convert_offset_x", 0, -2000, 2000);
+        STAR_COIN_BAG_CONVERT_OFFSET_Y = builder.comment("星币袋兑换(取出)按钮位置偏移 Y(像素,默认：0)")
+                .defineInRange("star_coin_bag_convert_offset_y", 0, -2000, 2000);
         builder.pop();
 
         SPEC = builder.build();
