@@ -1,7 +1,7 @@
 package com.merlinkitsune.astral_dice.item.chip;
 
 import com.merlinkitsune.starenginelib.item.CuriosCompat;
-import com.merlinkitsune.astral_dice.combat.HostileTargets;
+import com.merlinkitsune.starenginelib.combat.HostileTargets;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.event.RailgunStrikeScheduler;
 import com.merlinkitsune.astral_dice.item.ChargeManager;

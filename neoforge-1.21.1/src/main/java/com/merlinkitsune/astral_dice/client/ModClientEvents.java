@@ -1,6 +1,8 @@
 package com.merlinkitsune.astral_dice.client;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
+import com.merlinkitsune.astral_dice.screen.CardInventoryScreen;
+import com.merlinkitsune.astral_dice.screen.ModMenuTypes;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -15,6 +17,7 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
+import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
 import org.joml.Matrix4f;
 import org.joml.Quaternionf;
@@ -24,6 +27,15 @@ import com.merlinkitsune.starenginelib.client.ActionBarManager;
 import com.merlinkitsune.starenginelib.client.ClientDamageNumbers;
 @EventBusSubscriber(modid = AstralDiceMod.MODID, value = Dist.CLIENT, bus = EventBusSubscriber.Bus.MOD)
 public class ModClientEvents {
+
+    // 菜单界面注册:本类带 @EventBusSubscriber(Dist.CLIENT),**在专用服务端整体不会被加载**,
+    // 故此处引用纯客户端的 CardInventoryScreen 是安全的。
+    // ⚠️ 不要把这个注册挪回 AstralDiceMod(主入口类服务端也加载,运行时 dist 分支拦不住符号解析),
+    // 与 forge-1.20.1 侧 ModClientEvents#onClientSetup 的写法保持对等。
+    @SubscribeEvent
+    public static void registerScreens(RegisterMenuScreensEvent event) {
+        event.register(ModMenuTypes.CARD_INVENTORY.get(), CardInventoryScreen::new);
+    }
 
     @SubscribeEvent
     public static void registerGuiLayers(RegisterGuiLayersEvent event) {

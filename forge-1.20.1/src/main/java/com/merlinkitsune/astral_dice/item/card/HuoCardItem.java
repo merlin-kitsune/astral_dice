@@ -12,6 +12,8 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
+import com.merlinkitsune.starenginelib.combat.HostileTargets;
+import com.merlinkitsune.starenginelib.target.SelectorTargets;
 
 /**
  * 「符卡-祸」(风水师立牌 zhao 的专属伤害效果牌)。

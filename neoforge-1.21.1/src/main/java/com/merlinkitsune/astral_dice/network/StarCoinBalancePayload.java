@@ -1,7 +1,7 @@
 package com.merlinkitsune.astral_dice.network;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
-import com.merlinkitsune.astral_dice.economy.StarCoinWalletState;
+import com.merlinkitsune.starenginelib.economy.StarCoinWalletState;
 
 import io.netty.buffer.ByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;

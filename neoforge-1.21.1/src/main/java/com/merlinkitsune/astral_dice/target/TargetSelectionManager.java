@@ -28,6 +28,8 @@ import java.util.concurrent.ThreadLocalRandom;
 import com.merlinkitsune.starenginelib.target.TargetSelectionAction;
 import com.merlinkitsune.starenginelib.target.TargetSelectionRegistry;
 import com.merlinkitsune.starenginelib.target.TargetType;
+import com.merlinkitsune.starenginelib.target.SelectorTargets;
+import com.merlinkitsune.starenginelib.target.SignSelectionGate;
 /**
  * 目标选择器服务端管理器（权威）。
  *

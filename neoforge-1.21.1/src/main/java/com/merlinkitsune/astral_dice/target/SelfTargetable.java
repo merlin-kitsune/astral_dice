@@ -1,4 +1,5 @@
 package com.merlinkitsune.astral_dice.target;
+import com.merlinkitsune.starenginelib.target.SelectorTargets;
 
 /**
  * 消费方侧（本模组）目标选择「允许对自身使用」扩展点。

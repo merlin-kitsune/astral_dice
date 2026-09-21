@@ -459,7 +459,7 @@ public final class ModNetwork {
 
         public static void handle(StarCoinBalanceMessage msg, Supplier<NetworkEvent.Context> ctx) {
             ctx.get().enqueueWork(() ->
-                    com.merlinkitsune.astral_dice.economy.StarCoinWalletState.setBalance(msg.balance));
+                    com.merlinkitsune.starenginelib.economy.StarCoinWalletState.setBalance(msg.balance));
             ctx.get().setPacketHandled(true);
         }
     }

@@ -1,13 +1,10 @@
 package com.merlinkitsune.astral_dice.combat;
 
-
-import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.component.AppliedStone;
 import com.merlinkitsune.starenginelib.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
 import com.merlinkitsune.astral_dice.component.WeaponEnhancement;
-import com.merlinkitsune.astral_dice.network.DamageNumberPayload;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.item.RenShieldManager;
 import com.merlinkitsune.astral_dice.item.sign.ParunanSignItem;
@@ -15,12 +12,7 @@ import com.merlinkitsune.astral_dice.item.sign.BaseSignItem;
 import com.merlinkitsune.astral_dice.item.sign.MosesSignItem;
 import com.merlinkitsune.astral_dice.item.sign.PandamanSignItem;
 import com.merlinkitsune.astral_dice.effect.WeaknessRevealEffect;
-import com.merlinkitsune.starenginelib.item.BossEntityUtil;
-import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
 import com.merlinkitsune.astral_dice.item.dice.DiceCurioItem;
-import com.merlinkitsune.astral_dice.item.card.ExclusiveCardUtil;
-import com.merlinkitsune.astral_dice.item.HealingManager;
-import com.merlinkitsune.astral_dice.item.InvestigationEventUtil;
 import com.merlinkitsune.astral_dice.item.MarkManager;
 import com.merlinkitsune.astral_dice.item.StarLightManager;
 import com.merlinkitsune.astral_dice.item.sign.MisakiSignItem;
@@ -28,9 +20,6 @@ import com.merlinkitsune.astral_dice.item.sign.MamushiSignItem;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.event.WeirdDiceHandler;
 import com.merlinkitsune.astral_dice.event.CrimsonDiceHandler;
-import com.merlinkitsune.astral_dice.item.sign.PadmanSignItem;
-import com.merlinkitsune.astral_dice.item.sign.JasmineSignItem;
-import com.merlinkitsune.astral_dice.item.sign.LuluSignItem;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
@@ -43,15 +32,10 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.Attributes;
-import net.minecraft.world.entity.animal.Animal;
-import net.minecraft.world.entity.boss.wither.WitherBoss;
-import net.minecraft.world.entity.monster.Monster;
-import net.minecraft.world.entity.monster.warden.Warden;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.item.ProjectileWeaponItem;
 import net.minecraft.world.item.AxeItem;
 import net.minecraft.world.item.MaceItem;
 import net.minecraft.world.item.SwordItem;
@@ -60,20 +44,12 @@ import net.minecraft.world.item.TridentItem;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.event.AnvilUpdateEvent;
-import net.neoforged.neoforge.event.LootTableLoadEvent;
 import net.neoforged.neoforge.event.entity.living.LivingChangeTargetEvent;
 import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
 import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
-import net.neoforged.neoforge.event.entity.living.LivingDropsEvent;
 import net.neoforged.neoforge.event.entity.living.MobEffectEvent;
-import net.neoforged.neoforge.event.entity.player.ItemTooltipEvent;
-import net.neoforged.neoforge.event.entity.ProjectileImpactEvent;
-import net.neoforged.neoforge.event.entity.player.PlayerEvent;
-import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
 import top.theillusivec4.curios.api.CuriosApi;
-import top.theillusivec4.curios.api.type.inventory.ICurioStacksHandler;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -82,38 +58,17 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
-import net.minecraft.world.level.storage.loot.LootPool;
-import net.minecraft.world.level.storage.loot.LootTable;
-import net.minecraft.world.level.storage.loot.entries.LootItem;
-import net.minecraft.world.level.storage.loot.functions.SetItemCountFunction;
-import net.minecraft.world.level.storage.loot.predicates.LootItemRandomChanceCondition;
-import net.minecraft.world.level.storage.loot.providers.number.ConstantValue;
-import net.minecraft.world.level.storage.loot.providers.number.UniformGenerator;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import com.merlinkitsune.astral_dice.item.chip.StarCoinHammerChipItem;
 import com.merlinkitsune.astral_dice.item.chip.PerpetualMotionChipItem;
 import com.merlinkitsune.astral_dice.item.chip.AdvancedPeripheralsChipItem;
 import com.merlinkitsune.astral_dice.item.chip.BufferShieldChipItem;
 import com.merlinkitsune.astral_dice.network.ActionBarPayload;
-import com.merlinkitsune.astral_dice.combat.CardRegistry;
-import com.merlinkitsune.astral_dice.client.KeyBindingSetup;
 import com.merlinkitsune.astral_dice.combat.DiceCombatContext;
-import com.merlinkitsune.astral_dice.damage.ModDamageTypes;
-import com.merlinkitsune.astral_dice.item.sign.FenSignItem;
-import com.merlinkitsune.astral_dice.item.card.EffectCardPeriod;
-import com.merlinkitsune.astral_dice.item.chip.BankCardUnlimitedChipItem;
 import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
-import com.merlinkitsune.astral_dice.item.chip.CursedSwordChipItem;
-import com.merlinkitsune.astral_dice.item.chip.FriendshipBadgeChipItem;
-import com.merlinkitsune.astral_dice.item.chip.RevengeHalberdChipItem;
-import com.merlinkitsune.astral_dice.item.chip.SatelliteChipItem;
-import com.merlinkitsune.astral_dice.item.chip.CurrentCoreChipItem;
 import com.merlinkitsune.astral_dice.item.sign.NancyLuSignItem;
 import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
 import com.merlinkitsune.astral_dice.item.card.FateGuidanceCardItem;
 import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
-import com.merlinkitsune.starenginelib.event.ModEffectRemoval;
+import com.merlinkitsune.starenginelib.combat.HostileTargets;
 
 @EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public class DiceCombatEvents {
@@ -142,6 +97,14 @@ public class DiceCombatEvents {
     //      反击链内不可能再发起一次反击,递归在结构上不成立(不是"限制递归层数")。
     private static int counterDepth = 0;
 
+    // 把两条内部窗口的开关讲给库听(库的 PlayerHostilityTracker 需要它来区分"主动攻击"与"内部波及",
+    // 但窗口状态属本类的玩法实现,不下沉)。
+    static {
+        com.merlinkitsune.starenginelib.combat.InternalDamageWindows.install(
+                DiceCombatEvents::isInternalAoe,
+                DiceCombatEvents::isInCounterChain);
+    }
+
     // 当前是否处于反击链中(供骰战结算 / 闪避 / 反击入口判定)
     public static boolean isInCounterChain() {
         return counterDepth > 0;
@@ -152,7 +115,6 @@ public class DiceCombatEvents {
     public static boolean isInternalAoe() {
         return aoeProcessing;
     }
-
 
     // 检测玩家是否佩戴了七咒之戒(按物品 ID 识别,未安装该模组时返回 false)
     public static boolean hasEnigmaticCurse(Player player) {
@@ -185,7 +147,6 @@ public class DiceCombatEvents {
         }
         return points * (1 - cursePenalty);
     }
-
 
     @SubscribeEvent
     public static void onLivingDamagePre(LivingDamageEvent.Pre event) {
@@ -700,7 +661,6 @@ public class DiceCombatEvents {
         com.merlinkitsune.astral_dice.item.chip.FlashlightChipItem.onAttack(player, target);
     }
 
-
     // 攻击牌耐久消耗(仅在触发骰神赐福的那次攻击执行一次;防御牌/蓄力不消耗)。
     // 普通近战触发与反击伤害注入共用(反击未赐福时作为触发攻击消耗一次耐久)。
     private static void consumeAttackCardDurabilityOnce(Player player, ItemStack diceStack, WeaponEnhancement enhancement) {
@@ -791,8 +751,6 @@ public class DiceCombatEvents {
         consumeDefenseCardDurability(defender, dice, enh);
         ModAttachments.setDefenseCardConsumedThisBlessing(defender, true);
     }
-
-
 
     @SubscribeEvent
     public static void onLivingChangeTarget(LivingChangeTargetEvent event) {
@@ -916,7 +874,6 @@ public class DiceCombatEvents {
         event.setNewDamage(event.getNewDamage() + 1 * (berserk.getAmplifier() + 1));
     }
 
-
     // 虚弱印记:目标受到任意伤害 +10%;攻击者拥有"命运的指引"效果时对带虚弱印记的目标额外 +20%
     /**
      * 骰战外部伤害影响因子:作用于骰神赐福最终伤害的乘算修饰器。
@@ -951,7 +908,6 @@ public class DiceCombatEvents {
         });
     }
 
-
     // 伤害放大须先于 ChipDamageHandler(安全气囊,LOWEST)执行,故用 LOW
     @SubscribeEvent(priority = EventPriority.LOW)
     public static void onWeakMarkDamage(LivingDamageEvent.Pre event) {
@@ -978,7 +934,6 @@ public class DiceCombatEvents {
         var curios = CuriosApi.getCuriosInventory(player);
         return curios.isPresent() && curios.get().findFirstCurio(DiceCurioItem::isDiceItem).isPresent();
     }
-
 
     private static int rollDice(int max) {
         return ThreadLocalRandom.current().nextInt(1, max + 1);

@@ -1,6 +1,6 @@
 package com.merlinkitsune.astral_dice.damage;
 
-import com.merlinkitsune.astral_dice.combat.HostileTargets;
+import com.merlinkitsune.starenginelib.combat.HostileTargets;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LightningBolt;
 import net.minecraft.world.entity.OwnableEntity;

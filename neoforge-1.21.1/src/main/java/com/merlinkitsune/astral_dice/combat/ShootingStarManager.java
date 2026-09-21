@@ -25,6 +25,7 @@ import top.theillusivec4.curios.api.CuriosApi;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import com.merlinkitsune.starenginelib.combat.HostileTargets;
 
 /**
  * 「飞星」筹码（紫色飞星 / 金色飞星）的**唯一执行器**：触发检测、粒子下落编排、命中结算。

@@ -2,7 +2,7 @@ package com.merlinkitsune.astral_dice.client;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.network.ModNetwork;
-import com.merlinkitsune.astral_dice.target.SelectorTargets;
+import com.merlinkitsune.starenginelib.target.SelectorTargets;
 import com.merlinkitsune.starenginelib.client.ActionBarManager;
 import com.merlinkitsune.starenginelib.target.TargetType;
 import net.minecraft.ChatFormatting;

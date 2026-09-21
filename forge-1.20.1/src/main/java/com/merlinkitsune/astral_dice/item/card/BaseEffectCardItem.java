@@ -28,12 +28,13 @@ import com.merlinkitsune.astral_dice.item.sign.KomachiSignItem;
 import com.merlinkitsune.astral_dice.network.ModNetwork;
 import com.merlinkitsune.astral_dice.target.HoldToSelect;
 import com.merlinkitsune.astral_dice.target.SelfTargetable;
-import com.merlinkitsune.astral_dice.target.SignSelectionGate;
+import com.merlinkitsune.starenginelib.target.SignSelectionGate;
 import com.merlinkitsune.astral_dice.target.TargetSelectionManager;
 import com.merlinkitsune.starenginelib.component.GameplayConstants;
 import com.merlinkitsune.starenginelib.target.TargetSelectionAction;
 import com.merlinkitsune.starenginelib.target.TargetSelectionRegistry;
 import com.merlinkitsune.starenginelib.target.TargetType;
+import com.merlinkitsune.starenginelib.target.SelectorTargets;
 
 /**
  * 效果牌统一基类(不再区分"功能效果牌/伤害效果牌")。

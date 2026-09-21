@@ -125,7 +125,7 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
             if (!sign.canBeginSelectorSession(player)) return;
             if (!(player instanceof net.minecraft.server.level.ServerPlayer serverPlayer)) return;
             if (com.merlinkitsune.astral_dice.target.TargetSelectionManager.start(serverPlayer, gatedActionId)) {
-                com.merlinkitsune.astral_dice.target.SignSelectionGate.arm(player, gatedActionId, stack);
+                com.merlinkitsune.starenginelib.target.SignSelectionGate.arm(player, gatedActionId, stack);
             }
             return;
         }
@@ -208,8 +208,8 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
      * 非门控立牌的原流程(performSkill 第 5 步)仍保留默认提示。
      */
     public static void resumeGatedActiveSkill(Player player, String actionId) {
-        com.merlinkitsune.astral_dice.target.SignSelectionGate.Pending pending =
-                com.merlinkitsune.astral_dice.target.SignSelectionGate.take(player, actionId);
+        com.merlinkitsune.starenginelib.target.SignSelectionGate.Pending pending =
+                com.merlinkitsune.starenginelib.target.SignSelectionGate.take(player, actionId);
         if (pending == null) return;
         ItemStack stack = pending.stack();
         // 4. 手持风扇-大/小筹码:确认释放后才发牌(未确认绝不发牌)

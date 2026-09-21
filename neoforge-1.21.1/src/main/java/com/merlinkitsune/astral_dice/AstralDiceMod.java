@@ -9,24 +9,17 @@ import com.merlinkitsune.astral_dice.init.ModCompatibilityCheck;
 import com.merlinkitsune.astral_dice.init.ModCreativeTabs;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.recipe.ModRecipeSerializers;
-import com.merlinkitsune.astral_dice.screen.CardInventoryScreen;
 import com.merlinkitsune.astral_dice.screen.ModMenuTypes;
-import net.minecraft.world.inventory.MenuType;
-import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.config.ModConfig;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
-import net.neoforged.fml.loading.FMLEnvironment;
-import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import top.theillusivec4.curios.api.CuriosApi;
 import top.theillusivec4.curios.api.type.capability.ICurioItem;
-import com.merlinkitsune.astral_dice.combat.CardRegistry;
-import com.merlinkitsune.astral_dice.event.IronSpellbooksCompat;
 
 @Mod(AstralDiceMod.MODID)
 public class AstralDiceMod {
@@ -55,9 +48,14 @@ public class AstralDiceMod {
         }
         // Waystones 传送联动:仅在模组加载时反射注册事件,未安装时静默跳过
         com.merlinkitsune.astral_dice.event.WaystoneWarpCompat.init();
-        if (FMLEnvironment.dist == Dist.CLIENT) {
-            modEventBus.addListener(this::registerScreens);
-        }
+        // ⚠️ 客户端菜单界面(ModMenuTypes.CARD_INVENTORY → CardInventoryScreen)的注册**不在这里**。
+        // CardInventoryScreen 继承 AbstractContainerScreen、签名里带 net.minecraft.client.gui.GuiGraphics,
+        // 属纯客户端类;而本类是**主模组入口,专用服务端同样会加载**。
+        // 在此处用 `FMLEnvironment.dist == Dist.CLIENT` 分支守卫只能拦住**执行**,拦不住**符号解析**:
+        // 只要本方法被调用(JIT/解释器进入且未内联),`CardInventoryScreen::new` 所在的方法引用常量
+        // 就会要求解析其声明类型 ⇒ NoClassDefFoundError。故注册点必须整体搬到**永不加载于服务端**的类:
+        // 见 client/ModClientEvents#registerScreens(@EventBusSubscriber(Dist.CLIENT, bus = MOD))。
+        // (forge-1.20.1 侧从一开始就是这个写法,此处为对齐修正)
     }
 
     // 若配置文件版本号低于当前版本(新增了配置项):备份旧文件,由 NeoForge 加载时继承旧值并补齐新项
@@ -86,10 +84,6 @@ public class AstralDiceMod {
         } catch (Exception e) {
             return 0;
         }
-    }
-
-    private void registerScreens(RegisterMenuScreensEvent event) {
-        event.register(ModMenuTypes.CARD_INVENTORY.get(), CardInventoryScreen::new);
     }
 
     @SubscribeEvent
