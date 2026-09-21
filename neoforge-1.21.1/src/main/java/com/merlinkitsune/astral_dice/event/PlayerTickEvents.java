@@ -144,6 +144,11 @@ public class PlayerTickEvents {
         if (player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
             com.merlinkitsune.astral_dice.item.card.BaseEffectCardItem.tickHeldSelector(serverPlayer);
         }
+        // 星币钱包余额 → 客户端(余额条显示):1 秒节流 + 值变化才发包,覆盖一切改动来源
+        // (自身按钮 / 发币漏斗 / 拾取吸收 / 库的 /starcoin / 第三方 API),见 economy/StarCoinBalanceSync
+        if (player instanceof net.minecraft.server.level.ServerPlayer balanceSyncTarget) {
+            com.merlinkitsune.astral_dice.economy.StarCoinBalanceSync.tick(balanceSyncTarget);
+        }
         // 风水师立牌「白泽赐福」状态机:**每 tick** 做骰神赐福的下降沿检测 + 自检 + 效果续期
         // (不用 MobEffectEvent.Expired:该事件在外力移除/死亡/重连清场时不触发,会漏掉"赐福结束";
         //  下降沿把两条结束路径统一,且不会重复消费跳过计数 —— 见 ZhaoSignItem#tickBlessing)

@@ -1,0 +1,145 @@
+{
+  "case_id": "WALLET-GUI-1.21.1",
+  "title": "星币钱包 GUI 冒烟：物品栏按钮（生存 / 创造两套基座）存在性与位置",
+  "version": "1.21.1",
+  "target": {
+    "type": "feature",
+    "ref": "star-coin-wallet-gui"
+  },
+  "steps": [
+    {
+      "op": "note",
+      "text": "目的：确认星币钱包的三个按钮出现在原版物品栏界面左上角 —— 钱包按钮 18x20（基座 生存 (2,-24) / 创造 (2,-74)）、星币与星币袋按钮各 13x13（基座 生存 (77,7)/(77,23) / 创造 (127,5)/(127,21)），并各自截图交视觉判定。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode survival",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear @s",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/time set midnight",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 300
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamerule doDaylightCycle false",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "note",
+      "text": "生存模式物品栏：打开界面并截图。"
+    },
+    {
+      "op": "inject_key",
+      "key": "e"
+    },
+    {
+      "op": "wait",
+      "ms": 2000
+    },
+    {
+      "op": "screenshot",
+      "tag": "wallet-gui-survival",
+      "mode": "f2"
+    },
+    {
+      "op": "assert",
+      "type": "vision",
+      "image": "wallet-gui-survival",
+      "question": "这是 Minecraft 生存模式的物品栏界面截图。(1) 界面左上角、物品栏格子区域左上方是否可见一个约 18x20 的黄色/金色钱包图标按钮（不是原版合成书按钮）？(2) 在物品栏格子区域的左外侧，是否可见两个纵向排列的约 13x13 小圆形图标按钮（上面是星币、下面是星币袋）？(3) 请给出这三个按钮在图片中的大致像素位置（左上角 x,y）与像素尺寸。若界面上完全看不到任何模组新增按钮，请明确说明「未见新增按钮」。"
+    },
+    {
+      "op": "inject_key",
+      "key": "escape"
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode creative",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "note",
+      "text": "创造模式物品栏：打开界面并截图（基座与生存不同，且只在「物品栏」标签页显示）。"
+    },
+    {
+      "op": "inject_key",
+      "key": "e"
+    },
+    {
+      "op": "wait",
+      "ms": 2000
+    },
+    {
+      "op": "screenshot",
+      "tag": "wallet-gui-creative",
+      "mode": "f2"
+    },
+    {
+      "op": "assert",
+      "type": "vision",
+      "image": "wallet-gui-creative",
+      "question": "这是 Minecraft 创造模式的界面截图（应停在「物品栏」标签页）。(1) 是否可见一个约 18x20 的黄色/金色钱包图标按钮？(2) 是否可见两个约 13x13 的小圆形图标按钮（星币 / 星币袋）？(3) 给出它们的像素位置与尺寸。(4) 这三个按钮是否都完整落在屏幕画面之内（没有被窗口上边缘裁掉）？"
+    },
+    {
+      "op": "inject_key",
+      "key": "escape"
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode survival",
+      "no_esc": true
+    }
+  ],
+  "asserts": [
+    {
+      "type": "crash"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "mixin"
+    },
+    {
+      "type": "absent",
+      "pattern": "(StarCoinWalletButtons|WalletButton)[^\\n]*(Exception|error|failed)",
+      "source": "latest",
+      "scope": "case"
+    }
+  ],
+  "evidence": [
+    "wallet-gui-survival",
+    "wallet-gui-creative"
+  ],
+  "on_fail": "stop"
+}

@@ -265,6 +265,10 @@ public class PlayerLifecycleHandler {
         if (!(event.getEntity() instanceof Player player)) return;
         if (player.level().isClientSide()) return;
         DiceCurioItem.refreshChipSlotCount(player);
+        // 星币钱包余额条:登录时客户端缓存不可信(可能是上次会话残值) ⇒ 无条件重发一次
+        if (player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
+            com.merlinkitsune.astral_dice.economy.StarCoinBalanceSync.forceResend(serverPlayer);
+        }
     }
 
     // 数据包同步(进入世界 / 数据包重载):Curios 自己的处理器在 NORMAL 重建/同步栏位,

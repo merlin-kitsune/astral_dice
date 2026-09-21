@@ -59,6 +59,8 @@ public final class ModNetwork {
                 EnderDieTotemMessage::encode, EnderDieTotemMessage::decode, EnderDieTotemMessage::handle);
         CHANNEL.registerMessage(id++, StarCoinWalletMessage.class,
                 StarCoinWalletMessage::encode, StarCoinWalletMessage::decode, StarCoinWalletMessage::handle);
+        CHANNEL.registerMessage(id++, StarCoinBalanceMessage.class,
+                StarCoinBalanceMessage::encode, StarCoinBalanceMessage::decode, StarCoinBalanceMessage::handle);
     }
 
     // === 发送助手(对应 1.21 PacketDistributor 静态方法) ===
@@ -430,6 +432,34 @@ public final class ModNetwork {
                             com.merlinkitsune.astral_dice.economy.StarCoinWalletActions.Action.byOrdinal(msg.action));
                 }
             });
+            ctx.get().setPacketHandled(true);
+        }
+    }
+
+    // === 钱包余额(S→C) ===
+
+    /**
+     * 只承载**一个显示用数字**(余额条):客户端拿它渲染,不参与任何判定。
+     * 每玩家最多每秒一次、且只在值变化时发送(见 economy/StarCoinBalanceSync)。
+     */
+    public static class StarCoinBalanceMessage {
+        private final long balance;
+
+        public StarCoinBalanceMessage(long balance) {
+            this.balance = balance;
+        }
+
+        public static void encode(StarCoinBalanceMessage msg, FriendlyByteBuf buf) {
+            buf.writeVarLong(msg.balance);
+        }
+
+        public static StarCoinBalanceMessage decode(FriendlyByteBuf buf) {
+            return new StarCoinBalanceMessage(buf.readVarLong());
+        }
+
+        public static void handle(StarCoinBalanceMessage msg, Supplier<NetworkEvent.Context> ctx) {
+            ctx.get().enqueueWork(() ->
+                    com.merlinkitsune.astral_dice.economy.StarCoinWalletState.setBalance(msg.balance));
             ctx.get().setPacketHandled(true);
         }
     }

@@ -70,5 +70,11 @@ public class ModPayloads {
                 StarCoinWalletPayload.STREAM_CODEC,
                 StarCoinWalletPayload::handle
         );
+        // 钱包余额 → 客户端（余额条显示；值变化才发，见 economy/StarCoinBalanceSync）
+        registrar.playToClient(
+                StarCoinBalancePayload.TYPE,
+                StarCoinBalancePayload.STREAM_CODEC,
+                StarCoinBalancePayload::handle
+        );
     }
 }
