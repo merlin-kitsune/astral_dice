@@ -189,7 +189,7 @@
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_X1_SIGNSLOT:slot=astral_dice:sherry_sign:used=1"
+      "pattern": "AP_X1_SIGNSLOT:slot=astral_dice:sherry_sign:slots=[0-9]+:used=1"
     },
     {
       "type": "log",
@@ -214,7 +214,7 @@
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_X1_SIGNSLOT:slot=astral_dice:hanna_sign:used=1"
+      "pattern": "AP_X1_SIGNSLOT:slot=astral_dice:hanna_sign:slots=[0-9]+:used=1"
     },
     {
       "type": "log",

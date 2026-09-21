@@ -80,7 +80,7 @@
     },
     {
       "op": "inject_command",
-      "command": "/astralprobe equipslot chip \"astral_dice:golden_shooting_star_chip\" S2",
+      "command": "/astralprobe slotput S2 chip 1 \"astral_dice:golden_shooting_star_chip\"",
       "no_esc": true
     },
     {

@@ -9917,6 +9917,32 @@ function doSignReset(ctx, tag) {
  * <p>读数:`slot` = 槽内第一件物品的注册 id(`none` = 空)、`slots` = 槽位数、`used` = 非空槽数、
  * `ids` = 槽内全部物品 id 列表。
  */
+/**
+ * 把物品写进指定饰品槽的**指定序号**（`equipslot` 固定写 0 号槽，多件同类饰品会互相覆盖）。
+ *
+ * <p>需求来源：飞星「两枚筹码同装」的用例必须把紫色飞星与金色飞星分别放进 chip 槽的 0 / 1 号，
+ * 而 `equipslot` 两次调用都写 0 号 ⇒ 只剩后写的那枚（2026-09-21 实证：SS-SHARED 靶子只掉 2 点）。
+ *
+ * <p>`/astralprobe slotput <tag> <slot> <index> <item>`；`item` 为注册 id（含 `:` ⇒ 必须加引号）。
+ * 读数与 `equipslot` 同形：`AP_<tag>_SLOTPUT:slot=..:index=..:item=..`。
+ */
+function doSlotPut(ctx, tag, slotId, index, itemId) {
+    var p = ctx.source.getPlayerOrException();
+    var item = resolveItem(itemId);
+    if (item == null) { send(ctx, "AP_" + tag + "_ERR:unknown_item:" + itemId); return 0; }
+    var idx = index - 0;
+    if (idx < 0) idx = 0;
+    if (slotId === "chip") {
+        var slotErr = ensureChipSlot(p, CHIP_SLOT_MIN);
+        if (slotErr != null) { send(ctx, "AP_" + tag + "_ERR:" + slotErr); return 0; }
+    }
+    var err = putInSlot(p, slotId, new ItemStack(item), idx);
+    if (err != null) { send(ctx, "AP_" + tag + "_ERR:" + err); return 0; }
+    send(ctx, "AP_" + tag + "_SLOTPUT:slot=" + slotId + ":index=" + idx + ":item=" + itemId);
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
 function doSignSlot(ctx, tag) {
     var p = ctx.source.getPlayerOrException();
     var slots = -1, used = -1, item = "", ids = "", err = "";
@@ -13948,6 +13974,16 @@ ServerEvents.commandRegistry(event => {
                     .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
                         return doSignSlot(ctx, StringArg.getString(ctx, "tag"));
                     }))))
+            .then(Commands.literal("slotput")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("slot", StringArg.word())
+                        .then(Commands.argument("index", IntegerArg.integer(0, 8))
+                            .then(Commands.argument("item", StringArg.string())
+                                .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                                    return doSlotPut(ctx, StringArg.getString(ctx, "tag"),
+                                        StringArg.getString(ctx, "slot"), IntegerArg.getInteger(ctx, "index"),
+                                        StringArg.getString(ctx, "item"));
+                                })))))))
             .then(Commands.literal("signlag")
                 .then(Commands.argument("tag", StringArg.word())
                     .then(Commands.argument("ticks", StringArg.word())
