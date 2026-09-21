@@ -619,7 +619,7 @@
   "tooltip.astral_dice.sign.nancy_lu_bonus": "攻击力：§e+%s§7 | 防御力：§e+%s§r",
   "tooltip.astral_dice.sign.nancy_lu_passive": "免疫末影珍珠传送时的伤害。骰神赐福效果结束后，若周围 §e6§7 格范围内没有敌对生物，则攻击力 §e+3§7 并获得一张随机战斗牌，否则防御力 §e+3§r",
   "tooltip.astral_dice.sign.moses_active": "激活后进入目标选择模式（§930 秒§7 内可选择 §e16§7 格内的普通敌对目标），确认后向其施加 §9破绽 (2:00)§7：目标骰点只能为 §e0§7，会被枪匠闪避；闪避后自动触发反击并获得弱点识破层数加成；取消、超时或目标已带「破绽」则不消耗冷却",
-  "tooltip.astral_dice.sign.moses_passive": "装备时，主动技能冷却时间减为 §9120 秒§r\n触发闪避、反击、或攻击带「破绽」的目标后，获得 §e1§7 层「弱点识破」（最多 §e4§7 层）\n每层「弱点识破」使攻击力/防御力 §e+1§7、骰点最低数 §e+1§7；骰神赐福结束后减少 §e1§7 层",
+  "tooltip.astral_dice.sign.moses_passive": "触发闪避、反击、或攻击带「破绽」的目标后，获得 §e1§7 层「弱点识破」（最多 §e4§7 层）\n每层「弱点识破」使攻击力/防御力 §e+1§7、骰点最低数 §e+1§7；骰神赐福结束后减少 §e1§7 层",
   "tooltip.astral_dice.sign.moses_weakness_reveal": "弱点识破：§e%s§7 / §e%s§r",
   "tooltip.astral_dice.sign.padman_active": "重置被动计数器，本次攻击/防御点数取最大值",
   "tooltip.astral_dice.sign.padman_bonus": "攻击力：§e%s§7 | 防御力：§e%s§r",
@@ -759,5 +759,13 @@
   "astral_dice.guide.entry.attack_card_bite.1": "撕咬（专属战斗牌，与专属效果牌一样，无法被其他方式获取，只能由获得者使用）：费用 2，耐久 1。装备该战斗牌并触发「骰神赐福」后，获得 1 层「觉醒」，使玩家攻击力增加当前觉醒层数（最多 4 点），持续到当前骰神赐福效果结束。",
   "astral_dice.guide.entry.attack_card_bite.2": "专属战斗牌：无法被其他方式获取，只能由获得者使用。由蛟龙立牌的主动技能发放。",
   "astral_dice.guide.entry.attack_card_dragon_roar.1": "龙之咆哮（专属战斗牌，与专属效果牌一样，无法被其他方式获取，只能由获得者使用）：费用 3，耐久 5。攻击力 +3，被攻击的目标获得 缓慢 III (1:00)，并减少 4 点防御。",
-  "astral_dice.guide.entry.attack_card_dragon_roar.2": "专属战斗牌：无法被其他方式获取，只能由获得者使用。由蛟龙立牌的主动技能发放，或由手牌中的「撕咬」转换而来。"
+  "astral_dice.guide.entry.attack_card_dragon_roar.2": "专属战斗牌：无法被其他方式获取，只能由获得者使用。由蛟龙立牌的主动技能发放，或由手牌中的「撕咬」转换而来。",
+  "item.astral_dice.sherry_sign": "怪力侦探立牌",
+  "effect.astral_dice.sherry_reasoning": "推理时间",
+  "effect.astral_dice.sherry_reasoning.description": "每层攻击力 §e+1§7、受到的伤害 §e-1§7；骰神赐福结束后减少 §e1§7 层",
+  "tooltip.astral_dice.sign.sherry_active": "将 §e12§7 格内所有敌对目标扔向面前，随后对被投掷目标造成 §e2§7 点伤害并施加 §e1§7 层「标记」\n  如果玩家「推理时间」达到 §e5§7 层，则对被投掷目标额外造成 §e5§7 点伤害",
+  "tooltip.astral_dice.sign.sherry_passive": "侦探出击：每攻击一个不少于 §e20§7 血的敌对目标，获得一层「推理时间」（最大 §e5§7 层）\n  每层「推理时间」增加 §e1§7 点攻击力，减少 §e1§7 点伤害；每次骰神赐福效果结束后扣除 §e1§7 层「推理时间」\n  挚友守护：同队伍内若存在装备人偶师立牌的玩家，则使该玩家受到的伤害 §e-1§7",
+  "tooltip.astral_dice.sign.sherry_layers": "推理时间：§e%s§7 / §e%s§r",
+  "msg.astral_dice.sherry_no_target": "怪力侦探立牌：范围内没有可投掷的敌对目标",
+  "msg.astral_dice.sherry_throw": "怪力侦探立牌：已投掷 §e%d§7 个敌对目标"
 }

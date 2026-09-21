@@ -226,5 +226,10 @@ public class ModEffects {
      * 不存在「忘记往清单里补一个」的漂移风险;同时**不改变任何既有注册语义**
      * (不新增、不重排、不延迟任何注册调用)。
      */
+    // 推理时间(怪力侦探立牌 sherry 专属资源):层数真值在附件(带 copyOnDeath,死亡不清),
+    // 本效果只做 HUD 镜像(层数 = amplifier + 1,图标 = 立牌同图)。
+    public static final DeferredHolder<MobEffect, MobEffect> SHERRY_REASONING =
+            EFFECTS.register("sherry_reasoning", SherryReasoningEffect::new);
+
     public static final Collection<DeferredHolder<MobEffect, ? extends MobEffect>> ALL = EFFECTS.getEntries();
 }

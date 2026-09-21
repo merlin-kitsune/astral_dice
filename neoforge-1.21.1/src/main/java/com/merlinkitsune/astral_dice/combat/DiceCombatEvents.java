@@ -852,6 +852,8 @@ public class DiceCombatEvents {
         MosesSignItem.onDiceBlessingEnded(player);
         // 蛟龙立牌(mamushi)「撕咬」:赐福结束清除撕咬加成锁存(加成 = min(觉醒,4) 至此失效)
         MamushiSignItem.onDiceBlessingEnded(player);
+        // 怪力侦探立牌(sherry):赐福结束「推理时间」减少 1 层(层数真值在附件,死亡不清)
+        com.merlinkitsune.astral_dice.item.sign.SherrySignItem.onDiceBlessingEnded(player);
 
         var curios = CuriosApi.getCuriosInventory(player);
         if (curios.isEmpty()) return;

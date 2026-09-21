@@ -152,7 +152,7 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
             int forcedCooldown = sign.forcedActiveCooldownTicks();
             int signCooldownTicks = forcedCooldown > 0
                     ? forcedCooldown
-                    : com.merlinkitsune.astral_dice.event.WeirdDiceHandler.signCooldownTicks(player);
+                    : sign.activeCooldownBaseTicks(player);
             if (sign.startActiveLockOnUse(player, now)) {
                 // ★ 本主动施加了"带时长效果/自身计时器"⇒ 进入锁定(生效中)态。
                 //   锁定期间**不写** sign_active_cooldown_end:冷却要等锁定结束才起(第 13 条:无空档);
@@ -339,6 +339,20 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
      */
     protected int forcedActiveCooldownTicks() {
         return 0;
+    }
+
+    /**
+     * 本立牌主动技能的**基础冷却 tick**(仍受既有减免链影响)。
+     *
+     * <p>缺省 = 全局口径 {@code WeirdDiceHandler.signCooldownTicks(player)}(含充能封顶、诡异骰子 −50%
+     * 等全部既有减免)⇒ **其余立牌行为逐字不变**。个别立牌需要**自己的基础值**时覆写本方法
+     * (当前实现者:怪力侦探立牌 sherry = 120 秒,与枪匠立牌同款链)。
+     *
+     * <p>与 {@link #forcedActiveCooldownTicks()} 的区别:后者是「**强制值、不受任何减免**」的硬闸门
+     * (蛟龙立牌 mamushi);本方法是「**自定义基础值、仍走减免链**」。两者同时非默认时,**强制值优先**。
+     */
+    protected int activeCooldownBaseTicks(Player player) {
+        return com.merlinkitsune.astral_dice.event.WeirdDiceHandler.signCooldownTicks(player);
     }
 
     /**

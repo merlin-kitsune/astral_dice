@@ -619,7 +619,7 @@
   "tooltip.astral_dice.sign.nancy_lu_bonus": "Attack: §e+%s§7 | Defense: §e+%s§r",
   "tooltip.astral_dice.sign.nancy_lu_passive": "Immune to Ender Pearl teleport damage. After Dice Blessing ends, if there are no hostiles within §e6§7 blocks, gain §e+3§7 attack and a random battle card; otherwise gain §e+3§7 defense",
   "tooltip.astral_dice.sign.moses_active": "Activation opens the target selector (pick a normal hostile within §e16§7 blocks, §930 seconds§7 window); on confirm the target gains §9Broken (2:00)§7: its dice can only be §e0§7, and it is dodged by the Gunsmith; dodging triggers an automatic counterattack that gains Weakness Insight layer bonuses; cancelling, timing out, or a target that already has Broken consumes no cooldown",
-  "tooltip.astral_dice.sign.moses_passive": "Active cooldown reduced to §9120s§r\nGain §e1§7 Weakness Insight (max §e4§7) after dodging, counterattacking, or attacking a Broken target;\nEach layer: attack/defense §e+1§7 and minimum dice roll §e+1§7. One §e1§7 Weakness Insight layer is removed when a Dice Blessing ends",
+  "tooltip.astral_dice.sign.moses_passive": "Gain §e1§7 Weakness Insight (max §e4§7) after dodging, counterattacking, or attacking a Broken target;\nEach layer: attack/defense §e+1§7 and minimum dice roll §e+1§7. One §e1§7 Weakness Insight layer is removed when a Dice Blessing ends",
   "tooltip.astral_dice.sign.moses_weakness_reveal": "Weakness Insight: §e%s§7 / §e%s§r",
   "tooltip.astral_dice.sign.padman_active": "Reset the passive timer; this combat takes the max ATK/DEF value",
   "tooltip.astral_dice.sign.padman_bonus": "ATK: §e%s§7 | DEF: §e%s§r",
@@ -759,5 +759,13 @@
   "astral_dice.guide.entry.attack_card_bite.1": "Bite (an exclusive combat card, like exclusive effect cards: it cannot be obtained any other way and can only be used by its obtainer): cost 2, 1 use. Equipping this combat card and triggering the Dice Blessing grants 1 Awakening stack and increases your attack power by your current Awakening stacks (up to 4), until the current Dice Blessing ends.",
   "astral_dice.guide.entry.attack_card_bite.2": "An exclusive combat card: it cannot be obtained any other way and can only be used by its obtainer. It is handed out by the Mamushi Sign's active skill.",
   "astral_dice.guide.entry.attack_card_dragon_roar.1": "Dragon's Roar (an exclusive combat card, like exclusive effect cards: it cannot be obtained any other way and can only be used by its obtainer): cost 3, 5 uses. Attack power +3; the target hit gains Slowness III (1:00) and loses 4 defense.",
-  "astral_dice.guide.entry.attack_card_dragon_roar.2": "An exclusive combat card: it cannot be obtained any other way and can only be used by its obtainer. It is handed out by the Mamushi Sign's active skill, or converted from a Bite in your hand."
+  "astral_dice.guide.entry.attack_card_dragon_roar.2": "An exclusive combat card: it cannot be obtained any other way and can only be used by its obtainer. It is handed out by the Mamushi Sign's active skill, or converted from a Bite in your hand.",
+  "item.astral_dice.sherry_sign": "Sherry Sign",
+  "effect.astral_dice.sherry_reasoning": "Reasoning Time",
+  "effect.astral_dice.sherry_reasoning.description": "Each stack grants §e+1§7 attack power and reduces damage taken by §e-1§7; §e1§7 stack is lost when the Dice Blessing ends",
+  "tooltip.astral_dice.sign.sherry_active": "Throw every hostile target within §e12§7 blocks in front of you, then deal §e2§7 damage to each thrown target and apply §e1§7 Mark stack\n  if your Reasoning Time has reached §e5§7 stacks, the thrown targets take §e5§7 extra damage",
+  "tooltip.astral_dice.sign.sherry_passive": "Detective's Strike: attacking a hostile target with at least §e20§7 health grants §e1§7 Reasoning Time stack (max §e5§7)\n  each Reasoning Time stack grants §e1§7 attack power and reduces damage taken by §e1§7; §e1§7 stack is lost after every Dice Blessing ends\n  Friend's Guard: while a teammate wears the Puppeteer Sign, that teammate takes §e-1§7 less damage",
+  "tooltip.astral_dice.sign.sherry_layers": "Reasoning Time: §e%s§7 / §e%s§r",
+  "msg.astral_dice.sherry_no_target": "Sherry Sign: no throwable hostile target in range",
+  "msg.astral_dice.sherry_throw": "Sherry Sign: threw §e%d§7 hostile target(s)"
 }

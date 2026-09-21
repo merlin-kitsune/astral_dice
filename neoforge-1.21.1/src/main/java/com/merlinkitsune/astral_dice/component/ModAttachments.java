@@ -1589,4 +1589,26 @@ public class ModAttachments {
     public static void setMamushiForcedCooldownUntil(net.minecraft.world.entity.player.Player player, long value) {
         player.setData(MAMUSHI_FORCED_COOLDOWN_UNTIL.get(), Math.max(0L, value));
     }
+
+    /**
+     * 怪力侦探立牌(sherry)「推理时间」**层数真值**(0..5)。
+     *
+     * <p><b>为什么必须带 {@code .copyOnDeath()}</b>:用户要求「玩家**死亡不清**推理时间」——
+     * 1.21.1 的非 copyOnDeath 附件在重生后的**新实体**上回默认值,不复制就会在死亡时静默清零。
+     * 层数的 HUD 显示走 {@code effect/SherryReasoningEffect} 的镜像效果(该效果在死亡时被清空,
+     * 重生后由 {@code SherrySignItem#onCurioTick} 按本附件重建)。
+     */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> SHERRY_REASONING_LAYERS =
+            ATTACHMENTS.register("sherry_reasoning_layers", () -> AttachmentType.builder(() -> 0)
+                    .serialize(Codec.INT)
+                    .copyOnDeath()
+                    .build());
+
+    public static int getSherryReasoningLayers(net.minecraft.world.entity.player.Player player) {
+        return player.getData(SHERRY_REASONING_LAYERS.get());
+    }
+
+    public static void setSherryReasoningLayers(net.minecraft.world.entity.player.Player player, int value) {
+        player.setData(SHERRY_REASONING_LAYERS.get(), Math.max(0, value));
+    }
 }

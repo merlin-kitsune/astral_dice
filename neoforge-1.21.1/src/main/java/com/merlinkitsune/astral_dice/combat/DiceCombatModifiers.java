@@ -552,6 +552,14 @@ public final class DiceCombatModifiers {
             return ap;
         });
 
+        // === 内置:怪力侦探立牌(sherry)「推理时间」—— 每层攻击力 +1 ===
+        // 层数真值在附件(死亡不清),这里以**实时谓词**读取、不落地任何状态 ⇒ 层数变化立即体现,
+        // 卸下立牌(clearSignData 归零)后即刻失效。与「弱点识破」同款写法。
+        registerAttackModifier((ctx, ap) -> {
+            if (ctx.attacker.level().isClientSide()) return ap;
+            return ap + com.merlinkitsune.astral_dice.item.sign.SherrySignItem.getLayers(ctx.attacker);
+        });
+
         // === 内置:防御卡掷骰(收集结果写入上下文;目标无骰子时 targetEnhancement 为 null,结果 0)。
         // 防御力规范:骰战防御修饰器仅保留战斗防御牌(区间变动);效果牌/立牌/筹码的防御力
         // 统一折算为真实护甲(1 防御力 = 2 护甲值),由各自 tick 经 setDefenseArmorBonus 挂到 ARMOR 属性,

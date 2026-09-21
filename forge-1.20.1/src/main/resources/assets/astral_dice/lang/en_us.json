@@ -619,7 +619,7 @@
   "tooltip.astral_dice.sign.nancy_lu_bonus": "Attack: §e+%s§7 | Defense: §e+%s§r",
   "tooltip.astral_dice.sign.nancy_lu_passive": "Immune to Ender Pearl teleport damage. After Dice Blessing ends, if there are no hostiles within §e6§7 blocks, gain §e+3§7 attack and a random battle card; otherwise gain §e+3§7 defense",
   "tooltip.astral_dice.sign.moses_active": "Activation opens the target selector (pick a normal hostile within §e16§7 blocks, §930 seconds§7 window); on confirm the target gains §9Broken (2:00)§7: its dice can only be §e0§7, and it is dodged by the Gunsmith; dodging triggers an automatic counterattack that gains Weakness Insight layer bonuses; cancelling, timing out, or a target that already has Broken consumes no cooldown",
-  "tooltip.astral_dice.sign.moses_passive": "Active cooldown reduced to §9120s§r\nGain §e1§7 Weakness Insight (max §e4§7) after dodging, counterattacking, or attacking a Broken target;\nEach layer: attack/defense §e+1§7 and minimum dice roll §e+1§7. One §e1§7 Weakness Insight layer is removed when a Dice Blessing ends",
+  "tooltip.astral_dice.sign.moses_passive": "Gain §e1§7 Weakness Insight (max §e4§7) after dodging, counterattacking, or attacking a Broken target;\nEach layer: attack/defense §e+1§7 and minimum dice roll §e+1§7. One §e1§7 Weakness Insight layer is removed when a Dice Blessing ends",
   "tooltip.astral_dice.sign.moses_weakness_reveal": "Weakness Insight: §e%s§7 / §e%s§r",
   "tooltip.astral_dice.sign.padman_active": "Reset the passive timer; this combat takes the max ATK/DEF value",
   "tooltip.astral_dice.sign.padman_bonus": "ATK: §e%s§7 | DEF: §e%s§r",

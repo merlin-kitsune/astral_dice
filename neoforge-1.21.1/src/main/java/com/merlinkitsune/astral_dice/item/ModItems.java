@@ -946,6 +946,16 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(Rarity.UNCOMMON)));
 
+    // 怪力侦探立牌(命名:sherry,史诗):主动「怪力投掷」把 12 格内全部敌对目标按抛物线扔到玩家面前 2 格,
+    // **落地之后**造成 2 点伤害并施加 1 层「标记」(推理时间满 5 层 ⇒ 额外 5 点);被动「侦探出击」按
+    // 「攻击 ≥20 血敌对目标」累积「推理时间」(上限 5,**死亡不清**,骰神赐福结束后 −1 层),
+    // 「挚友守护」为同队装备人偶师立牌的玩家减伤 1 点。
+    // 史诗品质 = Rarity.EPIC;配方 = 钻石骰子(±星盘)档(同 忍者 komachi / 占星师 haiqing / 骇客 nancy_lu / 枪匠 moses)。
+    public static final DeferredItem<Item> SHERRY_SIGN = registerItem("sherry_sign",
+            () -> new com.merlinkitsune.astral_dice.item.sign.SherrySignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.EPIC)));
+
     // 符卡-福(专属功能效果牌,风水师立牌专属):出牌数 +1;对玩家(不限队伍)或自身使用 ⇒ 恢复 2 点生命值。
     // 专属绑定:获得即绑定获得者(ModDataComponents.OWNER_UUID),他人无法使用。
     public static final DeferredItem<Item> FU_CARD = registerItem("fu_card",
