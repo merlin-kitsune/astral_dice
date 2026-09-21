@@ -9852,6 +9852,47 @@ function doSignReset(ctx, tag) {
  *     前置条件由用例显式给,探针只提供通用的「写星光」能力。
  * 读数:`sign,stand,gate_cleared,star,ls_api` + `domLockStateRead`。
  */
+/**
+ * 只读快照:`stand`(立牌)饰品槽的**实际内容** —— 与具体立牌无关的通用装配证据。
+ *
+ * <p>⚠️ 为什么单独加这条:老读数 `domSignEquipped` 的实现是 `NardisSignItem.isEquipped`
+ * (**只查 `NARDIS_SIGN`**),对 sherry / hanna 等其它立牌**恒为 0**,不能当"是否装上"的判据
+ * (2026-09-21 实测:装配调用已成功、`sign_err` 为空,而 `stand` 仍读 0)。本命令直接回读槽内容,
+ * 任何立牌都适用。
+ *
+ * <p>读数:`slot` = 槽内第一件物品的注册 id(`none` = 空)、`slots` = 槽位数、`used` = 非空槽数、
+ * `ids` = 槽内全部物品 id 列表。
+ */
+function doSignSlot(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var slots = -1, used = -1, item = "", ids = "", err = "";
+    try {
+        var opt = CuriosApi.getCuriosInventory(p);
+        if (opt != null && opt.isPresent()) {
+            var h = opt.get().getStacksHandler("stand");
+            if (h != null && h.isPresent()) {
+                var st = h.get().getStacks();
+                slots = st.getSlots();
+                used = 0;
+                var acc = [];
+                for (var i = 0; i < slots; i++) {
+                    var s = st.getStackInSlot(i);
+                    if (s != null && !s.isEmpty()) {
+                        used = used + 1;
+                        acc.push(itemIdOf(s));
+                    }
+                }
+                item = (acc.length > 0) ? acc[0] : "none";
+                ids = "[" + acc.join(",") + "]";
+            } else { err = "no_slot:stand"; }
+        } else { err = "no_curios"; }
+    } catch (e1) { err = exText(e1); }
+    send(ctx, "AP_" + tag + "_SIGNSLOT:slot=" + item + ":slots=" + slots + ":used=" + used + ":ids=" + ids
+        + (err === "" ? "" : ":err=" + err));
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
 function doSignPrep(ctx, tag, signIdText, starText) {
     var p = ctx.source.getPlayerOrException();
     var signId = "" + signIdText;
@@ -13827,6 +13868,11 @@ ServerEvents.commandRegistry(event => {
                 .then(Commands.argument("tag", StringArg.word())
                     .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
                         return doSignCast(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("signslot")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doSignSlot(ctx, StringArg.getString(ctx, "tag"));
                     }))))
             .then(Commands.literal("signlag")
                 .then(Commands.argument("tag", StringArg.word())

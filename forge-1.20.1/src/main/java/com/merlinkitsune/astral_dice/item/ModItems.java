@@ -977,19 +977,21 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(Rarity.RARE)));
 
-    // 符卡-福(风水师立牌专属效果牌,传奇=UNCOMMON):目标选择器(任意玩家或自身)⇒ 目标治疗 2 点 + 本出牌轮出牌数 +1;
+    // 符卡-福(风水师立牌专属效果牌,**稀有**=RARE;用户 2026-09-21 裁决,原为传奇 UNCOMMON):
+    // 目标选择器(任意玩家或自身)⇒ 目标治疗 2 点 + 本出牌轮出牌数 +1;
     // 专属绑定(仅获得者可用)。命名按用户裁决保持卡牌自身命名(fu_card)。
     public static final RegistryObject<Item> FU_CARD = registerItem("fu_card",
             () -> new FuCardItem(new Item.Properties()
                     .stacksTo(64)
-                    .rarity(Rarity.UNCOMMON)));
+                    .rarity(Rarity.RARE)));
 
-    // 符卡-祸(风水师立牌专属效果牌,传奇=UNCOMMON):目标选择器(敌对目标,含非同队玩家)⇒ 1 点真实伤害;
+    // 符卡-祸(风水师立牌专属效果牌,**稀有**=RARE;用户 2026-09-21 裁决,原为传奇 UNCOMMON):
+    // 目标选择器(敌对目标,含非同队玩家)⇒ 1 点真实伤害;
     // 持有 N 张时「厄运」层数 == N,每 2:00 按当前张数结算伤害。
     public static final RegistryObject<Item> HUO_CARD = registerItem("huo_card",
             () -> new HuoCardItem(new Item.Properties()
                     .stacksTo(64)
-                    .rarity(Rarity.UNCOMMON)));
+                    .rarity(Rarity.RARE)));
 
     public static <T extends Item> RegistryObject<T> registerItem(String name, Supplier<T> itemSupplier) {
         return ITEMS.register(name, itemSupplier);

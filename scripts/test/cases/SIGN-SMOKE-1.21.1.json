@@ -61,6 +61,19 @@
       "no_esc": true
     },
     {
+      "op": "note",
+      "text": "装立牌证据：`signslot` 直接回读 stand 槽的实际内容 —— 老读数 `stand=` 是 `NardisSignItem.isEquipped`（只查 nardis），对 sherry/hanna 恒为 0，不能当装配判据。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe signslot X1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
       "op": "wait",
       "ms": 600
     },
@@ -103,6 +116,15 @@
       "op": "inject_command",
       "command": "/astralprobe signprep X1 \"astral_dice:hanna_sign\"",
       "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe signslot X1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
     },
     {
       "op": "wait",
@@ -162,12 +184,17 @@
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_X1_SIGNPREP:sign=astral_dice:sherry_sign:sign_err=:stand=1"
+      "pattern": "AP_X1_SIGNPREP:sign=astral_dice:sherry_sign:sign_err=:"
     },
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_X1_SHERRY:layers=0:mirror=0:stand=1"
+      "pattern": "AP_X1_SIGNSLOT:slot=astral_dice:sherry_sign:used=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_X1_SHERRY:layers=0:mirror=0"
     },
     {
       "type": "log",
@@ -182,12 +209,17 @@
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_X1_SIGNPREP:sign=astral_dice:hanna_sign:sign_err=:stand=1"
+      "pattern": "AP_X1_SIGNPREP:sign=astral_dice:hanna_sign:sign_err=:"
     },
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_X1_SIGNCAST:.*:sign_after=\\[astral_dice:hanna_sign\\]"
+      "pattern": "AP_X1_SIGNSLOT:slot=astral_dice:hanna_sign:used=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_X1_SIGNCAST:.*:cd_started=1"
     },
     {
       "type": "log",

@@ -984,17 +984,19 @@ public class ModItems {
 
     // 符卡-福(专属功能效果牌,风水师立牌专属):出牌数 +1;对玩家(不限队伍)或自身使用 ⇒ 恢复 2 点生命值。
     // 专属绑定:获得即绑定获得者(ModDataComponents.OWNER_UUID),他人无法使用。
+    // 品质:**稀有**(Rarity.RARE;用户 2026-09-21 裁决,原为传奇 UNCOMMON)。
     public static final DeferredItem<Item> FU_CARD = registerItem("fu_card",
             () -> new FuCardItem(new Item.Properties()
                     .stacksTo(64)
-                    .rarity(Rarity.UNCOMMON)));
+                    .rarity(Rarity.RARE)));
 
     // 符卡-祸(专属伤害效果牌,风水师立牌专属):只能对敌对目标(含非同队玩家)使用 ⇒ 1 点伤害;
     // 持有者每 2:00 按当前张数受伤(厄运层数 == 持有张数)。
+    // 品质:**稀有**(Rarity.RARE;用户 2026-09-21 裁决,原为传奇 UNCOMMON)。
     public static final DeferredItem<Item> HUO_CARD = registerItem("huo_card",
             () -> new HuoCardItem(new Item.Properties()
                     .stacksTo(64)
-                    .rarity(Rarity.UNCOMMON)));
+                    .rarity(Rarity.RARE)));
 
     public static <T extends Item> DeferredItem<T> registerItem(String name, Supplier<T> itemSupplier) {
         return ITEMS.register(name, itemSupplier);
