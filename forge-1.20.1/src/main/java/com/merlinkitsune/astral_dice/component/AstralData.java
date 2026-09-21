@@ -91,7 +91,12 @@ public class AstralData implements INBTSerializable<CompoundTag> {
                         // (规格 §2.5)。与 RIN_PAGES 同构:死亡时立牌从饰品槽掉出,Curios 的 tick 轮询
                         // 会先触发 onUnequip → clearSignData 清零,**早于**克隆复制 ⇒ 除本白名单外
                         // 还需要 DeathPreservedBonuses 的第 3 槽位暂存/回写(两层缺一不可)。
-                        ModAttachments.MAMUSHI_AWAKENING.name()
+                        ModAttachments.MAMUSHI_AWAKENING.name(),
+                        // 2026-09-21 怪力侦探立牌(sherry):「推理时间」需求为「死亡不清」
+                        // (1.21.1 侧是同名键的 .copyOnDeath())。与 MAMUSHI_AWAKENING 同构:
+                        // 死亡时立牌从饰品槽掉出会先经 onUnequip → clearSignData 清零,
+                        // 故除本白名单外还需要 DeathPreservedBonuses 的第 4 槽位(两层缺一不可)。
+                        ModAttachments.SHERRY_REASONING_LAYERS.name()
                 };
                 event.getEntity().getCapability(ModCapabilities.ASTRAL_DATA).ifPresent(newData -> {
                     CompoundTag src = oldData.persistentStore();

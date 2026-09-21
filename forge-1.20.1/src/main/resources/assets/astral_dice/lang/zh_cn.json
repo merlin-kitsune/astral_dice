@@ -759,5 +759,16 @@
   "astral_dice.guide.entry.attack_card_bite.1": "撕咬（专属战斗牌，与专属效果牌一样，无法被其他方式获取，只能由获得者使用）：费用 2，耐久 1。装备该战斗牌并触发「骰神赐福」后，获得 1 层「觉醒」，使玩家攻击力增加当前觉醒层数（最多 4 点），持续到当前骰神赐福效果结束。",
   "astral_dice.guide.entry.attack_card_bite.2": "专属战斗牌：无法被其他方式获取，只能由获得者使用。由蛟龙立牌的主动技能发放。",
   "astral_dice.guide.entry.attack_card_dragon_roar.1": "龙之咆哮（专属战斗牌，与专属效果牌一样，无法被其他方式获取，只能由获得者使用）：费用 3，耐久 5。攻击力 +3，被攻击的目标获得 缓慢 III (1:00)，并减少 4 点防御。",
-  "astral_dice.guide.entry.attack_card_dragon_roar.2": "专属战斗牌：无法被其他方式获取，只能由获得者使用。由蛟龙立牌的主动技能发放，或由手牌中的「撕咬」转换而来。"
+  "astral_dice.guide.entry.attack_card_dragon_roar.2": "专属战斗牌：无法被其他方式获取，只能由获得者使用。由蛟龙立牌的主动技能发放，或由手牌中的「撕咬」转换而来。",
+  "item.astral_dice.sherry_sign": "怪力侦探立牌",
+  "effect.astral_dice.sherry_reasoning": "推理时间",
+  "effect.astral_dice.sherry_reasoning.description": "每层攻击力 §e+1§7、受到的伤害 §e-1§7；骰神赐福结束后减少 §e1§7 层",
+  "tooltip.astral_dice.sign.sherry_active": "将 §e12§7 格内所有敌对目标扔向面前，随后对被投掷目标造成 §e2§7 点伤害并施加 §e1§7 层「标记」\n  如果玩家「推理时间」达到 §e5§7 层，则对被投掷目标额外造成 §e5§7 点伤害",
+  "tooltip.astral_dice.sign.sherry_passive": "侦探出击：每攻击一个不少于 §e20§7 血的敌对目标，获得 §e1§7 层「推理时间」（最大 §e5§7 层）\n  每层「推理时间」增加 §e1§7 点攻击力，减少 §e1§7 点伤害；每次骰神赐福效果结束后扣除 §e1§7 层「推理时间」\n  挚友守护：同队伍内若存在装备人偶师立牌的玩家，则使该玩家受到的伤害 §e-1§7",
+  "tooltip.astral_dice.sign.sherry_layers": "推理时间：§e%s§7 / §e%s§r",
+  "msg.astral_dice.sherry_no_target": "怪力侦探立牌：范围内没有可投掷的敌对目标",
+  "msg.astral_dice.sherry_throw": "怪力侦探立牌：已投掷 §e%d§7 个敌对目标",
+  "astral_dice.guide.entry.sherry_sign.1": "怪力侦探立牌。主动「怪力投掷」：将 12 格内所有敌对目标扔向面前，随后对被投掷目标造成 2 点伤害并施加 1 层「标记」。如果玩家「推理时间」达到 5 层，则对被投掷目标额外造成 5 点伤害。",
+  "astral_dice.guide.entry.sherry_sign.2": "被动「侦探出击」：每攻击一个不少于 20 血的敌对目标，获得一层「推理时间」，最大 5 层。每层「推理时间」增加 1 点攻击力，减少 1 点伤害；每次骰神赐福效果结束后扣除一层「推理时间」。被动「挚友守护」：同队伍内若存在装备人偶师立牌的玩家，则使该玩家受到的伤害 -1。",
+  "astral_dice.guide.entry.sherry_sign.3": "配方：钻石骰子 + 黄金星盘（史诗档），与忍者立牌、占星师立牌、骇客立牌、枪匠立牌同档。"
 }

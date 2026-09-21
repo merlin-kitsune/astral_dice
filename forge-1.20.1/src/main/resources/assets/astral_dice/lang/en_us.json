@@ -759,5 +759,16 @@
   "astral_dice.guide.entry.attack_card_bite.1": "Bite (an exclusive combat card, like exclusive effect cards: it cannot be obtained any other way and can only be used by its obtainer): cost 2, 1 use. Equipping this combat card and triggering the Dice Blessing grants 1 Awakening stack and increases your attack power by your current Awakening stacks (up to 4), until the current Dice Blessing ends.",
   "astral_dice.guide.entry.attack_card_bite.2": "An exclusive combat card: it cannot be obtained any other way and can only be used by its obtainer. It is handed out by the Mamushi Sign's active skill.",
   "astral_dice.guide.entry.attack_card_dragon_roar.1": "Dragon's Roar (an exclusive combat card, like exclusive effect cards: it cannot be obtained any other way and can only be used by its obtainer): cost 3, 5 uses. Attack power +3; the target hit gains Slowness III (1:00) and loses 4 defense.",
-  "astral_dice.guide.entry.attack_card_dragon_roar.2": "An exclusive combat card: it cannot be obtained any other way and can only be used by its obtainer. It is handed out by the Mamushi Sign's active skill, or converted from a Bite in your hand."
+  "astral_dice.guide.entry.attack_card_dragon_roar.2": "An exclusive combat card: it cannot be obtained any other way and can only be used by its obtainer. It is handed out by the Mamushi Sign's active skill, or converted from a Bite in your hand.",
+  "item.astral_dice.sherry_sign": "Sherry Sign",
+  "effect.astral_dice.sherry_reasoning": "Reasoning Time",
+  "effect.astral_dice.sherry_reasoning.description": "Each stack grants §e+1§7 attack power and reduces damage taken by §e-1§7; §e1§7 stack is lost when the Dice Blessing ends",
+  "tooltip.astral_dice.sign.sherry_active": "Throw every hostile target within §e12§7 blocks in front of you, then deal §e2§7 damage to each thrown target and apply §e1§7 Mark stack\n  if your Reasoning Time has reached §e5§7 stacks, the thrown targets take §e5§7 extra damage",
+  "tooltip.astral_dice.sign.sherry_passive": "Detective's Strike: attacking a hostile target with at least §e20§7 health grants §e1§7 Reasoning Time stack (max §e5§7)\n  each Reasoning Time stack grants §e1§7 attack power and reduces damage taken by §e1§7; §e1§7 stack is lost after every Dice Blessing ends\n  Friend's Guard: while a teammate wears the Puppeteer Sign, that teammate takes §e-1§7 less damage",
+  "tooltip.astral_dice.sign.sherry_layers": "Reasoning Time: §e%s§7 / §e%s§r",
+  "msg.astral_dice.sherry_no_target": "Sherry Sign: no throwable hostile target in range",
+  "msg.astral_dice.sherry_throw": "Sherry Sign: threw §e%d§7 hostile target(s)",
+  "astral_dice.guide.entry.sherry_sign.1": "Sherry Sign. Active \"Strong-arm Throw\": hurl every hostile target within 12 blocks to the front, then deal 2 damage to the thrown targets and apply 1 Mark stack. If your Reasoning Time has reached 5 stacks, the thrown targets take 5 extra damage.",
+  "astral_dice.guide.entry.sherry_sign.2": "Passive \"Detective's Strike\": each attack on a hostile target with at least 20 health grants 1 Reasoning Time stack, up to 5 stacks. Each Reasoning Time stack grants +1 attack power and reduces damage taken by 1; 1 stack is lost after every Dice Blessing ends. Passive \"Friend's Guard\": while a teammate wears the Puppeteer Sign, that teammate takes 1 less damage.",
+  "astral_dice.guide.entry.sherry_sign.3": "Recipe: diamond dice + golden star plate (Epic tier), the same tier as the Ninja Sign, Astrologer Sign, Hacker Sign and Gunsmith Sign."
 }

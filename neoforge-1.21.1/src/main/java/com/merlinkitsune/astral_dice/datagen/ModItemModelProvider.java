@@ -94,6 +94,7 @@ public class ModItemModelProvider extends ItemModelProvider {
         basicItem(ModItems.TERU_SIGN.get());
         basicItem(ModItems.NARDIS_SIGN.get());
         basicItem(ModItems.MAMUSHI_SIGN.get());
+        basicItem(ModItems.SHERRY_SIGN.get());
         basicItem(ModItems.FU_CARD.get());
         basicItem(ModItems.HUO_CARD.get());
         // 蛟龙立牌(mamushi)专属战斗牌(2026-09-27)

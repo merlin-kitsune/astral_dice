@@ -851,6 +851,8 @@ public class DiceCombatEvents {
         MosesSignItem.onDiceBlessingEnded(player);
         // 蛟龙立牌(mamushi):赐福结束清除撕咬加成锁存(立牌 tick 另有"无赐福且锁存为真 ⇒ 清"的兜底)
         MamushiSignItem.onDiceBlessingEnded(player);
+        // 怪力侦探立牌(sherry):赐福结束「推理时间」减少 1 层(层数真值在附件,死亡不清)
+        com.merlinkitsune.astral_dice.item.sign.SherrySignItem.onDiceBlessingEnded(player);
         // 风水师立牌(zhao)的「白泽赐福」两分支收尾**不在这里**,也**不**订阅本 Expired 事件:
         // 判定入口 = 玩家级 tick 的下降沿(ZhaoSignItem#tickBlessing,由 PlayerTickEvents 每 tick 驱动;
         // 规格 §4.4 冻结口径)。理由:Expired 在"效果被外力移除 / 死亡 / 重连清场"时不触发会漏掉结束,

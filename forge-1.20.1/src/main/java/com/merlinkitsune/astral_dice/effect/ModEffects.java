@@ -212,6 +212,11 @@ public class ModEffects {
     public static final RegistryObject<MobEffect> DRAGON_ROAR_BREAK =
             EFFECTS.register("dragon_roar_break", DragonRoarBreakEffect::new);
 
+    // 推理时间(怪力侦探立牌 sherry 专属资源):层数真值在附件(死亡保留名单,死亡不清),
+    // 本效果只做 HUD 镜像(层数 = amplifier + 1,图标 = 立牌同图)。
+    public static final RegistryObject<MobEffect> SHERRY_REASONING =
+            EFFECTS.register("sherry_reasoning", SherryReasoningEffect::new);
+
     /**
      * 本模组已注册的全部效果的**只读**视图(调试命令 {@code /astralparty cleareffect} 用)。
      *

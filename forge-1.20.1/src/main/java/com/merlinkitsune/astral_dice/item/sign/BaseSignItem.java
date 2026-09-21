@@ -147,17 +147,18 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
         }
         // 6. 冷却:目标选择器类技能(已进入选择会话)待确认目标后在 apply 中开始冷却;其余立牌立即开始玩家级冷却
         if (!com.merlinkitsune.astral_dice.target.TargetSelectionManager.isSelecting(player)) {
-            // 诡异骰子:立牌主动冷却 -50%
-            int signCooldownTicks = com.merlinkitsune.astral_dice.event.WeirdDiceHandler.signCooldownTicks(player);
             // ★ 强制冷却(规格 §3.4,2026-09-27 蛟龙立牌):forced > 0 时**直接使用该值**,
             //   既不读也不写诡异骰子的减免结果(不可被任何减免绕过);同时把 forced 写进
             //   sign_active_max_cooldown,使电流核心的档位分母与实际冷却一致(但它对 forced
             //   时长本身无效 —— 闸门由第 1 步的 forcedCooldownUntil 覆盖,不依赖本笔入账)。
-            //   缺省实现恒为 0 ⇒ 其余立牌逐字走原流程。
+            //   缺省实现恒为 0 ⇒ 其余立牌走下方基础冷却。
+            // ★ 基础冷却(2026-09-21 怪力侦探立牌 sherry):activeCooldownBaseTicks = **自定义基础值、
+            //   仍走既有减免链**(缺省实现 = WeirdDiceHandler.signCooldownTicks 的诡异骰子 −50% 原口径)
+            //   ⇒ 未覆写者与改动前逐字相同。
             int forced = sign.forcedActiveCooldownTicks();
-            if (forced > 0) {
-                signCooldownTicks = forced;
-            }
+            int signCooldownTicks = forced > 0
+                    ? forced
+                    : sign.activeCooldownBaseTicks(player);
             if (sign.startActiveLockOnUse(player, now)) {
                 // ★ 本主动施加了"带时长效果/自身计时器"⇒ 进入锁定(生效中)态。
                 //   锁定期间**不写** sign_active_cooldown_end:冷却要等锁定结束才起(第 13 条:无空档);
@@ -346,6 +347,23 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
      */
     protected int forcedActiveCooldownTicks() {
         return 0;
+    }
+
+    /**
+     * 本立牌主动技能的**基础冷却 tick**(仍受既有减免链影响)。
+     *
+     * <p>缺省 = 全局口径 {@code WeirdDiceHandler.signCooldownTicks(player)}(含充能封顶、诡异骰子 −50%
+     * 等全部既有减免)⇒ **其余立牌行为逐字不变**。个别立牌需要**自己的基础值**时覆写本方法
+     * (当前实现者:怪力侦探立牌 sherry = 120 秒,与枪匠立牌同款链)。
+     *
+     * <p>与 {@link #forcedActiveCooldownTicks()} 的区别:后者是「**强制值、不受任何减免**」的硬闸门
+     * (蛟龙立牌 mamushi);本方法是「**自定义基础值、仍走减免链**」。两者同时非默认时,**强制值优先**。
+     *
+     * @param player 触发主动的玩家(服务端;覆写者可用它做"是否佩戴本立牌"的分支)
+     * @return 基础冷却 tick 数(缺省 = 全局减免口径)
+     */
+    protected int activeCooldownBaseTicks(Player player) {
+        return com.merlinkitsune.astral_dice.event.WeirdDiceHandler.signCooldownTicks(player);
     }
 
     /**

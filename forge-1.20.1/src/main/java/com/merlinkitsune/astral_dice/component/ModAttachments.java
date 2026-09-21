@@ -1025,6 +1025,31 @@ public class ModAttachments {
         MAMUSHI_FORCED_COOLDOWN_UNTIL.set(player, Math.max(0L, value));
     }
 
+    /**
+     * 怪力侦探立牌(sherry)「推理时间」**层数真值**(0..5)。
+     *
+     * <p><b>为什么必须进死亡保留名单</b>:用户要求「玩家**死亡不清**推理时间」——
+     * 1.21.1 侧是 {@code AttachmentType.Builder#copyOnDeath()} 键;本线对应
+     * {@link AstralData#onPlayerClone} 死亡分支白名单 **+** {@link DeathPreservedBonuses}
+     * 第 4 槽位(立牌掉落触发的 {@code onUnequip → clearSignData} 会抢先清零,两层缺一不可,
+     * 与 {@code mamushi_awakening} 同构)。层数的 HUD 显示走
+     * {@code effect/SherryReasoningEffect} 的镜像效果(该效果在死亡时被清空,重生后由
+     * {@code SherrySignItem#onCurioTick} 按本键重建)。
+     *
+     * <p>不 {@code .sync()}、不加入 {@code SYNCED_KEYS}:客户端 tooltip 的层数计数器读的是
+     * **已同步的效果实例**(SherryReasoningEffect.getStacks),不读本键。
+     */
+    public static final AttachedDataKey<Integer> SHERRY_REASONING_LAYERS =
+            register(AttachedDataKey.builder("sherry_reasoning_layers", Codec.INT, () -> 0).build());
+
+    public static int getSherryReasoningLayers(net.minecraft.world.entity.player.Player player) {
+        return SHERRY_REASONING_LAYERS.get(player);
+    }
+
+    public static void setSherryReasoningLayers(net.minecraft.world.entity.player.Player player, int value) {
+        SHERRY_REASONING_LAYERS.set(player, Math.max(0, value));
+    }
+
     /** synced 键快照发送(登录/重生/切维度时)。 */
     public static void sendSyncSnapshot(ServerPlayer player) {
         com.merlinkitsune.astral_dice.network.ModNetwork.syncSnapshot(player, syncedKeys());

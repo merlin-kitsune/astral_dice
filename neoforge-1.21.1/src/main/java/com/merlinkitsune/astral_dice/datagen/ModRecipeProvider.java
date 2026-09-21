@@ -1358,6 +1358,24 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('D', ModItems.DIAMOND_DICE.get())
                 .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
                 .save(output);
+
+        // 怪力侦探立牌(sherry):钻石骰子 + 黄金星盘档。PBP/AEA/IDI
+        // (P=黄金星盘×2、B=书、E=空白立牌、A=铁砧、I=铁块、D=钻石骰子;空白立牌置中、骰子固定中下)
+        // 同档(钻石骰子+黄金星盘)的 moses/nancy_lu 为 GPG/TCT/PZP 与 YFY/BLW/PZP;
+        // 本配方六个填料的格位与它们(及全部其它立牌)均不复用,网格全局唯一
+        // (守门:scripts/verify/verify_crafting_recipe_uniqueness.ps1)。
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.SHERRY_SIGN.get())
+                .pattern("PBP")
+                .pattern("AEA")
+                .pattern("IDI")
+                .define('E', ModItems.BLANK_SIGN.get())
+                .define('P', ModItems.GOLDEN_STAR_PLATE.get())
+                .define('B', Items.BOOK)
+                .define('A', Items.ANVIL)
+                .define('I', Items.IRON_BLOCK)
+                .define('D', ModItems.DIAMOND_DICE.get())
+                .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
+                .save(output);
         // 符卡-福 / 符卡-祸:**无配方**(专属牌,仅由风水师立牌的被动「福祸相倚」与主动「白泽赐福」
         // 及「心意相连」发放,与活体书页/命运的指引等专属牌同一口径:不进随机池、不进合成表)。
     }

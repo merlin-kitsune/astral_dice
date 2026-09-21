@@ -35,6 +35,8 @@ public final class DeathPreservedBonuses {
     private static final int KOMACHI_DAMAGE_BONUS = 1;
     /** 第 3 槽位:蛟龙立牌(mamushi)觉醒层数(2026-09-27) */
     private static final int MAMUSHI_AWAKENING = 2;
+    /** 第 4 槽位:怪力侦探立牌(sherry)「推理时间」层数(2026-09-21) */
+    private static final int SHERRY_REASONING_LAYERS = 3;
 
     private static final Map<UUID, int[]> PRESERVED = new ConcurrentHashMap<>();
 
@@ -47,7 +49,8 @@ public final class DeathPreservedBonuses {
         PRESERVED.put(player.getUUID(), new int[] {
                 ModAttachments.getRinPages(player),
                 ModAttachments.getKomachiDamageBonus(player),
-                ModAttachments.getMamushiAwakening(player)
+                ModAttachments.getMamushiAwakening(player),
+                ModAttachments.getSherryReasoningLayers(player)
         });
     }
 
@@ -66,6 +69,10 @@ public final class DeathPreservedBonuses {
         // 蛟龙觉醒层数只增不减(卸下立牌才归零)⇒ 同样取较大值即可
         if (preserved[MAMUSHI_AWAKENING] > ModAttachments.getMamushiAwakening(player)) {
             ModAttachments.setMamushiAwakening(player, preserved[MAMUSHI_AWAKENING]);
+        }
+        // 怪力侦探「推理时间」同理:只由赐福结束 / 卸下立牌减少 ⇒ 取较大值幂等
+        if (preserved[SHERRY_REASONING_LAYERS] > ModAttachments.getSherryReasoningLayers(player)) {
+            ModAttachments.setSherryReasoningLayers(player, preserved[SHERRY_REASONING_LAYERS]);
         }
     }
 }
