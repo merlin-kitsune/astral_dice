@@ -1406,6 +1406,30 @@ public class ModTooltipHandler {
         // tooltip.astral_dice.sign.nardis_active)+ 被动「威压」(每装备一张攻击牌攻击力 +1、
         // 每装备一张防御牌防御力 +1;键 tooltip.astral_dice.sign.nardis_passive)。
         // 两个键的文案在 lang 里是**静态文案**(无占位符)⇒ addSignLines 不传 args。
+        // 怪力侦探立牌(sherry):主动「怪力投掷」(非选择器类;把 12 格内全部敌对目标按抛物线扔到玩家
+        // 面前 2 格,**落地之后**才造成 2 点伤害并施加 1 层「标记」,「推理时间」满 5 层 ⇒ 额外 5 点)
+        // + 被动「侦探出击」(攻击 ≥20 血敌对目标 +1 层,上限 5,骰神赐福结束后 −1 层,死亡不清)
+        // + 被动「挚友守护」(同队装备人偶师立牌的玩家受伤 −1)。
+        // 层数计数器读**已同步的效果层数**(客户端 tooltip 不发起 Curios 调用);块末尾必须调 addSignCooldownRemaining。
+        if (stack.is(ModItems.SHERRY_SIGN.get())) {
+            tooltip.add(Component.empty());
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "怪力投掷");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.sherry_active");
+            addSignPassiveTitle(tooltip, "侦探出击");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.sherry_passive");
+            Player sherryViewer = event.getEntity() instanceof Player sp ? sp : null;
+            if (sherryViewer != null) {
+                int sherryLayers = com.merlinkitsune.astral_dice.effect.SherryReasoningEffect
+                        .getStacks(sherryViewer);
+                if (sherryLayers > 0) {
+                    addSignCounter(tooltip, "tooltip.astral_dice.sign.sherry_layers",
+                            sherryLayers,
+                            com.merlinkitsune.astral_dice.item.sign.SherrySignItem.MAX_REASONING);
+                }
+            }
+            addSignCooldownRemaining(tooltip, sherryViewer);
+        }
         if (stack.is(ModItems.NARDIS_SIGN.get())) {
             tooltip.add(Component.empty());
             addSignKeyHint(tooltip);
