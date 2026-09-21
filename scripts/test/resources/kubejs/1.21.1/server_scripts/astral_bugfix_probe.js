@@ -4416,10 +4416,12 @@ function luluAfterTick() {
                     + ":cd_after=" + (signCooldownRemaining(p) > 0 ? 1 : 0));
             } else {
                 emitTo(p, "AP_" + tag + "_AFTER:delay=" + LULU_SETTLE_TICKS
+                    + ":which=" + st.kind
+                    + ":target=" + st.botName
                     + ":anchor_dist=" + st.anchorDist
-                    + ":pig_hp=" + st.pigHp0 + "->" + luluHpR(st.pig)
-                    + ":spider_by_pig=" + (st.spiderByPig == null ? "?" : luluFx(st.spiderByPig, MobEffectsClass.MOVEMENT_SLOWDOWN))
-                    + ":spider_by_pig_present=" + luluPresent(st.spiderByPig)
+                    + ":bot_hp=" + st.botHp0 + "->" + (st.bot == null ? "n/a" : luluHpR(st.bot))
+                    + ":spider_by_bot=" + (st.spiderByBot == null ? "?" : luluFx(st.spiderByBot, MobEffectsClass.MOVEMENT_SLOWDOWN))
+                    + ":spider_by_bot_present=" + luluPresent(st.spiderByBot)
                     + ":spider_by_player=" + (st.spiderByPlayer == null ? "?" : luluFx(st.spiderByPlayer, MobEffectsClass.MOVEMENT_SLOWDOWN))
                     + ":spider_by_player_present=" + luluPresent(st.spiderByPlayer)
                     + ":caster_heal=" + st.heal0 + "->" + luluHealPoints(p));
@@ -4450,9 +4452,19 @@ function luluDiscardNearby(p, radius) {
     try {
         var aabb = AABBClass.ofSize(p.position(), radius * 2, radius * 2, radius * 2);
         var list = p.level.getEntitiesOfClass(LivingEntityClass, aabb);
+        var playerCls = null;
+        try { playerCls = Java.loadClass("net.minecraft.world.entity.player.Player"); } catch (eP) { playerCls = null; }
         for (var i = 0; i < list.size(); i++) {
             var e = list.get(i);
             if (e == p) continue;
+            // ⚠️ **必须保留玩家（含 Carpet 假人）** —— 函数头注释写的是「丢弃半径内全部**非玩家**实体」，
+            //    但旧实现只跳过施法者自己 ⇒ 目标段会在 `confirm` 之前把**目标假人**一起 discard，
+            //    随后 `TargetSelectionManager#confirm` 解析不到该实体 id ⇒
+            //    `confirm FAIL: target_invalid`（实测 2026-09-21，目标 = Bot2 时 100% 复现；
+            //    直接 `apply` 段不受影响，因为它用的是实体对象而不是 id）。
+            if (playerCls != null) {
+                try { if (e instanceof playerCls) continue; } catch (eI) { /* 判不出来就按旧口径处理 */ }
+            }
             try { e.discard(); n = n + 1; } catch (e2) { /* 忽略 */ }
         }
     } catch (e3) { /* 忽略 */ }
@@ -4548,33 +4560,92 @@ function doLuluActive(ctx, tag) {
     return 1;
 }
 
-/** 「锚点段」:直接 apply(锚点 = 24 格外的一只猪),验两项范围能力是否跟着目标走 */
-function doLuluAnchor(ctx, tag) {
+// ── 2026-09-28(C 批:单人专用测试项清理)目标段改造 ─────────────────────────────
+// 旧「锚点段」用 `apply(player, 猪)` 绕过目标选择器,原因是单人世界没有第二名**真实**玩家
+// (TargetType.PLAYER + allowSelf 的自选段只能覆盖「目标 = 自己」)。Carpet 的 `/player` bot 是
+// 真 ServerPlayer ⇒ 「目标 = 另一名玩家」两条路径都能在游戏内走通:
+//   · `luluconfirm` —— **真实链路**:按键开会话 → 服务端 confirm(bot.id) → 管理器校验 → action.apply;
+//   · `luluanchor`  —— 直接 apply(bot)(路由判据:范围中心/受体跟着目标走,不再靠猪当替身)。
+// 两条命令共用同一个 apply 实现体,故只保留一处判据代码。
+
+/** 目标侧只读读数(真实玩家/Carpet bot):在场 + 名字 + 身份 + 血量 + 坐标 */
+function luluTargetRead(t, wanted) {
+    if (t == null) return "found=0:want=" + wanted;
+    var name = wanted;
+    try { name = "" + t.getName().getString(); } catch (e1) { /* 保留 want */ }
+    return "found=1:want=" + wanted + ":name=" + name + ":bot_hp=" + luluHpR(t);
+}
+
+/** 目标名(把「谁被操作」写进字段名,便于两线逐字断言;取不到时用 `-`) */
+function luluNameOf(t) {
+    if (t == null) return "-";
+    try { return "" + t.getName().getString(); } catch (e) { return "-"; }
+}
+
+/**
+ * 目标段主体:把「被指向的目标」换成真实玩家(bot)。
+ * @param which `confirm` = 走真实按键+服务端确认链路;`apply` = 直接调用注册表动作(路由判据)
+ */
+function luluRunTargetSegment(ctx, tag, t, which) {
     var p = ctx.source.getPlayerOrException();
+    var botName = luluNameOf(t);
+    // 目标的位置由**用例**用原版 `/tp <bot> …` 摆好(本函数不注入命令:探针内的 `runCmd` 走
+    // `performPrefixedCommand`,对 Carpet bot 的 `tp` 实测不生效 —— 见 sp_cleanup_report 的说明)。
     luluDiscardNearby(p, 48);
-    var pig = luluSpawnAt(p, "minecraft:pig", 0, 24);
-    if (pig == null) { send(ctx, "AP_" + tag + "_ERR:spawn_failed:anchor"); return 1; }
-    try { pig.setHealth(6); } catch (e1) { /* 忽略 */ }
-    var spiderByPig = luluSpawnAt(pig, "minecraft:spider", 0, 4);
+    var spiderByBot = luluSpawnAt(t, "minecraft:spider", 0, 4);
     var spiderByPlayer = luluSpawnAt(p, "minecraft:spider", 0, 4);
     var heal0 = luluHealPoints(p);
-    var pigHp0 = luluHpR(pig);
-    var anchorDist = luluDistTo(p, pig);   // 实测距离(取代硬编码 24)
-    var err = "";
-    try {
-        var action = TargetSelectionRegistryClass.get(LULU_ACTION_ID);
-        action.apply(p, pig);
-    } catch (e2) { err = exText(e2); }
-    send(ctx, "AP_" + tag + "_ANCHOR:anchor_dist=" + anchorDist + ":pig_hp=" + pigHp0 + "->" + luluHpR(pig)
-        + ":spider_by_pig=" + (spiderByPig == null ? "?" : luluFx(spiderByPig, MobEffectsClass.MOVEMENT_SLOWDOWN))
+    var botHp0 = luluHpR(t);
+    var targetDist = luluDistTo(p, t);   // 实测距离
+    var err = "", session = 0, token = -1, confirmCalled = 0;
+    if (which === "confirm") {
+        try {
+            BaseSignItemClass.performSkillForCurio(p);
+            session = TargetSelectionManagerClass.isSelecting(p) ? 1 : 0;
+            token = TargetSelectionManagerClass.sessionTokenForTests(p);
+            TargetSelectionManagerClass.confirm(p, token, t.getId());
+            confirmCalled = 1;
+        } catch (e2) { err = exText(e2); }
+    } else {
+        try {
+            var action = TargetSelectionRegistryClass.get(LULU_ACTION_ID);
+            action.apply(p, t);
+        } catch (e2b) { err = exText(e2b); }
+    }
+    send(ctx, "AP_" + tag + "_ANCHOR:which=" + which + ":target=" + botName
+        + ":target_dist=" + targetDist + ":bot_hp=" + botHp0 + "->" + luluHpR(t)
+        + ":session=" + session + ":token_seen=" + (token > 0 ? 1 : 0) + ":confirm_called=" + confirmCalled
+        + ":spider_by_bot=" + (spiderByBot == null ? "?" : luluFx(spiderByBot, MobEffectsClass.MOVEMENT_SLOWDOWN))
         + ":spider_by_player=" + (spiderByPlayer == null ? "?" : luluFx(spiderByPlayer, MobEffectsClass.MOVEMENT_SLOWDOWN))
         + ":caster_heal=" + heal0 + "->" + luluHealPoints(p)
+        + ":cd_after=" + (signCooldownRemaining(p) > 0 ? 1 : 0)
         + (err ? ":err=" + err : ""));
-    // 主体瞬间治疗落在**目标(猪)**上:同 tick 读不到 ⇒ 延迟读数;两只蜘蛛各带存在性读数,
+    // 主体瞬间治疗落在**目标(真实玩家)**上:同 tick 读不到 ⇒ 延迟读数;两只蜘蛛各带存在性读数,
     // 杜绝「对象创建了却没进世界 ⇒ 读数 - 也算通过」的负对照假过
-    luluLater("anchor", { player: p, tag: tag, pig: pig, pigHp0: pigHp0, heal0: heal0,
-        spiderByPig: spiderByPig, spiderByPlayer: spiderByPlayer, anchorDist: anchorDist });
+    luluLater(which, { player: p, tag: tag, bot: t, botName: botName, botHp0: botHp0, heal0: heal0,
+        spiderByBot: spiderByBot, spiderByPlayer: spiderByPlayer, anchorDist: targetDist });
     return 1;
+}
+
+/** 「目标段」判据靶解析:按名字取真实玩家(找不到**不**静默降级成「没人」) */
+function luluResolveTarget(ctx, tag, nameText) {
+    var t = teruFindPlayer(ctx, nameText);
+    if (t == null) { send(ctx, "AP_" + tag + "_ERR:no_player:" + nameText); return null; }
+    return t;
+}
+
+/** 目标段·真实确认链路:按键开会话 → 服务端 confirm(bot) → 管理器校验 → action.apply */
+function doLuluConfirm(ctx, tag, nameText) {
+    var t = luluResolveTarget(ctx, tag, nameText);
+    if (t == null) return 1;
+    return luluRunTargetSegment(ctx, tag, t, "confirm");
+}
+
+/** 目标段·直接 apply(路由判据:范围中心与受体跟着目标走,不再用猪当玩家替身) */
+function doLuluAnchor(ctx, tag, nameText) {
+    var t = luluResolveTarget(ctx, tag, nameText);
+    if (t == null) return 1;
+    return luluRunTargetSegment(ctx, tag, t, "apply");
 }
 
 // ── 效果牌 → 目标选择器(2026-09-25)只读读数 ─────────────────────────────────
@@ -5180,37 +5251,34 @@ function doChargeSet(ctx, tag, n) {
 //     /astralprobe teruread <tag> <phase>                只读全量读数
 //     /astralprobe terureg <tag>                         注册与冻结数值读数(物品/标签/效果/常量)
 //     /astralprobe terucast <tag>                        主动门控与目标校验(自身/生物必须被拒)
-//     /astralprobe terucastfake <tag>                    对 FakePlayer 走**真实施法**:快照 50% 与 +3 层
 //     /astralprobe terubot <tag> <name>                  只读:真实玩家(Carpet `/player` bot)是否在线 + 身份读数
 //     /astralprobe teruequipbot <tag> <name>             给真实玩家(bot)装骰子(curios dice 槽;骰战链硬前提)
 //     /astralprobe terublessreal <tag> <give|clear> <name>  给/撤真实玩家(bot)的骰神赐福(骰战链硬前提)
 //     /astralprobe terucastreal <tag> <name>             真实施法指向**真实在线玩家**(Carpet bot):快照 + 双侧读数
 //     /astralprobe terureadreal <tag> <phase> <name>     跨 tick 读双侧(链接存续 / 目标离线后的同 tick 自愈)
 //     /astralprobe teruendreal <tag> <name>              endDescent(真实目标)并立刻读双侧归零
-//     /astralprobe terulink <tag> <atk> <def> <base> <skip> <blessed> <layers> <wm>
-//                                                        单人脚手架:把「自身」写成降神目标以驱动目标侧状态机
+//     /astralprobe terulinkreal <tag> <name> <atk> <def> <base> <skip> <blessed> <layers> <wm>
+//                                                        目标段:目标侧七键写在**真实玩家(bot)**身上、施法者侧给镜像/指针
 //     /astralprobe terubless <tag> <give|clear>          骰神赐福 施加/移除(驱动下降沿)
-//     /astralprobe terufx <tag>                          外力移除降神效果实例(自检路径)
-//     /astralprobe terudie <tag>                         死亡清场钩子读数(死亡边界)
+//     /astralprobe terufx <tag> <name>                   外力移除降神效果实例(自检路径;`-` = 施法者自己)
+//     /astralprobe terudie <tag> <name>                  死亡清场钩子读数(死亡边界;`-` = 施法者自己)
 //     /astralprobe teruguard <tag>                       自目标防护:显示/快照路径不得消耗狐光
 //     /astralprobe terudummy <tag> <d1|d2> <type> <dist> <hp>   摆一只高血量靶(句柄跨命令复用)
-//     /astralprobe teruhit <tag> <d1|d2> <times>         真实近战(骰战链):读层数消耗与追加伤害
-//     /astralprobe teruhitreal <tag> <d1|d2> <times> <name>   真实近战但**攻击者 = 真实玩家(bot)**
+//     /astralprobe teruhitreal <tag> <d1|d2> <times> <name>   真实近战,**攻击者 = 真实玩家(bot)**(骰战链)
 //     /astralprobe terucard <tag> <attack|defense|other|attack_drop> <n>   发牌漏斗计层(含掉落不计)
 //     /astralprobe terudrop <tag>                        守卫①:地面攻击牌(拾取不计层)
 //     /astralprobe teruequip <tag> <first|unequip|again> 守卫②:真实卡牌栏 插入/卸除/再插入
 //     /astralprobe teruclear <tag>                       收尾:清效果/记录/饰品槽/主手
-//   ⚠️ 单人测试世界没有第二名**真实**玩家 ⇒ ③④ 的目标侧用 terulink 把「自身」写成降神目标
-//      (施法者 = 自身;与 lulu 用例直接 apply(锚点) 同一口径,已在读数与用例 note 里写明边界);
-//      ① 的合法玩家目标与 ② 的真实施法改走 FakePlayer(它是真 ServerPlayer,走同一 apply 入口)。
-//   ⚠️ FakePlayer **不在玩家列表**里 ⇒ 施法者侧指针的 tick 自愈解析必然失败(会被同 tick 清零):
-//      因此 terucastfake 的读数全部取在**施法同一次调用内**,随后调用 endDescent 收尾;
-//      「施法者侧加成随链接存续/失效」这条由 terulink(自身=目标,链接可解析)覆盖。
-//   ✅ **2026-09-27 起单人边界被 Carpet: NeoForged 打破**(用户要求向 1.21.1/1.20.1 测试端插入该模组):
-//      `/player <name> spawn` 造出的是**真 ServerPlayer**(在玩家列表里、参与 tick、可被选为目标、
-//      死亡走 disconnect) ⇒ `terucastreal/terureadreal/teruendreal/terubot` 用真目标覆盖:
-//      双人真实联动、跨 tick 链接存续、以及「目标离线 ⇒ 施法者侧同 tick 自愈归零」。
-//      用例:`cases/BOT-2P-<版本>.json`(bot 生命周期 + 上述四条);命令面见 AGENTS.md 的 Carpet 段。
+//   ✅ **2026-09-27 Carpet 玩家 bot 结束了「单人脚手架」时代**:`/player <name> spawn` 造出的是
+//      **真 ServerPlayer**(在玩家列表里、参与 tick、可被选为目标、死亡走 disconnect) ⇒
+//      「另一名玩家」不再需要 FakePlayer 或「自身当目标」的替身:
+//        · 施法快照/双侧派生值/跨 tick 链接存续 → `terucastreal` / `terureadreal` / `teruendreal`;
+//        · 降神目标侧状态机(下降沿 / 效果自检 / 死亡清场)→ `terulinkreal` / `terufx` / `terudie`;
+//        · 狐光「新目标」消耗由被指定者真实近战触发 → `teruhitreal`(攻击者 = bot);
+//        · 「生效中不可重复施放」第二道闸门 → `terugate <tag> <name>`。
+//      —— C 批(2026-09-28)据此**删除**已被取代的单人专用命令:`terucastfake`(FakePlayer 真实施法)、
+//      `teruhit`(攻击者只能是施法者自身)、`terulink`(自身同时当施法者与目标)。
+//      用例:`cases/BOT-2P-<版本>.json`、`cases/TERU-SIGN-<版本>.json`、`cases/TERU-EXTRA-ATTACK-<版本>.json`。
 //   ⚠️ 参数里的 type 是 StringArg.string():用例里必须加引号。
 //   ⚠️ 改探针后必须**冷启动**(stop → launch):/kubejs reload server-scripts 不会重绑已注册命令。
 // ════════════════════════════════════════════════════════════════════════════
@@ -5226,7 +5294,6 @@ var TeruDiceCombatModifiersClass = teruLoadCls("com.merlinkitsune.astral_dice.co
 var TeruCardInventoryMenuClass = teruLoadCls("com.merlinkitsune.astral_dice.screen.CardInventoryMenu");
 var TeruClosePacketClass = teruLoadCls("net.minecraft.network.protocol.game.ClientboundContainerClosePacket");
 var TeruVitaminPillChipItemClass = teruLoadCls("com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem");
-var TeruFakePlayerFactoryClass = teruLoadCls("net.neoforged.neoforge.common.util.FakePlayerFactory");
 var TeruSelectionRegistryClass = teruLoadCls("com.merlinkitsune.starenginelib.target.TargetSelectionRegistry");
 var TeruTargetTypeClass = teruLoadCls("com.merlinkitsune.starenginelib.target.TargetType");
 var OptionalClass = Java.loadClass("java.util.Optional");
@@ -5575,81 +5642,26 @@ function doTeruCast(ctx, tag) {
  * ⚠️ 全部读数取在**施法同一次调用内**(FakePlayer 不在玩家列表 ⇒ 下一 tick 施法者侧派生值
  *    会被 tickCasterSide 视为链接失效而清零,属脚手架边界,不是产品行为);收尾走 endDescent。
  */
-function doTeruCastFake(ctx, tag) {
+function teruOwner(ctx, tag, who, nameText) {
     var p = ctx.source.getPlayerOrException();
-    if (TeruFakePlayerFactoryClass == null) { send(ctx, "AP_" + tag + "_ERR:no_class:FakePlayerFactory"); return 1; }
-    try { resetEffectCardCycle(p); } catch (e0) { /* 忽略 */ }
-    try { TargetSelectionManagerClass.cancelSessionForTests(p); } catch (e1) { /* 忽略 */ }
-    teruClearState(p);
-
-    var fake = null, fakeErr = "";
-    // ⚠️ 不要写 `Java.loadClass("...ServerLevel").cast(p.level)`:Rhino 里 loadClass 拿到的是
-    //    NativeJavaClass,属性查找落在**被表示类(ServerLevel)的静态成员**上 ⇒ `cast` 找不到
-    //    (实测 `Cannot find function cast`);而 `getMinecraft(p.level)` 按运行时类型解析本就可用。
-    try { fake = TeruFakePlayerFactoryClass.getMinecraft(p.level); } catch (e2) { fakeErr = exText(e2); }
-    if (fake == null) { send(ctx, "AP_" + tag + "_ERR:fake_null:" + fakeErr); return 1; }
-    try {
-        var Attrs = Java.loadClass("net.minecraft.world.entity.ai.attributes.Attributes");
-        var atk = fake.getAttribute(Attrs.ATTACK_DAMAGE);
-        if (atk != null) atk.setBaseValue(20.0);
-        var arm = fake.getAttribute(Attrs.ARMOR);
-        if (arm != null) arm.setBaseValue(20.0);
-        var tou = fake.getAttribute(Attrs.ARMOR_TOUGHNESS);
-        if (tou != null) tou.setBaseValue(0.0);
-    } catch (e3) { fakeErr = fakeErr + "|attr:" + exText(e3); }
-
-    var aT = 0, dT = 0, aC = 0, armorBefore = 0;
-    try { aT = TeruDiceCombatModifiersClass.attackPowerOf(fake); } catch (e4) { aT = -1; }
-    try { dT = TeruDiceCombatModifiersClass.defensePowerOf(fake); } catch (e5) { dT = -1; }
-    try { aC = TeruDiceCombatModifiersClass.attackPowerOf(p); } catch (e6) { aC = -1; }
-    try { armorBefore = p.getArmorValue(); } catch (e7) { armorBefore = -1; }
-
-    var ok = -1;
-    try { ok = TeruSignItemClass.castDescent(p, fake) ? 1 : 0; } catch (e8) { ok = -2; fakeErr = fakeErr + "|cast:" + exText(e8); }
-
-    var bonusAtk = 0, bonusDef = 0, base = 0, skip = -1, prev = -1, fxOn = 0, casterOnFake = 0;
-    var layersAfter = 0, cache = 0, armorAfter = 0, newt = -1;
-    try { bonusAtk = ModAttachments.getTeruDescentAtkBonus(fake); } catch (e9) { bonusAtk = -1; }
-    try { bonusDef = ModAttachments.getTeruDescentDefBonus(fake); } catch (e10) { bonusDef = -1; }
-    try { base = ModAttachments.getTeruDescentAttackBase(fake); } catch (e11) { base = -1; }
-    try { skip = ModAttachments.getTeruDescentSkipCycles(fake); } catch (e12) { skip = -1; }
-    try { prev = ModAttachments.isTeruPrevBlessing(fake) ? 1 : 0; } catch (e13) { prev = -1; }
-    try { fxOn = teruFxOn(fake, DESC_TERU_DESCENT); } catch (e14) { fxOn = -1; }
-    try { casterOnFake = ModAttachments.getTeruDescentCaster(fake).isPresent() ? 1 : 0; } catch (e15) { casterOnFake = -1; }
-    try { layersAfter = TeruSignItemClass.getLayers(p); } catch (e16) { layersAfter = -1; }
-    try { cache = ModAttachments.getTeruAtkBonusCache(p); } catch (e17) { cache = -1; }
-    try { armorAfter = p.getArmorValue(); } catch (e18) { armorAfter = -1; }
-    try { newt = teruSetSize(ModAttachments.getTeruDescentNewTargets(fake)); } catch (e19) { newt = -1; }
-
-    // 期望值(用**施法前**的同口径读数算;floor 与产品一致)
-    var expAtk = Math.floor(aT * 0.5);
-    var expDef = Math.floor(dT * 0.5);
-    var expBase = Math.max(0, aC) + expAtk;
-    var atkOk = bonusAtk === expAtk ? 1 : 0;
-    var defOk = bonusDef === expDef ? 1 : 0;
-    var baseOk = base === expBase ? 1 : 0;
-    var cacheOk = cache === expAtk ? 1 : 0;
-    var armorOk = (armorAfter - armorBefore) === (expDef * 2) ? 1 : 0;
-    var layersOk = layersAfter === 3 ? 1 : 0;
-
-    send(ctx, "AP_" + tag + "_CASTFAKE:cast=" + ok
-        + ":A_t=" + aT + ":D_t=" + dT + ":A_c=" + aC
-        + ":bonus_atk=" + bonusAtk + ":bonus_def=" + bonusDef + ":base=" + base
-        + ":exp_atk=" + expAtk + ":exp_def=" + expDef + ":exp_base=" + expBase
-        + ":atk_ok=" + atkOk + ":def_ok=" + defOk + ":base_ok=" + baseOk
-        + ":layers=" + layersAfter + ":layers_ok=" + layersOk
-        + ":cache=" + cache + ":cache_ok=" + cacheOk
-        + ":armor=" + armorBefore + ">" + armorAfter + ":armor_ok=" + armorOk
-        + ":skip=" + skip + ":prev=" + prev + ":fx_on_fake=" + fxOn
-        + ":caster_on_fake=" + casterOnFake + ":newt=" + newt
-        + (fakeErr === "" ? "" : ":note=" + fakeErr));
-
-    // 收尾:endDescent 会同步清掉施法者的镜像缓存/护甲折算(施法者在线)与效果实例
-    try { TeruSignItemClass.endDescent(fake); } catch (e21) { /* 忽略 */ }
-    try { teruClearState(p); } catch (e22) { /* 忽略 */ }
-    return 1;
+    if (nameText == null || ("" + nameText) === "" || ("" + nameText) === "-") {
+        return { ok: true, p: p, who: who + "=self" };
+    }
+    var t = teruFindPlayer(ctx, nameText);
+    if (t == null) { send(ctx, "AP_" + tag + "_ERR:no_player:" + nameText); return { ok: false, p: null, who: "" }; }
+    return { ok: true, p: t, who: who + "=" + nameText };
 }
 
+/**
+ * 目标段产物的**生成入口**(真实玩家侧):`confirm` 走真实按键+服务端确认链路,
+ * `apply` 直接调用注册表动作(路由判据)。两者共用同一个 apply 实现体。
+ * —— C 批(2026-09-28)之前这里是「把**自身**同时写成降神目标与施法者」的单人脚手架。
+ *
+ * <p>先清施法者与目标两侧(上一段的残留在**目标**身上,`teruClearState(施法者)` 清不掉它;
+ * 不清会让 `prev` 仍为 1、跳过本段应有的下降沿),再按段参数写入。
+ *
+ * @param wm 水位字符串(如 `medium=1`);`-` = 保持原值
+ */
 /**
  * 解析**真实在线玩家**（Carpet 的 `/player` bot 也是真 ServerPlayer ⇒ 同一入口）。
  * 只用 PlayerList API；Rhino 下 `ServerPlayer#getUUID`/`getClass` 不可用（见本文件既有踩坑），
@@ -5894,37 +5906,44 @@ function doTeruEndReal(ctx, tag, nameText) {
  * 逐项与 castDescent 的写入口径一一对应(快照值由参数直接给定,故本命令不验证施法算术)。
  * @param wm 水位字符串(如 `medium=1`);`-` = 保持原值
  */
-function doTeruLink(ctx, tag, atkText, defText, baseText, skipText, blessedText, layersText, wmText) {
+function doTeruLinkReal(ctx, tag, nameText, atkText, defText, baseText, skipText, blessedText, layersText, wmText) {
     var p = ctx.source.getPlayerOrException();
-    var atk = teruInt(atkText, 0), def = teruInt(defText, 0), base = teruInt(baseText, 0);
-    var skip = teruInt(skipText, 0), layers = teruInt(layersText, 0);
-    var blessed = ("" + blessedText) === "1";
-    // ⚠️ KubeJS 的方法白名单里没有 `ServerPlayer#getUUID`(实测 `Cannot find function getUUID`),
-    //    故一律走本文件既有的容错取值器 playerUuid(它退到 KubeJS 实体包装的 `p.uuid`)。
-    var uuidInfo = playerUuid(p);
-    if (!uuidInfo.ok) { send(ctx, "AP_" + tag + "_ERR:no_uuid:src=" + uuidInfo.src); return 1; }
-    var uuid = uuidInfo.value;
+    var t = teruFindPlayer(ctx, nameText);
+    if (t == null) { send(ctx, "AP_" + tag + "_ERR:no_player:" + nameText); return 1; }
     try { TargetSelectionManagerClass.cancelSessionForTests(p); } catch (e0) { /* 忽略 */ }
+    // 收尾前先清**目标**再清施法者:施法者侧 tick 的「本次施法前是否已在赐福」判断读的是施法者
+    // **自己**的 prev 标记,而该标记会被「指向该目标的链接仍生效」那几拍写成 1 ⇒ 不清会让本段的
+    // 下降沿判据失真(实测:t_prev 已清为 0、施法者 prev 仍是 1)。
+    teruClearState(t);
     teruClearState(p);
+    teruClearState(t);
+    var pInfo = playerUuid(p);
+    if (!pInfo.ok) { send(ctx, "AP_" + tag + "_ERR:no_uuid:caster:" + pInfo.src); return 1; }
+    var tInfo = playerUuid(t);
+    if (!tInfo.ok) { send(ctx, "AP_" + tag + "_ERR:no_uuid:target:" + tInfo.src); return 1; }
+    var uuid = pInfo.value, tUuid = tInfo.value;
     try {
-        ModAttachments.setTeruDescentCaster(p, OptionalClass.of(uuid));
-        ModAttachments.setTeruDescentAtkBonus(p, atk);
-        ModAttachments.setTeruDescentDefBonus(p, def);
-        ModAttachments.setTeruDescentAttackBase(p, base);
-        ModAttachments.setTeruDescentSkipCycles(p, skip);
-        ModAttachments.setTeruPrevBlessing(p, blessed);
-        ModAttachments.setTeruDescentNewTargets(p, "");
-        ModAttachments.setTeruDescentTarget(p, OptionalClass.of(uuid));
-        ModAttachments.setTeruAtkBonusCache(p, atk);
-        TeruDiceCombatModifiersClass.setDefenseArmorBonus(p, TERU_DEF_ARMOR_KEY, def);
-        TeruDescentEffectClass.apply(p);
-        TeruSignItemClass.setLayers(p, layers);
+        // 目标侧七键(= castDescent 写进 receiver 的那一组)
+        ModAttachments.setTeruDescentCaster(t, OptionalClass.of(uuid));
+        ModAttachments.setTeruDescentAtkBonus(t, teruInt(atkText, 0));
+        ModAttachments.setTeruDescentDefBonus(t, teruInt(defText, 0));
+        ModAttachments.setTeruDescentAttackBase(t, teruInt(baseText, 0));
+        ModAttachments.setTeruDescentSkipCycles(t, teruInt(skipText, 0));
+        ModAttachments.setTeruPrevBlessing(t, ("" + blessedText) === "1");
+        ModAttachments.setTeruDescentNewTargets(t, "");
+        // 施法者侧指针 + 镜像
+        ModAttachments.setTeruDescentTarget(p, OptionalClass.of(tUuid));
+        ModAttachments.setTeruAtkBonusCache(p, teruInt(atkText, 0));
+        TeruDiceCombatModifiersClass.setDefenseArmorBonus(p, TERU_DEF_ARMOR_KEY, teruInt(defText, 0));
+        TeruDescentEffectClass.apply(t);
+        TeruSignItemClass.setLayers(p, teruInt(layersText, 0));
         if (wmText != null && wmText !== "-") ModAttachments.setTeruEquipWatermark(p, "" + wmText);
     } catch (e1) { send(ctx, "AP_" + tag + "_ERR:link_ex:" + exText(e1)); return 1; }
-    if (blessed) {
-        try { p.addEffect(new MobEffectInstanceClass(teruBlessing(), 6000, 0, false, false, true)); } catch (e2) { /* 忽略 */ }
+    if (("" + blessedText) === "1") {
+        try { t.addEffect(new MobEffectInstanceClass(teruBlessing(), 6000, 0, false, false, true)); } catch (e2) { /* 忽略 */ }
     }
-    send(ctx, "AP_" + tag + "_LINK:" + teruStateRead(p));
+    send(ctx, "AP_" + tag + "_LINK:target=" + nameText + ":" + teruStateRead(p));
+    send(ctx, "AP_" + tag + "_LINK_T:" + teruTargetRead(t));
     return 1;
 }
 
@@ -5942,23 +5961,36 @@ function doTeruBless(ctx, tag, mode) {
     return 1;
 }
 
-/** 外力移除降神效果实例(效果自检路径:真值仍在而实例没了 ⇒ 下一 tick 收敛到 endDescent) */
-function doTeruFx(ctx, tag) {
-    var p = ctx.source.getPlayerOrException();
+/**
+ * 外力移除降神效果实例(效果自检路径:真值仍在而实例没了 ⇒ 下一 tick 收敛到 endDescent)。
+ * 操作对象 = `<name>`(真实玩家/bot);名字为 `-` = 施法者自己。
+ * 读数同时给**被操作者**(`AP_<tag>_FX:<who>=…:fx_d_on=…`)与**施法者侧**全量(`…_FX_C:`),
+ * 因为自检收敛的可见后果是「施法者的 cache / 护甲折算同 tick 归零」(endDescent 的施法者分支)。
+ */
+function doTeruFx(ctx, tag, nameText) {
+    var own = teruOwner(ctx, tag, "who", nameText);
+    if (!own.ok) return 1;
+    var o = own.p;
     var err = "";
-    try { TeruDescentEffectClass.remove(p); } catch (e1) { err = exText(e1); }
-    send(ctx, "AP_" + tag + "_FX:removed=" + (err === "" ? 1 : 0) + ":fx_d_on=" + teruFxOn(p, DESC_TERU_DESCENT)
+    try { TeruDescentEffectClass.remove(o); } catch (e1) { err = exText(e1); }
+    send(ctx, "AP_" + tag + "_FX:" + own.who + ":removed=" + (err === "" ? 1 : 0)
+        + ":fx_d_on=" + teruFxOn(o, DESC_TERU_DESCENT)
         + (err === "" ? "" : ":err=" + err));
+    send(ctx, "AP_" + tag + "_FX_C:" + teruStateRead(ctx.source.getPlayerOrException()));
     return 1;
 }
 
-/** 死亡清场钩子(PlayerLifecycleHandler 死亡段调用的同一个产品入口) */
-function doTeruDie(ctx, tag) {
-    var p = ctx.source.getPlayerOrException();
+/** 死亡清场钩子(PlayerLifecycleHandler 死亡段调用的同一个产品入口);操作对象 = `<name>` */
+function doTeruDie(ctx, tag, nameText) {
+    var own = teruOwner(ctx, tag, "who_called", nameText);
+    if (!own.ok) return 1;
+    var o = own.p;
     var err = "";
-    try { TeruSignItemClass.onOwnerDeathCleanup(p); } catch (e1) { err = exText(e1); }
-    send(ctx, "AP_" + tag + "_DIE:called=" + (err === "" ? 1 : 0)
-        + (err === "" ? "" : ":err=" + err) + ":" + teruStateRead(p));
+    try { TeruSignItemClass.onOwnerDeathCleanup(o); } catch (e1) { err = exText(e1); }
+    send(ctx, "AP_" + tag + "_DIE:called=" + (err === "" ? 1 : 0) + ":" + own.who
+        + (err === "" ? "" : ":err=" + err));
+    send(ctx, "AP_" + tag + "_DIE_T:" + teruTargetRead(o));
+    send(ctx, "AP_" + tag + "_DIE_C:" + teruStateRead(ctx.source.getPlayerOrException()));
     return 1;
 }
 
@@ -6006,10 +6038,13 @@ function doTeruGuard(ctx, tag) {
  *   ① 客户端按键入口 `BaseSignItem#performSkillForCurio` 应被 `canBeginSelectorSession` 拦下
  *      ⇒ 不开选择会话(session=0)、不进冷却、不加层;
  *   ② 服务端二次校验 `castDescent` 对**其它玩家**目标也应返回 false(生效中不可重复施放)。
- * 用 FakePlayer 作「其它玩家」目标(它是真 ServerPlayer);读数里的 layers 不变即证明加成未被重复发放。
+ * 目标 = `<name>` 指定的**真实在线玩家**(Carpet bot 同入口;C 批之前这里用 FakePlayer ——
+ * 它不在玩家列表,只能勉强当「另一名玩家」用)。读数里的 layers 不变即证明加成未被重复发放。
  */
-function doTeruGate(ctx, tag) {
+function doTeruGate(ctx, tag, nameText) {
     var p = ctx.source.getPlayerOrException();
+    var t = teruFindPlayer(ctx, nameText);
+    if (t == null) { send(ctx, "AP_" + tag + "_ERR:no_player:" + nameText); return 1; }
     var layers0 = TeruSignItemClass.getLayers(p);
     var session = 0, token = -1;
     try {
@@ -6018,16 +6053,14 @@ function doTeruGate(ctx, tag) {
         token = TargetSelectionManagerClass.sessionTokenForTests(p);
     } catch (e1) { /* 忽略 */ }
     try { TargetSelectionManagerClass.cancelSessionForTests(p); } catch (e2) { /* 忽略 */ }
-    var fake = null;
-    // ⚠️ 同 doTeruCastFake:`Java.loadClass(...).cast(...)` 在 Rhino 下不可用(见该函数注释)
-    try { fake = TeruFakePlayerFactoryClass.getMinecraft(p.level); } catch (e3) { fake = null; }
     var recast = -1;
-    try { if (fake != null) recast = TeruSignItemClass.castDescent(p, fake) ? 1 : 0; } catch (e4) { recast = -2; }
+    try { recast = TeruSignItemClass.castDescent(p, t) ? 1 : 0; } catch (e4) { recast = -2; }
     var layers1 = TeruSignItemClass.getLayers(p);
-    send(ctx, "AP_" + tag + "_GATE:session=" + session + ":token_seen=" + (token > 0 ? 1 : 0)
+    send(ctx, "AP_" + tag + "_GATE:target=" + nameText
+        + ":session=" + session + ":token_seen=" + (token > 0 ? 1 : 0)
         + ":recast_other=" + recast + ":layers=" + layers0 + ">" + layers1
         + ":layers_ok=" + (layers0 === layers1 ? 1 : 0)
-        + ":fake_effect=" + (fake == null ? -1 : teruFxOn(fake, DESC_TERU_DESCENT))
+        + ":other_effect=" + teruFxOn(t, DESC_TERU_DESCENT)
         + ":cd=" + (signCooldownRemaining(p) > 0 ? 1 : 0)
         + ":" + teruStateRead(p));
     return 1;
@@ -6100,43 +6133,6 @@ function doTeruDummy(ctx, tag, whichText, typeText, distText, hpText) {
 /**
  * 真实近战(走 Player#attack ⇒ 原版左键同源 ⇒ 骰战链 + 攻击修饰器链)。
  * 判据:每次命中的层数增量 / 已攻击目标集增量 / 掉血值(额外攻击力足够大时 dmg 会跃升)。
- */
-function doTeruHit(ctx, tag, whichText, timesText) {
-    var p = ctx.source.getPlayerOrException();
-    var which = ("" + whichText) === "d2" ? "d2" : "d1";
-    var mob = (teruState == null) ? null : (which === "d2" ? teruState.d2 : teruState.d1);
-    if (mob == null) { send(ctx, "AP_" + tag + "_ERR:no_dummy:" + which); return 1; }
-    var alive = 0;
-    try { alive = mob.isAlive() ? 1 : 0; } catch (e0) { alive = -1; }
-    var times = teruInt(timesText, 1);
-    var out = "which=" + which + ":eid=" + mob.getId() + ":type=" + typeIdOf(mob) + ":alive=" + alive
-        + ":hand=" + itemIdOf(p.getMainHandItem())
-        + ":layers0=" + TeruSignItemClass.getLayers(p)
-        + ":newt0=" + teruSetSize(ModAttachments.getTeruDescentNewTargets(p));
-    for (var i = 0; i < times; i++) {
-        var hp0 = -1, hp1 = -1, l0 = -1, l1 = -1, dmg = -1, api = "-", err = "";
-        try { hp0 = mob.getHealth(); } catch (e1) { hp0 = -1; }
-        try { l0 = TeruSignItemClass.getLayers(p); } catch (e2) { l0 = -1; }
-        var r = null;
-        try { r = meleeHit(p, mob); } catch (e3) { err = exText(e3); }
-        try { hp1 = mob.getHealth(); } catch (e4) { hp1 = -1; }
-        try { l1 = TeruSignItemClass.getLayers(p); } catch (e5) { l1 = -1; }
-        if (r != null) { dmg = teruR1(r.dealt); api = "" + r.api; }
-        out = out + ":h" + i + "_hp=" + teruR1(hp0) + ">" + teruR1(hp1)
-            + ":h" + i + "_dmg=" + dmg + ":h" + i + "_api=" + api
-            + ":h" + i + "_layers=" + l0 + ">" + l1
-            + (err === "" ? "" : ":h" + i + "_err=" + err);
-    }
-    out = out + ":" + teruStateRead(p);
-    send(ctx, "AP_" + tag + "_HIT:" + out);
-    return 1;
-}
-
-/**
- * 真实近战,**攻击者 = 指定真实玩家（Carpet bot）** —— 用于「降神目标(被指定者)攻击**新目标** ⇒
- * 消耗 1 层狐光 + 追加攻击力」的真实双人验证（单人脚手架里攻击者只能是施法者自身）。
- * 复用 `meleeHit`（`Player#attack` ⇒ 与真人左键同源）；施法者侧层数由随后的 `terureadreal` 给出
- * （本读数里的 state 属于**攻击者**，bot 没有教主立牌 ⇒ layers=0 是预期值）。
  */
 function doTeruHitReal(ctx, tag, whichText, timesText, nameText) {
     var t = teruFindPlayer(ctx, nameText);
@@ -13097,9 +13093,18 @@ ServerEvents.commandRegistry(event => {
                     }))))
             .then(Commands.literal("luluanchor")
                 .then(Commands.argument("tag", StringArg.word())
-                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
-                        return doLuluAnchor(ctx, StringArg.getString(ctx, "tag"));
-                    }))))
+                    .then(Commands.argument("name", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doLuluAnchor(ctx, StringArg.getString(ctx, "tag"),
+                                StringArg.getString(ctx, "name"));
+                        })))))
+            .then(Commands.literal("luluconfirm")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("name", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doLuluConfirm(ctx, StringArg.getString(ctx, "tag"),
+                                StringArg.getString(ctx, "name"));
+                        })))))
             // ── 教主立牌(teru)「降神」+「狐光」(2026-09-27)────────────────────────
             .then(Commands.literal("teruprep")
                 .then(Commands.argument("tag", StringArg.word())
@@ -13127,11 +13132,6 @@ ServerEvents.commandRegistry(event => {
                 .then(Commands.argument("tag", StringArg.word())
                     .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
                         return doTeruCast(ctx, StringArg.getString(ctx, "tag"));
-                    }))))
-            .then(Commands.literal("terucastfake")
-                .then(Commands.argument("tag", StringArg.word())
-                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
-                        return doTeruCastFake(ctx, StringArg.getString(ctx, "tag"));
                     }))))
             .then(Commands.literal("terubot")
                 .then(Commands.argument("tag", StringArg.word())
@@ -13179,25 +13179,27 @@ ServerEvents.commandRegistry(event => {
                             return doTeruEndReal(ctx, StringArg.getString(ctx, "tag"),
                                 StringArg.getString(ctx, "name"));
                         })))))
-            .then(Commands.literal("terulink")
+            .then(Commands.literal("terulinkreal")
                 .then(Commands.argument("tag", StringArg.word())
-                    .then(Commands.argument("atk", StringArg.word())
-                        .then(Commands.argument("def", StringArg.word())
-                            .then(Commands.argument("base", StringArg.word())
-                                .then(Commands.argument("skip", StringArg.word())
-                                    .then(Commands.argument("blessed", StringArg.word())
-                                        .then(Commands.argument("layers", StringArg.word())
-                                            .then(Commands.argument("wm", StringArg.word())
-                                                .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
-                                                    return doTeruLink(ctx, StringArg.getString(ctx, "tag"),
-                                                        StringArg.getString(ctx, "atk"),
-                                                        StringArg.getString(ctx, "def"),
-                                                        StringArg.getString(ctx, "base"),
-                                                        StringArg.getString(ctx, "skip"),
-                                                        StringArg.getString(ctx, "blessed"),
-                                                        StringArg.getString(ctx, "layers"),
-                                                        StringArg.getString(ctx, "wm"));
-                                                })))))))))))
+                    .then(Commands.argument("name", StringArg.word())
+                        .then(Commands.argument("atk", StringArg.word())
+                            .then(Commands.argument("def", StringArg.word())
+                                .then(Commands.argument("base", StringArg.word())
+                                    .then(Commands.argument("skip", StringArg.word())
+                                        .then(Commands.argument("blessed", StringArg.word())
+                                            .then(Commands.argument("layers", StringArg.word())
+                                                .then(Commands.argument("wm", StringArg.word())
+                                                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                                                        return doTeruLinkReal(ctx, StringArg.getString(ctx, "tag"),
+                                                            StringArg.getString(ctx, "name"),
+                                                            StringArg.getString(ctx, "atk"),
+                                                            StringArg.getString(ctx, "def"),
+                                                            StringArg.getString(ctx, "base"),
+                                                            StringArg.getString(ctx, "skip"),
+                                                            StringArg.getString(ctx, "blessed"),
+                                                            StringArg.getString(ctx, "layers"),
+                                                            StringArg.getString(ctx, "wm"));
+                                                    }))))))))))))
             .then(Commands.literal("terubless")
                 .then(Commands.argument("tag", StringArg.word())
                     .then(Commands.argument("mode", StringArg.word())
@@ -13207,14 +13209,18 @@ ServerEvents.commandRegistry(event => {
                         })))))
             .then(Commands.literal("terufx")
                 .then(Commands.argument("tag", StringArg.word())
-                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
-                        return doTeruFx(ctx, StringArg.getString(ctx, "tag"));
-                    }))))
+                    .then(Commands.argument("name", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doTeruFx(ctx, StringArg.getString(ctx, "tag"),
+                                StringArg.getString(ctx, "name"));
+                        })))))
             .then(Commands.literal("terudie")
                 .then(Commands.argument("tag", StringArg.word())
-                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
-                        return doTeruDie(ctx, StringArg.getString(ctx, "tag"));
-                    }))))
+                    .then(Commands.argument("name", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doTeruDie(ctx, StringArg.getString(ctx, "tag"),
+                                StringArg.getString(ctx, "name"));
+                        })))))
             .then(Commands.literal("teruguard")
                 .then(Commands.argument("tag", StringArg.word())
                     .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
@@ -13222,9 +13228,11 @@ ServerEvents.commandRegistry(event => {
                     }))))
             .then(Commands.literal("terugate")
                 .then(Commands.argument("tag", StringArg.word())
-                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
-                        return doTeruGate(ctx, StringArg.getString(ctx, "tag"));
-                    }))))
+                    .then(Commands.argument("name", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doTeruGate(ctx, StringArg.getString(ctx, "tag"),
+                                StringArg.getString(ctx, "name"));
+                        })))))
             .then(Commands.literal("terudummy")
                 .then(Commands.argument("tag", StringArg.word())
                     .then(Commands.argument("which", StringArg.word())
@@ -13238,16 +13246,8 @@ ServerEvents.commandRegistry(event => {
                                             StringArg.getString(ctx, "dist"),
                                             StringArg.getString(ctx, "hp"));
                                     }))))))))
-            .then(Commands.literal("teruhit")
-                .then(Commands.argument("tag", StringArg.word())
-                    .then(Commands.argument("which", StringArg.word())
-                        .then(Commands.argument("times", StringArg.word())
-                            .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
-                                return doTeruHit(ctx, StringArg.getString(ctx, "tag"),
-                                    StringArg.getString(ctx, "which"),
-                                    StringArg.getString(ctx, "times"));
-                            }))))))
-            .then(Commands.literal("teruhitreal")
+            
+.then(Commands.literal("teruhitreal")
                 .then(Commands.argument("tag", StringArg.word())
                     .then(Commands.argument("which", StringArg.word())
                         .then(Commands.argument("times", StringArg.word())

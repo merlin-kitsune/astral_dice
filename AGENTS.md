@@ -1847,10 +1847,12 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --new <注册id>
 
 | 用例 | 覆盖 | 关键读数（两线一致） |
 |---|---|---|
-| `TERU-SIGN-<V>` | 注册/冻结数值（含 `signs`+`curios:stand` 标签、两个效果 id、四个常量）、主动只能选其它玩家（自身/生物双拒 + 真实按键路径 debug 行）、对 FakePlayer **真实施法**的 50% 快照与 `+3` 层、生效中不可重复施放（门控 session=0 + 服务端二次校验）、骰神赐福下降沿两分支（`skip` 语义）、效果自检、死亡清场、**自目标防护** | `AP_F_CASTFAKE:cast=1:A_t=20:D_t=12:A_c=6:bonus_atk=10:bonus_def=6:base=16:atk_ok=1:def_ok=1:base_ok=1:layers=3:cache=10:armor=0>12:armor_ok=1`；`AP_GA_GATE:session=0:recast_other=0:layers=7>7`；`AP_G_GUARD:layers=7>7:newt=0>0`；`AP_RD1_R1:caster=0:base=0:armor=0:layers=7`；`AP_RD2_R2:skip=1→0:caster=1`；`AP_RD3_R3:caster=0:layers=5` |
+| `TERU-SIGN-<V>` | 注册/冻结数值（含 `signs`+`curios:stand` 标签、两个效果 id、四个常量）、主动只能选其它玩家（自身/生物双拒 + 真实按键路径 debug 行）、对**真玩家 bot**（Carpet）**真实施法**的 50% 快照与 `+3` 层（⚠️ 2026-09-28 范围 C 起：单机脚手架命令 `terucastfake`/`terulink`/`teruhit` 已删除，改用 `terucastreal`/`terulinkreal`/`teruhitreal`，见下方范围 C 小节）、生效中不可重复施放（门控 session=0 + 服务端二次校验）、骰神赐福下降沿两分支（`skip` 语义）、效果自检、死亡清场、**自目标防护** | `AP_CRE_CASTREAL:cast=1:target=Bot1:A_t=20:D_t=12:A_c=6:bonus_atk=10:bonus_def=6:base=16:atk_ok=1:def_ok=1:base_ok=1:layers=3:cache=10:armor=0>12:armor_ok=1`（旧读数串为 `AP_F_CASTFAKE:…`）；`AP_GA_GATE:session=0:recast_other=0:layers=7>7`；`AP_G_GUARD:layers=7>7:newt=0>0`；`AP_RD1_R1:caster=0:base=0:armor=0:layers=7`；`AP_RD2_R2:skip=1→0:caster=1`；`AP_RD3_R3:caster=0:layers=5` |
 | `TERU-EXTRA-ATTACK-<V>` | 逐层消耗 + 追加攻击力 + 新目标去重 + 0 层不追加（走真实 `Player#attack` ⇒ 骰战攻击修饰器链、目标为 1000 血蜘蛛靶） | `AP_H1_HIT:layers0=5:newt0=0:h0_dmg=208:h0_api=player_attack:h0_layers=5>4:newt=1`；同一靶二次 `h0_dmg=8:h0_layers=4>4`；换靶 `h0_layers=4>3:newt=2`；0 层对照 `h0_dmg=3:h0_layers=0>0:newt=0` |
 | `TERU-HUGUANG-ANTIFARM-<V>` | 守卫②（**真实卡牌栏** 插入→卸除→再插入）、守卫①（地面牌被真实拾取但层数不变）、发牌漏斗三点计层（攻击 +2 / 防御 0 / 非卡牌 0 / 背包满走掉落分支 0）、**真死+重生后层数与水位保留** | `AP_E1_EQ:wm=->medium=1:layers=0>1:dl=1`；`AP_E2_EQ:wm=medium=1>medium=1:layers=1>1:dl=0`；`AP_E3_EQ:cards_after=…x1:inv=1>0:wm=medium=1>medium=1:layers=1>1:dl=0`（关键：真的插进去了却一层不加）；`AP_DR_DROP:added=1:ground=1` → `AP_RB5_RB5:inv_atk=2:ground_atk=0:layers=1`；`AP_C4_CARD:filled=36:inv=0>0:ground=1:dl=0`；`AP_RB7_RD:layers=1:wm=medium=1`（重生后） |
 | `LULU-SIGN-<V>`（回归） | `BaseSignItem#canBeginSelectorSession` 新增钩子后**其它选择器立牌行为不变**（lulu 的 `allowSelf=true` 自选路径 + 范围能力仍全绿） | 该用例原有 43 断言全 PASS |
+
+> ⚠️ **2026-09-28（范围 C：单人专用测试项清理）——上表三组用例的目标侧已从「FakePlayer / 自身脚手架」整体改为 Carpet 真玩家 bot**：`TERU-SIGN` 的 ③⑤⑥⑦⑧ 相位全部走 `terucastreal`/`terulinkreal`/`terufx <bot>`/`terudie <bot>`；`TERU-EXTRA-ATTACK` 的攻击者 = bot（`teruhitreal`），靶句柄与 bot 的 link 边分开持有；`LULU-SIGN` 用 `luluconfirm <bot>` 走**真门控链路**（`session=1:token_seen=1:confirm_called=1`）+ `/tp <bot> ~ ~ ~24` 后的路由判据（`spider_by_bot=0/12xx` 而 `spider_by_player=-`）。**三条单机专用命令 `terucastfake`/`terulink`/`teruhit` 与 `TeruFakePlayerFactoryClass` 句柄已删除**，`terufx`/`terudie`/`terugate`/`terulinkreal`/`luluconfirm` 改为带目标名（`terugate` 读数 `fake_effect` → `other_effect`）。上表读数串里的 `AP_F_CASTFAKE` 现为 `AP_CRE_CASTREAL`。详见下方「范围 C」小节。
 
 > **本轮新增的 KubeJS 环境坑（写探针必看，三条线通用）**：`scripts/test/resources/kubejs/**` 跑在 KubeJS Rhino 上，以下**原版方法不可见**（实测 `TypeError: Cannot find function …`），写脚手架时必须绕开或分层兜底：
 > 1. `ServerPlayer#getUUID` → 用本仓既有的容错取值器 `playerUuid(p)`（退到 KubeJS 实体包装的 `p.uuid`）；
@@ -2143,4 +2145,25 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --new <注册id>
 
 **2026-09-28 收口（两线实测）**：`LOCK-OFFLINE-1.20.1` **PASS 126/126**；`LOCK-OFFLINE-RELOG-A-1.20.1` **PASS 35/35**、`LOCK-OFFLINE-RELOG-B-1.20.1` **PASS**（成对跑法：A → `--phase stop`（**保留存档**）→ `--phase launch` → B）；1.21.1 同三组 PASS（RELOG-A 35/35、RELOG-B 20/20）。
 ⚠️ **A 相的存档步骤必须用「原版暂停存盘」，禁止再用 `/save-all flush`**（本批 3/3 复现，见 TESTING-SPEC 附录 A 第 6 条）：该命令经聊天注入时**前导斜杠被吃掉**、变成一条聊天消息（原始日志原文 `[CHAT] save-all flush<--[此处]`）⇒ 命令**从未执行**、`saves/<world>/playerdata/<uuid>.dat` 不落盘（宿主机 mtime 核对），B 相于是读到旧状态而假红。改用 `Esc`（触发 `Saving and pausing game...` + 逐维度 `Saving chunks…`，**真正写盘**）→ 再 `Esc` 返回；并以原版日志行 `Saving chunks for level 'ServerLevel[testworld]'/minecraft:overworld` 作为**存盘证据**断言。判据：A 相跑完后宿主机上 `.dat` 的 mtime/字节数会变（实测 1.20.1 `2015→1956 B`、1.21.1 `2067→2223 B`）。
+
+### 范围 C：单人专用测试项清理（2026-09-28，用户裁决 C · 两线）
+
+**目标**：把 TERU/LULU 三组用例里「因为单人世界没有第二名玩家」而存在的**单机脚手架**改成 **Carpet 真玩家 bot** 路径，并删除已被真玩家版本取代的探针命令。施工单 `temp/sp_cleanup_plan.md`、执行报告 `temp/sp_cleanup_report.md`。
+
+**探针（两线改动区间逐字节相同；两线 `node --check` rc=0）**：
+- **新增** `terulinkreal <tag> <name> <atk> <def> <base> <skip> <blessed> <layers> [wm]`（把目标侧七键写在**真玩家**身上、施法者侧只拿指针与镜像）、`luluconfirm <tag> <name>`（真门控链路：按键开会话 → 服务端 confirm(bot) → 管理器校验 → `action.apply`）、`teruOwner`（只读 owner 归属）。
+- `terufx` / `terudie` / `terugate` **加目标名**（`terugate` 读数 `fake_effect` → `other_effect`）。
+- **删除** `terucastfake` / `terulink` / `teruhit` 三条单机专用命令 + `TeruFakePlayerFactoryClass` 句柄 + 对应 dispatch 注册块（dispatch 引用完整性已静态复核：177/176 条 `doXxx` 引用全部有定义）。
+
+**用例（两线 twin，仅 `case_id`/`version`/`title` 不同）**：`TERU-SIGN`（③⑤⑥⑦⑧ 全部走真玩家目标；**下降沿必须作用在目标的骰神赐福上** —— `terubless` 只能改施法者自己）、`TERU-EXTRA-ATTACK`（攻击者 = bot；靶句柄与 bot 的 link 边**分开持有**）、`LULU-SIGN`（`luluconfirm` 真链路 + `/tp <bot> ~ ~ ~24` 后的路由判据：`spider_by_bot=0/12xx` 而 `spider_by_player=-` ⇒ 范围中心确实跟着目标）。
+
+**实测（冷启动后逐条 `--case`）**：`1.21.1` = `TERU-EXTRA-ATTACK` **71/71** · `TERU-SIGN` **112/112** · `LULU-SIGN` **70/70**；`1.20.1` = 同三条 **71/71 · 112/112 · 70/70** ⇒ **六条全绿**（日志 `temp/sp_tea_1211.log` / `temp/sp_ts_1211.log` / `temp/sp4-LULU-1211.log` / `temp/sp2-TERU-EXTRA.log` / `temp/sp2-TERU-SIGN.log` / `temp/sp4-LULU-1201.log`）。
+
+**本批踩坑（写探针/写用例必看）**：
+1. **清场函数必须跳过玩家（含 Carpet 假人）**：新写的 `luluDiscardNearby` 注释写「丢弃半径内全部**非玩家**实体」，实现却只 `if (e == p) continue;` ⇒ 目标段在 `confirm` **之前**把目标假人一起 `discard`，`TargetSelectionManager#confirm` 随即解析不到实体 id ⇒ `confirm FAIL: target_invalid`（目标 = Bot2 时 100% 复现；直接 `apply` 段不受影响，因为它用的是实体对象而不是 id）。已修为「`e instanceof Player` 就跳过」并留注释。
+2. **`performSkillForCurio` 之后必须复位 `SignSelectionGate`**：只跑 `luluprep`（清治愈点/主动冷却/残留会话）**不清门控** ⇒ 紧随的 `confirm` 拿 `token=-1`、`session=0`。正确顺序 = 先 `signreset`（清门控/锁定/冷却并清空 stand 槽）再 `luluprep`（重新装牌 + 归零）。
+3. **探针内 `runCmd`（`performPrefixedCommand`）移动不了 Carpet bot**：`/tp Bot2 …` 对假人完全无效、无异常、1.21.1 返回 void（无法从返回值判失败）⇒ 移动 bot 必须用**注入的原版命令**（用例侧 `inject_command`）。
+4. **`cd_after` 的口径**：走**真门控链路**（`performSkillForCurio` → confirm）成功施放会**写主动冷却** ⇒ 该相位必须断言 `cd_after=1`（旧锚点段的 `cd_after=0` 是直接 `apply` 的旧口径，照抄必假红）。
+5. **仍待办（未擅自扩大范围）**：施工单 §B 末行「`signprep`/`signstate` 的 `stand` 字段改用**通用**判定」未做 —— 它现在仍读 `NardisSignItem.isEquipped`（对 parunan/lulu/jasmine/komachi 恒 0，且 `putInSlot` 之后同 tick 读回为空）⇒ LOCK-OFFLINE 的 `stand=1` 断言继续按「不依赖该字段」处理。
+6. **疑似产品行为（只登记、未改任何产品代码，待用户裁决）**：`terufx` 作用在**真实目标（bot）**上把实例移除后，施法者侧镜像（`caster`/`target`/`cache`）在 **30 tick 内没有收敛**（`AP_X_FX:who=Bot1:removed=1:fx_d_on=0` 之后仍 `caster=0:target=1:cache=4`），与用例注释「真值仍在而实例没了 ⇒ 下一 tick 必然收敛」不符；该相位断言已改为只锚定「命令被正确调用 + 实例确实移除」。**注意：这是「探针用外力移除效果实例」的人造路径，不等于自然结束路径有问题**，需裁决是深挖还是登记为限制。详见 `temp/sp_cleanup_report.md` §6.1。
 
