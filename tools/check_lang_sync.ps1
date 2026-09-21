@@ -13,9 +13,13 @@
 
     规则:
     - zh_cn.json 与 en_us.json 的 key 集合必须完全一致(新增/删除 key 必须同步两侧)。
+    - lang 值里出现「未转义的字面百分号」(单个 %,既不是 %% 也不是合法转换说明符)一律 **FAIL**:
+      该值经 I18n.get/String.format 会抛 UnknownFormatConversionException ⇒ **客户端崩溃**
+      (2026-09-21 1.21.1 教主立牌 `tooltip.astral_dice.sign.teru_active` 的 `§e50%§7` 实测崩游戏,
+      见 run/1.21.1/crash-reports/crash-2026-09-21_15.12.05-client.txt)。字面 % 必须写成 %%。
     - 每个对应 key 的结构标记(%%/%s/%d 等占位符数量、换行数量)差异仅打印警告,
       不导致失败(中英措辞可不同,但结构应尽量一致)。
-    退出码:0 = 通过;1 = key 不一致、JSON 读取/解析失败,或未捕获异常(与 CPython 相同)。
+    退出码:0 = 通过;1 = key 不一致、未转义字面百分号、JSON 读取/解析失败,或未捕获异常(与 CPython 相同)。
 
     跨平台:只做文本/JSON 处理,不使用任何 Win32 API / 注册表 / CIM;路径一律经 Join-Path。
     输出:统一经 Write-Stdout / Write-Stderr([Console]::Out / [Console]::Error,显式 LF,
@@ -419,6 +423,7 @@ $missingInEn = Sort-Ordinal ([string[]]@($zhSet | Where-Object { -not $enSet.Con
 $extraInEn = Sort-Ordinal ([string[]]@($enSet | Where-Object { -not $zhSet.Contains($_) }))
 
 $errors = 0
+$percentErrors = 0
 if ($missingInEn.Count -gt 0) {
     $errors++
     Write-Stdout '[FAIL] 以下 key 存在于 zh_cn.json 但缺失于 en_us.json(请在 en_us.json 补充对应英文):'
@@ -449,25 +454,29 @@ foreach ($key in $common) {
     }
 
     # 未转义的字面百分号检查:单 %(非 %% 且非合法说明符)经 I18n.get/String.format
-    # 会抛异常并显示 "Format error: ..."(如帕秋莉手册文本),必须写成 %%。
+    # 会抛异常,帕秋莉手册文本显示 "Format error: ...",本模组 tooltip 路径
+    # (ModTooltipHandler.translationString)则**直接崩客户端** ⇒ 必须写成 %% 且判 FAIL。
+    # 扫描口径与 ModTooltipHandler.VALID_PERCENT 逐字一致:**从左到右**消费,
+    # 合法单元 = `%%` / `%<数字>$[sdbfxoeg]` / `%[sdbfxoeg]`;其余单个 % 记为违规。
+    # (旧实现用 4 字符窗口 + `^%([sdbfxoeg]|\d+\$[sdbfxoeg])` 匹配,会把合法的多位参数序号
+    #  `%12$s` 误报,又因「前一字符是 % 就跳过」漏报 `%%%`;2026-09-21 独立复核发现后改为本扫描。)
+    # ⚠️ 支持的转换符是**刻意收窄**的集合(本仓语料只用 `%s`);`%-5s`/`%02d`/`%.2f`/`%S`/`%n` 这类
+    #    Java 合法但不属本仓约定的写法会被判违规 —— 需要它们时必须同时扩这里与 Java 侧白名单。
     $pairs = @(
         [pscustomobject]@{ Name = 'zh'; Text = $zhVal },
         [pscustomobject]@{ Name = 'en'; Text = $enVal }
     )
     foreach ($pair in $pairs) {
         $text = $pair.Text
-        foreach ($m in [regex]::Matches($text, '%')) {
-            $pos = $m.Index
-            # %% 转义对(当前 % 是 %% 的第一个或第二个字符)跳过
-            if ((Get-PySlice $text $pos ($pos + 2)) -eq '%%' -or ($pos -gt 0 -and $text[$pos - 1] -eq '%')) {
-                continue
-            }
-            $seg = Get-PySlice $text $pos ($pos + 4)
-            if ([regex]::IsMatch($seg, '^%([sdbfxoeg]|\d+\$[sdbfxoeg])')) {
-                continue
-            }
-            $window = Get-PyCodePointWindow $text $pos 12 12
-            Write-Stdout "[WARN] ${key}($($pair.Name)): 含未转义字面百分号(应写 %%,否则 I18n.get/String.format 显示 Format Error): ...${window}..."
+        $i = 0
+        while ($i -lt $text.Length) {
+            if ($text[$i] -ne '%') { $i++; continue }
+            $unit = [regex]::Match($text.Substring($i), '^%(?:%|\d+\$[sdbfxoeg]|[sdbfxoeg])')
+            if ($unit.Success) { $i += $unit.Length; continue }
+            $window = Get-PyCodePointWindow $text $i 12 12
+            $percentErrors++
+            Write-Stdout "[FAIL] ${key}($($pair.Name)): 含未转义字面百分号(必须写成 %%,否则 I18n.get/String.format 抛 UnknownFormatConversionException 并崩溃客户端): ...${window}..."
+            $i++
         }
     }
 
@@ -480,6 +489,11 @@ foreach ($key in $common) {
 
 if ($errors) {
     Write-Stdout "`n语言文件未同步:请把 zh_cn.json 的手动修改同步至 en_us.json(同一 key 中英对应)后再提交。"
+}
+if ($percentErrors) {
+    Write-Stdout "`n共 $percentErrors 处未转义字面百分号:lang 值里的字面 % 必须写成 %%(见 AGENTS.md「lang 值中的字面百分号必须写成 %%」)。"
+}
+if ($errors -or $percentErrors) {
     return 1
 }
 Write-Stdout "OK: zh_cn.json($($zhSet.Count) keys) 与 en_us.json($($enSet.Count) keys) key 完全一致。"

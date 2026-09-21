@@ -232,9 +232,48 @@ public class ModTooltipHandler {
 
     // 翻译文本修正:将 %% 转义为普通 % 后放入 Component.literal,
     // 避免 Minecraft 将 %% 拆成无样式片段导致 % 号丢失颜色。
+    // 另外把“非法 %”就地安全化:lang 里漏写转义的字面 %(如 "§e50%§7")会让 String.format 抛
+    // UnknownFormatConversionException,而 tooltip 事件链上无人接这个异常 ⇒ **客户端直接崩溃**
+    // (2026-09-21 1.21.1 教主立牌 `tooltip.astral_dice.sign.teru_active` 实例,crash-2026-09-21_15.12.05;
+    //  1.20.1 同一键同样违规,同批修复)。这里先把所有不构成合法转换的 % 转义成 %%,任何文案笔误或
+    // 第三方资源包改坏 lang 都只会显示成字面 %(与 check_lang_sync.ps1 的“应写 %%”口径一致),不再崩游戏。
     private static String translationString(String key, Object... args) {
         String raw = net.minecraft.locale.Language.getInstance().getOrDefault(key, key);
-        return String.format(raw, args);
+        return String.format(escapeStrayPercents(raw), args);
+    }
+
+    // 合法转换 = %[sdbfxoeg] 或 %<数字>$[sdbfxoeg](与 tools/check_lang_sync.ps1 的白名单**逐字一致**)。
+    // ⚠️ 这是**刻意收窄**的集合:本仓语料只用 %s(少数 %d),故不支持 Java Formatter 的完整语法 ——
+    //    `%-5s` / `%02d` / `%.2f` / `%S` / `%n` / `%tY` 等合法写法会被当成字面 % 转义(渲染成原文而非格式化)。
+    //    要引入这类写法,必须**同时**扩这里的 VALID_PERCENT 与 check_lang_sync.ps1 的扫描口径,
+    //    否则闸门会把它判为「未转义字面百分号」。
+    private static final java.util.regex.Pattern VALID_PERCENT =
+            java.util.regex.Pattern.compile("%(?:%|\\d+\\$[sdbfxoeg]|[sdbfxoeg])");
+
+    private static String escapeStrayPercents(String text) {
+        if (text == null || text.indexOf('%') < 0) {
+            return text;
+        }
+        StringBuilder sb = new StringBuilder(text.length() + 8);
+        java.util.regex.Matcher m = VALID_PERCENT.matcher(text);
+        int i = 0;
+        while (i < text.length()) {
+            char c = text.charAt(i);
+            if (c != '%') {
+                sb.append(c);
+                i++;
+                continue;
+            }
+            m.region(i, text.length());
+            if (m.lookingAt()) {
+                sb.append(m.group());
+                i = m.end();
+            } else {
+                sb.append("%%");
+                i++;
+            }
+        }
+        return sb.toString();
     }
 
     private static net.minecraft.network.chat.MutableComponent tt(String key, Object... args) {
