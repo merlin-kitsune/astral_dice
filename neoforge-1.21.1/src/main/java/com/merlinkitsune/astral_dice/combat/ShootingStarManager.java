@@ -36,9 +36,10 @@ import java.util.List;
  *       额外造成**自身当前「星光」层数**的伤害；</li>
  *   <li><b>共享计时器</b>：两枚筹码共用**同一个 10 秒冷却**（{@link #COOLDOWN_TICKS}），
  *       该计时器**不创建任何效果**，只在 tooltip 里显示剩余秒数；</li>
- *   <li><b>粒子时序</b>：粒子从**目标头顶**落到**目标身上**，下落耗时恰好 1 秒（{@link #FALL_TICKS}），
- *       **落到之后才结算**筹码伤害。两枚同时装备时**依次下落**（先紫色飞星），
- *       第一束命中后再隔 1 秒（{@link #VOLLEY_GAP_TICKS}）落第二束。</li>
+ *   <li><b>粒子时序</b>：粒子自目标**头顶上方**下落，**落到目标头顶（碰撞箱上沿）即视为命中**并结算筹码伤害；
+ *       下落速度 = 旧口径的 {@link #FALL_SPEED_MULTIPLIER} 倍（用户裁决 2026-09-21），
+ *       行程随之 ×1.2、而**总下落时间仍为 1 秒**（{@link #FALL_TICKS}）⇒ 起点比旧口径更高。
+ *       两枚同时装备时**依次下落**（先紫色飞星），第一束命中后再隔 1 秒（{@link #VOLLEY_GAP_TICKS}）落第二束。</li>
  * </ul>
  *
  * <h2>触发判定</h2>
@@ -69,7 +70,7 @@ public final class ShootingStarManager {
     /** 路过判定半径（格，用户裁决）。 */
     public static final double RADIUS = 3.0D;
 
-    /** 粒子下落耗时：1 秒（用户裁决）。 */
+    /** 粒子下落耗时：1 秒（用户裁决；2026-09-21 改速后**时长保持不变**）。 */
     public static final int FALL_TICKS = 20;
 
     /** 两枚同时装备时，第一束命中后到第二束开始下落的间隔：1 秒（用户裁决）。 */
@@ -78,8 +79,14 @@ public final class ShootingStarManager {
     /** 「不对其发动攻击」的判定窗口（tick）：与共享冷却同周期。 */
     public static final int ATTACK_GRACE_TICKS = COOLDOWN_TICKS;
 
-    /** 粒子起点相对目标脚底的高度（格）—— 「从目标头上位置落下」。 */
-    private static final double LAUNCH_HEIGHT = 3.0D;
+    /** 旧口径的落体参考高（格）：起点 = 目标脚底上方 3.0 格、终点 = 碰撞箱中心。 */
+    private static final double LEGACY_FALL_REFERENCE = 3.0D;
+
+    /** 下落速度相对旧口径的倍数（用户裁决 2026-09-21：加快至 1.2 倍）。 */
+    private static final double FALL_SPEED_MULTIPLIER = 1.2D;
+
+    /** 落体行程下界（格）：极端体型（碰撞箱高 ≥ 6 格）下旧行程 ≤ 0，兜底保证仍有可见下落。 */
+    private static final double MIN_FALL_DISTANCE = 0.6D;
 
     // ---- 粒子参数（取自 LivingPageFlightScheduler，保持同款观感）----
     private static final double TRAIL_SPACING = 0.45D;
@@ -135,6 +142,34 @@ public final class ShootingStarManager {
     }
 
     private ShootingStarManager() {
+    }
+
+    // ==================================================================================
+    // 落体几何（起点 / 终点 / 行程）—— 公开给冒烟探针核对「1.2 倍速 + 头顶命中」口径
+    // ==================================================================================
+
+    /**
+     * 新口径的落体行程（格）= **旧行程 × {@link #FALL_SPEED_MULTIPLIER}**。
+     *
+     * <p>旧行程 = {@link #LEGACY_FALL_REFERENCE} − 碰撞箱高 / 2（脚底上方 3.0 格 → 碰撞箱中心）；
+     * 时长固定为 {@link #FALL_TICKS}（1 秒，用户裁决「保持总下落时间不变」）
+     * ⇒ 行程 ×1.2 即**每 tick 下落速度 ×1.2**，起点相应抬高（用户裁决「提高发射高度」）。
+     */
+    public static double fallDistance(LivingEntity target) {
+        double legacy = LEGACY_FALL_REFERENCE - target.getBbHeight() * 0.5D;
+        return Math.max(MIN_FALL_DISTANCE, legacy * FALL_SPEED_MULTIPLIER);
+    }
+
+    /** 落体起点 = 目标**头顶**（碰撞箱上沿）正上方 {@link #fallDistance} 格，水平取目标所在列。 */
+    public static Vec3 launchOrigin(LivingEntity target) {
+        Vec3 feet = target.position();
+        return new Vec3(feet.x, feet.y + target.getBbHeight() + fallDistance(target), feet.z);
+    }
+
+    /** 落体终点 = 目标**头顶**（碰撞箱上沿）正中 —— 「落到目标头顶即视为命中」（用户裁决 2026-09-21）。 */
+    public static Vec3 impactPoint(LivingEntity target) {
+        AABB bb = target.getBoundingBox();
+        return new Vec3((bb.minX + bb.maxX) * 0.5D, bb.maxY, (bb.minZ + bb.maxZ) * 0.5D);
     }
 
     // ==================================================================================
@@ -245,12 +280,12 @@ public final class ShootingStarManager {
         if (!stillValid(pending)) return;   // 目标/施法者已失效 ⇒ 直接丢弃（不结算）
 
         if (pending.origin == null) {
-            // 起点 = 目标脚底正上方 LAUNCH_HEIGHT 格（「从目标头上位置落下」），一旦起落即固定
-            pending.origin = pending.target.position().add(0.0D, LAUNCH_HEIGHT, 0.0D);
+            // 起点 = 目标头顶正上方 fallDistance 格（用户裁决：提高发射高度），一旦起落即固定
+            pending.origin = launchOrigin(pending.target);
             pending.pos = pending.origin;
         }
 
-        Vec3 dest = pending.target.getBoundingBox().getCenter();
+        Vec3 dest = impactPoint(pending.target);
         pending.elapsed++;
         if (now - pending.launchTick > MAX_AGE_TICKS) return;
 
@@ -289,7 +324,7 @@ public final class ShootingStarManager {
         }
     }
 
-    /** 粒子落到目标身上 —— **此刻才应用筹码伤害**（用户要求：先落粒子，后结算）。 */
+    /** 粒子落到目标**头顶**（{@link #impactPoint}）—— **此刻才应用筹码伤害**（用户要求：先落粒子，后结算）。 */
     private static void impact(Pending pending, Vec3 center) {
         pending.level.sendParticles(ParticleTypes.FLASH,
                 center.x, center.y, center.z, 1, 0.0D, 0.0D, 0.0D, 0.0D);

@@ -650,7 +650,7 @@ When extending this workspace:
 | 银行卡-用不完 | `bank_card_unlimited_chip` | 金 | 装备时星光 +3;每次骰神赐福结束后,自身及友方玩家(同队成员;未加入任何队伍时为全服在线玩家)获得 3 星币(`onBlessingEnd`,死亡清场不发放) |
 | 星币锤 | `star_coin_hammer_chip` | 金 | 装备时星光 +5;持有星币超过 20 枚时,每次进入骰神赐福消耗 3 星币并按持有总数 30% 提升攻击力(星币袋按 9 算;**零散星币不足时自动拆开 1 个星币袋**再按枚扣除,拆袋前做「可存放性预检」——优先拆单袋槽位,否则必须已存在可容纳整袋 9 枚的空槽或未满星币堆,预检不通过则整次消耗放弃,**绝不因物品栏已满而让星币掉落到地上**;加成附件 `star_coin_hammer_bonus`,赐福结束清除) |
 
-| 紫色飞星 | `purple_shooting_star_chip` | 紫 | 路过**敌对目标**且不对其发动攻击时,使其受到 **1 点**伤害(真伤 `astral_dice:true_damage`,忽略护甲值/盔甲韧性;击杀归属玩家)并使自身星光 **+1**;判定半径 3 格,「不对其发动攻击」= 该目标最近一次受伤非来自本玩家(窗口 = 冷却同周期 200 tick)。粒子自目标**头顶**下落 1 秒,**落到之后**才结算;**每 10 秒触发一次** |
+| 紫色飞星 | `purple_shooting_star_chip` | 紫 | 路过**敌对目标**且不对其发动攻击时,使其受到 **1 点**伤害(真伤 `astral_dice:true_damage`,忽略护甲值/盔甲韧性;击杀归属玩家)并使自身星光 **+1**;判定半径 3 格,「不对其发动攻击」= 该目标最近一次受伤非来自本玩家(窗口 = 冷却同周期 200 tick)。粒子自目标**头顶上方**下落(速度 = 旧口径的 **1.2 倍**,行程随之 ×1.2、**总下落时间仍为 1 秒** ⇒ 起点相应抬高;落体几何入口 `fallDistance`/`launchOrigin`/`impactPoint`),**落到目标头顶(碰撞箱上沿)即视为命中**并结算;**每 10 秒触发一次** |
 | 金色飞星 | `golden_shooting_star_chip` | 金 | 同上,但基础伤害 **2 点**;若目标为**精英怪物或 Boss**(见 `combat/EliteTargets`:血量 > 40 或 护甲 > 20 / `BossEntityUtil` / 神化 mod 持久化 NBT 的 `apoth.boss`、`apoth.miniboss`),额外造成**自身当前星光层数**的伤害。**与紫色飞星共享同一 10 秒冷却计时器**(用户裁决;附件 `shooting_star_cooldown_end`;两枚同时装备时先落紫色粒子、命中后隔 1 秒再落金色);该计时器**不创建效果**,只在 tooltip 显示剩余秒数。执行器 `combat/ShootingStarManager`(两线各一套) |
 
 ### 治愈类（Healing）
@@ -1109,6 +1109,15 @@ When extending this workspace:
 5. **自动本地提交**（`deploy.ps1` 自动提交 `release: v<版本>`，或手工 `chore: bump version to X.Y.Z` 等），**默认不执行 `git push`**。
 
 ## 自动化测试流程（Automated Testing）— 必须遵守（子配置）
+
+- ⚠️ **测试环境必须窗口模式**（2026-09-21 实测 + 用户裁决）：`run/<版本>/options.txt` 的
+  `fullscreen` 必须为 `false`。全屏会让 `mt_inject` 的键鼠注入**完全送不到**（全屏切换换窗口句柄/焦点），
+  launch 阶段硬闸门 `MT_preflight-op` 因此稳定 FAIL —— 症状极具迷惑性：脚本自发的 tick 心跳
+  （`AP_NOAI`）照常出现在 `latest.log`，唯独「注入命令」没有任何 `AP_*` 回应，极易误诊为「探针未加载」。
+  已由 `mt_env.ps1` 的 `Invoke-MtWindowedEnforce`（→ `Set-MtFullscreenDisabled`）在**冷启动之前**幂等强制。
+- ⚠️ **冒烟测试结束后直接杀死游戏进程**（2026-09-21 用户裁决）：不得让 runClient 驻留。
+  用例**不得**设 `on_fail=keep_game_running`（该值会落 `.mt_keep_alive`，使 `--phase stop` 只提示不执行、
+  现场保留成常驻进程）；标准收尾仍是 `mt.ps1 --version <V> --phase stop --purge-saves`。
 ### ⚠️ 测试资产已全部清零（2026-09-20 用户指令）— 现行状态，先读本节
 
 > 用户指令原文：「执行项目与AGENTS自检：清理所有测试项，已进行或未进行的测试项全部作废并删除，删除所有插针和测试项脚本，包括游戏环境中插入的kubejs脚本。保留测试规则，由用户对测试流程和规则进行核验，将完整的测试流程和规则向用户完整展示。」

@@ -12653,6 +12653,345 @@ function doMamuDie(ctx, tag, keepText) {
     return mamuRead(ctx, tag, (np != null) ? np : p, "DIE", np);
 }
 // MAMUSHI-IMPL-END(插入器用:重跑 build_mamushi_block.ps1 时靠这一行定位旧块并整段替换)
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  飞星筹码 / 精英-神化判定 / sherry / hanna —— 冒烟段(2026-09-21 新增)
+//    /astralprobe ssspawn <tag> <mode> [entityId]  生成带精英特征的靶子并回读产品判定
+//    /astralprobe ssfire  <tag>                    清共享冷却 + 直接触发一次飞星
+//    /astralprobe ssread  <tag>                    只读:星光 / 共享冷却 / 靶子血量与精英判定
+//    /astralprobe ssgeom  <tag>                    只读:落体几何(行程/起点/命中点/1.2 倍校核)
+//    /astralprobe eliteread <tag>                  只读:靶子的精英判定分项(阈值/boss/神化 NBT)
+//    /astralprobe sherryread <tag>                 只读:推理时间层数 + 效果镜像
+//    /astralprobe hannaread  <tag>                 只读:人偶制作 / 人偶完成 / 魔女漂浮 / 两条冷却
+//  mode: plain | apoth | apothmini | hp | armor
+//    plain     = 普通僵尸(20 血 2 甲 ⇒ 非精英)
+//    apoth     = 写实体持久化 NBT apoth.boss     = 1b(模拟「神化 Boss / Apothic Invader」)
+//    apothmini = 写实体持久化 NBT apoth.miniboss = 1b(模拟「神化精英 / Apothic Elite」)
+//    hp        = 最大生命调到 60(> 40 ⇒ 精英阈值)
+//    armor     = 护甲调到 25(> 20 ⇒ 精英阈值)
+// ══════════════════════════════════════════════════════════════════════════════
+var EliteTargetsClass = Java.loadClass("com.merlinkitsune.astral_dice.combat.EliteTargets");
+var ShootingStarManagerClass = Java.loadClass("com.merlinkitsune.astral_dice.combat.ShootingStarManager");
+var StarLightManagerClass = Java.loadClass("com.merlinkitsune.astral_dice.item.StarLightManager");
+var BossEntityUtilClass = Java.loadClass("com.merlinkitsune.starenginelib.item.BossEntityUtil");
+var AttributesClass = Java.loadClass("net.minecraft.world.entity.ai.attributes.Attributes");
+
+var SS_TARGET_TAG = "astral_ss_target";
+/** 实体持久化 NBT 的容器键(1.20.1 由 patch() 替换为 ForgeData) */
+var SS_NBT_ROOT = "NeoForgeData";
+/** 冻结用的共享冷却时长(tick):足够长以阻止产品 curioTick 的自动触发,隔离读数 */
+var SS_FREEZE_TICKS = 100000;
+
+/** 统计半径内带 tag 的靶子数量(诊断用)。 */
+function ssCountTargets(p, radius) {
+    var n = 0;
+    try {
+        var aabb = AABBClass(p.getX() - radius, p.getY() - radius, p.getZ() - radius,
+            p.getX() + radius, p.getY() + radius, p.getZ() + radius);
+        var list = p.level.getEntitiesOfClass(LivingEntityClass, aabb);
+        for (var i = 0; i < list.size(); i++) {
+            var e = list.get(i);
+            try { if (e.getTags() != null && e.getTags().contains(SS_TARGET_TAG)) n = n + 1; } catch (t1) { }
+        }
+    } catch (e0) { }
+    return n;
+}
+
+/** 把共享冷却推到很远的将来 —— 阻止产品 curioTick 自动触发,让读数只反映 ss* 命令的动作。 */
+function ssFreeze(p) {
+    try { ModAttachments.setShootingStarCooldownEnd(p, (nowTick(p) - 0) + SS_FREEZE_TICKS); } catch (e) { }
+}
+
+/** 找最近的飞星靶子(按实体 tag 过滤,跨命令调用可用)。 */
+function ssFindTarget(p, radius) {
+    var best = null;
+    var bestD = 1.0e9;
+    try {
+        var aabb = AABBClass(p.getX() - radius, p.getY() - radius, p.getZ() - radius,
+            p.getX() + radius, p.getY() + radius, p.getZ() + radius);
+        var list = p.level.getEntitiesOfClass(LivingEntityClass, aabb);
+        for (var i = 0; i < list.size(); i++) {
+            var e = list.get(i);
+            var hit = false;
+            try { hit = (e.getTags() != null) && e.getTags().contains(SS_TARGET_TAG); }
+            catch (t1) { try { hit = ("" + e.getTags()).indexOf(SS_TARGET_TAG) >= 0; } catch (t2) { hit = false; } }
+            if (!hit) continue;
+            var d = 0.0;
+            try { d = e.distanceToSqr(p); } catch (t3) { d = 0.0; }
+            if (d < bestD) { bestD = d; best = e; }
+        }
+    } catch (e0) { /* 查找失败按无目标处理 */ }
+    return best;
+}
+
+/**
+ * 按 mode 给靶子"精英化",返回实际写入的项目列表文本。
+ *
+ * ⚠️ 神化标记必须走**原版 `/data merge entity`**,不能用 KubeJS 的 `entity.getPersistentData()`:
+ * 2026-09-21 实测 —— KubeJS 侧 `pd.putBoolean("apoth.boss", true)` 后，探针自己能读回 1，
+ * 但**产品** `EliteTargets.isEliteOrBoss` 对同一实体仍返回 false（`apoth_boss=1 / elite=0` 并存）。
+ * 说明 KubeJS 的 `getPersistentData()` 与 Java 的 `Entity#getPersistentData()` **不同源**
+ * （前者写进了 KubeJS 自己的脚本数据通道）。原版 `/data merge` 走实体 NBT 的官方通道，
+ * 与 NeoForge/Forge 的持久化标签一致 ⇒ 产品可见。
+ */
+function ssMakeElite(ctx, p, mob, mode) {
+    var done = [];
+    var m = "" + mode;
+    try {
+        if (m === "apoth" || m === "apothmini") {
+            var key = (m === "apoth") ? "apoth.boss" : "apoth.miniboss";
+            var nbt = "{" + SS_NBT_ROOT + ":{\"" + key + "\":1b}}";
+            var rc = runCmd(ctx, "data merge entity @e[tag=" + SS_TARGET_TAG + ",limit=1] " + nbt);
+            done.push(m);
+            if (("" + rc).indexOf("rc=") !== 0) { done.push("merge:" + rc); }
+        } else if (m === "hp") {
+            var hAttr = mob.getAttribute(AttributesClass.MAX_HEALTH);
+            hAttr.setBaseValue(60.0);
+            mob.setHealth(60.0);
+            done.push("hp60");
+        } else if (m === "armor") {
+            var aAttr = mob.getAttribute(AttributesClass.ARMOR);
+            aAttr.setBaseValue(25.0);
+            done.push("armor25");
+        } else {
+            done.push("plain");
+        }
+    } catch (e1) { done.push("ERR:" + exText(e1)); }
+    return done.join(",");
+}
+
+/** 生成一只飞星靶子;mode 决定精英化手段。 */
+function doSsSpawn(ctx, tag, mode, entityId) {
+    var p = ctx.source.getPlayerOrException();
+    var id = ("" + entityId) === "" ? "minecraft:zombie" : ("" + entityId);
+    var mob = spawnDummy(p, id, 2.5);
+    if (mob == null) { send(ctx, "AP_" + tag + "_ERR:spawn_failed:" + id); return 0; }
+    try { mob.addTag(SS_TARGET_TAG); } catch (e1) { /* 标签失败则后续读数找不到靶子 */ }
+    var applied = ssMakeElite(ctx, p, mob, mode);
+    var elite = -1, maxHp = -1, armor = -1, hp = -1;
+    try { elite = EliteTargetsClass.isEliteOrBoss(mob) ? 1 : 0; } catch (e2) { }
+    try { maxHp = mob.getMaxHealth() - 0; } catch (e3) { }
+    try { armor = mob.getArmorValue() - 0; } catch (e4) { }
+    try { hp = mob.getHealth() - 0; } catch (e5) { }
+    send(ctx, "AP_" + tag + "_SSSPAWN:mode=" + mode + ":applied=" + applied
+        + ":max_hp=" + maxHp + ":armor=" + armor + ":hp=" + hp + ":elite=" + elite
+        + ":t_count=" + ssCountTargets(p, 8));
+    ssFreeze(p);   // 生成后立即冻结:避免产品自动触发在断言前改动靶子血量
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+/**
+ * 清共享冷却后**直接调用产品入口**触发一次飞星(绕过 tick 时序,验证触发逻辑本身)。
+ *
+ * 读数: `cd_product` = 产品写入的冷却截止刻(应为 now+200 ⇒ `cd_delta=200`,验证 10 秒共享计时器);
+ * 随后立即 `ssFreeze` 把冷却推到远处,使**产品 curioTick 的自动触发**不再干扰后续靶子血量读数。
+ */
+function doSsFire(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var now = nowTick(p) - 0;
+    var err = "";
+    try { ModAttachments.setShootingStarCooldownEnd(p, 0); } catch (e0) { err = exText(e0); }
+    try { ShootingStarManagerClass.tick(p); } catch (e1) { err = err + "|tick:" + exText(e1); }
+    var cdProduct = -1;
+    try { cdProduct = ModAttachments.getShootingStarCooldownEnd(p) - 0; } catch (e2) { }
+    ssFreeze(p);
+    send(ctx, "AP_" + tag + "_SSFIRE:now=" + now + ":cd_product=" + cdProduct
+        + ":cd_delta=" + (cdProduct - now)
+        + ":cd_started=" + ((cdProduct > now) ? 1 : 0)
+        + (err === "" ? "" : ":err=" + err));
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+/** 只读写:把玩家「星光」设为 n —— 用于精确控制金色飞星的**精英额外伤害**。
+ *
+ * 为什么不用 `signprep` 的 star 参数:那个参数依赖 `SignLagStarLightClass`,
+ * 该句柄为 null 时**静默不设置**(只回显 star=-2),实测三次都没生效 ⇒ 自带一条。 */
+function doSsStar(ctx, tag, n) {
+    var p = ctx.source.getPlayerOrException();
+    var want = n - 0;
+    var before = -1, after = -1;
+    var err = "";
+    try { before = StarLightManagerClass.get(p) - 0; } catch (e1) { err = exText(e1); }
+    try { StarLightManagerClass.set(p, want); after = StarLightManagerClass.get(p) - 0; }
+    catch (e2) { err = err + "|set:" + exText(e2); }
+    send(ctx, "AP_" + tag + "_SSSTAR:want=" + want + ":before=" + before + ":after=" + after
+        + (err === "" ? "" : ":err=" + err));
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+/** 只读快照:星光 / 共享冷却 / 两枚筹码是否在装 / 靶子血量与精英判定。 */
+function doSsRead(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var star = -1, cap = -1, cdEnd = -1, cdLeft = -1;
+    var err = "";
+    try { star = StarLightManagerClass.get(p) - 0; } catch (e1) { err = err + "|star:" + exText(e1); }
+    try { cap = StarLightManagerClass.getCap() - 0; } catch (e2) { }
+    try {
+        cdEnd = ModAttachments.getShootingStarCooldownEnd(p) - 0;
+        cdLeft = cdEnd - (nowTick(p) - 0);
+        if (cdLeft < 0) cdLeft = 0;
+    } catch (e3) { err = err + "|cd:" + exText(e3); }
+    var t = ssFindTarget(p, 8);
+    var tHp = -1, tAlive = -1, tElite = -1, tMax = -1, tArmor = -1;
+    if (t != null) {
+        try { tHp = t.getHealth() - 0; } catch (e4) { }
+        try { tAlive = t.isAlive() ? 1 : 0; } catch (e5) { }
+        try { tMax = t.getMaxHealth() - 0; } catch (e6) { }
+        try { tArmor = t.getArmorValue() - 0; } catch (e7) { }
+        try { tElite = EliteTargetsClass.isEliteOrBoss(t) ? 1 : 0; } catch (e8) { err = err + "|elite:" + exText(e8); }
+    }
+    send(ctx, "AP_" + tag + "_SSREAD:star=" + star + ":cap=" + cap
+        + ":cd_end=" + cdEnd + ":cd_left=" + cdLeft
+        + ":t_found=" + ((t == null) ? 0 : 1)
+        + ":t_count=" + ssCountTargets(p, 8)
+        + ":t_hp=" + tHp + ":t_max_hp=" + tMax + ":t_armor=" + tArmor
+        + ":t_alive=" + tAlive + ":t_elite=" + tElite
+        + ":" + chipStateText(p)
+        + (err === "" ? "" : ":err=" + err));
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+/** 清场:移除全部飞星靶子 + 复位共享冷却。 */
+function doSsClear(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var removed = 0;
+    try {
+        var aabb = AABBClass(p.getX() - 16, p.getY() - 8, p.getZ() - 16,
+            p.getX() + 16, p.getY() + 8, p.getZ() + 16);
+        var list = p.level.getEntitiesOfClass(LivingEntityClass, aabb);
+        for (var i = 0; i < list.size(); i++) {
+            var e = list.get(i);
+            var hit = false;
+            try { hit = (e.getTags() != null) && e.getTags().contains(SS_TARGET_TAG); }
+            catch (t1) { hit = false; }
+            if (hit) { try { e.discard(); removed = removed + 1; } catch (t2) { } }
+        }
+    } catch (e0) { }
+    try { ModAttachments.setShootingStarCooldownEnd(p, 0); } catch (e1) { }
+    send(ctx, "AP_" + tag + "_SSCLEAR:removed=" + removed);
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+/** 保留 2 / 3 / 4 位小数的本地格式化（KubeJS 侧没有现成的 toFixed 封装）。 */
+function ssNum(x, digits) {
+    var m = Math.pow(10, digits);
+    return Math.round(x * m) / m;
+}
+
+/**
+ * 只读快照:飞星**落体几何** —— 核对 2026-09-21 用户裁决的口径。
+ *
+ * 期望(探针侧按规范公式**独立**推导,不复用产品代码):
+ *   legacy = 3.0 - 碰撞箱高/2            // 旧口径行程(脚底上方 3.0 → 碰撞箱中心)
+ *   dist   = legacy * 1.2                // 新口径行程(下落速度 ×1.2、时长仍 1 秒 ⇒ 行程 ×1.2)
+ *   speed  = dist / FALL_TICKS           // 每 tick 下落格数
+ *   rise   = origin_y - (feet_y + 3.0)   // 起点相对旧起点的抬升量(应 > 0)
+ *   head_match = 产品 impactPoint.y == 目标碰撞箱上沿 y   // 「落到目标头顶即视为命中」
+ */
+function doSsGeom(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var t = ssFindTarget(p, 8);
+    var found = (t == null) ? 0 : 1;
+    var h = -1, feetY = 0, headY = -1, originY = -1, impY = -1;
+    var dist = -1, legacy = -1, ratio = -1, speed = -1, rise = -1;
+    var ft = 20, headMatch = 0, originAbove = 0;
+    var err = "";
+    try { ft = ShootingStarManagerClass.FALL_TICKS - 0; } catch (e0) { }
+    if (t != null) {
+        try { h = t.getBbHeight() - 0; } catch (e1) { err = err + "|h:" + exText(e1); }
+        try { feetY = t.getY() - 0; } catch (e2) { err = err + "|y:" + exText(e2); }
+        try { headY = t.getBoundingBox().maxY - 0; } catch (e3) { err = err + "|maxY:" + exText(e3); }
+        try { originY = ShootingStarManagerClass.launchOrigin(t).y() - 0; } catch (e4) { err = err + "|origin:" + exText(e4); }
+        try { impY = ShootingStarManagerClass.impactPoint(t).y() - 0; } catch (e5) { err = err + "|imp:" + exText(e5); }
+        try { dist = ShootingStarManagerClass.fallDistance(t) - 0; } catch (e6) { err = err + "|dist:" + exText(e6); }
+        legacy = 3.0 - h * 0.5;
+        ratio = (legacy !== 0) ? dist / legacy : -1;
+        speed = (dist >= 0 && ft > 0) ? dist / ft : -1;
+        rise = originY - (feetY + 3.0);
+        headMatch = (ssNum(impY, 2) === ssNum(headY, 2)) ? 1 : 0;
+        originAbove = (originY > impY) ? 1 : 0;
+    }
+    send(ctx, "AP_" + tag + "_SSGEOM:found=" + found
+        + ":height=" + ssNum(h, 2)
+        + ":feet_y=" + ssNum(feetY, 2)
+        + ":head_y=" + ssNum(headY, 3)
+        + ":origin_y=" + ssNum(originY, 3)
+        + ":imp_y=" + ssNum(impY, 3)
+        + ":dist=" + ssNum(dist, 2)
+        + ":legacy=" + ssNum(legacy, 3)
+        + ":ratio=" + ssNum(ratio, 2)
+        + ":speed=" + ssNum(speed, 4)
+        + ":fall_ticks=" + ft
+        + ":rise=" + ssNum(rise, 2)
+        + ":head_match=" + headMatch
+        + ":origin_above=" + originAbove
+        + (err === "" ? "" : ":err=" + err));
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+/** 只读:靶子的精英判定**分项**(用于定位是哪一路命中)。 */
+function doEliteRead(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var t = ssFindTarget(p, 8);
+    if (t == null) { send(ctx, "AP_" + tag + "_ELITE:no_target"); send(ctx, "AP_" + tag + "_DONE"); return 0; }
+    var maxHp = -1, armor = -1, boss = -1, ab = -1, am = -1, elite = -1;
+    var err = "";
+    try { maxHp = t.getMaxHealth() - 0; } catch (e1) { }
+    try { armor = t.getArmorValue() - 0; } catch (e2) { }
+    try { boss = BossEntityUtilClass.isBossEntity(t) ? 1 : 0; } catch (e3) { err = err + "|boss:" + exText(e3); }
+    try {
+        var pd = t.getPersistentData();
+        ab = pd.getBoolean("apoth.boss") ? 1 : 0;
+        am = pd.getBoolean("apoth.miniboss") ? 1 : 0;
+    } catch (e4) { err = err + "|pd:" + exText(e4); }
+    try { elite = EliteTargetsClass.isEliteOrBoss(t) ? 1 : 0; } catch (e5) { err = err + "|elite:" + exText(e5); }
+    send(ctx, "AP_" + tag + "_ELITE:max_hp=" + maxHp + ":armor=" + armor
+        + ":boss=" + boss + ":apoth_boss=" + ab + ":apoth_mini=" + am
+        + ":elite=" + elite + (err === "" ? "" : ":err=" + err));
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+/** 只读:怪力侦探(sherry)「推理时间」层数 + 效果镜像 + stand 槽。 */
+function doSherryRead(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var layers = -1, mirror = -1, stand = -1;
+    var err = "";
+    try { layers = ModAttachments.getSherryReasoningLayers(p) - 0; } catch (e1) { err = err + "|layers:" + exText(e1); }
+    try { mirror = p.hasEffect(ModEffects.SHERRY_REASONING) ? 1 : 0; } catch (e2) { err = err + "|eff:" + exText(e2); }
+    try { stand = domSignEquipped(p); } catch (e3) { }
+    send(ctx, "AP_" + tag + "_SHERRY:layers=" + layers + ":mirror=" + mirror + ":stand=" + stand
+        + (err === "" ? "" : ":err=" + err));
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+/** 只读:人偶师(hanna)「人偶制作 / 人偶完成 / 魔女漂浮」与两条被动冷却。 */
+function doHannaRead(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var craft = -1, complete = -1, floatOn = -1, cdF = -1, cdB = -1, stand = -1;
+    var err = "";
+    try { craft = ModAttachments.getHannaDollCraftLayers(p) - 0; } catch (e1) { err = err + "|craft:" + exText(e1); }
+    try { complete = ModAttachments.getHannaDollComplete(p) ? 1 : 0; } catch (e2) { }
+    try { floatOn = p.hasEffect(ModEffects.HANNA_FLOAT) ? 1 : 0; } catch (e3) { err = err + "|float:" + exText(e3); }
+    try { cdF = ModAttachments.getHannaFantasyCooldownEnd(p) - 0; } catch (e4) { }
+    try { cdB = ModAttachments.getHannaBlessingCooldownEnd(p) - 0; } catch (e5) { }
+    try { stand = domSignEquipped(p); } catch (e6) { }
+    var now = nowTick(p) - 0;
+    send(ctx, "AP_" + tag + "_HANNA:craft=" + craft + ":complete=" + complete
+        + ":float=" + floatOn + ":cd_fantasy=" + cdF + ":cd_blessing=" + cdB
+        + ":now=" + now + ":stand=" + stand
+        + (err === "" ? "" : ":err=" + err));
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
 ServerEvents.commandRegistry(event => {
     var Commands = event.commands;
     event.register(
@@ -13930,6 +14269,60 @@ ServerEvents.commandRegistry(event => {
                 .then(Commands.argument("tag", StringArg.word())
                     .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
                         return doZhaoClearAll(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("ssspawn")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("mode", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doSsSpawn(ctx, StringArg.getString(ctx, "tag"),
+                                StringArg.getString(ctx, "mode"), "");
+                        }))
+                        .then(Commands.argument("entity", StringArg.string())
+                            .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                                return doSsSpawn(ctx, StringArg.getString(ctx, "tag"),
+                                    StringArg.getString(ctx, "mode"), StringArg.getString(ctx, "entity"));
+                            }))))))
+            .then(Commands.literal("ssstar")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("n", IntegerArg.integer(0, 32))
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doSsStar(ctx, StringArg.getString(ctx, "tag"),
+                                IntegerArg.getInteger(ctx, "n"));
+                        })))))
+            .then(Commands.literal("ssfire")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doSsFire(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("ssread")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doSsRead(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("ssclear")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doSsClear(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("ssgeom")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doSsGeom(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("eliteread")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doEliteRead(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("sherryread")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doSherryRead(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("hannaread")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doHannaRead(ctx, StringArg.getString(ctx, "tag"));
                     }))))
     );
 });

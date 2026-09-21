@@ -1,0 +1,224 @@
+{
+  "case_id": "SIGN-SMOKE-1.21.1",
+  "title": "立牌冒烟：怪力侦探（sherry）与人偶师（hanna）的装备、读数与主动释放",
+  "version": "1.21.1",
+  "target": {
+    "type": "feature",
+    "ref": "sherry-hanna-smoke"
+  },
+  "steps": [
+    {
+      "op": "note",
+      "text": "目的：本次新增的两块立牌（怪力侦探 sherry / 人偶师 hanna）冒烟 —— 装备、读数命令、主动释放不崩、以及各自特有状态的读写。"
+    },
+    {
+      "op": "note",
+      "text": "前置：生存模式 + 清背包；`signprep` 会清 stand 槽并装指定立牌。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode survival",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear @s",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/time set midnight",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 300
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamerule doDaylightCycle false",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 300
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "note",
+      "text": "sherry：「侦探出击」层数（附件 `sherry_reasoning_layers`）与效果镜像；「怪力投掷」为选择器类主动，此处只验证装备与读数通道（不进入选择态）。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe signprep X1 \"astral_dice:sherry_sign\"",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe sherryread X1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "note",
+      "text": "攻击一只 20 血敌对目标（僵尸）⇒ 期望「侦探出击」计 1 层。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe attack \"minecraft:zombie\" X1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe sherryread X1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "note",
+      "text": "hanna：装备后主动「漂浮魔法」为自身 buff（非选择器）⇒ 用 `signcast` 走真实主动路径释放，期望 `float=1`（魔女漂浮效果已挂）。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe signprep X1 \"astral_dice:hanna_sign\"",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe hannaread X1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe signcast X1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe hannaread X1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "note",
+      "text": "收尾：清背包与靶子。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/kill @e[type=!player,distance=..32]",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear @s",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_X1_SIGNPREP:sign=astral_dice:sherry_sign:sign_err=:stand=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_X1_SHERRY:layers=0:mirror=0:stand=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_X1_MELEE:.*"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_X1_SHERRY:layers=1:.*"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_X1_SIGNPREP:sign=astral_dice:hanna_sign:sign_err=:stand=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_X1_SIGNCAST:.*:sign_after=\\[astral_dice:hanna_sign\\]"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_X1_HANNA:.*:float=1:.*"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_[A-Z0-9]+_ERR"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_[A-Z0-9]+_EX:"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": ":err="
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "参数后应有空格分隔|未知或不完整的命令|Unknown or incomplete command|Incorrect argument"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "crash"
+    }
+  ]
+}

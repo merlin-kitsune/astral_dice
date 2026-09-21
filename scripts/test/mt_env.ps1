@@ -1613,6 +1613,7 @@ function Invoke-MtEnvMods {
         Write-MtLine 'MT_MODS: 注意 — Sodium/Iris/ImmediatelyFast 为纯客户端模组：`mt_env world` 起专用服务器会自动移出，但**两段式数据生成（runClientData/runServerData）前必须手动移出** run/26.1.2/mods（与探针运行时同规则）'
         [void](Invoke-MtPauseLockEnforce -Paths $p)
     [void](Invoke-MtKeyBindingEnforce -Paths $p)
+    [void](Invoke-MtWindowedEnforce -Paths $p)
         return 0
     }
 
@@ -1641,6 +1642,7 @@ function Invoke-MtEnvMods {
         Write-MtLine 'MT_MODS: OK — 1.20.1 渲染栈（Embeddium/Oculus）与 FerriteCore 由 build.gradle 的 modImplementation 提供、光影包与光影加载器配置已落位（2026-09-17 实测：EMBEDDIUM_LOADED/OCULUS_LOADED=true + `Using shaderpack: ComplementaryUnbound_r5.9.3.zip`）；生产环境目录已校验'
         [void](Invoke-MtPauseLockEnforce -Paths $p)
     [void](Invoke-MtKeyBindingEnforce -Paths $p)
+    [void](Invoke-MtWindowedEnforce -Paths $p)
         return 0
     }
 
@@ -1692,6 +1694,7 @@ function Invoke-MtEnvMods {
     Write-MtLine 'MT_MODS: 提示 — ImmediatelyFast 为纯客户端：`mt_env world` 起专用服务器会自动移出；FerriteCore 两侧皆可，保留'
     [void](Invoke-MtPauseLockEnforce -Paths $p)
     [void](Invoke-MtKeyBindingEnforce -Paths $p)
+    [void](Invoke-MtWindowedEnforce -Paths $p)
     return 0
 }
 
@@ -1751,6 +1754,26 @@ function Invoke-MtPauseLockEnforce {
     Write-MtLine ("MT_PAUSE_LOCK: on — 禁止失焦打开 ESC 菜单（pauseOnLostFocus=false，{0}）" -f `
             (Join-Path $Paths.run_dir 'options.txt'))
     return $on
+}
+
+function Invoke-MtWindowedEnforce {
+    <#
+    .SYNOPSIS
+        全局测试规则「runClient 必须窗口模式」的唯一落地点：写 `options.txt` 的 `fullscreen:false`
+        并回显 `MT_WINDOWED: on`（幂等）。
+
+    .NOTES
+        为什么是全局规则（2026-09-21 实测）：全屏下 mt_inject 的键鼠注入送不到，
+        launch 的 `MT_preflight-op` 闸门会稳定 FAIL，而脚本自发心跳 `AP_NOAI` 仍然正常
+        —— 极易被误诊为「探针未加载」。与 pause-lock / keybinds 同属**环境不变量**。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][psobject]$Paths)
+
+    [void](Set-MtFullscreenDisabled -Paths $Paths)
+    Write-MtLine ("MT_WINDOWED: on — runClient 强制窗口模式（fullscreen=false，{0}）" -f `
+            (Join-Path $Paths.run_dir 'options.txt'))
+    return $true
 }
 
 function Invoke-MtKeyBindingEnforce {

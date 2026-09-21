@@ -453,6 +453,34 @@ function Get-MtPauseOnLostFocus {
     return $null
 }
 
+function Set-MtFullscreenDisabled {
+    <#
+    .SYNOPSIS
+        写 `run/<版本>/options.txt` 的 `fullscreen:false`（幂等）—— 测试环境**必须窗口模式**。
+
+    .NOTES
+        2026-09-21 实测踩坑：`run/1.21.1/options.txt` 被改成 `fullscreen:true` 后，
+        mt_inject 的键鼠注入**完全送不到**（全屏切换会换窗口句柄/焦点），
+        launch 阶段硬闸门 `MT_preflight-op` 因此稳定 FAIL ——
+        症状极具迷惑性：脚本自发的 tick 心跳（`AP_NOAI`）照常出现在 latest.log，
+        唯独「注入命令」没有任何 `AP_*` 回应，容易被误判成探针没加载。
+        · 与 `Set-MtPauseOnLostFocus` 同型：只动这一个键，过滤旧行后追加；
+        · ⚠️ 游戏退出时会重写 options.txt ⇒ 必须在**冷启动之前**写（mt_env/mt_launch 已强制）。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][psobject]$Paths)
+
+    $opt = Join-Path $Paths.run_dir 'options.txt'
+    $lines = @()
+    if (Test-Path -LiteralPath $opt -PathType Leaf) {
+        $lines = @(Get-Content -LiteralPath $opt -Encoding UTF8 -ErrorAction SilentlyContinue |
+                Where-Object { -not ([string]$_).StartsWith('fullscreen:') })
+    }
+    $lines += 'fullscreen:false'
+    [System.IO.File]::WriteAllText($opt, (($lines -join "`n") + "`n"), [System.Text.Encoding]::ASCII)
+    return $false
+}
+
 function Set-MtPauseOnLostFocus {
     <#
     .SYNOPSIS
@@ -588,5 +616,6 @@ Export-ModuleMember -Function @(
     'Get-MtReportsDir', 'ConvertTo-MtJson',
     'Get-MtProgressFile', 'Set-MtProgress', 'Get-MtProgress',
     'Get-MtPauseOnLostFocus', 'Set-MtPauseOnLostFocus',
+    'Set-MtFullscreenDisabled',
     'Get-MtTestKeyBindings', 'Get-MtKeyBinding', 'Repair-MtTestKeyBindings'
 )
