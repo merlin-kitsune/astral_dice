@@ -149,5 +149,7 @@ public class ModItemModelProvider extends ItemModelProvider {
         basicItem(ModItems.RAILGUN_CHIP.get());
         basicItem(ModItems.PRIMORDIAL_CORE_CHIP.get());
         basicItem(ModItems.WHETSTONE_CHIP.get());
+        basicItem(ModItems.PURPLE_SHOOTING_STAR_CHIP.get());
+        basicItem(ModItems.GOLDEN_SHOOTING_STAR_CHIP.get());
     }
 }

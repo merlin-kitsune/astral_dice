@@ -125,6 +125,8 @@ public class ModCreativeTabs {
                 output.accept(ModItems.BANK_CARD_HIGH.get());
                 output.accept(ModItems.BANK_CARD_UNLIMITED.get());
                 output.accept(ModItems.STAR_COIN_HAMMER.get());
+                output.accept(ModItems.PURPLE_SHOOTING_STAR_CHIP.get());
+                output.accept(ModItems.GOLDEN_SHOOTING_STAR_CHIP.get());
                 // === 治愈类 ===
                 output.accept(ModItems.MEDKIT_EMERGENCY_CHIP.get());
                 output.accept(ModItems.MEDKIT_COMPLETE_CHIP.get());

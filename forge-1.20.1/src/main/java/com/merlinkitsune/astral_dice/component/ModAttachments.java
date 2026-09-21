@@ -1112,6 +1112,22 @@ public class ModAttachments {
         HANNA_BLESSING_COOLDOWN_END.set(player, Math.max(0L, value));
     }
 
+    /**
+     * 「飞星」筹码(紫色飞星 / 金色飞星)的 **共享**触发冷却截止刻(绝对 gameTime)。
+     * <p>用户裁决:两枚筹码同时装备时共用同一计时器 ⇒ 只此一键。该计时器**不创建任何效果**,
+     * 仅在 tooltip 中显示剩余秒数。仅服务端。
+     */
+    public static final AttachedDataKey<Long> SHOOTING_STAR_COOLDOWN_END =
+            register(AttachedDataKey.builder("shooting_star_cooldown_end", Codec.LONG, () -> 0L).build());
+
+    public static long getShootingStarCooldownEnd(net.minecraft.world.entity.player.Player player) {
+        return SHOOTING_STAR_COOLDOWN_END.get(player);
+    }
+
+    public static void setShootingStarCooldownEnd(net.minecraft.world.entity.player.Player player, long value) {
+        SHOOTING_STAR_COOLDOWN_END.set(player, Math.max(0L, value));
+    }
+
     /** synced 键快照发送(登录/重生/切维度时)。 */
     public static void sendSyncSnapshot(ServerPlayer player) {
         com.merlinkitsune.astral_dice.network.ModNetwork.syncSnapshot(player, syncedKeys());

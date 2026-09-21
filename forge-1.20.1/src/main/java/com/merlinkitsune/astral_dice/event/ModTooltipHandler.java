@@ -291,6 +291,20 @@ public class ModTooltipHandler {
         }
     }
 
+    /**
+     * 「飞星」筹码的共享触发冷却剩余（用户要求：计时器不创建效果，只在 tooltip 显示）。
+     * 冷却未就绪时追加一行红色剩余秒数；就绪则不显示任何行。
+     */
+    private static void addShootingStarCooldown(List<Component> tooltip, Player player) {
+        if (player == null) return;
+        long cdEnd = ModAttachments.getShootingStarCooldownEnd(player);
+        int remainingTicks = cdEnd > 0 ? (int) (cdEnd - player.level().getGameTime()) : 0;
+        if (remainingTicks > 0) {
+            tooltip.add(tt("tooltip.astral_dice.chip.shooting_star_cooldown", remainingTicks / 20)
+                    .withStyle(ChatFormatting.RED));
+        }
+    }
+
     // 秒数 → 立牌 tooltip 时间格式(蓝):§9MM:SS§7(如 60 → §91:00§7)
     private static String formatSignTime(int seconds) {
         return String.format("§9%d:%02d§7", seconds / 60, seconds % 60);
@@ -770,6 +784,25 @@ public class ModTooltipHandler {
             if (event.getEntity() != null) {
                 addSignCounter(tooltip, "tooltip.astral_dice.chip.starlight",
                         StarLightManager.get(player), StarLightManager.getCap());
+            }
+        }
+        // 紫色飞星 / 金色飞星:功能描述 + 星光层数 + 共享冷却剩余(计时器不建效果,只在 tooltip 显示)
+        if (stack.is(ModItems.PURPLE_SHOOTING_STAR_CHIP.get())) {
+            tooltip.add(Component.empty());
+            addChipLines(tooltip, "tooltip.astral_dice.chip.purple_shooting_star", ChatFormatting.GRAY);
+            if (event.getEntity() != null) {
+                addSignCounter(tooltip, "tooltip.astral_dice.chip.starlight",
+                        StarLightManager.get(player), StarLightManager.getCap());
+                addShootingStarCooldown(tooltip, player);
+            }
+        }
+        if (stack.is(ModItems.GOLDEN_SHOOTING_STAR_CHIP.get())) {
+            tooltip.add(Component.empty());
+            addChipLines(tooltip, "tooltip.astral_dice.chip.golden_shooting_star", ChatFormatting.GRAY);
+            if (event.getEntity() != null) {
+                addSignCounter(tooltip, "tooltip.astral_dice.chip.starlight",
+                        StarLightManager.get(player), StarLightManager.getCap());
+                addShootingStarCooldown(tooltip, player);
             }
         }
         if (stack.is(ModItems.CUTTER_CHIP.get())) {

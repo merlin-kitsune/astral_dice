@@ -1680,4 +1680,22 @@ public class ModAttachments {
     public static void setHannaBlessingCooldownEnd(net.minecraft.world.entity.player.Player player, long value) {
         player.setData(HANNA_BLESSING_COOLDOWN_END.get(), Math.max(0L, value));
     }
+
+    /**
+     * 「飞星」筹码(紫色飞星 / 金色飞星)的 **共享**触发冷却截止刻(绝对 gameTime)。
+     * <p>用户裁决:两枚筹码同时装备时共用同一计时器 ⇒ 只此一键。该计时器**不创建任何效果**,
+     * 仅在 tooltip 中显示剩余秒数。仅服务端。
+     */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> SHOOTING_STAR_COOLDOWN_END =
+            ATTACHMENTS.register("shooting_star_cooldown_end", () -> AttachmentType.builder(() -> 0L)
+                    .serialize(Codec.LONG)
+                    .build());
+
+    public static long getShootingStarCooldownEnd(net.minecraft.world.entity.player.Player player) {
+        return player.getData(SHOOTING_STAR_COOLDOWN_END.get());
+    }
+
+    public static void setShootingStarCooldownEnd(net.minecraft.world.entity.player.Player player, long value) {
+        player.setData(SHOOTING_STAR_COOLDOWN_END.get(), Math.max(0L, value));
+    }
 }

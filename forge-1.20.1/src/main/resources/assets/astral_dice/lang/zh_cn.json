@@ -789,5 +789,12 @@
   "msg.astral_dice.hanna_no_pearl": "人偶师立牌：魔女漂浮期间无法使用末影珍珠",
   "astral_dice.guide.entry.hanna_sign.1": "人偶师立牌。主动「漂浮魔法」：使自身获得 魔女漂浮 (1:00)，在此期间你的移动速度 +20%%，掉落伤害 -100%%，任何对你的近战攻击都会被闪避，你也无法使用末影珍珠进行转移。",
   "astral_dice.guide.entry.hanna_sign.2": "被动「幻想千金」：战斗骰点等于 6 时，获得 1 星币；经过友方玩家时，获得 1 星币和一层「人偶制作」。如果处于「魔女漂浮」状态，则使该玩家获得 3 星币。该能力每 1:00 仅触发 1 次；如果「人偶制作」达到 7 层，则转换为「人偶完成」，此后路过友方玩家使该玩家额外获得 迅捷 II (1:00) 和 3 星币。被动「挚友祝福」：路过装备「怪力侦探」立牌的玩家时，使该玩家获得 力量 II (1:00) + 抗性提升 (1:00) 和一层「推理时间」。该能力每 1:00 仅触发 1 次。",
-  "astral_dice.guide.entry.hanna_sign.3": "配方：黄金骰子（无星盘）档，与史莱姆立牌、上班族立牌同档。"
+  "astral_dice.guide.entry.hanna_sign.3": "配方：黄金骰子（无星盘）档，与史莱姆立牌、上班族立牌同档。",
+  "item.astral_dice.purple_shooting_star_chip": "紫色飞星",
+  "item.astral_dice.golden_shooting_star_chip": "金色飞星",
+  "tooltip.astral_dice.chip.purple_shooting_star": "路过敌对目标且不对其发动攻击时，使其受到 §e1§7 点伤害，并使自身获得 §e1§7 层「星光」。每 §910 秒§7 触发一次，与金色飞星共享计时器",
+  "tooltip.astral_dice.chip.golden_shooting_star": "路过敌对目标且不对其发动攻击时，使其受到 §e2§7 点伤害，并使自身获得 §e1§7 层「星光」；若目标为精英怪物或 Boss，则额外对其造成玩家当前「星光」层数的伤害。每 §910 秒§7 触发一次，与紫色飞星共享计时器",
+  "tooltip.astral_dice.chip.shooting_star_cooldown": "冷却中：§c%s§c 秒",
+  "astral_dice.guide.entry.purple_shooting_star_chip.1": "路过敌对目标且不对其发动攻击时，使其受到 1 点伤害，并使自身获得 1 层「星光」。每 10 秒触发一次；与金色飞星共享计时器。",
+  "astral_dice.guide.entry.golden_shooting_star_chip.1": "路过敌对目标且不对其发动攻击时，使其受到 2 点伤害，并使自身获得 1 层「星光」；若目标为精英怪物或 Boss，则额外对其造成玩家当前「星光」层数的伤害。每 10 秒触发一次；与紫色飞星共享计时器。"
 }

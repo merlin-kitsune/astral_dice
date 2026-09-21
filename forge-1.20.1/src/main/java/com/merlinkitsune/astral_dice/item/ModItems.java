@@ -13,6 +13,7 @@ import net.minecraftforge.registries.DeferredRegister;
 
 import java.util.function.Supplier;
 import com.merlinkitsune.astral_dice.item.chip.StarCoinHammerChipItem;
+import com.merlinkitsune.astral_dice.item.chip.ShootingStarChipItem;
 import com.merlinkitsune.astral_dice.item.chip.EagleScopeChipItem;
 import com.merlinkitsune.astral_dice.item.chip.MagicTomeChipItem;
 import com.merlinkitsune.astral_dice.item.chip.BufferShieldChipItem;
@@ -800,6 +801,19 @@ public class ModItems {
             () -> new WhetstoneChipItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(Rarity.EPIC)));
+
+    // 紫色飞星(史诗):路过敌对目标且不对其发动攻击 ⇒ 使其受到 1 点伤害并自身 +1 层「星光」;每 10 秒触发一次。
+    // 与金色飞星共用同一冷却计时器(用户裁决);两枚共用 ShootingStarChipItem,差异全在执行器 ShootingStarManager。
+    public static final RegistryObject<Item> PURPLE_SHOOTING_STAR_CHIP = registerItem("purple_shooting_star_chip",
+            () -> new ShootingStarChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.EPIC)));
+
+    // 金色飞星(传奇):同上,基础伤害 2 点;若目标为精英怪物或 Boss,额外造成自身当前「星光」层数的伤害。
+    public static final RegistryObject<Item> GOLDEN_SHOOTING_STAR_CHIP = registerItem("golden_shooting_star_chip",
+            () -> new ShootingStarChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.UNCOMMON)));
 
     public static final RegistryObject<Item> PADMAN_SIGN = registerItem("padman_sign",
             () -> new PadmanSignItem(new Item.Properties()

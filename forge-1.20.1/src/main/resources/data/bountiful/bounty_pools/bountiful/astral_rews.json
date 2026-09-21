@@ -868,6 +868,16 @@
 			},
 			"unitWorth": 2800
 		},
+		"purple_shooting_star_chip": {
+			"type": "item",
+			"rarity": "EPIC",
+			"content": "astral_dice:purple_shooting_star_chip",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 2800
+		},
 		"nancy_lu_sign": {
 			"type": "item",
 			"rarity": "EPIC",

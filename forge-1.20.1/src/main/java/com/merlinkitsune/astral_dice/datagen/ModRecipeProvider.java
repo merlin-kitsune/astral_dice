@@ -300,6 +300,30 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
                 .save(output::accept);
 
+        // 紫色飞星(史诗/星光流派):第三行 = 星盘,第二行中 = 空白筹码,两侧 = 星币尘,第一行 = 紫水晶碎片
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.PURPLE_SHOOTING_STAR_CHIP.get())
+                .pattern("XXX")
+                .pattern("DBD")
+                .pattern("PPP")
+                .define('X', Items.AMETHYST_SHARD)
+                .define('D', ModItems.STAR_COIN_DUST.get())
+                .define('B', ModItems.BLANK_CHIP.get())
+                .define('P', ModItems.STAR_PLATE.get())
+                .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
+                .save(output::accept);
+
+        // 金色飞星(传奇/星光流派):同上,第三行 = 黄金星盘,第一行 = 荧石粉
+        ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.GOLDEN_SHOOTING_STAR_CHIP.get())
+                .pattern("XXX")
+                .pattern("DBD")
+                .pattern("GGG")
+                .define('X', Items.GLOWSTONE_DUST)
+                .define('D', ModItems.STAR_COIN_DUST.get())
+                .define('B', ModItems.BLANK_CHIP.get())
+                .define('G', ModItems.GOLDEN_STAR_PLATE.get())
+                .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
+                .save(output::accept);
+
         ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ModItems.ATTACK_CARD_LARGE.get())
                 .requires(ModItems.ATTACK_CARD_MEDIUM.get())
                 .requires(ModItems.ATTACK_CARD_MEDIUM.get())

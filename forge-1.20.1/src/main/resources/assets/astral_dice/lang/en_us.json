@@ -789,5 +789,12 @@
   "msg.astral_dice.hanna_no_pearl": "Hanna Sign: cannot use an ender pearl while floating",
   "astral_dice.guide.entry.hanna_sign.1": "Hanna Sign. Active \"Float Magic\": grants you Witch's Float (1:00); during it your movement speed is +20%%, fall damage is -100%%, every melee attack on you is dodged, and you cannot use an ender pearl to teleport.",
   "astral_dice.guide.entry.hanna_sign.2": "Passive \"Fantasy Heiress\": rolling a 6 in a dice battle grants 1 star coin; passing a friendly player grants 1 star coin and one Doll Crafting stack. While under Witch's Float, that player instead gains 3 star coins. This ability triggers only once per 1:00; once Doll Crafting reaches 7 stacks it turns into \"Doll Complete\", after which passing a friendly player additionally grants them Swiftness II (1:00) and 3 star coins. Passive \"Friend's Blessing\": passing a player wearing the Hanna Sign grants them Strength II (1:00) + Resistance (1:00) and one Reasoning Time stack. This ability triggers only once per 1:00.",
-  "astral_dice.guide.entry.hanna_sign.3": "Recipe: golden dice tier (no star plate), the same tier as the Slime Sign and the Padman Sign."
+  "astral_dice.guide.entry.hanna_sign.3": "Recipe: golden dice tier (no star plate), the same tier as the Slime Sign and the Padman Sign.",
+  "item.astral_dice.purple_shooting_star_chip": "Purple Shooting Star",
+  "item.astral_dice.golden_shooting_star_chip": "Golden Shooting Star",
+  "tooltip.astral_dice.chip.purple_shooting_star": "When you pass by a hostile target without attacking it, it takes §e1§7 damage and you gain §e1§7 Starlight. Triggers once every §910s§7; shares its timer with the Golden Shooting Star",
+  "tooltip.astral_dice.chip.golden_shooting_star": "When you pass by a hostile target without attacking it, it takes §e2§7 damage and you gain §e1§7 Starlight; if the target is an elite or a boss, it takes additional damage equal to your current Starlight. Triggers once every §910s§7; shares its timer with the Purple Shooting Star",
+  "tooltip.astral_dice.chip.shooting_star_cooldown": "On cooldown: §c%s§c s",
+  "astral_dice.guide.entry.purple_shooting_star_chip.1": "Passing by a hostile target without attacking it deals 1 damage to it and grants you 1 Starlight. Triggers once every 10 seconds; shares its timer with the Golden Shooting Star.",
+  "astral_dice.guide.entry.golden_shooting_star_chip.1": "Passing by a hostile target without attacking it deals 2 damage to it and grants you 1 Starlight; if the target is an elite or a boss, it takes additional damage equal to your current Starlight. Triggers once every 10 seconds; shares its timer with the Purple Shooting Star."
 }
