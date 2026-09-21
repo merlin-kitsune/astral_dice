@@ -80,6 +80,9 @@ public class ModCreativeTabs {
                 output.accept(ModItems.YOU_HAVE_I_HAVE.get());
                 output.accept(ModItems.EXPRESS_DELIVERY.get());
                 output.accept(ModItems.FATE_GUIDANCE_CARD.get());
+                // 风水师立牌专属符卡(专属绑定获得者的效果牌)
+                output.accept(ModItems.FU_CARD.get());
+                output.accept(ModItems.HUO_CARD.get());
                 // 伤害效果牌（活体书页在定向爆破之后）
                 output.accept(ModItems.MONSTER_LASER_CARD.get());
                 output.accept(ModItems.MONSTER_BRICK_CARD.get());
@@ -113,9 +116,6 @@ public class ModCreativeTabs {
                 output.accept(ModItems.MAMUSHI_SIGN.get());
                 output.accept(ModItems.SHERRY_SIGN.get());
                 output.accept(ModItems.HANNA_SIGN.get());
-                // 专属符卡(风水师立牌专属:符卡-福 / 符卡-祸)
-                output.accept(ModItems.FU_CARD.get());
-                output.accept(ModItems.HUO_CARD.get());
                 // 筹码
                 // === 星光类 ===
                 output.accept(ModItems.FLASHLIGHT_CHIP.get());
