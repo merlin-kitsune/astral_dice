@@ -725,6 +725,58 @@ if ($MyInvocation.InvocationName -ne '.') {
         }
     }
 
+    # ── 测试环境不变量：`doImmediateRespawn=true`（2026-09-28 实测新增，硬闸门）─────────────
+    # 为什么必须：**真人玩家**死亡时客户端会打开**死亡界面**（`ClientPacketListener#handlePlayerCombatKill`
+    #   → `new DeathScreen(...)`），死亡界面上没有聊天栏 ⇒ **此后所有 mt_inject 聊天注入整段被吞**，
+    #   用例读数一条都产生不出来（表现为「零读数」的整片 FAIL，极易被误判成探针/产品缺陷）。
+    #   实测两次（2026-09-28）：① 采集用例的探针 `mamudie`（kill + `PlayerList#respawn` 压在同一次执行内）
+    #   之后，`latest.log` 到本轮结束只剩 `AP_NOAI` 心跳（01:42 之后 11 行、0 条用例读数）⇒ 紧随其后的
+    #   `LOCK-OFFLINE-1.21.1`（47 条断言）与 `LOCK-OFFLINE-RELOG-A-1.21.1`（16 条）全红；
+    #   ② 截图确认客户端停在「你死了！」界面，**同时**服务端读数是 `respawn_ok=1:p_alive=1`、HUD 满血
+    #   ⇒ 是纯客户端界面卡死，玩家其实活着。
+    #   根因（源码级核对）：`ServerPlayer#die` 的死亡包带 `PacketSendListener`
+    #   （`exceptionallySend`，1.21.1 `ServerPlayer.java:691-706`），其写盘走事件循环任务 ⇒
+    #   **可能晚于**同一次执行内 `PlayerList#respawn` 发出的 `ClientboundRespawnPacket`
+    #   （`:490`，普通写）到达客户端；客户端 `handleRespawn` 只在「当前界面是 DeathScreen」时才
+    #   `setScreen(null)`（`ClientPacketListener.java:1230-1232`），此刻界面还没创建 ⇒ 不关；
+    #   随后迟到的死亡包**新建**死亡界面（`:1715-1716`），而玩家已被重生为满血 ⇒ 界面永久驻留。
+    #   修法：`doImmediateRespawn=true` ⇒ 客户端 `showDeathScreen=false`
+    #   （`GameRules.java:129-132` 广播 `ClientboundGameEventPacket.IMMEDIATE_RESPAWN` →
+    #   `ClientPacketListener:1491`），死亡包改走 `player.respawn()` 分支（`:1717`）⇒
+    #   **从不创建死亡界面**；客户端随后自发的 `PERFORM_RESPAWN` 被
+    #   `ServerGamePacketListenerImpl:1672` 的 `getHealth() > 0.0F` 早退守卫掉，
+    #   不会与「用例自己驱动的服务端重生」竞争（实测 `mamudie` 读数为 `fast respawn_ok=1:p_alive=1`）。
+    # 安全性：**产品源码不读该规则**（全仓只在对 `keepInventory` 的注释里提到死亡掉落）；
+    #   世界规则存在一次性测试存档里，`--purge-saves` 重建即复位。既有先例：
+    #   `TERU-HUGUANG-ANTIFARM-{1.21.1,1.20.1}` 用例自身就在 `/kill @s` 之前打开它。
+    # 注入口径与 PRECLEAN 一致（连发两次 + 600ms；注入通道偶发丢失，见 TESTING-SPEC §10-17），
+    #   **并以游戏内原版回显自证**（读不到即拒绝继续，绝不带着「会被死亡界面卡死」的现场跑用例）。
+    if ($env:MT_ALLOW_NO_IMMEDIATE_RESPAWN -eq '1') {
+        Write-MtWarn 'IMMEDIATE_RESPAWN=SKIPPED — 已按 MT_ALLOW_NO_IMMEDIATE_RESPAWN=1 显式放行；此时任何死亡都会把客户端留在死亡界面 ⇒ 其后所有聊天注入被吞（对照实验用）'
+    } else {
+        $immCmd = '/gamerule doImmediateRespawn true'
+        $immRc = @()
+        foreach ($immAttempt in 1..2) {
+            & $psExe -NoProfile -File (Join-Path $testDir 'mt_inject.ps1') cmd --command $immCmd --version $Version
+            $immRc += $LASTEXITCODE
+            Start-Sleep -Milliseconds 600
+        }
+        $immEv = 'not-found'
+        $immText = ''
+        try { $immText = Read-MtSharedText -Path $p.latest_log } catch { $immText = '' }
+        # ⚠️ 两线的**本地化回显文案不同**（1.20.1 实测）：1.21.1 =「游戏规则doImmediateRespawn已被设为：true」，
+        #    1.20.1 =「已将游戏规则doImmediateRespawn设为true」，en =「Gamerule doImmediateRespawn is now set to: true」
+        #    ⇒ 三条判据都要收（2026-09-28 首跑 1.20.1 时只写 1.21.1 文案 ⇒ 闸门正确拦下、launch rc=2）。
+        if ($immText -match 'doImmediateRespawn已被设为：true') { $immEv = 'zh1211:true' }
+        elseif ($immText -match '已将游戏规则doImmediateRespawn设为true') { $immEv = 'zh1201:true' }
+        elseif ($immText -match 'Gamerule doImmediateRespawn is now set to: true') { $immEv = 'en:true' }
+        if ($immEv -eq 'not-found') {
+            Write-MtErrLine ("MT_LAUNCH: ERROR — 未确认「doImmediateRespawn=true」（测试环境硬性要求，注入返回码 {0}）；死亡后客户端会停在死亡界面、其后所有聊天注入被吞 ⇒ 拒绝继续。确认原版回显（中/英）或显式设 MT_ALLOW_NO_IMMEDIATE_RESPAWN=1" -f ($immRc -join '/'))
+            exit $MT_EXIT_ERROR
+        }
+        Write-MtInfo ("IMMEDIATE_RESPAWN=true — {0}（{1} ×2）" -f $immEv, $immCmd)
+    }
+
     # ── A2（B2）：单阶段 launch 也必须建立快照基线 ─────────────────────────────
     # 背景（B1 实测，docs/batch3/B1-in-game-results.md ⑥-2）：此前**只有全流程**在
     # mt.ps1:330 调 `mt_assert snapshot`；`--phase launch` 单阶段不写快照，分步路线会

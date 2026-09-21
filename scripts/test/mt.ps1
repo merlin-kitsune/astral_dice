@@ -65,7 +65,7 @@
       · launch 走脱离式，除硬上限外还有「日志 90s 零增长 ⇒ `CHILD: STALL` 放弃等待」——
         进程存活 ≠ 有进展（实测：游戏空闲时仍有每月一分钟一条的 ModernFix DEBUG 噪声，
         旧监视器就是被它骗过，见 TESTING-SPEC §12）。
-      · 单条用例硬超时 `--case-timeout` / `MT_CASE_TIMEOUT_SEC`（默认 180 s，见 mt_case.ps1）
+      · 单条用例硬超时 `--case-timeout` / `MT_CASE_TIMEOUT_SEC`（默认 600 s，见 mt_case.ps1）
         ⇒ 该条记 **TIMEOUT** 并继续跑下一条；
       · 全局 `--run-timeout <秒>`（**默认 2700s**；旧默认「0 = 不限」已废除 —— 那正是
         「7 分 45 秒静默空转、人只能干等」能发生的前提）⇒ 超时走 `--phase stop --force`
@@ -429,7 +429,7 @@ function Invoke-MtRunPhase {
     if ($PhaseName -eq 'cases') {
         # cases 阶段是**预算自适应**的：单条 = 单条硬上限 + 90s 余量；全目录 = 90s × 用例数 + 90s。
         # 为什么不用固定值：固定 300s 会把 17 条用例的正常全量跑**误杀**，而固定 3600s 又等于不限。
-        $perCase = if ($script:CaseTimeoutSec -gt 0) { $script:CaseTimeoutSec } else { 180 }
+        $perCase = if ($script:CaseTimeoutSec -gt 0) { $script:CaseTimeoutSec } else { 600 }
         $caseArgs = @('--version', $PhaseVersion, '--case-timeout', "$perCase")
         if ($CasePath) {
             $budget = $perCase + 90
@@ -475,7 +475,7 @@ $StopPurgeSaves = $false
 # 覆写：环境变量 MT_RUN_TIMEOUT_SEC 或 --run-timeout <秒>。
 $RunTimeoutSec = 2700
 if ($env:MT_RUN_TIMEOUT_SEC -and $env:MT_RUN_TIMEOUT_SEC -match '^\d+$') { $RunTimeoutSec = [int]$env:MT_RUN_TIMEOUT_SEC }
-# 单条用例硬超时（透传给 mt_case 的 --case-timeout；0 = 用 mt_case 自己的默认 180s）
+# 单条用例硬超时（透传给 mt_case 的 --case-timeout；0 = 用 mt_case 自己的默认 600s）
 $script:CaseTimeoutSec = 0
 if ($env:MT_CASE_TIMEOUT_SEC -and $env:MT_CASE_TIMEOUT_SEC -match '^\d+$') { $script:CaseTimeoutSec = [int]$env:MT_CASE_TIMEOUT_SEC }
 

@@ -11,10 +11,8 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -199,23 +197,25 @@ public final class DragonCardUtil {
     /**
      * **骰子侧**转换:遍历骰子 {@code weapon_enhancement.appliedStones},对每个 {@code type == "bite"}
      * 的装配项按装配顺序**逐个**转换 —— 费用由 {@link CardRegistry#cost(String, Player)} 重算
-     * (撕咬 2 → 龙之咆哮 3),累计 {@code usedCost} 超过 {@code maxCost} 的那些**丢弃**
-     * (从 {@code appliedStones} 移除;{@code usedCost}/{@code usedDefenseCost} 按留下的项重算),
-     * 其余写回为 {@code dragon_roar}(规格 §2.3 第 2 条)。
+     * (撕咬 2 → 龙之咆哮 3),`runningCost + roarCost > maxCost` 的**那一项丢弃**
+     * (从 {@code appliedStones} 移除),其余写回为 {@code dragon_roar}(规格 §2.3 第 2 条)。
      *
-     * <p><b>丢弃判据必须"预留"剩余项</b>(否则会超出 {@code maxCost}):转换前先把
-     * <b>非撕咬项 + 全部撕咬项按"龙之咆哮费用"计</b>的总占用量算出来,超预算的部分按**装配顺序从后往前**
-     * 丢弃撕咬 —— 这样"按装配顺序逐个转换、先到先得"的语义成立,而留下的装配表**必然**不超预算
+     * <p><b>算法与 1.21.1 线逐字同源(2026-09-28 修正)</b>:基准 = 当前 {@code usedCost}
+     * **减去全部撕咬的旧费用**(先整体扣除 ⇒ "被丢弃"的项不会重复计入),随后按装配顺序逐项累加
+     * 咆哮费用、**累加前先判超支**。这样"先到先得"成立,且留下的装配表**必然**不超预算
      * (撕咬 2 → 龙之咆哮 3 是涨价,mixed 档位下前面几项放得下、后面的被挤掉)。
-     * 未被丢弃的写回为 {@code dragon_roar};{@code maxCost}/{@code maxDefenseCost} 不变,
-     * {@code usedCost} 按留下的项重算(防御通道原样保留)。
+     *
+     * <p>⚠️ <b>本方法原先不是这个算法</b>:旧写法"先按全部转换投影总占用,再从最后一张撕咬往前丢,
+     * 每丢一张只把投影减 1"会把**已被移出**装配表的撕咬旧费用又加回去(净 −1 而非 −3)⇒
+     * **多丢**卡牌 —— 实测 3 张撕咬在 {@code maxCost}=7 时只剩 1 张、{@code maxCost}=4 时一张都不剩,
+     * 与规格 §2.3「按装配顺序逐个转换」及 1.21.1 线(3/2/1)不符(1.20.1 实测 3/1/0)。
+     * 已按 1.21.1 的 {@code DragonCardUtil#convertEquipped} 改写为"基准扣除 + 逐项累加判超支"。
      *
      * <p><b>F2(2026-09-27 收口)—— 转换后的耐久</b>:写回的装配项 {@code uses} 一律取
-     * {@link CardRegistry#defaultUses(String)}{@code ("dragon_roar")} = <b>5(满耐久)</b>,
-     * <b>不再</b>保留撕咬的剩余耐久。理由:背包侧转换产出的是全新物品,自带
-     * {@code ModDataComponents.CARD_USES} 的默认值(= 龙之咆哮满耐久 5)⇒ 骰子侧若保留
-     * "撕咬 leftover"(撕咬耐久 1)会造成同一次真龙转换两处口径不一致(1 耐久 / 5 耐久)。
-     * 两线(1.21.1 / 1.20.1)同批统一为满耐久。
+     * {@link MamushiSignItem#ROAR_USES}(= 5,规格 §1 冻结常量;与 {@code ModDataComponents.CARD_USES}
+     * 给卡牌物品的默认耐久同一真值),**不再**保留撕咬的剩余耐久。理由:背包侧转换产出的是全新物品,
+     * 自带 {@code CARD_USES} 的默认值(= 龙之咆哮满耐久 5)⇒ 骰子侧若保留"撕咬 leftover"(耐久 1)
+     * 会造成同一次真龙转换两处口径不一致(1 耐久 / 5 耐久)。两线(1.21.1 / 1.20.1)同批统一为满耐久。
      *
      * <p>⚠️ 只处理 {@code bite};{@code dragon_roar} 已装配项原样保留(幂等)。
      *
@@ -228,64 +228,53 @@ public final class DragonCardUtil {
         WeaponEnhancement enh = ModDataComponents.WEAPON_ENHANCEMENT.getOrDefault(dice, WeaponEnhancement.EMPTY);
         List<AppliedStone> stones = enh.appliedStones();
         if (stones == null || stones.isEmpty()) return 0;
+        int biteCount = 0;
+        for (AppliedStone stone : stones) {
+            if (stone != null && TYPE_BITE.equals(stone.type())) biteCount++;
+        }
+        if (biteCount <= 0) return 0;
 
+        // 费用口径与 CardInventoryMenu#saveToDice / TemporaryCardUtil#purgeEquipped 同源:CardRegistry.cost(type, player)
         int roarCost = CardRegistry.cost(TYPE_DRAGON_ROAR, player);
-        int budget = enh.maxCost();
-        // 第 1 遍:算出"全部转换"的总占用量,并记下撕咬在表里的下标(按装配顺序)
-        List<Integer> biteIndexes = new ArrayList<>();
-        int projected = 0;
-        for (int i = 0; i < stones.size(); i++) {
-            AppliedStone stone = stones.get(i);
-            if (stone == null) continue;
-            if (TYPE_BITE.equals(stone.type())) {
-                biteIndexes.add(i);
-                projected += roarCost;
-            } else {
-                projected += CardRegistry.cost(stone.type(), player);
-            }
-        }
-        if (biteIndexes.isEmpty()) return 0;
-        // 第 2 遍:从**最后**一张撕咬开始丢弃,直到总占用量落回预算内(先到先得)
-        Set<Integer> dropped = new HashSet<>();
-        for (int k = biteIndexes.size() - 1; k >= 0 && projected > budget; k--) {
-            int idx = biteIndexes.get(k);
-            dropped.add(idx);
-            projected -= roarCost;
-            projected += CardRegistry.cost(stones.get(idx).type(), player);   // 该项被移除 ⇒ 旧费用也不再占用
-        }
-        // 第 3 遍:写回(未被丢弃的撕咬 ⇒ 龙之咆哮;其余原样),并重算 usedCost
+        int biteCost = CardRegistry.cost(TYPE_BITE, player);
+        boolean roarIsDefense = CardRegistry.isDefense(TYPE_DRAGON_ROAR);
+        boolean biteIsDefense = CardRegistry.isDefense(TYPE_BITE);
+        // 基准 = 当前值 − 全部撕咬的旧费用(逐个转换前先整体扣除,故"被丢弃"的项不会重复计入)
+        int runningCost = Math.max(0, enh.usedCost() - (biteIsDefense ? 0 : biteCount * biteCost));
+        int runningDefenseCost = Math.max(0,
+                enh.usedDefenseCost() - (biteIsDefense ? biteCount * biteCost : 0));
         List<AppliedStone> kept = new ArrayList<>(stones.size());
-        int usedCost = 0;
-        int usedDefenseCost = 0;
         int converted = 0;
-        for (int i = 0; i < stones.size(); i++) {
-            AppliedStone stone = stones.get(i);
-            if (stone == null || dropped.contains(i)) continue;
-            AppliedStone out = stone;
-            if (TYPE_BITE.equals(stone.type())) {
-                // F2(2026-09-27 收口,**两线同选**):装配项 `uses` 一律写**龙之咆哮的满耐久**
-                // {@link MamushiSignItem#ROAR_USES}(= 5,规格 §1 冻结常量;与 ModDataComponents.CARD_USES
-                // 给卡牌物品的默认耐久同一真值)。1.21.1 线的同一处也写作 MamushiSignItem.ROAR_USES
-                // —— 两线写法必须同选,故此处不用 CardRegistry.defaultUses(...)。
-                // 原先写 stone.uses() 会"保留撕咬的剩余耐久"(撕咬 leftover = 1)⇒ 与背包侧口径
-                // (替换出的新卡带物品自带 CARD_USES = 满耐久 5)不一致,同一次真龙转换在两个位置
-                // 得到 1 耐久 / 5 耐久两种结果。
-                out = new AppliedStone(TYPE_DRAGON_ROAR, MamushiSignItem.ROAR_USES, stone.temporary());
-                converted++;
+        int dropped = 0;
+        for (AppliedStone stone : stones) {
+            if (stone == null) continue;
+            if (!TYPE_BITE.equals(stone.type())) {
+                kept.add(stone);
+                continue;
             }
-            kept.add(out);
-            int cost = CardRegistry.cost(out.type(), player);
-            if (CardRegistry.isDefense(out.type())) {
-                usedDefenseCost += cost;
+            // 费用溢出(逐项累加后超过 maxCost)⇒ 该项丢弃;其旧费用已在基准里扣除,故不再回加
+            if (!roarIsDefense && runningCost + roarCost > enh.maxCost()) {
+                dropped++;
+                continue;
+            }
+            if (roarIsDefense && runningDefenseCost + roarCost > enh.maxDefenseCost()) {
+                dropped++;
+                continue;
+            }
+            if (roarIsDefense) {
+                runningDefenseCost += roarCost;
             } else {
-                usedCost += cost;
+                runningCost += roarCost;
             }
+            // 耐久口径(两线统一,见方法注释 F2):写回为龙之咆哮的**满耐久**;临时牌标记原样保留
+            kept.add(new AppliedStone(TYPE_DRAGON_ROAR, MamushiSignItem.ROAR_USES, stone.temporary()));
+            converted++;
         }
-        if (converted <= 0 && dropped.isEmpty()) return 0;
+        if (converted <= 0 && dropped <= 0) return 0;
         ModDataComponents.WEAPON_ENHANCEMENT.set(dice, new WeaponEnhancement(
-                usedCost,
+                runningCost,
                 enh.maxCost(),
-                usedDefenseCost,
+                runningDefenseCost,
                 enh.maxDefenseCost(),
                 enh.starLevel(),
                 kept));

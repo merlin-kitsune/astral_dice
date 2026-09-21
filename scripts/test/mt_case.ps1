@@ -155,9 +155,12 @@ $script:UserTerminated = $false
 # 客户端没就绪时 `Invoke-MtCaseChild` 会一直等（旧实现还是 `-Wait` 等整棵进程树）。
 # 超时后该条记**独立状态 `TIMEOUT`**（≠ FAIL：断言不满足；≠ ERROR：跑不起来），
 # 然后**继续跑下一条**，不整体挂住。
-# 默认 180 s（2026-09-16 由 300 s 收紧：用户裁决「不允许长时间等待」；单条用例的实测典型
-# 开销是 30~60 s，180 s 已留三倍余量）。覆写：环境变量 `MT_CASE_TIMEOUT_SEC`、CLI `--case-timeout <秒>`。
-$script:CaseTimeoutSec = 180
+# 默认 600 s（2026-09-28 由 180 s 放宽：用例规模已从 ~20 步涨到 105~164 步，而**每一步**都要过
+# 注入器（语言闸门 + 前台闸门 + 实际投递 + 等待），实测稳定开销 ≈ 1.7 s/步 ⇒ 164 步的
+# `MAMUSHI-ACTIVE` 需要 ~290 s，180 s 会把**正常用例**误判成 TIMEOUT（实测 `MAMUSHI-GUARD`
+# 105 步在 182 s 被判超时，只剩最后 3 步）。600 s 对最大用例仍留 2 倍余量，同时保留
+# 「真卡死迟早会被收掉」的兜底）。覆写：环境变量 `MT_CASE_TIMEOUT_SEC`、CLI `--case-timeout <秒>`。
+$script:CaseTimeoutSec = 600
 if ($env:MT_CASE_TIMEOUT_SEC -and $env:MT_CASE_TIMEOUT_SEC -match '^\d+$') { $script:CaseTimeoutSec = [int]$env:MT_CASE_TIMEOUT_SEC }
 $script:CaseTimeoutOverride = -1   # CLI 覆盖（-1 = 未给）
 # 当前用例的硬 deadline（unix 秒；0 = 未启用）。由 Invoke-MtCaseRun 设置，供

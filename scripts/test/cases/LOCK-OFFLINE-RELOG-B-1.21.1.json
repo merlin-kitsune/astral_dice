@@ -1,6 +1,6 @@
 {
   "case_id": "LOCK-OFFLINE-RELOG-B-1.21.1",
-  "title": "立牌锁定「离线时钟漂移」修复 —— **跨重登持久化 B 相**：重登后基准仍是重登前那一拍的值（陈值），驱动一拍即按 `gap = now − last_seen` 把上界**恰好**后移同样的量，且**仍处于锁定**（未迁移到冷却）。这一相就是缺陷的**端到端复现**：修前不存在基准 ⇒ 上界按墙钟已经过期 ⇒ `isSignActiveLocked` 判未锁定 ⇒下一拍 `endLockAndStartCooldown` ⇒ 读数会看到 `lock_after=0` 且 `cd_after>0`（**缺陷判据**）。修后：`lock_end_delta == gap`（探针算成 `delta_eq_gap=1`）、`lock_after=1`、`cd_unchanged=1`。⚠️ 必须紧跟 `LOCK-OFFLINE-RELOG-A-<版本>`（中间只允许 `stop`（保留存档）+`launch` 两个动作）。⚠️ `gap` 的绝对值就是「重登期间错过的 gameTime」，随加载耗时变化 ⇒ 只断言 `gap ≥ 2`（陈值 + 确实错过）   与 `delta_eq_gap=1`（位移恰等于 gap），不写死数值。",
+  "title": "立牌锁定「离线时钟漂移」修复 —— **跨重登持久化 B 相**：重登后锁定态与门控**原样存续**（`sign` 仍佩戴、`lock=1`、`lock_end>0`、`gate_on=1`），且漂移补偿链**仍然工作** —— 把基准写到 `now−6000` 再驱动一拍 ⇒ 上界**恰好**后移同样的量（`delta_eq_gap=1`）且**仍处于锁定**（未迁移到冷却）；紧接着再驱动一拍（step=0）⇒ 不得再补偿（幂等）。这一相就是缺陷的**端到端复现**：修前不存在基准 ⇒ 上界按墙钟已经过期 ⇒ `isSignActiveLocked` 判未锁定 ⇒ 下一拍 `endLockAndStartCooldown` ⇒ 读数是 `lock_after=0` 且 `cd_after>0`（**缺陷判据**）。⚠️ 必须紧跟 `LOCK-OFFLINE-RELOG-A-<版本>`（中间只允许 `stop`（保留存档）+`launch` 两个动作）。⚠️ `gap` 的绝对值随加载耗时变化 ⇒ 只断言 `gap>0` 与 `delta_eq_gap=1`（位移恰等于 gap），不写死数值。⚠️ **B2 原用 `nowrite`（纯自然拍）测不出补偿**：探针说明里 `nowrite` 的 `gap ∈ {0,1}`，且重登到本用例开跑之间已过掉大量 tick（2026-09-28 实测 `gap=0`）⇒ 已改为写基准形态。",
   "version": "1.21.1",
   "target": {
     "type": "feature",
@@ -27,11 +27,11 @@
     },
     {
       "op": "note",
-      "text": "B2 **主判据**:`signlag RB2 0 nowrite` = **不写基准**、只驱动一拍 ⇒ 用产品自己存下来的陈值算 gap。   期望:`gap>=2`(确实错过)、`delta_eq_gap=1`(上界位移恰等于 gap)、`seen_refreshed=1`(基准被刷新成 now)、   `lock_before=1:lock_after=1`(仍在锁定)、`cd_before=0:cd_after=0:cd_unchanged=1`(未起冷却)。   ⚠️ 若读到 `lock_after=0` + `cd_after>0`,那是**缺陷判据命中**(修前行为)。"
+      "text": "B2 **主判据**（2026-09-28 修正）：原写法 `signlag RB2 0 nowrite`（不写基准、纯自然拍）**测不出补偿** —— 探针自己的说明就写着 `nowrite` 的 `gap ∈ {0,1}`（真实 tick 相位会立刻把 `last_seen` 刷成 now），而重登后到本用例开跑之间 `mt_launch` 的就绪/闸门/清场已过掉大量 tick ⇒ 实测 `gap=0:lock_end_delta=0`（不是缺陷，是前提不成立）。改成 **L 组已证的写基准形态** `signlag RB2 6000`：把 `last_seen` 写到 `now−6000` 再驱动一拍 ⇒ 期望 `mode=once:ticks=6000:wrote>0:gap>0`、**`lock_end_delta>0` 且 `delta_eq_gap=1`**（上界位移**恰好**等于 gap）、`seen_refreshed=1`（基准被刷新成 now）、`lock_before=1:lock_after=1`（仍在锁定）、`cd_before=0:cd_after=0:cd_unchanged=1`（未迁移到冷却）。   ⚠️ 若读到 `lock_after=0` + `cd_after>0`，那是**缺陷判据命中**（修前行为）。"
     },
     {
       "op": "inject_command",
-      "command": "/astralprobe signlag RB2 0 nowrite",
+      "command": "/astralprobe signlag RB2 6000",
       "no_esc": true
     },
     {
@@ -74,12 +74,12 @@
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_RB2_SIGNLAG:mode=nowrite:.*gap=[2-9][0-9]*:.*lock_end_before=[1-9][0-9]*:lock_end_after=[1-9][0-9]*:lock_end_delta=[1-9][0-9]*:grace_end_delta=0:cd_before=0:cd_after=0:cd_unchanged=1:lock_before=1:lock_after=1:lock_sign_after=\\[astral_dice:parunan_sign\\]:lock_sign_unchanged=1:.*delta_eq_gap=1:seen_refreshed=1:.*drives=1:tick_ran=1:"
+      "pattern": "AP_RB2_SIGNLAG:mode=once:ticks=6000:.*wrote=[1-9][0-9]*:gap=[1-9][0-9]*:lock_end_before=[1-9][0-9]*:.*lock_end_delta=[1-9][0-9]*:grace_end_before=0:grace_end_mid=0:grace_end_after=0:grace_end_delta=0:cd_before=0:cd_after=0:cd_unchanged=1:lock_before=1:lock_after=1:lock_sign_after=\\[astral_dice:parunan_sign\\]:lock_sign_unchanged=1:.*delta_eq_gap=1:grace_delta_eq_gap=0:seen_refreshed=1:.*drives=1:tick_ran=1:"
     },
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_RB3_SIGNLAG:mode=nowrite:.*gap=[0-9]+:lock_end_before=[1-9][0-9]*:.*lock_end_delta=0:grace_end_delta=0:cd_unchanged=1:lock_before=1:lock_after=1:.*delta_eq_gap=0:tick_ran=1:"
+      "pattern": "AP_RB3_SIGNLAG:mode=nowrite:.*gap=[0-9]+:lock_end_before=[1-9][0-9]*:.*lock_end_delta=0:.*grace_end_delta=0:.*cd_unchanged=1:lock_before=1:lock_after=1:.*:delta_eq_gap=0:.*tick_ran=1:"
     },
     {
       "type": "log",

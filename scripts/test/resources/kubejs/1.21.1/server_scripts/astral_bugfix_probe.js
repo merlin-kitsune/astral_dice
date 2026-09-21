@@ -2770,7 +2770,14 @@ function dumpState(ctx, tag) {
     // 走 catch 分支返回 **rc=0**(两版本一致);探针自身异常则是 `ERR:` 前缀。
     // 真正的"dump 生效"证据是 `APDUMP|` 原始值行本身(用例侧断言锚定它)。
     if (s === "rc=0" || s.indexOf("ERR:") === 0) { send(ctx, "AP_" + tag + "_DUMP_ERR:" + s); }
-    return rc;
+    // ⚠️⚠️ **必须 `return 1;`**(2026-09-27 实机):Brigadier 的 `executes` 处理器必须返回 **int**,
+    // 而 `runCmd` 返回的是**字符串**(1.21.1 的 `performPrefixedCommand` 返回 void ⇒ `"rc=undefined"`)。
+    // 写 `return rc;` 会抛 `EvaluatorException: Cannot convert rc=undefined to int`,**且该异常同样
+    // 逃出 `guard`/`try-catch`**;更严重的是它**打断同一 tick 里排队执行的命令** —— 实测
+    // `/astralprobe dumpstate RA4` 那一拍 `astralparty dump` 根本没有运行(`APDUMP` 行数 = 0),
+    // 表现为"dump 一条都没跑"(而不是"读数缺失")。读数只留在上面两条消息文本里。
+    // (`return rc;` 是本文件第二个「处理器返回非 int」坑;第一个见块头「踩坑」注释。)
+    return 1;
 }
 
 /**
@@ -9687,16 +9694,41 @@ function signLagCompact(list) {
  *    表本身按产品源码逐条核对(行号如上),但**未经实机双验**(见用例说明的覆盖清单)。
  *    fanny 的表项经 `signLagHold` 跨线安全取值(`CONFUSION`/`DIG_SLOWDOWN` 两线命名有别)。
  */
+
+/**
+ * 把**立牌专属效果常量**归一为 `Holder<MobEffect>`(本文件既有口径;与 `domEffectHolder`/`mamuEffectHolder` 同形)。
+ *
+ * <p>⚠️ **必须归一,不得裸传**(2026-09-27 实机,1.20.1 整线全灭):`ModEffects.X` 在 1.21.1 是
+ * `DeferredHolder`(**本身就是 `Holder`**),在 1.20.1 是 `RegistryObject`(**不是** `Holder`)⇒
+ * 1.20.1 上把它喂给 `ModEffectRemoval.remove(p, holder)` 会在 **Rhino 参数转换**阶段抛
+ * `ResourceLocationException: Non [a-z0-9/._-] character in path of location:
+ * minecraft:net.minecraftforge.registries`,而**参数转换错误逃得出 JS `try/catch` 与 `guard`**
+ * (与本文件既有的 `p.hasEffect(ModEffects.X)` 同型)⇒ `signClearAllGateEffects` 中断 ⇒
+ * `doSignReset`/`doSignPrep` **在 `send(...)` 之前退出** ⇒ **整条用例零读数**
+ * (实测 `LOCK-OFFLINE-1.20.1` 30 条断言全 FAIL、`AP_L0_SIGNRESET` 命中 0)。
+ * `c.get()` 两线都可用(`DeferredHolder` / `RegistryObject` 都实现 `get()`);**注册未完成**(取到 `null`)
+ * 时返回 `null`(由调用方经 `signLagCompact` 过滤掉)而**不是**回落成 `RegistryObject` 裸传 —— 只有
+ * `get()` **抛错**(= `c` 本身已是 `Holder`,即 1.21.1 的 `DeferredHolder`)才原样返回。
+ */
+function signLagFxHolder(c) {
+    try {
+        var g = c.get();
+        if (g != null) return g;
+        return null;   // 1.20.1:RegistryObject 未绑定 ⇒ 绝不能回落成 RegistryObject(裸传会打死整条命令)
+    } catch (e1) { /* 落到下面 */ }
+    return c;          // 1.21.1:DeferredHolder 自身已经是 Holder
+}
+
 function signGateHolders(signId) {
     var id = "" + signId;
     try {
         if (id === "astral_dice:parunan_sign") {
             return signLagCompact([signLagHold("SATURATION"), signLagHold("LUCK"), signLagHold("HERO_OF_THE_VILLAGE")]);
         }
-        if (id === "astral_dice:jasmine_sign") return [ModEffects.JASMINE_SWEEP];
-        if (id === "astral_dice:fen_sign") return [ModEffects.FEN_FRENZY];
-        if (id === "astral_dice:misaki_sign") return [ModEffects.MISAKI_BURST];
-        if (id === "astral_dice:papara_sign") return [ModEffects.PAPARA_BITE];
+        if (id === "astral_dice:jasmine_sign") return signLagCompact([signLagFxHolder(ModEffects.JASMINE_SWEEP)]);
+        if (id === "astral_dice:fen_sign") return signLagCompact([signLagFxHolder(ModEffects.FEN_FRENZY)]);
+        if (id === "astral_dice:misaki_sign") return signLagCompact([signLagFxHolder(ModEffects.MISAKI_BURST)]);
+        if (id === "astral_dice:papara_sign") return signLagCompact([signLagFxHolder(ModEffects.PAPARA_BITE)]);
         if (id === "astral_dice:nancy_lu_sign") return signLagCompact([signLagHold("INVISIBILITY")]);
         if (id === "astral_dice:fanny_sign") {
             return signLagCompact([signLagHold("REGENERATION"), signLagHold("DAMAGE_BOOST"),
@@ -10198,6 +10230,2433 @@ function doSignExpireGrace(ctx, tag) {
 }
 
 // NARDIS-IMPL-END(插入器用:重跑 build_nardi_block.ps1 时靠这一行定位旧块并整段替换)
+// ════════════════════════════════════════════════════════════════════════════
+//  蛟龙立牌(mamushi)游戏内取证段(2026-09-27;双人/多人用 Carpet `/player` bot)
+//    语义基准 = docs/features/mamushi-sign-spec.md(§1 冻结常量 / §2 技能语义 /
+//    §3 实现落点 / §6 交叉验证清单 / §7 的「R1 自证边界(需游戏内读数)」6 项)。
+//
+//  命令(tag 一律 word();item/effect id 一律 string() ⇒ 用例侧必须带引号):
+//    /astralprobe mamuclear <tag>                            收尾:清卡/立牌/效果/附件 + 归零冷却(脚手架)
+//    /astralprobe mamuprep <tag> [bot]                       基线:装立牌 + 骰子 + 铁剑 + 全量读数(+可选对 bot 同基线)
+//    /astralprobe mamureg <tag>                              注册与冻结数值(物品/效果/常量/标签)
+//    /astralprobe mamuread <tag> <phase> [name]              只读全量快照(缺省自身;可指真实玩家/bot)
+//    /astralprobe mamuawake <tag> <mode> <n> [name]          mode: set(直写) | add(onCardGivenToOther 自身←自身,即 −0 负控)
+//    /astralprobe mamugive <tag> <giver> <receiver>          **一次发牌事件**:受益人去重(调用一次只 +1 层)
+//    /astralprobe mamubatch <tag> <mode> <g1> <g2> <g3>      mode: cap(1 受益人上界) | three(3 受益人 ⇒ +3) |
+//    /astralprobe mamuwatch <tag> <mode> [name]              mode: count | self | give15 | random | random2 |
+//                                                            active(真实主动路径 + 逐目标行,唯一能测 D1 的档) | selfonly
+//    /astralprobe mamuform <tag> <mode> [name]               mode: mark(只读) | on(直写 8 + 幂等转换 + 真龙 tick 刷新)
+//    /astralprobe mamuconv <tag> <mode> [arg] [name]         mode: inv 3 张撕咬(主栏 2 + 副手 1) |
+//                                                            dice <maxCost> 骰子侧 3 个 bite |
+//                                                            arm [张数] **把 dragon_roar 写进骰子卡牌栏**
+//                                                            (打通「命中 ⇒ 破防」端到端链的唯一路径)
+//    /astralprobe mamucast <tag> [noop] [name]               真实主动路径 performSkillForCurio + 前后全量读数
+//    /astralprobe mamucd <tag> <mode>                        冷却闸门读数 / 负控构造(mode 见函数头)
+//    /astralprobe mamucore <tag> <mode>                      mode: ready(充能备齐→被拒且不扣充能) | nocharge(负控:有充能会被扣)
+//                                                            | charge(无强制冷却 ⇒ 电流核心正常完成冷却)
+//                                                            **前置自足**:内部先把骰子换成 golden_dice 拿 1 个筹码栏
+//    /astralprobe mamujump <tag>                             攻击力/破防数值落地(真实攻击次数 + 客观组 + 实扣)
+//    /astralprobe mamuroar <tag> <mode> [name]               mode: read(目标侧只读) | apply(直调 applyRoarDebuff;第 3 参 = 目标)
+//    /astralprobe mamubite <tag> <mode>                      mode: clean | light(1 张撕咬 + 触发赐福 = 层 0→1) |
+//                                                            three(3 张 ⇒ +3) | dragon(7 层 + 1 张 ⇒ 立即真龙)
+//    /astralprobe mamuguard <tag> <mode>                     seven(7 层) | mark(只读:两张牌专属 + 随机池 + 标签 + mayPlace 装备入口)
+//    /astralprobe mamudie <tag> <keepinv>                    真死亡 + **服务端真重生**(PlayerList#respawn;
+//                                                            0 = keepInventory=false 场景,1 = keepEverything)
+//
+//  ⚠️ **`[name]` 参数不接受字面量 `self`**(2026-09-27 实机踩坑):凡是「目标名字」位(`mamuread` 第 3 参、
+//     `mamuawake` 第 4 参、`mamugive` 的 giver/receiver、`mamuwatch` 第 4 参、`mamuform` 第 4 参、
+//     `mamuconv` 的 `[name]`、`mamucast` 的 `<name>`、`mamuroar` 的 `[name]`)都经 `mamuResolve`
+//     → `zhaoResolve`,而后者**只把「缺省」与 `-` 当自身**;传 `self` 会去 `PlayerList` 里找名叫
+//     `self` 的玩家 ⇒ 报 `AP_<tag>_ERR:no_target:self`(实测)。
+//     ⇒ **要指自身:省略该参数或写 `-`**。
+//     ⚠️ **例外(这两个 `self` 是"模式",合法,别改)**:`mamucast <tag> [self|noop] [name]` 的**第 3 参**
+//     (模式位,`self` = 自身目标)与 `mamuwatch <tag> <mode>` 的**模式**取值(`self` / `selfonly`)。
+//
+//  ⚠️ **两线本段逐字一致**(除函数注释里显式标注的平台形态差异);唯一平台分叉收敛进
+//     {@link mamuEffectHolder}(1.21.1 = DeferredHolder 自身 / 1.20.1 = RegistryObject#get)
+//     与 {@link mamuBiteBonusActive}(1.21.1 = isMamushiBiteBonusActive / 1.20.1 = getMamushiBiteBonusActive)
+//     两个助手。产品 API 一律走**两线同名同签名**的入口(所以转换/持有判据一律用
+//     `MamushiSignItem` 的包装器,而不是两线签名的 `DragonCardUtil`)。
+//
+//  ⚠️ 踩坑(勿改回):
+//    1. `p.hasEffect(ModEffects.X)` 在 1.20.1 上会触发 KubeJS 注册表强转并抛异常(逃出 try/catch)
+//       ⇒ 效果判据一律 `findEffect(p, "effect.astral_dice.<x>")` 字符串匹配;
+//       `MobEffectInstance` 的构造/施加一律经 {@link mamuEffectHolder} 归一后的 Holder。
+//    2. 外部 `/effect clear` 会被产品 `ModEffectEvents#onModEffectRemovalPrevented` 取消 ⇒
+//       移除本模组效果必须走 `ModEffectRemoval.remove`(同 zhao 段)。
+//    3. curios 槽的 `getStackInSlot` 拿到的是**副本** ⇒ 改 `weapon_enhancement` 必须写回槽位
+//       (已由既有 `domWriteEnh` 处理)。
+//    4. 属性/伤害类命令的生效**晚于同一 tick 内的后续代码** ⇒ 探针一律**直写属性实例**
+//       (`Attribute#setBaseValue`),并把「写 → 攻击 → 读」压在一次执行内;用例侧只在跨相位时给 wait。
+//    5. 1.21.1 的 `dice.set(key.get(), 我的record)` 会被 KubeJS 的 `set` 扩展方法劫持并抛
+//       `Unsure how to convert … to JSON` ⇒ 写组件一律走既有 `nardiSetEnh`(传 JS 对象)。
+//    6. **函数声明一律放「函数体顶层」或「文件顶层」,绝不放 `try {}` / `if {}` 等块内**
+//       (2026-09-27 实机):Rhino/KubeJS 下**块内**函数声明在块内调用得到 `undefined` ⇒
+//       `TypeError: f is not a function`(实机唯一一条错误 = `REG_TAG` 整行只剩
+//       `tag_err=[] TypeError: hasTag is not a function, it is undefined.:tag_ex=1`)。
+//       `guard`/`try-catch` **捕不到**这类错误(它发生在 JS 求值层，读数会缺字段)。
+//       函数**体**顶层的声明没问题(同段 `flag`/`hit`/`giveOne`/`snapRow` 实机均正常)。
+//    7. 脚手架里「成/败都是正常结果」的操作,读数字段一律用 {@link mamuStatus} 的
+//       `ok` / `fail:<原因>`,**不要**再用 `*_err=` 拼空串 —— 全成功时那种写法也是非空的
+//       (`bot_err=|sign:|dice:`),实机被读成了"失败"。
+//    8. **每个 `.executes` 处理器的最终返回值必须是 `1`(数字字面量)**,绝不能是变量/字符串。
+//       Brigadier 要求返回 `int`;本文件既有的 `dumpState` 曾以 `return rc;`(`rc` = `"rc=undefined"`)
+//       收尾,实机抛 `EvaluatorException: Cannot convert rc=undefined to int` —— 该异常**逃出
+//       `guard`/`try-catch`**,而且**打断同一 tick 里排队执行的命令**(实测那一拍的 `astralparty dump`
+//       根本没运行、`APDUMP` 行数 = 0)。本段 18 条命令全部 `return 1;`,读数只进消息文本。
+//    9. **复用助手时不要动既有调用点**:本段的 `mamuRead` 多了第 5 参 `emitTarget`(重生后直发新实体),
+//       其余调用点**不传**即行为不变;批量替换时务必只改 `mamuRead` 函数体内部。
+//   10. **读数自己写下的值再拿来比,等于没比**(2026-09-27 实机):`MU_CD` 的 `mfu_is_1200` 原定义是
+//       `(mfu − 本命令刚写入的 base) === 1200` ⇒ **恒为 0**(含 `mode=present` 那一拍)。凡「写入 →
+//       读回 → 判等」一律要拿**产品口径的不变量**去比(这里是 `mfu − now == ACTIVE_FORCED_COOLDOWN_TICKS`,
+//       由 `mfu_remain_is_cfg` 给出),或用**进入命令时**的值(`mfu_entry`/`mfu_shift`)当基准。
+//   11. **"什么都没变"必须先能归因**:`mamucast`/`mamuwatch active` 走的真实主动路径有四道前置闸门
+//       (立牌在不在 curios `stand` 槽 / 锁定态 / **强制冷却** / 普通冷却),任一挡下都"毫无变化"。
+//       实测 `mamucast … self` 的 `bite_slots=->-` 就是被上一步 `mamucd … cast` 写下的强制冷却挡的
+//       (同拍 `mfu_remain=1200`)⇒ 读数必须有 `gate` / `sign` / `locked_before` / `cd_before` / `fired`。
+//   11b. **`bite_slots`/`roar_slots` 只数主物品栏 + 副手**(`槽号:张数`),**不含骰子卡牌栏**;主动自身
+//       那张若进的是骰子侧装配项,这两个字段恒为 `->-` —— 不是"没发牌",看 `stones_*`/`card_total=`。
+//   12. **攻击力加成的口径要按"这一拍到底叠加了几段"算**:`mamubite dragon` 档里 7 + 1 = 8 层会在
+//       **同一拍**跨过真龙阈值 ⇒ 攻击力同时吃 `min(觉醒,4)`(=4)**和** `DRAGON_FORM_ATTACK_BONUS`(=5)。
+//       旧口径只拿 `min(awk,4)` 比 ⇒ 该档 `ap_cap_ok` 恒 0(实机 `ap=6>15>15`,实际 +9)。现读数为
+//       `ap_cap_delta`(撕咬部分)+ `ap_df_bonus`(形态跃迁部分)= `ap_expect`,与其比对得 `ap_ok`。
+//   13. **`owner_uuid` 的"无主"与"读不到"必须分开**(2026-09-27 实机):`ItemStack#getOrDefault(type, null)`
+//       在**组件不存在**时返回 `null`**而不抛错** ⇒ 旧代码接着去试 1.20.1 形态(必然抛错)并把整件事
+//       记成 `err`,实测表现为 `CONV` 的 `owner_before=err:owner_after=err`(其实是**无主**/或没放进去)。
+//       {@link mamuOwnerUuid} 现在逐路径记录"成功返回 / 抛错",只有**全抛错**才是 `err`;闭集仍是
+//       `self|other|none|err`,原因另置 `owner_api=`。
+//   14. **脚手架放不进去东西要自报**(2026-09-27 实机):`mamuconv inv` 旧写法把 `placed=N` 拼进 `err=`
+//       串里 ⇒ `placed=0`(主栏满、一张都没放)被读成"转换失效"。现在 `placed`/`inv_free`/`place_mode`
+//       是**独立字段**,且放不下会走 `Inventory#add` → `drop` 兜底。
+//   15. **平台常量"裸传"会打死整条用例,而且捕不到**(2026-09-27 实机,`signGateHolders`)。
+//       `ModEffects.X` 在 1.21.1 = `DeferredHolder`(**本身就是 Holder**),在 1.20.1 = `RegistryObject`
+//       (**不是** Holder)⇒ 1.20.1 上把它喂给 `ModEffectRemoval.remove(p, holder)` 会在 **Rhino 参数
+//       转换**阶段抛 `ResourceLocationException: Non [a-z0-9/._-] character in path of location:
+//       minecraft:net.minecraftforge.registries`,**该异常逃得出 JS `try/catch` 与 `guard`** ⇒
+//       `signClearAllGateEffects` 中断 ⇒ `doSignReset`/`doSignPrep` **在 `send(...)` 之前退出** ⇒
+//       **整条用例零读数**(实测 `LOCK-OFFLINE-1.20.1` 30 条断言全 FAIL、`AP_L0_SIGNRESET` 命中 0)。
+//       ⇒ 凡把平台注册常量交给 Java API,一律先过**单行归一助手**(`c.get()` 优先、失败回落到 `c`):
+//       本段用 {@link mamuEffectHolder},sign 段用 `signLagFxHolder`,nardis 段用 `domEffectHolder`。
+//       **不得**直接 `return [ModEffects.X]` / `remove(p, ModEffects.X)`(1.20.1 侧)。
+// ════════════════════════════════════════════════════════════════════════════
+
+function mamuLoadCls(name) {
+    try { return Java.loadClass(name); } catch (e) { return null; }
+}
+
+var MamuSignItemClass = mamuLoadCls("com.merlinkitsune.astral_dice.item.sign.MamushiSignItem");
+var MamuCardUtilClass = mamuLoadCls("com.merlinkitsune.astral_dice.item.card.DragonCardUtil");
+var MamuDragonEffectClass = mamuLoadCls("com.merlinkitsune.astral_dice.effect.MamushiDragonEffect");
+var MamuBreakEffectClass = mamuLoadCls("com.merlinkitsune.astral_dice.effect.DragonRoarBreakEffect");
+var MamuItemsClass = mamuLoadCls("com.merlinkitsune.astral_dice.item.ModItems");
+var MamuCurrentCoreClass = mamuLoadCls("com.merlinkitsune.astral_dice.item.chip.CurrentCoreChipItem");
+var MamuChargeManagerClass = mamuLoadCls("com.merlinkitsune.astral_dice.item.ChargeManager");
+var MamuRandomCardHandlerClass = mamuLoadCls("com.merlinkitsune.astral_dice.item.card.RandomCardHandler");
+var MamuVitaminPillClass = mamuLoadCls("com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem");
+
+/** 蛟龙立牌 id / 两张专属战斗牌 id(规格 §1 冻结值;物品 id 与 typeId 同名部分刻意分开写) */
+var MAMU_SIGN_ID = "astral_dice:mamushi_sign";
+var MAMU_BITE_ID = "astral_dice:attack_card_bite";
+var MAMU_ROAR_ID = "astral_dice:attack_card_dragon_roar";
+var MAMU_BITE_TYPE = "bite";
+var MAMU_ROAR_TYPE = "dragon_roar";
+var MAMU_DICE_ID = "astral_dice:dice";
+/** 效果描述 id(只做字符串匹配;两线同源,见踩坑 1) */
+var DESC_MAMUSHI_DRAGON = "effect.astral_dice.mamushi_dragon";
+var DESC_DRAGON_ROAR_BREAK = "effect.astral_dice.dragon_roar_break";
+/** 破防效果的护甲修饰器语义名(1.21.1 的 ResourceLocation path;**仅用于读数标注**,见 mamuBreakArmor) */
+var MAMU_BREAK_ARMOR_KEY = "dragon_roar_break_armor";
+
+/**
+ * `ModEffects` 常量 → `Holder<MobEffect>`(唯一平台分叉点):
+ * 1.21.1 = `DeferredHolder` **自身**即可作 Holder;1.20.1 = `RegistryObject`,必须先 `.get()`。
+ * 先试 `.get()`(1.20.1 形态),取到就用;失败/返回 null 则回落常量自身(1.21.1 形态)。
+ * `which`:0 = 真龙形态;1 = 破防。
+ */
+function mamuEffectHolder(which) {
+    var c = (which === 1) ? ModEffects.DRAGON_ROAR_BREAK : ModEffects.MAMUSHI_DRAGON;
+    try { var g = c.get(); if (g != null) return g; } catch (e1) { /* 落到下面 */ }
+    return c;
+}
+
+/** 撕咬加成锁存(唯一平台函数名分叉点:1.21.1 = is… / 1.20.1 = get…) */
+function mamuBiteBonusActive(p) {
+    if (p == null) return -9;
+    try { return ModAttachments.isMamushiBiteBonusActive(p) ? 1 : 0; } catch (e1) { /* 落到 1.20.1 形态 */ }
+    try { return ModAttachments.getMamushiBiteBonusActive(p) ? 1 : 0; } catch (e2) { return -9; }
+}
+
+/** 立牌装备判定(产品入口;读不到给 -1) */
+function mamuSignEquipped(p) {
+    if (MamuSignItemClass == null || p == null) return -1;
+    return zhaoBool(function () { return MamuSignItemClass.isEquipped(p); });
+}
+
+/** 觉醒层数(读不到给 -1;不冒充 0) */
+function mamuAwaken(p) {
+    if (MamuSignItemClass == null || p == null) return -1;
+    return zhaoNum(function () { return MamuSignItemClass.getAwakening(p); });
+}
+
+/** 真龙形态判定(产品入口;读不到给 -1) */
+function mamuDragonFlag(p) {
+    if (MamuSignItemClass == null || p == null) return -1;
+    return zhaoBool(function () { return MamuSignItemClass.isDragonForm(p); });
+}
+
+/** 骰子卡牌栏指定 typeId 的装配张数(产品入口;读不到给 -1) */
+function mamuEquippedCount(p, typeId) {
+    if (MamuSignItemClass == null || p == null) return -1;
+    return zhaoNum(function () { return MamuSignItemClass.countEquippedType(p, typeId); });
+}
+
+/** D1 持有判据:主物品栏 + 双手 + 骰子卡牌栏内是否有任何本模组卡牌(产品入口) */
+function mamuHasAnyCard(p) {
+    if (MamuSignItemClass == null || p == null) return -1;
+    return zhaoBool(function () { return MamuSignItemClass.hasAnyCard(p); });
+}
+
+/**
+ * **产品口径**的本模组卡牌总张数(主物品栏 0..35 + 副手 + 骰子卡牌栏装配项;读不到给 -1)。
+ *
+ * <p>为什么要它:`WATCH` 行里的 `cards*` 只数**背包/副手**里的撕咬+龙之咆哮两张专属牌,
+ * 而 D1 的追加判据 `hasAnyCard` 的计数域是**背包 + 副手 + 骰子卡牌栏**、且 D1 追加的那张是
+ * **随机牌**(不是撕咬/咆哮)⇒ 只看 `cards` 永远看不到 D1 的效果。本字段按 `ModItems.isCardItem`
+ * (战斗牌 ∪ 效果牌标签)逐格计数,骰子侧按 `CardRegistry.typeToItem(type)` 还原成卡牌物品再计
+ * —— 与 `DragonCardUtil#hasAnyCard` **同一计数域**(只是从"有没有"升级成"有几张")。
+ */
+function mamuCardTotal(p) {
+    if (p == null) return -1;
+    var n = 0;
+    try {
+        var inv = p.getInventory();
+        for (var i = 0; i < 36; i++) {
+            var st = inv.getItem(i);
+            if (st == null || st.isEmpty()) continue;
+            try { if (MamuItemsClass.isCardItem(st)) n = n + (st.getCount() - 0); } catch (e0) { /* 非卡牌 */ }
+        }
+        var off = p.getOffhandItem();
+        if (off != null && !off.isEmpty()) {
+            try { if (MamuItemsClass.isCardItem(off)) n = n + (off.getCount() - 0); } catch (e1) { /* 忽略 */ }
+        }
+    } catch (eA) { return -1; }
+    // 骰子卡牌栏:每个装配项 → 卡牌物品 → 卡牌标签(与产品同一个还原口径)
+    try {
+        var enh = domEnh(p);
+        if (enh != null) {
+            var list = enh.appliedStones();
+            if (list != null) {
+                for (var k = 0; k < list.size(); k++) {
+                    var s = list.get(k);
+                    if (s == null || s.type() == null) continue;
+                    try {
+                        var card = NardisCardRegistryClass.typeToItem(s.type());
+                        if (card != null && !card.isEmpty() && MamuItemsClass.isCardItem(card)) n = n + 1;
+                    } catch (e2) { /* 未登记的 typeId ⇒ 不算 */ }
+                }
+            }
+        }
+    } catch (eB) { /* 无骰子/无装配栏 ⇒ 只算背包侧 */ }
+    return n;
+}
+
+/** 强制冷却截止刻(绝对 gameTime;0 = 无;读不到给 -1) */
+function mamuForcedUntil(p) {
+    if (MamuSignItemClass == null || p == null) return -1;
+    return zhaoNum(function () { return MamuSignItemClass.getForcedCooldownUntil(p); });
+}
+
+/** 本次冷却实际使用的上界(`sign_active_max_cooldown`;路线 A 各减免方共读的那一份) */
+function mamuMaxCd(p) { return domNum(function () { return ModAttachments.getSignActiveMaxCooldown(p); }); }
+
+/** 主动冷却截止刻(`sign_active_cooldown_end`) */
+function mamuCdEnd(p) { return domNum(function () { return ModAttachments.getSignActiveCooldownEnd(p); }); }
+
+/** 主物品栏(0..35)+ 副手里指定物品的张数(同 zhaoCountInvAndOff 口径;读不到 -1) */
+function mamuInvCount(p, itemId) { return zhaoCountInvAndOff(p, itemId); }
+
+/** 主物品栏 + 副手里的卡牌构成(`id xN` 用 `|` 连接;无卡 = `-`;读不到 = `?`) */
+function mamuInvCards(p, itemId) {
+    var out = "";
+    try {
+        var inv = p.getInventory();
+        for (var i = 0; i < 36; i++) {
+            var st = inv.getItem(i);
+            if (st == null || st.isEmpty()) continue;
+            var id = itemIdOf(st);
+            if (id !== itemId) continue;
+            out = (out === "") ? (id + "x" + st.getCount()) : (out + "|" + id + "x" + st.getCount());
+        }
+        var off = p.getOffhandItem();
+        if (off != null && !off.isEmpty() && itemIdOf(off) === itemId) {
+            out = (out === "") ? ("off:" + itemIdOf(off) + "x" + off.getCount()) : (out + "|off:" + itemIdOf(off) + "x" + off.getCount());
+        }
+    } catch (e) { return "?"; }
+    return (out === "") ? "-" : out;
+}
+
+/** 骰子 `weapon_enhancement` 的 `appliedStones` 构成(`type:uses:temp` 用 `|` 连接;无 = `-`) */
+function mamuDiceStones(p) {
+    var out = "";
+    try {
+        var enh = domEnh(p);
+        if (enh == null) return "none";
+        var list = enh.appliedStones();
+        if (list == null) return "none";
+        for (var i = 0; i < list.size(); i++) {
+            var s = list.get(i);
+            if (s == null) continue;
+            out = (out === "") ? (s.type() + ":" + s.uses() + ":" + (s.temporary() ? 1 : 0))
+                : (out + "|" + s.type() + ":" + s.uses() + ":" + (s.temporary() ? 1 : 0));
+        }
+    } catch (e) { return "?"; }
+    return (out === "") ? "-" : out;
+}
+
+/** 骰子装配栏费用读数(`used/max`;读不到 = `?/0`) */
+function mamuDiceCosts(p) {
+    var c = domUsedCost(p);
+    var enh = domEnh(p);
+    var m = "0";
+    try { m = "" + enh.maxCost(); } catch (e) { m = "0"; }
+    return c.atk + "/" + m;
+}
+
+/**
+ * 读一张卡牌栈的 `owner_uuid` 组件(跨线容错)。返回 `{ uuid, api }`:
+ * `uuid == null` 且 `api == ""` ⇒ **组件确实不存在**(= 无主);`api != ""` ⇒ **两条读取路径都抛错**
+ * (探针侧 API 不可用,与"无主"是两回事,绝不混用)。
+ *
+ * <p>⚠️ **2026-09-27 实机踩坑(读数缺陷)**:旧写法只用「`opt == null`」判断,而
+ * `ItemStack#getOrDefault(type, null)` 在**组件不存在**时**返回 `null`(不抛错)** ⇒ 落进第二条
+ * (1.20.1 形态,该线才有)必然抛错 ⇒ 把「无主」误报成 `err`。实测表现:`CONV` 行的
+ * `owner_before=err:owner_after=err`(栈上根本没绑定),读起来像"读 owner 的路径坏了"。
+ * 现在**分别记录每条路径是「返回成功」还是「抛错」**,只有全抛错才判 `err`。
+ *
+ * <p>两条路径(与 `nardiEnhOf` / `README` 记录的两线形态一致,顺序固定):
+ * ① 1.21.1 = `ItemStack#getOrDefault(DataComponentType, T)`(先 `.get()` 解 `DeferredHolder`);
+ * ② 1.20.1 = `ItemDataKey#getOrDefault(ItemStack, T)`。
+ * 组件值两线都是 `Optional<UUID>`;若 Rhino 直接给出 UUID(自动解包),按"有主"处理。
+ */
+function mamuOwnerUuid(stack) {
+    var out = { uuid: null, api: "" };
+    if (stack == null || stack.isEmpty()) return out;
+    var opt = null, got = false, why = "";
+    // ① 1.21.1:ItemStack#getOrDefault(DataComponentType, T);组件不存在 ⇒ 返回默认值 null(**不抛错**)
+    try { opt = stack.getOrDefault(ModDataComponentsClass.OWNER_UUID.get(), null); got = true; }
+    catch (e1) { why = why + "|a:" + domExText(e1); }
+    // ② 1.20.1:ItemDataKey#getOrDefault(ItemStack, T)
+    if (!got || opt == null) {
+        try { opt = ModDataComponentsClass.OWNER_UUID.getOrDefault(stack, null); got = true; }
+        catch (e2) { why = why + "|b:" + domExText(e2); }
+    }
+    if (opt == null) { out.api = got ? "" : why; return out; }
+    // 组件值形态:Optional<UUID>(首选)或已被 Rhino 解包的裸 UUID
+    var hasFn = false;
+    try { hasFn = (typeof opt.isPresent === "function"); } catch (e3) { hasFn = false; }
+    if (hasFn) {
+        var has = false;
+        try { has = opt.isPresent(); } catch (e4) { out.api = "|c:" + domExText(e4); return out; }
+        if (!has) return out;
+        try { out.uuid = "" + opt.get(); } catch (e5) { out.api = "|d:" + domExText(e5); }
+        return out;
+    }
+    try { out.uuid = "" + opt; } catch (e6) { out.api = "|e:" + domExText(e6); }
+    return out;
+}
+
+/**
+ * 一张卡牌栈的获得者绑定(`owner_uuid`)。
+ * 返回**闭集** `self`(绑定=本人) / `other`(绑定=他人) / `none`(无主) / `err`(探针读不到)。
+ * `err` 的具体原因由调用方另置一个 `owner_api=` 字段给出(**不塞进本字段**,保持闭集可断言)。
+ */
+function mamuOwnerTag(stack, p) {
+    if (stack == null || stack.isEmpty()) return "none";
+    var r = mamuOwnerUuid(stack);
+    if (r.api !== "") return "err";
+    if (r.uuid == null) return "none";
+    // ⚠️ 2026-09-28 实测缺陷(读数自相矛盾,害 4 条断言假红):原写法直接 `p.getUUID()`,
+    //    而 **KubeJS 的方法白名单里没有 `ServerPlayer#getUUID`**(本文件既有踩坑,见 `playerUuid`
+    //    的头注与 `zhaoUuidText` 的写法)⇒ 只要卡牌**真的有主**,这里就抛 `Cannot find function getUUID`
+    //    ⇒ 本函数落进 `err`,而 `owner_api_*` 仍是 `ok`(那条路径没抛)⇒ 实测读数
+    //    `owner_after=err:owner_api_after=ok` / `bound_foreign=owner=err:owner_api=ok`,
+    //    看起来像「转换后绑定丢失」「有主栈被当成读不到」——**假缺陷**。
+    //    注意 `owner_before=none` 那一拍不会暴露它(无主在更早的 `r.uuid == null` 就返回了),
+    //    所以「转换前 none、转换后 err」恰好只会在**绑定成功**时出现。
+    //    一律走既有容错取值器(它按 `getUUID()` → `p.uuid` → `UUIDUtil` 三级回退)。
+    var uu = playerUuid(p);
+    if (!uu.ok) return "err";
+    return (r.uuid === ("" + uu.value)) ? "self" : "other";
+}
+
+/**
+ * 立牌主动强制冷却的**读数**(规格 §3.4):证明「不可被任何减免绕过」需要三个数一起看 ——
+ * `mfu`(强制截止刻)、`cdend`(`sign_active_cooldown_end`)、`maxc`(`sign_active_max_cooldown`)。
+ * 三者一次给出,断言层无需算术(差值标志由本函数算成 0/1)。
+ *
+ * <p>⚠️ **2026-09-27 修正(`mfu_is_1200` 恒为 0 是读数缺陷,不是产品缺陷)**:旧定义是
+ * `(until − base) === 1200`,而 `base` 是**本命令刚刚写进去的那个值** ⇒ 差值恒为 0,
+ * 该字段**永远不可能为 1**(实机含 `mode=present` 那一拍也是 0)。现改为按**产品口径**判:
+ * 写入口 `MamushiSignItem#handleUse` 是 `level.getGameTime() + ACTIVE_FORCED_COOLDOWN_TICKS`,
+ * 故不变量是「`mfu − now` 恰好等于产品常量」——
+ *   `mfu_is_1200`       = 距 `now` 恰好 **1200**(字面量,留着便于人读);
+ *   `mfu_remain_is_cfg` = 距 `now` 恰好等于**产品常量** `ACTIVE_FORCED_COOLDOWN_TICKS`(推荐断言项,
+ *                         常量若被改动该标志自动跟随);`mfu_cfg` 把常量本身也打出来。
+ * 另补 `mfu_entry`(进入本命令时、**任何探针写入之前**的值)与 `mfu_shift`(= 现值 − `mfu_entry`),
+ * 用于区分「本次真的写了」与「值没动」;`mfu_delta` 保持旧义(= 现值 − **本命令写入值**),
+ * 但已在文档里写明它在 `present`/`cast` 档恒为 0(写入值就是 `base`)。
+ */
+function mamuCdRead(p, baseUntil, entryUntil) {
+    var now = nowTick(p) - 0;
+    var until = mamuForcedUntil(p);
+    var cdEnd = mamuCdEnd(p);
+    var maxc = mamuMaxCd(p);
+    var cfg = -1;
+    try { cfg = MamuSignItemClass.ACTIVE_FORCED_COOLDOWN_TICKS - 0; } catch (eC) { cfg = -1; }
+    var dUntil = (baseUntil === null || baseUntil === undefined || until < 0) ? -999 : (until - baseUntil);
+    var remain = (until > 0 && now > 0) ? (until - now) : -1;
+    var entry = (entryUntil === null || entryUntil === undefined) ? -1 : entryUntil;
+    var shift = (entry < 0 || until < 0) ? -999 : (until - entry);
+    return "now=" + now
+        + ":mfu=" + until + ":mfu_delta=" + dUntil + ":mfu_remain=" + remain
+        + ":cd_end=" + cdEnd + ":cd_remain=" + ((cdEnd > 0 && now > 0) ? (cdEnd - now) : -1)
+        + ":maxc=" + maxc
+        + ":mfu_cfg=" + cfg
+        + ":mfu_is_1200=" + (((until > 0) && (remain === 1200)) ? 1 : 0)
+        + ":mfu_remain_is_cfg=" + (((until > 0) && (cfg > 0) && (remain === cfg)) ? 1 : 0)
+        + ":mfu_entry=" + entry + ":mfu_shift=" + shift
+        + ":maxc_is_1200=" + ((maxc === 1200) ? 1 : 0)
+        + ":cd_eq_maxc=" + ((cdEnd > 0 && maxc > 0 && (cdEnd - now) === maxc) ? 1 : 0)
+        + ":forced_active=" + ((until > 0 && now < until) ? 1 : 0);
+}
+
+/**
+ * 真龙形态/破防两个效果的 amp/dur(`fx_d=amp/dur`、`fx_d_on` 的既有读法)。
+ * `which`:0 = 真龙形态(MAMUSHI_DRAGON);1 = 破防(DRAGON_ROAR_BREAK)。
+ */
+function mamuFx(p, which) {
+    var desc = (which === 1) ? DESC_DRAGON_ROAR_BREAK : DESC_MAMUSHI_DRAGON;
+    var inst = null;
+    try { inst = findEffect(p, desc); } catch (e) { inst = null; }
+    var amp = -1, dur = -1;
+    try { if (inst != null) { amp = inst.getAmplifier(); dur = inst.getDuration(); } } catch (e2) { amp = -1; dur = -1; }
+    return { amp: amp, dur: dur, on: (inst != null) ? 1 : 0 };
+}
+
+/**
+ * 破防效果挂在**实体护甲属性**上的实际修饰量(规格 §7 边界:「要能读到破防对实际减伤的影响」)。
+ *
+ * <p>修饰器 id 两线**形态不同**(1.21.1 = `ResourceLocation("astral_dice:dragon_roar_break_armor")`;
+ * 1.20.1 = 同一语义名的 UUIDv5 `188e1666-…`),故**不按 id 取值**,而是遍历 `Attribute#getModifiers()`
+ * 并按三个客观条件挑出**那一个**:`amount == ARMOR_DELTA(-8.0)`、`operation == ADDITION`、
+ * 且 id/名字串里不含其它立牌的键名(`unwavering` / `blue_curse` / `teru_descent` —— 它们同样
+ * 走 ARMOR 修饰器,是本实体上最可能的同名干扰项)。命中 ⇒ `amt=-8`、`n=1`;
+ * 未命中但存在 `-8.0` 的修饰器 ⇒ `n=1, amt=<原值>`(由断言按 `-8` 判)。
+ * 返回 `break_amt` / `break_mods` / `break_armor` / `break_base`。
+ */
+function mamuBreakArmor(ent) {
+    var out = { amt: 0, mods: 0, armor: -9, base: -9, op: "-", id: "-" };
+    if (ent == null) return out;
+    try {
+        var Attrs = Java.loadClass("net.minecraft.world.entity.ai.attributes.Attributes");
+        var a = ent.getAttribute(Attrs.ARMOR);
+        if (a == null) return out;
+        out.armor = Math.round(a.getValue() * 100) / 100;
+        out.base = Math.round(a.getBaseValue() * 100) / 100;
+        var delta = -8.0;
+        try { if (MamuBreakEffectClass != null) delta = MamuBreakEffectClass.ARMOR_DELTA - 0; } catch (e0) { /* 用冻结值 */ }
+        var list = a.getModifiers();
+        var it = list.iterator();
+        while (it.hasNext()) {
+            var m = it.next();
+            if (m == null) continue;
+            var amt = -999;
+            try { amt = m.amount() - 0; } catch (e1) { try { amt = m.getAmount() - 0; } catch (e2) { amt = -999; } }
+            if (Math.abs(amt - delta) > 0.0001) continue;
+            var id = "";
+            try { id = "" + m.id(); } catch (e3) { try { id = "" + m.getName(); } catch (e4) { id = ""; } }
+            var other = (id.indexOf("unwavering") >= 0) || (id.indexOf("blue_curse") >= 0)
+                || (id.indexOf("teru_descent") >= 0);
+            if (other) continue;
+            out.amt = Math.round(amt * 100) / 100;
+            out.mods = out.mods + 1;
+            // 修饰器 id 的**两线形态差异**在这里显式暴露(1.21.1 = ResourceLocation、
+            // 1.20.1 = UUIDv5 字符串);按语义名匹配只对 1.21.1 成立,故只做**读数标注**、不作断言依据。
+            out.op = (id.indexOf(MAMU_BREAK_ARMOR_KEY) >= 0) ? "rl" : ((id === "") ? "?" : "uuid");
+            out.id = (id.length > 48) ? (id.substring(0, 48) + "…") : id;
+        }
+    } catch (e5) { /* 读不到就保持 -9/-9 的显式失败值 */ }
+    return out;
+}
+
+/** 主物品栏 + 副手 + 骰子卡牌栏里的撕咬/龙之咆哮张数(转换前后对照用) */
+function mamuCardCounts(p) {
+    return "inv_bite=" + mamuInvCount(p, MAMU_BITE_ID)
+        + ":inv_roar=" + mamuInvCount(p, MAMU_ROAR_ID)
+        + ":eq_bite=" + mamuEquippedCount(p, MAMU_BITE_TYPE)
+        + ":eq_roar=" + mamuEquippedCount(p, MAMU_ROAR_TYPE);
+}
+
+/** 只读:当前环境里是否在**某处**存在指定 id 的实体(生成失败的可归因读数,不静默) */
+function mamuEntText(ent) {
+    if (ent == null) return "none";
+    try { return typeIdOf(ent) + "#" + ent.getId(); } catch (e) { return "?"; }
+}
+
+/** 该玩家当前所有效果的 `id/amp/dur`(短名单:只取本段关心的 3 个;避免整表噪声) */
+function mamuEffects(p) {
+    return "dragon=" + mamuFx(p, 0).amp + "/" + mamuFx(p, 0).dur
+        + ":dragon_on=" + mamuFx(p, 0).on
+        + ":break=" + mamuFx(p, 1).amp + "/" + mamuFx(p, 1).dur
+        + ":break_on=" + mamuFx(p, 1).on;
+}
+
+/** 世界 `keepInventory` 游戏规则的当前值(0/1;-1 = 读不到)。死亡保留用例必须显式报告它 */
+function mamuKeepInvRule(p) {
+    try {
+        var GR = Java.loadClass("net.minecraft.world.level.GameRules");
+        var lvl = p.level;
+        var srv = lvl.getServer();
+        var src = (srv != null) ? srv.getGameRules() : lvl.getGameRules();
+        return src.getBoolean(GR.RULE_KEEPINVENTORY) ? 1 : 0;
+    } catch (e) { return -1; }
+}
+
+/**
+ * 让玩家**真死亡**(等价原版 `/kill`:`LivingEntity#kill` → `hurt(damageSources().genericKill(), Float.MAX_VALUE)`;
+ * 1.21.1 `LivingEntity#kill:302` / 1.20.1 `:266`,两线均 public)。
+ *
+ * <p>**判据是「真的死了」而不是「没抛异常」**:`hurt(DamageSource,float)` 在 Rhino 下对部分实体
+ * 不可见(见 `meleeHit` 的既有注释)⇒ 逐条回退,并把**生效路径**写进读数(不静默)。
+ * 返回 `kill` / `hurt_genericKill` / `damage_genericKill` / `cmd:<rc>` / `fail` / `unknown`。
+ *
+ * <p>⚠️ 命令通道(`cmd:`)列在**最后**:既有 `applyFallDamage` 的注释证明 `/damage` 在
+ * `performPrefixedCommand` 上会被**推迟到本 tick 末**,同一次调用里读不到结果;
+ * 故它只作兜底,真死判据仍由本函数的 `dead()` 现读决定。
+ */
+function mamuKill(p) {
+    function dead() {
+        try { if (p.isDeadOrDying()) return true; } catch (e) { /* 落到下一判据 */ }
+        try { return (p.getHealth() - 0) <= 0; } catch (e) { return false; }
+    }
+    try { p.kill(); if (dead()) return "kill"; } catch (e1) { /* 回退 */ }
+    var src = null;
+    try { src = p.damageSources().genericKill(); } catch (e2) { src = null; }
+    if (src != null) {
+        try { p.hurt(src, 1.0e9); if (dead()) return "hurt_genericKill"; } catch (e3) { /* 回退 */ }
+        try { p.damage(1.0e9, src); if (dead()) return "damage_genericKill"; } catch (e4) { /* 回退 */ }
+    }
+    try { var rc = "" + runCmdP(p, "kill @s"); if (dead()) return "cmd:" + rc; } catch (e5) { /* 回退 */ }
+    return dead() ? "unknown" : "fail";
+}
+
+/**
+ * 服务端**真重生**:`PlayerList#respawn(...)`,与原版玩家点「重生」走的是**同一条**原版代码路径
+ * (`ServerGamePacketListenerImpl:1676` → `PlayerList#respawn`)。客户端会收到
+ * `ClientboundRespawnPacket`(`PlayerList.java:490`)。
+ *
+ * <p>⚠️ **别指望它自动关掉死亡界面**(2026-09-28 实测推翻旧注释):`ClientPacketListener#handleRespawn`
+ * 只在「当前界面已是 `DeathScreen`」时才 `setScreen(null)`(`:1230-1232`),而死亡包更晚到时会**新建**
+ * 界面 ⇒ 界面永久驻留、聊天注入全被吞(详见 {@link doMamuDie} 头注的取证与正确口径:
+ * 由 `mt_launch.ps1` 的 `gamerule doImmediateRespawn true` 环境不变量保证从不创建该界面)。
+ *
+ * <p>⚠️⚠️ **签名两线不同**(2026-09-27 反编译源码核对,必须双形态):
+ * <ul>
+ *   <li>1.21.1 `PlayerList.java:456`:`respawn(ServerPlayer, boolean keepInventory, Entity.RemovalReason)`
+ *       —— **没有** 2 参重载;原版死亡重生调用点传 `Entity.RemovalReason.KILLED`(`:1676`);</li>
+ *   <li>1.20.1 `PlayerList.java:437`:`respawn(ServerPlayer, boolean keepEverything)`。</li>
+ * </ul>
+ * 故先试 3 参(1.21.1),失败再试 2 参(1.20.1);`RemovalReason` 也走两条取值路径
+ * (`Java.loadClass("…Entity$RemovalReason")` → `EntityClass.RemovalReason`)。两条都失败时
+ * **不静默**:`how=fail` 且 `err=` 给出真实异常文本。
+ *
+ * <p>返回 `{player, how, rr, err}`;`how` = `playlist3` | `playlist2` | `fail` | `no_server` | `no_playerlist`。
+ * **调用方必须改用返回的新实体**:旧 `ServerPlayer` 已在 `respawn` 里被 `removePlayerImmediately` 移除。
+ */
+function mamuRespawn(p, keepInv) {
+    var out = { player: null, how: "fail", rr: "none", err: "" };
+    var srv = null;
+    try { srv = p.level.getServer(); } catch (e0) { srv = null; }
+    if (srv == null) { out.how = "no_server"; return out; }
+    var list = null;
+    try { list = srv.getPlayerList(); } catch (e1) { list = null; }
+    if (list == null) { out.how = "no_playerlist"; return out; }
+    var rr = null;
+    try { rr = Java.loadClass("net.minecraft.world.entity.Entity$RemovalReason").KILLED; out.rr = "cls"; }
+    catch (e2) {
+        try { rr = EntityClass.RemovalReason.KILLED; out.rr = "outer"; }
+        catch (e3) { rr = null; out.rr = "none"; }
+    }
+    if (rr != null) {
+        try {
+            var np = list.respawn(p, keepInv, rr);
+            if (np != null) { out.player = np; out.how = "playlist3"; return out; }
+        } catch (e4) { out.err = domExText(e4); }
+    }
+    try {
+        var np2 = list.respawn(p, keepInv);
+        if (np2 != null) { out.player = np2; out.how = "playlist2"; return out; }
+    } catch (e5) { out.err = out.err + "|" + domExText(e5); }
+    out.how = "fail";
+    return out;
+}
+
+/**
+ * 读数出口:优先直发指定玩家(`emitTo`),否则走命令上下文(`send`)。
+ *
+ * <p>为什么需要它:`mamudie` 重生后**旧 `ServerPlayer` 已被 `removePlayerImmediately` 移除**
+ * (新实体由 `PlayerList#respawn` 返回)⇒ 命令上下文持有的那个旧引用不再是权威出口。
+ * 传新玩家可保证读数一定送达。其余调用点不传第三参 ⇒ 行为与原来**逐字相同**。
+ */
+function mamuEmit(ctx, target, text) {
+    if (target != null && target !== undefined) { emitTo(target, text); return; }
+    send(ctx, text);
+}
+
+/**
+ * 全量快照(**多行**,每行一个稳定标签;字段只追加不得改名改序):
+ *   `AP_<tag>_MAW`  觉醒/真龙/佩戴/攻击力/撕咬
+ *   `AP_<tag>_MCARD` 主栏 + 副手 + 骰子卡牌栏的撕咬/龙之咆哮
+ *   `AP_<tag>_MDICE` 骰子装配项与费用
+ *   `AP_<tag>_MFX`  真龙形态/破防效果
+ *   `AP_<tag>_MCD`  强制冷却三件套
+ *   `AP_<tag>_MBASE` 宿主读数(既有 domStateRead,整段包在 `mamu=[…]` 内)
+ *
+ * <p>形态成立却缺效果时补一次**幂等**转换(与产品 `MamushiSignItem#onCurioTick` 每 20 tick 的
+ * 幂等保底同一入口)—— 否则「直写 8 层」的脚手架会读到 `dragon_on=0`,把脚手架差异误判成缺陷。
+ *
+ * @param emitTarget 可选;非空时所有读数行经 {@link mamuEmit} 直发该玩家(重生后的新实体)。
+ */
+function mamuRead(ctx, tag, p, phase, emitTarget) {
+    if (p == null) { mamuEmit(ctx, emitTarget, "AP_" + tag + "_" + phase + ":found=0"); return 1; }
+    var df = mamuDragonFlag(p);
+    var fxD = mamuFx(p, 0);
+    var healed = 0;
+    if (df === 1 && fxD.on === 0) {
+        try { MamuSignItemClass.transformToDragon(p); healed = 1; } catch (e0) { healed = -1; }
+        fxD = mamuFx(p, 0);
+    }
+    mamuEmit(ctx, emitTarget, "AP_" + tag + "_" + phase + "_MAW:sign=" + mamuSignEquipped(p)
+        + ":awk=" + mamuAwaken(p)
+        + ":df=" + df
+        + ":ap=" + (TeruDiceCombatModifiersClass == null ? -1 : domNum(function () { return TeruDiceCombatModifiersClass.attackPowerOf(p); }))
+        + ":dp=" + (TeruDiceCombatModifiersClass == null ? -1 : domNum(function () { return TeruDiceCombatModifiersClass.defensePowerOf(p); }))
+        + ":bite_latch=" + mamuBiteBonusActive(p)
+        + ":inv_bite=" + mamuInvCount(p, MAMU_BITE_ID)
+        + ":inv_roar=" + mamuInvCount(p, MAMU_ROAR_ID)
+        + ":inv_bite_slots=[" + mamuInvCards(p, MAMU_BITE_ID) + "]"
+        + ":inv_roar_slots=[" + mamuInvCards(p, MAMU_ROAR_ID) + "]"
+        + ":fx_healed=" + healed);
+    mamuEmit(ctx, emitTarget, "AP_" + tag + "_" + phase + "_MCARD:" + mamuCardCounts(p)
+        + ":any_card=" + mamuHasAnyCard(p));
+    mamuEmit(ctx, emitTarget, "AP_" + tag + "_" + phase + "_MDICE:stones=[" + mamuDiceStones(p) + "]"
+        + ":cost=" + mamuDiceCosts(p)
+        + ":dice_slot=" + diceSlotItemId(p));
+    mamuEmit(ctx, emitTarget, "AP_" + tag + "_" + phase + "_MFX:" + mamuEffects(p));
+    var bd = mamuBreakArmor(p);
+    mamuEmit(ctx, emitTarget, "AP_" + tag + "_" + phase + "_MCD:" + mamuCdRead(p, null)
+        + ":p_break_amt=" + bd.amt + ":p_break_armor=" + bd.armor);
+    mamuEmit(ctx, emitTarget, "AP_" + tag + "_" + phase + "_MBASE:mamu=[" + domStateRead(p) + "]");
+    return 1;
+}
+
+/** 类门禁:任一产品类缺失 ⇒ 报 ERR(负向断言会立刻抓出) */
+function mamuClassGate(ctx, tag) {
+    var miss = "";
+    if (MamuSignItemClass == null) miss = miss + "|MamushiSignItem";
+    if (MamuCardUtilClass == null) miss = miss + "|DragonCardUtil";
+    if (MamuDragonEffectClass == null) miss = miss + "|MamushiDragonEffect";
+    if (MamuBreakEffectClass == null) miss = miss + "|DragonRoarBreakEffect";
+    if (MamuCurrentCoreClass == null) miss = miss + "|CurrentCoreChipItem";
+    if (MamuChargeManagerClass == null) miss = miss + "|ChargeManager";
+    if (ExclusiveCardUtilClass == null) miss = miss + "|ExclusiveCardUtil";
+    if (miss !== "") { send(ctx, "AP_" + tag + "_ERR:no_class:" + miss); return false; }
+    return true;
+}
+
+/** 解析目标(bot / 真实玩家);缺省/`-` ⇒ 自身。找不到 ⇒ ERR(可归因,不静默) */
+function mamuResolve(ctx, tag, p, nameText, what) {
+    return zhaoResolve(ctx, tag, p, nameText, what);
+}
+
+/** 把玩家拉回同一基线:清两张专属牌 / 立牌 / 骰子 / 效果 / 锁存 / 冷却 / 出牌轮 / 测试筹码 */
+function mamuClearState(p) {
+    var err = "";
+    try { mamuClearItem(p, MAMU_BITE_ID); } catch (e1) { err = err + "|bite:" + domExText(e1); }
+    try { mamuClearItem(p, MAMU_ROAR_ID); } catch (e2) { err = err + "|roar:" + domExText(e2); }
+    try { clearCurioSlots(p, "stand"); } catch (e3) { err = err + "|stand:" + domExText(e3); }
+    try { clearCurioSlots(p, "dice"); } catch (e4) { err = err + "|dice:" + domExText(e4); }
+    try { clearCurioSlots(p, "chip"); } catch (e5) { err = err + "|chip:" + domExText(e5); }
+    try { MamuSignItemClass.setAwakening(p, 0); } catch (e6) { err = err + "|awk:" + domExText(e6); }
+    try { MamuSignItemClass.setBiteBonusActive(p, false); } catch (e7) { err = err + "|latch:" + domExText(e7); }
+    try { MamuSignItemClass.transformToDragon(p); } catch (e8) { /* 无卡即空操作 */ }
+    try { ModAttachments.setMamushiForcedCooldownUntil(p, 0); } catch (e9) { err = err + "|mfu:" + domExText(e9); }
+    try { ModEffectRemoval.remove(p, mamuEffectHolder(0)); } catch (e10) { /* 无效果即空操作 */ }
+    try { resetEffectCardCycle(p); } catch (e11) { /* 忽略 */ }
+    try { ModAttachments.setFenRecharge(p, 0); } catch (e12) { /* 忽略 */ }
+    try { mamuClearItem(p, "minecraft:iron_sword"); } catch (e13) { /* 忽略 */ }
+    try { mamuClearItem(p, MAMU_DICE_ID); } catch (e14) { /* 忽略 */ }
+    return err;
+}
+
+/**
+ * 清主物品栏(0..35)+ 副手里指定物品;**先搬到主手再清**会带来"手里仍有牌"的假读数,
+ * 故只在**不动手**的前提下逐格清(与 zhaoClearItem 同法)。
+ */
+function mamuClearItem(p, itemId) {
+    return zhaoClearItem(p, itemId);
+}
+
+/**
+ * 脚手架操作的返回值 → **语义明确**的状态串:`ok`(null / undefined / 空串 / "null")或 `fail:<原因>`。
+ *
+ * <p>为什么需要它:本文件既有的 `*_err=` 读法是「空串 = 成功」,拼进一行里肉眼可分但**语义反直觉**
+ * —— 2026-09-27 实机就出现 `bot_err=|sign:|dice:`(三项全成功)被读成"bot 侧装配失败"。
+ * 凡**成/败都是正常结果**的脚手架一律用它,不要再用 `*_err=` 拼空串。
+ */
+function mamuStatus(x) {
+    if (x === null || x === undefined) return "ok";
+    var s = "" + x;
+    if (s === "" || s === "null") return "ok";
+    return "fail:" + s;
+}
+
+/**
+ * 物品是否带某标签(`astral_dice:signs` / `curios:stand` / `astral_dice:is_exclusive` /
+ * `astral_dice:combat_cards`);返回 `1` / `0` / `-1`(读不到)。
+ *
+ * <p>⚠️ **必须是顶层函数**:Rhino/KubeJS 下**块内**函数声明(`try { function f(){} }`)在块内调用
+ * 会得到 `undefined` ⇒ `TypeError: f is not a function`。2026-09-27 实机踩坑:整个 `REG_TAG` 行
+ * 只输出 `tag_err=[] TypeError: hasTag is not a function, it is undefined.:tag_ex=1`。
+ * (函数体**顶层**的函数声明没问题 —— 同段的 `flag` / `hit` / `giveOne` / `snapRow` 等实机均正常。)
+ *
+ * <p>⚠️ 不得走 `ItemStack#is(TagKey)`(Rhino 重载歧义)⇒ 读 `Holder#tags()` 按 `location()` 比字符串
+ * (与 zhao 段 `doZhaoReg` 同法)。首选 `Registry#wrapAsHolder(item)`,失败退回 `Item#builtInRegistryHolder()`。
+ */
+function mamuHasTag(item, want) {
+    if (item == null) return 0;
+    var arr = null;
+    try { arr = BuiltInRegistries.ITEM.wrapAsHolder(item).tags().toArray(); } catch (e1) { arr = null; }
+    if (arr == null) {
+        try { arr = item.builtInRegistryHolder().tags().toArray(); } catch (e2) { arr = null; }
+    }
+    if (arr == null) return -1;
+    for (var i = 0; i < arr.length; i++) {
+        var loc = "";
+        try { loc = "" + arr[i].location(); } catch (e3) { loc = ""; }
+        if (loc === want) return 1;
+    }
+    return 0;
+}
+
+/**
+ * 基线:`mamuclear` + 装立牌 + 骰子入 curios + 主手铁剑;可选把对 bot 也拉回同一基线。
+ * 读数:立牌/骰子/铁剑的装配结果 + 全量快照(便于前置断言直接锚定)。
+ *
+ * <p>【2026-09-27 实机修正】bot 侧原来只输出一个 `bot_err=|sign:|dice:` —— 三个子操作**全部成功**
+ * 时该串也是 `|sign:|dice:`(错误文本为空),字段名却叫 `err`,把"成功"读成了"失败"(假红)。
+ * 现改为**语义明确的逐项状态** `bot_clear` / `bot_sign` / `bot_dice`(值 = `ok` | `fail:<原因>`)
+ * 外加**回读证据** `bot_stand`(= `MamushiSignItem.isEquipped(bot)` 的 0/1/-1):
+ * 对 bot 装立牌/骰子**是必要的**(`mamubatch other` 需要"另一名佩戴立牌的发牌者"),故保留该动作,
+ * 只是不再把它记成错误。无 bot 参数时这四个字段**不出现**(保持原形态不变)。
+ *
+ * <p>`sword_err` 的**唯一**出现条件(2026-09-27 澄清):`p.setItemInHand(MAIN_HAND, new ItemStack(<铁剑>))`
+ * 抛异常 —— 即 ①`ZhaoHandClass.MAIN_HAND` 取不到,或 ②`resolveItem("minecraft:iron_sword")` 返回
+ * `null` ⇒ `new ItemStack(null)` 构造抛错。正常环境下该字段**不出现**(不是空串,是整段不拼接)。
+ */
+function doMamuPrep(ctx, tag, botText) {
+    if (!mamuClassGate(ctx, tag)) return 1;
+    var p = ctx.source.getPlayerOrException();
+    var err = mamuClearState(p);
+    var signErr = equipSign(p, MAMU_SIGN_ID);
+    if (signErr == null) signErr = "";
+    var diceErr = "unknown_item:" + MAMU_DICE_ID;
+    var diceItem = resolveItem(MAMU_DICE_ID);
+    if (diceItem != null) diceErr = putInSlot(p, "dice", new ItemStack(diceItem), 0);
+    if (diceErr == null) diceErr = "";
+    var swordErr = "";
+    try { p.setItemInHand(ZhaoHandClass.MAIN_HAND, new ItemStack(resolveItem("minecraft:iron_sword"))); }
+    catch (e1) { swordErr = domExText(e1); }
+    var bot = "-", botClear = "-", botSign = "-", botDice = "-", botStand = -1;
+    if (("" + botText) !== "") {
+        var t = mamuResolve(ctx, tag, p, botText, "no_player");
+        if (t == null) return 1;
+        bot = "" + botText;
+        botClear = mamuStatus(mamuClearState(t));
+        botSign = mamuStatus(equipSign(t, MAMU_SIGN_ID));
+        var bDiceItem = resolveItem(MAMU_DICE_ID);
+        botDice = (bDiceItem == null) ? ("fail:unknown_item:" + MAMU_DICE_ID)
+            : mamuStatus(putInSlot(t, "dice", new ItemStack(bDiceItem), 0));
+        // 回读证据:立牌真的进了 bot 的 curios `stand` 槽(空串状态串不足以证明)
+        botStand = mamuSignEquipped(t);
+    }
+    send(ctx, "AP_" + tag + "_MU_PREP:sign_err=" + signErr + ":dice_err=" + diceErr
+        + (swordErr === "" ? "" : ":sword_err=" + swordErr)
+        + ":bot=" + bot
+        + (bot === "-" ? "" : (":bot_clear=" + botClear + ":bot_sign=" + botSign
+            + ":bot_dice=" + botDice + ":bot_stand=" + botStand))
+        + ":online=" + zhaoOnlineNames(ctx)
+        + ":nmobs=" + zhaoNum(function () { return p.level.getEntitiesOfClass(LivingEntityClass, AABBClass.ofSize(p.position(), 64, 64, 64)).size(); }));
+    return mamuRead(ctx, tag, p, "BASE");
+}
+
+/** 收尾:全清 + 全量读数 */
+function doMamuClear(ctx, tag) {
+    if (!mamuClassGate(ctx, tag)) return 1;
+    var p = ctx.source.getPlayerOrException();
+    var err = mamuClearState(p);
+    send(ctx, "AP_" + tag + "_MU_CLEAR:cleared=1" + (err === "" ? "" : ":err=" + err));
+    return mamuRead(ctx, tag, p, "ZERO");
+}
+
+/**
+ * 注册与冻结数值(规格 §1);全部走**只读**判定。
+ * 读数:
+ *   `AP_<tag>_REG_SRC`  物品/类的存在与身份
+ *   `AP_<tag>_REG_CONST` 常量(逐条 产品常量 → 期望值 → 相等标志,断言层无算术)
+ *   `AP_<tag>_REG_TAG`  标签(`astral_dice:signs` / `curios:stand` / `is_exclusive` / `combat_cards`)
+ *   `AP_<tag>_REG_TYPE` `CardRegistry` 的 typeId ↔ 物品 双向映射(费用/耐久)
+ */
+function doMamuReg(ctx, tag) {
+    if (!mamuClassGate(ctx, tag)) return 1;
+    var p = ctx.source.getPlayerOrException();
+    var signItem = resolveItem(MAMU_SIGN_ID);
+    var biteItem = resolveItem(MAMU_BITE_ID);
+    var roarItem = resolveItem(MAMU_ROAR_ID);
+    send(ctx, "AP_" + tag + "_REG_SRC:sign_item=" + (signItem == null ? "MISSING" : "ok")
+        + ":bite_item=" + (biteItem == null ? "MISSING" : "ok")
+        + ":roar_item=" + (roarItem == null ? "MISSING" : "ok")
+        + ":sign_is=" + ((signItem != null && (signItem instanceof MamuSignItemClass)) ? 1 : 0)
+        + ":dragon_fx_is=" + (MamuDragonEffectClass == null ? -1 : 1)
+        + ":break_fx_is=" + (MamuBreakEffectClass == null ? -1 : 1)
+        + ":core_is=" + (MamuCurrentCoreClass == null ? -1 : 1)
+        + ":vitamin_is=" + (MamuVitaminPillClass == null ? -1 : 1)
+        + ":moditems_is=" + (MamuItemsClass == null ? -1 : 1)
+        + ":break_mod=" + (MamuBreakEffectClass == null ? "n/a" : MAMU_BREAK_ARMOR_KEY));
+
+    var C = MamuSignItemClass;
+    function flag(actual, want) { return ((actual - 0) === (want - 0)) ? 1 : 0; }
+    send(ctx, "AP_" + tag + "_REG_CONST:awk_max=" + C.AWAKEN_MAX + ":awk_max_ok=" + flag(C.AWAKEN_MAX, 8)
+        + ":cap=" + C.AWAKEN_GRANT_CAP_PER_EVENT + ":cap_ok=" + flag(C.AWAKEN_GRANT_CAP_PER_EVENT, 3)
+        + ":bite_cap=" + C.BITE_BONUS_CAP + ":bite_cap_ok=" + flag(C.BITE_BONUS_CAP, 4)
+        + ":dragon_bonus=" + C.DRAGON_FORM_ATTACK_BONUS + ":dragon_bonus_ok=" + flag(C.DRAGON_FORM_ATTACK_BONUS, 5)
+        + ":range=" + C.ACTIVE_RANGE + ":range_ok=" + flag(C.ACTIVE_RANGE, 12)
+        + ":max_t=" + C.ACTIVE_MAX_TARGETS + ":max_t_ok=" + flag(C.ACTIVE_MAX_TARGETS, 32)
+        + ":forced=" + C.ACTIVE_FORCED_COOLDOWN_TICKS + ":forced_ok=" + flag(C.ACTIVE_FORCED_COOLDOWN_TICKS, 1200)
+        + ":bite_cost=" + C.BITE_COST + ":bite_cost_ok=" + flag(C.BITE_COST, 2)
+        + ":bite_uses=" + C.BITE_USES + ":bite_uses_ok=" + flag(C.BITE_USES, 1)
+        + ":bite_atk=" + C.BITE_ATTACK + ":bite_atk_ok=" + flag(C.BITE_ATTACK, 3)
+        + ":roar_cost=" + C.ROAR_COST + ":roar_cost_ok=" + flag(C.ROAR_COST, 3)
+        + ":roar_uses=" + C.ROAR_USES + ":roar_uses_ok=" + flag(C.ROAR_USES, 5)
+        + ":roar_atk=" + C.ROAR_ATTACK + ":roar_atk_ok=" + flag(C.ROAR_ATTACK, 3)
+        + ":roar_ticks=" + C.ROAR_DEBUFF_TICKS + ":roar_ticks_ok=" + flag(C.ROAR_DEBUFF_TICKS, 1200)
+        + ":roar_amp=" + C.ROAR_SLOW_AMPLIFIER + ":roar_amp_ok=" + flag(C.ROAR_SLOW_AMPLIFIER, 2)
+        + ":roar_armor=" + C.ROAR_ARMOR_DELTA + ":roar_armor_ok=" + flag(C.ROAR_ARMOR_DELTA, -8)
+        + ":break_delta=" + MamuBreakEffectClass.ARMOR_DELTA + ":break_delta_ok=" + flag(MamuBreakEffectClass.ARMOR_DELTA, -8)
+        + ":type_bite=" + MamuCardUtilClass.TYPE_BITE + ":type_bite_ok=" + ((MamuCardUtilClass.TYPE_BITE === "bite") ? 1 : 0)
+        + ":type_roar=" + MamuCardUtilClass.TYPE_DRAGON_ROAR + ":type_roar_ok=" + ((MamuCardUtilClass.TYPE_DRAGON_ROAR === "dragon_roar") ? 1 : 0));
+
+    // ⚠️ 标签判定不得走 ItemStack#is(TagKey)(Rhino 重载歧义)⇒ `mamuHasTag` 读 Holder#tags()
+    //    按 location() 比字符串。**该助手必须是顶层函数**(块内函数声明在 Rhino 下不可见,见其注释)。
+    var tagTxt = "", tagErr = "";
+    try {
+        tagTxt = ":sign_tag=" + mamuHasTag(signItem, "astral_dice:signs")
+            + ":stand_tag=" + mamuHasTag(signItem, "curios:stand")
+            + ":bite_excl=" + mamuHasTag(biteItem, "astral_dice:is_exclusive")
+            + ":roar_excl=" + mamuHasTag(roarItem, "astral_dice:is_exclusive")
+            + ":bite_combat=" + mamuHasTag(biteItem, "astral_dice:combat_cards")
+            + ":roar_combat=" + mamuHasTag(roarItem, "astral_dice:combat_cards");
+    } catch (e1) { tagTxt = ":tag_err=" + domExText(e1); tagErr = "1"; }
+    send(ctx, "AP_" + tag + "_REG_TAG" + tagTxt + (tagErr === "" ? "" : ":tag_ex=1"));
+
+    var typeTxt = "", typeErr = "";
+    try {
+        var biteByType = NardisCardRegistryClass.typeToItem(MAMU_BITE_TYPE);
+        var roarByType = NardisCardRegistryClass.typeToItem(MAMU_ROAR_TYPE);
+        typeTxt = ":bite_by_type=" + itemIdOf(biteByType) + ":roar_by_type=" + itemIdOf(roarByType)
+            + ":bite_reg_cost=" + NardisCardRegistryClass.cost(MAMU_BITE_TYPE, p)
+            + ":roar_reg_cost=" + NardisCardRegistryClass.cost(MAMU_ROAR_TYPE, p)
+            + ":bite_defense=" + zhaoBool(function () { return NardisCardRegistryClass.isDefense(MAMU_BITE_TYPE); })
+            + ":roar_defense=" + zhaoBool(function () { return NardisCardRegistryClass.isDefense(MAMU_ROAR_TYPE); });
+    } catch (e2) { typeTxt = ":type_err=" + domExText(e2); typeErr = "1"; }
+    send(ctx, "AP_" + tag + "_REG_TYPE" + typeTxt + (typeErr === "" ? "" : ":type_ex=1"));
+    return 1;
+}
+
+/** 只读全量快照(缺省自身;给名字则读 bot/真实玩家;找不到 ⇒ `found=0`,不报 ERR) */
+function doMamuReadCmd(ctx, tag, phase, nameText) {
+    if (!mamuClassGate(ctx, tag)) return 1;
+    var p = ctx.source.getPlayerOrException();
+    if (("" + nameText) === "" || ("" + nameText) === "-") return mamuRead(ctx, tag, p, phase);
+    var t = teruFindPlayer(ctx, nameText);
+    if (t == null) { send(ctx, "AP_" + tag + "_" + phase + ":found=0:who=" + nameText + ":online=" + zhaoOnlineNames(ctx)); return 1; }
+    send(ctx, "AP_" + tag + "_" + phase + "_P:" + teruPlayerRead(ctx, t, "" + nameText));
+    return mamuRead(ctx, tag, t, phase);
+}
+
+/**
+ * 觉醒层数脚手架/计数负控。
+ *   `set` ⇒ `setAwakening(p, n)`(**产品入口直写**;不钳制非负、不触发形态转换);
+ *   `add` ⇒ `onCardGivenToOther(p, p)`(自己给自己:**不计层**,是「自己给自己 +0」的正控)。
+ */
+function doMamuAwake(ctx, tag, modeText, nText, nameText) {
+    if (!mamuClassGate(ctx, tag)) return 1;
+    var p = ctx.source.getPlayerOrException();
+    var t = mamuResolve(ctx, tag, p, nameText, "no_player");
+    if (t == null) return 1;
+    var mode = "" + modeText;
+    var n = teruInt(nText, 0);
+    var before = mamuAwaken(t);
+    var how = "none", err = "";
+    try {
+        if (mode === "add") { MamuSignItemClass.onCardGivenToOther(t, t); how = "self_self"; }
+        else { MamuSignItemClass.setAwakening(t, n); how = "set"; }
+    } catch (e1) { err = domExText(e1); how = "ex"; }
+    var after = mamuAwaken(t);
+    send(ctx, "AP_" + tag + "_AWAKE:mode=" + mode + ":want=" + n + ":who=" + ((t === p) ? "self" : ("" + nameText))
+        + ":how=" + how
+        + ":awk=" + before + ">" + after
+        + ":delta=" + ((before < 0 || after < 0) ? -999 : (after - before))
+        + ":delta_ok=" + ((mode === "add") ? (((before >= 0) && (after === before)) ? 1 : 0) : 1)
+        + (err === "" ? "" : ":err=" + err));
+    return mamuRead(ctx, tag, t, "AW");
+}
+
+/**
+ * **一次发牌事件**内给一名受益人发牌(`giveExclusiveCard` → 唯一漏斗 → `onCardGivenToOther`)。
+ *
+ * <p>`count` 恒为 1:产品的去重单位是**受益人**(不是张数),故「同一人 2 张只 +1」由
+ * 「同一事件内对同一受益人调用两次」表达 —— 见 {@link doMamuBatch} 的 `twice` 档。
+ *
+ * 读数:`AP_<tag>_GIVE`(含提前 `hasAnyCard` 值 ⇒ 覆盖 D1 判据)。
+ */
+function doMamuGive(ctx, tag, giverText, receiverText) {
+    if (!mamuClassGate(ctx, tag)) return 1;
+    var p = ctx.source.getPlayerOrException();
+    var g = mamuResolve(ctx, tag, p, giverText, "no_giver");
+    if (g == null) return 1;
+    var r = mamuResolve(ctx, tag, p, receiverText, "no_receiver");
+    if (r == null) return 1;
+    var awkBefore = mamuAwaken(g);
+    var anyBefore = mamuHasAnyCard(r);
+    var err = "";
+    try { MamuSignItemClass.giveExclusiveCard(g, r, false, 1); } catch (e1) { err = domExText(e1); }
+    send(ctx, "AP_" + tag + "_MU_GIVE:giver=" + ((g === p) ? "self" : ("" + giverText))
+        + ":receiver=" + ((r === p) ? "self" : ("" + receiverText))
+        + ":giver_eq=" + mamuSignEquipped(g)
+        + ":giver_awk=" + awkBefore + ">" + mamuAwaken(g)
+        + ":giver_delta=" + ((awkBefore < 0) ? -999 : (mamuAwaken(g) - awkBefore))
+        + ":recv_any_before=" + anyBefore + ":recv_any_after=" + mamuHasAnyCard(r)
+        + ":recv_bite=" + mamuInvCount(r, MAMU_BITE_ID)
+        + (err === "" ? "" : ":err=" + err));
+    return 1;
+}
+
+/**
+ * 批次语义的**完整取证**(全部压在一次命令执行内 ⇒ 同一 gameTime):
+ *   `cap`   ⇒ `self`(佩戴者)**不是**受益人(自身自身不计层),只对 Bot1 的价值在读数里;
+ *             真值由 `three` 档给出。
+ *   `three` ⇒ 对 Bot1/Bot2/Bot3 各一次 ⇒ 期望 `+3`(单次封顶 3 层的**上界命中**);
+ *   `four`  ⇒ 对 Bot1/Bot2/Bot3/Bot4 各一次 ⇒ 期望**仍 +3**(封顶生效,第 4 人被挡下);
+ *   `twice` ⇒ 对 Bot1 连续两次 ⇒ 期望 **+1**(按受益人去重)+ `inv_bite` 增 2 张(张数真的发了 2);
+ *   `other` ⇒ Bot1 给 Bot2(发牌者 = 另一名佩戴立牌者)
+ *   `nosign`⇒ Bot1(无立牌)给 Bot2 ⇒ 期望 **+0**(非佩戴者发牌不计)。
+ *
+ * 读数:`AP_<tag>_BATCH`(逐受益人 delta 串 + 自身 df/latch 的后续影响)。
+ */
+function doMamuBatch(ctx, tag, modeText, n1, n2, n3) {
+    if (!mamuClassGate(ctx, tag)) return 1;
+    var p = ctx.source.getPlayerOrException();
+    var mode = "" + modeText;
+    var err = "";
+    var sent = "";
+    var selfBefore = mamuAwaken(p);
+    var selfAny = mamuHasAnyCard(p);
+
+    function hit(target, label) {
+        var b0 = mamuAwaken(target);
+        try { MamuSignItemClass.onCardGivenToOther(p, target); }
+        catch (e1) { err = err + "|" + label + ":" + domExText(e1); }
+        var d = (b0 < 0) ? -999 : (mamuAwaken(target) - b0);
+        sent = (sent === "") ? (label + ":" + b0 + ">" + mamuAwaken(target) + ":" + d)
+            : (sent + "," + label + ":" + b0 + ">" + mamuAwaken(target) + ":" + d);
+        return target;
+    }
+    function giveOne(target, label, times) {
+        var b0 = mamuAwaken(p);
+        var cards0 = mamuInvCount(target, MAMU_BITE_ID);
+        for (var i = 0; i < times; i++) {
+            try { MamuSignItemClass.giveExclusiveCard(p, target, false, 1); }
+            catch (e2) { err = err + "|give:" + label + ":" + domExText(e2); }
+        }
+        var d = (b0 < 0) ? -999 : (mamuAwaken(p) - b0);
+        sent = (sent === "") ? (label + ":" + b0 + ">" + mamuAwaken(p) + ":" + d)
+            : (sent + "," + label + ":" + b0 + ">" + mamuAwaken(p) + ":" + d);
+        return cards0;
+    }
+    var cardsBefore = -1, cardsAfter = -1;
+    var t1 = null, t2 = null, t3 = null, t4 = null;
+    if (("" + n1) !== "-" && ("" + n1) !== "") {
+        t1 = mamuResolve(ctx, tag, p, n1, "no_bot1");
+        if (t1 == null) return 1;
+    }
+    if (mode === "three" || mode === "four" || mode === "other" || mode === "nosign") {
+        t2 = mamuResolve(ctx, tag, p, n2, "no_bot2");
+        if (t2 == null) return 1;
+    }
+    if (mode === "three" || mode === "four") {
+        t3 = mamuResolve(ctx, tag, p, n3, "no_bot3");
+        if (t3 == null) return 1;
+    }
+    if (mode === "four") {
+        var all = p.level.getServer().getPlayerList().getPlayers();
+        for (var i = 0; i < all.size(); i++) {
+            var q = all.get(i);
+            var qn = "";
+            try { qn = "" + q.getName().getString(); } catch (e9) { qn = ""; }
+            if (qn !== "" && qn !== ("" + n1) && qn !== ("" + n2) && qn !== ("" + n3)) {
+                var isSelf = false;
+                try { isSelf = (q === p); } catch (e9b) { isSelf = false; }
+                if (!isSelf) { t4 = q; break; }
+            }
+        }
+    }
+    if (mode === "cap") {
+        if (t1 != null) hit(t1, "b1");
+    } else if (mode === "three") {
+        hit(t1, "b1"); hit(t2, "b2"); hit(t3, "b3");
+    } else if (mode === "four") {
+        hit(t1, "b1"); hit(t2, "b2"); hit(t3, "b3");
+        if (t4 == null) { err = err + "|four:no_bot4"; }
+        else { hit(t4, "b4"); }
+    } else if (mode === "twice") {
+        if (t1 != null) {
+            cardsBefore = mamuInvCount(t1, MAMU_BITE_ID);
+            var r1 = giveOne(t1, "g1", 1);
+            var r2 = giveOne(t1, "g2", 1);
+            cardsAfter = mamuInvCount(t1, MAMU_BITE_ID);
+            if (r1 < 0 || r2 < 0) err = err + "|twice:no_before";
+        }
+    } else if (mode === "other") {
+        if (t1 != null) {
+            var b0 = mamuAwaken(t1);
+            try { MamuSignItemClass.giveExclusiveCard(t1, t2, false, 1); }
+            catch (e3) { err = err + "|other:" + domExText(e3); }
+            sent = "b1:" + b0 + ">" + mamuAwaken(t1) + ":" + ((b0 < 0) ? -999 : (mamuAwaken(t1) - b0));
+        }
+    } else if (mode === "nosign") {
+        if (t1 != null) {
+            var s0 = mamuAwaken(t1);
+            try { MamuSignItemClass.giveExclusiveCard(t1, t2, false, 1); }
+            catch (e4) { err = err + "|nosign:" + domExText(e4); }
+            sent = "nosign_b1:" + s0 + ">" + mamuAwaken(t1) + ":" + ((s0 < 0) ? -999 : (mamuAwaken(t1) - s0));
+        }
+    } else {
+        err = err + "|unknown_mode:" + mode;
+    }
+    send(ctx, "AP_" + tag + "_BATCH:mode=" + mode
+        + ":self=" + selfBefore + ">" + mamuAwaken(p)
+        + ":self_delta=" + ((selfBefore < 0) ? -999 : (mamuAwaken(p) - selfBefore))
+        + ":self_any=" + selfAny
+        + ":byself=[" + sent + "]"
+        + ":bot1_inv_bite=" + cardsBefore + ">" + cardsAfter
+        + ":bot1_inv_delta=" + ((cardsBefore < 0 || cardsAfter < 0) ? -999 : (cardsAfter - cardsBefore))
+        + ":online=" + zhaoOnlineNames(ctx)
+        + (err === "" ? "" : ":err=" + err));
+    return mamuRead(ctx, tag, p, "BATCH");
+}
+
+/**
+ * 佩戴者主动技**发放面**(§2.4 ①②)+ 目标集合(§3.3)的只读/写读混合取证。
+ *
+ * <p>⚠️ **第 4 参 `[name]` 不接受字面量 `self`**(2026-09-27 实机踩坑):本参数经 `mamuResolve`
+ * → `zhaoResolve`,**只有缺省 / `-` 才是"自身"**;传 `self` 会被当成**玩家名**去查 ⇒
+ * `AP_<tag>_ERR:no_target:self`。要测自身请**省略第 4 参**。
+ * (第 3 参是本命令的**模式**,`self` / `selfonly` / `active` 等模式名合法 —— 两者别混。)
+ *
+ * <p>模式:
+ *   `count`   ⇒ **只读**:`n_others`(佩戴者以外的在线玩家数)+ 12 格内的人数;
+ *   `self`    ⇒ 佩戴者对**自身** `giveExclusiveCard(p, p, dragon, 1)`(自己给自己 ⇒ 觉醒 +0);
+ *   `give15`  ⇒ 对**全部在线他人**各 `giveExclusiveCard` 一次(同 tick ⇒ 同一事件,按受益人去重封顶 3)
+ *               —— **不经过** `handleUse` ⇒ **测不到 D1**;
+ *   `random`  ⇒ 对**全部在线他人**各 `RandomCardHandler.giveCardTo(p, t, ALL)` 1 次
+ *               —— 同样**不经过** `handleUse` ⇒ **测不到 D1**;
+ *   `random2` ⇒ 同 `random`,但**先清掉目标背包/副手的撕咬+龙之咆哮**再发(观察 `hasAnyCard` 变化);
+ *   `active`  ⇒ 【2026-09-27 新增】**真实主动路径**(`performSkillForCurio`)一次 + **逐目标建行** ——
+ *               `handleUse` 是 D1 的**唯一**所在(`自身 1 张 + 每个合格目标 1 张 + 原无卡者追加 1 张`);
+ *   `selfonly`⇒ 真实主动路径,但**只给自身那一组读数**(不建 per-target 行);单机无目标时也必须成功。
+ *
+ * <p>读数:`AP_<tag>_WATCH`(集合计数 + 闸门 + 逐目标行)。
+ *   `gate`/`fired` = 仅 `active` 档有意义(其余档 `n/a` / `-1`),语义同 `mamucast`。
+ *
+ * <p>**`rows` 是模式相关的,不要用同一套解析器**:
+ *   `give15`  ⇒ `self:<awk0>><awk1>:<delta>|<目标行>…`(佩戴者自己的觉醒 前>后 伪行在最前);
+ *   `random`/`random2`/`active` ⇒ 只有 `<目标行>…`;
+ *   `self`    ⇒ `self:<awk0>><awk1>:<delta>`;
+ *   `selfonly`⇒ `cast:<awk0>><awk1>:inv_bite=<b>><a>:inv_roar=<b>><a>:mfu_wrote=<0/1>`;
+ *   `count`   ⇒ 空串。
+ * 目标行的字段(固定顺序、只追加):
+ *   `<名字>:<df0>><df1>:<awk0>><awk1>:<any0>><any1>:<cards0>><cards1>:dist2=<平方距离>:df_same=<0/1>`
+ *   `:has_any_before=<0/1>:tot=<b>><a>:granted_cards=<n>`
+ *   其中
+ *     `df*`  = `MamushiSignItem.isDragonForm`(需**佩戴立牌**且觉醒 ≥ 8)前/后;
+ *     `awk*` = `getAwakening` 前/后(只有**佩戴者**会因"给别人发牌"涨);
+ *     `any*` = **产品 D1 判据** `hasAnyCard`(主物品栏 + 副手 + **骰子卡牌栏**)前/后;
+ *     `cards*` = **只数背包/副手**里的 `撕咬 + 龙之咆哮` 合计张数(探针口径,**不含**骰子装配项);
+ *     `tot*` = 与 `any` **同计数域**的**总张数**(`mamuCardTotal`);
+ *     `granted_cards` = 本拍**实际发给该目标**的张数(`tot` 的差);`-999` = 读数失败。
+ *   ⇒ ⚠️ `cards` 与 `hasAnyCard`/`tot` 是**两个不同计数域**,D1 只能用 `tot`/`granted_cards` 判
+ *      (D1 追加的是**随机牌**,`cards` 看不见它);`has_any_before` 是"发牌前"那一刻的产品取值
+ *      (snapshot 于 `collect()`,`random2` 档在**清卡之后**重读)。
+ *   ⇒ **D1 的可断言判据**:`has_any_before=0` ⇒ `granted_cards=2`;`has_any_before=1` ⇒ `granted_cards=1`。
+ *      且**只在 `active` 档成立**(`handleUse` 是 D1 的唯一所在);`give15`/`random` 档恒为 1。
+ *      ⚠️ 边界:目标背包满时产品走 `drop(...)`(掉落),那张不计入 ⇒ 如实读成少 1,不冒充成功。
+ */
+function doMamuWatch(ctx, tag, modeText, nameText) {
+    if (!mamuClassGate(ctx, tag)) return 1;
+    var p = ctx.source.getPlayerOrException();
+    var t = mamuResolve(ctx, tag, p, nameText, "no_player");
+    if (t == null) return 1;
+    var mode = "" + modeText;
+    var err = "";
+    var others = mamuOnlineOthers(p);
+    var near12 = mamuNearCount(p, 12.0);
+    var nearAll = mamuNearCount(p, -1.0);
+    var dragon = mamuDragonFlag(t);
+    var rows = "";
+    // 仅 `active` 档使用(真实主动路径的闸门归因,语义与 `mamucast` 的同名字段一致)
+    var gate = "n/a", fired = -1;
+
+    function snapRow(q, label) {
+        var d0 = mamuDragonFlag(q);
+        var a0 = mamuAwaken(q);
+        var any0 = mamuHasAnyCard(q);
+        var cards0 = mamuInvCount(q, MAMU_BITE_ID) + mamuInvCount(q, MAMU_ROAR_ID);
+        var tot0 = mamuCardTotal(q);
+        var dist = -1;
+        try { dist = Math.round(q.distanceToSqr(t) * 100) / 100; } catch (e0) { dist = -1; }
+        return { q: q, label: label, d0: d0, a0: a0, any0: any0, cards0: cards0, tot0: tot0, dist: dist };
+    }
+    function emitRow(row) {
+        var any1 = mamuHasAnyCard(row.q);
+        var cards1 = mamuInvCount(row.q, MAMU_BITE_ID) + mamuInvCount(row.q, MAMU_ROAR_ID);
+        var tot1 = mamuCardTotal(row.q);
+        var granted = ((row.tot0 < 0 || tot1 < 0) ? -999 : (tot1 - row.tot0));
+        var dd = (row.d0 === row.d0 && mamuDragonFlag(row.q) === row.d0) ? 1 : 0;
+        var rowTxt = row.label + ":" + row.d0 + ">" + mamuDragonFlag(row.q)
+            + ":" + row.a0 + ">" + mamuAwaken(row.q)
+            + ":" + row.any0 + ">" + any1
+            + ":" + row.cards0 + ">" + cards1
+            + ":dist2=" + row.dist
+            + ":df_same=" + dd
+            // 【2026-09-27 追加(位置固定在 df_same 之后,既有字段名/顺序一律不动)】
+            // `has_any_before` = **D1 的产品判据**(`MamushiSignItem.hasAnyCard`)在**发牌之前**的取值:
+            //   计数域 = 主物品栏 + 副手 + **骰子卡牌栏**(按 CardRegistry 还原装配项)。
+            // `tot` = 同口径的**总张数**(`mamuCardTotal`):D1 追加的那张是**随机牌**(不是撕咬/咆哮),
+            //   故 `cards*` 看不到它 ⇒ 判 D1 只能看 `tot`:`has_any_before=0` 且 `tot` +2 = D1 命中。
+            //   空背包但骰子里装着牌 ⇒ `has_any_before=1`、`tot` 只 +1(正确,不是缺陷)。
+            + ":has_any_before=" + row.any0
+            + ":tot=" + row.tot0 + ">" + tot1
+            // `granted_cards` = 本次**实际发给该目标**的张数(= `tot` 的差;`-999` = 读数失败)。
+            // 判据(用例可直接断言):`has_any_before=0` ⇒ `granted_cards=2`(1 张 + D1 追加 1 张);
+            // `has_any_before=1` ⇒ `granted_cards=1`。
+            // ⚠️ 口径边界:计数只覆盖**背包侧 + 骰子装配项**;目标背包满时产品走 `drop(...)`(掉落),
+            //    那一张不计入 ⇒ 会读成少 1(如实反映"没进包",不冒充成功)。
+            + ":granted_cards=" + granted;
+        rows = (rows === "") ? rowTxt : (rows + "|" + rowTxt);
+    }
+    function collect() {
+        var rowsOut = [];
+        var all = mamuOnlineList(p);
+        for (var i = 0; i < all.size(); i++) {
+            var q = all.get(i);
+            if (q === t) continue;
+            rowsOut.push(snapRow(q, mamuNameOf(q)));
+        }
+        return rowsOut;
+    }
+    function drive(modeName) {
+        var list = collect();
+        for (var i = 0; i < list.length; i++) {
+            var row = list[i];
+            try {
+                if (modeName === "random" || modeName === "random2") {
+                    if (modeName === "random2") {
+                        mamuClearItem(row.q, MAMU_BITE_ID);
+                        mamuClearItem(row.q, MAMU_ROAR_ID);
+                        // **重新按产品口径读一次**(不写死 0):清的是背包/副手的撕咬+咆哮,
+                        // 骰子卡牌栏里的牌不受影响 ⇒ `hasAnyCard` 仍可能为 1,那正是 D1 的真实前置。
+                        row.cards0 = 0;
+                        row.any0 = mamuHasAnyCard(row.q);
+                        row.tot0 = mamuCardTotal(row.q);
+                    }
+                    MamuRandomCardHandlerClass.giveCardTo(t, row.q, MamuRandomCardHandlerClass.CardCategory.ALL);
+                } else {
+                    MamuSignItemClass.giveExclusiveCard(t, row.q, (dragon === 1), 1);
+                }
+            } catch (e1) { err = err + "|" + row.label + ":" + domExText(e1); }
+            emitRow(row);
+        }
+        return list.length;
+    }
+    var touched = 0;
+    if (mode === "count") {
+        touched = 0;
+    } else if (mode === "self") {
+        var sb = mamuAwaken(t);
+        try { MamuSignItemClass.giveExclusiveCard(t, t, (dragon === 1), 1); }
+        catch (e2) { err = err + "|self:" + domExText(e2); }
+        rows = "self:" + sb + ">" + mamuAwaken(t) + ":" + ((sb < 0) ? -999 : (mamuAwaken(t) - sb));
+        touched = 1;
+    } else if (mode === "give15") {
+        // ⚠️ 这里的 `self:` 伪行是**佩戴者自己**的觉醒 前>后(单次事件按受益人去重、封顶 3),
+        //    旧写法把两个值都在 `drive` **之前**读 ⇒ 恒为 `x>x`(读数缺陷,已修)
+        var self0 = mamuAwaken(t);
+        touched = drive("give");
+        var selfRow = "self:" + self0 + ">" + mamuAwaken(t) + ":" + ((self0 < 0) ? -999 : (mamuAwaken(t) - self0));
+        rows = (rows === "") ? selfRow : (selfRow + "|" + rows);
+    } else if (mode === "random") {
+        touched = drive("random");
+    } else if (mode === "random2") {
+        touched = drive("random2");
+    } else if (mode === "active") {
+        // 【2026-09-27 新增】**真实主动路径**的收牌观测:`handleUse` 一次调用覆盖
+        //   「自身 1 张专属牌 + 每个合格目标 1 张随机牌 + D1 追加」——D1 只在这条路径里存在
+        //   (`give15`/`random` 直调发牌函数,**不经过** `handleUse`,永远测不到 D1)。
+        // 与 `selfonly` 的差别:`selfonly` 不建 per-target 行、只给自身那一组读数;本档**建行**。
+        // `gate`/`fired` 与 `mamucast` 同义(主动可能被 锁定/强制冷却/普通冷却 挡下)。
+        var gateNow = nowTick(t) - 0;
+        var lk0 = domBool(function () { return BaseSignItemClass.isSignActiveLocked(t); });
+        var sg0 = mamuSignEquipped(t);
+        var mfuB = mamuForcedUntil(t);
+        var cdB = mamuCdEnd(t);
+        if (sg0 !== 1) gate = "no_sign";
+        else if (lk0 === 1) gate = "locked";
+        else if (mfuB > 0 && gateNow < mfuB) gate = "forced_cd";
+        else if (cdB > 0 && gateNow < cdB) gate = "normal_cd";
+        var selfA0 = mamuAwaken(t);
+        var invB0 = mamuInvCount(t, MAMU_BITE_ID) + mamuInvCount(t, MAMU_ROAR_ID);
+        var list2 = collect();
+        touched = list2.length;
+        try { BaseSignItemClass.performSkillForCurio(t); }
+        catch (e3b) { err = err + "|active:" + domExText(e3b); }
+        fired = ((mamuForcedUntil(t) > 0) && (mamuForcedUntil(t) !== mfuB)) ? 1 : 0;
+        rows = "self:" + selfA0 + ">" + mamuAwaken(t)
+            + ":inv_total=" + invB0 + ">" + (mamuInvCount(t, MAMU_BITE_ID) + mamuInvCount(t, MAMU_ROAR_ID));
+        for (var ai = 0; ai < list2.length; ai++) { emitRow(list2[ai]); }
+    } else if (mode === "selfonly") {
+        var s0 = mamuAwaken(t);
+        var invB0 = mamuInvCount(t, MAMU_BITE_ID);
+        var invR0 = mamuInvCount(t, MAMU_ROAR_ID);
+        var cd0 = mamuForcedUntil(t);
+        try { BaseSignItemClass.performSkillForCurio(t); }
+        catch (e3) { err = err + "|cast:" + domExText(e3); }
+        rows = "cast:" + s0 + ">" + mamuAwaken(t)
+            + ":inv_bite=" + invB0 + ">" + mamuInvCount(t, MAMU_BITE_ID)
+            + ":inv_roar=" + invR0 + ">" + mamuInvCount(t, MAMU_ROAR_ID)
+            + ":mfu_wrote=" + ((mamuForcedUntil(t) > cd0) ? 1 : 0);
+        touched = 1;
+    } else {
+        err = err + "|unknown_mode:" + mode;
+    }
+    send(ctx, "AP_" + tag + "_WATCH:mode=" + mode
+        + ":who=" + ((t === p) ? "self" : ("" + nameText))
+        + ":df_wearer=" + dragon
+        + ":online=" + zhaoOnlineNames(ctx)
+        + ":n_others=" + others
+        + ":n_near12=" + near12 + ":n_near_all=" + nearAll
+        + ":touched=" + touched
+        + ":gate=" + gate + ":fired=" + fired
+        + ":rows=[" + rows + "]"
+        + (err === "" ? "" : ":err=" + err));
+    return mamuRead(ctx, tag, t, "WATCH");
+}
+
+/** 佩戴者以外的在线玩家数 */
+function mamuOnlineOthers(p) {
+    var n = 0;
+    try {
+        var all = mamuOnlineList(p);
+        for (var i = 0; i < all.size(); i++) { if (all.get(i) !== p) n = n + 1; }
+    } catch (e) { return -1; }
+    return n;
+}
+
+/** 同维度在线玩家列表(读不到给空表,由调用方的 -1 读数暴露) */
+function mamuOnlineList(p) {
+    try {
+        var srv = p.level.getServer();
+        if (srv == null) return new ArrayListClass();
+        var lvl = p.level;
+        var all = srv.getPlayerList().getPlayers();
+        var out = new ArrayListClass();
+        for (var i = 0; i < all.size(); i++) {
+            var q = all.get(i);
+            var same = false;
+            try { same = (q.level === lvl); } catch (e1) { same = false; }
+            if (same) out.add(q);
+        }
+        return out;
+    } catch (e2) { return new ArrayListClass(); }
+}
+
+/** 半径 r 内的同维度在线玩家数(r < 0 ⇒ 不限距离) */
+function mamuNearCount(p, r) {
+    var n = 0;
+    try {
+        var all = mamuOnlineList(p);
+        for (var i = 0; i < all.size(); i++) {
+            var q = all.get(i);
+            if (r < 0) { n = n + 1; continue; }
+            var d2 = q.distanceToSqr(p);
+            if (d2 <= r * r) n = n + 1;
+        }
+    } catch (e) { return -1; }
+    return n;
+}
+
+/** 玩家名(取不到给 `?`;不改动任何状态) */
+function mamuNameOf(q) {
+    try { return "" + q.getName().getString(); } catch (e) { return "?"; }
+}
+
+/**
+ * 真龙形态的**成立条件与收益**。
+ *   `mark` ⇒ 只读(直写 8 层后由 `mamuRead` 的幂等保底补效果);
+ *   `on`   ⇒ `setAwakening(AWAKEN_MAX)` + `transformToDragon`(幂等转换)+
+ *            驱动一次产品 tick 路径的形态刷新(`MamushiDragonEffect.refresh`);
+ *   `off`  ⇒ `setAwakening(0)`(形态必须立刻消失:下一个读命令走 `remove`)。
+ *
+ * 读数:`AP_<tag>_FORM`(awaken/dragon 标志/效果/攻击力 **三个数一起给** ⇒
+ * 「+5 是否真的进了攻击力」可由 `ap` 与 `ap_base` 的差值直接断言)。
+ */
+function doMamuForm(ctx, tag, modeText, nameText) {
+    if (!mamuClassGate(ctx, tag)) return 1;
+    var p = ctx.source.getPlayerOrException();
+    var t = mamuResolve(ctx, tag, p, nameText, "no_player");
+    if (t == null) return 1;
+    var mode = "" + modeText;
+    var apBase = mamuAp(t);
+    var err = "";
+    if (mode === "on") {
+        try {
+            MamuSignItemClass.setAwakening(t, MamuSignItemClass.AWAKEN_MAX - 0);
+            MamuSignItemClass.transformToDragon(t);
+            MamuDragonEffectClass.refresh(t);
+        } catch (e1) { err = domExText(e1); }
+    } else if (mode === "off") {
+        try {
+            MamuSignItemClass.setAwakening(t, 0);
+            MamuDragonEffectClass.remove(t);
+        } catch (e2) { err = domExText(e2); }
+    }
+    var df = mamuDragonFlag(t);
+    var fxD = mamuFx(t, 0);
+    var apAfter = mamuAp(t);
+    send(ctx, "AP_" + tag + "_FORM:mode=" + mode
+        + ":who=" + ((t === p) ? "self" : ("" + nameText))
+        + ":sign=" + mamuSignEquipped(t)
+        + ":awk=" + mamuAwaken(t)
+        + ":df=" + df
+        + ":fx_d_on=" + fxD.on + ":fx_d=" + fxD.amp + "/" + fxD.dur
+        + ":ap_before=" + apBase + ":ap=" + apAfter
+        + ":ap_delta=" + ((apBase < 0 || apAfter < 0) ? -999 : (apAfter - apBase))
+        + ":dragon_bonus=" + MamuSignItemClass.DRAGON_FORM_ATTACK_BONUS
+        + ":bonus_ok=" + (((mode === "on") && (apBase >= 0) && (apAfter >= 0) && (df === 1)
+            && ((apAfter - apBase) === (MamuSignItemClass.DRAGON_FORM_ATTACK_BONUS - 0))) ? 1 : 0)
+        + ":off_ok=" + ((mode === "off") ? (((df === 0) && (fxD.on === 0)) ? 1 : 0) : -1)
+        + (err === "" ? "" : ":err=" + err));
+    return mamuRead(ctx, tag, t, "FORM");
+}
+
+/** 攻击力(骰战修饰器链全量;读不到 -1) */
+function mamuAp(p) {
+    if (TeruDiceCombatModifiersClass == null) return -1;
+    return domNum(function () { return TeruDiceCombatModifiersClass.attackPowerOf(p); });
+}
+
+/**
+ * 牌转换(规格 §2.3 / §7 边界「背包/副手/骰子栏撕咬全部转换、溢出丢弃、绑定保留」)。
+ *   `inv [name]`      ⇒ 发给目标 3 张撕咬(背包 2 + 副手 1,均带 `owner_uuid` 绑定),再 `transformToDragon`:
+ *                       期望背包侧 3 张全部变龙之咆哮、张数不变、槽位数量不变、绑定保持 `self`。
+ *                       ⚠️ 装配过程自报 `placed` / `inv_free` / `place_mode`(`setitem`|`add`|`drop`|`fail`)
+ *                       / `off_ok` —— 2026-09-27 实机出现过 `placed=0`(主栏已满 ⇒ 一张都没放进),
+ *                       那次 `owner_before` 读的是"没有栈"⇒ 无从判绑定;现在放不下会走 `add`/`drop` 兜底。
+ *   `dice <maxCost>`  ⇒ 直写骰子装配栏 3 个 `bite`(`uses=1`、费用 2 各),再 `transformToDragon`:
+ *                       期望 `eq_bite=0`;`maxCost=7` 时 `eq_roar=2`(**第 3 个因费用溢出被丢弃**);
+ *                       `maxCost=9` 时 `eq_roar=3`;
+ *                       `maxCost=4` 时 `eq_roar=1`(**第 1 项 3 ≤ 4 入栏、第 2 项起连续丢弃**;
+ *                       证明「丢弃」是逐项费用判定而非无条件清空)。
+ *                       ⚠️ 2026-09-28 修正:本条原写「`maxCost=4` ⇒ `eq_bite` 保持 3 且 `eq_roar=0`
+ *                       (要么全转要么全不转)」—— 那是**旧口径**,与规格 §2.3 及两线实现都不符
+ *                       (1.20.1 侧当时另有「投影后从后往前多丢」的算法缺陷,已按 1.21.1 改写;
+ *                       修正后两线同为 3/2/1)。
+ *                       ⚠️ `maxCost` 是**第 3 参(arg)**,**不是**目标玩家位;`[name]` 是第 4 参。
+ *                       2026-09-27 修复:旧写法把 `arg` 当玩家名解析 ⇒ `mamuconv C2 dice 9` 报
+ *                       `AP_C2_ERR:no_player:9`,骰子侧三个验证点全部取证不到。
+ *   `arm [张数]`      ⇒ **把 `dragon_roar` 写进骰子卡牌栏**(`appliedStones`)—— 这是打通
+ *                       「命中 ⇒ 缓慢 III + 破防」端到端链的**唯一**路径(产品触发条件 =
+ *                       `countEquippedType(attacker,"dragon_roar") > 0`)。缺省 1 张;
+ *                       `uses` = 产品 `ROAR_USES`、费用 = `CardRegistry.cost("dragon_roar")`。
+ *                       读数 `arm_count` 与 `eq_bite`/`eq_roar`/`stones_after`/`cost` 即"已装进栏"的证据。
+ *
+ * 读数:`AP_<tag>_CONV`(转换前后张数 + 槽位构成 + 装配栏构成 + 费用 + 绑定 + `arm_count`)。
+ *  ⚠️ `owner_before`/`owner_after` 的取值是**闭集** `self|other|none|err`;判定"绑定是否保留"请用
+ *     `owner_before=self` 且 `owner_after=self`,并同时确认 `owner_api_before/after=ok`
+ *     (`err` = 探针两条组件读取路径都不可用,**不是**"无主";无主读作 `none`)。
+ */
+function doMamuConv(ctx, tag, modeText, argText, nameText) {
+    if (!mamuClassGate(ctx, tag)) return 1;
+    var p = ctx.source.getPlayerOrException();
+    var mode = "" + modeText;
+    // ⚠️ **参数位不得混用**(2026-09-27 修):`arg` 是**数值/类型位**(`dice` 档 = `maxCost`、`arm` 档 = 装配张数),
+    //    `[name]`(第 4 参)才是**目标玩家位**。旧写法在 `dice` 档执行 `who = arg` 再喂给 `mamuResolve`
+    //    ⇒ `mamuconv C2 dice 9` 直接报 `AP_C2_ERR:no_player:9` 并 `return`(骰子侧三个验证点全部取证不到)。
+    var arg = (argText == null) ? "" : ("" + argText);
+    var who = (nameText == null) ? "" : ("" + nameText);
+    var t = p;
+    if (who !== "" && who !== "-") {
+        t = mamuResolve(ctx, tag, p, who, "no_player");
+        if (t == null) return 1;
+    }
+    var err = "";
+    // 【2026-09-27 补】`inv` 档的装配过程必须**自报成败**(旧写法把 `placed=N` 拼进 `err=` 串里,
+    // 结果 `placed=0`(= 主栏已满、一张都没放进去)被读成"转换没生效"。现在三项都是**独立字段**:
+    // `placed`(成功放进主栏的张数)/`inv_free`(放之前主栏空格数)/`place_mode`(`setitem`|`add`|`drop`|`fail`)。
+    var placed = -1, invFree = -1, placeMode = "n/a", offOk = -1, armCount = -1;
+    var stonesBefore = "[" + mamuDiceStones(t) + "]";
+    var costBefore = mamuDiceCosts(t);
+    var invBefore = mamuInvCount(t, MAMU_BITE_ID) + mamuInvCount(t, MAMU_ROAR_ID);
+    var biteSlotsBefore = mamuSlotText(t, MAMU_BITE_ID);
+    if (mode === "inv") {
+        try {
+            mamuClearItem(t, MAMU_BITE_ID);
+            mamuClearItem(t, MAMU_ROAR_ID);
+            var bite = resolveItem(MAMU_BITE_ID);
+            if (bite == null) { send(ctx, "AP_" + tag + "_ERR:no_item:" + MAMU_BITE_ID); return 1; }
+            var inv = t.getInventory();
+            placed = 0;
+            invFree = 0;
+            for (var i = 0; i < 36; i++) {
+                var st = inv.getItem(i);
+                if (st == null || st.isEmpty()) invFree = invFree + 1;
+            }
+            placeMode = "setitem";
+            for (var k2 = 0; k2 < 36 && placed < 2; k2++) {
+                var st2 = inv.getItem(k2);
+                if (st2 != null && st2.isEmpty()) { inv.setItem(k2, new ItemStack(bite, 1)); placed = placed + 1; }
+            }
+            // 主栏满(实机出现过 `placed=0`)⇒ 退到 `Inventory#add`(会自己找可叠/空位),再退到掉落:
+            // 绝不能"静默一张都没放"⇒ 后续 `owner_before=none` 会被误读成绑定丢了。
+            if (placed < 2) {
+                var need = 2 - placed;
+                var added = false;
+                try { added = inv.add(new ItemStack(bite, need)); } catch (eAd) { added = false; }
+                if (added) { placed = 2; placeMode = "add"; }
+                else {
+                    placeMode = "drop";
+                    try { t.drop(new ItemStack(bite, need), false); placed = 2; } catch (eDr) { placeMode = "fail"; }
+                }
+            }
+            try { t.setItemInHand(ZhaoHandClass.OFF_HAND, new ItemStack(bite, 1)); offOk = 1; }
+            catch (eOff) { offOk = 0; err = err + "|off:" + domExText(eOff); }
+        } catch (e1) { err = err + "|setup:" + domExText(e1); }
+        invBefore = mamuInvCount(t, MAMU_BITE_ID) + mamuInvCount(t, MAMU_ROAR_ID);
+        biteSlotsBefore = mamuSlotText(t, MAMU_BITE_ID);
+    } else if (mode === "dice") {
+        var maxCost = 9;
+        if (arg !== "") {
+            if (!(/^[0-9]+$/).test(arg)) { send(ctx, "AP_" + tag + "_ERR:no_maxcost:" + arg); return 1; }
+            maxCost = teruInt(arg, 9);
+        }
+        try {
+            mamuClearItem(t, MAMU_BITE_ID);
+            mamuClearItem(t, MAMU_ROAR_ID);
+            var kept = new ArrayListClass();
+            for (var k = 0; k < 3; k++) kept.add(new NardisAppliedStoneClass(MAMU_BITE_TYPE, 1, false));
+            var biteCost = 2;
+            try { biteCost = NardisCardRegistryClass.cost(MAMU_BITE_TYPE, t) - 0; } catch (eC) { biteCost = 2; }
+            var enh = new NardisWeaponEnhancementClass(3 * biteCost, maxCost, 0, maxCost, 0, kept);
+            var w = domWriteEnh(t, "curio", enh);
+            if (w.err !== "") err = err + "|write:" + w.err;
+            err = err + "|set_ok_curio=" + w.curio + ":set_ok_hand=" + w.hand;
+        } catch (e2) { err = err + "|setup:" + domExText(e2); }
+        stonesBefore = "[" + mamuDiceStones(t) + "]";
+        costBefore = mamuDiceCosts(t);
+    } else if (mode === "arm") {
+        // 【2026-09-27 新增】**把 `dragon_roar` 写进骰子卡牌栏**(`appliedStones`)的**唯一**路径。
+        // 为什么必须有:产品的「命中 ⇒ 缓慢 III + 破防」触发条件正是
+        // `MamushiSignItem.countEquippedType(attacker, "dragon_roar") > 0`(规格 §3.6),
+        // 而此前**没有任何探针路径**能把咆哮装进去(`mamubite` 写死 `bite`、
+        // `domBuildTempStone` 写死 nardis 类型、`mamuconv dice` 参数坏了、`cardprep` 只进主手)
+        // ⇒ 「命中触发 ⇒ 破防」的端到端链**不可达**。本档即补上这条路径(脚手架写装配项,不做任何产品逻辑)。
+        // 参数:`mamuconv <tag> arm [张数] [name]`(缺省 1 张;uses = 产品 `ROAR_USES`,费用 = `CardRegistry` 的咆哮费用)。
+        var armN = 1;
+        if (arg !== "") {
+            if (!(/^[0-9]+$/).test(arg)) { send(ctx, "AP_" + tag + "_ERR:no_arm_count:" + arg); return 1; }
+            armN = teruInt(arg, 1);
+        }
+        var roarUses = 5, roarCost = 3;
+        try { roarUses = MamuSignItemClass.ROAR_USES - 0; } catch (eRU) { roarUses = 5; }
+        try { roarCost = NardisCardRegistryClass.cost(MAMU_ROAR_TYPE, t) - 0; } catch (eRC) { roarCost = 3; }
+        try {
+            mamuClearItem(t, MAMU_BITE_ID);
+            mamuClearItem(t, MAMU_ROAR_ID);
+            var keptR = new ArrayListClass();
+            for (var k3 = 0; k3 < armN; k3++) keptR.add(new NardisAppliedStoneClass(MAMU_ROAR_TYPE, roarUses, false));
+            var enhR = new NardisWeaponEnhancementClass(armN * roarCost, armN * roarCost, 0, armN * roarCost, 0, keptR);
+            var wR = domWriteEnh(t, "curio", enhR);
+            if (wR.err !== "") err = err + "|write:" + wR.err;
+            err = err + "|set_ok_curio=" + wR.curio + ":set_ok_hand=" + wR.hand;
+        } catch (e2b) { err = err + "|setup:" + domExText(e2b); }
+        stonesBefore = "[" + mamuDiceStones(t) + "]";
+        costBefore = mamuDiceCosts(t);
+        armCount = armN;
+    } else {
+        err = err + "|unknown_mode:" + mode;
+    }
+    var ownerBefore = "none", ownerApiB = "ok";
+    try {
+        var stB = mamuInvStack(t, MAMU_BITE_ID);
+        ownerBefore = mamuOwnerTag(stB, t);
+        if (stB != null) { var rB = mamuOwnerUuid(stB); if (rB.api !== "") ownerApiB = rB.api; }
+    } catch (e3) { ownerBefore = "err"; ownerApiB = "|probe:" + domExText(e3); }
+    try { MamuSignItemClass.transformToDragon(t); } catch (e4) { err = err + "|conv:" + domExText(e4); }
+    var ownerAfter = "none", ownerApiA = "ok";
+    try {
+        var stA = mamuInvStack(t, MAMU_ROAR_ID);
+        ownerAfter = mamuOwnerTag(stA, t);
+        if (stA != null) { var rA = mamuOwnerUuid(stA); if (rA.api !== "") ownerApiA = rA.api; }
+    } catch (e5) { ownerAfter = "err"; ownerApiA = "|probe:" + domExText(e5); }
+    var invAfter = mamuInvCount(t, MAMU_BITE_ID) + mamuInvCount(t, MAMU_ROAR_ID);
+    send(ctx, "AP_" + tag + "_CONV:mode=" + mode + ":who=" + ((t === p) ? "self" : who)
+        + ":inv_total=" + invBefore + ">" + invAfter + ":inv_same=" + ((invBefore === invAfter) ? 1 : 0)
+        + ":inv_bite_slots_before=[" + biteSlotsBefore + "]"
+        + ":inv_bite_slots_after=[" + mamuSlotText(t, MAMU_BITE_ID) + "]"
+        + ":stones_before=" + stonesBefore + ":stones_after=[" + mamuDiceStones(t) + "]"
+        + ":cost=" + costBefore + ">" + mamuDiceCosts(t)
+        + ":placed=" + placed + ":inv_free=" + invFree + ":place_mode=" + placeMode + ":off_ok=" + offOk
+        + ":arm_count=" + armCount
+        + ":eq_bite=" + mamuEquippedCount(t, MAMU_BITE_TYPE) + ":eq_roar=" + mamuEquippedCount(t, MAMU_ROAR_TYPE)
+        + ":owner_before=" + ownerBefore + ":owner_after=" + ownerAfter
+        + ":owner_api_before=" + ((ownerApiB === "") ? "ok" : ownerApiB)
+        + ":owner_api_after=" + ((ownerApiA === "") ? "ok" : ownerApiA)
+        + ":df=" + mamuDragonFlag(t)
+        + ":fx_d_on=" + mamuFx(t, 0).on
+        + (err === "" ? "" : ":err=" + err));
+    return mamuRead(ctx, tag, t, "CONV");
+}
+
+/** 主物品栏(0..35)+ 副手里指定物品的 `槽号:张数` 串(无 = `-`) */
+function mamuSlotText(p, itemId) {
+    var out = "";
+    try {
+        var inv = p.getInventory();
+        for (var i = 0; i < 36; i++) {
+            var st = inv.getItem(i);
+            if (st == null || st.isEmpty() || itemIdOf(st) !== itemId) continue;
+            out = (out === "") ? (i + ":" + st.getCount()) : (out + "|" + i + ":" + st.getCount());
+        }
+        var off = p.getOffhandItem();
+        if (off != null && !off.isEmpty() && itemIdOf(off) === itemId) {
+            out = (out === "") ? ("off:" + off.getCount()) : (out + "|off:" + off.getCount());
+        }
+    } catch (e) { return "?"; }
+    return (out === "") ? "-" : out;
+}
+
+/** 主物品栏(0..35)里第一个指定 id 的栈(找不到给 null) */
+function mamuInvStack(p, itemId) {
+    try {
+        var inv = p.getInventory();
+        for (var i = 0; i < 36; i++) {
+            var st = inv.getItem(i);
+            if (st != null && !st.isEmpty() && itemIdOf(st) === itemId) return st;
+        }
+        var off = p.getOffhandItem();
+        if (off != null && !off.isEmpty() && itemIdOf(off) === itemId) return off;
+    } catch (e) { return null; }
+    return null;
+}
+
+/**
+ * **真实主动路径**(`BaseSignItem.performSkillForCurio`;与客户端按键的服务端同一入口)。
+ * 本命令**不**做任何 per-sign 前置(由 `mamuprep` / `mamuform` 备好)。
+ *
+ * <p>参数位:`mamucast <tag>` = 自身 / `mamucast <tag> self` = 自身(**此处的 `self` 是"模式"位,
+ * 合法**)/ `mamucast <tag> noop <name>` = 目标为 `<name>`。
+ *
+ * 读数:`AP_<tag>_MU_CAST`
+ *   `gate=` 四道前置闸门的一行归因 —— `open`(放行)/`no_sign`(立牌不在 curios `stand` 槽)/
+ *   `locked`(锁定态生效中)/`forced_cd`(**强制冷却窗口内**)/`normal_cd`(普通冷却中);
+ *   伴随 `sign=` / `locked_before=` / `cd_before=` + `cd_before` 是否生效(0/1);
+ *   `fired=` = 本次**真的执行了**主动(判据 = `mfu` 被写成新的正数;产品在 `handleUse` 末尾落笔);
+ *   `bite_slots=` / `roar_slots=` = **主物品栏(0..35)+ 副手**里该物品的 `槽号:张数`(`|` 连接;
+ *   无 = `-`;`off:张数` = 副手)**前>后**。
+ *   ⚠️ 该字段**不含骰子卡牌栏** —— 主动自身发的那张若进了骰子卡牌栏(装配项),这里恒为 `->-`;
+ *      要看"牌到底进哪了"请同时读 `stones_before/stones_after`、`card_total=` 与后续 `_MCARD`/`_MDICE`。
+ *   ⚠️ `fired=0` 时后面所有字段都是"没动过"的原值,不要当成"主动没发牌"的缺陷证据 ——
+ *      先看 `gate=`。
+ * 非自身目标由目标侧的 `AP_<tag>_WATCH` 或收牌计数给出。
+ */
+function doMamuCast(ctx, tag, nameTextOrNoop, maybeName) {
+    if (!mamuClassGate(ctx, tag)) return 1;
+    var p = ctx.source.getPlayerOrException();
+    // 参数位:`mamucast <tag>` / `mamucast <tag> self` / `mamucast <tag> noop <name>`
+    var a1 = ("" + (nameTextOrNoop == null ? "" : nameTextOrNoop));
+    var targetName = a1;
+    if (a1 === "" || a1 === "-" || a1 === "self") targetName = "";
+    else if (a1 === "noop") targetName = ("" + (maybeName == null ? "" : maybeName));
+    var t = mamuResolve(ctx, tag, p, targetName, "no_player");
+    if (t == null) return 1;
+    var biteSlots0 = mamuSlotText(t, MAMU_BITE_ID);
+    var roarSlots0 = mamuSlotText(t, MAMU_ROAR_ID);
+    var stones0 = "[" + mamuDiceStones(t) + "]";
+    var awk0 = mamuAwaken(t);
+    var until0 = mamuForcedUntil(t);
+    var cd0 = mamuCdEnd(t);
+    var maxc0 = mamuMaxCd(t);
+    var df0 = mamuDragonFlag(t);
+    // 【2026-09-27 补】主动路径的**四道前置闸门**(与 `BaseSignItem#performSkill` 的判定顺序逐条对应):
+    //   ⓪ 立牌必须在 curios `stand` 槽(不在 ⇒ 第 81 行就 `return`);① 锁定态;② 强制冷却;③ 普通冷却。
+    //   ⚠️ 没有这几个字段时,「什么都没变」的读数**无法归因** —— 2026-09-27 实机就出现过
+    //   `mamucast … self` 的 `bite_slots=->-` / `roar_slots=1:1>1:1`(全无变化),看着像"主动没发牌",
+    //   实际是被**上一步 `mamucd … cast` 写下的强制冷却**挡下(`mfu_remain` 同拍为 1200)。
+    //   故本命令现在**逐闸门自报**:`sign` / `locked_before` / `cd_before` / `gate` / `fired`。
+    var entryNow = nowTick(t) - 0;
+    var sign0 = mamuSignEquipped(t);
+    var locked0 = domBool(function () { return BaseSignItemClass.isSignActiveLocked(t); });
+    var cardTotal0 = mamuCardTotal(t);
+    var gate = "open";
+    if (sign0 !== 1) gate = "no_sign";
+    else if (locked0 === 1) gate = "locked";
+    else if (until0 > 0 && entryNow < until0) gate = "forced_cd";
+    else if (cd0 > 0 && entryNow < cd0) gate = "normal_cd";
+    var err = "";
+    try { BaseSignItemClass.performSkillForCurio(t); } catch (e1) { err = domExText(e1); }
+    var until1 = mamuForcedUntil(t);
+    var fired = ((until1 > 0) && (until1 !== until0)) ? 1 : 0;
+    send(ctx, "AP_" + tag + "_MU_CAST:who=" + ((t === p) ? "self" : ("" + targetName))
+        + ":df_before=" + df0
+        + ":sign=" + sign0 + ":locked_before=" + locked0
+        + ":cd_before=" + cd0 + ":" + ((cd0 > 0 && entryNow < cd0) ? 1 : 0)
+        + ":gate=" + gate + ":fired=" + fired
+        + ":card_total=" + cardTotal0 + ">" + mamuCardTotal(t)
+        + ":awk=" + awk0 + ">" + mamuAwaken(t)
+        + ":bite_slots=" + biteSlots0 + ">" + mamuSlotText(t, MAMU_BITE_ID)
+        + ":roar_slots=" + roarSlots0 + ">" + mamuSlotText(t, MAMU_ROAR_ID)
+        + ":stones_before=" + stones0 + ":stones_after=[" + mamuDiceStones(t) + "]"
+        + ":mfu=" + until0 + ">" + until1
+        + ":mfu_wrote=" + ((until1 > 0 && until1 !== until0) ? 1 : 0)
+        + ":cd=" + cd0 + ">" + mamuCdEnd(t)
+        + ":maxc=" + maxc0 + ">" + mamuMaxCd(t)
+        + ":lock_after=" + domBool(function () { return BaseSignItemClass.isSignActiveLocked(t); })
+        + (err === "" ? "" : ":err=" + err));
+    return mamuRead(ctx, tag, t, "CAST");
+}
+
+/**
+ * 强制冷却闸门(规格 §3.4)。`mode`:
+ *   `read`    ⇒ 只读三件套(不写任何状态);
+ *   `fresh`   ⇒ **负控构造**:清两个冷却键 ⇒ `forced_active` 必须为 0
+ *               (证明后面的「有冷却」不是残留造成的);
+ *   `past`    ⇒ 把 `mfu` 写到 `now − 1`(**正数**的过去刻:0 会被当成「无强制」而早退,
+ *               与 nardis `signexpiregrace` 同一个坑)⇒ `forced_active` 必须为 0;
+ *   `present` ⇒ 把 `mfu` 写到 `now + ACTIVE_FORCED_COOLDOWN_TICKS` ⇒ `mfu_remain == 1200`、
+ *               `mfu_is_1200=1` **且** `mfu_remain_is_cfg=1`(后者按**产品常量**判,推荐断言项);
+ *   `busy`    ⇒ 把 `cd_end` 写到 `now + 1200`、`maxc` 写到 1200、`mfu` 清 0 ⇒ 普通冷却生效;
+ *   `cast`    ⇒ 只写 `mfu = now + 1200`,**再走真实主动路径** ⇒ 必须被强制冷却挡下
+ *               (读数 `cast_rejected` 用「自身什么都没变」判:牌种/张数/觉醒前后相同);
+ *   `recast`  ⇒ 与 `cast` 同法但**先清 `cd_end`/`maxc`** ⇒ 证明挡下它的是强制闸门而非普通冷却。
+ *
+ * 读数:`AP_<tag>_CD`(`mfu_delta` / `mfu_is_1200` / `maxc_is_1200` / `cd_eq_maxc` /
+ * `forced_active` / `cast_rejected` / `cd_unchanged`)。
+ */
+function doMamuCd(ctx, tag, modeText) {
+    if (!mamuClassGate(ctx, tag)) return 1;
+    var p = ctx.source.getPlayerOrException();
+    var mode = "" + modeText;
+    var err = "";
+    var now = nowTick(p) - 0;
+    // `entryMfu` = 进入本命令时、**任何探针写入之前**的 `mfu`(mamuCdRead 的 `mfu_entry`/`mfu_shift` 用它)
+    var entryMfu = mamuForcedUntil(p);
+    var base = entryMfu;
+    var invBefore = mamuInvCount(p, MAMU_BITE_ID) + mamuInvCount(p, MAMU_ROAR_ID);
+    var awkBefore = mamuAwaken(p);
+    var maxcBefore = mamuMaxCd(p);
+    var cdBefore = mamuCdEnd(p);
+    var castRejected = -1;
+    if (mode === "fresh" || mode === "past" || mode === "present" || mode === "busy" || mode === "cast" || mode === "recast") {
+        try { ModAttachments.setMamushiForcedCooldownUntil(p, 0); } catch (e1) { err = err + "|mfu0:" + domExText(e1); }
+        try { ModAttachments.setSignActiveCooldownEnd(p, 0); } catch (e2) { err = err + "|cd0:" + domExText(e2); }
+        try { ModAttachments.setSignActiveMaxCooldown(p, 0); } catch (e3) { err = err + "|maxc0:" + domExText(e3); }
+    }
+    if (mode === "past") {
+        var past = now - 1;
+        if (past < 1) past = 1;
+        try { ModAttachments.setMamushiForcedCooldownUntil(p, past); } catch (e4) { err = err + "|past:" + domExText(e4); }
+        base = past;
+    } else if (mode === "present" || mode === "cast") {
+        var want = now + (MamuSignItemClass.ACTIVE_FORCED_COOLDOWN_TICKS - 0);
+        try { ModAttachments.setMamushiForcedCooldownUntil(p, want); } catch (e5) { err = err + "|present:" + domExText(e5); }
+        base = want;
+    } else if (mode === "recast") {
+        var want2 = now + (MamuSignItemClass.ACTIVE_FORCED_COOLDOWN_TICKS - 0);
+        try { ModAttachments.setMamushiForcedCooldownUntil(p, want2); } catch (e6) { err = err + "|recast:" + domExText(e6); }
+        base = want2;
+    } else if (mode === "busy") {
+        try {
+            ModAttachments.setSignActiveCooldownEnd(p, now + 1200);
+            ModAttachments.setSignActiveMaxCooldown(p, 1200);
+        } catch (e7) { err = err + "|busy:" + domExText(e7); }
+    }
+    if (mode === "cast" || mode === "recast") {
+        try { BaseSignItemClass.performSkillForCurio(p); } catch (e8) { err = err + "|cast:" + domExText(e8); }
+        var invAfter = mamuInvCount(p, MAMU_BITE_ID) + mamuInvCount(p, MAMU_ROAR_ID);
+        var awkAfter = mamuAwaken(p);
+        castRejected = ((invBefore === invAfter) && (awkBefore === awkAfter)) ? 1 : 0;
+    }
+    send(ctx, "AP_" + tag + "_MU_CD:mode=" + mode + ":" + mamuCdRead(p, base, entryMfu)
+        + ":cast_rejected=" + castRejected
+        + ":mfu_unchanged=" + ((mamuForcedUntil(p) === base) ? 1 : 0)
+        + ":cd_unchanged=" + ((mamuCdEnd(p) === cdBefore) ? 1 : 0)
+        + ":maxc_unchanged=" + ((mamuMaxCd(p) === maxcBefore) ? 1 : 0)
+        + ":inv_total=" + invBefore + ">" + (mamuInvCount(p, MAMU_BITE_ID) + mamuInvCount(p, MAMU_ROAR_ID))
+        + ":awk=" + awkBefore + ">" + mamuAwaken(p)
+        + (err === "" ? "" : ":err=" + err));
+    return 1;
+}
+
+/**
+ * 电流核心筹码(`CurrentCoreChipItem.tryFinishCooldown`)的强制冷却拒绝(规格 §3.4)。
+ *   `ready`    ⇒ 装筹码 + 充能 6 + `mfu = now + 1200` + `cd_end = now + 600`
+ *                ⇒ `rv` 必须 = `FINISH_NOT_ENOUGH(-1)`、充能**不扣**、`cd_end` **不变**
+ *                (证明不是"没筹码/没充能"造成的假拒);
+ *   `nocharge` ⇒ 与 `ready` 同构但**清掉强制冷却**、充能 0 ⇒ `rv` 必须 = NONE 或 NOT_ENOUGH
+ *                且**不使用**强制冷却分支(负控:同一命令路径在无强制冷却时行为不同)。
+ *   `charge`   ⇒ 装筹码 + 充能 6 + 普通冷却 + `mfu = 0` ⇒ 电流核心**正常完成冷却**
+ *                (`rv = FINISH_DONE(1)`、充能确实减少)⇒ 证明「拒绝」专属于强制冷却窗口。
+ *
+ * <p>**前置自足(2026-09-27 修正)**:命令内部先把骰子槽换成 `astral_dice:golden_dice`
+ * (0★ 即 1 个筹码栏;`mamuprep` 默认装的 `astral_dice:dice` 是 0★ 0 槽)⇒ **不需要**用例侧
+ * 额外准备筹码栏。⚠️ 副作用:本命令会**改掉骰子槽**(`dice_before`/`dice_after` 留痕),
+ * 若后续步骤依赖原来的骰子,请在之后重跑 `mamuprep`。
+ *
+ * 读数:`AP_<tag>_CORE`(rv / 充能 前>后 / cd_end 前>后 / 各标志 / 筹码栏前置证据)。
+ */
+function doMamuCore(ctx, tag, modeText) {
+    if (!mamuClassGate(ctx, tag)) return 1;
+    var p = ctx.source.getPlayerOrException();
+    var mode = "" + modeText;
+    var err = "";
+    var now = nowTick(p) - 0;
+    try { clearCurioSlots(p, "chip"); } catch (e0) { err = err + "|chip0:" + domExText(e0); }
+    // 【2026-09-27 修正(前置自足)】筹码栏格数由**骰子品阶公式**给出(`ModItems.java:215-243`):
+    //   `dice` = `s -> s`      ⇒ 0★ 时 **0 槽**(`mamuprep` 装的正是它)
+    //   `golden_dice`          ⇒ 0★ 时 **1 槽**(= `CHIP_SLOT_MIN`)
+    // 旧写法直接 `ensureChipSlot`,在 `mamuprep` 之后必然拿不到筹码栏 ⇒ 实测报
+    // `AP_<tag>_ERR:chip_slot_insufficient:0/1`(三条模式全废)。现在**本命令自己把骰子换成
+    // `astral_dice:golden_dice`**(读数 `dice_before`/`dice_for_chip`/`dice_after` 三处留痕),
+    // 不再依赖用例侧的前置;`ensureChipSlot` 仍保留为兜底(骰子已被换掉时它是空操作)。
+    var diceBefore = diceSlotItemId(p);
+    var diceSetErr = "-";
+    var golden = resolveItem("astral_dice:golden_dice");
+    if (golden == null) { send(ctx, "AP_" + tag + "_ERR:no_item:astral_dice:golden_dice"); return 1; }
+    try {
+        var dErr = putInSlot(p, "dice", new ItemStack(golden), 0);
+        diceSetErr = (dErr == null) ? "ok" : ("" + dErr);
+    } catch (eD) { diceSetErr = "ex:" + domExText(eD); }
+    var chipErr = ensureChipSlot(p, CHIP_SLOT_MIN);
+    if (chipErr != null) { send(ctx, "AP_" + tag + "_ERR:" + chipErr); return 1; }
+    var chip = resolveItem("astral_dice:current_core_chip");
+    if (chip == null) { send(ctx, "AP_" + tag + "_ERR:no_item:current_core_chip"); return 1; }
+    var putErr = putInSlot(p, "chip", new ItemStack(chip), 0);
+    if (putErr != null) err = err + "|chip:" + putErr;
+    try { MamuChargeManagerClass.removeAll(p); } catch (e1) { err = err + "|charge0:" + domExText(e1); }
+    if (mode === "nocharge") {
+        try { MamuChargeManagerClass.addStacks(p, 0); } catch (e2) { err = err + "|charge:" + domExText(e2); }
+        try { ModAttachments.setMamushiForcedCooldownUntil(p, 0); } catch (e3) { err = err + "|mfu:" + domExText(e3); }
+        try { ModAttachments.setSignActiveCooldownEnd(p, now + 600); } catch (e4) { err = err + "|cd:" + domExText(e4); }
+        try { ModAttachments.setSignActiveMaxCooldown(p, 1200); } catch (e5) { err = err + "|maxc:" + domExText(e5); }
+    } else {
+        try { MamuChargeManagerClass.addStacks(p, 6); } catch (e6) { err = err + "|charge:" + domExText(e6); }
+        try { ModAttachments.setSignActiveCooldownEnd(p, now + 600); } catch (e7) { err = err + "|cd:" + domExText(e7); }
+        try { ModAttachments.setSignActiveMaxCooldown(p, 1200); } catch (e8) { err = err + "|maxc:" + domExText(e8); }
+        if (mode === "ready") {
+            try { ModAttachments.setMamushiForcedCooldownUntil(p, now + 1200); } catch (e9) { err = err + "|mfu:" + domExText(e9); }
+        } else {
+            try { ModAttachments.setMamushiForcedCooldownUntil(p, 0); } catch (e10) { err = err + "|mfu0:" + domExText(e10); }
+        }
+    }
+    var charge0 = zhaoNum(function () { return MamuChargeManagerClass.getStacks(p); });
+    var cd0 = mamuCdEnd(p);
+    var mfu0 = mamuForcedUntil(p);
+    var equipped = zhaoBool(function () { return MamuCurrentCoreClass.isEquipped(p); });
+    var rv = -99;
+    try { rv = MamuCurrentCoreClass.tryFinishCooldown(p, mamuCdEnd(p), now) - 0; } catch (e11) { rv = -98; err = err + "|call:" + domExText(e11); }
+    var charge1 = zhaoNum(function () { return MamuChargeManagerClass.getStacks(p); });
+    var cd1 = mamuCdEnd(p);
+    send(ctx, "AP_" + tag + "_CORE:mode=" + mode
+        + ":core_eq=" + equipped
+        + ":dice_before=" + diceBefore + ":dice_for_chip=golden_dice:dice_set=" + diceSetErr
+        + ":dice_after=" + diceSlotItemId(p) + ":chip_slots=" + domNum(function () { return curioHandler(p, "chip").getStacks().getSlots(); })
+        + ":rv=" + rv + ":finish_none=" + (MamuCurrentCoreClass.FINISH_NONE - 0)
+        + ":finish_done=" + (MamuCurrentCoreClass.FINISH_DONE - 0)
+        + ":finish_not_enough=" + (MamuCurrentCoreClass.FINISH_NOT_ENOUGH - 0)
+        + ":charge=" + charge0 + ">" + charge1
+        + ":charge_kept=" + ((charge0 === charge1) ? 1 : 0)
+        + ":cd=" + cd0 + ">" + cd1 + ":cd_kept=" + ((cd0 === cd1) ? 1 : 0)
+        + ":cd_finished=" + ((cd1 <= now) ? 1 : 0)
+        + ":rejected_ok=" + ((mfu0 > 0 && now < mfu0) ? ((rv === (MamuCurrentCoreClass.FINISH_NOT_ENOUGH - 0)) ? 1 : 0) : -1)
+        + ":drained_ok=" + ((mfu0 === 0) ? ((rv === (MamuCurrentCoreClass.FINISH_DONE - 0)) ? 1 : 0) : -1)
+        + (err === "" ? "" : ":err=" + err));
+    return 1;
+}
+
+/**
+ * 攻击力数值落地 + 破防对实际减伤的影响(规格 §7 边界「要能读到实际进入伤害的数值」)。
+ *
+ * 四只同型靶(`minecraft:vindicator`,最大生命 24;护甲由**直写属性实例**给出 ⇒ 无命令延迟):
+ *   `t0` 无甲**参照靶**(只吃 1 次攻击 ⇒ 近战裸值 `raw`)、
+ *   `t1` 甲 16 / 韧性 0(**应用破防**)、`t3` 甲 16 / 韧性 0(**对照**,不加破防)、
+ *   `t2` 无甲**备用靶**(不参与断言,只保证攻击目标彼此不同 —— 同实体连击会撞无敌帧,读数变 0)。
+ * 步骤(与既往 `glovebase` 同法,**全部压在一次执行内**):
+ *   ① 直写护甲 ⇒ 读 4 靶护甲;
+ *   ② `attack(t0)` ⇒ `raw`(裸值客观参照);
+ *   ③ `attack(t1)`(**第一击**,双方都还没破防)⇒ `hit_break_first`;此时跑产品条件块
+ *      (攻击方骰子栏装备了 `dragon_roar` ⇒ `applyRoarDebuff`)⇒ 读 t1 的护甲与破防修饰量;
+ *   ④ 走**内部通道**清掉 t1 的破防,再直调 `applyRoarDebuff(t1)`(可复现、不依赖触发),
+ *      并在 t3 上手动应用**同参数**的破防后**立刻清掉** ⇒ t3 全程无破防(对照臂);
+ *   ⑤ `attack(t1)`(**第二击**,有破防)与 `attack(t3)`(**第二击**,无破防)⇒ `hit_break` / `hit_plain`;
+ *      `diff = hit_plain − hit_break` 即**破防带来的额外实扣**。
+ *
+ * 读数:
+ *   `AP_<tag>_JUMP`  攻击力 前>后 + delta(证明「真龙/撕咬加成进了攻击力」)
+ *   `AP_<tag>_JR`    四次攻击的实扣与生效 API
+ *   `AP_<tag>_JARM`  护甲与破防修饰量(**真实进入伤害的护甲**)
+ *   `AP_<tag>_JGUARD` 真实减伤口径对照(raw / hit_plain / hit_break / diff / min(护甲,20) 口径的期望减伤)
+ */
+function doMamuJump(ctx, tag) {
+    if (!mamuClassGate(ctx, tag)) return 1;
+    var p = ctx.source.getPlayerOrException();
+    var err = "";
+    var mode = "already_survival";
+    try { p.setGameMode(GameTypeClass.SURVIVAL); mode = "forced_survival"; } catch (e0) { /* 忽略 */ }
+    var weather = "skip";
+    try { p.level.setWeatherParameters(6000, 0, false, false); weather = "clear"; } catch (e1) { weather = "err"; }
+    try { p.setHealth(p.getMaxHealth()); } catch (e2) { /* 忽略 */ }
+    var t0 = spawnDummy(p, "minecraft:vindicator", 3);
+    var t1 = spawnDummy(p, "minecraft:vindicator", 3);
+    var t2 = spawnDummy(p, "minecraft:vindicator", 3);
+    var t3 = spawnDummy(p, "minecraft:vindicator", 3);
+    if (t0 == null || t1 == null || t2 == null || t3 == null) { send(ctx, "AP_" + tag + "_ERR:spawn_failed"); return 1; }
+    try { placeAt(t0, p.getX() - 1.2, p.getY(), p.getZ() + 3.0); } catch (e3) { /* 忽略 */ }
+    try { placeAt(t1, p.getX() - 0.4, p.getY(), p.getZ() + 3.0); } catch (e4) { /* 忽略 */ }
+    try { placeAt(t2, p.getX() + 0.4, p.getY(), p.getZ() + 3.0); } catch (e5) { /* 忽略 */ }
+    try { placeAt(t3, p.getX() + 1.2, p.getY(), p.getZ() + 3.0); } catch (e6) { /* 忽略 */ }
+    var all = [t0, t1, t2, t3];
+    for (var i = 0; i < all.length; i++) {
+        try { all[i].setNoAi(true); } catch (e7) { /* 忽略 */ }
+        try { all[i].setPersistenceRequired(); } catch (e8) { /* 忽略 */ }
+        try { all[i].setHealth(all[i].getMaxHealth()); } catch (e9) { /* 忽略 */ }
+    }
+    var aRef = mamuSetArmor(t0, 0.0, 0.0);
+    var aBrk = mamuSetArmor(t1, 16.0, 0.0);
+    var aCtl = mamuSetArmor(t2, 0.0, 0.0);
+    var aPln = mamuSetArmor(t3, 16.0, 0.0);
+    if (aRef !== null || aBrk !== null || aCtl !== null || aPln !== null) {
+        err = err + "|armor_set:" + aRef + "/" + aBrk + "/" + aCtl + "/" + aPln;
+    }
+    var arm0 = mamuBreakArmor(t0);
+    var arm1 = mamuBreakArmor(t1);
+    var arm3 = mamuBreakArmor(t3);
+    var apBefore = mamuAp(p);
+    // ② 裸值参照
+    var raw = mamuAttack(p, t0);
+    // ③ 第一击(双方都还没有破防)
+    var firstBreak = mamuAttack(p, t1);
+    var arm1Hit = mamuBreakArmor(t1);
+    var fxFirst = mamuFx(t1, 1);
+    // ④ 构造:清 t1 的破防后直调产品入口(可复现);t3 全程不加破防
+    try { ModEffectRemoval.remove(t1, mamuEffectHolder(1)); } catch (e10) { /* 无效果即空操作 */ }
+    try { MamuSignItemClass.applyRoarDebuff(t1); } catch (e12) { err = err + "|roar:" + domExText(e12); }
+    var arm1After = mamuBreakArmor(t1);
+    // ⑤ 第二击对照
+    var secondBreak = mamuAttack(p, t1);
+    var secondPlain = mamuAttack(p, t3);
+    var apAfter = mamuAp(p);
+    // 「期望减伤」按 §7 的 min(护甲,20) 口径算成**纯数字**(断言层无算术能力)
+    var expReduction = -1;
+    try { expReduction = Math.round(Math.min(arm1After.base, 20.0) / 25.0 * 10000) / 10000; } catch (e13) { expReduction = -1; }
+    var diff = ((secondBreak < 0) || (secondPlain < 0)) ? -999 : (secondPlain - secondBreak);
+    send(ctx, "AP_" + tag + "_JUMP:mode=" + mode + ":weather=" + weather
+        + ":ap_before=" + apBefore + ":ap=" + apAfter
+        + ":ap_delta=" + ((apBefore < 0 || apAfter < 0) ? -999 : (apAfter - apBefore))
+        + ":t0=" + mamuEntText(t0) + ":t1=" + mamuEntText(t1) + ":t2=" + mamuEntText(t2) + ":t3=" + mamuEntText(t3));
+    send(ctx, "AP_" + tag + "_JR:raw=" + raw.dmg + ":" + raw.api
+        + ":hit_break_first=" + firstBreak.dmg + ":" + firstBreak.api
+        + ":hit_break=" + secondBreak.dmg + ":" + secondBreak.api
+        + ":hit_plain=" + secondPlain.dmg + ":" + secondPlain.api);
+    send(ctx, "AP_" + tag + "_JARM:armor_ref=" + arm0.armor + ":armor_break=" + arm1.armor + ":armor_plain=" + arm3.armor
+        + ":break_first=" + arm1Hit.amt + "/" + arm1Hit.mods
+        + ":break_after=" + arm1After.amt + "/" + arm1After.mods
+        + ":break_base=" + arm1After.base
+        + ":break_fx=" + fxFirst.amp + "/" + fxFirst.dur
+        + ":break_mod_kind=" + arm1After.op
+        + ":break_mod_id=[" + arm1After.id + "]"
+        + ":roar_matched=" + mamuEquippedCount(p, MAMU_ROAR_TYPE));
+    send(ctx, "AP_" + tag + "_JGUARD:raw=" + raw.dmg
+        + ":hit_plain=" + secondPlain.dmg + ":hit_break=" + secondBreak.dmg
+        + ":diff=" + diff
+        + ":exp_reduction=" + expReduction
+        + ":break_helps=" + ((diff > 0) ? 1 : 0)
+        + ":break_amt_ok=" + ((arm1After.amt === -8) ? 1 : 0)
+        + ":roar_eq_gt0=" + ((mamuEquippedCount(p, MAMU_ROAR_TYPE) > 0) ? 1 : 0)
+        + (err === "" ? "" : ":err=" + err));
+    for (var q = 0; q < all.length; q++) { try { all[q].discard(); } catch (e14) { /* 忽略 */ } }
+    try { clearCurioSlots(p, "chip"); } catch (e15) { /* 忽略 */ }
+    try { p.setGameMode(GameTypeClass.CREATIVE); } catch (e16) { /* 忽略 */ }
+    return 1;
+}
+
+/** 一次真实近战,返回 `{dmg, api}`(dmg < 0 或 0 = 本次没有有效输出,读数里显式可见) */
+function mamuAttack(attacker, victim) {
+    try {
+        var hp0 = victim.getHealth();
+        var hit = meleeHit(attacker, victim);
+        var hp1 = victim.getHealth();
+        var api = "?";
+        try { api = "" + hit.api; } catch (eA) { api = "?"; }
+        return { dmg: Math.round((hp0 - hp1) * 100) / 100, api: api };
+    } catch (e) { return { dmg: -1, api: "ex:" + domExText(e) }; }
+}
+
+/** 直写实体护甲/韧性(返回 null = 成功;不依赖命令的下一 tick 生效) */
+function mamuSetArmor(ent, armor, tough) {
+    try {
+        var Attrs = Java.loadClass("net.minecraft.world.entity.ai.attributes.Attributes");
+        var a = ent.getAttribute(Attrs.ARMOR);
+        var t = ent.getAttribute(Attrs.ARMOR_TOUGHNESS);
+        if (a == null || t == null) return "no_attr_instance";
+        a.setBaseValue(armor);
+        t.setBaseValue(tough);
+        return null;
+    } catch (e) { return domExText(e); }
+}
+
+/**
+ * 龙之咆哮(规格 §2.7)。`mode`:
+ *   `read`  ⇒ 目标侧只读(缓慢 III 的 amp/dur + 破防的 修饰量/armor);
+ *   `apply` ⇒ **直调产品入口** `applyRoarDebuff(t)`(可复现、不依赖触发条件),
+ *             第 3 参是目标名(`read` 档第 3 参同义)。
+ *
+ * 读数:`AP_<tag>_ROAR`(缓慢 `fx_slow=amp/dur` + `break_amt` / `break_armor` / `break_base` /
+ * 命中次数代理 = 破防修饰器个数 `break_mods`)+ `AP_<tag>_ROAR_CARD`(攻击方装备的 `dragon_roar` 张数)。
+ */
+function doMamuRoar(ctx, tag, modeText, nameText) {
+    if (!mamuClassGate(ctx, tag)) return 1;
+    var p = ctx.source.getPlayerOrException();
+    var mode = "" + modeText;
+    var t = mamuResolve(ctx, tag, p, nameText, "no_target");
+    if (t == null) return 1;
+    var err = "";
+    var bd0 = mamuBreakArmor(t);
+    var slow0 = mamuSlowFx(t);
+    if (mode === "apply") {
+        try { MamuSignItemClass.applyRoarDebuff(t); } catch (e1) { err = domExText(e1); }
+    }
+    var bd1 = mamuBreakArmor(t);
+    var slow1 = mamuSlowFx(t);
+    send(ctx, "AP_" + tag + "_ROAR:mode=" + mode + ":who=" + ((t === p) ? "self" : ("" + nameText))
+        + ":type=" + mamuEntText(t)
+        + ":slow_before=" + slow0.amp + "/" + slow0.dur + ":slow_on_before=" + slow0.on
+        + ":slow=" + slow1.amp + "/" + slow1.dur + ":slow_on=" + slow1.on
+        + ":slow_amp_ok=" + ((slow1.on === 1 && slow1.amp === (MamuSignItemClass.ROAR_SLOW_AMPLIFIER - 0)) ? 1 : 0)
+        + ":break_before=" + bd0.amt + "/" + bd0.mods
+        + ":break_amt=" + bd1.amt + ":break_mods=" + bd1.mods
+        + ":break_armor=" + bd1.armor + ":break_base=" + bd1.base
+        + ":break_ok=" + ((bd1.amt === -8) ? 1 : 0)
+        + (err === "" ? "" : ":err=" + err));
+    send(ctx, "AP_" + tag + "_ROAR_CARD:attacker_eq_roar=" + mamuEquippedCount(p, MAMU_ROAR_TYPE)
+        + ":attacker_eq_bite=" + mamuEquippedCount(p, MAMU_BITE_TYPE));
+    return 1;
+}
+
+/**
+ * 缓慢效果的 amp/dur(`MOVEMENT_SLOWDOWN`;缺 = `on 0`)。
+ * 用 `Entity#getEffect(Holder)` 直取(`MobEffects.MOVEMENT_SLOWDOWN` 两线都是 Holder,
+ * 与本文件既有的 `luluFx(…, MobEffectsClass.MOVEMENT_SLOWDOWN)` 同源),避免再猜描述 id。
+ */
+function mamuSlowFx(ent) {
+    var inst = null;
+    try { inst = ent.getEffect(MobEffectsClass.MOVEMENT_SLOWDOWN); } catch (e1) { inst = null; }
+    var amp = -1, dur = -1;
+    try { if (inst != null) { amp = inst.getAmplifier(); dur = inst.getDuration(); } } catch (e3) { amp = -1; dur = -1; }
+    return { amp: amp, dur: dur, on: (inst != null) ? 1 : 0 };
+}
+
+/**
+ * 撕咬(规格 §2.6)。`mode`:
+ *   `clean`  ⇒ 清两张牌 + 清锁存(基线;由 `mamuprep` 顺带完成,此档供单独复位用);
+ *   `light`  ⇒ **最小自证**(1 张撕咬、觉醒 0):直调真实挂点入口
+ *              `MamushiSignItem.onDiceBlessingTriggered(p)` ⇒ 必须 `awk 0→1`、
+ *              `bite_latch` 0→1、`ap` **+1**(= `min(觉醒, 4)`,裁决 2/4)。
+ *              随后清掉骰子装配栏里的撕咬(模拟耐久 1 被消耗)并读回 ⇒ `latch` **仍为 1**、
+ *              `ap` 仍含加成(**锁存的唯一硬判据**:不锁存则同一击内加成即失效)。
+ *   `three`  ⇒ 3 张撕咬 ⇒ 一次触发 `+3` 层(裁决 2:不受"给他人发牌"的 3 层封顶约束),
+ *              `ap_delta` 同为 +3(3 ≤ BITE_BONUS_CAP=4);
+ *   `dragon` ⇒ 觉醒先置 **7** + 1 张撕咬 + 触发 ⇒ 8 层并**立即**进真龙形态
+ *              (`df` 0→1、`fx_d_on` 1);攻击力同时吃到两段 ⇒ `ap_expect = min(8,4) + 5 = 9`
+ *              (`ap_cap_delta=4` 只是**撕咬部分**,`ap_df_bonus=5` 是形态跃迁那一拍叠加的,
+ *              `ap_cap_ok` 按两段之和判 ⇒ 必须为 1)。
+ *
+ * 读数:`AP_<tag>_BITE`(awake/latch/ap 的三段读数与该档的 0/1 判定标志;
+ * `ap_cap_delta` = 撕咬部分,`ap_df_bonus` = 形态跃迁部分,`ap_expect` = 两者之和,`ap_ok`/`ap_cap_ok` 同值)。
+ */
+function doMamuBite(ctx, tag, modeText) {
+    if (!mamuClassGate(ctx, tag)) return 1;
+    var p = ctx.source.getPlayerOrException();
+    var mode = "" + modeText;
+    var err = "";
+    var bites = (mode === "three") ? 3 : 1;
+    var awk0 = (mode === "dragon") ? 7 : 0;
+    try {
+        mamuClearItem(p, MAMU_BITE_ID);
+        mamuClearItem(p, MAMU_ROAR_ID);
+        clearCurioSlots(p, "chip");
+        MamuSignItemClass.setAwakening(p, awk0);
+        MamuSignItemClass.setBiteBonusActive(p, false);
+        ModEffectRemoval.remove(p, teruBlessing());
+        MamuDragonEffectClass.remove(p);
+        ModAttachments.setMamushiForcedCooldownUntil(p, 0);
+    } catch (e0) { err = err + "|reset:" + domExText(e0); }
+    var keep = [];
+    for (var i = 0; i < bites; i++) keep.push(new NardisAppliedStoneClass(MAMU_BITE_TYPE, 1, false));
+    try {
+        var biteCost = 2;
+        try { biteCost = NardisCardRegistryClass.cost(MAMU_BITE_TYPE, p) - 0; } catch (eC) { biteCost = 2; }
+        var enh = new NardisWeaponEnhancementClass(bites * biteCost, 10, 0, 10, 0, keep);
+        var w = domWriteEnh(p, "curio", enh);
+        if (w.err !== "") err = err + "|write:" + w.err;
+        err = err + "|set_ok_curio=" + w.curio + ":set_ok_hand=" + w.hand;
+    } catch (e1) { err = err + "|enh:" + domExText(e1); }
+    // 骰神赐福(立牌 tick 的兜底会清锁存 ⇒ 必须在触发**之前**给上)
+    try { p.addEffect(new MobEffectInstanceClass(teruBlessing(), 6000, 0, false, false, true)); }
+    catch (e2) { err = err + "|bless:" + domExText(e2); }
+    // 驱动一次产品 tick(与玩家 tick 事件调的是同一份代码)⇒ 形态失效/锁存兜底都走真实入口
+    try { BaseSignItemClass.tickSignActiveLock(p); } catch (e3) { err = err + "|tick:" + domExText(e3); }
+    var eqBite = mamuEquippedCount(p, MAMU_BITE_TYPE);
+    var latch0 = mamuBiteBonusActive(p);
+    var ap0 = mamuAp(p);
+    var fxD0 = mamuFx(p, 0);
+    var df0 = mamuDragonFlag(p);
+    try { MamuSignItemClass.onDiceBlessingTriggered(p); } catch (e4) { err = err + "|trigger:" + domExText(e4); }
+    var latch1 = mamuBiteBonusActive(p);
+    var ap1 = mamuAp(p);
+    var awk1 = mamuAwaken(p);
+    var df1 = mamuDragonFlag(p);
+    // 「耐久 1 被消耗 ⇒ 撕咬离身」:直接清空装配栏骰子上的撕咬,再读回锁存与攻击力
+    var consumeErr = "none";
+    try { consumeErr = domClearCurioDice(p); } catch (e5) { consumeErr = domExText(e5); }
+    var eqAfter = mamuEquippedCount(p, MAMU_BITE_TYPE);
+    var latch2 = mamuBiteBonusActive(p);
+    var ap2 = mamuAp(p);
+    // 撕咬部分 = `min(觉醒层数, BITE_BONUS_CAP)`(裁决 4:实时;不落地状态)
+    var capDelta = Math.min(awk1, (MamuSignItemClass.BITE_BONUS_CAP - 0));
+    // 【2026-09-27 修正】`dragon` 档里 7 + 1 = 8 层是**同一拍跨过真龙阈值** ⇒ 攻击力同时还叠加
+    // `DRAGON_FORM_ATTACK_BONUS(+5)`(由 `isDragonForm` 实时谓词给出)。旧口径只拿"撕咬部分"比,
+    // ⇒ `dragon` 档必然 `ap_cap_ok=0`(实机 `ap=6>15>15`:实际 +9,`ap_cap_delta` 只给 4)
+    // —— 那是**读数口径缺陷**,不是产品缺陷。现在把形态跃迁的 +N 显式算进 `ap_expect`。
+    var dfBonus = ((df0 === 0 && df1 === 1) ? (MamuSignItemClass.DRAGON_FORM_ATTACK_BONUS - 0) : 0);
+    var apExpect = capDelta + dfBonus;
+    var apDelta = ((ap0 < 0 || ap1 < 0) ? -999 : (ap1 - ap0));
+    var apOk = (((ap0 >= 0) && (ap1 >= 0) && (apDelta === apExpect)) ? 1 : 0);
+    send(ctx, "AP_" + tag + "_BITE:mode=" + mode
+        + ":bites=" + bites + ":eq_bite=" + eqBite
+        + ":awk=" + awk0 + ">" + awk1 + ":awk_delta=" + (awk1 - awk0)
+        + ":awk_ok=" + ((awk1 - awk0) === bites ? 1 : 0)
+        + ":latch=" + latch0 + ">" + latch1 + ">" + latch2
+        + ":latch_set=" + ((latch1 === 1) ? 1 : 0)
+        + ":latch_kept_after_consume=" + ((latch2 === 1) ? 1 : 0)
+        + ":ap=" + ap0 + ">" + ap1 + ">" + ap2
+        + ":ap_delta=" + apDelta
+        + ":ap_cap_delta=" + capDelta
+        + ":ap_df_bonus=" + dfBonus
+        + ":ap_expect=" + apExpect
+        + ":ap_cap_ok=" + apOk
+        + ":ap_ok=" + apOk
+        + ":ap_kept=" + ((ap1 >= 0 && ap2 === ap1) ? 1 : 0)
+        + ":eq_after=" + eqAfter + ":eq_cleared=" + ((eqAfter <= 0) ? 1 : 0)
+        + ":df=" + df0 + ">" + df1 + ":df_on_ok=" + ((mode === "dragon") ? ((df1 === 1) ? 1 : 0) : -1)
+        + ":fx_d_on=" + mamuFx(p, 0).on + ":fx_d_before=" + fxD0.on
+        + ":consume_err=" + consumeErr
+        + (err === "" ? "" : ":err=" + err));
+    return mamuRead(ctx, tag, p, "BITE");
+}
+
+/**
+ * 专属守门(规格 §3.5 / §6 第 5 条 / §7 边界)。
+ *   `mark`  ⇒ 只读:两张牌的 `isExclusive`、两张牌**不在**随机池
+ *              (`RandomCardHandler.attackCards()` 逐个比对 id)、装备入口 `mayPlace` 门控
+ *              (**真 ServerPlayer + 真 `CardInventoryMenu`**:开菜单 → `slots.get(i).mayPlace(stack)`);
+ *   `seven` ⇒ 把觉醒直写到 7(配合 `mamubite dragon` 做 7→8 的构造)
+ *
+ * 读数:`AP_<tag>_MU_GUARD`(excl/pool/menu 三组 + **三种绑定分别读**的 canUse 组)。
+ *  ⚠️ **`canuse_own=1/1` 不是守门失效**(2026-09-27 澄清):该字段用的是**无主**新栈
+ *     (`new ItemStack(...)`,没有 `owner_uuid`),而规格 §3.5 明确「`canUse` 无主时放行并首次绑定」
+ *     ⇒ 无主栈对**任何**玩家都是 1。要判守门必须看**有主**栈:
+ *       `canuse_unowned_bite/roar` = 无主栈(期望 1/1;**证明不了守门**)
+ *       `canuse_bound_self`        = 绑定本人(`setOwner(selfStack, p)`;期望 **1**)
+ *       `canuse_bound_foreign`     = 绑定**另一名在线玩家**(期望 **0**;现场无他人 ⇒ `-1` + `bound_foreign=no_other_player`)
+ *       装备入口侧同理:`mayplace_bite_self`(期望 1)/ `mayplace_bite_foreign`(期望 0)
+ *       / `mayplace_bite_own`(= 无主栈,期望 1)。
+ *  ⚠️ `mayPlace` 只能由**服务端**经 `menu.slots.get(idx).mayPlace(stack)` 触发(产品实现正是
+ *     读 `Slot` 参数里的玩家)**不可达**的部分:客户端点击的真实鼠标路径 —— 已如实登记。
+ *  ⚠️ 传副本:产品对一个**无主**栈入槽时会先 `ExclusiveCardUtil.canUse` 但**不写绑定**
+ *     (`CardInventoryMenu` 只调 `canUse`,不调 `bindIfAbsent`),故 `mamu_place` 不会污染
+ *     后续读数 —— 读数里仍显式给出 `owner_tag` 与该栈操作前后的 `owner` 一致标志。
+ *  ⚠️ `owner_*` 是**闭集** `self|other|none|err`;`owner_api=ok` 表示探针的两条组件读取路径
+ *     至少有一条可用(`err` 才是"读不到",见 {@link mamuOwnerUuid})。
+ */
+function doMamuGuard(ctx, tag, modeText) {
+    if (!mamuClassGate(ctx, tag)) return 1;
+    var p = ctx.source.getPlayerOrException();
+    var mode = "" + modeText;
+    var err = "";
+    var bite = new ItemStack(resolveItem(MAMU_BITE_ID), 1);
+    var roar = new ItemStack(resolveItem(MAMU_ROAR_ID), 1);
+    var exclBite = zhaoBool(function () { return ExclusiveCardUtilClass.isExclusive(bite); });
+    var exclRoar = zhaoBool(function () { return ExclusiveCardUtilClass.isExclusive(roar); });
+    // 【2026-09-27 补】"获得者 / 非获得者 / 无主"三种绑定必须**分别**读,否则 `canuse_own=1/1`
+    // 会被误读成"守门失效"。规格 §3.5 的语义是:**无主栈**对任何人放行并在入槽时首次绑定;
+    // 有主栈只有获得者能用。故三组读数缺一不可:
+    //   `canuse_unowned_bite/roar`  = 无主栈(期望 **1/1**,证明不了守门)
+    //   `canuse_bound_self`         = 绑定到本人(期望 **1**)
+    //   `canuse_bound_foreign`      = 绑定到**另一名在线玩家**(期望 **0**;现场无他人 ⇒ -1 并记 `no_other_player`)
+    var canOwnBite = zhaoBool(function () { return ExclusiveCardUtilClass.canUse(p, bite); });
+    var canOwnRoar = zhaoBool(function () { return ExclusiveCardUtilClass.canUse(p, roar); });
+    var selfStack = new ItemStack(resolveItem(MAMU_BITE_ID), 1);
+    var canSelf = -1;
+    try {
+        ExclusiveCardUtilClass.setOwner(selfStack, p);
+        canSelf = zhaoBool(function () { return ExclusiveCardUtilClass.canUse(p, selfStack); });
+    } catch (eS) { err = err + "|selfbind:" + domExText(eS); }
+    var other = null;
+    try {
+        var allPre = mamuOnlineList(p);
+        for (var jp = 0; jp < allPre.size(); jp++) { if (allPre.get(jp) !== p) { other = allPre.get(jp); break; } }
+    } catch (eOp) { other = null; }
+    var foreignStack = new ItemStack(resolveItem(MAMU_BITE_ID), 1);
+    var canForeign = -1, foreignTxt = "n/a";
+    if (other == null) { foreignTxt = "no_other_player"; }
+    else {
+        try {
+            ExclusiveCardUtilClass.setOwner(foreignStack, other);
+            foreignTxt = "owner=" + mamuOwnerTag(foreignStack, other);
+            canForeign = zhaoBool(function () { return ExclusiveCardUtilClass.canUse(p, foreignStack); });
+        } catch (eF) { err = err + "|foreignbind:" + domExText(eF); }
+    }
+    var ownerTagBefore = mamuOwnerTag(bite, p);
+    var ownerUuidApi = "";
+    try { ownerUuidApi = mamuOwnerUuid(bite).api; } catch (eU) { ownerUuidApi = "|probe:" + domExText(eU); }
+    var pool = "-", poolHit = -1, poolN = -1;
+    // 诊断字段(2026-09-28 回填,用于定位 1.20.1 侧那次 `pool_n=0:pool=[-]` 且**零异常文本**):
+    //   · `pool_rawn`  = `getCardPool(ALL)` **原对象**的 `size()`(见下方"为什么必须先复制")
+    //   · `pool_null`  = 池调用返回 null 的次数
+    //   · `pool_err`   = 首个访问异常文本(分类前缀 outer/call/size/get),文本已净化
+    var poolRawN = -1, poolNulls = 0, poolErr = "";
+    // ⚠️ `RandomCardHandler#attackCards()` 是 **private**(两线一致)⇒ 只能走**公开**的
+    //    `getCardPool(CardCategory)`:取 `ALL ∪ BATTLE` 的并集 —— 两张专属战斗牌若混进随机池,
+    //    必然出现在这两个池中的至少一个(专属牌不进池 ⇒ 两个池都不应出现它们)。
+    try {
+        var acc = "";
+        var hit = 0;
+        var seen = {};
+        var n = 0;
+        var cats = [MamuRandomCardHandlerClass.CardCategory.ALL, MamuRandomCardHandlerClass.CardCategory.BATTLE];
+        for (var ci = 0; ci < cats.length; ci++) {
+            var raw = null;
+            try { raw = MamuRandomCardHandlerClass.getCardPool(cats[ci]); }
+            catch (eR) { if (poolErr === "") poolErr = "call:" + domExText(eR); continue; }
+            if (raw == null) { poolNulls = poolNulls + 1; continue; }
+            // ⚠️ 池对象是 JDK **包私有**内部类 `java.util.ImmutableCollections$ListN`,必须先复制再读:
+            //    `RandomCardHandler#getCardPool` 尾句是 `items.stream().map(ItemStack::new).toList()`
+            //    (Java 16+ ⇒ `ImmutableCollections$ListN`)。
+            //    **实测矩阵(2026-09-28 独立 Rhino 验证,两线真 jar)**:
+            //      `size()` / `isEmpty()` **可用** —— 它们由**公开**类 `java.util.AbstractCollection`
+            //        实现,`MemberBox` 走公开超类型即可;
+            //      `iterator()` / `toArray()` 亦可用;
+            //      `get(int)` **抛** `IllegalAccessException: class dev.latvian.mods.rhino.MemberBox
+            //        cannot access a member of class java.util.ImmutableCollections$ListN
+            //        (in module java.base) with modifiers "public"` —— 它声明在包私有
+            //        `ImmutableCollections$AbstractImmutableList` 上。
+            //    ⇒ 这正好解释修好之前那个症状:`list.size()` 读到 22(循环正常跑 22 轮),而每次
+            //       `list.get(i)` 都抛进**内层** catch 被吞掉(⇒ `st=null` ⇒ `continue`)⇒ 读数恰好是
+            //       `pool_n=0:pool=[-]` 且外层零异常文本(不是"池是空的")。
+            //    ⇒ **必须先复制**:`new ArrayListClass(raw)` —— 构造函数声明在**公开**类
+            //       `java.util.ArrayList` 上(可访问),复制由 Java 侧在构造函数内部完成
+            //       (`c.toArray()`),不经 Rhino 成员分派。**不得**改成 `raw.size()/raw.get(i)`
+            //       (size 只是侥幸可用,`get` 必抛;不要把"侥幸"写进契约)。
+            try { if (ci === 0) poolRawN = raw.size() - 0; } catch (eS) { if (poolErr === "") poolErr = "size:" + domExText(eS); }
+            var list = new ArrayListClass(raw);
+            for (var i = 0; i < list.size(); i++) {
+                var st = null;
+                try { st = list.get(i); } catch (e1) { st = null; if (poolErr === "") poolErr = "get:" + domExText(e1); }
+                if (st == null || st.isEmpty()) continue;
+                var id = itemIdOf(st);
+                if (seen[id] === 1) continue;
+                seen[id] = 1;
+                acc = (acc === "") ? id : (acc + "," + id);
+                n = n + 1;
+                if (id === MAMU_BITE_ID || id === MAMU_ROAR_ID) hit = hit + 1;
+            }
+        }
+        pool = (acc === "") ? "-" : acc;
+        poolHit = hit;
+        poolN = n;
+    } catch (e2) {
+        // 外层 catch 也必须留痕:否则 `pool=[?:…]` 与 `pool_err=-` 同时出现会自相矛盾
+        if (poolErr === "") poolErr = "outer:" + domExText(e2);
+        pool = "?:" + domExText(e2); poolHit = -1; poolN = -1;
+    }
+    // 装备入口:`Slot#mayPlace`(真菜单 + 真 ServerPlayer)
+    var menuTxt = "menu=none", placeBiteOwn = -1, placeRoarOwn = -1, placeBiteForeign = -1, placeBiteSelf = -1;
+    try {
+        var menu = teruOpenCardMenu(p);
+        if (menu != null) {
+            var atk = menu.getAttackSlots() - 0;
+            menuTxt = "menu=ok:slots=" + (menu.getCardSlots() - 0) + ":attack=" + atk;
+            if (atk > 0) {
+                var s0 = menu.slots.get(0);
+                placeBiteOwn = zhaoBool(function () { return s0.mayPlace(bite); });
+                placeRoarOwn = zhaoBool(function () { return s0.mayPlace(roar); });
+                // 获得者(绑定本人)⇒ 期望放行
+                placeBiteSelf = zhaoBool(function () { return s0.mayPlace(selfStack); });
+                // 非获得者(绑定另一名在线玩家)⇒ 期望拒绝;现场没有第二名玩家时保持 -1 并如实标注
+                if (other != null) {
+                    placeBiteForeign = zhaoBool(function () { return s0.mayPlace(foreignStack); });
+                }
+            } else { menuTxt = "menu=ok:attack=0"; }
+        }
+        try { teruCloseMenu(p); } catch (e4) { err = err + "|close:" + domExText(e4); }
+    } catch (e5) { menuTxt = "menu=ex"; err = err + "|menu:" + domExText(e5); }
+    if (mode === "seven") {
+        try { MamuSignItemClass.setAwakening(p, MamuSignItemClass.AWAKEN_MAX - 1); } catch (e6) { err = err + "|seven:" + domExText(e6); }
+    }
+    send(ctx, "AP_" + tag + "_MU_GUARD:mode=" + mode
+        + ":excl_bite=" + exclBite + ":excl_roar=" + exclRoar
+        + ":canuse_own=" + canOwnBite + "/" + canOwnRoar
+        + ":canuse_unowned_bite=" + canOwnBite + ":canuse_unowned_roar=" + canOwnRoar
+        + ":canuse_bound_self=" + canSelf + ":canuse_bound_foreign=" + canForeign
+        + ":bound_foreign=" + foreignTxt
+        + ":owner_tag=" + ownerTagBefore + ":owner_after=" + mamuOwnerTag(bite, p)
+        + ":owner_unchanged=" + ((ownerTagBefore === mamuOwnerTag(bite, p)) ? 1 : 0)
+        + ":owner_api=" + ((ownerUuidApi === "") ? "ok" : ownerUuidApi)
+        + ":pool_hits=" + poolHit + ":pool_n=" + poolN
+        + ":pool=[" + pool + "]"
+        + ":pool_rawn=" + poolRawN + ":pool_null=" + poolNulls
+        + ":pool_err=" + (poolErr === "" ? "-" : ("" + poolErr).replace(/[:|\r\n]/g, "/"))
+        + ":mayplace_bite_own=" + placeBiteOwn + ":mayplace_roar_own=" + placeRoarOwn
+        + ":mayplace_bite_self=" + placeBiteSelf
+        + ":mayplace_bite_foreign=" + placeBiteForeign
+        + ":foreign=" + foreignTxt
+        + ":" + menuTxt
+        + ":awk=" + mamuAwaken(p)
+        + (err === "" ? "" : ":err=" + err));
+    return 1;
+}
+
+/**
+ * **真死亡 + 服务端真重生**(规格 §2.5 / §6-6 的「死亡后觉醒保留」)。`mamudie <tag> <keepinv>`。
+ *
+ * <p>**为什么需要它**(2026-09-27 实机踩坑):用例里用原版 `/kill @s` 杀真人,会让客户端停在
+ * **死亡界面**,之后所有聊天注入(命令)都被吞 —— 实测采集用例的 `/kill @s` 之后 `latest.log`
+ * 完全静默(`AP_CL10_MU_CLEAR` 不存在),且紧随其后的 `LOCK-OFFLINE-RELOG-A` 8 条断言全 FAIL、
+ * `AP_RA*` 命中 0 次。本命令把 **kill + respawn 压在一次执行内**,走
+ * {@link mamuRespawn} 的**原版重生链**(服务端 `PlayerList#respawn`)。
+ *
+ * <p>⚠️⚠️ **「压在一次执行内」并**不能**保证客户端不留在死亡界面(2026-09-28 实测推翻旧结论)**:
+ * 实测 `mamudie` 之后客户端**仍停在「你死了!」界面**(截图确认),而同一刻服务端读数是
+ * `respawn_ok=1:p_alive=1`、HUD 满血 ⇒ 玩家其实活着,只是**纯客户端界面卡死**,其后所有聊天注入
+ * 被吞(01:42 之后 `latest.log` 只剩 `AP_NOAI` 心跳、0 条用例读数),把紧随的
+ * `LOCK-OFFLINE-1.21.1`(47 断言)与 `LOCK-OFFLINE-RELOG-A-1.21.1`(16 断言)整片染红。
+ * **根因**(源码级):`ServerPlayer#die` 的死亡包带 `PacketSendListener`
+ * (`exceptionallySend`,1.21.1 `ServerPlayer.java:691-706`),其写盘走事件循环任务 ⇒ **可能晚于**
+ * 同一次执行内 `PlayerList#respawn` 的 `ClientboundRespawnPacket`(`:490`,普通写)到达客户端;
+ * 客户端 `handleRespawn` **只在「当前界面已是 DeathScreen」时**才 `setScreen(null)`
+ * (`ClientPacketListener.java:1230-1232`),此刻界面还没创建 ⇒ 不关;随后迟到的死亡包**新建**
+ * 死亡界面(`:1715-1716`),而玩家已被重生为满血 ⇒ 界面永久驻留。
+ * ⇒ **正确口径由环境不变量提供**:测试启动期 `mt_launch.ps1` 注入 `gamerule doImmediateRespawn true`
+ * (硬闸门 + 游戏内回显自证),客户端因此 `showDeathScreen=false`
+ * (`ClientPacketListener:1491`),死亡包改走 `player.respawn()` 分支(`:1717`)⇒
+ * **从不创建死亡界面**;客户端自发 `PERFORM_RESPAWN` 被 `ServerGamePacketListenerImpl:1672` 的
+ * `getHealth() > 0.0F` 守卫早退,不会与本命令的服务端重生竞争(实测 `respawn_ok=1:p_alive=1`)。
+ * **本命令自身不再假设客户端状态**;若绕过 `mt_launch` 手工启动客户端,必须自行打开该规则。
+ *
+ * <p>`keepinv`:传 `0` 对应需求里的「`keepInventory=false` 场景由两层机制保证」
+ * (`.copyOnDeath()` + `DeathPreservedBonuses`);传 `1` 走 `keepEverything=true` 分支
+ * (此时 `PlayerEvent.Clone` 的 `wasDeath=false`,但 `PlayerRespawnEvent` 侧仍会补一次)。
+ *
+ * <p>⚠️ **世界的 `keepInventory` 游戏规则会在 `keepEverything=false` 时覆盖物品保留**
+ * (`ServerPlayer#restoreFrom` 1.21.1 `:1458` / 1.20.1 `:1166`)⇒ `keepinv=0` 时本命令会**显式把
+ * 该规则置 false**(否则"死亡掉落 → 立牌离身 → `clearSignData` 清零"这条链根本不会发生,
+ * 测出来的"觉醒保留"是假绿)。`gamerule_ki=<置前>><置后>` 与 `gamerule_set=<命令 rc>` 都进读数。
+ *
+ * <p>读数:
+ *   `AP_<tag>_MU_DIE:`(主行)
+ *   `AP_<tag>_DIE_MAW/_DIE_MCARD/_DIE_MDICE/_DIE_MFX/_DIE_MCD/_DIE_MBASE`(**重生后的新实体**全量快照,
+ *   字段顺序与 `ZERO_*` / `BASE_*` 等各族**完全一致**,同出 {@link mamuRead})。
+ *   读数直发**新玩家**(`via=player`)以避开"旧引用已移除"的出口风险。
+ *   主行尾部三个**只追加**字段(2026-09-28 新增,见下两条 ⚠️):
+ *   `revive_hp=<补血前>><补血后>`、`pos_err=<坐标/朝向读取失败原因>`(成功时不出现)、
+ *   `resp_err=<重生失败原因>`(成功时不出现)。
+ *
+ * <p>⚠️ **重生后 curios 槽会因 `keepinv=0` 掉光** ⇒ 本命令**不假设**立牌还在(`sign=b>a` 与
+ * `df=b>a` 都只是原样读数);要接着测后续语义,用例侧需再跑一次 `mamuprep`。
+ * ⚠️ `latch_kept` 的**期望值是 0**:规格 §1 附件表明确 `mamushi_bite_bonus_active`
+ * **不** `.copyOnDeath()` ⇒ 死亡后回默认 false(`-1` 表示前置 `latch0 != 1`,该项不适用)。
+ * ⚠️ 重生会把玩家放到**世界出生点**(通常离测试区很远)⇒ 本命令在重生后把**死亡前的坐标/朝向**
+ * 还原回去(`pos_restored=1`),否则用例尾部的 `/kill @e[type=!player,distance=..64]` 会打空、
+ * bot 也会落到 12 格外。这是**位置**的还原,与死亡保留语义无关(不影响 `awake_kept` 等判据)。
+ * 实测注记:朝向 `getYRot()/getXRot()` 在本环境**不可见**(Rhino 解析失败)⇒ 回退读裸字段
+ * `p.yRot/p.xRot`,并在 `pos_how` 后缀 `_yawfield` 留痕(`pos_restored` 仍为 1);
+ * 坐标三项 `getX/getY/getZ` 与朝向已**拆成两个 try**,朝向失败不再连坐标一起丢(旧写法实测
+ * `pos_restored` 恒 0 / `pos_how=no_pos`)。
+ * ⚠️⚠️ **`keepinv=1` 的重生会连血量一起复制**:`PlayerList#respawn(p, true, rr)` 走
+ * `keepEverything=true` ⇒ `ServerPlayer#restoreFrom`(1.21.1 `:1443` 先满血,`:1446` 再
+ * `setHealth(that.getHealth())`;**1.20.1 `:1157-1159` 直接 `setHealth(that.getHealth())`**,
+ * 连前置满血都没有)**把死亡玩家的 0 血复制给新实体** ⇒ 新玩家 0 血濒死:
+ * `LivingEntity#isAlive()`(1.21.1 `:1632` / 1.20.1 `:1545` 同为 `!isRemoved() && getHealth() > 0`)
+ * 读成 0(`hp=20>0:p_alive=0`),且不放任会被 `tickDeath` 真移除 ⇒
+ * **本命令在读数前显式补满血**(仅当读到 0 才动手),并把前后血量写进 `revive_hp=0>20`。
+ * 这是**本命令的契约**(结束时玩家活着)而不是产品语义,不影响 `awake_kept`/`copied_ok` 判据。
+ */
+function doMamuDie(ctx, tag, keepText) {
+    if (!mamuClassGate(ctx, tag)) return 1;
+    var p = ctx.source.getPlayerOrException();
+    var keepArg = "" + keepText;
+    var keepInv = (keepArg === "1" || keepArg === "true") ? true : false;
+    // 0. 前置:生存模式 + 满血(创造模式不会死;血量必须为正,否则 respawn 的 wasDeath 语义不清)
+    var gm = "already_survival";
+    try { p.setGameMode(GameTypeClass.SURVIVAL); gm = "forced_survival"; } catch (e0) { gm = "err:" + domExText(e0); }
+    try { p.setHealth(p.getMaxHealth()); } catch (e1) { /* 忽略 */ }
+    // 死亡前坐标/朝向(重生后还原;见函数头说明)
+    // ⚠️ 2026-09-28 实测:`pos_restored` 此前**恒为 0**(`pos_how=no_pos`)—— 坐标与朝向挤在同一个
+    //    try 里,任一项抛异常就把**整段坐标**一起丢掉(而坐标还原是**功能前置**:重生会把玩家丢回
+    //    世界出生点,用例尾部的 `/kill @e[type=!player,distance=..64]` 清场与 bot 距离判据都依赖
+    //    玩家回到测试区)。坐标三项 `getX/getY/getZ` 在探针里被大量使用且从未出问题,而
+    //    `getYRot()/getXRot()` **全探针只出现在这一处**(两线各一行、此前从未真正执行过)⇒
+    //    拆成两个 try:坐标独立成败;朝向退化为「getter → 裸字段 → 0」三级,失败原因进 `pos_err`
+    //    只读读数(不静默)。朝向只是还原观感,失败**不得**连坐标一起牺牲。
+    var px = 0.0, py = 0.0, pz = 0.0, pyaw = 0.0, ppitch = 0.0, posOk = 0, posErr = "", posRotViaField = 0;
+    try {
+        px = p.getX() - 0; py = p.getY() - 0; pz = p.getZ() - 0;
+        posOk = 1;
+    } catch (eP) { posOk = 0; posErr = "xyz:" + domExText(eP); }
+    if (posOk === 1) {
+        try { pyaw = p.getYRot() - 0; ppitch = p.getXRot() - 0; }
+        catch (eY1) {
+            try { pyaw = p.yRot - 0; ppitch = p.xRot - 0; posRotViaField = 1; }
+            catch (eY2) { pyaw = 0.0; ppitch = 0.0; posErr = posErr + "|rot:" + domExText(eY1); }
+        }
+    }
+    // keepInventory=false 场景:显式关掉世界规则(否则 restoreFrom 会照常保留物品)
+    var kiBefore = mamuKeepInvRule(p);
+    var kiSet = "-";
+    if (!keepInv) {
+        try { kiSet = "" + runCmdP(p, "gamerule keepInventory false"); }
+        catch (e2) { kiSet = "err:" + domExText(e2); }
+    }
+    var kiAfter = mamuKeepInvRule(p);
+    // 1. 前置读数
+    var awk0 = mamuAwaken(p), latch0 = mamuBiteBonusActive(p), df0 = mamuDragonFlag(p);
+    var sign0 = mamuSignEquipped(p), fx0 = mamuFx(p, 0).on;
+    var hp0 = zhaoNum(function () { return teruR1(p.getHealth()); });
+    // 2. 真死亡(等价 /kill)
+    var killHow = mamuKill(p);
+    var died = 0;
+    try { died = (p.isDeadOrDying() || (p.getHealth() - 0) <= 0) ? 1 : 0; } catch (e3) { died = -1; }
+    // 3. 服务端真重生(**必须改用返回的新实体**);没真死就不重生(否则测的是"活人克隆",`copied_ok` 无意义)
+    var r = { player: null, how: "skipped", rr: "-", err: "" };
+    if (died === 1) { r = mamuRespawn(p, keepInv); }
+    var np = r.player;
+    // 3b. 位置/朝向还原(重生把玩家丢到**世界出生点**;见函数头说明)。
+    //     首选 `ServerPlayer#connection#teleport(x,y,z,yaw,pitch)`(与客户端同步、不会穿墙瞬移丢包),
+    //     退路 `ServerPlayer#setPos(x,y,z)`。**不用 `moveTo`**(Rhino 下 4 参/5 参重载有歧义,已踩坑)。
+    var posRestored = -1, posHow = "n/a";
+    if (np != null) {
+        if (posOk === 1) {
+            posHow = "fail";
+            try {
+                np.connection.teleport(px, py, pz, pyaw, ppitch);
+                posHow = "teleport";
+            } catch (eT1) {
+                try { np.setPos(px, py, pz); posHow = "setpos"; }
+                catch (eT2) { posHow = "err:" + domExText(eT2); }
+            }
+            try { np.setYRot(pyaw); np.setXRot(ppitch); } catch (eR) { /* 朝向尽力而为,失败不影响判据 */ }
+            posRestored = ((posHow === "teleport" || posHow === "setpos") ? 1 : 0);
+            // 朝向读数走了裸字段回退 ⇒ 在 `pos_how` 上留痕(`getYRot/getXRot` 在本环境**不可见**,
+            // 实测两线同一处;不让它静默变成"看起来正常"的一行)。
+            if (posRotViaField === 1 && posRestored === 1) { posHow = posHow + "_yawfield"; }
+        } else { posHow = "no_pos"; posRestored = 0; }
+    }
+    // 3c. 保证「命令结束时玩家活着」(本命令的契约,见函数头说明)。
+    //     ⚠️ 2026-09-28 实测缺陷:`keepinv=1` 走 `respawn(p, true, rr)`(keepEverything=true)时,
+    //     原版 `ServerPlayer#restoreFrom` **会连血量一起复制** —— 1.21.1 `:1443` 先
+    //     `setHealth(getMaxHealth())`,紧接着 `:1446` 在 keepEverything 分支里
+    //     `setHealth(that.getHealth())` = **0**(死亡玩家)⇒ 新实体是「0 血濒死」态:
+    //     `LivingEntity#isAlive()`(`:1632` = `!isRemoved() && getHealth() > 0`)读成 **0**
+    //     (实测 `AP_GDS_MU_DIE:…:hp=20>0:p_alive=0`),且若不放任不管,`tickDeath` 会在若干 tick 后
+    //     **真把玩家移除** ⇒ 用例后续步骤全部落空、且下一个用例拿到「玩家不存在」的现场。
+    //     这里在读数**之前**显式补满血并把「发生过补血」写进读数(`revive_hp`,只读、不静默);
+    //     `keepinv=0` 分支由原版 `:1443` 决定(keepEverything=false ⇒ 不被覆盖),故实测 `p_alive=1`,
+    //     本分支只在读数为 0 时才动手 ⇒ 对正常路径零影响。
+    var reviveBefore = -1, reviveAfter = -1;
+    if (np != null) {
+        reviveBefore = zhaoNum(function () { return teruR1(np.getHealth()); });
+        reviveAfter = reviveBefore;
+        if (reviveBefore === 0) {
+            try {
+                np.setHealth(np.getMaxHealth());
+                reviveAfter = zhaoNum(function () { return teruR1(np.getHealth()); });
+            } catch (eH) { reviveAfter = -2; }
+        }
+    }
+    // 4. 后置读数(全在新实体上;读不到就给 -1,不冒充 0)
+    var awk1 = (np == null) ? -1 : mamuAwaken(np);
+    var latch1 = (np == null) ? -1 : mamuBiteBonusActive(np);
+    var df1 = (np == null) ? -1 : mamuDragonFlag(np);
+    var sign1 = (np == null) ? -1 : mamuSignEquipped(np);
+    var fx1 = (np == null) ? -1 : mamuFx(np, 0).on;
+    var hp1 = (np == null) ? -1 : zhaoNum(function () { return teruR1(np.getHealth()); });
+    var alive = (np == null) ? -1 : zhaoBool(function () { return np.isAlive(); });
+    var respawnOk = ((np != null) && (np !== p)) ? 1 : 0;
+    var awakeKept = ((awk0 >= 0 && awk1 >= 0 && awk1 >= awk0) ? 1 : 0);
+    var latchKept = ((latch0 === 1) ? ((latch1 === 1) ? 1 : 0) : -1);
+    mamuEmit(ctx, np, "AP_" + tag + "_MU_DIE:keepinv=" + (keepInv ? 1 : 0)
+        + ":keep_arg=" + keepArg
+        + ":gm=" + gm
+        + ":gamerule_ki=" + kiBefore + ">" + kiAfter + ":gamerule_set=" + kiSet
+        + ":how=" + r.how + ":rr=" + r.rr
+        + ":kill=" + killHow + ":died=" + died
+        + ":respawn_ok=" + respawnOk
+        + ":same_entity=" + ((np === p) ? 1 : 0)
+        + ":pos_restored=" + posRestored + ":pos_how=" + posHow
+        + ":p_alive=" + alive + ":hp=" + hp0 + ">" + hp1
+        + ":awk=" + awk0 + ">" + awk1 + ":awake_kept=" + awakeKept + ":copied_ok=" + awakeKept
+        + ":latch=" + latch0 + ">" + latch1 + ":latch_kept=" + latchKept
+        + ":sign=" + sign0 + ">" + sign1
+        + ":df=" + df0 + ">" + df1
+        + ":fx_d_on=" + fx0 + ">" + fx1
+        + ":via=" + ((np != null) ? "player" : "ctx")
+        + ":revive_hp=" + reviveBefore + ">" + reviveAfter
+        + (posErr === "" ? "" : ":pos_err=" + posErr)
+        + (r.err === "" ? "" : ":resp_err=" + r.err));
+    // 全量快照(字段顺序与 ZERO_* 逐字一致;第 5 参 = 直发新玩家)
+    return mamuRead(ctx, tag, (np != null) ? np : p, "DIE", np);
+}
+// MAMUSHI-IMPL-END(插入器用:重跑 build_mamushi_block.ps1 时靠这一行定位旧块并整段替换)
 ServerEvents.commandRegistry(event => {
     var Commands = event.commands;
     event.register(
@@ -11073,6 +13532,178 @@ ServerEvents.commandRegistry(event => {
                             return doSignState(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "mark"));
                         })))))
             // NARDIS-DISP-END(插入器用)
+            // ── 2026-09-27:蛟龙立牌(mamushi)觉醒/真龙/转换/主动/冷却/撕咬/咆哮/守门游戏内取证 ──
+            .then(Commands.literal("mamuclear")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doMamuClear(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("mamuprep")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doMamuPrep(ctx, StringArg.getString(ctx, "tag"), "");
+                    }))
+                    .then(Commands.argument("bot", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doMamuPrep(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "bot"));
+                        })))))
+            .then(Commands.literal("mamureg")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doMamuReg(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("mamuread")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("phase", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doMamuReadCmd(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "phase"), "");
+                        }))
+                        .then(Commands.argument("name", StringArg.word())
+                            .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                                return doMamuReadCmd(ctx, StringArg.getString(ctx, "tag"),
+                                    StringArg.getString(ctx, "phase"), StringArg.getString(ctx, "name"));
+                            }))))))
+            .then(Commands.literal("mamuawake")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("mode", StringArg.word())
+                        .then(Commands.argument("n", StringArg.word())
+                            .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                                return doMamuAwake(ctx, StringArg.getString(ctx, "tag"),
+                                    StringArg.getString(ctx, "mode"), StringArg.getString(ctx, "n"), "");
+                            }))
+                            .then(Commands.argument("name", StringArg.word())
+                                .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                                    return doMamuAwake(ctx, StringArg.getString(ctx, "tag"),
+                                        StringArg.getString(ctx, "mode"), StringArg.getString(ctx, "n"),
+                                        StringArg.getString(ctx, "name"));
+                                })))))))
+            .then(Commands.literal("mamugive")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("giver", StringArg.word())
+                        .then(Commands.argument("receiver", StringArg.word())
+                            .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                                return doMamuGive(ctx, StringArg.getString(ctx, "tag"),
+                                    StringArg.getString(ctx, "giver"), StringArg.getString(ctx, "receiver"));
+                            }))))))
+            .then(Commands.literal("mamubatch")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("mode", StringArg.word())
+                        .then(Commands.argument("n1", StringArg.word())
+                            .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                                return doMamuBatch(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "mode"),
+                                    StringArg.getString(ctx, "n1"), "-", "-");
+                            }))
+                            .then(Commands.argument("n2", StringArg.word())
+                                .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                                    return doMamuBatch(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "mode"),
+                                        StringArg.getString(ctx, "n1"), StringArg.getString(ctx, "n2"), "-");
+                                }))
+                                .then(Commands.argument("n3", StringArg.word())
+                                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                                        return doMamuBatch(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "mode"),
+                                            StringArg.getString(ctx, "n1"), StringArg.getString(ctx, "n2"),
+                                            StringArg.getString(ctx, "n3"));
+                                    }))))))))
+            .then(Commands.literal("mamuwatch")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("mode", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doMamuWatch(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "mode"), "");
+                        }))
+                        .then(Commands.argument("name", StringArg.word())
+                            .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                                return doMamuWatch(ctx, StringArg.getString(ctx, "tag"),
+                                    StringArg.getString(ctx, "mode"), StringArg.getString(ctx, "name"));
+                            }))))))
+            .then(Commands.literal("mamuform")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("mode", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doMamuForm(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "mode"), "");
+                        }))
+                        .then(Commands.argument("name", StringArg.word())
+                            .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                                return doMamuForm(ctx, StringArg.getString(ctx, "tag"),
+                                    StringArg.getString(ctx, "mode"), StringArg.getString(ctx, "name"));
+                            }))))))
+            .then(Commands.literal("mamuconv")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("mode", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doMamuConv(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "mode"), "", "");
+                        }))
+                        .then(Commands.argument("arg", StringArg.word())
+                            .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                                return doMamuConv(ctx, StringArg.getString(ctx, "tag"),
+                                    StringArg.getString(ctx, "mode"), StringArg.getString(ctx, "arg"), "");
+                            }))
+                            .then(Commands.argument("name", StringArg.word())
+                                .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                                    return doMamuConv(ctx, StringArg.getString(ctx, "tag"),
+                                        StringArg.getString(ctx, "mode"), StringArg.getString(ctx, "arg"),
+                                        StringArg.getString(ctx, "name"));
+                                })))))))
+            .then(Commands.literal("mamucast")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doMamuCast(ctx, StringArg.getString(ctx, "tag"), "", "");
+                    }))
+                    .then(Commands.argument("a1", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doMamuCast(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "a1"), "");
+                        }))
+                        .then(Commands.argument("a2", StringArg.word())
+                            .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                                return doMamuCast(ctx, StringArg.getString(ctx, "tag"),
+                                    StringArg.getString(ctx, "a1"), StringArg.getString(ctx, "a2"));
+                            }))))))
+            .then(Commands.literal("mamucd")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("mode", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doMamuCd(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "mode"));
+                        })))))
+            .then(Commands.literal("mamucore")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("mode", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doMamuCore(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "mode"));
+                        })))))
+            .then(Commands.literal("mamujump")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doMamuJump(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("mamuroar")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("mode", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doMamuRoar(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "mode"), "");
+                        }))
+                        .then(Commands.argument("name", StringArg.word())
+                            .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                                return doMamuRoar(ctx, StringArg.getString(ctx, "tag"),
+                                    StringArg.getString(ctx, "mode"), StringArg.getString(ctx, "name"));
+                            }))))))
+            .then(Commands.literal("mamubite")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("mode", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doMamuBite(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "mode"));
+                        })))))
+            .then(Commands.literal("mamuguard")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("mode", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doMamuGuard(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "mode"));
+                        })))))
+            .then(Commands.literal("mamudie")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("keepinv", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doMamuDie(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "keepinv"));
+                        })))))
+            // MAMUSHI-DISP-END(插入器用)
             // ── 2026-09-27:风水师立牌(zhao)+ 符卡-福/祸 游戏内取证(双人用 Carpet /player bot)──
             .then(Commands.literal("zhauprep")
                 .then(Commands.argument("tag", StringArg.word())

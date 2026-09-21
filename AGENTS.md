@@ -2053,3 +2053,94 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --new <注册id>
 7. **用例 JSON 里的 `{` 必须写成 `\\{`**：断言文本含 `{` 时写单反斜杠会让整份 JSON 解析失败（`--- JSON …` 报 invalid escape）。
 8. **参数位写错会让该步静默不产出读数**：`zhaocard` / `zhaoplay` 的尾部是 `[name] [owner]` 两个位置参数，本批误写成 `… Bot1 - Bot1`（多一个 `-`）导致该步零读数、无任何报错。
 9. 1.20.1 的 `zhaohuobox ender` 计时器要到**下一个 tick** 才清 ⇒ 该断言要么等一拍、要么只断言张数与效果。
+
+---
+
+## 蛟龙立牌（mamushi）+ 撕咬 / 龙之咆哮 —— 双人测试流程 — 2026-09-28
+
+用户要求（原话）：「对蛟龙立牌以及关联卡牌执行验证。随后对之前遗留测试项进行补全测试。」
+
+**范围**：本批以**测试资产**为主（探针 mamushi 段 + mamushi 用例），**外加一处经用户裁决的 1.20.1 产品修复** —— 1.20.1 `DragonCardUtil#convertEquippedBites`（骰子卡牌栏「撕咬 → 龙之咆哮」转换）原先与规格/1.21.1 语义不符（多销毁卡牌，实测 `maxCost=9/7/4` 只留 **3/1/0**，规格与 1.21.1 为 **3/2/1**）⇒ 已按 1.21.1 `convertEquipped` 改写为「基准扣除 + 逐项累加判超支」（用户 2026-09-28 裁决 A：对齐 1.21.1/规格；**1.21.1 侧零改动**）。其余产品功能在 2026-09-27 批次（`4fa9c907`）已落地并经 R1/R2 代码级二重验证。语义契约 = 冻结件 `docs/features/mamushi-sign-spec.md`（§0 四项用户裁决、§1 冻结常量/键名、§2 技能语义、§3 实现落点、§6 交叉验证清单、§7「需游戏内读数」边界）。本批同时修掉 `LOCK-OFFLINE-*` 遗留草稿的用例缺陷并首次跑通（见下方「遗留项」）。
+
+### 资产（两线同步）
+
+| 资产 | 路径 | 规模 |
+|---|---|---|
+| 探针 mamushi 段 | `scripts/test/resources/kubejs/{1.21.1,1.20.1}/server_scripts/astral_bugfix_probe.js` | 两线**逐字节相同**的 2137 行 impl 块（插在 `ServerEvents.commandRegistry(...)` 之前）＋ 166 行 dispatch（插在 `// NARDIS-DISP-END(插入器用)` 之前）；插入器 `temp/build_block.ps1 -Name mamushi`（幂等：按标题行 + `// MAMUSHI-IMPL-END` / `-DISP-END` 整段摘除重插） |
+| 用例 | `scripts/test/cases/MAMUSHI-{REG,PASSIVE,DRAGON,ACTIVE,COMBAT,GUARD}-{1.21.1,1.20.1}.json` | 12 个文件（两线同构，仅 `case_id`/`version` 不同） |
+| 采集脚手架 | `temp/MAMUSHI-COLLECT-{1.21.1,1.20.1}.json` | 219 步、**零行为断言** ⚠️ **不得放进 `cases/`**（会被 `--phase cases` 全量枚举并记成 PASS = 假绿）；只用于「一次冷启动把全部读数打进日志」 |
+
+### 探针命令（17 条，两线同名同参；读数行前缀 `AP_<tag>_`，除基线/脚手架外全部只读）
+
+| 组 | 命令 |
+|---|---|
+| 基线/收尾 | `mamuclear <tag>`（清两张专属牌 + 立牌 + 骰子 + 效果 + 锁存 + 冷却 + 出牌轮 + 测试筹码，并打全量快照 `ZERO_*`）、`mamuprep <tag> [bot]`（装立牌 + 骰子 + 铁剑；给 bot 时另报 `bot_clear/bot_sign/bot_dice/bot_stand` 回读证据） |
+| 只读 | `mamureg <tag>`（物品/效果 id、`REG_CONST` 逐条冻结值 `x=…:x_ok=0/1`、标签成员、`typeId`↔物品）、`mamuread <tag> <phase> [name]`（六行 `_MAW/_MCARD/_MDICE/_MFX/_MCD/_MBASE`） |
+| 被动/发放 | `mamuawake <tag> <set\|add> <n> [name]`、`mamugive <tag> <giver> <receiver>`、`mamubatch <tag> <cap\|three\|four\|twice\|other\|nosign> <n1> <n2> <n3>`（同一 tick 内多受益人 ⇒ 单次封顶 3）、`mamuwatch <tag> <count\|self\|give15\|random\|random2\|selfonly> [name]`（逐目标 `rows`：`has_any_before` + 本拍实发张数） |
+| 真龙形态/转换 | `mamuform <tag> <mark\|on\|off> [name]`、`mamuconv <tag> <inv\|dice> [arg] [name]` |
+| 主动/冷却 | `mamucast <tag> [self\|noop] [name]`（真实主动路径）、`mamucd <tag> <read\|fresh\|past\|present\|busy\|cast\|recast>`、`mamucore <tag> <ready\|charge\|nocharge>`（**需要 ≥1 个筹码槽** ⇒ 前面必须 `equipslot dice "astral_dice:golden_dice"` 之类，基础 `astral_dice:dice` 在 0★ 给 0 槽） |
+| 战斗牌/命中 | `mamubite <tag> <clean\|light\|three\|dragon>`（撕咬：触发赐福 +1 层/张、锁存、`min(觉醒,4)` 实时）、`mamuroar <tag> <read\|apply> [name]`（**直调产品 `applyRoarDebuff`**，与命中路径同一份代码）、`mamujump <tag>`（真实近战 + 护甲/修饰器读数 + 减伤对照） |
+| 专属守门/生死 | `mamuguard <tag> <mark\|seven>`（`isExclusive` / `canUse` / **服务端真 `CardInventoryMenu` 的 `mayPlace`** / 不在随机池）、`mamudie <tag> <keepinv>`（真死亡 + 原版 `getPlayerList().respawn` 真重生；`latch_kept` 期望 0 —— 规格 §1 明确锁存不 `copyOnDeath`） |
+
+### 多人怎么造
+
+`/carpet allowSpawningOfflinePlayers true` → `/player Bot1|Bot2|Bot3 spawn at ~±3 ~ ~1` → **立刻 `/clear BotN`** → 每条用例开头 `mamuclear` + `mamuprep` 归一化 → 收尾 `/player BotN kill` + `mamuclear`。
+**现场要 4 人**（自己 + 3 bot）：「单次发牌事件封顶 3 层」的**上界**需要同一 tick 内 ≥3 个不同受益人。
+⚠️ **`/kill @s` 的死亡界面会吞掉之后所有注入**：真人玩家死亡时客户端打开死亡界面（没有聊天栏）⇒ 其后**所有聊天注入整段被吞**（本批实测：`/kill @s` 之后步骤全丢，紧随的独立用例 8 条断言全 FAIL 且该标签全会话命中 0）。**现行口径**：环境不变量由 `mt_launch.ps1` 在进世界后注入 `/gamerule doImmediateRespawn true`（硬闸门 + 原版回显自证，见 TESTING-SPEC §10-31）⇒ 客户端**根本不创建死亡界面**，`/kill @s` 与 `mamudie` 都安全；死亡保留仍优先走 `mamudie`（服务端真重生，一次执行内拿全读数）。
+⚠️⚠️ **`mamudie` 自身并不能避免死亡界面**：旧注释「客户端收到 `ClientboundRespawnPacket` 后自动离开死亡界面」已被 2026-09-28 实测**推翻**（死亡包带 `PacketSendListener`、写盘走事件循环 ⇒ 可能晚于重生包到达，界面随后被新建并永久驻留；同刻服务端 `respawn_ok=1:p_alive=1`）。详见踩坑 10 与 TESTING-SPEC §10-31。
+
+### 覆盖（6 条用例 × 2 线）
+
+- **`MAMUSHI-REG`**：§1 冻结常量逐条（`awk_max=8` / `cap=3` / `bite_cap=4` / `dragon_bonus=5` / `range=12` / `max_t=32` / `forced=1200` / `bite_cost=2` `bite_uses=1` `bite_atk=3` / `roar_cost=3` `roar_uses=5` `roar_atk=3` `roar_ticks=1200` `roar_amp=2` `break_delta=-8`）、物品与效果 id、`typeId`↔物品、4 个标签成员、专属守门注册面。
+- **`MAMUSHI-PASSIVE`**：觉醒按受益人去重 + 单次封顶 3 + 自己给自己 +0 + 非佩戴者不计（`mamubatch` 的石器口径：`three` 1→4→7 各 +3、7→8 只 +1 = `AWAKEN_MAX` 截断、`twice` 同一人两次只 +1）；**撕咬**：1 张触发赐福 +1 层、`latch` 锁存且**耐久被消耗后仍在**、`ap += min(觉醒,4)` 实时、7 层 + 撕咬 ⇒ 立即进真龙。
+- **`MAMUSHI-DRAGON`**：8 层 ⇒ `mamushi_dragon` 常驻 + 攻击力 **+5**（`ap 6→11`）、摘下 ⇒ 回 6；牌转换（背包/副手/骰子栏 撕咬→龙之咆哮、费用 2→3、放不下丢弃、`owner_uuid` 绑定保留、幂等）。
+- **`MAMUSHI-ACTIVE`**：主动自身 1 张（非真龙=撕咬 / 真龙=龙之咆哮）、目标集合（同维度 / 距离 ≤12 / 距离升序）、**D1「发放前判定目标无卡 ⇒ 额外 +1 张」**、无合格目标仍成功、强制冷却 1200 且**不可被减免绕过（含电流核心被拒）**。
+- **`MAMUSHI-COMBAT`**：龙之咆哮命中侧 —— `applyRoarDebuff` 两拍 ⇒ `缓慢 III`（`slow_amp_ok=1`）+ `dragon_roar_break`（`break_amt=-8`、`break_mods=1`）+ 第二拍**刷新不叠层**（D8）；`mamujump` 侧的护甲与修饰器读数（`break_after=-8/<n>`、`break_mod_id`、`exp_reduction`）。
+- **`MAMUSHI-GUARD`**：`isExclusive` 覆盖两张牌、非获得者 `canUse=0`、服务端真 `CardInventoryMenu` 的 `mayPlace` 三态、不在随机池；卸下立牌 ⇒ 觉醒 0 / 锁存 false / 效果移除 / **冷却不重置**；死亡保留（`mamudie`）。
+
+### 未覆盖（如实登记）
+
+① **客户端路径**（服务端探针判不了）：真龙形态与破防的**效果图标**、tooltip 文案与染色、觉醒行 `觉醒：%s/%s` 的实际显示、actionbar 文案（`msg.astral_dice.mamushi_*`）、创造栏/手册渲染 —— 走 `mt_capture.ps1` 截图人工判读或静态键名核对；② **伤害跳字**是 S2C 客户端包 ⇒ 数值落地一律用「实体实扣血量 + `DiceCombatModifiers.attackPowerOf` 差值」两条客观读数替代；③ **32 人截断**只有常量断言（现场起不了 32 人）；④ **跨维度 / 同队过滤**只覆盖「未组队 + 同维度 + 距离 ≤12」分支（bot 全同维度未组队）；⑤ `isAlive()` 过滤与「三条队伍开关全关 + 玩家仍有队伍 ⇒ 空集」边界未构造；⑥ **「命中触发 ⇒ 破防」端到端链**受探针装配能力限制（见踩坑 7/8）—— 目前用 `mamuroar apply`（同一份产品代码）取证。
+
+### 踩坑（本批实测，写用例必看）
+
+1. **Brigadier 的 `executes` 处理器必须返回 `int`**：`dumpState` 曾以 `return rc;` 收尾（`rc` = 字符串 `"rc=undefined"`）⇒ `EvaluatorException: Cannot convert rc=undefined to int`，**且该异常逃出 `guard`/`try-catch`、并打断同一 tick 里排队执行的命令**（实测那一拍 `astralparty dump` **一条都没跑**：该时刻 `APDUMP` 行数 = 0）。⇒ 断言里挂一条全局 `absent: "Cannot convert .* to int"`。
+2. **Rhino 下「块内函数声明」不可见**：`try { function hasTag(…) {…} … }` 内的声明在块内调用得到 `undefined`（`TypeError: hasTag is not a function`）⇒ 助手一律声明在**函数体顶层**（本文件已有的 `flag`/`hit`/`giveOne`/`snapRow`/`emitRow`/`collect`/`drive` 都是这么写的）。
+3. **`[name]` 参数不接受字面量 `self`**：缺省或 `-` 才是自身；传 `self` 会当作玩家名去查 ⇒ `AP_<tag>_ERR:no_target:self` 且**无主读数**。例外：`mamucast` 与 `mamuwatch` 的**模式位** `self` 合法。
+4. **1.20.1 的 `ModEffects.X` 是 `RegistryObject`，裸传给 Java API 会在 Rhino「参数转换」阶段抛 `ResourceLocationException`，而转换错误逃得出 `try/catch`** ⇒ 命令在 `send(...)` **之前**中断、**整条用例零读数**（本批实测：`LOCK-OFFLINE-1.20.1` 30 条断言全 FAIL、`kubejs/server.log` 680 条 error）。统一写法：`var c = ModEffects.X; try { var g = c.get(); if (g != null) return g; } catch (e1) {} return c;`（见 `domEffectHolder` / `mamuEffectHolder` / `signLagFxHolder`）。
+5. **`mamucore` 需要 ≥1 个筹码槽**：筹码槽数 = 骰子品阶公式（`ModItems.java:213-232`）—— 基础 `astral_dice:dice` 是 `s -> s`（**0★ = 0 槽**）、`golden_dice`/`glass_dice` 是 `1+s`（0★ 1 槽）、`diamond_dice`/`emerald_dice` 是 `2+s`（0★ 2 槽）⇒ 先 `/astralprobe equipslot dice "astral_dice:golden_dice" <tag>` 再 `mamucore`。
+6. **导出读数的白名单正则会漏掉 `_ERR:`/`_EX:` 行**（本批一度把「命令报了前置错误」误判为「静默失败」）⇒ 采集导出必须抓**全部** `AP_*` 行，且体检要单独看 `_ERR:` / `_EX:` / `no_*`。
+7. **`mamuconv <tag> dice <maxCost>` 的参数位曾把 `maxCost` 当成目标玩家名**（`who = arg` 后又喂给 `mamuResolve`）⇒ `no_player:9` 且 return ⇒ 骰子侧转换不可取证（已修）。
+8. **没有任何既有路径能把 `dragon_roar` 写进 `appliedStones`**（唯一写入口 `domBuildTempStone` 类型写死 nardis；`mamubite` 写死 bite；`cardprep` 只进主手）⇒ 端到端命中链依赖 `mamuconv dice` 修复；`doMamuJump` 自身也有时序陷阱（破防臂的 `arm1` 在攻击**前**读、第二击落在上一击的**无敌帧**内 ⇒ `meleeHit` 三连 API 全失败、`hit_break=-1`）。
+9. **`signprep` 的 `stand` 字段取的是纳德丽专属判定**（`NardisSignItem.isEquipped`）⇒ 对 parunan/jasmine/komachi 恒为 0，且紧接 `putInSlot` 之后同 tick 读回为空；不要把它当「任意立牌已装备」的通用门控（LOCK-OFFLINE 的断言已改为不依赖它，待探针改通用判定后可复原）。
+10. **「零读数」先怀疑死亡界面，再怀疑探针/产品**：`mamudie`（kill + 同 tick 服务端重生）在客户端**仍会留下死亡界面**（`ServerPlayer#die` 的死亡包带 `PacketSendListener`，写盘走事件循环 ⇒ 可能晚于 `PlayerList#respawn` 的重生包到达；客户端 `handleRespawn` 只在「界面**已是** DeathScreen」时才 `setScreen(null)`，此刻界面还没创建 ⇒ 迟到的死亡包随后新建界面）。实测：`mamudie` 之后 `latest.log` 直到本轮结束只剩 `AP_NOAI` 心跳、**0 条用例读数**，把紧随的 `LOCK-OFFLINE-1.21.1`（47 断言）与 `LOCK-OFFLINE-RELOG-A-1.21.1`（16 断言）整片染红；而**同一刻**服务端读数是 `respawn_ok=1:p_alive=1`、HUD 满血、截图确认界面停在「你死了！」⇒ **玩家其实活着，纯客户端界面卡死**。**修法/排查口径见 TESTING-SPEC §10-31**（启动期 `doImmediateRespawn=true` 硬闸门；`inject_mouse` 只能点窗口中心，重生按钮点不到 ⇒ 手工恢复用 `computer_control` 真实点击或 stop+launch）。
+11. **`pos_restored` 曾恒为 0（坐标被朝向连坐）**：`getYRot()/getXRot()` 在本环境 Rhino **不可见**（全探针只出现在这一处、此前从未真正执行过）⇒ 与坐标挤在同一个 `try` 时把**坐标一起丢掉**（`pos_how=no_pos`）。后果是功能性的：重生会把玩家丢回**世界出生点**，用例尾部 `/kill @e[type=!player,distance=..64]` 清场静默打空、污染下一个用例。已拆两个 `try`，朝向退化 `getter → 裸字段 p.yRot/p.xRot → 0`（走字段回退时 `pos_how` 后缀 `_yawfield` 留痕）。
+12. **`mamudie <tag> 1` 会把玩家留在「0 血濒死」态**：`PlayerList#respawn(p, true, …)` 走 `keepEverything=true` ⇒ `ServerPlayer#restoreFrom` **连血量一起复制**（1.21.1 `:1443` 先满血、`:1446` 再 `setHealth(that.getHealth())` = 0；1.20.1 `:1157-1159` 直接复制）⇒ `LivingEntity#isAlive()` 读 0（实测 `hp=20>0:p_alive=0`），不放任会被 `tickDeath` 真移除。探针**已在读数前补满血**（仅读到 0 才动手）并记 `revive_hp=0>20`；这是**命令契约**（结束时玩家活着），不是产品语义，不影响 `awake_kept`/`copied_ok` 判据。
+13. **单条用例预算已由 180 s 放宽到 600 s**（2026-09-28）：用例规模从 ~20 步涨到 105~164 步，而**每一步**都要过注入器 ⇒ 实测稳定 ≈ **1.7 s/步**，105 步的 `MAMUSHI-GUARD` 刚好被 180 s 判 TIMEOUT（只剩最后 3 步）。**写用例不必再为预算压缩等待/合并步骤**；标定数据与覆写方式见 TESTING-SPEC §12。
+14. **探针 `string()` 参数里的 id 必须加引号**（Brigadier 的 `readUnquotedString` **不接受 `:`**）⇒ 写成 `equipslot dice astral_dice:golden_dice CC0` 时命令在**客户端解析阶段**就被拒收：服务端**零痕迹**（没有读数、没有 `_EX`/`_ERR`、`absent` 闸门照样全绿），极易误判成探针坏了。本批实测 8 步中招（`MAMUSHI-ACTIVE` 2 + `MAMUSHI-GUARD` 6），其中 GUARD 的三处 `equipslot stand "minecraft:air" …` 正是它「纯卸载 ⇒ 产品归因」相位的硬前置。⚠️ **原版命令不要一并加引号**：`/give … astral_dice:x`、`/effect clear @s minecraft:slowness` 走的是 resource-location 参数（`ResourceLocation.read` 自己允许 `:`），未加引号合法。
+15. **`any_card` 不是「两张专属牌」的计数**：它是产品 `MamushiSignItem#hasAnyCard` = 背包 + 副手 + **骰子卡牌栏**里的**任意**本模组卡牌 ⇒ `mamuprep` 清不掉（只清两张专属牌 + curios），拿 `any_card=0` 断言「目标身上无卡」在发过随机牌之后必然假红。断言专属牌用 `inv_bite/inv_roar/eq_bite/eq_roar`；断言「发牌前有没有卡」用 `mamuwatch <tag> active` 的 `has_any_before`/`tot`/`granted_cards`（唯一走产品 `handleUse` 的档，也是 D1 的唯一观测面）。
+16. **`mamuwatch` 的 `gate` 恒为 `n/a`**（该档不走 `MU_CAST` 的四道前置）⇒ 在 watch 档判「主动真的生效」只能用 `fired=1`；写 `gate=open` 必红。
+17. **相邻字段之间多写 `[^\n]*` 与「漏写」同样致命**（那个 `:` 已被前一字段吃掉 ⇒ 永不匹配，实测 `AP_CR1_ROAR`/`AP_GDD_MU_CD` 各一条）；**「预期数值」必须来自本次实测**，本批 `raw=5`/`ap_delta=5`/`inv_total=1>0`/D1S Bot3 `granted_cards=2` 四处外推猜值全部假红 ⇒ 能写「域 + 不变量」就别写死数值。
+18. **`mamudie <tag> 1` 档必须先把世界 `keepInventory` 置 true**：否则 `ServerPlayer#die` 的 `dropAllDeathLoot` 在**重生之前**就把 curios 掉在地上，`keepEverything=true` 只能拿到「已被清空的旧实体」⇒ 立牌照样丢（实测 `sign=1>0`），与该档「`keepInventory=true` 场景」的意图不符（GUARD 已在 GDS 前补 `/gamerule keepInventory true`、之后还原）。
+19. **1.20.1 侧探针「随机池」读数恒为 `pool_n=0:pool=[-]` 且零异常文本 —— 是 Rhino 对 JDK 包私有类的成员分派差异，不是池空**（2026-09-28 定位并修复）：`RandomCardHandler#getCardPool` 尾句 `items.stream().map(ItemStack::new).toList()` 在 Java 16+ 返回 JDK **包私有**内部类 `java.util.ImmutableCollections$ListN`。1.20.1 的旧 Rhino（`rhino-forge-2001.2.3-build.10`）成员分派经 `MemberBox` 反射，**实测矩阵**（两线真 jar + `Context.compileString`，独立验证代理复核）：`size()` / `isEmpty()`（由**公开**类 `java.util.AbstractCollection` 实现）与 `iterator()` / `toArray()` **可用**，只有 `get(int)` **抛** `IllegalAccessException: … MemberBox cannot access a member of class java.util.ImmutableCollections$ListN (in module java.base) with modifiers "public"`（它声明在包私有 `ImmutableCollections$AbstractImmutableList` 上）⇒ 循环跑满 22 轮、每轮 `get(i)` 都落进**内层** `catch` 被吞掉（`st=null` ⇒ `continue`）⇒ 读数恰好 `pool_n=0:pool=[-]`（外层零异常文本，极易误判成「池是空的/专属牌真的不在池里」—— 而 1.21.1 的 `rhino-2101.2.8-build.91` 已修该路径，同源代码在 1.21.1 一直读到 22，故只有一条线红）。**修法**：读取前先复制 —— `new ArrayListClass(pool)`（构造函数声明在**公开**类 `java.util.ArrayList` 上，复制在 Java 内部完成、不经 Rhino 成员分派；**不得**改成 `pool.toArray()/iterator()/get()`，`size()` 只是侥幸可用，不要把侥幸写进契约）。修后两线 `pool_n=22`（6 攻击 + 3 防御 + 13 效果；6 张专属牌本就不在这三表内 ⇒ 剔除 0 项；`BATTLE=9 ⊂ ALL` ⇒ 并集 22）、`pool_rawn=22:pool_null=0:pool_err=-`；`MAMUSHI-REG/GUARD` 的 `pool_n=[1-9][0-9]*` 断言在 1.20.1 由**必 FAIL 转 PASS**。同源既有修法见 `countEffectCards`（`EffectCardUtil#getRandomEffectCardPool`，2026-09-18 T14-F1）。
+20. **1.20.1「撕咬 → 龙之咆哮」转换算法与规格/1.21.1 不符（多销毁卡牌）—— 已按用户裁决 A 修复**（2026-09-28）：1.20.1 `DragonCardUtil#convertEquippedBites` 原实现是「先按**全部转换**投影总占用，再从最后一张撕咬往前丢，每丢一张只把投影减 1」（把**已被移出装配表**的撕咬旧费用又加回去 ⇒ 净 −1 而非 −3）⇒ 实测 3 张撕咬在 `maxCost=9/7/4` 下只留 **3/1/0**；规格 §2.3 第 2 条与 1.21.1 `convertEquipped`（基准 = `usedCost − biteCount×biteCost`，再按装配顺序逐项 `runningCost + roarCost > maxCost` 即丢弃）给的是 **3/2/1**。裁决 A = **对齐 1.21.1/规格**（1.21.1 侧零改动），已改写成与 1.21.1 逐字同源的循环（`dropped` 由 `Set<Integer>` 改 int 计数、删两行 import），独立 javac（`--release 17`，`build/classes/main + moddev merged + client-extra + DFU + starengine_lib + curios`）单文件与联编调用点 `MamushiSignItem` 均 EXIT=0。修复后 `MAMUSHI-DRAGON-1.20.1` 131/131 PASS（`eq_roar=3/2/1` 三级阶梯逐条命中）。⚠️ 该缺陷**同一提交（`4fa9c907`）内两线就已分叉**，属「同批写出但语义不同」，不是平台差异；26.1.2 尚无蛟龙代码 ⇒ 随将来整批迁移带走。玩家侧 CHANGELOG 无需新增条目（`未发布(2.0.0-SNAPSHOT.10)` 的「龙之咆哮」条目本就写「费用放不下的会被丢弃」，按「合并约定」不追加「再次修改」条目）。
+21. **`dragon_roar_break` 的护甲修饰器两线形态不同（平台 API 差异，不是缺陷）**：1.21.1 的 `MobEffect#addAttributeModifier` 取 `ResourceLocation` ⇒ 探针读 `break_mod_kind=rl:break_mod_id=[astral_dice:dragon_roar_break_armor]`；1.20.1 的同名 API **只接受 UUID 字符串**（`MobEffect.java:169-173`）⇒ 读 `uuid:break_mod_id=[effect.astral_dice.dragon_roar_break 0]`（修饰器 `getName()` = `effect.<效果 id> <amp>`）。`MAMUSHI-COMBAT` 的两条 `*_JARM` 断言因此写成 `(rl:…|uuid:…)` **二选一**（twin 保持逐字节相同）。
+22. **1.20.1 探针的「怪物侧近战」不可用**：`Vindicator#hurt/damage` 不在 KubeJS 1.20.1 的白名单内 ⇒ `MAMUSHI-COMBAT` 的 `mamujump` 读数里固定带 `ex:[] Error: no_melee_api:mob_hurt:TypeError: Cannot find function hurt in object Vindicator[…]`，探针自动退回 `player_attack` 路径（`hit_plain` 仍由玩家攻击给出，`hit_break_first`/`break_first` 等判据不受影响；1.21.1 侧同一读数无此错误）。该错误串落在 `ex:[]` 字段内，**不**触发 `absent` 闸门；不要为它放宽断言。
+
+### 实测（2026-09-28，两线各 6/6 用例、各 808/808 断言全绿）
+
+- **1.21.1**（最终探针字节 + 产品零改动）：`REG 86/86` · `PASSIVE 141/141` · `DRAGON 131/131` · `ACTIVE 199/199` · `COMBAT 110/110` · `GUARD 141/141` = **808/808 PASS**（用时 123/224/195/313/179/221 s，逐条 `--case`）。日志 `temp/suite-1211-*.log`；关键读数 `pool_hits=0:pool_n=22:pool_rawn=22:pool_null=0:pool_err=-`（`run/1.21.1/logs/latest.log:955`，22 项全池且不含 bite/roar）。
+- **1.20.1**（最终探针字节 + 转换算法修复后的产品 jar）：`REG 86/86` · `PASSIVE 141/141` · `DRAGON 131/131` · `ACTIVE 199/199` · `COMBAT 110/110` · `GUARD 141/141` = **808/808 PASS**（用时 121/226/198/317/176/215 s）。日志 `temp/suite-1201-*.log`；**首轮失败版**归档在 `temp/r1_triage/`（保留对比证据）。
+- 两线**同一探针字节**（mamushi impl 块 2409 行逐字节相同，`temp/mamu_blockcheck.ps1` 报 `IMPL/DISP/COMBINED-identical=True`）+ **同一套 twin 用例**（仅 `case_id`/`version` 不同）⇒ 逐字段可对照，满足 TESTING-SPEC §13.2「同探针 + 同用例 + 双侧读数 diff」的一致性口径。
+- **1.20.1 首跑四项失败**（全部定位并修复，详见上方踩坑 19/20/21/22）：`REG` 1 条（随机池读数恒 0 —— 探针 Rhino 陷阱）· `DRAGON` 2 条（转换算法缺陷 —— **产品修复**，用户裁决 A）· `COMBAT` 2 条（`break_mod_kind` 两线形态不同 —— **断言改二选一**）· `GUARD` 1 条（同 pool）。`PASSIVE`/`ACTIVE` 首跑即全绿。
+- 报告：`pwsh -NoProfile -File scripts/test/mt.ps1 --version <V> --phase report` → `scripts/test/reports/20260920-114651/<V>/report.md`；**两线结论均为 ✅ PASS**（收口时的本轮世代 `20260921-101550`）。⚠️ **报告的条目表只统计「本轮世代」的标记**：同一 run id 下更早跑过的用例会被归档进 `history`（本批报 `已归档 4 个 / 101 条标记`），故本轮表里只出现**最近一次跑过**的用例（1.20.1 = `REG/GUARD/LOCK-OFFLINE/RELOG-A/RELOG-B`；1.21.1 = `REG/GUARD/PASSIVE/RELOG-A/RELOG-B`）——其余蛟龙用例属更早世代，其 PASS 证据见 `temp/suite-{1201,1211}-*.log`、`temp/final*-*.log` 与 `temp/r1_triage/`。**判 PASS 的完整清单以逐条 `--case` 日志为准**，报告表只作本轮小结。
+- 独立验证（R1，只读代理）：① 1.20.1 转换算法与 1.21.1 `convertEquipped` 归一化后 44/47 条语句逐字相同、余 3 条仅可见性/守卫位置/换行，且用独立 `javac --release 17` 联编 `DragonCardUtil + MamushiSignItem` EXIT=0；② 探针池修法在真 Rhino 下复现了 `get(int)` 抛 `IllegalAccessException`（`size()/isEmpty()` 反而可用）并逐条回放 21 条相关断言全 PASS、确认无断言受影响。
+
+### 遗留项：`LOCK-OFFLINE-*` 的补全（本批首次跑通）
+
+`LOCK-OFFLINE-{1.21.1,1.20.1}` + `LOCK-OFFLINE-RELOG-{A,B}-{1.21.1,1.20.1}` 是 2026-09-27 批次写下但**从未执行**的草稿。本批首跑抓出 **16 条用例侧缺陷**并修复（`stand` 字段 5 + `gap=6000` 字面量 5 + 相邻字段直连 6）+ **1 条相位竞态**：parunan 主动是**三选一随机**（饱和 30s / 幸运 5:00 / 村庄英雄 15:00，`lock_end = now + 该分支时长`），L1–L3 的滞后电池已耗 ~25 s ⇒ 抽到 30 s 分支时锁定会在 `L4R/L5E` 之前自然到期（实测该轮 `L1C lock_end = now + 600`）⇒ 在 `L4R` 前插入**相位重铸**（`signprep` + `signcast`），与 K 组「每相位重铸」同口径。
+（1.21.1 已 **PASS**；1.20.1 因上方踩坑 4 的探针缺陷首跑全灭，修好后复跑。）
+
+**2026-09-28 收口（两线实测）**：`LOCK-OFFLINE-1.20.1` **PASS 126/126**；`LOCK-OFFLINE-RELOG-A-1.20.1` **PASS 35/35**、`LOCK-OFFLINE-RELOG-B-1.20.1` **PASS**（成对跑法：A → `--phase stop`（**保留存档**）→ `--phase launch` → B）；1.21.1 同三组 PASS（RELOG-A 35/35、RELOG-B 20/20）。
+⚠️ **A 相的存档步骤必须用「原版暂停存盘」，禁止再用 `/save-all flush`**（本批 3/3 复现，见 TESTING-SPEC 附录 A 第 6 条）：该命令经聊天注入时**前导斜杠被吃掉**、变成一条聊天消息（原始日志原文 `[CHAT] save-all flush<--[此处]`）⇒ 命令**从未执行**、`saves/<world>/playerdata/<uuid>.dat` 不落盘（宿主机 mtime 核对），B 相于是读到旧状态而假红。改用 `Esc`（触发 `Saving and pausing game...` + 逐维度 `Saving chunks…`，**真正写盘**）→ 再 `Esc` 返回；并以原版日志行 `Saving chunks for level 'ServerLevel[testworld]'/minecraft:overworld` 作为**存盘证据**断言。判据：A 相跑完后宿主机上 `.dat` 的 mtime/字节数会变（实测 1.20.1 `2015→1956 B`、1.21.1 `2067→2223 B`）。
+

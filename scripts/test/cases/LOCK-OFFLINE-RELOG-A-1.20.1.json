@@ -85,16 +85,23 @@
     },
     {
       "op": "note",
-      "text": "显式存档:`--phase stop` 是强杀不存档,故必须先 `/save-all flush`(B 相才能读回同一份玩家数据)。"
+      "text": "显式存档:`--phase stop` 是**强杀不存档**,故必须在 A 相末尾自己触发一次原版存盘(B 相才能读回同一份玩家数据)。\n⚠️ **2026-09-21 实测:不得再用 `/save-all flush`** —— 该命令经聊天注入时**前导斜杠会被吃掉**,变成一条聊天消息(原始日志原文 `[CHAT] save-all flush<--[此处]`),命令**从未执行**,玩家数据文件不落盘(宿主机核对:`saves/testworld/playerdata/<uuid>.dat` 的 mtime 不变;1.20.1 连测 3/3 复现;而 `/say a-b`、`/time set day` 同一通道正常执行 ⇒ 与通道/语言无关,是该命令串被改写)。\n改用**原版暂停存盘**:`Esc` 打开暂停菜单会触发 `Saving and pausing game...` + 逐维度 `Saving chunks…` 并**真正写盘**(实测 `playerdata/<uuid>.dat` 当场被重写,字节数随之变化),再按一次 `Esc` 回到游戏。断言用原版**日志行** `Saving chunks for level 'ServerLevel[testworld]'/minecraft:overworld` 作存盘证据(日志行是英文、两线一致,不受语言影响)。"
     },
     {
-      "op": "inject_command",
-      "command": "/save-all flush",
-      "no_esc": true
+      "op": "inject_key",
+      "key": "escape"
     },
     {
       "op": "wait",
-      "ms": 2000
+      "ms": 1500
+    },
+    {
+      "op": "inject_key",
+      "key": "escape"
+    },
+    {
+      "op": "wait",
+      "ms": 1500
     },
     {
       "op": "note",
@@ -110,12 +117,12 @@
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_RA1_SIGNPREP:sign=astral_dice:parunan_sign:sign_err=:stand=1:.*star=[1-9][0-9]*:"
+      "pattern": "AP_RA1_SIGNPREP:sign=astral_dice:parunan_sign:sign_err=:.*star=[1-9][0-9]*:"
     },
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_RA2_SIGNCAST:sign_before=\\[\\]:.*:sign_after=\\[astral_dice:parunan_sign\\]:lock_after=1:lock_end=[1-9][0-9]*:grace_end=0:cd_after=0:gate_on=1:last_seen=[1-9][0-9]*:"
+      "pattern": "AP_RA2_SIGNCAST:sign_before=\\[\\]:.*:sign_after=\\[astral_dice:parunan_sign\\]:lock_after=1:lock_end=[1-9][0-9]*:grace_end=0:cd_after=0:cd_started=0:gate_on=1:.*last_seen=[1-9][0-9]*:"
     },
     {
       "type": "log",
@@ -136,6 +143,11 @@
       "type": "log",
       "source": "latest",
       "pattern": "APDUMP\\|SIGN\\|sign_active_lock_sign=astral_dice:parunan_sign"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "Saving chunks for level 'ServerLevel\\[testworld\\]'/minecraft:overworld"
     },
     {
       "type": "absent",

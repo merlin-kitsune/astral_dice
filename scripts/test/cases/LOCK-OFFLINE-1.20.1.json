@@ -163,6 +163,28 @@
     },
     {
       "op": "note",
+      "text": "②f2 **相位重铸（必须先做）**：parunan 主动是**三选一随机**（饱和 30 秒 / 幸运 5:00 / 村庄英雄 15:00，`lock_end = now + 该分支时长`，见 `ParunanSignItem` 主动体），而 L1–L3 的滞后电池已耗去 ~25 秒 ⇒ 抽到 30 秒分支时锁定会在 L4R/L5E 之前自然到期（**实测**：第二轮跑 L5E 读到 `sign_before=[]:cd_before=11273`，该轮 L1C 为 `lock_end=7672 = now 7072 + 600`，即 30 秒分支）。故在负控前**重新 prep + cast** 造一个新鲜锁定态，使 L4R/L5E/L4N 的暴露约 4 秒、对任何分支都有 >7× 余量（与 K 组每相位重铸同一口径）。第 3 参 `10` = 星光：parunan 主动无星光会 fail（`starlightToStarCoins <= 0` 分支）。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe signprep L4P \"astral_dice:parunan_sign\" 10",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe signcast L4C",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "note",
       "text": "②g 负控：非忍者立牌的**出牌周期完全重置**回调不得动它的锁定（`onEffectCardRoundReset` 首行只认忍者）。   `signroundreset L4R` ⇒ `sign_unchanged=1`、`ended=0`、`cd_started=0`（证明无 per-sign 泄漏）。"
     },
     {
@@ -432,7 +454,7 @@
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_L1P_SIGNPREP:sign=astral_dice:parunan_sign:sign_err=:stand=1:.*star=[1-9][0-9]*:.*ls_wrote=0:ls_after=0:.*:lock=0:lock_end=0:"
+      "pattern": "AP_L1P_SIGNPREP:sign=astral_dice:parunan_sign:sign_err=:.*star=[1-9][0-9]*:.*ls_wrote=0:ls_after=0:.*:lock=0:lock_end=0:"
     },
     {
       "type": "log",
@@ -452,12 +474,12 @@
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_L1G_SIGNLAG:mode=once:ticks=6000:.*wrote=[1-9][0-9]*:gap=6000:lock_end_before=[1-9][0-9]*:.*lock_end_delta=6000:grace_end_before=0:grace_end_mid=0:grace_end_after=0:grace_end_delta=0:cd_before=0:cd_after=0:cd_unchanged=1:lock_before=1:lock_after=1:lock_sign_after=\\[astral_dice:parunan_sign\\]:lock_sign_unchanged=1:.*delta_eq_gap=1:grace_delta_eq_gap=0:seen_refreshed=1:.*drives=1:tick_ran=1:"
+      "pattern": "AP_L1G_SIGNLAG:mode=once:ticks=6000:.*wrote=[1-9][0-9]*:gap=[1-9][0-9]*:lock_end_before=[1-9][0-9]*:.*lock_end_delta=[1-9][0-9]*:grace_end_before=0:grace_end_mid=0:grace_end_after=0:grace_end_delta=0:cd_before=0:cd_after=0:cd_unchanged=1:lock_before=1:lock_after=1:lock_sign_after=\\[astral_dice:parunan_sign\\]:lock_sign_unchanged=1:.*delta_eq_gap=1:grace_delta_eq_gap=0:seen_refreshed=1:.*drives=1:tick_ran=1:"
     },
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_L1H_SIGNLAG:mode=once:ticks=1:.*gap=1:lock_end_before=[1-9][0-9]*:.*lock_end_delta=0:.*grace_end_delta=0:cd_unchanged=1:lock_before=1:lock_after=1:.*delta_eq_gap=0:.*drives=1:tick_ran=1:"
+      "pattern": "AP_L1H_SIGNLAG:mode=once:ticks=1:.*gap=1:lock_end_before=[1-9][0-9]*:.*lock_end_delta=0:.*grace_end_delta=0:.*cd_unchanged=1:lock_before=1:lock_after=1:.*delta_eq_gap=0:.*drives=1:tick_ran=1:"
     },
     {
       "type": "log",
@@ -467,12 +489,22 @@
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_L2A_SIGNLAG:mode=triple:ticks=0:.*gap=0:lock_end_before=[1-9][0-9]*:.*lock_end_delta=0:.*grace_end_delta=0:cd_unchanged=1:lock_before=1:lock_after=1:.*triple_stable=1:drives=3:tick_ran=1:"
+      "pattern": "AP_L2A_SIGNLAG:mode=triple:ticks=0:.*gap=0:lock_end_before=[1-9][0-9]*:.*lock_end_delta=0:.*grace_end_delta=0:.*cd_unchanged=1:lock_before=1:lock_after=1:.*triple_stable=1:drives=3:tick_ran=1:"
     },
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_L3A_SIGNLAG:mode=double:ticks=6000:.*gap=6000:lock_end_before=[1-9][0-9]*:.*lock_end_mid=[1-9][0-9]*:lock_end_after=[1-9][0-9]*:lock_end_delta=6000:.*cd_unchanged=1:lock_after=1:.*delta_eq_gap=1:seen_refreshed=1:.*idem=1:drives=2:tick_ran=1:"
+      "pattern": "AP_L3A_SIGNLAG:mode=double:ticks=6000:.*gap=[1-9][0-9]*:lock_end_before=[1-9][0-9]*:.*lock_end_mid=[1-9][0-9]*:lock_end_after=[1-9][0-9]*:lock_end_delta=[1-9][0-9]*:.*cd_unchanged=1:lock_before=1:lock_after=1:.*delta_eq_gap=1:grace_delta_eq_gap=0:seen_refreshed=1:.*idem=1:.*drives=2:tick_ran=1:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_L4P_SIGNPREP:sign=astral_dice:parunan_sign:sign_err=:.*gate_cleared=[0-9]+:.*ls_wrote=0:ls_after=0:.*sign=\\[\\]:lock=0:lock_end=0:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_L4C_SIGNCAST:sign_before=\\[\\]:lock_before=0:cd_before=0:gate_before=0:sign_after=\\[astral_dice:parunan_sign\\]:lock_after=1:lock_end=[1-9][0-9]*:grace_end=0:cd_after=0:cd_started=0:gate_on=1:"
     },
     {
       "type": "log",
@@ -487,12 +519,12 @@
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_L4N_SIGNLAG:.*gap=6000:lock_end_before=0:lock_end_mid=0:lock_end_after=0:lock_end_delta=0:grace_end_before=0:.*grace_end_after=0:grace_end_delta=0:.*cd_unchanged=1:lock_before=0:lock_after=0:.*last_seen_after=0:.*drives=1:tick_ran=1:"
+      "pattern": "AP_L4N_SIGNLAG:.*gap=[1-9][0-9]*:lock_end_before=0:lock_end_mid=0:lock_end_after=0:lock_end_delta=0:grace_end_before=0:.*grace_end_after=0:grace_end_delta=0:.*cd_unchanged=1:lock_before=0:lock_after=0:.*last_seen_after=0:.*drives=1:tick_ran=1:"
     },
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_J0_SIGNPREP:sign=astral_dice:jasmine_sign:sign_err=:stand=1:.*ls_wrote=0:ls_after=0:"
+      "pattern": "AP_J0_SIGNPREP:sign=astral_dice:jasmine_sign:sign_err=:.*ls_wrote=0:ls_after=0:"
     },
     {
       "type": "log",
@@ -502,17 +534,17 @@
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_J2_SIGNLAG:mode=once:ticks=6000:.*gap=6000:lock_end_before=[1-9][0-9]*:.*lock_end_delta=6000:grace_end_delta=0:cd_before=0:cd_after=0:cd_unchanged=1:lock_before=1:lock_after=1:.*delta_eq_gap=1:.*tick_ran=1:"
+      "pattern": "AP_J2_SIGNLAG:mode=once:ticks=6000:.*gap=[1-9][0-9]*:lock_end_before=[1-9][0-9]*:.*lock_end_delta=[1-9][0-9]*:grace_end_before=0:grace_end_mid=0:grace_end_after=0:grace_end_delta=0:cd_before=0:cd_after=0:cd_unchanged=1:lock_before=1:lock_after=1:.*delta_eq_gap=1:.*tick_ran=1:"
     },
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_J3_SIGNEND:sign_before=\\[astral_dice:jasmine_sign\\]:gate_before=1:gate_removed=1:gate_after=0:sign_after=\\[\\]:lock_before=1:lock_after=0:cd_before=0:cd_after=[1-9][0-9]*:cd_started=1:.*ended=1:tick_ran=1:"
+      "pattern": "AP_J3_SIGNEND:sign_before=\\[astral_dice:jasmine_sign\\]:gate_before=1:gate_removed=1:gate_after=0:sign_after=\\[\\]:lock_before=1:lock_after=0:lock_end_after=0:grace_after=0:cd_before=0:cd_after=[1-9][0-9]*:cd_started=1:.*ended=1:tick_ran=1:"
     },
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_K0_SIGNPREP:sign=astral_dice:komachi_sign:sign_err=:stand=1:.*ls_wrote=0:ls_after=0:"
+      "pattern": "AP_K0_SIGNPREP:sign=astral_dice:komachi_sign:sign_err=:.*ls_wrote=0:ls_after=0:"
     },
     {
       "type": "log",
@@ -522,7 +554,7 @@
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_K1A_SIGNLAG:mode=once:ticks=6000:.*gap=6000:lock_end_before=0:lock_end_mid=0:lock_end_after=0:lock_end_delta=0:grace_end_before=[1-9][0-9]*:.*grace_end_delta=6000:cd_unchanged=1:lock_before=1:lock_after=1:lock_sign_after=\\[astral_dice:komachi_sign\\]:lock_sign_unchanged=1:.*delta_eq_gap=0:grace_delta_eq_gap=1:seen_refreshed=1:.*tick_ran=1:"
+      "pattern": "AP_K1A_SIGNLAG:mode=once:ticks=6000:.*gap=[1-9][0-9]*:lock_end_before=0:lock_end_mid=0:lock_end_after=0:lock_end_delta=0:grace_end_before=[1-9][0-9]*:.*grace_end_delta=[1-9][0-9]*:cd_before=0:cd_after=0:cd_unchanged=1:lock_before=1:lock_after=1:lock_sign_after=\\[astral_dice:komachi_sign\\]:lock_sign_unchanged=1:.*delta_eq_gap=0:grace_delta_eq_gap=1:seen_refreshed=1:.*tick_ran=1:"
     },
     {
       "type": "log",
@@ -537,7 +569,7 @@
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_K3_SIGNPREP:sign=astral_dice:komachi_sign:sign_err=:stand=1:"
+      "pattern": "AP_K3_SIGNPREP:sign=astral_dice:komachi_sign:sign_err=:"
     },
     {
       "type": "log",
@@ -547,12 +579,12 @@
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_K3R_SIGNROUNDRST:sign_before=\\[astral_dice:komachi_sign\\]:called=1:sign_after=\\[\\]:sign_unchanged=0:.*cd_started=1:.*ended=1:tick_ran=1:"
+      "pattern": "AP_K3R_SIGNROUNDRST:sign_before=\\[astral_dice:komachi_sign\\]:gate_on=0:called=1:sign_after=\\[\\]:sign_unchanged=0:.*cd_started=1:.*ended=1:.*tick_ran=1:"
     },
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_K5_SIGNPREP:sign=astral_dice:komachi_sign:sign_err=:stand=1:"
+      "pattern": "AP_K5_SIGNPREP:sign=astral_dice:komachi_sign:sign_err=:"
     },
     {
       "type": "log",
@@ -572,12 +604,12 @@
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_N0_PREP:sign_err=:dice_where=curio:"
+      "pattern": "AP_N0_PREP:sign_err=:dice_err=:dice_where=curio:"
     },
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_N1_CAST:who=self:.*granted=3:n_temp=3:.*fx_dur=3600:n_fx_on=1:.*lock_before=0:lock_after=0:.*lock_sign=\\[\\]"
+      "pattern": "AP_N1_CAST:who=self:.*lock_before=0:lock_after=0:.*granted=3:n_temp=3:.*fx_dur=3600:n_fx_on=1:.*lock_sign=\\[\\]"
     },
     {
       "type": "log",
