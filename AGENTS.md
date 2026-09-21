@@ -1041,6 +1041,26 @@ When extending this workspace:
 
 余额 HUD、`/starcoin pay`、钱包物品、战利品表注入、跨币种换算；**已预留**「星币掉落」的位置。
 
+### 不兼容模组黑名单（Magic Coins / SG-Economy）— 必须遵守
+
+- 黑名单与检查在**消费方** `init/ModCompatibilityCheck`（两版行为与文案逐字一致；平台差异只有 import
+  与抛出的异常形态）：`magic_coins`、`sg_economy` 命中任意一个 ⇒ **在 `AstralDiceMod` 构造函数最开头**
+  （一切注册之前，已用 `javap -c` 核对字节码）抛**平台加载异常** ——
+  neo 为 `new ModLoadingException(ModLoadingIssue.error(文案))`，
+  forge 为 `new ModLoadingException(selfInfo, ModLoadingStage.CONSTRUCT, 文案, null)`。
+- **提示怎么上屏**（这条决定了**不能**用 `IllegalStateException`）：Forge 的 `LoadingErrorScreen` 逐条渲染
+  `ModLoadingException#formatToString()`（= 对构造时传的 i18n 串 `parseMessage` 后显示），
+  NeoForge 用 `Component.translatable(issue.translationKey(), args)`；两边那个 key 在语言文件里
+  **不存在** ⇒ 按原版行为**原样显示 key 本身** ⇒ 我们传的文案直接出现在错误界面。
+  ⚠️ 因此**不要**把这段文案写进 lang（会被翻译覆盖），文案里也**不要出现 `%` 或 `{}`**（会被当格式化占位符）。
+- **为什么两版都走 Java 检查、不写进 mods.toml**：NeoForge 的 `[[dependencies]]` 支持
+  `type="incompatible"`，但 **Forge 1.20.1 不支持**（其依赖解析只认 `mandatory` 布尔，见
+  `ModInfo$ModVersion` 的 `Missing required field mandatory in dependency`），且声明式的提示文案由 FML
+  生成、不受本模组控制 ⇒ 统一走本类，两版行为与提示逐字一致。
+- ⚠️ 新增不兼容项只改 `INCOMPATIBLE_MODS` 一处（`{modId, 玩家可读名称}`），**不要把检查挪到注册之后**
+  （越晚失败，玩家看到的错误越脏，且留下半注册状态）。
+- 新增/修改不兼容项时，同步两版 CHANGELOG 的星币钱包条目与该表。
+
 ## Bountiful 赏金联动规范(可选前置)— 必须遵守
 
 - 联动为纯数据驱动(无 Java 依赖),文件位于 `src/main/resources/data/bountiful/`:

@@ -4,6 +4,7 @@ import com.merlinkitsune.astral_dice.config.ModCommonConfig;
 import com.merlinkitsune.starenginelib.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.effect.ModEnchantments;
+import com.merlinkitsune.astral_dice.init.ModCompatibilityCheck;
 import com.merlinkitsune.astral_dice.init.ModCreativeTabs;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.network.ModNetwork;
@@ -31,6 +32,9 @@ public class AstralDiceMod {
 
     public AstralDiceMod() {
         IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
+        // 不兼容模组黑名单(Magic Coins / SG-Economy):命中即拒绝启动(提示见 ModCompatibilityCheck)。
+        // 必须放在**一切注册之前** —— 越早失败,玩家看到的错误越干净,也不会留下半注册状态。
+        ModCompatibilityCheck.verifyOrThrow();
         ModItems.ITEMS.register(modEventBus);
         ModEffects.EFFECTS.register(modEventBus);
         ModEnchantments.ENCHANTMENTS.register(modEventBus);
