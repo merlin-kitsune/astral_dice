@@ -1303,7 +1303,7 @@ public class ModAttachments {
     }
 
     /**
-     * **狐光攻击基数** {@code B = ⌊施法前施法者攻击力⌋ + ⌊目标攻击力 × 50%⌋}(施法瞬间快照)。
+     * **狐光攻击基数** {@code B = 施加时的施法者攻击力(基础) + ⌊目标攻击力 × 50%⌋}（= 施法者「获得目标 50% 加成后」的快照攻击力;施法瞬间快照）。
      * 目标攻击新目标时的额外攻击 = {@code B + 消耗 1 层后剩余狐光层数}(计入骰战攻击力)。
      */
     public static final AttachedDataKey<Integer> TERU_DESCENT_ATTACK_BASE =

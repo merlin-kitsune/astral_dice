@@ -68,7 +68,7 @@ import java.util.UUID;
  *   <li>锁定目标 50% 的攻击力与防御力给施法者(施法瞬间快照;攻击加成经镜像缓存进骰战攻击力,
  *       防御加成经 {@link DiceCombatModifiers#setDefenseArmorBonus} 折算真实护甲);</li>
  *   <li>目标身上留下「降神」效果(图标复用教主立牌贴图),并记录狐光攻击基数
- *       {@code B = ⌊施法前施法者攻击力⌋ + ⌊目标攻击力×0.5⌋};</li>
+ *       {@code B = 施加时的施法者攻击力(基础) + ⌊目标攻击力×0.5⌋}(= 获得目标 50% 加成后的快照攻击力);</li>
  *   <li>目标**每攻击一个新目标**(本次降神期内未攻击过的目标,按 UUID 记集合)消耗 1 层狐光,
  *       按 {@code B + 消耗后剩余层数} 追加骰战攻击力(层数已为 0 时不消耗、不追加);</li>
  *   <li>持续到**该目标自己的下一次骰神赐福结束**(下降沿状态机,语义与
@@ -229,7 +229,8 @@ public class TeruSignItem extends BaseSignItem {
         int targetDefense = DiceCombatModifiers.defensePowerOf(receiver);
         int bonusAtk = (int) Math.floor(targetAttack * DESCENT_RATIO);
         int bonusDef = (int) Math.floor(targetDefense * DESCENT_RATIO);
-        // 狐光攻击基数 B = ⌊施法前施法者攻击力⌋ + ⌊目标攻击力×50%⌋(后续攻击力成长不计入)
+        // 狐光攻击基数 B = 施加时的施法者攻击力(基础攻击力) + ⌊目标攻击力×50%⌋
+        // = 施法者「获得目标 50% 加成后」的快照攻击力(后续攻击力成长不计入;2026-09-21 用户口径)
         int attackBase = Math.max(0, casterAttack) + bonusAtk;
 
         // ② 状态机初始化(语义与 zhao 的 skip_cycles 逐字相同):
