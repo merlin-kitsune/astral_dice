@@ -1414,8 +1414,8 @@ public class ModTooltipHandler {
             addSignCooldownRemaining(tooltip, event.getEntity());
         }
         // 绿洲女王立牌(nardis):主动「女王特权」(3:00 随机临时牌;只写冻结键
-        // tooltip.astral_dice.sign.nardis_active)+ 被动「威压」(每装备一张攻击牌攻击力 +1、
-        // 每装备一张防御牌防御力 +1;键 tooltip.astral_dice.sign.nardis_passive)。
+        // tooltip.astral_dice.sign.nardis_active)+ 被动「威压」(每装备一张攻击牌攻击力 +2、
+        // 每装备一张防御牌防御力 +2;键 tooltip.astral_dice.sign.nardis_passive)。
         // 两个键的文案在 lang 里是**静态文案**(无占位符)⇒ addSignLines 不传 args。
         // 1.20.1 与 1.21.1 的辅助方法签名逐字相同(addSignKeyHint/addSignActiveTitle/addSignPassiveTitle/
         // addSignLines/addSignCooldownRemaining),故本段为纯镜像。

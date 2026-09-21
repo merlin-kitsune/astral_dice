@@ -471,18 +471,18 @@ public final class DiceCombatModifiers {
             return ap;
         });
 
-        // === 内置:绿洲女王立牌(nardis)被动「威压」—— 每装备一张**攻击牌**攻击力 +1 ===
+        // === 内置:绿洲女王立牌(nardis)被动「威压」—— 每装备一张**攻击牌**攻击力 +2 ===
         // 计数直接取**攻击方骰子的 enhancement**(ctx.enhancement)⇒ 与实战同源;
         // tooltip/GUI 走 getDisplayAttackRange 时传的是按卡牌栏实时构建的 enhancement,口径一致
         // (所以不需要第二条链路)。临时牌**同样计入**它只是一张普通战斗牌,只是被打了标记;
-        // 被动防御力(+1/防御牌)走真实护甲折算,见 NardisSignItem#onCurioTick。
+        // 被动防御力(+2/防御牌)走真实护甲折算,见 NardisSignItem#onCurioTick。
         registerAttackModifier((ctx, ap) -> {
             if (ctx.attacker.level().isClientSide()) return ap;
             if (!NardisSignItem.isEquipped(ctx.attacker)) return ap;
             WeaponEnhancement enh = ctx.enhancement != null
                     ? ctx.enhancement
                     : NardisSignItem.equippedEnhancement(ctx.attacker);
-            return ap + NardisSignItem.countStones(enh, false);
+            return ap + NardisSignItem.BONUS_PER_CARD * NardisSignItem.countStones(enh, false);
         });
 
         // === 内置:肾上腺素-高效筹码(生命值为 50% 或更低时攻击力 +8;汲取期间无条件触发) ===

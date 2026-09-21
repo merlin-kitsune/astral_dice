@@ -24,7 +24,8 @@ import top.theillusivec4.curios.api.SlotContext;
  * 绿洲女王立牌(nardis,稀有 RARE)。
  *
  * <h2>被动「威压」</h2>
- * <b>每装备一张攻击牌 ⇒ 攻击力 +1;每装备一张防御牌 ⇒ 防御力 +1</b>
+ * <b>每装备一张攻击牌 ⇒ 攻击力 +2;每装备一张防御牌 ⇒ 防御力 +2</b>
+ * —— 每张牌的加成 = {@link #BONUS_PER_CARD}(2026-09-21 用户裁决:由 +1 小幅加强为 +2)。
  * (「已装备」= 骰子物品的 {@code weapon_enhancement.appliedStones};背包里没装配的不算)。
  * <ul>
  *   <li>攻击力:走 {@code combat/DiceCombatModifiers} 静态注册块里的攻击修饰器 ——
@@ -100,6 +101,20 @@ public class NardisSignItem extends BaseSignItem {
 
     /** 被动防御力折算到 ARMOR 属性时使用的修饰器 id(卸下/清场时用同一个 key 归零) */
     public static final String DEFENSE_ARMOR_KEY = "nardis_def_armor";
+
+    /**
+     * 被动「威压」每张**已装配**卡牌提供的加成 —— 攻击力与防御力**各 +2**
+     * (2026-09-21 用户裁决:由 +1 小幅加强为 +2;此裁决**覆盖**玩家原文里的「+1」)。
+     *
+     * <p>两个消费点**共用本常量**,禁止各自写死字面量(否则攻防两条链会各自漂移):
+     * <ul>
+     *   <li>攻击力:{@code combat/DiceCombatModifiers} 的攻击修饰器
+     *       ({@code BONUS_PER_CARD × countStones(enh, false)});</li>
+     *   <li>防御力:{@link #onCurioTick} 传给 {@link DiceCombatModifiers#setDefenseArmorBonus}
+     *       的**防御力点数**({@code BONUS_PER_CARD × 已装配防御牌张数};1 防御力 = 2 护甲值)。</li>
+     * </ul>
+     */
+    public static final int BONUS_PER_CARD = 2;
 
     public NardisSignItem(Properties properties) {
         super(properties);
@@ -235,11 +250,13 @@ public class NardisSignItem extends BaseSignItem {
     protected void onCurioTick(SlotContext slotContext, ItemStack stack) {
         if (!(slotContext.entity() instanceof Player player)) return;
         if (player.level().isClientSide()) return;
-        // 防御力 +1/防御牌:折算为真实护甲(1 防御力 = 2 护甲值;经 ARMOR 属性,骰战与原版伤害均生效)。
+        // 防御力 +2/防御牌(每张牌加成 = BONUS_PER_CARD 常量):折算为真实护甲
+        // (1 防御力 = 2 护甲值;经 ARMOR 属性,骰战与原版伤害均生效)。
         // 现算现写:装配/卸下卡牌后最迟下一 tick 生效,不需要任何缓存或附件。
         // ⚠️ 1.20.1 的 Curios curioTick 每 tick 调用一次(与 1.21.1 相同),setDefenseArmorBonus
         //    内部「数值未变则不增删」⇒ 不会产生每 tick 属性同步。
-        DiceCombatModifiers.setDefenseArmorBonus(player, DEFENSE_ARMOR_KEY, equippedDefenseCardCount(player));
+        DiceCombatModifiers.setDefenseArmorBonus(player, DEFENSE_ARMOR_KEY,
+                BONUS_PER_CARD * equippedDefenseCardCount(player));
     }
 
     @Override

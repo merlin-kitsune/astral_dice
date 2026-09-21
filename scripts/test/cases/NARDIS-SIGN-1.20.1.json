@@ -831,12 +831,12 @@
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_P1_ARM:atk_n=2:def_n=1:where=curio:sign=1:set_ok=1:set_ok_curio=1:.*atk_cards=2:def_cards=1:.*n_stones=3:.*ap=3:"
+      "pattern": "AP_P1_ARM:atk_n=2:def_n=1:where=curio:sign=1:set_ok=1:set_ok_curio=1:.*atk_cards=2:def_cards=1:.*n_stones=3:.*ap=5:"
     },
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_P1_PASSIVE:.*atk_cards=2:def_cards=1:.*n_stones=3:.*ap=3:dp=3:armor=2:"
+      "pattern": "AP_P1_PASSIVE:.*atk_cards=2:def_cards=1:.*n_stones=3:.*ap=5:dp=4:armor=4:"
     },
     {
       "type": "log",

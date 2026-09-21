@@ -1439,8 +1439,8 @@ public class ModTooltipHandler {
             addSignCooldownRemaining(tooltip, event.getEntity() instanceof Player p ? p : null);
         }
         // 绿洲女王立牌(nardis):主动「女王特权」(3:00 随机临时牌;只写冻结键
-        // tooltip.astral_dice.sign.nardis_active)+ 被动「威压」(每装备一张攻击牌攻击力 +1、
-        // 每装备一张防御牌防御力 +1;键 tooltip.astral_dice.sign.nardis_passive)。
+        // tooltip.astral_dice.sign.nardis_active)+ 被动「威压」(每装备一张攻击牌攻击力 +2、
+        // 每装备一张防御牌防御力 +2;键 tooltip.astral_dice.sign.nardis_passive)。
         // 两个键的文案在 lang 里是**静态文案**(无占位符)⇒ addSignLines 不传 args。
         // 怪力侦探立牌(sherry):主动「怪力投掷」(非选择器类;把 12 格内全部敌对目标按抛物线扔到玩家
         // 面前 2 格,**落地之后**才造成 2 点伤害并施加 1 层「标记」,「推理时间」满 5 层 ⇒ 额外 5 点)
