@@ -141,7 +141,7 @@ When extending this workspace:
 ### 前置库 starengine_lib 的版本与兼容性契约（全局，2026-09-22 用户裁决）
 
 > 本契约**跨两个仓库生效**（库仓 `F:\MCProject\starengine_lib` ↔ 本仓三条线），是库的**公开兼容性承诺**。
-> 库侧原文见其 `README.md` §6「版本与兼容」、双 `CHANGELOG`、以及三处 `gradle.properties` 的 `1.0.0` 条目。
+> 库侧原文见其 `README_ZH.md` §6「版本与兼容」（英文版为 `README.md` §6 "Versions and compatibility"）、双 `CHANGELOG`、以及三处 `gradle.properties` 的 `1.0.0` 条目。
 
 1. **禁止破坏性更新（第一位数字不变时）**：凡**主版本号（第一位数字）不变**的库版本（当前 = `1.x`），
    **不得**删除或改名任何 public 类型 / 方法 / 字段 / 常量，**不得**改变其可见性、签名或既有语义；
