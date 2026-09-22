@@ -72,13 +72,15 @@ jobs:
         # **库版本 bump 时本行必须同步更新**(与 neoforge-1.21.1 / forge-1.20.1 / neoforge-26.1.2
         # 的 gradle.properties 的 starengine_lib_version 同一提交里一起改;`.5` 旧钉值为库提交
         # d5b0776,`.6` 为 716f976,`.10` 终态即库提交 ec28415,`.16` 终态即库提交 f706be0,
-        # `1.0.0` 即库提交 205eed8,`1.0.1` 即库提交 4b17116),且该提交需已推送到远端。
-        # ✅ **2026-09-22:库仓库已推送**(远端 `main` 现含 205eed8 及其后续;库 CI 同批跑通并
-        #    产出 tag `1.0.0` + 三平台 jar 的 Release)⇒ 本 ref 现可被 CI 检出,KNOWN-ISSUES KI-M4① 已解除。
+        # `1.0.0` 首个正式版即库提交 205eed8;`1.0.1` **从未推送、已撤销** —— 其内容(移除 forge 侧
+        # Curios 前置)并入 1.0.0 ⇒ 现钉库提交 c9818d1),且该提交需已推送到远端。
+        # ✅ **2026-09-22:库仓库已推送**(远端 `main` 含 tag `1.0.0` + 三平台 jar 的 Release;
+        #    Curios 前置移除并入 1.0.0 后,同一次 CI 复用既有 tag 并 --clobber 刷新 Release 附件)
+        #    ⇒ 本 ref 可被 CI 检出,KNOWN-ISSUES KI-M4① 已解除。
         uses: actions/checkout@v4
         with:
           repository: merlin-kitsune/starengine_lib
-          ref: 4b17116920499911d059b342a72a9dfffd05469c   # = 1.0.1(移除 forge 侧 Curios 前置:mods.toml 删依赖块 + modImplementation -> modCompileOnly)
+          ref: c9818d189d47f9c6ece6193123cbf57db2f22958   # = 1.0.0(含「移除 forge 侧 Curios 前置」:mods.toml 删依赖块 + modImplementation -> modCompileOnly;此改动原拟作 1.0.1,已撤销并并入 1.0.0)
           path: .ci/starengine_lib
           fetch-depth: 1
 
