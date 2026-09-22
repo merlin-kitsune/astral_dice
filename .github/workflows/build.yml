@@ -60,7 +60,7 @@ jobs:
         # 构建出的库必须**恰好**是 `starengine_lib_version` 指定的那一版 —— 浮动 main 会让
         # 「区间下界 [1.0.0,2.0)」与「CI 实际 publishToMavenLocal 出的版本」脱钩,
         # 一旦库在两次 CI 之间 bump 或改动坐标,断在依赖解析(本地不可复现,只在 CI 暴露)。
-        # 现固定为 `starengine_lib_version=1.0.0` 的提交(该提交里三平台 mod_version 均为 1.0.1;
+        # 现固定为 `starengine_lib_version=1.0.0` 的提交(该提交里三平台 mod_version 均为 1.0.0;
         # 它是快照系列终态 `.16` 的**规范化**结果 —— 库内 Java 源码零改动,仅版本号去掉 -SNAPSHOT,
         # 同时带着此前两批修复:**库自身被 FML 拒载**的根因修复
         # —— 1.21.1 的 loaderVersion 槽曾误填 NeoForge 版本带 [21.1,21.2),而该槽比的是 javafml
@@ -72,15 +72,15 @@ jobs:
         # **库版本 bump 时本行必须同步更新**(与 neoforge-1.21.1 / forge-1.20.1 / neoforge-26.1.2
         # 的 gradle.properties 的 starengine_lib_version 同一提交里一起改;`.5` 旧钉值为库提交
         # d5b0776,`.6` 为 716f976,`.10` 终态即库提交 ec28415,`.16` 终态即库提交 f706be0,
-        # `1.0.0` 首个正式版即库提交 205eed8;`1.0.1` **从未推送、已撤销** —— 其内容(移除 forge 侧
-        # Curios 前置)并入 1.0.0 ⇒ 现钉库提交 c9818d1),且该提交需已推送到远端。
-        # ✅ **2026-09-22:库仓库已推送**(远端 `main` 含 tag `1.0.0` + 三平台 jar 的 Release;
-        #    Curios 前置移除并入 1.0.0 后,同一次 CI 复用既有 tag 并 --clobber 刷新 Release 附件)
+        # `1.0.0` 首个正式版即库提交 205eed8;`1.0.1` 这个版本号**从未推送、已撤销** —— 前后两批内容
+        # (前者库提交 c9818d1,后者库提交 b90a16e)⇒ 现钉库提交 b90a16e),且该提交需已推送到远端。
+        # ✅ **2026-09-23:库仓库已推送**(远端 `main` = b90a16e,含 tag `1.0.0` + 三平台 jar 的 Release;
+        #    两批「原拟 1.0.1」的改动均已并入 1.0.0,同一次 CI 复用既有 tag 并 --clobber 刷新 Release 附件)
         #    ⇒ 本 ref 可被 CI 检出,KNOWN-ISSUES KI-M4① 已解除。
         uses: actions/checkout@v4
         with:
           repository: merlin-kitsune/starengine_lib
-          ref: 9273fff19d19e1b7c0ad2cfecc44fd8cb1ec1816   # = 1.0.1(为 neoforge-26.1.2 补齐平台侧经济存储实现 NeoForgeEconomyStorage,使三线功能对等;纯新增,消费方区间 [1.0.0,2.0) 不动)
+          ref: b90a16e1d935e9eb1409f8fe28745a41194f2727   # = 1.0.0(含为 neoforge-26.1.2 补齐的平台侧经济存储实现 NeoForgeEconomyStorage,使三线功能对等;纯新增,消费方区间 [1.0.0,2.0) 不动)
           path: .ci/starengine_lib
           fetch-depth: 1
 
