@@ -766,7 +766,7 @@
   "item.astral_dice.sherry_sign": "怪力侦探立牌",
   "effect.astral_dice.sherry_reasoning": "推理时间",
   "effect.astral_dice.sherry_reasoning.description": "每层攻击力 §e+1§7、受到的伤害 §e-1§7；骰神赐福结束后减少 §e1§7 层",
-  "tooltip.astral_dice.sign.sherry_active": "将 §e12§7 格内所有敌对目标扔向准星指向的地面（§e1-6§7 格内，须为地面或水面），随后对被投掷目标造成 §e2§7 点伤害并施加 §e1§7 层「标记」\n  如果玩家「推理时间」达到 §e5§7 层，则对被投掷目标额外造成 §e5§7 点伤害",
+  "tooltip.astral_dice.sign.sherry_active": "将 §e12§7 格内所有敌对目标扔向面前 §e1-6§7 格的位置，随后对被投掷目标造成 §e2§7 点伤害并施加 §e1§7 层「标记」\n  如果玩家「推理时间」达到 §e5§7 层，则对被投掷目标额外造成 §e5§7 点伤害",
   "tooltip.astral_dice.sign.sherry_passive": "每攻击一个不少于 §e20§7 血的敌对目标，获得 §e1§7 层「推理时间」（最大 §e5§7 层）\n  每层「推理时间」增加 §e1§7 点攻击力，减少 §e1§7 点伤害；每次骰神赐福效果结束后扣除 §e1§7 层「推理时间」",
   "tooltip.astral_dice.sign.sherry_zhishou_shouhu": "挚友守护：同队伍内若存在装备人偶师立牌的玩家，则使该玩家受到的伤害 §e-1§7",
   "tooltip.astral_dice.sign.sherry_layers": "推理时间：§e%s§7 / §e%s§r",
