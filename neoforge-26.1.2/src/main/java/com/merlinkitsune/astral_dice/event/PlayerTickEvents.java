@@ -143,6 +143,14 @@ public class PlayerTickEvents {
         if (player instanceof ServerPlayer serverPlayer) {
             com.merlinkitsune.astral_dice.item.card.BaseEffectCardItem.tickHeldSelector(serverPlayer);
         }
+        // 星币钱包余额 → 客户端(余额条显示):1 秒节流 + 值变化才发包,覆盖一切改动来源
+        // (自身按钮 / 发币漏斗 / 拾取吸收 / 库的 /starcoin / 第三方 API),见 economy/StarCoinBalanceSync
+        // ⚠️ 26.1.2 迁移时**漏掉了这一处**:本线原先只有 PlayerLifecycleHandler 的 forceResend
+        //    (登录/重生一次),余额条进世界后就再不刷新 —— 存款/取款/拾取后数字长期不跟手
+        //    (2026-09-22 用户报「存款数存在延迟,不能实时跟进正确余额」)。
+        if (player instanceof ServerPlayer balanceSyncTarget) {
+            com.merlinkitsune.astral_dice.economy.StarCoinBalanceSync.tick(balanceSyncTarget);
+        }
         if (player.tickCount % 20 != 0) return;
         // 赋能:每 0:30 减少 1 层(剩余 1 层时直接归 0)
         com.merlinkitsune.astral_dice.item.EmpowerManager.tick(player);

@@ -516,6 +516,8 @@ function spawnDummy(p, typeId, dist) {
     try { mob.setNoAi(true); } catch (e1) { /* 忽略 */ }
     try { mob.setPersistenceRequired(); } catch (e2) { /* 忽略 */ }
     p.level.addFreshEntity(mob);
+    // 登记进「落地冻结」tick 采样器（见文件末尾 AP_FREEZE 段）
+    try { FP_TRACK.push({ e: mob, n: -1, t: 0, edge: -1, py: p.getY() - 0, px: p.getX() - 0, pz: p.getZ() - 0 }); } catch (eTrack) { /* 跟踪失败不影响生成 */ }
     return mob;
 }
 
@@ -10252,6 +10254,7 @@ function doSignPrep(ctx, tag, signIdText, starText) {
  *       cd_started,gate_on,last_seen,err` + `domLockStateRead`。
  */
 function doSignCast(ctx, tag) {
+    SS_TRACE = FP_TICK;   // 落点追踪基准:AP_DROP 自此刻起连续 14 tick 输出
     var p = ctx.source.getPlayerOrException();
     var sign0 = domLockSign(p);
     var lock0 = domBool(function () { return BaseSignItemClass.isSignActiveLocked(p); });
@@ -13166,6 +13169,39 @@ function doSsFire(ctx, tag) {
  *
  * 为什么不用 `signprep` 的 star 参数:那个参数依赖 `SignLagStarLightClass`,
  * 该句柄为 null 时**静默不设置**(只回显 star=-2),实测三次都没生效 ⇒ 自带一条。 */
+/**
+ * 只读:靶子**最近一次受伤**的伤害源 + AI 冻结态 —— 验证「怪力投掷」已改判为**法伤**
+ * (类型 id 应为 `card_spell`;原实现走 `playerAttack` ⇒ `player_attack`)并核对落地保险冻结。
+ *
+ * 读数:`type` = 伤害源 msgId;`direct`/`causing` = 直接实体 / 归因实体的类型
+ * (法伤的 `direct` 应为 `null`、`causing` 为玩家);`noai` = 目标当前是否 noAi。
+ */
+function doSsDmg(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var t = ssFindTarget(p, 8);
+    var found = (t == null) ? 0 : 1;
+    var typeId = "-", direct = "-", causing = "-", hp = -1, noai = -1;
+    if (t != null) {
+        try { hp = t.getHealth() - 0; } catch (e0) { }
+        // 直接调用，靠异常兜底（`Class.isInstance` 在 Rhino 下不可靠 —— 首轮实测恒抛异常）
+        try { noai = t.isNoAi() ? 1 : 0; } catch (e1) { noai = -4; }
+        try {
+            var ds = t.getLastDamageSource();
+            if (ds == null) {
+                typeId = "none";
+            } else {
+                try { typeId = "" + ds.getMsgId(); } catch (e2) { }
+                try { direct = (ds.getDirectEntity() == null) ? "null" : ("" + ds.getDirectEntity().getType()); } catch (e3) { }
+                try { causing = (ds.getEntity() == null) ? "null" : ("" + ds.getEntity().getType()); } catch (e4) { }
+            }
+        } catch (e5) { }
+    }
+    send(ctx, "AP_" + tag + "_SSDMG:found=" + found + ":t_hp=" + hp + ":noai=" + noai
+        + ":type=" + typeId + ":direct=" + direct + ":causing=" + causing);
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
 function doSsStar(ctx, tag, n) {
     var p = ctx.source.getPlayerOrException();
     var want = n - 0;
@@ -13326,6 +13362,27 @@ function doSherryRead(ctx, tag) {
     try { stand = domSignEquipped(p); } catch (e3) { }
     send(ctx, "AP_" + tag + "_SHERRY:layers=" + layers + ":mirror=" + mirror + ":stand=" + stand
         + (err === "" ? "" : ":err=" + err));
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+/** 只读:靶子相对玩家的**水平距离**与高度差 —— 验证「投掷落点回退」四段规则(2026-09-22 补充)。 */
+function doSherryDrop(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var t = ssFindTarget(p, 16);
+    var found = (t == null) ? 0 : 1;
+    var hd = -1, dy = -1, ty = -1, noai = -1;
+    if (t != null) {
+        try {
+            var dx = t.getX() - p.getX();
+            var dz = t.getZ() - p.getZ();
+            hd = Math.round(Math.sqrt(dx * dx + dz * dz) * 100) / 100;
+        } catch (e1) { hd = -2; }
+        try { dy = Math.round((t.getY() - p.getY()) * 100) / 100; } catch (e2) { dy = -2; }
+        try { ty = Math.round(t.getY() * 100) / 100; } catch (e3) { }
+        try { noai = t.isNoAi() ? 1 : 0; } catch (e4) { noai = -4; }
+    }
+    send(ctx, "AP_" + tag + "_SDROP:found=" + found + ":hd=" + hd + ":dy=" + dy + ":ty=" + ty + ":noai=" + noai);
     send(ctx, "AP_" + tag + "_DONE");
     return 1;
 }
@@ -14705,6 +14762,11 @@ ServerEvents.commandRegistry(event => {
                     .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
                         return doSsGeom(ctx, StringArg.getString(ctx, "tag"));
                     }))))
+            .then(Commands.literal("ssdmg")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doSsDmg(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
             .then(Commands.literal("eliteread")
                 .then(Commands.argument("tag", StringArg.word())
                     .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
@@ -14715,10 +14777,74 @@ ServerEvents.commandRegistry(event => {
                     .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
                         return doSherryRead(ctx, StringArg.getString(ctx, "tag"));
                     }))))
+            .then(Commands.literal("sherrydrop")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doSherryDrop(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
             .then(Commands.literal("hannaread")
                 .then(Commands.argument("tag", StringArg.word())
                     .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
                         return doHannaRead(ctx, StringArg.getString(ctx, "tag"));
                     }))))
     );
+});
+
+
+// ══════════════════════════════════════════════════════════════════════════
+//  落地冻结的 **tick 级取证**（2026-09-22 新增）
+//
+//  为什么需要:命令注入的端到端延迟实测**大于 2 秒**（按 T 开聊天 → 输入 → 回车，
+//  且每条探针命令本身也耗时），而「落地保险冻结」只有 40 tick = 2 秒 ⇒ 任何
+//  「投掷之后再读 noAi」的用例都必然读到**已解冻**的状态（首轮实测:signcast 后
+//  600ms 的读数已是 noai=0，说明真实间隔 > 2.5 秒）。
+//
+//  本采样器在服务端 tick 里跟踪 `ssspawn` 生成的靶子，记录 noAi 的**边缘**与持续 tick:
+//    [AP_FREEZE] uuid=<id>:noai=<0|1>:since=<tick>:at=<tick>:dur=<n>
+//  判据:noai=1 的边缘 = 投掷瞬间 `schedule` 的 `setNoAi(true)`;
+//        noai=0 且 `dur=50` 的边缘 = 落地(飞行 10) + 冻结 40 ⇒ **冻结 2 秒**成立。
+//  对照:**原本就 noAi 的靶子不登记解冻**(hadNoAi ⇒ 不写 RELEASES) ⇒ 只会有 noai=1 边缘;
+//        「先 /data merge {NoAI:0b} 再投掷」的靶子才会给出 dur=50 的那条。
+// ══════════════════════════════════════════════════════════════════════════
+var FP_TRACK = [];      // 元素 = { e: 实体, n: 上次 noAi(-1=未采样), t: 上次变化时的 FP_TICK }
+var FP_TICK = 0;        // 采样器自持 tick 计数（KubeJS 下拿不到 level.getGameTime）
+var SS_TRACE = 0;       // 「怪力投掷」施放瞬间的 FP_TICK（落点追踪基准；0=未施放）
+
+ServerEvents.tick(event => {
+    FP_TICK = FP_TICK + 1;
+    if (FP_TRACK.length === 0) return;
+    var keep = [];
+    for (var i = 0; i < FP_TRACK.length; i++) {
+        var tr = FP_TRACK[i];
+        var e = tr.e;
+        var alive = false;
+        try { alive = e.isAlive() && !e.isRemoved(); } catch (e1) { alive = false; }
+        if (!alive) continue;
+        var n = -1;
+        try { n = e.isNoAi() ? 1 : 0; } catch (e2) { keep.push(tr); continue; }
+        if (tr.n < 0) {
+            tr.n = n;                 // 首次见到:只记基线,不输出
+            tr.t = FP_TICK;
+        } else if (tr.n !== n) {
+            console.info("[AP_FREEZE] idx=" + i + ":noai=" + n + ":since=" + tr.t
+                + ":at=" + FP_TICK + ":dur=" + (FP_TICK - tr.t));
+            tr.n = n;
+            tr.t = FP_TICK;
+        }
+        // 落点追踪:`signcast` 施放瞬间起连续 14 tick 记录实体相对玩家的位置。
+        // 飞行为 10 tick(FLIGHT_TICKS),第 10 tick 才 teleportTo(落点) ⇒ k=10 那行即落点坐标。
+        // 用「施放瞬间」而不是 noai 边缘做基准 ⇒ 靶子可保持无 AI(不会自己走动污染读数)。
+        if (SS_TRACE > 0 && FP_TICK >= SS_TRACE && FP_TICK <= SS_TRACE + 14) {
+            var dy = -999, hd = -999;
+            try { dy = Math.round((e.getY() - tr.py) * 100) / 100; } catch (e5) { }
+            try {
+                var dx = e.getX() - tr.px, dz = e.getZ() - tr.pz;
+                hd = Math.round(Math.sqrt(dx * dx + dz * dz) * 100) / 100;
+            } catch (e6) { }
+            console.info("[AP_DROP] idx=" + i + ":k=" + (FP_TICK - SS_TRACE) + ":dy=" + dy
+                + ":hd=" + hd + ":noai=" + n + ":py=" + (Math.round(tr.py * 100) / 100));
+        }
+        keep.push(tr);
+    }
+    FP_TRACK = keep;
 });

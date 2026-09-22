@@ -106,6 +106,13 @@ function noaiSweep(server) {
                     if (seen[key] === true) continue;
                     seen[key] = true;
                 }
+                // 本仓新增(2026-09-22):**带 `astral_ss_target` 的靶子不强制 noAi** ——
+                // 怪力侦探的「落地保险冻结」只在**原本非 noAi** 的目标上登记延迟解冻;若被本脚本
+                // 每 2 tick 强制 noAi,产品那条分支永远不可达(用例 SHERRY-FIX 实测踩到)。
+                // 该 tag 只由 `ssspawn` 添加 ⇒ 只影响显式需要「带 AI 靶子」的用例。
+                try {
+                    if (m.entityTags() != null && m.entityTags().contains("astral_ss_target")) continue;
+                } catch (eTag) { /* 取不到 tag ⇒ 按原逻辑强制 */ }
                 mobs++;
                 var isNo = false;
                 try { isNo = m.isNoAi(); } catch (e4) { isNo = false; }

@@ -62,6 +62,16 @@ public final class ShootingStarManager {
     /** 路过判定半径（格，用户裁决）。 */
     public static final double RADIUS = 3.0D;
 
+    /**
+     * 路过判定的**竖直窗口**（格，以双方**脚底**之差的绝对值计）—— 用户 2026-09-22 裁决。
+     *
+     * <p>为什么需要它：候选集用的 {@code inflate(RADIUS)} 是**三轴同时膨胀的 AABB**，竖直容差实为
+     * 「脚底 −3 … 脚底 +4.8」——比水平还宽，于是站在 4 格高的台子上也会命中地面的怪
+     * （实机取证：靶子 +4 格被接受、+6 格被拒绝）。技能语义是「**路过**」，只允许同一层
+     * （含跳跃与上下台阶），故在粗筛之后再做这层精筛。
+     */
+    public static final double PASS_VERTICAL_WINDOW = 2.0D;
+
     /** 粒子下落耗时：1 秒（用户裁决；2026-09-21 改速后**时长保持不变**）。 */
     public static final int FALL_TICKS = 20;
 
@@ -196,7 +206,14 @@ public final class ShootingStarManager {
         return curios.get().findFirstCurio(s -> s.is(item)).isPresent();
     }
 
-    /** 取半径内最近的合格敌对目标（不合格 = 非敌对 / 最近被本玩家攻击过）。 */
+    /**
+     * 取「路过窗口」内最近的合格敌对目标（不合格 = 出窗口 / 非敌对 / 最近被本玩家攻击过）。
+     *
+     * <p><b>两级判据</b>（用户 2026-09-22 裁决「水平圆柱 + 同高度窗口」）：{@code inflate(RADIUS)} 的
+     * AABB 只当**粗筛** —— 它三轴同时膨胀、竖直容差达「脚底 −3 … +4.8」，**不能**直接当命中判据；
+     * 随后由 {@link #isWithinPassWindow} 做「**水平距离 ≤ {@link #RADIUS}** + **脚底高差 ≤
+     * {@link #PASS_VERTICAL_WINDOW}**」的精筛。「最近的」也按**水平**距离取，与门限同口径。
+     */
     private static LivingEntity findPassingTarget(ServerPlayer player) {
         AABB box = player.getBoundingBox().inflate(RADIUS);
         LivingEntity best = null;
@@ -205,13 +222,32 @@ public final class ShootingStarManager {
             if (candidate == player || !candidate.isAlive()) continue;
             if (!HostileTargets.isHostile(player, candidate)) continue;
             if (attackedByPlayerRecently(player, candidate)) continue;
-            double distSqr = player.distanceToSqr(candidate);
+            if (!isWithinPassWindow(player, candidate)) continue;
+            double distSqr = horizontalDistanceSqr(player, candidate);
             if (distSqr < bestDistSqr) {
                 bestDistSqr = distSqr;
                 best = candidate;
             }
         }
         return best;
+    }
+
+    /**
+     * 「路过窗口」精筛：**水平距离 ≤ {@link #RADIUS}** 且 **脚底高差 ≤ {@link #PASS_VERTICAL_WINDOW}**。
+     *
+     * <p>水平用两实体中心点的水平距离（不再是 AABB 的「半径 + 双方半宽」）⇒ 与文案「半径 N 格」字面一致；
+     * 竖直按**脚底**差：玩家跳跃高度约 1.25 格、台阶 1 格都落在窗口内，2 格以上的高台/坑洞不再算「路过」。
+     */
+    private static boolean isWithinPassWindow(LivingEntity self, LivingEntity other) {
+        if (horizontalDistanceSqr(self, other) > RADIUS * RADIUS) return false;
+        return Math.abs(self.getY() - other.getY()) <= PASS_VERTICAL_WINDOW;
+    }
+
+    /** 两点之间的**水平**平方距离（忽略 Y）—— 与「路过窗口」同口径，「取最近」也用它。 */
+    private static double horizontalDistanceSqr(LivingEntity a, LivingEntity b) {
+        double dx = a.getX() - b.getX();
+        double dz = a.getZ() - b.getZ();
+        return dx * dx + dz * dz;
     }
 
     /** 该目标最近一次受伤是否来自本玩家（= 「对其发动过攻击」）。 */

@@ -34,7 +34,9 @@ import java.util.List;
  * <h3>被动「幻想千金」</h3>
  * <ul>
  *   <li><b>战斗骰点 = 6</b> ⇒ 佩戴者获得 {@value #COIN_ON_SIX} 星币;</li>
- *   <li><b>路过友方玩家</b>(半径 {@value #PASS_RADIUS} 格,用户 2026-09-21 裁决)⇒ 该玩家获得
+ *   <li><b>路过友方玩家</b>(水平距离 ≤ {@value #PASS_RADIUS} 格,用户 2026-09-21 裁决;
+ *       <b>脚底高差 ≤ {@value #PASS_VERTICAL_WINDOW} 格</b>,用户 2026-09-22 裁决 —— 「路过」只认同一层,
+ *       上下台阶算,跨 2 格以上的高台/坑洞不算)⇒ 该玩家获得
  *       {@value #COIN_ON_PASS} 星币,佩戴者获得 1 层「人偶制作」;
  *       <b>若佩戴者处于「魔女漂浮」</b> ⇒ 该玩家改为获得 {@value #COIN_ON_PASS_FLOAT} 星币;</li>
  *   <li>「人偶制作」达 {@value #MAX_CRAFT} 层 ⇒ **归零**并转为「人偶完成」(用户裁决);
@@ -68,6 +70,11 @@ public class HannaSignItem extends BaseSignItem {
     public static final int MAX_CRAFT = 7;
     /** 「路过友方玩家」的判定半径(格) —— 用户 2026-09-21 裁决 */
     public static final double PASS_RADIUS = 3.0D;
+    /** 「路过」判定的**竖直窗口**(格,以双方**脚底**之差计) —— 用户 2026-09-22 裁决。
+     *  候选集用的 `inflate(PASS_RADIUS)` 是三轴同时膨胀的 AABB,竖直容差实为「脚底 −3 … +4.8」
+     *  ——比水平还宽,站上 4 格高台也会「路过」地面玩家(实机取证:+4 格被接受、+6 格被拒绝)。
+     *  技能语义是「**路过**」,只允许同一层(含跳跃与上下台阶),故在粗筛后再做这层精筛。 */
+    public static final double PASS_VERTICAL_WINDOW = 2.0D;
     /** 两个被动各自的触发间隔 = 1:00 */
     public static final int PASSIVE_INTERVAL_TICKS = 1200;
     /** 「人偶完成」附加给友方的迅捷 II 时长 = 1:00 */
@@ -218,7 +225,8 @@ public class HannaSignItem extends BaseSignItem {
      * 路过判定(由 {@code event/PlayerTickEvents} 的玩家 tick 每 tick 驱动)。
      *
      * <p>两条被动**各自独立**的 1:00 冷却:冷却未到即整体早退(因此每 tick 的扫描成本可忽略);
-     * 冷却已到时扫描 {@value #PASS_RADIUS} 格内的玩家,命中则结算并立刻写入该被动的冷却。
+     * 冷却已到时扫描 {@value #PASS_RADIUS} 格内的玩家(**水平距离口径**,且脚底高差须 ≤
+     * {@value #PASS_VERTICAL_WINDOW} 格),命中则结算并立刻写入该被动的冷却。
      *
      * <p><b>「每 1:00 仅触发 1 次」的实现口径</b>:一次触发最多结算**一名**玩家(取距离最近者),
      * 随后该被动进入 1:00 冷却 —— 避免 3 格内站着一队人时被一次性多发。
@@ -227,9 +235,11 @@ public class HannaSignItem extends BaseSignItem {
         if (wearer == null || wearer.level().isClientSide()) return;
         if (!isEquipped(wearer)) return;
         long now = wearer.level().getGameTime();
+        // inflate(PASS_RADIUS) 只当**粗筛**(它三轴同时膨胀、竖直容差达「脚底 −3 … +4.8」,
+        // 不能直接当命中判据);随后由 isWithinPassWindow 做「水平 ≤ 半径 + 脚底高差 ≤ 窗口」的精筛。
         List<Player> nearby = wearer.level().getEntitiesOfClass(Player.class,
                 wearer.getBoundingBox().inflate(PASS_RADIUS),
-                p -> p != wearer && p.isAlive());
+                p -> p != wearer && p.isAlive() && isWithinPassWindow(wearer, p));
 
         // ① 挚友祝福:路过装备「怪力侦探」立牌的玩家
         if (now >= ModAttachments.getHannaBlessingCooldownEnd(wearer)) {
@@ -272,13 +282,31 @@ public class HannaSignItem extends BaseSignItem {
         return true;
     }
 
-    /** 在候选里按「距离最近」取第一个满足条件的玩家(平局按 UUID 保证稳定) */
+    /**
+     * 「路过窗口」精筛:**水平距离 ≤ {@link #PASS_RADIUS}** 且 **脚底高差 ≤ {@link #PASS_VERTICAL_WINDOW}**。
+     *
+     * <p>水平用两玩家中心点的水平距离(不再是 AABB 的「半径 + 双方半宽」)⇒ 与文案「半径 N 格」一致;
+     * 竖直按**脚底**差:跳跃约 1.25 格、台阶 1 格都在窗口内,2 格以上的高台/坑洞不再算「路过」。
+     */
+    private static boolean isWithinPassWindow(Player self, Player other) {
+        if (horizontalDistanceSqr(self, other) > PASS_RADIUS * PASS_RADIUS) return false;
+        return Math.abs(self.getY() - other.getY()) <= PASS_VERTICAL_WINDOW;
+    }
+
+    /** 两点之间的**水平**平方距离(忽略 Y) —— 与「路过窗口」同口径,「取最近」也用它。 */
+    private static double horizontalDistanceSqr(Player a, Player b) {
+        double dx = a.getX() - b.getX();
+        double dz = a.getZ() - b.getZ();
+        return dx * dx + dz * dz;
+    }
+
+    /** 在候选里按「**水平**距离最近」取第一个满足条件的玩家(平局按 UUID 保证稳定,与门限同口径) */
     private static Player nearest(List<Player> candidates, Player self, java.util.function.Predicate<Player> filter) {
         Player best = null;
         double bestDist = Double.MAX_VALUE;
         for (Player p : candidates) {
             if (!filter.test(p)) continue;
-            double d = p.distanceToSqr(self);
+            double d = horizontalDistanceSqr(self, p);
             if (d < bestDist || (d == bestDist && best != null
                     && p.getUUID().compareTo(best.getUUID()) < 0)) {
                 best = p;

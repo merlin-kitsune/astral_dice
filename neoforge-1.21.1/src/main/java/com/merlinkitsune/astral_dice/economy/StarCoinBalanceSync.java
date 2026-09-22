@@ -50,6 +50,18 @@ public final class StarCoinBalanceSync {
         syncIfChanged(player);
     }
 
+    /**
+     * 余额刚被**本模组**改动（存入 / 取出 / 拾取吸收 / 发币漏斗）⇒ 立刻推给客户端。
+     *
+     * <p>与 1 秒轮询的分工：轮询是**兜底**，负责覆盖我们看不见的来源（第三方模组、库的
+     * {@code /starcoin} 命令、直接写账本）；本方法负责把「玩家刚做过的操作」在**同一 tick**
+     * 变成客户端读数 —— 否则按钮点完要等最多 1 秒数字才跳，观感上就是「存款数不跟手」。
+     */
+    public static void notifyChanged(net.minecraft.world.entity.player.Player player) {
+        if (!(player instanceof ServerPlayer serverPlayer)) return;
+        forceResend(serverPlayer);
+    }
+
     private static void syncIfChanged(ServerPlayer player) {
         // 钱包功能关闭时不产生任何网络流量（此时界面上也没有余额条）
         if (!StarCoinCurrency.isWalletEnabled()) return;

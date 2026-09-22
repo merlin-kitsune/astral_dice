@@ -1,0 +1,191 @@
+{
+  "case_id": "WALLET-GAMEMODE-26.1.2",
+  "title": "星币钱包：创造模式下的可见性（切游戏模式后不再整条消失）+ 余额实时跟随（拾取吸收后数字立即跟上）",
+  "version": "26.1.2",
+  "target": {
+    "type": "feature",
+    "ref": "star-coin-wallet-visibility-and-balance-sync"
+  },
+  "steps": [
+    {
+      "op": "note",
+      "text": "目的（2026-09-22 用户报「切换创造模式会导致钱包栏消失、只有重开界面才显示」＋「存款数不实时」）：\n  ① 基线：**生存**物品栏 ⇒ 余额条 + 钱包按钮 + 星币 + 星币袋四个控件都应在。\n  ② **创造**模式打开物品栏（默认落在「建筑方块」标签页）⇒ 修复后**余额条 + 钱包按钮**必须仍在。\n     原先 26.1.2 的 `resolveTarget` 对创造栏要求 `isInventoryOpen()`（= 选中「物品栏」标签页），\n     而创造栏每次 `init()` 都把 `selectedTab` 重置为 `CreativeModeTabs.getDefaultTab()` =「建筑方块」⇒\n     整组控件被判定隐藏；又因原版 `InventoryScreen.containerTick()` 在 `hasInfiniteMaterials()` 时**换屏**到创造栏\n     （切模式即触发），观感就是「切创造模式后钱包栏整条消失」。\n  ③ 余额实时：走**真实玩家路径** —— `/give` 星币袋 ⇒ `drop` 丢出 ⇒ 掉落物被拾取 ⇒「获得即入钱包」吸收。\n     26.1.2 原先**漏移植**了 `StarCoinBalanceSync.tick`（每玩家 tick 的 1 秒节流回推），\n     余额条只在登录/重生那一次刷新 ⇒ 存款/拾取后数字长期不跟手。\n\n⚠️ 为什么不用 `/gamemode` 在「界面开着时」注入：`inject_command` 是真实的「T 开聊天 → 输入 → 回车」，\n   而**容器界面开着时 T 无绑定、命令会被 GUI 吞掉**（见 mt_inject.ps1 的状态归一化穷举）。\n   故按「关界面 → 切模式 → 重开界面」走等价路径（26.1.2 是即时模式，每帧按 `mc.screen` 求值）。\n⚠️ 环境前提：`run/26.1.2/options.txt` 的 `guiScale` 必须 = 2。创造栏的控件基座在面板**上方界外**\n   （余额条 -76 / 钱包按钮 -74，GUI 像素），guiScale=4 时创造栏 guiTop 只有 67 ⇒ 控件被推到屏幕顶端之外\n   （实测：可见部分只剩下半截）。这是**测试窗口的缩放问题**，不是产品缺陷。\n\n读数口径：客户端探针 astral_wallet_vision.js 落盘 `AP_WALLET:evt=scr|bal:...`（通道 kubejs_client）＋\nprobe 自截图（纯 framebuffer，不含桌面）。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode survival",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/time set noon",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamerule advance_time false",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear @s",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "note",
+      "text": "① 生存基线：打开物品栏 ⇒ 四个控件 + 余额数字（0）都应在。"
+    },
+    {
+      "op": "inject_key",
+      "key": "e"
+    },
+    {
+      "op": "wait",
+      "ms": 3200
+    },
+    {
+      "op": "screenshot",
+      "tag": "wallet-gm-survival",
+      "mode": "window"
+    },
+    {
+      "op": "inject_key",
+      "key": "escape"
+    },
+    {
+      "op": "wait",
+      "ms": 1000
+    },
+    {
+      "op": "note",
+      "text": "② 创造模式：打开物品栏（默认「建筑方块」标签页）⇒ **余额条 + 钱包按钮**必须仍在（兑换按钮按设计仍只在「物品栏」标签页显示，避免压住物品格子）。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode creative",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_key",
+      "key": "e"
+    },
+    {
+      "op": "wait",
+      "ms": 3200
+    },
+    {
+      "op": "screenshot",
+      "tag": "wallet-gm-creative",
+      "mode": "window"
+    },
+    {
+      "op": "inject_key",
+      "key": "escape"
+    },
+    {
+      "op": "wait",
+      "ms": 1000
+    },
+    {
+      "op": "note",
+      "text": "③ 余额实时（拾取吸收路径，不用按钮点击）：先回到**生存**让玩家落地，再用 `/summon` 把 1 个星币袋**直接生成在玩家位置**（`q` 丢出会沿视线抛出、落在 1 格开外并超出拾取范围，故改用本路径），掉落物 40 tick 后自动拾取 ⇒「获得即入钱包」吸收 9 ⇒ 客户端 `bal=` 必须由 0 变 9。⚠️ 本线此前 `starengine_lib` 缺平台侧经济存储实现 ⇒ `isAvailable()` 恒 false、`/starcoin` 不注册、拾取不吸收；库补齐（1.0.1）后本用例才有意义 —— 同时以 `/starcoin get` 验证命令已注册。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/starcoin get",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode survival",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1400
+    },
+    {
+      "op": "inject_command",
+      "command": "/kill @e[type=item]",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/summon minecraft:item ~ ~ ~ {Item:{id:\"astral_dice:star_coin_bag\",count:1}}",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 5000
+    },
+    {
+      "op": "note",
+      "text": "④ 重开物品栏：余额条数字应为 9（星币袋面额 9）。"
+    },
+    {
+      "op": "inject_key",
+      "key": "e"
+    },
+    {
+      "op": "wait",
+      "ms": 3200
+    },
+    {
+      "op": "screenshot",
+      "tag": "wallet-balance-9",
+      "mode": "window"
+    },
+    {
+      "op": "inject_key",
+      "key": "escape"
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "note",
+      "text": "收尾：清掉测试用星币袋、余额归零、回到生存（不把测试状态留给用户环境）。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear @s",
+      "no_esc": true
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode survival",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    }
+  ],
+  "asserts": [
+    {
+      "type": "crash"
+    },
+    {
+      "type": "mixin"
+    }
+  ],
+  "evidence": [
+    "wallet-gm-survival",
+    "wallet-gm-creative",
+    "wallet-balance-9"
+  ],
+  "on_fail": "keep_game_running"
+}

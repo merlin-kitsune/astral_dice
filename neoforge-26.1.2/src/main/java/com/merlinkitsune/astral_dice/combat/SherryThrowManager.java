@@ -1,3 +1,4 @@
+// SHERRY_AIM_PATCH 2026-09-22（怪力侦探：法伤结算 / 准星落点 / 隔墙过滤 / 落地冻结）
 package com.merlinkitsune.astral_dice.combat;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
@@ -45,6 +46,14 @@ public final class SherryThrowManager {
     public static final double ARC_HEIGHT = 1.6D;
 
     /**
+     * 落地后「保险冻结」时长(tick) —— 用户 2026-09-22 裁决:被投出的怪 **2 秒**内不索敌、不攻击。
+     *
+     * <p>为什么需要:落点就在玩家面前 1–6 格,若落地即恢复 AI,怪会立刻反手攻击 —— 实测能把玩家打死。
+     * 因此落地**不立即**恢复 AI,而是登记一次延迟解冻(见 {@link #RELEASES});解冻时同时清掉索敌目标。
+     */
+    public static final int LANDING_FREEZE_TICKS = 40;
+
+    /**
      * 一次投掷作业。
      *
      * @param entityId    被投掷实体
@@ -64,6 +73,12 @@ public final class SherryThrowManager {
     }
 
     private static final List<Job> JOBS = new ArrayList<>();
+
+    /** 待解冻的目标(落地时登记、到点恢复 AI) —— 保险冻结的收尾队列。 */
+    private record Release(UUID entityId, ResourceKey<Level> dimension, long releaseTick) {
+    }
+
+    private static final List<Release> RELEASES = new ArrayList<>();
 
     private SherryThrowManager() {
     }
@@ -92,6 +107,7 @@ public final class SherryThrowManager {
     /** 推进全部作业;到达 {@link #FLIGHT_TICKS} 的那一 tick 落地并结算。 */
     @SubscribeEvent
     public static void onServerTick(ServerTickEvent.Post event) {
+        releaseDue(event.getServer());
         if (JOBS.isEmpty()) return;
         List<Job> snapshot = new ArrayList<>(JOBS);
         JOBS.clear();
@@ -107,10 +123,12 @@ public final class SherryThrowManager {
                 living.teleportTo(job.to().x, job.to().y, job.to().z);
                 living.setDeltaMovement(Vec3.ZERO);
                 living.fallDistance = 0.0F;
+                // 原本就 noAi 的目标保持原状;否则**延迟** LANDING_FREEZE_TICKS 再恢复 AI(落地保险冻结)
                 if (living instanceof Mob mob && !job.hadNoAi()) {
-                    mob.setNoAi(false);
+                    RELEASES.add(new Release(living.getUUID(), job.dimension(),
+                            level.getGameTime() + LANDING_FREEZE_TICKS));
                 }
-                settle(living, level.getPlayerByUUID(job.playerId()), job.bonusDamage());
+                settle(living, level, level.getPlayerByUUID(job.playerId()), job.bonusDamage());
                 continue;
             }
             // ---- 飞行中:水平线性插值 + 竖直抛物线抬升 ----
@@ -127,11 +145,25 @@ public final class SherryThrowManager {
         }
     }
 
-    /** 落地结算:固定伤害(2 点 + 额外) + 1 层「标记」。 */
-    private static void settle(LivingEntity target, Player caster, int bonusDamage) {
+    /**
+     * 落地结算:**法伤**(2 点 + 额外) + 1 层「标记」,并显示**法伤数字**。
+     *
+     * <p>⚠️ 必须走本模组**法伤**类型 {@code astral_dice:card_spell},并以
+     * {@link DiceCombatEvents#aoeProcessing} 包裹:原先用的
+     * {@code damageSources().playerAttack(...)} 会被当作**玩家近战** ⇒ 意外吃骰伤、
+     * 并触发「战斗伤害类」筹码(用户 2026-09-22 裁决)。
+     * 同时按「活体书页」同款发**法伤颜色**的伤害数字(用户要求「显示法伤数字」)。
+     */
+    private static void settle(LivingEntity target, ServerLevel level, Player caster, int bonusDamage) {
         float damage = 2.0F + bonusDamage;
         if (caster != null && !caster.level().isClientSide()) {
-            target.hurt(caster.damageSources().playerAttack(caster), damage);
+            DiceCombatEvents.aoeProcessing = true;
+            try {
+                target.hurt(com.merlinkitsune.astral_dice.damage.ModDamageTypes.cardSpell(level, caster), damage);
+            } finally {
+                DiceCombatEvents.aoeProcessing = false;
+            }
+            sendSpellDamageNumber(target, (int) damage);
         } else {
             target.hurt(target.damageSources().generic(), damage);
         }
@@ -140,8 +172,36 @@ public final class SherryThrowManager {
         }
     }
 
-    /** 清空全部待处理作业(测试脚手架/关服收敛用) */
+    /**
+     * 发**法伤颜色**的伤害数字(与「活体书页」同款) ——
+     * 1.21.1/26.1.2 走 {@code DamageNumberPayload},1.20.1 走 {@code ModNetwork.DamageNumberMessage}。
+     */
+    private static void sendSpellDamageNumber(LivingEntity target, int amount) {
+        com.merlinkitsune.astral_dice.network.DamageNumberPayload.send(target, amount, LivingPageImpact.SPELL_DAMAGE_COLOR);
+    }
+
+    /** 到点解冻(落地保险的收尾):恢复 AI 并**清掉索敌目标**,避免解冻瞬间立刻追杀玩家。 */
+    private static void releaseDue(net.minecraft.server.MinecraftServer server) {
+        if (RELEASES.isEmpty() || server == null) return;
+        List<Release> pending = new ArrayList<>(RELEASES);
+        RELEASES.clear();
+        for (Release r : pending) {
+            ServerLevel level = server.getLevel(r.dimension());
+            if (level == null) continue;
+            if (level.getGameTime() < r.releaseTick()) {
+                RELEASES.add(r);          // 未到点:留在队列里
+                continue;
+            }
+            if (level.getEntity(r.entityId()) instanceof Mob mob && !mob.isRemoved() && mob.isAlive()) {
+                mob.setNoAi(false);
+                mob.setTarget(null);
+            }
+        }
+    }
+
+    /** 清空全部待处理作业与待解冻记录(测试脚手架/关服收敛用) */
     public static void clearAll() {
         JOBS.clear();
+        RELEASES.clear();
     }
 }
