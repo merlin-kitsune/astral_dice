@@ -495,8 +495,8 @@ public final class TargetSelectionClient {
     /**
      * 技能名（按会话 actionId 取 lang）。
      *
-     * <p>用 {@code translatableWithFallback}：未登记的 actionId（演示/测试动作如
-     * {@code test_echo_*}）回退显示 actionId 本身，而不是裸的 lang 键名。
+     * <p>用 {@code translatableWithFallback}：未登记的 actionId 回退显示 actionId 本身，
+     * 而不是裸的 lang 键名。
      */
     private static Component skillName() {
         return Component.translatableWithFallback("msg.astral_dice.target_select.skill." + actionId, actionId);

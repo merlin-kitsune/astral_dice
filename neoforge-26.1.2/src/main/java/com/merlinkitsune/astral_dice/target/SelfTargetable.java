@@ -17,8 +17,8 @@ package com.merlinkitsune.astral_dice.target;
  * {@code registerSelectorAction(actionId, allowSelf)} 的 {@code allowSelf}）；③ 史莱姆立牌 lulu 的主动
  * 「治愈粘液」（{@code lulu_healing_slime}，2026-09-19 重写为「对自身或被指向的玩家施加」时实现）。其余动作恒为
  * {@code false}（未实现本接口，或实现但返回 false —— 如效果牌 {@code you_have_i_have} / {@code living_page}
- * 与立牌动作 {@code bonnie_undercover} / {@code haiqing_weak_mark} / {@code moses_apply_broken}、演示动作
- * {@code test_echo_*}），玩家可见行为与改动前逐字一致。放行做在**消费方**而不动前置库 ——
+ * 与立牌动作 {@code bonnie_undercover} / {@code haiqing_weak_mark} / {@code moses_apply_broken}），
+ * 玩家可见行为与改动前逐字一致。放行做在**消费方**而不动前置库 ——
  * {@link SelectorTargets#matches(TargetType, Player, LivingEntity, boolean)} 这一重载只在
  * 「会话允许自身 + 目标就是选择者」时放行，{@link TargetSelectionManager#confirm} 会把
  * {@code Session.allowSelf} 交给它。故无需放宽 {@code TargetType#matches}（该枚举仍在库里排除自身）。

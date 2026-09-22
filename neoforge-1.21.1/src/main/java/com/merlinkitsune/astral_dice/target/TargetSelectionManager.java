@@ -260,7 +260,7 @@ public final class TargetSelectionManager {
         notifyActionBar(player, "msg.astral_dice.target_select.applied", ChatFormatting.YELLOW, target.getDisplayName());
         action.apply(player, target);
         // 立牌主动技能前置门控(2026-09-17):由立牌登记的会话在**确认成功**后才恢复原流程剩余步骤
-        // (风扇筹码发牌 + 立牌主动响应事件/默认提示);非立牌会话(test_echo_* 等)无记录 ⇒ 空操作。
+        // (风扇筹码发牌 + 立牌主动响应事件/默认提示);非立牌会话无记录 ⇒ 空操作。
         com.merlinkitsune.astral_dice.item.sign.BaseSignItem.resumeGatedActiveSkill(player, session.actionId);
     }
 

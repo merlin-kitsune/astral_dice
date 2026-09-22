@@ -4,7 +4,7 @@
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 
-## 未发布（2.0.0-SNAPSHOT.13）
+## 1.3.0
 
 ### 新内容
 
@@ -77,15 +77,11 @@
 #### 物品、筹码与交易
 - 修复**装备骰子时筹码栏偶尔不增加**（表现为装备后要等约 1 秒才出现，甚至当场看不到）：此前「装备骰子 → 立即获得对应数量的筹码栏」这一步实际从未生效，筹码栏只能靠每秒一次的兜底检查补上 —— 装备的瞬间（或刚打开饰品栏界面时）看到的仍是 0 格，过一秒再看才出现，因此像是「偶发不增加」；若在这一秒内退出游戏，这次应得的筹码栏位还会被当作 0 存进存档。现在装备骰子会**立即**按骰子品阶与星级给出筹码栏位，并在**进入世界 / 数据包重载 / 死亡复活**后各对账一次；筹码栏位数改为由本模组直接声明（不再用累加方式改写），因此**旧存档的残留数值、饰品栏被管理员重置、同步丢失**等情况都会在 1 秒内恢复到应有的格数，不会再出现「该有 2 格却一直是 0 格」或「格数越用越多」。换骰子时**不会**因为读数瞬时为空而把栏内已放的筹码弹出（栏内还有筹码时保持占用它的格数，直到你自己取走）。
 
-### 工程
+### 安装要求
 
-- **把五项「两侧逐字节一致」的判定逻辑下沉到前置库 `starengine_lib`，库版本 `1.0.0-SNAPSHOT.14 → .15`**：`combat.HostileTargets`（敌对目标判定的唯一入口，口径 = 敌对生物 ∪ 已被激怒的中立生物 ∪ 「非同队伍且曾主动攻击过观察者的玩家」）、`combat.PlayerHostilityTracker`（受害者 → 攻击者 UUID 的内存记录表）、`target.SelectorTargets`（把「敌对」族并到 `HostileTargets` 上，修补 `TargetType#matches` 只做裸 `instanceof Enemy`、漏掉被激怒的狼/铁傀儡/北极熊/蜜蜂的缺陷）、`target.SignSelectionGate`（立牌主动技能前置门控的待执行记录）、`economy.StarCoinWalletState`（钱包余额条的显示缓存）。这五个类此前在两条发布线上**逐字节相同**，属典型的「本该在库里」。**玩法行为零变化** —— 判定口径、门控生命周期与显示数值逐字照搬，仅换了存放位置。
-  - ⚠️ **库内不注册任何事件**（库的既有红线），故 `PlayerHostilityTracker` 的四个平台挂点（记进攻 / 死亡清 / 死亡重生克隆清 / 登出清）留在本模组，新增 `combat.PlayerHostilityTrackerEvents` 负责把平台事件翻译成库的 `recordAttack` / `forget` 调用；另一处依赖 `DiceCombatEvents` 的「内部伤害窗口」（溅射 / AOE 与反击注入不计为主动攻击）改为库侧 seam `InternalDamageWindows`，由 `DiceCombatEvents` 在类初始化时注入两条判定。该 seam **未注入时一律返回 false**（安全方向：漏判只多记一条敌对立场的记录，误判会让真实攻击不被记入）。
-  - 消费方需 `--refresh-dependencies`（库版本号不以 `-SNAPSHOT` 结尾，Gradle 不当作 changing module）。**26.1.2 线当时未接入**（钉版照旧）；该线已于本版本（`2.0.0-SNAPSHOT.13`）随「26.1.2 完整移植」一并接入。
-
-- **修复客户端类型进入双端加载类的字节码（1.21.1 侧两处）**：`event.ModTooltipHandler` 原先直接读 `client.KeyBindingSetup` 的按键字段来显示「按 J / 按 H」提示；该类的字段声明类型是 `net.minecraft.client.KeyMapping` —— 只要该方法被调用，`getstatic` 就要求解析该类型，而 `FMLEnvironment.dist == Dist.CLIENT` 只拦得住**执行**、拦不住**符号解析**（`catch` 也不包住解析）⇒ 专用服务端有 `NoClassDefFoundError` 风险（是否发生取决于 JIT 是否恰好内联，属时序相关）。现把取按键名的逻辑收进 `client.ClientKeyNames`，`ModTooltipHandler` 只调用它；**开包核对：`ModTooltipHandler.class` 的常量池里已不含任何 `net.minecraft.client.*`**。同类问题在 `AstralDiceMod`（主入口，服务端同样加载）上还有一处 —— 菜单界面注册 `CardInventoryScreen::new` 原先写在一个运行期 `dist` 分支里，现整体搬到只客户端加载的 `client.ModClientEvents`（1.20.1 侧从一开始就是这个写法，本次为对齐），`AstralDiceMod.class` 的常量池同样已无客户端类型。
-
-- **清理 7 个文件 × 两条发布线共 1100 行未使用的 import**（`AnvilUpgradeHandler` / `ModEffectEvents` / `PlayerTickEvents` / `PlayerLifecycleHandler` / `LootInjectionHandler` / `ModTooltipHandler` / `DiceCombatEvents`）：这些文件的 import 块是从早期含大段 tooltip 格式化辅助方法的版本复制下来的，正文缩减后残留了整块未被引用的 import（1.21.1 侧 7 个文件共 562 行、1.20.1 侧共 538 行）。**纯删除、零行为变化**，逐条按「简单名零出现」或「仅以全限定形态出现」两条判据确认后删除，双版本 `build` 通过。
+- ⚠️ **自 1.3.0 起必须安装前置模组 StarEngine Lib**（`starengine_lib`）：**1.2.1 及更早的发布版本可以单独运行**；从 1.3.0 起本模组大量共享实现已移入该库，**缺装会在加载阶段被直接拒绝启动**（加载器给出「缺失必需前置」的明确提示，而不是进游戏后才崩溃）。
+- **本版本要求 StarEngine Lib `1.0.0` 或更高的 `1.x` 版本**（本模组声明的前置版本区间为 `[1.0.0,2.0)`）。
+- **库与模组必须成对更新**：请把与本次模组版本同批发布的库 jar 一并放进 `mods` 目录（库仓库：<https://github.com/merlin-kitsune/starengine_lib>）。
 
 ## 2.0.0-SNAPSHOT.5
 
