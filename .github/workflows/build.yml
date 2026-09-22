@@ -66,15 +66,18 @@ jobs:
         # 语言提供者版本(本机报 4.0.42)⇒ 改回语言区间 [1,),forge-1.20.1 的 loaderVersion 同时由
         # [47,) 收敛为 [47,48)、其 forge 依赖改用从 forge_version 派生的精确区间 [47.4.10,48);
         # 以及 forge-1.20.1 缺失的 `pack.mcmeta`(缺它时 Forge 加载界面告警且该模组资源包不注册)。
-        # 库侧 `.7` 只发布过 mavenLocal、从未入库,故它并入 `.10`;库侧当前无 tag,用提交 SHA 钉死)。
+        # 库侧 `.7` 只发布过 mavenLocal、从未入库,故它并入 `.10`;库侧现有 tag `1.0.0`,用提交 SHA 钉死。
         # **库版本 bump 时本行必须同步更新**(与 neoforge-1.21.1 / forge-1.20.1 / neoforge-26.1.2
         # 的 gradle.properties 的 starengine_lib_version 同一提交里一起改;`.5` 旧钉值为库提交
         # d5b0776,`.6` 为 716f976,`.10` 终态即库提交 ec28415,`.16` 终态即库提交 f706be0),且该提交需已推送到远端 ——
-        # 库仓库尚未 push 前,本 ref 不可被 CI 检出(见 KNOWN-ISSUES KI-M4①,状态不变)。
+        # `1.0.0` 首个正式版即库提交 205eed8;`1.0.1` 这个版本号**从未推送、已撤销** —— 前后两批内容
+        # (移除 forge 侧 Curios 前置 / 为 26.1.2 补齐 `NeoForgeEconomyStorage`)分别并入 1.0.0
+        # (前者库提交 c9818d1,后者库提交 b90a16e)⇒ 现钉库提交 b90a16e),且该提交需已推送到远端。
+        # ✅ **2026-09-23:库仓库已推送**(远端 `main` = b90a16e)⇒ 本 ref 可被 CI 检出,KI-M4① 已解除。
         uses: actions/checkout@v4
         with:
           repository: merlin-kitsune/starengine_lib
-          ref: f706be00d2715db584460f1b1235970e9726ac91   # = 1.0.0-SNAPSHOT.16(终态:随消费方 26.1.2 线接入,库源码零改动)
+          ref: b90a16e1d935e9eb1409f8fe28745a41194f2727   # = 1.0.0(含为 neoforge-26.1.2 补齐的平台侧经济存储实现 NeoForgeEconomyStorage)
           path: .ci/starengine_lib
           fetch-depth: 1
 
