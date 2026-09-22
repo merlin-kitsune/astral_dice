@@ -1,3 +1,4 @@
+// SHERRY_AIM_PATCH 2026-09-22（怪力侦探：法伤结算 / 准星落点 / 隔墙过滤 / 落地冻结）
 package com.merlinkitsune.astral_dice.item.sign;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
@@ -33,8 +34,14 @@ import java.util.List;
  * 怪力侦探立牌(sherry,史诗)。
  *
  * <h3>主动「怪力投掷」</h3>
- * 把 {@value #THROW_RADIUS} 格内**所有敌对目标**按抛物线扔到**玩家面前 {@value #THROW_FACE_DISTANCE} 格内**,
- * **落地之后**再对被投掷目标造成 {@value #THROW_BASE_DAMAGE} 点伤害并施加 1 层「标记」;
+ * 把 {@value #THROW_RADIUS} 格内**所有敌对目标**按抛物线扔到**准星指向的地面**
+ * (距玩家 {@value #AIM_MIN_DISTANCE}–{@value #AIM_MAX_DISTANCE} 格,须为**地面或水面**;
+ * 准星未指向合格面则退至**面前 {@value #AIM_MAX_DISTANCE} 格**,被掩体/高方块阻挡时**向内逐格靠近**,
+ * 直到面前 {@value #AIM_MIN_DISTANCE} 格也不可落才拒绝施放、零消耗);**被方块遮挡(视线不可达)的目标不参与投掷**
+ * (用户 2026-09-22 裁决「阻止怪被从墙后拉出来」);
+ * **落地之后**再对被投掷目标造成 {@value #THROW_BASE_DAMAGE} 点伤害(走本模组**法伤**类型
+ * {@code astral_dice:card_spell},并显示法伤数字)并施加 1 层「标记」;
+ * 落地后目标保留 **2 秒 noAi**(保险冻结,见 {@code SherryThrowManager#LANDING_FREEZE_TICKS});
  * 「推理时间」满 {@value #MAX_REASONING} 层时**额外**造成 {@value #THROW_BONUS_DAMAGE} 点伤害。
  * 冷却基础 {@value #ACTIVE_COOLDOWN_SECONDS} 秒(与枪匠立牌同款:仍受诡异骰子/充能链的既有减免)。
  * 投掷的飞行过程由 {@link SherryThrowManager} 负责(逐 tick 插值抛物线,期间目标 noAi)。
@@ -65,8 +72,16 @@ public class SherrySignItem extends BaseSignItem {
     public static final int ACTIVE_COOLDOWN_SECONDS = 120;
     /** 主动投掷范围(格) */
     public static final double THROW_RADIUS = 12.0D;
-    /** 落点距玩家(格)——「玩家面前 2 格内」 */
-    public static final double THROW_FACE_DISTANCE = 2.0D;
+    /** 落点距玩家的**最小**距离(格) —— 也是向内回退的下限(用户 2026-09-22 裁决「面前 1–6 格」) */
+    public static final double AIM_MIN_DISTANCE = 1.0D;
+    /** 落点距玩家的**最大**距离(格) —— 也是准星未命中地面时的**默认落点**(面前 6 格) */
+    public static final double AIM_MAX_DISTANCE = 6.0D;
+    /** 向内回退的步长(格) —— 基准落点被掩体/高方块阻挡时逐格靠近 */
+    public static final double DROP_STEP = 1.0D;
+    /** 落点上方需要的净空(格) —— 不足即视为「被高于该值的方块阻挡」(用户 2026-09-22 补充) */
+    public static final double DROP_CLEARANCE = 3.0D;
+    /** 面前 {@value #AIM_MIN_DISTANCE}–{@value #AIM_MAX_DISTANCE} 格内**均无可落地面**时 {@link #castThrow} 的返回值 */
+    public static final int THROW_BAD_GROUND = -1;
     /** 落地基础伤害 */
     public static final int THROW_BASE_DAMAGE = 2;
     /** 「推理时间」满层时的额外伤害 */
@@ -141,6 +156,11 @@ public class SherrySignItem extends BaseSignItem {
             return InteractionResult.SUCCESS;
         }
         int thrown = castThrow(player);
+        if (thrown == THROW_BAD_GROUND) {
+            // 面前 1–6 格内均无可落地面(被方块阻挡) ⇒ 提示 + 拒绝使用主动(返回 FAIL = 不进冷却、不消耗)
+            sendSignActionBar(player, "msg.astral_dice.sherry_bad_ground");
+            return InteractionResult.FAIL;
+        }
         if (thrown <= 0) {
             sendSignActionBar(player, "msg.astral_dice.sherry_no_target");
             return InteractionResult.FAIL;
@@ -168,26 +188,39 @@ public class SherrySignItem extends BaseSignItem {
     /**
      * 收集 {@value #THROW_RADIUS} 格内的全部敌对目标并登记投掷。
      *
-     * <p>落点 = 玩家水平视线方向前 {@value #THROW_FACE_DISTANCE} 格;多个目标按**环形均匀分布**散开
-     * (半径同上,避免全部叠在同一格)。
+     * <p><b>候选过滤</b>：敌对 + **视线可达**（{@code hasLineOfSight}）—— 隔墙的目标不投掷
+     * （用户 2026-09-22 裁决「阻止怪被从墙后拉出来」）。
      *
-     * @return 被投掷的目标数(0 = 无可投掷目标 ⇒ 调用方按「零消耗」处理)
+     * <p><b>落点</b> = {@link #resolveThrowDestination} 解析出的地面/水面（准星指向处优先，
+     * 否则退到面前 {@value #AIM_MAX_DISTANCE} 格并被掩体向内逼退）；多个目标围绕该落点沿
+     * （距玩家 {@value #AIM_MIN_DISTANCE}–{@value #AIM_MAX_DISTANCE} 格）；多个目标围绕该落点沿
+     * 与视线垂直的水平方向按 ±0.9 格均匀铺开（避免全部叠在同一格）。
+     *
+     * @return 被投掷的目标数；{@link #THROW_BAD_GROUND}（-1）= 面前无任何可落地面 ⇒ 调用方发提示并拒绝施放；
+     *         0 = 范围内无可投掷目标（两者都按「零消耗」处理）
      */
     public static int castThrow(Player player) {
         if (player == null || player.level().isClientSide()) return 0;
+        Level level = player.level();
         List<LivingEntity> targets = new ArrayList<>();
-        for (LivingEntity candidate : player.level().getEntitiesOfClass(LivingEntity.class,
+        for (LivingEntity candidate : level.getEntitiesOfClass(LivingEntity.class,
                 player.getBoundingBox().inflate(THROW_RADIUS), e -> e != player && e.isAlive())) {
-            if (HostileTargets.isHostile(player, candidate)) {
-                targets.add(candidate);
-            }
+            if (!HostileTargets.isHostile(player, candidate)) continue;
+            // 隔墙不拉:只投掷玩家**视线可达**的目标(与「从墙后把怪拉出来」互斥)
+            if (!player.hasLineOfSight(candidate)) continue;
+            targets.add(candidate);
         }
         if (targets.isEmpty()) return 0;
+
+        // 落点:准星指向的地面/水面(1–6 格)优先,否则退到面前 6 格并被掩体逐格向内逼退;
+        // 面前 1–6 格内全部不可落 ⇒ 拒绝施放(零消耗)
+        Vec3 aim = resolveThrowDestination(player);
+        if (aim == null) return THROW_BAD_GROUND;
 
         boolean maxed = getLayers(player) >= MAX_REASONING;
         int bonus = maxed ? THROW_BONUS_DAMAGE : 0;
 
-        // 水平视线方向(去掉俯仰,避免落点跑到脚下/头顶)
+        // 水平视线方向(去掉俯仰,仅用于多点散布的垂直向量)
         Vec3 look = player.getLookAngle();
         Vec3 flat = new Vec3(look.x, 0.0D, look.z);
         if (flat.lengthSqr() < 1.0E-4D) {
@@ -196,17 +229,102 @@ public class SherrySignItem extends BaseSignItem {
         flat = flat.normalize();
         // 与视线垂直的水平向量,用于多点散布
         Vec3 side = new Vec3(-flat.z, 0.0D, flat.x);
-        Vec3 base = player.position().add(flat.scale(THROW_FACE_DISTANCE));
 
         int n = targets.size();
         for (int i = 0; i < n; i++) {
-            // 单目标 ⇒ 正前方;多目标 ⇒ 沿垂直方向按 -0.9/0/0.9 格均匀铺开(仍在「面前 2 格内」的语义范围)
+            // 单目标 ⇒ 准星落点;多目标 ⇒ 围绕落点沿垂直方向 ±0.9 格铺开
             double offset = n == 1 ? 0.0D
                     : -0.9D + 1.8D * ((double) i / (double) (n - 1));
-            Vec3 dest = base.add(side.scale(offset));
+            Vec3 dest = aim.add(side.scale(offset));
             SherryThrowManager.schedule(targets.get(i), dest, player, bonus);
         }
         return n;
+    }
+
+    /**
+     * 解析投掷落点（用户 2026-09-22 裁决 + 当晚补充）：
+     * <ol>
+     *   <li>准星在 {@value #AIM_MAX_DISTANCE} 格内指向<b>地面或水面</b> ⇒ 基准落点 = 该处；</li>
+     *   <li>准星指向更远处或天空（{@value #AIM_MAX_DISTANCE} 格内未命中地面/水面）⇒ 基准落点 =
+     *       <b>面前 {@value #AIM_MAX_DISTANCE} 格</b>；</li>
+     *   <li>基准落点被掩体/高方块阻挡 ⇒ <b>向内逐 {@value #DROP_STEP} 格靠近</b>后重试；</li>
+     *   <li>退到面前 {@value #AIM_MIN_DISTANCE} 格仍无可落地面（被高于 {@value #DROP_CLEARANCE} 格的
+     *       方块阻挡）⇒ 返回 {@code null} ⇒ 调用方发提示并<b>拒绝施放</b>（零消耗）。</li>
+     * </ol>
+     *
+     * <p>「可落地面」的三条判据见 {@link #groundBelow}。
+     *
+     * @return 落点坐标；面前 {@value #AIM_MIN_DISTANCE}–{@value #AIM_MAX_DISTANCE} 格内全部不可落 ⇒ {@code null}
+     */
+    private static Vec3 resolveThrowDestination(Player player) {
+        Level level = player.level();
+        Vec3 eye = player.getEyePosition();
+        Vec3 feet = player.position();
+
+        // 水平前方(去掉俯仰;垂直俯视导致水平分量退化时用 +Z 兜底,与 castThrow 的多点散布同款)
+        Vec3 look = player.getLookAngle();
+        Vec3 flat = new Vec3(look.x, 0.0D, look.z);
+        if (flat.lengthSqr() < 1.0E-4D) {
+            flat = new Vec3(0.0D, 0.0D, 1.0D);
+        }
+        flat = flat.normalize();
+
+        // ① 准星射线(含俯仰,最长 6 格):命中地面/水面且距离落在 [1,6] ⇒ 基准距离取该处
+        double base = AIM_MAX_DISTANCE;
+        Vec3 end = eye.add(look.scale(AIM_MAX_DISTANCE));
+        net.minecraft.world.phys.BlockHitResult hit = level.clip(new net.minecraft.world.level.ClipContext(
+                eye, end, net.minecraft.world.level.ClipContext.Block.COLLIDER,
+                net.minecraft.world.level.ClipContext.Fluid.ANY, player));
+        if (hit.getType() == net.minecraft.world.phys.HitResult.Type.BLOCK) {
+            double dist = hit.getLocation().distanceTo(feet);
+            if (dist >= AIM_MIN_DISTANCE && dist <= AIM_MAX_DISTANCE) {
+                base = dist;
+            }
+        }
+
+        // ②③④ 自基准距离向内逐格靠近,取第一个可落地面;全部失败 ⇒ null(拒绝施放)
+        for (double d = base; ; d -= DROP_STEP) {
+            double probe = Math.max(d, AIM_MIN_DISTANCE);
+            Vec3 dest = groundBelow(level, player, feet.x + flat.x * probe, feet.z + flat.z * probe);
+            if (dest != null) return dest;
+            if (probe <= AIM_MIN_DISTANCE + 1.0E-6D) return null;
+        }
+    }
+
+    /**
+     * 求水平坐标 {@code (x, z)} 处的「可落地面」；三条判据任一不满足即返回 {@code null}：
+     * <ol>
+     *   <li>该列向下 {@code 8} 格内存在碰撞面（地面 / 水面），且面高 ≤ 玩家脚底 +1 格
+     *       （更高 ⇒ 那是墙顶或高台，不是「面前的地面」）；</li>
+     *   <li>该面之上 {@value #DROP_CLEARANCE} 格内无碰撞 —— 即用户所说「超过 3 格高的方块阻挡」的反面；</li>
+     *   <li>自玩家<b>眼睛</b>到该落点的路径无方块遮挡（掩体判据）。</li>
+     * </ol>
+     */
+    private static Vec3 groundBelow(Level level, Player player, double x, double z) {
+        double feetY = player.getY();
+        net.minecraft.world.phys.BlockHitResult down = level.clip(new net.minecraft.world.level.ClipContext(
+                new Vec3(x, feetY + 1.0D, z), new Vec3(x, feetY - 8.0D, z),
+                net.minecraft.world.level.ClipContext.Block.COLLIDER,
+                net.minecraft.world.level.ClipContext.Fluid.ANY, player));
+        if (down.getType() != net.minecraft.world.phys.HitResult.Type.BLOCK) return null;
+        double surfaceY = down.getLocation().y;
+        // 面高上限:高于玩家脚底 1 格 ⇒ 该列是墙/高台(被方块阻挡),向内回退
+        if (surfaceY > feetY + 1.0D) return null;
+        // 净空:落点之上 DROP_CLEARANCE 格内无碰撞(被高方块盖住 ⇒ 不合格)
+        if (!level.noCollision(player, new net.minecraft.world.phys.AABB(
+                x - 0.3D, surfaceY, z - 0.3D, x + 0.3D, surfaceY + DROP_CLEARANCE, z + 0.3D))) {
+            return null;
+        }
+        Vec3 dest = new Vec3(x, surfaceY + 0.05D, z);
+        // 掩体:自眼睛到落点的路径不得被方块挡住(命中点明显早于落点 ⇒ 其间有遮挡物)
+        net.minecraft.world.phys.BlockHitResult los = level.clip(new net.minecraft.world.level.ClipContext(
+                player.getEyePosition(), dest, net.minecraft.world.level.ClipContext.Block.COLLIDER,
+                net.minecraft.world.level.ClipContext.Fluid.NONE, player));
+        if (los.getType() == net.minecraft.world.phys.HitResult.Type.BLOCK
+                && los.getLocation().distanceToSqr(dest) > 0.25D) {
+            return null;
+        }
+        return dest;
     }
 
     // ══════════════════════════════════════════════════════════════════════════
