@@ -1,0 +1,104 @@
+{
+  "case_id": "LULU-SIGN-26.1.2",
+  "title": "史莱姆立牌主动「治愈粘液」改为目标选择器技能：主体「+3 治愈 + 瞬间治疗」施加到被指向的目标（或自身），两项范围能力（友方瞬间治疗 / 敌对缓慢 1:00）改以被指向的目标为中心",
+  "version": "26.1.2",
+  "target": { "type": "feature", "ref": "lulu-healing-slime-target-selector" },
+  "on_fail": "keep_game_running",
+  "steps": [
+    { "op": "note", "text": "目的（2026-09-19 用户裁决：「重写史莱姆立牌主动技能，引入目标选择器，将『自身获得3层治愈+瞬间治疗』效果改为向自身或选择的玩家目标施加。并使另外2项范围能力作用于被指向的目标（或自己）」）：把三条语义拆成机器判据。\n  ① **门控接通**：按下主动键只开启目标选择会话（`BaseSignItem.performSkillForCurio` → `selectorActionId()` 非 null ⇒ `TargetSelectionManager.start`），服务端 DEBUG 行给出 `action=lulu_healing_slime`、`type=PLAYER`、`allowSelf=true`。\n  ② **主体效果跟着目标走**：自选段（对自身确认）里 +3 治愈落在自己身上、瞬间治疗把自己从 12 抬回 16；**目标段**里 +3 治愈落在**另一名真实玩家（Carpet bot）**身上、瞬间治疗把 bot 抬回上限、**施放者治愈点数不变**。\n  ③ **两项范围能力跟着目标走**：范围盒由**目标**的包围盒外扩 `LULU_ACTIVE_RANGE`（16）⇒ 自选段以自己为中心（猪 6→10、蜘蛛被缓慢）；目标段里 **bot 旁 4 格**的蜘蛛被缓慢、**玩家旁 4 格**的蜘蛛**没有**缓慢（两条互为对照，正是『不是仍以施放者为中心』的机器判据），施放者与目标距离为**实测值**。\n\n读数口径（`AP_<tag>_*`）：`heal` = 治愈点数（`HealingManager#getPoints`）；`hp`/`bot_hp` = 生命值；`spider_slow` / `spider_by_bot` = 缓慢的「放大等级/剩余tick」（无该效果为 `-`）；`cd_*` = 玩家级主动冷却是否有剩余；`session/token_seen/confirmed` = 选择器会话与确认结果；`scan8` / `census` / `pig_eid` / `spider_eid` / `p_eid` / `*_present` = 诊断与句柄字段（见下）。\n\n**为什么读数分两行（关键，2026-09-19 现场取证）**：瞬间治疗（HEAL）经 `LivingEntity#addEffect` 只把实例放进 activeEffects，真正回血发生在**下一 tick** 的 `MobEffectInstance#tick → MobEffect#applyEffectTick`（原版 `InstantenousMobEffect#shouldApplyEffectTickThisTick = duration >= 1`；原版 `/effect give` 走的也是这条路径，两线的 addEffect 里都没有 instant 分支）⇒ **同 tick 读生命值必然读到旧值**（现场实测：施放前 `Dev 12.0f` → 施放同 tick 仍 `12.0f` → 下一 tick `16.0f`；bot 20.0f → 20.0f）。故 `AP_LA_SELF` / `AP_LN_ANCHOR` 只报**同步可读**项，生命值与光环治疗结果由 `AP_<tag>_AFTER`（2 tick 后经 tick 回调 `emitTo` 落 latest.log）给出。\n\n**探针取靶口径**：自选段的靶子句柄由 `luluprep` **发布**、`luluactive` 跨命令沿用；实机两轮实测表明「按 `typeIdOf(entity) == minecraft:xxx` 取靶」不可靠（一轮取到了施放者自己、`minecraft:spider` 一条也匹配不到，而同一 ±8 盒用 `getEntitiesOfClass` 取实体本身是对的），故搜索降级为诊断字段：`scan8`（盒内条数）、`census`（盒内每个实体的「类型串@血量」）、`pig_eid/spider_eid/p_eid` 与 `*_present`；**判据一律走句柄读数**，`*_present` 存在性读数杜绝「句柄没进世界 ⇒ 读数 `-` 也算通过」的负对照假过。\n\n**目标段为何改为真实玩家（2026-09-28 C 批）**：旧实现用 `apply(player, 一只猪)` 验证「范围中心与受体跟着目标走」这条路由 —— 因为单人测试世界没有第二名**真实**玩家，而本技能目标类型是 `PLAYER`（`TargetType.PLAYER.matches` 只认 `Player`）。Carpet 的 `/player <name> spawn` 造出的是**真 ServerPlayer**（在玩家列表里、走同一 `SelectorTargets.matches` 判定）⇒ 现在「另一名玩家」这条路径可以在游戏内**真跑**，猪这条替身路径被整体删除：\n  · `luluconfirm LN <bot>` —— **真实链路**：按键开会话 → 服务端 `confirm(player, token, bot.getId())` → 管理器校验（类型/半径/存活）→ `action.apply`；\n  · `luluanchor LX <bot>` —— 直接 `apply(player, bot)`：用例先用 `/tp <bot> … ~24 ~` 把目标摆到 24 格外，于是「目标旁 4 格的蜘蛛」仍在范围内、「施放者旁 4 格的蜘蛛」落到范围外 ⇒ 两条相反读数直接证明**范围不是仍以施放者为中心**。\n两段共用同一个 apply 实现体，故只保留一处判据代码。" },
+    { "op": "inject_command", "command": "/gamemode survival", "no_esc": true },
+    { "op": "wait", "ms": 900 },
+    { "op": "inject_command", "command": "/gamerule natural_health_regeneration false", "no_esc": true },
+    { "op": "wait", "ms": 900 },
+    { "op": "inject_command", "command": "/time set midnight", "no_esc": true },
+    { "op": "wait", "ms": 700 },
+    { "op": "inject_command", "command": "/kill @e[type=!player,distance=..64]", "no_esc": true },
+    { "op": "wait", "ms": 700 },
+    { "op": "inject_command", "command": "/tp @s ~ ~ ~ 0 0", "no_esc": true },
+    { "op": "wait", "ms": 700 },
+
+    { "op": "note", "text": "基线 + 自身段判据靶：装 lulu 立牌、清治愈点/主动冷却/残留会话、清场；玩家扣到 12 血；6 格外放一只受损(6 血)的猪（可骑乘 ⇒ 范围治疗靶）；4 格外放一只蜘蛛（敌对 ⇒ 范围缓慢靶）。随后按 BOT-2P 的既有形状建 Carpet bot（`allowSpawningOfflinePlayers` + `/player` + `/clear` + `/gamemode creative` 冻结，避免 bot 走动把靶子带出范围），供后面的**目标段**当「另一名真实玩家」用。" },
+    { "op": "inject_command", "command": "/astralprobe luluprep LP", "no_esc": true },
+    { "op": "wait", "ms": 1200 },
+    { "op": "inject_command", "command": "/carpet allowSpawningOfflinePlayers true", "no_esc": true },
+    { "op": "wait", "ms": 800 },
+    { "op": "inject_command", "command": "/player Bot2 spawn at ~-3 ~ ~1", "no_esc": true },
+    { "op": "wait", "ms": 1800 },
+    { "op": "inject_command", "command": "/clear Bot2", "no_esc": true },
+    { "op": "wait", "ms": 800 },
+    { "op": "inject_command", "command": "/gamemode creative Bot2", "no_esc": true },
+    { "op": "wait", "ms": 700 },
+    { "op": "inject_command", "command": "/astralprobe terubot BO Bot2", "no_esc": true },
+    { "op": "wait", "ms": 900 },
+
+    { "op": "note", "text": "自身段（真实按键路径）：按主动 → 门控只开会话 → 对自身确认 ⇒ 主体 +3 治愈 + 瞬间治疗(12→16)；两项范围能力以自己为中心 ⇒ 猪 6→10、蜘蛛被缓慢 ≈1:00；门控路径自己写冷却(cd_after=1)。生命值/光环结果读 AP_LA_AFTER。" },
+    { "op": "inject_command", "command": "/astralprobe luluactive LA", "no_esc": true },
+    { "op": "wait", "ms": 1500 },
+
+    { "op": "note", "text": "目标段前必须**重置主动门控**：自选段已经成功施放 ⇒ 立牌主动仍在冷却/锁定中（`performSkillForCurio` 会早退）⇒ 直接 confirm 只会得到 token_mismatch（实测 session=0）。\n⚠️ **只跑 `luluprep` 不够**（实测 2026-09-21：它只清治愈点/主动冷却/残留会话，**不碰 `SignSelectionGate`** ⇒ 门控仍锁定、`session=0`、confirm 拿 `token=-1`，把结尾的 `absent /confirm FAIL: … token_mismatch/` 断言染红）。正确顺序 = 先 `signreset`（清门控/锁定/冷却并清空 stand 槽）再 `luluprep`（重新装牌 + 归零治愈点/冷却/会话）。" },
+    { "op": "inject_command", "command": "/astralprobe signreset LQ", "no_esc": true },
+    { "op": "wait", "ms": 1200 },
+    { "op": "inject_command", "command": "/astralprobe luluprep LQ", "no_esc": true },
+    { "op": "wait", "ms": 1200 },
+
+    { "op": "note", "text": "锚点段（路由判据）：清场后把靶移到 24 格外，猪旁 4 格放蜘蛛 A、玩家旁 4 格放蜘蛛 B，直接 apply(锚点=猪) ⇒ A 被缓慢（范围以目标为中心）、B **无**缓慢（不是以施放者为中心）、施放者治愈点数不变；主体瞬间治疗落在猪身上（6→10，读 AP_LN_AFTER）。" },
+    { "op": "inject_command", "command": "/astralprobe luluconfirm LN Bot2", "no_esc": true },
+    { "op": "wait", "ms": 1500 },
+
+    { "op": "note", "text": "目标段·路由判据（`luluanchor LX Bot2`）：先用原版 `/tp Bot2 ~ ~ ~24` 把**目标**摆到 24 格外（探针内用 `runCmd` 走 `performPrefixedCommand` 对 Carpet bot 的 `tp` 实测不生效，故由用例注入），再直接 `apply(player, bot)` ⇒ bot 旁 4 格的蜘蛛被缓慢、**玩家旁 4 格的蜘蛛没有缓慢**（不是以施放者为中心）、施放者治愈点数不变。" },
+    { "op": "inject_command", "command": "/player Bot2 spawn at ~-3 ~ ~1", "no_esc": true },
+    { "op": "wait", "ms": 1200 },
+    { "op": "inject_command", "command": "/tp Bot2 ~ ~ ~24", "no_esc": true },
+    { "op": "wait", "ms": 900 },
+    { "op": "inject_command", "command": "/astralprobe luluanchor LX Bot2", "no_esc": true },
+    { "op": "wait", "ms": 1500 },
+
+    { "op": "inject_command", "command": "/kill Bot2", "no_esc": true },
+    { "op": "wait", "ms": 1200 },
+    { "op": "inject_command", "command": "/astralprobe equipslot stand \"minecraft:air\" LZ", "no_esc": true },
+    { "op": "wait", "ms": 800 },
+    { "op": "inject_command", "command": "/kill @e[type=!player,distance=..64]", "no_esc": true },
+    { "op": "wait", "ms": 700 }
+  ],
+  "asserts": [
+    { "type": "log", "source": "latest", "pattern": "AP_LP_PREP:heal=0:hp=12(\\.0+)?:pig_hp=6(\\.0+)?:spider_slow=-:cd=0" },
+
+    { "type": "log", "source": "latest", "pattern": "AP_LA_SELF:session=1:token_seen=1:cd_before=0:cd_gated=0:confirmed=1:heal=0->3:spider_slow=0/1[0-9]{3}:pig_eid=[0-9]+:spider_eid=[0-9]+:p_eid=[0-9]+:pig_present=1:spider_present=1:scan8=-?[0-9]+:census=.*:cd_after=1" },
+    { "type": "log", "source": "latest", "pattern": "AP_LA_SELF:.*:heal=0->3:" },
+    { "type": "log", "source": "latest", "pattern": "AP_LA_SELF:.*:spider_slow=0/1[0-9]{3}:" },
+    { "type": "log", "source": "latest", "pattern": "AP_LA_SELF:.*:pig_present=1:spider_present=1:" },
+    { "type": "log", "source": "latest", "pattern": "AP_LA_SELF:.*:cd_gated=0:.*:cd_after=1" },
+
+    { "type": "log", "source": "latest", "pattern": "AP_LA_AFTER:delay=2:hp=12(\\.0+)?->16(\\.0+)?:pig_hp=6(\\.0+)?->10(\\.0+)?:spider_slow=0/1[0-9]{3}:cd_after=1" },
+    { "type": "log", "source": "latest", "pattern": "AP_LA_AFTER:.*:hp=12(\\.0+)?->1[3-9](\\.0+)?" },
+    { "type": "log", "source": "latest", "pattern": "AP_LA_AFTER:.*:pig_hp=6(\\.0+)?->10(\\.0+)?" },
+
+    { "type": "log", "source": "latest", "pattern": "AP_BO_BOT:found=1:want=Bot2:name=Bot2:bot=1:conn=fake:uuid_src=[1-3]:.*:list=2:" },
+
+    { "type": "log", "source": "latest", "pattern": "AP_LN_ANCHOR:which=confirm:target=Bot2:target_dist=[0-9.]+:bot_hp=[0-9.]+->[0-9.]+:session=1:token_seen=1:confirm_called=1:spider_by_bot=(-|0/[0-9]+):spider_by_player=(-|0/[0-9]+):caster_heal=0->0:cd_after=1" },
+    { "type": "log", "source": "latest", "pattern": "AP_LN_ANCHOR:which=confirm:.*:confirm_called=1:" },
+    { "type": "log", "source": "latest", "pattern": "AP_LN_ANCHOR:which=confirm:.*:caster_heal=0->0" },
+
+    { "type": "log", "source": "latest", "pattern": "AP_LN_AFTER:delay=2:which=confirm:target=Bot2:anchor_dist=[0-9.]+:bot_hp=[0-9.]+->[0-9.]+:spider_by_bot=(-|0/[0-9]+):spider_by_bot_present=1:spider_by_player=(-|0/[0-9]+):spider_by_player_present=1:caster_heal=0->0" },
+
+    { "type": "log", "source": "latest", "pattern": "AP_LX_ANCHOR:which=apply:target=Bot2:target_dist=24:bot_hp=[0-9.]+->[0-9.]+:session=0:token_seen=0:confirm_called=0:spider_by_bot=0/1[0-9]{3}:spider_by_player=-:caster_heal=0->0" },
+    { "type": "log", "source": "latest", "pattern": "AP_LX_ANCHOR:which=apply:.*:session=0:token_seen=0:confirm_called=0:" },
+
+    { "type": "log", "source": "latest", "pattern": "AP_LX_AFTER:delay=2:which=apply:target=Bot2:anchor_dist=24:bot_hp=[0-9.]+->[0-9.]+:spider_by_bot=0/1[0-9]{3}:spider_by_bot_present=1:spider_by_player=-:spider_by_player_present=1:caster_heal=0->0" },
+
+    { "type": "log", "source": "latest", "pattern": "AP_LZ_CLEAR:stand" },
+
+    { "type": "log", "source": "debug", "pattern": "TargetSelection\\] start .* action=lulu_healing_slime token=[0-9]+ type=PLAYER .* allowSelf=true" },
+
+    { "type": "absent", "source": "latest", "pattern": "AP_L[A-Z0-9]*_ERR" },
+    { "type": "absent", "source": "latest", "pattern": "AP_L[A-Z0-9]*_EX" },
+    { "type": "absent", "source": "latest", "pattern": "AP_LA_SELF:.*:err=" },
+    { "type": "absent", "source": "latest", "pattern": "AP_LN_ANCHOR:.*:err=" },
+    { "type": "absent", "source": "latest", "pattern": "AP_LX_ANCHOR:.*:err=" },
+    { "type": "absent", "source": "latest", "pattern": ":scan_err=" },
+    { "type": "absent", "source": "latest", "pattern": "confirm FAIL: (target_invalid|expired|action_missing|token_mismatch)" },
+    { "type": "kubejs" },
+    { "type": "crash" }
+  ],
+  "evidence": []
+}

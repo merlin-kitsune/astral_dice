@@ -1,0 +1,30 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "D": {
+      "item": "astral_dice:diamond_dice"
+    },
+    "E": {
+      "item": "astral_dice:blank_sign"
+    },
+    "G": {
+      "item": "astral_dice:golden_star_plate"
+    },
+    "P": {
+      "item": "minecraft:gold_block"
+    },
+    "S": {
+      "item": "minecraft:prismarine_shard"
+    }
+  },
+  "pattern": [
+    "SPS",
+    "SES",
+    "GDG"
+  ],
+  "result": {
+    "count": 1,
+    "id": "astral_dice:mamushi_sign"
+  }
+}

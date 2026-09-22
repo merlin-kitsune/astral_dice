@@ -2,7 +2,8 @@ package com.merlinkitsune.astral_dice.combat;
 
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
-import com.merlinkitsune.astral_dice.event.AmethystDiceHandler;
+import com.merlinkitsune.starenginelib.component.GameplayConstants;
+import com.merlinkitsune.starenginelib.event.AmethystDiceHandler;
 import com.merlinkitsune.astral_dice.item.MarkManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import net.minecraft.core.registries.Registries;
@@ -21,6 +22,7 @@ import java.util.Locale;
 import com.merlinkitsune.astral_dice.damage.ModDamageTypes;
 import com.merlinkitsune.astral_dice.item.chip.MagicQuiverChipItem;
 import com.merlinkitsune.astral_dice.item.chip.PiercingGunChipItem;
+import com.merlinkitsune.starenginelib.combat.HostileTargets;
 
 /**
  * 法伤(远程/魔法伤害)模块:作用域判定(白名单 matcher + 军火黑名单保险)与加成修饰器注册表。
@@ -32,9 +34,12 @@ import com.merlinkitsune.astral_dice.item.chip.PiercingGunChipItem;
  * 4. 诡厄巫法(goety):summon/shock/freeze/hellfire/magic_fire/magic_fireball/magic_bolt 等法术伤害类型
  *    (排除近战类 goety:sword);
  * 5. Iron 的法术与魔法书(irons_spellbooks):fire_magic/ice_magic/lightning_magic/holy_magic/ender_magic/
- *    blood_magic/evocation_magic/eldritch_magic/nature_magic 等。
+ *    blood_magic/evocation_magic/eldritch_magic/nature_magic 等;
+ * 6. 本模组「活体书页」命中伤害(astral_dice:card_spell,2026-09-25 起;见 {@link LivingPageImpact})。
  * 排除:枪械/炮弹/炸药/火箭等军火类(tacZ、维克斯的武器、卓越前线、气动工艺、机械动力:火炮、通用机械:武器、
  * 沉浸工程等)——其弹丸实体不属于白名单,黑名单关键词仅作"弹丸继承原生类"场景的保险。
+ * 该排除由公共配置 {@code allow_firearm_damage} 控制(**默认 false 即默认继续排除**);设为 true 时,
+ * 弹丸实体类名或伤害类型关键词命中的军火类伤害也会进入下方白名单 matcher 判定。
  */
 public final class SpellDamageRegistry {
 
@@ -112,14 +117,48 @@ public final class SpellDamageRegistry {
     }
 
     /**
-     * 作用域判定:先排除军火类(保险),再按白名单 matcher 依次判定。
+     * 作用域判定:先按公共配置 {@code allow_firearm_damage} 决定是否排除军火类(保险),
+     * 再按白名单 matcher 依次判定。
+     *
+     * <p>军火类排除默认生效({@code allow_firearm_damage = false}),即与既有行为一致;
+     * 仅当显式开启该配置时,弹丸/伤害类型关键词命中的军火类伤害才会继续走白名单判定。
      */
     public static boolean isSpellDamage(DamageSource source, Entity direct) {
-        if (isFirearmDamage(source)) return false;
+        if (!GameplayConstants.ALLOW_FIREARM_DAMAGE && isFirearmDamage(source)) return false;
         for (SpellDamageMatcher matcher : MATCHERS) {
             if (matcher.matches(source, direct)) return true;
         }
         return false;
+    }
+
+    /**
+     * 本次法伤是否来自「活体书页」的**即时命中**。
+     *
+     * <p>2026-09-19 用户裁决「活体书页不应该有持续效果,应转换为及时伤害,移除所有原本效果器」之后,该牌
+     * **不再给玩家施加任何效果** ⇒ 原先靠 `hasEffect(ModEffects.LIVING_PAGE)` 判定的「使用了伤害效果牌」
+     * 改由**伤害类型本身**识别(`astral_dice:card_spell`)。这样忍术飞镖/贯穿之铳对书页自身的命中照旧生效
+     * (它们本就是"伤害效果牌生效期间的加成"),又不引入任何玩家可见状态或额外字段。
+     */
+    private static boolean isLivingPageImpact(SpellDamageContext ctx) {
+        return ctx != null && ctx.source != null && ctx.source.is(ModDamageTypes.CARD_SPELL);
+    }
+
+    /**
+     * 立牌「效果牌伤害加成」的**静默安全上限**(2026-09-19 用户要求「增加忍者立牌和调查员立牌的
+     * 效果牌伤害加成上限,设置为 120,**不说明不提示**」)。
+     *
+     * <p>只做**数值夹取**,不新增任何 UI 文案 / actionbar 提示 / tooltip 说明 / lang 键:超过该值后
+     * 继续按 {@value #SIGN_DAMAGE_BONUS_CAP} 计入,玩家侧只看到数值不再增长。
+     * 覆盖两个来源:忍者立牌 {@code komachi_damage_bonus}(见 {@link #effectCardDamageBonus})与
+     * 调查员立牌累计页数 {@code rin_pages}(见 {@link #livingPageBonusPages});
+     * 书签筹码的固定加成**不在**此列(用户只点名两个立牌)。
+     * ⚠️ tooltip 显示与伤害结算同源(两处都走上面两个方法),故显示值同样是夹取后的值 —— 两处始终一致。
+     */
+    public static final int SIGN_DAMAGE_BONUS_CAP = 120;
+
+    /** 把**立牌来源**的伤害加成夹到 {@link #SIGN_DAMAGE_BONUS_CAP} 以内(负值按 0;只读、无副作用) */
+    public static int cappedSignDamageBonus(int raw) {
+        return Math.max(0, Math.min(raw, SIGN_DAMAGE_BONUS_CAP));
     }
 
     /**
@@ -134,8 +173,10 @@ public final class SpellDamageRegistry {
         if (attacker == null) return 0;
         // 忍者立牌的伤害增益只在**佩戴立牌**时生效(2026-09-15 裁决):死亡保留的累计值不因
         // "立牌死亡掉落、尚未重新装备"而继续加成。故此处统一按佩戴判定,勿在别处直接读原值。
-        int komachi = com.merlinkitsune.astral_dice.item.sign.KomachiSignItem.isEquipped(attacker)
-                ? ModAttachments.getKomachiDamageBonus(attacker) : 0;
+        // 超过 {@link #SIGN_DAMAGE_BONUS_CAP} 的部分不生效(静默夹取,2026-09-19)。
+        int komachi = cappedSignDamageBonus(
+                com.merlinkitsune.astral_dice.item.sign.KomachiSignItem.isEquipped(attacker)
+                        ? ModAttachments.getKomachiDamageBonus(attacker) : 0);
         return komachi
                 + com.merlinkitsune.astral_dice.item.chip.BookmarkChipItem.damageBonus(attacker);
     }
@@ -144,11 +185,28 @@ public final class SpellDamageRegistry {
      * 活体书页的**有效**累计页数:只在佩戴调查员立牌时计入(2026-09-15 裁决,与
      * {@link #effectCardDamageBonus} 同一口径)。伤害结算与 tooltip 显示统一走本方法,
      * 禁止在别处直接读 {@code rin_pages} 原值来做加成或显示加成。
+     *
+     * <p>超过 {@link #SIGN_DAMAGE_BONUS_CAP} 的部分不生效(静默夹取,2026-09-19)。
      */
     public static int livingPageBonusPages(net.minecraft.world.entity.player.Player attacker) {
         if (attacker == null) return 0;
-        return com.merlinkitsune.astral_dice.item.sign.RinSignItem.isEquipped(attacker)
-                ? ModAttachments.getRinPages(attacker) : 0;
+        return cappedSignDamageBonus(com.merlinkitsune.astral_dice.item.sign.RinSignItem.isEquipped(attacker)
+                ? ModAttachments.getRinPages(attacker) : 0);
+    }
+
+    /**
+     * 「活体书页」命中伤害 = {@link LivingPageImpact#BASE_DAMAGE 基础 2}
+     * + {@link #livingPageBonusPages 调查员已用页数}(仅佩戴 rin 立牌时计入)
+     * + {@link #effectCardDamageBonus 伤害效果牌统一加成}(忍者立牌 + 书签)。
+     *
+     * <p><b>伤害结算与 tooltip 显示统一走本方法</b>(与 {@code effectCardDamageBonus} 同一口径):
+     * 命中结算见 {@link LivingPageImpact#resolve},tooltip 见 {@code event/ModTooltipHandler}。
+     * 页数在**命中结算的最后**才 +1(2026-09-19 用户裁决「先执行伤害,后施加标记,最后使活体书页伤害+1」)
+     * ⇒ <b>本值不含本次使用</b>:首张命中 = 2,tooltip 与实际命中数值一致。
+     */
+    public static int livingPageImpactDamage(net.minecraft.world.entity.player.Player attacker) {
+        if (attacker == null) return LivingPageImpact.BASE_DAMAGE;
+        return LivingPageImpact.BASE_DAMAGE + livingPageBonusPages(attacker) + effectCardDamageBonus(attacker);
     }
 
     private static ResourceKey<DamageType> key(String namespace, String path) {
@@ -172,26 +230,15 @@ public final class SpellDamageRegistry {
             }
             return false;
         });
+        // 4. 本模组「活体书页」命中伤害(astral_dice:card_spell,2026-09-25 活体书页重写):
+        //    该伤害必须登记为法伤,才能原样跑完整修饰器链(见 LivingPageImpact 的结算说明)。
+        //    注意:这里**不**依赖任何"效果存在"的开关 —— 书页命中本身就是一次法伤事件。
+        registerMatcher((source, direct) -> source.is(ModDamageTypes.CARD_SPELL));
 
         // === 内置修饰器 ===
-        // 活体书页:对敌对目标远程/魔法伤害增加(基础 2 + 调查员(rin)已使用数量 + 忍者立牌效果牌伤害增益,均无上限),并施加 1 层标记
-        registerModifier(new SpellDamageModifier() {
-            @Override
-            public boolean isActive(SpellDamageContext ctx) {
-                return ctx.attacker.hasEffect(ModEffects.LIVING_PAGE);
-            }
-
-            @Override
-            public double apply(SpellDamageContext ctx, double bonus) {
-                int pages = livingPageBonusPages(ctx.attacker);
-                return bonus + 2 + pages + effectCardDamageBonus(ctx.attacker);
-            }
-
-            @Override
-            public void onHit(SpellDamageContext ctx, double bonus) {
-                MarkManager.apply(ctx.target);
-            }
-        });
+        // (活体书页原有的「效果期间远程/魔法伤害 +2+页数」修饰器已于 2026-09-25 删除:
+        //  该牌已改为「飞向目标并必定命中」的打击牌,伤害在命中时经 LivingPageImpact 登记为
+        //  astral_dice:card_spell 结算,不再附着于其它远程/魔法伤害之上。)
         // 对怪激光:远程和魔法伤害 +4(+忍者立牌效果牌伤害增益)
         registerModifier(new SpellDamageModifier() {
             @Override
@@ -264,12 +311,12 @@ public final class SpellDamageRegistry {
                 }
             }
         });
-        // 忍术飞镖:已使用伤害效果牌(任一效果生效)且造成远程/魔法伤害时,获得目标标记层数的伤害加成
+        // 忍术飞镖:已使用伤害效果牌(任一效果生效,**或本次就是活体书页的即时法伤**)且造成远程/魔法伤害时,获得目标标记层数的伤害加成
         registerModifier(new SpellDamageModifier() {
             @Override
             public boolean isActive(SpellDamageContext ctx) {
                 if (!ctx.hasCurio(ModItems.NINJA_STAR_CHIP.get())) return false;
-                return ctx.attacker.hasEffect(ModEffects.LIVING_PAGE)
+                return isLivingPageImpact(ctx)
                         || ctx.attacker.hasEffect(ModEffects.MONSTER_LASER)
                         || ctx.attacker.hasEffect(ModEffects.MONSTER_BRICK)
                         || ctx.attacker.hasEffect(ModEffects.ORBITAL_STRIKE)
@@ -281,13 +328,13 @@ public final class SpellDamageRegistry {
                 return bonus + MarkManager.getLevel(ctx.target);
             }
         });
-        // 贯穿之铳:伤害效果牌生效时,对敌对目标远程/魔法伤害额外增加目标防御力点数
+        // 贯穿之铳:伤害效果牌生效时(同上,含活体书页的即时法伤),对敌对目标远程/魔法伤害额外增加目标防御力点数
         registerModifier(new SpellDamageModifier() {
             @Override
             public boolean isActive(SpellDamageContext ctx) {
                 if (!ctx.hasCurio(ModItems.PIERCING_GUN.get())) return false;
                 if (!HostileTargets.isHostile(ctx.attacker, ctx.target)) return false;
-                return ctx.attacker.hasEffect(ModEffects.LIVING_PAGE)
+                return isLivingPageImpact(ctx)
                         || ctx.attacker.hasEffect(ModEffects.MONSTER_LASER)
                         || ctx.attacker.hasEffect(ModEffects.MONSTER_BRICK)
                         || ctx.attacker.hasEffect(ModEffects.ORBITAL_STRIKE)

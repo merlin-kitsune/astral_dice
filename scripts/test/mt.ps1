@@ -65,11 +65,14 @@
       · launch 走脱离式，除硬上限外还有「日志 90s 零增长 ⇒ `CHILD: STALL` 放弃等待」——
         进程存活 ≠ 有进展（实测：游戏空闲时仍有每月一分钟一条的 ModernFix DEBUG 噪声，
         旧监视器就是被它骗过，见 TESTING-SPEC §12）。
-      · 单条用例硬超时 `--case-timeout` / `MT_CASE_TIMEOUT_SEC`（默认 180 s，见 mt_case.ps1）
+      · 单条用例硬超时 `--case-timeout` / `MT_CASE_TIMEOUT_SEC`（默认 600 s，见 mt_case.ps1）
         ⇒ 该条记 **TIMEOUT** 并继续跑下一条；
       · 全局 `--run-timeout <秒>`（**默认 2700s**；旧默认「0 = 不限」已废除 —— 那正是
         「7 分 45 秒静默空转、人只能干等」能发生的前提）⇒ 超时走 `--phase stop --force`
         收停、报告写 TIMEOUT、退出码 12（与 FAIL=1 区分）；
+      · 汇总折码（t34，规则 14 收严版）：`mt_report summary` 的「无效运行（MT_USER_TERMINATED）」
+        中断码 `MT_EXIT_ERROR`(2) **原样传出**，不再折成 `MT_EXIT_FAIL`(1) ⇒ 端到端退出码可区分
+        「无效运行(2) / 产品断言失败(1) / 超时(12) / 前置不足(11) / 全通过(0)」；
       · 长流程包裹用 `mt_watchdog.ps1`（独立脚本，见 TESTING-SPEC §12；判据已从「日志
         mtime」改为**语义标记 + 进度信标**）；阶段/用例/步骤级进度写在
         `cases/.mt_progress.json`，监视器与事后取证共读这一个文件即可定位卡点。
@@ -426,7 +429,7 @@ function Invoke-MtRunPhase {
     if ($PhaseName -eq 'cases') {
         # cases 阶段是**预算自适应**的：单条 = 单条硬上限 + 90s 余量；全目录 = 90s × 用例数 + 90s。
         # 为什么不用固定值：固定 300s 会把 17 条用例的正常全量跑**误杀**，而固定 3600s 又等于不限。
-        $perCase = if ($script:CaseTimeoutSec -gt 0) { $script:CaseTimeoutSec } else { 180 }
+        $perCase = if ($script:CaseTimeoutSec -gt 0) { $script:CaseTimeoutSec } else { 600 }
         $caseArgs = @('--version', $PhaseVersion, '--case-timeout', "$perCase")
         if ($CasePath) {
             $budget = $perCase + 90
@@ -441,8 +444,18 @@ function Invoke-MtRunPhase {
                 Where-Object { (-not $_.Name.StartsWith('.')) -and ($_.Name -like "*-$PhaseVersion.json") }).Count
         } catch { $n = 0 }
         if ($n -le 0) { $n = 20 }
-        $budget = 90 + (90 * $n)
-        Write-MtInfo ("CASES_BUDGET: {0} 条用例 × 90s + 90s = {1}s（单条硬上限 {2}s；覆写 MT_CASES_TIMEOUT_SEC）" -f $n, $budget, $perCase)
+        # ⚠️ 2026-09-22 修：此前这里**硬编码** `90 + 90*n`，但提示文案却写着「覆写 MT_CASES_TIMEOUT_SEC」
+        #    ⇒ 环境变量被无视，整目录跑**必然**在 90*n+90 秒处被截断（实测 11 条 × 90 + 90 = 1080s，
+        #    而按用例步数估算需要 ≈ 1700s ⇒ 后半程用例从未被执行，却看不出是「被截断」还是「失败」）。
+        #    该公式的前提是「单条用例 ≤ 90s」，而用例规模早已从 ~20 步涨到 105~164 步 ⇒ 前提失效。
+        #    现在：显式设了 MT_CASES_TIMEOUT_SEC 就用它；否则按「单条硬上限 × 条数 + 90s 余量」推导，
+        #    与 `$script:CaseTimeoutSec` 保持同一口径（不再假设 90s/条）。
+        $budget = 90 + ([Math]::Max(90, $perCase) * $n)
+        if ($env:MT_CASES_TIMEOUT_SEC) {
+            $override = 0
+            if ([int]::TryParse($env:MT_CASES_TIMEOUT_SEC, [ref]$override) -and $override -gt 0) { $budget = $override }
+        }
+        Write-MtInfo ("CASES_BUDGET: {0} 条用例 × 单条上限 {1}s + 90s = {2}s（覆写 MT_CASES_TIMEOUT_SEC）" -f $n, $perCase, $budget)
         return (Invoke-MtChild -Script 'mt_case.ps1' -ScriptArgs (@('run-dir') + $caseArgs) -TimeoutSec $budget)
     }
     if ($PhaseName -eq 'report') {
@@ -472,7 +485,7 @@ $StopPurgeSaves = $false
 # 覆写：环境变量 MT_RUN_TIMEOUT_SEC 或 --run-timeout <秒>。
 $RunTimeoutSec = 2700
 if ($env:MT_RUN_TIMEOUT_SEC -and $env:MT_RUN_TIMEOUT_SEC -match '^\d+$') { $RunTimeoutSec = [int]$env:MT_RUN_TIMEOUT_SEC }
-# 单条用例硬超时（透传给 mt_case 的 --case-timeout；0 = 用 mt_case 自己的默认 180s）
+# 单条用例硬超时（透传给 mt_case 的 --case-timeout；0 = 用 mt_case 自己的默认 600s）
 $script:CaseTimeoutSec = 0
 if ($env:MT_CASE_TIMEOUT_SEC -and $env:MT_CASE_TIMEOUT_SEC -match '^\d+$') { $script:CaseTimeoutSec = [int]$env:MT_CASE_TIMEOUT_SEC }
 
@@ -703,7 +716,15 @@ try {
 
     Start-MtPhase 'summary'
     $summaryRc = Invoke-MtChild -Script 'mt_report.ps1' -ScriptArgs @('summary')
-    if ($summaryRc -ne 0) { $overall = $MT_EXIT_FAIL }
+    # t34（规则 14 收严版）折码修复：`mt_report summary` 在「无效运行（MT_USER_TERMINATED）」上返回
+    # `MT_EXIT_ERROR`(2) —— 该中断码必须**原样传出**，不再像以前那样折成 `MT_EXIT_FAIL`(1)；
+    # 否则端到端退出码分不清「被用户终止的无效运行」与「产品断言失败」（TESTING-SPEC §12.3 第 5 条）。
+    # 语义保持：任何非 0 汇总码仍保证端到端非 0（FAIL(1) 语义不变），只是把中断码单列出来。
+    # 无效运行优先于 FAIL：即使某版本已判 FAIL，只要汇总结论是「无效运行」就以中断码收尾
+    # （规则 14：该次运行的全部结果无效；真实失败串已在 SUMMARY.md 里如实并列，供重新执行时复验）。
+    if ($summaryRc -ne 0) {
+        $overall = if ($summaryRc -eq $MT_EXIT_ERROR) { $MT_EXIT_ERROR } else { $MT_EXIT_FAIL }
+    }
 
     # 退出清理走在这里（早于最终判定行），finally 只是兜底（Ctrl-C / 异常退出）
     [void](Invoke-MtAutoCleanup)
@@ -717,6 +738,10 @@ if ($overall -eq 0) {
     else { Write-MtLine "MT_RUN: PASS — $Version 通过（--version 指定单版本，未执行跨版本门控）" }
 } elseif ($overall -eq $MT_EXIT_TIMEOUT) {
     Write-MtLine "MT_RUN: TIMEOUT — 见 reports/$runId/SUMMARY.md（超时与 FAIL 是两种结论）"
+} elseif ($overall -eq $MT_EXIT_ERROR) {
+    # t34：无效运行（规则 14 收严版）—— 与产品 FAIL 是两种结论，退出码 2 ≠ 1
+    Write-MtLine "MT_RUN: 无效运行（MT_USER_TERMINATED）— 本次测试结果全部无效，需重新执行测试验证（与 FAIL 是两种结论）"
+    Write-MtLine "MT_RUN: INVALID reason=USER_TERMINATED exit=$MT_EXIT_ERROR — 见 reports/$runId/SUMMARY.md"
 } else {
     Write-MtLine "MT_RUN: FAIL — 见 reports/$runId/SUMMARY.md"
 }

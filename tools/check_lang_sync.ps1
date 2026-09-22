@@ -3,17 +3,24 @@
 # -*- coding: utf-8 -*-
 <#
 .SYNOPSIS
-    语言文件同步检查(zh_cn.json <-> en_us.json) —— tools/check_lang_sync.py（已于 92fbeaf 删除；取回：`git show 92fbeaf^:tools/check_lang_sync.py`）的 1:1 PowerShell 移植。
+    语言文件同步检查(zh_cn.json <-> en_us.json，<b>并可选地覆盖 ja_jp.json</b>) —— tools/check_lang_sync.py（已于 92fbeaf 删除；取回：`git show 92fbeaf^:tools/check_lang_sync.py`）的 1:1 PowerShell 移植。
 
 .DESCRIPTION
     用法:
         pwsh -NoProfile -File tools/check_lang_sync.ps1 [-LangDir <assets/astral_dice/lang>]
+        #  未传 -LangDir(默认):在仓库根目录跑时检查三线全部子项目的 lang 目录;
+        #  在子项目目录内跑时回退为相对默认 src/main/resources/assets/astral_dice/lang。
 
     规则:
     - zh_cn.json 与 en_us.json 的 key 集合必须完全一致(新增/删除 key 必须同步两侧)。
+    - **ja_jp.json(若存在)以 zh_cn.json 为基线**：key 集合必须与 zh_cn 完全一致，且「未转义字面百分号」同口径判定(见下条)；结构标记差异仅告警。
+    - lang 值里出现「未转义的字面百分号」(单个 %,既不是 %% 也不是合法转换说明符)一律 **FAIL**:
+      该值经 I18n.get/String.format 会抛 UnknownFormatConversionException ⇒ **客户端崩溃**
+      (2026-09-21 1.21.1 教主立牌 `tooltip.astral_dice.sign.teru_active` 的 `§e50%§7` 实测崩游戏,
+      见 run/1.21.1/crash-reports/crash-2026-09-21_15.12.05-client.txt)。字面 % 必须写成 %%。
     - 每个对应 key 的结构标记(%%/%s/%d 等占位符数量、换行数量)差异仅打印警告,
       不导致失败(中英措辞可不同,但结构应尽量一致)。
-    退出码:0 = 通过;1 = key 不一致、JSON 读取/解析失败,或未捕获异常(与 CPython 相同)。
+    退出码:0 = 通过;1 = key 不一致、未转义字面百分号、JSON 读取/解析失败,或未捕获异常(与 CPython 相同)。
 
     跨平台:只做文本/JSON 处理,不使用任何 Win32 API / 注册表 / CIM;路径一律经 Join-Path。
     输出:统一经 Write-Stdout / Write-Stderr([Console]::Out / [Console]::Error,显式 LF,
@@ -381,27 +388,50 @@ function Sort-Ordinal {
 # 主流程(与 check_lang_sync.py 的 main() 一一对应)
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# 单个 lang 目录的检查(返回退出码:0 通过 / 1 不一致或读失败 / 2 未捕获异常)
+# ---------------------------------------------------------------------------
+function Invoke-LangDirCheck {
+    param([Parameter(Mandatory = $true)][string]$LangDir)
+
 $zhPath = Join-Path $LangDir 'zh_cn.json'
 $enPath = Join-Path $LangDir 'en_us.json'
+$jaPath = Join-Path $LangDir 'ja_jp.json'
+
+# ja_jp.json 为**可选**语言(存在即校验)：以 zh_cn 为基线比对 key 集合，并扫描未转义字面百分号。
+$ja = $null
+$jaSet = $null
+if (Test-Path -LiteralPath $jaPath -PathType Leaf) {
+    $ja = Read-LangJson $jaPath
+    if (-not $ja.Ok) {
+        if ($ja.Kind -eq 'fatal') {
+            Write-Stderr $ja.Message
+            return 1
+        }
+        Write-Stdout "[FAIL] 无法读取/解析语言文件: $($ja.Message)"
+        return 1
+    }
+    $jaSet = New-OrdinalSet $ja.Keys
+}
 
 $zh = Read-LangJson $zhPath
 if (-not $zh.Ok) {
     if ($zh.Kind -eq 'fatal') {
         # CPython 未捕获异常:stdout 为空,异常打到 stderr,退出码 1
         Write-Stderr $zh.Message
-        exit 1
+        return 1
     }
     Write-Stdout "[FAIL] 无法读取/解析语言文件: $($zh.Message)"
-    exit 1
+    return 1
 }
 $en = Read-LangJson $enPath
 if (-not $en.Ok) {
     if ($en.Kind -eq 'fatal') {
         Write-Stderr $en.Message
-        exit 1
+        return 1
     }
     Write-Stdout "[FAIL] 无法读取/解析语言文件: $($en.Message)"
-    exit 1
+    return 1
 }
 
 $zhSet = New-OrdinalSet $zh.Keys
@@ -411,6 +441,7 @@ $missingInEn = Sort-Ordinal ([string[]]@($zhSet | Where-Object { -not $enSet.Con
 $extraInEn = Sort-Ordinal ([string[]]@($enSet | Where-Object { -not $zhSet.Contains($_) }))
 
 $errors = 0
+$percentErrors = 0
 if ($missingInEn.Count -gt 0) {
     $errors++
     Write-Stdout '[FAIL] 以下 key 存在于 zh_cn.json 但缺失于 en_us.json(请在 en_us.json 补充对应英文):'
@@ -422,13 +453,29 @@ if ($extraInEn.Count -gt 0) {
     foreach ($key in $extraInEn) { Write-Stdout ('  - ' + $key) }
 }
 
+# ja_jp(可选)：key 集合必须与 zh_cn 完全一致
+if ($null -ne $jaSet) {
+    $missingInJa = Sort-Ordinal ([string[]]@($zhSet | Where-Object { -not $jaSet.Contains($_) }))
+    $extraInJa = Sort-Ordinal ([string[]]@($jaSet | Where-Object { -not $zhSet.Contains($_) }))
+    if ($missingInJa.Count -gt 0) {
+        $errors++
+        Write-Stdout '[FAIL] 以下 key 存在于 zh_cn.json 但缺失于 ja_jp.json(请在 ja_jp.json 补充对应日文):'
+        foreach ($key in $missingInJa) { Write-Stdout ('  - ' + $key) }
+    }
+    if ($extraInJa.Count -gt 0) {
+        $errors++
+        Write-Stdout '[FAIL] 以下 key 存在于 ja_jp.json 但缺失于 zh_cn.json(请同步删除或补回中文):'
+        foreach ($key in $extraInJa) { Write-Stdout ('  - ' + $key) }
+    }
+}
+
 $common = Sort-Ordinal ([string[]]@($zhSet | Where-Object { $enSet.Contains($_) }))
 
 # 极退化输入:根节点不是对象时,CPython 会在 zh[key] / en[key] 上抛 TypeError(未捕获)
 if ($common.Count -gt 0 -and (-not $zh.IsObject -or -not $en.IsObject)) {
     $which = if (-not $zh.IsObject) { $zh } else { $en }
     Write-Stderr $which.SubscriptError
-    exit 1
+    return 1
 }
 
 foreach ($key in $common) {
@@ -441,25 +488,33 @@ foreach ($key in $common) {
     }
 
     # 未转义的字面百分号检查:单 %(非 %% 且非合法说明符)经 I18n.get/String.format
-    # 会抛异常并显示 "Format error: ..."(如帕秋莉手册文本),必须写成 %%。
+    # 会抛异常,帕秋莉手册文本显示 "Format error: ...",本模组 tooltip 路径
+    # (ModTooltipHandler.translationString)则**直接崩客户端** ⇒ 必须写成 %% 且判 FAIL。
+    # 扫描口径与 ModTooltipHandler.VALID_PERCENT 逐字一致:**从左到右**消费,
+    # 合法单元 = `%%` / `%<数字>$[sdbfxoeg]` / `%[sdbfxoeg]`;其余单个 % 记为违规。
+    # (旧实现用 4 字符窗口 + `^%([sdbfxoeg]|\d+\$[sdbfxoeg])` 匹配,会把合法的多位参数序号
+    #  `%12$s` 误报,又因「前一字符是 % 就跳过」漏报 `%%%`;2026-09-21 独立复核发现后改为本扫描。)
+    # ⚠️ 支持的转换符是**刻意收窄**的集合(本仓语料只用 `%s`);`%-5s`/`%02d`/`%.2f`/`%S`/`%n` 这类
+    #    Java 合法但不属本仓约定的写法会被判违规 —— 需要它们时必须同时扩这里与 Java 侧白名单。
     $pairs = @(
         [pscustomobject]@{ Name = 'zh'; Text = $zhVal },
         [pscustomobject]@{ Name = 'en'; Text = $enVal }
     )
+    if ($null -ne $jaSet -and $jaSet.Contains($key)) {
+        $jaVal = $ja.Map[$key]
+        if ($jaVal -is [string]) { $pairs += [pscustomobject]@{ Name = 'ja'; Text = $jaVal } }
+    }
     foreach ($pair in $pairs) {
         $text = $pair.Text
-        foreach ($m in [regex]::Matches($text, '%')) {
-            $pos = $m.Index
-            # %% 转义对(当前 % 是 %% 的第一个或第二个字符)跳过
-            if ((Get-PySlice $text $pos ($pos + 2)) -eq '%%' -or ($pos -gt 0 -and $text[$pos - 1] -eq '%')) {
-                continue
-            }
-            $seg = Get-PySlice $text $pos ($pos + 4)
-            if ([regex]::IsMatch($seg, '^%([sdbfxoeg]|\d+\$[sdbfxoeg])')) {
-                continue
-            }
-            $window = Get-PyCodePointWindow $text $pos 12 12
-            Write-Stdout "[WARN] ${key}($($pair.Name)): 含未转义字面百分号(应写 %%,否则 I18n.get/String.format 显示 Format Error): ...${window}..."
+        $i = 0
+        while ($i -lt $text.Length) {
+            if ($text[$i] -ne '%') { $i++; continue }
+            $unit = [regex]::Match($text.Substring($i), '^%(?:%|\d+\$[sdbfxoeg]|[sdbfxoeg])')
+            if ($unit.Success) { $i += $unit.Length; continue }
+            $window = Get-PyCodePointWindow $text $i 12 12
+            $percentErrors++
+            Write-Stdout "[FAIL] ${key}($($pair.Name)): 含未转义字面百分号(必须写成 %%,否则 I18n.get/String.format 抛 UnknownFormatConversionException 并崩溃客户端): ...${window}..."
+            $i++
         }
     }
 
@@ -468,11 +523,55 @@ foreach ($key in $common) {
     if ($zm -ne $em) {
         Write-Stdout "[WARN] ${key}: 结构标记不一致(占位符/换行/颜色码) zh=$zm en=$em"
     }
+    if ($null -ne $jaSet -and $jaSet.Contains($key)) {
+        $jaValForMarker = $ja.Map[$key]
+        if ($jaValForMarker -is [string]) {
+            $jm = Get-StructureMarkerRepr $jaValForMarker
+            if ($zm -ne $jm) {
+                Write-Stdout "[WARN] ${key}: 结构标记不一致(占位符/换行/颜色码) zh=$zm ja=$jm"
+            }
+        }
+    }
 }
 
 if ($errors) {
     Write-Stdout "`n语言文件未同步:请把 zh_cn.json 的手动修改同步至 en_us.json(同一 key 中英对应)后再提交。"
-    exit 1
 }
-Write-Stdout "OK: zh_cn.json($($zhSet.Count) keys) 与 en_us.json($($enSet.Count) keys) key 完全一致。"
-exit 0
+if ($percentErrors) {
+    Write-Stdout "`n共 $percentErrors 处未转义字面百分号:lang 值里的字面 % 必须写成 %%(见 AGENTS.md「lang 值中的字面百分号必须写成 %%」)。"
+}
+if ($errors -or $percentErrors) {
+    return 1
+}
+if ($null -ne $jaSet) {
+    Write-Stdout "OK: zh_cn.json($($zhSet.Count) keys) 与 en_us.json($($enSet.Count) keys) key 完全一致；ja_jp.json($($jaSet.Count) keys) 与 zh_cn.json key 完全一致。"
+} else {
+    Write-Stdout "OK: zh_cn.json($($zhSet.Count) keys) 与 en_us.json($($enSet.Count) keys) key 完全一致。"
+}
+return 0
+}
+
+# ---------------------------------------------------------------------------
+# 目标选择
+#   显式 -LangDir:只检查该目录(CI 的三步显式调用、以及在子项目目录内的手工调用都走这里)。
+#   未传参:默认检查三线**全部**子项目的 lang 目录 —— 仓库根目录一次跑完
+#   (`pwsh -NoProfile -File tools/check_lang_sync.ps1`),与 CI 的显式三步等价。
+# ---------------------------------------------------------------------------
+$targetDirs = [System.Collections.Generic.List[string]]::new()
+if ($PSBoundParameters.ContainsKey('LangDir')) {
+    $targetDirs.Add($LangDir)
+} else {
+    foreach ($proj in @('neoforge-1.21.1', 'forge-1.20.1', 'neoforge-26.1.2')) {
+        $cand = Join-Path $proj 'src/main/resources/assets/astral_dice/lang'
+        if (Test-Path -LiteralPath $cand -PathType Container) { $targetDirs.Add($cand) }
+    }
+    if ($targetDirs.Count -eq 0) { $targetDirs.Add($LangDir) }   # 回退:在子项目目录内直接运行时用相对默认
+}
+
+$exitCode = 0
+foreach ($dir in $targetDirs) {
+    if ($targetDirs.Count -gt 1) { Write-Stdout "--- $dir" }
+    $rc = Invoke-LangDirCheck -LangDir $dir
+    if ($rc -ne 0) { $exitCode = $rc }
+}
+exit $exitCode

@@ -23,6 +23,8 @@ import com.mojang.math.Axis;
 import org.joml.Matrix4f;
 import org.joml.Vector4f;
 
+import com.merlinkitsune.starenginelib.client.ActionBarManager;
+import com.merlinkitsune.starenginelib.client.ClientDamageNumbers;
 @Mod.EventBusSubscriber(modid = AstralDiceMod.MODID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.MOD)
 public class ModClientEvents {
 
@@ -31,6 +33,8 @@ public class ModClientEvents {
         // 1.20.1:registerAbove 的 id 参数是纯 path,Forge 自动拼 modid 前缀
         event.registerAbove(VanillaGuiOverlay.CROSSHAIR.id(),
                 "damage_number", DamageNumberOverlay.INSTANCE);
+        event.registerAbove(VanillaGuiOverlay.CROSSHAIR.id(),
+                "target_select", TargetSelectOverlay.INSTANCE);
         event.registerAbove(VanillaGuiOverlay.AIR_LEVEL.id(),
                 "action_bar", ActionBarOverlay.INSTANCE);
     }
@@ -47,6 +51,10 @@ public class ModClientEvents {
 
         @Override
         public void render(ForgeGui gui, GuiGraphics guiGraphics, float partialTick, int width, int height) {
+            // F1（隐藏 HUD）守卫:本线原版门槛是 `!hideGui || screen != null`,故同条件守卫是**逐例 no-op**;
+            // 写成裸 `hideGui` 会在「F1 + 界面打开」时多隐藏一层（R2-04）。此处只求与 1.21.1 同形。
+            Minecraft mc = Minecraft.getInstance();
+            if (mc.options.hideGui && mc.screen == null) return;
             ActionBarManager.render(guiGraphics, partialTick);
         }
     }
@@ -55,6 +63,7 @@ public class ModClientEvents {
     public static void registerKeyMappings(RegisterKeyMappingsEvent event) {
         event.register(KeyBindingSetup.ACTIVATE_SIGN_KEY);
         event.register(KeyBindingSetup.OPEN_CARD_INVENTORY_KEY);
+        // 目标选择器不注册键盘确认键：确认 = 鼠标左键、取消 = 右键+潜行 / ESC 菜单（强力胶式语义）
     }
 
     public static class DamageNumberOverlay implements IGuiOverlay {
@@ -123,7 +132,8 @@ public class ModClientEvents {
                 int color = (alpha << 24) | (number.color & 0xFFFFFF);
                 int yOffset = -(int) (progress * 30);
 
-                String text = "+" + number.damage;
+                // 数显只给数值、不加 "+" 前缀(2026-09-19 用户要求:攻击伤与法伤一并移除)
+                String text = Integer.toString(number.damage);
                 int textWidth = mc.font.width(text);
                 poseStack.pushPose();
                 poseStack.translate(x - textWidth / 2.0f, y + yOffset, 0);

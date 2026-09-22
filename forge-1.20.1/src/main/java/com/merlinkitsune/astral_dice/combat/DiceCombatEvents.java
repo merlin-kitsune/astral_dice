@@ -1,35 +1,25 @@
 package com.merlinkitsune.astral_dice.combat;
-import com.merlinkitsune.astral_dice.item.CuriosCompat;
+import com.merlinkitsune.starenginelib.item.CuriosCompat;
 import com.merlinkitsune.astral_dice.network.ModNetwork;
 
-
-import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.component.AppliedStone;
-import com.merlinkitsune.astral_dice.component.GameplayConstants;
+import com.merlinkitsune.starenginelib.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
 import com.merlinkitsune.astral_dice.component.WeaponEnhancement;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
+import com.merlinkitsune.astral_dice.item.RenShieldManager;
 import com.merlinkitsune.astral_dice.item.sign.ParunanSignItem;
 import com.merlinkitsune.astral_dice.item.sign.BaseSignItem;
-import com.merlinkitsune.astral_dice.item.sign.BonnieSignItem;
 import com.merlinkitsune.astral_dice.item.sign.MosesSignItem;
 import com.merlinkitsune.astral_dice.item.sign.PandamanSignItem;
+import com.merlinkitsune.astral_dice.item.sign.MamushiSignItem;
 import com.merlinkitsune.astral_dice.effect.WeaknessRevealEffect;
-import com.merlinkitsune.astral_dice.item.BossEntityUtil;
-import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
 import com.merlinkitsune.astral_dice.item.dice.DiceCurioItem;
-import com.merlinkitsune.astral_dice.item.card.ExclusiveCardUtil;
-import com.merlinkitsune.astral_dice.item.sign.HaiqingSignItem;
-import com.merlinkitsune.astral_dice.item.HealingManager;
-import com.merlinkitsune.astral_dice.item.InvestigationEventUtil;
 import com.merlinkitsune.astral_dice.item.MarkManager;
 import com.merlinkitsune.astral_dice.item.StarLightManager;
 import com.merlinkitsune.astral_dice.item.sign.MisakiSignItem;
 import com.merlinkitsune.astral_dice.item.ModItems;
-import com.merlinkitsune.astral_dice.item.sign.PadmanSignItem;
-import com.merlinkitsune.astral_dice.item.sign.JasmineSignItem;
-import com.merlinkitsune.astral_dice.item.sign.LuluSignItem;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
@@ -42,15 +32,10 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.Attributes;
-import net.minecraft.world.entity.animal.Animal;
-import net.minecraft.world.entity.boss.wither.WitherBoss;
-import net.minecraft.world.entity.monster.Monster;
-import net.minecraft.world.entity.monster.warden.Warden;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.item.ProjectileWeaponItem;
 import net.minecraft.world.item.AxeItem;
 import net.minecraft.world.item.SwordItem;
 import net.minecraft.world.item.TridentItem;
@@ -58,19 +43,11 @@ import net.minecraft.world.item.TridentItem;
 import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.event.AnvilUpdateEvent;
-import net.minecraftforge.event.LootTableLoadEvent;
 import net.minecraft.tags.DamageTypeTags;
 import net.minecraftforge.event.entity.living.LivingAttackEvent;
 import net.minecraftforge.event.entity.living.LivingChangeTargetEvent;
 import net.minecraftforge.event.entity.living.LivingDamageEvent;
-import net.minecraftforge.event.entity.living.LivingDropsEvent;
 import net.minecraftforge.event.entity.living.MobEffectEvent;
-import net.minecraftforge.event.entity.player.ItemTooltipEvent;
-import net.minecraftforge.event.entity.ProjectileImpactEvent;
-import net.minecraftforge.event.entity.player.PlayerEvent;
-import top.theillusivec4.curios.api.CuriosApi;
-import top.theillusivec4.curios.api.type.inventory.ICurioStacksHandler;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -79,37 +56,16 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
-import net.minecraft.world.level.storage.loot.LootPool;
-import net.minecraft.world.level.storage.loot.LootTable;
-import net.minecraft.world.level.storage.loot.entries.LootItem;
-import net.minecraft.world.level.storage.loot.functions.SetItemCountFunction;
-import net.minecraft.world.level.storage.loot.predicates.LootItemRandomChanceCondition;
-import net.minecraft.world.level.storage.loot.providers.number.ConstantValue;
-import net.minecraft.world.level.storage.loot.providers.number.UniformGenerator;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import com.merlinkitsune.astral_dice.item.chip.StarCoinHammerChipItem;
 import com.merlinkitsune.astral_dice.item.chip.PerpetualMotionChipItem;
 import com.merlinkitsune.astral_dice.item.chip.AdvancedPeripheralsChipItem;
 import com.merlinkitsune.astral_dice.item.chip.BufferShieldChipItem;
-import com.merlinkitsune.astral_dice.combat.CardRegistry;
-import com.merlinkitsune.astral_dice.client.KeyBindingSetup;
 import com.merlinkitsune.astral_dice.combat.DiceCombatContext;
-import com.merlinkitsune.astral_dice.damage.ModDamageTypes;
-import com.merlinkitsune.astral_dice.item.sign.FenSignItem;
-import com.merlinkitsune.astral_dice.item.card.EffectCardPeriod;
-import com.merlinkitsune.astral_dice.item.chip.BankCardUnlimitedChipItem;
 import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
-import com.merlinkitsune.astral_dice.item.chip.CursedSwordChipItem;
-import com.merlinkitsune.astral_dice.item.chip.FriendshipBadgeChipItem;
-import com.merlinkitsune.astral_dice.item.chip.RevengeHalberdChipItem;
-import com.merlinkitsune.astral_dice.item.chip.SatelliteChipItem;
-import com.merlinkitsune.astral_dice.item.chip.CurrentCoreChipItem;
 import com.merlinkitsune.astral_dice.item.sign.NancyLuSignItem;
 import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
 import com.merlinkitsune.astral_dice.item.card.FateGuidanceCardItem;
 import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
-import com.merlinkitsune.astral_dice.event.ModEffectRemoval;
+import com.merlinkitsune.starenginelib.combat.HostileTargets;
 
 @Mod.EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public class DiceCombatEvents {
@@ -138,6 +94,14 @@ public class DiceCombatEvents {
     //      反击链内不可能再发起一次反击,递归在结构上不成立(不是"限制递归层数")。
     private static int counterDepth = 0;
 
+    // 把两条内部窗口的开关讲给库听(库的 PlayerHostilityTracker 需要它来区分"主动攻击"与"内部波及",
+    // 但窗口状态属本类的玩法实现,不下沉)。
+    static {
+        com.merlinkitsune.starenginelib.combat.InternalDamageWindows.install(
+                DiceCombatEvents::isInternalAoe,
+                DiceCombatEvents::isInCounterChain);
+    }
+
     // 当前是否处于反击链中(供骰战结算 / 闪避 / 反击入口判定)
     public static boolean isInCounterChain() {
         return counterDepth > 0;
@@ -148,7 +112,6 @@ public class DiceCombatEvents {
     public static boolean isInternalAoe() {
         return aoeProcessing;
     }
-
 
     // 检测玩家是否佩戴了七咒之戒(按物品 ID 识别,未安装该模组时返回 false)
     public static boolean hasEnigmaticCurse(Player player) {
@@ -181,7 +144,6 @@ public class DiceCombatEvents {
         }
         return points * (1 - cursePenalty);
     }
-
 
     @SubscribeEvent
     public static void onLivingDamagePre(LivingDamageEvent event) {
@@ -238,70 +200,13 @@ public class DiceCombatEvents {
             }
         }
 
-        // 占星师立牌主动:对本次攻击的第一个目标施加"虚弱印记"5:00(须符合骰神赐福触发条件)+ 虚弱效果。
-        // 印记持续生效至目标被击杀或计时结束;记录释放者,击杀后仅释放者获得奖励。
+        // 占星师/秘密侦探立牌主动已迁移至目标选择器(TargetSelectionManager + HaiqingSignItem/BonnieSignItem 的
+        // TargetSelectionAction.apply),不再于攻击时自动释放,此处无攻击释放逻辑。
+        // 枪匠立牌主动同样已迁移至目标选择器(见 MosesSignItem 注册的 TargetSelectionAction),此处仅保留其被动:
+        // 攻击已带"破绽"的敌对目标,每段破绽获得 1 层「弱点识破」。
         if (!player.level().isClientSide() && attackerCurios.isPresent() && isBlessingTarget(target, player)) {
-            var haiqingResult = attackerCurios.get().findFirstCurio(s -> s.is(ModItems.HAIQING_SIGN.get()));
-            if (haiqingResult.isPresent() && ModAttachments.getSignReadyType(player) == HaiqingSignItem.READY_TYPE) {
-                ModAttachments.setSignReadyType(player, 0);
-                ModAttachments.setSignReadyExpire(player, 0);
-                ModAttachments.setWeakMarkSource(target, Optional.of(player.getUUID()));
-                target.addEffect(new MobEffectInstance(ModEffects.WEAK_MARK.get(), 6000, 0, false, true));
-                EffectTimerGuard.apply(target, new MobEffectInstance(MobEffects.WEAKNESS, 6000, 0, false, true));
-                // 主动成功施加:移除"待命"提示效果并开始玩家级冷却
-                ModEffectRemoval.remove(player, ModEffects.HAIQING_READY.get());
-                int signCooldownTicks = com.merlinkitsune.astral_dice.event.WeirdDiceHandler.signCooldownTicks(player);
-                ModAttachments.setSignActiveCooldownEnd(player,
-                        player.level().getGameTime() + signCooldownTicks);
-                // 路线 A:记录本次冷却实际使用的最大冷却值,所有减免方一律读它(不再各自重算基准)
-                ModAttachments.setSignActiveMaxCooldown(player, signCooldownTicks);
-                CurrentCoreChipItem.onActiveSkillUsed(player);
-            }
-            // 秘密侦探立牌主动:对本次攻击的第一个目标施加"隐匿调查"(永久,直到目标死亡/消失);若目标带"标记",按标记层数*2 获得星币
-            var bonnieResult = attackerCurios.get().findFirstCurio(s -> s.is(ModItems.BONNIE_SIGN.get()));
-            if (bonnieResult.isPresent() && ModAttachments.getSignReadyType(player) == BonnieSignItem.READY_TYPE) {
-                ModAttachments.setSignReadyType(player, 0);
-                ModAttachments.setSignReadyExpire(player, 0);
-                ModAttachments.setUndercoverSource(target, Optional.of(player.getUUID()));
-                target.addEffect(new MobEffectInstance(ModEffects.UNDERCOVER_INVESTIGATION.get(),
-                        Integer.MAX_VALUE, 0, false, true));
-                int markLevel = MarkManager.getLevel(target);
-                if (markLevel > 0) {
-                    ItemStack coinStack = new ItemStack(ModItems.STAR_COIN.get(), markLevel * 2);
-                    if (!player.getInventory().add(coinStack)) {
-                        player.drop(coinStack, false);
-                    }
-                }
-                // 主动成功施加:移除"待命"提示效果并开始玩家级冷却
-                ModEffectRemoval.remove(player, ModEffects.BONNIE_READY.get());
-                int signCooldownTicks = com.merlinkitsune.astral_dice.event.WeirdDiceHandler.signCooldownTicks(player);
-                ModAttachments.setSignActiveCooldownEnd(player,
-                        player.level().getGameTime() + signCooldownTicks);
-                // 路线 A:记录本次冷却实际使用的最大冷却值,所有减免方一律读它(不再各自重算基准)
-                ModAttachments.setSignActiveMaxCooldown(player, signCooldownTicks);
-                CurrentCoreChipItem.onActiveSkillUsed(player);
-            }
-            // 枪匠立牌主动:对本次攻击的第一个普通敌对目标施加"破绽"2:00(已带破绽则不重复施加)
-            // 枪匠立牌主动:对本次攻击的第一个目标施加"破绽"2:00(已带破绽则不重复施加)。
-            // 触发条件与骰神赐福完全一致:近战武器(外层已判定)+ isBlessingTarget(外层已判定),
-            // 因此不再额外限制"普通敌对生物"。
-            var mosesResult = attackerCurios.get().findFirstCurio(s -> s.is(ModItems.MOSES_SIGN.get()));
-            if (mosesResult.isPresent()
-                    && ModAttachments.getSignReadyType(player) == MosesSignItem.READY_TYPE) {
-                if (MosesSignItem.applyBroken(player, target)) {
-                    ModAttachments.setSignReadyType(player, 0);
-                    ModAttachments.setSignReadyExpire(player, 0);
-                    ModEffectRemoval.remove(player, ModEffects.MOSES_READY.get());
-                    int signCooldownTicks = MosesSignItem.signCooldownTicks(player);
-                    ModAttachments.setSignActiveCooldownEnd(player,
-                            player.level().getGameTime() + signCooldownTicks);
-                    // 路线 A:记录本次冷却实际使用的最大冷却值,所有减免方一律读它(不再各自重算基准)
-                    ModAttachments.setSignActiveMaxCooldown(player, signCooldownTicks);
-                    CurrentCoreChipItem.onActiveSkillUsed(player);
-                }
-            }
-            // 枪匠立牌被动:攻击已带"破绽"的目标,每段破绽获得 1 层弱点识破
-            if (MosesSignItem.isEquipped(player) && target.hasEffect(ModEffects.MOSES_BROKEN.get())) {
+            if (MosesSignItem.isEquipped(player) && target instanceof net.minecraft.world.entity.monster.Enemy
+                    && target.hasEffect(ModEffects.MOSES_BROKEN.get())) {
                 MosesSignItem.onAttackBrokenTarget(player, target);
             }
         }
@@ -376,6 +281,8 @@ public class DiceCombatEvents {
             com.merlinkitsune.astral_dice.item.chip.MemberRecommendationChipItem.onBlessingStart(player);
             // 大当家立牌:触发骰神赐福 → 记录触发时刻;养精蓄锐满层则消耗 2 层并置位本次攻击的溅射
             fenSplashArmed = com.merlinkitsune.astral_dice.item.sign.FenSignItem.onBlessingTriggered(player);
+            // 蛟龙立牌(mamushi)专属战斗牌「撕咬」:触发骰神赐福时,每张**装备中**的撕咬 +1 层觉醒并锁存加成
+            MamushiSignItem.onDiceBlessingTriggered(player);
             // 治愈体系:触发骰神赐福 → 医疗箱加点(先)+ 按当前治愈点×2 回血(后)。
             // 置于触发块末尾,确保晚于本事件内所有影响治愈点数量的效果(立牌受击钩子/缓冲盾牌在前部已执行)
             com.merlinkitsune.astral_dice.item.HealingManager.onBlessingTriggered(player);
@@ -441,6 +348,25 @@ public class DiceCombatEvents {
                     ModDataComponents.PADMAN_FORCE_SIX.set(padmanStack, true);
                 }
             }
+        }
+
+        // 风水师立牌(zhao)被动「福祸相倚」:骰点定稿后判定 —— 结果为 1 ⇒ 获得 1 张符卡-祸;
+        // 为 6 ⇒ 获得 1 张符卡-福(卡牌在发放那一刻绑定获得者)。
+        // ⚠️ 挂点必须在本处(骰点**已被全部修正方改写之后**):上班族立牌的"骰点为 1 则下次必为 6"
+        // 会把 baseDice 直接改写成 6,挂在它之前会读到被覆盖掉的旧值。
+        // ⚠️ 「一次结算一次判定」:同一挥击命中多目标会多次进入本事件 ⇒ 由
+        // ZhaoSignItem#tryClaimDiceJudgment 的**实例内**标记(纯静态槽位,不写附件、不跨实例持久化,
+        // 同 DiceCombatModifiers#instanceVictim 口径)防重复发牌。
+        if (!player.level().isClientSide()
+                && com.merlinkitsune.astral_dice.item.sign.ZhaoSignItem.tryClaimDiceJudgment(player)) {
+            com.merlinkitsune.astral_dice.item.sign.ZhaoSignItem.onDiceRollResult(player, baseDice);
+        }
+
+        // 人偶师立牌(hanna)「幻想千金」:战斗骰点 = 6 ⇒ 佩戴者获得 1 星币。
+        // 「每 1:00 仅触发 1 次」由立牌自己的 hanna_fantasy_cooldown_end 附件保证 ——
+        // 同一挥击命中多个目标会多次进入本处,第二次起被冷却挡下。
+        if (!player.level().isClientSide()) {
+            com.merlinkitsune.astral_dice.item.sign.HannaSignItem.onDiceRollResult(player, baseDice);
         }
 
         // 经商立牌(parunan):触发骰神赐福后立即获得 触发时骰点*2 的星光
@@ -643,6 +569,11 @@ public class DiceCombatEvents {
 
         event.setAmount((float) finalDmg);
         sendDamageNumber(event.getEntity(), (int) finalDmg);
+        // 蛟龙立牌(mamushi)专属战斗牌「龙之咆哮」:装备者在骰战中命中目标时施加破防(ARMOR -8 = -4 防御)
+        // + 缓慢 III,均 1:00;重复命中只刷新时长不叠层(施加口径与时长常量归 MamushiSignItem)。
+        if (!player.level().isClientSide() && MamushiSignItem.countEquippedType(player, "dragon_roar") > 0) {
+            MamushiSignItem.applyRoarDebuff(target);
+        }
         // 电磁炮:以本次骰战最终伤害回填雷击伤害(50%)
         com.merlinkitsune.astral_dice.item.chip.RailgunChipItem.applyFinalDamage(railgunStrike, (float) finalDmg);
 
@@ -732,7 +663,6 @@ public class DiceCombatEvents {
         com.merlinkitsune.astral_dice.item.chip.FlashlightChipItem.onAttack(player, target);
     }
 
-
     // 攻击牌耐久消耗(仅在触发骰神赐福的那次攻击执行一次;防御牌/蓄力不消耗)。
     // 普通近战触发与反击伤害注入共用(反击未赐福时作为触发攻击消耗一次耐久)。
     private static void consumeAttackCardDurabilityOnce(Player player, ItemStack diceStack, WeaponEnhancement enhancement) {
@@ -757,7 +687,9 @@ public class DiceCombatEvents {
                 attackCostFreed += MisakiSignItem.effectiveCost(player, stone.type());
                 dirty = true;
             } else {
-                newStones.add(new AppliedStone(stone.type(), newUses));
+                // ⚠️ 必须透传 temporary:临时牌(绿洲女王 nardis)扣 1 点耐久后仍须保持临时性,
+                //    否则本次消耗就会把它"洗"成永久牌(到期清理便找不到它)—— 见 AppliedStone 类注释。
+                newStones.add(new AppliedStone(stone.type(), newUses, stone.temporary()));
                 dirty = true;
             }
         }
@@ -788,7 +720,8 @@ public class DiceCombatEvents {
                 defenseCostFreed += MisakiSignItem.effectiveCost(defender, stone.type());
                 dirty = true;
             } else {
-                newStones.add(new AppliedStone(stone.type(), newUses));
+                // 同 consumeAttackCardDurabilityOnce:temporary 必须透传(临时牌不会因扣耐久变回永久牌)
+                newStones.add(new AppliedStone(stone.type(), newUses, stone.temporary()));
                 dirty = true;
             }
         }
@@ -818,8 +751,6 @@ public class DiceCombatEvents {
         consumeDefenseCardDurability(defender, dice, enh);
         ModAttachments.setDefenseCardConsumedThisBlessing(defender, true);
     }
-
-
 
     @SubscribeEvent
     public static void onLivingChangeTarget(LivingChangeTargetEvent event) {
@@ -885,6 +816,14 @@ public class DiceCombatEvents {
         NancyLuSignItem.onDiceBlessingEnded(player);
         // 枪匠立牌:赐福结束弱点识破减少 1 层
         MosesSignItem.onDiceBlessingEnded(player);
+        // 蛟龙立牌(mamushi):赐福结束清除撕咬加成锁存(立牌 tick 另有"无赐福且锁存为真 ⇒ 清"的兜底)
+        MamushiSignItem.onDiceBlessingEnded(player);
+        // 怪力侦探立牌(sherry):赐福结束「推理时间」减少 1 层(层数真值在附件,死亡不清)
+        com.merlinkitsune.astral_dice.item.sign.SherrySignItem.onDiceBlessingEnded(player);
+        // 风水师立牌(zhao)的「白泽赐福」两分支收尾**不在这里**,也**不**订阅本 Expired 事件:
+        // 判定入口 = 玩家级 tick 的下降沿(ZhaoSignItem#tickBlessing,由 PlayerTickEvents 每 tick 驱动;
+        // 规格 §4.4 冻结口径)。理由:Expired 在"效果被外力移除 / 死亡 / 重连清场"时不触发会漏掉结束,
+        // 且与下降沿同时订阅会重复消费 skip 计数。本处理器对骰神赐福自身的语义保持原样。
 
         var curios = CuriosCompat.getCuriosInventory(player);
         if (curios.isEmpty()) return;
@@ -928,6 +867,10 @@ public class DiceCombatEvents {
 
     // 标记效果自然结束时:每分钟减少 1 层标记(层数>1 时重新施加并重置计时,否则标记消失)
 
+    // 风水师立牌(zhao)「白泽赐福」的溢出治疗转攻击力**不在这里**:它由
+    // ZhaoSignItem#onLivingHeal 自己挂在 Forge 的 LivingHealEvent 上(与 1.21.1 侧同一形状:
+    // 处理逻辑与状态归立牌类所有,骰战类只保留"骰点定稿后发放符卡"这一处挂点)。
+
     // 伤害放大须先于 ChipDamageHandler(安全气囊,LOWEST)执行,故用 LOW
     @SubscribeEvent(priority = EventPriority.LOW)
     public static void onBerserkDamageTaken(LivingDamageEvent event) {
@@ -937,7 +880,6 @@ public class DiceCombatEvents {
         if (berserk == null) return;
         event.setAmount(event.getAmount() + 1 * (berserk.getAmplifier() + 1));
     }
-
 
     // 虚弱印记:目标受到任意伤害 +10%;攻击者拥有"命运的指引"效果时对带虚弱印记的目标额外 +20%
     /**
@@ -973,7 +915,6 @@ public class DiceCombatEvents {
         });
     }
 
-
     // 伤害放大须先于 ChipDamageHandler(安全气囊,LOWEST)执行,故用 LOW
     @SubscribeEvent(priority = EventPriority.LOW)
     public static void onWeakMarkDamage(LivingDamageEvent event) {
@@ -1000,7 +941,6 @@ public class DiceCombatEvents {
         var curios = CuriosCompat.getCuriosInventory(player);
         return curios.isPresent() && curios.get().findFirstCurio(DiceCurioItem::isDiceItem).isPresent();
     }
-
 
     private static int rollDice(int max) {
         return ThreadLocalRandom.current().nextInt(1, max + 1);
@@ -1049,7 +989,7 @@ public class DiceCombatEvents {
         if (HostileTargets.isHostile(target)) return true;
         if (target instanceof Mob mob) {
             // Boss 允许触发;其余生物仅在被激怒/正在攻击玩家时允许
-            if (com.merlinkitsune.astral_dice.item.BossEntityUtil.isBossEntity(target)) return true;
+            if (com.merlinkitsune.starenginelib.item.BossEntityUtil.isBossEntity(target)) return true;
             return mob.getTarget() == player || mob.isAggressive();
         }
         // 被动/友好/未激怒的中立生物不允许触发骰神赐福
@@ -1175,6 +1115,34 @@ public class DiceCombatEvents {
         Optional<UUID> tauntSource = ModAttachments.getPandamanTauntSource(attacker);
         if (tauntSource.isEmpty() || !tauntSource.get().equals(player.getUUID())) return;
         injectCounterDamage(player, attacker);
+    }
+
+    // 游戏大师立牌(ren)「鼠鼠护盾」自带的一次性反击:带盾玩家被攻击时消耗 1 层,对攻击者注入一次
+    // 现有反击伤害(沿用同一公式)。1.20.1 的 LivingDamageEvent 派发于吸收结算**之后**,
+    // 但它同样只是「伤害已确认」的钩子,与是否被吸收无关 ⇒ **被黄心完全吃掉的一击同样触发**;
+    // 若这一击正好打空黄心,护盾的清空由 RenShieldManager 的每 tick 轮询在稍后完成(先反击、后破盾)。
+    @SubscribeEvent
+    public static void onRenShieldCounter(LivingDamageEvent event) {
+        LivingEntity victim = event.getEntity();
+        if (victim.level().isClientSide()) return;
+        // 反击链中不再触发(与破绽闪避 / 嘲讽反击共用同一结构性递归截断)
+        if (isInCounterChain()) return;
+        if (!(victim instanceof Player player)) return;
+        if (!player.isAlive()) return;
+        if (!player.hasEffect(ModEffects.REN_SHIELD.get())) return;
+        if (ModAttachments.getRenCounterCharges(player) <= 0) return;
+        if (!(event.getSource().getEntity() instanceof LivingEntity attacker)) return;
+        if (attacker == player) return;
+        // 一次性充能:先消耗层数(并同步摘掉「反击」图标),再注入伤害
+        ModAttachments.setRenCounterCharges(player, 0);
+        RenShieldManager.refreshCounterEffect(player);
+        injectCounterDamage(player, attacker);
+        if (player instanceof ServerPlayer sp) {
+            ModNetwork.sendToPlayer(sp, new ModNetwork.ActionBarMessage(
+                    Component.translatable("msg.astral_dice.ren_counter_fired")
+                            .withStyle(ChatFormatting.YELLOW),
+                    GameplayConstants.ACTIONBAR_DURATION_TICKS));
+        }
     }
 
     // === 反击伤害注入(Counterattack Damage Injection) ===

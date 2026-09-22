@@ -12,6 +12,7 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 
 import java.util.function.Supplier;
 import com.merlinkitsune.astral_dice.item.chip.StarCoinHammerChipItem;
+import com.merlinkitsune.astral_dice.item.chip.ShootingStarChipItem;
 import com.merlinkitsune.astral_dice.item.chip.EagleScopeChipItem;
 import com.merlinkitsune.astral_dice.item.chip.MagicTomeChipItem;
 import com.merlinkitsune.astral_dice.item.chip.BufferShieldChipItem;
@@ -43,6 +44,13 @@ import com.merlinkitsune.astral_dice.item.card.LuxuryFeastCardItem;
 import com.merlinkitsune.astral_dice.item.chip.AtmChipItem;
 import com.merlinkitsune.astral_dice.item.chip.BankCardChipItem;
 import com.merlinkitsune.astral_dice.item.sign.RinSignItem;
+import com.merlinkitsune.astral_dice.item.sign.RenSignItem;
+import com.merlinkitsune.astral_dice.item.sign.ZhaoSignItem;
+import com.merlinkitsune.astral_dice.item.sign.TeruSignItem;
+import com.merlinkitsune.astral_dice.item.sign.NardisSignItem;
+import com.merlinkitsune.astral_dice.item.sign.MamushiSignItem;
+import com.merlinkitsune.astral_dice.item.card.FuCardItem;
+import com.merlinkitsune.astral_dice.item.card.HuoCardItem;
 import com.merlinkitsune.astral_dice.item.dice.DiceTierRegistry;
 import com.merlinkitsune.astral_dice.item.card.HamburgerCardItem;
 import com.merlinkitsune.astral_dice.item.chip.TargetChipItem;
@@ -285,6 +293,25 @@ public class ModItems {
                     .stacksTo(64)
                     .rarity(Rarity.UNCOMMON)
                     .component(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("full_power")), "full_power"));
+
+    // 撕咬(蛟龙立牌 mamushi 专属战斗牌):费用 2 / 耐久 1 / 定值攻击 +3(对齐暗影突袭)。
+    // 专属绑定:获得者由 ExclusiveCardUtil 绑定(owner_uuid),非获得者无法放入骰子卡牌栏;
+    // 装备且触发骰神赐福时每张 +1 层觉醒并锁存撕咬加成(见 MamushiSignItem)。
+    // 无配方、不进任何随机池/赏金池。
+    public static final DeferredItem<Item> ATTACK_CARD_BITE = registerItem("attack_card_bite",
+            () -> new CardItem(new Item.Properties()
+                    .stacksTo(64)
+                    .rarity(Rarity.UNCOMMON)
+                    .component(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("bite")), "bite"));
+
+    // 龙之咆哮(蛟龙立牌 mamushi 专属战斗牌):费用 3 / 耐久 5 / 定值攻击 +3。
+    // 命中使目标 缓慢 III 1:00 并减 4 点防御 1:00(见 MamushiSignItem.applyRoarDebuff);
+    // 只能由处于真龙形态的蛟龙立牌佩戴者获得(主动发放 / 撕咬转换),无配方、不进任何池。
+    public static final DeferredItem<Item> ATTACK_CARD_DRAGON_ROAR = registerItem("attack_card_dragon_roar",
+            () -> new CardItem(new Item.Properties()
+                    .stacksTo(64)
+                    .rarity(Rarity.UNCOMMON)
+                    .component(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("dragon_roar")), "dragon_roar"));
 
     public static final DeferredItem<Item> DEFENSE_CARD_MEDIUM = registerItem("defense_card_medium",
             () -> new CardItem(new Item.Properties()
@@ -777,6 +804,19 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(Rarity.EPIC)));
 
+    // 紫色飞星(史诗):路过敌对目标且不对其发动攻击 ⇒ 使其受到 1 点伤害并自身 +1 层「星光」;每 10 秒触发一次。
+    // 与金色飞星共用同一冷却计时器(用户裁决);两枚共用 ShootingStarChipItem,差异全在执行器 ShootingStarManager。
+    public static final DeferredItem<Item> PURPLE_SHOOTING_STAR_CHIP = registerItem("purple_shooting_star_chip",
+            () -> new ShootingStarChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.EPIC)));
+
+    // 金色飞星(传奇):同上,基础伤害 2 点;若目标为精英怪物或 Boss,额外造成自身当前「星光」层数的伤害。
+    public static final DeferredItem<Item> GOLDEN_SHOOTING_STAR_CHIP = registerItem("golden_shooting_star_chip",
+            () -> new ShootingStarChipItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.UNCOMMON)));
+
     public static final DeferredItem<Item> PADMAN_SIGN = registerItem("padman_sign",
             () -> new PadmanSignItem(new Item.Properties()
                     .stacksTo(1)
@@ -874,6 +914,89 @@ public class ModItems {
     public static final DeferredItem<Item> PANDAMAN_SIGN = registerItem("pandaman_sign",
             () -> new PandamanSignItem(new Item.Properties()
                     .stacksTo(1)
+                    .rarity(Rarity.RARE)));
+
+    // 游戏大师立牌(命名:ren,史诗):鼠鼠救我被动(5:00 无盾自动补「1 张随机卡牌 + 护盾」)
+    // + 熊孩子特权主动(选任意玩家或自身);盾 = 5 黄心 + 抗性提升 + 1 层反击;配方=基础骰子(纸×4 + 星币×3) → 史诗
+    public static final DeferredItem<Item> REN_SIGN = registerItem("ren_sign",
+            () -> new RenSignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.EPIC)));
+
+    // 风水师立牌(命名:zhao,传奇):被动「福祸相倚」(骰点 1→符卡-祸 / 6→符卡-福)
+    // + 被动「完美帮手」(对装备大当家立牌者施加白泽赐福时给 1 层养精蓄锐)
+    // + 主动「白泽赐福」(目标选择器;溢出治疗等量转攻击力;持续到下一次骰神赐福结束;
+    //   施法者得 1 张符卡-福并把自身全部符卡-祸转为符卡-福)。
+    // 传奇品质 = Rarity.UNCOMMON(本模组「金=传奇」映射,见本类顶部的稀有度标准)。
+    public static final DeferredItem<Item> ZHAO_SIGN = registerItem("zhao_sign",
+            () -> new ZhaoSignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.UNCOMMON)));
+
+    // 教主立牌(命名:teru,传奇):被动「狐光」(层数资源;合成/获得/装备攻击牌 +1 层,带防刷守卫)
+    // + 主动「降神」(目标选择器,只能选**其他玩家**:锁定目标 50% 攻防给自己,持续到目标下一次骰神赐福结束;
+    //   目标每攻击一个新目标消耗 1 层狐光,按「狐光攻击基数 + 剩余层数」追加骰战攻击力)。
+    // 传奇品质 = Rarity.UNCOMMON(本模组「金=传奇」映射,见本类顶部的稀有度标准)。
+    public static final DeferredItem<Item> TERU_SIGN = registerItem("teru_sign",
+            () -> new TeruSignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.UNCOMMON)));
+
+    // 绿洲女王立牌(命名:nardis,稀有):被动「威压」(每装配 1 张攻击牌攻击力 +2 / 每装配 1 张防御牌防御力 +2;
+    //   2026-09-21 用户裁决由 +1 小幅加强,常量 = NardisSignItem.BONUS_PER_CARD)
+    // + 主动「女王特权」(立即获得 3 张随机临时牌,有效期 3:00;临时牌只能装备与使用,
+    //   不可丢弃/不可放入其它容器,到期连同已装配的一并清除;效果 HUD 计时器图标 = 立牌贴图)。
+    // 稀有品质 = Rarity.RARE;配方 = 黄金骰子(无星盘)档(同史莱姆 lulu / 上班族 padman)。
+    public static final DeferredItem<Item> NARDIS_SIGN = registerItem("nardis_sign",
+            () -> new NardisSignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.RARE)));
+
+    // 蛟龙立牌(命名:mamushi,传奇):**技能(主动/被动)待用户裁决** —— 本批只落资产与注册,
+    // 物品类未覆写 handleUse ⇒ 主动暂无任何效果(契约兜底会打 WARN,见 MamushiSignItem 类 javadoc);
+    // 技能定稿后在此补技能注释并在物品类内实现。
+    // 传奇品质 = Rarity.UNCOMMON(本模组「金=传奇」映射);配方 = 钻石骰子 + 黄金星盘档(照大当家立牌 fen)。
+    public static final DeferredItem<Item> MAMUSHI_SIGN = registerItem("mamushi_sign",
+            () -> new MamushiSignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.UNCOMMON)));
+
+    // 怪力侦探立牌(命名:sherry,史诗):主动「怪力投掷」把 12 格内全部敌对目标按抛物线扔到玩家面前 2 格,
+    // **落地之后**造成 2 点伤害并施加 1 层「标记」(推理时间满 5 层 ⇒ 额外 5 点);被动「侦探出击」按
+    // 「攻击 ≥20 血敌对目标」累积「推理时间」(上限 5,**死亡不清**,骰神赐福结束后 −1 层),
+    // 「挚友守护」为同队装备人偶师立牌的玩家减伤 1 点。
+    // 史诗品质 = Rarity.EPIC;配方 = 钻石骰子(±星盘)档(同 忍者 komachi / 占星师 haiqing / 骇客 nancy_lu / 枪匠 moses)。
+    public static final DeferredItem<Item> SHERRY_SIGN = registerItem("sherry_sign",
+            () -> new com.merlinkitsune.astral_dice.item.sign.SherrySignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.EPIC)));
+
+    // 人偶师立牌(命名:hanna,稀有):被动「幻想千金」(战斗骰点 = 6 ⇒ 1 星币;路过 3 格内友方玩家 ⇒
+    // 该玩家 1 星币 + 自身 1 层「人偶制作」,自身处于「魔女漂浮」时该玩家改为 3 星币;「人偶制作」满 7 层
+    // ⇒ 归零转为「人偶完成」,此后路过额外给该玩家 迅捷 II (1:00) + 3 星币;整体每 1:00 仅触发 1 次)
+    // + 被动「挚友祝福」(路过装备「怪力侦探」立牌的玩家 ⇒ 该玩家获得 力量 II (1:00) + 抗性提升 (1:00)
+    // + 1 层「推理时间」;每 1:00 仅触发 1 次)
+    // + 主动「漂浮魔法」(自身 魔女漂浮 1:00:移速 +20%、掉落伤害 -100%、近战攻击被闪避、禁用末影珍珠)。
+    // 稀有品质 = Rarity.RARE;配方 = 黄金骰子(无星盘)档(同 史莱姆 lulu / 上班族 padman)。
+    public static final DeferredItem<Item> HANNA_SIGN = registerItem("hanna_sign",
+            () -> new com.merlinkitsune.astral_dice.item.sign.HannaSignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(Rarity.RARE)));
+
+    // 符卡-福(专属功能效果牌,风水师立牌专属):出牌数 +1;对玩家(不限队伍)或自身使用 ⇒ 恢复 2 点生命值。
+    // 专属绑定:获得即绑定获得者(ModDataComponents.OWNER_UUID),他人无法使用。
+    // 品质:**稀有**(Rarity.RARE;用户 2026-09-21 裁决,原为传奇 UNCOMMON)。
+    public static final DeferredItem<Item> FU_CARD = registerItem("fu_card",
+            () -> new FuCardItem(new Item.Properties()
+                    .stacksTo(64)
+                    .rarity(Rarity.RARE)));
+
+    // 符卡-祸(专属伤害效果牌,风水师立牌专属):只能对敌对目标(含非同队玩家)使用 ⇒ 1 点伤害;
+    // 持有者每 2:00 按当前张数受伤(厄运层数 == 持有张数)。
+    // 品质:**稀有**(Rarity.RARE;用户 2026-09-21 裁决,原为传奇 UNCOMMON)。
+    public static final DeferredItem<Item> HUO_CARD = registerItem("huo_card",
+            () -> new HuoCardItem(new Item.Properties()
+                    .stacksTo(64)
                     .rarity(Rarity.RARE)));
 
     public static <T extends Item> DeferredItem<T> registerItem(String name, Supplier<T> itemSupplier) {

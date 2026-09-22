@@ -1,9 +1,10 @@
 package com.merlinkitsune.astral_dice;
 
-import com.merlinkitsune.astral_dice.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.config.ModCommonConfig;
+import com.merlinkitsune.starenginelib.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.effect.ModEnchantments;
+import com.merlinkitsune.astral_dice.init.ModCompatibilityCheck;
 import com.merlinkitsune.astral_dice.init.ModCreativeTabs;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.network.ModNetwork;
@@ -14,11 +15,10 @@ import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.InterModComms;
+import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
-import net.minecraftforge.fml.loading.FMLPaths;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import top.theillusivec4.curios.api.CuriosApi;
@@ -32,6 +32,10 @@ public class AstralDiceMod {
 
     public AstralDiceMod() {
         IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
+        // ⚠️ 不兼容模组黑名单(Magic Coins / SG-Economy)的检查**不能放在这里**:它是否拒绝取决于
+        //    「星币钱包」开关(config/ModCommonConfig 的 enable_star_coin_wallet),而配置要到**本阶段之后**
+        //    才加载(装载状态机:CONSTRUCT -> CONFIG_LOAD -> COMMON_SETUP),此处读配置会抛「配置尚未加载」。
+        //    ⇒ 检查已移到 onCommonSetup 的 ModCompatibilityCheck.verifyOrThrow()(详见该类类头)。
         ModItems.ITEMS.register(modEventBus);
         ModEffects.EFFECTS.register(modEventBus);
         ModEnchantments.ENCHANTMENTS.register(modEventBus);
@@ -43,9 +47,10 @@ public class AstralDiceMod {
         // 否则 data/astral_dice/loot_modifiers/*.json 全部解码失败(详见 loot/AstralLootModifiers)
         com.merlinkitsune.astral_dice.loot.AstralLootModifiers.SERIALIZERS.register(modEventBus);
         modEventBus.register(this);
-        // 配置版本检查:旧版本配置文件先备份,再由 Forge 继承旧值写入新配置(仅公共配置;client 配置已移除)
+        // 配置:配置项定义、TOML 读写与配置 GUI 全部留在本模组(见 config/ModCommonConfig)。
+        // 旧版本配置文件先备份,再由 Forge 继承旧值写入新配置(仅公共配置;client 配置已移除)。
         backupOldConfigIfNeeded("astral_dice-common.toml", ModCommonConfig.CONFIG_VERSION);
-        net.minecraftforge.fml.ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, ModCommonConfig.SPEC);
+        net.minecraftforge.fml.ModLoadingContext.get().registerConfig(net.minecraftforge.fml.config.ModConfig.Type.COMMON, ModCommonConfig.SPEC);
         // 版本互通门槛(见 AGENTS.md):多人生服列表的「兼容」标记按 mod_version 的 major.minor 判定,
         // 与 SimpleChannel 的握手门槛同一判据。Forge 默认的 MATCH_VERSION 要求完整版本号完全相同,
         // 会把 1.2.0 ↔ 1.2.1 这类同二号位组合误标为不兼容,故显式注册本判据。
@@ -63,7 +68,7 @@ public class AstralDiceMod {
     // 若配置文件版本号低于当前版本(新增了配置项):备份旧文件,由 Forge 加载时继承旧值并补齐新项
     private static void backupOldConfigIfNeeded(String fileName, int currentVersion) {
         try {
-            java.nio.file.Path configPath = FMLPaths.CONFIGDIR.get().resolve(fileName);
+            java.nio.file.Path configPath = net.minecraftforge.fml.loading.FMLPaths.CONFIGDIR.get().resolve(fileName);
             if (!java.nio.file.Files.exists(configPath))
                 return;
             int fileVersion = readConfigVersion(configPath);
@@ -82,7 +87,7 @@ public class AstralDiceMod {
             String content = java.nio.file.Files.readString(configPath, java.nio.charset.StandardCharsets.UTF_8);
             java.util.regex.Matcher m = java.util.regex.Pattern
                     .compile("config_version\\s*=\\s*(\\d+)").matcher(content);
-            return m.find() ? java.lang.Integer.parseInt(m.group(1)) : 0;
+            return m.find() ? Integer.parseInt(m.group(1)) : 0;
         } catch (Exception e) {
             return 0;
         }
@@ -90,7 +95,14 @@ public class AstralDiceMod {
 
     @SubscribeEvent
     public void onCommonSetup(FMLCommonSetupEvent event) {
+        // 不兼容模组黑名单(Magic Coins / SG-Economy):**只有在「星币钱包」启用时才拒绝启动**
+        // (2026-09-22 用户裁决),因此必须等到配置加载完成才能判定 —— 本事件就在 CONFIG_LOAD 之后。
+        // 命中即抛 ModLoadingException ⇒ 游戏停在加载错误界面并显示提示原文(链路见 ModCompatibilityCheck 类头)。
+        // 放在 enqueueWork **之前**:同步执行,不与其它 mod 的延迟任务交错,失败得越干净越好。
+        ModCompatibilityCheck.verifyOrThrow();
         event.enqueueWork(() -> {
+            // 配置已加载:把配置值打成快照推给库的 GameplayConstants(库不读配置文件,见 config/ModCommonConfig)
+            GameplayConstants.applyConfig(ModCommonConfig.snapshot());
             // 网络通道注册(1.20.1 SimpleChannel)
             ModNetwork.register();
             // Curios 槽位类型注册(1.20.1 经 IMC;对应 1.21 的 curios JSON 槽位注册)
@@ -104,8 +116,6 @@ public class AstralDiceMod {
             InterModComms.sendTo(CuriosApi.MODID, SlotTypeMessage.REGISTER_TYPE,
                     () -> new SlotTypeMessage.Builder("chip").size(0)
                             .icon(new net.minecraft.resources.ResourceLocation(AstralDiceMod.MODID, "slot/empty_chip_slot")).build());
-            // 配置已加载:将配置值刷新到 GameplayConstants
-            GameplayConstants.refresh();
             // 卡牌类型注册表初始化(战斗牌定义集中管理)
             com.merlinkitsune.astral_dice.combat.CardRegistry.init();
             LOGGER.info("Astral Dice mod loaded.");

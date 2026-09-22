@@ -1,110 +1,22 @@
 package com.merlinkitsune.astral_dice.event;
 
-
-import com.merlinkitsune.astral_dice.AstralDiceMod;
-import com.merlinkitsune.astral_dice.component.AppliedStone;
-import com.merlinkitsune.astral_dice.component.GameplayConstants;
-import com.merlinkitsune.astral_dice.component.ModAttachments;
-import com.merlinkitsune.astral_dice.component.ModDataComponents;
-import com.merlinkitsune.astral_dice.component.WeaponEnhancement;
-import com.merlinkitsune.astral_dice.network.DamageNumberPayload;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
-import com.merlinkitsune.astral_dice.item.sign.ParunanSignItem;
 import com.merlinkitsune.astral_dice.item.sign.BaseSignItem;
-import com.merlinkitsune.astral_dice.item.sign.BonnieSignItem;
-import com.merlinkitsune.astral_dice.item.BossEntityUtil;
-import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
-import com.merlinkitsune.astral_dice.item.dice.DiceCurioItem;
-import com.merlinkitsune.astral_dice.item.card.ExclusiveCardUtil;
-import com.merlinkitsune.astral_dice.item.sign.HaiqingSignItem;
 import com.merlinkitsune.astral_dice.item.HealingManager;
-import com.merlinkitsune.astral_dice.item.InvestigationEventUtil;
-import com.merlinkitsune.astral_dice.item.MarkManager;
-import com.merlinkitsune.astral_dice.item.StarLightManager;
-import com.merlinkitsune.astral_dice.item.sign.MisakiSignItem;
 import com.merlinkitsune.astral_dice.item.ModItems;
-import com.merlinkitsune.astral_dice.item.sign.PadmanSignItem;
-import com.merlinkitsune.astral_dice.item.sign.JasmineSignItem;
-import com.merlinkitsune.astral_dice.item.sign.LuluSignItem;
-import net.minecraft.ChatFormatting;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffectInstance;
-import net.minecraft.world.effect.MobEffects;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.Mob;
-import net.minecraft.world.entity.ai.attributes.Attributes;
-import net.minecraft.world.entity.animal.Animal;
-import net.minecraft.world.entity.boss.wither.WitherBoss;
-import net.minecraft.world.entity.monster.Enemy;
-import net.minecraft.world.entity.monster.Monster;
-import net.minecraft.world.entity.monster.warden.Warden;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.Item;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
-import net.minecraft.world.item.ProjectileWeaponItem;
-import net.minecraft.world.item.AxeItem;
-import net.minecraft.world.item.MaceItem;
-import net.minecraft.world.item.SwordItem;
-import net.minecraft.world.item.TridentItem;
 
-import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.event.AnvilUpdateEvent;
-import net.neoforged.neoforge.event.LootTableLoadEvent;
-import net.neoforged.neoforge.event.entity.living.LivingChangeTargetEvent;
-import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
-import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
-import net.neoforged.neoforge.event.entity.living.LivingDropsEvent;
 import net.neoforged.neoforge.event.entity.living.MobEffectEvent;
-import net.neoforged.neoforge.event.entity.player.ItemTooltipEvent;
-import net.neoforged.neoforge.event.entity.ProjectileImpactEvent;
-import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
-import net.neoforged.neoforge.network.PacketDistributor;
 import top.theillusivec4.curios.api.CuriosApi;
-import top.theillusivec4.curios.api.type.inventory.ICurioStacksHandler;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
-import java.util.Optional;
-import java.util.UUID;
-import java.util.concurrent.ThreadLocalRandom;
-
-import net.minecraft.world.level.storage.loot.LootPool;
-import net.minecraft.world.level.storage.loot.LootTable;
-import net.minecraft.world.level.storage.loot.entries.LootItem;
-import net.minecraft.world.level.storage.loot.functions.SetItemCountFunction;
-import net.minecraft.world.level.storage.loot.predicates.LootItemRandomChanceCondition;
-import net.minecraft.world.level.storage.loot.providers.number.ConstantValue;
-import net.minecraft.world.level.storage.loot.providers.number.UniformGenerator;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import com.merlinkitsune.astral_dice.item.chip.StarCoinHammerChipItem;
-import com.merlinkitsune.astral_dice.item.chip.BufferShieldChipItem;
-import com.merlinkitsune.astral_dice.network.ActionBarPayload;
-import com.merlinkitsune.astral_dice.combat.CardRegistry;
-import com.merlinkitsune.astral_dice.client.KeyBindingSetup;
-import com.merlinkitsune.astral_dice.combat.DiceCombatContext;
-import com.merlinkitsune.astral_dice.damage.ModDamageTypes;
-import com.merlinkitsune.astral_dice.item.sign.FenSignItem;
-import com.merlinkitsune.astral_dice.item.card.EffectCardPeriod;
-import com.merlinkitsune.astral_dice.item.chip.BankCardUnlimitedChipItem;
-import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
-import com.merlinkitsune.astral_dice.item.chip.CursedSwordChipItem;
-import com.merlinkitsune.astral_dice.item.chip.FriendshipBadgeChipItem;
+import com.merlinkitsune.astral_dice.item.card.TemporaryCardUtil;
 import com.merlinkitsune.astral_dice.item.chip.RevengeHalberdChipItem;
-import com.merlinkitsune.astral_dice.item.chip.SatelliteChipItem;
-import com.merlinkitsune.astral_dice.item.sign.NancyLuSignItem;
-import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
 
+import com.merlinkitsune.starenginelib.event.ModEffectRemoval;
 @EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public class PlayerTickEvents {
     @SubscribeEvent
@@ -112,10 +24,9 @@ public class PlayerTickEvents {
         Player player = event.getEntity();
         if (player.level().isClientSide()) return;
         EffectTimerGuard.tick(player);
-        // 立牌"待命"状态与计时器分离(S6-C2,2026-09-15 用户裁决):计时器归 0/过期即自动重置待命状态。
-        // 必须挂在玩家级 tick——原先写在各立牌 onCurioTick 里的超时清除只在立牌仍佩戴时执行,
-        // 立牌离身后残留的正计时器会让该玩家任何立牌的主动技能都不再进入冷却(可无限连发)。
-        BaseSignItem.tickSignReadyTimeout(player);
+        // 立牌"待命"等待器已随目标选择器并入而移除(2026-09-17:主线 → dev-next 合并裁决),原先在此的
+        // BaseSignItem.tickSignReadyTimeout(player) 不再存在;立牌主动的冷却门槛改由
+        // BaseSignItem#performSkill 第 6 步按"是否已进入目标选择会话"判定。
         // 立牌主动技能"三态化"(第二批):锁定(生效中)态的玩家级判定——
         // ① 忍者宽限 1:00 内未出任何效果牌 ⇒ 强制重置出牌状态并起冷却;
         // ② 其余立牌门控计时器跑完 ⇒ 必起冷却(无空档);与立牌是否仍在饰品槽无关。
@@ -138,6 +49,33 @@ public class PlayerTickEvents {
         RevengeHalberdChipItem.updateArmorBonus(player);
         // 原初核心:赋能层数折算为真实护甲(1 防御力 = 2 护甲值)
         com.merlinkitsune.astral_dice.item.chip.PrimordialCoreChipItem.updateArmorBonus(player);
+        // 效果牌「手持即选择」(2026-09-25 用户裁决):主手持有选择器类效果牌 ⇒ 自动开启目标选择会话
+        // (门槛与按键兜底同源;移出手持的收官在 TargetSelectionManager.tick 侧,reason=released)
+        if (player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
+            com.merlinkitsune.astral_dice.item.card.BaseEffectCardItem.tickHeldSelector(serverPlayer);
+        }
+        // 星币钱包余额 → 客户端(余额条显示):1 秒节流 + 值变化才发包,覆盖一切改动来源
+        // (自身按钮 / 发币漏斗 / 拾取吸收 / 库的 /starcoin / 第三方 API),见 economy/StarCoinBalanceSync
+        if (player instanceof net.minecraft.server.level.ServerPlayer balanceSyncTarget) {
+            com.merlinkitsune.astral_dice.economy.StarCoinBalanceSync.tick(balanceSyncTarget);
+        }
+        // 风水师立牌「白泽赐福」状态机:**每 tick** 做骰神赐福的下降沿检测 + 自检 + 效果续期
+        // (不用 MobEffectEvent.Expired:该事件在外力移除/死亡/重连清场时不触发,会漏掉"赐福结束";
+        //  下降沿把两条结束路径统一,且不会重复消费跳过计数 —— 见 ZhaoSignItem#tickBlessing)
+        com.merlinkitsune.astral_dice.item.sign.ZhaoSignItem.tickBlessing(player);
+        // 教主立牌「降神 / 狐光」:**每 tick** 驱动 —— 施法者侧派生加成缓存与护甲折算、目标侧骰神赐福下降沿
+        // 状态机、狐光层数镜像为 HUD 效果(见 TeruSignItem#tick)。必须放在 tickCount % 20 早退之前:
+        // 下降沿检测一旦漏 tick 就会错过"赐福结束"这一拍。
+        com.merlinkitsune.astral_dice.item.sign.TeruSignItem.tick(player);
+        // 绿洲女王立牌(nardis)「女王特权」:临时牌自检(**幂等**)——真值 = 原生效果实例;
+        // 「身上/骰子里还有临时牌,但玩家已没有 nardis_privilege 效果」⇒ 清空全部临时牌
+        // (效果自然到期 / 被 /effect clear / 离线到期后重登 / 异常残留,四条路径都走这一条)。
+        // 必须放在 tickCount % 20 早退**之前**:漏 tick 就会让"效果已结束而临时牌还在"多挂一拍。
+        TemporaryCardUtil.tick(player);
+        // 人偶师立牌(hanna)「幻想千金」/「挚友祝福」:路过友方玩家的判定。
+        // 两条被动各有独立的 1:00 冷却 ⇒ 冷却内只读两个 long 即早退,每 tick 调用安全;
+        // 放在 % 20 早退**之前**,避免"擦身而过只停留几拍"被 20 tick 采样漏掉。
+        com.merlinkitsune.astral_dice.item.sign.HannaSignItem.tickPassing(player);
         if (player.tickCount % 20 != 0) return;
         // 赋能:每 0:30 减少 1 层(剩余 1 层时直接归 0)
         com.merlinkitsune.astral_dice.item.EmpowerManager.tick(player);
@@ -147,6 +85,9 @@ public class PlayerTickEvents {
         com.merlinkitsune.astral_dice.item.card.FightPoisonWithPoisonCardItem.tick(player);
         // 大当家立牌:1 分钟内没有触发骰神赐福 → 养精蓄锐 +1 层
         com.merlinkitsune.astral_dice.item.sign.FenSignItem.tick(player);
+        // 符卡-祸「厄运」:层数镜像 == 当前持有张数 + 每 2:00 按结算时刻张数的周期伤害
+        // (计时器只在首次持有时起算一次,张数增减不改写它 —— 计时器与结算分离)
+        com.merlinkitsune.astral_dice.item.card.HuoCardItem.tick(player);
 
     }
 
@@ -177,6 +118,5 @@ public class PlayerTickEvents {
             ModEffectRemoval.remove(player, effect);
         }
     }
-
 
 }

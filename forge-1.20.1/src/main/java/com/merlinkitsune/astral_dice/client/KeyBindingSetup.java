@@ -28,6 +28,9 @@ public class KeyBindingSetup {
             "key.categories.astral_dice"
     );
 
+    // 目标选择器无独立键盘确认键：确认 = 鼠标左键、取消 = 右键+潜行 / ESC 菜单
+    // （Create 强力胶式语义；旧的 Enter 确认键与客户端键盘拦截 Mixin 已删除）
+
     @Mod.EventBusSubscriber(modid = AstralDiceMod.MODID, value = Dist.CLIENT)
     public static class ClientEvents {
         @SubscribeEvent
@@ -40,10 +43,18 @@ public class KeyBindingSetup {
             if (player == null) return;
 
             while (ACTIVATE_SIGN_KEY.consumeClick()) {
-                ModNetwork.sendToServer(new ModNetwork.SignActivateMessage());
+                if (TargetSelectionClient.isActive()) {
+                    // 目标选择期间再次按下主动技能键 = 取消选择(不触发立牌技能)
+                    TargetSelectionClient.logPrompt("j", "cancel");
+                    TargetSelectionClient.cancel("key");
+                } else {
+                    ModNetwork.sendToServer(new ModNetwork.SignActivateMessage());
+                }
             }
             while (OPEN_CARD_INVENTORY_KEY.consumeClick()) {
-                ModNetwork.sendToServer(new ModNetwork.OpenCardInventoryMessage());
+                if (!TargetSelectionClient.isActive()) {
+                    ModNetwork.sendToServer(new ModNetwork.OpenCardInventoryMessage());
+                }
             }
         }
     }

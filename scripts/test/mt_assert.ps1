@@ -39,6 +39,56 @@
       kubejs   --version V                KubeJS server.log 为 0 errors
       mixin    --version V [--window ...] 窗口内无 Mixin 应用失败（默认 launch）
 
+    ## B8（t22）：窗口起点是**锚定的**，跨 log4j 零点日切仍然有效
+
+    `offsets` 只记「文件少了多少字节」是不够的：`logs/latest.log` 的 log4j filePattern 带日期
+    （`logs/%d{yyyy-MM-dd}-%i.log.gz`）⇒ **跨零点会把活动文件日切**（更名 + 新建一个更小的
+    latest.log）。此时旧偏移在新文件上越界，旧实现 `if ($Offset -gt $size) { $Offset = 0 }`
+    **静默**改成「整读新文件」：窗口前半段（用例开始 → 零点）整段丢失 ⇒ `log` 假 FAIL、
+    `absent` 漏判（假 PASS）；偏移未越界时更糟 —— 会拿**另一个文件**的同一字节号切片。
+
+    现在 `snapshot` 除了 `offsets` 还写 `anchors`（键 = 日志文件名，值 = 窗口起点的**文件身份**：
+    `ctime_ms` + 头部 64 KiB 的 `prefix_sha` + `len`/`mtime_ms`），`launch` 窗口对应
+    `launch_anchors`（与 `launch_offsets` 同样只在 launch 时冻结、case 快照不动它）。
+    读取时 `Read-MtLogWindow` 按身份把窗口跨轮转拼回来：
+
+      · 同一文件（创建时间 + 头部指纹相符）→ 与旧实现**逐字节同义**；
+      · 锚点文件已日切 → 只从**身份匹配**的那一段的同一偏移处接着拼，起点之前的内容绝不并入
+        （并入 = 窗口前移 = 跨用例串读）；
+      · 锚点文件已不在（重登/重启删除了 latest.log）→ **不猜**：退回既有语义并 WARN 报出；
+      · 无锚点的旧快照 → 与旧实现逐字节同义（向后兼容）。
+
+    通道差异：latest 家族的日切由该机制覆盖；`debug.log` 的 filePattern 是 `debug-%i`（**无日期**），
+    只在客户端**启动时**轮转、不跨零点日切 —— 故 1.20.1 侧（模组清单读 debug.log）不存在同类问题，
+    重启后 debug.log 的窗口起点本就该是「新文件的开头」，无需也不应跨该轮转拼接。
+
+    ## t39：窗口**缺内容**时未命中 = 「不可判（INCONCLUSIVE）」，不再记产品 FAIL
+
+    实测背景（2026-09-19 跨零点运行）：`latest.log` 在 `00:00:00` 日切为
+    `2026-09-19-1.log.gz`，随后 6 条断言被记成 FAIL。逐字节复核后**结论分两层**，两层都必须守住：
+
+      1. **`reassembled` 窗口本身是可证连续的**（库已经把身份段从窗口起点拼回来了）⇒ 此时未命中
+         就是**真实结论**（读数不在窗口里 / 值不符），**必须**仍然记 FAIL —— 「跨零点」不是免罪符，
+         否则会掩盖真实缺陷。重拼能力**已经存在**（B8/t22），不需要再实现一遍。
+      2. 但**确证缺内容**的窗口上，未命中**不是**产品结论：本版把这种情形单列为
+         `MT_ASSERT_INCONCLUSIVE`（非 FAIL、退出码 0、stderr 具名 WARN、stdout 打印不判理由），
+         三种确证缺口（判定实现 = `Get-MtWindowFidelity`）：
+
+           · `unreconstructable` —— 锚点文件身份找不到（重登/重启删了 `latest.log`、或轮转件被清理）⇒
+             库退回「整读当前文件」，窗口起点之前的内容**确定丢失**；
+           · `anchor-overrun` —— 请求起点 > 当前文件长度且身份未变（原地被截断）⇒ 起点被 clamp 到 0，
+             起点之前的内容**确定丢失**；
+           · `gap-after-anchor（ROTATED）` —— 锚点段与当前文件之间**另有更晚的轮转段未并入**
+             （库在 `Note` 里显式写「未并入」，或经 latest 家族枚举复核发现）⇒ 那一段内容**确定缺失**。
+
+        `absent` / `mixin` 这两种**否定式**判据在不可判窗口上仍不给强结论：命中（发现不该出现的东西）
+        **仍是可信证据**（记 FAIL）；未命中只报 `INCONCLUSIVE(弱通过)` 并留 WARN，不冒充「已验证干净」。
+
+        ⚠️ 适用范围：只覆盖 **latest 家族**（带日期 filePattern）。`debug-1/-2/-3.log.gz` 属 `debug-%i`
+        家族（无日期、只在启动时轮转），**不参与**窗口重拼（见上方「通道差异」）；`crash` 通道是
+        crash-reports **目录清单**、`kubejs` 通道整读 `server.log`，两者都**不走**窗口读取 ⇒ 无同类边界。
+        判定与离线自证见 `temp/t90/t39-verify.ps1`（含「完整重拼窗口上未命中仍 FAIL」的反向回归）。
+
 .NOTES
     迁移前源文件 scripts/test/mt_assert.py（该原件已在 92fbeaf「工具链收敛为纯 pwsh」删除，取回：`git show 92fbeaf^:scripts/test/mt_assert.py`）。
 
@@ -59,6 +109,8 @@ $ErrorActionPreference = 'Stop'
 $script:LibDir = Join-Path $PSScriptRoot 'lib'
 Import-Module (Join-Path $script:LibDir 'Mt.Phase.psm1')
 Import-Module (Join-Path $script:LibDir 'Mt.Paths.psm1')
+# t22：窗口的跨轮转重建（`Read-MtLogWindow` / `Get-MtLogAnchor`）与轮转识别口径同源实现放在 Mt.Proc。
+Import-Module (Join-Path $script:LibDir 'Mt.Proc.psm1')
 
 Initialize-MtConsole
 
@@ -68,14 +120,15 @@ $script:SnapshotFile = Join-Path (Join-Path (Get-MtTestDir) 'cases') '.mt_snapsh
 #            tick 回调经 ServerPlayer#sendSystemMessage，两条路都由 ChatComponent 落到
 #            `[CHAT] AP_...`；mt_launch 每次运行前删除该文件，故天然是「本轮增量」。
 # debug  —— 客户端调试日志（Mixin 应用 / 渲染栈加载证据）。
+# kubejs_client —— KubeJS **客户端**脚本日志（logs/kubejs/client.log）。客户端侧状态
+#            （ActionBarManager 的私有 message、TargetSelectionClient.isActive() 等）
+#            **只能**从这里读：客户端状态没有服务端通道，聊天/截图又会被聊天行遮挡与
+#            「缺字形占位符」污染（2026-09-22 实测）。2026-09-22 新增。
 #
 # ⚠️ 已移除的 `probe` 通道（run/<版本>/astral_probe.log）：该文件从未生成 —— KubeJS 的
 #    Java 类过滤器拒绝 java.io，FileWriter 构造失败又被 try/catch 静默吞掉，表现为
 #    「服务端权威通道不存在」，把测试链故障伪装成修复无效。不要再加回来。
-# loadergate —— **纯离线**用例（LOADER-GATE-FORGE）的读数通道：由
-#    scripts/test/mt_loadergate.ps1 直接写 run/<版本>/logs/loadergate.log，
-#    不经过游戏客户端（该用例不需要 runClient）。断言一律配 scope=whole。
-$script:LogSources = [ordered]@{ 'latest' = 'latest_log'; 'debug' = 'debug_log'; 'loadergate' = 'loadergate_log' }
+$script:LogSources = [ordered]@{ 'latest' = 'latest_log'; 'debug' = 'debug_log'; 'kubejs_client' = 'kubejs_client_log' }
 
 $script:TAG_UTF8 = [System.Text.UTF8Encoding]::new($false, $false)
 
@@ -123,18 +176,56 @@ function Get-MtSnapFor {
 }
 
 # ── B7 窗口选择 ───────────────────────────────────────────────────────────
+function Get-MtWindowTag {
+    <#
+    .SYNOPSIS
+        窗口标签后缀：只在**非普通情形**（跨轮转重拼 / 窗口不可重建）时附加到断言标签上。
+
+    .NOTES
+        普通情形（`intact` / `from-zero` / `legacy`）保持旧标签形状不变；`reassembled+1`、
+        `unreconstructable` 必须能从断言输出里一眼看见 —— 否则「跨零点时窗口被重拼过」这件事
+        在取证文本里就消失了。
+    #>
+    [CmdletBinding()]
+    param([string]$Info)
+
+    if ($Info -like 'reassembled*' -or $Info -eq 'unreconstructable') { return "; $Info" }
+    return ''
+}
+
+function Get-MtAssertFidelity {
+    <#
+    .SYNOPSIS
+        t39：从 `Read-MtLogDelta` 的返回值里取「窗口保真度」；缺第 4 项（旧形状）时按**可证连续**处理。
+
+    .NOTES
+        兼容分支只为「调用方拿到 3 元组」的极端情况兜底 —— 默认 `Inconclusive = $false`
+        （宁可记 FAIL 也不误免，与 `Test-MtStopInFlight` 的保守方向相反：那里宁可不判用户终止，
+        这里宁可不放过未命中）。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)]$Delta)
+
+    if ($Delta.Count -ge 4 -and $null -ne $Delta[3] -and $Delta[3] -is [System.Collections.IDictionary]) {
+        return $Delta[3]
+    }
+    return @{ Inconclusive = $false; Reason = '' }
+}
+
 function Get-MtWindowOffset {
     <#
     .SYNOPSIS
-        按窗口种类取某日志文件的起始字节偏移。
+        按窗口种类取某日志文件的起始字节偏移**与该起点的文件锚点**。
 
     .NOTES
-        case   → `offsets`（自本用例起，B7 的默认语义）
-        launch → `launch_offsets`（自 launch 起；旧快照没有该键时**退化并告警**，
+        case   → `offsets` + `anchors`（自本用例起，B7 的默认语义）
+        launch → `launch_offsets` + `launch_anchors`（自 launch 起；旧快照没有该键时**退化并告警**，
                  绝不静默把 launch 断言变成 case 断言 —— 那会凭空制造假 FAIL）
-        whole  → 0（整文件）
+        whole  → 0（整文件；无锚点）
 
-        返回 (偏移, 实际生效的窗口名, 退化告警文本或空串)。
+        返回 (偏移, 实际生效的窗口名, 退化告警文本或空串, 锚点或 $null)。
+        锚点（t22/B8）与偏移**成对**返回：没有锚点的偏移在跨零点日切后无法重建窗口，
+        调用方必须把它一路传给 `Read-MtLogWindow`（不要再自己拼路径去读）。
     #>
     [CmdletBinding()]
     param(
@@ -143,21 +234,29 @@ function Get-MtWindowOffset {
         [Parameter(Mandatory)][string]$Window
     )
 
-    if ($Window -eq 'whole') { return , @([long]0, 'whole', '') }
+    if ($Window -eq 'whole') { return , @([long]0, 'whole', '', $null) }
 
     $key = if ($Window -eq 'launch') { 'launch_offsets' } else { 'offsets' }
+    $akey = if ($Window -eq 'launch') { 'launch_anchors' } else { 'anchors' }
     $degraded = ''
     if (-not $Entry.Contains($key) -or $null -eq $Entry[$key]) {
         if ($Window -eq 'launch' -and $Entry.Contains('offsets')) {
             $key = 'offsets'
+            $akey = 'anchors'
             $degraded = 'launch_offsets 缺失（快照早于 B7 / 本条走的是 --phase cases 单步路线）⇒ 退化为当前窗口'
         } else {
-            return , @([long]0, $Window, '')
+            return , @([long]0, $Window, '', $null)
         }
     }
+
+    $anchor = $null
+    if ($Entry.Contains($akey) -and $null -ne $Entry[$akey] -and $Entry[$akey].Contains($LogName)) {
+        $anchor = $Entry[$akey][$LogName]
+    }
+
     $offsets = $Entry[$key]
-    if ($offsets.Contains($LogName)) { return , @([long]$offsets[$LogName], $Window, $degraded) }
-    return , @([long]0, $Window, $degraded)
+    if ($offsets.Contains($LogName)) { return , @([long]$offsets[$LogName], $Window, $degraded, $anchor) }
+    return , @([long]0, $Window, $degraded, $anchor)
 }
 
 # ── 增量读取 ──────────────────────────────────────────────────────────────
@@ -178,28 +277,94 @@ function ConvertTo-MtUniversalNewlines {
     return $Text.Replace("`r`n", "`n").Replace("`r", "`n")
 }
 
+function Get-MtWindowFidelity {
+    <#
+    .SYNOPSIS
+        t39：判定「本断言窗口是否**确证缺内容**」⇒ 缺内容时未命中**不得**记产品 FAIL，改记「不可判」。
+
+    .NOTES
+        只认三种**可证**缺口（不做任何推测），任何一种成立即 `Inconclusive = $true`：
+
+          · `unreconstructable`：锚点文件身份没找到 ⇒ 库退回「整读当前文件」，起点之前的内容确定丢失；
+          · `anchor-overrun`：请求起点 > 当前文件长度且身份未变 ⇒ 库把起点 clamp 到 0，起点之前确定丢失；
+          · `gap-after-anchor（ROTATED）`：`reassembled` 之后仍有**更晚的轮转段未并入** ——
+            库在 `Note` 里显式写「未并入」，或经 latest 家族枚举（`Get-MtRotatedLatestLogs`，
+            同一唯一口径）复核发现锚点时间之后仍有候选轮转件。
+
+        ⚠️ **反向纪律（不得滥用，t39 取证依据）**：`reassembled` 且**无**更晚轮转段时，窗口
+        = 身份段[起点..] + 当前文件，是**可证连续**的完整窗口 ⇒ 返回 `Inconclusive = $false`，
+        未命中仍记 FAIL。实测：本轮 1.21.1/ZHAO-BLESSING 的窗口起点 `132900B` **小于**该用例首个标记
+        `AP_B1_GIVE` 的字节位 `134816B` ⇒ 全部读数都在窗口内，6 条 FAIL 属**值不符**而非窗口缺陷，
+        不能用「跨零点」豁免。
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]$W,
+        [long]$RequestedOffset = 0,
+        [string]$LogsDir = '',
+        $Anchor = $null
+    )
+
+    $kind = [string]$W['Kind']
+    if ($kind -eq 'unreconstructable') {
+        return @{ Inconclusive = $true; Reason = 'unreconstructable（锚点文件身份丢失，窗口起点之前的内容确定丢失）' }
+    }
+    if ($RequestedOffset -gt 0 -and [long]$W['Offset'] -eq 0 -and @('intact', 'legacy') -contains $kind) {
+        return @{ Inconclusive = $true; Reason = "anchor-overrun（请求起点 ${RequestedOffset}B > 当前文件长度，起点被 clamp 到 0 ⇒ 起点之前的内容确定丢失）" }
+    }
+    if ($kind -eq 'reassembled') {
+        $gapByNote = ([string]$W['Note'] -like '*未并入*')
+        $gapByEnum = $false
+        if ($LogsDir -and $null -ne $Anchor -and $Anchor -is [System.Collections.IDictionary] -and $Anchor.Contains('mtime_ms')) {
+            # 锚点文件的 mtime 之后仍有 latest 家族轮转件 ⇒ 锚点段与当前文件之间夹了未并入的段
+            $since = ([DateTimeOffset]::FromUnixTimeMilliseconds([long]$Anchor['mtime_ms'] + 2000)).UtcDateTime.ToLocalTime()
+            $later = @((Get-MtRotatedLatestLogs -LogsDir $LogsDir -Since $since -MaxRotated 16))
+            $gapByEnum = ($later.Count -gt 0)
+        }
+        if ($gapByNote -or $gapByEnum) {
+            return @{ Inconclusive = $true; Reason = 'gap-after-anchor（ROTATED：锚点段与当前文件之间另有更晚的轮转段未并入 ⇒ 窗口可能缺段）' }
+        }
+        return @{ Inconclusive = $false; Reason = '' }   # 可证连续：窗口完整，未命中 = 真实结论
+    }
+    return @{ Inconclusive = $false; Reason = '' }
+}
+
 function Read-MtLogDelta {
     <#
     .SYNOPSIS
-        读取 offset 之后的新增内容；文件被轮转（变小）则整读（与 python _read_delta 同义）。
+        读取窗口起点之后的新增内容；窗口起点由**锚点**定位，跨 log4j 零点日切仍有效（t22/B8）。
+
+    .NOTES
+        实现落在 `lib/Mt.Proc.psm1` 的 `Read-MtLogWindow`（与 t20 的轮转识别口径同源：同一套
+        latest 家族枚举 `Get-MtRotatedLatestLogs`）。本函数只负责：
+          · 把锚点一路传下去；
+          · 把「窗口是怎么来的」如实打出来（`reassembled` 出信息行、`unreconstructable` 出 WARN）
+            —— 判据本身一字未改，也不存在「读不到就跳过断言」的分支。
+
+        返回 (文本, 窗口种类标签, 实际起点, **窗口保真度**)。第 4 项由 `Get-MtWindowFidelity` 给出
+        （t39）：只有**确证缺内容**的窗口才置 `Inconclusive = $true`，其未命中由调用方改记
+        `MT_ASSERT_INCONCLUSIVE`（非 FAIL）；可证连续的窗口一律 `$false`（未命中仍记 FAIL）。
+        **不再自己 Seek**：旧实现（按字节偏移直接 Seek
+        当前文件）在日切后越界时会静默改成整读新文件，窗口前半段丢失 ⇒ 假 FAIL / 漏判。
     #>
     [CmdletBinding()]
-    param([Parameter(Mandatory)][string]$LogPath, [long]$Offset = 0)
+    param(
+        [Parameter(Mandatory)][string]$LogPath,
+        [long]$Offset = 0,
+        $Anchor = $null
+    )
 
-    if (-not (Test-Path -LiteralPath $LogPath -PathType Leaf)) { return '' }
-    $size = (Get-Item -LiteralPath $LogPath).Length
-    if ($Offset -gt $size) { $Offset = 0 }   # launch 阶段清零过日志 → 从 0 读
-
-    $fs = [System.IO.File]::Open($LogPath, [System.IO.FileMode]::Open,
-        [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
-    try {
-        [void]$fs.Seek($Offset, [System.IO.SeekOrigin]::Begin)
-        $ms = [System.IO.MemoryStream]::new()
-        try {
-            $fs.CopyTo($ms)
-            return (ConvertTo-MtUniversalNewlines -Text $script:TAG_UTF8.GetString($ms.ToArray()))
-        } finally { $ms.Dispose() }
-    } finally { $fs.Dispose() }
+    $logsDir = [System.IO.Path]::GetDirectoryName($LogPath)
+    $w = Read-MtLogWindow -Path $LogPath -Offset $Offset -Anchor $Anchor -LogsDir $logsDir
+    $kind = [string]$w['Kind']
+    $info = if ([int]$w['Rotated'] -gt 0) { "$kind+$($w['Rotated'])" } else { $kind }
+    if ($kind -eq 'reassembled') {
+        Write-MtLine ("MT_ASSERT_WINDOW: {0}" -f [string]$w['Note'])
+    } elseif ($kind -eq 'unreconstructable') {
+        Write-MtWarn ("MT_ASSERT_WINDOW: WARN — {0}" -f [string]$w['Note'])
+    }
+    $fid = Get-MtWindowFidelity -W $w -RequestedOffset $Offset -LogsDir $logsDir -Anchor $Anchor
+    return , @([string]$w['Text'], $info, [long]$w['Offset'], $fid)
 }
 
 function Get-MtLogPath {
@@ -303,6 +468,7 @@ function Invoke-MtAssertSnapshot {
     }
 
     $offsets = [ordered]@{}
+    $anchors = [ordered]@{}
     foreach ($log in @($p.latest_log, $p.debug_log, $p.kubejs_log, $p.probe_log)) {
         $name = [System.IO.Path]::GetFileName($log)
         $size = 0
@@ -310,6 +476,9 @@ function Invoke-MtAssertSnapshot {
             if (Test-Path -LiteralPath $log -PathType Leaf) { $size = (Get-Item -LiteralPath $log).Length }
         } catch { $size = 0 }
         $offsets[$name] = [long]$size
+        # t22（B8）：窗口起点必须同时记住**是哪个文件**。日切后「偏移越界」才有证据可用来重建窗口
+        # （见 Read-MtLogWindow 的 NOTES）；只记字节数时无法区分「日切」与「文件被换掉」。
+        $anchors[$name] = Get-MtLogAnchor -Path $log
     }
 
     $crashNames = @()
@@ -321,20 +490,27 @@ function Invoke-MtAssertSnapshot {
     $prev = if ($sameRun -and $snap['versions'].Contains($Version)) { $snap['versions'][$Version] } else { $null }
 
     # launch 基线：launch 窗口写死；case 窗口沿用上一份（没有则退化为当前偏移并告警）
+    # t22：`launch_anchors` 与 `launch_offsets` 严格同源同步 —— 两把钥匙少一把，launch 窗口就退化了。
     $launchOffsets = $null
+    $launchAnchors = $null
     $launchWarn = ''
     if ($Window -ne 'case') {
         $launchOffsets = $offsets
+        $launchAnchors = $anchors
     } elseif ($null -ne $prev -and $prev.Contains('launch_offsets') -and $null -ne $prev['launch_offsets']) {
         $launchOffsets = $prev['launch_offsets']
+        $launchAnchors = if ($prev.Contains('launch_anchors')) { $prev['launch_anchors'] } else { $null }
     } else {
         $launchOffsets = $offsets
+        $launchAnchors = $anchors
         $launchWarn = 'WARN — 无 launch 基线（--phase cases 单步路线 / 快照早于 B7），launch 窗口退化为当前起点'
     }
 
     $entry = [ordered]@{
         offsets        = $offsets
         launch_offsets = $launchOffsets
+        anchors        = $anchors
+        launch_anchors = $launchAnchors
         window         = $Window
         ts             = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() / 1000.0
         crash_baseline = @($crashNames)
@@ -347,7 +523,8 @@ function Invoke-MtAssertSnapshot {
     $latest = if ($offsets.Contains('latest.log')) { $offsets['latest.log'] } else { 0 }
     $debug = if ($offsets.Contains('debug.log')) { $offsets['debug.log'] } else { 0 }
     $probe = if ($offsets.Contains('astral_probe.log')) { $offsets['astral_probe.log'] } else { 0 }
-    Write-MtLine "MT_SNAPSHOT: OK — $Version run=$runId window=$Window latest=${latest}B debug=${debug}B probe=${probe}B"
+    $anchorCount = @($anchors.Keys | Where-Object { $null -ne $anchors[$_] }).Count
+    Write-MtLine "MT_SNAPSHOT: OK — $Version run=$runId window=$Window latest=${latest}B debug=${debug}B probe=${probe}B anchors=$anchorCount"
     if ($launchWarn) { Write-MtWarn "MT_SNAPSHOT: $launchWarn" }
     return 0
 }
@@ -375,14 +552,24 @@ function Invoke-MtAssertLog {
     $winUsed = [string]$wo[1]
     if ([string]$wo[2]) { Write-MtWarn ("MT_ASSERT_LOG: {0}" -f [string]$wo[2]) }
 
-    $text = Read-MtLogDelta -LogPath $log -Offset $offset
+    $delta = Read-MtLogDelta -LogPath $log -Offset $offset -Anchor $wo[3]
+    $text = [string]$delta[0]
+    $winInfo = [string]$delta[1]
+    $offsetUsed = [long]$delta[2]
+    $fid = Get-MtAssertFidelity -Delta $delta
     $pat = New-MtRegex -Pattern $PatternText
     $hits = $pat.Matches($text).Count
-    $label = "$Source`:$name@${offset}B(win=$winUsed)"
+    $label = "$Source`:$name@${offsetUsed}B(win=$winUsed$(Get-MtWindowTag -Info $winInfo))"
 
     if ($hits -gt 0) {
         Write-MtLine "MT_ASSERT_LOG: PASS — /$PatternText/ 命中 $hits 次（$label）"
         Show-MtHits -Pattern $pat -Text $text
+        return 0
+    }
+    if ($fid.Inconclusive) {
+        # t39：窗口**确证缺内容** ⇒ 未命中不是产品结论，记「不可判（非 FAIL）」
+        Write-MtLine "MT_ASSERT_LOG: INCONCLUSIVE — /$PatternText/ 未命中，但**窗口不可判**（$($fid.Reason)；$label）"
+        Write-MtWarn "MT_ASSERT_INCONCLUSIVE: WARN — 窗口不可判（$($fid.Reason)）⇒ 本条**不计 FAIL**；该断言需重新执行测试验证"
         return 0
     }
     Write-MtLine "MT_ASSERT_LOG: FAIL — /$PatternText/ 未命中（$label）"
@@ -421,14 +608,25 @@ function Invoke-MtAssertAbsent {
     $winUsed = [string]$wo[1]
     if ([string]$wo[2]) { Write-MtWarn ("MT_ASSERT_ABSENT: {0}" -f [string]$wo[2]) }
 
-    $text = Read-MtLogDelta -LogPath $log -Offset $offset
+    $delta = Read-MtLogDelta -LogPath $log -Offset $offset -Anchor $wo[3]
+    $text = [string]$delta[0]
+    $winInfo = [string]$delta[1]
+    $offsetUsed = [long]$delta[2]
+    $fid = Get-MtAssertFidelity -Delta $delta
     $pat = New-MtRegex -Pattern $PatternText
-    $label = "$Source`:$name@${offset}B(win=$winUsed)"
+    $label = "$Source`:$name@${offsetUsed}B(win=$winUsed$(Get-MtWindowTag -Info $winInfo))"
 
     if ($pat.IsMatch($text)) {
-        Write-MtLine "MT_ASSERT_ABSENT: FAIL — 不应出现的 /$PatternText/ 出现了"
+        # 命中 = **可信证据**（窗口里确有不该出现的东西）⇒ 即使窗口不可判也仍记 FAIL
+        Write-MtLine "MT_ASSERT_ABSENT: FAIL — 不应出现的 /$PatternText/ 出现了（$label）"
         Show-MtHits -Pattern $pat -Text $text
         return 1
+    }
+    if ($fid.Inconclusive) {
+        # t39：否定式判据在缺内容的窗口上只能给**弱结论**（不冒充「已验证干净」，但也不记 FAIL）
+        Write-MtLine "MT_ASSERT_ABSENT: INCONCLUSIVE(弱通过) — /$PatternText/ 未出现，但**窗口不可判**（$($fid.Reason)；$label）"
+        Write-MtWarn "MT_ASSERT_INCONCLUSIVE: WARN — 窗口不可判（$($fid.Reason)）⇒ ABSENT 的「未出现」为**弱结论**，需重新执行测试验证"
+        return 0
     }
     Write-MtLine "MT_ASSERT_ABSENT: PASS — /$PatternText/ 未出现（$label）"
     return 0
@@ -510,13 +708,23 @@ function Invoke-MtAssertMixin {
     $winUsed = [string]$wo[1]
     if ([string]$wo[2]) { Write-MtWarn ("MT_ASSERT_MIXIN: {0}" -f [string]$wo[2]) }
 
-    $text = Read-MtLogDelta -LogPath $log -Offset $offset
+    $delta = Read-MtLogDelta -LogPath $log -Offset $offset -Anchor $wo[3]
+    $text = [string]$delta[0]
+    $winInfo = [string]$delta[1]
+    $offsetUsed = [long]$delta[2]
+    $fid = Get-MtAssertFidelity -Delta $delta
     $pat = [regex]::new('Mixin apply failed|Mixin apply error|Failed to apply mixin')
     if ($pat.IsMatch($text)) {
         Write-MtLine 'MT_ASSERT_MIXIN: FAIL — 检测到 Mixin 应用失败（兼容模组栈异常）'
         return 1
     }
-    Write-MtLine "MT_ASSERT_MIXIN: PASS — $name@${offset}B(win=$winUsed) 窗口内无 Mixin 失败"
+    if ($fid.Inconclusive) {
+        # t39：否定式判据在缺内容的窗口上只能给弱结论（窗口读的是 latest 通道，debug 家族不参与重拼）
+        Write-MtLine "MT_ASSERT_MIXIN: INCONCLUSIVE(弱通过) — $name@${offsetUsed}B(win=$winUsed$(Get-MtWindowTag -Info $winInfo)) **窗口不可判**（$($fid.Reason)）⇒ 无 Mixin 失败为弱结论"
+        Write-MtWarn "MT_ASSERT_INCONCLUSIVE: WARN — 窗口不可判（$($fid.Reason)）⇒ MIXIN 判据为弱结论，需重新执行测试验证"
+        return 0
+    }
+    Write-MtLine "MT_ASSERT_MIXIN: PASS — $name@${offsetUsed}B(win=$winUsed$(Get-MtWindowTag -Info $winInfo)) 窗口内无 Mixin 失败"
     return 0
 }
 

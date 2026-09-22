@@ -3,16 +3,17 @@ package com.merlinkitsune.astral_dice.event;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.component.AppliedStone;
-import com.merlinkitsune.astral_dice.component.GameplayConstants;
+import com.merlinkitsune.starenginelib.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
 import com.merlinkitsune.astral_dice.component.WeaponEnhancement;
 import com.merlinkitsune.astral_dice.network.DamageNumberPayload;
+import com.merlinkitsune.astral_dice.item.card.TemporaryCardUtil;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.item.sign.ParunanSignItem;
 import com.merlinkitsune.astral_dice.item.sign.BaseSignItem;
 import com.merlinkitsune.astral_dice.item.sign.BonnieSignItem;
-import com.merlinkitsune.astral_dice.item.BossEntityUtil;
+import com.merlinkitsune.starenginelib.item.BossEntityUtil;
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
 import com.merlinkitsune.astral_dice.item.dice.DiceCurioItem;
 import com.merlinkitsune.astral_dice.item.card.ExclusiveCardUtil;
@@ -106,6 +107,7 @@ import com.merlinkitsune.astral_dice.item.chip.RevengeHalberdChipItem;
 import com.merlinkitsune.astral_dice.item.chip.SatelliteChipItem;
 import com.merlinkitsune.astral_dice.item.sign.NancyLuSignItem;
 import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
+import com.merlinkitsune.starenginelib.event.ModEffectRemoval;
 
 @EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public class PlayerLifecycleHandler {
@@ -135,7 +137,7 @@ public class PlayerLifecycleHandler {
         // 故原清单的 23 个附件键逐项清零(外加 EffectCardPeriod.clearRoundBonuses —— 它同样只是写 4 个
         // 附件默认值)全部删除;下面保留下来的调用都带有附件之外的真实副作用(静态暂存表 / 物品数据 /
         // 移除 MobEffect / 阻止效果被重新施加)。
-        player.removeEffect(net.minecraft.world.effect.MobEffects.INVISIBILITY);
+        player.removeEffect(MobEffects.INVISIBILITY);
         player.removeEffect(ModEffects.NANCY_LU_HACK);
         player.removeEffect(ModEffects.BLUE_CURSE);
         // 秘密侦探:死亡保留调查阶段进度(仅卸牌时清除)
@@ -173,13 +175,36 @@ public class PlayerLifecycleHandler {
             }
         });
         player.removeEffect(ModEffects.DICE_BLESSING);
-        player.removeEffect(ModEffects.HAIQING_READY);
-        player.removeEffect(ModEffects.BONNIE_READY);
+        // 风水师立牌「白泽赐福」(规格 §4.6②):与 DICE_BLESSING **同段**清理 —— 这里保住的是
+        // 「移除 MobEffect」+「清零有真实读取方的附件」两类真实副作用(其余非 copyOnDeath 键按上文
+        // S4-C6 口径不逐项写默认值):
+        //   ① 效果实例本身(可见载体,死亡后不该留在尸体上);
+        //   ② 溢出治疗转化的攻击力(有真实读取方 = 骰战攻击修饰器;重登/救回等路径下会残留);
+        //   ③ 状态机三键(玩家级 tick 每 tick 读取)。
+        // 厄运效果同样移除(其真值"持有张数"不在触发死亡时清空,重登时由 tick 重新镜像)。
+        com.merlinkitsune.astral_dice.item.sign.ZhaoSignItem.onOwnerDeathCleanup(player);
+        // 教主立牌「降神」(规格 §3.6):与 DICE_BLESSING **同段**清理 —— 本人是降神目标 ⇒ 结束降神
+        // (移除效果 + 清目标记录 + 清施法者缓存);本人是施法者 ⇒ 派生值清零。
+        // ⚠️ 狐光层数与装备水位是 .copyOnDeath() 键,死亡**保留**(需求:层数跨死亡/重登保留)。
+        com.merlinkitsune.astral_dice.item.sign.TeruSignItem.onOwnerDeathCleanup(player);
         player.removeEffect(ModEffects.INVESTIGATION_BONUS);
         player.removeEffect(ModEffects.FATE_GUIDANCE);
         player.removeEffect(ModEffects.FEN_FRENZY);
         player.removeEffect(ModEffects.PAPARA_BITE);
         player.removeEffect(ModEffects.MAGIC_TOME_COUNT);
+        // 绿洲女王立牌(nardis)「女王特权」:清空全部临时牌(物品栏 + 副手 + 骰子已装配的)。
+        // **时序结论(已实测,不必新增订阅)**:
+        //   · 本处理器订阅的是 LivingDeathEvent(优先级 LOWEST,只为晚于"保命方"的取消)——
+        //     而该事件在 NeoForge 侧于 **`ServerPlayer#die` 的第一行**抛出
+        //     (`CommonHooks.onLivingDeath`,实测 `ServerPlayer.java:687`),**远早于**
+        //     `dropAllDeathLoot`(实测 `ServerPlayer.java:725`);事件的全部处理器(含 LOWEST)
+        //     都在 `onLivingDeath` 返回之前跑完 ⇒ 挂在这里一定**早于掉落**。
+        //   · 因此**不需要**再新增一个默认优先级的 LivingDeathEvent 订阅(那只会是同一事件的第二份重复清理)。
+        //   · 死亡路径与玩家级 tick 自检都幂等(见 TemporaryCardUtil#purgeAll / #tick),重复调用无副作用。
+        TemporaryCardUtil.purgeAll(player);
+        // 效果实例本身也一并移除(状态迁移表「死亡 ⇒ 效果移除 + 清空」):宠物模式/规则保留效果时,
+        // 只清牌不清效果会留下「HUD 还在倒计时、牌却没了」的不一致状态。
+        player.removeEffect(ModEffects.NARDIS_PRIVILEGE);
     }
 
     // 死亡重生克隆:恢复"死亡保留"的数据(充能层数 + 调查员/忍者累计加成)。
@@ -205,8 +230,23 @@ public class PlayerLifecycleHandler {
         // 计时器守卫:清空效果结束时刻记录,避免重登后守卫重新施加旧效果
         EffectTimerGuard.clear(player);
         ModEffectRemoval.remove(player, ModEffects.DICE_BLESSING);
+        // 风水师立牌「白泽赐福」(规格 §4.7):与骰神赐福同口径"不跨会话残留" —— 移除效果实例 + 复位
+        // active/prev(防止重登被误判为一次赐福结束)+ 回收溢出治疗转化的攻击力(否则无赐福仍吃加成)。
+        com.merlinkitsune.astral_dice.item.sign.ZhaoSignItem.onOwnerRelogin(player);
+        // 教主立牌「降神」(规格 A2):目标重登 ⇒ 降神不跨会话残留(与白泽赐福同口径);
+        // 施法者重登 ⇒ 降神**保留**,就地重建"我 → 目标"指针与攻击加成镜像缓存(目标记录是唯一真值)。
+        com.merlinkitsune.astral_dice.item.sign.TeruSignItem.onOwnerRelogin(player);
         // 重连后刷新治愈体系(上限收缩/效果显示;赐福边沿 prev 标记初始 false,不会误触发减半)
         HealingManager.tick(player);
+        // 筹码栏位对账(筹码栏尺寸完全由骰子修饰符给出):重登后必须按当前佩戴的骰子重算一次。
+        // ⚠️ 26.1.2 差异:OnDatapackSyncEvent 路径由 event/ChipSlotMigrationHandler 全权接管
+        // (HIGHEST 快照 + LOWEST 恢复,并已内含 refreshChipSlotCount),故本类**不再**订阅该事件;
+        // 但「登录」「克隆」两条路径在该类里没有任何覆盖 ⇒ 仍须在此对账,否则尺寸漂移不会自愈。
+        DiceCurioItem.refreshChipSlotCount(player);
+        // 星币钱包余额条:登录时客户端缓存不可信(可能是上次会话残值) ⇒ 无条件重发一次
+        if (player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
+            com.merlinkitsune.astral_dice.economy.StarCoinBalanceSync.forceResend(serverPlayer);
+        }
         // 首次加入世界赠送《恋的规则书》(开关见 common 配置)
         giveGuideBookOnFirstJoin(player);
     }
@@ -222,6 +262,15 @@ public class PlayerLifecycleHandler {
         ChargeManager.restoreAfterDeath(player);
         // 调查员/忍者立牌累计加成:重生后再兜底恢复(克隆已恢复过则此处空操作)
         com.merlinkitsune.astral_dice.component.DeathPreservedBonuses.restoreAfterDeath(player);
+    }
+
+    // 复活/换维度克隆:Curios 在 playerClone 里把旧档案交给新实体(保留筹码栏的永久修饰符),
+    // 此处再按当前骰子对账一次,覆盖「克隆期间骰子槽瞬时为空」等状态。
+    @SubscribeEvent(priority = EventPriority.LOWEST)
+    public static void onPlayerCloneRefreshChipSlots(PlayerEvent.Clone event) {
+        if (!(event.getEntity() instanceof Player player)) return;
+        if (player.level().isClientSide()) return;
+        DiceCurioItem.refreshChipSlotCount(player);
     }
 
     // 首次加入世界:若配置开启且玩家尚未领过,赠送《恋的规则书》(每个玩家在每个世界只发一次)

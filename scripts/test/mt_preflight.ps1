@@ -36,17 +36,24 @@ Import-Module (Join-Path $script:LibDir 'Mt.Win32.psm1')
 Initialize-MtConsole
 
 $script:ExitPreflight = 10
-# 分支口径（2026-09-20 S3 与 -next 工作树统一；依据 -next SPEC 所载 2026-09-17 用户裁决「移除二重验证白名单」）：
-# 发布线 = multi-1.20.1-1.21.1；非发布线分支 WARN 放行（回显分支名）。原白名单含已并入主线的 multi-26.1.2-neoforge。
+# 分支**不再是前置门槛**(2026-09-17 用户裁决:「移除二重验证白名单，允许该分支执行」)。
+# 本流程在任何分支上都可运行;这里保留一份「发布线分支」清单,只用于回显与告警标注,
+# **不参与任何判定**(判定恒为放行,见 Get-MtPreflightBranch)。
 $script:ReleaseLineBranches = @('multi-1.20.1-1.21.1')
 $script:KeepAlive = Join-Path (Join-Path (Get-MtTestDir) 'cases') '.mt_keep_alive'
 $script:KLID_EN_US = '00000409'
 
-# ── 分支 ──────────────────────────────────────────────────────────────────
-function Test-MtPreflightBranch {
+# ── 分支（信息性：回显 + 告警，不拦停）────────────────────────────────────
+function Get-MtPreflightBranch {
     <#
     .SYNOPSIS
-        分支口径：发布线 multi-1.20.1-1.21.1 ⇒ OK；其它分支 ⇒ WARN 放行（回显分支名）。返回 @(bool, detail)。
+        回显当前分支（信息性检查，不再拦停）。返回 @(bool, detail)。
+
+    .NOTES
+        2026-09-17 用户裁决「移除二重验证白名单，允许该分支执行」：分支检查由**强断言**改为
+        **回显 + 告警** —— 任何分支（发布线 / 开发分支 / detached HEAD）都放行，第一项恒为 $true，
+        输出里只如实标注实际分支名；发布线分支直接回显，其它分支追加 WARN 说明。
+        连分支名都读不出来时同样不拦停（非 git 目录照常可跑），只把原因写进说明。
     #>
     [CmdletBinding()]
     param([Parameter(Mandatory)][string]$Root)
@@ -54,13 +61,17 @@ function Test-MtPreflightBranch {
     $r = Invoke-MtProcessFull -FilePath 'git' `
         -ArgumentList @('-C', $Root, 'rev-parse', '--abbrev-ref', 'HEAD') -TimeoutSec 60
     if ($r.ExitCode -ne 0) {
-        return , @($false, "无法读取分支：$($r.StdErr.Trim())")
+        return , @($true, "无法读取分支（$($r.StdErr.Trim())）—— 信息性检查，不拦停")
     }
     $branch = $r.StdOut.Trim()
+    if (-not $branch) {
+        return , @($true, '分支名读出为空 —— 信息性检查，不拦停')
+    }
     if ($script:ReleaseLineBranches -contains $branch) {
         return , @($true, "$branch（发布线分支）")
     }
-    return , @($true, ("$branch —— WARN: 非发布线分支（发布线 {0}）" -f ($script:ReleaseLineBranches -join ' / ')))
+    return , @($true, ("$branch —— WARN: 非发布线分支（发布线 $($script:ReleaseLineBranches -join ' / ')）；" +
+                '按 2026-09-17 用户裁决放行，不拦停，仅告警'))
 }
 
 # ── 输入语言 ──────────────────────────────────────────────────────────────
@@ -273,6 +284,65 @@ function Test-MtPreflightWritable {
     return , @($true, [string]$p.run_dir)
 }
 
+# ── 前置库配对（run/<版本>/mods 的库 jar 与本线引脚一致）──────────────────
+function Get-MtGradleProperty {
+    <#
+    .SYNOPSIS
+        读取某子项目 gradle.properties 的单个键（键不存在返回 $null）。仅供本文件的前置检查使用。
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$File,
+        [Parameter(Mandatory)][string]$Key
+    )
+    if (-not (Test-Path -LiteralPath $File -PathType Leaf)) { return $null }
+    $m = Select-String -LiteralPath $File -Pattern ('^\s*' + [regex]::Escape($Key) + '\s*=(.*)$') | Select-Object -First 1
+    if (-not $m) { return $null }
+    return $m.Matches[0].Groups[1].Value.Trim()
+}
+
+function Test-MtPreflightLibPairing {
+    <#
+    .SYNOPSIS
+        run/<版本>/mods 内的 starengine_lib 库 jar 必须与本线 gradle.properties 的
+        starengine_lib_version **一致**（缺失可接受）。返回 @(bool, detail)。
+
+    .NOTES
+        2026-09-19 实测：库版本由 `.10` 提到 `.11` 后，`run/<版本>/mods` 仍留着旧的 `.10` 库 jar，
+        于是 `run/Start-<版本>.bat` 的前置检查一律拒绝启动（「库 jar 名与本线 starengine_lib_version
+        不一致」）—— 而工具链自身没有这道闸门，自动化测试照常运行，环境因此处于
+        「人手启动被拒、自动化照跑」的不一致状态。本检查与 `Start-*.bat` **同口径**，
+        把不一致暴露在最前面并给出可照做的修复命令（唯一修复入口 = Start-SelfTest 的成对部署）。
+
+        缺 jar **不**判失败：dev 运行的库由 Gradle `implementation` 放进 runtimeClasspath
+        （见 `scripts/devtools/Start-SelfTest.ps1` 的说明），`run/mods` 里那份只是让人手启动路径自足。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$Version)
+
+    $p = Get-MtPaths -Version $Version
+    $props = Join-Path (Join-Path $p.root $p.subproject) 'gradle.properties'
+    $pin = Get-MtGradleProperty -File $props -Key 'starengine_lib_version'
+    if (-not $pin) {
+        return , @($false, "$props 里读不到 starengine_lib_version")
+    }
+    if (-not (Test-Path -LiteralPath $p.mods_dir -PathType Container)) {
+        return , @($true, "无 mods 目录（库由 Gradle runtimeClasspath 提供 $pin）")
+    }
+    $libs = @(Get-ChildItem -LiteralPath $p.mods_dir -Filter 'starengine_lib-*.jar' -File -ErrorAction SilentlyContinue)
+    if ($libs.Count -eq 0) {
+        return , @($true, "mods 内无库 jar（由 Gradle runtimeClasspath 提供 $pin）")
+    }
+    if ($libs.Count -gt 1) {
+        return , @($false, "mods 内 starengine_lib-*.jar 有 $($libs.Count) 份（应恰 1 份）：$(($libs | ForEach-Object { $_.Name }) -join ' / ')")
+    }
+    $name = [string]$libs[0].Name
+    if ($name -notlike "*-$pin.jar") {
+        return , @($false, "库 jar 与本线引脚不一致：实际 $name ；期望 *-$pin.jar ⟹ 照做：pwsh -NoProfile -File scripts/devtools/Start-SelfTest.ps1 -Version $Version")
+    }
+    return , @($true, "$name（与 starengine_lib_version=$pin 一致）")
+}
+
 # ── 模组来源（统一口径闸门）──────────────────────────────────────────────
 function Test-MtPreflightModSources {
     <#
@@ -310,7 +380,7 @@ function Invoke-MtPreflightAll {
     $gradlewExists = Test-Path -LiteralPath (Join-Path $root 'gradlew') -PathType Leaf
 
     $checks = [System.Collections.Generic.List[object]]::new()
-    $checks.Add([pscustomobject]@{ Name = '分支'; Pair = (Test-MtPreflightBranch -Root $root) })
+    $checks.Add([pscustomobject]@{ Name = '分支'; Pair = (Get-MtPreflightBranch -Root $root) })
     $checks.Add([pscustomobject]@{ Name = '输入法'; Pair = (Test-MtPreflightIme) })
     $checks.Add([pscustomobject]@{ Name = '遗留进程'; Pair = (Test-MtPreflightLeftover) })
     $checks.Add([pscustomobject]@{ Name = 'MCP 二进制'; Pair = (Test-MtPreflightMcpBinary) })
@@ -327,6 +397,7 @@ function Invoke-MtPreflightAll {
     foreach ($v in $Versions) {
         $checks.Add([pscustomobject]@{ Name = "兼容栈 $v"; Pair = (Test-MtPreflightCompatStack -Version $v) })
         $checks.Add([pscustomobject]@{ Name = "run 可写 $v"; Pair = (Test-MtPreflightWritable -Version $v) })
+        $checks.Add([pscustomobject]@{ Name = "前置库配对 $v"; Pair = (Test-MtPreflightLibPairing -Version $v) })
     }
 
     $failed = @()

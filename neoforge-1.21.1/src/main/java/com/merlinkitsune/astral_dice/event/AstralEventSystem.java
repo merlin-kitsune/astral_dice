@@ -1,5 +1,7 @@
 package com.merlinkitsune.astral_dice.event;
 
+import com.merlinkitsune.astral_dice.AstralDiceMod;
+import com.merlinkitsune.starenginelib.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.item.card.ExclusiveCardUtil;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
@@ -9,6 +11,10 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import top.theillusivec4.curios.api.CuriosApi;
 
+import java.util.Optional;
+import com.merlinkitsune.astral_dice.network.ActionBarPayload;
+
+import com.merlinkitsune.starenginelib.event.EventTargetCollector;
 /**
  * 事件系统:事件触发后的统一附加效果。
  * 事件本体由各立牌自行实现(大侦探主动的随机事件、秘密侦探击杀「隐匿调查」目标触发的调查阶段);

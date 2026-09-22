@@ -3,7 +3,7 @@ package com.merlinkitsune.astral_dice.event;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.component.AppliedStone;
-import com.merlinkitsune.astral_dice.component.GameplayConstants;
+import com.merlinkitsune.starenginelib.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
 import com.merlinkitsune.astral_dice.component.WeaponEnhancement;
@@ -12,7 +12,7 @@ import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.item.sign.ParunanSignItem;
 import com.merlinkitsune.astral_dice.item.sign.BaseSignItem;
 import com.merlinkitsune.astral_dice.item.sign.BonnieSignItem;
-import com.merlinkitsune.astral_dice.item.BossEntityUtil;
+import com.merlinkitsune.starenginelib.item.BossEntityUtil;
 import com.merlinkitsune.astral_dice.item.ChargeManager;
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
 import com.merlinkitsune.astral_dice.item.dice.DiceCurioItem;
@@ -91,7 +91,6 @@ import com.merlinkitsune.astral_dice.item.chip.StarCoinHammerChipItem;
 import com.merlinkitsune.astral_dice.item.chip.BufferShieldChipItem;
 import com.merlinkitsune.astral_dice.network.ActionBarPayload;
 import com.merlinkitsune.astral_dice.combat.CardRegistry;
-import com.merlinkitsune.astral_dice.client.KeyBindingSetup;
 import com.merlinkitsune.astral_dice.combat.DiceCombatContext;
 import com.merlinkitsune.astral_dice.damage.ModDamageTypes;
 import com.merlinkitsune.astral_dice.item.sign.FenSignItem;
@@ -235,9 +234,48 @@ public class ModTooltipHandler {
 
     // 翻译文本修正:将 %% 转义为普通 % 后放入 Component.literal,
     // 避免 Minecraft 将 %% 拆成无样式片段导致 % 号丢失颜色。
+    // 另外把“非法 %”就地安全化:lang 里漏写转义的字面 %(如 "§e50%§7")会让 String.format 抛
+    // UnknownFormatConversionException,而 tooltip 事件链上无人接这个异常 ⇒ **客户端直接崩溃**
+    // (2026-09-21 教主立牌 `tooltip.astral_dice.sign.teru_active` 实例,见 crash-2026-09-21_15.12.05)。
+    // 这里先把所有不构成合法转换的 % 转义成 %%,任何文案笔误或第三方资源包改坏 lang 都只会显示成
+    // 字面 %(与 check_lang_sync.ps1 的“应写 %%”口径一致),不再崩游戏。
     private static String translationString(String key, Object... args) {
         String raw = net.minecraft.locale.Language.getInstance().getOrDefault(key, key);
-        return String.format(raw, args);
+        return String.format(escapeStrayPercents(raw), args);
+    }
+
+    // 合法转换 = %[sdbfxoeg] 或 %<数字>$[sdbfxoeg](与 tools/check_lang_sync.ps1 的白名单**逐字一致**)。
+    // ⚠️ 这是**刻意收窄**的集合:本仓语料只用 %s(少数 %d),故不支持 Java Formatter 的完整语法 ——
+    //    `%-5s` / `%02d` / `%.2f` / `%S` / `%n` / `%tY` 等合法写法会被当成字面 % 转义(渲染成原文而非格式化)。
+    //    要引入这类写法,必须**同时**扩这里的 VALID_PERCENT 与 check_lang_sync.ps1 的扫描口径,
+    //    否则闸门会把它判为「未转义字面百分号」。
+    private static final java.util.regex.Pattern VALID_PERCENT =
+            java.util.regex.Pattern.compile("%(?:%|\\d+\\$[sdbfxoeg]|[sdbfxoeg])");
+
+    private static String escapeStrayPercents(String text) {
+        if (text == null || text.indexOf('%') < 0) {
+            return text;
+        }
+        StringBuilder sb = new StringBuilder(text.length() + 8);
+        java.util.regex.Matcher m = VALID_PERCENT.matcher(text);
+        int i = 0;
+        while (i < text.length()) {
+            char c = text.charAt(i);
+            if (c != '%') {
+                sb.append(c);
+                i++;
+                continue;
+            }
+            m.region(i, text.length());
+            if (m.lookingAt()) {
+                sb.append(m.group());
+                i = m.end();
+            } else {
+                sb.append("%%");
+                i++;
+            }
+        }
+        return sb.toString();
     }
 
     private static net.minecraft.network.chat.MutableComponent tt(String key, Object... args) {
@@ -255,6 +293,17 @@ public class ModTooltipHandler {
         }
     }
 
+    // 飞星共享冷却提示(红色):紫色飞星 / 金色飞星共用一份冷却(计时器不建效果,只在 tooltip 显示)
+    private static void addShootingStarCooldown(List<Component> tooltip, Player p) {
+        if (p == null) return;
+        long cdEnd = ModAttachments.getShootingStarCooldownEnd(p);
+        int remainingTicks = cdEnd > 0 ? (int) (cdEnd - p.level().getGameTime()) : 0;
+        if (remainingTicks > 0) {
+            tooltip.add(tt("tooltip.astral_dice.chip.shooting_star_cooldown", remainingTicks / 20)
+                    .withStyle(ChatFormatting.RED));
+        }
+    }
+
     // 秒数 → 立牌 tooltip 时间格式(蓝):§9MM:SS§7(如 60 → §91:00§7)
     private static String formatSignTime(int seconds) {
         return String.format("§9%d:%02d§7", seconds / 60, seconds % 60);
@@ -266,12 +315,17 @@ public class ModTooltipHandler {
     }
 
     // 立牌主动技能按键显示名(客户端取实际映射,服务端/异常回退 "J")
+    //
+    // 取值必须经 client/ClientKeyNames —— 本类双端都会加载,若在这里直接引用
+    // KeyBindingSetup.ACTIVATE_SIGN_KEY,该字段的声明类型 net.minecraft.client.KeyMapping
+    // 就会进本类的常量池;而 dist 判断是运行期的,挡得住执行、挡不住符号解析
+    // (getstatic 的字段类型须在方法被调用时解析,catch 不包住解析)。
+    // 收进 client 包后,本类字节码里不再出现任何客户端类型。
     private static String signKeyName() {
         if (net.neoforged.fml.loading.FMLEnvironment.getDist() == net.neoforged.api.distmarker.Dist.CLIENT) {
-            try {
-                return com.merlinkitsune.astral_dice.client.KeyBindingSetup.ACTIVATE_SIGN_KEY
-                        .getTranslatedKeyMessage().getString();
-            } catch (Throwable ignored) {
+            String name = com.merlinkitsune.astral_dice.client.ClientKeyNames.activateSignKey();
+            if (name != null) {
+                return name;
             }
         }
         return "J";
@@ -280,10 +334,9 @@ public class ModTooltipHandler {
     // 卡牌栏按键显示名(客户端取实际映射,服务端/异常回退 "H")
     private static String cardInventoryKeyName() {
         if (net.neoforged.fml.loading.FMLEnvironment.getDist() == net.neoforged.api.distmarker.Dist.CLIENT) {
-            try {
-                return com.merlinkitsune.astral_dice.client.KeyBindingSetup.OPEN_CARD_INVENTORY_KEY
-                        .getTranslatedKeyMessage().getString();
-            } catch (Throwable ignored) {
+            String name = com.merlinkitsune.astral_dice.client.ClientKeyNames.cardInventoryKeyName();
+            if (name != null) {
+                return name;
             }
         }
         return "H";
@@ -315,10 +368,8 @@ public class ModTooltipHandler {
         if (p.hasEffect(ModEffects.MONSTER_BRICK)) bonus += 6 + cardBonus;
         if (p.hasEffect(ModEffects.ORBITAL_STRIKE)) bonus += 8 + cardBonus;
         if (p.hasEffect(ModEffects.DIRECTIONAL_BLAST)) bonus += 5 + cardBonus;
-        if (p.hasEffect(ModEffects.LIVING_PAGE)) {
-            int pages = com.merlinkitsune.astral_dice.combat.SpellDamageRegistry.livingPageBonusPages(p);
-            bonus += 2 + pages + cardBonus;
-        }
+        // 活体书页不再提供「效果期间的被动法伤加成」(2026-09-25 重写):其伤害是一次**命中结算**,
+        // 不再叠加到其它远程/魔法伤害上 ⇒ 本行不再计入,否则会把一次性命中当成全周期增益重复显示。
         tooltip.add(tt("tooltip.astral_dice.card.active_damage_bonus", bonus)
                 .withStyle(ChatFormatting.GRAY));
     }
@@ -589,6 +640,9 @@ public class ModTooltipHandler {
         }
         if (stack.is(ModItems.EFFECT_CARD_BERSERK.get())) {
             tooltip.add(Component.empty());
+            // 第一行 = 精简用法(左键对其他玩家 / 右键对自身),第二行 = 效果本身(2026-09-25 用户裁决)
+            tooltip.add(Component.translatable("tooltip.astral_dice.card.berserk")
+                    .withStyle(ChatFormatting.GRAY));
             tooltip.add(Component.translatable("effect.astral_dice.berserk.description")
                     .withStyle(ChatFormatting.GRAY));
             addEffectCardPlayCountTooltip(tooltip, player);
@@ -718,9 +772,11 @@ public class ModTooltipHandler {
                 addSignCounter(tooltip, "tooltip.astral_dice.sign.komachi_effect_count",
                         ModAttachments.getKomachiUseCount(p));
                 // 伤害增益只在**佩戴立牌**时生效(2026-09-15 裁决):死亡保留的值不因"牌不在身上"而显示为加成
+                // 并与伤害结算同源做静默上限夹取(2026-09-19,SpellDamageRegistry#SIGN_DAMAGE_BONUS_CAP)
                 addSignCounter(tooltip, "tooltip.astral_dice.sign.komachi_damage_bonus",
-                        com.merlinkitsune.astral_dice.item.sign.KomachiSignItem.isEquipped(p)
-                                ? ModAttachments.getKomachiDamageBonus(p) : 0);
+                        com.merlinkitsune.astral_dice.combat.SpellDamageRegistry.cappedSignDamageBonus(
+                                com.merlinkitsune.astral_dice.item.sign.KomachiSignItem.isEquipped(p)
+                                        ? ModAttachments.getKomachiDamageBonus(p) : 0));
             }
             addSignCooldownRemaining(tooltip, event.getEntity() instanceof Player p ? p : null);
         }
@@ -731,6 +787,25 @@ public class ModTooltipHandler {
             if (event.getEntity() instanceof Player p) {
                 addSignCounter(tooltip, "tooltip.astral_dice.chip.starlight",
                         StarLightManager.get(p), StarLightManager.getCap());
+            }
+        }
+        // 紫色飞星 / 金色飞星:功能描述 + 星光层数 + 共享冷却剩余(计时器不建效果,只在 tooltip 显示)
+        if (stack.is(ModItems.PURPLE_SHOOTING_STAR_CHIP.get())) {
+            tooltip.add(Component.empty());
+            addChipLines(tooltip, "tooltip.astral_dice.chip.purple_shooting_star", ChatFormatting.GRAY);
+            if (event.getEntity() instanceof Player p) {
+                addSignCounter(tooltip, "tooltip.astral_dice.chip.starlight",
+                        StarLightManager.get(p), StarLightManager.getCap());
+                addShootingStarCooldown(tooltip, p);
+            }
+        }
+        if (stack.is(ModItems.GOLDEN_SHOOTING_STAR_CHIP.get())) {
+            tooltip.add(Component.empty());
+            addChipLines(tooltip, "tooltip.astral_dice.chip.golden_shooting_star", ChatFormatting.GRAY);
+            if (event.getEntity() instanceof Player p) {
+                addSignCounter(tooltip, "tooltip.astral_dice.chip.starlight",
+                        StarLightManager.get(p), StarLightManager.getCap());
+                addShootingStarCooldown(tooltip, p);
             }
         }
         if (stack.is(ModItems.CUTTER_CHIP.get())) {
@@ -1102,16 +1177,11 @@ public class ModTooltipHandler {
         if (stack.is(ModItems.LIVING_PAGE.get())) {
             tooltip.add(Component.empty());
             if (event.getEntity() instanceof Player p) {
-                // 活体书页伤害 = 基础 2 + 调查员(rin)已使用数量 + 伤害效果牌统一加成(忍者立牌效果牌伤害增益 + 书签)
-                // 两项都只在**佩戴对应立牌**时生效(2026-09-15 裁决),故一律走 SpellDamageRegistry 的判定入口
-                int pages = com.merlinkitsune.astral_dice.combat.SpellDamageRegistry.livingPageBonusPages(p);
-                // 组件基础色为灰(普通文本);行内颜色码:数值=黄 §e、时间=蓝 §9
-                tooltip.add(Component.translatable("tooltip.astral_dice.card.living_page",
-                                2 + pages + com.merlinkitsune.astral_dice.combat.SpellDamageRegistry
-                                        .effectCardDamageBonus(p))
+                tooltip.add(tt("tooltip.astral_dice.card.living_page",
+                                com.merlinkitsune.astral_dice.combat.SpellDamageRegistry.livingPageImpactDamage(p))
                         .withStyle(ChatFormatting.GRAY));
             } else {
-                tooltip.add(Component.translatable("tooltip.astral_dice.card.living_page", "?")
+                tooltip.add(tt("tooltip.astral_dice.card.living_page", "?")
                         .withStyle(ChatFormatting.GRAY));
             }
             addEffectCardPlayCountTooltip(tooltip, player);
@@ -1298,13 +1368,22 @@ public class ModTooltipHandler {
             }
             addSignCooldownRemaining(tooltip, event.getEntity() instanceof Player p ? p : null);
         }
+        if (stack.is(ModItems.REN_SIGN.get())) {
+            tooltip.add(Component.empty());
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "熊孩子特权");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.ren_active");
+            addSignPassiveTitle(tooltip, "鼠鼠救我");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.ren_passive");
+            addSignCooldownRemaining(tooltip, event.getEntity() instanceof Player p ? p : null);
+        }
     }
 
-    /** 效果牌冷却显示:按玩家当前实际冷却取值(含充能的 -20% 减免),结果向下取整为秒 */
+    /** 效果牌冷却显示:按玩家当前实际冷却取值(有充能时基础值封顶为 20 秒),结果向下取整为秒 */
     private static long effectCardCooldownSeconds(Player player) {
         long baseTicks = GameplayConstants.EFFECT_CARD_COOLDOWN_SECONDS * 20L;
         long ticks = player != null
-                ? com.merlinkitsune.astral_dice.item.ChargeManager.cooldownTicks(player, baseTicks)
+                ? com.merlinkitsune.astral_dice.item.ChargeManager.effectCardCooldownTicks(player, baseTicks)
                 : baseTicks;
         return Math.max(1L, ticks / 20L);
     }

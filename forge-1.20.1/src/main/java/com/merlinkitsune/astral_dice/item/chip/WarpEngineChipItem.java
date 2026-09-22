@@ -5,7 +5,7 @@ import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
 import com.merlinkitsune.astral_dice.event.WaystoneWarpCompat;
 import com.merlinkitsune.astral_dice.item.ChargeManager;
-import com.merlinkitsune.astral_dice.item.CuriosCompat;
+import com.merlinkitsune.starenginelib.item.CuriosCompat;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;

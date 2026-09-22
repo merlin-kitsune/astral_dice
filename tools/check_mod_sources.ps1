@@ -58,6 +58,12 @@ $script:LibraryGroups = @(
     'com.google.code.gson'   # mixin 注解处理器依赖
     'com.google.guava'       # mixin 注解处理器依赖
     'org.ow2.asm'            # mixin 注解处理器依赖
+    # 本家前置库 StarEngine Lib(com.merlinkitsune.starenginelib):三线共享类的下沉目标,
+    # **只发布到 mavenLocal**(无远程 maven),消费方坐标形如
+    # `${starengine_lib_group}:starengine_lib-<平台>:${starengine_lib_version}`(见各 build.gradle)。
+    # 它是**库而不是模组**(不注册任何注册表条目:物品/效果/附件/数据组件/能力全留在本模组),
+    # 故按「库」白名单放行,不受「模组必须来自 Curse/Modrinth Maven」约束。
+    'com.merlinkitsune.starenginelib'
 )
 
 # R2：已知例外（**官方 maven 提供的模组依赖**）。每次运行都回显；是否迁移到 Curse/Modrinth Maven
@@ -72,7 +78,10 @@ $script:LocalJarDirs = @('base-mod-libs', 'base-mod-compile-libs')
 
 # ── 目标 ──────────────────────────────────────────────────────────────────
 $script:Targets = @('forge-1.20.1', 'neoforge-1.21.1')   # 统一口径约束的两条发布线
-$script:InfoTargets = @('neoforge-26.1.2')               # 第三条线：只回显，不参与 R1/R2 判定
+# 第三条线(26.1.2 由 1.21.1 整体迁移而来):只回显 + 参与 R1b(坐标↔仓库一致性),不做 R1/R2 判定。
+# 2026-09-17 收紧:只对**实际存在**的子项目生效(与 settings.gradle 的 include 列表一一对应,
+# 避免对已移除/尚未进入本 worktree 的子项目持续报 INFO)。
+$script:InfoTargets = @('neoforge-26.1.2')               # 第三条线（仅回显）
 
 $script:Violations = [System.Collections.Generic.List[string]]::new()
 $script:Exceptions = [System.Collections.Generic.List[string]]::new()
@@ -84,18 +93,61 @@ function Get-BuildGradleLines {
     return @(Get-Content -LiteralPath $Path)
 }
 
+function Expand-GradlePlaceholders {
+    <#
+    .SYNOPSIS
+        把坐标字符串里的 ${key} 占位符按 gradle.properties 的键值还原;未知键保持原样。
+    #>
+    param(
+        [Parameter(Mandatory)][string]$Coord,
+        [hashtable]$Props = @{}
+    )
+    $out = $Coord
+    foreach ($m in [regex]::Matches($Coord, '\$\{([A-Za-z0-9_.]+)\}')) {
+        $key = $m.Groups[1].Value
+        if ($Props.ContainsKey($key)) { $out = $out.Replace('${' + $key + '}', [string]$Props[$key]) }
+    }
+    return $out
+}
+
+function Get-GradleProperties {
+    <#
+    .SYNOPSIS
+        读取子项目 gradle.properties 的 key=value(用于还原坐标占位符)。
+    #>
+    param([Parameter(Mandatory)][string]$ProjectDir)
+    $props = @{}
+    $f = Join-Path $ProjectDir 'gradle.properties'
+    if (-not (Test-Path -LiteralPath $f -PathType Leaf)) { return $props }
+    foreach ($line in Get-Content -LiteralPath $f) {
+        $s = $line.Trim()
+        if ($s -eq '' -or $s.StartsWith('#')) { continue }
+        $eq = $s.IndexOf('=')
+        if ($eq -le 0) { continue }
+        $props[$s.Substring(0, $eq).Trim()] = $s.Substring($eq + 1).Trim()
+    }
+    return $props
+}
+
 function Get-DependencyCoordinate {
     <#
     .SYNOPSIS
         从一条 build.gradle 行的「坐标部分」抽坐标；返回 @(种类, 坐标)。
         种类: mod-spi / modrinth / curse / local-jar / library / exception / unknown / none
     #>
-    param([Parameter(Mandatory)][AllowEmptyString()][string]$Rest)
+    param(
+        [Parameter(Mandatory)][AllowEmptyString()][string]$Rest,
+        [hashtable]$Props = @{}
+    )
 
     if ($Rest -match 'fileTree\s*\(|files\s*\(') { return @('local-jar', 'fileTree/files(...)') }
     $m = [regex]::Match($Rest, "['""]([^'""]+)['""]")
     if (-not $m.Success) { return @('none', '') }
     $coord = $m.Groups[1].Value.Trim()
+    # Gradle 属性占位符(${group} / ${version})按该子项目的 gradle.properties 还原:
+    # 本家前置库的坐标正是 `${starengine_lib_group}:starengine_lib-<平台>:${starengine_lib_version}`,
+    # 不还原的话坐标首段是字面量 `${starengine_lib_group}`,$LibraryGroups 白名单永远匹配不上。
+    if ($coord -match '\$\{') { $coord = Expand-GradlePlaceholders -Coord $coord -Props $Props }
     if ($coord -like 'curse.maven:*') { return @('curse', $coord) }
     if ($coord -like 'maven.modrinth:*') { return @('modrinth', $coord) }
     $group = ($coord -split ':')[0]
@@ -118,6 +170,7 @@ function Test-ModSourceFile {
     }
 
     $lines = Get-BuildGradleLines -Path $Path
+    $props = Get-GradleProperties -ProjectDir (Split-Path -Parent $Path)
     $depRe = '^\s*(modImplementation|modCompileOnly|modRuntimeOnly|modApi|implementation|compileOnly|runtimeOnly|api|jarJar)\b(.*)$'
     $repoRe = "maven\s*\{\s*url\s*=?\s*['""]([^'""]+)['""]"
 
@@ -144,7 +197,7 @@ function Test-ModSourceFile {
         # ── R2：依赖坐标 ──────────────────────────────────────────────
         $dm = [regex]::Match($raw, $depRe)
         if (-not $dm.Success) { continue }
-        $kind, $coord = Get-DependencyCoordinate -Rest $dm.Groups[2].Value
+        $kind, $coord = Get-DependencyCoordinate -Rest $dm.Groups[2].Value -Props $props
         switch ($kind) {
             'none' { }
             'curse' { $usedCurse = $true }
@@ -232,8 +285,13 @@ foreach ($p in $script:Targets) {
     Test-ModSourceFile -Project $p -Path (Join-Path (Join-Path $Root $p) 'build.gradle') -Enforce
 }
 foreach ($p in $script:InfoTargets) {
+    $infoBuild = Join-Path (Join-Path $Root $p) 'build.gradle'
+    if (-not (Test-Path -LiteralPath $infoBuild -PathType Leaf)) {
+        $script:Infos.Add("${p}: 子项目不存在（已从 info 目标中收紧掉,不参与判定）") | Out-Null
+        continue
+    }
     Write-Line "[$p]（仅回显，不作为统一口径的判定对象）"
-    Test-ModSourceFile -Project $p -Path (Join-Path (Join-Path $Root $p) 'build.gradle')
+    Test-ModSourceFile -Project $p -Path $infoBuild
 }
 
 Write-Line ''

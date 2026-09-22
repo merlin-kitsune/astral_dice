@@ -34,6 +34,9 @@ sourceSets.main.resources {
 }
 
 repositories {
+    // 前置库 StarEngine Lib 走本地 Maven(库仓库执行 ./gradlew publishToMavenLocal 后即可解析)。
+    // 置于首位:该 group 不在任何远程仓库中,不会误命中同名远程工件。
+    mavenLocal()
     mavenCentral()
     maven { url = uri('https://maven.neoforged.net/releases') }
     // ── 模组来源硬规则(2026-09-17 用户要求)────────────────────────────────
@@ -166,6 +169,10 @@ configurations {
 }
 
 dependencies {
+    // StarEngine Lib(必须前置):效果/事件/通用组件等共享逻辑所在库。
+    // NeoForge 侧发布的是普通 Mojmap jar(NeoForge 1.20.5+ 编译与生产同为 Mojmap,无重映射),
+    // 因此用 implementation 而非 modImplementation(net.neoforged.moddev 不提供后者)。
+    implementation "${starengine_lib_group}:starengine_lib-neoforge-26.1.2:${starengine_lib_version}"
     // Curios API(必须的前置):15.0.0+26.1.2(Modrinth version id dRnRThvD)
     // 其 mods.toml 声明 neoforge [26.1.0.0,),故本模组的 curios 门槛同步升至 [15,)
     implementation 'maven.modrinth:curios:dRnRThvD'
@@ -174,6 +181,11 @@ dependencies {
     // JEI(配方查看,测试环境用);26.1.2 线 29.37.0.99
     // 2026-09-17 起按统一口径改走 Curse Maven(CF 文件 8886511 = `jei-26.1.2-neoforge-29.37.0.99.jar`,1908683 字节)
     implementation "curse.maven:jei-238222:8886511"
+    // Jade(方块/实体信息 HUD;2026-09-19 用户要求「所有测试环境增加 jei 和 jade 模组,用于用户侧物品和效果检查」):
+    // 测试环境用,不进发货产物。Modrinth Maven 的 version id 5jKeKXwB = `Jade-mc26.1-NeoForge-26.1.11.jar`
+    // (1030012 B 的 primary 文件;game_versions = 26.1/26.1.1/26.1.2),与本线整合包内现有
+    // `[玉 🔍] Jade-mc26.1-NeoForge-26.1.11.jar` **同版**。⚠️ 该 version 另有 `-sources.jar` 次文件,坐标为 primary。
+    implementation "maven.modrinth:jade:5jKeKXwB"
     // Mixin:26.1.2 的 NeoForge 运行时自带 Mixin(Fabric 分支 0.17.3+mixin.0.8.7),
     // 编译期仅需注解类;NeoForge 编译/运行同为 Mojmap,无需 refmap。
     compileOnly 'net.fabricmc:sponge-mixin:0.17.3+mixin.0.8.7'
@@ -193,6 +205,7 @@ var generateModMetadata = tasks.register("generateModMetadata", ProcessResources
             neo_version_range      : neo_version_range,
             loader_version_range   : loader_version_range,
             curios_version_range   : curios_version_range,
+            starengine_lib_version_range: starengine_lib_version_range,
             mod_id                 : mod_id,
             mod_name               : mod_name,
             mod_license            : mod_license,
@@ -245,6 +258,30 @@ idea {
 def devRunModsDir = rootProject.file('run/26.1.2/mods')
 def packModsDir = file('D:/.minecraft/versions/26.1.2 模组测试/mods')
 
+//
+// ⚠️ 约定(2026-09-12 起,同日修订为白名单):**只有发布线分支推送整合包。**
+//   判定依据是当前 git 分支(读 .git/HEAD,兼容普通仓库与 worktree),规则:
+//     · 分支出现在 packPushBranches(**白名单**)中 → 允许 pushToGame
+//     · 分支不在白名单 / 无法确定分支(detached HEAD/无 .git,如 CI) → 跳过,只打日志,不算失败
+//     · 传 -PdeployToPack 或 -PpackPush    → 强制推送,覆盖上述判定(手动出包用)
+//   理由:整合包是玩家手测环境,开发分支(如 `multi-dev-next` / `wt/*`)的产物会把不匹配的
+//   组合灌进测试包,表现为启动期报错或行为与源码不符。本线(26.1.2)自 2026-09-17 迁移起同样
+//   依赖前置库 starengine_lib,故与另两线一样带「库 jar 与 mod jar 成对匹配」自检(只告警)。
+//   **白名单优于黑名单**:新开的分支(含 DSH/WorkBuddy 自动建的 `wt/*` worktree 分支)
+//   默认落在"不推送"一侧,不会因为忘了把分支名登记进黑名单而误推、误删整合包里的正式 jar。
+//   需要推送时:把分支加进白名单;或单次用 -PdeployToPack 强制。
+//
+// --- 整合包推送的 git 分支守卫(配合上方约定;与 neoforge-1.21.1 / forge-1.20.1 同形同文案) ---
+// 分支判定放在**执行期**(见 pushToGame 的 doLast),不做配置期求值:
+//   ① 每次构建都读当时的 .git/HEAD,切分支后立即生效,不存在配置缓存陈旧问题;
+//   ② 不把 Provider/闭包塞进 configuration-cache,避免缓存序列化限制与行为漂移。
+// dotGitEntry 是配置期算好的 File(可序列化),执行期读它即可 —— 普通仓库这里就是
+// .git 目录;worktree 下它是**文件**,内容为 `gitdir: <path>`,真正的 HEAD 在 gitdir 下。
+// 【白名单】只有列在这里的分支允许把 jar 推进整合包;其余分支(含 worktree 的 `wt/*`)一律跳过。
+def packPushBranches = ['multi-1.20.1-1.21.1']
+def forcePackPush = project.hasProperty('deployToPack') || project.hasProperty('packPush')
+def dotGitEntry = rootProject.file('.git')
+def libVersionLocked = project.findProperty('starengine_lib_version')?.toString()
 def jarArchiveProvider = tasks.named('jar').flatMap { it.archiveFile }
 
 tasks.register('pushToDevRun') {
@@ -275,9 +312,44 @@ tasks.register('pushToDevRun') {
 // 默认随 build 推送到整合包 mods 目录
 tasks.register('pushToGame') {
     group = 'build'
-    description = 'Copy the built mod jar to the bound game pack mods folder and remove old versions.'
+    description = 'Copy the built mod jar to the bound game pack mods folder and remove old versions. Only the release branch (see packPushBranches) pushes; force with -PdeployToPack.'
     dependsOn tasks.named('jar')
     doLast {
+        // --- 约定:只有发布线分支推送整合包(白名单,见文件顶部「编译产物分发规则」) ---
+        if (!forcePackPush) {
+            // 执行期读取当前分支:普通仓库 .git 是目录;worktree 的 .git 是文件,内容记录 gitdir
+            def readGitBranch = { File dotGit ->
+                File headFile = null
+                if (dotGit.isDirectory()) {
+                    def hf = new File(dotGit, 'HEAD')
+                    headFile = hf.isFile() ? hf : null
+                } else if (dotGit.isFile()) {
+                    def m = dotGit.text.trim() =~ /^gitdir:\s*(.+)$/
+                    if (m.find()) {
+                        def gd = new File(m.group(1).trim())
+                        if (!gd.isAbsolute()) {
+                            gd = new File(dotGit.parentFile, m.group(1).trim())
+                        }
+                        def hf = new File(gd, 'HEAD')
+                        headFile = hf.isFile() ? hf : null
+                    }
+                }
+                if (headFile == null) {
+                    return ''
+                }
+                def s = headFile.text.trim()
+                s.startsWith('ref: refs/heads/') ? s.substring('ref: refs/heads/'.length()) : ''
+            }
+            def branch = readGitBranch(dotGitEntry)
+            if (branch.isEmpty()) {
+                logger.lifecycle('pushToGame: skipped — 无法确定当前 git 分支(detached HEAD 或无 .git);如需强制推送请加 -PdeployToPack')
+                return
+            }
+            if (!packPushBranches.contains(branch)) {
+                logger.lifecycle("pushToGame: skipped — 分支 '${branch}' 不在整合包推送白名单 ${packPushBranches} 内;如需强制推送请加 -PdeployToPack")
+                return
+            }
+        }
         def jarFile = jarArchiveProvider.get().asFile
         if (!jarFile.exists()) {
             logger.warn("pushToGame: built jar not found, skipped: ${jarFile}")
@@ -303,6 +375,24 @@ tasks.register('pushToGame') {
             jarFile.withInputStream { inp -> inp.transferTo(out) }
         }
         logger.lifecycle("pushToGame: pushed ${jarFile.name} -> ${packModsDir}")
+
+        // --- 成对匹配自检:整合包内前置库 jar 必须与 mod 锁定的库版本一致 ---
+        // 迁移(2026-09-17)后本线同样依赖 starengine_lib。强推本 mod 时最容易踩的坑:库 jar 没跟着更新
+        // (或反过来),两者版本区间对不上,表现为启动期 NoClassDefFoundError / "缺必需前置"。此处只告警,不阻断构建。
+        if (libVersionLocked) {
+            def libJars = packModsDir.listFiles()?.findAll { File f ->
+                f.isFile() && f.name.startsWith('starengine_lib-') && f.name.endsWith('.jar')
+            } ?: []
+            if (libJars.isEmpty()) {
+                logger.warn("pushToGame: 整合包内没有 starengine_lib-*.jar —— 本 mod 把它声明为必需前置,缺失会导致整合包拒绝启动")
+            } else {
+                def mismatched = libJars.findAll { !it.name.contains(libVersionLocked) }
+                if (mismatched) {
+                    logger.warn("pushToGame: 整合包内的前置库 jar 与 starengine_lib_version=${libVersionLocked} 不一致: " +
+                            "${mismatched*.name} —— 请到 starengine_lib 仓库同步推送库 jar")
+                }
+            }
+        }
     }
 }
 

@@ -8,6 +8,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import top.theillusivec4.curios.api.CuriosApi;
+import com.merlinkitsune.starenginelib.event.EventTargetCollector;
 
 /**
  * 事件系统:事件触发后的统一附加效果。

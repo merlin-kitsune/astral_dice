@@ -1,6 +1,6 @@
 package com.merlinkitsune.astral_dice.event;
 
-import com.merlinkitsune.astral_dice.item.CuriosCompat;
+import com.merlinkitsune.starenginelib.item.CuriosCompat;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;

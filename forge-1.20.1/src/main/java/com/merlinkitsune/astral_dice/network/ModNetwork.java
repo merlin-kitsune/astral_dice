@@ -49,8 +49,18 @@ public final class ModNetwork {
                 OpenCardInventoryMessage::encode, OpenCardInventoryMessage::decode, OpenCardInventoryMessage::handle);
         CHANNEL.registerMessage(id++, AttachmentSyncMessage.class,
                 AttachmentSyncMessage::encode, AttachmentSyncMessage::decode, AttachmentSyncMessage::handle);
+        CHANNEL.registerMessage(id++, TargetSelectStartMessage.class,
+                TargetSelectStartMessage::encode, TargetSelectStartMessage::decode, TargetSelectStartMessage::handle);
+        CHANNEL.registerMessage(id++, TargetSelectConfirmMessage.class,
+                TargetSelectConfirmMessage::encode, TargetSelectConfirmMessage::decode, TargetSelectConfirmMessage::handle);
+        CHANNEL.registerMessage(id++, TargetSelectCancelMessage.class,
+                TargetSelectCancelMessage::encode, TargetSelectCancelMessage::decode, TargetSelectCancelMessage::handle);
         CHANNEL.registerMessage(id++, EnderDieTotemMessage.class,
                 EnderDieTotemMessage::encode, EnderDieTotemMessage::decode, EnderDieTotemMessage::handle);
+        CHANNEL.registerMessage(id++, StarCoinWalletMessage.class,
+                StarCoinWalletMessage::encode, StarCoinWalletMessage::decode, StarCoinWalletMessage::handle);
+        CHANNEL.registerMessage(id++, StarCoinBalanceMessage.class,
+                StarCoinBalanceMessage::encode, StarCoinBalanceMessage::decode, StarCoinBalanceMessage::handle);
     }
 
     // === 发送助手(对应 1.21 PacketDistributor 静态方法) ===
@@ -155,7 +165,7 @@ public final class ModNetwork {
 
         public static void handle(DamageNumberMessage msg, Supplier<NetworkEvent.Context> ctx) {
             ctx.get().enqueueWork(() ->
-                    com.merlinkitsune.astral_dice.client.ClientDamageNumbers.add(msg.entityId, msg.bonusDamage, msg.color));
+                    com.merlinkitsune.starenginelib.client.ClientDamageNumbers.add(msg.entityId, msg.bonusDamage, msg.color));
             ctx.get().setPacketHandled(true);
         }
 
@@ -193,7 +203,7 @@ public final class ModNetwork {
 
         public static void handle(ActionBarMessage msg, Supplier<NetworkEvent.Context> ctx) {
             ctx.get().enqueueWork(() ->
-                    com.merlinkitsune.astral_dice.client.ActionBarManager.show(msg.message, msg.durationTicks));
+                    com.merlinkitsune.starenginelib.client.ActionBarManager.show(msg.message, msg.durationTicks));
             ctx.get().setPacketHandled(true);
         }
     }
@@ -240,6 +250,124 @@ public final class ModNetwork {
         }
     }
 
+    // === 目标选择器(S→C 会话开始 / C→S 确认 / C→S 取消) ===
+
+    /** 服务端下发目标选择会话开始(S→C):由 TargetSelectionManager.start 调用,客户端进入选择模式。 */
+    public static class TargetSelectStartMessage {
+        private final int token;
+        private final int targetType;
+        private final double radius;
+        private final int durationTicks;
+        private final String actionId;
+        /**
+         * 本次会话是否允许对自身使用(消费方接口
+         * com.merlinkitsune.astral_dice.target.SelfTargetable#allowSelf() 的取值;
+         * 当前 {@code ren_privilege} 与三张可自用效果牌动作（express_delivery / luxury_feast / berserk）为 true，其余动作 false)。
+         */
+        private final boolean allowSelf;
+        /**
+         * 本会话是否由「主手手持物品」驱动且**没有倒计时**（消费方接口
+         * com.merlinkitsune.astral_dice.target.HoldToSelect 的取值，当前 = 四张效果牌动作
+         * express_delivery / luxury_feast / you_have_i_have / berserk）。
+         *
+         * <p>为真时 {@code durationTicks} 恒为 0：客户端不显示「（剩余 N 秒）」、提示口径改为
+         * 「移出手持退出选择」，并在物品离开主手时自行退出选择模式。
+         */
+        private final boolean holdToSelect;
+
+        public TargetSelectStartMessage(int token, int targetType, double radius, int durationTicks, String actionId,
+                                        boolean allowSelf, boolean holdToSelect) {
+            this.token = token;
+            this.targetType = targetType;
+            this.radius = radius;
+            this.durationTicks = durationTicks;
+            this.actionId = actionId;
+            this.allowSelf = allowSelf;
+            this.holdToSelect = holdToSelect;
+        }
+
+        public static void encode(TargetSelectStartMessage msg, FriendlyByteBuf buf) {
+            buf.writeVarInt(msg.token);
+            buf.writeVarInt(msg.targetType);
+            buf.writeDouble(msg.radius);
+            buf.writeVarInt(msg.durationTicks);
+            buf.writeUtf(msg.actionId);
+            buf.writeBoolean(msg.allowSelf);
+            buf.writeBoolean(msg.holdToSelect);
+        }
+
+        public static TargetSelectStartMessage decode(FriendlyByteBuf buf) {
+            return new TargetSelectStartMessage(buf.readVarInt(), buf.readVarInt(), buf.readDouble(),
+                    buf.readVarInt(), buf.readUtf(), buf.readBoolean(), buf.readBoolean());
+        }
+
+        public static void handle(TargetSelectStartMessage msg, Supplier<NetworkEvent.Context> ctx) {
+            ctx.get().enqueueWork(() ->
+                    com.merlinkitsune.astral_dice.client.TargetSelectionClient.start(
+                            msg.token, msg.targetType, msg.radius, msg.durationTicks, msg.actionId, msg.allowSelf,
+                            msg.holdToSelect));
+            ctx.get().setPacketHandled(true);
+        }
+    }
+
+    /** 客户端确认目标(C→S):由 TargetSelectionClient.confirm 发送,服务端 TargetSelectionManager.confirm 权威校验。 */
+    public static class TargetSelectConfirmMessage {
+        private final int token;
+        private final int targetId;
+
+        public TargetSelectConfirmMessage(int token, int targetId) {
+            this.token = token;
+            this.targetId = targetId;
+        }
+
+        public static void encode(TargetSelectConfirmMessage msg, FriendlyByteBuf buf) {
+            buf.writeVarInt(msg.token);
+            buf.writeVarInt(msg.targetId);
+        }
+
+        public static TargetSelectConfirmMessage decode(FriendlyByteBuf buf) {
+            return new TargetSelectConfirmMessage(buf.readVarInt(), buf.readVarInt());
+        }
+
+        public static void handle(TargetSelectConfirmMessage msg, Supplier<NetworkEvent.Context> ctx) {
+            ctx.get().enqueueWork(() -> {
+                ServerPlayer serverPlayer = ctx.get().getSender();
+                if (serverPlayer != null) {
+                    com.merlinkitsune.astral_dice.target.TargetSelectionManager.confirm(
+                            serverPlayer, msg.token, msg.targetId);
+                }
+            });
+            ctx.get().setPacketHandled(true);
+        }
+    }
+
+    /** 客户端取消选择(C→S):由 TargetSelectionClient.cancel 发送,服务端立即清除会话。 */
+    public static class TargetSelectCancelMessage {
+        private final int token;
+
+        public TargetSelectCancelMessage(int token) {
+            this.token = token;
+        }
+
+        public static void encode(TargetSelectCancelMessage msg, FriendlyByteBuf buf) {
+            buf.writeVarInt(msg.token);
+        }
+
+        public static TargetSelectCancelMessage decode(FriendlyByteBuf buf) {
+            return new TargetSelectCancelMessage(buf.readVarInt());
+        }
+
+        public static void handle(TargetSelectCancelMessage msg, Supplier<NetworkEvent.Context> ctx) {
+            ctx.get().enqueueWork(() -> {
+                ServerPlayer serverPlayer = ctx.get().getSender();
+                if (serverPlayer != null) {
+                    com.merlinkitsune.astral_dice.target.TargetSelectionManager.cancel(serverPlayer, msg.token);
+                }
+            });
+            ctx.get().setPacketHandled(true);
+        }
+    }
+
     // === 末影骰子不死图腾动画(S→C) ===
 
     public static class EnderDieTotemMessage {
@@ -271,6 +399,68 @@ public final class ModNetwork {
             if (target instanceof ServerPlayer serverTarget) {
                 sendToPlayer(serverTarget, packet);
             }
+        }
+    }
+
+    // === 星币钱包按钮点击(C→S) ===
+
+    /**
+     * 客户端只表达「点了哪个按钮」,不带任何数量/金额 —— 存多少、能取多少由服务端按真实
+     * 物品栏与账本决定(见 economy/StarCoinWalletActions)。序数越界时服务端静默丢弃。
+     */
+    public static class StarCoinWalletMessage {
+        private final int action;
+
+        public StarCoinWalletMessage(int action) {
+            this.action = action;
+        }
+
+        public static void encode(StarCoinWalletMessage msg, FriendlyByteBuf buf) {
+            buf.writeVarInt(msg.action);
+        }
+
+        public static StarCoinWalletMessage decode(FriendlyByteBuf buf) {
+            return new StarCoinWalletMessage(buf.readVarInt());
+        }
+
+        public static void handle(StarCoinWalletMessage msg, Supplier<NetworkEvent.Context> ctx) {
+            ctx.get().enqueueWork(() -> {
+                ServerPlayer player = ctx.get().getSender();
+                if (player != null) {
+                    com.merlinkitsune.astral_dice.economy.StarCoinWalletActions.execute(
+                            player,
+                            com.merlinkitsune.astral_dice.economy.StarCoinWalletActions.Action.byOrdinal(msg.action));
+                }
+            });
+            ctx.get().setPacketHandled(true);
+        }
+    }
+
+    // === 钱包余额(S→C) ===
+
+    /**
+     * 只承载**一个显示用数字**(余额条):客户端拿它渲染,不参与任何判定。
+     * 每玩家最多每秒一次、且只在值变化时发送(见 economy/StarCoinBalanceSync)。
+     */
+    public static class StarCoinBalanceMessage {
+        private final long balance;
+
+        public StarCoinBalanceMessage(long balance) {
+            this.balance = balance;
+        }
+
+        public static void encode(StarCoinBalanceMessage msg, FriendlyByteBuf buf) {
+            buf.writeVarLong(msg.balance);
+        }
+
+        public static StarCoinBalanceMessage decode(FriendlyByteBuf buf) {
+            return new StarCoinBalanceMessage(buf.readVarLong());
+        }
+
+        public static void handle(StarCoinBalanceMessage msg, Supplier<NetworkEvent.Context> ctx) {
+            ctx.get().enqueueWork(() ->
+                    com.merlinkitsune.starenginelib.economy.StarCoinWalletState.setBalance(msg.balance));
+            ctx.get().setPacketHandled(true);
         }
     }
 }

@@ -26,7 +26,7 @@
     python**，改为调同名 pwsh 脚本，参数名与顺序逐项对应：
 
         mt_assert.py  → mt_assert.ps1    log/absent/crash/kubejs/mixin
-        mt_inject.py  → mt_inject.ps1    key/cmd
+        mt_inject.py  → mt_inject.ps1    key/cmd（+ pwsh 侧新增 `mouse` 子命令，python 无对应）
         mt_capture.py → mt_capture.ps1   capture
 
     ## 有意为之的等价点（不是偏差，是为了逐字节一致的显式复刻）
@@ -109,6 +109,12 @@ $script:TAG_UTF8 = [System.Text.UTF8Encoding]::new($false, $false)
 # ── 封闭原语表（与 python PRIMITIVES 同键同集合）──────────────────────────
 $script:Primitives = [ordered]@{
     'inject_key'     = @('key', 'hold_ms', 'no_esc')
+    # 2026-09-18（t18）：`inject_mouse` 增列 `no_esc` —— 鼠标路径本身**不按 Esc**（只有
+    # shift/光标/左右键，见 mt_inject.ps1 的 Send-MtInjectMouseCenter），故该字段对它是
+    # 「声明层断言」而非开关；之所以必须可声明，是因为「会话期每一项注入都要显式表态不得按
+    # 归一化 Esc」这条结构校验（Test-MtCaseValid 末尾的 esc_sensitive 段）按统一的
+    # `inject*` 口径收取声明，且声明会一路传到注入器（ESC_SKIP 回显）以确保不是空话。
+    'inject_mouse'   = @('button', 'shift', 'hold_ms', 'no_esc')
     'inject_command' = @('command', 'no_esc')
     'kubejs_reload'  = @()
     'wait'           = @('ms')
@@ -118,17 +124,43 @@ $script:Primitives = [ordered]@{
 }
 $script:AssertTypes = @('log', 'absent', 'crash', 'kubejs', 'mixin', 'vision')
 
+# ── 会话期 Esc 保护（2026-09-18 t18；口径见 TESTING-SPEC.md）──────────────────
+# 背景（实测）：目标选择会话激活期间 **Esc = 取消选择**。而 `inject_command` 只要没声明
+# `no_esc`，就会先走一次 Esc→Tab→Enter 界面归一化（mt_inject.ps1 的归一化段；pause-lock 只对
+# `-NoEsc` 生效）—— 那一次真实 Esc 会当场取消会话（日志 `key=esc action=cancel`），并曾把客户端
+# 带出世界（SELECTOR-KEYS-1.21.1 曾因此 7/11，见 temp/t11/T11-REPORT.md 的 F1）。
+# 判据：① 用例显式声明 `esc_sensitive: true`；或 ② 用例的命令命中 $script:EscSensitiveSessionCmds
+# （即「打开一个 Esc 会改语义的会话」的命令，用子串匹配）。命中后**所有注入步骤**都必须声明
+# `no_esc`（真值），缺任一项即结构校验失败、`run` 拒绝执行（不静默）。
+$script:EscSensitiveSessionCmds = @('targetselect')
+$script:NoEscField = 'no_esc'
+$script:EscSensitiveFlag = 'esc_sensitive'
+
 # 失败取证标记：存在时，流程退出清理不杀游戏客户端（见 run_case 与 mt_cleanup.ps1）
 $script:KeepAlive = Join-Path $script:CasesDir '.mt_keep_alive'
+
+# ── 「疑似用户手动终止」判定（2026-09-19 用户规则）────────────────────────────
+# 规则：**该版本本次运行确实启动过**、客户端进程在运行期消失、**无新崩溃报告**、且
+# **不是工具链自己发起的收停** ⇒ 判定为「疑似用户手动终止」：打可区分标记 `MT_USER_TERMINATED`、
+# 本次测试视为被强行终止、**立即中断**剩余用例、**禁止自动重启**客户端、等待用户指令。
+# 有崩溃报告 ⇒ 维持既有崩溃归因路径（产品缺陷不得被本判定吞掉），`expect_crash` 语义不动。
+# ⚠️ t38（2026-09-19 实跑误报修复）：首条「确实启动过」是**必要条件** —— 「该版本从未启动/
+#    启动被工具链挡住」（如另一版本客户端仍在运行 ⇒ `MT_launch: BLOCKED`）**不得**判用户终止，
+#    必须回落既有「工具链故障/需要客户端」ERROR；证据取自既有信标（见 Get-MtLaunchEvidence）。
+# 置位：Write-MtUserTerminated；消费：Invoke-MtCaseRunCommand（中断枚举剩余用例）。
+$script:UserTerminated = $false
 
 # ── ⑥-1 单条用例硬超时（2026-09-15 B6 ⑥）──────────────────────────────────
 # 为什么必须有：本轮有三位执行者卡死在「启动客户端 + 跑用例」—— 根因是**单条用例没有超时**，
 # 客户端没就绪时 `Invoke-MtCaseChild` 会一直等（旧实现还是 `-Wait` 等整棵进程树）。
 # 超时后该条记**独立状态 `TIMEOUT`**（≠ FAIL：断言不满足；≠ ERROR：跑不起来），
 # 然后**继续跑下一条**，不整体挂住。
-# 默认 180 s（2026-09-16 由 300 s 收紧：用户裁决「不允许长时间等待」；单条用例的实测典型
-# 开销是 30~60 s，180 s 已留三倍余量）。覆写：环境变量 `MT_CASE_TIMEOUT_SEC`、CLI `--case-timeout <秒>`。
-$script:CaseTimeoutSec = 180
+# 默认 600 s（2026-09-28 由 180 s 放宽：用例规模已从 ~20 步涨到 105~164 步，而**每一步**都要过
+# 注入器（语言闸门 + 前台闸门 + 实际投递 + 等待），实测稳定开销 ≈ 1.7 s/步 ⇒ 164 步的
+# `MAMUSHI-ACTIVE` 需要 ~290 s，180 s 会把**正常用例**误判成 TIMEOUT（实测 `MAMUSHI-GUARD`
+# 105 步在 182 s 被判超时，只剩最后 3 步）。600 s 对最大用例仍留 2 倍余量，同时保留
+# 「真卡死迟早会被收掉」的兜底）。覆写：环境变量 `MT_CASE_TIMEOUT_SEC`、CLI `--case-timeout <秒>`。
+$script:CaseTimeoutSec = 600
 if ($env:MT_CASE_TIMEOUT_SEC -and $env:MT_CASE_TIMEOUT_SEC -match '^\d+$') { $script:CaseTimeoutSec = [int]$env:MT_CASE_TIMEOUT_SEC }
 $script:CaseTimeoutOverride = -1   # CLI 覆盖（-1 = 未给）
 # 当前用例的硬 deadline（unix 秒；0 = 未启用）。由 Invoke-MtCaseRun 设置，供
@@ -401,6 +433,35 @@ function Test-MtCaseValid {
         }
     }
 
+    # ── 会话期 Esc 保护（结构校验阶段；判据与理由见文件头 $script:EscSensitiveSessionCmds）──
+    $escSensitive = Test-MtTruthyValue (Get-MtMapValue -Map $Case -Key $script:EscSensitiveFlag)
+    $hitCmd = ''
+    if (-not $escSensitive) {
+        foreach ($s in $steps) {
+            if ([string](Get-MtMapValue -Map $s -Key 'op') -ne 'inject_command') { continue }
+            $cmdText = [string](Get-MtMapValue -Map $s -Key 'command')
+            foreach ($pat in $script:EscSensitiveSessionCmds) {
+                if ($cmdText -like ("*{0}*" -f $pat)) { $hitCmd = $cmdText; break }
+            }
+            if ($hitCmd) { break }
+        }
+    }
+    if ($escSensitive -or $hitCmd) {
+        # 触发来源写进错误文案：声明（esc_sensitive）与自动识别（命令命中）都是**显式**拦截。
+        $why = if ($escSensitive) {
+            "用例声明 $($script:EscSensitiveFlag)=true"
+        } else {
+            ("命令 '{0}' 命中会话命令表 {1}" -f $hitCmd, ($script:EscSensitiveSessionCmds -join '/'))
+        }
+        for ($i = 0; $i -lt $steps.Count; $i++) {
+            $opText = [string](Get-MtMapValue -Map $steps[$i] -Key 'op')
+            if ($opText -notlike 'inject*') { continue }
+            if (Test-MtTruthyValue (Get-MtMapValue -Map $steps[$i] -Key $script:NoEscField)) { continue }
+            $errs += ("步骤 {0}: '{1}' 缺少 {2}=true（{3} ⇒ 会话期 Esc 会取消选择，注入不得先按归一化 Esc；mt_inject.ps1 只在 -NoEsc 为真时才跳过）" -f `
+                    $i, $opText, $script:NoEscField, $why)
+        }
+    }
+
     $asserts = @(Get-MtMapValue -Map $Case -Key 'asserts' -Default @())
     for ($i = 0; $i -lt $asserts.Count; $i++) {
         $a = $asserts[$i]
@@ -625,8 +686,35 @@ function Invoke-MtCaseOp {
 
     if ($op -eq 'inject_key') {
         $argv = @('key', '--key', (ConvertTo-MtPyText (Get-MtMapValue -Map $Step -Key 'key')), '--version', $Paths.version)
+        if (Test-MtTruthyValue (Get-MtMapValue -Map $Step -Key 'no_esc')) {
+            # t18：声明层字段必须真的传到注入器 —— 否则「用例写了 no_esc」与「注入器收到
+            # -NoEsc」脱节，声明就成了一句空话（这正是 SELECTOR-KEYS 假失败能藏住的原因之一）。
+            $argv += '-NoEsc'
+        }
         if (Test-MtTruthyValue (Get-MtMapValue -Map $Step -Key 'hold_ms')) {
             # python 传 --hold-ms；PowerShell 参数名不允许内嵌连字符（见文件头第 1 条）
+            $argv += @('-HoldMs', (ConvertTo-MtPyText (Get-MtMapValue -Map $Step -Key 'hold_ms')))
+        }
+        $r = Invoke-MtCaseChild -Script 'mt_inject.ps1' -ScriptArgs $argv
+        $text = if ($r.StdOut) { [string]$r.StdOut } else { [string]$r.StdErr }
+        # ⑥-1：子进程被超时强杀 ⇒ TIMEOUT（不是 ERROR：跑不起来；也不是 FAIL：断言不满足）
+        $oc = if ($r.TimedOut) { 'TIMEOUT' } elseif ($r.ExitCode -eq 0) { 'PASS' } else { 'ERROR' }
+        return (New-MtPair $oc (Get-MtTail -Text $text -FromTextMode))
+    }
+
+    if ($op -eq 'inject_mouse') {
+        # 与 inject_key 同构：字段名沿用 python 侧 snake_case（button/shift/hold_ms），
+        # 子脚本参数按 PowerShell 拼法传（-Shift / -HoldMs，见文件头「无法 1:1 复刻之处」第 1 条）。
+        $argv = @('mouse', '--button', (ConvertTo-MtPyText (Get-MtMapValue -Map $Step -Key 'button')), '--version', $Paths.version)
+        if (Test-MtTruthyValue (Get-MtMapValue -Map $Step -Key 'no_esc')) {
+            # t18：鼠标路径本来就不按 Esc，`-NoEsc` 是「把声明送到注入器并回显 ESC_SKIP」的
+            # 显式通路（不回显就无法从用例输出证明声明生效，只能靠读源码）。
+            $argv += '-NoEsc'
+        }
+        if (Test-MtTruthyValue (Get-MtMapValue -Map $Step -Key 'shift')) {
+            $argv += '-Shift'
+        }
+        if (Test-MtTruthyValue (Get-MtMapValue -Map $Step -Key 'hold_ms')) {
             $argv += @('-HoldMs', (ConvertTo-MtPyText (Get-MtMapValue -Map $Step -Key 'hold_ms')))
         }
         $r = Invoke-MtCaseChild -Script 'mt_inject.ps1' -ScriptArgs $argv
@@ -806,6 +894,372 @@ function Get-MtCaseClientStatus {
     try { return (Get-MtClientStatus -Paths (Get-MtPaths -Version $Version)) } catch { return $null }
 }
 
+function Get-MtLogTailText {
+    <#
+    .SYNOPSIS
+        只读 `latest.log` 的**尾部**若干 KB（不整文件读；latest.log 可达数十 MB）。
+    .NOTES
+        客户端被外部关闭时文件仍可能被其它写者持有，故显式 `FileShare::ReadWrite`
+        （与 Mt.Proc 的 Read-MtSharedText 同一口径，不另立读取族）。读不到返回 ''。
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$Path,
+        [int]$Bytes = 65536
+    )
+
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return '' }
+    $fs = $null
+    try {
+        $fs = [System.IO.File]::Open($Path, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
+        $len = $fs.Length
+        $start = if ($len -gt $Bytes) { $len - $Bytes } else { 0 }
+        [void]$fs.Seek($start, [System.IO.SeekOrigin]::Begin)
+        $buf = [byte[]]::new([int]($len - $start))
+        $read = $fs.Read($buf, 0, $buf.Length)
+        return [System.Text.Encoding]::UTF8.GetString($buf, 0, $read)
+    } catch {
+        return ''
+    } finally {
+        if ($null -ne $fs) { try { $fs.Dispose() } catch { } }
+    }
+}
+
+function Get-MtClientExitTrace {
+    <#
+    .SYNOPSIS
+        `latest.log` 尾部是否留下**正常收尾**痕迹 —— 只作「确认 / 疑似」的程度标注，不作门槛。
+    .NOTES
+        2026-09-19 用户实机确认样本（用户本人手动终止 1.21.1 客户端）的日志形态：
+          `ThreadedAnvilChunkStorage (DIM1): All chunks are saved` →
+          `All dimensions are saved` → `Stopping worker threads` →
+          KubeJS `Closed KubeJS Virtual Resource Pack …`，且 `crash-reports/` 无新报告。
+        取值：`normal-shutdown`（命中收尾痕迹 ⇒ 确认度更高）/ `no-trace`（无痕迹）/
+        `unknown`（日志读不到，如已被清理）。⚠️ **无痕迹不等于崩溃**：无新崩溃报告时
+        两种取值都走「中断 + 等指令」，只是文案标注不同（不得静默按崩溃处理、也不得静默重启）。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][psobject]$Paths)
+
+    $tail = Get-MtLogTailText -Path ([string]$Paths.latest_log)
+    if (-not $tail) { return 'unknown' }
+    if ($tail -match 'All dimensions are saved|Stopping worker threads') { return 'normal-shutdown' }
+    return 'no-trace'
+}
+
+# ── t38（2026-09-19 实跑误报修复）：启动证据判定 ──────────────────────────────
+# 实跑证据（`temp/t76/change-scoped.log:946-947`）：1.21.1 的用例失败置了 `.mt_keep_alive`
+# （保留现场、不杀客户端）⇒ 其客户端一直活着 ⇒ 下一条线 1.20.1 的 launch 被工具链**主动挡住**
+# （`MT_launch: BLOCKED — 全机已存在 Minecraft 客户端进程(PID=84552)` + `launch rc=2`）
+# ⇒ 1.20.1 **从未启动** ⇒ 该线用例开始前自然没有客户端。旧实现只看「客户端不在运行 +
+# 非收停在途」就判「疑似用户手动终止」——那等于**替用户承认了一次并未发生的终止**。
+# 修正口径：把「从未启动 / 启动被挡」（情形①）与「确实启动过、运行期消失」（情形②）分开；
+# 情形① 回落既有「工具链故障/需要客户端」ERROR，只有情形② 才允许 `MT_USER_TERMINATED`。
+# 证据一律取**既有状态源**（不新造并行状态文件），判据见 Get-MtLaunchEvidence 的注释。
+function Get-MtNestedValue {
+    <#
+    .SYNOPSIS
+        嵌套读既有 JSON 状态文件（`.mt_run_state.json` / `.mt_snapshot.json`）；缺任一环返回 $null。
+    #>
+    [CmdletBinding()]
+    param([AllowNull()]$Map, [Parameter(Mandatory)][string[]]$Path)
+
+    $cur = $Map
+    foreach ($k in $Path) {
+        if ($null -eq $cur) { return $null }
+        if ($cur -is [System.Collections.IDictionary]) {
+            if (-not $cur.Contains($k)) { return $null }
+            $cur = $cur[$k]
+        } elseif ($cur -is [System.Management.Automation.PSCustomObject]) {
+            $prop = $cur.PSObject.Properties[$k]
+            if ($null -eq $prop) { return $null }
+            $cur = $prop.Value
+        } else {
+            return $null
+        }
+    }
+    return $cur
+}
+
+function Get-MtStateFileJson {
+    <#
+    .SYNOPSIS
+        只读**既有跨脚本契约**状态文件（`cases/.mt_run_state.json` / `cases/.mt_snapshot.json`）。
+    .NOTES
+        读不到/损坏即返回 $null（调用方按「无证据」处理），绝不新建、绝不改写这两个文件。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$FileName)
+
+    $f = Join-Path $script:CasesDir $FileName
+    if (-not (Test-Path -LiteralPath $f -PathType Leaf)) { return $null }
+    try { return ([System.IO.File]::ReadAllText($f, $script:TAG_UTF8) | ConvertFrom-Json -AsHashtable -ErrorAction Stop) } catch { return $null }
+}
+
+function Get-MtFileUnixStamp {
+    <#
+    .SYNOPSIS
+        文件时间戳（unix 秒）；文件不存在/读不到返回 0。默认取**创建**时刻（`-UseMtime` 取写入时刻）。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][AllowEmptyString()][string]$Path, [switch]$UseMtime)
+
+    if (-not $Path) { return [long]0 }
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return [long]0 }
+    try {
+        $i = Get-Item -LiteralPath $Path -ErrorAction Stop
+        $t = if ($UseMtime) { $i.LastWriteTimeUtc } else { $i.CreationTimeUtc }
+        return [long][DateTimeOffset]::new($t).ToUnixTimeSeconds()
+    } catch { return [long]0 }
+}
+
+function Get-MtLaunchAttemptVerdict {
+    <#
+    .SYNOPSIS
+        最近一次**属于本版本**的脱离式启动尝试的终态 ⇒ `$true`(OK) / `$false`(被挡或失败) / `$null`(无记录)。
+    .NOTES
+        数据源 = `temp/mt_detached/mt_launch_<stamp>.log` + `.err`（`mt.ps1` 的
+        `Invoke-MtChild -Detached` 每次启动写一对，见 Mt.Proc/mt.ps1:218-227）。
+        为什么能按版本归属：该日志首行是 `===== MT_PHASE: launch (<版本>) =====`（实跑取样：
+        `mt_launch_20260920-000201.log` = 1.20.1、`mt_launch_20260920-000733.log` = 1.21.1）。
+        终态标记由 Mt.Phase 写出：成功 `MT_LAUNCH: OK`（Write-MtOk 'LAUNCH'，stdout）、
+        被挡/失败 `MT_launch: BLOCKED|ERROR|FAIL`（Write-MtBlocked/Write-MtError，**stderr**）
+        —— 故两文件都要读；取**最后**一条标记为终态。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$Version)
+
+    $dir = Join-Path (Join-Path (Get-MtRoot) 'temp') 'mt_detached'
+    if (-not (Test-Path -LiteralPath $dir -PathType Container)) { return $null }
+    $cand = @(Get-ChildItem -LiteralPath $dir -File -Filter 'mt_launch_*.log' -ErrorAction SilentlyContinue |
+            Sort-Object LastWriteTime -Descending)
+    foreach ($f in $cand) {
+        $text = ''
+        foreach ($src in @([string]$f.FullName, ([string]$f.FullName + '.err'))) {
+            try {
+                if (Test-Path -LiteralPath $src -PathType Leaf) { $text += ([System.IO.File]::ReadAllText($src) + "`n") }
+            } catch { }
+        }
+        if (-not ($text -match ('MT_PHASE: launch \(' + [regex]::Escape($Version) + '\)'))) { continue }
+        $m = [regex]::Matches($text, 'MT_(?:LAUNCH|launch): (OK|BLOCKED|ERROR|FAIL)')
+        if ($m.Count -eq 0) { return $null }
+        $last = [string]$m[$m.Count - 1].Groups[1].Value
+        return @{
+            Verdict = ($last -eq 'OK')
+            Source  = ('mt_detached/' + $f.Name + ' → MT_launch: ' + $last)
+        }
+    }
+    return $null
+}
+
+function Get-MtLaunchEvidence {
+    <#
+    .SYNOPSIS
+        「该版本**本次运行**是否成功启动过客户端」——只读既有状态源，不新造并行状态文件。
+    .NOTES
+        判据优先级（层与层之间取**第一条有结论**的；全部无结论 ⇒ `Launched = $null`）：
+          ① `temp/mt_detached/mt_launch_*.log(.err)`：**按版本归属**的最近一次启动尝试终态
+             （`MT_LAUNCH: OK` ⇒ 启动过；`MT_launch: BLOCKED|ERROR|FAIL` ⇒ 从未启动）。
+             这是最强证据（直接是 launch 自己的终态），故**优先**于阶段结果信标 ——
+             否则「上一轮遗留的 `phases.launch=PASS`」会盖掉本轮的 BLOCKED。
+          ② `.mt_progress.json`：`phase=launch` 且 `version=<v>` 时，其 `ts`（由 mt.ps1 的
+             `Start-MtPhase 'launch'` 写入）即本版本本次**启动尝试起点**；与该版本**自己的**
+             客户端现场（`logs/latest.log` 创建时刻 / `runclient_launch.log` 写入时刻）比对：
+             现场 ≥ 起点 ⇒ 启动过；现场缺失或早于起点 ⇒ 启动尝试没有产出任何客户端现场 ⇒ 从未启动。
+          ③ `.mt_run_state.json` → `versions.<v>.phases.launch.result`（全流程阶段结果信标）：
+             `PASS` ⇒ 启动过；`BLOCKED`/`FAIL`/`TIMEOUT` ⇒ 从未启动。
+          ④ 该版本**完全没有任何**客户端现场（`latest.log` 与 `runclient_launch.log` 都不存在）
+             ⇒ 从未启动。
+        顺序流程假设：`stop → build → env → launch → cases` 逐版本顺序执行（mt.ps1 与
+        temp/t76 的定向冒烟都如此）⇒ 「最近一次属于本版本的启动尝试」就是本版本本次的启动。
+        返回 @{ Launched = $true/$false/$null; Source = '<信标+读数>'; Detail = '<人类可读>' }。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$Version, [Parameter(Mandatory)][psobject]$Paths)
+
+    $latestLog = [string]$Paths.latest_log
+    $runLog = Join-Path ([string]$Paths.run_dir) 'runclient_launch.log'
+    $latestCtime = Get-MtFileUnixStamp -Path $latestLog
+    $latestMtime = Get-MtFileUnixStamp -Path $latestLog -UseMtime
+    $runLogMtime = Get-MtFileUnixStamp -Path $runLog -UseMtime
+
+    # ① 本版本最近一次启动尝试的终态（既有脱离式启动日志）
+    $attempt = Get-MtLaunchAttemptVerdict -Version $Version
+    if ($null -ne $attempt) {
+        if ($attempt.Verdict) {
+            return @{
+                Launched = $true
+                Source   = [string]$attempt.Source
+                Detail   = '本版本最近一次 launch 成功进入世界（`MT_LAUNCH: OK`，temp/mt_detached）'
+            }
+        }
+        return @{
+            Launched = $false
+            Source   = [string]$attempt.Source
+            Detail   = '本版本最近一次 launch 的终态是 BLOCKED/ERROR/FAIL（启动被挡或未成功；见 temp/mt_detached 的 mt_launch_*.log(.err)）'
+        }
+    }
+
+    # ② 启动尝试起点（进度信标） vs 本版本自己的客户端现场
+    $ph = $null
+    try { $ph = Get-MtProgress } catch { $ph = $null }
+    $pPhase = [string](Get-MtMapValue -Map $ph -Key 'phase')
+    $pVer = [string](Get-MtMapValue -Map $ph -Key 'version')
+    $pTs = [long](Get-MtMapValue -Map $ph -Key 'ts' -Default 0)
+    if ($pPhase -eq 'launch' -and $pVer -eq $Version -and $pTs -gt 0) {
+        $clientTs = [Math]::Max($latestCtime, $runLogMtime)
+        if ($clientTs -ge $pTs) {
+            return @{
+                Launched = $true
+                Source   = ("progress.launch(ts=$pTs) ≤ client-artifacts(ts=$clientTs)")
+                Detail   = '本版本启动尝试（.mt_progress.json phase=launch）之后出现了该版本自己的客户端现场'
+            }
+        }
+        return @{
+            Launched = $false
+            Source   = ("progress.launch(ts=$pTs) > client-artifacts(ts=$clientTs)")
+            Detail   = '本版本启动尝试之后没有任何该版本客户端现场（被挡/未启动，日志与存档都未被客户端触碰）'
+        }
+    }
+
+    # ③ 全流程阶段结果信标
+    $state = Get-MtStateFileJson -FileName '.mt_run_state.json'
+    $res = [string](Get-MtNestedValue -Map $state -Path @('versions', $Version, 'phases', 'launch', 'result'))
+    if ($res) {
+        if ($res -eq 'PASS') {
+            return @{ Launched = $true; Source = '.mt_run_state.json phases.launch=PASS'; Detail = '阶段结果信标：本版本 launch 阶段 PASS' }
+        }
+        if (@('BLOCKED', 'FAIL', 'TIMEOUT') -contains $res) {
+            return @{
+                Launched = $false
+                Source   = ('.mt_run_state.json phases.launch=' + $res)
+                Detail   = ('阶段结果信标：本版本 launch 阶段 ' + $res + ' ⇒ 本次运行从未启动成功')
+            }
+        }
+    }
+
+    # ④ 从未有过任何客户端现场
+    if ($latestCtime -eq 0 -and $runLogMtime -eq 0) {
+        return @{
+            Launched = $false
+            Source   = 'no-client-artifacts'
+            Detail   = '该版本既无 logs/latest.log 也无 runclient_launch.log ⇒ 从未拉起过客户端'
+        }
+    }
+
+    # ⑤ 无结论：保守回落（调用方按情形① ERROR 处理，绝不替用户承认终止）
+    return @{
+        Launched = $null
+        Source   = 'inconclusive'
+        Detail   = ('没有可用的启动终态/阶段结果信标；该版本留有历史客户端现场（latest.log mtime=' + $latestMtime + '）但无法证明属于本次运行')
+    }
+}
+
+function Get-MtCaseNewCrashReports {
+    <#
+    .SYNOPSIS
+        客户端消失时的崩溃排除：基线 = `.mt_snapshot.json` 的 `crash_baseline`（既有契约文件，
+        由 `mt_assert.ps1 snapshot` 写入），比对 `run/<v>/crash-reports/crash-*.txt`。
+    .OUTPUTS
+        @{ Reports = @('crash-…txt'…); Unverifiable = $bool }
+        `Unverifiable = $true` ⇒ 无基线**但有**崩溃报告文件（新旧无法区分）⇒ 调用方不得判用户终止。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$Version, [Parameter(Mandatory)][psobject]$Paths)
+
+    $snap = Get-MtStateFileJson -FileName '.mt_snapshot.json'
+    $base = Get-MtNestedValue -Map $snap -Path @('versions', $Version, 'crash_baseline')
+    $known = ($null -ne $base)
+    $baseNames = @()
+    if ($known) { $baseNames = @($base | ForEach-Object { [string]$_ }) }
+
+    $cur = @()
+    $dir = [string]$Paths.crash_dir
+    if ($dir -and (Test-Path -LiteralPath $dir -PathType Container)) {
+        $cur = @(Get-ChildItem -LiteralPath $dir -File -Filter 'crash-*.txt' -ErrorAction SilentlyContinue |
+            ForEach-Object { [string]$_.Name })
+    }
+    $new = @($cur | Where-Object { $baseNames -notcontains $_ })
+    return @{ Reports = $new; Unverifiable = ((-not $known) -and ($cur.Count -gt 0)) }
+}
+
+function Test-MtStopInFlight {
+    <#
+    .SYNOPSIS
+        「工具链发起的停止在途」判定（只读**既有**状态源，不新造并行状态）。
+    .NOTES
+        «疑似用户手动终止» 判定必须排除「客户端是被工具链自己收停掉的」这一情形，
+        否则 `--phase stop` / run-timeout / watchdog-stop 会被误报成用户终止。两条既有来源：
+          ① 进度信标 `cases/.mt_progress.json` —— 唯一写入口是 Mt.Paths.psm1 的 Set-MtProgress
+             （mt.ps1 的 Invoke-MtRunPhase / preflight 落盘）。阶段名含 stop / cleanup
+             ⇒ 收停在途。
+          ② 收停实现进程存活 —— `mt_stop.ps1`（→ `mt_cleanup.ps1 run`）是本仓**唯一**收停入口
+             （mt.ps1 的退出清理走同一实现），它在跑就是「收停在途」。
+        任一条命中 ⇒ 客户端消失**不**归因于用户，保持既有 ERROR 路径（含崩溃归因与
+        `expect_crash` 处理）。判定能力缺失（如 CIM 查询失败）时**保守返回 $true**：
+        宁可不判「用户终止」，也不把工具链自己的收停误判成用户操作。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$Version)
+
+    try {
+        $phase = [string](Get-MtMapValue -Map (Get-MtProgress) -Key 'phase')
+        if ($phase -and ($phase -like '*stop*' -or $phase -like '*cleanup*')) { return $true }
+    } catch { }
+
+    try {
+        $self = [int]$PID
+        foreach ($pr in @(Get-CimInstance Win32_Process -Filter "Name='pwsh.exe'" -ErrorAction Stop)) {
+            if ([int]$pr.ProcessId -eq $self) { continue }
+            $cl = [string]$pr.CommandLine
+            if ($cl -like '*mt_stop.ps1*' -or $cl -like '*mt_cleanup.ps1*') { return $true }
+        }
+    } catch { return $true }
+    return $false
+}
+
+function Write-MtUserTerminated {
+    <#
+    .SYNOPSIS
+        命中「疑似用户手动终止」：打可区分标记（含版本 / 用例名 / 进程信息 / 收尾痕迹 / 启动证据）并置中断标志。
+    .NOTES
+        · 标记行写 **stdout**（机器可读主标记，与 MT_KEEP_ALIVE / MT_CASE_RESULT 同流）；
+          给操作者的说明写 **stderr**（异常终止属错误面，与 `MT_CASE: ERROR` 同流）。
+        · ⚠️ t38：本函数**只允许**在「情形② 已确认该版本本次运行成功启动过、且无新崩溃报告、无在途停止」
+          时调用（判据见 Invoke-MtCaseRun 用例开始前的分流）。「该版本从未启动/启动被挡」一律走
+          ERROR，不得经过这里 —— 否则文案会**声称用户做了未做的事**（实跑误报：1.20.1 从未启动，
+          却被标成 USER_TERMINATED）。`$Evidence` 即这条确认，写进标记行与文案供事后复核。
+        · 客户端此刻已消失，故进程信息取自**消失前**的 Get-MtClientStatus 快照
+          （`$ClientBefore.Pids`），并回显当前存活进程以便区分「另有客户端在跑」。
+        · `$Trace` = Get-MtClientExitTrace 的读数（`normal-shutdown` / `no-trace` / `unknown`）
+          只标注**确认程度**：两者都判「中断 + 等指令」，区别仅在文案（无痕迹时标注「疑似」）。
+        · 只打印 + 置标志：**不杀进程、不重启**（重启禁令由调用方 `return` 提前落地）。
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$Version,
+        [Parameter(Mandatory)][string]$CaseId,
+        [Parameter(Mandatory)][string]$Kind,
+        [Parameter(Mandatory)][AllowEmptyString()][string]$Trace,
+        [AllowNull()]$ClientBefore,
+        [AllowNull()]$ClientAfter,
+        # t38：本次判定所依据的「该版本确实启动过」的既有信标读数（写进标记行 + 文案）。
+        [AllowEmptyString()][string]$Evidence = ''
+    )
+
+    $before = if ($null -ne $ClientBefore -and $null -ne $ClientBefore.Pids) { (@($ClientBefore.Pids) -join ',') } else { '' }
+    if (-not $before) { $before = '-' }
+    $after = if ($null -ne $ClientAfter -and $null -ne $ClientAfter.Pids) { (@($ClientAfter.Pids) -join ',') } else { '' }
+    if (-not $after) { $after = 'none' }
+    $ev = if ($Evidence) { $Evidence } else { 'n/a' }
+
+    Write-MtLine ("MT_USER_TERMINATED: version={0} case={1} kind={2} exit_trace={3} client_pids_before={4} client_pids_now={5} pid={6} crash_new=0 stop_in_flight=0 launch_evidence={7}" -f `
+            $Version, $CaseId, $Kind, $Trace, $before, $after, $PID, $ev)
+    Write-MtErrLine ("MT_USER_TERMINATED: 疑似用户手动终止（已确认：该版本本次运行成功启动过、客户端在运行期消失、无新崩溃报告、无在途停止；启动证据 {0}）—— 等待用户指令：本次测试视为被强行终止，立即中断剩余用例、禁止自动重启客户端（kind={1}, exit_trace={2}）" -f `
+            $ev, $Kind, $Trace)
+    $script:UserTerminated = $true
+}
+
 function Restart-MtCaseClient {
     <#
     .SYNOPSIS
@@ -875,7 +1329,8 @@ function Invoke-MtCaseRun {
     Write-MtLine ''
     Write-MtLine ("--- MT_CASE: {0} — {1} ---" -f $caseId, (Get-MtMapValue -Map $case -Key 'title'))
     # ── 状态校验（2026-09-13 新增；此前完全没有，客户端崩掉后仍会刷一屏 PASS）──────────
-    # 是否需要客户端：由步骤 op 自动判定（inject_* / screenshot），SMOKE-TOOLCHAIN 之类无客户端用例不受影响。
+    # 是否需要客户端：由步骤 op 自动判定（`inject*` = inject_key / inject_mouse / inject_command
+    # 三个注入原语，通配符一并覆盖；再加 screenshot），SMOKE-TOOLCHAIN 之类无客户端用例不受影响。
     $rawSteps = @(Get-MtMapValue -Map $case -Key 'steps' -Default @())
     $needsClient = @($rawSteps | Where-Object {
             $o = [string](Get-MtMapValue -Map $_ -Key 'op')
@@ -883,13 +1338,58 @@ function Invoke-MtCaseRun {
         }).Count -gt 0
     $clientStart = if ($needsClient) { Get-MtCaseClientStatus -Version $Version } else { $null }
     if ($needsClient -and $null -ne $clientStart -and -not $clientStart.Alive) {
-        if ($RestartBudget -gt 0) {
-            if (Restart-MtCaseClient -Version $Version -Reason '用例开始前客户端未在运行') {
-                return (Invoke-MtCaseRun -Version $Version -CaseFile $CaseFile -RunId $RunId -RestartBudget ($RestartBudget - 1))
-            }
+        # ── 2026-09-19 用户规则（AGENTS 变更分级第 14 条 / TESTING-SPEC §12.3 第 5 条）──────
+        #   ⚠️ t38（2026-09-19 实跑误报修复）：**不得**只看「客户端不在运行 + 非收停在途」就判
+        #   「疑似用户手动终止」—— 那会让工具链**替用户承认一次并未发生的终止**（实跑：
+        #   1.21.1 的 keep_alive 让客户端活着 ⇒ 1.20.1 的 launch 被 `MT_launch: BLOCKED` 挡住
+        #   ⇒ 1.20.1 从未启动，却被标成 USER_TERMINATED）。两类情形必须先分开：
+        #     情形① **该版本从未启动成功 / 启动被工具链挡住** ⇒ 回落**既有**「工具链故障/需要客户端」
+        #           ERROR（用户没做任何事，绝不打 `MT_USER_TERMINATED`）；
+        #     情形② **确实启动过**，运行期客户端消失、**无新崩溃报告**、**无在途停止** ⇒
+        #           疑似用户手动终止：打 `MT_USER_TERMINATED` + 本用例结论记 `USER_TERMINATED`
+        #           （≠ 产品 FAIL/PASS）+ **不重启**，由 Invoke-MtCaseRunCommand 立即中断剩余用例。
+        #   （此处此前会尝试自动重启客户端并继续枚举后续用例 —— 与用户新规则相反。）
+        #   判据只读**既有状态源**（见 Get-MtLaunchEvidence / Get-MtCaseNewCrashReports 注释）。
+        if (Test-MtStopInFlight -Version $Version) {
+            Write-MtErrLine ("MT_CASE: ERROR — {0} 需要客户端，但客户端未在运行（工具链收停在途，非用户终止）" -f $caseId)
+            return (New-MtPair 'ERROR' @())
         }
-        Write-MtErrLine ("MT_CASE: ERROR — {0} 需要客户端，但客户端未在运行（自动重启已用尽）" -f $caseId)
-        return (New-MtPair 'ERROR' @())
+        # 例外（不判用户终止）：本流程压根没进过 launch/cases 阶段（如单独跑 `mt_case.ps1 run`
+        # 而没先 launch）—— 客户端本来就没起来，不是「被终止」。判据同用既有进度信标。
+        $phaseNow = [string](Get-MtMapValue -Map (Get-MtProgress) -Key 'phase')
+        if ($phaseNow -notin @('launch', 'cases')) {
+            Write-MtErrLine ("MT_CASE: ERROR — {0} 需要客户端，但客户端未在运行（本流程未处于 launch/cases 阶段，该版本客户端未在运行：疑似启动被挡或未启动）" -f $caseId)
+            return (New-MtPair 'ERROR' @())
+        }
+        # ── 情形①/② 分流：先确认「本次运行该版本确实启动过」──────────────────────────────
+        $launchEv = Get-MtLaunchEvidence -Version $Version -Paths $p
+        if ($launchEv.Launched -ne $true) {
+            $why = if ($launchEv.Launched -eq $false) {
+                '该版本本次运行从未成功启动（never-launched：启动被工具链挡住或启动失败）'
+            } else {
+                '无法确认该版本本次运行曾成功启动'
+            }
+            Write-MtErrLine ("MT_CASE: ERROR — {0} 需要客户端，但{1}；判据 {2} —— {3}。用户没有终止任何东西，故**不判** USER_TERMINATED（回落工具链故障/需要客户端语义）" -f `
+                    $caseId, $why, $launchEv.Source, $launchEv.Detail)
+            return (New-MtPair 'ERROR' @())
+        }
+        # ── 情形② 的另两个必要条件：无新崩溃报告（有崩溃 ⇒ 走既有崩溃归因，不判用户终止）────
+        $crash = Get-MtCaseNewCrashReports -Version $Version -Paths $p
+        if ($crash.Reports.Count -gt 0 -or $crash.Unverifiable) {
+            $what = if ($crash.Reports.Count -gt 0) {
+                ('新增崩溃报告 ' + ($crash.Reports -join ', '))
+            } else {
+                '存在崩溃报告但缺基线（无法排除本次崩溃）'
+            }
+            Write-MtErrLine ("MT_CASE: ERROR — {0} 需要客户端；该版本本次已启动过但客户端已消失，且{1} ⇒ 归因到既有崩溃路径，不判 USER_TERMINATED（启动证据 {2}）" -f `
+                    $caseId, $what, $launchEv.Source)
+            return (New-MtPair 'ERROR' @())
+        }
+        Write-MtUserTerminated -Version $Version -CaseId $caseId -Kind 'client-gone-after-launch-no-crash' `
+            -Trace (Get-MtClientExitTrace -Paths $p) -ClientBefore $clientStart -ClientAfter $clientStart `
+            -Evidence ([string]$launchEv.Source)
+        Write-MtLine ("MT_CASE_RESULT: {0} = USER_TERMINATED" -f $caseId)
+        return (New-MtPair 'USER_TERMINATED' @())
     }
 
     $steps = @()
@@ -1030,7 +1530,28 @@ function Invoke-MtCaseRun {
                 $first = ''
                 try { $first = (Get-Content -LiteralPath $clientEnd.LatestCrash -TotalCount 8 | Where-Object { $_ -match '\S' } | Select-Object -First 3) -join ' | ' } catch { }
                 if ($first) { Write-MtErrLine ("    {0}" -f $first) }
-            } else {
+            }
+            # ── 2026-09-19 用户规则：**无新崩溃报告**的客户端消失 = 疑似用户手动终止 ──────────
+            #    三条同时成立才判：① 进程消失且**无**新崩溃报告；② 未声明 `expect_crash`
+            #    （声明了就把现场交给断言，绝不吞）；③ **不是**工具链发起的收停在途
+            #    （`--phase stop` / run-timeout / mt_cleanup 在途，见 Test-MtStopInFlight）。
+            #    命中后：打 `MT_USER_TERMINATED` + 本用例结论记 `USER_TERMINATED`
+            #    （≠ 产品 FAIL/PASS）+ **不重启**（下方 Restart-MtCaseClient 分支不可达），
+            #    并由 Invoke-MtCaseRunCommand 立即中断剩余用例、等待用户指令。
+            #    有崩溃报告 ⇒ 完整走下方既有崩溃归因路径（产品缺陷不得被新逻辑吞掉）。
+            if ($died -and (-not $newCrash) -and (-not $expectCrash) -and (-not (Test-MtStopInFlight -Version $Version))) {
+                Write-MtUserTerminated -Version $Version -CaseId $caseId -Kind 'client-gone-during-case-no-crash' `
+                    -Trace (Get-MtClientExitTrace -Paths $p) -ClientBefore $clientStart -ClientAfter $clientEnd `
+                    -Evidence 'client-alive-at-case-start'
+                # 进度信标上面已按 `$worst`（通常 PASS）写过 'done' —— 这里改写成本用例的**真实**
+                # 结论，避免事后再看 `.mt_progress.json` 时把「被强行终止」误读成「跑完且通过」。
+                [void](Set-MtProgress -Phase 'cases' -Version $Version -Case $caseId -StepIndex $steps.Count `
+                        -StepTotal $steps.Count -Op 'done' -Detail 'USER_TERMINATED')
+                Write-MtLine ("MT_CASE_RESULT: {0} = USER_TERMINATED" -f $caseId)
+                return (New-MtPair 'USER_TERMINATED' @())
+            }
+            if (-not $newCrash) {
+                # 收停在途 / `expect_crash` / 无法判定 ⇒ 保持既有归因（只诊断，不改判定）
                 Write-MtErrLine ("MT_CASE: ERROR — {0} 执行期间客户端退出（进程消失且无新崩溃报告）" -f $caseId)
             }
             if ($expectCrash) {
@@ -1126,6 +1647,13 @@ function Invoke-MtCaseRunCommand {
     $summary = @()
     $worst = 'PASS'
     foreach ($f in $files) {
+        # ⓪ 2026-09-19 用户规则：一旦判定「疑似用户手动终止」（标志可能由**上一条**用例置位），
+        #    **立即中断** —— 不再枚举/执行任何剩余用例，等待用户指令。
+        if ($script:UserTerminated) {
+            $skipped = @($files | Select-Object -Skip $summary.Count | ForEach-Object { [System.IO.Path]::GetFileNameWithoutExtension([string]$_) })
+            Write-MtErrLine ("MT_USER_TERMINATED: 已中断剩余 {0} 条用例（{1}）—— 本次测试视为被强行终止，等待用户指令" -f $skipped.Count, ($skipped -join ', '))
+            break
+        }
         try {
             $pair = Invoke-MtCaseRun -Version $Version -CaseFile $f -RunId $runId
             $outcome = [string]$pair[0]
@@ -1140,6 +1668,12 @@ function Invoke-MtCaseRunCommand {
         # 一旦漏补，全绿的运行也会被总览判成「未全部通过」并返回退出码 1）。
         [void](Invoke-MtCaseChild -Script 'mt_report.ps1' `
                 -ScriptArgs @('mark', '--version', $Version, '--case', $caseName, '--result', $outcome))
+        # ⓪ 2026-09-19 用户规则：本用例被判定「疑似用户手动终止」⇒ 用例级结论记
+        #    `USER_TERMINATED`（可区分，非产品 FAIL/PASS）并**立即中断**（不再枚举后续用例）。
+        if ($outcome -eq 'USER_TERMINATED') {
+            $worst = 'USER_TERMINATED'
+            break
+        }
         if ($outcome -eq 'ERROR') {
             $worst = 'ERROR'
         } elseif ($outcome -eq 'TIMEOUT') {
@@ -1153,6 +1687,9 @@ function Invoke-MtCaseRunCommand {
 
     Write-MtLine ''
     Write-MtLine ("MT_CASES_SUMMARY: {0}" -f ($summary -join ', '))
+    if ($script:UserTerminated) {
+        Write-MtErrLine ("MT_USER_TERMINATED: version={0} 本次运行已中止（剩余用例未执行、客户端未被自动重启）—— 等待用户指令后再决定是否复跑" -f $Version)
+    }
     # ⑥-1：TIMEOUT 用**独立退出码**上报（12），与 FAIL(1)/ERROR(2)/BLOCKED(11) 区分
     $timeoutCount = @($summary | Where-Object { $_ -like '*=TIMEOUT' }).Count
     if ($timeoutCount -gt 0) {
@@ -1160,6 +1697,11 @@ function Invoke-MtCaseRunCommand {
                 $timeoutCount, $(if ($script:CaseTimeoutOverride -ge 0) { $script:CaseTimeoutOverride } else { $script:CaseTimeoutSec }))
     }
     switch ($worst) {
+        # 2026-09-19 用户规则：被用户强行终止**不是产品结论** —— 复用既有**非 0 中断码**
+        # ERROR(2)（与断言失败 FAIL(1)、超时 TIMEOUT(12)、前置欠缺 BLOCKED(11) 均不相同），
+        # 用例级结论字符串为 `USER_TERMINATED`（见 MT_CASE_RESULT / MT_CASES_SUMMARY /
+        # MT_USER_TERMINATED 三处可区分记录，报不进 PASS/FAIL 语义）。
+        'USER_TERMINATED' { return $MT_EXIT_ERROR }
         'FAIL' { return $MT_EXIT_FAIL }
         'BLOCKED' { return $MT_EXIT_BLOCKED }
         'TIMEOUT' { return $MT_EXIT_TIMEOUT }

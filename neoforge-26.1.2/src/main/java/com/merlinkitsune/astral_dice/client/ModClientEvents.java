@@ -1,6 +1,8 @@
 package com.merlinkitsune.astral_dice.client;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
+import com.merlinkitsune.astral_dice.screen.CardInventoryScreen;
+import com.merlinkitsune.astral_dice.screen.ModMenuTypes;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -15,18 +17,46 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
+import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
 import org.joml.Matrix4f;
 import org.joml.Vector4f;
+import com.merlinkitsune.starenginelib.client.ActionBarManager;
+import com.merlinkitsune.starenginelib.client.ClientDamageNumbers;
 
+// ⚠️ 26.1.2 的 @EventBusSubscriber **只剩 value()/modid()** —— FML 11.0.15 的该注解
+//    (loader-11.0.15.jar, javap 实证)已删除 `bus()` 与内部枚举 `EventBusSubscriber$Bus`
+//    (1.21.1 的 FML 4.0.42 仍有 `public abstract EventBusSubscriber$Bus bus()`)。
+//    故此处**不得**照抄 1.21.1 的 `bus = EventBusSubscriber.Bus.MOD`(会报「找不到符号: 方法 bus()」)。
+//    语义等价:26.1.2 下本类的 @SubscribeEvent 静态方法一律视为 mod 总线订阅
+//    ——本类注册的正是 RegisterMenuScreensEvent / RegisterGuiLayersEvent / RegisterKeyMappingsEvent
+//    三个 mod 总线事件,方向一致。
 @EventBusSubscriber(modid = AstralDiceMod.MODID, value = Dist.CLIENT)
 public class ModClientEvents {
+
+    // 菜单界面注册:本类带 @EventBusSubscriber(Dist.CLIENT),**在专用服务端整体不会被加载**,
+    // 故此处引用纯客户端的 CardInventoryScreen 是安全的。
+    // ⚠️ 不要把这个注册挪回 AstralDiceMod(主入口类服务端也加载,运行时 dist 分支拦不住符号解析):
+    //     AstralDiceMod 构造函数里的 `if (getDist() == Dist.CLIENT) addListener(this::registerScreens)`
+    //     会在常量池留下 BootstrapMethods 项 `REF_newInvokeSpecial CardInventoryScreen.<init>`,
+    //     该项由**类初始化时的每个 invokedynamic 解析**触发(§5.4.3.6)⇒ 专用服务端启动即
+    //     NoClassDefFoundError: CardInventoryScreen(除非它是纯服务端 mod,才会被 strip 掉)。
+    //     与 forge-1.20.1 侧 ModClientEvents#onClientSetup 的写法保持对等。
+    @SubscribeEvent
+    public static void registerScreens(RegisterMenuScreensEvent event) {
+        event.register(ModMenuTypes.CARD_INVENTORY.get(), CardInventoryScreen::new);
+    }
 
     @SubscribeEvent
     public static void registerGuiLayers(RegisterGuiLayersEvent event) {
         event.registerAbove(VanillaGuiLayers.CROSSHAIR,
                 Identifier.fromNamespaceAndPath(AstralDiceMod.MODID, "damage_number"),
                 DamageNumberOverlay.INSTANCE);
+        // 目标选择器中央 HUD:注册 id / 锚点与两发布线逐字对齐
+        // （1.21.1 `client/ModClientEvents.java:33-35`,锚点 CROSSHAIR,id `target_select`）
+        event.registerAbove(VanillaGuiLayers.CROSSHAIR,
+                Identifier.fromNamespaceAndPath(AstralDiceMod.MODID, "target_select"),
+                TargetSelectOverlay.INSTANCE);
         event.registerAbove(VanillaGuiLayers.AIR_LEVEL,
                 Identifier.fromNamespaceAndPath(AstralDiceMod.MODID, "action_bar"),
                 ActionBarOverlay.INSTANCE);
@@ -37,6 +67,11 @@ public class ModClientEvents {
 
         @Override
         public void render(GuiGraphicsExtractor guiGraphics, DeltaTracker deltaTracker) {
+            // F1（隐藏 HUD）守卫:与 TargetSelectOverlay 同源（条件与理由见该文件注释）——
+            // 26.1.2 原版只把**原版层**包进 `guiVisible`、模组层不被包裹（GuiLayerManager.java:36-39）
+            // ⇒ 必须自行守,否则按 F1 时本模组 actionbar 提示仍显示。
+            Minecraft mc = Minecraft.getInstance();
+            if (mc.options.hideGui && mc.screen == null) return;
             ActionBarManager.render(guiGraphics, deltaTracker);
         }
     }
@@ -104,7 +139,8 @@ public class ModClientEvents {
                 int color = (alpha << 24) | (number.color & 0xFFFFFF);
                 int yOffset = -(int) (progress * 30);
 
-                String text = "+" + number.damage;
+                // 数显只给数值、不加 "+" 前缀(2026-09-19 用户要求:攻击伤与法伤一并移除)
+                String text = Integer.toString(number.damage);
                 int textWidth = mc.font.width(text);
                 poseStack.pushMatrix();
                 // 26.1.2 的 pose() 是 JOML Matrix3x2fStack,translate/scale 只接受 float

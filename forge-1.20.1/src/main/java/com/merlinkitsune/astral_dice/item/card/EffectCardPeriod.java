@@ -1,7 +1,7 @@
 package com.merlinkitsune.astral_dice.item.card;
-import com.merlinkitsune.astral_dice.item.CuriosCompat;
+import com.merlinkitsune.starenginelib.item.CuriosCompat;
 
-import com.merlinkitsune.astral_dice.component.GameplayConstants;
+import com.merlinkitsune.starenginelib.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.item.ChargeManager;
@@ -22,14 +22,17 @@ import com.merlinkitsune.astral_dice.item.ModItems;
  * 规则(冷却与效果判定分离):
  * - 基础出牌数固定为 1(游戏设计决定,不可配置)。
  * - 固定出牌数加成(佩戴即提供,不卸载一直有效):大背包 +1、忍术飞镖 +1。
- * - 临时出牌数加成(仅当前出牌周期有效,周期归零时清除):活体书页每次使用累计 +1(可叠加,
- *   非"效果存在即 +1"的开关式)、命运的指引效果存在即 +1(覆盖式,不累计)、可口糖果满血触发 +1
+ * - 临时出牌数加成(仅当前出牌周期有效,周期归零时清除):活体书页**命中前已有 ≥3 层标记**的目标时
+ *   累计 +1(可叠加,非"效果存在即 +1"的开关式;补记入口 {@link #grantLivingPageCycleBonus})、
+ *   命运的指引效果存在即 +1(覆盖式,不累计)、可口糖果满血触发 +1
  *   (每周期一次)、探天卫星轨道炮触发 +1(每 1:00 一次)、
  *   立牌主动技能一次性 +1({@link #grantBonusPlay},同样只作用于当前出牌轮)。
  * - 出牌数上限:min(1 + 固定 + 临时, {@link GameplayConstants#MAX_EFFECT_CARD_PLAYS})
  *   实时计算,加成来源可叠加,但单轮总出牌数固定封顶 9 张(固定常量,非配置文件项)。
  * - 出牌数打满上限后立即开始冷却倒计时(30 秒);未打满的一轮在**本轮所有计时器(效果待定/被锁时长)
  *   都结束后**同样进入一轮 30 秒冷却(2026-09-15 用户裁决,选项 2),冷却归零时出牌数归零。
+ *   **例外(2026-09-20 用户裁决 C)**:当轮上限被「出牌数 +1」类**牌**(符卡-福 / 活体书页的本周期
+ *   累加计数)抬高时,未打满的一轮**不**启动这轮收尾冷却(走规格 §14.2 收支表口径),其余牌不变。
  *   效果牌本身的效果单独计算;单个轮询内所有已出效果牌的效果全部结束后才可重新出牌
  *   (冷却已归零但效果仍在生效时,出牌被锁定)。
  * - 效果牌轮次(出牌周期)定义:指当前出牌周期——不论出牌数是否已达上限——只要仍有
@@ -183,7 +186,7 @@ public final class EffectCardPeriod {
         // 临时来源(仅当前出牌周期有效,周期归零时清除):
         // 活体书页已改为"每次使用累计 +1"的本周期计数(见 getMaxAllowed 的 LIVING_PAGE_CYCLE_BONUS),
         // 不再注册为"效果存在即 +1"的开关式临时来源(否则会与累计计数重复计算);
-        // 活体书页效果本身仍作为效果待定来源注册(registerEffectPendingSource),与出牌数无关。
+        // 2026-09-19 起该牌为纯即时伤害、不给玩家任何效果 ⇒ 也不再作为"效果待定"来源(见下方注释)。
         registerTemporarySource(p -> p.hasEffect(ModEffects.FATE_GUIDANCE.get()));     // 命运的指引效果(存在即 +1,覆盖式,不累计)
         registerTemporarySource(p -> ModAttachments.isCandyChipPlayBonusActive(p)); // 可口糖果:满血使用效果牌触发(每轮一次)
         registerTemporarySource(p -> ModAttachments.isSatellitePlayBonusActive(p)); // 探天卫星:使用轨道炮后触发(每 1:00 一次)
@@ -191,7 +194,8 @@ public final class EffectCardPeriod {
         // 直接由 EffectCardPeriod 的出牌轮自有字段承载,见 getMaxAllowed 的 EFFECT_CARD_BONUS_PLAYS。
 
         // 效果待定来源(全部效果牌统一注册;新增效果牌在此追加或调用 registerEffectPendingSource)
-        registerEffectPendingSource(ModEffects.LIVING_PAGE.get());
+        // ⚠️ 活体书页**不在此列**(2026-09-19 用户裁决「移除所有原本效果器」):它已改为纯即时伤害、
+        //    不给玩家任何效果,出牌轮只由出牌数/冷却推进,不存在"等它的效果结束"这一步。
         registerEffectPendingSource(ModEffects.MONSTER_LASER.get());
         registerEffectPendingSource(ModEffects.MONSTER_BRICK.get());
         registerEffectPendingSource(ModEffects.ORBITAL_STRIKE.get());
@@ -211,8 +215,11 @@ public final class EffectCardPeriod {
         for (ExtraPlaySource source : TEMPORARY_SOURCES) {
             if (source.isActive(player)) extra += source.amount();
         }
-        // 活体书页:每次使用在本周期内累计 +1(仅当前周期,周期归零时清除;可叠加,非"效果存在即 +1"的开关式)
+        // 活体书页:命中(前)已有 ≥3 层标记的目标时在本周期内累计 +1(仅当前周期,周期归零时清除;
+        // 可叠加,非"效果存在即 +1"的开关式;补记入口 = grantLivingPageCycleBonus,且该入口自身封顶 9)
         extra += ModAttachments.getLivingPageCycleBonus(player);
+        // 符卡-福:每打出一次在本周期内累计 +1(方案 B;同样可叠加、同样受 min(9, 1+extra) 封顶)
+        extra += ModAttachments.getFuCardCycleBonus(player);
         // 立牌主动技能一次性追加(仅当前出牌轮有效,周期结束由 clearRoundBonuses 清除)
         extra += getBonusPlays(player);
         // 防御性下界:附件被写成负值(异常/溢出)时不得让上限退化为 0 或负数——
@@ -246,6 +253,60 @@ public final class EffectCardPeriod {
     }
 
     /**
+     * 「符卡-福」的「出牌数 +1」——**单点入口**(2026-09-26 用户终裁 = **方案 B:每张各 +1**)。
+     *
+     * <p>两个调用点约束(顺序不可颠倒):
+     * <ol>
+     *   <li>调用点只有**一处** = {@code FuCardItem#applyEffect};</li>
+     *   <li>它发生在 {@code BaseEffectCardItem#tryUseCard} 的 {@code applyEffect} 之内,
+     *       **早于** {@link #registerPlay} —— 否则 registerPlay 的 {@code count >= getMaxAllowed}
+     *       会以上限的旧值成立,该次出牌被当"已打满"而立即进入 30 秒冷却,
+     *       净效果「消耗 1 张 / 返还 1 次出牌」不成立。</li>
+     * </ol>
+     *
+     * <p><b>方案 B 的口径</b>(照 {@link #grantLivingPageCycleBonus} 先例):
+     * 每次打出**都**给本周期计数器 {@link ModAttachments#FU_CARD_CYCLE_BONUS} +1(不做"每轮一次"的
+     * 拒绝判断、**不**走 {@link #grantBonusPlay} 的二进制槽位 ⇒ 与忍者立牌主动 +1 **彻底解耦**,
+     * 两者可叠加);该计数器计入 {@link #getMaxAllowed} 的 extra,并受
+     * {@link GameplayConstants#MAX_EFFECT_CARD_PLAYS} 全局封顶(单轮最多 9 张);
+     * 周期归零时由 {@link #clearRoundBonuses} 与活体书页计数器同址清零。
+     */
+    public static boolean grantFuCardBonusPlay(Player player) {
+        if (player == null) return false;
+        int current = ModAttachments.getFuCardCycleBonus(player);
+        if (current >= GameplayConstants.MAX_EFFECT_CARD_PLAYS) return false;
+        ModAttachments.setFuCardCycleBonus(player, current + 1);
+        return true;
+    }
+
+    /**
+     * 活体书页「连续出牌」补记:命中**前**已有 ≥3 层标记的目标时,本出牌周期出牌数 +1。
+     *
+     * <p><b>用户裁决(2026-09-25)</b>:仅当命中标记层数 ≥ 3 才应用出牌数 +1,且严格遵守
+     * 「单轮出牌数封顶 {@link GameplayConstants#MAX_EFFECT_CARD_PLAYS}」的全局规则。
+     * 判定用的层数由调用方({@code combat/LivingPageImpact#resolve})在**施加本次 1 层标记之前**读取。
+     *
+     * <p><b>跨轮保护</b>:本方法在**命中时**才被调用(飞行结束),与出牌不在同一 tick;
+     * 若该出牌轮已归零(忍者宽限强重置等),不得把这次补记漏记到新一轮里 ⇒ 以
+     * {@link #getPlayCount} > 0(本轮仍存活)为前提。正常路径下飞行期间活体书页效果仍在生效
+     * ({@link #registerEffectPendingSource}),出牌轮不可能归零。
+     *
+     * <p>与 {@link #grantBonusPlay} 的区别:后者是立牌主动技能的**一次性**授予(同一轮只成功一次),
+     * 本方法每次满足条件的命中都可累加,但累加值本身也封顶
+     * {@link GameplayConstants#MAX_EFFECT_CARD_PLAYS}(避免周期长期不结算时无界增长)。
+     *
+     * @return true = 本次补记成功(+1);false = 未补记(本轮已归零或已达封顶)
+     */
+    public static boolean grantLivingPageCycleBonus(Player player) {
+        if (player == null) return false;
+        if (getPlayCount(player) <= 0) return false;
+        int current = ModAttachments.getLivingPageCycleBonus(player);
+        if (current >= GameplayConstants.MAX_EFFECT_CARD_PLAYS) return false;
+        ModAttachments.setLivingPageCycleBonus(player, current + 1);
+        return true;
+    }
+
+    /**
      * 出牌轮归零:清除全部"仅当前出牌轮有效"的出牌数加成与标记,
      * 以及**本周期已武装的电击手套法伤扩散**({@link ElectricGloveChipItem#disarmAoe}——下个周期可重新武装)。
      * <b>唯一入口</b> —— 仅由 {@link #registerPlay} 的周期边界、{@link #tick} 的周期结束(情形 1)
@@ -265,6 +326,8 @@ public final class EffectCardPeriod {
         ModAttachments.setCandyChipPlayBonusActive(player, false);
         ModAttachments.setSatellitePlayBonusActive(player, false);
         ModAttachments.setLivingPageCycleBonus(player, 0);
+        // 符卡-福本周期累计(方案 B):与活体书页计数器同址清零
+        ModAttachments.setFuCardCycleBonus(player, 0);
         // 周期归零:解除电击手套本周期已武装的法伤扩散(下个周期可重新武装)
         ElectricGloveChipItem.disarmAoe(player);
     }
@@ -411,7 +474,7 @@ public final class EffectCardPeriod {
         // 不变(什么都不写);仅当没有冷却在跑(为 0 或已到期)时才写入 now + cooldownTicks。
         // 正常打满路径(无冷却在跑)与改动前逐字等价。
         if (count >= getMaxAllowed(player)) {
-            long cooldownTicks = ChargeManager.cooldownTicks(player,
+            long cooldownTicks = ChargeManager.effectCardCooldownTicks(player,
                     GameplayConstants.EFFECT_CARD_COOLDOWN_SECONDS * 20L);
             if (cooldown <= now) {
                 ModAttachments.setEffectCardCooldownEnd(player, now + cooldownTicks);
@@ -428,14 +491,19 @@ public final class EffectCardPeriod {
      *   <li><b>未打满的一轮在计时器全部结束后收尾(2026-09-15 用户裁决)</b>:出牌数未达上限、
      *       但本轮的"剩余被锁时长"({@link #getRemainingBlockTicks},由 {@code EFFECT_PENDING_SOURCES}
      *       的效果自动推导,不硬编码效果列表)已归 0 时,同样启动一轮 30 秒冷却(时长与"打满上限"复用
-     *       同一 {@code ChargeManager.cooldownTicks} 口径)。判据:{@code played > 0 &&
+     *       同一 {@code ChargeManager.effectCardCooldownTicks} 口径)。判据:{@code played > 0 &&
      *       played < getMaxAllowed(player)} 且 {@code getRemainingBlockTicks(player) <= 0};
      *       仍有计时器在跑时继续等待(即正常累积中)。
      *       <b>最终语义(2026-09-15 用户裁决)</b>:未打满的一轮在所有计时器结束后也会进入一轮冷却,
      *       但<b>不</b>作废剩余出牌数;冷却期间仍可继续出牌,冷却到期后计数归零。
      *       为此本分支<b>不</b>把出牌数补齐到当轮上限——{@link #isBurstFull} 因而保持为假,
      *       玩家不会在冷却期间被"已打满"提前拦住({@link #isBlocked} 对"冷却进行中"本身并不拦截),
-     *       剩余出牌数得以在冷却期间继续使用,冷却不会被后续出牌重置。</li>
+     *       剩余出牌数得以在冷却期间继续使用,冷却不会被后续出牌重置。
+     *       <b>2026-09-20 用户裁决 C 的豁免</b>:当轮上限被「出牌数 +1」类<b>牌</b>抬高时
+     *       ({@code FU_CARD_CYCLE_BONUS} / {@code LIVING_PAGE_CYCLE_BONUS} &gt; 0,判据与注释见
+     *       {@link #tick} 本分支内),本情形<b>不</b>启动收尾冷却 —— 这类牌走规格 §14.2 收支表口径
+     *       (「本轮冷却未启动」,只有 {@code count ≥ max} 即打满时才启动 30 秒)。
+     *       其余牌仍保留上述 2026-09-15 的收尾冷却规则。</li>
      *   <li><b>不变量违例的修复(2026-09-14 严重 BUG)</b>:出牌数已达当轮上限、却<b>没有</b>冷却在跑。
      *       该状态只可能来自「上限在周期中途下降」——卸下大背包/忍术飞镖(固定 +1)、
      *       卸下可口糖果/探天卫星筹码、命运的指引效果到期等,
@@ -461,8 +529,25 @@ public final class EffectCardPeriod {
                 // 但**不**作废剩余出牌数(不再把计数补齐到当轮上限):冷却期间仍可继续出牌,
                 // 冷却到期后计数归零。
                 if (getRemainingBlockTicks(player) > 0) return;
+                // ⚠️ 2026-09-20 用户裁决 C:当轮上限被「出牌数 +1」类**牌**抬高时,情形 2(未打满的
+                // 收尾冷却)**不启动** —— 这类牌走规格 §14.2 收支表口径(打出后「本轮冷却**未启动**」,
+                // 只有 count ≥ max = 打满当轮上限时才启动 30 秒冷却,那条路径在下方同一块的
+                // 「不变量违例/已打满」分支与 registerPlay 里,不受本豁免影响)。
+                // 判据 = 两个由**打出牌**驱动、本周期内累加的出牌数计数器(与 getMaxAllowed 的 extra 同源):
+                //   · FU_CARD_CYCLE_BONUS  符卡-福:每次打出 +1(FuCardItem:78 → grantFuCardBonusPlay);
+                //   · LIVING_PAGE_CYCLE_BONUS 活体书页:命中「命中前已有 ≥3 层标记」的目标时 +1
+                //     (LivingPageImpact:41 → grantLivingPageCycleBonus)。
+                // 不纳入(均非「打出即 +1 的牌」,继续适用 2026-09-15 的收尾冷却):
+                //   · EFFECT_CARD_BONUS_PLAYS 立牌主动一次性槽位(技能授予,见 grantBonusPlay);
+                //   · 可口糖果/探天卫星筹码的「每轮一次」开关:candyChipPlayBonusActive /
+                //     satellitePlayBonusActive(筹码状态,非牌);
+                //   · 固定来源 大背包 +1 / 忍术飞镖 +1(佩戴即提供,非牌);
+                //   · 命运的指引:效果存在即 +1(覆盖式,且自身就是 EFFECT_PENDING_SOURCE,
+                //     情形 2 已由上方「剩余被锁时长 > 0」等到它结束)。
+                if (ModAttachments.getFuCardCycleBonus(player) > 0
+                        || ModAttachments.getLivingPageCycleBonus(player) > 0) return;
             }
-            long recoverTicks = ChargeManager.cooldownTicks(player,
+            long recoverTicks = ChargeManager.effectCardCooldownTicks(player,
                     GameplayConstants.EFFECT_CARD_COOLDOWN_SECONDS * 20L);
             ModAttachments.setEffectCardCooldownEnd(player, now + recoverTicks);
             return;
@@ -477,7 +562,7 @@ public final class EffectCardPeriod {
     }
 
     private static boolean hasCurio(Player player, net.minecraft.world.item.Item item) {
-        var curios = com.merlinkitsune.astral_dice.item.CuriosCompat.getCuriosInventory(player);
+        var curios = com.merlinkitsune.starenginelib.item.CuriosCompat.getCuriosInventory(player);
         return curios.isPresent() && curios.get().findFirstCurio(s -> s.is(item)).isPresent();
     }
 }

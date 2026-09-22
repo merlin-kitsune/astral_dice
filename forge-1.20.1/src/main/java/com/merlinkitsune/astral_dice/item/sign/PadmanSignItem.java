@@ -1,6 +1,6 @@
 package com.merlinkitsune.astral_dice.item.sign;
 
-import com.merlinkitsune.astral_dice.component.GameplayConstants;
+import com.merlinkitsune.starenginelib.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.player.Player;

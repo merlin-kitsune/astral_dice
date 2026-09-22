@@ -7,6 +7,7 @@ import net.minecraft.world.item.ItemStack;
 import java.util.Optional;
 import java.util.UUID;
 
+import com.merlinkitsune.starenginelib.component.ItemDataKey;
 /**
  * 1.20.1 Forge 数据组件 shim:常量名与 1.21 分支的 {@code ModDataComponents} 一一对应,
  * 内部由 {@link ItemDataKey}(ItemStack NBT)承载;1.21 的 networkSynchronized 语义
@@ -51,6 +52,22 @@ public class ModDataComponents {
     public static final ItemDataKey<Integer> JASMINE_DEF_BONUS =
             ItemDataKey.create("jasmine_def_bonus", Codec.INT);
 
+
+    /**
+     * 临时牌标记(绿洲女王 nardis 主动「女王特权」):带此 NBT 键的卡牌为「临时牌」——
+     * 只有 3:00 有效期、不可丢弃、不可移入其它容器、带附魔光效,效果结束即整体清空。
+     *
+     * <p>装备进骰子后**不会**丢失临时性:装配会销毁物品栈,标记改由
+     * {@link AppliedStone#temporary()} 承载,两者由 {@code screen/CardInventoryMenu} 双向透传
+     * (见 {@link AppliedStone} 的类注释)。
+     *
+     * <p>1.20.1 落点:1.21 的 {@code DataComponentType<Boolean>} 在这里由 {@link ItemDataKey}
+     * (ItemStack NBT)承载 —— 读写签名为 {@code get(stack)} / {@code set(stack, v)} /
+     * {@code remove(stack)}(不是 1.21 的 {@code stack.get(KEY.get())} 形式)。
+     * 未写入 NBT 前 {@code get} 返回 {@code null},故判定必须用 {@code Boolean.TRUE.equals(...)}。
+     */
+    public static final ItemDataKey<Boolean> TEMPORARY_CARD =
+            ItemDataKey.create("temporary_card", Codec.BOOL);
 
     // 专属效果牌:获得者 UUID(空表示尚未绑定,首次使用时绑定)
     public static final ItemDataKey<Optional<UUID>> OWNER_UUID =

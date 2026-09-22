@@ -6,6 +6,24 @@ import net.minecraft.world.effect.MobEffect;
 import net.minecraftforge.registries.RegistryObject;
 import net.minecraftforge.registries.DeferredRegister;
 
+import com.merlinkitsune.starenginelib.effect.BerserkEffect;
+import com.merlinkitsune.starenginelib.effect.CounterEffect;
+import com.merlinkitsune.starenginelib.effect.CutterReadyEffect;
+import com.merlinkitsune.starenginelib.effect.DiceBlessingEffect;
+import com.merlinkitsune.starenginelib.effect.FateGuidanceEffect;
+import com.merlinkitsune.starenginelib.effect.HealingEffect;
+import com.merlinkitsune.starenginelib.effect.InvestigationBonusEffect;
+import com.merlinkitsune.starenginelib.effect.KingPowerEffect;
+import com.merlinkitsune.starenginelib.effect.LivingPageEffect;
+import com.merlinkitsune.starenginelib.effect.MarkedEffect;
+import com.merlinkitsune.starenginelib.effect.MisakiBurstEffect;
+import com.merlinkitsune.starenginelib.effect.MosesBrokenEffect;
+import com.merlinkitsune.starenginelib.effect.NancyLuHackEffect;
+import com.merlinkitsune.starenginelib.effect.PandamanTauntEffect;
+import com.merlinkitsune.starenginelib.effect.PaparaBiteEffect;
+import com.merlinkitsune.starenginelib.effect.RevengeHalberdEffect;
+import com.merlinkitsune.starenginelib.effect.UndercoverInvestigationEffect;
+import com.merlinkitsune.starenginelib.effect.WeakMarkEffect;
 import java.util.Collection;
 
 public class ModEffects {
@@ -57,14 +75,6 @@ public class ModEffects {
     // 调查阶段增益:由调查阶段事件触发,amplifier 表示阶段(1=I,2=II,3=III,4=真相揭露;阶段 I 仅提示无攻击加成)
     public static final RegistryObject<MobEffect> INVESTIGATION_BONUS =
             EFFECTS.register("investigation_bonus", InvestigationBonusEffect::new);
-
-    // 占星师立牌主动待命:主动已激活,攻击目标后施加"虚弱印记"
-    public static final RegistryObject<MobEffect> HAIQING_READY =
-            EFFECTS.register("haiqing_ready", () -> new ReadyEffect(0x4B0082));
-
-    // 秘密侦探立牌主动待命:主动已激活,攻击目标后施加"隐匿调查"
-    public static final RegistryObject<MobEffect> BONNIE_READY =
-            EFFECTS.register("bonnie_ready", () -> new ReadyEffect(0x8B4513));
 
     // 治愈:显示当前治愈点数(等级=层数,时长=距下次结算);由史莱姆立牌等维护
     public static final RegistryObject<MobEffect> HEALING =
@@ -132,13 +142,96 @@ public class ModEffects {
     public static final RegistryObject<MobEffect> MOSES_BROKEN =
             EFFECTS.register("moses_broken", MosesBrokenEffect::new);
 
-    // 枪匠立牌主动待命:主动已激活,攻击敌对目标后施加"破绽"
-    public static final RegistryObject<MobEffect> MOSES_READY =
-            EFFECTS.register("moses_ready", () -> new ReadyEffect(0x8B5A2B));
-
     // 嘲讽(肉弹战车立牌 pandaman 主动):目标只能攻击对其施加嘲讽的玩家
     public static final RegistryObject<MobEffect> PANDAMAN_TAUNT =
             EFFECTS.register("pandaman_taunt", PandamanTauntEffect::new);
+
+    // 鼠鼠护盾(游戏大师立牌 ren):5 黄心(10 点吸收)+ 抗性提升;黄心被打空即清空。
+    // 本效果同时是「是否持有护盾」的唯一真值(客户端球形渲染以原生效果同步为条件源)。
+    // 平台差异:1.20.1 无 MAX_ABSORPTION 属性、吸收值不被钳制 ⇒ 本类不含修饰器(1.21.1 侧必须带)。
+    public static final RegistryObject<MobEffect> REN_SHIELD =
+            EFFECTS.register("ren_shield", RenShieldEffect::new);
+
+    /** 「反击」:鼠鼠护盾那 1 层一次性反击的可见载体(层数镜像到 HUD 图标;图标 = images/反击.png) */
+    public static final RegistryObject<MobEffect> REN_COUNTER =
+            EFFECTS.register("ren_counter", RenCounterEffect::new);
+
+    // 白泽赐福(风水师立牌 zhao 主动):溢出治疗转攻击力的有效期载体;
+    // 无限时长施加,由「下次骰神赐福结束」驱动移除(两种分支见 ZhaoSignItem)。
+    // 图标按需求复用风水师立牌贴图(images/风水师立牌.png → textures/mob_effect/zhao_blessing.png)。
+    public static final RegistryObject<MobEffect> ZHAO_BLESSING =
+            EFFECTS.register("zhao_blessing", ZhaoBlessingEffect::new);
+
+    // 厄运:持有「符卡-祸」的层数镜像(层数 = 张数);每 2:00 按当前张数结算一次伤害。
+    // 图标 = images/厄运.png(实装路径 textures/mob_effect/misfortune.png)。
+    public static final RegistryObject<MobEffect> MISFORTUNE =
+            EFFECTS.register("misfortune", MisfortuneEffect::new);
+
+    // 「降神」(教主立牌 teru 主动):施加在被指定目标身上的状态载体,持续到**该目标的下一次骰神赐福结束**
+    // 才移除(玩家级 tick 下降沿判定,见 TeruSignItem#tick)。给施法者的 50% 攻防加成与狐光攻击基数另存附件。
+    // 图标 = images/教主立牌.png(实装路径 textures/mob_effect/teru_descent.png)。
+    public static final RegistryObject<MobEffect> TERU_DESCENT =
+            EFFECTS.register("teru_descent", TeruDescentEffect::new);
+
+    // 「狐光」(教主立牌 teru 的资源层数镜像):层数 == 施法者附件 TERU_HUGUANG_LAYERS(上限 20);
+    // 归 0 即移除。增层带两条防刷守卫(拾取不计层 + 装备按历史水位去重),见 TeruSignItem。
+    // 图标 = images/狐光.png(实装路径 textures/mob_effect/teru_huguang.png)。
+    public static final RegistryObject<MobEffect> TERU_HUGUANG =
+            EFFECTS.register("teru_huguang", HuguangEffect::new);
+
+    /**
+     * 「女王特权」(绿洲女王立牌 nardis 主动):**有限时长 3:00(3600 tick)** 的状态载体。
+     * 它同时是「临时牌是否仍在有效期」的**唯一真值**(玩家级 tick 自检:有临时牌但无本效果 ⇒ 清空),
+     * 并直接充当 HUD 计时器与图标(`showIcon=true`,图标 = 立牌贴图,见 {@link NardisPrivilegeEffect})。
+     *
+     * <p>⚠️ 1.20.1 是 {@code RegistryObject} ⇒ 全部引用处必须 {@code .get()}。
+     */
+    public static final RegistryObject<MobEffect> NARDIS_PRIVILEGE =
+            EFFECTS.register("nardis_privilege", NardisPrivilegeEffect::new);
+
+    /**
+     * 「真龙形态」(蛟龙立牌 mamushi 的锁存态载体,2026-09-27)。
+     *
+     * <p>常驻效果({@code Integer.MAX_VALUE}),由立牌 tick 每 tick {@code refresh}、
+     * 判据不成立时 {@code remove} —— 与 {@code zhao_blessing} 同一写法。
+     * **不登记 {@code EffectTimerGuard}**:它没有自己的倒计时,移除时机完全由层数与佩戴判定驱动
+     * (规格 §1 效果表 + §2.2)。图标 = {@code images/蛟龙立牌.png}
+     * (实装路径 {@code textures/mob_effect/mamushi_dragon.png},与立牌贴图逐字节相同)。
+     *
+     * <p>⚠️ 1.20.1 是 {@code RegistryObject} ⇒ 全部引用处必须 {@code .get()}。
+     */
+    public static final RegistryObject<MobEffect> MAMUSHI_DRAGON =
+            EFFECTS.register("mamushi_dragon", MamushiDragonEffect::new);
+
+    /**
+     * 「破防」(龙之咆哮命中):{@code HARMFUL},携带 {@code ARMOR -8}(= 减 4 点防御,1 防御 = 2 护甲)。
+     * 时长 {@code DragonRoarBreakEffect.DURATION_TICKS} = 1:00,重复命中**刷新时长、不叠层**。
+     * 图标 = {@code images/龙之咆哮.png}(实装路径 {@code textures/mob_effect/dragon_roar_break.png},
+     * 与战斗牌贴图逐字节相同)。
+     */
+    public static final RegistryObject<MobEffect> DRAGON_ROAR_BREAK =
+            EFFECTS.register("dragon_roar_break", DragonRoarBreakEffect::new);
+
+    // 推理时间(怪力侦探立牌 sherry 专属资源):层数真值在附件(死亡保留名单,死亡不清),
+    // 本效果只做 HUD 镜像(层数 = amplifier + 1,图标 = 立牌同图)。
+    public static final RegistryObject<MobEffect> SHERRY_REASONING =
+            EFFECTS.register("sherry_reasoning", SherryReasoningEffect::new);
+
+    // 人偶制作(人偶师立牌 hanna 专属资源):层数真值在附件(不跨死亡),本效果只做 HUD 镜像
+    // (层数 = amplifier + 1,上限 HannaSignItem.MAX_CRAFT = 7;图标 images/人偶制作.png)。
+    public static final RegistryObject<MobEffect> HANNA_DOLL_CRAFT =
+            EFFECTS.register("hanna_doll_craft", HannaDollCraftEffect::new);
+
+    // 人偶完成(人偶师立牌 hanna):「人偶制作」满 7 层后**归零转换**而来的常驻状态(用户 2026-09-21 裁决);
+    // 无限时长、不登记 EffectTimerGuard;图标 images/人偶完成.png。
+    public static final RegistryObject<MobEffect> HANNA_DOLL_COMPLETE =
+            EFFECTS.register("hanna_doll_complete", HannaDollCompleteEffect::new);
+
+    // 魔女漂浮(人偶师立牌 hanna 主动):有限时长 1:00 = 1200 tick,移速 +20%(ADD_MULTIPLIED_TOTAL);
+    // 掉落免疫 / 近战闪避 / 禁用末影珍珠三条语义在 HannaSignItem 的事件里;
+    // 图标与立牌本体同图(textures/mob_effect/hanna_float.png 逐字节复制)。
+    public static final RegistryObject<MobEffect> HANNA_FLOAT =
+            EFFECTS.register("hanna_float", HannaFloatEffect::new);
 
     /**
      * 本模组已注册的全部效果的**只读**视图(调试命令 {@code /astralparty cleareffect} 用)。

@@ -6,6 +6,8 @@ on:
       # 发布线分支(本仓已无 main 分支;origin/HEAD 默认分支即此分支)。
       # 原先写的 `main` 是不存在的分支 → push 过滤与下方自动打 tag 永远不生效。
       - 'multi-1.20.1-1.21.1'
+      # 合并后的开发主线（原 dev-targetselector 重命名而来）
+      - 'multi-dev-next'
       # 26.1.2 第三条线:2026-09-17 起已与发布线同树(该分支保留为历史/回滚入口)。
       # 它同样跑 lang 同步 + 三子项目构建,并且它的 jar 会**一并附到发布线的 Release**(见文末三 jar 步骤);
       # 打 tag / 建 Release 这两步仍**只在发布线分支**(multi-1.20.1-1.21.1)触发 —— 26.1.2 的版本号
@@ -51,6 +53,34 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
+
+      - name: Checkout StarEngine Lib (required prerequisite)
+        # 前置库 starengine_lib 只在 mavenLocal 发布(无远程 maven),CI 上必须先从源码构建。
+        # ⚠️ ref **不得**停在浮动的 main(2026-09-17 修正):main 每推一个提交都向前走,而消费方在这里
+        # 构建出的库必须**恰好**是 `starengine_lib_version` 指定的那一版 —— 浮动 main 会让
+        # 「区间下界 [1.0.0-SNAPSHOT.<n>,2.0)」与「CI 实际 publishToMavenLocal 出的版本」脱钩,
+        # 一旦库在两次 CI 之间 bump 或改动坐标,断在依赖解析(本地不可复现,只在 CI 暴露)。
+        # 现固定为 `starengine_lib_version=1.0.0-SNAPSHOT.16` 的**终态**提交(该提交里三平台
+        # mod_version 均为 1.0.0-SNAPSHOT.16,同时带着此前两批修复:**库自身被 FML 拒载**的根因修复
+        # —— 1.21.1 的 loaderVersion 槽曾误填 NeoForge 版本带 [21.1,21.2),而该槽比的是 javafml
+        # 语言提供者版本(本机报 4.0.42)⇒ 改回语言区间 [1,),forge-1.20.1 的 loaderVersion 同时由
+        # [47,) 收敛为 [47,48)、其 forge 依赖改用从 forge_version 派生的精确区间 [47.4.10,48);
+        # 以及 forge-1.20.1 缺失的 `pack.mcmeta`(缺它时 Forge 加载界面告警且该模组资源包不注册)。
+        # 库侧 `.7` 只发布过 mavenLocal、从未入库,故它并入 `.10`;库侧当前无 tag,用提交 SHA 钉死)。
+        # **库版本 bump 时本行必须同步更新**(与 neoforge-1.21.1 / forge-1.20.1 / neoforge-26.1.2
+        # 的 gradle.properties 的 starengine_lib_version 同一提交里一起改;`.5` 旧钉值为库提交
+        # d5b0776,`.6` 为 716f976,`.10` 终态即库提交 ec28415,`.16` 终态即库提交 f706be0),且该提交需已推送到远端 ——
+        # 库仓库尚未 push 前,本 ref 不可被 CI 检出(见 KNOWN-ISSUES KI-M4①,状态不变)。
+        uses: actions/checkout@v4
+        with:
+          repository: merlin-kitsune/starengine_lib
+          ref: f706be00d2715db584460f1b1235970e9726ac91   # = 1.0.0-SNAPSHOT.16(终态:随消费方 26.1.2 线接入,库源码零改动)
+          path: .ci/starengine_lib
+          fetch-depth: 1
+
+      - name: Publish StarEngine Lib to mavenLocal
+        working-directory: .ci/starengine_lib
+        run: ./gradlew publishToMavenLocal
 
       - name: Check lang sync (neoforge-1.21.1)
         run: pwsh -NoProfile -File tools/check_lang_sync.ps1 -LangDir neoforge-1.21.1/src/main/resources/assets/astral_dice/lang
@@ -98,6 +128,11 @@ jobs:
         # 不再依赖「tag push 触发 Release」:GITHUB_TOKEN 推送的 tag 不会再触发本 workflow。
         if: github.event_name == 'push' && github.ref == 'refs/heads/multi-1.20.1-1.21.1' && steps.version.outputs.skip_tag == '0'
         run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          if [[ "$VERSION" == *-* ]]; then
+            echo "Version $VERSION is a pre-release/snapshot (contains '-'), skip auto tagging"
+            exit 0
+          fi
           TAG="${{ steps.version.outputs.base }}"
           if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
             echo "Tag $TAG already exists"

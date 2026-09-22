@@ -1,9 +1,9 @@
 package com.merlinkitsune.astral_dice.item.chip;
 
-import com.merlinkitsune.astral_dice.component.GameplayConstants;
+import com.merlinkitsune.starenginelib.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.item.ChargeManager;
-import com.merlinkitsune.astral_dice.item.CuriosCompat;
+import com.merlinkitsune.starenginelib.item.CuriosCompat;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.network.ModNetwork;
 import net.minecraft.ChatFormatting;
@@ -77,8 +77,18 @@ public class CurrentCoreChipItem extends BaseChipItem {
     /**
      * 立牌主动技能冷却中按下主动技能键时调用:按剩余冷却占比消耗充能并立即使冷却完成。
      *
-     * @return {@link #FINISH_NONE}(未佩戴,交回默认冷却提示)、{@link #FINISH_DONE}(已完成)、
-     *         {@link #FINISH_NOT_ENOUGH}(充能不足,已提示)
+     * <p>2026-09-27 蛟龙立牌(mamushi)规格 §3.4 新增一条**拒绝**分支:当前佩戴 mamushi 且其
+     * 强制冷却(1:00,不可被任何减免绕过)尚未到期 ⇒ **拒绝**本次"立即完成冷却" ——
+     * 不扣充能、不写冷却,提示走该立牌专属文案 {@code msg.astral_dice.mamushi_cooldown_locked}
+     * (F7 收口:返回 {@link #FINISH_NOT_ENOUGH},与 1.21.1 的
+     * {@code CurrentCoreChipItem#tryFinishCooldown} 逐字对齐;此前本线误写成"返回
+     * {@link #FINISH_NONE} + 走既有冷却文案")。该分支在正常路径上不可达 ——
+     * {@code BaseSignItem#performSkill} 第 ② 步的硬闸门在冷却分支之前就早退了 ——
+     * 它是纵深防御。
+     *
+     * @return {@link #FINISH_NONE}(未佩戴,交回默认冷却提示)、
+     *         {@link #FINISH_DONE}(已完成)、
+     *         {@link #FINISH_NOT_ENOUGH}(充能不足 / 强制冷却被拒,均已提示)
      */
     public static int tryFinishCooldown(Player player, long cooldownEnd, long now) {
         if (player == null || player.level().isClientSide()) return FINISH_NONE;
@@ -86,6 +96,16 @@ public class CurrentCoreChipItem extends BaseChipItem {
         // 不触发、不扣充能、不入减免池;用户可见提示由 BaseSignItem.performSkill 的锁定分支统一发出
         // (该分支判定在冷却分支之前,故正常路径下根本走不到这里;此处仅为纵深防御)
         if (com.merlinkitsune.astral_dice.item.sign.BaseSignItem.isSignActiveLocked(player)) return FINISH_NONE;
+        // 强制冷却硬闸门(规格 §3.4,2026-09-27 蛟龙立牌;F7 = 与 1.21.1 对齐的写法):
+        // 当前佩戴的是 mamushi 立牌且其强制冷却(1:00,不可被任何减免绕过)尚未到期 ⇒ **拒绝**
+        // 本次"立即完成冷却" —— 不扣充能、不写冷却,并给出本立牌的专属提示文案。
+        // 正常路径下走不到这里(BaseSignItem#performSkill 第 ② 步的闸门在冷却分支之前就早退了),
+        // 本判据是纵深防御,保证任何到达本方法的路径都无法用充能绕过强制冷却。
+        if (com.merlinkitsune.astral_dice.item.sign.MamushiSignItem.isEquipped(player)
+                && now < com.merlinkitsune.astral_dice.item.sign.MamushiSignItem.getForcedCooldownUntil(player)) {
+            sendActionBar(player, "msg.astral_dice.mamushi_cooldown_locked");
+            return FINISH_NOT_ENOUGH;
+        }
         if (!isEquipped(player)) return FINISH_NONE;
         long remaining = cooldownEnd - now;
         if (remaining <= 0) return FINISH_NONE;

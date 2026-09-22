@@ -23,10 +23,16 @@ mt_inject.ps1 — 游戏内输入注入（阶段 C 的执行臂）。
   mt_inject.ps1 cmd -Command "/astral_dice targetselect enemy"
   mt_inject.ps1 cmd -Command "/give @s minecraft:stone" -NoEsc
   mt_inject.ps1 cmd -Command "/give Dev x" -Layout as-is     # 排查用：不切语言
+  mt_inject.ps1 mouse -Button left                 # 窗口中心左键（目标选择器「确认」）
+  mt_inject.ps1 mouse -Button right -Shift         # 窗口中心右键 + 潜行（「自用」提示 / 取消）
+  mt_inject.ps1 mouse -Button right -HoldMs 3000   # 按住右键 3 秒（长按/自动重复类回归）
+  mt_inject.ps1 mouse -Button wheel                # 向下滚一格（默认 notches=-1；「滚轮拦截」回归）
+  mt_inject.ps1 mouse -Button wheel -Notches 2     # 向上滚两格
+  mt_inject.ps1 mouse -Button wheel -Transport postmessage   # 排查：WM_MOUSEWHEEL 直投
 
 ## 退出码（与 python 版一致）
 
-  0 = 注入完成；2 = 未找到窗口 / 语言未就绪 / 未知按键 / 参数错误。
+  0 = 注入完成；2 = 未找到窗口 / 语言未就绪 / 未知按键 / 非法 `--button`·`--notches` 值 / 参数错误。
 
 ## 与 python 版的差异（逐条）
 
@@ -54,6 +60,20 @@ mt_inject.ps1 — 游戏内输入注入（阶段 C 的执行臂）。
    `--hold-ms` / `-HoldMs` 等价，两种调用风格都能吃下。
 6. `-Hwnd` / `-DryRun` 是**上面第 2 条那两个扩展参数**（python 版没有）：
    接受 `--hwnd` / `--dry-run` 与 `-Hwnd` / `-DryRun` 两种拼写。
+7. **`mouse` 子命令是 pwsh 侧新增**（python 只有 `key` / `cmd`；鼠标此前只能经 `key` 的
+   `attack` / `rclick` / `shift-rclick` 别名触达）。它**不新造注入路径**：内部直接调
+   `Send-MtInjectMouseCenter`（与上述别名同一个函数、同一坐标口径）。`--button` 必填且
+   接受 `left|right|wheel`（其它值 ⇒ `MT_ERROR: 非法 --button 值 …` + rc=2，在定位窗口**之前**
+   校验，故客户端没跑也能得到可读报错）；`--shift` 与 `--hold-ms` 与 `key` 子命令同义。
+   `--version` / `--hwnd` / `--layout` 与 `key` 子命令同形，输出行前缀为 `MT_INJECT_MOUSE:`
+   （与 `MT_INJECT_KEY:` / `MT_INJECT_CMD:` 同一族）。
+8. **`--button wheel` + `--notches` 是 2026-09-18（t23, F3）新增的滚轮原语**：`postmessage`
+   通道走 `PostMessage(WM_MOUSEWHEEL, HIGHWORD=delta, lParam=窗口中心)`，`sendinput` 通道走
+   **真实** `SendInput(MOUSEEVENTF_WHEEL)`（`mouseData = notches × 120`）；`--notches` 缺省 -1
+   （向下滚一格），取值非 0 且 |n| ≤ 32，`wheel` 与 `--shift` 组合直接报错（不静默忽略）。
+   存在理由：目标选择器「选择期间拦截滚轮」此前**零自动化断言**（用例没有滚轮步骤、注入器没有
+   滚轮原语、探针没有选中栏位读数），该原语 + 探针 `selectedSlot` 读数把这条语义变成可跑的两步
+   断言（会话中不变 / 取消后变化）。
 #>
 
 $ErrorActionPreference = 'Stop'
@@ -88,14 +108,27 @@ for ($i = 1; $i -le 9; $i++) {
     $script:Vk[$digit] = 0x30 + $i
     $script:Scan[$digit] = 0x02 + ($i - 1)
 }
+# 功能键 F1..F12（2026-09-25 新增）：护盾这类**世界空间特效**的取证必须切第三人称
+# （第一人称下相机在球内、外壳会糊满整屏，渲染端有意跳过自己那一个）⇒ 需要能按 F5。
+# VK 连续 F1=0x70..F12=0x7B；扫描码 F1..F10 = 0x3B..0x44 连续，F11/F12 = 0x57/0x58（不连续）。
+for ($i = 1; $i -le 12; $i++) {
+    $fn = "f$i"
+    $script:Vk[$fn] = 0x6F + $i
+    $script:Scan[$fn] = if ($i -le 10) { 0x3A + $i } else { 0x57 + ($i - 11) }
+}
 
 # 语义键 → 实际按键
+# 2026-09-17：删除 `'confirm' = 'enter'`（全仓 grep 确认无任何用例/脚本引用该别名）——
+# 「确认」在目标选择器语义下改为**鼠标左键**（走 `mouse --button left`），不再用 Enter；
+# 确需 Enter 的场合直接写 `-Key enter` 即可（上面扫描码表里 enter 一直在）。
 $script:KeyAlias = @{
     'chat' = 't'; 'skill' = 'j'; 'cancel' = 'escape'
-    'confirm' = 'enter'; 'screenshot' = 'f2'
+    'screenshot' = 'f2'
     'debug' = 'f3'; 'inventory' = 'e'; 'card' = 'h'
     # 光影（Iris）语义键：开关 / 光影选择界面 / 重载光影
     'shadertoggle' = 'k'; 'shaderscreen' = 'o'; 'shaderreload' = 'r'
+    # 视角：原版 F5 在 第一人称 → 第三人称背面 → 第三人称正面 之间循环
+    'thirdperson' = 'f5'
 }
 
 $script:WM_KEYDOWN = 0x0100
@@ -105,6 +138,12 @@ $script:WM_LBUTTONDOWN = 0x0201
 $script:WM_LBUTTONUP = 0x0202
 $script:WM_RBUTTONDOWN = 0x0204
 $script:WM_RBUTTONUP = 0x0205
+# 滚轮（2026-09-18 t23 新增，F3「滚轮拦截」自动化）：WM_MOUSEWHEEL 的**高位字**是
+# 带符号的滚动量（一格 = WHEEL_DELTA = 120）；GLFW 的窗口过程按 `(SHORT)HIWORD(wParam)/WHEEL_DELTA`
+# 转成 scroll 回调 ⇒ 与真实滚轮等价。低位字 lParam 是**屏幕坐标**（文档如此），但 GLFW/MC 的
+# 滚轮处理只读 wParam ⇒ 这里沿用既有 lParam 口径（窗口矩形中心）并注明，不另造坐标来源。
+$script:WM_MOUSEWHEEL = 0x020A
+$script:WHEEL_DELTA = 120
 $script:VK_SHIFT = 0xA0
 
 # 投递通道（2026-09-13）：
@@ -243,39 +282,159 @@ function Send-MtInjectMouseCenter {
         [int]$HoldMs = 0
     )
 
-    if ($Shift) {
-        Send-MtInjectKeyDown -Hwnd $Hwnd -Vk $script:VK_SHIFT -Scan 0x2A
-        Start-MtInjectPause -Milliseconds 120
-    }
+    # ── 修饰键（SHIFT）必须**同通道成对**且异常路径也复位（2026-09-18 t21 实测修复）──────────
+    # 缺陷（修复前）：按下走 `Send-MtInjectKeyDown`（sendinput 通道 ⇒ 真实 `SendInput`），
+    # 抬起却直接写 `Send-MtInjectMessage … WM_KEYUP`（**PostMessage**）—— 通道不一致导致
+    # OS 级 SHIFT 逻辑键状态**常驻按下**（实测 `GetAsyncKeyState(VK_SHIFT)` 的 0x8000 位在
+    # 20/20 次 `mouse --right -Shift` 后仍为按下；不带 -Shift 的对照组 0/20）。
+    # 现在：抬起改走 `Send-MtInjectKeyUp`（与按下同一个分发函数 ⇒ 两条通道各自自洽），
+    # 并用 try/finally 保证「按下过就一定会抬起」（鼠标段抛异常也不留残留）。
+    # 不引入任何全局状态：`$shiftDown` 只是本函数内的局部标志。
+    $shiftDown = $false
+    try {
+        if ($Shift) {
+            Send-MtInjectKeyDown -Hwnd $Hwnd -Vk $script:VK_SHIFT -Scan 0x2A
+            $shiftDown = $true
+            Start-MtInjectPause -Milliseconds 120
+        }
 
+        $rect = Get-MtWindowRect -Hwnd $Hwnd
+        $x = [int](($rect.Right - $rect.Left) / 2)
+        $y = [int](($rect.Bottom - $rect.Top) / 2)
+        $hold = if ($HoldMs -gt 0) { $HoldMs } else { 100 }
+
+        if ($script:Transport -eq 'sendinput') {
+            # 真实鼠标：先把光标移到窗口中心（屏幕坐标），再发真实左右键
+            if (-not $script:DryRun) {
+                [void](Set-MtRealCursorPosition -X ($rect.Left + $x) -Y ($rect.Top + $y))
+                Start-MtInjectPause -Milliseconds 80
+                [void](Send-MtRealMouse -Right $Right -Up $false)
+                Start-MtInjectPause -Milliseconds $hold
+                [void](Send-MtRealMouse -Right $Right -Up $true)
+            }
+        } else {
+            $lp = ($y -shl 16) -bor ($x -band 0xFFFF)
+            $down = if ($Right) { $script:WM_RBUTTONDOWN } else { $script:WM_LBUTTONDOWN }
+            $up = if ($Right) { $script:WM_RBUTTONUP } else { $script:WM_LBUTTONUP }
+            Send-MtInjectMessage -Hwnd $Hwnd -Msg $down -WParam 1 -LParam $lp
+            Start-MtInjectPause -Milliseconds $hold
+            Send-MtInjectMessage -Hwnd $Hwnd -Msg $up -WParam 0 -LParam $lp
+        }
+    } finally {
+        if ($shiftDown) {
+            Start-MtInjectPause -Milliseconds 100
+            # 与按下同一分发（sendinput ⇒ SendInput；postmessage ⇒ 同 lParam 的 WM_KEYUP）
+            Send-MtInjectKeyUp -Hwnd $Hwnd -Vk $script:VK_SHIFT -Scan 0x2A
+        }
+    }
+}
+
+# ══ 滚轮注入（2026-09-18 t23 新增；F3「滚轮拦截」自动化）══════════════════════
+#
+# 为什么要有它：目标选择器会话激活期间**拦截滚轮**（`InputEvent.MouseScrollingEvent` 取消，
+# 防切栏/缩放），但此前的工具链没有任何滚轮注入原语 ⇒ 该语义在全链路**零自动化断言**
+# （t12 的 F3）。这里补上原语，配合探针的 `selectedSlot` 读数就能做出「会话中滚一格 ⇒
+# selectedSlot 不变；取消后再滚一格 ⇒ selectedSlot 变化（正对照）」两步断言。
+#
+# 两条通道都给：
+#   postmessage —— `PostMessage(WM_MOUSEWHEEL, (delta shl 16), lParam)`（与既有鼠标路径同渠道）；
+#   sendinput   —— 真实 `SendInput(MOUSEEVENTF_WHEEL, mouseData = delta)`（默认通道；游戏侧
+#                  GLFW 收到的就是真实滚轮）。`Mt.Win32.psm1` 的 `Mt.RealInput` 只暴露了
+#                  左右键，没有「带标志的鼠标」入口，而该模块不在本任务 inScope ⇒ 这里在
+#                  mt_inject 内部用**本脚本自己的**最小 P/Invoke（独立类型名，不与 Mt.RealInput 冲突）。
+if (-not ('Mt.Inject.WheelInput' -as [type])) {
+    Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+
+namespace Mt.Inject
+{
+    public static class WheelInput
+    {
+        [StructLayout(LayoutKind.Sequential)]
+        private struct MOUSEINPUT
+        {
+            public int dx;
+            public int dy;
+            public uint mouseData;
+            public uint dwFlags;
+            public uint time;
+            public IntPtr dwExtraInfo;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct INPUT
+        {
+            public uint type;
+            public MOUSEINPUT mi;
+        }
+
+        private const uint INPUT_MOUSE = 0;
+        private const uint MOUSEEVENTF_WHEEL = 0x0800;
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
+
+        /// <summary>真实滚轮：delta = 格数 × WHEEL_DELTA（正 = 向上/远离用户，负 = 向下）。</summary>
+        public static bool Wheel(int delta)
+        {
+            INPUT input = new INPUT();
+            input.type = INPUT_MOUSE;
+            input.mi.dwFlags = MOUSEEVENTF_WHEEL;
+            input.mi.mouseData = (uint)delta;
+            INPUT[] batch = new INPUT[] { input };
+            return SendInput(1, batch, Marshal.SizeOf(typeof(INPUT))) == 1;
+        }
+    }
+}
+'@
+}
+
+function Send-MtInjectWheel {
+    <#
+    .SYNOPSIS
+        在目标窗口触发一次滚轮（`-Notches` 格，正 = 向上滚，默认 -1 = 向下滚一格）。
+
+    .NOTES
+        与 `Send-MtInjectMouseCenter` 同一纪律：**同一通道成对自洽**（不存在按下/抬起，
+        但 sendinput 走真实 SendInput、postmessage 走 PostMessage，二者不混用）；
+        `-DryRun` 只打印将投递的元组，不真的注入（与既有 key/mouse 干跑口径一致）。
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][long]$Hwnd,
+        [int]$Notches = -1
+    )
+
+    $delta = $Notches * $script:WHEEL_DELTA
     $rect = Get-MtWindowRect -Hwnd $Hwnd
     $x = [int](($rect.Right - $rect.Left) / 2)
     $y = [int](($rect.Bottom - $rect.Top) / 2)
-    $hold = if ($HoldMs -gt 0) { $HoldMs } else { 100 }
+    $lp = ($y -shl 16) -bor ($x -band 0xFFFF)
 
     if ($script:Transport -eq 'sendinput') {
-        # 真实鼠标：先把光标移到窗口中心（屏幕坐标），再发真实左右键
-        if (-not $script:DryRun) {
-            [void](Set-MtRealCursorPosition -X ($rect.Left + $x) -Y ($rect.Top + $y))
-            Start-MtInjectPause -Milliseconds 80
-            [void](Send-MtRealMouse -Right $Right -Up $false)
-            Start-MtInjectPause -Milliseconds $hold
-            [void](Send-MtRealMouse -Right $Right -Up $true)
+        if ($script:DryRun) {
+            # 干跑：与 postmessage 同形地打印一条元组（msg 用 WM_MOUSEWHEEL 便于逐行比对），
+            # 另加一行标明真实通道调用，确保「干跑不撒谎」。
+            Write-MtInjectDryTuple -Hwnd $Hwnd -Msg $script:WM_MOUSEWHEEL `
+                -WParam (([long]($delta -band 0xFFFF)) -shl 16) -LParam $lp
+            Write-MtInjectDryTuple -Hwnd $Hwnd -Msg 0xFFFF -WParam $delta -LParam 0
+            return
         }
-    } else {
-        $lp = ($y -shl 16) -bor ($x -band 0xFFFF)
-        $down = if ($Right) { $script:WM_RBUTTONDOWN } else { $script:WM_LBUTTONDOWN }
-        $up = if ($Right) { $script:WM_RBUTTONUP } else { $script:WM_LBUTTONUP }
-        Send-MtInjectMessage -Hwnd $Hwnd -Msg $down -WParam 1 -LParam $lp
-        Start-MtInjectPause -Milliseconds $hold
-        Send-MtInjectMessage -Hwnd $Hwnd -Msg $up -WParam 0 -LParam $lp
+        [void](Set-MtRealCursorPosition -X ($rect.Left + $x) -Y ($rect.Top + $y))
+        Start-MtInjectPause -Milliseconds 60
+        [void][Mt.Inject.WheelInput]::Wheel($delta)
+        return
     }
 
-    if ($Shift) {
-        Start-MtInjectPause -Milliseconds 100
-        Send-MtInjectMessage -Hwnd $Hwnd -Msg $script:WM_KEYUP -WParam $script:VK_SHIFT `
-            -LParam ((1 -shl 30) -bor (1 -shl 14) -bor (0x2A -shl 16))
+    # ⚠️ 负数要按 16 位截断后再左移 16：(-120 -band 0xFFFF) = 0xFF88 ⇒ 0xFF880000
+    # （GLFW 按 (SHORT)HIWORD 取回 -120；直接算 -120 << 16 会得到负数的高位垃圾）。
+    $w = [long](([long]($delta -band 0xFFFF)) -shl 16)
+    if ($script:DryRun) {
+        Write-MtInjectDryTuple -Hwnd $Hwnd -Msg $script:WM_MOUSEWHEEL -WParam $w -LParam $lp
+        return
     }
+    Send-MtInjectMessage -Hwnd $Hwnd -Msg $script:WM_MOUSEWHEEL -WParam $w -LParam $lp
 }
 
 # ══ 注入前的输入语言准备 ═════════════════════════════════════════════════
@@ -383,7 +542,7 @@ function Assert-MtInjectForeground {
 
 function Invoke-MtInjectKeyCommand {
     [CmdletBinding()]
-    param([string]$Key, [int]$HoldMs, [string]$Version, [string]$Layout, [long]$Hwnd)
+    param([string]$Key, [int]$HoldMs, [string]$Version, [string]$Layout, [long]$Hwnd, [bool]$NoEsc = $false)
 
     $hwnd = Resolve-MtInjectWindow -Hwnd $Hwnd -Version $Version
     if (-not $hwnd) { return 2 }
@@ -402,6 +561,14 @@ function Invoke-MtInjectKeyCommand {
             return 2
         }
         Write-MtInjectLine 'MT_INJECT_FOCUS: OK'
+    }
+
+    # 2026-09-18（t18）会话期 Esc 保护：`key` 子命令**从不**做 Esc→Tab→Enter 归一化
+    # （只有 `cmd` 子命令会，见 Invoke-MtInjectCmdCommand 的归一化段），它按下的键就是调用方
+    # 要的那一个（含 `--key cancel` = 刻意按一次真实 Esc）。故这里的 `-NoEsc` 不是开关，
+    # 而是把「本步不得引入归一化 Esc」这一声明**回显出来**，让用例输出可取证（否则只能读源码）。
+    if ($NoEsc) {
+        Write-MtInjectLine 'ESC_SKIP: key 子命令无 Esc 归一化 ⇒ -NoEsc 声明成立（按下的键就是本步输入）'
     }
 
     $k = $Key.ToLowerInvariant()
@@ -433,6 +600,84 @@ function Invoke-MtInjectKeyCommand {
 
     Send-MtInjectKey -Hwnd $hwnd -Vk $script:Vk[$k] -Scan $script:Scan[$k]
     Write-MtInjectLine ("MT_INJECT_KEY: $k")
+    return 0
+}
+
+function Invoke-MtInjectMouseCommand {
+    <#
+    .SYNOPSIS
+        `mouse` 子命令：在窗口中心投递一次鼠标输入（左键 / 右键[+潜行] / 滚轮）。
+
+    .NOTES
+        为什么需要：目标选择器的按键语义里「确认」= **左键**、「自用/取消」= **右键**
+        （或右键 + 潜行），而此前的 `key` 子命令只有 `attack` / `rclick` / `shift-rclick`
+        三个语义别名 —— 没有可读的「左键」写法，也没有独立的鼠标入口。本函数把
+        `Send-MtInjectMouseCenter` 暴露成子命令，**不新造第二条注入路径**（同一函数、
+        同一坐标口径、同一 sendinput/postmessage 分支）。
+
+        `--button wheel`（2026-09-18 t23 新增）走 `Send-MtInjectWheel`：`-Notches` 格、
+        正 = 向上滚、缺省 -1 = 向下滚一格。用途 = 验证「选择期间滚轮拦截」——配合探针
+        `AP_<tag>_DIAG:selectedSlot=` 读数做「会话中不变 / 取消后变化」两步断言（t12 F3）。
+        wheel 不接受 `--shift`（无意义的组合，宁可报错也不要静默忽略）。
+
+        `--button` 在**定位窗口之前**校验：客户端未运行 / 未启动时，非法值仍给出可读的
+        `MT_ERROR: 非法 --button 值 <x>（可选：left right wheel）` + rc=2，而不是被
+        「客户端未在运行」掩盖掉（任务自检项）。
+    #>
+    [CmdletBinding()]
+    param([string]$Button, [bool]$Shift, [int]$HoldMs, [string]$Version, [string]$Layout, [long]$Hwnd, [bool]$NoEsc = $false, [int]$Notches = -1)
+
+    $b = if ($null -eq $Button) { '' } else { $Button.Trim().ToLowerInvariant() }
+    if ($b -ne 'left' -and $b -ne 'right' -and $b -ne 'wheel') {
+        Write-MtErrorLine ("非法 --button 值 {0}（可选：left right wheel）" -f $Button)
+        return 2
+    }
+    if ($b -eq 'wheel') {
+        if ($Shift) {
+            Write-MtErrorLine 'wheel 不接受 --shift（滚轮无修饰键语义；要潜行请用 left/right）'
+            return 2
+        }
+        if ($Notches -eq 0 -or $Notches -lt -32 -or $Notches -gt 32) {
+            Write-MtErrorLine ("非法 --notches 值 {0}（非 0 且 |n| ≤ 32）" -f $Notches)
+            return 2
+        }
+    }
+
+    $hwnd = Resolve-MtInjectWindow -Hwnd $Hwnd -Version $Version
+    if (-not $hwnd) { return 2 }
+
+    if (-not $script:DryRun) {
+        $r = Get-MtInjectLayoutReady -Hwnd $hwnd -Layout $Layout
+        $tag = if ($r.Ok) { 'OK' } else { 'FAIL' }
+        Write-MtInjectLine ('MT_INJECT_LAYOUT: {0} — {1}' -f $tag, $r.Message)
+        if (-not $r.Ok) {
+            Write-MtErrLine ('MT_INJECT: ERROR — 输入语言未就绪，拒绝注入（{0}）' -f $r.Message)
+            return 2
+        }
+        if (-not (Assert-MtInjectForeground -Hwnd $hwnd)) {
+            Write-MtInjectLine 'MT_INJECT_FOCUS: FAIL — 目标窗口无法置前台，鼠标会被游戏忽略'
+            Write-MtErrLine 'MT_INJECT: ERROR — 目标窗口未取得前台，拒绝注入（失焦时 GLFW 会丢弃按键）'
+            return 2
+        }
+        Write-MtInjectLine 'MT_INJECT_FOCUS: OK'
+    }
+
+    # 2026-09-18（t18）：鼠标路径只有 shift/光标/左右键（Send-MtInjectMouseCenter），**没有**
+    # Esc 归一化 ⇒ `-NoEsc` 对它是「声明成立」的回显（理由同 key 子命令处）。
+    if ($NoEsc) {
+        Write-MtInjectLine 'ESC_SKIP: mouse 子命令无 Esc 归一化 ⇒ -NoEsc 声明成立（只发鼠标键）'
+    }
+
+    if ($b -eq 'wheel') {
+        Send-MtInjectWheel -Hwnd $hwnd -Notches $Notches
+        Write-MtInjectLine ('MT_INJECT_MOUSE: wheel notches={0}{1} (窗口中心)' -f $Notches, $(if ($script:Transport -eq 'sendinput') { ' transport=sendinput' } else { ' transport=postmessage' }))
+        return 0
+    }
+
+    Send-MtInjectMouseCenter -Hwnd $hwnd -Right ($b -eq 'right') -Shift $Shift -HoldMs $HoldMs
+    $shiftTag = if ($Shift) { ' +shift' } else { '' }
+    $held = if ($HoldMs -gt 0) { " 按住 ${HoldMs}ms" } else { '' }
+    Write-MtInjectLine ('MT_INJECT_MOUSE: {0}{1} (窗口中心){2}' -f $b, $shiftTag, $held)
     return 0
 }
 
@@ -569,7 +814,10 @@ function ConvertTo-MtArgLong {
 
 $Mode = ''
 $Key = ''
+$Button = ''
+$Shift = $false
 $HoldMs = 0
+$Notches = -1
 $Command = ''
 $NoEsc = $false
 $Version = ''
@@ -597,12 +845,22 @@ while ($i -lt $args.Count) {
     if ($optName -eq 'key') {
         if ($i + 1 -ge $args.Count) { Write-MtErrorLine '缺少 --key 的值'; exit $MT_EXIT_ERROR }
         $Key = [string]$args[$i + 1]; $i += 2
+    } elseif ($optName -eq 'button') {
+        if ($i + 1 -ge $args.Count) { Write-MtErrorLine '缺少 --button 的值'; exit $MT_EXIT_ERROR }
+        $Button = [string]$args[$i + 1]; $i += 2
+    } elseif ($optName -eq 'shift') {
+        # 标志位（与 --no-esc / --esc-normalize 同形）：只对 mouse 子命令有意义
+        $Shift = $true; $i++
     } elseif ($optName -eq 'command') {
         if ($i + 1 -ge $args.Count) { Write-MtErrorLine '缺少 --command 的值'; exit $MT_EXIT_ERROR }
         $Command = [string]$args[$i + 1]; $i += 2
     } elseif ($optName -eq 'holdms') {
         if ($i + 1 -ge $args.Count) { Write-MtErrorLine '缺少 --hold-ms 的值'; exit $MT_EXIT_ERROR }
         $HoldMs = [int](ConvertTo-MtArgLong -Raw ([string]$args[$i + 1]) -Name '--hold-ms'); $i += 2
+    } elseif ($optName -eq 'notches') {
+        # 滚轮格数（2026-09-18 t23）：正 = 向上滚、负 = 向下滚；只对 mouse --button wheel 有意义
+        if ($i + 1 -ge $args.Count) { Write-MtErrorLine '缺少 --notches 的值'; exit $MT_EXIT_ERROR }
+        $Notches = [int](ConvertTo-MtArgLong -Raw ([string]$args[$i + 1]) -Name '--notches'); $i += 2
     } elseif ($optName -eq 'version') {
         if ($i + 1 -ge $args.Count) { Write-MtErrorLine '缺少 --version 的值'; exit $MT_EXIT_ERROR }
         $Version = [string]$args[$i + 1]; $i += 2
@@ -654,7 +912,8 @@ switch ($modeName) {
             Write-MtErrorLine '缺少必填参数 --key'
             exit $MT_EXIT_ERROR
         }
-        $rc = Invoke-MtInjectKeyCommand -Key $Key -HoldMs $HoldMs -Version $Version -Layout $Layout -Hwnd $Hwnd
+        $rc = Invoke-MtInjectKeyCommand -Key $Key -HoldMs $HoldMs -Version $Version -Layout $Layout -Hwnd $Hwnd `
+            -NoEsc ([bool]$NoEsc)
     }
     'cmd' {
         if (-not $Command) {
@@ -663,11 +922,21 @@ switch ($modeName) {
         }
         $rc = Invoke-MtInjectCmdCommand -Command $Command -NoEsc ([bool]$NoEsc) -Version $Version -Layout $Layout -Hwnd $Hwnd
     }
+    'mouse' {
+        if (-not $Button) {
+            Write-MtErrorLine '缺少必填参数 --button（可选：left right wheel）'
+            exit $MT_EXIT_ERROR
+        }
+        # --button 的取值校验放在 Invoke-MtInjectMouseCommand 首行（早于窗口定位），
+        # 这样客户端未运行时也能得到「非法 --button 值」而不是「客户端未在运行」。
+        $rc = Invoke-MtInjectMouseCommand -Button $Button -Shift ([bool]$Shift) -HoldMs $HoldMs `
+            -Version $Version -Layout $Layout -Hwnd $Hwnd -NoEsc ([bool]$NoEsc) -Notches $Notches
+    }
     default {
         if (-not $modeName) {
-            Write-MtErrorLine '缺少子命令（可选：key cmd）'
+            Write-MtErrorLine '缺少子命令（可选：key cmd mouse）'
         } else {
-            Write-MtErrorLine ("未知子命令 {0}（可选：key cmd）" -f $modeName)
+            Write-MtErrorLine ("未知子命令 {0}（可选：key cmd mouse）" -f $modeName)
         }
         exit $MT_EXIT_ERROR
     }

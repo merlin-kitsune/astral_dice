@@ -118,13 +118,14 @@ function Get-MtPaths {
         latest_log      = Join-Path $logsDir 'latest.log'
         debug_log       = Join-Path $logsDir 'debug.log'
         kubejs_log      = Join-Path (Join-Path $logsDir 'kubejs') 'server.log'
+        # KubeJS **客户端**脚本日志：由 run/<版本>/kubejs/client_scripts/*.js 的
+        # `console.info(...)` 落盘。客户端侧读数（例如 ActionBarManager 的私有 message、
+        # TargetSelectionClient.isActive()）**只能**从这里取证 —— 客户端状态没有服务端通道。
+        kubejs_client_log = Join-Path (Join-Path $logsDir 'kubejs') 'client.log'
         # 服务端权威通道：由 run/<版本>/kubejs/server_scripts/astral_bugfix_probe.js 追加写
         # （工作目录 = run_dir）。独立于客户端渲染/聊天与 SLF4J 配置，因此
         # 「客户端卡死 / logger 被过滤」都不影响断言取证（source=probe）。
         probe_log       = Join-Path $runDir 'astral_probe.log'
-        # 纯离线用例的读数通道：由 scripts/test/mt_loadergate.ps1 写（不经过游戏客户端）。
-        # 现存唯一使用者是 LOADER-GATE-FORGE（1.20.1 FML 依赖排序门槛）。
-        loadergate_log  = Join-Path $logsDir 'loadergate.log'
         crash_dir       = Join-Path $runDir 'crash-reports'
         shot_dir        = $shopsDir
         client_world    = Join-Path (Join-Path $runDir 'saves') $script:WORLD_NAME
@@ -456,6 +457,34 @@ function Get-MtPauseOnLostFocus {
     return $null
 }
 
+function Set-MtFullscreenDisabled {
+    <#
+    .SYNOPSIS
+        写 `run/<版本>/options.txt` 的 `fullscreen:false`（幂等）—— 测试环境**必须窗口模式**。
+
+    .NOTES
+        2026-09-21 实测踩坑：`run/1.21.1/options.txt` 被改成 `fullscreen:true` 后，
+        mt_inject 的键鼠注入**完全送不到**（全屏切换会换窗口句柄/焦点），
+        launch 阶段硬闸门 `MT_preflight-op` 因此稳定 FAIL ——
+        症状极具迷惑性：脚本自发的 tick 心跳（`AP_NOAI`）照常出现在 latest.log，
+        唯独「注入命令」没有任何 `AP_*` 回应，容易被误判成探针没加载。
+        · 与 `Set-MtPauseOnLostFocus` 同型：只动这一个键，过滤旧行后追加；
+        · ⚠️ 游戏退出时会重写 options.txt ⇒ 必须在**冷启动之前**写（mt_env/mt_launch 已强制）。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][psobject]$Paths)
+
+    $opt = Join-Path $Paths.run_dir 'options.txt'
+    $lines = @()
+    if (Test-Path -LiteralPath $opt -PathType Leaf) {
+        $lines = @(Get-Content -LiteralPath $opt -Encoding UTF8 -ErrorAction SilentlyContinue |
+                Where-Object { -not ([string]$_).StartsWith('fullscreen:') })
+    }
+    $lines += 'fullscreen:false'
+    [System.IO.File]::WriteAllText($opt, (($lines -join "`n") + "`n"), [System.Text.Encoding]::ASCII)
+    return $false
+}
+
 function Set-MtPauseOnLostFocus {
     <#
     .SYNOPSIS
@@ -486,6 +515,103 @@ function Set-MtPauseOnLostFocus {
     return $Enabled
 }
 
+# ══ 测试环境按键绑定（2026-09-19 新增）════════════════════════════════════════
+#
+# 为什么要有它：工具链用**真实按键注入**表达语义（`mt_inject.ps1 mouse --button right --shift`
+# ⇒ 真实 SendInput(LEFT SHIFT)），而游戏侧读的是 `options.keyShift`（潜行）当前的**绑定** ——
+# 两者只有在绑定未被改动时才等价。
+# 实测踩坑（2026-09-19）：`run/1.21.1/options.txt` 里 sneak/sprint 被**换绑**
+# （`key_key.sneak:key.keyboard.left.control`、`key_key.sprint:key.keyboard.left.shift`）⇒
+# 「右键 + 潜行 = 取消」用例注入的 LEFT SHIFT 打到了**冲刺**上，客户端始终走「右键 = 自用提示」
+# 分支，断言 `key=right_sneak action=cancel` 连续失败；而 1.20.1（绑定未被改动）同一用例全绿。
+# ⇒ 与 `pauseOnLostFocus` 同性质：属于**测试环境不变量**，由 env 阶段幂等修回并回显。
+# 只钉这两个键（工具链唯一以「修饰键」语义承载判据的一对）；其余注入键按用例语义注入，不强制。
+$script:MtTestKeyBindings = [ordered]@{
+    'key_key.sneak'  = 'key.keyboard.left.shift'
+    'key_key.sprint' = 'key.keyboard.left.control'
+}
+
+function Get-MtTestKeyBindings {
+    <#
+    .SYNOPSIS
+        测试环境期望的按键绑定表（有序：键名 → 期望值），供 env 阶段与调试入口共用。
+    #>
+    [CmdletBinding()]
+    param()
+
+    return $script:MtTestKeyBindings
+}
+
+function Get-MtKeyBinding {
+    <#
+    .SYNOPSIS
+        读 `run/<版本>/options.txt` 里某个按键绑定的当前值（文件不存在或无该键 ⇒ `$null`）。
+
+    .NOTES
+        `options.txt` 是**游戏自己重写**的文件（退出时落盘），故读取必须按行匹配、不做整体解析。
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][psobject]$Paths,
+        [Parameter(Mandatory)][string]$Key
+    )
+
+    $opt = Join-Path $Paths.run_dir 'options.txt'
+    if (-not (Test-Path -LiteralPath $opt -PathType Leaf)) { return $null }
+    $pattern = '^\s*' + [regex]::Escape($Key) + '\s*:\s*(.*?)\s*$'
+    foreach ($ln in @(Get-Content -LiteralPath $opt -Encoding UTF8 -ErrorAction SilentlyContinue)) {
+        if ([string]$ln -match $pattern) { return [string]$Matches[1] }
+    }
+    return $null
+}
+
+function Repair-MtTestKeyBindings {
+    <#
+    .SYNOPSIS
+        把 `Get-MtTestKeyBindings` 里的绑定**幂等**改回期望值；返回被修正的条目（`Key`/`From`/`To`）。
+
+    .NOTES
+        · 只动这些键，保留文件里其它设置与行序；条目缺失时补写（游戏下次启动读取）；
+        · 编码/换行与 `Set-MtPauseOnLostFocus` 同口径（ASCII、`\n`、无 BOM）；
+        · 返回值列表为空 ⇒ 绑定本来就是期望值（调用方据此回显 `MT_KEYBINDS: OK`）；
+        · ⚠️ 与 pause-lock 同理：游戏**退出时会重写 options.txt**，写入必须在**冷启动之前**。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][psobject]$Paths)
+
+    $opt = Join-Path $Paths.run_dir 'options.txt'
+    $lines = @()
+    if (Test-Path -LiteralPath $opt -PathType Leaf) {
+        $lines = @(Get-Content -LiteralPath $opt -Encoding UTF8 -ErrorAction SilentlyContinue)
+    }
+
+    $fixed = @()
+    foreach ($k in @($script:MtTestKeyBindings.Keys)) {
+        $want = [string]$script:MtTestKeyBindings[$k]
+        $pattern = '^\s*' + [regex]::Escape($k) + '\s*:'
+        $kept = @()
+        $have = $null
+        $seen = $false
+        foreach ($ln in $lines) {
+            if ([string]$ln -match $pattern) {
+                if (-not $seen) { $have = ([string]$ln -replace '^[^:]*:\s*', '').Trim(); $seen = $true }
+                continue
+            }
+            $kept += [string]$ln
+        }
+        if ($have -ne $want) {
+            $fixed += [pscustomobject]@{ Key = $k; From = $have; To = $want }
+        }
+        $kept += ('{0}:{1}' -f $k, $want)
+        $lines = $kept
+    }
+
+    if ($fixed.Count -gt 0) {
+        [System.IO.File]::WriteAllText($opt, (($lines -join "`n") + "`n"), [System.Text.Encoding]::ASCII)
+    }
+    return $fixed
+}
+
 Export-ModuleMember -Function @(
     'Get-MtVersions', 'Get-MtTestDir', 'Get-MtRoot', 'Get-MtConfFile', 'Get-MtRunsFile',
     'Get-MtConf', 'Get-MtWorldName', 'Assert-MtVersion', 'Get-MtPaths',
@@ -493,5 +619,7 @@ Export-ModuleMember -Function @(
     'Get-MtCurrentShots', 'New-MtRunId', 'Get-MtActiveRunId', 'Get-MtRunStartTs',
     'Get-MtReportsDir', 'ConvertTo-MtJson',
     'Get-MtProgressFile', 'Set-MtProgress', 'Get-MtProgress',
-    'Get-MtPauseOnLostFocus', 'Set-MtPauseOnLostFocus'
+    'Get-MtPauseOnLostFocus', 'Set-MtPauseOnLostFocus',
+    'Set-MtFullscreenDisabled',
+    'Get-MtTestKeyBindings', 'Get-MtKeyBinding', 'Repair-MtTestKeyBindings'
 )

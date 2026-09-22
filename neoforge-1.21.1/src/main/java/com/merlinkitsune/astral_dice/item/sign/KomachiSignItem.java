@@ -1,7 +1,9 @@
 package com.merlinkitsune.astral_dice.item.sign;
 
-import com.merlinkitsune.astral_dice.component.GameplayConstants;
+import com.merlinkitsune.starenginelib.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
+import com.merlinkitsune.astral_dice.effect.ModEffects;
+import com.merlinkitsune.starenginelib.event.ModEffectRemoval;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -20,7 +22,7 @@ import net.neoforged.bus.api.SubscribeEvent;
  * 被动:每使用 3 张效果牌时(独立计数,与魔法秘典互不关联):
  * - 复制最后一张使用的效果牌并返回到物品栏;
  * - 主动技能冷却时间立即减少 30%;
- * - 伤害类效果牌伤害加成 +1(计数器"效果牌伤害增益",无上限,卸下立牌重置)。
+ * - 伤害类效果牌伤害加成 +1(计数器"效果牌伤害增益"累计无上限;作为加成生效时静默上限 120,卸下立牌重置)。
  * 被动计数只保存在附件 {@code komachi_use_count} 中,<b>不再用任何效果承载/显示</b>
  * (原「忍者立牌出牌」计数效果 komachi_count 已删除)。
  *
@@ -103,7 +105,7 @@ public class KomachiSignItem extends BaseSignItem {
 
     // 主动技能 ActionBar:出牌数+1 与剩余出牌数(注册到主动技能响应事件)
     @SubscribeEvent
-    public static void onSignActiveTriggered(com.merlinkitsune.astral_dice.event.SignActiveTriggeredEvent event) {
+    public static void onSignActiveTriggered(com.merlinkitsune.starenginelib.event.SignActiveTriggeredEvent event) {
         if (event.getSignStack().is(ModItems.KOMACHI_SIGN.get())) {
             Player player = event.getPlayer();
             int remaining = Math.max(0,
@@ -138,7 +140,7 @@ public class KomachiSignItem extends BaseSignItem {
             }
             // 2. 主动技能冷却时间立即减少 30%(剩余部分)
             reduceSignCooldown(player);
-            // 3. 伤害类效果牌伤害加成 +1(无上限,卸下立牌重置)
+            // 3. 伤害类效果牌伤害加成 +1(累计无上限;作为加成生效时静默上限 120,卸下立牌重置)
             ModAttachments.setKomachiDamageBonus(player,
                     ModAttachments.getKomachiDamageBonus(player) + 1);
             ModAttachments.setKomachiUseCount(player, 0);

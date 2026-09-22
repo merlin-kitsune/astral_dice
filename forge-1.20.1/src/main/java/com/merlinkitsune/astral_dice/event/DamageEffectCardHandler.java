@@ -73,7 +73,9 @@ public class DamageEffectCardHandler {
             } finally {
                 APPLYING_TRUE_BONUS.set(false);
             }
-            sendBonusDamageNumber(target, (int) bonus);
+            // HUD 数显 = 本次法伤的**完整伤害**(原始基础伤害 + 法伤加成,取整;2026-09-19 用户要求)。
+            // 基准取 `event.getAmount()`(护甲之后;见类注释的平台差异),与电击手套 AOE 同口径。
+            sendBonusDamageNumber(target, (int) Math.round(event.getAmount() + bonus));
         }
 
         // 命中副作用(施加标记/定向爆破 AOE 等)
@@ -82,8 +84,8 @@ public class DamageEffectCardHandler {
         }
     }
 
-    // 法伤加成跳数字(草绿色 0x7CFC00)
-    private static void sendBonusDamageNumber(net.minecraft.world.entity.LivingEntity target, int bonus) {
-        com.merlinkitsune.astral_dice.network.ModNetwork.DamageNumberMessage.send(target, bonus, 0x7CFC00);
+    // 法伤跳数字(草绿色 0x7CFC00;传入的已是「原始基础伤害 + 法伤加成」的完整值)
+    private static void sendBonusDamageNumber(net.minecraft.world.entity.LivingEntity target, int damage) {
+        com.merlinkitsune.astral_dice.network.ModNetwork.DamageNumberMessage.send(target, damage, 0x7CFC00);
     }
 }

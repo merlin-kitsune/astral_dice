@@ -7,8 +7,8 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * 死亡保留的两个立牌累计值(2026-09-15 用户裁决):调查员 {@code rin_pages} 与忍者
- * {@code komachi_damage_bonus}。
+ * 死亡保留的立牌累计值(2026-09-15 用户裁决 + 2026-09-27 蛟龙立牌):调查员 {@code rin_pages}、
+ * 忍者 {@code komachi_damage_bonus} 与蛟龙 {@code mamushi_awakening}(第 3 个槽位)。
  *
  * <p><b>为什么需要暂存:</b>死亡掉落在默认 gamerule({@code keepInventory=false})下会把立牌从饰品槽丢出,
  * Curios 的 tick 轮询随即判定"已离身"并回调 {@code ICurio#onUnequip} →
@@ -29,6 +29,16 @@ public final class DeathPreservedBonuses {
 
     private static final int RIN_PAGES = 0;
     private static final int KOMACHI_DAMAGE_BONUS = 1;
+    /**
+     * 蛟龙立牌(mamushi)觉醒层数(第 3 个槽位,2026-09-27)。
+     *
+     * <p>为什么必须在这里也存一份:该附件本身已是 {@code .copyOnDeath()},但**死亡时立牌先掉出饰品槽**,
+     * Curios 的 tick 轮询会先判定"已离身"并回调 {@code onUnequip → clearSignData},
+     * 而 {@code MamushiSignItem#clearSignData} 按 D4「只有卸下立牌才归零」把觉醒清零 —— 该回调
+     * **早于**玩家克隆的附件复制 ⇒ 单靠 {@code .copyOnDeath()} 会被抢先抹掉。
+     * 与 {@code rin_pages} 的既有做法逐字相同(两层齐备:附件标记 + 本表兜底)。
+     */
+    private static final int MAMUSHI_AWAKENING = 2;
 
     private static final Map<UUID, int[]> PRESERVED = new ConcurrentHashMap<>();
 
@@ -40,7 +50,8 @@ public final class DeathPreservedBonuses {
         if (player == null || player.level().isClientSide()) return;
         PRESERVED.put(player.getUUID(), new int[] {
                 ModAttachments.getRinPages(player),
-                ModAttachments.getKomachiDamageBonus(player)
+                ModAttachments.getKomachiDamageBonus(player),
+                ModAttachments.getMamushiAwakening(player)
         });
     }
 
@@ -55,6 +66,10 @@ public final class DeathPreservedBonuses {
         }
         if (preserved[KOMACHI_DAMAGE_BONUS] > ModAttachments.getKomachiDamageBonus(player)) {
             ModAttachments.setKomachiDamageBonus(player, preserved[KOMACHI_DAMAGE_BONUS]);
+        }
+        // 蛟龙立牌:觉醒层数同样取较大值(死亡不掉层;重生后由立牌 tick 依据层数自动补回真龙形态效果)
+        if (preserved[MAMUSHI_AWAKENING] > ModAttachments.getMamushiAwakening(player)) {
+            ModAttachments.setMamushiAwakening(player, preserved[MAMUSHI_AWAKENING]);
         }
     }
 }

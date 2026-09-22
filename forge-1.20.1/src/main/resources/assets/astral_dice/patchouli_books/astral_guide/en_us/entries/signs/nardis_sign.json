@@ -1,0 +1,25 @@
+{
+  "name": "item.astral_dice.nardis_sign",
+  "category": "astral_dice:signs",
+  "icon": "astral_dice:nardis_sign",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:nardis_sign",
+      "text": "astral_dice.guide.entry.nardis_sign.1"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.nardis_sign.2"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.nardis_sign.3"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:nardis_sign"
+    }
+  ],
+  "sortnum": 19
+}

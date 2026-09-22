@@ -1,9 +1,9 @@
 package com.merlinkitsune.astral_dice.item.sign;
-import com.merlinkitsune.astral_dice.combat.HostileTargets;
-import com.merlinkitsune.astral_dice.item.CuriosCompat;
+import com.merlinkitsune.starenginelib.item.CuriosCompat;
+import com.merlinkitsune.starenginelib.combat.HostileTargets;
 
 import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
-import com.merlinkitsune.astral_dice.event.ModEffectRemoval;
+import com.merlinkitsune.starenginelib.event.ModEffectRemoval;
 
 import com.merlinkitsune.astral_dice.combat.CardRegistry;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
@@ -70,9 +70,14 @@ public class NancyLuSignItem extends BaseSignItem {
         if (player.level().isClientSide()) return;
         long now = player.level().getGameTime();
 
-        // 主动完全隐身到期(仅立牌自身授予的隐身到期时才移除,避免误清其他来源的隐身)
+        // 主动完全隐身到期(仅立牌自身授予的隐身到期时才移除,避免误清其他来源的隐身)。
+        // ⚠️ 到期判据必须取**已补偿**的锁定硬上界:触发当刻 sign_active_lock_end == nancy_lu_hidden_until
+        // (见 startActiveLockOnUse),但只有硬上界会被 BaseSignItem#tickSignActiveLock 的离线补偿后移
+        // ⇒ 若仍按本键判定,跨离线重登的第一拍就会清掉仍有效的隐身实例、把刚补偿好的三态锁定一并打死
+        // (该锁定的门控效果正是这个隐身实例)。取 max 保留原语义:锁定已提前结束(硬上界为 0)时回退本键。
         long hiddenUntil = ModAttachments.getNancyLuHiddenUntil(player);
-        if (hiddenUntil > 0 && now >= hiddenUntil) {
+        long hiddenExpiry = Math.max(hiddenUntil, ModAttachments.getSignActiveLockEnd(player));
+        if (hiddenUntil > 0 && now >= hiddenExpiry) {
             ModAttachments.setNancyLuHiddenUntil(player, 0);
             player.removeEffect(net.minecraft.world.effect.MobEffects.INVISIBILITY);
         }
@@ -147,7 +152,10 @@ public class NancyLuSignItem extends BaseSignItem {
     public static void onAttackWhileHidden(Player player) {
         if (player == null || player.level().isClientSide()) return;
         long now = player.level().getGameTime();
-        if (now >= ModAttachments.getNancyLuHiddenUntil(player)) return;
+        // 判据改用**已补偿**的锁定态(硬上界未到 且 隐身效果仍在 = 仍在隐身窗口内):触发当刻两个
+        // 截止刻相等,但只有 sign_active_lock_end 会被离线补偿后移 ⇒ 旧写法(now < nancy_lu_hidden_until)
+        // 在跨离线重登后立刻判假,隐身仍在却不给"攻击破隐"加成。
+        if (!isSignActiveLocked(player)) return;
         if (!player.hasEffect(net.minecraft.world.effect.MobEffects.INVISIBILITY)) return;
 
         // 解除完全隐身
@@ -171,7 +179,7 @@ public class NancyLuSignItem extends BaseSignItem {
 
     // 主动技能 ActionBar:完全隐身提示(注册到主动技能响应事件)
     @SubscribeEvent
-    public static void onSignActiveTriggered(com.merlinkitsune.astral_dice.event.SignActiveTriggeredEvent event) {
+    public static void onSignActiveTriggered(com.merlinkitsune.starenginelib.event.SignActiveTriggeredEvent event) {
         if (event.getSignStack().is(ModItems.NANCY_LU_SIGN.get())) {
             sendSignActionBar(event.getPlayer(), "msg.astral_dice.nancy_lu_active", HIDDEN_DURATION_TICKS / 20);
             event.setHandled();
@@ -191,19 +199,24 @@ public class NancyLuSignItem extends BaseSignItem {
         if (player == null || player.level().isClientSide()) return false;
         if (!isEquipped(player)) return false;
         if (!player.hasEffect(net.minecraft.world.effect.MobEffects.INVISIBILITY)) return false;
-        return player.level().getGameTime() < ModAttachments.getNancyLuHiddenUntil(player);
+        // 隐身窗口判据改用**已补偿**的锁定态(理由见 onAttackWhileHidden):效果仍在 + 上界未到
+        // 才算"仍在隐身"——否则跨离线重登后,生物会重新索敌一个实际仍在隐身的玩家。
+        return isSignActiveLocked(player);
     }
 
     // 客户端渲染抑制判定:玩家当前是否处于本立牌主动授予的完全隐身状态。
-    // 服务端附件 nancy_lu_hidden_until 已加入 synced 键(登录/重生/切维度快照 + 写入即推送),
-    // 客户端可读到权威状态;同时要求原版隐身效果仍在(效果被提前清除/技能被解除时立即停止抑制)。
+    // 服务端附件 nancy_lu_hidden_until 已加入 synced 键(登录/重生/切维度快照 + 写入即推送;键非零 =
+    // 服务端仍认这个窗口)。**刻意不比较绝对刻**(本轮裁决的 α 方案):该截止刻跨离线后会被服务端
+    // BaseSignItem 的离线补偿后移,而本键是**未补偿**的原值,客户端又拿不到未同步的
+    // sign_active_lock_end ⇒ 比较绝对刻会在跨离线重登后立刻判假、本机自身渲染抑制提前失效。改为
+    // 「键非零 + 原版隐身实例仍在」两个**都已同步到客户端**的事实:服务端在对称到期刻(onCurioTick 的
+    // max 判据)必清零该键并推送 ⇒「键仍在」等价于「窗口仍在」;效果被提前解除(攻击破隐/外力清除)时
+    // hasEffect 立假 ⇒ 立即停止抑制,不会多盖。
     // 仅供 client/NancyLuClientEvents 抑制渲染使用,不参与任何伤害与数值结算。
     public static boolean isHiddenClient(Player player) {
         if (player == null) return false;
-        long hiddenUntil = ModAttachments.getNancyLuHiddenUntil(player);
-        if (hiddenUntil <= 0) return false;
-        if (!player.hasEffect(net.minecraft.world.effect.MobEffects.INVISIBILITY)) return false;
-        return player.level().getGameTime() < hiddenUntil;
+        return ModAttachments.getNancyLuHiddenUntil(player) > 0
+                && player.hasEffect(net.minecraft.world.effect.MobEffects.INVISIBILITY);
     }
 
     public static int getAttackBonus(Player player) {

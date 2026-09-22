@@ -132,6 +132,7 @@ $V = New-PyMapFrom ([ordered]@{
     'SHIELD'                   = '盾牌'; 'SPONGE' = '海绵'; 'LEATHER' = '皮革'; 'BLUE_ICE' = '蓝冰'; 'LEATHER_BOOTS' = '皮革靴子'
     'GLASS_PANE'               = '玻璃板'; 'LEATHER_HELMET' = '皮革头盔'; 'COOKIE' = '曲奇'; 'EGG' = '鸡蛋'; 'MILK_BUCKET' = '奶桶'
     'SUGAR'                    = '糖'; 'CARVED_PUMPKIN' = '雕刻南瓜'; 'AMETHYST_SHARD' = '紫水晶碎片'; 'COPPER_INGOT' = '铜锭'
+    'GLOWSTONE_DUST'           = '荧石粉'
     'OAK_BUTTON'               = '橡木按钮'; 'NETHER_WART' = '下界疣'; 'TARGET' = '标靶'; 'SLIME_BALL' = '粘液球'
     'FERMENTED_SPIDER_EYE'     = '发酵蛛眼'; 'ENCHANTED_GOLDEN_APPLE' = '附魔金苹果'; 'WITHER_ROSE' = '凋零玫瑰'
     'NETHER_STAR'              = '下界之星'; 'WITHER_SKELETON_SKULL' = '凋灵骷髅头'; 'DIAMOND_SWORD' = '钻石剑'
@@ -231,6 +232,8 @@ $GRID = New-PyMapFrom ([ordered]@{
     'PRIMORDIAL_CORE_CHIP'        = @(@('MC:ECHO_SHARD', 'MC:DRAGON_HEAD', 'MC:ECHO_SHARD'), @('W', 'B', 'W'), @('G', 'G', 'G'))
     # 星光类
     'FLASHLIGHT_CHIP'             = @(@('MC:REDSTONE_LAMP', 'MC:YELLOW_STAINED_GLASS', 'MC:REDSTONE_LAMP'), @('D', 'B', 'D'), @('P', 'P', 'P'))
+    'PURPLE_SHOOTING_STAR_CHIP'   = @(@('MC:AMETHYST_SHARD', 'MC:AMETHYST_SHARD', 'MC:AMETHYST_SHARD'), @('D', 'B', 'D'), @('P', 'P', 'P'))
+    'GOLDEN_SHOOTING_STAR_CHIP'   = @(@('MC:GLOWSTONE_DUST', 'MC:GLOWSTONE_DUST', 'MC:GLOWSTONE_DUST'), @('D', 'B', 'D'), @('G', 'G', 'G'))
     'EIGHT_SIDED_DICE'            = @(@('MC:GOLD_INGOT', 'MOD:DICE', 'MC:GOLD_INGOT'), @('D', 'B', 'D'), @('C', 'C', 'C'))
     'ATM'                         = @(@('MC:GOLD_INGOT', 'MC:GOLD_INGOT', 'MC:GOLD_INGOT'), @('D', 'B', 'D'), @('C', 'C', 'C'))
     'BANK_CARD_LOW'               = @(@('MC:GOLD_INGOT', 'MC:GOLD_BLOCK', 'MC:GOLD_INGOT'), @('D', 'B', 'D'), @('C', 'C', 'C'))
@@ -284,7 +287,8 @@ $UPGRADE = New-PyMapFrom ([ordered]@{
 
 $NEW_CHIPS = @('ELECTRIC_GLOVE_CHIP', 'AIRBAG_CHIP', 'RAILGUN_CHIP', 'PRIMORDIAL_CORE_CHIP',
     'BIG_BOWL_STEW_CHIP', 'BOOKMARK_CHIP', 'MEMBER_RECOMMENDATION_CHIP',
-    'PIGGY_BANK_CHIP', 'SMART_WATCH_CHIP', 'WHETSTONE_CHIP')
+    'PIGGY_BANK_CHIP', 'SMART_WATCH_CHIP', 'WHETSTONE_CHIP',
+    'PURPLE_SHOOTING_STAR_CHIP', 'GOLDEN_SHOOTING_STAR_CHIP')
 
 
 function target {

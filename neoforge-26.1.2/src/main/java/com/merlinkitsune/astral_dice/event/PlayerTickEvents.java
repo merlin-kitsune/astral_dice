@@ -3,7 +3,7 @@ package com.merlinkitsune.astral_dice.event;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.component.AppliedStone;
-import com.merlinkitsune.astral_dice.component.GameplayConstants;
+import com.merlinkitsune.starenginelib.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
 import com.merlinkitsune.astral_dice.component.WeaponEnhancement;
@@ -12,7 +12,7 @@ import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.item.sign.ParunanSignItem;
 import com.merlinkitsune.astral_dice.item.sign.BaseSignItem;
 import com.merlinkitsune.astral_dice.item.sign.BonnieSignItem;
-import com.merlinkitsune.astral_dice.item.BossEntityUtil;
+import com.merlinkitsune.starenginelib.item.BossEntityUtil;
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
 import com.merlinkitsune.astral_dice.item.dice.DiceCurioItem;
 import com.merlinkitsune.astral_dice.item.card.ExclusiveCardUtil;
@@ -103,6 +103,7 @@ import com.merlinkitsune.astral_dice.item.chip.RevengeHalberdChipItem;
 import com.merlinkitsune.astral_dice.item.chip.SatelliteChipItem;
 import com.merlinkitsune.astral_dice.item.sign.NancyLuSignItem;
 import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
+import com.merlinkitsune.starenginelib.event.ModEffectRemoval;
 
 @EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public class PlayerTickEvents {
@@ -111,10 +112,9 @@ public class PlayerTickEvents {
         Player player = event.getEntity();
         if (player.level().isClientSide()) return;
         EffectTimerGuard.tick(player);
-        // 立牌"待命"状态与计时器分离(S6-C2,2026-09-15 用户裁决):计时器归 0/过期即自动重置待命状态。
-        // 必须挂在玩家级 tick——原先写在各立牌 onCurioTick 里的超时清除只在立牌仍佩戴时执行,
-        // 立牌离身后残留的正计时器会让该玩家任何立牌的主动技能都不再进入冷却(可无限连发)。
-        BaseSignItem.tickSignReadyTimeout(player);
+        // 立牌"待命"等待器已随目标选择器并入而移除(2026-09-17:主线 → dev-next 合并裁决),原先在此的
+        // BaseSignItem.tickSignReadyTimeout(player) 不再存在;立牌主动的冷却门槛改由
+        // BaseSignItem#performSkill 第 6 步按"是否已进入目标选择会话"判定。
         // 立牌主动技能"三态化"(第二批):锁定(生效中)态的玩家级判定——
         // ① 忍者宽限 1:00 内未出任何效果牌 ⇒ 强制重置出牌状态并起冷却;
         // ② 其余立牌门控计时器跑完 ⇒ 必起冷却(无空档);与立牌是否仍在饰品槽无关。
@@ -137,6 +137,12 @@ public class PlayerTickEvents {
         RevengeHalberdChipItem.updateArmorBonus(player);
         // 原初核心:赋能层数折算为真实护甲(1 防御力 = 2 护甲值)
         com.merlinkitsune.astral_dice.item.chip.PrimordialCoreChipItem.updateArmorBonus(player);
+        // 效果牌「手持即选择」(2026-09-25 用户裁决):主手持有选择器类效果牌 ⇒ 自动开启目标选择会话
+        // (门槛与按键兜底同源;移出手持的收官在 TargetSelectionManager.tick 侧,reason=released)
+        // 26.1.2 平台差异:`ServerPlayer` 在本文件已由 `net.minecraft.server.level` 导入,直接用短名即可。
+        if (player instanceof ServerPlayer serverPlayer) {
+            com.merlinkitsune.astral_dice.item.card.BaseEffectCardItem.tickHeldSelector(serverPlayer);
+        }
         if (player.tickCount % 20 != 0) return;
         // 赋能:每 0:30 减少 1 层(剩余 1 层时直接归 0)
         com.merlinkitsune.astral_dice.item.EmpowerManager.tick(player);

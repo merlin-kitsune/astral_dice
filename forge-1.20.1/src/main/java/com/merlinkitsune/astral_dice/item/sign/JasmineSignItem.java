@@ -1,9 +1,10 @@
 package com.merlinkitsune.astral_dice.item.sign;
-import com.merlinkitsune.astral_dice.item.CuriosCompat;
+import com.merlinkitsune.starenginelib.item.CuriosCompat;
 
 import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
 
-import com.merlinkitsune.astral_dice.component.GameplayConstants;
+import com.merlinkitsune.starenginelib.component.GameplayConstants;
+import com.merlinkitsune.astral_dice.item.ChargeManager;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
@@ -104,7 +105,8 @@ public class JasmineSignItem extends BaseSignItem {
         long now = player.level().getGameTime();
         long maxCooldown = ModAttachments.getSignActiveMaxCooldown(player);
         if (maxCooldown <= 0) {
-            maxCooldown = GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS;
+            // 记录缺失时的兜底基线:与起冷却时同一口径(含「有充能时封顶 160 秒」,2026-09-25 改口径)
+            maxCooldown = ChargeManager.signCooldownTicks(player, GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS);
         }
         // 第二批「三态化」:主动仍在锁定(生效中)态时冷却尚未起算 ⇒ 把同一减半量累加进锁定减免池,
         // 由锁定结束起冷却时一次性抵扣(不在这里改任何冷却数值)

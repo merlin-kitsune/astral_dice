@@ -142,7 +142,7 @@ public class ModRecipeProvider extends RecipeProvider {
                 .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
                 .save(output);
 
-        // T2 中:看板立牌(3 白色染料 + 2 蓝色染料 + 骰子×1 + 星币×2,有序,空白立牌置中,骰子置中下)
+        // T2 中:看板娘立牌(3 白色染料 + 2 蓝色染料 + 骰子×1 + 星币×2,有序,空白立牌置中,骰子置中下)
         ShapedRecipeBuilder.shaped(items, RecipeCategory.MISC, ModItems.MIMI_SIGN.get())
                 .pattern("WWW")
                 .pattern("SES")
@@ -1240,6 +1240,19 @@ public class ModRecipeProvider extends RecipeProvider {
                 .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
                 .save(output);
 
+        // 游戏大师立牌(ren,稀有):PSP/SES/PDP(P=纸,S=星币,E=空白立牌,D=基础骰子);
+        // 空白立牌居中、骰子中下且仅 1 个、对称填充 → 基础骰子档 = 稀有(RARE)
+        ShapedRecipeBuilder.shaped(items, RecipeCategory.MISC, ModItems.REN_SIGN.get())
+                .pattern("PSP")
+                .pattern("SES")
+                .pattern("PDP")
+                .define('P', Items.PAPER)
+                .define('S', ModItems.STAR_COIN.get())
+                .define('E', ModItems.BLANK_SIGN.get())
+                .define('D', ModItems.DICE.get())
+                .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
+                .save(output);
+
         // === 合成材料(1.2.0) ===
         // 再生试剂:红石粉 + 粘液球 + 金西瓜片 + 蜂蜜瓶(无序)
         ShapelessRecipeBuilder.shapeless(items, RecipeCategory.MISC, ModItems.REGENERATION_REAGENT.get())
@@ -1281,6 +1294,137 @@ public class ModRecipeProvider extends RecipeProvider {
                 .define('G', Items.GOLD_INGOT)
                 .unlockedBy("has_magma_cream", has(Items.MAGMA_CREAM))
                 .save(output);
+
+        // ===== 第 4 代新增配方（2026-09-22 补登）=====
+        // ⚠️ 与 `ModItemModelProvider` 同源问题：26.1.2 迁移时整体漏抄了 1.21.1 provider 的
+        //    这一段（1.21.1 见 ModRecipeProvider 第 303-330 / 1325-1420 行）⇒ 8 个物品
+        //    **合成不出来**（配方书里也看不到）。两个 provider 都是逐条硬编码，新增内容
+        //    必须**两边同步**。
+
+        // 紫色飞星(史诗/星光流派):第三行 = 星盘,第二行中 = 空白筹码,两侧 = 星币尘,第一行 = 紫水晶碎片
+        ShapedRecipeBuilder.shaped(items, RecipeCategory.MISC, ModItems.PURPLE_SHOOTING_STAR_CHIP.get())
+                .pattern("XXX")
+                .pattern("DBD")
+                .pattern("PPP")
+                .define('X', Items.AMETHYST_SHARD)
+                .define('D', ModItems.STAR_COIN_DUST.get())
+                .define('B', ModItems.BLANK_CHIP.get())
+                .define('P', ModItems.STAR_PLATE.get())
+                .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
+                .save(output);
+
+        // 金色飞星(传奇/星光流派):同上,第三行 = 黄金星盘,第一行 = 荧石粉
+        ShapedRecipeBuilder.shaped(items, RecipeCategory.MISC, ModItems.GOLDEN_SHOOTING_STAR_CHIP.get())
+                .pattern("XXX")
+                .pattern("DBD")
+                .pattern("GGG")
+                .define('X', Items.GLOWSTONE_DUST)
+                .define('D', ModItems.STAR_COIN_DUST.get())
+                .define('B', ModItems.BLANK_CHIP.get())
+                .define('G', ModItems.GOLDEN_STAR_PLATE.get())
+                .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
+                .save(output);
+
+        // 风水师立牌(zhao,传奇):GCG/RER/ZPZ(G=金锭,C=指南针,E=空白立牌,R=红石块,
+        // Z=钻石骰子,P=黄金星盘);与「大当家立牌」同为"钻石骰子 + 黄金星盘"档 → 传奇(UNCOMMON)
+        ShapedRecipeBuilder.shaped(items, RecipeCategory.MISC, ModItems.ZHAO_SIGN.get())
+                .pattern("GCG")
+                .pattern("RER")
+                .pattern("ZPZ")
+                .define('G', Items.GOLD_INGOT)
+                .define('C', Items.COMPASS)
+                .define('E', ModItems.BLANK_SIGN.get())
+                .define('R', Items.REDSTONE_BLOCK)
+                .define('Z', ModItems.DIAMOND_DICE.get())
+                .define('P', ModItems.GOLDEN_STAR_PLATE.get())
+                .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
+                .save(output);
+        // 教主立牌(teru,传奇):GCG/LEL/ZPZ(G=金锭,C=指南针,E=空白立牌,L=荧石粉,
+        // Z=钻石骰子,P=黄金星盘);与「风水师立牌」同档（钻石骰子 + 黄金星盘）→ 传奇(UNCOMMON)
+        // 但**材料须与 zhao 区分**：zhao 保持 GCG/RER/ZPZ(红石块×2)，本立牌填充材料改用荧石粉×2
+        // （主动「降神」/被动「狐光」取「光」意）——两条配方形状+材料完全相同会让其中一条永远合不出来。
+        ShapedRecipeBuilder.shaped(items, RecipeCategory.MISC, ModItems.TERU_SIGN.get())
+                .pattern("GCG")
+                .pattern("LEL")
+                .pattern("ZPZ")
+                .define('G', Items.GOLD_INGOT)
+                .define('C', Items.COMPASS)
+                .define('E', ModItems.BLANK_SIGN.get())
+                .define('L', Items.GLOWSTONE_DUST)
+                .define('Z', ModItems.DIAMOND_DICE.get())
+                .define('P', ModItems.GOLDEN_STAR_PLATE.get())
+                .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
+                .save(output);
+        // 绿洲女王立牌(nardis,稀有):CYC/TET/TDT(C=仙人掌,Y=黄色染料,T=陶瓦,
+        // E=空白立牌,D=黄金骰子);「黄金骰子(无星盘)」档,与上班族立牌 padman 同档
+        // 但**材料须与 padman 区分**：padman 保持 WYW/TET/TDT(凋灵骷髅头×2)，本立牌填充材料改用
+        // 仙人掌×2（绿洲主题）——两条配方形状+材料完全相同会让其中一条永远合不出来。
+        // 立牌置中、骰子固定中下,无占位洞 → 稀有(RARE)。
+        ShapedRecipeBuilder.shaped(items, RecipeCategory.MISC, ModItems.NARDIS_SIGN.get())
+                .pattern("CYC")
+                .pattern("TET")
+                .pattern("TDT")
+                .define('C', Items.CACTUS)
+                .define('Y', Items.YELLOW_DYE)
+                .define('T', Items.TERRACOTTA)
+                .define('E', ModItems.BLANK_SIGN.get())
+                .define('D', ModItems.GOLDEN_DICE.get())
+                .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
+                .save(output);
+        // 蛟龙立牌(mamushi,传奇):SPS/SES/GDG(S=海晶碎片,P=金块,E=空白立牌,G=黄金星盘×2,
+        // D=钻石骰子);「钻石骰子 + 黄金星盘」档,与大当家立牌 fen 同档
+        // 但**材料须与 fen 区分**——原样照抄会让两条配方的形状+材料完全相同（原版合成台按第一条匹配
+        // 返回结果 ⇒ 其中一条永远合不出来），故填充材料由红石块×4 改为海晶碎片×4（蛟龙＝水属）；
+        // 立牌置中、骰子固定中下,无占位洞 → 传奇(UNCOMMON)。
+        ShapedRecipeBuilder.shaped(items, RecipeCategory.MISC, ModItems.MAMUSHI_SIGN.get())
+                .pattern("SPS")
+                .pattern("SES")
+                .pattern("GDG")
+                .define('E', ModItems.BLANK_SIGN.get())
+                .define('S', Items.PRISMARINE_SHARD)
+                .define('P', Items.GOLD_BLOCK)
+                .define('G', ModItems.GOLDEN_STAR_PLATE.get())
+                .define('D', ModItems.DIAMOND_DICE.get())
+                .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
+                .save(output);
+
+        // 怪力侦探立牌(sherry):钻石骰子 + 黄金星盘档。PBP/AEA/IDI
+        // (P=黄金星盘×2、B=书、E=空白立牌、A=铁砧、I=铁块、D=钻石骰子;空白立牌置中、骰子固定中下)
+        // 同档(钻石骰子+黄金星盘)的 moses/nancy_lu 为 GPG/TCT/PZP 与 YFY/BLW/PZP;
+        // 本配方六个填料的格位与它们(及全部其它立牌)均不复用,网格全局唯一
+        // (守门:scripts/verify/verify_crafting_recipe_uniqueness.ps1)。
+        ShapedRecipeBuilder.shaped(items, RecipeCategory.MISC, ModItems.SHERRY_SIGN.get())
+                .pattern("PBP")
+                .pattern("AEA")
+                .pattern("IDI")
+                .define('E', ModItems.BLANK_SIGN.get())
+                .define('P', ModItems.GOLDEN_STAR_PLATE.get())
+                .define('B', Items.BOOK)
+                .define('A', Items.ANVIL)
+                .define('I', Items.IRON_BLOCK)
+                .define('D', ModItems.DIAMOND_DICE.get())
+                .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
+                .save(output);
+
+        // 人偶师立牌(hanna):黄金骰子(无星盘)档。SQS/LEL/TDT
+        // (S=线、Q=白色羊毛、L=皮革、E=空白立牌、T=木棍、D=黄金骰子;空白立牌置中、骰子固定中下)
+        // 同档(黄金骰子无星盘)的 lulu 为 SZS/ZCZ/SDS、padman 为 WYW/TET/TDT、nardis 为 CYC/TET/TDT;
+        // 本配方六个填料的格位与它们(及全部其它立牌)均不复用,材料多重集亦不同 ⇒ 网格全局唯一
+        // (守门:scripts/verify/verify_crafting_recipe_uniqueness.ps1)。
+        ShapedRecipeBuilder.shaped(items, RecipeCategory.MISC, ModItems.HANNA_SIGN.get())
+                .pattern("SQS")
+                .pattern("LEL")
+                .pattern("TDT")
+                .define('E', ModItems.BLANK_SIGN.get())
+                .define('S', Items.STRING)
+                .define('Q', Items.WHITE_WOOL)
+                .define('L', Items.LEATHER)
+                .define('T', Items.STICK)
+                .define('D', ModItems.GOLDEN_DICE.get())
+                .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
+                .save(output);
+        // 符卡-福 / 符卡-祸:**无配方**（专属牌,仅由风水师立牌的被动「福祸相倚」与主动「白泽赐福」
+        // 及「心意相连」发放,与活体书页/命运的指引等专属牌同一口径:不进随机池、不进合成表）。
     }
     /**
      * DataProvider 包装:26.1.2 的 {@code RecipeProvider} 只暴露

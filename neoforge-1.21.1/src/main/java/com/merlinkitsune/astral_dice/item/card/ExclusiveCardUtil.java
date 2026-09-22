@@ -27,9 +27,12 @@ public final class ExclusiveCardUtil {
         return owner.isEmpty() || owner.get().equals(player.getUUID());
     }
 
-    // 是否为专属效果牌
+    // 是否为专属效果牌(复制/返还路径据此为新牌绑定获得者)
     public static boolean isExclusive(ItemStack stack) {
-        return stack.is(ModItems.LIVING_PAGE.get()) || stack.is(ModItems.FATE_GUIDANCE_CARD.get());
+        return stack.is(ModItems.LIVING_PAGE.get()) || stack.is(ModItems.FATE_GUIDANCE_CARD.get())
+                || stack.is(ModItems.FU_CARD.get()) || stack.is(ModItems.HUO_CARD.get())
+                // 蛟龙立牌专属战斗牌(2026-09-27):撕咬 / 龙之咆哮
+                || stack.is(ModItems.ATTACK_CARD_BITE.get()) || stack.is(ModItems.ATTACK_CARD_DRAGON_ROAR.get());
     }
 
     // 无所有者时绑定为当前使用者

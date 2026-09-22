@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "D": "astral_dice:dice",
+    "E": "astral_dice:blank_sign",
+    "P": "minecraft:paper",
+    "S": "astral_dice:star_coin"
+  },
+  "pattern": [
+    "PSP",
+    "SES",
+    "PDP"
+  ],
+  "result": {
+    "id": "astral_dice:ren_sign"
+  }
+}

@@ -137,11 +137,20 @@ $script:RenderModsByVersion = @{
 # 注：1.21.1 线早已集成 ModernFix（`install_test_mods.ps1` 复制进 run/1.21.1/mods，launch 亦校验其
 # 加载完成日志）；本清单是 26.1.2 线的对应实现。
 $script:PerfMods2612 = @(
-    @{ Name = 'ImmediatelyFast-NeoForge-1.15.3+26.1.jar'
-       Coord = 'maven.modrinth:immediatelyfast:adbrNJLm'
-       Url  = 'https://api.modrinth.com/maven/maven/modrinth/immediatelyfast/adbrNJLm/ImmediatelyFast-NeoForge-1.15.3%2B26.1.jar'
-       Sha1 = 'bb10bdde4199da3cb7a2a64f9e3274a46218c9f1'
-       Size = 312276 }
+    # ⚠️ **ImmediatelyFast 已于 2026-09-22 从 26.1.2 移除**（用户裁决：「移除 ImmediatelyFast 模组，
+    #    其不兼容 Iris 已经明确标注」）。实测证据：加入 ImmediatelyFast 后，**开启光影**的客户端在
+    #    进入世界约 10 秒内必崩，崩溃报告指向 ImmediatelyFast 自己的批处理路径 ——
+    #      java.lang.IllegalStateException: Missing sampler Sampler1
+    #        at com.mojang.blaze3d.opengl.GlCommandEncoder.trySetup
+    #        at …immediatelyfast…feature.core.BatchableBufferSource.drawDirect(BatchableBufferSource.java:178)
+    #        at …MultiBufferSource$BufferSource.endBatch → RenderType.draw
+    #      （`crash-2026-09-22_10.04.21-client.txt`；栈上 Iris/Sodium/ImmediatelyFast 三方 mixin 同在
+    #        `GlCommandEncoder` 上，故障点是 IF 的 BatchableBufferSource 复用 RenderPass 后
+    #        sampler 绑定丢失。）
+    #    这与本表 1.20.1 条目记载的是**同一类互斥**（「装 ImmediatelyFast」与「光影默认启用」不可兼得；
+    #    1.20.1 上的表现是模组构造期 ClassNotFoundException）。两线取舍一致 = **保光影**，
+    #    因为光影兼容性测试是本项目明确要求的验证项，而 ImmediatelyFast 只是优化类附加验证。
+    #    若将来要恢复：先把 `mt_env.ps1 shaders --state off` 关光影，再放开本条目。
     @{ Name = 'modernfix-neoforge-5.27.22+mc26.1.2.jar'
        Coord = 'maven.modrinth:modernfix:j7EoxpYe'
        Url  = 'https://api.modrinth.com/maven/maven/modrinth/modernfix/j7EoxpYe/modernfix-neoforge-5.27.22%2Bmc26.1.2.jar'
@@ -268,6 +277,94 @@ $script:SlimeGuardByVersion = @{
     # 1.20.1 **故意缺省**：已由 `forge-1.20.1/build.gradle` 的 modImplementation 提供（见上）
     '26.1.2' = $script:SlimeGuard2612
 }
+
+# ── Carpet: NeoForged（玩家 bot：`/player <name> spawn` / `/player <name> kill`）──────────
+# 用户要求（2026-09-27 原话）：「向 1.21.1 和 1.20.1 测试端插入 Carpet: NeoForged 模组（Fabric
+# Carpet 的 Forge/NeoForge 移植，https://github.com/chililisoup/neoforge-carpet）……在测试脚本中，
+# 插入 /player 命令用于创建玩家 bot，该 bot 可被用作测试 2 人及更多玩家的联动功能；使用 /kill
+# 命令击杀 bot 玩家可使其退出（建议阅读源代码以掌握该模组全部指令）。」
+# 用途：单人测试世界此前**没有第二名真实玩家** ⇒ teru 降神的「另一名玩家」只能用 FakePlayer/
+# 自身脚手架（见探针 teru 段注释）；Carpet 的 bot 是**真 ServerPlayer**（在玩家列表里、参与 tick、
+# 可被攻击/被选为目标、死亡走 disconnect），因此能覆盖「真实双人联动」「目标中途离线的链接自愈」。
+# 来源：**Modrinth Maven**（`maven.modrinth:neoforge-carpet:<versionId>`，project_id = XqqOkvZz），
+# 与渲染栈/史莱姆压制同规则（不走 CDN/GitHub 直链）。
+# 侧别：`environment = server_only_client_optional` ⇒ 专用服务器（生成世界）与客户端都可保留
+# （`/player` 是服务端命令，集成服务器必须装载；客户端侧只有 Carpet 的 GUI 可选）。文件名不含
+# imblocker/sodium/iris/embeddium/oculus 子串 ⇒ 不会被 `Invoke-MtEnvWorld` 的纯客户端移出名单误删。
+#
+# ⚠️ 两条线的**装配机制不同**，不要照抄同一套：
+#   · **1.21.1 → 本表**（放进 `run/1.21.1/mods`）：NeoForge 1.21.1 无 reobf，生产 jar 本身就是
+#     Mojmap 命名，dev run 可直接加载（与 ImmediatelyFast/FerriteCore/史莱姆压制同一机制）。
+#   · **1.20.1 → 故意不在本表**：Forge 1.20.1 的生产 jar 是 **SRG 字节码 + SRG refmap**，手工放进
+#     `run/1.20.1/mods` 既不会被重映射、refmap 也不会被改写（mixin 静默失效，见本仓既有取证：
+#     `NoSuchMethodError … Util.m_137583_()`）⇒ 改由 `forge-1.20.1/build.gradle` 的
+#     `modImplementation` 提供（MDG 解析期重映射，与 KubeJS/JEI/collective/superflat/FerriteCore
+#     同一机制）；再往 run/mods 放一份会被 FML 判「重复模组」。
+#   · **26.1.2 → Sinytra Connector 栈**（2026-09-22 用户改定，覆盖 2026-09-27 的「不使用」裁决）：
+#     该线原裁决「用 Mojang 自带 bot 管理指令」经查**不成立** —— 26.1.2 原版没有任何 player/bot
+#     管理命令（逐条核对 net/minecraft/server/commands/ 80 个文件）。Carpet 官方只有 Fabric 构建，
+#     故本线改为「Connector + Launchpad + Forgified Fabric API + fabric-carpet」四件套
+#     （清单见 `$script:ConnectorStack2612`）。⚠️ 该栈是 beta 且侵入，风险与复验要求见该表上方注释。
+$script:CarpetByVersion = @{
+    '1.21.1' = @(
+        @{ Name = 'neoforge-carpet-1.21.1-1.0.8+v251027.jar'
+           Coord = 'maven.modrinth:neoforge-carpet:lnOeoKcQ'
+           Url  = 'https://api.modrinth.com/maven/maven/modrinth/neoforge-carpet/lnOeoKcQ/neoforge-carpet-1.21.1-1.0.8%2Bv251027.jar'
+           Sha1 = 'fffcc899d13b25c808d4d906cafa41de8cffc861'
+           Size = 1498683 }
+    )
+    # 26.1.2:Fabric 版 Carpet 本体（其三个前置在 ConnectorStack2612 里,由 Install-MtCarpet 一并装）
+    '26.1.2' = @(
+        @{ Name = 'fabric-carpet-26.1+v260402.jar'
+           Coord = 'maven.modrinth:carpet:26.1'
+           Url  = 'https://api.modrinth.com/maven/maven/modrinth/carpet/26.1/fabric-carpet-26.1+v260402.jar'
+           Sha1 = 'f786a53c97e7caaa5b34c94309e79ed1201c0114'
+           Size = 1535777 }
+    )
+}
+
+# ── 26.1.2 · Sinytra Connector 栈（2026-09-22 用户要求：让 **Fabric** 版 Carpet 能在
+#    NeoForge 26.1.2 上跑，从而启用 12 条「需第二玩家」的用例）────────────────────
+# 背景：26.1.2 原版**没有** bot 管理命令（已逐条核对
+#   `minecraft-patched-26.1.2.109-sources.jar` 的 net/minecraft/server/commands/ 全部 80 个文件，
+#   无 player/bot 命令；全库只有 NeoForge 的 FakePlayer，且它**不进 PlayerList**
+#   ⇒ 探针「按名字取玩家」的路径全部失效）。因此第二玩家必须由**测试环境模组**提供。
+# Carpet 官方只有 **Fabric** 构建（Modrinth `loaders: ['fabric']`），要落在 NeoForge 上
+# 只能经 Sinytra Connector 转发。
+#
+# 四件套（全部走 **Modrinth Maven**，与 Sodium/Iris 同源、同口径；均实测 307 可达）：
+#   1) Launchpad        —— Sinytra 的类加载/Mixin 基础设施，Connector 的**必需**前置；
+#   2) Connector        —— Fabric 模组 → NeoForge 的转译层（本版为 beta，见下方风险提示）；
+#   3) Forgified Fabric API —— Fabric API 在 NeoForge 上的实现，Carpet 的**必需**前置
+#                             （Connector 元数据里 `Aqlf1Shp` = 本项，dependency_type=required）；
+#   4) fabric-carpet    —— Carpet 本体，直接放 run/mods（它是 Fabric 模组，不经 Gradle 依赖）。
+#
+# ⚠️ 已知风险（必须在测试报告里如实登记，不能当成「环境已就绪」直接给结论）：
+#   · Connector 在本版是 **3.0.0-beta.6**（beta）；它做的是**类加载期转译 + Mixin 重映射**，
+#     属侵入式改造，可能与被测模组、或与 Sodium/Iris/ModernFix/FerriteCore 相互干扰；
+#   · 因此**加入 Connector 后必须重新验证此前已通过的启动闸门**
+#     （NOAI / KUBEJS / OP / 清场 / immediate_respawn），任一闸门回归都说明该栈不可用；
+#   · Carpet 是 Fabric 模组 ⇒ 只保证「在 Connector 转发下能加载并被 `/player` 驱动」，
+#     不保证与 Fabric 原环境的完全一致。
+# 版本锁定依据：Modrinth API `game_versions` 含 "26.1.2"（2026-09-22 实查）。
+$script:ConnectorStack2612 = @(
+    @{ Name = 'launchpad-1.9.2+26.1.2-full.jar'
+       Coord = 'maven.modrinth:launchpad:1.9.2+26.1.2'
+       Url  = 'https://api.modrinth.com/maven/maven/modrinth/launchpad/1.9.2+26.1.2/launchpad-1.9.2+26.1.2-full.jar'
+       Sha1 = '2f4514d1980c735bde499bc25760fae45f44448e'
+       Size = 466664 }
+    @{ Name = 'connector-3.0.0-beta.6+26.1.2-full.jar'
+       Coord = 'maven.modrinth:connector:3.0.0-beta.6+26.1.2'
+       Url  = 'https://api.modrinth.com/maven/maven/modrinth/connector/3.0.0-beta.6+26.1.2/connector-3.0.0-beta.6+26.1.2-full.jar'
+       Sha1 = 'be19358e16a22ad6174075e6f5b0f78fd1b36e12'
+       Size = 1011536 }
+    @{ Name = 'forgified-fabric-api-0.155.2+26.1.2+3.5.5.jar'
+       Coord = 'maven.modrinth:forgified-fabric-api:0.155.2+26.1.2+3.5.5'
+       Url  = 'https://api.modrinth.com/maven/maven/modrinth/forgified-fabric-api/0.155.2+26.1.2+3.5.5/forgified-fabric-api-0.155.2+26.1.2+3.5.5.jar'
+       Sha1 = '35ced241d822f055ff9b31eec9fd4b3fa0d5c9f4'
+       Size = 2972661 }
+)
+$script:ConnectorStackPrefixes2612 = @('launchpad-', 'connector-', 'forgified-fabric-api-')
 
 # Complementary Shaders - Unbound（用户指定用于光影兼容性测试）
 # `maven.modrinth:complementary-unbound:r5.9.3`；落位 `run/<版本>/shaderpacks/`，并在 Iris 配置里选中它。
@@ -676,6 +773,232 @@ function Set-MtKeepInventory {
     return $true
 }
 
+# ══ 26.1.2：gamerule 独立文件（level.dat 不再是存储位置）════════════════════
+#
+# 背景（2026-09-19 本机实测 + 反编译源码双证据）:
+#   MC 26.1 起 gamerule 整体搬出 level.dat，改由 SavedData 承载:
+#     · 路径  <世界目录>/data/minecraft/game_rules.dat   （gzip 压缩的 NBT）
+#     · 负载  { data: { "minecraft:keep_inventory": 0b, … }, DataVersion: <int> }
+#     · 键名  蛇形 + `minecraft:` 命名空间前缀；布尔值是 **TAG_Byte**(0/1)，不是旧版 TAG_String
+#   实测（run/26.1.2/saves/testworld/data/minecraft/game_rules.dat，解压后 2000 字节）:
+#     minecraft:keep_inventory = 0b(false)  ← 与 AGENTS「测试世界必须死亡不掉落」冲突
+#     minecraft:natural_health_regeneration = 0b、mob_griefing = 1b、spawn_mobs = 1b、
+#     immediate_respawn = 0b、fire_spread_radius_around_player = 128(TAG_Int)
+#   同一世界的 level.dat 里**没有** GameRules 键：`Set-MtKeepInventory` 写进去的那份既没有
+#   任何读者（26.1.2 只从**文件**读规则），又会在游戏自己保存 level.dat 时被丢弃；且 26.1.2 的
+#   file fix（LevelDatToSavedDataFileFix）只认 level.dat 的 `game_rules` 键，**不认** `GameRules`。
+#   ⇒ 在该版本上旧写法等于「写入无人读的数据 + 拿自己刚写的数据自我复核」= **假通过**。
+#
+#   源码依据（neoforge-26.1.2/build/moddev/artifacts/minecraft-patched-26.1.2.109-sources.jar）:
+#     · GameRuleMap.TYPE = new SavedDataType(Identifier.withDefaultNamespace("game_rules"), …)
+#     · SavedDataStorage#getDataFile  → `<dataFolder>/<namespace>/<path>.dat`
+#     · SavedDataStorage#encodeUnchecked → `tag.put("data", payload)` + addCurrentDataVersion
+#     · SavedDataStorage#readSavedData   → 只读 `data` 负载；文件缺失 ⇒ GameRuleMap.of()（空表）
+#     · GameRules 构造器对**缺失的规则**调用 GameRuleMap#reset(默认值)
+#       ⇒ 文件里少写的键由游戏补默认值（不会 NPE），且 reset→set→setDirty() 会让游戏下次保存
+#         把整份规则写全（既有非默认值不会因此丢失）。
+#   ⇒ 只需精确改写 `minecraft:keep_inventory` 一个键，其余既有键**逐键原样保留**。
+#
+#   ⚠️ 只有 26.1.2 走这条路：1.20.1 / 1.21.1 的 gamerule 仍在 level.dat（TAG_String），
+#      它们的产物与行为由下面的 `$Version -ne $script:MtGameRuleFileVersion` 早退保证不变。
+$script:MtGameRuleFileVersion = '26.1.2'
+$script:MtKeepInventoryRuleKey = 'minecraft:keep_inventory'
+
+function Get-MtGameRulesFile {
+    <#
+    .SYNOPSIS
+        26.1.2 的 gamerule 存储文件：<世界目录>/data/minecraft/game_rules.dat。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$WorldDir)
+
+    return (Join-Path (Join-Path (Join-Path $WorldDir 'data') 'minecraft') 'game_rules.dat')
+}
+
+function Read-MtGameRuleKeepInventoryFile {
+    <#
+    .SYNOPSIS
+        从 game_rules.dat **真实读回** minecraft:keep_inventory 的值。
+    .OUTPUTS
+        $null = 文件不存在 / 不可解析 / 无该键 / 类型不是 TAG_Byte；否则 [int] 0 或 1。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$WorldDir)
+
+    $file = Get-MtGameRulesFile -WorldDir $WorldDir
+    if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { return $null }
+    try { $nbt = Read-MtNbt -Path $file } catch { return $null }
+    if ($nbt.TagId -ne $script:TAG_COMPOUND -or -not $nbt.Payload.Contains('data')) { return $null }
+    $data = $nbt.Payload['data'][1]
+    if (-not ($data -is [System.Collections.IDictionary])) { return $null }
+    if (-not $data.Contains($script:MtKeepInventoryRuleKey)) { return $null }
+    $pair = $data[$script:MtKeepInventoryRuleKey]
+    if ([int]$pair[0] -ne $script:TAG_BYTE) { return $null }
+    return [int][sbyte]$pair[1]
+}
+
+function Test-MtGameRuleKeepInventoryFile {
+    <#
+    .SYNOPSIS
+        26.1.2 的 keepInventory 硬闸门：game_rules.dat 里 minecraft:keep_inventory 必须读回 1。
+    .NOTES
+        刻意重新从磁盘解析（不复用刚写进内存的对象）—— 这正是旧实现假通过的根因。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$WorldDir)
+
+    return ((Read-MtGameRuleKeepInventoryFile -WorldDir $WorldDir) -eq 1)
+}
+
+function Read-MtLevelDataVersion {
+    <#
+    .SYNOPSIS
+        读 level.dat 的 Data.DataVersion（新建 game_rules.dat 时用作其 DataVersion）。
+    .OUTPUTS
+        [int] 版本号；读不到返回 0。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$LevelDat)
+
+    try {
+        $nbt = Read-MtNbt -Path $LevelDat
+        if ($nbt.TagId -eq $script:TAG_COMPOUND -and $nbt.Payload.Contains('Data')) {
+            $data = $nbt.Payload['Data'][1]
+            if (($data -is [System.Collections.IDictionary]) -and $data.Contains('DataVersion')) {
+                return [int]$data['DataVersion'][1]
+            }
+        }
+    } catch { return 0 }
+    return 0
+}
+
+function Set-MtGameRuleKeepInventoryFile {
+    <#
+    .SYNOPSIS
+        26.1.2：把 <世界>/data/minecraft/game_rules.dat 的 minecraft:keep_inventory 置为 1b。
+
+    .DESCRIPTION
+        只改这一个键，其余既有规则（natural_health_regeneration / mob_griefing / …）逐键原样保留；
+        不整份重建、不引入任何第三方依赖（复用文件顶部的 New-MtPair / Read-MtNbt / Write-MtNbt）。
+        文件不存在时按 vanilla 形态新建最小文件 { data: {…}, DataVersion }（缺失键由游戏补默认值）。
+        已经是 1 时**不重写**（幂等：不制造 mtime 抖动，也不给并发读方留半截文件的窗口）。
+        对已存在的世界同样有效（把 0 纠正为 1）。
+
+    .OUTPUTS
+        $true = 已就位或写入成功；$false = 机制性失败（调用方负责 BLOCKED）。
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$WorldDir,
+        [Parameter(Mandatory)][string]$LevelDat
+    )
+
+    $file = Get-MtGameRulesFile -WorldDir $WorldDir
+
+    # 世界目录都不存在时**绝不**代为创建（否则会凭空造出一个假世界目录）；
+    # 调用链上 Set-MtKeepInventory 已先要求 level.dat 存在，这里是显式兜底。
+    if (-not (Test-Path -LiteralPath $WorldDir -PathType Container)) {
+        Write-MtErrorLine "世界目录不存在，拒绝创建 game_rules.dat：$WorldDir"
+        return $false
+    }
+
+    # 已就位 ⇒ 幂等返回，不重写
+    if ((Read-MtGameRuleKeepInventoryFile -WorldDir $WorldDir) -eq 1) { return $true }
+
+    $payload = $null
+    $rootName = ''
+    if (Test-Path -LiteralPath $file -PathType Leaf) {
+        try { $nbt = Read-MtNbt -Path $file } catch {
+            Write-MtErrorLine "解析 game_rules.dat 失败：$($_.Exception.Message)"
+            return $false
+        }
+        if ($nbt.TagId -ne $script:TAG_COMPOUND -or -not ($nbt.Payload -is [System.Collections.IDictionary])) {
+            Write-MtErrorLine 'game_rules.dat 结构异常（根不是复合标签）'
+            return $false
+        }
+        $payload = $nbt.Payload
+        $rootName = $nbt.Name
+    } else {
+        # 世界已建但该文件还没落盘（首次保存前）⇒ 按 vanilla 形态新建，键数最小
+        $payload = [System.Collections.Specialized.OrderedDictionary]::new([System.StringComparer]::Ordinal)
+    }
+
+    $data = $null
+    if ($payload.Contains('data')) {
+        $cand = $payload['data'][1]
+        if ($cand -is [System.Collections.IDictionary]) { $data = $cand }
+    }
+    if ($null -eq $data) {
+        $data = [System.Collections.Specialized.OrderedDictionary]::new([System.StringComparer]::Ordinal)
+        $payload['data'] = (New-MtPair $script:TAG_COMPOUND $data)
+    }
+
+    $data[$script:MtKeepInventoryRuleKey] = (New-MtPair $script:TAG_BYTE 1)
+
+    # DataVersion：沿用文件里已有的（保证数据修复链是 no-op），缺失才从 level.dat 取
+    if (-not $payload.Contains('DataVersion')) {
+        $dv = Read-MtLevelDataVersion -LevelDat $LevelDat
+        if ($dv -gt 0) {
+            $payload['DataVersion'] = (New-MtPair $script:TAG_INT $dv)
+        } else {
+            Write-MtErrorLine '警告：无法确定 DataVersion（level.dat 里读不到），game_rules.dat 将不带该键'
+        }
+    }
+
+    $dir = Split-Path -Parent $file
+    if (-not (Test-Path -LiteralPath $dir -PathType Container)) {
+        [void](New-Item -ItemType Directory -Force -Path $dir)
+    }
+
+    try {
+        Write-MtNbt -Path $file -TagId $script:TAG_COMPOUND -Name $rootName -Payload $payload
+    } catch {
+        Write-MtErrorLine "写回 game_rules.dat 失败：$($_.Exception.Message)"
+        return $false
+    }
+    return $true
+}
+
+function Set-MtWorldKeepInventory {
+    <#
+    .SYNOPSIS
+        落地并**读回复核**「测试世界必须 keepInventory=true」，供种子快恢复与世界重建两条路径复用。
+
+    .OUTPUTS
+        $null = 已就位且复核通过；否则返回应接在 `MT_WORLD: BLOCKED — ` 之后的**原因文案**。
+    .NOTES
+        ⚠️ 1.20.1 / 1.21.1 走 `$Version -ne $script:MtGameRuleFileVersion` 早退：只调用原有的
+        `Set-MtKeepInventory`（level.dat，TAG_String），原因文案与被调用的写函数均未变 ⇒
+        这两个版本的成功/失败输出**逐字节不变**，也不产生新文件。
+        26.1.2 追加独立文件的写入 + 从磁盘读回复核（见 Set-MtGameRuleKeepInventoryFile）。
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$Version,
+        [Parameter(Mandatory)][psobject]$Paths
+    )
+
+    $level = Join-Path $Paths.client_world 'level.dat'
+    if (-not (Set-MtKeepInventory -LevelDat $level)) {
+        return 'level.dat 的 GameRules.keepInventory 未能设置'
+    }
+    if ($Version -ne $script:MtGameRuleFileVersion) { return $null }
+
+    # ── 26.1.2：真正的存储在独立文件里 ──────────────────────────────────────
+    $rulesFile = Get-MtGameRulesFile -WorldDir $Paths.client_world
+    if (-not (Set-MtGameRuleKeepInventoryFile -WorldDir $Paths.client_world -LevelDat $level)) {
+        return ("game_rules.dat 的 {0} 未能写入（{1}）" -f $script:MtKeepInventoryRuleKey, $rulesFile)
+    }
+    $readBack = Read-MtGameRuleKeepInventoryFile -WorldDir $Paths.client_world
+    if ($readBack -ne 1) {
+        $shown = '读不到（文件缺失 / 无该键 / 类型不符）'
+        if ($null -ne $readBack) { $shown = "$readBack" }
+        return ("game_rules.dat 的 {0} 读回复核不为 1b：{1}（{2}）" -f $script:MtKeepInventoryRuleKey, $shown, $rulesFile)
+    }
+    Write-MtLine ("MT_WORLD: keepInventory 落地于 {0}（{1}=1b，读回复核通过）" -f $rulesFile, $script:MtKeepInventoryRuleKey)
+    return $null
+}
+
 # ══ 子命令：kubejs（探针脚本同步）══════════════════════════════════════════
 function Sync-MtEnvKubejs {
     <#
@@ -711,8 +1034,14 @@ function Sync-MtEnvKubejs {
     foreach ($f in @(Get-ChildItem -LiteralPath $src -Recurse -File)) {
         $keep[$f.FullName.Substring($src.Length).TrimStart('\', '/')] = $true
     }
-    $dstMeta = Join-Path $dstRoot 'server_scripts'
-    if (Test-Path -LiteralPath $dstMeta -PathType Container) {
+    #    2026-09-22 扩展:`client_scripts` / `startup_scripts` **同样纳入清理** —— 客户端
+    #    探针(`resources/kubejs/<版本>/client_scripts/**`,用于读客户端侧状态)加入后若不清理,
+    #    残留的旧客户端脚本会与模板并行注册同一批客户端事件,读数来源就不唯一了(与上面
+    #    服务端那次的失效形态同源)。只遍历这三个**脚本目录**,不碰 KubeJS 自有的
+    #    config/ data/ assets/ logs/ exported/。
+    foreach ($sub in @('server_scripts', 'client_scripts', 'startup_scripts')) {
+        $dstMeta = Join-Path $dstRoot $sub
+        if (-not (Test-Path -LiteralPath $dstMeta -PathType Container)) { continue }
         foreach ($f in @(Get-ChildItem -LiteralPath $dstMeta -Recurse -File -Filter '*.js')) {
             $rel = $f.FullName.Substring($dstRoot.Length).TrimStart('\', '/')
             if (-not $keep.ContainsKey($rel)) {
@@ -1082,6 +1411,106 @@ function Install-MtSlimeGuard {
     return 0
 }
 
+function Install-MtCarpet {
+    <#
+    .SYNOPSIS
+        把 Carpet（玩家 bot 模组）放进 `run/<版本>/mods`（幂等；1.20.1 走 SKIP 分支）。
+
+    .NOTES
+        · 用户要求见 `$script:CarpetByVersion` 的注释（`/player <name> spawn` 造 bot，用于 2 人及以上
+          联动的游戏内测试；`/player <name> kill` 或 `/kill <name>` 使其退出）；
+        · **1.21.1 → Modrinth Maven 下载**（NeoForge 1.21.1 无 reobf，生产 jar 即 Mojmap 命名）；
+        · **1.20.1 → SKIP + 清理历史副本**：改由 `forge-1.20.1/build.gradle` 的 modImplementation 提供
+          （生产 SRG jar + SRG refmap 必须经 MDG 重映射；手工放 run/mods 会静默失效）；
+        · **26.1.2 → 默认 SKIP**（该线无法获得第二玩家能力，理由见函数体内的完整实测记录）；
+          提供**实验路径**：`MT_CARPET_VIA_CONNECTOR=1` 时走「Connector 栈 + Fabric 版 Carpet」，
+          但 2026-09-22 实测该路径会导致专用服务器启动致命失败，仅供将来复测用。
+          启用时须与 `mt_launch.ps1` 的同名开关保持一致（那边据此决定是否设 Carpet 硬闸门）。
+        · 侧别 `server_only_client_optional` ⇒ 专用服务器生成世界时**保留**（不会被移出名单命中）。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][psobject]$Paths)
+
+    $specs = $script:CarpetByVersion[$Paths.version]
+    if (-not $specs -or @($specs).Count -eq 0) {
+        if ($Paths.version -eq '1.20.1') {
+            Write-MtLine 'MT_MODS: SKIP — 1.20.1 的 Carpet 由 build.gradle 的 modImplementation 提供（forge-carpet-1.20.1-1.0.8；生产 SRG jar + SRG refmap 必须经 MDG 重映射，手工放 run/mods 会让 mixin 静默失效）'
+            # 清理历史上被本函数下载进来的副本：classpath 上已由 Gradle 提供同一模组，
+            # run/mods 再放一份会被 FML 判「重复模组」而拒绝启动。
+            if (Test-Path -LiteralPath $Paths.mods_dir -PathType Container) {
+                foreach ($f in @(Get-ChildItem -LiteralPath $Paths.mods_dir -File -Filter 'forge-carpet-*' -ErrorAction SilentlyContinue)) {
+                    Remove-Item -LiteralPath $f.FullName -Force -ErrorAction SilentlyContinue
+                    if (-not (Test-Path -LiteralPath $f.FullName)) { Write-MtLine ("MT_MODS: 清理历史副本 {0}（改为 Gradle modImplementation 提供）" -f $f.Name) }
+                }
+            }
+        }
+        return 0
+    }
+
+    $cache = Join-Path (Join-Path (Get-MtRoot) 'temp\probe_mods') $Paths.version
+    [void](New-Item -ItemType Directory -Force -Path $cache)
+    [void](New-Item -ItemType Directory -Force -Path $Paths.mods_dir)
+
+    # 26.1.2：Carpet 只有 **Fabric** 构建，需 Sinytra Connector 三件套转发。
+    # ⚠️ **默认关闭**（2026-09-22 实测不可用，见下），必须显式 `MT_CARPET_VIA_CONNECTOR=1` 才装。
+    #
+    # 实测结论（2026-09-22，本机，NeoForge 26.1.2.109 + Connector 3.0.0-beta.6 + FFAPI 0.155.2
+    #   + Launchpad 1.9.2 + fabric-carpet 26.1+v260402）：
+    #   · 四件套**能装、能被 FML 识别、Connector 转译器能起来**（日志可见
+    #     `ConnectorPlugin from mods/connector-….jar` 与 53 个 JiJ 依赖）;
+    #   · 但 **Carpet 的 mixin 全部无法注入** ⇒ 专用服务器启动**致命失败**：
+    #       MixinTransformerError: Critical injection failure: Constant modifier method
+    #       addFillUpdatesInt(I)I in carpet.mixins.json:Level_fillUpdatesMixin from mod carpet
+    #       failed injection check, (0/1) succeeded. Scanned 0 target(s). **No refMap loaded.**
+    #     根因：`carpet.mixins.json` **不含 refmap 字段**（实测 refmap=None；`fabric.mod.json`
+    #     的 mixins 段也只是裸文件名），171 个 mixin 的方法/字段引用以 Fabric **intermediary**
+    #     名硬编码；Fabric 环境下由 Fabric Loader 的运行时反向映射兜底，而 Connector 在本版
+    #     未能为它生成/应用 refmap ⇒ 目标方法名解析不到（`Scanned 0 target(s)`）。
+    #     （日志里另有一条 `Reference map '' for adapter.init.mixins.json could not be read`
+    #      —— 那属于 Sinytra Mixin Adapter 自己的配置，**故意不带 refmap**，是良性告警，
+    #      不是本故障的原因。）
+    #   · 影响面：**是阻断性的**。世界生成阶段即崩，整条 26.1.2 测试线（含原本可跑的 10 条单机
+    #     用例）都会变得不可运行 ⇒ 默认必须关闭，否则「为一个功能废掉一整条线」。
+    #   · 备选路径同样不存在：NeoForge 原生移植 `Carpet: NeoForged`（`neoforge-carpet`）
+    #     只发布到 **1.20.1 / 1.21.1**，**没有 26.1.x 构建**（Modrinth 实查 2026-09-22）。
+    #   · `connector-extras` 不解决该问题 —— 它是第三方 API 桥接（能量/REI/…），与 mixin 重映射无关。
+    # ⇒ 结论：**该 MC×加载器组合下无法引入第二玩家能力**；12 条双人用例保持 BLOCKED。
+    #   若将来 Connector 修好 refmap 生成、或 Carpet 出了带 refmap 的构建、或有 NeoForge 原生
+    #   26.1.x Carpet，只需把 `Install-MtCarpet` 的 26.1.2 分支恢复为无条件安装即可。
+    if ($Paths.version -eq '26.1.2') {
+        if ($env:MT_CARPET_VIA_CONNECTOR -ne '1') {
+            Write-MtLine 'MT_MODS: SKIP — 26.1.2 不装 Carpet（Connector 路径实测不可用：Carpet 的 171 个 mixin 缺 refmap ⇒ 目标名解析不到 ⇒ 专用服务器启动致命失败；详见 Install-MtCarpet 注释。要复测该项请设 MT_CARPET_VIA_CONNECTOR=1）'
+            # 清理历史上被本函数装进来的 Connector 栈与 Fabric Carpet，避免残留把环境继续弄坏。
+            if (Test-Path -LiteralPath $Paths.mods_dir -PathType Container) {
+                $stale = @('fabric-carpet-*') + @($script:ConnectorStackPrefixes2612 | ForEach-Object { "$_*" })
+                foreach ($pat in $stale) {
+                    foreach ($f in @(Get-ChildItem -LiteralPath $Paths.mods_dir -File -Filter $pat -ErrorAction SilentlyContinue)) {
+                        Remove-Item -LiteralPath $f.FullName -Force -ErrorAction SilentlyContinue
+                        if (-not (Test-Path -LiteralPath $f.FullName)) { Write-MtLine ("MT_MODS: 清理 {0}（Connector 路径默认关闭）" -f $f.Name) }
+                    }
+                }
+            }
+            return 0
+        }
+        $rc = Install-MtSpecList -Paths $Paths -Specs $script:ConnectorStack2612 -Cache $cache `
+            -Label 'Sinytra Connector 栈（Launchpad/Connector/Forgified Fabric API）' `
+            -Prefixes $script:ConnectorStackPrefixes2612
+        if ($rc -ne 0) { return $rc }
+        $stackNames = @($script:ConnectorStack2612 | ForEach-Object { $_.Name }) -join ' / '
+        Write-MtWarn ("MT_MODS: 已装 Connector 栈（{0}）—— 这是**实验路径**：2026-09-22 实测 Carpet 在此栈下 mixin 注入失败、专用服务器启动即崩，预期世界生成会 BLOCKED" -f $stackNames)
+    }
+
+    $rc = Install-MtSpecList -Paths $Paths -Specs $specs -Cache $cache -Label 'Carpet 玩家 bot' -Prefixes @('neoforge-carpet-', 'forge-carpet-', 'fabric-carpet-')
+    if ($rc -ne 0) { return $rc }
+    $names = @($specs | ForEach-Object { $_.Name }) -join ' / '
+    if ($Paths.version -eq '26.1.2') {
+        Write-MtWarn ("MT_MODS: 已装 Carpet(Fabric, 经 Connector 转发)（{0}）—— 实验路径，见上方风险说明" -f $names)
+    } else {
+        Write-MtLine ("MT_MODS: OK — Carpet(NeoForged) 就位（{0}）；`/player <name> spawn 建 bot、`/player <name> kill 或 `/kill <name> 使其退出" -f $names)
+    }
+    return 0
+}
+
 function Get-MtIrisConfigFile {
     <#
     .SYNOPSIS
@@ -1191,16 +1620,25 @@ function Install-MtRenderStack {
             Copy-Item -LiteralPath $spCache -Destination $spDst -Force
         }
 
-        # 3) 光影加载器配置：选中该光影**并默认启用**（Iris 的 config/iris.properties；
+        # 3) 光影加载器配置：选中该光影（Iris 的 config/iris.properties；
         #    **1.20.1 是 Oculus，配置文件名不同** ⇒ 一律经 Get-MtIrisConfigFile 取，别写死）
-        #    2026-09-17 用户要求「添加光影包并设置默认启用」⇒ enableShaders 默认写 true。
-        #    ⚠️ 需要「关光影冷启动」的用例（SHADER-VISION-26.1.2 的步骤 0）仍显式执行
-        #    `mt_env.ps1 shaders --version <V> --state off` —— 那是用例自己的前置，不靠这里的默认值。
+        #    2026-09-17 用户要求「添加光影包并设置默认启用」⇒ **1.21.1 / 1.20.1 默认写 true**。
+        #    ⚠️ **26.1.2 例外：默认写 false**（2026-09-22 三次实测：Iris 在该线上的 GUI 渲染管线
+        #       与光影不兼容 ⇒ 一进世界就崩、客户端被 emergencySaveAndCrash 终止）：
+        #         · `Iris/FATAL: Missing program minecraft:pipeline/gui_text in override list`
+        #         · `IllegalStateException: Missing sampler Sampler1`（**移除 ImmediatelyFast 后仍复现**
+        #           ⇒ 元凶不是 ImmediatelyFast；Sodium 亦已降到注释里记的 0.9.1，仍崩 ⇒ 该修复不再复现）
+        #       其表征极易误判：`mt_launch` 报 `MT_LAUNCH: OK (40s) — 已进入世界`，随后客户端
+        #       数秒内**静默消失**（无 shutdown 消息、无 crash-reports 之外的下文），用例全报
+        #       「26.1.2 客户端未在运行」⇒ 排查时**先看 `SHADERS=` 与本项**，不要误判成宿主回收进程树。
+        #       需要「开光影」做对照时显式 `mt_env.ps1 shaders --version 26.1.2 --state on`。
         $irisCfg = Get-MtIrisConfigFile -Paths $Paths
         [void](New-Item -ItemType Directory -Force -Path (Split-Path $irisCfg))
         $lines = @()
         if (Test-Path -LiteralPath $irisCfg -PathType Leaf) { $lines = @(Get-Content -LiteralPath $irisCfg) }
-        $set = @{ 'shaderPack' = $sp.Name; 'enableShaders' = 'true' }
+        # 26.1.2 = false（理由见上）；其余线维持用户 2026-09-17 的「默认启用」裁决。
+        $shadersOn = if ($Paths.version -eq '26.1.2') { 'false' } else { 'true' }
+        $set = @{ 'shaderPack' = $sp.Name; 'enableShaders' = $shadersOn }
         foreach ($k in $set.Keys) {
             $found = $false
             for ($i = 0; $i -lt $lines.Count; $i++) {
@@ -1211,8 +1649,8 @@ function Install-MtRenderStack {
         Set-Content -LiteralPath $irisCfg -Value $lines -Encoding utf8
 
         $modsText = if ($installed.Count -gt 0) { $installed -join ' / ' } else { '（渲染模组由整合包复制，见 NeoForgeMods）' }
-        Write-MtLine ("MT_MODS: OK — 渲染栈就位（{0}）＋ 光影 {1}；光影加载器已选中该光影并默认启用（enableShaders=true @ {2}）" -f `
-                $modsText, $sp.Name, (Split-Path -Leaf $irisCfg))
+        Write-MtLine ("MT_MODS: OK — 渲染栈就位（{0}）＋ 光影 {1}；光影加载器已选中该光影（enableShaders={2} @ {3}）" -f `
+                $modsText, $sp.Name, $shadersOn, (Split-Path -Leaf $irisCfg))
         return 0
     } finally {
         $ProgressPreference = $progressBak
@@ -1298,9 +1736,16 @@ function Invoke-MtEnvMods {
         # 优化类模组（2026-09-17 用户要求：ImmediatelyFast + ModernFix 兼容性验证）
         $rc = Install-MtPerfMods -Paths $p
         if ($rc -ne 0) { return $rc }
-        Write-MtLine 'MT_MODS: OK — 26.1.2 dev run：探针运行时 + Sodium/Iris + Complementary Unbound 光影(默认启用) + 超平坦史莱姆压制 + 优化模组(ImmediatelyFast/ModernFix/FerriteCore)'
-        Write-MtLine 'MT_MODS: 注意 — Sodium/Iris/ImmediatelyFast 为纯客户端模组：`mt_env world` 起专用服务器会自动移出，但**两段式数据生成（runClientData/runServerData）前必须手动移出** run/26.1.2/mods（与探针运行时同规则）'
+        # Carpet：玩家 bot（2026-09-27 用户要求）。**26.1.2 走 SKIP 分支** —— 用户裁决该线不使用
+        # 本模组（Mojang 自带 bot 管理指令，后续再学）；这里显式调用只为在 env 日志里留一行可见的
+        # 「为什么不装」，避免后来者以为漏了。
+        $rc = Install-MtCarpet -Paths $p
+        if ($rc -ne 0) { return $rc }
+        Write-MtLine 'MT_MODS: OK — 26.1.2 dev run：探针运行时 + Sodium/Iris + Complementary Unbound 光影(默认启用) + 超平坦史莱姆压制 + 优化模组(ModernFix/FerriteCore)'
+        Write-MtLine 'MT_MODS: 注意 — ImmediatelyFast 在 26.1.2 **故意不装**（与 Iris 开光影互斥，实测 Missing sampler 崩溃；见 $script:PerfMods2612 注释）。Sodium/Iris 为纯客户端模组：`mt_env world` 起专用服务器会自动移出，但**两段式数据生成（runClientData/runServerData）前必须手动移出** run/26.1.2/mods（与探针运行时同规则）'
         [void](Invoke-MtPauseLockEnforce -Paths $p)
+    [void](Invoke-MtKeyBindingEnforce -Paths $p)
+    [void](Invoke-MtWindowedEnforce -Paths $p)
         return 0
     }
 
@@ -1322,8 +1767,14 @@ function Invoke-MtEnvMods {
         if ($rc -ne 0) { return $rc }
         $rc = Install-MtPerfMods -Paths $p
         if ($rc -ne 0) { return $rc }
+        # Carpet：玩家 bot（2026-09-27 用户要求）。1.20.1 走 SKIP 分支 —— 由 build.gradle 的
+        # modImplementation 提供（生产 SRG jar 必须经 MDG 重映射），本调用只回显来源并清理历史副本。
+        $rc = Install-MtCarpet -Paths $p
+        if ($rc -ne 0) { return $rc }
         Write-MtLine 'MT_MODS: OK — 1.20.1 渲染栈（Embeddium/Oculus）与 FerriteCore 由 build.gradle 的 modImplementation 提供、光影包与光影加载器配置已落位（2026-09-17 实测：EMBEDDIUM_LOADED/OCULUS_LOADED=true + `Using shaderpack: ComplementaryUnbound_r5.9.3.zip`）；生产环境目录已校验'
         [void](Invoke-MtPauseLockEnforce -Paths $p)
+    [void](Invoke-MtKeyBindingEnforce -Paths $p)
+    [void](Invoke-MtWindowedEnforce -Paths $p)
         return 0
     }
 
@@ -1363,12 +1814,19 @@ function Invoke-MtEnvMods {
     if ($rc -ne 0) { return $rc }
     $rc = Install-MtPerfMods -Paths $p
     if ($rc -ne 0) { return $rc }
+    # Carpet：玩家 bot（2026-09-27 用户要求，`/player <name> spawn`；见 $script:CarpetByVersion）。
+    # 放在这里（复制循环之后）与其它「按族清理」的调用并列：前缀 neoforge-carpet- 不与整合包
+    # 文件名（sodium/iris/modernfix）相交，故无顺序依赖。
+    $rc = Install-MtCarpet -Paths $p
+    if ($rc -ne 0) { return $rc }
     # 光影包 + Iris 默认启用（2026-09-17 用户要求「游戏环境缺少光影包，添加光影包并设置默认启用」）。
     # 1.21.1 的 Sodium/Iris 由上面的整合包复制提供，本调用只补「光影包 + 光影加载器配置（iris.properties / 1.20.1 为 oculus.properties）」。
     $rc = Install-MtRenderStack -Paths $p
     if ($rc -ne 0) { return $rc }
     Write-MtLine 'MT_MODS: 提示 — ImmediatelyFast 为纯客户端：`mt_env world` 起专用服务器会自动移出；FerriteCore 两侧皆可，保留'
     [void](Invoke-MtPauseLockEnforce -Paths $p)
+    [void](Invoke-MtKeyBindingEnforce -Paths $p)
+    [void](Invoke-MtWindowedEnforce -Paths $p)
     return 0
 }
 
@@ -1430,11 +1888,60 @@ function Invoke-MtPauseLockEnforce {
     return $on
 }
 
+function Invoke-MtWindowedEnforce {
+    <#
+    .SYNOPSIS
+        全局测试规则「runClient 必须窗口模式」的唯一落地点：写 `options.txt` 的 `fullscreen:false`
+        并回显 `MT_WINDOWED: on`（幂等）。
+
+    .NOTES
+        为什么是全局规则（2026-09-21 实测）：全屏下 mt_inject 的键鼠注入送不到，
+        launch 的 `MT_preflight-op` 闸门会稳定 FAIL，而脚本自发心跳 `AP_NOAI` 仍然正常
+        —— 极易被误诊为「探针未加载」。与 pause-lock / keybinds 同属**环境不变量**。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][psobject]$Paths)
+
+    [void](Set-MtFullscreenDisabled -Paths $Paths)
+    Write-MtLine ("MT_WINDOWED: on — runClient 强制窗口模式（fullscreen=false，{0}）" -f `
+            (Join-Path $Paths.run_dir 'options.txt'))
+    return $true
+}
+
+function Invoke-MtKeyBindingEnforce {
+    <#
+    .SYNOPSIS
+        测试环境按键绑定不变量：把 `Get-MtTestKeyBindings` 里的一对（潜行/冲刺）幂等改回期望值，
+        并回显 `MT_KEYBINDS: OK` / `MT_KEYBINDS: REPAIRED …`。
+
+    .NOTES
+        2026-09-19 实测踩坑：`run/1.21.1/options.txt` 的 sneak/sprint 被换绑后，
+        「右键 + 潜行 = 取消」用例（SELECTOR-KEYS）注入的 LEFT SHIFT 被游戏当成**冲刺**，
+        客户端始终走「右键 = 自用提示」分支 ⇒ 断言 `key=right_sneak action=cancel` 稳定失败，
+        而与工具链无关的 1.20.1（绑定未变）同一用例全绿 —— 这类环境漂移**只能靠不变量挡住**。
+        查询入口：`mt_env.ps1 debug --version <V> --keybinds status`。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][psobject]$Paths)
+
+    $fixed = @(Repair-MtTestKeyBindings -Paths $Paths)
+    $path = Join-Path $Paths.run_dir 'options.txt'
+    if ($fixed.Count -eq 0) {
+        Write-MtLine ("MT_KEYBINDS: OK — 潜行/冲刺绑定未被改动（{0}）" -f $path)
+    } else {
+        $detail = ($fixed | ForEach-Object {
+                '{0}:{1}→{2}' -f $_.Key, $(if ($null -eq $_.From -or $_.From -eq '') { '(缺失)' } else { $_.From }), $_.To
+            }) -join '; '
+        Write-MtWarn ("MT_KEYBINDS: REPAIRED — 测试环境按键绑定被改动过，已改回期望值：{0}（{1}）" -f $detail, $path)
+    }
+    return $fixed
+}
+
 function Invoke-MtEnvDebug {
     <#
     .SYNOPSIS
         全局调试/测试环境开关子命令（三条线同一入口）：
-        `mt_env.ps1 debug --version <V> [--pause-lock on|off|status] [--shaders on|off|status]`。
+        `mt_env.ps1 debug --version <V> [--pause-lock on|off|status] [--shaders on|off|status] [--keybinds status|repair]`。
 
     .DESCRIPTION
         2026-09-17 用户要求「添加全局调试命令，禁止游戏失焦打开 ESC 菜单」。本子命令是这些
@@ -1442,17 +1949,20 @@ function Invoke-MtEnvDebug {
           · `--pause-lock on`  → `options.txt` `pauseOnLostFocus:false`（**默认期望值**：禁止失焦弹 ESC 菜单）
             `--pause-lock off` → 写回 true（对照实验用；会明确 WARN，因为之后注入/截图可能失效）
           · `--shaders on|off|status` → 透传到 `Invoke-MtEnvShaders`（路径按版本取：Iris 线 = config/iris.properties，1.20.1 = Oculus 的 config/oculus.properties）
-        不带任何开关时只**回显当前状态**（等效于两个都 status）。
+          · `--keybinds status|repair` → 潜行/冲刺绑定不变量（2026-09-19 新增）：`status` 只读回显
+            「当前值 vs 期望值」，`repair` 幂等改回期望值；env 阶段每次都会自动 repair
+        不带任何开关时只**回显当前状态**（等效于都给 status）。
 
     .NOTES
-        ⚠️ 游戏退出时会重写 `options.txt`，故 pause-lock 必须在**冷启动之前**设置；
-        mt_launch 每次启动前也会自动强制一次，本命令用于「先设好、再手工启动」或事后核对。
+        ⚠️ 游戏退出时会重写 `options.txt`，故 pause-lock / keybinds 必须在**冷启动之前**设置；
+        mt_launch 每次启动前也会自动强制 pause-lock，本命令用于「先设好、再手工启动」或事后核对。
     #>
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][string]$Version,
         [string]$PauseLock = 'status',
-        [string]$Shaders = 'status'
+        [string]$Shaders = 'status',
+        [string]$Keybinds = 'status'
     )
 
     $Paths = Get-MtPaths -Version $Version
@@ -1476,6 +1986,27 @@ function Invoke-MtEnvDebug {
     $pauseText = if ($null -eq $pauseState) { '(未设置/options.txt 不存在)' }
     elseif (-not $pauseState) { 'on (pauseOnLostFocus=false)' } else { 'off (pauseOnLostFocus=true)' }
     Write-MtLine ("MT_DEBUG: {0} pause-lock={1}" -f $Version, $pauseText)
+
+    if ($Keybinds -eq 'repair') {
+        [void](Invoke-MtKeyBindingEnforce -Paths $Paths)
+    } elseif ($Keybinds -eq 'status') {
+        $drift = @()
+        foreach ($k in @((Get-MtTestKeyBindings).Keys)) {
+            $want = [string](Get-MtTestKeyBindings)[$k]
+            $have = Get-MtKeyBinding -Paths $Paths -Key $k
+            $haveText = if ($null -eq $have -or $have -eq '') { '(未设置)' } else { $have }
+            if ($have -ne $want) { $drift += ('{0}:{1}（期望 {2}）' -f $k, $haveText, $want) }
+        }
+        if ($drift.Count -eq 0) {
+            Write-MtLine ("MT_DEBUG: {0} keybinds=OK（潜行/冲刺绑定为期望值）" -f $Version)
+        } else {
+            Write-MtWarn ("MT_DEBUG: {0} keybinds=DRIFT — {1}；用 `--keybinds repair` 或重跑 `mt_env world/mods` 改回" -f `
+                    $Version, ($drift -join '; '))
+        }
+    } else {
+        Write-MtErrorLine ("非法 --keybinds {0}（可选：status repair）" -f $Keybinds)
+        return $MT_EXIT_ERROR
+    }
 
     if ($Shaders -ne 'status') {
         $src = Invoke-MtEnvShaders -Version $Version -State $Shaders
@@ -1562,9 +2093,12 @@ function Invoke-MtEnvWorld {
             Write-MtLine 'MT_WORLD: BLOCKED — level.dat 的 AllowCommands 未能设置'
             return 11
         }
-        # 测试规则：新建/恢复的世界必须 keepInventory=true（见 Set-MtKeepInventory）
-        if (-not (Set-MtKeepInventory -LevelDat (Join-Path $p.client_world 'level.dat'))) {
-            Write-MtLine 'MT_WORLD: BLOCKED — level.dat 的 GameRules.keepInventory 未能设置'
+        # 测试规则：新建/恢复的世界必须 keepInventory=true（见 Set-MtKeepInventory）；
+        # 26.1.2 追加：真正存储在 data/minecraft/game_rules.dat，写后**从文件读回**校验
+        # （见 Set-MtWorldKeepInventory）。1.20.1/1.21.1 的文案与产物不变。
+        $kinvErr = Set-MtWorldKeepInventory -Version $Version -Paths $p
+        if ($null -ne $kinvErr) {
+            Write-MtLine "MT_WORLD: BLOCKED — $kinvErr"
             return 11
         }
         Write-MtLine "MT_WORLD: OK — 种子快恢复（allowCommands=1, keepInventory=true） $($p.client_world)"
@@ -1678,9 +2212,12 @@ function Invoke-MtEnvWorld {
         Write-MtErrLine 'MT_WORLD: BLOCKED — level.dat 的 AllowCommands 未能设置'
         return 11
     }
-    # 测试规则：新建/恢复的世界必须 keepInventory=true（见 Set-MtKeepInventory）
-    if (-not (Set-MtKeepInventory -LevelDat $level)) {
-        Write-MtErrLine 'MT_WORLD: BLOCKED — level.dat 的 GameRules.keepInventory 未能设置'
+    # 测试规则：新建/恢复的世界必须 keepInventory=true（见 Set-MtKeepInventory）；
+    # 26.1.2 追加：真正存储在 data/minecraft/game_rules.dat，写后**从文件读回**校验
+    # （见 Set-MtWorldKeepInventory）。1.20.1/1.21.1 的文案与产物不变。
+    $kinvErr = Set-MtWorldKeepInventory -Version $Version -Paths $p
+    if ($null -ne $kinvErr) {
+        Write-MtErrLine "MT_WORLD: BLOCKED — $kinvErr"
         return 11
     }
     Write-MtLine "MT_WORLD: OK — 世界重建（allowCommands=1, keepInventory=true） $($p.client_world)"
@@ -1699,6 +2236,8 @@ if ($MyInvocation.InvocationName -ne '.') {
     $ShaderState = 'status'
     # 全局调试子命令的开关（2026-09-17）：pause-lock = 禁止失焦打开 ESC 菜单（见 Invoke-MtEnvDebug）
     $PauseLockState = 'status'
+    # 测试环境按键绑定不变量（2026-09-19）：潜行/冲刺绑定漂移会让 `--shift` 注入语义错位
+    $KeybindState = 'status'
 
     $i = 0
     while ($i -lt $args.Count) {
@@ -1721,6 +2260,10 @@ if ($MyInvocation.InvocationName -ne '.') {
         } elseif ($key -eq 'pause-lock') {
             if ($i + 1 -ge $args.Count) { Write-MtErrorLine '缺少 --pause-lock 的值'; exit $MT_EXIT_ERROR }
             $PauseLockState = ([string]$args[$i + 1]).ToLowerInvariant()
+            $i += 2
+        } elseif ($key -eq 'keybinds') {
+            if ($i + 1 -ge $args.Count) { Write-MtErrorLine '缺少 --keybinds 的值'; exit $MT_EXIT_ERROR }
+            $KeybindState = ([string]$args[$i + 1]).ToLowerInvariant()
             $i += 2
         } elseif ($key -eq 'timeout') {
             if ($i + 1 -ge $args.Count) { Write-MtErrorLine '缺少 --timeout 的值'; exit $MT_EXIT_ERROR }
@@ -1746,7 +2289,7 @@ if ($MyInvocation.InvocationName -ne '.') {
         'kubejs' { exit (Invoke-MtEnvKubejs -Version $Version) }
         'world' { exit (Invoke-MtEnvWorld -Version $Version -Seed $SeedFlag -Timeout $TimeoutSec) }
         'shaders' { exit (Invoke-MtEnvShaders -Version $Version -State $ShaderState) }
-        'debug' { exit (Invoke-MtEnvDebug -Version $Version -PauseLock $PauseLockState -Shaders $ShaderState) }
+        'debug' { exit (Invoke-MtEnvDebug -Version $Version -PauseLock $PauseLockState -Shaders $ShaderState -Keybinds $KeybindState) }
         'kill' {
             [void](Stop-MtVersionProcesses -Paths (Get-MtPaths -Version $Version))
             exit $MT_EXIT_PASS

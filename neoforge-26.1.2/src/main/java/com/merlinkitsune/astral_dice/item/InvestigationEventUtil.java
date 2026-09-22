@@ -2,9 +2,9 @@ package com.merlinkitsune.astral_dice.item;
 
 import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
 
-import com.merlinkitsune.astral_dice.component.GameplayConstants;
+import com.merlinkitsune.starenginelib.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.event.AstralEventSystem;
-import com.merlinkitsune.astral_dice.event.EventTargetCollector;
+import com.merlinkitsune.starenginelib.event.EventTargetCollector;
 import com.merlinkitsune.astral_dice.network.ActionBarPayload;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
@@ -26,6 +26,7 @@ import com.merlinkitsune.astral_dice.effect.ModEffects;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.neoforged.bus.api.SubscribeEvent;
 import java.util.Optional;
+import com.merlinkitsune.starenginelib.item.BossEntityUtil;
 
 /**
  * "调查阶段"事件核心逻辑。

@@ -3,13 +3,16 @@ package com.merlinkitsune.astral_dice.screen;
 import com.merlinkitsune.astral_dice.combat.CardRegistry;
 import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
 import com.merlinkitsune.astral_dice.component.AppliedStone;
-import com.merlinkitsune.astral_dice.component.GameplayConstants;
+import com.merlinkitsune.starenginelib.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.component.WeaponEnhancement;
 import com.merlinkitsune.astral_dice.item.dice.DiceCurioItem;
 import com.merlinkitsune.astral_dice.item.ModItems;
+import com.merlinkitsune.astral_dice.item.card.ExclusiveCardUtil;
+import com.merlinkitsune.astral_dice.item.card.TemporaryCardPermissiveSlot;
+import com.merlinkitsune.astral_dice.item.card.TemporaryCardUtil;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
@@ -17,7 +20,7 @@ import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.DataSlot;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
-import com.merlinkitsune.astral_dice.item.CuriosCompat;
+import com.merlinkitsune.starenginelib.item.CuriosCompat;
 import top.theillusivec4.curios.api.CuriosApi;
 
 import java.util.ArrayList;
@@ -260,6 +263,11 @@ public class CardInventoryMenu extends AbstractContainerMenu {
                 if (defIdx < cardSlots) {
                     ItemStack itemStack = stoneToItem(stone);
                     ModDataComponents.CARD_USES.set(itemStack,  stone.uses());
+                    // 临时牌(绿洲女王 nardis):装配状态下的临时性只存在 AppliedStone 里(装配会销毁
+                    // 物品栈),这里把它**还原**到重建出来的栈上 ⇒ 卡牌栏 UI 里也一眼可辨(isFoil 会亮)。
+                    if (stone.temporary()) {
+                        TemporaryCardUtil.mark(itemStack);
+                    }
                     cardContainer.setItem(defIdx, itemStack);
                     defIdx++;
                 }
@@ -267,6 +275,9 @@ public class CardInventoryMenu extends AbstractContainerMenu {
                 if (attIdx < attackSlots) {
                     ItemStack itemStack = stoneToItem(stone);
                     ModDataComponents.CARD_USES.set(itemStack,  stone.uses());
+                    if (stone.temporary()) {
+                        TemporaryCardUtil.mark(itemStack);
+                    }
                     cardContainer.setItem(attIdx, itemStack);
                     attIdx++;
                 }
@@ -289,7 +300,9 @@ public class CardInventoryMenu extends AbstractContainerMenu {
                 if (type != null) {
                     int cost = stoneCost(type);
                     int uses = ModDataComponents.CARD_USES.getOrDefault(stack,  AppliedStone.defaultUses(type));
-                    stones.add(new AppliedStone(type, uses));
+                    // 临时性从物品栈**读回**写进记录(装配后物品栈会被销毁,记录是唯一载体;
+                    // 反向还原见 loadFromDice)。
+                    stones.add(new AppliedStone(type, uses, TemporaryCardUtil.isTemporary(stack)));
                     if (isDefenseType(type)) {
                         totalDefenseCost += cost;
                     } else {
@@ -302,6 +315,18 @@ public class CardInventoryMenu extends AbstractContainerMenu {
         int actualStar = ModDataComponents.WEAPON_ENHANCEMENT.getOrDefault(dice,  WeaponEnhancement.EMPTY).starLevel();
         ModDataComponents.WEAPON_ENHANCEMENT.set(dice, 
                 new WeaponEnhancement(totalAttackCost, maxAttackCost, totalDefenseCost, maxDefenseCost, actualStar, stones));
+
+        // 教主立牌「狐光」装备计层(**守卫 ②:历史同时装备水位去重**)。
+        // 只传"本次实际装备的攻击牌 类型→张数";是否计层由 TeruSignItem 按该玩家的历史水位判定
+        // ⇒ 同一批牌「插入 → 卸除 → 再插入」一层都刷不到(详见 TeruSignItem#onAttackCardsEquipped)。
+        // 注意必须落在 stones 计算之后:装备会**销毁卡牌物品栈**,卸除时由 loadFromDice 重建全新栈,
+        // 任何物品级标记都不可能在"插入→卸除→再插入"之间存活。
+        java.util.Map<String, Integer> equippedAttackCards = new java.util.LinkedHashMap<>();
+        for (AppliedStone stone : stones) {
+            if (stone == null || stone.type() == null || isDefenseType(stone.type())) continue;
+            equippedAttackCards.merge(stone.type(), 1, Integer::sum);
+        }
+        com.merlinkitsune.astral_dice.item.sign.TeruSignItem.onAttackCardsEquipped(player, equippedAttackCards);
     }
 
     public ItemStack getCardItem(int slotIndex) {
@@ -412,7 +437,9 @@ public class CardInventoryMenu extends AbstractContainerMenu {
         return stack;
     }
 
-    class AttackCardSlot extends Slot {
+    // 卡牌栏两个槽类实现 TemporaryCardPermissiveSlot:临时牌**允许**放进卡牌栏(那就是"装备"),
+    // 是需求允许的两条去路之一。两个 mixin 的容器拦截据此放行;不用容器类型猜(它们是 SimpleContainer)。
+    class AttackCardSlot extends Slot implements TemporaryCardPermissiveSlot {
         AttackCardSlot(int index, int x, int y) {
             super(cardContainer, index, x, y);
         }
@@ -421,6 +448,8 @@ public class CardInventoryMenu extends AbstractContainerMenu {
         public boolean mayPlace(ItemStack stack) {
             String type = itemToStoneType(stack);
             if (type == null || isDefenseType(type)) return false;
+            // 专属牌守门(撕咬/龙之咆哮等):非获得者不得装备(无主时放行并首次绑定,与效果牌同语义)
+            if (ExclusiveCardUtil.isExclusive(stack) && !ExclusiveCardUtil.canUse(player, stack)) return false;
             int slotCost = stoneCost(type);
             int usedWithoutThis = 0;
             for (int i = 0; i < attackSlots; i++) {
@@ -440,7 +469,7 @@ public class CardInventoryMenu extends AbstractContainerMenu {
         }
     }
 
-    class DefenseCardSlot extends Slot {
+    class DefenseCardSlot extends Slot implements TemporaryCardPermissiveSlot {
         DefenseCardSlot(int index, int x, int y) {
             super(cardContainer, index, x, y);
         }
@@ -449,6 +478,8 @@ public class CardInventoryMenu extends AbstractContainerMenu {
         public boolean mayPlace(ItemStack stack) {
             String type = itemToStoneType(stack);
             if (type == null || !isDefenseType(type)) return false;
+            // 专属牌守门(同攻击牌槽;当前专属战斗牌均为攻击牌,防御槽此行为纵深防御)
+            if (ExclusiveCardUtil.isExclusive(stack) && !ExclusiveCardUtil.canUse(player, stack)) return false;
             int slotCost = stoneCost(type);
             int usedWithoutThis = 0;
             for (int i = attackSlots; i < cardSlots; i++) {

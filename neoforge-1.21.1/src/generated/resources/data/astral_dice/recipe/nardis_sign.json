@@ -1,0 +1,30 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": {
+      "item": "minecraft:cactus"
+    },
+    "D": {
+      "item": "astral_dice:golden_dice"
+    },
+    "E": {
+      "item": "astral_dice:blank_sign"
+    },
+    "T": {
+      "item": "minecraft:terracotta"
+    },
+    "Y": {
+      "item": "minecraft:yellow_dye"
+    }
+  },
+  "pattern": [
+    "CYC",
+    "TET",
+    "TDT"
+  ],
+  "result": {
+    "count": 1,
+    "id": "astral_dice:nardis_sign"
+  }
+}

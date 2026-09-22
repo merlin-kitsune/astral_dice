@@ -59,7 +59,7 @@ public class ModAttachments {
 
     // 活体书页(effect_card_living_page):本周期活体书页累计的出牌数加成(0,1,2,…)。
     // 每次使用活体书页 +1(可累计;不是"效果存在即 +1"的开关式),周期归零时由 EffectCardPeriod 清除。
-    // 注意:与"调查员已用页数"(rin_pages,永久、无上限)无关,不可复用后者做本周期计数。
+    // 注意:与"调查员已用页数"(rin_pages,永久累计;作为加成生效时静默上限 120)无关,不可复用后者做本周期计数。
     public static final AttachedDataKey<Integer> LIVING_PAGE_CYCLE_BONUS =
             register(AttachedDataKey.builder("living_page_cycle_bonus", Codec.INT, () -> 0).sync().build());
 
@@ -144,7 +144,7 @@ public class ModAttachments {
     public static final AttachedDataKey<String> KOMACHI_LAST_CARD =
             register(AttachedDataKey.builder("komachi_last_card", Codec.STRING, () -> "").build());
 
-    // 忍者立牌(komachi):效果牌伤害增益(每使用 3 张效果牌 +1,无上限,卸下立牌重置;死亡重生保留)
+    // 忍者立牌(komachi):效果牌伤害增益(每使用 3 张效果牌 +1,累计无上限;作为加成生效时静默上限 120,卸下立牌重置;死亡重生保留)
     // 「死亡重生保留」由 AstralData.onPlayerClone 的死亡分支复制本键实现(对应 1.21.1 的 .copyOnDeath())
     public static final AttachedDataKey<Integer> KOMACHI_DAMAGE_BONUS =
             register(AttachedDataKey.builder("komachi_damage_bonus", Codec.INT, () -> 0).sync().build());
@@ -466,6 +466,26 @@ public class ModAttachments {
         SIGN_ACTIVE_LOCK_PLAYED.set(player, value);
     }
 
+    // 锁定态的"离线补偿基准":本方法最后一次见到该玩家的 gameTime(0 = 无锁定/宽限计时,不参与补偿)。
+    // 为什么需要它:两个时钟在多人服务器上不同步 —— 门控效果的剩余时长只在 LivingEntity#tickEffects
+    // 里递减(玩家离线期间**冻结**),而 SIGN_ACTIVE_LOCK_END / SIGN_ACTIVE_LOCK_GRACE_END 是**绝对
+    // gameTime**(服务器只要在跑就照常推进)⇒ 「离线时长 > 上界剩余」后重登会看到"上界已过而效果仍在",
+    // BaseSignItem#isSignActiveLocked 一过界即判未锁定 ⇒ 锁定被墙钟单方面提前结束。
+    // BaseSignItem#tickSignActiveLock 用本键算出两次结算之间错过的间隔 gap,把锁定自己的两个截止刻
+    // **整体后移** gap,使两个时钟对称(等效"离线期间锁定不走"),**不读任何效果实例**。
+    // 仅服务端使用(与上面 5 个锁定键同性质),故一律不 .sync()、不加入 SYNCED_KEYS;
+    // 未 .inMemory() ⇒ 落 AstralData 的 persistent compound,随玩家 NBT(players/<uuid>.dat)保存。
+    public static final AttachedDataKey<Long> SIGN_ACTIVE_LOCK_LAST_SEEN =
+            register(AttachedDataKey.builder("sign_active_lock_last_seen", Codec.LONG, () -> 0L).build());
+
+    public static long getSignActiveLockLastSeen(net.minecraft.world.entity.player.Player player) {
+        return SIGN_ACTIVE_LOCK_LAST_SEEN.get(player);
+    }
+
+    public static void setSignActiveLockLastSeen(net.minecraft.world.entity.player.Player player, long value) {
+        SIGN_ACTIVE_LOCK_LAST_SEEN.set(player, value);
+    }
+
     // 末影骰子:不死图腾效果冷却结束时刻(玩家级,0 表示未进入冷却)
     public static final AttachedDataKey<Long> ENDER_DIE_TOTEM_COOLDOWN_END =
             register(AttachedDataKey.builder("ender_die_totem_cooldown_end", Codec.LONG, () -> 0L).sync().build());
@@ -490,26 +510,37 @@ public class ModAttachments {
         WARP_ENGINE_PORTAL_COOLDOWN_END.set(player, value);
     }
 
+    // @Deprecated 已废弃:立牌主动技能"等待目标释放"机制已被目标选择器(TargetSelectionManager 会话)替代,
+    // 占星师/秘密侦探不再读写本附件。定义保留(已持久化)以避免旧存档附件数据异常,禁止新代码使用。
     // 立牌主动技能"等待目标释放"状态类型:1=占星师(虚弱印记) 2=秘密侦探(隐匿调查);0=无等待
     public static final AttachedDataKey<Integer> SIGN_READY_TYPE =
             register(AttachedDataKey.builder("sign_ready_type", Codec.INT, () -> 0).sync().build());
 
+    // @Deprecated 已废弃:见 SIGN_READY_TYPE
     // 立牌主动技能等待到期时刻(0 表示无等待)
     public static final AttachedDataKey<Long> SIGN_READY_EXPIRE =
             register(AttachedDataKey.builder("sign_ready_expire", Codec.LONG, () -> 0L).sync().build());
 
+    /** @deprecated 已废弃,由目标选择器会话替代;禁止新代码使用 */
+    @Deprecated
     public static int getSignReadyType(net.minecraft.world.entity.player.Player player) {
         return SIGN_READY_TYPE.get(player);
     }
 
+    /** @deprecated 已废弃,由目标选择器会话替代;禁止新代码使用 */
+    @Deprecated
     public static void setSignReadyType(net.minecraft.world.entity.player.Player player, int value) {
         SIGN_READY_TYPE.set(player, value);
     }
 
+    /** @deprecated 已废弃,由目标选择器会话替代;禁止新代码使用 */
+    @Deprecated
     public static long getSignReadyExpire(net.minecraft.world.entity.player.Player player) {
         return SIGN_READY_EXPIRE.get(player);
     }
 
+    /** @deprecated 已废弃,由目标选择器会话替代;禁止新代码使用 */
+    @Deprecated
     public static void setSignReadyExpire(net.minecraft.world.entity.player.Player player, long value) {
         SIGN_READY_EXPIRE.set(player, value);
     }
@@ -603,7 +634,7 @@ public class ModAttachments {
     public static final AttachedDataKey<Long> NANCY_LU_HIDDEN_UNTIL =
             register(AttachedDataKey.builder("nancy_lu_hidden_until", Codec.LONG, () -> 0L).sync().build());
 
-    // 看板立牌:被动"主动技能返还"累计的战斗牌数量(每累计 25 张返还战斗牌获得一个随机筹码)
+    // 看板娘立牌:被动"主动技能返还"累计的战斗牌数量(每累计 25 张返还战斗牌获得一个随机筹码)
     public static final AttachedDataKey<Integer> MIMI_RETURNED_CARD_COUNT =
             register(AttachedDataKey.builder("mimi_returned_card_count", Codec.INT, () -> 0).build());
 
@@ -869,6 +900,34 @@ public class ModAttachments {
     public static final AttachedDataKey<Long> RAILGUN_COOLDOWN_END =
             register(AttachedDataKey.builder("railgun_cooldown_end", Codec.LONG, () -> 0L).sync().build());
 
+    /**
+     * 游戏大师立牌(ren):最后一次「持有鼠鼠护盾」的世界时刻 —— 被动「鼠鼠救我」的 5 分钟计时基准。
+     * 玩家级、**非同步**(仅服务端使用);跨重登继续累加(persisted 于 level.dat 的 Time)。
+     */
+    public static final AttachedDataKey<Long> REN_SHIELD_LAST_SEEN_TICK =
+            register(AttachedDataKey.builder("ren_shield_last_seen_tick", Codec.LONG, () -> 0L).build());
+
+    /**
+     * 游戏大师立牌(ren):授予护盾时玩家已有的吸收值(基线)。护盾只在此基础上 +20(10 黄心),
+     * 清空时也只回收这 20 ⇒ 不吞掉金苹果/不死图腾等外部来源的吸收。
+     */
+    public static final AttachedDataKey<Float> REN_SHIELD_BASELINE_ABSORPTION =
+            register(AttachedDataKey.builder("ren_shield_baseline_absorption", Codec.FLOAT, () -> 0.0f).build());
+
+    /**
+     * 游戏大师立牌(ren):当前那份「抗性提升」是否由本护盾施加(放大器 0 且带此标记才在清空时移除,
+     * 玩家的药水或更高等级一律保留)。玩家级、非同步。
+     */
+    public static final AttachedDataKey<Boolean> REN_SHIELD_OWN_RESISTANCE =
+            register(AttachedDataKey.builder("ren_shield_own_resistance", Codec.BOOL, () -> false).build());
+
+    /**
+     * 游戏大师立牌(ren):一次性反击层数(0/1)。获得鼠鼠护盾时 +1,被攻击时消耗 1 层并对攻击者
+     * 注入一次现有反击伤害;护盾清空时归零。
+     */
+    public static final AttachedDataKey<Integer> REN_COUNTER_CHARGES =
+            register(AttachedDataKey.builder("ren_counter_charges", Codec.INT, () -> 0).build());
+
     public static long getEmpowerDecayAt(net.minecraft.world.entity.player.Player player) {
         return EMPOWER_DECAY_AT.get(player);
     }
@@ -901,6 +960,174 @@ public class ModAttachments {
         RAILGUN_COOLDOWN_END.set(player, Math.max(0, value));
     }
 
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 蛟龙立牌(mamushi):觉醒层数 / 撕咬加成锁存 / 强制冷却硬闸门(2026-09-27)
+    //
+    // 与 1.21.1 侧**同名同型、同语义**(先例见上方「白泽赐福」「教主立牌」两段):
+    // 只有 mamushi_awakening 是 Tooltip 需要读取的显示值 ⇒ 唯一登记进 SYNCED_KEYS 的键;
+    // 另两键纯服务端判定,一律不 .sync()。三个键都**不** .inMemory()(随玩家 NBT 持久化)。
+    // ⚠️ mamushi_awakening 需**跨死亡保留**,1.20.1 没有 copyOnDeath():必须加入
+    // component/AstralData#onPlayerClone 死亡分支白名单(对应 1.21.1 的 .copyOnDeath()),
+    // 并且作为第 3 槽位进入 component/DeathPreservedBonuses(立牌掉落导致的卸载会先清零)。
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /**
+     * 蛟龙立牌(mamushi)「觉醒」层数(0..{@code MamushiSignItem.AWAKEN_MAX} 之后继续累加,不回落)。
+     *
+     * <p>**同步**:立牌 tooltip 的计数行({@code tooltip.astral_dice.sign.mamushi_awaken})要读它,
+     * 与 {@code fen_recharge} 同一口径 ⇒ 必须进 {@code SYNCED_KEYS}。
+     * **跨死亡保留** ⇒ 同时进 {@link AstralData#onPlayerClone} 白名单与
+     * {@link DeathPreservedBonuses} 第 3 槽位(两层缺一不可,理由同 {@code rin_pages})。
+     */
+    public static final AttachedDataKey<Integer> MAMUSHI_AWAKENING =
+            register(AttachedDataKey.builder("mamushi_awakening", Codec.INT, () -> 0).sync().build());
+
+    /**
+     * 撕咬加成**锁存**(纯服务端):触发骰神赐福当刻装备了撕咬 ⇒ 置 true;赐福结束时清除。
+     *
+     * <p>为什么必须锁存:撕咬耐久 1,同一击稍后就会被消耗掉;若不锁存,"加成需要撕咬仍在装备中"
+     * 会在加成本该生效的那一刻立即失效(规格 §2.6)。
+     * 不 {@code .sync()}、不加入 {@code SYNCED_KEYS}(客户端不参与该判定)。
+     */
+    public static final AttachedDataKey<Boolean> MAMUSHI_BITE_BONUS_ACTIVE =
+            register(AttachedDataKey.builder("mamushi_bite_bonus_active", Codec.BOOL, () -> false).build());
+
+    /**
+     * 强制冷却**硬闸门**(纯服务端):释放当刻写 {@code now + MamushiSignItem.ACTIVE_FORCED_COOLDOWN_TICKS}。
+     *
+     * <p>与 {@code sign_active_cooldown_end} 并存但语义不同:后者可被诡异骰子/电流核心等减免,
+     * 前者**不接受任何减免**(规格 §3.4)。不 {@code .sync()}、不加入 {@code SYNCED_KEYS}。
+     */
+    public static final AttachedDataKey<Long> MAMUSHI_FORCED_COOLDOWN_UNTIL =
+            register(AttachedDataKey.builder("mamushi_forced_cooldown_until", Codec.LONG, () -> 0L).build());
+
+    public static int getMamushiAwakening(net.minecraft.world.entity.player.Player player) {
+        return MAMUSHI_AWAKENING.get(player);
+    }
+
+    public static void setMamushiAwakening(net.minecraft.world.entity.player.Player player, int value) {
+        MAMUSHI_AWAKENING.set(player, Math.max(0, value));
+    }
+
+    public static boolean getMamushiBiteBonusActive(net.minecraft.world.entity.player.Player player) {
+        return MAMUSHI_BITE_BONUS_ACTIVE.get(player);
+    }
+
+    public static void setMamushiBiteBonusActive(net.minecraft.world.entity.player.Player player, boolean value) {
+        MAMUSHI_BITE_BONUS_ACTIVE.set(player, value);
+    }
+
+    public static long getMamushiForcedCooldownUntil(net.minecraft.world.entity.player.Player player) {
+        return MAMUSHI_FORCED_COOLDOWN_UNTIL.get(player);
+    }
+
+    public static void setMamushiForcedCooldownUntil(net.minecraft.world.entity.player.Player player, long value) {
+        MAMUSHI_FORCED_COOLDOWN_UNTIL.set(player, Math.max(0L, value));
+    }
+
+    /**
+     * 怪力侦探立牌(sherry)「推理时间」**层数真值**(0..5)。
+     *
+     * <p><b>为什么必须进死亡保留名单</b>:用户要求「玩家**死亡不清**推理时间」——
+     * 1.21.1 侧是 {@code AttachmentType.Builder#copyOnDeath()} 键;本线对应
+     * {@link AstralData#onPlayerClone} 死亡分支白名单 **+** {@link DeathPreservedBonuses}
+     * 第 4 槽位(立牌掉落触发的 {@code onUnequip → clearSignData} 会抢先清零,两层缺一不可,
+     * 与 {@code mamushi_awakening} 同构)。层数的 HUD 显示走
+     * {@code effect/SherryReasoningEffect} 的镜像效果(该效果在死亡时被清空,重生后由
+     * {@code SherrySignItem#onCurioTick} 按本键重建)。
+     *
+     * <p>不 {@code .sync()}、不加入 {@code SYNCED_KEYS}:客户端 tooltip 的层数计数器读的是
+     * **已同步的效果实例**(SherryReasoningEffect.getStacks),不读本键。
+     */
+    public static final AttachedDataKey<Integer> SHERRY_REASONING_LAYERS =
+            register(AttachedDataKey.builder("sherry_reasoning_layers", Codec.INT, () -> 0).build());
+
+    public static int getSherryReasoningLayers(net.minecraft.world.entity.player.Player player) {
+        return SHERRY_REASONING_LAYERS.get(player);
+    }
+
+    public static void setSherryReasoningLayers(net.minecraft.world.entity.player.Player player, int value) {
+        SHERRY_REASONING_LAYERS.set(player, Math.max(0, value));
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    //  人偶师立牌(hanna,2026-09-21)
+    // ══════════════════════════════════════════════════════════════════════════
+
+    /**
+     * 人偶师立牌(hanna)「人偶制作」**层数真值**(0..{@code HannaSignItem.MAX_CRAFT − 1} = 0..6;
+     * 达到 7 时由立牌**归零并转为「人偶完成」**,故本键**永不为 7**)。
+     *
+     * <p>层数的 HUD 显示走 {@code effect/HannaDollCraftEffect} 的镜像效果(层数 = {@code amplifier + 1})。
+     * <b>不 {@code .sync()}</b> —— 客户端 tooltip 的层数计数器读的是**已同步的效果实例**,不读本键。
+     *
+     * <p><b>不跨死亡保留</b>:技能原文未声明死亡保留 ⇒ 按"未声明即不保留"的既定口径处理
+     * (照「剑气」「弱点识破」),故**不**进 {@code AstralData#onPlayerClone} 白名单、
+     * 也**不**占 {@code DeathPreservedBonuses} 槽位。
+     */
+    public static final AttachedDataKey<Integer> HANNA_DOLL_CRAFT_LAYERS =
+            register(AttachedDataKey.builder("hanna_doll_craft_layers", Codec.INT, () -> 0).build());
+
+    /** 人偶师立牌(hanna)「人偶完成」状态(「人偶制作」满 7 层归零转换而来;卸下立牌时清除)。不 {@code .sync()}。 */
+    public static final AttachedDataKey<Boolean> HANNA_DOLL_COMPLETE =
+            register(AttachedDataKey.builder("hanna_doll_complete", Codec.BOOL, () -> false).build());
+
+    /** 人偶师立牌(hanna)被动「幻想千金」的 1:00 触发冷却截止刻(绝对 gameTime;骰点 6 与路过共享)。仅服务端。 */
+    public static final AttachedDataKey<Long> HANNA_FANTASY_COOLDOWN_END =
+            register(AttachedDataKey.builder("hanna_fantasy_cooldown_end", Codec.LONG, () -> 0L).build());
+
+    /** 人偶师立牌(hanna)被动「挚友祝福」的 1:00 触发冷却截止刻(与「幻想千金」各自独立)。仅服务端。 */
+    public static final AttachedDataKey<Long> HANNA_BLESSING_COOLDOWN_END =
+            register(AttachedDataKey.builder("hanna_blessing_cooldown_end", Codec.LONG, () -> 0L).build());
+
+    public static int getHannaDollCraftLayers(net.minecraft.world.entity.player.Player player) {
+        return HANNA_DOLL_CRAFT_LAYERS.get(player);
+    }
+
+    public static void setHannaDollCraftLayers(net.minecraft.world.entity.player.Player player, int value) {
+        HANNA_DOLL_CRAFT_LAYERS.set(player, Math.max(0, value));
+    }
+
+    public static boolean getHannaDollComplete(net.minecraft.world.entity.player.Player player) {
+        return HANNA_DOLL_COMPLETE.get(player);
+    }
+
+    public static void setHannaDollComplete(net.minecraft.world.entity.player.Player player, boolean value) {
+        HANNA_DOLL_COMPLETE.set(player, value);
+    }
+
+    public static long getHannaFantasyCooldownEnd(net.minecraft.world.entity.player.Player player) {
+        return HANNA_FANTASY_COOLDOWN_END.get(player);
+    }
+
+    public static void setHannaFantasyCooldownEnd(net.minecraft.world.entity.player.Player player, long value) {
+        HANNA_FANTASY_COOLDOWN_END.set(player, Math.max(0L, value));
+    }
+
+    public static long getHannaBlessingCooldownEnd(net.minecraft.world.entity.player.Player player) {
+        return HANNA_BLESSING_COOLDOWN_END.get(player);
+    }
+
+    public static void setHannaBlessingCooldownEnd(net.minecraft.world.entity.player.Player player, long value) {
+        HANNA_BLESSING_COOLDOWN_END.set(player, Math.max(0L, value));
+    }
+
+    /**
+     * 「飞星」筹码(紫色飞星 / 金色飞星)的 **共享**触发冷却截止刻(绝对 gameTime)。
+     * <p>用户裁决:两枚筹码同时装备时共用同一计时器 ⇒ 只此一键。该计时器**不创建任何效果**,
+     * 仅在 tooltip 中显示剩余秒数。仅服务端。
+     */
+    public static final AttachedDataKey<Long> SHOOTING_STAR_COOLDOWN_END =
+            register(AttachedDataKey.builder("shooting_star_cooldown_end", Codec.LONG, () -> 0L).build());
+
+    public static long getShootingStarCooldownEnd(net.minecraft.world.entity.player.Player player) {
+        return SHOOTING_STAR_COOLDOWN_END.get(player);
+    }
+
+    public static void setShootingStarCooldownEnd(net.minecraft.world.entity.player.Player player, long value) {
+        SHOOTING_STAR_COOLDOWN_END.set(player, Math.max(0L, value));
+    }
+
     /** synced 键快照发送(登录/重生/切维度时)。 */
     public static void sendSyncSnapshot(ServerPlayer player) {
         com.merlinkitsune.astral_dice.network.ModNetwork.syncSnapshot(player, syncedKeys());
@@ -913,6 +1140,7 @@ public class ModAttachments {
             SYNCED_KEYS.add(EFFECT_CARD_PLAY_COUNT);
             SYNCED_KEYS.add(EFFECT_CARD_BONUS_PLAYS);
             SYNCED_KEYS.add(LIVING_PAGE_CYCLE_BONUS);
+            SYNCED_KEYS.add(FU_CARD_CYCLE_BONUS);
             SYNCED_KEYS.add(EFFECT_CARD_COOLDOWN_END);
             SYNCED_KEYS.add(HEALING_POINTS);
             SYNCED_KEYS.add(KOMACHI_DAMAGE_BONUS);
@@ -936,8 +1164,355 @@ public class ModAttachments {
             SYNCED_KEYS.add(RIN_PAGES);
             SYNCED_KEYS.add(PANDAMAN_MAX_HEALTH_BONUS);
             SYNCED_KEYS.add(NANCY_LU_PASSIVE_TYPE);
+            // 蛟龙立牌(mamushi):仅觉醒层数需客户端可见(tooltip 计数行);另两键纯服务端
+            SYNCED_KEYS.add(MAMUSHI_AWAKENING);
         }
         return SYNCED_KEYS;
+    }
+
+    public static long getRenShieldLastSeenTick(net.minecraft.world.entity.player.Player player) {
+        return REN_SHIELD_LAST_SEEN_TICK.get(player);
+    }
+
+    public static void setRenShieldLastSeenTick(net.minecraft.world.entity.player.Player player, long value) {
+        REN_SHIELD_LAST_SEEN_TICK.set(player, Math.max(0L, value));
+    }
+
+    public static float getRenShieldBaselineAbsorption(net.minecraft.world.entity.player.Player player) {
+        return REN_SHIELD_BASELINE_ABSORPTION.get(player);
+    }
+
+    public static void setRenShieldBaselineAbsorption(net.minecraft.world.entity.player.Player player, float value) {
+        REN_SHIELD_BASELINE_ABSORPTION.set(player, Math.max(0.0F, value));
+    }
+
+    public static boolean isRenShieldOwnResistance(net.minecraft.world.entity.player.Player player) {
+        return REN_SHIELD_OWN_RESISTANCE.get(player);
+    }
+
+    public static void setRenShieldOwnResistance(net.minecraft.world.entity.player.Player player, boolean value) {
+        REN_SHIELD_OWN_RESISTANCE.set(player, value);
+    }
+
+    public static int getRenCounterCharges(net.minecraft.world.entity.player.Player player) {
+        return REN_COUNTER_CHARGES.get(player);
+    }
+
+    public static void setRenCounterCharges(net.minecraft.world.entity.player.Player player, int value) {
+        REN_COUNTER_CHARGES.set(player, Math.max(0, value));
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 风水师立牌(zhao)+ 两张符卡(fu_card / huo_card)
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /**
+     * 「白泽赐福」状态机**真值**:是否处于生效期(附件与效果实例两处一致,由玩家级 tick 维持)。
+     *
+     * <p>与 1.21.1 侧同名同型(规格 §9.1 冻结名)。仅服务端使用(可见载体是效果实例,客户端由原生效果同步),
+     * 故不 {@code .sync()}、不加入 {@code SYNCED_KEYS}。
+     */
+    public static final AttachedDataKey<Boolean> ZHAO_BLESSING_ACTIVE =
+            register(AttachedDataKey.builder("zhao_blessing_active", Codec.BOOL, () -> false).build());
+
+    public static boolean isZhaoBlessingActive(net.minecraft.world.entity.player.Player player) {
+        return ZHAO_BLESSING_ACTIVE.get(player);
+    }
+
+    public static void setZhaoBlessingActive(net.minecraft.world.entity.player.Player player, boolean value) {
+        ZHAO_BLESSING_ACTIVE.set(player, value);
+    }
+
+    /**
+     * 「白泽赐福」的时序计数器:**仍需跳过的「骰神赐福结束」次数**(0 或 1)。
+     *
+     * <p>两种分支(与 1.21.1 逐条等价,规格 §4.5):
+     * <ul>
+     *   <li>施放时<b>不在</b>骰神赐福中 ⇒ 写 0 ⇒ **下一次**赐福结束即移除「白泽赐福」;</li>
+     *   <li>施放时<b>已在</b>骰神赐福中 ⇒ 写 1 ⇒ **跳过当前这次**赐福结束,下一次赐福结束后移除。</li>
+     * </ul>
+     * 仅由玩家级 tick 的下降沿消费({@code ZhaoSignItem#tickBlessing});仅服务端使用,故不 {@code .sync()}。
+     */
+    public static final AttachedDataKey<Integer> ZHAO_BLESSING_SKIP_CYCLES =
+            register(AttachedDataKey.builder("zhao_blessing_skip_cycles", Codec.INT, () -> 0).build());
+
+    public static int getZhaoBlessingSkipCycles(net.minecraft.world.entity.player.Player player) {
+        return ZHAO_BLESSING_SKIP_CYCLES.get(player);
+    }
+
+    public static void setZhaoBlessingSkipCycles(net.minecraft.world.entity.player.Player player, int value) {
+        ZHAO_BLESSING_SKIP_CYCLES.set(player, Math.max(0, value));
+    }
+
+    /**
+     * 上一拍的「骰神赐福存在性」(下降沿检测的**基准**;仅服务端,每 tick 读取)。
+     *
+     * <p>不 {@code .sync()}:同步会让每 tick 都写包(同口径先例:{@code healing_prev_blessing})。
+     */
+    public static final AttachedDataKey<Boolean> ZHAO_PREV_BLESSING =
+            register(AttachedDataKey.builder("zhao_prev_blessing", Codec.BOOL, () -> false).build());
+
+    public static boolean isZhaoPrevBlessing(net.minecraft.world.entity.player.Player player) {
+        return ZHAO_PREV_BLESSING.get(player);
+    }
+
+    public static void setZhaoPrevBlessing(net.minecraft.world.entity.player.Player player, boolean value) {
+        ZHAO_PREV_BLESSING.set(player, value);
+    }
+
+    /**
+     * 风水师立牌「白泽赐福」期间**溢出治疗等量转化的攻击力加成**(整数部分)。
+     *
+     * <p>写入方 = {@code item/sign/ZhaoSignItem#onLivingHeal} 经 {@link #addZhaoOverflowBonus}(整数化 +
+     * 余数留档,禁止无声丢数);读取方 = {@code combat/DiceCombatModifiers} 的攻击力修饰器;
+     * **唯一回收动作** = {@link #clearZhaoOverflowBonus}(整数 + 余数一并归零,幂等)。
+     * 仅服务端使用,故不 {@code .sync()}(与 1.21.1 侧同名同型)。
+     */
+    public static final AttachedDataKey<Integer> ZHAO_OVERFLOW_BONUS =
+            register(AttachedDataKey.builder("zhao_overflow_bonus", Codec.INT, () -> 0).build());
+
+    /** 溢出治疗取整后的**余数累加器**(< 1 的尾数;见 {@link #ZHAO_OVERFLOW_BONUS}) */
+    public static final AttachedDataKey<Float> ZHAO_OVERFLOW_REMAINDER =
+            register(AttachedDataKey.builder("zhao_overflow_remainder", Codec.FLOAT, () -> 0.0F).build());
+
+    public static int getZhaoOverflowBonus(net.minecraft.world.entity.player.Player player) {
+        return ZHAO_OVERFLOW_BONUS.get(player);
+    }
+
+    public static void setZhaoOverflowBonus(net.minecraft.world.entity.player.Player player, int value) {
+        ZHAO_OVERFLOW_BONUS.set(player, Math.max(0, value));
+    }
+
+    public static float getZhaoOverflowRemainder(net.minecraft.world.entity.player.Player player) {
+        return ZHAO_OVERFLOW_REMAINDER.get(player);
+    }
+
+    public static void setZhaoOverflowRemainder(net.minecraft.world.entity.player.Player player, float value) {
+        ZHAO_OVERFLOW_REMAINDER.set(player, Math.max(0.0F, value));
+    }
+
+    /**
+     * 把一次**溢出治疗量**累加进攻击力加成:整数部分进 {@link #ZHAO_OVERFLOW_BONUS},
+     * 小数部分留在 {@link #ZHAO_OVERFLOW_REMAINDER}(下一次溢出可能与余数凑成新的整数点)
+     * —— 规格 §5.2「禁止无声丢数」的选项一(余数也存进附件),与 1.21.1 逐字同形。
+     */
+    public static void addZhaoOverflowBonus(net.minecraft.world.entity.player.Player player, float overflow) {
+        if (overflow <= 0.0F) return;
+        float total = getZhaoOverflowRemainder(player) + overflow;
+        int whole = (int) Math.floor(total);
+        setZhaoOverflowRemainder(player, total - whole);
+        if (whole > 0) {
+            setZhaoOverflowBonus(player, getZhaoOverflowBonus(player) + whole);
+        }
+    }
+
+    /** 溢出加成的**唯一回收动作**(整数 + 余数一并归零;幂等) */
+    public static void clearZhaoOverflowBonus(net.minecraft.world.entity.player.Player player) {
+        setZhaoOverflowBonus(player, 0);
+        setZhaoOverflowRemainder(player, 0.0F);
+    }
+
+    /**
+     * 「厄运」(符卡-祸 的镜像效果)下一次周期伤害的**绝对结算刻**(gameTime;0 = 未起算)。
+     *
+     * <p><b>计时器与结算分离</b>:该键只在「持有张数 0 → &gt;0」时起算一次,此后**只由结算推进**
+     * (每次结算后 += 2:00),持卡张数的增减**一律不写本键** ⇒ 张数变化不会重置/推迟计时器,
+     * 而每次结算造成的伤害取「**结算时刻**的当前张数」。仅服务端使用,故不 {@code .sync()}。
+     */
+    public static final AttachedDataKey<Long> HUO_CARD_NEXT_DAMAGE_TICK =
+            register(AttachedDataKey.builder("huo_card_next_damage_tick", Codec.LONG, () -> 0L).build());
+
+    public static long getHuoCardNextDamageTick(net.minecraft.world.entity.player.Player player) {
+        return HUO_CARD_NEXT_DAMAGE_TICK.get(player);
+    }
+
+    public static void setHuoCardNextDamageTick(net.minecraft.world.entity.player.Player player, long value) {
+        HUO_CARD_NEXT_DAMAGE_TICK.set(player, Math.max(0L, value));
+    }
+
+    /**
+     * 「符卡-福」本出牌周期累计的出牌数加成(0,1,2,…):**每打出一次 +1**(可累计,不是"每轮一次"的开关)。
+     *
+     * <p>与活体书页的 {@link #LIVING_PAGE_CYCLE_BONUS} 同级、同址清理:
+     * 计入 {@code EffectCardPeriod#getMaxAllowed} 的 extra(受 {@code min(9, 1+extra)} 全局封顶),
+     * 由 {@code EffectCardPeriod#clearRoundBonuses} 在周期归零时清除。
+     *
+     * <p><b>必须同步</b>:客户端预检 {@code BaseEffectCardItem#isBlockedOnClient} →
+     * {@code EffectCardPeriod#isBurstFull} → {@code getMaxAllowed} 会在客户端读本键;
+     * 不同步会让客户端按较低的上限误判"本轮已打满"(与 {@code living_page_cycle_bonus} 的处理一致)。
+     */
+    public static final AttachedDataKey<Integer> FU_CARD_CYCLE_BONUS =
+            register(AttachedDataKey.builder("fu_card_cycle_bonus", Codec.INT, () -> 0).sync().build());
+
+    public static int getFuCardCycleBonus(net.minecraft.world.entity.player.Player player) {
+        return FU_CARD_CYCLE_BONUS.get(player);
+    }
+
+    // 计数器只增不减(归零由周期清理负责),此处仅钳制非负
+    public static void setFuCardCycleBonus(net.minecraft.world.entity.player.Player player, int value) {
+        FU_CARD_CYCLE_BONUS.set(player, Math.max(0, value));
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 教主立牌(teru):主动「降神」+ 被动「狐光」(2026-09-27)
+    //
+    // 与 1.21.1 侧**同名同型、同语义**(先例见上方「白泽赐福」段):真值全部在**被指定目标**身上,
+    // 施法者侧只有「狐光层数」「当前目标指针」「攻击加成镜像缓存」三个派生/持有值。
+    // 全部键仅服务端使用(可见载体是效果实例,客户端由原生效果同步)⇒ 一律不 {@code .sync()}、
+    // 不加入 {@link #SYNCED_KEYS}。
+    // ⚠️ {@code teru_huguang_layers} 与 {@code teru_equip_watermark} 需**跨死亡保留**,1.20.1 侧
+    // 没有 {@code copyOnDeath()}:必须加入 {@code component/AstralData#onPlayerClone} 死亡分支的白名单
+    // (对应 1.21.1 的 {@code .copyOnDeath()})。
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /**
+     * 降神**施加者**的 UUID(挂在被指定目标身上)= 降神是否生效的**唯一真值**(非空即生效中)。
+     * 目标死亡/登出/重登一律走 {@code TeruSignItem#endDescent} 收敛。
+     */
+    public static final AttachedDataKey<Optional<UUID>> TERU_DESCENT_CASTER =
+            register(AttachedDataKey.builder("teru_descent_caster",
+                    UUIDUtil.CODEC.optionalFieldOf("id").codec(), Optional::empty).build());
+
+    public static Optional<UUID> getTeruDescentCaster(net.minecraft.world.entity.player.Player player) {
+        return TERU_DESCENT_CASTER.get(player);
+    }
+
+    public static void setTeruDescentCaster(net.minecraft.world.entity.player.Player player, Optional<UUID> value) {
+        TERU_DESCENT_CASTER.set(player, value);
+    }
+
+    /** 降神给施法者的攻击力加成快照 = ⌊目标攻击力 × 50%⌋(施法瞬间锁定) */
+    public static final AttachedDataKey<Integer> TERU_DESCENT_ATK_BONUS =
+            register(AttachedDataKey.builder("teru_descent_atk_bonus", Codec.INT, () -> 0).build());
+
+    public static int getTeruDescentAtkBonus(net.minecraft.world.entity.player.Player player) {
+        return TERU_DESCENT_ATK_BONUS.get(player);
+    }
+
+    public static void setTeruDescentAtkBonus(net.minecraft.world.entity.player.Player player, int value) {
+        TERU_DESCENT_ATK_BONUS.set(player, Math.max(0, value));
+    }
+
+    /** 降神给施法者的防御力加成快照 = ⌊目标防御力 × 50%⌋(消费点 = setDefenseArmorBonus,1 防御 = 2 护甲) */
+    public static final AttachedDataKey<Integer> TERU_DESCENT_DEF_BONUS =
+            register(AttachedDataKey.builder("teru_descent_def_bonus", Codec.INT, () -> 0).build());
+
+    public static int getTeruDescentDefBonus(net.minecraft.world.entity.player.Player player) {
+        return TERU_DESCENT_DEF_BONUS.get(player);
+    }
+
+    public static void setTeruDescentDefBonus(net.minecraft.world.entity.player.Player player, int value) {
+        TERU_DESCENT_DEF_BONUS.set(player, Math.max(0, value));
+    }
+
+    /**
+     * **狐光攻击基数** {@code B = 施加时的施法者攻击力(基础) + ⌊目标攻击力 × 50%⌋}（= 施法者「获得目标 50% 加成后」的快照攻击力;施法瞬间快照）。
+     * 目标攻击新目标时的额外攻击 = {@code B + 消耗 1 层后剩余狐光层数}(计入骰战攻击力)。
+     */
+    public static final AttachedDataKey<Integer> TERU_DESCENT_ATTACK_BASE =
+            register(AttachedDataKey.builder("teru_descent_attack_base", Codec.INT, () -> 0).build());
+
+    public static int getTeruDescentAttackBase(net.minecraft.world.entity.player.Player player) {
+        return TERU_DESCENT_ATTACK_BASE.get(player);
+    }
+
+    public static void setTeruDescentAttackBase(net.minecraft.world.entity.player.Player player, int value) {
+        TERU_DESCENT_ATTACK_BASE.set(player, Math.max(0, value));
+    }
+
+    /** 降神待跳过的骰神赐福结束次数(0/1;语义与 {@link #ZHAO_BLESSING_SKIP_CYCLES} 逐字相同) */
+    public static final AttachedDataKey<Integer> TERU_DESCENT_SKIP_CYCLES =
+            register(AttachedDataKey.builder("teru_descent_skip_cycles", Codec.INT, () -> 0).build());
+
+    public static int getTeruDescentSkipCycles(net.minecraft.world.entity.player.Player player) {
+        return TERU_DESCENT_SKIP_CYCLES.get(player);
+    }
+
+    public static void setTeruDescentSkipCycles(net.minecraft.world.entity.player.Player player, int value) {
+        TERU_DESCENT_SKIP_CYCLES.set(player, Math.max(0, value));
+    }
+
+    /** 上一 tick 被指定目标是否处于骰神赐福(下降沿检测专用;仅服务端,每 tick 读写) */
+    public static final AttachedDataKey<Boolean> TERU_PREV_BLESSING =
+            register(AttachedDataKey.builder("teru_prev_blessing", Codec.BOOL, () -> false).build());
+
+    public static boolean isTeruPrevBlessing(net.minecraft.world.entity.player.Player player) {
+        return TERU_PREV_BLESSING.get(player);
+    }
+
+    public static void setTeruPrevBlessing(net.minecraft.world.entity.player.Player player, boolean value) {
+        TERU_PREV_BLESSING.set(player, value);
+    }
+
+    /** 本次降神期间已被该目标攻击过的目标 UUID 集(逗号分隔;效果结束时清空) */
+    public static final AttachedDataKey<String> TERU_DESCENT_NEW_TARGETS =
+            register(AttachedDataKey.builder("teru_descent_new_targets", Codec.STRING, () -> "").build());
+
+    public static String getTeruDescentNewTargets(net.minecraft.world.entity.player.Player player) {
+        return TERU_DESCENT_NEW_TARGETS.get(player);
+    }
+
+    public static void setTeruDescentNewTargets(net.minecraft.world.entity.player.Player player, String value) {
+        TERU_DESCENT_NEW_TARGETS.set(player, value == null ? "" : value);
+    }
+
+    /**
+     * 狐光层数(0..{@code TeruSignItem.MAX_HUGUANG} = 20;持有者 = 施法者自身)。
+     * **跨死亡保留** ⇒ 必须进 {@code AstralData#onPlayerClone} 死亡白名单。
+     */
+    public static final AttachedDataKey<Integer> TERU_HUGUANG_LAYERS =
+            register(AttachedDataKey.builder("teru_huguang_layers", Codec.INT, () -> 0).build());
+
+    public static int getTeruHuguangLayers(net.minecraft.world.entity.player.Player player) {
+        return TERU_HUGUANG_LAYERS.get(player);
+    }
+
+    public static void setTeruHuguangLayers(net.minecraft.world.entity.player.Player player, int value) {
+        TERU_HUGUANG_LAYERS.set(player, Math.max(0, value));
+    }
+
+    /** 施法者侧当前降神目标指针(拒绝重复施放的判据;失效可由玩家级 tick 扫描在线玩家自愈重建) */
+    public static final AttachedDataKey<Optional<UUID>> TERU_DESCENT_TARGET =
+            register(AttachedDataKey.builder("teru_descent_target",
+                    UUIDUtil.CODEC.optionalFieldOf("id").codec(), Optional::empty).build());
+
+    public static Optional<UUID> getTeruDescentTarget(net.minecraft.world.entity.player.Player player) {
+        return TERU_DESCENT_TARGET.get(player);
+    }
+
+    public static void setTeruDescentTarget(net.minecraft.world.entity.player.Player player, Optional<UUID> value) {
+        TERU_DESCENT_TARGET.set(player, value);
+    }
+
+    /** 施法者侧攻击力加成**镜像缓存**(每 tick 由目标记录派生写入;攻击修饰器唯一读取方) */
+    public static final AttachedDataKey<Integer> TERU_ATK_BONUS_CACHE =
+            register(AttachedDataKey.builder("teru_atk_bonus_cache", Codec.INT, () -> 0).build());
+
+    public static int getTeruAtkBonusCache(net.minecraft.world.entity.player.Player player) {
+        return TERU_ATK_BONUS_CACHE.get(player);
+    }
+
+    public static void setTeruAtkBonusCache(net.minecraft.world.entity.player.Player player, int value) {
+        TERU_ATK_BONUS_CACHE.set(player, Math.max(0, value));
+    }
+
+    /**
+     * **装备计层防刷水位**(挂在行为者身上):`类型=历史最大同时装备张数;…`(只升不降)。
+     *
+     * <p>为什么去重落在玩家侧:{@code screen/CardInventoryMenu#saveToDice} 只把卡牌写成
+     * {@code AppliedStone(type, uses)} 并销毁物品栈,卸除时由 {@code loadFromDice} 经
+     * {@code CardRegistry.typeToItem} **重建全新 ItemStack** ⇒ 任何物品级标记都会被抹掉。
+     * **跨死亡保留**(否则"死一次再装备一次"可刷层)⇒ 同样进 {@code AstralData#onPlayerClone} 白名单。
+     */
+    public static final AttachedDataKey<String> TERU_EQUIP_WATERMARK =
+            register(AttachedDataKey.builder("teru_equip_watermark", Codec.STRING, () -> "").build());
+
+    public static String getTeruEquipWatermark(net.minecraft.world.entity.player.Player player) {
+        return TERU_EQUIP_WATERMARK.get(player);
+    }
+
+    public static void setTeruEquipWatermark(net.minecraft.world.entity.player.Player player, String value) {
+        TERU_EQUIP_WATERMARK.set(player, value == null ? "" : value);
     }
 
     private ModAttachments() {

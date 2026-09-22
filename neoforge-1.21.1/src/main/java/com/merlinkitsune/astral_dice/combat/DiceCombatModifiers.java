@@ -17,10 +17,12 @@ import com.merlinkitsune.astral_dice.item.sign.NancyLuSignItem;
 import com.merlinkitsune.astral_dice.item.sign.MosesSignItem;
 import com.merlinkitsune.astral_dice.effect.WeaknessRevealEffect;
 import com.merlinkitsune.astral_dice.item.sign.JasmineSignItem;
+import com.merlinkitsune.astral_dice.item.sign.NardisSignItem;
+import com.merlinkitsune.astral_dice.item.sign.MamushiSignItem;
 import com.merlinkitsune.astral_dice.item.MarkManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.sign.PadmanSignItem;
-import com.merlinkitsune.astral_dice.item.BossEntityUtil;
+import com.merlinkitsune.starenginelib.item.BossEntityUtil;
 import com.merlinkitsune.astral_dice.item.StarLightManager;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.damagesource.DamageSource;
@@ -37,6 +39,7 @@ import top.theillusivec4.curios.api.CuriosApi;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
+import com.merlinkitsune.starenginelib.combat.HostileTargets;
 
 /**
  * 骰神赐福攻防修饰器注册表:管理攻击力/防御力修饰器的有序注册与内置修饰器。
@@ -45,7 +48,7 @@ import java.util.concurrent.ThreadLocalRandom;
  * - 效果类加成(王之力/狂暴/力量 / 抗性);
  * - 卡牌掷骰(攻击/防御);
  * - 全部立牌与筹码的战斗加成(护法 misaki/扫地机 jasmine/吸血鬼 papara/秘密侦探 bonnie/
- *   上班族 padman/调查阶段,以及美工刀/瞄具/标靶/手电筒等筹码)。
+ *   上班族 padman/调查阶段/蛟龙 mamushi,以及美工刀/瞄具/标靶/手电筒等筹码)。
  *
  * 防御力规范(必须遵守):**仅战斗牌(防御牌)参与骰战防御修饰器**(只有防御牌数值是区间变动,
  * 由 {@link CardRegistry} 掷骰);效果牌/立牌/筹码提供的防御力一律折算为真实护甲
@@ -394,6 +397,16 @@ public final class DiceCombatModifiers {
             return ap;
         });
 
+        // === 内置:风水师立牌(zhao)主动「白泽赐福」—— 溢出治疗等量转化的攻击力(2026-09-26) ===
+        // 加成本身是玩家附件(整数化 + 取整余数留在另一个浮点累加器;唯一写入方 =
+        // ZhaoSignItem#onLivingHeal,唯一回收动作 = clearZhaoOverflowBonus,在"赐福结束/被移除/
+        // 死亡/重登"四条路径上幂等调用),故赐福不存在时该加算项必为 0(回收彻底、与其它来源互不影响)。
+        registerAttackModifier((ctx, ap) -> {
+            if (ctx.attacker.level().isClientSide()) return ap;
+            ap += ModAttachments.getZhaoOverflowBonus(ctx.attacker);
+            return ap;
+        });
+
         // === 内置:骇客立牌(nancy_lu)被动攻击/主动远程侵入攻击力 ===
         registerAttackModifier((ctx, ap) -> {
             if (ctx.attacker.level().isClientSide()) return ap;
@@ -458,6 +471,20 @@ public final class DiceCombatModifiers {
             return ap;
         });
 
+        // === 内置:绿洲女王立牌(nardis)被动「威压」—— 每装备一张**攻击牌**攻击力 +2 ===
+        // 计数直接取**攻击方骰子的 enhancement**(ctx.enhancement)⇒ 与实战同源;
+        // tooltip/GUI 走 getDisplayAttackRange 时传的是按卡牌栏实时构建的 enhancement,口径一致
+        // (所以不需要第二条链路)。临时牌**同样计入**它只是一张普通战斗牌,只是被打了标记;
+        // 被动防御力(+2/防御牌)走真实护甲折算,见 NardisSignItem#onCurioTick。
+        registerAttackModifier((ctx, ap) -> {
+            if (ctx.attacker.level().isClientSide()) return ap;
+            if (!NardisSignItem.isEquipped(ctx.attacker)) return ap;
+            WeaponEnhancement enh = ctx.enhancement != null
+                    ? ctx.enhancement
+                    : NardisSignItem.equippedEnhancement(ctx.attacker);
+            return ap + NardisSignItem.BONUS_PER_CARD * NardisSignItem.countStones(enh, false);
+        });
+
         // === 内置:肾上腺素-高效筹码(生命值为 50% 或更低时攻击力 +8;汲取期间无条件触发) ===
         registerAttackModifier((ctx, ap) -> {
             Player p = ctx.attacker;
@@ -487,6 +514,51 @@ public final class DiceCombatModifiers {
             Player p = ctx.attacker;
             if (p.level().isClientSide()) return ap;
             return ap + com.merlinkitsune.astral_dice.item.chip.WhetstoneChipItem.getAttackBonus(p);
+        });
+
+        // === 内置:教主立牌(teru)主动「降神」—— 施法者获得目标 50% 攻击力(镜像缓存) ===
+        // 攻击加成真值在**目标**身上(施法瞬间快照),施法者侧只读每 tick 派生出来的镜像缓存
+        // (见 item/sign/TeruSignItem#tickCasterSide):目标效果结束/死亡/登出 ⇒ 同 tick 归 0,不留残留。
+        // 防御加成同源,但走真实护甲(setDefenseArmorBonus),不在攻击修饰器内。
+        registerAttackModifier((ctx, ap) -> {
+            if (ctx.attacker.level().isClientSide()) return ap;
+            return ap + ModAttachments.getTeruAtkBonusCache(ctx.attacker);
+        });
+
+        // === 内置:教主立牌(teru)「狐光」—— 降神目标每攻击一个**新目标**,消耗 1 层并追加攻击力 ===
+        // 额外攻击 = 狐光攻击基数(施法者快照攻击力 = 施加时的基础攻击力 + 从目标获得的 50%,施法瞬间快照)
+        //           + 消耗 1 层后的剩余层数;计入骰战**攻击力**(受目标防御力抵扣,并参与全力攻击等既有倍率)。
+        // 「新目标」判定与消耗/登记全部收敛在 TeruSignItem#consumeHuguangForNewTarget
+        // (层数已为 0 ⇒ 不消耗、不追加;施法者离线 ⇒ 不加成、不消耗)。
+        registerAttackModifier((ctx, ap) -> {
+            if (ctx.attacker.level().isClientSide()) return ap;
+            return ap + com.merlinkitsune.astral_dice.item.sign.TeruSignItem
+                    .consumeHuguangForNewTarget(ctx.attacker, ctx.target);
+        });
+
+        // === 内置:蛟龙立牌(mamushi)攻击力加成(2026-09-27) ===
+        // 全部走 MamushiSignItem 的冻结查询方法,**实时谓词**、不落地任何状态:
+        // ① 真龙形态(觉醒 ≥ 8 且佩戴立牌)⇒ 攻击力 +5;
+        // ② 撕咬锁存(bite_bonus_active,由「触发骰神赐福且装备撕咬」置位、赐福结束清除)
+        //    且**仍有骰神赐福** ⇒ +min(觉醒层数, 4)(裁决 4:层数变化即时体现)。
+        registerAttackModifier((ctx, ap) -> {
+            if (ctx.attacker.level().isClientSide()) return ap;
+            if (MamushiSignItem.isDragonForm(ctx.attacker)) {
+                ap += MamushiSignItem.DRAGON_FORM_ATTACK_BONUS;
+            }
+            if (MamushiSignItem.getBiteBonusActive(ctx.attacker)
+                    && ctx.attacker.hasEffect(ModEffects.DICE_BLESSING)) {
+                ap += Math.min(MamushiSignItem.getAwakening(ctx.attacker), MamushiSignItem.BITE_BONUS_CAP);
+            }
+            return ap;
+        });
+
+        // === 内置:怪力侦探立牌(sherry)「推理时间」—— 每层攻击力 +1 ===
+        // 层数真值在附件(死亡不清),这里以**实时谓词**读取、不落地任何状态 ⇒ 层数变化立即体现,
+        // 卸下立牌(clearSignData 归零)后即刻失效。与「弱点识破」同款写法。
+        registerAttackModifier((ctx, ap) -> {
+            if (ctx.attacker.level().isClientSide()) return ap;
+            return ap + com.merlinkitsune.astral_dice.item.sign.SherrySignItem.getLayers(ctx.attacker);
         });
 
         // === 内置:防御卡掷骰(收集结果写入上下文;目标无骰子时 targetEnhancement 为 null,结果 0)。
@@ -524,9 +596,55 @@ public final class DiceCombatModifiers {
     public record PowerRange(int min, int max) {
     }
 
-    // === GUI 显示用:攻击/防御范围(基础值+修饰器+卡牌下限/上限) ===
-    public static PowerRange getDisplayAttackRange(Player player, ItemStack diceStack, WeaponEnhancement enhancement) {
-        if (player == null) return new PowerRange(0, 0);
+    /**
+     * 玩家的**攻击力**(与 GUI/tooltip 同源的口径):属性攻击力 + 全部已注册攻击修饰器。
+     *
+     * <p>唯一用途是「施法瞬间快照」(教主立牌 teru 的降神:目标攻击力 50%、狐光攻击基数),
+     * 故这里取的是**显示口径的整数基值**(不含骰点与卡牌加成),与
+     * {@link #getDisplayAttackRange} 的基础项**逐字同源**——两者都由
+     * {@link #attackPowerBase} 计算,不存在"tooltip 一个值、结算另一个值"的漂移。
+     *
+     * <p>上下文按既有显示口径构造({@code ctx.target == player} 自己):与 GUI 显示同款近似,
+     * 依赖"目标状态"的修饰器(如秘密侦探对带标记目标的加成)在自身身上自然取 0。
+     */
+    public static int attackPowerOf(Player player) {
+        if (player == null) return 0;
+        WeaponEnhancement enhancement = WeaponEnhancement.EMPTY;
+        ItemStack diceStack = ItemStack.EMPTY;
+        var curios = CuriosApi.getCuriosInventory(player);
+        if (curios.isPresent()) {
+            var r = curios.get().findFirstCurio(com.merlinkitsune.astral_dice.item.dice.DiceCurioItem::isDiceItem);
+            if (r.isPresent()) {
+                diceStack = r.get().stack();
+                enhancement = diceStack.getOrDefault(ModDataComponents.WEAPON_ENHANCEMENT.get(), WeaponEnhancement.EMPTY);
+            }
+        }
+        return (int) Math.floor(attackPowerBase(player, diceStack, enhancement));
+    }
+
+    /**
+     * 玩家的**防御力**(与 GUI/tooltip 同源的口径):{@code 2 + 有效护甲÷2 + 1.4×盔甲韧性}。
+     *
+     * <p>效果牌/立牌/筹码的防御力都已折算为**真实护甲**(1 防御 = 2 护甲值,见
+     * {@link #setDefenseArmorBonus}),故 {@code getArmorValue()} 已包含它们 ⇒ 本方法自动反映
+     * 「当前实际防御力」。与 {@link #getDisplayDefenseRange} 的基础项逐字同源。
+     */
+    public static int defensePowerOf(Player player) {
+        if (player == null) return 0;
+        WeaponEnhancement enhancement = WeaponEnhancement.EMPTY;
+        var curios = CuriosApi.getCuriosInventory(player);
+        if (curios.isPresent()) {
+            var r = curios.get().findFirstCurio(com.merlinkitsune.astral_dice.item.dice.DiceCurioItem::isDiceItem);
+            if (r.isPresent()) {
+                enhancement = r.get().stack()
+                        .getOrDefault(ModDataComponents.WEAPON_ENHANCEMENT.get(), WeaponEnhancement.EMPTY);
+            }
+        }
+        return (int) Math.floor(defensePowerBase(player, enhancement));
+    }
+
+    /** 攻击力基础值(属性 + 攻击修饰器链);{@link #getDisplayAttackRange} 与 {@link #attackPowerOf} 共用 */
+    private static double attackPowerBase(Player player, ItemStack diceStack, WeaponEnhancement enhancement) {
         if (enhancement == null) enhancement = WeaponEnhancement.EMPTY;
         int misakiStar = enhancement.starLevel();
         int misakiStacks = 0;
@@ -545,6 +663,32 @@ public final class DiceCombatModifiers {
         for (AttackPowerModifier modifier : attackModifiers()) {
             ap = modifier.apply(ctx, ap);
         }
+        return ap;
+    }
+
+    /** 防御力基础值(2 + 护甲÷2 + 1.4×韧性);{@link #getDisplayDefenseRange} 与 {@link #defensePowerOf} 共用 */
+    private static double defensePowerBase(Player player, WeaponEnhancement enhancement) {
+        if (enhancement == null) enhancement = WeaponEnhancement.EMPTY;
+        DiceCombatContext ctx = new DiceCombatContext(
+                player, player, null, 0, ItemStack.EMPTY, enhancement, false,
+                false, 0, 0);
+        double modifierDefense = 0;
+        for (DefensePowerModifier modifier : defenseModifiers()) {
+            modifierDefense = modifier.apply(ctx, modifierDefense);
+        }
+        // 效果牌/立牌/筹码的防御力已折算为真实护甲(1 防御力 = 2 护甲值,见 setDefenseArmorBonus),
+        // getArmorValue() 已包含其瞬态修饰器;此处 modifierDefense 恒为 0(仅防御卡掷骰写 ctx.defenseCardSum)
+        double rawArmor = Math.min(player.getArmorValue(), 20);
+        double toughness = player.getAttributeValue(Attributes.ARMOR_TOUGHNESS);
+        double effectiveArmor = Math.max(0, Math.min(rawArmor + modifierDefense * 2.0, 20));
+        return 2 + effectiveArmor / 2.0 + 1.4 * toughness;
+    }
+
+    // === GUI 显示用:攻击/防御范围(基础值+修饰器+卡牌下限/上限) ===
+    public static PowerRange getDisplayAttackRange(Player player, ItemStack diceStack, WeaponEnhancement enhancement) {
+        if (player == null) return new PowerRange(0, 0);
+        if (enhancement == null) enhancement = WeaponEnhancement.EMPTY;
+        double ap = attackPowerBase(player, diceStack, enhancement);
         int base = (int) Math.floor(ap);
         int min = base;
         int max = base;
@@ -559,19 +703,7 @@ public final class DiceCombatModifiers {
     public static PowerRange getDisplayDefenseRange(Player player, WeaponEnhancement enhancement) {
         if (player == null) return new PowerRange(0, 0);
         if (enhancement == null) enhancement = WeaponEnhancement.EMPTY;
-        DiceCombatContext ctx = new DiceCombatContext(
-                player, player, null, 0, ItemStack.EMPTY, enhancement, false,
-                false, 0, 0);
-        double modifierDefense = 0;
-        for (DefensePowerModifier modifier : defenseModifiers()) {
-            modifierDefense = modifier.apply(ctx, modifierDefense);
-        }
-        // 效果牌/立牌/筹码的防御力已折算为真实护甲(1 防御力 = 2 护甲值,见 setDefenseArmorBonus),
-        // getArmorValue() 已包含其瞬态修饰器;此处 modifierDefense 恒为 0(仅防御卡掷骰写 ctx.defenseCardSum)
-        double rawArmor = Math.min(player.getArmorValue(), 20);
-        double toughness = player.getAttributeValue(Attributes.ARMOR_TOUGHNESS);
-        double effectiveArmor = Math.max(0, Math.min(rawArmor + modifierDefense * 2.0, 20));
-        double dp = 2 + effectiveArmor / 2.0 + 1.4 * toughness;
+        double dp = defensePowerBase(player, enhancement);
         int base = (int) Math.floor(dp);
         int min = base;
         int max = base;

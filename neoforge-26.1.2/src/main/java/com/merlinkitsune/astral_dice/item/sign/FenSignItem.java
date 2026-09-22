@@ -105,10 +105,24 @@ public class FenSignItem extends BaseSignItem {
 
     // 使用治疗类效果牌时调用(佩戴立牌且未满上限时):养精蓄锐 +1 层
     public static void onHealingCardUsed(Player player) {
-        if (player.level().isClientSide()) return;
+        if (player == null || player.level().isClientSide()) return;
         if (!isEquipped(player)) return;
-        if (ModAttachments.getFenRecharge(player) >= MAX_RECHARGE) return;
-        ModAttachments.setFenRecharge(player, ModAttachments.getFenRecharge(player) + 1);
+        addRecharge(player, 1);
+    }
+
+    /**
+     * 养精蓄锐 +{@code layers} 层(封顶 {@value #MAX_RECHARGE};唯一写入入口)。
+     *
+     * <p>调用方:① 本类"使用治疗类效果牌"({@code BaseEffectCardItem} 钩子);
+     * ② 风水师立牌被动「完美帮手」—— 对**装备本立牌**的玩家施加白泽赐福时给 1 层
+     * ({@code item/sign/ZhaoSignItem#applyBlessing})。两条路径共用同一附件计数,不新建效果。
+     */
+    public static void addRecharge(Player player, int layers) {
+        if (player == null || player.level().isClientSide()) return;
+        if (layers <= 0) return;
+        int current = ModAttachments.getFenRecharge(player);
+        if (current >= MAX_RECHARGE) return;
+        ModAttachments.setFenRecharge(player, Math.min(MAX_RECHARGE, current + layers));
     }
 
     /**
@@ -168,8 +182,7 @@ public class FenSignItem extends BaseSignItem {
         }
         if (!isEquipped(player)) return;
         if (now - last < 1200) return;
-        if (ModAttachments.getFenRecharge(player) >= MAX_RECHARGE) return;
-        ModAttachments.setFenRecharge(player, ModAttachments.getFenRecharge(player) + 1);
+        addRecharge(player, 1);
         // 重新计时
         ModAttachments.setFenLastBlessingTick(player, now);
     }

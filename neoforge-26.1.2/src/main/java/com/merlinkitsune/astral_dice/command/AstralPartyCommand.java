@@ -3,7 +3,7 @@ package com.merlinkitsune.astral_dice.command;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
-import com.merlinkitsune.astral_dice.event.ModEffectRemoval;
+import com.merlinkitsune.starenginelib.event.ModEffectRemoval;
 import com.merlinkitsune.astral_dice.item.card.EffectCardPeriod;
 import com.merlinkitsune.astral_dice.item.sign.BaseSignItem;
 import com.mojang.brigadier.Command;
@@ -383,6 +383,12 @@ public final class AstralPartyCommand {
                 ModAttachments.getSignActiveLockGraceEnd(player)));
         lines.add(row(DUMP_GROUP_SIGN, "sign_active_lock_played",
                 ModAttachments.getSignActiveLockPlayed(player)));
+        // 锁定态的"离线补偿基准"(最后一次见到该玩家的 gameTime;0 = 无锁定/宽限计时)。只读:
+        // 用于实测取证该附件跨重登持久化(dump → saveall → 重登 → 再 dump,值应等于重登前那一拍)。
+        // 2026-09-22(26.1.2 冒烟测试)补回:本行在 26.1.2 移植时被遗漏 ⇒ LOCK-OFFLINE-RELOG-A 的
+        // `APDUMP\|SIGN\|sign_active_lock_last_seen=[1-9][0-9]*` 断言无读数可命中。
+        lines.add(row(DUMP_GROUP_SIGN, "sign_active_lock_last_seen",
+                ModAttachments.getSignActiveLockLastSeen(player)));
         lines.add(row(DUMP_GROUP_SIGN, "sign_active_cooldown_end",
                 ModAttachments.getSignActiveCooldownEnd(player)));
         lines.add(row(DUMP_GROUP_SIGN, "sign_active_max_cooldown",
@@ -490,15 +496,10 @@ public final class AstralPartyCommand {
             ModAttachments.setWeakMarkSource(player, Optional.empty());
             return;
         }
-        if (effect == ModEffects.HAIQING_READY || effect == ModEffects.BONNIE_READY
-                || effect == ModEffects.MOSES_READY) {
-            // 三个「待命」提示效果是等待窗口的显示,权威态在 sign_ready_type/sign_ready_expire;
-            // 超时时两者一起清(BaseSignItem.java:189-207)。只清效果会留下仍生效的窗口:
-            // 按主动键被 isSkillWaiting(BaseSignItem.java:171-175)静默拒绝最多 30 秒且无任何提示。
-            ModAttachments.setSignReadyType(player, 0);
-            ModAttachments.setSignReadyExpire(player, 0L);
-            return;
-        }
+        // 三个「待命」提示效果(haiqing_ready / bonnie_ready / moses_ready)与旧「待命等待器」
+        // 已随目标选择器并入而整体移除(2026-09-17 主线 → dev-next 合并裁决):
+        // 这三个效果不再注册、sign_ready_type / sign_ready_expire 也不再有写入方,
+        // 故此处不再需要「清效果时同步清等待窗口」的伴生清理。
         // **刻意不动** MARKED 的伴生原版发光(minecraft:glowing):本命令的能力边界是
         // 「只重置/清除本模组自身状态」,不得去动原版或其它模组的状态(光谱箭等也会施加发光)。
         // 后果(已知取舍,勿在此处补代码):清掉 marked 后发光按它自己的计时自然结束,

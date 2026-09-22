@@ -1,10 +1,10 @@
 package com.merlinkitsune.astral_dice.item.sign;
 
-import com.merlinkitsune.astral_dice.combat.HostileTargets;
+import com.merlinkitsune.starenginelib.combat.HostileTargets;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
-import com.merlinkitsune.astral_dice.item.CuriosCompat;
+import com.merlinkitsune.starenginelib.item.CuriosCompat;
 import com.merlinkitsune.astral_dice.item.HealingManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.chip.FriendshipBadgeChipItem;
@@ -119,7 +119,7 @@ public class PandamanSignItem extends BaseSignItem {
 
     // 主动技能 ActionBar 反馈
     @SubscribeEvent
-    public static void onSignActiveTriggered(com.merlinkitsune.astral_dice.event.SignActiveTriggeredEvent event) {
+    public static void onSignActiveTriggered(com.merlinkitsune.starenginelib.event.SignActiveTriggeredEvent event) {
         if (event.getSignStack().is(ModItems.PANDAMAN_SIGN.get())) {
             sendSignActionBar(event.getPlayer(), "msg.astral_dice.pandaman_active_used");
             event.setHandled();

@@ -6,6 +6,8 @@
   "mixins": [
     "EntityThunderHitMixin",
     "LightningBoltStrikeScopeMixin",
+    "container.ContainerMoveGuardMixin",
+    "container.SlotPlaceGuardMixin",
     "trade.MerchantContainerMixin",
     "trade.MerchantMenuMixin",
     "trade.MerchantOfferMixin",
@@ -16,7 +18,8 @@
   "client": [
     "client.AstralUseItemGuardMixin",
     "client.EffectsInInventoryMixin",
-    "client.GuiMixin"
+    "client.GuiMixin",
+    "client.LivingEntityOutlineCaptureMixin"
   ],
   "injectors": {
     "defaultRequire": 1

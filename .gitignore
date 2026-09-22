@@ -62,8 +62,10 @@ images/
 deploy.ps1
 .zcode/
 .workbuddy/
-.dsh/
 
+### CI 前置库检出目录(见 .github/workflows/build.yml) ###
+.ci/
+.dsh/
 ### base-mod 本地 jar 目录(2026-09-17 用户要求排除):模组一律经 Curse Maven / Modrinth Maven 获取,
 ### 不再把第三方模组 jar 放进版本库(见 AGENTS.md「模组依赖添加规则(统一口径)」)。
 ### 无斜杠前缀 ⇒ 三个子项目下的同名目录一并生效。

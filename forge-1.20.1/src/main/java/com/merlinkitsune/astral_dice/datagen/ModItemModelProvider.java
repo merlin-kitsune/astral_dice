@@ -33,6 +33,8 @@ public class ModItemModelProvider extends ItemModelProvider {
         basicItem(ModItems.ATTACK_CARD_MEITO.get());
         basicItem(ModItems.ATTACK_CARD_CHARGE.get());
         basicItem(ModItems.ATTACK_CARD_FULL_POWER.get());
+        basicItem(ModItems.ATTACK_CARD_BITE.get());
+        basicItem(ModItems.ATTACK_CARD_DRAGON_ROAR.get());
         basicItem(ModItems.DEFENSE_CARD_MEDIUM.get());
         basicItem(ModItems.DEFENSE_CARD_LARGE.get());
         basicItem(ModItems.DEFENSE_CARD_EPIC.get());
@@ -88,6 +90,15 @@ public class ModItemModelProvider extends ItemModelProvider {
         basicItem(ModItems.NANCY_LU_SIGN.get());
         basicItem(ModItems.MOSES_SIGN.get());
         basicItem(ModItems.PANDAMAN_SIGN.get());
+        basicItem(ModItems.REN_SIGN.get());
+        basicItem(ModItems.ZHAO_SIGN.get());
+        basicItem(ModItems.TERU_SIGN.get());
+        basicItem(ModItems.NARDIS_SIGN.get());
+        basicItem(ModItems.MAMUSHI_SIGN.get());
+        basicItem(ModItems.SHERRY_SIGN.get());
+        basicItem(ModItems.HANNA_SIGN.get());
+        basicItem(ModItems.FU_CARD.get());
+        basicItem(ModItems.HUO_CARD.get());
         basicItem(ModItems.CHOCOLATE_CAKE.get());
         basicItem(ModItems.HAMBURGER.get());
         basicItem(ModItems.LUXURY_FEAST.get());
@@ -136,5 +147,7 @@ public class ModItemModelProvider extends ItemModelProvider {
         basicItem(ModItems.RAILGUN_CHIP.get());
         basicItem(ModItems.PRIMORDIAL_CORE_CHIP.get());
         basicItem(ModItems.WHETSTONE_CHIP.get());
+        basicItem(ModItems.PURPLE_SHOOTING_STAR_CHIP.get());
+        basicItem(ModItems.GOLDEN_SHOOTING_STAR_CHIP.get());
     }
 }

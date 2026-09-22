@@ -1,110 +1,30 @@
 package com.merlinkitsune.astral_dice.event;
-import com.merlinkitsune.astral_dice.item.CuriosCompat;
-import com.merlinkitsune.astral_dice.network.ModNetwork;
-
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
-import com.merlinkitsune.astral_dice.component.AppliedStone;
-import com.merlinkitsune.astral_dice.component.GameplayConstants;
+import com.merlinkitsune.starenginelib.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
-import com.merlinkitsune.astral_dice.component.WeaponEnhancement;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
-import com.merlinkitsune.astral_dice.item.sign.ParunanSignItem;
-import com.merlinkitsune.astral_dice.item.sign.BaseSignItem;
-import com.merlinkitsune.astral_dice.item.sign.BonnieSignItem;
-import com.merlinkitsune.astral_dice.item.BossEntityUtil;
-import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
 import com.merlinkitsune.astral_dice.item.dice.DiceCurioItem;
-import com.merlinkitsune.astral_dice.item.card.ExclusiveCardUtil;
-import com.merlinkitsune.astral_dice.item.sign.HaiqingSignItem;
 import com.merlinkitsune.astral_dice.item.HealingManager;
 import com.merlinkitsune.astral_dice.item.ChargeManager;
-import com.merlinkitsune.astral_dice.item.InvestigationEventUtil;
-import com.merlinkitsune.astral_dice.item.MarkManager;
-import com.merlinkitsune.astral_dice.item.StarLightManager;
-import com.merlinkitsune.astral_dice.item.sign.MisakiSignItem;
-import com.merlinkitsune.astral_dice.item.ModItems;
-import com.merlinkitsune.astral_dice.item.sign.PadmanSignItem;
-import com.merlinkitsune.astral_dice.item.sign.JasmineSignItem;
-import com.merlinkitsune.astral_dice.item.sign.LuluSignItem;
-import net.minecraft.ChatFormatting;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.damagesource.DamageSource;
-import net.minecraft.world.effect.MobEffectInstance;
-import net.minecraft.world.effect.MobEffects;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.Mob;
-import net.minecraft.world.entity.ai.attributes.Attributes;
-import net.minecraft.world.entity.animal.Animal;
-import net.minecraft.world.entity.boss.wither.WitherBoss;
-import net.minecraft.world.entity.monster.Enemy;
-import net.minecraft.world.entity.monster.Monster;
-import net.minecraft.world.entity.monster.warden.Warden;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
-import net.minecraft.world.item.ProjectileWeaponItem;
-import net.minecraft.world.item.AxeItem;
-import net.minecraft.world.item.SwordItem;
-import net.minecraft.world.item.TridentItem;
 
 import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.fml.ModList;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.event.AnvilUpdateEvent;
-import net.minecraftforge.event.LootTableLoadEvent;
-import net.minecraftforge.event.entity.living.LivingChangeTargetEvent;
-import net.minecraftforge.event.entity.living.LivingDamageEvent;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
-import net.minecraftforge.event.entity.living.LivingDropsEvent;
-import net.minecraftforge.event.entity.living.MobEffectEvent;
-import net.minecraftforge.event.entity.player.ItemTooltipEvent;
-import net.minecraftforge.event.entity.ProjectileImpactEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
-import top.theillusivec4.curios.api.CuriosApi;
 import vazkii.patchouli.common.item.ItemModBook;
-import top.theillusivec4.curios.api.type.inventory.ICurioStacksHandler;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
-import java.util.Optional;
-import java.util.UUID;
-import java.util.concurrent.ThreadLocalRandom;
-
-import net.minecraft.world.level.storage.loot.LootPool;
-import net.minecraft.world.level.storage.loot.LootTable;
-import net.minecraft.world.level.storage.loot.entries.LootItem;
-import net.minecraft.world.level.storage.loot.functions.SetItemCountFunction;
-import net.minecraft.world.level.storage.loot.predicates.LootItemRandomChanceCondition;
-import net.minecraft.world.level.storage.loot.providers.number.ConstantValue;
-import net.minecraft.world.level.storage.loot.providers.number.UniformGenerator;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import com.merlinkitsune.astral_dice.item.chip.StarCoinHammerChipItem;
-import com.merlinkitsune.astral_dice.item.chip.BufferShieldChipItem;
-import com.merlinkitsune.astral_dice.combat.CardRegistry;
-import com.merlinkitsune.astral_dice.client.KeyBindingSetup;
-import com.merlinkitsune.astral_dice.combat.DiceCombatContext;
-import com.merlinkitsune.astral_dice.damage.ModDamageTypes;
-import com.merlinkitsune.astral_dice.item.sign.FenSignItem;
 import com.merlinkitsune.astral_dice.item.card.EffectCardPeriod;
-import com.merlinkitsune.astral_dice.item.chip.BankCardUnlimitedChipItem;
-import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
-import com.merlinkitsune.astral_dice.item.chip.CursedSwordChipItem;
-import com.merlinkitsune.astral_dice.item.chip.FriendshipBadgeChipItem;
-import com.merlinkitsune.astral_dice.item.chip.RevengeHalberdChipItem;
-import com.merlinkitsune.astral_dice.item.chip.SatelliteChipItem;
-import com.merlinkitsune.astral_dice.item.sign.NancyLuSignItem;
-import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
+import com.merlinkitsune.astral_dice.item.card.TemporaryCardUtil;
 
+import com.merlinkitsune.starenginelib.event.ModEffectRemoval;
 @Mod.EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public class PlayerLifecycleHandler {
     // 玩家死亡:移除全部治愈(清零点数并结束"治愈"效果)与骰神赐福效果,防止死亡残留
@@ -141,7 +61,7 @@ public class PlayerLifecycleHandler {
         // 魔法秘典计数器、骰咒倍率同样无需在此清理:它们都是附件且不在死亡复制集合内。
         // 效果牌伤害加成(忍者立牌 KomachiDamageBonus/调查员立牌 RinPages)死亡保留,不清除
         // 护法立牌:死亡时丢失全部"剑气"层数(死亡时刻即清除装备中的立牌数据,不受 KeepInventory 影响)
-        com.merlinkitsune.astral_dice.item.CuriosCompat.getCuriosInventory(player).ifPresent(handler -> {
+        com.merlinkitsune.starenginelib.item.CuriosCompat.getCuriosInventory(player).ifPresent(handler -> {
             var misaki = handler.findFirstCurio(
                     s -> s.is(com.merlinkitsune.astral_dice.item.ModItems.MISAKI_SIGN.get()));
             if (misaki.isPresent()) {
@@ -165,13 +85,36 @@ public class PlayerLifecycleHandler {
             }
         });
         player.removeEffect(ModEffects.DICE_BLESSING.get());
-        player.removeEffect(ModEffects.HAIQING_READY.get());
-        player.removeEffect(ModEffects.BONNIE_READY.get());
+        // 风水师立牌「白泽赐福」(规格 §4.6②):与 DICE_BLESSING **同段**清理 —— 这里保住的是
+        // 「移除 MobEffect」+「清零有真实读取方的附件」两类真实副作用:
+        //   ① 效果实例本身(可见载体,死亡后不该留在尸体上);
+        //   ② 溢出治疗转化的攻击力(有真实读取方 = 骰战攻击修饰器;救回/重生等路径下会残留);
+        //   ③ 状态机三键(玩家级 tick 每 tick 读取)+「厄运」计时器。
+        // 厄运效果同样移除(其真值"持有张数"不在触发死亡时清空,重登时由 tick 重新镜像)。
+        com.merlinkitsune.astral_dice.item.sign.ZhaoSignItem.onOwnerDeathCleanup(player);
+        // 教主立牌「降神」:与 DICE_BLESSING **同段**清理 —— 本人是降神目标 ⇒ 结束降神;本人是施法者 ⇒
+        // 派生值清零。狐光层数与装备水位经 AstralData#onPlayerClone 白名单跨死亡保留。
+        com.merlinkitsune.astral_dice.item.sign.TeruSignItem.onOwnerDeathCleanup(player);
         player.removeEffect(ModEffects.INVESTIGATION_BONUS.get());
         player.removeEffect(ModEffects.FATE_GUIDANCE.get());
         player.removeEffect(ModEffects.FEN_FRENZY.get());
         player.removeEffect(ModEffects.PAPARA_BITE.get());
         player.removeEffect(ModEffects.MAGIC_TOME_COUNT.get());
+        // 绿洲女王立牌(nardis)「女王特权」:清空全部临时牌(物品栏 + 副手 + 骰子已装配的)。
+        // **1.20.1 时序结论(源码级核对,不必新增订阅)**:
+        //   · 本处理器订阅的是 LivingDeathEvent(优先级 LOWEST,只为晚于"保命方"的取消)——
+        //     而该事件在 Forge 侧由 **`ServerPlayer#die` 的第一行**抛出
+        //     (`ForgeHooks.onLivingDeath` → `MinecraftForge.EVENT_BUS.post(new LivingDeathEvent(...))`,
+        //      实测 `ForgeHooks.java:304-307`;调用点实测 `ServerPlayer.java:591`,且事件被取消时
+        //      `die()` 直接 `return`),**远早于** `dropAllDeathLoot`(实测 `ServerPlayer.java:624`);
+        //     事件的全部处理器(含 LOWEST)都在 `onLivingDeath` 返回之前跑完 ⇒ 挂在这里一定**早于掉落**。
+        //   · 因此**不需要**再新增一个默认优先级的 LivingDeathEvent 订阅(那只会是同一事件的第二份重复清理)。
+        //   · 死亡路径与玩家级 tick 自检都幂等(见 TemporaryCardUtil#purgeAll / #tick),重复调用无副作用。
+        TemporaryCardUtil.purgeAll(player);
+        // 效果实例本身也一并移除(状态迁移表「死亡 ⇒ 效果移除 + 清空」):宠物模式/规则保留效果时,
+        // 只清牌不清效果会留下「HUD 还在倒计时、牌却没了」的不一致状态。
+        // 1.20.1 差异:效果常量是 RegistryObject ⇒ 必须 .get()。
+        player.removeEffect(ModEffects.NARDIS_PRIVILEGE.get());
     }
 
     // 死亡重生克隆:恢复"死亡保留"的数据(充能层数 + 调查员/忍者累计加成)。
@@ -198,6 +141,11 @@ public class PlayerLifecycleHandler {
         // 计时器守卫:清空效果结束时刻记录,避免重登后守卫重新施加旧效果
         EffectTimerGuard.clear(player);
         ModEffectRemoval.remove(player, ModEffects.DICE_BLESSING.get());
+        // 风水师立牌「白泽赐福」(规格 §4.7):与骰神赐福同口径"不跨会话残留" —— 移除效果实例 + 复位
+        // active/prev(防止重登被误判为一次赐福结束)+ 回收溢出治疗转化的攻击力(否则无赐福仍吃加成)。
+        com.merlinkitsune.astral_dice.item.sign.ZhaoSignItem.onOwnerRelogin(player);
+        // 教主立牌「降神」:目标重登 ⇒ 不跨会话残留(与白泽赐福同口径);施法者重登 ⇒ 保留并重建链接与镜像缓存。
+        com.merlinkitsune.astral_dice.item.sign.TeruSignItem.onOwnerRelogin(player);
         // 重连后刷新治愈体系(上限收缩/效果显示;赐福边沿 prev 标记初始 false,不会误触发减半)
         HealingManager.tick(player);
         // 首次加入世界赠送《恋的规则书》(开关见 common 配置)
@@ -227,6 +175,10 @@ public class PlayerLifecycleHandler {
         Player player = event.getEntity();
         if (player == null || player.level().isClientSide()) return;
         DiceCurioItem.refreshChipSlotCount(player);
+        // 星币钱包余额条:登录时客户端缓存不可信(可能是上次会话残值) ⇒ 无条件重发一次
+        if (player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
+            com.merlinkitsune.astral_dice.economy.StarCoinBalanceSync.forceResend(serverPlayer);
+        }
     }
 
     // 数据包同步(进入世界 / 数据包重载):Curios 自己的处理器在 NORMAL 重建/同步栏位,

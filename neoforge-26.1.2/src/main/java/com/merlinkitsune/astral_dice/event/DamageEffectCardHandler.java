@@ -67,7 +67,14 @@ public class DamageEffectCardHandler {
             } finally {
                 APPLYING_TRUE_BONUS.set(false);
             }
-            com.merlinkitsune.astral_dice.network.DamageNumberPayload.send(target, (int) bonus, 0x7CFC00);
+            // HUD 数显 = 本次法伤的**完整伤害**(原始基础伤害 + 法伤加成,取整;2026-09-19 用户要求)。
+            // 只显示加成会让数字与实际掉血不符:箭矢本身打 6 点、加成 4 点 ⇒ 应显示 10(旧写法只有 4)。
+            // 基准取 `event.getNewDamage()`(护甲/附魔减免之后、吸收之前),与电击手套 AOE 同口径。
+            // 26.1.2 平台核对:本线 `LivingDamageEvent.Pre#getNewDamage()` 逐字可用
+            // (同版本 `combat/DiceCombatEvents.java:202/217`、`combat/SpellDamageRegistry.java:365`
+            //  已在用),故与 1.21.1 基准同式,无需改写。
+            com.merlinkitsune.astral_dice.network.DamageNumberPayload.send(
+                    target, (int) Math.round(event.getNewDamage() + bonus), 0x7CFC00);
         }
 
         // 命中副作用(施加标记/定向爆破 AOE 等)

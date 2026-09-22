@@ -1,6 +1,6 @@
 package com.merlinkitsune.astral_dice.effect;
 
-import com.merlinkitsune.astral_dice.event.ModEffectRemoval;
+import com.merlinkitsune.starenginelib.event.ModEffectRemoval;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectCategory;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -38,7 +38,7 @@ public class EmpowerEffect extends MobEffect {
      * <p>不影响 {@code EffectTimerGuard}:守卫只管理经其 {@code apply} 登记的效果,
      * 且 {@code INFINITE_THRESHOLD} 以上的旧值本就被跳过;本效果不经守卫登记。
  *
- * <p><b>禁用粒子</b>:实例一律以 {@code visible=false} 构造(第 5 参),不产生原版药水粒子;
+ * <p><b>禁用粒子</b>:实例一律把原版 {@code visible} 开关置 {@code false}(第 5 参),不产生原版药水粒子;
  * 面板图标与倒计时由 {@code showIcon=true} 保留(原版显示闸门是 showIcon,粒子闸门才是 visible)。
      */
     public static final int DURATION_TICKS = DECAY_INTERVAL_TICKS + 20;
@@ -53,7 +53,7 @@ public class EmpowerEffect extends MobEffect {
         if (stacks <= 0) return getStacks(player);
         int total = Math.min(MAX_STACKS, getStacks(player) + stacks);
         if (total > 0) {
-            // visible=false:禁用粒子(showIcon 仍为 true → 图标/层数/倒计时照常显示)
+            // 第 4/5/6 参 = ambient=false, visible=false, showIcon=true:只关粒子,图标/层数/倒计时照常显示
             player.addEffect(new MobEffectInstance(ModEffects.EMPOWER.get(),
                     DURATION_TICKS, total - 1, false, false, true));
         }
@@ -77,6 +77,7 @@ public class EmpowerEffect extends MobEffect {
         // (低等级实例被塞进 hiddenEffect,层数永远不变)。故必须"先移除旧实例,再写入新层数"。
         ModEffectRemoval.remove(player, ModEffects.EMPOWER.get());
         if (remaining > 0) {
+            // 第 4/5/6 参 = ambient=false, visible=false, showIcon=true
             player.addEffect(new MobEffectInstance(ModEffects.EMPOWER.get(),
                     DURATION_TICKS, remaining - 1, false, false, true));
         }
@@ -97,6 +98,7 @@ public class EmpowerEffect extends MobEffect {
         int stacks = getStacks(player);
         if (stacks <= 0) return;
         ModEffectRemoval.remove(player, ModEffects.EMPOWER.get());
+        // 第 4/5/6 参 = ambient=false, visible=false, showIcon=true
         player.addEffect(new MobEffectInstance(ModEffects.EMPOWER.get(),
                 DURATION_TICKS, stacks - 1, false, false, true));
     }

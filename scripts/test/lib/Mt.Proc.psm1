@@ -225,6 +225,455 @@ function Read-MtSharedText {
     }
 }
 
+function Get-MtRotatedLatestLogs {
+    <#
+    .SYNOPSIS
+        latest 家族的轮转件（`<yyyy-MM-dd>-<n>.log[.gz]`）里 `LastWriteTime -ge -Since` 的那些，按 mtime **倒序**。
+
+    .NOTES
+        **轮转识别口径的唯一实现**：两个消费方共用它，禁止各自再写一套正则/过滤 ——
+
+          · `Read-MtLogWithRotation`（t20）：判据是「**是否存在某行**」（模组清单等启动期事实）；
+          · `Read-MtLogWindow`（t22）：判据是「**窗口起点在哪**」（把某用例的日志窗口跨轮转拼回来）。
+
+        两者语义不同（前者是集合成员判定，后者是字节起点重建），但「哪些文件算 latest 家族的轮转件」
+        必须同一口径，故枚举收在这里。
+
+        只认 latest 家族（带日期 filePattern），**不碰 debug 家族**：1.20.1 的模组清单读 `debug.log`，
+        而它的 filePattern 是 `debug-%i`（**无日期**）⇒ 只在**启动时**轮转、不跨零点日切
+        （t20 实测结论），故 debug 家族不存在同类问题，也不需要放宽。
+
+        ⚠️ 调用约定：本函数返回 `, @(…)`（保证「零个候选」也是数组）。**不要把返回值直接塞进 `@( … )`**——
+        `@(f)` 会把整个数组当成**单个元素**收进去，得到「元素是数组」的嵌套结构
+        （实测：`@(f).Count = 1` 且 `[0]` 是 `Object[]`；`$x = f` 或 `@((f) | Sort-Object …)` 才是平的）。
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$LogsDir,
+        [datetime]$Since = [datetime]::MinValue,
+        # 最多取几段（正常跨零点只会切 1 段；留少量余量，避免误把多个历史文件并进来）
+        [int]$MaxRotated = 4
+    )
+
+    if (-not (Test-Path -LiteralPath $LogsDir -PathType Container)) { return , @() }
+    return , @(Get-ChildItem -LiteralPath $LogsDir -File -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -match '^\d{4}-\d{2}-\d{2}-\d+\.log(\.gz)?$' -and $_.LastWriteTime -ge $Since } |
+        Sort-Object LastWriteTime -Descending |
+        Select-Object -First $MaxRotated)
+}
+
+function Read-MtLogWithRotation {
+    <#
+    .SYNOPSIS
+        读「本次会话的日志」= `latest.log` + **同一会话跨零点被 log4j 日切出去的那一段**。
+
+    .NOTES
+        ⚠️ 与 t22 的 `Read-MtLogWindow` 的分工（**不要混用**）：本函数是「**是否存在某行**」的取值域，
+        把本会话所有轮转件都并进来；`Read-MtLogWindow` 是「**窗口起点在哪**」的字节起点重建，
+        只从身份匹配的那一段的某个字节开始拼。断言层需要后者（并进来会前移窗口 ⇒ 跨用例串读）。
+        为什么需要（2026-09-18 t20 实测）：`logs/latest.log` 的 log4j 配置带日期 filePattern
+        （`logs/%d{yyyy-MM-dd}-%i.log.gz`）⇒ **跨零点时活动文件被日切**：会话启动期写下的
+        「已加载模组清单」（`Mod List:` 与 `显示名 版本 (modId)` 行）会整块留在
+        `logs/2026-09-17-1.log.gz` 里，而 00:00:01 起新建的 `latest.log` **一条括号清单行都没有**。
+        mt_launch 又在启动前删除 `latest.log`（保证只读本轮），故只读 `latest.log` 的判据
+        （史莱姆压制硬闸门、Sodium/Iris/KubeJS/优化类模组读数、`Using shaderpack`）在
+        **跨零点冷启动**时全部假阴性 —— 实测 23:59:50 启动的会话：Mod List 写在 23:59:53，
+        00:00:00 日切，`latest.log` 里查不到 ⇒ 硬闸门 ERROR「未检测到…模组」，重跑即 OK。
+
+        **只补「同一会话被切走的那一段」，绝不回退到别的会话**：候选轮转文件必须满足
+        `LastWriteTime -ge -Since`（`-Since` 传本次 launch 的时刻）。依据：mt_launch 在启动前
+        会拒绝「全机已存在客户端进程」（TESTING-SPEC §10 第 10 条）⇒ 启动窗口内只有本会话在写
+        日志，「日切发生在本次启动之后」等价于「该片段属于本会话」；上一会话的轮转文件其
+        `LastWriteTime` 早于 `-Since`，被排除。**这条边界是判据强度的一部分**：若不过滤，
+        「上一会话装过该模组、本会话已移除」会被误判成已加载（正是本判据要防的假阳性）。
+
+        只认 **latest 家族的轮转名**（`<yyyy-MM-dd>-<n>.log.gz` / `.log`），不碰 `debug-*.log.gz`：
+        1.20.1 的模组清单读 `debug.log`，而它的 filePattern 是 `debug-%i`（**无日期**）⇒ 只在
+        启动时轮转、不跨零点日切，故 1.20.1 侧不存在同类假阴性，也不需要放宽。
+
+        读取容错与 `Read-MtSharedText` 一致（`FileShare::ReadWrite` / UTF-8 容错 / 读不到返回 ''）。
+        **本函数不判定任何语义**：调用方拿到的仍是原始文本，判据（如带括号 modId 的正则）不变。
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$Path,
+        [Parameter(Mandatory)][string]$LogsDir,
+        [Parameter(Mandatory)][datetime]$Since,
+        # 最多补几段轮转（正常跨零点只会切 1 段；留少量余量，避免误把多个历史文件并进来）
+        [int]$MaxRotated = 4
+    )
+
+    $text = Read-MtSharedText -Path $Path
+    # 轮转件枚举收在 Get-MtRotatedLatestLogs（唯一口径，与 Read-MtLogWindow 共用）
+    $candidates = Get-MtRotatedLatestLogs -LogsDir $LogsDir -Since $Since -MaxRotated $MaxRotated
+
+    foreach ($c in $candidates) {
+        $part = ''
+        if ($c.Extension -eq '.gz') {
+            $fs = $null; $gz = $null; $sr = $null
+            try {
+                $fs = [System.IO.File]::Open($c.FullName, [System.IO.FileMode]::Open,
+                    [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
+                $gz = New-Object System.IO.Compression.GZipStream($fs, [System.IO.Compression.CompressionMode]::Decompress)
+                $sr = [System.IO.StreamReader]::new($gz, [System.Text.UTF8Encoding]::new($false, $false))
+                $part = $sr.ReadToEnd()
+            } catch {
+                $part = ''
+            } finally {
+                if ($null -ne $sr) { $sr.Dispose() } elseif ($null -ne $gz) { $gz.Dispose() } elseif ($null -ne $fs) { $fs.Dispose() }
+            }
+        } else {
+            $part = Read-MtSharedText -Path $c.FullName
+        }
+        if ($part) { $text += "`n" + $part }
+    }
+    return $text
+}
+
+# ── t22：断言窗口的「跨轮转锚定」────────────────────────────────────────────
+# 头部指纹取多少字节当「文件身份」：64 KiB 足以区分「同一个文件被追加」与「换成了另一个文件」，
+# 而 latest.log 可能数十 MB ⇒ 只读头部，不在每条用例的快照路径上整读。
+$script:MT_ANCHOR_PREFIX_BYTES = 65536
+# 创建时间比较容差（ms）：不同文件系统的创建时间粒度不同（FAT 2 s），留余量；
+# 真正把关「是不是同一个文件」的是头部指纹，时间只是第一道筛。
+$script:MT_ANCHOR_CTIME_TOLERANCE_MS = 2000
+# 轮转件 mtime 预筛容差（ms）：日切件的 mtime = 轮转时刻 ≥ 锚点时刻，留时钟粒度余量。
+$script:MT_ANCHOR_MTIME_TOLERANCE_MS = 2000
+
+function Get-MtAnchorValue {
+    <#
+    .SYNOPSIS
+        从锚点字典里安全取值（锚点可能来自 JSON 反序列化的 Hashtable / OrderedDictionary）。
+    #>
+    [CmdletBinding()]
+    param($Anchor, [Parameter(Mandatory)][string]$Key)
+
+    if ($null -eq $Anchor) { return $null }
+    if ($Anchor -is [System.Collections.IDictionary]) {
+        if ($Anchor.Contains($Key)) { return $Anchor[$Key] }
+    }
+    return $null
+}
+
+function Read-MtLogBytesShared {
+    <#
+    .SYNOPSIS
+        按**字节**整读日志文件（游戏进程持有句柄时也能读）；读不到返回 $null。
+
+    .NOTES
+        与 `Read-MtSharedText`（字符串版）同一套容错（`FileShare::ReadWrite`），区别是这里**不解码** ——
+        断言窗口是按**字节偏移**切的，跨轮转重拼也必须在字节域做，否则多字节字符会错位。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$Path)
+
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return $null }
+    $fs = $null; $ms = $null
+    try {
+        $fs = [System.IO.File]::Open($Path, [System.IO.FileMode]::Open,
+            [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
+        $ms = [System.IO.MemoryStream]::new()
+        $fs.CopyTo($ms)
+        return $ms.ToArray()
+    } catch {
+        return $null
+    } finally {
+        if ($null -ne $ms) { $ms.Dispose() }
+        if ($null -ne $fs) { $fs.Dispose() }
+    }
+}
+
+function Read-MtLogBytesHead {
+    <#
+    .SYNOPSIS
+        只读文件头 Count 字节（不足则读多少算多少）；读不到返回空数组。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$Path, [int]$Count)
+
+    if ($Count -le 0) { return , @() }
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return , @() }
+    $fs = $null
+    try {
+        $fs = [System.IO.File]::Open($Path, [System.IO.FileMode]::Open,
+            [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
+        $buf = [byte[]]::new([Math]::Min([long]$Count, $fs.Length))
+        $read = 0
+        while ($read -lt $buf.Length) {
+            $n = $fs.Read($buf, $read, $buf.Length - $read)
+            if ($n -le 0) { break }
+            $read += $n
+        }
+        if ($read -eq $buf.Length) { return , $buf }
+        $out = [byte[]]::new($read)
+        if ($read -gt 0) { [Array]::Copy($buf, $out, $read) }
+        return , $out
+    } catch {
+        return , @()
+    } finally {
+        if ($null -ne $fs) { $fs.Dispose() }
+    }
+}
+
+function Read-MtRotatedBytes {
+    <#
+    .SYNOPSIS
+        读一个轮转件的**原始字节**：`.gz` 解压后返回，其它按字节直读；读不到返回 $null。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$Path)
+
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return $null }
+    if (-not $Path.EndsWith('.gz', [System.StringComparison]::OrdinalIgnoreCase)) {
+        return (Read-MtLogBytesShared -Path $Path)
+    }
+    $fs = $null; $gz = $null; $ms = $null
+    try {
+        $fs = [System.IO.File]::Open($Path, [System.IO.FileMode]::Open,
+            [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
+        $gz = [System.IO.Compression.GZipStream]::new($fs, [System.IO.Compression.CompressionMode]::Decompress)
+        $ms = [System.IO.MemoryStream]::new()
+        $gz.CopyTo($ms)
+        return $ms.ToArray()
+    } catch {
+        return $null
+    } finally {
+        if ($null -ne $ms) { $ms.Dispose() }
+        if ($null -ne $gz) { $gz.Dispose() }
+        if ($null -ne $fs) { $fs.Dispose() }
+    }
+}
+
+function Get-MtBytesPrefixHash {
+    <#
+    .SYNOPSIS
+        字节数组头部 Count 字节的 SHA-256（小写 hex）；Count ≤ 0 或空数组返回 ''。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)]$Bytes, [int]$Count)
+
+    if ($null -eq $Bytes -or $Bytes.Length -eq 0) { return '' }
+    $n = [int][Math]::Min([long]$Count, [long]$Bytes.Length)
+    if ($n -le 0) { return '' }
+    $sha = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        return ([System.BitConverter]::ToString($sha.ComputeHash($Bytes, 0, $n))).Replace('-', '').ToLowerInvariant()
+    } finally {
+        $sha.Dispose()
+    }
+}
+
+function ConvertFrom-MtLogBytes {
+    <#
+    .SYNOPSIS
+        字节切片 → 文本：UTF-8 容错解码 + **通用换行翻译**（与 mt_assert 既有口径一致）。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)]$Bytes, [long]$From = 0)
+
+    if ($null -eq $Bytes -or $Bytes.Length -eq 0) { return '' }
+    $from = [Math]::Max([long]0, $From)
+    if ($from -ge $Bytes.Length) { return '' }
+    $enc = [System.Text.UTF8Encoding]::new($false, $false)
+    $txt = $enc.GetString($Bytes, [int]$from, [int]($Bytes.Length - $from))
+    return $txt.Replace("`r`n", "`n").Replace("`r", "`n")
+}
+
+function Get-MtLogAnchor {
+    <#
+    .SYNOPSIS
+        为一个日志文件建立**窗口锚点**：快照时刻的字节起点 + 该文件的**身份指纹**。
+
+    .NOTES
+        为什么需要「身份」而不只是「字节偏移」（2026-09-18 t22 实测/构造复现）：断言窗口原本只记
+        「用例开始时的字节偏移」，读取时直接对 `latest.log` 做 `Seek(偏移)`。而 latest.log 的
+        log4j filePattern 带日期（`logs/%d{yyyy-MM-dd}-%i.log.gz`）⇒ **跨零点日切**把活动文件更名、
+        新建一个更小的 latest.log，于是原偏移越界 ⇒ 旧实现 `if ($Offset -gt $size) { $Offset = 0 }`
+        **静默**改成整读新文件：窗口前半段（用例开始 → 零点）整段丢失 ⇒ `log` 假 FAIL、
+        `absent` 漏判（假 PASS）。只记偏移时，「偏移越界」既可能是日切、也可能是别的原因，
+        没有证据就无法安全重建窗口。
+
+        锚点字段（跨语言契约：`.mt_snapshot.json` 的 `anchors` / `launch_anchors`，键 = 日志文件名）：
+          · `len`        —— 快照时刻的文件字节长度（= 窗口起点，与 `offsets` 同值）
+          · `ctime_ms`   —— 创建时间（unix ms）：认「还是不是同一个文件」
+          · `mtime_ms`   —— 最后写入时间（unix ms）：只做轮转件的**预筛**（日切件 mtime = 轮转时刻 ≥ 它）
+          · `prefix_len` / `prefix_sha` —— 头部 64 KiB 的 SHA-256：认「被日切出去的那一段是不是它」
+
+        **只有身份匹配的轮转件才允许并入窗口**（见 `Read-MtLogWindow`）：不匹配时绝不猜、绝不无条件
+        并入「所有轮转件」或「整个日志」，故不会串读到上一用例/上一会话的行。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$Path)
+
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return $null }
+    try {
+        $fi = Get-Item -LiteralPath $Path
+        $len = [long]$fi.Length
+        $ctimeMs = [long]([DateTimeOffset]::new($fi.CreationTimeUtc)).ToUnixTimeMilliseconds()
+        $mtimeMs = [long]([DateTimeOffset]::new($fi.LastWriteTimeUtc)).ToUnixTimeMilliseconds()
+        $head = Read-MtLogBytesHead -Path $Path -Count $script:MT_ANCHOR_PREFIX_BYTES
+        return [ordered]@{
+            len        = $len
+            ctime_ms   = $ctimeMs
+            mtime_ms   = $mtimeMs
+            prefix_len = [int]$head.Length
+            prefix_sha = (Get-MtBytesPrefixHash -Bytes $head -Count $head.Length)
+        }
+    } catch {
+        return $null
+    }
+}
+
+function Read-MtLogWindow {
+    <#
+    .SYNOPSIS
+        读「某个断言窗口自锚点起」的日志文本；跨 log4j 零点日切时，把该窗口**跨轮转拼回来**。
+
+    .NOTES
+        语义边界（与 t20 的 `Read-MtLogWithRotation` 刻意区分）：
+
+          · `Read-MtLogWithRotation` 回答「**是否存在某行**」（模组清单等启动期事实）⇒ 把本会话
+            所有轮转件都并进来，取值域；
+          · 本函数回答「**窗口起点在哪**」⇒ 只从**身份匹配的那一个轮转件的某个字节**开始拼，
+            起点之前的内容**绝不并入**（并入就等于把窗口前移，制造跨用例串读）。
+
+        判定顺序：
+          1. 偏移 ≤ 0 → 整读当前文件（既有语义）；
+          2. 无锚点（旧快照）→ 与既有实现逐字节同义（越界则 clamp 到 0）；
+          3. 锚点存在且**当前文件就是锚点文件**（创建时间相符 + 头部指纹相符）→ 从偏移处切；
+          4. 当前文件不是锚点文件 → 说明锚点文件被替换（日切/被删）：在 latest 家族轮转件里找
+             **头部指纹与锚点一致且解压后长度 ≥ 偏移**的那一段 ⇒ 窗口 = 该段[偏移..] + 当前文件；
+             更晚的轮转段**不并入**（身份不可验证，并入即等于「所有轮转件都并进来」）；
+             找不到 ⇒ **不猜**，退回既有语义（clamp 整读当前文件）并置 `Kind='unreconstructable'`，
+             由调用方**显式报出**（不静默）。
+
+        返回 hashtable：`Text` / `Kind`（`missing` | `from-zero` | `legacy` | `intact` | `reassembled` |
+        `unreconstructable`）/ `Offset`（实际使用的起点）/ `Rotated`（并入的轮转段数）/ `Note`。
+        本函数**不判定任何断言语义**：调用方拿到的仍是原始文本，判据一字不变。
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$Path,
+        [long]$Offset = 0,
+        $Anchor = $null,
+        [string]$LogsDir = '',
+        # 轮转件上限（正常跨零点只会切 1 段；用例有硬超时，不可能横跨两个零点）
+        [int]$MaxRotated = 16
+    )
+
+    $cur = Read-MtLogBytesShared -Path $Path
+    if ($null -eq $cur) {
+        return @{ Text = ''; Kind = 'missing'; Offset = [long]0; Rotated = 0; Note = '' }
+    }
+    if ($Offset -le 0) {
+        return @{ Text = (ConvertFrom-MtLogBytes -Bytes $cur); Kind = 'from-zero'; Offset = [long]0; Rotated = 0; Note = '' }
+    }
+
+    $anchorCtime = Get-MtAnchorValue -Anchor $Anchor -Key 'ctime_ms'
+    $anchorPfxLen = Get-MtAnchorValue -Anchor $Anchor -Key 'prefix_len'
+    $anchorPfxSha = [string](Get-MtAnchorValue -Anchor $Anchor -Key 'prefix_sha')
+
+    $sameFile = $true
+    if ($null -ne $anchorCtime) {
+        $sameFile = $false
+        try {
+            $nowCtime = [long]([DateTimeOffset]::new((Get-Item -LiteralPath $Path).CreationTimeUtc)).ToUnixTimeMilliseconds()
+            if ([Math]::Abs($nowCtime - [long]$anchorCtime) -le $script:MT_ANCHOR_CTIME_TOLERANCE_MS) {
+                $plen = if ($null -ne $anchorPfxLen) { [int]$anchorPfxLen } else { 0 }
+                $nowSha = Get-MtBytesPrefixHash -Bytes $cur -Count $plen
+                # 头部指纹相符 = 还是那个被追加的文件（头部永不被追加改写）
+                $sameFile = ($nowSha -eq $anchorPfxSha)
+            }
+        } catch {
+            $sameFile = $false
+        }
+    }
+
+    if ($sameFile) {
+        $off = $Offset
+        if ($off -gt $cur.Length) { $off = [long]0 }   # 原地被截断：与既有实现同义的兜底
+        return @{
+            Text    = (ConvertFrom-MtLogBytes -Bytes $cur -From $off)
+            Kind    = $(if ($null -eq $anchorCtime) { 'legacy' } else { 'intact' })
+            Offset  = $off
+            Rotated = 0
+            Note    = ''
+        }
+    }
+
+    # ── 锚点文件已被替换：只有**身份匹配**的轮转段才允许并入窗口 ────────────────
+    $since = [datetime]::MinValue
+    $anchorMtime = Get-MtAnchorValue -Anchor $Anchor -Key 'mtime_ms'
+    if ($null -ne $anchorMtime) {
+        $since = ([DateTimeOffset]::FromUnixTimeMilliseconds([long]$anchorMtime - $script:MT_ANCHOR_MTIME_TOLERANCE_MS)).UtcDateTime.ToLocalTime()
+    }
+
+    $rotated = @()
+    if ($LogsDir) {
+        # ⚠️ 必须写成 `@((…) | Sort-Object …)`：`@(Get-MtRotatedLatestLogs …)` 会得到嵌套数组（见函数 NOTES）
+        $rotated = @((Get-MtRotatedLatestLogs -LogsDir $LogsDir -Since $since -MaxRotated $MaxRotated) |
+            Sort-Object LastWriteTime)   # 升序：最靠近锚点的那一段在最前
+    }
+
+    $parts = [System.Collections.Generic.List[byte[]]]::new()
+    $rotCount = 0
+    $matchedIdx = -1
+    $bytesCache = @{}
+    for ($i = 0; $i -lt $rotated.Count; $i++) {
+        $b = Read-MtRotatedBytes -Path $rotated[$i].FullName
+        if ($null -eq $b) { continue }
+        $bytesCache[$i] = $b
+        if ($matchedIdx -ge 0) { continue }
+        if ($b.Length -lt $Offset) { continue }
+        $plen = if ($null -ne $anchorPfxLen) { [int]$anchorPfxLen } else { 0 }
+        if ($b.Length -lt $plen) { continue }
+        if ((Get-MtBytesPrefixHash -Bytes $b -Count $plen) -eq $anchorPfxSha) { $matchedIdx = $i }
+    }
+
+    if ($matchedIdx -ge 0) {
+        $anchorBytes = $bytesCache[$matchedIdx]
+        $head = [byte[]]::new($anchorBytes.Length - [int]$Offset)
+        [Array]::Copy($anchorBytes, [int]$Offset, $head, 0, $head.Length)
+        $parts.Add($head)
+        $rotCount = 1
+        $parts.Add($cur)
+
+        $ms = [System.IO.MemoryStream]::new()
+        try {
+            foreach ($p in $parts) { $ms.Write($p, 0, $p.Length) }
+            $all = $ms.ToArray()
+        } finally { $ms.Dispose() }
+
+        # 比锚点段**更晚**的轮转段不再并入：它们的身份无法用锚点指纹验证，无条件并入就等于
+        # 「把所有轮转件并进窗口」（正是本函数要防的串读）。窗口横跨两个零点需要一次 >24h 的
+        # 会话，而用例/启动都有硬超时 ⇒ 实际不可能；真出现也只在此处**显式报出**，不静默。
+        $later = [Math]::Max(0, $rotated.Count - $matchedIdx - 1)
+        $note = "跨零点日切：锚点文件已轮转为 $($rotated[$matchedIdx].Name)，窗口自其 ${Offset}B 处 + 当前文件重拼"
+        if ($later -gt 0) {
+            $note += "；另有 $later 段更晚的轮转件**未并入**（身份不可验证）"
+        }
+        return @{
+            Text    = (ConvertFrom-MtLogBytes -Bytes $all)
+            Kind    = 'reassembled'
+            Offset  = $Offset
+            Rotated = $rotCount
+            Note    = $note
+        }
+    }
+
+    # 找不到锚点文件（例如 mt_launch 在重登时删除了 latest.log）⇒ 不猜：退回既有语义并显式报出
+    $off = $Offset
+    if ($off -gt $cur.Length) { $off = [long]0 }
+    return @{
+        Text    = (ConvertFrom-MtLogBytes -Bytes $cur -From $off)
+        Kind    = 'unreconstructable'
+        Offset  = $off
+        Rotated = 0
+        Note    = ("锚点文件已不在（候选轮转段 $($rotated.Count) 个，均无匹配身份）⇒ 窗口退化为当前文件（起点 ${off}B）," +
+            '可能是重登/重启删除了 latest.log，或轮转件已被清理')
+    }
+}
+
 function ConvertTo-MtStartArgs {
     <#
     .SYNOPSIS
@@ -534,6 +983,7 @@ function Get-MtClientStatus {
 Export-ModuleMember -Function @(
     'ConvertFrom-MtBytes', 'Invoke-MtProcess', 'Invoke-MtProcessFull',
     'Stop-MtProcessTree', 'Get-JavaProcesses', 'Get-GradleDaemonProcesses',
-    'Read-MtSharedText', 'ConvertTo-MtStartArgs', 'Start-MtProcessToFile',
+    'Read-MtSharedText', 'Read-MtLogWithRotation', 'Get-MtRotatedLatestLogs',
+    'Get-MtLogAnchor', 'Read-MtLogWindow', 'ConvertTo-MtStartArgs', 'Start-MtProcessToFile',
     'Stop-MtVersionProcesses', 'Get-MtClientStatus', 'Test-MtClientProcess', 'Test-MtPipelineProcess'
 )

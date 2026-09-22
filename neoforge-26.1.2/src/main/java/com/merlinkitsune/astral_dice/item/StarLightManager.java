@@ -1,6 +1,6 @@
 package com.merlinkitsune.astral_dice.item;
 
-import com.merlinkitsune.astral_dice.component.GameplayConstants;
+import com.merlinkitsune.starenginelib.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import net.minecraft.world.entity.player.Player;
 import top.theillusivec4.curios.api.CuriosApi;
@@ -16,7 +16,7 @@ import com.merlinkitsune.astral_dice.item.chip.BankCardChipItem;
  *   <li>基础值默认 0,可由未来"固定增加星光"的筹码在装备期间提供(预留 {@link #getBasePoints} 接入点);</li>
  *   <li>星光被消耗并低于基础值时,自动补充回基础值。</li>
  * </ul>
- * 获取来源:经商立牌被动/赐福加成、手电筒筹码攻击加成、八面骰累计、看板立牌兑换等。
+ * 获取来源:经商立牌被动/赐福加成、手电筒筹码攻击加成、八面骰累计、看板娘立牌兑换等。
  */
 public final class StarLightManager {
     /** 当前星光点数 */

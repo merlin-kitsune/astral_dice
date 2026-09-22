@@ -109,6 +109,7 @@ public class ModItemModelProvider extends ModelProvider {
         basicItem(itemModels, ModItems.NANCY_LU_SIGN.get());
         basicItem(itemModels, ModItems.MOSES_SIGN.get());
         basicItem(itemModels, ModItems.PANDAMAN_SIGN.get());
+        basicItem(itemModels, ModItems.REN_SIGN.get());
         basicItem(itemModels, ModItems.CHOCOLATE_CAKE.get());
         basicItem(itemModels, ModItems.HAMBURGER.get());
         basicItem(itemModels, ModItems.LUXURY_FEAST.get());
@@ -157,6 +158,26 @@ public class ModItemModelProvider extends ModelProvider {
         basicItem(itemModels, ModItems.RAILGUN_CHIP.get());
         basicItem(itemModels, ModItems.PRIMORDIAL_CORE_CHIP.get());
         basicItem(itemModels, ModItems.WHETSTONE_CHIP.get());
+
+        // ===== 第 4 代新增（2026-09-22 补登）=====
+        // ⚠️ 本清单是**逐行硬编码**的：新物品若不在 ModItems 之外**同时**加到这里，
+        //    datagen 就不会产出 `assets/astral_dice/items/<id>.json`（1.21.4+ 必需的
+        //    物品模型定义）与 `models/item/<id>.json` ⇒ 实机显示**紫黑格子**。
+        //    本次缺失的 12 项即由此产生（贴图 jar 里都有，所以从「紫黑格子」
+        //    看不出是缺模型而不是缺贴图）—— 1.21.1 的同名 provider 是有的（第 93-103 / 152-153 行），
+        //    26.1.2 迁移时清单整体漏抄了这一段。新增物品时**务必在本类同步登记**。
+        basicItem(itemModels, ModItems.ZHAO_SIGN.get());
+        basicItem(itemModels, ModItems.TERU_SIGN.get());
+        basicItem(itemModels, ModItems.NARDIS_SIGN.get());
+        basicItem(itemModels, ModItems.MAMUSHI_SIGN.get());
+        basicItem(itemModels, ModItems.SHERRY_SIGN.get());
+        basicItem(itemModels, ModItems.HANNA_SIGN.get());
+        basicItem(itemModels, ModItems.FU_CARD.get());
+        basicItem(itemModels, ModItems.HUO_CARD.get());
+        basicItem(itemModels, ModItems.ATTACK_CARD_BITE.get());
+        basicItem(itemModels, ModItems.ATTACK_CARD_DRAGON_ROAR.get());
+        basicItem(itemModels, ModItems.PURPLE_SHOOTING_STAR_CHIP.get());
+        basicItem(itemModels, ModItems.GOLDEN_SHOOTING_STAR_CHIP.get());
     }
 
     /** 与 1.21.1 的 {@code ItemModelProvider#basicItem(Item)} 等价的最小平铺物品模型。 */

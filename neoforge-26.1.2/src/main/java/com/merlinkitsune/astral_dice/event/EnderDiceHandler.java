@@ -34,6 +34,7 @@ import top.theillusivec4.curios.api.CuriosApi;
 
 import java.util.ArrayList;
 import java.util.List;
+import com.merlinkitsune.starenginelib.event.ModEffectRemoval;
 
 /**
  * 末影骰子:与下界合金骰子同阶。

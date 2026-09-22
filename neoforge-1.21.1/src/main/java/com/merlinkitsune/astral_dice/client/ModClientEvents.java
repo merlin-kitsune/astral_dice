@@ -1,6 +1,8 @@
 package com.merlinkitsune.astral_dice.client;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
+import com.merlinkitsune.astral_dice.screen.CardInventoryScreen;
+import com.merlinkitsune.astral_dice.screen.ModMenuTypes;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -15,19 +17,34 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
+import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
 import org.joml.Matrix4f;
 import org.joml.Quaternionf;
 import org.joml.Vector4f;
 
+import com.merlinkitsune.starenginelib.client.ActionBarManager;
+import com.merlinkitsune.starenginelib.client.ClientDamageNumbers;
 @EventBusSubscriber(modid = AstralDiceMod.MODID, value = Dist.CLIENT, bus = EventBusSubscriber.Bus.MOD)
 public class ModClientEvents {
+
+    // 菜单界面注册:本类带 @EventBusSubscriber(Dist.CLIENT),**在专用服务端整体不会被加载**,
+    // 故此处引用纯客户端的 CardInventoryScreen 是安全的。
+    // ⚠️ 不要把这个注册挪回 AstralDiceMod(主入口类服务端也加载,运行时 dist 分支拦不住符号解析),
+    // 与 forge-1.20.1 侧 ModClientEvents#onClientSetup 的写法保持对等。
+    @SubscribeEvent
+    public static void registerScreens(RegisterMenuScreensEvent event) {
+        event.register(ModMenuTypes.CARD_INVENTORY.get(), CardInventoryScreen::new);
+    }
 
     @SubscribeEvent
     public static void registerGuiLayers(RegisterGuiLayersEvent event) {
         event.registerAbove(VanillaGuiLayers.CROSSHAIR,
                 ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID, "damage_number"),
                 DamageNumberOverlay.INSTANCE);
+        event.registerAbove(VanillaGuiLayers.CROSSHAIR,
+                ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID, "target_select"),
+                TargetSelectOverlay.INSTANCE);
         event.registerAbove(VanillaGuiLayers.AIR_LEVEL,
                 ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID, "action_bar"),
                 ActionBarOverlay.INSTANCE);
@@ -38,6 +55,10 @@ public class ModClientEvents {
 
         @Override
         public void render(GuiGraphics guiGraphics, DeltaTracker deltaTracker) {
+            // F1（隐藏 HUD）守卫:与 TargetSelectOverlay 同源（条件与理由见该文件注释）——
+            // 1.21.1 原版不整体跳过 gui.render、模组层也不被 `!hideGui` 包裹 ⇒ 必须自行守。
+            Minecraft mc = Minecraft.getInstance();
+            if (mc.options.hideGui && mc.screen == null) return;
             ActionBarManager.render(guiGraphics, deltaTracker);
         }
     }
@@ -46,6 +67,7 @@ public class ModClientEvents {
     public static void registerKeyMappings(RegisterKeyMappingsEvent event) {
         event.register(KeyBindingSetup.ACTIVATE_SIGN_KEY);
         event.register(KeyBindingSetup.OPEN_CARD_INVENTORY_KEY);
+        // 目标选择器不注册键盘确认键：确认 = 鼠标左键、取消 = 右键+潜行 / ESC 菜单（强力胶式语义）
     }
 
     public static class DamageNumberOverlay implements LayeredDraw.Layer {
@@ -109,7 +131,8 @@ public class ModClientEvents {
                 int color = (alpha << 24) | (number.color & 0xFFFFFF);
                 int yOffset = -(int) (progress * 30);
 
-                String text = "+" + number.damage;
+                // 数显只给数值、不加 "+" 前缀(2026-09-19 用户要求:攻击伤与法伤一并移除)
+                String text = Integer.toString(number.damage);
                 int textWidth = mc.font.width(text);
                 poseStack.pushPose();
                 poseStack.translate(x - textWidth / 2.0f, y + yOffset, 0);

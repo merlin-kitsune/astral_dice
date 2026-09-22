@@ -1,8 +1,9 @@
 package com.merlinkitsune.astral_dice.network;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
-import com.merlinkitsune.astral_dice.client.ActionBarManager;
-import com.merlinkitsune.astral_dice.client.ClientDamageNumbers;
+import com.merlinkitsune.starenginelib.client.ActionBarManager;
+import com.merlinkitsune.starenginelib.client.ClientDamageNumbers;
+import com.merlinkitsune.astral_dice.client.TargetSelectionClient;
 import com.merlinkitsune.astral_dice.client.EnderDieTotemAnimator;
 import net.minecraft.network.chat.Component;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -45,6 +46,35 @@ public class ModPayloads {
                 OpenCardInventoryPayload.TYPE,
                 OpenCardInventoryPayload.STREAM_CODEC,
                 OpenCardInventoryPayload::handle
+        );
+        registrar.playToClient(
+                TargetSelectStartPayload.TYPE,
+                TargetSelectStartPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() ->
+                        TargetSelectionClient.start(payload.token(), payload.targetType(),
+                                payload.radius(), payload.durationTicks(), payload.actionId(), payload.allowSelf(),
+                                payload.holdToSelect()))
+        );
+        registrar.playToServer(
+                TargetSelectConfirmPayload.TYPE,
+                TargetSelectConfirmPayload.STREAM_CODEC,
+                TargetSelectConfirmPayload::handle
+        );
+        registrar.playToServer(
+                TargetSelectCancelPayload.TYPE,
+                TargetSelectCancelPayload.STREAM_CODEC,
+                TargetSelectCancelPayload::handle
+        );
+        registrar.playToServer(
+                StarCoinWalletPayload.TYPE,
+                StarCoinWalletPayload.STREAM_CODEC,
+                StarCoinWalletPayload::handle
+        );
+        // 钱包余额 → 客户端（余额条显示；值变化才发，见 economy/StarCoinBalanceSync）
+        registrar.playToClient(
+                StarCoinBalancePayload.TYPE,
+                StarCoinBalancePayload.STREAM_CODEC,
+                StarCoinBalancePayload::handle
         );
     }
 }

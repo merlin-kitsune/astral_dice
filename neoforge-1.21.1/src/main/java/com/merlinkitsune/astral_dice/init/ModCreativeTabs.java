@@ -61,6 +61,9 @@ public class ModCreativeTabs {
                 output.accept(ModItems.ATTACK_CARD_MEITO.get());
                 output.accept(ModItems.ATTACK_CARD_CHARGE.get());
                 output.accept(ModItems.ATTACK_CARD_FULL_POWER.get());
+                // 蛟龙立牌(mamushi)专属战斗牌(2026-09-27):撕咬 / 龙之咆哮
+                output.accept(ModItems.ATTACK_CARD_BITE.get());
+                output.accept(ModItems.ATTACK_CARD_DRAGON_ROAR.get());
                 // 防御牌
                 output.accept(ModItems.DEFENSE_CARD_MEDIUM.get());
                 output.accept(ModItems.DEFENSE_CARD_LARGE.get());
@@ -77,6 +80,9 @@ public class ModCreativeTabs {
                 output.accept(ModItems.YOU_HAVE_I_HAVE.get());
                 output.accept(ModItems.EXPRESS_DELIVERY.get());
                 output.accept(ModItems.FATE_GUIDANCE_CARD.get());
+                // 风水师立牌专属符卡(专属绑定获得者的效果牌)
+                output.accept(ModItems.FU_CARD.get());
+                output.accept(ModItems.HUO_CARD.get());
                 // 伤害效果牌（活体书页在定向爆破之后）
                 output.accept(ModItems.MONSTER_LASER_CARD.get());
                 output.accept(ModItems.MONSTER_BRICK_CARD.get());
@@ -91,6 +97,7 @@ public class ModCreativeTabs {
                 output.accept(ModItems.LULU_SIGN.get());
                 output.accept(ModItems.PADMAN_SIGN.get());
                 output.accept(ModItems.PANDAMAN_SIGN.get());
+                output.accept(ModItems.NARDIS_SIGN.get());
                 // 史诗 EPIC
                 output.accept(ModItems.KOMACHI_SIGN.get());
                 output.accept(ModItems.FANNY_SIGN.get());
@@ -98,11 +105,17 @@ public class ModCreativeTabs {
                 output.accept(ModItems.PAPARA_SIGN.get());
                 output.accept(ModItems.NANCY_LU_SIGN.get());
                 output.accept(ModItems.MOSES_SIGN.get());
+                output.accept(ModItems.REN_SIGN.get());
                 // 传奇 UNCOMMON
                 output.accept(ModItems.MISAKI_SIGN.get());
                 output.accept(ModItems.RIN_SIGN.get());
                 output.accept(ModItems.BONNIE_SIGN.get());
                 output.accept(ModItems.FEN_SIGN.get());
+                output.accept(ModItems.ZHAO_SIGN.get());
+                output.accept(ModItems.TERU_SIGN.get());
+                output.accept(ModItems.MAMUSHI_SIGN.get());
+                output.accept(ModItems.SHERRY_SIGN.get());
+                output.accept(ModItems.HANNA_SIGN.get());
                 // 筹码
                 // === 星光类 ===
                 output.accept(ModItems.FLASHLIGHT_CHIP.get());
@@ -112,6 +125,8 @@ public class ModCreativeTabs {
                 output.accept(ModItems.BANK_CARD_HIGH.get());
                 output.accept(ModItems.BANK_CARD_UNLIMITED.get());
                 output.accept(ModItems.STAR_COIN_HAMMER.get());
+                output.accept(ModItems.PURPLE_SHOOTING_STAR_CHIP.get());
+                output.accept(ModItems.GOLDEN_SHOOTING_STAR_CHIP.get());
                 // === 治愈类 ===
                 output.accept(ModItems.MEDKIT_EMERGENCY_CHIP.get());
                 output.accept(ModItems.MEDKIT_COMPLETE_CHIP.get());

@@ -1,6 +1,6 @@
 package com.merlinkitsune.astral_dice.item.chip;
-import com.merlinkitsune.astral_dice.combat.HostileTargets;
-import com.merlinkitsune.astral_dice.item.CuriosCompat;
+import com.merlinkitsune.starenginelib.item.CuriosCompat;
+import com.merlinkitsune.starenginelib.combat.HostileTargets;
 
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.monster.Enemy;
@@ -11,7 +11,7 @@ import net.minecraft.world.phys.AABB;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 import com.merlinkitsune.astral_dice.item.sign.BaseSignItem;
-import com.merlinkitsune.astral_dice.component.GameplayConstants;
+import com.merlinkitsune.starenginelib.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.item.MarkManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
@@ -30,7 +30,7 @@ public class FanBigChipItem extends BaseChipItem {
     // 主动技能触发成功后调用:佩戴本筹码时获得随机效果牌并对周围敌对目标施加标记
     public static void applyAfterSignSkill(Player player) {
         if (player.level().isClientSide()) return;
-        var curios = com.merlinkitsune.astral_dice.item.CuriosCompat.getCuriosInventory(player);
+        var curios = com.merlinkitsune.starenginelib.item.CuriosCompat.getCuriosInventory(player);
         if (curios.isEmpty()) return;
         if (curios.get().findFirstCurio(s -> s.is(ModItems.HAND_FAN_BIG_CHIP.get())).isEmpty()) return;
 
@@ -42,7 +42,7 @@ public class FanBigChipItem extends BaseChipItem {
         }
 
         // 对周围 HAND_FAN_BIG_RANGE 格范围内所有敌对目标施加一层标记
-        AABB aabb = player.getBoundingBox().inflate(com.merlinkitsune.astral_dice.component.GameplayConstants.HAND_FAN_BIG_RANGE);
+        AABB aabb = player.getBoundingBox().inflate(com.merlinkitsune.starenginelib.component.GameplayConstants.HAND_FAN_BIG_RANGE);
         List<LivingEntity> nearby = player.level().getEntitiesOfClass(LivingEntity.class, aabb,
                 e -> HostileTargets.isHostile(player, e) && e.isAlive());
         for (LivingEntity entity : nearby) {
