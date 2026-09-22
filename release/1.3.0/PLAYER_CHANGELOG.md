@@ -170,6 +170,12 @@
 
 ---
 
+### Tooltip display
+
+- **Fixed four signs' passive descriptions repeating the ability name** (Boss / Fengshui Master / Muscle Detective / Puppeteer): the passive title is drawn separately by the UI, and the body's first line repeated it — so the same name appeared twice in a row. The duplicated prefix is now removed (Boss's condition line reads "While having stacks", same meaning).
+- **Fixed a box glyph appearing in the middle of multi-line card descriptions (talismans included)**: vanilla only splits a line when the tooltip has to wrap; when it fits, the whole string is drawn as **one line** — so a newline used for line breaking was rendered as a **missing-glyph box** (and whether it showed up depended on screen width and mouse position, making it look random). Values are now split per line before being added, so multi-line descriptions never show a box.
+
+
 ## 📌 Requirements
 
 - ⚠️ **StarEngine Lib is now a required dependency from 1.3.0 onward**: **releases up to and including 1.2.1-hotfix ran on their own**; from 1.3.0 a large part of this mod's shared implementation lives in that library, and **without it the mod is refused at load time** (the loader reports a missing required dependency instead of letting you into the game and crashing there). Library repository: <https://github.com/merlin-kitsune/starengine_lib>

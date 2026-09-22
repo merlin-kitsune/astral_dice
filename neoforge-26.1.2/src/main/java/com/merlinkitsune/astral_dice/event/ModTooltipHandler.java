@@ -181,6 +181,20 @@ public class ModTooltipHandler {
         }
     }
 
+    // 效果牌(卡牌)tooltip 多行文本:lang 值内嵌 "\n" 时逐行拆分添加(基础色灰)。
+    // ⚠️ **为什么必须拆**:原版仅在「需要折行」时才走 Font.split —— ClientHooks#gatherTooltipComponentsFromElements
+    // (Forge 侧 ForgeHooksClient)的 needsWrap 分支;不需要折行时直接把**整个 Component** 交给
+    // ClientTextTooltip,而它 getHeight() 恒为 10、renderText 走 Font#drawInBatch
+    // ⇒ 组件里的 LF 没有字形,会被渲染成**方块占位符**(且是否出现取决于屏幕宽度/鼠标位置,看着像伪随机)。
+    // 故凡 lang 值含 LF 的键都必须在此拆行添加。同型 helper:addChipLines / addSignLines。
+    private static void addCardLines(List<Component> tooltip, String langKey, Object... args) {
+        String text = translationString(langKey, args);
+        for (String line : text.split("\n")) {
+            tooltip.add(line.isEmpty() ? Component.empty()
+                    : Component.literal(line).withStyle(ChatFormatting.GRAY));
+        }
+    }
+
     // 读取 lang key 的多行描述,逐行添加(前缀灰色;行内 § 码着色重点)
     // 约定:lang 中每行以 "\n" 分隔;以两个空格开头的行视为子项(带 "- " 符号),其余为普通项(无符号)。
     // 渲染:无缩进;子项加 "§7- " 前缀。
@@ -1235,8 +1249,7 @@ public class ModTooltipHandler {
         }
         if (stack.is(ModItems.LUXURY_FEAST.get())) {
             tooltip.add(Component.empty());
-            tooltip.add(tt("tooltip.astral_dice.card.luxury_feast")
-                    .withStyle(ChatFormatting.GRAY));
+            addCardLines(tooltip, "tooltip.astral_dice.card.luxury_feast");
             addEffectCardPlayCountTooltip(tooltip, player);
             tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown",
                             effectCardCooldownSeconds(player))
@@ -1244,8 +1257,7 @@ public class ModTooltipHandler {
         }
         if (stack.is(ModItems.YOU_HAVE_I_HAVE.get())) {
             tooltip.add(Component.empty());
-            tooltip.add(Component.translatable("tooltip.astral_dice.card.you_have_i_have")
-                    .withStyle(ChatFormatting.GRAY));
+            addCardLines(tooltip, "tooltip.astral_dice.card.you_have_i_have");
             addEffectCardPlayCountTooltip(tooltip, player);
             tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown",
                             effectCardCooldownSeconds(player))
@@ -1253,8 +1265,7 @@ public class ModTooltipHandler {
         }
         if (stack.is(ModItems.EXPRESS_DELIVERY.get())) {
             tooltip.add(Component.empty());
-            tooltip.add(Component.translatable("tooltip.astral_dice.card.express_delivery")
-                    .withStyle(ChatFormatting.GRAY));
+            addCardLines(tooltip, "tooltip.astral_dice.card.express_delivery");
             addEffectCardPlayCountTooltip(tooltip, player);
             tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown",
                             effectCardCooldownSeconds(player))
@@ -1271,8 +1282,7 @@ public class ModTooltipHandler {
         }
         if (stack.is(ModItems.FATE_GUIDANCE_CARD.get())) {
             tooltip.add(Component.empty());
-            tooltip.add(tt("tooltip.astral_dice.card.fate_guidance_desc")
-                    .withStyle(ChatFormatting.GRAY));
+            addCardLines(tooltip, "tooltip.astral_dice.card.fate_guidance_desc");
             tooltip.add(Component.translatable("tooltip.astral_dice.card.fate_saturation")
                     .withStyle(ChatFormatting.GRAY));
             // 联动条目:仅安装相关模组时显示(备注区,紫色,无编号)
