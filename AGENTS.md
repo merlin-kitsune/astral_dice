@@ -129,14 +129,39 @@ When extending this workspace:
 
 | 子项目 | 来源分支(原 astra_dice 仓库) | MC | 加载器 | Java | 当前版本 | 版本号格式 |
 |---|---|---|---|---|---|---|
-| `neoforge-1.21.1` | `1.21.1-main` | 1.21.1 | NeoForge | 21 | `1.2.1-hotfix+neoforge_1.21.1` | `x.y.z[-rcN|hotfix]+neoforge_1.21.1` |
-| `forge-1.20.1` | `1.20.1-forge` | 1.20.1 | Forge | 17 | `1.2.1-hotfix+forge_1.20.1` | `x.y.z[-rcN|preN|hotfix]+forge_1.20.1` |
-| `neoforge-26.1.2` | 本仓 `multi-26.1.2-neoforge` 分支新增（基线 = 主线 `1.2.1`/`fda8ca9` 的 `neoforge-1.21.1` 源码）；**2026-09-17 已合并进 `multi-1.20.1-1.21.1`**（与主线同目录同树，原独立 worktree 已移除）；**2026-09-22 完整移植后版本号与另两线对齐** | 26.1.2 | NeoForge | 25 | `2.0.0-SNAPSHOT.13+neoforge_26.1.2` | `x.y.z[-rcN]+neoforge_26.1.2` |
+| `neoforge-1.21.1` | `1.21.1-main` | 1.21.1 | NeoForge | 21 | `1.3.0+neoforge_1.21.1` | `x.y.z[-rcN|hotfix]+neoforge_1.21.1` |
+| `forge-1.20.1` | `1.20.1-forge` | 1.20.1 | Forge | 17 | `1.3.0+forge_1.20.1` | `x.y.z[-rcN|preN|hotfix]+forge_1.20.1` |
+| `neoforge-26.1.2` | 本仓 `multi-26.1.2-neoforge` 分支新增（基线 = 主线 `1.2.1`/`fda8ca9` 的 `neoforge-1.21.1` 源码）；**2026-09-17 已合并进当时的主线 `multi-1.20.1-1.21.1`（该分支已于 2026-09-22 改名为 `multi-main`）**（与主线同目录同树，原独立 worktree 已移除）；**2026-09-22 完整移植后版本号与另两线同批升版（26.1.2 取 `1.3.0-beta.1`）** | 26.1.2 | NeoForge | 25 | `1.3.0-beta.1+neoforge_26.1.2` | `x.y.z[-rcN]+neoforge_26.1.2` |
 
-> 版本号各 git 分支独立（AGENTS.md 自 2026-09-15 起**已纳入版本库**，各分支各自维护一份）：`multi-1.20.1-1.21.1` 当前 = `1.2.1-hotfix`（`1.2.1` 的修补版，2026-09-18 筹码栏修复；按发布规范 tag 仍解析为裸版本 **`1.2.1`**，故 Release 1.2.1 为**刷新**而非新建）；`multi-dev-next` 当前 = **`2.0.0-SNAPSHOT.13`**（2026-09-17 用户裁决：`2.0.0-SNAPSHOT.5` 封包，版本号升至 `.10`；**2026-09-22 用户裁决：SNAPSHOT 数值按提交数下沉，档位 = 提交数 / 37，自 `.10` 起累计 104 提交 ⇒ 向上取整 3 档 ⇒ `.13`**；后续改动一律记入两个 CHANGELOG 顶部的 `未发布（2.0.0-SNAPSHOT.13）` 小节）；`neoforge-26.1.2` 子项目当前 = **`2.0.0-SNAPSHOT.13`**（2026-09-17 用户裁决 + **2026-09-19 修订：26.1.2 已纳入主线、三线同步（不再是低优先级线）**，**2026-09-22 用户裁决：26.1.2 完整移植后与另两线版本号对齐，不再单独加 `-beta`**；`multi-26.1.2-neoforge` 分支自此只作为合并前历史，不再单独开发）。上表「当前版本」以主线工作分支 `multi-1.20.1-1.21.1` 为准。
+> 版本号各 git 分支独立（AGENTS.md 自 2026-09-15 起**已纳入版本库**，各分支各自维护一份）：**发布线 `multi-main`**（2026-09-22 由 `multi-1.20.1-1.21.1` 改名；连带项已同批处理：三线 `build.gradle` 的 `packPushBranches → ['multi-main']`、`.github/workflows/build.yml` 的 5 处分支名与触发条件，以及 `.github/workflows/build.yml` 里 checkout 前置库的 `ref:` 钉值）当前 = **`1.3.0`**（2026-09-22 用户裁决：把 `multi-dev-next` 整体收编后统一升版 —— 1.21.1 / 1.20.1 = `1.3.0`，26.1.2 = `1.3.0-beta.1`；按发布规范 tag 解析为裸版本 **`1.3.0`**）；`multi-dev-next` 当前 = **`2.0.0-SNAPSHOT.13`**（2026-09-17 用户裁决：`2.0.0-SNAPSHOT.5` 封包，版本号升至 `.10`；**2026-09-22 用户裁决：SNAPSHOT 数值按提交数下沉，档位 = 提交数 / 37，自 `.10` 起累计 104 提交 ⇒ 向上取整 3 档 ⇒ `.13`**；后续改动一律记入两个 CHANGELOG 顶部的 `未发布（2.0.0-SNAPSHOT.13）` 小节；该线已于 **2026-09-22 整体合并进发布线 `multi-main`**（合并提交 `7b726617`，收编 160 个提交），自此不再单独演进）；`neoforge-26.1.2` 子项目当前 = **`1.3.0-beta.1`**（2026-09-17 用户裁决 + **2026-09-19 修订：26.1.2 已纳入主线、三线同步（不再是低优先级线）**；**2026-09-22 用户裁决：三线同批升版，26.1.2 取 `1.3.0-beta.1`** —— 此前 `.13` 时代「与另两线版本号对齐、不再单独加 `-beta`」的口径随之作废；`multi-26.1.2-neoforge` 分支自此只作为合并前历史，不再单独开发）。上表「当前版本」以发布线工作分支 `multi-main` 为准。
 > ⚠️ 历史上另有一条 dev 分支 **`wt/2.0.0-vnext`**（连带独立 worktree `C:/Users/xmace/.dsh/worktrees/astral_dice_multiloader-a03b2df2/2.0.0-vnext`）——2026-09-17 用户裁决「移除 wt/2.0.0-vnext 分支，仅保留当前分支」后**已删除**：worktree 与分支一并移除，`git branch -d` 成功即证明其 tip **`d7e4ac8f4f1c31484bf4366caa4e144aec45979f`** 的全部提交都已被 `multi-dev-next` 包含（`multi-dev-next..wt/2.0.0-vnext` 为空）⇒ **未丢失任何提交**；该分支从未推到远端（`origin` 只有 `multi-1.20.1-1.21.1` 与 `multi-dev-next`），故无需远端清理。`multi-26.1.2-neoforge` 作为合并前历史分支**保留**（未在本次裁决范围内）。
 
 > **第三条线(26.1.2)的规则边界(2026-09-19 用户裁决修订 —— 26.1.2 已纳入主线,必须遵守)**:自本裁决起「同步修改」约束**三个版本**(`neoforge-1.21.1` + `forge-1.20.1` + `neoforge-26.1.2`):任何功能/修复/平衡/文案改动一律**三线同批实施**(实施方式见下方「### 子项目修改默认规则」与「### 模组内容更新规则(三线同步)」),26.1.2 **不再**是「发布线完成后再迁移」的低优先级移植线。三条线各自按 `docs/compat-26.1.2-neoforge.md`(26.1.2 相对 1.21.1)、`docs/compat-1.20.1-forge.md`(1.20.1 相对 1.21.1)的差异映射实现,**平台差异必须逐条登记**;三线落地后按 `scripts/test/TESTING-SPEC.md` §13.2 做一致性测试。三子项目的 `mod_version`/`mods.toml` 门槛仍各自独立。⛔ **2026-09-19 补充裁决：暂停 26.1.2 版本更新**（原话「暂停26.1.2版本更新」）—— 本段的「三线同批实施」对 `neoforge-26.1.2` **暂不适用**，该线**冻结在已提交状态 `127fabd5`**，不得再落地任何改动（只读取证不受限），恢复需用户明确指示；详见下方「### 模组内容更新规则(三线同步)」段首的裁决记录。
+
+### 前置库 starengine_lib 的版本与兼容性契约（全局，2026-09-22 用户裁决）
+
+> 本契约**跨两个仓库生效**（库仓 `F:\MCProject\starengine_lib` ↔ 本仓三条线），是库的**公开兼容性承诺**。
+> 库侧原文见其 `README.md` §6「版本与兼容」、双 `CHANGELOG`、以及三处 `gradle.properties` 的 `1.0.0` 条目。
+
+1. **禁止破坏性更新（第一位数字不变时）**：凡**主版本号（第一位数字）不变**的库版本（当前 = `1.x`），
+   **不得**删除或改名任何 public 类型 / 方法 / 字段 / 常量，**不得**改变其可见性、签名或既有语义；
+   只允许**新增**（新类型、新成员、新可选入口）与不改变契约的行为修正。
+2. **破坏性变更必须升第一位**（`1.x` → `2.x`），并在**同一次**发布里收紧三条线 `gradle.properties` 的
+   `starengine_lib_version_range` 下界 ⇒ **破坏性变更不允许藏在次版本/补丁位里**。
+3. **区间即契约**：三条线现声明 `starengine_lib_version_range=[1.0.0,2.0)` —— 这是上述承诺的**机器可读表达**：
+   区间内任何 `1.x` 版本都可**原位替换**，无需改动本模组的任何代码或配置。
+4. **当前版本 = `1.0.0`**（库的**首个正式版**，2026-09-22 由快照终态 `1.0.0-SNAPSHOT.16` 规范化而来，
+   库内 Java 源码零改动，产物名由 `…-1.0.0-SNAPSHOT.16.jar` 变为 `…-1.0.0.jar`）⇒ 三条线 `starengine_lib_version=1.0.0`。
+5. ⛔ **快照系列（`1.0.0-SNAPSHOT.*`）已终止，不受本契约保护**：那时相邻快照之间二进制不兼容且 `modId` 相同，
+   消费方必须把下界**精确到序号**（历史口径与实测矩阵见各线 `gradle.properties` 注释与库 README §4.2）；
+   **自 `1.0.0` 起不再需要精确序号**，`[1.0.0,2.0)` 一条即可。
+6. ⚠️ **升级库的固定动作（缺一即断）**：① 库侧 bump `lib_version`/`mod_version` 并
+   `./gradlew build publishToMavenLocal`（三平台同号）；② 本仓三条线 `gradle.properties` 的
+   `starengine_lib_version` 与 `_version_range` **同批**更新；③ `.github/workflows/build.yml` 的库 `ref:`
+   钉值改为库的**新提交 SHA**（该提交须已推送到远端，否则 CI 检不出）；④ 三个 `run/<版本>/mods` 与三个整合包
+   里的库 jar **成对更新**（`Start-*.bat` 会以 exit 10 拒绝版本不一致的环境）。
+7. ⚠️ **推送整合包的分支白名单**：库侧 `packPushBranches = ['main']`、本仓三线 `packPushBranches = ['multi-main']`
+   （2026-09-22 起两侧同构；此前是黑名单，已改白名单 ⇒ 新分支默认不推，不会误删整合包里的正式 jar）。
 
 ### neoforge-26.1.2 关键差异速记(相对 neoforge-1.21.1)
 
@@ -184,7 +209,7 @@ When extending this workspace:
    - **`data/neoforge/loot_modifiers/global_loot_modifiers.json` 索引已废除**:26.1 的 `LootModifierManager` 是扫描目录的 `SimpleJsonResourceReloadListener`(FOLDER=`loot_modifiers`,类里**没有** `global_loot_modifiers`/`entries`/`replace` 字面量)⇒ 旧的索引文件会被**当成一个 GLM 去解析**并报 `No key type in MapLike[{"replace":false,"entries":[…]}]`。**必须删除该索引文件**,14 个 `data/astral_dice/loot_modifiers/*.json` 仍会被自动扫描加载。
    - **`minecraft:crafting_special_suspiciousstew` 序列化器已不存在**:26.1 把「特殊合成」全部数据化(vanilla 现以 `suspicious_stew_from_<花>` 的 shapeless 配方 + 结果组件 `minecraft:suspicious_stew_effects` 表达)⇒ 旧的 special 配方文件及其配方解锁 advancement 一并删除。
 10. **26.1.2 新增「长矛」已纳入骰神赐福的近战武器判定(2026-09-17)**:26.1.2 新增 7 种长矛(木/石/铜/铁/金/钻石/下界合金),**没有独立物品类**,是 `Item.Properties#spear(...)` 参数化的普通 `Item`,故只能按 vanilla 物品标签 `net.minecraft.tags.ItemTags.SPEARS`(=`minecraft:spears`,7 项)判定;`DiceCombatEvents#isMeleeWeaponAttack` 现为「剑标签 + **长矛标签** + `AxeItem` + `MaceItem` + `TridentItem`」。用标签而非逐个 Item,可自动覆盖后续新增与其它模组的长矛。⚠️ 该判定只在 26.1.2 线存在(`ItemTags.SPEARS` 是 26.1.2 才有的常量),**不得**回移到 1.21.1/1.20.1 线。
-11. **26.1.2 已接入前置库 starengine_lib(2026-09-17)**:该线原为「完全未接入库」的独立移植线,现与另两线一致消费库 —— `gradle.properties` 新增 `starengine_lib_version=1.0.0-SNAPSHOT.5` / `starengine_lib_group` / `starengine_lib_version_range=[1.0.0-SNAPSHOT.5,2.0)`;`build.gradle` 首位 `mavenLocal()` + `implementation "${starengine_lib_group}:starengine_lib-neoforge-26.1.2:${starengine_lib_version}"` + `generateModMetadata` 增模板占位符;`neoforge.mods.toml` 增 `starengine_lib` required 段。**库已提供的 26 个同名类已删本地副本并改指库包**(18 个 `effect/*Effect`、`client/ClientDamageNumbers`|`ActionBarManager`、`component/GameplayConstants`、`event/AmethystDiceHandler`|`EventTargetCollector`|`ModEffectRemoval`|`SignActiveTriggeredEvent`、`item/BossEntityUtil`);配置缝改为 `GameplayConstants.applyConfig(ModCommonConfig.snapshot())`(库不读配置文件)。**该线原有的本地重复类 `effect/ReadyEffect` 已于 2026-09-19 删除**（⛔ 原文「唯一保留的本地副本是 `effect/ReadyEffect`…该线的旧「待命等待器」机制与 **33 个**效果注册**行为未变**」**已过期，就地更正**）—— 「立牌主动前置门控收口」移植把该线的立牌主动改成发布线同款形态（`BaseSignItem.handleUse` 由 `abstract` 改为「默认实现 + WARN」、删 `isSkillWaiting`/`tickSignReadyTimeout` 及其调用点），随该机制存在的本地 `ReadyEffect` 与 `ModEffects` 的 `haiqing_ready`/`bonnie_ready`/`moses_ready` 三处注册**一并删除**：效果注册 **33 → 32**、id 集合与两个发布线逐项一致；同时删掉仅该线多出的 3 个 `effect.astral_dice.*_ready` lang 键与 3 张 `mob_effect/*_ready.png`（lang **686 → 683**、`textures/mob_effect/` **35 → 32**）。该线现**无**任何「库已删而本地保留」的重复类；`KNOWN-ISSUES` **KI-M5②** 已随之标记**关闭**（其中「禁止删本地副本」一条失效，另三条库侧政策仍适用）。取证见 `scripts/test/TESTING-SPEC.md` 续 18。**库版本沿革（2026-09-19 补记）**：该线的 `starengine_lib_version` 已随批次提升过多次（上文的 `.5` 只是 2026-09-17 接入时的值）—— 充能封顶批次升到 `.11`，`allow_firearm_damage` 批次升到 **`.12`**。⚠️ **当前两条发布线为 `.12`，而 26.1.2 线因用户冻结（同日裁决）仍钉在 `.11`**；解冻迁移时必须同步到 `.12`（`.11` 的库里没有 `ALLOW_FIREARM_DAMAGE` 字段）。三条线的 `starengine_lib_version` 与区间下限一贯**同批同步**。
+11. **26.1.2 已接入前置库 starengine_lib(2026-09-17)**:该线原为「完全未接入库」的独立移植线,现与另两线一致消费库 —— `gradle.properties` 新增 `starengine_lib_version=1.0.0-SNAPSHOT.5` / `starengine_lib_group` / `starengine_lib_version_range=[1.0.0-SNAPSHOT.5,2.0)`;`build.gradle` 首位 `mavenLocal()` + `implementation "${starengine_lib_group}:starengine_lib-neoforge-26.1.2:${starengine_lib_version}"` + `generateModMetadata` 增模板占位符;`neoforge.mods.toml` 增 `starengine_lib` required 段。**库已提供的 26 个同名类已删本地副本并改指库包**(18 个 `effect/*Effect`、`client/ClientDamageNumbers`|`ActionBarManager`、`component/GameplayConstants`、`event/AmethystDiceHandler`|`EventTargetCollector`|`ModEffectRemoval`|`SignActiveTriggeredEvent`、`item/BossEntityUtil`);配置缝改为 `GameplayConstants.applyConfig(ModCommonConfig.snapshot())`(库不读配置文件)。**该线原有的本地重复类 `effect/ReadyEffect` 已于 2026-09-19 删除**（⛔ 原文「唯一保留的本地副本是 `effect/ReadyEffect`…该线的旧「待命等待器」机制与 **33 个**效果注册**行为未变**」**已过期，就地更正**）—— 「立牌主动前置门控收口」移植把该线的立牌主动改成发布线同款形态（`BaseSignItem.handleUse` 由 `abstract` 改为「默认实现 + WARN」、删 `isSkillWaiting`/`tickSignReadyTimeout` 及其调用点），随该机制存在的本地 `ReadyEffect` 与 `ModEffects` 的 `haiqing_ready`/`bonnie_ready`/`moses_ready` 三处注册**一并删除**：效果注册 **33 → 32**、id 集合与两个发布线逐项一致；同时删掉仅该线多出的 3 个 `effect.astral_dice.*_ready` lang 键与 3 张 `mob_effect/*_ready.png`（lang **686 → 683**、`textures/mob_effect/` **35 → 32**）。该线现**无**任何「库已删而本地保留」的重复类；`KNOWN-ISSUES` **KI-M5②** 已随之标记**关闭**（其中「禁止删本地副本」一条失效，另三条库侧政策仍适用）。取证见 `scripts/test/TESTING-SPEC.md` 续 18。**库版本沿革（2026-09-19 补记）**：该线的 `starengine_lib_version` 已随批次提升过多次（上文的 `.5` 只是 2026-09-17 接入时的值）—— 充能封顶批次升到 `.11`，`allow_firearm_damage` 批次升到 **`.12`**。⛔ **该段「两条发布线为 `.12`、26.1.2 钉 `.11`」的描述已过期（2026-09-22 更正）**：三条线现**同钉 `1.0.0`**（库的首个正式版，由快照终态 `.16` 规范化而来、库内 Java 源码零改动），26.1.2 亦已于 2026-09-17 接入库 ⇒ 不再存在「未接入 / 冻结」线。三条线的 `starengine_lib_version` 与区间下限一贯**同批同步**；自 `1.0.0` 起库侧另立有**兼容性契约**（见上方「### 前置库 starengine_lib 的版本与兼容性契约」）。
 12. **gamerule 族的存放位置与命名随 26.1 全变(2026-09-19 实测,踩过一次假失败)**:① **键名一律 snake_case** —— `naturalRegeneration` → `natural_health_regeneration`、`keepInventory` → `keep_inventory`;`doFireTick` **已被删除**,火势改由整数规则 `fire_spread_radius_around_player`(置 **0** 即等价于旧的 `doFireTick=false`;原版 datafix `GameRuleRegistryFix` 就是这么折算的)表达。⇒ 旧名在 26.1.2 上被 Brigadier **静默拒绝**,`CARD-SELECTOR-26.1.2` 的 4 条 HP 基线断言因此假失败(`naturalRegeneration false` 未生效、自然回血照常,`FoodData` 的分数回血让血量出现 `17.3` 这类小数;修用例、产品未动,复跑后与 1.21.1 读数逐条相同);探针里凡执行该族的命令都按此映射(1.20.1/1.21.1 用 `doFireTick false`,26.1.2 用 `fire_spread_radius_around_player 0`)。② **存储位置**改为 `saves/<world>/data/minecraft/game_rules.dat`(gzip NBT,键带 `minecraft:` 前缀、布尔值是 **TAG_Byte** 0/1 而非旧版 TAG_String),**不再放在 `level.dat` 里**(26.1.2 的 file fix `LevelDatToSavedDataFileFix` 只认 `level.dat` 的 `game_rules` 键,不认旧版 `GameRules`)。⇒ 该线的环境写入一律走该文件(`mt_env.ps1` 的 `Get/Read/Test/Set-MtGameRule*File` 系列;只有 26.1.2 分支会写它,另两线的 `level.dat` 路径与文案逐字不变),且**必须从真实文件读回复核**(读回通过才回显 `MT_WORLD: keepInventory 落地于 …game_rules.dat`),禁止「写进去再读自己刚写的数据」式的自我复核。引用 gamerule 读数时**必须写明观测时刻**——`mt_env world` 重建世界会把规则恢复默认。⚠️ 相关未决项:`AGENTS` 要求的 `mobGriefing=false` 目前**没有代码执行方**(详见 `TESTING-SPEC.md` 续 21),当前靠 2026-09-18 的 noai 硬闸门与本模组用例自带的取证前清理覆盖。
 
 ## 模组依赖添加规则(统一口径,1.20.1 + 1.21.1)— 必须遵守
@@ -222,7 +247,7 @@ When extending this workspace:
 - 两侧门槛都必须在 **mods.toml 解析 / 依赖排序阶段**拒绝不合格环境(FML 会给出可读提示:语言提供者版本不符 = `fml.language.missingversion`;
   强制依赖不满足 = `Missing or unsupported mandatory dependencies:`),**不得**依赖"先加载、再在代码里检查"——mixin 变换早于 mod 构造器,那样只会得到 mixin 报错。
 
-发布规范:GitHub **Release tag 使用无后缀的基础版本号**(如 `1.1.3`,禁止 `v` 前缀与 `+加载器` 后缀),tag 推送即触发 CI 自动构建并发布**三个 jar**(1.21.1 + 1.20.1 + 26.1.2,第三个是 26.1.2 的低优先级 `-beta` jar);发布线分支 `multi-1.20.1-1.21.1` 推送时 CI 会从 `mod_version` 剥离 `-rc/-pre` 与后缀自动打 tag。⚠️ **剥离规则是「先剥 `+后缀`,再剥第一个 `-` 之后的一切」**(`BASE=${VERSION%%+*}; BASE=${BASE%%-*}`)⇒ **`1.2.1-hotfix` 打出的 tag 是裸版本 `1.2.1`**(2026-09-18 实测确认),tag 已存在时 CI 会走 `gh release edit` + `gh release upload --clobber` **刷新同一个 Release**,不会再建新 tag/Release。**26.1.2 永远只作为附件随发布线 Release 发布,不生成自己的 tag/Release**(其 `1.2.1-beta.2` 不是裸 `x.y.z`);CI 侧实现见 `.github/workflows/build.yml` 的 `Create/Update GitHub Release (three JARs, notes from release/<tag>/)`。
+发布规范:GitHub **Release tag 使用无后缀的基础版本号**(如 `1.1.3`,禁止 `v` 前缀与 `+加载器` 后缀),tag 推送即触发 CI 自动构建并发布**三个 jar**(1.21.1 + 1.20.1 + 26.1.2,第三个是 26.1.2 的低优先级 `-beta` jar);发布线分支 `multi-main`（2026-09-22 由 `multi-1.20.1-1.21.1` 改名）推送时 CI 会从 `mod_version` 剥离 `-rc/-pre` 与后缀自动打 tag。⚠️ **剥离规则是「先剥 `+后缀`,再剥第一个 `-` 之后的一切」**(`BASE=${VERSION%%+*}; BASE=${BASE%%-*}`)⇒ **`1.2.1-hotfix` 打出的 tag 是裸版本 `1.2.1`**(2026-09-18 实测确认),tag 已存在时 CI 会走 `gh release edit` + `gh release upload --clobber` **刷新同一个 Release**,不会再建新 tag/Release。**26.1.2 永远只作为附件随发布线 Release 发布,不生成自己的 tag/Release**(其 `1.2.1-beta.2` 不是裸 `x.y.z`);CI 侧实现见 `.github/workflows/build.yml` 的 `Create/Update GitHub Release (three JARs, notes from release/<tag>/)`。
 **Release 正文取自玩家侧发布说明**(2026-09-17 起,用户要求):`release/<tag>/PLAYER_CHANGELOG_ZH.md` + `release/<tag>/PLAYER_CHANGELOG.md`,中文在前、中间插 `---`、英文在后,经 `gh release ... --notes-file` 整文件传入(不再用内联单行 `--notes`);两份文件都不存在时只打 `::warning::` 并退回「附件清单」兜底,**不阻断发布**。⇒ 发布前必须确认该版本目录的两份文件已存在且与 `CHANGELOG_(ZH|EN).md` 同步(见「更新日志约定」)。
 **CI / Actions 状态由用户自行观察(2026-09-17 用户裁决,必须遵守)**:本机无 GitHub token、不安装 `gh`,因此**代理不得监视、轮询或尝试查询** GitHub Actions / Release 状态(不跑 `gh run view|list`、不装 CLI、不改用 API 轮询)。推送后代理只在交付说明里列明**预期结果**与失败时的排查入口(远端 job 日志),由用户到 Actions 页面自行核对;禁止把「本机看不到 CI」写成未完成事项反复追问。
 
@@ -284,7 +309,7 @@ When extending this workspace:
 1. **`allow_firearm_damage` 公共配置项**：两发布线 `config/ModCommonConfig` 新增 `BooleanValue`、`CONFIG_VERSION` **2 → 3**、`snapshot()` 末尾追加第 7 实参 `ALLOW_FIREARM_DAMAGE.get()`。
 2. **库侧承载**：`GameplayConstants.ALLOW_FIREARM_DAMAGE`（`public static boolean = false`）与 `GameplayConfigValues` 末尾第 7 分量 `allowFirearmDamage`（**库 `1.0.0-SNAPSHOT.12` 起**；库侧 `applyConfig` 已写入该字段）。
 3. **消费点**：`combat/SpellDamageRegistry.isSpellDamage()` 改为 `if (!GameplayConstants.ALLOW_FIREARM_DAMAGE && isFirearmDamage(source)) return false;`。
-4. **依赖坐标**：两条发布线的 `starengine_lib_version` 与 `starengine_lib_version_range` 同时提到 `1.0.0-SNAPSHOT.12`；**26.1.2 线因冻结仍钉在 `.11`** ⇒ 解冻迁移时必须一并提，否则该线编译期拿不到新字段。
+4. **依赖坐标**：该批当时是「两条发布线提到 `1.0.0-SNAPSHOT.12`、26.1.2 因冻结仍钉 `.11`」。**现状（2026-09-22 起）：三条线同钉 `1.0.0`（区间 `[1.0.0,2.0)`）** —— 该项已随 26.1.2 完整移植一并完成。
 5. **文档/日志**：两份 CHANGELOG 的该条目是三线共用的一对文件（不需要为 26.1.2 另写），但**功能上 26.1.2 目前没有这个开关** —— 该线的 `ModCommonConfig` 里根本没有 `allow_firearm_damage` 键，配置文件里不会出现该项，玩家改不了。`AGENTS.md` 的法伤口径条目（见「效果牌」小节）在 26.1.2 上暂不成立。
 6. **风水师立牌(zhao)+ 符卡-福/符卡-祸(2026-09-26 本批;26.1.2 侧**未改动任何文件**,以下为解冻后待迁移项)**:① **物品三件套** —— `zhao_sign` / `fu_card` / `huo_card` 的 `item/ModItems` 注册(传奇 = `Rarity.UNCOMMON`)、`init/ModCreativeTabs` 创造栏、两段式 datagen 产物(1.21.1/1.20.1 是 `src/generated/resources` 单根 ⇒ 26.1.2 必须**另出** `src/generated/clientResources` 的 `items/*.json` 物品模型定义 + `models/item/*.json`,否则客户端只留一行 `Missing item model`);② **标签四处**:`data/astral_dice/tags/item/{signs,effect_cards,is_exclusive}.json` + `data/curios/tags/item/stand.json`(注意 1.20.1 侧是 `tags/items` 目录名,26.1.2 与 1.21.1 同为 `tags/item`);③ **贴图五张**:`textures/item/{zhao_sign,fu_card,huo_card}.png` 与 `textures/mob_effect/{zhao_blessing,misfortune}.png`,必须与发布线**逐字节相同**(取自仓库根 `images/`);④ **配方与进度**:`ModRecipeProvider` 的形状配方 + 生成物 `recipe/zhao_sign.json`、`advancement/recipes/misc/zhao_sign.json`,并同步 `scripts/test/cases/CRAFT-SMOKE-26.1.2.json` 的配方数判据(生成 109 → 110、总数 122 → 123;⚠️ 该用例已随 2026-09-26 用例清理删除 —— 见 `scripts/test/TESTING-SPEC.md` 附录 A 续 27,迁移时如需回归配方数须先用 `git checkout` 恢复该用例)。
 7. **两个新效果**:`zhao_blessing`(白泽赐福,`effect/ZhaoBlessingEffect`,BENEFICIAL、常驻 `Integer.MAX_VALUE`、移除走前置库 `ModEffectRemoval`)/`misfortune`(厄运,`effect/MisfortuneEffect`,HARMFUL、层数镜像)—— 26.1.2 侧效果注册 **32 → 34**;`ModEffects` 两条注册照 1.21.1 同形抄写(该线包装类型与 1.21.1 相同)。
@@ -1005,10 +1030,12 @@ When extending this workspace:
   （星币是物品、面额多少、物品栏怎么折算）。
 - 库**不注册任何注册表条目** ⇒ 余额落**玩家持久化 NBT**（`starengine_lib.star_coin_wallet`，离线可读），
   由 `PlayerEvent.Clone` 显式复制 ⇒ **不受死亡掉落影响**。
-- ⚠️ 改库的 `economy` 包必须 **bump 库版本 + `publishToMavenLocal`**，并同步两版 `gradle.properties`
-  的 `starengine_lib_version` 与 `starengine_lib_version_range` **下界**（库版本不以 `-SNAPSHOT` 结尾
-  ⇒ Gradle 不当它是 changing module，不 bump 就永远解析旧 jar，运行期 `NoClassDefFoundError`）。
-  26.1.2 线仍钉旧版且**未接入**（`StarEngineEconomy` 安全降级为返回 0/false）。
+- ⚠️ 改库必须 **bump 库版本 + `publishToMavenLocal`**，并同步**三条线** `gradle.properties` 的
+  `starengine_lib_version` 与 `starengine_lib_version_range` **下界**（库版本不以 `-SNAPSHOT` 结尾
+  ⇒ Gradle 不当它是 changing module，不 bump 就永远解析旧 jar，运行期 `NoClassDefFoundError`）；
+  **还要同步消费方 `.github/workflows/build.yml` 里 checkout 前置库的 `ref:` 提交钉值**（库每次 bump 一行）。
+  三条线自 2026-09-22 起同钉 **`1.0.0`**；26.1.2 已于 2026-09-17 接入库，**不再有「未接入」线**
+  （`StarEngineEconomy` 在三条线均可用）。
 
 ### 交互口径（用户裁决，勿擅自改）
 
