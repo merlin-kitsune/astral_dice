@@ -215,15 +215,28 @@ public final class StarCoinWalletButtons {
             this.withBalanceBar = withBalanceBar;
         }
 
-        /** 创造模式：只有「物品栏」标签页显示（切到其它标签页时隐藏且不可点）。 */
+        /**
+         * 创造模式下的隐藏判据。
+         *
+         * <p>**只有两个兑换按钮**受「物品栏」标签页限制：它们落在面板内右侧，切到建筑方块等
+         * 标签页会压住原版物品格子并把点击抢走。余额条与钱包按钮位于面板**上方界外**，
+         * 任何标签页都不遮挡原版元素 ⇒ 常显（「切游戏模式后整条钱包栏消失」正是原先
+         * 把两类控件一起判定造成的）。
+         */
         private boolean hiddenByCreativeTab() {
-            return parent instanceof CreativeModeInventoryScreen creative && !creative.isInventoryOpen();
+            return !withBalanceBar
+                    && parent instanceof CreativeModeInventoryScreen creative
+                    && !creative.isInventoryOpen();
         }
 
         @Override
         protected void renderWidget(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
             boolean hidden = hiddenByCreativeTab();
-            this.visible = !hidden;
+            // ⚠️ 只写 active，**绝不写 visible**：AbstractWidget#render 仅在 visible 为真时才调用
+            //    renderWidget ⇒ 一旦把 visible 置 false，本方法再也不会被调用，「隐藏」就变成
+            //    **永久**（切回「物品栏」标签页也不恢复，必须关掉界面重开才回来）。
+            //    active 只参与鼠标命中（AbstractWidget#mouseClicked 检查 active && visible），
+            //    正是「隐藏即不可点」所需要的语义。
             this.active = !hidden;
             if (hidden) return;
             setX(parent.getGuiLeft() + offsetX);

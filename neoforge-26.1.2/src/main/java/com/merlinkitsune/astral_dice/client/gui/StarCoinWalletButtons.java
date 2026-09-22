@@ -13,6 +13,7 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.resources.Identifier;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -33,14 +34,21 @@ import net.neoforged.neoforge.client.network.ClientPacketDistributor;
  *   <tr><td>{@code AbstractButton} 子类 + {@code renderWidget(GuiGraphics,...)}</td>
  *       <td>{@code AbstractButton}/{@code AbstractWidget} 已删除（{@code javap} 实证：{@code AbstractButton}
  *           无任何 {@code render*} 方法；{@code components} 包只剩 {@code events.*}）</td>
- *       <td>不建任何 widget，改在 {@link ContainerScreenEvent.Render.Foreground} <b>即时模式</b>直接绘制</td></tr>
+ *       <td>不建任何 widget，改在 {@link ScreenEvent.Render.Foreground} <b>即时模式</b>直接绘制</td></tr>
  *   <tr><td>{@code ScreenEvent.Init.Post#addListener(AbstractWidget)}</td>
  *       <td>{@code addListener} 现收 {@code GuiEventListener}；控件需自行实现命中测试</td>
  *       <td>改用 {@link ScreenEvent.MouseButtonPressed.Pre} 自算命中矩形</td></tr>
  *   <tr><td>{@code GuiGraphics.blit/drawString}</td>
  *       <td>{@code GuiGraphics} 已删除 ⇒ {@link GuiGraphicsExtractor}；{@code drawString} 改名 {@code text}</td>
- *       <td>{@code extractor.blit(Identifier,IIIIFFFF)} / {@code extractor.text(Font,String,IIIZ)}</td></tr>
+ *       <td>{@code extractor.blit(RenderPipeline,Identifier,x,y,u,v,w,h,texW,texH)}（同
+ *           {@code screen/CardInventoryScreen} 的用法）/ {@code extractor.text(Font,String,IIIZ)}</td></tr>
  * </table>
+ * <p>⚠️ {@link GuiGraphicsExtractor} 另有一个只给 {@code Identifier} 的 {@code blit} 重载
+ * （{@code blit(Identifier,int,int,int,int,float,float,float,float)}），语义与本类上面的用法**不同**：
+ * 四个 int 是**绝对终点坐标** {@code (x0,y0,x1,y1)}、四个 float 是**已归一化**的 {@code (u0,u1,v0,v1)}
+ * —— 按 1.21.1 的 {@code (x,y,w,h,u,v,texW,texH)} 去调它会把控件压成退化细条且 UV 退化为单点采样
+ * （2026-09-22 实机取证）。另外 {@code text(...)} 的颜色**必须带非零 alpha**（ARGB），
+ * 传 {@code 0xFFFFFF} 会因 {@code ARGB.alpha == 0} 被静默跳过、一个字都不画。
  * 位置改为**每帧现算**（原实现在 {@code renderWidget} 里 {@code setX/setY}）——即时模式下天然每帧重算，
  * 反而更直接地满足了「创造栏切标签时 {@code guiLeft/guiTop} 会变」的要求。
  *
@@ -101,7 +109,15 @@ public final class StarCoinWalletButtons {
     private static final int BALANCE_TEXT_RIGHT = 88;
     private static final int BALANCE_TEXT_DY = 7;
     /** 数字颜色 = 纯白，**不带阴影**（与参考实现一致）。 */
-    private static final int BALANCE_TEXT_COLOR = 0xFFFFFF;
+    /**
+     * 数字颜色 = 纯白，**不带阴影**（与参考实现一致）。
+     *
+     * <p>⚠️ 必须写成 **ARGB**（{@code 0xFFFFFFFF}）。26.1.2 的 {@code text(...)} 第一步就查
+     * {@code ARGB.alpha(color)}，为 0 时**直接 return、一个字都不画**（1.21.1 的 {@code drawString}
+     * 有「alpha = 0 视为不透明」的旧口径，本版本已移除）。2026-09-22 实机取证：沿用 1.21.1 的
+     * {@code 0xFFFFFF} ⇒ 余额数字恒不可见（控件在、数字空）。
+     */
+    private static final int BALANCE_TEXT_COLOR = 0xFFFFFFFF;
 
     private static final int CONVERT_SIZE = 13;
     private static final int CONVERT_X_SURVIVAL = 77;
@@ -119,15 +135,14 @@ public final class StarCoinWalletButtons {
     }
 
     /**
-     * 目标界面：原版生存物品栏，或创造物品栏。
+     * 目标界面：原版生存物品栏，或创造物品栏（**任意标签页**）。
      *
-     * <p>创造栏额外要求当前停在「物品栏」标签页 —— 切到建筑/装饰等标签页时整组控件隐藏
-     * （余额条一并不显示），与 1.21.1 行为一致。
+     * <p>创造栏下不再整组隐藏：余额条与钱包按钮位于面板**上方界外**，任何标签页都不遮挡
+     * 原版元素 ⇒ 常显；只有两个兑换按钮仍受「物品栏」标签页限制（见 {@link #layout}），
+     * 因为它们落在面板内右侧，切到建筑方块等标签页会压住物品格子并抢走点击。
      */
     private static AbstractContainerScreen<?> resolveTarget(net.minecraft.client.gui.screens.Screen screen) {
-        if (screen instanceof CreativeModeInventoryScreen creative) {
-            return creative.isInventoryOpen() ? creative : null;
-        }
+        if (screen instanceof CreativeModeInventoryScreen creative) return creative;
         return (screen instanceof InventoryScreen inv) ? inv : null;
     }
 
@@ -166,18 +181,24 @@ public final class StarCoinWalletButtons {
         int coinY = guiTop + (creative ? COIN_Y_CREATIVE : COIN_Y_SURVIVAL) + convertOffsetY();
         int bagY = guiTop + (creative ? BAG_Y_CREATIVE : BAG_Y_SURVIVAL) + bagOffsetY();
 
-        return java.util.List.of(
+        // 余额条 + 钱包按钮：**任何标签页**都在（位于面板上方界外，不遮挡任何原版元素）。
+        java.util.List<Hit> hits = new java.util.ArrayList<>(java.util.List.of(
                 new Hit(walletX, walletY, WALLET_WIDTH, WALLET_HEIGHT,
                         WALLET_TEXTURE, WALLET_HOVER_TEXTURE,
-                        StarCoinWalletActions.Action.DEPOSIT_ALL, null, true),
-                new Hit(convertX, coinY, CONVERT_SIZE, CONVERT_SIZE,
-                        COIN_TEXTURE, COIN_HOVER_TEXTURE,
-                        StarCoinWalletActions.Action.WITHDRAW_COIN_ONE,
-                        StarCoinWalletActions.Action.WITHDRAW_COIN_ALL, false),
-                new Hit(convertX, bagY, CONVERT_SIZE, CONVERT_SIZE,
-                        BAG_TEXTURE, BAG_HOVER_TEXTURE,
-                        StarCoinWalletActions.Action.WITHDRAW_BAG_ONE,
-                        StarCoinWalletActions.Action.WITHDRAW_BAG_ALL, false));
+                        StarCoinWalletActions.Action.DEPOSIT_ALL, null, true)));
+        // 两个兑换按钮：只在「物品栏」标签页画 / 可点 —— 它们落在面板内右侧，
+        // 其它标签页那个位置是原版物品格子，画上去会压住格子并抢走点击。
+        if (!creative || ((CreativeModeInventoryScreen) screen).isInventoryOpen()) {
+            hits.add(new Hit(convertX, coinY, CONVERT_SIZE, CONVERT_SIZE,
+                    COIN_TEXTURE, COIN_HOVER_TEXTURE,
+                    StarCoinWalletActions.Action.WITHDRAW_COIN_ONE,
+                    StarCoinWalletActions.Action.WITHDRAW_COIN_ALL, false));
+            hits.add(new Hit(convertX, bagY, CONVERT_SIZE, CONVERT_SIZE,
+                    BAG_TEXTURE, BAG_HOVER_TEXTURE,
+                    StarCoinWalletActions.Action.WITHDRAW_BAG_ONE,
+                    StarCoinWalletActions.Action.WITHDRAW_BAG_ALL, false));
+        }
+        return hits;
     }
 
     /**
@@ -204,15 +225,21 @@ public final class StarCoinWalletButtons {
         for (Hit hit : layout(screen)) {
             if (hit.withBalanceBar()) {
                 // 先铺余额条底图：面板压在按钮之下，按钮图标自然完整露出
-                gfx.blit(BALANCE_BAR_TEXTURE, hit.x() - BAR_INSET, hit.y() - BAR_INSET,
-                        BAR_WIDTH, BAR_HEIGHT, 0.0F, 0.0F, (float) BAR_WIDTH, (float) BAR_HEIGHT);
+                // ⚠️ 26.1.2 只能用**带 RenderPipeline 的 blit**（语义 = (x, y, u, v, w, h, texW, texH)，
+                //    内部把 w/h 折算成终点 x1/y1、把 UV 除以 texW/texH 归一化）。
+                //    它另有一个只给 Identifier 的重载
+                //    blit(Identifier, int, int, int, int, float, float, float, float)，
+                //    语义**完全不同**：四个 int 是**绝对终点坐标** (x0, y0, x1, y1)，
+                //    四个 float 是**已归一化**的 (u0, u1, v0, v1)。
+                //    2026-09-22 实机取证（Sodium+Iris + 光影）：按 1.21.1 的 (x, y, w, h, u, v, texW, texH)
+                //    去调那个重载，余额条被压成 56×2 像素的退化条、UV 退化为单点采样 ⇒ 控件几乎全不可见。
+                //    故统一改用与本仓 CardInventoryScreen 相同的带管线重载。
+                gfx.blit(RenderPipelines.GUI_TEXTURED, BALANCE_BAR_TEXTURE, hit.x() - BAR_INSET, hit.y() - BAR_INSET,
+                        0.0F, 0.0F, BAR_WIDTH, BAR_HEIGHT, BAR_WIDTH, BAR_HEIGHT);
             }
             boolean hovered = hit.contains(mouseX, mouseY);
-            // 26.1.2 的 blit(Identifier, int x, int y, int w, int h, float u, float v, float texW, float texH)
-            // ——注意与 1.21.1 的 blit(Identifier, int,int, float u,float v, int w,int h, int tw,int th)
-            //   参数顺序不同：w/h 提前到第 4/5 位，UV 与贴图尺寸后移且为 float。
-            gfx.blit(hovered ? hit.hoverTexture() : hit.texture(), hit.x(), hit.y(),
-                    hit.width(), hit.height(), 0.0F, 0.0F, (float) hit.width(), (float) hit.height());
+            gfx.blit(RenderPipelines.GUI_TEXTURED, hovered ? hit.hoverTexture() : hit.texture(), hit.x(), hit.y(),
+                    0.0F, 0.0F, hit.width(), hit.height(), hit.width(), hit.height());
             if (hit.withBalanceBar()) {
                 drawBalance(gfx, hit.x(), hit.y());
             }
