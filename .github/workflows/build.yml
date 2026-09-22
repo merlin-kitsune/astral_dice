@@ -60,7 +60,7 @@ jobs:
         # 构建出的库必须**恰好**是 `starengine_lib_version` 指定的那一版 —— 浮动 main 会让
         # 「区间下界 [1.0.0,2.0)」与「CI 实际 publishToMavenLocal 出的版本」脱钩,
         # 一旦库在两次 CI 之间 bump 或改动坐标,断在依赖解析(本地不可复现,只在 CI 暴露)。
-        # 现固定为 `starengine_lib_version=1.0.0` 的提交(该提交里三平台 mod_version 均为 1.0.0;
+        # 现固定为 `starengine_lib_version=1.0.0` 的提交(该提交里三平台 mod_version 均为 1.0.1;
         # 它是快照系列终态 `.16` 的**规范化**结果 —— 库内 Java 源码零改动,仅版本号去掉 -SNAPSHOT,
         # 同时带着此前两批修复:**库自身被 FML 拒载**的根因修复
         # —— 1.21.1 的 loaderVersion 槽曾误填 NeoForge 版本带 [21.1,21.2),而该槽比的是 javafml
@@ -80,7 +80,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: merlin-kitsune/starengine_lib
-          ref: c9818d189d47f9c6ece6193123cbf57db2f22958   # = 1.0.0(含「移除 forge 侧 Curios 前置」:mods.toml 删依赖块 + modImplementation -> modCompileOnly;此改动原拟作 1.0.1,已撤销并并入 1.0.0)
+          ref: 9273fff19d19e1b7c0ad2cfecc44fd8cb1ec1816   # = 1.0.1(为 neoforge-26.1.2 补齐平台侧经济存储实现 NeoForgeEconomyStorage,使三线功能对等;纯新增,消费方区间 [1.0.0,2.0) 不动)
           path: .ci/starengine_lib
           fetch-depth: 1
 
