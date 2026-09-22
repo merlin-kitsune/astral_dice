@@ -513,7 +513,14 @@ if ($MyInvocation.InvocationName -ne '.') {
         # 旧模组记录误判成已加载（2026-09-17 在史莱姆压制闸门上踩过这个坑）。
         # 这两条**不**做硬失败（与 Sodium/Iris 一致）：它们是兼容性验证对象，缺装载时给出 WARN 即可，
         # 但要看得见 —— 否则「验证」会静默地什么都没验证。
-        if (Test-MtModLoaded 'immediatelyfast') { Write-MtInfo 'IMMEDIATELYFAST_LOADED=true' } else { Write-MtWarn 'IMMEDIATELYFAST_LOADED=false(优化模组兼容性验证未生效)' }
+        # ImmediatelyFast（2026-09-22 起 26.1.2 **故意不装**：与 Iris 开光影互斥，实测
+        # `Missing sampler Sampler1` 崩溃，见 mt_env 的 $script:PerfMods2612 注释）。
+        # 这里反过来断言它**不在**，把「意外被装回来」显式暴露出来，而不是沉默地不管。
+        if (Test-MtModLoaded 'immediatelyfast') {
+            Write-MtWarn 'IMMEDIATELYFAST_LOADED=true — 该版本**不应**装载 ImmediatelyFast（与 Iris 开光影互斥）；若客户端在开光影时崩溃，先查此项'
+        } else {
+            Write-MtInfo 'IMMEDIATELYFAST_LOADED=false(符合预期)'
+        }
         if (Test-MtModLoaded 'modernfix') { Write-MtInfo 'MODERNFIX_LOADED=true' } else { Write-MtWarn 'MODERNFIX_LOADED=false(优化模组兼容性验证未生效)' }
         if (Test-MtModLoaded 'ferritecore') { Write-MtInfo 'FERRITECORE_LOADED=true' } else { Write-MtWarn 'FERRITECORE_LOADED=false(优化模组兼容性验证未生效)' }
         # 光影状态：以 config/iris.properties 为准（而不是「日志里有没有出现过 shaderpack 字样」）。
@@ -617,12 +624,24 @@ if ($MyInvocation.InvocationName -ne '.') {
     # 判据 = `Test-MtModLoaded 'carpet'`（版本相关：NeoForge 读 latest.log 的 `(carpet)` 清单行，
     # Forge 读 debug.log 的 `Found valid mod file … with {carpet} mods`）—— 只认清单行，
     # 不认裸名字，避免把存档里 `carpet (version X -> MISSING)` 的缺失记录误判成已加载。
-    # 来源（两条线不同，见 mt_env 的 $script:CarpetByVersion）：
-    #   1.21.1 → Modrinth Maven 下载进 run/1.21.1/mods；
+    # 来源（三条线不同，见 mt_env 的 $script:CarpetByVersion）：
+    #   1.21.1 → Modrinth Maven 下载 **NeoForge 版** Carpet 进 run/1.21.1/mods；
     #   1.20.1 → forge-1.20.1/build.gradle 的 modImplementation（生产 SRG jar + SRG refmap 必须经
     #            MDG 重映射；手工放 run/mods 会让 mixin 静默失效）。
-    # 26.1.2 **不使用**该模组（用户裁决：该线用 Mojang 自带 bot 管理指令，后续再学）⇒ 不设闸门。
-    if ($Version -ne '26.1.2') {
+    #   26.1.2 → **Sinytra Connector 栈 + Fabric 版 Carpet**（2026-09-22 用户改定），
+    #            但**实测不可用**（Carpet 的 171 个 mixin 不带 refmap ⇒ 目标名解析不到 ⇒
+    #            专用服务器启动致命失败，详见 mt_env 的 Install-MtCarpet 注释）⇒ 该路径
+    #            **默认关闭**，只有 `MT_CARPET_VIA_CONNECTOR=1` 时才装、也才在此设闸门。
+    #            默认关闭时本线重新退回「不设 Carpet 闸门」，12 条双人用例保持 BLOCKED。
+    $carpetGateOn = ($Version -ne '26.1.2') -or ($env:MT_CARPET_VIA_CONNECTOR -eq '1')
+    if ($Version -eq '26.1.2' -and $env:MT_CARPET_VIA_CONNECTOR -eq '1') {
+        # 只在**实验路径**下打印：帮使用者区分「栈没装上」与「栈装上了但 Carpet 没被转发」。
+        foreach ($m in @(@('launchpad', 'LAUNCHPAD_LOADED'), @('connector', 'CONNECTOR_LOADED'), @('fabric-api', 'FFAPI_LOADED'))) {
+            if (Test-MtModLoaded $m[0]) { Write-MtInfo ("{0}=true" -f $m[1]) }
+            else { Write-MtWarn ("{0}=false（Connector 栈缺件；Carpet 一定不加载）" -f $m[1]) }
+        }
+    }
+    if ($carpetGateOn) {
         if (-not (Test-MtModLoaded 'carpet')) {
             if ($env:MT_ALLOW_NO_CARPET -eq '1') {
                 Write-MtWarn 'CARPET_LOADED=false — 已按 MT_ALLOW_NO_CARPET=1 显式放行（对照实验用；此时 `/player` 不存在，双人联动用例不可跑）'
@@ -633,6 +652,8 @@ if ($MyInvocation.InvocationName -ne '.') {
         } else {
             Write-MtInfo 'CARPET_LOADED=true'
         }
+    } else {
+        Write-MtWarn 'CARPET_GATE=skipped — 26.1.2 默认不引入 Carpet（Connector 路径实测不可用）⇒ 双人联动用例在该线不可跑（记为 BLOCKED，不是失败）'
     }
 
     # ── 禁用生物 AI 硬闸门（2026-09-18 用户裁决「测试流程未禁用生物 AI，这是严重失误」）────
@@ -754,7 +775,15 @@ if ($MyInvocation.InvocationName -ne '.') {
     if ($env:MT_ALLOW_NO_IMMEDIATE_RESPAWN -eq '1') {
         Write-MtWarn 'IMMEDIATE_RESPAWN=SKIPPED — 已按 MT_ALLOW_NO_IMMEDIATE_RESPAWN=1 显式放行；此时任何死亡都会把客户端留在死亡界面 ⇒ 其后所有聊天注入被吞（对照实验用）'
     } else {
-        $immCmd = '/gamerule doImmediateRespawn true'
+        # ⚠️ 26.1.2 起**游戏规则 id 整体改名**（camelCase + `do` 前缀 → snake_case、去前缀）：
+        #    doImmediateRespawn → immediate_respawn（1.21.1/1.20.1 仍是旧名）。
+        #    依据 minecraft-patched-26.1.2.109-sources.jar 的
+        #      net/minecraft/world/level/gamerules/GameRules.java:45
+        #      `IMMEDIATE_RESPAWN = registerBoolean("immediate_respawn", Player, false)`
+        #    用旧名会得到原版回显「错误的命令参数 / Incorrect argument for command」，
+        #    而本闸门以**回显自证**，于是会正确地拦下并报 ERROR（2026-09-22 实测即为该形态）。
+        $immRule = if ($Version -eq '26.1.2') { 'immediate_respawn' } else { 'doImmediateRespawn' }
+        $immCmd = "/gamerule $immRule true"
         $immRc = @()
         foreach ($immAttempt in 1..2) {
             & $psExe -NoProfile -File (Join-Path $testDir 'mt_inject.ps1') cmd --command $immCmd --version $Version
@@ -764,14 +793,31 @@ if ($MyInvocation.InvocationName -ne '.') {
         $immEv = 'not-found'
         $immText = ''
         try { $immText = Read-MtSharedText -Path $p.latest_log } catch { $immText = '' }
-        # ⚠️ 两线的**本地化回显文案不同**（1.20.1 实测）：1.21.1 =「游戏规则doImmediateRespawn已被设为：true」，
-        #    1.20.1 =「已将游戏规则doImmediateRespawn设为true」，en =「Gamerule doImmediateRespawn is now set to: true」
-        #    ⇒ 三条判据都要收（2026-09-28 首跑 1.20.1 时只写 1.21.1 文案 ⇒ 闸门正确拦下、launch rc=2）。
-        if ($immText -match 'doImmediateRespawn已被设为：true') { $immEv = 'zh1211:true' }
-        elseif ($immText -match '已将游戏规则doImmediateRespawn设为true') { $immEv = 'zh1201:true' }
-        elseif ($immText -match 'Gamerule doImmediateRespawn is now set to: true') { $immEv = 'en:true' }
+        # ⚠️ 三线的**本地化回显文案不同**（1.20.1 实测）：1.21.1 =「游戏规则doImmediateRespawn已被设为：true」，
+        #    1.20.1 =「已将游戏规则doImmediateRespawn设为true」，en =「Gamerule doImmediateRespawn is now set to: true」。
+        #    2026-09-22 起改为**先按规则名定位、再按 locale 无关的「设为其值」标记判定**，
+        #    从而同时覆盖三条线 + 中英双语，且新增版本无需再加一条硬编码文案：
+        #      · 必须含 `[CHAT]`（只认聊天通道）、含本版规则名、**不是命令自身的回显行**
+        #        （回显形如 `[CHAT] gamerule immediate_respawn true<--[此处]`，必须排除，
+        #         否则「命令被回显」会被误判成「规则已生效」——这正是本闸门存在的意义）；
+        #      · 再要求出现**设值确认**措辞 + 值 true。措辞判据用中性的 `设为|now set to`：
+        #        实测三条线的中文文案并不统一 ——
+        #          1.21.1 =「游戏规则X**已被设为**：true」
+        #          1.20.1 =「**已将**游戏规则X**设为**true」
+        #          26.1.2 =「**已将**游戏规则X**设为**true」（2026-09-22 实测，与 1.20.1 同形）
+        #        ⇒ 只写「已被设为」会在 26.1.2 上**正确拦下**（本次首跑即如此），
+        #          故取两者共同子串「设为」+ 英文「now set to」。
+        #    判据仍是「读不到就硬失败」，绝不静默降级。
+        $immLines = @($immText -split "`r?`n" | Where-Object {
+                ($_ -match '\[CHAT\]') -and
+                ($_ -match [regex]::Escape($immRule)) -and
+                ($_ -notmatch '\[CHAT\]\s*gamerule\s')
+            })
+        if (@($immLines | Where-Object { ($_ -match '设为|now set to') -and ($_ -match 'true') }).Count -gt 0) {
+            $immEv = 'i18n:set:true'
+        }
         if ($immEv -eq 'not-found') {
-            Write-MtErrLine ("MT_LAUNCH: ERROR — 未确认「doImmediateRespawn=true」（测试环境硬性要求，注入返回码 {0}）；死亡后客户端会停在死亡界面、其后所有聊天注入被吞 ⇒ 拒绝继续。确认原版回显（中/英）或显式设 MT_ALLOW_NO_IMMEDIATE_RESPAWN=1" -f ($immRc -join '/'))
+            Write-MtErrLine ("MT_LAUNCH: ERROR — 未确认「{0}=true」（测试环境硬性要求，注入返回码 {1}）；死亡后客户端会停在死亡界面、其后所有聊天注入被吞 ⇒ 拒绝继续。确认原版回显（中/英）或显式设 MT_ALLOW_NO_IMMEDIATE_RESPAWN=1" -f $immRule, ($immRc -join '/'))
             exit $MT_EXIT_ERROR
         }
         Write-MtInfo ("IMMEDIATE_RESPAWN=true — {0}（{1} ×2）" -f $immEv, $immCmd)

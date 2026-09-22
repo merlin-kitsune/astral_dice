@@ -1,0 +1,139 @@
+{
+  "case_id": "NARDIS-TEMP-GUARD-26.1.2",
+  "title": "绿洲女王立牌 R1/R2 回归取证（spec §7.0）：R1 = 临时**效果牌**的容器缺口（1.21.1 栈级 `ItemStack#canFitInsideContainerItems` 五处入口的唯一判据 + 行为面「真实潜影盒方块实体 `canPlaceItemThroughFace`」），R2 = 临时**效果牌**无附魔光效。判据 = 同一 id 的临时牌 / 普通牌各一组**只读**读数：`foil_t=1`/`foil_n=0`（R2）、`guard_t=0`/`guard_n=1`（R1 栈级）、`face_t=0`/`face_n=1`（R1 行为面，1.20.1 侧靠这条取证）、`perm_t=1`/`perm_n=1`（玩家自身槽位仍放行 ⇒ 拦截是定向的、不存在第二个拦截点）。",
+  "version": "26.1.2",
+  "target": {
+    "type": "feature",
+    "ref": "nardis-sign-temp-guard-r1-r2"
+  },
+  "on_fail": "keep_game_running",
+  "steps": [
+    {
+      "op": "note",
+      "text": "目的（spec §7.0）：原 `NARDIS-SIGN` 用例全程只用 `attack_card_medium` ⇒ **R1（效果牌的容器缺口）**与 **R2（效果牌无光效）**在游戏内不可见。本用例用 `nardiguard <tag> <effect|attack>` 对**效果牌**与攻击牌各做一组只读对照取证。\n判据口径：`foil_*` = `ItemStack#hasFoil()` 真值（产品覆写的是物品级 `Item#isFoil(ItemStack)`）；`guard_*` = 栈级 `canFitInsideContainerItems`（1.21.1 的 `IItemStackExtension` 钩子，五处容器入口的唯一判据）；`face_*` = **现场放置的真实潜影盒方块实体** `canPlaceItemThroughFace(0, stack, UP)`；`perm_*` = 玩家自身槽位必须放行（`isPlacementBlocked(stack, true) == false`）。\n只读性：命令只调判定方法，唯一状态改动是临时放置的一个潜影盒（读数后立即移除还原）。"
+    },
+    {
+      "op": "note",
+      "text": "前置：生存模式 / 清背包；`nardiprep GU clear` 装立牌 + 骰子（curios `dice` 槽）并复位临时牌/效果/冷却。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode survival",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear @s",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardiprep GU clear",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "note",
+      "text": "R1/R2 取证·效果牌：`mode=effect` 用 `astral_dice:effect_card_king_power`（R1/R2 只在效果牌上暴露）。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardiguard GEO effect",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "note",
+      "text": "R1/R2 取证·攻击牌（对照组）：`mode=attack` 用 `astral_dice:attack_card_medium`，证明拦截/光效对两类牌一致。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardiguard GAT attack",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "note",
+      "text": "收尾：`nardinuclear` 清临时牌/效果/立牌/主手并复位冷却。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardinuclear Z1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear @s",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_GEO_GUARD:mode=effect:card=astral_dice:effect_card_king_power:mark_t=1:mark_n=0:foil_t=1:foil_n=0:guard_t=0:guard_n=1:face_t=0:face_n=1:perm_t=1:perm_n=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_GAT_GUARD:mode=attack:card=astral_dice:attack_card_medium:mark_t=1:mark_n=0:foil_t=1:foil_n=0:guard_t=0:guard_n=1:face_t=0:face_n=1:perm_t=1:perm_n=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_Z1_CLEARALL:cleared=1:purged=[0-9]+:sign_left=0:ok=1:n_eq=0:atk_cards=0:def_cards=0:n_temp=0:n_temp_eq=0:dice_hand=[0-9]+:n_stones=0:enh_src=curio:n_fx=-1:n_fx_on=0"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_[A-Z0-9]+_ERR"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_[A-Z0-9]+_EX:"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": ":err="
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "Unknown or incomplete command"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "crash"
+    }
+  ],
+  "evidence": []
+}

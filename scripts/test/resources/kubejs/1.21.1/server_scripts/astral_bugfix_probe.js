@@ -1478,7 +1478,7 @@ function doKomachiRepeat(ctx, tag) {
 var MOSES_SIGN_ID = "astral_dice:moses_sign";
 var HAND_FAN_BIG_CHIP_ID = "astral_dice:hand_fan_big_chip";
 var TargetSelectionManagerClass = Java.loadClass("com.merlinkitsune.astral_dice.target.TargetSelectionManager");
-var SignSelectionGateClass = Java.loadClass("com.merlinkitsune.astral_dice.target.SignSelectionGate");
+var SignSelectionGateClass = Java.loadClass("com.merlinkitsune.starenginelib.target.SignSelectionGate");
 var EffectCardUtilClass = Java.loadClass("com.merlinkitsune.astral_dice.item.card.EffectCardUtil");
 
 // ⚠️ 池对象**必须先复制成 java.util.ArrayList** 再做任何成员调用（2026-09-18 t27，与 1.20.1 侧同形）：

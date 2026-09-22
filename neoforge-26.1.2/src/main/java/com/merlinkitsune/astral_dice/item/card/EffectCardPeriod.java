@@ -211,6 +211,9 @@ public final class EffectCardPeriod {
         // 活体书页:命中(前)已有 ≥3 层标记的目标时在本周期内累计 +1(仅当前周期,周期归零时清除;
         // 可叠加,非"效果存在即 +1"的开关式;补记入口 = grantLivingPageCycleBonus,且该入口自身封顶 9)
         extra += ModAttachments.getLivingPageCycleBonus(player);
+        // 符卡-福(风水师立牌专属牌):本周期内**每次打出都 +1**(裁决 B),与立牌主动的一次性槽位解耦;
+        // 入口自带 MAX_EFFECT_CARD_PLAYS 封顶,叠加结果同样受下方 min(9, 1+extra) 约束
+        extra += ModAttachments.getFuCardCycleBonus(player);
         // 立牌主动技能一次性追加(仅当前出牌轮有效,周期结束由 clearRoundBonuses 清除)
         extra += getBonusPlays(player);
         // 防御性下界:附件被写成负值(异常/溢出)时不得让上限退化为 0 或负数——
@@ -240,6 +243,37 @@ public final class EffectCardPeriod {
     public static boolean grantBonusPlay(Player player) {
         if (getBonusPlays(player) > 0) return false;
         ModAttachments.setEffectCardBonusPlays(player, 1);
+        return true;
+    }
+
+    /**
+     * 「符卡-福」(风水师立牌专属牌)的出牌数 +1 —— **单一入口**:全仓调用点只有
+     * {@code item/card/FuCardItem#applyEffect} 一处,故「+1 的具体口径」被收进这一个方法体,
+     * 改口径只需改这里(调用点与用例结构不必动)。
+     *
+     * <p><b>当前口径(2026-09-26 用户裁决 B:每张各 +1)</b>:新增本周期专属计数器
+     * {@code fu_card_cycle_bonus}(语义 = 本周期内打出符卡-福的次数),**每次打出都 +1**、
+     * 不做 {@code >0 即拒绝} 的判定;该计数器进入 {@link #getMaxAllowed} 的 {@code extra}
+     * (与 {@link #getBonusPlays} / 活体书页累加项同级)并受既有
+     * {@code min(9, 1+extra)} 全局封顶 ⇒ **天然不可能刷爆**,无需额外限制;
+     * 周期结束时由 {@link #clearRoundBonuses} 与活体书页计数器同址归零。
+     *
+     * <p><b>与忍者立牌主动彻底解耦</b>:不再调用 {@link #grantBonusPlay}
+     * ({@code effect_card_bonus_plays} 那个"每轮单个二进制槽位"),故「忍者先给过 +1」不再吞掉本卡的 +1
+     * —— 两者可叠加(可判别 B 与旧口径的交叉验证点)。
+     *
+     * <p>⚠️ <b>调用时序不可颠倒</b>:必须发生在 {@link BaseEffectCardItem#applyEffect} 之内、
+     * **早于** {@link #registerPlay} —— 否则 {@code registerPlay} 里「{@code count >= getMaxAllowed}」
+     * 会在本轮上限仍是旧值时立即成立并起 30 秒冷却,「消耗 1 / 返回 1」的净 0 不成立
+     * (见 {@code FuCardItem#applyEffect} 的调用点注释)。
+     *
+     * @return true = 本次成功授予(该次出牌净 0);false = 已达 {@link GameplayConstants#MAX_EFFECT_CARD_PLAYS} 封顶
+     */
+    public static boolean grantFuCardBonusPlay(Player player) {
+        if (player == null) return false;
+        int current = ModAttachments.getFuCardCycleBonus(player);
+        if (current >= GameplayConstants.MAX_EFFECT_CARD_PLAYS) return false;
+        ModAttachments.setFuCardCycleBonus(player, current + 1);
         return true;
     }
 
@@ -290,6 +324,8 @@ public final class EffectCardPeriod {
         ModAttachments.setCandyChipPlayBonusActive(player, false);
         ModAttachments.setSatellitePlayBonusActive(player, false);
         ModAttachments.setLivingPageCycleBonus(player, 0);
+        // 符卡-福本周期计数(裁决 B):与活体书页计数器同址清零
+        ModAttachments.setFuCardCycleBonus(player, 0);
         // 周期归零:解除电击手套本周期已武装的法伤扩散(下个周期可重新武装)
         ElectricGloveChipItem.disarmAoe(player);
     }
@@ -486,6 +522,23 @@ public final class EffectCardPeriod {
                 // 但**不**作废剩余出牌数(不再把计数补齐到当轮上限):冷却期间仍可继续出牌,
                 // 冷却到期后计数归零。
                 if (getRemainingBlockTicks(player) > 0) return;
+                // ⚠️ 2026-09-20 用户裁决 C:当轮上限被「出牌数 +1」类**牌**抬高时,情形 2(未打满的
+                // 收尾冷却)**不启动** —— 这类牌走规格 §14.2 收支表口径(打出后「本轮冷却**未启动**」,
+                // 只有 count ≥ max = 打满当轮上限时才启动 30 秒冷却,那条路径在下方同一块的
+                // 「不变量违例/已打满」分支与 registerPlay 里,不受本豁免影响)。
+                // 判据 = 两个由**打出牌**驱动、本周期内累加的出牌数计数器(与 getMaxAllowed 的 extra 同源):
+                //   · FU_CARD_CYCLE_BONUS  符卡-福:每次打出 +1(FuCardItem:78 → grantFuCardBonusPlay);
+                //   · LIVING_PAGE_CYCLE_BONUS 活体书页:命中「命中前已有 ≥3 层标记」的目标时 +1
+                //     (LivingPageImpact:41 → grantLivingPageCycleBonus)。
+                // 不纳入(均非「打出即 +1 的牌」,继续适用 2026-09-15 的收尾冷却):
+                //   · EFFECT_CARD_BONUS_PLAYS 立牌主动一次性槽位(技能授予,见 grantBonusPlay);
+                //   · 可口糖果/探天卫星筹码的「每轮一次」开关:candyChipPlayBonusActive /
+                //     satellitePlayBonusActive(筹码状态,非牌);
+                //   · 固定来源 大背包 +1 / 忍术飞镖 +1(佩戴即提供,非牌);
+                //   · 命运的指引:效果存在即 +1(覆盖式,且自身就是 EFFECT_PENDING_SOURCE,
+                //     情形 2 已由上方「剩余被锁时长 > 0」等到它结束)。
+                if (ModAttachments.getFuCardCycleBonus(player) > 0
+                        || ModAttachments.getLivingPageCycleBonus(player) > 0) return;
             }
             long recoverTicks = ChargeManager.effectCardCooldownTicks(player,
                     GameplayConstants.EFFECT_CARD_COOLDOWN_SECONDS * 20L);

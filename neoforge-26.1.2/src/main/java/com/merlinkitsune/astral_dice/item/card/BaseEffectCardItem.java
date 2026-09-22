@@ -27,7 +27,7 @@ import com.merlinkitsune.astral_dice.item.sign.KomachiSignItem;
 import com.merlinkitsune.astral_dice.network.ActionBarPayload;
 import com.merlinkitsune.astral_dice.target.HoldToSelect;
 import com.merlinkitsune.astral_dice.target.SelfTargetable;
-import com.merlinkitsune.astral_dice.target.SignSelectionGate;
+import com.merlinkitsune.starenginelib.target.SignSelectionGate;
 import com.merlinkitsune.astral_dice.target.TargetSelectionManager;
 import com.merlinkitsune.starenginelib.component.GameplayConstants;
 import com.merlinkitsune.starenginelib.target.TargetSelectionAction;
@@ -487,5 +487,33 @@ public abstract class BaseEffectCardItem extends Item {
         // 小猪存钱罐筹码:每使用 2 张效果牌获得 3 星币(独立计数)
         PiggyBankChipItem.onEffectCardUsed(player);
         return true;
+    }
+
+    /**
+     * 附魔光效:临时效果牌同样常亮(需求「临时牌全部添加附魔光效」)。
+     *
+     * <p>为什么必须在这里也没收一份:临时牌池是 {@link RandomCardHandler.CardCategory#ALL},
+     * **包含效果牌**(实测该池由攻击牌 + 防御牌 + 效果牌三段拼成),而效果牌走本类
+     * ({@code extends Item}),不经过 {@link CardItem} 的覆写。
+     */
+    @Override
+    public boolean isFoil(ItemStack stack) {
+        return TemporaryCardUtil.glint(stack, super.isFoil(stack));
+    }
+
+    /**
+     * 不可放进「物品内的容器」:临时效果牌同样一律拒绝。
+     *
+     * <p>1.21.1 的栈级钩子 {@code canFitInsideContainerItems(ItemStack)} 是潜影盒 GUI 槽
+     * ({@code ShulkerBoxSlot#mayPlace},它**覆写** {@code Slot#mayPlace} 且不调 super ⇒ 槽位 mixin
+     * 对它无效)、潜影盒自动化面({@code ShulkerBoxBlockEntity#canPlaceItemThroughFace})、
+     * 收纳袋({@code BundleItem} / {@code BundleContents})与 NeoForge 组件容器
+     * ({@code ComponentItemHandler#isItemValid})的**唯一**判据 —— 本类未覆写它时,
+     * 临时效果牌可从这四条路径进入容器并长期留存(到期清理只扫主物品栏 + 副手)。
+     * 覆写后与 {@link CardItem} 走**同一份**判据,两线入口清零。
+     */
+    @Override
+    public boolean canFitInsideContainerItems(ItemStack stack) {
+        return TemporaryCardUtil.fitsInsideContainer(stack, super.canFitInsideContainerItems(stack));
     }
 }

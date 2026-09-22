@@ -21,6 +21,8 @@ import java.util.Locale;
 import com.merlinkitsune.astral_dice.damage.ModDamageTypes;
 import com.merlinkitsune.astral_dice.item.chip.MagicQuiverChipItem;
 import com.merlinkitsune.astral_dice.item.chip.PiercingGunChipItem;
+import com.merlinkitsune.starenginelib.combat.HostileTargets;
+import com.merlinkitsune.starenginelib.component.GameplayConstants;
 
 /**
  * 法伤(远程/魔法伤害)模块:作用域判定(白名单 matcher + 军火黑名单保险)与加成修饰器注册表。
@@ -31,11 +33,16 @@ import com.merlinkitsune.astral_dice.item.chip.PiercingGunChipItem;
  * 3. 新生魔艺(ars_nouveau):generic_spell_damage/windshear/cold_snap/flare/crush;
  * 4. 诡厄巫法(goety):summon/shock/freeze/hellfire/magic_fire/magic_fireball/magic_bolt 等法术伤害类型
  *    (排除近战类 goety:sword);
- * 5. Iron 的法术与魔法书(irons_spellbooks):fire_magic/ice_magic/lightning_magic/holy_magic/ender_magic/
- *    blood_magic/evocation_magic/eldritch_magic/nature_magic 等;
- * 6. 本模组「活体书页」命中伤害(astral_dice:card_spell,2026-09-25 起;见 {@link LivingPageImpact})。
+ * 5. 本模组「活体书页」命中伤害(astral_dice:card_spell,2026-09-25 起;见 {@link LivingPageImpact})。
  * 排除:枪械/炮弹/炸药/火箭等军火类(tacZ、维克斯的武器、卓越前线、气动工艺、机械动力:火炮、通用机械:武器、
  * 沉浸工程等)——其弹丸实体不属于白名单,黑名单关键词仅作"弹丸继承原生类"场景的保险。
+ *
+ * <p><b>26.1.2 迁移说明(用户裁决「1.21.1 存在的联动模组但 26.1.2 不存在 ⇒ 直接删除联动」):</b>
+ * Iron 的法术与魔法书(irons_spellbooks)无 26.1.x 构建 ⇒ <b>其 15 个伤害类型键已整体删除</b>
+ * (原第 5 条作用域,以及 {@code fire_magic} 等全部 {@code key("irons_spellbooks", ...)} 条目)。
+ * 生效后果:装有 Iron 法术的 26.1.2 整合包里,其法术伤害不再计入本模组法伤加成 ——
+ * 这是「无联动模组即无联动」的预期行为,不是缺陷。
+ * {@code event/IronSpellbooksCompat} 与本子项目一并移除(见 {@code docs/compat-26.1.2-neoforge.md})。
  */
 public final class SpellDamageRegistry {
 
@@ -69,22 +76,11 @@ public final class SpellDamageRegistry {
             key("goety", "fire_breath"),
             key("goety", "frost_breath"),
             key("goety", "bubble_stream"),
-            key("goety", "magic_bolt"),
-            // Iron 的法术与魔法书 (irons_spellbooks)
-            key("irons_spellbooks", "fire_magic"),
-            key("irons_spellbooks", "ice_magic"),
-            key("irons_spellbooks", "lightning_magic"),
-            key("irons_spellbooks", "holy_magic"),
-            key("irons_spellbooks", "ender_magic"),
-            key("irons_spellbooks", "blood_magic"),
-            key("irons_spellbooks", "evocation_magic"),
-            key("irons_spellbooks", "eldritch_magic"),
-            key("irons_spellbooks", "nature_magic"),
-            key("irons_spellbooks", "cauldron"),
-            key("irons_spellbooks", "heartstop"),
-            key("irons_spellbooks", "dragon_breath_pool"),
-            key("irons_spellbooks", "fire_field"),
-            key("irons_spellbooks", "poison_cloud"));
+            key("goety", "magic_bolt"));
+            // 注:原 1.21.1 此处还有 15 个 irons_spellbooks 键(fire_magic / ice_magic / lightning_magic /
+            // holy_magic / ender_magic / blood_magic / evocation_magic / eldritch_magic / nature_magic /
+            // cauldron / heartstop / dragon_breath_pool / fire_field / poison_cloud),已在 26.1.2 删除
+            // ——Iron 的法术与魔法书无 26.1.x 构建(用户裁决:直接删除相关联动)。
 
     // === 作用域 matcher 注册表(附属模组可注册自定义判定) ===
     @FunctionalInterface
@@ -113,10 +109,19 @@ public final class SpellDamageRegistry {
     }
 
     /**
-     * 作用域判定:先排除军火类(保险),再按白名单 matcher 依次判定。
+     * 作用域判定:先按公共配置 {@code allow_firearm_damage} 决定是否排除军火类(保险),
+     * 再按白名单 matcher 依次判定。
+     *
+     * <p>军火类排除默认生效({@code allow_firearm_damage = false}),即与既有行为一致;
+     * 仅当显式开启该配置时,弹丸/伤害类型关键词命中的军火类伤害才会继续走白名单判定。
+     *
+     * <p><b>26.1.2 迁移修正:</b>本子项目此前把这一行写成了无条件的
+     * {@code if (isFirearmDamage(source)) return false;} —— 那会让 {@code allow_firearm_damage}
+     * 配置项**彻底失效**(配置键仍在 {@code ModCommonConfig} 且仍经 {@code snapshot()} 推到库的
+     * {@code GameplayConstants.ALLOW_FIREARM_DAMAGE},但无人读取)。现恢复为与 1.21.1 逐字一致的条件式。
      */
     public static boolean isSpellDamage(DamageSource source, Entity direct) {
-        if (isFirearmDamage(source)) return false;
+        if (!GameplayConstants.ALLOW_FIREARM_DAMAGE && isFirearmDamage(source)) return false;
         for (SpellDamageMatcher matcher : MATCHERS) {
             if (matcher.matches(source, direct)) return true;
         }

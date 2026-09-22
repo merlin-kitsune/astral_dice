@@ -111,6 +111,7 @@ import com.merlinkitsune.astral_dice.item.sign.NancyLuSignItem;
 import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
 import com.merlinkitsune.astral_dice.item.card.FateGuidanceCardItem;
 import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
+import com.merlinkitsune.starenginelib.combat.HostileTargets;
 
 @EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public class DiceCombatEvents {
@@ -138,6 +139,14 @@ public class DiceCombatEvents {
     //      都先判定 isInCounterChain(),injectCounterDamage 自身也拒绝再入 →
     //      反击链内不可能再发起一次反击,递归在结构上不成立(不是"限制递归层数")。
     private static int counterDepth = 0;
+
+    // 把两条内部窗口的开关讲给库听(库的 PlayerHostilityTracker 需要它来区分"主动攻击"与"内部波及",
+    // 但窗口状态属本类的玩法实现,不下沉)。
+    static {
+        com.merlinkitsune.starenginelib.combat.InternalDamageWindows.install(
+                DiceCombatEvents::isInternalAoe,
+                DiceCombatEvents::isInCounterChain);
+    }
 
     // 当前是否处于反击链中(供骰战结算 / 闪避 / 反击入口判定)
     public static boolean isInCounterChain() {

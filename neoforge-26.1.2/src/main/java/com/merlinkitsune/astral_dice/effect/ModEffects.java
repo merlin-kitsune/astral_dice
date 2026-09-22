@@ -158,6 +158,96 @@ public class ModEffects {
             EFFECTS.register("ren_counter", RenCounterEffect::new);
 
     /**
+     * 「白泽赐福」(风水师立牌 zhao 主动):常驻时长的状态载体,持续到**下一次**骰神赐福结束才移除
+     * (由玩家级 tick 的下降沿状态机判定)。无属性修饰符、无粒子;溢出治疗转化的攻击力另存玩家附件
+     * ({@code ModAttachments#ZHAO_OVERFLOW_BONUS},余数在 {@code #ZHAO_OVERFLOW_REMAINDER})。
+     * 图标 = {@code images/风水师立牌.png}(实装路径 {@code textures/mob_effect/zhao_blessing.png})。
+     */
+    public static final DeferredHolder<MobEffect, MobEffect> ZHAO_BLESSING =
+            EFFECTS.register("zhao_blessing", ZhaoBlessingEffect::new);
+
+    /**
+     * 「厄运」(符卡-祸的层数镜像效果):层数 == 持有者当前符卡-祸张数(主物品栏口径);张数归 0 即移除。
+     * 图标 = {@code images/厄运.png}(实装路径 {@code textures/mob_effect/misfortune.png})。
+     */
+    public static final DeferredHolder<MobEffect, MobEffect> MISFORTUNE =
+            EFFECTS.register("misfortune", MisfortuneEffect::new);
+
+    /**
+     * 「降神」(教主立牌 teru 主动):施加在**被指定目标**身上的状态载体,持续到**该目标的下一次骰神赐福结束**
+     * 才移除(由玩家级 tick 的下降沿状态机判定,见 {@code TeruSignItem#tick})。无属性修饰符;
+     * 给施法者的 50% 攻防加成与狐光攻击基数另存目标侧附件。
+     * 图标 = {@code images/教主立牌.png}(实装路径 {@code textures/mob_effect/teru_descent.png})。
+     */
+    public static final DeferredHolder<MobEffect, MobEffect> TERU_DESCENT =
+            EFFECTS.register("teru_descent", TeruDescentEffect::new);
+
+    /**
+     * 「狐光」(教主立牌 teru 的资源层数镜像):层数 == 施法者附件 {@code TERU_HUGUANG_LAYERS}(上限 20);
+     * 层数归 0 即移除。增层带两条防刷守卫(拾取不计层 + 装备按历史水位去重),见 {@code TeruSignItem}。
+     * 图标 = {@code images/狐光.png}(实装路径 {@code textures/mob_effect/teru_huguang.png})。
+     */
+    public static final DeferredHolder<MobEffect, MobEffect> TERU_HUGUANG =
+            EFFECTS.register("teru_huguang", HuguangEffect::new);
+
+    /**
+     * 「女王特权」(绿洲女王立牌 nardis 主动):**有限时长 3:00(3600 tick)** 的状态载体。
+     * 它同时是「临时牌是否仍在有效期」的**唯一真值**(玩家级 tick 自检:有临时牌但无本效果 ⇒ 清空),
+     * 并直接充当 HUD 计时器与图标(`showIcon=true`,图标 = 立牌贴图,见 {@link NardisPrivilegeEffect})。
+     */
+    public static final DeferredHolder<MobEffect, MobEffect> NARDIS_PRIVILEGE =
+            EFFECTS.register("nardis_privilege", NardisPrivilegeEffect::new);
+
+    /**
+     * 「真龙形态」(蛟龙立牌 mamushi 的**锁存态**可见载体):{@code 佩戴立牌 && 觉醒 >= 8} 时常驻显示
+     * (图标 = 立牌贴图),由 {@code MamushiSignItem#onCurioTick} 每 tick {@link MamushiDragonEffect#refresh}
+     * 续期、条件不再成立时 {@link MamushiDragonEffect#remove} 移除。
+     *
+     * <p>时长 = {@link Integer#MAX_VALUE}(常驻),**不参与** {@code EffectTimerGuard} 的计时守卫
+     * (守卫本身按 {@code INFINITE_THRESHOLD} 跳过无限时长效果,故无需任何登记;口径同 zhao 赐福 / teru 降神)。
+     */
+    public static final DeferredHolder<MobEffect, MobEffect> MAMUSHI_DRAGON =
+            EFFECTS.register("mamushi_dragon", MamushiDragonEffect::new);
+
+    /**
+     * 「破防」(蛟龙立牌 mamushi 的专属战斗牌「龙之咆哮」命中时施加):护甲 {@code -8}
+     * (1 防御 = 2 护甲 ⇒ 减 4 点防御),时长 {@code 1200}(1:00);重复命中只刷新时长、不叠层(D8)。
+     *
+     * <p>属性修饰器见 {@link DragonRoarBreakEffect}(与「岿然不动」{@code +8} 的正值版取负,同源写法)。
+     */
+    public static final DeferredHolder<MobEffect, MobEffect> DRAGON_ROAR_BREAK =
+            EFFECTS.register("dragon_roar_break", DragonRoarBreakEffect::new);
+
+    /**
+     * 本模组已注册的全部效果的**只读**视图(调试命令 {@code /astralparty cleareffect} 用)。
+     *
+     * <p>直接派生自 {@link #EFFECTS} 的注册条目视图——NeoForge 的 {@code getEntries()} 返回
+     * {@code Collections.unmodifiableSet(entries.keySet())} 的**活视图**,故新增效果会自动纳入,
+     * 不存在「忘记往清单里补一个」的漂移风险;同时**不改变任何既有注册语义**
+     * (不新增、不重排、不延迟任何注册调用)。
+     */
+    // 推理时间(怪力侦探立牌 sherry 专属资源):层数真值在附件(带 copyOnDeath,死亡不清),
+    // 本效果只做 HUD 镜像(层数 = amplifier + 1,图标 = 立牌同图)。
+    public static final DeferredHolder<MobEffect, MobEffect> SHERRY_REASONING =
+            EFFECTS.register("sherry_reasoning", SherryReasoningEffect::new);
+
+    // 人偶制作(人偶师立牌 hanna 专属资源):层数真值在附件(不跨死亡),本效果只做 HUD 镜像
+    // (层数 = amplifier + 1,上限 HannaSignItem.MAX_CRAFT = 7;图标 images/人偶制作.png)。
+    public static final DeferredHolder<MobEffect, MobEffect> HANNA_DOLL_CRAFT =
+            EFFECTS.register("hanna_doll_craft", HannaDollCraftEffect::new);
+
+    // 人偶完成(人偶师立牌 hanna):「人偶制作」满 7 层后**归零转换**而来的常驻状态(用户 2026-09-21 裁决);
+    // 无限时长、不登记 EffectTimerGuard(照 teru 狐光 / mamushi 真龙形态的口径);图标 images/人偶完成.png。
+    public static final DeferredHolder<MobEffect, MobEffect> HANNA_DOLL_COMPLETE =
+            EFFECTS.register("hanna_doll_complete", HannaDollCompleteEffect::new);
+
+    // 魔女漂浮(人偶师立牌 hanna 主动):有限时长 1:00 = 1200 tick,移速 +20%(ADD_MULTIPLIED_TOTAL);
+    // 掉落免疫 / 近战闪避 / 禁用末影珍珠三条语义在 HannaSignItem 的事件里;
+    // 图标与立牌本体同图(textures/mob_effect/hanna_float.png 逐字节复制)。
+    public static final DeferredHolder<MobEffect, MobEffect> HANNA_FLOAT =
+            EFFECTS.register("hanna_float", HannaFloatEffect::new);
+
+    /**
      * 本模组已注册的全部效果的**只读**视图(调试命令 {@code /astralparty cleareffect} 用)。
      *
      * <p>直接派生自 {@link #EFFECTS} 的注册条目视图——NeoForge 的 {@code getEntries()} 返回

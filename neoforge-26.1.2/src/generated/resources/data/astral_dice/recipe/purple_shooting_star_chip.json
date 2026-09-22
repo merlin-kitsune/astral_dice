@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": "astral_dice:blank_chip",
+    "D": "astral_dice:star_coin_dust",
+    "P": "astral_dice:star_plate",
+    "X": "minecraft:amethyst_shard"
+  },
+  "pattern": [
+    "XXX",
+    "DBD",
+    "PPP"
+  ],
+  "result": {
+    "id": "astral_dice:purple_shooting_star_chip"
+  }
+}

@@ -130,9 +130,9 @@ When extending this workspace:
 |---|---|---|---|---|---|---|
 | `neoforge-1.21.1` | `1.21.1-main` | 1.21.1 | NeoForge | 21 | `1.2.1-hotfix+neoforge_1.21.1` | `x.y.z[-rcN|hotfix]+neoforge_1.21.1` |
 | `forge-1.20.1` | `1.20.1-forge` | 1.20.1 | Forge | 17 | `1.2.1-hotfix+forge_1.20.1` | `x.y.z[-rcN|preN|hotfix]+forge_1.20.1` |
-| `neoforge-26.1.2` | 本仓 `multi-26.1.2-neoforge` 分支新增（基线 = 主线 `1.2.1`/`fda8ca9` 的 `neoforge-1.21.1` 源码）；**2026-09-17 已合并进 `multi-1.20.1-1.21.1`**（与主线同目录同树，原独立 worktree 已移除） | 26.1.2 | NeoForge | 25 | `1.2.1-beta.2+neoforge_26.1.2` | `x.y.z[-rcN]+neoforge_26.1.2` |
+| `neoforge-26.1.2` | 本仓 `multi-26.1.2-neoforge` 分支新增（基线 = 主线 `1.2.1`/`fda8ca9` 的 `neoforge-1.21.1` 源码）；**2026-09-17 已合并进 `multi-1.20.1-1.21.1`**（与主线同目录同树，原独立 worktree 已移除）；**2026-09-22 完整移植后版本号与另两线对齐** | 26.1.2 | NeoForge | 25 | `2.0.0-SNAPSHOT.13+neoforge_26.1.2` | `x.y.z[-rcN]+neoforge_26.1.2` |
 
-> 版本号各 git 分支独立（AGENTS.md 自 2026-09-15 起**已纳入版本库**，各分支各自维护一份）：`multi-1.20.1-1.21.1` 当前 = `1.2.1-hotfix`（`1.2.1` 的修补版，2026-09-18 筹码栏修复；按发布规范 tag 仍解析为裸版本 **`1.2.1`**，故 Release 1.2.1 为**刷新**而非新建）；`multi-dev-next` 当前 = **`2.0.0-SNAPSHOT.10`**（2026-09-17 用户裁决：`2.0.0-SNAPSHOT.5` 封包，版本号升至 `.10`；后续改动一律记入两个 CHANGELOG 顶部的 `未发布（2.0.0-SNAPSHOT.10）` 小节）；`neoforge-26.1.2` 子项目当前 = **`1.2.1-beta.2`**（2026-09-17 用户裁决 + **2026-09-19 修订：26.1.2 已纳入主线、三线同步（不再是低优先级线）**，版本号仍单独加 `-beta` 与主线 `1.2.1` 的发布态区分；2026-09-18 随同批修复升为 `-beta.2`；`multi-26.1.2-neoforge` 分支自此只作为合并前历史，不再单独开发）。上表「当前版本」以主线工作分支 `multi-1.20.1-1.21.1` 为准。
+> 版本号各 git 分支独立（AGENTS.md 自 2026-09-15 起**已纳入版本库**，各分支各自维护一份）：`multi-1.20.1-1.21.1` 当前 = `1.2.1-hotfix`（`1.2.1` 的修补版，2026-09-18 筹码栏修复；按发布规范 tag 仍解析为裸版本 **`1.2.1`**，故 Release 1.2.1 为**刷新**而非新建）；`multi-dev-next` 当前 = **`2.0.0-SNAPSHOT.13`**（2026-09-17 用户裁决：`2.0.0-SNAPSHOT.5` 封包，版本号升至 `.10`；**2026-09-22 用户裁决：SNAPSHOT 数值按提交数下沉，档位 = 提交数 / 37，自 `.10` 起累计 104 提交 ⇒ 向上取整 3 档 ⇒ `.13`**；后续改动一律记入两个 CHANGELOG 顶部的 `未发布（2.0.0-SNAPSHOT.13）` 小节）；`neoforge-26.1.2` 子项目当前 = **`2.0.0-SNAPSHOT.13`**（2026-09-17 用户裁决 + **2026-09-19 修订：26.1.2 已纳入主线、三线同步（不再是低优先级线）**，**2026-09-22 用户裁决：26.1.2 完整移植后与另两线版本号对齐，不再单独加 `-beta`**；`multi-26.1.2-neoforge` 分支自此只作为合并前历史，不再单独开发）。上表「当前版本」以主线工作分支 `multi-1.20.1-1.21.1` 为准。
 > ⚠️ 历史上另有一条 dev 分支 **`wt/2.0.0-vnext`**（连带独立 worktree `C:/Users/xmace/.dsh/worktrees/astral_dice_multiloader-a03b2df2/2.0.0-vnext`）——2026-09-17 用户裁决「移除 wt/2.0.0-vnext 分支，仅保留当前分支」后**已删除**：worktree 与分支一并移除，`git branch -d` 成功即证明其 tip **`d7e4ac8f4f1c31484bf4366caa4e144aec45979f`** 的全部提交都已被 `multi-dev-next` 包含（`multi-dev-next..wt/2.0.0-vnext` 为空）⇒ **未丢失任何提交**；该分支从未推到远端（`origin` 只有 `multi-1.20.1-1.21.1` 与 `multi-dev-next`），故无需远端清理。`multi-26.1.2-neoforge` 作为合并前历史分支**保留**（未在本次裁决范围内）。
 
 > **第三条线(26.1.2)的规则边界(2026-09-19 用户裁决修订 —— 26.1.2 已纳入主线,必须遵守)**:自本裁决起「同步修改」约束**三个版本**(`neoforge-1.21.1` + `forge-1.20.1` + `neoforge-26.1.2`):任何功能/修复/平衡/文案改动一律**三线同批实施**(实施方式见下方「### 子项目修改默认规则」与「### 模组内容更新规则(三线同步)」),26.1.2 **不再**是「发布线完成后再迁移」的低优先级移植线。三条线各自按 `docs/compat-26.1.2-neoforge.md`(26.1.2 相对 1.21.1)、`docs/compat-1.20.1-forge.md`(1.20.1 相对 1.21.1)的差异映射实现,**平台差异必须逐条登记**;三线落地后按 `scripts/test/TESTING-SPEC.md` §13.2 做一致性测试。三子项目的 `mod_version`/`mods.toml` 门槛仍各自独立。⛔ **2026-09-19 补充裁决：暂停 26.1.2 版本更新**（原话「暂停26.1.2版本更新」）—— 本段的「三线同批实施」对 `neoforge-26.1.2` **暂不适用**，该线**冻结在已提交状态 `127fabd5`**，不得再落地任何改动（只读取证不受限），恢复需用户明确指示；详见下方「### 模组内容更新规则(三线同步)」段首的裁决记录。
@@ -949,13 +949,28 @@ When extending this workspace:
 
 ## 语言文件同步规范（Lang Sync）— 必须遵守
 
-- 语言文件位于 `src/main/resources/assets/astral_dice/lang/`:`zh_cn.json`(中文)与 `en_us.json`(英文),两文件 key 必须一一对应。
+- 语言文件位于 `src/main/resources/assets/astral_dice/lang/`:`zh_cn.json`(中文)、`en_us.json`(英文)与 `ja_jp.json`(日语,2026-09-22 起三线各一份);三者 key 必须一一对应(**以 `zh_cn.json` 为基线**)。
 - **每次手动修改 `zh_cn.json` 必须同步修改 `en_us.json`**:同一 lang key 的中英文本保持对应(内容、换行结构、占位符 `%s`/`%%`、彩色代码 § 尽量一致)。
 - **lang 值中的字面百分号必须写成 `%%`（2026-09-21 已实机崩溃，红线）**:单个 `%` 经 `I18n.get`/`String.format` 会抛异常 —— 在**帕秋莉手册文本**路径上显示 `Format error: ...`，在**本模组自己的 tooltip 组装路径**上（`ModTooltipHandler.translationString` 无条件 `String.format`，事件链上无人接异常）**直接崩客户端**。实测：1.21.1 把鼠标指向创造物品栏里的「教主立牌」即崩（`UnknownFormatConversionException: Conversion = '§'`，`tooltip.astral_dice.sign.teru_active` 的 `§e50%§7`，见 `run/1.21.1/crash-reports/crash-2026-09-21_15.12.05-client.txt`）。⚠️ **裸 `%` 有两种抛错形态**：`%` 后跟 `§`/中文 → `UnknownFormatConversionException`；`%` 后跟「空格 + 字母」（英文文案 `50% of …`）会被解析成「带空格标志的 `%o`」→ `MissingFormatArgumentException`。两种都必须按 `%%` 修。`check_lang_sync.ps1` 对未转义的单 `%` **输出 `[FAIL]` 且退出码 1**（2026-09-21 由 WARN 升为 FAIL，因为它是必然的客户端崩溃源）；`translationString` 另有 `escapeStrayPercents` 兜底（把非法 `%` 就地转义），故第三方资源包改坏 lang 也只会显示字面 `%`，不再崩游戏。⚠️ **加固范围**：全仓「对 lang 值做 `String.format`」只有 `translationString` 一个站（三线各一份），2026-09-21 只加固了**发布线两处**（1.21.1 + 1.20.1）；**`neoforge-26.1.2` 的 `ModTooltipHandler.translationString`（约 `:240`）仍未加固** —— 该线今天不会崩（lang 内 0 个裸 `%`），但其新文案再写裸 `%` 仍会崩客户端 ⇒ **登记为待办**，按三线优先级待发布线内容完成后迁移（迁移 = 把发布线那段 `VALID_PERCENT` + `escapeStrayPercents` 原样搬过去，改动仅限该方法）。**2026-09-21 用户裁决：26.1.2 保持冻结、留在待办，本轮不加固。**⚠️ 白名单 `%(?:%|\d+\$[sdbfxoeg]|[sdbfxoeg])` 是**刻意收窄**的集合（与闸门逐字一致，本仓只用 `%s`）：要引入 `%-5s`/`%02d`/`%.2f`/`%S`/`%n` 这类 Java 合法写法，**必须同时扩代码白名单与 `check_lang_sync.ps1` 的扫描口径**，否则会被闸门判为违规、或被代码转义成字面量。
 - 新增/删除 lang key 时两侧必须同步新增/删除;禁止只改一侧。
-- **两子项目的 lang 默认保持一致**(便于对照维护);唯一允许的差异是**某条描述依赖版本专有的原版内容**时在 1.20.1 侧删减该部分——当前唯一登记项为复仇之戟 `revenge_halberd_chip`(1.20.1 缺 6 个 1.21 新增效果),见「筹码一览 → 无流派 → 复仇之戟」;新增差异必须同步登记到 AGENTS.md,禁止随手分叉。
+- **三线的 lang 默认保持一致**(便于对照维护);允许的差异只有「某条描述依赖版本专有的原版内容」——已登记一处:(a) 复仇之戟 `tooltip.astral_dice.chip.revenge_halberd` 与 `guide.entry.revenge_halberd_chip.{1,2}`:1.20.1 缺 6 个 1.21 新增效果,见「筹码一览 → 无流派 → 复仇之戟」;新增差异必须同步登记到 AGENTS.md,禁止随手分叉。
+- ⚠️ 上述差异**在日语侧同样存在**,翻译时不能三线共用一份:`temp/ja/gen_ja_lang.py` 的 `OVERRIDE` 已按线覆盖这些键。
+- ⚠️ **对齐不变量:三线 × 三语共 805 键逐键一致、取值 diff = 0(2026-09-22 复核)**。比对必须**逐键比取值**,不能只比键集 —— 26.1.2 的 lang 早期用「缺键就补」的方式同步,**已有键的取值从不回改**,于是单侧漂移会只增不减。当日已据此删除 26.1.2 单侧多出的 3 处**实现细节注释**(属「多余注释」,一律不进 tooltip / 手册):(a) `energy_recycler` 的「单 tick 位移过大视为传送,不累计」(`tooltip.astral_dice.chip.energy_recycler` 与 `guide.entry.energy_recycler_chip.1`);(b) `tooltip.astral_dice.sign.moses_passive` 的首行「装备时,主动技能冷却时间减为 120 秒」—— 该被动(「精密技巧」,`MosesSignItem.ACTIVE_COOLDOWN_SECONDS = 120`)**照旧生效**,只是不进 tooltip(tooltip 唯一基准 = 玩家原文)。配套删除了 `temp/ja/gen_ja_lang.py` 的 `neoforge-26.1.2` 覆盖块(**不要加回来**,否则重跑会把注释写回 ja);该脚本现只剩 `forge-1.20.1` 覆盖块。⚠️ **键序仍未对齐**(不影响运行,JSON 对象无序):26.1.2 把 `hud.astral_dice.target_select.*`(6 键)与 `msg.astral_dice.target_select.*`(38 键)两段放在文件后段,1.20.1 / 1.21.1 放在中段 ⇒ 逐行 `diff` 仍不干净;若要收口需**同时**重排线的 `en_us.json` 并重跑日语生成器(ja 的键序派生自各线 zh 的键序)。
 - 修改后必须运行同步检查:`pwsh -NoProfile -File tools/check_lang_sync.ps1 -LangDir <子项目>/src/main/resources/assets/astral_dice/lang`(对被修改的子项目执行;key 不一致退出码非 0);CI(build.yml)在构建前也会自动对**三个子项目**(`neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2`,三线各一步)执行该检查,key 不一致会导致 CI 失败。
 - **默认自动本地提交、不推送 GitHub**:每次改动完成后由代理自动执行本地提交(见「子项目修改默认规则」),但**不执行 `git push`**。
+
+### 日语（ja_jp）本地化 — 2026-09-22 起三线各一份
+
+- **文件**：三线 `lang/ja_jp.json`（各 **805 键**），**以 `zh_cn.json` 为基线**（键集必须完全一致）。`key.categories.astral_dice`（1.20.1/1.21.1）与 `key.category.astral_dice.main`（26.1.2）是**预期平台差异键**，各线各留其一。
+- **守门**：`tools/check_lang_sync.ps1` **已扩展**为「zh 基线 + `en_us` + 可选 `ja_jp`」——ja 的 key 集合与**未转义字面 `%`** 同口径判 `[FAIL]`（`%` 是崩溃红线，见上条），结构标记差异仅 `[WARN]`；ja 不存在时工具行为与旧版完全一致。**已做反例验证**（临时植入裸 `%` / 删一个键 ⇒ 均 `[FAIL]` + 退出码 1）。
+- **生成方式**：`temp/ja/gen_ja_lang.py`（**逐行定点写，禁 `json.dump` 整写**；UTF-8 无 BOM / CRLF / 2 空格缩进 / 每 key 独占行 / 末尾换行）；翻译数据在 `temp/ja/t_*.py`。脚本自带三道校验：键集覆盖、换行数/`§`/`%` 与**各线自己的中文原文**守恒。
+- **专有名词一律取官方日语名**（《星引擎派对》英文名 Astral Party，**日服 2025-05-20 开服**，日文名「アストラルパーティー」）：角色 / 世界术语 / 有官方名的筹码。术语表与来源见 `docs/i18n/`：`ja-terms.json`（机器可读）、`ja-glossary.md`（角色与世界术语）、`ja-items.md`（物品）。**权威源 = B站《吉星派对》wiki 的结构化 `日文名` 字段 + 日服玩家实测文章**（note.com）；⚠️ wiki.gg 的日文名有 3 处复制错误（Fen/Padman/Mimi 被写成同一个名），不可采信。
+- **「立牌」= `スタンド`**（2026-09-22 用户裁决：沿用原有名词，**不用**「看板／支架」）；「看板娘」这一角色直接用其官方日语名 **ミミ**。立牌名统一 = `<角色官方日语名>のスタンド`（如 `jasmine_sign` → ジャスミンのスタンド、`mimi_sign` → ミミのスタンド、`blank_sign` → 空白のスタンド）。
+- **原版效果名取 MC 官方 ja_jp**（`effect.minecraft.*`），不要按中文自译：`resistance`=`耐性`（不是「耐性上昇」）、`saturation`=`満腹度回復`（不是「飽和」）、`blindness`=`盲目`、`wind_charged`=`蓄風`、`weaving`=`巣張り`、`oozing`=`滲出`、`infested`=`虫食い`、`raid_omen`=`襲撃の予感`、`trial_omen`=`試練の予感`。**离线取证**：官方 ja_jp 已留档 `temp/ref/mclang/ja_jp_1211.json` 与 `ja_jp_1201.json`。
+- **术语统一口径**（已按英文原文对齐，勿改）：骰神赐福=ダイス神の加護、筹码=チップ、卡牌=カード、出牌数=プレイ可能枚数、充能=チャージ、星光=スターライト、治愈=治癒、标记=マーキング、养精蓄锐=充填エネルギー(Recharged Energy)、剑气=剣気(Sword Qi)、弱点识破=弱点看破(Weakness Insight)、狐光=狐光、降神=降神、觉醒/真龙形态=覚醒/真龍形態、推理时间=推理の時間、人偶制作/完成=人形製作/人形完成、白泽赐福=白澤の加護、鼠鼠护盾=ネズミのシールド、模组名「星之骰戏」=アストラルダイス。
+- ⚠️ **`gen_ja_lang.py` 的 `OVERRIDE` 只服务「版本专有的原版内容」差异**（现仅 `forge-1.20.1` 的复仇之戟 6 个 1.21 新增效果）。**26.1.2 曾多出的两处原文差异（`energy_recycler` 的「单 tick 位移过大视为传送，不累计」、`moses_passive` 的「装备时，主动技能冷却时间减为 120 秒」一行）已于 2026-09-22 作为「多余注释」从 26.1.2 的 zh / en / ja 三份文件删除，其 `neoforge-26.1.2` 覆盖块同时删除 —— 不要再往 `OVERRIDE` 里加回它们**，否则重跑会把已删注释写回 ja。重跑后三份 ja 应与重跑前**逐字节相同**（`md5` 判据），这是脚本改动的验收方式。
+- ⚠️ **帕秋莉手册的框架 UI**（`Categories` 等按钮、搜索框）走 Patchouli **自身**的语言文件；上游未提供 ja ⇒ 那部分会回落英文。**条目内容 / 类目名 / 落地页 / 书名**走本模组 lang，均为日语（`data/astral_dice/patchouli_books/astral_guide/book.json` 的 `i18n: true`）。这不属本模组可修范围。
+- **实机取证**：`scripts/test/cases/JA-VISUAL-1.21.1.json` — 临时把 `run/<版本>/options.txt` 的 `lang` 改为 `ja_jp`，① `/astralparty dump` 的命令反馈走 `msg.*`；② `/give @s patchouli:guide_book[patchouli:book="astral_dice:astral_guide"]` + 选中 + 右键打开，书页走 `astral_dice.guide.*`。断言含 `absent /Format error/`（手册遇到裸 `%` 会直接打出该串）与 `crash`。⚠️ 取证后**必须把 `options.txt` 的 `lang` 还原为 `zh_cn`**。
 
 ## 骰子槽位与配置规范（Dice Slots & Config）— 必须遵守
 
@@ -1075,11 +1090,28 @@ When extending this workspace:
 
 ### 不兼容模组黑名单（Magic Coins / SG-Economy）— 必须遵守
 
-- 黑名单与检查在**消费方** `init/ModCompatibilityCheck`（两版行为与文案逐字一致；平台差异只有 import
-  与抛出的异常形态）：`magic_coins`、`sg_economy` 命中任意一个 ⇒ **在 `AstralDiceMod` 构造函数最开头**
-  （一切注册之前，已用 `javap -c` 核对字节码）抛**平台加载异常** ——
+- 黑名单与检查在**消费方** `init/ModCompatibilityCheck`（三线行为与文案逐字一致；平台差异只有 import
+  与抛出的异常形态）：`magic_coins`、`sg_economy` 命中任意一个 ⇒ 抛**平台加载异常** ——
   neo 为 `new ModLoadingException(ModLoadingIssue.error(文案))`，
-  forge 为 `new ModLoadingException(selfInfo, ModLoadingStage.CONSTRUCT, 文案, null)`。
+  forge 为 `new ModLoadingException(selfInfo, ModLoadingStage.COMMON_SETUP, 文案, null)`。
+- ⚠️ **前提条件：仅当「星币钱包」启用时才拒绝**（2026-09-22 用户裁决）。判定读
+  `economy/StarCoinCurrency#isWalletEnabled()`（内部读 `ModCommonConfig.ENABLE_STAR_COIN_WALLET`；
+  读不到配置时退回默认值 `true` = 启用，与改这一版之前的拒绝行为一致）。`false` ⇒ **完全放行** ——
+  钱包一关，本模组就不再维护玩家级货币账本，「同一枚星币被两套系统记账」的前提随之消失。
+  提示文案里同时给出两条出路（关钱包 / 移模组）。
+  ⚠️ 两项**同条件**：SG-Economy 是 Magic Coins 的前置（总是一起安装），只放行 `magic_coins`
+  而硬拒 `sg_economy` 等于两条路都走不通。
+- ⚠️ **调用点必须在 `FMLCommonSetupEvent` 内，不能在 mod 构造阶段**（这是本检查唯一允许的位置）：
+  配置是在**构造阶段之后**才加载的（neo `CommonModLoader.begin`：构造 → 注册表初始化 → **Config loading**；
+  forge 状态机：CONSTRUCT → CONFIG_LOAD → COMMON_SETUP），构造阶段读 `ConfigValue#get()` 会抛
+  「配置尚未加载」—— 这也是「越早越好、放在一切注册之前」这条旧口径必须作废的原因。
+  挂到 common setup 后**提示上屏的链路完全不变**（已读 FML 源码逐条核实）：neo
+  `ModLoader.addLoadingIssuesFromException` 对 `ModLoadingException` **原样采用 `getIssues()`**；
+  forge `ModContainer.buildTransitionHandler` → `ModList.completableFutureFromExceptionList`
+  （把它挂到汇聚异常的 suppressed 上）→ `ModLoader.waitForTransition` 挑出全部 `ModLoadingException`
+  组成 `LoadingFailedException`。
+  ⚠️ **不要**改挂 `ModConfigEvent`：那是 CONFIG_LOAD 阶段，forge 侧该阶段走 `handleInlineTransition`、
+  **没有 try/catch** ⇒ 异常会冒出去退化成上游的「There was a crash during startup」，本模组文案就没了。
 - **提示怎么上屏**（这条决定了**不能**用 `IllegalStateException`）：Forge 的 `LoadingErrorScreen` 逐条渲染
   `ModLoadingException#formatToString()`（= 对构造时传的 i18n 串 `parseMessage` 后显示），
   NeoForge 用 `Component.translatable(issue.translationKey(), args)`；两边那个 key 在语言文件里
@@ -1089,8 +1121,9 @@ When extending this workspace:
   `type="incompatible"`，但 **Forge 1.20.1 不支持**（其依赖解析只认 `mandatory` 布尔，见
   `ModInfo$ModVersion` 的 `Missing required field mandatory in dependency`），且声明式的提示文案由 FML
   生成、不受本模组控制 ⇒ 统一走本类，两版行为与提示逐字一致。
-- ⚠️ 新增不兼容项只改 `INCOMPATIBLE_MODS` 一处（`{modId, 玩家可读名称}`），**不要把检查挪到注册之后**
-  （越晚失败，玩家看到的错误越脏，且留下半注册状态）。
+- ⚠️ 新增不兼容项只改 `BLACKLIST` 一处（`Entry(modId, 玩家可读名称, onlyWhenWalletEnabled)`）；
+  **不要**把检查挪出 `FMLCommonSetupEvent` 的监听器体（挪前读不到配置，挪后被 FML 的异常汇聚路径漏掉）。
+  检查放在 `event.enqueueWork(...)` **之前**（同步执行，不与其它 mod 的延迟任务交错）。
 - 新增/修改不兼容项时，同步两版 CHANGELOG 的星币钱包条目与该表。
 
 ## Bountiful 赏金联动规范(可选前置)— 必须遵守
@@ -1867,7 +1900,7 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --new <注册id>
 
 **Java 入口**(`damage/ModDamageTypes`):`trueDamage(Level)` = 无来源实体(用于电磁炮雷击:与旧的原版闪电一致,不算玩家攻击、无击杀归属);`trueDamage(Level, Entity causing)` = 直接伤害实体为空 + 击杀归属 causing(用于大当家溅射,与旧 `explosion(null, player)` 同形状)。**直接伤害实体必须为空**:`DiceCombatEvents#onLivingDamagePre` 以 `source.getDirectEntity() instanceof Player` 作为骰战入口判据,直接实体一旦是玩家,溅射/雷击就会被当成玩家攻击重走骰战并递归触发赐福。
 
-**死亡消息**:自定义伤害类型必须自带 lang 键,否则聊天栏会显示原始 key。`DamageSource#getLocalizedDeathMessage`(已核对 1.21.1 `:78-93` / 1.20.1 `:71-91`)的三种形态对应三个键:`death.attack.<msgId>`(1 参=受害者;受害者有 killer credit 时走 `.player`)、`death.attack.<msgId>.player`(2 参)、`death.attack.<msgId>.item`(3 参,击杀者主手为命名物品)。**base 键只写 `%1$s`**,使 1 参/2 参两种调用都安全;四个 lang(中英 × 双版本)必须齐全。
+**死亡消息**:自定义伤害类型必须自带 lang 键,否则聊天栏会显示原始 key。`DamageSource#getLocalizedDeathMessage`(已核对 1.21.1 `:78-93` / 1.20.1 `:71-91`)的三种形态对应三个键:`death.attack.<msgId>`(1 参=受害者;受害者有 killer credit 时走 `.player`)、`death.attack.<msgId>.player`(2 参)、`death.attack.<msgId>.item`(3 参,击杀者主手为命名物品)。**base 键只写 `%1$s`**,使 1 参/2 参两种调用都安全;六个 lang(中英日 × 三线)必须齐全。
 
 **电磁炮雷击为什么要 Mixin**:原版闪电自身不带伤害——`LightningBolt#tick` 只挑目标(箱体 ±3 格、垂直 +6+3、谓词 `Entity::isAlive`;`onEntityStruckByLightning` 事件可 veto)并把每个目标交给 `Entity#thunderHit`;真正的结算在 `Entity#thunderHit` 内用 `damageSources().lightningBolt()`,且火焰在 hurt **之前无条件**设置。`minecraft:lightning_bolt` **不在** `bypasses_armor` 里(已从本机 client-extra 资源 jar 逐条核对)⇒ 原版雷击会被护甲与韧性减免,这就是电磁炮此前"不是真伤"的原因。故 `mixin/EntityThunderHitMixin`(`@Inject(method = "thunderHit(Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/world/entity/LightningBolt;)V", at = HEAD, cancellable = true)`)只对**本模组电磁炮降下的闪电**接管:复刻原版点火两行(1.21.1 `igniteForSeconds(8.0F)` / 1.20.1 `setSecondsOnFire(8)`,版本差异仅此),把伤害换成 `trueDamage(level)` 后 `ci.cancel()`。
 

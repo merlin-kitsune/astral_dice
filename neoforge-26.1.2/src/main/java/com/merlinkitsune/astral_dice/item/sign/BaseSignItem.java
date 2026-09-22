@@ -89,7 +89,15 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
         }
         // 1. 玩家级冷却检查:冷却中按键默认无效,并明确提示"<立牌名>冷却中"(修复:触发成功与冷却拒绝的反馈混淆)
         //    电流核心筹码:冷却中按下主动技能键 → 按剩余冷却占比消耗充能并立即使冷却完成(佩戴且充能足够时)
+        //    强制冷却硬闸门(规格 §3.4):forcedCooldownUntil(player) 非 0 且 now < 该值时**无条件**视为
+        //    冷却中并早退 —— 优先级**高于** CurrentCoreChipItem.tryFinishCooldown,即强制冷却窗口内
+        //    电流核心筹码也无法"消耗充能立即完成冷却"。
         long cdEnd = ModAttachments.getSignActiveCooldownEnd(player);
+        long forcedUntil = sign.forcedCooldownUntil(player);
+        if (forcedUntil > 0 && now < forcedUntil) {
+            notifyActionBar(player, "hud.astral_dice.sign_active_cooldown", signName, ChatFormatting.RED);
+            return;
+        }
         if (cdEnd > 0 && now < cdEnd) {
             int coreResult = com.merlinkitsune.astral_dice.item.chip.CurrentCoreChipItem
                     .tryFinishCooldown(player, cdEnd, now);
@@ -111,9 +119,13 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
         //     actionId 为 null 的立牌(其余全部立牌)不走本分支,下方原流程逐字不变。
         String gatedActionId = sign.selectorActionId();
         if (gatedActionId != null) {
+            // 2.4 「选择器类」立牌的**前置拒绝**钩子(2026-09-27,为教主立牌「降神生效中不可重复施放」):
+            //     返回 false ⇒ 只发提示并立即返回 —— 不开选择会话、不发牌、不进冷却/锁定、不充能。
+            //     缺省实现恒为 true ⇒ 其余立牌走与原流程逐字相同的分支。
+            if (!sign.canBeginSelectorSession(player)) return;
             if (!(player instanceof net.minecraft.server.level.ServerPlayer serverPlayer)) return;
             if (com.merlinkitsune.astral_dice.target.TargetSelectionManager.start(serverPlayer, gatedActionId)) {
-                com.merlinkitsune.astral_dice.target.SignSelectionGate.arm(player, gatedActionId, stack);
+                com.merlinkitsune.starenginelib.target.SignSelectionGate.arm(player, gatedActionId, stack);
             }
             return;
         }
@@ -134,7 +146,13 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
         // 6. 冷却:目标选择器类技能(已进入选择会话)待确认目标后在 apply 中开始冷却;其余立牌立即开始玩家级冷却
         if (!com.merlinkitsune.astral_dice.target.TargetSelectionManager.isSelecting(player)) {
             // 诡异骰子:立牌主动冷却 -50%
-            int signCooldownTicks = com.merlinkitsune.astral_dice.event.WeirdDiceHandler.signCooldownTicks(player);
+            // 强制冷却(规格 §3.4):forcedActiveCooldownTicks() > 0 的立牌(蛟龙立牌 mamushi)
+            // **直接使用该值**,完全不经过 WeirdDiceHandler.signCooldownTicks ⇒ 诡异骰子的 -50%、
+            // 充能封顶、命运的指引及其它任何减免一律无效(硬闸门同时在冷却判定侧生效)。
+            int forcedCooldown = sign.forcedActiveCooldownTicks();
+            int signCooldownTicks = forcedCooldown > 0
+                    ? forcedCooldown
+                    : sign.activeCooldownBaseTicks(player);
             if (sign.startActiveLockOnUse(player, now)) {
                 // ★ 本主动施加了"带时长效果/自身计时器"⇒ 进入锁定(生效中)态。
                 //   锁定期间**不写** sign_active_cooldown_end:冷却要等锁定结束才起(第 13 条:无空档);
@@ -162,6 +180,20 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
     }
 
     /**
+     * 「选择器类」立牌开启选择会话前的**前置拒绝**钩子(缺省恒为 {@code true} = 照原流程开会话)。
+     *
+     * <p>返回 {@code false} 时 {@link #performSkill} 的 2.5 分支只负责提示并立即返回:
+     * 不开选择会话、不发牌、不进冷却/锁定、不充能 —— 即该次按键**等同未使用**
+     * (适用场景:教主立牌 {@code teru} 的「降神生效中不可重复施放」)。
+     *
+     * @param player 触发主动技能的玩家(服务端)
+     * @return true = 允许开启选择会话(缺省);false = 本次主动被拒绝
+     */
+    protected boolean canBeginSelectorSession(Player player) {
+        return true;
+    }
+
+    /**
      * 目标选择**确认成功**后的恢复点(由 {@code TargetSelectionManager#confirm} 在 action.apply 之后调用)。
      *
      * <p>只对「由立牌门控登记的会话」生效:非立牌会话(如 {@code test_echo_*})没有待执行记录 ⇒ 直接返回,
@@ -176,8 +208,8 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
      * 非门控立牌的原流程(performSkill 第 5 步)仍保留默认提示。
      */
     public static void resumeGatedActiveSkill(Player player, String actionId) {
-        com.merlinkitsune.astral_dice.target.SignSelectionGate.Pending pending =
-                com.merlinkitsune.astral_dice.target.SignSelectionGate.take(player, actionId);
+        com.merlinkitsune.starenginelib.target.SignSelectionGate.Pending pending =
+                com.merlinkitsune.starenginelib.target.SignSelectionGate.take(player, actionId);
         if (pending == null) return;
         ItemStack stack = pending.stack();
         // 4. 手持风扇-大/小筹码:确认释放后才发牌(未确认绝不发牌)
@@ -296,6 +328,47 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
         return false;
     }
 
+    /**
+     * 本立牌主动技能的**强制冷却**时长(tick)。
+     *
+     * <p>返回 {@code > 0} 时,{@link #performSkill} 第 6 步(冷却入账;规格 §3.4 记作第⑧步)
+     * **直接使用该值**,**不经过** {@code WeirdDiceHandler.signCooldownTicks} ⇒ 诡异骰子(-50%)、
+     * 充能封顶、命运的指引及其它任何减免一律无效(规格 §3.4 冻结口径;当前实现者:蛟龙立牌 mamushi = 1200)。
+     *
+     * <p>缺省 0 = 无强制冷却(其余立牌走原流程,行为逐字不变)。
+     */
+    protected int forcedActiveCooldownTicks() {
+        return 0;
+    }
+
+    /**
+     * 本立牌主动技能的**基础冷却 tick**(仍受既有减免链影响)。
+     *
+     * <p>缺省 = 全局口径 {@code WeirdDiceHandler.signCooldownTicks(player)}(含充能封顶、诡异骰子 −50%
+     * 等全部既有减免)⇒ **其余立牌行为逐字不变**。个别立牌需要**自己的基础值**时覆写本方法
+     * (当前实现者:怪力侦探立牌 sherry = 120 秒,与枪匠立牌同款链)。
+     *
+     * <p>与 {@link #forcedActiveCooldownTicks()} 的区别:后者是「**强制值、不受任何减免**」的硬闸门
+     * (蛟龙立牌 mamushi);本方法是「**自定义基础值、仍走减免链**」。两者同时非默认时,**强制值优先**。
+     */
+    protected int activeCooldownBaseTicks(Player player) {
+        return com.merlinkitsune.astral_dice.event.WeirdDiceHandler.signCooldownTicks(player);
+    }
+
+    /**
+     * 本立牌主动技能的**强制冷却截止刻**(绝对 gameTime;0 = 无)。
+     *
+     * <p>{@link #performSkill} 第 1 步(冷却判定;规格 §3.4 记作第②步)会先读本值:
+     * {@code now < forcedCooldownUntil(player)} 时**无条件**视为冷却中并早退(提示既有冷却文案),
+     * 优先级**高于** {@code CurrentCoreChipItem.tryFinishCooldown} —— 即强制冷却窗口内电流核心筹码
+     * 也无法"消耗充能立即完成冷却"(规格 §3.4)。
+     *
+     * <p>缺省 0 = 无强制冷却(其余立牌行为逐字不变)。
+     */
+    protected long forcedCooldownUntil(Player player) {
+        return 0L;
+    }
+
     /** 进入锁定态:写锁定标记与硬上界(宽限/减免池归零,避免跨技能残留) */
     protected static void beginActiveLock(Player player, String signId, long lockEndTick) {
         ModAttachments.setSignActiveLockSign(player, signId);
@@ -303,6 +376,10 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
         ModAttachments.setSignActiveLockGraceEnd(player, 0L);
         ModAttachments.setSignActiveLockPlayed(player, false);
         ModAttachments.setSignActiveReductionPool(player, 0L);
+        // 离线补偿基准必须在此一并落笔:上一次锁定可能早已结束(lastSeen 陈值/0),若留到 tick 里首次
+        // 写入,则"上一次锁定结束时的 lastSeen"与"本次触发时刻"之间会被误判成一次离线 gap,把上界凭空后移。
+        // 2026-09-22(26.1.2 冒烟测试)补回:本行在 26.1.2 移植时被**连同步骤 0 整段遗漏**。
+        ModAttachments.setSignActiveLockLastSeen(player, player.level().getGameTime());
     }
 
     /**
@@ -323,6 +400,10 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
         ModAttachments.setSignActiveLockEnd(player, 0L);
         ModAttachments.setSignActiveLockGraceEnd(player, 0L);
         ModAttachments.setSignActiveLockPlayed(player, false);
+        // 解锁即清零离线补偿基准:下一次锁定由 beginActiveLock 重新落笔,避免"本次锁定结束刻"被
+        // 之后某次 tick 当成离线起点算出巨大 gap(冷却是墙钟语义,不参与补偿,故此处一并归零)。
+        // 2026-09-22(26.1.2 冒烟测试)补回:同上,随步骤 0 一并遗漏。
+        ModAttachments.setSignActiveLockLastSeen(player, 0L);
     }
 
     /**
@@ -338,12 +419,47 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
     public static void tickSignActiveLock(Player player) {
         if (player == null) return;
         if (player.level().isClientSide()) return;
+        long now = player.level().getGameTime();
+
+        // ===== 步骤 0:离线补偿(必须在任何早退/分支之前,含 isSignActiveLocked 判定)=====
+        // 2026-09-22(26.1.2 冒烟测试)补回:本块在 26.1.2 移植时被**整段遗漏**(半移植缺陷),
+        // 后果 = 跨重登/跨暂停的锁定与宽限计时**永不按错过的间隔后移**,且 lastSeen 从不上写
+        // ⇒ LOCK-OFFLINE / LOCK-OFFLINE-RELOG-A / -B 三条用例共 12 条断言失败、
+        //    readProbe 的 last_seen 恒 0、lock_end_delta 恒 0。现按 1.21.1 基准逐字补回。
+        // seen = 上一次结算时刻的 gameTime。0 = 无锁定/宽限计时(或旧存档/探针未写该键)⇒ 不补偿。
+        long seen = ModAttachments.getSignActiveLockLastSeen(player);
+        if (seen > 0) {
+            long gap = now - seen;
+            // gap > 1 才补偿:正常在线相邻两拍 = 1 ⇒ 一次都不动(否则每 tick 自我延长,锁定永不解)。
+            if (gap > 1) {
+                long lockEnd = ModAttachments.getSignActiveLockEnd(player);
+                if (lockEnd > 0) {
+                    ModAttachments.setSignActiveLockEnd(player, lockEnd + gap);
+                }
+                long graceEnd = ModAttachments.getSignActiveLockGraceEnd(player);
+                if (graceEnd > 0) {
+                    ModAttachments.setSignActiveLockGraceEnd(player, graceEnd + gap);
+                }
+            }
+        }
+        // 每拍刷新 lastSeen:仍在硬上界/宽限计时内 ⇒ now(离线检测基准必须每 tick 都是新的);
+        // 两者都不在(含忍者的宽限已被"出过效果牌"清掉、只剩周期出口)⇒ 0。
+        // 只在取值真的变化时才写:无锁定期间(0 → 0)一次都不写,不做无谓的附件写入;
+        // 锁定期间 now 每 tick 递增 ⇒ 每拍照写,基准始终是最新值(否则离线检测失效)。
+        // 陈值自愈:锁定结束后的第一拍就把陈值写成 0,此后不再写。
+        long lockEndNow = ModAttachments.getSignActiveLockEnd(player);
+        long graceEndNow = ModAttachments.getSignActiveLockGraceEnd(player);
+        long desiredSeen = (lockEndNow > 0 || graceEndNow > 0) ? now : 0L;
+        if (desiredSeen != seen) {
+            ModAttachments.setSignActiveLockLastSeen(player, desiredSeen);
+        }
+
         String signId = getSignActiveLockSignId(player);
         if (signId.isEmpty()) return;
-        long now = player.level().getGameTime();
         if (KOMACHI_LOCK_ID.equals(signId)) {
             // 忍者:锁定跟随出牌周期,本方法只负责"宽限 1:00 内自始至终未出任何效果牌"的保险。
             // 其余出口是出牌周期完全重置(EffectCardPeriod -> onEffectCardRoundReset)。
+            // 宽限刻已在步骤 0 一并按 gap 后移 ⇒ 1:00 宽限与门控效果同为"在线才走"的时钟。
             long graceEnd = ModAttachments.getSignActiveLockGraceEnd(player);
             if (graceEnd <= 0 || now < graceEnd) return;
             if (ModAttachments.getSignActiveLockPlayed(player)) {

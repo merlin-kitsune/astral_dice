@@ -180,15 +180,27 @@ public final class RandomCardHandler {
 
     // === 发放逻辑 ===
 
-    // 给指定玩家随机一张卡(背包满则掉落)
+    // 给指定玩家随机一张卡(背包满则掉落)。两参版等价于 giver = null(发牌者未知 ⇒ 不计蛟龙立牌觉醒)。
     public static void giveCardTo(Player receiver, CardCategory category) {
+        giveCardTo(null, receiver, category);
+    }
+
+    // 给指定玩家随机一张卡(**带发牌者**:蛟龙立牌被动「湖沼之王」按 giver 计觉醒;背包满则掉落)
+    public static void giveCardTo(Player giver, Player receiver, CardCategory category) {
         ItemStack card = randomCard(category);
         if (card.isEmpty()) return;
         // 维生素药丸发牌统一入口(治愈联动;看板娘立牌被动不再随奖励/复制/返还触发,仅合成与主动返还显式触发)
-        VitaminPillChipItem.giveCard(receiver, card);
+        VitaminPillChipItem.giveCard(giver, receiver, card);
     }
 
-    // 收集发放目标:范围玩家 + (可选)团队队友;排除自己(按作用域);人数上限随机抽样
+    /**
+     * 收集发放目标:范围玩家 + (可选)团队队友;排除自己(按作用域)。
+     *
+     * <p><b>人数上限语义(2026-09-27 变更)</b>:{@code maxTargets >= 0} 时按**距离升序取最近 N 人**
+     * (旧实现是 {@code Collections.shuffle} 随机抽样,全仓零调用;蛟龙立牌「连锁反应」需要
+     * 「最近的 N 人」这一确定性次序)。距离用 {@code distanceToSqr}(同维度/同 level,不会返回 NaN),
+     * 平局按 UUID 稳定排序,团队队友一并参与同一排序。
+     */
     public static List<Player> collectTargets(Player giver, GiveoutScope scope) {
         if (giver.level().isClientSide()) return List.of();
         List<Player> targets = new ArrayList<>();
@@ -209,17 +221,19 @@ public final class RandomCardHandler {
         List<Player> distinct = targets.stream().distinct().filter(Player::isAlive).toList();
         if (scope.maxTargets >= 0 && distinct.size() > scope.maxTargets) {
             List<Player> copy = new ArrayList<>(distinct);
-            Collections.shuffle(copy);
+            copy.sort(java.util.Comparator
+                    .comparingDouble((Player p) -> p.distanceToSqr(giver))
+                    .thenComparing((Player p) -> p.getUUID().toString()));
             return copy.subList(0, scope.maxTargets);
         }
         return distinct;
     }
 
-    // 按作用域向玩家发放随机卡(返回实际发放数量)
+    // 按作用域向玩家发放随机卡(返回实际发放数量;**giver 透传**到发牌漏斗)
     public static int giveCards(Player giver, CardCategory category, GiveoutScope scope) {
         List<Player> targets = collectTargets(giver, scope);
         for (Player target : targets) {
-            giveCardTo(target, category);
+            giveCardTo(giver, target, category);
         }
         return targets.size();
     }

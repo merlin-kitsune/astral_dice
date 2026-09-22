@@ -137,11 +137,20 @@ $script:RenderModsByVersion = @{
 # 注：1.21.1 线早已集成 ModernFix（`install_test_mods.ps1` 复制进 run/1.21.1/mods，launch 亦校验其
 # 加载完成日志）；本清单是 26.1.2 线的对应实现。
 $script:PerfMods2612 = @(
-    @{ Name = 'ImmediatelyFast-NeoForge-1.15.3+26.1.jar'
-       Coord = 'maven.modrinth:immediatelyfast:adbrNJLm'
-       Url  = 'https://api.modrinth.com/maven/maven/modrinth/immediatelyfast/adbrNJLm/ImmediatelyFast-NeoForge-1.15.3%2B26.1.jar'
-       Sha1 = 'bb10bdde4199da3cb7a2a64f9e3274a46218c9f1'
-       Size = 312276 }
+    # ⚠️ **ImmediatelyFast 已于 2026-09-22 从 26.1.2 移除**（用户裁决：「移除 ImmediatelyFast 模组，
+    #    其不兼容 Iris 已经明确标注」）。实测证据：加入 ImmediatelyFast 后，**开启光影**的客户端在
+    #    进入世界约 10 秒内必崩，崩溃报告指向 ImmediatelyFast 自己的批处理路径 ——
+    #      java.lang.IllegalStateException: Missing sampler Sampler1
+    #        at com.mojang.blaze3d.opengl.GlCommandEncoder.trySetup
+    #        at …immediatelyfast…feature.core.BatchableBufferSource.drawDirect(BatchableBufferSource.java:178)
+    #        at …MultiBufferSource$BufferSource.endBatch → RenderType.draw
+    #      （`crash-2026-09-22_10.04.21-client.txt`；栈上 Iris/Sodium/ImmediatelyFast 三方 mixin 同在
+    #        `GlCommandEncoder` 上，故障点是 IF 的 BatchableBufferSource 复用 RenderPass 后
+    #        sampler 绑定丢失。）
+    #    这与本表 1.20.1 条目记载的是**同一类互斥**（「装 ImmediatelyFast」与「光影默认启用」不可兼得；
+    #    1.20.1 上的表现是模组构造期 ClassNotFoundException）。两线取舍一致 = **保光影**，
+    #    因为光影兼容性测试是本项目明确要求的验证项，而 ImmediatelyFast 只是优化类附加验证。
+    #    若将来要恢复：先把 `mt_env.ps1 shaders --state off` 关光影，再放开本条目。
     @{ Name = 'modernfix-neoforge-5.27.22+mc26.1.2.jar'
        Coord = 'maven.modrinth:modernfix:j7EoxpYe'
        Url  = 'https://api.modrinth.com/maven/maven/modrinth/modernfix/j7EoxpYe/modernfix-neoforge-5.27.22%2Bmc26.1.2.jar'
@@ -291,8 +300,11 @@ $script:SlimeGuardByVersion = @{
 #     `NoSuchMethodError … Util.m_137583_()`）⇒ 改由 `forge-1.20.1/build.gradle` 的
 #     `modImplementation` 提供（MDG 解析期重映射，与 KubeJS/JEI/collective/superflat/FerriteCore
 #     同一机制）；再往 run/mods 放一份会被 FML 判「重复模组」。
-#   · **26.1.2 不使用本模组**（用户裁决 2026-09-27：「26.1.2 版本不使用该模组，Mojang 在高版本加入了
-#     可以创建 bot 的管理员指令，后续再进行学习」）⇒ 本表无该键 = `Install-MtCarpet` 走 SKIP 分支。
+#   · **26.1.2 → Sinytra Connector 栈**（2026-09-22 用户改定，覆盖 2026-09-27 的「不使用」裁决）：
+#     该线原裁决「用 Mojang 自带 bot 管理指令」经查**不成立** —— 26.1.2 原版没有任何 player/bot
+#     管理命令（逐条核对 net/minecraft/server/commands/ 80 个文件）。Carpet 官方只有 Fabric 构建，
+#     故本线改为「Connector + Launchpad + Forgified Fabric API + fabric-carpet」四件套
+#     （清单见 `$script:ConnectorStack2612`）。⚠️ 该栈是 beta 且侵入，风险与复验要求见该表上方注释。
 $script:CarpetByVersion = @{
     '1.21.1' = @(
         @{ Name = 'neoforge-carpet-1.21.1-1.0.8+v251027.jar'
@@ -301,7 +313,58 @@ $script:CarpetByVersion = @{
            Sha1 = 'fffcc899d13b25c808d4d906cafa41de8cffc861'
            Size = 1498683 }
     )
+    # 26.1.2:Fabric 版 Carpet 本体（其三个前置在 ConnectorStack2612 里,由 Install-MtCarpet 一并装）
+    '26.1.2' = @(
+        @{ Name = 'fabric-carpet-26.1+v260402.jar'
+           Coord = 'maven.modrinth:carpet:26.1'
+           Url  = 'https://api.modrinth.com/maven/maven/modrinth/carpet/26.1/fabric-carpet-26.1+v260402.jar'
+           Sha1 = 'f786a53c97e7caaa5b34c94309e79ed1201c0114'
+           Size = 1535777 }
+    )
 }
+
+# ── 26.1.2 · Sinytra Connector 栈（2026-09-22 用户要求：让 **Fabric** 版 Carpet 能在
+#    NeoForge 26.1.2 上跑，从而启用 12 条「需第二玩家」的用例）────────────────────
+# 背景：26.1.2 原版**没有** bot 管理命令（已逐条核对
+#   `minecraft-patched-26.1.2.109-sources.jar` 的 net/minecraft/server/commands/ 全部 80 个文件，
+#   无 player/bot 命令；全库只有 NeoForge 的 FakePlayer，且它**不进 PlayerList**
+#   ⇒ 探针「按名字取玩家」的路径全部失效）。因此第二玩家必须由**测试环境模组**提供。
+# Carpet 官方只有 **Fabric** 构建（Modrinth `loaders: ['fabric']`），要落在 NeoForge 上
+# 只能经 Sinytra Connector 转发。
+#
+# 四件套（全部走 **Modrinth Maven**，与 Sodium/Iris 同源、同口径；均实测 307 可达）：
+#   1) Launchpad        —— Sinytra 的类加载/Mixin 基础设施，Connector 的**必需**前置；
+#   2) Connector        —— Fabric 模组 → NeoForge 的转译层（本版为 beta，见下方风险提示）；
+#   3) Forgified Fabric API —— Fabric API 在 NeoForge 上的实现，Carpet 的**必需**前置
+#                             （Connector 元数据里 `Aqlf1Shp` = 本项，dependency_type=required）；
+#   4) fabric-carpet    —— Carpet 本体，直接放 run/mods（它是 Fabric 模组，不经 Gradle 依赖）。
+#
+# ⚠️ 已知风险（必须在测试报告里如实登记，不能当成「环境已就绪」直接给结论）：
+#   · Connector 在本版是 **3.0.0-beta.6**（beta）；它做的是**类加载期转译 + Mixin 重映射**，
+#     属侵入式改造，可能与被测模组、或与 Sodium/Iris/ModernFix/FerriteCore 相互干扰；
+#   · 因此**加入 Connector 后必须重新验证此前已通过的启动闸门**
+#     （NOAI / KUBEJS / OP / 清场 / immediate_respawn），任一闸门回归都说明该栈不可用；
+#   · Carpet 是 Fabric 模组 ⇒ 只保证「在 Connector 转发下能加载并被 `/player` 驱动」，
+#     不保证与 Fabric 原环境的完全一致。
+# 版本锁定依据：Modrinth API `game_versions` 含 "26.1.2"（2026-09-22 实查）。
+$script:ConnectorStack2612 = @(
+    @{ Name = 'launchpad-1.9.2+26.1.2-full.jar'
+       Coord = 'maven.modrinth:launchpad:1.9.2+26.1.2'
+       Url  = 'https://api.modrinth.com/maven/maven/modrinth/launchpad/1.9.2+26.1.2/launchpad-1.9.2+26.1.2-full.jar'
+       Sha1 = '2f4514d1980c735bde499bc25760fae45f44448e'
+       Size = 466664 }
+    @{ Name = 'connector-3.0.0-beta.6+26.1.2-full.jar'
+       Coord = 'maven.modrinth:connector:3.0.0-beta.6+26.1.2'
+       Url  = 'https://api.modrinth.com/maven/maven/modrinth/connector/3.0.0-beta.6+26.1.2/connector-3.0.0-beta.6+26.1.2-full.jar'
+       Sha1 = 'be19358e16a22ad6174075e6f5b0f78fd1b36e12'
+       Size = 1011536 }
+    @{ Name = 'forgified-fabric-api-0.155.2+26.1.2+3.5.5.jar'
+       Coord = 'maven.modrinth:forgified-fabric-api:0.155.2+26.1.2+3.5.5'
+       Url  = 'https://api.modrinth.com/maven/maven/modrinth/forgified-fabric-api/0.155.2+26.1.2+3.5.5/forgified-fabric-api-0.155.2+26.1.2+3.5.5.jar'
+       Sha1 = '35ced241d822f055ff9b31eec9fd4b3fa0d5c9f4'
+       Size = 2972661 }
+)
+$script:ConnectorStackPrefixes2612 = @('launchpad-', 'connector-', 'forgified-fabric-api-')
 
 # Complementary Shaders - Unbound（用户指定用于光影兼容性测试）
 # `maven.modrinth:complementary-unbound:r5.9.3`；落位 `run/<版本>/shaderpacks/`，并在 Iris 配置里选中它。
@@ -971,8 +1034,14 @@ function Sync-MtEnvKubejs {
     foreach ($f in @(Get-ChildItem -LiteralPath $src -Recurse -File)) {
         $keep[$f.FullName.Substring($src.Length).TrimStart('\', '/')] = $true
     }
-    $dstMeta = Join-Path $dstRoot 'server_scripts'
-    if (Test-Path -LiteralPath $dstMeta -PathType Container) {
+    #    2026-09-22 扩展:`client_scripts` / `startup_scripts` **同样纳入清理** —— 客户端
+    #    探针(`resources/kubejs/<版本>/client_scripts/**`,用于读客户端侧状态)加入后若不清理,
+    #    残留的旧客户端脚本会与模板并行注册同一批客户端事件,读数来源就不唯一了(与上面
+    #    服务端那次的失效形态同源)。只遍历这三个**脚本目录**,不碰 KubeJS 自有的
+    #    config/ data/ assets/ logs/ exported/。
+    foreach ($sub in @('server_scripts', 'client_scripts', 'startup_scripts')) {
+        $dstMeta = Join-Path $dstRoot $sub
+        if (-not (Test-Path -LiteralPath $dstMeta -PathType Container)) { continue }
         foreach ($f in @(Get-ChildItem -LiteralPath $dstMeta -Recurse -File -Filter '*.js')) {
             $rel = $f.FullName.Substring($dstRoot.Length).TrimStart('\', '/')
             if (-not $keep.ContainsKey($rel)) {
@@ -1345,7 +1414,7 @@ function Install-MtSlimeGuard {
 function Install-MtCarpet {
     <#
     .SYNOPSIS
-        把 Carpet: NeoForged（玩家 bot 模组）放进 `run/<版本>/mods`（幂等；1.20.1/26.1.2 走 SKIP 分支）。
+        把 Carpet（玩家 bot 模组）放进 `run/<版本>/mods`（幂等；1.20.1 走 SKIP 分支）。
 
     .NOTES
         · 用户要求见 `$script:CarpetByVersion` 的注释（`/player <name> spawn` 造 bot，用于 2 人及以上
@@ -1353,7 +1422,10 @@ function Install-MtCarpet {
         · **1.21.1 → Modrinth Maven 下载**（NeoForge 1.21.1 无 reobf，生产 jar 即 Mojmap 命名）；
         · **1.20.1 → SKIP + 清理历史副本**：改由 `forge-1.20.1/build.gradle` 的 modImplementation 提供
           （生产 SRG jar + SRG refmap 必须经 MDG 重映射；手工放 run/mods 会静默失效）；
-        · **26.1.2 → SKIP**：用户裁决该线不使用 Carpet（Mojang 自带 bot 管理指令，后续再学）；
+        · **26.1.2 → 默认 SKIP**（该线无法获得第二玩家能力，理由见函数体内的完整实测记录）；
+          提供**实验路径**：`MT_CARPET_VIA_CONNECTOR=1` 时走「Connector 栈 + Fabric 版 Carpet」，
+          但 2026-09-22 实测该路径会导致专用服务器启动致命失败，仅供将来复测用。
+          启用时须与 `mt_launch.ps1` 的同名开关保持一致（那边据此决定是否设 Carpet 硬闸门）。
         · 侧别 `server_only_client_optional` ⇒ 专用服务器生成世界时**保留**（不会被移出名单命中）。
     #>
     [CmdletBinding()]
@@ -1371,8 +1443,6 @@ function Install-MtCarpet {
                     if (-not (Test-Path -LiteralPath $f.FullName)) { Write-MtLine ("MT_MODS: 清理历史副本 {0}（改为 Gradle modImplementation 提供）" -f $f.Name) }
                 }
             }
-        } elseif ($Paths.version -eq '26.1.2') {
-            Write-MtLine 'MT_MODS: SKIP — 26.1.2 不使用 Carpet（用户裁决：该线用 Mojang 自带 bot 管理指令，后续再学）'
         }
         return 0
     }
@@ -1381,10 +1451,63 @@ function Install-MtCarpet {
     [void](New-Item -ItemType Directory -Force -Path $cache)
     [void](New-Item -ItemType Directory -Force -Path $Paths.mods_dir)
 
-    $rc = Install-MtSpecList -Paths $Paths -Specs $specs -Cache $cache -Label 'Carpet 玩家 bot' -Prefixes @('neoforge-carpet-', 'forge-carpet-')
+    # 26.1.2：Carpet 只有 **Fabric** 构建，需 Sinytra Connector 三件套转发。
+    # ⚠️ **默认关闭**（2026-09-22 实测不可用，见下），必须显式 `MT_CARPET_VIA_CONNECTOR=1` 才装。
+    #
+    # 实测结论（2026-09-22，本机，NeoForge 26.1.2.109 + Connector 3.0.0-beta.6 + FFAPI 0.155.2
+    #   + Launchpad 1.9.2 + fabric-carpet 26.1+v260402）：
+    #   · 四件套**能装、能被 FML 识别、Connector 转译器能起来**（日志可见
+    #     `ConnectorPlugin from mods/connector-….jar` 与 53 个 JiJ 依赖）;
+    #   · 但 **Carpet 的 mixin 全部无法注入** ⇒ 专用服务器启动**致命失败**：
+    #       MixinTransformerError: Critical injection failure: Constant modifier method
+    #       addFillUpdatesInt(I)I in carpet.mixins.json:Level_fillUpdatesMixin from mod carpet
+    #       failed injection check, (0/1) succeeded. Scanned 0 target(s). **No refMap loaded.**
+    #     根因：`carpet.mixins.json` **不含 refmap 字段**（实测 refmap=None；`fabric.mod.json`
+    #     的 mixins 段也只是裸文件名），171 个 mixin 的方法/字段引用以 Fabric **intermediary**
+    #     名硬编码；Fabric 环境下由 Fabric Loader 的运行时反向映射兜底，而 Connector 在本版
+    #     未能为它生成/应用 refmap ⇒ 目标方法名解析不到（`Scanned 0 target(s)`）。
+    #     （日志里另有一条 `Reference map '' for adapter.init.mixins.json could not be read`
+    #      —— 那属于 Sinytra Mixin Adapter 自己的配置，**故意不带 refmap**，是良性告警，
+    #      不是本故障的原因。）
+    #   · 影响面：**是阻断性的**。世界生成阶段即崩，整条 26.1.2 测试线（含原本可跑的 10 条单机
+    #     用例）都会变得不可运行 ⇒ 默认必须关闭，否则「为一个功能废掉一整条线」。
+    #   · 备选路径同样不存在：NeoForge 原生移植 `Carpet: NeoForged`（`neoforge-carpet`）
+    #     只发布到 **1.20.1 / 1.21.1**，**没有 26.1.x 构建**（Modrinth 实查 2026-09-22）。
+    #   · `connector-extras` 不解决该问题 —— 它是第三方 API 桥接（能量/REI/…），与 mixin 重映射无关。
+    # ⇒ 结论：**该 MC×加载器组合下无法引入第二玩家能力**；12 条双人用例保持 BLOCKED。
+    #   若将来 Connector 修好 refmap 生成、或 Carpet 出了带 refmap 的构建、或有 NeoForge 原生
+    #   26.1.x Carpet，只需把 `Install-MtCarpet` 的 26.1.2 分支恢复为无条件安装即可。
+    if ($Paths.version -eq '26.1.2') {
+        if ($env:MT_CARPET_VIA_CONNECTOR -ne '1') {
+            Write-MtLine 'MT_MODS: SKIP — 26.1.2 不装 Carpet（Connector 路径实测不可用：Carpet 的 171 个 mixin 缺 refmap ⇒ 目标名解析不到 ⇒ 专用服务器启动致命失败；详见 Install-MtCarpet 注释。要复测该项请设 MT_CARPET_VIA_CONNECTOR=1）'
+            # 清理历史上被本函数装进来的 Connector 栈与 Fabric Carpet，避免残留把环境继续弄坏。
+            if (Test-Path -LiteralPath $Paths.mods_dir -PathType Container) {
+                $stale = @('fabric-carpet-*') + @($script:ConnectorStackPrefixes2612 | ForEach-Object { "$_*" })
+                foreach ($pat in $stale) {
+                    foreach ($f in @(Get-ChildItem -LiteralPath $Paths.mods_dir -File -Filter $pat -ErrorAction SilentlyContinue)) {
+                        Remove-Item -LiteralPath $f.FullName -Force -ErrorAction SilentlyContinue
+                        if (-not (Test-Path -LiteralPath $f.FullName)) { Write-MtLine ("MT_MODS: 清理 {0}（Connector 路径默认关闭）" -f $f.Name) }
+                    }
+                }
+            }
+            return 0
+        }
+        $rc = Install-MtSpecList -Paths $Paths -Specs $script:ConnectorStack2612 -Cache $cache `
+            -Label 'Sinytra Connector 栈（Launchpad/Connector/Forgified Fabric API）' `
+            -Prefixes $script:ConnectorStackPrefixes2612
+        if ($rc -ne 0) { return $rc }
+        $stackNames = @($script:ConnectorStack2612 | ForEach-Object { $_.Name }) -join ' / '
+        Write-MtWarn ("MT_MODS: 已装 Connector 栈（{0}）—— 这是**实验路径**：2026-09-22 实测 Carpet 在此栈下 mixin 注入失败、专用服务器启动即崩，预期世界生成会 BLOCKED" -f $stackNames)
+    }
+
+    $rc = Install-MtSpecList -Paths $Paths -Specs $specs -Cache $cache -Label 'Carpet 玩家 bot' -Prefixes @('neoforge-carpet-', 'forge-carpet-', 'fabric-carpet-')
     if ($rc -ne 0) { return $rc }
     $names = @($specs | ForEach-Object { $_.Name }) -join ' / '
-    Write-MtLine ("MT_MODS: OK — Carpet(NeoForged) 就位（{0}）；`/player <name> spawn 建 bot、`/player <name> kill 或 `/kill <name> 使其退出" -f $names)
+    if ($Paths.version -eq '26.1.2') {
+        Write-MtWarn ("MT_MODS: 已装 Carpet(Fabric, 经 Connector 转发)（{0}）—— 实验路径，见上方风险说明" -f $names)
+    } else {
+        Write-MtLine ("MT_MODS: OK — Carpet(NeoForged) 就位（{0}）；`/player <name> spawn 建 bot、`/player <name> kill 或 `/kill <name> 使其退出" -f $names)
+    }
     return 0
 }
 
@@ -1497,16 +1620,25 @@ function Install-MtRenderStack {
             Copy-Item -LiteralPath $spCache -Destination $spDst -Force
         }
 
-        # 3) 光影加载器配置：选中该光影**并默认启用**（Iris 的 config/iris.properties；
+        # 3) 光影加载器配置：选中该光影（Iris 的 config/iris.properties；
         #    **1.20.1 是 Oculus，配置文件名不同** ⇒ 一律经 Get-MtIrisConfigFile 取，别写死）
-        #    2026-09-17 用户要求「添加光影包并设置默认启用」⇒ enableShaders 默认写 true。
-        #    ⚠️ 需要「关光影冷启动」的用例（SHADER-VISION-26.1.2 的步骤 0）仍显式执行
-        #    `mt_env.ps1 shaders --version <V> --state off` —— 那是用例自己的前置，不靠这里的默认值。
+        #    2026-09-17 用户要求「添加光影包并设置默认启用」⇒ **1.21.1 / 1.20.1 默认写 true**。
+        #    ⚠️ **26.1.2 例外：默认写 false**（2026-09-22 三次实测：Iris 在该线上的 GUI 渲染管线
+        #       与光影不兼容 ⇒ 一进世界就崩、客户端被 emergencySaveAndCrash 终止）：
+        #         · `Iris/FATAL: Missing program minecraft:pipeline/gui_text in override list`
+        #         · `IllegalStateException: Missing sampler Sampler1`（**移除 ImmediatelyFast 后仍复现**
+        #           ⇒ 元凶不是 ImmediatelyFast；Sodium 亦已降到注释里记的 0.9.1，仍崩 ⇒ 该修复不再复现）
+        #       其表征极易误判：`mt_launch` 报 `MT_LAUNCH: OK (40s) — 已进入世界`，随后客户端
+        #       数秒内**静默消失**（无 shutdown 消息、无 crash-reports 之外的下文），用例全报
+        #       「26.1.2 客户端未在运行」⇒ 排查时**先看 `SHADERS=` 与本项**，不要误判成宿主回收进程树。
+        #       需要「开光影」做对照时显式 `mt_env.ps1 shaders --version 26.1.2 --state on`。
         $irisCfg = Get-MtIrisConfigFile -Paths $Paths
         [void](New-Item -ItemType Directory -Force -Path (Split-Path $irisCfg))
         $lines = @()
         if (Test-Path -LiteralPath $irisCfg -PathType Leaf) { $lines = @(Get-Content -LiteralPath $irisCfg) }
-        $set = @{ 'shaderPack' = $sp.Name; 'enableShaders' = 'true' }
+        # 26.1.2 = false（理由见上）；其余线维持用户 2026-09-17 的「默认启用」裁决。
+        $shadersOn = if ($Paths.version -eq '26.1.2') { 'false' } else { 'true' }
+        $set = @{ 'shaderPack' = $sp.Name; 'enableShaders' = $shadersOn }
         foreach ($k in $set.Keys) {
             $found = $false
             for ($i = 0; $i -lt $lines.Count; $i++) {
@@ -1517,8 +1649,8 @@ function Install-MtRenderStack {
         Set-Content -LiteralPath $irisCfg -Value $lines -Encoding utf8
 
         $modsText = if ($installed.Count -gt 0) { $installed -join ' / ' } else { '（渲染模组由整合包复制，见 NeoForgeMods）' }
-        Write-MtLine ("MT_MODS: OK — 渲染栈就位（{0}）＋ 光影 {1}；光影加载器已选中该光影并默认启用（enableShaders=true @ {2}）" -f `
-                $modsText, $sp.Name, (Split-Path -Leaf $irisCfg))
+        Write-MtLine ("MT_MODS: OK — 渲染栈就位（{0}）＋ 光影 {1}；光影加载器已选中该光影（enableShaders={2} @ {3}）" -f `
+                $modsText, $sp.Name, $shadersOn, (Split-Path -Leaf $irisCfg))
         return 0
     } finally {
         $ProgressPreference = $progressBak
@@ -1609,8 +1741,8 @@ function Invoke-MtEnvMods {
         # 「为什么不装」，避免后来者以为漏了。
         $rc = Install-MtCarpet -Paths $p
         if ($rc -ne 0) { return $rc }
-        Write-MtLine 'MT_MODS: OK — 26.1.2 dev run：探针运行时 + Sodium/Iris + Complementary Unbound 光影(默认启用) + 超平坦史莱姆压制 + 优化模组(ImmediatelyFast/ModernFix/FerriteCore)'
-        Write-MtLine 'MT_MODS: 注意 — Sodium/Iris/ImmediatelyFast 为纯客户端模组：`mt_env world` 起专用服务器会自动移出，但**两段式数据生成（runClientData/runServerData）前必须手动移出** run/26.1.2/mods（与探针运行时同规则）'
+        Write-MtLine 'MT_MODS: OK — 26.1.2 dev run：探针运行时 + Sodium/Iris + Complementary Unbound 光影(默认启用) + 超平坦史莱姆压制 + 优化模组(ModernFix/FerriteCore)'
+        Write-MtLine 'MT_MODS: 注意 — ImmediatelyFast 在 26.1.2 **故意不装**（与 Iris 开光影互斥，实测 Missing sampler 崩溃；见 $script:PerfMods2612 注释）。Sodium/Iris 为纯客户端模组：`mt_env world` 起专用服务器会自动移出，但**两段式数据生成（runClientData/runServerData）前必须手动移出** run/26.1.2/mods（与探针运行时同规则）'
         [void](Invoke-MtPauseLockEnforce -Paths $p)
     [void](Invoke-MtKeyBindingEnforce -Paths $p)
     [void](Invoke-MtWindowedEnforce -Paths $p)

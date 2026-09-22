@@ -35,10 +35,10 @@ Astral Dice is a survival expansion mod built around dice. Equip a dice and ever
 |---|---|---|---|---|---|---|
 | ✅ | `neoforge-1.21.1` | 1.21.1 | NeoForge 21.1.235 | 21 | 1.2.1-hotfix | ✅ |
 | ✅ | `forge-1.20.1` | 1.20.1 | Forge 47.4.10 | 17 | 1.2.1-hotfix | ✅ |
-| 🧪 | `neoforge-26.1.2` | 26.1.2 | NeoForge 26.1.2.109 | 25 | 1.2.1-beta.2 | ✅ |
+| 🧪 | `neoforge-26.1.2` | 26.1.2 | NeoForge 26.1.2.109 | 25 | 2.0.0-SNAPSHOT.13 | ✅ |
 
 - `neoforge-1.21.1` 与 `forge-1.20.1` 是**发布线**（功能对等，两者的 jar 随每个 GitHub Release 发布）。
-- `neoforge-26.1.2` 是**低优先级移植线**：版本号带 `-beta`、**不单独打 tag / 发 Release**，但其 jar 已作为**第三个附件随发布线的 Release 一并发布**（CI 三线同批构建，见 `.github/workflows/build.yml`）；内容以发布线为准并在发布线完成后迁移，迁移后需通过功能一致性测试。该线**无** Iron's Spells 'n Spellbooks 联动（上游无 26.1.x 构建）。
+- `neoforge-26.1.2` 是**移植线**（2026-09-19 起已纳入主线、与另两线同级同步，不再是低优先级线）：**不单独打 tag / 发 Release**，但其 jar 作为**第三个附件随发布线的 Release 一并发布**（CI 三线同批构建，见 `.github/workflows/build.yml`）。该线**无** Iron's Spells 'n Spellbooks 联动（上游无 26.1.x 构建）。
 
 | 前置/联动 | 要求 |
 |---|---|
@@ -73,10 +73,10 @@ Astral Dice is a survival expansion mod built around dice. Equip a dice and ever
 |---|---|---|---|---|---|---|
 | ✅ | `neoforge-1.21.1` | 1.21.1 | NeoForge 21.1.235 | 21 | 1.2.1-hotfix | ✅ |
 | ✅ | `forge-1.20.1` | 1.20.1 | Forge 47.4.10 | 17 | 1.2.1-hotfix | ✅ |
-| 🧪 | `neoforge-26.1.2` | 26.1.2 | NeoForge 26.1.2.109 | 25 | 1.2.1-beta.2 | ✅ |
+| 🧪 | `neoforge-26.1.2` | 26.1.2 | NeoForge 26.1.2.109 | 25 | 2.0.0-SNAPSHOT.13 | ✅ |
 
 - `neoforge-1.21.1` and `forge-1.20.1` are the **release lines** (feature-parity pair; both jars are published with every GitHub Release).
-- `neoforge-26.1.2` is the **low-priority port line**: its version carries `-beta`, it **never gets its own tag or Release**, but its jar is shipped as a **third attachment on the release lines' Releases** (CI builds all three lines together, see `.github/workflows/build.yml`); content is ported from the release lines *after* they are done, followed by a functional-consistency test. This line has **no** Iron's Spells 'n Spellbooks integration (upstream ships no 26.1.x build).
+- `neoforge-26.1.2` is the **port line** (since 2026-09-19 it belongs to the mainline and is synchronised at the same level as the other two, no longer low-priority): it **never gets its own tag or Release**, but its jar is shipped as a **third attachment on the release lines' Releases** (CI builds all three lines together, see `.github/workflows/build.yml`). This line has **no** Iron's Spells 'n Spellbooks integration (upstream ships no 26.1.x build).
 
 | Dependency | Requirement |
 |---|---|

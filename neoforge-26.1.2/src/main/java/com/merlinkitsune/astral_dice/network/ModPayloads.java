@@ -71,5 +71,25 @@ public class ModPayloads {
                 TargetSelectCancelPayload.STREAM_CODEC,
                 TargetSelectCancelPayload::handle
         );
+        // === 星币钱包（26.1.2 冒烟测试 2026-09-22 补齐：原移植漏注册这两条）============
+        // 缺陷表现：`StarCoinBalanceSync` 在玩家登录/重生时会 `PacketDistributor.sendToPlayer`
+        // 一个未注册的载荷 ⇒ NeoForge 在网络层拒绝 ⇒ 服务端抛
+        //   "Payload astral_dice:star_coin_balance may not be sent to the client!"
+        // ⇒ 原版 `ServerConfigurationPacketListenerImpl` 报 `Couldn't place player in world`
+        // ⇒ 玩家被踢（`lost connection: 无效的玩家数据`）、单人服务器随即停机。
+        // 因为**登录即发包**，该缺陷是「必现、且表现为进不去世界」，不是只在用钱包时才出问题。
+        // 顺序与 1.21.1 基准 `neoforge-1.21.1/.../network/ModPayloads.java` 第 68-78 行逐条一致
+        // （注册顺序 = 网络同步顺序，不得随意插入）。
+        registrar.playToServer(
+                StarCoinWalletPayload.TYPE,
+                StarCoinWalletPayload.STREAM_CODEC,
+                StarCoinWalletPayload::handle
+        );
+        // 钱包余额 → 客户端（余额条显示；值变化才发，见 economy/StarCoinBalanceSync）
+        registrar.playToClient(
+                StarCoinBalancePayload.TYPE,
+                StarCoinBalancePayload.STREAM_CODEC,
+                StarCoinBalancePayload::handle
+        );
     }
 }

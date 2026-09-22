@@ -3,7 +3,7 @@
 # -*- coding: utf-8 -*-
 <#
 .SYNOPSIS
-    语言文件同步检查(zh_cn.json <-> en_us.json) —— tools/check_lang_sync.py（已于 92fbeaf 删除；取回：`git show 92fbeaf^:tools/check_lang_sync.py`）的 1:1 PowerShell 移植。
+    语言文件同步检查(zh_cn.json <-> en_us.json，<b>并可选地覆盖 ja_jp.json</b>) —— tools/check_lang_sync.py（已于 92fbeaf 删除；取回：`git show 92fbeaf^:tools/check_lang_sync.py`）的 1:1 PowerShell 移植。
 
 .DESCRIPTION
     用法:
@@ -13,6 +13,7 @@
 
     规则:
     - zh_cn.json 与 en_us.json 的 key 集合必须完全一致(新增/删除 key 必须同步两侧)。
+    - **ja_jp.json(若存在)以 zh_cn.json 为基线**：key 集合必须与 zh_cn 完全一致，且「未转义字面百分号」同口径判定(见下条)；结构标记差异仅告警。
     - lang 值里出现「未转义的字面百分号」(单个 %,既不是 %% 也不是合法转换说明符)一律 **FAIL**:
       该值经 I18n.get/String.format 会抛 UnknownFormatConversionException ⇒ **客户端崩溃**
       (2026-09-21 1.21.1 教主立牌 `tooltip.astral_dice.sign.teru_active` 的 `§e50%§7` 实测崩游戏,
@@ -395,6 +396,23 @@ function Invoke-LangDirCheck {
 
 $zhPath = Join-Path $LangDir 'zh_cn.json'
 $enPath = Join-Path $LangDir 'en_us.json'
+$jaPath = Join-Path $LangDir 'ja_jp.json'
+
+# ja_jp.json 为**可选**语言(存在即校验)：以 zh_cn 为基线比对 key 集合，并扫描未转义字面百分号。
+$ja = $null
+$jaSet = $null
+if (Test-Path -LiteralPath $jaPath -PathType Leaf) {
+    $ja = Read-LangJson $jaPath
+    if (-not $ja.Ok) {
+        if ($ja.Kind -eq 'fatal') {
+            Write-Stderr $ja.Message
+            return 1
+        }
+        Write-Stdout "[FAIL] 无法读取/解析语言文件: $($ja.Message)"
+        return 1
+    }
+    $jaSet = New-OrdinalSet $ja.Keys
+}
 
 $zh = Read-LangJson $zhPath
 if (-not $zh.Ok) {
@@ -435,6 +453,22 @@ if ($extraInEn.Count -gt 0) {
     foreach ($key in $extraInEn) { Write-Stdout ('  - ' + $key) }
 }
 
+# ja_jp(可选)：key 集合必须与 zh_cn 完全一致
+if ($null -ne $jaSet) {
+    $missingInJa = Sort-Ordinal ([string[]]@($zhSet | Where-Object { -not $jaSet.Contains($_) }))
+    $extraInJa = Sort-Ordinal ([string[]]@($jaSet | Where-Object { -not $zhSet.Contains($_) }))
+    if ($missingInJa.Count -gt 0) {
+        $errors++
+        Write-Stdout '[FAIL] 以下 key 存在于 zh_cn.json 但缺失于 ja_jp.json(请在 ja_jp.json 补充对应日文):'
+        foreach ($key in $missingInJa) { Write-Stdout ('  - ' + $key) }
+    }
+    if ($extraInJa.Count -gt 0) {
+        $errors++
+        Write-Stdout '[FAIL] 以下 key 存在于 ja_jp.json 但缺失于 zh_cn.json(请同步删除或补回中文):'
+        foreach ($key in $extraInJa) { Write-Stdout ('  - ' + $key) }
+    }
+}
+
 $common = Sort-Ordinal ([string[]]@($zhSet | Where-Object { $enSet.Contains($_) }))
 
 # 极退化输入:根节点不是对象时,CPython 会在 zh[key] / en[key] 上抛 TypeError(未捕获)
@@ -466,6 +500,10 @@ foreach ($key in $common) {
         [pscustomobject]@{ Name = 'zh'; Text = $zhVal },
         [pscustomobject]@{ Name = 'en'; Text = $enVal }
     )
+    if ($null -ne $jaSet -and $jaSet.Contains($key)) {
+        $jaVal = $ja.Map[$key]
+        if ($jaVal -is [string]) { $pairs += [pscustomobject]@{ Name = 'ja'; Text = $jaVal } }
+    }
     foreach ($pair in $pairs) {
         $text = $pair.Text
         $i = 0
@@ -485,6 +523,15 @@ foreach ($key in $common) {
     if ($zm -ne $em) {
         Write-Stdout "[WARN] ${key}: 结构标记不一致(占位符/换行/颜色码) zh=$zm en=$em"
     }
+    if ($null -ne $jaSet -and $jaSet.Contains($key)) {
+        $jaValForMarker = $ja.Map[$key]
+        if ($jaValForMarker -is [string]) {
+            $jm = Get-StructureMarkerRepr $jaValForMarker
+            if ($zm -ne $jm) {
+                Write-Stdout "[WARN] ${key}: 结构标记不一致(占位符/换行/颜色码) zh=$zm ja=$jm"
+            }
+        }
+    }
 }
 
 if ($errors) {
@@ -496,7 +543,11 @@ if ($percentErrors) {
 if ($errors -or $percentErrors) {
     return 1
 }
-Write-Stdout "OK: zh_cn.json($($zhSet.Count) keys) 与 en_us.json($($enSet.Count) keys) key 完全一致。"
+if ($null -ne $jaSet) {
+    Write-Stdout "OK: zh_cn.json($($zhSet.Count) keys) 与 en_us.json($($enSet.Count) keys) key 完全一致；ja_jp.json($($jaSet.Count) keys) 与 zh_cn.json key 完全一致。"
+} else {
+    Write-Stdout "OK: zh_cn.json($($zhSet.Count) keys) 与 en_us.json($($enSet.Count) keys) key 完全一致。"
+}
 return 0
 }
 

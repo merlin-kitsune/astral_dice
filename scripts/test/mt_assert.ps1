@@ -120,11 +120,15 @@ $script:SnapshotFile = Join-Path (Join-Path (Get-MtTestDir) 'cases') '.mt_snapsh
 #            tick 回调经 ServerPlayer#sendSystemMessage，两条路都由 ChatComponent 落到
 #            `[CHAT] AP_...`；mt_launch 每次运行前删除该文件，故天然是「本轮增量」。
 # debug  —— 客户端调试日志（Mixin 应用 / 渲染栈加载证据）。
+# kubejs_client —— KubeJS **客户端**脚本日志（logs/kubejs/client.log）。客户端侧状态
+#            （ActionBarManager 的私有 message、TargetSelectionClient.isActive() 等）
+#            **只能**从这里读：客户端状态没有服务端通道，聊天/截图又会被聊天行遮挡与
+#            「缺字形占位符」污染（2026-09-22 实测）。2026-09-22 新增。
 #
 # ⚠️ 已移除的 `probe` 通道（run/<版本>/astral_probe.log）：该文件从未生成 —— KubeJS 的
 #    Java 类过滤器拒绝 java.io，FileWriter 构造失败又被 try/catch 静默吞掉，表现为
 #    「服务端权威通道不存在」，把测试链故障伪装成修复无效。不要再加回来。
-$script:LogSources = [ordered]@{ 'latest' = 'latest_log'; 'debug' = 'debug_log' }
+$script:LogSources = [ordered]@{ 'latest' = 'latest_log'; 'debug' = 'debug_log'; 'kubejs_client' = 'kubejs_client_log' }
 
 $script:TAG_UTF8 = [System.Text.UTF8Encoding]::new($false, $false)
 

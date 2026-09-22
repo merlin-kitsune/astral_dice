@@ -1,0 +1,157 @@
+{
+  "case_id": "TARGETSEL-PROMPT-1.21.1",
+  "title": "目标选择器 actionbar 验收：主动取消 + 超时两条提示（2026-09-22 用户要求）",
+  "version": "1.21.1",
+  "target": {
+    "type": "feature",
+    "ref": "target-select-actionbar-prompts"
+  },
+  "on_fail": "keep_game_running",
+  "steps": [
+    {
+      "op": "note",
+      "text": "功能验收（2026-09-22 用户要求「对目标选择器增加取消选择和超时的提示文本，固定格式即可」）：`cancel(String reason)` 是唯一取消入口，reason 实测四个值 `esc` / `right_sneak` / `expired` / `screen`。\n改动前只有用户主动取消会给 actionbar 反馈，**超时与第三方界面两条路径全程无提示**；改动后按事件分两键：`expired` ⇒ `msg.astral_dice.target_select.expired`，其余 ⇒ `…cancelled`。\n**判据（权威 = debug 通道，不依赖 2 秒窗口的 case 截图）**：`cancel()` 第一行无条件写 `[Astral Dice][TargetSelectionClient] cancel token=N (reason)`，其后才进二分分支 ⇒\n  · debug 有 `cancel token=N (right_sneak)` ⇒ 走到 `showPrompt(…cancelled)`；\n  · debug 有 `cancel token=N (expired)`     ⇒ 走到 `showPrompt(…expired)`。\n再叠加两条已实测事实即可闭环：① 模组 GUI layer 渲染正常（ACTIONBAR-DIAG 已证：会话中 y=848 有 1598 亮像素的常驻提示；注入的库消息同带可见）；② 两键文案存在于 jar 内 zh_cn/en_us。本用例还要求探针**自截图成功**（`evt=shot:…:res=ok`）—— 那张 PNG 是两条瞬态提示的视觉证据，由人工/视觉模型参考（它不经 mt_capture 登记，故不能做 tag 形式的 vision 断言）。\n⚠️ 关于「为什么不用 case 截图判瞬态提示」：`screenshot` 步骤自身约 1.9s 前置开销（提窗 600ms + 另起 pwsh 进程注入 F2），而瞬态提示只存在 ACTIONBAR_TICKS=40 tick = 2.0 秒。两轮实测分别差 0.3s / 0.5s 错过 ⇒ 该窗口的视觉捕获由**客户端探针自截图**承担（延后 2 拍取帧，落在 https:// 的 run/<版本>/screenshots/ 下），本用例的 screenshot 步骤只作尽力而为的补充；判定权威在 debug 通道。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode creative",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/time set midnight",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/tp @s ~ ~ ~ 0 0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "note",
+      "text": "【阶段 1：主动取消】进入选择态后用「右键 + 潜行」取消 ⇒ 期望 actionbar 出「目标选择已取消」（探针在该拍后第 2 拍自截图）。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astral_dice targetselect living",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 2500
+    },
+    {
+      "op": "screenshot",
+      "tag": "tsp-A-steady",
+      "mode": "f2"
+    },
+    {
+      "op": "inject_mouse",
+      "button": "right",
+      "shift": true,
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "screenshot",
+      "tag": "tsp-B-cancelled",
+      "mode": "f2"
+    },
+    {
+      "op": "note",
+      "text": "【阶段 2：超时】再次进入选择态，等倒计时 600 tick(30s) 走完 ⇒ 期望 actionbar 出「目标选择已超时」。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astral_dice targetselect living",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 29700
+    },
+    {
+      "op": "screenshot",
+      "tag": "tsp-C-expired",
+      "mode": "f2"
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "screenshot",
+      "tag": "tsp-D-expired2",
+      "mode": "f2"
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "debug",
+      "scope": "whole",
+      "pattern": "TargetSelectPrompt\\] key=right_sneak action=cancel"
+    },
+    {
+      "type": "log",
+      "source": "debug",
+      "scope": "whole",
+      "pattern": "TargetSelectionClient\\] cancel token=[0-9]+ \\(right_sneak\\)"
+    },
+    {
+      "type": "log",
+      "source": "debug",
+      "scope": "whole",
+      "pattern": "TargetSelectionClient\\] cancel token=[0-9]+ \\(expired\\)"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "scope": "whole",
+      "pattern": "AP_CDIAG:evt=act:.*:to=1:rem=30"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "scope": "whole",
+      "pattern": "AP_CDIAG:evt=edge:.*:n=2:"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "scope": "whole",
+      "pattern": "AP_CDIAG:evt=shot:.*:res=ok"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "Unknown or incomplete command|未知或不完整的命令"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "crash"
+    },
+    {
+      "type": "vision",
+      "image": "tsp-A-steady",
+      "question": "这是目标选择会话进行中的截图。请在准星下方、屏幕中下部找一条**居中**的提示文字，回答：(a) 是否出现？(b) 逐字抄出文字（含其中的剩余秒数）。"
+    }
+  ]
+}

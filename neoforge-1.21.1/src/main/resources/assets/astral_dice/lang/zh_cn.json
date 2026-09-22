@@ -430,6 +430,7 @@
   "msg.astral_dice.target_select.no_target": "没有可指定的目标",
   "msg.astral_dice.target_select.rejected": "该目标不能被指定（类型或距离不符）",
   "msg.astral_dice.target_select.cancelled": "已取消目标选择",
+  "msg.astral_dice.target_select.expired": "目标选择已超时",
   "msg.astral_dice.target_select.no_valid_action": "该技能没有可执行的目标动作",
   "msg.astral_dice.target_select.action_missing": "目标选择会话已失效",
   "msg.astral_dice.target_select.invalid_target": "无效的目标（类型不符或目标已消失）",

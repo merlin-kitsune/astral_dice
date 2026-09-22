@@ -1,0 +1,20 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "A": "minecraft:anvil",
+    "B": "minecraft:book",
+    "D": "astral_dice:diamond_dice",
+    "E": "astral_dice:blank_sign",
+    "I": "minecraft:iron_block",
+    "P": "astral_dice:golden_star_plate"
+  },
+  "pattern": [
+    "PBP",
+    "AEA",
+    "IDI"
+  ],
+  "result": {
+    "id": "astral_dice:sherry_sign"
+  }
+}

@@ -27,9 +27,10 @@ public class AstralDiceMod {
     private static final Logger LOGGER = LoggerFactory.getLogger(AstralDiceMod.class);
 
     public AstralDiceMod(IEventBus modEventBus, ModContainer modContainer) {
-        // 不兼容模组黑名单(Magic Coins / SG-Economy):命中即拒绝启动(提示见 ModCompatibilityCheck)。
-        // 必须放在**一切注册之前** —— 越早失败,玩家看到的错误越干净,也不会留下半注册状态。
-        ModCompatibilityCheck.verifyOrThrow();
+        // ⚠️ 不兼容模组黑名单(Magic Coins / SG-Economy)的检查**不能放在这里**:它是否拒绝取决于
+        //    「星币钱包」开关(config/ModCommonConfig 的 enable_star_coin_wallet),而配置要到**本阶段之后**
+        //    才加载(装载顺序:构造 -> 注册表初始化 -> Config loading),此处读配置会抛「配置尚未加载」。
+        //    ⇒ 检查已移到 onCommonSetup 的 ModCompatibilityCheck.verifyOrThrow()(详见该类类头)。
         ModItems.ITEMS.register(modEventBus);
         ModDataComponents.DATA_COMPONENTS.register(modEventBus);
         ModEffects.EFFECTS.register(modEventBus);
@@ -88,6 +89,11 @@ public class AstralDiceMod {
 
     @SubscribeEvent
     private void onCommonSetup(FMLCommonSetupEvent event) {
+        // 不兼容模组黑名单(Magic Coins / SG-Economy):**只有在「星币钱包」启用时才拒绝启动**
+        // (2026-09-22 用户裁决),因此必须等到配置加载完成才能判定 —— 本事件就在 Config loading 之后。
+        // 命中即抛 ModLoadingException ⇒ 游戏停在加载错误界面并显示提示原文(链路见 ModCompatibilityCheck 类头)。
+        // 放在 enqueueWork **之前**:同步执行,不与其它 mod 的延迟任务交错,失败得越干净越好。
+        ModCompatibilityCheck.verifyOrThrow();
         event.enqueueWork(() -> {
             // 配置已加载:把配置值打成快照推给库的 GameplayConstants(库不读配置文件,见 config/ModCommonConfig)
             GameplayConstants.applyConfig(ModCommonConfig.snapshot());

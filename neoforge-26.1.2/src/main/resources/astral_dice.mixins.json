@@ -6,6 +6,8 @@
   "mixins": [
     "EntityThunderHitMixin",
     "LightningBoltStrikeScopeMixin",
+    "container.ContainerMoveGuardMixin",
+    "container.SlotPlaceGuardMixin",
     "trade.MerchantContainerMixin",
     "trade.MerchantMenuMixin",
     "trade.MerchantOfferMixin",

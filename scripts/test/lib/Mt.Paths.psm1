@@ -118,6 +118,10 @@ function Get-MtPaths {
         latest_log      = Join-Path $logsDir 'latest.log'
         debug_log       = Join-Path $logsDir 'debug.log'
         kubejs_log      = Join-Path (Join-Path $logsDir 'kubejs') 'server.log'
+        # KubeJS **客户端**脚本日志：由 run/<版本>/kubejs/client_scripts/*.js 的
+        # `console.info(...)` 落盘。客户端侧读数（例如 ActionBarManager 的私有 message、
+        # TargetSelectionClient.isActive()）**只能**从这里取证 —— 客户端状态没有服务端通道。
+        kubejs_client_log = Join-Path (Join-Path $logsDir 'kubejs') 'client.log'
         # 服务端权威通道：由 run/<版本>/kubejs/server_scripts/astral_bugfix_probe.js 追加写
         # （工作目录 = run_dir）。独立于客户端渲染/聊天与 SLF4J 配置，因此
         # 「客户端卡死 / logger 被过滤」都不影响断言取证（source=probe）。

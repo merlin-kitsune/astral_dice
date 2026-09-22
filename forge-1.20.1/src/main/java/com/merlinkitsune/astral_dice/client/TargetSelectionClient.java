@@ -330,20 +330,33 @@ public final class TargetSelectionClient {
         deactivate();
     }
 
-    /** 取消选择（右键+潜行 / J / ESC 菜单 / 第三方界面打开时调用） */
+    /**
+     * 取消选择（右键+潜行 / J / ESC 菜单 / 第三方界面打开 / 倒计时走完时调用）。
+     *
+     * <p>2026-09-22（用户要求「增加取消选择和超时的提示文本」）：**所有 reason 都给 actionbar
+     * 反馈**，按事件分两键 ——
+     * <ul>
+     *   <li>{@code expired}（倒计时走完）⇒ {@code msg.astral_dice.target_select.expired}；</li>
+     *   <li>其余（{@code right_sneak} / {@code key} / {@code esc} / {@code screen}）⇒
+     *       {@code msg.astral_dice.target_select.cancelled}。</li>
+     * </ul>
+     * 改动前只有 {@code right_sneak/key/esc} 有提示（原 {@code isUserCancel} 判定），
+     * 超时与第三方界面两条路径全程无任何反馈；该判定已随本次改动删除。
+     */
     public static void cancel(String reason) {
         if (!isActive()) return;
         LOGGER.debug("[Astral Dice][TargetSelectionClient] cancel token={} ({})", token, reason);
         ModNetwork.sendToServer(new ModNetwork.TargetSelectCancelMessage(token));
         deactivate();
-        if (isUserCancel(reason)) {
+        // 2026-09-22（用户要求「增加取消选择和超时的提示文本」）：原先只有 isUserCancel
+        // 会给反馈 ⇒ **超时与第三方界面两条路径全程无提示**。现按事件分两键：
+        //   `expired` = 倒计时走完；其余（用户主动 / 第三方界面打开）= 被取消。
+        // 两键文案对称，便于玩家区分「我到点了」还是「我不要了/被打断」。
+        if ("expired".equals(reason)) {
+            showPrompt(Component.translatable("msg.astral_dice.target_select.expired"));
+        } else {
             showPrompt(Component.translatable("msg.astral_dice.target_select.cancelled"));
         }
-    }
-
-    /** 用户主动取消（区别于超时/第三方界面）：给一条 `cancelled` actionbar 反馈 */
-    private static boolean isUserCancel(String reason) {
-        return "right_sneak".equals(reason) || "key".equals(reason) || "esc".equals(reason);
     }
 
     private static void deactivate() {

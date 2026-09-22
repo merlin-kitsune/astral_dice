@@ -444,8 +444,18 @@ function Invoke-MtRunPhase {
                 Where-Object { (-not $_.Name.StartsWith('.')) -and ($_.Name -like "*-$PhaseVersion.json") }).Count
         } catch { $n = 0 }
         if ($n -le 0) { $n = 20 }
-        $budget = 90 + (90 * $n)
-        Write-MtInfo ("CASES_BUDGET: {0} 条用例 × 90s + 90s = {1}s（单条硬上限 {2}s；覆写 MT_CASES_TIMEOUT_SEC）" -f $n, $budget, $perCase)
+        # ⚠️ 2026-09-22 修：此前这里**硬编码** `90 + 90*n`，但提示文案却写着「覆写 MT_CASES_TIMEOUT_SEC」
+        #    ⇒ 环境变量被无视，整目录跑**必然**在 90*n+90 秒处被截断（实测 11 条 × 90 + 90 = 1080s，
+        #    而按用例步数估算需要 ≈ 1700s ⇒ 后半程用例从未被执行，却看不出是「被截断」还是「失败」）。
+        #    该公式的前提是「单条用例 ≤ 90s」，而用例规模早已从 ~20 步涨到 105~164 步 ⇒ 前提失效。
+        #    现在：显式设了 MT_CASES_TIMEOUT_SEC 就用它；否则按「单条硬上限 × 条数 + 90s 余量」推导，
+        #    与 `$script:CaseTimeoutSec` 保持同一口径（不再假设 90s/条）。
+        $budget = 90 + ([Math]::Max(90, $perCase) * $n)
+        if ($env:MT_CASES_TIMEOUT_SEC) {
+            $override = 0
+            if ([int]::TryParse($env:MT_CASES_TIMEOUT_SEC, [ref]$override) -and $override -gt 0) { $budget = $override }
+        }
+        Write-MtInfo ("CASES_BUDGET: {0} 条用例 × 单条上限 {1}s + 90s = {2}s（覆写 MT_CASES_TIMEOUT_SEC）" -f $n, $perCase, $budget)
         return (Invoke-MtChild -Script 'mt_case.ps1' -ScriptArgs (@('run-dir') + $caseArgs) -TimeoutSec $budget)
     }
     if ($PhaseName -eq 'report') {

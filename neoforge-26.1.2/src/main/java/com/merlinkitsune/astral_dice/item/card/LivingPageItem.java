@@ -1,6 +1,6 @@
 package com.merlinkitsune.astral_dice.item.card;
 
-import com.merlinkitsune.astral_dice.combat.HostileTargets;
+import com.merlinkitsune.starenginelib.combat.HostileTargets;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.event.LivingPageFlightScheduler;
 import com.merlinkitsune.starenginelib.target.TargetType;

@@ -430,6 +430,7 @@
   "msg.astral_dice.target_select.no_target": "No valid target",
   "msg.astral_dice.target_select.rejected": "That target cannot be selected (wrong type or out of range)",
   "msg.astral_dice.target_select.cancelled": "Target selection cancelled",
+  "msg.astral_dice.target_select.expired": "Target selection timed out",
   "msg.astral_dice.target_select.no_valid_action": "This skill has no valid target action",
   "msg.astral_dice.target_select.action_missing": "The target selection session is no longer valid",
   "msg.astral_dice.target_select.invalid_target": "Invalid target (wrong type or target is gone)",
