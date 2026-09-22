@@ -2,9 +2,7 @@
   "type": "minecraft:crafting_shapeless",
   "category": "misc",
   "ingredients": [
-    "minecraft:suspicious_stew",
     "minecraft:red_mushroom",
-    "minecraft:rabbit_foot",
     "astral_dice:star_plate"
   ],
   "result": {

@@ -3,13 +3,7 @@
   "category": "misc",
   "ingredients": [
     {
-      "item": "minecraft:suspicious_stew"
-    },
-    {
       "item": "minecraft:red_mushroom"
-    },
-    {
-      "item": "minecraft:rabbit_foot"
     },
     {
       "item": "astral_dice:star_plate"

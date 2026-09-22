@@ -80,11 +80,10 @@ public class ModRecipeProvider extends RecipeProvider {
                 .unlockedBy("has_star_coin", has(ModItems.STAR_COIN.get()))
                 .save(output);
 
-        // 以毒攻毒:1 谜之炖菜 + 1 红色蘑菇 + 1 兔子脚 + 1 星盘
+        // 以毒攻毒:1 红色蘑菇 + 1 星盘
+        // 2026-09-23 用户裁决「只保留红蘑菇和星盘」⇒ 移除谜之炖菜与兔子脚(无序配方,材料多重集随之变化)
         ShapelessRecipeBuilder.shapeless(items, RecipeCategory.MISC, ModItems.EFFECT_CARD_FIGHT_POISON_WITH_POISON.get())
-                .requires(Items.SUSPICIOUS_STEW)
                 .requires(Items.RED_MUSHROOM)
-                .requires(Items.RABBIT_FOOT)
                 .requires(ModItems.STAR_PLATE.get())
                 .unlockedBy("has_star_plate", has(ModItems.STAR_PLATE.get()))
                 .save(output);
@@ -1339,10 +1338,11 @@ public class ModRecipeProvider extends RecipeProvider {
                 .define('P', ModItems.GOLDEN_STAR_PLATE.get())
                 .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
                 .save(output);
-        // 教主立牌(teru,传奇):GCG/LEL/ZPZ(G=金锭,C=指南针,E=空白立牌,L=荧石粉,
+        // 教主立牌(teru,传奇):GCG/LEL/ZPZ(G=金锭,C=指南针,E=空白立牌,L=荧石,
         // Z=钻石骰子,P=黄金星盘);与「风水师立牌」同档（钻石骰子 + 黄金星盘）→ 传奇(UNCOMMON)
-        // 但**材料须与 zhao 区分**：zhao 保持 GCG/RER/ZPZ(红石块×2)，本立牌填充材料改用荧石粉×2
+        // 但**材料须与 zhao 区分**：zhao 保持 GCG/RER/ZPZ(红石块×2)，本立牌填充材料改用荧石×2
         // （主动「降神」/被动「狐光」取「光」意）——两条配方形状+材料完全相同会让其中一条永远合不出来。
+        // 2026-09-23 用户裁决:填充材料由荧石粉改为**荧石**(整块)。
         ShapedRecipeBuilder.shaped(items, RecipeCategory.MISC, ModItems.TERU_SIGN.get())
                 .pattern("GCG")
                 .pattern("LEL")
@@ -1350,7 +1350,7 @@ public class ModRecipeProvider extends RecipeProvider {
                 .define('G', Items.GOLD_INGOT)
                 .define('C', Items.COMPASS)
                 .define('E', ModItems.BLANK_SIGN.get())
-                .define('L', Items.GLOWSTONE_DUST)
+                .define('L', Items.GLOWSTONE)
                 .define('Z', ModItems.DIAMOND_DICE.get())
                 .define('P', ModItems.GOLDEN_STAR_PLATE.get())
                 .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
@@ -1371,17 +1371,17 @@ public class ModRecipeProvider extends RecipeProvider {
                 .define('D', ModItems.GOLDEN_DICE.get())
                 .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
                 .save(output);
-        // 蛟龙立牌(mamushi,传奇):SPS/SES/GDG(S=海晶碎片,P=金块,E=空白立牌,G=黄金星盘×2,
+        // 蛟龙立牌(mamushi,传奇):SPS/SES/GDG(S=海晶灯,P=金块,E=空白立牌,G=黄金星盘×2,
         // D=钻石骰子);「钻石骰子 + 黄金星盘」档,与大当家立牌 fen 同档
         // 但**材料须与 fen 区分**——原样照抄会让两条配方的形状+材料完全相同（原版合成台按第一条匹配
-        // 返回结果 ⇒ 其中一条永远合不出来），故填充材料由红石块×4 改为海晶碎片×4（蛟龙＝水属）；
+        // 返回结果 ⇒ 其中一条永远合不出来），故填充材料由红石块×4 改为海晶灯×4（蛟龙＝水属；2026-09-23 用户裁决由海晶碎片改为整块**海晶灯**）；
         // 立牌置中、骰子固定中下,无占位洞 → 传奇(UNCOMMON)。
         ShapedRecipeBuilder.shaped(items, RecipeCategory.MISC, ModItems.MAMUSHI_SIGN.get())
                 .pattern("SPS")
                 .pattern("SES")
                 .pattern("GDG")
                 .define('E', ModItems.BLANK_SIGN.get())
-                .define('S', Items.PRISMARINE_SHARD)
+                .define('S', Items.SEA_LANTERN)
                 .define('P', Items.GOLD_BLOCK)
                 .define('G', ModItems.GOLDEN_STAR_PLATE.get())
                 .define('D', ModItems.DIAMOND_DICE.get())
