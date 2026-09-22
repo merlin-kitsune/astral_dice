@@ -394,7 +394,7 @@ def packModsDir = file('D:/.minecraft/versions/1.20.1 模组测试/mods')
 // dotGitEntry 是配置期算好的 File(可序列化),执行期读它即可 —— 普通仓库这里就是
 // .git 目录;worktree 下它是**文件**,内容为 `gitdir: <path>`,真正的 HEAD 在 gitdir 下。
 // 【白名单】只有列在这里的分支允许把 jar 推进整合包;其余分支(含 worktree 的 `wt/*`)一律跳过。
-def packPushBranches = ['multi-1.20.1-1.21.1']
+def packPushBranches = ['multi-main']
 def forcePackPush = project.hasProperty('deployToPack') || project.hasProperty('packPush')
 def libVersionLocked = project.findProperty('starengine_lib_version')?.toString()
 def dotGitEntry = rootProject.file('.git')
