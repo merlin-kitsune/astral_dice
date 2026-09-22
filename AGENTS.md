@@ -985,7 +985,7 @@ When extending this workspace:
 - 新增/删除 lang key 时两侧必须同步新增/删除;禁止只改一侧。
 - **三线的 lang 默认保持一致**(便于对照维护);允许的差异只有「某条描述依赖版本专有的原版内容」——已登记一处:(a) 复仇之戟 `tooltip.astral_dice.chip.revenge_halberd` 与 `guide.entry.revenge_halberd_chip.{1,2}`:1.20.1 缺 6 个 1.21 新增效果,见「筹码一览 → 无流派 → 复仇之戟」;新增差异必须同步登记到 AGENTS.md,禁止随手分叉。
 - ⚠️ 上述差异**在日语侧同样存在**,翻译时不能三线共用一份:`temp/ja/gen_ja_lang.py` 的 `OVERRIDE` 已按线覆盖这些键。
-- ⚠️ **对齐不变量:三线 × 三语共 803 键逐键一致、取值 diff = 0(2026-09-22 怪力侦探批 +1:`msg.astral_dice.sherry_bad_ground`)(2026-09-22 复核;原 805 —— 当日交付清理删掉了只服务于已删测试钩子的 3 条 `msg.astral_dice.target_select.skill.test_echo_{player,enemy,living}`)**。比对必须**逐键比取值**,不能只比键集 —— 26.1.2 的 lang 早期用「缺键就补」的方式同步,**已有键的取值从不回改**,于是单侧漂移会只增不减。当日已据此删除 26.1.2 单侧多出的 3 处**实现细节注释**(属「多余注释」,一律不进 tooltip / 手册):(a) `energy_recycler` 的「单 tick 位移过大视为传送,不累计」(`tooltip.astral_dice.chip.energy_recycler` 与 `guide.entry.energy_recycler_chip.1`);(b) `tooltip.astral_dice.sign.moses_passive` 的首行「装备时,主动技能冷却时间减为 120 秒」—— 该被动(「精密技巧」,`MosesSignItem.ACTIVE_COOLDOWN_SECONDS = 120`)**照旧生效**,只是不进 tooltip(tooltip 唯一基准 = 玩家原文)。配套删除了 `temp/ja/gen_ja_lang.py` 的 `neoforge-26.1.2` 覆盖块(**不要加回来**,否则重跑会把注释写回 ja);该脚本现只剩 `forge-1.20.1` 覆盖块。⚠️ **键序仍未对齐**(不影响运行,JSON 对象无序):26.1.2 把 `hud.astral_dice.target_select.*`(6 键)与 `msg.astral_dice.target_select.*`(38 键)两段放在文件后段,1.20.1 / 1.21.1 放在中段 ⇒ 逐行 `diff` 仍不干净;若要收口需**同时**重排线的 `en_us.json` 并重跑日语生成器(ja 的键序派生自各线 zh 的键序)。
+- ⚠️ **对齐不变量:三线 × 三语共 805 键逐键一致、取值 diff = 0(2026-09-23 `/astralparty finishsigncooldown` +2)(2026-09-22 怪力侦探批 +1:`msg.astral_dice.sherry_bad_ground`)(2026-09-22 复核;原 805 —— 当日交付清理删掉了只服务于已删测试钩子的 3 条 `msg.astral_dice.target_select.skill.test_echo_{player,enemy,living}`)**。比对必须**逐键比取值**,不能只比键集 —— 26.1.2 的 lang 早期用「缺键就补」的方式同步,**已有键的取值从不回改**,于是单侧漂移会只增不减。当日已据此删除 26.1.2 单侧多出的 3 处**实现细节注释**(属「多余注释」,一律不进 tooltip / 手册):(a) `energy_recycler` 的「单 tick 位移过大视为传送,不累计」(`tooltip.astral_dice.chip.energy_recycler` 与 `guide.entry.energy_recycler_chip.1`);(b) `tooltip.astral_dice.sign.moses_passive` 的首行「装备时,主动技能冷却时间减为 120 秒」—— 该被动(「精密技巧」,`MosesSignItem.ACTIVE_COOLDOWN_SECONDS = 120`)**照旧生效**,只是不进 tooltip(tooltip 唯一基准 = 玩家原文)。配套删除了 `temp/ja/gen_ja_lang.py` 的 `neoforge-26.1.2` 覆盖块(**不要加回来**,否则重跑会把注释写回 ja);该脚本现只剩 `forge-1.20.1` 覆盖块。⚠️ **键序仍未对齐**(不影响运行,JSON 对象无序):26.1.2 把 `hud.astral_dice.target_select.*`(6 键)与 `msg.astral_dice.target_select.*`(38 键)两段放在文件后段,1.20.1 / 1.21.1 放在中段 ⇒ 逐行 `diff` 仍不干净;若要收口需**同时**重排线的 `en_us.json` 并重跑日语生成器(ja 的键序派生自各线 zh 的键序)。
 - 修改后必须运行同步检查:`pwsh -NoProfile -File tools/check_lang_sync.ps1 -LangDir <子项目>/src/main/resources/assets/astral_dice/lang`(对被修改的子项目执行;key 不一致退出码非 0);CI(build.yml)在构建前也会自动对**三个子项目**(`neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2`,三线各一步)执行该检查,key 不一致会导致 CI 失败。
 - **默认自动本地提交、不推送 GitHub**:每次改动完成后由代理自动执行本地提交(见「子项目修改默认规则」),但**不执行 `git push`**。
 
@@ -1976,6 +1976,7 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --new <注册id>
 | `clearcardeffect [目标]` | 只清**效果牌施加的效果**(`EffectCardPeriod.effectPendingEffects()`,9 个) | 出牌锁第 ③ 条的**最小**解锁手段 |
 | `resetcardlock [目标]` | 重置出牌锁的 **①②** | **仅效果牌轮次**,不含立牌锁定态 |
 | `resetcardcolddown [目标]` / `resetcardcooldown [目标]` | `resetcardlock` 的**别名**(原话拼写 + 拼写正确版) | 与主字面量**共用同一实现**,禁止写第二份逻辑 |
+| `finishsigncooldown [目标]` | 立即**结束立牌主动技能的玩家级冷却**(把 `sign_active_cooldown_end` 写成当前时刻) | **只结束冷却计时** —— 不碰锁定(生效中)态、不碰冷却基准 `sign_active_max_cooldown`、不碰蛟龙强制冷却硬闸门;不带数值参数 |
 | `dump [目标]` | **只读**转储本模组自身的关键状态为 `APDUMP\|<组>\|<键>=<值>` 行 | 排障与自动化断言取数;**不改变任何状态** |
 
 目标参数可选(`@a`/玩家名),省略时作用于执行者自己;执行者不是玩家且未给参数、或选择器解析不出玩家时返回可读失败文案而**不抛异常**。反馈文案一律走 lang key(`command.astral_dice.astralparty.*`,经 `Component.translatable`),禁止内联文本。
@@ -1985,6 +1986,15 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --new <注册id>
 - `resetcardlock` **只解 ①②** —— 调 `EffectCardPeriod.forceResetRound(player)`:出牌数、出牌冷却、全部「每轮一次」标记(含电击手套本周期武装)一并归零。**明确不做 ③**:不清 `EFFECT_PENDING_SOURCES` 对应的效果、**不清立牌锁定态 `sign_active_lock_*`**、**不清待命等待器 `sign_ready_*`**、不补 `onRoundFullyReset` 回调。该入口对「未处于任何轮次状态」的玩家**幂等安全**(全是无条件写默认值,不读旧值)。
 - ③ **只能靠清掉效果实例**解除(`forceResetRound` 覆盖不到),由 `clearcardeffect` 负责。
 - `cleareffect` 与 `clearcardeffect` 的区别:前者 = **全部本模组效果**(含立牌主动效果 `misaki_burst`/`papara_bite`/`nancy_lu_hack`/`weak_mark` 等);后者 = **仅效果牌留下的那批效果**(= 出牌锁第 ③ 条的权威来源),不碰立牌主动效果,也不碰效果牌顺带施加的原版 rider(迅捷/中毒/生命恢复/抗性提升——它们不参与出牌锁且来源众多)。
+
+**`finishsigncooldown [目标]`(立即结束主动技能冷却)**:把玩家级冷却附件 `sign_active_cooldown_end` 写成**当前时刻**,等价于「这一瞬间冷却正好走完」(与电流核心筹码的「立即完成冷却」同款写法 —— `CurrentCoreChipItem` 也写当前时刻),用于排障时立刻重试立牌主动技能。
+
+- **边界(用户 2026-09-23 裁决「只结束冷却计时,不动冻结期」)**:冷却判定在 `BaseSignItem.performSkill` 侧是**三道**闸门,本命令**只解最后一道** ——
+  - **锁定(生效中)态 `sign_active_lock_*`(五个键)一律不动**:主动技能「生效中」窗口由各立牌自己的计时器决定,提前解开会让同一技能被重复施放(效果叠加、计时器重挂)。锁定态下执行本命令**不产生任何效果** —— 此时本来就没有"正在跑的冷却"(进入锁定时只写基准、不写 `cooldown_end`,冷却要等锁定结束才起)。
+  - **`sign_active_max_cooldown` 不动**:它是「本次冷却实际使用的基准」,锁定态下**尚未**用于那次还没开始的冷却(冷却开始那一刻按 `max(0, 基准 − 减免池)` 起算)。一并清零等于把玩家**冻结期结束后本该开始的冷却**也取消 ⇒ 越界。
+  - **蛟龙立牌(mamushi)的强制冷却硬闸门 `mamushi_forced_cooldown_until` 不动**:它在冷却判定侧优先级**高于** `sign_active_cooldown_end`(无条件早退,连电流核心的"消耗充能立即完成冷却"都不允许触发),属「不受任何减免的硬闸门」,与"冷却计时"不是同一个东西;若要一并解除需另开子命令。
+- **不带数值参数**(能力边界红线②:禁止 `setcooldown <tick>` 这类任意值写入):本命令只有一个动作「结束计时」,目标参数仍是可选的玩家选择器。
+- **幂等**:仅一次无条件赋值,不读旧值、不依赖前置状态 ⇒ 对「本来就不在冷却中」的玩家重复调用无任何副作用。执行后可用 `dump` 的 `SIGN` 组核对 `sign_active_cooldown_end` 与 `sign_active_lock_*`(前者应 ≤ `game_time`,后者逐字不变)。
 
 **`dump [目标]`(只读转储,机器格式)**:语法 `/astralparty dump [目标]`,权限门槛与其它子命令**完全相同**(`requires(src -> src.hasPermission(2))`,服务端注册/执行);目标参数可选(`@a`/玩家名),省略时作用于执行者自己,执行者不是玩家且未给参数时 `sendFailure` 可读文案、**不抛异常**。**本命令不改变任何状态**——只经 getter 与 `is*` 判定取值(含判定入口方法),不写任何附件/组件/效果,也不提供任何"设置/给予"入口;同理**不得越界**:只 dump 本模组自己的状态(效果清单只遍历 `ModEffects.ALL`,非本模组效果一行都不输出)。
 

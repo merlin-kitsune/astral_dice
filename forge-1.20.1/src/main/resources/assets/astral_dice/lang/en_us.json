@@ -683,6 +683,8 @@
   "command.astral_dice.astralparty.clearcardeffect.success.other": "Cleared %s effect card effect(s) across %s player(s)",
   "command.astral_dice.astralparty.resetcardlock.success": "Reset the play lock: play count and play cooldown cleared",
   "command.astral_dice.astralparty.resetcardlock.success.other": "Reset the play lock for %s player(s)",
+  "command.astral_dice.astralparty.finishsigncooldown.success": "Sign active-skill cooldown finished immediately (the cooldown timer only; a skill still in effect is untouched)",
+  "command.astral_dice.astralparty.finishsigncooldown.success.other": "Finished the sign active-skill cooldown for %s player(s) (the cooldown timer only; skills still in effect are untouched)",
   "command.astral_dice.astralparty.error.no_player": "This command must be run by a player, or you must specify a player argument",
   "command.astral_dice.astralparty.dump.summary": "Dumped state for %s player(s); machine-readable lines are in latest.log",
   "item.astral_dice.zhao_sign": "Fengshui Master Sign",

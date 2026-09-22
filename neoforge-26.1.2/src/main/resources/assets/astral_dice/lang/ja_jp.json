@@ -642,6 +642,8 @@
   "command.astral_dice.astralparty.clearcardeffect.success.other": "効果カードの効果を %s 個解除しました（%s 名のプレイヤー）",
   "command.astral_dice.astralparty.resetcardlock.success": "プレイロックをリセットしました：プレイ枚数とクールダウンをゼロに戻しました",
   "command.astral_dice.astralparty.resetcardlock.success.other": "%s 名のプレイヤーのプレイロックをリセットしました",
+  "command.astral_dice.astralparty.finishsigncooldown.success": "立牌アクティブスキルのクールダウンを即座に終了しました（クールダウンのみ。発動中のスキルには影響しません）",
+  "command.astral_dice.astralparty.finishsigncooldown.success.other": "%s 名のプレイヤーの立牌アクティブスキルのクールダウンを即座に終了しました（クールダウンのみ。発動中のスキルには影響しません）",
   "command.astral_dice.astralparty.error.no_player": "このコマンドはプレイヤーが実行するか、プレイヤー引数を指定する必要があります",
   "command.astral_dice.astralparty.dump.summary": "%s 名のプレイヤーの状態をダンプしました。機械可読行はログ (latest.log) を参照",
   "msg.astral_dice.target_select.prompt.hold.no_target": "%s に照準を合わせてスキルを解放してください。メインハンドから外すと選択を終了します",
