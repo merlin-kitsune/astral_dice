@@ -80,6 +80,16 @@
 
 **清场生效判据（2026-09-15 实机验证）**：客户端 locale 是**中文**，原版反馈为 `杀死了N个实体` / `未找到实体`（英文 locale 才是 `Killed N entities` / `No entity was found`）—— 判「清场真的执行了」就看这一行，别拿英文串去 grep。本次实测：1.20.1 清场 `杀死了94个实体`（该世界 128 格内当时**堆了 94 个非玩家实体** —— 这正是 `self`/`bolt_delta` 被污染的来源），1.21.1 两次分别为 `9` / `6`。两次注入中**可能只有一次落地**（§10-17 的注入丢失同族），所以双发是必要的冗余，不是装饰。
 
+**禁用生物 AI（2026-09-18 起强制，工具链自动执行 + 硬闸门）**：清场只解决「已经存在」的实体，**不解决「之后刷新出来的生物」** —— 它们在清场后照样带着 AI 刷出并行动（接近/攻击/推挤玩家、投掷弹射物、踩压力板、引爆苦力怕），污染世界级差值读数（`self`、`bolt_delta`、实体计数），甚至把玩家打死。故工具链现在**默认禁用生物 AI**：
+- 实施物 = `scripts/test/resources/kubejs/<版本>/server_scripts/astral_test_noai.js`（由 `mt_env` 的 `kubejs` 子命令 / env 阶段同步到 `run/<版本>/kubejs/server_scripts/`）：每 **2 tick** 横扫每个玩家周围 **128 格**内的所有 Mob 强制 `setNoAi(true)`（按 UUID 去重、幂等），并在 `EntityEvents.spawned` 上即时生效（新刷生物在第一次行动前就被停住）。
+- **两种读数行**（都走玩家聊天通道 → `logs/latest.log`，判据取 `[CHAT]` 后的原文）：
+  - `AP_NOAI:mobs=<n>:noai=<n>:radius=128:forced=<n>:total=<n>:tick=<t>` —— 心跳：前 30 秒每 5 秒一行（闸门取样窗口），之后**整个会话**每 30 秒一行（收尾审计窗口；**不能**只对刚进世界那 30 秒取样 —— 那时世界通常还是白天、且刚清过场，晚刷的生物会整轮漏过去）。
+  - `AP_NOAI_FORCED:new=<n>:mobs=<n>:noai=<n>:total=<n>:tick=<t>` —— **正面对照**：真的存在带 AI 的自然刷怪、且本脚本把它停住了（同一事件最快 1 秒一次，不刷屏）。
+- **进入世界硬闸门**（`mt_launch`）：进入世界后 30 秒内必须读到 `AP_NOAI:` 行**且 `mobs == noai`**，否则 `MT_LAUNCH: ERROR` 并拒绝继续；通过时打印 `NOAI_ENFORCED=true — AP_NOAI:…`。唯一例外 = 显式设 `MT_ALLOW_MOB_AI=1`（对照实验用，会留 WARN 痕迹）。
+- **整轮收尾审计**（`mt_report collect`）：扫描整轮 `latest.log` 的全部两类读数行，任一 `mobs != noai`、任何 `AP_NOAI:ERR:`、或一行心跳都没有 ⇒ `MT_REPORT: ERROR`（非 0 退出码，该轮判不合格），并把审计小节写进 `report.md`。**证据强度分级（不得含混）**：读到 `AP_NOAI_FORCED:` ⇒ 有正面对照（`MT_NOAI_AUDIT: PASS`）；只有 `mobs=0` 的心跳 ⇒ 只证明「现场干净」，打印 `MT_NOAI_AUDIT: PASS(无正面对照)` 且**不得**据此宣称强制逻辑已被实测触发。
+- 脚本属 KubeJS，**改动需冷启动才生效**（`/kubejs reload server-scripts` 只重载脚本，已注册命令的 lambda 不重绑）。
+- ⚠️ **本规则只禁 AI，不改刷怪规则**：史莱姆仍由「Superflat World No Slimes」模组负责；**禁止**用 `/gamerule doMobSpawning false` 代替 —— 它会让 `/astralprobe slimecheck` 的 A/B 对照读数（未装 `slimes=103` / 已装 `slimes=0`）恒为 0，把「刷怪压制」硬闸门变成假证。
+
 ---
 
 ## 3. 唯一入口与阶段
@@ -431,7 +441,6 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --phase <p> --version <v>
 pwsh -NoProfile -File tools/check_lang_sync.ps1 -LangDir neoforge-1.21.1/src/main/resources/assets/astral_dice/lang
 pwsh -NoProfile -File tools/check_lang_sync.ps1 -LangDir forge-1.20.1/src/main/resources/assets/astral_dice/lang
 pwsh -NoProfile -File scripts/audit/tooltip_color_audit.ps1 --root .   # R1/R1b/R2/R3 + R0(回落码=行底色)/R4(%% 必须走 tt())
-pwsh -NoProfile -File scripts/verify/verify_content_library.ps1
 pwsh -NoProfile -File scripts/verify/verify_chip_recipes.ps1          # java / gen / jar 三档
 pwsh -NoProfile -File scripts/verify/verify_crafting_recipe_uniqueness.ps1   # 合成网格唯一性（必须在 runData 之后跑；0/1，见附录 A「蛟龙立牌批：配方网格重合修复 + 本守门」）
 pwsh -NoProfile -File scripts/verify/verify_chip_acquisition.ps1
@@ -441,7 +450,10 @@ pwsh -NoProfile -File scripts/verify/verify_forge_loader_gate.ps1   # 1.20.1 加
 pwsh -NoProfile -File tools/check_mod_sources.ps1                    # 模组来源统一口径(Curse/Modrinth Maven);阶段 P 的「模组来源」一项共用本脚本
 ```
 
-> ⚠️ `verify_content_library.ps1` 依赖 `docs/1.2.0-content.json`，该文件当前**被 .gitignore 排除**（详见 §11）。干净克隆下该守门脚本会因缺文件而无法运行。
+> ℹ️ **`verify_content_library.ps1` 已移出本节（2026-09-23 用户裁决「按第 2 路修复」）** —— 它是 **1.2.0 冻结期一次性验收工具，不是长期闸门**。
+> 其对照件 `docs/1.2.0-content.json` 按设计是「1.2.0 新增了什么」的**冻结快照**（`start_commit = 68dbd59`；采集脚本已于 2026-09-15 随 `temp/` 清理删除），工程推进到新版本后它**必然报偏差**——1.3.0 开发期实测 15 项（1.3.0 的 13 个新物品不在库里 1 项 + 汇总标签/槽位基线陈旧 8 项 + 1.2.0 有而 1.3.0 已移除的 `moses_ready`「待命：破绽」仍被登记 6 项），**不代表回归**。
+> 仅在「**重建某个版本的内容库快照并校验它**」时手动运行（届时须同步切换脚本内的 `$START_COMMIT` / `$BASE_*_COUNTS` / `$NEW_EFFECTS` / `$VERS`）。
+> ⚠️ 另：它依赖的 `docs/1.2.0-content.json` **被 .gitignore 排除**（详见 §11），干净克隆下会因缺文件而无法运行。
 
 ---
 
@@ -704,6 +716,32 @@ pwsh -NoProfile -File scripts/test/mt_watchdog.ps1 -Version 1.21.1 [-StallSecond
 ---
 
 ## 附录 A：工具链与发布工程变更记录（自 CHANGELOG 移出）
+
+**2026-09-18：CurseForge「1.20.1 forge 产物与 26.1.2 内容一致」报告的核查 + 1.20.1 重新签发 + `.cache` 泄漏缺陷修复**
+
+- **核查结论**：本仓的构建 / 分发链路**不会**把 26.1.2 的内容写成 1.20.1 的名字。判据（全部实测，非目测）：
+  1. **全盘哈希清单**：`F:\MCProject`、`D:\.minecraft`、`D:\`、下载与桌面共扫到 **73 个** `astral_dice-*.jar`，按 SHA256 分组；所有名字里带 `+forge_1.20.1` 的文件内容都**互不相同**，且**没有任何**一个 forge 命名文件的哈希等于 26.1.2 产物（26.1.2 本轮 = `2E57B191…`，967218 B）。
+  2. **三线判别特征**（每份产物逐项核过）：装载器元数据文件名（forge = `META-INF/mods.toml`；两条 neoforge = `META-INF/neoforge.mods.toml`）、**class 文件主版本**（1.20.1 = **61** / Java 17、1.21.1 = **65** / Java 21、26.1.2 = **69** / Java 25）、资源布局（1.20.1 与 1.21.1 用 `data/astral_dice/recipes/`；26.1.2 用 `recipe/` 且额外带 `assets/astral_dice/items/`）、`astral_dice.refmap.json`（只有 forge 有）、`MANIFEST.MF` 的 `MixinConfigs`（只有 forge 有）。
+  3. **reobf 取证**：`forge-1.20.1/build/libs` 发货 jar 的 266 个 mod class 里含 **1152** 处 SRG 引用（`m_NNN_`），`run/1.20.1/mods` 的 dev jar 为 **0** 处 ⇒ 与 `AGENTS.md`「reobf/dev 双产物」口径一致，两边都没有混装。
+  4. **GitHub Release 侧的既有样本**：`temp/release_check/` 里 2026-09-16 下载的 `astral_dice-1.2.1+forge_1.20.1.jar`（967543 B）经同一套判别 = `mods.toml` + `version="1.2.1+forge_1.20.1"` + class 主版本 61 + `recipes/` + refmap ⇒ **当时 Release 上的 1.20.1 附件内容正确**。
+  5. **本机无法核验的部分（如实写明）**：GitHub Release 现资产与 CurseForge 侧文件均不可从本机查询（无 token / 不装 `gh`，见 `AGENTS.md` 的「CI/Actions 状态由用户自行观察」），故「上传到 CF 的那份文件到底是哪一份」只能由用户用下面的一行自检确认。
+- **发现并修掉的真实缺陷（本轮核查的主要产出）**：`forge-1.20.1/build.gradle` 与 `neoforge-1.21.1/build.gradle` 的 `sourceSets.main.resources` 里，datagen 缓存排除写成 `exclude("src/generated/**/.cache")` —— 该区块的模式是**相对每个 srcDir 根**（`src/generated/resources`）解析的，带 `src/generated/` 前缀**永远不命中**。实测后果：
+  - 本地 `forge-1.20.1/build/libs/astral_dice-1.2.1-hotfix+forge_1.20.1.jar`（982006 B / 1119 条目）根目录里带着 **`.cache/`**（3 条目 / 33544 B 未压缩 / +12727 B 压缩），dev jar（`build/devlibs` 与 `run/1.20.1/mods`）同样带；
+  - CI 新鲜检出时 `src/generated/resources/.cache/` 被 `.gitignore`（`**/src/generated/**/.cache/`）排除、产物干净（对照：2026-09-16 的 CI 产物 1116 条目、无 `.cache`）⇒ **同一版本本地与 CI 的 jar 字节不一致**，正是「哪份才是真的」这类混淆的温床；`neoforge-1.21.1` 同写法同样无效，仅因该线当前恰好没有 `.cache` 目录而未暴露；`neoforge-26.1.2` 用的相对模式 `exclude("**/.cache")` 正确（其产物 1231 条目、无 `.cache`）。
+  - **修复**：两条线统一改为相对模式 **`exclude("**/.cache")`**（与 26.1.2 一致，`build.gradle` 内附注释说明为何旧模式无效）。**防回归判据**：`jar tf <产物>.jar` 中不得出现任何 `.cache/` 条目（`build/libs` 与 `build/devlibs` 两份都查）。
+- **1.20.1 重新签发（本次交付物）**：`gradlew :forge-1.20.1:clean`（顺带清掉 `build/libs` 里滞留的上一版 `1.2.1+forge_1.20.1.jar`）→ `mt_build.ps1 --version 1.20.1 --timeout 60 --retries 3`（`MT_BUILD: OK (4s)`）。新产物核验：
+
+  | 项 | 值 |
+  |---|---|
+  | 文件 | `astral_dice-1.2.1-hotfix+forge_1.20.1.jar` |
+  | 大小 / 条目 | **969960 B** / **1116**（与 2026-09-16 的 CI 产物条目数一致） |
+  | SHA-256 / SHA-1 | `B459536551137BA3F1325A3EB002E6A7DDA6CF5A622A9B0746491E9272722B37` / `3ED4C261E807C3BFAC82A429B8FDE5110129B1A4` |
+  | 元数据 | `META-INF/mods.toml`：`modLoader="javafml"`、`version="1.2.1-hotfix+forge_1.20.1"`、`forge [47.4.10,48)`、`minecraft [1.20.1]`、`curios [5,6)`、`mixinbooster [0.1.3,)` |
+  | 打包完整性 | `MANIFEST.MF` 含 `MixinConfigs: astral_dice.mixins.json`；`astral_dice.mixins.json` 的 `refmap = astral_dice.refmap.json` 且该文件在包内；`DiceCurioItem.class` 主版本 **61** 且含 `onEquip`/`refreshChipSlotCount`/`clearChipSlotCount`/`applySlotCount`；**无任何 `.cache/` 条目** |
+  | 分发去向 | 子项目 `build/libs`（清理后仅此一份）、根 `build/libs`、`D:\...\1.20.1 模组测试\mods` 三处 **同一 SHA256**；`run/1.20.1/mods` 为 dev jar（952328 B，SRG 0 处，同样已无 `.cache`） |
+  | 交付暂存 | `temp/reissue-1.2.1-hotfix/`（jar + `SHA256SUMS.txt` + `SHA1SUMS.txt` + `VERIFY.md` 自检说明） |
+
+- **未做（需用户明确授权）**：不执行 `git push`（按默认规则），因此 GitHub Release 上的既有附件不会被刷新；若需要用 CI 重新产出/覆盖 Release 附件，需用户明确要求后再推送（tag 仍解析为 `1.2.1`，CI 走 `gh release edit` + `--clobber` 刷新同一 Release）。
 
 **2026-09-25：充能冷却改口径（有充能时基础值封顶：立牌主动 160 秒 / 效果牌 20 秒；含共享库删旧常量 + 升版）**
 
@@ -1617,7 +1655,7 @@ pwsh -NoProfile -File scripts/test/mt_watchdog.ps1 -Version 1.21.1 [-StallSecond
 - 工程:**蛟龙立牌（mamushi）资产与注册 + 三组「配方网格重合」修复 + 新增配方网格唯一性守门（2026-09-27，发布线双版本）**:本批按用户指令「先只做立牌资产与注册，技能后定」执行；随后由主代理核出**三组配方重合**并经用户裁决「**三组一起拆开**」同批修复。`neoforge-26.1.2` 侧**零改动任何文件**。
   1. **交付面（两线对等；两线新增文件逐字节相同）**：新增 `item/sign/MamushiSignItem`（**只有 javadoc + 构造器**：未覆写 `handleUse`、无被动钩子 ⇒ 主动走 `BaseSignItem` 默认实现「WARN + `InteractionResultHolder.fail`」，不进冷却、**无任何 actionbar 反馈**）、手册 `entries/signs/mamushi_sign.json`（**只有一条 `patchouli:crafting`**，无 spotlight/text 占位页；`sortnum`=20）、贴图 `textures/item/mamushi_sign.png`（自 `images/蛟龙立牌.png` 逐字节复制，sha256 `35711E2F32039A24EA90435402B08FC405EF1205FC54562DF200C9800C433F1A`，32×32 / 635 B）；改动 `item/ModItems`（`MAMUSHI_SIGN`，`Rarity.UNCOMMON` = 本仓「传奇」）、`init/ModCreativeTabs`、`datagen/ModItemModelProvider`、`datagen/ModRecipeProvider`、`data/astral_dice/tags/item/signs.json`（forge 为 `tags/items/`）、`data/curios/tags/item/stand.json`（同上）、lang（**只加物品名** `item.astral_dice.mamushi_sign` = 蛟龙立牌 / Mamushi Sign；两线 738 → **739** 键）；**tooltip 零新增**（`ModTooltipHandler` 的立牌 tooltip 是逐立牌 if 链，无 mamushi 分支 ⇒ 该立牌当前**不带任何 tooltip**）。
   2. **配方重合的机制与危害（本轮固化的硬知识）**：`RecipeManager#getRecipeFor`（`RecipeManager.java:94-104`）取 `byType(CRAFTING)` 中**第一条** `matches()` 命中的配方，而该 `byType` 是 `ImmutableMultimap`，其顺序来自 `SimpleJsonResourceReloadListener#prepare` 的 **`HashMap` 迭代序**（`:32`）⇒ 两条「形状 + 材料完全相同、只有产出不同」的配方里**只有一条能被合成台产出**，另一条**永远合不出来**（JEI 里点它，合成台给的仍是赢家）。实测两线各存在 **2 组**（`zhao/teru` = `GCG/RER/ZPZ`、`nardis/padman` = `WYW/TET/TDT`），蛟龙「照抄同档立牌」时又引入第三组（`mamushi/fen`）。
-  3. **修复（用户裁决「三组一起拆开」，两线各 3 处，只动 `datagen/ModRecipeProvider`）**：`teru_sign` `GCG/RER/ZPZ` → `GCG/LEL/ZPZ`（红石块×2 → **荧石粉**×2）、`nardis_sign` `WYW/TET/TDT` → `CYC/TET/TDT`（凋灵骷髅头×2 → **仙人掌**×2）、`mamushi_sign` 定稿 `SPS/SES/GDG`（**海晶碎片**×4，**不得照抄 fen**）；`zhao_sign` / `padman_sign` / `fen_sign` **保持原样**（逐行 sha256 前后相同已取证）。三处均保持「空白立牌置中、骰子固定中下、材料对称填充」的既有配方规范。
+  3. **修复（用户裁决「三组一起拆开」，两线各 3 处，只动 `datagen/ModRecipeProvider`）**：`teru_sign` `GCG/RER/ZPZ` → `GCG/LEL/ZPZ`（红石块×2 → **荧石**×2；2026-09-23 由荧石粉改荧石）、`nardis_sign` `WYW/TET/TDT` → `CYC/TET/TDT`（凋灵骷髅头×2 → **仙人掌**×2）、`mamushi_sign` 定稿 `SPS/SES/GDG`（**海晶灯**×4；2026-09-23 由海晶碎片改海晶灯，**不得照抄 fen**）；`zhao_sign` / `padman_sign` / `fen_sign` **保持原样**（逐行 sha256 前后相同已取证）。三处均保持「空白立牌置中、骰子固定中下、材料对称填充」的既有配方规范。**同批另改「以毒攻毒」效果牌的无序配方**：由「谜之炖菜 + 红色蘑菇 + 兔子脚 + 星盘」精简为「**红色蘑菇 + 星盘**」（材料多重集随之变化 ⇒ 必须重跑本守门再提交）。
   4. **新增静态守门 `scripts/verify/verify_crafting_recipe_uniqueness.ps1`（已进 §9）**：shaped 按「**裁剪四周全空行/列后的 3×3 单元格矩阵**」判重（与原版 `matches()` 的偏移匹配语义对齐）、shapeless 按**材料多重集**判重、并做 **shaped↔shapeless 交叉判定**；覆盖 `src/generated` + `src/main` 两个资源目录（`recipe` 与 `recipes` 两种目录名都扫）、并对同一 id 出现在两个目录的情况报 WARN。⚠️ **必须在 `runData` 之后跑**（只看资源产物，生成目录未刷新会漏报）。**已知边界（写在脚本头）**：tag↔tag / tag↔物品的**集合重叠**不展开比较；自定义 RecipeType（`astral_dice:dice_upgrade` 等）不与 `crafting` 竞争，不参与判定。
   5. **验证读数（本轮实跑）**：两线 `runData` 完成（1.21.1 `BUILD SUCCESSFUL in 10s` + `HashCache written: 5`；**1.20.1 生成器跑完 `All providers took: 69 ms` + `written: 7` 后 Gradle 收尾挂起，按「守护规则」强杀进程树并以**产物**验证通过 —— 生成目录 112 → **113** 份、三份目标配方内容与时间戳均已确认**）⇒ 生成配方 112 → **113**（两线一致）；`verify_crafting_recipe_uniqueness.ps1` = `RECIPE_UNIQ: OK`（两线 `shaped=87 shapeless=27 collisions=0`；26.1.2 `shaped=83 shapeless=27 collisions=0`）；`tools/check_lang_sync.ps1` 两线 **739/739**、26.1.2 683/683（WARN 全部是既有的 teru `50%` 未转义告警，与本批无关）；两线 `mt_build` = `MT_BUILD: OK` 且产物已更新（`astral_dice-2.0.0-SNAPSHOT.10+{neoforge_1.21.1,forge_1.20.1}.jar`）。
   6. **同批修正的两处玩家侧文案事实错误（nardis 批遗留，两份 CHANGELOG 按「合并进原条目」改写）**：锁离线修复条目把「15 分钟村庄英雄」的例子写成**蛟龙立牌** —— 实为**经商立牌** `parunan`（唯一 `HERO_OF_THE_VILLAGE` 18000t 施加点，全仓仅 `ParunanSignItem` 一处）；又写成**怪力侦探立牌** —— 该立牌**不存在于本仓**（实为**骇客立牌** `nancy_lu`，即同一提交里的三处 nancy 残留）。现已按产品代码逐条改正，并把「同机制更短时长」名单校正为**护法 / 扫地机 / 吸血鬼 / 大当家 / 骇客 / 大侦探**（与全仓 `beginActiveLock` 调用点逐一对齐；忍者 `lock_end=0` 本就免疫）。**教训**：CHANGELOG 属玩家侧文档，写例子必须回代码取「谁真的施加了这个效果」，不得凭印象命名。
@@ -1656,3 +1694,12 @@ pwsh -NoProfile -File scripts/test/mt_watchdog.ps1 -Version 1.21.1 [-StallSecond
   7. **独立复核（R1，只读 subagent，改动哈希已固化为证据）**：判据 1–7 **全部 PASS** —— 根因与栈行号对应、崩溃范围无遗漏且无多改（其独立 Formatter 扫描器确认 26.1.2 = 0 非法值）、同类第二处代码站仅剩 26.1.2、代码正确性（含 50 万条恶意串 fuzz 与 194 万条穷举：0 mismatch、0 非幂等、0 残余 UFCE）、数据规范、闸门升级、反向退出码。其提出的「白名单偏窄」「`%12$s` 误报 / `%%%` 漏报」已在本批**一并修掉或文档化**。
   8. **遗留（已登记）**：`neoforge-26.1.2` 的 `translationString(:240)` **仍未加固** —— 该线今天不会崩（0 非法值），但新文案再写裸 `%` 仍会崩；按三线优先级待发布线内容完成后迁移（`AGENTS.md`「语言文件同步规范」已登记；**2026-09-21 用户裁决：保持冻结、留在待办，本轮不加固**）。另：`check_lang_sync.ps1` 未传 `-LangDir` 时的三线目录是**相对 cwd** 解析的，在错误的 cwd 下会静默检查另一棵树并返回 0（R1 实测踩到）—— 调用时必须用仓库根或绝对 `-LangDir`。
   9. **日期口径提醒（本批新发现，未擅自批量改写）**：本条目按**机器时钟**写 **2026-09-21**（依据：崩溃报告文件名 `crash-2026-09-21_15.12.05`、`git log --date=iso` 全部为 2026-09-21、`Get-Date` = 2026-09-21）。⚠️ 本附录及其它文档此前若干条目写作「2026-09-26 / 27 / 28」（如本小节上一条、`AGENTS.md` 蛟龙段），与提交时间**不符**（疑为系统性日期漂移）。本批**未改动**那些历史日期，仅在此登记；**2026-09-21 用户裁决：先放着、只保留本登记，不批量改写历史条目**（后续若统一校正，判据一律取 `git log --date=iso` 的真实提交时间）。
+
+- 工程:**锁版 1.3.0：两份 CHANGELOG 的 `### 工程` / `### Engineering` 小节移入本附录（2026-09-22；原文逐字保留）**：按「更新日志约定」第 4 条（两份 CHANGELOG 是**玩家侧**文档，工程 / 工具 / CI / 脚本 / 文档口径类条目**一律不进 CHANGELOG**），本次锁版把该小节整体移出 —— 中英两侧同步删除（`CHANGELOG_ZH.md` 的 `### 工程`、`CHANGELOG.md` 的 `### Engineering`），玩家侧条目数与顺序不变。原文如下（仅整体缩进 2 空格）：
+  - **把五项「两侧逐字节一致」的判定逻辑下沉到前置库 `starengine_lib`，库版本 `1.0.0-SNAPSHOT.14 → .15`**：`combat.HostileTargets`（敌对目标判定的唯一入口，口径 = 敌对生物 ∪ 已被激怒的中立生物 ∪ 「非同队伍且曾主动攻击过观察者的玩家」）、`combat.PlayerHostilityTracker`（受害者 → 攻击者 UUID 的内存记录表）、`target.SelectorTargets`（把「敌对」族并到 `HostileTargets` 上，修补 `TargetType#matches` 只做裸 `instanceof Enemy`、漏掉被激怒的狼/铁傀儡/北极熊/蜜蜂的缺陷）、`target.SignSelectionGate`（立牌主动技能前置门控的待执行记录）、`economy.StarCoinWalletState`（钱包余额条的显示缓存）。这五个类此前在两条发布线上**逐字节相同**，属典型的「本该在库里」。**玩法行为零变化** —— 判定口径、门控生命周期与显示数值逐字照搬，仅换了存放位置。
+    - ⚠️ **库内不注册任何事件**（库的既有红线），故 `PlayerHostilityTracker` 的四个平台挂点（记进攻 / 死亡清 / 死亡重生克隆清 / 登出清）留在本模组，新增 `combat.PlayerHostilityTrackerEvents` 负责把平台事件翻译成库的 `recordAttack` / `forget` 调用；另一处依赖 `DiceCombatEvents` 的「内部伤害窗口」（溅射 / AOE 与反击注入不计为主动攻击）改为库侧 seam `InternalDamageWindows`，由 `DiceCombatEvents` 在类初始化时注入两条判定。该 seam **未注入时一律返回 false**（安全方向：漏判只多记一条敌对立场的记录，误判会让真实攻击不被记入）。
+    - 消费方需 `--refresh-dependencies`（库版本号不以 `-SNAPSHOT` 结尾，Gradle 不当作 changing module）。**26.1.2 线当时未接入**（钉版照旧）；该线已于本版本（`2.0.0-SNAPSHOT.13`）随「26.1.2 完整移植」一并接入。
+
+  - **修复客户端类型进入双端加载类的字节码（1.21.1 侧两处）**：`event.ModTooltipHandler` 原先直接读 `client.KeyBindingSetup` 的按键字段来显示「按 J / 按 H」提示；该类的字段声明类型是 `net.minecraft.client.KeyMapping` —— 只要该方法被调用，`getstatic` 就要求解析该类型，而 `FMLEnvironment.dist == Dist.CLIENT` 只拦得住**执行**、拦不住**符号解析**（`catch` 也不包住解析）⇒ 专用服务端有 `NoClassDefFoundError` 风险（是否发生取决于 JIT 是否恰好内联，属时序相关）。现把取按键名的逻辑收进 `client.ClientKeyNames`，`ModTooltipHandler` 只调用它；**开包核对：`ModTooltipHandler.class` 的常量池里已不含任何 `net.minecraft.client.*`**。同类问题在 `AstralDiceMod`（主入口，服务端同样加载）上还有一处 —— 菜单界面注册 `CardInventoryScreen::new` 原先写在一个运行期 `dist` 分支里，现整体搬到只客户端加载的 `client.ModClientEvents`（1.20.1 侧从一开始就是这个写法，本次为对齐），`AstralDiceMod.class` 的常量池同样已无客户端类型。
+
+  - **清理 7 个文件 × 两条发布线共 1100 行未使用的 import**（`AnvilUpgradeHandler` / `ModEffectEvents` / `PlayerTickEvents` / `PlayerLifecycleHandler` / `LootInjectionHandler` / `ModTooltipHandler` / `DiceCombatEvents`）：这些文件的 import 块是从早期含大段 tooltip 格式化辅助方法的版本复制下来的，正文缩减后残留了整块未被引用的 import（1.21.1 侧 7 个文件共 562 行、1.20.1 侧共 538 行）。**纯删除、零行为变化**，逐条按「简单名零出现」或「仅以全限定形态出现」两条判据确认后删除，双版本 `build` 通过。

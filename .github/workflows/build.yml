@@ -5,12 +5,12 @@ on:
     branches:
       # 发布线分支(本仓已无 main 分支;origin/HEAD 默认分支即此分支)。
       # 原先写的 `main` 是不存在的分支 → push 过滤与下方自动打 tag 永远不生效。
-      - 'multi-1.20.1-1.21.1'
+      - 'multi-main'
       # 合并后的开发主线（原 dev-targetselector 重命名而来）
       - 'multi-dev-next'
       # 26.1.2 第三条线:2026-09-17 起已与发布线同树(该分支保留为历史/回滚入口)。
       # 它同样跑 lang 同步 + 三子项目构建,并且它的 jar 会**一并附到发布线的 Release**(见文末三 jar 步骤);
-      # 打 tag / 建 Release 这两步仍**只在发布线分支**(multi-1.20.1-1.21.1)触发 —— 26.1.2 的版本号
+      # 打 tag / 建 Release 这两步仍**只在发布线分支**(multi-main)触发 —— 26.1.2 的版本号
       # 形如 `1.2.1-beta+neoforge_26.1.2`,不是裸 x.y.z,按发布规范不会(也不应)生成独立 tag。
       - 'multi-26.1.2-neoforge'
     tags:
@@ -58,26 +58,29 @@ jobs:
         # 前置库 starengine_lib 只在 mavenLocal 发布(无远程 maven),CI 上必须先从源码构建。
         # ⚠️ ref **不得**停在浮动的 main(2026-09-17 修正):main 每推一个提交都向前走,而消费方在这里
         # 构建出的库必须**恰好**是 `starengine_lib_version` 指定的那一版 —— 浮动 main 会让
-        # 「区间下界 [1.0.0-SNAPSHOT.<n>,2.0)」与「CI 实际 publishToMavenLocal 出的版本」脱钩,
+        # 「区间下界 [1.0.0,2.0)」与「CI 实际 publishToMavenLocal 出的版本」脱钩,
         # 一旦库在两次 CI 之间 bump 或改动坐标,断在依赖解析(本地不可复现,只在 CI 暴露)。
-        # 现固定为 `starengine_lib_version=1.0.0-SNAPSHOT.16` 的**终态**提交(该提交里三平台
-        # mod_version 均为 1.0.0-SNAPSHOT.16,同时带着此前两批修复:**库自身被 FML 拒载**的根因修复
+        # 现固定为 `starengine_lib_version=1.0.0` 的提交(该提交里三平台 mod_version 均为 1.0.0;
+        # 它是快照系列终态 `.16` 的**规范化**结果 —— 库内 Java 源码零改动,仅版本号去掉 -SNAPSHOT,
+        # 同时带着此前两批修复:**库自身被 FML 拒载**的根因修复
         # —— 1.21.1 的 loaderVersion 槽曾误填 NeoForge 版本带 [21.1,21.2),而该槽比的是 javafml
         # 语言提供者版本(本机报 4.0.42)⇒ 改回语言区间 [1,),forge-1.20.1 的 loaderVersion 同时由
         # [47,) 收敛为 [47,48)、其 forge 依赖改用从 forge_version 派生的精确区间 [47.4.10,48);
         # 以及 forge-1.20.1 缺失的 `pack.mcmeta`(缺它时 Forge 加载界面告警且该模组资源包不注册)。
-        # 库侧 `.7` 只发布过 mavenLocal、从未入库,故它并入 `.10`;库侧现有 tag `1.0.0`,用提交 SHA 钉死。
+        # 库侧 `.7` 只发布过 mavenLocal、从未入库,故它并入 `.10`;本 ref 一律用提交 SHA 钉死
+        # (1.0.0 推送到库 `main` 后其 CI 会自动打 tag `1.0.0`,但不依赖 tag —— 避免 tag 建立时序问题)。
         # **库版本 bump 时本行必须同步更新**(与 neoforge-1.21.1 / forge-1.20.1 / neoforge-26.1.2
         # 的 gradle.properties 的 starengine_lib_version 同一提交里一起改;`.5` 旧钉值为库提交
-        # d5b0776,`.6` 为 716f976,`.10` 终态即库提交 ec28415,`.16` 终态即库提交 f706be0),且该提交需已推送到远端 ——
+        # d5b0776,`.6` 为 716f976,`.10` 终态即库提交 ec28415,`.16` 终态即库提交 f706be0,
         # `1.0.0` 首个正式版即库提交 205eed8;`1.0.1` 这个版本号**从未推送、已撤销** —— 前后两批内容
-        # (移除 forge 侧 Curios 前置 / 为 26.1.2 补齐 `NeoForgeEconomyStorage`)分别并入 1.0.0
         # (前者库提交 c9818d1,后者库提交 b90a16e)⇒ 现钉库提交 b90a16e),且该提交需已推送到远端。
-        # ✅ **2026-09-23:库仓库已推送**(远端 `main` = b90a16e)⇒ 本 ref 可被 CI 检出,KI-M4① 已解除。
+        # ✅ **2026-09-23:库仓库已推送**(远端 `main` = b90a16e,含 tag `1.0.0` + 三平台 jar 的 Release;
+        #    两批「原拟 1.0.1」的改动均已并入 1.0.0,同一次 CI 复用既有 tag 并 --clobber 刷新 Release 附件)
+        #    ⇒ 本 ref 可被 CI 检出,KNOWN-ISSUES KI-M4① 已解除。
         uses: actions/checkout@v4
         with:
           repository: merlin-kitsune/starengine_lib
-          ref: b90a16e1d935e9eb1409f8fe28745a41194f2727   # = 1.0.0(含为 neoforge-26.1.2 补齐的平台侧经济存储实现 NeoForgeEconomyStorage)
+          ref: b90a16e1d935e9eb1409f8fe28745a41194f2727   # = 1.0.0(含为 neoforge-26.1.2 补齐的平台侧经济存储实现 NeoForgeEconomyStorage,使三线功能对等;纯新增,消费方区间 [1.0.0,2.0) 不动)
           path: .ci/starengine_lib
           fetch-depth: 1
 
@@ -126,10 +129,10 @@ jobs:
 
       - name: Create Git tag (release branch push only)
         id: tag
-        # 仅在发布线分支(multi-1.20.1-1.21.1)自动打 tag:tag = 基础版本号(去掉 -rc/-pre 与 +后缀),如 1.1.3。
+        # 仅在发布线分支(multi-main)自动打 tag:tag = 基础版本号(去掉 -rc/-pre 与 +后缀),如 1.1.3。
         # ⚠️ 该分支推送时若 mod_version 不含 '-',会自动建 tag;Release 由**同一 job 的下一步**直接发布。
         # 不再依赖「tag push 触发 Release」:GITHUB_TOKEN 推送的 tag 不会再触发本 workflow。
-        if: github.event_name == 'push' && github.ref == 'refs/heads/multi-1.20.1-1.21.1' && steps.version.outputs.skip_tag == '0'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/multi-main' && steps.version.outputs.skip_tag == '0'
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           if [[ "$VERSION" == *-* ]]; then
@@ -156,7 +159,7 @@ jobs:
         # 说明正文取自**玩家侧发布说明** `release/<tag>/PLAYER_CHANGELOG_ZH.md` + `PLAYER_CHANGELOG.md`
         # (中文在前、英文在后,中间插一条 `---`);两个文件都不存在时退回「附件清单」兜底并留 ::warning::。
         # 已存在同名 Release 时改为「编辑说明 + --clobber 覆盖附件」,保证重复发布幂等、附件与最新构建一致。
-        if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'push' && github.ref == 'refs/heads/multi-1.20.1-1.21.1' && steps.tag.outputs.tag != '')
+        if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'push' && github.ref == 'refs/heads/multi-main' && steps.tag.outputs.tag != '')
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

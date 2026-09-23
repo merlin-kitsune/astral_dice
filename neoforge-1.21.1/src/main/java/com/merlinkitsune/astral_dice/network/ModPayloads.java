@@ -76,5 +76,13 @@ public class ModPayloads {
                 StarCoinBalancePayload.STREAM_CODEC,
                 StarCoinBalancePayload::handle
         );
+        // 鼠鼠护盾可见性 → 客户端（护盾球渲染条件）。⚠️ 原版**不同步** mob effect 给
+        // 「本人 + 乘客」以外的玩家 ⇒ 他人客户端 entity.hasEffect(REN_SHIELD) 恒为 false，
+        // 故可见性必须走本载荷（见 combat/RenShieldVisibility 类头）。
+        registrar.playToClient(
+                RenShieldStatePayload.TYPE,
+                RenShieldStatePayload.STREAM_CODEC,
+                RenShieldStatePayload::handle
+        );
     }
 }

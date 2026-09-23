@@ -2,24 +2,31 @@ package com.merlinkitsune.astral_dice.item;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.starenginelib.component.GameplayConstants;
+import com.merlinkitsune.astral_dice.combat.RenShieldVisibility;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
 import com.merlinkitsune.astral_dice.item.sign.RenSignItem;
 import com.merlinkitsune.astral_dice.network.ActionBarPayload;
+import com.merlinkitsune.astral_dice.network.RenShieldStatePayload;
 import com.merlinkitsune.starenginelib.event.ModEffectRemoval;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.player.Player;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * 鼠鼠护盾(游戏大师立牌 ren)的服务端权威管理。
@@ -134,6 +141,8 @@ public final class RenShieldManager {
         if (notify) {
             notifyShieldGained(player);
         }
+        // 护盾状态变化 ⇒ 广播可见性(原版不同步 mob effect 给他人,见 broadcastShieldStates)
+        broadcastShieldStates(player);
         LOGGER.debug("[Astral Dice][RenShield] granted player={} absorb={} baseline={} already={} notify={}",
                 player.getName().getString(), player.getAbsorptionAmount(), baseline, already, notify);
     }
@@ -164,6 +173,8 @@ public final class RenShieldManager {
         ModAttachments.setRenCounterCharges(player, 0);
         removeCounterEffect(player);
         ModAttachments.setRenShieldBaselineAbsorption(player, 0.0F);
+        // 护盾清空 ⇒ 广播可见性(重复广播同一状态幂等)
+        broadcastShieldStates(player);
         LOGGER.debug("[Astral Dice][RenShield] voided player={} reason={} absorb={} -> {}",
                 player.getName().getString(), reason, before, player.getAbsorptionAmount());
     }
@@ -182,6 +193,54 @@ public final class RenShieldManager {
         }
         ModAttachments.setRenCounterCharges(player, 0);
         ModAttachments.setRenShieldBaselineAbsorption(player, 0.0F);
+        // 效果被外部路径移除(/effect clear、牛奶、死亡等)时**不会**经过 voidShield
+        // ⇒ 客户端镜像会残留「他有护盾」,故这里必须补一次广播。
+        broadcastShieldStates(player);
+    }
+
+    /**
+     * 把「当前全服护盾持有者」的**全量**列表广播给所有玩家。
+     *
+     * <p><b>为什么必须另开通道</b>:原版从不同步 {@code MobEffectInstance} 给「本人 + 自己乘客」
+     * 以外的玩家 —— 全 jar 构造 {@code ClientboundUpdateMobEffectPacket} 只有 4 处,全部只发本人
+     * 或乘客;{@code ServerEntity} 内不含任何效果同步代码;原版为「他人可见」单开的发光轮廓与
+     * 效果粒子两条通道都走 {@code SynchedEntityData}。⇒ 他人客户端 {@code hasEffect(REN_SHIELD)}
+     * **恒为 false**,护盾球会只在持有者自己(第三人称)可见。详见 {@link RenShieldVisibility} 类头。
+     *
+     * <p><b>为什么是全量 + 全服广播</b>:① 全量天然幂等,且天然覆盖「清除」(不在列表即失效),
+     * 不会因丢包或漏发而残留;② entityId 在**全服**唯一,列表落在别的维度不会命中任何已加载玩家
+     * ⇒ 无需按维度/追踪范围裁剪;而按追踪范围裁剪反而会在「登录时目标在视野外」漏发。
+     * 开销可忽略:本方法只在护盾授予/清空/清理时调用(低频),列表长度 = 当前持有者人数。
+     */
+    private static void broadcastShieldStates(Player trigger) {
+        if (!(trigger instanceof ServerPlayer player)) return;
+        MinecraftServer server = player.level().getServer();
+        if (server == null) return;
+        PacketDistributor.sendToAllPlayers(collectShieldedPayload(server));
+    }
+
+    /** 构造「当前全服护盾持有者」的全量载荷 */
+    private static RenShieldStatePayload collectShieldedPayload(MinecraftServer server) {
+        List<Integer> ids = new ArrayList<>();
+        for (ServerPlayer other : server.getPlayerList().getPlayers()) {
+            if (isShielded(other)) {
+                ids.add(other.getId());
+            }
+        }
+        return new RenShieldStatePayload(List.copyOf(ids));
+    }
+
+    /**
+     * 玩家登录时单独补发一份全量:让每个新会话的**第一份包**就把客户端镜像整体刷新。
+     * entityId 只在单个服务端会话内唯一(跨服务器/重启会撞号),全量替换是唯一的清理时机,
+     * 因此这一步不是优化而是正确性所需。
+     */
+    @SubscribeEvent
+    public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
+        if (!(event.getEntity() instanceof ServerPlayer player)) return;
+        MinecraftServer server = player.level().getServer();
+        if (server == null) return;
+        PacketDistributor.sendToPlayer(player, collectShieldedPayload(server));
     }
 
     @SubscribeEvent

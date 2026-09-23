@@ -33,7 +33,7 @@ import java.util.Optional;
 /**
  * {@code /astralparty} 调试命令(仅 OP,权限级 2)。
  *
- * <p>四个子命令:三个写入类按「出牌锁的三条判据」分工——出牌锁判定见
+ * <p>五个子命令:三个写入类按「出牌锁的三条判据」分工——出牌锁判定见
  * {@link EffectCardPeriod#isBlocked(net.minecraft.world.entity.player.Player)}:
  * <ol>
  *   <li>{@code isBurstFull} —— 出牌数达当轮上限;</li>
@@ -51,6 +51,10 @@ import java.util.Optional;
  *   <li>{@code /astralparty dump [目标]} —— <b>只读</b>:把本模组自身的出牌锁原始值 / 派生判定、
  *       立牌三态原始值、玩家实际携带的本模组效果、效果待定来源明细倾倒成
  *       {@code APDUMP|<组>|<键>=<值>} 行(见 {@link #DUMP_PREFIX});**不改变任何状态**。</li>
+ *   <li>{@code /astralparty finishsigncooldown [目标]} —— 立即<b>结束立牌主动技能的玩家级冷却</b>
+ *       (把 {@code sign_active_cooldown_end} 写成当前时刻)。**只结束冷却计时**:不碰锁定(生效中)态
+ *       {@code sign_active_lock_*},不碰 {@code sign_active_max_cooldown},也不碰蛟龙立牌(mamushi)的
+ *       强制冷却硬闸门 {@code mamushi_forced_cooldown_until};**不带任何数值参数**(见文末「能力边界」红线②)。</li>
  * </ul>
  *
  * <p><b>dump 的输出约定(核心是「格式稳定」,不是给人看)</b>:① 每行固定前缀 {@code APDUMP|},
@@ -63,7 +67,7 @@ import java.util.Optional;
  * **判定入口字段**,行尾带 {@code |assert=forbidden} 标记 —— 它们只作人工参考,**禁止作为断言落点**,
  * 断言一律锚定 {@code LOCKRAW}/{@code SIGN} 的原始值。
  *
- * <p>别名:{@code resetcardcolddown}(用户原话拼写)与 {@code resetcardcooldown}(拼写正确版)都是
+ * <p>别名:{@code resetcardcooldown}(拼写正确版)是
  * {@code resetcardlock} 的别名,与主字面量**共用同一实现**,不存在第二份逻辑。
  *
  * <p>权限:全部子命令 {@code requires(src -> src.hasPermission(2))}。目标参数可选
@@ -101,6 +105,8 @@ public final class AstralPartyCommand {
     private static final String KEY_CLEAR_CARD_EFFECT_OTHER = "command.astral_dice.astralparty.clearcardeffect.success.other";
     private static final String KEY_RESET_LOCK_SELF = "command.astral_dice.astralparty.resetcardlock.success";
     private static final String KEY_RESET_LOCK_OTHER = "command.astral_dice.astralparty.resetcardlock.success.other";
+    private static final String KEY_FINISH_COOLDOWN_SELF = "command.astral_dice.astralparty.finishsigncooldown.success";
+    private static final String KEY_FINISH_COOLDOWN_OTHER = "command.astral_dice.astralparty.finishsigncooldown.success.other";
     private static final String KEY_NO_PLAYER = "command.astral_dice.astralparty.error.no_player";
     /** dump 的**人类可读摘要**(唯一走 lang key 的 dump 反馈;APDUMP 机器行正文刻意不走 lang) */
     private static final String KEY_DUMP_SUMMARY = "command.astral_dice.astralparty.dump.summary";
@@ -109,8 +115,10 @@ public final class AstralPartyCommand {
     private static final String ROOT_LITERAL = "astralparty";
     /** {@code resetcardlock} 的主字面量 */
     private static final String RESET_LOCK_LITERAL = "resetcardlock";
-    /** {@code resetcardlock} 的别名(用户原话拼写 + 拼写正确版),与主字面量同一实现 */
-    private static final String[] RESET_LOCK_ALIASES = { "resetcardcolddown", "resetcardcooldown" };
+    /** {@code finishsigncooldown} 的主字面量(立即结束立牌主动技能的玩家级冷却) */
+    private static final String FINISH_COOLDOWN_LITERAL = "finishsigncooldown";
+    /** {@code resetcardlock} 的别名(拼写正确版),与主字面量同一实现 */
+    private static final String[] RESET_LOCK_ALIASES = { "resetcardcooldown" };
 
     // === dump(只读转储)的机器格式约定 =====================================================
     // 机器格式的核心价值是「稳定」:固定前缀 + 固定分隔符 + 固定键序,供 PowerShell 侧对
@@ -159,6 +167,11 @@ public final class AstralPartyCommand {
                         .executes(ctx -> onSelf(ctx, AstralPartyCommand::dumpState))
                         .then(Commands.argument(ARG_TARGETS, EntityArgument.players())
                                 .executes(ctx -> onTargets(ctx, AstralPartyCommand::dumpState))))
+                .then(Commands.literal(FINISH_COOLDOWN_LITERAL)
+                        .requires(AstralPartyCommand::hasPermission)
+                        .executes(ctx -> onSelf(ctx, AstralPartyCommand::finishSignCooldown))
+                        .then(Commands.argument(ARG_TARGETS, EntityArgument.players())
+                                .executes(ctx -> onTargets(ctx, AstralPartyCommand::finishSignCooldown))))
                 .then(resetCardLockNode(RESET_LOCK_LITERAL));
         // 别名:同一构建器工厂 + 同一执行方法,命令只注册一次主名 + 别名
         for (String alias : RESET_LOCK_ALIASES) {
@@ -273,6 +286,49 @@ public final class AstralPartyCommand {
             source.sendSuccess(() -> Component.translatable(KEY_RESET_LOCK_SELF), false);
         } else {
             source.sendSuccess(() -> Component.translatable(KEY_RESET_LOCK_OTHER, targets.size()), false);
+        }
+        return Command.SINGLE_SUCCESS;
+    }
+
+    /**
+     * {@code finishsigncooldown}:立即**结束立牌主动技能的玩家级冷却** —— 把
+     * {@code sign_active_cooldown_end} 写成当前时刻,等价于「这一瞬间冷却正好走完」
+     * (与电流核心筹码的「立即完成冷却」同款写法:{@code CurrentCoreChipItem} 也是写当前时刻)。
+     *
+     * <p><b>边界(用户 2026-09-23 裁决:「只结束冷却计时,不动冻结期」)</b>:冷却判定在
+     * {@code BaseSignItem.performSkill} 侧是**三道**闸门,本命令只解最后一道 ——
+     * <ol>
+     *   <li><b>锁定(生效中)态</b> {@code sign_active_lock_*}(五个键)一律不动:主动技能「生效中」
+     *       窗口由各立牌自己的计时器决定,提前解开会让同一技能被重复施放(效果叠加、计时器重挂)。
+     *       锁定态下执行本命令**不产生任何效果**,因为此时本来就没有"正在跑的冷却"——冷却要等锁定
+     *       结束才起({@code performSkill} 第 6 步:进入锁定时只写基准,不写 {@code cooldown_end})。
+     *       排障时可先 {@code dump} 看 {@code sign_active_lock_end} 与 {@code sign_active_lock_sign}。</li>
+     *   <li><b>{@code sign_active_max_cooldown}</b> 不动:它是「本次冷却实际使用的基准」,锁定态下
+     *       还**尚未**被用于那次"还没开始的冷却"(冷却开始那一刻按 {@code max(0, 基准 − 减免池)} 起算)。
+     *       若一并清零,等于把玩家**冻结期结束后本该开始的冷却**也一起取消 —— 那属于「动冻结期」,越界。</li>
+     *   <li><b>蛟龙立牌(mamushi)的强制冷却硬闸门</b> {@code mamushi_forced_cooldown_until} 不动:它在
+     *       冷却判定侧的优先级**高于**本键({@code performSkill} 第 1 步无条件早退,连电流核心的
+     *       "消耗充能立即完成冷却"都不允许触发),属「不受任何减免的硬闸门」,与"冷却计时"不是同一个东西。
+     *       若需一并解除另开子命令,不在本条范围内。</li>
+     * </ol>
+     *
+     * <p>同样**不**碰:待命等待器 {@code sign_ready_*}(现已无写入方)、出牌锁(那是
+     * {@link #resetCardLock} 的职责)、任何效果实例、以及任何非本模组状态。
+     *
+     * <p><b>不带数值参数</b>(能力边界红线②):本命令只有一个动作「结束计时」,没有
+     * {@code setcooldown <tick>} 这类任意值写入入口 —— 目标参数仍是可选的玩家选择器。
+     *
+     * <p><b>幂等</b>:仅一次无条件赋值,不读旧值、不依赖前置状态,对「本来就不在冷却中」的玩家重复
+     * 调用没有任何副作用(写入值 ≤ 当前时刻 ⇒ 冷却判定侧 {@code cdEnd > 0 && now < cdEnd} 恒不成立)。
+     */
+    private static int finishSignCooldown(CommandSourceStack source, List<ServerPlayer> targets) {
+        for (ServerPlayer target : targets) {
+            ModAttachments.setSignActiveCooldownEnd(target, target.level().getGameTime());
+        }
+        if (isSoleSelfTarget(source, targets)) {
+            source.sendSuccess(() -> Component.translatable(KEY_FINISH_COOLDOWN_SELF), false);
+        } else {
+            source.sendSuccess(() -> Component.translatable(KEY_FINISH_COOLDOWN_OTHER, targets.size()), false);
         }
         return Command.SINGLE_SUCCESS;
     }

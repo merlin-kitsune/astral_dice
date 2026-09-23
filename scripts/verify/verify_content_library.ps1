@@ -1,5 +1,22 @@
 # -*- coding: utf-8 -*-
 <#
+⚠️ 定位：**1.2.0 冻结期一次性验收工具 —— 不属常规守门清单**（2026-09-23 用户裁决「按第 2 路修复」，
+见 `scripts/test/TESTING-SPEC.md` §9）。**不要**把它接进「每批必绿」的流水线或收尾清单。
+
+  原因：它的对照件 `docs/1.2.0-content.json` 按设计是「**1.2.0 到底新增了什么**」的**冻结快照**
+  （`start_commit = 68dbd59` = 1.2.0-rc1 bump 提交；采集脚本已于 2026-09-15 随 `temp/` 清理删除，
+  且 `docs/` 被 .gitignore 排除 ⇒ 干净克隆下本脚本无法运行）。工程一旦推进到新版本，本脚本
+  **必然报偏差**，例如 1.3.0 开发期实测 15 项：
+    · 闭集 1 项 —— 1.3.0 的 13 个新物品不在库里（两枚飞星 / 七个新立牌 / 风水师两张符卡 / 蛟龙两张战斗牌）；
+    · 计数 8 项 —— 汇总标签与 curios 槽位基线陈旧（chips 62≠60、signs 24≠17、chip 槽 61≠59、stand 槽 23≠16，× 双版本）；
+    · 效果 6 项 —— 1.2.0 有、1.3.0 已移除的 `moses_ready`（「待命：破绽」效果，现改为消息键
+      `msg.astral_dice.moses_ready`）仍被库里登记为 effect ⇒ 报「未注册 + 缺 lang 键」。
+  ⇒ **这类偏差不是回归**，不得据此判定某次改动有问题。
+
+  何时运行：仅在「**重建某个版本的内容库快照并校验它**」时手动运行。届时必须一并把本脚本的
+  `$START_COMMIT` / `$BASE_TAG_COUNTS` / `$BASE_SLOT_COUNTS` / `$NEW_EFFECTS` / `$VERS`
+  切到目标版本（另需重写采集脚本——原件已删）。
+
 内容库一致性校验：docs/1.2.0-content.json ↔ 工程实际文件。
 
 独立重算工程事实（不依赖任何生成脚本的中间产物），逐项比对内容库：
@@ -245,6 +262,9 @@ function Get-ModEffects {
 # main
 # ---------------------------------------------------------------------------
 $root = $Root
+Write-Out '[NOTE] 本脚本是 1.2.0 冻结期一次性验收工具，**不属常规守门清单**；'
+Write-Out '       它对照的是 1.2.0 的冻结快照，工程推进后出现偏差属预期、不代表回归（见脚本头部与 TESTING-SPEC.md §9）。'
+Write-Out ''
 $out_json = [System.IO.Path]::Combine($root, 'docs/1.2.0-content.json')
 if (-not [System.IO.File]::Exists($out_json)) {
     Write-Out '!! 缺少 docs/1.2.0-content.json（内容库快照，被 .gitignore 排除，其生成脚本已于 2026-09-15 随 temp/ 清理移除）—— 请先从备份恢复该文件，详见 scripts/test/TESTING-SPEC.md §11'
@@ -420,6 +440,9 @@ foreach ($w in $warnings) { Write-Out ('WARN ' + $w) }
 if ($errors.Count -gt 0) {
     Write-Out ('FAIL —— ' + $errors.Count + ' 项偏差：')
     foreach ($e in $errors) { Write-Out ('  - ' + $e) }
+    Write-Out ''
+    Write-Out '（提示：本脚本对照的是 **1.2.0 冻结快照**，工程已推进时出现偏差属预期 —— 见脚本头部与 TESTING-SPEC.md §9。'
+    Write-Out '  要判定「是否真的漏登记」，须先确认内容库快照是否已按当前版本重建；本脚本不参与常规门禁。）'
     [Console]::Out.Flush()
     exit 1
 }

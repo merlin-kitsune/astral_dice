@@ -202,7 +202,7 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
     /**
      * 目标选择**确认成功**后的恢复点(由 {@code TargetSelectionManager#confirm} 在 action.apply 之后调用)。
      *
-     * <p>只对「由立牌门控登记的会话」生效:非立牌会话(如 {@code test_echo_*})没有待执行记录 ⇒ 直接返回,
+     * <p>只对「由立牌门控登记的会话」生效:非立牌会话没有待执行记录 ⇒ 直接返回,
      * 原有行为不受影响。恢复的是原 performSkill 的第 4/5 步(风扇筹码发牌 + 立牌主动响应事件);
      * **不**重复写玩家级冷却/锁定与电流核心充能 —— 那两件事已由各 TargetSelectionAction#apply 完成。
      *

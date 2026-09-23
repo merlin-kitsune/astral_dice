@@ -1,56 +1,16 @@
-# Astral Dice（星之骰戏）
+# Astral Dice
 
-**Minecraft multiloader 模组：1.21.1 NeoForge / 1.20.1 Forge** | A Minecraft multiloader mod: 1.21.1 NeoForge / 1.20.1 Forge
+**English** | [中文](README_ZH.md)
 
-> 本仓库为 multiloader 单仓：`neoforge-1.21.1/`（1.21.1 NeoForge 主线）与 `forge-1.20.1/`（1.20.1 Forge 移植线）两个自包含子项目，共享同一套玩法内容。详见 `docs/multiloader-layout.md`。
+**A Minecraft multiloader mod: 1.21.1 NeoForge / 1.20.1 Forge / 26.1.2 NeoForge**
 
-Astral Dice 是一个以「骰子」为核心的生存扩展模组。戴上骰子，每一次近战攻击都会掷出命运之骰，触发「骰神赐福」，进入攻防对垒的骰战玩法。
+> This repository is a multiloader monorepo: three self-contained subprojects — `neoforge-1.21.1/` (the 1.21.1 NeoForge mainline), `forge-1.20.1/` (the 1.20.1 Forge port line) and `neoforge-26.1.2/` (the 26.1.2 NeoForge migration line) — sharing one set of gameplay content. See `docs/multiloader-layout.md`.
 
 Astral Dice is a survival expansion mod built around dice. Equip a dice and every melee attack becomes a roll of fate — trigger the **Dice Blessing** and enter a dice-battle system where attack clashes against defense.
 
 ---
 
-## 中文介绍
-
-### 核心玩法
-
-- **骰子**：基础 → 黄金 → 钻石 → 下界合金，四阶升级；星级提升解锁更多费用点数与卡牌槽位。
-- **战斗牌**：攻击牌与防御牌，插入骰子卡牌栏后，在骰神赐福中提供随机点数加成；每张卡牌拥有独立耐久。
-- **效果牌**：王之力、狂暴、岿然不动、对怪激光、轨道炮、活体书页等丰富效果牌，拥有独立的出牌数与冷却周期。
-- **立牌**：17 位风格各异的角色立牌，每位都有专属被动与主动技能，例如经商、扫地机、护法、忍者、吸血鬼等。
-- **筹码**：大量被动饰品，如拳击手套、速度轮滑、摩托头盔、医疗箱、魔法箭袋、星币锤等，提供攻击、防御、移速、生命、星光等多维加成。
-- **资源流派**：治愈点、星光点、标记层数、充能层数四大玩家资源体系，配合立牌与筹码形成多样构筑。
-
-### 特色系统
-
-- 骰神赐福攻防对垒
-- 法伤模块：兼容弓箭、三叉戟、魔法与多种法术模组
-- 卡牌选择界面：卡牌栏按骰子星级（0★=4 / 1★=6 / 2★=8 / 3★=12 格，攻防各半），实时数值预览
-- 事件系统：大侦探、调查员、秘密侦探等立牌联动
-- Bountiful 赏金板联动
-
-### 支持版本 / 环境要求
-
-| 支持 | 子项目 | Minecraft | 加载器 | Java | 当前模组版本 | 帕秋莉手册 |
-|---|---|---|---|---|---|---|
-| ✅ | `neoforge-1.21.1` | 1.21.1 | NeoForge 21.1.235 | 21 | 1.2.1-hotfix | ✅ |
-| ✅ | `forge-1.20.1` | 1.20.1 | Forge 47.4.10 | 17 | 1.2.1-hotfix | ✅ |
-| 🧪 | `neoforge-26.1.2` | 26.1.2 | NeoForge 26.1.2.109 | 25 | 2.0.0-SNAPSHOT.13 | ✅ |
-
-- `neoforge-1.21.1` 与 `forge-1.20.1` 是**发布线**（功能对等，两者的 jar 随每个 GitHub Release 发布）。
-- `neoforge-26.1.2` 是**移植线**（2026-09-19 起已纳入主线、与另两线同级同步，不再是低优先级线）：**不单独打 tag / 发 Release**，但其 jar 作为**第三个附件随发布线的 Release 一并发布**（CI 三线同批构建，见 `.github/workflows/build.yml`）。该线**无** Iron's Spells 'n Spellbooks 联动（上游无 26.1.x 构建）。
-
-| 前置/联动 | 要求 |
-|---|---|
-| 前置模组 | Curios API（1.20.1 用 Curios 5.x；1.21.1 用 Curios 9+；**26.1.2 用 Curios 15+**，缺失时会在 NeoForge 依赖排序阶段被拒绝） |
-| 前置模组（仅 1.20.1） | **Mixin Booster ≥ 0.1.3**，**强制**：未安装时游戏会在 Forge 依赖排序阶段直接拒绝启动并提示缺少 `mixinbooster`；装旧版本同样会被拒 |
-| 可选联动 | Bountiful、帕秋莉手册 |
-
----
-
-## English Introduction
-
-### Core Features
+## Core Features
 
 - **Dice**: Four tiers — Basic, Golden, Diamond, and Netherite. Star upgrades unlock more cost points and card slots.
 - **Battle Cards**: Attack and defense cards are inserted into the dice card inventory. They grant random bonus points during Dice Blessings, and each card has its own durability.
@@ -59,7 +19,7 @@ Astral Dice is a survival expansion mod built around dice. Equip a dice and ever
 - **Chips**: A wide variety of passive curios — Boxing Gloves, Speed Skates, Moto Helmet, Medkit, Magic Quiver, Star Coin Hammer, and more — providing attack, defense, movement speed, health, starlight, and other bonuses.
 - **Player Resources**: Healing Points, Starlight, Mark stacks and Charge stacks form four player resource systems that work together with signs and chips.
 
-### Highlights
+## Highlights
 
 - Dice Blessing attack/defense showdown
 - Spell Damage system compatible with bows, crossbows, tridents, magic, and many magic mods
@@ -67,38 +27,39 @@ Astral Dice is a survival expansion mod built around dice. Equip a dice and ever
 - Event system featuring Detective, Investigator, and Secret Detective signs
 - Bountiful bounty board integration
 
-### Supported Versions / Requirements
+## Supported Versions / Requirements
 
 | Support | Subproject | Minecraft | Loader | Java | Current Version | Patchouli |
 |---|---|---|---|---|---|---|
-| ✅ | `neoforge-1.21.1` | 1.21.1 | NeoForge 21.1.235 | 21 | 1.2.1-hotfix | ✅ |
-| ✅ | `forge-1.20.1` | 1.20.1 | Forge 47.4.10 | 17 | 1.2.1-hotfix | ✅ |
-| 🧪 | `neoforge-26.1.2` | 26.1.2 | NeoForge 26.1.2.109 | 25 | 2.0.0-SNAPSHOT.13 | ✅ |
+| ✅ | `neoforge-1.21.1` | 1.21.1 | NeoForge 21.1.235 | 21 | 1.3.0 | ✅ |
+| ✅ | `forge-1.20.1` | 1.20.1 | Forge 47.4.10 | 17 | 1.3.0 | ✅ |
+| ✅ | `neoforge-26.1.2` | 26.1.2 | NeoForge 26.1.2.109 | 25 | 1.3.0-beta.1 | ✅ |
 
 - `neoforge-1.21.1` and `forge-1.20.1` are the **release lines** (feature-parity pair; both jars are published with every GitHub Release).
-- `neoforge-26.1.2` is the **port line** (since 2026-09-19 it belongs to the mainline and is synchronised at the same level as the other two, no longer low-priority): it **never gets its own tag or Release**, but its jar is shipped as a **third attachment on the release lines' Releases** (CI builds all three lines together, see `.github/workflows/build.yml`). This line has **no** Iron's Spells 'n Spellbooks integration (upstream ships no 26.1.x build).
+- `neoforge-26.1.2` is the **migration line** (since 2026-09-19 it belongs to the mainline and is synchronised at the same level as the other two; since 2026-09-22 it is a **fully supported migration line** rather than experimental client-side support): it **never gets its own tag or Release**, but its jar is shipped as a **third attachment on the release lines' Releases** (CI builds all three lines together, see `.github/workflows/build.yml`). This line has **no** Iron's Spells 'n Spellbooks integration (upstream ships no 26.1.x build).
 
 | Dependency | Requirement |
 |---|---|
-| Required | Curios API (Curios 5.x on 1.20.1, Curios 9+ on 1.21.1, **Curios 15+ on 26.1.2**; a missing or too-old Curios is rejected during NeoForge's dependency sorting) |
+| Required (**mandatory from 1.3.0 on**) | **StarEngine Lib** (`starengine_lib`) **1.0.0 or any higher 1.x**: **required from 1.3.0 onward** (`1.2.1-hotfix` and earlier run on their own); without it the mod is refused at load time. **The library and the mod must be updated as a pair** |
+| Required | Curios API (Curios 5.x on 1.20.1, Curios 9+ on 1.21.1, **Curios 15+ on 26.1.2**; a missing or too-old Curios is rejected during NeoForge's dependency sorting). ⚠️ This prerequisite is declared **by this mod**; StarEngine Lib itself only uses it as a **compile-time** dependency on the Forge side (it is not in the library's `mods.toml`) |
 | Required (1.20.1 only) | **Mixin Booster ≥ 0.1.3**, **mandatory**: when it is missing, the game refuses to start right at Forge's dependency-sorting stage and reports the missing `mixinbooster`; an outdated version is rejected the same way |
 | Optional | Bountiful, Patchouli |
 
 ---
 
-## 下载 / Download
+## Download
 
-- 支持平台：Minecraft 1.21.1 / NeoForge、1.20.1 / Forge（发布线）；Minecraft 26.1.2 / NeoForge（低优先级线，不单独发 Release，jar 随发布线 Release 附带）
-- 前置：Curios API（1.20.1 另需 Mixin Booster ≥ 0.1.3）
-- 构建产物：`neoforge-1.21.1/build/libs/astral_dice-<版本>+neoforge_1.21.1.jar`、`forge-1.20.1/build/libs/astral_dice-<版本>+forge_1.20.1.jar`、`neoforge-26.1.2/build/libs/astral_dice-<版本>+neoforge_26.1.2.jar`；GitHub Release 的 tag 使用无后缀的基础版本号（如 `1.1.3`），自动附带**三个** jar（发布线两个 + 26.1.2 的 `-beta` jar，版本号各自独立）
+- Supported platforms: Minecraft 1.21.1 / NeoForge, 1.20.1 / Forge (release lines); Minecraft 26.1.2 / NeoForge (migration line — no tag or Release of its own; its jar ships with the release lines' Releases)
+- Requirements: **StarEngine Lib 1.0.0+** (mandatory from 1.3.0 on), Curios API (plus Mixin Booster ≥ 0.1.3 on 1.20.1)
+- Build artefacts: `neoforge-1.21.1/build/libs/astral_dice-<version>+neoforge_1.21.1.jar`, `forge-1.20.1/build/libs/astral_dice-<version>+forge_1.20.1.jar`, `neoforge-26.1.2/build/libs/astral_dice-<version>+neoforge_26.1.2.jar`; GitHub Release tags use the bare base version number (e.g. `1.3.0`) and carry **three** jars (the two release lines plus 26.1.2's `-beta` jar, each with its own version number)
 
-## 构建 / Build
+## Build
 
 ```bash
-./gradlew build                    # 构建全部子项目（三个版本）
-./gradlew :neoforge-1.21.1:build   # 仅构建 1.21.1 NeoForge
-./gradlew :forge-1.20.1:build      # 仅构建 1.20.1 Forge
-./gradlew :neoforge-26.1.2:build   # 仅构建 26.1.2 NeoForge（低优先级线）
+./gradlew build                    # build every subproject (all three lines)
+./gradlew :neoforge-1.21.1:build   # 1.21.1 NeoForge only
+./gradlew :forge-1.20.1:build      # 1.20.1 Forge only
+./gradlew :neoforge-26.1.2:build   # 26.1.2 NeoForge only (migration line)
 ```
 
-- **模组依赖来源有硬规则**：所有第三方模组（含前置/附属模组）只允许经 **Curse Maven**（`curse.maven:`）或 **Modrinth Maven**（`maven.modrinth:`）获取，并由 `build.gradle` 的 `exclusiveContent` 在依赖解析期强制、由 `tools/check_mod_sources.ps1` 静态守门（细则见 `AGENTS.md`「模组依赖添加规则(统一口径)」）。第三方模组 jar **不入库**（`base-mod-*` 目录已在 `.gitignore` 中排除）。
+- **Hard rule for mod dependency sources**: every third-party mod (front-ends included) may only come from **Curse Maven** (`curse.maven:`) or **Modrinth Maven** (`maven.modrinth:`), enforced at dependency-resolution time by `exclusiveContent` in `build.gradle` and statically gated by `tools/check_mod_sources.ps1` (details in `AGENTS.md`). Third-party mod jars are **never committed** (the `base-mod-*` directory is excluded in `.gitignore`).

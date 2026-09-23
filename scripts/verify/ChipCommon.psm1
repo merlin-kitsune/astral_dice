@@ -22,6 +22,9 @@
   (pwsh -File scripts/verify/verify_chip_recipes.ps1)引用。改动前先确认双版本 ModRecipeProvider.java
   的真实内容,勿仅凭此表推断。
 
+⚠️ 2026-09-23:金色飞星(传奇)从 GRID 移入 $UPGRADE(进阶自紫色飞星),走紫->金模板 RDR/DTD/GGG。
+  它与 ADRENALINE_HIGH 材料集合相同但**第二行中位不同**(紫色飞星 vs 肾上腺素-一般),签名不冲突。
+
 —— PowerShell 移植版:1:1 对应 scripts/verify/chip_common.py（原 .py 已在 92fbeaf 删除；取回：`git show 92fbeaf^:scripts/verify/chip_common.py`）,
    运行期完全不再依赖 python。字典一律用 Ordinal 比较器(等价 Python dict 的大小写敏感)。
 #>
@@ -233,7 +236,7 @@ $GRID = New-PyMapFrom ([ordered]@{
     # 星光类
     'FLASHLIGHT_CHIP'             = @(@('MC:REDSTONE_LAMP', 'MC:YELLOW_STAINED_GLASS', 'MC:REDSTONE_LAMP'), @('D', 'B', 'D'), @('P', 'P', 'P'))
     'PURPLE_SHOOTING_STAR_CHIP'   = @(@('MC:AMETHYST_SHARD', 'MC:AMETHYST_SHARD', 'MC:AMETHYST_SHARD'), @('D', 'B', 'D'), @('P', 'P', 'P'))
-    'GOLDEN_SHOOTING_STAR_CHIP'   = @(@('MC:GLOWSTONE_DUST', 'MC:GLOWSTONE_DUST', 'MC:GLOWSTONE_DUST'), @('D', 'B', 'D'), @('G', 'G', 'G'))
+    # 金色飞星已转为**进阶筹码**(紫->金,2026-09-23):不再是基础图案,见 $UPGRADE
     'EIGHT_SIDED_DICE'            = @(@('MC:GOLD_INGOT', 'MOD:DICE', 'MC:GOLD_INGOT'), @('D', 'B', 'D'), @('C', 'C', 'C'))
     'ATM'                         = @(@('MC:GOLD_INGOT', 'MC:GOLD_INGOT', 'MC:GOLD_INGOT'), @('D', 'B', 'D'), @('C', 'C', 'C'))
     'BANK_CARD_LOW'               = @(@('MC:GOLD_INGOT', 'MC:GOLD_BLOCK', 'MC:GOLD_INGOT'), @('D', 'B', 'D'), @('C', 'C', 'C'))
@@ -283,6 +286,9 @@ $UPGRADE = New-PyMapFrom ([ordered]@{
     'BANK_CARD_HIGH'         = 'BANK_CARD_LOW'; 'BANK_CARD_UNLIMITED' = 'BANK_CARD_HIGH'
     'CUTTER_BLADE_CHIP'      = 'CUTTER_CHIP'; 'EAGLE_SCOPE_CHIP' = 'SCOPE_CHIP'
     'MEDKIT_COMPLETE_CHIP'   = 'MEDKIT_EMERGENCY_CHIP'; 'ADRENALINE_HIGH' = 'ADRENALINE_LOW'
+    # 2026-09-23 新增:金色飞星由「光彩石粉基础图案」改为「紫色飞星升级」⇒ 登记进阶关系,
+    # 走紫->金通用模板 RDR/DTD/GGG(红石粉/钻石/紫色飞星/黄金星盘)。
+    'GOLDEN_SHOOTING_STAR_CHIP' = 'PURPLE_SHOOTING_STAR_CHIP'
 })
 
 $NEW_CHIPS = @('ELECTRIC_GLOVE_CHIP', 'AIRBAG_CHIP', 'RAILGUN_CHIP', 'PRIMORDIAL_CORE_CHIP',

@@ -129,6 +129,8 @@ public final class StarCoinCurrency {
         if (isCurrency(player.getOffhandItem())) {
             player.setItemSlot(EquipmentSlot.OFFHAND, ItemStack.EMPTY);
         }
+        // 余额已变 ⇒ 立刻推给客户端（否则余额条要等到 1 秒轮询的落点才跳数字）
+        StarCoinBalanceSync.notifyChanged(player);
         return total;
     }
 
@@ -163,6 +165,8 @@ public final class StarCoinCurrency {
         if (placed < wanted) {
             StarEngineEconomy.deposit(player, unit * (wanted - placed));
         }
+        // 余额已变 ⇒ 立刻推给客户端
+        StarCoinBalanceSync.notifyChanged(player);
         return placed;
     }
 
@@ -204,6 +208,8 @@ public final class StarCoinCurrency {
         if (total <= 0L) return false;
         if (!StarEngineEconomy.deposit(player, total)) return false;
         stack.setCount(0);
+        // 拾取 / 发币漏斗吸收 ⇒ 立刻推给客户端（余额条同 tick 跟上）
+        StarCoinBalanceSync.notifyChanged(player);
         return true;
     }
 }

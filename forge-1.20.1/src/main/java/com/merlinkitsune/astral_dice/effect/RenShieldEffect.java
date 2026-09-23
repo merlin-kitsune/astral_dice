@@ -6,9 +6,15 @@ import net.minecraft.world.effect.MobEffectCategory;
 /**
  * 鼠鼠护盾(游戏大师立牌 ren)。
  *
- * <p><b>为什么要有这个效果</b>:「是否持有鼠鼠护盾」的唯一真值(总开关)。效果实例由服务端施加,
- * 原版会把 mob effect 同步给**所有能看到该实体的客户端** ⇒ 第三人称可见的能量球护盾渲染可以直接以
- * {@code entity.hasEffect(REN_SHIELD)} 为条件源(1.20.1 的附件同步只发给本人,不能用作此条件)。
+ * <p><b>为什么要有这个效果</b>:「是否持有鼠鼠护盾」的唯一真值(总开关)。效果实例仅由服务端施加与读取。
+ *
+ * <p><b>⚠️ 它不能作为客户端渲染条件</b>:原版**不同步** mob effect 给「本人 + 自己乘客」以外的玩家
+ * —— 全 jar 构造 {@code ClientboundUpdateMobEffectPacket} 只有 4 处,全部只发本人或乘客;
+ * {@code ServerEntity} 内不含效果同步代码;原版为「他人可见」单开的发光轮廓与效果粒子两条通道
+ * 都走 {@code SynchedEntityData}。⇒ 他人客户端 {@code entity.hasEffect(REN_SHIELD)} 恒为 false。
+ * 第三人称可见性改走
+ * {@link com.merlinkitsune.astral_dice.combat.RenShieldVisibility}
+ * (由 {@code ModNetwork.RenShieldStateMessage} 维护),渲染见 {@code client/RenShieldRenderer}。
  *
  * <p><b>平台差异(有意为之,与 1.21.1 侧同名类不同)</b>:1.20.1 没有 {@code generic.max_absorption}
  * 属性、{@code setAbsorptionAmount} 也只把负值钳到 0 ⇒ 本类**不需要**也不应加 MAX_ABSORPTION 修饰器;
