@@ -2,22 +2,22 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
-    "B": {
-      "item": "astral_dice:blank_chip"
-    },
     "D": {
-      "item": "astral_dice:star_coin_dust"
+      "item": "minecraft:diamond"
     },
     "G": {
       "item": "astral_dice:golden_star_plate"
     },
-    "X": {
-      "item": "minecraft:glowstone_dust"
+    "R": {
+      "item": "minecraft:redstone"
+    },
+    "T": {
+      "item": "astral_dice:purple_shooting_star_chip"
     }
   },
   "pattern": [
-    "XXX",
-    "DBD",
+    "RDR",
+    "DTD",
     "GGG"
   ],
   "result": {

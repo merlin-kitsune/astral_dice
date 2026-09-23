@@ -1,11 +1,11 @@
 {
   "parent": "minecraft:recipes/root",
   "criteria": {
-    "has_blank_chip": {
+    "has_purple_shooting_star_chip": {
       "conditions": {
         "items": [
           {
-            "items": "astral_dice:blank_chip"
+            "items": "astral_dice:purple_shooting_star_chip"
           }
         ]
       },
@@ -21,7 +21,7 @@
   "requirements": [
     [
       "has_the_recipe",
-      "has_blank_chip"
+      "has_purple_shooting_star_chip"
     ]
   ],
   "rewards": {

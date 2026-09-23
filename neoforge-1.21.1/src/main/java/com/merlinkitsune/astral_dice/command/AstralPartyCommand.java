@@ -67,7 +67,7 @@ import java.util.Optional;
  * **判定入口字段**,行尾带 {@code |assert=forbidden} 标记 —— 它们只作人工参考,**禁止作为断言落点**,
  * 断言一律锚定 {@code LOCKRAW}/{@code SIGN} 的原始值。
  *
- * <p>别名:{@code resetcardcolddown}(用户原话拼写)与 {@code resetcardcooldown}(拼写正确版)都是
+ * <p>别名:{@code resetcardcooldown}(拼写正确版)是
  * {@code resetcardlock} 的别名,与主字面量**共用同一实现**,不存在第二份逻辑。
  *
  * <p>权限:全部子命令 {@code requires(src -> src.hasPermission(2))}。目标参数可选
@@ -117,8 +117,8 @@ public final class AstralPartyCommand {
     private static final String RESET_LOCK_LITERAL = "resetcardlock";
     /** {@code finishsigncooldown} 的主字面量(立即结束立牌主动技能的玩家级冷却) */
     private static final String FINISH_COOLDOWN_LITERAL = "finishsigncooldown";
-    /** {@code resetcardlock} 的别名(用户原话拼写 + 拼写正确版),与主字面量同一实现 */
-    private static final String[] RESET_LOCK_ALIASES = { "resetcardcolddown", "resetcardcooldown" };
+    /** {@code resetcardlock} 的别名(拼写正确版),与主字面量同一实现 */
+    private static final String[] RESET_LOCK_ALIASES = { "resetcardcooldown" };
 
     // === dump(只读转储)的机器格式约定 =====================================================
     // 机器格式的核心价值是「稳定」:固定前缀 + 固定分隔符 + 固定键序,供 PowerShell 侧对

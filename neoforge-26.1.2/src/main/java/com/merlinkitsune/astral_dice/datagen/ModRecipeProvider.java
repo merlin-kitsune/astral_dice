@@ -1312,16 +1312,18 @@ public class ModRecipeProvider extends RecipeProvider {
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
                 .save(output);
 
-        // 金色飞星(传奇/星光流派):同上,第三行 = 黄金星盘,第一行 = 荧石粉
+        // 金色飞星(传奇/星光流派):**进阶筹码** —— 走紫->金「通用升级」模板 RDR/DTD/GGG
+        // (红石粉 / 钻石 / 上一等级 = 紫色飞星 / 黄金星盘),不再复用紫色飞星的基础图案。
+        // ⚠️ 本筹码的进阶关系同时登记在 scripts/verify/ChipCommon.psm1 的 $UPGRADE 表中。
         ShapedRecipeBuilder.shaped(items, RecipeCategory.MISC, ModItems.GOLDEN_SHOOTING_STAR_CHIP.get())
-                .pattern("XXX")
-                .pattern("DBD")
+                .pattern("RDR")
+                .pattern("DTD")
                 .pattern("GGG")
-                .define('X', Items.GLOWSTONE_DUST)
-                .define('D', ModItems.STAR_COIN_DUST.get())
-                .define('B', ModItems.BLANK_CHIP.get())
+                .define('R', Items.REDSTONE)
+                .define('D', Items.DIAMOND)
+                .define('T', ModItems.PURPLE_SHOOTING_STAR_CHIP.get())
                 .define('G', ModItems.GOLDEN_STAR_PLATE.get())
-                .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
+                .unlockedBy("has_purple_shooting_star_chip", has(ModItems.PURPLE_SHOOTING_STAR_CHIP.get()))
                 .save(output);
 
         // 风水师立牌(zhao,传奇):GCG/RER/ZPZ(G=金锭,C=指南针,E=空白立牌,R=红石块,
