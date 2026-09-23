@@ -61,6 +61,8 @@ public final class ModNetwork {
                 StarCoinWalletMessage::encode, StarCoinWalletMessage::decode, StarCoinWalletMessage::handle);
         CHANNEL.registerMessage(id++, StarCoinBalanceMessage.class,
                 StarCoinBalanceMessage::encode, StarCoinBalanceMessage::decode, StarCoinBalanceMessage::handle);
+        CHANNEL.registerMessage(id++, RenShieldStateMessage.class,
+                RenShieldStateMessage::encode, RenShieldStateMessage::decode, RenShieldStateMessage::handle);
     }
 
     // === 发送助手(对应 1.21 PacketDistributor 静态方法) ===
@@ -71,6 +73,17 @@ public final class ModNetwork {
 
     public static void sendToPlayersTrackingEntity(Entity entity, Object message) {
         CHANNEL.send(PacketDistributor.TRACKING_ENTITY.with(() -> entity), message);
+    }
+
+    /**
+     * 全服广播(含所有维度)。
+     *
+     * <p>鼠鼠护盾可见性用它而不是追踪范围:entityId 在**全服**唯一,列表落在别的维度不会命中
+     * 任何已加载玩家 ⇒ 无需按维度/追踪范围裁剪;而按追踪范围裁剪反而会在「登录时目标在视野外」
+     * 漏发。详见 {@code combat.RenShieldVisibility} 类头。
+     */
+    public static void sendToAllPlayers(Object message) {
+        CHANNEL.send(PacketDistributor.ALL.noArg(), message);
     }
 
     public static void sendToServer(Object message) {
@@ -460,6 +473,60 @@ public final class ModNetwork {
         public static void handle(StarCoinBalanceMessage msg, Supplier<NetworkEvent.Context> ctx) {
             ctx.get().enqueueWork(() ->
                     com.merlinkitsune.starenginelib.economy.StarCoinWalletState.setBalance(msg.balance));
+            ctx.get().setPacketHandled(true);
+        }
+    }
+
+    // === 鼠鼠护盾可见性(S→C) ===
+
+    /**
+     * 鼠鼠护盾「他人可见」状态的**全量**列表(entityId)。
+     *
+     * <p>⚠️ 原版**不同步** mob effect 给「本人 + 自己乘客」以外的玩家 —— 全 jar 构造
+     * {@code ClientboundUpdateMobEffectPacket} 只有 4 处,全部只发本人或乘客;
+     * {@code ServerEntity} 内不含效果同步代码;原版为「他人可见」单开的发光轮廓与效果粒子
+     * 两条通道都走 {@code SynchedEntityData}。⇒ 他人客户端 {@code entity.hasEffect(REN_SHIELD)}
+     * **恒为 false**,护盾球曾只在持有者自己(第三人称)可见(2026-09-23 用户实测)。
+     * 本消息是该状态的唯一跨客户端来源。
+     *
+     * <p>全量语义(而非增量):天然幂等、天然覆盖「清除」(不在列表即失效)、且登录时整体刷新
+     * 掉跨服务器 entityId 撞号的残留。
+     */
+    public static class RenShieldStateMessage {
+        private final int[] shieldedEntityIds;
+
+        public RenShieldStateMessage(int[] shieldedEntityIds) {
+            this.shieldedEntityIds = shieldedEntityIds;
+        }
+
+        public static void encode(RenShieldStateMessage msg, FriendlyByteBuf buf) {
+            buf.writeVarInt(msg.shieldedEntityIds.length);
+            for (int id : msg.shieldedEntityIds) {
+                buf.writeVarInt(id);
+            }
+        }
+
+        public static RenShieldStateMessage decode(FriendlyByteBuf buf) {
+            int count = buf.readVarInt();
+            if (count < 0 || count > com.merlinkitsune.astral_dice.combat.RenShieldVisibility.MAX_ENTRIES) {
+                throw new io.netty.handler.codec.DecoderException(
+                        "ren_shield_state: 非法的实体数量 " + count);
+            }
+            int[] ids = new int[count];
+            for (int i = 0; i < count; i++) {
+                ids[i] = buf.readVarInt();
+            }
+            return new RenShieldStateMessage(ids);
+        }
+
+        public static void handle(RenShieldStateMessage msg, Supplier<NetworkEvent.Context> ctx) {
+            ctx.get().enqueueWork(() -> {
+                java.util.List<Integer> ids = new java.util.ArrayList<>(msg.shieldedEntityIds.length);
+                for (int id : msg.shieldedEntityIds) {
+                    ids.add(id);
+                }
+                com.merlinkitsune.astral_dice.combat.RenShieldVisibility.replaceAll(ids);
+            });
             ctx.get().setPacketHandled(true);
         }
     }

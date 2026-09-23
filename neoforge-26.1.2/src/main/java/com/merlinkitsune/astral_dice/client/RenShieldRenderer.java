@@ -1,7 +1,7 @@
 package com.merlinkitsune.astral_dice.client;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
-import com.merlinkitsune.astral_dice.effect.ModEffects;
+import com.merlinkitsune.astral_dice.combat.RenShieldVisibility;
 import com.mojang.blaze3d.pipeline.BlendFunction;
 import com.mojang.blaze3d.pipeline.ColorTargetState;
 import com.mojang.blaze3d.pipeline.DepthStencilState;
@@ -31,10 +31,19 @@ import java.util.List;
 /**
  * 鼠鼠护盾(游戏大师立牌 ren)的**第三方可见**能量球护盾渲染(26.1.2 移植版;语义基准 = 1.21.1 同名类)。
  *
- * <h2>条件源为什么是 mob effect</h2>
- * 原版会把 {@code MobEffectInstance} 同步给**所有能看到该实体的客户端**(效果粒子对他人可见就是这条路径)
- * ⇒ 直接以 {@code entity.hasEffect(REN_SHIELD)} 作为渲染条件,天然就是「别人也能看见」;
- * 1.20.1 的玩家附件同步只发给本人(见 forge 侧同名类注释),**不能**用作此条件。
+ * <h2>条件源:为什么**不能**用 {@code entity.hasEffect(REN_SHIELD)}</h2>
+ * <b>原版从不同步 {@code MobEffectInstance} 给「本人 + 自己乘客」以外的玩家。</b>
+ * 全 jar 构造 {@code ClientboundUpdateMobEffectPacket} 只有 4 处
+ * ({@code ServerPlayer.onEffectAdded} / {@code onEffectUpdated}、{@code PlayerList.sendActiveEffects}、
+ * {@code LivingEntity.sendEffectToPassengers}),全部只发**本人**或**乘客**;
+ * {@code ServerEntity} 内不含任何效果同步代码。原版为「他人可见」单开的两条通道都走
+ * {@code SynchedEntityData}:发光轮廓({@code setSharedFlag(6)},见 {@code LivingEntity.updateGlowingStatus})
+ * 与效果粒子({@code DATA_EFFECT_PARTICLES},**只同步粒子外观、不同步实例**)。
+ * ⇒ 他人客户端上 {@code player.hasEffect(REN_SHIELD)} **恒为 false** ⇒ 曾以它作条件的版本表现为
+ * 「护盾只有持有者自己(第三人称)看得见」(2026-09-23 用户实测)。
+ *
+ * <p>故条件源改为 {@link RenShieldVisibility} —— 全服护盾持有者镜像,由
+ * {@code network.RenShieldStatePayload} 维护(服务端在护盾状态变化时广播、玩家登录时补发全量)。
  *
  * <h2>观感(2026-09-25 两轮用户反馈:①更大更深更亮 ②必须完全覆盖玩家 + 球体 + 动态纹理)</h2>
  * <ul>
@@ -234,7 +243,8 @@ public final class RenShieldRenderer {
 
         List<Player> shielded = new ArrayList<>();
         for (Player player : mc.level.players()) {
-            if (!player.hasEffect(ModEffects.REN_SHIELD)) continue;
+            // 条件源 = 服务端广播的全量镜像(见类头:原版不同步 mob effect 给他人)
+            if (!RenShieldVisibility.isShielded(player.getId())) continue;
             // 防拿上一 tick 的已移除实体
             if (mc.level.getEntity(player.getId()) != player) continue;
             if (player.distanceToSqr(mc.player) > MAX_DISTANCE * MAX_DISTANCE) continue;
