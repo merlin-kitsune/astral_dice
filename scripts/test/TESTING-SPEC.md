@@ -441,7 +441,6 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --phase <p> --version <v>
 pwsh -NoProfile -File tools/check_lang_sync.ps1 -LangDir neoforge-1.21.1/src/main/resources/assets/astral_dice/lang
 pwsh -NoProfile -File tools/check_lang_sync.ps1 -LangDir forge-1.20.1/src/main/resources/assets/astral_dice/lang
 pwsh -NoProfile -File scripts/audit/tooltip_color_audit.ps1 --root .   # R1/R1b/R2/R3 + R0(回落码=行底色)/R4(%% 必须走 tt())
-pwsh -NoProfile -File scripts/verify/verify_content_library.ps1
 pwsh -NoProfile -File scripts/verify/verify_chip_recipes.ps1          # java / gen / jar 三档
 pwsh -NoProfile -File scripts/verify/verify_crafting_recipe_uniqueness.ps1   # 合成网格唯一性（必须在 runData 之后跑；0/1，见附录 A「蛟龙立牌批：配方网格重合修复 + 本守门」）
 pwsh -NoProfile -File scripts/verify/verify_chip_acquisition.ps1
@@ -451,7 +450,10 @@ pwsh -NoProfile -File scripts/verify/verify_forge_loader_gate.ps1   # 1.20.1 加
 pwsh -NoProfile -File tools/check_mod_sources.ps1                    # 模组来源统一口径(Curse/Modrinth Maven);阶段 P 的「模组来源」一项共用本脚本
 ```
 
-> ⚠️ `verify_content_library.ps1` 依赖 `docs/1.2.0-content.json`，该文件当前**被 .gitignore 排除**（详见 §11）。干净克隆下该守门脚本会因缺文件而无法运行。
+> ℹ️ **`verify_content_library.ps1` 已移出本节（2026-09-23 用户裁决「按第 2 路修复」）** —— 它是 **1.2.0 冻结期一次性验收工具，不是长期闸门**。
+> 其对照件 `docs/1.2.0-content.json` 按设计是「1.2.0 新增了什么」的**冻结快照**（`start_commit = 68dbd59`；采集脚本已于 2026-09-15 随 `temp/` 清理删除），工程推进到新版本后它**必然报偏差**——1.3.0 开发期实测 15 项（1.3.0 的 13 个新物品不在库里 1 项 + 汇总标签/槽位基线陈旧 8 项 + 1.2.0 有而 1.3.0 已移除的 `moses_ready`「待命：破绽」仍被登记 6 项），**不代表回归**。
+> 仅在「**重建某个版本的内容库快照并校验它**」时手动运行（届时须同步切换脚本内的 `$START_COMMIT` / `$BASE_*_COUNTS` / `$NEW_EFFECTS` / `$VERS`）。
+> ⚠️ 另：它依赖的 `docs/1.2.0-content.json` **被 .gitignore 排除**（详见 §11），干净克隆下会因缺文件而无法运行。
 
 ---
 
