@@ -95,14 +95,14 @@
 ## 3. 唯一入口与阶段
 
 ```powershell
-pwsh -NoProfile -File scripts/test/mt.ps1                      # 全流程（P→B→E→L→C→R，双版本 + 跨版本门控）
+pwsh -NoProfile -File scripts/test/mt.ps1                      # 全流程（P→B→E→L→C→R，三版本 + 跨版本门控）
 pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1      # 全流程**只跑指定版本**（无跨版本门控）
 pwsh -NoProfile -File scripts/test/mt.ps1 --phase <p> --version <v>
 ```
 
 > **`--version` 语义（2026-09-15 B6 ⑤ 修正）**：全流程分支**同样尊重** `--version` ——
-> 指定单版本时只跑该版本、**不做跨版本门控**（门控的前提是"两版本顺序执行"），`mt_report summary`
-> 也只汇总实际执行过的版本。旧实现无条件跑两版本，`mt.ps1 --version 1.20.1` 会**先跑 1.21.1**，
+> 指定单版本时只跑该版本、**不做跨版本门控**（门控的前提是"多版本顺序执行"），`mt_report summary`
+> 也只汇总实际执行过的版本。旧实现无条件跑全部版本，`mt.ps1 --version 1.20.1` 会**先跑 1.21.1**，
 > 1.21.1 一旦不通过就把 1.20.1 记成 `GATED` 而根本没跑 —— 与 `--version` 相反。
 
 | 阶段 | 实现 | 职责 | 终态标记 |
@@ -112,7 +112,7 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --phase <p> --version <v>
 | **E** 环境 | `mt_env.ps1` | `mods`（装兼容模组）/ `world`（重建测试世界，含原生 NBT 改写）/ `kill` | `MT_WORLD: OK/BLOCKED`（退出码 11） |
 | **L** 启动 | `mt_launch.ps1` | 启动 `runClient`、轮询就绪日志、兼容栈信号；**进入世界后先跑 B6 ④ 的 OP / `dump` 前置闸门**（只读；前置不足 ⇒ `BLOCKED`，探针/dump 不可用 ⇒ `ERROR`） | `MT_LAUNCH: OK/FAIL`、`MT_preflight-op: BLOCKED/ERROR` |
 | **C** 条目 | `mt_case.ps1` | 顺序执行 `cases/*.json`：注入命令/按键 → 等待 → 断言；每条结果**自动**写入报告状态 | 每条 `PASS/FAIL` |
-| **R** 报告 | `mt_report.ps1` | 收集证据（日志 / 崩溃 / 截图）→ 单版本 `report.md` → 双版本/单版本 `SUMMARY.md` | `MT_REPORT: OK/FAIL`（未全绿退出码 1） |
+| **R** 报告 | `mt_report.ps1` | 收集证据（日志 / 崩溃 / 截图）→ 单版本 `report.md` → 多版本/单版本 `SUMMARY.md` | `MT_REPORT: OK/FAIL`（未全绿退出码 1） |
 
 **辅助脚本**：`mt_assert.ps1`（断言引擎）、`mt_inject.ps1`（键鼠注入）、`mt_ime.ps1`（输入法）、`mt_capture.ps1`（截图世代）、`mt_cleanup.ps1`（退出清理唯一实现）、`mt_stop.ps1`（薄封装）、`mt_gen_case.ps1`（条目生成器）。
 **共享模块**：`lib/Mt.{Conf,Paths,Phase,Proc,Win32}.psm1`。
@@ -134,7 +134,7 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --phase <p> --version <v>
 
 - 1.21.1 未通过时，1.20.1 记 **`GATED`（未执行）**，报告显式标注为「未执行」而非「失败」。
 - 汇总：`scripts/test/reports/<运行id>/SUMMARY.md`；明细：`<运行id>/<版本>/report.md`。
-- 退出码：两版本均通过 `0`；任一失败或汇总未全通过 `1`。
+- 退出码：三版本均通过 `0`；任一失败或汇总未全通过 `1`。
 
 ---
 

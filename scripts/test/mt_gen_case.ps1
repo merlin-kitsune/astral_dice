@@ -76,7 +76,7 @@ $script:CategoryRules = [ordered]@{
     'chip'        = [ordered]@{
         keywords = @('chip', '筹码')
         asserts  = @([ordered]@{ type = 'kubejs' }, [ordered]@{ type = 'crash' })
-        notes    = '筹码需核对：配方两档互不越界、tooltip 染色（非时间数值黄/时间蓝）、创造栏顺序、手册条目与 lang 双版本同步'
+        notes    = '筹码需核对：配方两档互不越界、tooltip 染色（非时间数值黄/时间蓝）、创造栏顺序、手册条目与 lang 三版本同步'
     }
     'sign'        = [ordered]@{
         keywords = @('sign', '立牌')
