@@ -1,0 +1,32 @@
+{
+  "case_id": "JA-VISUAL-1.21.1",
+  "title": "日语本地化实机取证：命令反馈（msg.*）+ 帕秋莉手册条目（astral_dice.guide.*）",
+  "version": "1.21.1",
+  "target": { "type": "infra", "ref": "ja-l10n-visual" },
+  "on_fail": "keep_game_running",
+  "steps": [
+    { "op": "note", "text": "前置：run/1.21.1/options.txt 的 lang 已临时切为 ja_jp（取证后须还原为 zh_cn）。\n本用例只为**视觉取证**日语文本真的在客户端渲染出来：\n① 命令反馈走 msg.astral_dice.command.*（聊天区）；\n② 帕秋莉手册条目走 astral_dice.guide.*（书页）。\n断言侧额外收一条 absent `Format error`：帕秋莉手册遇到未转义字面 % 会在书页上直接打出该串（这正是 lang 红线要防的），所以它是本用例最灵敏的失败信号。" },
+    { "op": "inject_command", "command": "/gamemode creative", "no_esc": true },
+    { "op": "wait", "ms": 700 },
+    { "op": "inject_command", "command": "/clear @s", "no_esc": true },
+    { "op": "wait", "ms": 600 },
+
+    { "op": "note", "text": "【1】命令反馈：预期聊天区出现「%s 名のプレイヤーの状態をダンプしました。機械可読行はログ (latest.log) を参照」" },
+    { "op": "inject_command", "command": "/astralparty dump", "no_esc": true },
+    { "op": "wait", "ms": 1600 },
+    { "op": "screenshot", "tag": "ja-cmd-1.21.1", "mode": "f2" },
+
+    { "op": "note", "text": "【2】帕秋莉手册：用 `/patchouli open <book>` 直接打开最稳（手册是 Patchouli book，不是物品；`data/astral_dice/patchouli_books/astral_guide/book.json` 里 `i18n:true` ⇒ 书页会走 astral_dice.guide.* 的 lang）" },
+    { "op": "inject_command", "command": "/give @s patchouli:guide_book[patchouli:book=\"astral_dice:astral_guide\"]", "no_esc": true },
+    { "op": "wait", "ms": 1200 },
+    { "op": "inject_key", "key": "1" },
+    { "op": "wait", "ms": 700 },
+    { "op": "inject_mouse", "button": "right", "shift": false, "no_esc": true },
+    { "op": "wait", "ms": 3200 },
+    { "op": "screenshot", "tag": "ja-guide-1.21.1", "mode": "f2" }
+  ],
+  "asserts": [
+    { "type": "absent", "source": "latest", "pattern": "Format error" },
+    { "type": "crash" }
+  ]
+}

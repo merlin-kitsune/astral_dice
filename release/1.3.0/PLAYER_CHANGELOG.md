@@ -6,7 +6,7 @@
 
 **In one line**: seven new character signs (Game Master / Fengshui Master / Cult Leader / Oasis Queen / Mamushi / Sherry / Hanna) with their exclusive cards, the Shooting Star chips and the Star Coin Wallet; the target selector moves to click-to-pick controls with a redrawn selection box; the Living Page becomes a "hostile-target selector + high-speed flying strike"; plus fixes for angered neutral mobs being unselectable, the pause menu and scroll wheel being dead while holding an effect card, three sign pairs that could not be crafted, and a crash the moment you pointed at the Cult Leader Sign.
 
-> ⚠️ **StarEngine Lib is now a required dependency from this version on** — see "📌 Requirements" at the end.
+> ✅ **From this version on the StarEngine Lib prerequisite is bundled inside the mod — you no longer install it separately.** See "📌 Requirements" at the end.
 
 ---
 
@@ -179,10 +179,10 @@
 - **Fixed a box glyph appearing in the middle of multi-line card descriptions (talismans included)**: vanilla only splits a line when the tooltip has to wrap; when it fits, the whole string is drawn as **one line** — so a newline used for line breaking was rendered as a **missing-glyph box** (and whether it showed up depended on screen width and mouse position, making it look random). Values are now split per line before being added, so multi-line descriptions never show a box.
 ## 📌 Requirements
 
-- ⚠️ **StarEngine Lib is now a required dependency from 1.3.0 onward**: **releases up to and including 1.2.1-hotfix ran on their own**; from 1.3.0 a large part of this mod's shared implementation lives in that library, and **without it the mod is refused at load time** (the loader reports a missing required dependency instead of letting you into the game and crashing there). Library repository: <https://github.com/merlin-kitsune/starengine_lib>
-- **This release requires StarEngine Lib `1.0.3` or any higher `1.x` version** (the dependency range this mod declares is `[1.0.3,2.0)`); **update the library and the mod as a pair** — put the library jar released together with this mod version into the `mods` folder as well.
+- ✅ **From this version on, the StarEngine Lib dependency is bundled inside the mod — you no longer install it separately**: a copy of `starengine_lib` ships inside the artefact (embedded under `META-INF/jarjar/`) and is loaded automatically by the loader at startup.
+- ⚠️ **Bundled version = `1.0.3`, compatible range `[1.0.3,2.0)`** (the same range declared in `mods.toml`); **do not** also drop a standalone `starengine_lib-*.jar` into `mods` — the loader de-duplicates by modId and prefers that copy, so an older one would shadow the bundled library. Library source repository: <https://github.com/merlin-kitsune/starengine_lib>
 - **Other requirements**: Curios API (**1.20.1 additionally requires Mixin Booster**).
 - **26.1.2 line**: requires Curios API **15+**; it has **no Iron's Spells 'n Spellbooks integration**.
 - **Optional integrations**: Patchouli (guidebook), Bountiful.
 - **Version gate (multiplayer)**: the client and server must share the same **major.minor version** (`1.3.x` ↔ `1.3.y` interoperate). Cross-version connections are **refused with a clear message** instead of failing silently.
-- Upgrading from **1.2.1-hotfix**: besides the mod jar, **please install StarEngine Lib as well** (1.2.1-hotfix and earlier did not need it, so a pack upgrading from an older version must add it). Existing worlds and config files carry over as they are.
+- Upgrading from **1.2.1-hotfix**: just replace the mod jar (the prerequisite library is now bundled inside it, so **no separate install** is needed). Existing worlds and config files carry over as-is.

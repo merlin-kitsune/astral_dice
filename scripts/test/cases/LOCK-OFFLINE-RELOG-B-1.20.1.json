@@ -1,0 +1,127 @@
+{
+  "case_id": "LOCK-OFFLINE-RELOG-B-1.20.1",
+  "title": "立牌锁定「离线时钟漂移」修复 —— **跨重登持久化 B 相**：重登后锁定态与门控**原样存续**（`sign` 仍佩戴、`lock=1`、`lock_end>0`、`gate_on=1`），且漂移补偿链**仍然工作** —— 把基准写到 `now−6000` 再驱动一拍 ⇒ 上界**恰好**后移同样的量（`delta_eq_gap=1`）且**仍处于锁定**（未迁移到冷却）；紧接着再驱动一拍（step=0）⇒ 不得再补偿（幂等）。这一相就是缺陷的**端到端复现**：修前不存在基准 ⇒ 上界按墙钟已经过期 ⇒ `isSignActiveLocked` 判未锁定 ⇒ 下一拍 `endLockAndStartCooldown` ⇒ 读数是 `lock_after=0` 且 `cd_after>0`（**缺陷判据**）。⚠️ 必须紧跟 `LOCK-OFFLINE-RELOG-A-<版本>`（中间只允许 `stop`（保留存档）+`launch` 两个动作）。⚠️ `gap` 的绝对值随加载耗时变化 ⇒ 只断言 `gap>0` 与 `delta_eq_gap=1`（位移恰等于 gap），不写死数值。⚠️ **B2 原用 `nowrite`（纯自然拍）测不出补偿**：探针说明里 `nowrite` 的 `gap ∈ {0,1}`，且重登到本用例开跑之间已过掉大量 tick（2026-09-28 实测 `gap=0`）⇒ 已改为写基准形态。",
+  "version": "1.20.1",
+  "target": {
+    "type": "feature",
+    "ref": "sign-active-lock-offline-clock-drift"
+  },
+  "on_fail": "keep_game_running",
+  "steps": [
+    {
+      "op": "note",
+      "text": "B 相（重登后）：只读确认锁定态与陈值基准 → 驱动一拍看补偿 → 再驱动一拍确认幂等。**不做任何 reset/prep**。"
+    },
+    {
+      "op": "note",
+      "text": "B1 第 1 步必须是纯只读 `signstate`：重登之后、任何驱动之前,读数应仍是**重登前**的锁定态 ——   `sign=[astral_dice:parunan_sign]`、`lock=1`、`lock_end>0`、`grace_end=0`、`last_seen>0`(陈值,尚未被刷新)。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe signstate RB1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "note",
+      "text": "B2 **主判据**（2026-09-28 修正）：原写法 `signlag RB2 0 nowrite`（不写基准、纯自然拍）**测不出补偿** —— 探针自己的说明就写着 `nowrite` 的 `gap ∈ {0,1}`（真实 tick 相位会立刻把 `last_seen` 刷成 now），而重登后到本用例开跑之间 `mt_launch` 的就绪/闸门/清场已过掉大量 tick ⇒ 实测 `gap=0:lock_end_delta=0`（不是缺陷，是前提不成立）。改成 **L 组已证的写基准形态** `signlag RB2 6000`：把 `last_seen` 写到 `now−6000` 再驱动一拍 ⇒ 期望 `mode=once:ticks=6000:wrote>0:gap>0`、**`lock_end_delta>0` 且 `delta_eq_gap=1`**（上界位移**恰好**等于 gap）、`seen_refreshed=1`（基准被刷新成 now）、`lock_before=1:lock_after=1`（仍在锁定）、`cd_before=0:cd_after=0:cd_unchanged=1`（未迁移到冷却）。   ⚠️ 若读到 `lock_after=0` + `cd_after>0`，那是**缺陷判据命中**（修前行为）。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe signlag RB2 6000",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "note",
+      "text": "B3 幂等复核:紧接再驱动一拍,真实 tick 已把基准刷新 ⇒ 不得再补偿(`delta_eq_gap=0`、上界不动、仍锁定)。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe signlag RB3 0 nowrite",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "note",
+      "text": "B4 收尾:`signreset RB9` 归零(含第 6 个键),避免锁定态跨用例残留。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe signreset RB9",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_RB1_SIGNSTATE:.*:sign=\\[astral_dice:parunan_sign\\]:lock=1:lock_end=[1-9][0-9]*:grace_end=0:.*last_seen=[1-9][0-9]*:.*ls_api=accessor:getSignActiveLockLastSeen"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_RB2_SIGNLAG:mode=once:ticks=6000:.*wrote=[1-9][0-9]*:gap=[1-9][0-9]*:lock_end_before=[1-9][0-9]*:.*lock_end_delta=[1-9][0-9]*:grace_end_before=0:grace_end_mid=0:grace_end_after=0:grace_end_delta=0:cd_before=0:cd_after=0:cd_unchanged=1:lock_before=1:lock_after=1:lock_sign_after=\\[astral_dice:parunan_sign\\]:lock_sign_unchanged=1:.*delta_eq_gap=1:grace_delta_eq_gap=0:seen_refreshed=1:.*drives=1:tick_ran=1:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_RB3_SIGNLAG:mode=nowrite:.*gap=[0-9]+:lock_end_before=[1-9][0-9]*:.*lock_end_delta=0:.*grace_end_delta=0:.*cd_unchanged=1:lock_before=1:lock_after=1:.*:delta_eq_gap=0:.*tick_ran=1:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_RB9_SIGNRESET:.*ls_wrote=0:ls_after=0:.*:sign=\\[\\]:lock=0:lock_end=0:grace_end=0:cd_end=0:"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_[A-Z0-9]+_ERR"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_[A-Z0-9]+_EX:"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": ":err="
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "Unknown or incomplete command"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "redeclaration of var"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "ls_api=none"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "crash"
+    }
+  ],
+  "evidence": []
+}

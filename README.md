@@ -40,7 +40,7 @@ Astral Dice is a survival expansion mod built around dice. Equip a dice and ever
 
 | Dependency | Requirement |
 |---|---|
-| Required (**mandatory from 1.3.0 on**) | **StarEngine Lib** (`starengine_lib`) **1.0.3 or any higher 1.x**: **required from 1.3.0 onward** (`1.2.1-hotfix` and earlier run on their own); without it the mod is refused at load time. **The library and the mod must be updated as a pair** |
+| Required | **StarEngine Lib** (`starengine_lib`) **is bundled inside this mod since 1.3.1** (embedded `1.0.3`, compatible range `[1.0.3,2.0)`): **you do not install it separately** — the loader picks up the embedded copy at startup. ⚠️ Do **not** also drop a standalone `starengine_lib-*.jar` into `mods`: the loader de-duplicates by modId and prefers that copy, so an older one would shadow the bundled library |
 | Required | Curios API (Curios 5.x on 1.20.1, Curios 9+ on 1.21.1, **Curios 15+ on 26.1.2**; a missing or too-old Curios is rejected during NeoForge's dependency sorting). ⚠️ This prerequisite is declared **by this mod**; StarEngine Lib itself only uses it as a **compile-time** dependency on the Forge side (it is not in the library's `mods.toml`) |
 | Required (1.20.1 only) | **Mixin Booster ≥ 0.1.3**, **mandatory**: when it is missing, the game refuses to start right at Forge's dependency-sorting stage and reports the missing `mixinbooster`; an outdated version is rejected the same way |
 | Optional | Bountiful, Patchouli |
@@ -50,7 +50,7 @@ Astral Dice is a survival expansion mod built around dice. Equip a dice and ever
 ## Download
 
 - Supported platforms: Minecraft 1.21.1 / NeoForge, 1.20.1 / Forge (release lines); Minecraft 26.1.2 / NeoForge (migration line — no tag or Release of its own; its jar ships with the release lines' Releases)
-- Requirements: **StarEngine Lib 1.0.3+** (mandatory from 1.3.0 on), Curios API (plus Mixin Booster ≥ 0.1.3 on 1.20.1)
+- Requirements: Curios API (plus Mixin Booster ≥ 0.1.3 on 1.20.1). **StarEngine Lib is bundled inside the mod since 1.3.1 — no separate install needed**
 - Build artefacts: `neoforge-1.21.1/build/libs/astral_dice-<version>+neoforge_1.21.1.jar`, `forge-1.20.1/build/libs/astral_dice-<version>+forge_1.20.1.jar`, `neoforge-26.1.2/build/libs/astral_dice-<version>+neoforge_26.1.2.jar`; GitHub Release tags use the bare base version number (e.g. `1.3.0`) and carry **three** jars (the two release lines plus 26.1.2's `-beta` jar, each with its own version number)
 
 ## Build

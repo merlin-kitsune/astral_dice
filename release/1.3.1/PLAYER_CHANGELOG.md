@@ -6,7 +6,7 @@
 
 **In one sentence**: the "hostile target" criterion is relaxed — a neutral mob no longer has to be provoked first (**an untamed wolf now counts as a hostile target outright**); the Piercing Gun no longer requires "a damage effect card has been used", so plain arrows get the bonus too; and the training dummy can finally be selected and hit.
 
-> ⚠️ **This release needs StarEngine Lib `1.0.3`+** — see "📌 Requirements" at the end.
+> ✅ **From this version on the StarEngine Lib prerequisite is bundled inside the mod — you no longer install it separately.** See "📌 Requirements" at the end.
 
 ---
 
@@ -32,8 +32,8 @@
 
 ## 📌 Requirements
 
-- ⚠️ **StarEngine Lib is a required dependency from 1.3.0 onward**: **releases up to and including 1.2.1-hotfix ran on their own**; from 1.3.0 a large part of this mod's shared implementation lives in that library, and **without it the mod is refused at load time** (the loader reports a missing required dependency instead of letting you into the game and crashing there). Library repository: <https://github.com/merlin-kitsune/starengine_lib>
-- **This release requires StarEngine Lib `1.0.3` or any higher `1.x` version** (the dependency range this mod declares is `[1.0.3,2.0)`); **update the library and the mod as a pair** — put the library jar released together with this mod version into the `mods` folder as well. ⚠️ Library versions `1.0.2` and `1.0.1` were **never published** (the content of `1.0.2` was merged into `1.0.3`).
+- ✅ **From this version on, the StarEngine Lib dependency is bundled inside the mod — you no longer install it separately**: a copy of `starengine_lib` ships inside the artefact (embedded under `META-INF/jarjar/`) and is loaded automatically by the loader at startup.
+- ⚠️ **Bundled version = `1.0.3`, compatible range `[1.0.3,2.0)`** (the same range declared in `mods.toml`); **do not** also drop a standalone `starengine_lib-*.jar` into `mods` — the loader de-duplicates by modId and prefers that copy, so an older one would shadow the bundled library. Library source repository: <https://github.com/merlin-kitsune/starengine_lib>
 - **Other requirements**: Curios API (**1.20.1 additionally requires Mixin Booster**).
 - **26.1.2 line**: requires Curios API **15+**; it has **no Iron's Spells 'n Spellbooks integration**.
 - **Optional integrations**: Patchouli (guidebook), Bountiful.

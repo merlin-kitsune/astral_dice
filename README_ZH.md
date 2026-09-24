@@ -40,7 +40,7 @@ Astral Dice 是一个以「骰子」为核心的生存扩展模组。戴上骰�
 
 | 前置/联动 | 要求 |
 |---|---|
-| 前置模组（**自 1.3.0 起必需**） | **StarEngine Lib**（`starengine_lib`）**1.0.3 或更高的 1.x**：**自 1.3.0 起必须安装**（`1.2.1-hotfix` 及更早版本可单独运行）；缺失时在加载阶段被直接拒绝。**库与模组必须成对更新** |
+| 前置模组（**自 1.3.1 起已内嵌，无需单独安装**） | **StarEngine Lib**（`starengine_lib`）**自 1.3.1 起内嵌于本模组**（内嵌 `1.0.3`，兼容区间 `[1.0.3,2.0)`）：加载器启动时自动载入内嵌副本。⚠️ **请勿**再往 `mods` 里单独放 `starengine_lib-*.jar` —— 加载器按 modId 去重时优先采用那一份，更旧的会盖掉内嵌库 |
 | 前置模组 | Curios API（1.20.1 用 Curios 5.x；1.21.1 用 Curios 9+；**26.1.2 用 Curios 15+**，缺失时会在 NeoForge 依赖排序阶段被拒绝）。⚠️ 该前置**由本模组声明**；StarEngine Lib 本身仅在 forge 侧把它作为**编译期**依赖（不进库的 `mods.toml`） |
 | 前置模组（仅 1.20.1） | **Mixin Booster ≥ 0.1.3**，**强制**：未安装时游戏会在 Forge 依赖排序阶段直接拒绝启动并提示缺少 `mixinbooster`；装旧版本同样会被拒 |
 | 可选联动 | Bountiful、帕秋莉手册 |
@@ -50,7 +50,7 @@ Astral Dice 是一个以「骰子」为核心的生存扩展模组。戴上骰�
 ## 下载
 
 - 支持平台：Minecraft 1.21.1 / NeoForge、1.20.1 / Forge（发布线）；Minecraft 26.1.2 / NeoForge（迁移线，不单独发 Release，jar 随发布线 Release 附带）
-- 前置：**StarEngine Lib 1.0.3+**（自 1.3.0 起必需）、Curios API（1.20.1 另需 Mixin Booster ≥ 0.1.3）
+- 前置：Curios API（1.20.1 另需 Mixin Booster ≥ 0.1.3）。**StarEngine Lib 自 1.3.1 起内嵌于本模组，无需单独安装**
 - 构建产物：`neoforge-1.21.1/build/libs/astral_dice-<版本>+neoforge_1.21.1.jar`、`forge-1.20.1/build/libs/astral_dice-<版本>+forge_1.20.1.jar`、`neoforge-26.1.2/build/libs/astral_dice-<版本>+neoforge_26.1.2.jar`；GitHub Release 的 tag 使用无后缀的基础版本号（如 `1.3.0`），自动附带**三个** jar（发布线两个 + 26.1.2 的 `-beta` jar，版本号各自独立）
 
 ## 构建

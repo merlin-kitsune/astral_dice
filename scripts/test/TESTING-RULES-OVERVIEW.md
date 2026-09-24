@@ -26,7 +26,7 @@
 ## 3. 唯一入口与阶段
 
 ```powershell
-pwsh -NoProfile -File scripts/test/mt.ps1                      # 全流程（P→B→E→L→C→R，双版本 + 跨版本门控）
+pwsh -NoProfile -File scripts/test/mt.ps1                      # 全流程（P→B→E→L→C→R，三版本 + 跨版本门控）
 pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1      # 只跑指定版本（无跨版本门控）
 pwsh -NoProfile -File scripts/test/mt.ps1 --phase <p> --version <v>
 pwsh -NoProfile -File scripts/test/mt.ps1 --version <v> --phase stop --purge-saves   # 收尾

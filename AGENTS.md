@@ -1,6 +1,6 @@
 # Agent Instructions
 
-> **子项目默认规则(必须遵守)**:所有功能/修复默认**同步修改两个版本**(`neoforge-1.21.1` + `forge-1.20.1`),两侧保持功能对等;每次改动完成后由代理**自动本地提交**并**自动部署到整合包**(随 `gradlew build` 触发),但**默认不执行 `git push`**。
+> **子项目默认规则(必须遵守)**:所有功能/修复默认**同步修改三个版本**(`neoforge-1.21.1` + `forge-1.20.1` + `neoforge-26.1.2`),三线保持功能对等(无法对等的项必须按平台差异逐条登记,见 `docs/compat-26.1.2-neoforge.md`;**不再存在"只同步两个版本"的口径**);每次改动完成后由代理**自动本地提交**并**自动部署到整合包**(随 `gradlew build` 触发,**三线各自推往自己的整合包**:`狐の航空学 Voxy Edition` / `1.20.1 模组测试` / `26.1.2 模组测试`),但**默认不执行 `git push`**。
 
 项目基线:
 - 主线子项目 `neoforge-1.21.1`:MC 1.21.1 / NeoForge 21.1.235 / Java 21 / ModDevGradle(`net.neoforged.moddev` 2.0.141)
@@ -168,9 +168,26 @@ When extending this workspace:
 6. ⚠️ **升级库的固定动作（缺一即断）**：① 库侧 bump `lib_version`/`mod_version` 并
    `./gradlew build publishToMavenLocal`（三平台同号）；② 本仓三条线 `gradle.properties` 的
    `starengine_lib_version` 与 `_version_range` **同批**更新；③ `.github/workflows/build.yml` 的库 `ref:`
-   钉值改为库的**新提交 SHA**（该提交须已推送到远端，否则 CI 检不出）；④ 三个 `run/<版本>/mods` 与三个整合包
-   里的库 jar **成对更新**（`Start-*.bat` 会以 exit 10 拒绝版本不一致的环境）。
-7. ⚠️ **推送整合包的分支白名单**：库侧 `packPushBranches = ['main']`、本仓三线 `packPushBranches = ['multi-main']`
+   钉值改为库的**新提交 SHA**（该提交须已推送到远端，否则 CI 检不出）；④ 三条线**重新构建**，让产物内的
+   内嵌副本（`META-INF/jarjar/`）跟上新版本 —— 整合包里**不再**放独立库 jar（见第 7 条）；⑤ 三个
+   `run/<版本>/mods` 仍各持一份**与引脚同版本**的库 jar（dev 的手工启动路径要用，`Start-*.bat` 会以
+   exit 10 拒绝版本不一致的环境；forge 线必须是库仓库 `build/devlibs` 的 dev 形态）。
+7. **库随产物内嵌（JarJar，2026-09-24 起，三线同口径）**：三条线各用 ModDevGradle 的 `jarJar` 配置把
+   `starengine_lib-<平台>-<版本>.jar` 打进 `astral_dice` 产物（生成 `META-INF/jarjar/metadata.json` +
+   `META-INF/jarjar/<库 jar>`），理由 = **CurseForge / Modrinth 不收录纯库型工程**，库无法作为独立前置分发。
+   - `metadata.json` 的版本区间取自 DSL 的 `version { strictly <starengine_lib_version_range> }`，
+     **必须与 `mods.toml` / `neoforge.mods.toml` 里的同一区间同值**（两处一起改）。
+   - `mods.toml` 对 `starengine_lib` 的 **required 依赖保留**：内嵌 jar 就是满足它的那个 mod。
+   - ⚠️ **1.20.1 线内嵌的必须是生产 SRG 件**：`modImplementation` 只用于 dev 重映射，内嵌走**独立坐标**；
+     实测内嵌件与 mavenLocal 生产件 md5 一致（SRG 成员名 64 处），devlibs 形态为 0 处 ⇒ 写错会把 Mojmap
+     副本打进生产包。NeoForge 两线编译与生产同为 Mojmap，无此风险。
+   - ⚠️ **独立 jar 会被优先采用**：FML 的 `JarJarSelector` 按 **modId** 识别同源件（NeoForge 的
+     `JarInJarDependencyLocator.identifyMod` 返回 modId 拼接；Forge 1.20.1 同源实现），顶层 mod 列表里
+     若已有同名 mod，内嵌副本被丢弃且只打一条 WARN ⇒ 更旧的独立 jar 会盖掉内嵌版本。三条线的
+     `pushToGame` 会在发现整合包内仍有独立库 jar 时告警（只告警，不阻断）。
+   - 三条线的 `pushToDevRun`（1.20.1 线为 `pushToRootBuild`）每次构建打印一行「内嵌前置自检」
+     （内嵌件名 + version + range），作为「jarJar 配置失效」的回归护栏。
+8. ⚠️ **推送整合包的分支白名单**：库侧 `packPushBranches = ['main']`、本仓三线 `packPushBranches = ['multi-main']`
    （2026-09-22 起两侧同构；此前是黑名单，已改白名单 ⇒ 新分支默认不推，不会误删整合包里的正式 jar）。
 
 ### neoforge-26.1.2 关键差异速记(相对 neoforge-1.21.1)
@@ -306,7 +323,7 @@ When extending this workspace:
 ### 子项目修改默认规则 — 必须遵守
 - **功能/修复默认同步修改三个版本（2026-09-19 起 26.1.2 纳入主线）**:所有功能、修复、平衡性调整一律在 `neoforge-1.21.1`、`forge-1.20.1`、`neoforge-26.1.2` **同时实施**,三侧保持功能对等。**实施方式**:以 `neoforge-1.21.1` 的实现为**语义基准**,按 `docs/compat-1.20.1-forge.md` / `docs/compat-26.1.2-neoforge.md` 的差异映射在三线各自落地;平台差异逐条登记(不写「看起来一致」的实现)。
 - **实施必须走 subagent(2026-09-19 用户裁决)**:每次代码修改**必须创建 subagent**,**三个版本各一个 subagent 并行实施**(复杂批次再按子系统拆分);同一文件同一时间只能归**一个** subagent 所有(共享文件由主 agent 预先指派 owner,跨文件接口由主 agent 先固定)。详见「### 模组内容更新规则(三线同步)」第 1-2 条。
-- **每次改动完成后自动执行下述收尾(无需用户逐项指示)**:① 同步两个 CHANGELOG 文件 → ② 构建**三个**版本 → ③ **自动部署到整合包**(随 `gradlew build` 触发的 `pushToGame`;**仅发布线分支 `multi-1.20.1-1.21.1` 会真正推送,其它分支严格执行「不推整合包」——见「编译产物上传规则」的分支口径**)→ ④ **自动本地提交**。全程**不执行 `git push`**。
+- **每次改动完成后自动执行下述收尾(无需用户逐项指示)**:① 同步两个 CHANGELOG 文件 → ② 构建**三个**版本 → ③ **自动部署到整合包**(随 `gradlew build` 触发的 `pushToGame`;**三线各自的推送白名单都是 `['multi-main']`——本开发工作树 `multi-dev-next` 与 `wt/*` 一律跳过,需强推时加 `-PdeployToPack`;三线各推往自己的整合包 `狐の航空学 Voxy Edition` / `1.20.1 模组测试` / `26.1.2 模组测试`**)→ ④ **自动本地提交**。全程**不执行 `git push`**。
 - **单侧改动仅限用户明确要求**:只有当用户明确说“只改 1.21.1 / 先不移植”时,才允许只改一个版本;禁止擅自只改单侧或长期让三版本功能不对等。
 - 平台差异按各子项目规范实现(1.21.1 / 26.1.2 用数据组件/附件,1.20.1 用 `component/*DataKey` 与 Capability;事件、Curios 注册、Mixin、数据包目录均不同),**不得为了“看起来一致”而破坏目标平台的正确写法**。
 - 用户在任一版本测试时报告的 BUG/需求,默认在**三个版本同步修复**。
@@ -355,7 +372,7 @@ When extending this workspace:
 - 神秘遗物+ 联动 ID 两子项目**均为 `enigmaticlegacyplus:`**(`cursed_ring`/`the_acknowledgment`/`the_twist`);`enigmaticaddons:the_bless` 保留(forge `templates/META-INF/mods.toml` 里的 `enigmaticlegacy` 仅出现在注释,非依赖声明)。
 - 千咒刻印附魔代码注册于 `effect/ModEnchantments`(1.21 分支为数据驱动 JSON:`data/astral_dice/enchantment/curse_marker.json`)。
 - 数据包目录 `recipes/advancements/loot_tables/structures`、`data/forge/` 前缀、`pack.mcmeta`(pack_format 15)、`META-INF/mods.toml`。
-- **两子项目均有帕秋莉手册**(1.21.1 原有;1.20.1 已于 1.1.3 移植,含 Patchouli 1.20.1-85-forge 依赖);手册结构两版本一致(`{assets,data}/astral_dice/patchouli_books/`)。
+- **三个子项目均有帕秋莉手册**(1.21.1 原有;1.20.1 已于 1.1.3 移植,含 Patchouli 1.20.1-85-forge 依赖;26.1.2 同持,依赖取自 `maven.modrinth:patchouli`);手册结构三线一致(`{assets,data}/astral_dice/patchouli_books/`)。
 - 物品类已按 `item.dice/card/chip/sign` 拆分子包,与 1.21.1 结构一致(见「包结构规范」)。
 - 产物清理规则只匹配 `astral_dice-*+forge_1.20.1.jar`,不会误删 1.21.1 产物;部署目标为仓库根 `run/1.20.1/mods`(版本隔离开发测试目录,自动推送)+ `D:/.minecraft/versions/1.20.1 模组测试/mods`(**随 build 默认自动推送**,与 1.21.1 标准一致)。
 - **Mixin refmap 是生产硬需求(2026-09-16 生产事故,禁止再删)**:Forge 1.20.1 生产运行的是 **reobf(SRG 名)jar**,而 mixin 的 `@Inject(method = "…")` / `@Shadow` 是**注解里的字符串选择器**(Mojmap 名),reobf **改不动注解字符串** ⇒ 必须由 **refmap** 在运行时翻译成 SRG 名。三处缺一不可:① `build.gradle` 的 `annotationProcessor 'org.spongepowered:mixin:0.8.5'` + gson/guava/asm(注解处理器);② `mixin { add sourceSets.main, 'astral_dice.refmap.json' }`;③ `src/main/resources/astral_dice.mixins.json` 里的 `"refmap": "astral_dice.refmap.json"`(**缺该字段 Mixin 根本不加载 refmap**)。⚠️ **Mixin Booster 不能替代 refmap**:它只提供 `org.sinytra.mixinbooster.MixinModlauncherRemapper` 重映射**字节码引用**,不翻译注解选择器字符串;**dev 永远看不出该缺陷**(dev 类是 Mojmap 名,选择器直接命中,refmap 不参与)⇒ 只有生产会崩。实测故障:`InvalidInjectionException ... could not find any targets matching 'startUseItem()V' ... No refMap loaded` → 启动 FATAL。**已排除加载顺序**(ModLauncher 在 01:06:29.297 就加载了 booster、01:06:29.335 Mixin 子系统已以 booster 为 Source、我们的 config 01:06:31.906 才注册;`mods.toml` 里 `mixinbooster` 为 `mandatory=true` + `ordering="AFTER"`;全部 22 条 mixin 错误只属于本模组,其它带 refmap 的模组无一报错)。历史:`01be1fb` 曾加入该机制修生产 `@Shadow` 映射,`127a2b7` 因「Booster 自动重映射」这一**错误前提**整体移除 ⇒ 生产自此必崩;`7a980b4` 已恢复。**回归判据**(构建后必查):jar 内存在 `astral_dice.refmap.json`、`mixins.json` 声明了它、且配置里的每个 mixin 类在 refmap 中都有条目(1.20.1 目前 11/11)。
@@ -662,7 +679,7 @@ When extending this workspace:
 - **第二行中位 = 空白筹码**（`B`）。
 - **流派类筹码第二行两侧按流派替换**：治愈=再生试剂 `R` / 星光=星币尘 `D` / 标记=标记涂料 `M` / 充能=导电线材 `W`。
 - 新补配方左右对称；排除 星币/星盘/黄金星盘/空白筹码/空白立牌 作为材料。
-- 例外：星币锤第一行中位为 1.21 独有的重锤 `Items.MACE`，1.20.1 用 `Items.ANVIL` 替代（平台差异，见「双版本对等性」）。
+- 例外：星币锤第一行中位为 1.21 独有的重锤 `Items.MACE`，1.20.1 用 `Items.ANVIL` 替代（平台差异，按「模组内容更新规则(三线同步)」逐条登记）。
 
 **② 进阶筹码（15 个）——通用升级模板，一律遵循，无例外**
 
@@ -1293,8 +1310,8 @@ When extending this workspace:
 
 完成一个新版本的功能/修复后，由代理自动执行（无需用户逐项指示）：
 1. 更新两个更新日志文件（`CHANGELOG_ZH.md` + `CHANGELOG.md`，条目一一对应）；
-2. 递增**两个**子项目 `gradle.properties` 的 `mod_version`（`deploy.ps1 -Target neoforge|forge` 可自动递增 `x.y-SNAPSHOT.N` / `x.y.z-rcN` / `x.y.z`，或用 `-Version` 显式指定；两版本保持同号，后缀各自为 `+neoforge_1.21.1` / `+forge_1.20.1`）；
-3. 若改过 lang 文件，分别对**两个**子项目跑 `pwsh -NoProfile -File tools/check_lang_sync.ps1 -LangDir <子项目>/src/main/resources/assets/astral_dice/lang`；
+2. 递增**三个**子项目 `gradle.properties` 的 `mod_version`（`deploy.ps1 -Target neoforge|forge` 可自动递增 `x.y-SNAPSHOT.N` / `x.y.z-rcN` / `x.y.z`，或用 `-Version` 显式指定；三线保持同号，后缀各自为 `+neoforge_1.21.1` / `+forge_1.20.1` / `+neoforge_26.1.2`；⚠️ 本工作树无 `deploy.ps1`，该工具的覆盖范围以仓库实际存在的脚本为准）；
+3. 若改过 lang 文件，分别对**三个**子项目跑 `pwsh -NoProfile -File tools/check_lang_sync.ps1 -LangDir <子项目>/src/main/resources/assets/astral_dice/lang`；
 4. `gradlew build` 同时编译并部署**三个**版本(26.1.2 与另两线同规则)——`pushToDevRun` / `pushToRootBuild` / `pushToGame`(整合包) 均默认随 build 自动触发（整合包推送仅发布线分支执行，本流程即运行在发布线上；失败则回滚版本号，不提交）；
 5. **自动本地提交**（`deploy.ps1` 自动提交 `release: v<版本>`，或手工 `chore: bump version to X.Y.Z` 等），**默认不执行 `git push`**。
 

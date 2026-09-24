@@ -21,9 +21,16 @@
 
 ### Installation Requirements
 
-- ⚠️ **StarEngine Lib is a required dependency from 1.3.0 onward** (`starengine_lib`): **releases up to and including 1.2.1-hotfix ran on their own**; from 1.3.0 a large part of this mod's shared implementation lives in that library, and **without it the mod is refused at load time** (the loader reports a missing required dependency instead of letting you into the game and crashing there).
-- **This release requires StarEngine Lib `1.0.3` or any higher `1.x` version** (the dependency range this mod declares is `[1.0.3,2.0)`). ⚠️ Library versions `1.0.2` and `1.0.1` were **never published** (the content of `1.0.2` was merged into `1.0.3`; see the library changelog).
-- **The library and the mod must be updated as a pair**: put the library jar released together with this mod version into the `mods` folder as well (library repository: <https://github.com/merlin-kitsune/starengine_lib>).
+- ✅ **From this version on, the StarEngine Lib dependency is bundled inside the mod — you no longer install
+  it separately**: a copy of `starengine_lib` ships inside the artefact (embedded under `META-INF/jarjar/`)
+  and is loaded automatically by the loader at startup.
+- ⚠️ **Do not keep a standalone `starengine_lib-*.jar` next to it**: when the loader de-duplicates by modId it
+  **prefers the copy in `mods` and discards the embedded one** ⇒ if that copy is **older**, it shadows the
+  library bundled with this mod (visible as a prerequisite version mismatch).
+- **Bundled version = `1.0.3`, compatible range `[1.0.3,2.0)`** (the same range declared in `mods.toml`): the
+  library is still a **required** prerequisite (a large part of this mod's shared implementation lives in it
+  since 1.3.0); it is merely distributed together with this mod now.
+- Library source repository: <https://github.com/merlin-kitsune/starengine_lib>.
 
 ## 1.3.0
 
@@ -117,9 +124,10 @@
 
 ### Installation Requirements
 
-- ⚠️ **StarEngine Lib is now a required dependency from 1.3.0 onward** (`starengine_lib`): **releases up to and including 1.2.1-hotfix ran on their own**; from 1.3.0 a large part of this mod's shared implementation lives in that library, and **without it the mod is refused at load time** (the loader reports a missing required dependency instead of letting you into the game and crashing there).
-- **This release requires StarEngine Lib `1.0.3` or any higher `1.x` version** (the dependency range this mod declares is `[1.0.3,2.0)`). (Note: this line belongs to `## 1.3.0`; its paired library is `1.0.3`, the only actual release at the time — `1.0.2` / `1.0.1` were never published.)
-- **The library and the mod must be updated as a pair**: put the library jar released together with this mod version into the `mods` folder as well (library repository: <https://github.com/merlin-kitsune/starengine_lib>).
+- ✅ **This version bundles the StarEngine Lib dependency inside the mod — you no longer install it separately**: the mod jar carries its own copy of `starengine_lib` (embedded under `META-INF/jarjar/`) which the loader picks up at startup, so all you have to do is drop the mod jar into your `mods` folder.
+- ⚠️ **Do not keep a standalone `starengine_lib-*.jar` next to it**: when the loader de-duplicates by modId it **prefers the copy in the `mods` folder and discards the embedded one** ⇒ if yours is an **older** version it shadows the bundled library (showing up as `NoSuchMethodError` / `NoClassDefFoundError`). If you installed the library manually before, please delete it.
+- **Bundled version = `1.0.3`, compatible range `[1.0.3,2.0)`** (the same range declared in `mods.toml`): the library is still a **required** dependency (a large part of this mod's shared implementation has lived there since 1.3.0) — it is simply shipped together with the mod now.
+- Library source repository: <https://github.com/merlin-kitsune/starengine_lib>.
 
 ## 2.0.0-SNAPSHOT.5
 

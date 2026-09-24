@@ -1,0 +1,212 @@
+{
+  "case_id": "DIAG-26.1.2",
+  "title": "26.1.2 探针 API 自检：Level 访问器形态、注册表取值语义、Identifier 工厂、kill/hurt 兼容层、ContainerInput 可见性、时间基准",
+  "version": "26.1.2",
+  "target": {
+    "type": "infra",
+    "ref": "probe-api-selfcheck-26.1.2"
+  },
+  "steps": [
+    {
+      "op": "note",
+      "text": "目的（2026-09-22）：26.1.2 的探针由 1.21.1 版机械移植而来（temp/port_probe_26.py + 两条手工补丁）。移植期间所有类/方法替换均由两份反编译源码 jar 逐条核对，但**有两类事实静态不可判**，必须实机确认：\n  ① `p.level` **属性**访问是否仍被 KubeJS 8 的 Rhino 支持（本文件全篇 104 处用它；26.1.2 的 `Entity#level()` 与 1.21.1 一样是 public 方法、字段 private）。\n  ② 注册表取值语义已变（`get` 返回 `Optional<Holder.Reference<T>>`、`getValue` 才返回 `T`）—— 必须确认移植后的 `getValue` 真取到物品，且旧写法确实退化成 Optional。\n  其余断言项覆盖本次移植的每一处高风险替换点；任何一项失败都说明该替换必须回头改。"
+    },
+    {
+      "op": "note",
+      "text": "前置：创造模式（探针会现场生成靶子）＋ 午夜（消夜光/亡灵燃烧干扰）＋ 关昼夜循环 + 清场。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode creative",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/time set midnight",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamerule advance_time false",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/kill @e[type=!player,distance=..128]",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/tp @s ~ ~ ~ 0 0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "note",
+      "text": "执行 diag：一次打印全部 API 自检读数（AP_D_DIAG:<name>=<value>）与 AP_D_DONE 结束标记。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe diag D",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 6000
+    },
+    {
+      "op": "note",
+      "text": "单人替身自检（2026-09-22 用户裁决「移除双人测试项、改为单人测试」）：验证 26.1.2 上能否用 NeoForge 自带的 FakePlayer 充当「第二玩家」。\n  必要性与唯一性：产品多处 API 的形参类型是 Player（onCardGivenToOther / giveExclusiveCard / castDescent）⇒ 非玩家实体在**类型层面**就走不通；FakePlayer extends Player 且允许自定义 UUID ⇒ 是唯一能保住「按受益人去重 / 单次封顶 / 多名受益人」判据的手段。\n  本步读数判据：cls=1（三件套类可加载）、fp1..4=1（工厂真返回对象）、isP1..4=1（是 Player 子类）、uuid_dup=0（四者 UUID 互不相同）、list1..4=0（**不在**在线玩家列表 —— 这是替身的已知局限，凡是「由产品自己从在线列表挑目标」的路径都看不见它，相应判据必须降级）。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe fptest FP",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe tagprobe TG",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "screenshot",
+      "tag": "diag-26.1.2",
+      "mode": "f2"
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_D_DIAG:levelClass="
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_D_DIAG:lvlProp=(object|function)"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_D_DIAG:lvlCall=ERR:TypeError"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_D_DIAG:lvlDataGGT=[0-9]+"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_D_DIAG:nowTickSrc=leveldata"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_D_DIAG:srvTickCount=[0-9]+"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_D_DIAG:regGetValue=minecraft:stone"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_D_DIAG:identParse=astral_dice:blank_chip"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_D_DIAG:containerInput=PICKUP"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_D_DIAG:killArity=ok"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_D_DIAG:hurtCompat=ERR:TypeError"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_D_DIAG:damageSources=.*"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_D_DIAG:meleeApi=(player_attack|mob_hurt|mob_attack|mob_damage)"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_D_DIAG:setPosOk=ok"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_D_DONE"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_TG_TAGPROBE:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_FP_FPTEST:cls=1:fp1=1:uuid1=[0-9a-f-]{36}:usrc1=[1-3]:isP1=1:list1=0:fp2=1:uuid2=[0-9a-f-]{36}:usrc2=[1-3]:isP2=1:list2=0:fp3=1:uuid3=[0-9a-f-]{36}:usrc3=[1-3]:isP3=1:list3=0:fp4=1:uuid4=[0-9a-f-]{36}:usrc4=[1-3]:isP4=1:list4=0:uuid_dup=0"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_D_DIAG:(?!levelClass|getGameTime|fileWriter|nioFiles|reflectGGT|lvlCall|hurtCompat)[a-zA-Z]+=ERR:"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_D_ERR"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "参数后应有空格分隔|未知或不完整的命令|Unknown or incomplete command|Incorrect argument"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "crash"
+    }
+  ]
+}

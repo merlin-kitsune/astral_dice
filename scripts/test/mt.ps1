@@ -6,16 +6,16 @@
 .DESCRIPTION
     测试顺序（硬性）:
       前置检查 → 1.21.1 全流程 → 判定通过后才执行 → 1.20.1 全流程 → 总览
-      两个版本都给出独立的通过/失败结论；1.21.1 不通过时 1.20.1 记为「因门控未执行」。
+      三个版本各自给出独立的通过/失败结论；1.21.1 不通过时，其后的版本按门控不再执行。
 
     `--version <V>`:
       全流程分支**同样尊重该参数** —— 指定单版本时只跑该版本，且**不做跨版本门控**
-      （门控的前提是「两版本顺序执行」）。不带 `--version` 时才是「两版本顺序 + 门控」。
+      （门控的前提是「多版本顺序执行」）。不带 `--version` 时才是「三版本顺序 + 门控」。
 
     阶段: preflight | build | env | launch | cases | report | stop
 
 .EXAMPLE
-    pwsh -File scripts/test/mt.ps1                                  # 全流程（两版本，带门控）
+    pwsh -File scripts/test/mt.ps1                                  # 全流程（三版本顺序，带门控）
     pwsh -File scripts/test/mt.ps1 --version 1.21.1                 # 全流程（只跑 1.21.1，无门控）
     pwsh -File scripts/test/mt.ps1 --version 1.20.1                 # 全流程（只跑 1.20.1，无门控）
     pwsh -File scripts/test/mt.ps1 --version 1.21.1 --phase build   # 单阶段
@@ -80,7 +80,7 @@
     文案偏差：前置失败提示里的 `mt.sh --phase stop` 改为 `mt.ps1`（同一入口的新名字）。
 
     行为修复（唯一一处非 1:1 移植）：env 阶段的种子包开关由「硬编码 1.20.1 种子包存在性、
-    两版本共用」改为「按版本各查 testworld-seed-<版本>.zip」，见 Invoke-MtRunPhase 内注释。
+    多版本共用」改为「按版本各查 testworld-seed-<版本>.zip」，见 Invoke-MtRunPhase 内注释。
     1.20.1 行为与原版一致；1.21.1 不再被塞入 1.20.1 的 --seed（原版必然 MT_WORLD: BLOCKED）。
 #>
 
@@ -399,7 +399,7 @@ function Invoke-MtRunPhase {
         $rc = Invoke-MtChild -Script 'mt_env.ps1' -ScriptArgs @('mods', '--version', $PhaseVersion) -TimeoutSec $envBudget
         if ($rc -ne 0) { return $rc }
         # 缺陷修复（2026-09-12）：种子包按**版本**判定。bash 原件硬编码
-        # resources/testworld-seed-1.20.1.zip 的存在性并把它作为两个版本共用的 --seed 开关，
+        # resources/testworld-seed-1.20.1.zip 的存在性并把它作为多版本共用的 --seed 开关，
         # 而 mt_env 的 seed 恢复是按版本找 testworld-seed-<版本>.zip —— 只要 1.20.1 种子包在位，
         # 1.21.1 的 env 阶段必然 MT_WORLD: BLOCKED（exit 11）而全流程在此中断。
         # 现改为各版本各自查自己的种子包：1.20.1 行为不变（有包 → --seed），1.21.1 无包 → 生成世界。
@@ -591,7 +591,7 @@ try {
     # 单阶段默认不清理（launch → cases 需分步执行、客户端要活着）；显式开关已在上面生效。
     if ($Phase) {
         if (-not $Version) {
-            # 无 --version 时对两个版本顺序执行该阶段
+            # 无 --version 时对所有版本（Get-MtVersions 的三条线）顺序执行该阶段
             $rc = 0
             foreach ($v in @(Get-MtVersions)) {
                 if (-not (Assert-MtVersion -Version $v)) { exit $MT_EXIT_ERROR }
@@ -615,8 +615,8 @@ try {
     # 旧实现无条件 `foreach ($v in @(Get-MtVersions))`,并把 1.20.1 挂在 `$gateOpen` 上 ⇒
     # `mt.ps1 --version 1.20.1` 会**先跑 1.21.1**（无视用户指定的版本),1.21.1 一旦不通过,
     # 1.20.1 立刻被记成 `GATED` 而**根本没跑** —— 与 `--version` 的语义完全相反。
-    # 现在:指定单版本 ⇒ 只跑该版本、不做跨版本门控（门控的前提是"两版本顺序执行",
-    # 单版本时不存在"上一个版本");未指定 ⇒ 沿用两版本顺序 + 门控的原行为。
+    # 现在:指定单版本 ⇒ 只跑该版本、不做跨版本门控（门控的前提是"多版本顺序执行",
+    # 单版本时不存在"上一个版本");未指定 ⇒ 沿用三版本顺序 + 门控的原行为。
     $flowVersions = if ($Version) { @($Version) } else { @(Get-MtVersions) }
     $multiVersion = -not [bool]$Version
 
@@ -649,8 +649,16 @@ try {
         Write-MtLine "########## MT VERSION: $v ##########"
 
         if ($multiVersion -and $v -eq '1.20.1' -and -not $gateOpen) {
-            Write-MtBlocked "version-$v" '1.21.1 未通过，按测试顺序门控不执行 1.20.1'
-            [void](Invoke-MtChild -Script 'mt_report.ps1' -ScriptArgs @('mark', '--version', $v, '--phase', 'cases', '--result', 'GATED'))
+            # 首条线（1.21.1）未通过 ⇒ 自本条线起一律不再执行；**逐条**登记 GATED（含 26.1.2）。
+            # 旧实现只标记本条线后即 break ⇒ 总览里第三条线缺项（2026-09-24 修，跳过语义不变）。
+            # 注：1.20.1 自身失败**不**门控 26.1.2（后者由 1.21.1 迁移而来），该语义保持不变。
+            $gateMark = $false
+            foreach ($gv in $flowVersions) {
+                if ($gv -eq $v) { $gateMark = $true }
+                if (-not $gateMark) { continue }
+                Write-MtBlocked "version-$gv" '1.21.1 未通过，按测试顺序门控不执行'
+                [void](Invoke-MtChild -Script 'mt_report.ps1' -ScriptArgs @('mark', '--version', $gv, '--phase', 'cases', '--result', 'GATED'))
+            }
             break
         }
 
@@ -734,7 +742,7 @@ try {
 
 Write-MtLine ''
 if ($overall -eq 0) {
-    if ($multiVersion) { Write-MtLine 'MT_RUN: PASS — 两版本均通过' }
+    if ($multiVersion) { Write-MtLine 'MT_RUN: PASS — 三版本均通过' }
     else { Write-MtLine "MT_RUN: PASS — $Version 通过（--version 指定单版本，未执行跨版本门控）" }
 } elseif ($overall -eq $MT_EXIT_TIMEOUT) {
     Write-MtLine "MT_RUN: TIMEOUT — 见 reports/$runId/SUMMARY.md（超时与 FAIL 是两种结论）"

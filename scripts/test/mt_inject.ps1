@@ -96,12 +96,12 @@ Initialize-MtConsole
 $script:Scan = @{
     't' = 0x14; 'enter' = 0x1C; 'escape' = 0x01; 'e' = 0x12; 'j' = 0x24
     'h' = 0x23; 'w' = 0x11; 'f2' = 0x3C; 'f3' = 0x3D; 'slash' = 0x35; 'tab' = 0x0F
-    'k' = 0x25; 'o' = 0x18; 'r' = 0x13
+    'k' = 0x25; 'o' = 0x18; 'r' = 0x13; 'q' = 0x51
 }
 $script:Vk = @{
     't' = 0x54; 'enter' = 0x0D; 'escape' = 0x1B; 'e' = 0x45; 'j' = 0x4A
     'h' = 0x48; 'w' = 0x57; 'f2' = 0x71; 'f3' = 0x72; 'slash' = 0xBF; 'tab' = 0x09
-    'k' = 0x4B; 'o' = 0x4F; 'r' = 0x52
+    'k' = 0x4B; 'o' = 0x4F; 'r' = 0x52; 'q' = 0x10
 }
 for ($i = 1; $i -le 9; $i++) {
     $digit = [string]$i
@@ -127,6 +127,9 @@ $script:KeyAlias = @{
     'debug' = 'f3'; 'inventory' = 'e'; 'card' = 'h'
     # 光影（Iris）语义键：开关 / 光影选择界面 / 重载光影
     'shadertoggle' = 'k'; 'shaderscreen' = 'o'; 'shaderreload' = 'r'
+    # 2026-09-22 新增：丢出手中物品（原版 drop）。用途 = 制造**掉落物**（如星币）走
+    # 「玩家拾取 ⇒ 吸收进钱包」这条真实路径，而不必依赖 /summon 的 NBT 语法。
+    'drop' = 'q'
     # 视角：原版 F5 在 第一人称 → 第三人称背面 → 第三人称正面 之间循环
     'thirdperson' = 'f5'
 }
