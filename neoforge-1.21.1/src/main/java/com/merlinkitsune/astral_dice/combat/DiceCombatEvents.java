@@ -979,7 +979,7 @@ public class DiceCombatEvents {
                 || held.getItem() instanceof TridentItem;
     }
 
-    // 骰神赐福触发目标判定:敌对生物、非团队内玩家、已被激怒的中立生物,以及其余非被动动物实体
+    // 骰神赐福触发目标判定:敌对生物、非团队内玩家、中立生物(宠物除外),以及其余非被动动物实体
     // ⚠️ 试验假人不再在此单列特例 —— 它已由库的 HostileTargets「额外敌对判定」seam 统一计入敌对目标
     // (注入见本类 static 块),故下一行 HostileTargets.isHostile 即覆盖它,与其它调用点口径一致。
     public static boolean isBlessingTarget(LivingEntity target, Player player) {
@@ -992,7 +992,7 @@ public class DiceCombatEvents {
             if (com.merlinkitsune.starenginelib.item.BossEntityUtil.isBossEntity(target)) return true;
             return mob.getTarget() == player || mob.isAggressive();
         }
-        // 被动/友好/未激怒的中立生物不允许触发骰神赐福
+        // 被动/友好生物不允许触发骰神赐福(中立生物已在上面由 HostileTargets 计入)
         return false;
     }
 

@@ -128,17 +128,10 @@ public final class SpellDamageRegistry {
         return false;
     }
 
-    /**
-     * 本次法伤是否来自「活体书页」的**即时命中**。
-     *
-     * <p>2026-09-19 用户裁决「活体书页不应该有持续效果,应转换为及时伤害,移除所有原本效果器」之后,该牌
-     * **不再给玩家施加任何效果** ⇒ 原先靠 `hasEffect(ModEffects.LIVING_PAGE)` 判定的「使用了伤害效果牌」
-     * 改由**伤害类型本身**识别(`astral_dice:card_spell`)。这样忍术飞镖/贯穿之铳对书页自身的命中照旧生效
-     * (它们本就是"伤害效果牌生效期间的加成"),又不引入任何玩家可见状态或额外字段。
-     */
-    private static boolean isLivingPageImpact(SpellDamageContext ctx) {
-        return ctx != null && ctx.source != null && ctx.source.is(ModDamageTypes.CARD_SPELL);
-    }
+    // (原 isLivingPageImpact 已删除 —— 忍术飞镖与贯穿之铳自 2026-09-24 起都不再要求「已使用伤害效果牌」,
+    //  该判定遂无使用者。它当时的作用是:活体书页自 2026-09-19 起不再给玩家施加任何效果,于是把
+    //  「使用了伤害效果牌」的识别从 hasEffect 改为**伤害类型**(`astral_dice:card_spell`)。
+    //  该伤害类型仍被上方 isSpellDamage 的 matcher 使用,故 import 保留。)
 
     /**
      * 立牌「效果牌伤害加成」的**静默安全上限**(2026-09-19 用户要求「增加忍者立牌和调查员立牌的
@@ -327,17 +320,18 @@ public final class SpellDamageRegistry {
                 return bonus + MarkManager.getLevel(ctx.target);
             }
         });
-        // 贯穿之铳:伤害效果牌生效时(同上,含活体书页的即时法伤),对敌对目标远程/魔法伤害额外增加目标防御力点数
+        // 贯穿之铳:只要佩戴者对**敌对目标**造成远程/魔法伤害,即额外增加目标防御力点数的伤害。
+        // (2026-09-24 用户裁决:与忍术飞镖保持一致 —— 移除「已使用伤害效果牌」前提)
+        //
+        // ⚠️ 与忍术飞镖的唯一差别:本修饰器**保留目标范围检查**(必须是敌对目标) ——
+        // 其加成值取自「目标防御力点数」,对非敌对目标(被动动物/队友/自己)生效没有玩法意义。
+        // 同忍术飞镖,「进入本方法」已由 DamageEffectCardHandler 用 isSpellDamage 筛过作用域
+        // ⇒ 等价于「本次是远程/魔法伤害」,无需重复判定。
         registerModifier(new SpellDamageModifier() {
             @Override
             public boolean isActive(SpellDamageContext ctx) {
-                if (!ctx.hasCurio(ModItems.PIERCING_GUN.get())) return false;
-                if (!HostileTargets.isHostile(ctx.attacker, ctx.target)) return false;
-                return isLivingPageImpact(ctx)
-                        || ctx.attacker.hasEffect(ModEffects.MONSTER_LASER)
-                        || ctx.attacker.hasEffect(ModEffects.MONSTER_BRICK)
-                        || ctx.attacker.hasEffect(ModEffects.ORBITAL_STRIKE)
-                        || ctx.attacker.hasEffect(ModEffects.DIRECTIONAL_BLAST);
+                return ctx.hasCurio(ModItems.PIERCING_GUN.get())
+                        && HostileTargets.isHostile(ctx.attacker, ctx.target);
             }
 
             @Override
