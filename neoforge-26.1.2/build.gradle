@@ -173,6 +173,19 @@ dependencies {
     // NeoForge 侧发布的是普通 Mojmap jar(NeoForge 1.20.5+ 编译与生产同为 Mojmap,无重映射),
     // 因此用 implementation 而非 modImplementation(net.neoforged.moddev 不提供后者)。
     implementation "${starengine_lib_group}:starengine_lib-neoforge-26.1.2:${starengine_lib_version}"
+    // ── 内嵌打包(JarJar,2026-09-24)────────────────────────────────────────
+    // 库**随产物内嵌**(CurseForge / Modrinth 不收录纯库型工程,无法作为独立前置分发),
+    // 与另两线同一口径(见 neoforge-1.21.1/build.gradle 的同类注释)。
+    // 本线 NeoForge 26.1.2 的 MDG 2.0.147 同样内置 `jarJar` 配置与 `jarJar` 任务。
+    // · version { strictly … } = 写进 metadata.json 的**版本区间**,与 neoforge.mods.toml 的
+    //   starengine_lib_version_range 同源同值(两处必须一起改)。
+    // ⚠️ 发布包**不应**再单独放库 jar:内嵌副本按 modId 去重,顶层同名 jar 会盖掉内嵌版本。
+    jarJar("${starengine_lib_group}:starengine_lib-neoforge-26.1.2:${starengine_lib_version}") {
+        version {
+            strictly "${starengine_lib_version_range}"
+            prefer "${starengine_lib_version}"
+        }
+    }
     // Curios API(必须的前置):15.0.0+26.1.2(Modrinth version id dRnRThvD)
     // 其 mods.toml 声明 neoforge [26.1.0.0,),故本模组的 curios 门槛同步升至 [15,)
     implementation 'maven.modrinth:curios:dRnRThvD'
@@ -305,6 +318,29 @@ tasks.register('pushToDevRun') {
         target.withOutputStream { out ->
             jarFile.withInputStream { inp -> inp.transferTo(out) }
         }
+        // --- 产物自检(回归护栏):确认本 mod jar 内确实内嵌了前置库 ---
+        // 结构判据 = jar 内存在 META-INF/jarjar/metadata.json 与 META-INF/jarjar/*.jar,
+        // 且 metadata 的 artifactVersion 与 gradle.properties 的 starengine_lib_version 一致。
+        // (为何不能只靠编译通过:jarJar 配置写错时编译照常成功,只是产物里少一层内嵌目录。)
+        def zf = new java.util.zip.ZipFile(jarFile)
+        try {
+            def entries = zf.entries().toList()
+            def nested = entries.findAll { it.name.startsWith('META-INF/jarjar/') && it.name.endsWith('.jar') }*.name
+            def metaEntry = entries.find { it.name == 'META-INF/jarjar/metadata.json' }
+            if (nested.isEmpty() || metaEntry == null) {
+                logger.warn("pushToDevRun: 产物 ${jarFile.name} 内未发现 META-INF/jarjar/(jarJar 配置未生效?)")
+            } else {
+                def metaText = zf.getInputStream(metaEntry).getText('UTF-8')
+                def av = (metaText =~ /"artifactVersion"\s*:\s*"([^"]+)"/)
+                def rg = (metaText =~ /"range"\s*:\s*"([^"]+)"/)
+                def avText = av.find() ? av.group(1) : '?'
+                def rgText = rg.find() ? rg.group(1) : '?'
+                logger.lifecycle("内嵌前置自检: ${nested.join(', ')}  (version=${avText}, range=${rgText})" +
+                        (avText == libVersionLocked ? '' : "  ⚠️ 与 starengine_lib_version=${libVersionLocked} 不一致"))
+            }
+        } finally {
+            zf.close()
+        }
         logger.lifecycle("pushToDevRun: pushed ${jarFile.name} -> ${devRunModsDir}")
     }
 }
@@ -376,21 +412,20 @@ tasks.register('pushToGame') {
         }
         logger.lifecycle("pushToGame: pushed ${jarFile.name} -> ${packModsDir}")
 
-        // --- 成对匹配自检:整合包内前置库 jar 必须与 mod 锁定的库版本一致 ---
-        // 迁移(2026-09-17)后本线同样依赖 starengine_lib。强推本 mod 时最容易踩的坑:库 jar 没跟着更新
-        // (或反过来),两者版本区间对不上,表现为启动期 NoClassDefFoundError / "缺必需前置"。此处只告警,不阻断构建。
+        // --- 内嵌前置自检:库已随本 mod 内嵌(JarJar),整合包里**不应**再单独放库 jar ---
+        // 依据:FML 的 JarInJar 选择器按 **modId** 识别同源件 —— 顶层 mod 列表里若已有同名 mod,
+        // 内嵌副本会被丢弃(选择器只打一条 WARN:JarJarSelector "…which was passed in as source")。
+        // ⇒ 独立 jar 版本更旧时会**盖掉**内嵌版本,表现为 NoSuchMethodError / NoClassDefFoundError。
+        // 此处只告警,不阻断构建。
         if (libVersionLocked) {
             def libJars = packModsDir.listFiles()?.findAll { File f ->
                 f.isFile() && f.name.startsWith('starengine_lib-') && f.name.endsWith('.jar')
             } ?: []
-            if (libJars.isEmpty()) {
-                logger.warn("pushToGame: 整合包内没有 starengine_lib-*.jar —— 本 mod 把它声明为必需前置,缺失会导致整合包拒绝启动")
+            if (libJars) {
+                logger.warn("pushToGame: 整合包内仍存在独立的 starengine_lib jar ${libJars*.name} —— " +
+                        "库现已内嵌进本 mod,独立 jar 会被 FML 优先采用并盖掉内嵌版本(${libVersionLocked});建议删除")
             } else {
-                def mismatched = libJars.findAll { !it.name.contains(libVersionLocked) }
-                if (mismatched) {
-                    logger.warn("pushToGame: 整合包内的前置库 jar 与 starengine_lib_version=${libVersionLocked} 不一致: " +
-                            "${mismatched*.name} —— 请到 starengine_lib 仓库同步推送库 jar")
-                }
+                logger.lifecycle("pushToGame: 整合包内无独立库 jar(符合内嵌口径)")
             }
         }
     }

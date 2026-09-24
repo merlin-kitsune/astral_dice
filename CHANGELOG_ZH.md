@@ -93,9 +93,10 @@
 
 ### 安装要求
 
-- ⚠️ **自 1.3.0 起必须安装前置模组 StarEngine Lib**（`starengine_lib`）：**1.2.1-hotfix 及更早的发布版本可以单独运行**；从 1.3.0 起本模组大量共享实现已移入该库，**缺装会在加载阶段被直接拒绝启动**（加载器给出「缺失必需前置」的明确提示，而不是进游戏后才崩溃）。
-- **本版本要求 StarEngine Lib `1.0.0` 或更高的 `1.x` 版本**（本模组声明的前置版本区间为 `[1.0.0,2.0)`）。
-- **库与模组必须成对更新**：请把与本次模组版本同批发布的库 jar 一并放进 `mods` 目录（库仓库：<https://github.com/merlin-kitsune/starengine_lib>）。
+- ✅ **本版本把前置模组 StarEngine Lib 内嵌进了本模组 —— 玩家无需再单独安装**：产物内自带一份 `starengine_lib`（内嵌于 `META-INF/jarjar/`），由加载器在启动时自动载入，你只要把本模组 jar 放进 `mods` 目录即可。
+- ⚠️ **请不要再单独放置 `starengine_lib-*.jar`**：加载器按 modId 去重时**优先采用 `mods` 目录里那一份、丢弃内嵌副本** ⇒ 如果那份是**更旧**的版本，就会盖掉本模组自带的新库（表现为 `NoSuchMethodError` / `NoClassDefFoundError`）。此前手动装过库的，请把它删掉。
+- **内嵌版本 = `1.0.0`，兼容区间 `[1.0.0,2.0)`**（与 `mods.toml` 里声明的前置区间同源）：该库仍是**必需**前置（自 1.3.0 起本模组大量共享实现位于其中），只是改为随本模组一起分发。
+- 库的源码仓库：<https://github.com/merlin-kitsune/starengine_lib>。
 
 ## 2.0.0-SNAPSHOT.5
 
