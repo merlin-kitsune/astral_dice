@@ -36,6 +36,20 @@
   English and "コスト：◆◆◆" in Japanese, through the new lang key `tooltip.astral_dice.card_cost` (three lines
   x zh/en/ja). The whole line is still yellow and its position is unchanged.
 
+- **The active-skill tooltips of the Astrologer / Secret Detective / Gunsmith signs now share one opening
+  phrasing** (user ruling 2026-09-25: "the descriptions are far too long and convoluted"): all three used to
+  open with "Activating enters target-selection mode (hostile mobs or non-teammate players within 16 blocks,
+  30 s to choose). Confirming applies X"; this is now compressed to "**Choose a hostile target and apply X to
+  it**" (same shape as the Cult Leader sign's "Choose a player and apply Descent to them"), with the effect
+  description that follows kept verbatim. The Secret Detective's trailing "cancelling or timing out spends no
+  cooldown" was dropped because the selection session it referred to is no longer mentioned; the Gunsmith's
+  "cancelling, timing out, or ..." lost its referent the same way and was trimmed to "a target that already
+  has Broken consumes no cooldown". The three Patchouli handbook "Active" entries were brought in line too
+  (the "selection session lasts 30 s; cancelling or timing out spends no cooldown" sentence is gone), and the
+  leftover Markdown bold `**normal hostile**` in the Gunsmith handbook entry was removed (lang values are
+  plain text, so the asterisks were shown to players). Covers three lines x zh/en/ja (6 keys x 9 lang files =
+  54 lines); the key set and the placeholder/newline/colour-code structure are unchanged.
+
 #### Damage & Resolution
 
 - **The Whetstone's "keep 1 HP" guard now has a 1:00 cooldown, and the saving priority "Airbag > Whetstone"
