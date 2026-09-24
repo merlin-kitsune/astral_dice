@@ -5,6 +5,7 @@ import net.minecraft.network.chat.Component;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.effect.MobEffect;
@@ -14,6 +15,8 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
+import com.merlinkitsune.astral_dice.audio.ModSounds;
+import com.merlinkitsune.astral_dice.audio.SoundPlayback;
 import com.merlinkitsune.astral_dice.item.chip.MagicTomeChipItem;
 import com.merlinkitsune.astral_dice.item.chip.CandyChipItem;
 import com.merlinkitsune.astral_dice.item.chip.SatelliteChipItem;
@@ -468,6 +471,10 @@ public abstract class BaseEffectCardItem extends Item {
         // 施加效果(子类实现)
         applyEffect(level, player, applyTo, stack);
 
+        // 出牌音效:狂暴/王之力/岿然不动 三张增益牌走专属音效;
+        // 其余按**实际受益目标**分流(作用于自身 / 作用于其他人或目标)
+        playUseSound(level, player, applyTo);
+
         // 出牌登记:立即开始/重置冷却倒计时(冷却与效果分离计算)
         EffectCardPeriod.registerPlay(player);
 
@@ -504,6 +511,36 @@ public abstract class BaseEffectCardItem extends Item {
         // 小猪存钱罐筹码:每使用 2 张效果牌获得 3 星币(独立计数)
         PiggyBankChipItem.onEffectCardUsed(player);
         return true;
+    }
+
+    /**
+     * 出牌音效(仅服务端;在 {@link #applyEffect} 之后调用,失败路径不会走到)。
+     *
+     * <p>优先级:**狂暴 / 王之力 / 岿然不动** 三张增益牌 → {@link ModSounds#BOOST_EFFECT_CARD_USE};
+     * 其余按**实际受益目标**分流 —— 目标是自己 → {@link ModSounds#EFFECT_CARD_USE_SELF},
+     * 是其他人或生物(玩家 / 敌对目标) → {@link ModSounds#EFFECT_CARD_USE_TARGET}。
+     *
+     * <p>判据用 {@link #cardTypeId()} 而不是物品实例:选择器类效果牌(狂暴)可对他人使用,
+     * 与自身牌共用同一条 {@link #tryUseCard} 路径,必须按**同一份**类型 id 判定,
+     * 否则会随"这次指定了谁当目标"而漂移。
+     */
+    private void playUseSound(Level level, Player user, LivingEntity applyTo) {
+        SoundEvent sound;
+        if (isBoostCard(cardTypeId())) {
+            sound = ModSounds.BOOST_EFFECT_CARD_USE.get();
+        } else if (applyTo == user) {
+            sound = ModSounds.EFFECT_CARD_USE_SELF.get();
+        } else {
+            sound = ModSounds.EFFECT_CARD_USE_TARGET.get();
+        }
+        SoundPlayback.playAt(level, user.getX(), user.getY(), user.getZ(), sound);
+    }
+
+    /** 是否为「使用后播增益专属音效」的三张牌(狂暴 / 王之力 / 岿然不动)。 */
+    private static boolean isBoostCard(String cardTypeId) {
+        return "berserk".equals(cardTypeId)
+                || "king_power".equals(cardTypeId)
+                || "unwavering".equals(cardTypeId);
     }
 
     /**

@@ -1,6 +1,8 @@
 package com.merlinkitsune.astral_dice.event;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
+import com.merlinkitsune.astral_dice.audio.ModSounds;
+import com.merlinkitsune.astral_dice.audio.SoundPlayback;
 import com.merlinkitsune.astral_dice.combat.SpellDamageContext;
 import com.merlinkitsune.astral_dice.combat.SpellDamageModifier;
 import com.merlinkitsune.astral_dice.combat.DiceCombatEvents;
@@ -28,6 +30,9 @@ public class DamageEffectCardHandler {
     /** 真伤加成结算的**重入闸门**:真伤伤害源会再次进入本处理器(伤害事件对每一次 hurt 都会触发),
      *  若将来某个作用域 matcher 把它判为法伤就会无限递归;闸门只覆盖"本处理器自己发起的那一次真伤结算"。 */
     private static final ThreadLocal<Boolean> APPLYING_TRUE_BONUS = ThreadLocal.withInitial(() -> Boolean.FALSE);
+
+    /** 活体书页命中的「重击」音效门槛:本次**完整伤害**(与 HUD 跳字同值) >= 该值即播 bighit。 */
+    private static final int LIVING_PAGE_BIG_HIT_THRESHOLD = 8;
 
     @SubscribeEvent(priority = EventPriority.NORMAL)
     public static void onLivingDamagePre(LivingDamageEvent.Pre event) {
@@ -76,6 +81,18 @@ public class DamageEffectCardHandler {
             //  已在用),故与 1.21.1 基准同式,无需改写。
             com.merlinkitsune.astral_dice.network.DamageNumberPayload.send(
                     target, (int) Math.round(event.getNewDamage() + bonus), 0x7CFC00);
+        }
+
+        // 活体书页命中音效:**按本次命中的完整伤害分档**，取值与上面的 HUD 跳字完全同源
+        // （原始基础伤害 + 法伤加成，取整）⇒ 玩家听到的强弱与看到的数字一致。
+        // 判据是伤害类型本身：astral_dice:card_spell 目前的唯一产出路径就是活体书页命中
+        // （见 damage/ModDamageTypes#cardSpell 与 combat/LivingPageImpact#resolve）。
+        if (source.is(com.merlinkitsune.astral_dice.damage.ModDamageTypes.CARD_SPELL)) {
+            int dealt = (int) Math.round(event.getNewDamage() + bonus);
+            SoundPlayback.playAt(target.level(), target.getX(), target.getY(), target.getZ(),
+                    dealt >= LIVING_PAGE_BIG_HIT_THRESHOLD
+                            ? ModSounds.DAMAGE_EFFECT_CARD_BIGHIT.get()
+                            : ModSounds.DAMAGE_EFFECT_CARD_HIT.get());
         }
 
         // 命中副作用(施加标记/定向爆破 AOE 等)

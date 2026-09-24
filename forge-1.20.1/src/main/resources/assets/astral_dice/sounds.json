@@ -1,0 +1,42 @@
+{
+  "wallet_deposit": {
+    "sounds": [
+      "astral_dice:wallet_deposit"
+    ]
+  },
+  "coin_withdraw": {
+    "sounds": [
+      "astral_dice:coin_withdraw"
+    ]
+  },
+  "coin_bag_withdraw": {
+    "sounds": [
+      "astral_dice:coin_bag_withdraw"
+    ]
+  },
+  "damage_effect_card_hit": {
+    "sounds": [
+      "astral_dice:damage_effect_card_hit"
+    ]
+  },
+  "damage_effect_card_bighit": {
+    "sounds": [
+      "astral_dice:damage_effect_card_bighit"
+    ]
+  },
+  "boost_effect_card_use": {
+    "sounds": [
+      "astral_dice:boost_effect_card_use"
+    ]
+  },
+  "effect_card_use_target": {
+    "sounds": [
+      "astral_dice:effect_card_use_target"
+    ]
+  },
+  "effect_card_use_self": {
+    "sounds": [
+      "astral_dice:effect_card_use_self"
+    ]
+  }
+}

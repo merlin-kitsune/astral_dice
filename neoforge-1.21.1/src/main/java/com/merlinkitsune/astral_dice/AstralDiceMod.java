@@ -34,6 +34,7 @@ public class AstralDiceMod {
         ModItems.ITEMS.register(modEventBus);
         ModDataComponents.DATA_COMPONENTS.register(modEventBus);
         ModEffects.EFFECTS.register(modEventBus);
+        com.merlinkitsune.astral_dice.audio.ModSounds.SOUNDS.register(modEventBus);
         ModRecipeSerializers.RECIPE_SERIALIZERS.register(modEventBus);
         ModCreativeTabs.CREATIVE_TABS.register(modEventBus);
         ModMenuTypes.MENU_TYPES.register(modEventBus);

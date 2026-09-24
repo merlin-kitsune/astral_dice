@@ -4,9 +4,20 @@
 > The GitHub Release additionally ships a build of the third line, **26.1.2 (NeoForge)**, suffixed `+neoforge_26.1.2` (its version carries `-beta`; feature parity with the release lines).
 > This file is the player-facing release note and corresponds one-to-one with the player-visible sections of **1.3.1** in `CHANGELOG.md` (engineering / tooling entries excluded).
 
-**In one sentence**: the "hostile target" criterion is relaxed — a neutral mob no longer has to be provoked first (**an untamed wolf now counts as a hostile target outright**); the Piercing Gun no longer requires "a damage effect card has been used", so plain arrows get the bonus too; and the training dummy can finally be selected and hit.
+**In one sentence**: the "hostile target" criterion is relaxed — a neutral mob no longer has to be provoked first (**an untamed wolf now counts as a hostile target outright**); the Piercing Gun no longer requires "a damage effect card has been used", so plain arrows get the bonus too; and the training dummy can finally be selected and hit; on top of that, **8 custom sound effects** were added (deposit / withdraw, Living Page hits, effect-card use).
 
 > ✅ **From this version on the StarEngine Lib prerequisite is bundled inside the mod — you no longer install it separately.** See "📌 Requirements" at the end.
+
+---
+
+## 🔊 New Sound Effects
+
+This version adds **8 custom sound effects**, converted from the assets you supplied:
+
+- **Star Coin wallet: deposit / withdraw**: one sound when a deposit into the wallet succeeds, plus separate sounds for withdrawing **Star Coins** and withdrawing **Star Coin Bags** (nothing plays when the action does nothing).
+- **Living Page hit**: split by **the damage actually dealt** — the regular impact sound below 8, a heavier hit sound at 8 or more.
+- **Effect cards**: **Berserk / King Power / Unwavering** get their own cast sound; every other effect card is split by target — one for using it on **another player or target**, one for using it on **yourself**.
+- **Who hears it**: deposit / withdraw are private UI feedback and play **only for you**; the rest play in the world and are **audible to nearby players**.
 
 ---
 

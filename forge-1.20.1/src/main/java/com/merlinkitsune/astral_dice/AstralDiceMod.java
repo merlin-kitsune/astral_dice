@@ -38,6 +38,7 @@ public class AstralDiceMod {
         //    ⇒ 检查已移到 onCommonSetup 的 ModCompatibilityCheck.verifyOrThrow()(详见该类类头)。
         ModItems.ITEMS.register(modEventBus);
         ModEffects.EFFECTS.register(modEventBus);
+        com.merlinkitsune.astral_dice.audio.ModSounds.SOUNDS.register(modEventBus);
         ModEnchantments.ENCHANTMENTS.register(modEventBus);
         ModRecipeSerializers.RECIPE_SERIALIZERS.register(modEventBus);
         ModCreativeTabs.CREATIVE_TABS.register(modEventBus);

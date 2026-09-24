@@ -6,6 +6,19 @@
 
 ## 1.3.1
 
+### New Content
+
+#### Sound Effects
+
+- **8 custom sound effects added** (assets supplied by the user, 2026-09-24): depositing into the Star Coin wallet,
+  withdrawing **Star Coins**, withdrawing **Star Coin Bags**, the **Living Page** hitting a target (damage
+  **below 8**), the Living Page hitting a target (damage **8 or more**), using **Berserk / King Power / Unwavering**,
+  using an effect card on **another player or target**, and using an effect card on **yourself**. All assets ship as
+  mono Ogg Vorbis (`assets/astral_dice/sounds/`: 8 ogg files, plus a same-named `sounds.json` declaration and a
+  `SoundEvent` registration whose id matches the file name). Deposit / withdraw are private UI feedback and are sent
+  **only to the player who clicked**; the rest play in the world and are **audible to nearby players**. The Living
+  Page entry is split by **the full damage of the hit** (the same value as the damage number shown).
+
 ### Content & Balance
 
 #### Damage & Resolution
