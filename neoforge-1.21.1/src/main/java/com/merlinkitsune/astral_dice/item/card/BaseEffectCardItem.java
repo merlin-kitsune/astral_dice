@@ -47,7 +47,7 @@ import com.merlinkitsune.starenginelib.target.SelectorTargets;
  * 2. 服务端权威判定(专属校验 → 出牌锁,见 {@link EffectCardPeriod#isBlocked});
  * 3. 调用子类的 {@link #applyEffect}(服务端,施加实际效果);
  * 4. 出牌登记(出牌数达到上限时才开始冷却,见 {@link EffectCardPeriod#registerPlay});
- * 5. 复制计数钩子(忍者立牌/魔法秘典/魔法箭袋,见 {@link #cardTypeId()};计数范围为全部效果牌,无类型过滤);
+ * 5. 复制计数钩子(忍者立牌/魔法秘典:全部效果牌;魔法箭袋:**仅伤害效果牌**,见 {@link #isDamageEffectCard});
  * 6. 消耗一张。
  *
  * <p><b>释放方式二选一</b>:
@@ -70,8 +70,9 @@ import com.merlinkitsune.starenginelib.target.SelectorTargets;
  * - 简单状态牌:覆写 {@link #getEffect()} 返回效果引用(基类自动施加 {@link #getEffectDuration()} 时长);
  * - 复杂逻辑牌:覆写 {@link #applyEffect()}(使用后对玩家/目标施加的效果)。
  * 按需覆写 {@link #cardTypeId()} / {@link #isExclusive()} / {@link #selectorActionId()}。
- * 全部效果牌均参与忍者立牌/魔法秘典/魔法箭袋的复制计数
- * (通过 {@link #cardTypeId()} 与 {@link #cardByTypeId(String)} 映射,无排除项)。
+ * 忍者立牌 / 魔法秘典的复制计数覆盖**全部效果牌**(通过 {@link #cardTypeId()} 与
+ * {@link #cardByTypeId(String)} 映射,无排除项);**魔法箭袋例外** —— 只统计
+ * {@link #isDamageEffectCard 伤害效果牌}(2026-09-24 用户裁决第二版)。
  */
 public abstract class BaseEffectCardItem extends Item {
 
@@ -84,8 +85,23 @@ public abstract class BaseEffectCardItem extends Item {
         return false;
     }
 
-    // 参与复制计数时的卡牌类型 id(与计数钩子的 cardByTypeId 映射对应;全部效果牌均参与复制,无排除项)
+    // 参与复制计数时的卡牌类型 id(与计数钩子的 cardByTypeId 映射对应)
     protected abstract String cardTypeId();
+
+    /**
+     * 该效果牌是否属于「**伤害效果牌**」(对怪激光 / 对怪板砖 / 轨道炮 / 定向爆破 / 活体书页)。
+     *
+     * <p><b>单一事实源</b>:电击手套(充能武装法伤扩散)与魔法箭袋(「第一张使用的效果牌」追踪)
+     * 共用本判定 —— 任一处都不得自建清单。活体书页**计入**(它是一次命中法伤的打击牌)。
+     */
+    public static boolean isDamageEffectCard(ItemStack cardStack) {
+        if (cardStack == null || cardStack.isEmpty()) return false;
+        return cardStack.is(ModItems.LIVING_PAGE.get())
+                || cardStack.is(ModItems.MONSTER_LASER_CARD.get())
+                || cardStack.is(ModItems.MONSTER_BRICK_CARD.get())
+                || cardStack.is(ModItems.ORBITAL_STRIKE_CARD.get())
+                || cardStack.is(ModItems.DIRECTIONAL_BLAST_CARD.get());
+    }
 
     /**
      * 效果牌类型 id → 对应物品(忍者立牌复制/魔法秘典返还/魔法箭袋返还共用,
@@ -469,10 +485,11 @@ public abstract class BaseEffectCardItem extends Item {
             PandamanSignItem.onHealingFoodUsed(player, stack.is(ModItems.HAMBURGER.get()));
         }
 
-        // 复制计数钩子(忍者立牌/魔法秘典/魔法箭袋):全部效果牌均参与,无排除项
+        // 复制计数钩子(忍者立牌/魔法秘典):全部效果牌均参与,无排除项
         KomachiSignItem.onEffectCardUsed(player, cardTypeId());
         MagicTomeChipItem.onEffectCardUsed(player, cardTypeId());
-        MagicQuiverChipItem.onEffectCardUsed(player, cardTypeId());
+        // 魔法箭袋:仅**伤害效果牌**(含活体书页)参与「第一张使用的效果牌」追踪
+        MagicQuiverChipItem.onEffectCardUsed(player, cardTypeId(), stack);
         // 小猪存钱罐筹码:每使用 2 张效果牌获得 3 星币(独立计数)
         PiggyBankChipItem.onEffectCardUsed(player);
         return true;

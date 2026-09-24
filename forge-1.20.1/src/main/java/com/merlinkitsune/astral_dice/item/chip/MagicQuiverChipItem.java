@@ -12,14 +12,17 @@ import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.card.BaseEffectCardItem;
 
 /**
- * 魔法箭袋筹码:若使用过效果牌,且对具有"标记"的目标造成了法伤(远程+魔法),
- * 则对该目标施加一层标记并返还第一张使用的效果牌。每 30 秒仅能触发一次。
+ * 魔法箭袋筹码:**使用过伤害效果牌**,并对**已有标记**的目标造成**远程 / 法术伤害**后,
+ * 对该目标施加一层标记并返还**第一张使用的效果牌**。每 30 秒仅能触发一次。
  *
- * <p><b>活体书页例外(2026-09-24 用户裁决)</b>:本次伤害类型为 {@code astral_dice:card_spell}
- * (活体书页命中)且目标已有标记时**必定触发** —— 不要求「已使用效果牌」的追踪态。
+ * <p>追踪流程:使用**伤害效果牌**(对怪激光 / 对怪板砖 / 轨道炮 / 定向爆破 / 活体书页,
+ * 判定见 {@link BaseEffectCardItem#isDamageEffectCard})时由 {@link #onEffectCardUsed}
+ * 记录**第一张**(已有记录则不覆盖);此后任意一次法伤命中**带标记**目标时,由
+ * {@link #tryProc} 施加标记 + 返还并进入 30 秒冷却。
  *
- * <p>追踪流程:使用效果牌(全部效果牌均参与复制计数)时由 {@link #onEffectCardUsed}
- * 记录第一张使用的效果牌;法伤命中带标记目标时由 {@link #tryProc} 触发返还并进入 30 秒冷却。
+ * <p><b>2026-09-24 用户裁决(第二版)</b>:取消「活体书页命中必定触发」的例外 —— 它同样必须
+ * 先使用过一张伤害效果牌(活体书页**本身**即计入该集合);且记录**只统计伤害效果牌**
+ * (王之力 / 狂暴等非伤害类效果牌不再参与追踪)。
  */
 public class MagicQuiverChipItem extends BaseChipItem {
     /** 触发冷却时长(30 秒;2026-09-24 用户裁决由 1 分钟下调) */
@@ -37,12 +40,13 @@ public class MagicQuiverChipItem extends BaseChipItem {
     }
 
     /**
-     * 使用效果牌时调用(全部效果牌均参与复制计数):
-     * 佩戴箭袋且冷却已结束时,记录第一张使用的效果牌类型。
+     * 使用效果牌时调用:**仅伤害效果牌**(含活体书页)参与追踪。
+     * 佩戴箭袋、冷却已结束、且尚未记录时,记录**第一张**使用的伤害效果牌类型。
      */
-    public static void onEffectCardUsed(Player player, String cardType) {
+    public static void onEffectCardUsed(Player player, String cardType, ItemStack cardStack) {
         if (player.level().isClientSide()) return;
         if (!isEquipped(player)) return;
+        if (!BaseEffectCardItem.isDamageEffectCard(cardStack)) return;
         if (ModAttachments.getMagicQuiverTracking(player)) return;
         if (player.level().getGameTime() < ModAttachments.getMagicQuiverCooldownEnd(player)) return;
         ModAttachments.setMagicQuiverTracking(player, true);
@@ -51,14 +55,15 @@ public class MagicQuiverChipItem extends BaseChipItem {
 
     /**
      * 法伤命中带标记目标时调用(由 SpellDamageRegistry 修饰器分发):
-     * 满足全部条件(佩戴箭袋、冷却结束、目标带标记,且**已记录第一张效果牌或本次是活体书页命中**)时,
+     * 满足全部条件(佩戴箭袋、**已记录第一张伤害效果牌**、冷却结束、目标带标记)时,
      * 施加一层标记并返还第一张使用的效果牌,随后进入 30 秒冷却并清除追踪。
+     *
+     * <p>「必须为远程 / 法术伤害」由入口保证:{@code DamageEffectCardHandler} 已用
+     * {@code SpellDamageRegistry.isSpellDamage} 筛过作用域,故进入本方法即等价于本次是法伤。
      */
     public static boolean tryProc(SpellDamageContext ctx) {
         if (!isEquipped(ctx.attacker)) return false;
-        // 活体书页命中:不要求"已使用效果牌"的追踪态(必定触发;2026-09-24 用户裁决)
-        boolean viaLivingPage = ctx.source.is(com.merlinkitsune.astral_dice.damage.ModDamageTypes.CARD_SPELL);
-        if (!viaLivingPage && !ModAttachments.getMagicQuiverTracking(ctx.attacker)) return false;
+        if (!ModAttachments.getMagicQuiverTracking(ctx.attacker)) return false;
         long now = ctx.attacker.level().getGameTime();
         if (now < ModAttachments.getMagicQuiverCooldownEnd(ctx.attacker)) return false;
         if (MarkManager.getLevel(ctx.target) <= 0) return false;

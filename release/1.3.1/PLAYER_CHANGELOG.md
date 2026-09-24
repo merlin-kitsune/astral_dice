@@ -33,7 +33,7 @@
 - **Star Coin Hammer**: Star Coins consumed per Dice Blessing **3 -> 6**.
 - **Smart Watch**: the card top-up threshold drops from **10 to 6** (easier to keep a hand).
 - **Target chip**: the Mark from a Dice Blessing no longer lands on **the very target you are attacking** - it now picks the nearest target **other than that one**, so it finally works as "set up a second target".
-- **Magic Quiver**: hitting a target that already has Marks with a **Living Page** now **always triggers** it (no prior effect card needed), and the cooldown drops from 1:00 to **30 seconds**.
+- **Magic Quiver**: it now requires **a damage effect card to have been used first** (Monster Laser / Monster Brick / Orbital Strike / Directional Blast / Living Page), and upon dealing **ranged or spell damage to an already-marked target** it returns the first effect card used and applies 1 Mark layer (at most once every 30 seconds). The Living Page itself counts as a damage effect card - but you still need to have used one first.
 
 ## 🐛 Bug Fixes
 
@@ -50,12 +50,16 @@
 
 - The **area splash** of Directional Blast and the Electric Glove, the **Boss sign's splash**, and the dice-battle "Investigation Stage bonus" used a narrower hostility test - so **a player who never attacked you**, a **Boss**, or **a mob that fights back but has no vanilla "neutral" marker** could receive the bonus as the main target while an identical target standing next to it got nothing. All four now use the **same gate** as the Dice Blessing, the Ninja Star and the Piercing Gun.
 
+### The Electric Glove's splash no longer hits the caster
+
+- **Electric Glove and Directional Blast**: the area splash used to **include you as a target** - at close range you would take your own splash damage. Fixed: the splash only hits **other targets**, never the caster.
+
 ### Text and display
 
 - **Friendship Badge / Big Bowl Stew**: the parenthesised notes (dedup rule, what counts as a "friendly creature") are gone - implementation details the player does not need.
-- **Scope / Eagle Scope**: the "During a Dice Blessing" wording had **no matching code** - the Mark (and the Eagle Scope's x2) applied outside a Blessing too. The gate has now been **added to the code**: the Mark and the x2 only apply **while a Dice Blessing is active** (the Scope's flat +2 stays unconditional).
+- **Scope / Eagle Scope**: the text has been trimmed (redundant qualifiers removed); behaviour is unchanged.
 - **Sky-Searching Satellite**: the parentheses became a comma, for consistent phrasing.
-- **Revenge Halberd**: the "each type triggers once" clause is gone (the "does not stack" part stays).
+- **Revenge Halberd**: the "each type triggers once" and "does not stack" clauses are gone.
 - **Speed Skates (basic / medium / advanced)**: the **`%` no longer loses its colour** (it used to fall back to the line colour, looking un-highlighted).
 
 ## 📌 Requirements
