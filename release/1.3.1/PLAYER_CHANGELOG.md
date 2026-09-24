@@ -62,6 +62,11 @@ This version adds **8 custom sound effects**, converted from the assets you supp
 
 ## 🐛 Bug Fixes
 
+### Sherry Sign "Strength Throw": thrown mobs no longer pile up and shove each other apart
+
+- Previously, throwing a group of mobs in front of you packed them onto **a single line** (the more targets, the tighter - from 4 targets on, neighbouring landing spots were less than 0.6 blocks apart), so after landing they **shoved each other apart**; the AI herded them back, and a few seconds later it happened again.
+- Landing spots are now laid out on **a small grid** (centre first, at least 1.1 blocks apart - automatically wider for broad mobs), and each spot resolves its own ground => they land **without overlapping**, so the shoving is gone.
+
 ### The training dummy can now be selected and hit
 
 - **The training dummy (`dummmmmmy`) is now always treated as a hostile target**: it is neither a hostile mob nor an angerable neutral mob, so every "requires a hostile target" effect excluded it — most visibly, the **Living Page could not select it at all, and therefore could not hit it** (you could not even use it to test your damage). This is now fixed at the root: the training dummy counts as hostile in **all** "hostile target" checks — Dice Blessing triggers normally, spell-damage bonuses are applied normally, and the target selector picks it up normally.

@@ -64,6 +64,20 @@
 
 #### Signs & State
 
+- **The Sherry Sign's "Strength Throw" no longer stacks multiple targets on the same spot** (reported
+  2026-09-24: "mobs that were gathered get flung apart again after a few seconds"): the old implementation
+  spread every hostile target in range along **a single line of +/-0.9 blocks** — with 4 or more targets the
+  spacing between landing spots fell below 0.6 blocks, so the entities overlapped heavily. Vanilla
+  `LivingEntity#aiStep` calls `pushEntities()` **unconditionally** at its end (`noAi` only disables AI
+  decisions, it does **not** stop pushing) and performs one `doPush` per pushable entity inside the bounding
+  box, so the stacked mobs shoved each other apart (worst on a line, where both ends are pushed the same
+  way); the AI then drove them back to the player, making it recur periodically. Landing spots are now picked
+  from a **centre-first grid ordered by distance from the centre**, spaced at least 1.1 blocks apart (enlarged
+  by the widest hitbox among the targets, so broad mobs such as iron golems and spiders do not overlap
+  either), and **each candidate resolves its own ground** (skipping to the next one where the terrain does
+  not allow it) => targets land **without overlapping**, and the shoving is gone.
+
+
 - **Mamushi Sign (True Dragon Form) and Hanna Sign (Doll Complete): both counters are now voided as soon as the
   latched state is reached** - Awakening and Doll Crafting used to keep counting after the state was obtained: on the
   Hanna side the counter would **climb back to 7 and re-trigger the conversion**, and the Doll Crafting icon would

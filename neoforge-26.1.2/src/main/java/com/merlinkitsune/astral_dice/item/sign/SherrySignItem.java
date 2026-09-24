@@ -81,6 +81,22 @@ public class SherrySignItem extends BaseSignItem {
     public static final double DROP_STEP = 1.0D;
     /** 落点上方需要的净空(格) —— 不足即视为「被高于该值的方块阻挡」(用户 2026-09-22 补充) */
     public static final double DROP_CLEARANCE = 3.0D;
+
+    /**
+     * 多目标落点之间的**最小间距**(格)。
+     *
+     * <p>⚠️ 必须大于常见怪物的碰撞箱宽度（僵尸/骷髅 0.6）—— 落点一旦重叠，原版
+     * {@code LivingEntity#aiStep} 末尾**无条件**执行的 {@code pushEntities()} 会对包围盒内每个
+     * 可推实体各来一次 {@code doPush}（{@code noAi} 只关 AI 决策、**不阻止推挤**）⇒ 叠在一起的怪
+     * 被互相弹开；AI 再让它们走回玩家 ⇒ 表现为「隔几秒又被弹开」（2026-09-24 用户实报）。
+     */
+    public static final double DROP_SPACING = 1.1D;
+    /** 间距相对目标碰撞箱宽度的**余量**(格) —— 宽体怪(铁傀儡 1.4 / 蜘蛛 1.4)按此放大间距 */
+    public static final double DROP_SPACING_MARGIN = 0.3D;
+    /** 落点网格**前向/侧向**的最大圈数(每圈 = 一个 {@link #DROP_SPACING}) */
+    public static final int DROP_MAX_RING = 3;
+    /** 落点网格允许的**最大后向偏移**(格,相对落点中心) —— 避免把怪扔到玩家身后 */
+    public static final int DROP_MAX_BACK = 1;
     /** 面前 {@value #AIM_MIN_DISTANCE}–{@value #AIM_MAX_DISTANCE} 格内**均无可落地面**时 {@link #castThrow} 的返回值 */
     public static final int THROW_BAD_GROUND = -1;
     /** 落地基础伤害 */
@@ -193,9 +209,9 @@ public class SherrySignItem extends BaseSignItem {
      * （用户 2026-09-22 裁决「阻止怪被从墙后拉出来」）。
      *
      * <p><b>落点</b> = {@link #resolveThrowDestination} 解析出的地面/水面（准星指向处优先，
-     * 否则退到面前 {@value #AIM_MAX_DISTANCE} 格并被掩体向内逼退）；多个目标围绕该落点沿
-     * （距玩家 {@value #AIM_MIN_DISTANCE}–{@value #AIM_MAX_DISTANCE} 格）；多个目标围绕该落点沿
-     * 与视线垂直的水平方向按 ±0.9 格均匀铺开（避免全部叠在同一格）。
+     * 否则退到面前 {@value #AIM_MAX_DISTANCE} 格并被掩体向内逼退）。**多个目标**以该落点为中心、
+     * 按到中心的距离升序取网格格点（间距 ≥ {@value #DROP_SPACING} 格，并按目标中最大的碰撞箱宽度
+     * 放大），每个候选格点**独立求可落地面**（地形受限就跳到下一个候选）⇒ 落点之间**互不重叠**。
      *
      * @return 被投掷的目标数；{@link #THROW_BAD_GROUND}（-1）= 面前无任何可落地面 ⇒ 调用方发提示并拒绝施放；
      *         0 = 范围内无可投掷目标（两者都按「零消耗」处理）
@@ -232,12 +248,30 @@ public class SherrySignItem extends BaseSignItem {
         Vec3 side = new Vec3(-flat.z, 0.0D, flat.x);
 
         int n = targets.size();
-        for (int i = 0; i < n; i++) {
-            // 单目标 ⇒ 准星落点;多目标 ⇒ 围绕落点沿垂直方向 ±0.9 格铺开
-            double offset = n == 1 ? 0.0D
-                    : -0.9D + 1.8D * ((double) i / (double) (n - 1));
-            Vec3 dest = aim.add(side.scale(offset));
-            SherryThrowManager.schedule(targets.get(i), dest, player, bonus);
+        // ⚠️ **落点必须互不重叠**（2026-09-24 用户实报「聚集的怪隔几秒又被弹开」）:
+        //    旧实现是「围绕落点沿一条线 ±0.9 格铺开」⇒ n >= 4 时相邻落点间距 < 0.6 格、实体严重重叠;
+        //    而原版 LivingEntity#aiStep 末尾**无条件**调 pushEntities()（noAi 只关 AI 决策、不阻止推挤），
+        //    对包围盒内每个可推实体各调一次 doPush ⇒ 重叠的怪被互相弹开（线性排布下两端受力同向叠加,
+        //    弹得最明显）;AI 又让它们走回玩家 ⇒ 周期性复现。
+        //    现改为「中心优先、按到中心距离升序」的网格候选点，间距 >= DROP_SPACING
+        //    （并按目标里最大的碰撞箱宽度放大），每个候选点独立求可落地面 ⇒ 落地即不重叠。
+        double spacing = DROP_SPACING;
+        for (LivingEntity candidate : targets) {
+            spacing = Math.max(spacing, (double) candidate.getBbWidth() + DROP_SPACING_MARGIN);
+        }
+        List<int[]> cells = scatterCells();
+        int cursor = 0;
+        for (LivingEntity target : targets) {
+            Vec3 dest = null;
+            while (cursor < cells.size()) {
+                int[] cell = cells.get(cursor++);
+                double x = aim.x + side.x * cell[0] * spacing + flat.x * cell[1] * spacing;
+                double z = aim.z + side.z * cell[0] * spacing + flat.z * cell[1] * spacing;
+                dest = groundBelow(level, player, x, z);
+                if (dest != null) break;
+            }
+            // 候选格点耗尽（地形受限）⇒ 退化为共用中心落点（至少保证每个目标都有落点）
+            SherryThrowManager.schedule(target, dest != null ? dest : aim, player, bonus);
         }
         return n;
     }
@@ -326,6 +360,28 @@ public class SherrySignItem extends BaseSignItem {
             return null;
         }
         return dest;
+    }
+
+    /**
+     * 多目标落点的**候选格点**（按到中心 {@code (0,0)} 的距离升序）。
+     *
+     * <p>坐标含义:{@code [0]} = 沿 {@code side}（与视线垂直的水平方向）的格数,
+     * {@code [1]} = 沿 {@code flat}（视线水平方向）的格数 —— 实际落点 = 落点中心 + 两者 × 间距。
+     * **含中心点 {@code (0,0)}**（第一个目标落在 {@link #resolveThrowDestination} 解析出的落点本身）。
+     *
+     * <p>前向/侧向 ±{@link #DROP_MAX_RING} 圈、后向 {1+DROP_MAX_BACK} 格 ⇒
+     * 共 {@code (2*DROP_MAX_RING+1) * (DROP_MAX_RING+1+DROP_MAX_BACK)} 个候选,
+     * 足够容纳 {@code 1 + 8 + 16 + ...} 个互不重叠的落点。
+     */
+    private static List<int[]> scatterCells() {
+        List<int[]> cells = new ArrayList<>();
+        for (int u = -DROP_MAX_RING; u <= DROP_MAX_RING; u++) {
+            for (int v = -DROP_MAX_BACK; v <= DROP_MAX_RING; v++) {
+                cells.add(new int[] {u, v});
+            }
+        }
+        cells.sort(java.util.Comparator.comparingDouble((int[] c) -> Math.hypot(c[0], c[1])));
+        return cells;
     }
 
     // ══════════════════════════════════════════════════════════════════════════
