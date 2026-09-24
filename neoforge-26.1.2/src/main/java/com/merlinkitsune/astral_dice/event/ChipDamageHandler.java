@@ -2,6 +2,7 @@ package com.merlinkitsune.astral_dice.event;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.item.chip.AirbagChipItem;
+import com.merlinkitsune.astral_dice.item.RenShieldManager;
 import com.merlinkitsune.astral_dice.item.chip.WhetstoneChipItem;
 import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.entity.LivingEntity;
@@ -52,6 +53,11 @@ public final class ChipDamageHandler {
 
         float damage = event.getNewDamage();
         if (damage <= 0.0F) return;
+
+        // 鼠鼠护盾(ren)会**完整吃掉**这一击(item/RenShieldManager#onRenShieldAbsorb 已把伤害钳到剩余黄心以内)
+        // ⇒ 红心一滴不掉,此时气囊/磨刀石/减伤介入只会白扣充能。该早退让本处理器与护盾的**同档(LOWEST)**
+        // 注册顺序无关 —— 谁先执行都不会误触发保命。
+        if (RenShieldManager.remainingShieldAbsorption(player) > 0.0F) return;
 
         // 虚空击杀优先级最高(用户裁决):掉入虚空的 out_of_world 伤害不得被保命阻止,
         // 故整段保命处理(安全气囊 + 磨刀石"不可被一次击倒"的不可击杀保护)直接跳过。

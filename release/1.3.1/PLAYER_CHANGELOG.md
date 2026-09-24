@@ -39,6 +39,16 @@
 
 - **Flashlight (every 4 Starlight +1), Star Coin Hammer (30% of held coins), Cutter (+2 / +4 plus healing points)**: these three used to be folded into **Attack Power** (reduced by defence, and scaled by "attack power snapshot" effects). They are now **resolved as a separate damage instance on hit**, with the new damage type **bonus damage** (`astral_dice:extra_damage`) - the same treatment as true damage and skill damage: **armour is ignored and the listed amount lands as-is**. Their item text now says "**Attack Damage**" (things that add to your base damage still say "Attack Power").
 
+### Mouse Shield: a single hit bigger than its yellow hearts no longer reaches your red hearts
+
+- The **Mouse Shield** still gives **5 yellow hearts (10 absorption)** and still vanishes once they are used up - but now **as long as any
+  yellow hearts remain, that one hit is fully carried by the shield**: the excess is discarded, only the remaining yellow hearts are
+  consumed, and **your red hearts take nothing at all**.
+- That was not true before: a hit harder than the yellow hearts only lost the part the shield could cover, and the rest went straight to
+  your red hearts (5 yellow hearts could not stop 190 of a 200-damage hit).
+- A knock-on issue was fixed too: a hit fully eaten by the shield no longer wastes the **Airbag** charge (same for the Whetstone and the
+  deduction from Detective layers).
+
 ## 🐛 Bug Fixes
 
 ### The training dummy can now be selected and hit

@@ -25,6 +25,16 @@
 - **Magic Quiver: tracking now counts damage effect cards only, and its text was rewritten** (user ruling 2026-09-24, second revision): (1) tracking counts **only damage effect cards** (Monster Laser / Monster Brick / Orbital Strike / Directional Blast / Living Page, see `BaseEffectCardItem.isDamageEffectCard`) - non-damage cards no longer count; (2) the first revision's "hitting with a Living Page always triggers" exception is **removed** - the Living Page itself is part of that set, but you still need to have used one damage effect card first; (3) triggering requires dealing **ranged or spell damage to an already-marked target**; (4) the text was rewritten from the player's own wording (tooltip and guide synced).
 - **Smart Watch: the card top-up threshold drops from 10 to 6** (user ruling 2026-09-24).
 
+#### Signs & State
+
+- **Game Master Sign's Mouse Shield: a single hit bigger than its yellow hearts no longer reaches your red hearts** (user ruling
+  2026-09-24): the shield still gives **5 yellow hearts (10 absorption)** and still vanishes once they are used up, but a hit larger than
+  the yellow hearts previously only lost the part the shield could cover - **the excess went straight to your red hearts** (5 yellow
+  hearts could not stop 190 of a 200-damage hit). Now, **as long as any yellow hearts remain the whole hit is absorbed**: the excess is
+  discarded, only the remaining yellow hearts are consumed, and the shield vanishes as before once they run out.
+  As a knock-on guarantee, **survival chips** (Airbag / Whetstone / Detective damage reduction) no longer waste a charge on such a
+  fully-absorbed hit.
+
 ### Bug Fixes
 
 #### Damage & Resolution
