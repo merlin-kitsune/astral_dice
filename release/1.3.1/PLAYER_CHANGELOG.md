@@ -90,6 +90,9 @@ Temporary cards also have their own hint line now: **"Temporary card: cannot be 
 
 ## 🐛 Bug Fixes
 
+- **Chips that grant Starlight on equip (bank cards, ATM, Star Coin Hammer) no longer keep the Starlight after unequipping
+  (equip/unequip cycling could farm Starlight)**: unequipping now **deducts exactly** what the equip actually granted, so
+  cycling grants nothing, and bank cards no longer leave convertible Starlight behind when removed.
 ### Temporary cards and the Q key: from "vanishing" to "simply not droppable"
 
 The temporary cards the Oasis Queen hands out say "cannot be dropped" - but pressing Q actually made them **vanish from your inventory**, with nothing on the ground. The reason: only the server refused the drop, while the client had already wiped the card from its slot, and the server never sends a correction for that. So all you saw was "the card is gone" until you relogged.

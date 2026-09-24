@@ -601,6 +601,13 @@ public class ModAttachments {
     public static final AttachedDataKey<Integer> STARLIGHT_EQUIP_GRANT_FLAGS =
             register(AttachedDataKey.builder("starlight_equip_grant_flags", Codec.INT, () -> 0).build());
 
+    // 「装备时获得 N 层星光」的**发放账本**:每枚 4 bit 存「本次装备**实际**获得的星光量」(0..15),
+    // 槽位顺序 = `StarLightManager.GRANT_BIT_*` 的位号(bit0 → 最低 4 bit)。
+    // 为什么必须记账:「卸除即扣除」这条**全筹码底线**要按实际值扣 —— 星光已到上限时装备**一点没涨**,
+    // 照名义值扣就是白扣玩家自己攒的星光。必须持久化且**不 `.sync()`/不进 `SYNCED_KEYS`**(仅服务端判定)。
+    public static final AttachedDataKey<Integer> STARLIGHT_EQUIP_GRANT_AMOUNTS =
+            register(AttachedDataKey.builder("starlight_equip_grant_amounts", Codec.INT, () -> 0).build());
+
     // 诅咒之剑筹码:累计击杀不少于 20 血的敌对目标获得的攻击力加成(移除筹码/死亡清除)
     public static final AttachedDataKey<Integer> CURSED_SWORD_BONUS =
             register(AttachedDataKey.builder("cursed_sword_bonus", Codec.INT, () -> 0).sync().build());
@@ -697,6 +704,14 @@ public class ModAttachments {
 
     public static void setStarlightEquipGrantFlags(net.minecraft.world.entity.player.Player player, int value) {
         STARLIGHT_EQUIP_GRANT_FLAGS.set(player, value);
+    }
+
+    public static int getStarlightEquipGrantAmounts(net.minecraft.world.entity.player.Player player) {
+        return STARLIGHT_EQUIP_GRANT_AMOUNTS.get(player);
+    }
+
+    public static void setStarlightEquipGrantAmounts(net.minecraft.world.entity.player.Player player, int value) {
+        STARLIGHT_EQUIP_GRANT_AMOUNTS.set(player, value);
     }
 
     public static int getCursedSwordBonus(net.minecraft.world.entity.player.Player player) {

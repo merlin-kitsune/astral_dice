@@ -37,9 +37,23 @@ public class BankCardChipItem extends BaseChipItem {
         // 旧代码把 `!prevStack.isEmpty()` 这个空槽守卫写在第 3 参上 ⇒ 恒为真、恒 return,
         // 银行卡的基础星光**从未生效**(2026-09-24 用户实报「所有银行卡都无法提供星光点数」;
         // 同款签名问题在 `DiceCurioItem` 早有记录,筹码/立牌这几处一直漏改)。
-        // 本处**不加任何守卫**:set() 本身即幂等(只在低于基础值时抬升),重复触发无副作用,
-        // 因而"换装进非空槽 / 槽位激活 / 登录重放"各条路径都能覆盖到。
-        // 装备后立即把当前星光提升到至少基础值(set 内部 Math.max(base, ...))
-        StarLightManager.set(player, StarLightManager.get(player));
+        // 发放走「装备会话闸门 + 发放账本」(grantStarlightFloorOnEquip):闸门挡掉登录/重生重放,
+        // 账本记下**实际**抬升量 ⇒ 卸下时能按实际值严格扣除(见 revokeStarlightOnUnequip)。
+        // ⚠️ 不能只靠 set() 抬到下限:那样卸下时既不会扣回(银行卡刷星光的根因),
+        // 也不能在上限已满(一点没涨)时避免白扣玩家自己攒的星光。
+        StarLightManager.grantStarlightFloorOnEquip(player, grantBitForBase());
+    }
+
+    /** 与 {@link #baseStarlight} 对应的发放账本位(本类被注册两次:银行卡-余额少 / 余额多)。 */
+    private int grantBitForBase() {
+        return baseStarlight == BASE_HIGH
+                ? StarLightManager.GRANT_BIT_BANK_CARD_HIGH
+                : StarLightManager.GRANT_BIT_BANK_CARD_LOW;
+    }
+
+    // 卸下筹码:「卸除即扣除」全筹码底线 —— 按账本把装备时实际获得的星光扣回(并释放闸门)
+    @Override
+    protected void onChipUnequip(Player player, ItemStack stack) {
+        StarLightManager.revokeStarlightOnUnequip(player, grantBitForBase());
     }
 }

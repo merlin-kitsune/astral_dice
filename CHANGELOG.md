@@ -184,6 +184,23 @@
 
 #### Chips & Resources
 
+- **Bank cards (and ATM / Unlimited Bank Card / Star Coin Hammer) added Starlight on equip but never took it back** (reported
+  2026-09-25: "bank cards can farm Starlight"): after the previous fix restored the grant, unequipping only released the
+  grant gate and **never deducted the Starlight** ⇒ cycling equip/unequip accumulated Starlight without bound. Bank cards
+  were worse: unequipping also removed their base floor, so the 4/7 points that used to be **non-convertible** instantly
+  became convertible ⇒ a steady Star Coin production line. Per the user's ruling, the **"deduct on unequip" bottom line
+  for every chip** is now enforced in `StarLightManager`:
+  - **Grant**: all paths go through `grantStarlightOnEquip` (one-shot +N) / `grantStarlightFloorOnEquip` (floor type, for
+    bank cards) - they claim the equip-session gate and record the **actual** gain into the new attachment
+    `starlight_equip_grant_amounts` (Int, 4 bits per slot; not `.sync()`ed);
+  - **Revoke**: all paths go through `revokeStarlightOnUnequip` - it deducts exactly the **actual** amount recorded at equip
+    and releases the gate; all four chips now call it from `onChipUnequip` (bank cards gained such a hook).
+  - Note: the ledger amount must be used, **never the nominal value** - when Starlight is already at the cap (32) equipping
+    grants nothing, so deducting the nominal value would eat Starlight the player earned themselves.
+  - Note: the deduction **does not go through `set()`** - inside the unequip callback the slot may not be updated yet, and
+    `set()`'s base floor would be re-applied by the not-yet-removed bank card, making the deduction a no-op (this was the
+    root cause of "bank cards never lose Starlight on unequip"); it writes `ModAttachments#setStarlight` directly.
+
 - **The four chips that grant Starlight on equip never granted anything (Curios callback parameter mix-up)** (reported
   2026-09-24: "none of the bank cards provide starlight"): the official Curios signature is
   `onEquip(slotContext, prevStack, stack)` - the 2nd parameter is the **slot's previous content** (`ItemStack.EMPTY`

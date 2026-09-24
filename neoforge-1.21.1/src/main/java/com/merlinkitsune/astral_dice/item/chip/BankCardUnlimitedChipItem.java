@@ -39,15 +39,16 @@ public class BankCardUnlimitedChipItem extends BaseChipItem {
         // 一次性发放改由「装备会话闸门」判定:Curios 登录 / 重生 / 切维度后会重放 onEquip
         // (重放时 prevStack 恰好是空栈,空槽守卫拦不住),没有闸门就会每次登录重发 3 层
         // ⇒ 见 StarLightManager#claimEquipGrant。
-        if (!StarLightManager.claimEquipGrant(player, StarLightManager.GRANT_BIT_BANK_CARD_UNLIMITED)) return;
-        // 装备时星光 +3(上限由 StarLightManager 统一管理)
-        StarLightManager.add(player, 3);
+        // 装备时星光 +3(上限由 StarLightManager 统一管理);走统一发放入口 —— 把**实际**抬升量记账,
+        // 卸除时按账本严格扣回(见 StarLightManager#revokeStarlightOnUnequip)。
+        StarLightManager.grantStarlightOnEquip(player, StarLightManager.GRANT_BIT_BANK_CARD_UNLIMITED, 3);
     }
 
     // 卸下筹码:释放发放闸门 ⇒ 再次装备可再发
     @Override
     protected void onChipUnequip(Player player, ItemStack stack) {
-        StarLightManager.releaseEquipGrant(player, StarLightManager.GRANT_BIT_BANK_CARD_UNLIMITED);
+        // 「卸除即扣除」全筹码底线:按账本把装备时**实际**获得的星光扣回(顺带释放发放闸门)。
+        StarLightManager.revokeStarlightOnUnequip(player, StarLightManager.GRANT_BIT_BANK_CARD_UNLIMITED);
     }
 
     /**
