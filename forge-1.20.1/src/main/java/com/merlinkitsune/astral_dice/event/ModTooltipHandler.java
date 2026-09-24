@@ -1498,11 +1498,29 @@ public class ModTooltipHandler {
     }
 
     /** 效果牌冷却显示:按玩家当前实际冷却取值(有充能时基础值封顶为 20 秒),结果向下取整为秒 */
+    /**
+     * 效果牌冷却的 tooltip 显示值（秒）。
+     *
+     * <p><b>2026-09-24 修正「冷却倒计时不实时刷新」</b>：原先恒返回**冷却总时长**
+     * （{@link GameplayConstants#EFFECT_CARD_COOLDOWN_SECONDS} 经充能减免后的静态值）⇒
+     * tooltip 虽然每帧重建（物品栏悬停时），但**数值本身不随时间变化**，玩家看到的是一个冻住的秒数
+     * （用户原话「手持效果牌时冷却倒计时不能实时刷新」，且这是**全局**问题：所有效果牌共用本方法）。
+     * 现改为：**冷却进行中返回实时剩余秒数**（随 tick 递减 ⇒ 自然实时刷新），空闲时返回本次冷却的总时长。
+     *
+     * <p>数据来源 = **synced 附件** {@code effect_card_cooldown_end} + {@code level().getGameTime()}，
+     * 故客户端可安全读取（参见 {@code EffectCardPeriod#isCooldownActive} 的注释）。
+     */
     private static long effectCardCooldownSeconds(Player player) {
         long baseTicks = GameplayConstants.EFFECT_CARD_COOLDOWN_SECONDS * 20L;
         long ticks = player != null
                 ? com.merlinkitsune.astral_dice.item.ChargeManager.effectCardCooldownTicks(player, baseTicks)
                 : baseTicks;
+        // 冷却进行中 ⇒ 显示实时剩余（tooltip 每帧重建,因而会持续刷新）
+        if (player != null
+                && com.merlinkitsune.astral_dice.item.card.EffectCardPeriod.isCooldownActive(player)) {
+            return Math.max(0L,
+                    com.merlinkitsune.astral_dice.item.card.EffectCardPeriod.getRemainingBlockSeconds(player));
+        }
         return Math.max(1L, ticks / 20L);
     }
 

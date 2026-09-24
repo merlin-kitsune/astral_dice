@@ -311,16 +311,18 @@ public final class SpellDamageRegistry {
                 }
             }
         });
-        // 忍术飞镖:已使用伤害效果牌(任一效果生效,**或本次就是活体书页的即时法伤**)且造成远程/魔法伤害时,获得目标标记层数的伤害加成
+        // 忍术飞镖:只要佩戴者对目标造成**远程/魔法伤害**即获得「目标标记层数」的伤害加成。
+        // (2026-09-24 用户裁决「移除『已使用伤害效果牌』前提,只要是对目标造成远程和魔法伤害就应该生效」)
+        //
+        // ⚠️ 本修饰器**只在法伤链内被求值** —— DamageEffectCardHandler 已先用
+        // SpellDamageRegistry.isSpellDamage 筛过作用域,故「进入本方法」本身就等价于
+        // 「本次是远程/魔法伤害」⇒ 判据退化为**仅检查是否佩戴筹码**。
+        // 旧实现额外要求「已使用伤害类效果牌」(激光/板砖/轨道炮/爆破四个效果在身,或本次是活体书页法伤),
+        // 导致箭矢 / 投掷物 / 联动模组法术等**未先打效果牌的法伤**全部吃不到加成。
         registerModifier(new SpellDamageModifier() {
             @Override
             public boolean isActive(SpellDamageContext ctx) {
-                if (!ctx.hasCurio(ModItems.NINJA_STAR_CHIP.get())) return false;
-                return isLivingPageImpact(ctx)
-                        || ctx.attacker.hasEffect(ModEffects.MONSTER_LASER.get())
-                        || ctx.attacker.hasEffect(ModEffects.MONSTER_BRICK.get())
-                        || ctx.attacker.hasEffect(ModEffects.ORBITAL_STRIKE.get())
-                        || ctx.attacker.hasEffect(ModEffects.DIRECTIONAL_BLAST.get());
+                return ctx.hasCurio(ModItems.NINJA_STAR_CHIP.get());
             }
 
             @Override
