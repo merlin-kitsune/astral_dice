@@ -649,8 +649,16 @@ try {
         Write-MtLine "########## MT VERSION: $v ##########"
 
         if ($multiVersion -and $v -eq '1.20.1' -and -not $gateOpen) {
-            Write-MtBlocked "version-$v" '1.21.1 未通过，按测试顺序门控不执行 1.20.1'
-            [void](Invoke-MtChild -Script 'mt_report.ps1' -ScriptArgs @('mark', '--version', $v, '--phase', 'cases', '--result', 'GATED'))
+            # 首条线（1.21.1）未通过 ⇒ 自本条线起一律不再执行；**逐条**登记 GATED（含 26.1.2）。
+            # 旧实现只标记本条线后即 break ⇒ 总览里第三条线缺项（2026-09-24 修，跳过语义不变）。
+            # 注：1.20.1 自身失败**不**门控 26.1.2（后者由 1.21.1 迁移而来），该语义保持不变。
+            $gateMark = $false
+            foreach ($gv in $flowVersions) {
+                if ($gv -eq $v) { $gateMark = $true }
+                if (-not $gateMark) { continue }
+                Write-MtBlocked "version-$gv" '1.21.1 未通过，按测试顺序门控不执行'
+                [void](Invoke-MtChild -Script 'mt_report.ps1' -ScriptArgs @('mark', '--version', $gv, '--phase', 'cases', '--result', 'GATED'))
+            }
             break
         }
 

@@ -132,7 +132,7 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --phase <p> --version <v>
 | 1 | 1.21.1 | `neoforge-1.21.1` | 前置检查通过 | 独立 PASS / FAIL |
 | 2 | 1.20.1 | `forge-1.20.1` | **1.21.1 判定 PASS**（门控） | 独立 PASS / FAIL |
 
-- 1.21.1 未通过时，1.20.1 记 **`GATED`（未执行）**，报告显式标注为「未执行」而非「失败」。
+- 1.21.1 未通过时，其后的每条线（1.20.1、26.1.2）各记 **`GATED`（未执行）**，报告显式标注为「未执行」而非「失败」。
 - 汇总：`scripts/test/reports/<运行id>/SUMMARY.md`；明细：`<运行id>/<版本>/report.md`。
 - 退出码：三版本均通过 `0`；任一失败或汇总未全通过 `1`。
 
