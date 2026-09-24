@@ -23,6 +23,11 @@ This version adds **8 custom sound effects**, converted from the assets you supp
 
 ## ⚖️ Balance & Quality-of-Life
 
+### Card costs have a new look
+
+- The cost line at the top of a battle card's tooltip used to read "Cost: ⨀⨀⨀" - "Cost" was never localised, and the ⨀ glyph does not look great in some fonts.
+- It now shows a **localised label plus ◆** (one ◆ per point of cost): "**费用：◆◆◆**" in Chinese, "Cost: ◆◆◆" in English, "コスト：◆◆◆" in Japanese.
+
 ### Whetstone: its life-saving effect now has a 1-minute cooldown
 
 - The Whetstone's "a single hit can at most reduce your health to 1" used to have **no cooldown** - as long as you were above 1 HP you were nearly unkillable by any single hit, which made the Airbag (6 charge plus a 1-minute cooldown) feel pointless.

@@ -520,6 +520,7 @@
   "tooltip.astral_dice.chip.starlight": "当前星光：§e%s§7 / §e%s§r",
   "tooltip.astral_dice.chip.target": "攻击力 §e+1§7。触发骰神赐福后，对本次攻击目标之外距离最近的敌对目标施加 §e1§7 层标记",
   "tooltip.astral_dice.chip.vitamin_pill": "合成或获得任意卡牌时，治愈 §e+1§r",
+  "tooltip.astral_dice.card_cost": "费用：",
   "tooltip.astral_dice.cost": "攻击 §e%s§r",
   "tooltip.astral_dice.defense_cost": "防御 §e%s§r",
   "tooltip.astral_dice.dice_desc_prefix": "攻击时获得 ",

@@ -982,7 +982,7 @@ When extending this workspace:
 - 颜色约定:标题=金(§6)、时间=蓝(§9)、数值=黄(§e)、效果=青(§b)、负面/冷却中=红(§c)、普通=灰(§7)、备注=浅紫(§d)。
 - 时间格式:持续时间统一 `§9MM:SS§7`(蓝,尾部 §7 恢复灰),不加外括号;速率/数值保持原样。
 - **彩色代码后统一用 `§7` 恢复普通灰,禁止使用 `§r`**:`§r`(RESET)会把后续文本重置为纯白 #FFFFFF(亮白),与 tooltip 普通灰不一致;`§7` 只恢复灰色,后续若再有彩色代码会被其覆盖,安全无害。
-- 战斗牌 tooltip:费用置于**最上方**、黄色,格式 `Cost: ⨀⨀`——`Cost: ` 前缀 + 用 `⨀` 符号按费用重复(1费=⨀、2费=⨀⨀),费用由 `CardRegistry.cost(type, player)` 动态提供(含护法名刀折扣);下方为描述行(`点数 | 剩余次数: X`)。
+- 战斗牌 tooltip:费用置于**最上方**、**整行黄色**,格式 `费用：◆◆`——**本地化标题**(lang 键 `tooltip.astral_dice.card_cost`:zh「费用：」/ en「Cost: 」/ ja「コスト：」;实现 = `Component.translatable(key).append(Component.literal("◆".repeat(cost)))`)+ 用 `◆` 符号按费用重复(1费=◆、2费=◆◆),费用由 `CardRegistry.cost(type, player)` 动态提供(含护法名刀折扣);下方为描述行(`点数 | 剩余次数: X`)。⚠️ **2026-09-24 用户裁决改版**:原为硬编码 `Cost: ` 前缀 + `⨀`(U+2A00,未本地化、字形可疑)。
 - **筹码/物品 tooltip 的 lang 值若含 `\n` 换行,必须在 `ModTooltipHandler` 中用 `addChipLines(...)` 逐行拆分后添加**,禁止整段 `Component.translatable(...)` 直接入列——整段组件中的真实 `\n` 会被渲染成方块占位符(如夹心饼干-美味曾经出现的问题);与立牌 `addSignLines` 同理。
 - **创建筹码必须同步创建 tooltip**:每个新增筹码物品必须同步完成 lang 的 tooltip key(zh_cn/en_us 成对)与 `ModTooltipHandler.onItemTooltip` 中对应的 `stack.is(ModItems.XXX)` 分支(多行一律经 `addChipLines`);禁止创建只有注册与 lang 名称、没有 tooltip 渲染分支的筹码。
 
@@ -2201,7 +2201,7 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --new <注册id>
 2. `combat/CardRegistry`：`init()` 里注册 `new CardType("<typeId>", false, <uses>, <cost>, <item>, <roller>)`，**并且**在 `defaultUses(String)` 的 `switch` 里补分支（该方法在 `ModItems` 静态初始化阶段就被调用，`CardRegistry.init()` 更晚 ⇒ **不能**只依赖 `BY_ID`，否则耐久静默回退为 10 的既有坑）。
 3. 结算/加算落点：`combat/DiceCombatModifiers`（攻击力加算）或该牌自己的 `roller`。
 4. 标签：`data/astral_dice/tags/item/combat_cards.json`（**战斗牌汇总标签，两线各一份**）+ 专属牌另进 `is_exclusive.json`（1.20.1 同为 `tags/items/`）。
-5. tooltip 两行：费用行在最上方、黄色 `Cost: ⨀…`（费用由 `CardRegistry.cost(type, player)` 动态给），描述行 `点数 | 剩余次数: X`。
+5. tooltip 两行：费用行在最上方、黄色 `费用：◆…`（**本地化标题** lang 键 `tooltip.astral_dice.card_cost` + `◆` 按费用重复；费用由 `CardRegistry.cost(type, player)` 动态给），描述行 `点数 | 剩余次数: X`。
 6. lang（中英）+ 手册 `entries/cards_attack/<id>.json`（现有 `cards_attack/` 7 条）。
 7. 获取渠道：蛟龙专属 ⇒ 由蛟龙立牌技能（主动或被动）发放/回收，**具体入口与"专属绑定"时机待裁决**；若走随机发放则必须排除（§1）。
 

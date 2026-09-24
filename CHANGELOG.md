@@ -21,6 +21,15 @@
 
 ### Content & Balance
 
+#### Text & Display
+
+- **The card cost line now uses a new symbol and a localised label** (user ruling 2026-09-24): the cost line at
+  the top of a battle card's tooltip used to be hard-coded `Cost: ⨀⨀⨀` ("Cost" was never localised, and the
+  symbol was the mathematical N-ary operator `⨀` U+2A00, whose glyph is questionable in some fonts). It is now
+  a **localised label plus repeated "◆"** (one per point of cost): "费用：◆◆◆" in Chinese, "Cost: ◆◆◆" in
+  English and "コスト：◆◆◆" in Japanese, through the new lang key `tooltip.astral_dice.card_cost` (three lines
+  x zh/en/ja). The whole line is still yellow and its position is unchanged.
+
 #### Damage & Resolution
 
 - **The Whetstone's "keep 1 HP" guard now has a 1:00 cooldown, and the saving priority "Airbag > Whetstone"

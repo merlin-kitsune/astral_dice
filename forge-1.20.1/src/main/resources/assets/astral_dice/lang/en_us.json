@@ -560,6 +560,7 @@
   "tooltip.astral_dice.chip.starlight": "Current Starlight: §e%s§7 / §e%s§r",
   "tooltip.astral_dice.chip.target": "Attack §e+1§7. After gaining Dice Blessing, apply §e1§7 Mark layer to the nearest hostile target other than the one you are attacking",
   "tooltip.astral_dice.chip.vitamin_pill": "When you obtain any card through crafting or other means, gain §e+1§7 healing layer",
+  "tooltip.astral_dice.card_cost": "Cost: ",
   "tooltip.astral_dice.cost": "Attack §e%s§r",
   "tooltip.astral_dice.defense_cost": "Defense §e%s§r",
   "tooltip.astral_dice.dice_desc_prefix": "Get ",

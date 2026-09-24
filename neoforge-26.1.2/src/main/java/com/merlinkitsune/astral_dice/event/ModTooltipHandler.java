@@ -556,9 +556,9 @@ public class ModTooltipHandler {
 
         if (stack.is(ModItems.ATTACK_CARD_MEDIUM.get())) {
             tooltip.add(Component.empty());
-            // 费用:黄色 "Cost: " + ⨀(每 1 费一个符号),置于 tooltip 最上方
-            tooltip.add(Component.literal("Cost: " + "⨀".repeat(
-                            com.merlinkitsune.astral_dice.combat.CardRegistry.cost("medium", player)))
+            // 费用:黄色「本地化标题 + ◆(每 1 费一个符号)」,置于 tooltip 最上方
+            tooltip.add(Component.translatable("tooltip.astral_dice.card_cost").append(Component.literal("◆".repeat(
+                            com.merlinkitsune.astral_dice.combat.CardRegistry.cost("medium", player))))
                     .withStyle(ChatFormatting.YELLOW));
             int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("medium"));
             tooltip.add(tt("tooltip.astral_dice.card.attack_medium", uses)
@@ -566,8 +566,8 @@ public class ModTooltipHandler {
         }
         if (stack.is(ModItems.ATTACK_CARD_LARGE.get())) {
             tooltip.add(Component.empty());
-            tooltip.add(Component.literal("Cost: " + "⨀".repeat(
-                            com.merlinkitsune.astral_dice.combat.CardRegistry.cost("large", player)))
+            tooltip.add(Component.translatable("tooltip.astral_dice.card_cost").append(Component.literal("◆".repeat(
+                            com.merlinkitsune.astral_dice.combat.CardRegistry.cost("large", player))))
                     .withStyle(ChatFormatting.YELLOW));
             int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("large"));
             tooltip.add(tt("tooltip.astral_dice.card.attack_large", uses)
@@ -575,8 +575,8 @@ public class ModTooltipHandler {
         }
         if (stack.is(ModItems.ATTACK_CARD_EPIC.get())) {
             tooltip.add(Component.empty());
-            tooltip.add(Component.literal("Cost: " + "⨀".repeat(
-                            com.merlinkitsune.astral_dice.combat.CardRegistry.cost("epic", player)))
+            tooltip.add(Component.translatable("tooltip.astral_dice.card_cost").append(Component.literal("◆".repeat(
+                            com.merlinkitsune.astral_dice.combat.CardRegistry.cost("epic", player))))
                     .withStyle(ChatFormatting.YELLOW));
             int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("epic"));
             tooltip.add(tt("tooltip.astral_dice.card.attack_epic", uses)
@@ -584,8 +584,8 @@ public class ModTooltipHandler {
         }
         if (stack.is(ModItems.ATTACK_CARD_SHADOW_STRIKE.get())) {
             tooltip.add(Component.empty());
-            tooltip.add(Component.literal("Cost: " + "⨀".repeat(
-                            com.merlinkitsune.astral_dice.combat.CardRegistry.cost("shadow_strike", player)))
+            tooltip.add(Component.translatable("tooltip.astral_dice.card_cost").append(Component.literal("◆".repeat(
+                            com.merlinkitsune.astral_dice.combat.CardRegistry.cost("shadow_strike", player))))
                     .withStyle(ChatFormatting.YELLOW));
             int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("shadow_strike"));
             tooltip.add(tt("tooltip.astral_dice.card.shadow_strike", uses)
@@ -593,8 +593,8 @@ public class ModTooltipHandler {
         }
         if (stack.is(ModItems.ATTACK_CARD_MEITO.get())) {
             tooltip.add(Component.empty());
-            tooltip.add(Component.literal("Cost: " + "⨀".repeat(
-                            com.merlinkitsune.astral_dice.combat.CardRegistry.cost("meito", player)))
+            tooltip.add(Component.translatable("tooltip.astral_dice.card_cost").append(Component.literal("◆".repeat(
+                            com.merlinkitsune.astral_dice.combat.CardRegistry.cost("meito", player))))
                     .withStyle(ChatFormatting.YELLOW));
             int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("meito"));
             tooltip.add(tt("tooltip.astral_dice.card.meito", uses)
@@ -602,8 +602,8 @@ public class ModTooltipHandler {
         }
         if (stack.is(ModItems.ATTACK_CARD_CHARGE.get())) {
             tooltip.add(Component.empty());
-            tooltip.add(Component.literal("Cost: " + "⨀".repeat(
-                            com.merlinkitsune.astral_dice.combat.CardRegistry.cost("charge", player)))
+            tooltip.add(Component.translatable("tooltip.astral_dice.card_cost").append(Component.literal("◆".repeat(
+                            com.merlinkitsune.astral_dice.combat.CardRegistry.cost("charge", player))))
                     .withStyle(ChatFormatting.YELLOW));
             int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("charge"));
             tooltip.add(tt("tooltip.astral_dice.card.charge", uses)
@@ -611,8 +611,8 @@ public class ModTooltipHandler {
         }
         if (stack.is(ModItems.ATTACK_CARD_FULL_POWER.get())) {
             tooltip.add(Component.empty());
-            tooltip.add(Component.literal("Cost: " + "⨀".repeat(
-                            com.merlinkitsune.astral_dice.combat.CardRegistry.cost("full_power", player)))
+            tooltip.add(Component.translatable("tooltip.astral_dice.card_cost").append(Component.literal("◆".repeat(
+                            com.merlinkitsune.astral_dice.combat.CardRegistry.cost("full_power", player))))
                     .withStyle(ChatFormatting.YELLOW));
             int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("full_power"));
             tooltip.add(tt("tooltip.astral_dice.card.full_power", uses)
@@ -620,8 +620,8 @@ public class ModTooltipHandler {
         }
         if (stack.is(ModItems.DEFENSE_CARD_MEDIUM.get())) {
             tooltip.add(Component.empty());
-            tooltip.add(Component.literal("Cost: " + "⨀".repeat(
-                            com.merlinkitsune.astral_dice.combat.CardRegistry.cost("defense_medium", player)))
+            tooltip.add(Component.translatable("tooltip.astral_dice.card_cost").append(Component.literal("◆".repeat(
+                            com.merlinkitsune.astral_dice.combat.CardRegistry.cost("defense_medium", player))))
                     .withStyle(ChatFormatting.YELLOW));
             int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("defense_medium"));
             tooltip.add(tt("tooltip.astral_dice.card.defense_medium", uses)
@@ -629,8 +629,8 @@ public class ModTooltipHandler {
         }
         if (stack.is(ModItems.DEFENSE_CARD_LARGE.get())) {
             tooltip.add(Component.empty());
-            tooltip.add(Component.literal("Cost: " + "⨀".repeat(
-                            com.merlinkitsune.astral_dice.combat.CardRegistry.cost("defense_large", player)))
+            tooltip.add(Component.translatable("tooltip.astral_dice.card_cost").append(Component.literal("◆".repeat(
+                            com.merlinkitsune.astral_dice.combat.CardRegistry.cost("defense_large", player))))
                     .withStyle(ChatFormatting.YELLOW));
             int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("defense_large"));
             tooltip.add(tt("tooltip.astral_dice.card.defense_large", uses)
@@ -638,8 +638,8 @@ public class ModTooltipHandler {
         }
         if (stack.is(ModItems.DEFENSE_CARD_EPIC.get())) {
             tooltip.add(Component.empty());
-            tooltip.add(Component.literal("Cost: " + "⨀".repeat(
-                            com.merlinkitsune.astral_dice.combat.CardRegistry.cost("defense_epic", player)))
+            tooltip.add(Component.translatable("tooltip.astral_dice.card_cost").append(Component.literal("◆".repeat(
+                            com.merlinkitsune.astral_dice.combat.CardRegistry.cost("defense_epic", player))))
                     .withStyle(ChatFormatting.YELLOW));
             int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("defense_epic"));
             tooltip.add(tt("tooltip.astral_dice.card.defense_epic", uses)
