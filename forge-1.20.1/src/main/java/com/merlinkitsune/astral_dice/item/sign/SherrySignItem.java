@@ -25,6 +25,7 @@ import net.minecraftforge.eventbus.api.EventPriority;
 import top.theillusivec4.curios.api.SlotContext;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -44,9 +45,10 @@ import java.util.List;
  * 投掷的飞行过程由 {@link SherryThrowManager} 负责(逐 tick 插值抛物线,期间目标 noAi)。
  *
  * <h3>被动「侦探出击」</h3>
- * 每攻击一个**最大生命值 ≥ {@value #HIGH_HEALTH_THRESHOLD} 的敌对目标**,获得 1 层「推理时间」
- * (上限 {@value #MAX_REASONING} 层);每层 **+1 攻击力、减少 1 点受到的伤害**;
- * **骰神赐福结束后扣除 1 层**。
+ * 每攻击一个**新的**、最大生命值 ≥ {@value #HIGH_HEALTH_THRESHOLD} 的敌对目标,获得 1 层「推理时间」
+ * —— **每个目标只提供 1 层**(已提供过的目标 UUID 记在 {@code ModAttachments#SHERRY_REASONING_TARGETS},
+ * 首次命中即登记;2026-09-25 用户裁决「每攻击一下给一层」为缺陷);上限 {@value #MAX_REASONING} 层;
+ * 每层 **+1 攻击力、减少 1 点受到的伤害**;**骰神赐福结束后扣除 1 层**。
  *
  * <p><b>层数真值在附件 {@code ModAttachments#SHERRY_REASONING_LAYERS}</b>(1.20.1 经
  * {@code AstralData#onPlayerClone} 的死亡保留白名单,⇒ **死亡不清**「推理时间」,与「弱点识破」
@@ -75,8 +77,18 @@ public class SherrySignItem extends BaseSignItem {
     /** 立牌注册 id(锁定态/调试用) */
     public static final String SIGN_ID = AstralDiceMod.MODID + ":sherry_sign";
 
-    /** 「推理时间」上限 */
-    public static final int MAX_REASONING = 5;
+    /** 「推理时间」上限(2026-09-25 用户裁决:由 5 降为 **4**) */
+    public static final int MAX_REASONING = 4;
+    /**
+     * 「每个目标只提供 1 层」的**已推理目标**记录上限(超出时**按最旧淘汰**)。
+     *
+     * <p>数值与手电筒筹码的 {@code FlashlightChipItem.MAX_TRACKED_TARGETS} 相同,但**淘汰策略不同**:
+     * 手电筒发的是**星光货币**,故取「记录满则不再发放」以求严格;本条记录键按目标**实体实例** UUID 计,
+     * 长局里 256 个目标很容易达到,若也「满则停发」会让玩家长时间游戏后**静默失去整个被动**;
+     * 而「推理时间」本身有 {@link #MAX_REASONING} 层上限、且每次赐福结束 −1 层,
+     * 重复发放(前提是先打过 256 个其它目标)不构成刷取 ⇒ 取**按最旧淘汰**。
+     */
+    public static final int MAX_TRACKED_TARGETS = 256;
     /** 主动冷却基础秒数(与枪匠立牌一致:120 秒) */
     public static final int ACTIVE_COOLDOWN_SECONDS = 120;
     /** 主动投掷范围(格) */
@@ -163,11 +175,15 @@ public class SherrySignItem extends BaseSignItem {
         }
     }
 
-    /** 卸下立牌:清「推理时间」层数与显示效果(与「弱点识破」同款「卸下即归零」口径) */
+    /**
+     * 卸下立牌:「推理时间」层数、**已推理目标记录**与显示效果一起清空
+     * (记录与层数**同寿命** —— 层数归零后重新累计,新目标重新计算)。
+     */
     @Override
     protected void clearSignData(Player player, ItemStack stack) {
         super.clearSignData(player, stack);
         ModAttachments.setSherryReasoningLayers(player, 0);
+        clearReasonedTargets(player);
         SherryReasoningEffect.clear(player);
     }
 
@@ -397,14 +413,51 @@ public class SherrySignItem extends BaseSignItem {
     // ══════════════════════════════════════════════════════════════════════════
 
     /**
-     * 攻击命中 ≥{@value #HIGH_HEALTH_THRESHOLD} 血敌对目标 ⇒ +1 层。
+     * 攻击命中 ≥{@value #HIGH_HEALTH_THRESHOLD} 血敌对目标,**且该目标是新的** ⇒ +1 层。
      * 由 {@link #onAttackHostile} 在本模组的伤害事件里分发(只认玩家近战/直接攻击)。
+     *
+     * <p>⚠️ **去重是硬要求**(2026-09-25 用户实报):旧实现**每攻击一下**就 +1 层,与
+     * 「每攻击一个**新**目标获得一层(每个目标只能获得一层)」不符;已登记的目标直接跳过。
      */
-    public static void onAttackedHighHealthHostile(Player attacker) {
-        if (attacker == null || attacker.level().isClientSide()) return;
+    public static void onAttackedHighHealthHostile(Player attacker, net.minecraft.world.entity.LivingEntity target) {
+        if (attacker == null || target == null) return;
+        if (attacker.level().isClientSide()) return;
         if (!isEquipped(attacker)) return;
         if (getLayers(attacker) >= MAX_REASONING) return;
+        if (!markReasonedTarget(attacker, target)) return;
         addLayers(attacker, 1);
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    //  「已推理目标」记录(「每个目标只提供 1 层」的唯一判据)
+    // ══════════════════════════════════════════════════════════════════════
+
+    /**
+     * 登记「该目标已提供过 1 层」;返回 {@code true} = **本次是新目标**(调用方据此 +1 层),
+     * {@code false} = 该目标已登记过(不再发放)。记录超 {@link #MAX_TRACKED_TARGETS} 时按最旧淘汰。
+     */
+    private static boolean markReasonedTarget(Player player, net.minecraft.world.entity.LivingEntity target) {
+        String uuid = target.getUUID().toString();
+        List<String> granted = readReasonedTargets(player);
+        if (granted.contains(uuid)) return false;
+        granted.add(uuid);
+        while (granted.size() > MAX_TRACKED_TARGETS) {
+            granted.remove(0);
+        }
+        ModAttachments.setSherryReasoningTargets(player, String.join(",", granted));
+        return true;
+    }
+
+    /** 清空「已推理目标」记录(卸下立牌时,与层数同寿命) */
+    public static void clearReasonedTargets(Player player) {
+        if (player == null) return;
+        ModAttachments.setSherryReasoningTargets(player, "");
+    }
+
+    private static List<String> readReasonedTargets(Player player) {
+        String raw = ModAttachments.getSherryReasoningTargets(player);
+        if (raw == null || raw.isEmpty()) return new ArrayList<>();
+        return new ArrayList<>(Arrays.asList(raw.split(",")));
     }
 
     /** 骰神赐福结束后扣除 1 层(由 {@code combat/DiceCombatEvents} 的赐福结束段调用) */
@@ -468,6 +521,6 @@ public class SherrySignItem extends BaseSignItem {
         if (!HostileTargets.isHostile(victim)) return;
         if (!(event.getSource().getDirectEntity() instanceof Player attacker)) return;
         if (attacker == victim) return;
-        onAttackedHighHealthHostile(attacker);
+        onAttackedHighHealthHostile(attacker, victim);
     }
 }

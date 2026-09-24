@@ -127,6 +127,22 @@
 
 #### Signs & State
 
+- **The Sherry Sign's "Detective's Strike" passive granted a stack per *hit* instead of per *new target*** (reported
+  2026-09-25): the counter hook only checked "hit a hostile target with >= 20 health" and never recorded **which** target
+  it was, so hitting the same mob four times maxed out Reasoning Time - contradicting the passive's own text ("attacking
+  a **new** target grants 1 stack; each target can only grant one"). A player-level **reasoned-target** record was added
+  (attachment `sherry_reasoning_targets`, comma-separated target UUIDs, following the `flashlight_granted_targets`
+  string-set convention): the first hit registers the target and **an already-registered target grants nothing further**.
+  The record is capped at **256** and evicts the **oldest** entry (unlike the flashlight chip's "stop granting once full":
+  this record is keyed by **entity instance** UUID so 256 is easy to reach in a long session, and stopping would silently
+  kill the whole passive; Reasoning Time itself is capped and decays by 1 per blessing, so a repeat grant is no exploit).
+  The record is **cleared when the sign is unequipped** (same lifetime as the stacks) and deliberately **not** kept
+  through death, matching the flashlight chip.
+- **Reasoning Time's cap was lowered from 5 to 4 stacks** (user ruling 2026-09-25): constant
+  `SherrySignItem.MAX_REASONING = 4` (the tooltip counter and the "maxed" bonus-damage check both read it, so they follow
+  automatically); the tooltip and handbook wording ("up to 5 stacks" / "has reached 5 stacks") was updated to 4
+  across all three branches x zh/en/ja.
+
 - **Temporary cards were "undroppable" on the server only - pressing Q on the client ate the card, with nothing on the ground** (reported 2026-09-24: "a battle card can be dropped with Q and no item drops"): the server's `ServerPlayer#drop(boolean)` asks the item first (`ItemStack#onDroppedByPlayer`; false returns immediately), so temporary battle cards (`CardItem` override) are **never** dropped server-side. The **client**'s `LocalPlayer#drop(boolean)` (bytecode-identical on 1.21.1 / 1.20.1 / 26.1.2) removes the stack from the selected slot locally and *then* sends the packet, and never asks that question - the client also never spawns a drop entity (entities only exist once the server creates them in `CommonHooks#onPlayerTossEvent`). So the client slot is emptied, the server silently refuses, and because the server slot never changed `broadcastChanges` never resends it: the card looks gone with nothing on the ground until a full resync (relog / reopening a container). Added `mixin/client/LocalPlayerDropGuardMixin`: at the HEAD of `LocalPlayer#drop(Z)Z` it refuses with the same predicate (`TemporaryCardUtil#isTemporary`) - nothing is removed, no packet is sent, no side effects (temporary cards only; third-party `onDroppedByPlayer` is not invoked on the client).
 - **Temporary *effect* cards never overrode "undroppable"**: the effect-card root class `BaseEffectCardItem` only overrode the glint and the container hooks, so the server ran the whole drop path and was only stopped afterwards by `ItemTossEvent` (cancel the entity + best-effort refund into the inventory) - the card did not land, but it **jumped to another inventory slot**, and when the refund failed (full inventory) it was **destroyed** (that handler states "never lands, so destroy when it does not fit"). It now overrides `onDroppedByPlayer` **symmetrically** with the battle-card root class `CardItem`, both delegating to the same predicate.
 - **Pressing Q on a temporary card inside a container GUI pulled it out of its slot first (destroyed when the inventory was full)** (reported 2026-09-24: "a temporary battle card equipped in the dice simply disappears"): Q in a GUI is `ClickType.THROW`, and vanilla takes the stack out of the slot first (`slot.safeTake`) and only then calls `player.drop` - so the card left its slot and only afterwards met the cancelled `ItemTossEvent` and its best-effort refund (full inventory = destroyed); even on success it was silently unequipped from the dice (closing the menu immediately rewrites the dice through `saveToDice()`). Added `mixin/container/ContainerClickGuardMixin` on the HEAD of `AbstractContainerMenu#clicked` (the single entry point for **all** container-GUI clicks): a `THROW` hitting a temporary card, or dragging a temporary card out of the GUI (`PICKUP` + pseudo-slot `-999`), is cancelled outright - nothing is taken out and nothing is dropped.

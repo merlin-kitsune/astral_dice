@@ -91,6 +91,9 @@ Temporary cards also have their own hint line now: **"Temporary card: cannot be 
 
 ## 🐛 Bug Fixes
 
+- **The Sherry Sign's "Detective's Strike" now counts new targets**: previously a few hits on the same mob filled up
+  Reasoning Time; now **each target only ever grants 1 stack** (you need fresh targets to keep stacking), and the cap was
+  lowered from 5 to **4** stacks (sign tooltip and handbook updated).
 - **Chips that grant Starlight on equip (bank cards, ATM, Star Coin Hammer) no longer keep the Starlight after unequipping
   (equip/unequip cycling could farm Starlight)**: unequipping now **deducts exactly** what the equip actually granted, so
   cycling grants nothing, and bank cards no longer leave convertible Starlight behind when removed.

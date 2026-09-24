@@ -1674,6 +1674,30 @@ public class ModAttachments {
         player.setData(SHERRY_REASONING_LAYERS.get(), Math.max(0, value));
     }
 
+    /**
+     * **已推理目标 UUID 集**(逗号分隔) —— 「侦探出击」被动「每个目标只提供 1 层」的唯一判据。
+     *
+     * <p>「攻击一个**新**目标」= 该 UUID 不在本集中;首次命中即登记,已登记的直接跳过(不再 +1 层)。
+     * 写法与寿命都沿用 {@link #FLASHLIGHT_GRANTED_TARGETS} 的字符串集口径:**卸下立牌即清空**。
+     * ⚠️ 层数 {@link #SHERRY_REASONING_LAYERS} 本身**跨死亡保留**({@code .copyOnDeath()} / 1.20.1 白名单),
+     * 而本记录**有意不跨死亡**(不加 {@code .copyOnDeath()})—— 死亡属重置类事件,重生后同一目标可重新
+     * 提供 1 层;口径与手电筒筹码一致(理由见 {@code SherrySignItem#MAX_TRACKED_TARGETS})。
+     *
+     * <p>不 {@code .sync()}:仅服务端判定,客户端不读。
+     */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<String>> SHERRY_REASONING_TARGETS =
+            ATTACHMENTS.register("sherry_reasoning_targets", () -> AttachmentType.builder(() -> "")
+                    .serialize(Codec.STRING.fieldOf("value"))
+                    .build());
+
+    public static String getSherryReasoningTargets(net.minecraft.world.entity.player.Player player) {
+        return player.getData(SHERRY_REASONING_TARGETS.get());
+    }
+
+    public static void setSherryReasoningTargets(net.minecraft.world.entity.player.Player player, String value) {
+        player.setData(SHERRY_REASONING_TARGETS.get(), value == null ? "" : value);
+    }
+
     // ══════════════════════════════════════════════════════════════════════════
     //  人偶师立牌(hanna,2026-09-21)
     // ══════════════════════════════════════════════════════════════════════════
