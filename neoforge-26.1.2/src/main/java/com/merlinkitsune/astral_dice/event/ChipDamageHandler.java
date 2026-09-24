@@ -70,7 +70,7 @@ public final class ChipDamageHandler {
         // A6 口径统一(致命判定一律按**吸收(黄心)之后**):1.21.1 的 LivingDamageEvent.Pre 派发于吸收之前
         // (neoforge-21.1.235 LivingEntity#actuallyHurt L1789 onLivingDamagePre → L1790-1792 吸收),
         // 故须把待判定伤害换算为"吸收后仍会扣的生命" = damage - getAbsorptionAmount()(下限 0)。
-        // 该换算**只喂给气囊**;磨刀石仍按原值处理。1.20.1 侧对应事件本身已在吸收之后,不做换算。
+        // 该换算**喂给气囊与磨刀石**(2026-09-24 起磨刀石同口径);1.20.1 侧对应事件本身已在吸收之后,不做换算。
         float damageAfterAbsorption = Math.max(0.0F, damage - player.getAbsorptionAmount());
         if (damageAfterAbsorption >= player.getHealth() && AirbagChipItem.tryNegateFatal(player)) {
             event.setNewDamage(0.0F);
@@ -83,9 +83,15 @@ public final class ChipDamageHandler {
         // (该能力自 2026-09-24 起同样带 1:00 冷却)。两者同时佩戴时气囊恒为第一顺位 ——
         // 气囊接管后本次结算直接返回,磨刀石连它的 -2 减伤都不参与。
         // 磨刀石:低血量减伤 + 血量 > 1 时不可被一次伤害击倒(保命部分带 1:00 冷却)
-        float modified = WhetstoneChipItem.modifyIncomingDamage(player, damage);
-        if (modified != damage) {
-            event.setNewDamage(modified);
+        // ⚠️ **口径:磨刀石按「吸收(黄心)之后」的净掉血计算**(2026-09-24 用户裁决「1.21.1 不符合预期、
+        //    1.20.1 正确」)。1.20.1 的 LivingDamageEvent 天然派发于吸收之后;本线的 Pre 在吸收**之前**、
+        //    拿到的是含黄心的原始伤害 ⇒ 直接按它算会**过度削减**(血量 5 + 黄心 10 挨 8 点时,本该只吃黄心、
+        //    红心一点不掉,却被削成 4 ⇒ 连黄心都少吃了)。故先换算成净掉血 damageAfterAbsorption 交给磨刀石,
+        //    再把「它省下的那部分」从事件伤害里扣回去(damage - raw + fixed)⇒ **黄心消耗量保持不变**,
+        //    只有红心扣血被磨刀石改动,与 1.20.1 逐点一致。
+        float modified = WhetstoneChipItem.modifyIncomingDamage(player, damageAfterAbsorption);
+        if (modified != damageAfterAbsorption) {
+            event.setNewDamage(Math.max(0.0F, damage - damageAfterAbsorption + modified));
         }
     }
 

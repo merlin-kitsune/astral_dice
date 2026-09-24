@@ -73,6 +73,13 @@ This version adds **8 custom sound effects**, converted from the assets you supp
 
 ## 🐛 Bug Fixes
 
+### 1.21.1: the Whetstone was over-cutting hits while yellow hearts were up
+
+- Only **1.21.1 / 26.1.2** had this problem (1.20.1 was always correct): **with yellow hearts up, the Whetstone cut the damage far too hard**.
+- The clearest example: 5 health, 10 absorption, taking 8 - it should be "absorption eats 8, red health untouched", but the hit was cut to 4 (absorption only lost 4).
+- The cause is that the damage event fires at a different moment on the two versions, so on 1.21.1 the Whetstone was handed a value that still included the yellow hearts.
+- It now matches 1.20.1: **absorption is consumed first, then the Whetstone decides how much red health is lost** - the yellow hearts eat exactly what they should, and only red health is affected. Its -2 reduction and "keep 1 HP" guard are unchanged.
+
 ### Sherry Sign "Strength Throw": thrown mobs no longer pile up and shove each other apart
 
 - Previously, throwing a group of mobs in front of you packed them onto **a single line** (the more targets, the tighter - from 4 targets on, neighbouring landing spots were less than 0.6 blocks apart), so after landing they **shoved each other apart**; the AI herded them back, and a few seconds later it happened again.

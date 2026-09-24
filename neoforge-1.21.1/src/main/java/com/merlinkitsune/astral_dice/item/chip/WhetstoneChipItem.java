@@ -70,9 +70,14 @@ public class WhetstoneChipItem extends BaseChipItem {
     }
 
     /**
-     * 受到伤害时计算修正后的伤害:
-     * 佩戴且生命值为 50% 或更低 → -2;生命值 > 1 时伤害被限制为不超过(剩余生命值 - 1),
-     * 保证不会被一次伤害击倒(至少保留 1 点生命值)。
+     * 受到伤害时计算修正后的伤害。
+     *
+     * <p>⚠️ 入参 {@code damage} 必须是**「吸收(黄心)之后仍会扣的生命」**(2026-09-24 用户裁决):
+     * 1.20.1 的 {@code LivingDamageEvent} 天然派发于吸收之后;1.21.1 / 26.1.2 的 {@code Pre} 在吸收**之前**,
+     * 由 {@code ChipDamageHandler} 先换算再传入(否则带黄心时会被**过度削减**)。
+     *
+     * <p>佩戴且生命值为 50% 或更低 → -2;生命值 > 1 时伤害被限制为不超过(剩余生命值 - 1),
+     * 保证不会被一次伤害击倒(至少保留 1 点生命值;该保命能力带 1:00 冷却,见 {@link #GUARD_COOLDOWN_TICKS})。
      */
     public static float modifyIncomingDamage(Player player, float damage) {
         if (damage <= 0) return damage;

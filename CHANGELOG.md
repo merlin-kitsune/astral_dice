@@ -78,6 +78,20 @@
 ### Bug Fixes
 
 #### Damage & Resolution
+- **On 1.21.1 / 26.1.2 the Whetstone computed from the pre-absorption damage, over-cutting hits while yellow
+  hearts were up** (reported 2026-09-24: "1.21.1 is not what I expect, 1.20.1 is correct"): the 1.20.1
+  `LivingDamageEvent` is dispatched **after** absorption, so the Whetstone sees how much red health would
+  actually be lost; the 1.21.1 / 26.1.2 `LivingDamageEvent.Pre` is dispatched **before** absorption, so the
+  Whetstone received the raw damage **including the yellow hearts** - comparing that against `getHealth()`
+  treated the part the yellow hearts could have eaten as lethal, so even the yellow hearts were under-consumed.
+  Typical symptom: 5 health, 10 absorption, taking 8 - it should be "absorption eats 8, red health untouched",
+  but the hit was cut to 4 (absorption only lost 4). It now converts to the post-absorption net loss first, then
+  subtracts only **what it saved** from the event damage (`newDamage = damage - netAfterAbsorption +
+  netAfterModification`) => the **absorption consumed is unchanged**, only the red-health loss is modified by
+  the Whetstone, matching 1.20.1 point for point (both lines call the same `modifyIncomingDamage`, so aligning
+  the input convention makes them fully equivalent). The Airbag's lethal test already used the post-absorption
+  value and is unaffected; void damage is still ignored by both.
+
 
 - **The training dummy (`dummmmmmy`) is now always treated as a hostile target** (reported on 2026-09-24 as "the training dummy is not declared as a hittable target"): it is neither an `Enemy` nor an angered neutral mob, so every "requires a hostile target" effect excluded it - most visibly, the Living Page could neither select nor hit it. This is now solved by an **"extra hostile" injection seam added to the prerequisite library** (`starengine_lib` `1.0.3`): on startup this mod installs its "the dummy counts as hostile" predicate into the library's `combat/HostileTargets` (the single entry point for "hostile target"), so the dummy counts as hostile in **all** such checks - Dice Blessing triggering, the spell-damage modifier chain, and the target selector's selectability checks (client raycast / radius highlight / server-side confirmation).
 
