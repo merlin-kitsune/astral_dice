@@ -100,6 +100,12 @@ public class DiceCombatEvents {
         com.merlinkitsune.starenginelib.combat.InternalDamageWindows.install(
                 DiceCombatEvents::isInternalAoe,
                 DiceCombatEvents::isInCounterChain);
+        // 再把「试验假人应当算敌对目标」讲给库听:库的 combat/HostileTargets 是「敌对目标」的唯一入口,
+        // 而它的判定点有一部分落在库内 —— target/SelectorTargets 的可选中判定(客户端射线/半径高亮/
+        // 服务端确认)直接调它 ⇒ 消费方无法插手,故由库留 seam、本模组在此注入。
+        // 未注入时库退回原口径(假人不算敌对),即本注入是**纯增益**、不影响其它实体。
+        com.merlinkitsune.starenginelib.combat.HostileTargets.installExtraHostileProbe(
+                DiceCombatEvents::isTrainingDummy);
     }
 
     // 当前是否处于反击链中(供骰战结算 / 闪避 / 反击入口判定)
@@ -980,9 +986,9 @@ public class DiceCombatEvents {
     }
 
     // 骰神赐福触发目标判定:敌对生物、非团队内玩家、已被激怒的中立生物,以及其余非被动动物实体
+    // ⚠️ 试验假人不再在此单列特例 —— 它已由库的 HostileTargets「额外敌对判定」seam 统一计入敌对目标
+    // (注入见本类 static 块),故下一行 HostileTargets.isHostile 即覆盖它,与其它调用点口径一致。
     public static boolean isBlessingTarget(LivingEntity target, Player player) {
-        // dummmmmmy 训练人偶:允许触发骰神赐福与伤害效果牌(用于伤害/效果测试)
-        if (isTrainingDummy(target)) return true;
         if (target instanceof Player other) {
             return other.getTeam() == null || other.getTeam() != player.getTeam();
         }
@@ -996,8 +1002,13 @@ public class DiceCombatEvents {
         return false;
     }
 
-    // dummmmmmy 训练人偶识别:实体注册 id 命名空间为 dummmmmmy,或类名包含 dummy(兼容不同版本/命名)
-    private static boolean isTrainingDummy(LivingEntity target) {
+    // 试验假人(dummmmmmy)识别:实体注册 id 命名空间为 dummmmmmy,或类名包含 dummy(兼容不同版本/命名)。
+    // 由本类 static 块注入给库的 combat/HostileTargets(ExtraHostileProbe)⇒ 该假人在**所有**
+    // 「需要敌对目标」的判定里都算敌对(骰神赐福、法伤修饰符链、导弹/轨道类技能的波及选目标,以及
+    // 目标选择器的可选中判定),不再是「骰神赐福」一处特例。参数取 Entity 是为满足 seam 签名
+    // (库的判定入参是 Entity,不是 LivingEntity);null 返回 false。
+    public static boolean isTrainingDummy(Entity target) {
+        if (target == null) return false;
         ResourceLocation id = BuiltInRegistries.ENTITY_TYPE.getKey(target.getType());
         if ("dummmmmmy".equals(id.getNamespace())) return true;
         String name = target.getClass().getSimpleName().toLowerCase(Locale.ROOT);

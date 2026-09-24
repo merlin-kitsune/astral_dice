@@ -179,10 +179,15 @@
 - **Fixed a box glyph appearing in the middle of multi-line card descriptions (talismans included)**: vanilla only splits a line when the tooltip has to wrap; when it fits, the whole string is drawn as **one line** — so a newline used for line breaking was rendered as a **missing-glyph box** (and whether it showed up depended on screen width and mouse position, making it look random). Values are now split per line before being added, so multi-line descriptions never show a box.
 
 
+### Training dummies can now be selected and hit
+
+- **The training dummy (`dummmmmmy`) is now always treated as a hostile target**: it is neither a "hostile mob" nor an angryable neutral mob, so every effect that "requires a hostile target" excluded it — most visibly, the **Living Page could not select it at all, and therefore could not hit it** (you could not even use it to test your damage). This is now fixed at the root: the training dummy counts as hostile in **all** "hostile target" checks — Dice Blessing triggers normally, spell-damage bonuses are applied normally, and the target selector picks it up normally.
+- ⚠️ **Update the prerequisite library StarEngine Lib to `1.0.2` in the same batch**: the dependency range this mod declares has been tightened to `[1.0.2,2.0)`, and an older library is rejected outright by the loader as a missing required dependency.
+
 ## 📌 Requirements
 
 - ⚠️ **StarEngine Lib is now a required dependency from 1.3.0 onward**: **releases up to and including 1.2.1-hotfix ran on their own**; from 1.3.0 a large part of this mod's shared implementation lives in that library, and **without it the mod is refused at load time** (the loader reports a missing required dependency instead of letting you into the game and crashing there). Library repository: <https://github.com/merlin-kitsune/starengine_lib>
-- **This release requires StarEngine Lib `1.0.0` or any higher `1.x` version** (the dependency range this mod declares is `[1.0.0,2.0)`); **update the library and the mod as a pair** — put the library jar released together with this mod version into the `mods` folder as well.
+- **This release requires StarEngine Lib `1.0.2` or any higher `1.x` version** (the dependency range this mod declares is `[1.0.2,2.0)`); **update the library and the mod as a pair** — put the library jar released together with this mod version into the `mods` folder as well.
 - **Other requirements**: Curios API (**1.20.1 additionally requires Mixin Booster**).
 - **26.1.2 line**: requires Curios API **15+**; it has **no Iron's Spells 'n Spellbooks integration**.
 - **Optional integrations**: Patchouli (guidebook), Bountiful.
