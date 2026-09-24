@@ -25,11 +25,20 @@ public class AtmChipItem extends BaseChipItem {
     }
 
     @Override
-    public void onEquip(SlotContext slotContext, ItemStack curio, ItemStack prevStack) {
+    public void onEquip(SlotContext slotContext, ItemStack prevStack, ItemStack stack) {
         if (!(slotContext.entity() instanceof Player player)) return;
         if (player.level().isClientSide()) return;
-        if (!prevStack.isEmpty()) return;
+        // ⚠️ 第 3 参 stack 才是刚装上的那件(恒非空);旧代码把空槽守卫写在第 3 参上 ⇒ 恒 return、星光从未发放。
+        // 一次性发放改由「装备会话闸门」判定:Curios 登录 / 重生 / 切维度后会重放 onEquip
+        // (重放时 prevStack 恰好是空栈,空槽守卫拦不住)⇒ 见 StarLightManager#claimEquipGrant。
+        if (!StarLightManager.claimEquipGrant(player, StarLightManager.GRANT_BIT_ATM)) return;
         // 装备时星光 +1(上限由 StarLightManager 统一管理)
         StarLightManager.add(player, 1);
+    }
+
+    // 卸下筹码:释放发放闸门 ⇒ 再次装备可再发
+    @Override
+    protected void onChipUnequip(Player player, ItemStack stack) {
+        StarLightManager.releaseEquipGrant(player, StarLightManager.GRANT_BIT_ATM);
     }
 }

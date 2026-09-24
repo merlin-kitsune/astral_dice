@@ -159,7 +159,38 @@
   opened a selector session ⇒ cooldown waits for confirmation", leaving the skill **without cooldown / lock and
   without a Current Core charge**.
 
+#### Chips & Resources
+
+- **The four chips that grant Starlight on equip never granted anything (Curios callback parameter mix-up)** (reported
+  2026-09-24: "none of the bank cards provide starlight"): the official Curios signature is
+  `onEquip(slotContext, prevStack, stack)` - the 2nd parameter is the **slot's previous content** (`ItemStack.EMPTY`
+  when equipping into an empty slot) and the **3rd is the item just equipped** (passed as `this.getStack()` by
+  `ItemizedCurioCapability#onEquip`, hence never empty). All four chips had the empty-slot guard
+  `if (!prevStack.isEmpty()) return;` written against that 3rd parameter ⇒ **always true, always returned early**, so
+  the grant never ran:
+  - Bank Card (Low / High balance): equipping should raise Starlight to the base value **4 / 7** (the
+    "base starlight is not convertible" rule of `StarLightManager#getBasePoints`) - it stayed at 0;
+  - Bank Card (Unlimited): +3 Starlight on equip - never granted;
+  - ATM: +1 Starlight on equip - never granted;
+  - Star Coin Hammer: +5 Starlight on equip - never granted.
+  The parameters now follow the official signature, and the three one-shot grants (Unlimited / ATM / Hammer) are
+  gated by a new player-level "equip session" latch (new player attachment `starlight_equip_grant_flags`, a bitmask).
+  **Why the latch is required**: Curios persists `stacks` but **not `previousStacks`**, so after **login / respawn /
+  dimension change** the first tick reads "slot occupied, previous value empty" as an equip change and **replays
+  `onEquip`** - with `prevStack` being exactly the empty stack, so **the empty-slot guard cannot block that path** (a
+  plain parameter fix would hand out starlight on every login). The latch is set on equip and released on unequip, so
+  the equip/unequip loop still grants once per equip by design without being farmable by relogging. The two Bank Card
+  balance variants are an **idempotent base-value floor** (`set` only raises values below the base), so they carry no
+  guard at all.
+- **Two more sites shared the same parameter mix-up and are fixed as well**: ① the Cursed Sword chip wrote its
+  "Thousand Curses Mark" into the 2nd parameter - which on an empty-slot equip is the `ItemStack.EMPTY` **global
+  singleton**, so the mark was written and immediately discarded (it only ever worked because `curioTick` re-applies it
+  every tick) ⇒ now uses the 3rd parameter; ② the Big Boss sign's "reset the 1-minute timer on equip" never took
+  effect either ⇒ now uses the same latch (also preventing a login replay from wiping progress the player had
+  accumulated).
+
 ### Installation Requirements
+
 
 - ✅ **From this version on, the StarEngine Lib dependency is bundled inside the mod — you no longer install
   it separately**: a copy of `starengine_lib` ships inside the artefact (embedded under `META-INF/jarjar/`)

@@ -14,6 +14,7 @@ import net.minecraft.world.level.Level;
 import top.theillusivec4.curios.api.CuriosApi;
 import top.theillusivec4.curios.api.SlotContext;
 import com.merlinkitsune.astral_dice.item.ModItems;
+import com.merlinkitsune.astral_dice.item.StarLightManager;
 
 /**
  * 大当家立牌(命名:fen)。
@@ -56,12 +57,22 @@ public class FenSignItem extends BaseSignItem {
     }
 
     @Override
-    public void onEquip(SlotContext slotContext, ItemStack curio, ItemStack prevStack) {
+    public void onEquip(SlotContext slotContext, ItemStack prevStack, ItemStack stack) {
         if (!(slotContext.entity() instanceof Player player)) return;
         if (player.level().isClientSide()) return;
-        if (!prevStack.isEmpty()) return;
+        // ⚠️ 第 3 参 stack 才是刚装上的那件(恒非空);旧代码把空槽守卫写在第 3 参上 ⇒ 恒 return,
+        // 所以"装备时重置计时起点"从未生效过。空槽守卫换成「装备会话闸门」:Curios 登录 / 重生 / 切维度后
+        // 会重放 onEquip(重放时 prevStack 恰好是空栈,守卫拦不住),没有闸门就会每次登录白重置一次"1 分钟"
+        // 计时、把玩家刚攒的进度抹掉。
+        if (!StarLightManager.claimEquipGrant(player, StarLightManager.GRANT_BIT_FEN_SIGN)) return;
         // 装备时重置"1 分钟未触发赐福"计时起点
         ModAttachments.setFenLastBlessingTick(player, player.level().getGameTime());
+    }
+
+    // 卸下立牌:释放发放闸门 ⇒ 再次装备可重新计时
+    @Override
+    protected void clearSignData(Player player, ItemStack stack) {
+        StarLightManager.releaseEquipGrant(player, StarLightManager.GRANT_BIT_FEN_SIGN);
     }
 
     @Override

@@ -49,11 +49,14 @@ public class CursedSwordChipItem extends BaseChipItem {
     }
 
     @Override
-    public void onEquip(SlotContext slotContext, ItemStack curio, ItemStack prevStack) {
+    public void onEquip(SlotContext slotContext, ItemStack prevStack, ItemStack stack) {
         if (!(slotContext.entity() instanceof Player player)) return;
         if (player.level().isClientSide()) return;
+        // ⚠️ 第 2 参 prevStack 是槽位原内容(**往空槽装备时即 EMPTY**),第 3 参 stack 才是刚装上的那件。
+        // 旧代码把「千咒刻印」写到了第 2 参上 —— 空槽装备时那正是 `ItemStack.EMPTY` 这个全局单例,
+        // 于是装备时从未刻印成功(全靠 curioTick 每 tick 兜底才看似正常;EMPTY 单例被写组件本身也是隐患)。
         applyBlueCurse(player);
-        ensureCurseMarker(player, curio);
+        ensureCurseMarker(player, stack);
     }
 
     @Override

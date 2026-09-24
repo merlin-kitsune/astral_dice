@@ -677,6 +677,17 @@ public class ModAttachments {
                     .serialize(Codec.INT)
                     .build());
 
+    // 「装备时获得 N 层星光」类筹码/立牌的**发放闸门**(位掩码;位含义见 StarLightManager.GRANT_BIT_*)。
+    // 为什么需要:Curios 只持久化 stacks、**不持久化 previousStacks** ⇒ 登录 / 重生 / 切维度后
+    // 首 tick 的 prevStack 恒为空栈而槽里有物品,Curios 会把这判成一次装备变化并**重放 onEquip**
+    // (1.21.1 curios 9.5.1 的 tick 轮询 / 1.20.1 5.14.1 同构)。所以"空槽守卫"挡不住这条路径
+    // (重放时它恰好就是空栈),只有玩家级、持久化的闸门能区分"真的新装上"与"登录重放"。
+    // 必须持久化(随附件存档)且**不 `.sync()`**(仅服务端判定,客户端不读)。
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> STARLIGHT_EQUIP_GRANT_FLAGS =
+            ATTACHMENTS.register("starlight_equip_grant_flags", () -> AttachmentType.builder(() -> 0)
+                    .serialize(Codec.INT)
+                    .build());
+
     // 诅咒之剑筹码:累计击杀不少于 20 血的敌对目标获得的攻击力加成(移除筹码/死亡清除)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> CURSED_SWORD_BONUS =
             ATTACHMENTS.register("cursed_sword_bonus", () -> AttachmentType.builder(() -> 0)
@@ -796,6 +807,14 @@ public class ModAttachments {
 
     public static void setStarCoinHammerBonus(net.minecraft.world.entity.player.Player player, int value) {
         player.setData(STAR_COIN_HAMMER_BONUS.get(), Math.max(0, value));
+    }
+
+    public static int getStarlightEquipGrantFlags(net.minecraft.world.entity.player.Player player) {
+        return player.getData(STARLIGHT_EQUIP_GRANT_FLAGS.get());
+    }
+
+    public static void setStarlightEquipGrantFlags(net.minecraft.world.entity.player.Player player, int value) {
+        player.setData(STARLIGHT_EQUIP_GRANT_FLAGS.get(), value);
     }
 
     public static int getCursedSwordBonus(net.minecraft.world.entity.player.Player player) {

@@ -73,6 +73,28 @@ This version adds **8 custom sound effects**, converted from the assets you supp
 
 ## 🐛 Bug Fixes
 
+### Bank Cards: the starlight they promised actually arrives now
+
+The four bank cards (Low / High balance, Unlimited) plus the ATM and the Star Coin Hammer all say "On equip, gain N
+Starlight" - but **not one of them ever granted anything**: equip it and Starlight was still 0 (these chips print
+"Current Starlight: X / cap" at the bottom of their tooltip, so you can check directly).
+
+The cause was a parameter read at the wrong position: the "is this a fresh equip?" check was reading the item just
+equipped instead of the slot's previous content - and that is never empty, so the whole grant was skipped every time.
+
+All fixed:
+
+- **Bank Card (Low / High balance)**: equipping raises Starlight to **4 / 7 base starlight** (base starlight cannot be
+  converted into Star Coins);
+- **Bank Card (Unlimited) / ATM / Star Coin Hammer**: **+3 / +1 / +5 Starlight** on equip;
+- Two same-root issues fixed along the way: the Cursed Sword's "Thousand Curses Mark" was never actually applied on
+  equip (it only ever worked because it is re-applied every second), and the Big Boss sign's "reset the 1-minute timer
+  on equip" never took effect either.
+
+The starlight readout is already **live** (the server syncs it to your client the moment it changes), so the tooltip
+shows the new value as soon as you equip the chip.
+
+
 ### 1.21.1: the Whetstone was over-cutting hits while yellow hearts were up
 
 - Only **1.21.1 / 26.1.2** had this problem (1.20.1 was always correct): **with yellow hearts up, the Whetstone cut the damage far too hard**.

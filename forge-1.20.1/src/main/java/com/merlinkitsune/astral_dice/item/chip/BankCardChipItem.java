@@ -28,10 +28,17 @@ public class BankCardChipItem extends BaseChipItem {
     }
 
     @Override
-    public void onEquip(SlotContext slotContext, ItemStack curio, ItemStack prevStack) {
+    public void onEquip(SlotContext slotContext, ItemStack prevStack, ItemStack stack) {
         if (!(slotContext.entity() instanceof Player player)) return;
         if (player.level().isClientSide()) return;
-        if (!prevStack.isEmpty()) return;
+        // ⚠️ Curios 官方签名 `onEquip(slotContext, prevStack, stack)`:第 2 参 prevStack 是**槽位原内容**
+        // (往空槽装备时即 `ItemStack.EMPTY`),**第 3 参 stack 才是刚装上的那件**
+        // (由 `ItemizedCurioCapability#onEquip` 以 `this.getStack()` 传入,恒非空)。
+        // 旧代码把 `!prevStack.isEmpty()` 这个空槽守卫写在第 3 参上 ⇒ 恒为真、恒 return,
+        // 银行卡的基础星光**从未生效**(2026-09-24 用户实报「所有银行卡都无法提供星光点数」;
+        // 同款签名问题在 `DiceCurioItem` 早有记录,筹码/立牌这几处一直漏改)。
+        // 本处**不加任何守卫**:set() 本身即幂等(只在低于基础值时抬升),重复触发无副作用,
+        // 因而"换装进非空槽 / 槽位激活 / 登录重放"各条路径都能覆盖到。
         // 装备后立即把当前星光提升到至少基础值(set 内部 Math.max(base, ...))
         StarLightManager.set(player, StarLightManager.get(player));
     }
