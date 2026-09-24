@@ -52,7 +52,11 @@ public class KeyBindingSetup {
             if (player == null) return;
 
             while (ACTIVATE_SIGN_KEY.consumeClick()) {
-                if (TargetSelectionClient.isActive()) {
+                // 「按键开启」的选择会话(立牌主动技能的目标选择)才把主动技能键当作「取消选择」;
+                // ⚠️ 「手持即选择」会话(效果牌握在主手时自动开启,玩家从未按过键)不得吞掉该键 ——
+                //    否则玩家只要握着选择器类效果牌就永远触发不了立牌主动技能(2026-09-24 用户报
+                //    BUG:「手持活体书页时,无法触发主动技能」)。该类会话的取消手势是 下蹲+右键 / 移出主手。
+                if (TargetSelectionClient.isActive() && !TargetSelectionClient.isHoldToSelect()) {
                     // 目标选择期间再次按下主动技能键 = 取消选择(不触发立牌技能)
                     TargetSelectionClient.logPrompt("j", "cancel");
                     TargetSelectionClient.cancel("key");

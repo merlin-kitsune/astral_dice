@@ -80,6 +80,17 @@
 - **Descent bonus**: it used to apply only to the **first hit on each target** - a second hit on the same mob lost it. Now attacking a **new** target spends 1 Fox Light stack and grants the bonus, and **further hits on the same target keep it** (no extra stack spent). With no stacks left, attacking a **new** target adds nothing.
 - **Fox Light**: (1) **unequipping the Teru Sign** now clears its stacks and icon (it could not be cleared before); (2) at 0 stacks the icon always disappears; (3) the icon number saturates at **X** (10) - vanilla only draws numerals up to X, so stacks >= 11 show X; **see the item description ("Fox Light: x / 20") for the real count**.
 
+### Holding an effect card no longer swallows the sign active-skill key (J)
+
+- Before: with the **Living Page** (or Express Delivery / Luxury Feast / You Have I Have / Berserk / Talisman Cards)
+  in your main hand, the card automatically entered aiming mode - and pressing J to fire your sign active skill was
+  read as "cancel selection", so **the skill simply would not fire** (you got a "selection cancelled" message instead).
+- Now: these hold-to-aim cards no longer take over the active-skill key: **the sign active skill fires as usual and the
+  card stays in aiming mode**. To cancel aiming, keep using **sneak + right-click** or **move the card out of your
+  main hand**.
+- A knock-on issue was fixed too: firing a skill while holding a card used to leave the skill **without cooldown /
+  "in effect" lock** (and without a Current Core charge) because of the same misjudgement.
+
 ## 📌 Requirements
 
 - ✅ **From this version on, the StarEngine Lib dependency is bundled inside the mod — you no longer install it separately**: a copy of `starengine_lib` ships inside the artefact (embedded under `META-INF/jarjar/`) and is loaded automatically by the loader at startup.

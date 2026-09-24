@@ -59,12 +59,27 @@
   the exact count stays in the item description ("Fox Light: x / 20").
 
 #### Text & Handbook
-#### Text & Handbook
 
 - **Friendship Badge / Big Bowl Stew**: dropped the parenthesised notes ("deduplicated per healer-target pair...", "only pets/mounts tamed by you or a teammate...") - implementation details the player does not need.
 - **Scope / Eagle Scope**: (1) per the user ruling that "Scope-type attacks are gated by the Dice Blessing, and must not trigger unless you attack in Dice Blessing mode (melee)", the gate has been **added to the code** (the attack modifier in `DiceCombatModifiers` requires `DICE_BLESSING`; the Scope's flat +2 stays unconditional); (2) on the same day a second ruling followed: **the "During a Dice Blessing" wording was removed from the tooltip and the guide (text only, the code gate stays)** - so the text no longer reflects the gate.
 - **Sky-Searching Satellite**: the parentheses around "(once per 1:00)" became a comma, for consistent phrasing.
 - **Revenge Halberd**: dropped the "each type triggers once" and "does not stack" clauses (tooltip and guide synced).
+
+#### Input & UI
+
+- **Holding an effect card no longer swallows the sign active-skill key (J)** (reported 2026-09-24: "while holding the
+  Living Page, the active skill cannot be triggered"): selector-type effect cards (**Living Page**, Express Delivery,
+  Luxury Feast, You Have I Have, Berserk, Fortune/Misfortune Talisman Card, ...) open the target selector **as soon as
+  they sit in your main hand**; while a selection session was active the active-skill key was read as "cancel
+  selection" and the server bailed out at step 2 of `performSkill` ⇒ **the sign active skill could not be triggered at
+  all while such a card was held** (the client even printed a misleading "selection cancelled" prompt).
+  Key-initiated sessions and hold-to-select sessions are now separated: only the former treat J as cancel; a held-card
+  session no longer intercepts the key, the sign active skill fires normally and **the held card stays in aiming mode**
+  (its cancel gestures remain sneak+right-click / move it out of the main hand).
+- ⚠️ A knock-on defect was fixed in the same pass: step 6 of `performSkill` ("should the cooldown be deferred?") also
+  switched to key-initiated sessions - otherwise a skill fired while holding a card was misjudged as "this activation
+  opened a selector session ⇒ cooldown waits for confirmation", leaving the skill **without cooldown / lock and
+  without a Current Core charge**.
 
 ### Installation Requirements
 
