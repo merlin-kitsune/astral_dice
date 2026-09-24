@@ -48,6 +48,7 @@ import net.neoforged.neoforge.event.entity.living.LivingChangeTargetEvent;
 import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
 import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
 import net.neoforged.neoforge.event.entity.living.MobEffectEvent;
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
 import top.theillusivec4.curios.api.CuriosApi;
 
@@ -849,12 +850,13 @@ public class DiceCombatEvents {
         com.merlinkitsune.astral_dice.item.chip.BigBowlStewChipItem.onBlessingEnd(player);
         // 骇客立牌:赐福结束刷新被动(攻击/防御,覆盖旧类型)
         NancyLuSignItem.onDiceBlessingEnded(player);
-        // 枪匠立牌:赐福结束弱点识破减少 1 层
-        MosesSignItem.onDiceBlessingEnded(player);
+        // 枪匠立牌:赐福结束弱点识破减少 1 层 —— **延到下一 tick**(见 BLESSING_END_PENDING 注释)
         // 蛟龙立牌(mamushi)「撕咬」:赐福结束清除撕咬加成锁存(加成 = min(觉醒,4) 至此失效)
         MamushiSignItem.onDiceBlessingEnded(player);
         // 怪力侦探立牌(sherry):赐福结束「推理时间」减少 1 层(层数真值在附件,死亡不清)
-        com.merlinkitsune.astral_dice.item.sign.SherrySignItem.onDiceBlessingEnded(player);
+        //   —— 与「弱点识破」一并延到下一 tick:两者都会改 activeEffects,在本回调里直接执行会触发 CME
+        //   (见 BLESSING_END_PENDING 注释);此处只登记待办
+        BLESSING_END_PENDING.add(player);
 
         var curios = CuriosApi.getCuriosInventory(player);
         if (curios.isEmpty()) return;
@@ -894,6 +896,40 @@ public class DiceCombatEvents {
             PacketDistributor.sendToPlayer(sp,
                     new ActionBarPayload(Component.translatable("msg.astral_dice.charge_refund_full_power")
                             .withStyle(ChatFormatting.YELLOW), GameplayConstants.ACTIONBAR_DURATION_TICKS));
+        }
+    }
+
+    /**
+     * 待办的「赐福结束」减层(怪力侦探「推理时间」/ 枪匠「弱点识破」),下一 tick 服务端 tick 末尾统一执行。
+     *
+     * <p>⚠️ <b>为什么必须在下一 tick 执行</b>:{@code MobEffectEvent.Expired} 在
+     * {@code LivingEntity#tickEffects} 的 {@code iterator.remove()} <b>之前</b>发出 —— 此刻处理器若
+     * 新增/移除任何效果,就会结构性修改正在被 for-each 遍历的 {@code activeEffects}
+     * ⇒ {@code iterator.remove()} 抛 {@link java.util.ConcurrentModificationException},
+     * 而原版把它 {@code catch (ConcurrentModificationException) {}} <b>静默吞掉</b>
+     * ⇒ <b>该效果本拍不被移除</b>,且其 duration 已为 0 ⇒ 下一拍 {@code tick()} 直接返回 false
+     * ⇒ {@code Expired} <b>再发一次</b> ⇒ 减层被逐拍重放,直到「不再改 map」为止。
+     *
+     * <p>而这两条减层的镜像实现都必然「先 removeEffect 再 addEffect」(原版 {@code MobEffectInstance#update}
+     * 只接受更高的 amplifier)⇒ 必然命中上述陷阱。<b>2026-09-25 两轮实测</b>:一次赐福结束时减层次数
+     * <b>恰等于当时层数</b>(4 层 ⇒ 连续 4 拍各扣 1、直接归 0;3 层 ⇒ 3 拍),即用户所报「骰神赐福结束变成全扣」。
+     *
+     * <p>范式同 {@code MarkManager#PENDING_DECAY}(标记减层同样不能在 Expired 里直接补写)。
+     */
+    private static final List<Player> BLESSING_END_PENDING = new ArrayList<>();
+
+    @SubscribeEvent
+    public static void onBlessingEndPending(ServerTickEvent.Post event) {
+        if (BLESSING_END_PENDING.isEmpty()) return;
+        List<Player> pending = new ArrayList<>(BLESSING_END_PENDING);
+        BLESSING_END_PENDING.clear();
+        for (Player player : pending) {
+            if (player == null || player.isRemoved() || !player.isAlive()) continue;
+            if (player.level().isClientSide()) continue;
+            // 枪匠立牌:弱点识破 −1 层(层数真值 = 效果实例本身)
+            MosesSignItem.onDiceBlessingEnded(player);
+            // 怪力侦探立牌(sherry):「推理时间」−1 层(层数真值在附件,死亡不清)
+            com.merlinkitsune.astral_dice.item.sign.SherrySignItem.onDiceBlessingEnded(player);
         }
     }
 

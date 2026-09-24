@@ -163,6 +163,27 @@
   automatically); the tooltip and handbook wording ("up to 5 stacks" / "has reached 5 stacks") was updated to 4
   across all three branches x zh/en/ja.
 
+- **"Dice Blessing ends -> a sign loses 1 stack" was replayed once per tick, wiping every stack at once** (reported
+  2026-09-25: "the Sherry sign's Reasoning Time goes straight to 0 when the Dice Blessing ends"): both the Sherry
+  sign's Reasoning Time and the Gunsmith's Weakness Insight **subtract their stack directly inside the
+  `MobEffectEvent.Expired` callback** - but vanilla `LivingEntity#tickEffects` **posts `Expired` first and calls
+  `iterator.remove()` afterwards**. If the handler adds or removes any effect at that moment, it structurally
+  modifies the `activeEffects` map that the for-each loop is walking, so `iterator.remove()` throws
+  `ConcurrentModificationException` - which vanilla **silently swallows** via
+  `catch (ConcurrentModificationException) {}`. The blessing is therefore **not removed that tick** while its
+  duration already reads 0, so the next tick `tick()` returns false immediately and `Expired` **fires again**:
+  the stack subtraction is replayed tick after tick until nothing mutates the map any more. Both subtractions
+  inevitably hit this trap, because lowering a stack requires `removeEffect` followed by `addEffect` (vanilla
+  `MobEffectInstance#update` only accepts a higher amplifier). **Two per-tick sampling runs measured** that the
+  number of subtractions in one blessing end **equals the current stack count** (4 stacks -> 4 consecutive
+  subtractions straight to 0; 3 stacks -> 3). Both subtractions are now **queued and executed at the end of the
+  next server tick** (new `DiceCombatEvents#BLESSING_END_PENDING` + `onBlessingEndPending`, the same pattern as
+  `MarkManager#PENDING_DECAY` for Mark stacks) so one blessing end subtracts **exactly 1 stack** (re-run of
+  `SHERRY-BLESS-1.21.1`: 3 stacks -> 2, and stable afterwards).
+  ⚠️ This also removes the **knock-on multiplication** of the storm: the other blessing-end side effects ("Unlimited"
+  bank card star coins, the Hacker sign's passive refresh plus card grant, the Big Bowl Stew heal, the Mamushi /
+  Star Coin Hammer latch clears) were being re-executed once per storm tick and are back to once per blessing.
+
 - **Temporary cards were "undroppable" on the server only - pressing Q on the client ate the card, with nothing on the ground** (reported 2026-09-24: "a battle card can be dropped with Q and no item drops"): the server's `ServerPlayer#drop(boolean)` asks the item first (`ItemStack#onDroppedByPlayer`; false returns immediately), so temporary battle cards (`CardItem` override) are **never** dropped server-side. The **client**'s `LocalPlayer#drop(boolean)` (bytecode-identical on 1.21.1 / 1.20.1 / 26.1.2) removes the stack from the selected slot locally and *then* sends the packet, and never asks that question - the client also never spawns a drop entity (entities only exist once the server creates them in `CommonHooks#onPlayerTossEvent`). So the client slot is emptied, the server silently refuses, and because the server slot never changed `broadcastChanges` never resends it: the card looks gone with nothing on the ground until a full resync (relog / reopening a container). Added `mixin/client/LocalPlayerDropGuardMixin`: at the HEAD of `LocalPlayer#drop(Z)Z` it refuses with the same predicate (`TemporaryCardUtil#isTemporary`) - nothing is removed, no packet is sent, no side effects (temporary cards only; third-party `onDroppedByPlayer` is not invoked on the client).
 - **Temporary *effect* cards never overrode "undroppable"**: the effect-card root class `BaseEffectCardItem` only overrode the glint and the container hooks, so the server ran the whole drop path and was only stopped afterwards by `ItemTossEvent` (cancel the entity + best-effort refund into the inventory) - the card did not land, but it **jumped to another inventory slot**, and when the refund failed (full inventory) it was **destroyed** (that handler states "never lands, so destroy when it does not fit"). It now overrides `onDroppedByPlayer` **symmetrically** with the battle-card root class `CardItem`, both delegating to the same predicate.
 - **Pressing Q on a temporary card inside a container GUI pulled it out of its slot first (destroyed when the inventory was full)** (reported 2026-09-24: "a temporary battle card equipped in the dice simply disappears"): Q in a GUI is `ClickType.THROW`, and vanilla takes the stack out of the slot first (`slot.safeTake`) and only then calls `player.drop` - so the card left its slot and only afterwards met the cancelled `ItemTossEvent` and its best-effort refund (full inventory = destroyed); even on success it was silently unequipped from the dice (closing the menu immediately rewrites the dice through `saveToDice()`). Added `mixin/container/ContainerClickGuardMixin` on the HEAD of `AbstractContainerMenu#clicked` (the single entry point for **all** container-GUI clicks): a `THROW` hitting a temporary card, or dragging a temporary card out of the GUI (`PICKUP` + pseudo-slot `-999`), is cancelled outright - nothing is taken out and nothing is dropped.
