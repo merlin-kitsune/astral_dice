@@ -71,6 +71,12 @@ This version adds **8 custom sound effects**, converted from the assets you supp
 - A knock-on issue was fixed too: a hit fully eaten by the shield no longer wastes the **Airbag** charge (same for the Whetstone and the
   deduction from Detective layers).
 
+### Shooting Stars: higher, faster, and pickier about targets
+
+- **Higher and faster**: the origin now starts **3x** higher and the star falls **6x** faster - what used to take 1 second to reach the target's head now takes **0.5 s** (dropping from 7.3 blocks above it).
+- **Tighter back-to-back timing**: with both chips equipped the golden star now follows **0.5 s** after the purple one lands (was 1 s).
+- **Hostile targets only**: an **unprovoked** wolf, iron golem, polar bear or bee used to catch a star as you walked by - such neutral mobs must now be **angered** first; real monsters (zombies, skeletons, creepers, endermen, ...) trigger exactly as before.
+
 ## 🐛 Bug Fixes
 
 ### Bank Cards: the starlight they promised actually arrives now

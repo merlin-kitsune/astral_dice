@@ -75,6 +75,15 @@
   As a knock-on guarantee, **survival chips** (Airbag / Whetstone / Detective damage reduction) no longer waste a charge on such a
   fully-absorbed hit.
 
+#### Chips & Resources
+
+- **Shooting Star (purple / golden): fall parameters and target scope** (2026-09-24 rulings: "height x3, fall speed x6, dual-star gap x2; shooting stars should only affect hostile targets"):
+  - **Height x3**: fall distance is now the legacy reference x **3.6** (the historical 1.2 speed-up x this batch's 3.0) - for a 1.95-tall zombie the origin sits **7.29 blocks** above its head (was 2.43);
+  - **Fall speed x6**: the distance triples while the **duration halves** (`FALL_TICKS` 20 -> **10 ticks**, i.e. 0.5 s to land) - the per-tick speed is exactly 6x the original (0.1215 -> 0.729 blocks/tick);
+  - **Dual-star gap x2**: `VOLLEY_GAP_TICKS` 20 -> **10 ticks** (0.5 s) - with both equipped the purple star lands at `t=0->10` and the golden one at `t=20->30`;
+  - **Hostile targets only**: the target check reverts to the criterion used **before** the 2026-09-24 rewrite that counted every neutral mob - a neutral mob now only counts when it is **actually angered** (`NeutralMob#isAngry()`), so an unprovoked wolf / iron golem / polar bear / bee no longer triggers a star, while true monsters (including **calm** endermen / zombified piglins, which implement both `Enemy` and `NeutralMob`, hence `Enemy` is checked first) and consumer-declared entities (the training dummy) still count.
+    This is a **deliberate narrowing** of the canonical `HostileTargets#isHostile` entry (not a bypass): the widened scope exists for **active skill** release targeting (Detective / Gunsmith), whereas the shooting star is a **passive auto-trigger** that should not drop on peaceful neutral mobs. The criterion lives in `ShootingStarManager#isStarTarget`.
+
 ### Bug Fixes
 
 #### Damage & Resolution

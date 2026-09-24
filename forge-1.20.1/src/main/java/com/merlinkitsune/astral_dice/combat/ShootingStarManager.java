@@ -12,6 +12,8 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.NeutralMob;
+import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -39,9 +41,9 @@ import com.merlinkitsune.starenginelib.combat.HostileTargets;
  *   <li><b>共享计时器</b>：两枚筹码共用**同一个 10 秒冷却**，该计时器**不创建任何效果**，
  *       只在 tooltip 里显示剩余秒数；</li>
  *   <li><b>粒子时序</b>：粒子自目标**头顶上方**下落，**落到目标头顶（碰撞箱上沿）即视为命中**并结算筹码伤害；
- *       下落速度 = 旧口径的 {@link #FALL_SPEED_MULTIPLIER} 倍（用户裁决 2026-09-21），
- *       行程随之 ×1.2、而**总下落时间仍为 1 秒**（{@link #FALL_TICKS}）⇒ 起点比旧口径更高。
- *       两枚同时装备时依次下落（先紫色飞星），第一束命中后再隔 1 秒（{@link #VOLLEY_GAP_TICKS}）落第二束。</li>
+ *       高度 ×3（用户裁决 2026-09-24）⇒ 行程 ×3.6（历史 1.2 × 3），时长相伴减半（{@link #FALL_TICKS} = 10 tick）
+ *       ⇒ **每 tick 下落速度 = 原口径的 6 倍**、起点比旧口径高得多。
+ *       两枚同时装备时依次下落（先紫色飞星），第一束命中后再隔 0.5 秒（{@link #VOLLEY_GAP_TICKS}）落第二束。</li>
  * </ul>
  *
  * <p><b>平台差异（与 1.21.1 逐字等价）</b>：本线用 {@code TickEvent.ServerTickEvent} +
@@ -72,11 +74,16 @@ public final class ShootingStarManager {
      */
     public static final double PASS_VERTICAL_WINDOW = 2.0D;
 
-    /** 粒子下落耗时：1 秒（用户裁决；2026-09-21 改速后**时长保持不变**）。 */
-    public static final int FALL_TICKS = 20;
+    /**
+     * 粒子下落耗时（tick）—— **0.5 秒**（用户裁决 2026-09-24）。
+     *
+     * <p>推导：高度 ×3（{@link #FALL_DISTANCE_MULTIPLIER} 由 1.2 → 3.6）+ **速度 ×6**
+     * ⇒ 时长 = 行程 ×3 ÷ 速度 ×6 = 原时长的 **1/2**（20 → 10 tick）。
+     */
+    public static final int FALL_TICKS = 10;
 
-    /** 两枚同时装备时，第一束命中后到第二束开始下落的间隔：1 秒（用户裁决）。 */
-    public static final int VOLLEY_GAP_TICKS = 20;
+    /** 两枚同时装备时，第一束命中后到第二束开始下落的间隔 —— 0.5 秒（用户 2026-09-24 裁决「间隔加快到 2 倍」）。 */
+    public static final int VOLLEY_GAP_TICKS = 10;
 
     /** 「不对其发动攻击」的判定窗口（tick）：与共享冷却同周期。 */
     public static final int ATTACK_GRACE_TICKS = COOLDOWN_TICKS;
@@ -84,8 +91,11 @@ public final class ShootingStarManager {
     /** 旧口径的落体参考高（格）：起点 = 目标脚底上方 3.0 格、终点 = 碰撞箱中心。 */
     private static final double LEGACY_FALL_REFERENCE = 3.0D;
 
-    /** 下落速度相对旧口径的倍数（用户裁决 2026-09-21：加快至 1.2 倍）。 */
-    private static final double FALL_SPEED_MULTIPLIER = 1.2D;
+    /**
+     * 下落**行程**相对旧口径（{@link #LEGACY_FALL_REFERENCE} − 碰撞箱高 / 2）的倍数
+     * = 历史提速 1.2 倍（2026-09-21 用户裁决）× 本次抬高 3 倍（2026-09-24 用户裁决「高度提升 3 倍」）= **3.6**。
+     */
+    private static final double FALL_DISTANCE_MULTIPLIER = 3.6D;
 
     /** 落体行程下界（格）：极端体型（碰撞箱高 ≥ 6 格）下旧行程 ≤ 0，兜底保证仍有可见下落。 */
     private static final double MIN_FALL_DISTANCE = 0.6D;
@@ -151,15 +161,15 @@ public final class ShootingStarManager {
     // ==================================================================================
 
     /**
-     * 新口径的落体行程（格）= **旧行程 × {@link #FALL_SPEED_MULTIPLIER}**。
+     * 本口径的落体行程（格）= **旧行程 × {@link #FALL_DISTANCE_MULTIPLIER}**（= 1.2 × 3.0 = 3.6）。
      *
      * <p>旧行程 = {@link #LEGACY_FALL_REFERENCE} − 碰撞箱高 / 2（脚底上方 3.0 格 → 碰撞箱中心）；
-     * 时长固定为 {@link #FALL_TICKS}（1 秒，用户裁决「保持总下落时间不变」）
-     * ⇒ 行程 ×1.2 即**每 tick 下落速度 ×1.2**，起点相应抬高（用户裁决「提高发射高度」）。
+     * 本次（2026-09-24 用户裁决「高度提升 3 倍、下落速度加快到 6 倍」）行程再 ×3、时长减半
+     * （{@link #FALL_TICKS} 20 → 10）⇒ **每 tick 下落速度 = 原口径的 6 倍**、起点相应抬高 3 倍。
      */
     public static double fallDistance(LivingEntity target) {
         double legacy = LEGACY_FALL_REFERENCE - target.getBbHeight() * 0.5D;
-        return Math.max(MIN_FALL_DISTANCE, legacy * FALL_SPEED_MULTIPLIER);
+        return Math.max(MIN_FALL_DISTANCE, legacy * FALL_DISTANCE_MULTIPLIER);
     }
 
     /** 落体起点 = 目标**头顶**（碰撞箱上沿）正上方 {@link #fallDistance} 格，水平取目标所在列。 */
@@ -207,7 +217,7 @@ public final class ShootingStarManager {
     }
 
     /**
-     * 取「路过窗口」内最近的合格敌对目标（不合格 = 出窗口 / 非敌对 / 最近被本玩家攻击过）。
+     * 取「路过窗口」内最近的合格敌对目标（不合格 = 出窗口 / 非敌对 / 未被激怒的中立生物 / 最近被本玩家攻击过）。
      *
      * <p><b>两级判据</b>（用户 2026-09-22 裁决「水平圆柱 + 同高度窗口」）：{@code inflate(RADIUS)} 的
      * AABB 只当**粗筛** —— 它三轴同时膨胀、竖直容差达「脚底 −3 … +4.8」，**不能**直接当命中判据；
@@ -220,7 +230,7 @@ public final class ShootingStarManager {
         double bestDistSqr = Double.MAX_VALUE;
         for (LivingEntity candidate : player.level().getEntitiesOfClass(LivingEntity.class, box)) {
             if (candidate == player || !candidate.isAlive()) continue;
-            if (!HostileTargets.isHostile(player, candidate)) continue;
+            if (!isStarTarget(player, candidate)) continue;
             if (attackedByPlayerRecently(player, candidate)) continue;
             if (!isWithinPassWindow(player, candidate)) continue;
             double distSqr = horizontalDistanceSqr(player, candidate);
@@ -230,6 +240,26 @@ public final class ShootingStarManager {
             }
         }
         return best;
+    }
+
+    /**
+     * 飞星的「敌对目标」档位 = 全局唯一入口 {@link HostileTargets#isHostile(net.minecraft.world.entity.Entity, net.minecraft.world.entity.Entity)}
+     * **再减去「未被激怒的中立生物」**（用户 2026-09-24 裁决「飞星应当只对敌对目标生效」）。
+     *
+     * <p>⚠️ 这是对全局口径的**有意收窄**，不是漏用入口：全局口径自 2026-09-24 重写起把「中立生物」
+     * **一律**计入（不再要求 {@code isAngry()}），那套宽口径是为**主动技能的释放目标判定**
+     * （秘密侦探 / 枪匠）定的；而飞星是**被动自动触发**（路过即落星）—— 不该凭空砸到未激怒的
+     * 狼 / 铁傀儡 / 北极熊 / 蜜蜂。故此处回到重写**之前**的判据（中立生物须已被激怒）。
+     *
+     * <p>三步顺序与库的旧实现保持一致：① 敌对生物一律计入（末影人 / 僵尸猪灵**同时**实现
+     * {@link Enemy} 与 {@link NeutralMob}，若先判中立会把「平静的末影人」错杀）；
+     * ② 中立生物看 {@link NeutralMob#isAngry()}；③ 其余（含消费方 seam 声明的试验假人、
+     * 以及「曾攻击过观察者的非同队玩家」）**完全走入口**，不在玩法代码里自建判定。
+     */
+    private static boolean isStarTarget(ServerPlayer player, LivingEntity candidate) {
+        if (candidate instanceof Enemy) return true;
+        if (candidate instanceof NeutralMob neutral) return neutral.isAngry();
+        return HostileTargets.isHostile(player, candidate);
     }
 
     /**
@@ -257,13 +287,13 @@ public final class ShootingStarManager {
         return since >= 0 && since < ATTACK_GRACE_TICKS;
     }
 
-    /** 编排一次「齐射」：先紫色飞星，命中后间隔 1 秒再落金色；只装备一枚时直接落该枚。 */
+    /** 编排一次「齐射」：先紫色飞星，命中后间隔 0.5 秒再落金色；只装备一枚时直接落该枚。 */
     private static void launchVolley(ServerPlayer player, LivingEntity target, boolean purple, boolean golden, long now) {
         ServerLevel level = (ServerLevel) player.level();
         if (purple) {
             PENDING.add(new Pending(level, player, target, Kind.PURPLE, now));
             if (golden) {
-                // 紫：t=0 开始 → t=20 命中；金：t=20+20=40 开始 → t=60 命中
+                // 紫：t=0 开始 → t=10 命中；金：t=10+10=20 开始 → t=30 命中（各 0.5 秒落地、间隔 0.5 秒）
                 PENDING.add(new Pending(level, player, target, Kind.GOLDEN, now + FALL_TICKS + VOLLEY_GAP_TICKS));
             }
         } else if (golden) {

@@ -12726,7 +12726,7 @@ function doMamuDie(ctx, tag, keepText) {
 //    /astralprobe ssspawn <tag> <mode> [entityId]  生成带精英特征的靶子并回读产品判定
 //    /astralprobe ssfire  <tag>                    清共享冷却 + 直接触发一次飞星
 //    /astralprobe ssread  <tag>                    只读:星光 / 共享冷却 / 靶子血量与精英判定
-//    /astralprobe ssgeom  <tag>                    只读:落体几何(行程/起点/命中点/1.2 倍校核)
+//    /astralprobe ssgeom  <tag>                    只读:落体几何(行程/起点/命中点/3.6 倍校核)
 //    /astralprobe eliteread <tag>                  只读:靶子的精英判定分项(阈值/boss/神化 NBT)
 //    /astralprobe sherryread <tag>                 只读:推理时间层数 + 效果镜像
 //    /astralprobe hannaread  <tag>                 只读:人偶制作 / 人偶完成 / 魔女漂浮 / 两条冷却
@@ -12955,7 +12955,7 @@ function ssNum(x, digits) {
  *
  * 期望(探针侧按规范公式**独立**推导,不复用产品代码):
  *   legacy = 3.0 - 碰撞箱高/2            // 旧口径行程(脚底上方 3.0 → 碰撞箱中心)
- *   dist   = legacy * 1.2                // 新口径行程(下落速度 ×1.2、时长仍 1 秒 ⇒ 行程 ×1.2)
+ *   dist   = legacy * 3.6                // 行程 ×3.6(= 历史 ×1.2 × 高度 ×3);时长 0.5 秒 ⇒ 速度 ×6
  *   speed  = dist / FALL_TICKS           // 每 tick 下落格数
  *   rise   = origin_y - (feet_y + 3.0)   // 起点相对旧起点的抬升量(应 > 0)
  *   head_match = 产品 impactPoint.y == 目标碰撞箱上沿 y   // 「落到目标头顶即视为命中」

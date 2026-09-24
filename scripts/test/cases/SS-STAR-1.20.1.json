@@ -525,7 +525,7 @@
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_S1_SSGEOM:found=1:height=1.95:.*:dist=2.43:legacy=2.025:ratio=1.2:speed=0.1215:fall_ticks=20:rise=1.38:head_match=1:origin_above=1"
+      "pattern": "AP_S1_SSGEOM:found=1:height=1.95:.*:dist=7.29:legacy=2.025:ratio=3.6:speed=0.729:fall_ticks=10:rise=6.24:head_match=1:origin_above=1"
     },
     {
       "type": "log",
