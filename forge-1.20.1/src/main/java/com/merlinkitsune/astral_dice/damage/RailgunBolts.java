@@ -38,13 +38,13 @@ public final class RailgunBolts {
      * <p>① 先过统一入口 {@link HostileTargets#isHostile(net.minecraft.world.entity.Entity, net.minecraft.world.entity.Entity)}
      * (双参口径,{@code viewer} = 落雷来源玩家 = {@code LightningBolt#getCause()},由
      * {@code RailgunChipItem#strike} 的 {@code bolt.setCause(cause)} 写入):
-     * **敌对生物(`Enemy`)或已被激怒的中立生物(`NeutralMob#isAngry()`)**,以及
+     * **敌对生物(`Enemy`)或中立生物(宠物除外)**,以及
      * **「非同队伍、且曾主动攻击过施放者的玩家」**——与其它 AOE 的双参敌对口径完全一致
      * (2026-09-15 用户裁决:电磁炮落雷同样参与"双向意图记录 + 仅同队豁免"口径);
-     * 平静的狼/铁傀儡/北极熊/蜜蜂、攻击者自己、中立动物、盔甲架等一律不算。
+     * 攻击者自己、被动动物、盔甲架等一律不算。
      *
      * <p>② 再排除**施放者自己拥有的宠物**({@link OwnableEntity} 的 owner == 闪电的
-     * {@code cause}):被激怒的已驯服宠物(如自己养的狼)属"友方宠物",永不挨自己的雷击
+     * {@code cause}):自己养的驯服动物(如自己养的狼)属"友方宠物",永不挨自己的雷击
      * (2026-09-14 用户裁决)。其它玩家的宠物不在排除范围内。
      *
      * <p>原版 {@code LightningBolt#tick} 对判定箱内**所有存活实体**一律调用 {@code thunderHit}

@@ -20,7 +20,7 @@ import com.merlinkitsune.starenginelib.target.SelectorTargets;
  *
  * <h2>使用</h2>
  * 沿用效果牌基类的「手持即选择」路径:主手手持自动开启目标选择会话,目标类型
- * {@link TargetType#ENEMY_OR_RIVAL} —— 即本模组全局口径的**敌对目标**(敌对生物 ∪ 已被激怒的中立生物)
+ * {@link TargetType#ENEMY_OR_RIVAL} —— 即本模组全局口径的**敌对目标**(敌对生物 ∪ 中立生物(宠物除外))
  * **并含「非同队伍的玩家」**({@code target/SelectorTargets} 把该类型并到
  * {@code combat/HostileTargets#isHostile(viewer,target)} 的上下文口径上;
  * 队友玩家 / 被动生物 / 自己**不可选**,{@code allowSelf=false})。确认后对目标造成 <b>1</b> 点伤害。

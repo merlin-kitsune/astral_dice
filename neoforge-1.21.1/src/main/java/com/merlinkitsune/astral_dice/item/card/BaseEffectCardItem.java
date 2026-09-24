@@ -184,7 +184,7 @@ public abstract class BaseEffectCardItem extends Item {
      * 目标选择器动作注册入口(显式目标类型;2026-09-25「活体书页」改敌对目标选择器时新增)。
      *
      * <p>可选中判定统一走 {@code target/SelectorTargets#matches} ⇒ 传 {@link TargetType#ENEMY}
-     * 即本模组全局的「敌对目标」口径(敌对生物 ∪ 已被激怒的中立生物,**不含玩家**),
+     * 即本模组全局的「敌对目标」口径(敌对生物 ∪ 中立生物(宠物除外),**不含玩家**),
      * 客户端准星过滤 / 半径高亮 / 服务端确认三处同一判据。
      *
      * <p>半径缺省 = 配置统一值({@link GameplayConstants#TARGET_SELECT_RADIUS});需要**更大**锁定范围
