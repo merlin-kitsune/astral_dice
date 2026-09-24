@@ -73,20 +73,21 @@ jobs:
         # 的 gradle.properties 的 starengine_lib_version 同一提交里一起改;`.5` 旧钉值为库提交
         # d5b0776,`.6` 为 716f976,`.10` 终态即库提交 ec28415,`.16` 终态即库提交 f706be0,
         # `1.0.0` 首个正式版即库提交 205eed8;`1.0.1` 这个版本号**从未推送、已撤销** —— 前后两批内容
-        # (前者库提交 c9818d1,后者库提交 b90a16e);`1.0.2` = 「HostileTargets 额外敌对判定 seam」
-        # (库提交 cd579e7,纯新增)⇒ 现钉库提交 cd579e7),且该提交需已推送到远端。
+        # (前者库提交 c9818d1,后者库提交 b90a16e);`1.0.2` 同样**从未推送、从未发布**(其内容为
+        # 「HostileTargets 额外敌对判定 seam」,库提交 cd579e7)⇒ 已按「未发布版本的改动并入原条目」并入 `1.0.3`;
+        # `1.0.3` = 该 seam + **敌对目标口径重写**(库提交 e407844)⇒ 现钉库提交 e407844),且该提交需已推送到远端。
         # ✅ **2026-09-23:库 1.0.0 仓库已推送**(远端 `main` = b90a16e,含 tag `1.0.0` + 三平台 jar 的 Release;
         #    两批「原拟 1.0.1」的改动均已并入 1.0.0,同一次 CI 复用既有 tag 并 --clobber 刷新 Release 附件)
         #    ⇒ 当时本 ref 可被 CI 检出,KNOWN-ISSUES KI-M4① 已解除。
-        # ⚠️ **2026-09-24:1.0.2 尚未推送** —— 本 ref 已改指库提交 cd579e7(本地 `main`,未 push)
+        # ⚠️ **2026-09-24:`1.0.2` / `1.0.3` 均尚未推送** —— 本 ref 已改指库提交 e407844(本地 `main`,未 push)
         #    ⇒ **在库被推送之前,本工作流会断在 Checkout 步骤**(消费方 CI 无法检出该 SHA)。
-        #    推库后其 CI 会自动打 tag `1.0.2` 并发布三平台 Release 附件,届时本步即可通过。
-        #    跳过 `1.0.1` 的原因(库侧):该号从未发布,但 mavenLocal 留有已撤销版本的残留目录,
-        #    复用会「同号覆盖」而让本地构建静默解析到旧 jar ⇒ 故另起 `1.0.2`。
+        #    推库后其 CI 会自动打 tag `1.0.3` 并发布三平台 Release 附件,届时本步即可通过。
+        #    跳号的由来:更早的 `1.0.1` 从未发布,但 mavenLocal 留有已撤销版本的残留目录,复用会「同号覆盖」
+        #    而让本地构建静默解析到旧 jar ⇒ 故逐次另起新号(`1.0.2` 因从未发布又并入 `1.0.3`)。
         uses: actions/checkout@v4
         with:
           repository: merlin-kitsune/starengine_lib
-          ref: cd579e7864d5d9c73ad4e1752e390b79a797faa5   # = 1.0.2(HostileTargets 新增「额外敌对判定」注入 seam:ExtraHostileProbe / installExtraHostileProbe,供消费方把试验假人声明为敌对目标;纯新增,消费方区间下界同步收紧为 [1.0.2,2.0))
+          ref: e407844c5efbd39e812c809346ce7bae08186a1f   # = 1.0.3(HostileTargets 新增「额外敌对判定」注入 seam:ExtraHostileProbe / installExtraHostileProbe,供消费方把试验假人声明为敌对目标;纯新增,消费方区间下界同步收紧为 [1.0.2,2.0))
           path: .ci/starengine_lib
           fetch-depth: 1
 

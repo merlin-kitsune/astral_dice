@@ -131,8 +131,8 @@ When extending this workspace:
 
 | 子项目 | 来源分支(原 astra_dice 仓库) | MC | 加载器 | Java | 当前版本 | 版本号格式 |
 |---|---|---|---|---|---|---|
-| `neoforge-1.21.1` | `1.21.1-main` | 1.21.1 | NeoForge | 21 | `1.3.0+neoforge_1.21.1` | `x.y.z[-rcN|hotfix]+neoforge_1.21.1` |
-| `forge-1.20.1` | `1.20.1-forge` | 1.20.1 | Forge | 17 | `1.3.0+forge_1.20.1` | `x.y.z[-rcN|preN|hotfix]+forge_1.20.1` |
+| `neoforge-1.21.1` | `1.21.1-main` | 1.21.1 | NeoForge | 21 | `1.3.1+neoforge_1.21.1` | `x.y.z[-rcN|hotfix]+neoforge_1.21.1` |
+| `forge-1.20.1` | `1.20.1-forge` | 1.20.1 | Forge | 17 | `1.3.1+forge_1.20.1` | `x.y.z[-rcN|preN|hotfix]+forge_1.20.1` |
 | `neoforge-26.1.2` | 本仓 `multi-26.1.2-neoforge` 分支新增（基线 = 主线 `1.2.1`/`fda8ca9` 的 `neoforge-1.21.1` 源码）；**2026-09-17 已合并进当时的主线 `multi-1.20.1-1.21.1`（该分支已于 2026-09-22 改名为 `multi-main`）**（与主线同目录同树，原独立 worktree 已移除）；**2026-09-22 完整移植后版本号与另两线同批升版（26.1.2 取 `1.3.0-beta.1`）** | 26.1.2 | NeoForge | 25 | `1.3.0-beta.1+neoforge_26.1.2` | `x.y.z[-rcN]+neoforge_26.1.2` |
 
 > 版本号各 git 分支独立（AGENTS.md 自 2026-09-15 起**已纳入版本库**，各分支各自维护一份）：**发布线 `multi-main`**（2026-09-22 由 `multi-1.20.1-1.21.1` 改名；连带项已同批处理：三线 `build.gradle` 的 `packPushBranches → ['multi-main']`、`.github/workflows/build.yml` 的 5 处分支名与触发条件，以及 `.github/workflows/build.yml` 里 checkout 前置库的 `ref:` 钉值）当前 = **`1.3.0`**（2026-09-22 用户裁决：把 `multi-dev-next` 整体收编后统一升版 —— 1.21.1 / 1.20.1 = `1.3.0`，26.1.2 = `1.3.0-beta.1`；按发布规范 tag 解析为裸版本 **`1.3.0`**）；`multi-dev-next` 当前 = **`2.0.0-SNAPSHOT.13`**（2026-09-17 用户裁决：`2.0.0-SNAPSHOT.5` 封包，版本号升至 `.10`；**2026-09-22 用户裁决：SNAPSHOT 数值按提交数下沉，档位 = 提交数 / 37，自 `.10` 起累计 104 提交 ⇒ 向上取整 3 档 ⇒ `.13`**；后续改动一律记入两个 CHANGELOG 顶部的 `未发布（2.0.0-SNAPSHOT.13）` 小节；该线已于 **2026-09-22 整体合并进发布线 `multi-main`**（合并提交 `7b726617`，收编 160 个提交），自此不再单独演进）；`neoforge-26.1.2` 子项目当前 = **`1.3.0-beta.1`**（2026-09-17 用户裁决 + **2026-09-19 修订：26.1.2 已纳入主线、三线同步（不再是低优先级线）**；**2026-09-22 用户裁决：三线同批升版，26.1.2 取 `1.3.0-beta.1`** —— 此前 `.13` 时代「与另两线版本号对齐、不再单独加 `-beta`」的口径随之作废；`multi-26.1.2-neoforge` 分支自此只作为合并前历史，不再单独开发）。上表「当前版本」以发布线工作分支 `multi-main` 为准。
@@ -150,17 +150,21 @@ When extending this workspace:
    只允许**新增**（新类型、新成员、新可选入口）与不改变契约的行为修正。
 2. **破坏性变更必须升第一位**（`1.x` → `2.x`），并在**同一次**发布里收紧三条线 `gradle.properties` 的
    `starengine_lib_version_range` 下界 ⇒ **破坏性变更不允许藏在次版本/补丁位里**。
-3. **区间即契约**：三条线现声明 `starengine_lib_version_range=[1.0.2,2.0)` —— 这是上述承诺的**机器可读表达**：
+3. **区间即契约**：三条线现声明 `starengine_lib_version_range=[1.0.3,2.0)` —— 这是上述承诺的**机器可读表达**：
    区间内任何 `1.x` 版本都可**原位替换**，无需改动本模组的任何代码或配置。
-4. **当前版本 = `1.0.2`**（2026-09-24：「额外敌对判定」注入 seam —— 库的 `combat/HostileTargets` 新增
-   `ExtraHostileProbe` / `installExtraHostileProbe`，供本模组把**试验假人**（`dummmmmmy` 训练人偶）声明为
-   敌对目标；**纯新增**，契约不变。⚠️ 版本号**跳过 `1.0.1`**：该号从未推送/发布，但 `mavenLocal` 留有已撤销
-   版本的残留目录 ⇒ 复用属「同号覆盖」，会让本地构建静默解析到旧 jar）⇒ 三条线 `starengine_lib_version=1.0.2`。
+4. **当前版本 = `1.0.3`**（2026-09-24，**两批内容**）：
+   ① **「额外敌对判定」注入 seam**（`ExtraHostileProbe` / `installExtraHostileProbe`，供本模组把**试验假人**
+      `dummmmmmy` 声明为敌对目标）；**纯新增**。
+   ② ⚠️ **敌对目标口径重写**：`isHostile` 由「敌对生物 ∪ 已被激怒的中立生物」改为
+      「敌对生物 ∪ 中立生物(宠物除外)」—— **语义变更**，按本契约本应升主版本，经用户 2026-09-24 裁决作
+      **玩法口径特例**按补丁位发布；消费方下界随之收紧（而非按契约升主版本）。
+   ⇒ 三条线 `starengine_lib_version=1.0.3`。⚠️ 版本号沿革：`1.0.2` 已提交但**从未推送、从未发布**
+   （内容已并入 `1.0.3`）；`1.0.1` 亦从未发布（内容并入 `1.0.0`）。
    沿革：`1.0.0` = 库的**首个正式版**（2026-09-22 由快照终态 `1.0.0-SNAPSHOT.16` 规范化而来，库内 Java 源码
    零改动，产物名由 `…-1.0.0-SNAPSHOT.16.jar` 变为 `…-1.0.0.jar`）。
 5. ⛔ **快照系列（`1.0.0-SNAPSHOT.*`）已终止，不受本契约保护**：那时相邻快照之间二进制不兼容且 `modId` 相同，
    消费方必须把下界**精确到序号**（历史口径与实测矩阵见各线 `gradle.properties` 注释与库 README §4.2）；
-   **自 `1.0.0` 起不再需要精确序号**，`[1.0.2,2.0)` 一条即可。
+   **自 `1.0.0` 起不再需要精确序号**，`[1.0.3,2.0)` 一条即可。
 6. ⚠️ **升级库的固定动作（缺一即断）**：① 库侧 bump `lib_version`/`mod_version` 并
    `./gradlew build publishToMavenLocal`（三平台同号）；② 本仓三条线 `gradle.properties` 的
    `starengine_lib_version` 与 `_version_range` **同批**更新；③ `.github/workflows/build.yml` 的库 `ref:`
@@ -317,7 +321,7 @@ When extending this workspace:
 1. **`allow_firearm_damage` 公共配置项**：两发布线 `config/ModCommonConfig` 新增 `BooleanValue`、`CONFIG_VERSION` **2 → 3**、`snapshot()` 末尾追加第 7 实参 `ALLOW_FIREARM_DAMAGE.get()`。
 2. **库侧承载**：`GameplayConstants.ALLOW_FIREARM_DAMAGE`（`public static boolean = false`）与 `GameplayConfigValues` 末尾第 7 分量 `allowFirearmDamage`（**库 `1.0.0-SNAPSHOT.12` 起**；库侧 `applyConfig` 已写入该字段）。
 3. **消费点**：`combat/SpellDamageRegistry.isSpellDamage()` 改为 `if (!GameplayConstants.ALLOW_FIREARM_DAMAGE && isFirearmDamage(source)) return false;`。
-4. **依赖坐标**：该批当时是「两条发布线提到 `1.0.0-SNAPSHOT.12`、26.1.2 因冻结仍钉 `.11`」。**现状（2026-09-24 起）：三条线同钉 `1.0.2`（区间 `[1.0.2,2.0)`）** —— 该项已随 26.1.2 完整移植一并完成。
+4. **依赖坐标**：该批当时是「两条发布线提到 `1.0.0-SNAPSHOT.12`、26.1.2 因冻结仍钉 `.11`」。**现状（2026-09-24 起）：三条线同钉 `1.0.3`（区间 `[1.0.3,2.0)`）** —— 该项已随 26.1.2 完整移植一并完成。
 5. **文档/日志**：两份 CHANGELOG 的该条目是三线共用的一对文件（不需要为 26.1.2 另写），但**功能上 26.1.2 目前没有这个开关** —— 该线的 `ModCommonConfig` 里根本没有 `allow_firearm_damage` 键，配置文件里不会出现该项，玩家改不了。`AGENTS.md` 的法伤口径条目（见「效果牌」小节）在 26.1.2 上暂不成立。
 6. **风水师立牌(zhao)+ 符卡-福/符卡-祸(2026-09-26 本批;26.1.2 侧**未改动任何文件**,以下为解冻后待迁移项)**:① **物品三件套** —— `zhao_sign` / `fu_card` / `huo_card` 的 `item/ModItems` 注册(传奇 = `Rarity.UNCOMMON`)、`init/ModCreativeTabs` 创造栏、两段式 datagen 产物(1.21.1/1.20.1 是 `src/generated/resources` 单根 ⇒ 26.1.2 必须**另出** `src/generated/clientResources` 的 `items/*.json` 物品模型定义 + `models/item/*.json`,否则客户端只留一行 `Missing item model`);② **标签四处**:`data/astral_dice/tags/item/{signs,effect_cards,is_exclusive}.json` + `data/curios/tags/item/stand.json`(注意 1.20.1 侧是 `tags/items` 目录名,26.1.2 与 1.21.1 同为 `tags/item`);③ **贴图五张**:`textures/item/{zhao_sign,fu_card,huo_card}.png` 与 `textures/mob_effect/{zhao_blessing,misfortune}.png`,必须与发布线**逐字节相同**(取自仓库根 `images/`);④ **配方与进度**:`ModRecipeProvider` 的形状配方 + 生成物 `recipe/zhao_sign.json`、`advancement/recipes/misc/zhao_sign.json`,并同步 `scripts/test/cases/CRAFT-SMOKE-26.1.2.json` 的配方数判据(生成 109 → 110、总数 122 → 123;⚠️ 该用例已随 2026-09-26 用例清理删除 —— 见 `scripts/test/TESTING-SPEC.md` 附录 A 续 27,迁移时如需回归配方数须先用 `git checkout` 恢复该用例)。
 7. **两个新效果**:`zhao_blessing`(白泽赐福,`effect/ZhaoBlessingEffect`,BENEFICIAL、常驻 `Integer.MAX_VALUE`、移除走前置库 `ModEffectRemoval`)/`misfortune`(厄运,`effect/MisfortuneEffect`,HARMFUL、层数镜像)—— 26.1.2 侧效果注册 **32 → 34**;`ModEffects` 两条注册照 1.21.1 同形抄写(该线包装类型与 1.21.1 相同)。

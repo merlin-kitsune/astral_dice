@@ -4,6 +4,27 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 1.3.1
+
+### Content & Balance
+
+#### Damage & Resolution
+
+- **The "hostile target" criterion is rewritten to "hostile mobs ∪ neutral mobs (pets excluded)"** (user ruling 2026-09-24): previously a neutral mob had to be **angered** (`NeutralMob#isAngry()`) to count as a hostile target — so an unangered wolf, iron golem, polar bear or bee simply "was not hostile" until you let it hit you first. It now reads **every neutral mob counts, only tamed pets are excluded** (`TamableAnimal`, i.e. wolf / cat / parrot). ⚠️ Measured impact: the only vanilla mob that is both a neutral mob and tameable is the **wolf**, so this entry is effectively "**an untamed wolf now counts as a hostile target, a tamed one does not**". The criterion is implemented once in the **prerequisite library** `starengine_lib` `1.0.3` (the single entry point `combat/HostileTargets`), so every effect that depends on it (Dice Blessing, spell-damage bonuses, the target selector's selectability checks, railgun lightning target selection, …) follows suit.
+- **The Piercing Gun drops its "a damage effect card has been used" prerequisite** (user ruling 2026-09-24, "make it consistent with the Ninja Star"): it used to additionally require an active damage effect card (one of Monster Laser / Monster Brick / Orbital Strike / Directional Blast, or the hit itself being the Living Page's spell damage), which meant **plain arrows, thrown projectiles and linked-mod spells** never received the bonus. Now simply wearing the Piercing Gun and dealing ranged/magic damage to a hostile target is enough. ⚠️ The one difference from the Ninja Star: it **keeps** the "the target must be a hostile target" range check (the bonus is taken from the target's defence points, which is meaningless against passive animals, teammates or yourself). The tooltip and handbook entry had that prerequisite removed to match.
+
+### Bug Fixes
+
+#### Damage & Resolution
+
+- **The training dummy (`dummmmmmy`) is now always treated as a hostile target** (reported on 2026-09-24 as "the training dummy is not declared as a hittable target"): it is neither an `Enemy` nor an angered neutral mob, so every "requires a hostile target" effect excluded it - most visibly, the Living Page could neither select nor hit it. This is now solved by an **"extra hostile" injection seam added to the prerequisite library** (`starengine_lib` `1.0.3`): on startup this mod installs its "the dummy counts as hostile" predicate into the library's `combat/HostileTargets` (the single entry point for "hostile target"), so the dummy counts as hostile in **all** such checks - Dice Blessing triggering, the spell-damage modifier chain, and the target selector's selectability checks (client raycast / radius highlight / server-side confirmation).
+
+### Installation Requirements
+
+- ⚠️ **StarEngine Lib is a required dependency from 1.3.0 onward** (`starengine_lib`): **releases up to and including 1.2.1-hotfix ran on their own**; from 1.3.0 a large part of this mod's shared implementation lives in that library, and **without it the mod is refused at load time** (the loader reports a missing required dependency instead of letting you into the game and crashing there).
+- **This release requires StarEngine Lib `1.0.3` or any higher `1.x` version** (the dependency range this mod declares is `[1.0.3,2.0)`). ⚠️ Library versions `1.0.2` and `1.0.1` were **never published** (the content of `1.0.2` was merged into `1.0.3`; see the library changelog).
+- **The library and the mod must be updated as a pair**: put the library jar released together with this mod version into the `mods` folder as well (library repository: <https://github.com/merlin-kitsune/starengine_lib>).
+
 ## 1.3.0
 
 ### New Content
@@ -77,7 +98,6 @@
 #### Damage & Resolution
 - **Fixed the Living Page's first hit dealing too much damage (3 instead of 2)**: the "pages the Investigator has used" counter was incremented **when the card was used**, so the first page's impact counted that page as well (2 + 1 = 3) while the tooltip showed 2 (excluding it) ⇒ display and reality disagreed. Resolution now strictly follows "**deal damage → apply the Mark → then add the page**": the page from the current use only raises **later** hits by +1 - the first one is always **2**, then 3 / 4 / … (while the Investigator sign is worn), and the tooltip matches the actual hit. Consequently: **pages that never land no longer count** (target dies mid-flight, is removed, changes dimension or the projectile ages out).
 
-- **The training dummy (`dummmmmmy`) is now always treated as a hostile target** (reported on 2026-09-24 as "the training dummy is not declared as a hittable target"): it is neither an `Enemy` nor an angered neutral mob, so every "requires a hostile target" effect excluded it - most visibly, the Living Page could neither select nor hit it. This is now solved by an **"extra hostile" injection seam added to the prerequisite library** (`starengine_lib` `1.0.2`): on startup this mod installs its "the dummy counts as hostile" predicate into the library's `combat/HostileTargets` (the single entry point for "hostile target"), so the dummy counts as hostile in **all** such checks - Dice Blessing triggering, the spell-damage modifier chain, and the target selector's selectability checks (client raycast / radius highlight / server-side confirmation). ⚠️ This change requires **updating the prerequisite library to `1.0.2` in the same batch** (the declared range lower bound has been tightened to `[1.0.2,2.0)`; an older library is now rejected outright as a missing required dependency).
 #### Signs & Skills
 - **Fixed angered neutral mobs being unselectable by the target selector** (reported in-game on 2026-09-18): this mod's global rule is "hostile targets = hostile mobs ∪ angered neutral mobs" (single entry point `HostileTargets`), but the selector's selectability test only accepted vanilla's "hostile mob" marker ⇒ an **angered iron golem / wolf / polar bear / bee** was judged an "invalid target" and could not be confirmed (out of step with the mainline rule). The test now goes through that same entry point - the Gunsmith's Weakness Counter (`ENEMY`) = hostile mobs ∪ angered neutral mobs, and the Undercover Detective's Undercover Operation and the Astrologer's Weak Mark (`ENEMY_OR_RIVAL`) = that set plus non-teammate players. The client's crosshair test, the client-side highlight of other selectable targets in range and the server-side confirmation all use exactly the same test (the server stays authoritative). **No** skill's range or effect changes - only the set of mobs that can be selected. **Note**: angered neutral mobs keep their neutral colouring (yellow box / "Neutral" label), consistent with the existing "label matches box colour" rule; damage-dealing effects already counted them as hostile, and the two are now consistent.
 - **Fixed each target-selector sign's own confirmation message being overwritten by the generic one**: on confirming a target the server sent the sign's own message and then the generic "Effect applied to X" line right after it, and since the action bar holds a single message with the newest one winning, players **only ever saw the generic text** (the Undercover Detective's, Astrologer's and Game Master's own wording was effectively dead). The generic notice is now sent **before** the effect is applied, so the sign-specific message shows as intended (Game Master: "Brat's Privilege: 1 card and Mouse Shield granted to X").
@@ -98,7 +118,7 @@
 ### Installation Requirements
 
 - ⚠️ **StarEngine Lib is now a required dependency from 1.3.0 onward** (`starengine_lib`): **releases up to and including 1.2.1-hotfix ran on their own**; from 1.3.0 a large part of this mod's shared implementation lives in that library, and **without it the mod is refused at load time** (the loader reports a missing required dependency instead of letting you into the game and crashing there).
-- **This release requires StarEngine Lib `1.0.2` or any higher `1.x` version** (the dependency range this mod declares is `[1.0.2,2.0)`).
+- **This release requires StarEngine Lib `1.0.3` or any higher `1.x` version** (the dependency range this mod declares is `[1.0.3,2.0)`). (Note: this line belongs to `## 1.3.0`; its paired library is `1.0.3`, the only actual release at the time — `1.0.2` / `1.0.1` were never published.)
 - **The library and the mod must be updated as a pair**: put the library jar released together with this mod version into the `mods` folder as well (library repository: <https://github.com/merlin-kitsune/starengine_lib>).
 
 ## 2.0.0-SNAPSHOT.5
