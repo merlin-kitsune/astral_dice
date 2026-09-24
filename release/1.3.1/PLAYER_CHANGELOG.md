@@ -23,6 +23,12 @@ This version adds **8 custom sound effects**, converted from the assets you supp
 
 ## ⚖️ Balance & Quality-of-Life
 
+### Whetstone: its life-saving effect now has a 1-minute cooldown
+
+- The Whetstone's "a single hit can at most reduce your health to 1" used to have **no cooldown** - as long as you were above 1 HP you were nearly unkillable by any single hit, which made the Airbag (6 charge plus a 1-minute cooldown) feel pointless.
+- That guard now **goes on a 1-minute cooldown each time it saves you** (only when it actually blocks a lethal hit; the everyday -2 reduction and +4 Attack Power are unaffected).
+- We also spelled out who saves you first: **the Airbag takes priority over the Whetstone** - when a hit would kill you, the Airbag is checked first (if it has charge and is off cooldown it negates the hit), and only when it is unavailable does the Whetstone's "keep 1 HP" step in. With both equipped, the Airbag is always first.
+
 ### Hostile targets relaxed: neutral mobs no longer need to be provoked first
 
 - **The "hostile target" criterion is rewritten to "hostile mobs ∪ neutral mobs (pets excluded)"**: previously a neutral mob had to be **angered** to count — so an unangered wolf, iron golem, polar bear or bee simply "was not hostile" in your eyes until you **let it hit you first** and it entered its 20–39 s anger state. It now reads **every neutral mob counts, only tamed pets are excluded**.

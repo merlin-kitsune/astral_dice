@@ -77,7 +77,12 @@ public final class ChipDamageHandler {
             return;
         }
 
-        // 磨刀石:低血量减伤 + 血量 > 1 时不可被一次伤害击倒
+        // ⚠️ **保命优先级(2026-09-24 用户裁决):安全气囊 > 磨刀石**。
+        // 致命一击先交给安全气囊(消耗 6 充能 + 进 1:00 冷却、本次伤害完全无效化,见上、命中即 return);
+        // **只有气囊不可用**(未佩戴 / 冷却中 / 充能不足)时,才轮到这里由磨刀石的「保留 1 血」兜底
+        // (该能力自 2026-09-24 起同样带 1:00 冷却)。两者同时佩戴时气囊恒为第一顺位 ——
+        // 气囊接管后本次结算直接返回,磨刀石连它的 -2 减伤都不参与。
+        // 磨刀石:低血量减伤 + 血量 > 1 时不可被一次伤害击倒(保命部分带 1:00 冷却)
         float modified = WhetstoneChipItem.modifyIncomingDamage(player, damage);
         if (modified != damage) {
             event.setNewDamage(modified);

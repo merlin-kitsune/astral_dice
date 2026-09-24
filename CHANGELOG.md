@@ -22,6 +22,24 @@
 ### Content & Balance
 
 #### Damage & Resolution
+
+- **The Whetstone's "keep 1 HP" guard now has a 1:00 cooldown, and the saving priority "Airbag > Whetstone"
+  is now explicit** (user ruling 2026-09-24): the Whetstone's "while health is above 1, a single hit can at
+  most reduce your health to 1" had **no cooldown**, while its trigger condition (the hit would kill you)
+  completely overlaps the Airbag's "fatal damage" - so wearing the Whetstone made you nearly unkillable by
+  any single hit, flattening the Airbag's advantage (6 charge plus a 1:00 cooldown). It now **consumes one
+  cooldown (1:00) per save**: the cooldown is only written when the cap **actually reduced the damage**, and
+  while it is running the guard does not apply (the low-health -2 reduction and the +4 Attack Power are
+  unaffected). Both the check and the write are server-side, using the new player attachment
+  `whetstone_guard_cooldown_end` (not `.sync()`ed). The saving priority is now an explicit contract:
+  **Airbag > Whetstone** - a fatal hit goes to the Airbag first (consuming charge, fully negating it), and
+  only when the Airbag is **unavailable** (not equipped / on cooldown / not enough charge) does the Whetstone
+  step in; once the Airbag takes over this resolution returns immediately, so the Whetstone does not even
+  contribute its -2 reduction. With both equipped the Airbag is always first.
+  Text updated accordingly: the Airbag tooltip and handbook entry now list the Whetstone in their
+  "takes priority over ..." line, and the Whetstone tooltip and handbook entry state the cooldown
+  (all three lines x zh/en/ja).
+
 - **The "Starlight / Star Coin / healing point" bonuses are now a separate damage instance (new type `astral_dice:extra_damage`)**: the
   Flashlight (every 4 Starlight +1), the Star Coin Hammer (30% of held coins) and the Cutter (+2 / +4 plus healing points) used to be
   folded into **Attack Power** - so they were scaled by "attack power snapshot" effects (the Mamushi Sign? no: the Teru Sign's Fox Light

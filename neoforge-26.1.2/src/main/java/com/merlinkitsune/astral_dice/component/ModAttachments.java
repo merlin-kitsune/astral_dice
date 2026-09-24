@@ -1041,6 +1041,20 @@ public class ModAttachments {
                     .sync(ByteBufCodecs.VAR_LONG)
                     .build());
 
+    /**
+     * 磨刀石「保留 1 血」（不可被一次伤害击倒）的**触发冷却结束时刻**（1:00；0 表示无冷却）。
+     *
+     * <p>2026-09-24 用户裁决：该保命能力此前**无冷却**，而它的生效条件与安全气囊的「致命伤害」完全
+     * 重叠 ⇒ 戴着磨刀石几乎不会被单次伤害打死，气囊的资源优势被抹平。现改为**一次保命耗一次冷却**
+     * （1:00，与安全气囊同档）；保命优先级明确为 **安全气囊 &gt; 磨刀石**（见 {@code event/ChipDamageHandler}）。
+     *
+     * <p>只在 cap **实际削减了伤害**时写入（不致命的攻击不耗冷却）；低血量减伤（-2）不受本冷却影响。
+     * **仅服务端使用** ⇒ 不 {@code .sync()}。
+     */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> WHETSTONE_GUARD_COOLDOWN_END =
+            ATTACHMENTS.register("whetstone_guard_cooldown_end", () -> AttachmentType.builder(() -> 0L)
+                    .serialize(Codec.LONG.fieldOf("value"))
+                    .build());
     /** 电磁炮:雷击触发冷却结束时刻(1:00;0 表示无冷却;仅第二能力雷击,不影响充能攻击力加成) */
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> RAILGUN_COOLDOWN_END =
             ATTACHMENTS.register("railgun_cooldown_end", () -> AttachmentType.builder(() -> 0L)
@@ -1106,6 +1120,14 @@ public class ModAttachments {
 
     public static void setAirbagCooldownEnd(net.minecraft.world.entity.player.Player player, long value) {
         player.setData(AIRBAG_COOLDOWN_END.get(), Math.max(0, value));
+    }
+
+    public static long getWhetstoneGuardCooldownEnd(net.minecraft.world.entity.player.Player player) {
+        return player.getData(WHETSTONE_GUARD_COOLDOWN_END.get());
+    }
+
+    public static void setWhetstoneGuardCooldownEnd(net.minecraft.world.entity.player.Player player, long value) {
+        player.setData(WHETSTONE_GUARD_COOLDOWN_END.get(), Math.max(0, value));
     }
 
     public static long getRailgunCooldownEnd(net.minecraft.world.entity.player.Player player) {
