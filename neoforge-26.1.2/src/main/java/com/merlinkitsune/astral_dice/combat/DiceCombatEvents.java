@@ -597,6 +597,28 @@ public class DiceCombatEvents {
 
         event.setNewDamage((float) finalDmg);
         sendDamageNumber(event.getEntity(), (int) finalDmg);
+
+        // === 额外加伤(astral_dice:extra_damage):星光 / 星币 / 治愈点三项加伤 ===
+        // 2026-09-25 用户裁决:这三项**不得并进「攻击力」**(它们会污染教主立牌降神的「狐光攻击基数」
+        // 攻击力快照 —— 即「严格排除」),改为命中落地后按**独立伤害类型**单独结算(额外加伤)。
+        // 复用大当家溅射的既有范式:主目标此刻正处在自己这次伤害事件内部(原版 hurt 已先写
+        // invulnerableTime/lastHurt),不临时清零无敌帧就会被"无敌帧内不更低伤害被丢弃"整段吞掉。
+        if (!player.level().isClientSide()) {
+            int extraDamage = com.merlinkitsune.astral_dice.combat.DiceCombatModifiers.extraDamageOf(ctx);
+            if (extraDamage > 0) {
+                aoeProcessing = true;
+                int savedInvulnerable = target.invulnerableTime;
+                try {
+                    target.invulnerableTime = 0;
+                    target.hurt(com.merlinkitsune.astral_dice.damage.ModDamageTypes.extraDamage(
+                            target.level(), player), extraDamage);
+                    sendDamageNumber(target, extraDamage);
+                } finally {
+                    target.invulnerableTime = savedInvulnerable;
+                    aoeProcessing = false;
+                }
+            }
+        }
         // 电磁炮:以本次骰战最终伤害回填雷击伤害(50%)
         com.merlinkitsune.astral_dice.item.chip.RailgunChipItem.applyFinalDamage(railgunStrike, (float) finalDmg);
 

@@ -35,6 +35,10 @@
 - **Target chip**: the Mark from a Dice Blessing no longer lands on **the very target you are attacking** - it now picks the nearest target **other than that one**, so it finally works as "set up a second target".
 - **Magic Quiver**: it now requires **a damage effect card to have been used first** (Monster Laser / Monster Brick / Orbital Strike / Directional Blast / Living Page), and upon dealing **ranged or spell damage to an already-marked target** it returns the first effect card used and applies 1 Mark layer (at most once every 30 seconds). The Living Page itself counts as a damage effect card - but you still need to have used one first.
 
+### The "Starlight / Star Coin / healing point" bonuses are now resolved separately
+
+- **Flashlight (every 4 Starlight +1), Star Coin Hammer (30% of held coins), Cutter (+2 / +4 plus healing points)**: these three used to be folded into **Attack Power** (reduced by defence, and scaled by "attack power snapshot" effects). They are now **resolved as a separate damage instance on hit**, with the new damage type **bonus damage** (`astral_dice:extra_damage`) - the same treatment as true damage and skill damage: **armour is ignored and the listed amount lands as-is**. Their item text now says "**Attack Damage**" (things that add to your base damage still say "Attack Power").
+
 ## 🐛 Bug Fixes
 
 ### The training dummy can now be selected and hit
@@ -70,6 +74,11 @@
 - **Sky-Searching Satellite**: the parentheses became a comma, for consistent phrasing.
 - **Revenge Halberd**: the "each type triggers once" and "does not stack" clauses are gone.
 - **Speed Skates (basic / medium / advanced)**: the **`%` no longer loses its colour** (it used to fall back to the line colour, looking un-highlighted).
+
+### Teru Sign: the Descent bonus now persists, and Fox Light can be cleared
+
+- **Descent bonus**: it used to apply only to the **first hit on each target** - a second hit on the same mob lost it. Now attacking a **new** target spends 1 Fox Light stack and grants the bonus, and **further hits on the same target keep it** (no extra stack spent). With no stacks left, attacking a **new** target adds nothing.
+- **Fox Light**: (1) **unequipping the Teru Sign** now clears its stacks and icon (it could not be cleared before); (2) at 0 stacks the icon always disappears; (3) the icon number saturates at **X** (10) - vanilla only draws numerals up to X, so stacks >= 11 show X; **see the item description ("Fox Light: x / 20") for the real count**.
 
 ## 📌 Requirements
 

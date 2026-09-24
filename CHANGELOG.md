@@ -9,6 +9,12 @@
 ### Content & Balance
 
 #### Damage & Resolution
+- **The "Starlight / Star Coin / healing point" bonuses are now a separate damage instance (new type `astral_dice:extra_damage`)**: the
+  Flashlight (every 4 Starlight +1), the Star Coin Hammer (30% of held coins) and the Cutter (+2 / +4 plus healing points) used to be
+  folded into **Attack Power** - so they were scaled by "attack power snapshot" effects (the Mamushi Sign? no: the Teru Sign's Fox Light
+  attack base). They are now resolved as **a separate damage instance on hit** and no longer count as attack power.
+  Like true damage / skill damage, the type **ignores armour and bypasses the hurt-invulnerability window**. 
+
 
 - **The "hostile target" criterion is rewritten to "hostile mobs ∪ neutral mobs (pets excluded)"** (user ruling 2026-09-24): previously a neutral mob had to be **angered** (`NeutralMob#isAngry()`) to count as a hostile target — so an unangered wolf, iron golem, polar bear or bee simply "was not hostile" until you let it hit you first. It now reads **every neutral mob counts, only tamed pets are excluded** (`TamableAnimal`, i.e. wolf / cat / parrot). ⚠️ Measured impact: the only vanilla mob that is both a neutral mob and tameable is the **wolf**, so this entry is effectively "**an untamed wolf now counts as a hostile target, a tamed one does not**". The criterion is implemented once in the **prerequisite library** `starengine_lib` `1.0.3` (the single entry point `combat/HostileTargets`), so every effect that depends on it (Dice Blessing, spell-damage bonuses, the target selector's selectability checks, railgun lightning target selection, …) follows suit.
 - **The Piercing Gun drops its "a damage effect card has been used" prerequisite** (user ruling 2026-09-24, "make it consistent with the Ninja Star"): it used to additionally require an active damage effect card (one of Monster Laser / Monster Brick / Orbital Strike / Directional Blast, or the hit itself being the Living Page's spell damage), which meant **plain arrows, thrown projectiles and linked-mod spells** never received the bonus. Now simply wearing the Piercing Gun and dealing ranged/magic damage to a target is enough. ⚠️ It is now **fully identical to the Ninja Star** — it performs **no target-scope test at all** (user ruling 2026-09-24, "its target criterion should match the Ninja Star, including neutral targets"): the old implementation additionally required "the target must be a hostile target", a criterion **narrower** than the spell-damage chain's `isBlessingTarget` gate, so **non-teammate players who had never attacked you** and **neutral mobs that are not `NeutralMob` (goats / llamas / foxes etc.)** received the Ninja Star bonus but not the Piercing Gun one. The target scope is now governed solely by that gate. The tooltip and handbook entry had the "hostile" qualifier removed to match.
@@ -43,6 +49,16 @@
   counter row is no longer shown (only the True Dragon Form label remains); Doll Crafting accepts no further layer
   writes once Doll Complete is reached.
 
+- **The Teru Sign's Descent bonus now persists on the current target**: it used to return 0 for an **already-attacked** target, so the
+  bonus only applied to the **first hit** on each target (measured: second hit on the same dummy `208 -> 8`). Now attacking a **new**
+  target spends 1 Fox Light stack and grants the bonus, and **further hits on the same target keep that bonus** (no extra spend);
+  with 0 stacks, attacking a new target adds nothing.
+- **The Fox Light effect can now be cleared**: (1) unequipping the Teru Sign clears its stacks and icon; (2) at 0 stacks the icon is
+  always removed (removal now loops until no instance remains); (3) the icon's number saturates at the **vanilla display ceiling** -
+  vanilla only draws numerals for `amplifier` 1..9 (stacks 2..10), so stacks >= 11 now show **X** ("10 or more");
+  the exact count stays in the item description ("Fox Light: x / 20").
+
+#### Text & Handbook
 #### Text & Handbook
 
 - **Friendship Badge / Big Bowl Stew**: dropped the parenthesised notes ("deduplicated per healer-target pair...", "only pets/mounts tamed by you or a teammate...") - implementation details the player does not need.

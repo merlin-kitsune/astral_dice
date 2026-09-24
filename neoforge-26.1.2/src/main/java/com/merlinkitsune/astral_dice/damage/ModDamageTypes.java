@@ -63,6 +63,17 @@ public class ModDamageTypes {
             Identifier.fromNamespaceAndPath(AstralDiceMod.MODID, "skill_damage")
     );
 
+    /**
+     * **额外加伤**(2026-09-25 新增):手电筒星光 / 星币锤星币 / 美工刀治愈点三项加伤的**独立结算通道**
+     * —— 它们**不进「攻击力」**(否则会污染教主立牌降神「狐光攻击基数」的攻击力快照),
+     * 而是命中落地后按本类型单独造成一段伤害。登记于 {@code minecraft:bypasses_armor} 与
+     * {@code minecraft:bypasses_cooldown} ⇒ 无视护甲与受击无敌帧(与 {@link #SKILL_DAMAGE} 同口径)。
+     */
+    public static final ResourceKey<DamageType> EXTRA_DAMAGE = ResourceKey.create(
+            Registries.DAMAGE_TYPE,
+            Identifier.fromNamespaceAndPath(AstralDiceMod.MODID, "extra_damage")
+    );
+
     public static DamageSource diceDamage(Level level, Entity source) {
         return new DamageSource(trueHolder(level, DICE_DAMAGE), source);
     }
@@ -100,6 +111,15 @@ public class ModDamageTypes {
      */
     public static DamageSource skillDamage(Level level, Entity causing) {
         return new DamageSource(trueHolder(level, SKILL_DAMAGE), null, causing);
+    }
+
+    /**
+     * 额外加伤伤害源:**直接伤害实体为空、击杀归属 {@code causing}** ——
+     * 与 {@link #trueDamage(Level, Entity)} 同形状(不会被当成玩家的直接攻击而重走骰战),
+     * 但伤害类型是独立的 {@link #EXTRA_DAMAGE} ⇒ 单独结算一段「额外加伤」。
+     */
+    public static DamageSource extraDamage(Level level, Entity causing) {
+        return new DamageSource(trueHolder(level, EXTRA_DAMAGE), null, causing);
     }
 
     private static Holder<DamageType> trueHolder(Level level, ResourceKey<DamageType> key) {

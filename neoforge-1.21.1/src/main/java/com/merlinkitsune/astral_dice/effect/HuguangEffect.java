@@ -31,7 +31,12 @@ public class HuguangEffect extends MobEffect {
         super(MobEffectCategory.BENEFICIAL, 0xFFA64D);
     }
 
-    /** 当前「狐光」层数(无效果为 0) */
+    /** HUD 图标可显示的层数上限:原版只在 {@code amplifier ∈ [1,9]} 时画罗马数字
+     *  ⇒ 可见数字只覆盖「层数 2..10」。层数超过本值时图标固定显示 §eX§7(=「10 层及以上」),
+     *  真实层数见立牌物品说明的「狐光:x / 20」。 */
+    public static final int MAX_ICON_LAYERS = 10;
+
+    /** 当前**图标**层数(无效果为 0;饱和度见 {@link #MAX_ICON_LAYERS}) */
     public static int getStacks(Player player) {
         if (player == null) return 0;
         MobEffectInstance instance = player.getEffect(ModEffects.TERU_HUGUANG);
@@ -39,17 +44,30 @@ public class HuguangEffect extends MobEffect {
     }
 
     /**
-     * 把「狐光」层数镜像为 {@code count}(0 = 移除效果)。
-     * 层数已等于目标值时不做任何写入(避免每 tick 的重复同步包)。
+     * 把「狐光」层数镜像为 HUD 效果:目标图标层数 = {@code min(count, }{@link #MAX_ICON_LAYERS}{@code )},
+     * {@code 0} = 移除效果。图标层数已等于目标值时不做写入(避免每 tick 的重复同步包)。
+     *
+     * <p>⚠️ 移除走 {@link #clearFully}:原版 {@code MobEffectInstance#update} 只接受更高的 amplifier,
+     * 因此**降层必须"先移除再施加"**(低层实例直接 addEffect 会被塞进 hiddenEffect,可见层数永不下降)。
      */
     public static void mirror(Player player, int count) {
         if (player == null || player.level().isClientSide()) return;
-        int current = getStacks(player);
-        if (current == count) return;
-        ModEffectRemoval.remove(player, ModEffects.TERU_HUGUANG);
-        if (count > 0) {
+        int wanted = Math.max(0, Math.min(count, MAX_ICON_LAYERS));
+        if (getStacks(player) == wanted) return;
+        clearFully(player);
+        if (wanted > 0) {
             player.addEffect(new MobEffectInstance(ModEffects.TERU_HUGUANG,
-                    DURATION_TICKS, count - 1, false, false, true));
+                    DURATION_TICKS, wanted - 1, false, false, true));
+        }
+    }
+
+    /**
+     * 清到**真的没有实例**为止(防御残留 / 隐藏层链):单次 removeEffect 成功后仍可能有实例被顶回可见层,
+     * 故循环到 {@code hasEffect} 为假(上限 8 轮,纯防御性,正常路径 1 轮即结束)。
+     */
+    private static void clearFully(Player player) {
+        for (int guard = 0; guard < 8 && player.hasEffect(ModEffects.TERU_HUGUANG); guard++) {
+            ModEffectRemoval.remove(player, ModEffects.TERU_HUGUANG);
         }
     }
 

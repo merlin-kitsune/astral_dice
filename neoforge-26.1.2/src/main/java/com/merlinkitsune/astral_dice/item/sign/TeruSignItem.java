@@ -69,7 +69,7 @@ import java.util.UUID;
  *   <li>目标身上留下「降神」效果(图标复用教主立牌贴图),并记录狐光攻击基数
  *       {@code B = 施加时的施法者攻击力(基础) + ⌊目标攻击力×0.5⌋}(= 获得目标 50% 加成后的快照攻击力);</li>
  *   <li>目标**每攻击一个新目标**(本次降神期内未攻击过的目标,按 UUID 记集合)消耗 1 层狐光,
- *       按 {@code B + 消耗后剩余层数} 追加骰战攻击力(层数已为 0 时不消耗、不追加);</li>
+ *       并按 {@code B + 当前剩余层数} 追加骰战攻击力;⚠️ **同一目标的后续攻击照常吃这份加成**(2026-09-25 用户裁决:旧实现「已攻击过的目标直接返回 0」使加伤只对每个目标第一击生效),而层数已为 0 时攻击新目标**不消耗、不追加**;</li>
  *   <li>持续到**该目标自己的下一次骰神赐福结束**(下降沿状态机,语义与
  *       {@code ZhaoSignItem#tickBlessing} 逐字相同:施加时目标已在赐福 ⇒ 跳过当前这一次)。</li>
  * </ol>
@@ -84,7 +84,7 @@ import java.util.UUID;
  *   <li>只有「目标效果结束 / 目标死亡 / 目标登出 / 目标重登」才会真正移除加成
  *       ({@link #endDescent} 是唯一收敛点);</li>
  *   <li>狐光层数与装备水位**跨死亡保留**(两条附件均为 {@code .copyOnDeath()});</li>
- *   <li>卸下立牌**不清**已有层数与生效中的降神(真值不在立牌物品上,与 {@code ren} 护盾同口径)。</li>
+ *   <li>卸下立牌 ⇒ **清空狐光层数与 HUD 效果**(2026-09-25 用户裁决,见 {@link #clearSignData});生效中的降神链接**仍保留**(真值在目标身上,与 {@code ren} 护盾同口径)。</li>
  * </ul>
  *
  * <p>图标 = {@code images/教主立牌.png}(实装路径 {@code textures/item/teru_sign.png});
@@ -462,14 +462,14 @@ public class TeruSignItem extends BaseSignItem {
     }
 
     /**
-     * 降神目标「攻击新目标」时的额外攻击(**消耗 1 层狐光 + 返回攻击力加算**)。
+     * 降神目标的**额外攻击**(攻击**新**目标时消耗 1 层狐光;同一目标的后续攻击维持该加成、不再消耗)。
      *
      * <p>由 {@code combat/DiceCombatModifiers} 的攻击修饰器调用;返回值直接加进骰战攻击力
      * (因此受目标防御力抵扣,且参与全力攻击等既有倍率 —— 见规格文档 A8)。
      *
-     * @return 额外攻击力(0 = 本次不适用:非降神目标 / 已攻击过该目标 / 施法者离线 / 层数已为 0)
+     * @return 额外攻击力(0 = 本次不适用:非降神目标 / 施法者离线 / **攻击新目标**且层数已为 0)
      */
-    public static int consumeHuguangForNewTarget(Player attacker, LivingEntity victim) {
+    public static int descendExtraAttack(Player attacker, LivingEntity victim) {
         if (attacker == null || victim == null) return 0;
         if (attacker.level().isClientSide()) return 0;
         // ⚠️ 自目标防护(**必须保留**):本方法会被「显示/快照」路径以 `ctx.target == attacker` 调用 ——
@@ -480,20 +480,25 @@ public class TeruSignItem extends BaseSignItem {
         //   (`combat/DiceCombatEvents`: target == player 直接 return)⇒ 本防护对实战零影响。
         if (victim == attacker) return 0;
         if (ModAttachments.getTeruDescentCaster(attacker).isEmpty()) return 0;
-        String recorded = ModAttachments.getTeruDescentNewTargets(attacker);
-        String victimId = victim.getUUID().toString();
-        if (containsTarget(recorded, victimId)) return 0;
         // 施法者离线时无法写离线玩家数据 ⇒ 本次不加成、不消耗(A3,见规格文档)
         Player caster = descentCasterOf(attacker);
         if (caster == null) return 0;
-        int layers = getLayers(caster);
-        if (layers <= 0) return 0;
-        ModAttachments.setTeruDescentNewTargets(attacker, appendTarget(recorded, victimId));
-        addLayers(caster, -1);
+        String recorded = ModAttachments.getTeruDescentNewTargets(attacker);
+        String victimId = victim.getUUID().toString();
+        if (!containsTarget(recorded, victimId)) {
+            // 攻击**新目标**:消耗 1 层「狐光」;层数已为 0 ⇒ 不消耗、本次不追加
+            // (用户口径:「攻击新目标时若已经没有狐光,则不追加伤害」)。
+            if (getLayers(caster) <= 0) return 0;
+            ModAttachments.setTeruDescentNewTargets(attacker, appendTarget(recorded, victimId));
+            addLayers(caster, -1);
+        }
+        // **维持**:同一目标的后续攻击照常吃「攻击基数 B + 当前剩余层数」,且**不再消耗**。
+        // 2026-09-25 用户裁决:旧实现「已攻击过的目标直接 return 0」使加伤只对每个目标**第一击**生效,
+        // 与设计机制不符(应当对当前目标的伤害维持降神加成)。
         int bonus = ModAttachments.getTeruDescentAttackBase(attacker) + getLayers(caster);
-        LOGGER.debug("[Astral Dice][Teru] 新目标额外攻击: victim={} base={} remainLayers={} bonus={}",
-                victim.getName().getString(), ModAttachments.getTeruDescentAttackBase(attacker),
-                getLayers(caster), bonus);
+        LOGGER.debug("[Astral Dice][Teru] 额外攻击: victim={} visited={} base={} remainLayers={} bonus={}",
+                victim.getName().getString(), containsTarget(recorded, victimId),
+                ModAttachments.getTeruDescentAttackBase(attacker), getLayers(caster), bonus);
         return bonus;
     }
 
@@ -544,6 +549,23 @@ public class TeruSignItem extends BaseSignItem {
         if (ModAttachments.getTeruDescentCaster(player).isPresent()) {
             endDescent(player);
         }
+
+    }
+
+    /**
+     * 卸下立牌:清空「狐光」层数与 HUD 效果。
+     *
+     * <p>⚠️ **2026-09-25 用户裁决(与规格原口径的差异)**:原设计「卸下立牌**不**清层数与生效中的降神
+     * (真值不在立牌物品上,与 ren 护盾同口径)」,现改为**卸下即清狐光**(层数归零 + 移除效果实例)
+     * —— 用户报「即使卸除立牌也无法清除狐光效果器」。**生效中的降神链接仍按原口径保留**
+     * (它挂在目标身上,与施法者是否佩戴立牌无关):施法者侧 50% 攻防加成与狐光攻击基数 B 照旧,
+     * 只是不再有新层数可消耗 ⇒ 攻击新目标不再产生额外加伤(维持语义见 {@link #descendExtraAttack})。
+     */
+    @Override
+    protected void clearSignData(Player player, ItemStack stack) {
+        super.clearSignData(player, stack);
+        setLayers(player, 0);            // 含 HuguangEffect.mirror(0) ⇒ 图标一并移除
+        HuguangEffect.clear(player);     // 双保险:层数已 0 但实例残留时也清掉
     }
 
     // ══════════════════════════════════════════════════════════════════════════
