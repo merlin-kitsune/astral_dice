@@ -111,6 +111,7 @@ import com.merlinkitsune.astral_dice.item.sign.NancyLuSignItem;
 import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
 import com.merlinkitsune.astral_dice.item.card.FateGuidanceCardItem;
 import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
+import com.merlinkitsune.astral_dice.item.sign.MamushiSignItem;
 import com.merlinkitsune.starenginelib.combat.HostileTargets;
 
 @EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
@@ -330,6 +331,10 @@ public class DiceCombatEvents {
             com.merlinkitsune.astral_dice.item.chip.MemberRecommendationChipItem.onBlessingStart(player);
             // 大当家立牌:触发骰神赐福 → 记录触发时刻;养精蓄锐满层则消耗 2 层并置位本次攻击的溅射
             fenSplashArmed = com.merlinkitsune.astral_dice.item.sign.FenSignItem.onBlessingTriggered(player);
+            // 蛟龙立牌(mamushi)「撕咬」:装备的每张撕咬 +1 层觉醒并锁存撕咬加成(赐福结束时清锁存)。
+            // 必须置于本触发块内(即位于下方攻击力修饰器链求值之前):锁存置位与层数增长都要在
+            // 本次攻击生效范围内(裁决 4:加成实时取 min(觉醒,4))。
+            MamushiSignItem.onDiceBlessingTriggered(player);
             // 治愈体系:触发骰神赐福 → 医疗箱加点(先)+ 按当前治愈点×2 回血(后)。
             // 置于触发块末尾,确保晚于本事件内所有影响治愈点数量的效果(立牌受击钩子/缓冲盾牌在前部已执行)
             com.merlinkitsune.astral_dice.item.HealingManager.onBlessingTriggered(player);
@@ -395,6 +400,26 @@ public class DiceCombatEvents {
                     padmanStack.set(ModDataComponents.PADMAN_FORCE_SIX.get(), true);
                 }
             }
+        }
+
+        // 风水师立牌(zhao)被动「福祸相倚」:骰点定稿后判定 —— 结果为 1 ⇒ 获得 1 张符卡-祸;
+        // 为 6 ⇒ 获得 1 张符卡-福(卡牌在发放那一刻绑定获得者)。
+        // ⚠️ 挂点必须在本处(骰点**已被全部修正方改写之后**):上班族立牌的"骰点为 1 则下次必为 6"
+        // 会把 baseDice 直接改写成 6,挂在它之前会读到被覆盖掉的旧值。
+        // ⚠️ 「一次结算一次判定」:同一挥击命中多目标会多次进入本事件 ⇒ 由
+        // ZhaoSignItem#tryClaimDiceJudgment 的**实例内**标记(纯静态槽位,不写附件、不跨实例持久化,
+        // 同 DiceCombatModifiers#instanceVictim 口径)防重复发牌。
+        if (!player.level().isClientSide()
+                && com.merlinkitsune.astral_dice.item.sign.ZhaoSignItem.tryClaimDiceJudgment(player)) {
+            com.merlinkitsune.astral_dice.item.sign.ZhaoSignItem.onDiceRollResult(player, baseDice);
+        }
+
+        // 人偶师立牌(hanna)「幻想千金」:战斗骰点 = 6 ⇒ 佩戴者获得 1 星币。
+        // 「每 1:00 仅触发 1 次」由立牌自己的 hanna_fantasy_cooldown_end 附件保证 ——
+        // 同一挥击命中多个目标会多次进入本处,第二次起被冷却挡下(与 zhao 的实例内 claim 同一目的,
+        // 但 hanna 用真冷却而非静态槽位,因为它的上限就是"1 分钟一次")。
+        if (!player.level().isClientSide()) {
+            com.merlinkitsune.astral_dice.item.sign.HannaSignItem.onDiceRollResult(player, baseDice);
         }
 
         // 经商立牌(parunan):触发骰神赐福后立即获得 触发时骰点*2 的星光
@@ -618,6 +643,12 @@ public class DiceCombatEvents {
                     aoeProcessing = false;
                 }
             }
+        }
+        // 蛟龙立牌(mamushi)「龙之咆哮」:命中时对**本次伤害的受击者**施加 缓慢 III 1:00 +
+        // 破防(ARMOR -8 = 减 4 点防御)1:00;重复命中刷新时长、不叠层(D8)。
+        // 条件 = 攻击方骰子卡牌栏装备了任意张 dragon_roar(与赐福触发块同源口径)。
+        if (!player.level().isClientSide() && MamushiSignItem.countEquippedType(player, "dragon_roar") > 0) {
+            MamushiSignItem.applyRoarDebuff(target);
         }
         // 电磁炮:以本次骰战最终伤害回填雷击伤害(50%)
         com.merlinkitsune.astral_dice.item.chip.RailgunChipItem.applyFinalDamage(railgunStrike, (float) finalDmg);
@@ -864,6 +895,10 @@ public class DiceCombatEvents {
         NancyLuSignItem.onDiceBlessingEnded(player);
         // 枪匠立牌:赐福结束弱点识破减少 1 层
         MosesSignItem.onDiceBlessingEnded(player);
+        // 蛟龙立牌(mamushi)「撕咬」:赐福结束清除撕咬加成锁存(加成 = min(觉醒,4) 至此失效)
+        MamushiSignItem.onDiceBlessingEnded(player);
+        // 怪力侦探立牌(sherry):赐福结束「推理时间」减少 1 层(层数真值在附件,死亡不清)
+        com.merlinkitsune.astral_dice.item.sign.SherrySignItem.onDiceBlessingEnded(player);
 
         var curios = CuriosApi.getCuriosInventory(player);
         if (curios.isEmpty()) return;

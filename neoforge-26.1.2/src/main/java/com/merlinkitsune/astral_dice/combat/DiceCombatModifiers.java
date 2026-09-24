@@ -17,6 +17,8 @@ import com.merlinkitsune.astral_dice.item.sign.NancyLuSignItem;
 import com.merlinkitsune.astral_dice.item.sign.MosesSignItem;
 import com.merlinkitsune.astral_dice.effect.WeaknessRevealEffect;
 import com.merlinkitsune.astral_dice.item.sign.JasmineSignItem;
+import com.merlinkitsune.astral_dice.item.sign.NardisSignItem;
+import com.merlinkitsune.astral_dice.item.sign.MamushiSignItem;
 import com.merlinkitsune.astral_dice.item.MarkManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.sign.PadmanSignItem;
@@ -534,6 +536,78 @@ public final class DiceCombatModifiers {
             if (p.level().isClientSide()) return ap;
             return ap + com.merlinkitsune.astral_dice.item.chip.WhetstoneChipItem.getAttackBonus(p);
         });
+
+
+        // === 内置:风水师立牌(zhao)主动「白泽赐福」—— 溢出治疗等量转化的攻击力(2026-09-26) ===
+        // 加成本身是玩家附件(整数化 + 取整余数留在另一个浮点累加器;唯一写入方 =
+        // ZhaoSignItem#onLivingHeal,唯一回收动作 = clearZhaoOverflowBonus,在"赐福结束/被移除/
+        // 死亡/重登"四条路径上幂等调用),故赐福不存在时该加算项必为 0(回收彻底、与其它来源互不影响)。
+        registerAttackModifier((ctx, ap) -> {
+            if (ctx.attacker.level().isClientSide()) return ap;
+            ap += ModAttachments.getZhaoOverflowBonus(ctx.attacker);
+            return ap;
+        });
+
+        // === 内置:绿洲女王立牌(nardis)被动「威压」—— 每装备一张**攻击牌**攻击力 +2 ===
+        // 计数直接取**攻击方骰子的 enhancement**(ctx.enhancement)⇒ 与实战同源;
+        // tooltip/GUI 走 getDisplayAttackRange 时传的是按卡牌栏实时构建的 enhancement,口径一致
+        // (所以不需要第二条链路)。临时牌**同样计入**它只是一张普通战斗牌,只是被打了标记;
+        // 被动防御力(+2/防御牌)走真实护甲折算,见 NardisSignItem#onCurioTick。
+        registerAttackModifier((ctx, ap) -> {
+            if (ctx.attacker.level().isClientSide()) return ap;
+            if (!NardisSignItem.isEquipped(ctx.attacker)) return ap;
+            WeaponEnhancement enh = ctx.enhancement != null
+                    ? ctx.enhancement
+                    : NardisSignItem.equippedEnhancement(ctx.attacker);
+            return ap + NardisSignItem.BONUS_PER_CARD * NardisSignItem.countStones(enh, false);
+        });
+
+        // === 内置:教主立牌(teru)主动「降神」—— 施法者获得目标 50% 攻击力(镜像缓存) ===
+        // 攻击加成真值在**目标**身上(施法瞬间快照),施法者侧只读每 tick 派生出来的镜像缓存
+        // (见 item/sign/TeruSignItem#tickCasterSide):目标效果结束/死亡/登出 ⇒ 同 tick 归 0,不留残留。
+        // 防御加成同源,但走真实护甲(setDefenseArmorBonus),不在攻击修饰器内。
+        registerAttackModifier((ctx, ap) -> {
+            if (ctx.attacker.level().isClientSide()) return ap;
+            return ap + ModAttachments.getTeruAtkBonusCache(ctx.attacker);
+        });
+
+        // === 内置:教主立牌(teru)「狐光」—— 降神目标每攻击一个**新目标**,消耗 1 层并追加攻击力 ===
+        // 额外攻击 = 狐光攻击基数(施法者快照攻击力 = 施加时的基础攻击力 + 从目标获得的 50%,施法瞬间快照)
+        //           + 消耗 1 层后的剩余层数;计入骰战**攻击力**(受目标防御力抵扣,并参与全力攻击等既有倍率)。
+        // 「新目标」判定与消耗/登记全部收敛在 TeruSignItem#descendExtraAttack
+        // (层数已为 0 ⇒ 不消耗、不追加;施法者离线 ⇒ 不加成、不消耗)。
+        registerAttackModifier((ctx, ap) -> {
+            if (ctx.attacker.level().isClientSide()) return ap;
+            return ap + com.merlinkitsune.astral_dice.item.sign.TeruSignItem
+                    .descendExtraAttack(ctx.attacker, ctx.target);
+        });
+
+        
+        // === 内置:蛟龙立牌(mamushi)攻击力加成(2026-09-27) ===
+        // 全部走 MamushiSignItem 的冻结查询方法,**实时谓词**、不落地任何状态:
+        // ① 真龙形态(觉醒 ≥ 8 且佩戴立牌)⇒ 攻击力 +5;
+        // ② 撕咬锁存(bite_bonus_active,由「触发骰神赐福且装备撕咬」置位、赐福结束清除)
+        //    且**仍有骰神赐福** ⇒ +min(觉醒层数, 4)(裁决 4:层数变化即时体现)。
+        registerAttackModifier((ctx, ap) -> {
+            if (ctx.attacker.level().isClientSide()) return ap;
+            if (MamushiSignItem.isDragonForm(ctx.attacker)) {
+                ap += MamushiSignItem.DRAGON_FORM_ATTACK_BONUS;
+            }
+            if (MamushiSignItem.getBiteBonusActive(ctx.attacker)
+                    && ctx.attacker.hasEffect(ModEffects.DICE_BLESSING)) {
+                ap += Math.min(MamushiSignItem.getAwakening(ctx.attacker), MamushiSignItem.BITE_BONUS_CAP);
+            }
+            return ap;
+        });
+
+        // === 内置:怪力侦探立牌(sherry)「推理时间」—— 每层攻击力 +1 ===
+        // 层数真值在附件(死亡不清),这里以**实时谓词**读取、不落地任何状态 ⇒ 层数变化立即体现,
+        // 卸下立牌(clearSignData 归零)后即刻失效。与「弱点识破」同款写法。
+        registerAttackModifier((ctx, ap) -> {
+            if (ctx.attacker.level().isClientSide()) return ap;
+            return ap + com.merlinkitsune.astral_dice.item.sign.SherrySignItem.getLayers(ctx.attacker);
+        });
+
 
         // === 内置:防御卡掷骰(收集结果写入上下文;目标无骰子时 targetEnhancement 为 null,结果 0)。
         // 防御力规范:骰战防御修饰器仅保留战斗防御牌(区间变动);效果牌/立牌/筹码的防御力

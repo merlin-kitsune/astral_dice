@@ -59,6 +59,10 @@ docs/
 run/
 temp/
 images/
+
+### 音效素材(2026-09-25 用户要求排除):成品 ogg 已入库三线
+### src/main/resources/assets/astral_dice/sounds/,仓库根的 sound/ 只是转换前的 wav 源料。
+sound/
 deploy.ps1
 .zcode/
 .workbuddy/
