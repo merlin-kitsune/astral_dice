@@ -554,6 +554,24 @@ public abstract class BaseEffectCardItem extends Item {
     }
 
     /**
+     * 不可丢弃:Q 键 / {@code ServerPlayer#drop(boolean)} 路径直接拒绝(与 {@link CardItem} 同款)。
+     *
+     * <p>临时牌规则要求「不可丢弃」,而本类此前**只**覆写了光效与容器拦截 ⇒ 服务端
+     * {@code ServerPlayer#drop(boolean)} 里 {@code selected.onDroppedByPlayer(this)} 对本类的
+     * 临时效果牌**恒真** ⇒ 会走完丢弃流程,之后才被 {@code event/TemporaryCardEvents} 的
+     * {@code ItemTossEvent} 兜住(取消实体 + 尽力退还进物品栏):牌不会落地,却会**从原槽跳到
+     * 物品栏的其它格子**;退还失败(物品栏满)时更会被**直接销毁**(该处理器明写「绝不落地 ⇒
+     * 放不下即销毁」)⇒ 既不符合「不可丢弃」的语义,也与战斗牌根类 {@link CardItem} 不对称。
+     * 覆写后两个牌根类走**同一份**判据({@link TemporaryCardUtil#isTemporary}),
+     * 与「覆写体只允许委托共用判据」的既有约定一致(见类内临时牌段注释)。
+     */
+    @Override
+    public boolean onDroppedByPlayer(ItemStack stack, Player player) {
+        if (TemporaryCardUtil.isTemporary(stack)) return false;
+        return super.onDroppedByPlayer(stack, player);
+    }
+
+    /**
      * 不可放进「物品内的容器」:临时效果牌同样一律拒绝。
      *
      * <p>1.21.1 的栈级钩子 {@code canFitInsideContainerItems(ItemStack)} 是潜影盒 GUI 槽

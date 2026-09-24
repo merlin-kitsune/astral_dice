@@ -79,6 +79,15 @@ This version adds **8 custom sound effects**, converted from the assets you supp
 
 ## 🐛 Bug Fixes
 
+### Temporary cards and the Q key: from "vanishing" to "simply not droppable"
+
+The temporary cards the Oasis Queen hands out say "cannot be dropped" - but pressing Q actually made them **vanish from your inventory**, with nothing on the ground. The reason: only the server refused the drop, while the client had already wiped the card from its slot, and the server never sends a correction for that. So all you saw was "the card is gone" until you relogged.
+
+- **Q now does nothing at all**: the client asks "can this be dropped?" first, and if not, nothing happens (no drop, no vanishing, no leftovers).
+- **Same inside the dice screen**: pressing Q on a temporary card already equipped in the dice used to **pull it out of the dice and stuff it back into your inventory** - and **destroy it outright** when the inventory was full. It is now refused, and the card in the dice stays put.
+- **Effect cards fixed too**: they did not hit the ground, but they **jumped to another inventory slot**, and were destroyed as well when the inventory was full.
+- **Dying now always clears every temporary card**: before, dying with the dice screen open - or with a temporary card on the cursor - let that card survive death (and it came back into the dice when the screen closed). Both paths are covered now.
+
 ### Bank Cards: the starlight they promised actually arrives now
 
 The four bank cards (Low / High balance, Unlimited) plus the ATM and the Star Coin Hammer all say "On equip, gain N

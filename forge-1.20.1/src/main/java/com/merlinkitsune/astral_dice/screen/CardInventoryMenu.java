@@ -329,6 +329,27 @@ public class CardInventoryMenu extends AbstractContainerMenu {
         com.merlinkitsune.astral_dice.item.sign.TeruSignItem.onAttackCardsEquipped(player, equippedAttackCards);
     }
 
+    /**
+     * 清空卡牌栏里所有带临时标记的牌,返回移除张数(幂等;判据 =
+     * {@link TemporaryCardUtil#isTemporary})。
+     *
+     * <p>为什么需要这个方法:牌一旦放进卡牌栏就**离开了物品栏**,而本菜单的
+     * {@code cardContainer} 在这段时间里才是「骰子卡牌栏」的真值 —— 菜单关闭时
+     * {@link #saveToDice()} 会把它写回骰子。所以死亡清牌({@code event/PlayerLifecycleHandler})
+     * 与效果到期清牌({@code TemporaryCardUtil#tick})若不覆盖这里,这些牌会借「关闭菜单时写回骰子」
+     * 跨过清理。{@code TemporaryCardUtil#purgeAll} 已接入本方法(扫「当前打开的容器」那一段)。
+     */
+    public int purgeTemporaryCards() {
+        int removed = 0;
+        for (int i = 0; i < cardSlots; i++) {
+            ItemStack stack = cardContainer.getItem(i);
+            if (!TemporaryCardUtil.isTemporary(stack)) continue;
+            removed += stack.getCount();
+            cardContainer.setItem(i, ItemStack.EMPTY);
+        }
+        return removed;
+    }
+
     public ItemStack getCardItem(int slotIndex) {
         return cardContainer.getItem(slotIndex);
     }

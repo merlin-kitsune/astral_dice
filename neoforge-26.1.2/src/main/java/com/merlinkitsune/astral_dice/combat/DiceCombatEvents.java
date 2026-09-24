@@ -734,7 +734,7 @@ public class DiceCombatEvents {
                 attackCostFreed += MisakiSignItem.effectiveCost(player, stone.type());
                 dirty = true;
             } else {
-                newStones.add(new AppliedStone(stone.type(), newUses));
+                newStones.add(new AppliedStone(stone.type(), newUses, stone.temporary()));
                 dirty = true;
             }
         }
@@ -766,7 +766,7 @@ public class DiceCombatEvents {
                 defenseCostFreed += MisakiSignItem.effectiveCost(defender, stone.type());
                 dirty = true;
             } else {
-                newStones.add(new AppliedStone(stone.type(), newUses));
+                newStones.add(new AppliedStone(stone.type(), newUses, stone.temporary()));
                 dirty = true;
             }
         }

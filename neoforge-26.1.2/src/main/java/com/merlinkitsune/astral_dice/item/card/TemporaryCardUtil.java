@@ -377,6 +377,45 @@ public final class TemporaryCardUtil {
         } catch (Throwable t) {
             LOGGER.error("[Astral Dice][TemporaryCard] 清空骰子装配栏临时牌失败", t);
         }
+        try {
+            removed += purgeOpenMenuAndCursor(player);
+        } catch (Throwable t) {
+            LOGGER.error("[Astral Dice][TemporaryCard] 清空打开的容器/光标临时牌失败", t);
+        }
+        return removed;
+    }
+
+    /**
+     * 玩家**当前打开的容器**里挂着的临时牌 + **鼠标光标**上那一张(2026-09-24 补,死亡清理范围)。
+     *
+     * <p>为什么必须补(两条「跨死亡存活」的路径):
+     * <ol>
+     *   <li>本模组卡牌栏菜单({@code screen/CardInventoryMenu})把自己那份 {@code cardContainer}
+     *       当作「骰子卡牌栏的真值」,而**牌进了这个容器就不在物品栏里** ⇒ {@link #purgeInventory}
+     *       扫不到;更糟的是该菜单关闭时({@code removed()})会把容器内容**写回骰子**
+     *       ({@code saveToDice()} 会透传 {@code temporary} 标记)。死亡流程里 {@code purgeAll} 跑在
+     *       {@code dropAllDeathLoot} **之前**(见 {@code event/PlayerLifecycleHandler} 的时序注释),
+     *       而容器内容根本不在掉落清单里 ⇒ 死亡时若卡牌栏还开着,这些临时牌会**跨死亡存活**
+     *       并借「关闭菜单」回到骰子里 —— 正是「死亡应强制清空全部临时牌」的反例;</li>
+     *   <li>光标栈({@code containerMenu#getCarried()})既不在物品栏也不在骰子里 ⇒ 同样扫不到;
+     *       容器关闭时原版会把光标栈退回物品栏 ⇒ 又是一条存活路径
+     *       (AGENTS 里登记的 F4 早已指出「光标不计入也不被 purgeAll 清理」)。</li>
+     * </ol>
+     * 卡牌栏容器的清理委托给它自己的 {@code purgeTemporaryCards()}(判据同源);
+     * 光标只清空**临时牌**那一栈,不影响任何其它物品。
+     */
+    private static int purgeOpenMenuAndCursor(Player player) {
+        var menu = player.containerMenu;
+        if (menu == null) return 0;
+        int removed = 0;
+        if (menu instanceof com.merlinkitsune.astral_dice.screen.CardInventoryMenu cardMenu) {
+            removed += cardMenu.purgeTemporaryCards();
+        }
+        ItemStack carried = menu.getCarried();
+        if (isTemporary(carried)) {
+            removed += carried.getCount();
+            menu.setCarried(net.minecraft.world.item.ItemStack.EMPTY);
+        }
         return removed;
     }
 
