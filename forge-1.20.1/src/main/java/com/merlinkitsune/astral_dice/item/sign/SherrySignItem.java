@@ -21,6 +21,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.event.entity.living.LivingDamageEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.eventbus.api.EventPriority;
 import top.theillusivec4.curios.api.SlotContext;
 
 import java.util.ArrayList;
@@ -403,7 +404,7 @@ public class SherrySignItem extends BaseSignItem {
      * {@code LivingDamageEvent.Pre};残余平台差异(1.20.1 在吸收结算之后派发)对本判定无影响
      * —— 这里只读实体与伤害源,不看伤害数值。
      */
-    @SubscribeEvent
+    @SubscribeEvent(priority = EventPriority.NORMAL)
     public static void onAttackHostile(LivingDamageEvent event) {
         LivingEntity victim = event.getEntity();
         if (victim.level().isClientSide()) return;

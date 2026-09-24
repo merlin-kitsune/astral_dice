@@ -24,11 +24,39 @@
 - **Its target criterion now matches the Ninja Star exactly — the "must be a hostile target" restriction is gone**: the old test was narrower than the actual gate, so **non-teammate players who had never attacked you** and **neutral mobs without vanilla's "neutral" marker (goats / llamas / foxes etc.)** received the Ninja Star bonus but not the Piercing Gun one. The two are now fully identical, with the target scope decided by the spell-damage chain's single gate.
 - The item description and handbook entry had both the prerequisite and the "hostile" qualifier removed to match.
 
+### The four damage cards and the Electric Glove now read straight
+
+- **Monster Laser / Monster Brick / Orbital Strike / Directional Blast and the Electric Glove** used to say "**all ranged/magic damage to hostiles** +N", but they do **not check the target at all** - with the effect up, the bonus applies to whatever you hit. The text was narrower than the code and made it look as if neutral mobs were excluded. All five now start with "ranged/magic damage", and the area wording says "other targets" to match the code.
+
+### A few numbers
+
+- **Star Coin Hammer**: Star Coins consumed per Dice Blessing **3 -> 6**.
+- **Smart Watch**: the card top-up threshold drops from **10 to 6** (easier to keep a hand).
+- **Target chip**: the Mark from a Dice Blessing no longer lands on **the very target you are attacking** - it now picks the nearest target **other than that one**, so it finally works as "set up a second target".
+- **Magic Quiver**: hitting a target that already has Marks with a **Living Page** now **always triggers** it (no prior effect card needed), and the cooldown drops from 1:00 to **30 seconds**.
+
 ## 🐛 Bug Fixes
 
 ### The training dummy can now be selected and hit
 
 - **The training dummy (`dummmmmmy`) is now always treated as a hostile target**: it is neither a hostile mob nor an angerable neutral mob, so every "requires a hostile target" effect excluded it — most visibly, the **Living Page could not select it at all, and therefore could not hit it** (you could not even use it to test your damage). This is now fixed at the root: the training dummy counts as hostile in **all** "hostile target" checks — Dice Blessing triggers normally, spell-damage bonuses are applied normally, and the target selector picks it up normally.
+
+### Gunsmith sign: neutral targets now get Weakness Insight too
+
+- The 1.21.1 / 1.20.1 lines used to restrict the Gunsmith passive to "**normal hostile mobs**", so targets like **wolves / iron golems / polar bears / bees, goats / llamas** carrying Broken never granted Weakness Insight even when killed (the Dice Blessing from the same swing still triggered). Both lines now match 26.1.2: the trigger condition is exactly the Dice Blessing's.
+- For the record, the Gunsmith's **active** always selected "hostiles + neutral mobs (tamed pets excluded) + the training dummy", so neutral targets were **always** selectable.
+
+### Four places where the area/bonus missed identical nearby targets
+
+- The **area splash** of Directional Blast and the Electric Glove, the **Boss sign's splash**, and the dice-battle "Investigation Stage bonus" used a narrower hostility test - so **a player who never attacked you**, a **Boss**, or **a mob that fights back but has no vanilla "neutral" marker** could receive the bonus as the main target while an identical target standing next to it got nothing. All four now use the **same gate** as the Dice Blessing, the Ninja Star and the Piercing Gun.
+
+### Text and display
+
+- **Friendship Badge / Big Bowl Stew**: the parenthesised notes (dedup rule, what counts as a "friendly creature") are gone - implementation details the player does not need.
+- **Scope / Eagle Scope**: the "During a Dice Blessing" wording had **no matching code** - the Mark (and the Eagle Scope's x2) applied outside a Blessing too. The gate has now been **added to the code**: the Mark and the x2 only apply **while a Dice Blessing is active** (the Scope's flat +2 stays unconditional).
+- **Sky-Searching Satellite**: the parentheses became a comma, for consistent phrasing.
+- **Revenge Halberd**: the "each type triggers once" clause is gone (the "does not stack" part stays).
+- **Speed Skates (basic / medium / advanced)**: the **`%` no longer loses its colour** (it used to fall back to the line colour, looking un-highlighted).
 
 ## 📌 Requirements
 

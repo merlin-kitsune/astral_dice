@@ -9,6 +9,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.event.entity.living.LivingDamageEvent;
 import com.merlinkitsune.astral_dice.network.ModNetwork.DamageNumberMessage;
@@ -34,7 +35,7 @@ public class DamageEffectCardHandler {
     // 残余(平台固有,已在 AGENTS.md 记录):1.20.1 的 LivingDamageEvent 在**吸收结算之后**
     // (吸收 :1669-1670 早于派发 :1680),1.21.1 的 Pre 在**吸收之前**(:1789 早于 :1790-1792),
     // 故目标带吸收(黄心)时两版本基准仍会有差异——普通目标无吸收,实际影响可忽略。
-    @SubscribeEvent
+    @SubscribeEvent(priority = EventPriority.NORMAL)
     public static void onLivingDamagePre(LivingDamageEvent event) {
         LivingEntity target = event.getEntity();
         if (target.level().isClientSide()) return;

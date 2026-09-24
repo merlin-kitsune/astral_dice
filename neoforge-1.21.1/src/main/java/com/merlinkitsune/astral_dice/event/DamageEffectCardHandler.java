@@ -10,6 +10,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.bus.api.EventPriority;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
 
@@ -28,7 +29,7 @@ public class DamageEffectCardHandler {
      *  若将来某个作用域 matcher 把它判为法伤就会无限递归;闸门只覆盖"本处理器自己发起的那一次真伤结算"。 */
     private static final ThreadLocal<Boolean> APPLYING_TRUE_BONUS = ThreadLocal.withInitial(() -> Boolean.FALSE);
 
-    @SubscribeEvent
+    @SubscribeEvent(priority = EventPriority.NORMAL)
     public static void onLivingDamagePre(LivingDamageEvent.Pre event) {
         LivingEntity target = event.getEntity();
         if (target.level().isClientSide()) return;

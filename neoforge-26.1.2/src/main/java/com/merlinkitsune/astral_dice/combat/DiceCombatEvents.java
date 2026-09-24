@@ -199,7 +199,7 @@ public class DiceCombatEvents {
     }
 
 
-    @SubscribeEvent
+    @SubscribeEvent(priority = EventPriority.NORMAL)
     public static void onLivingDamagePre(LivingDamageEvent.Pre event) {
         DamageSource source = event.getSource();
         Entity directEntity = source.getDirectEntity();
@@ -288,7 +288,8 @@ public class DiceCombatEvents {
                     }
                 }
             }
-            // 标靶筹码:触发骰神赐福后,对距离最近的敌对目标施加一层标记(无固定范围常量)
+            // 标靶筹码:触发骰神赐福后,对距离最近的**其他**目标施加一层标记(无固定范围常量)。
+            // 2026-09-24 用户裁决:不再判定「本次正在攻击的那个目标」—— 标记要落到**别的**目标身上。
             if (attackerCurios.isPresent()) {
                 var targetChipResult = attackerCurios.get().findFirstCurio(s -> s.is(ModItems.TARGET_CHIP.get()));
                 if (targetChipResult.isPresent()) {
@@ -299,6 +300,8 @@ public class DiceCombatEvents {
                     for (net.minecraft.world.entity.Entity entity : serverLevel.getEntities().getAll()) {
                         if (entity instanceof net.minecraft.world.entity.LivingEntity living
                                 // 上下文重载:攻击者"视谁为敌"(全局规则,含曾主动攻击过攻击者的非同队玩家)
+                                // ⚠️ 排除本次攻击的目标(2026-09-24 用户裁决)与玩家自身
+                                && living != target && living != player
                                 && HostileTargets.isHostile(player, living) && living.isAlive()) {
                             double distSqr = living.distanceToSqr(player);
                             if (distSqr < nearestDistSqr) {
@@ -312,7 +315,7 @@ public class DiceCombatEvents {
                     }
                 }
             }
-            // 星币锤筹码:每次进入骰神赐福时,若持有星币超过 20 枚,则消耗 3 星币并按持有总数 30% 提升攻击力
+            // 星币锤筹码:每次进入骰神赐福时,若持有星币超过 20 枚,则消耗 6 星币并按持有总数 30% 提升攻击力
             if (attackerCurios.isPresent()) {
                 var hammerResult = attackerCurios.get().findFirstCurio(s -> s.is(ModItems.STAR_COIN_HAMMER.get()));
                 if (hammerResult.isPresent()) {
@@ -623,8 +626,9 @@ public class DiceCombatEvents {
                         .inflate(com.merlinkitsune.astral_dice.item.sign.FenSignItem.SPLASH_RANGE);
                 var splashVictims = target.level().getEntitiesOfClass(
                         net.minecraft.world.entity.LivingEntity.class, splashBox,
-                        // 上下文重载:施放者"视谁为敌" —— 溅射现在也会命中「非同队伍且曾主动攻击过施放者的玩家」
-                        e -> HostileTargets.isHostile(player, e) && e.isAlive());
+                        // 2026-09-24 口径统一:波及选目标改用**法伤链闸门** isBlessingTarget(比
+                        // HostileTargets 更宽)⇒ 与非同队玩家 / Boss / 会反击的中立怪(山羊等)的主目标口径一致
+                        e -> isBlessingTarget(e, player) && e.isAlive());
                 if (!splashVictims.isEmpty()) {
                     // 真伤伤害源:直接伤害实体为空、击杀归属玩家(与旧 explosion(null, player) 同形状,
                     // 不会被本模组或其它模组再当成一次"玩家的直接攻击"重走命中判定,同时保留击杀归属);
@@ -1087,7 +1091,7 @@ public class DiceCombatEvents {
     // 闪避改在伤害判定最前置处"取消"(LivingIncomingDamageEvent)而不是在伤害阶段把伤害改成 0:
     // 只有前者能让攻击方 Mob#doHurtTarget 拿到 hurt()==false,从而不施加尸壳饥饿等命中附加效果、
     // 也不产生红屏/屏幕震动/受伤音效与击退同步。详见 applyDodgeCancel 的注释。
-    @SubscribeEvent
+    @SubscribeEvent(priority = EventPriority.NORMAL)
     public static void onMosesBrokenDodge(LivingIncomingDamageEvent event) {
         LivingEntity victim = event.getEntity();
         if (victim.level().isClientSide()) return;
@@ -1108,7 +1112,7 @@ public class DiceCombatEvents {
 
     // 肉弹战车立牌(pandaman)主动「嘲讽」:被嘲讽目标攻击施加者时触发反击
     // (沿用反击伤害公式;不消耗“反击”层数,每次嘲讽目标成功攻击时触发)
-    @SubscribeEvent
+    @SubscribeEvent(priority = EventPriority.NORMAL)
     public static void onPandamanTauntCounter(LivingDamageEvent.Pre event) {
         LivingEntity victim = event.getEntity();
         if (victim.level().isClientSide()) return;
@@ -1129,7 +1133,7 @@ public class DiceCombatEvents {
     // 现有反击伤害(沿用同一公式)。事件与肉弹嘲讽同源(LivingDamageEvent.Pre,位于吸收结算之前),
     // 该钩子只表示「伤害已确认」,与吸收数值无关 ⇒ **被黄心完全吃掉的一击同样触发**;
     // 若这一击正好打空黄心,护盾的清空由 RenShieldManager 的每 tick 轮询在稍后完成(先反击、后破盾)。
-    @SubscribeEvent
+    @SubscribeEvent(priority = EventPriority.NORMAL)
     public static void onRenShieldCounter(LivingDamageEvent.Pre event) {
         LivingEntity victim = event.getEntity();
         if (victim.level().isClientSide()) return;

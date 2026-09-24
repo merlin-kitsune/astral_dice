@@ -284,9 +284,10 @@ public final class SpellDamageRegistry {
             public void onHit(SpellDamageContext ctx, double bonus) {
                 if (bonus <= 0) return;
                 net.minecraft.world.phys.AABB aabb = ctx.target.getBoundingBox().inflate(6);
+                // 2026-09-24 口径统一:波及选目标用法伤链同一闸门(比 HostileTargets 更宽)
                 var nearby = ctx.target.level().getEntitiesOfClass(
                         net.minecraft.world.entity.LivingEntity.class, aabb,
-                        e -> HostileTargets.isHostile(ctx.attacker, e)
+                        e -> DiceCombatEvents.isBlessingTarget(e, ctx.attacker)
                                 && e != ctx.target && e.isAlive());
                 var blastSource = com.merlinkitsune.astral_dice.damage.ModDamageTypes
                         .trueDamage(ctx.target.level(), ctx.attacker);   // 真伤:效果牌范围波及伤害同样无视护甲值/盔甲韧性
@@ -360,16 +361,19 @@ public final class SpellDamageRegistry {
                 }
             }
         });
-        // 魔法箭袋:使用过效果牌并对带标记目标造成法伤 → 施加一层标记并返还第一张使用的效果牌(每分钟一次)
+        // 魔法箭袋:使用过效果牌(**或本次就是活体书页命中**)并对带标记目标造成法伤 → 施加一层标记并返还第一张使用的效果牌。
+        // 2026-09-24 用户裁决:使用「活体书页」且目标已有标记时**必定触发**,冷却 30 秒。
         registerModifier(new SpellDamageModifier() {
             @Override
             public boolean isActive(SpellDamageContext ctx) {
                 if (!ctx.hasCurio(ModItems.MAGIC_QUIVER.get())) return false;
-                if (!ModAttachments.getMagicQuiverTracking(ctx.attacker)) return false;
                 if (ctx.attacker.level().getGameTime() < ModAttachments.getMagicQuiverCooldownEnd(ctx.attacker)) {
                     return false;
                 }
-                return MarkManager.getLevel(ctx.target) > 0;
+                if (MarkManager.getLevel(ctx.target) <= 0) return false;
+                // 活体书页命中(astral_dice:card_spell)不要求"已使用效果牌"的追踪态 ⇒ 必定触发
+                return ctx.source.is(ModDamageTypes.CARD_SPELL)
+                        || ModAttachments.getMagicQuiverTracking(ctx.attacker);
             }
 
             @Override
@@ -413,8 +417,9 @@ public final class SpellDamageRegistry {
                 if (total <= 0) return;
                 net.minecraft.world.phys.AABB aabb = ctx.target.getBoundingBox()
                         .inflate(com.merlinkitsune.astral_dice.item.chip.ElectricGloveChipItem.AOE_RADIUS);
+                // 2026-09-24 口径统一:波及选目标用法伤链同一闸门(比 HostileTargets 更宽)
                 var nearby = ctx.target.level().getEntitiesOfClass(LivingEntity.class, aabb,
-                        e -> HostileTargets.isHostile(ctx.attacker, e) && e != ctx.target && e.isAlive());
+                        e -> DiceCombatEvents.isBlessingTarget(e, ctx.attacker) && e != ctx.target && e.isAlive());
                 var source = com.merlinkitsune.astral_dice.damage.ModDamageTypes
                         .trueDamage(ctx.target.level(), ctx.attacker);   // 真伤:效果牌范围波及伤害同样无视护甲值/盔甲韧性
                 // AOE 波及伤害不进入骰战结算(见 DiceCombatEvents.aoeProcessing)

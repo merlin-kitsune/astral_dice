@@ -43,7 +43,7 @@ public final class PlayerHostilityTrackerEvents {
     }
 
     /** 记录「攻击者主动攻击过受害者」(仅玩家对玩家,且非本人;仅服务端) */
-    @SubscribeEvent
+    @SubscribeEvent(priority = EventPriority.NORMAL)
     public static void onLivingDamagePre(LivingDamageEvent.Pre event) {
         // 只记「**主动**攻击」:本模组内部的范围/波及伤害(大当家溅射、电击手套/定向爆破 AOE)与
         // 反击注入都不是主动攻击 —— 前者在 DiceCombatEvents.aoeProcessing、后者在 counterDepth

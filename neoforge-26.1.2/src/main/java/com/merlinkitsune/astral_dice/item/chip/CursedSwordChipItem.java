@@ -18,7 +18,6 @@ import top.theillusivec4.curios.api.SlotContext;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
-import net.minecraft.world.entity.monster.Enemy;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.minecraft.world.entity.LivingEntity;

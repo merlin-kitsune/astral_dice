@@ -27,7 +27,6 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
-import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.effect.MobEffects;
@@ -263,17 +262,24 @@ public final class DiceCombatModifiers {
             return ap;
         });
 
-        // === 内置:普通瞄具/鹰眼瞄具(攻击力+2/+标记层数*2,并施加 1 层标记) ===
+        // === 内置:普通瞄具/鹰眼瞄具(攻击力+2;骰神赐福期间攻击时施加 1 层标记 / 按标记层数×2 加攻击力) ===
+        // ⚠️ 2026-09-24 用户裁决:「瞄具类攻击实际上受**骰神赐福门控** —— 不按骰神赐福模式攻击目标
+        //   (近战类)则不应该触发」⇒ 标记与鹰眼的 ×2 都要求 `DICE_BLESSING` 生效;
+        //   普通瞄具的固定 +2 仍**无条件**(与 tooltip 同源:「攻击力 +2。骰神赐福期间攻击时对目标施加 1 层标记」)。
+        //   旧实现只判「是否佩戴」⇒ 未处于赐福期间也会施加标记/加成,与文案不符,本次补齐门控。
         registerAttackModifier((ctx, ap) -> {
             if (ctx.attacker.level().isClientSide()) return ap;
+            boolean blessed = ctx.attacker.hasEffect(ModEffects.DICE_BLESSING);
             if (hasCurio(ctx.attacker, ModItems.SCOPE_CHIP.get())) {
                 ap += 2;
-                if (ctx.event != null) MarkManager.apply(ctx.target);
+                if (blessed && ctx.event != null) MarkManager.apply(ctx.target);
             }
             if (hasCurio(ctx.attacker, ModItems.EAGLE_SCOPE_CHIP.get())) {
-                int markLevel = MarkManager.getLevel(ctx.target);
-                ap += markLevel * 2;
-                if (ctx.event != null) MarkManager.apply(ctx.target);
+                if (blessed) {
+                    int markLevel = MarkManager.getLevel(ctx.target);
+                    ap += markLevel * 2;
+                    if (ctx.event != null) MarkManager.apply(ctx.target);
+                }
             }
             return ap;
         });
@@ -428,8 +434,10 @@ public final class DiceCombatModifiers {
             int stage = investigation.getAmplifier(); // 1=I,2=II,3=III,4=真相揭露(I 无攻击加成)
             int markLevel = MarkManager.getLevel(ctx.target);
             boolean isBoss = BossEntityUtil.isBossEntity(ctx.target);
-            // 上下文重载:把「非同队伍且曾主动攻击过攻击者的玩家」一并计入敌对(全局规则)
-            boolean isHostile = HostileTargets.isHostile(ctx.attacker, ctx.target);
+            // 2026-09-24 口径统一:改用**法伤链同一闸门** isBlessingTarget(比 HostileTargets 更宽:
+            // 含非同队玩家 / Boss / 会反击的中立怪)⇒ 与骰神赐福、贯穿之铳、忍术飞镖一致
+            boolean isHostile = com.merlinkitsune.astral_dice.combat.DiceCombatEvents
+                    .isBlessingTarget(ctx.target, ctx.attacker);
             if (!isBoss && isHostile) {
                 if (stage >= 3) {
                     ap += 2 + markLevel;

@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
+import net.neoforged.bus.api.EventPriority;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
 import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
@@ -277,7 +278,7 @@ public class NancyLuSignItem extends BaseSignItem {
 
 
     // 骇客立牌:任何攻击行为(含远程/投掷物/魔法)命中敌对生物或玩家时,同样解除隐身并触发战斗牌加成
-    @SubscribeEvent
+    @SubscribeEvent(priority = EventPriority.NORMAL)
     public static void onNancyLuAnyAttackWhileHidden(LivingDamageEvent.Pre event) {
         if (event.getEntity().level().isClientSide()) return;
         if (!(event.getSource().getEntity() instanceof Player player)) return;
@@ -310,7 +311,7 @@ public class NancyLuSignItem extends BaseSignItem {
     // 不 markHurt(无击退同步)、不 indicateDamage(即不发送
     // ClientboundHurtAnimationPacket,无红屏与屏幕震动)、不 playHurtSound(无受伤音效)。
     // 旧实现只 setNewDamage(0),hurt 仍走完整个流程并播放全部受伤反馈。
-    @SubscribeEvent
+    @SubscribeEvent(priority = EventPriority.NORMAL)
     public static void onNancyLuEnderPearlDamage(LivingIncomingDamageEvent event) {
         if (!(event.getEntity() instanceof Player player)) return;
         if (player.level().isClientSide()) return;

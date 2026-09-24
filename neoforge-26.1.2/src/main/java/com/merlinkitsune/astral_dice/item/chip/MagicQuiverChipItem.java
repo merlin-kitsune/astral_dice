@@ -12,14 +12,17 @@ import com.merlinkitsune.astral_dice.item.card.BaseEffectCardItem;
 
 /**
  * 魔法箭袋筹码:若使用过效果牌,且对具有"标记"的目标造成了法伤(远程+魔法),
- * 则对该目标施加一层标记并返还第一张使用的效果牌。每分钟仅能触发一次。
+ * 则对该目标施加一层标记并返还第一张使用的效果牌。每 30 秒仅能触发一次。
+ *
+ * <p><b>活体书页例外(2026-09-24 用户裁决)</b>:本次伤害类型为 {@code astral_dice:card_spell}
+ * (活体书页命中)且目标已有标记时**必定触发** —— 不要求「已使用效果牌」的追踪态。
  *
  * <p>追踪流程:使用效果牌(全部效果牌均参与复制计数)时由 {@link #onEffectCardUsed}
- * 记录第一张使用的效果牌;法伤命中带标记目标时由 {@link #tryProc} 触发返还并进入 1 分钟冷却。
+ * 记录第一张使用的效果牌;法伤命中带标记目标时由 {@link #tryProc} 触发返还并进入 30 秒冷却。
  */
 public class MagicQuiverChipItem extends BaseChipItem {
-    /** 触发冷却时长(1 分钟) */
-    public static final int COOLDOWN_TICKS = 1200;
+    /** 触发冷却时长(30 秒;2026-09-24 用户裁决由 1 分钟下调) */
+    public static final int COOLDOWN_TICKS = 600;
 
     public MagicQuiverChipItem(Properties properties) {
         super(properties);
@@ -47,12 +50,14 @@ public class MagicQuiverChipItem extends BaseChipItem {
 
     /**
      * 法伤命中带标记目标时调用(由 SpellDamageRegistry 修饰器分发):
-     * 满足全部条件(佩戴箭袋、已记录第一张效果牌、冷却结束、目标带标记)时,
-     * 施加一层标记并返还第一张使用的效果牌,随后进入 1 分钟冷却并清除追踪。
+     * 满足全部条件(佩戴箭袋、冷却结束、目标带标记,且**已记录第一张效果牌或本次是活体书页命中**)时,
+     * 施加一层标记并返还第一张使用的效果牌,随后进入 30 秒冷却并清除追踪。
      */
     public static boolean tryProc(SpellDamageContext ctx) {
         if (!isEquipped(ctx.attacker)) return false;
-        if (!ModAttachments.getMagicQuiverTracking(ctx.attacker)) return false;
+        // 活体书页命中:不要求"已使用效果牌"的追踪态(必定触发;2026-09-24 用户裁决)
+        boolean viaLivingPage = ctx.source.is(com.merlinkitsune.astral_dice.damage.ModDamageTypes.CARD_SPELL);
+        if (!viaLivingPage && !ModAttachments.getMagicQuiverTracking(ctx.attacker)) return false;
         long now = ctx.attacker.level().getGameTime();
         if (now < ModAttachments.getMagicQuiverCooldownEnd(ctx.attacker)) return false;
         if (MarkManager.getLevel(ctx.target) <= 0) return false;
@@ -66,7 +71,7 @@ public class MagicQuiverChipItem extends BaseChipItem {
             VitaminPillChipItem.giveCard(ctx.attacker, card);
         }
 
-        // 开始 1 分钟冷却并清除追踪
+        // 开始 30 秒冷却并清除追踪
         ModAttachments.setMagicQuiverCooldownEnd(ctx.attacker, now + COOLDOWN_TICKS);
         ModAttachments.setMagicQuiverTracking(ctx.attacker, false);
         return true;

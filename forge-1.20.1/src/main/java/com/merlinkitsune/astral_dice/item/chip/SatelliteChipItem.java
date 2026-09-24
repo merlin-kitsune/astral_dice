@@ -13,7 +13,6 @@ import com.merlinkitsune.astral_dice.AstralDiceMod;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.monster.Enemy;
 import com.merlinkitsune.astral_dice.combat.SpellDamageRegistry;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import net.minecraftforge.eventbus.api.SubscribeEvent;

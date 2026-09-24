@@ -41,7 +41,6 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.animal.Animal;
 import net.minecraft.world.entity.boss.wither.WitherBoss;
-import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.entity.monster.warden.Warden;
 import net.minecraft.world.entity.player.Player;
@@ -966,12 +965,14 @@ public class ModTooltipHandler {
         if (stack.is(ModItems.SPEED_SKATES_LOW.get()) || stack.is(ModItems.SPEED_SKATES_MEDIUM.get())
                 || stack.is(ModItems.SPEED_SKATES_HIGH.get())) {
             tooltip.add(Component.empty());
-            tooltip.add(Component.translatable(stack.is(ModItems.SPEED_SKATES_LOW.get())
-                            ? "tooltip.astral_dice.chip.speed_skates_low"
-                            : stack.is(ModItems.SPEED_SKATES_MEDIUM.get())
-                            ? "tooltip.astral_dice.chip.speed_skates_medium"
-                            : "tooltip.astral_dice.chip.speed_skates_high")
-                    .withStyle(ChatFormatting.GRAY));
+            // ⚠️ 必须走 tt(...):原版 TranslatableContents 会把 %% 拆成**独立的无样式片段**
+            // ⇒ 高亮区内那个 % 会掉成行底色(R4 审计项),故不可用 Component.translatable
+            String skatesKey = stack.is(ModItems.SPEED_SKATES_LOW.get())
+                    ? "tooltip.astral_dice.chip.speed_skates_low"
+                    : stack.is(ModItems.SPEED_SKATES_MEDIUM.get())
+                    ? "tooltip.astral_dice.chip.speed_skates_medium"
+                    : "tooltip.astral_dice.chip.speed_skates_high";
+            tooltip.add(tt(skatesKey).withStyle(ChatFormatting.GRAY));
         }
         if (stack.is(ModItems.MOTO_HELMET_LOW.get()) || stack.is(ModItems.MOTO_HELMET_MEDIUM.get())
                 || stack.is(ModItems.MOTO_HELMET_HIGH.get())) {

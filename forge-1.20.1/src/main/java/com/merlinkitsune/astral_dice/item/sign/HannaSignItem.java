@@ -25,6 +25,7 @@ import net.minecraft.world.level.Level;
 import net.minecraftforge.event.entity.living.LivingAttackEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.eventbus.api.EventPriority;
 import top.theillusivec4.curios.api.SlotContext;
 
 import java.util.List;
@@ -358,7 +359,7 @@ public class HannaSignItem extends BaseSignItem {
      *
      * <p>近战判据 = 伤害源的**直接实体是生物本人**,因此弹射物、法术、AOE 与环境伤害照常命中。
      */
-    @SubscribeEvent
+    @SubscribeEvent(priority = EventPriority.NORMAL)
     public static void onHannaFloatIncomingDamage(LivingAttackEvent event) {
         if (!(event.getEntity() instanceof Player player)) return;
         if (player.level().isClientSide()) return;

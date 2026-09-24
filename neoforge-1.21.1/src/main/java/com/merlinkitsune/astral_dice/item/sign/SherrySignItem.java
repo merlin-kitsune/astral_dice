@@ -21,6 +21,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
+import net.neoforged.bus.api.EventPriority;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -391,7 +392,7 @@ public class SherrySignItem extends BaseSignItem {
      * <p>只认 {@code getDirectEntity()} 是玩家本人的近战 —— 弹射物、法术、AOE 与环境伤害一律不计
      * (与「每攻击一个」的语义一致;本模组既有的「玩家近战」判据同款)。
      */
-    @SubscribeEvent
+    @SubscribeEvent(priority = EventPriority.NORMAL)
     public static void onAttackHostile(LivingDamageEvent.Pre event) {
         LivingEntity victim = event.getEntity();
         if (victim.level().isClientSide()) return;
