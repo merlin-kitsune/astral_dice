@@ -807,9 +807,9 @@
   "astral_dice.guide.entry.hanna_sign.3": "配方：黄金骰子（无星盘）档，与史莱姆立牌、上班族立牌同档。",
   "item.astral_dice.purple_shooting_star_chip": "紫色飞星",
   "item.astral_dice.golden_shooting_star_chip": "金色飞星",
-  "tooltip.astral_dice.chip.purple_shooting_star": "路过敌对目标且不对其发动攻击时，使其受到 §e1§7 点伤害，并使自身获得 §e1§7 层「星光」。每 §910 秒§7 触发一次，与金色飞星共享计时器",
-  "tooltip.astral_dice.chip.golden_shooting_star": "路过敌对目标且不对其发动攻击时，使其受到 §e2§7 点伤害，并使自身获得 §e1§7 层「星光」；若目标为精英怪物或 Boss，则额外对其造成玩家当前「星光」层数的伤害。每 §910 秒§7 触发一次，与紫色飞星共享计时器",
+  "tooltip.astral_dice.chip.purple_shooting_star": "路过敌对目标时，使其受到 §e1§7 点伤害，并使自身获得 §e1§7 层「星光」。每 §910 秒§7 触发一次，与金色飞星共享计时器",
+  "tooltip.astral_dice.chip.golden_shooting_star": "路过敌对目标时，使其受到 §e2§7 点伤害，并使自身获得 §e1§7 层「星光」；若目标为精英怪物或 Boss，则额外对其造成玩家当前「星光」层数的伤害。每 §910 秒§7 触发一次，与紫色飞星共享计时器",
   "tooltip.astral_dice.chip.shooting_star_cooldown": "冷却中：§c%s§c 秒",
-  "astral_dice.guide.entry.purple_shooting_star_chip.1": "路过敌对目标且不对其发动攻击时，使其受到 1 点伤害，并使自身获得 1 层「星光」。每 10 秒触发一次；与金色飞星共享计时器。",
-  "astral_dice.guide.entry.golden_shooting_star_chip.1": "路过敌对目标且不对其发动攻击时，使其受到 2 点伤害，并使自身获得 1 层「星光」；若目标为精英怪物或 Boss，则额外对其造成玩家当前「星光」层数的伤害。每 10 秒触发一次；与紫色飞星共享计时器。"
+  "astral_dice.guide.entry.purple_shooting_star_chip.1": "路过敌对目标时，使其受到 1 点伤害，并使自身获得 1 层「星光」。每 10 秒触发一次；与金色飞星共享计时器。",
+  "astral_dice.guide.entry.golden_shooting_star_chip.1": "路过敌对目标时，使其受到 2 点伤害，并使自身获得 1 层「星光」；若目标为精英怪物或 Boss，则额外对其造成玩家当前「星光」层数的伤害。每 10 秒触发一次；与紫色飞星共享计时器。"
 }

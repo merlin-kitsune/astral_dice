@@ -802,7 +802,7 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(Rarity.EPIC)));
 
-    // 紫色飞星(史诗):路过敌对目标且不对其发动攻击 ⇒ 使其受到 1 点伤害并自身 +1 层「星光」;每 10 秒触发一次。
+    // 紫色飞星(史诗):路过敌对目标 ⇒ 使其受到 1 点伤害并自身 +1 层「星光」;每 10 秒触发一次。
     // 与金色飞星共用同一冷却计时器(用户裁决);两枚共用 ShootingStarChipItem,差异全在执行器 ShootingStarManager。
     public static final RegistryObject<Item> PURPLE_SHOOTING_STAR_CHIP = registerItem("purple_shooting_star_chip",
             () -> new ShootingStarChipItem(new Item.Properties()

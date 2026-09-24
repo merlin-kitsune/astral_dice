@@ -6,6 +6,7 @@ import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.effect.ModEnchantments;
 import com.merlinkitsune.astral_dice.init.ModCompatibilityCheck;
 import com.merlinkitsune.astral_dice.init.ModCreativeTabs;
+import com.merlinkitsune.astral_dice.init.ModParticles;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.network.ModNetwork;
 import com.merlinkitsune.astral_dice.network.VersionGate;
@@ -43,6 +44,7 @@ public class AstralDiceMod {
         ModRecipeSerializers.RECIPE_SERIALIZERS.register(modEventBus);
         ModCreativeTabs.CREATIVE_TABS.register(modEventBus);
         ModMenuTypes.MENU_TYPES.register(modEventBus);
+        ModParticles.PARTICLE_TYPES.register(modEventBus);
         // 全局战利品修饰符序列化器:1.20.1 的 Forge 自带注册表里**没有任何内置项**
         // (没有 forge:add_table),必须由本模组注册 astral_dice:add_table,
         // 否则 data/astral_dice/loot_modifiers/*.json 全部解码失败(详见 loot/AstralLootModifiers)

@@ -807,9 +807,9 @@
   "astral_dice.guide.entry.hanna_sign.3": "Recipe: golden dice tier (no star plate), the same tier as the Slime Sign and the Padman Sign.",
   "item.astral_dice.purple_shooting_star_chip": "Purple Shooting Star",
   "item.astral_dice.golden_shooting_star_chip": "Golden Shooting Star",
-  "tooltip.astral_dice.chip.purple_shooting_star": "When you pass by a hostile target without attacking it, it takes §e1§7 damage and you gain §e1§7 Starlight. Triggers once every §910s§7; shares its timer with the Golden Shooting Star",
-  "tooltip.astral_dice.chip.golden_shooting_star": "When you pass by a hostile target without attacking it, it takes §e2§7 damage and you gain §e1§7 Starlight; if the target is an elite or a boss, it takes additional damage equal to your current Starlight. Triggers once every §910s§7; shares its timer with the Purple Shooting Star",
+  "tooltip.astral_dice.chip.purple_shooting_star": "When you pass by a hostile target, it takes §e1§7 damage and you gain §e1§7 Starlight. Triggers once every §910s§7; shares its timer with the Golden Shooting Star",
+  "tooltip.astral_dice.chip.golden_shooting_star": "When you pass by a hostile target, it takes §e2§7 damage and you gain §e1§7 Starlight; if the target is an elite or a boss, it takes additional damage equal to your current Starlight. Triggers once every §910s§7; shares its timer with the Purple Shooting Star",
   "tooltip.astral_dice.chip.shooting_star_cooldown": "On cooldown: §c%s§c s",
-  "astral_dice.guide.entry.purple_shooting_star_chip.1": "Passing by a hostile target without attacking it deals 1 damage to it and grants you 1 Starlight. Triggers once every 10 seconds; shares its timer with the Golden Shooting Star.",
-  "astral_dice.guide.entry.golden_shooting_star_chip.1": "Passing by a hostile target without attacking it deals 2 damage to it and grants you 1 Starlight; if the target is an elite or a boss, it takes additional damage equal to your current Starlight. Triggers once every 10 seconds; shares its timer with the Purple Shooting Star."
+  "astral_dice.guide.entry.purple_shooting_star_chip.1": "Passing by a hostile target deals 1 damage to it and grants you 1 Starlight. Triggers once every 10 seconds; shares its timer with the Golden Shooting Star.",
+  "astral_dice.guide.entry.golden_shooting_star_chip.1": "Passing by a hostile target deals 2 damage to it and grants you 1 Starlight; if the target is an elite or a boss, it takes additional damage equal to your current Starlight. Triggers once every 10 seconds; shares its timer with the Purple Shooting Star."
 }

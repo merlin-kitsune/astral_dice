@@ -7,6 +7,7 @@ import com.merlinkitsune.starenginelib.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.init.ModCompatibilityCheck;
 import com.merlinkitsune.astral_dice.init.ModCreativeTabs;
+import com.merlinkitsune.astral_dice.init.ModParticles;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.recipe.ModRecipeSerializers;
 import com.merlinkitsune.astral_dice.screen.ModMenuTypes;
@@ -39,6 +40,7 @@ public class AstralDiceMod {
         ModCreativeTabs.CREATIVE_TABS.register(modEventBus);
         ModMenuTypes.MENU_TYPES.register(modEventBus);
         ModAttachments.ATTACHMENTS.register(modEventBus);
+        ModParticles.PARTICLE_TYPES.register(modEventBus);
         // 配置版本检查:旧版本配置文件先备份,再由 NeoForge 继承旧值写入新配置(仅公共配置;client 配置已移除)
         backupOldConfigIfNeeded("astral_dice-common.toml", ModCommonConfig.CONFIG_VERSION);
         modContainer.registerConfig(ModConfig.Type.COMMON, ModCommonConfig.SPEC);

@@ -5,8 +5,8 @@ import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.damage.ModDamageTypes;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.StarLightManager;
+import com.merlinkitsune.astral_dice.particle.GlowingDustOptions;
 import net.minecraft.core.particles.ColorParticleOption;
-import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -34,7 +34,7 @@ import com.merlinkitsune.starenginelib.combat.HostileTargets;
  *
  * <h2>技能口径（2026-09-21 用户原文）</h2>
  * <ul>
- *   <li><b>紫色飞星（史诗）</b>：路过敌对目标且不对其发动攻击 ⇒ 使其受到 1 点伤害并自身 +1 层「星光」；</li>
+ *   <li><b>紫色飞星（史诗）</b>：路过敌对目标 ⇒ 使其受到 1 点伤害并自身 +1 层「星光」；</li>
  *   <li><b>金色飞星（传奇）</b>：同上，但基础伤害 2 点；若目标为**精英怪物或 Boss**，
  *       额外造成**自身当前「星光」层数**的伤害；</li>
  *   <li><b>共享计时器</b>：两枚筹码共用**同一个 10 秒冷却**（{@link #COOLDOWN_TICKS}），
@@ -53,10 +53,7 @@ import com.merlinkitsune.starenginelib.combat.HostileTargets;
  *       会让站上 4 格高台的玩家命中地面的怪）；</li>
  *   <li>「敌对目标」= 全局唯一入口 {@link HostileTargets#isHostile(net.minecraft.world.entity.Entity, net.minecraft.world.entity.Entity)}
  *       （带「视谁为敌」上下文）**再减去「未被激怒的中立生物」**（用户 2026-09-24 裁决
- *       「飞星应当只对敌对目标生效」）—— 判据见 {@link #isStarTarget}；</li>
- *   <li>「不对其发动攻击」= 该目标**最近一次受伤不是来自本玩家**（{@code getLastHurtByMob()}），
- *       或在 {@link #ATTACK_GRACE_TICKS} 之前。飞星自身的真伤**直接伤害实体为空**
- *       ⇒ 不会写 {@code lastHurtByMob}，因此不会自我抑制。</li>
+ *       「飞星应当只对敌对目标生效」）—— 判据见 {@link #isStarTarget}。</li>
  * </ul>
  *
  * <h2>伤害与粒子</h2>
@@ -64,8 +61,10 @@ import com.merlinkitsune.starenginelib.combat.HostileTargets;
  *   <li>伤害类型 {@code astral_dice:true_damage}（无视护甲值 / 盔甲韧性），
  *       **击杀归属玩家**（{@code causing} = 玩家）；不构成玩家直接攻击 ⇒ 不触发骰战 / 骰神赐福；</li>
  *   <li>粒子复用「活体书页」的**观感与轨迹参数**（拖尾间距 / 每步粒数 / 命中爆闪），
- *       但把不可染色的 {@code END_ROD} 换成可染色的 {@link DustParticleOptions} —— 紫色 / 金色各一色
- *       （{@code END_ROD} 是固定白色，无法满足「金色飞星粒子 = 同效果但改金色」的要求）。</li>
+ *       但把不可染色的 {@code END_ROD} 换成**可染色且自发光**的 {@link GlowingDustOptions}
+ *       （本模组粒子 {@code astral_dice:glowing_dust}：全亮光照 + 半透明混合，见 {@code client/GlowingDustParticle}）
+ *       —— 紫色 / 金色各一色（{@code END_ROD} 是固定白色，无法满足「金色飞星粒子 = 同效果但改金色」的要求；
+ *       而原版 {@code DustParticleOptions} 没有覆写光照 ⇒ 暗处不发光，正是本次要补的缺口）。</li>
  * </ul>
  */
 @EventBusSubscriber(modid = AstralDiceMod.MODID)
@@ -97,9 +96,6 @@ public final class ShootingStarManager {
 
     /** 两枚同时装备时，第一束命中后到第二束开始下落的间隔 —— 0.5 秒（用户 2026-09-24 裁决「间隔加快到 2 倍」）。 */
     public static final int VOLLEY_GAP_TICKS = 10;
-
-    /** 「不对其发动攻击」的判定窗口（tick）：与共享冷却同周期。 */
-    public static final int ATTACK_GRACE_TICKS = COOLDOWN_TICKS;
 
     /** 旧口径的落体参考高（格）：起点 = 目标脚底上方 3.0 格、终点 = 碰撞箱中心。 */
     private static final double LEGACY_FALL_REFERENCE = 3.0D;
@@ -228,7 +224,7 @@ public final class ShootingStarManager {
     }
 
     /**
-     * 取「路过窗口」内最近的合格敌对目标（不合格 = 出窗口 / 非敌对 / 未被激怒的中立生物 / 最近被本玩家攻击过）。
+     * 取「路过窗口」内最近的合格敌对目标（不合格 = 出窗口 / 非敌对 / 未被激怒的中立生物）。
      *
      * <p><b>两级判据</b>（用户 2026-09-22 裁决「水平圆柱 + 同高度窗口」）：{@code inflate(RADIUS)} 的
      * AABB 只当**粗筛** —— 它三轴同时膨胀、竖直容差达「脚底 −3 … +4.8」，**不能**直接当命中判据；
@@ -242,7 +238,6 @@ public final class ShootingStarManager {
         for (LivingEntity candidate : player.level().getEntitiesOfClass(LivingEntity.class, box)) {
             if (candidate == player || !candidate.isAlive()) continue;
             if (!isStarTarget(player, candidate)) continue;
-            if (attackedByPlayerRecently(player, candidate)) continue;
             if (!isWithinPassWindow(player, candidate)) continue;
             double distSqr = horizontalDistanceSqr(player, candidate);
             if (distSqr < bestDistSqr) {
@@ -289,13 +284,6 @@ public final class ShootingStarManager {
         double dx = a.getX() - b.getX();
         double dz = a.getZ() - b.getZ();
         return dx * dx + dz * dz;
-    }
-
-    /** 该目标最近一次受伤是否来自本玩家（= 「对其发动过攻击」）。 */
-    private static boolean attackedByPlayerRecently(ServerPlayer player, LivingEntity target) {
-        if (target.getLastHurtByMob() != player) return false;
-        int since = target.tickCount - target.getLastHurtByMobTimestamp();
-        return since >= 0 && since < ATTACK_GRACE_TICKS;
     }
 
     /**
@@ -382,8 +370,8 @@ public final class ShootingStarManager {
         return pending.caster.level() == pending.level;
     }
 
-    private static DustParticleOptions dust(Kind kind) {
-        return new DustParticleOptions(kind.color, DUST_SCALE);
+    private static GlowingDustOptions dust(Kind kind) {
+        return new GlowingDustOptions(kind.color, DUST_SCALE);
     }
 
     private static void emitTrail(Pending pending, Vec3 from, Vec3 to) {
