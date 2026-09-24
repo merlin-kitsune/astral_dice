@@ -15,6 +15,7 @@
 This version adds **8 custom sound effects**, converted from the assets you supplied:
 
 - **Star Coin wallet: deposit / withdraw**: one sound when a deposit into the wallet succeeds, plus separate sounds for withdrawing **Star Coins** and withdrawing **Star Coin Bags** (nothing plays when the action does nothing).
+  (2026-09-25: the **Star Coin Bag** withdraw sound was too loud, so it is now **40% quieter**.)
 - **Living Page hit**: split by **the damage actually dealt** — the regular impact sound below 8, a heavier hit sound at 8 or more.
 - **Effect cards**: **Berserk / King Power / Unwavering** get their own cast sound; every other effect card is split by target — one for using it on **another player or target**, one for using it on **yourself**.
 - **Who hears it**: deposit / withdraw are private UI feedback and play **only for you**; the rest play in the world and are **audible to nearby players**.

@@ -18,6 +18,10 @@
   `SoundEvent` registration whose id matches the file name). Deposit / withdraw are private UI feedback and are sent
   **only to the player who clicked**; the rest play in the world and are **audible to nearby players**. The Living
   Page entry is split by **the full damage of the hit** (the same value as the damage number shown).
+  Per a 2026-09-25 user ruling the **Star Coin Bag** withdraw sound was too loud, so its volume is
+  **reduced by 40%** - tuned via the vanilla `sounds.json` `volume` field (`coin_bag_withdraw` = `0.6`;
+  defaults to 1.0 and must be > 0), which `AbstractSoundInstance#getVolume()` multiplies straight into the
+  playback gain that `SoundEngine#play` reads.
 
 ### Content & Balance
 

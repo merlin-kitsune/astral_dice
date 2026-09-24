@@ -19,6 +19,11 @@ import net.minecraftforge.registries.RegistryObject;
  * 资源声明缺失时 {@code SoundEvent} 仍能注册成功，但播放时静默无声，
  * 故新增音效必须**三处同时**落地（ogg / sounds.json / 本类）。
  *
+ * <p><b>音量</b>调在 {@code sounds.json} 的条目里 —— {@code {"name": "...", "volume": 0.6}}（缺省 1.0，必须 &gt; 0）：
+ * 原版 {@code AbstractSoundInstance#getVolume()} = 实例音量 × JSON 音量，而 {@code SoundEngine#play} 读的正是它
+ * ⇒ JSON 音量**直接乘在播放增益上**（星币袋的取钱音效即 0.6 = 音量降低 40%，2026-09-25 用户裁决）。
+ * 音量属于**音效自身**，一律写进 JSON；{@code SoundPlayback} 里的 1.0F 是「实例音量」，不要为单条音效去改它。
+ *
  * <p>播放一律走 {@link SoundPlayback}（区分「只发给本人」与「世界中广播」两种语义），
  * 不要在调用点直接写 {@code level.playSound}。
  *

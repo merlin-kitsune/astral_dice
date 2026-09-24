@@ -11,7 +11,10 @@
   },
   "coin_bag_withdraw": {
     "sounds": [
-      "astral_dice:coin_bag_withdraw"
+      {
+        "name": "astral_dice:coin_bag_withdraw",
+        "volume": 0.6
+      }
     ]
   },
   "damage_effect_card_hit": {

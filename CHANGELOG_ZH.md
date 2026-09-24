@@ -16,6 +16,9 @@
   素材统一收录为单声道 Ogg Vorbis（`assets/astral_dice/sounds/`：8 个 ogg ＋ 同名 `sounds.json` 声明 ＋
   `SoundEvent` 注册，事件 id 与音频文件名同名）。**存钱 / 取钱**属界面私有反馈，**只发给操作者本人**；
   其余为世界内动作，**附近玩家都能听到**。活体书页那条按**本次命中的完整伤害**（与伤害跳字同值）分档。
+  ⚠️ 2026-09-25 用户裁决：**取星币袋**那条偏吵，音量**降低 40%** —— 音量写在原版 `sounds.json` 条目的
+  `volume` 字段上（`coin_bag_withdraw` = `0.6`；缺省 1.0、必须 > 0），该字段由原版
+  `AbstractSoundInstance#getVolume()` 直接乘进播放增益（`SoundEngine#play` 读的就是它）。
 
 ### 内容与平衡性调整
 
