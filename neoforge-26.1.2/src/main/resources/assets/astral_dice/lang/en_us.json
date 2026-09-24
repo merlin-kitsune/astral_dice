@@ -746,6 +746,7 @@
   "msg.astral_dice.nardis_card_limit": "Temporary cards are already at the limit (9) - cannot gain more",
   "tooltip.astral_dice.sign.nardis_passive": "Each equipped attack card: attack power §e+2§7; each equipped defense card: defense power §e+2§7",
   "tooltip.astral_dice.sign.nardis_active": "Immediately gain §e3§7 random temporary cards, lasting §93:00§7\n  Temporary cards can only be equipped and used, not dropped or transferred\n  All temporary cards are discarded when the timer ends\n  Using the active skill does not freeze; if temporary cards remain, they are resupplied and the timer resets",
+  "tooltip.astral_dice.temporary_card": "Temporary card: cannot be dropped or transferred; destroyed if put into another container; disappears when Queen's Privilege ends",
   "astral_dice.guide.entry.nardis_sign.1": "Oasis Queen sign. Active - Queen's Privilege: immediately gain 3 random temporary cards lasting 3:00. Temporary cards can only be equipped and used, not dropped or transferred. All temporary cards are discarded when the timer ends. Using the active skill does not freeze; if temporary cards remain, they are resupplied and the timer resets.",
   "astral_dice.guide.entry.nardis_sign.2": "Passive \"Intimidation\": each equipped attack card: attack power +2; each equipped defense card: defense power +2.",
   "astral_dice.guide.entry.nardis_sign.3": "Recipe: golden dice tier (no star plate), the same tier as the Slime Sign and the Padman Sign.",

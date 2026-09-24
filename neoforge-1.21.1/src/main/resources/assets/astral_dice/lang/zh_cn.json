@@ -746,6 +746,7 @@
   "msg.astral_dice.nardis_card_limit": "临时牌已达上限（9 张），无法继续补给",
   "tooltip.astral_dice.sign.nardis_passive": "每装备一张攻击牌：攻击力 §e+2§7；每装备一张防御牌：防御力 §e+2§7",
   "tooltip.astral_dice.sign.nardis_active": "立即获取 §e3§7 张随机临时牌，有效期 §93:00§7\n  临时牌只能装备和使用，无法丢弃或转移\n  计时结束后丢弃所有临时牌\n  使用主动技能不进入冻结，若有未消耗的临时牌则继续补给并重置过期时间",
+  "tooltip.astral_dice.temporary_card": "临时牌：不可丢弃或转移，放入其它容器即销毁，女王特权结束后消失",
   "astral_dice.guide.entry.nardis_sign.1": "绿洲女王立牌。主动「女王特权」：立即获取 3 张随机临时牌，有效期 3:00。临时牌只能装备和使用，无法丢弃或转移。在计时结束后，丢弃所有临时牌。使用主动技能不进入冻结，若有未消耗的临时牌，则继续补给并重置过期时间。",
   "astral_dice.guide.entry.nardis_sign.2": "被动「威压」：每装备一张攻击牌：攻击力 +2；每装备一张防御牌：防御力 +2。",
   "astral_dice.guide.entry.nardis_sign.3": "配方：黄金骰子（无星盘）档，与史莱姆立牌、上班族立牌同档。",

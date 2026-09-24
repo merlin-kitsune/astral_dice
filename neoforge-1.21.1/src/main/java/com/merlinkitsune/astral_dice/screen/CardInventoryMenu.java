@@ -276,7 +276,7 @@ public class CardInventoryMenu extends AbstractContainerMenu {
                     // 临时牌(绿洲女王 nardis):装配状态下的临时性只存在 AppliedStone 里(装配会销毁
                     // 物品栈),这里把它**还原**到重建出来的栈上 ⇒ 卡牌栏 UI 里也一眼可辨(isFoil 会亮)。
                     if (stone.temporary()) {
-                        TemporaryCardUtil.mark(itemStack);
+                        TemporaryCardUtil.mark(player, itemStack);
                     }
                     cardContainer.setItem(defIdx, itemStack);
                     defIdx++;
@@ -286,7 +286,7 @@ public class CardInventoryMenu extends AbstractContainerMenu {
                     ItemStack itemStack = stoneToItem(stone);
                     itemStack.set(ModDataComponents.CARD_USES.get(), stone.uses());
                     if (stone.temporary()) {
-                        TemporaryCardUtil.mark(itemStack);
+                        TemporaryCardUtil.mark(player, itemStack);
                     }
                     cardContainer.setItem(attIdx, itemStack);
                     attIdx++;

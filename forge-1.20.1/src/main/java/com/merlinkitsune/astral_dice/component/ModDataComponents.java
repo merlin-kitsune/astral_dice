@@ -69,6 +69,21 @@ public class ModDataComponents {
     public static final ItemDataKey<Boolean> TEMPORARY_CARD =
             ItemDataKey.create("temporary_card", Codec.BOOL);
 
+    /**
+     * 临时牌的**到期刻**(绝对 gameTime;{@code 0} = 未设限,判据见
+     * {@code item/card/TemporaryCardUtil#NO_EXPIRY})。
+     *
+     * <p>为什么必须存在物品上、以及语义与对齐时机:见 1.21.1 侧同键的说明 —— 第三方容器
+     * (AE2 存储总线 / 机械动力物品舱口)**不经槽位校验**地收走临时牌后,玩家级效果实例就够不着它,
+     * 牌只能自带到期刻才能在取回时自毁。骰子已装配的牌不写本键(那份临时性在
+     * {@code AppliedStone#temporary()})。
+     *
+     * <p>1.20.1 形态:未写入 NBT 前 {@code get} 返回 {@code null} ⇒ 读取一律
+     * {@code getOrDefault(stack, 0L)},写入走 {@code set(stack, v)}。
+     */
+    public static final ItemDataKey<Long> TEMPORARY_CARD_EXPIRES =
+            ItemDataKey.create("temporary_card_expires", Codec.LONG);
+
     // 专属效果牌:获得者 UUID(空表示尚未绑定,首次使用时绑定)
     public static final ItemDataKey<Optional<UUID>> OWNER_UUID =
             ItemDataKey.create("owner_uuid", UUIDUtil.CODEC.optionalFieldOf("id").codec());

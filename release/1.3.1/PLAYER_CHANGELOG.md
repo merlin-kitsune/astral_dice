@@ -23,6 +23,17 @@ This version adds **8 custom sound effects**, converted from the assets you supp
 
 ## ⚖️ Balance & Quality-of-Life
 
+### Temporary cards: no more surviving inside mod containers
+
+Temporary cards are supposed to live "only in your inventory and hand", but mod containers (AE2 storage terminals, Create vaults and item hatches) use completely different insertion paths, and **they cannot be blocked in code**. So the approach changed: **if we cannot block it, make it destroy itself**.
+
+- **Every card now carries its own self-destruct deadline**: written as "3 minutes from now" when the cards are granted, so it can be judged wherever the card ends up.
+- **Put into another container, or dropped on the ground - destroyed at once**: opening any container (chest, ender chest, a mod terminal...) sweeps once, and cards lying near you on the ground are cleared too.
+- **Re-casting the skill / relogging realigns the deadline**: the "each cast resets the 3 minutes" rule now covers the cards you already hold.
+- **One explicit boundary**: cards already sitting **inside** an AE2 network are out of reach, and we will not dig through another mod's storage - they merely **occupy a slot** there, and the moment they are taken out (into your inventory, a container, or the ground) they are destroyed on the next sweep and can **never be used again**.
+
+Temporary cards also have their own hint line now: **"Temporary card: cannot be dropped or transferred; destroyed if put into another container; disappears when Queen's Privilege ends"** (visible on hover, including on a card sitting in someone else's container).
+
 ### Card costs have a new look
 
 - The cost line at the top of a battle card's tooltip used to read "Cost: ⨀⨀⨀" - "Cost" was never localised, and the ⨀ glyph does not look great in some fonts.

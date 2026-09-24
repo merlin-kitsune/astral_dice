@@ -156,6 +156,9 @@ public class NardisSignItem extends BaseSignItem {
         //    HUD 计时器与立牌图标全靠这条原生效果实例,它也是「临时牌仍在有效期」的唯一真值。
         //    ⚠️ 顺序:发牌(第 2 步)**先于**重置(本步)—— 与既有「效果一定在牌进包之后才出现」同序。
         applyPrivilegeDuration(player);
+        // 到期刻对齐:需求「再次释放把有效期重置为 3:00」对**已存在的**临时牌同样成立 ——
+        // 不重写戳就会让旧牌先于效果到期(见 TemporaryCardUtil#realignExpiry)。
+        TemporaryCardUtil.realignExpiry(player);
         // 4. ActionBar:实际发放张数(默认「主动技能已启动」提示由 onSignActiveTriggered 抑制)
         sendSignActionBar(player, "msg.astral_dice.nardis_active", granted);
         return InteractionResult.SUCCESS;

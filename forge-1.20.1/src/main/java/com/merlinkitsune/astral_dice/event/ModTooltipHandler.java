@@ -317,6 +317,13 @@ public class ModTooltipHandler {
     public static void onItemTooltip(ItemTooltipEvent event) {
         ItemStack stack = event.getItemStack();
         var tooltip = event.getToolTip();
+        // 临时牌(绿洲女王 nardis「女王特权」)提示行:置于最前 —— 先说清「这是什么、为什么丢不掉、
+        // 放进别的容器会怎样」,再进各物品自己的费用与描述行。判据与全仓其它临时牌逻辑同源,
+        // 且**不显示剩余时间**(客户端只同步自己的效果实例,显示时间会在看别人牌时错)。
+        if (com.merlinkitsune.astral_dice.item.card.TemporaryCardUtil.isTemporary(stack)) {
+            tooltip.add(Component.translatable("tooltip.astral_dice.temporary_card")
+                    .withStyle(ChatFormatting.YELLOW));
+        }
         Player player = event.getEntity();
 
         if (stack.is(ModItems.DICE.get()) || stack.is(ModItems.GOLDEN_DICE.get()) || stack.is(ModItems.DIAMOND_DICE.get())

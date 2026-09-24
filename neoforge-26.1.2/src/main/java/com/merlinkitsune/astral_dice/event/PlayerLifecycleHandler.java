@@ -226,6 +226,9 @@ public class PlayerLifecycleHandler {
         if (!(event.getEntity() instanceof Player player)) return;
         if (player.level().isClientSide()) return;
         ModAttachments.setDefenseCardConsumedThisBlessing(player, false);
+        // 临时牌到期刻对齐:效果时长只在玩家在线时流逝,而到期刻是绝对 gameTime
+        // (多人服务器离线期间照走)⇒ 重登时按效果剩余重写一次,避免把仍然有效的牌判成过期。
+        com.merlinkitsune.astral_dice.item.card.TemporaryCardUtil.realignExpiry(player);
         // 计时器守卫:清空效果结束时刻记录,避免重登后守卫重新施加旧效果
         EffectTimerGuard.clear(player);
         ModEffectRemoval.remove(player, ModEffects.DICE_BLESSING);

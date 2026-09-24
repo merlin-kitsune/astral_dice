@@ -23,6 +23,8 @@
 
 #### Text & Display
 
+- **Temporary cards now have a tooltip hint line** (user ruling 2026-09-24: "temporary cards lack a tooltip hint"): both card root classes (battle and effect) now show a yellow line at the very top of the tooltip - "Temporary card: cannot be dropped or transferred; destroyed if put into another container; disappears when Queen's Privilege ends" (new lang key `tooltip.astral_dice.temporary_card`, three lines x zh/en/ja, key count 811 -> **812**). The line deliberately shows **no remaining time**: the client only syncs its own effect instances (other entities' effects are not synced), so showing a time would be wrong when looking at a card inside someone else's container.
+
 - **The card cost line now uses a new symbol and a localised label** (user ruling 2026-09-24): the cost line at
   the top of a battle card's tooltip used to be hard-coded `Cost: ⨀⨀⨀` ("Cost" was never localised, and the
   symbol was the mathematical N-ary operator `⨀` U+2A00, whose glyph is questionable in some fonts). It is now
@@ -66,6 +68,13 @@
 - **Smart Watch: the card top-up threshold drops from 10 to 6** (user ruling 2026-09-24).
 
 #### Signs & State
+
+- **Temporary cards now self-destruct when a third-party container (AE2 storage, Create item hatches, ...) takes them - they can no longer be "banked" for later** (reported 2026-09-24: "temporary cards cannot be kept out of mod containers, so they never disappear"):
+  The short version: this kind of insertion **cannot be blocked generically** - measured: NeoForge's own `ItemStackHandler#insertItem` **only** asks `isItemValid` (true by default) and **not** the stack-level item hook `ItemStack#canFitInsideContainerItems` (only `ComponentItemHandler` asks it), while AE2's storage bus writes its own storage implementation and Create's vaults / hatches go through `IItemHandler#insertItem`. So both slot guards and the stack-level hook are blind to them. The answer is therefore **self-destruct when we cannot block**:
+  - New data component `temporary_card_expires` (long, absolute `gameTime`, **persistent only, never synced**): written as "now + 3:00" when the cards are granted, so a card carries its own deadline - the only information that can be judged without knowing its owner;
+  - New self-destruct sweep (every 20 ticks, `TemporaryCardUtil#purgeOutOfPlace`): (1) inside **whatever container menu is open**, a temporary card sitting in a slot that is not "the player's own inventory / offhand / hand / this mod's card panel" is **destroyed at once**, while cards in legal slots are judged by their deadline; (2) **dropped items** within 16 blocks of the player are `discard`ed outright;
+  - **Three alignment points** (`realignExpiry`, rewriting the deadline from the effect instance's remaining time as the single source of truth): granting, **re-casting** (the ruling "each cast resets the validity to 3:00" applies to already-existing cards too) and **player login** (cancelling the wall-clock drift caused by "effect duration freezes while offline, but absolute time keeps running").
+  Note the explicit boundary: the **inside** of third-party storage (storage cells inside an AE2 network, vaults nobody opened) is not actively purged - we can neither see it nor should we dig through another mod's storage. It may therefore occupy one of their slots, but **any retrieval** (into the inventory, a foreign slot, or the ground) is destroyed by the next sweep, so "never disappears" no longer holds. Cards from older saves without a deadline are treated as "unlimited" (we do not invent a past timestamp for them, which would wipe them on login) and still obey the three existing rules: death / effect end / illegal location.
 
 - **Game Master Sign's Mouse Shield: a single hit bigger than its yellow hearts no longer reaches your red hearts** (user ruling
   2026-09-24): the shield still gives **5 yellow hearts (10 absorption)** and still vanishes once they are used up, but a hit larger than

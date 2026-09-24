@@ -5,9 +5,11 @@ import com.merlinkitsune.astral_dice.component.ModDataComponents;
 import com.merlinkitsune.astral_dice.component.WeaponEnhancement;
 import com.merlinkitsune.astral_dice.combat.CardRegistry;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
+import com.merlinkitsune.astral_dice.effect.NardisPrivilegeEffect;
 import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
 import com.merlinkitsune.astral_dice.item.dice.DiceCurioItem;
 import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
@@ -109,6 +111,168 @@ public final class TemporaryCardUtil {
     public static void unmark(ItemStack stack) {
         if (stack == null || stack.isEmpty()) return;
         stack.remove(ModDataComponents.TEMPORARY_CARD.get());
+    }
+
+    /**
+     * 「到期刻」缺省值(= 不设限)。
+     *
+     * <p>旧存档里已经存在的临时牌没有这个戳 ⇒ 按"不设限"处理 —— 它们仍受全部**既有**收口约束
+     * (非法位置立即销毁 / 玩家死亡 / 效果结束 ⇒ 整体清空),只是不额外走"到点自毁"。
+     * 这是刻意的向后兼容取舍:不给老牌凭空定一个过去时刻,否则重登即被清。
+     */
+    public static final long NO_EXPIRY = 0L;
+
+    /** 自毁巡查对**地面掉落物**的扫描半径(格):只扫玩家附近,避免做全维度实体查询 */
+    private static final double DROP_SWEEP_RADIUS = 16.0D;
+
+    /** 该栈的到期刻(绝对 gameTime;{@link #NO_EXPIRY} = 不设限) */
+    public static long expiryOf(ItemStack stack) {
+        if (stack == null || stack.isEmpty()) return NO_EXPIRY;
+        Long v = stack.get(ModDataComponents.TEMPORARY_CARD_EXPIRES.get());
+        return v == null ? NO_EXPIRY : v;
+    }
+
+    /** 是否已过到期刻(无戳 = 不过期) */
+    public static boolean isExpired(ItemStack stack, long now) {
+        long expiry = expiryOf(stack);
+        return expiry > NO_EXPIRY && now >= expiry;
+    }
+
+    /** 打上临时牌标记,并把到期刻写成 {@code expiresAt}(绝对 gameTime;{@code <= 0} 时只打标记) */
+    public static void mark(ItemStack stack, long expiresAt) {
+        if (stack == null || stack.isEmpty()) return;
+        mark(stack);
+        if (expiresAt > NO_EXPIRY) {
+            stack.set(ModDataComponents.TEMPORARY_CARD_EXPIRES.get(), expiresAt);
+        }
+    }
+
+    /** 打上标记,并把到期刻对齐到「现在 + 效果剩余」(效果不在时按满时长兜底) */
+    public static void mark(Player player, ItemStack stack) {
+        if (player == null || stack == null || stack.isEmpty()) return;
+        mark(stack, player.level().getGameTime() + remainingTicks(player));
+    }
+
+    /** 女王特权的剩余 tick;效果不在时返回满时长({@link NardisPrivilegeEffect#DURATION_TICKS}) */
+    private static int remainingTicks(Player player) {
+        MobEffectInstance fx = player == null ? null : player.getEffect(ModEffects.NARDIS_PRIVILEGE);
+        return fx != null ? Math.max(1, fx.getDuration()) : NardisPrivilegeEffect.DURATION_TICKS;
+    }
+
+    /**
+     * 把**够得着的**临时牌的到期刻确定性对齐到「现在 + 效果剩余」,返回处理的张数(幂等)。
+     *
+     * <p><b>为什么需要对齐</b>:到期刻是「发放刻 + 3:00」的绝对时间,而效果时长只在玩家在线时流逝
+     * (多人服务器上 `gameTime` 却照走)⇒ 不对齐的话,长时间离线后重登会把仍然有效的牌判成过期。
+     * 对齐 = 以**效果实例的剩余时长**为唯一真值重新写戳,与
+     * `BaseSignItem#realignLockEndToGateEffect` 是同一手法。
+     *
+     * <p><b>三个调用点</b>(缺一会出问题):
+     * <ol>
+     *   <li>发放(`grantRandom` 发牌时已写初值);</li>
+     *   <li>**再次释放**(`NardisSignItem#handleUse` 重置效果时长之后)—— 需求「再次释放把有效期重置为
+     *       3:00」对**已存在的牌**同样成立,不重写就会让旧牌先于效果到期;</li>
+     *   <li>**玩家登录**(`PlayerLifecycleHandler`)—— 抵消离线墙钟漂移。</li>
+     * </ol>
+     *
+     * <p>扫描面 = 当前容器菜单里**允许临时牌**的槽位 + 光标({@link #isPlayerOwnedOrPermissive} 判据);
+     * 骰子已装配的牌**不在**此列(它们的临时性在 `AppliedStone` 里、由效果实例直接承载);
+     * 非法位置的牌不对齐(交给 {@link #purgeOutOfPlace} 直接销毁)。
+     * 只写组件不标脏槽位:该组件不上网,客户端看不到差异,不需要发包。
+     */
+    public static int realignExpiry(Player player) {
+        if (player == null || player.level().isClientSide()) return 0;
+        if (!player.hasEffect(ModEffects.NARDIS_PRIVILEGE)) return 0;        // 无效果 ⇒ 牌马上会被 tick 清掉,不对齐
+        long deadline = player.level().getGameTime() + remainingTicks(player);
+        int touched = 0;
+        try {
+            var menu = player.containerMenu;
+            if (menu != null) {
+                for (Slot slot : menu.slots) {
+                    ItemStack stack = slot.getItem();
+                    if (!isTemporary(stack) || !isPlayerOwnedOrPermissive(slot)) continue;
+                    mark(stack, deadline);
+                    touched++;
+                }
+                ItemStack carried = menu.getCarried();
+                if (isTemporary(carried)) {
+                    mark(carried, deadline);
+                    touched++;
+                }
+            }
+        } catch (Throwable t) {
+            LOGGER.error("[Astral Dice][TemporaryCard] 对齐临时牌到期刻失败", t);
+        }
+        return touched;
+    }
+
+    /**
+     * **自毁巡查**(2026-09-24 用户裁决「为临时效果牌增加自毁机制」),返回移除张数(幂等)。
+     *
+     * <h2>为什么需要它(拦截在先、自毁兜底)</h2>
+     * 临时牌的语义是「只能存在于玩家物品栏 0..35 / 副手 / 手中 / 本模组卡牌栏 / 骰子已装配」。
+     * 槽位面已有两道守卫({@code SlotPlaceGuardMixin} / {@code ContainerMoveGuardMixin})与
+     * 1.21.1 的栈级钩子,但**第三方容器的插入路径可以完全绕过槽位校验** ——
+     * 最典型的是 AE2 的存储总线(直接写自己的存储实现)与机械动力的物品舱口/仓库(走
+     * {@code IItemHandler#insertItem})。已实测:NeoForge 自己的 {@code ItemStackHandler#insertItem}
+     * **只**问 {@code isItemValid}(缺省恒真),**不**问 {@code canFitInsideContainerItems}
+     * ⇒ 这类容器**无法**用物品钩子拦住(只有 {@code ComponentItemHandler} 会问)。
+     * 因此改为:拦不住就**让它自毁** —— 凡在允许位置之外被"看见"一次,立即销毁。
+     *
+     * <h2>两个巡查面</h2>
+     * <ol>
+     *   <li><b>当前打开的容器菜单的全部槽位</b>:允许位置({@link #isPlayerOwnedOrPermissive})之外的
+     *       临时牌一律销毁 —— 覆盖箱子 / 末影箱 / 潜影盒 / 各类模组界面(玩家一打开就清);
+     *       合法位置上的牌则按 {@link #isExpired} 收口(杀掉"存进容器过夜、事后取回"的旧牌);</li>
+     *   <li><b>玩家附近({@value #DROP_SWEEP_RADIUS} 格)的地面掉落物</b>:临时牌不得落地 ⇒ 直接
+     *       {@code discard}(兜住第三方 {@code player.drop} 与老版本残留)。</li>
+     * </ol>
+     *
+     * <p>⚠️ **明确够不着的场景**:第三方存储内部(AE2 网络里的存储元件 / 未打开的仓库)不会被主动
+     * 清空 —— 那里我们既扫不到也不该去扫。后果是它**可能占着对方的一个格子**,但**任何一次取出**
+     * (无论落到玩家物品栏、外部槽位还是地面)都会在下一次巡查被销毁 ⇒ "永不消失"不再成立。
+     *
+     * <p>成本:由调用方每 20 tick 调一次;单次 = 遍历一个菜单的槽位(几十个)+ 一次 AABB 实体查询。
+     */
+    private static int purgeOutOfPlace(Player player, long now) {
+        int removed = 0;
+        try {
+            var menu = player.containerMenu;
+            if (menu != null) {
+                for (Slot slot : menu.slots) {
+                    if (slot.container == null) continue;         // 无容器槽位无法安全写入,跳过
+                    ItemStack stack = slot.getItem();
+                    if (!isTemporary(stack)) continue;
+                    if (isPlayerOwnedOrPermissive(slot) && !isExpired(stack, now)) continue;
+                    removed += stack.getCount();
+                    slot.set(ItemStack.EMPTY);                    // Slot#set 内部已 setChanged
+                }
+                ItemStack carried = menu.getCarried();
+                if (isTemporary(carried) && isExpired(carried, now)) {
+                    removed += carried.getCount();
+                    menu.setCarried(ItemStack.EMPTY);
+                }
+            }
+        } catch (Throwable t) {
+            LOGGER.error("[Astral Dice][TemporaryCard] 清理非法位置临时牌失败", t);
+        }
+        try {
+            var level = player.level();
+            var box = player.getBoundingBox().inflate(DROP_SWEEP_RADIUS);
+            for (ItemEntity entity : level.getEntitiesOfClass(ItemEntity.class, box)) {
+                ItemStack stack = entity.getItem();
+                if (!isTemporary(stack)) continue;
+                removed += stack.getCount();
+                entity.discard();
+            }
+        } catch (Throwable t) {
+            LOGGER.error("[Astral Dice][TemporaryCard] 清理地面临时牌失败", t);
+        }
+        if (removed > 0) {
+            LOGGER.debug("[Astral Dice][TemporaryCard] 自毁巡查: player={} removed={}",
+                    player.getName().getString(), removed);
+        }
+        return removed;
     }
 
     // ══════════════════════════════════════════════════════════════════════════
@@ -229,7 +393,9 @@ public final class TemporaryCardUtil {
         for (int i = 0; i < toGrant; i++) {
             ItemStack card = RandomCardHandler.randomCard(category);
             if (card.isEmpty()) break;
-            mark(card);
+            // 到期刻初值 = 现在 + 满时长;释放流程随后会用 realignExpiry 按效果实际剩余再写一次
+            mark(card, player.level().getGameTime()
+                    + com.merlinkitsune.astral_dice.effect.NardisPrivilegeEffect.DURATION_TICKS);
             VitaminPillChipItem.giveCard(player, card);
             granted++;
         }
@@ -490,6 +656,13 @@ public final class TemporaryCardUtil {
     public static void tick(Player player) {
         if (player == null || player.level().isClientSide()) return;
         try {
+            // 自毁巡查(2026-09-24 用户裁决「为临时效果牌增加自毁机制」):临时牌只允许存在于
+            // 「玩家物品栏 0..35 / 副手 / 手中 / 本模组卡牌栏 / 骰子已装配」五处 ——
+            // 第三方容器(不经槽位校验的插入路径)拦不住,就改成"看见即销毁";另杀过期的旧牌。
+            // 成本受控:每 20 tick 一次;下面"无效果 ⇒ 清空"那一条仍需**每 tick** 判定,不动。
+            if (player.tickCount % 20 == 0) {
+                purgeOutOfPlace(player, player.level().getGameTime());
+            }
             MobEffectInstance fx = player.getEffect(ModEffects.NARDIS_PRIVILEGE);
             if (fx == null) {
                 boolean hasCards = countTemporary(player) > 0 || countTemporaryEquipped(player) > 0;
