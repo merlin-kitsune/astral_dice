@@ -33,6 +33,15 @@
 - Removed **unused** `import ... Enemy` / `import ... Monster` from 27 files (hygiene only, no behaviour change).
 - **A dedicated damage type for "skill damage", fixing the Sherry Sign wrongly running the spell-damage chain** (user ruling 2026-09-24, "create a separate damage tag for skill damage so it is not mixed with spell damage"): added `astral_dice:skill_damage` (registered in `bypasses_armor`, so it still ignores armour and armour toughness; **not** in the spell-damage whitelist) and switched the "Strength Throw" landing damage from `astral_dice:card_spell` to it. That flat 2 (+5) damage used to resolve as **spell damage**, so it was amplified by the Ninja Star, the Piercing Gun, the Amethyst Dice, the Marker Sprayer, the Magic Quiver and the damage effect card bonuses, and could trigger the Electric Glove's splash. It now deals only its own amount; death messages were added for the new type. It is also registered in `bypasses_cooldown` (same as true damage), so skill damage **bypasses the hurt-invulnerability window** and is never swallowed by a target's brief invulnerability 
 
+#### Signs & State
+
+- **Mamushi Sign (True Dragon Form) and Hanna Sign (Doll Complete): both counters are now voided as soon as the
+  latched state is reached** - Awakening and Doll Crafting used to keep counting after the state was obtained: on the
+  Hanna side the counter would **climb back to 7 and re-trigger the conversion**, and the Doll Crafting icon would
+  reappear; on the Mamushi side "Awakening: 8 / 8" stayed pinned in the item description forever. Now the counter is
+  invalidated the moment the state is reached - Awakening stops accumulating in True Dragon Form (pinned at 8) and its
+  counter row is no longer shown (only the True Dragon Form label remains); Doll Crafting accepts no further layer
+  writes once Doll Complete is reached.
 
 #### Text & Handbook
 

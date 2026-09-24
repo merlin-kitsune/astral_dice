@@ -127,12 +127,19 @@ public class HannaSignItem extends BaseSignItem {
             setComplete(holder, true);
             return;
         }
+        // 「人偶完成」是锁存态:完成即表示「人偶制作」计数器**已失效** ⇒ 不再接受层数写入
+        // (否则计数器会在归零后重新爬满 7 层、反复触发满层转换,「人偶制作」图标也会再次出现)。
+        if (isComplete(holder)) return;
         int clamped = Math.max(0, Math.min(MAX_CRAFT - 1, value));
         ModAttachments.setHannaDollCraftLayers(holder, clamped);
         HannaDollCraftEffect.mirror(holder, clamped);
     }
 
-    /** 层数增减(自动处理满层转换) */
+    /**
+     * 层数增减(自动处理满层转换)。
+     *
+     * <p>已进入「人偶完成」时**空操作** —— 该状态是锁存态,计数器已失效(闸门在 {@link #setCraftLayers})。
+     */
     public static void addCraftLayers(Player holder, int amount) {
         if (holder == null || amount == 0) return;
         setCraftLayers(holder, getCraftLayers(holder) + amount);

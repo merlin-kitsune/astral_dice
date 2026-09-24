@@ -379,6 +379,8 @@ public class MamushiSignItem extends BaseSignItem {
      * @return true = 本次确实加了 1 层
      */
     private static boolean grantAwakeningFromBatch(Player giver, Player receiver) {
+        // 真龙形态是锁存态:形态成立即表示「觉醒」计数器**已失效** ⇒ 不再累计(值恒为 AWAKEN_MAX)。
+        if (isDragonForm(giver)) return false;
         long now = giver.level().getGameTime();
         Batch batch = BATCHES.get(giver.getUUID());
         if (batch == null || batch.tick != now) {
@@ -451,12 +453,13 @@ public class MamushiSignItem extends BaseSignItem {
         if (!isEquipped(player)) return;
         int bites = DragonCardUtil.countEquippedType(player, DragonCardUtil.TYPE_BITE);
         if (bites <= 0) return;
-        boolean wasDragon = isDragonForm(player);
-        setAwakening(player, Math.min(getAwakening(player) + bites, AWAKEN_MAX));
         setBiteBonusActive(player, true);
-        // 7 层 + 撕咬触发赐福 ⇒ 加层后 8 层 ⇒ 立即真龙(自然结果,无需特判);
-        // 提示与转换走与被动加层同一出口(F6b:msg.astral_dice.mamushi_dragon_form)
-        triggerDragonFormIfNeeded(player, wasDragon);
+        // 真龙形态是锁存态:形态成立即表示「觉醒」计数器**已失效** ⇒ 不再累计(值恒为 AWAKEN_MAX);
+        // 撕咬加成锁存照旧写入 —— 加成按 `min(觉醒, BITE_BONUS_CAP)` 实时取值,与计数器失效与否无关。
+        if (isDragonForm(player)) return;
+        setAwakening(player, Math.min(getAwakening(player) + bites, AWAKEN_MAX));
+        // 上方已早退「形态已成立」的分支 ⇒ 走到这里必为「首次进入」,等价旧 wasDragon == false
+        triggerDragonFormIfNeeded(player, false);
     }
 
     /** 骰神赐福**结束**时调用:清除撕咬加成锁存(裁决 4:加成实时读取,锁存清掉即失效) */

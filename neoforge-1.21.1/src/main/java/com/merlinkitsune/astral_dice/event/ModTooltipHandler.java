@@ -1457,13 +1457,17 @@ public class ModTooltipHandler {
             addSignPassiveTitle(tooltip, "湖沼之王");
             addSignLines(tooltip, "tooltip.astral_dice.sign.mamushi_passive");
             if (event.getEntity() instanceof Player p) {
-                addSignCounter(tooltip, "tooltip.astral_dice.sign.mamushi_awaken",
-                        com.merlinkitsune.astral_dice.item.sign.MamushiSignItem.getAwakening(p),
-                        com.merlinkitsune.astral_dice.item.sign.MamushiSignItem.AWAKEN_MAX);
-                if (com.merlinkitsune.astral_dice.item.sign.MamushiSignItem.getAwakening(p)
-                        >= com.merlinkitsune.astral_dice.item.sign.MamushiSignItem.AWAKEN_MAX) {
+                // 「觉醒」计数器在进入真龙形态后**已失效** ⇒ 不再显示该行,只留「真龙形态」标注。
+                // 判据用**已同步**的觉醒层数(客户端 tooltip 不发起 Curios 调用)。
+                int mamushiAwaken =
+                        com.merlinkitsune.astral_dice.item.sign.MamushiSignItem.getAwakening(p);
+                if (mamushiAwaken >= com.merlinkitsune.astral_dice.item.sign.MamushiSignItem.AWAKEN_MAX) {
                     tooltip.add(tt("tooltip.astral_dice.sign.mamushi_dragon_form")
                             .withStyle(ChatFormatting.GOLD));
+                } else {
+                    addSignCounter(tooltip, "tooltip.astral_dice.sign.mamushi_awaken",
+                            mamushiAwaken,
+                            com.merlinkitsune.astral_dice.item.sign.MamushiSignItem.AWAKEN_MAX);
                 }
             }
             addSignCooldownRemaining(tooltip, event.getEntity() instanceof Player p ? p : null);

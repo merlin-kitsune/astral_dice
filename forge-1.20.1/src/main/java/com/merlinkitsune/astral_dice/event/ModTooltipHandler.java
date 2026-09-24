@@ -1429,7 +1429,7 @@ public class ModTooltipHandler {
         // 牌转换 / 死亡不重置)。动态计数行照大当家立牌 fen_recharge 的 addSignCounter 写法;
         // 觉醒层数经 mamushi_awakening 同步到客户端(tooltip 需要读)。
         // 键的文案在 lang 里是**静态文案**(无占位符)⇒ addSignLines 不传 args;
-        // 计数行走 addSignCounter(mamushi_awaken 是 "%s/%s" 两参)。
+        // 计数行走 addSignCounter(mamushi_awaken 是 "%s/%s" 两参);**真龙形态成立后该行不再显示**(计数器已失效)。
         if (stack.is(ModItems.MAMUSHI_SIGN.get())) {
             tooltip.add(Component.empty());
             addSignKeyHint(tooltip);
@@ -1437,15 +1437,15 @@ public class ModTooltipHandler {
             addSignLines(tooltip, "tooltip.astral_dice.sign.mamushi_active");
             addSignPassiveTitle(tooltip, "湖沼之王");
             addSignLines(tooltip, "tooltip.astral_dice.sign.mamushi_passive");
-            if (event.getEntity() != null) {
-                addSignCounter(tooltip, "tooltip.astral_dice.sign.mamushi_awaken",
-                        com.merlinkitsune.astral_dice.item.sign.MamushiSignItem.getAwakening(player),
-                        com.merlinkitsune.astral_dice.item.sign.MamushiSignItem.AWAKEN_MAX);
-            }
-            // 真龙形态标注行(仅锁存态成立时显示;金色,与「觉醒已达 8 层」的语义对应)
+            // 真龙形态标注行(仅锁存态成立时显示;金色,与「觉醒已达 8 层」的语义对应);
+            // 「觉醒」计数器在进入真龙形态后**已失效** ⇒ 此时不再显示计数器行,只留该标注。
             if (com.merlinkitsune.astral_dice.item.sign.MamushiSignItem.isDragonForm(player)) {
                 tooltip.add(Component.translatable("tooltip.astral_dice.sign.mamushi_dragon_form")
                         .withStyle(ChatFormatting.GOLD));
+            } else if (event.getEntity() != null) {
+                addSignCounter(tooltip, "tooltip.astral_dice.sign.mamushi_awaken",
+                        com.merlinkitsune.astral_dice.item.sign.MamushiSignItem.getAwakening(player),
+                        com.merlinkitsune.astral_dice.item.sign.MamushiSignItem.AWAKEN_MAX);
             }
             addSignCooldownRemaining(tooltip, event.getEntity());
         }

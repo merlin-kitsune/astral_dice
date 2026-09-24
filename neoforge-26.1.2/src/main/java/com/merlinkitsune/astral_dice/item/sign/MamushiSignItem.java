@@ -197,12 +197,18 @@ public class MamushiSignItem extends BaseSignItem {
      * <p>层数**封顶** {@link #AWAKEN_MAX}(用户需求:撕咬的加层"受 8 层上限约束";无封顶会让
      * tooltip 显示成 {@code 9/8} / {@code 12/8})。真龙形态本身是锁存态,故封顶不影响形态判定,
      * 撕咬加成仍按 {@code min(觉醒, }{@link #BITE_BONUS_CAP}{@code )} 实时取值。
+     *
+     * <p><b>计数器失效</b>(2026-09-24 用户裁决):真龙形态成立后「觉醒」**不再累计** —— 加层入口
+     * 直接早退,值恒为 {@link #AWAKEN_MAX};形态本身是锁存态(判据 {@code >= }{@link #AWAKEN_MAX}),
+     * 故计数器失效不影响形态判定。
      */
     private static void addAwakening(Player player, int delta) {
         if (player == null || delta <= 0) return;
-        boolean wasDragon = isDragonForm(player);
+        // 真龙形态是锁存态:形态成立即表示「觉醒」计数器**已失效** ⇒ 不再累计(值恒为 AWAKEN_MAX)。
+        if (isDragonForm(player)) return;
         setAwakening(player, Math.min(getAwakening(player) + delta, AWAKEN_MAX));
-        if (!wasDragon && isDragonForm(player)) {
+        // 走到这里此前必不在形态(上方已早退)⇒ 加层后达阈值即为「首次进入」
+        if (isDragonForm(player)) {
             sendSignActionBar(player, "msg.astral_dice.mamushi_dragon_form");
             transformToDragon(player);
         }

@@ -58,6 +58,10 @@
 
 - **Sherry Sign, "Strength Throw"**: the 2 (+5) damage dealt on landing used to resolve as **spell damage** - so it was amplified by the Ninja Star, the Piercing Gun, the Amethyst Dice, the Marker Sprayer, the Magic Quiver and the damage effect card bonuses, and could even trigger the Electric Glove's splash. It now uses a **separate skill-damage type**: only its own flat amount is dealt (still armour-piercing). It also **bypasses the hurt-invulnerability window**, like true damage.
 
+### Mamushi & Hanna: the counters stop once True Dragon Form / Doll Complete is reached
+
+- **Mamushi Sign**: in True Dragon Form, Awakening no longer accumulates (it stays pinned at 8), and the "Awakening: 8 / 8" row is no longer shown in the item description - only the True Dragon Form label remains.
+- **Hanna Sign**: once Doll Complete is reached, Doll Crafting no longer accumulates. It used to climb back from 0 to 7, re-trigger the completion and make the Doll Crafting icon reappear; now it stays void after completion.
 
 ### Text and display
 
