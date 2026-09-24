@@ -320,18 +320,22 @@ public final class SpellDamageRegistry {
                 return bonus + MarkManager.getLevel(ctx.target);
             }
         });
-        // 贯穿之铳:只要佩戴者对**敌对目标**造成远程/魔法伤害,即额外增加目标防御力点数的伤害。
+        // 贯穿之铳:佩戴者对目标造成**远程/魔法伤害**即额外增加「目标防御力点数」的伤害。
         // (2026-09-24 用户裁决:与忍术飞镖保持一致 —— 移除「已使用伤害效果牌」前提)
+        // (2026-09-24 用户裁决:目标判定也与忍术飞镖对齐 —— 移除「必须是敌对目标」这一范围检查)
         //
-        // ⚠️ 与忍术飞镖的唯一差别:本修饰器**保留目标范围检查**(必须是敌对目标) ——
-        // 其加成值取自「目标防御力点数」,对非敌对目标(被动动物/队友/自己)生效没有玩法意义。
-        // 同忍术飞镖,「进入本方法」已由 DamageEffectCardHandler 用 isSpellDamage 筛过作用域
-        // ⇒ 等价于「本次是远程/魔法伤害」,无需重复判定。
+        // ⚠️ 本修饰器**不再做任何目标范围判定**,与忍术飞镖完全同形:「进入本方法」已由
+        //  DamageEffectCardHandler 用 isSpellDamage 筛过作用域 ⇒ 等价于「本次是远程/魔法伤害」;
+        //  目标侧由该处理器的 isBlessingTarget 闸门统一把关(敌对生物 / 中立生物(宠物除外) /
+        //  非同队玩家 / Boss / 正在攻击你的怪),本修饰器不二次收窄。
+        //  历史:旧实现额外要求 HostileTargets.isHostile(attacker, target) —— 该判据比闸门**更窄**,
+        //  使「非同队但从未攻击过你的玩家」与「非 NeutralMob 的中立生物(山羊/羊驼/狐狸等)」
+        //  只吃忍术飞镖、不吃贯穿之铳 ⇒ 已按上述裁决删除。
+
         registerModifier(new SpellDamageModifier() {
             @Override
             public boolean isActive(SpellDamageContext ctx) {
-                return ctx.hasCurio(ModItems.PIERCING_GUN.get())
-                        && HostileTargets.isHostile(ctx.attacker, ctx.target);
+                return ctx.hasCurio(ModItems.PIERCING_GUN.get());
             }
 
             @Override

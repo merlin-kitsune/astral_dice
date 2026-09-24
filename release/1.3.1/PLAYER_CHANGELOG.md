@@ -18,11 +18,11 @@
 - ⚠️ **Measured impact**: the only vanilla mob that is both a neutral mob and tameable is the **wolf**, so this entry is effectively "**an untamed wolf now counts as a hostile target, a tamed one does not**".
 - The criterion is **global**: the single entry point for "hostile target" lives in the prerequisite library `StarEngine Lib`, so **every** effect that depends on it follows suit — Dice Blessing triggering, spell-damage bonuses, the target selector's selectability checks (crosshair filter / radius highlight / server-side confirmation), railgun lightning target selection, and more.
 
-### Piercing Gun: no longer requires "a damage effect card has been used"
+### Piercing Gun: its condition now matches the Ninja Star exactly
 
-- **The Piercing Gun drops its "while a damage effect card is active" prerequisite**: it used to additionally require an active damage effect card (one of Monster Laser / Monster Brick / Orbital Strike / Directional Blast, or the hit itself being the Living Page's spell damage), which meant **plain arrows, thrown projectiles and linked-mod spells** never received the bonus. Now it simply reads: **wearing the Piercing Gun and dealing ranged/magic damage to a hostile target grants bonus damage equal to the target's defence points**.
-- ⚠️ The one difference from the Ninja Star: the Piercing Gun **keeps** the "the target must be a hostile target" range check — its bonus is taken from the target's defence points, which is meaningless against passive animals, teammates or yourself.
-- The item description and handbook entry had that prerequisite removed to match.
+- **The Piercing Gun drops its "while a damage effect card is active" prerequisite**: it used to additionally require an active damage effect card (one of Monster Laser / Monster Brick / Orbital Strike / Directional Blast, or the hit itself being the Living Page's spell damage), which meant **plain arrows, thrown projectiles and linked-mod spells** never received the bonus. Now it simply reads: **wearing the Piercing Gun and dealing ranged/magic damage to a target grants bonus damage equal to the target's defence points**.
+- **Its target criterion now matches the Ninja Star exactly — the "must be a hostile target" restriction is gone**: the old test was narrower than the actual gate, so **non-teammate players who had never attacked you** and **neutral mobs without vanilla's "neutral" marker (goats / llamas / foxes etc.)** received the Ninja Star bonus but not the Piercing Gun one. The two are now fully identical, with the target scope decided by the spell-damage chain's single gate.
+- The item description and handbook entry had both the prerequisite and the "hostile" qualifier removed to match.
 
 ## 🐛 Bug Fixes
 
