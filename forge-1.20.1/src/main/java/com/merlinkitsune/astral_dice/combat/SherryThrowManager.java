@@ -1,4 +1,5 @@
-// SHERRY_AIM_PATCH 2026-09-22（怪力侦探：法伤结算 / 准星落点 / 隔墙过滤 / 落地冻结）
+// SHERRY_AIM_PATCH 2026-09-22（怪力侦探：结算 / 准星落点 / 隔墙过滤 / 落地冻结）
+// 2026-09-24：落地结算的伤害类型由 card_spell 改为 skill_damage（技能类伤害与法伤分离）
 package com.merlinkitsune.astral_dice.combat;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
@@ -150,24 +151,31 @@ public final class SherryThrowManager {
     }
 
     /**
-     * 落地结算:**法伤**(2 点 + 额外) + 1 层「标记」,并显示**法伤数字**。
+     * 落地结算:**技能类伤害**(2 点 + 额外) + 1 层「标记」,并显示伤害数字。
      *
-     * <p>⚠️ 必须走本模组**法伤**类型 {@code astral_dice:card_spell},并以
-     * {@link DiceCombatEvents#aoeProcessing} 包裹:原先用的
-     * {@code damageSources().playerAttack(...)} 会被当作**玩家近战** ⇒ 意外吃骰伤、
-     * 并触发「战斗伤害类」筹码(用户 2026-09-22 裁决)。
-     * 同时按「活体书页」同款发**法伤颜色**的伤害数字(用户要求「显示法伤数字」)。
+     * <p>⚠️ **必须走 {@code astral_dice:skill_damage}**(专门的「技能类伤害」类型),
+     * 并以 {@link DiceCombatEvents#aoeProcessing} 包裹。两条排除项都是踩过的坑:
+     * <ul>
+     *   <li>不能用 {@code damageSources().playerAttack(...)} —— 会被当作**玩家近战**,
+     *       意外吃骰伤、并触发「战斗伤害类」筹码(用户 2026-09-22 裁决);</li>
+     *   <li>也不能用 {@code astral_dice:card_spell} —— 它是 {@code SpellDamageRegistry}
+     *       法伤白名单的第 4 条 matcher ⇒ 立牌的固定点数会被忍术飞镖 / 贯穿之铳 / 紫晶骰子 /
+     *       标记喷罐 / 魔法箭袋 / 效果牌加成层层放大,还会触发电击手套的范围波及
+     *       (**用户 2026-09-24 裁决「为技能类伤害创建单独的伤害标签,避免与法伤混用」**)。</li>
+     * </ul>
+     * 该类型同样登记于 {@code bypasses_armor}(无视护甲值与盔甲韧性),但不在法伤白名单内
+     * ⇒ **只结算自身点数**。伤害数字沿用「活体书页」同款配色(视觉不变)。
      */
     private static void settle(LivingEntity target, ServerLevel level, Player caster, int bonusDamage) {
         float damage = 2.0F + bonusDamage;
         if (caster != null && !caster.level().isClientSide()) {
             DiceCombatEvents.aoeProcessing = true;
             try {
-                target.hurt(com.merlinkitsune.astral_dice.damage.ModDamageTypes.cardSpell(level, caster), damage);
+                target.hurt(com.merlinkitsune.astral_dice.damage.ModDamageTypes.skillDamage(level, caster), damage);
             } finally {
                 DiceCombatEvents.aoeProcessing = false;
             }
-            sendSpellDamageNumber(target, (int) damage);
+            sendSkillDamageNumber(target, (int) damage);
         } else {
             target.hurt(target.damageSources().generic(), damage);
         }
@@ -177,10 +185,10 @@ public final class SherryThrowManager {
     }
 
     /**
-     * 发**法伤颜色**的伤害数字(与「活体书页」同款) ——
+     * 发技能伤害数字(**配色沿用「活体书页」同款**,视觉维持不变) ——
      * 1.21.1/26.1.2 走 {@code DamageNumberPayload},1.20.1 走 {@code ModNetwork.DamageNumberMessage}。
      */
-    private static void sendSpellDamageNumber(LivingEntity target, int amount) {
+    private static void sendSkillDamageNumber(LivingEntity target, int amount) {
         com.merlinkitsune.astral_dice.network.ModNetwork.DamageNumberMessage.send(target, amount, LivingPageImpact.SPELL_DAMAGE_COLOR);
     }
 

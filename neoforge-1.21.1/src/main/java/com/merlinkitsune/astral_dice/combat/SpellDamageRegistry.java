@@ -227,7 +227,10 @@ public final class SpellDamageRegistry {
         //    该伤害必须登记为法伤,才能原样跑完整修饰器链(见 LivingPageImpact 的结算说明)。
         //    注意:这里**不**依赖任何"效果存在"的开关 —— 书页命中本身就是一次法伤事件。
         registerMatcher((source, direct) -> source.is(ModDamageTypes.CARD_SPELL));
-
+        // ⚠️ **禁止**把 astral_dice:skill_damage(技能类伤害)加入本白名单 —— 它是立牌 / 技能
+        //   **固定点数**伤害的专用类型(2026-09-24 用户裁决「避免与法伤混用」):一旦加入,
+        //   这些固定点数会被本链的全部修饰器放大,并触发电击手套的波及。
+        //   需要「不是法伤、但无视护甲」的伤害时,用 ModDamageTypes.skillDamage(...)。
         // === 内置修饰器 ===
         // (活体书页原有的「效果期间远程/魔法伤害 +2+页数」修饰器已于 2026-09-25 删除:
         //  该牌已改为「飞向目标并必定命中」的打击牌,伤害在命中时经 LivingPageImpact 登记为

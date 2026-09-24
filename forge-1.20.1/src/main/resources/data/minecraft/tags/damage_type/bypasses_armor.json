@@ -1,6 +1,7 @@
 {
   "values": [
     "astral_dice:true_damage",
-    "astral_dice:card_spell"
+    "astral_dice:card_spell",
+    "astral_dice:skill_damage"
   ]
 }

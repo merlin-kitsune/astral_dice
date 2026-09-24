@@ -54,6 +54,11 @@
 
 - **Electric Glove and Directional Blast**: the area splash used to **include you as a target** - at close range you would take your own splash damage. Fixed: the splash only hits **other targets**, never the caster.
 
+### The Sherry Sign's throw damage is no longer amplified by spell-damage bonuses
+
+- **Sherry Sign, "Strength Throw"**: the 2 (+5) damage dealt on landing used to resolve as **spell damage** - so it was amplified by the Ninja Star, the Piercing Gun, the Amethyst Dice, the Marker Sprayer, the Magic Quiver and the damage effect card bonuses, and could even trigger the Electric Glove's splash. It now uses a **separate skill-damage type**: only its own flat amount is dealt (still armour-piercing).
+
+
 ### Text and display
 
 - **Friendship Badge / Big Bowl Stew**: the parenthesised notes (dedup rule, what counts as a "friendly creature") are gone - implementation details the player does not need.

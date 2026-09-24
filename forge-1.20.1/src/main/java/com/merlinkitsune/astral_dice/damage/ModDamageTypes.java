@@ -44,6 +44,25 @@ public class ModDamageTypes {
             new ResourceLocation(AstralDiceMod.MODID, "card_spell")
     );
 
+    /**
+     * 「技能类伤害」类型(见 {@code data/astral_dice/damage_type/skill_damage.json})。
+     *
+     * <p><b>为什么需要独立类型</b>(2026-09-24 用户裁决「为技能类伤害创建单独的伤害标签,
+     * 避免与法伤混用」):立牌 / 技能打的**固定点数伤害**不应复用 {@link #CARD_SPELL} ——
+     * 该类型是 {@code SpellDamageRegistry} 法伤白名单的第 4 条 matcher,复用它会让固定点数
+     * 被忍术飞镖 / 贯穿之铳 / 紫晶骰子 / 标记喷罐 / 魔法箭袋 / 效果牌加成层层放大,并可能
+     * 触发电击手套的范围波及。
+     *
+     * <p>本类型同样登记于 {@code data/minecraft/tags/damage_type/bypasses_armor.json}
+     * (⇒ 无视护甲值与盔甲韧性,与卡片/技能固定点数口径一致),但**不在**法伤白名单内
+     * ⇒ 只结算自身点数。⚠️ **禁止**把它加进 {@code SpellDamageRegistry} 的
+     * {@code MAGIC_DAMAGE_TYPES} 或任何 matcher。
+     */
+    public static final ResourceKey<DamageType> SKILL_DAMAGE = ResourceKey.create(
+            Registries.DAMAGE_TYPE,
+            new ResourceLocation(AstralDiceMod.MODID, "skill_damage")
+    );
+
     public static DamageSource diceDamage(Level level, Entity source) {
         return new DamageSource(holder(level, DICE_DAMAGE), source);
     }
@@ -72,6 +91,15 @@ public class ModDamageTypes {
      */
     public static DamageSource cardSpell(Level level, Entity causing) {
         return new DamageSource(holder(level, CARD_SPELL), null, causing);
+    }
+
+    /**
+     * 技能类伤害源:**直接伤害实体为空、击杀归属 {@code causing}** ——
+     * 与 {@link #trueDamage(Level, Entity)} 同形状(不会被当成玩家的直接攻击而重走命中判定,
+     * 同时保留击杀归属),但伤害类型是独立的 {@link #SKILL_DAMAGE} ⇒ **不进入法伤链**。
+     */
+    public static DamageSource skillDamage(Level level, Entity causing) {
+        return new DamageSource(holder(level, SKILL_DAMAGE), null, causing);
     }
 
     private static Holder<DamageType> holder(Level level, ResourceKey<DamageType> key) {
