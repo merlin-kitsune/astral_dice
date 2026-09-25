@@ -180,20 +180,15 @@ dependencies {
     // 机制 = ModDevGradle 的 `jarJar` 配置:产物内生成 META-INF/jarjar/metadata.json 与
     // META-INF/jarjar/<库 jar>,FML 启动时把内嵌 jar 当作普通 mod 载入 ⇒ mods.toml 里
     // `modId="starengine_lib"` 的 required 依赖由内嵌副本满足,玩家无需单独安装。
-    // · version { strictly … } = 写进 metadata.json 的**版本区间**,与 mods.toml 的
-    //   starengine_lib_version_range 同源同值(两处必须一起改)。
-    // · prefer = 开发/构建时实际解析的版本(即 gradle.properties 的 starengine_lib_version)。
+    // · **不写 `version { }` 块**(2026-09-25 裁决:移除库版本限制规则)——ModDevGradle 按
+    //   「严格版本 → 需求版本 → 首选版本」的顺序取值写进 metadata.json,这里落到**需求版本**,
+    //   也就是 gradle.properties 的 starengine_lib_version ⇒ 不再有第二个需要与引脚同步的量。
     // ⚠️ 不再需要 `additionalRuntimeClasspath`:dev run 的库来自上面的 implementation
     //   (已在本项目既有配置里,勿删);jarJar 只是把同一坐标另打一份进产物。
     // ⚠️ FML 的 JarInJar 选择器按 **modId** 识别重复(见 neoForge JarJarSelector:
     //   若同一 identification 已在顶层 mod 列表中出现,内嵌副本被丢弃并只打一条 WARN)
     //   ⇒ 发布包**不应**再单独放库 jar,否则那份独立 jar 会盖掉内嵌版本。
-    jarJar("${starengine_lib_group}:starengine_lib-neoforge-1.21.1:${starengine_lib_version}") {
-        version {
-            strictly "${starengine_lib_version_range}"
-            prefer "${starengine_lib_version}"
-        }
-    }
+    jarJar("${starengine_lib_group}:starengine_lib-neoforge-1.21.1:${starengine_lib_version}")
     implementation 'maven.modrinth:curios:yohfFbgD'
     // JEI(配方查看,测试环境用);19.39 系仍兼容本项目 neoforge 21.1.235(19.42+ 要求 ≥21.1.238)
     // 2026-09-17 起按统一口径改走 Curse Maven(原 `mezz.jei:jei-1.21.1-neoforge:19.39.0.372` 走官方 maven;
@@ -223,7 +218,6 @@ var generateModMetadata = tasks.register("generateModMetadata", ProcessResources
             mod_name               : mod_name,
             mod_license            : mod_license,
             mod_version            : mod_version,
-            starengine_lib_version_range: starengine_lib_version_range,
     ]
     inputs.properties replaceProperties
     expand replaceProperties

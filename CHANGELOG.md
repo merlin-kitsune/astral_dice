@@ -315,9 +315,13 @@
 - ⚠️ **Do not keep a standalone `starengine_lib-*.jar` next to it**: when the loader de-duplicates by modId it
   **prefers the copy in `mods` and discards the embedded one** ⇒ if that copy is **older**, it shadows the
   library bundled with this mod (visible as a prerequisite version mismatch).
-- **Bundled version = `1.0.4`, compatible range `[1.0.4,2.0)`** (the same range declared in `mods.toml`): the
-  library is still a **required** prerequisite (a large part of this mod's shared implementation lives in it
-  since 1.3.0); it is merely distributed together with this mod now.
+- **Bundled version = `1.0.4`**: the library is still a **required** prerequisite (a large part of this mod's
+  shared implementation lives in it since 1.3.0); it is merely distributed together with this mod now.
+  ⚠️ **No version range is declared any more** (2026-09-25 decision): `mods.toml` no longer writes
+  `versionRange` and `gradle.properties` no longer defines `starengine_lib_version_range` ⇒ the loader only
+  checks that the library is **present**, and the required version is expressed by `starengine_lib_version`
+  alone. The old range (e.g. `[1.0.3,2.0)`) used to reject outdated library jars at startup; that gate is gone
+  as well — hence **never** drop a standalone library jar into `mods` (see the bullet above).
 - Library source repository: <https://github.com/merlin-kitsune/starengine_lib>.
 
 ## 1.3.0

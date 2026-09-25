@@ -40,7 +40,7 @@ Astral Dice is a survival expansion mod built around dice. Equip a dice and ever
 
 | Dependency | Requirement |
 |---|---|
-| Required | **StarEngine Lib** (`starengine_lib`) **is bundled inside this mod since 1.3.1** (embedded `1.0.3`, compatible range `[1.0.3,2.0)`): **you do not install it separately** — the loader picks up the embedded copy at startup. ⚠️ Do **not** also drop a standalone `starengine_lib-*.jar` into `mods`: the loader de-duplicates by modId and prefers that copy, so an older one would shadow the bundled library |
+| Required | **StarEngine Lib** (`starengine_lib`) **is bundled inside this mod since 1.3.1** (embedded `1.0.4`): **you do not install it separately** — the loader picks up the embedded copy at startup. ⚠️ Do **not** also drop a standalone `starengine_lib-*.jar` into `mods`: the loader de-duplicates by modId and prefers that copy, so an older one would shadow the bundled library. ⚠️ No version range is declared any more (since 2026-09-25): the prerequisite is checked by **presence** only, and the required version is expressed by the single `starengine_lib_version` pin in `gradle.properties` |
 | Required | Curios API (Curios 5.x on 1.20.1, Curios 9+ on 1.21.1, **Curios 15+ on 26.1.2**; a missing or too-old Curios is rejected during NeoForge's dependency sorting). ⚠️ This prerequisite is declared **by this mod**; StarEngine Lib itself only uses it as a **compile-time** dependency on the Forge side (it is not in the library's `mods.toml`) |
 | Required (1.20.1 only) | **Mixin Booster ≥ 0.1.3**, **mandatory**: when it is missing, the game refuses to start right at Forge's dependency-sorting stage and reports the missing `mixinbooster`; an outdated version is rejected the same way |
 | Optional | Bountiful, Patchouli |

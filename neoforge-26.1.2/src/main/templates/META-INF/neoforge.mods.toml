@@ -123,9 +123,11 @@ config="${mod_id}.mixins.json"
 
 # StarEngine Lib(必须前置):效果/事件/通用组件的共享实现所在库。
 # 本模组绝大多数共享逻辑已下沉至该库,缺失将导致 NoClassDefFoundError,故为 required。
+# ⚠️ 2026-09-25 起**不再声明 versionRange**:库版本区间规则已移除,版本要求只由 gradle.properties 的
+#   starengine_lib_version 一个量表达。省略 versionRange 时 FML 取 UNBOUNDED(实测对任意版本均判满足),
+#   本段仍按「**必须存在**」校验 —— 库随本模组内嵌(JarJar),内嵌副本就是满足它的那个 mod。
 [[dependencies.${mod_id}]]
     modId="starengine_lib"
     type="required"
-    versionRange="${starengine_lib_version_range}"
     ordering="AFTER"
     side="BOTH"

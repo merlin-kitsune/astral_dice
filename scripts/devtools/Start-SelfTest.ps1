@@ -306,7 +306,6 @@ $propsPath = Join-Path $RepoRoot "$sub\gradle.properties"
 if (-not (Test-Path -LiteralPath $propsPath)) { Fail "找不到 $propsPath（仓库根解析异常？）" @("仓库根 = $RepoRoot") }
 $props = Read-GradleProperties $propsPath
 $libVersion = $props['starengine_lib_version']
-$libRange = $props['starengine_lib_version_range']
 $modVersion = $props['mod_version']
 if (-not $libVersion) { Fail "$sub\gradle.properties 里没有 starengine_lib_version" @('库版本必须由该键驱动，不允许脚本硬编码') }
 
@@ -363,7 +362,6 @@ Write-Info "目标 mods 目录                  : $TargetDir"
 Write-Info "目标形态                        : $form（dev ⇒ dev/Mojmap 形态 jar；prod ⇒ 生产 reobf 形态 jar）｜判定依据：$kindReason（可用 -TargetKind dev|prod 覆盖）"
 Write-Info "本模组 mod_version              : $modVersion"
 Write-Info "库坐标                          : $($props['starengine_lib_group']):$($line.Artifact):$libVersion"
-Write-Info "库前置区间                      : $libRange"
 Write-Info "独立库 jar 部署                 : $(if ($deployLibJar) { "是（dev 目标必需）· 形态来源 $libJarForm" } else { '否（prod 目标：库已内嵌进本模组产物，放独立 jar 会盖掉内嵌副本）' })"
 Write-Info "本模组 jar                      : $(if ($modJar) { $modJar } else { "<未找到: $($modJarCandidates -join ' | ')>" })"
 Write-Info "配套库 jar                      : $(if (-not $deployLibJar) { '<不部署（prod）>' } elseif (Test-Path -LiteralPath $libJar) { $libJar } else { "<缺失: $libJar>" })"

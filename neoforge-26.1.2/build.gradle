@@ -177,15 +177,11 @@ dependencies {
     // 库**随产物内嵌**(CurseForge / Modrinth 不收录纯库型工程,无法作为独立前置分发),
     // 与另两线同一口径(见 neoforge-1.21.1/build.gradle 的同类注释)。
     // 本线 NeoForge 26.1.2 的 MDG 2.0.147 同样内置 `jarJar` 配置与 `jarJar` 任务。
-    // · version { strictly … } = 写进 metadata.json 的**版本区间**,与 neoforge.mods.toml 的
-    //   starengine_lib_version_range 同源同值(两处必须一起改)。
+    // · **不写 `version { }` 块**(2026-09-25 裁决:移除库版本限制规则)——ModDevGradle 按
+    //   「严格版本 → 需求版本 → 首选版本」的顺序取值写进 metadata.json,这里落到**需求版本**,
+    //   也就是 gradle.properties 的 starengine_lib_version ⇒ 不再有第二个需要与引脚同步的量。
     // ⚠️ 发布包**不应**再单独放库 jar:内嵌副本按 modId 去重,顶层同名 jar 会盖掉内嵌版本。
-    jarJar("${starengine_lib_group}:starengine_lib-neoforge-26.1.2:${starengine_lib_version}") {
-        version {
-            strictly "${starengine_lib_version_range}"
-            prefer "${starengine_lib_version}"
-        }
-    }
+    jarJar("${starengine_lib_group}:starengine_lib-neoforge-26.1.2:${starengine_lib_version}")
     // Curios API(必须的前置):15.0.0+26.1.2(Modrinth version id dRnRThvD)
     // 其 mods.toml 声明 neoforge [26.1.0.0,),故本模组的 curios 门槛同步升至 [15,)
     implementation 'maven.modrinth:curios:dRnRThvD'
@@ -218,7 +214,6 @@ var generateModMetadata = tasks.register("generateModMetadata", ProcessResources
             neo_version_range      : neo_version_range,
             loader_version_range   : loader_version_range,
             curios_version_range   : curios_version_range,
-            starengine_lib_version_range: starengine_lib_version_range,
             mod_id                 : mod_id,
             mod_name               : mod_name,
             mod_license            : mod_license,

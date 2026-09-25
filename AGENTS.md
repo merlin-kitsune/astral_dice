@@ -147,10 +147,20 @@ When extending this workspace:
 1. **禁止破坏性更新（第一位数字不变时）**：凡**主版本号（第一位数字）不变**的库版本（当前 = `1.x`），
    **不得**删除或改名任何 public 类型 / 方法 / 字段 / 常量，**不得**改变其可见性、签名或既有语义；
    只允许**新增**（新类型、新成员、新可选入口）与不改变契约的行为修正。
-2. **破坏性变更必须升第一位**（`1.x` → `2.x`），并在**同一次**发布里收紧三条线 `gradle.properties` 的
-   `starengine_lib_version_range` 下界 ⇒ **破坏性变更不允许藏在次版本/补丁位里**。
-3. **区间即契约**：三条线现声明 `starengine_lib_version_range=[1.0.3,2.0)` —— 这是上述承诺的**机器可读表达**：
-   区间内任何 `1.x` 版本都可**原位替换**，无需改动本模组的任何代码或配置。
+2. **破坏性变更必须升第一位**（`1.x` → `2.x`），并在**同一次**发布里把三条线的 `starengine_lib_version`
+   一起升到新版本 ⇒ **破坏性变更不允许藏在次版本/补丁位里**。
+3. ⛔ **版本区间已于 2026-09-25 移除（用户裁决：「移除本分支内 starengine_lib 版本限制规则，只按需求版本
+   引入实际发布版本」）**：三条线 `gradle.properties` **不再有 `starengine_lib_version_range`**，
+   `mods.toml` / `neoforge.mods.toml` 也**不再声明 `versionRange`** ⇒ 前置库只按「**是否存在**」校验
+   （FML 对省略 `versionRange` 的依赖取 `UNBOUNDED`，实测对任意版本均判满足），版本要求只由
+   `starengine_lib_version` **一个量**表达（即实际发布版本）。
+   - **动机**：区间是与引脚并列的第二个量，两者必须同步挪动；历史上已两次因此出真实故障（反向合并时
+     git 静默采纳另一侧取值 ⇒「内嵌件版本 vs 声明区间」不一致，加载期直接失败）。
+   - **代价（如实登记）**：加载期不再拦过旧的库 —— 整合包里若存在更旧的独立 `starengine_lib-*.jar`，
+     FML 的 `JarJarSelector` 会优先采用它，后果从「干净的前置版本报错」变成运行期 `NoSuchMethodError`。
+     该风险改由下方第 7 条的 `pushToGame` 告警、以及「不要往 mods 里放独立库 jar」的玩家口径承担。
+   - 内嵌副本仍**自动**满足前置依赖：`metadata.json` 的区间由 ModDevGradle 从坐标派生为
+     `[<starengine_lib_version>,)`（见第 7 条），无需手工维护。
 4. **当前版本 = `1.0.3`**（2026-09-24，**两批内容**）：
    ① **「额外敌对判定」注入 seam**（`ExtraHostileProbe` / `installExtraHostileProbe`，供本模组把**试验假人**
       `dummmmmmy` 声明为敌对目标）；**纯新增**。
@@ -166,7 +176,7 @@ When extending this workspace:
    **自 `1.0.0` 起不再需要精确序号**，`[1.0.3,2.0)` 一条即可。
 6. ⚠️ **升级库的固定动作（缺一即断）**：① 库侧 bump `lib_version`/`mod_version` 并
    `./gradlew build publishToMavenLocal`（三平台同号）；② 本仓三条线 `gradle.properties` 的
-   `starengine_lib_version` 与 `_version_range` **同批**更新；③ `.github/workflows/build.yml` 的库 `ref:`
+   `starengine_lib_version` 更新到新版本（**唯一的版本量**；自 2026-09-25 起已无区间可同步）；③ `.github/workflows/build.yml` 的库 `ref:`
    钉值改为库的**新提交 SHA**（该提交须已推送到远端，否则 CI 检不出）；④ 三条线**重新构建**，让产物内的
    内嵌副本（`META-INF/jarjar/`）跟上新版本 —— 整合包里**不再**放独立库 jar（见第 7 条）；⑤ 三个
    `run/<版本>/mods` 仍各持一份**与引脚同版本**的库 jar（dev 的手工启动路径要用，`Start-*.bat` 会以
@@ -174,8 +184,10 @@ When extending this workspace:
 7. **库随产物内嵌（JarJar，2026-09-24 起，三线同口径）**：三条线各用 ModDevGradle 的 `jarJar` 配置把
    `starengine_lib-<平台>-<版本>.jar` 打进 `astral_dice` 产物（生成 `META-INF/jarjar/metadata.json` +
    `META-INF/jarjar/<库 jar>`），理由 = **CurseForge / Modrinth 不收录纯库型工程**，库无法作为独立前置分发。
-   - `metadata.json` 的版本区间取自 DSL 的 `version { strictly <starengine_lib_version_range> }`，
-     **必须与 `mods.toml` / `neoforge.mods.toml` 里的同一区间同值**（两处一起改）。
+   - DSL **只写坐标**（`jarJar("…:${starengine_lib_version}")`，**不写 `version { }` 块**）：ModDevGradle 按
+     「严格版本 → 需求版本 → 首选版本」的顺序取值，落到**需求版本** ⇒ `metadata.json` 的区间自动成为
+     `[<starengine_lib_version>,)`（实测：有下界、无上界、`hasRestrictions()=true`），**没有手工同步点**；
+     选择器在「同一库出现多份内嵌件」时仍能正常解析（该区间只在多候选时才被读取）。
    - `mods.toml` 对 `starengine_lib` 的 **required 依赖保留**：内嵌 jar 就是满足它的那个 mod。
    - ⚠️ **1.20.1 线内嵌的必须是生产 SRG 件**：`modImplementation` 只用于 dev 重映射，内嵌走**独立坐标**；
      实测内嵌件与 mavenLocal 生产件 md5 一致（SRG 成员名 64 处），devlibs 形态为 0 处 ⇒ 写错会把 Mojmap
@@ -236,7 +248,7 @@ When extending this workspace:
    - **`data/neoforge/loot_modifiers/global_loot_modifiers.json` 索引已废除**:26.1 的 `LootModifierManager` 是扫描目录的 `SimpleJsonResourceReloadListener`(FOLDER=`loot_modifiers`,类里**没有** `global_loot_modifiers`/`entries`/`replace` 字面量)⇒ 旧的索引文件会被**当成一个 GLM 去解析**并报 `No key type in MapLike[{"replace":false,"entries":[…]}]`。**必须删除该索引文件**,14 个 `data/astral_dice/loot_modifiers/*.json` 仍会被自动扫描加载。
    - **`minecraft:crafting_special_suspiciousstew` 序列化器已不存在**:26.1 把「特殊合成」全部数据化(vanilla 现以 `suspicious_stew_from_<花>` 的 shapeless 配方 + 结果组件 `minecraft:suspicious_stew_effects` 表达)⇒ 旧的 special 配方文件及其配方解锁 advancement 一并删除。
 10. **26.1.2 新增「长矛」已纳入骰神赐福的近战武器判定(2026-09-17)**:26.1.2 新增 7 种长矛(木/石/铜/铁/金/钻石/下界合金),**没有独立物品类**,是 `Item.Properties#spear(...)` 参数化的普通 `Item`,故只能按 vanilla 物品标签 `net.minecraft.tags.ItemTags.SPEARS`(=`minecraft:spears`,7 项)判定;`DiceCombatEvents#isMeleeWeaponAttack` 现为「剑标签 + **长矛标签** + `AxeItem` + `MaceItem` + `TridentItem`」。用标签而非逐个 Item,可自动覆盖后续新增与其它模组的长矛。⚠️ 该判定只在 26.1.2 线存在(`ItemTags.SPEARS` 是 26.1.2 才有的常量),**不得**回移到 1.21.1/1.20.1 线。
-11. **26.1.2 已接入前置库 starengine_lib(2026-09-17)**:该线原为「完全未接入库」的独立移植线,现与另两线一致消费库 —— `gradle.properties` 新增 `starengine_lib_version=1.0.0-SNAPSHOT.5` / `starengine_lib_group` / `starengine_lib_version_range=[1.0.0-SNAPSHOT.5,2.0)`;`build.gradle` 首位 `mavenLocal()` + `implementation "${starengine_lib_group}:starengine_lib-neoforge-26.1.2:${starengine_lib_version}"` + `generateModMetadata` 增模板占位符;`neoforge.mods.toml` 增 `starengine_lib` required 段。**库已提供的 26 个同名类已删本地副本并改指库包**(18 个 `effect/*Effect`、`client/ClientDamageNumbers`|`ActionBarManager`、`component/GameplayConstants`、`event/AmethystDiceHandler`|`EventTargetCollector`|`ModEffectRemoval`|`SignActiveTriggeredEvent`、`item/BossEntityUtil`);配置缝改为 `GameplayConstants.applyConfig(ModCommonConfig.snapshot())`(库不读配置文件)。**该线原有的本地重复类 `effect/ReadyEffect` 已于 2026-09-19 删除**（⛔ 原文「唯一保留的本地副本是 `effect/ReadyEffect`…该线的旧「待命等待器」机制与 **33 个**效果注册**行为未变**」**已过期，就地更正**）—— 「立牌主动前置门控收口」移植把该线的立牌主动改成发布线同款形态（`BaseSignItem.handleUse` 由 `abstract` 改为「默认实现 + WARN」、删 `isSkillWaiting`/`tickSignReadyTimeout` 及其调用点），随该机制存在的本地 `ReadyEffect` 与 `ModEffects` 的 `haiqing_ready`/`bonnie_ready`/`moses_ready` 三处注册**一并删除**：效果注册 **33 → 32**、id 集合与两个发布线逐项一致；同时删掉仅该线多出的 3 个 `effect.astral_dice.*_ready` lang 键与 3 张 `mob_effect/*_ready.png`（lang **686 → 683**、`textures/mob_effect/` **35 → 32**）。该线现**无**任何「库已删而本地保留」的重复类；`KNOWN-ISSUES` **KI-M5②** 已随之标记**关闭**（其中「禁止删本地副本」一条失效，另三条库侧政策仍适用）。取证见 `scripts/test/TESTING-SPEC.md` 续 18。**库版本沿革（2026-09-19 补记）**：该线的 `starengine_lib_version` 已随批次提升过多次（上文的 `.5` 只是 2026-09-17 接入时的值）—— 充能封顶批次升到 `.11`，`allow_firearm_damage` 批次升到 **`.12`**。⛔ **该段「两条发布线为 `.12`、26.1.2 钉 `.11`」的描述已过期（2026-09-22 更正）**：三条线现**同钉 `1.0.0`**（库的首个正式版，由快照终态 `.16` 规范化而来、库内 Java 源码零改动），26.1.2 亦已于 2026-09-17 接入库 ⇒ 三条线的库接入状态完全一致。三条线的 `starengine_lib_version` 与区间下限一贯**同批同步**；自 `1.0.0` 起库侧另立有**兼容性契约**（见上方「### 前置库 starengine_lib 的版本与兼容性契约」）。
+11. **26.1.2 已接入前置库 starengine_lib(2026-09-17)**:该线原为「完全未接入库」的独立移植线,现与另两线一致消费库 —— `gradle.properties` 新增 `starengine_lib_version=1.0.0-SNAPSHOT.5` / `starengine_lib_group` / `starengine_lib_version_range=[1.0.0-SNAPSHOT.5,2.0)`;`build.gradle` 首位 `mavenLocal()` + `implementation "${starengine_lib_group}:starengine_lib-neoforge-26.1.2:${starengine_lib_version}"` + `generateModMetadata` 增模板占位符;`neoforge.mods.toml` 增 `starengine_lib` required 段。**库已提供的 26 个同名类已删本地副本并改指库包**(18 个 `effect/*Effect`、`client/ClientDamageNumbers`|`ActionBarManager`、`component/GameplayConstants`、`event/AmethystDiceHandler`|`EventTargetCollector`|`ModEffectRemoval`|`SignActiveTriggeredEvent`、`item/BossEntityUtil`);配置缝改为 `GameplayConstants.applyConfig(ModCommonConfig.snapshot())`(库不读配置文件)。**该线原有的本地重复类 `effect/ReadyEffect` 已于 2026-09-19 删除**（⛔ 原文「唯一保留的本地副本是 `effect/ReadyEffect`…该线的旧「待命等待器」机制与 **33 个**效果注册**行为未变**」**已过期，就地更正**）—— 「立牌主动前置门控收口」移植把该线的立牌主动改成发布线同款形态（`BaseSignItem.handleUse` 由 `abstract` 改为「默认实现 + WARN」、删 `isSkillWaiting`/`tickSignReadyTimeout` 及其调用点），随该机制存在的本地 `ReadyEffect` 与 `ModEffects` 的 `haiqing_ready`/`bonnie_ready`/`moses_ready` 三处注册**一并删除**：效果注册 **33 → 32**、id 集合与两个发布线逐项一致；同时删掉仅该线多出的 3 个 `effect.astral_dice.*_ready` lang 键与 3 张 `mob_effect/*_ready.png`（lang **686 → 683**、`textures/mob_effect/` **35 → 32**）。该线现**无**任何「库已删而本地保留」的重复类；`KNOWN-ISSUES` **KI-M5②** 已随之标记**关闭**（其中「禁止删本地副本」一条失效，另三条库侧政策仍适用）。取证见 `scripts/test/TESTING-SPEC.md` 续 18。**库版本沿革（2026-09-19 补记）**：该线的 `starengine_lib_version` 已随批次提升过多次（上文的 `.5` 只是 2026-09-17 接入时的值）—— 充能封顶批次升到 `.11`，`allow_firearm_damage` 批次升到 **`.12`**。⛔ **该段「两条发布线为 `.12`、26.1.2 钉 `.11`」的描述已过期（2026-09-22 更正）**：三条线现**同钉 `1.0.0`**（库的首个正式版，由快照终态 `.16` 规范化而来、库内 Java 源码零改动），26.1.2 亦已于 2026-09-17 接入库 ⇒ 三条线的库接入状态完全一致。三条线的 `starengine_lib_version` 与区间下限一贯**同批同步**；自 `1.0.0` 起库侧另立有**兼容性契约**（见上方「### 前置库 starengine_lib 的版本与兼容性契约」）。⛔ **2026-09-25 起该契约的「区间」部分作废**：三线不再声明 `starengine_lib_version_range`，前置只按「是否存在」校验（见该契约第 3 条）。
 12. **gamerule 族的存放位置与命名随 26.1 全变(2026-09-19 实测,踩过一次假失败)**:① **键名一律 snake_case** —— `naturalRegeneration` → `natural_health_regeneration`、`keepInventory` → `keep_inventory`;`doFireTick` **已被删除**,火势改由整数规则 `fire_spread_radius_around_player`(置 **0** 即等价于旧的 `doFireTick=false`;原版 datafix `GameRuleRegistryFix` 就是这么折算的)表达。⇒ 旧名在 26.1.2 上被 Brigadier **静默拒绝**,`CARD-SELECTOR-26.1.2` 的 4 条 HP 基线断言因此假失败(`naturalRegeneration false` 未生效、自然回血照常,`FoodData` 的分数回血让血量出现 `17.3` 这类小数;修用例、产品未动,复跑后与 1.21.1 读数逐条相同);探针里凡执行该族的命令都按此映射(1.20.1/1.21.1 用 `doFireTick false`,26.1.2 用 `fire_spread_radius_around_player 0`)。② **存储位置**改为 `saves/<world>/data/minecraft/game_rules.dat`(gzip NBT,键带 `minecraft:` 前缀、布尔值是 **TAG_Byte** 0/1 而非旧版 TAG_String),**不再放在 `level.dat` 里**(26.1.2 的 file fix `LevelDatToSavedDataFileFix` 只认 `level.dat` 的 `game_rules` 键,不认旧版 `GameRules`)。⇒ 该线的环境写入一律走该文件(`mt_env.ps1` 的 `Get/Read/Test/Set-MtGameRule*File` 系列;只有 26.1.2 分支会写它,另两线的 `level.dat` 路径与文案逐字不变),且**必须从真实文件读回复核**(读回通过才回显 `MT_WORLD: keepInventory 落地于 …game_rules.dat`),禁止「写进去再读自己刚写的数据」式的自我复核。引用 gamerule 读数时**必须写明观测时刻**——`mt_env world` 重建世界会把规则恢复默认。⚠️ 相关未决项:`AGENTS` 要求的 `mobGriefing=false` 目前**没有代码执行方**(详见 `TESTING-SPEC.md` 续 21),当前靠 2026-09-18 的 noai 硬闸门与本模组用例自带的取证前清理覆盖。
 
 ## 模组依赖添加规则(统一口径,1.20.1 + 1.21.1)— 必须遵守
@@ -1100,7 +1112,7 @@ When extending this workspace:
 - 库**不注册任何注册表条目** ⇒ 余额落**玩家持久化 NBT**（`starengine_lib.star_coin_wallet`，离线可读），
   由 `PlayerEvent.Clone` 显式复制 ⇒ **不受死亡掉落影响**。
 - ⚠️ 改库必须 **bump 库版本 + `publishToMavenLocal`**，并同步**三条线** `gradle.properties` 的
-  `starengine_lib_version` 与 `starengine_lib_version_range` **下界**（库版本不以 `-SNAPSHOT` 结尾
+  `starengine_lib_version`（**唯一的版本量**；区间规则已于 2026-09-25 移除）—— 库版本不以 `-SNAPSHOT` 结尾
   ⇒ Gradle 不当它是 changing module，不 bump 就永远解析旧 jar，运行期 `NoClassDefFoundError`）；
   **还要同步消费方 `.github/workflows/build.yml` 里 checkout 前置库的 `ref:` 提交钉值**（库每次 bump 一行）。
   三条线自 2026-09-22 起同钉 **`1.0.0`**；26.1.2 已于 2026-09-17 接入库，**不再有「未接入」线**

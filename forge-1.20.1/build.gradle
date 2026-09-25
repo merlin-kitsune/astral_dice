@@ -167,7 +167,6 @@ var generateModMetadata = tasks.register("generateModMetadata", ProcessResources
             mod_name               : mod_name,
             mod_license            : mod_license,
             mod_version            : mod_version,
-            starengine_lib_version_range: starengine_lib_version_range,
     ]
     inputs.properties replaceProperties
     expand replaceProperties
@@ -225,17 +224,13 @@ dependencies {
     // **未经 dev 重映射的生产 jar** ⇒ 这里用**独立坐标声明**(不写成 jarJar(modImplementation(...)),
     // 否则可能把重映射后的 dev 副本打进产物,生产端会以 Mojmap 成员名找不到方法而崩)。
     // 内嵌件字节已实测 = mavenLocal 生产 jar(md5 一致)。
-    // · version { strictly … } = 写进 metadata.json 的**版本区间**,与 mods.toml 的
-    //   starengine_lib_version_range 同源同值(两处必须一起改)。
+    // · **不写 `version { }` 块**(2026-09-25 裁决:移除库版本限制规则)——ModDevGradle 按
+    //   「严格版本 → 需求版本 → 首选版本」的顺序取值写进 metadata.json,这里落到**需求版本**,
+    //   也就是 gradle.properties 的 starengine_lib_version ⇒ 不再有第二个需要与引脚同步的量。
     // ⚠️ FML 的 JarInJar 选择器按 **modId** 识别重复(Forge 的 JarJarSelector 0.3.19 与
     //   NeoForge 同源:同一 identification 已在顶层 mod 列表出现时,内嵌副本被丢弃并只打 WARN)
     //   ⇒ 发布包**不应**再单独放库 jar,否则那份独立 jar 会盖掉内嵌版本。
-    jarJar("${starengine_lib_group}:starengine_lib-forge-1.20.1:${starengine_lib_version}") {
-        version {
-            strictly "${starengine_lib_version_range}"
-            prefer "${starengine_lib_version}"
-        }
-    }
+    jarJar("${starengine_lib_group}:starengine_lib-forge-1.20.1:${starengine_lib_version}")
     // Curios API(必须前置):1.20.1 Forge = Curios 5.x(IPQlZkz1 = 5.14.1+1.20.1 的 Modrinth 版本 id)
     modImplementation "maven.modrinth:curios:IPQlZkz1"
 
