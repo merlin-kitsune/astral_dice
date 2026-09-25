@@ -40,6 +40,16 @@
 			},
 			"unitWorth": 8000
 		},
+		"netherite_dice": {
+			"type": "item",
+			"rarity": "LEGENDARY",
+			"content": "astral_dice:netherite_dice",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 24000
+		},
 		"emerald_dice": {
 			"type": "item",
 			"rarity": "EPIC",
@@ -80,6 +90,16 @@
 			},
 			"unitWorth": 8000
 		},
+		"crimson_dice": {
+			"type": "item",
+			"rarity": "LEGENDARY",
+			"content": "astral_dice:crimson_dice",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 24000
+		},
 		"amethyst_dice": {
 			"type": "item",
 			"rarity": "EPIC",
@@ -89,6 +109,16 @@
 				"max": 1
 			},
 			"unitWorth": 8000
+		},
+		"ender_dice": {
+			"type": "item",
+			"rarity": "LEGENDARY",
+			"content": "astral_dice:ender_dice",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 24000
 		},
 		"star_coin": {
 			"type": "item",

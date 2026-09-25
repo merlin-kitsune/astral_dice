@@ -110,7 +110,21 @@
 
 #### Chips & Resources
 
-- **The rarity system is now "four own tiers + vanilla Common"** (ruled 2026-09-25): the old "borrowing" of vanilla
+- **The bounty reward pool now accepts the Legendary tier and excludes Pinnacle and Bizarre** (ruled 2026-09-25:
+  "add legendary items, exclude pinnacle and bizarre"): `astral_objs` gains three legendary dice
+  (`netherite_dice` / `crimson_dice` / `ender_dice`, worth 24000) and `astral_rews` gains three legendary dice (12000)
+  plus 7 legendary signs and 18 legendary chips (10000 each), i.e. **`objs` 13->16, `rews` 95->123**. The
+  "excluded tiers" set narrows from three tiers (Legendary + Pinnacle + Bizarre) to **two (Pinnacle + Bizarre)** -
+  neither of those has a data-layer rarity value, so an entry in a pool would simply fail. The legendary value band is new
+  in this batch (dice 24000/12000, chips and signs 10000) and the balance formula becomes
+  `legendary dice (objs) 24000 >= legendary dice (rews) 24000 x 0.9 = 21600` (OK).
+  A three-line inconsistency was fixed along the way: 26.1.2's `astral_rews.json` still contained two **exclusive cards**
+  (which must never be obtainable outside their banner, per an earlier ruling) and was missing four non-exclusive entries the
+  other two lines already had - all three pool files plus the decree are now **byte-identical across lines**. Exclusive cards
+  (`is_exclusive.json`, currently 6) still never enter any pool.
+
+
+- **The rarity system is now "five own tiers + vanilla Common"** (ruled 2026-09-25): the old "borrowing" of vanilla
   `COMMON`/`UNCOMMON`/`RARE`/`EPIC` is gone - four own tiers are now **extended into the vanilla `Rarity` enum**:
   **Rare (light blue) / Epic (pink-purple) / Legendary (gold) / Pinnacle (bright red)**, with plain items still on
   vanilla `COMMON`. **Player-visible changes**: (1) Legendary moves from "yellow" (borrowed `UNCOMMON`) to **gold**;

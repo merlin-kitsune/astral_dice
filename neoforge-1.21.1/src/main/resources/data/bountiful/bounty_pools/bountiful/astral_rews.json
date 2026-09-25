@@ -40,6 +40,16 @@
 			},
 			"unitWorth": 7500
 		},
+		"netherite_dice": {
+			"type": "item",
+			"rarity": "LEGENDARY",
+			"content": "astral_dice:netherite_dice",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 12000
+		},
 		"emerald_dice": {
 			"type": "item",
 			"rarity": "EPIC",
@@ -80,6 +90,16 @@
 			},
 			"unitWorth": 7500
 		},
+		"crimson_dice": {
+			"type": "item",
+			"rarity": "LEGENDARY",
+			"content": "astral_dice:crimson_dice",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 12000
+		},
 		"amethyst_dice": {
 			"type": "item",
 			"rarity": "EPIC",
@@ -89,6 +109,16 @@
 				"max": 1
 			},
 			"unitWorth": 7500
+		},
+		"ender_dice": {
+			"type": "item",
+			"rarity": "LEGENDARY",
+			"content": "astral_dice:ender_dice",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 12000
 		},
 		"star_coin": {
 			"type": "item",
@@ -378,6 +408,16 @@
 			},
 			"unitWorth": 1200
 		},
+		"misaki_sign": {
+			"type": "item",
+			"rarity": "LEGENDARY",
+			"content": "astral_dice:misaki_sign",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 10000
+		},
 		"mimi_sign": {
 			"type": "item",
 			"rarity": "RARE",
@@ -428,6 +468,16 @@
 			},
 			"unitWorth": 3500
 		},
+		"rin_sign": {
+			"type": "item",
+			"rarity": "LEGENDARY",
+			"content": "astral_dice:rin_sign",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 10000
+		},
 		"haiqing_sign": {
 			"type": "item",
 			"rarity": "EPIC",
@@ -447,6 +497,26 @@
 				"max": 1
 			},
 			"unitWorth": 3500
+		},
+		"bonnie_sign": {
+			"type": "item",
+			"rarity": "LEGENDARY",
+			"content": "astral_dice:bonnie_sign",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 10000
+		},
+		"fen_sign": {
+			"type": "item",
+			"rarity": "LEGENDARY",
+			"content": "astral_dice:fen_sign",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 10000
 		},
 		"flashlight_chip": {
 			"type": "item",
@@ -468,6 +538,16 @@
 			},
 			"unitWorth": 2800
 		},
+		"cutter_blade_chip": {
+			"type": "item",
+			"rarity": "LEGENDARY",
+			"content": "astral_dice:cutter_blade_chip",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 10000
+		},
 		"scope_chip": {
 			"type": "item",
 			"rarity": "EPIC",
@@ -478,6 +558,16 @@
 			},
 			"unitWorth": 2400
 		},
+		"eagle_scope_chip": {
+			"type": "item",
+			"rarity": "LEGENDARY",
+			"content": "astral_dice:eagle_scope_chip",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 10000
+		},
 		"medkit_emergency_chip": {
 			"type": "item",
 			"rarity": "RARE",
@@ -487,6 +577,16 @@
 				"max": 1
 			},
 			"unitWorth": 900
+		},
+		"medkit_complete_chip": {
+			"type": "item",
+			"rarity": "LEGENDARY",
+			"content": "astral_dice:medkit_complete_chip",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 10000
 		},
 		"vitamin_pill_chip": {
 			"type": "item",
@@ -537,6 +637,16 @@
 				"max": 1
 			},
 			"unitWorth": 3000
+		},
+		"ninja_star_chip": {
+			"type": "item",
+			"rarity": "LEGENDARY",
+			"content": "astral_dice:ninja_star_chip",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 10000
 		},
 		"hand_fan_small_chip": {
 			"type": "item",
@@ -598,6 +708,16 @@
 			},
 			"unitWorth": 2800
 		},
+		"bank_card_unlimited_chip": {
+			"type": "item",
+			"rarity": "LEGENDARY",
+			"content": "astral_dice:bank_card_unlimited_chip",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 10000
+		},
 		"boxing_gloves_low_chip": {
 			"type": "item",
 			"rarity": "RARE",
@@ -617,6 +737,16 @@
 				"max": 1
 			},
 			"unitWorth": 2400
+		},
+		"boxing_gloves_high_chip": {
+			"type": "item",
+			"rarity": "LEGENDARY",
+			"content": "astral_dice:boxing_gloves_high_chip",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 10000
 		},
 		"speed_skates_low_chip": {
 			"type": "item",
@@ -638,6 +768,16 @@
 			},
 			"unitWorth": 2400
 		},
+		"speed_skates_high_chip": {
+			"type": "item",
+			"rarity": "LEGENDARY",
+			"content": "astral_dice:speed_skates_high_chip",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 10000
+		},
 		"moto_helmet_low_chip": {
 			"type": "item",
 			"rarity": "RARE",
@@ -657,6 +797,16 @@
 				"max": 1
 			},
 			"unitWorth": 2400
+		},
+		"moto_helmet_high_chip": {
+			"type": "item",
+			"rarity": "LEGENDARY",
+			"content": "astral_dice:moto_helmet_high_chip",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 10000
 		},
 		"sandwich_low_chip": {
 			"type": "item",
@@ -678,6 +828,16 @@
 			},
 			"unitWorth": 2400
 		},
+		"sandwich_high_chip": {
+			"type": "item",
+			"rarity": "LEGENDARY",
+			"content": "astral_dice:sandwich_high_chip",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 10000
+		},
 		"adrenaline_low_chip": {
 			"type": "item",
 			"rarity": "EPIC",
@@ -687,6 +847,16 @@
 				"max": 1
 			},
 			"unitWorth": 3000
+		},
+		"adrenaline_high_chip": {
+			"type": "item",
+			"rarity": "LEGENDARY",
+			"content": "astral_dice:adrenaline_high_chip",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 10000
 		},
 		"magic_quiver_chip": {
 			"type": "item",
@@ -708,6 +878,16 @@
 			},
 			"unitWorth": 1300
 		},
+		"star_coin_hammer_chip": {
+			"type": "item",
+			"rarity": "LEGENDARY",
+			"content": "astral_dice:star_coin_hammer_chip",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 10000
+		},
 		"cursed_sword_chip": {
 			"type": "item",
 			"rarity": "RARE",
@@ -728,6 +908,16 @@
 			},
 			"unitWorth": 3200
 		},
+		"piercing_gun_chip": {
+			"type": "item",
+			"rarity": "LEGENDARY",
+			"content": "astral_dice:piercing_gun_chip",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 10000
+		},
 		"candy_chip": {
 			"type": "item",
 			"rarity": "EPIC",
@@ -747,6 +937,16 @@
 				"max": 1
 			},
 			"unitWorth": 3200
+		},
+		"satellite_chip": {
+			"type": "item",
+			"rarity": "LEGENDARY",
+			"content": "astral_dice:satellite_chip",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 10000
 		},
 		"warp_engine_chip": {
 			"type": "item",
@@ -788,6 +988,16 @@
 			},
 			"unitWorth": 3000
 		},
+		"perpetual_motion_chip": {
+			"type": "item",
+			"rarity": "LEGENDARY",
+			"content": "astral_dice:perpetual_motion_chip",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 10000
+		},
 		"current_core_chip": {
 			"type": "item",
 			"rarity": "EPIC",
@@ -797,6 +1007,16 @@
 				"max": 1
 			},
 			"unitWorth": 3200
+		},
+		"big_bowl_stew_chip": {
+			"type": "item",
+			"rarity": "LEGENDARY",
+			"content": "astral_dice:big_bowl_stew_chip",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 10000
 		},
 		"member_recommendation_chip": {
 			"type": "item",
@@ -858,6 +1078,26 @@
 			},
 			"unitWorth": 3400
 		},
+		"railgun_chip": {
+			"type": "item",
+			"rarity": "LEGENDARY",
+			"content": "astral_dice:railgun_chip",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 10000
+		},
+		"primordial_core_chip": {
+			"type": "item",
+			"rarity": "LEGENDARY",
+			"content": "astral_dice:primordial_core_chip",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 10000
+		},
 		"whetstone_chip": {
 			"type": "item",
 			"rarity": "EPIC",
@@ -877,6 +1117,16 @@
 				"max": 1
 			},
 			"unitWorth": 2800
+		},
+		"golden_shooting_star_chip": {
+			"type": "item",
+			"rarity": "LEGENDARY",
+			"content": "astral_dice:golden_shooting_star_chip",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 10000
 		},
 		"nancy_lu_sign": {
 			"type": "item",
@@ -918,6 +1168,26 @@
 			},
 			"unitWorth": 1800
 		},
+		"zhao_sign": {
+			"type": "item",
+			"rarity": "LEGENDARY",
+			"content": "astral_dice:zhao_sign",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 10000
+		},
+		"teru_sign": {
+			"type": "item",
+			"rarity": "LEGENDARY",
+			"content": "astral_dice:teru_sign",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 10000
+		},
 		"nardis_sign": {
 			"type": "item",
 			"rarity": "RARE",
@@ -927,6 +1197,16 @@
 				"max": 1
 			},
 			"unitWorth": 1400
+		},
+		"mamushi_sign": {
+			"type": "item",
+			"rarity": "LEGENDARY",
+			"content": "astral_dice:mamushi_sign",
+			"amount": {
+				"min": 1,
+				"max": 1
+			},
+			"unitWorth": 10000
 		},
 		"sherry_sign": {
 			"type": "item",

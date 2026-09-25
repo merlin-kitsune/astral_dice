@@ -107,6 +107,17 @@ Temporary cards also have their own hint line now: **"Temporary card: cannot be 
   rainbow frame there needs its own texture set and is still to come; 1.20.1 has no item components, so it will only show once
   an item actually uses this tier.)
 
+### Bounty board: legendary items can be traded now, Pinnacle and Bizarre still cannot
+
+- Gold-framed (Legendary) dice, chips and signs **never appeared on the bounty board**; now they **can** - both as the
+  materials a bounty asks for and as redeemable rewards (the Netherite / Crimson / Ender dice, 7 legendary signs and
+  18 legendary chips).
+- **Bright-red (Pinnacle) and rainbow (Bizarre) stay out of the bounty board** - those tiers simply have no bounty
+  quality value.
+- Two inconsistencies were fixed on the way: (1) on 26.1.2 the board **offered two "exclusive" cards** that by design can
+  only be handed out by their own banner - they are gone; (2) that same version was **missing 4 rewards** it should have
+  had - now added. All three versions now carry **identical** bounty content.
+
 ## 🐛 Bug Fixes
 
 - **The Sherry Sign's "Detective's Strike" now counts new targets**: previously a few hits on the same mob filled up

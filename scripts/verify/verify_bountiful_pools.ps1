@@ -4,10 +4,11 @@ Bountiful 赏金联动一致性校验（只读守门）。
 
 独立重算「按规则应进入赏金池的物品集合」，与双版本四份池文件逐项比对：
   1. 双版本 ModItems 注册物品 id 与品质完全一致；
-  2. astral_objs = 非传奇骰子 + 货币(star_coin / star_coin_bag / star_plate / golden_star_plate)；
-  3. astral_rews = astral_objs ∪ 卡牌(全部) ∪ 非传奇筹码 ∪ 非传奇立牌
-     （**不进池 = 传奇（ASTRAL_DICE_LEGENDARY）+ 巅峰（ASTRAL_DICE_PINNACLE）**：这两档的骰子/筹码/立牌不进任何池；
-      传奇的数据层 rarity = `LEGENDARY`，巅峰**没有**数据层对应值；卡牌不受限）；
+  2. astral_objs = 非「不进池档」骰子 + 货币(star_coin / star_coin_bag / star_plate / golden_star_plate)；
+  3. astral_rews = astral_objs ∪ 卡牌(全部，⚠️ 专属牌除外，见 §4) ∪ 非「不进池档」筹码 ∪ 非「不进池档」立牌
+     （**不进池 = 巅峰（ASTRAL_DICE_PINNACLE）+ 奇特（ASTRAL_DICE_BIZARRE）**：这两档的骰子/筹码/立牌不进任何池,
+      二者都**没有**数据层 rarity 对应值;⚠️ 2026-09-25 用户裁决「加入传奇物品，排除巅峰和奇特」后 **传奇档已进池**
+      (其数据层 rarity = `LEGENDARY`);卡牌不受档位限制）；
      「卡牌」判据 = **与生产线同一判据**：id 前缀(attack_card_/defense_card_/effect_card_)
      **∪ 本模组卡牌标签**(`data/<ns>/tags/{item|items}/{combat_cards,effect_cards}.json`，即 `ModItems.isCardItem`)。
      ⚠️ **2026-09-26 修正（消除失明区）**：此前只用 id 前缀 ⇒ 不以前缀命名的卡牌
@@ -15,7 +16,7 @@ Bountiful 赏金联动一致性校验（只读守门）。
      ⇒ **闸门对「这两张卡是否入池」完全失明**（实测：加入池前后分类都是 cards 25 / materials 8，条数不变）。
      该盲区正是「守门看不见规则违反」的实例：分类判据与生产线不一致时，闸门给出的是**假绿**。
   4. 集合相等（0 缺失 / 0 多余），且数据层 rarity 与物品品质映射一致
-     （RARE→RARE、EPIC→EPIC、LEGENDARY→LEGENDARY；⚠️ 巅峰档**无**数据层对应值 ⇒ 巅峰物品入池即报错）；
+     （RARE→RARE、EPIC→EPIC、LEGENDARY→LEGENDARY；⚠️ 巅峰/奇特档**无**数据层对应值 ⇒ 这两档物品入池即报错）；
   5. 双版本四份文件逐字节一致（md5）；
   6. 文件格式：UTF-8 / CRLF / Tab 缩进 / 末尾换行；
   7. 价值平衡式：objs 顶值(1 条, amount.max×unitWorth) ≥ rews 顶值(2 条之和) × 0.9
@@ -45,21 +46,20 @@ $DECREE_REL = 'src/main/resources/data/bountiful/bounty_decrees/bountiful/astral
 
 $REG = 'registerItem\("([a-z0-9_]+)"'
 # ⚠️ 2026-09-25 稀有度改造:调用语法 = .rarity(AstralRarities.z()),z ∈ {rare,epic,legendary,pinnacle};
-# 捕获后统一大写(见 Get-ParsedItems),故 $LEGEND / $RARITY_MAP 的键为大写档名。
+# 捕获后统一大写(见 Get-ParsedItems),故 $EXCLUDED_TIERS / $RARITY_MAP 的键为大写档名。
 $RAR = 'rarity\(AstralRarities\.([a-z]+)\(\)\)'
 
 $DICE = @('dice', 'golden_dice', 'glass_dice', 'netherrack_dice', 'diamond_dice',
     'emerald_dice', 'obsidian_dice', 'weird_dice', 'amethyst_dice',
     'netherite_dice', 'crimson_dice', 'ender_dice', 'nether_star_dice')
 $MONEY = @('star_coin', 'star_coin_bag', 'star_plate', 'golden_star_plate')
-$LEGEND = 'LEGENDARY'                      # 本 mod「金 = 传奇」
-# ⚠️ 2026-09-25 稀有度改造:「不进池」现在是**两档** ——
-#   传奇(LEGENDARY,既有规则) + **巅峰(PINNACLE)**。巅峰是本模组新增的最高档,
-#   **没有**数据层 rarity 对应值(见 $RARITY_MAP),故与传奇同口径:不得进入任何池。
+# ⚠️ 2026-09-25 用户裁决「加入传奇物品，排除巅峰和奇特」:「不进池」= **巅峰 + 奇特**两档
+#   (此前是「传奇 + 巅峰 + 奇特」三档全排除;传奇已放开 ⇒ 其数据层 rarity = LEGENDARY 照常映射)。
+#   巅峰(PINNACLE) 与 奇特(BIZARRE) 都**没有**数据层 rarity 对应值(见 $RARITY_MAP) ⇒ 不得进入任何池。
 #   判据集中在 $EXCLUDED_TIERS,勿在别处另写档位比较。
-$EXCLUDED_TIERS = @('LEGENDARY', 'PINNACLE', 'BIZARRE')
-# ⚠️ 刻意**不含** PINNACLE:巅峰档没有数据层对应值 ⇒ 若有巅峰物品入池,$want 取到 $null,
-#    与池内任何 rarity 都不等 ⇒ 当场报错(fail-loud,与「巅峰不入池」的口径一致)。
+$EXCLUDED_TIERS = @('PINNACLE', 'BIZARRE')
+# ⚠️ 刻意**不含** PINNACLE/BIZARRE:这两档没有数据层对应值 ⇒ 若有其物品入池,$want 取到 $null,
+#    与池内任何 rarity 都不等 ⇒ 当场报错(fail-loud,与「不进池」的口径一致)。
 $RARITY_MAP = [ordered]@{ 'COMMON' = 'COMMON'; 'RARE' = 'RARE'; 'EPIC' = 'EPIC'; 'LEGENDARY' = 'LEGENDARY' }
 
 $errors = New-Object System.Collections.Generic.List[string]
@@ -337,7 +337,7 @@ foreach ($k in $c['chips']) { if ($EXCLUDED_TIERS -ccontains $items[$k]) { $excl
 foreach ($k in $c['signs']) { if ($EXCLUDED_TIERS -ccontains $items[$k]) { $excl += $k } }
 foreach ($k in $c['dice']) { if ($EXCLUDED_TIERS -ccontains $items[$k]) { $excl += $k } }
 $excl = Sort-Ordinal $excl
-Write-Out ('按规则排除(传奇筹码/立牌/骰子): ' + $excl.Count + ' 项')
+Write-Out ('按规则排除(巅峰/奇特档 筹码/立牌/骰子): ' + $excl.Count + ' 项')
 
 # 2/3/4) 逐版本逐池比对
 foreach ($ver in $VERSIONS) {
