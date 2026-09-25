@@ -125,11 +125,15 @@
 
 
 - **The rarity system is now "five own tiers + vanilla Common"** (ruled 2026-09-25): the old "borrowing" of vanilla
-  `COMMON`/`UNCOMMON`/`RARE`/`EPIC` is gone - four own tiers are now **extended into the vanilla `Rarity` enum**:
-  **Rare (light blue) / Epic (pink-purple) / Legendary (gold) / Pinnacle (bright red)**, with plain items still on
+  `COMMON`/`UNCOMMON`/`RARE`/`EPIC` is gone - five own tiers are now **extended into the vanilla `Rarity` enum**:
+  **Rare (aqua) / Epic (pink-purple) / Legendary (gold) / Pinnacle (bright red) / Bizarre (rainbow)**, with plain items still on
+  (second correction the same day: **Rare / Epic now use the vanilla RARE / EPIC colours** - aqua `#55FFFF` =
+  `ChatFormatting.AQUA` and pink-purple `#FF55FF` = `ChatFormatting.LIGHT_PURPLE`, replacing the first draft's paler
+  `#8FD3FF` / `#E3A6FF`)
   vanilla `COMMON`. **Player-visible changes**: (1) Legendary moves from "yellow" (borrowed `UNCOMMON`) to **gold**;
   (2) a new top tier **Pinnacle (bright red)** exists, with the **Nether Star Dice** as its first (and currently only)
-  member; (3) **enchanting no longer bumps an item up one tier** (own tiers are not in vanilla's switch).
+  member; (3) **enchanting no longer bumps an item up one tier** (own tiers are not in vanilla's switch);
+  (4) **Rare / Epic adopt the vanilla colours** (the more saturated aqua and pink-purple).
   Mechanics: the single source of truth for tiers, constant names, serialized names and **colour codes** lives in the
   prerequisite library `starengine_lib` (`item/Rarity` plus a per-platform `item/AstralRarities`); this mod only declares
   `META-INF/enumextensions.json` (both NeoForge lines, via the `enumExtensions=` key in `mods.toml`) and calls
@@ -142,12 +146,33 @@
   created; if it works, that tier is named Bizarre"): this tier has **no single colour** - the tooltip's own **frame** sweeps
   around the colour wheel (3 s per revolution). Why it needs its own hook: vanilla's tooltip **frame colour is unrelated to
   rarity** (`TooltipRenderUtil` hard-codes the border colours) and `Rarity#getStyleModifier()` only touches the item-name
-  line. On 1.21.1 and 1.20.1 `client/RainbowRarityFrame` listens to `RenderTooltipEvent.Color#setBorderStart/setBorderEnd`;
+  line.   On 1.21.1 and 1.20.1 `client/RarityTooltipFrame` listens to `RenderTooltipEvent.Color#setBorderStart/setBorderEnd`;
   because the tooltip is **redrawn every frame** (`AbstractContainerScreen#renderTooltip` runs per frame) the event fires
   every frame, so computing the colour from the current time gives a **flowing rainbow with zero Mixins**. The name line keeps
   the tier's base colour (mint `#6BFFA8`, from the library's `item/Rarity`).
-  **No item uses this tier yet** (ruled: "just create the tier") - to see it immediately:
+  **Eight items now use this tier** (ruled 2026-09-25: "make all exclusive cards, plus the Secret Detective and the Game
+  Master, Bizarre"): the six **exclusive cards** (`is_exclusive.json`) plus the **Secret Detective** (`sherry_sign`) and the
+  **Game Master** (`ren_sign`). The latter two were Epic and sat in the bounty reward pool, so they were **removed from
+  `astral_rews` on all three lines** (Bizarre is an excluded tier). To turn any item into it by hand:
   `/give @s <item>[minecraft:rarity="astral_dice:bizarre"]`.
+
+- **The tooltip frame now strictly shares the text colour (Bizarre excepted), fixing two defects** (ruled 2026-09-25):
+  **Player-visible**: (1) Rare / Epic switch to the vanilla RARE / EPIC colours; (2) **the tooltip frame matches the item
+  name colour** (before, only Bizarre had a frame colour while the other four tiers kept the vanilla purple); (3) in packs with
+  Tooltip Overhaul the frame is **no longer uniformly gold**.
+  Defect one: the first client class only wrote a frame colour for Bizarre - renamed to `client/RarityTooltipFrame` and extended
+  to **all five tiers** (reverse lookup `AstralRarities#tierOf(...)` + `Rarity#frameColor(now)`; items that are not ours are
+  left untouched).
+  Defect two (**caused by a third-party mod, not by this mod**): the user's pack ships **Tooltip Overhaul 2.0.4, which draws the
+  whole tooltip itself** and never calls `TooltipRenderUtil`, so this mod's event is ignored - and for **any non-vanilla rarity**
+  it falls back to one palette (`Palette.CUSTOM_RARITY`, default gold `0xFFE8B84A`) => **all five own tiers got a gold frame**,
+  which looks exactly like "the recolouring turned every border gold".
+  Fix = ship the mod's **official resource-pack extension point** `assets/astral_dice/tooltipoverhaul/custom_frames.json`
+  (matched by `Rarity#name()`, `gradientType:"custom"` + explicit three-colour override of the fallback palette): the four solid
+  tiers get a static single colour (= the text colour) and Bizarre gets a **static three-stop rainbow gradient**
+  (`#FF2626` / `#26FF26` / `#2626FF`, taken from the library's `hsvToRgb` at phases 0 / 1/3 / 2/3) - that mod has **no per-frame
+  animation** (its effect catalogue and palettes were checked; there is no rainbow), so the *flowing* rainbow only exists where
+  it is absent. The file is byte-identical on all three lines and inert where the mod is not installed.
   ⚠️ **On 26.1.2 the frame stays vanilla (known gap, registered in AGENTS)**: that line's tooltip frame is a nine-slice
   **texture** (`TooltipRenderUtil` uses the `tooltip/frame` sprite; the event is `RenderTooltipEvent.Texture`) with **no colour
   hook** - a rainbow frame there needs its own texture frames and is a separate round of work.

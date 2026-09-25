@@ -95,12 +95,20 @@ Temporary cards also have their own hint line now: **"Temporary card: cannot be 
 
 - **Legendary is gold now**: "Legendary" used to borrow vanilla's yellow tier, so it looked yellow - it is **gold** now.
 - **New top tier "Pinnacle" (bright red)**: currently exclusive to the **Nether Star Dice** (the T4 exotic tier).
-- **Rare / Epic keep their colours** (light blue / pink-purple), and plain items stay white.
+- **Rare / Epic now use the vanilla colours** (aqua / pink-purple - the very colours vanilla uses for its "Rare" and "Epic"
+  item names), and plain items stay white.
+- **The tooltip frame now matches the item name colour** (before, only "Bizarre" had a frame colour; the other tiers kept the
+  vanilla blue-purple frame).
+  ⚠️ Note: the **Tooltip Overhaul** mod in your pack draws the whole tooltip itself and falls back to a single gold palette for
+  any non-vanilla rarity - which is why you saw "text recoloured per tier, but every border gold". This release ships a colour
+  table through that mod's official mechanism (single colours for four tiers, a three-stop rainbow gradient for Bizarre). It has
+  no per-frame animation, so **in your pack Bizarre's frame is a static rainbow gradient**; without that mod it still flows.
 - **Enchanting no longer bumps the tier**: it used to show an item one tier higher; now the tier comes from the item alone.
 - For the record: tiers and colours are now defined in one place inside the **prerequisite library**, so recolouring is a
   one-line change; the library version moves to **1.0.4** (still embedded - you do not install it separately).
 - **New fifth tier "Bizarre" (the tooltip frame is a flowing rainbow)**: this tier has **no fixed colour** - its tooltip
-  **frame** sweeps around the colour wheel (about one revolution every 3 seconds). **No item uses it yet** (yours to assign);
+  **frame** sweeps around the colour wheel (about one revolution every 3 seconds). **Eight items now use it** (the six exclusive
+  cards plus the **Secret Detective** and the **Game Master**);
   to see it right away, turn any item into it:
   `/give @s minecraft:stone[minecraft:rarity="astral_dice:bizarre"]` (1.21.1).
   ⚠️ **On 26.1.2 the tooltip frame is still vanilla**: that version draws the frame from a texture with no colour hook, so a
@@ -109,6 +117,8 @@ Temporary cards also have their own hint line now: **"Temporary card: cannot be 
 
 ### Bounty board: legendary items can be traded now, Pinnacle and Bizarre still cannot
 
+- **The Secret Detective and the Game Master left the reward pool**: both banners became "Bizarre" this round, and Bizarre never
+  enters the bounty board (same as Pinnacle).
 - Gold-framed (Legendary) dice, chips and signs **never appeared on the bounty board**; now they **can** - both as the
   materials a bounty asks for and as redeemable rewards (the Netherite / Crimson / Ender dice, 7 legendary signs and
   18 legendary chips).

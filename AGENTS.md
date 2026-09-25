@@ -1041,9 +1041,17 @@ When extending this workspace:
 ## 骰子槽位与配置规范（Dice Slots & Config）— 必须遵守
 
 - **稀有度标准(2026-09-25 起 = 「自有 5 档 + 原版普通」,权威实现在前置库 `starengine_lib`)**:
-  - **档位与颜色**:白 = 普通 → 原版 `Rarity.COMMON`;浅蓝 `#8FD3FF` = 稀有 → `ASTRAL_DICE_RARE`;粉紫 `#E3A6FF` = 史诗 → `ASTRAL_DICE_EPIC`;
+  - **档位与颜色**(2026-09-25 二次修正:**稀有/史诗改用原版 RARE/EPIC 的配色**):
+    白 = 普通 → 原版 `Rarity.COMMON`;**水蓝 `#55FFFF`** = 原版 RARE(`ChatFormatting.AQUA`)= 稀有 → `ASTRAL_DICE_RARE`;
+    **粉紫 `#FF55FF`** = 原版 EPIC(`ChatFormatting.LIGHT_PURPLE`)= 史诗 → `ASTRAL_DICE_EPIC`;
     金 `#FFC24B` = 传奇 → `ASTRAL_DICE_LEGENDARY`;亮红 `#FF4D4D` = 巅峰 → `ASTRAL_DICE_PINNACLE`;
     **彩虹(流动)** = 奇特 → `ASTRAL_DICE_BIZARRE`(⚠️ 本档**没有单一颜色**:基准色薄荷绿 `#6BFFA8` 只用于物品名那一行)。
+  - ⚠️ **文字与边框严格同色**(唯一例外 = 奇特):库 `Rarity#frameColor(long)` = 「文字色的边框版」(`0xFF000000|rgb()`);
+    彩虹档返回该时刻的彩虹起色(逐帧调用 = 流动)。**边框必须自己写** —— 原版 tooltip 的边框色与稀有度无关。
+  - **奇特档当前挂载**(2026-09-25 用户裁决):6 张**专属牌**(= `is_exclusive.json` 全表:`effect_card_living_page` /
+    `effect_card_fate_guidance` / `fu_card` / `huo_card` / `attack_card_bite` / `attack_card_dragon_roar`)
+    + **怪力侦探**(`sherry_sign`)+ **人偶师**(`ren_sign`);后两者原为史诗且**在赏金奖励池里** ⇒ 改档后按「奇特不入池」
+    已从三线 `astral_rews` 移除(守门 `$EXCLUDED_TIERS` 含 `BIZARRE`,池里留着会 fail-loud)。
   - **调用面(唯一写法)**:`.rarity(AstralRarities.rare() / epic() / legendary() / pinnacle() / bizarre())`
     (`com.merlinkitsune.starenginelib.item.AstralRarities`);普通档仍写 `Rarity.COMMON`。
     ⚠️ **禁止**再写**原版那三档常量**（`Rarity` 的 `RARE` / `EPIC` / `UNCOMMON`）—— 那套「借用原版枚举」的旧映射已废弃。
@@ -1071,13 +1079,34 @@ When extending this workspace:
     自有档位**带**(`astral_dice:rare`)——命令/NBT 里写错会静默不生效(命令直接报解析错)。
   - **「彩虹档」(奇特)的实现面**:原版 tooltip **边框颜色与稀有度无关**(`TooltipRenderUtil` 硬编码
     `BORDER_COLOR_TOP/BOTTOM`),`Rarity#getStyleModifier()` 只作用于**物品名那一行** ⇒ 边框按档位上色必须自己加客户端钩子。
-    · **1.21.1 / 1.20.1** = `client/RainbowRarityFrame`(`RenderTooltipEvent.Color#setBorderStart/setBorderEnd`)。
+    · **1.21.1 / 1.20.1** = `client/RarityTooltipFrame`(`RenderTooltipEvent.Color#setBorderStart/setBorderEnd`)——
+      **对全部 5 档生效**:先 `AstralRarities#tierOf(stack.getRarity())` 反查档位(`null` = 原版物品/其它模组 ⇒ 一律不动),
+      再写 `Rarity#frameColor(now)`。
+      ⚠️ **历史缺陷(2026-09-25 已修)**:首版类名 `RainbowRarityFrame` **只给奇特写了边框**,其余 4 档边框仍是原版紫色
+      ⇒ 「文字与边框同色」当时并不成立;改名 + 覆盖全档后修好。
       tooltip **每帧重绘**(`AbstractContainerScreen#renderTooltip` 每帧调用)⇒ 事件**每帧都发** ⇒ 按时间算色即得
       **流动彩虹,零 Mixin**;粒度上限 = 「两色渐变」(原版 `renderFrameGradient`:上横线=起始色/下横线=结束色/左右竖线=两者竖直渐变),
       要「七色同屏」得 Mixin 掉那条渐变线的绘制。实测色环周期 = `Rarity.RAINBOW_CYCLE_MILLIS`(3000ms,60 tick 回到同一色)。
     · ⚠️ **26.1.2 未接(已知缺口)**:该线 tooltip 边框已改为**九宫格贴图**(`TooltipRenderUtil` 用 `tooltip/background`
       + `tooltip/frame` 精灵,事件是 `RenderTooltipEvent.Texture#setTexture`),**没有颜色接口** ⇒ 彩虹边框必须自带贴图帧,
-      属独立一轮待办;该线目前只有「奇特」的基准色(物品名那一行),边框仍是原版样式。
+      属独立一轮待办(可行路线 = 每档自带一对 `tooltip/<tier>_background` / `_frame` 九宫格精灵 + `setTexture`);
+      该线目前只有「奇特」的基准色(物品名那一行),边框仍是原版样式。
+    · 🚨 **第三方 tooltip 模组会整个接管边框**(2026-09-25 实测,整合包 `狐の航空学 Voxy Edition`):它们**自己画**提示框
+      ⇒ 上面的事件被**完全忽略**,而且「自定义稀有度」会落进那家的**未知档位兜底色**。实测 Tooltip Overhaul 2.0.4:
+      `ColorUtils#getColorsPerRarity` 用 `==` 比原版 `COMMON/UNCOMMON/RARE/EPIC`,其余一律 `Palette.CUSTOM_RARITY`
+      (= 配置 `CUSTOM_RARITY_PALETTE_COLORS` 默认 `0xFFE8B84A, 0xFFB5832A, 0xFF6B4A12`,**金→褐**)⇒
+      **症状 = 「物品名按档位变色,但边框一律金色」**(自有档位越多越明显)。
+      · **对接方式(已内置)**:它按 `<任意命名空间>/tooltipoverhaul/custom_frames.json` 扫描资源包
+        (`CustomFrameLoader#discoverSources` → `listResources("tooltipoverhaul", path.endsWith("custom_frames.json"))`),
+        每条 frame 的 `rarities` 按 **`Rarity#name()`**(= `ASTRAL_DICE_*`)匹配(`CustomFrameData#matchesRarity`),
+        `gradientType:"custom"` + 3 个 `gradientColors` 会**覆盖**兜底调色板(`getInnerOverlayColors` 先判 `gradientType == CUSTOM`),
+        `priority` 高者胜(`findMatch` 先比 priority 再比 score)⇒ 本仓三线内置
+        `assets/astral_dice/tooltipoverhaul/custom_frames.json`(5 档,priority 10;非 TO 环境下是惰性数据)。
+      · ⚠️ 该模组**没有逐帧动画能力**(特效表 + 调色板全查过,无 rainbow)⇒ 奇特在它下面用**静态三段彩虹渐变**
+        (`borderType:"gradient"`,取库 `hsvToRgb(h,0.85,1.0)` 的相位 0 / 1/3 / 2/3 = `#FF2626` / `#26FF26` / `#2626FF`);
+        不装它时仍是真·流动彩虹。其余 4 档用 `borderType:"static"` + 三色相同 = 与文字严格同色。
+      · ⚠️ **别把「颜色不对」直接归因于本模组** —— 先确认整合包是否装了边框类模组(另两条线的包用 **LegendaryTooltips**,
+        **未对接**:26.1.2 测试包与 FTB Skies 2 有它)。
   - ⚠️ **附魔不再升档**:原版「附魔升一档」的 switch 只覆盖原版 4 档,自有档走 `default` 原样返回(三线一致,可接受)。
   - ⚠️ **解析面耦合(改语法必改)**:`scripts/verify/ChipCommon.psm1` 与 `scripts/verify/verify_bountiful_pools.ps1`
     **正则解析 `ModItems` 的 `.rarity(...)`** 推断档位(前者决定进阶配方模板,后者核对赏金池数据层 rarity)⇒ 调用语法一变必须同步

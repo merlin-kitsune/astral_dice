@@ -15,7 +15,7 @@
 //    以及 `getRarity().getStyleModifier().apply(Style.EMPTY).getColor()` 的 ARGB。最后这一项**等价于
 //    提示框首行的真实颜色** —— 因为 `ItemStack#getTooltipLines` 给物品名套的就是这条 styleModifier。
 //    若该档位是「奇特」（彩虹档），再补 `rainbow=`/`rb=`/`spin=`：`rb` 是库函数算出的边框起始色
-//    （与产品客户端钩子 `client/RainbowRarityFrame` 用的是同一个方法），`spin=1` = 色环确实在随时间推进。
+//    （与产品客户端钩子 `client/RarityTooltipFrame` 用的是同一个方法），`spin=1` = 色环确实在随时间推进。
 //
 //  【为什么不用 `net.minecraft.Util#getMillis`】
 //    ⚠️ KubeJS 的**类过滤器会拒绝 `net.minecraft.Util`**（实测：`Failed to load Java class
@@ -69,7 +69,7 @@ function rrRead(mc) {
         var c = r.getStyleModifier().apply(RR_Style.EMPTY).getColor();
         rgb = (c === null) ? "none" : rrHex(c.getValue());
         // 彩虹档（奇特）：顺带证明「色环真的在流动」—— 取当前与 1 秒后的边框起始色，必须不同。
-        // ⚠️ 这两个值由**库里的唯一权威函数**算出，与产品客户端钩子 `client/RainbowRarityFrame`
+        // ⚠️ 这两个值由**库里的唯一权威函数**算出，与产品客户端钩子 `client/RarityTooltipFrame`
         //    调用的是同一个方法 ⇒ 二者颜色必然一致。
         if (sn === "astral_dice:bizarre") {
             var now = Date.now();

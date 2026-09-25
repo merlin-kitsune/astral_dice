@@ -1761,3 +1761,19 @@ Forge 1.20.1 无该文件与机制，改由库的静态初始化调用 `Rarity.c
    ⇒ 读用例日志时必须确认「断言条数 == 期望条数」，别把「只报了 1 条」当成「其余都通过」。
 5. **本档尚未挂任何物品**（用户裁决「只建等级」）⇒ 实机观察走组件：`/item replace entity @s weapon.mainhand with
    minecraft:stone[minecraft:rarity="astral_dice:bizarre"]`（1.20.1 无组件系统 ⇒ 只能注册时设档）。
+
+## 附录 A 续 31. 文字与边框同色 + 第三方 tooltip 模组对接（2026-09-25）
+
+**改动**：库 `Rarity#frameColor(long)`（= 文字色的边框版；彩虹档返回该时刻起色）+ 三平台 `AstralRarities#tierOf(原版 Rarity)`
+（反查档位，非本库档位返回 `null`）；两线 `client/RainbowRarityFrame` → `client/RarityTooltipFrame`（**对全部 5 档写边框**）；
+库色码 `RARE`/`EPIC` → 原版 `#55FFFF` / `#FF55FF`；三线内置 `assets/astral_dice/tooltipoverhaul/custom_frames.json`。
+
+**判据（实机）**：用例 `RARITY-SYNC-1.21.1` 扩到 **34 步 / 10 条断言**（本条 PASS）：新增 ⑤ 自有 `astral_dice:rare` ⇒ `rgb=0055ffff`、
+⑥ 自有 `astral_dice:epic` ⇒ `rgb=00ff55ff`（证明**库侧改色真的到了客户端**）、⑦/⑧ `sherry_sign` / `fu_card` ⇒
+`enum=ASTRAL_DICE_BIZARRE` + `rainbow=1`（证明改档生效）。1.20.1 `TERU-SIGN-1.20.1` = PASS（107/0，验证 Forge 侧新钩子类能启动）。
+
+**⚠️ 本批最重要的排查结论**：**第三方 tooltip 模组会整个接管提示框边框**，此时 `RenderTooltipEvent.Color` **被完全忽略**，
+而「非原版稀有度」会落进那家的兜底调色板（Tooltip Overhaul 2.0.4 = `Palette.CUSTOM_RARITY` **金色**）⇒ 症状是
+「物品名按档位变色、边框一律金色」，**极易误判成本模组染色坏了**。可复现判据（`config/tooltipoverhaul/tooltipoverhaul.toml`）：
+`CUSTOM_RARITY_PALETTE_COLORS = "0xFFE8B84A, …"`。对接方式与三家模组的差异见技能 `mc-thirdparty-tooltip-frame`；
+排查入口 = **先看整合包 `mods/` 里有没有画 tooltip 的模组**（`grep -i "tooltip\|legendary\|border"`）。

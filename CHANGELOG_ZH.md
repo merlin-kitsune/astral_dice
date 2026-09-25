@@ -116,9 +116,12 @@
 
 
 - **稀有度系统改为「自有 5 档 + 原版普通」**（2026-09-25 用户裁决）：不再沿用原版 `COMMON`/`UNCOMMON`/`RARE`/`EPIC` 那套"借用"，
-  改为把 **4 个自有等级扩展进原版 `Rarity`**：**稀有（浅蓝）/ 史诗（粉紫）/ 传奇（金）/ 巅峰（亮红）**；普通仍用原版 `COMMON`。
+  改为把 **5 个自有等级扩展进原版 `Rarity`**：**稀有（水蓝）/ 史诗（粉紫）/ 传奇（金）/ 巅峰（亮红）/ 奇特（彩虹）**；普通仍用原版 `COMMON`。
+  ⚠️ **2026-09-25 二次修正**：**稀有 / 史诗改用原版 RARE / EPIC 的配色** —— 水蓝 `#55FFFF`（= `ChatFormatting.AQUA`）
+  与粉紫 `#FF55FF`（= `ChatFormatting.LIGHT_PURPLE`），替换首版偏淡的自选色 `#8FD3FF` / `#E3A6FF`。
   **玩家可见变化**：① 传奇档由原来的"黄"（借用 `UNCOMMON`）变为**金**；② 新增最高档**巅峰（亮红）**，
-  **下界之星骰子**成为首个（当前唯一）巅峰物品；③ **附魔不再让档位升一档**（自有档不在原版那条 switch 里）。
+  **下界之星骰子**成为首个（当前唯一）巅峰物品；③ **附魔不再让档位升一档**（自有档不在原版那条 switch 里）；
+  ④ **稀有 / 史诗的颜色改为原版 RARE / EPIC 那两个色**（更饱和的水蓝 `#55FFFF` 与粉紫 `#FF55FF`）。
   机制：等级、常量名、序列化名与**颜色码的唯一权威**落在前置库 `starengine_lib`（`item/Rarity` + 三平台 `item/AstralRarities`），
   本模组只声明 `META-INF/enumextensions.json`（NeoForge 两线，`mods.toml` 的 `enumExtensions=` 键）并在 `ModItems` 里调用
   `AstralRarities.rare()/epic()/legendary()/pinnacle()`；Forge 1.20.1 走 `Rarity.create` + `IExtensibleEnum`（库侧静态初始化登记）。
@@ -128,10 +131,27 @@
 - **新增第 5 档「奇特」（彩虹流动的提示框边框）**（2026-09-25 用户裁决「试验能否创建彩虹色边框；若可行，该档定为奇特」）：
   本档**没有单一颜色** —— 它的提示框那圈**边框**会沿色环流动（周期 3 秒）。实现面：原版 tooltip 的边框颜色**与稀有度无关**
   （`TooltipRenderUtil` 硬编码边框色），而 `Rarity#getStyleModifier()` 只管物品名那一行 ⇒ 边框按档位上色必须自己加客户端钩子：
-  1.21.1 与 1.20.1 用 `client/RainbowRarityFrame` 挂 `RenderTooltipEvent.Color#setBorderStart/setBorderEnd`；因为 tooltip
+  1.21.1 与 1.20.1 用 `client/RarityTooltipFrame` 挂 `RenderTooltipEvent.Color#setBorderStart/setBorderEnd`；因为 tooltip
   **每帧重绘**（`AbstractContainerScreen#renderTooltip` 每帧调用）⇒ 该事件每帧都发 ⇒ 按当前时间算色即得**流动彩虹、零 Mixin**。
   物品名那一行仍用基准色（薄荷绿 `#6BFFA8`，见库 `item/Rarity`）。
-  **本档暂不挂任何物品**（用户裁决「只建等级」）⇒ 想立刻看效果：`/give @s <物品>[minecraft:rarity="astral_dice:bizarre"]`。
+  **本档现有 8 件物品**（2026-09-25 用户裁决「将所有专属牌，以及怪力侦探和人偶师改为奇特」）：6 张**专属牌**
+  （`is_exclusive.json` 全表）+ **怪力侦探**（`sherry_sign`）+ **人偶师**（`ren_sign`）。后两者原为史诗且**在赏金奖励池里**
+  ⇒ 改档后按「奇特不入池」规则从三线 `astral_rews` 移除（`verify_bountiful_pools` 的 `$EXCLUDED_TIERS` 含 `BIZARRE`，
+  留着会 fail-loud）。想手工验证任意物品：`/give @s <物品>[minecraft:rarity="astral_dice:bizarre"]`。
+
+- **提示框边框改为「文字与边框严格同色」（唯一例外 = 奇特），并修掉两处缺陷**（2026-09-25 用户裁决）：
+  **玩家可见变化**：① 稀有 / 史诗的颜色换成原版 RARE / EPIC 那两个色；② **提示框那圈边框现在跟物品名同色**
+  （此前只有奇特有边框色，其余 4 档仍是原版紫色）；③ 装了 Tooltip Overhaul 的整合包里边框**不再一律金色**。
+  缺陷一：首版客户端类只对奇特写边框 ⇒ 改名 `client/RarityTooltipFrame` 并**覆盖全部 5 档**（走库
+  `AstralRarities#tierOf(...)` 反查 + `Rarity#frameColor(now)`；非本模组档位一律不动）。
+  缺陷二（**根因在第三方模组，不在本模组**）：整合包 `狐の航空学 Voxy Edition` 装的 **Tooltip Overhaul 2.0.4 自己画整个提示框**，
+  完全不调 `TooltipRenderUtil` ⇒ 本模组的事件被忽略；而它对**非原版稀有度**一律用兜底调色板
+  （`Palette.CUSTOM_RARITY` 默认 = 金 `0xFFE8B84A`）⇒ **自有 5 档全部拿到金色边框**，看起来就像「染色把边框全变成金色」。
+  对策 = 按该模组**官方的资源包扩展点**内置一份 `assets/astral_dice/tooltipoverhaul/custom_frames.json`
+  （按 `Rarity#name()` 匹配、`gradientType:"custom"` + 显式三色覆盖兜底调色板）：4 档 = 静态单色（与文字严格同色），
+  奇特 = **静态三段彩虹渐变**（`#FF2626` / `#26FF26` / `#2626FF`，取自库 `hsvToRgb` 的相位 0 / 1/3 / 2/3）——
+  ⚠️ 该模组**没有逐帧动画能力**（特效与调色板全查过，无 rainbow），故流动彩虹只在没有它的环境里成立。
+  文件在三线同字节；未装该模组的线/包不受影响（惰性数据）。
   ⚠️ **26.1.2 的边框仍是原版样式（已知缺口，已登记在 AGENTS）**：该线 tooltip 边框改为九宫格贴图
   （`TooltipRenderUtil` 用 `tooltip/frame` 精灵、事件是 `RenderTooltipEvent.Texture`），**没有颜色接口** ⇒ 彩虹边框要自带贴图帧，属独立一轮待办。
   顺带取得的**实测事实**（写进 AGENTS）：扩展档位**确实进了**原版 `Rarity.CODEC` 与 `BY_ID` ⇒ 数据组件能携带自有档位并跨网络同步到客户端
