@@ -125,8 +125,8 @@ public class ModItems {
     //   亮红 #FF4D4D = 巅峰 → AstralRarities.pinnacle()  扩展常量 ASTRAL_DICE_PINNACLE
     //   彩虹(流动)   = 奇特 → AstralRarities.bizarre()   扩展常量 ASTRAL_DICE_BIZARRE
     //                 ⚠️ 奇特**没有**单一颜色:基准色薄荷绿 #6BFFA8 只用于物品名那一行;
-    //                    边框策略(2026-09-25 二次裁决):稀有/史诗随原版不干预;传奇/巅峰/奇特
-    //                    (金/亮红/顺时针流动彩虹)由客户端 mixin/client/TooltipBorderMixin + client/RarityBorderRenderer 自绘。
+    //                    边框策略(2026-09-25 二次裁决):稀有/史诗随原版不干预;传奇/巅峰=单色、奇特=两色
+    //                    流动渐变,由客户端 client/RarityTooltipFrame 经 RenderTooltipEvent.Color 写入(无 Mixin)。
     // 机制:库里的 item.Rarity 是**唯一色码权威**,其平台接线把这 5 档**扩展进原版 Rarity**
     //   (NeoForge 两线 = 本 mod 的 META-INF/enumextensions.json + 库 AstralRarities 的 EnumProxy 字段;
     //    Forge 1.20.1 = 库 AstralRarities 静态初始化里的 Rarity.create + IExtensibleEnum)

@@ -1782,11 +1782,12 @@ Forge 1.20.1 无该文件与机制，改由库的静态初始化调用 `Rarity.c
 
 **⚠️ 二次修订（2026-09-25 晚，用户裁决 —— 本节上面的「文字与边框同色」结论作废）**：
 用户以原版稀有物品截图定调（文字水蓝、边框紫蓝，**原版边框与文字本就不同色**）⇒ 稀有/史诗**不干预边框**（随原版）；
-传奇/巅峰维持自定义单色边框；奇特要求**沿边框顺时针流动**。`RenderTooltipEvent.Color` 只有「顶/底」两色
-（竖直渐变），**画不出顺时针环绕** ⇒ 全线改走 **Mixin 自绘**：`mixin/client/TooltipBorderMixin`（包 `renderTooltipBackground`
-/ `extractTooltipBackground` 调用）+ `client/RarityBorderRenderer`（奇特 = 逐像素顺时针彩虹环
-`hsvToRgb(rainbowHue(now) − dist/周长, …)`；传奇/巅峰 = `frameColor` 单色环；其余不画）。
-`RarityTooltipFrame` 两线删除；26.1.2 的贴图边框几何（`tooltip/frame` nine-slice border=10）实测解出：
-上横线 `y-3, x-2..x+w+1`（**四角缺 1px**）、竖线 `y-2..y+h+1` —— 自绘必须贴合，否则漏紫边。
-`custom_frames.json`：稀有/史诗改原版紫蓝三段近似 `#5000FF/#3C00BF/#28007F`（TO hex 无 alpha），传奇/巅峰/奇特不变。
-赏金池随品质修正：`hanna_sign` 移出、`ren_sign` 以 EPIC/1800 加回（三线 md5 一致）。
+传奇/巅峰 = 自定义单色边框；奇特 = **两色流动渐变**（`RenderTooltipEvent.Color` 只给「顶/底」两色，原版画成竖直渐变）。
+**⚠️ 三次修订（2026-09-25 深夜，用户裁决 —— Mixin 自绘顺时针彻底放弃）**：顺时针环绕的 Mixin 方案三线都有
+lambda 包裹/签名陷阱（1.21.1/1.20.1 的 `renderTooltipBackground` 调用被 `drawManaged(() -> …)` 的 lambda 包裹、
+生产字节码只有 6 参；26.1.2 `extractTooltipBackground` 描述符易错），且实机仍「动态渐变无效」⇒ 全删
+`TooltipBorderMixin` / `GuiGraphicsTooltipStackAccessor` / `RarityBorderRenderer`，改回最初 `RarityTooltipFrame`：
+`RenderTooltipEvent.Color` 里 `tierOf` 反查档位，稀有/史诗/原版 return 不动，传奇/巅峰 = `frameColor` 单色，
+奇特 = `rainbowBorderStart/End` 两色流动渐变。26.1.2 无颜色事件 ⇒ 不接（保持贴图边框）。
+`custom_frames.json`：**删稀有/史诗两条**（退回原版 = 让 Tooltip Overhaul 走默认边框，不再自定义），
+仅保留传奇/巅峰/奇特三档。赏金池随品质修正：`hanna_sign` 移出、`ren_sign` 以 EPIC/1800 加回（三线 md5 一致）。

@@ -168,32 +168,33 @@
   lines; Bizarre is an excluded tier and the gate fails loud if it stays). To turn any item into it by hand:
   `/give @s <item>[minecraft:rarity="astral_dice:bizarre"]`.
 
-- **Tooltip frame policy revised: the "same colour" rule is withdrawn; Bizarre becomes a clockwise-flowing rainbow
-  (Mixin-drawn, 26.1.2 included)** (user ruling 2026-09-25, second round):
+- **Tooltip frame policy revised: the "same colour" rule is withdrawn; Rare/Epic return to vanilla, Legendary/Pinnacle/Bizarre
+  stay custom (two-colour gradient restored, Mixin-drawn clockwise dropped)** (user ruling 2026-09-25, second + third round):
   the user pinned it with a screenshot of a vanilla rare item - **in vanilla the frame and the text are not the same colour**
   (aqua name, purple frame) => the earlier "text and border strictly share one colour" rule is **withdrawn**. New policy:
   **Rare / Epic leave the frame completely alone** (vanilla purple gradient kept; only the name line is tinted - matching how
-  vanilla rare items look); **Legendary / Pinnacle** keep a custom frame matching their name colour (gold / bright red);
-  **Bizarre = a clockwise-flowing rainbow** - a full colour wheel laid around the frame perimeter, drifting clockwise over time
-  (the previous two-colour API could only do "top line = start, bottom line = end, side lines = a vertical gradient", which
-  physically cannot wrap around).
-  Implementation: the old `client/RarityTooltipFrame` (both lines) is **deleted**; a **Mixin** now wraps the vanilla background
-  draw call (`mixin/client/TooltipBorderMixin` - `renderTooltipBackground` on 1.21.1/1.20.1, `extractTooltipBackground` on
-  26.1.2) and `client/RarityBorderRenderer` overlays per-pixel colours afterwards (Bizarre: `hsvToRgb(rainbowHue - dist/perimeter, ...)`;
-  Legendary/Pinnacle: a solid ring of `frameColor`; everything else: untouched). **26.1.2 is covered too** - its frame is a
-  nine-slice texture with no colour hook; the texture geometry was measured pixel-by-pixel so the drawn ring sits exactly on it
-  (Legendary / Pinnacle get their gold / red frames on that line for the first time).
+  vanilla RARE/EPIC items look); **Legendary / Pinnacle** keep a custom solid frame in their tier colour (gold `#FFC24B` /
+  bright red `#FF4D4D`, matching the name); **Bizarre = a two-colour flowing gradient** - `RenderTooltipEvent.Color` only gives
+  a top/bottom pair (vanilla draws "top line = start, bottom line = end, side lines = a vertical gradient"), so Bizarre writes
+  `rainbowBorderStart/End` into start/end and the colour flows around the wheel over time.
+  Implementation: `client/RarityTooltipFrame` (1.21.1 / 1.20.1, `@EventBusSubscriber(Dist.CLIENT)` + `RenderTooltipEvent.Color`) -
+  it reverse-looks-up the tier via `AstralRarities.tierOf`, **returns untouched** for Rare/Epic/vanilla/other mods, sets
+  `frameColor(now)` (solid) for Legendary/Pinnacle and `rainbowBorderStart/End` for Bizarre. **26.1.2 is not wired** (its frame is a
+  nine-slice texture with no colour hook => it keeps the vanilla texture).
+  ⚠️ before the third ruling there was a "Mixin-drawn clockwise rainbow" round (`TooltipBorderMixin` + `RarityBorderRenderer`); it was
+  **deleted wholesale** - all three lines hit lambda-wrapping / signature traps (production bytecode only has the 6-arg
+  `renderTooltipBackground`) and the animated gradient still did not show in-game.
   Defect two stays (**caused by a third-party mod, not by this mod**): the user's pack ships **Tooltip Overhaul 2.0.4, which draws the
-  whole tooltip itself** and never calls `TooltipRenderUtil`, so this mod's event *and* the drawn ring are ignored - and for
-  **any non-vanilla rarity** it falls back to one palette (`Palette.CUSTOM_RARITY`, default gold `0xFFE8B84A`) => **all own tiers got
-  a gold frame**, which looks exactly like "the recolouring turned every border gold".
+  whole tooltip itself** and never calls `TooltipRenderUtil`, so this mod's event is ignored - and for **any non-vanilla rarity** it
+  falls back to one palette (`Palette.CUSTOM_RARITY`, default gold `0xFFE8B84A`) => **all own tiers got a gold frame**, which looks
+  exactly like "the recolouring turned every border gold".
   Fix = ship the mod's **official resource-pack extension point** `assets/astral_dice/tooltipoverhaul/custom_frames.json`
-  (matched by `Rarity#name()`, `gradientType:"custom"` + explicit three-colour override of the fallback palette): **Rare / Epic get
-  the vanilla frame purple** as a three-stop approximation (`#5000FF` / `#3C00BF` / `#28007F`; the mod's hex has no alpha support),
-  **Legendary / Pinnacle keep their tier colour**, and Bizarre gets a **static three-stop rainbow gradient**
-  (`#FF2626` / `#26FF26` / `#2626FF`, taken from the library's `hsvToRgb` at phases 0 / 1/3 / 2/3) - that mod has **no per-frame
-  animation** (its effect catalogue and palettes were checked; there is no rainbow), so the *clockwise-flowing* rainbow only exists
-  where it is absent. The file is byte-identical on all three lines and inert where the mod is not installed.
+  (matched by `Rarity#name()`, `gradientType:"custom"` + explicit three-colour override of the fallback palette): **Rare / Epic are
+  not written at all** (returned to vanilla => Tooltip Overhaul uses its own default frame), **Legendary / Pinnacle keep their tier
+  colour**, and Bizarre gets a **static three-stop rainbow gradient** (`#FF2626` / `#26FF26` / `#2626FF`, taken from the library's
+  `hsvToRgb` at phases 0 / 1/3 / 2/3) - that mod has **no per-frame animation** (its effect catalogue and palettes were checked;
+  there is no rainbow), so the *flowing* gradient only exists where it is absent. The file is byte-identical on all three lines and
+  inert where the mod is not installed.
   Incidentally established (and recorded in AGENTS): the extended tiers **do reach** vanilla `Rarity.CODEC` and `BY_ID`, so the
   data component can carry own tiers and sync them to the client (case `RARITY-SYNC-1.21.1`); ⚠️ vanilla tier serialized names
   are **not** namespaced (`rare`), own tiers **are** (`astral_dice:rare`).

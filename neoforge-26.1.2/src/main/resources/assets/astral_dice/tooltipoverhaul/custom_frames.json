@@ -1,35 +1,19 @@
 {
   "frames": [
     {
-      "id": "astral_dice_rare",
-      "items": [],
-      "tags": [],
-      "rarities": ["ASTRAL_DICE_RARE"],
-      "gradientType": "custom",
-      "borderType": "static",
-      "gradientColors": ["#5000FF", "#3C00BF", "#28007F"],
-      "dividerLineColor": "match_inner_frame_color",
-      "priority": 10
-    },
-    {
-      "id": "astral_dice_epic",
-      "items": [],
-      "tags": [],
-      "rarities": ["ASTRAL_DICE_EPIC"],
-      "gradientType": "custom",
-      "borderType": "static",
-      "gradientColors": ["#5000FF", "#3C00BF", "#28007F"],
-      "dividerLineColor": "match_inner_frame_color",
-      "priority": 10
-    },
-    {
       "id": "astral_dice_legendary",
       "items": [],
       "tags": [],
-      "rarities": ["ASTRAL_DICE_LEGENDARY"],
+      "rarities": [
+        "ASTRAL_DICE_LEGENDARY"
+      ],
       "gradientType": "custom",
       "borderType": "static",
-      "gradientColors": ["#FFC24B", "#FFC24B", "#FFC24B"],
+      "gradientColors": [
+        "#FFC24B",
+        "#FFC24B",
+        "#FFC24B"
+      ],
       "dividerLineColor": "match_inner_frame_color",
       "priority": 10
     },
@@ -37,10 +21,16 @@
       "id": "astral_dice_pinnacle",
       "items": [],
       "tags": [],
-      "rarities": ["ASTRAL_DICE_PINNACLE"],
+      "rarities": [
+        "ASTRAL_DICE_PINNACLE"
+      ],
       "gradientType": "custom",
       "borderType": "static",
-      "gradientColors": ["#FF4D4D", "#FF4D4D", "#FF4D4D"],
+      "gradientColors": [
+        "#FF4D4D",
+        "#FF4D4D",
+        "#FF4D4D"
+      ],
       "dividerLineColor": "match_inner_frame_color",
       "priority": 10
     },
@@ -48,10 +38,16 @@
       "id": "astral_dice_bizarre",
       "items": [],
       "tags": [],
-      "rarities": ["ASTRAL_DICE_BIZARRE"],
+      "rarities": [
+        "ASTRAL_DICE_BIZARRE"
+      ],
       "gradientType": "custom",
       "borderType": "gradient",
-      "gradientColors": ["#FF2626", "#26FF26", "#2626FF"],
+      "gradientColors": [
+        "#FF2626",
+        "#26FF26",
+        "#2626FF"
+      ],
       "dividerLineColor": "match_inner_frame_color",
       "priority": 10
     }

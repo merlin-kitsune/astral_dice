@@ -147,24 +147,24 @@
   本批纠正 —— **游戏大师改回史诗**（按 EPIC/1800 加回赏金池）、**人偶师改奇特**（按「奇特不入池」从三线 `astral_rews` 移除，
   守门 `$EXCLUDED_TIERS` 含 `BIZARRE`，池里留着会 fail-loud）。想手工验证任意物品：`/give @s <物品>[minecraft:rarity="astral_dice:bizarre"]`。
 
-- **提示框边框策略修订：同色约定作废，奇特改为顺时针流动彩虹（Mixin 自绘，26.1.2 一并接上）**（2026-09-25 用户二次裁决）：
+- **提示框边框策略修订：同色约定作废，稀有/史诗退回原版，传奇/巅峰/奇特自定义（改回两色渐变，放弃 Mixin 自绘顺时针）**（2026-09-25 用户二次 + 三次裁决）：
   用户以原版稀有物品实测定调 —— **原版边框与文字本就不同色**（截图「神秘蠕虫」：文字水蓝、边框紫蓝）⇒ 早前「文字与边框
-  严格同色」的约定**作废**。新策略：**稀有 / 史诗完全不干预边框**（原版紫蓝渐变保留，只染物品名，观感与原版稀有/史诗一致）；
-  **传奇 / 巅峰**边框与物品名同色（金 / 亮红）；**奇特 = 顺时针流动彩虹** —— 沿边框周长铺满一整圈色环、随时间沿顺时针平移
-  （上一版的双色 API 只能让「上横线 = start、下横线 = end、左右竖线竖直渐变」，物理上画不出环绕）。
-  实现面：原 `client/RarityTooltipFrame`（两线）**删除**，改走 **Mixin 自绘** —— `mixin/client/TooltipBorderMixin` 包住原版
-  背景绘制调用（1.21.1 / 1.20.1 = `renderTooltipBackground`、26.1.2 = `extractTooltipBackground`），画完后由
-  `client/RarityBorderRenderer` 逐像素叠加（奇特按周长相位取色 `hsvToRgb(rainbowHue − dist/周长, …)`、传奇/巅峰单色环、
-  其余不画）。**26.1.2 一并接上**（该线边框是九宫格贴图、本无颜色接口 —— 贴图几何已逐像素解出，自绘环精确覆盖；
-  传奇/巅峰在 26.1.2 也因此第一次有了金/红边框）。
+  严格同色」的约定**作废**。新策略：**稀有 / 史诗完全不干预边框**（原版紫蓝渐变保留、只染物品名，观感与原版 RARE/EPIC 一致）；
+  **传奇 / 巅峰**边框 = 档位色单色（金 `#FFC24B` / 亮红 `#FF4D4D`，与物品名同色）；**奇特 = 两色流动渐变** ——
+  `RenderTooltipEvent.Color` 只给「顶/底」两色（原版画成「上横线 = start、下横线 = end、左右竖线竖直渐变」），
+  奇特把 `rainbowBorderStart/End` 写进起/止色 ⇒ 颜色随时间沿色环流动。
+  实现面：`client/RarityTooltipFrame`（1.21.1 / 1.20.1，`@EventBusSubscriber(Dist.CLIENT)` + `RenderTooltipEvent.Color`）——
+  用 `AstralRarities.tierOf` 反查档位，稀有/史诗/原版/其它模组 **return 不动**，传奇/巅峰 = `frameColor(now)` 单色，
+  奇特 = `rainbowBorderStart/End` 两色。**26.1.2 不接**（该线边框是九宫格贴图、无颜色事件 ⇒ 保持原版贴图）。
+  ⚠️ 三次裁决前曾走过一轮「Mixin 自绘顺时针彩虹」（`TooltipBorderMixin` + `RarityBorderRenderer`），因三线都有 lambda 包裹 /
+  签名陷阱（生产字节码只有 6 参 `renderTooltipBackground`）且实机「动态渐变无效」，**已整条删除**。
   缺陷二保留（**根因在第三方模组，不在本模组**）：整合包 `狐の航空学 Voxy Edition` 装的 **Tooltip Overhaul 2.0.4 自己画整个提示框**，
-  完全不调 `TooltipRenderUtil` ⇒ 本模组的事件与自绘都被忽略；而它对**非原版稀有度**一律用兜底调色板
+  完全不调 `TooltipRenderUtil` ⇒ 本模组的事件被忽略；而它对**非原版稀有度**一律用兜底调色板
   （`Palette.CUSTOM_RARITY` 默认 = 金 `0xFFE8B84A`）⇒ **自有档位全部拿到金色边框**，看起来就像「染色把边框全变成金色」。
   对策 = 按该模组**官方的资源包扩展点**内置一份 `assets/astral_dice/tooltipoverhaul/custom_frames.json`
-  （按 `Rarity#name()` 匹配、`gradientType:"custom"` + 显式三色覆盖兜底调色板）：**稀有 / 史诗 = 原版边框紫蓝**三段近似
-  （`#5000FF` / `#3C00BF` / `#28007F`；该模组的 hex 不支持 alpha），**传奇 / 巅峰 = 档位色**（与文字同色），
-  奇特 = **静态三段彩虹渐变**（`#FF2626` / `#26FF26` / `#2626FF`，取自库 `hsvToRgb` 的相位 0 / 1/3 / 2/3）——
-  ⚠️ 该模组**没有逐帧动画能力**（特效与调色板全查过，无 rainbow），故顺时针流动彩虹只在没有它的环境里成立。
+  （按 `Rarity#name()` 匹配、`gradientType:"custom"` + 显式三色覆盖兜底调色板）：**稀有 / 史诗不写入**（退回原版 ⇒ 让 TO 用默认边框），
+  **传奇 / 巅峰 = 档位色**（与文字同色），奇特 = **静态三段彩虹渐变**（`#FF2626` / `#26FF26` / `#2626FF`，取自库 `hsvToRgb` 的相位 0 / 1/3 / 2/3）——
+  ⚠️ 该模组**没有逐帧动画能力**（特效与调色板全查过，无 rainbow），故流动渐变只在没有它的环境里成立。
   文件在三线同字节；未装该模组的线/包不受影响（惰性数据）。
   顺带取得的**实测事实**（写进 AGENTS）：扩展档位**确实进了**原版 `Rarity.CODEC` 与 `BY_ID` ⇒ 数据组件能携带自有档位并跨网络同步到客户端
   （用例 `RARITY-SYNC-1.21.1` 实证）；⚠️ 原版档位序列化名**不带命名空间**（`rare`），自有档位**带**（`astral_dice:rare`）。

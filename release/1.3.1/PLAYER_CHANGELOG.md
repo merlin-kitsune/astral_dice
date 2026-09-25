@@ -99,19 +99,19 @@ Temporary cards also have their own hint line now: **"Temporary card: cannot be 
   item names), and plain items stay white.
 - **The tooltip frame now follows the vanilla look, tier by tier**: for **Rare / Epic** the frame stays the **vanilla blue-purple**
   (in vanilla, a rare item's name and frame are *not* the same colour - e.g. the vanilla "Mysterious Worm": aqua name, purple
-  frame); **Legendary / Pinnacle** frames match their name colour (gold / bright red); **Bizarre** gets a **clockwise-flowing
-  rainbow frame** (the colours travel around the frame, about one revolution every 3 seconds).
+  frame); **Legendary / Pinnacle** frames match their name colour (gold / bright red); **Bizarre** gets a **flowing rainbow
+  gradient frame** (the two colours travel around the colour wheel, about one cycle every 3 seconds).
   ⚠️ Note: the **Tooltip Overhaul** mod in your pack draws the whole tooltip itself and falls back to a single gold palette for
   any non-vanilla rarity - which is why you saw "text recoloured per tier, but every border gold". This release ships a colour
-  table through that mod's official mechanism (Rare / Epic = the vanilla blue-purple, Legendary / Pinnacle = their tier colour,
+  table through that mod's official mechanism (Rare / Epic = handled by its defaults, Legendary / Pinnacle = their tier colour,
   Bizarre = a three-stop rainbow gradient). It has no per-frame animation, so **in your pack Bizarre's frame is a static rainbow
-  gradient**; without that mod it flows clockwise.
+  gradient**; without that mod it is a flowing rainbow gradient.
 - **Enchanting no longer bumps the tier**: it used to show an item one tier higher; now the tier comes from the item alone.
 - For the record: tiers and colours are now defined in one place inside the **prerequisite library**, so recolouring is a
   one-line change; the library version moves to **1.0.4** (still embedded - you do not install it separately).
-- **New fifth tier "Bizarre" (the tooltip frame is a clockwise-flowing rainbow)**: this tier has **no fixed colour** - its tooltip
-  **frame** carries a full colour wheel around the perimeter that **flows clockwise** (colours travel along the frame, about one
-  revolution every 3 seconds; 26.1.2 supports it too).
+- **New fifth tier "Bizarre" (the tooltip frame is a flowing rainbow gradient)**: this tier has **no fixed colour** - its tooltip
+  **frame** is a rainbow gradient that **flows over time** (the two colours travel around the colour wheel, about one cycle
+  every 3 seconds).
   **Eight items now use it**: the six exclusive cards (Fate Guidance / Living Page / Fu Card / Huo Card / Bite / Dragon Roar) plus
   the **Sherry Sign** and the **Hanna Sign**.
   (⚠️ Fix note: an earlier batch mistakenly turned the **Game Master** into Bizarre instead of the Hanna Sign - the Game Master is

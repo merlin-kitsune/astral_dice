@@ -1052,7 +1052,7 @@ When extending this workspace:
     **稀有 / 史诗 = 完全随原版**(消费方不干预边框 —— 原版边框与稀有度无关的紫蓝渐变保留,只染物品名,
     与原版稀有/史诗物品观感一致;用户以原版稀有物品「神秘蠕虫」截图定调:文字水蓝、边框紫蓝,两者本就不同色);
     **传奇 / 巅峰 = 自定义单色边框**(`Rarity#frameColor(long)` = `0xFF000000|rgb()`,与物品名同色);
-    **奇特 = 顺时针流动彩虹**(沿边框周长铺满一整圈色环、随时间顺时针平移)。
+    **奇特 = 两色流动渐变**(`rainbowBorderStart/End` 写进边框起/止色 ⇒ 原版竖直渐变随时间流动;实现面见下方「边框的实现面」条)。
   - **奇特档当前挂载**(2026-09-25 用户裁决;⚠️ **2026-09-25 二次修正:上一批把「人偶师」误认成 `ren_sign`(实际 = 游戏大师)
     ⇒ `ren_sign` 被误改奇特、`hanna_sign` 漏改,本批纠正**):6 张**专属牌**(= `is_exclusive.json` 全表:`effect_card_living_page` /
     `effect_card_fate_guidance` / `fu_card` / `huo_card` / `attack_card_bite` / `attack_card_dragon_roar`)
@@ -1084,22 +1084,15 @@ When extending this workspace:
     ② 客户端 `getRarity()` 是**真值** ⇒ 任何「按档位生效」的客户端表现(名字染色、边框彩虹)都可靠。
     ⚠️ **写法不同**:原版档位的序列化名**不带命名空间**(`rare` / `epic` …,写成 `minecraft:rare` 解析失败),
     自有档位**带**(`astral_dice:rare`)——命令/NBT 里写错会静默不生效(命令直接报解析错)。
-  - **「传奇/巅峰/奇特」边框的实现面(2026-09-25 重写 = Mixin 自绘,原 `RarityTooltipFrame`/`RenderTooltipEvent.Color` 路线已废弃)**:
-    原版 tooltip **边框颜色与稀有度无关**,而 `RenderTooltipEvent.Color` 只有「顶/底」两色
-    (`renderFrameGradient`:上横线=start/下横线=end/左右竖线=竖直渐变)——**物理上画不出沿边框顺时针环绕**
-    (顺时针需要逐像素按周长相位取色)。⇒ 唯一路线 = **Mixin 包住原版背景绘制调用,画完之后叠加自绘边框**:
-    · 三线统一 = `mixin/client/TooltipBorderMixin` + `client/RarityBorderRenderer`:
-      **1.21.1/1.20.1** 包 `GuiGraphics#renderTooltipInternal` 里的 `TooltipRenderUtil#renderTooltipBackground(10 参)`
-      (`@Shadow tooltipStack` 取物品;z=400 同层后写者胜);
-      **26.1.2** 包 `GuiGraphicsExtractor#tooltip(7 参)` 里的 `TooltipRenderUtil#extractTooltipBackground`
-      (贴图线;物品用 `@Local(argsOnly)` 取方法参数 —— deferred 渲染下字段不可靠)。
-    · 渲染器按档位:奇特 = 顺时针彩虹(逐像素 `hsvToRgb(rainbowHue(now) − dist/周长, rainbowSaturation(), rainbowBrightness())`,
-      `dist` = 从上横线左端沿「上→右→下→左」的像素数 ⇒ 时间推进等色线沿顺时针平移);
-      传奇/巅峰 = `frameColor(now)` 单色环;稀有/史诗/其它 = **不画**(原版边框原样)。
-    · ⚠️ **几何三线不同**:1.21.1/1.20.1 的边框环 = 上横线 `y-3, x-3..x+w+2`(含角)/竖线 `y-2..y+h+1`;
-      26.1.2 = `tooltip/frame` 九宫格贴图(100×100,border=10)解出的线是 上横线 `y-3, x-2..x+w+1`(**四角缺 1px**),
-      竖线同 —— 自绘必须各自贴合,否则与原版边框错位漏紫边。
-    · 色环周期 = `Rarity.RAINBOW_CYCLE_MILLIS`(3000ms);饱和度/明度 = 库 `rainbowSaturation()`/`rainbowBrightness()`(0.85/1.0)。
+  - **「传奇/巅峰/奇特」边框的实现面(2026-09-25 二次裁决 = 放弃 Mixin 自绘顺时针,改回 `RenderTooltipEvent.Color` 两色渐变)**:
+    原版 tooltip **边框颜色与稀有度无关**,`RenderTooltipEvent.Color` 只给「顶/底」两色
+    (`renderFrameGradient`:上横线=start/下横线=end/左右竖线=竖直渐变)。**放弃**「沿边框顺时针环绕」的诉求
+    (那需要逐像素按周长相位取色、必走 Mixin,实测三线都有 lambda 包裹/签名陷阱),改回最初的**两色流动渐变**:
+    · 1.21.1/1.20.1 = `client/RarityTooltipFrame`(`@EventBusSubscriber(Dist.CLIENT)` + `RenderTooltipEvent.Color`):
+      稀有/史诗/原版/其它模组 = **return 不动**(随原版边框);传奇/巅峰 = `frameColor(now)` 单色(起=止);
+      奇特 = `rainbowBorderStart(now)` / `rainbowBorderEnd(now)` 两色 ⇒ 原版画出的竖直渐变随时间流动。
+      26.1.2 **无此事件**(贴图边框)⇒ 不接,保持原版贴图(奇特在该线无动画,已登记缺口)。
+    · 色环周期 = `Rarity.RAINBOW_CYCLE_MILLIS`(3000ms);`rainbowBorderEnd` 相位 = 起始 + 1/3 圈(120°)。
     · 🚨 **第三方 tooltip 模组会整个接管边框**(2026-09-25 实测,整合包 `狐の航空学 Voxy Edition`):它们**自己画**提示框
       ⇒ 上面的事件被**完全忽略**,而且「自定义稀有度」会落进那家的**未知档位兜底色**。实测 Tooltip Overhaul 2.0.4:
       `ColorUtils#getColorsPerRarity` 用 `==` 比原版 `COMMON/UNCOMMON/RARE/EPIC`,其余一律 `Palette.CUSTOM_RARITY`
@@ -1110,12 +1103,11 @@ When extending this workspace:
         每条 frame 的 `rarities` 按 **`Rarity#name()`**(= `ASTRAL_DICE_*`)匹配(`CustomFrameData#matchesRarity`),
         `gradientType:"custom"` + 3 个 `gradientColors` 会**覆盖**兜底调色板(`getInnerOverlayColors` 先判 `gradientType == CUSTOM`),
         `priority` 高者胜(`findMatch` 先比 priority 再比 score)⇒ 本仓三线内置
-        `assets/astral_dice/tooltipoverhaul/custom_frames.json`(5 档,priority 10;非 TO 环境下是惰性数据)。
+        `assets/astral_dice/tooltipoverhaul/custom_frames.json`(**仅传奇/巅峰/奇特 3 档**,priority 10;非 TO 环境惰性数据)。
+        ⚠️ **稀有/史诗不写进 custom_frames.json**(退回原版 ⇒ 让 TO 用自己的默认边框处理,不自定义)。
       · ⚠️ 该模组**没有逐帧动画能力**(特效表 + 调色板全查过,无 rainbow)⇒ 奇特在它下面用**静态三段彩虹渐变**
         (`borderType:"gradient"`,取库 `hsvToRgb(h,0.85,1.0)` 的相位 0 / 1/3 / 2/3 = `#FF2626` / `#26FF26` / `#2626FF`);
-        不装它时仍是真·顺时针流动彩虹(自绘)。其余 4 档按新策略给色:稀有/史诗 = **原版边框紫蓝**三段近似
-        (`#5000FF` / `#3C00BF` / `#28007F`,即原版 `BORDER_COLOR_TOP/BOTTOM` 的 RGB,TO 的 hex 不支持 alpha),
-        传奇/巅峰 = 档位色(与文字同色)⇒ 在 TO 环境下「奇特以外不干预边框」的观感由这三色近似复刻。
+        不装它时 = 真·两色流动渐变。传奇/巅峰 = 档位色(与文字同色,`#FFC24B` / `#FF4D4D`)。
       · ⚠️ **别把「颜色不对」直接归因于本模组** —— 先确认整合包是否装了边框类模组(另两条线的包用 **LegendaryTooltips**,
         **未对接**:26.1.2 测试包与 FTB Skies 2 有它)。
   - ⚠️ **附魔不再升档**:原版「附魔升一档」的 switch 只覆盖原版 4 档,自有档走 `default` 原样返回(三线一致,可接受)。
