@@ -8,10 +8,10 @@ import net.minecraft.client.particle.SingleQuadParticle;
 import net.minecraft.client.particle.SpriteSet;
 import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.util.RandomSource;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
 
-@OnlyIn(Dist.CLIENT)
+// ⚠️ 本线**不用** @OnlyIn:NeoForge 26.1.2 的 OnlyInWarningsHandler 会把它当 ERROR 报
+//    (「runtime member-stripping behaviour ... is no longer supported」);本类在 client/ 包内、
+//    双端加载类不引用它 ⇒ 只需靠包隔离。
 public final class GlowingDustParticle extends DustParticle {
     /** 全亮（{@code 0xF000F0}）—— 与 {@code SimpleAnimatedParticle}（{@code END_ROD} 的基类）取值一致。 */
     private static final int FULL_BRIGHT = 15728880;
