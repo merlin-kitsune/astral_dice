@@ -4,6 +4,20 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## Unreleased (1.3.2)
+
+### New Content
+
+<!-- 新内容在此登记 -->
+
+### Content & Balance
+
+<!-- 内容与平衡性调整在此登记 -->
+
+### Bug Fixes
+
+<!-- 已修复BUG在此登记 -->
+
 ## 1.3.1
 
 ### New Content
