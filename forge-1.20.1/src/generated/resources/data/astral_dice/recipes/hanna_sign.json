@@ -3,10 +3,13 @@
   "category": "misc",
   "key": {
     "D": {
-      "item": "astral_dice:golden_dice"
+      "item": "astral_dice:amethyst_dice"
     },
     "E": {
       "item": "astral_dice:blank_sign"
+    },
+    "G": {
+      "item": "astral_dice:golden_star_plate"
     },
     "L": {
       "item": "minecraft:leather"
@@ -14,15 +17,12 @@
     "Q": {
       "item": "minecraft:white_wool"
     },
-    "S": {
-      "item": "minecraft:string"
-    },
     "T": {
       "item": "minecraft:stick"
     }
   },
   "pattern": [
-    "SQS",
+    "GQG",
     "LEL",
     "TDT"
   ],

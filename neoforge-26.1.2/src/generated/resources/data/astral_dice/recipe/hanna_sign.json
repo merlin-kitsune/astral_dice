@@ -2,15 +2,15 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
-    "D": "astral_dice:golden_dice",
+    "D": "astral_dice:amethyst_dice",
     "E": "astral_dice:blank_sign",
+    "G": "astral_dice:golden_star_plate",
     "L": "minecraft:leather",
     "Q": "minecraft:white_wool",
-    "S": "minecraft:string",
     "T": "minecraft:stick"
   },
   "pattern": [
-    "SQS",
+    "GQG",
     "LEL",
     "TDT"
   ],

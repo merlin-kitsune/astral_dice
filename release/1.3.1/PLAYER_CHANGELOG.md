@@ -108,7 +108,7 @@ Temporary cards also have their own hint line now: **"Temporary card: cannot be 
   one-line change; the library version moves to **1.0.4** (still embedded - you do not install it separately).
 - **New fifth tier "Bizarre" (the tooltip frame is a flowing rainbow)**: this tier has **no fixed colour** - its tooltip
   **frame** sweeps around the colour wheel (about one revolution every 3 seconds). **Eight items now use it** (the six exclusive
-  cards plus the **Secret Detective** and the **Game Master**);
+  cards plus the **Sherry Sign** and the **Hanna Sign**);
   to see it right away, turn any item into it:
   `/give @s minecraft:stone[minecraft:rarity="astral_dice:bizarre"]` (1.21.1).
   ⚠️ **On 26.1.2 the tooltip frame is still vanilla**: that version draws the frame from a texture with no colour hook, so a
@@ -117,7 +117,7 @@ Temporary cards also have their own hint line now: **"Temporary card: cannot be 
 
 ### Bounty board: legendary items can be traded now, Pinnacle and Bizarre still cannot
 
-- **The Secret Detective and the Game Master left the reward pool**: both banners became "Bizarre" this round, and Bizarre never
+- **The Sherry Sign and the Hanna Sign left the reward pool**: both banners became "Bizarre" this round, and Bizarre never
   enters the bounty board (same as Pinnacle).
 - Gold-framed (Legendary) dice, chips and signs **never appeared on the bounty board**; now they **can** - both as the
   materials a bounty asks for and as redeemable rewards (the Netherite / Crimson / Ender dice, 7 legendary signs and
@@ -127,6 +127,15 @@ Temporary cards also have their own hint line now: **"Temporary card: cannot be 
 - Two inconsistencies were fixed on the way: (1) on 26.1.2 the board **offered two "exclusive" cards** that by design can
   only be handed out by their own banner - they are gone; (2) that same version was **missing 4 rewards** it should have
   had - now added. All three versions now carry **identical** bounty content.
+
+### Recipe changes for the Sherry Sign and the Hanna Sign
+
+- **Sherry Sign**: its dice changed from **diamond dice** to **amethyst dice**; everything else is unchanged -
+  1 book, 2 anvils, 2 iron blocks, 2 golden star plates and 1 blank sign.
+- **Hanna Sign**: its two **string** became **golden star plates** and its dice changed from **golden dice** to
+  **amethyst dice**; everything else is unchanged - 1 white wool, 2 leather, 2 sticks and 1 blank sign.
+- Sign rarity is unchanged (Sherry Sign = Epic, Hanna Sign = Rare), and the Patchouli handbook recipe lines were
+  updated to match.
 
 ## 🐛 Bug Fixes
 

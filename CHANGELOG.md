@@ -108,6 +108,13 @@
   As a knock-on guarantee, **survival chips** (Airbag / Whetstone / Detective damage reduction) no longer waste a charge on such a
   fully-absorbed hit.
 
+- **Detective / Puppeteer sign recipe changes** (ruled 2026-09-25): the Detective Sign's dice changed from **diamond dice**
+  to **amethyst dice** (grid `PBP/AEA/IDI` unchanged), and the Puppeteer Sign's two **string** positions became
+  **golden star plates** while its dice changed from **golden dice** to **amethyst dice** (grid `SQS/LEL/TDT` -> `GQG/LEL/TDT`).
+  The two recipes used to sit in the "diamond dice + golden star plate" and "golden dice (no star plate)" tiers and now have
+  **no tier-mates** (they are the first recipes in this repo to use amethyst dice). Sign rarity is unchanged
+  (Detective = Epic, Puppeteer = Rare). The handbook recipe lines were updated to match.
+
 #### Chips & Resources
 
 - **The bounty reward pool now accepts the Legendary tier and excludes Pinnacle and Bizarre** (ruled 2026-09-25:
