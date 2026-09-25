@@ -6,7 +6,8 @@ Bountiful 赏金联动一致性校验（只读守门）。
   1. 双版本 ModItems 注册物品 id 与品质完全一致；
   2. astral_objs = 非传奇骰子 + 货币(star_coin / star_coin_bag / star_plate / golden_star_plate)；
   3. astral_rews = astral_objs ∪ 卡牌(全部) ∪ 非传奇筹码 ∪ 非传奇立牌
-     （**传奇=物品层 Rarity.UNCOMMON，数据层 LEGENDARY**：传奇骰子/筹码/立牌不进 rews；卡牌不受限）；
+     （**不进池 = 传奇（ASTRAL_DICE_LEGENDARY）+ 巅峰（ASTRAL_DICE_PINNACLE）**：这两档的骰子/筹码/立牌不进任何池；
+      传奇的数据层 rarity = `LEGENDARY`，巅峰**没有**数据层对应值；卡牌不受限）；
      「卡牌」判据 = **与生产线同一判据**：id 前缀(attack_card_/defense_card_/effect_card_)
      **∪ 本模组卡牌标签**(`data/<ns>/tags/{item|items}/{combat_cards,effect_cards}.json`，即 `ModItems.isCardItem`)。
      ⚠️ **2026-09-26 修正（消除失明区）**：此前只用 id 前缀 ⇒ 不以前缀命名的卡牌
@@ -14,7 +15,7 @@ Bountiful 赏金联动一致性校验（只读守门）。
      ⇒ **闸门对「这两张卡是否入池」完全失明**（实测：加入池前后分类都是 cards 25 / materials 8，条数不变）。
      该盲区正是「守门看不见规则违反」的实例：分类判据与生产线不一致时，闸门给出的是**假绿**。
   4. 集合相等（0 缺失 / 0 多余），且数据层 rarity 与物品品质映射一致
-     （RARE→RARE、EPIC→EPIC、UNCOMMON→LEGENDARY）；
+     （RARE→RARE、EPIC→EPIC、LEGENDARY→LEGENDARY；⚠️ 巅峰档**无**数据层对应值 ⇒ 巅峰物品入池即报错）；
   5. 双版本四份文件逐字节一致（md5）；
   6. 文件格式：UTF-8 / CRLF / Tab 缩进 / 末尾换行；
   7. 价值平衡式：objs 顶值(1 条, amount.max×unitWorth) ≥ rews 顶值(2 条之和) × 0.9
@@ -43,14 +44,23 @@ $POOL_REL = 'src/main/resources/data/bountiful/bounty_pools/bountiful/'
 $DECREE_REL = 'src/main/resources/data/bountiful/bounty_decrees/bountiful/astral.json'
 
 $REG = 'registerItem\("([a-z0-9_]+)"'
-$RAR = 'rarity\(Rarity\.([A-Z_]+)\)'
+# ⚠️ 2026-09-25 稀有度改造:调用语法 = .rarity(AstralRarities.z()),z ∈ {rare,epic,legendary,pinnacle};
+# 捕获后统一大写(见 Get-ParsedItems),故 $LEGEND / $RARITY_MAP 的键为大写档名。
+$RAR = 'rarity\(AstralRarities\.([a-z]+)\(\)\)'
 
 $DICE = @('dice', 'golden_dice', 'glass_dice', 'netherrack_dice', 'diamond_dice',
     'emerald_dice', 'obsidian_dice', 'weird_dice', 'amethyst_dice',
     'netherite_dice', 'crimson_dice', 'ender_dice', 'nether_star_dice')
 $MONEY = @('star_coin', 'star_coin_bag', 'star_plate', 'golden_star_plate')
-$LEGEND = 'UNCOMMON'                       # 本 mod「金 = 传奇」
-$RARITY_MAP = [ordered]@{ 'COMMON' = 'COMMON'; 'RARE' = 'RARE'; 'EPIC' = 'EPIC'; 'UNCOMMON' = 'LEGENDARY' }
+$LEGEND = 'LEGENDARY'                      # 本 mod「金 = 传奇」
+# ⚠️ 2026-09-25 稀有度改造:「不进池」现在是**两档** ——
+#   传奇(LEGENDARY,既有规则) + **巅峰(PINNACLE)**。巅峰是本模组新增的最高档,
+#   **没有**数据层 rarity 对应值(见 $RARITY_MAP),故与传奇同口径:不得进入任何池。
+#   判据集中在 $EXCLUDED_TIERS,勿在别处另写档位比较。
+$EXCLUDED_TIERS = @('LEGENDARY', 'PINNACLE')
+# ⚠️ 刻意**不含** PINNACLE:巅峰档没有数据层对应值 ⇒ 若有巅峰物品入池,$want 取到 $null,
+#    与池内任何 rarity 都不等 ⇒ 当场报错(fail-loud,与「巅峰不入池」的口径一致)。
+$RARITY_MAP = [ordered]@{ 'COMMON' = 'COMMON'; 'RARE' = 'RARE'; 'EPIC' = 'EPIC'; 'LEGENDARY' = 'LEGENDARY' }
 
 $errors = New-Object System.Collections.Generic.List[string]
 $warnings = New-Object System.Collections.Generic.List[string]
@@ -161,7 +171,7 @@ function Get-ParsedItems {
         $r = [regex]::Match($seg, $RAR)
         # 注意:PowerShell 变量名大小写不敏感,本地名不得写成 $rar(会与 $RAR 冲突)
         $rarityText = 'COMMON'
-        if ($r.Success) { $rarityText = $r.Groups[1].Value }
+        if ($r.Success) { $rarityText = $r.Groups[1].Value.ToUpperInvariant() }
         $out[$hits[$i].Groups[1].Value] = $rarityText
     }
     return , $out
@@ -232,12 +242,12 @@ function Get-Classified {
 function Get-Expected {
     param($items, $c, $exclusive)
     $objs = New-StrSet
-    foreach ($k in $c['dice']) { if ($items[$k] -cne $LEGEND) { [void]$objs.Add($k) } }
+    foreach ($k in $c['dice']) { if ($EXCLUDED_TIERS -cnotcontains $items[$k]) { [void]$objs.Add($k) } }
     foreach ($k in $c['money']) { [void]$objs.Add($k) }
     $rews = [System.Collections.Generic.HashSet[string]]::new($objs, [System.StringComparer]::Ordinal)
     foreach ($k in $c['cards']) { [void]$rews.Add($k) }
-    foreach ($k in $c['signs']) { if ($items[$k] -cne $LEGEND) { [void]$rews.Add($k) } }
-    foreach ($k in $c['chips']) { if ($items[$k] -cne $LEGEND) { [void]$rews.Add($k) } }
+    foreach ($k in $c['signs']) { if ($EXCLUDED_TIERS -cnotcontains $items[$k]) { [void]$rews.Add($k) } }
+    foreach ($k in $c['chips']) { if ($EXCLUDED_TIERS -cnotcontains $items[$k]) { [void]$rews.Add($k) } }
     # 专属效果牌从**所有**池的期望集合中剔除(用户 2026-09-26 裁决:严禁经立牌以外的任何途径获得)。
     # 剔除后,若这些 id 仍出现在池文件里,下面的 extra 差集就会把它们逐个报出来 —— 这正是我们要的强制力。
     if ($null -ne $exclusive) {
@@ -323,9 +333,9 @@ foreach ($k in $c.Keys) { $counts[$k] = $c[$k].Count }
 Write-Out ('物品分类: ' + (ConvertTo-PyRepr $counts) + ' 总 ' + $items.Count)
 Write-Out ('规则应含: objs ' + $eo.Count + ' / rews ' + $er.Count)
 $excl = @()
-foreach ($k in $c['chips']) { if ($items[$k] -ceq $LEGEND) { $excl += $k } }
-foreach ($k in $c['signs']) { if ($items[$k] -ceq $LEGEND) { $excl += $k } }
-foreach ($k in $c['dice']) { if ($items[$k] -ceq $LEGEND) { $excl += $k } }
+foreach ($k in $c['chips']) { if ($EXCLUDED_TIERS -ccontains $items[$k]) { $excl += $k } }
+foreach ($k in $c['signs']) { if ($EXCLUDED_TIERS -ccontains $items[$k]) { $excl += $k } }
+foreach ($k in $c['dice']) { if ($EXCLUDED_TIERS -ccontains $items[$k]) { $excl += $k } }
 $excl = Sort-Ordinal $excl
 Write-Out ('按规则排除(传奇筹码/立牌/骰子): ' + $excl.Count + ' 项')
 

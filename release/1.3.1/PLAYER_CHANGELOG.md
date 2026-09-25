@@ -91,6 +91,15 @@ Temporary cards also have their own hint line now: **"Temporary card: cannot be 
 - **The star trail now glows**: in the dark the old particles were just a string of **dim coloured dots** (the vanilla particle family does not glow), while the Living Page trail has always been bright - the shooting star now uses a **self-luminous** particle that stays bright in the dark, and the purple / gold split is unchanged.
 - **"Without attacking it" is no longer required**: that wording was often ineffective in practice (it read a **single-slot** record of who last hit the mob, which any other mob or environmental damage would overwrite), so the whole restriction was **removed** - a star now drops whenever you pass a hostile target.
 
+### Rarity rework: Legendary is now gold, and a new top tier "Pinnacle" exists
+
+- **Legendary is gold now**: "Legendary" used to borrow vanilla's yellow tier, so it looked yellow - it is **gold** now.
+- **New top tier "Pinnacle" (bright red)**: currently exclusive to the **Nether Star Dice** (the T4 exotic tier).
+- **Rare / Epic keep their colours** (light blue / pink-purple), and plain items stay white.
+- **Enchanting no longer bumps the tier**: it used to show an item one tier higher; now the tier comes from the item alone.
+- For the record: tiers and colours are now defined in one place inside the **prerequisite library**, so recolouring is a
+  one-line change; the library version moves to **1.0.4** (still embedded - you do not install it separately).
+
 ## 🐛 Bug Fixes
 
 - **The Sherry Sign's "Detective's Strike" now counts new targets**: previously a few hits on the same mob filled up

@@ -12,7 +12,7 @@
      /标记=标记涂料/充能=导电线材),无流派筹码则放与图标相关的材料
   3. 进阶筹码:一律走「通用升级」模板,**不**复用基础版图案(见 UPGRADE_TEMPLATE)
        蓝->紫(EPIC)     LGL/GTG/PPP  青金石 / 金锭 / 上一等级 / 星盘
-       紫->金(UNCOMMON) RDR/DTD/GGG  红石  / 钻石 / 上一等级 / 黄金星盘
+       紫->金(LEGENDARY) RDR/DTD/GGG  红石  / 钻石 / 上一等级 / 黄金星盘
      (ADRENALINE_HIGH 原版字母写作 RZR/ZOZ/PPP,材料集合与紫->金模板完全一致)
   4. 进阶筹码第二行中间 = 上一等级筹码,unlockedBy 也指向上一等级筹码
   5. 非进阶缺失配方按上述生成,空位按作用与图标补材并保持左右对称;
@@ -88,8 +88,11 @@ foreach ($_m in [regex]::Matches($items_src, $RE_ITEMS, [System.Text.RegularExpr
     if (-not $_id.Contains('chip') -or $_id.StartsWith('blank_chip')) {
         continue
     }
-    $_rm = [regex]::Match($_m.Groups[3].Value, 'rarity\(Rarity\.(\w+)\)')
-    $chips[$_m.Groups[1].Value] = @{ id = $_id; rarity = $(if ($_rm.Success) { $_rm.Groups[1].Value } else { 'COMMON' }) }
+    # ⚠️ 2026-09-25 稀有度改造:调用语法由 `.rarity(Rarity.X)` 变为 `.rarity(AstralRarities.z())`
+    #    (X ∈ {RARE,EPIC,UNCOMMON} 词法 → z ∈ {rare,epic,legendary,pinnacle};原版 COMMON 两处仍走 fallback)
+    #    ⇒ 此处统一**归一化为大写档名**,故下面三张表的键改名为 RARE/EPIC/LEGENDARY(/PINNACLE)。
+    $_rm = [regex]::Match($_m.Groups[3].Value, 'rarity\(AstralRarities\.(\w+)\(\)\)')
+    $chips[$_m.Groups[1].Value] = @{ id = $_id; rarity = $(if ($_rm.Success) { $_rm.Groups[1].Value.ToUpperInvariant() } else { 'COMMON' }) }
 }
 
 $stream_of = New-PyMap
@@ -104,16 +107,19 @@ foreach ($_pair in @(@('星光类', '星光'), @('治愈类', '治愈'), @('标�
     }
 }
 
+# 进阶筹码的「本品质填充材料」符号。⚠️ 无 PINNACLE 项:当前不存在巅峰筹码,
+# 若将来出现,此处**故意留缺** ⇒ target 会取到 $null 并当场失败(fail-loud,不静默)。
 $RARITY_ITEM = New-PyMapFrom ([ordered]@{
-    'RARE'     = 'C'
-    'EPIC'     = 'P'
-    'UNCOMMON' = 'G'
+    'RARE'      = 'C'
+    'EPIC'      = 'P'
+    'LEGENDARY' = 'G'
 })
 $RARITY_CN = New-PyMapFrom ([ordered]@{
-    'RARE'     = '稀有'
-    'EPIC'     = '史诗'
-    'UNCOMMON' = '传奇'
-    'COMMON'   = '—'
+    'RARE'      = '稀有'
+    'EPIC'      = '史诗'
+    'LEGENDARY' = '传奇'
+    'PINNACLE'  = '巅峰'
+    'COMMON'    = '—'
 })
 
 # 进阶筹码「通用升级」模板(与 e096513 原版一致,2026-09-11 回滚后生效)
@@ -123,7 +129,7 @@ $UPGRADE_TEMPLATE = New-PyMapFrom ([ordered]@{
         @('MC:LAPIS_LAZULI', 'MC:GOLD_INGOT', 'MC:LAPIS_LAZULI'),
         @('MC:GOLD_INGOT', $null, 'MC:GOLD_INGOT')
     )      # 蓝->紫
-    'UNCOMMON' = @(
+    'LEGENDARY' = @(
         @('MC:REDSTONE', 'MC:DIAMOND', 'MC:REDSTONE'),
         @('MC:DIAMOND', $null, 'MC:DIAMOND')
     )      # 紫->金

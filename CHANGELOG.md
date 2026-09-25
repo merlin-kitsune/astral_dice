@@ -110,6 +110,20 @@
 
 #### Chips & Resources
 
+- **The rarity system is now "four own tiers + vanilla Common"** (ruled 2026-09-25): the old "borrowing" of vanilla
+  `COMMON`/`UNCOMMON`/`RARE`/`EPIC` is gone - four own tiers are now **extended into the vanilla `Rarity` enum**:
+  **Rare (light blue) / Epic (pink-purple) / Legendary (gold) / Pinnacle (bright red)**, with plain items still on
+  vanilla `COMMON`. **Player-visible changes**: (1) Legendary moves from "yellow" (borrowed `UNCOMMON`) to **gold**;
+  (2) a new top tier **Pinnacle (bright red)** exists, with the **Nether Star Dice** as its first (and currently only)
+  member; (3) **enchanting no longer bumps an item up one tier** (own tiers are not in vanilla's switch).
+  Mechanics: the single source of truth for tiers, constant names, serialized names and **colour codes** lives in the
+  prerequisite library `starengine_lib` (`item/Rarity` plus a per-platform `item/AstralRarities`); this mod only declares
+  `META-INF/enumextensions.json` (both NeoForge lines, via the `enumExtensions=` key in `mods.toml`) and calls
+  `AstralRarities.rare()/epic()/legendary()/pinnacle()` from `ModItems`; Forge 1.20.1 uses `Rarity.create` +
+  `IExtensibleEnum` (registered from the library's static initialiser). The tooltip name colour is applied by
+  **vanilla's own path** (this mod has no colouring code - changing a colour means editing one constant in the library).
+  => The prerequisite library goes **1.0.3 -> 1.0.4** (range tightened to `[1.0.4,2.0)`; still embedded, no separate install).
+
 - **Shooting Star (purple / golden): fall parameters, self-luminous particles and target scope** (2026-09-24 / 09-25 rulings: "height x3, fall speed x6, dual-star gap x2; shooting stars should only affect hostile targets", "the shooting star particles do not glow but the Living Page ones do - add the glow", "the phrase 'without attacking it' is actually ineffective, so delete both the wording and the code"):
   - **Height x3**: fall distance is now the legacy reference x **3.6** (the historical 1.2 speed-up x this batch's 3.0) - for a 1.95-tall zombie the origin sits **7.29 blocks** above its head (was 2.43);
   - **Fall speed x6**: the distance triples while the **duration halves** (`FALL_TICKS` 20 -> **10 ticks**, i.e. 0.5 s to land) - the per-tick speed is exactly 6x the original (0.1215 -> 0.729 blocks/tick);
@@ -301,7 +315,7 @@
 - ⚠️ **Do not keep a standalone `starengine_lib-*.jar` next to it**: when the loader de-duplicates by modId it
   **prefers the copy in `mods` and discards the embedded one** ⇒ if that copy is **older**, it shadows the
   library bundled with this mod (visible as a prerequisite version mismatch).
-- **Bundled version = `1.0.3`, compatible range `[1.0.3,2.0)`** (the same range declared in `mods.toml`): the
+- **Bundled version = `1.0.4`, compatible range `[1.0.4,2.0)`** (the same range declared in `mods.toml`): the
   library is still a **required** prerequisite (a large part of this mod's shared implementation lives in it
   since 1.3.0); it is merely distributed together with this mod now.
 - Library source repository: <https://github.com/merlin-kitsune/starengine_lib>.

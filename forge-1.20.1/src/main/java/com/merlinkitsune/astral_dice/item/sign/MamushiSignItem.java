@@ -31,7 +31,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * 蛟龙立牌(mamushi,传奇 {@code Rarity.UNCOMMON})。
+ * 蛟龙立牌(mamushi,传奇 {@code ASTRAL_DICE_LEGENDARY})。
  *
  * <p>实现基准 = {@code docs/features/mamushi-sign-spec.md}(2026-09-27 冻结规格 + 用户 4 项裁决)。
  * 与 {@code neoforge-1.21.1} 侧**功能对等**,差异只在平台写法(见文末「1.20.1 平台适配」)。
