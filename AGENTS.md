@@ -1282,6 +1282,7 @@ When extending this workspace:
 - 联动为纯数据驱动(无 Java 依赖),文件位于 `src/main/resources/data/bountiful/`:
   - `bounty_pools/bountiful/astral_objs.json`:需求材料池(**非「不进池档」骰子 + 货币**:星币/袋装星币/星盘/黄金星盘);
   - `bounty_pools/bountiful/astral_rews.json`:可兑换奖励池(**astral_objs ∪ 全部卡牌 ∪ 非「不进池档」筹码 ∪ 非「不进池档」立牌 —— 专属牌除外**);
+  - `bounty_pools/bountiful/astral_currency.json`:填充货币池(**`currency: true`**;星币/袋装星币/星盘/黄金星盘,供「奖励价值不足时补齐差额」—— 见「奖励机制」段);
   - `bounty_decrees/bountiful/astral.json`:悬赏令(objectives=`astral_objs`, rewards=`astral_rews`)。
 - **入池判定(闭集规则)**——`scripts/verify/verify_bountiful_pools.ps1` 是唯一守门(0 = 一致):
   - `objs` = 非「不进池档」骰子 + 货币 4 项(`star_coin`/`star_coin_bag`/`star_plate`/`golden_star_plate`);
@@ -1302,6 +1303,7 @@ When extending this workspace:
   - ⚠️ 2026-09-25 重排(用户裁决「每档价值带不重叠、材料品质与兑换物品质对应」):卡牌/筹码/立牌价值带按「每档不重叠、与骰子品质对齐」整体重排——原卡牌稀有 600~1800/史诗 1500~4500/传奇 2000~6500、筹码史诗 2400~3400、立牌史诗 1600~3500 与骰子带严重重叠,导致「材料品质↔兑换物品质」脱钩(传奇材料骰子 24000 可能换到传奇卡牌 2000,倒挂 12 倍)。
 - **价值平衡式**(必须保持,Bountiful 加载时校验,违反会告警 `top value rewards cannot be matched`):
   `astral_objs` 最高价值条目(1 条,`amount.max × unitWorth`) ≥ `astral_rews` 最高价值(2 条之和) × 0.9。当前:传奇骰子(objs)24000 ≥ (传奇骰子 12000 + 传奇骰子 12000) × 0.9 = 21600 ✓(重排后卡牌最高 10000、筹码/立牌 10000 均未超过传奇骰子 12000)。
+- **奖励机制(填充货币池)**(2026-09-25 用户裁决「建货币填充池」):Bountiful 生成赏金时,若「奖励价值 < 材料价值」,会用 `bounty.fillerCurrencyPool` 指向的 **currency 池**自动补齐差额(`BountyCreator.genFillerEntries`)。本仓提供 `astral_currency.json`(`currency: true`,星币 250/袋装星币 2250/星盘 4000/黄金星盘 16000)。⚠️ **该配置是整合包级(`config/bountiful/bountiful.json` 的 `bounty.fillerCurrencyPool`),mod 数据包管不到**——不设它(默认 `null`)则高价值材料(如传奇骰子 24000)无法靠「奖励+货币」凑齐价值 ⇒ 刷不出匹配赏金。整合包侧须设 `"fillerCurrencyPool": "astral_currency"`(游商/整合包维护者负责)。守门脚本第 5 步已把 `astral_currency.json` 纳入「双版本逐字节一致」检查。
 - **条目顺序** = `ModItems` 注册序(按类别分组:骰子 → 货币 → 卡牌 → 立牌 → 筹码);新增条目插在同类别既有条目之间,不重排既有条目。
 - **文件格式**:UTF-8、**CRLF**、Tab 缩进、末尾换行(与 lang 的 LF 规则不同);改动后双版本四份文件必须逐字节一致(md5 相同)。
 - 新增物品(骰子/星币/星盘/卡牌/筹码/立牌)时,除常规注册外,需同步维护 `astral_objs`/`astral_rews` 对应条目(若属于可兑换类)。

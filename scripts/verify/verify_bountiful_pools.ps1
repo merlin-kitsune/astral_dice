@@ -414,7 +414,7 @@ foreach ($ver in $VERSIONS) {
 }
 
 # 5) 双版本逐字节一致
-foreach ($pool in @('astral_objs.json', 'astral_rews.json', 'astral.json')) {
+foreach ($pool in @('astral_objs.json', 'astral_rews.json', 'astral_currency.json', 'astral.json')) {
     $paths = @()
     foreach ($v in $VERSIONS) {
         if ($pool -ceq 'astral.json') { $paths += ($pre + $v + '/' + $DECREE_REL) }
