@@ -189,8 +189,11 @@
   falls back to one palette (`Palette.CUSTOM_RARITY`, default gold `0xFFE8B84A`) => **all own tiers got a gold frame**, which looks
   exactly like "the recolouring turned every border gold".
   Fix = ship the mod's **official resource-pack extension point** `assets/astral_dice/tooltipoverhaul/custom_frames.json`
-  (matched by `Rarity#name()`, `gradientType:"custom"` + explicit three-colour override of the fallback palette): **Rare / Epic are
-  not written at all** (returned to vanilla => Tooltip Overhaul uses its own default frame), **Legendary / Pinnacle keep their tier
+  (matched by `Rarity#name()`, `gradientType:"custom"` + explicit three-colour override of the fallback palette): **Rare / Epic copy
+  the exact palettes Tooltip Overhaul itself uses for vanilla RARE/EPIC** (RARE = blue `#4D9BE8` / `#2B66B5` / `#123A6B`, EPIC = purple
+  `#B14BE0` / `#7A28A8` / `#431463`, read from the TO jar's `TooltipsConfig` defaults; an earlier round "deleted the entries to return
+  to vanilla" - that was wrong: TO compares rarities with `==` against the vanilla enum, so own tiers always fall to the gold fallback
+  and deleting the entries just turned Rare/Epic gold), **Legendary / Pinnacle keep their tier
   colour**, and Bizarre gets a **static three-stop rainbow gradient** (`#FF2626` / `#26FF26` / `#2626FF`, taken from the library's
   `hsvToRgb` at phases 0 / 1/3 / 2/3) - that mod has **no per-frame animation** (its effect catalogue and palettes were checked;
   there is no rainbow), so the *flowing* gradient only exists where it is absent. The file is byte-identical on all three lines and

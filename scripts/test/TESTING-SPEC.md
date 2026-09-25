@@ -1791,3 +1791,9 @@ lambda 包裹/签名陷阱（1.21.1/1.20.1 的 `renderTooltipBackground` 调用�
 奇特 = `rainbowBorderStart/End` 两色流动渐变。26.1.2 无颜色事件 ⇒ 不接（保持贴图边框）。
 `custom_frames.json`：**删稀有/史诗两条**（退回原版 = 让 Tooltip Overhaul 走默认边框，不再自定义），
 仅保留传奇/巅峰/奇特三档。赏金池随品质修正：`hanna_sign` 移出、`ren_sign` 以 EPIC/1800 加回（三线 md5 一致）。
+**⚠️ 四次修订（2026-09-25 深夜，用户实机截图纠正 —— 上一批「删稀有/史诗条目 = 退回原版」是错的）**：
+删条目后稀有/史诗在整合包里**整圈金框**（用户截图：巧克力蛋糕=稀有水蓝字、以毒攻毒=史诗粉紫字，边框全金）——
+TO 的 `getColorsPerRarity` 默认 `Palette.CUSTOM_RARITY`（金），只有 `==` 命中**原版**枚举才换调色板，自有枚举永远命中不了。
+「退回原版」的正确做法 = **照抄 TO 画原版档的确切调色板**：反汇编 TO jar 的 `TooltipsConfig` 默认值（与包内 toml 一致）
+—— RARE = `#4D9BE8/#2B66B5/#123A6B`（蓝渐变）、EPIC = `#B14BE0/#7A28A8/#431463`（紫渐变），`borderType:"gradient"`。
+custom_frames.json 恢复 5 档全写；包内原版稀有/史诗与本模组稀有/史诗在 TO 下**同框**。

@@ -1103,8 +1103,11 @@ When extending this workspace:
         每条 frame 的 `rarities` 按 **`Rarity#name()`**(= `ASTRAL_DICE_*`)匹配(`CustomFrameData#matchesRarity`),
         `gradientType:"custom"` + 3 个 `gradientColors` 会**覆盖**兜底调色板(`getInnerOverlayColors` 先判 `gradientType == CUSTOM`),
         `priority` 高者胜(`findMatch` 先比 priority 再比 score)⇒ 本仓三线内置
-        `assets/astral_dice/tooltipoverhaul/custom_frames.json`(**仅传奇/巅峰/奇特 3 档**,priority 10;非 TO 环境惰性数据)。
-        ⚠️ **稀有/史诗不写进 custom_frames.json**(退回原版 ⇒ 让 TO 用自己的默认边框处理,不自定义)。
+        `assets/astral_dice/tooltipoverhaul/custom_frames.json`(**5 档全写**,priority 10;非 TO 环境惰性数据)。
+        ⚠️ **稀有/史诗必须写进去,且照抄 TO 画原版档的确切调色板**(2026-09-25 四次裁决:上一批「删条目=退回原版」是错的 ——
+        TO 的 `getColorsPerRarity` 用 `==` 比原版枚举,自有枚举**永远**掉金兜底;删条目 = 稀有/史诗变金框)。
+        从 TO jar 反汇编 `TooltipsConfig` 默认值取真值:RARE = `#4D9BE8/#2B66B5/#123A6B`(蓝渐变)、
+        EPIC = `#B14BE0/#7A28A8/#431463`(紫渐变),`borderType:"gradient"` 与它画原版档一致 ⇒ TO 环境下与原版稀有/史诗**同框**。
       · ⚠️ 该模组**没有逐帧动画能力**(特效表 + 调色板全查过,无 rainbow)⇒ 奇特在它下面用**静态三段彩虹渐变**
         (`borderType:"gradient"`,取库 `hsvToRgb(h,0.85,1.0)` 的相位 0 / 1/3 / 2/3 = `#FF2626` / `#26FF26` / `#2626FF`);
         不装它时 = 真·两色流动渐变。传奇/巅峰 = 档位色(与文字同色,`#FFC24B` / `#FF4D4D`)。

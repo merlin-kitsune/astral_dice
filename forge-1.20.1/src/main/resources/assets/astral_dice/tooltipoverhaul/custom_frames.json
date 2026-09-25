@@ -1,6 +1,40 @@
 {
   "frames": [
     {
+      "id": "astral_dice_rare",
+      "items": [],
+      "tags": [],
+      "rarities": [
+        "ASTRAL_DICE_RARE"
+      ],
+      "gradientType": "custom",
+      "borderType": "gradient",
+      "gradientColors": [
+        "#4D9BE8",
+        "#2B66B5",
+        "#123A6B"
+      ],
+      "dividerLineColor": "match_inner_frame_color",
+      "priority": 10
+    },
+    {
+      "id": "astral_dice_epic",
+      "items": [],
+      "tags": [],
+      "rarities": [
+        "ASTRAL_DICE_EPIC"
+      ],
+      "gradientType": "custom",
+      "borderType": "gradient",
+      "gradientColors": [
+        "#B14BE0",
+        "#7A28A8",
+        "#431463"
+      ],
+      "dividerLineColor": "match_inner_frame_color",
+      "priority": 10
+    },
+    {
       "id": "astral_dice_legendary",
       "items": [],
       "tags": [],

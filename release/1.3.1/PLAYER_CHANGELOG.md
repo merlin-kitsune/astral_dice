@@ -97,13 +97,14 @@ Temporary cards also have their own hint line now: **"Temporary card: cannot be 
 - **New top tier "Pinnacle" (bright red)**: currently exclusive to the **Nether Star Dice** (the T4 exotic tier).
 - **Rare / Epic now use the vanilla colours** (aqua / pink-purple - the very colours vanilla uses for its "Rare" and "Epic"
   item names), and plain items stay white.
-- **The tooltip frame now follows the vanilla look, tier by tier**: for **Rare / Epic** the frame stays the **vanilla blue-purple**
-  (in vanilla, a rare item's name and frame are *not* the same colour - e.g. the vanilla "Mysterious Worm": aqua name, purple
-  frame); **Legendary / Pinnacle** frames match their name colour (gold / bright red); **Bizarre** gets a **flowing rainbow
+- **The tooltip frame now follows the vanilla look, tier by tier**: for **Rare / Epic** the frame is **identical to vanilla
+  rare/epic items in your pack** (whatever a vanilla rare item's frame looks like there, ours matches it);
+  **Legendary / Pinnacle** frames match their name colour (gold / bright red); **Bizarre** gets a **flowing rainbow
   gradient frame** (the two colours travel around the colour wheel, about one cycle every 3 seconds).
   ⚠️ Note: the **Tooltip Overhaul** mod in your pack draws the whole tooltip itself and falls back to a single gold palette for
   any non-vanilla rarity - which is why you saw "text recoloured per tier, but every border gold". This release ships a colour
-  table through that mod's official mechanism (Rare / Epic = handled by its defaults, Legendary / Pinnacle = their tier colour,
+  table through that mod's official mechanism (Rare / Epic = the exact blue/purple gradients it uses for vanilla rare/epic items,
+  Legendary / Pinnacle = their tier colour,
   Bizarre = a three-stop rainbow gradient). It has no per-frame animation, so **in your pack Bizarre's frame is a static rainbow
   gradient**; without that mod it is a flowing rainbow gradient.
 - **Enchanting no longer bumps the tier**: it used to show an item one tier higher; now the tier comes from the item alone.
