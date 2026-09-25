@@ -57,7 +57,7 @@ $LEGEND = 'LEGENDARY'                      # 本 mod「金 = 传奇」
 #   传奇(LEGENDARY,既有规则) + **巅峰(PINNACLE)**。巅峰是本模组新增的最高档,
 #   **没有**数据层 rarity 对应值(见 $RARITY_MAP),故与传奇同口径:不得进入任何池。
 #   判据集中在 $EXCLUDED_TIERS,勿在别处另写档位比较。
-$EXCLUDED_TIERS = @('LEGENDARY', 'PINNACLE')
+$EXCLUDED_TIERS = @('LEGENDARY', 'PINNACLE', 'BIZARRE')
 # ⚠️ 刻意**不含** PINNACLE:巅峰档没有数据层对应值 ⇒ 若有巅峰物品入池,$want 取到 $null,
 #    与池内任何 rarity 都不等 ⇒ 当场报错(fail-loud,与「巅峰不入池」的口径一致)。
 $RARITY_MAP = [ordered]@{ 'COMMON' = 'COMMON'; 'RARE' = 'RARE'; 'EPIC' = 'EPIC'; 'LEGENDARY' = 'LEGENDARY' }

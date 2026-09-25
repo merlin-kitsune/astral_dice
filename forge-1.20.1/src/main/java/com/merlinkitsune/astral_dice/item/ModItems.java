@@ -117,13 +117,16 @@ public class ModItems {
                     AstralDiceMod.MODID, "effect_cards"));
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // 本模组稀有度标准(2026-09-25 起改为**自有 4 档**;等级/常量名/颜色码的权威在前置库 starengine_lib):
+    // 本模组稀有度标准(2026-09-25 起改为**自有 5 档**;等级/常量名/颜色码的权威在前置库 starengine_lib):
     //   白 = 普通   → 原版 Rarity.COMMON(本模组**唯一**保留的原版档,直接写 Rarity.COMMON)
     //   浅蓝 #8FD3FF = 稀有 → AstralRarities.rare()      扩展常量 ASTRAL_DICE_RARE
     //   粉紫 #E3A6FF = 史诗 → AstralRarities.epic()      扩展常量 ASTRAL_DICE_EPIC
     //   金   #FFC24B = 传奇 → AstralRarities.legendary() 扩展常量 ASTRAL_DICE_LEGENDARY
     //   亮红 #FF4D4D = 巅峰 → AstralRarities.pinnacle()  扩展常量 ASTRAL_DICE_PINNACLE
-    // 机制:库里的 item.Rarity 是**唯一色码权威**,其平台接线把这 4 档**扩展进原版 Rarity**
+    //   彩虹(流动)   = 奇特 → AstralRarities.bizarre()   扩展常量 ASTRAL_DICE_BIZARRE
+    //                 ⚠️ 奇特**没有**单一颜色:基准色薄荷绿 #6BFFA8 只用于物品名那一行;
+    //                    真正流动的提示框边框由客户端 client/RainbowRarityFrame 逐帧上色。
+    // 机制:库里的 item.Rarity 是**唯一色码权威**,其平台接线把这 5 档**扩展进原版 Rarity**
     //   (NeoForge 两线 = 本 mod 的 META-INF/enumextensions.json + 库 AstralRarities 的 EnumProxy 字段;
     //    Forge 1.20.1 = 库 AstralRarities 静态初始化里的 Rarity.create + IExtensibleEnum)
     //   ⇒ 原版 tooltip 链路(ItemStack#getTooltipLines → Rarity#getStyleModifier)会自动套用该颜色,

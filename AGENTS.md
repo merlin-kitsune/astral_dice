@@ -1040,35 +1040,55 @@ When extending this workspace:
 
 ## 骰子槽位与配置规范（Dice Slots & Config）— 必须遵守
 
-- **稀有度标准(2026-09-25 起 = 「自有 4 档 + 原版普通」,权威实现在前置库 `starengine_lib`)**:
+- **稀有度标准(2026-09-25 起 = 「自有 5 档 + 原版普通」,权威实现在前置库 `starengine_lib`)**:
   - **档位与颜色**:白 = 普通 → 原版 `Rarity.COMMON`;浅蓝 `#8FD3FF` = 稀有 → `ASTRAL_DICE_RARE`;粉紫 `#E3A6FF` = 史诗 → `ASTRAL_DICE_EPIC`;
-    金 `#FFC24B` = 传奇 → `ASTRAL_DICE_LEGENDARY`;亮红 `#FF4D4D` = 巅峰 → `ASTRAL_DICE_PINNACLE`。
-  - **调用面(唯一写法)**:`.rarity(AstralRarities.rare() / epic() / legendary() / pinnacle())`
+    金 `#FFC24B` = 传奇 → `ASTRAL_DICE_LEGENDARY`;亮红 `#FF4D4D` = 巅峰 → `ASTRAL_DICE_PINNACLE`;
+    **彩虹(流动)** = 奇特 → `ASTRAL_DICE_BIZARRE`(⚠️ 本档**没有单一颜色**:基准色薄荷绿 `#6BFFA8` 只用于物品名那一行)。
+  - **调用面(唯一写法)**:`.rarity(AstralRarities.rare() / epic() / legendary() / pinnacle() / bizarre())`
     (`com.merlinkitsune.starenginelib.item.AstralRarities`);普通档仍写 `Rarity.COMMON`。
     ⚠️ **禁止**再写**原版那三档常量**（`Rarity` 的 `RARE` / `EPIC` / `UNCOMMON`）—— 那套「借用原版枚举」的旧映射已废弃。
   - **机制**:库 `item.Rarity` 是等级 / 常量名 / 序列化名 / **颜色码的唯一权威**(`textColor()` / `apply(Style)` / `styleModifier()`),
-    其平台接线把这 4 档**扩展进原版 `net.minecraft.world.item.Rarity`** ⇒ **原版 tooltip 链路自己套色**
+    其平台接线把这 5 档**扩展进原版 `net.minecraft.world.item.Rarity`** ⇒ **原版 tooltip 链路自己套色**
     (`ItemStack#getTooltipLines` → `Rarity#getStyleModifier()`),本模组**不写任何 tooltip 染色代码**;改色 = 改库里那一个常量。
-    · NeoForge 两线(1.21.1 / 26.1.2):本 mod 的 `src/main/resources/META-INF/enumextensions.json`(**4 条 entry 指向库类字段**)
+    · NeoForge 两线(1.21.1 / 26.1.2):本 mod 的 `src/main/resources/META-INF/enumextensions.json`(**5 条 entry 指向库类字段**)
       + `neoforge.mods.toml` 的 `enumExtensions="META-INF/enumextensions.json"`;FML 的 `RuntimeEnumExtender` 在 `Rarity` 类加载时注入常量。
     · Forge 1.20.1:`Rarity implements IExtensibleEnum` ⇒ 库 `AstralRarities` 的**静态初始化**里 `Rarity.create(name, styleModifier)` 登记
       (方法体在类加载时被 `fmlloader` 的 `RuntimeEnumExtender` 换成真正的构造 + 追加 `$VALUES`)。
   - ⚠️ **FML 两条命名硬约束(作用对象不同,别混)**:① `enumextensions.json` 的 **`name` 键 = 注入进枚举的字段名**,
     **小写后必须以「声明该 json 的 mod」的 modId 开头**(当前 = `astral_dice` ⇒ 只能 `ASTRAL_DICE_*`);
     ② `parameters` 里那个 **name 参数 = 枚举的 `getSerializedName()`**,必须以 **`<modId>:`(冒号)** 开头
-    (⇒ `astral_dice:rare` / `astral_dice:epic` / `astral_dice:legendary` / `astral_dice:pinnacle`)——
+    (⇒ `astral_dice:rare` / `astral_dice:epic` / `astral_dice:legendary` / `astral_dice:pinnacle` / `astral_dice:bizarre`)——
     写错第 ② 条会在 `Rarity` 类加载时抛 `IllegalArgumentException: Name parameter must be prefixed by mod ID`,**游戏直接起不来**(实测)。
     三处互相约束:**库里的 `EnumProxy` 字段名** ↔ **json 的 `field`/`name`** ↔ **modId 前缀**,
     改名必须三处同改;`constructor` 描述符 = 原版 `Rarity(int,String,UnaryOperator<Style>)` 的**声明**参数
     (`enumextensions` 会自动前置 `(String,int)` 合成参数 ⇒ 写成 `(ILjava/lang/String;Ljava/util/function/UnaryOperator;)V`)。
+  - **实测结论(2026-09-25,用例 `RARITY-SYNC-1.21.1` 实证)**:扩展档位**确实进了**原版 `Rarity.CODEC` 与 `BY_ID`
+    (`ByIdMap.continuous`)——尽管这两者都是 `<clinit>` 里的**静态字段初始化器**,而 FML 把扩展常量的构造插在
+    `$VALUES=$values()` **之前**(`RuntimeEnumExtender` 第 117-120 行,javac 分支)。⇒ ① 数据组件 `minecraft:rarity`
+    能携带自有档位并**跨网络同步到客户端**(实测客户端读到 `enum=ASTRAL_DICE_LEGENDARY` / `ASTRAL_DICE_BIZARRE`);
+    ② 客户端 `getRarity()` 是**真值** ⇒ 任何「按档位生效」的客户端表现(名字染色、边框彩虹)都可靠。
+    ⚠️ **写法不同**:原版档位的序列化名**不带命名空间**(`rare` / `epic` …,写成 `minecraft:rare` 解析失败),
+    自有档位**带**(`astral_dice:rare`)——命令/NBT 里写错会静默不生效(命令直接报解析错)。
+  - **「彩虹档」(奇特)的实现面**:原版 tooltip **边框颜色与稀有度无关**(`TooltipRenderUtil` 硬编码
+    `BORDER_COLOR_TOP/BOTTOM`),`Rarity#getStyleModifier()` 只作用于**物品名那一行** ⇒ 边框按档位上色必须自己加客户端钩子。
+    · **1.21.1 / 1.20.1** = `client/RainbowRarityFrame`(`RenderTooltipEvent.Color#setBorderStart/setBorderEnd`)。
+      tooltip **每帧重绘**(`AbstractContainerScreen#renderTooltip` 每帧调用)⇒ 事件**每帧都发** ⇒ 按时间算色即得
+      **流动彩虹,零 Mixin**;粒度上限 = 「两色渐变」(原版 `renderFrameGradient`:上横线=起始色/下横线=结束色/左右竖线=两者竖直渐变),
+      要「七色同屏」得 Mixin 掉那条渐变线的绘制。实测色环周期 = `Rarity.RAINBOW_CYCLE_MILLIS`(3000ms,60 tick 回到同一色)。
+    · ⚠️ **26.1.2 未接(已知缺口)**:该线 tooltip 边框已改为**九宫格贴图**(`TooltipRenderUtil` 用 `tooltip/background`
+      + `tooltip/frame` 精灵,事件是 `RenderTooltipEvent.Texture#setTexture`),**没有颜色接口** ⇒ 彩虹边框必须自带贴图帧,
+      属独立一轮待办;该线目前只有「奇特」的基准色(物品名那一行),边框仍是原版样式。
   - ⚠️ **附魔不再升档**:原版「附魔升一档」的 switch 只覆盖原版 4 档,自有档走 `default` 原样返回(三线一致,可接受)。
   - ⚠️ **解析面耦合(改语法必改)**:`scripts/verify/ChipCommon.psm1` 与 `scripts/verify/verify_bountiful_pools.ps1`
     **正则解析 `ModItems` 的 `.rarity(...)`** 推断档位(前者决定进阶配方模板,后者核对赏金池数据层 rarity)⇒ 调用语法一变必须同步
     「正则 + 大写档名归一 + 表键(`UNCOMMON`→`LEGENDARY`)」,否则闸门按 COMMON 计算 ⇒ **假红/假绿**。
   - **赏金数据层**:稀有 → `RARE`、史诗 → `EPIC`、传奇 → `LEGENDARY`、普通 → `COMMON`(一一对应);
-    ⚠️ **巅峰档没有数据层对应值 ⇒ 一律不得写入任何赏金池**(守门脚本会对 `$null` 期望当场报错,fail-loud)。
+    ⚠️ **巅峰档与奇特档都没有数据层对应值 ⇒ 一律不得写入任何赏金池**(守门脚本 `$EXCLUDED_TIERS = @('LEGENDARY','PINNACLE','BIZARRE')`
+    会对 `$null` 期望当场报错,fail-loud)。
   - **骰子按升级链配色**:基础 = 普通(白)、黄金 = 稀有(浅蓝)、钻石 = 史诗(粉紫)、合金 = 传奇(金)、
     **下界之星 = 巅峰(亮红,T4 奇异品阶)**;合金与下界之星均**不参与赏金板**。
+    ⚠️ **「奇特」目前没有任何物品**(用户 2026-09-25 裁决「只建等级,暂不挂物品」)⇒ 想实测就用数据组件:
+    `/give @s <任意物品>[minecraft:rarity="astral_dice:bizarre"]`(1.21.1 / 26.1.2 可用;1.20.1 无组件系统,只能注册时设档)。
   - 新增物品的 `.rarity(...)` 按此标准选择,并与图标边框颜色一致(图标边框色即品质色);1.2.0 新增骰子按各自阶层定品质。
 - **立牌品质由合成配方决定**(见「立牌品质(配方决定)」表;立牌本身的 `.rarity(...)` 与配方分级保持一致)。
 

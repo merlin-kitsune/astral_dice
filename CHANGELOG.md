@@ -124,6 +124,23 @@
   **vanilla's own path** (this mod has no colouring code - changing a colour means editing one constant in the library).
   => The prerequisite library goes **1.0.3 -> 1.0.4** (range tightened to `[1.0.4,2.0)`; still embedded, no separate install).
 
+- **New fifth tier "Bizarre" - a rainbow (flowing) tooltip frame** (ruled 2026-09-25: "test whether a rainbow border can be
+  created; if it works, that tier is named Bizarre"): this tier has **no single colour** - the tooltip's own **frame** sweeps
+  around the colour wheel (3 s per revolution). Why it needs its own hook: vanilla's tooltip **frame colour is unrelated to
+  rarity** (`TooltipRenderUtil` hard-codes the border colours) and `Rarity#getStyleModifier()` only touches the item-name
+  line. On 1.21.1 and 1.20.1 `client/RainbowRarityFrame` listens to `RenderTooltipEvent.Color#setBorderStart/setBorderEnd`;
+  because the tooltip is **redrawn every frame** (`AbstractContainerScreen#renderTooltip` runs per frame) the event fires
+  every frame, so computing the colour from the current time gives a **flowing rainbow with zero Mixins**. The name line keeps
+  the tier's base colour (mint `#6BFFA8`, from the library's `item/Rarity`).
+  **No item uses this tier yet** (ruled: "just create the tier") - to see it immediately:
+  `/give @s <item>[minecraft:rarity="astral_dice:bizarre"]`.
+  ⚠️ **On 26.1.2 the frame stays vanilla (known gap, registered in AGENTS)**: that line's tooltip frame is a nine-slice
+  **texture** (`TooltipRenderUtil` uses the `tooltip/frame` sprite; the event is `RenderTooltipEvent.Texture`) with **no colour
+  hook** - a rainbow frame there needs its own texture frames and is a separate round of work.
+  Incidentally established (and recorded in AGENTS): the extended tiers **do reach** vanilla `Rarity.CODEC` and `BY_ID`, so the
+  data component can carry own tiers and sync them to the client (case `RARITY-SYNC-1.21.1`); ⚠️ vanilla tier serialized names
+  are **not** namespaced (`rare`), own tiers **are** (`astral_dice:rare`).
+
 - **Shooting Star (purple / golden): fall parameters, self-luminous particles and target scope** (2026-09-24 / 09-25 rulings: "height x3, fall speed x6, dual-star gap x2; shooting stars should only affect hostile targets", "the shooting star particles do not glow but the Living Page ones do - add the glow", "the phrase 'without attacking it' is actually ineffective, so delete both the wording and the code"):
   - **Height x3**: fall distance is now the legacy reference x **3.6** (the historical 1.2 speed-up x this batch's 3.0) - for a 1.95-tall zombie the origin sits **7.29 blocks** above its head (was 2.43);
   - **Fall speed x6**: the distance triples while the **duration halves** (`FALL_TICKS` 20 -> **10 ticks**, i.e. 0.5 s to land) - the per-tick speed is exactly 6x the original (0.1215 -> 0.729 blocks/tick);

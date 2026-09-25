@@ -99,6 +99,13 @@ Temporary cards also have their own hint line now: **"Temporary card: cannot be 
 - **Enchanting no longer bumps the tier**: it used to show an item one tier higher; now the tier comes from the item alone.
 - For the record: tiers and colours are now defined in one place inside the **prerequisite library**, so recolouring is a
   one-line change; the library version moves to **1.0.4** (still embedded - you do not install it separately).
+- **New fifth tier "Bizarre" (the tooltip frame is a flowing rainbow)**: this tier has **no fixed colour** - its tooltip
+  **frame** sweeps around the colour wheel (about one revolution every 3 seconds). **No item uses it yet** (yours to assign);
+  to see it right away, turn any item into it:
+  `/give @s minecraft:stone[minecraft:rarity="astral_dice:bizarre"]` (1.21.1).
+  ⚠️ **On 26.1.2 the tooltip frame is still vanilla**: that version draws the frame from a texture with no colour hook, so a
+  rainbow frame there needs its own texture set and is still to come; 1.20.1 has no item components, so it will only show once
+  an item actually uses this tier.)
 
 ## 🐛 Bug Fixes
 

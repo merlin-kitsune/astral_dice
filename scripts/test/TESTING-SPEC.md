@@ -1732,3 +1732,32 @@ pwsh -NoProfile -File scripts/test/mt_watchdog.ps1 -Version 1.21.1 [-StallSecond
 
 **三线差异**：NeoForge 两线靠 `enumextensions.json`（含 FML 的「常量名小写须以声明方 modId 开头」硬约束 ⇒ 只能 `ASTRAL_DICE_*`）；
 Forge 1.20.1 无该文件与机制，改由库的静态初始化调用 `Rarity.create`。**没有** `Rarity.valueOf(...)` 路径（Forge 侧枚举常量目录可能被提前缓存）。
+
+## 附录 A 续 30. 第 5 档「奇特」与彩虹边框 + 客户端真值裁决（2026-09-25）
+
+**改动**：库 `item/Rarity` 增第 5 档 `BIZARRE`（`astral_dice:bizarre`）与彩虹 API；两线新增客户端钩子
+`client/RainbowRarityFrame`；`ModItems` 档位注释与闸门 `$EXCLUDED_TIERS` 同步。
+
+**新增测试资产**：
+- 客户端探针 `scripts/test/resources/kubejs/1.21.1/client_scripts/astral_rarity_probe.js`（通道 `kubejs_client`）：
+  逐 tick 读**主手物品**的 `getRarity()` → `name()` / `getSerializedName()` /
+  `getStyleModifier().apply(Style.EMPTY).getColor()`（**等价于提示框首行的真实颜色**）；档位变化或每 40 tick 落一行
+  `AP_CRAR:evt=chg|hb:ticks=<n>:item=<id>:enum=<常量名>:sn=<序列化名>:rgb=<8位hex>[:rainbow=1:rb=<hex>:spin=<0|1>]`。
+- 用例 `scripts/test/cases/RARITY-SYNC-1.21.1.json`（`--case` 前台跑）：四点判定 ——
+  ① 原版档位经**数据组件**覆盖（`minecraft:rarity="rare"`，⚠️ 原版名**不带命名空间**）；
+  ② 自有档位经组件覆盖（`"astral_dice:legendary"`）；③ 注册默认档（`astral_dice:teru_sign`）；
+  ④ 第 5 档（`"astral_dice:bizarre"`）+ `rainbow=1` + `spin=1`。
+
+**判据（本批实测 PASS）**：
+1. **客户端拿到的是真值**：三线扩展档位**确实进了** `Rarity.CODEC`/`BY_ID`（即使二者是 `<clinit>` 静态字段初始化器、
+   而 FML 把扩展常量插在 `$VALUES=$values()` 之前）⇒ 组件可携带自有档位并跨网络同步。
+2. **彩虹在流动**：`rb=` 是库函数 `rainbowBorderStart(millis)` 的输出（与产品钩子同一个方法）；实测色环
+   **60 tick（3 s）回到同一色**，与 `RAINBOW_CYCLE_MILLIS` 一致 ⇒ 「流动」可被自动断言（`spin=1` + 逐 tick 序列）。
+3. ⚠️ **KubeJS 类过滤器会拒绝 `net.minecraft.Util`**（实测：`Failed to load Java class 'net.minecraft.Util':
+   Class is not allowed by class filter!`），且异常发生在**脚本加载期** ⇒ **整个客户端脚本不注册、探针零输出**
+   （表现为「读数为空」而不是报错）。**修法**：时间源用纯 JS 的 `Date.now()`；并把所有 `Java.loadClass` 包成
+   「失败即上报」（`AP_CRAR:evt=loaderr:…`），不让单个类把整个探针拖死。
+4. ⚠️ **用例里断言失败会截断后续断言**：本次首条 log 断言（原版 `rare`）因探针死掉而失败后，后面三条断言**根本没被评估**
+   ⇒ 读用例日志时必须确认「断言条数 == 期望条数」，别把「只报了 1 条」当成「其余都通过」。
+5. **本档尚未挂任何物品**（用户裁决「只建等级」）⇒ 实机观察走组件：`/item replace entity @s weapon.mainhand with
+   minecraft:stone[minecraft:rarity="astral_dice:bizarre"]`（1.20.1 无组件系统 ⇒ 只能注册时设档）。
