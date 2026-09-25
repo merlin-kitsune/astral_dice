@@ -117,13 +117,17 @@ public class ModItems {
                     AstralDiceMod.MODID, "effect_cards"));
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // 本模组稀有度标准(2026-09-25 起改为**自有 4 档**;等级/常量名/颜色码的权威在前置库 starengine_lib):
+    // 本模组稀有度标准(2026-09-25 起改为**自有 5 档**;等级/常量名/颜色码的权威在前置库 starengine_lib):
     //   白 = 普通   → 原版 Rarity.COMMON(本模组**唯一**保留的原版档,直接写 Rarity.COMMON)
-    //   浅蓝 #8FD3FF = 稀有 → AstralRarities.rare()      扩展常量 ASTRAL_DICE_RARE
-    //   粉紫 #E3A6FF = 史诗 → AstralRarities.epic()      扩展常量 ASTRAL_DICE_EPIC
+    //   水蓝 #55FFFF = 稀有 → AstralRarities.rare()      扩展常量 ASTRAL_DICE_RARE
+    //   粉紫 #FF55FF = 史诗 → AstralRarities.epic()      扩展常量 ASTRAL_DICE_EPIC
     //   金   #FFC24B = 传奇 → AstralRarities.legendary() 扩展常量 ASTRAL_DICE_LEGENDARY
     //   亮红 #FF4D4D = 巅峰 → AstralRarities.pinnacle()  扩展常量 ASTRAL_DICE_PINNACLE
-    // 机制:库里的 item.Rarity 是**唯一色码权威**,其平台接线把这 4 档**扩展进原版 Rarity**
+    //   彩虹(流动)   = 奇特 → AstralRarities.bizarre()   扩展常量 ASTRAL_DICE_BIZARRE
+    //                 ⚠️ 奇特文字色 = 亮红(与巅峰同色 #FF4D4D);流动彩虹只在边框上(见下一行);
+    //                    边框策略(2026-09-25 二次裁决):稀有/史诗随原版不干预;传奇/巅峰=单色、奇特=两色
+    //                    流动渐变,由客户端 client/RarityTooltipFrame 经 RenderTooltipEvent.Color 写入(无 Mixin)。
+    // 机制:库里的 item.Rarity 是**唯一色码权威**,其平台接线把这 5 档**扩展进原版 Rarity**
     //   (NeoForge 两线 = 本 mod 的 META-INF/enumextensions.json + 库 AstralRarities 的 EnumProxy 字段;
     //    Forge 1.20.1 = 库 AstralRarities 静态初始化里的 Rarity.create + IExtensibleEnum)
     //   ⇒ 原版 tooltip 链路(ItemStack#getTooltipLines → Rarity#getStyleModifier)会自动套用该颜色,
@@ -300,7 +304,7 @@ public class ModItems {
     public static final RegistryObject<Item> ATTACK_CARD_FULL_POWER = registerItem("attack_card_full_power",
             () -> new CardItem(new Item.Properties()
                     .stacksTo(64)
-                    .rarity(AstralRarities.legendary())
+                    .rarity(AstralRarities.pinnacle())
                     , "full_power"));
 
     // 蛟龙立牌(mamushi)专属战斗牌「撕咬」(传奇=UNCOMMON):费用 2 / 耐久 1 / 攻击贡献定值 +3(对齐暗影突袭)。
@@ -308,7 +312,7 @@ public class ModItems {
     public static final RegistryObject<Item> ATTACK_CARD_BITE = registerItem("attack_card_bite",
             () -> new CardItem(new Item.Properties()
                     .stacksTo(64)
-                    .rarity(AstralRarities.legendary())
+                    .rarity(AstralRarities.bizarre())
                     , "bite"));
 
     // 蛟龙立牌(mamushi)专属战斗牌「龙之咆哮」(传奇=UNCOMMON):费用 3 / 耐久 5 / 攻击贡献定值 +3;
@@ -316,7 +320,7 @@ public class ModItems {
     public static final RegistryObject<Item> ATTACK_CARD_DRAGON_ROAR = registerItem("attack_card_dragon_roar",
             () -> new CardItem(new Item.Properties()
                     .stacksTo(64)
-                    .rarity(AstralRarities.legendary())
+                    .rarity(AstralRarities.bizarre())
                     , "dragon_roar"));
 
     public static final RegistryObject<Item> DEFENSE_CARD_MEDIUM = registerItem("defense_card_medium",
@@ -384,7 +388,7 @@ public class ModItems {
     public static final RegistryObject<Item> STAR_COIN = registerItem("star_coin",
             () -> new Item(new Item.Properties()
                     .stacksTo(64)
-                    .rarity(AstralRarities.rare())));
+                    .rarity(Rarity.COMMON)));
 
     // 袋装星币:9 枚星币打包(可逆),便于批量携带
     public static final RegistryObject<Item> STAR_COIN_BAG = registerItem("star_coin_bag",
@@ -841,7 +845,7 @@ public class ModItems {
     public static final RegistryObject<Item> LIVING_PAGE = registerItem("effect_card_living_page",
             () -> new LivingPageItem(new Item.Properties()
                     .stacksTo(64)
-                    .rarity(AstralRarities.epic())));
+                    .rarity(AstralRarities.bizarre())));
 
     // 占星师立牌(命名:haiqing)
     public static final RegistryObject<Item> HAIQING_SIGN = registerItem("haiqing_sign",
@@ -853,7 +857,7 @@ public class ModItems {
     public static final RegistryObject<Item> FATE_GUIDANCE_CARD = registerItem("effect_card_fate_guidance",
             () -> new FateGuidanceCardItem(new Item.Properties()
                     .stacksTo(64)
-                    .rarity(AstralRarities.epic())));
+                    .rarity(AstralRarities.bizarre())));
 
     // 吸血鬼立牌(命名:papara):配方=黄金骰子+星盘 → 史诗
     public static final RegistryObject<Item> PAPARA_SIGN = registerItem("papara_sign",
@@ -924,6 +928,7 @@ public class ModItems {
 
     // 游戏大师立牌(命名:ren,史诗):鼠鼠救我被动(5:00 无盾自动补「1 张随机卡牌 + 护盾」)
     // + 熊孩子特权主动(选任意玩家或自身);盾 = 5 黄心 + 抗性提升 + 1 层反击;配方=基础骰子(纸×4 + 星币×3) → 史诗
+    // (2026-09-25 修正:上一批误把本立牌改成「奇特」,本批按用户裁决改回史诗 —— 奇特的立牌是怪力侦探与人偶师。)
     public static final RegistryObject<Item> REN_SIGN = registerItem("ren_sign",
             () -> new RenSignItem(new Item.Properties()
                     .stacksTo(1)
@@ -964,27 +969,29 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(AstralRarities.legendary())));
 
-    // 怪力侦探立牌(命名:sherry,史诗):主动「怪力投掷」把 12 格内全部敌对目标按抛物线扔到玩家面前 2 格,
+    // 怪力侦探立牌(命名:sherry,奇特):主动「怪力投掷」把 12 格内全部敌对目标按抛物线扔到玩家面前 2 格,
     // **落地之后**造成 2 点伤害并施加 1 层「标记」(推理时间满 5 层 ⇒ 额外 5 点);被动「侦探出击」按
     // 「攻击 ≥20 血敌对目标」累积「推理时间」(上限 5,**死亡不清**,骰神赐福结束后 −1 层),
     // 「挚友守护」为同队装备人偶师立牌的玩家减伤 1 点。
-    // 史诗品质 = ASTRAL_DICE_EPIC;配方 = 钻石骰子(±星盘)档(同 忍者 komachi / 占星师 haiqing / 骇客 nancy_lu / 枪匠 moses)。
+    // 奇特品质 = ASTRAL_DICE_BIZARRE(2026-09-25 用户裁决「专属牌 + 怪力侦探和人偶师改奇特」);
+    // 配方 = 紫晶骰子 + 黄金星盘档(2026-09-25 用户裁决:骰子由钻石骰子改紫晶骰子)。
     public static final RegistryObject<Item> SHERRY_SIGN = registerItem("sherry_sign",
             () -> new com.merlinkitsune.astral_dice.item.sign.SherrySignItem(new Item.Properties()
                     .stacksTo(1)
-                    .rarity(AstralRarities.epic())));
+                    .rarity(AstralRarities.bizarre())));
 
-    // 人偶师立牌(命名:hanna,稀有):被动「幻想千金」(战斗骰点 = 6 ⇒ 1 星币;路过 3 格内友方玩家 ⇒
+    // 人偶师立牌(命名:hanna,奇特):被动「幻想千金」(战斗骰点 = 6 ⇒ 1 星币;路过 3 格内友方玩家 ⇒
     // 该玩家 1 星币 + 自身 1 层「人偶制作」,自身处于「魔女漂浮」时该玩家改为 3 星币;「人偶制作」满 7 层
     // ⇒ 归零转为「人偶完成」,此后路过额外给该玩家 迅捷 II (1:00) + 3 星币;整体每 1:00 仅触发 1 次)
     // + 被动「挚友祝福」(路过装备「怪力侦探」立牌的玩家 ⇒ 该玩家获得 力量 II (1:00) + 抗性提升 (1:00)
     // + 1 层「推理时间」;每 1:00 仅触发 1 次)
     // + 主动「漂浮魔法」(自身 魔女漂浮 1:00:移速 +20%、掉落伤害 -100%、近战攻击被闪避、禁用末影珍珠)。
-    // 稀有品质 = ASTRAL_DICE_RARE;配方 = 黄金骰子(无星盘)档(同 史莱姆 lulu / 上班族 padman)。
+    // 奇特品质 = ASTRAL_DICE_BIZARRE(2026-09-25 用户裁决;上一批漏改,本批补上);
+    // 配方 = 紫晶骰子 + 黄金星盘×2 档(2026-09-25 用户裁决:两个线位改黄金星盘、骰子改紫晶骰子)。
     public static final RegistryObject<Item> HANNA_SIGN = registerItem("hanna_sign",
             () -> new com.merlinkitsune.astral_dice.item.sign.HannaSignItem(new Item.Properties()
                     .stacksTo(1)
-                    .rarity(AstralRarities.rare())));
+                    .rarity(AstralRarities.bizarre())));
 
     // 符卡-福(风水师立牌专属效果牌,**稀有**=RARE;用户 2026-09-21 裁决,原为传奇 UNCOMMON):
     // 目标选择器(任意玩家或自身)⇒ 目标治疗 2 点 + 本出牌轮出牌数 +1;
@@ -992,7 +999,7 @@ public class ModItems {
     public static final RegistryObject<Item> FU_CARD = registerItem("fu_card",
             () -> new FuCardItem(new Item.Properties()
                     .stacksTo(64)
-                    .rarity(AstralRarities.rare())));
+                    .rarity(AstralRarities.bizarre())));
 
     // 符卡-祸(风水师立牌专属效果牌,**稀有**=RARE;用户 2026-09-21 裁决,原为传奇 UNCOMMON):
     // 目标选择器(敌对目标,含非同队玩家)⇒ 1 点真实伤害;
@@ -1000,7 +1007,7 @@ public class ModItems {
     public static final RegistryObject<Item> HUO_CARD = registerItem("huo_card",
             () -> new HuoCardItem(new Item.Properties()
                     .stacksTo(64)
-                    .rarity(AstralRarities.rare())));
+                    .rarity(AstralRarities.bizarre())));
 
     public static <T extends Item> RegistryObject<T> registerItem(String name, Supplier<T> itemSupplier) {
         return ITEMS.register(name, itemSupplier);

@@ -4,6 +4,20 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## Unreleased (2.0.0-SNAPSHOT.13)
+
+### New Content
+
+<!-- 新内容在此登记 -->
+
+### Content & Balance
+
+<!-- 内容与平衡性调整在此登记 -->
+
+### Bug Fixes
+
+<!-- 已修复BUG在此登记 -->
+
 ## 1.3.1
 
 ### New Content
@@ -58,6 +72,12 @@
 
 #### Damage & Resolution
 
+- **The Obsidian Die's damage reduction changed from "-70% fire damage" to "-50% explosion damage"**
+  (user ruling 2026-09-25): it previously reduced fire damage (vanilla `is_fire` tag) by 70%; it now reduces
+  **explosion damage** (vanilla `is_explosion` tag - TNT / creepers / end crystals / fireball explosions etc.) by
+  **50%**, checked in `ObsidianDiceItem.isExplosionDamage` (all three lines). The tooltip and handbook wording changed
+  from "fire" to "explosion" (`tooltip.astral_dice.obsidian_dice_fire` -> `obsidian_dice_explosion`, three lines x three languages).
+
 - **The Whetstone's "keep 1 HP" guard now has a 1:00 cooldown, and the saving priority "Airbag > Whetstone"
   is now explicit** (user ruling 2026-09-24): the Whetstone's "while health is above 1, a single hit can at
   most reduce your health to 1" had **no cooldown**, while its trigger condition (the hit would kill you)
@@ -108,14 +128,41 @@
   As a knock-on guarantee, **survival chips** (Airbag / Whetstone / Detective damage reduction) no longer waste a charge on such a
   fully-absorbed hit.
 
+- **Detective / Puppeteer sign recipe changes** (ruled 2026-09-25): the Detective Sign's dice changed from **diamond dice**
+  to **amethyst dice** (grid `PBP/AEA/IDI` unchanged), and the Puppeteer Sign's two **string** positions became
+  **golden star plates** while its dice changed from **golden dice** to **amethyst dice** (grid `SQS/LEL/TDT` -> `GQG/LEL/TDT`).
+  The two recipes used to sit in the "diamond dice + golden star plate" and "golden dice (no star plate)" tiers and now have
+  **no tier-mates** (they are the first recipes in this repo to use amethyst dice). Sign rarity was later adjusted again - both
+  the Sherry Sign and the Hanna Sign became **Bizarre** (see the "Bizarre" entry above; the Game Master was mistakenly made
+  Bizarre and is **Epic again**; the "Detective / Puppeteer" wording here was also a naming slip), and the Patchouli handbook
+  recipe lines were updated to match.
+
 #### Chips & Resources
 
-- **The rarity system is now "four own tiers + vanilla Common"** (ruled 2026-09-25): the old "borrowing" of vanilla
-  `COMMON`/`UNCOMMON`/`RARE`/`EPIC` is gone - four own tiers are now **extended into the vanilla `Rarity` enum**:
-  **Rare (light blue) / Epic (pink-purple) / Legendary (gold) / Pinnacle (bright red)**, with plain items still on
+- **The bounty reward pool now accepts the Legendary tier and excludes Pinnacle and Bizarre** (ruled 2026-09-25:
+  "add legendary items, exclude pinnacle and bizarre"): `astral_objs` gains three legendary dice
+  (`netherite_dice` / `crimson_dice` / `ender_dice`, worth 24000) and `astral_rews` gains three legendary dice (12000)
+  plus 7 legendary signs and 18 legendary chips (10000 each), i.e. **`objs` 13->16, `rews` 95->123**. The
+  "excluded tiers" set narrows from three tiers (Legendary + Pinnacle + Bizarre) to **two (Pinnacle + Bizarre)** -
+  neither of those has a data-layer rarity value, so an entry in a pool would simply fail. The legendary value band is new
+  in this batch (dice 24000/12000, chips and signs 10000) and the balance formula becomes
+  `legendary dice (objs) 24000 >= legendary dice (rews) 24000 x 0.9 = 21600` (OK).
+  A three-line inconsistency was fixed along the way: 26.1.2's `astral_rews.json` still contained two **exclusive cards**
+  (which must never be obtainable outside their banner, per an earlier ruling) and was missing four non-exclusive entries the
+  other two lines already had - all three pool files plus the decree are now **byte-identical across lines**. Exclusive cards
+  (`is_exclusive.json`, currently 6) still never enter any pool.
+
+
+- **The rarity system is now "five own tiers + vanilla Common"** (ruled 2026-09-25): the old "borrowing" of vanilla
+  `COMMON`/`UNCOMMON`/`RARE`/`EPIC` is gone - five own tiers are now **extended into the vanilla `Rarity` enum**:
+  **Rare (aqua) / Epic (pink-purple) / Legendary (gold) / Pinnacle (bright red) / Bizarre (rainbow)**, with plain items still on
+  (second correction the same day: **Rare / Epic now use the vanilla RARE / EPIC colours** - aqua `#55FFFF` =
+  `ChatFormatting.AQUA` and pink-purple `#FF55FF` = `ChatFormatting.LIGHT_PURPLE`, replacing the first draft's paler
+  `#8FD3FF` / `#E3A6FF`)
   vanilla `COMMON`. **Player-visible changes**: (1) Legendary moves from "yellow" (borrowed `UNCOMMON`) to **gold**;
   (2) a new top tier **Pinnacle (bright red)** exists, with the **Nether Star Dice** as its first (and currently only)
-  member; (3) **enchanting no longer bumps an item up one tier** (own tiers are not in vanilla's switch).
+  member; (3) **enchanting no longer bumps an item up one tier** (own tiers are not in vanilla's switch);
+  (4) **Rare / Epic adopt the vanilla colours** (the more saturated aqua and pink-purple).
   Mechanics: the single source of truth for tiers, constant names, serialized names and **colour codes** lives in the
   prerequisite library `starengine_lib` (`item/Rarity` plus a per-platform `item/AstralRarities`); this mod only declares
   `META-INF/enumextensions.json` (both NeoForge lines, via the `enumExtensions=` key in `mods.toml`) and calls
@@ -123,6 +170,57 @@
   `IExtensibleEnum` (registered from the library's static initialiser). The tooltip name colour is applied by
   **vanilla's own path** (this mod has no colouring code - changing a colour means editing one constant in the library).
   => The prerequisite library goes **1.0.3 -> 1.0.4** (range tightened to `[1.0.4,2.0)`; still embedded, no separate install).
+
+- **New fifth tier "Bizarre" - a rainbow (flowing) tooltip frame** (ruled 2026-09-25: "test whether a rainbow border can be
+  created; if it works, that tier is named Bizarre"): this tier has **no single colour** - the tooltip's own **frame** sweeps
+  around the colour wheel (3 s per revolution). Why it needs its own hook: vanilla's tooltip **frame colour is unrelated to
+  rarity** (`TooltipRenderUtil` hard-codes the border colours) and `Rarity#getStyleModifier()` only touches the item-name
+  line.   On 1.21.1 and 1.20.1 `client/RarityTooltipFrame` listens to `RenderTooltipEvent.Color#setBorderStart/setBorderEnd`;
+  because the tooltip is **redrawn every frame** (`AbstractContainerScreen#renderTooltip` runs per frame) the event fires
+  every frame, so computing the colour from the current time gives a **flowing rainbow with zero Mixins**. The name line is
+  **bright red** (same as Pinnacle, `#FF4D4D`, from the library's `item/Rarity`; ruled 2026-09-25 "Bizarre text = bright red, frame unchanged").
+  **Eight items now use this tier** (ruled 2026-09-25: "make all exclusive cards, plus the Detective and the Puppeteer,
+  Bizarre"): the six **exclusive cards** (`is_exclusive.json`) plus the **Sherry Sign** (`sherry_sign`) and the
+  **Hanna Sign** (`hanna_sign`).
+  ⚠️ **Corrected 2026-09-25**: an earlier batch mistook the "Puppeteer" for `ren_sign` (which is actually the **Game Master**),
+  so the Game Master was wrongly made Bizarre and the Hanna Sign was missed; this batch fixes it - the **Game Master is Epic
+  again** (put back into the bounty pool at EPIC/1800) and the **Hanna Sign is Bizarre** (removed from `astral_rews` on all three
+  lines; Bizarre is an excluded tier and the gate fails loud if it stays). To turn any item into it by hand:
+  `/give @s <item>[minecraft:rarity="astral_dice:bizarre"]`.
+
+- **Tooltip frame policy revised: the "same colour" rule is withdrawn; Rare/Epic return to vanilla, Legendary/Pinnacle/Bizarre
+  stay custom (two-colour gradient restored, Mixin-drawn clockwise dropped)** (user ruling 2026-09-25, second + third round):
+  the user pinned it with a screenshot of a vanilla rare item - **in vanilla the frame and the text are not the same colour**
+  (aqua name, purple frame) => the earlier "text and border strictly share one colour" rule is **withdrawn**. New policy:
+  **Rare / Epic leave the frame completely alone** (vanilla purple gradient kept; only the name line is tinted - matching how
+  vanilla RARE/EPIC items look); **Legendary / Pinnacle** keep a custom solid frame in their tier colour (gold `#FFC24B` /
+  bright red `#FF4D4D`, matching the name); **Bizarre = a two-colour flowing gradient** - `RenderTooltipEvent.Color` only gives
+  a top/bottom pair (vanilla draws "top line = start, bottom line = end, side lines = a vertical gradient"), so Bizarre writes
+  `rainbowBorderStart/End` into start/end and the colour flows around the wheel over time.
+  Implementation: `client/RarityTooltipFrame` (1.21.1 / 1.20.1, `@EventBusSubscriber(Dist.CLIENT)` + `RenderTooltipEvent.Color`) -
+  it reverse-looks-up the tier via `AstralRarities.tierOf`, **returns untouched** for Rare/Epic/vanilla/other mods, sets
+  `frameColor(now)` (solid) for Legendary/Pinnacle and `rainbowBorderStart/End` for Bizarre. **26.1.2 is not wired** (its frame is a
+  nine-slice texture with no colour hook => it keeps the vanilla texture).
+  ⚠️ before the third ruling there was a "Mixin-drawn clockwise rainbow" round (`TooltipBorderMixin` + `RarityBorderRenderer`); it was
+  **deleted wholesale** - all three lines hit lambda-wrapping / signature traps (production bytecode only has the 6-arg
+  `renderTooltipBackground`) and the animated gradient still did not show in-game.
+  Defect two stays (**caused by a third-party mod, not by this mod**): the user's pack ships **Tooltip Overhaul 2.0.4, which draws the
+  whole tooltip itself** and never calls `TooltipRenderUtil`, so this mod's event is ignored - and for **any non-vanilla rarity** it
+  falls back to one palette (`Palette.CUSTOM_RARITY`, default gold `0xFFE8B84A`) => **all own tiers got a gold frame**, which looks
+  exactly like "the recolouring turned every border gold".
+  Fix = ship the mod's **official resource-pack extension point** `assets/astral_dice/tooltipoverhaul/custom_frames.json`
+  (matched by `Rarity#name()`, `gradientType:"custom"` + explicit three-colour override of the fallback palette): **Rare / Epic copy
+  the exact palettes Tooltip Overhaul itself uses for vanilla RARE/EPIC** (RARE = blue `#4D9BE8` / `#2B66B5` / `#123A6B`, EPIC = purple
+  `#B14BE0` / `#7A28A8` / `#431463`, read from the TO jar's `TooltipsConfig` defaults; an earlier round "deleted the entries to return
+  to vanilla" - that was wrong: TO compares rarities with `==` against the vanilla enum, so own tiers always fall to the gold fallback
+  and deleting the entries just turned Rare/Epic gold), **Legendary / Pinnacle keep their tier
+  colour**, and Bizarre gets a **static three-stop rainbow gradient** (`#FF2626` / `#26FF26` / `#2626FF`, taken from the library's
+  `hsvToRgb` at phases 0 / 1/3 / 2/3) - that mod has **no per-frame animation** (its effect catalogue and palettes were checked;
+  there is no rainbow), so the *flowing* gradient only exists where it is absent. The file is byte-identical on all three lines and
+  inert where the mod is not installed.
+  Incidentally established (and recorded in AGENTS): the extended tiers **do reach** vanilla `Rarity.CODEC` and `BY_ID`, so the
+  data component can carry own tiers and sync them to the client (case `RARITY-SYNC-1.21.1`); ⚠️ vanilla tier serialized names
+  are **not** namespaced (`rare`), own tiers **are** (`astral_dice:rare`).
 
 - **Shooting Star (purple / golden): fall parameters, self-luminous particles and target scope** (2026-09-24 / 09-25 rulings: "height x3, fall speed x6, dual-star gap x2; shooting stars should only affect hostile targets", "the shooting star particles do not glow but the Living Page ones do - add the glow", "the phrase 'without attacking it' is actually ineffective, so delete both the wording and the code"):
   - **Height x3**: fall distance is now the legacy reference x **3.6** (the historical 1.2 speed-up x this batch's 3.0) - for a 1.95-tall zombie the origin sits **7.29 blocks** above its head (was 2.43);

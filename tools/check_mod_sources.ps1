@@ -55,6 +55,8 @@ $script:RequiredRepos = @(
 $script:LibraryGroups = @(
     'org.spongepowered'      # Sponge Mixin（1.20.1 注解处理器 + compileOnly）
     'net.fabricmc'           # sponge-mixin（26.1.2 侧的 mixin 实现）
+    'io.github.llamalad7'    # MixinExtras（@WrapOperation/@Local 等注入辅助注解库；1.20.1 编译期 compileOnly，
+                             # 运行时用 Forge 自带的那份；26.1.2 的 TooltipBorderMixin @Local 同族）
     'com.google.code.gson'   # mixin 注解处理器依赖
     'com.google.guava'       # mixin 注解处理器依赖
     'org.ow2.asm'            # mixin 注解处理器依赖

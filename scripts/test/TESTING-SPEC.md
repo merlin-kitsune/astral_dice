@@ -1732,3 +1732,84 @@ pwsh -NoProfile -File scripts/test/mt_watchdog.ps1 -Version 1.21.1 [-StallSecond
 
 **三线差异**：NeoForge 两线靠 `enumextensions.json`（含 FML 的「常量名小写须以声明方 modId 开头」硬约束 ⇒ 只能 `ASTRAL_DICE_*`）；
 Forge 1.20.1 无该文件与机制，改由库的静态初始化调用 `Rarity.create`。**没有** `Rarity.valueOf(...)` 路径（Forge 侧枚举常量目录可能被提前缓存）。
+
+## 附录 A 续 30. 第 5 档「奇特」与彩虹边框 + 客户端真值裁决（2026-09-25）
+
+**改动**：库 `item/Rarity` 增第 5 档 `BIZARRE`（`astral_dice:bizarre`）与彩虹 API；两线新增客户端钩子
+`client/RainbowRarityFrame`；`ModItems` 档位注释与闸门 `$EXCLUDED_TIERS` 同步。
+
+**新增测试资产**：
+- 客户端探针 `scripts/test/resources/kubejs/1.21.1/client_scripts/astral_rarity_probe.js`（通道 `kubejs_client`）：
+  逐 tick 读**主手物品**的 `getRarity()` → `name()` / `getSerializedName()` /
+  `getStyleModifier().apply(Style.EMPTY).getColor()`（**等价于提示框首行的真实颜色**）；档位变化或每 40 tick 落一行
+  `AP_CRAR:evt=chg|hb:ticks=<n>:item=<id>:enum=<常量名>:sn=<序列化名>:rgb=<8位hex>[:rainbow=1:rb=<hex>:spin=<0|1>]`。
+- 用例 `scripts/test/cases/RARITY-SYNC-1.21.1.json`（`--case` 前台跑）：四点判定 ——
+  ① 原版档位经**数据组件**覆盖（`minecraft:rarity="rare"`，⚠️ 原版名**不带命名空间**）；
+  ② 自有档位经组件覆盖（`"astral_dice:legendary"`）；③ 注册默认档（`astral_dice:teru_sign`）；
+  ④ 第 5 档（`"astral_dice:bizarre"`）+ `rainbow=1` + `spin=1`。
+
+**判据（本批实测 PASS）**：
+1. **客户端拿到的是真值**：三线扩展档位**确实进了** `Rarity.CODEC`/`BY_ID`（即使二者是 `<clinit>` 静态字段初始化器、
+   而 FML 把扩展常量插在 `$VALUES=$values()` 之前）⇒ 组件可携带自有档位并跨网络同步。
+2. **彩虹在流动**：`rb=` 是库函数 `rainbowBorderStart(millis)` 的输出（与产品钩子同一个方法）；实测色环
+   **60 tick（3 s）回到同一色**，与 `RAINBOW_CYCLE_MILLIS` 一致 ⇒ 「流动」可被自动断言（`spin=1` + 逐 tick 序列）。
+3. ⚠️ **KubeJS 类过滤器会拒绝 `net.minecraft.Util`**（实测：`Failed to load Java class 'net.minecraft.Util':
+   Class is not allowed by class filter!`），且异常发生在**脚本加载期** ⇒ **整个客户端脚本不注册、探针零输出**
+   （表现为「读数为空」而不是报错）。**修法**：时间源用纯 JS 的 `Date.now()`；并把所有 `Java.loadClass` 包成
+   「失败即上报」（`AP_CRAR:evt=loaderr:…`），不让单个类把整个探针拖死。
+4. ⚠️ **用例里断言失败会截断后续断言**：本次首条 log 断言（原版 `rare`）因探针死掉而失败后，后面三条断言**根本没被评估**
+   ⇒ 读用例日志时必须确认「断言条数 == 期望条数」，别把「只报了 1 条」当成「其余都通过」。
+5. ⚠️（2026-09-25 晚已过时）**本档现已挂 8 件物品**（6 专属牌 + 怪力侦探 `sherry_sign` + 人偶师 `hanna_sign`；
+   游戏大师 `ren_sign` 曾被误改奇特、本批改回史诗）—— 想实测任意物品仍可用组件：
+   `/item replace entity @s weapon.mainhand with minecraft:stone[minecraft:rarity="astral_dice:bizarre"]`
+   （1.20.1 无组件系统 ⇒ 只能注册时设档）。
+
+## 附录 A 续 31. 文字与边框同色 + 第三方 tooltip 模组对接（2026-09-25）
+
+**改动**：库 `Rarity#frameColor(long)`（= 文字色的边框版；彩虹档返回该时刻起色）+ 三平台 `AstralRarities#tierOf(原版 Rarity)`
+（反查档位，非本库档位返回 `null`）；两线 `client/RainbowRarityFrame` → `client/RarityTooltipFrame`（**对全部 5 档写边框**）；
+库色码 `RARE`/`EPIC` → 原版 `#55FFFF` / `#FF55FF`；三线内置 `assets/astral_dice/tooltipoverhaul/custom_frames.json`。
+
+**判据（实机）**：用例 `RARITY-SYNC-1.21.1` 扩到 **34 步 / 10 条断言**（本条 PASS）：新增 ⑤ 自有 `astral_dice:rare` ⇒ `rgb=0055ffff`、
+⑥ 自有 `astral_dice:epic` ⇒ `rgb=00ff55ff`（证明**库侧改色真的到了客户端**）、⑦/⑧ `sherry_sign` / `fu_card` ⇒
+`enum=ASTRAL_DICE_BIZARRE` + `rainbow=1`（证明改档生效）。1.20.1 `TERU-SIGN-1.20.1` = PASS（107/0，验证 Forge 侧新钩子类能启动）。
+
+**⚠️ 本批最重要的排查结论**：**第三方 tooltip 模组会整个接管提示框边框**，此时 `RenderTooltipEvent.Color` **被完全忽略**，
+而「非原版稀有度」会落进那家的兜底调色板（Tooltip Overhaul 2.0.4 = `Palette.CUSTOM_RARITY` **金色**）⇒ 症状是
+「物品名按档位变色、边框一律金色」，**极易误判成本模组染色坏了**。可复现判据（`config/tooltipoverhaul/tooltipoverhaul.toml`）：
+`CUSTOM_RARITY_PALETTE_COLORS = "0xFFE8B84A, …"`。对接方式与三家模组的差异见技能 `mc-thirdparty-tooltip-frame`；
+排查入口 = **先看整合包 `mods/` 里有没有画 tooltip 的模组**（`grep -i "tooltip\|legendary\|border"`）。
+
+**⚠️ 二次修订（2026-09-25 晚，用户裁决 —— 本节上面的「文字与边框同色」结论作废）**：
+用户以原版稀有物品截图定调（文字水蓝、边框紫蓝，**原版边框与文字本就不同色**）⇒ 稀有/史诗**不干预边框**（随原版）；
+传奇/巅峰 = 自定义单色边框；奇特 = **两色流动渐变**（`RenderTooltipEvent.Color` 只给「顶/底」两色，原版画成竖直渐变）。
+**⚠️ 三次修订（2026-09-25 深夜，用户裁决 —— Mixin 自绘顺时针彻底放弃）**：顺时针环绕的 Mixin 方案三线都有
+lambda 包裹/签名陷阱（1.21.1/1.20.1 的 `renderTooltipBackground` 调用被 `drawManaged(() -> …)` 的 lambda 包裹、
+生产字节码只有 6 参；26.1.2 `extractTooltipBackground` 描述符易错），且实机仍「动态渐变无效」⇒ 全删
+`TooltipBorderMixin` / `GuiGraphicsTooltipStackAccessor` / `RarityBorderRenderer`，改回最初 `RarityTooltipFrame`：
+`RenderTooltipEvent.Color` 里 `tierOf` 反查档位，稀有/史诗/原版 return 不动，传奇/巅峰 = `frameColor` 单色，
+奇特 = `rainbowBorderStart/End` 两色流动渐变。26.1.2 无颜色事件 ⇒ 不接（保持贴图边框）。
+`custom_frames.json`：**删稀有/史诗两条**（退回原版 = 让 Tooltip Overhaul 走默认边框，不再自定义），
+仅保留传奇/巅峰/奇特三档。赏金池随品质修正：`hanna_sign` 移出、`ren_sign` 以 EPIC/1800 加回（三线 md5 一致）。
+**⚠️ 四次修订（2026-09-25 深夜，用户实机截图纠正 —— 上一批「删稀有/史诗条目 = 退回原版」是错的）**：
+删条目后稀有/史诗在整合包里**整圈金框**（用户截图：巧克力蛋糕=稀有水蓝字、以毒攻毒=史诗粉紫字，边框全金）——
+TO 的 `getColorsPerRarity` 默认 `Palette.CUSTOM_RARITY`（金），只有 `==` 命中**原版**枚举才换调色板，自有枚举永远命中不了。
+「退回原版」的正确做法 = **照抄 TO 画原版档的确切调色板**：反汇编 TO jar 的 `TooltipsConfig` 默认值（与包内 toml 一致）
+—— RARE = `#4D9BE8/#2B66B5/#123A6B`（蓝渐变）、EPIC = `#B14BE0/#7A28A8/#431463`（紫渐变），`borderType:"gradient"`。
+custom_frames.json 恢复 5 档全写；包内原版稀有/史诗与本模组稀有/史诗在 TO 下**同框**。
+## 附录 A 续 32. 1.3.1 锁版交付清理 —— 仓库侧测试资产清零（2026-09-25）
+
+- **背景**：1.3.1 锁版收尾，用户指示「清理模组内测试钩子」。经产品侧（`src/main/java`）全量扫描，
+  真正「仅测试使用」的产品侧钩子只有 `target/TargetSelectionManager` 的 `cancelSessionForTests` /
+  `sessionTokenForTests` 两个方法（被探针 `astral_bugfix_probe.js` 直接调用驱动目标选择器测试），
+  用户裁决**保留**；`AstralPartyCommand`（`/astralparty`，仅 OP 权限级 2 的常驻管理员诊断命令，
+  被 `mt_launch` B6④ 硬闸门与大量用例依赖）用户裁决**保留**；`event/TargetSelectionTestCommand`
+  等演示动作早于 2026-09-22 已删净。故「清理」落地为**仓库侧测试资产清零**（不进发货 jar）。
+- **删除内容**（`shutil.move` 到 `temp/t112_test_assets_cleanup/`，非 `rm`）：
+  `scripts/test/cases/**`（93 个用例 json，含 `blocked-26.1.2/` 13 个）、
+  `scripts/test/resources/**`（23 个：三线 kubejs 探针 + `testworld-seed-1.20.1.zip`）、
+  `scripts/test/reports/**` 报告内容（`20260925-014303/`，本已被 .gitignore 忽略，`_template.md` 保留）。
+- **保留**（工具链与规范，同「测试资产清零」先例口径）：`mt*.ps1` 全套、`lib/`、`tools/`、
+  `TESTING-SPEC.md`、`TESTING-RULES-OVERVIEW.md`、`reports/_template.md`。
+- **判据**：`git diff --cached --name-status` 计 `D` = 116 条（93 cases + 23 resources），
+  与 `git ls-files scripts/test/{cases,resources}/` 逐项吻合；temp 备份 139 文件可回滚。

@@ -35,6 +35,15 @@
         "class": "com/merlinkitsune/starenginelib/item/AstralRarities",
         "field": "PINNACLE"
       }
+    },
+    {
+      "enum": "net/minecraft/world/item/Rarity",
+      "name": "ASTRAL_DICE_BIZARRE",
+      "constructor": "(ILjava/lang/String;Ljava/util/function/UnaryOperator;)V",
+      "parameters": {
+        "class": "com/merlinkitsune/starenginelib/item/AstralRarities",
+        "field": "BIZARRE"
+      }
     }
   ]
 }

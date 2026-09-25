@@ -64,6 +64,7 @@ Temporary cards also have their own hint line now: **"Temporary card: cannot be 
 
 ### A few numbers
 
+- **Obsidian Die**: its damage reduction changes from "fire damage -70%" to "**explosion damage -50%**".
 - **Star Coin Hammer**: Star Coins consumed per Dice Blessing **3 -> 6**.
 - **Smart Watch**: the card top-up threshold drops from **10 to 6** (easier to keep a hand).
 - **Target chip**: the Mark from a Dice Blessing no longer lands on **the very target you are attacking** - it now picks the nearest target **other than that one**, so it finally works as "set up a second target".
@@ -95,10 +96,54 @@ Temporary cards also have their own hint line now: **"Temporary card: cannot be 
 
 - **Legendary is gold now**: "Legendary" used to borrow vanilla's yellow tier, so it looked yellow - it is **gold** now.
 - **New top tier "Pinnacle" (bright red)**: currently exclusive to the **Nether Star Dice** (the T4 exotic tier).
-- **Rare / Epic keep their colours** (light blue / pink-purple), and plain items stay white.
+- **Rare / Epic now use the vanilla colours** (aqua / pink-purple - the very colours vanilla uses for its "Rare" and "Epic"
+  item names), and plain items stay white.
+- **The tooltip frame now follows the vanilla look, tier by tier**: for **Rare / Epic** the frame is **identical to vanilla
+  rare/epic items in your pack** (whatever a vanilla rare item's frame looks like there, ours matches it);
+  **Legendary / Pinnacle** frames match their name colour (gold / bright red); **Bizarre** gets a **flowing rainbow
+  gradient frame** (the two colours travel around the colour wheel, about one cycle every 3 seconds).
+  ⚠️ Note: the **Tooltip Overhaul** mod in your pack draws the whole tooltip itself and falls back to a single gold palette for
+  any non-vanilla rarity - which is why you saw "text recoloured per tier, but every border gold". This release ships a colour
+  table through that mod's official mechanism (Rare / Epic = the exact blue/purple gradients it uses for vanilla rare/epic items,
+  Legendary / Pinnacle = their tier colour,
+  Bizarre = a three-stop rainbow gradient). It has no per-frame animation, so **in your pack Bizarre's frame is a static rainbow
+  gradient**; without that mod it is a flowing rainbow gradient.
 - **Enchanting no longer bumps the tier**: it used to show an item one tier higher; now the tier comes from the item alone.
 - For the record: tiers and colours are now defined in one place inside the **prerequisite library**, so recolouring is a
   one-line change; the library version moves to **1.0.4** (still embedded - you do not install it separately).
+- **New fifth tier "Bizarre" (the tooltip frame is a flowing rainbow gradient)**: this tier has **no fixed colour** - its tooltip
+  **frame** is a rainbow gradient that **flows over time** (the two colours travel around the colour wheel, about one cycle
+  every 3 seconds).
+  **Eight items now use it**: the six exclusive cards (Fate Guidance / Living Page / Fu Card / Huo Card / Bite / Dragon Roar) plus
+  the **Sherry Sign** and the **Hanna Sign**.
+  (⚠️ Fix note: an earlier batch mistakenly turned the **Game Master** into Bizarre instead of the Hanna Sign - the Game Master is
+  **Epic again**, and the Hanna Sign is Bizarre now.)
+  To see it right away, turn any item into it:
+  `/give @s minecraft:stone[minecraft:rarity="astral_dice:bizarre"]` (1.21.1 / 26.1.2; 1.20.1 has no item components, but this
+  release already puts the two signs on this tier).
+
+### Bounty board: legendary items can be traded now, Pinnacle and Bizarre still cannot
+
+- **The Sherry Sign and the Hanna Sign left the reward pool**: both banners became "Bizarre" this round, and Bizarre never
+  enters the bounty board (same as Pinnacle).
+- Gold-framed (Legendary) dice, chips and signs **never appeared on the bounty board**; now they **can** - both as the
+  materials a bounty asks for and as redeemable rewards (the Netherite / Crimson / Ender dice, 7 legendary signs and
+  18 legendary chips).
+- **Bright-red (Pinnacle) and rainbow (Bizarre) stay out of the bounty board** - those tiers simply have no bounty
+  quality value.
+- Two inconsistencies were fixed on the way: (1) on 26.1.2 the board **offered two "exclusive" cards** that by design can
+  only be handed out by their own banner - they are gone; (2) that same version was **missing 4 rewards** it should have
+  had - now added. All three versions now carry **identical** bounty content.
+
+### Recipe changes for the Sherry Sign and the Hanna Sign
+
+- **Sherry Sign**: its dice changed from **diamond dice** to **amethyst dice**; everything else is unchanged -
+  1 book, 2 anvils, 2 iron blocks, 2 golden star plates and 1 blank sign.
+- **Hanna Sign**: its two **string** became **golden star plates** and its dice changed from **golden dice** to
+  **amethyst dice**; everything else is unchanged - 1 white wool, 2 leather, 2 sticks and 1 blank sign.
+- Sign rarity was later adjusted again: both the Sherry Sign and the Hanna Sign became **Bizarre** (see the "Bizarre" section
+  above; the Game Master was mistakenly made Bizarre and is **Epic again**), and the Patchouli handbook recipe lines were
+  updated to match.
 
 ## 🐛 Bug Fixes
 

@@ -1390,10 +1390,11 @@ public class ModRecipeProvider extends RecipeProvider {
                 .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
                 .save(output);
 
-        // 怪力侦探立牌(sherry):钻石骰子 + 黄金星盘档。PBP/AEA/IDI
-        // (P=黄金星盘×2、B=书、E=空白立牌、A=铁砧、I=铁块、D=钻石骰子;空白立牌置中、骰子固定中下)
-        // 同档(钻石骰子+黄金星盘)的 moses/nancy_lu 为 GPG/TCT/PZP 与 YFY/BLW/PZP;
-        // 本配方六个填料的格位与它们(及全部其它立牌)均不复用,网格全局唯一
+        // 怪力侦探立牌(sherry):紫晶骰子 + 黄金星盘档。PBP/AEA/IDI
+        // (P=黄金星盘×2、B=书、E=空白立牌、A=铁砧、I=铁块、D=紫晶骰子;空白立牌置中、骰子固定中下)
+        // 2026-09-25 用户裁决:骰子由钻石骰子改为紫晶骰子(本仓首条以紫晶骰子为材料的配方,
+        // 故不再有同档伙伴)。
+        // 本配方六个填料的格位与全部其它立牌均不复用,网格全局唯一
         // (守门:scripts/verify/verify_crafting_recipe_uniqueness.ps1)。
         ShapedRecipeBuilder.shaped(items, RecipeCategory.MISC, ModItems.SHERRY_SIGN.get())
                 .pattern("PBP")
@@ -1404,25 +1405,25 @@ public class ModRecipeProvider extends RecipeProvider {
                 .define('B', Items.BOOK)
                 .define('A', Items.ANVIL)
                 .define('I', Items.IRON_BLOCK)
-                .define('D', ModItems.DIAMOND_DICE.get())
+                .define('D', ModItems.AMETHYST_DICE.get())
                 .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
                 .save(output);
 
-        // 人偶师立牌(hanna):黄金骰子(无星盘)档。SQS/LEL/TDT
-        // (S=线、Q=白色羊毛、L=皮革、E=空白立牌、T=木棍、D=黄金骰子;空白立牌置中、骰子固定中下)
-        // 同档(黄金骰子无星盘)的 lulu 为 SZS/ZCZ/SDS、padman 为 WYW/TET/TDT、nardis 为 CYC/TET/TDT;
-        // 本配方六个填料的格位与它们(及全部其它立牌)均不复用,材料多重集亦不同 ⇒ 网格全局唯一
+        // 人偶师立牌(hanna):紫晶骰子 + 黄金星盘×2 档。GQG/LEL/TDT
+        // (G=黄金星盘×2、Q=白色羊毛、L=皮革、E=空白立牌、T=木棍、D=紫晶骰子;空白立牌置中、骰子固定中下)
+        // 2026-09-25 用户裁决:两个线位换黄金星盘、骰子换紫晶骰子(原「黄金骰子(无星盘)」档作废)。
+        // 本配方六个填料的格位与全部其它立牌均不复用,材料多重集亦不同 ⇒ 网格全局唯一
         // (守门:scripts/verify/verify_crafting_recipe_uniqueness.ps1)。
         ShapedRecipeBuilder.shaped(items, RecipeCategory.MISC, ModItems.HANNA_SIGN.get())
-                .pattern("SQS")
+                .pattern("GQG")
                 .pattern("LEL")
                 .pattern("TDT")
                 .define('E', ModItems.BLANK_SIGN.get())
-                .define('S', Items.STRING)
+                .define('G', ModItems.GOLDEN_STAR_PLATE.get())
                 .define('Q', Items.WHITE_WOOL)
                 .define('L', Items.LEATHER)
                 .define('T', Items.STICK)
-                .define('D', ModItems.GOLDEN_DICE.get())
+                .define('D', ModItems.AMETHYST_DICE.get())
                 .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
                 .save(output);
         // 符卡-福 / 符卡-祸:**无配方**（专属牌,仅由风水师立牌的被动「福祸相倚」与主动「白泽赐福」
