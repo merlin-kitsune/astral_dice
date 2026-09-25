@@ -1797,3 +1797,19 @@ TO 的 `getColorsPerRarity` 默认 `Palette.CUSTOM_RARITY`（金），只有 `==
 「退回原版」的正确做法 = **照抄 TO 画原版档的确切调色板**：反汇编 TO jar 的 `TooltipsConfig` 默认值（与包内 toml 一致）
 —— RARE = `#4D9BE8/#2B66B5/#123A6B`（蓝渐变）、EPIC = `#B14BE0/#7A28A8/#431463`（紫渐变），`borderType:"gradient"`。
 custom_frames.json 恢复 5 档全写；包内原版稀有/史诗与本模组稀有/史诗在 TO 下**同框**。
+## 附录 A 续 32. 1.3.1 锁版交付清理 —— 仓库侧测试资产清零（2026-09-25）
+
+- **背景**：1.3.1 锁版收尾，用户指示「清理模组内测试钩子」。经产品侧（`src/main/java`）全量扫描，
+  真正「仅测试使用」的产品侧钩子只有 `target/TargetSelectionManager` 的 `cancelSessionForTests` /
+  `sessionTokenForTests` 两个方法（被探针 `astral_bugfix_probe.js` 直接调用驱动目标选择器测试），
+  用户裁决**保留**；`AstralPartyCommand`（`/astralparty`，仅 OP 权限级 2 的常驻管理员诊断命令，
+  被 `mt_launch` B6④ 硬闸门与大量用例依赖）用户裁决**保留**；`event/TargetSelectionTestCommand`
+  等演示动作早于 2026-09-22 已删净。故「清理」落地为**仓库侧测试资产清零**（不进发货 jar）。
+- **删除内容**（`shutil.move` 到 `temp/t112_test_assets_cleanup/`，非 `rm`）：
+  `scripts/test/cases/**`（93 个用例 json，含 `blocked-26.1.2/` 13 个）、
+  `scripts/test/resources/**`（23 个：三线 kubejs 探针 + `testworld-seed-1.20.1.zip`）、
+  `scripts/test/reports/**` 报告内容（`20260925-014303/`，本已被 .gitignore 忽略，`_template.md` 保留）。
+- **保留**（工具链与规范，同「测试资产清零」先例口径）：`mt*.ps1` 全套、`lib/`、`tools/`、
+  `TESTING-SPEC.md`、`TESTING-RULES-OVERVIEW.md`、`reports/_template.md`。
+- **判据**：`git diff --cached --name-status` 计 `D` = 116 条（93 cases + 23 resources），
+  与 `git ls-files scripts/test/{cases,resources}/` 逐项吻合；temp 备份 139 文件可回滚。
