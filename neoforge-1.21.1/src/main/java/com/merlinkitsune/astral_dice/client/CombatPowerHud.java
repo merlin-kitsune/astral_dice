@@ -24,7 +24,8 @@ import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
  *
  * <h2>数值口径</h2>
  * 两条 bar 直接复用结算口径，不做任何本地换算（用户裁决「全部直接复用」）：
- * 防御力 = {@link DiceCombatModifiers#defensePowerOf}，攻击力 = {@link DiceCombatModifiers#attackPowerOf}。
+ * 防御力 = {@link DiceCombatModifiers#defensePowerOf}；攻击力 = {@link DiceCombatModifiers#attackPowerDisplayOf}
+ * （**手持武器不参与显示**，用户需求；与战斗口径 {@code attackPowerOf} 的差异见该方法注释）。
  * 两者下限分别为 2 / 1，**恒 &gt; 0 ⇒ 两条 bar 永远显示**（用户裁决）。
  *
  * <h2>替换原版护甲条（含 OAB）</h2>
@@ -64,7 +65,7 @@ import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
  * {@code IGuiOverlay}/{@code ForgeGui} 且高度累加量在 {@code ForgeGui} 上。三份**不得互相照抄**。
  *
  * <h2>性能</h2>
- * {@code defensePowerOf}/{@code attackPowerOf} 各自含一次 Curios 查找 + {@code DiceCombatContext}
+ * {@code defensePowerOf}/{@code attackPowerDisplayOf} 各自含一次 Curios 查找 + {@code DiceCombatContext}
  * 构造，不适合逐帧调用。此处用「**玩家 tick 变了才重算**」缓存（{@code Entity.tickCount} 是 public
  * 字段），即每游戏刻至多一次，渲染路径只读缓存的两个 int。
  */
@@ -183,7 +184,7 @@ public final class CombatPowerHud {
         cachedPlayer = player;
         cachedTick = player.tickCount;
         defense = DiceCombatModifiers.defensePowerOf(player);
-        attack = DiceCombatModifiers.attackPowerOf(player);
+        attack = DiceCombatModifiers.attackPowerDisplayOf(player);
     }
 
     /**

@@ -15,11 +15,15 @@
   armor bar is hidden as well so the two never stack on one row), while the **Attack Power** bar is pinned directly
   **above the hunger bar** so extra info rows added by other mods cannot push it away. Both read Defense / Attack
   Power straight from the damage-resolution path and **no longer show the vanilla armor value**. A row holds up to
-  10 icons of 2 points each (10 icons = 20 points) using a **full** and a **half** icon, and a partial point is
-  simply **not drawn** (empty slots stay transparent instead of showing hollow icons); values **above 20 points**
+  10 icons of 2 points each (10 icons = 20 points) using a **full** and a **half** icon: every full 2 points draws
+  one full icon, and a remaining single point draws one **half** icon (a half icon takes the left half of the full
+  icon and the right half of the empty one, matching vanilla's "half armor" shape); slots beyond the current value
+  stay **transparent** (no hollow icons); values **above 20 points**
   fall back to **one full icon plus a number**. Both bars are **always shown** whenever the value exists (Defense
   bottoms out at 2, Attack Power at 1) and hide together with the rest of the HUD on **F1**. The Attack Power bar
-  yields the right-hand row while riding so it never covers the vehicle health bar.
+  yields the right-hand row while riding so it never covers the vehicle health bar. **The Attack Power bar does not
+  include the player's held weapons** (neither main hand nor off hand; combat resolution keeps the original
+  weapon-inclusive value, so the two never interfere) - user instruction 2026-09-26.
 
 - **Jade's armor readout now shows this mod's Defense** (user request 2026-09-26): with Jade installed, the **armor
   icon and value** in the entity info overlay show this mod's **Defense** instead (full / half / empty icons

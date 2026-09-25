@@ -1,0 +1,68 @@
+{
+  "case_id": "HUD-JADE-1.21.1",
+  "title": "Jade 护甲显示替换实机取证：玩家目标走本模组防御力 + 第三态图标（深灰实心）+ 非玩家回落原版护甲值（A/B 对照）",
+  "version": "1.21.1",
+  "target": { "type": "feature", "ref": "jade-defense-icons" },
+  "on_fail": "keep_game_running",
+  "steps": [
+    { "op": "note", "text": "目的：验证三个 Jade Mixin 在**真机**上确实生效（此前只有「编译通过 + 开包见到类 + refmap 在册」的结构证据，Mixin 是否真的 apply 只有运行期能判）。\n\n三条本用例要拿到的观感证据：\n① **玩家目标**：`ArmorValueProviderMixin` 把 `LivingEntity#getArmorValue()` 重定向为 `DiceCombatModifiers.defensePowerOf(player)` ⇒ 悬浮框里的护甲**数值**必须是本模组防御力（不是原版护甲值）；同时 `DisplayHelperArmorIconMixin` 把图标换成 `defense_{full,half,empty}`。\n② **第三态**：Jade 的 `ArmorElement.render` 对每个格子**先铺 EMPTY 底色再叠满/半** ⇒ 值不满 20 时右侧若干格子露出的是**第三态**贴图。本模组第三态 = 外形同满图标、中心 `#3D3D3D`（由原版 `armor_empty` 的重着色规则派生：透明→透明、纯黑→纯黑、其余→`#3D3D3D`）。\n③ **A/B 对照（关键）**：非玩家实体上 `getArmorValue()` **不被替换** ⇒ 回落原版 `DisplayHelper.renderIcon` ⇒ 空档画的是**原版空盔轮廓**，与 ① 的深灰实心**肉眼可分**。这一对截图同时证明「Mixin 生效」与「替换被正确限定在玩家」。\n\n目标取值：`defensePowerOf = 2 + min(护甲,20)/2 + 1.4×韧性`。给 Bot1 铁套（护甲 15 / 韧性 0）⇒ **9** ⇒ 应画 `4 满 + 1 半 + 5 个第三态`。僵尸只给铁头盔（护甲 2）⇒ 原版口径 `1 满 + 9 原版空`。\n\n⚠️ 前置：`run/1.21.1/mods` 内无 Jade 的**文件**，但 `neoforge-1.21.1/build.gradle:200` 声明了 `implementation \"maven.modrinth:jade:eYz2YBGT\"`（= `Jade-1.21.1-NeoForge-15.10.6.jar`，与整合包同版）⇒ 走 Gradle 运行时类路径，dev run **会**加载 Jade。本用例若「看不到任何 Jade 悬浮框」即为该前提不成立的证据，须如实记录。" },
+
+    { "op": "inject_command", "command": "/gamemode survival", "no_esc": true },
+    { "op": "wait", "ms": 800 },
+    { "op": "inject_command", "command": "/gamerule doDaylightCycle false", "no_esc": true },
+    { "op": "inject_command", "command": "/gamerule naturalRegeneration false", "no_esc": true },
+    { "op": "inject_command", "command": "/time set midnight", "no_esc": true },
+    { "op": "inject_command", "command": "/weather clear", "no_esc": true },
+    { "op": "wait", "ms": 500 },
+    { "op": "inject_command", "command": "/kill @e[type=!player,distance=..64]", "no_esc": true },
+    { "op": "wait", "ms": 500 },
+
+    { "op": "note", "text": "【①】造真 ServerPlayer bot（Carpet）并把它摆在准星正前方：先 `/tp @s ~ ~ ~ 0 0` 把朝向钉成 yaw=0/pitch=0（= 正 +Z 水平），再 `at ~ ~ ~2.5` 生成 ⇒ 视线**恰好**穿过它的碰撞箱（眼高 1.62 < 身高 1.8）。距离取 2.5 而非 3.0：生存态实体交互距离就是 3.0，贴着上限容易被判定为打不到 ⇒ Jade 不点亮悬浮框。" },
+    { "op": "inject_command", "command": "/carpet allowSpawningOfflinePlayers true", "no_esc": true },
+    { "op": "wait", "ms": 700 },
+    { "op": "inject_command", "command": "/tp @s ~ ~ ~ 0 0", "no_esc": true },
+    { "op": "wait", "ms": 600 },
+    { "op": "inject_command", "command": "/player Bot1 spawn at ~ ~ ~2.5", "no_esc": true },
+    { "op": "wait", "ms": 2000 },
+    { "op": "inject_command", "command": "/clear Bot1", "no_esc": true },
+    { "op": "wait", "ms": 800 },
+
+    { "op": "note", "text": "给 Bot1 铁套（护甲 15 ⇒ 本模组防御力 9）。⚠️ bot 是**真 ServerPlayer**，背包跨用例保留 ⇒ 必须先 `/clear`（上一步已做）再穿甲，否则上一轮的钻石套会让读数漂移。" },
+    { "op": "inject_command", "command": "/item replace entity Bot1 armor.head with minecraft:iron_helmet", "no_esc": true },
+    { "op": "inject_command", "command": "/item replace entity Bot1 armor.chest with minecraft:iron_chestplate", "no_esc": true },
+    { "op": "inject_command", "command": "/item replace entity Bot1 armor.legs with minecraft:iron_leggings", "no_esc": true },
+    { "op": "inject_command", "command": "/item replace entity Bot1 armor.feet with minecraft:iron_boots", "no_esc": true },
+    { "op": "wait", "ms": 1000 },
+    { "op": "inject_command", "command": "/astralprobe terureadreal RJB BOT1 Bot1", "no_esc": true },
+    { "op": "wait", "ms": 800 },
+
+    { "op": "note", "text": "【②】保持准星不动，等 Jade 悬浮框稳定后 F2 截图。预期：护甲那一行是 **4 个本模组满图标 + 1 个半图标 + 5 个深灰实心第三态**，且**数值/图标数量与本模组防御力 9 一致**（不是原版护甲值，也不是 15）。" },
+    { "op": "wait", "ms": 1500 },
+    { "op": "screenshot", "tag": "jade-bot-player-1.21.1", "mode": "f2" },
+
+    { "op": "note", "text": "【③】A/B 对照：先让 bot 退场，再在**同一位置**放一只戴铁头盔的僵尸（原版护甲值 2）。僵尸不是 Player ⇒ 重定向不生效 ⇒ 走原版 `renderIcon` ⇒ 空档应是**原版空盔轮廓**（与 ② 的深灰实心形成对照组）。\n⚠️ 亡灵 + 日光会燃烧漂血 ⇒ 已 `/time set midnight` + 关日光循环；头盔本身也免燃。" },
+    { "op": "inject_command", "command": "/player Bot1 kill", "no_esc": true },
+    { "op": "wait", "ms": 1500 },
+    { "op": "inject_command", "command": "/summon minecraft:zombie ~ ~ ~2.5 {ArmorItems:[{},{},{},{id:\"minecraft:iron_helmet\",count:1}],PersistenceRequired:1b}", "no_esc": true },
+    { "op": "wait", "ms": 1800 },
+    { "op": "screenshot", "tag": "jade-mob-vanilla-1.21.1", "mode": "f2" },
+
+    { "op": "note", "text": "收尾：清靶子与背包（bot 已被 `kill` 登出）。" },
+    { "op": "inject_command", "command": "/kill @e[type=!player,distance=..64]", "no_esc": true },
+    { "op": "wait", "ms": 600 },
+    { "op": "inject_command", "command": "/clear @s", "no_esc": true },
+    { "op": "wait", "ms": 500 }
+  ],
+  "asserts": [
+    { "type": "mixin" },
+    { "type": "kubejs" },
+    { "type": "crash" },
+    { "type": "log", "source": "latest", "pattern": "Bot1\\[[a-z]+\\] logged in with entity id [0-9]+ at \\(" },
+    { "type": "log", "source": "latest", "pattern": "AP_RJB_BOT1_T:found=1:.*:t_dp=9:t_armor=15:" },
+    { "type": "log", "source": "latest", "pattern": "AP_RJB_BOT1_BOT:found=1:want=Bot1:name=Bot1:bot=1:" },
+    { "type": "log", "source": "latest", "pattern": "Bot1 lost connection: Killed" },
+    { "type": "absent", "source": "latest", "pattern": "AP_[A-Z0-9]+_ERR" },
+    { "type": "absent", "source": "latest", "pattern": "AP_[A-Z0-9]+_EX:" },
+    { "type": "absent", "source": "latest", "pattern": "Unknown or incomplete command|未知或不完整的命令" }
+  ]
+}

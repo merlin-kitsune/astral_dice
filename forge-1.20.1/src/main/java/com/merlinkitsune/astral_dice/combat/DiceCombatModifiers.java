@@ -26,6 +26,7 @@ import com.merlinkitsune.starenginelib.item.BossEntityUtil;
 import com.merlinkitsune.astral_dice.item.StarLightManager;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
@@ -36,7 +37,10 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import top.theillusivec4.curios.api.CuriosApi;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 import com.merlinkitsune.starenginelib.combat.HostileTargets;
 
@@ -654,8 +658,19 @@ public final class DiceCombatModifiers {
      * 故这里取的是**显示口径的整数基值**(不含骰点与卡牌加成),与
      * {@link #getDisplayAttackRange} 的基础项**逐字同源**——两者都由
      * {@link #attackPowerBase} 计算,不存在"tooltip 一个值、结算另一个值"的漂移。
+     *
+     * <p><b>本口径含手持武器</b>:属性起点是 {@code ATTACK_DAMAGE} 原值,已含主/副手物品的修饰器。
+     * HUD 攻击力条要的是**不含武器**的版本 ⇒ 用 {@link #attackPowerDisplayOf}。
      */
+    public static int attackPowerDisplayOf(Player player) {
+        return attackPowerOf(player, true);
+    }
+
     public static int attackPowerOf(Player player) {
+        return attackPowerOf(player, false);
+    }
+
+    private static int attackPowerOf(Player player, boolean excludeHeldWeapon) {
         if (player == null) return 0;
         WeaponEnhancement enhancement = WeaponEnhancement.EMPTY;
         ItemStack diceStack = ItemStack.EMPTY;
@@ -667,7 +682,11 @@ public final class DiceCombatModifiers {
                 enhancement = ModDataComponents.WEAPON_ENHANCEMENT.getOrDefault(diceStack, WeaponEnhancement.EMPTY);
             }
         }
-        return (int) Math.floor(attackPowerBase(player, diceStack, enhancement));
+        // 显示口径（HUD 攻击力条）剔除手持武器；战斗口径保留属性原值（含武器）
+        double start = excludeHeldWeapon
+                ? attackDamageExcludingHeldWeapon(player)
+                : player.getAttributeValue(Attributes.ATTACK_DAMAGE);
+        return (int) Math.floor(attackPowerBase(player, diceStack, enhancement, start));
     }
 
     /**
@@ -692,6 +711,15 @@ public final class DiceCombatModifiers {
 
     /** 攻击力基础值(属性 + 攻击修饰器链);{@link #getDisplayAttackRange} 与 {@link #attackPowerOf} 共用 */
     private static double attackPowerBase(Player player, ItemStack diceStack, WeaponEnhancement enhancement) {
+        return attackPowerBase(player, diceStack, enhancement, player.getAttributeValue(Attributes.ATTACK_DAMAGE));
+    }
+
+    /**
+     * 同 {@link #attackPowerBase(Player, ItemStack, WeaponEnhancement)},但**起点**(属性攻击力)由调用方给定。
+     * 唯一用途是让 HUD 显示口径传入「已剔除手持武器」的起点(见 {@link #attackDamageExcludingHeldWeapon})。
+     */
+    private static double attackPowerBase(Player player, ItemStack diceStack, WeaponEnhancement enhancement,
+                                          double attackDamageStart) {
         if (enhancement == null) enhancement = WeaponEnhancement.EMPTY;
         int misakiStar = enhancement.starLevel();
         int misakiStacks = 0;
@@ -706,11 +734,73 @@ public final class DiceCombatModifiers {
         DiceCombatContext ctx = new DiceCombatContext(
                 player, player, null, 0, diceStack, enhancement, false,
                 misakiBurst, misakiStar, misakiStacks);
-        double ap = player.getAttributeValue(Attributes.ATTACK_DAMAGE);
+        double ap = attackDamageStart;
         for (AttackPowerModifier modifier : attackModifiers()) {
             ap = modifier.apply(ctx, ap);
         }
         return ap;
+    }
+
+    /**
+     * HUD 攻击力条使用的手持槽位：主手 + 副手（用户裁决）。
+     *
+     * <p>⚠️ 副手这一项对**原版**武器是空操作：1.20.1 尚无 {@code EquipmentSlotGroup}，走
+     * {@code getDefaultAttributeModifiers(EquipmentSlot)} 且**仅**对 {@code MAINHAND} 返回
+     * 默认修饰器（源 {@code SwordItem.java:82-83} / {@code DiggerItem.java:67-68}：
+     * {@code equipmentSlot == EquipmentSlot.MAINHAND ? this.defaultModifiers : super.…}）
+     * ⇒ 挂到副手**不产生**攻击力加成（服务端属性读数也不变）。保留它是为了覆盖
+     * **第三方**在副手提供 {@code ATTACK_DAMAGE} 的物品，并让口径与用户裁决逐字一致。
+     */
+    private static final EquipmentSlot[] HELD_WEAPON_SLOTS = {EquipmentSlot.MAINHAND, EquipmentSlot.OFFHAND};
+
+    /**
+     * {@code ATTACK_DAMAGE} 的**不含手持武器（主手 + 副手）**取值：按原版
+     * {@code AttributeInstance.calculateValue()} 的算法逐项重算,跳过手持物品提供的修饰器。
+     *
+     * <p>**不用「属性值 − 手持加成」直接相减**:原版求值是
+     * {@code (base + ΣADDITION) × (1 + ΣMULTIPLY_BASE) × Π(1 + MULTIPLY_TOTAL)},
+     * 乘法项会让相减失真。这里与 forge 源 {@code AttributeInstance:140-157} 同序重算。
+     *
+     * <p>**为什么要显式剔除**(而不是依赖"客户端本来就拿不到"):客户端对该属性天然不含武器
+     * ——{@code ATTACK_DAMAGE} 未开启客户端同步({@code Attribute#syncable} 默认 {@code false},
+     * 源 {@code Attributes:33} 未调 {@code setSyncable(true)}),且 {@code LivingEntity.tick()} 的
+     * {@code !isClientSide} 守卫让客户端不本地重算装备修饰器(源 {@code LivingEntity:2350})。
+     * 但那是**副作用**而非设计:同步策略一变、或有人按"补全客户端属性"的思路补注装备修饰器,
+     * 武器就会悄悄进入显示。故此处两侧统一重算,使该口径不依赖副作用,
+     * 且**服务端可复现同一数值**(便于测试台断言)。
+     */
+    private static double attackDamageExcludingHeldWeapon(Player player) {
+        AttributeInstance instance = player.getAttributes().getInstance(Attributes.ATTACK_DAMAGE);
+        if (instance == null) return player.getAttributeValue(Attributes.ATTACK_DAMAGE);
+        Set<UUID> held = heldWeaponModifierIds(player);
+        if (held.isEmpty()) return player.getAttributeValue(Attributes.ATTACK_DAMAGE);
+        double base = instance.getBaseValue();
+        double added = 0;
+        double multipliedBase = 0;
+        double multipliedTotal = 1;
+        for (AttributeModifier modifier : instance.getModifiers()) {
+            if (held.contains(modifier.getId())) continue;
+            switch (modifier.getOperation()) {
+                case ADDITION -> added += modifier.getAmount();
+                case MULTIPLY_BASE -> multipliedBase += modifier.getAmount();
+                case MULTIPLY_TOTAL -> multipliedTotal *= 1.0 + modifier.getAmount();
+            }
+        }
+        // ATTACK_DAMAGE 是 RangedAttribute(0..2048):原版 calculateValue 末尾会 sanitize,这里对齐下界
+        return Math.max(0.0, (base + added) * (1.0 + multipliedBase) * multipliedTotal);
+    }
+
+    /** 主手 / 副手物品提供的 {@code ATTACK_DAMAGE} 修饰器 id（与原版 detectEquipmentUpdates 同源的枚举方式）。 */
+    private static Set<UUID> heldWeaponModifierIds(Player player) {
+        Set<UUID> ids = new HashSet<>();
+        for (EquipmentSlot slot : HELD_WEAPON_SLOTS) {
+            ItemStack stack = player.getItemBySlot(slot);
+            if (stack.isEmpty()) continue;
+            stack.getAttributeModifiers(slot).forEach((attribute, modifier) -> {
+                if (attribute == Attributes.ATTACK_DAMAGE) ids.add(modifier.getId());
+            });
+        }
+        return ids;
     }
 
     /** 防御力基础值(2 + 护甲÷2 + 1.4×韧性);{@link #getDisplayDefenseRange} 与 {@link #defensePowerOf} 共用 */

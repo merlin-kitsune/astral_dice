@@ -1,0 +1,72 @@
+{
+  "case_id": "HUD-ATKDISP-1.21.1",
+  "title": "攻击力条显示口径：手持武器（主手 + 副手）不参与显示——服务端 d=atk-atkd 差值判据 + 客户端同源读数",
+  "version": "1.21.1",
+  "target": { "type": "feature", "ref": "combat-power-hud" },
+  "on_fail": "keep_game_running",
+  "steps": [
+    { "op": "note", "text": "需求（2026-09-26 用户指令）：「玩家手持的武器不参与攻击力条数值显示」。落地方式 = **显式化独立显示口径**：`DiceCombatModifiers#attackPowerOf`（战斗口径，含武器）**保持不动**，新增 `#attackPowerDisplayOf`（显示口径，剔除主手 + 副手物品的 ATTACK_DAMAGE 修饰器）供 HUD 使用；武器范围 = 主手 + 副手。\n\n【为什么判据必须落在服务端】\n客户端 `ATTACK_DAMAGE` 未开同步（`Attribute#syncable` 默认 false，源 `Attributes:27-29`）⇒ 客户端两个方法**都返回 1**，无法区分新旧口径。服务端才有真实装备修饰器。\n\n【为什么锚「差值 d」而不是绝对值】\n玩家身上可能有其它攻击力来源（curio 立牌 / 筹码 / 效果 / 骰战修饰器链的加算），绝对值会被整体抬高 ⇒ 写死 `atk=6` 会假红。两个口径的**差**恰好只剩「手持武器贡献的量」：`attackPowerBase` 除起点外全是加算常量（无乘法），故 `d = atk - atkd` 经两次 floor 后仍精确等于武器加成 ⇒ **与玩家其它状态无关**。\n\n【预期】空手 d=0；主手铁剑 d=5；主手钻石剑 d=6；副手铁剑（主手空）d=5。" },
+
+    { "op": "inject_command", "command": "/gamemode survival", "no_esc": true },
+    { "op": "wait", "ms": 700 },
+    { "op": "inject_command", "command": "/gamerule doDaylightCycle false", "no_esc": true },
+    { "op": "inject_command", "command": "/time set noon", "no_esc": true },
+    { "op": "inject_command", "command": "/weather clear", "no_esc": true },
+    { "op": "wait", "ms": 400 },
+    { "op": "inject_command", "command": "/kill @e[type=!player,distance=..64]", "no_esc": true },
+    { "op": "wait", "ms": 500 },
+    { "op": "inject_command", "command": "/clear @s", "no_esc": true },
+    { "op": "wait", "ms": 900 },
+
+    { "op": "note", "text": "【A】空手基线：没有手持武器 ⇒ 两个口径必须**相等**（d=0）。这是「剔除逻辑不至于误伤」的反向对照。" },
+    { "op": "inject_command", "command": "/astralprobe hudread HA1", "no_esc": true },
+    { "op": "wait", "ms": 1400 },
+    { "op": "screenshot", "tag": "atkdisp-bare-1.21.1", "mode": "f2" },
+    { "op": "wait", "ms": 700 },
+
+    { "op": "note", "text": "【B】主手铁剑（武器加成 +5）：`atk` 应含它、`atkd` 应剔除它 ⇒ `d=5`。**本格是全案的判定点**。" },
+    { "op": "inject_command", "command": "/item replace entity @s weapon.mainhand with minecraft:iron_sword", "no_esc": true },
+    { "op": "wait", "ms": 1500 },
+    { "op": "inject_command", "command": "/astralprobe hudread HA2", "no_esc": true },
+    { "op": "wait", "ms": 1400 },
+    { "op": "screenshot", "tag": "atkdisp-sword-1.21.1", "mode": "f2" },
+    { "op": "wait", "ms": 700 },
+
+    { "op": "note", "text": "【C】主手钻石剑（+6）做第二点对照，排除「铁剑刚好的巧合」⇒ `d=6`。" },
+    { "op": "inject_command", "command": "/item replace entity @s weapon.mainhand with minecraft:diamond_sword", "no_esc": true },
+    { "op": "wait", "ms": 1500 },
+    { "op": "inject_command", "command": "/astralprobe hudread HA3", "no_esc": true },
+    { "op": "wait", "ms": 1400 },
+
+    { "op": "note", "text": "【D】**副手**铁剑（主手清空）：用户裁决武器范围含副手。⚠️ 但**原版武器的攻击力修饰器 slot group 是 `EquipmentSlotGroup.MAINHAND`**（源 `SwordItem.java:49` / `DiggerItem.java:23`）⇒ 副手铁剑**本就不产生攻击力加成**（实测 `attr=1`，服务端原版属性读数）⇒ 两个口径都 1、**`d=0` 才是正确期望**。\n【本格实际证明的是】副手挂武器也**不会**被误算成加成（负向对照），**不是**「副手剔除生效」—— 真正验证副手剔除分支需要能提供 ATTACK_DAMAGE 的**第三方副手武器**（原版无此物品）。\n（本条预期于 2026-09-26 首轮实测后修正：首轮误写 `d=5` 而 FAIL，取证见 `run/1.21.1/logs/latest.log` 的 `AP_HA4_HUD:atk=1:atkd=1:d=0:attr=1:hand=empty:off=minecraft:iron_sword`。）" },
+    { "op": "inject_command", "command": "/item replace entity @s weapon.mainhand with air", "no_esc": true },
+    { "op": "wait", "ms": 900 },
+    { "op": "inject_command", "command": "/item replace entity @s weapon.offhand with minecraft:iron_sword", "no_esc": true },
+    { "op": "wait", "ms": 1300 },
+    { "op": "inject_command", "command": "/astralprobe hudread HA4", "no_esc": true },
+    { "op": "wait", "ms": 1400 },
+
+    { "op": "note", "text": "收尾：清空双手与背包，避免污染后续用例。" },
+    { "op": "inject_command", "command": "/item replace entity @s weapon.offhand with air", "no_esc": true },
+    { "op": "inject_command", "command": "/clear @s", "no_esc": true },
+    { "op": "wait", "ms": 900 }
+  ],
+  "asserts": [
+    { "type": "mixin" },
+    { "type": "kubejs" },
+    { "type": "crash" },
+
+    { "type": "log", "source": "latest", "pattern": "AP_HA1_HUD:[^\\n]*:d=0:[^\\n]*:hand=empty:off=empty" },
+    { "type": "log", "source": "latest", "pattern": "AP_HA2_HUD:[^\\n]*:d=5:[^\\n]*:hand=minecraft:iron_sword" },
+    { "type": "log", "source": "latest", "pattern": "AP_HA3_HUD:[^\\n]*:d=6:[^\\n]*:hand=minecraft:diamond_sword" },
+    { "type": "log", "source": "latest", "pattern": "AP_HA4_HUD:[^\\n]*:d=0:[^\\n]*:hand=empty:off=minecraft:iron_sword" },
+
+    { "type": "absent", "source": "latest", "pattern": "AP_H[A-Z0-9]+_HUD_ERR" },
+    { "type": "absent", "source": "latest", "pattern": "AP_H[A-Z0-9]+_HUD_EX" },
+    { "type": "absent", "source": "latest", "pattern": "AP_[A-Z0-9]+_EX:" },
+
+    { "type": "log", "source": "kubejs_client", "pattern": "AP_HUD:evt=tick:.*:atk=[0-9]+:atkraw=[0-9]+:hand=" },
+    { "type": "absent", "source": "kubejs_client", "pattern": "AP_HUD:evt=tick:.*:atk=ERR" },
+    { "type": "absent", "source": "kubejs_client", "pattern": "AP_HUD:evt=tick:.*:atkraw=ERR" }
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "case_id": "HUD-ATTRDIAG-1.21.1",
+  "title": "诊断：HUD 攻击力条读数恒为 1 的真伪——客户端主手物品 / 客户端 ATTACK_DAMAGE 属性 / 服务端 ATTACK_DAMAGE 属性三通道对照",
+  "version": "1.21.1",
+  "target": { "type": "feature", "ref": "combat-power-hud" },
+  "on_fail": "keep_game_running",
+  "steps": [
+    { "op": "note", "text": "目的：前一轮冒烟里 `client/CombatPowerHud` 的攻击力条**恒为 1**（`AP_HUD ... :atk=1`，从空手到持铁剑都不变），而**同一时刻**服务端探针 `AP_H2_SWORD:...:ap=6:hand=minecraft:iron_sword` 给出 6 ⇒ 二者矛盾。\n\n两种可能必须分开：\n  ① **客户端背包不同步**（本地主手仍是空的）⇒ `atk=1` 是「读到了正确的旧状态」，不是缺陷；\n  ② **客户端属性不同步**（本地主手已是铁剑，但 `LocalPlayer` 的 `ATTACK_DAMAGE` 属性不含主手装备修饰器）⇒ `atk=1` 是 HUD 的**真缺陷**（攻击力条永远错）。\n\n本用例一次跑出三条同时刻读数，直接定案：\n· **客户端**（`AP_HUD`，通道 `kubejs_client`）：本次给探针新增 `hand=`（主手物品）`attr=`（`getAttributeValue(ATTACK_DAMAGE)`）`armor=`（`getArmorValue()`）；\n· **服务端**（`/attribute @s minecraft:attack_damage get`，走 `sendSuccess` ⇒ 落 `latest.log` 的 `[CHAT]`）：原版权威值。\n\n期望（若无缺陷）：空手 `attack_damage=1` / 客户端 `attr=1`；铁剑 `6` / `6`；钻石剑 `7` / `7`。\n若出现「服务端 6、客户端 attr=1 且客户端 hand=minecraft:iron_sword」⇒ **② 成立，属真缺陷**。" },
+
+    { "op": "inject_command", "command": "/gamemode survival", "no_esc": true },
+    { "op": "wait", "ms": 700 },
+    { "op": "inject_command", "command": "/gamerule doDaylightCycle false", "no_esc": true },
+    { "op": "inject_command", "command": "/time set noon", "no_esc": true },
+    { "op": "inject_command", "command": "/weather clear", "no_esc": true },
+    { "op": "wait", "ms": 400 },
+    { "op": "inject_command", "command": "/kill @e[type=!player,distance=..64]", "no_esc": true },
+    { "op": "wait", "ms": 500 },
+    { "op": "inject_command", "command": "/clear @s", "no_esc": true },
+    { "op": "wait", "ms": 900 },
+
+    { "op": "note", "text": "【A】空手基线：服务端 `/attribute` 应给 1；客户端 `hand=empty:attr=1`。" },
+    { "op": "inject_command", "command": "/attribute @s minecraft:attack_damage get", "no_esc": true },
+    { "op": "wait", "ms": 1200 },
+    { "op": "screenshot", "tag": "attrdiag-bare-1.21.1", "mode": "f2" },
+    { "op": "wait", "ms": 700 },
+
+    { "op": "note", "text": "【B】主手铁剑（基础 1 + 剑 +5 = 6）。这一格是全案的判定点。\n⚠️ 必须在**同一秒**内让客户端探针报出 `hand=minecraft:iron_sword`，否则无法排除「背包不同步」。" },
+    { "op": "inject_command", "command": "/item replace entity @s weapon.mainhand with minecraft:iron_sword", "no_esc": true },
+    { "op": "wait", "ms": 1500 },
+    { "op": "inject_command", "command": "/attribute @s minecraft:attack_damage get", "no_esc": true },
+    { "op": "wait", "ms": 2200 },
+    { "op": "screenshot", "tag": "attrdiag-sword-1.21.1", "mode": "f2" },
+    { "op": "wait", "ms": 700 },
+
+    { "op": "note", "text": "【C】换钻石剑（7）做第二点对照，排除「铁剑刚好等于基础值」的巧合。" },
+    { "op": "inject_command", "command": "/item replace entity @s weapon.mainhand with minecraft:diamond_sword", "no_esc": true },
+    { "op": "wait", "ms": 1500 },
+    { "op": "inject_command", "command": "/attribute @s minecraft:attack_damage get", "no_esc": true },
+    { "op": "wait", "ms": 2200 },
+    { "op": "screenshot", "tag": "attrdiag-diamond-1.21.1", "mode": "f2" },
+
+    { "op": "note", "text": "收尾：清空主手与背包，避免污染后续用例。" },
+    { "op": "inject_command", "command": "/clear @s", "no_esc": true },
+    { "op": "wait", "ms": 800 }
+  ],
+  "asserts": [
+    { "type": "mixin" },
+    { "type": "kubejs" },
+    { "type": "crash" },
+    { "type": "log", "source": "latest", "pattern": "[Aa]ttribute" },
+    { "type": "log", "source": "kubejs_client", "pattern": "AP_HUD:evt=tick:.*:hand=empty:attr=1:" },
+    { "type": "log", "source": "kubejs_client", "pattern": "AP_HUD:evt=tick:.*:hand=minecraft:iron_sword:attr=" },
+    { "type": "log", "source": "kubejs_client", "pattern": "AP_HUD:evt=tick:.*:hand=minecraft:diamond_sword:attr=" },
+    { "type": "absent", "source": "kubejs_client", "pattern": "AP_HUD:evt=tick:.*:attr=ERR" },
+    { "type": "absent", "source": "latest", "pattern": "AP_[A-Z0-9]+_ERR" },
+    { "type": "absent", "source": "latest", "pattern": "Unknown or incomplete command|未知或不完整的命令" }
+  ]
+}

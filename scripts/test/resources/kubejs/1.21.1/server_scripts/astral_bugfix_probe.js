@@ -488,6 +488,56 @@ try {
     }
 }
 
+/**
+ * HUD 攻击力条「**手持武器不参与显示**」的取证点（2026-09-26 用户需求）。
+ *
+ * <h3>为什么需要这一条读数</h3>
+ * 需求是「玩家手持的武器不参与攻击力条数值显示」，落地方式为**显式化独立显示口径**：
+ * `DiceCombatModifiers#attackPowerOf`（战斗口径，含武器）保持不动，新增
+ * `DiceCombatModifiers#attackPowerDisplayOf`（显示口径，剔除主手 + 副手物品的
+ * `ATTACK_DAMAGE` 修饰器）供 HUD 使用。
+ *
+ * <p>⚠️ **客户端不可判**：`ATTACK_DAMAGE` 三线均未开客户端同步
+ * （`Attribute#syncable` 默认 false，源 `Attributes:27-29` 未调 `setSyncable(true)`），
+ * 且客户端不本地重算装备修饰器（`LivingEntity.tick()` 的 `!isClientSide` 守卫，
+ * 源 `:2457`/`:2482`）⇒ 客户端两个方法**都**返回 1，无法区分新旧口径。
+ * 故判据必须落在**服务端**（本读数）。
+ *
+ * <h3>为什么断言「差值 d」而不是绝对值</h3>
+ * 玩家身上可能有其它攻击力来源（curio 立牌 / 筹码 / 效果 / 骰战修饰器链的加算），
+ * 绝对值会被它们整体抬高 ⇒ 写死 `atk=6` 会假红。而两个口径的**差**恰好只剩
+ * 「手持武器贡献的量」：`attackPowerBase` 里除起点外全是**加算常量**（`ap += …`，无乘法），
+ * 故 `d = atk - atkd = (含武器起点 − 剔除武器起点)` 经两次 `floor` 后仍精确等于武器加成。
+ * ⇒ `d` 与玩家其它状态**无关**，是唯一鲁棒的判据。
+ *
+ * <p>预期：空手 `d=0`；主手铁剑 `d=5`；主手钻石剑 `d=6`；**副手**铁剑 `d=5`（用户裁决含副手）。
+ */
+function doHudRead(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    if (TeruDiceCombatModifiersClass == null) {
+        send(ctx, "AP_" + tag + "_HUD_ERR:no_class:DiceCombatModifiers");
+        return 0;
+    }
+    var atk = -1, atkd = -1, d = -1, attr = -1;
+    try {
+        atk = TeruDiceCombatModifiersClass.attackPowerOf(p);
+        atkd = TeruDiceCombatModifiersClass.attackPowerDisplayOf(p);
+        d = atk - atkd;
+    } catch (e1) {
+        send(ctx, "AP_" + tag + "_HUD_EX:" + exText(e1));
+        return 0;
+    }
+    try {
+        var Attrs = Java.loadClass("net.minecraft.world.entity.ai.attributes.Attributes");
+        attr = p.getAttributeValue(Attrs.ATTACK_DAMAGE);
+    } catch (e2) { attr = "ERR:" + exText(e2); }
+    send(ctx, "AP_" + tag + "_HUD:atk=" + atk + ":atkd=" + atkd + ":d=" + d
+        + ":attr=" + attr
+        + ":hand=" + itemIdOf(p.getMainHandItem())
+        + ":off=" + itemIdOf(p.getOffhandItem()));
+    return 1;
+}
+
 // ── 命令执行体 ────────────────────────────────────────────────────────────
 function doDiag(ctx, tag) {
     var p = ctx.source.getPlayerOrException();
@@ -13310,6 +13360,12 @@ ServerEvents.commandRegistry(event => {
                 .then(Commands.argument("tag", StringArg.word())
                     .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
                         return doDiag(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            // ── 2026-09-26: HUD 攻击力显示口径（手持武器不参与显示）取证 ──
+            .then(Commands.literal("hudread")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doHudRead(ctx, StringArg.getString(ctx, "tag"));
                     }))))
             .then(Commands.literal("equipslot")
                 .then(Commands.argument("slot", StringArg.word())

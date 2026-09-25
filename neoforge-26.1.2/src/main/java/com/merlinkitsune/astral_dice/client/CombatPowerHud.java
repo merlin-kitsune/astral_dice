@@ -25,7 +25,8 @@ import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
  *
  * <h2>数值口径</h2>
  * 直接复用结算口径：防御力 = {@link DiceCombatModifiers#defensePowerOf}，攻击力 =
- * {@link DiceCombatModifiers#attackPowerOf}。两者下限为 2 / 1，恒 &gt; 0 ⇒ **两条 bar 永远显示**。
+ * {@link DiceCombatModifiers#attackPowerDisplayOf}（**手持武器不参与显示**，用户需求；
+ * 与战斗口径 {@code attackPowerOf} 的差异见该方法注释）。两者下限为 2 / 1，恒 &gt; 0 ⇒ **两条 bar 永远显示**。
  *
  * <h2>替换原版护甲条（含 OAB）</h2>
  * 取消走 {@link RenderGuiLayerEvent.Pre}：命中 {@link VanillaGuiLayers#ARMOR_LEVEL} 或
@@ -177,7 +178,7 @@ public final class CombatPowerHud {
         cachedPlayer = player;
         cachedTick = player.tickCount;
         defense = DiceCombatModifiers.defensePowerOf(player);
-        attack = DiceCombatModifiers.attackPowerOf(player);
+        attack = DiceCombatModifiers.attackPowerDisplayOf(player);
     }
 
     /**
