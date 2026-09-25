@@ -58,36 +58,30 @@ jobs:
         # 前置库 starengine_lib 只在 mavenLocal 发布(无远程 maven),CI 上必须先从源码构建。
         # ⚠️ ref **不得**停在浮动的 main(2026-09-17 修正):main 每推一个提交都向前走,而消费方在这里
         # 构建出的库必须**恰好**是 `starengine_lib_version` 指定的那一版 —— 浮动 main 会让
-        # 「区间下界 [1.0.2,2.0)」与「CI 实际 publishToMavenLocal 出的版本」脱钩,
+        # 「区间下界 [1.0.3,2.0)」与「CI 实际 publishToMavenLocal 出的版本」脱钩,
         # 一旦库在两次 CI 之间 bump 或改动坐标,断在依赖解析(本地不可复现,只在 CI 暴露)。
-        # 现固定为 `starengine_lib_version=1.0.2` 的提交(该提交里三平台 mod_version 均为 1.0.2;
-        # 它是快照系列终态 `.16` 的**规范化**结果 —— 库内 Java 源码零改动,仅版本号去掉 -SNAPSHOT,
-        # 同时带着此前两批修复:**库自身被 FML 拒载**的根因修复
-        # —— 1.21.1 的 loaderVersion 槽曾误填 NeoForge 版本带 [21.1,21.2),而该槽比的是 javafml
-        # 语言提供者版本(本机报 4.0.42)⇒ 改回语言区间 [1,),forge-1.20.1 的 loaderVersion 同时由
-        # [47,) 收敛为 [47,48)、其 forge 依赖改用从 forge_version 派生的精确区间 [47.4.10,48);
-        # 以及 forge-1.20.1 缺失的 `pack.mcmeta`(缺它时 Forge 加载界面告警且该模组资源包不注册)。
-        # 库侧 `.7` 只发布过 mavenLocal、从未入库,故它并入 `.10`;本 ref 一律用提交 SHA 钉死
-        # (1.0.0 推送到库 `main` 后其 CI 会自动打 tag `1.0.0`,但不依赖 tag —— 避免 tag 建立时序问题)。
-        # **库版本 bump 时本行必须同步更新**(与 neoforge-1.21.1 / forge-1.20.1 / neoforge-26.1.2
-        # 的 gradle.properties 的 starengine_lib_version 同一提交里一起改;`.5` 旧钉值为库提交
-        # d5b0776,`.6` 为 716f976,`.10` 终态即库提交 ec28415,`.16` 终态即库提交 f706be0,
-        # `1.0.0` 首个正式版即库提交 205eed8;`1.0.1` 这个版本号**从未推送、已撤销** —— 前后两批内容
-        # (前者库提交 c9818d1,后者库提交 b90a16e);`1.0.2` 同样**从未推送、从未发布**(其内容为
-        # 「HostileTargets 额外敌对判定 seam」,库提交 cd579e7)⇒ 已按「未发布版本的改动并入原条目」并入 `1.0.3`;
-        # `1.0.3` = 该 seam + **敌对目标口径重写**(库提交 e407844)⇒ 现钉库提交 e407844),且该提交需已推送到远端。
-        # ✅ **2026-09-23:库 1.0.0 仓库已推送**(远端 `main` = b90a16e,含 tag `1.0.0` + 三平台 jar 的 Release;
-        #    两批「原拟 1.0.1」的改动均已并入 1.0.0,同一次 CI 复用既有 tag 并 --clobber 刷新 Release 附件)
-        #    ⇒ 当时本 ref 可被 CI 检出,KNOWN-ISSUES KI-M4① 已解除。
-        # ⚠️ **2026-09-24:`1.0.2` / `1.0.3` 均尚未推送** —— 本 ref 已改指库提交 e407844(本地 `main`,未 push)
-        #    ⇒ **在库被推送之前,本工作流会断在 Checkout 步骤**(消费方 CI 无法检出该 SHA)。
-        #    推库后其 CI 会自动打 tag `1.0.3` 并发布三平台 Release 附件,届时本步即可通过。
-        #    跳号的由来:更早的 `1.0.1` 从未发布,但 mavenLocal 留有已撤销版本的残留目录,复用会「同号覆盖」
-        #    而让本地构建静默解析到旧 jar ⇒ 故逐次另起新号(`1.0.2` 因从未发布又并入 `1.0.3`)。
+        # 本 ref 一律用提交 SHA 钉死 —— **不依赖 tag**,避免 tag 建立时序问题;
+        # **库版本 bump 时本行必须同步更新**(与三线 gradle.properties 的 starengine_lib_version
+        # 在同一提交里一起改)。
+        # 沿革(以下均为历史记录,旧钉值勿再当现行值):`.5`=d5b0776;`.6`=716f976;`.10`=ec28415
+        # (`.7` 只发过 mavenLocal、从未入库,故并入 `.10`);`.16`=f706be0(快照系列终态);
+        # `1.0.0`=205eed8(首个正式版 = `.16` 的**规范化**结果:库内 Java 源码零改动、仅去掉
+        # -SNAPSHOT,并带着两批修复 —— ① **库自身被 FML 拒载**的根因:1.21.1 的 loaderVersion 槽
+        # 曾误填 NeoForge 版本带 [21.1,21.2),而该槽比的是 javafml 语言提供者版本(本机报 4.0.42)
+        # ⇒ 改回语言区间 [1,),forge-1.20.1 的 loaderVersion 同时由 [47,) 收敛为 [47,48)、其 forge
+        # 依赖改用从 forge_version 派生的精确区间 [47.4.10,48);② forge-1.20.1 缺失 `pack.mcmeta`
+        # (缺它时 Forge 加载界面告警且该模组资源包不注册);两批「原拟 1.0.1」的内容也并入 1.0.0)。
+        # `1.0.1`=**从未推送、从未发布**;`1.0.2`=**从未推送、从未发布**(内容 = HostileTargets 新增
+        # 「额外敌对判定」注入 seam,库提交 cd579e7)⇒ 按「未发布版本的改动并入原条目」并入 `1.0.3`。
+        # 现行 ref = `1.0.3` = 库提交 e407844(= 该 seam + **敌对目标口径重写**)。
+        # ✅ **2026-09-24:库已推送**(远端 `main` = e407844;其 CI 自动打 tag `1.0.3` 并发布三平台 jar
+        #    的 Release;消费方 CI 同日跑绿)⇒ 本 ref 可被 CI 检出,不再存在「库推送前必然断在
+        #    Checkout」的窗口。跳号的由来:`1.0.1` 从未发布,但 mavenLocal 留有已撤销版本的残留目录,
+        #    复用会「同号覆盖」而让本地构建静默解析到旧 jar ⇒ 故逐次另起新号。
         uses: actions/checkout@v4
         with:
           repository: merlin-kitsune/starengine_lib
-          ref: e407844c5efbd39e812c809346ce7bae08186a1f   # = 1.0.3(HostileTargets 新增「额外敌对判定」注入 seam:ExtraHostileProbe / installExtraHostileProbe,供消费方把试验假人声明为敌对目标;纯新增,消费方区间下界同步收紧为 [1.0.2,2.0))
+          ref: e407844c5efbd39e812c809346ce7bae08186a1f   # = 1.0.3 = HostileTargets 新增「额外敌对判定」注入 seam(ExtraHostileProbe / installExtraHostileProbe,供消费方把试验假人声明为敌对目标)+ **敌对目标口径重写**(敌对生物 ∪ 中立生物(宠物除外));语义变更 ⇒ 消费方区间下界随之收紧为 [1.0.3,2.0)
           path: .ci/starengine_lib
           fetch-depth: 1
 

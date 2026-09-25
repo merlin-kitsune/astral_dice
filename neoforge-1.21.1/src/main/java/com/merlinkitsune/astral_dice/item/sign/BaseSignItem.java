@@ -108,8 +108,11 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
             notifyActionBar(player, "hud.astral_dice.sign_active_cooldown", signName, ChatFormatting.RED);
             return;
         }
-        // 2. 目标选择会话检查:已处于目标选择模式时按键无效(防重复进入;客户端按 J 会先取消,此处为服务端兜底)
-        if (com.merlinkitsune.astral_dice.target.TargetSelectionManager.isSelecting(player)) return;
+        // 2. 目标选择会话检查:已处于**按键开启的**选择模式时按键无效(防重复进入;客户端按 J 会先取消,此处为服务端兜底)。
+        //    ⚠️ 「手持即选择」会话(效果牌握在主手时自动开启,由物品而非按键驱动)不在此列 ——
+        //    玩家从未按过键开它,故不得拦住主动技能键(2026-09-24 用户报 BUG:
+        //    「手持活体书页时,无法触发主动技能」)。
+        if (com.merlinkitsune.astral_dice.target.TargetSelectionManager.isSelectingByKey(player)) return;
         // 2.5 「目标选择器类」立牌的前置门控(2026-09-17 用户裁决):按下主动键**只**开启目标选择会话并立即返回。
         //     本次主动的效果、玩家级冷却/锁定、电流核心充能、风扇筹码发牌与立牌主动响应事件(含默认提示)
         //     **全部推迟到确认合法目标之后**(恢复点见 resumeGatedActiveSkill);效果与冷却/充能由各
@@ -143,8 +146,10 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
         if (!triggered.isHandled()) {
             notifyActionBar(player, "msg.astral_dice.sign_active_triggered", signName, ChatFormatting.YELLOW);
         }
-        // 6. 冷却:目标选择器类技能(已进入选择会话)待确认目标后在 apply 中开始冷却;其余立牌立即开始玩家级冷却
-        if (!com.merlinkitsune.astral_dice.target.TargetSelectionManager.isSelecting(player)) {
+        // 6. 冷却:目标选择器类技能(已进入选择会话)待确认目标后在 apply 中开始冷却;其余立牌立即开始玩家级冷却。
+        //    ⚠️ 判据用 isSelectingByKey:「手持即选择」会话不算「本次主动开了会话」,否则玩家握着效果牌
+        //    放技能时会被误判 ⇒ 冷却/锁定与电流核心充能**全部不生效**。
+        if (!com.merlinkitsune.astral_dice.target.TargetSelectionManager.isSelectingByKey(player)) {
             // 诡异骰子:立牌主动冷却 -50%
             // 强制冷却(规格 §3.4):{@code forcedActiveCooldownTicks() > 0} 的立牌(蛟龙立牌 mamushi)
             // **直接使用该值**,完全不经过 WeirdDiceHandler.signCooldownTicks ⇒ 诡异骰子的 -50%、

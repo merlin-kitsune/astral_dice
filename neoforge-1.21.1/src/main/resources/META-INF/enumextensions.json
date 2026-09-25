@@ -1,0 +1,40 @@
+{
+  "entries": [
+    {
+      "enum": "net/minecraft/world/item/Rarity",
+      "name": "ASTRAL_DICE_RARE",
+      "constructor": "(ILjava/lang/String;Ljava/util/function/UnaryOperator;)V",
+      "parameters": {
+        "class": "com/merlinkitsune/starenginelib/item/AstralRarities",
+        "field": "RARE"
+      }
+    },
+    {
+      "enum": "net/minecraft/world/item/Rarity",
+      "name": "ASTRAL_DICE_EPIC",
+      "constructor": "(ILjava/lang/String;Ljava/util/function/UnaryOperator;)V",
+      "parameters": {
+        "class": "com/merlinkitsune/starenginelib/item/AstralRarities",
+        "field": "EPIC"
+      }
+    },
+    {
+      "enum": "net/minecraft/world/item/Rarity",
+      "name": "ASTRAL_DICE_LEGENDARY",
+      "constructor": "(ILjava/lang/String;Ljava/util/function/UnaryOperator;)V",
+      "parameters": {
+        "class": "com/merlinkitsune/starenginelib/item/AstralRarities",
+        "field": "LEGENDARY"
+      }
+    },
+    {
+      "enum": "net/minecraft/world/item/Rarity",
+      "name": "ASTRAL_DICE_PINNACLE",
+      "constructor": "(ILjava/lang/String;Ljava/util/function/UnaryOperator;)V",
+      "parameters": {
+        "class": "com/merlinkitsune/starenginelib/item/AstralRarities",
+        "field": "PINNACLE"
+      }
+    }
+  ]
+}

@@ -10,7 +10,7 @@ import net.minecraft.world.entity.player.Player;
  * 「推理时间」:怪力侦探立牌(sherry)专属资源的**层数镜像效果**(1.20.1 Forge 移植版)。
  *
  * <p><b>层数真值 == 附件 {@code ModAttachments#SHERRY_REASONING_LAYERS}</b>(层数 = {@code amplifier + 1},
- * 上限 {@code SherrySignItem.MAX_REASONING} = 5);本效果**不提供任何属性修饰符、不产生周期反噬**,
+ * 上限 {@code SherrySignItem.MAX_REASONING} = 4);本效果**不提供任何属性修饰符、不产生周期反噬**,
  * 只把附件真值镜像成 HUD 图标 + 层数,层数归 0 时由镜像方移除(与「狐光」{@link HuguangEffect} 同款写法)。
  *
  * <p><b>为什么层数不放效果里(与「弱点识破」{@link WeaknessRevealEffect} 的关键差异)</b>:

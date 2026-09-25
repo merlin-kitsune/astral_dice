@@ -179,6 +179,9 @@ public class PlayerLifecycleHandler {
         if (!(event.getEntity() instanceof Player player)) return;
         if (player.level().isClientSide()) return;
         DiceCurioItem.refreshChipSlotCount(player);
+        // 临时牌到期刻对齐:效果时长只在玩家在线时流逝,而到期刻是绝对 gameTime
+        // (多人服务器离线期间照走)⇒ 重登时按效果剩余重写一次,避免把仍然有效的牌判成过期。
+        com.merlinkitsune.astral_dice.item.card.TemporaryCardUtil.realignExpiry(player);
         // 星币钱包余额条:登录时客户端缓存不可信(可能是上次会话残值) ⇒ 无条件重发一次
         if (player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
             com.merlinkitsune.astral_dice.economy.StarCoinBalanceSync.forceResend(serverPlayer);

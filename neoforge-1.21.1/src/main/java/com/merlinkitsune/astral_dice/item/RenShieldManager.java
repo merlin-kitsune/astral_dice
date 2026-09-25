@@ -17,8 +17,10 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.player.Player;
+import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
@@ -37,6 +39,9 @@ import java.util.List;
  *       1 层一次性反击({@link #MAX_COUNTER_CHARGES});由 {@link com.merlinkitsune.astral_dice.effect.RenShieldEffect}
  *       的效果实例作为「是否持有护盾」的唯一真值;</li>
  *   <li><b>授予不叠加</b>:再次获得时把**护盾自己的那份**黄心补满(基线 + 10),不累加;层数上限 1;</li>
+ *   <li><b>护盾存续期间红心一滴不掉（2026-09-24 用户裁决）</b>：单次超过黄心的伤害同样被**完全吸收**
+ *       —— 超出的部分被丢弃，只消耗掉剩余黄心：{@link #onRenShieldAbsorb} 在最终伤害阶段把伤害钳到
+ *       {@link #remainingShieldAbsorption} 以内。⚠️ 原版吸收只吃「能吃的部分」，超出部分照常扣红心。</li>
  *   <li><b>黄心被打空即清空</b>:每 tick 轮询 {@code getAbsorptionAmount() <= 基线} ⇒ 最多 1 tick 内清空
  *       护盾效果、我们施加的抗性提升与反击层(以及反击的 HUD 图标 {@code ren_counter})。
  *       用轮询而不是伤害事件是因为
@@ -83,6 +88,19 @@ public final class RenShieldManager {
     /** 玩家当前是否持有鼠鼠护盾(效果实例是唯一真值) */
     public static boolean isShielded(Player player) {
         return player != null && player.hasEffect(ModEffects.REN_SHIELD);
+    }
+
+    /**
+     * 护盾当前**还剩多少可用的黄心**（= 总吸收 − 基线；基线是授予时刻外部来源的快照，如金苹果）。
+     * 护盾不在、或黄心已打空（只剩基线）时返回 {@code 0}。
+     *
+     * <p>两个消费方：{@link #onRenShieldAbsorb} 拿它当「这一击的钳制上限」；
+     * {@code event/ChipDamageHandler} 拿它判断「这一击会被护盾完整吃掉 ⇒ 保命类不该介入」。
+     */
+    public static float remainingShieldAbsorption(Player player) {
+        if (!isShielded(player)) return 0.0F;
+        float baseline = Math.max(0.0F, ModAttachments.getRenShieldBaselineAbsorption(player));
+        return Math.max(0.0F, player.getAbsorptionAmount() - baseline);
     }
 
     public static void grantShield(Player player) {
@@ -365,6 +383,34 @@ public final class RenShieldManager {
             player.removeEffect(MobEffects.DAMAGE_RESISTANCE);
         }
         ModAttachments.setRenShieldOwnResistance(player, false);
+    }
+
+    /**
+     * 鼠鼠护盾的**吸收钳制**：只要还有黄心，就把这一击的**最终伤害**压到「剩余黄心」以内
+     * ⇒ 原版吸收阶段必然把它整份吃掉，**红心一滴不掉**。
+     *
+     * <p>口径（2026-09-24 用户裁决）：「护盾免疫单次超过黄心的伤害（不会影响红心）」——
+     * 超出的部分被**丢弃**（而不是漏到红心），黄心按这一击消耗；黄心打空后护盾由 {@link #tick} 轮询清空。
+     * 原版吸收只吃「能吃的部分」（5 黄心挡不住一发 200 伤害里的 190），故必须在这里钳制。
+     *
+     * <p><b>为什么必须在 {@link EventPriority#LOWEST}</b>：本事件（{@code LivingDamageEvent.Pre}）由
+     * {@code CommonHooks.onLivingDamagePre} 在 {@code LivingEntity#actuallyHurt} 内派发，
+     * 位置 = **护甲/附魔减免之后、吸收结算之前**（neoforge-21.1.235 L1789 → L1790-1792），
+     * 这里拿到的就是最终伤害；排在所有「改最终伤害」的处理器之后（骰战主链 NORMAL、狂暴/虚弱印记 LOW…），
+     * 否则后置加成会把伤害重新抬到黄心之上 ⇒ 又漏血。
+     *
+     * <p>本处理器**不改动任何持久状态**（黄心的扣减仍由原版吸收完成）⇒ 与同为 LOWEST 的
+     * {@code event/ChipDamageHandler} 谁先执行都等价（那侧另有「有黄心即早退」守卫，见其类注释）。
+     */
+    @SubscribeEvent(priority = EventPriority.LOWEST)
+    public static void onRenShieldAbsorb(LivingDamageEvent.Pre event) {
+        if (!(event.getEntity() instanceof Player player)) return;
+        if (player.level().isClientSide()) return;
+        float remaining = remainingShieldAbsorption(player);
+        if (remaining <= 0.0F) return;
+        float damage = event.getNewDamage();
+        if (damage <= remaining) return;
+        event.setNewDamage(remaining);
     }
 
     private static void sendActionBar(Player player, String langKey, Object... args) {

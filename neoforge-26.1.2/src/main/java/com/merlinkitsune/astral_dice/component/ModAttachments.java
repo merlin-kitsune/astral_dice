@@ -681,6 +681,26 @@ public class ModAttachments {
                     .serialize(Codec.INT.fieldOf("value"))
                     .build());
 
+    // 「装备时获得 N 层星光」类筹码/立牌的**发放闸门**(位掩码;位含义见 StarLightManager.GRANT_BIT_*)。
+    // 为什么需要:Curios 只持久化 stacks、**不持久化 previousStacks** ⇒ 登录 / 重生 / 切维度后
+    // 首 tick 的 prevStack 恒为空栈而槽里有物品,Curios 会把这判成一次装备变化并**重放 onEquip**
+    // (1.21.1 curios 9.5.1 的 tick 轮询 / 1.20.1 5.14.1 同构)。所以"空槽守卫"挡不住这条路径
+    // (重放时它恰好就是空栈),只有玩家级、持久化的闸门能区分"真的新装上"与"登录重放"。
+    // 必须持久化(随附件存档)且**不 `.sync()`**(仅服务端判定,客户端不读)。
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> STARLIGHT_EQUIP_GRANT_FLAGS =
+            ATTACHMENTS.register("starlight_equip_grant_flags", () -> AttachmentType.builder(() -> 0)
+                    .serialize(Codec.INT.fieldOf("value"))
+                    .build());
+
+    // 「装备时获得 N 层星光」的**发放账本**:每枚 4 bit 存「本次装备**实际**获得的星光量」(0..15),
+    // 槽位顺序 = `StarLightManager.GRANT_BIT_*` 的位号(bit0 → 最低 4 bit)。
+    // 为什么必须记账:「卸除即扣除」这条**全筹码底线**要按实际值扣 —— 星光已到上限时装备**一点没涨**,
+    // 照名义值扣就是白扣玩家自己攒的星光。必须持久化且**不 `.sync()`**(仅服务端判定)。
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> STARLIGHT_EQUIP_GRANT_AMOUNTS =
+            ATTACHMENTS.register("starlight_equip_grant_amounts", () -> AttachmentType.builder(() -> 0)
+                    .serialize(Codec.INT.fieldOf("value"))
+                    .build());
+
     // 诅咒之剑筹码:累计击杀不少于 20 血的敌对目标获得的攻击力加成(移除筹码/死亡清除)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> CURSED_SWORD_BONUS =
             ATTACHMENTS.register("cursed_sword_bonus", () -> AttachmentType.builder(() -> 0)
@@ -800,6 +820,22 @@ public class ModAttachments {
 
     public static void setStarCoinHammerBonus(net.minecraft.world.entity.player.Player player, int value) {
         player.setData(STAR_COIN_HAMMER_BONUS.get(), Math.max(0, value));
+    }
+
+    public static int getStarlightEquipGrantFlags(net.minecraft.world.entity.player.Player player) {
+        return player.getData(STARLIGHT_EQUIP_GRANT_FLAGS.get());
+    }
+
+    public static void setStarlightEquipGrantFlags(net.minecraft.world.entity.player.Player player, int value) {
+        player.setData(STARLIGHT_EQUIP_GRANT_FLAGS.get(), value);
+    }
+
+    public static int getStarlightEquipGrantAmounts(net.minecraft.world.entity.player.Player player) {
+        return player.getData(STARLIGHT_EQUIP_GRANT_AMOUNTS.get());
+    }
+
+    public static void setStarlightEquipGrantAmounts(net.minecraft.world.entity.player.Player player, int value) {
+        player.setData(STARLIGHT_EQUIP_GRANT_AMOUNTS.get(), value);
     }
 
     public static int getCursedSwordBonus(net.minecraft.world.entity.player.Player player) {
@@ -1041,6 +1077,20 @@ public class ModAttachments {
                     .sync(ByteBufCodecs.VAR_LONG)
                     .build());
 
+    /**
+     * 磨刀石「保留 1 血」（不可被一次伤害击倒）的**触发冷却结束时刻**（1:00；0 表示无冷却）。
+     *
+     * <p>2026-09-24 用户裁决：该保命能力此前**无冷却**，而它的生效条件与安全气囊的「致命伤害」完全
+     * 重叠 ⇒ 戴着磨刀石几乎不会被单次伤害打死，气囊的资源优势被抹平。现改为**一次保命耗一次冷却**
+     * （1:00，与安全气囊同档）；保命优先级明确为 **安全气囊 &gt; 磨刀石**（见 {@code event/ChipDamageHandler}）。
+     *
+     * <p>只在 cap **实际削减了伤害**时写入（不致命的攻击不耗冷却）；低血量减伤（-2）不受本冷却影响。
+     * **仅服务端使用** ⇒ 不 {@code .sync()}。
+     */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> WHETSTONE_GUARD_COOLDOWN_END =
+            ATTACHMENTS.register("whetstone_guard_cooldown_end", () -> AttachmentType.builder(() -> 0L)
+                    .serialize(Codec.LONG.fieldOf("value"))
+                    .build());
     /** 电磁炮:雷击触发冷却结束时刻(1:00;0 表示无冷却;仅第二能力雷击,不影响充能攻击力加成) */
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> RAILGUN_COOLDOWN_END =
             ATTACHMENTS.register("railgun_cooldown_end", () -> AttachmentType.builder(() -> 0L)
@@ -1106,6 +1156,14 @@ public class ModAttachments {
 
     public static void setAirbagCooldownEnd(net.minecraft.world.entity.player.Player player, long value) {
         player.setData(AIRBAG_COOLDOWN_END.get(), Math.max(0, value));
+    }
+
+    public static long getWhetstoneGuardCooldownEnd(net.minecraft.world.entity.player.Player player) {
+        return player.getData(WHETSTONE_GUARD_COOLDOWN_END.get());
+    }
+
+    public static void setWhetstoneGuardCooldownEnd(net.minecraft.world.entity.player.Player player, long value) {
+        player.setData(WHETSTONE_GUARD_COOLDOWN_END.get(), Math.max(0, value));
     }
 
     public static long getRailgunCooldownEnd(net.minecraft.world.entity.player.Player player) {
@@ -1614,6 +1672,30 @@ public class ModAttachments {
 
     public static void setSherryReasoningLayers(net.minecraft.world.entity.player.Player player, int value) {
         player.setData(SHERRY_REASONING_LAYERS.get(), Math.max(0, value));
+    }
+
+    /**
+     * **已推理目标 UUID 集**(逗号分隔) —— 「侦探出击」被动「每个目标只提供 1 层」的唯一判据。
+     *
+     * <p>「攻击一个**新**目标」= 该 UUID 不在本集中;首次命中即登记,已登记的直接跳过(不再 +1 层)。
+     * 写法与寿命都沿用 {@link #FLASHLIGHT_GRANTED_TARGETS} 的字符串集口径:**卸下立牌即清空**。
+     * ⚠️ 层数 {@link #SHERRY_REASONING_LAYERS} 本身**跨死亡保留**({@code .copyOnDeath()} / 1.20.1 白名单),
+     * 而本记录**有意不跨死亡**(不加 {@code .copyOnDeath()})—— 死亡属重置类事件,重生后同一目标可重新
+     * 提供 1 层;口径与手电筒筹码一致(理由见 {@code SherrySignItem#MAX_TRACKED_TARGETS})。
+     *
+     * <p>不 {@code .sync()}:仅服务端判定,客户端不读。
+     */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<String>> SHERRY_REASONING_TARGETS =
+            ATTACHMENTS.register("sherry_reasoning_targets", () -> AttachmentType.builder(() -> "")
+                    .serialize(Codec.STRING.fieldOf("value"))
+                    .build());
+
+    public static String getSherryReasoningTargets(net.minecraft.world.entity.player.Player player) {
+        return player.getData(SHERRY_REASONING_TARGETS.get());
+    }
+
+    public static void setSherryReasoningTargets(net.minecraft.world.entity.player.Player player, String value) {
+        player.setData(SHERRY_REASONING_TARGETS.get(), value == null ? "" : value);
     }
 
     // ══════════════════════════════════════════════════════════════════════════

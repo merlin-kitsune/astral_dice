@@ -64,6 +64,7 @@ import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
 import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
 import net.neoforged.neoforge.event.entity.living.LivingDropsEvent;
 import net.neoforged.neoforge.event.entity.living.MobEffectEvent;
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import net.neoforged.neoforge.event.entity.player.ItemTooltipEvent;
 import net.neoforged.neoforge.event.entity.ProjectileImpactEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
@@ -111,6 +112,7 @@ import com.merlinkitsune.astral_dice.item.sign.NancyLuSignItem;
 import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
 import com.merlinkitsune.astral_dice.item.card.FateGuidanceCardItem;
 import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
+import com.merlinkitsune.astral_dice.item.sign.MamushiSignItem;
 import com.merlinkitsune.starenginelib.combat.HostileTargets;
 
 @EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
@@ -199,7 +201,7 @@ public class DiceCombatEvents {
     }
 
 
-    @SubscribeEvent
+    @SubscribeEvent(priority = EventPriority.NORMAL)
     public static void onLivingDamagePre(LivingDamageEvent.Pre event) {
         DamageSource source = event.getSource();
         Entity directEntity = source.getDirectEntity();
@@ -288,7 +290,8 @@ public class DiceCombatEvents {
                     }
                 }
             }
-            // 标靶筹码:触发骰神赐福后,对距离最近的敌对目标施加一层标记(无固定范围常量)
+            // 标靶筹码:触发骰神赐福后,对距离最近的**其他**目标施加一层标记(无固定范围常量)。
+            // 2026-09-24 用户裁决:不再判定「本次正在攻击的那个目标」—— 标记要落到**别的**目标身上。
             if (attackerCurios.isPresent()) {
                 var targetChipResult = attackerCurios.get().findFirstCurio(s -> s.is(ModItems.TARGET_CHIP.get()));
                 if (targetChipResult.isPresent()) {
@@ -299,6 +302,8 @@ public class DiceCombatEvents {
                     for (net.minecraft.world.entity.Entity entity : serverLevel.getEntities().getAll()) {
                         if (entity instanceof net.minecraft.world.entity.LivingEntity living
                                 // 上下文重载:攻击者"视谁为敌"(全局规则,含曾主动攻击过攻击者的非同队玩家)
+                                // ⚠️ 排除本次攻击的目标(2026-09-24 用户裁决)与玩家自身
+                                && living != target && living != player
                                 && HostileTargets.isHostile(player, living) && living.isAlive()) {
                             double distSqr = living.distanceToSqr(player);
                             if (distSqr < nearestDistSqr) {
@@ -312,7 +317,7 @@ public class DiceCombatEvents {
                     }
                 }
             }
-            // 星币锤筹码:每次进入骰神赐福时,若持有星币超过 20 枚,则消耗 3 星币并按持有总数 30% 提升攻击力
+            // 星币锤筹码:每次进入骰神赐福时,若持有星币超过 20 枚,则消耗 6 星币并按持有总数 30% 提升攻击力
             if (attackerCurios.isPresent()) {
                 var hammerResult = attackerCurios.get().findFirstCurio(s -> s.is(ModItems.STAR_COIN_HAMMER.get()));
                 if (hammerResult.isPresent()) {
@@ -327,6 +332,10 @@ public class DiceCombatEvents {
             com.merlinkitsune.astral_dice.item.chip.MemberRecommendationChipItem.onBlessingStart(player);
             // 大当家立牌:触发骰神赐福 → 记录触发时刻;养精蓄锐满层则消耗 2 层并置位本次攻击的溅射
             fenSplashArmed = com.merlinkitsune.astral_dice.item.sign.FenSignItem.onBlessingTriggered(player);
+            // 蛟龙立牌(mamushi)「撕咬」:装备的每张撕咬 +1 层觉醒并锁存撕咬加成(赐福结束时清锁存)。
+            // 必须置于本触发块内(即位于下方攻击力修饰器链求值之前):锁存置位与层数增长都要在
+            // 本次攻击生效范围内(裁决 4:加成实时取 min(觉醒,4))。
+            MamushiSignItem.onDiceBlessingTriggered(player);
             // 治愈体系:触发骰神赐福 → 医疗箱加点(先)+ 按当前治愈点×2 回血(后)。
             // 置于触发块末尾,确保晚于本事件内所有影响治愈点数量的效果(立牌受击钩子/缓冲盾牌在前部已执行)
             com.merlinkitsune.astral_dice.item.HealingManager.onBlessingTriggered(player);
@@ -392,6 +401,26 @@ public class DiceCombatEvents {
                     padmanStack.set(ModDataComponents.PADMAN_FORCE_SIX.get(), true);
                 }
             }
+        }
+
+        // 风水师立牌(zhao)被动「福祸相倚」:骰点定稿后判定 —— 结果为 1 ⇒ 获得 1 张符卡-祸;
+        // 为 6 ⇒ 获得 1 张符卡-福(卡牌在发放那一刻绑定获得者)。
+        // ⚠️ 挂点必须在本处(骰点**已被全部修正方改写之后**):上班族立牌的"骰点为 1 则下次必为 6"
+        // 会把 baseDice 直接改写成 6,挂在它之前会读到被覆盖掉的旧值。
+        // ⚠️ 「一次结算一次判定」:同一挥击命中多目标会多次进入本事件 ⇒ 由
+        // ZhaoSignItem#tryClaimDiceJudgment 的**实例内**标记(纯静态槽位,不写附件、不跨实例持久化,
+        // 同 DiceCombatModifiers#instanceVictim 口径)防重复发牌。
+        if (!player.level().isClientSide()
+                && com.merlinkitsune.astral_dice.item.sign.ZhaoSignItem.tryClaimDiceJudgment(player)) {
+            com.merlinkitsune.astral_dice.item.sign.ZhaoSignItem.onDiceRollResult(player, baseDice);
+        }
+
+        // 人偶师立牌(hanna)「幻想千金」:战斗骰点 = 6 ⇒ 佩戴者获得 1 星币。
+        // 「每 1:00 仅触发 1 次」由立牌自己的 hanna_fantasy_cooldown_end 附件保证 ——
+        // 同一挥击命中多个目标会多次进入本处,第二次起被冷却挡下(与 zhao 的实例内 claim 同一目的,
+        // 但 hanna 用真冷却而非静态槽位,因为它的上限就是"1 分钟一次")。
+        if (!player.level().isClientSide()) {
+            com.merlinkitsune.astral_dice.item.sign.HannaSignItem.onDiceRollResult(player, baseDice);
         }
 
         // 经商立牌(parunan):触发骰神赐福后立即获得 触发时骰点*2 的星光
@@ -594,6 +623,34 @@ public class DiceCombatEvents {
 
         event.setNewDamage((float) finalDmg);
         sendDamageNumber(event.getEntity(), (int) finalDmg);
+
+        // === 额外加伤(astral_dice:extra_damage):星光 / 星币 / 治愈点三项加伤 ===
+        // 2026-09-25 用户裁决:这三项**不得并进「攻击力」**(它们会污染教主立牌降神的「狐光攻击基数」
+        // 攻击力快照 —— 即「严格排除」),改为命中落地后按**独立伤害类型**单独结算(额外加伤)。
+        // 复用大当家溅射的既有范式:主目标此刻正处在自己这次伤害事件内部(原版 hurt 已先写
+        // invulnerableTime/lastHurt),不临时清零无敌帧就会被"无敌帧内不更低伤害被丢弃"整段吞掉。
+        if (!player.level().isClientSide()) {
+            int extraDamage = com.merlinkitsune.astral_dice.combat.DiceCombatModifiers.extraDamageOf(ctx);
+            if (extraDamage > 0) {
+                aoeProcessing = true;
+                int savedInvulnerable = target.invulnerableTime;
+                try {
+                    target.invulnerableTime = 0;
+                    target.hurt(com.merlinkitsune.astral_dice.damage.ModDamageTypes.extraDamage(
+                            target.level(), player), extraDamage);
+                    sendDamageNumber(target, extraDamage);
+                } finally {
+                    target.invulnerableTime = savedInvulnerable;
+                    aoeProcessing = false;
+                }
+            }
+        }
+        // 蛟龙立牌(mamushi)「龙之咆哮」:命中时对**本次伤害的受击者**施加 缓慢 III 1:00 +
+        // 破防(ARMOR -8 = 减 4 点防御)1:00;重复命中刷新时长、不叠层(D8)。
+        // 条件 = 攻击方骰子卡牌栏装备了任意张 dragon_roar(与赐福触发块同源口径)。
+        if (!player.level().isClientSide() && MamushiSignItem.countEquippedType(player, "dragon_roar") > 0) {
+            MamushiSignItem.applyRoarDebuff(target);
+        }
         // 电磁炮:以本次骰战最终伤害回填雷击伤害(50%)
         com.merlinkitsune.astral_dice.item.chip.RailgunChipItem.applyFinalDamage(railgunStrike, (float) finalDmg);
 
@@ -623,8 +680,9 @@ public class DiceCombatEvents {
                         .inflate(com.merlinkitsune.astral_dice.item.sign.FenSignItem.SPLASH_RANGE);
                 var splashVictims = target.level().getEntitiesOfClass(
                         net.minecraft.world.entity.LivingEntity.class, splashBox,
-                        // 上下文重载:施放者"视谁为敌" —— 溅射现在也会命中「非同队伍且曾主动攻击过施放者的玩家」
-                        e -> HostileTargets.isHostile(player, e) && e.isAlive());
+                        // 2026-09-24 口径统一:波及选目标改用**法伤链闸门** isBlessingTarget(比
+                        // HostileTargets 更宽)⇒ 与非同队玩家 / Boss / 会反击的中立怪(山羊等)的主目标口径一致
+                        e -> isBlessingTarget(e, player) && e.isAlive());
                 if (!splashVictims.isEmpty()) {
                     // 真伤伤害源:直接伤害实体为空、击杀归属玩家(与旧 explosion(null, player) 同形状,
                     // 不会被本模组或其它模组再当成一次"玩家的直接攻击"重走命中判定,同时保留击杀归属);
@@ -708,7 +766,7 @@ public class DiceCombatEvents {
                 attackCostFreed += MisakiSignItem.effectiveCost(player, stone.type());
                 dirty = true;
             } else {
-                newStones.add(new AppliedStone(stone.type(), newUses));
+                newStones.add(new AppliedStone(stone.type(), newUses, stone.temporary()));
                 dirty = true;
             }
         }
@@ -740,7 +798,7 @@ public class DiceCombatEvents {
                 defenseCostFreed += MisakiSignItem.effectiveCost(defender, stone.type());
                 dirty = true;
             } else {
-                newStones.add(new AppliedStone(stone.type(), newUses));
+                newStones.add(new AppliedStone(stone.type(), newUses, stone.temporary()));
                 dirty = true;
             }
         }
@@ -836,8 +894,13 @@ public class DiceCombatEvents {
         com.merlinkitsune.astral_dice.item.chip.BigBowlStewChipItem.onBlessingEnd(player);
         // 骇客立牌:赐福结束刷新被动(攻击/防御,覆盖旧类型)
         NancyLuSignItem.onDiceBlessingEnded(player);
-        // 枪匠立牌:赐福结束弱点识破减少 1 层
-        MosesSignItem.onDiceBlessingEnded(player);
+        // 枪匠立牌:赐福结束弱点识破减少 1 层 —— **延到下一 tick**(见 BLESSING_END_PENDING 注释)
+        // 蛟龙立牌(mamushi)「撕咬」:赐福结束清除撕咬加成锁存(加成 = min(觉醒,4) 至此失效)
+        MamushiSignItem.onDiceBlessingEnded(player);
+        // 怪力侦探立牌(sherry):赐福结束「推理时间」减少 1 层(层数真值在附件,死亡不清)
+        //   —— 与「弱点识破」一并延到下一 tick:两者都会改 activeEffects,在本回调里直接执行会触发 CME
+        //   (见 BLESSING_END_PENDING 注释);此处只登记待办
+        BLESSING_END_PENDING.add(player);
 
         var curios = CuriosApi.getCuriosInventory(player);
         if (curios.isEmpty()) return;
@@ -877,6 +940,40 @@ public class DiceCombatEvents {
             PacketDistributor.sendToPlayer(sp,
                     new ActionBarPayload(Component.translatable("msg.astral_dice.charge_refund_full_power")
                             .withStyle(ChatFormatting.YELLOW), GameplayConstants.ACTIONBAR_DURATION_TICKS));
+        }
+    }
+
+    /**
+     * 待办的「赐福结束」减层(怪力侦探「推理时间」/ 枪匠「弱点识破」),下一 tick 服务端 tick 末尾统一执行。
+     *
+     * <p>⚠️ <b>为什么必须在下一 tick 执行</b>:{@code MobEffectEvent.Expired} 在
+     * {@code LivingEntity#tickEffects} 的 {@code iterator.remove()} <b>之前</b>发出 —— 此刻处理器若
+     * 新增/移除任何效果,就会结构性修改正在被 for-each 遍历的 {@code activeEffects}
+     * ⇒ {@code iterator.remove()} 抛 {@link java.util.ConcurrentModificationException},
+     * 而原版把它 {@code catch (ConcurrentModificationException) {}} <b>静默吞掉</b>
+     * ⇒ <b>该效果本拍不被移除</b>,且其 duration 已为 0 ⇒ 下一拍 {@code tick()} 直接返回 false
+     * ⇒ {@code Expired} <b>再发一次</b> ⇒ 减层被逐拍重放,直到「不再改 map」为止。
+     *
+     * <p>而这两条减层的镜像实现都必然「先 removeEffect 再 addEffect」(原版 {@code MobEffectInstance#update}
+     * 只接受更高的 amplifier)⇒ 必然命中上述陷阱。<b>2026-09-25 两轮实测</b>:一次赐福结束时减层次数
+     * <b>恰等于当时层数</b>(4 层 ⇒ 连续 4 拍各扣 1、直接归 0;3 层 ⇒ 3 拍),即用户所报「骰神赐福结束变成全扣」。
+     *
+     * <p>范式同 {@code MarkManager#PENDING_DECAY}(标记减层同样不能在 Expired 里直接补写)。
+     */
+    private static final List<Player> BLESSING_END_PENDING = new ArrayList<>();
+
+    @SubscribeEvent
+    public static void onBlessingEndPending(ServerTickEvent.Post event) {
+        if (BLESSING_END_PENDING.isEmpty()) return;
+        List<Player> pending = new ArrayList<>(BLESSING_END_PENDING);
+        BLESSING_END_PENDING.clear();
+        for (Player player : pending) {
+            if (player == null || player.isRemoved() || !player.isAlive()) continue;
+            if (player.level().isClientSide()) continue;
+            // 枪匠立牌:弱点识破 −1 层(层数真值 = 效果实例本身)
+            MosesSignItem.onDiceBlessingEnded(player);
+            // 怪力侦探立牌(sherry):「推理时间」−1 层(层数真值在附件,死亡不清)
+            com.merlinkitsune.astral_dice.item.sign.SherrySignItem.onDiceBlessingEnded(player);
         }
     }
 
@@ -1087,7 +1184,7 @@ public class DiceCombatEvents {
     // 闪避改在伤害判定最前置处"取消"(LivingIncomingDamageEvent)而不是在伤害阶段把伤害改成 0:
     // 只有前者能让攻击方 Mob#doHurtTarget 拿到 hurt()==false,从而不施加尸壳饥饿等命中附加效果、
     // 也不产生红屏/屏幕震动/受伤音效与击退同步。详见 applyDodgeCancel 的注释。
-    @SubscribeEvent
+    @SubscribeEvent(priority = EventPriority.NORMAL)
     public static void onMosesBrokenDodge(LivingIncomingDamageEvent event) {
         LivingEntity victim = event.getEntity();
         if (victim.level().isClientSide()) return;
@@ -1108,7 +1205,7 @@ public class DiceCombatEvents {
 
     // 肉弹战车立牌(pandaman)主动「嘲讽」:被嘲讽目标攻击施加者时触发反击
     // (沿用反击伤害公式;不消耗“反击”层数,每次嘲讽目标成功攻击时触发)
-    @SubscribeEvent
+    @SubscribeEvent(priority = EventPriority.NORMAL)
     public static void onPandamanTauntCounter(LivingDamageEvent.Pre event) {
         LivingEntity victim = event.getEntity();
         if (victim.level().isClientSide()) return;
@@ -1129,7 +1226,7 @@ public class DiceCombatEvents {
     // 现有反击伤害(沿用同一公式)。事件与肉弹嘲讽同源(LivingDamageEvent.Pre,位于吸收结算之前),
     // 该钩子只表示「伤害已确认」,与吸收数值无关 ⇒ **被黄心完全吃掉的一击同样触发**;
     // 若这一击正好打空黄心,护盾的清空由 RenShieldManager 的每 tick 轮询在稍后完成(先反击、后破盾)。
-    @SubscribeEvent
+    @SubscribeEvent(priority = EventPriority.NORMAL)
     public static void onRenShieldCounter(LivingDamageEvent.Pre event) {
         LivingEntity victim = event.getEntity();
         if (victim.level().isClientSide()) return;

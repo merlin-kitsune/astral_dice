@@ -87,6 +87,28 @@ public class ModDataComponents {
                             .persistent(Codec.BOOL)
                             .networkSynchronized(ByteBufCodecs.BOOL));
 
+    /**
+     * 临时牌的**到期刻**(绝对 {@code gameTime};{@code 0} = 未设限,判据见
+     * {@code item/card/TemporaryCardUtil#NO_EXPIRY})。
+     *
+     * <p><b>为什么必须存在物品上</b>(2026-09-24 用户裁决「为临时效果牌增加自毁机制」):第三方容器
+     * (AE2 存储总线 / 机械动力物品舱口这类**不经槽位校验**的插入路径)收走临时牌后,玩家级的效果实例
+     * 就"够不着"它了 —— 牌必须**自带**一个与玩家无关也能判定的到期刻,取回时才能立刻自毁,
+     * 否则它可以在容器里过夜、跨过整轮有效期再被取回来继续用。
+     *
+     * <p>语义 = 「发放时刻 + 3:00」;再次释放 / 玩家登录时对**够得着的**牌做确定性对齐
+     * (见 {@code TemporaryCardUtil#realignExpiry})。骰子已装配的牌**不写**本组件 —— 那份临时性在
+     * {@code AppliedStone#temporary()} 里,生命周期由效果实例直接承载。
+     *
+     * <p>**刻意不 {@code networkSynchronized}**({@code 0} 字节额外带宽):纯服务端判定,
+     * 客户端不读它 —— 客户端可见性由已同步的 {@link #TEMPORARY_CARD} 承载,
+     * tooltip 提示行也不显示剩余时间。
+     */
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<Long>> TEMPORARY_CARD_EXPIRES =
+            DATA_COMPONENTS.registerComponentType("temporary_card_expires",
+                    builder -> builder
+                            .persistent(Codec.LONG));
+
     // 专属效果牌:获得者 UUID(空表示尚未绑定,首次使用时绑定)
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<Optional<UUID>>> OWNER_UUID =
             DATA_COMPONENTS.registerComponentType("owner_uuid",

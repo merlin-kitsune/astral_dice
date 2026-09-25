@@ -1,0 +1,71 @@
+{
+  "case_id": "SHERRY-BLESS-1.21.1",
+  "title": "怪力侦探「推理时间」：一次赐福结束必须只扣 1 层（含逐 tick 采样定位重复扣层通路）",
+  "version": "1.21.1",
+  "target": {
+    "type": "feature",
+    "ref": "sherry-reasoning-blessing-end"
+  },
+  "steps": [
+    {
+      "op": "note",
+      "text": "目的（用户 2026-09-25 实报「骰神赐福结束变成全扣（直接归0）」）：确认一次赐福结束**只扣 1 层**。\n\n判据：`sherryset 3` 钉成 3 层 → 吃一次 1 秒赐福（到期走原版 `LivingEntity.tickEffects` → `MobEffectEvent.Expired`）→ 期望 **2**；\n实测若为 0 即复现「全扣」。逐 tick 采样行 `AP_W0_W:<i>:t=<tick>:b=<赐福0/1>:ba=<amp>:d=<赐福剩余tick>:re=<计时守卫记录endTick>:l=<层数>:m=<镜像层数>`\n把全过程落盘（`d`/`re` 用于区分「Expired 被取消、效果仍在」与「效果被移除后被重新施加」两条通路）。\n\n⚠️ **为什么必须逐 tick**：命令注入端到端延迟 ≈2.9 秒 ⇒ 1 秒级瞬态用「注入式读数」只会读到已经归 0 的晚状态（首轮实测）。"
+    },
+    {
+      "op": "note",
+      "text": "前置：生存 + 清背包 + 锁午夜；`signprep` 清 stand 槽并装怪力侦探立牌。`stand=` 只查 nardis 恒为 0，装配判据看 `signslot`。"
+    },
+    {"op": "inject_command", "command": "/gamemode survival", "no_esc": true},
+    {"op": "wait", "ms": 600},
+    {"op": "inject_command", "command": "/clear @s", "no_esc": true},
+    {"op": "wait", "ms": 400},
+    {"op": "inject_command", "command": "/time set midnight", "no_esc": true},
+    {"op": "wait", "ms": 400},
+    {"op": "inject_command", "command": "/gamerule doDaylightCycle false", "no_esc": true},
+    {"op": "wait", "ms": 400},
+    {"op": "inject_command", "command": "/kill @e[type=!player,distance=..32]", "no_esc": true},
+    {"op": "wait", "ms": 400},
+
+    {"op": "inject_command", "command": "/astralprobe signprep S0 \"astral_dice:sherry_sign\"", "no_esc": true},
+    {"op": "wait", "ms": 900},
+    {"op": "inject_command", "command": "/astralprobe signslot S0", "no_esc": true},
+    {"op": "wait", "ms": 400},
+    {"op": "inject_command", "command": "/astralprobe sherryread S0", "no_esc": true},
+    {"op": "wait", "ms": 400},
+
+    {"op": "note", "text": "钉成 3 层（探针入口直接写层数，免去打多只怪的注入开销）。"},
+    {"op": "inject_command", "command": "/astralprobe sherryset S1 3", "no_esc": true},
+    {"op": "wait", "ms": 600},
+
+    {"op": "note", "text": "起 200 tick 采样，随后施加 1 秒赐福。期望：赐福到期那一刻 3 → **2**，且此后恒为 2。"},
+    {"op": "inject_command", "command": "/astralprobe sherrywatch W0 200", "no_esc": true},
+    {"op": "inject_command", "command": "/effect give @s astral_dice:dice_blessing 1 0", "no_esc": true},
+    {"op": "wait", "ms": 8000},
+
+    {"op": "inject_command", "command": "/astralprobe sherryread R1", "no_esc": true},
+    {"op": "wait", "ms": 2500},
+    {"op": "inject_command", "command": "/astralprobe sherryread R2", "no_esc": true},
+    {"op": "wait", "ms": 400},
+
+    {"op": "note", "text": "收尾：清靶子与背包。"},
+    {"op": "inject_command", "command": "/kill @e[type=!player,distance=..32]", "no_esc": true},
+    {"op": "wait", "ms": 500},
+    {"op": "inject_command", "command": "/clear @s", "no_esc": true},
+    {"op": "wait", "ms": 400}
+  ],
+  "asserts": [
+    {"type": "log", "source": "latest", "pattern": "AP_S0_SIGNPREP:sign=astral_dice:sherry_sign:sign_err=:"},
+    {"type": "log", "source": "latest", "pattern": "AP_S0_SIGNSLOT:slot=astral_dice:sherry_sign:slots=[0-9]+:used=1"},
+    {"type": "log", "source": "latest", "pattern": "AP_S0_SHERRY:layers=0:mirror=0"},
+    {"type": "log", "source": "latest", "pattern": "AP_S1_SHERRYSET:n=3:l=3:"},
+    {"type": "log", "source": "latest", "pattern": "AP_W0_WATCH:ticks=200:l=3"},
+    {"type": "log", "source": "latest", "pattern": "AP_W0_W:1:t=[0-9]+:b=0:ba=-1:d=-1:re=-1:l=3:m=3"},
+    {"type": "log", "source": "latest", "pattern": "AP_R1_SHERRY:layers=2:"},
+    {"type": "log", "source": "latest", "pattern": "AP_R2_SHERRY:layers=2:"},
+    {"type": "absent", "source": "latest", "pattern": "AP_[A-Z0-9]+_ERR"},
+    {"type": "absent", "source": "latest", "pattern": ":err="},
+    {"type": "absent", "source": "latest", "pattern": "未知或不完整的命令|Unknown or incomplete command|Incorrect argument"},
+    {"type": "kubejs"},
+    {"type": "crash"}
+  ]
+}

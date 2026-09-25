@@ -32,6 +32,7 @@ import net.minecraftforge.event.entity.ProjectileImpactEvent;
 import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.entity.projectile.ThrownEnderpearl;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.eventbus.api.EventPriority;
 
 /**
  * 骇客立牌(命名:nancy_lu)。
@@ -292,7 +293,7 @@ public class NancyLuSignItem extends BaseSignItem {
 
 
     // 骇客立牌:任何攻击行为(含远程/投掷物/魔法)命中敌对生物或玩家时,同样解除隐身并触发战斗牌加成
-    @SubscribeEvent
+    @SubscribeEvent(priority = EventPriority.NORMAL)
     public static void onNancyLuAnyAttackWhileHidden(LivingDamageEvent event) {
         if (event.getEntity().level().isClientSide()) return;
         if (!(event.getSource().getEntity() instanceof Player player)) return;
@@ -325,7 +326,7 @@ public class NancyLuSignItem extends BaseSignItem {
     // 不 indicateDamage(即不发送 ClientboundHurtAnimationPacket,无红屏与屏幕震动)、
     // 不 playHurtSound(无受伤音效)。旧实现只 setAmount(0),hurt 仍走完整个流程
     // 并播放全部受伤反馈。
-    @SubscribeEvent
+    @SubscribeEvent(priority = EventPriority.NORMAL)
     public static void onNancyLuEnderPearlDamage(LivingAttackEvent event) {
         if (!(event.getEntity() instanceof Player player)) return;
         if (player.level().isClientSide()) return;

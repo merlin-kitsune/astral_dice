@@ -5,6 +5,7 @@ import net.minecraft.network.chat.Component;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.effect.MobEffect;
@@ -14,6 +15,8 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
+import com.merlinkitsune.astral_dice.audio.ModSounds;
+import com.merlinkitsune.astral_dice.audio.SoundPlayback;
 import com.merlinkitsune.astral_dice.item.chip.MagicTomeChipItem;
 import com.merlinkitsune.astral_dice.item.chip.CandyChipItem;
 import com.merlinkitsune.astral_dice.item.chip.SatelliteChipItem;
@@ -45,7 +48,7 @@ import net.neoforged.neoforge.network.PacketDistributor;
  * 2. 服务端权威判定(专属校验 → 出牌锁,见 {@link EffectCardPeriod#isBlocked});
  * 3. 调用子类的 {@link #applyEffect}(服务端,施加实际效果);
  * 4. 出牌登记(出牌数达到上限时才开始冷却,见 {@link EffectCardPeriod#registerPlay});
- * 5. 复制计数钩子(忍者立牌/魔法秘典/魔法箭袋,见 {@link #cardTypeId()};计数范围为全部效果牌,无类型过滤);
+ * 5. 复制计数钩子(忍者立牌/魔法秘典:全部效果牌;魔法箭袋:**仅伤害效果牌**,见 {@link #isDamageEffectCard});
  * 6. 消耗一张。
  *
  * <p><b>释放方式二选一</b>:
@@ -68,8 +71,9 @@ import net.neoforged.neoforge.network.PacketDistributor;
  * - 简单状态牌:覆写 {@link #getEffect()} 返回效果引用(基类自动施加 {@link #getEffectDuration()} 时长);
  * - 复杂逻辑牌:覆写 {@link #applyEffect()}(使用后对玩家/目标施加的效果)。
  * 按需覆写 {@link #cardTypeId()} / {@link #isExclusive()} / {@link #selectorActionId()}。
- * 全部效果牌均参与忍者立牌/魔法秘典/魔法箭袋的复制计数
- * (通过 {@link #cardTypeId()} 与 {@link #cardByTypeId(String)} 映射,无排除项)。
+ * 忍者立牌 / 魔法秘典的复制计数覆盖**全部效果牌**(通过 {@link #cardTypeId()} 与
+ * {@link #cardByTypeId(String)} 映射,无排除项);**魔法箭袋例外** —— 只统计
+ * {@link #isDamageEffectCard 伤害效果牌}(2026-09-24 用户裁决第二版)。
  *
  * <h2>26.1.2 平台改写点（相对 {@code neoforge-1.21.1} 基准，语义零差异）</h2>
  * <ol>
@@ -99,8 +103,23 @@ public abstract class BaseEffectCardItem extends Item {
         return false;
     }
 
-    // 参与复制计数时的卡牌类型 id(与计数钩子的 cardByTypeId 映射对应;全部效果牌均参与复制,无排除项)
+    // 参与复制计数时的卡牌类型 id(与计数钩子的 cardByTypeId 映射对应)
     protected abstract String cardTypeId();
+
+    /**
+     * 该效果牌是否属于「**伤害效果牌**」(对怪激光 / 对怪板砖 / 轨道炮 / 定向爆破 / 活体书页)。
+     *
+     * <p><b>单一事实源</b>:电击手套(充能武装法伤扩散)与魔法箭袋(「第一张使用的效果牌」追踪)
+     * 共用本判定 —— 任一处都不得自建清单。活体书页**计入**(它是一次命中法伤的打击牌)。
+     */
+    public static boolean isDamageEffectCard(ItemStack cardStack) {
+        if (cardStack == null || cardStack.isEmpty()) return false;
+        return cardStack.is(ModItems.LIVING_PAGE.get())
+                || cardStack.is(ModItems.MONSTER_LASER_CARD.get())
+                || cardStack.is(ModItems.MONSTER_BRICK_CARD.get())
+                || cardStack.is(ModItems.ORBITAL_STRIKE_CARD.get())
+                || cardStack.is(ModItems.DIRECTIONAL_BLAST_CARD.get());
+    }
 
     /**
      * 效果牌类型 id → 对应物品(忍者立牌复制/魔法秘典返还/魔法箭袋返还共用,
@@ -452,6 +471,10 @@ public abstract class BaseEffectCardItem extends Item {
         // 施加效果(子类实现)
         applyEffect(level, player, applyTo, stack);
 
+        // 出牌音效:狂暴/王之力/岿然不动 三张增益牌走专属音效;
+        // 其余按**实际受益目标**分流(作用于自身 / 作用于其他人或目标)
+        playUseSound(level, player, applyTo);
+
         // 出牌登记:立即开始/重置冷却倒计时(冷却与效果分离计算)
         EffectCardPeriod.registerPlay(player);
 
@@ -480,13 +503,44 @@ public abstract class BaseEffectCardItem extends Item {
             PandamanSignItem.onHealingFoodUsed(player, stack.is(ModItems.HAMBURGER.get()));
         }
 
-        // 复制计数钩子(忍者立牌/魔法秘典/魔法箭袋):全部效果牌均参与,无排除项
+        // 复制计数钩子(忍者立牌/魔法秘典):全部效果牌均参与,无排除项
         KomachiSignItem.onEffectCardUsed(player, cardTypeId());
         MagicTomeChipItem.onEffectCardUsed(player, cardTypeId());
-        MagicQuiverChipItem.onEffectCardUsed(player, cardTypeId());
+        // 魔法箭袋:仅**伤害效果牌**(含活体书页)参与「第一张使用的效果牌」追踪
+        MagicQuiverChipItem.onEffectCardUsed(player, cardTypeId(), stack);
         // 小猪存钱罐筹码:每使用 2 张效果牌获得 3 星币(独立计数)
         PiggyBankChipItem.onEffectCardUsed(player);
         return true;
+    }
+
+    /**
+     * 出牌音效(仅服务端;在 {@link #applyEffect} 之后调用,失败路径不会走到)。
+     *
+     * <p>优先级:**狂暴 / 王之力 / 岿然不动** 三张增益牌 → {@link ModSounds#BOOST_EFFECT_CARD_USE};
+     * 其余按**实际受益目标**分流 —— 目标是自己 → {@link ModSounds#EFFECT_CARD_USE_SELF},
+     * 是其他人或生物(玩家 / 敌对目标) → {@link ModSounds#EFFECT_CARD_USE_TARGET}。
+     *
+     * <p>判据用 {@link #cardTypeId()} 而不是物品实例:选择器类效果牌(狂暴)可对他人使用,
+     * 与自身牌共用同一条 {@link #tryUseCard} 路径,必须按**同一份**类型 id 判定,
+     * 否则会随"这次指定了谁当目标"而漂移。
+     */
+    private void playUseSound(Level level, Player user, LivingEntity applyTo) {
+        SoundEvent sound;
+        if (isBoostCard(cardTypeId())) {
+            sound = ModSounds.BOOST_EFFECT_CARD_USE.get();
+        } else if (applyTo == user) {
+            sound = ModSounds.EFFECT_CARD_USE_SELF.get();
+        } else {
+            sound = ModSounds.EFFECT_CARD_USE_TARGET.get();
+        }
+        SoundPlayback.playAt(level, user.getX(), user.getY(), user.getZ(), sound);
+    }
+
+    /** 是否为「使用后播增益专属音效」的三张牌(狂暴 / 王之力 / 岿然不动)。 */
+    private static boolean isBoostCard(String cardTypeId) {
+        return "berserk".equals(cardTypeId)
+                || "king_power".equals(cardTypeId)
+                || "unwavering".equals(cardTypeId);
     }
 
     /**
@@ -499,6 +553,24 @@ public abstract class BaseEffectCardItem extends Item {
     @Override
     public boolean isFoil(ItemStack stack) {
         return TemporaryCardUtil.glint(stack, super.isFoil(stack));
+    }
+
+    /**
+     * 不可丢弃:Q 键 / {@code ServerPlayer#drop(boolean)} 路径直接拒绝(与 {@link CardItem} 同款)。
+     *
+     * <p>临时牌规则要求「不可丢弃」,而本类此前**只**覆写了光效与容器拦截 ⇒ 服务端
+     * {@code ServerPlayer#drop(boolean)} 里 {@code selected.onDroppedByPlayer(this)} 对本类的
+     * 临时效果牌**恒真** ⇒ 会走完丢弃流程,之后才被 {@code event/TemporaryCardEvents} 的
+     * {@code ItemTossEvent} 兜住(取消实体 + 尽力退还进物品栏):牌不会落地,却会**从原槽跳到
+     * 物品栏的其它格子**;退还失败(物品栏满)时更会被**直接销毁**(该处理器明写「绝不落地 ⇒
+     * 放不下即销毁」)⇒ 既不符合「不可丢弃」的语义,也与战斗牌根类 {@link CardItem} 不对称。
+     * 覆写后两个牌根类走**同一份**判据({@link TemporaryCardUtil#isTemporary}),
+     * 与「覆写体只允许委托共用判据」的既有约定一致(见类内临时牌段注释)。
+     */
+    @Override
+    public boolean onDroppedByPlayer(ItemStack stack, Player player) {
+        if (TemporaryCardUtil.isTemporary(stack)) return false;
+        return super.onDroppedByPlayer(stack, player);
     }
 
     /**

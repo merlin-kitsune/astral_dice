@@ -12726,7 +12726,7 @@ function doMamuDie(ctx, tag, keepText) {
 //    /astralprobe ssspawn <tag> <mode> [entityId]  生成带精英特征的靶子并回读产品判定
 //    /astralprobe ssfire  <tag>                    清共享冷却 + 直接触发一次飞星
 //    /astralprobe ssread  <tag>                    只读:星光 / 共享冷却 / 靶子血量与精英判定
-//    /astralprobe ssgeom  <tag>                    只读:落体几何(行程/起点/命中点/1.2 倍校核)
+//    /astralprobe ssgeom  <tag>                    只读:落体几何(行程/起点/命中点/3.6 倍校核)
 //    /astralprobe eliteread <tag>                  只读:靶子的精英判定分项(阈值/boss/神化 NBT)
 //    /astralprobe sherryread <tag>                 只读:推理时间层数 + 效果镜像
 //    /astralprobe hannaread  <tag>                 只读:人偶制作 / 人偶完成 / 魔女漂浮 / 两条冷却
@@ -12955,7 +12955,7 @@ function ssNum(x, digits) {
  *
  * 期望(探针侧按规范公式**独立**推导,不复用产品代码):
  *   legacy = 3.0 - 碰撞箱高/2            // 旧口径行程(脚底上方 3.0 → 碰撞箱中心)
- *   dist   = legacy * 1.2                // 新口径行程(下落速度 ×1.2、时长仍 1 秒 ⇒ 行程 ×1.2)
+ *   dist   = legacy * 3.6                // 行程 ×3.6(= 历史 ×1.2 × 高度 ×3);时长 0.5 秒 ⇒ 速度 ×6
  *   speed  = dist / FALL_TICKS           // 每 tick 下落格数
  *   rise   = origin_y - (feet_y + 3.0)   // 起点相对旧起点的抬升量(应 > 0)
  *   head_match = 产品 impactPoint.y == 目标碰撞箱上沿 y   // 「落到目标头顶即视为命中」
@@ -13036,6 +13036,93 @@ function doSherryRead(ctx, tag) {
     send(ctx, "AP_" + tag + "_SHERRY:layers=" + layers + ":mirror=" + mirror + ":stand=" + stand
         + (err === "" ? "" : ":err=" + err));
     send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+// SHERRY-WATCH-INS(2026-09-25)
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  怪力侦探「推理时间」逐 tick 采样(2026-09-25 新增:赐福结束「全扣」取证)
+//    /astralprobe sherryset   <tag> <n>      直接写入层数(走产品入口 setLayers)
+//    /astralprobe sherrywatch <tag> <ticks>  起逐 tick 采样,N tick 内每 tick 报一行
+//      AP_<tag>_W:<i>:t=<gameTick>:b=<骰神赐福 0/1>:ba=<赐福 amplifier>:l=<层数>:m=<镜像层数>
+//    ⚠️ 存在的理由:命令注入端到端延迟 >2 秒 ⇒ 1 秒级的赐福到期瞬态**不能**靠注入式读数取证
+//      (2026-09-25 实测:注入式读数只会读到"已经归 0"的晚状态,看不到中间过程)。
+// ══════════════════════════════════════════════════════════════════════════════
+
+var SherrySignItemClass = Java.loadClass("com.merlinkitsune.astral_dice.item.sign.SherrySignItem");
+var SherryReasoningEffectClass = Java.loadClass("com.merlinkitsune.astral_dice.effect.SherryReasoningEffect");
+
+/** 层数真值(附件);读失败返回 -1 */
+function sherryLayersOf(p) {
+    try { return ModAttachments.getSherryReasoningLayers(p) - 0; } catch (e) { return -1; }
+}
+
+/** 镜像效果层数(无效果为 0);读失败返回 -1 */
+function sherryMirrorOf(p) {
+    try { return SherryReasoningEffectClass.getStacks(p) - 0; } catch (e) { return -1; }
+}
+
+/** 骰神赐福是否在身上 + 其 amplifier(不在 = -1) */
+function sherryBlessingAmp(p) {
+    try {
+        if (!p.hasEffect(ModEffects.DICE_BLESSING)) return -1;
+        return p.getEffect(ModEffects.DICE_BLESSING).getAmplifier() - 0;
+    } catch (e) { return -2; }
+}
+
+/** 逐 tick 采样的待检状态(由下面的 ServerEvents.tick 消费) */
+var sherryWatchPending = null;
+
+ServerEvents.tick(event => {
+    var pend = sherryWatchPending;
+    if (pend == null) return;
+    try {
+        var p = pend.player;
+        if (p == null) { sherryWatchPending = null; return; }
+        pend.i = pend.i + 1;
+        var bamp = sherryBlessingAmp(p);
+        // v2(2026-09-25):补「赐福剩余时长 d」与「计时守卫记录 endTick re」两个观测量 ——
+        // 用于区分「Expired 被取消(效果仍在)」与「效果被移除后被守卫重新施加」两条通路。
+        var bDur = -1;
+        try { if (bamp >= 0) bDur = p.getEffect(ModEffects.DICE_BLESSING).getDuration() - 0; } catch (e2) { bDur = -3; }
+        var bRec = -1;
+        try {
+            var timerMap = p.getData(ModAttachments.EFFECT_TIMER_ENDS.get());
+            if (timerMap != null) {
+                var ent = timerMap.get("astral_dice:dice_blessing");
+                if (ent != null) bRec = ent.endTick() - 0;
+            }
+        } catch (e3) { bRec = -3; }
+        emitTo(p, "AP_" + pend.tag + "_W:" + pend.i
+            + ":t=" + (nowTick(p) - 0)
+            + ":b=" + (bamp >= 0 ? 1 : 0)
+            + ":ba=" + bamp
+            + ":d=" + bDur
+            + ":re=" + bRec
+            + ":l=" + sherryLayersOf(p)
+            + ":m=" + sherryMirrorOf(p));
+        if (pend.i >= pend.ticks) sherryWatchPending = null;
+    } catch (e) {
+        sherryWatchPending = null;
+    }
+});
+
+/** `/astralprobe sherryset <tag> <n>` —— 探针专用:直接写入层数(免去打多只怪的注入开销) */
+function doSherrySet(ctx, tag, nText) {
+    var p = ctx.source.getPlayerOrException();
+    var n = parseInt("" + nText);
+    SherrySignItemClass.setLayers(p, n);
+    send(ctx, "AP_" + tag + "_SHERRYSET:n=" + n + ":l=" + sherryLayersOf(p) + ":m=" + sherryMirrorOf(p));
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+/** `/astralprobe sherrywatch <tag> <ticks>` —— 起逐 tick 采样(读数行由上面的 tick 消费发出) */
+function doSherryWatch(ctx, tag, ticksText) {
+    var p = ctx.source.getPlayerOrException();
+    var ticks = parseInt("" + ticksText);
+    sherryWatchPending = { player: p, tag: tag, ticks: ticks, i: 0 };
+    send(ctx, "AP_" + tag + "_WATCH:ticks=" + ticks + ":l=" + sherryLayersOf(p));
     return 1;
 }
 
@@ -14401,6 +14488,21 @@ ServerEvents.commandRegistry(event => {
                     .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
                         return doSherryRead(ctx, StringArg.getString(ctx, "tag"));
                     }))))
+// SHERRY-WATCH-REG(2026-09-25)
+            .then(Commands.literal("sherryset")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("n", IntegerArg.integer(0, 4))
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doSherrySet(ctx, StringArg.getString(ctx, "tag"),
+                                "" + IntegerArg.getInteger(ctx, "n"));
+                        })))))
+            .then(Commands.literal("sherrywatch")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("ticks", IntegerArg.integer(1, 400))
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doSherryWatch(ctx, StringArg.getString(ctx, "tag"),
+                                "" + IntegerArg.getInteger(ctx, "ticks"));
+                        })))))
             .then(Commands.literal("hannaread")
                 .then(Commands.argument("tag", StringArg.word())
                     .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {

@@ -3,6 +3,7 @@ package com.merlinkitsune.astral_dice.item.chip;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.item.ChargeManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
+import com.merlinkitsune.astral_dice.item.card.BaseEffectCardItem;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import top.theillusivec4.curios.api.CuriosApi;
@@ -39,14 +40,12 @@ public class ElectricGloveChipItem extends BaseChipItem {
                 && curios.get().findFirstCurio(s -> s.is(ModItems.ELECTRIC_GLOVE_CHIP.get())).isPresent();
     }
 
-    /** 该效果牌是否属于「伤害效果牌」(对怪激光/对怪板砖/轨道炮/定向爆破/活体书页) */
+    /**
+     * 该效果牌是否属于「伤害效果牌」——委托 {@link BaseEffectCardItem#isDamageEffectCard}
+     * (单一事实源:魔法箭袋的「第一张效果牌」追踪用同一判定)。
+     */
     public static boolean isDamageEffectCard(ItemStack cardStack) {
-        if (cardStack == null || cardStack.isEmpty()) return false;
-        return cardStack.is(ModItems.LIVING_PAGE.get())
-                || cardStack.is(ModItems.MONSTER_LASER_CARD.get())
-                || cardStack.is(ModItems.MONSTER_BRICK_CARD.get())
-                || cardStack.is(ModItems.ORBITAL_STRIKE_CARD.get())
-                || cardStack.is(ModItems.DIRECTIONAL_BLAST_CARD.get());
+        return BaseEffectCardItem.isDamageEffectCard(cardStack);
     }
 
     /**

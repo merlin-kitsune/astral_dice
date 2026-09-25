@@ -4,10 +4,10 @@ import com.merlinkitsune.starenginelib.combat.HostileTargets;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.item.ModItems;
-import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.event.entity.living.LivingAttackEvent;
 import top.theillusivec4.curios.api.CuriosApi;
@@ -84,7 +84,7 @@ public class AdrenalineChipItem extends BaseChipItem {
     // 必须在伤害判定最前置处"取消"(LivingAttackEvent)而不是在伤害阶段把伤害改成 0:
     // 否则攻击方 Mob#doHurtTarget 仍会拿到 hurt()==true,继续施加命中附加效果(如尸壳的饥饿)
     // 并播放红屏/屏幕震动/受伤音效。详见 DiceCombatEvents.applyDodgeCancel 的注释。
-    @SubscribeEvent
+    @SubscribeEvent(priority = EventPriority.NORMAL)
     public static void onAdrenalineDodge(LivingAttackEvent event) {
         if (!(event.getEntity() instanceof Player player)) return;
         if (player.level().isClientSide()) return;

@@ -59,6 +59,8 @@
     "astral_dice:airbag_chip",
     "astral_dice:railgun_chip",
     "astral_dice:primordial_core_chip",
-    "astral_dice:whetstone_chip"
+    "astral_dice:whetstone_chip",
+    "astral_dice:purple_shooting_star_chip",
+    "astral_dice:golden_shooting_star_chip"
   ]
 }

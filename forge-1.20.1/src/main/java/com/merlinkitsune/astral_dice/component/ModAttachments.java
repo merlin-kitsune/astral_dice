@@ -592,6 +592,22 @@ public class ModAttachments {
     public static final AttachedDataKey<Integer> STAR_COIN_HAMMER_BONUS =
             register(AttachedDataKey.builder("star_coin_hammer_bonus", Codec.INT, () -> 0).build());
 
+    // 「装备时获得 N 层星光」类筹码/立牌的**发放闸门**(位掩码;位含义见 StarLightManager.GRANT_BIT_*)。
+    // 为什么需要:Curios 只持久化 stacks、**不持久化 previousStacks** ⇒ 登录 / 重生 / 切维度后
+    // 首 tick 的 prevStack 恒为空栈而槽里有物品,Curios 会把这判成一次装备变化并**重放 onEquip**
+    // (1.20.1 curios 5.14.1;1.21.1 9.5.1 同构)。所以"空槽守卫"挡不住这条路径
+    // (重放时它恰好就是空栈),只有玩家级、持久化的闸门能区分"真的新装上"与"登录重放"。
+    // 必须持久化(随附件存档),且**不 `.sync()`、不进 SYNCED_KEYS**(仅服务端判定,客户端不读)。
+    public static final AttachedDataKey<Integer> STARLIGHT_EQUIP_GRANT_FLAGS =
+            register(AttachedDataKey.builder("starlight_equip_grant_flags", Codec.INT, () -> 0).build());
+
+    // 「装备时获得 N 层星光」的**发放账本**:每枚 4 bit 存「本次装备**实际**获得的星光量」(0..15),
+    // 槽位顺序 = `StarLightManager.GRANT_BIT_*` 的位号(bit0 → 最低 4 bit)。
+    // 为什么必须记账:「卸除即扣除」这条**全筹码底线**要按实际值扣 —— 星光已到上限时装备**一点没涨**,
+    // 照名义值扣就是白扣玩家自己攒的星光。必须持久化且**不 `.sync()`/不进 `SYNCED_KEYS`**(仅服务端判定)。
+    public static final AttachedDataKey<Integer> STARLIGHT_EQUIP_GRANT_AMOUNTS =
+            register(AttachedDataKey.builder("starlight_equip_grant_amounts", Codec.INT, () -> 0).build());
+
     // 诅咒之剑筹码:累计击杀不少于 20 血的敌对目标获得的攻击力加成(移除筹码/死亡清除)
     public static final AttachedDataKey<Integer> CURSED_SWORD_BONUS =
             register(AttachedDataKey.builder("cursed_sword_bonus", Codec.INT, () -> 0).sync().build());
@@ -680,6 +696,22 @@ public class ModAttachments {
 
     public static void setStarCoinHammerBonus(net.minecraft.world.entity.player.Player player, int value) {
         STAR_COIN_HAMMER_BONUS.set(player, Math.max(0, value));
+    }
+
+    public static int getStarlightEquipGrantFlags(net.minecraft.world.entity.player.Player player) {
+        return STARLIGHT_EQUIP_GRANT_FLAGS.get(player);
+    }
+
+    public static void setStarlightEquipGrantFlags(net.minecraft.world.entity.player.Player player, int value) {
+        STARLIGHT_EQUIP_GRANT_FLAGS.set(player, value);
+    }
+
+    public static int getStarlightEquipGrantAmounts(net.minecraft.world.entity.player.Player player) {
+        return STARLIGHT_EQUIP_GRANT_AMOUNTS.get(player);
+    }
+
+    public static void setStarlightEquipGrantAmounts(net.minecraft.world.entity.player.Player player, int value) {
+        STARLIGHT_EQUIP_GRANT_AMOUNTS.set(player, value);
     }
 
     public static int getCursedSwordBonus(net.minecraft.world.entity.player.Player player) {
@@ -896,6 +928,18 @@ public class ModAttachments {
     public static final AttachedDataKey<Long> AIRBAG_COOLDOWN_END =
             register(AttachedDataKey.builder("airbag_cooldown_end", Codec.LONG, () -> 0L).sync().build());
 
+    /**
+     * 磨刀石「保留 1 血」（不可被一次伤害击倒）的**触发冷却结束时刻**（1:00；0 表示无冷却）。
+     *
+     * <p>2026-09-24 用户裁决：该保命能力此前**无冷却**，而它的生效条件与安全气囊的「致命伤害」完全
+     * 重叠 ⇒ 戴着磨刀石几乎不会被单次伤害打死，气囊的资源优势被抹平。现改为**一次保命耗一次冷却**
+     * （1:00，与安全气囊同档）；保命优先级明确为 **安全气囊 &gt; 磨刀石**（见 {@code event/ChipDamageHandler}）。
+     *
+     * <p>只在 cap **实际削减了伤害**时写入（不致命的攻击不耗冷却）；低血量减伤（-2）不受本冷却影响。
+     * **仅服务端使用** ⇒ 不 {@code .sync()}。
+     */
+    public static final AttachedDataKey<Long> WHETSTONE_GUARD_COOLDOWN_END =
+            register(AttachedDataKey.builder("whetstone_guard_cooldown_end", Codec.LONG, () -> 0L).build());
     /** 电磁炮:雷击触发冷却结束时刻(1:00;0 表示无冷却;仅第二能力雷击,不影响充能攻击力加成) */
     public static final AttachedDataKey<Long> RAILGUN_COOLDOWN_END =
             register(AttachedDataKey.builder("railgun_cooldown_end", Codec.LONG, () -> 0L).sync().build());
@@ -950,6 +994,14 @@ public class ModAttachments {
 
     public static void setAirbagCooldownEnd(net.minecraft.world.entity.player.Player player, long value) {
         AIRBAG_COOLDOWN_END.set(player, Math.max(0, value));
+    }
+
+    public static long getWhetstoneGuardCooldownEnd(net.minecraft.world.entity.player.Player player) {
+        return WHETSTONE_GUARD_COOLDOWN_END.get(player);
+    }
+
+    public static void setWhetstoneGuardCooldownEnd(net.minecraft.world.entity.player.Player player, long value) {
+        WHETSTONE_GUARD_COOLDOWN_END.set(player, Math.max(0, value));
     }
 
     public static long getRailgunCooldownEnd(net.minecraft.world.entity.player.Player player) {
@@ -1048,6 +1100,28 @@ public class ModAttachments {
 
     public static void setSherryReasoningLayers(net.minecraft.world.entity.player.Player player, int value) {
         SHERRY_REASONING_LAYERS.set(player, Math.max(0, value));
+    }
+
+    /**
+     * **已推理目标 UUID 集**(逗号分隔) —— 「侦探出击」被动「每个目标只提供 1 层」的唯一判据。
+     *
+     * <p>「攻击一个**新**目标」= 该 UUID 不在本集中;首次命中即登记,已登记的直接跳过(不再 +1 层)。
+     * 写法与寿命都沿用 {@link #FLASHLIGHT_GRANTED_TARGETS} 的字符串集口径:**卸下立牌即清空**。
+     * ⚠️ 层数 {@link #SHERRY_REASONING_LAYERS} 本身**跨死亡保留**({@code .copyOnDeath()} / 1.20.1 白名单),
+     * 而本记录**有意不跨死亡**(不加 {@code .copyOnDeath()})—— 死亡属重置类事件,重生后同一目标可重新
+     * 提供 1 层;口径与手电筒筹码一致(理由见 {@code SherrySignItem#MAX_TRACKED_TARGETS})。
+     *
+     * <p>不 {@code .sync()}:仅服务端判定,客户端不读。
+     */
+    public static final AttachedDataKey<String> SHERRY_REASONING_TARGETS =
+            register(AttachedDataKey.builder("sherry_reasoning_targets", Codec.STRING, () -> "").build());
+
+    public static String getSherryReasoningTargets(net.minecraft.world.entity.player.Player player) {
+        return SHERRY_REASONING_TARGETS.get(player);
+    }
+
+    public static void setSherryReasoningTargets(net.minecraft.world.entity.player.Player player, String value) {
+        SHERRY_REASONING_TARGETS.set(player, value == null ? "" : value);
     }
 
     // ══════════════════════════════════════════════════════════════════════════

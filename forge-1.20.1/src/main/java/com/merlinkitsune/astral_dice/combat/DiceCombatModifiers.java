@@ -29,7 +29,6 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
-import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.effect.MobEffects;
@@ -63,6 +62,9 @@ import com.merlinkitsune.starenginelib.combat.HostileTargets;
  */
 public final class DiceCombatModifiers {
 
+    // 额外加伤修饰器表(与攻击力修饰器**分离**:见 extraDamageOf 的口径说明)
+    private static final List<ExtraDamageModifier> EXTRA_DAMAGE_MODIFIERS = new ArrayList<>();
+
     private static final List<AttackPowerModifier> ATTACK_MODIFIERS = new ArrayList<>();
     private static final List<DefensePowerModifier> DEFENSE_MODIFIERS = new ArrayList<>();
 
@@ -82,6 +84,34 @@ public final class DiceCombatModifiers {
     public static List<AttackPowerModifier> attackModifiers() {
         return List.copyOf(ATTACK_MODIFIERS);
     }
+
+    /**
+     * **额外加伤**唯一求值入口:命中落地后按独立伤害类型({@code astral_dice:extra_damage})单独结算的加伤合计。
+     *
+     * <p>与 {@link #attackModifiers()} **分离**:这些加伤不得并进「攻击力」—— 否则会污染依赖「攻击力快照」
+     * 的效果(教主立牌降神的「狐光攻击基数」)⇒ 2026-09-25 用户裁决拆成独立通道,文案一律称「攻击伤害」
+     * (加到玩家基础伤害的才叫「攻击力」)。
+     */
+    public static int extraDamageOf(DiceCombatContext ctx) {
+        if (ctx == null) return 0;
+        int sum = 0;
+        for (ExtraDamageModifier modifier : EXTRA_DAMAGE_MODIFIERS) {
+            sum += Math.max(0, modifier.extraDamage(ctx));
+        }
+        return sum;
+    }
+
+    /** 额外加伤修饰器:返回本次命中应额外结算的点数(0 = 不适用)。 */
+    @FunctionalInterface
+    public interface ExtraDamageModifier {
+        int extraDamage(DiceCombatContext ctx);
+    }
+
+    /** 注册额外加伤修饰器(按注册顺序累加) */
+    public static void registerExtraDamageModifier(ExtraDamageModifier modifier) {
+        EXTRA_DAMAGE_MODIFIERS.add(modifier);
+    }
+
 
     public static List<DefensePowerModifier> defenseModifiers() {
         return List.copyOf(DEFENSE_MODIFIERS);
@@ -250,46 +280,62 @@ public final class DiceCombatModifiers {
             return ap;
         });
 
-        // === 内置:美工刀/美工刀-锋利(满血时按当前治愈点数增伤) ===
-        registerAttackModifier((ctx, ap) -> {
-            if (ctx.attacker.level().isClientSide()) return ap;
-            boolean fullHp = ctx.attacker.getHealth() >= ctx.attacker.getMaxHealth() * 0.6f || ctx.attacker.hasEffect(ModEffects.PAPARA_BITE.get());
-            if (fullHp) {
-                int healing = HealingManager.getPoints(ctx.attacker);
-                if (hasCurio(ctx.attacker, ModItems.CUTTER_CHIP.get())) {
-                    ap += 2 + healing;
-                }
-                if (hasCurio(ctx.attacker, ModItems.CUTTER_BLADE_CHIP.get())) {
-                    ap += 4 + healing;
-                }
+        // === 额外加伤:美工刀 / 美工刀-锋利(生命值不低于 60% 时,按当前治愈点数加伤) ===
+        // 2026-09-25 用户裁决:由「攻击力修饰器」改为**额外加伤修饰器** —— 独立伤害类型结算,
+        // 不进攻击力(故不会污染降神的攻击力快照),文案称「攻击伤害」。
+        registerExtraDamageModifier(ctx -> {
+            if (ctx.attacker.level().isClientSide()) return 0;
+            boolean fullHp = ctx.attacker.getHealth() >= ctx.attacker.getMaxHealth() * 0.6f
+                    || ctx.attacker.hasEffect(ModEffects.PAPARA_BITE.get());
+            if (!fullHp) return 0;
+            int healing = HealingManager.getPoints(ctx.attacker);
+            int extra = 0;
+            if (hasCurio(ctx.attacker, ModItems.CUTTER_CHIP.get())) {
+                extra += 2 + healing;
             }
-            return ap;
+            if (hasCurio(ctx.attacker, ModItems.CUTTER_BLADE_CHIP.get())) {
+                extra += 4 + healing;
+            }
+            return extra;
         });
 
-        // === 内置:普通瞄具/鹰眼瞄具(攻击力+2/+标记层数*2,并施加 1 层标记) ===
+        // === 内置:普通瞄具/鹰眼瞄具(攻击力+2;骰神赐福期间攻击时施加 1 层标记 / 按标记层数×2 加攻击力) ===
+        // ⚠️ 2026-09-24 用户裁决:「瞄具类攻击实际上受**骰神赐福门控** —— 不按骰神赐福模式攻击目标
+        //   (近战类)则不应该触发」⇒ 标记与鹰眼的 ×2 都要求 `DICE_BLESSING` 生效;
+        //   普通瞄具的固定 +2 仍**无条件**(与 tooltip 同源:「攻击力 +2。骰神赐福期间攻击时对目标施加 1 层标记」)。
+        //   旧实现只判「是否佩戴」⇒ 未处于赐福期间也会施加标记/加成,与文案不符,本次补齐门控。
         registerAttackModifier((ctx, ap) -> {
             if (ctx.attacker.level().isClientSide()) return ap;
+            // ⚠️ 本线(forge)必须 .get():此处 ModEffects 暴露的是 RegistryObject,hasEffect 只收 MobEffect 实例;
+            //    neo 两线是 DeferredHolder(实现 Holder<MobEffect>)⇒ 可直接传给 hasEffect(Holder)。勿互相照抄。
+            boolean blessed = ctx.attacker.hasEffect(ModEffects.DICE_BLESSING.get());
             if (hasCurio(ctx.attacker, ModItems.SCOPE_CHIP.get())) {
                 ap += 2;
-                if (ctx.event != null) MarkManager.apply(ctx.target);
+                if (blessed && ctx.event != null) MarkManager.apply(ctx.target);
             }
             if (hasCurio(ctx.attacker, ModItems.EAGLE_SCOPE_CHIP.get())) {
-                int markLevel = MarkManager.getLevel(ctx.target);
-                ap += markLevel * 2;
-                if (ctx.event != null) MarkManager.apply(ctx.target);
+                if (blessed) {
+                    int markLevel = MarkManager.getLevel(ctx.target);
+                    ap += markLevel * 2;
+                    if (ctx.event != null) MarkManager.apply(ctx.target);
+                }
             }
             return ap;
         });
 
-        // === 内置:标靶(攻击力+1) / 手电筒-强光(每 4 星光 +1) ===
+        // === 内置:标靶(攻击力+1) ===
+        // 手电筒-强光(每 4 星光 +1)自 2026-09-25 起改为**额外加伤**(见下方专属块)。
         registerAttackModifier((ctx, ap) -> {
             if (hasCurio(ctx.attacker, ModItems.TARGET_CHIP.get())) {
                 ap += 1;
             }
-            if (hasCurio(ctx.attacker, ModItems.FLASHLIGHT_CHIP.get())) {
-                ap += StarLightManager.get(ctx.attacker) / 4;
-            }
             return ap;
+        });
+
+        // === 额外加伤:手电筒-强光(每 4 层星光 +1 点) ===
+        registerExtraDamageModifier(ctx -> {
+            if (!hasCurio(ctx.attacker, ModItems.FLASHLIGHT_CHIP.get())) return 0;
+            return StarLightManager.get(ctx.attacker) / 4;
         });
 
         // === 内置:电流剑(每 4 点充能 +1 攻击力) ===
@@ -354,12 +400,11 @@ public final class DiceCombatModifiers {
             return ap;
         });
 
-        // === 内置:星币锤(进入骰神赐福消耗星币,按持有总数 30% 提升攻击力,赐福结束清除) ===
-        registerAttackModifier((ctx, ap) -> {
-            if (hasCurio(ctx.attacker, ModItems.STAR_COIN_HAMMER.get())) {
-                ap += ModAttachments.getStarCoinHammerBonus(ctx.attacker);
-            }
-            return ap;
+        // === 额外加伤:星币锤(进入骰神赐福消耗星币,按持有总数 30% 加伤,赐福结束清除) ===
+        // 2026-09-25 用户裁决:由「攻击力修饰器」改为**额外加伤修饰器**(独立伤害类型)。
+        registerExtraDamageModifier(ctx -> {
+            if (!hasCurio(ctx.attacker, ModItems.STAR_COIN_HAMMER.get())) return 0;
+            return ModAttachments.getStarCoinHammerBonus(ctx.attacker);
         });
 
         // === 内置:诅咒之剑(装备时受青之诅咒;每击杀 1 个不少于 20 血的敌对目标攻击力 +1,上限由配置决定) ===
@@ -441,8 +486,10 @@ public final class DiceCombatModifiers {
             int stage = investigation.getAmplifier(); // 1=I,2=II,3=III,4=真相揭露(I 无攻击加成)
             int markLevel = MarkManager.getLevel(ctx.target);
             boolean isBoss = BossEntityUtil.isBossEntity(ctx.target);
-            // 上下文重载:把「非同队伍且曾主动攻击过攻击者的玩家」一并计入敌对(全局规则)
-            boolean isHostile = HostileTargets.isHostile(ctx.attacker, ctx.target);
+            // 2026-09-24 口径统一:改用**法伤链同一闸门** isBlessingTarget(比 HostileTargets 更宽:
+            // 含非同队玩家 / Boss / 会反击的中立怪)⇒ 与骰神赐福、贯穿之铳、忍术飞镖一致
+            boolean isHostile = com.merlinkitsune.astral_dice.combat.DiceCombatEvents
+                    .isBlessingTarget(ctx.target, ctx.attacker);
             if (!isBoss && isHostile) {
                 if (stage >= 3) {
                     ap += 2 + markLevel;
@@ -529,12 +576,12 @@ public final class DiceCombatModifiers {
         // === 内置:教主立牌(teru)「狐光」—— 降神目标每攻击一个**新目标**,消耗 1 层并追加攻击力 ===
         // 额外攻击 = 狐光攻击基数(施法者快照攻击力 = 施加时的基础攻击力 + 从目标获得的 50%,施法瞬间快照)
         //           + 消耗 1 层后的剩余层数;计入骰战**攻击力**(受目标防御力抵扣,并参与全力攻击等既有倍率)。
-        // 「新目标」判定与消耗/登记全部收敛在 TeruSignItem#consumeHuguangForNewTarget
+        // 「新目标」判定与消耗/登记全部收敛在 TeruSignItem#descendExtraAttack
         // (层数已为 0 ⇒ 不消耗、不追加;施法者离线 ⇒ 不加成、不消耗)。
         registerAttackModifier((ctx, ap) -> {
             if (ctx.attacker.level().isClientSide()) return ap;
             return ap + com.merlinkitsune.astral_dice.item.sign.TeruSignItem
-                    .consumeHuguangForNewTarget(ctx.attacker, ctx.target);
+                    .descendExtraAttack(ctx.attacker, ctx.target);
         });
 
         // === 内置:蛟龙立牌(mamushi)「真龙形态」—— 觉醒 ≥ 8 层且佩戴立牌 ⇒ 攻击力 +5 ===

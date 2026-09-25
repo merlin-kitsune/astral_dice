@@ -1,5 +1,7 @@
 package com.merlinkitsune.astral_dice.economy;
 
+import com.merlinkitsune.astral_dice.audio.ModSounds;
+import com.merlinkitsune.astral_dice.audio.SoundPlayback;
 import com.merlinkitsune.astral_dice.item.ModItems;
 
 import net.minecraft.network.chat.Component;
@@ -61,6 +63,8 @@ public final class StarCoinWalletActions {
             case DEPOSIT_ALL -> {
                 long deposited = StarCoinCurrency.depositAllFromInventory(player);
                 if (deposited > 0L) {
+                    // 存钱音效:只在真的存进去时响(空操作保持静默,与"取不出"的处理一致)
+                    SoundPlayback.playTo(player, ModSounds.WALLET_DEPOSIT.get());
                     send(player, Component.translatable(
                             "msg.astral_dice.star_coin_wallet_deposited", deposited));
                 } else {
@@ -79,6 +83,9 @@ public final class StarCoinWalletActions {
     private static void withdraw(ServerPlayer player, Item item, int maxCount) {
         int taken = StarCoinCurrency.withdraw(player, item, maxCount);
         if (taken > 0) {
+            // 取钱音效:星币与星币袋各一条;取不出时不响(与失败提示同条件)
+            SoundPlayback.playTo(player, (item == ModItems.STAR_COIN_BAG.get()
+                    ? ModSounds.COIN_BAG_WITHDRAW : ModSounds.COIN_WITHDRAW).get());
             send(player, Component.translatable("msg.astral_dice.star_coin_wallet_withdrawn",
                     new ItemStack(item).getHoverName(), taken));
         } else {

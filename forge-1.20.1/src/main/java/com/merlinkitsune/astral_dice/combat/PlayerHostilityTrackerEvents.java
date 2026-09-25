@@ -43,7 +43,7 @@ public final class PlayerHostilityTrackerEvents {
     }
 
     /** 记录「攻击者主动攻击过受害者」(仅玩家对玩家,且非本人;仅服务端) */
-    @SubscribeEvent
+    @SubscribeEvent(priority = EventPriority.NORMAL)
     public static void onLivingDamage(LivingDamageEvent event) {
         // 只记"确实成立的伤害":LivingDamageEvent 在 Forge 可取消(被取消 ⇒ 该伤害不生效)
         if (event.isCanceled()) return;

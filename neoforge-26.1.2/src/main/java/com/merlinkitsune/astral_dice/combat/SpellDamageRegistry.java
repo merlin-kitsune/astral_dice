@@ -224,6 +224,10 @@ public final class SpellDamageRegistry {
         //    该伤害必须登记为法伤,才能原样跑完整修饰器链(见 LivingPageImpact 的结算说明)。
         //    注意:这里**不**依赖任何"效果存在"的开关 —— 书页命中本身就是一次法伤事件。
         registerMatcher((source, direct) -> source.is(ModDamageTypes.CARD_SPELL));
+        // ⚠️ **禁止**把 astral_dice:skill_damage(技能类伤害)加入本白名单 —— 它是立牌 / 技能
+        //   **固定点数**伤害的专用类型(2026-09-24 用户裁决「避免与法伤混用」):一旦加入,
+        //   这些固定点数会被本链的全部修饰器放大,并触发电击手套的波及。
+        //   需要「不是法伤、但无视护甲」的伤害时,用 ModDamageTypes.skillDamage(...)。
 
         // === 内置修饰器 ===
         // (活体书页原有的「效果期间远程/魔法伤害 +2+页数」修饰器已于 2026-09-25 删除:
@@ -281,10 +285,12 @@ public final class SpellDamageRegistry {
             public void onHit(SpellDamageContext ctx, double bonus) {
                 if (bonus <= 0) return;
                 net.minecraft.world.phys.AABB aabb = ctx.target.getBoundingBox().inflate(6);
+                // 2026-09-24 口径统一:波及选目标用法伤链同一闸门(比 HostileTargets 更宽)
+                // e != ctx.attacker:同电击手套 —— 闸门对「施法者本人」不成立,须显式排除(2026-09-24 修复)
                 var nearby = ctx.target.level().getEntitiesOfClass(
                         net.minecraft.world.entity.LivingEntity.class, aabb,
-                        e -> HostileTargets.isHostile(ctx.attacker, e)
-                                && e != ctx.target && e.isAlive());
+                        e -> DiceCombatEvents.isBlessingTarget(e, ctx.attacker)
+                                && e != ctx.target && e != ctx.attacker && e.isAlive());
                 var blastSource = com.merlinkitsune.astral_dice.damage.ModDamageTypes
                         .trueDamage(ctx.target.level(), ctx.attacker);   // 真伤:效果牌范围波及伤害同样无视护甲值/盔甲韧性
                 // AOE 造成与主目标「同样的伤害」:基础 5 + 效果牌伤害加成(与主目标一致,不吃忍者/书签加成之外的其它修饰器)
@@ -320,18 +326,22 @@ public final class SpellDamageRegistry {
                 return bonus + MarkManager.getLevel(ctx.target);
             }
         });
-        // 贯穿之铳:只要佩戴者对**敌对目标**造成远程/魔法伤害,即额外增加目标防御力点数的伤害。
+        // 贯穿之铳:佩戴者对目标造成**远程/魔法伤害**即额外增加「目标防御力点数」的伤害。
         // (2026-09-24 用户裁决:与忍术飞镖保持一致 —— 移除「已使用伤害效果牌」前提)
+        // (2026-09-24 用户裁决:目标判定也与忍术飞镖对齐 —— 移除「必须是敌对目标」这一范围检查)
         //
-        // ⚠️ 与忍术飞镖的唯一差别:本修饰器**保留目标范围检查**(必须是敌对目标) ——
-        // 其加成值取自「目标防御力点数」,对非敌对目标(被动动物/队友/自己)生效没有玩法意义。
-        // 同忍术飞镖,「进入本方法」已由 DamageEffectCardHandler 用 isSpellDamage 筛过作用域
-        // ⇒ 等价于「本次是远程/魔法伤害」,无需重复判定。
+        // ⚠️ 本修饰器**不再做任何目标范围判定**,与忍术飞镖完全同形:「进入本方法」已由
+        //  DamageEffectCardHandler 用 isSpellDamage 筛过作用域 ⇒ 等价于「本次是远程/魔法伤害」;
+        //  目标侧由该处理器的 isBlessingTarget 闸门统一把关(敌对生物 / 中立生物(宠物除外) /
+        //  非同队玩家 / Boss / 正在攻击你的怪),本修饰器不二次收窄。
+        //  历史:旧实现额外要求 HostileTargets.isHostile(attacker, target) —— 该判据比闸门**更窄**,
+        //  使「非同队但从未攻击过你的玩家」与「非 NeutralMob 的中立生物(山羊/羊驼/狐狸等)」
+        //  只吃忍术飞镖、不吃贯穿之铳 ⇒ 已按上述裁决删除。
+
         registerModifier(new SpellDamageModifier() {
             @Override
             public boolean isActive(SpellDamageContext ctx) {
-                return ctx.hasCurio(ModItems.PIERCING_GUN.get())
-                        && HostileTargets.isHostile(ctx.attacker, ctx.target);
+                return ctx.hasCurio(ModItems.PIERCING_GUN.get());
             }
 
             @Override
@@ -353,16 +363,19 @@ public final class SpellDamageRegistry {
                 }
             }
         });
-        // 魔法箭袋:使用过效果牌并对带标记目标造成法伤 → 施加一层标记并返还第一张使用的效果牌(每分钟一次)
+        // 魔法箭袋:**使用过伤害效果牌**并对**已有标记**目标造成法伤 → 施加一层标记并返还第一张使用的效果牌。
+        // 2026-09-24 用户裁决(第二版):取消「活体书页命中必定触发」的例外 —— 必须先用过一张伤害效果牌
+        // (活体书页本身即计入该集合),且追踪只统计伤害效果牌;冷却 30 秒。
         registerModifier(new SpellDamageModifier() {
             @Override
             public boolean isActive(SpellDamageContext ctx) {
                 if (!ctx.hasCurio(ModItems.MAGIC_QUIVER.get())) return false;
-                if (!ModAttachments.getMagicQuiverTracking(ctx.attacker)) return false;
                 if (ctx.attacker.level().getGameTime() < ModAttachments.getMagicQuiverCooldownEnd(ctx.attacker)) {
                     return false;
                 }
-                return MarkManager.getLevel(ctx.target) > 0;
+                if (MarkManager.getLevel(ctx.target) <= 0) return false;
+                // 本方法只在法伤链内求值(isSpellDamage 已筛过作用域)⇒ 只需判「已记录第一张伤害效果牌」
+                return ModAttachments.getMagicQuiverTracking(ctx.attacker);
             }
 
             @Override
@@ -406,8 +419,12 @@ public final class SpellDamageRegistry {
                 if (total <= 0) return;
                 net.minecraft.world.phys.AABB aabb = ctx.target.getBoundingBox()
                         .inflate(com.merlinkitsune.astral_dice.item.chip.ElectricGloveChipItem.AOE_RADIUS);
+                // 2026-09-24 口径统一:波及选目标用法伤链同一闸门(比 HostileTargets 更宽)
+                // e != ctx.attacker:闸门把「无队伍玩家」视为敌对(相对他人成立),对**施法者本人**不成立,
+                // 不显式排除自己则近战距离下 AOE 会波及施法者自己(2026-09-24 修复)
                 var nearby = ctx.target.level().getEntitiesOfClass(LivingEntity.class, aabb,
-                        e -> HostileTargets.isHostile(ctx.attacker, e) && e != ctx.target && e.isAlive());
+                        e -> DiceCombatEvents.isBlessingTarget(e, ctx.attacker)
+                                && e != ctx.target && e != ctx.attacker && e.isAlive());
                 var source = com.merlinkitsune.astral_dice.damage.ModDamageTypes
                         .trueDamage(ctx.target.level(), ctx.attacker);   // 真伤:效果牌范围波及伤害同样无视护甲值/盔甲韧性
                 // AOE 波及伤害不进入骰战结算(见 DiceCombatEvents.aoeProcessing)

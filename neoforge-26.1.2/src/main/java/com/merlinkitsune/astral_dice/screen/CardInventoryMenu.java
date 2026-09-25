@@ -9,6 +9,9 @@ import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.component.WeaponEnhancement;
 import com.merlinkitsune.astral_dice.item.dice.DiceCurioItem;
 import com.merlinkitsune.astral_dice.item.ModItems;
+import com.merlinkitsune.astral_dice.item.card.ExclusiveCardUtil;
+import com.merlinkitsune.astral_dice.item.card.TemporaryCardPermissiveSlot;
+import com.merlinkitsune.astral_dice.item.card.TemporaryCardUtil;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
@@ -270,6 +273,11 @@ public class CardInventoryMenu extends AbstractContainerMenu {
                 if (defIdx < cardSlots) {
                     ItemStack itemStack = stoneToItem(stone);
                     itemStack.set(ModDataComponents.CARD_USES.get(), stone.uses());
+                    // 临时牌(绿洲女王 nardis):装配状态下的临时性只存在 AppliedStone 里(装配会销毁
+                    // 物品栈),这里把它**还原**到重建出来的栈上 ⇒ 卡牌栏 UI 里也一眼可辨(isFoil 会亮)。
+                    if (stone.temporary()) {
+                        TemporaryCardUtil.mark(player, itemStack);
+                    }
                     cardContainer.setItem(defIdx, itemStack);
                     defIdx++;
                 }
@@ -277,6 +285,9 @@ public class CardInventoryMenu extends AbstractContainerMenu {
                 if (attIdx < attackSlots) {
                     ItemStack itemStack = stoneToItem(stone);
                     itemStack.set(ModDataComponents.CARD_USES.get(), stone.uses());
+                    if (stone.temporary()) {
+                        TemporaryCardUtil.mark(player, itemStack);
+                    }
                     cardContainer.setItem(attIdx, itemStack);
                     attIdx++;
                 }
@@ -299,7 +310,9 @@ public class CardInventoryMenu extends AbstractContainerMenu {
                 if (type != null) {
                     int cost = stoneCost(type);
                     int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses(type));
-                    stones.add(new AppliedStone(type, uses));
+                    // 临时性从物品栈**读回**写进记录(装配后物品栈会被销毁,记录是唯一载体;
+                    // 反向还原见 loadFromDice)。
+                    stones.add(new AppliedStone(type, uses, TemporaryCardUtil.isTemporary(stack)));
                     if (isDefenseType(type)) {
                         totalDefenseCost += cost;
                     } else {
@@ -312,6 +325,27 @@ public class CardInventoryMenu extends AbstractContainerMenu {
         int actualStar = dice.getOrDefault(ModDataComponents.WEAPON_ENHANCEMENT.get(), WeaponEnhancement.EMPTY).starLevel();
         dice.set(ModDataComponents.WEAPON_ENHANCEMENT.get(),
                 new WeaponEnhancement(totalAttackCost, maxAttackCost, totalDefenseCost, maxDefenseCost, actualStar, stones));
+    }
+
+    /**
+     * 清空卡牌栏里所有带临时标记的牌,返回移除张数(幂等;判据 =
+     * {@link TemporaryCardUtil#isTemporary})。
+     *
+     * <p>为什么需要这个方法:牌一旦放进卡牌栏就**离开了物品栏**,而本菜单的
+     * {@code cardContainer} 在这段时间里才是「骰子卡牌栏」的真值 —— 菜单关闭时
+     * {@link #saveToDice()} 会把它写回骰子。所以死亡清牌({@code event/PlayerLifecycleHandler})
+     * 与效果到期清牌({@code TemporaryCardUtil#tick})若不覆盖这里,这些牌会借「关闭菜单时写回骰子」
+     * 跨过清理。{@code TemporaryCardUtil#purgeAll} 已接入本方法(扫「当前打开的容器」那一段)。
+     */
+    public int purgeTemporaryCards() {
+        int removed = 0;
+        for (int i = 0; i < cardSlots; i++) {
+            ItemStack stack = cardContainer.getItem(i);
+            if (!TemporaryCardUtil.isTemporary(stack)) continue;
+            removed += stack.getCount();
+            cardContainer.setItem(i, ItemStack.EMPTY);
+        }
+        return removed;
     }
 
     public ItemStack getCardItem(int slotIndex) {
@@ -422,7 +456,7 @@ public class CardInventoryMenu extends AbstractContainerMenu {
         return stack;
     }
 
-    class AttackCardSlot extends Slot {
+    class AttackCardSlot extends Slot implements TemporaryCardPermissiveSlot {
         AttackCardSlot(int index, int x, int y) {
             super(cardContainer, index, x, y);
         }
@@ -431,6 +465,8 @@ public class CardInventoryMenu extends AbstractContainerMenu {
         public boolean mayPlace(ItemStack stack) {
             String type = itemToStoneType(stack);
             if (type == null || isDefenseType(type)) return false;
+            // 专属牌守门(撕咬/龙之咆哮等):非获得者不得装备(无主时放行并首次绑定,与效果牌同语义)
+            if (ExclusiveCardUtil.isExclusive(stack) && !ExclusiveCardUtil.canUse(player, stack)) return false;
             int slotCost = stoneCost(type);
             int usedWithoutThis = 0;
             for (int i = 0; i < attackSlots; i++) {
@@ -450,7 +486,7 @@ public class CardInventoryMenu extends AbstractContainerMenu {
         }
     }
 
-    class DefenseCardSlot extends Slot {
+    class DefenseCardSlot extends Slot implements TemporaryCardPermissiveSlot {
         DefenseCardSlot(int index, int x, int y) {
             super(cardContainer, index, x, y);
         }
@@ -459,6 +495,8 @@ public class CardInventoryMenu extends AbstractContainerMenu {
         public boolean mayPlace(ItemStack stack) {
             String type = itemToStoneType(stack);
             if (type == null || !isDefenseType(type)) return false;
+            // 专属牌守门(同攻击牌槽;当前专属战斗牌均为攻击牌,防御槽此行为纵深防御)
+            if (ExclusiveCardUtil.isExclusive(stack) && !ExclusiveCardUtil.canUse(player, stack)) return false;
             int slotCost = stoneCost(type);
             int usedWithoutThis = 0;
             for (int i = attackSlots; i < cardSlots; i++) {

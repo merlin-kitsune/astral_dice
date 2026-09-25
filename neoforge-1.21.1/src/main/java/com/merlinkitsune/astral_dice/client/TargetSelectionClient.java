@@ -49,7 +49,7 @@ import java.util.Optional;
  *   <li><b>右键 + 潜行</b> = 取消选择；</li>
  *   <li><b>ESC</b> = 原版照常打开暂停菜单，菜单一打开（{@code ScreenEvent.Opening}）即取消选择
  *       （**手持即选择类会话例外**：开着菜单也保留会话，见 {@link #onScreenOpening}）；</li>
- *   <li><b>J</b>（主动技能键）= 取消选择（保留）；</li>
+ *   <li><b>J</b>（主动技能键）= 取消**按键开启的**选择会话；「手持即选择」类会话（效果牌握在主手时自动开启）**不吞此键** —— 照常触发立牌主动技能（2026-09-24 用户报 BUG 后修正）；</li>
  *   <li><b>移出主手</b> = 手持即选择类会话（四张效果牌）的收官方式：物品离开主手即退出选择
  *       （{@code reason=released}，无瞬态提示），此类会话**没有倒计时**、提示里也不出现剩余时间；</li>
  *   <li>选择期间滚轮拦截、{@link ChatScreen} 豁免（命令聊天/自动化注入命令）均保留。</li>
@@ -165,6 +165,16 @@ public final class TargetSelectionClient {
     /** 本次会话是否允许对自身使用（服务端下发；ren_privilege 与三张可自用效果牌为 true，其余 false） */
     public static boolean allowSelf() {
         return allowSelf;
+    }
+    /**
+     * 当前会话是否由「主手手持物品」驱动（=「手持即选择」类，无倒计时，物品离开主手即退出）。
+     *
+     * <p>供 {@code client/KeyBindingSetup} 分流主动技能键：手持类会话是**由物品而非按键**开启的，
+     * 玩家从未按过键 ⇒ 不得把它当作「按 J 取消选择」，否则握着选择器类效果牌时触发不了立牌主动技能
+     * （2026-09-24 用户报 BUG「手持活体书页时，无法触发主动技能」）。
+     */
+    public static boolean isHoldToSelect() {
+        return holdToSelect;
     }
 
     /**

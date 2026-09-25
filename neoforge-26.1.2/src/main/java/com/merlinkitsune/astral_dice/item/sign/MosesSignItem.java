@@ -30,7 +30,9 @@ import top.theillusivec4.curios.api.SlotContext;
  * 弱点识破:每层攻击/防御 +1、骰点最低数 +1,骰神赐福结束减 1 层,最多 4 层。
  * 被动「精密技巧」:装备时主动冷却减为 120 秒。
  * 主动「弱点反击」:使用目标选择器选择普通敌对目标并施加「破绽」2:00
- * (选择器目标规则:仅 vanilla {@link net.minecraft.world.entity.monster.Enemy} 敌对生物)。
+ * (选择器目标规则:{@code TargetType.ENEMY} 经 {@code SelectorTargets} 委托到全局唯一入口
+ *  {@code HostileTargets.isHostile} ⇒ 敌对生物 ∪ **中立生物(宠物除外)** ∪ 试验假人,**已含中立**;
+ *  旧注记「仅 vanilla Enemy」自 2026-09-22 口径下沉起即已过时,2026-09-24 订正)。
  * 破绽:目标与枪匠交战时骰点只能为 0,会被枪匠闪避;闪避后自动反击。
  *
  * 主动为"目标选择器"类技能:触发后经 {@link TargetSelectionManager} 进入选择模式,

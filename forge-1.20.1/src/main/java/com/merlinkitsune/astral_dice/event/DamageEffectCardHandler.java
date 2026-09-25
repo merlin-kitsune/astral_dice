@@ -1,6 +1,8 @@
 package com.merlinkitsune.astral_dice.event;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
+import com.merlinkitsune.astral_dice.audio.ModSounds;
+import com.merlinkitsune.astral_dice.audio.SoundPlayback;
 import com.merlinkitsune.astral_dice.combat.SpellDamageContext;
 import com.merlinkitsune.astral_dice.combat.SpellDamageModifier;
 import com.merlinkitsune.astral_dice.combat.SpellDamageRegistry;
@@ -9,6 +11,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.event.entity.living.LivingDamageEvent;
 import com.merlinkitsune.astral_dice.network.ModNetwork.DamageNumberMessage;
@@ -25,6 +28,9 @@ public class DamageEffectCardHandler {
      *  若将来某个作用域 matcher 把它判为法伤就会无限递归;闸门只覆盖"本处理器自己发起的那一次真伤结算"。 */
     private static final ThreadLocal<Boolean> APPLYING_TRUE_BONUS = ThreadLocal.withInitial(() -> Boolean.FALSE);
 
+    /** 活体书页命中的「重击」音效门槛:本次**完整伤害**(与 HUD 跳字同值) >= 该值即播 bighit。 */
+    private static final int LIVING_PAGE_BIG_HIT_THRESHOLD = 8;
+
     // ⚠️ 事件时机必须与 1.21.1 对齐(2026-09-15 用户裁决修补 KI-5「电击手套 AOE 基准跨版本」):
     // 1.21.1 挂在 LivingDamageEvent.Pre(**护甲/附魔减免之后**),而 1.20.1 原先挂 LivingHurtEvent
     // (**护甲前**,LivingEntity.java:1665 早于 :1667-1668 的护甲减免)⇒ 同一发法伤在 1.20.1 上
@@ -34,7 +40,7 @@ public class DamageEffectCardHandler {
     // 残余(平台固有,已在 AGENTS.md 记录):1.20.1 的 LivingDamageEvent 在**吸收结算之后**
     // (吸收 :1669-1670 早于派发 :1680),1.21.1 的 Pre 在**吸收之前**(:1789 早于 :1790-1792),
     // 故目标带吸收(黄心)时两版本基准仍会有差异——普通目标无吸收,实际影响可忽略。
-    @SubscribeEvent
+    @SubscribeEvent(priority = EventPriority.NORMAL)
     public static void onLivingDamagePre(LivingDamageEvent event) {
         LivingEntity target = event.getEntity();
         if (target.level().isClientSide()) return;
@@ -76,6 +82,18 @@ public class DamageEffectCardHandler {
             // HUD 数显 = 本次法伤的**完整伤害**(原始基础伤害 + 法伤加成,取整;2026-09-19 用户要求)。
             // 基准取 `event.getAmount()`(护甲之后;见类注释的平台差异),与电击手套 AOE 同口径。
             sendBonusDamageNumber(target, (int) Math.round(event.getAmount() + bonus));
+        }
+
+        // 活体书页命中音效:**按本次命中的完整伤害分档**，取值与上面的 HUD 跳字完全同源
+        // （原始基础伤害 + 法伤加成，取整）⇒ 玩家听到的强弱与看到的数字一致。
+        // 判据是伤害类型本身：astral_dice:card_spell 目前的唯一产出路径就是活体书页命中
+        // （见 damage/ModDamageTypes#cardSpell 与 combat/LivingPageImpact#resolve）。
+        if (source.is(com.merlinkitsune.astral_dice.damage.ModDamageTypes.CARD_SPELL)) {
+            int dealt = (int) Math.round(event.getAmount() + bonus);
+            SoundPlayback.playAt(target.level(), target.getX(), target.getY(), target.getZ(),
+                    dealt >= LIVING_PAGE_BIG_HIT_THRESHOLD
+                            ? ModSounds.DAMAGE_EFFECT_CARD_BIGHIT.get()
+                            : ModSounds.DAMAGE_EFFECT_CARD_HIT.get());
         }
 
         // 命中副作用(施加标记/定向爆破 AOE 等)

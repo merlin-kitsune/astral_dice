@@ -83,7 +83,7 @@
     { "type": "log", "source": "latest", "pattern": "AP_T1_PREP:layers=0:wm=-:caster=0:target=0:cache=0:atkbonus=0:defbonus=0:base=0:skip=0:prev=0:newt=0:bless=0:fx_d=-:fx_d_on=0:fx_h=-:fx_h_on=0:" },
     { "type": "log", "source": "latest", "pattern": "AP_T1_PREP:.*:armor_mod=0:sign=1:hand=minecraft:iron_sword:inv_atk=0:ground_atk=0:cd=0" },
 
-    { "type": "log", "source": "latest", "pattern": "AP_REG_REG:item=astral_dice:teru_sign:desc=item\\.astral_dice\\.teru_sign:rarity=UNCOMMON:stack=1:signs_tag=1:curios_stand_tag=1:" },
+    { "type": "log", "source": "latest", "pattern": "AP_REG_REG:item=astral_dice:teru_sign:desc=item\\.astral_dice\\.teru_sign:rarity=ASTRAL_DICE_LEGENDARY:stack=1:signs_tag=1:curios_stand_tag=1:" },
     { "type": "log", "source": "latest", "pattern": "AP_REG_REG:.*:fx_d=effect\\.astral_dice\\.teru_descent:fx_h=effect\\.astral_dice\\.teru_huguang:action=teru_descent:sign_id=astral_dice:teru_sign:max_layers=20:on_active=3:ratio=0\\.5:sign_equipped=1" },
 
     { "type": "log", "source": "latest", "pattern": "AP_BT1_BOT:found=1:want=FP1:name=FP1:bot=1:conn=fake:uuid_src=[1-3]:.*:mode=SURVIVAL:list=2:names=.*FP1" },

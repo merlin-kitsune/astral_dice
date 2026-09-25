@@ -2,6 +2,7 @@ package com.merlinkitsune.astral_dice.event;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.item.chip.AirbagChipItem;
+import com.merlinkitsune.astral_dice.item.RenShieldManager;
 import com.merlinkitsune.astral_dice.item.chip.WhetstoneChipItem;
 import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.entity.LivingEntity;
@@ -53,6 +54,11 @@ public final class ChipDamageHandler {
         float damage = event.getNewDamage();
         if (damage <= 0.0F) return;
 
+        // 鼠鼠护盾(ren)会**完整吃掉**这一击(item/RenShieldManager#onRenShieldAbsorb 已把伤害钳到剩余黄心以内)
+        // ⇒ 红心一滴不掉,此时气囊/磨刀石/减伤介入只会白扣充能。该早退让本处理器与护盾的**同档(LOWEST)**
+        // 注册顺序无关 —— 谁先执行都不会误触发保命。
+        if (RenShieldManager.remainingShieldAbsorption(player) > 0.0F) return;
+
         // 虚空击杀优先级最高(用户裁决):掉入虚空的 out_of_world 伤害不得被保命阻止,
         // 故整段保命处理(安全气囊 + 磨刀石"不可被一次击倒"的不可击杀保护)直接跳过。
         // 只按伤害类型排除 out_of_world:bypasses_invulnerability 标签同时含 generic_kill(/kill),
@@ -64,17 +70,42 @@ public final class ChipDamageHandler {
         // A6 口径统一(致命判定一律按**吸收(黄心)之后**):1.21.1 的 LivingDamageEvent.Pre 派发于吸收之前
         // (neoforge-21.1.235 LivingEntity#actuallyHurt L1789 onLivingDamagePre → L1790-1792 吸收),
         // 故须把待判定伤害换算为"吸收后仍会扣的生命" = damage - getAbsorptionAmount()(下限 0)。
-        // 该换算**只喂给气囊**;磨刀石仍按原值处理。1.20.1 侧对应事件本身已在吸收之后,不做换算。
+        // 该换算**喂给气囊与磨刀石**(2026-09-24 起磨刀石同口径);1.20.1 侧对应事件本身已在吸收之后,不做换算。
         float damageAfterAbsorption = Math.max(0.0F, damage - player.getAbsorptionAmount());
         if (damageAfterAbsorption >= player.getHealth() && AirbagChipItem.tryNegateFatal(player)) {
             event.setNewDamage(0.0F);
             return;
         }
 
-        // 磨刀石:低血量减伤 + 血量 > 1 时不可被一次伤害击倒
-        float modified = WhetstoneChipItem.modifyIncomingDamage(player, damage);
-        if (modified != damage) {
-            event.setNewDamage(modified);
+        // ⚠️ **保命优先级(2026-09-24 用户裁决):安全气囊 > 磨刀石**。
+        // 致命一击先交给安全气囊(消耗 6 充能 + 进 1:00 冷却、本次伤害完全无效化,见上、命中即 return);
+        // **只有气囊不可用**(未佩戴 / 冷却中 / 充能不足)时,才轮到这里由磨刀石的「保留 1 血」兜底
+        // (该能力自 2026-09-24 起同样带 1:00 冷却)。两者同时佩戴时气囊恒为第一顺位 ——
+        // 气囊接管后本次结算直接返回,磨刀石连它的 -2 减伤都不参与。
+        // 磨刀石:低血量减伤 + 血量 > 1 时不可被一次伤害击倒(保命部分带 1:00 冷却)
+        // ⚠️ **口径:磨刀石按「吸收(黄心)之后」的净掉血计算**(2026-09-24 用户裁决「1.21.1 不符合预期、
+        //    1.20.1 正确」)。1.20.1 的 LivingDamageEvent 天然派发于吸收之后;本线的 Pre 在吸收**之前**、
+        //    拿到的是含黄心的原始伤害 ⇒ 直接按它算会**过度削减**(血量 5 + 黄心 10 挨 8 点时,本该只吃黄心、
+        //    红心一点不掉,却被削成 4 ⇒ 连黄心都少吃了)。故先换算成净掉血 damageAfterAbsorption 交给磨刀石,
+        //    再把「它省下的那部分」从事件伤害里扣回去(damage - raw + fixed)⇒ **黄心消耗量保持不变**,
+        //    只有红心扣血被磨刀石改动,与 1.20.1 逐点一致。
+        float modified = WhetstoneChipItem.modifyIncomingDamage(player, damageAfterAbsorption);
+        if (modified != damageAfterAbsorption) {
+            event.setNewDamage(Math.max(0.0F, damage - damageAfterAbsorption + modified));
+        }
+
+        // 怪力侦探立牌(sherry):「推理时间」每层受到伤害 −1;外加「挚友守护」(同队有装备人偶师立牌的
+        // 玩家时再 −1)。两者都是**固定点数减法**,与磨刀石同阶段(LOWEST = 最终伤害阶段)结算;
+        // 刻意**不**附带"不可致死保护"—— 那是磨刀石/安全气囊的专属口径,本立牌只做纯减伤。
+        int sherryCut = com.merlinkitsune.astral_dice.item.sign.SherrySignItem.getLayers(player);
+        float guardian = com.merlinkitsune.astral_dice.item.sign.SherrySignItem.guardianReductionFor(player);
+        float totalCut = sherryCut + guardian;
+        if (totalCut > 0.0F) {
+            float current = event.getNewDamage();
+            float capped = Math.max(0.0F, current - totalCut);
+            if (capped != current) {
+                event.setNewDamage(capped);
+            }
         }
     }
 

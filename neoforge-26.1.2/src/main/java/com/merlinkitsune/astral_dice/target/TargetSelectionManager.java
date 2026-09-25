@@ -136,6 +136,19 @@ public final class TargetSelectionManager {
     public static boolean isSelecting(Player player) {
         return player != null && SESSIONS.containsKey(player.getUUID());
     }
+    /**
+     * 玩家当前是否处于**由按键开启的**选择会话中（= 有会话且**不是**「手持即选择」类）。
+     *
+     * <p>供 {@code BaseSignItem.performSkill} 的第 2 / 6 步使用，用途是把「手持即选择」会话排除在外：
+     * ① 第 2 步 —— 主手握着选择器类效果牌（活体书页等）时，该自持会话不应拦住立牌主动技能键；
+     * ② 第 6 步 —— 若仍按 {@link #isSelecting} 判定，握着效果牌放出的技能会被误判成
+     *    「本次主动开了选择会话 ⇒ 冷却等确认后再起」⇒ **技能不进冷却**。
+     */
+    public static boolean isSelectingByKey(Player player) {
+        if (player == null) return false;
+        Session session = SESSIONS.get(player.getUUID());
+        return session != null && !session.holdToSelect;
+    }
 
     /**
      * 该「手持即选择」动作此刻是否被抑制（玩家显式取消过、且还没把牌移出主手）。

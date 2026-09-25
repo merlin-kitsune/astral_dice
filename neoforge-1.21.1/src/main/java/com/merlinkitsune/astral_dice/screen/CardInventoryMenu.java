@@ -276,7 +276,7 @@ public class CardInventoryMenu extends AbstractContainerMenu {
                     // 临时牌(绿洲女王 nardis):装配状态下的临时性只存在 AppliedStone 里(装配会销毁
                     // 物品栈),这里把它**还原**到重建出来的栈上 ⇒ 卡牌栏 UI 里也一眼可辨(isFoil 会亮)。
                     if (stone.temporary()) {
-                        TemporaryCardUtil.mark(itemStack);
+                        TemporaryCardUtil.mark(player, itemStack);
                     }
                     cardContainer.setItem(defIdx, itemStack);
                     defIdx++;
@@ -286,7 +286,7 @@ public class CardInventoryMenu extends AbstractContainerMenu {
                     ItemStack itemStack = stoneToItem(stone);
                     itemStack.set(ModDataComponents.CARD_USES.get(), stone.uses());
                     if (stone.temporary()) {
-                        TemporaryCardUtil.mark(itemStack);
+                        TemporaryCardUtil.mark(player, itemStack);
                     }
                     cardContainer.setItem(attIdx, itemStack);
                     attIdx++;
@@ -337,6 +337,27 @@ public class CardInventoryMenu extends AbstractContainerMenu {
             equippedAttackCards.merge(stone.type(), 1, Integer::sum);
         }
         com.merlinkitsune.astral_dice.item.sign.TeruSignItem.onAttackCardsEquipped(player, equippedAttackCards);
+    }
+
+    /**
+     * 清空卡牌栏里所有带临时标记的牌,返回移除张数(幂等;判据 =
+     * {@link TemporaryCardUtil#isTemporary})。
+     *
+     * <p>为什么需要这个方法:牌一旦放进卡牌栏就**离开了物品栏**,而本菜单的
+     * {@code cardContainer} 在这段时间里才是「骰子卡牌栏」的真值 —— 菜单关闭时
+     * {@link #saveToDice()} 会把它写回骰子。所以死亡清牌({@code event/PlayerLifecycleHandler})
+     * 与效果到期清牌({@code TemporaryCardUtil#tick})若不覆盖这里,这些牌会借「关闭菜单时写回骰子」
+     * 跨过清理。{@code TemporaryCardUtil#purgeAll} 已接入本方法(扫「当前打开的容器」那一段)。
+     */
+    public int purgeTemporaryCards() {
+        int removed = 0;
+        for (int i = 0; i < cardSlots; i++) {
+            ItemStack stack = cardContainer.getItem(i);
+            if (!TemporaryCardUtil.isTemporary(stack)) continue;
+            removed += stack.getCount();
+            cardContainer.setItem(i, ItemStack.EMPTY);
+        }
+        return removed;
     }
 
     public ItemStack getCardItem(int slotIndex) {

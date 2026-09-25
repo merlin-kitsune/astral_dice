@@ -4,7 +4,6 @@ import com.merlinkitsune.starenginelib.combat.HostileTargets;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.card.RandomCardHandler;
-import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -23,7 +22,7 @@ import top.theillusivec4.curios.api.CuriosApi;
 @EventBusSubscriber(modid = AstralDiceMod.MODID)
 public class SmartWatchChipItem extends BaseChipItem {
     /** 物品栏卡牌数量低于该值时补充 */
-    public static final int CARD_THRESHOLD = 10;
+    public static final int CARD_THRESHOLD = 6;
 
     public SmartWatchChipItem(Properties properties) {
         super(properties);

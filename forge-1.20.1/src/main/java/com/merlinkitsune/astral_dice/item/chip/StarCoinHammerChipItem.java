@@ -12,7 +12,7 @@ import com.merlinkitsune.astral_dice.item.StarLightManager;
 
 /**
  * 星币锤筹码:装备时获得 5 点星光(一次性);
- * 若物品栏中持有超过 20 枚星币,则每次进入骰神赐福时消耗 3 星币,并按持有星币总数的 30% 提升攻击力
+ * 若物品栏中持有超过 20 枚星币,则每次进入骰神赐福时消耗 6 星币,并按持有星币总数的 30% 提升攻击力
  * (星币袋按 9 星币算;零散星币不足时自动拆开 1 个星币袋,只扣走所需枚数、余额留在物品栏,
  * 无法安全拆袋时不消耗;加成持续整个赐福,赐福结束清除,结算在 DiceCombatModifiers 攻击修饰器)。
  */
@@ -20,7 +20,7 @@ public class StarCoinHammerChipItem extends BaseChipItem {
     /** 触发门槛:持有星币须超过该数量 */
     public static final int THRESHOLD_COINS = 20;
     /** 每次进入赐福消耗的星币数 */
-    public static final int CONSUME_COINS = 3;
+    public static final int CONSUME_COINS = 6;
     /** 攻击力提升比例(持有星币总数的 30%) */
     public static final double ATTACK_RATIO = 0.30;
     /** 星币袋折算星币数 */
@@ -176,7 +176,7 @@ public class StarCoinHammerChipItem extends BaseChipItem {
     }
 
     /**
-     * 进入骰神赐福时调用:持有星币超过 20 枚 → 消耗 3 星币,并按持有星币总数的 30% 记录攻击加成。
+     * 进入骰神赐福时调用:持有星币超过 20 枚 → 消耗 6 星币,并按持有星币总数的 30% 记录攻击加成。
      */
     public static void onBlessingStart(Player player) {
         if (player.level().isClientSide()) return;
@@ -197,17 +197,21 @@ public class StarCoinHammerChipItem extends BaseChipItem {
     }
 
     @Override
-    public void onEquip(SlotContext slotContext, ItemStack curio, ItemStack prevStack) {
+    public void onEquip(SlotContext slotContext, ItemStack prevStack, ItemStack stack) {
         if (!(slotContext.entity() instanceof Player player)) return;
         if (player.level().isClientSide()) return;
-        if (!prevStack.isEmpty()) return;
-        // 装备时星光 +5(上限由 StarLightManager 统一管理)
-        StarLightManager.add(player, 5);
+        // ⚠️ 第 3 参 stack 才是刚装上的那件(恒非空);旧代码把空槽守卫写在第 3 参上 ⇒ 恒 return、星光从未发放。
+        // 一次性发放改由「装备会话闸门」判定:Curios 登录 / 重生 / 切维度后会重放 onEquip
+        // (重放时 prevStack 恰好是空栈,空槽守卫拦不住)⇒ 见 StarLightManager#claimEquipGrant。
+        // 装备时星光 +5(上限由 StarLightManager 统一管理);走统一发放入口 —— 把**实际**抬升量记账,
+        // 卸除时按账本严格扣回(见 StarLightManager#revokeStarlightOnUnequip)。
+        StarLightManager.grantStarlightOnEquip(player, StarLightManager.GRANT_BIT_STAR_COIN_HAMMER, 5);
     }
 
-    // 卸下筹码:清除当前赐福的攻击加成(下次装备重新计算)
+    // 卸下筹码:清除当前赐福的攻击加成(下次装备重新计算)+ 按账本严格扣除装备时获得的星光
     @Override
     protected void onChipUnequip(Player player, ItemStack stack) {
         ModAttachments.setStarCoinHammerBonus(player, 0);
+        StarLightManager.revokeStarlightOnUnequip(player, StarLightManager.GRANT_BIT_STAR_COIN_HAMMER);
     }
 }

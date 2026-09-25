@@ -21,6 +21,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
+import net.neoforged.bus.api.EventPriority;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -28,6 +29,7 @@ import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
 import top.theillusivec4.curios.api.CuriosApi;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -47,9 +49,10 @@ import java.util.List;
  * 投掷的飞行过程由 {@link SherryThrowManager} 负责(逐 tick 插值抛物线,期间目标 noAi)。
  *
  * <h3>被动「侦探出击」</h3>
- * 每攻击一个**最大生命值 ≥ {@value #HIGH_HEALTH_THRESHOLD} 的敌对目标**,获得 1 层「推理时间」
- * (上限 {@value #MAX_REASONING} 层);每层 **+1 攻击力、减少 1 点受到的伤害**;
- * **骰神赐福结束后扣除 1 层**。
+ * 每攻击一个**新的**、最大生命值 ≥ {@value #HIGH_HEALTH_THRESHOLD} 的敌对目标,获得 1 层「推理时间」
+ * —— **每个目标只提供 1 层**(已提供过的目标 UUID 记在 {@code ModAttachments#SHERRY_REASONING_TARGETS},
+ * 首次命中即登记;2026-09-25 用户裁决「每攻击一下给一层」为缺陷);上限 {@value #MAX_REASONING} 层;
+ * 每层 **+1 攻击力、减少 1 点受到的伤害**;**骰神赐福结束后扣除 1 层**。
  *
  * <p><b>层数真值在附件 {@code ModAttachments#SHERRY_REASONING_LAYERS}</b>(带 {@code .copyOnDeath()},
  * ⇒ **死亡不清**「推理时间」,与「弱点识破」那种"层数放效果里"的写法**不同**);
@@ -66,8 +69,18 @@ public class SherrySignItem extends BaseSignItem {
     /** 立牌注册 id(锁定态/调试用) */
     public static final String SIGN_ID = AstralDiceMod.MODID + ":sherry_sign";
 
-    /** 「推理时间」上限 */
-    public static final int MAX_REASONING = 5;
+    /** 「推理时间」上限(2026-09-25 用户裁决:由 5 降为 **4**) */
+    public static final int MAX_REASONING = 4;
+    /**
+     * 「每个目标只提供 1 层」的**已推理目标**记录上限(超出时**按最旧淘汰**)。
+     *
+     * <p>数值与手电筒筹码的 {@code FlashlightChipItem.MAX_TRACKED_TARGETS} 相同,但**淘汰策略不同**:
+     * 手电筒发的是**星光货币**,故取「记录满则不再发放」以求严格;本条记录键按目标**实体实例** UUID 计,
+     * 长局里 256 个目标很容易达到,若也「满则停发」会让玩家长时间游戏后**静默失去整个被动**;
+     * 而「推理时间」本身有 {@link #MAX_REASONING} 层上限、且每次赐福结束 −1 层,
+     * 重复发放(前提是先打过 256 个其它目标)不构成刷取 ⇒ 取**按最旧淘汰**。
+     */
+    public static final int MAX_TRACKED_TARGETS = 256;
     /** 主动冷却基础秒数(与枪匠立牌一致:120 秒) */
     public static final int ACTIVE_COOLDOWN_SECONDS = 120;
     /** 主动投掷范围(格) */
@@ -80,6 +93,22 @@ public class SherrySignItem extends BaseSignItem {
     public static final double DROP_STEP = 1.0D;
     /** 落点上方需要的净空(格) —— 不足即视为「被高于该值的方块阻挡」(用户 2026-09-22 补充) */
     public static final double DROP_CLEARANCE = 3.0D;
+
+    /**
+     * 多目标落点之间的**最小间距**(格)。
+     *
+     * <p>⚠️ 必须大于常见怪物的碰撞箱宽度（僵尸/骷髅 0.6）—— 落点一旦重叠，原版
+     * {@code LivingEntity#aiStep} 末尾**无条件**执行的 {@code pushEntities()} 会对包围盒内每个
+     * 可推实体各来一次 {@code doPush}（{@code noAi} 只关 AI 决策、**不阻止推挤**）⇒ 叠在一起的怪
+     * 被互相弹开；AI 再让它们走回玩家 ⇒ 表现为「隔几秒又被弹开」（2026-09-24 用户实报）。
+     */
+    public static final double DROP_SPACING = 1.1D;
+    /** 间距相对目标碰撞箱宽度的**余量**(格) —— 宽体怪(铁傀儡 1.4 / 蜘蛛 1.4)按此放大间距 */
+    public static final double DROP_SPACING_MARGIN = 0.3D;
+    /** 落点网格**前向/侧向**的最大圈数(每圈 = 一个 {@link #DROP_SPACING}) */
+    public static final int DROP_MAX_RING = 3;
+    /** 落点网格允许的**最大后向偏移**(格,相对落点中心) —— 避免把怪扔到玩家身后 */
+    public static final int DROP_MAX_BACK = 1;
     /** 面前 {@value #AIM_MIN_DISTANCE}–{@value #AIM_MAX_DISTANCE} 格内**均无可落地面**时 {@link #castThrow} 的返回值 */
     public static final int THROW_BAD_GROUND = -1;
     /** 落地基础伤害 */
@@ -138,11 +167,15 @@ public class SherrySignItem extends BaseSignItem {
         }
     }
 
-    /** 卸下立牌:清「推理时间」层数与显示效果(与「弱点识破」同款「卸下即归零」口径) */
+    /**
+     * 卸下立牌:「推理时间」层数、**已推理目标记录**与显示效果一起清空
+     * (记录与层数**同寿命** —— 层数归零后重新累计,新目标重新计算)。
+     */
     @Override
     protected void clearSignData(Player player, ItemStack stack) {
         super.clearSignData(player, stack);
         ModAttachments.setSherryReasoningLayers(player, 0);
+        clearReasonedTargets(player);
         SherryReasoningEffect.clear(player);
     }
 
@@ -192,9 +225,9 @@ public class SherrySignItem extends BaseSignItem {
      * （用户 2026-09-22 裁决「阻止怪被从墙后拉出来」）。
      *
      * <p><b>落点</b> = {@link #resolveThrowDestination} 解析出的地面/水面（准星指向处优先，
-     * 否则退到面前 {@value #AIM_MAX_DISTANCE} 格并被掩体向内逼退）；多个目标围绕该落点沿
-     * （距玩家 {@value #AIM_MIN_DISTANCE}–{@value #AIM_MAX_DISTANCE} 格）；多个目标围绕该落点沿
-     * 与视线垂直的水平方向按 ±0.9 格均匀铺开（避免全部叠在同一格）。
+     * 否则退到面前 {@value #AIM_MAX_DISTANCE} 格并被掩体向内逼退）。**多个目标**以该落点为中心、
+     * 按到中心的距离升序取网格格点（间距 ≥ {@value #DROP_SPACING} 格，并按目标中最大的碰撞箱宽度
+     * 放大），每个候选格点**独立求可落地面**（地形受限就跳到下一个候选）⇒ 落点之间**互不重叠**。
      *
      * @return 被投掷的目标数；{@link #THROW_BAD_GROUND}（-1）= 面前无任何可落地面 ⇒ 调用方发提示并拒绝施放；
      *         0 = 范围内无可投掷目标（两者都按「零消耗」处理）
@@ -231,12 +264,30 @@ public class SherrySignItem extends BaseSignItem {
         Vec3 side = new Vec3(-flat.z, 0.0D, flat.x);
 
         int n = targets.size();
-        for (int i = 0; i < n; i++) {
-            // 单目标 ⇒ 准星落点;多目标 ⇒ 围绕落点沿垂直方向 ±0.9 格铺开
-            double offset = n == 1 ? 0.0D
-                    : -0.9D + 1.8D * ((double) i / (double) (n - 1));
-            Vec3 dest = aim.add(side.scale(offset));
-            SherryThrowManager.schedule(targets.get(i), dest, player, bonus);
+        // ⚠️ **落点必须互不重叠**（2026-09-24 用户实报「聚集的怪隔几秒又被弹开」）:
+        //    旧实现是「围绕落点沿一条线 ±0.9 格铺开」⇒ n >= 4 时相邻落点间距 < 0.6 格、实体严重重叠;
+        //    而原版 LivingEntity#aiStep 末尾**无条件**调 pushEntities()（noAi 只关 AI 决策、不阻止推挤），
+        //    对包围盒内每个可推实体各调一次 doPush ⇒ 重叠的怪被互相弹开（线性排布下两端受力同向叠加,
+        //    弹得最明显）;AI 又让它们走回玩家 ⇒ 周期性复现。
+        //    现改为「中心优先、按到中心距离升序」的网格候选点，间距 >= DROP_SPACING
+        //    （并按目标里最大的碰撞箱宽度放大），每个候选点独立求可落地面 ⇒ 落地即不重叠。
+        double spacing = DROP_SPACING;
+        for (LivingEntity candidate : targets) {
+            spacing = Math.max(spacing, (double) candidate.getBbWidth() + DROP_SPACING_MARGIN);
+        }
+        List<int[]> cells = scatterCells();
+        int cursor = 0;
+        for (LivingEntity target : targets) {
+            Vec3 dest = null;
+            while (cursor < cells.size()) {
+                int[] cell = cells.get(cursor++);
+                double x = aim.x + side.x * cell[0] * spacing + flat.x * cell[1] * spacing;
+                double z = aim.z + side.z * cell[0] * spacing + flat.z * cell[1] * spacing;
+                dest = groundBelow(level, player, x, z);
+                if (dest != null) break;
+            }
+            // 候选格点耗尽（地形受限）⇒ 退化为共用中心落点（至少保证每个目标都有落点）
+            SherryThrowManager.schedule(target, dest != null ? dest : aim, player, bonus);
         }
         return n;
     }
@@ -327,19 +378,78 @@ public class SherrySignItem extends BaseSignItem {
         return dest;
     }
 
+    /**
+     * 多目标落点的**候选格点**（按到中心 {@code (0,0)} 的距离升序）。
+     *
+     * <p>坐标含义:{@code [0]} = 沿 {@code side}（与视线垂直的水平方向）的格数,
+     * {@code [1]} = 沿 {@code flat}（视线水平方向）的格数 —— 实际落点 = 落点中心 + 两者 × 间距。
+     * **含中心点 {@code (0,0)}**（第一个目标落在 {@link #resolveThrowDestination} 解析出的落点本身）。
+     *
+     * <p>前向/侧向 ±{@link #DROP_MAX_RING} 圈、后向 {1+DROP_MAX_BACK} 格 ⇒
+     * 共 {@code (2*DROP_MAX_RING+1) * (DROP_MAX_RING+1+DROP_MAX_BACK)} 个候选,
+     * 足够容纳 {@code 1 + 8 + 16 + ...} 个互不重叠的落点。
+     */
+    private static List<int[]> scatterCells() {
+        List<int[]> cells = new ArrayList<>();
+        for (int u = -DROP_MAX_RING; u <= DROP_MAX_RING; u++) {
+            for (int v = -DROP_MAX_BACK; v <= DROP_MAX_RING; v++) {
+                cells.add(new int[] {u, v});
+            }
+        }
+        cells.sort(java.util.Comparator.comparingDouble((int[] c) -> Math.hypot(c[0], c[1])));
+        return cells;
+    }
+
     // ══════════════════════════════════════════════════════════════════════════
     //  被动「侦探出击」/「挚友守护」
     // ══════════════════════════════════════════════════════════════════════════
 
     /**
-     * 攻击命中 ≥{@value #HIGH_HEALTH_THRESHOLD} 血敌对目标 ⇒ +1 层。
+     * 攻击命中 ≥{@value #HIGH_HEALTH_THRESHOLD} 血敌对目标,**且该目标是新的** ⇒ +1 层。
      * 由 {@link #onAttackHostile} 在本模组的伤害前事件里分发(只认玩家近战/直接攻击)。
+     *
+     * <p>⚠️ **去重是硬要求**(2026-09-25 用户实报):旧实现**每攻击一下**就 +1 层,与
+     * 「每攻击一个**新**目标获得一层(每个目标只能获得一层)」不符;已登记的目标直接跳过。
      */
-    public static void onAttackedHighHealthHostile(Player attacker) {
-        if (attacker == null || attacker.level().isClientSide()) return;
+    public static void onAttackedHighHealthHostile(Player attacker, net.minecraft.world.entity.LivingEntity target) {
+        if (attacker == null || target == null) return;
+        if (attacker.level().isClientSide()) return;
         if (!isEquipped(attacker)) return;
         if (getLayers(attacker) >= MAX_REASONING) return;
+        if (!markReasonedTarget(attacker, target)) return;
         addLayers(attacker, 1);
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    //  「已推理目标」记录(「每个目标只提供 1 层」的唯一判据)
+    // ══════════════════════════════════════════════════════════════════════
+
+    /**
+     * 登记「该目标已提供过 1 层」;返回 {@code true} = **本次是新目标**(调用方据此 +1 层),
+     * {@code false} = 该目标已登记过(不再发放)。记录超 {@link #MAX_TRACKED_TARGETS} 时按最旧淘汰。
+     */
+    private static boolean markReasonedTarget(Player player, net.minecraft.world.entity.LivingEntity target) {
+        String uuid = target.getUUID().toString();
+        List<String> granted = readReasonedTargets(player);
+        if (granted.contains(uuid)) return false;
+        granted.add(uuid);
+        while (granted.size() > MAX_TRACKED_TARGETS) {
+            granted.remove(0);
+        }
+        ModAttachments.setSherryReasoningTargets(player, String.join(",", granted));
+        return true;
+    }
+
+    /** 清空「已推理目标」记录(卸下立牌时,与层数同寿命) */
+    public static void clearReasonedTargets(Player player) {
+        if (player == null) return;
+        ModAttachments.setSherryReasoningTargets(player, "");
+    }
+
+    private static List<String> readReasonedTargets(Player player) {
+        String raw = ModAttachments.getSherryReasoningTargets(player);
+        if (raw == null || raw.isEmpty()) return new ArrayList<>();
+        return new ArrayList<>(Arrays.asList(raw.split(",")));
     }
 
     /** 骰神赐福结束后扣除 1 层(由 {@code combat/DiceCombatEvents} 的赐福结束段调用) */
@@ -391,7 +501,7 @@ public class SherrySignItem extends BaseSignItem {
      * <p>只认 {@code getDirectEntity()} 是玩家本人的近战 —— 弹射物、法术、AOE 与环境伤害一律不计
      * (与「每攻击一个」的语义一致;本模组既有的「玩家近战」判据同款)。
      */
-    @SubscribeEvent
+    @SubscribeEvent(priority = EventPriority.NORMAL)
     public static void onAttackHostile(LivingDamageEvent.Pre event) {
         LivingEntity victim = event.getEntity();
         if (victim.level().isClientSide()) return;
@@ -399,6 +509,6 @@ public class SherrySignItem extends BaseSignItem {
         if (!HostileTargets.isHostile(victim)) return;
         if (!(event.getSource().getDirectEntity() instanceof Player attacker)) return;
         if (attacker == victim) return;
-        onAttackedHighHealthHostile(attacker);
+        onAttackedHighHealthHostile(attacker, victim);
     }
 }

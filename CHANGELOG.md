@@ -6,20 +6,308 @@
 
 ## 1.3.1
 
+### New Content
+
+#### Sound Effects
+
+- **8 custom sound effects added** (assets supplied by the user, 2026-09-24): depositing into the Star Coin wallet,
+  withdrawing **Star Coins**, withdrawing **Star Coin Bags**, the **Living Page** hitting a target (damage
+  **below 8**), the Living Page hitting a target (damage **8 or more**), using **Berserk / King Power / Unwavering**,
+  using an effect card on **another player or target**, and using an effect card on **yourself**. All assets ship as
+  mono Ogg Vorbis (`assets/astral_dice/sounds/`: 8 ogg files, plus a same-named `sounds.json` declaration and a
+  `SoundEvent` registration whose id matches the file name). Deposit / withdraw are private UI feedback and are sent
+  **only to the player who clicked**; the rest play in the world and are **audible to nearby players**. The Living
+  Page entry is split by **the full damage of the hit** (the same value as the damage number shown).
+  Per a 2026-09-25 user ruling the **Star Coin Bag** withdraw sound was too loud, so its volume is
+  **reduced by 40%** - tuned via the vanilla `sounds.json` `volume` field (`coin_bag_withdraw` = `0.6`;
+  defaults to 1.0 and must be > 0), which `AbstractSoundInstance#getVolume()` multiplies straight into the
+  playback gain that `SoundEngine#play` reads.
+
 ### Content & Balance
+
+#### Text & Display
+
+- **Temporary cards now have a tooltip hint line** (user ruling 2026-09-24: "temporary cards lack a tooltip hint"): both card root classes (battle and effect) now show a yellow line at the very top of the tooltip - "Temporary card: cannot be dropped or transferred; destroyed if put into another container; disappears when Queen's Privilege ends" (new lang key `tooltip.astral_dice.temporary_card`, three lines x zh/en/ja, key count 811 -> **812**). The line deliberately shows **no remaining time**: the client only syncs its own effect instances (other entities' effects are not synced), so showing a time would be wrong when looking at a card inside someone else's container.
+
+- **The card cost line now uses a new symbol and a localised label** (user ruling 2026-09-24): the cost line at
+  the top of a battle card's tooltip used to be hard-coded `Cost: ⨀⨀⨀` ("Cost" was never localised, and the
+  symbol was the mathematical N-ary operator `⨀` U+2A00, whose glyph is questionable in some fonts). It is now
+  a **localised label plus repeated "◆"** (one per point of cost): "费用：◆◆◆" in Chinese, "Cost: ◆◆◆" in
+  English and "コスト：◆◆◆" in Japanese, through the new lang key `tooltip.astral_dice.card_cost` (three lines
+  x zh/en/ja). The whole line is still yellow and its position is unchanged.
+
+- **Five signs' active-skill tooltips now share one opening phrasing** (user ruling 2026-09-25: "the
+  descriptions are far too long and convoluted"): the Astrologer / Secret Detective / Gunsmith used to open
+  with "Activating enters target-selection mode (hostile mobs or non-teammate players within 16 blocks,
+  30 s to choose). Confirming applies X"; this is now compressed to "**Choose a hostile target and apply X to
+  it**" (same shape as the Cult Leader sign's "Choose a player and apply Descent to them"). The Slime and
+  Puppeteer signs used to open with "Pick any player (or press Right Click to use it on yourself): ..." and now
+  use the same scheme, "**Choose a friendly player or yourself and apply / grant X to them**", with the
+  right-click hint dropped (once the selection session starts, the action bar already says "or press Right
+  Click to use it on yourself", so nothing is lost in game). The effect description that follows is kept
+  verbatim in all five. The Secret Detective's trailing "cancelling or timing out spends no cooldown" was
+  dropped because the selection session it referred to is no longer mentioned; the Gunsmith's "cancelling,
+  timing out, or ..." lost its referent the same way and was trimmed to "a target that already has Broken
+  consumes no cooldown"; and the Puppeteer's "gains 1 random card and the Mouse Shield" duplicated the new
+  opening's "grant them the Mouse Shield", so it was de-duplicated to "gains 1 random card". The five Patchouli
+  handbook "Active" entries were brought in line too (the "selection session lasts 30 s; cancelling or timing
+  out spends no cooldown" sentence is gone), and the leftover Markdown bold `**normal hostile**` in the
+  Gunsmith handbook entry was removed (lang values are plain text, so the asterisks were shown to players).
+  Covers three lines x zh/en/ja (10 keys x 9 lang files = 90 lines); the key set and the
+  placeholder/newline/colour-code structure are unchanged.
 
 #### Damage & Resolution
 
+- **The Whetstone's "keep 1 HP" guard now has a 1:00 cooldown, and the saving priority "Airbag > Whetstone"
+  is now explicit** (user ruling 2026-09-24): the Whetstone's "while health is above 1, a single hit can at
+  most reduce your health to 1" had **no cooldown**, while its trigger condition (the hit would kill you)
+  completely overlaps the Airbag's "fatal damage" - so wearing the Whetstone made you nearly unkillable by
+  any single hit, flattening the Airbag's advantage (6 charge plus a 1:00 cooldown). It now **consumes one
+  cooldown (1:00) per save**: the cooldown is only written when the cap **actually reduced the damage**, and
+  while it is running the guard does not apply (the low-health -2 reduction and the +4 Attack Power are
+  unaffected). Both the check and the write are server-side, using the new player attachment
+  `whetstone_guard_cooldown_end` (not `.sync()`ed). The saving priority is now an explicit contract:
+  **Airbag > Whetstone** - a fatal hit goes to the Airbag first (consuming charge, fully negating it), and
+  only when the Airbag is **unavailable** (not equipped / on cooldown / not enough charge) does the Whetstone
+  step in; once the Airbag takes over this resolution returns immediately, so the Whetstone does not even
+  contribute its -2 reduction. With both equipped the Airbag is always first.
+  Text updated accordingly: the Airbag tooltip and handbook entry now list the Whetstone in their
+  "takes priority over ..." line, and the Whetstone tooltip and handbook entry state the cooldown
+  (all three lines x zh/en/ja).
+
+- **The "Starlight / Star Coin / healing point" bonuses are now a separate damage instance (new type `astral_dice:extra_damage`)**: the
+  Flashlight (every 4 Starlight +1), the Star Coin Hammer (30% of held coins) and the Cutter (+2 / +4 plus healing points) used to be
+  folded into **Attack Power** - so they were scaled by "attack power snapshot" effects (the Mamushi Sign? no: the Teru Sign's Fox Light
+  attack base). They are now resolved as **a separate damage instance on hit** and no longer count as attack power.
+  Like true damage / skill damage, the type **ignores armour and bypasses the hurt-invulnerability window**. 
+
+
 - **The "hostile target" criterion is rewritten to "hostile mobs ∪ neutral mobs (pets excluded)"** (user ruling 2026-09-24): previously a neutral mob had to be **angered** (`NeutralMob#isAngry()`) to count as a hostile target — so an unangered wolf, iron golem, polar bear or bee simply "was not hostile" until you let it hit you first. It now reads **every neutral mob counts, only tamed pets are excluded** (`TamableAnimal`, i.e. wolf / cat / parrot). ⚠️ Measured impact: the only vanilla mob that is both a neutral mob and tameable is the **wolf**, so this entry is effectively "**an untamed wolf now counts as a hostile target, a tamed one does not**". The criterion is implemented once in the **prerequisite library** `starengine_lib` `1.0.3` (the single entry point `combat/HostileTargets`), so every effect that depends on it (Dice Blessing, spell-damage bonuses, the target selector's selectability checks, railgun lightning target selection, …) follows suit.
-- **The Piercing Gun drops its "a damage effect card has been used" prerequisite** (user ruling 2026-09-24, "make it consistent with the Ninja Star"): it used to additionally require an active damage effect card (one of Monster Laser / Monster Brick / Orbital Strike / Directional Blast, or the hit itself being the Living Page's spell damage), which meant **plain arrows, thrown projectiles and linked-mod spells** never received the bonus. Now simply wearing the Piercing Gun and dealing ranged/magic damage to a hostile target is enough. ⚠️ The one difference from the Ninja Star: it **keeps** the "the target must be a hostile target" range check (the bonus is taken from the target's defence points, which is meaningless against passive animals, teammates or yourself). The tooltip and handbook entry had that prerequisite removed to match.
+- **The Piercing Gun drops its "a damage effect card has been used" prerequisite** (user ruling 2026-09-24, "make it consistent with the Ninja Star"): it used to additionally require an active damage effect card (one of Monster Laser / Monster Brick / Orbital Strike / Directional Blast, or the hit itself being the Living Page's spell damage), which meant **plain arrows, thrown projectiles and linked-mod spells** never received the bonus. Now simply wearing the Piercing Gun and dealing ranged/magic damage to a target is enough. ⚠️ It is now **fully identical to the Ninja Star** — it performs **no target-scope test at all** (user ruling 2026-09-24, "its target criterion should match the Ninja Star, including neutral targets"): the old implementation additionally required "the target must be a hostile target", a criterion **narrower** than the spell-damage chain's `isBlessingTarget` gate, so **non-teammate players who had never attacked you** and **neutral mobs that are not `NeutralMob` (goats / llamas / foxes etc.)** received the Ninja Star bonus but not the Piercing Gun one. The target scope is now governed solely by that gate. The tooltip and handbook entry had the "hostile" qualifier removed to match.
+
+- **The four damage effect cards and the Electric Glove now start their text with "ranged/magic damage"** (user ruling 2026-09-24): they used to read "**all ranged/magic damage to hostiles** +N", while the implementation only requires the effect to be active and performs **no target test at all** - the text was narrower than the code. They now read "Ranged/magic damage ..." (and the area descriptions of Directional Blast / Electric Glove changed "other hostiles" to "other targets"). Tooltip and handbook entries updated to match.
+- **Star Coin Hammer consumes 3 -> 6 Star Coins per Dice Blessing** (user ruling 2026-09-24).
+- **The Target chip no longer marks "the very target you are attacking"** (user ruling 2026-09-24): it now picks the nearest hostile target **other than the one being attacked** - otherwise the mark always landed on whatever you were already hitting, defeating the point of setting up a second target. Tooltip and handbook updated.
+- **Magic Quiver: tracking now counts damage effect cards only, and its text was rewritten** (user ruling 2026-09-24, second revision): (1) tracking counts **only damage effect cards** (Monster Laser / Monster Brick / Orbital Strike / Directional Blast / Living Page, see `BaseEffectCardItem.isDamageEffectCard`) - non-damage cards no longer count; (2) the first revision's "hitting with a Living Page always triggers" exception is **removed** - the Living Page itself is part of that set, but you still need to have used one damage effect card first; (3) triggering requires dealing **ranged or spell damage to an already-marked target**; (4) the text was rewritten from the player's own wording (tooltip and guide synced).
+- **Smart Watch: the card top-up threshold drops from 10 to 6** (user ruling 2026-09-24).
+
+#### Signs & State
+
+- **Temporary cards now self-destruct when a third-party container (AE2 storage, Create item hatches, ...) takes them - they can no longer be "banked" for later** (reported 2026-09-24: "temporary cards cannot be kept out of mod containers, so they never disappear"):
+  The short version: this kind of insertion **cannot be blocked generically** - measured: NeoForge's own `ItemStackHandler#insertItem` **only** asks `isItemValid` (true by default) and **not** the stack-level item hook `ItemStack#canFitInsideContainerItems` (only `ComponentItemHandler` asks it), while AE2's storage bus writes its own storage implementation and Create's vaults / hatches go through `IItemHandler#insertItem`. So both slot guards and the stack-level hook are blind to them. The answer is therefore **self-destruct when we cannot block**:
+  - New data component `temporary_card_expires` (long, absolute `gameTime`, **persistent only, never synced**): written as "now + 3:00" when the cards are granted, so a card carries its own deadline - the only information that can be judged without knowing its owner;
+  - New self-destruct sweep (every 20 ticks, `TemporaryCardUtil#purgeOutOfPlace`): (1) inside **whatever container menu is open**, a temporary card sitting in a slot that is not "the player's own inventory / offhand / hand / this mod's card panel" is **destroyed at once**, while cards in legal slots are judged by their deadline; (2) **dropped items** within 16 blocks of the player are `discard`ed outright;
+  - **Three alignment points** (`realignExpiry`, rewriting the deadline from the effect instance's remaining time as the single source of truth): granting, **re-casting** (the ruling "each cast resets the validity to 3:00" applies to already-existing cards too) and **player login** (cancelling the wall-clock drift caused by "effect duration freezes while offline, but absolute time keeps running").
+  Note the explicit boundary: the **inside** of third-party storage (storage cells inside an AE2 network, vaults nobody opened) is not actively purged - we can neither see it nor should we dig through another mod's storage. It may therefore occupy one of their slots, but **any retrieval** (into the inventory, a foreign slot, or the ground) is destroyed by the next sweep, so "never disappears" no longer holds. Cards from older saves without a deadline are treated as "unlimited" (we do not invent a past timestamp for them, which would wipe them on login) and still obey the three existing rules: death / effect end / illegal location.
+
+- **Game Master Sign's Mouse Shield: a single hit bigger than its yellow hearts no longer reaches your red hearts** (user ruling
+  2026-09-24): the shield still gives **5 yellow hearts (10 absorption)** and still vanishes once they are used up, but a hit larger than
+  the yellow hearts previously only lost the part the shield could cover - **the excess went straight to your red hearts** (5 yellow
+  hearts could not stop 190 of a 200-damage hit). Now, **as long as any yellow hearts remain the whole hit is absorbed**: the excess is
+  discarded, only the remaining yellow hearts are consumed, and the shield vanishes as before once they run out.
+  As a knock-on guarantee, **survival chips** (Airbag / Whetstone / Detective damage reduction) no longer waste a charge on such a
+  fully-absorbed hit.
+
+#### Chips & Resources
+
+- **The rarity system is now "four own tiers + vanilla Common"** (ruled 2026-09-25): the old "borrowing" of vanilla
+  `COMMON`/`UNCOMMON`/`RARE`/`EPIC` is gone - four own tiers are now **extended into the vanilla `Rarity` enum**:
+  **Rare (light blue) / Epic (pink-purple) / Legendary (gold) / Pinnacle (bright red)**, with plain items still on
+  vanilla `COMMON`. **Player-visible changes**: (1) Legendary moves from "yellow" (borrowed `UNCOMMON`) to **gold**;
+  (2) a new top tier **Pinnacle (bright red)** exists, with the **Nether Star Dice** as its first (and currently only)
+  member; (3) **enchanting no longer bumps an item up one tier** (own tiers are not in vanilla's switch).
+  Mechanics: the single source of truth for tiers, constant names, serialized names and **colour codes** lives in the
+  prerequisite library `starengine_lib` (`item/Rarity` plus a per-platform `item/AstralRarities`); this mod only declares
+  `META-INF/enumextensions.json` (both NeoForge lines, via the `enumExtensions=` key in `mods.toml`) and calls
+  `AstralRarities.rare()/epic()/legendary()/pinnacle()` from `ModItems`; Forge 1.20.1 uses `Rarity.create` +
+  `IExtensibleEnum` (registered from the library's static initialiser). The tooltip name colour is applied by
+  **vanilla's own path** (this mod has no colouring code - changing a colour means editing one constant in the library).
+  => The prerequisite library goes **1.0.3 -> 1.0.4** (range tightened to `[1.0.4,2.0)`; still embedded, no separate install).
+
+- **Shooting Star (purple / golden): fall parameters, self-luminous particles and target scope** (2026-09-24 / 09-25 rulings: "height x3, fall speed x6, dual-star gap x2; shooting stars should only affect hostile targets", "the shooting star particles do not glow but the Living Page ones do - add the glow", "the phrase 'without attacking it' is actually ineffective, so delete both the wording and the code"):
+  - **Height x3**: fall distance is now the legacy reference x **3.6** (the historical 1.2 speed-up x this batch's 3.0) - for a 1.95-tall zombie the origin sits **7.29 blocks** above its head (was 2.43);
+  - **Fall speed x6**: the distance triples while the **duration halves** (`FALL_TICKS` 20 -> **10 ticks**, i.e. 0.5 s to land) - the per-tick speed is exactly 6x the original (0.1215 -> 0.729 blocks/tick);
+  - **Dual-star gap x2**: `VOLLEY_GAP_TICKS` 20 -> **10 ticks** (0.5 s) - with both equipped the purple star lands at `t=0->10` and the golden one at `t=20->30`;
+  - **Hostile targets only**: the target check reverts to the criterion used **before** the 2026-09-24 rewrite that counted every neutral mob - a neutral mob now only counts when it is **actually angered** (`NeutralMob#isAngry()`), so an unprovoked wolf / iron golem / polar bear / bee no longer triggers a star, while true monsters (including **calm** endermen / zombified piglins, which implement both `Enemy` and `NeutralMob`, hence `Enemy` is checked first) and consumer-declared entities (the training dummy) still count.
+    This is a **deliberate narrowing** of the canonical `HostileTargets#isHostile` entry (not a bypass): the widened scope exists for **active skill** release targeting (Detective / Gunsmith), whereas the shooting star is a **passive auto-trigger** that should not drop on peaceful neutral mobs. The criterion lives in `ShootingStarManager#isStarTarget`.
+  - **The trail particles are now self-luminous**: they used to be vanilla `DustParticleOptions` - colour-tintable, but the particle **does not override lighting** (so it follows world light) and renders with opaque blending, which makes it a "dim, hard-edged coloured dot" in the dark. The Living Page trail glows because its `END_ROD` comes from `SimpleAnimatedParticle#getLightColor`, which always returns full brightness `15728880`. **No vanilla particle is both colour-tintable and full-bright** (tintable dust / spell particles follow world light, while the full-bright `END_ROD` / `FLASH` / `SCULK_CHARGE` / `GUST` take no colour), so the mod now registers its own **`astral_dice:glowing_dust`**: options `GlowingDustOptions` (extends vanilla `DustParticleOptions` with codecs that wrap decoded instances into the mod's own `ParticleType`), a client `GlowingDustParticle` (**always full bright** + **translucent blending**; friction / size / lifetime / colour randomisation all inherited) and the sprite list `assets/astral_dice/particles/glowing_dust.json` (the vanilla dust `generic_0..generic_7`). The purple / gold split and the trail shape are unchanged, and the trail now glows like `END_ROD`.
+  - **The "without attacking it" condition and its wording are gone** (2026-09-25 ruling: "it is actually ineffective"): it read `target.getLastHurtByMob()`, which in vanilla is a **single slot** - any entity (another mob, environmental damage) overwrites it, and `LivingEntity#tick` clears it after 100 ticks - so a target the player is fighting was mis-read as "never attacked" as soon as a third party hit it, making the check useless in practice. `ShootingStarManager#attackedByPlayerRecently` and `ATTACK_GRACE_TICKS` were removed, and the phrase was dropped from the tooltips and handbook entries (three lines x zh/en/ja, 4 keys x 9 lang files). A star now triggers on the nearest valid hostile target inside the passing window.
 
 ### Bug Fixes
 
 #### Damage & Resolution
+- **On 1.21.1 / 26.1.2 the Whetstone computed from the pre-absorption damage, over-cutting hits while yellow
+  hearts were up** (reported 2026-09-24: "1.21.1 is not what I expect, 1.20.1 is correct"): the 1.20.1
+  `LivingDamageEvent` is dispatched **after** absorption, so the Whetstone sees how much red health would
+  actually be lost; the 1.21.1 / 26.1.2 `LivingDamageEvent.Pre` is dispatched **before** absorption, so the
+  Whetstone received the raw damage **including the yellow hearts** - comparing that against `getHealth()`
+  treated the part the yellow hearts could have eaten as lethal, so even the yellow hearts were under-consumed.
+  Typical symptom: 5 health, 10 absorption, taking 8 - it should be "absorption eats 8, red health untouched",
+  but the hit was cut to 4 (absorption only lost 4). It now converts to the post-absorption net loss first, then
+  subtracts only **what it saved** from the event damage (`newDamage = damage - netAfterAbsorption +
+  netAfterModification`) => the **absorption consumed is unchanged**, only the red-health loss is modified by
+  the Whetstone, matching 1.20.1 point for point (both lines call the same `modifyIncomingDamage`, so aligning
+  the input convention makes them fully equivalent). The Airbag's lethal test already used the post-absorption
+  value and is unaffected; void damage is still ignored by both.
+
 
 - **The training dummy (`dummmmmmy`) is now always treated as a hostile target** (reported on 2026-09-24 as "the training dummy is not declared as a hittable target"): it is neither an `Enemy` nor an angered neutral mob, so every "requires a hostile target" effect excluded it - most visibly, the Living Page could neither select nor hit it. This is now solved by an **"extra hostile" injection seam added to the prerequisite library** (`starengine_lib` `1.0.3`): on startup this mod installs its "the dummy counts as hostile" predicate into the library's `combat/HostileTargets` (the single entry point for "hostile target"), so the dummy counts as hostile in **all** such checks - Dice Blessing triggering, the spell-damage modifier chain, and the target selector's selectability checks (client raycast / radius highlight / server-side confirmation).
 
+- **The Gunsmith sign's passive no longer demands a "normal hostile mob"** (user ruling 2026-09-24, "the release target test should include neutral mobs"): the 1.21.1 / 1.20.1 lines still tested `target instanceof Enemy` while 26.1.2 had already dropped it - so **neutral mobs** (wolves / iron golems / polar bears / bees, goats / llamas etc.) carrying Broken **never granted Weakness Insight**, even though the Dice Blessing triggered right there. Both lines are now back-ported to the 26.1.2 behaviour, with exactly the same trigger condition as the Dice Blessing (melee weapon + `isBlessingTarget`).
+  Note: its **release** target test always went through `SelectorTargets`' `ENEMY` criterion (= hostile mobs + neutral mobs (pets excluded) + the training dummy), so neutral mobs were **already** selectable; the class javadoc claim "vanilla Enemy only" (stale since the 2026-09-22 harmonisation) was corrected as well.
+- **Four narrower "splash / bonus" target tests fixed** (user ruling 2026-09-24, "fix everything the audit found"): the area splash of Directional Blast and the Electric Glove, the Big Boss sign's splash, and the dice-battle "Investigation Stage bonus" all used the narrower `HostileTargets` - so against **a non-teammate player who never attacked you**, a **Boss**, or a mob that fights back but has no vanilla "neutral" marker, the main target got the bonus while the splash missed identical nearby targets. They now all use the **same gate as the spell-damage chain**, `isBlessingTarget`. Also fixed in the same batch: the Electric Glove's and Directional Blast's splash **did not exclude the caster** (that gate treats a team-less player as hostile - true relative to others, not to yourself), so close-range attacks splashed onto the caster; they now exclude the attacker explicitly (`e != ctx.attacker`).
+- **Damage-hook priorities are now explicit**: most "modify the incoming damage" handlers did not declare an `EventPriority` (same-tier execution order was undefined). All are now explicitly labelled (amplification HIGH / main chain NORMAL / late amplification LOW / life-saving LOWEST); behaviour is unchanged and ordering no longer depends on registration order.
+- **The `%` in the Speed Skates (basic / medium / advanced) tooltip no longer loses its colour**: the implementation emitted the `%%` text through `Component.translatable`, and vanilla splits `%%` into a **separate unstyled fragment**, so the `%` inside the highlight fell back to the line colour. It now goes through the project's `tt(...)` helper (the R4 audit item); all three tiers fixed.
+- Removed **unused** `import ... Enemy` / `import ... Monster` from 27 files (hygiene only, no behaviour change).
+- **A dedicated damage type for "skill damage", fixing the Sherry Sign wrongly running the spell-damage chain** (user ruling 2026-09-24, "create a separate damage tag for skill damage so it is not mixed with spell damage"): added `astral_dice:skill_damage` (registered in `bypasses_armor`, so it still ignores armour and armour toughness; **not** in the spell-damage whitelist) and switched the "Strength Throw" landing damage from `astral_dice:card_spell` to it. That flat 2 (+5) damage used to resolve as **spell damage**, so it was amplified by the Ninja Star, the Piercing Gun, the Amethyst Dice, the Marker Sprayer, the Magic Quiver and the damage effect card bonuses, and could trigger the Electric Glove's splash. It now deals only its own amount; death messages were added for the new type. It is also registered in `bypasses_cooldown` (same as true damage), so skill damage **bypasses the hurt-invulnerability window** and is never swallowed by a target's brief invulnerability 
+
+#### Signs & State
+
+- **The Sherry Sign's "Detective's Strike" passive granted a stack per *hit* instead of per *new target*** (reported
+  2026-09-25): the counter hook only checked "hit a hostile target with >= 20 health" and never recorded **which** target
+  it was, so hitting the same mob four times maxed out Reasoning Time - contradicting the passive's own text ("attacking
+  a **new** target grants 1 stack; each target can only grant one"). A player-level **reasoned-target** record was added
+  (attachment `sherry_reasoning_targets`, comma-separated target UUIDs, following the `flashlight_granted_targets`
+  string-set convention): the first hit registers the target and **an already-registered target grants nothing further**.
+  The record is capped at **256** and evicts the **oldest** entry (unlike the flashlight chip's "stop granting once full":
+  this record is keyed by **entity instance** UUID so 256 is easy to reach in a long session, and stopping would silently
+  kill the whole passive; Reasoning Time itself is capped and decays by 1 per blessing, so a repeat grant is no exploit).
+  The record is **cleared when the sign is unequipped** (same lifetime as the stacks) and deliberately **not** kept
+  through death, matching the flashlight chip.
+- **Reasoning Time's cap was lowered from 5 to 4 stacks** (user ruling 2026-09-25): constant
+  `SherrySignItem.MAX_REASONING = 4` (the tooltip counter and the "maxed" bonus-damage check both read it, so they follow
+  automatically); the tooltip and handbook wording ("up to 5 stacks" / "has reached 5 stacks") was updated to 4
+  across all three branches x zh/en/ja.
+
+- **"Dice Blessing ends -> a sign loses 1 stack" was replayed once per tick, wiping every stack at once** (reported
+  2026-09-25: "the Sherry sign's Reasoning Time goes straight to 0 when the Dice Blessing ends"): both the Sherry
+  sign's Reasoning Time and the Gunsmith's Weakness Insight **subtract their stack directly inside the
+  `MobEffectEvent.Expired` callback** - but vanilla `LivingEntity#tickEffects` **posts `Expired` first and calls
+  `iterator.remove()` afterwards**. If the handler adds or removes any effect at that moment, it structurally
+  modifies the `activeEffects` map that the for-each loop is walking, so `iterator.remove()` throws
+  `ConcurrentModificationException` - which vanilla **silently swallows** via
+  `catch (ConcurrentModificationException) {}`. The blessing is therefore **not removed that tick** while its
+  duration already reads 0, so the next tick `tick()` returns false immediately and `Expired` **fires again**:
+  the stack subtraction is replayed tick after tick until nothing mutates the map any more. Both subtractions
+  inevitably hit this trap, because lowering a stack requires `removeEffect` followed by `addEffect` (vanilla
+  `MobEffectInstance#update` only accepts a higher amplifier). **Two per-tick sampling runs measured** that the
+  number of subtractions in one blessing end **equals the current stack count** (4 stacks -> 4 consecutive
+  subtractions straight to 0; 3 stacks -> 3). Both subtractions are now **queued and executed at the end of the
+  next server tick** (new `DiceCombatEvents#BLESSING_END_PENDING` + `onBlessingEndPending`, the same pattern as
+  `MarkManager#PENDING_DECAY` for Mark stacks) so one blessing end subtracts **exactly 1 stack** (re-run of
+  `SHERRY-BLESS-1.21.1`: 3 stacks -> 2, and stable afterwards).
+  ⚠️ This also removes the **knock-on multiplication** of the storm: the other blessing-end side effects ("Unlimited"
+  bank card star coins, the Hacker sign's passive refresh plus card grant, the Big Bowl Stew heal, the Mamushi /
+  Star Coin Hammer latch clears) were being re-executed once per storm tick and are back to once per blessing.
+
+- **Temporary cards were "undroppable" on the server only - pressing Q on the client ate the card, with nothing on the ground** (reported 2026-09-24: "a battle card can be dropped with Q and no item drops"): the server's `ServerPlayer#drop(boolean)` asks the item first (`ItemStack#onDroppedByPlayer`; false returns immediately), so temporary battle cards (`CardItem` override) are **never** dropped server-side. The **client**'s `LocalPlayer#drop(boolean)` (bytecode-identical on 1.21.1 / 1.20.1 / 26.1.2) removes the stack from the selected slot locally and *then* sends the packet, and never asks that question - the client also never spawns a drop entity (entities only exist once the server creates them in `CommonHooks#onPlayerTossEvent`). So the client slot is emptied, the server silently refuses, and because the server slot never changed `broadcastChanges` never resends it: the card looks gone with nothing on the ground until a full resync (relog / reopening a container). Added `mixin/client/LocalPlayerDropGuardMixin`: at the HEAD of `LocalPlayer#drop(Z)Z` it refuses with the same predicate (`TemporaryCardUtil#isTemporary`) - nothing is removed, no packet is sent, no side effects (temporary cards only; third-party `onDroppedByPlayer` is not invoked on the client).
+- **Temporary *effect* cards never overrode "undroppable"**: the effect-card root class `BaseEffectCardItem` only overrode the glint and the container hooks, so the server ran the whole drop path and was only stopped afterwards by `ItemTossEvent` (cancel the entity + best-effort refund into the inventory) - the card did not land, but it **jumped to another inventory slot**, and when the refund failed (full inventory) it was **destroyed** (that handler states "never lands, so destroy when it does not fit"). It now overrides `onDroppedByPlayer` **symmetrically** with the battle-card root class `CardItem`, both delegating to the same predicate.
+- **Pressing Q on a temporary card inside a container GUI pulled it out of its slot first (destroyed when the inventory was full)** (reported 2026-09-24: "a temporary battle card equipped in the dice simply disappears"): Q in a GUI is `ClickType.THROW`, and vanilla takes the stack out of the slot first (`slot.safeTake`) and only then calls `player.drop` - so the card left its slot and only afterwards met the cancelled `ItemTossEvent` and its best-effort refund (full inventory = destroyed); even on success it was silently unequipped from the dice (closing the menu immediately rewrites the dice through `saveToDice()`). Added `mixin/container/ContainerClickGuardMixin` on the HEAD of `AbstractContainerMenu#clicked` (the single entry point for **all** container-GUI clicks): a `THROW` hitting a temporary card, or dragging a temporary card out of the GUI (`PICKUP` + pseudo-slot `-999`), is cancelled outright - nothing is taken out and nothing is dropped.
+- **Two more paths let temporary cards survive the cleanup, death included**: `purgeAll` cleared the main inventory, the offhand and the cards equipped in the dice, but not **the currently open card panel's contents** nor **the stack on the mouse cursor**. The former is even written **back into the dice** when the menu closes (`saveToDice()`), and death loot is handled after the purge while container contents are not part of the loot at all; the latter is returned to the inventory when the container closes. So dying with the card panel open - or with a temporary card on the cursor - let those cards survive death. `purgeAll` now also clears the open card panel through its own `purgeTemporaryCards()` and empties a temporary stack on the cursor (temporary cards only; nothing else is touched).
+
+- **The Sherry Sign's "Strength Throw" no longer stacks multiple targets on the same spot** (reported
+  2026-09-24: "mobs that were gathered get flung apart again after a few seconds"): the old implementation
+  spread every hostile target in range along **a single line of +/-0.9 blocks** — with 4 or more targets the
+  spacing between landing spots fell below 0.6 blocks, so the entities overlapped heavily. Vanilla
+  `LivingEntity#aiStep` calls `pushEntities()` **unconditionally** at its end (`noAi` only disables AI
+  decisions, it does **not** stop pushing) and performs one `doPush` per pushable entity inside the bounding
+  box, so the stacked mobs shoved each other apart (worst on a line, where both ends are pushed the same
+  way); the AI then drove them back to the player, making it recur periodically. Landing spots are now picked
+  from a **centre-first grid ordered by distance from the centre**, spaced at least 1.1 blocks apart (enlarged
+  by the widest hitbox among the targets, so broad mobs such as iron golems and spiders do not overlap
+  either), and **each candidate resolves its own ground** (skipping to the next one where the terrain does
+  not allow it) => targets land **without overlapping**, and the shoving is gone.
+
+
+- **Mamushi Sign (True Dragon Form) and Hanna Sign (Doll Complete): both counters are now voided as soon as the
+  latched state is reached** - Awakening and Doll Crafting used to keep counting after the state was obtained: on the
+  Hanna side the counter would **climb back to 7 and re-trigger the conversion**, and the Doll Crafting icon would
+  reappear; on the Mamushi side "Awakening: 8 / 8" stayed pinned in the item description forever. Now the counter is
+  invalidated the moment the state is reached - Awakening stops accumulating in True Dragon Form (pinned at 8) and its
+  counter row is no longer shown (only the True Dragon Form label remains); Doll Crafting accepts no further layer
+  writes once Doll Complete is reached.
+
+- **The Teru Sign's Descent bonus now persists on the current target**: it used to return 0 for an **already-attacked** target, so the
+  bonus only applied to the **first hit** on each target (measured: second hit on the same dummy `208 -> 8`). Now attacking a **new**
+  target spends 1 Fox Light stack and grants the bonus, and **further hits on the same target keep that bonus** (no extra spend);
+  with 0 stacks, attacking a new target adds nothing.
+- **The Fox Light effect can now be cleared**: (1) unequipping the Teru Sign clears its stacks and icon; (2) at 0 stacks the icon is
+  always removed (removal now loops until no instance remains); (3) the icon's number saturates at the **vanilla display ceiling** -
+  vanilla only draws numerals for `amplifier` 1..9 (stacks 2..10), so stacks >= 11 now show **X** ("10 or more");
+  the exact count stays in the item description ("Fox Light: x / 20").
+
+#### Text & Handbook
+
+- **Friendship Badge / Big Bowl Stew**: dropped the parenthesised notes ("deduplicated per healer-target pair...", "only pets/mounts tamed by you or a teammate...") - implementation details the player does not need.
+- **Scope / Eagle Scope**: (1) per the user ruling that "Scope-type attacks are gated by the Dice Blessing, and must not trigger unless you attack in Dice Blessing mode (melee)", the gate has been **added to the code** (the attack modifier in `DiceCombatModifiers` requires `DICE_BLESSING`; the Scope's flat +2 stays unconditional); (2) on the same day a second ruling followed: **the "During a Dice Blessing" wording was removed from the tooltip and the guide (text only, the code gate stays)** - so the text no longer reflects the gate.
+- **Sky-Searching Satellite**: the parentheses around "(once per 1:00)" became a comma, for consistent phrasing.
+- **Revenge Halberd**: dropped the "each type triggers once" and "does not stack" clauses (tooltip and guide synced).
+
+#### Input & UI
+
+- **Holding an effect card no longer swallows the sign active-skill key (J)** (reported 2026-09-24: "while holding the
+  Living Page, the active skill cannot be triggered"): selector-type effect cards (**Living Page**, Express Delivery,
+  Luxury Feast, You Have I Have, Berserk, Fortune/Misfortune Talisman Card, ...) open the target selector **as soon as
+  they sit in your main hand**; while a selection session was active the active-skill key was read as "cancel
+  selection" and the server bailed out at step 2 of `performSkill` ⇒ **the sign active skill could not be triggered at
+  all while such a card was held** (the client even printed a misleading "selection cancelled" prompt).
+  Key-initiated sessions and hold-to-select sessions are now separated: only the former treat J as cancel; a held-card
+  session no longer intercepts the key, the sign active skill fires normally and **the held card stays in aiming mode**
+  (its cancel gestures remain sneak+right-click / move it out of the main hand).
+- ⚠️ A knock-on defect was fixed in the same pass: step 6 of `performSkill` ("should the cooldown be deferred?") also
+  switched to key-initiated sessions - otherwise a skill fired while holding a card was misjudged as "this activation
+  opened a selector session ⇒ cooldown waits for confirmation", leaving the skill **without cooldown / lock and
+  without a Current Core charge**.
+
+#### Chips & Resources
+
+- **Bank cards (and ATM / Unlimited Bank Card / Star Coin Hammer) added Starlight on equip but never took it back** (reported
+  2026-09-25: "bank cards can farm Starlight"): after the previous fix restored the grant, unequipping only released the
+  grant gate and **never deducted the Starlight** ⇒ cycling equip/unequip accumulated Starlight without bound. Bank cards
+  were worse: unequipping also removed their base floor, so the 4/7 points that used to be **non-convertible** instantly
+  became convertible ⇒ a steady Star Coin production line. Per the user's ruling, the **"deduct on unequip" bottom line
+  for every chip** is now enforced in `StarLightManager`:
+  - **Grant**: all paths go through `grantStarlightOnEquip` (one-shot +N) / `grantStarlightFloorOnEquip` (floor type, for
+    bank cards) - they claim the equip-session gate and record the **actual** gain into the new attachment
+    `starlight_equip_grant_amounts` (Int, 4 bits per slot; not `.sync()`ed);
+  - **Revoke**: all paths go through `revokeStarlightOnUnequip` - it deducts exactly the **actual** amount recorded at equip
+    and releases the gate; all four chips now call it from `onChipUnequip` (bank cards gained such a hook).
+  - Note: the ledger amount must be used, **never the nominal value** - when Starlight is already at the cap (32) equipping
+    grants nothing, so deducting the nominal value would eat Starlight the player earned themselves.
+  - Note: the deduction **does not go through `set()`** - inside the unequip callback the slot may not be updated yet, and
+    `set()`'s base floor would be re-applied by the not-yet-removed bank card, making the deduction a no-op (this was the
+    root cause of "bank cards never lose Starlight on unequip"); it writes `ModAttachments#setStarlight` directly.
+
+- **The four chips that grant Starlight on equip never granted anything (Curios callback parameter mix-up)** (reported
+  2026-09-24: "none of the bank cards provide starlight"): the official Curios signature is
+  `onEquip(slotContext, prevStack, stack)` - the 2nd parameter is the **slot's previous content** (`ItemStack.EMPTY`
+  when equipping into an empty slot) and the **3rd is the item just equipped** (passed as `this.getStack()` by
+  `ItemizedCurioCapability#onEquip`, hence never empty). All four chips had the empty-slot guard
+  `if (!prevStack.isEmpty()) return;` written against that 3rd parameter ⇒ **always true, always returned early**, so
+  the grant never ran:
+  - Bank Card (Low / High balance): equipping should raise Starlight to the base value **4 / 7** (the
+    "base starlight is not convertible" rule of `StarLightManager#getBasePoints`) - it stayed at 0;
+  - Bank Card (Unlimited): +3 Starlight on equip - never granted;
+  - ATM: +1 Starlight on equip - never granted;
+  - Star Coin Hammer: +5 Starlight on equip - never granted.
+  The parameters now follow the official signature, and the three one-shot grants (Unlimited / ATM / Hammer) are
+  gated by a new player-level "equip session" latch (new player attachment `starlight_equip_grant_flags`, a bitmask).
+  **Why the latch is required**: Curios persists `stacks` but **not `previousStacks`**, so after **login / respawn /
+  dimension change** the first tick reads "slot occupied, previous value empty" as an equip change and **replays
+  `onEquip`** - with `prevStack` being exactly the empty stack, so **the empty-slot guard cannot block that path** (a
+  plain parameter fix would hand out starlight on every login). The latch is set on equip and released on unequip, so
+  the equip/unequip loop still grants once per equip by design without being farmable by relogging. The two Bank Card
+  balance variants are an **idempotent base-value floor** (`set` only raises values below the base), so they carry no
+  guard at all.
+- **Two more sites shared the same parameter mix-up and are fixed as well**: ① the Cursed Sword chip wrote its
+  "Thousand Curses Mark" into the 2nd parameter - which on an empty-slot equip is the `ItemStack.EMPTY` **global
+  singleton**, so the mark was written and immediately discarded (it only ever worked because `curioTick` re-applies it
+  every tick) ⇒ now uses the 3rd parameter; ② the Big Boss sign's "reset the 1-minute timer on equip" never took
+  effect either ⇒ now uses the same latch (also preventing a login replay from wiping progress the player had
+  accumulated).
+
 ### Installation Requirements
+
 
 - ✅ **From this version on, the StarEngine Lib dependency is bundled inside the mod — you no longer install
   it separately**: a copy of `starengine_lib` ships inside the artefact (embedded under `META-INF/jarjar/`)
@@ -27,7 +315,7 @@
 - ⚠️ **Do not keep a standalone `starengine_lib-*.jar` next to it**: when the loader de-duplicates by modId it
   **prefers the copy in `mods` and discards the embedded one** ⇒ if that copy is **older**, it shadows the
   library bundled with this mod (visible as a prerequisite version mismatch).
-- **Bundled version = `1.0.3`, compatible range `[1.0.3,2.0)`** (the same range declared in `mods.toml`): the
+- **Bundled version = `1.0.4`, compatible range `[1.0.4,2.0)`** (the same range declared in `mods.toml`): the
   library is still a **required** prerequisite (a large part of this mod's shared implementation lives in it
   since 1.3.0); it is merely distributed together with this mod now.
 - Library source repository: <https://github.com/merlin-kitsune/starengine_lib>.
@@ -75,7 +363,7 @@
 - **New `/astralparty` subcommand `finishsigncooldown [targets]` (finish the active-skill cooldown immediately)**: writes the player-level cooldown attachment `sign_active_cooldown_end` to the **current game time**, i.e. "the cooldown just finished this instant" (the same technique the Current Core chip uses), so an admin can retry a sign's active skill right away. It **only ends the cooldown timer**: it leaves the locked ("in effect") state `sign_active_lock_*`, the cooldown baseline `sign_active_max_cooldown` and the Mamushi sign's forced-cooldown hard gate untouched - so neither "the skill is still in effect" nor "we are inside the forced-cooldown window" is affected (in the former case there is no running cooldown to end anyway: the cooldown starts only after the in-effect window ends). Permission level (OP level 2), target argument (optional `@a`/player name, executor by default) and everything else match the other subcommands, and it takes **no numeric argument**; use `/astralparty dump` afterwards to check the `SIGN` group's `sign_active_cooldown_end` and `sign_active_lock_*`.
 
 ### Content & Balance
-- **The Ninja Star's bonus condition is relaxed to "any ranged/magic damage dealt to a target"**: it used to additionally require "a damage effect card has been used" (one of Monster Laser / Monster Brick / Orbital Strike / Directional Blast active on you, or the hit itself being the Living Page's spell damage), which meant **plain arrows, thrown projectiles and linked-mod spells** never received the "target's Mark layers" bonus. Now simply wearing the Ninja Star and dealing ranged/magic damage to a target grants a bonus equal to the target's Mark layers (the modifier is only ever evaluated inside the spell-damage chain, so "reaching the check" already means "this hit is spell damage"). The tooltip and handbook entry had that prerequisite removed to match. ⚠️ Piercing Gun (`PIERCING_GUN`) has the same condition structure and was **left untouched** in this batch.
+- **The Ninja Star's bonus condition is relaxed to "any ranged/magic damage dealt to a target"**: it used to additionally require "a damage effect card has been used" (one of Monster Laser / Monster Brick / Orbital Strike / Directional Blast active on you, or the hit itself being the Living Page's spell damage), which meant **plain arrows, thrown projectiles and linked-mod spells** never received the "target's Mark layers" bonus. Now simply wearing the Ninja Star and dealing ranged/magic damage to a target grants a bonus equal to the target's Mark layers (the modifier is only ever evaluated inside the spell-damage chain, so "reaching the check" already means "this hit is spell damage"). The tooltip and handbook entry had that prerequisite removed to match. ⚠️ Piercing Gun (`PIERCING_GUN`) has the same condition structure — both its bonus prerequisite and its **target criterion** have since been aligned under the same ruling (see the Piercing Gun entry above).
 
 #### Damage & Resolution
 - Fixed the **Living Page's impact damage number being overwritten so spell bonuses were invisible** (reported in play on 2026-09-24 as "the Living Page does not benefit from Mark bonus damage"): the bonus **was always applied** (health loss was correct) - but client damage numbers use **one slot per entity** (`Map<entityId, value>`, where a later packet simply overwrites the earlier one). The spell-modifier chain fires first inside `hurt` with **the full damage including the bonus**, and the Living Page then sent a second number carrying the **base value** after `hurt`, overwriting the correct one. That second send now happens **before `hurt`**, so it is the final number when there is no bonus and gets overwritten by the chain when there is one - both cases now display correctly. ⚠️ Display only; no damage value changed.

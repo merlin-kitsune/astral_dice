@@ -68,6 +68,11 @@ public final class CardRegistry {
             case "meito" -> 5;
             case "charge" -> 1;
             case "full_power" -> 5;
+            // 蛟龙立牌专属战斗牌(2026-09-27):撕咬 1 次 / 龙之咆哮 5 次
+            // ⚠️ 必须在此显式列出:ModItems 静态初始化早于 CardRegistry.init(),
+            //    否则两张专属牌会静默回退为默认耐久 10。
+            case "bite" -> 1;
+            case "dragon_roar" -> 5;
             default -> {
                 CardType t = BY_ID.get(typeId);
                 yield t != null ? t.defaultUses() : 10;
@@ -128,6 +133,8 @@ public final class CardRegistry {
             case "meito" -> 20;
             case "charge" -> 5;
             case "full_power" -> 6;
+            // 蛟龙立牌专属战斗牌:定值 3(与 roller 同值;供卡牌栏 "最低/最高" 显示与闪避失败上限结算)
+            case "bite", "dragon_roar" -> 3;
             default -> 0;
         };
     }
@@ -135,7 +142,7 @@ public final class CardRegistry {
     /** 卡牌点数下限(固定伤害牌返回其固定值,随机骰牌返回 1) */
     public static int minRoll(String typeId) {
         return switch (typeId) {
-            case "shadow_strike" -> 3;
+            case "shadow_strike", "bite", "dragon_roar" -> 3;
             case "charge" -> 5;
             case "full_power" -> 6;
             default -> 1;
@@ -216,6 +223,16 @@ public final class CardRegistry {
                     ctx.hasFullPower = true;
                     return 6;
                 }));
+
+        // 蛟龙立牌(mamushi)专属战斗牌(2026-09-27):定值 +3(撕咬对齐暗影突袭的定值 3)。
+        // 两张牌**不参与任何随机池**(专属牌,见 RandomCardHandler.registerExclusiveCard);
+        // 无配方,只能由真龙形态的蛟龙立牌佩戴者经主动技发放 / 牌转换获得。
+        register(new CardType("bite", false, 1, 2,
+                com.merlinkitsune.astral_dice.item.ModItems.ATTACK_CARD_BITE.get(),
+                ctx -> 3));
+        register(new CardType("dragon_roar", false, 5, 3,
+                com.merlinkitsune.astral_dice.item.ModItems.ATTACK_CARD_DRAGON_ROAR.get(),
+                ctx -> 3));
 
         // 防御牌
         register(new CardType("defense_medium", true, 10, 1,

@@ -2,6 +2,7 @@ package com.merlinkitsune.astral_dice.event;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.item.chip.AirbagChipItem;
+import com.merlinkitsune.astral_dice.item.RenShieldManager;
 import com.merlinkitsune.astral_dice.item.chip.WhetstoneChipItem;
 import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.entity.LivingEntity;
@@ -52,6 +53,10 @@ public final class ChipDamageHandler {
 
         float damage = event.getAmount();
         if (damage <= 0.0F) return;
+
+        // 鼠鼠护盾(ren)由 item/RenShieldManager#onRenShieldAbsorb 在 LivingHurtEvent 阶段钳制 ⇒ 本事件
+        // (吸收之后)拿到的伤害已经是 0;此处保留同一条守卫只为三线同形(将来若换锚点,顺序同样无关)。
+        if (RenShieldManager.remainingShieldAbsorption(player) > 0.0F) return;
 
         // 虚空击杀优先级最高(用户裁决):掉入虚空的 out_of_world 伤害不得被保命阻止,
         // 故整段保命处理(安全气囊 + 磨刀石"不可被一次击倒"的不可击杀保护)直接跳过。
