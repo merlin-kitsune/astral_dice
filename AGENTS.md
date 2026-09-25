@@ -425,7 +425,7 @@ When extending this workspace:
 | 下界岩骰子 | `netherrack_dice` | 蓝(稀有 RARE) | `dice_t1` | 1/2/3/4 | 下界采矿 30% 掉星币 / 5% 掉星盘;猪灵中立(`PiglinAiMixin`) |
 | 钻石骰子 | `diamond_dice` | 紫(史诗 EPIC) | `dice_t2` | 2/3/4/5 | — |
 | 绿宝石骰子 | `emerald_dice` | 紫(史诗 EPIC) | `dice_t2` | 2/3/4/5 | 村民交易用星币支付并享 20% 折扣 |
-| 黑曜石骰子 | `obsidian_dice` | 紫(史诗 EPIC) | `dice_t2` | 2/3/4/5 | +3 基础防御力(折算 +6 护甲);火焰伤害 -70% |
+| 黑曜石骰子 | `obsidian_dice` | 紫(史诗 EPIC) | `dice_t2` | 2/3/4/5 | +3 基础防御力(折算 +6 护甲);爆炸伤害 -50% |
 | 诡异骰子 | `weird_dice` | 紫(史诗 EPIC) | `dice_t2` | 2/3/4/5 | 立牌主动冷却 -50%;战斗骰低点数(1-3)概率 +50% |
 | 紫晶骰子 | `amethyst_dice` | 紫(史诗 EPIC) | `dice_t2` | 2/3/4/5 | 远程/魔法攻击也触发战斗骰并追加骰点伤害(不触发赐福、不耗卡牌耐久) |
 | 下界合金骰子 | `netherite_dice` | 金(传奇 UNCOMMON) | `dice_t3` | 3/4/5/6 | — |

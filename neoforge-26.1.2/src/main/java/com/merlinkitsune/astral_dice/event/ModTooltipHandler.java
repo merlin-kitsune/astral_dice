@@ -514,7 +514,7 @@ public class ModTooltipHandler {
             if (stack.is(ModItems.OBSIDIAN_DICE.get())) {
                 tooltip.add(tt("tooltip.astral_dice.obsidian_dice_defense")
                         .withStyle(ChatFormatting.BLUE));
-                tooltip.add(tt("tooltip.astral_dice.obsidian_dice_fire")
+                tooltip.add(tt("tooltip.astral_dice.obsidian_dice_explosion")
                         .withStyle(ChatFormatting.GOLD));
             }
             if (stack.is(ModItems.WEIRD_DICE.get())) {

@@ -64,6 +64,7 @@ Temporary cards also have their own hint line now: **"Temporary card: cannot be 
 
 ### A few numbers
 
+- **Obsidian Die**: its damage reduction changes from "fire damage -70%" to "**explosion damage -50%**".
 - **Star Coin Hammer**: Star Coins consumed per Dice Blessing **3 -> 6**.
 - **Smart Watch**: the card top-up threshold drops from **10 to 6** (easier to keep a hand).
 - **Target chip**: the Mark from a Dice Blessing no longer lands on **the very target you are attacking** - it now picks the nearest target **other than that one**, so it finally works as "set up a second target".

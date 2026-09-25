@@ -58,6 +58,12 @@
 
 #### Damage & Resolution
 
+- **The Obsidian Die's damage reduction changed from "-70% fire damage" to "-50% explosion damage"**
+  (user ruling 2026-09-25): it previously reduced fire damage (vanilla `is_fire` tag) by 70%; it now reduces
+  **explosion damage** (vanilla `is_explosion` tag - TNT / creepers / end crystals / fireball explosions etc.) by
+  **50%**, checked in `ObsidianDiceItem.isExplosionDamage` (all three lines). The tooltip and handbook wording changed
+  from "fire" to "explosion" (`tooltip.astral_dice.obsidian_dice_fire` -> `obsidian_dice_explosion`, three lines x three languages).
+
 - **The Whetstone's "keep 1 HP" guard now has a 1:00 cooldown, and the saving priority "Airbag > Whetstone"
   is now explicit** (user ruling 2026-09-24): the Whetstone's "while health is above 1, a single hit can at
   most reduce your health to 1" had **no cooldown**, while its trigger condition (the hit would kill you)

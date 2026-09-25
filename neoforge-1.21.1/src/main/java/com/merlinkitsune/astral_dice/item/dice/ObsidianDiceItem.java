@@ -19,7 +19,7 @@ import com.merlinkitsune.astral_dice.AstralDiceMod;
  *
  * 功能:
  * - 基础防御力 +3(按本模组「1 防御力 = 2 护甲值」折算,经 ARMOR 属性修饰器装备期间恒定 +6 护甲);
- * - 受到的火焰伤害减少 70%(由 ObsidianDiceHandler 在伤害事件中处理)。
+ * - 受到的爆炸伤害减少 50%(由 ObsidianDiceHandler 在伤害事件中处理)。
  */
 public class ObsidianDiceItem extends DiceCurioItem {
 
@@ -27,8 +27,8 @@ public class ObsidianDiceItem extends DiceCurioItem {
     public static final int DEFENSE_BONUS = 3;
     /** 折算后的真实护甲加成 */
     public static final int ARMOR_BONUS = DEFENSE_BONUS * 2;
-    /** 火焰伤害减免比例(70%) */
-    public static final float FIRE_DAMAGE_REDUCTION = 0.7F;
+    /** 爆炸伤害减免比例(50%) */
+    public static final float EXPLOSION_DAMAGE_REDUCTION = 0.5F;
 
     public ObsidianDiceItem(Properties properties) {
         super(properties);
@@ -44,9 +44,9 @@ public class ObsidianDiceItem extends DiceCurioItem {
         return map;
     }
 
-    /** 判定伤害源是否属于火焰伤害(原版 is_fire 标签:火焰/岩浆/炽足/火球等) */
-    public static boolean isFireDamage(DamageSource source) {
-        return source.is(DamageTypeTags.IS_FIRE);
+    /** 判定伤害源是否属于爆炸伤害(原版 is_explosion 标签:TNT/苦力怕/末影水晶/火球爆炸等) */
+    public static boolean isExplosionDamage(DamageSource source) {
+        return source.is(DamageTypeTags.IS_EXPLOSION);
     }
 
     private static ResourceLocation modifierId(String suffix) {
