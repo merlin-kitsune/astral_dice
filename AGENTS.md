@@ -1047,7 +1047,7 @@ When extending this workspace:
     白 = 普通 → 原版 `Rarity.COMMON`;**水蓝 `#55FFFF`** = 原版 RARE(`ChatFormatting.AQUA`)= 稀有 → `ASTRAL_DICE_RARE`;
     **粉紫 `#FF55FF`** = 原版 EPIC(`ChatFormatting.LIGHT_PURPLE`)= 史诗 → `ASTRAL_DICE_EPIC`;
     金 `#FFC24B` = 传奇 → `ASTRAL_DICE_LEGENDARY`;亮红 `#FF4D4D` = 巅峰 → `ASTRAL_DICE_PINNACLE`;
-    **彩虹(流动)** = 奇特 → `ASTRAL_DICE_BIZARRE`(⚠️ 本档**没有单一颜色**:基准色薄荷绿 `#6BFFA8` 只用于物品名那一行)。
+    **彩虹(流动)** = 奇特 → `ASTRAL_DICE_BIZARRE`(⚠️ 文字色 = 亮红,与巅峰同色 `#FF4D4D`;流动彩虹只在边框上)。
   - ⚠️ **边框策略(2026-09-25 二次裁决:「文字与边框严格同色」的约定作废)**:
     **稀有 / 史诗 = 完全随原版**(消费方不干预边框 —— 原版边框与稀有度无关的紫蓝渐变保留,只染物品名,
     与原版稀有/史诗物品观感一致;用户以原版稀有物品「神秘蠕虫」截图定调:文字水蓝、边框紫蓝,两者本就不同色);

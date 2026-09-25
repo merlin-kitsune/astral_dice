@@ -140,7 +140,7 @@
   （`TooltipRenderUtil` 硬编码边框色），而 `Rarity#getStyleModifier()` 只管物品名那一行 ⇒ 边框按档位上色必须自己加客户端钩子：
   1.21.1 与 1.20.1 用 `client/RarityTooltipFrame` 挂 `RenderTooltipEvent.Color#setBorderStart/setBorderEnd`；因为 tooltip
   **每帧重绘**（`AbstractContainerScreen#renderTooltip` 每帧调用）⇒ 该事件每帧都发 ⇒ 按当前时间算色即得**流动彩虹、零 Mixin**。
-  物品名那一行仍用基准色（薄荷绿 `#6BFFA8`，见库 `item/Rarity`）。
+  物品名那一行用**亮红**（与巅峰同色 `#FF4D4D`，见库 `item/Rarity`；2026-09-25 用户裁决「奇特文字改亮红、边框不动」）。
   **本档现有 8 件物品**（2026-09-25 用户裁决「将所有专属牌，以及怪力侦探和人偶师改为奇特」）：6 张**专属牌**
   （`is_exclusive.json` 全表）+ **怪力侦探**（`sherry_sign`）+ **人偶师**（`hanna_sign`）。
   ⚠️ **2026-09-25 修正**：上一批把「人偶师」误认成 `ren_sign`（那其实是**游戏大师**）⇒ 游戏大师被误改奇特、人偶师漏改；

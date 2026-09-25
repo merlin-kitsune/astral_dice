@@ -157,8 +157,8 @@
   rarity** (`TooltipRenderUtil` hard-codes the border colours) and `Rarity#getStyleModifier()` only touches the item-name
   line.   On 1.21.1 and 1.20.1 `client/RarityTooltipFrame` listens to `RenderTooltipEvent.Color#setBorderStart/setBorderEnd`;
   because the tooltip is **redrawn every frame** (`AbstractContainerScreen#renderTooltip` runs per frame) the event fires
-  every frame, so computing the colour from the current time gives a **flowing rainbow with zero Mixins**. The name line keeps
-  the tier's base colour (mint `#6BFFA8`, from the library's `item/Rarity`).
+  every frame, so computing the colour from the current time gives a **flowing rainbow with zero Mixins**. The name line is
+  **bright red** (same as Pinnacle, `#FF4D4D`, from the library's `item/Rarity`; ruled 2026-09-25 "Bizarre text = bright red, frame unchanged").
   **Eight items now use this tier** (ruled 2026-09-25: "make all exclusive cards, plus the Detective and the Puppeteer,
   Bizarre"): the six **exclusive cards** (`is_exclusive.json`) plus the **Sherry Sign** (`sherry_sign`) and the
   **Hanna Sign** (`hanna_sign`).
