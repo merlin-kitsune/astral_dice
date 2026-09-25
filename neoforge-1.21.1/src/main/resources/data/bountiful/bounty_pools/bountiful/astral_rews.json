@@ -177,7 +177,7 @@
 				"min": 1,
 				"max": 1
 			},
-			"unitWorth": 800
+			"unitWorth": 1500
 		},
 		"attack_card_epic": {
 			"type": "item",
@@ -187,7 +187,7 @@
 				"min": 1,
 				"max": 1
 			},
-			"unitWorth": 2500
+			"unitWorth": 4600
 		},
 		"attack_card_shadow_strike": {
 			"type": "item",
@@ -197,7 +197,7 @@
 				"min": 1,
 				"max": 1
 			},
-			"unitWorth": 1500
+			"unitWorth": 1600
 		},
 		"attack_card_meito": {
 			"type": "item",
@@ -207,7 +207,7 @@
 				"min": 1,
 				"max": 1
 			},
-			"unitWorth": 4500
+			"unitWorth": 6000
 		},
 		"attack_card_charge": {
 			"type": "item",
@@ -217,7 +217,7 @@
 				"min": 1,
 				"max": 1
 			},
-			"unitWorth": 2000
+			"unitWorth": 9000
 		},
 		"defense_card_medium": {
 			"type": "item",
@@ -236,7 +236,7 @@
 				"min": 1,
 				"max": 1
 			},
-			"unitWorth": 800
+			"unitWorth": 1500
 		},
 		"defense_card_epic": {
 			"type": "item",
@@ -246,7 +246,7 @@
 				"min": 1,
 				"max": 1
 			},
-			"unitWorth": 2500
+			"unitWorth": 4600
 		},
 		"effect_card_king_power": {
 			"type": "item",
@@ -256,7 +256,7 @@
 				"min": 1,
 				"max": 1
 			},
-			"unitWorth": 6000
+			"unitWorth": 9500
 		},
 		"effect_card_berserk": {
 			"type": "item",
@@ -266,7 +266,7 @@
 				"min": 1,
 				"max": 1
 			},
-			"unitWorth": 3500
+			"unitWorth": 5400
 		},
 		"effect_card_unwavering": {
 			"type": "item",
@@ -276,7 +276,7 @@
 				"min": 1,
 				"max": 1
 			},
-			"unitWorth": 3500
+			"unitWorth": 5400
 		},
 		"effect_card_fight_poison_with_poison": {
 			"type": "item",
@@ -286,7 +286,7 @@
 				"min": 1,
 				"max": 1
 			},
-			"unitWorth": 3000
+			"unitWorth": 5000
 		},
 		"effect_card_monster_laser": {
 			"type": "item",
@@ -306,7 +306,7 @@
 				"min": 1,
 				"max": 1
 			},
-			"unitWorth": 3000
+			"unitWorth": 5000
 		},
 		"effect_card_orbital_strike": {
 			"type": "item",
@@ -316,7 +316,7 @@
 				"min": 1,
 				"max": 1
 			},
-			"unitWorth": 6500
+			"unitWorth": 10000
 		},
 		"effect_card_directional_blast": {
 			"type": "item",
@@ -326,7 +326,7 @@
 				"min": 1,
 				"max": 1
 			},
-			"unitWorth": 6500
+			"unitWorth": 10000
 		},
 		"effect_card_chocolate_cake": {
 			"type": "item",
@@ -336,7 +336,7 @@
 				"min": 1,
 				"max": 2
 			},
-			"unitWorth": 600
+			"unitWorth": 1500
 		},
 		"effect_card_hamburger": {
 			"type": "item",
@@ -346,7 +346,7 @@
 				"min": 1,
 				"max": 2
 			},
-			"unitWorth": 1500
+			"unitWorth": 4000
 		},
 		"effect_card_luxury_feast": {
 			"type": "item",
@@ -356,7 +356,7 @@
 				"min": 1,
 				"max": 1
 			},
-			"unitWorth": 2200
+			"unitWorth": 4400
 		},
 		"effect_card_you_have_i_have": {
 			"type": "item",
@@ -366,7 +366,7 @@
 				"min": 1,
 				"max": 1
 			},
-			"unitWorth": 2500
+			"unitWorth": 4600
 		},
 		"effect_card_express_delivery": {
 			"type": "item",
@@ -376,7 +376,7 @@
 				"min": 1,
 				"max": 1
 			},
-			"unitWorth": 1800
+			"unitWorth": 4200
 		},
 		"parunan_sign": {
 			"type": "item",
@@ -436,7 +436,7 @@
 				"min": 1,
 				"max": 1
 			},
-			"unitWorth": 1800
+			"unitWorth": 3800
 		},
 		"padman_sign": {
 			"type": "item",
@@ -456,7 +456,7 @@
 				"min": 1,
 				"max": 1
 			},
-			"unitWorth": 3500
+			"unitWorth": 4500
 		},
 		"rin_sign": {
 			"type": "item",
@@ -476,7 +476,7 @@
 				"min": 1,
 				"max": 1
 			},
-			"unitWorth": 1600
+			"unitWorth": 3500
 		},
 		"papara_sign": {
 			"type": "item",
@@ -486,7 +486,7 @@
 				"min": 1,
 				"max": 1
 			},
-			"unitWorth": 3500
+			"unitWorth": 4500
 		},
 		"bonnie_sign": {
 			"type": "item",
@@ -516,7 +516,7 @@
 				"min": 1,
 				"max": 1
 			},
-			"unitWorth": 2600
+			"unitWorth": 3600
 		},
 		"cutter_chip": {
 			"type": "item",
@@ -526,7 +526,7 @@
 				"min": 1,
 				"max": 1
 			},
-			"unitWorth": 2800
+			"unitWorth": 3800
 		},
 		"cutter_blade_chip": {
 			"type": "item",
@@ -546,7 +546,7 @@
 				"min": 1,
 				"max": 1
 			},
-			"unitWorth": 2400
+			"unitWorth": 3500
 		},
 		"eagle_scope_chip": {
 			"type": "item",
@@ -566,7 +566,7 @@
 				"min": 1,
 				"max": 1
 			},
-			"unitWorth": 900
+			"unitWorth": 1200
 		},
 		"medkit_complete_chip": {
 			"type": "item",
@@ -586,7 +586,7 @@
 				"min": 1,
 				"max": 1
 			},
-			"unitWorth": 3000
+			"unitWorth": 4000
 		},
 		"target_chip": {
 			"type": "item",
@@ -596,7 +596,7 @@
 				"min": 1,
 				"max": 1
 			},
-			"unitWorth": 1000
+			"unitWorth": 1250
 		},
 		"marker_sprayer_chip": {
 			"type": "item",
@@ -606,7 +606,7 @@
 				"min": 1,
 				"max": 1
 			},
-			"unitWorth": 1100
+			"unitWorth": 1300
 		},
 		"magic_tome_chip": {
 			"type": "item",
@@ -616,7 +616,7 @@
 				"min": 1,
 				"max": 1
 			},
-			"unitWorth": 3200
+			"unitWorth": 4200
 		},
 		"big_backpack_chip": {
 			"type": "item",
@@ -626,7 +626,7 @@
 				"min": 1,
 				"max": 1
 			},
-			"unitWorth": 3000
+			"unitWorth": 4000
 		},
 		"ninja_star_chip": {
 			"type": "item",
@@ -646,7 +646,7 @@
 				"min": 1,
 				"max": 1
 			},
-			"unitWorth": 1100
+			"unitWorth": 1300
 		},
 		"hand_fan_big_chip": {
 			"type": "item",
@@ -656,7 +656,7 @@
 				"min": 1,
 				"max": 1
 			},
-			"unitWorth": 2600
+			"unitWorth": 3600
 		},
 		"eight_sided_dice_chip": {
 			"type": "item",
@@ -666,7 +666,7 @@
 				"min": 1,
 				"max": 1
 			},
-			"unitWorth": 1200
+			"unitWorth": 1350
 		},
 		"atm_chip": {
 			"type": "item",
@@ -676,7 +676,7 @@
 				"min": 1,
 				"max": 1
 			},
-			"unitWorth": 1000
+			"unitWorth": 1250
 		},
 		"bank_card_low_chip": {
 			"type": "item",
@@ -686,7 +686,7 @@
 				"min": 1,
 				"max": 1
 			},
-			"unitWorth": 1000
+			"unitWorth": 1250
 		},
 		"bank_card_high_chip": {
 			"type": "item",
@@ -696,7 +696,7 @@
 				"min": 1,
 				"max": 1
 			},
-			"unitWorth": 2800
+			"unitWorth": 3800
 		},
 		"bank_card_unlimited_chip": {
 			"type": "item",
@@ -716,7 +716,7 @@
 				"min": 1,
 				"max": 1
 			},
-			"unitWorth": 900
+			"unitWorth": 1200
 		},
 		"boxing_gloves_medium_chip": {
 			"type": "item",
@@ -726,7 +726,7 @@
 				"min": 1,
 				"max": 1
 			},
-			"unitWorth": 2400
+			"unitWorth": 3500
 		},
 		"boxing_gloves_high_chip": {
 			"type": "item",
@@ -746,7 +746,7 @@
 				"min": 1,
 				"max": 1
 			},
-			"unitWorth": 900
+			"unitWorth": 1200
 		},
 		"speed_skates_medium_chip": {
 			"type": "item",
@@ -756,7 +756,7 @@
 				"min": 1,
 				"max": 1
 			},
-			"unitWorth": 2400
+			"unitWorth": 3500
 		},
 		"speed_skates_high_chip": {
 			"type": "item",
@@ -776,7 +776,7 @@
 				"min": 1,
 				"max": 1
 			},
-			"unitWorth": 900
+			"unitWorth": 1200
 		},
 		"moto_helmet_medium_chip": {
 			"type": "item",
@@ -786,7 +786,7 @@
 				"min": 1,
 				"max": 1
 			},
-			"unitWorth": 2400
+			"unitWorth": 3500
 		},
 		"moto_helmet_high_chip": {
 			"type": "item",
@@ -806,7 +806,7 @@
 				"min": 1,
 				"max": 1
 			},
-			"unitWorth": 900
+			"unitWorth": 1200
 		},
 		"sandwich_medium_chip": {
 			"type": "item",
@@ -816,7 +816,7 @@
 				"min": 1,
 				"max": 1
 			},
-			"unitWorth": 2400
+			"unitWorth": 3500
 		},
 		"sandwich_high_chip": {
 			"type": "item",
@@ -836,7 +836,7 @@
 				"min": 1,
 				"max": 1
 			},
-			"unitWorth": 3000
+			"unitWorth": 4000
 		},
 		"adrenaline_high_chip": {
 			"type": "item",
@@ -856,7 +856,7 @@
 				"min": 1,
 				"max": 1
 			},
-			"unitWorth": 3400
+			"unitWorth": 4500
 		},
 		"buffer_shield_chip": {
 			"type": "item",
@@ -866,7 +866,7 @@
 				"min": 1,
 				"max": 1
 			},
-			"unitWorth": 1300
+			"unitWorth": 1400
 		},
 		"star_coin_hammer_chip": {
 			"type": "item",
@@ -896,7 +896,7 @@
 				"min": 1,
 				"max": 1
 			},
-			"unitWorth": 3200
+			"unitWorth": 4200
 		},
 		"piercing_gun_chip": {
 			"type": "item",
@@ -916,7 +916,7 @@
 				"min": 1,
 				"max": 1
 			},
-			"unitWorth": 3000
+			"unitWorth": 4000
 		},
 		"friendship_badge_chip": {
 			"type": "item",
@@ -926,7 +926,7 @@
 				"min": 1,
 				"max": 1
 			},
-			"unitWorth": 3200
+			"unitWorth": 4200
 		},
 		"satellite_chip": {
 			"type": "item",
@@ -946,7 +946,7 @@
 				"min": 1,
 				"max": 1
 			},
-			"unitWorth": 1100
+			"unitWorth": 1300
 		},
 		"energy_recycler_chip": {
 			"type": "item",
@@ -956,7 +956,7 @@
 				"min": 1,
 				"max": 1
 			},
-			"unitWorth": 1100
+			"unitWorth": 1300
 		},
 		"electric_sword_chip": {
 			"type": "item",
@@ -966,7 +966,7 @@
 				"min": 1,
 				"max": 1
 			},
-			"unitWorth": 1200
+			"unitWorth": 1350
 		},
 		"advanced_peripherals_chip": {
 			"type": "item",
@@ -976,7 +976,7 @@
 				"min": 1,
 				"max": 1
 			},
-			"unitWorth": 3000
+			"unitWorth": 4000
 		},
 		"perpetual_motion_chip": {
 			"type": "item",
@@ -996,7 +996,7 @@
 				"min": 1,
 				"max": 1
 			},
-			"unitWorth": 3200
+			"unitWorth": 4200
 		},
 		"big_bowl_stew_chip": {
 			"type": "item",
@@ -1016,7 +1016,7 @@
 				"min": 1,
 				"max": 1
 			},
-			"unitWorth": 900
+			"unitWorth": 1200
 		},
 		"bookmark_chip": {
 			"type": "item",
@@ -1026,7 +1026,7 @@
 				"min": 1,
 				"max": 1
 			},
-			"unitWorth": 1000
+			"unitWorth": 1250
 		},
 		"piggy_bank_chip": {
 			"type": "item",
@@ -1036,7 +1036,7 @@
 				"min": 1,
 				"max": 1
 			},
-			"unitWorth": 900
+			"unitWorth": 1200
 		},
 		"smart_watch_chip": {
 			"type": "item",
@@ -1046,7 +1046,7 @@
 				"min": 1,
 				"max": 1
 			},
-			"unitWorth": 3000
+			"unitWorth": 4000
 		},
 		"electric_glove_chip": {
 			"type": "item",
@@ -1056,7 +1056,7 @@
 				"min": 1,
 				"max": 1
 			},
-			"unitWorth": 3000
+			"unitWorth": 4000
 		},
 		"airbag_chip": {
 			"type": "item",
@@ -1066,7 +1066,7 @@
 				"min": 1,
 				"max": 1
 			},
-			"unitWorth": 3400
+			"unitWorth": 4500
 		},
 		"railgun_chip": {
 			"type": "item",
@@ -1096,7 +1096,7 @@
 				"min": 1,
 				"max": 1
 			},
-			"unitWorth": 2800
+			"unitWorth": 3800
 		},
 		"purple_shooting_star_chip": {
 			"type": "item",
@@ -1106,7 +1106,7 @@
 				"min": 1,
 				"max": 1
 			},
-			"unitWorth": 2800
+			"unitWorth": 3800
 		},
 		"golden_shooting_star_chip": {
 			"type": "item",
@@ -1126,7 +1126,7 @@
 				"min": 1,
 				"max": 1
 			},
-			"unitWorth": 3400
+			"unitWorth": 4200
 		},
 		"moses_sign": {
 			"type": "item",
@@ -1136,7 +1136,7 @@
 				"min": 1,
 				"max": 1
 			},
-			"unitWorth": 3400
+			"unitWorth": 4200
 		},
 		"pandaman_sign": {
 			"type": "item",
@@ -1156,7 +1156,7 @@
 				"min": 1,
 				"max": 1
 			},
-			"unitWorth": 1800
+			"unitWorth": 3800
 		},
 		"zhao_sign": {
 			"type": "item",
