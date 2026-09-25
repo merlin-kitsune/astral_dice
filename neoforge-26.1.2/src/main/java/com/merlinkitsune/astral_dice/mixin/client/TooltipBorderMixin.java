@@ -35,7 +35,7 @@ public abstract class TooltipBorderMixin {
 
     @WrapOperation(method = "tooltip(Lnet/minecraft/client/gui/Font;Ljava/util/List;IILnet/minecraft/client/gui/screens/inventory/tooltip/ClientTooltipPositioner;Lnet/minecraft/resources/Identifier;Lnet/minecraft/world/item/ItemStack;)V",
             at = @At(value = "INVOKE",
-                    target = "Lnet/minecraft/client/gui/screens/inventory/tooltip/TooltipRenderUtil;extractTooltipBackground(Lnet/minecraft/client/gui/GuiGraphicsExtractor;IIIIILnet/minecraft/resources/Identifier;)V"))
+                    target = "Lnet/minecraft/client/gui/screens/inventory/tooltip/TooltipRenderUtil;extractTooltipBackground(Lnet/minecraft/client/gui/GuiGraphicsExtractor;IIIILnet/minecraft/resources/Identifier;)V"))
     private void astral_dice$drawCustomFrame(GuiGraphicsExtractor graphics, int x, int y, int width, int height, Identifier style,
                                              Operation<Void> original,
                                              @Local(argsOnly = true) ItemStack tooltipStack) {

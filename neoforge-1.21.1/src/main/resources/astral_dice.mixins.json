@@ -21,7 +21,8 @@
     "client.LocalPlayerDropGuardMixin",
     "client.EffectRenderingInventoryScreenMixin",
     "client.GuiMixin",
-    "client.TooltipBorderMixin"
+    "client.TooltipBorderMixin",
+    "client.GuiGraphicsTooltipStackAccessor"
   ],
   "injectors": {
     "defaultRequire": 1
