@@ -7,7 +7,7 @@
       "rarities": ["ASTRAL_DICE_RARE"],
       "gradientType": "custom",
       "borderType": "static",
-      "gradientColors": ["#55FFFF", "#55FFFF", "#55FFFF"],
+      "gradientColors": ["#5000FF", "#3C00BF", "#28007F"],
       "dividerLineColor": "match_inner_frame_color",
       "priority": 10
     },
@@ -18,7 +18,7 @@
       "rarities": ["ASTRAL_DICE_EPIC"],
       "gradientType": "custom",
       "borderType": "static",
-      "gradientColors": ["#FF55FF", "#FF55FF", "#FF55FF"],
+      "gradientColors": ["#5000FF", "#3C00BF", "#28007F"],
       "dividerLineColor": "match_inner_frame_color",
       "priority": 10
     },

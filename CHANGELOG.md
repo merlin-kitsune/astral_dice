@@ -112,8 +112,10 @@
   to **amethyst dice** (grid `PBP/AEA/IDI` unchanged), and the Puppeteer Sign's two **string** positions became
   **golden star plates** while its dice changed from **golden dice** to **amethyst dice** (grid `SQS/LEL/TDT` -> `GQG/LEL/TDT`).
   The two recipes used to sit in the "diamond dice + golden star plate" and "golden dice (no star plate)" tiers and now have
-  **no tier-mates** (they are the first recipes in this repo to use amethyst dice). Sign rarity is unchanged
-  (Detective = Epic, Puppeteer = Rare). The handbook recipe lines were updated to match.
+  **no tier-mates** (they are the first recipes in this repo to use amethyst dice). Sign rarity was later adjusted again - both
+  the Sherry Sign and the Hanna Sign became **Bizarre** (see the "Bizarre" entry above; the Game Master was mistakenly made
+  Bizarre and is **Epic again**; the "Detective / Puppeteer" wording here was also a naming slip), and the Patchouli handbook
+  recipe lines were updated to match.
 
 #### Chips & Resources
 
@@ -157,32 +159,41 @@
   because the tooltip is **redrawn every frame** (`AbstractContainerScreen#renderTooltip` runs per frame) the event fires
   every frame, so computing the colour from the current time gives a **flowing rainbow with zero Mixins**. The name line keeps
   the tier's base colour (mint `#6BFFA8`, from the library's `item/Rarity`).
-  **Eight items now use this tier** (ruled 2026-09-25: "make all exclusive cards, plus the Secret Detective and the Game
-  Master, Bizarre"): the six **exclusive cards** (`is_exclusive.json`) plus the **Secret Detective** (`sherry_sign`) and the
-  **Game Master** (`ren_sign`). The latter two were Epic and sat in the bounty reward pool, so they were **removed from
-  `astral_rews` on all three lines** (Bizarre is an excluded tier). To turn any item into it by hand:
+  **Eight items now use this tier** (ruled 2026-09-25: "make all exclusive cards, plus the Detective and the Puppeteer,
+  Bizarre"): the six **exclusive cards** (`is_exclusive.json`) plus the **Sherry Sign** (`sherry_sign`) and the
+  **Hanna Sign** (`hanna_sign`).
+  ⚠️ **Corrected 2026-09-25**: an earlier batch mistook the "Puppeteer" for `ren_sign` (which is actually the **Game Master**),
+  so the Game Master was wrongly made Bizarre and the Hanna Sign was missed; this batch fixes it - the **Game Master is Epic
+  again** (put back into the bounty pool at EPIC/1800) and the **Hanna Sign is Bizarre** (removed from `astral_rews` on all three
+  lines; Bizarre is an excluded tier and the gate fails loud if it stays). To turn any item into it by hand:
   `/give @s <item>[minecraft:rarity="astral_dice:bizarre"]`.
 
-- **The tooltip frame now strictly shares the text colour (Bizarre excepted), fixing two defects** (ruled 2026-09-25):
-  **Player-visible**: (1) Rare / Epic switch to the vanilla RARE / EPIC colours; (2) **the tooltip frame matches the item
-  name colour** (before, only Bizarre had a frame colour while the other four tiers kept the vanilla purple); (3) in packs with
-  Tooltip Overhaul the frame is **no longer uniformly gold**.
-  Defect one: the first client class only wrote a frame colour for Bizarre - renamed to `client/RarityTooltipFrame` and extended
-  to **all five tiers** (reverse lookup `AstralRarities#tierOf(...)` + `Rarity#frameColor(now)`; items that are not ours are
-  left untouched).
-  Defect two (**caused by a third-party mod, not by this mod**): the user's pack ships **Tooltip Overhaul 2.0.4, which draws the
-  whole tooltip itself** and never calls `TooltipRenderUtil`, so this mod's event is ignored - and for **any non-vanilla rarity**
-  it falls back to one palette (`Palette.CUSTOM_RARITY`, default gold `0xFFE8B84A`) => **all five own tiers got a gold frame**,
-  which looks exactly like "the recolouring turned every border gold".
+- **Tooltip frame policy revised: the "same colour" rule is withdrawn; Bizarre becomes a clockwise-flowing rainbow
+  (Mixin-drawn, 26.1.2 included)** (user ruling 2026-09-25, second round):
+  the user pinned it with a screenshot of a vanilla rare item - **in vanilla the frame and the text are not the same colour**
+  (aqua name, purple frame) => the earlier "text and border strictly share one colour" rule is **withdrawn**. New policy:
+  **Rare / Epic leave the frame completely alone** (vanilla purple gradient kept; only the name line is tinted - matching how
+  vanilla rare items look); **Legendary / Pinnacle** keep a custom frame matching their name colour (gold / bright red);
+  **Bizarre = a clockwise-flowing rainbow** - a full colour wheel laid around the frame perimeter, drifting clockwise over time
+  (the previous two-colour API could only do "top line = start, bottom line = end, side lines = a vertical gradient", which
+  physically cannot wrap around).
+  Implementation: the old `client/RarityTooltipFrame` (both lines) is **deleted**; a **Mixin** now wraps the vanilla background
+  draw call (`mixin/client/TooltipBorderMixin` - `renderTooltipBackground` on 1.21.1/1.20.1, `extractTooltipBackground` on
+  26.1.2) and `client/RarityBorderRenderer` overlays per-pixel colours afterwards (Bizarre: `hsvToRgb(rainbowHue - dist/perimeter, ...)`;
+  Legendary/Pinnacle: a solid ring of `frameColor`; everything else: untouched). **26.1.2 is covered too** - its frame is a
+  nine-slice texture with no colour hook; the texture geometry was measured pixel-by-pixel so the drawn ring sits exactly on it
+  (Legendary / Pinnacle get their gold / red frames on that line for the first time).
+  Defect two stays (**caused by a third-party mod, not by this mod**): the user's pack ships **Tooltip Overhaul 2.0.4, which draws the
+  whole tooltip itself** and never calls `TooltipRenderUtil`, so this mod's event *and* the drawn ring are ignored - and for
+  **any non-vanilla rarity** it falls back to one palette (`Palette.CUSTOM_RARITY`, default gold `0xFFE8B84A`) => **all own tiers got
+  a gold frame**, which looks exactly like "the recolouring turned every border gold".
   Fix = ship the mod's **official resource-pack extension point** `assets/astral_dice/tooltipoverhaul/custom_frames.json`
-  (matched by `Rarity#name()`, `gradientType:"custom"` + explicit three-colour override of the fallback palette): the four solid
-  tiers get a static single colour (= the text colour) and Bizarre gets a **static three-stop rainbow gradient**
+  (matched by `Rarity#name()`, `gradientType:"custom"` + explicit three-colour override of the fallback palette): **Rare / Epic get
+  the vanilla frame purple** as a three-stop approximation (`#5000FF` / `#3C00BF` / `#28007F`; the mod's hex has no alpha support),
+  **Legendary / Pinnacle keep their tier colour**, and Bizarre gets a **static three-stop rainbow gradient**
   (`#FF2626` / `#26FF26` / `#2626FF`, taken from the library's `hsvToRgb` at phases 0 / 1/3 / 2/3) - that mod has **no per-frame
-  animation** (its effect catalogue and palettes were checked; there is no rainbow), so the *flowing* rainbow only exists where
-  it is absent. The file is byte-identical on all three lines and inert where the mod is not installed.
-  ⚠️ **On 26.1.2 the frame stays vanilla (known gap, registered in AGENTS)**: that line's tooltip frame is a nine-slice
-  **texture** (`TooltipRenderUtil` uses the `tooltip/frame` sprite; the event is `RenderTooltipEvent.Texture`) with **no colour
-  hook** - a rainbow frame there needs its own texture frames and is a separate round of work.
+  animation** (its effect catalogue and palettes were checked; there is no rainbow), so the *clockwise-flowing* rainbow only exists
+  where it is absent. The file is byte-identical on all three lines and inert where the mod is not installed.
   Incidentally established (and recorded in AGENTS): the extended tiers **do reach** vanilla `Rarity.CODEC` and `BY_ID`, so the
   data component can carry own tiers and sync them to the client (case `RARITY-SYNC-1.21.1`); ⚠️ vanilla tier serialized names
   are **not** namespaced (`rare`), own tiers **are** (`astral_dice:rare`).

@@ -1759,8 +1759,10 @@ Forge 1.20.1 无该文件与机制，改由库的静态初始化调用 `Rarity.c
    「失败即上报」（`AP_CRAR:evt=loaderr:…`），不让单个类把整个探针拖死。
 4. ⚠️ **用例里断言失败会截断后续断言**：本次首条 log 断言（原版 `rare`）因探针死掉而失败后，后面三条断言**根本没被评估**
    ⇒ 读用例日志时必须确认「断言条数 == 期望条数」，别把「只报了 1 条」当成「其余都通过」。
-5. **本档尚未挂任何物品**（用户裁决「只建等级」）⇒ 实机观察走组件：`/item replace entity @s weapon.mainhand with
-   minecraft:stone[minecraft:rarity="astral_dice:bizarre"]`（1.20.1 无组件系统 ⇒ 只能注册时设档）。
+5. ⚠️（2026-09-25 晚已过时）**本档现已挂 8 件物品**（6 专属牌 + 怪力侦探 `sherry_sign` + 人偶师 `hanna_sign`；
+   游戏大师 `ren_sign` 曾被误改奇特、本批改回史诗）—— 想实测任意物品仍可用组件：
+   `/item replace entity @s weapon.mainhand with minecraft:stone[minecraft:rarity="astral_dice:bizarre"]`
+   （1.20.1 无组件系统 ⇒ 只能注册时设档）。
 
 ## 附录 A 续 31. 文字与边框同色 + 第三方 tooltip 模组对接（2026-09-25）
 
@@ -1777,3 +1779,14 @@ Forge 1.20.1 无该文件与机制，改由库的静态初始化调用 `Rarity.c
 「物品名按档位变色、边框一律金色」，**极易误判成本模组染色坏了**。可复现判据（`config/tooltipoverhaul/tooltipoverhaul.toml`）：
 `CUSTOM_RARITY_PALETTE_COLORS = "0xFFE8B84A, …"`。对接方式与三家模组的差异见技能 `mc-thirdparty-tooltip-frame`；
 排查入口 = **先看整合包 `mods/` 里有没有画 tooltip 的模组**（`grep -i "tooltip\|legendary\|border"`）。
+
+**⚠️ 二次修订（2026-09-25 晚，用户裁决 —— 本节上面的「文字与边框同色」结论作废）**：
+用户以原版稀有物品截图定调（文字水蓝、边框紫蓝，**原版边框与文字本就不同色**）⇒ 稀有/史诗**不干预边框**（随原版）；
+传奇/巅峰维持自定义单色边框；奇特要求**沿边框顺时针流动**。`RenderTooltipEvent.Color` 只有「顶/底」两色
+（竖直渐变），**画不出顺时针环绕** ⇒ 全线改走 **Mixin 自绘**：`mixin/client/TooltipBorderMixin`（包 `renderTooltipBackground`
+/ `extractTooltipBackground` 调用）+ `client/RarityBorderRenderer`（奇特 = 逐像素顺时针彩虹环
+`hsvToRgb(rainbowHue(now) − dist/周长, …)`；传奇/巅峰 = `frameColor` 单色环；其余不画）。
+`RarityTooltipFrame` 两线删除；26.1.2 的贴图边框几何（`tooltip/frame` nine-slice border=10）实测解出：
+上横线 `y-3, x-2..x+w+1`（**四角缺 1px**）、竖线 `y-2..y+h+1` —— 自绘必须贴合，否则漏紫边。
+`custom_frames.json`：稀有/史诗改原版紫蓝三段近似 `#5000FF/#3C00BF/#28007F`（TO hex 无 alpha），传奇/巅峰/奇特不变。
+赏金池随品质修正：`hanna_sign` 移出、`ren_sign` 以 EPIC/1800 加回（三线 md5 一致）。

@@ -1048,12 +1048,17 @@ When extending this workspace:
     **粉紫 `#FF55FF`** = 原版 EPIC(`ChatFormatting.LIGHT_PURPLE`)= 史诗 → `ASTRAL_DICE_EPIC`;
     金 `#FFC24B` = 传奇 → `ASTRAL_DICE_LEGENDARY`;亮红 `#FF4D4D` = 巅峰 → `ASTRAL_DICE_PINNACLE`;
     **彩虹(流动)** = 奇特 → `ASTRAL_DICE_BIZARRE`(⚠️ 本档**没有单一颜色**:基准色薄荷绿 `#6BFFA8` 只用于物品名那一行)。
-  - ⚠️ **文字与边框严格同色**(唯一例外 = 奇特):库 `Rarity#frameColor(long)` = 「文字色的边框版」(`0xFF000000|rgb()`);
-    彩虹档返回该时刻的彩虹起色(逐帧调用 = 流动)。**边框必须自己写** —— 原版 tooltip 的边框色与稀有度无关。
-  - **奇特档当前挂载**(2026-09-25 用户裁决):6 张**专属牌**(= `is_exclusive.json` 全表:`effect_card_living_page` /
+  - ⚠️ **边框策略(2026-09-25 二次裁决:「文字与边框严格同色」的约定作废)**:
+    **稀有 / 史诗 = 完全随原版**(消费方不干预边框 —— 原版边框与稀有度无关的紫蓝渐变保留,只染物品名,
+    与原版稀有/史诗物品观感一致;用户以原版稀有物品「神秘蠕虫」截图定调:文字水蓝、边框紫蓝,两者本就不同色);
+    **传奇 / 巅峰 = 自定义单色边框**(`Rarity#frameColor(long)` = `0xFF000000|rgb()`,与物品名同色);
+    **奇特 = 顺时针流动彩虹**(沿边框周长铺满一整圈色环、随时间顺时针平移)。
+  - **奇特档当前挂载**(2026-09-25 用户裁决;⚠️ **2026-09-25 二次修正:上一批把「人偶师」误认成 `ren_sign`(实际 = 游戏大师)
+    ⇒ `ren_sign` 被误改奇特、`hanna_sign` 漏改,本批纠正**):6 张**专属牌**(= `is_exclusive.json` 全表:`effect_card_living_page` /
     `effect_card_fate_guidance` / `fu_card` / `huo_card` / `attack_card_bite` / `attack_card_dragon_roar`)
-    + **怪力侦探**(`sherry_sign`)+ **人偶师**(`ren_sign`);后两者原为史诗且**在赏金奖励池里** ⇒ 改档后按「奇特不入池」
-    已从三线 `astral_rews` 移除(守门 `$EXCLUDED_TIERS` 含 `BIZARRE`,池里留着会 fail-loud)。
+    + **怪力侦探**(`sherry_sign`)+ **人偶师**(`hanna_sign`)共 **8 件**;游戏大师(`ren_sign`)**改回史诗**(其注释本就写「史诗」)。
+    赏金池随品质同步:`hanna_sign` 移出三线 `astral_rews`(奇特不入池,守门 fail-loud)、`ren_sign` 按 **EPIC/1800** 加回
+    (插在 `pandaman_sign` 之后,= ModItems 注册序)。
   - **调用面(唯一写法)**:`.rarity(AstralRarities.rare() / epic() / legendary() / pinnacle() / bizarre())`
     (`com.merlinkitsune.starenginelib.item.AstralRarities`);普通档仍写 `Rarity.COMMON`。
     ⚠️ **禁止**再写**原版那三档常量**（`Rarity` 的 `RARE` / `EPIC` / `UNCOMMON`）—— 那套「借用原版枚举」的旧映射已废弃。
@@ -1079,20 +1084,22 @@ When extending this workspace:
     ② 客户端 `getRarity()` 是**真值** ⇒ 任何「按档位生效」的客户端表现(名字染色、边框彩虹)都可靠。
     ⚠️ **写法不同**:原版档位的序列化名**不带命名空间**(`rare` / `epic` …,写成 `minecraft:rare` 解析失败),
     自有档位**带**(`astral_dice:rare`)——命令/NBT 里写错会静默不生效(命令直接报解析错)。
-  - **「彩虹档」(奇特)的实现面**:原版 tooltip **边框颜色与稀有度无关**(`TooltipRenderUtil` 硬编码
-    `BORDER_COLOR_TOP/BOTTOM`),`Rarity#getStyleModifier()` 只作用于**物品名那一行** ⇒ 边框按档位上色必须自己加客户端钩子。
-    · **1.21.1 / 1.20.1** = `client/RarityTooltipFrame`(`RenderTooltipEvent.Color#setBorderStart/setBorderEnd`)——
-      **对全部 5 档生效**:先 `AstralRarities#tierOf(stack.getRarity())` 反查档位(`null` = 原版物品/其它模组 ⇒ 一律不动),
-      再写 `Rarity#frameColor(now)`。
-      ⚠️ **历史缺陷(2026-09-25 已修)**:首版类名 `RainbowRarityFrame` **只给奇特写了边框**,其余 4 档边框仍是原版紫色
-      ⇒ 「文字与边框同色」当时并不成立;改名 + 覆盖全档后修好。
-      tooltip **每帧重绘**(`AbstractContainerScreen#renderTooltip` 每帧调用)⇒ 事件**每帧都发** ⇒ 按时间算色即得
-      **流动彩虹,零 Mixin**;粒度上限 = 「两色渐变」(原版 `renderFrameGradient`:上横线=起始色/下横线=结束色/左右竖线=两者竖直渐变),
-      要「七色同屏」得 Mixin 掉那条渐变线的绘制。实测色环周期 = `Rarity.RAINBOW_CYCLE_MILLIS`(3000ms,60 tick 回到同一色)。
-    · ⚠️ **26.1.2 未接(已知缺口)**:该线 tooltip 边框已改为**九宫格贴图**(`TooltipRenderUtil` 用 `tooltip/background`
-      + `tooltip/frame` 精灵,事件是 `RenderTooltipEvent.Texture#setTexture`),**没有颜色接口** ⇒ 彩虹边框必须自带贴图帧,
-      属独立一轮待办(可行路线 = 每档自带一对 `tooltip/<tier>_background` / `_frame` 九宫格精灵 + `setTexture`);
-      该线目前只有「奇特」的基准色(物品名那一行),边框仍是原版样式。
+  - **「传奇/巅峰/奇特」边框的实现面(2026-09-25 重写 = Mixin 自绘,原 `RarityTooltipFrame`/`RenderTooltipEvent.Color` 路线已废弃)**:
+    原版 tooltip **边框颜色与稀有度无关**,而 `RenderTooltipEvent.Color` 只有「顶/底」两色
+    (`renderFrameGradient`:上横线=start/下横线=end/左右竖线=竖直渐变)——**物理上画不出沿边框顺时针环绕**
+    (顺时针需要逐像素按周长相位取色)。⇒ 唯一路线 = **Mixin 包住原版背景绘制调用,画完之后叠加自绘边框**:
+    · 三线统一 = `mixin/client/TooltipBorderMixin` + `client/RarityBorderRenderer`:
+      **1.21.1/1.20.1** 包 `GuiGraphics#renderTooltipInternal` 里的 `TooltipRenderUtil#renderTooltipBackground(10 参)`
+      (`@Shadow tooltipStack` 取物品;z=400 同层后写者胜);
+      **26.1.2** 包 `GuiGraphicsExtractor#tooltip(7 参)` 里的 `TooltipRenderUtil#extractTooltipBackground`
+      (贴图线;物品用 `@Local(argsOnly)` 取方法参数 —— deferred 渲染下字段不可靠)。
+    · 渲染器按档位:奇特 = 顺时针彩虹(逐像素 `hsvToRgb(rainbowHue(now) − dist/周长, rainbowSaturation(), rainbowBrightness())`,
+      `dist` = 从上横线左端沿「上→右→下→左」的像素数 ⇒ 时间推进等色线沿顺时针平移);
+      传奇/巅峰 = `frameColor(now)` 单色环;稀有/史诗/其它 = **不画**(原版边框原样)。
+    · ⚠️ **几何三线不同**:1.21.1/1.20.1 的边框环 = 上横线 `y-3, x-3..x+w+2`(含角)/竖线 `y-2..y+h+1`;
+      26.1.2 = `tooltip/frame` 九宫格贴图(100×100,border=10)解出的线是 上横线 `y-3, x-2..x+w+1`(**四角缺 1px**),
+      竖线同 —— 自绘必须各自贴合,否则与原版边框错位漏紫边。
+    · 色环周期 = `Rarity.RAINBOW_CYCLE_MILLIS`(3000ms);饱和度/明度 = 库 `rainbowSaturation()`/`rainbowBrightness()`(0.85/1.0)。
     · 🚨 **第三方 tooltip 模组会整个接管边框**(2026-09-25 实测,整合包 `狐の航空学 Voxy Edition`):它们**自己画**提示框
       ⇒ 上面的事件被**完全忽略**,而且「自定义稀有度」会落进那家的**未知档位兜底色**。实测 Tooltip Overhaul 2.0.4:
       `ColorUtils#getColorsPerRarity` 用 `==` 比原版 `COMMON/UNCOMMON/RARE/EPIC`,其余一律 `Palette.CUSTOM_RARITY`
@@ -1106,7 +1113,9 @@ When extending this workspace:
         `assets/astral_dice/tooltipoverhaul/custom_frames.json`(5 档,priority 10;非 TO 环境下是惰性数据)。
       · ⚠️ 该模组**没有逐帧动画能力**(特效表 + 调色板全查过,无 rainbow)⇒ 奇特在它下面用**静态三段彩虹渐变**
         (`borderType:"gradient"`,取库 `hsvToRgb(h,0.85,1.0)` 的相位 0 / 1/3 / 2/3 = `#FF2626` / `#26FF26` / `#2626FF`);
-        不装它时仍是真·流动彩虹。其余 4 档用 `borderType:"static"` + 三色相同 = 与文字严格同色。
+        不装它时仍是真·顺时针流动彩虹(自绘)。其余 4 档按新策略给色:稀有/史诗 = **原版边框紫蓝**三段近似
+        (`#5000FF` / `#3C00BF` / `#28007F`,即原版 `BORDER_COLOR_TOP/BOTTOM` 的 RGB,TO 的 hex 不支持 alpha),
+        传奇/巅峰 = 档位色(与文字同色)⇒ 在 TO 环境下「奇特以外不干预边框」的观感由这三色近似复刻。
       · ⚠️ **别把「颜色不对」直接归因于本模组** —— 先确认整合包是否装了边框类模组(另两条线的包用 **LegendaryTooltips**,
         **未对接**:26.1.2 测试包与 FTB Skies 2 有它)。
   - ⚠️ **附魔不再升档**:原版「附魔升一档」的 switch 只覆盖原版 4 档,自有档走 `default` 原样返回(三线一致,可接受)。
@@ -1118,7 +1127,7 @@ When extending this workspace:
     会对 `$null` 期望当场报错,fail-loud)。
   - **骰子按升级链配色**:基础 = 普通(白)、黄金 = 稀有(浅蓝)、钻石 = 史诗(粉紫)、合金 = 传奇(金)、
     **下界之星 = 巅峰(亮红,T4 奇异品阶)**;⚠️ **合金(传奇)自 2026-09-25 起可参与赏金板**,下界之星(巅峰)**不参与**。
-    ⚠️ **「奇特」目前没有任何物品**(用户 2026-09-25 裁决「只建等级,暂不挂物品」)⇒ 想实测就用数据组件:
+    (「奇特」已有 8 件挂载,见本节「奇特档当前挂载」;想实测任意物品仍可用数据组件:
     `/give @s <任意物品>[minecraft:rarity="astral_dice:bizarre"]`(1.21.1 / 26.1.2 可用;1.20.1 无组件系统,只能注册时设档)。
   - 新增物品的 `.rarity(...)` 按此标准选择,并与图标边框颜色一致(图标边框色即品质色);1.2.0 新增骰子按各自阶层定品质。
 - **立牌品质由合成配方决定**(见「立牌品质(配方决定)」表;立牌本身的 `.rarity(...)` 与配方分级保持一致)。

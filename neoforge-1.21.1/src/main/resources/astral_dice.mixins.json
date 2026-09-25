@@ -20,7 +20,8 @@
     "client.AstralUseItemGuardMixin",
     "client.LocalPlayerDropGuardMixin",
     "client.EffectRenderingInventoryScreenMixin",
-    "client.GuiMixin"
+    "client.GuiMixin",
+    "client.TooltipBorderMixin"
   ],
   "injectors": {
     "defaultRequire": 1

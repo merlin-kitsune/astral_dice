@@ -124,7 +124,8 @@ public class ModItems {
     //   亮红 #FF4D4D = 巅峰 → AstralRarities.pinnacle()  扩展常量 ASTRAL_DICE_PINNACLE
     //   彩虹(流动)   = 奇特 → AstralRarities.bizarre()   扩展常量 ASTRAL_DICE_BIZARRE
     //                 ⚠️ 奇特**没有**单一颜色:基准色薄荷绿 #6BFFA8 只用于物品名那一行;
-    //                    文字与边框同色的提示框边框(奇特=流动彩虹)由客户端 client/RarityTooltipFrame 负责。
+    //                    边框策略(2026-09-25 二次裁决):稀有/史诗随原版不干预;传奇/巅峰/奇特
+    //                    (金/亮红/顺时针流动彩虹)由客户端 mixin/client/TooltipBorderMixin + client/RarityBorderRenderer 自绘。
     // 机制:库里的 item.Rarity 是**唯一色码权威**,其平台接线把这 5 档**扩展进原版 Rarity**
     //   (NeoForge 两线 = 本 mod 的 META-INF/enumextensions.json + 库 AstralRarities 的 EnumProxy 字段;
     //    Forge 1.20.1 = 库 AstralRarities 静态初始化里的 Rarity.create + IExtensibleEnum)
@@ -929,10 +930,11 @@ public class ModItems {
 
     // 游戏大师立牌(命名:ren,史诗):鼠鼠救我被动(5:00 无盾自动补「1 张随机卡牌 + 护盾」)
     // + 熊孩子特权主动(选任意玩家或自身);盾 = 5 黄心 + 抗性提升 + 1 层反击;配方=基础骰子(纸×4 + 星币×3) → 史诗
+    // (2026-09-25 修正:上一批误把本立牌改成「奇特」,本批按用户裁决改回史诗 —— 奇特的立牌是怪力侦探与人偶师。)
     public static final DeferredItem<Item> REN_SIGN = registerItem("ren_sign",
             () -> new RenSignItem(new Item.Properties()
                     .stacksTo(1)
-                    .rarity(AstralRarities.bizarre())));
+                    .rarity(AstralRarities.epic())));
 
     // 风水师立牌(命名:zhao,传奇):被动「福祸相倚」(骰点 1→符卡-祸 / 6→符卡-福)
     // + 被动「完美帮手」(对装备大当家立牌者施加白泽赐福时给 1 层养精蓄锐)
@@ -972,27 +974,29 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(AstralRarities.legendary())));
 
-    // 怪力侦探立牌(命名:sherry,史诗):主动「怪力投掷」把 12 格内全部敌对目标按抛物线扔到玩家面前 2 格,
+    // 怪力侦探立牌(命名:sherry,奇特):主动「怪力投掷」把 12 格内全部敌对目标按抛物线扔到玩家面前 2 格,
     // **落地之后**造成 2 点伤害并施加 1 层「标记」(推理时间满 5 层 ⇒ 额外 5 点);被动「侦探出击」按
     // 「攻击 ≥20 血敌对目标」累积「推理时间」(上限 5,**死亡不清**,骰神赐福结束后 −1 层),
     // 「挚友守护」为同队装备人偶师立牌的玩家减伤 1 点。
-    // 史诗品质 = ASTRAL_DICE_EPIC;配方 = 钻石骰子(±星盘)档(同 忍者 komachi / 占星师 haiqing / 骇客 nancy_lu / 枪匠 moses)。
+    // 奇特品质 = ASTRAL_DICE_BIZARRE(2026-09-25 用户裁决「专属牌 + 怪力侦探和人偶师改奇特」);
+    // 配方 = 紫晶骰子 + 黄金星盘档(2026-09-25 用户裁决:骰子由钻石骰子改紫晶骰子)。
     public static final DeferredItem<Item> SHERRY_SIGN = registerItem("sherry_sign",
             () -> new com.merlinkitsune.astral_dice.item.sign.SherrySignItem(new Item.Properties()
                     .stacksTo(1)
                     .rarity(AstralRarities.bizarre())));
 
-    // 人偶师立牌(命名:hanna,稀有):被动「幻想千金」(战斗骰点 = 6 ⇒ 1 星币;路过 3 格内友方玩家 ⇒
+    // 人偶师立牌(命名:hanna,奇特):被动「幻想千金」(战斗骰点 = 6 ⇒ 1 星币;路过 3 格内友方玩家 ⇒
     // 该玩家 1 星币 + 自身 1 层「人偶制作」,自身处于「魔女漂浮」时该玩家改为 3 星币;「人偶制作」满 7 层
     // ⇒ 归零转为「人偶完成」,此后路过额外给该玩家 迅捷 II (1:00) + 3 星币;整体每 1:00 仅触发 1 次)
     // + 被动「挚友祝福」(路过装备「怪力侦探」立牌的玩家 ⇒ 该玩家获得 力量 II (1:00) + 抗性提升 (1:00)
     // + 1 层「推理时间」;每 1:00 仅触发 1 次)
     // + 主动「漂浮魔法」(自身 魔女漂浮 1:00:移速 +20%、掉落伤害 -100%、近战攻击被闪避、禁用末影珍珠)。
-    // 稀有品质 = ASTRAL_DICE_RARE;配方 = 黄金骰子(无星盘)档(同 史莱姆 lulu / 上班族 padman)。
+    // 奇特品质 = ASTRAL_DICE_BIZARRE(2026-09-25 用户裁决;上一批漏改,本批补上);
+    // 配方 = 紫晶骰子 + 黄金星盘×2 档(2026-09-25 用户裁决:两个线位改黄金星盘、骰子改紫晶骰子)。
     public static final DeferredItem<Item> HANNA_SIGN = registerItem("hanna_sign",
             () -> new com.merlinkitsune.astral_dice.item.sign.HannaSignItem(new Item.Properties()
                     .stacksTo(1)
-                    .rarity(AstralRarities.rare())));
+                    .rarity(AstralRarities.bizarre())));
 
     // 符卡-福(专属功能效果牌,风水师立牌专属):出牌数 +1;对玩家(不限队伍)或自身使用 ⇒ 恢复 2 点生命值。
     // 专属绑定:获得即绑定获得者(ModDataComponents.OWNER_UUID),他人无法使用。

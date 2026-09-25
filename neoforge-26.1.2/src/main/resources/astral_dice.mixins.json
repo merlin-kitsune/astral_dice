@@ -21,7 +21,8 @@
     "client.LocalPlayerDropGuardMixin",
     "client.EffectsInInventoryMixin",
     "client.GuiMixin",
-    "client.LivingEntityOutlineCaptureMixin"
+    "client.LivingEntityOutlineCaptureMixin",
+    "client.TooltipBorderMixin"
   ],
   "injectors": {
     "defaultRequire": 1
