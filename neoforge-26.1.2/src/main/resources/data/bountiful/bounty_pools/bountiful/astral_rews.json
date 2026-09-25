@@ -122,7 +122,7 @@
 		},
 		"star_coin": {
 			"type": "item",
-			"rarity": "RARE",
+			"rarity": "COMMON",
 			"content": "astral_dice:star_coin",
 			"amount": {
 				"min": 2,
@@ -218,16 +218,6 @@
 				"max": 1
 			},
 			"unitWorth": 2000
-		},
-		"attack_card_full_power": {
-			"type": "item",
-			"rarity": "LEGENDARY",
-			"content": "astral_dice:attack_card_full_power",
-			"amount": {
-				"min": 1,
-				"max": 1
-			},
-			"unitWorth": 4000
 		},
 		"defense_card_medium": {
 			"type": "item",

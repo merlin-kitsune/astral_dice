@@ -408,7 +408,7 @@ When extending this workspace:
 | 中文名 | 注册 id | 品质 | 备注 |
 |---|---|---|---|
 | 规则书《恋的规则书》 | `astral_guide` | — | 帕秋莉书籍 id(**非 `ModItems` 注册物品**;经 `ItemModBook.forBook` 生成,创造栏首位;lang 无 `item.astral_dice.astral_guide` 键) |
-| 星币 | `star_coin` | 蓝(稀有 RARE) | 货币;袋装星币可 9:1 互转(`star_coin_bag`) |
+| 星币 | `star_coin` | 白(普通 COMMON) | 货币;袋装星币可 9:1 互转(`star_coin_bag`) |
 | 袋装星币 | `star_coin_bag` | 蓝(稀有 RARE) | 9 枚星币打包 |
 | 星盘 | `star_plate` | 紫(史诗 EPIC) | 骰子/立牌/筹码合成材料;可从原版宝箱开出 |
 | 黄金星盘 | `golden_star_plate` | 金(传奇 UNCOMMON) | 星盘升级/下界之星两条配方;不祥宝库可开出 |

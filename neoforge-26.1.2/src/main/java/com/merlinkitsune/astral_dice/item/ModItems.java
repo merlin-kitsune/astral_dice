@@ -305,7 +305,7 @@ public class ModItems {
     public static final DeferredItem<Item> ATTACK_CARD_FULL_POWER = registerItem("attack_card_full_power",
             props -> new CardItem(props
                     .stacksTo(64)
-                    .rarity(AstralRarities.legendary())
+                    .rarity(AstralRarities.pinnacle())
                     .component(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("full_power")), "full_power"));
 
     // 撕咬(蛟龙立牌 mamushi 专属战斗牌):费用 2 / 耐久 1 / 定值攻击 +3(对齐暗影突袭)。
@@ -392,7 +392,7 @@ public class ModItems {
     public static final DeferredItem<Item> STAR_COIN = registerItem("star_coin",
             props -> new Item(props
                     .stacksTo(64)
-                    .rarity(AstralRarities.rare())));
+                    .rarity(Rarity.COMMON)));
 
     // 袋装星币:9 枚星币打包(可逆),便于批量携带
     public static final DeferredItem<Item> STAR_COIN_BAG = registerItem("star_coin_bag",

@@ -304,7 +304,7 @@ public class ModItems {
     public static final RegistryObject<Item> ATTACK_CARD_FULL_POWER = registerItem("attack_card_full_power",
             () -> new CardItem(new Item.Properties()
                     .stacksTo(64)
-                    .rarity(AstralRarities.legendary())
+                    .rarity(AstralRarities.pinnacle())
                     , "full_power"));
 
     // 蛟龙立牌(mamushi)专属战斗牌「撕咬」(传奇=UNCOMMON):费用 2 / 耐久 1 / 攻击贡献定值 +3(对齐暗影突袭)。
@@ -388,7 +388,7 @@ public class ModItems {
     public static final RegistryObject<Item> STAR_COIN = registerItem("star_coin",
             () -> new Item(new Item.Properties()
                     .stacksTo(64)
-                    .rarity(AstralRarities.rare())));
+                    .rarity(Rarity.COMMON)));
 
     // 袋装星币:9 枚星币打包(可逆),便于批量携带
     public static final RegistryObject<Item> STAR_COIN_BAG = registerItem("star_coin_bag",

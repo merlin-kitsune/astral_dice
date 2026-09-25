@@ -6,9 +6,10 @@ Bountiful 赏金联动一致性校验（只读守门）。
   1. 双版本 ModItems 注册物品 id 与品质完全一致；
   2. astral_objs = 非「不进池档」骰子 + 货币(star_coin / star_coin_bag / star_plate / golden_star_plate)；
   3. astral_rews = astral_objs ∪ 卡牌(全部，⚠️ 专属牌除外，见 §4) ∪ 非「不进池档」筹码 ∪ 非「不进池档」立牌
-     （**不进池 = 巅峰（ASTRAL_DICE_PINNACLE）+ 奇特（ASTRAL_DICE_BIZARRE）**：这两档的骰子/筹码/立牌不进任何池,
+     （**不进池 = 巅峰（ASTRAL_DICE_PINNACLE）+ 奇特（ASTRAL_DICE_BIZARRE）**：这两档的骰子/筹码/立牌/**卡牌**不进任何池,
       二者都**没有**数据层 rarity 对应值;⚠️ 2026-09-25 用户裁决「加入传奇物品，排除巅峰和奇特」后 **传奇档已进池**
-      (其数据层 rarity = `LEGENDARY`);卡牌不受档位限制）；
+      (其数据层 rarity = `LEGENDARY`);⚠️ 2026-09-26 用户裁决「巅峰/奇特档的卡牌也排除」——此前卡牌不受档位限制，
+      现在卡牌与骰子/筹码/立牌一样受 $EXCLUDED_TIERS 约束(如「全力攻击」改巅峰后即自动从 rews 移出)）；
      「卡牌」判据 = **与生产线同一判据**：id 前缀(attack_card_/defense_card_/effect_card_)
      **∪ 本模组卡牌标签**(`data/<ns>/tags/{item|items}/{combat_cards,effect_cards}.json`，即 `ModItems.isCardItem`)。
      ⚠️ **2026-09-26 修正（消除失明区）**：此前只用 id 前缀 ⇒ 不以前缀命名的卡牌
@@ -245,7 +246,7 @@ function Get-Expected {
     foreach ($k in $c['dice']) { if ($EXCLUDED_TIERS -cnotcontains $items[$k]) { [void]$objs.Add($k) } }
     foreach ($k in $c['money']) { [void]$objs.Add($k) }
     $rews = [System.Collections.Generic.HashSet[string]]::new($objs, [System.StringComparer]::Ordinal)
-    foreach ($k in $c['cards']) { [void]$rews.Add($k) }
+    foreach ($k in $c['cards']) { if ($EXCLUDED_TIERS -cnotcontains $items[$k]) { [void]$rews.Add($k) } }
     foreach ($k in $c['signs']) { if ($EXCLUDED_TIERS -cnotcontains $items[$k]) { [void]$rews.Add($k) } }
     foreach ($k in $c['chips']) { if ($EXCLUDED_TIERS -cnotcontains $items[$k]) { [void]$rews.Add($k) } }
     # 专属效果牌从**所有**池的期望集合中剔除(用户 2026-09-26 裁决:严禁经立牌以外的任何途径获得)。
@@ -336,8 +337,9 @@ $excl = @()
 foreach ($k in $c['chips']) { if ($EXCLUDED_TIERS -ccontains $items[$k]) { $excl += $k } }
 foreach ($k in $c['signs']) { if ($EXCLUDED_TIERS -ccontains $items[$k]) { $excl += $k } }
 foreach ($k in $c['dice']) { if ($EXCLUDED_TIERS -ccontains $items[$k]) { $excl += $k } }
+foreach ($k in $c['cards']) { if ($EXCLUDED_TIERS -ccontains $items[$k]) { $excl += $k } }
 $excl = Sort-Ordinal $excl
-Write-Out ('按规则排除(巅峰/奇特档 筹码/立牌/骰子): ' + $excl.Count + ' 项')
+Write-Out ('按规则排除(巅峰/奇特档 筹码/立牌/骰子/卡牌): ' + $excl.Count + ' 项')
 
 # 2/3/4) 逐版本逐池比对
 foreach ($ver in $VERSIONS) {

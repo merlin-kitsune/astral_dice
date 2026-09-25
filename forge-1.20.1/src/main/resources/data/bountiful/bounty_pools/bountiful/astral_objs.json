@@ -122,7 +122,7 @@
 		},
 		"star_coin": {
 			"type": "item",
-			"rarity": "RARE",
+			"rarity": "COMMON",
 			"content": "astral_dice:star_coin",
 			"amount": {
 				"min": 4,
