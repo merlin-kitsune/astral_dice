@@ -55,6 +55,14 @@ config="${mod_id}.mixins.json"
 [[mixins]]
 config="${mod_id}.neoforge_fixes.mixins.json"
 
+# Jade 兼容(2026-09-25):把 Jade 工具提示里的「护甲」换成本模组的**防御力**(数值 + 图标)。
+# 独立配置:required=false ⇒ 目标类(Jade)缺席、或 Jade 升版后注入点漂移时,Mixin 只降级为 WARN、
+# 把该 mixin 摘掉,绝不阻断启动(依据 Mixin 0.8.5 源码 MixinProcessor.java:603 与
+# MixinApplicatorStandard.java:297/327/346 —— 非 required 配置的 prepare/apply 失败一律降级)。
+# 注入器本身用 defaultRequire=1:注入点漂移时留下明确的错误行,便于定位。
+[[mixins]]
+config="${mod_id}.jade.mixins.json"
+
 # The [[accessTransformers]] block allows you to declare where your AT file is.
 # If this block is omitted, a fallback attempt will be made to load an AT from META-INF/accesstransformer.cfg
 #[[accessTransformers]]

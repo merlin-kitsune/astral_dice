@@ -48,6 +48,14 @@ public class ModClientEvents {
                 "target_select", TargetSelectOverlay.INSTANCE);
         event.registerAbove(VanillaGuiOverlay.AIR_LEVEL.id(),
                 "action_bar", ActionBarOverlay.INSTANCE);
+        // 战斗数值 HUD（见 CombatPowerHud 类头）：
+        //  防御条接在 ARMOR_LEVEL 之后 —— 原版护甲 overlay 已被 CombatPowerHud 取消，本 overlay 补位占那一行；
+        //  攻击条接在 FOOD_LEVEL 之后 —— Forge 的 registerAbove 插到锚点后一位，故落在
+        //  FOOD_LEVEL 与 AIR_LEVEL 之间，正好是饱食度正上方一行。
+        event.registerAbove(VanillaGuiOverlay.ARMOR_LEVEL.id(),
+                "defense_bar", CombatPowerHud.DEFENSE_OVERLAY);
+        event.registerAbove(VanillaGuiOverlay.FOOD_LEVEL.id(),
+                "attack_bar", CombatPowerHud.ATTACK_OVERLAY);
     }
 
     @SubscribeEvent

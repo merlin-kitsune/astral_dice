@@ -56,6 +56,18 @@ config="${mod_id}.mixins.json"
 # (上游 PR #3101 的修复已进入 26.1.x),故该配置与 mixin/助手类在本子项目一并删除。
 # 禁止把 1.21.1 的那份配置复制回来 —— 重复 pop/截断在已修复的版本上属多余变换。
 
+# Jade 兼容(2026-09-25):把 Jade 工具提示里的「护甲」换成本模组的**防御力**(数值 + 图标)。
+# 落点是 Jade 26.1.11 的实体护甲提供器**内部类 Client**(本版本护甲读取已下沉到该内部类;
+# 完整二进制类名见 mixin 类 ArmorValueProviderMixin 的 @Mixin(targets = ...)。
+# ⚠️ 本注释**禁止**写出带美元符号的内部类二进制名 —— 本目录会被 `expand replaceProperties`
+#    以 Groovy 模板展开,美元符号后面的标识符会被当成占位符,导致 generateModMetadata 直接失败)。
+# 独立配置:required=false ⇒ 目标类(Jade)缺席、或 Jade 升版后注入点漂移时,Mixin 只降级为 WARN、
+# 把该 mixin 摘掉,绝不阻断启动(依据 Mixin 源码 MixinProcessor.java:603 与
+# MixinApplicatorStandard.java:297/327/346 —— 非 required 配置的 prepare/apply 失败一律降级)。
+# 注入器本身用 defaultRequire=1:注入点漂移时留下明确的错误行,便于定位。
+[[mixins]]
+config="${mod_id}.jade.mixins.json"
+
 # The [[accessTransformers]] block allows you to declare where your AT file is.
 # If this block is omitted, a fallback attempt will be made to load an AT from META-INF/accesstransformer.cfg
 #[[accessTransformers]]

@@ -47,6 +47,20 @@ May the god of the dice be with you!
 [[mixins]]
 config="${mod_id}.mixins.json"
 
+# Jade 兼容(2026-09-25):把 Jade 工具提示里的「护甲」换成本模组的**防御力**(数值 + 图标)。
+# ⚠️ 1.20.1 的护甲由独立枚举 `EntityArmorProvider` 提供(neo 两线是 EntityHealthAndArmorProvider),
+#    图标走 `icons.png` 的 UV 图集(不是 sprite),故两个注入点与另两线不同。
+# 独立配置:required=false ⇒ 目标类(Jade)缺席、或 Jade 升版后注入点漂移时,Mixin 只降级为 WARN、
+# 把该 mixin 摘掉,绝不阻断启动(依据 Mixin 0.8.5 源码 MixinProcessor.java:603 与
+# MixinApplicatorStandard.java:297/327/346)。注入器用 defaultRequire=1 以便漂移时留下错误行。
+# ⚠️ 本线是**生产 SRG** jar,@At 里的原版类/方法名靠 refmap 映射 ⇒ 必须声明 refmap,
+#    且**与主配置共用同一个** astral_dice.refmap.json(MDG Legacy 只产这一份,AP 会把本配置里
+#    的 mixin 引用一并合并进去)。
+# ⚠️ dev run 不读 mods.toml 的 [[mixins]](见 build.gradle 的 `mixin { config(...) }`),
+#    新配置必须在 build.gradle 里同样登记,否则 dev 环境不会加载它。
+[[mixins]]
+config="${mod_id}.jade.mixins.json"
+
 # The [[accessTransformers]] block allows you to declare where your AT file is.
 # If this block is omitted, a fallback attempt will be made to load an AT from META-INF/accesstransformer.cfg
 #[[accessTransformers]]

@@ -8,7 +8,22 @@
 
 ### New Content
 
-<!-- 新内容在此登记 -->
+#### Input & UI
+
+- **New combat stat bars: Defense and Attack Power** (user request 2026-09-26): the vanilla **armor bar row** now
+  shows this mod's **Defense** bar instead (the vanilla armor bar is no longer drawn, and Overloaded Armor Bar's
+  armor bar is hidden as well so the two never stack on one row), while the **Attack Power** bar is pinned directly
+  **above the hunger bar** so extra info rows added by other mods cannot push it away. Both read Defense / Attack
+  Power straight from the damage-resolution path and **no longer show the vanilla armor value**. A row holds up to
+  10 icons of 2 points each (10 icons = 20 points) using a **full** and a **half** icon, and a partial point is
+  simply **not drawn** (empty slots stay transparent instead of showing hollow icons); values **above 20 points**
+  fall back to **one full icon plus a number**. Both bars are **always shown** whenever the value exists (Defense
+  bottoms out at 2, Attack Power at 1) and hide together with the rest of the HUD on **F1**. The Attack Power bar
+  yields the right-hand row while riding so it never covers the vehicle health bar.
+
+- **Jade's armor readout now shows this mod's Defense** (user request 2026-09-26): with Jade installed, the **armor
+  icon and value** in the entity info overlay show this mod's **Defense** instead (full / half / empty icons
+  matching the vanilla shapes; mobs keep their vanilla armor value - only players use this mod's numbers).
 
 ### Content & Balance
 

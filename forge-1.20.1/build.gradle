@@ -134,8 +134,14 @@ legacyForge {
 
     // MDG Legacy:Mixin 配置声明(dev run 需显式注册 mixin config,
     // mods.toml [[mixins]] 仅生产 jar 生效;此处同时启用 refmap 生成链)
+    // ⚠️ 注册项会被拼成 dev run 的 `--mixin.config=<名字>`(见 MDG Legacy 的
+    //    LegacyForgeModDevPlugin:getConfigs().map(...) → RunModel#getProgramArguments),
+    //    **每一条配置都必须在这里出现**,否则 dev 环境根本不加载它(mods.toml 在 dev 不被读取)。
+    // ⚠️ refmap 只有一份(astral_dice.refmap.json,由 Mixin AP 合并本模块全部 mixin 的引用生成),
+    //    因此 astral_dice.jade.mixins.json 里也写同一个 refmap 名 —— 不要试图给它单独起名。
     mixin {
         config("${mod_id}.mixins.json")
+        config("${mod_id}.jade.mixins.json")
     }
 }
 

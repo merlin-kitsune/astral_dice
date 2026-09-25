@@ -71,6 +71,12 @@ public class ModClientEvents {
         event.registerAbove(VanillaGuiLayers.AIR_LEVEL,
                 Identifier.fromNamespaceAndPath(AstralDiceMod.MODID, "action_bar"),
                 ActionBarOverlay.INSTANCE);
+        // 战斗数值 HUD（见 CombatPowerHud 类头）：
+        //  防御条接在 ARMOR_LEVEL 之后 —— 原版护甲层已被 CombatPowerHud 取消，本层补位占那一行；
+        //  攻击条接在 FOOD_LEVEL 之后 —— 锚点 id 与两发布线逐字对齐（1.21.1 的 `attack_bar`），
+        //  该锚点保证它落在饱食度正上方，且排在「锚 Hunger 再用 rightHeight 往上叠」的 bar 之下。
+        event.registerAbove(VanillaGuiLayers.ARMOR_LEVEL, CombatPowerHud.DEFENSE_LAYER_ID, CombatPowerHud.DEFENSE_LAYER);
+        event.registerAbove(VanillaGuiLayers.FOOD_LEVEL, CombatPowerHud.ATTACK_LAYER_ID, CombatPowerHud.ATTACK_LAYER);
     }
 
     public static class ActionBarOverlay implements GuiLayer {
