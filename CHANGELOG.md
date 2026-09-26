@@ -78,12 +78,13 @@
   the Great Detective
   standee and so on) are applied **after** the final damage is computed and are **allowed to reduce it to 0**.
 
-- **Defense card durability 10 -> 100, drained "1 point per dice-combat hit"** (user request 2026-09-26): the
-  durability cap of the defense battle cards (Medium / Large / Epic Defense Card) rises to **100**, and instead of
-  **every** defense card losing 1 point once per blessing period, **each dice-combat hit a player takes now removes
-  exactly 1 point from the first defense card that still has durability, in equip order** (a card is only removed
-  once it reaches 0). Ranged, spell and skill damage that does **not** trigger dice combat **does not consume
-  defense cards**.
+- **Defense card durability 10 -> 150, drained "1 point from every equipped defense card per dice-combat hit"**
+  (user request 2026-09-26): the durability cap of the defense battle cards (Medium / Large / Epic Defense Card)
+  rises to **150**, and **each dice-combat hit a player takes now removes 1 point from *every* defense card
+  equipped in the card slots** (a card is removed and its cost refunded once it reaches 0). This replaces the old
+  "every defense card loses 1 point once per blessing period" mechanism — the trigger is **every** dice-combat
+  hit, not a blessing cycle. Ranged, spell and skill damage that does **not** trigger dice combat **does not
+  consume defense cards**.
 
 - **Vanilla damage modifiers now take effect in dice combat** (user ruling 2026-09-26): dice combat used to overwrite
   the whole damage value and discard everything vanilla had already computed, so **Sharpness, Critical Hits, the attack

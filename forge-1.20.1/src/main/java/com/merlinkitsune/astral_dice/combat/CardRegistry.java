@@ -64,8 +64,8 @@ public final class CardRegistry {
         // 内置卡牌默认耐久在此集中维护,CardType 注册时也使用同一组数值。
         return switch (typeId) {
             case "medium", "large", "epic", "shadow_strike" -> 10;
-            // 防御牌:2026-09-26 用户裁决由 10 提升至 100,配合「每次受骰战攻击按装备顺序扣 1 点」
-            case "defense_medium", "defense_large", "defense_epic" -> 100;
+            // 防御牌:2026-09-26 用户裁决由 10 提升至 150,配合「每次受骰战攻击时装备的所有防御牌各扣 1 点」
+            case "defense_medium", "defense_large", "defense_epic" -> 150;
             case "meito" -> 5;
             case "charge" -> 1;
             case "full_power" -> 5;
@@ -233,13 +233,13 @@ public final class CardRegistry {
                 ctx -> 3));
 
         // 防御牌
-        register(new CardType("defense_medium", true, 100, 1,
+        register(new CardType("defense_medium", true, 150, 1,
                 com.merlinkitsune.astral_dice.item.ModItems.DEFENSE_CARD_MEDIUM.get(),
                 ctx -> rollTwoMax(3, ctx)));
-        register(new CardType("defense_large", true, 100, 2,
+        register(new CardType("defense_large", true, 150, 2,
                 com.merlinkitsune.astral_dice.item.ModItems.DEFENSE_CARD_LARGE.get(),
                 ctx -> rollTwoMax(6, ctx)));
-        register(new CardType("defense_epic", true, 100, 3,
+        register(new CardType("defense_epic", true, 150, 3,
                 com.merlinkitsune.astral_dice.item.ModItems.DEFENSE_CARD_EPIC.get(),
                 ctx -> rollTwoMax(10, ctx)));
     }

@@ -673,11 +673,11 @@ public class DiceCombatEvents {
         // 电磁炮:以本次骰战最终伤害回填雷击伤害(50%)
         com.merlinkitsune.astral_dice.item.chip.RailgunChipItem.applyFinalDamage(railgunStrike, (float) finalDmg);
 
-        // 防御牌耐久(2026-09-26 用户裁决):**每次受到骰战攻击**按装备顺序扣除 1 点(只扣一张),
-        // 取代旧的「每个赐福周期一次、所有防御牌各扣 1」口径。
-        // 未装备骰子的防御方无事发生(由方法内部早退保证)。
+        // 防御牌耐久(2026-09-26 用户裁决·更正版):**每次受到骰战攻击**时,
+        // 防御方装备的**所有**防御牌各扣 1 点。
+        // 未装备骰子 / 无防御牌的防御方无事发生(由方法内部早退保证)。
         if (!player.level().isClientSide() && target instanceof Player targetDefender) {
-            consumeOneDefenseCardDurability(targetDefender);
+            consumeAllDefenseCardDurability(targetDefender);
         }
 
         // 大当家立牌被动(战斗爽·溅射):本次攻击触发骰神赐福且养精蓄锐满层时,触发块已置位;
@@ -775,7 +775,7 @@ public class DiceCombatEvents {
         int attackCostFreed = 0;
         boolean dirty = false;
         for (AppliedStone stone : enhancement.appliedStones()) {
-            // 防御牌:不在此消耗(消耗见 consumeDefenseCardDurability)
+            // 防御牌:不在此消耗(消耗见 consumeAllDefenseCardDurability)
             if (stone.type().startsWith("defense_")) {
                 newStones.add(stone);
                 continue;
@@ -808,15 +808,13 @@ public class DiceCombatEvents {
         }
     }
 
-    // consumeDefenseCardDurability(全量扣除版)已于 2026-09-26 移除 —— 口径改为
-    // 「每次受骰战攻击只扣一张、按装备顺序」,实现见 consumeOneDefenseCardDurability。
-
-    // 防御牌耐久扣除(2026-09-26 用户裁决):**每次受到骰战攻击**按**装备顺序**扣除,
-    // 且**只扣一张**(不是每张同时扣)——取 appliedStones 中第一张仍有耐久的 defense_* 牌扣 1 点。
-    // 该牌归零时从卡牌栏移除并返还其费用(沿用 MisakiSignItem.effectiveCost 口径)。
-    // 防御方未装备骰子 / 无防御牌 / 防御牌全部耗尽 ⇒ 无事发生。
-    // ⚠️ 本方法取代旧的 consumeDefenseCardDurabilityOnce(每赐福周期一次、所有防御牌各扣 1)。
-    private static void consumeOneDefenseCardDurability(Player defender) {
+    // 防御牌耐久扣除(2026-09-26 用户裁决·更正版):**每次受到骰战攻击**时,防御方卡牌栏中
+    // 装备的**所有防御牌各扣 1 点**(不是只扣装备顺序里的第一张)。
+    // 任一牌归零即从卡牌栏移除并返还其费用(沿用 MisakiSignItem.effectiveCost 口径)。
+    // 防御方未装备骰子 / 无防御牌 ⇒ 无事发生。
+    // ⚠️ 触发口径 = **每一次**受骰战攻击(不按赐福周期计数) —— 本方法取代原先
+    //    「按装备顺序只扣第一张」的实现,以及更早的「每赐福周期一次、所有牌各扣 1」实现。
+    private static void consumeAllDefenseCardDurability(Player defender) {
         if (defender.level().isClientSide()) return;
         var curios = CuriosCompat.getCuriosInventory(defender);
         if (curios.isEmpty()) return;
@@ -827,27 +825,26 @@ public class DiceCombatEvents {
         if (enh == null) return;
 
         List<AppliedStone> stones = enh.appliedStones();
-        int hit = -1;
-        for (int i = 0; i < stones.size(); i++) {
-            AppliedStone s = stones.get(i);
-            if (s.type().startsWith("defense_") && s.uses() > 0) {
-                hit = i;
-                break;
+        List<AppliedStone> newStones = new ArrayList<>(stones.size());
+        int defenseCostFreed = 0;
+        boolean dirty = false;
+        for (AppliedStone s : stones) {
+            // 非防御牌原样保留(已耗尽的防御牌理论上不存在,一并跳过)
+            if (!s.type().startsWith("defense_") || s.uses() <= 0) {
+                newStones.add(s);
+                continue;
+            }
+            dirty = true;
+            int newUses = s.uses() - 1;
+            if (newUses <= 0) {
+                // 归零 ⇒ 从卡牌栏移除并返还其费用
+                defenseCostFreed += MisakiSignItem.effectiveCost(defender, s.type());
+            } else {
+                // temporary 必须透传(临时牌不会因扣耐久变回永久牌),同 consumeAttackCardDurabilityOnce 口径
+                newStones.add(new AppliedStone(s.type(), newUses, s.temporary()));
             }
         }
-        if (hit < 0) return;
-
-        AppliedStone cur = stones.get(hit);
-        List<AppliedStone> newStones = new ArrayList<>(stones);
-        int defenseCostFreed = 0;
-        int newUses = cur.uses() - 1;
-        if (newUses <= 0) {
-            newStones.remove(hit);
-            defenseCostFreed = MisakiSignItem.effectiveCost(defender, cur.type());
-        } else {
-            // temporary 必须透传(临时牌不会因扣耐久变回永久牌),同 consumeAttackCardDurabilityOnce 口径
-            newStones.set(hit, new AppliedStone(cur.type(), newUses, cur.temporary()));
-        }
+        if (!dirty) return;
         ModDataComponents.WEAPON_ENHANCEMENT.set(dice, new WeaponEnhancement(
                 enh.usedCost(),
                 enh.maxCost(),
@@ -918,9 +915,9 @@ public class DiceCombatEvents {
         event.setAmount(finalDmg);
         // 跳数字:与玩家攻击同一出口(登记组别,由 DamageNumberAggregator 在管线终值上取值)
         DamageNumberAggregator.tag(target, source, DamageNumberAggregator.Group.ATTACK);
-        // 防御牌耐久:每次受到骰战攻击按装备顺序扣 1 点(仅在对骰成立时)
+        // 防御牌耐久:每次受到骰战攻击,防御方装备的所有防御牌各扣 1 点(仅在对骰成立时)
         if (opposed) {
-            consumeOneDefenseCardDurability(target);
+            consumeAllDefenseCardDurability(target);
         }
     }
 

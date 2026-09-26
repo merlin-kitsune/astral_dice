@@ -7819,6 +7819,15 @@ var NardisPrivilegeEffectClass = teruLoadCls("com.merlinkitsune.astral_dice.effe
 var NardisCardItemClass = teruLoadCls("com.merlinkitsune.astral_dice.item.card.CardItem");
 var NardisCardRegistryClass = teruLoadCls("com.merlinkitsune.astral_dice.combat.CardRegistry");
 var NardisModDataComponentsClass = teruLoadCls("com.merlinkitsune.astral_dice.component.ModDataComponents");
+// `DataComponentPatch`(1.20.5+ 才存在;1.20.1 ⇒ null)—— `nardiSetEnh` 的**纯 Java 写通道**
+var DataComponentPatchClass = teruLoadCls("net.minecraft.core.component.DataComponentPatch");
+// `TypedDataComponent`(1.20.5+;1.20.1 ⇒ null)—— `set` 扩展是**两参**(type,value),
+// 用一参的 `Builder#set(TypedDataComponent)` 可以绕开 KubeJS 的值转换
+var TypedDataComponentClass = teruLoadCls("net.minecraft.core.component.TypedDataComponent");
+// **26.x 线的判据**:Mojang 在 1.21.9+ 把 `ResourceLocation` 改名为 `Identifier`
+// (1.20.1 / 1.21.1 **无此类** ⇒ `teruLoadCls` 返回 null)。只用于**禁用**会在 26.x 上
+// 抛 Error 打死服务器的写通道,不作其它用途。
+var ProbeModernNames = (teruLoadCls("net.minecraft.resources.Identifier") != null);
 var NardisWeaponEnhancementClass = teruLoadCls("com.merlinkitsune.astral_dice.component.WeaponEnhancement");
 var NardisAppliedStoneClass = teruLoadCls("com.merlinkitsune.astral_dice.component.AppliedStone");
 var NardisSlotClass = teruLoadCls("net.minecraft.world.inventory.Slot");
@@ -8001,6 +8010,14 @@ function domEnhToJs(enh) {
  * 写回骰子的 `weapon_enhancement` —— 双形态容错,**成功返回 true**(失败不静默:读数里的
  * `set_ok` / `enh_curio` / `n_stones` 会同时暴露)。
  *
+ * <p>🚨 **2026-09-26 修订(下方 2026-09-20 的笔记仅作历史记录,其中 ① 「`dice.set(...)`」通道已废弃)**:
+ * 该通道在 **26.1.2(KubeJS 8.0.6)** 上抛 `IncompatibleClassChangeError: Conflicting default methods:
+ * `MutableDataComponentHolder.kjs$self` / `MutableDataComponentHolderKJS.kjs$self` /
+ * `ItemStackKJS.kjs$self``,**且它是 error 而非 exception ⇒ 穿透 Rhino 的 try/catch**,实测把
+ * server tick loop 直接打死(`run/26.1.2/crash-reports/crash-2026-09-26_17.25.05-server.txt`,栈顶
+ * `ItemStack.kjs$self` ← `MutableDataComponentHolderKJS.kjs$override` ← `DataComponentAccessor.kjs$set`)。
+ * 现改用 **`DataComponentPatch` + `ItemStack#applyComponents`**(纯 Java 通道),见下方 `nardiSetEnh`。
+ *
  * <p>⚠️⚠️ **1.21.1 侧必须传「JS 对象」而不是 Java `WeaponEnhancement` 实例**(2026-09-20 逐项取证):
  * KubeJS 给 `ItemStack` 注册了一个**扩展方法 `set(Context, DataComponentType, Object)`**,
  * Rhino 在解析 `dice.set(key.get(), 我的record)` 时优先命中它,进而在 `kjs$set` 内部做
@@ -8026,12 +8043,73 @@ function domEnhToJs(enh) {
  */
 function nardiSetEnh(dice, enh) {
     if (dice == null || enh == null) return false;
-    // ① 1.21.1:`ItemStack#set(ComponentType, <JS 对象>)` —— 唯一实测可用的写通道
-    try { dice.set(NardisModDataComponentsClass.WEAPON_ENHANCEMENT.get(), domEnhToJs(enh)); return true; }
-    catch (e1) { /* 落到 1.20.1 形态 */ }
-    // ② 1.20.1:`ItemDataKey#set(ItemStack, T)`
+    var dtype = null;
+    try { dtype = NardisModDataComponentsClass.WEAPON_ENHANCEMENT.get(); } catch (eD) { dtype = null; }
+    if (dtype == null) {
+        // 1.20.1 形态(无 0 参 `get()`,只有 `ItemDataKey#set(stack, value)`)
+        try { NardisModDataComponentsClass.WEAPON_ENHANCEMENT.set(dice, enh); return true; }
+        catch (e0) { return false; }
+    }
+
+    // ① `PatchedDataComponentMap` 通道:`dice.getComponents()` 的**运行时类型**是
+    //    `PatchedDataComponentMap`,它只实现 KubeJS 的**一个**接口 ⇒ 不会像 `ItemStack` 那样撞
+    //    `kjs$self` 的 conflicting default methods。值是 JS 对象 ⇒ 走 KubeJS 的 JSON 化 + 组件 codec。
+    //    ⚠️ 2026-09-26 三线实测:**该通道在本工程全废** —— `set` 抛
+    //    `IllegalArgumentException: Data components must implement equals and hashCode`
+    //    (KubeJS 把 JS 对象**原样**当值塞进 `PatchedDataComponentMap`,未按组件 codec 解码)。
+    //    保留只为「换平台/换 KubeJS 版本后可能可用」,无害(失败即落 ②)。
+    try {
+        var cm = dice.getComponents();
+        if (cm != null) {
+            cm.set(dtype, domEnhToJs(enh));
+            if (nardiEnhWriteBackOk(dice, enh)) return true;
+        }
+    } catch (e1) { /* 落 ② */ }
+
+    // ② `ItemStack#set(TypedDataComponent)` —— **单参**重载;KubeJS 的 `set` 扩展是**两参**
+    //    (type,value)签名 ⇒ 不命中 ⇒ 走纯 Java(连 JSON 转换都不发生)。
+    //    ⚠️ 2026-09-26 实测:**26.1.2 最终靠这一条写通**(`defcdiag` 的 `we=1` ⇒ prep 的 `set_ok=1`);
+    //    1.21.1 上 KubeJS 连单参形态也吃掉了 —— `Can't find method
+    //    dev.latvian.mods.kubejs.component.MutableDataComponentHolderFunctions.set(TypedDataComponent)`
+    //    ⇒ 落 ③。
+    if (TypedDataComponentClass != null) {
+        try {
+            dice.set(new TypedDataComponentClass(dtype, enh));
+            if (nardiEnhWriteBackOk(dice, enh)) return true;
+        } catch (e2) { /* 落 ③ */ }
+    }
+
+    // ③ KubeJS 的 `ItemStack#set(type, <JS 对象>)` 扩展 —— **1.20.1 / 1.21.1 可用**;
+    //    26.x(KubeJS 8)会先撞 `kjs$self` ⇒ `IncompatibleClassChangeError`(**Error 不是 Exception**
+    //    ⇒ 穿透下面的 catch ⇒ 打死 server tick loop,实测 run/26.1.2/crash-reports/) ⇒ 硬挡。
+    //    2026-09-26 实测:**1.21.1 走的就是这一条**(`we=0` ⇒ 落 ③ ⇒ `set_ok=1`)。
+    if (!ProbeModernNames) {
+        try {
+            dice.set(dtype, domEnhToJs(enh));
+            if (nardiEnhWriteBackOk(dice, enh)) return true;
+        } catch (e3) { /* 落 ④ */ }
+    }
+
+    // ④ 1.20.1:`ItemDataKey#set(ItemStack, T)` —— 纯 Java、无 JSON 转换
+    //    (2026-09-26 实测:1.20.1 上 ① 无 `getComponents`、② 无该重载、③ 无 `ItemStack#set`
+    //     ⇒ **最终落在这条**)。
     try { NardisModDataComponentsClass.WEAPON_ENHANCEMENT.set(dice, enh); return true; }
-    catch (e2) { return false; }
+    catch (e4) { return false; }
+}
+
+/**
+ * 写回校验:`applied_stones` 条数与待写的**一致**才算成功
+ * (避免「写进去一个空组件」也被当成成功)。读不回 / 条数不符 ⇒ false,由调用方响亮暴露 `set_ok=0`。
+ */
+function nardiEnhWriteBackOk(dice, enh) {
+    try {
+        var back = nardiEnhOf(dice);
+        if (back == null) return false;
+        var want = (enh.appliedStones() == null) ? 0 : enh.appliedStones().size();
+        if (want === 0) return true;
+        var got = (back.appliedStones() == null) ? 0 : back.appliedStones().size();
+        return (got - 0) === (want - 0);
+    } catch (e) { return false; }
 }
 
 /** 该玩家主手是否拿着骰子(读数里显式给出,替代「骰子到底在不在 curios 槽」的猜测) */
@@ -13866,6 +13944,27 @@ ServerEvents.commandRegistry(event => {
                     .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
                         return doGloveBase(ctx, StringArg.getString(ctx, "tag"));
                     }))))
+            // ── 2026-09-26: 防御牌口径（耐久 150 + 受骰战攻击时所有防御牌各扣 1）取证 ──
+            .then(Commands.literal("defcdiag")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doDefCardDiag(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("defcardprep")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doDefCardPrep(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("defcardhit")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doDefCardHit(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("defcardend")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doDefCardEnd(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
             .then(Commands.literal("spelltdsetup")
                 .then(Commands.argument("tag", StringArg.word())
                     .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
@@ -15252,3 +15351,219 @@ ServerEvents.tick(event => {
     }
     FP_TRACK = keep;
 });
+
+// ════════════════════════════════════════════════════════════════════════════
+//  防御牌口径取证 —— 2026-09-26 用户裁决·更正版
+//    「耐久上限 150」+「每次受到骰战攻击时,装备的所有防御牌各扣 1 点」
+//
+//  为什么必须同时看三张:旧口径 = 每次只扣**装备顺序第一张**,新口径 = **所有防御牌各扣 1**。
+//  同一次命中后两者的读数不同 ——
+//      旧 = defense_medium:1 | defense_large:2 | defense_epic:2   (只有第一张掉)
+//      新 = defense_medium:1 | defense_large:1 | defense_epic:1   (三张同时掉)
+//  故「一次命中后三张同时 -1、两次后三张同时归零移除」是**唯一能分辨两套口径**的判据;
+//  只断言「有变化」两套都会通过(假绿)。
+//
+//  命令:
+//    /astralprobe defcardprep <tag>  装骰子 + 写 3 张防御牌(uses 各 2) + 只读产品默认耐久常量
+//    /astralprobe defcardhit  <tag>  生成定点僵尸(空手),以 mobAttack 源对玩家命中一次
+//    /astralprobe defcardend  <tag>  清场(移除僵尸)
+//
+//  判读(AP_<TAG>_DEFC_*):
+//    PREP{defaults=150/150/150, stones=[…:2:0 ×3], defcost=<used>/<max>, set_ok=1}
+//    HIT1{n=1, stones=[…:1:0 ×3], defcost=6/6, before=[…:2:0 ×3]}
+//    HIT2{n=2, stones=[-], defcost=0/6}(三张同时归零 ⇒ 同时移除 + 费用退还)
+// ════════════════════════════════════════════════════════════════════════════
+var DEFC_TYPES = ["defense_medium", "defense_large", "defense_epic"];
+var DEFC_INIT_USES = 2;
+var DEFC_MOB_ID = "minecraft:zombie";
+var defcMob = null;
+var defcHits = 0;
+
+/** 只读:三档防御牌的产品默认耐久(`CardRegistry.defaultUses` —— tooltip / 物品默认 / 注册的**唯一**源) */
+function defcDefaults() {
+    var out = "";
+    for (var i = 0; i < DEFC_TYPES.length; i++) {
+        var u = "err";
+        try { u = "" + (NardisCardRegistryClass.defaultUses(DEFC_TYPES[i]) - 0); } catch (e) { u = "err"; }
+        out = (out === "") ? u : (out + "/" + u);
+    }
+    return out;
+}
+
+/** 防御装配栏的费用读数 `used/max`(与 mamuDiceCosts 的攻击口径互补) */
+function defcDefCost(p) {
+    var enh = domEnh(p);
+    if (enh == null) return "?/?";
+    var u = "err", m = "err";
+    try { u = "" + (enh.usedDefenseCost() - 0); } catch (e1) { u = "err"; }
+    try { m = "" + (enh.maxDefenseCost() - 0); } catch (e2) { m = "err"; }
+    return u + "/" + m;
+}
+
+/** 诊断用的异常文本:压掉换行 + 限长,保证读数**单行可断言** */
+function defcCut(s) {
+    s = "" + s;
+    s = s.replace(/[\r\n]+/g, " / ");
+    return (s.length > 150) ? (s.substring(0, 150) + "~") : s;
+}
+
+/**
+ * **写组件通道**的逐步诊断(2026-09-26):把「哪条通道在本线可用」变成可断言读数。
+ *
+ * <p>⚠️ **分两条 `send`**:第二条会碰 `ItemStack#set(…)`,若某线上的 KubeJS 把 `set` 扩展
+ * 劫持到 `kjs$self`(26.x 实测会抛 `IncompatibleClassChangeError`,**穿透 catch**),
+ * 整条命令会随服务器一起挂 ⇒ 把**低风险通道**(`getComponents().set`)的读数放在**第一条**,
+ * 崩了也保得住。
+ *
+ * <p>字段:`patch_cls`/`builder`/`build` = `DataComponentPatch` 无参形态、`rsz` = 当前骰子 stones 数、
+ * `dt` = 组件键取法、`wd/wde` = `getComponents().set(type, <JS 对象>)`、
+ * `we/wee` = `ItemStack#set(TypedDataComponent)`、`mm` = 是否 26.x 类名(`ProbeModernNames`)。
+ */
+function doDefCardDiag(ctx, tag) {
+    var line = "AP_" + tag + "_DEFC_DIAG";
+    var p = ctx.source.player;
+    if (p == null) { send(ctx, line + ":no_player"); return 0; }
+    var patchCls = (DataComponentPatchClass == null) ? 0 : 1;
+    var builderOk = 0, buildOk = 0, rsz = -1;
+    if (patchCls === 1) {
+        try {
+            var b0 = DataComponentPatchClass.builder();
+            if (b0 != null) { builderOk = 1; if (b0.build() != null) buildOk = 1; }
+        } catch (e1) { /* 保持 0 */ }
+    }
+    try { var cur = domEnh(p); if (cur != null) rsz = cur.appliedStones().size(); } catch (e2) { /* 保持 -1 */ }
+
+    var item = resolveItem(NARDIS_DICE_ID);
+    var dtype = null, dt = "-";
+    try { dtype = NardisModDataComponentsClass.WEAPON_ENHANCEMENT.get(); dt = "get"; } catch (ed) { dt = "raw"; }
+    var enh = null;
+    try { enh = new NardisWeaponEnhancementClass(0, 0, 6, 6, 0, new ArrayListClass()); } catch (eE) { enh = null; }
+
+    // ── 第一条(低风险):`getComponents().set(type, <JS 对象>)` ──
+    var wd = 0, wde = "", szd = -1;
+    if (dtype != null && enh != null) {
+        try {
+            var pd = new ItemStack(item, 1);
+            pd.getComponents().set(dtype, domEnhToJs(enh));
+            wd = 1;
+            try { szd = nardiEnhOf(pd).appliedStones().size(); } catch (eS) { szd = -1; }
+        } catch (ea) { wde = defcCut(domExText(ea)); }
+    }
+    send(ctx, line + ":patch_cls=" + patchCls + ":builder=" + builderOk + ":build=" + buildOk
+        + ":rsz=" + rsz + ":dt=" + dt + ":mm=" + (ProbeModernNames ? 1 : 0)
+        + ":wd=" + wd + ":wde=" + wde + ":szd=" + szd);
+
+    // ── 第二条(高风险):`ItemStack#set(TypedDataComponent)` ──
+    var we = 0, wee = "", sze = -1;
+    if (dtype != null && enh != null && TypedDataComponentClass != null) {
+        try {
+            var pe = new ItemStack(item, 1);
+            pe.set(new TypedDataComponentClass(dtype, enh));
+            we = 1;
+            try { sze = nardiEnhOf(pe).appliedStones().size(); } catch (eT) { sze = -1; }
+        } catch (eb) { wee = defcCut(domExText(eb)); }
+    }
+    send(ctx, line + "2:we=" + we + ":wee=" + wee + ":sze=" + sze);
+    return 1;
+}
+
+function doDefCardPrep(ctx, tag) {
+    var line = "AP_" + tag + "_DEFC_PREP";
+    var p = ctx.source.player;
+    if (p == null) { send(ctx, line + ":no_player"); return 0; }
+    var err = "";
+    var stones = new ArrayListClass();
+    var total = 0;
+    for (var i = 0; i < DEFC_TYPES.length; i++) {
+        var c = 1;
+        try { c = NardisCardRegistryClass.cost(DEFC_TYPES[i], p) - 0; } catch (eC) { c = 1; }
+        total = total + c;
+        stones.add(new NardisAppliedStoneClass(DEFC_TYPES[i], DEFC_INIT_USES, false));
+    }
+    // 本组只装防御牌 ⇒ 攻击预算 0;防御预算 = 三张费用之和(便于观测归零时的费用退还)
+    var enh = new NardisWeaponEnhancementClass(0, 0, total, total, 0, stones);
+    var w = domWriteEnh(p, "curio", enh);
+    if (w.err !== "") err = err + "|write:" + w.err;
+    defcHits = 0;
+    var hp = -1;
+    try { hp = p.getHealth(); } catch (eH) { hp = -1; }
+    send(ctx, line + ":defaults=" + defcDefaults() + ":stones=[" + mamuDiceStones(p) + "]"
+        + ":defcost=" + defcDefCost(p) + ":set_ok=" + w.curio + ":hp=" + hp
+        + (err === "" ? "" : ":err=" + err));
+    return 1;
+}
+
+/**
+ * 造成一次「**怪物近战**」伤害 —— 与「真人被怪打」同源:`damageSources().mobAttack(mob)`
+ * ⇒ `directEntity = 该 mob` ⇒ 恰好命中产品 `resolveMobMeleeAttack` 的入口判据。
+ *
+ * <p>⚠️ 命中前必须清零 `invulnerableTime`:原版「无敌帧内不更低的伤害被丢弃」会把第 2 次命中
+ * 整段吞掉(输入伤害恒 1.0,而骰战终值常 ≈1~2)⇒ stones 不动 ⇒ 被误读成「新口径没生效」。
+ */
+function defcMobHit(p, mob) {
+    try { p.invulnerableTime = 0; } catch (e0) { /* 忽略 */ }
+    var src = p.level.damageSources().mobAttack(mob);
+    var h0 = -1;
+    try { h0 = p.getHealth(); } catch (eA) { h0 = -1; }
+    var tried = [];
+    // ⚠️ 首选 `Mob#doHurtTarget(...)` —— 它就是原版怪物近战的**入口**(内部即
+    //    `pEntity.hurt(damageSources().mobAttack(this), f)`),与「真人被怪打」逐字同源。
+    //    **签名三线不同**(javap 实证):26.1.2 = `doHurtTarget(ServerLevel, Entity)`,
+    //    1.20.1 / 1.21.1 = `doHurtTarget(Entity)` ⇒ 按序试,不按平台分支。
+    //    不用裸 `p.hurt(src, f)`:Rhino 在该实例上把 `hurt` 解析成**同名字段**(boolean)
+    //    ⇒ `TypeError: Cannot call property hurt ... it is "boolean"`。
+    //    末位兜底 = `p.damage(float, DamageSource)`,源恒为 `mobAttack(mob)` ⇒ `directEntity = 该 mob`
+    //    ⇒ 与产品 `resolveMobMeleeAttack` 的入口判据同源(1.20.1 无该方法,自然落到上一档)。
+    var seq = [
+        function () { mob.doHurtTarget(p.level, p); return "doHurtTarget2"; },
+        function () { mob.doHurtTarget(p); return "doHurtTarget"; },
+        function () { p.damage(1.0, src); return "damage"; }
+    ];
+    for (var i = 0; i < seq.length; i++) {
+        var a = "none";
+        try { a = seq[i](); } catch (e) { tried.push(exText(e)); a = "none"; }
+        var hN = -1;
+        try { hN = p.getHealth(); } catch (eB) { hN = -1; }
+        if (h0 < 0 || hN < 0 || hN < h0) {
+            return { api: a, dmg: (h0 < 0 || hN < 0) ? -1 : (h0 - hN), tried: tried.join(";") };
+        }
+    }
+    return { api: "none", dmg: -1, tried: tried.join(";") };
+}
+
+function doDefCardHit(ctx, tag) {
+    var line = "AP_" + tag + "_DEFC_HIT";
+    var p = ctx.source.player;
+    if (p == null) { send(ctx, line + ":no_player"); return 0; }
+    var err = "";
+    if (defcMob == null || !defcMob.isAlive()) {
+        try { defcMob = spawnDummy(p, DEFC_MOB_ID, 2); } catch (eS) { defcMob = null; err = err + "|spawn:" + exText(eS); }
+    }
+    if (defcMob == null) { send(ctx, line + ":no_mob" + err); return 0; }
+    // 空手:`type.create()` 生成的原版僵尸本身无装备 ⇒ 不需要任何摘武器动作,「不依赖武器」天然成立
+    var before = mamuDiceStones(p);
+    var r = defcMobHit(p, defcMob);
+    defcHits = defcHits + 1;
+    send(ctx, line + ":n=" + defcHits
+        + ":stones=[" + mamuDiceStones(p) + "]"
+        + ":defcost=" + defcDefCost(p)
+        + ":before=[" + before + "]"
+        + ":api=" + r.api + ":dmg=" + r.dmg
+        + (err === "" ? "" : ":err=" + err)
+        + (r.tried === "" ? "" : ":tried=" + r.tried));
+    return 1;
+}
+
+function doDefCardEnd(ctx, tag) {
+    var line = "AP_" + tag + "_DEFC_END";
+    var p = ctx.source.player;
+    var removed = 0;
+    if (defcMob != null) { try { defcMob.discard(); removed = 1; } catch (e1) { /* 忽略 */ } }
+    defcMob = null;
+    var stones = "?";
+    var cost = "?/?";
+    try { stones = mamuDiceStones(p); } catch (e2) { stones = "?"; }
+    try { cost = defcDefCost(p); } catch (e3) { cost = "?/?"; }
+    send(ctx, line + ":removed=" + removed + ":stones=[" + stones + "]:defcost=" + cost);
+    return 1;
+}

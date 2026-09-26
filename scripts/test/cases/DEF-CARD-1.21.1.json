@@ -1,0 +1,182 @@
+{
+  "case_id": "DEF-CARD-1.21.1",
+  "title": "防御牌耐久口径：上限 150 + 受骰战攻击时装备的所有防御牌各扣 1 点",
+  "version": "1.21.1",
+  "target": {
+    "type": "feature",
+    "ref": "defense-card-durability"
+  },
+  "on_fail": "keep_game_running",
+  "steps": [
+    {
+      "op": "note",
+      "text": "目的：验证 2026-09-26 **更正后**的防御牌口径 —— ① 耐久上限 = **150**；② **每次受到骰战攻击**时，卡牌栏中装备的**所有防御牌各扣 1 点**（不是只扣装备顺序里的第一张）。\n\n**为什么必须同时看三张（反假绿判据）**：旧口径与新口径的「首击后读数」不同 ——\n  · 旧 = `defense_medium:1` / `defense_large:2` / `defense_epic:2`（只有第一张掉）；\n  · 新 = `defense_medium:1` / `defense_large:1` / `defense_epic:1`（三张同时掉）。\n只断言「有变化」两套都会通过，故本用例把「三张同时 -1」「两次后三张同时归零并移除 + 费用退还」都写成硬断言。\n\n**命中来源**：`defcardhit` 生成**空手**僵尸并以 `damageSources().mobAttack(zombie)` 命中玩家 —— 与「真人被怪打」同源（`directEntity = 该 mob` ⇒ 命中产品 `resolveMobMeleeAttack` 入口判据）。该档同时是「**怪物空手攻击也计入骰战**」的实机证据。\n\n**前置**：骰子必须已在 curios 骰子槽（`defcardprep` 会装 `astral_dice:dice` 并写 3 张防御牌，uses 各 2）。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode survival"
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamerule doDaylightCycle false"
+    },
+    {
+      "op": "inject_command",
+      "command": "/time set midnight"
+    },
+    {
+      "op": "inject_command",
+      "command": "/weather clear"
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "inject_command",
+      "command": "/kill @e[type=!player,distance=..64]"
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "inject_command",
+      "command": "/effect give @s minecraft:instant_health 1 9"
+    },
+    {
+      "op": "inject_command",
+      "command": "/tp @s ~ ~ ~ 0 0"
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "note",
+      "text": "【0】前置：装骰子 + 写 3 张防御牌（uses 各 2）。三条硬读数：`defaults=` 三档产品默认耐久必须**全 150**（`CardRegistry.defaultUses` 是 tooltip / 物品默认 / 注册的**唯一**源）；`stones=[…:2:0 ×3]` 三张都在；`set_ok=1` 写入真的落到槽位。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe defcardprep D0"
+    },
+    {
+      "op": "note",
+      "text": "【0b】**写组件通道诊断（只读，永不崩）**：`nardiSetEnh` 在 2026-09-26 改为纯 Java 的 `DataComponentPatch` + `ItemStack#applyComponents`，以绕开 KubeJS 的 `set` 扩展方法 —— 后者在 **26.1.2（KubeJS 8.0.6）** 上抛 `IncompatibleClassChangeError: Conflicting default methods …kjs$self`（**Error 穿透 Rhino 的 catch** ⇒ 打死 server tick loop，实测见 `run/26.1.2/crash-reports/crash-2026-09-26_17.25.05-server.txt`）。本步只做「建空 patch + 读回组件」，把通道可用性变成可断言读数，避免通道故障被误读成「产品没扣耐久」。预期 `1/1/1/1`（1.20.5+ 起有数据组件 API）。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe defcdiag D0"
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "note",
+      "text": "【1】第一次骰战受击（空手僵尸近战）。判据：`n=1` + `stones=[…:1:0 ×3]` —— **三张同时各 -1** 即为新口径；若只有 `defense_medium` 掉到 1、另两张仍为 2，则说明落到了旧口径（响亮地红）。`defcost` 此时应仍为 `6/6`（未归零 ⇒ 不退还）。\n⚠️ 本档**不**断言 `api=` / `dmg=`：骰战终值可能被筹码/立牌减伤压到 0（血量不动），而耐久扣除发生在骰战伤害定稿处、与最终扣血多少无关 —— 断言 `stones` 才是正确的判据面。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe defcardhit D0"
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "note",
+      "text": "【2】第二次骰战受击。判据：`n=2` + `stones=[]`（三张同时归零 ⇒ **同时**被移出卡牌栏）+ `defcost=0/6`（三张费用 1+2+3 一次性退还）。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe defcardhit D0"
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe defcardend D0"
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    }
+  ],
+  "asserts": [
+    {
+      "type": "mixin"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "crash"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_D0_DEFC_PREP:defaults=150/150/150"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_D0_DEFC_DIAG:patch_cls=1:builder=1:build=1:rsz=3:dt=get:mm=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_D0_DEFC_DIAG2:we=0:wee="
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": ":stones=.defense_medium:2:0.defense_large:2:0.defense_epic:2:0.:defcost=6/6:set_ok=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_D0_DEFC_HIT:n=1:stones=.defense_medium:1:0.defense_large:1:0.defense_epic:1:0."
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": ":defcost=6/6:before=.defense_medium:2:0.defense_large:2:0.defense_epic:2:0."
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_D0_DEFC_HIT:n=2:stones=.-.:defcost=0/6"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_D0_DEFC_END:removed=1:stones=.-.:defcost=0/6"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_D0_[A-Z]+_ERR"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_[A-Z0-9]+_EX:"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "Unknown or incomplete command|未知或不完整的命令"
+    }
+  ]
+}

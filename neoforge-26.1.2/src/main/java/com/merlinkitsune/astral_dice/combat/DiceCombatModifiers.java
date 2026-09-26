@@ -631,7 +631,7 @@ public final class DiceCombatModifiers {
         registerDefenseModifier((ctx, dp) -> {
             int sum = 0;
             if (ctx.targetEnhancement != null) {
-                // 防御牌在赐福期间持续生效,每次受击独立随机判定;耐久在佩戴者自身触发赐福时统一消耗
+                // 防御牌在骰战期间持续生效,每次受击独立随机判定;耐久由防御方在每次受骰战攻击时各扣 1 点
                 for (AppliedStone stone : ctx.targetEnhancement.appliedStones()) {
                     // 防御牌掷骰统一由 CardRegistry 提供(未知类型返回 0)
                     // 玻璃骰子:防御牌点数始终取最大值
