@@ -32,16 +32,6 @@
       "astral_dice:boost_effect_card_use"
     ]
   },
-  "effect_card_use_target": {
-    "sounds": [
-      "astral_dice:effect_card_use_target"
-    ]
-  },
-  "effect_card_use_self": {
-    "sounds": [
-      "astral_dice:effect_card_use_self"
-    ]
-  },
   "effect_card_use": {
     "sounds": [
       "astral_dice:effect_card_use"
