@@ -75,9 +75,14 @@ public class MegasSignItem extends BaseSignItem {
             @Override
             public void apply(ServerPlayer player, LivingEntity target) {
                 if (!performOrbitalBombardment(player, target)) return;
+                // 主动成功触发：开始玩家级冷却并计入「电流核心」充能
                 ModAttachments.setSignActiveCooldownEnd(player,
                         player.level().getGameTime() + signCooldownTicks(player));
                 CurrentCoreChipItem.onActiveSkillUsed(player);
+                // 玩家可见反馈(与其他立牌的专属提示同款;行为口径见
+                // TargetSelectionManager#confirm 的注释:actionbar 单槽位 ⇒ 这里发的会覆盖
+                // 通用「已确认」提示,正是设计意图 —— 玩家只看得到专属提示)
+                sendSignActionBar(player, "msg.astral_dice.megas_cast");
                 LOGGER.debug("[Astral Dice][TargetSelection] megas_orbital_bombardment by {} -> {}({})",
                         player.getName().getString(), target.getId(), target.getName().getString());
             }
