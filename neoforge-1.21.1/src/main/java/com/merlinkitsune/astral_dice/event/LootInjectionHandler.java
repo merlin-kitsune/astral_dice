@@ -63,10 +63,18 @@ public class LootInjectionHandler {
                 .name("astral_dice:star_coin")
                 .build());
 
-        // Blank Chip: ONLY in buried treasure (always)
+        // Blank Chip: 埋藏的宝藏 100% 必出;其余战利品箱子 3%
+        // (2026-09-27 用户需求:略微提高空白筹码的战利品获取概率 —— 原先其它箱子 0%)
         if (isBuriedTreasure) {
             table.addPool(LootPool.lootPool()
                     .setRolls(ConstantValue.exactly(1))
+                    .add(LootItem.lootTableItem(ModItems.BLANK_CHIP.get()))
+                    .name("astral_dice:blank_chip")
+                    .build());
+        } else {
+            table.addPool(LootPool.lootPool()
+                    .setRolls(ConstantValue.exactly(1))
+                    .when(LootItemRandomChanceCondition.randomChance(0.03f))
                     .add(LootItem.lootTableItem(ModItems.BLANK_CHIP.get()))
                     .name("astral_dice:blank_chip")
                     .build());

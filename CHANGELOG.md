@@ -29,6 +29,17 @@
   icon and value** in the entity info overlay show this mod's **Defense** instead (full / half / empty icons
   matching the vanilla shapes; mobs keep their vanilla armor value - only players use this mod's numbers).
 
+#### Loot & World
+
+- **New "first adventure gift": the first loot chest a player opens in a save is guaranteed to contain 1 die**
+  (user request 2026-09-27): when a player enters a new world and opens **their first loot chest**, that chest is
+  **guaranteed** to hold **1 die (`astral_dice:dice`)** - placed into a **random empty slot** or, if the chest is already
+  full of loot (common on heavily modded packs), it **forcibly replaces a random slot** so the die always lands in your
+  hands. Each player gets this **once per save**: the flag lives in the player's saved data, so **a new save counts
+  again** while **respawning or changing dimension does not re-grant it**. Only "loot chests" qualify (containers whose
+  loot table sits under `chests/` - chests, trapped chests, barrels, shulker boxes, hoppers and minecart chests; the
+  jungle temple dispenser is excluded), and chests you place yourself never trigger it.
+
 ### Content & Balance
 
 #### Damage & Resolution
@@ -151,6 +162,11 @@
   **healing stacks** is separate **attack damage** (which does not count towards Attack Power). When both
   Cutters are equipped, healing stacks count **once per chip**. The matching tooltips and handbook entries now
   read "Attack Power +2 / +4".
+
+- **Blank Chip now has a slightly higher loot chance** (user request 2026-09-27): the Blank Chip is still a
+  **guaranteed 100%** drop from **buried treasure**, and it now additionally has a **3%** chance in every other loot
+  chest (those whose loot table sits under `chests/`) - previously **no chest** other than buried treasure could drop
+  one at all.
 
 #### Platform & Compatibility
 
