@@ -13118,6 +13118,345 @@ function doHannaRead(ctx, tag) {
     return 1;
 }
 
+// ════════════════════════════════════════════════════════════════════════════
+//  伤害跳字 / 美工刀指示器 冒烟探针（2026-09-26 新增；对应用户本轮四项裁决）
+//
+//  【伤害跳字】最终值（实际扣血量）/ 红绿两组分组 / 冻结坐标（不跟随目标）/ ±30° 扩散
+//    /astralprobe dnumprep <tag>         基线:清效果清背包 + 装骰子 + 摆高血量蜘蛛靶
+//    /astralprobe dnumhit  <tag>         主手换铁剑 + 真实近战一次 → 红组(攻击力类)终值
+//    /astralprobe dnumhold <tag>         主手换活体书页(下一 tick 自动开启目标选择会话)
+//    /astralprobe dnumspell <tag>        真实出牌(异步飞行命中) → 绿组(法伤类)终值
+//    /astralprobe dnumspellread <tag>    读法术命中后的实际扣血(与客户端绿字比对)
+//    /astralprobe dnumread <tag>         只读:靶血 / 靶坐标 / 赐福
+//    /astralprobe dnumend  <tag>         收尾:清靶 / 清手 / 卸骰子 / 清效果
+//
+//  【美工刀指示器】门控(无骰神赐福即隐藏) / 不闪烁(时长恒 >200 tick) / 无粒子(visible=false)
+//                  / 基础值 +2、+4 进攻击力 / 治愈点**不进**攻击力(走额外加伤链)
+//    /astralprobe cutterprep <tag> <mode>   mode=none|chip|blade|both
+//    /astralprobe cutterread <tag> <phase>  只读:指示器存在性/时长/粒子 + 攻击力 + 治愈点
+//    /astralprobe cutterheal <tag> <n>      预置治愈点(HealingManager.add)
+//    /astralprobe cutterend  <tag>          收尾:卸美工刀 / 清效果 / 清治愈点
+//
+//  ⚠️ 两个用例的判据都是**读数行**（`log` 断言只保证通道畅通、值由报告人读日志核对）：
+//     本仓测试台断言类型只有 snapshot/log/absent/crash/kubejs/mixin，**没有「值等于」断言**。
+// ════════════════════════════════════════════════════════════════════════════
+
+var DNUM_DICE_ID = "astral_dice:dice";
+var DNUM_SWORD_ID = "minecraft:iron_sword";
+var DNUM_TARGET_ID = "minecraft:spider";
+var DNUM_TARGET_HP = 200;                 // 抬高上限:默认 16 血会被一次骰战打死后法术无靶
+var CUTTER_CHIP_ID = "astral_dice:cutter_chip";
+var CUTTER_BLADE_CHIP_ID = "astral_dice:cutter_blade_chip";
+// 筹码栏**必须佩戴骰子才有**(chip 槽注册 size=0,由骰子档位动态提供,见 ModItems 静态块的
+// DiceTierRegistry 注册):`astral_dice:dice` 0★ = 0 槽,`diamond_dice` 0★ = **2** 槽
+// ⇒ 美工刀用例一律装 diamond_dice(0★ 已够「两枚同装」,不需要升星脚手架)。
+var CUTTER_DICE_ID = "astral_dice:diamond_dice";
+var DESC_CUTTER_READY_X = "effect.astral_dice.cutter_ready";
+var DESC_CUTTER_BLADE_READY_X = "effect.astral_dice.cutter_blade_ready";
+var DESC_DICE_BLESSING_X = "effect.astral_dice.dice_blessing";
+
+/** 跳字靶句柄(跨命令保持;dnumend 置空) */
+var dnumState = null;
+/** 攻击力基线（`cutterprep <tag> none` 时冻结）⇒ 后续读数报 `dap = ap - 基线` */
+var cutterApBase = null;
+
+/**
+ * 一枚骰子进 curios dice 槽。
+ *
+ * <p>两个用途:① 骰战链硬前提(无骰子 ⇒ `DiceCombatEvents.onLivingDamagePre` 直接 return,
+ * 连 `DamageNumberAggregator.tag` 都不会被调用);② **筹码栏的提供者** —— chip 槽注册为
+ * `size=0`,槽数由骰子档位算(`dice` 0★=0、`diamond_dice` 0★=2),
+ * 不装骰子直接 `putInSlot(p,"chip",…)` 会落成 `slot_overflow:chip:0`(筹码没进槽)。
+ */
+function dnumEquipDice(p, diceId) {
+    var id = (diceId == null || diceId === "") ? DNUM_DICE_ID : ("" + diceId);
+    var it = resolveItem(id);
+    if (it == null) return "unknown_item:" + id;
+    var err = putInSlot(p, "dice", new ItemStack(it), 0);
+    return (err == null) ? "ok" : err;
+}
+
+/** 高血量蜘蛛靶:先抬 MAX_HEALTH 再回满 + 无 AI(非亡灵 ⇒ 日光不烧,不会漂血污染读数)。 */
+function dnumSpawnTarget(p) {
+    var d = spawnDummy(p, DNUM_TARGET_ID, 3);
+    if (d == null) return null;
+    try {
+        var Attrs = Java.loadClass("net.minecraft.world.entity.ai.attributes.Attributes");
+        d.getAttribute(Attrs.MAX_HEALTH).setBaseValue(DNUM_TARGET_HP);
+    } catch (e1) { /* 抬不上就按原上限 */ }
+    try { d.setHealth(d.getMaxHealth()); } catch (e2) { /* 忽略 */ }
+    try { d.setNoAi(true); } catch (e3) { /* 忽略 */ }
+    return d;
+}
+
+function dnumPos(entity) {
+    try {
+        return "" + (Math.round(entity.getX() * 1000) / 1000) + ","
+            + (Math.round(entity.getY() * 1000) / 1000) + ","
+            + (Math.round(entity.getZ() * 1000) / 1000);
+    } catch (e) { return "err"; }
+}
+
+/** 基线 + 骰子 + 高血量蜘蛛靶 */
+function doDnumPrep(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    lpBaseline(ctx, p);                       // 出牌轮归零 + 清效果 + 清原版背包
+    // 显式清赐福(理由同 doCutterPrep):近战命中会自动获得赐福,不清会给下一条用例留脏基线。
+    try { ModEffectRemoval.remove(p, teruBlessing()); } catch (eB) { /* 忽略 */ }
+    var dice = dnumEquipDice(p);
+    var d = dnumSpawnTarget(p);
+    if (d == null) { send(ctx, "AP_" + tag + "_ERR:spawn_failed:" + DNUM_TARGET_ID); return 1; }
+    dnumState = { tag: tag, player: p, dummy: d, hpBefore: -1 };
+    send(ctx, "AP_" + tag + "_DNUM_PREP:dice=" + dice
+        + ":dice_slot=" + diceSlotItemId(p)
+        + ":hand=" + itemIdOf(p.getMainHandItem())
+        + ":dummy=" + d.getId() + ":hp=" + rghp(d) + ":max=" + lpMaxHp(d)
+        + ":pos=" + dnumPos(d));
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+/**
+ * 真实近战一次(骰战链) ⇒ 红组终值。
+ *
+ * <p>同命令内读血量差 = 本次**实际扣血量**，即用户要求的「最终值」判据 —— 骰战有
+ * `nextInt(1,7)` 随机化 ⇒ 数值不可预测，但「客户端跳字的数字 == 服务端血量差」恒成立。
+ * <p>`lpSetHand` 先换铁剑：骰战链入口有 `isMeleeWeaponAttack(player)` 守卫，空手直接 return，
+ * 那样连 `DamageNumberAggregator.tag` 都不会被调用 ⇒ 红组不出现。
+ */
+function doDnumHit(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    if (dnumState == null || dnumState.dummy == null) { send(ctx, "AP_" + tag + "_ERR:no_dummy"); return 1; }
+    var d = dnumState.dummy;
+    var stale = (dnumState.tag === tag) ? 0 : 1;
+    lpSetHand(p, DNUM_SWORD_ID);
+    var h0 = rghp(d);
+    var hit = null, err = "";
+    try { hit = meleeHit(p, d); } catch (e) { err = exText(e); }
+    var h1 = rghp(d);
+    var blessed = (findEffect(p, DESC_DICE_BLESSING_X) == null) ? 0 : 1;
+    send(ctx, "AP_" + tag + "_DNUM_HIT:api=" + (hit == null ? "-" : hit.api)
+        + ":h0=" + h0 + ":h1=" + h1
+        + ":dealt=" + (Math.round((h0 - h1) * 100) / 100)
+        + ":blessed=" + blessed + ":stale=" + stale
+        + ":pos=" + dnumPos(d) + (err ? ":err=" + err : ""));
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+/** 把活体书页放进主手。⚠️ 必须与 dnumspell 分两条命令:目标选择会话由 tickHeldSelector 在**下一 tick** 才开启。 */
+function doDnumHold(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    if (dnumState == null || dnumState.dummy == null) { send(ctx, "AP_" + tag + "_ERR:no_dummy"); return 1; }
+    resetEffectCardCycle(p);
+    var set = lpSetHand(p, lpCardId());
+    send(ctx, "AP_" + tag + "_DNUM_HOLD:set=" + set + ":hand=" + itemIdOf(p.getMainHandItem()));
+    return 1;
+}
+
+/** 真实出牌(异步飞行命中) ⇒ 绿组终值。命中后由 dnumspellread 读扣血。 */
+function doDnumSpell(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    if (dnumState == null || dnumState.dummy == null) { send(ctx, "AP_" + tag + "_ERR:no_dummy"); return 1; }
+    var d = dnumState.dummy;
+    var stale = (dnumState.tag === tag) ? 0 : 1;
+    var token = lpToken(p);
+    dnumState.hpBefore = rghp(d);
+    var called = 0, err = "";
+    try { TargetSelectionManagerClass.confirm(p, token, d.getId()); called = 1; }
+    catch (e) { err = exText(e); }
+    var exp = "ERR";
+    try { exp = "" + SpellDamageRegistryClass.livingPageImpactDamage(p); } catch (e2) { exp = "ERR:" + exText(e2); }
+    send(ctx, "AP_" + tag + "_DNUM_SPELL:called=" + called + ":token=" + token
+        + ":hp_before=" + dnumState.hpBefore + ":exp=" + exp
+        + ":blessed=" + ((findEffect(p, DESC_DICE_BLESSING_X) == null) ? 0 : 1)
+        + ":stale=" + stale + (err ? ":err=" + err : ""));
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+/** 读法术实际扣血 = 基线血量 - 当前血量(客户端绿字应与之相等) */
+function doDnumSpellRead(ctx, tag) {
+    var d = (dnumState == null) ? null : dnumState.dummy;
+    var stale = (dnumState == null) ? 1 : ((dnumState.tag === tag) ? 0 : 1);
+    var dmg = "-";
+    if (d != null && dnumState.hpBefore != null && dnumState.hpBefore >= 0) {
+        dmg = Math.round((dnumState.hpBefore - rghp(d)) * 100) / 100;
+    }
+    send(ctx, "AP_" + tag + "_DNUM_SPELLREAD:dmg=" + dmg + ":hp=" + (d == null ? "-" : rghp(d))
+        + ":pos=" + (d == null ? "-" : dnumPos(d)) + ":stale=" + stale);
+    return 1;
+}
+
+function doDnumRead(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var d = (dnumState == null) ? null : dnumState.dummy;
+    send(ctx, "AP_" + tag + "_DNUM_READ:hp=" + (d == null ? "-" : rghp(d))
+        + ":pos=" + (d == null ? "-" : dnumPos(d))
+        + ":hp_before=" + (dnumState == null ? "-" : dnumState.hpBefore)
+        + ":blessed=" + ((findEffect(p, DESC_DICE_BLESSING_X) == null) ? 0 : 1));
+    return 1;
+}
+
+function doDnumEnd(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var killed = 0;
+    if (dnumState != null && dnumState.dummy != null) {
+        try { dnumState.dummy.discard(); killed = 1; } catch (e1) { /* 忽略 */ }
+    }
+    dnumState = null;
+    lpSetHand(p, "");
+    // ⚠️ 卸空**必须**传 `ItemStack.EMPTY`:不能用 `resolveItem("minecraft:air")` ——
+    //    `minecraft:air` 不在 ITEM 注册表里 ⇒ resolveItem 返回 null ⇒ `new ItemStack(null)`
+    //    在**参数求值阶段**就抛 NPE(实测 `ItemLike.asItem() because "item" is null`),
+    //    于是 putInSlot 根本没被调用、卸除整条失败(而读数只表现为一个 JavaException 串)。
+    //    `ItemStack.EMPTY.getItem()` 返回 Items.AIR,是合法空栈。
+    var derr = "";
+    try { derr = "" + putInSlot(p, "dice", ItemStack.EMPTY, 0); } catch (e2) { derr = exText(e2); }
+    runCmd(ctx, "effect clear @s");
+    send(ctx, "AP_" + tag + "_DNUM_END:killed=" + killed + ":dice=" + derr);
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+/**
+ * 把靶子沿 +X 平移若干格。
+ *
+ * <p>用途:证明跳字坐标**已在命中那一刻冻结** —— 数字存活 40 tick 内把目标搬走,
+ * 客户端读数里的 `x/y/z` 必须**仍是**搬运前那一组(若实现是「每帧读实体位置」,
+ * 坐标会跟着变)。服务端这里报出搬运前后坐标,便于与客户端逐条比对。
+ */
+function doDnumShove(ctx, tag, distText) {
+    var d = (dnumState == null) ? null : dnumState.dummy;
+    if (d == null) { send(ctx, "AP_" + tag + "_ERR:no_dummy"); return 1; }
+    var dist = 5;
+    var pd = parseInt("" + distText, 10); if (!isNaN(pd) && pd !== 0) dist = pd;
+    var from = dnumPos(d);
+    try { d.setPos(d.getX() + dist, d.getY(), d.getZ()); } catch (e1) { /* 忽略 */ }
+    send(ctx, "AP_" + tag + "_DNUM_SHOVE:dist=" + dist + ":from=" + from + ":pos=" + dnumPos(d));
+    return 1;
+}
+
+// ── 美工刀指示器 + 加成归属 ─────────────────────────────────────────────────
+
+/** 指示器单行读数:存在性 / 剩余时长 / 是否产生粒子(`visible`)。0 = 效果不存在。 */
+function cutterInd(p, descId) {
+    var inst = findEffect(p, descId);
+    if (inst == null) return "0";
+    var vis = -2;
+    try { vis = inst.isVisible() ? 1 : 0; } catch (e) { vis = -2; }
+    return "1:d=" + inst.getDuration() + ":vis=" + vis;
+}
+
+/** 攻击力（战斗口径,含美工刀基础值;额外加伤链不在此口径内）。返回 number 或 null。 */
+function cutterApNum(p) {
+    try { return (TeruDiceCombatModifiersClass.attackPowerOf(p)) + 0; } catch (e) { return null; }
+}
+
+function cutterAp(p) {
+    var v = cutterApNum(p);
+    return (v == null) ? "ERR" : "" + v;
+}
+
+function cutterHeal(p) {
+    try { return "" + HealingManagerClass.getPoints(p); } catch (e) { return "ERR"; }
+}
+
+/** 单行读数:`dap` = 相对基线(`cutterprep <tag> none`)的攻击力增量 —— 「+2/+4 进攻击力」的直接判据。 */
+function cutterReadout(p) {
+    var ap = cutterApNum(p);
+    var dap = "-";
+    if (ap != null && cutterApBase != null) dap = "" + (ap - cutterApBase);
+    return "cutter=" + cutterInd(p, DESC_CUTTER_READY_X)
+        + ":blade=" + cutterInd(p, DESC_CUTTER_BLADE_READY_X)
+        + ":bless=" + ((findEffect(p, DESC_DICE_BLESSING_X) == null) ? 0 : 1)
+        + ":ap=" + cutterAp(p) + ":base=" + (cutterApBase == null ? "-" : "" + cutterApBase) + ":dap=" + dap
+        + ":heal=" + cutterHeal(p) + ":hp=" + rghp(p);
+}
+
+/** 摘除 chip 槽 0/1（美工刀家族只占这两格） */
+function cutterUnequip(p) {
+    var n = 0;
+    for (var i = 0; i < 2; i++) {
+        // 同 doDnumEnd:必须传 ItemStack.EMPTY —— `minecraft:air` 不是 ITEM 注册表项,
+        // resolveItem 返回 null ⇒ `new ItemStack(null)` 参数求值即 NPE ⇒ 卸除静默失败。
+        try { if (putInSlot(p, "chip", ItemStack.EMPTY, i) === null) n++; } catch (e) { /* 忽略 */ }
+    }
+    return n;
+}
+
+/**
+ * 美工刀基线 + 按 mode 装配。mode: `none` | `chip`(+2) | `blade`(+4) | `both`(+2/+4 各一)。
+ *
+ * <p>`none` 时冻结攻击力基线 `cutterApBase`,之后所有读数报 `dap` 增量 ⇒ 用例断言可写
+ * `dap=2` / `dap=6`,不受「上一用例残留其它 curios 修饰器」干扰。
+ * <p>回满血:`CutterChipItem.isActive` 要求 `hp >= 60% max`(或处于汲取),否则指示器与加成都不生效。
+ */
+function doCutterPrep(ctx, tag, mode) {
+    var p = ctx.source.getPlayerOrException();
+    var m = "" + mode;
+    lpClearInventory(p);
+    runCmd(ctx, "effect clear @s");
+    // ⚠️ 基线必须**显式**清骰神赐福:`/effect clear @s` 在本探针里实测**不即时生效**
+    //    (实测 cutterprep 内下发后、900ms 后的读数仍是 bless=1) ⇒ 只能作辅助。
+    //    指示器判据整个建立在「有无赐福」上,靠自然到期会变成时序耦合的脆弱用例。
+    try { ModEffectRemoval.remove(p, teruBlessing()); } catch (eB) { /* 忽略 */ }
+    try { HealingManagerClass.clear(p); } catch (e0) { /* 忽略 */ }
+    // ⚠️ 先装骰子再动 chip 槽:chip 槽数**完全由骰子档位决定**(见 dnumEquipDice 注释)。
+    //    不装骰子时 `ensureChipSlot` 也救不回来(它内部走 DiceCurioItem.refreshChipSlotCount,
+    //    而该口径在 dice 栏为空时目标值恒为 CHIP_NO_DICE_SLOTS=0)。
+    var dice = dnumEquipDice(p, CUTTER_DICE_ID);
+    cutterUnequip(p);
+    try { p.setHealth(p.getMaxHealth()); } catch (e1) { /* 忽略 */ }
+    var need = (m === "both") ? 2 : ((m === "none") ? 0 : 1);
+    // 槽位不足时必须**报出来**:否则读数只表现为「加成没生效」,与「修饰器链没注册」难以区分。
+    var slotErr = "";
+    if (need > 0) { var se = ensureChipSlot(p, need); if (se !== null) slotErr = "slotslot=" + se + "|"; }
+    var placed = 0, derr = "";
+    if (m === "chip" || m === "both") {
+        var e2 = putInSlot(p, "chip", new ItemStack(resolveItem(CUTTER_CHIP_ID)), 0);
+        if (e2 === null) placed++; else derr += "chip:" + e2 + "|";
+    }
+    if (m === "blade" || m === "both") {
+        var idx = (m === "both") ? 1 : 0;
+        var e3 = putInSlot(p, "chip", new ItemStack(resolveItem(CUTTER_BLADE_CHIP_ID)), idx);
+        if (e3 === null) placed++; else derr += "blade:" + e3 + "|";
+    }
+    if (m === "none") cutterApBase = cutterApNum(p);
+    send(ctx, "AP_" + tag + "_CUT_PREP:mode=" + m + ":dice=" + dice + ":placed=" + placed
+        + ":slots=" + chipSlotCount(p) + ":need=" + need
+        + (slotErr ? ":" + slotErr : "") + (derr ? ":err=" + derr : "")
+        + ":" + cutterReadout(p));
+    return 1;
+}
+
+function doCutterRead(ctx, tag, phase) {
+    var p = ctx.source.getPlayerOrException();
+    send(ctx, "AP_" + tag + "_CUT_READ:phase=" + phase + ":" + cutterReadout(p));
+    return 1;
+}
+
+function doCutterHeal(ctx, tag, nText) {
+    var p = ctx.source.getPlayerOrException();
+    var n = parseInt("" + nText, 10); if (isNaN(n) || n < 0) n = 0;
+    var out = "ERR";
+    try { out = "" + HealingManagerClass.add(p, n); } catch (e) { out = "ex:" + exText(e); }
+    send(ctx, "AP_" + tag + "_CUT_HEAL:add=" + n + ":ret=" + out + ":" + cutterReadout(p));
+    return 1;
+}
+
+function doCutterEnd(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var n = cutterUnequip(p);
+    runCmd(ctx, "effect clear @s");
+    try { HealingManagerClass.clear(p); } catch (e) { /* 忽略 */ }
+    lpSetHand(p, "");
+    cutterApBase = null;
+    send(ctx, "AP_" + tag + "_CUT_END:unequip=" + n + ":" + cutterReadout(p));
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
 ServerEvents.commandRegistry(event => {
     var Commands = event.commands;
     event.register(
@@ -14479,6 +14818,71 @@ ServerEvents.commandRegistry(event => {
                 .then(Commands.argument("tag", StringArg.word())
                     .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
                         return doHannaRead(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            // ── 2026-09-26:伤害跳字(终值/红绿分组/冻结坐标/±30°扩散)+ 美工刀指示器门控与加成归属 ──
+            .then(Commands.literal("dnumprep")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doDnumPrep(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("dnumhit")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doDnumHit(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("dnumhold")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doDnumHold(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("dnumspell")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doDnumSpell(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("dnumspellread")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doDnumSpellRead(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("dnumread")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doDnumRead(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("dnumshove")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("dist", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doDnumShove(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "dist"));
+                        })))))
+            .then(Commands.literal("dnumend")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doDnumEnd(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("cutterprep")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("mode", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doCutterPrep(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "mode"));
+                        })))))
+            .then(Commands.literal("cutterread")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("phase", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doCutterRead(ctx, StringArg.getString(ctx, "tag"), StringArg.getString(ctx, "phase"));
+                        })))))
+            .then(Commands.literal("cutterheal")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("n", IntegerArg.integer(0, 32))
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doCutterHeal(ctx, StringArg.getString(ctx, "tag"), "" + IntegerArg.getInteger(ctx, "n"));
+                        })))))
+            .then(Commands.literal("cutterend")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doCutterEnd(ctx, StringArg.getString(ctx, "tag"));
                     }))))
     );
 });

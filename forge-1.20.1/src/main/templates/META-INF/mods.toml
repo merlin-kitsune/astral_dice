@@ -128,11 +128,22 @@ config="${mod_id}.jade.mixins.json"
 
 # StarEngine Lib(必须前置):效果/事件/目标选择/通用组件的共享实现所在库。
 # 本模组绝大多数共享逻辑已下沉至该库,缺失将导致 NoClassDefFoundError,故为 mandatory。
-# ⚠️ 2026-09-25 起**不再声明 versionRange**:库版本区间规则已移除,版本要求只由 gradle.properties 的
-#   starengine_lib_version 一个量表达。省略 versionRange 时 FML 取 UNBOUNDED(实测对任意版本均判满足),
-#   本段仍按「**必须存在**」校验 —— 库随本模组内嵌(JarJar),内嵌副本就是满足它的那个 mod。
+# ⚠️ 2026-09-25 起**不再声明库的版本下界**:版本区间规则已移除,版本要求只由 gradle.properties 的
+#   starengine_lib_version **一个量**表达;本段只按「**必须存在**」校验 —— 库随本模组内嵌(JarJar),
+#   内嵌副本就是满足它的那个 mod。
+# ⚠️⚠️ **但本线不能像 neo 两线那样省略 versionRange**(2026-09-26 实机取证 + 反编译确证):
+#   本线省略时 FML 取 IModInfo.UNBOUNDED,而该常量的静态初始化就是 `ldc ""`(空 spec)⇒
+#   MavenVersionAdapter.createFromVersionSpec("") ⇒ **restriction 数为 0**;
+#   Maven 的 VersionRange.containsVersion() 对「无任何 restriction」的区间**恒返回 false**
+#   ⇒ mandatory 依赖永不可满足,启动即以
+#     "Missing or unsupported mandatory dependencies: ... Expected range: ''" 硬失败。
+#   neo 两线省略时走的是另一套默认(同批 jar 实测可正常启动)⇒ 「省略即 UNBOUNDED 且判满足」
+#   这一口径**只对 NeoForge 成立**,对 Forge 1.20.1 是错的(曾据此三线同批删除,只坏了本线)。
+#   ⇒ 本线显式写 versionRange="*":实测 Maven 把 "*" 解析为「单条、无上下界的 restriction」,
+#   containsVersion() 对任意版本均 true ⇒ 语义恰为「只判存在」,且是常量、不随库版本漂移。
 [[dependencies.${mod_id}]]
     modId="starengine_lib"
     mandatory=true
+    versionRange="*"
     ordering="AFTER"
     side="BOTH"

@@ -1,0 +1,74 @@
+{
+  "case_id": "CUTTER-26.1.2",
+  "title": "美工刀筹码实机冒烟：指示器按骰神赐福门控（无赐福即隐藏）+ 时长>200 不闪烁 + visible=false 无粒子 + 基础值 +2/+4 进攻击力 + 治愈点不进攻击力",
+  "version": "26.1.2",
+  "target": { "type": "feature", "ref": "cutter-chip-indicator-and-bonus" },
+  "on_fail": "keep_game_running",
+  "steps": [
+    { "op": "note", "text": "目的：验证 2026-09-26 美工刀两项改动（`event/PlayerTickEvents#updateCutterEffect` + `combat/DiceCombatModifiers` 的内置块）。\n\n判据与读取点（全部可在**服务端**取值，无需客户端通道）：\n① **门控**：指示器语义由「加成生效中」收紧为「**赐福中**且加成生效中」⇒ 无 `astral_dice:dice_blessing` 时 `effect.astral_dice.cutter_ready` / `cutter_blade_ready` **必须不存在**（旧实现只看「装备 + 满血」⇒ 会误显示）。\n② **不闪烁**：原版 `Gui#renderEffects` 对 `endsWithin(200)` 的效果按余弦调制图标 alpha（本线 `Gui#renderEffects` 的对应实现）。旧实现施加 100 tick 并在 ≤20 tick 时续期 ⇒ 时长恒在 [21,100] ⇒ **永久闪烁**。新实现施加 1200 tick、≤1000 才续期 ⇒ 读数须满足 `d=1xxx`（恒 > 200）。\n③ **无粒子**：`MobEffectInstance` 第 5 参 `visible` ⇒ 读数 `vis=0`（旧实现传 true ⇒ 持续粒子）。\n④ **基础值进攻击力**：`registerAttackModifier` 链 ⇒ `dap`（相对基线的攻击力增量）在装 1 枚时 **=2**、装两枚时 **=2+4=6**。\n⑤ **治愈点不进攻击力**：`registerExtraDamageModifier` 链 ⇒ 预置 10 点治愈点后 `dap` **不变**（仍 =2），同时 `heal=10`。这一条与 ④ 合起来正是用户要求的「基础值为攻击力加成、治愈点提供伤害加成」的分离性判据。\n\n基线与门槛（两处**刻意不同**，不是缺陷）：\n· 攻击力 +2/+4 只看 `CutterChipItem.isActive`（`hp ≥ 60% max` 或汲取）⇒ **无赐福也生效**；\n· 指示器额外要求赐福 ⇒ 第【2】步「装有美工刀但无赐福」必须同时看到 `cutter=0` **且** `dap=2`。\n\n脚手架要点：`cutterprep` 内显式装 `astral_dice:diamond_dice` —— chip 槽注册为 `size=0`，槽数由骰子档位提供（`dice` 0★=0 槽、`diamond_dice` 0★=**2** 槽）；不装骰子则筹码根本进不了槽（`slot_overflow:chip:0`），读数会伪装成「加成没生效」。\n赐福的清除走 API（`ModEffectRemoval`）而非 `/effect clear`：本探针实测后者不即时生效。" },
+
+    { "op": "inject_command", "command": "/gamemode survival", "no_esc": true },
+    { "op": "wait", "ms": 800 },
+    { "op": "inject_command", "command": "/gamerule doDaylightCycle false", "no_esc": true },
+    { "op": "inject_command", "command": "/time set noon", "no_esc": true },
+    { "op": "inject_command", "command": "/weather clear", "no_esc": true },
+    { "op": "wait", "ms": 400 },
+    { "op": "inject_command", "command": "/kill @e[type=!player,distance=..64]", "no_esc": true },
+    { "op": "wait", "ms": 500 },
+    { "op": "inject_command", "command": "/tp @s ~ ~ ~ 0 0", "no_esc": true },
+    { "op": "wait", "ms": 600 },
+
+    { "op": "note", "text": "【0】基线：卸掉全部美工刀 + 清赐福/清背包/清治愈点 + 回满血，冻结攻击力基线。\n期望：`cutter=0:blade=0:bless=0:dap=0:heal=0:hp=20`。" },
+    { "op": "inject_command", "command": "/astralprobe cutterprep C0 none", "no_esc": true },
+    { "op": "wait", "ms": 900 },
+    { "op": "inject_command", "command": "/astralprobe cutterread C0 BASE", "no_esc": true },
+    { "op": "wait", "ms": 1200 },
+
+    { "op": "note", "text": "【1】装「美工刀-初级」（+2）。**无赐福** ⇒ 指示器必须隐藏（`cutter=0`），但攻击力 +2 已生效（`dap=2`）。" },
+    { "op": "inject_command", "command": "/astralprobe cutterprep C1 chip", "no_esc": true },
+    { "op": "wait", "ms": 900 },
+    { "op": "inject_command", "command": "/astralprobe cutterread C1 NOBLESS", "no_esc": true },
+    { "op": "wait", "ms": 1200 },
+
+    { "op": "note", "text": "【2】给骰神赐福（`terubless … give`，6000 tick）⇒ 下一 tick 起 `updateCutterEffect` 应施加指示器。\n期望：`cutter=1:d=1200:vis=0`（时长 1200 ⇒ 恒 > 200 ⇒ 不闪烁；`visible=false` ⇒ 无粒子），`bless=1`，`dap` 仍为 2（赐福不影响攻击力口径）。" },
+    { "op": "inject_command", "command": "/astralprobe terubless C1 give", "no_esc": true },
+    { "op": "wait", "ms": 1300 },
+    { "op": "inject_command", "command": "/astralprobe cutterread C1 BLESSED", "no_esc": true },
+    { "op": "wait", "ms": 1300 },
+
+    { "op": "note", "text": "【3】预置 10 点治愈点（`HealingManager.add`）⇒ 攻击力**必须不变**（`dap=2`）。\n治愈点走的是 `registerExtraDamageModifier`（独立 `astral_dice:extra_damage` 结算），不进攻击力口径。" },
+    { "op": "inject_command", "command": "/astralprobe cutterheal C1 10", "no_esc": true },
+    { "op": "wait", "ms": 900 },
+    { "op": "inject_command", "command": "/astralprobe cutterread C1 HEAL10", "no_esc": true },
+    { "op": "wait", "ms": 1200 },
+
+    { "op": "note", "text": "【4】两枚同时装备（美工刀-初级 +2 / 美工刀-锋利 +4）⇒ `dap` 应为 **6**（两枚基础值都进攻击力），并再给一次赐福以验证**两枚指示器同时显示**。" },
+    { "op": "inject_command", "command": "/astralprobe cutterprep C2 both", "no_esc": true },
+    { "op": "wait", "ms": 900 },
+    { "op": "inject_command", "command": "/astralprobe terubless C2 give", "no_esc": true },
+    { "op": "wait", "ms": 1300 },
+    { "op": "inject_command", "command": "/astralprobe cutterread C2 BOTH", "no_esc": true },
+    { "op": "wait", "ms": 1200 },
+
+    { "op": "note", "text": "收尾：卸全部美工刀 + 清效果 + 清治愈点。" },
+    { "op": "inject_command", "command": "/astralprobe cutterend C2", "no_esc": true },
+    { "op": "wait", "ms": 800 }
+  ],
+  "asserts": [
+    { "type": "mixin" },
+    { "type": "kubejs" },
+    { "type": "crash" },
+    { "type": "log", "source": "latest", "pattern": "AP_C0_CUT_PREP:mode=none:dice=ok:placed=0:slots=2" },
+    { "type": "log", "source": "latest", "pattern": "AP_C0_CUT_READ:phase=BASE:cutter=0:blade=0:.*:dap=0:" },
+    { "type": "log", "source": "latest", "pattern": "AP_C1_CUT_PREP:mode=chip:dice=ok:placed=1" },
+    { "type": "log", "source": "latest", "pattern": "AP_C1_CUT_READ:phase=NOBLESS:cutter=0:blade=0:.*:dap=2:" },
+    { "type": "log", "source": "latest", "pattern": "AP_C1_BLESS:give" },
+    { "type": "log", "source": "latest", "pattern": "AP_C1_CUT_READ:phase=BLESSED:cutter=1:d=1[0-9]{3}:vis=0:.*:dap=2:" },
+    { "type": "log", "source": "latest", "pattern": "AP_C1_CUT_READ:phase=HEAL10:.*dap=2:heal=10:" },
+    { "type": "log", "source": "latest", "pattern": "AP_C2_CUT_READ:phase=BOTH:cutter=1:.*blade=1:.*:dap=6:" },
+    { "type": "log", "source": "latest", "pattern": "AP_C2_CUT_END:unequip=2" },
+    { "type": "absent", "source": "latest", "pattern": "AP_C[0-9]_[A-Z]+_ERR" },
+    { "type": "absent", "source": "latest", "pattern": "AP_[A-Z0-9]+_EX:" },
+    { "type": "absent", "source": "latest", "pattern": "Unknown or incomplete command|未知或不完整的命令" }
+  ]
+}

@@ -97,6 +97,9 @@ public final class ChipDamageHandler {
         // 怪力侦探立牌(sherry):「推理时间」每层受到伤害 −1;外加「挚友守护」(同队有装备人偶师立牌的
         // 玩家时再 −1)。两者都是**固定点数减法**,与磨刀石同阶段(LOWEST = 最终伤害阶段)结算;
         // 刻意**不**附带"不可致死保护"—— 那是磨刀石/安全气囊的专属口径,本立牌只做纯减伤。
+        // ⚠️ 与骰战的先后顺序(2026-09-26 固化):骰战在 LivingDamageEvent.Pre(@NORMAL)自算并
+        //    setNewDamage(骰战层下限 1 点),本处理器 @LOWEST 在其**之后**执行 ⇒ 固定值减伤作用在
+        //    「骰战最终伤害」之上,且 `Math.max(0, …)` **允许扣到 0**(用户裁决:算完最终伤害再扣除)。
         int sherryCut = com.merlinkitsune.astral_dice.item.sign.SherrySignItem.getLayers(player);
         float guardian = com.merlinkitsune.astral_dice.item.sign.SherrySignItem.guardianReductionFor(player);
         float totalCut = sherryCut + guardian;

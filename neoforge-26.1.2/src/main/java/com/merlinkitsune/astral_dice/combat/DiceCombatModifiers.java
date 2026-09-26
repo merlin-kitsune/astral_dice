@@ -827,10 +827,11 @@ public final class DiceCombatModifiers {
         }
         // 效果牌/立牌/筹码的防御力已折算为真实护甲(1 防御力 = 2 护甲值,见 setDefenseArmorBonus),
         // getArmorValue() 已包含其瞬态修饰器;此处 modifierDefense 恒为 0(仅防御卡掷骰写 ctx.defenseCardSum)
-        double rawArmor = Math.min(player.getArmorValue(), 20);
+        // ⚠️ 护甲 20 硬上限已于 2026-09-26 移除;公式下沉至库 CombatFormula,与骰战结算**同源**,
+        //    避免「HUD/tooltip 一个值、结算另一个值」的漂移。
+        double effectiveArmor = Math.max(0, player.getArmorValue() + modifierDefense * 2.0);
         double toughness = player.getAttributeValue(Attributes.ARMOR_TOUGHNESS);
-        double effectiveArmor = Math.max(0, Math.min(rawArmor + modifierDefense * 2.0, 20));
-        return 2 + effectiveArmor / 2.0 + 1.4 * toughness;
+        return com.merlinkitsune.starenginelib.combat.CombatFormula.playerDefense(effectiveArmor, toughness);
     }
 
     // === GUI 显示用:攻击/防御范围(基础值+修饰器+卡牌下限/上限) ===

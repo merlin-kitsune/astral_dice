@@ -52,6 +52,38 @@ import org.spongepowered.asm.mixin.injection.Redirect;
  *
  * <h2>为什么用字符串 {@code targets}</h2>
  * 本配置是可选兼容（{@code required:false}）；用字符串可让 mixin 类在 Jade 缺席时仍能加载。
+ *
+ * <h2>⚠️ 处理器必须是**非 static**——本线 Mixin 是 0.8.5，别照抄 neo 的 static 写法</h2>
+ * （2026-09-26 实机取证 + 反编译确证）Mixin <b>0.8.5</b>（本线 dev 由 mixinbooster 提供，
+ * 实例：{@code mixin-0.8.5.jar:0.8.5+Jenkins-b310…}）里
+ * {@code Injector#checkTargetForNode(target, node, ALLOW_ALL)} 收尾调的是
+ * {@code checkTargetModifiers(target, true)}——{@code exactMatch=true} 要求
+ * <b>处理器的 static 修饰符与「被注入方法」严格一致</b>：
+ * <pre>
+ * if (exactMatch &amp;&amp; target.isStatic != this.isStatic) {
+ *     throw new InvalidInjectionException(... "'static' modifier of handler method does not match target" ...);
+ * }
+ * </pre>
+ * 本类的被注入方法 {@code EntityArmorProvider#appendTooltip} 是<b>实例方法</b>（javap 实证：
+ * {@code public void appendTooltip(ITooltip, EntityAccessor, IPluginConfig)}）⇒ 处理器写成
+ * {@code static} 会在<b>类加载那一刻</b>抛
+ * {@code InvalidInjectionException: 'static' modifier of handler method does not match target}，
+ * 整条 mixin 被摘掉；因本配置是 {@code required:false}，只留一条 WARN，游戏照常启动、
+ * 但「Jade 护甲行显示防御力」静默失效。
+ *
+ * <p><b>为什么 neo 两线写 static 却能跑</b>：它们的 dev 用 <b>Mixin 0.8.7</b>
+ * （{@code net.fabricmc:sponge-mixin:0.15.2+mixin.0.8.7}），同一处收尾改成了
+ * {@code checkTargetModifiers(target, false)} ⇒ 只拦「非 static 处理器打 static 方法」，
+ * 「static 处理器打实例方法」被<b>放行</b>。⇒ <b>同一份源码在 neo 上能跑，靠的是 0.8.7 放宽了这条</b>；
+ * 本线 0.8.5 会严格拒绝，故<b>不得与本线之外的两线互抄写法</b>。
+ *
+ * <p><b>去掉 {@code static} 为何不改变形参表</b>：Redirect 期望的处理器形参由
+ * {@code RedirectInjector.RedirectedInvokeData} 从<b>被重定向调用自身</b>的字节码推导——
+ * {@code handlerArgs = opcode == INVOKESTATIC ? targetArgs : [owner] + targetArgs}，
+ * <b>与处理器是否 static 无关</b> ⇒ 仍是 {@code (LivingEntity)}。非 static 处理器调用点由
+ * {@code Injector#invokeHandlerWithArgs} 用 {@code ALOAD 0} 取目标实例（= 该枚举实例，本类不使用它）。
+ * 同线可工作先例：{@code GuiMixin#astralDice$suppressExpiryFlash}（同为
+ * {@code INVOKEVIRTUAL} 重定向、同为非 static、形参 {@code (接收者, 实参…)}）。
  */
 @Mixin(targets = "snownee.jade.addon.vanilla.EntityArmorProvider")
 public abstract class ArmorValueProviderMixin {
@@ -62,7 +94,10 @@ public abstract class ArmorValueProviderMixin {
                     + "Lsnownee/jade/api/config/IPluginConfig;)V",
             at = @At(value = "INVOKE",
                     target = "Lnet/minecraft/world/entity/LivingEntity;getArmorValue()I"))
-    private static int astralDice$armorAsDefense(LivingEntity entity) {
+    // ⚠️ 必须**非 static**：被注入方法 appendTooltip 是实例方法，而本线 Mixin 0.8.5 要求二者
+    //    static 修饰符严格一致（详见类头 javadoc）。写成 static ⇒ 类加载时抛
+    //    InvalidInjectionException，整条 mixin 被摘掉（只留 WARN，防御力显示静默失效）。
+    private int astralDice$armorAsDefense(LivingEntity entity) {
         if (entity instanceof Player player) {
             return DiceCombatModifiers.defensePowerOf(player);
         }

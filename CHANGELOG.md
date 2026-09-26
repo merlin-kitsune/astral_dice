@@ -42,6 +42,42 @@
   use green as well). Multiple hits on the same target within the same colour group in one tick are **merged
   into a single total** instead of overwriting each other.
 
+#### Combat Statistics & Resolution
+
+- **Defense formula split between players and mobs, and the 20-point armor cap removed** (user request 2026-09-26):
+  - Players: `Defense = 2 + armor / 2 + 1.4 x armor toughness` (the conversion is unchanged);
+  - Mobs: `Defense = base defense + armor / 2 + 1.125 x armor toughness`, **floored to a whole number**;
+  - Base defense: **hostile mobs 2**, neutral / passive / friendly mobs **0**;
+  - The `min(armor, 20)` cap that previously applied to every target is **removed on both sides**;
+  - Armor is always read as the **final attribute value** (`getArmorValue()`), so modifiers applied by status effects
+    and by other mods (such as the Ring of Seven Curses) take effect **first** and this mod **no longer rescales
+    them**, keeping other mods' changes always effective (maximum mod compatibility). Vanilla armor-affecting status
+    effects are handled by **equivalent substitution**: they change the armor value exactly as they always did, and
+    the result then goes through this mod's defense conversion.
+
+- **Mobs gained base attack power and their melee attacks now take part in dice combat** (user request 2026-09-26):
+  hostile mobs start at **5** attack power, neutral mobs at **4**, passive / friendly mobs at **0**; a mob's own damage
+  (its attack-damage attribute plus the incoming damage event value) is folded into its attack power as well.
+
+- **Opposed rolls unified to "if one side may roll, the other must roll too"** (user request 2026-09-26): whether the
+  attacker rolls depends only on the attacker (a player needs an equipped die; a mob always rolls 1d6), and whether
+  the defender rolls depends only on whether the defender **has a die equipped**. **A defending player with a die
+  equipped now rolls a defense die without needing Dice Blessing**. When a mob melees a player the opposed roll
+  happens as long as **the player has a die equipped** (both sides roll 1d6), and the player's battle-card points
+  count towards defense; attacking a player **without** a die does not trigger an opposed roll and falls back to a
+  plain base attack-vs-defense resolution. **Dice Blessing is still only triggered by a player's own melee attack** -
+  neither a mob's attack nor a defender's roll triggers it. Final damage keeps the original wording "base attack power
+  - base defense + dice roll + battle-card bonus", with **at least 1 damage dealt whenever the defender's total is
+  greater than or equal to the attacker's**; a player's flat damage-reduction effects (Whetstone, the Great Detective
+  standee and so on) are applied **after** the final damage is computed and are **allowed to reduce it to 0**.
+
+- **Defense card durability 10 -> 100, drained "1 point per dice-combat hit"** (user request 2026-09-26): the
+  durability cap of the defense battle cards (Medium / Large / Epic Defense Card) rises to **100**, and instead of
+  **every** defense card losing 1 point once per blessing period, **each dice-combat hit a player takes now removes
+  exactly 1 point from the first defense card that still has durability, in equip order** (a card is only removed
+  once it reaches 0). Ranged, spell and skill damage that does **not** trigger dice combat **does not consume
+  defense cards**.
+
 #### Chips & Resources
 
 - **The Cutter's base bonus is back on the Attack Power channel** (user ruling 2026-09-26): the **+2 / +4** that
@@ -50,6 +86,19 @@
   **healing stacks** is separate **attack damage** (which does not count towards Attack Power). When both
   Cutters are equipped, healing stacks count **once per chip**. The matching tooltips and handbook entries now
   read "Attack Power +2 / +4".
+
+#### Platform & Compatibility
+
+- **The prerequisite library `starengine_lib` is upgraded to `2.0.0-SNAPSHOT.1`**: the new four-way mob
+  classification and the attack / defense conversion formulas were pushed down into the library's `combat` package
+  (`TargetCategory` for the four-way classification, `TargetBattleStats` for the base attack / defense table,
+  `CombatFormula` for the pure conversion functions and `DiceBattleResolver` for opposed rolls and damage synthesis),
+  so all three lines (1.21.1 / 1.20.1 / 26.1.2) share a single implementation and the formulas cannot drift apart.
+  The library changes live on a separate `next` branch (the main branch stays on `1.0.4`), and all three lines of this
+  mod move their `starengine_lib_version` to `2.0.0-SNAPSHOT.1` together. The library is still **JarJar-embedded**
+  into the artifact as before, so the modpack must **not** carry a standalone library jar. This is a **major version
+  bump** (`1.0.4` -> `2.0.0`), matching the library's own rule that changing existing semantics requires a major bump:
+  this round removes the 20-point armor cap from the formula, which is exactly such a change.
 
 ### Bug Fixes
 
@@ -65,6 +114,38 @@
   the indicator is now shown **only while the player actually has Dice Blessing** and is fully hidden otherwise
   (no icon and no particles); its duration no longer falls inside vanilla's "about to expire" blink window,
   **removing the constant blinking**.
+
+#### Platform & Compatibility
+
+- **Fixed Forge 1.20.1 being completely unable to start because the library dependency declared no version
+  range**: 1.20.1's `mods.toml` had **dropped `versionRange`** for the `starengine_lib` dependency, following
+  the "library is checked for presence only" decision - but the two loaders do not share that semantics. On
+  Forge, FML falls back to `IModInfo.UNBOUNDED`, which decompilation shows is built by
+  `MavenVersionAdapter.createFromVersionSpec("")` (the static initialiser is a bare `ldc ""`) => the resulting
+  `VersionRange` has **zero restrictions**, and Maven's `VersionRange#containsVersion()` **always returns false
+  for a range with no restrictions** => this `mandatory=true` dependency can **never be satisfied**, so startup
+  hard-fails during FML dependency sorting with
+  `Missing or unsupported mandatory dependencies: Mod ID: 'starengine_lib' ... Expected range: ''`
+  (the NeoForge lines fall back to a different default and were verified to start from the same build => the old
+  wording **only holds for NeoForge**). 1.20.1 now writes `versionRange="*"` explicitly: measured against Maven,
+  `"*"` parses to a **single restriction with no bounds**, so `containsVersion()` returns true for every version -
+  exactly "presence only", and it is a constant that cannot drift with the library version.
+  Criteria: the shipped `META-INF/mods.toml` carries `versionRange="*"` on the library dependency, and a cold
+  1.20.1 client start logs neither `Missing or unsupported mandatory dependencies` nor `Expected range`, with the
+  mod loading normally.
+
+- **Fixed the Jade armor row not showing Defense on 1.20.1**: the 1.20.1 Jade compatibility Mixin declared its
+  redirect handler as `static`, but that line runs Mixin **0.8.5** (supplied by Mixin Booster) - 0.8.5 ends
+  `Injector#checkTargetForNode` with `checkTargetModifiers(target, true)`, which **requires the handler's
+  `static` modifier to match the injected method exactly**; the injected `EntityArmorProvider#appendTooltip` is
+  an **instance method**, so loading the class threw
+  `InvalidInjectionException: 'static' modifier of handler method does not match target` and the whole Mixin was
+  dropped (the config is `required:false` => only a WARN, the game starts and the feature silently does nothing).
+  It is now **non-static**, with the parameter list unchanged (Redirect derives the expected parameters from the
+  redirected call's own bytecode, independently of the handler's static-ness).
+  ⚠️ **The NeoForge lines keep their `static` handlers**: they run Mixin **0.8.7**, where that same spot was
+  relaxed to `checkTargetModifiers(target, false)` and only rejects a non-static handler on a static method.
+  Criteria: a cold 1.20.1 start logs zero `Mixin apply for mod` failures and no `InvalidInjectionException`.
 
 ## 1.3.1
 
