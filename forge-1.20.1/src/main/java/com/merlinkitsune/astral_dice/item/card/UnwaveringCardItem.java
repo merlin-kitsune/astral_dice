@@ -12,7 +12,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 
 /**
- * 岿然不动(功能效果牌):使用后获得"岿然不动"效果——每层护甲 +8(对应骰战防御力 +4,按"防御 = 2 + 护甲÷2"折算),
+ * 岿然不动(功能效果牌):使用后获得"岿然不动"效果——每层护甲 +8(对应骰战防御力 +2.4,按"防御 = 4 + 护甲×0.30 + 0.85×韧性"折算),
  * 最多叠 3 层(amplifier 上限取 GameplayConstants.MAX_EFFECT_STACKS - 1);并获得 抗性提升 II,持续 3:00。
  *
  * 叠层口径与狂暴/王之力一致:重复使用叠 1 层并把时长刷新为 max(旧, 3:00);

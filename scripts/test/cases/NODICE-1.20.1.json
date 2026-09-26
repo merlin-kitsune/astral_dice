@@ -1,0 +1,183 @@
+{
+  "case_id": "NODICE-1.20.1",
+  "title": "未装骰子仍走骰战模型：双方骰点恒为 0（伤害恒等且等于攻击点）",
+  "version": "1.20.1",
+  "target": {
+    "type": "feature",
+    "ref": "no-dice-still-dice-combat"
+  },
+  "on_fail": "keep_game_running",
+  "steps": [
+    {
+      "op": "note",
+      "text": "目的:验证 2026-09-26 裁决 —— **玩家未装备骰子时仍使用骰战模型**,但**双方骰点恒为 0**(一方没有骰点,另一方也不得掷),且该路径下伤害数字正常跳出(走 DamageNumberAggregator 的 ATTACK 组)。\n\n**反假绿判据(三条一起看)**\n  · `ND_MOB:dice=0` —— 确认本档玩家**确实没有**装备骰子(curios 骰子槽为空);\n  · `ND_HIT:n=1/2/3:...:mode=dice` —— 造伤口径 = **骰战公式**。`mode` 由探针按两套公式归类:\n      `dice` = 伤害 ≈ 攻击点 ap(骰战:`max(1, ap×15%, ap−def)`,僵尸 def = floor(0+2×0.40+0) = 0);\n      `vanilla` = 伤害 ≈ ap×(1−f1/25)(原版护甲减免,f1 = clamp(2−ap/2, 0.4, 20) ⇒ 约 ap×0.984)。\n      若代码**未改**(未装骰子直接 return 原版),本条会红成 `mode=vanilla`。\n  · `ND_HIT:n=2/3:...:same=1` —— 三次伤害**完全一致** ⇒ 生物侧防御骰恒为 0(对骰不成立)。\n      若旧口径(生物恒掷 1d6),三次全同的概率仅 (1/6)² ≈ 2.8%。\n\n**命中来源**:`nodicehit` 用 `Player#attack`(与真人左键同源)打**空手僵尸**;\n前置 `nodicemob` 会生成定点僵尸并给玩家换上铁剑(近战武器闸门 `isMeleeWeaponAttack` 要求主手为剑/斧/锤/三叉戟)。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode survival"
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamerule doDaylightCycle false"
+    },
+    {
+      "op": "inject_command",
+      "command": "/time set midnight"
+    },
+    {
+      "op": "inject_command",
+      "command": "/weather clear"
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "inject_command",
+      "command": "/kill @e[type=!player,distance=..64]"
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "inject_command",
+      "command": "/effect give @s minecraft:instant_health 1 9"
+    },
+    {
+      "op": "inject_command",
+      "command": "/tp @s ~ ~ ~ 0 0"
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "note",
+      "text": "【0】前置:生成定点僵尸(空手,护甲 2) + 主手铁剑 + 打印基线读数。\n硬读数:`dice=0`(无骰子)、`hand=minecraft:iron_sword:sword=-`(铁剑已就位,无异常)。\n⚠️ 本行的 `atk` / `ap` 是**换武器那一瞬间**读到的旧属性值(`getAttributeValue` 要等下一 tick 的装备变更收集才刷新),**不作判据**;本次攻击点以后续 `ND_HIT` 行的 `ap` 为准。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nodicemob D0"
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "note",
+      "text": "【1】满冷却近战第 1 次。判据:`n=1` + `mode=dice`。此档 `same=-`(首次无对照)。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nodicehit D0"
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "note",
+      "text": "【2】第 2 次。判据:`n=2` + `mode=dice` + `same=1`(与上次伤害完全一致 ⇒ 生物防御骰为 0)。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nodicehit D0"
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "note",
+      "text": "【3】第 3 次。判据:`n=3` + `mode=dice` + `same=1`。三次一致即排除 `1d6` 防御骰的存在。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nodicehit D0"
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nodiceend D0"
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    }
+  ],
+  "asserts": [
+    {
+      "type": "mixin"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "crash"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_D0_ND_MOB:dice=0"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": ":hand=minecraft:iron_sword:sword=-"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_D0_ND_HIT:n=1:.*:mode=dice"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_D0_ND_HIT:n=2:.*:mode=dice:same=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_D0_ND_HIT:n=3:.*:mode=dice:same=1"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_D0_ND_END:removed=1"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_DNUM:evt=boot:.*:store=ok",
+      "scope": "whole"
+    },
+    {
+      "type": "log",
+      "source": "kubejs_client",
+      "pattern": "AP_DNUM:evt=tick:.*items=\\[.*,FF5555,"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_D0_[A-Z]+_ERR"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_[A-Z0-9]+_EX:"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "Unknown or incomplete command|未知或不完整的命令"
+    }
+  ]
+}

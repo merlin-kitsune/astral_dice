@@ -65,18 +65,35 @@
   bonus of its held weapon's enchantments**. The incoming damage event value is **no longer** added - that value had
   already passed armour, resistance and protection on the vanilla path, so folding it in counted those three twice.
 
-- **Opposed rolls unified to "if one side may roll, the other must roll too"** (user request 2026-09-26): whether the
-  attacker rolls depends only on the attacker (a player needs an equipped die; a mob always rolls 1d6), and whether
-  the defender rolls depends only on whether the defender **has a die equipped**. **A defending player with a die
-  equipped now rolls a defense die without needing Dice Blessing**. When a mob melees a player the opposed roll
-  happens as long as **the player has a die equipped** (both sides roll 1d6), and the player's battle-card points
-  count towards defense; attacking a player **without** a die does not trigger an opposed roll and falls back to a
-  plain base attack-vs-defense resolution. **Dice Blessing is still only triggered by a player's own melee attack** -
-  neither a mob's attack nor a defender's roll triggers it. Final damage keeps the original wording "base attack power
-  - base defense + dice roll + battle-card bonus", with a damage floor of **`max(1, attack power x 15%)`** whenever
-  the defender's total is greater than or equal to the attacker's; a player's flat damage-reduction effects (Whetstone,
-  the Great Detective
+- **Opposed rolls require BOTH sides to have a die; if either side lacks one both roll 0, yet the dice-combat
+  formula still applies** (user request 2026-09-26, revised the same day): each side only checks whether *it* has a
+  die equipped, and **if either side lacks one, both sides' rolls count as 0** (if one side has no roll, the other may
+  not roll either). Specifically:
+  - **Player as attacker**: with a die equipped the old rule applies (dice combat still requires Dice Blessing to be
+    active); **without a die the attack no longer falls back to vanilla combat** - as long as the target is a
+    dice-combat target (hostile / neutral / non-teammate player / boss) the **dice-combat formula still resolves
+    normally**, with the attacker's roll at 0 and the defender's roll likewise zeroed;
+  - **Player as defender**: a die equipped means a defense roll (**Dice Blessing is no longer required**) and
+    battle-card points count towards defense; without a die nothing is rolled and the opponent's roll is zeroed too;
+  - **A mob meleeing a player**: the opposed roll triggers as long as **the player has a die equipped** (both sides
+    roll 1d6); when the player has no die neither side rolls, but the **dice-combat** formula still resolves (not the
+    vanilla armour-reduction formula) - going without a die does **not** mean returning to vanilla difficulty.
+  **Dice Blessing is still only triggered by a player's own melee attack** - neither a mob's attack nor a defender's
+  roll triggers it. Final damage keeps the original wording "base attack power - base defense + dice roll +
+  battle-card bonus", with a damage floor of **`max(1, attack power x 15%)`** whenever the defender's total is
+  greater than or equal to the attacker's; a player's flat damage-reduction effects (Whetstone, the Great Detective
   standee and so on) are applied **after** the final damage is computed and are **allowed to reduce it to 0**.
+  - **The Patchouli guide entry "Battle Dice Rolls" was rewritten to match (all three languages)**: it now states
+    that combat still resolves with the dice-combat formula when no die is equipped, counting both sides' rolls as 0,
+    and it corrects the defense formula to be **computed per side** (player `4 + armor x 0.30 + 0.85 x toughness`;
+    mob `base defense + armor x 0.40 + 1.0 x toughness`, rounded down), noting that the damage floor is now
+    "15% of attack power" instead of a flat 1.
+  - **Engineering docs brought in line (no gameplay effect)**: the `AGENTS.md` "Dodge & Defense" section and the
+    `DiceCombatEvents` comments in all three lines were rewritten to the new wording (dice-combat entry conditions,
+    a mob's defense die is rolled only when the attacker also has a die, per-side defense formulas and the absence of
+    any 20 cap); `tools/balance_sim/` (simulator and report renderer) now carries an explicit "stale model
+    (pre-recalibration)" notice - **its model constants were intentionally left unchanged** so the committed reports
+    stay reproducible.
 
 - **Defense card durability 10 -> 150, drained "1 point from every equipped defense card per dice-combat hit"**
   (user request 2026-09-26): the durability cap of the defense battle cards (Medium / Large / Epic Defense Card)

@@ -118,6 +118,26 @@ CARDS: Dict[str, Tuple[str, int]] = {
     "defense_epic": ("rand2of", 10),
 }
 
+# ⚠️⚠️ 已过期（2026-09-26 标注，本版未改）—— 下面的库侧常量仍停在**重标定前**的旧模型：
+#   护甲项写死「统一除数 2」、PLAYER_BASE_DEFENSE 2.0 / PLAYER_TOUGHNESS_COEF 1.4 /
+#   MOB_TOUGHNESS_COEF 1.125、BASE_ATTACK 敌对 5 / 中立 4、BASE_DEFENSE 敌对 2。
+#   库 starengine_lib 自 2.0.0-SNAPSHOT.2 起已改为（并**删除**了 ARMOR_DIVISOR）：
+#     playerDefense  = 4 + 护甲×0.30 + 0.85×韧性
+#     mobDefenseInt  = 0 + 护甲×0.40 + 1.0×韧性   （两侧均无 20 上限，护甲取属性终值）
+#     BASE_ATTACK: 敌对 4 / 中立 3 / 被动 0 / 友好 0 ; BASE_DEFENSE: 全 0
+#   ⇒ **直接重跑本脚本会复现旧模型的曲线**。若要按现行口径重跑，必须先把下列常量与
+#     player_defense / mob_defense_int 两个函数换成库现行值；重跑后 docs/balance/ 下的
+#     历史报告需重新标注（那是旧模型的快照）。权威口径见 AGENTS.md「骰战闪避与防御规范」。
+# ⚠️⚠️ 已过期（2026-09-26 标注，本版未改）—— 下面的库侧常量仍停在**重标定前**的旧模型：
+#   护甲项写死「统一除数 2」、PLAYER_BASE_DEFENSE 2.0 / PLAYER_TOUGHNESS_COEF 1.4 /
+#   MOB_TOUGHNESS_COEF 1.125、BASE_ATTACK 敌对 5 / 中立 4、BASE_DEFENSE 敌对 2。
+#   库 starengine_lib 自 2.0.0-SNAPSHOT.2 起已改为（并**删除**了 ARMOR_DIVISOR）：
+#     playerDefense  = 4 + 护甲×0.30 + 0.85×韧性
+#     mobDefenseInt  = 0 + 护甲×0.40 + 1.0×韧性   （两侧均无 20 上限，护甲取属性终值）
+#     BASE_ATTACK: 敌对 4 / 中立 3 / 被动 0 / 友好 0 ; BASE_DEFENSE: 全 0
+#   ⇒ **直接重跑本脚本会复现旧模型的曲线**。若要按现行口径重跑，必须先把下列常量与
+#     player_defense / mob_defense_int 两个函数换成库现行值；重跑后 docs/balance/ 下的
+#     历史报告需重新标注（那是旧模型的快照）。权威口径见 AGENTS.md「骰战闪避与防御规范」。
 # 库公式常量（CombatFormula）
 PLAYER_BASE_DEFENSE = 2.0
 PLAYER_TOUGHNESS_COEF = 1.4

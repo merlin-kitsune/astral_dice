@@ -13686,6 +13686,22 @@ ServerEvents.commandRegistry(event => {
                     .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
                         return doDefCardEnd(ctx, StringArg.getString(ctx, "tag"));
                     }))))
+            // ── 2026-09-26: 未装骰子仍走骰战(双方骰点恒 0)取证 ──
+            .then(Commands.literal("nodicemob")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doNoDiceMob(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("nodicehit")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doNoDiceHit(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("nodiceend")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doNoDiceEnd(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
             .then(Commands.literal("spelltdsetup")
                 .then(Commands.argument("tag", StringArg.word())
                     .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
@@ -15199,5 +15215,113 @@ function doDefCardEnd(ctx, tag) {
     try { stones = mamuDiceStones(p); } catch (e2) { stones = "?"; }
     try { cost = defcDefCost(p); } catch (e3) { cost = "?/?"; }
     send(ctx, line + ":removed=" + removed + ":stones=[" + stones + "]:defcost=" + cost);
+    return 1;
+}
+// ============================================================================
+// 2026-09-26 裁决取证:未装备骰子时仍走骰战模型(双方骰点恒为 0)
+// ----------------------------------------------------------------------------
+// 命令:
+//   /astralprobe nodicemob <tag>   定点僵尸(空手) + 主手铁剑 + 打印基线读数
+//   /astralprobe nodicehit <tag>   满冷却连续近战 3 次,逐次打印实际扣血
+//   /astralprobe nodiceend <tag>   清场
+//
+// 反假绿判据(mode 字段直接命名两套口径):
+//   · dice    = 伤害 ≈ 攻击点 ap            ⇒ 走骰战公式(未装骰子仍入骰战)
+//   · vanilla = 伤害 ≈ ap × (1 − f1/25)     ⇒ 被原版护甲减免(旧行为:未装骰子退回原版)
+//   僵尸护甲 2 ⇒ def = floor(0 + 2×0.40 + 0) = 0 ⇒ 骰战伤害 = ap;
+//   原版 f1 = clamp(2 − ap/2, 0.4, 20) ⇒ 伤害 = ap×0.984 ⇒ 两者差 ≈1.6%,足以区分。
+//   ② 未装骰子 ⇒ 生物侧防御骰恒为 0(opposed 不成立)⇒ **三次 mode 均为 dice 且 dmg 恒等**;
+//      若旧口径(生物恒掷 1d6)则三次全同的概率仅 (1/6)² ≈ 2.8%。
+// ============================================================================
+var ndMob = null;
+var ndHits = 0;
+var ndPrevDmg = null;
+
+function ndHasDice(p) {
+    var id = null;
+    try { id = diceSlotItemId(p); } catch (e) { return -1; }
+    if (id == null) return -1;
+    if (id === "empty" || id === "-") return 0;
+    if (id.length > 0 && id.charAt(0) === "<") return -1;
+    return 1;
+}
+
+function ndAttackPoint(p) {
+    var Attrs = Java.loadClass("net.minecraft.world.entity.ai.attributes.Attributes");
+    var attr = -1;
+    try { attr = p.getAttributeValue(Attrs.ATTACK_DAMAGE); } catch (e0) { attr = -1; }
+    var cd = -1;
+    try { cd = p.getAttackStrengthScale(0.5); } catch (e1) { cd = -1; }
+    var ap = (attr >= 0 && cd >= 0) ? (attr * (0.2 + cd * cd * 0.8)) : -1;
+    return { attr: attr, cd: cd, ap: ap };
+}
+
+function ndClassify(dmg, ap) {
+    if (!(ap > 0) || !(dmg > 0)) return "?";
+    // 原版对照:僵尸护甲 2 ⇒ f1 = clamp(2 − ap/2, 0.4, 20)
+    var f1 = Math.min(Math.max(2 - ap / 2, 0.4), 20);
+    var vanilla = ap * (1 - f1 / 25);
+    if (Math.abs(dmg - ap) < 0.06) return "dice";
+    if (Math.abs(dmg - vanilla) < 0.06) return "vanilla";
+    return "other(dmg=" + dmg + ",ap=" + ap + ",van=" + vanilla + ")";
+}
+
+function doNoDiceMob(ctx, tag) {
+    var line = "AP_" + tag + "_ND_MOB";
+    var p = ctx.source.player;
+    if (ndMob != null) { try { ndMob.discard(); } catch (e0) { /* 忽略 */ } ndMob = null; }
+    ndHits = 0;
+    ndPrevDmg = null;
+    var mob = null;
+    try { mob = spawnDummy(p, "minecraft:zombie", 3); } catch (e1) { mob = null; }
+    if (mob == null) { send(ctx, line + ":spawn=0"); return 1; }
+    ndMob = mob;
+    var swErr = "-";
+    try {
+        var IH = Java.loadClass("net.minecraft.world.InteractionHand");
+        var item = resolveItem("minecraft:iron_sword");
+        if (item == null) swErr = "no_item";
+        else p.setItemInHand(IH.MAIN_HAND, new ItemStack(item));
+    } catch (e2) { swErr = exText(e2); }
+    var q = ndAttackPoint(p);
+    send(ctx, line + ":dice=" + ndHasDice(p)
+        + ":hand=" + itemIdOf(p.getMainHandItem())
+        + ":sword=" + swErr
+        + ":atk=" + q.attr + ":cd=" + q.cd + ":ap=" + q.ap
+        + ":mobhp=" + mob.getHealth());
+    return 1;
+}
+
+function doNoDiceHit(ctx, tag) {
+    var line = "AP_" + tag + "_ND_HIT";
+    var p = ctx.source.player;
+    if (ndMob == null || !ndMob.isAlive()) { send(ctx, line + ":nomob=1"); return 1; }
+    ndHits = ndHits + 1;
+    try { p.attackStrengthTicker = 1000; } catch (e0) { /* 忽略 */ }
+    try { ndMob.invulnerableTime = 0; } catch (e1) { /* 忽略 */ }
+    var q = ndAttackPoint(p);
+    var before = ndMob.getHealth();
+    var api = "?";
+    try {
+        var hit = meleeHit(p, ndMob);
+        api = (hit == null) ? "?" : hit.api;
+    } catch (e2) { api = "err:" + exText(e2); }
+    var after = ndMob.getHealth();
+    var dmg = before - after;
+    var same = (ndPrevDmg == null) ? "-" : ((Math.abs(ndPrevDmg - dmg) < 0.06) ? 1 : 0);
+    ndPrevDmg = dmg;
+    send(ctx, line + ":n=" + ndHits
+        + ":dmg=" + dmg + ":ap=" + q.ap + ":cd=" + q.cd
+        + ":mode=" + ndClassify(dmg, q.ap) + ":same=" + same
+        + ":rest=" + after + ":api=" + api);
+    return 1;
+}
+
+function doNoDiceEnd(ctx, tag) {
+    var line = "AP_" + tag + "_ND_END";
+    var removed = 0;
+    if (ndMob != null) { try { ndMob.discard(); removed = 1; } catch (e0) { /* 忽略 */ } }
+    ndMob = null;
+    send(ctx, line + ":removed=" + removed);
     return 1;
 }

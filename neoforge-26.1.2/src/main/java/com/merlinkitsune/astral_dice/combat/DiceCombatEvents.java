@@ -349,18 +349,28 @@ public class DiceCombatEvents {
             com.merlinkitsune.astral_dice.item.HealingManager.onBlessingTriggered(player);
         }
 
-        // Dice combat mechanics require the Dice Blessing effect
-        if (!player.hasEffect(ModEffects.DICE_BLESSING)) return;
-        if (diceStack == null) return;
+        // === 骰战模型适用闸门(2026-09-26 用户裁决:骰战对玩家常驻,"是否装备骰子"不再是门槛) ===
+        // · 装备骰子 —— 沿用旧口径:必须处于骰神赐福生效时(赐福由本次攻击或既有 buff 提供);
+        // · 未装备骰子 —— **不再退出骰战**:只要目标属于骰战适用目标(isBlessingTarget)即以
+        //   "双方骰点恒为 0"参与结算 —— 与"生物→玩家"路径的 opposed = hasDice(target) 对称。
+        //   一方没有骰点,另一方也不得掷:攻击方骰点见下方 baseDice 归零;防御方(生物/玩家)
+        //   骰点见 DEFENSE 段的 opposed 判定。
+        if (diceStack == null) {
+            if (!isBlessingTarget(target, player)) return;
+        } else if (!player.hasEffect(ModEffects.DICE_BLESSING)) {
+            return;
+        }
         if (enhancement == null) {
             enhancement = WeaponEnhancement.EMPTY;
 
-            if (!diceStack.has(ModDataComponents.WEAPON_ENHANCEMENT.get())) {
+            // 未装备骰子时 diceStack 为 null:无处写回默认组件,且本就无卡牌可耗,故加 null 守卫。
+            if (diceStack != null && !diceStack.has(ModDataComponents.WEAPON_ENHANCEMENT.get())) {
                 diceStack.set(ModDataComponents.WEAPON_ENHANCEMENT.get(), WeaponEnhancement.EMPTY);
             }
         }
 
-        int baseDice = rollCombatDie(player); // 特殊骰子掷骰(诡异骰子低点数偏置/绯红骰子高点数偏置)
+        // 未装备骰子 ⇒ 骰点恒为 0(2026-09-26 用户裁决:一方没有骰点,另一方也不得掷)。
+        int baseDice = (diceStack != null) ? rollCombatDie(player) : 0; // 特殊骰子掷骰(诡异骰子低点数偏置/绯红骰子高点数偏置)
 
         // === MISAKI SIGN (护法立牌, via curios stand slot) ===
         boolean misakiFound = false;
@@ -410,6 +420,10 @@ public class DiceCombatEvents {
                 }
             }
         }
+
+        // ⚠️ 未装备骰子:上方全部骰点加成链(护法爆发追加 / 上班族"下次必 6")一律作废 ——
+        // 骰点恒为 0(2026-09-26 用户裁决:一方没有骰点,另一方也不得掷)。
+        if (diceStack == null) baseDice = 0;
 
         // 风水师立牌(zhao)被动「福祸相倚」:骰点定稿后判定 —— 结果为 1 ⇒ 获得 1 张符卡-祸;
         // 为 6 ⇒ 获得 1 张符卡-福(卡牌在发放那一刻绑定获得者)。
@@ -543,7 +557,9 @@ public class DiceCombatEvents {
         // 防御方是否掷防御骰,只看「是否装备骰子」——
         // 玩家装备骰子即掷(不再要求骰神赐福生效);未装备则不掷(对骰不成立)。
         // 玩家侧闪避判定仍停用(PLAYER_DODGE_ENABLED=false),闪避代码保留供未来使用。
-        // 怪物(含无护甲):始终防御——每次受击掷 1d6 防御骰,最终伤害按双方骰点计算。
+        // 怪物(含无护甲):不闪避,始终防御。⚠️ **防御骰只在攻击方装备了骰子时掷 1d6** ——
+        // 攻击方没有骰子 ⇒ 一方没有骰点,另一方也不得掷 ⇒ 双方骰点恒 0(2026-09-26 用户裁决);
+        // 最终伤害仍按骰战公式(= 攻击力 − 防御力)结算,**不退回原版护甲减免**。
         boolean skipDefense = false;
         boolean dodgeFailed = false;
         double dodgeFailDamage = 0;
@@ -565,7 +581,7 @@ public class DiceCombatEvents {
                     }
                     dodgeFailed = true;
                     dodgeFailDamage = baseDamage + baseDice + attackCardSum;
-                } else if (targetDiceResult.isPresent()) {
+                } else if (diceStack != null && targetDiceResult.isPresent()) {
                     // 防御方装备骰子即掷(2026-09-26:不再要求 DICE_BLESSING 生效)——
                     // 对骰成立后双方各掷 1d6,但**不**因此触发骰神赐福。
                     // 特殊骰子掷骰(防御方:诡异骰子低点数偏置,绯红骰子高点数偏置)
@@ -579,9 +595,12 @@ public class DiceCombatEvents {
                 }
             }
         } else if (!target.level().isClientSide() && !(target instanceof Player)) {
-            // 怪物:始终防御,每次受击掷 1d6 防御骰(不再闪避)
+            // 怪物:不闪避,始终防御。⚠️ 防御骰**仅在攻击方装备了骰子时**掷 1d6;
+            // 攻击方没有骰子 ⇒ 双方骰点恒 0(2026-09-26 用户裁决:一方没有骰点,另一方也不得掷),
+            // 但骰战公式照常生效、不退回原版。
             // 枪匠"破绽":目标骰点只能为 0
-            if (target.hasEffect(ModEffects.MOSES_BROKEN)) {
+            // ⚠️ 2026-09-26 用户裁决:攻击方未装备骰子 ⇒ 一方没有骰点,另一方也不得掷 ⇒ 防御骰恒 0。
+            if (diceStack == null || target.hasEffect(ModEffects.MOSES_BROKEN)) {
                 defenseBaseDice = 0;
             } else {
                 defenseBaseDice = ThreadLocalRandom.current().nextInt(1, 7);
@@ -610,8 +629,9 @@ public class DiceCombatEvents {
                 // · 护甲 20 硬上限**两侧一律移除**;
                 // · 护甲取**属性终值**(getArmorValue()) ⇒ 状态效果与第三方模组(如七咒之戒)修饰
                 //   完毕后的真实值先参与换算,本模组**不再二次换算**(最大模组兼容性);
-                // · 玩家:2 + 护甲÷2 + 1.4×韧性;
-                // · 生物:初始值(敌对 2 / 中立 0 / 被动 0 / 友好 0) + 护甲÷2 + 1.125×韧性,最终取整。
+                // · 玩家:4 + 护甲×0.30 + 0.85×韧性;
+                // · 生物:初始值(敌对 0 / 中立 0 / 被动 0 / 友好 0) + 护甲×0.40 + 1.0×韧性,最终取整。
+                //   ↑ 两式均取自库 CombatFormula,本模组不再内联系数(2.0.0-SNAPSHOT.2 起)。
                 double effectiveArmor = Math.max(0, target.getArmorValue() + modifierDefense * 2.0);
                 double toughness = target.getAttributeValue(Attributes.ARMOR_TOUGHNESS);
                 if (target instanceof Player) {
@@ -627,7 +647,7 @@ public class DiceCombatEvents {
             }
 
             // 上班族立牌:攻击骰为 6 时无视目标防御力——按本模组「目标防御力」口径
-            // (与贯穿之铳同一公式:2 + 护甲÷2 + 1.4×韧性;护甲已包含由防御力折算而来的部分)
+            // (与贯穿之铳同一公式:4 + 护甲×0.30 + 0.85×韧性;护甲已包含由防御力折算而来的部分)
             // 整项不计入防御,但保留目标的防御骰与防御牌加成。
             if (ctx.padmanDefBypass && !skipDefense) {
                 defensePower = defenseBaseDice + ctx.defenseCardSum;
@@ -1532,7 +1552,8 @@ public class DiceCombatEvents {
         }
         if (enhancement == null) enhancement = WeaponEnhancement.EMPTY;
 
-        int baseDice = rollCombatDie(player); // 特殊骰子掷骰(诡异骰子低点数偏置/绯红骰子高点数偏置)
+        // 未装备骰子 ⇒ 骰点恒为 0(2026-09-26 用户裁决:一方没有骰点,另一方也不得掷)。
+        int baseDice = (diceStack != null) ? rollCombatDie(player) : 0; // 特殊骰子掷骰(诡异骰子低点数偏置/绯红骰子高点数偏置)
         int misakiStar = enhancement.starLevel();
         int misakiStacks = 0;
         boolean misakiBurst = false;

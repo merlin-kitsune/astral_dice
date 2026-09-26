@@ -6,7 +6,7 @@ import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 
 /**
- * 岿然不动:效果期间每层护甲值 +8(ADDITION,对应骰战防御力 +4,按"防御 = 2 + 护甲÷2"折算),
+ * 岿然不动:效果期间每层护甲值 +8(ADDITION,对应骰战防御力 +2.4,按"防御 = 4 + 护甲×0.30 + 0.85×韧性"折算),
  * 由骰战防御修饰器迁移而来——真实护甲与骰战均正确生效,避免双重计算。
  *
  * 注意:1.20.1 的 addAttributeModifier(Attribute, String, ...) 要求 UUID 字符串

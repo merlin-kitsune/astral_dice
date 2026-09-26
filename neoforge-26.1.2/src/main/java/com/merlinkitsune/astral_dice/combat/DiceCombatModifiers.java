@@ -57,7 +57,7 @@ import com.merlinkitsune.starenginelib.combat.HostileTargets;
  * 防御力规范(必须遵守):**仅战斗牌(防御牌)参与骰战防御修饰器**(只有防御牌数值是区间变动,
  * 由 {@link CardRegistry} 掷骰);效果牌/立牌/筹码提供的防御力一律折算为真实护甲
  * (1 防御力 = 2 护甲值),经 {@link #setDefenseArmorBonus} 挂到玩家 ARMOR 属性——
- * 骰战经护甲项(护甲÷2)自动计入,原版伤害管线(骰战伤害无穿透标志)同样按真实护甲减伤。
+ * 骰战经护甲项(护甲×0.30,取自库 CombatFormula)自动计入,原版伤害管线(骰战伤害无穿透标志)同样按真实护甲减伤。
  *
  * 附属内容(新立牌/筹码/效果/联动)实现 {@link AttackPowerModifier} / {@link DefensePowerModifier}
  * 并通过 register 注册即可影响攻防,无需修改 DiceCombatEvents 主流程。
@@ -194,9 +194,14 @@ public final class DiceCombatModifiers {
     }
 
     /**
-     * 效果牌/立牌/筹码的防御力统一折算为真实护甲(1 防御力 = 2 护甲值)。
+     * 效果牌/立牌/筹码的防御力统一按「防御力点数 × 2.0」折算为真实护甲值。
      * 通过瞬态 ARMOR 属性修饰器施加:仅当数值变化时才增删(避免每 tick 属性同步)。
      * 数值 ≤ 0 时移除修饰器(护甲属性下限 0,负防御自然失效)。
+     *
+     * <p>⚠️ <b>折算系数口径提示(待裁决,本版未改)</b>:2.0 是旧防御公式「2 + 护甲÷2」的遗留 ——
+     * 当时 2 点护甲恰等于 1 点防御力。现公式已改为「4 + 护甲×0.30 + 0.85×韧性」,
+     * 2 点护甲只兑现 0.6 点防御力 ⇒ 传入的 {@code defensePoints} 实际只落地 <b>60%</b>。
+     * 是否把系数改为「1 ÷ 玩家护甲系数(0.30)≈ 3.333」由用户裁决。
      */
     public static void setDefenseArmorBonus(Player player, String modifierKey, int defensePoints) {
         if (player == null || player.level().isClientSide()) return;
@@ -702,7 +707,7 @@ public final class DiceCombatModifiers {
     }
 
     /**
-     * 玩家的**防御力**(与 GUI/tooltip 同源的口径):{@code 2 + 有效护甲÷2 + 1.4×盔甲韧性}。
+     * 玩家的**防御力**(与 GUI/tooltip 同源的口径):{@code 4 + 有效护甲×0.30 + 0.85×盔甲韧性}。
      *
      * <p>效果牌/立牌/筹码的防御力都已折算为**真实护甲**(1 防御 = 2 护甲值,见
      * {@link #setDefenseArmorBonus}),故 {@code getArmorValue()} 已包含它们 ⇒ 本方法自动反映
@@ -848,7 +853,7 @@ public final class DiceCombatModifiers {
         return ids;
     }
 
-    /** 防御力基础值(2 + 护甲÷2 + 1.4×韧性);{@link #getDisplayDefenseRange} 与 {@link #defensePowerOf} 共用 */
+    /** 防御力基础值(4 + 护甲×0.30 + 0.85×韧性,取自库 CombatFormula);{@link #getDisplayDefenseRange} 与 {@link #defensePowerOf} 共用 */
     private static double defensePowerBase(Player player, WeaponEnhancement enhancement) {
         if (enhancement == null) enhancement = WeaponEnhancement.EMPTY;
         DiceCombatContext ctx = new DiceCombatContext(
