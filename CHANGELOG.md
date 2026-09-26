@@ -95,6 +95,28 @@
     (pre-recalibration)" notice - **its model constants were intentionally left unchanged** so the committed reports
     stay reproducible.
 
+- **Combat-card rolls are now a single roll with "higher is rarer"; the "max of 2 rolls" rule is gone** (user request
+  2026-09-26): random combat cards (Attack M / L / XL, Defense M / L / XL, Meito) now roll **once** and pick the value
+  with a **linearly decreasing weight**: for the range `[lo, hi]` the weight is `w = (2n - 1) - offset` (`n` = range
+  size, offset is 0-based), i.e. lowest-value weight : highest-value weight is roughly **2 : 1**, and the **median sits
+  near the middle of the range** (1~3 -> 2, 1~6 -> 3, 1~10 -> 5, 1~20 -> 9). The **max-value hit rate drops sharply**:
+  1~3 from 55.6% to **25%**, 1~6 from 30.6% to **11.8%**, 1~10 from 19% to **6.9%**, 1~20 from 9.8% to **3.4%**; the
+  expected value falls by **25%~32%** (1~10: 7.15 -> 4.93; 1~20: 13.82 -> 9.37) - combat cards no longer contribute an
+  outsized average.
+  - Meito's "misaki burst raises the lower bound" still applies (the raised lower bound uses the same weights).
+  - **Glass Dice and Padman's "this roll takes the maximum" are unaffected** - that path still returns the cap.
+  - Card tooltips and the three-language Patchouli "Battle Dice Rolls" entries were rewritten (the "max of 2 rolls"
+    wording was removed).
+  - The `tools/balance_sim/` card model was recalibrated (`rand2of` -> `decline`).
+
+- **Combat-card rarity unified to blue (Rare)** (user request 2026-09-26): the **7 standard combat cards** (Attack M /
+  L / XL, Shadow Strike, Defense M / L / XL) are now all **Rare (aqua)** (Attack M and Defense M were **promoted** from
+  Common; Attack XL and Defense XL were **lowered** from Epic; Attack L / Shadow Strike / Defense L were already Rare).
+  **Only 3 exceptions keep their rarity**: Meito (Epic), Charge (Legendary) and Full Power (Pinnacle). The
+  Mamushi-exclusive combat cards "Bite" and "Dragon Roar" stay **Bizarre**, following the existing convention. The
+  `"rarity"` field in the three-line bounty pool `astral_rews.json` was updated in step (the gate cross-checks each
+  item's tier against the data-layer rarity).
+
 - **Defense card durability 10 -> 150, drained "1 point from every equipped defense card per dice-combat hit"**
   (user request 2026-09-26): the durability cap of the defense battle cards (Medium / Large / Epic Defense Card)
   rises to **150**, and **each dice-combat hit a player takes now removes 1 point from *every* defense card

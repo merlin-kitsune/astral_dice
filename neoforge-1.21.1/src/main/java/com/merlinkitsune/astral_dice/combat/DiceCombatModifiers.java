@@ -230,6 +230,38 @@ public final class DiceCombatModifiers {
         return ThreadLocalRandom.current().nextInt(min, max + 1);
     }
 
+
+    /**
+     * **战斗牌专用掷骰**(2026-09-26 用户裁决):单次随机 + **点数越高命中率越低**。
+     *
+     * <p>取值范围 {@code [min, max]};令 {@code n = max - min + 1}、{@code j = 结果 - min}(0 基),
+     * 权重 {@code w(j) = (2n - 1) - j} —— 最低点权重 {@code 2n-1}、最高点权重 {@code n}(比 ≈ 2:1),
+     * 即**严格递减**;总权重 {@code n(3n-1)/2}。抽样为**一次** {@code nextInt(总权重)} + 线性累计
+     * 权重扫描(逆变换法);n ≤ 20 故无需二分、也**不再**掷两次。
+     *
+     * <p>分布特征(离线复算,旧口径「掷 2 次取最大值」括号内):
+     * <ul>
+     *   <li>中位数落在取值区间**半程附近**:1~3 → 2、1~6 → 3、1~10 → 5、1~20 → 9;</li>
+     *   <li>满值命中率 {@code 2/(3n-1)}:25% / 11.8% / 6.9% / 3.4%(旧:55.6% / 30.6% / 19% / 9.8%);</li>
+     *   <li>期望值:1.83 / 3.16 / 4.93 / 9.37(旧:2.44 / 4.47 / 7.15 / 13.82,下调 25%~32%)。</li>
+     * </ul>
+     *
+     * <p>⚠️ 玻璃骰子 / 上班族「真的生气了」的**「本次点数取最大值」不经此处** —— 仍由
+     * {@code CardRegistry.maxRoll} 直接给上限(见 {@code CardRegistry.roll} 的 maxMode 分支)。
+     */
+    public static int rollDiceDescending(int min, int max) {
+        int n = max - min + 1;
+        if (n <= 1) return min;
+        int total = n * (3 * n - 1) / 2; // Σ_{j=0}^{n-1} (2n-1-j);n(3n-1) 恒为偶数
+        int r = ThreadLocalRandom.current().nextInt(total); // 单次随机
+        int acc = 0;
+        for (int j = 0; j < n; j++) {
+            acc += (2 * n - 1) - j;
+            if (r < acc) return min + j;
+        }
+        return max; // 不可达(acc 恒等于 total);保底
+    }
+
     // 玩家是否佩戴指定 Curios 物品
     private static boolean hasCurio(Player player, net.minecraft.world.item.Item item) {
         if (player == null) return false;

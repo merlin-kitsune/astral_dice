@@ -460,16 +460,36 @@ When extending this workspace:
 
 | 中文名 | 注册 id | 品质 | 效果 |
 |---|---|---|---|
-| 攻击-中 | `attack_card_medium` | 白 | 攻击力 1~3 |
+| 攻击-中 | `attack_card_medium` | 蓝 | 攻击力 1~3 |
 | 攻击-大 | `attack_card_large` | 蓝 | 攻击力 1~6 |
-| 攻击-特大 | `attack_card_epic` | 紫 | 攻击力 1~10 |
+| 攻击-特大 | `attack_card_epic` | 蓝 | 攻击力 1~10 |
 | 暗影突袭 | `attack_card_shadow_strike` | 蓝 | 攻击力 +3 + 黑暗 0:03 |
 | 名刀嘎呜切 | `attack_card_meito` | 紫 | 攻击力 1~20(装备护法立牌时费用降至 3) |
 | 蓄力 | `attack_card_charge` | 金 | 攻击力 +5(须在赐福前预先放入卡牌栏,赐福期间卡牌栏锁定);骰神赐福结束返还「全力攻击」 |
 | 全力攻击 | `attack_card_full_power` | 金 | 攻击力 +6,最终攻击力 +50%(仅由蓄力返还获得,不在随机卡池) |
-| 撕咬 | `attack_card_bite` | 传奇 | 攻击力 +3;装备且**触发骰神赐福**时获得 **1 层觉醒** 并 +`min(当前觉醒,4)` 攻击力,持续到本次赐福结束(多张叠加);**费用 2 / 耐久 1**;蛟龙立牌**专属**(`owner_uuid` 绑定、无配方、不进任何卡池,由主动「连锁反应」发放) |
-| 龙之咆哮 | `attack_card_dragon_roar` | 传奇 | 攻击力 +3;命中目标施加**缓慢 III 1:00** + 破防(`ARMOR -8` = 减 4 点防御)1:00(重复命中只刷新);**费用 3 / 耐久 5**;蛟龙立牌**专属**,仅**真龙形态**可获(进入真龙形态时手中/背包/骰子卡牌栏内的撕咬逐张转换、骰子内费用放不下的丢弃) |
-| 防御-中/大/特大 | `defense_card_medium/large/epic` | 白/蓝/紫 | 防御力 1~3 / 1~6 / 1~10 |
+| 撕咬 | `attack_card_bite` | 奇特 | 攻击力 +3;装备且**触发骰神赐福**时获得 **1 层觉醒** 并 +`min(当前觉醒,4)` 攻击力,持续到本次赐福结束(多张叠加);**费用 2 / 耐久 1**;蛟龙立牌**专属**(`owner_uuid` 绑定、无配方、不进任何卡池,由主动「连锁反应」发放) |
+| 龙之咆哮 | `attack_card_dragon_roar` | 奇特 | 攻击力 +3;命中目标施加**缓慢 III 1:00** + 破防(`ARMOR -8` = 减 4 点防御)1:00(重复命中只刷新);**费用 3 / 耐久 5**;蛟龙立牌**专属**,仅**真龙形态**可获(进入真龙形态时手中/背包/骰子卡牌栏内的撕咬逐张转换、骰子内费用放不下的丢弃) |
+| 防御-中/大/特大 | `defense_card_medium/large/epic` | 蓝 | 防御力 1~3 / 1~6 / 1~10 |
+
+> **战斗牌品质(2026-09-26 用户裁决)— 必须遵守**:战斗牌**统一为蓝(稀有 `AstralRarities.rare()`)** ——
+> 上述 7 张常规战斗牌(`attack_card_medium/large/epic/shadow_strike` + `defense_card_medium/large/epic`)全部稀有。
+> **例外只有 3 张**:名刀·嘎呜切(史诗 `epic`)、蓄力(传奇 `legendary`)、全力攻击(巅峰 `pinnacle`)保持原档。
+> 撕咬 / 龙之咆哮 = **奇特**(`bizarre`,沿用「专属牌 = 奇特」惯例,同日经用户确认保留 —— 不得改成稀有)。
+> ⚠️ 改战斗牌(或任何入池物品)的品质**必须**同步三线赏金池 `astral_rews.json` 的 `"rarity"` 字段 ——
+> 守门 `scripts/verify/verify_bountiful_pools.ps1` 按「物品档位 ↔ 数据层 rarity」映射逐项比对,漏改即红。
+
+> **随机数战斗牌的掷骰口径(2026-09-26 用户裁决)— 必须遵守**:随机点数战斗牌(攻击-中/大/特大、防御-中/大/特大、
+> 名刀)一律**单次**掷骰,实现**唯一入口** = `combat/DiceCombatModifiers.rollDiceDescending(int min, int max)`
+> (由 `CardRegistry` 的 `rollCard(...)` 调用)。权重为**线性递减**:`n = max - min + 1`、`j = 结果 - min`(0 基),
+> `w(j) = (2n - 1) - j` ⇒ 最低点权重 : 最高点权重 ≈ **2 : 1**,**点数越高命中率越低**。
+> 抽样 = **一次** `nextInt(n(3n-1)/2)` + 线性累计权重扫描(n ≤ 20,无需二分)。
+> - 中位数落在取值范围**半程附近**:1~3 → 2、1~6 → 3、1~10 → 5、1~20 → 9;
+> - 满值命中率 = `2/(3n-1)`:25% / 11.8% / 6.9% / 3.4%(旧口径「掷 2 次取最大值」为 55.6% / 30.6% / 19% / 9.8%);
+> - 期望值 1.83 / 3.16 / 4.93 / 9.37(旧 2.44 / 4.47 / 7.15 / 13.82,下调 25%~32%)。
+> ⚠️ **旧口径「掷 2 次取最大值」已删除** —— 它把中位数抬到区间 67%~100% 处、满值率最高达 55.6%,
+> 是「战斗牌提供的伤害非常可观」的主因。新牌**禁止**再写「掷两次取最大/最小」。
+> ⚠️ **玻璃骰子 / 上班族「真的生气了」的「本次点数取最大值」不走该权重** —— 仍由 `CardRegistry.maxRoll` 直给上限
+> (`roll(typeId, ctx, maxMode=true)` 分支),该能力不受本次改动影响。
 
 ### 效果牌（effect cards）
 
@@ -2312,9 +2332,9 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --new <注册id>
 11. AGENTS.md 三处表：**立牌技能表**、**立牌品质表**、效果/附件/数据组件清单；`neoforge-26.1.2` 迁移清单追加迁移项（见 §4）。
 
 **B. 每张战斗牌**
-1. `item/ModItems` 注册 `ATTACK_CARD_<TYPE>`（`CardItem` + `CARD_USES` 组件；品质映射见 §0）。
+1. `item/ModItems` 注册 `ATTACK_CARD_<TYPE>`（`CardItem` + `CARD_USES` 组件；品质映射见 §0）。**2026-09-26 起战斗牌品质统一为蓝(稀有)**，例外只有名刀/蓄力/全力攻击；撕咬/龙之咆哮 = 奇特；改品质**必须**同步三线 `astral_rews.json` 的 `"rarity"`。
 2. `combat/CardRegistry`：`init()` 里注册 `new CardType("<typeId>", false, <uses>, <cost>, <item>, <roller>)`，**并且**在 `defaultUses(String)` 的 `switch` 里补分支（该方法在 `ModItems` 静态初始化阶段就被调用，`CardRegistry.init()` 更晚 ⇒ **不能**只依赖 `BY_ID`，否则耐久静默回退为 10 的既有坑）。
-3. 结算/加算落点：`combat/DiceCombatModifiers`（攻击力加算）或该牌自己的 `roller`。
+3. 结算/加算落点：`combat/DiceCombatModifiers`（攻击力加算）或该牌自己的 `roller`。⚠️ **随机点数牌必须走** `DiceCombatModifiers.rollDiceDescending(min, max)`（单次随机 + 递减权重）；**禁止**再写「掷两次取最大/最小值」。
 4. 标签：`data/astral_dice/tags/item/combat_cards.json`（**战斗牌汇总标签，两线各一份**）+ 专属牌另进 `is_exclusive.json`（1.20.1 同为 `tags/items/`）。
 5. tooltip 两行：费用行在最上方、黄色 `费用：◆…`（**本地化标题** lang 键 `tooltip.astral_dice.card_cost` + `◆` 按费用重复；费用由 `CardRegistry.cost(type, player)` 动态给），描述行 `点数 | 剩余次数: X`。
 6. lang（中英）+ 手册 `entries/cards_attack/<id>.json`（现有 `cards_attack/` 7 条）。

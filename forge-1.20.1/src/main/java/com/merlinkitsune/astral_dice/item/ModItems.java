@@ -139,6 +139,12 @@ public class ModItems {
     //   ⚠️ 巅峰档**没有**数据层对应值 ⇒ 巅峰物品不得写入任何赏金池(守门脚本会报错,属预期的 fail-loud)。
     // 骰子品质按升级链配色:基础=普通(白)、黄金=稀有(浅蓝)、钻石=史诗(粉紫)、合金=传奇(金)、
     //   下界之星骰子=巅峰(亮红,T4 奇异品阶);合金与下界之星骰子均不参与赏金板。
+    // ⚠️ **2026-09-26 用户裁决「战斗牌稀有度统一为蓝色(稀有)」**:攻击-中/大/特大、暗影突袭、
+    //   防御-中/大/特大 = 稀有(rare);**例外** 只有 名刀·嘎呜切(史诗 epic)/ 蓄力(传奇 legendary)/
+    //   全力攻击(巅峰 pinnacle)**保持原档**;撕咬 / 龙之咆哮 = 奇特(bizarre,沿用「专属牌 = 奇特」惯例,
+    //   同日经用户确认保留 —— 不得随手改成稀有)。
+    //   ⚠️ 改这些牌(或任何入池物品)的 rarity,**必须**同步三线赏金池 `astral_rews.json` 的 `"rarity"` 字段
+    //      (守门 `scripts/verify/verify_bountiful_pools.ps1` 按「物品档位 ↔ 数据层 rarity」映射比对,漏改即红)。
     // 新增物品时按此标准选择 rarity,并保持与图标边框颜色一致;若参与赏金,同步维护 astral_objs/astral_rews。
     // ═══════════════════════════════════════════════════════════════════════════
 
@@ -269,6 +275,7 @@ public class ModItems {
     public static final RegistryObject<Item> ATTACK_CARD_MEDIUM = registerItem("attack_card_medium",
             () -> new CardItem(new Item.Properties()
                     .stacksTo(64)
+                    .rarity(AstralRarities.rare())
                     , "medium"));
 
     public static final RegistryObject<Item> ATTACK_CARD_LARGE = registerItem("attack_card_large",
@@ -280,7 +287,7 @@ public class ModItems {
     public static final RegistryObject<Item> ATTACK_CARD_EPIC = registerItem("attack_card_epic",
             () -> new CardItem(new Item.Properties()
                     .stacksTo(64)
-                    .rarity(AstralRarities.epic())
+                    .rarity(AstralRarities.rare())
                     , "epic"));
 
     public static final RegistryObject<Item> ATTACK_CARD_SHADOW_STRIKE = registerItem("attack_card_shadow_strike",
@@ -307,7 +314,7 @@ public class ModItems {
                     .rarity(AstralRarities.pinnacle())
                     , "full_power"));
 
-    // 蛟龙立牌(mamushi)专属战斗牌「撕咬」(传奇=UNCOMMON):费用 2 / 耐久 1 / 攻击贡献定值 +3(对齐暗影突袭)。
+    // 蛟龙立牌(mamushi)专属战斗牌「撕咬」(奇特=BIZARRE):费用 2 / 耐久 1 / 攻击贡献定值 +3(对齐暗影突袭)。
     // 触发骰神赐福时按**装备张数**各 +1 层觉醒;专属绑定获得者(仅获得者可装备),不入随机池、无配方。
     public static final RegistryObject<Item> ATTACK_CARD_BITE = registerItem("attack_card_bite",
             () -> new CardItem(new Item.Properties()
@@ -315,7 +322,7 @@ public class ModItems {
                     .rarity(AstralRarities.bizarre())
                     , "bite"));
 
-    // 蛟龙立牌(mamushi)专属战斗牌「龙之咆哮」(传奇=UNCOMMON):费用 3 / 耐久 5 / 攻击贡献定值 +3;
+    // 蛟龙立牌(mamushi)专属战斗牌「龙之咆哮」(奇特=BIZARRE):费用 3 / 耐久 5 / 攻击贡献定值 +3;
     // 命中使目标缓慢 III 1:00 + 破防(-4 防御)1:00。仅真龙形态(觉醒 ≥ 8)可获得;专属绑定获得者。
     public static final RegistryObject<Item> ATTACK_CARD_DRAGON_ROAR = registerItem("attack_card_dragon_roar",
             () -> new CardItem(new Item.Properties()
@@ -326,6 +333,7 @@ public class ModItems {
     public static final RegistryObject<Item> DEFENSE_CARD_MEDIUM = registerItem("defense_card_medium",
             () -> new CardItem(new Item.Properties()
                     .stacksTo(64)
+                    .rarity(AstralRarities.rare())
                     , "defense_medium"));
 
     public static final RegistryObject<Item> DEFENSE_CARD_LARGE = registerItem("defense_card_large",
@@ -337,7 +345,7 @@ public class ModItems {
     public static final RegistryObject<Item> DEFENSE_CARD_EPIC = registerItem("defense_card_epic",
             () -> new CardItem(new Item.Properties()
                     .stacksTo(64)
-                    .rarity(AstralRarities.epic())
+                    .rarity(AstralRarities.rare())
                     , "defense_epic"));
 
     public static final RegistryObject<Item> EFFECT_CARD_KING_POWER = registerItem("effect_card_king_power",

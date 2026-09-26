@@ -101,33 +101,28 @@ WEAPONS: Dict[str, float] = {
     "下界合金剑": 8.0,  # 1 + (3 + 4)
 }
 
-# 卡牌点数：("rand2of", N) = max(两次 1dN)；("fixed", V) = 定值
-# 来源：CardRegistry.init() 的 roller 与 maxRoll/minRoll
+# 卡牌点数：("decline", N) = 单次随机 + 递减权重 w(j) = (2N-1) - j（2026-09-26 用户裁决；中位数贴半程）；
+#           ("fixed", V) = 定值。
+# 来源：CardRegistry.init() 的 roller 与 maxRoll/minRoll；抽样口径 = DiceCombatModifiers.rollDiceDescending
+# ⚠️ 旧口径 ("decline", N) = max(两次 1dN) 已于 2026-09-26 删除（满值率最高 55.6%、中位数被抬到区间 67%~100%）。
 CARDS: Dict[str, Tuple[str, int]] = {
-    "medium": ("rand2of", 3),
-    "large": ("rand2of", 6),
-    "epic": ("rand2of", 10),
-    "meito": ("rand2of", 20),
+    "medium": ("decline", 3),
+    "large": ("decline", 6),
+    "epic": ("decline", 10),
+    "meito": ("decline", 20),
     "shadow_strike": ("fixed", 3),
     "charge": ("fixed", 5),
     "full_power": ("fixed", 6),
     "bite": ("fixed", 3),
     "dragon_roar": ("fixed", 3),
-    "defense_medium": ("rand2of", 3),
-    "defense_large": ("rand2of", 6),
-    "defense_epic": ("rand2of", 10),
+    "defense_medium": ("decline", 3),
+    "defense_large": ("decline", 6),
+    "defense_epic": ("decline", 10),
 }
 
-# ⚠️⚠️ 已过期（2026-09-26 标注，本版未改）—— 下面的库侧常量仍停在**重标定前**的旧模型：
-#   护甲项写死「统一除数 2」、PLAYER_BASE_DEFENSE 2.0 / PLAYER_TOUGHNESS_COEF 1.4 /
-#   MOB_TOUGHNESS_COEF 1.125、BASE_ATTACK 敌对 5 / 中立 4、BASE_DEFENSE 敌对 2。
-#   库 starengine_lib 自 2.0.0-SNAPSHOT.2 起已改为（并**删除**了 ARMOR_DIVISOR）：
-#     playerDefense  = 4 + 护甲×0.30 + 0.85×韧性
-#     mobDefenseInt  = 0 + 护甲×0.40 + 1.0×韧性   （两侧均无 20 上限，护甲取属性终值）
-#     BASE_ATTACK: 敌对 4 / 中立 3 / 被动 0 / 友好 0 ; BASE_DEFENSE: 全 0
-#   ⇒ **直接重跑本脚本会复现旧模型的曲线**。若要按现行口径重跑，必须先把下列常量与
-#     player_defense / mob_defense_int 两个函数换成库现行值；重跑后 docs/balance/ 下的
-#     历史报告需重新标注（那是旧模型的快照）。权威口径见 AGENTS.md「骰战闪避与防御规范」。
+# ✅ 卡牌点数模型已于 2026-09-26 与本模组**现行实现**对齐（单次随机 + 递减权重），
+#    抽样口径 = DiceCombatModifiers.rollDiceDescending（由 CardRegistry.rollCard 调用）。
+#    仍在「旧模型」状态的**只有**下面那组库侧防御/攻击常量。
 # ⚠️⚠️ 已过期（2026-09-26 标注，本版未改）—— 下面的库侧常量仍停在**重标定前**的旧模型：
 #   护甲项写死「统一除数 2」、PLAYER_BASE_DEFENSE 2.0 / PLAYER_TOUGHNESS_COEF 1.4 /
 #   MOB_TOUGHNESS_COEF 1.125、BASE_ATTACK 敌对 5 / 中立 4、BASE_DEFENSE 敌对 2。
@@ -194,15 +189,27 @@ def roll_card(card: str, rng: random.Random) -> int:
     kind, v = CARDS[card]
     if kind == "fixed":
         return v
-    return max(rng.randint(1, v), rng.randint(1, v))
+    # ("decline", N)：单次随机 + 递减权重 w(j) = (2N-1) - j（j = 结果-1，0 基）
+    # 口径 = DiceCombatModifiers.rollDiceDescending（1 次 randrange + 线性累计权重扫描）
+    n = v
+    total = n * (3 * n - 1) // 2
+    r = rng.randrange(total)
+    acc = 0
+    for j in range(n):
+        acc += (2 * n - 1) - j
+        if r < acc:
+            return 1 + j
+    return v
 
 
 def card_mean(card: str) -> float:
     kind, v = CARDS[card]
     if kind == "fixed":
         return float(v)
-    # E[max(两次 1dN)] = Σ k·((k/N)² − ((k−1)/N)²)
-    return sum(k * ((k / v) ** 2 - ((k - 1) / v) ** 2) for k in range(1, v + 1))
+    # E[单次 + 递减权重，(1..N)] = Σ (1+j)·((2N-1)-j) / [N(3N-1)/2]
+    n = v
+    total = n * (3 * n - 1) // 2
+    return sum((1 + j) * ((2 * n - 1) - j) for j in range(n)) / total
 
 
 def card_is_defense(card: str) -> bool:
@@ -627,8 +634,8 @@ def exp5_dice_roll_value(n: int, rng: random.Random) -> Dict[str, object]:
     out = {"cards": {}, "d6": {"mean": 3.5}}
     for c in CARDS:
         kind, v = CARDS[c]
-        if kind == "rand2of":
-            xs = [max(rng.randint(1, v), rng.randint(1, v)) for _ in range(n)]
+        if kind == "decline":
+            xs = [roll_card(c, rng) for _ in range(n)]
         else:
             xs = [v] * n
         out["cards"][c] = {"type": kind, "param": v, "analytic_mean": card_mean(c),

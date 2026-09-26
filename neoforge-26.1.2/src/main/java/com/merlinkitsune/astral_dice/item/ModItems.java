@@ -140,6 +140,12 @@ public class ModItems {
     //   ⚠️ 巅峰档**没有**数据层对应值 ⇒ 巅峰物品不得写入任何赏金池(守门脚本会报错,属预期的 fail-loud)。
     // 骰子品质按升级链配色:基础=普通(白)、黄金=稀有(浅蓝)、钻石=史诗(粉紫)、合金=传奇(金)、
     //   下界之星骰子=巅峰(亮红,T4 奇异品阶);合金与下界之星骰子均不参与赏金板。
+    // ⚠️ **2026-09-26 用户裁决「战斗牌稀有度统一为蓝色(稀有)」**:攻击-中/大/特大、暗影突袭、
+    //   防御-中/大/特大 = 稀有(rare);**例外** 只有 名刀·嘎呜切(史诗 epic)/ 蓄力(传奇 legendary)/
+    //   全力攻击(巅峰 pinnacle)**保持原档**;撕咬 / 龙之咆哮 = 奇特(bizarre,沿用「专属牌 = 奇特」惯例,
+    //   同日经用户确认保留 —— 不得随手改成稀有)。
+    //   ⚠️ 改这些牌(或任何入池物品)的 rarity,**必须**同步三线赏金池 `astral_rews.json` 的 `"rarity"` 字段
+    //      (守门 `scripts/verify/verify_bountiful_pools.ps1` 按「物品档位 ↔ 数据层 rarity」映射比对,漏改即红)。
     // 新增物品时按此标准选择 rarity,并保持与图标边框颜色一致;若参与赏金,同步维护 astral_objs/astral_rews。
     // ═══════════════════════════════════════════════════════════════════════════
 
@@ -270,6 +276,7 @@ public class ModItems {
     public static final DeferredItem<Item> ATTACK_CARD_MEDIUM = registerItem("attack_card_medium",
             props -> new CardItem(props
                     .stacksTo(64)
+                    .rarity(AstralRarities.rare())
                     .component(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("medium")), "medium"));
 
     public static final DeferredItem<Item> ATTACK_CARD_LARGE = registerItem("attack_card_large",
@@ -281,7 +288,7 @@ public class ModItems {
     public static final DeferredItem<Item> ATTACK_CARD_EPIC = registerItem("attack_card_epic",
             props -> new CardItem(props
                     .stacksTo(64)
-                    .rarity(AstralRarities.epic())
+                    .rarity(AstralRarities.rare())
                     .component(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("epic")), "epic"));
 
     public static final DeferredItem<Item> ATTACK_CARD_SHADOW_STRIKE = registerItem("attack_card_shadow_strike",
@@ -330,6 +337,7 @@ public class ModItems {
     public static final DeferredItem<Item> DEFENSE_CARD_MEDIUM = registerItem("defense_card_medium",
             props -> new CardItem(props
                     .stacksTo(64)
+                    .rarity(AstralRarities.rare())
                     .component(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("defense_medium")), "defense_medium"));
 
     public static final DeferredItem<Item> DEFENSE_CARD_LARGE = registerItem("defense_card_large",
@@ -341,7 +349,7 @@ public class ModItems {
     public static final DeferredItem<Item> DEFENSE_CARD_EPIC = registerItem("defense_card_epic",
             props -> new CardItem(props
                     .stacksTo(64)
-                    .rarity(AstralRarities.epic())
+                    .rarity(AstralRarities.rare())
                     .component(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("defense_epic")), "defense_epic"));
 
     public static final DeferredItem<Item> EFFECT_CARD_KING_POWER = registerItem("effect_card_king_power",

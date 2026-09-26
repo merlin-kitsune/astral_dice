@@ -124,6 +124,9 @@ public final class CardRegistry {
     /**
      * 卡牌点数上限(该卡掷骰可能达到的最大值;供闪避失败"攻击点数最大值"结算使用)。
      * 与攻击卡掷骰一致遍历 appliedStones,因此防御卡同样返回其点数上限(当前攻击点数结算包含全部已装卡)。
+     *
+     * <p>⚠️ 2026-09-26 起自然掷骰命中上限的概率已很低(随机牌 = {@code 2/(3n-1)},1~10 时仅 6.9%),
+     * 因此本方法只剩两个用途:① 玻璃骰子 / 上班族「取最大值」的**保底**上限;② 卡牌栏"最低/最高"区间显示。
      */
     public static int maxRoll(String typeId) {
         return switch (typeId) {
@@ -174,11 +177,17 @@ public final class CardRegistry {
         return fallback != null && fallback.item() != null ? new ItemStack(fallback.item()) : ItemStack.EMPTY;
     }
 
-    // === 内置掷骰:取两次随机最大值 ===
-    private static int rollTwoMax(int max, DiceCombatContext ctx) {
-        int a = DiceCombatModifiers.rollDice(max);
-        int b = DiceCombatModifiers.rollDice(max);
-        return Math.max(a, b);
+    // === 内置战斗牌掷骰:单次随机 + 点数越高命中率越低(2026-09-26 用户裁决) ===
+    // 权重 w(j) = (2n-1) - j(n = 上限-下限+1,j 为 0 基偏移);抽样实现见 DiceCombatModifiers.rollDiceDescending。
+    // ⚠️ 旧口径「掷 2 次取最大值」已**删除**:该口径下满值命中率 = (2n-1)/n²(1~3 时 55.6%、1~10 时 19%),
+    //    且中位数被抬到区间 67%~100% 处 —— 正是「战斗牌提供的伤害非常可观」的主因。
+    // ⚠️ 本方法**不**参与玻璃骰子/上班族「取最大值」:那条路走 maxRoll()(见 roll 的 maxMode 分支)。
+    private static int rollCard(int max) {
+        return DiceCombatModifiers.rollDiceDescending(1, max);
+    }
+
+    private static int rollCard(int min, int max) {
+        return DiceCombatModifiers.rollDiceDescending(min, max);
     }
 
     // 注册全部内置战斗牌
@@ -186,13 +195,13 @@ public final class CardRegistry {
         // 攻击牌
         register(new CardType("medium", false, 10, 1,
                 com.merlinkitsune.astral_dice.item.ModItems.ATTACK_CARD_MEDIUM.get(),
-                ctx -> rollTwoMax(3, ctx)));
+                ctx -> rollCard(3)));
         register(new CardType("large", false, 10, 2,
                 com.merlinkitsune.astral_dice.item.ModItems.ATTACK_CARD_LARGE.get(),
-                ctx -> rollTwoMax(6, ctx)));
+                ctx -> rollCard(6)));
         register(new CardType("epic", false, 10, 3,
                 com.merlinkitsune.astral_dice.item.ModItems.ATTACK_CARD_EPIC.get(),
-                ctx -> rollTwoMax(10, ctx)));
+                ctx -> rollCard(10)));
         register(new CardType("shadow_strike", false, 10, 2,
                 com.merlinkitsune.astral_dice.item.ModItems.ATTACK_CARD_SHADOW_STRIKE.get(),
                 ctx -> {
@@ -212,7 +221,7 @@ public final class CardRegistry {
                             default -> 0;
                         };
                     }
-                    return Math.max(DiceCombatModifiers.rollDice(min, 20), DiceCombatModifiers.rollDice(min, 20));
+                    return rollCard(min, 20);
                 }));
         register(new CardType("charge", false, 1, 5,
                 com.merlinkitsune.astral_dice.item.ModItems.ATTACK_CARD_CHARGE.get(),
@@ -238,12 +247,12 @@ public final class CardRegistry {
         // 防御牌
         register(new CardType("defense_medium", true, 150, 1,
                 com.merlinkitsune.astral_dice.item.ModItems.DEFENSE_CARD_MEDIUM.get(),
-                ctx -> rollTwoMax(3, ctx)));
+                ctx -> rollCard(3)));
         register(new CardType("defense_large", true, 150, 2,
                 com.merlinkitsune.astral_dice.item.ModItems.DEFENSE_CARD_LARGE.get(),
-                ctx -> rollTwoMax(6, ctx)));
+                ctx -> rollCard(6)));
         register(new CardType("defense_epic", true, 150, 3,
                 com.merlinkitsune.astral_dice.item.ModItems.DEFENSE_CARD_EPIC.get(),
-                ctx -> rollTwoMax(10, ctx)));
+                ctx -> rollCard(10)));
     }
 }
