@@ -14,7 +14,7 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.event.entity.living.LivingDamageEvent;
-import com.merlinkitsune.astral_dice.network.ModNetwork.DamageNumberMessage;
+import com.merlinkitsune.astral_dice.combat.DamageNumberAggregator;
 
 /**
  * 法伤(远程/魔法伤害)结算主链路:判定作用域后,由注册表修饰器聚合加成并应用。
@@ -71,17 +71,24 @@ public class DamageEffectCardHandler {
         // 「伤害效果牌伤害纳入真伤机制」的口径不符;改走 ModDamageTypes.trueDamage(...)
         // 独立结算:直接伤害实体为空 + 击杀归属施法者(与旧 explosion(null, player) 同形状,
         // 不会被本模组或其它模组当成"玩家的直接攻击"重走骰战)。
+        // 2026-09-26:本处原有的「HUD 数显 = getAmount() + bonus」直发已移除 —— 显示值**同源**,
+        // 但改由 combat/DamageNumberAggregator 在伤害管线终值(本线 = LivingDamageEvent#getAmount(),
+        // 已是吸收之后的最终值)上取,并与基础伤害累加成一个法伤总值。
         if (bonus > 0 && !APPLYING_TRUE_BONUS.get()) {
+            // ① 本次命中的**基础伤害**也归入法伤组。必须显式登记:这条命中绝大多数是**原版**伤害源
+            //    (箭矢 arrow / 投掷物 / 其它模组法术),聚合器的类型回落认不出来。
+            DamageNumberAggregator.tag(target, source, DamageNumberAggregator.Group.SPELL);
             APPLYING_TRUE_BONUS.set(true);
             try {
-                target.hurt(com.merlinkitsune.astral_dice.damage.ModDamageTypes
-                        .trueDamage(target.level(), player), (float) bonus);
+                var bonusSource = com.merlinkitsune.astral_dice.damage.ModDamageTypes
+                        .trueDamage(target.level(), player);
+                // ② 法伤加成段(独立真伤)。组别同样必须显式登记:astral_dice:true_damage 被多路复用
+                //    (大当家溅射=攻击力类红 / 这里与效果牌范围波及=法伤类绿),只看类型区分不出来。
+                DamageNumberAggregator.tag(target, bonusSource, DamageNumberAggregator.Group.SPELL);
+                target.hurt(bonusSource, (float) bonus);
             } finally {
                 APPLYING_TRUE_BONUS.set(false);
             }
-            // HUD 数显 = 本次法伤的**完整伤害**(原始基础伤害 + 法伤加成,取整;2026-09-19 用户要求)。
-            // 基准取 `event.getAmount()`(护甲之后;见类注释的平台差异),与电击手套 AOE 同口径。
-            sendBonusDamageNumber(target, (int) Math.round(event.getAmount() + bonus));
         }
 
         // 活体书页命中音效:**按本次命中的完整伤害分档**，取值与上面的 HUD 跳字完全同源
@@ -102,8 +109,7 @@ public class DamageEffectCardHandler {
         }
     }
 
-    // 法伤跳数字(草绿色 0x7CFC00;传入的已是「原始基础伤害 + 法伤加成」的完整值)
-    private static void sendBonusDamageNumber(net.minecraft.world.entity.LivingEntity target, int damage) {
-        com.merlinkitsune.astral_dice.network.ModNetwork.DamageNumberMessage.send(target, damage, 0x7CFC00);
-    }
+    // ⚠️ 本类原有的 sendBonusDamageNumber 私有帮助方法已于 2026-09-26 移除:跳数字的唯一出口是
+    // combat/DamageNumberAggregator(取伤害管线终值 + 按组别聚合),各调用点自行发包会被它在
+    // 客户端单槽覆盖(见该类的类头)。
 }

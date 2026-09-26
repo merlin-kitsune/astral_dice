@@ -301,8 +301,10 @@ public final class SpellDamageRegistry {
                 DiceCombatEvents.aoeProcessing = true;
                 try {
                     for (var e : nearby) {
+                        // 跳数字:不再直发,登记组别后由 DamageNumberAggregator 取终值并聚合成总值。
+                        // ⚠️ 必须显式登记:astral_dice:true_damage 被多路复用(大当家溅射=红 / 这里=绿)。
+                        DamageNumberAggregator.tag(e, blastSource, DamageNumberAggregator.Group.SPELL);
                         e.hurt(blastSource, aoeDamage);
-                        sendAoeDamageNumber(e, aoeDamage, 0x7CFC00);
                     }
                 } finally {
                     DiceCombatEvents.aoeProcessing = false;
@@ -433,8 +435,11 @@ public final class SpellDamageRegistry {
                 DiceCombatEvents.aoeProcessing = true;
                 try {
                     for (LivingEntity e : nearby) {
+                        // 跳数字:不再直发 —— 电击手套范围波及原为青色(0x00E5FF),2026-09-26 起
+                        // 按用户裁决统一归入**法伤类绿色**(所有法伤/技能伤害共用一个绿色数值)。
+                        // ⚠️ 必须显式登记:astral_dice:true_damage 被多路复用(大当家溅射=红 / 这里=绿)。
+                        DamageNumberAggregator.tag(e, source, DamageNumberAggregator.Group.SPELL);
                         e.hurt(source, total);
-                        sendAoeDamageNumber(e, (int) total, 0x00E5FF);
                     }
                 } finally {
                     DiceCombatEvents.aoeProcessing = false;
@@ -445,10 +450,9 @@ public final class SpellDamageRegistry {
         });
     }
 
-    // 溅射/范围伤害跳数字(颜色由调用方指定;定向爆破使用效果牌绿色)
-    private static void sendAoeDamageNumber(LivingEntity target, int damage, int color) {
-        com.merlinkitsune.astral_dice.network.DamageNumberPayload.send(target, damage, color);
-    }
+    // ⚠️ 本类原有的 sendAoeDamageNumber 私有帮助方法已于 2026-09-26 移除:跳数字的唯一出口是
+    // combat/DamageNumberAggregator(取伤害管线终值 + 按组别聚合),各调用点自行发包会被它在
+    // 客户端单槽覆盖(见该类的类头)。两处范围波及现均归入**法伤类绿色**。
 
     // 枪械/火炮类远程弹丸判定(保险):伤害类型与弹丸类名关键词识别
     private static boolean isFirearmDamage(DamageSource source) {

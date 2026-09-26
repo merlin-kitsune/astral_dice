@@ -578,7 +578,12 @@ public class DiceCombatEvents {
         finalDmg *= victimFactor;
 
         event.setNewDamage((float) finalDmg);
-        sendDamageNumber(event.getEntity(), (int) finalDmg);
+        // 跳数字不再在此直发(2026-09-26):登记组别,由 DamageNumberAggregator 在**伤害管线终值**
+        // (LivingDamageEvent.Post 的 getNewDamage = 实际扣血量)上取值,并与本 tick 同目标的其它
+        // 攻击力类伤害累加成一个**总值**后一次性下发。
+        // ⚠️ 必须显式登记:骰战主伤害用的是**原版** player_attack 伤害源(本模组只 setNewDamage 改数值、
+        //    改类型),类型回落认不出来。
+        DamageNumberAggregator.tag(target, source, DamageNumberAggregator.Group.ATTACK);
 
         // === 额外加伤(astral_dice:extra_damage):星光 / 星币 / 治愈点三项加伤 ===
         // 2026-09-25 用户裁决:这三项**不得并进「攻击力」**(它们会污染教主立牌降神的「狐光攻击基数」
@@ -594,7 +599,8 @@ public class DiceCombatEvents {
                     target.invulnerableTime = 0;
                     target.hurt(com.merlinkitsune.astral_dice.damage.ModDamageTypes.extraDamage(
                             target.level(), player), extraDamage);
-                    sendDamageNumber(target, extraDamage);
+                    // 跳数字:不再直发,由 DamageNumberAggregator 在 Post 上取终值并累加。
+                    // 组别走**类型回落**即可 —— astral_dice:extra_damage ⇒ 攻击力/伤害加成类(红)。
                 } finally {
                     target.invulnerableTime = savedInvulnerable;
                     aoeProcessing = false;
@@ -655,8 +661,13 @@ public class DiceCombatEvents {
                         int savedInvulnerable = isMainTarget ? victim.invulnerableTime : 0;
                         try {
                             if (isMainTarget) victim.invulnerableTime = 0;
+                            // 跳数字:登记组别后由 DamageNumberAggregator 取终值(不再直发)。
+                            // ⚠️ 必须显式登记:astral_dice:true_damage 被多路复用
+                            //    (大当家溅射=攻击力类红 / 效果牌范围波及与法伤加成=法伤类绿),
+                            //    只看类型区分不出来。
+                            DamageNumberAggregator.tag(victim, splashSource,
+                                    DamageNumberAggregator.Group.ATTACK);
                             victim.hurt(splashSource, splashDmg);
-                            sendDamageNumber(victim, (int) splashDmg);
                         } finally {
                             if (isMainTarget) victim.invulnerableTime = savedInvulnerable;
                         }
@@ -1084,15 +1095,9 @@ public class DiceCombatEvents {
                         GameplayConstants.ACTIONBAR_DURATION_TICKS));
     }
 
-    // 骰战最终伤害跳数字(红色)
-    private static void sendDamageNumber(LivingEntity target, int bonusDamage) {
-        sendDamageNumber(target, bonusDamage, 0xFF5555);
-    }
-
-    // 通用跳数字发送:指定 ARGB 颜色(0xRRGGBB 将被叠加透明度)
-    private static void sendDamageNumber(LivingEntity target, int bonusDamage, int color) {
-        com.merlinkitsune.astral_dice.network.DamageNumberPayload.send(target, bonusDamage, color);
-    }
+    // ⚠️ 本类原有的 sendDamageNumber 私有重载(红色默认色 / 指定 ARGB)已于 2026-09-26 移除:
+    // 跳数字的**唯一出口**是 combat/DamageNumberAggregator(取伤害管线终值 + 按组别聚合),
+    // 任何调用点自行发包都会被它在客户端单槽覆盖(见该类的类头)。
 
     // === 闪避统一取消入口(必须在伤害判定最前置处"取消") ===
     // 为什么必须"取消"而不是"把伤害改成 0":
@@ -1218,7 +1223,7 @@ public class DiceCombatEvents {
             if (dmg <= 0) return;
             attacker.hurt(com.merlinkitsune.astral_dice.damage.ModDamageTypes.diceDamage(attacker.level(), player),
                     (float) dmg);
-            sendDamageNumber(attacker, (int) dmg);
+            // 跳数字:不再直发 —— 组别走**类型回落**即可(astral_dice:dice_damage ⇒ 攻击力类红)。
         } finally {
             // try/finally:异常/提前返回都会复位;计数器只减不置零 → 嵌套同样安全
             counterDepth--;

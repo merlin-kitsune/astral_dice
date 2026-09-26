@@ -3,6 +3,7 @@ package com.merlinkitsune.astral_dice.event;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.audio.ModSounds;
 import com.merlinkitsune.astral_dice.audio.SoundPlayback;
+import com.merlinkitsune.astral_dice.combat.DamageNumberAggregator;
 import com.merlinkitsune.astral_dice.combat.SpellDamageContext;
 import com.merlinkitsune.astral_dice.combat.SpellDamageModifier;
 import com.merlinkitsune.astral_dice.combat.DiceCombatEvents;
@@ -66,18 +67,22 @@ public class DamageEffectCardHandler {
         // 独立结算:直接伤害实体为空 + 击杀归属施法者(与旧 explosion(null, player) 同形状,
         // 不会被本模组或其它模组当成"玩家的直接攻击"重走骰战)。
         if (bonus > 0 && !APPLYING_TRUE_BONUS.get()) {
+            // ① 本次命中的**基础伤害**也归入法伤组。必须显式登记:这条命中绝大多数是**原版**伤害源
+            //    (箭矢 arrow / 投掷物 / 其它模组法术),聚合器的类型回落认不出来。
+            //    登记后,聚合器会把它与 ② 的法伤加成累加成一个「法伤总值」——
+            //    与旧实现「发 getNewDamage() + bonus」的**显示值同源**,但改用了伤害管线终值。
+            DamageNumberAggregator.tag(target, source, DamageNumberAggregator.Group.SPELL);
             APPLYING_TRUE_BONUS.set(true);
             try {
-                target.hurt(com.merlinkitsune.astral_dice.damage.ModDamageTypes
-                        .trueDamage(target.level(), player), (float) bonus);
+                var bonusSource = com.merlinkitsune.astral_dice.damage.ModDamageTypes
+                        .trueDamage(target.level(), player);
+                // ② 法伤加成段(独立真伤)。组别同样必须显式登记:astral_dice:true_damage 被多路复用
+                //    (大当家溅射=攻击力类红 / 这里与效果牌范围波及=法伤类绿),只看类型区分不出来。
+                DamageNumberAggregator.tag(target, bonusSource, DamageNumberAggregator.Group.SPELL);
+                target.hurt(bonusSource, (float) bonus);
             } finally {
                 APPLYING_TRUE_BONUS.set(false);
             }
-            // HUD 数显 = 本次法伤的**完整伤害**(原始基础伤害 + 法伤加成,取整;2026-09-19 用户要求)。
-            // 只显示加成会让数字与实际掉血不符:箭矢本身打 6 点、加成 4 点 ⇒ 应显示 10(旧写法只有 4)。
-            // 基准取 `event.getNewDamage()`(护甲/附魔减免之后、吸收之前),与电击手套 AOE 同口径。
-            com.merlinkitsune.astral_dice.network.DamageNumberPayload.send(
-                    target, (int) Math.round(event.getNewDamage() + bonus), 0x7CFC00);
         }
 
         // 活体书页命中音效:**按本次命中的完整伤害分档**，取值与上面的 HUD 跳字完全同源

@@ -1,0 +1,70 @@
+{
+  "case_id": "DAMAGE-NUMBER-1.21.1",
+  "title": "伤害跳字实机冒烟：最终值（= 实际扣血量）+ 红/绿两组分组 + 冻结坐标（搬运目标后不跟随）+ ±30° 扩散偏移",
+  "version": "1.21.1",
+  "target": { "type": "feature", "ref": "damage-number-aggregator" },
+  "on_fail": "keep_game_running",
+  "steps": [
+    { "op": "note", "text": "目的：验证 2026-09-26 的跳字改造（`combat/DamageNumberAggregator` + `client/DamageNumberStore`）。\n\n四条判据与取证通道：\n① **最终值** = 伤害管线终值（`LivingDamageEvent.Post` 的 `getNewDamage` = 实际扣血量），而非结算前的自算值。\n   服务端：`dnumspellread` 的 `dmg=`（法术，纯法术段）、`dnumhit` 的 `dealt=`（近战血量差）；\n   客户端：`DamageNumberStore.Entry.damage`。两边数值相等即成立（骰战有 `nextInt(1,7)` 随机化 ⇒ 绝对值不可预测，只能两端比对）。\n② **红/绿分组**：攻击力/伤害加成类 = `0xFF5555`（红），法伤/技能伤害类 = `0x7CFC00`（绿）。客户端探针打印 6 位十六进制 ⇒ 断言里直接锚 `FF5555` / `7CFC00`。\n③ **冻结坐标**：坐标由服务端在命中那一刻随包下发（`getEyePosition().add(0,-0.5,0)`）。\n   强判据 = `dnumshove` 在数字存活期内把靶子**搬走 5 格**，客户端读数里的 `x/y/z` 必须**仍是搬运前那一组**（若实现是每帧读实体位置，坐标会跟着变）。\n   同时可核对：客户端 `y` 应等于靶子 `y + 眼高 - 0.5`（蜘蛛眼高 ≈0.65 ⇒ `-60 + 0.15 = -59.85`），即坐标确实来自服务端锚点而非客户端自算。\n④ **±30° 扩散**：每条数字生成时抽自己的 `spreadRadians` ⇒ 两个不同数字的 `deg=` 不同，且 |deg| ≤ 30。\n\n前几步是**基线**（生存/正午/清场），避免亡灵靶在日光下燃烧漂血污染血量读数。" },
+
+    { "op": "inject_command", "command": "/gamemode survival", "no_esc": true },
+    { "op": "wait", "ms": 800 },
+    { "op": "inject_command", "command": "/gamerule doDaylightCycle false", "no_esc": true },
+    { "op": "inject_command", "command": "/time set noon", "no_esc": true },
+    { "op": "inject_command", "command": "/weather clear", "no_esc": true },
+    { "op": "wait", "ms": 400 },
+    { "op": "inject_command", "command": "/kill @e[type=!player,distance=..64]", "no_esc": true },
+    { "op": "wait", "ms": 500 },
+    { "op": "inject_command", "command": "/tp @s ~ ~ ~ 0 0", "no_esc": true },
+    { "op": "wait", "ms": 600 },
+
+    { "op": "note", "text": "【0】基线 + 装骰子 + 摆高血量蜘蛛靶（非亡灵 ⇒ 正午不燃烧；`MAX_HEALTH` 抬到 200 ⇒ 一次骰战打不死，后续法术仍有靶）。\n骰子是**骰战链硬前提**：`DiceCombatEvents.onLivingDamagePre` 要求 curios dice 槽有骰子，否则整条链（含 `DamageNumberAggregator.tag`）都不会进入。" },
+    { "op": "inject_command", "command": "/astralprobe dnumprep D0", "no_esc": true },
+    { "op": "wait", "ms": 900 },
+
+    { "op": "note", "text": "【1】绿组（法伤）：主手换活体书页 —— 目标选择会话由 `tickHeldSelector` 在**下一 tick** 才开启，故必须与出牌分成两条命令。" },
+    { "op": "inject_command", "command": "/astralprobe dnumhold D0", "no_esc": true },
+    { "op": "wait", "ms": 700 },
+
+    { "op": "note", "text": "【2】真实出牌（`TargetSelectionManager.confirm`）⇒ 书页飞行约 1 秒后命中 ⇒ 绿字出现。\n期望：`called=1`（会话 token 有效）、`exp=` 给出 `livingPageImpactDamage` 期望值（本内容下 = 2），客户端应打印 `7CFC00` 的一条。" },
+    { "op": "inject_command", "command": "/astralprobe dnumspell D0", "no_esc": true },
+    { "op": "wait", "ms": 1300 },
+
+    { "op": "note", "text": "【3】**纯法术扣血**读数（必须在近战之前读，否则会把近战那一段也算进来）。\n期望：`dmg` = 客户端绿字 `damage`。" },
+    { "op": "inject_command", "command": "/astralprobe dnumspellread D0", "no_esc": true },
+    { "op": "wait", "ms": 300 },
+
+    { "op": "note", "text": "【4】红组（攻击力类）：主手换铁剑 + 真实近战（`Player#attack` = 与真人左键同源）。\n此拍是**红绿共存**取样点：绿字（约 1.6 秒前出现，存活 40 tick = 2 秒）此时应仍在显。\n⚠️ 主手必须是近战武器：骰战链入口有 `isMeleeWeaponAttack(player)` 守卫，空手直接 return。" },
+    { "op": "inject_command", "command": "/astralprobe dnumhit D0", "no_esc": true },
+    { "op": "wait", "ms": 250 },
+
+    { "op": "note", "text": "【5】**冻结坐标的强判据**：把靶子沿 +X 搬走 5 格。\n数字（红/绿都还在显）的坐标必须**仍是搬运前**的 `x/y/z` —— 这正是「不再跟随目标跳动」的定义。\n服务端 `dnumshove` 同时报出 `from=` 与 `pos=`，两者相差 5 即为「目标确实动了」。" },
+    { "op": "inject_command", "command": "/astralprobe dnumshove D0 5", "no_esc": true },
+    { "op": "wait", "ms": 350 },
+    { "op": "screenshot", "tag": "dnum-red-green-1.21.1", "mode": "f2" },
+
+    { "op": "note", "text": "【6】收尾读数（靶血/新坐标）+ 清场。" },
+    { "op": "inject_command", "command": "/astralprobe dnumread D0", "no_esc": true },
+    { "op": "wait", "ms": 400 },
+    { "op": "inject_command", "command": "/astralprobe dnumend D0", "no_esc": true },
+    { "op": "wait", "ms": 700 }
+  ],
+  "asserts": [
+    { "type": "mixin" },
+    { "type": "kubejs" },
+    { "type": "crash" },
+    { "type": "log", "source": "latest", "pattern": "AP_D0_DNUM_PREP:dice=ok" },
+    { "type": "log", "source": "latest", "pattern": "AP_D0_DNUM_SPELL:called=1" },
+    { "type": "log", "source": "latest", "pattern": "AP_D0_DNUM_SPELLREAD:dmg=[0-9]" },
+    { "type": "log", "source": "latest", "pattern": "AP_D0_DNUM_HIT:api=[a-z_]+:.*:dealt=[0-9]" },
+    { "type": "log", "source": "latest", "pattern": "AP_D0_DNUM_SHOVE:dist=5:from=.*:pos=" },
+    { "type": "log", "source": "latest", "pattern": "AP_D0_DNUM_END:killed=1:dice=null" },
+    { "type": "log", "source": "kubejs_client", "pattern": "AP_DNUM:evt=tick:.*FF5555" },
+    { "type": "log", "source": "kubejs_client", "pattern": "AP_DNUM:evt=tick:.*7CFC00" },
+    { "type": "log", "source": "kubejs_client", "pattern": "AP_DNUM:evt=tick:.*deg=" },
+    { "type": "absent", "source": "latest", "pattern": "AP_D0_[A-Z]+_ERR" },
+    { "type": "absent", "source": "latest", "pattern": "AP_[A-Z0-9]+_EX:" },
+    { "type": "absent", "source": "latest", "pattern": "Unknown or incomplete command|未知或不完整的命令" },
+    { "type": "absent", "source": "kubejs_client", "pattern": "AP_DNUM:evt=tick:.*n=ERR" }
+  ]
+}

@@ -160,18 +160,22 @@ public final class SherryThrowManager {
      *       (**用户 2026-09-24 裁决「为技能类伤害创建单独的伤害标签,避免与法伤混用」**)。</li>
      * </ul>
      * 该类型同样登记于 {@code bypasses_armor}(无视护甲值与盔甲韧性),但不在法伤白名单内
-     * ⇒ **只结算自身点数**。伤害数字沿用「活体书页」同款配色(视觉不变)。
+     * ⇒ **只结算自身点数**。伤害数字沿用「活体书页」同款配色(2026-09-26 起与全部法伤/技能伤害
+     * 共用同一个**绿色数值**,见 {@link DamageNumberAggregator})。
      */
     private static void settle(LivingEntity target, ServerLevel level, Player caster, int bonusDamage) {
         float damage = 2.0F + bonusDamage;
         if (caster != null && !caster.level().isClientSide()) {
             DiceCombatEvents.aoeProcessing = true;
             try {
-                target.hurt(com.merlinkitsune.astral_dice.damage.ModDamageTypes.skillDamage(level, caster), damage);
+                var skillSource = com.merlinkitsune.astral_dice.damage.ModDamageTypes.skillDamage(level, caster);
+                // 跳数字:不再直发(见下方注释)。组别走**类型回落**即可
+                // (astral_dice:skill_damage ⇒ 法伤/技能伤害类绿),显式登记只为可读性。
+                DamageNumberAggregator.tag(target, skillSource, DamageNumberAggregator.Group.SPELL);
+                target.hurt(skillSource, damage);
             } finally {
                 DiceCombatEvents.aoeProcessing = false;
             }
-            sendSkillDamageNumber(target, (int) damage);
         } else {
             target.hurt(target.damageSources().generic(), damage);
         }
@@ -180,13 +184,9 @@ public final class SherryThrowManager {
         }
     }
 
-    /**
-     * 发技能伤害数字(**配色沿用「活体书页」同款**,视觉维持不变) ——
-     * 1.21.1/26.1.2 走 {@code DamageNumberPayload},1.20.1 走 {@code ModNetwork.DamageNumberMessage}。
-     */
-    private static void sendSkillDamageNumber(LivingEntity target, int amount) {
-        com.merlinkitsune.astral_dice.network.DamageNumberPayload.send(target, amount, LivingPageImpact.SPELL_DAMAGE_COLOR);
-    }
+    // ⚠️ 本类原有的 sendSkillDamageNumber 私有帮助方法已于 2026-09-26 移除:跳数字的唯一出口是
+    // combat/DamageNumberAggregator(取伤害管线终值 + 按组别聚合),各调用点自行发包会被它在
+    // 客户端单槽覆盖(见该类的类头)。技能伤害沿用**法伤同款绿色**。
 
     /** 到点解冻(落地保险的收尾):恢复 AI 并**清掉索敌目标**,避免解冻瞬间立刻追杀玩家。 */
     private static void releaseDue(net.minecraft.server.MinecraftServer server) {

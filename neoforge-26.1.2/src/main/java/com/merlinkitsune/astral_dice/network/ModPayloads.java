@@ -2,7 +2,7 @@ package com.merlinkitsune.astral_dice.network;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.starenginelib.client.ActionBarManager;
-import com.merlinkitsune.starenginelib.client.ClientDamageNumbers;
+import com.merlinkitsune.astral_dice.client.DamageNumberStore;
 import com.merlinkitsune.astral_dice.client.EnderDieTotemAnimator;
 import com.merlinkitsune.astral_dice.client.TargetSelectionClient;
 import net.minecraft.network.chat.Component;
@@ -19,11 +19,14 @@ public class ModPayloads {
         // NeoForge 在配置阶段逐通道比较两端版本号,不等即握手失败 → 1.1.X 客户端无法加入 1.2.0 服务端;
         // 同二号位的 1.2.x ↔ 1.2.y 版本号字符串相同,照常放行。
         PayloadRegistrar registrar = event.registrar(VersionGate.interopVersion());
+        // 跳数字 → 客户端。⚠️ 载荷自带**冻结的世界坐标**(服务端在命中那一刻取好),
+        // 客户端不读实体坐标:见 DamageNumberStore 类头(不跟随目标 + 击杀那一下也不丢数字)。
         registrar.playToClient(
                 DamageNumberPayload.TYPE,
                 DamageNumberPayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(() ->
-                        ClientDamageNumbers.add(payload.entityId(), payload.bonusDamage(), payload.color()))
+                        DamageNumberStore.add(payload.entityId(), payload.bonusDamage(), payload.color(),
+                                payload.x(), payload.y(), payload.z()))
         );
         registrar.playToClient(
                 ActionBarPayload.TYPE,

@@ -183,7 +183,9 @@ public class PlayerTickEvents {
 
     }
 
-    // 美工刀-初级/锋利状态效果:佩戴对应筹码且生命值 ≥60% 或处于"汲取"状态时显示效果图标,否则移除
+    // 美工刀-初级/锋利状态效果:佩戴对应筹码 + 生命值 ≥60%(或处于"汲取") + **处于骰神赐福期间**时
+    // 显示效果图标,否则移除。最后一条是 2026-09-26 用户需求:「未触发骰神赐福时仍然显示并且有粒子
+    // (没有骰神赐福状态时应当隐藏)」⇒ 指示器的语义由「加成生效中」收紧为「赐福中且加成生效中」。
     private static void updateCutterEffect(Player player) {
         var curios = CuriosApi.getCuriosInventory(player);
         boolean hasCutter = false;
@@ -193,18 +195,34 @@ public class PlayerTickEvents {
             hasBlade = curios.get().findFirstCurio(s -> s.is(ModItems.CUTTER_BLADE_CHIP.get())).isPresent();
         }
         boolean fullHp = player.getHealth() >= player.getMaxHealth() * 0.6f || player.hasEffect(ModEffects.PAPARA_BITE);
+        boolean blessed = player.hasEffect(ModEffects.DICE_BLESSING);
         // 效果存在且剩余时长充足时不重复施加,避免每 tick 触发效果更新/同步包
-        refreshIndicator(player, ModEffects.CUTTER_READY, hasCutter && fullHp);
-        refreshIndicator(player, ModEffects.CUTTER_BLADE_READY, hasBlade && fullHp);
+        refreshIndicator(player, ModEffects.CUTTER_READY, hasCutter && fullHp && blessed);
+        refreshIndicator(player, ModEffects.CUTTER_BLADE_READY, hasBlade && fullHp && blessed);
     }
 
-    // 显示指示器效果:需要显示且(缺失/即将到期)时施加 5 秒;不需要显示且存在时内部移除
+    /** 指示器效果的施加时长。⚠️ **必须始终 > 200 tick**:见 {@link #refreshIndicator} 注释。 */
+    private static final int INDICATOR_DURATION_TICKS = 1200;
+    /** 剩余时长低于此值即续期,保证实际时长永不低于 200 tick(留足余量,避免边界抖动)。 */
+    private static final int INDICATOR_REFRESH_BELOW = 1000;
+
+    // 显示指示器效果:需要显示且(缺失/即将到期)时续期;不需要显示且存在时内部移除。
+    //
+    // ⚠️ 时长必须 **始终 > 200 tick**,否则图标会**永久闪烁**:
+    //   原版 Gui#renderEffects 对 `mobeffectinstance.endsWithin(200)` 的效果按
+    //   `f = clamp(duration/10/5*0.5,0,0.5) + cos(duration*PI/5) * clamp(l/10*0.25,0,0.25)`
+    //   调制图标 alpha(neoforge 21.1.235 Gui.java:548-553;1.20.1 同构)。
+    //   旧实现施加 100 tick、在 ≤20 tick 时续期 ⇒ 时长**恒在 [21,100] 区间**,永远落在
+    //   `endsWithin(200)` 内 ⇒ 每 tick 都在按余弦改 alpha,表现为「一直闪」。
+    // ⚠️ `visible=false`(第 5 参):不产生持续粒子。既有指示器同口径先例 ——
+    //   RevengeHalberdChipItem:76 / JasmineSignItem:63 均为 (…, false, false, true);
+    //   旧实现用 visible=true,这正是用户看到的「并且有粒子」。
     private static void refreshIndicator(Player player, net.minecraft.core.Holder<net.minecraft.world.effect.MobEffect> effect,
                                          boolean shouldShow) {
         if (shouldShow) {
             MobEffectInstance existing = player.getEffect(effect);
-            if (existing == null || existing.getDuration() <= 20) {
-                player.addEffect(new MobEffectInstance(effect, 100, 0, false, true, true));
+            if (existing == null || existing.getDuration() <= INDICATOR_REFRESH_BELOW) {
+                player.addEffect(new MobEffectInstance(effect, INDICATOR_DURATION_TICKS, 0, false, false, true));
             }
         } else if (player.hasEffect(effect)) {
             ModEffectRemoval.remove(player, effect);

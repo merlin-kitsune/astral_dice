@@ -13,6 +13,8 @@ import com.merlinkitsune.astral_dice.item.chip.AdrenalineChipItem;
 import com.merlinkitsune.astral_dice.item.chip.RevengeHalberdChipItem;
 import com.merlinkitsune.astral_dice.item.chip.ElectricSwordChipItem;
 import com.merlinkitsune.astral_dice.item.chip.AdvancedPeripheralsChipItem;
+import com.merlinkitsune.astral_dice.item.chip.CutterChipItem;
+import com.merlinkitsune.astral_dice.item.chip.CutterBladeChipItem;
 import com.merlinkitsune.astral_dice.item.sign.FenSignItem;
 import com.merlinkitsune.astral_dice.item.sign.NancyLuSignItem;
 import com.merlinkitsune.astral_dice.item.sign.MosesSignItem;
@@ -284,23 +286,33 @@ public final class DiceCombatModifiers {
             return ap;
         });
 
-        // === 额外加伤:美工刀 / 美工刀-锋利(生命值不低于 60% 时,按当前治愈点数加伤) ===
-        // 2026-09-25 用户裁决:由「攻击力修饰器」改为**额外加伤修饰器** —— 独立伤害类型结算,
-        // 不进攻击力(故不会污染降神的攻击力快照),文案称「攻击伤害」。
+        // === 美工刀 / 美工刀-锋利 ===
+        // 2026-09-26 用户裁决(修订 2026-09-25 那次「整块进额外加伤」):「美工刀提供的基础攻击力
+        // (+2 和 +4)被错误的划分到了伤害加成。正确情况是**基础值为攻击力加成,治愈点提供伤害加成**」
+        // ⇒ 拆成两条链,门槛共用 CutterChipItem.isActive(两条链必须同进同出):
+        //   ① 基础值 +2 / +4 → **攻击力修饰器**(进战斗攻击力,也进 HUD 攻击力条);
+        //   ② 当前治愈层数   → **额外加伤修饰器**(独立 astral_dice:extra_damage 结算)。
+        // ⚠️ 已知并接受的代价:① 进攻击力后,教主立牌「降神」的**狐光攻击基数快照**会随之变化 ——
+        //   TeruSignItem 施法瞬间快照处(`DiceCombatModifiers.attackPowerOf(caster)`),而本修饰器在该
+        //   口径内生效。这是 2026-09-25「三项不进攻击力以免污染降神快照」的初衷被本次需求**覆盖**
+        //   后的必然结果,不是缺陷(2026-09-26 用户明确选择「进攻击力,快照含它」)。
+        // ⚠️ ②「每枚各计 1 份」同样是 2026-09-26 用户裁决:两枚美工刀同时装备 ⇒ 治愈部分**叠加两次**。
+        registerAttackModifier((ctx, ap) -> {
+            if (ctx.attacker.level().isClientSide()) return ap;
+            if (!CutterChipItem.isActive(ctx.attacker)) return ap;
+            if (hasCurio(ctx.attacker, ModItems.CUTTER_CHIP.get())) ap += CutterChipItem.BASE_ATTACK;
+            if (hasCurio(ctx.attacker, ModItems.CUTTER_BLADE_CHIP.get())) ap += CutterBladeChipItem.BASE_ATTACK;
+            return ap;
+        });
         registerExtraDamageModifier(ctx -> {
             if (ctx.attacker.level().isClientSide()) return 0;
-            boolean fullHp = ctx.attacker.getHealth() >= ctx.attacker.getMaxHealth() * 0.6f
-                    || ctx.attacker.hasEffect(ModEffects.PAPARA_BITE.get());
-            if (!fullHp) return 0;
+            if (!CutterChipItem.isActive(ctx.attacker)) return 0;
             int healing = HealingManager.getPoints(ctx.attacker);
-            int extra = 0;
-            if (hasCurio(ctx.attacker, ModItems.CUTTER_CHIP.get())) {
-                extra += 2 + healing;
-            }
-            if (hasCurio(ctx.attacker, ModItems.CUTTER_BLADE_CHIP.get())) {
-                extra += 4 + healing;
-            }
-            return extra;
+            if (healing <= 0) return 0;
+            int copies = 0;
+            if (hasCurio(ctx.attacker, ModItems.CUTTER_CHIP.get())) copies++;
+            if (hasCurio(ctx.attacker, ModItems.CUTTER_BLADE_CHIP.get())) copies++;
+            return healing * copies;
         });
 
         // === 内置:普通瞄具/鹰眼瞄具(攻击力+2;骰神赐福期间攻击时施加 1 层标记 / 按标记层数×2 加攻击力) ===

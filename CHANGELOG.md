@@ -31,11 +31,40 @@
 
 ### Content & Balance
 
-<!-- 内容与平衡性调整在此登记 -->
+#### Damage & Resolution
+
+- **Damage numbers now show the final value and are colour-coded by damage type** (user request 2026-09-26):
+  whether the damage is melee, spell or skill damage, the number shown is now the **health actually lost**
+  (the final value from the damage pipeline, after armour, resistances, absorption and every other modifier)
+  instead of a pre-resolution intermediate value. Colours split into **red / green**: **Attack Power and bonus
+  damage** (including splash, area-of-effect and counter-attacks) are always **red**, while **spell damage and
+  skill damage** are always **green** (sources that used to get their own colour, such as the Shock Gloves, now
+  use green as well). Multiple hits on the same target within the same colour group in one tick are **merged
+  into a single total** instead of overwriting each other.
+
+#### Chips & Resources
+
+- **The Cutter's base bonus is back on the Attack Power channel** (user ruling 2026-09-26): the **+2 / +4** that
+  Cutter (Basic) / Cutter (Sharp) grant while health is at or above 60% is **Attack Power** (it counts towards
+  Attack Power and therefore also feeds snapshot effects that read Attack Power), while the bonus earned from
+  **healing stacks** is separate **attack damage** (which does not count towards Attack Power). When both
+  Cutters are equipped, healing stacks count **once per chip**. The matching tooltips and handbook entries now
+  read "Attack Power +2 / +4".
 
 ### Bug Fixes
 
-<!-- 已修复BUG在此登记 -->
+#### Damage & Resolution
+
+- **Damage number display reworked** (user request 2026-09-26): numbers **no longer follow the target around** -
+  the position is fixed at the moment the damage resolves and sent by the server; the existing drift-and-fade
+  effect is kept, with an added **±30° random spread** so simultaneous numbers no longer overlap exactly.
+
+#### Chips & Resources
+
+- **The Cutter's status indicator kept blinking and appeared without Dice Blessing** (user report 2026-09-26):
+  the indicator is now shown **only while the player actually has Dice Blessing** and is fully hidden otherwise
+  (no icon and no particles); its duration no longer falls inside vanilla's "about to expire" blink window,
+  **removing the constant blinking**.
 
 ## 1.3.1
 

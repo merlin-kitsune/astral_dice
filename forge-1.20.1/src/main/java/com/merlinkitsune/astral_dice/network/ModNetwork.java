@@ -155,37 +155,64 @@ public final class ModNetwork {
 
     // === 伤害数字(S→C) ===
 
+    /**
+     * 跳数字(S→C)。
+     *
+     * <p>2026-09-26 起新增 <b>冻结坐标</b>({@code x/y/z}):由服务端
+     * {@code combat/DamageNumberAggregator} 在命中那一刻取好,客户端不再自行读实体坐标 ——
+     * ① 满足「数字不跟随目标跳动」;② 聚合包在 tick 末尾才发,击杀那一下目标可能已被客户端移除,
+     * 若靠客户端取实体就会整条丢数字。
+     *
+     * <p>⚠️ 与 neo 两线的 {@code network/DamageNumberPayload}(record + StreamCodec)**不可互抄**,
+     * 本线走 SimpleChannel 的 encode/decode。
+     */
     public static class DamageNumberMessage {
         private final int entityId;
         private final int bonusDamage;
         private final int color;
+        private final float x;
+        private final float y;
+        private final float z;
 
-        public DamageNumberMessage(int entityId, int bonusDamage, int color) {
+        public DamageNumberMessage(int entityId, int bonusDamage, int color, float x, float y, float z) {
             this.entityId = entityId;
             this.bonusDamage = bonusDamage;
             this.color = color;
+            this.x = x;
+            this.y = y;
+            this.z = z;
         }
 
         public static void encode(DamageNumberMessage msg, FriendlyByteBuf buf) {
             buf.writeVarInt(msg.entityId);
             buf.writeVarInt(msg.bonusDamage);
             buf.writeInt(msg.color);
+            buf.writeFloat(msg.x);
+            buf.writeFloat(msg.y);
+            buf.writeFloat(msg.z);
         }
 
         public static DamageNumberMessage decode(FriendlyByteBuf buf) {
-            return new DamageNumberMessage(buf.readVarInt(), buf.readVarInt(), buf.readInt());
+            return new DamageNumberMessage(buf.readVarInt(), buf.readVarInt(), buf.readInt(),
+                    buf.readFloat(), buf.readFloat(), buf.readFloat());
         }
 
         public static void handle(DamageNumberMessage msg, Supplier<NetworkEvent.Context> ctx) {
             ctx.get().enqueueWork(() ->
-                    com.merlinkitsune.starenginelib.client.ClientDamageNumbers.add(msg.entityId, msg.bonusDamage, msg.color));
+                    com.merlinkitsune.astral_dice.client.DamageNumberStore.add(
+                            msg.entityId, msg.bonusDamage, msg.color, msg.x, msg.y, msg.z));
             ctx.get().setPacketHandled(true);
         }
 
-        /** 向目标追踪客户端(含目标本人)发送跳数字。全部跳数字发送统一走本方法。 */
-        public static void send(LivingEntity target, int damage, int color) {
+        /**
+         * 向目标追踪客户端(含目标本人)发送跳数字。全部跳数字发送统一走本方法。
+         *
+         * <p>⚠️ 唯一调用方是 {@code combat/DamageNumberAggregator} —— 各伤害点不再各自发包,
+         * 否则仍会在客户端互相覆盖(见该类的类头)。
+         */
+        public static void send(LivingEntity target, int damage, int color, double x, double y, double z) {
             if (target.level().isClientSide()) return;
-            var packet = new DamageNumberMessage(target.getId(), damage, color);
+            var packet = new DamageNumberMessage(target.getId(), damage, color, (float) x, (float) y, (float) z);
             sendToPlayersTrackingEntity(target, packet);
             if (target instanceof net.minecraft.server.level.ServerPlayer serverTarget) {
                 sendToPlayer(serverTarget, packet);
