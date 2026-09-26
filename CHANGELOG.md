@@ -168,6 +168,12 @@
   chest (those whose loot table sits under `chests/`) - previously **no chest** other than buried treasure could drop
   one at all.
 
+- **Glass Dice added to loot chests** (user request 2026-09-27): the Glass Dice (`astral_dice:glass_dice`,
+  the T1 golden tier) can now be found in loot chests - **2%** in ordinary chests and **5%** in **end city**
+  treasure, 1 per roll. Previously loot chests dropped **no dice at all** (dice came only from crafting and
+  from the bounty board). It does not interact with the "first adventure gift": the first chest still grants
+  1 extra base die on top, and the Glass Dice is rolled independently, so both can appear in the same chest.
+
 #### Platform & Compatibility
 
 - **The prerequisite library `starengine_lib` is upgraded to `2.0.0-SNAPSHOT.2`**: the new four-way mob
