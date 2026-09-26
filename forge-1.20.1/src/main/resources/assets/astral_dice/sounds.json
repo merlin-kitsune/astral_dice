@@ -41,5 +41,25 @@
     "sounds": [
       "astral_dice:effect_card_use_self"
     ]
+  },
+  "effect_card_use": {
+    "sounds": [
+      "astral_dice:effect_card_use"
+    ]
+  },
+  "skill_use": {
+    "sounds": [
+      "astral_dice:skill_use"
+    ]
+  },
+  "glass_dice_broken": {
+    "sounds": [
+      "astral_dice:glass_dice_broken"
+    ]
+  },
+  "megas_blast": {
+    "sounds": [
+      "astral_dice:megas_blast"
+    ]
   }
 }

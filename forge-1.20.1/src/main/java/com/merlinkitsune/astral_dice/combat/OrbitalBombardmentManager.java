@@ -11,6 +11,8 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
+import com.merlinkitsune.astral_dice.audio.ModSounds;
+import com.merlinkitsune.astral_dice.audio.SoundPlayback;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -350,6 +352,10 @@ public final class OrbitalBombardmentManager {
                 center.x, center.y, center.z, IMPACT_FLAME_PARTICLES, 1.1D, 0.5D, 1.1D, 0.06D);
         job.level.sendParticles(dust(new Vector3f(1.00F, 0.45F, 0.12F), DUST_SCALE_HEAD),
                 center.x, center.y, center.z, IMPACT_BURST_PARTICLES, 0.35D, 0.30D, 0.35D, 0.03D);
+
+        // 命中音效：在**命中位置**播放（附近玩家都听得到）
+        SoundPlayback.playAt(job.level, center.x, center.y, center.z,
+                ModSounds.MEGAS_BLAST.get());
         job.level.playSound(null, center.x, center.y, center.z,
                 SoundEvents.GENERIC_EXPLODE, SoundSource.BLOCKS, 4.0F,
                 (1.0F + (job.level.random.nextFloat() - job.level.random.nextFloat()) * 0.2F) * 0.7F);

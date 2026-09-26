@@ -130,11 +130,15 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
             if (com.merlinkitsune.astral_dice.target.TargetSelectionManager.start(serverPlayer, gatedActionId)) {
                 com.merlinkitsune.starenginelib.target.SignSelectionGate.arm(player, gatedActionId, stack);
             }
+            // 主动技能**生效**音效（2026-09-27 用户裁决：进入目标选择器也算生效）
+            playSkillUseSound(player);
             return;
         }
         // 3. 触发主动技能
         InteractionResultHolder<ItemStack> result = sign.handleUse(player.level(), player, stack);
         if (result.getResult() != InteractionResult.SUCCESS) return;
+        // 主动技能**生效**音效（非选择器类立牌的实际施放）
+        playSkillUseSound(player);
         // 4. 手持风扇-大筹码:使用主动技能后,获得一张随机效果牌(不含专属),并对周围范围内敌对目标施加标记
         FanBigChipItem.applyAfterSignSkill(player);
         FanSmallChipItem.applyAfterSignSkill(player);
@@ -194,6 +198,18 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
      * @param player 触发主动技能的玩家(服务端)
      * @return true = 允许开启选择会话(缺省);false = 本次主动被拒绝
      */
+    /** 主动技能**生效**时的音效（2026-09-27 用户裁决，源素材 {@code skill_use.wav}）。
+     *
+     * <p>「生效」两种形态都算：① 选择器类立牌**成功进入目标选择器**（含后续确认）；
+     * ② 其余立牌的 {@code handleUse} 返回 SUCCESS。被前置门控拒绝 / 取消 / 未确认的路径不播。
+     */
+    protected static void playSkillUseSound(Player player) {
+        if (player == null) return;
+        com.merlinkitsune.astral_dice.audio.SoundPlayback.playAt(player.level(),
+                player.getX(), player.getY(), player.getZ(),
+                com.merlinkitsune.astral_dice.audio.ModSounds.SKILL_USE.get());
+    }
+
     protected boolean canBeginSelectorSession(Player player) {
         return true;
     }

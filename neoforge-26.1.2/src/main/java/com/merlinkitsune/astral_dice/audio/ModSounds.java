@@ -8,7 +8,7 @@ import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
 /**
- * 本模组自定义音效的**注册表**（8 条）。
+ * 本模组自定义音效的**注册表**（12 条）。
  *
  * <p>每条音效由两部分组成，缺一不可：
  * <ol>
@@ -68,6 +68,18 @@ public final class ModSounds {
 
     /** 对**自身**使用效果牌。源素材 {@code effect_card_use2.wav}。 */
     public static final DeferredHolder<SoundEvent, SoundEvent> EFFECT_CARD_USE_SELF = register("effect_card_use_self");
+
+    /** 使用效果牌（狂暴 / 王之力 / 岿然不动 除外）。源素材 {@code effect_card_use.wav}。 */
+    public static final DeferredHolder<SoundEvent, SoundEvent> EFFECT_CARD_USE = register("effect_card_use");
+
+    /** 主动技能**生效**时（含进入目标选择器）。源素材 {@code skill_use.wav}。 */
+    public static final DeferredHolder<SoundEvent, SoundEvent> SKILL_USE = register("skill_use");
+
+    /** 佩戴玻璃骰子的玩家死亡。源素材 {@code glass_dice_broken.wav}。 */
+    public static final DeferredHolder<SoundEvent, SoundEvent> GLASS_DICE_BROKEN = register("glass_dice_broken");
+
+    /** 「轨道轰炸」命中目标（在命中位置播放）。源素材 {@code megas_blast.wav}。 */
+    public static final DeferredHolder<SoundEvent, SoundEvent> MEGAS_BLAST = register("megas_blast");
 
     private ModSounds() {
     }

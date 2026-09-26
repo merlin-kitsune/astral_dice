@@ -514,14 +514,11 @@ public abstract class BaseEffectCardItem extends Item {
      * 否则会随"这次指定了谁当目标"而漂移。
      */
     private void playUseSound(Level level, Player user, LivingEntity applyTo) {
-        SoundEvent sound;
-        if (isBoostCard(cardTypeId())) {
-            sound = ModSounds.BOOST_EFFECT_CARD_USE.get();
-        } else if (applyTo == user) {
-            sound = ModSounds.EFFECT_CARD_USE_SELF.get();
-        } else {
-            sound = ModSounds.EFFECT_CARD_USE_TARGET.get();
-        }
+        // 2026-09-27 用户裁决：三张增益牌（狂暴 / 王之力 / 岿然不动）之外，**所有效果牌统一**播
+        // effect_card_use —— 不再按「对自身 / 对他人」分流（旧 target/self 两条素材已废弃）。
+        SoundEvent sound = isBoostCard(cardTypeId())
+                ? ModSounds.BOOST_EFFECT_CARD_USE.get()
+                : ModSounds.EFFECT_CARD_USE.get();
         SoundPlayback.playAt(level, user.getX(), user.getY(), user.getZ(), sound);
     }
 
