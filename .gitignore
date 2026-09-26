@@ -46,6 +46,7 @@ temp/
 scripts/**/__pycache__/
 scripts/temp/
 scripts/devtools/tmp/
+tools/**/__pycache__/
 scripts/test/reports/*
 !scripts/test/reports/_template.md
 scripts/test/cases/.mt_*

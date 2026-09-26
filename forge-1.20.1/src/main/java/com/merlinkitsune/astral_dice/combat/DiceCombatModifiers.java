@@ -694,10 +694,11 @@ public final class DiceCombatModifiers {
                 enhancement = ModDataComponents.WEAPON_ENHANCEMENT.getOrDefault(diceStack, WeaponEnhancement.EMPTY);
             }
         }
-        // 显示口径（HUD 攻击力条）剔除手持武器；战斗口径保留属性原值（含武器）
+        // 显示口径（HUD 攻击力条）剔除手持武器；战斗口径保留属性原值（含武器 + 附魔加伤）
+        // ⚠️ 含武器口径才含附魔：附魔加伤来自武器本身 ⇒ HUD 的「不含手持武器」口径自然也不含它。
         double start = excludeHeldWeapon
                 ? attackDamageExcludingHeldWeapon(player)
-                : player.getAttributeValue(Attributes.ATTACK_DAMAGE);
+                : enchantedAttackDamage(player);
         return (int) Math.floor(attackPowerBase(player, diceStack, enhancement, start));
     }
 
@@ -721,9 +722,35 @@ public final class DiceCombatModifiers {
         return (int) Math.floor(defensePowerBase(player, enhancement));
     }
 
-    /** 攻击力基础值(属性 + 攻击修饰器链);{@link #getDisplayAttackRange} 与 {@link #attackPowerOf} 共用 */
+    /**
+     * 攻击力基础值(属性 + 攻击修饰器链，**不含附魔加伤**)。
+     *
+     * <p>用于 {@link #getDisplayAttackRange}（tooltip 区间）。该值在**客户端**求值，
+     * 而附魔加伤在客户端取不到（见 {@link #enchantedAttackDamage}）⇒ 此处刻意不含附魔，
+     * 与**原版客户端 tooltip 同样不显示武器附魔加伤**的行为一致。战斗/降神口径（含附魔）见 {@link #attackPowerOf}。
+     */
     private static double attackPowerBase(Player player, ItemStack diceStack, WeaponEnhancement enhancement) {
         return attackPowerBase(player, diceStack, enhancement, player.getAttributeValue(Attributes.ATTACK_DAMAGE));
+    }
+
+    /**
+     * 属性攻击力经**附魔加伤**之后的取值（2026-09-26 裁决④：附魔项加入显示口径）。
+     *
+     * <p>与结算侧 {@code DiceCombatEvents#enchantDamageBonus} 同源（1.20.1 走
+     * {@code EnchantmentHelper.getDamageBonus(主手, 目标 MobType)}，是**绝对量**加法）。
+     * 上下文按既有显示口径近似：目标取玩家自身（{@code getMobType()} = {@code UNDEFINED}）。
+     *
+     * <p>⚠️ <b>客户端环境无法算出附魔项</b>：本侧虽不强制 {@code ServerLevel}，但为与 NeoForge 两线
+     * 保持**同一语义边界**（tooltip 在客户端不含附魔、降神快照在服务端含附魔），此处统一以
+     * {@code ServerLevel} 作门禁 ⇒ 客户端返回原值。这与原版客户端 tooltip 行为一致。
+     */
+    static double enchantedAttackDamage(Player player) {
+        double base = player.getAttributeValue(Attributes.ATTACK_DAMAGE);
+        if (!(player.level() instanceof net.minecraft.server.level.ServerLevel)) {
+            return base;
+        }
+        return base + net.minecraft.world.item.enchantment.EnchantmentHelper
+                .getDamageBonus(player.getMainHandItem(), player.getMobType());
     }
 
     /**

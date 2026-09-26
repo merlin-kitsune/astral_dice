@@ -44,10 +44,14 @@
 
 #### Combat Statistics & Resolution
 
-- **Defense formula split between players and mobs, and the 20-point armor cap removed** (user request 2026-09-26):
-  - Players: `Defense = 2 + armor / 2 + 1.4 x armor toughness` (the conversion is unchanged);
-  - Mobs: `Defense = base defense + armor / 2 + 1.125 x armor toughness`, **floored to a whole number**;
-  - Base defense: **hostile mobs 2**, neutral / passive / friendly mobs **0**;
+- **Defense formula split between players and mobs, and the 20-point armor cap removed** (user request 2026-09-26;
+  coefficient curve re-calibrated by user ruling 2026-09-26):
+  - Players: `Defense = 4 + armor x 0.30 + 0.85 x armor toughness`;
+  - Mobs: `Defense = base defense + armor x 0.40 + 1.0 x armor toughness`, **floored to a whole number**;
+  - Base defense: **hostile mobs 0**, neutral / passive / friendly mobs **0**;
+  - The coefficients were re-calibrated in the same round as the vanilla-modifier fix below: the base was raised and the
+    slope flattened (the old shared `armor / 2` divisor is gone) so that early-game difficulty and late-game output are
+    both less extreme.
   - The `min(armor, 20)` cap that previously applied to every target is **removed on both sides**;
   - Armor is always read as the **final attribute value** (`getArmorValue()`), so modifiers applied by status effects
     and by other mods (such as the Ring of Seven Curses) take effect **first** and this mod **no longer rescales
@@ -55,9 +59,11 @@
     effects are handled by **equivalent substitution**: they change the armor value exactly as they always did, and
     the result then goes through this mod's defense conversion.
 
-- **Mobs gained base attack power and their melee attacks now take part in dice combat** (user request 2026-09-26):
-  hostile mobs start at **5** attack power, neutral mobs at **4**, passive / friendly mobs at **0**; a mob's own damage
-  (its attack-damage attribute plus the incoming damage event value) is folded into its attack power as well.
+- **Mobs gained base attack power and their melee attacks now take part in dice combat** (user request 2026-09-26;
+  values re-calibrated by user ruling 2026-09-26): hostile mobs start at **4** attack power, neutral mobs at **3**,
+  passive / friendly mobs at **0**; a mob's attack power is **base attack power + its attack-damage attribute + the damage
+  bonus of its held weapon's enchantments**. The incoming damage event value is **no longer** added - that value had
+  already passed armour, resistance and protection on the vanilla path, so folding it in counted those three twice.
 
 - **Opposed rolls unified to "if one side may roll, the other must roll too"** (user request 2026-09-26): whether the
   attacker rolls depends only on the attacker (a player needs an equipped die; a mob always rolls 1d6), and whether
@@ -67,8 +73,9 @@
   count towards defense; attacking a player **without** a die does not trigger an opposed roll and falls back to a
   plain base attack-vs-defense resolution. **Dice Blessing is still only triggered by a player's own melee attack** -
   neither a mob's attack nor a defender's roll triggers it. Final damage keeps the original wording "base attack power
-  - base defense + dice roll + battle-card bonus", with **at least 1 damage dealt whenever the defender's total is
-  greater than or equal to the attacker's**; a player's flat damage-reduction effects (Whetstone, the Great Detective
+  - base defense + dice roll + battle-card bonus", with a damage floor of **`max(1, attack power x 15%)`** whenever
+  the defender's total is greater than or equal to the attacker's; a player's flat damage-reduction effects (Whetstone,
+  the Great Detective
   standee and so on) are applied **after** the final damage is computed and are **allowed to reduce it to 0**.
 
 - **Defense card durability 10 -> 100, drained "1 point per dice-combat hit"** (user request 2026-09-26): the
@@ -77,6 +84,24 @@
   exactly 1 point from the first defense card that still has durability, in equip order** (a card is only removed
   once it reaches 0). Ranged, spell and skill damage that does **not** trigger dice combat **does not consume
   defense cards**.
+
+- **Vanilla damage modifiers now take effect in dice combat** (user ruling 2026-09-26): dice combat used to overwrite
+  the whole damage value and discard everything vanilla had already computed, so **Sharpness, Critical Hits, the attack
+  cooldown charge, Protection and Resistance** were all inert under dice combat. All five are now rebuilt explicitly:
+  - **Sharpness** (weapon damage enchantments) is added to attack power through the vanilla enchantment hook, exactly as
+    vanilla does it;
+  - **Critical Hits** use vanilla's own trigger conditions (falling, not on ground, not climbing, not in water, not
+    blind, not riding, not sprinting) and apply **x1.5 to the vanilla base segment only**, so the measured gain is
+    exactly **+50%**, matching vanilla;
+  - **Attack cooldown** scales the base segment with vanilla's `0.2 + charge^2 x 0.8`;
+  - **Protection** (enchantment) and **Resistance** (effect) are applied as one multiplicative factor **after** the
+    dice-combat resolution, so a full Protection IV set gives **x0.36** and Resistance II gives **x0.6** - both matching
+    vanilla. The factor applies on **both** paths (player to target and mob to player), so neither side is favoured;
+  - A **mob's held weapon enchantments** are likewise folded into its attack power, so an enchanted mob weapon is no
+    longer ignored. This also replaces the incoming damage event value that used to be counted there (see the mob
+    attack-power entry above).
+  Measured against vanilla (40,000 samples): Sharpness V +42.9% (vanilla +42.9%), Critical +50.1% (vanilla +50.0%),
+  Protection IV full set -64.0% (vanilla -64.0%), Resistance II -40.0% (vanilla -40.0%).
 
 #### Chips & Resources
 
@@ -89,16 +114,24 @@
 
 #### Platform & Compatibility
 
-- **The prerequisite library `starengine_lib` is upgraded to `2.0.0-SNAPSHOT.1`**: the new four-way mob
+- **The prerequisite library `starengine_lib` is upgraded to `2.0.0-SNAPSHOT.2`**: the new four-way mob
   classification and the attack / defense conversion formulas were pushed down into the library's `combat` package
   (`TargetCategory` for the four-way classification, `TargetBattleStats` for the base attack / defense table,
   `CombatFormula` for the pure conversion functions and `DiceBattleResolver` for opposed rolls and damage synthesis),
   so all three lines (1.21.1 / 1.20.1 / 26.1.2) share a single implementation and the formulas cannot drift apart.
   The library changes live on a separate `next` branch (the main branch stays on `1.0.4`), and all three lines of this
-  mod move their `starengine_lib_version` to `2.0.0-SNAPSHOT.1` together. The library is still **JarJar-embedded**
+  mod move their `starengine_lib_version` to `2.0.0-SNAPSHOT.2` together. The library is still **JarJar-embedded**
   into the artifact as before, so the modpack must **not** carry a standalone library jar. This is a **major version
   bump** (`1.0.4` -> `2.0.0`), matching the library's own rule that changing existing semantics requires a major bump:
   this round removes the 20-point armor cap from the formula, which is exactly such a change.
+  `2.0.0-SNAPSHOT.2` adds the rest of this batch and re-calibrates the numbers: **`VanillaMitigation`** (pure arithmetic
+  for the two vanilla magic-reduction channels - the Resistance effect and the Protection enchantment - applied after
+  dice resolution), a re-calibrated defense curve (player base `2 -> 4`, armor coefficient `0.5 -> 0.30`, toughness
+  coefficient `1.4 -> 0.85`; mob armor coefficient `0.5 -> 0.40`, toughness coefficient `1.125 -> 1.0`, hostile base
+  defense `2 -> 0`, hostile base attack `5 -> 4`, neutral base attack `4 -> 3`) and a damage-floor overload
+  `DiceBattleResolver.resolve(attack, defense, relativeFloorRatio)` with `RELATIVE_FLOOR_RATIO = 0.15` (the floor is
+  "attack power x 15%" instead of a flat 1 point). **Breaking change inside the snapshot line**: the public constant
+  `CombatFormula.ARMOR_DIVISOR` has been **removed** - the single shared divisor is replaced by per-side coefficients.
 
 ### Bug Fixes
 

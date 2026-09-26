@@ -5,7 +5,7 @@
 
 背景：v1 仿真（dice_combat_sim.py）已确证 —— 骰战在 LivingDamageEvent.Pre 用覆盖式
 写入丢弃了原版整条前置链，导致 锋利 / 暴击 / 攻击冷却 / 保护 / 抗性 全部失效。本脚本在
-「方案 A（去 getNewDamage）+ 简单暴击口径 + 冷却 + 附魔生效」的**修正公式**之上，把全部
+「方案 A（去 getNewDamage）+ 分拆暴击口径 + 冷却 + 附魔生效」的**修正公式**之上，把全部
 公式系数与整体数值做成可调旋钮，用于回答：
 
     1. 修正后修饰器是否真的生效（复检矩阵）；
@@ -68,7 +68,7 @@ BASE: Dict[str, object] = dict(
     # —— 机制开关 ——
     mitigation_mode="legacy",  # legacy = getNewDamage() 作加项；plan_a = pre-mitigation + 乘算因子
     magic_factor=False,        # 是否应用「保护 × 抗性」乘算因子（方案 A 必备）
-    crit_mode="none",          # none / simple（×1.5 作用于整个攻击点）
+    crit_mode="none",          # none / simple（整点×1.5，对照）/ split（仅原版基础段×1.5，与原版同域）
     cooldown=False,            # 是否应用攻击冷却缩放 (0.2 + s²·0.8)
     enchanted=False,           # 是否让武器附魔加伤生效
 )
@@ -81,7 +81,7 @@ PRESETS["方案A·纯落地"] = dict(
     BASE,
     mitigation_mode="plan_a",
     magic_factor=True,
-    crit_mode="simple",
+    crit_mode="split",
     cooldown=True,
     enchanted=True,
 )
@@ -100,48 +100,30 @@ PRESETS["档位B·仅校准基数"] = dict(
     mob_armor_coef=0.40,    # 0.5 → 0.40
     mob_tough_coef=1.0,     # 1.125 → 1.0
     mob_atk_base=4.0,       # 5.0 → 4.0（配合 play_base=4，使前期承伤 = 原版）
-    card_coef=1.0,          # **不压卡牌** ⇒ 用于观察「修机制 + 校基数」后的原生跨度
+    card_coef=1.0,          # **不压卡牌**
     mitigation_mode="plan_a",
     magic_factor=True,
-    crit_mode="simple",
+    crit_mode="split",
     cooldown=True,
     enchanted=True,
 )
 
-PRESETS["档位C·中度压缩（推荐）"] = dict(
+# ★ 最终采纳档：在 B 的基础上再叠「斜率凹化 + 相对下限」，**卡牌点数保持 1.0 不动**
+#   （卡牌 = 每次攻击 1~10 随机的临时性爆发加成，运气权重高 ⇒ 不参与压缩）
+PRESETS["档位C·保留卡牌基数（推荐）"] = dict(
     BASE,
     play_base=4.0,
-    play_armor_coef=0.30,
-    play_tough_coef=0.85,
+    play_armor_coef=0.30,   # 0.35 → 0.30：进一步凹化「裸装→满配」承伤斜率
+    play_tough_coef=0.85,   # 1.0 → 0.85
     mob_def_base=0.0,
     mob_armor_coef=0.40,
     mob_tough_coef=1.0,
     mob_atk_base=4.0,
-    card_coef=0.65,         # 中度压低卡牌上限（终局 3×特大 → ×0.65）
+    card_coef=1.0,             # ★ 卡牌点数**不压缩**（保留原生随机上限）
     resolve_floor_ratio=0.15,  # 下限由「绝对 1 点」改为「攻击点 ×15%」⇒ 治重甲档触底失真
     mitigation_mode="plan_a",
     magic_factor=True,
-    crit_mode="simple",
-    cooldown=True,
-    enchanted=True,
-)
-
-PRESETS["档位D·重度压缩"] = dict(
-    BASE,
-    play_base=4.0,
-    play_armor_coef=0.26,
-    play_tough_coef=0.75,
-    mob_def_base=0.0,
-    mob_armor_coef=0.40,
-    mob_tough_coef=1.0,
-    mob_atk_base=4.0,
-    card_coef=1.0,
-    bonus_softcap_threshold=7.0,   # 「骰点+卡牌」>7 起衰减（前期 3.5 完全不受影响）
-    bonus_softcap_ratio=0.45,      # 超出部分只保留 45%
-    resolve_floor_ratio=0.15,
-    mitigation_mode="plan_a",
-    magic_factor=True,
-    crit_mode="simple",
+    crit_mode="split",         # ★ 分拆口径：×1.5 只作用于原版基础段
     cooldown=True,
     enchanted=True,
 )
@@ -210,18 +192,46 @@ def resolve(attack_power: float, defense_power: float, T: Dict) -> float:
 def d_out(atk_attr: float, T: Dict, rng: random.Random, *,
           mob: Dict, cards: Sequence[str] = (), sharp: float = 0.0, cd: float = 1.0,
           crit: bool = False, full_power: bool = False, attack_mods: float = 0.0,
-          curse_fourth: bool = False, victim_factor: float = 1.0) -> Tuple[float, float]:
-    """骰战 玩家→生物 一次命中（方案 A 公式）。返回 (终值, 攻击点)。"""
-    core = atk_attr + (sharp if T["enchanted"] else 0.0)
-    attack_power = core * ((0.2 + cd * cd * 0.8) if T["cooldown"] else 1.0)
-    attack_power += attack_mods
+          curse_fourth: bool = False, victim_factor: float = 1.0,
+          crit_mode: str = None) -> Tuple[float, float]:
+    """骰战 玩家→生物 一次命中（方案 A 公式）。返回 (终值, 攻击点)。
+
+    ``crit_mode`` 覆写本组的 T 设定，用于在同一组参数下并列对照两种暴击口径。
+
+    **分拆口径（split）严格复刻原版 ``Player#attack`` 的分段**：
+
+    .. code-block:: text
+
+        f  = ATTACK_DAMAGE 终值
+        f1 = getEnchantedDamage(target, f, src) - f   # 附魔增量，作用于**未缩放**的 f
+        f *= 0.2 + s²·0.8                             # 基础段按冷却缩放
+        f1 *= s                                        # 附魔增量只乘一次 s
+        f += item.getAttackDamageBonus(...)            # 物品加伤（≈骰战攻击修饰器位）
+        if crit: f *= 1.5                              # ★ 只乘基础段（不含附魔增量）
+        f3 = f + f1                                    # 附魔增量加在暴击之后
+
+    ⇒ 骰战映射：``基础段 = 属性值×缩放 + 攻击修饰器``（吃暴击）、``附魔增量 = sharp×s``
+    （不吃暴击），骰点与卡牌作为**其后**的加项，同样不吃暴击。
+    """
+    cm = crit_mode if crit_mode is not None else T["crit_mode"]
+    cd_scale = (0.2 + cd * cd * 0.8) if T["cooldown"] else 1.0
+    if cm == "split":
+        core = atk_attr * cd_scale + attack_mods
+        if crit:
+            core *= 1.5
+        core += (sharp * cd) if T["enchanted"] else 0.0
+    else:
+        core = atk_attr + (sharp if T["enchanted"] else 0.0)
+        core *= cd_scale
+        core += attack_mods
+    attack_power = core
     bonus = (rng.randint(1, 6) * T["dice_coef"]
              + sum(roll_card(c, rng) for c in cards) * T["card_coef"])
     bonus = softcap(bonus, T)
     if curse_fourth:
         bonus *= 0.6
     attack_power += bonus
-    if crit and T["crit_mode"] == "simple":
+    if cm == "simple" and crit:      # 对照口径：整点（含骰点/卡牌）×1.5
         attack_power *= 1.5
     if full_power:
         attack_power = math.ceil(attack_power * 1.5)
@@ -337,18 +347,20 @@ def eval_conf(T: Dict, n: int, ttk_trials: int) -> Dict:
     mod_rows = []
 
     def out_case(name, **kw):
+        cm = kw.pop("crit_mode", None)
         van = vanilla_player_hit(kw.get("atk", 7.0), kw.get("sharp", 0.0), kw.get("cd", 1.0),
                                  kw.get("crit", False), Z["armor"], Z["tough"])
         dic = _mean(lambda r: d_out(kw.get("atk", 7.0), T, r, mob=Z, cards=[],
                                     sharp=kw.get("sharp", 0.0), cd=kw.get("cd", 1.0),
-                                    crit=kw.get("crit", False))[0], n, SEED + 900)
+                                    crit=kw.get("crit", False), crit_mode=cm)[0], n, SEED + 900)
         mod_rows.append({"group": "输出", "modifier": name,
                          "vanilla": van, "dice": dic})
 
     out_case("基准（钻石剑，无修饰器）")
     out_case("锋利 V（+3）", sharp=3.0)
     out_case("攻击冷却 50%", cd=0.5)
-    out_case("暴击 ×1.5", crit=True)
+    out_case("暴击 ×1.5（采纳·分拆口径）", crit=True)
+    out_case("暴击 ×1.5（对照·整点口径）", crit=True, crit_mode="simple")
 
     def in_case(name, **kw):
         van = vanilla_mob_hit(30.0, zw, zt, player_prot=kw.get("prot", 0.0),
@@ -362,12 +374,13 @@ def eval_conf(T: Dict, n: int, ttk_trials: int) -> Dict:
     in_case("保护 IV 全套（16 点）", prot=16.0)
     in_case("抗性提升 II", res=1)
 
-    base_out = mod_rows[0]["vanilla"], mod_rows[0]["dice"]
-    base_in = mod_rows[4]["vanilla"], mod_rows[4]["dice"]
+    # 基准行 = 各组第一行（输出组「基准（钻石剑，无修饰器）」/ 承伤组「基准（监守者→钻石全套）」）
+    b_out = next(r for r in mod_rows if r["group"] == "输出")
+    b_in = next(r for r in mod_rows if r["group"] == "承伤")
     for r in mod_rows:
-        bv, bd = base_out if r["group"] == "输出" else base_in
-        r["vanilla_delta_pct"] = (r["vanilla"] / bv - 1) * 100 if bv else 0.0
-        r["dice_delta_pct"] = (r["dice"] / bd - 1) * 100 if bd else 0.0
+        b = b_out if r["group"] == "输出" else b_in
+        r["vanilla_delta_pct"] = (r["vanilla"] / b["vanilla"] - 1) * 100 if b["vanilla"] else 0.0
+        r["dice_delta_pct"] = (r["dice"] / b["dice"] - 1) * 100 if b["dice"] else 0.0
 
     return {
         "out_curve": out_curve,
@@ -392,7 +405,7 @@ def main() -> None:
             "stages": [s[0] for s in STAGES],
             "out_targets": OUT_TARGETS,
             "in_sources": IN_SOURCES,
-            "note": "方案A = 去 getNewDamage + 保护/抗性乘算因子 + 简单暴击 + 冷却 + 附魔生效",
+            "note": "口径 = 方案A + 分拆暴击 + 冷却 + 附魔 + 卡牌基数不压缩 + 相对下限（终版C）",
         },
         "configs": {},
         "curves": {},

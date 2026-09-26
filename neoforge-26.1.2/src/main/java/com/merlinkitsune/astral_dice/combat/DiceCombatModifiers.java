@@ -693,10 +693,11 @@ public final class DiceCombatModifiers {
                 enhancement = diceStack.getOrDefault(ModDataComponents.WEAPON_ENHANCEMENT.get(), WeaponEnhancement.EMPTY);
             }
         }
-        // 显示口径（HUD 攻击力条）剔除手持武器；战斗口径保留属性原值（含武器）
+        // 显示口径（HUD 攻击力条）剔除手持武器；战斗口径保留属性原值（含武器 + 附魔加伤）
+        // ⚠️ 含武器口径才含附魔：附魔加伤来自武器本身 ⇒ HUD 的「不含手持武器」口径自然也不含它。
         double start = excludeHeldWeapon
                 ? attackDamageExcludingHeldWeapon(player)
-                : player.getAttributeValue(Attributes.ATTACK_DAMAGE);
+                : enchantedAttackDamage(player);
         return (int) Math.floor(attackPowerBase(player, diceStack, enhancement, start));
     }
 
@@ -721,9 +722,41 @@ public final class DiceCombatModifiers {
         return (int) Math.floor(defensePowerBase(player, enhancement));
     }
 
-    /** 攻击力基础值(属性 + 攻击修饰器链);{@link #getDisplayAttackRange} 与 {@link #attackPowerOf} 共用 */
+    /**
+     * 攻击力基础值(属性 + 攻击修饰器链，**不含附魔加伤**)。
+     *
+     * <p>用于 {@link #getDisplayAttackRange}（tooltip 区间）。该值在**客户端**求值，
+     * 而附魔加伤需要 {@code ServerLevel} 才能取到（见 {@link #enchantedAttackDamage}）
+     * ⇒ 此处刻意不含附魔，与**原版客户端 tooltip 同样不显示武器附魔加伤**的行为一致。
+     * 战斗/降神口径（含附魔）见 {@link #attackPowerOf}。
+     */
     private static double attackPowerBase(Player player, ItemStack diceStack, WeaponEnhancement enhancement) {
         return attackPowerBase(player, diceStack, enhancement, player.getAttributeValue(Attributes.ATTACK_DAMAGE));
+    }
+
+    /**
+     * 属性攻击力经**附魔加伤链**之后的**替换式**结果（2026-09-26 裁决④：附魔项加入显示口径）。
+     *
+     * <p>与结算侧 {@code DiceCombatEvents#enchantDamageDelta} 同源 —— 都用
+     * {@code EnchantmentHelper.modifyDamage}（即 {@code ServerPlayer#getEnchantedDamage} 的底层调用）。
+     * 上下文按既有显示口径近似：{@code target} / {@code source} 均取玩家自身
+     * （与 {@link #attackPowerBase} 构造 {@code ctx} 的方式同款；依赖目标类型的附魔在此自然取 0）。
+     *
+     * <p>⚠️ <b>客户端环境下恒等于无附魔的原值</b>：{@code EnchantmentHelper.modifyDamage} 需要
+     * {@code ServerLevel}（原版 API 的硬限制，客户端不存在该类）⇒ 只能返回 {@code ATTACK_DAMAGE} 原值。
+     * 影响面 = 依赖本值的 **tooltip 区间在客户端不含附魔加伤** —— 与**原版行为一致**
+     * （原版客户端 tooltip 同样不显示武器附魔加伤）。若日后要求客户端也显示，须改走 S2C 同步。
+     *
+     * <p>服务端消费点（降神快照 {@link #attackPowerOf}、骰战结算）**含**附魔加伤。
+     */
+    static double enchantedAttackDamage(Player player) {
+        double base = player.getAttributeValue(Attributes.ATTACK_DAMAGE);
+        if (!(player.level() instanceof net.minecraft.server.level.ServerLevel level)) {
+            return base;
+        }
+        return net.minecraft.world.item.enchantment.EnchantmentHelper.modifyDamage(
+                level, player.getMainHandItem(), player,
+                player.damageSources().playerAttack(player), (float) base);
     }
 
     /**

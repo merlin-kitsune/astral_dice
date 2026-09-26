@@ -24,6 +24,7 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -36,6 +37,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraft.world.item.AxeItem;
 import net.minecraft.world.item.MaceItem;
 import net.minecraft.world.item.SwordItem;
@@ -437,7 +439,18 @@ public class DiceCombatEvents {
                         player, target, event, baseDice, diceStack, enhancement,
                         triggeredBlessing, misakiBurst, misakiStar, misakiStacks);
 
-        double attackPower = player.getAttributeValue(Attributes.ATTACK_DAMAGE);
+        // === 基础段:属性攻击力 × 攻击冷却缩放(2026-09-26 裁决③:冷却一并处理) ===
+        // 原版 Player#attack 的分段(f = 属性值、f1 = 附魔增量、f2 = 攻击冷却缩放):
+        //   f1 = getEnchantedDamage(target, f, src) − f   ← 对**未缩放**的 f 求值
+        //   f *= 0.2 + f2²·0.8                            ← 基础段按冷却缩放
+        //   f1 *= f2                                       ← 附魔增量只乘一次 f2(不是 f2²)
+        //   f += item.getAttackDamageBonus(...)            ← 物品加伤
+        //   if (crit) f *= 1.5                             ← ★ 只乘基础段(附魔增量不在其中)
+        //   f3 = f + f1                                    ← 附魔增量加在暴击之后
+        // 骰战逐段照搬:基础段吃冷却与暴击;附魔增量两者都不吃;骰点与卡牌作为**其后**的加项,同样不吃暴击。
+        double rawAttackDamage = player.getAttributeValue(Attributes.ATTACK_DAMAGE);
+        float attackCooldown = player.getAttackStrengthScale(0.5F);
+        double attackPower = rawAttackDamage * (0.2 + attackCooldown * attackCooldown * 0.8);
         for (var modifier : com.merlinkitsune.astral_dice.combat.DiceCombatModifiers.attackModifiers()) {
             attackPower = modifier.apply(ctx, attackPower);
         }
@@ -458,8 +471,22 @@ public class DiceCombatEvents {
         // 佩戴七咒之戒时,骰子伤害加成(骰点 + 卡牌点数)降低 40%;手持"启示之证"攻击时,减益再降低 20%;
         // 装备"倒转之启"或"恩惠之典"时修正第四诅咒,骰子总能造成全额伤害(完全免疫七咒减益);
         // 护法立牌"爆发"效果期间同样修正第四诅咒:总能造成全额伤害
+        // === 暴击(2026-09-26 裁决②:分拆口径) ===
+        // ×1.5 **只作用于原版基础段**(属性值 × 冷却缩放 + 攻击修饰器):附魔增量、骰点、卡牌均不吃 ——
+        // 与原版 `f *= 1.5; f3 = f + f1` 同域 ⇒ 暴击的实测倍率恰为 1.5(与原版一致)。
+        if (isVanillaCriticalHit(player, target, attackCooldown)) {
+            attackPower *= 1.5;
+        }
+
+        // === 附魔加伤(2026-09-26 裁决④:附魔项加入) ===
+        // 附魔增量 = getEnchantedDamage(target, 属性值) − 属性值,随后按源码 `f1 *= f2` 乘一次冷却系数。
+        // ⚠️ Player#getEnchantedDamage 是 protected 且默认实现直接 `return damage;`(真实现落在 ServerPlayer)
+        //    ⇒ 模组调不到,只能用其底层调用 EnchantmentHelper.modifyDamage 自行复刻。
+        attackPower += enchantDamageDelta(player, target, source, rawAttackDamage) * attackCooldown;
+
         double diceAttackBonus = applyCurseToDicePoints(player, baseDice + attackCardSum);
-        // 基础伤害值(属性 + 立牌/筹码/效果攻击修饰器,不含骰点/卡牌加成):供闪避失败结算使用
+        // 基础伤害值(属性 + 附魔 + 冷却/暴击 + 立牌/筹码/效果攻击修饰器,不含骰点/卡牌加成):
+        // 供闪避失败结算使用(该路径当前恒不启用,见 PLAYER_DODGE_ENABLED)。
         double baseDamage = attackPower;
         attackPower += diceAttackBonus;
 
@@ -564,9 +591,19 @@ public class DiceCombatEvents {
                 defensePower = defenseBaseDice + ctx.defenseCardSum;
             }
 
-            finalDmg = Math.max(1, attackPower - defensePower);
+            // 骰战层:库统一口径「max(绝对下限 1 点, 攻击点 ×15%, 攻击点 − 防御点)」
+            // (2026-09-26 裁决⑥:相对下限入库 —— 修「高防+低攻档位恒定触底 ⇒ 任何修饰器读数都退化为 0」)
+            finalDmg = com.merlinkitsune.starenginelib.combat.DiceBattleResolver
+                    .resolve(attackPower, defensePower);
 
         }
+
+        // === 受击方「抗性提升 + 保护附魔」乘算因子(2026-09-26 裁决①:方案 A) ===
+        // 原版这两条通道在 LivingDamageEvent.Pre **之前**已算完,而骰战在此处覆盖式写入自算终值 ⇒
+        // 整段减免被丢弃。此处按库 VanillaMitigation 补乘回来,使两条通道在骰战下与原版等价。
+        // ⚠️ 「护甲」不在此列:它已折算进防御力(CombatFormula),再乘一次就是重复计算。
+        finalDmg *= com.merlinkitsune.starenginelib.combat.VanillaMitigation.magicAbsorbFactor(
+                resistanceAmplifierOf(target), protectionPointsOf(target, source));
 
         if (MarkManager.getLevel(target) > 0) {
             finalDmg += 1;
@@ -827,12 +864,14 @@ public class DiceCombatEvents {
     //   · 攻击方是生物 ⇒ 无玩家上下文(DiceCombatContext 要求 Player 攻击者),故不走攻击修饰器链;
     //   · **不触发骰神赐福**(赐福只能由玩家主动近战攻击触发);
     //   · 生物无骰子槽位 ⇒ 只要「玩家装备骰子」即视为对骰成立,生物恒掷 1d6,玩家掷防御骰。
-    // 攻击力 = 生物初始攻击力(敌对 5 / 中立 4 / 被动 0 / 友好 0)
-    //        + 生物自身 ATTACK_DAMAGE 属性值 + 本次伤害事件原值 + 生物骰点
+    // 攻击力 = 生物初始攻击力(敌对 4 / 中立 3 / 被动 0 / 友好 0)
+    //        + 生物自身 ATTACK_DAMAGE 属性值(经附魔链) + 生物骰点
     // 防御力 = 玩家防御力公式 + 玩家防御骰点 + 战斗牌点数
-    // 最终伤害 = max(1, 攻击力 − 防御力);随后由 ChipDamageHandler(@LOWEST)做固定值减伤(可扣到 0)。
-    // ⚠️ 「属性值 + 事件原值」两者都纳入是 2026-09-26 用户裁决(原版 Mob#doHurtTarget 下二者高度重叠,
-    //    实际量级接近 2× 属性值,属已确认取舍,非缺陷)。
+    // 最终伤害 = max(1, 攻击点 ×15%, 攻击点 − 防御力);随后由 ChipDamageHandler(@LOWEST)做固定值减伤(可扣到 0)。
+    // ⚠️ 2026-09-26 裁决①(方案 A):**移除**原先作为加项的 event.getNewDamage()。
+    //    该值取自 LivingDamageEvent.Pre(在 pre 之前的护甲 → 抗性 → 保护三步减免**之后**),
+    //    当加项用等于①护甲被计入两次、②抗性/保护经它泄漏进攻击项 —— 属结构性缺陷,非取舍。
+    //    移除后生物攻击点回归「初始 + 属性值(含武器附魔)」的干净口径,抗性/保护改由受击方乘算因子表达。
     private static void resolveMobMeleeAttack(Mob mob, Player target, LivingDamageEvent.Pre event,
                                               DamageSource source, double victimFactor) {
         if (mob.level().isClientSide() || target.level().isClientSide()) return;
@@ -861,9 +900,10 @@ public class DiceCombatEvents {
             }
         }
 
+        // 生物武器附魔:按原版 Mob#doHurtTarget —— f = modifyDamage(level, getWeaponItem(), target, source, f)
+        // (**替换式**:返回的已是「属性值 + 附魔」的合成值,而非增量)。
         double mobAttack = com.merlinkitsune.starenginelib.combat.TargetBattleStats.baseAttack(mob)
-                + mob.getAttributeValue(Attributes.ATTACK_DAMAGE)
-                + event.getNewDamage()
+                + enchantedMobAttack(mob, target, source)
                 + mobRoll;
         double playerDefense = com.merlinkitsune.starenginelib.combat.CombatFormula.playerDefense(
                 target.getArmorValue(), target.getAttributeValue(Attributes.ARMOR_TOUGHNESS))
@@ -871,6 +911,10 @@ public class DiceCombatEvents {
 
         float finalDmg = com.merlinkitsune.starenginelib.combat.DiceBattleResolver
                 .resolve(mobAttack, playerDefense);
+        // 受击方(玩家)「抗性提升 + 保护附魔」乘算因子 —— 与「玩家→生物」路径**对称**应用
+        // (2026-09-26 裁决①:两条路径必须用同一口径,不得一边丢弃、一边泄漏)。
+        finalDmg *= com.merlinkitsune.starenginelib.combat.VanillaMitigation.magicAbsorbFactor(
+                resistanceAmplifierOf(target), protectionPointsOf(target, source));
         finalDmg *= (float) victimFactor;
         event.setNewDamage(finalDmg);
         // 跳数字:与玩家攻击同一出口(登记组别,由 DamageNumberAggregator 在管线终值上取值)
@@ -879,6 +923,91 @@ public class DiceCombatEvents {
         if (opposed) {
             consumeOneDefenseCardDurability(target);
         }
+    }
+
+    // ============================================================================================
+    // 原版伤害修饰器接入(2026-09-26 裁决:方案 A + 分拆暴击 + 冷却 + 附魔 + 抗性/保护通道)
+    // ============================================================================================
+
+    /**
+     * 玩家武器附魔带来的**附加伤害增量**（原版 {@code Player#attack} 里的 {@code f1}）。
+     *
+     * <p>复刻式：{@code f1 = getEnchantedDamage(target, f, source) − f}。
+     * ⚠️ {@code Player#getEnchantedDamage} 是 {@code protected}，且其默认实现直接
+     * {@code return damage;}（真实现落在 {@code ServerPlayer}，内容就是下面这行
+     * {@code EnchantmentHelper.modifyDamage}）⇒ 模组**调不到**它，只能用同一底层调用自行复刻。
+     *
+     * @param baseDamage 未经附魔的属性攻击力原值（必须是**未做冷却缩放**的属性终值）
+     * @return 附魔增量；调用方需按源码 {@code f1 *= f2} 自行乘一次冷却系数
+     */
+    private static double enchantDamageDelta(Player attacker, Entity target, DamageSource source,
+                                             double baseDamage) {
+        if (!(attacker.level() instanceof ServerLevel level)) {
+            return 0.0;
+        }
+        float enchanted = EnchantmentHelper.modifyDamage(
+                level, attacker.getMainHandItem(), target, source, (float) baseDamage);
+        return enchanted - baseDamage;
+    }
+
+    /**
+     * 生物武器的**附魔后**攻击力（原版 {@code Mob#doHurtTarget} 的**替换式**换算）。
+     *
+     * <pre>
+     *   float f = (float)this.getAttributeValue(Attributes.ATTACK_DAMAGE);
+     *   if (this.level() instanceof ServerLevel sl) {
+     *       f = EnchantmentHelper.modifyDamage(sl, this.getWeaponItem(), entity, damagesource, f);
+     *   }
+     * </pre>
+     */
+    private static double enchantedMobAttack(Mob mob, Entity target, DamageSource source) {
+        float base = (float) mob.getAttributeValue(Attributes.ATTACK_DAMAGE);
+        if (!(mob.level() instanceof ServerLevel level)) {
+            return base;
+        }
+        return EnchantmentHelper.modifyDamage(level, mob.getWeaponItem(), target, source, base);
+    }
+
+    /**
+     * 原版暴击判定（逐条照搬 {@code Player#attack}，2026-09-26 裁决②）。
+     *
+     * <pre>
+     *   flag4 = 攻击冷却 &gt; 0.9
+     *   crit  = flag4 &amp;&amp; fallDistance &gt; 0 &amp;&amp; !onGround &amp;&amp; !onClimbable &amp;&amp; !isInWater
+     *           &amp;&amp; !hasEffect(BLINDNESS) &amp;&amp; !isPassenger
+     *           &amp;&amp; target instanceof LivingEntity &amp;&amp; !isSprinting
+     * </pre>
+     *
+     * <p>⚠️ <b>不派发</b> NeoForge 的 {@code CriticalHitEvent}：骰战已在 {@code LivingDamageEvent.Pre}
+     * 之内，派发它会让同一次攻击出现两条独立的暴击判定链（重复派发）。第三方若需修改骰战暴击，
+     * 应走 {@code registerDiceCombatFactor} 通道。
+     *
+     * @param attackCooldown 已取好的 {@code getAttackStrengthScale(0.5F)}（原版用同一个值判 {@code flag4}）
+     */
+    private static boolean isVanillaCriticalHit(Player attacker, Entity target, float attackCooldown) {
+        return attackCooldown > 0.9F
+                && attacker.fallDistance > 0.0F
+                && !attacker.onGround()
+                && !attacker.onClimbable()
+                && !attacker.isInWater()
+                && !attacker.hasEffect(MobEffects.BLINDNESS)
+                && !attacker.isPassenger()
+                && target instanceof LivingEntity
+                && !attacker.isSprinting();
+    }
+
+    /** 受击方「抗性提升」效果的 amplifier（未持有该效果时返回 {@code null}）。 */
+    private static Integer resistanceAmplifierOf(LivingEntity victim) {
+        MobEffectInstance effect = victim.getEffect(MobEffects.DAMAGE_RESISTANCE);
+        return effect == null ? null : effect.getAmplifier();
+    }
+
+    /** 受击方护甲上的**保护附魔**点数（1.21.1 为 {@code float} 重载，需 {@code ServerLevel}）。 */
+    private static float protectionPointsOf(LivingEntity victim, DamageSource source) {
+        if (!(victim.level() instanceof ServerLevel level)) {
+            return 0.0F;
+        }
+        return EnchantmentHelper.getDamageProtection(level, victim, source);
     }
 
     /** 玩家是否装备骰子(curios 骰子槽)。 */
