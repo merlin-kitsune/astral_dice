@@ -1426,6 +1426,23 @@ public class ModRecipeProvider extends RecipeProvider {
                 .define('D', ModItems.AMETHYST_DICE.get())
                 .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
                 .save(output);
+
+        // 机械师立牌(megas,传奇):紫晶骰子 + 黄金星盘档。RPR/MEM/DID
+        // (R=红石块、P=黄金星盘、M=铁块、E=空白立牌、D=紫晶骰子、I=发射器;空白立牌置中、骰子固定中下)
+        // 工业/机械主题(轨道轰炸 = 从天而降的火力支援)。本配方六个填料的格位与全部其它立牌均不复用,
+        // 材料多重集亦不同 ⇒ 网格全局唯一(守门:scripts/verify/verify_crafting_recipe_uniqueness.ps1)。
+        ShapedRecipeBuilder.shaped(items, RecipeCategory.MISC, ModItems.MEGAS_SIGN.get())
+                .pattern("RPR")
+                .pattern("MEM")
+                .pattern("DID")
+                .define('E', ModItems.BLANK_SIGN.get())
+                .define('R', Items.REDSTONE_BLOCK)
+                .define('P', ModItems.GOLDEN_STAR_PLATE.get())
+                .define('M', Items.IRON_BLOCK)
+                .define('D', ModItems.AMETHYST_DICE.get())
+                .define('I', Items.DISPENSER)
+                .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
+                .save(output);
         // 符卡-福 / 符卡-祸:**无配方**（专属牌,仅由风水师立牌的被动「福祸相倚」与主动「白泽赐福」
         // 及「心意相连」发放,与活体书页/命运的指引等专属牌同一口径:不进随机池、不进合成表）。
     }

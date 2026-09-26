@@ -993,6 +993,16 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(AstralRarities.bizarre())));
 
+    // 机械师立牌(命名:megas,传奇):被动「物资补充」(手牌<6 张时每 1:00 自动获得 1 张随机卡牌)
+    // + 主动「轨道轰炸」(指定 1 个敌对目标,消耗物品栏全部手牌,对目标及其周围 12 格范围轰炸;
+    // 每 2 张卡 +1 次轰炸(上限 10 次),单次命中随机 1 怪 +2 点基础伤害 + 每张战斗牌费用×2;
+    // 技能伤害无视防御(真伤);消耗 ≥6 张触发「精准打击」,每命中 +1 层,每层使目标受轰炸伤害 +1、永久到死亡)。
+    // 传奇品质 = ASTRAL_DICE_LEGENDARY。
+    public static final RegistryObject<Item> MEGAS_SIGN = registerItem("megas_sign",
+            () -> new com.merlinkitsune.astral_dice.item.sign.MegasSignItem(new Item.Properties()
+                    .stacksTo(1)
+                    .rarity(AstralRarities.legendary())));
+
     // 符卡-福(风水师立牌专属效果牌,**稀有**=RARE;用户 2026-09-21 裁决,原为传奇 UNCOMMON):
     // 目标选择器(任意玩家或自身)⇒ 目标治疗 2 点 + 本出牌轮出牌数 +1;
     // 专属绑定(仅获得者可用)。命名按用户裁决保持卡牌自身命名(fu_card)。

@@ -1,0 +1,33 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "D": {
+      "item": "astral_dice:amethyst_dice"
+    },
+    "E": {
+      "item": "astral_dice:blank_sign"
+    },
+    "I": {
+      "item": "minecraft:dispenser"
+    },
+    "M": {
+      "item": "minecraft:iron_block"
+    },
+    "P": {
+      "item": "astral_dice:golden_star_plate"
+    },
+    "R": {
+      "item": "minecraft:redstone_block"
+    }
+  },
+  "pattern": [
+    "RPR",
+    "MEM",
+    "DID"
+  ],
+  "result": {
+    "count": 1,
+    "id": "astral_dice:megas_sign"
+  }
+}

@@ -91,6 +91,7 @@ public class ModCreativeTabs {
                 output.accept(ModItems.LULU_SIGN.get());
                 output.accept(ModItems.PADMAN_SIGN.get());
                 output.accept(ModItems.PANDAMAN_SIGN.get());
+                output.accept(ModItems.NARDIS_SIGN.get());
                 // 史诗 EPIC
                 output.accept(ModItems.KOMACHI_SIGN.get());
                 output.accept(ModItems.FANNY_SIGN.get());
@@ -104,6 +105,12 @@ public class ModCreativeTabs {
                 output.accept(ModItems.RIN_SIGN.get());
                 output.accept(ModItems.BONNIE_SIGN.get());
                 output.accept(ModItems.FEN_SIGN.get());
+                output.accept(ModItems.ZHAO_SIGN.get());
+                output.accept(ModItems.TERU_SIGN.get());
+                output.accept(ModItems.MAMUSHI_SIGN.get());
+                output.accept(ModItems.SHERRY_SIGN.get());
+                output.accept(ModItems.HANNA_SIGN.get());
+                output.accept(ModItems.MEGAS_SIGN.get());
                 // 筹码
                 // === 星光类 ===
                 output.accept(ModItems.FLASHLIGHT_CHIP.get());
