@@ -8,11 +8,13 @@
 
 ### New Content
 
-- **Megas Sign (Legendary)**: active **"Orbital Bombardment"** — designate one hostile target, then immediately consume every card in the inventory and call down an orbital bombardment on that target and a 12-block area around it. Every 2 cards consumed adds 1 bombardment (up to 10); each bombardment hits 1 random monster in the area for 2 base damage, plus extra damage equal to the total cost of the battle cards consumed ×2. Passive **"Resupply"**: whenever there are fewer than 6 cards in the inventory, gain 1 random card every 1:00. Consuming 6 or more cards in a single cast triggers **"Precision Strike"**, which permanently raises the orbital bombardment damage that target takes by +1 per stack, until it dies.
+- **Megas Sign (Legendary)**: active **"Orbital Bombardment"** — designate one hostile target, then immediately consume every card in the inventory and call down an orbital bombardment on that target and a 12-block area around it. Every 2 cards consumed adds 1 bombardment (up to 10); each bombardment hits 1 random monster in the area for 2 base damage, plus extra damage equal to the total cost of the battle cards consumed. Passive **"Resupply"**: whenever there are fewer than 6 cards in the inventory, gain 1 random card every 1:00. Consuming 6 or more cards in a single cast triggers **"Precision Strike"**, which permanently raises the orbital bombardment damage that target takes by +1 per stack, until it dies.
 
 <!-- 新内容在此登记 -->
 
 ### Content & Balance
+
+- **Megas Sign "Orbital Bombardment"**: the battle-card cost bonus is now **1 damage per 1 cost** (was 2 damage per 1 cost), and the target-selector radius is **32** blocks (was 16).
 
 <!-- 内容与平衡性调整在此登记 -->
 

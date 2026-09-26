@@ -77,8 +77,13 @@ public final class OrbitalBombardmentManager {
     /** 触发「精准打击」所需的最小消耗卡牌数。 */
     public static final int PRECISION_THRESHOLD = 6;
 
-    /** 触发「精准打击」时，每消耗 1 张战斗牌额外加的伤害倍数（费用 × 该倍数）。 */
-    public static final int COST_DAMAGE_MULTIPLIER = 2;
+    /**
+     * 每消耗 1 张战斗牌，该次轰炸额外加的伤害倍数（费用 × 该倍数）。
+     *
+     * <p>2026-09-27 用户平衡性调整：**2 → 1**（1 费 = 1 伤害）。
+     * ⚠️ 旧注释误写为「触发精准打击时」—— 本加成与精准打击无关，一直是**按消耗的战斗牌费用**结算。
+     */
+    public static final int COST_DAMAGE_MULTIPLIER = 1;
 
     /** 火流星配色：头部白热黄（核心）。 */
     private static final Vector3f FIRE_HEAD = new Vector3f(1.00F, 0.94F, 0.66F);

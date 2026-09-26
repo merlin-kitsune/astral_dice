@@ -1,6 +1,6 @@
 {
   "case_id": "MEGAS-COST-26.1.2",
-  "title": "机械师立牌(megas)「每消耗 1 张战斗牌 + 该牌费用 x2」取证：4 张战斗牌(attack_card_medium, 费用 1) => 次数 2、单轮 2+(1x4)x2=10、总伤害 20 => 靶 500->480。与 MEGAS-ACTIVE 相位 B（同卡数、效果牌 per=2、总伤害 4）构成对照 => 差值 16 全部来自费用加成。",
+  "title": "机械师立牌(megas)「每消耗 1 张战斗牌 + 该牌费用 x1」取证：4 张战斗牌(attack_card_medium, 费用 1) => 次数 2、单轮 2+(1x4)x1=4、总伤害 12 => 靶 500->488。与 MEGAS-ACTIVE 相位 B（同卡数、效果牌 per=2、总伤害 4）构成对照 => 差值 8 全部来自费用加成。",
   "version": "26.1.2",
   "target": {
     "type": "new",
@@ -59,7 +59,7 @@
     },
     {
       "op": "note",
-      "text": "战斗牌费用加成：4 张 attack_card_medium(费用 1，属战斗牌) =>\n  strikes=min(4/2,10)=2；per=2 + (1x4)x2=2+8=10；无精准打击(4<6) => 总伤害 2x10=20 => 靶 500->480。\n  与 MEGAS-ACTIVE 的相位 B（效果牌 per=2）形成同卡数对照 => 差值 16 全部来自费用 x2。\n  WARN 4 张(<6)刻意不触发精准打击，避免层数把费用口径搅在一起。"
+      "text": "战斗牌费用加成：4 张 attack_card_medium(费用 1，属战斗牌) =>\n  strikes=min(4/2,10)=2；per=2 + (1x4)x2=2+8=10；无精准打击(4<6) => 总伤害 2x10=20 => 靶 500->488。\n  与 MEGAS-ACTIVE 的相位 B（效果牌 per=2）形成同卡数对照 => 差值 8 全部来自费用 x1。\n  WARN 4 张(<6)刻意不触发精准打击，避免层数把费用口径搅在一起。"
     },
     {
       "op": "inject_command",
@@ -156,7 +156,7 @@
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_C3_MEGAS:phase=AFTER:[^\\n]*:hand=0:[^\\n]*:dummy=480/500:"
+      "pattern": "AP_C3_MEGAS:phase=AFTER:[^\\n]*:hand=0:[^\\n]*:dummy=488/500:"
     },
     {
       "type": "absent",

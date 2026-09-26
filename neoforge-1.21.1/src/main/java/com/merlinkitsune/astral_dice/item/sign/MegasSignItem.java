@@ -56,6 +56,15 @@ public class MegasSignItem extends BaseSignItem {
     /** 被动「物资补充」的触发阈值：手牌数**小于**该值时才会补充。 */
     public static final int RESUPPLY_MAX_CARDS = 6;
 
+    /**
+     * 主动「轨道轰炸」的目标选择器半径（格）。
+     *
+     * <p>2026-09-27 用户平衡性调整：**16 → 32**（前置库契约上限即 32，
+     * {@code TargetSelectionManager} 会按 {@code MAX_SELECT_RADIUS} 夹取）。
+     * 客户端半径由服务端随 StartPayload 下发 ⇒ 覆写本值即三侧一致。
+     */
+    public static final double SELECTOR_RADIUS = 32.0D;
+
     /** 主动「轨道轰炸」的激活门槛：物品栏手牌数**至少**该值才能发起。 */
     public static final int MIN_CARDS_TO_ACTIVATE = 2;
 
@@ -69,6 +78,11 @@ public class MegasSignItem extends BaseSignItem {
             @Override
             public TargetType targetType() {
                 return TargetType.ENEMY;
+            }
+
+            @Override
+            public double radius() {
+                return SELECTOR_RADIUS;
             }
 
             @Override
