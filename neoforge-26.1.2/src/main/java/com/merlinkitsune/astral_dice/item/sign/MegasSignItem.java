@@ -57,6 +57,9 @@ public class MegasSignItem extends BaseSignItem {
     /** 被动「物资补充」的触发阈值：手牌数**小于**该值时才会补充。 */
     public static final int RESUPPLY_MAX_CARDS = 6;
 
+    /** 主动「轨道轰炸」的激活门槛：物品栏手牌数**至少**该值才能发起。 */
+    public static final int MIN_CARDS_TO_ACTIVATE = 2;
+
     static {
         TargetSelectionRegistry.register(new TargetSelectionAction() {
             @Override
@@ -108,6 +111,23 @@ public class MegasSignItem extends BaseSignItem {
         super.clearSignData(player, stack);
         // 卸下立牌：被动计时基准归零
         ModAttachments.setMegasResupplyNextTick(player, 0L);
+    }
+
+    /**
+     * 前置门控（{@code BaseSignItem#performSkill} 第 2.4 步）：手牌不足 {@value #MIN_CARDS_TO_ACTIVATE} 张时**直接拒绝**。
+     *
+     * <p>2026-09-27 用户裁决：原实现把「手牌不足」校验放在 {@code TargetSelectionAction#apply} 里 ⇒
+     * 玩家**先进入目标选择界面、确认目标之后**才被告知不足 ⇒ 程序顺序颠倒。现提前到门控：
+     * 不足即发**红色**提示并返回 false（不开选择会话、不发牌、不写冷却/锁定、不充能）。
+     *
+     * @return true = 允许开启选择会话
+     */
+    @Override
+    protected boolean canBeginSelectorSession(Player player) {
+        if (countHandCards(player) >= MIN_CARDS_TO_ACTIVATE) return true;
+        sendSignActionBarColored(player, net.minecraft.ChatFormatting.RED,
+                "msg.astral_dice.megas_not_enough_cards");
+        return false;
     }
 
     /** 发送「请选择敌对目标」提示。 */
@@ -195,8 +215,10 @@ public class MegasSignItem extends BaseSignItem {
         }
 
         // 至少 2 张卡牌才能激活
-        if (totalCards < 2) {
-            sendSignActionBar(player, "msg.astral_dice.megas_not_enough_cards");
+        if (totalCards < MIN_CARDS_TO_ACTIVATE) {
+            // 兜底(正常已被前置门控 canBeginSelectorSession 拦下):同样走**红色**阻止色。
+            sendSignActionBarColored(player, net.minecraft.ChatFormatting.RED,
+                    "msg.astral_dice.megas_not_enough_cards");
             return false;
         }
 

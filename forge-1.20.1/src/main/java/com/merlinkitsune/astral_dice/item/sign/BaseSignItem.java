@@ -244,6 +244,24 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
                         GameplayConstants.ACTIONBAR_DURATION_TICKS));
     }
 
+
+    /**
+     * 发一条 actionbar 提示（**显式颜色**）。
+     *
+     * <p>2026-09-27 用户裁决：**拒绝 / 阻止类**提示必须为**红色**。原 {@link #sendSignActionBar}
+     * 固定 {@code YELLOW}；且若文案自带 {@code §e…§7}，收尾的 {@code §7} 会把后半句重置成灰色 ⇒
+     * 出现「前半黄、后半灰」的**断层**（实测：机械师立牌「手牌不足」提示）。
+     * ⇒ 带色版本 + 文案**不带任何 {@code §} 码**，整条由外层颜色统一控制。
+     */
+    protected static void sendSignActionBarColored(Player player, net.minecraft.ChatFormatting color, String langKey, Object... args) {
+        if (!(player instanceof net.minecraft.server.level.ServerPlayer serverPlayer)) return;
+        net.minecraft.network.chat.Component msg =
+                net.minecraft.network.chat.Component.translatable(langKey, args).withStyle(color);
+        ModNetwork.sendToPlayer(serverPlayer,
+                new ModNetwork.ActionBarMessage(msg,
+                        GameplayConstants.ACTIONBAR_DURATION_TICKS));
+    }
+
     // 服务端发送立牌技能反馈(actionbar 提示,带立牌名称前缀;统一由服务端判定成功/拒绝,避免客户端推测混淆)
     private static void notifyActionBar(Player player, String langKey, net.minecraft.network.chat.Component signName, ChatFormatting color) {
         if (!(player instanceof net.minecraft.server.level.ServerPlayer serverPlayer)) return;
