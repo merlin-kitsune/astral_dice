@@ -2,29 +2,26 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
-    "D": {
-      "item": "astral_dice:amethyst_dice"
-    },
-    "E": {
-      "item": "astral_dice:blank_sign"
-    },
-    "I": {
+    "F": {
       "item": "minecraft:dispenser"
     },
-    "M": {
-      "item": "minecraft:iron_block"
-    },
-    "P": {
+    "G": {
       "item": "astral_dice:golden_star_plate"
     },
-    "R": {
-      "item": "minecraft:redstone_block"
+    "L": {
+      "item": "astral_dice:blank_sign"
+    },
+    "S": {
+      "item": "minecraft:beacon"
+    },
+    "X": {
+      "item": "minecraft:netherite_block"
     }
   },
   "pattern": [
-    "RPR",
-    "MEM",
-    "DID"
+    "SFS",
+    "XLX",
+    "GGG"
   ],
   "result": {
     "item": "astral_dice:megas_sign"
