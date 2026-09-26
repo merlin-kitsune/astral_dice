@@ -52,6 +52,14 @@
 //    不改任何玩法状态；副作用只有：两条覆盖层文字、清空客户端聊天显示、写 PNG 到 screenshots/。
 // ════════════════════════════════════════════════════════════════════════════
 
+// ⚠️⚠️ 总开关（2026-09-27 加入，**默认 false**）：
+//   本探针在「选择器 1→0」边沿会调 `ActionBarManager.show` **往 actionbar 注入两条对照消息**
+//   （见 `cdiagInjectRefs`），那会覆盖产品刚写下的瞬态提示 —— 属于「用调试文本占用 actionbar」，
+//   在常规冒烟测试里既污染玩家可见界面，也让「产品文案是否正确」的观察失真。
+//   ⇒ 默认关闭。需要诊断 actionbar 时把它改成 true 并**重新 launch**
+//     （KubeJS 客户端脚本在游戏启动时加载，不热重载）。
+var CDIAG_ENABLE = false;
+
 var Mc_CLASS = Java.loadClass("net.minecraft.client.Minecraft");
 var Component_CLASS = Java.loadClass("net.minecraft.network.chat.Component");
 var TSC_CLASS = Java.loadClass("com.merlinkitsune.astral_dice.client.TargetSelectionClient");
@@ -147,6 +155,7 @@ function cdiagAbDur() {
 }
 
 ClientEvents.tick(event => {
+    if (!CDIAG_ENABLE) return;   // 默认关闭：见文件顶部总开关说明
     cdiagTick++;
     var mc = null;
     try { mc = Mc_CLASS.getInstance(); } catch (e0) { return; }

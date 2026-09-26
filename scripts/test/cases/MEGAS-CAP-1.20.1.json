@@ -10,7 +10,7 @@
   "steps": [
     {
       "op": "note",
-      "text": "目的：机械师立牌(megas)「轨道轰炸 / 物资补充 / 精准打击」游戏内取证。\n本用例组由探针 megas* 系列驱动，**只调产品公开函数**（MegasSignItem / OrbitalBombardmentManager / PrecisionStrikeEffect / ModAttachments），断言锚定 latest.log 的 AP_<tag>_MEGAS 机器行。\n\n**期望值均按产品常量独立推算**（不读产品的中间量）：RADIUS=12、BASE_DAMAGE=2、MAX_STRIKES=10、\nPRECISION_THRESHOLD=6、COST_DAMAGE_MULTIPLIER=2、STRIKE_INTERVAL=20t、FALL=12t、合计单轮约 32t；\n主动冷却 120s=2400t；被动间隔 1200t、阈值 6 张。\n  次数 strikes = min(floor(消耗卡牌数 / 2), 10)；\n  单轮伤害 = BASE(2) + 战斗牌费用总和 x2；若有「精准打击」则该轮再 + 当前层数；\n  总伤害 = strikes x per + (precision ? strikes x (strikes+1)/2 : 0)。\n\n**场景控制**：doMobSpawning false（仅本用例内，末尾恢复）避免自然刷怪混入目标池；\n探针读数里的 near（指定靶 12 格内存活实体数）恒应为 1 —— 若被污染则**响亮失败**，\n不把伤害平摊当成功。\n\nWARN 冷却写在 TargetSelectionAction#apply 内 => 只有 megascast confirm 档能验冷却；\nWARN 轰炸异步（每轮 20t 间隔 + 12t 下落）=> 伤害/层数必须在用例侧 wait 之后读。"
+      "text": "目的：机械师立牌(megas)「轨道轰炸 / 物资补充 / 精准打击」游戏内取证。\n本用例组由探针 megas* 系列驱动，**只调产品公开函数**（MegasSignItem / OrbitalBombardmentManager / PrecisionStrikeEffect / ModAttachments），断言锚定 latest.log 的 AP_<tag>_MEGAS 机器行。\n\n**期望值均按产品常量独立推算**（不读产品的中间量）：RADIUS=12、BASE_DAMAGE=2、MAX_STRIKES=10、\nPRECISION_THRESHOLD=6、COST_DAMAGE_MULTIPLIER=1、STRIKE_INTERVAL=10t、FALL=8t、合计单轮约 18t；\n主动冷却 120s=2400t；被动间隔 1200t、阈值 6 张。\n  次数 strikes = min(floor(消耗卡牌数 / 2), 10)；\n  单轮伤害 = BASE(2) + 战斗牌费用总和 x1；若有「精准打击」则该轮再 + 当前层数；\n  总伤害 = strikes x per + (precision ? strikes x (strikes+1)/2 : 0)。\n\n**场景控制**：doMobSpawning false（仅本用例内，末尾恢复）避免自然刷怪混入目标池；\n探针读数里的 near（指定靶 12 格内存活实体数）恒应为 1 —— 若被污染则**响亮失败**，\n不把伤害平摊当成功。\n\nWARN 冷却写在 TargetSelectionAction#apply 内 => 只有 megascast confirm 档能验冷却；\nWARN 轰炸异步（每轮 10t 间隔 + 8t 下落）=> 伤害/层数必须在用例侧 wait 之后读。"
     },
     {
       "op": "inject_command",
@@ -59,7 +59,7 @@
     },
     {
       "op": "note",
-      "text": "次数上限：30 张效果牌 => 未封顶值 floor(30/2)=15 > 上限 10 => strikes=10；\n  per=2(效果牌无费用)；30>=6 => 触发精准打击 => 总伤害 = 10x2 + (1+...+10) = 20+55 = 75 => 靶 500->425。\n  时长 = 9x32t + 12t = 300t = 15s => 等待 20s 后读数。\n  WARN 该相位同时验证「上限 10」与「高卡数下精准打击层数封顶于 strikes(=10)」。"
+      "text": "次数上限：30 张效果牌 => 未封顶值 floor(30/2)=15 > 上限 10 => strikes=10；\n  per=2(效果牌无费用)；30>=6 => 触发精准打击 => 总伤害 = 10x2 + (1+...+10) = 20+55 = 75 => 靶 500->425。\n  时长 = 9x10t + 8t = 98t = 4.9s => 等待 20s 后读数（充裕）。\n  WARN 该相位同时验证「上限 10」与「高卡数下精准打击层数封顶于 strikes(=10)」。"
     },
     {
       "op": "inject_command",

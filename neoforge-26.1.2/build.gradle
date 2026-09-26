@@ -98,9 +98,18 @@ neoForge {
             client()
 
             // 自动化测试:gradlew runClient -Pquickplay=<世界名> 直接进入指定单机世界
+            // ⚠️⚠️ 26.1.2 必须用 `--quickPlaySingleplayer=<世界名>`（**等号**连接）：
+            //   MC 26.1.2 的 `net.minecraft.client.main.Main` 把该选项声明为
+            //     `parser.accepts("quickPlaySingleplayer").withOptionalArg()`
+            //   （1.21.1 实测是 `.withRequiredArg()`；26.1.2 的 sources jar 实测为 optional）
+            //   ⇒ JOptSimple 对「可选参数」不会吞掉下一个 token，写成
+            //     `--quickPlaySingleplayer testworld`（空格分隔）时 `testworld` 被当成
+            //     positional arg 丢弃 ⇒ **quickplay 静默失效**、客户端停在主菜单。
+            //   症状：工具链 `MT_MARK: 26.1.2 phase=launch — TIMEOUT`（180s 内没进世界），
+            //         而 latest.log 里连一行 quickplay / "main menu to in-game" 都没有。
+            //   2026-09-27 定位并修复（此前 26.1.2 从未真正进过世界）。
             if (project.hasProperty('quickplay')) {
-                programArgument '--quickPlaySingleplayer'
-                programArgument project.findProperty('quickplay')
+                programArguments.add("--quickPlaySingleplayer=${project.findProperty('quickplay')}")
             }
 
             // 自动化测试:固定游戏窗口尺寸 1920x1080(便于 OCR 读取画面与屏幕坐标换算)
