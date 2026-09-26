@@ -38,12 +38,13 @@ import java.util.concurrent.ThreadLocalRandom;
  *       该次轰炸 + 该牌费用 ×2（战斗牌费用总和一次性算好，加到每次轰炸上）；</li>
  *   <li><b>真伤</b>：{@code skill_damage}（无视护甲、不进法伤链、击杀归属施法者）；</li>
  *   <li><b>命中顺序</b>：首次轰炸必命中指定目标，之后随机；</li>
- *   <li><b>间隔</b>：相邻两次轰炸间隔 {@value #STRIKE_INTERVAL_TICKS} tick（1 秒）；</li>
+ *   <li><b>间隔</b>：相邻两次轰炸的**发射**间隔 {@value #STRIKE_INTERVAL_TICKS} tick（0.5 秒）；</li>
  *   <li><b>偏好</b>：随机优先高威胁目标（精英/Boss + 血量降序加权），但保留低概率命中低威胁；</li>
  *   <li><b>无目标</b>：范围内无存活目标 ⇒ 丢弃剩余轰炸次数；</li>
  *   <li><b>精准打击</b>：消耗 ≥6 张卡牌时触发，每次命中给目标 +1 层（层数 = 被轰炸次数）；</li>
- *   <li><b>FX</b>：白色发光粒子团从目标头顶高处下落（追踪目标实时位置，下落 {@value #FALL_TICKS} tick
- *       = 0.6 秒），落地 TNT 级爆炸特效（纯视觉，不破坏方块）。</li>
+ *   <li><b>FX</b>：**火流星**（头白热 / 尾暗橙红 + 原版火焰拖尾）从目标上方
+ *       {@value #FALL_HEIGHT} 格下落，追踪目标实时位置，下落 {@value #FALL_TICKS} tick（0.4 秒），
+ *       落点为**目标脚下的地面**（非头顶），落地 TNT 级爆炸特效 + 熔岩爆燃（纯视觉，不破坏方块）。</li>
  * </ul>
  *
  * <p><b>平台差异（与 1.21.1 逐字等价）</b>：本线用 {@code TickEvent.ServerTickEvent} +
@@ -61,11 +62,17 @@ public final class OrbitalBombardmentManager {
     /** 轰炸次数上限。 */
     public static final int MAX_STRIKES = 10;
 
-    /** 相邻两次轰炸的间隔（tick）＝ 1 秒。 */
-    public static final int STRIKE_INTERVAL_TICKS = 20;
+    /**
+     * 相邻两次轰炸的**发射**间隔（tick）＝ 0.5 秒。
+     *
+     * <p>2026-09-27 用户裁决：原 1 秒「间隔太长」⇒ 缩短到 0.5 秒。计时口径为
+     * **本轮开始下落 → 下一轮开始下落**（{@link Job#strikeStartAt} + 本值），
+     * 而不是「落地 → 下一轮开始」，否则一轮周期会被下落耗时额外拉长。
+     */
+    public static final int STRIKE_INTERVAL_TICKS = 10;
 
-    /** 粒子团下落耗时（tick）＝ 0.6 秒。 */
-    public static final int FALL_TICKS = 12;
+    /** 粒子团下落耗时（tick）＝ 0.4 秒（2026-09-27 用户裁决：0.6 秒 → 0.4 秒）。 */
+    public static final int FALL_TICKS = 8;
 
     /** 触发「精准打击」所需的最小消耗卡牌数。 */
     public static final int PRECISION_THRESHOLD = 6;
@@ -73,11 +80,13 @@ public final class OrbitalBombardmentManager {
     /** 触发「精准打击」时，每消耗 1 张战斗牌额外加的伤害倍数（费用 × 该倍数）。 */
     public static final int COST_DAMAGE_MULTIPLIER = 2;
 
-    /** 白色发光粒子团颜色（纯白）。 */
-    private static final Vector3f WHITE = new Vector3f(1.0F, 1.0F, 1.0F);
+    /** 火流星配色：头部白热黄（核心）。 */
+    private static final Vector3f FIRE_HEAD = new Vector3f(1.00F, 0.94F, 0.66F);
 
-    /** 发光粒子团 scale（头部大小的观感由多颗聚集 + 大 scale 模拟）。 */
-    private static final float DUST_SCALE = 1.6F;
+    /** 火流星配色：尾部暗橙红（余烬拖尾）。 */
+    private static final Vector3f FIRE_TAIL = new Vector3f(0.86F, 0.24F, 0.05F);
+
+    // scale 见 DUST_SCALE_HEAD / DUST_SCALE_TAIL（火流星：头大尾小）。
 
     /** 拖尾间距 / 每步粒数（取自飞星同款观感）。 */
     private static final double TRAIL_SPACING = 0.45D;
@@ -86,8 +95,36 @@ public final class OrbitalBombardmentManager {
     /** 落地爆闪的发光粒子数。 */
     private static final int IMPACT_BURST_PARTICLES = 16;
 
-    /** 粒子团起始高度（目标头顶正上方，格）。 */
-    private static final double FALL_HEIGHT = 6.0D;
+    /** 每 tick 贴在弹体上的原版火焰粒数（火流星「燃烧」观感）。 */
+    private static final int FLAME_PER_TICK = 4;
+
+    /** 落地熔岩爆燃粒数（火流星砸地的灼烧感）。 */
+    private static final int IMPACT_LAVA_PARTICLES = 14;
+
+    /** 落地火焰余烬粒数。 */
+    private static final int IMPACT_FLAME_PARTICLES = 40;
+
+    /** 弹体 scale：头部（白热核）到尾部（余烬）由大到小。 */
+    private static final float DUST_SCALE_HEAD = 1.9F;
+    private static final float DUST_SCALE_TAIL = 0.9F;
+
+    /**
+     * 粒子团起始高度（目标正上方，格）。
+     *
+     * <p>2026-09-27 用户裁决：原 6 格「发射高度太低」⇒ 至少翻倍，取 12.0（= 原 2 倍）。
+     */
+    private static final double FALL_HEIGHT = 12.0D;
+
+    /**
+     * 落点地面扫描深度（格）：自目标脚底向下最多扫这么多格找可站立面。
+     *
+     * <p>2026-09-27 用户裁决：轰炸「并没有落到地面，而是跟飞星一样只砸到头顶就爆了」
+     * ⇒ 落点改为**目标脚下的地面**（见 {@link #impactPoint}）。
+     */
+    private static final int GROUND_SCAN_DEPTH = 16;
+
+    /** 取目标脚底格时的向上容差（目标恰好停在整数高度时不至于把脚底格算成空气）。 */
+    private static final double GROUND_EPSILON = 0.001D;
 
     /** 安全上界：单次下落最长存活（tick），超时丢弃（防目标瞬移导致永久滞留）。 */
     private static final long MAX_AGE_TICKS = 200L;
@@ -162,6 +199,7 @@ public final class OrbitalBombardmentManager {
             if (target == null || !target.isAlive() || target.isRemoved()) {
                 return;
             }
+            job.strikeStartAt = now;
             job.falling = new FallState(target, launchOrigin(target));
         }
 
@@ -169,7 +207,7 @@ public final class OrbitalBombardmentManager {
         if (!stillValid(fall.target, job.level)) {
             job.falling = null;
             job.completed++;
-            job.nextStrikeAt = job.level.getGameTime() + STRIKE_INTERVAL_TICKS;
+            job.nextStrikeAt = job.strikeStartAt + STRIKE_INTERVAL_TICKS;
             JOBS.add(job);
             return;
         }
@@ -178,12 +216,12 @@ public final class OrbitalBombardmentManager {
         if (fall.elapsed > MAX_AGE_TICKS) {
             job.falling = null;
             job.completed++;
-            job.nextStrikeAt = job.level.getGameTime() + STRIKE_INTERVAL_TICKS;
+            job.nextStrikeAt = job.strikeStartAt + STRIKE_INTERVAL_TICKS;
             JOBS.add(job);
             return;
         }
 
-        Vec3 dest = impactPoint(fall.target);
+        Vec3 dest = impactPoint(job.level, fall.target);
         double progress = Math.min(1.0D, (double) fall.elapsed / (double) FALL_TICKS);
         Vec3 prev = fall.pos;
         Vec3 next = fall.origin.lerp(dest, progress);
@@ -195,7 +233,7 @@ public final class OrbitalBombardmentManager {
             impact(job, fall.target, dest);
             job.falling = null;
             job.completed++;
-            job.nextStrikeAt = job.level.getGameTime() + STRIKE_INTERVAL_TICKS;
+            job.nextStrikeAt = job.strikeStartAt + STRIKE_INTERVAL_TICKS;
         }
         JOBS.add(job);
     }
@@ -243,36 +281,70 @@ public final class OrbitalBombardmentManager {
         return new Vec3(feet.x, feet.y + target.getBbHeight() + FALL_HEIGHT, feet.z);
     }
 
-    private static Vec3 impactPoint(LivingEntity target) {
-        AABB bb = target.getBoundingBox();
-        return new Vec3((bb.minX + bb.maxX) * 0.5D, bb.maxY, (bb.minZ + bb.maxZ) * 0.5D);
+    /**
+     * 落体终点 = **目标脚下的地面**（不再是目标头顶）。
+     *
+     * <p>2026-09-27 用户裁决：「轰炸并没有落到地面，而是跟飞星一样只砸到头顶就爆了」
+     * ⇒ 落点取目标所在列**最近的可站立面顶面**；目标悬空（飞行怪 / 半空）时继续下落到
+     * 真正的地面。伤害目标仍是 {@code target} 本身，与落点位置解耦。
+     */
+    private static Vec3 impactPoint(net.minecraft.server.level.ServerLevel level, LivingEntity target) {
+        return new Vec3(target.getX(), groundSurfaceY(level, target), target.getZ());
+    }
+
+    /** 目标脚下最近的可站立面顶面 Y；整列无可站立面（虚空/悬空）时退回目标脚底 Y。 */
+    private static double groundSurfaceY(net.minecraft.server.level.ServerLevel level, LivingEntity target) {
+        int bx = net.minecraft.util.Mth.floor(target.getX());
+        int bz = net.minecraft.util.Mth.floor(target.getZ());
+        int startY = net.minecraft.util.Mth.floor(target.getY() + GROUND_EPSILON);
+        net.minecraft.core.BlockPos.MutableBlockPos pos = new net.minecraft.core.BlockPos.MutableBlockPos();
+        for (int y = startY; y >= startY - GROUND_SCAN_DEPTH; y--) {
+            pos.set(bx, y, bz);
+            net.minecraft.world.level.block.state.BlockState state = level.getBlockState(pos);
+            if (!state.isAir() && state.blocksMotion()) {
+                return (double) y + 1.0D;
+            }
+        }
+        return target.getY();
     }
 
     private static boolean stillValid(LivingEntity target, ServerLevel level) {
         return target != null && !target.isRemoved() && target.isAlive() && target.level() == level;
     }
 
-    private static GlowingDustOptions dust() {
-        return new GlowingDustOptions(WHITE, DUST_SCALE);
+    /** 火流星粒子（颜色随「尾 → 头」在 {@link #FIRE_TAIL} 与 {@link #FIRE_HEAD} 间插值）。 */
+    private static GlowingDustOptions dust(Vector3f color, float scale) {
+        return new GlowingDustOptions(color, scale);
     }
 
     private static void emitTrail(Job job, Vec3 from, Vec3 to) {
         double length = from.distanceTo(to);
         int steps = Math.max(1, (int) Math.ceil(length / TRAIL_SPACING));
         for (int i = 1; i <= steps; i++) {
-            Vec3 at = from.lerp(to, (double) i / (double) steps);
-            job.level.sendParticles(dust(), at.x, at.y, at.z,
-                    TRAIL_PARTICLES_PER_STEP, 0.03D, 0.03D, 0.03D, 0.0D);
+            double f = (double) i / (double) steps;                 // 0 = 尾, 1 = 头
+            Vec3 at = from.lerp(to, f);
+            Vector3f col = new Vector3f(FIRE_TAIL).lerp(FIRE_HEAD, (float) f);
+            float scale = DUST_SCALE_TAIL + (DUST_SCALE_HEAD - DUST_SCALE_TAIL) * (float) f;
+            job.level.sendParticles(dust(col, scale), at.x, at.y, at.z,
+                    TRAIL_PARTICLES_PER_STEP, 0.04D, 0.04D, 0.04D, 0.0D);
         }
+        // 燃烧尾焰：原版火焰粒子贴在弹体当前位置，制造「火球在烧」的观感
+        job.level.sendParticles(ParticleTypes.FLAME, to.x, to.y, to.z,
+                FLAME_PER_TICK, 0.09D, 0.09D, 0.09D, 0.015D);
     }
 
     private static void impact(Job job, LivingEntity target, Vec3 center) {
+        // 爆炸视觉（不破坏方块）:TNT 级烟团 + 闪光 + 熔岩爆燃 + 火焰余烬（火流星砸地）
         job.level.sendParticles(ParticleTypes.EXPLOSION_EMITTER,
                 center.x, center.y, center.z, 1, 0.0D, 0.0D, 0.0D, 0.0D);
         job.level.sendParticles(ParticleTypes.FLASH,
                 center.x, center.y, center.z, 1, 0.0D, 0.0D, 0.0D, 0.0D);
-        job.level.sendParticles(dust(), center.x, center.y, center.z,
-                IMPACT_BURST_PARTICLES, 0.25D, 0.25D, 0.25D, 0.02D);
+        job.level.sendParticles(ParticleTypes.LAVA,
+                center.x, center.y, center.z, IMPACT_LAVA_PARTICLES, 0.8D, 0.4D, 0.8D, 0.0D);
+        job.level.sendParticles(ParticleTypes.FLAME,
+                center.x, center.y, center.z, IMPACT_FLAME_PARTICLES, 1.1D, 0.5D, 1.1D, 0.06D);
+        job.level.sendParticles(dust(new Vector3f(1.00F, 0.45F, 0.12F), DUST_SCALE_HEAD),
+                center.x, center.y, center.z, IMPACT_BURST_PARTICLES, 0.35D, 0.30D, 0.35D, 0.03D);
         job.level.playSound(null, center.x, center.y, center.z,
                 SoundEvents.GENERIC_EXPLODE, SoundSource.BLOCKS, 4.0F,
                 (1.0F + (job.level.random.nextFloat() - job.level.random.nextFloat()) * 0.2F) * 0.7F);
@@ -288,6 +360,11 @@ public final class OrbitalBombardmentManager {
             } finally {
                 DiceCombatEvents.aoeProcessing = false;
             }
+            // 全局伤害显示规定（AGENTS 第 386 条③）：技能伤害**必须**弹跳字，
+            // 与「怪力侦探投掷」「活体书页」同口径（绿字 0x7CFC00；一实体一数字取最新值）。
+            // ⚠️ 不能指望骰战路径代发：本伤害以 aoeProcessing 包裹 ⇒ 骰战结算被早退，
+            //    数字必须在此显式补发（2026-09-27 用户报障「该技能伤害完全不显示伤害数字」）。
+            com.merlinkitsune.astral_dice.network.ModNetwork.DamageNumberMessage.send(target, Math.round(damage), LivingPageImpact.SPELL_DAMAGE_COLOR);
         }
     }
 
@@ -305,6 +382,8 @@ public final class OrbitalBombardmentManager {
 
         int completed = 0;
         long nextStrikeAt = 0L;
+        /** 本轮开始下落的 tick（间隔按「发射 → 发射」计：{@code strikeStartAt + STRIKE_INTERVAL_TICKS}）。 */
+        long strikeStartAt = 0L;
         FallState falling = null;
 
         Job(ServerLevel level, ServerPlayer caster, LivingEntity primary,
