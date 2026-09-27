@@ -8,6 +8,17 @@
 
 ### New Content
 
+#### Loot & World
+
+- **New "first adventure gift": the first loot chest a player opens in a save is guaranteed to contain 1 die**
+  (user request 2026-09-27): when a player enters a new world and opens **their first loot chest**, that chest is
+  **guaranteed** to hold **1 die (`astral_dice:dice`)** - placed into a **random empty slot** or, if the chest is already
+  full of loot (common on heavily modded packs), it **forcibly replaces a random slot** so the die always lands in your
+  hands. Each player gets this **once per save**: the flag lives in the player's saved data, so **a new save counts
+  again** while **respawning or changing dimension does not re-grant it**. Only "loot chests" qualify (containers whose
+  loot table sits under `chests/` - chests, trapped chests, barrels, shulker boxes, hoppers and minecart chests; the
+  jungle temple dispenser is excluded), and chests you place yourself never trigger it.
+
 - **Custom sound effects**: added `skill_use` (active skills taking effect, including entering the target selector), `glass_dice_broken` (dying while wearing the glass dice) and `megas_blast` (Orbital Bombardment impact, played at the hit position); the effect-card use sound is now a single `effect_card_use` for every effect card except Berserk / King's Power / Immovable, and the Living Page / Misfortune Card hit sounds were replaced with the new `hit_normal` / `hit_bighit` samples (split at 8 damage, played at the hit position).
 
 - **Megas Sign (Legendary)**: active **"Orbital Bombardment"** — designate one hostile target, then immediately consume every card in the inventory and call down an orbital bombardment on that target and a 12-block area around it. Every 2 cards consumed adds 1 bombardment (up to 10); each bombardment hits 1 random monster in the area for 2 base damage, plus extra damage equal to the total cost of the battle cards consumed. Passive **"Resupply"**: whenever there are fewer than 6 cards in the inventory, gain 1 random card every 1:00. Consuming 6 or more cards in a single cast triggers **"Precision Strike"**, which permanently raises the orbital bombardment damage that target takes by +1 per stack, until it dies.
@@ -15,6 +26,19 @@
 <!-- 新内容在此登记 -->
 
 ### Content & Balance
+
+#### Chips & Resources
+
+- **Blank Chip now has a slightly higher loot chance** (user request 2026-09-27): the Blank Chip is still a
+  **guaranteed 100%** drop from **buried treasure**, and it now additionally has a **3%** chance in every other loot
+  chest (those whose loot table sits under `chests/`) - previously **no chest** other than buried treasure could drop
+  one at all.
+
+- **Glass Dice added to loot chests** (user request 2026-09-27): the Glass Dice (`astral_dice:glass_dice`,
+  the T1 golden tier) can now be found in loot chests - **2%** in ordinary chests and **5%** in **end city**
+  treasure, 1 per roll. Previously loot chests dropped **no dice at all** (dice came only from crafting and
+  from the bounty board). It does not interact with the "first adventure gift": the first chest still grants
+  1 extra base die on top, and the Glass Dice is rolled independently, so both can appear in the same chest.
 
 - **Megas Sign "Orbital Bombardment"**: the battle-card cost bonus is now **1 damage per 1 cost** (was 2 damage per 1 cost), and the target-selector radius is **32** blocks (was 16); a single bombardment now deals at most **80** damage and a single cast deals at most **800** damage in total (bombardments beyond that budget keep only their visuals and sound and deal no damage).
 

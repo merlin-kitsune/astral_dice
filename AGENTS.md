@@ -1311,6 +1311,43 @@ When extending this workspace:
 - 新增物品(骰子/星币/星盘/卡牌/筹码/立牌)时,除常规注册外,需同步维护 `astral_objs`/`astral_rews` 对应条目(若属于可兑换类)。
 - 整合包自定义方式见 `docs/bountiful-integration.md`(config pack 增补/替换/排除、概率/声望调整、故障排查)。
 
+## 战利品箱初次赠礼与战利品注入 — 必须遵守（2026-09-27 用户裁决）
+
+**用户原话**：「玩家进入一个新世界（刚创建自身存档之后），开的第一个战利品箱子中必定包含一个空白骰子（如果装了较多模组导致物品太多，确保骰子必定出现，需要强行顶掉一个随机物品）。同时略微提高空白筹码的战利品获取概率。」
+**裁决口径**：① 「空白骰子」= **`astral_dice:dice`（基础骰子）**（本模组无同名物品，只有 `blank_sign` 空白立牌 / `blank_chip` 空白筹码）；② 「第一个」= **每个玩家各一次（按玩家 × 按存档）**；③ 空白筹码 = **其余箱子 3% + 埋藏宝藏仍 100% 必出**。
+
+### 首次开箱赠礼（`event/FirstLootChestHandler`，三线各一份）
+
+- ⚠️ **必须容器侧直写，不得做成战利品池（GLM / `add_table`）**：原版 `LootTable#fill` 在「结果列表长度 > 容器空位数」时，`shuffleAndSplitItems` 末尾的 `Util.shuffle` 已把顺序打乱，随后 `for` 循环遇到无空槽即 `LOGGER.warn("Tried to over-fill a container"); return;` —— 是**整叠丢弃**而非丢弃数量 ⇒ 装了很多模组、箱子被塞爆时，塞进去的骰子会被随机抽签抽掉，「必定出现」不成立。现做法 = 玩家真正打开箱子时先按原版口径补货，再**直接 `setItem` 覆盖一个槽位**：优先**随机空槽**；整箱装满则**随机顶掉一个槽位**（= 用户要求的「强行顶掉一个随机物品」）。骰子不参与任何抽签。
+- ⚠️ **必须显式 `unpackLootTable(player)` 再写入**：`RandomizableContainerBlockEntity#getItem/setItem/removeItem/removeItemNoUpdate/isEmpty` **都会先调 `unpackLootTable(null)`**（1.21.1 L50/59/68/77/86；26.1.2 L49/55/61/67/73）⇒ 若放任我方写入触发无玩家口径补货，会缺 `LootContextParams.THIS_ENTITY` 且不触发 `GENERATE_LOOT` 进度准则，与原版（`createMenu` 里带玩家补货）不一致。
+- ⚠️ **必须挂 `PlayerEvent.Clone` 搬运标记**：标记存在 `Entity#getPersistentData()`（落盘于玩家 `.dat` 的 `NeoForgeData` / 1.20.1 `ForgeData` 段；根键 = `astral_dice`、字段 `first_loot_chest_done`），**不随实体克隆复制** ⇒ 不搬过去等于「死一次 → 再开箱」能刷第二次。不注册任何注册表条目。
+- **触发面**：方块容器 = `PlayerInteractEvent.RightClickBlock` + 战利品表判据；实体容器（运输矿车）= `PlayerInteractEvent.EntityInteract` + `ContainerEntity`。**仅当战利品表 id 落在 `chests/` 前缀下才生效**（玩家自放箱子没有表 ⇒ 天然排除），排除 `chests/jungle_temple_dispenser`（发射器不是箱子）；箱子被方块压住 / 猫坐在箱子上（`ChestBlock#isChestBlockedAt`）跳过且**不抢先消费标记**。
+- **大箱子两半**：表可能挂在另一半上 ⇒ `partnerChestWithLoot` 用 `ChestBlock.TYPE != SINGLE` + 水平邻居扫描补齐（原版 `MENU_PROVIDER_COMBINER` 对两半都补货）；相邻独立箱子必为 `SINGLE`，不会误判成一对。
+
+### 三线 API 差异（逐条核过 sources jar，**勿互抄**）
+
+| 事项 | 1.21.1 | 1.20.1 | 26.1.2 |
+|---|---|---|---|
+| 方块容器接口 | `net.minecraft.world.RandomizableContainer` | **无该接口**（1.21 才引入）⇒ 用具体类 `RandomizableContainerBlockEntity` | `RandomizableContainer` |
+| 方块容器取表 | `getLootTable()` | **无 getter**（仅 `protected ResourceLocation lootTable`）⇒ 反读 NBT | `getLootTable()` |
+| 实体容器取表 | `ContainerEntity#getLootTable()` → `ResourceKey<LootTable>` | 同左但返回 **`ResourceLocation`** | **改名** `getContainerLootTable()` |
+| 资源键取值 | `ResourceKey#location()` | `ResourceLocation#getPath()` | `ResourceKey#identifier()` |
+| NBT 取值 | `getCompound` / `getBoolean` | 同 1.21.1 | **改名** `getCompoundOrEmpty` / `getBooleanOr` |
+
+- 1.20.1 反读原理：`RandomizableContainerBlockEntity#trySaveLootTable`（L55）把 `lootTable` 用 `toString()` 写进 `"LootTable"`，子类 `ChestBlockEntity#saveAdditional`（L78-84）在 `lootTable != null` 时**只**写该键、不写物品列表（Barrel / ShulkerBox / Dispenser / Hopper 同构）⇒ 「存在非空 `"LootTable"` 字符串键」⇔ `lootTable != null`；只读字段、不碰 `getItem`，故不会顺带触发 `unpackLootTable(null)`。
+- ⚠️ **`CompoundTag#getCompound` 缺键时返回「新实例」且不挂回父标签**（26.1.2 为 `getCompoundOrEmpty`）⇒ 改完**必须 `put` 回父标签**。
+
+### 战利品概率注入（`event/LootInjectionHandler`）
+
+- 运行期注入（`LootTableLoadEvent`），**只处理 `name.getPath().startsWith("chests/")`**；**防重复判据 = `table.getPool("<池名>") != null`**（重复注入会让同一池叠加）。
+- 现有池：星币 5%（末地城 9%，1~2 个）、**空白筹码（埋藏宝藏 100% 必出；其余箱子 3% —— 2026-09-27 起）**、星盘 1%（末地城 5%）、**玻璃骰子 2%（末地城 5% —— 2026-09-27 起；此前战利品箱不出任何骰子）**。
+- ⚠️ **调整任何战利品概率一律改这里**，不要在数据包 GLM 里另开一套；三线同步 + 重跑构建 + **开 jar 核符号与常量**。
+
+### 取证红线
+
+- ⚠️ **1.20.1 产物被 SRG 重映射**（原版成员 → `m_XXXXX_`；NeoForge 两线不重映射）⇒ 开 jar 核符号时，1.20.1 **必须先用 `forge-1.20.1/build/moddev/artifacts/intermediateToNamed.srg` 把 `m_XXXXX_` 反混回可读名**再断言，否则会把 `unpackLootTable` / `isChestBlockedAt` / `setChanged` / `randomChance` 等**全部误判为「缺失」**（2026-09-27 实测踩坑）。
+- 断言只落在**最终产物**上：解 jar 内 class → `javap -p -c -constants` → 断言 + **jar 时间戳晚于源码**。
+
 ## 骰战闪避与防御规范（Dodge & Defense）— 必须遵守
 
 骰战结算位于 `combat/DiceCombatEvents.onLivingDamagePre`(需攻击者赐福激活 + 佩戴骰子 + 近战):

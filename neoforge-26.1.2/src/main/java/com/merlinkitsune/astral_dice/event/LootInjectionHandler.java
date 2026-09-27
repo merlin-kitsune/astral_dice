@@ -146,10 +146,18 @@ public class LootInjectionHandler {
                 .name("astral_dice:star_coin")
                 .build());
 
-        // Blank Chip: ONLY in buried treasure (always)
+        // Blank Chip: 埋藏的宝藏 100% 必出;其余战利品箱子 3%
+        // (2026-09-27 用户需求:略微提高空白筹码的战利品获取概率 —— 原先其它箱子 0%)
         if (isBuriedTreasure) {
             table.addPool(LootPool.lootPool()
                     .setRolls(ConstantValue.exactly(1))
+                    .add(LootItem.lootTableItem(ModItems.BLANK_CHIP.get()))
+                    .name("astral_dice:blank_chip")
+                    .build());
+        } else {
+            table.addPool(LootPool.lootPool()
+                    .setRolls(ConstantValue.exactly(1))
+                    .when(LootItemRandomChanceCondition.randomChance(0.03f))
                     .add(LootItem.lootTableItem(ModItems.BLANK_CHIP.get()))
                     .name("astral_dice:blank_chip")
                     .build());
@@ -161,6 +169,15 @@ public class LootInjectionHandler {
                 .when(LootItemRandomChanceCondition.randomChance(isEndCity ? 0.05f : 0.01f))
                 .add(LootItem.lootTableItem(ModItems.STAR_PLATE.get()))
                 .name("astral_dice:star_plate")
+                .build());
+
+        // Glass Dice: 末地城 5%;其余战利品箱子 2%(数量固定 1)
+        // (2026-09-27 用户需求:战利品箱中增加玻璃骰子,并略微提高其掉落率 —— 原先战利品箱 0%)
+        table.addPool(LootPool.lootPool()
+                .setRolls(ConstantValue.exactly(1))
+                .when(LootItemRandomChanceCondition.randomChance(isEndCity ? 0.05f : 0.02f))
+                .add(LootItem.lootTableItem(ModItems.GLASS_DICE.get()))
+                .name("astral_dice:glass_dice")
                 .build());
     }
 
