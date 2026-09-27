@@ -12,17 +12,24 @@ import com.merlinkitsune.astral_dice.item.StarLightManager;
 
 /**
  * 星币锤筹码:装备时获得 5 点星光(一次性);
- * 若物品栏中持有超过 20 枚星币,则每次进入骰神赐福时消耗 6 星币,并按持有星币总数的 30% 提升攻击力
+ * 若物品栏中持有**至少 32 枚**星币,则每次进入骰神赐福时消耗 **18** 星币,
+ * 并按持有星币总数的 30% 提升攻击力(**上限 100**)
+ * (2026-09-27 用户平衡性调整:门槛 20→32 且语义由「超过」改为「至少」、消耗 6→18、加成新增上限 100)
  * (星币袋按 9 星币算;零散星币不足时自动拆开 1 个星币袋,只扣走所需枚数、余额留在物品栏,
  * 无法安全拆袋时不消耗;加成持续整个赐福,赐福结束清除,结算在 DiceCombatModifiers 攻击修饰器)。
  */
 public class StarCoinHammerChipItem extends BaseChipItem {
-    /** 触发门槛:持有星币须超过该数量 */
-    public static final int THRESHOLD_COINS = 20;
-    /** 每次进入赐福消耗的星币数 */
-    public static final int CONSUME_COINS = 6;
+    /** 触发门槛:持有星币须**至少**达到该数量
+     *  (2026-09-27 用户平衡性调整:20 → 32,且语义由「超过」改为「至少」)
+     *  ⚠️ 判定式随之改为 `total < THRESHOLD_COINS` ⇒ `total == 32` 可启动。 */
+    public static final int THRESHOLD_COINS = 32;
+    /** 每次进入赐福消耗的星币数(2026-09-27 用户平衡性调整:6 → 18) */
+    public static final int CONSUME_COINS = 18;
     /** 攻击力提升比例(持有星币总数的 30%) */
     public static final double ATTACK_RATIO = 0.30;
+    /** 攻击力提升的**上限**(2026-09-27 用户平衡性调整新增):
+     *  按持有总数 × {@link #ATTACK_RATIO} 算出后封顶,避免高额持币带来无上界的加成。 */
+    public static final int MAX_ATTACK_BONUS = 100;
     /** 星币袋折算星币数 */
     public static final int COINS_PER_BAG = 9;
 
@@ -176,16 +183,18 @@ public class StarCoinHammerChipItem extends BaseChipItem {
     }
 
     /**
-     * 进入骰神赐福时调用:持有星币超过 20 枚 → 消耗 6 星币,并按持有星币总数的 30% 记录攻击加成。
+     * 进入骰神赐福时调用:持有星币 **≥ 32** 枚 → 消耗 **18** 星币,
+     * 并按持有星币总数的 30% 记录攻击加成(**上限 {@link #MAX_ATTACK_BONUS}**)。
+     * ⚠️ 加成基数取**消耗前**的持有总数(`total`),与 tooltip「持有星币总数」口径一致。
      */
     public static void onBlessingStart(Player player) {
         if (player.level().isClientSide()) return;
         if (!isEquipped(player)) return;
         int total = countStarCoins(player);
-        if (total <= THRESHOLD_COINS) return;
+        if (total < THRESHOLD_COINS) return;
         if (!consumeStarCoins(player, CONSUME_COINS)) return;
         // 百分比加成统一下限为 1(按持有总数 30% 提升攻击力,截断后至少 +1)
-        ModAttachments.setStarCoinHammerBonus(player, Math.max(1, (int) (total * ATTACK_RATIO)));
+        ModAttachments.setStarCoinHammerBonus(player, Math.min(MAX_ATTACK_BONUS, Math.max(1, (int) (total * ATTACK_RATIO))));
     }
 
     /**

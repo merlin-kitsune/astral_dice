@@ -268,42 +268,42 @@ public class ModItems {
 
     public static final RegistryObject<Item> ATTACK_CARD_MEDIUM = registerItem("attack_card_medium",
             () -> new CardItem(new Item.Properties()
-                    .stacksTo(64)
+                    .stacksTo(1)
                     , "medium"));
 
     public static final RegistryObject<Item> ATTACK_CARD_LARGE = registerItem("attack_card_large",
             () -> new CardItem(new Item.Properties()
-                    .stacksTo(64)
+                    .stacksTo(1)
                     .rarity(AstralRarities.rare())
                     , "large"));
 
     public static final RegistryObject<Item> ATTACK_CARD_EPIC = registerItem("attack_card_epic",
             () -> new CardItem(new Item.Properties()
-                    .stacksTo(64)
+                    .stacksTo(1)
                     .rarity(AstralRarities.epic())
                     , "epic"));
 
     public static final RegistryObject<Item> ATTACK_CARD_SHADOW_STRIKE = registerItem("attack_card_shadow_strike",
             () -> new CardItem(new Item.Properties()
-                    .stacksTo(64)
+                    .stacksTo(1)
                     .rarity(AstralRarities.rare())
                     , "shadow_strike"));
 
     public static final RegistryObject<Item> ATTACK_CARD_MEITO = registerItem("attack_card_meito",
             () -> new CardItem(new Item.Properties()
-                    .stacksTo(64)
+                    .stacksTo(1)
                     .rarity(AstralRarities.epic())
                     , "meito"));
 
     public static final RegistryObject<Item> ATTACK_CARD_CHARGE = registerItem("attack_card_charge",
             () -> new CardItem(new Item.Properties()
-                    .stacksTo(64)
+                    .stacksTo(1)
                     .rarity(AstralRarities.legendary())
                     , "charge"));
 
     public static final RegistryObject<Item> ATTACK_CARD_FULL_POWER = registerItem("attack_card_full_power",
             () -> new CardItem(new Item.Properties()
-                    .stacksTo(64)
+                    .stacksTo(1)
                     .rarity(AstralRarities.pinnacle())
                     , "full_power"));
 
@@ -311,7 +311,7 @@ public class ModItems {
     // 触发骰神赐福时按**装备张数**各 +1 层觉醒;专属绑定获得者(仅获得者可装备),不入随机池、无配方。
     public static final RegistryObject<Item> ATTACK_CARD_BITE = registerItem("attack_card_bite",
             () -> new CardItem(new Item.Properties()
-                    .stacksTo(64)
+                    .stacksTo(1)
                     .rarity(AstralRarities.bizarre())
                     , "bite"));
 
@@ -319,70 +319,70 @@ public class ModItems {
     // 命中使目标缓慢 III 1:00 + 破防(-4 防御)1:00。仅真龙形态(觉醒 ≥ 8)可获得;专属绑定获得者。
     public static final RegistryObject<Item> ATTACK_CARD_DRAGON_ROAR = registerItem("attack_card_dragon_roar",
             () -> new CardItem(new Item.Properties()
-                    .stacksTo(64)
+                    .stacksTo(1)
                     .rarity(AstralRarities.bizarre())
                     , "dragon_roar"));
 
     public static final RegistryObject<Item> DEFENSE_CARD_MEDIUM = registerItem("defense_card_medium",
             () -> new CardItem(new Item.Properties()
-                    .stacksTo(64)
+                    .stacksTo(1)
                     , "defense_medium"));
 
     public static final RegistryObject<Item> DEFENSE_CARD_LARGE = registerItem("defense_card_large",
             () -> new CardItem(new Item.Properties()
-                    .stacksTo(64)
+                    .stacksTo(1)
                     .rarity(AstralRarities.rare())
                     , "defense_large"));
 
     public static final RegistryObject<Item> DEFENSE_CARD_EPIC = registerItem("defense_card_epic",
             () -> new CardItem(new Item.Properties()
-                    .stacksTo(64)
+                    .stacksTo(1)
                     .rarity(AstralRarities.epic())
                     , "defense_epic"));
 
     public static final RegistryObject<Item> EFFECT_CARD_KING_POWER = registerItem("effect_card_king_power",
             () -> new EffectCardItem(new Item.Properties()
-                    .stacksTo(64)
+                    .stacksTo(1)
                     .rarity(AstralRarities.legendary())));
 
     public static final RegistryObject<Item> EFFECT_CARD_BERSERK = registerItem("effect_card_berserk",
             () -> new BerserkCardItem(new Item.Properties()
-                    .stacksTo(64)
+                    .stacksTo(1)
                     .rarity(AstralRarities.epic())));
 
     public static final RegistryObject<Item> EFFECT_CARD_UNWAVERING = registerItem("effect_card_unwavering",
             () -> new UnwaveringCardItem(new Item.Properties()
-                    .stacksTo(64)
+                    .stacksTo(1)
                     .rarity(AstralRarities.epic())));
 
     // 以毒攻毒(效果牌):中毒 8 秒后移除负面效果并获得生命恢复 II 15 秒
     public static final RegistryObject<Item> EFFECT_CARD_FIGHT_POISON_WITH_POISON = registerItem("effect_card_fight_poison_with_poison",
             () -> new FightPoisonWithPoisonCardItem(new Item.Properties()
-                    .stacksTo(64)
+                    .stacksTo(1)
                     .rarity(AstralRarities.epic())));
 
     // 对怪激光(伤害效果牌):远程和魔法伤害 +4。品质:青(蓝)
     public static final RegistryObject<Item> MONSTER_LASER_CARD = registerItem("effect_card_monster_laser",
             () -> new MonsterLaserCardItem(new Item.Properties()
-                    .stacksTo(64)
+                    .stacksTo(1)
                     .rarity(AstralRarities.rare())));
 
     // 对怪板砖(伤害效果牌):远程和魔法伤害 +6
     public static final RegistryObject<Item> MONSTER_BRICK_CARD = registerItem("effect_card_monster_brick",
             () -> new MonsterBrickCardItem(new Item.Properties()
-                    .stacksTo(64)
+                    .stacksTo(1)
                     .rarity(AstralRarities.epic())));
 
     // 轨道炮(伤害效果牌):远程和魔法伤害 +8。品质:黄(金)
     public static final RegistryObject<Item> ORBITAL_STRIKE_CARD = registerItem("effect_card_orbital_strike",
             () -> new OrbitalStrikeCardItem(new Item.Properties()
-                    .stacksTo(64)
+                    .stacksTo(1)
                     .rarity(AstralRarities.legendary())));
 
     // 定向爆破(伤害效果牌):远程和魔法伤害 +5,并对目标周围 6 格敌对目标造成同样伤害。品质:黄(金)
     public static final RegistryObject<Item> DIRECTIONAL_BLAST_CARD = registerItem("effect_card_directional_blast",
             () -> new DirectionalBlastCardItem(new Item.Properties()
-                    .stacksTo(64)
+                    .stacksTo(1)
                     .rarity(AstralRarities.legendary())));
 
     public static final RegistryObject<Item> STAR_COIN = registerItem("star_coin",
@@ -844,7 +844,7 @@ public class ModItems {
 
     public static final RegistryObject<Item> LIVING_PAGE = registerItem("effect_card_living_page",
             () -> new LivingPageItem(new Item.Properties()
-                    .stacksTo(64)
+                    .stacksTo(1)
                     .rarity(AstralRarities.bizarre())));
 
     // 占星师立牌(命名:haiqing)
@@ -856,7 +856,7 @@ public class ModItems {
     // 命运的指引(专属功能效果牌,击杀带虚弱印记的目标获取)
     public static final RegistryObject<Item> FATE_GUIDANCE_CARD = registerItem("effect_card_fate_guidance",
             () -> new FateGuidanceCardItem(new Item.Properties()
-                    .stacksTo(64)
+                    .stacksTo(1)
                     .rarity(AstralRarities.bizarre())));
 
     // 吸血鬼立牌(命名:papara):配方=黄金骰子+星盘 → 史诗
@@ -875,31 +875,31 @@ public class ModItems {
     // 巧克力蛋糕:使用后恢复 4 点生命值。品质:青(蓝)
     public static final RegistryObject<Item> CHOCOLATE_CAKE = registerItem("effect_card_chocolate_cake",
             () -> new ChocolateCakeCardItem(new Item.Properties()
-                    .stacksTo(64)
+                    .stacksTo(1)
                     .rarity(AstralRarities.rare())));
 
     // 汉堡:使用后恢复 8 点生命值
     public static final RegistryObject<Item> HAMBURGER = registerItem("effect_card_hamburger",
             () -> new HamburgerCardItem(new Item.Properties()
-                    .stacksTo(64)
+                    .stacksTo(1)
                     .rarity(AstralRarities.epic())));
 
     // 奢华大餐:治疗目标及周围 6 格内所有玩家 6 点生命值(可对自己/他人使用)
     public static final RegistryObject<Item> LUXURY_FEAST = registerItem("effect_card_luxury_feast",
             () -> new LuxuryFeastCardItem(new Item.Properties()
-                    .stacksTo(64)
+                    .stacksTo(1)
                     .rarity(AstralRarities.epic())));
 
     // 你有我有:仅能对其他玩家使用,自身与目标玩家各获得一张随机卡牌
     public static final RegistryObject<Item> YOU_HAVE_I_HAVE = registerItem("effect_card_you_have_i_have",
             () -> new YouHaveIHaveCardItem(new Item.Properties()
-                    .stacksTo(64)
+                    .stacksTo(1)
                     .rarity(AstralRarities.epic())));
 
     // 加急加快:使目标获得 迅捷 II 1:00(可对自己/他人使用)
     public static final RegistryObject<Item> EXPRESS_DELIVERY = registerItem("effect_card_express_delivery",
             () -> new ExpressDeliveryCardItem(new Item.Properties()
-                    .stacksTo(64)
+                    .stacksTo(1)
                     .rarity(AstralRarities.epic())));
 
     // 大当家立牌(命名:fen):养精蓄锐计数器 + 战斗爽主动;配方=钻石骰子+星盘 → 传奇
@@ -1008,7 +1008,7 @@ public class ModItems {
     // 专属绑定(仅获得者可用)。命名按用户裁决保持卡牌自身命名(fu_card)。
     public static final RegistryObject<Item> FU_CARD = registerItem("fu_card",
             () -> new FuCardItem(new Item.Properties()
-                    .stacksTo(64)
+                    .stacksTo(1)
                     .rarity(AstralRarities.bizarre())));
 
     // 符卡-祸(风水师立牌专属效果牌,**稀有**=RARE;用户 2026-09-21 裁决,原为传奇 UNCOMMON):
@@ -1016,7 +1016,7 @@ public class ModItems {
     // 持有 N 张时「厄运」层数 == N,每 2:00 按当前张数结算伤害。
     public static final RegistryObject<Item> HUO_CARD = registerItem("huo_card",
             () -> new HuoCardItem(new Item.Properties()
-                    .stacksTo(64)
+                    .stacksTo(1)
                     .rarity(AstralRarities.bizarre())));
 
     public static <T extends Item> RegistryObject<T> registerItem(String name, Supplier<T> itemSupplier) {

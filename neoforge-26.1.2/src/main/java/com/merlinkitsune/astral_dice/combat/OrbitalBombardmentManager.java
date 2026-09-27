@@ -44,6 +44,8 @@ import java.util.concurrent.ThreadLocalRandom;
  *   <li><b>偏好</b>：随机优先高威胁目标（精英/Boss + 血量降序加权），但保留低概率命中低威胁；</li>
  *   <li><b>无目标</b>：范围内无存活目标 ⇒ 丢弃剩余轰炸次数；</li>
  *   <li><b>精准打击</b>：消耗 ≥6 张卡牌时触发，每次命中给目标 +1 层（层数 = 被轰炸次数）；</li>
+ *   <li><b>上限</b>：单次轰炸伤害 ≤ {@value #MAX_SINGLE_STRIKE_DAMAGE} 点，单轮（一次释放）
+ *       总输出 ≤ {@value #MAX_TOTAL_DAMAGE_PER_CAST} 点（2026-09-27 用户平衡性调整）；</li>
  *   <li><b>FX</b>：**火流星**（头白热 / 尾暗橙红 + 原版火焰拖尾）从目标上方
  *       {@value #FALL_HEIGHT} 格下落，追踪目标实时位置，下落 {@value #FALL_TICKS} tick（0.4 秒），
  *       落点为**目标脚下的地面**（非头顶），落地 TNT 级爆炸特效 + 熔岩爆燃（纯视觉，不破坏方块）。</li>
@@ -83,6 +85,23 @@ public final class OrbitalBombardmentManager {
      * ⚠️ 旧注释误写为「触发精准打击时」—— 本加成与精准打击无关，一直是**按消耗的战斗牌费用**结算。
      */
     public static final int COST_DAMAGE_MULTIPLIER = 1;
+
+    /**
+     * **单次轰炸伤害上限**（2026-09-27 用户平衡性调整）。
+     *
+     * <p>单次命中伤害 = {@link #BASE_DAMAGE} + 战斗牌费用总和 × {@link #COST_DAMAGE_MULTIPLIER}
+     * + 精准打击层数；本值对**单次**结果封顶。
+     */
+    public static final float MAX_SINGLE_STRIKE_DAMAGE = 80.0F;
+
+    /**
+     * **单轮（一次释放）总输出上限**（2026-09-27 用户平衡性调整）。
+     *
+     * <p>一次释放的全部轰炸**累计**伤害不超过本值；额度用尽后剩余轰炸只保留视觉/音效、
+     * 不再造成伤害（{@link Job#dealtTotal} 记账）。
+     * ⚠️ 与 {@code MAX_STRIKES(10) × MAX_SINGLE_STRIKE_DAMAGE(80) = 800} 同口径，两条上限自洽。
+     */
+    public static final float MAX_TOTAL_DAMAGE_PER_CAST = 800.0F;
 
     /** 火流星配色：头部白热黄（核心）。26.1.2 平台：GlowingDustOptions 接受打包 int。 */
     private static final int FIRE_HEAD = 0xFFF0A8;
@@ -388,7 +407,11 @@ public final class OrbitalBombardmentManager {
             PrecisionStrikeEffect.addStacks(target, 1);
         }
         // 伤害 = 基础 + 战斗牌费用×2 + 精准打击层数
+        // 伤害 = 基础 + 战斗牌费用×1 + 精准打击层数；随后按「单次上限 → 单轮剩余额度」两级封顶
+        // （2026-09-27 用户平衡性调整：单次 ≤ MAX_SINGLE_STRIKE_DAMAGE、单轮累计 ≤ MAX_TOTAL_DAMAGE_PER_CAST）
         float damage = job.perStrikeDamage + PrecisionStrikeEffect.getStacks(target);
+        damage = Math.min(damage, MAX_SINGLE_STRIKE_DAMAGE);
+        damage = Math.min(damage, MAX_TOTAL_DAMAGE_PER_CAST - job.dealtTotal);
         if (damage > 0.0F) {
             DiceCombatEvents.aoeProcessing = true;
             try {
@@ -396,6 +419,7 @@ public final class OrbitalBombardmentManager {
             } finally {
                 DiceCombatEvents.aoeProcessing = false;
             }
+            job.dealtTotal += damage;
             // 全局伤害显示规定（AGENTS 第 386 条③）：技能伤害**必须**弹跳字，
             // 与「怪力侦探投掷」「活体书页」同口径（绿字 0x7CFC00；一实体一数字取最新值）。
             // ⚠️ 不能指望骰战路径代发：本伤害以 aoeProcessing 包裹 ⇒ 骰战结算被早退，
@@ -417,6 +441,8 @@ public final class OrbitalBombardmentManager {
         final boolean precision;
 
         int completed = 0;
+        /** 本轮已结算的累计伤害（受 {@link #MAX_TOTAL_DAMAGE_PER_CAST} 约束，见 {@code impact}）。 */
+        float dealtTotal = 0.0F;
         long nextStrikeAt = 0L;
         /** 本轮开始下落的 tick（间隔按「发射 → 发射」计：{@code strikeStartAt + STRIKE_INTERVAL_TICKS}）。 */
         long strikeStartAt = 0L;

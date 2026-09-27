@@ -236,7 +236,9 @@ public class MegasSignItem extends BaseSignItem {
             return false;
         }
 
-        // 轰炸次数 = min(消耗卡牌数 ÷ 2, 10)；每次伤害 = 基础 2 + 战斗牌费用总和 × 2
+        // 轰炸次数 = min(消耗卡牌数 ÷ 2, 10)；单次伤害 = 基础 2 + 战斗牌费用总和 × COST_DAMAGE_MULTIPLIER(=1)
+        // ⚠️ 单次伤害另受 MAX_SINGLE_STRIKE_DAMAGE(80) 封顶、单轮累计受 MAX_TOTAL_DAMAGE_PER_CAST(800) 封顶，
+        //    夹取在唯一执行器 OrbitalBombardmentManager#impact 内完成（此处只传未夹取的 perStrikeDamage）。
         int strikes = Math.min(totalCards / 2, OrbitalBombardmentManager.MAX_STRIKES);
         float perStrikeDamage = OrbitalBombardmentManager.BASE_DAMAGE
                 + (float) battleCostSum * OrbitalBombardmentManager.COST_DAMAGE_MULTIPLIER;
