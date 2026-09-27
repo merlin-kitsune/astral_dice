@@ -65,13 +65,17 @@ public class ZhaoBlessingEffect extends MobEffect {
      *
      * <p>只在「首次合格近战攻击」那一刻调用一次(由状态机保证 {@code timer_started})。重复调用会
      * 重置剩余时长 ⇒ 只允许一次,勿在 tick 里调用。
+     *
+     * <p>⚠️ <b>必须「先移除再施加」</b> —— 不能只调 {@code addEffect}:对已存在的同名效果,
+     * {@code LivingEntity#addEffect} 走 {@code MobEffectInstance#update(other)},而
+     * {@code update} 的改时长分支判据是 {@code isShorterDurationThan(other)},其首项
+     * {@code !this.isInfiniteDuration()} 在**当前时长 = {@code -1}(未启动占位值)** 时为
+     * {@code false} ⇒ 该分支根本不命中,时长**原封不动留在 {@code -1}**,倒计时永远不会启动。
+     * 先经 {@link ModEffectRemoval#remove} 摘掉旧实例,再施加新实例即可从 -1 切到 2400。
      */
     public static void startTimer(Player player) {
         if (player == null || player.level().isClientSide()) return;
-        if (!player.hasEffect(ModEffects.ZHAO_BLESSING)) {
-            apply(player);
-            return;
-        }
+        ModEffectRemoval.remove(player, ModEffects.ZHAO_BLESSING);
         player.addEffect(new MobEffectInstance(ModEffects.ZHAO_BLESSING,
                 DURATION_TICKS, 0, false, false, true));
     }
