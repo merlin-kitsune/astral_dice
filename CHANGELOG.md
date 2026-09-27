@@ -44,11 +44,13 @@
 
 - **Star Coin Hammer (Starlight chip)**: the trigger threshold is now **holding at least 32 Star Coins** (was "more than 20"), each Dice Blessing consumes **18** Star Coins (was 6), and the Attack Damage bonus is **capped at 100** (still 30% of the Star Coins held; nothing accrues beyond the cap).
 
-- **Oasis Queen's Sign (Rare) "Queen's Privilege" slot requirement reverted to 3**: casting the active skill now requires **3** free main-inventory slots (was 2), matching the fixed 2 battle + 1 effect cards granted per cast (cards no longer stack, so each takes its own slot); with fewer slots the cast is refused at no cost (no cooldown, no effect). The message now reads "3 free slots needed".
+- **Oasis Queen's Sign (Rare) "Queen's Privilege" slot requirement reverted to 3**: casting the active skill now requires **3** free main-inventory slots (was 2), matching the fixed 2 battle + 1 effect cards granted per cast; with fewer slots the cast is refused at no cost (no cooldown, no effect). The message now reads "3 free slots needed".
 
 <!-- 内容与平衡性调整在此登记 -->
 
 ### Bug Fixes
+
+- **The Mechanic sign's "Precision Strike" now shows a visible effect FX**: the effect was previously applied to monsters without **particle display** enabled, making it **entirely invisible** in the world - you could not tell whether an orbital bombardment had triggered Precision Strike or how many stacks a target had already accumulated, so it looked as if the effect did not exist (or vanished once the bombardment ended). Hit targets now continuously emit that effect's particles, making higher stacks easier to identify. The effect's duration and its "permanently retained until the target dies" behaviour are unchanged (the effect was in fact always retained correctly; it simply had no visual indicator at all). The parameter documentation for this effect in `AGENTS.md` was corrected as well.
 
 <!-- 已修复BUG在此登记 -->
 

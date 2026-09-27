@@ -40,7 +40,13 @@ $OutputEncoding = [System.Text.Encoding]::UTF8
 $ErrorActionPreference = 'Stop'
 
 $NS = 'astral_dice'
-$VERSIONS = @('neoforge-1.21.1', 'forge-1.20.1')
+# ⚠️ 2026-09-27 补齐 26.1.2：该线**早已有完整的赏金板内容**(三线 md5 逐字节一致),
+#   但此前 $VERSIONS 只含两线 ⇒ 守门对该线**完全失明**(「ALL OK」≠ 三线全绿)。
+#   追加第三线后，下面所有「两两比对」必须改为**对构造**循环 —— 因为旧代码是用
+#   $VERSIONS[0] / $VERSIONS[1] 硬编码取两线的，直接追加会让 26.1.2 被静默跳过(假绿)。
+$VERSIONS = @('neoforge-1.21.1', 'forge-1.20.1', 'neoforge-26.1.2')
+# 用于「跨线一致性」比对的基线线(= 物品与池清单的参考实现)。
+$BASELINE = $VERSIONS[0]
 $MODITEMS_REL = 'src/main/java/com/merlinkitsune/astral_dice/item/ModItems.java'
 $POOL_REL = 'src/main/resources/data/bountiful/bounty_pools/bountiful/'
 $DECREE_REL = 'src/main/resources/data/bountiful/bounty_decrees/bountiful/astral.json'
@@ -179,8 +185,8 @@ function Get-ParsedItems {
 }
 
 
-# 卡牌标签目录名按线不同(1.21.1: tags/item;1.20.1: tags/items) —— 与 compat 差异表一致
-$TAG_DIR = [ordered]@{ 'neoforge-1.21.1' = 'item'; 'forge-1.20.1' = 'items' }
+# 卡牌标签目录名按线不同(1.21.1: tags/item;1.20.1: tags/items;26.1.2: tags/item) —— 与 compat 差异表一致
+$TAG_DIR = [ordered]@{ 'neoforge-1.21.1' = 'item'; 'forge-1.20.1' = 'items'; 'neoforge-26.1.2' = 'item' }
 $CARD_TAGS = @('combat_cards.json', 'effect_cards.json')
 # 专属效果牌标签(与 CARD_TAGS 同目录/同线差异)。用户 2026-09-26 裁决:
 # **专属效果牌严禁经立牌以外的任何途径获得 ⇒ 不得进入任何赏金池**。
@@ -282,49 +288,55 @@ $root = $root.TrimEnd([char[]]@('/', '\'))
 $pre = ''
 if ($root -cnotin @('.', '')) { $pre = $root + '/' }
 
-# 1) 双版本物品清单一致
+# 1) 各线物品清单一致（以 $BASELINE 为基线，逐条与其余线比对 —— 不再只比前两条）
 $items_by_ver = New-Map
 foreach ($ver in $VERSIONS) {
     $p = $pre + $ver + '/' + $MODITEMS_REL
     $items_by_ver[$ver] = Get-ParsedItems $p
 }
-$a = $items_by_ver[$VERSIONS[0]]
-$b = $items_by_ver[$VERSIONS[1]]
-$sameItems = $true
-if ($a.Count -ne $b.Count) { $sameItems = $false }
-else {
-    foreach ($k in $a.Keys) {
-        if (-not $b.Contains($k)) { $sameItems = $false; break }
-        if ($b[$k] -cne $a[$k]) { $sameItems = $false; break }
+$a = $items_by_ver[$BASELINE]
+foreach ($ver in $VERSIONS) {
+    if ($ver -ceq $BASELINE) { continue }
+    $b = $items_by_ver[$ver]
+    $sameItems = $true
+    if ($a.Count -ne $b.Count) { $sameItems = $false }
+    else {
+        foreach ($k in $a.Keys) {
+            if (-not $b.Contains($k)) { $sameItems = $false; break }
+            if ($b[$k] -cne $a[$k]) { $sameItems = $false; break }
+        }
     }
-}
-if (-not $sameItems) {
-    $only_a = Sort-Ordinal (Get-SetDiff (ConvertTo-StrSet @($a.Keys)) (ConvertTo-StrSet @($b.Keys)))
-    $only_b = Sort-Ordinal (Get-SetDiff (ConvertTo-StrSet @($b.Keys)) (ConvertTo-StrSet @($a.Keys)))
-    $diffRar = @()
-    foreach ($k in $a.Keys) {
-        if ($b.Contains($k) -and ($a[$k] -cne $b[$k])) { $diffRar += $k }
+    if (-not $sameItems) {
+        $only_a = Sort-Ordinal (Get-SetDiff (ConvertTo-StrSet @($a.Keys)) (ConvertTo-StrSet @($b.Keys)))
+        $only_b = Sort-Ordinal (Get-SetDiff (ConvertTo-StrSet @($b.Keys)) (ConvertTo-StrSet @($a.Keys)))
+        $diffRar = @()
+        foreach ($k in $a.Keys) {
+            if ($b.Contains($k) -and ($a[$k] -cne $b[$k])) { $diffRar += $k }
+        }
+        $diffRar = Sort-Ordinal $diffRar
+        Add-Err ('跨线 ModItems 不一致(' + $BASELINE + ' vs ' + $ver + ')：仅 ' + $BASELINE + '=' + (ConvertTo-PyRepr $only_a) + '；品质差异=' + (ConvertTo-PyRepr $diffRar))
+        Add-Err ('跨线 ModItems 不一致(' + $BASELINE + ' vs ' + $ver + ')：仅 ' + $ver + '=' + (ConvertTo-PyRepr $only_b))
     }
-    $diffRar = Sort-Ordinal $diffRar
-    Add-Err ('双版本 ModItems 不一致：仅 ' + $VERSIONS[0] + '=' + (ConvertTo-PyRepr $only_a) + '；品质差异=' + (ConvertTo-PyRepr $diffRar))
-    Add-Err ('双版本 ModItems 不一致：仅 ' + $VERSIONS[1] + '=' + (ConvertTo-PyRepr $only_b))
 }
 $items = $a
-$tagCards = Get-TaggedCards $pre $VERSIONS[0]
-$tagCardsOther = Get-TaggedCards $pre $VERSIONS[1]
-$tagOnlyA = Sort-Ordinal (Get-SetDiff $tagCards $tagCardsOther)
-$tagOnlyB = Sort-Ordinal (Get-SetDiff $tagCardsOther $tagCards)
-if ((@($tagOnlyA).Count -gt 0) -or (@($tagOnlyB).Count -gt 0)) {
-    Add-Warn ('双版本卡牌标签不一致：仅 ' + $VERSIONS[0] + '=' + (ConvertTo-PyRepr $tagOnlyA) + '；仅 ' + $VERSIONS[1] + '=' + (ConvertTo-PyRepr $tagOnlyB))
+$tagCards = Get-TaggedCards $pre $BASELINE
+$exclusive = Get-TaggedCards $pre $BASELINE @($EXCLUSIVE_TAG)
+foreach ($ver in $VERSIONS) {
+    if ($ver -ceq $BASELINE) { continue }
+    $tagCardsOther = Get-TaggedCards $pre $ver
+    $tagOnlyA = Sort-Ordinal (Get-SetDiff $tagCards $tagCardsOther)
+    $tagOnlyB = Sort-Ordinal (Get-SetDiff $tagCardsOther $tagCards)
+    if ((@($tagOnlyA).Count -gt 0) -or (@($tagOnlyB).Count -gt 0)) {
+        Add-Warn ('跨线卡牌标签不一致(' + $BASELINE + ' vs ' + $ver + ')：仅 ' + $BASELINE + '=' + (ConvertTo-PyRepr $tagOnlyA) + '；仅 ' + $ver + '=' + (ConvertTo-PyRepr $tagOnlyB))
+    }
+    $exclusiveOther = Get-TaggedCards $pre $ver @($EXCLUSIVE_TAG)
+    $exclOnlyA = Sort-Ordinal (Get-SetDiff $exclusive $exclusiveOther)
+    $exclOnlyB = Sort-Ordinal (Get-SetDiff $exclusiveOther $exclusive)
+    if ((@($exclOnlyA).Count -gt 0) -or (@($exclOnlyB).Count -gt 0)) {
+        Add-Warn ('跨线专属牌标签不一致(' + $BASELINE + ' vs ' + $ver + ')：仅 ' + $BASELINE + '=' + (ConvertTo-PyRepr $exclOnlyA) + '；仅 ' + $ver + '=' + (ConvertTo-PyRepr $exclOnlyB))
+    }
 }
 $c = Get-Classified $items $tagCards
-$exclusive = Get-TaggedCards $pre $VERSIONS[0] @($EXCLUSIVE_TAG)
-$exclusiveOther = Get-TaggedCards $pre $VERSIONS[1] @($EXCLUSIVE_TAG)
-$exclOnlyA = Sort-Ordinal (Get-SetDiff $exclusive $exclusiveOther)
-$exclOnlyB = Sort-Ordinal (Get-SetDiff $exclusiveOther $exclusive)
-if ((@($exclOnlyA).Count -gt 0) -or (@($exclOnlyB).Count -gt 0)) {
-    Add-Warn ('双版本专属牌标签不一致：仅 ' + $VERSIONS[0] + '=' + (ConvertTo-PyRepr $exclOnlyA) + '；仅 ' + $VERSIONS[1] + '=' + (ConvertTo-PyRepr $exclOnlyB))
-}
 Write-Out ('专属效果牌(禁止进入任何赏金池): ' + $exclusive.Count + ' 项')
 $ex = Get-Expected $items $c $exclusive
 $eo = $ex[0]
@@ -413,7 +425,7 @@ foreach ($ver in $VERSIONS) {
     }
 }
 
-# 5) 双版本逐字节一致
+# 5) 各线逐字节一致（遍历 $VERSIONS 全集 ⇒ 自动覆盖 26.1.2）
 foreach ($pool in @('astral_objs.json', 'astral_rews.json', 'astral_currency.json', 'astral.json')) {
     $paths = @()
     foreach ($v in $VERSIONS) {
@@ -424,7 +436,7 @@ foreach ($pool in @('astral_objs.json', 'astral_rews.json', 'astral_currency.jso
     $missing = $false
     foreach ($p in $paths) {
         if (-not [System.IO.File]::Exists($p)) {
-            Add-Err ("双版本文件缺失: [Errno 2] No such file or directory: '" + $p + "'")
+            Add-Err ("跨线文件缺失: [Errno 2] No such file or directory: '" + $p + "'")
             $missing = $true
             break
         }
@@ -432,10 +444,10 @@ foreach ($pool in @('astral_objs.json', 'astral_rews.json', 'astral_currency.jso
     }
     if ($missing) { continue }
     if ((ConvertTo-StrSet $digests).Count -ne 1) {
-        Add-Err ('双版本不一致: ' + $pool + ' → ' + (ConvertTo-PyRepr $digests))
+        Add-Err ('跨线不一致: ' + $pool + ' → ' + (ConvertTo-PyRepr $digests))
     }
     else {
-        Write-Out ('OK  双版本一致 ' + $pool.PadRight(24) + ' md5 ' + $digests[0])
+        Write-Out ('OK  跨线一致 ' + $pool.PadRight(24) + ' md5 ' + $digests[0])
     }
 }
 
