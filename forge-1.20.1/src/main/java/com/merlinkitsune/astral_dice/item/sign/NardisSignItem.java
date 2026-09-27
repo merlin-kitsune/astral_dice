@@ -11,6 +11,7 @@ import com.merlinkitsune.astral_dice.effect.NardisPrivilegeEffect;
 import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.card.TemporaryCardUtil;
+import com.merlinkitsune.starenginelib.event.ModEffectRemoval;
 import com.merlinkitsune.starenginelib.item.CuriosCompat;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -73,11 +74,14 @@ import top.theillusivec4.curios.api.SlotContext;
  *   <li>再次释放**不清空旧临时牌**,新牌**叠加**在现有临时牌上,并把有效期重置为 3:00。</li>
  * </ul>
  *
- * <h2>效果结束口径(仅三件事)</h2>
- * 效果只由 ① 3:00 **自然到期**、② **外力移除**({@code /effect clear}、牛奶等)、③ **玩家死亡** 结束
- * —— 三者都由既有安全网收口:{@code item/card/TemporaryCardUtil#tick} 判定
+ * <h2>效果结束口径(四件事)</h2>
+ * 效果由 ① 3:00 **自然到期**、② **外力移除**({@code /effect clear}、牛奶等)、③ **玩家死亡**、
+ * ④ **卸下立牌**(2026-09-27 用户裁决「卸除即清理」)结束。
+ * ①②③ 由既有安全网收口:{@code item/card/TemporaryCardUtil#tick} 判定
  * 「玩家身上/骰子里还有临时牌,但已没有 {@code nardis_privilege} 效果」⇒ 清空全部临时牌
- * (死亡路径另有 {@code event/PlayerLifecycleHandler} 的显式清理,两者幂等)。
+ * (死亡路径另有 {@code event/PlayerLifecycleHandler} 的显式清理,两者幂等);
+ * ④ **不走**该 tick 自检 —— 卸下立牌本身**不移除**效果(效果自行倒计时)⇒ 由
+ * {@link #clearSignData} **显式**「移除效果 + 清空全部临时牌」(见该方法的 javadoc)。
  * <p>⚠️ **牌被用光不再提前结束效果**:上一版为配合冻结而加的「一张临时牌都没有 ⇒ 立即移除效果」
  * 已按用户裁决**删除**。
  *
@@ -262,11 +266,33 @@ public class NardisSignItem extends BaseSignItem {
                 BONUS_PER_CARD * equippedDefenseCardCount(player));
     }
 
+    /**
+     * 卸下立牌(仅「玩家有意卸除」时到达,见 {@code BaseSignItem#onUnequip}):
+     * <ol>
+     *   <li>归零被动「威压」折算出来的 ARMOR 修饰器;</li>
+     *   <li><b>移除「女王特权」效果</b> —— 走 {@link ModEffectRemoval} 统一内部通道
+     *       (不是裸 {@code removeEffect}:外部清除拦截器会拦牛奶 / {@code /effect clear},
+     *       本模组自己的移除必须走内部标志放行);</li>
+     *   <li><b>清空全部临时牌</b>(物品栏 0..35 / 副手 / 骰子已装配 / 打开的卡牌栏菜单 / 光标)。</li>
+     * </ol>
+     *
+     * <h2>为什么必须由本方法清,而不能指望 tick 自检</h2>
+     * 临时牌的唯一收口条件是 {@link TemporaryCardUtil#tick} 的「无效果 ⇒ 清牌」——
+     * 而立牌卸下**不会**移除效果(效果是有限时长 3:00,自行倒计时)⇒ 若此处不主动清,
+     * 卸下后最长 3:00 内:① HUD 仍在倒计时、② 临时牌仍在其物品栏 / 骰子里可用
+     * —— 这违反「**卸除即清理**」(与 mamushi / teru 等立牌的卸载语义一致,
+     * 也沿用死亡路径 {@code PlayerLifecycleHandler} 的「移除效果 + purgeAll」同款配对)。
+     * <p>两步**顺序固定**:先移除效果、后清牌。
+     */
     @Override
     protected void clearSignData(Player player, ItemStack stack) {
         super.clearSignData(player, stack);
         // 卸下立牌:移除被动折算出来的护甲(数值 ≤ 0 时 setDefenseArmorBonus 会移除修饰器)
         DiceCombatModifiers.setDefenseArmorBonus(player, DEFENSE_ARMOR_KEY, 0);
+        // 移除「女王特权」效果(内部通道,不被外部清除拦截器拦截)
+        ModEffectRemoval.remove(player, ModEffects.NARDIS_PRIVILEGE.get());
+        // 清空全部临时牌(幂等)
+        TemporaryCardUtil.purgeAll(player);
     }
 
     // ══════════════════════════════════════════════════════════════════════════

@@ -39,7 +39,9 @@ import java.util.List;
  *   <li>发放:{@link #grantNardisPrivilege(Player)}(= 2 张战斗牌 + 1 张效果牌,2026-09-27 用户裁决①)
  *       与通用的 {@link #grantRandom(Player, RandomCardHandler.CardCategory, int)}
  *       (两者都走 {@link VitaminPillChipItem#giveCard} 发牌漏斗,保证「获得卡牌」类触发器全部生效);</li>
- *   <li>清理:{@link #purgeAll(Player)}(幂等,调用点 = 释放路径之外的死亡与到期清牌)与玩家级 tick 自检
+ *   <li>清理:{@link #purgeAll(Player)}(幂等,调用点 = 释放路径之外的**死亡**、**卸下绿洲女王立牌**
+ *       (2026-09-27 用户裁决「卸除即清理」,见 {@code NardisSignItem#clearSignData})与到期清牌)
+ *       与玩家级 tick 自检
  *       {@link #tick(Player)}(收口条件只有一条:**无效果 ⇒ 清牌**;
  *       上一版的「无牌 ⇒ 移除效果」反向分支已按 2026-09-27 用户裁决删除 —— 牌被用光**不再**提前结束效果);</li>
  *   <li>保护:不可丢弃见 {@link CardItem#onDroppedByPlayer} 与

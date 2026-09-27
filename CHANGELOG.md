@@ -56,6 +56,8 @@
 
 - **The Mechanic sign's "Precision Strike" now shows a visible effect FX**: the effect was previously applied to monsters without **particle display** enabled, making it **entirely invisible** in the world - you could not tell whether an orbital bombardment had triggered Precision Strike or how many stacks a target had already accumulated, so it looked as if the effect did not exist (or vanished once the bombardment ended). Hit targets now continuously emit that effect's particles, making higher stacks easier to identify. The effect's duration and its "permanently retained until the target dies" behaviour are unchanged (the effect was in fact always retained correctly; it simply had no visual indicator at all). The parameter documentation for this effect in `AGENTS.md` was corrected as well.
 
+- **Unequipping the Oasis Queen sign now clears "Queen's Privilege" and the temporary cards along with it**: previously unequipping the sign only removed the armor granted by its passive, so the **"Queen's Privilege" effect (the HUD timer) and every temporary card stayed on you** for up to the effect's full 3:00 duration - inconsistent with the "clean up on unequip" convention every other sign follows. Unequipping the sign now **removes the "Queen's Privilege" effect** and **purges all temporary cards** (inventory, offhand, those equipped into the dice, and any on an open card-panel or the cursor) at the same instant, matching exactly how natural expiry, external removal and player death already clean up.
+
 <!-- 已修复BUG在此登记 -->
 
 ## 1.3.1
