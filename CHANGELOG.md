@@ -22,6 +22,8 @@
 
 - **Star Coin Hammer (Starlight chip)**: the trigger threshold is now **holding at least 32 Star Coins** (was "more than 20"), each Dice Blessing consumes **18** Star Coins (was 6), and the Attack Damage bonus is **capped at 100** (still 30% of the Star Coins held; nothing accrues beyond the cap).
 
+- **Oasis Queen's Sign (Rare) "Queen's Privilege" slot requirement reverted to 3**: casting the active skill now requires **3** free main-inventory slots (was 2), matching the fixed 2 battle + 1 effect cards granted per cast (cards no longer stack, so each takes its own slot); with fewer slots the cast is refused at no cost (no cooldown, no effect). The message now reads "3 free slots needed".
+
 <!-- 内容与平衡性调整在此登记 -->
 
 ### Bug Fixes

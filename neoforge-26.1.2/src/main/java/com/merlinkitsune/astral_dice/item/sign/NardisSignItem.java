@@ -47,7 +47,7 @@ import top.theillusivec4.curios.api.SlotContext;
  *       {@link TemporaryCardUtil#MAX_TEMPORARY_CARDS}(= 9)⇒ **拒绝释放**(**零消耗**:
  *       不冷却、不施效果、不发牌、**不清**既有临时牌、不重置时长),
  *       只发一条 `msg.astral_dice.nardis_card_limit` 提示;</li>
- *   <li>**安全门**:主物品栏空槽 &lt; {@link TemporaryCardUtil#MIN_FREE_SLOTS_TO_CAST}(= 2)
+ *   <li>**安全门**:主物品栏空槽 &lt; {@link TemporaryCardUtil#MIN_FREE_SLOTS_TO_CAST}(= 3)
  *       ⇒ 同样**拒绝释放**(零消耗),只发一条 `msg.astral_dice.nardis_inventory_full` 提示;</li>
  *   <li>**叠加补给**:发 **2 张战斗牌 + 1 张效果牌**(战斗牌池 = {@code CardCategory.BATTLE}
  *       攻击/防御混合随机,两张各自独立 ⇒ 允许两张同类;效果牌池 = {@code CardCategory.EFFECT}),
@@ -133,15 +133,15 @@ public class NardisSignItem extends BaseSignItem {
             sendSignActionBar(player, "msg.astral_dice.nardis_card_limit");
             return InteractionResult.FAIL;
         }
-        // 1. 安全门(2026-09-27 用户裁决⑦;阈值 = {@link TemporaryCardUtil#MIN_FREE_SLOTS_TO_CAST} = 2):
-        //    本次固定发 2 战斗 + 1 效果共 3 张 ⇒ 主物品栏空槽 < 2 时**拒绝释放**,同样**零消耗**
+        // 1. 安全门(2026-09-27 用户裁决;阈值 = {@link TemporaryCardUtil#MIN_FREE_SLOTS_TO_CAST} = 3):
+        //    本次固定发 2 战斗 + 1 效果共 3 张 ⇒ 主物品栏空槽 < 3 时**拒绝释放**,同样**零消耗**
         //    (不冷却、不施效果、不发牌、不清既有临时牌)。这里返回 fail ⇒ performSkill 第 3 步
         //    直接 return(不发风扇筹码、不抛立牌主动事件、不进冷却/不充能)。
         //    判据说明:`countFreeSlots` = 主物品栏(0..35)**空**槽数,与 {@code giveCard} 的入包路径同段。
-        //    ⚠️ 为什么门槛是 2(而不是 3):卡牌物品是 {@code stacksTo(64)}(可堆叠),同 id 的临时牌
-        //    **组件相同** ⇒ 会并进既有临时牌堆(叠加语义下比"先清空再发"更宽松);随机到不同牌时只是
-        //    {@code grantRandom} 的"放不下就少发、绝不落地"截断少发,不落地也不报错。
-        //    只有 < 2 格才必然只能发 ≤1 张,不值得消耗一次释放。
+        //    ⚠️ 为什么门槛是 **3**(2026-09-27 用户二次裁决,由当日更早的 2 回调):本次固定发
+        //    2 战斗 + 1 效果 = 3 张,而卡牌自 2026-09-27 起**不可堆叠**({@code stacksTo(1)},每张各占
+        //    一格)⇒ 只有 ≥ 3 格才发得满一整套。门槛低于 3 时 {@code grantRandom} 只能"放不下就少发",
+        //    玩家会为一次释放拿到不完整的一套却照价进入冷却 ⇒ 宁可**拒绝释放**、零消耗。
         if (TemporaryCardUtil.countFreeSlots(player) < TemporaryCardUtil.MIN_FREE_SLOTS_TO_CAST) {
             sendSignActionBar(player, "msg.astral_dice.nardis_inventory_full");
             return InteractionResult.FAIL;

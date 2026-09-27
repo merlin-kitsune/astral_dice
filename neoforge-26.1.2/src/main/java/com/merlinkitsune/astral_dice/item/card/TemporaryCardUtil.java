@@ -70,13 +70,14 @@ public final class TemporaryCardUtil {
     /** 战斗牌之后发放的效果牌张数(池 = {@link RandomCardHandler.CardCategory#EFFECT}) */
     public static final int GRANT_EFFECT_COUNT = 1;
 
-    /** 主动技能的最低可用格数门槛(2026-09-27 用户裁决放宽为 2)。
-     *  ⚠️ **2026-09-27 用户平衡性调整为「所有卡牌不可堆叠」({@code stacksTo(1)},见 ModItems)** ——
-     *  本条原论证「同 id 临时牌会合并进一格 ⇒ 2 格也能收下 3 张」**随堆叠取消而失效**:
-     *  恰好 2 格时本轮只能发出 2 张(第 3 张被 {@link #grantRandom} 的「少发、绝不落地」截断)。
-     *  本常量**按用户既有裁决保持 2 不动**(不擅自改回 3);若要恢复「必须能发满 3 张」的原意,
-     *  应显式改为 3 并同步 lang 提示文案(三线 × 三语的 {@code nardis_inventory_full})。 */
-    public static final int MIN_FREE_SLOTS_TO_CAST = 2;
+    /** 主动技能的最低可用格数门槛(**3**;2026-09-27 用户二次裁决,由当日更早的 2 回调)。
+     *  取值与「每次释放固定发 2 张战斗牌 + 1 张效果牌」对齐 ⇒ 门槛通过时空槽必然够发满一整套,
+     *  {@link #grantRandom} 的「少发、绝不落地」截断在正常情况下不可达(它只是安全网)。
+     *  ⚠️ 沿革:当日曾**放宽为 2**,唯一理由是「卡牌可堆叠({@code stacksTo(64)})⇒ 同 id 临时牌会
+     *  并进一格,2 格也收得下 3 张」;同日稍晚卡牌改为**不可堆叠**({@code stacksTo(1)},见 ModItems)
+     *  ⇒ 该理由失效(恰好 2 格时只能发出 2 张、第 3 张被截断),用户遂裁决**回调为 3**。
+     *  改动本常量**必须同步**三线 × 三语的 {@code msg.astral_dice.nardis_inventory_full} 文案。 */
+    public static final int MIN_FREE_SLOTS_TO_CAST = 3;
 
     /** 临时牌同时持有的**上限**(2026-09-27 用户裁决⑦:叠加补给下必须设上限 —— 否则只要在冷却好了
      *  就再放一次,而每次释放都会把有效期重置为 3:00 ⇒ 临时牌永不过期、每 180 秒净增 3 张,无上界)。

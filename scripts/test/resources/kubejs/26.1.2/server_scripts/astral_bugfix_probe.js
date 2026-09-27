@@ -9540,12 +9540,12 @@ function doNardiEquip(ctx, tag, whatText) {
 /**
  * `/astralprobe nardiinv <tag> <fill|clear> [reserve]` —— 控制**主物品栏 0..35** 的可用格数。
  *
- * <p>`fill`(缺省 reserve=2)用 `minecraft:stone` 把空槽填到**恰好剩 `reserve` 格**;
+ * <p>`fill`(缺省 reserve=3)用 `minecraft:stone` 把空槽填到**恰好剩 `reserve` 格**;
  * `clear` 直接清空主物品栏。用途(= **M6** 安全门的三个对照态,阈值
- * `TemporaryCardUtil.MIN_FREE_SLOTS_TO_CAST = 2`,即「可用格 &lt; 2 才拒绝」):
+ * `TemporaryCardUtil.MIN_FREE_SLOTS_TO_CAST = 3`,即「可用格 &lt; 3 才拒绝」):
  * <ul>
- *   <li>`fill 1` ⇒ 可用格 1 (**&lt; 2**) ⇒ **拒绝释放**且零消耗;</li>
- *   <li>`fill 2` ⇒ 可用格 2 (**= 2**) ⇒ **允许释放**(边界组:实发 2 或 3 张,见用例说明);</li>
+ *   <li>`fill 2` ⇒ 可用格 2 (**&lt; 3**) ⇒ **拒绝释放**且零消耗;</li>
+ *   <li>`fill 3` ⇒ 可用格 3 (**= 3**) ⇒ **允许释放**(边界组:卡牌不可堆叠 ⇒ 必发满 3 张);</li>
  *   <li>`clear` ⇒ 腾空后**立刻可释放**。</li>
  * </ul>
  * 只动主物品栏(0..35),不碰副手/骰子/curios。
@@ -9553,7 +9553,7 @@ function doNardiEquip(ctx, tag, whatText) {
 function doNardiInv(ctx, tag, modeText, reserveText) {
     var p = ctx.source.getPlayerOrException();
     var mode = ("" + modeText) === "clear" ? "clear" : "fill";
-    var reserve = teruInt(reserveText, 2);
+    var reserve = teruInt(reserveText, 3);
     if (reserve < 0) reserve = 0;
     var freeBefore = domFreeSlots(p);
     var filler = resolveItem("minecraft:stone");
@@ -14448,8 +14448,8 @@ ServerEvents.commandRegistry(event => {
             //    nardiuseup = 把身上临时牌**清到 0**(purgeAll;含装配栏)但**不碰效果** ⇒ M3 主判据
             //                 (新语义下「牌用光」**不得**再结束效果);`drive` 档额外显式驱动产品自检;
             //    nardiinv   = 主物品栏填充到「恰好剩 reserve 格」/ 清空 ⇒ M6 安全门前置
-            //                 (阈值 = TemporaryCardUtil.MIN_FREE_SLOTS_TO_CAST = 2:
-            //                  可用格 < 2 ⇒ 拒绝;= 2 ⇒ 允许;clear ⇒ 腾空后立刻可释放);
+            //                 (阈值 = TemporaryCardUtil.MIN_FREE_SLOTS_TO_CAST = 3:
+            //                  可用格 < 3 ⇒ 拒绝;= 3 ⇒ 允许;clear ⇒ 腾空后立刻可释放);
             //    nardilockback = 通用锁定硬上界脚手架 —— **当前无用例使用**(冻结机械已撤回),
             //                 保留给其它立牌/后续锁定类回归,详见 impl 块的函数注释。
             .then(Commands.literal("nardicd")

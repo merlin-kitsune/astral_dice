@@ -742,7 +742,7 @@
   "effect.astral_dice.nardis_privilege": "女王の特権",
   "effect.astral_dice.nardis_privilege.description": "ランダムな一時カードを §e3§7 枚獲得、持続 §93:00§7；計時終了時にすべての一時カードを破棄（装備中のものも含む）",
   "msg.astral_dice.nardis_active": "ナーディスのスタンド：一時カードを %d 枚獲得（有効期間 3:00）",
-  "msg.astral_dice.nardis_inventory_full": "インベントリの空きが不足（2 スロット必要）のため、一時カードを獲得できません",
+  "msg.astral_dice.nardis_inventory_full": "インベントリの空きが不足（3 スロット必要）のため、一時カードを獲得できません",
   "msg.astral_dice.nardis_card_limit": "一時カードが上限（9 枚）に達したため、これ以上補充できません",
   "tooltip.astral_dice.sign.nardis_passive": "攻撃カードを 1 枚装備する毎に：攻撃力 §e+2§7；防御カードを 1 枚装備する毎に：防御力 §e+2§7",
   "tooltip.astral_dice.sign.nardis_active": "即座にランダムな一時カードを §e3§7 枚獲得、有効期間 §93:00§7\n  一時カードは装備と使用のみ可能で、破棄や受け渡しはできない\n  計時終了時に全ての一時カードを破棄\n  アクティブスキル使用時はフリーズせず、未使用の一時カードがあれば補充し期限をリセット",

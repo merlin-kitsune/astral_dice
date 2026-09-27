@@ -743,7 +743,7 @@
   "effect.astral_dice.nardis_privilege": "Queen's Privilege",
   "effect.astral_dice.nardis_privilege.description": "Grants §e3§7 random temporary cards for §93:00§7; when the timer ends all temporary cards are discarded (including the equipped ones)",
   "msg.astral_dice.nardis_active": "Oasis Queen's Sign: got %d temporary card(s) (lasts 3:00)",
-  "msg.astral_dice.nardis_inventory_full": "Not enough inventory space (2 free slots needed) - cannot gain temporary cards",
+  "msg.astral_dice.nardis_inventory_full": "Not enough inventory space (3 free slots needed) - cannot gain temporary cards",
   "msg.astral_dice.nardis_card_limit": "Temporary cards are already at the limit (9) - cannot gain more",
   "tooltip.astral_dice.sign.nardis_passive": "Each equipped attack card: attack power §e+2§7; each equipped defense card: defense power §e+2§7",
   "tooltip.astral_dice.sign.nardis_active": "Immediately gain §e3§7 random temporary cards, lasting §93:00§7\n  Temporary cards can only be equipped and used, not dropped or transferred\n  All temporary cards are discarded when the timer ends\n  Using the active skill does not freeze; if temporary cards remain, they are resupplied and the timer resets",
