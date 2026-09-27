@@ -14,6 +14,7 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import com.merlinkitsune.astral_dice.audio.ModSounds;
 import com.merlinkitsune.astral_dice.audio.SoundPlayback;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -413,18 +414,21 @@ public final class OrbitalBombardmentManager {
         damage = Math.min(damage, MAX_SINGLE_STRIKE_DAMAGE);
         damage = Math.min(damage, MAX_TOTAL_DAMAGE_PER_CAST - job.dealtTotal);
         if (damage > 0.0F) {
+            DamageSource source = ModDamageTypes.skillDamage(job.level, job.caster);
             DiceCombatEvents.aoeProcessing = true;
             try {
-                target.hurt(ModDamageTypes.skillDamage(job.level, job.caster), damage);
+                // 全局伤害显示规定（AGENTS 第 386 条③）：技能伤害**必须**弹跳字，
+                // 与「怪力侦探投掷」「活体书页」同口径（绿字 = DamageNumberAggregator.Group.SPELL；
+                // 一实体一数字取最新值）。
+                // ⚠️ 不能指望骰战路径代发：本伤害以 aoeProcessing 包裹 ⇒ 骰战结算被早退，
+                //    故在此**显式登记组别**，由 combat/DamageNumberAggregator 在 LivingDamageEvent.Post 上
+                //    取「实际扣血量（伤害管线终值）」后统一发包（2026-09-27 用户报障「该技能伤害完全不显示伤害数字」）。
+                DamageNumberAggregator.tag(target, source, DamageNumberAggregator.Group.SPELL);
+                target.hurt(source, damage);
             } finally {
                 DiceCombatEvents.aoeProcessing = false;
             }
             job.dealtTotal += damage;
-            // 全局伤害显示规定（AGENTS 第 386 条③）：技能伤害**必须**弹跳字，
-            // 与「怪力侦探投掷」「活体书页」同口径（绿字 0x7CFC00；一实体一数字取最新值）。
-            // ⚠️ 不能指望骰战路径代发：本伤害以 aoeProcessing 包裹 ⇒ 骰战结算被早退，
-            //    数字必须在此显式补发（2026-09-27 用户报障「该技能伤害完全不显示伤害数字」）。
-            com.merlinkitsune.astral_dice.network.DamageNumberPayload.send(target, Math.round(damage), LivingPageImpact.SPELL_DAMAGE_COLOR);
         }
     }
 
