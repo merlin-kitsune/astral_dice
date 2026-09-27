@@ -71,11 +71,33 @@ import java.util.UUID;
  *       {@code B = 施加时的施法者攻击力(基础) + ⌊目标攻击力×0.5⌋}(= 获得目标 50% 加成后的快照攻击力);</li>
  *   <li>目标**每攻击一个新目标**(本次降神期内未攻击过的目标,按 UUID 记集合)消耗 1 层狐光,
  *       并按 {@code B + 当前剩余层数} 追加骰战攻击力;⚠️ **同一目标的后续攻击照常吃这份加成**(2026-09-25 用户裁决:旧实现「已攻击过的目标直接返回 0」使加伤只对每个目标第一击生效),而层数已为 0 时攻击新目标**不消耗、不追加**;</li>
- *   <li>持续到**该目标自己的下一次骰神赐福结束**(下降沿状态机,语义与
- *       {@code ZhaoSignItem#tickBlessing} 逐字相同)。</li>
+ *   <li>**持续时间(2026-09-27 用户裁决重写)**:不再绑定「该目标自己的下一次骰神赐福结束」,
+ *       改为**固定 2:00 时长**,且倒计时必须等**目标首次实施一次合格的近战攻击**后才启动 ——
+ *       施加瞬间效果**立即生效**(50% 攻防加成、狐光基数、狐光追加全部照常)。机制详见下方
+ *       「降神的时长与移除」。</li>
  * </ol>
  * <p><b>生效中不可重复施放</b>(2026-09-27 用户裁决):按主动键时经
  * {@link BaseSignItem#canBeginSelectorSession} 拒绝 —— 只提示、不开选择会话、不进冷却、不发牌、不充能。
+ *
+ * <h2>「降神」的时长与移除(2026-09-27 用户裁决重写:不再绑定骰神赐福)</h2>
+ * <b>需求</b>:降神**不再**以「骰神赐福结束」为移除时机;改为**固定 2:00 时长**,但计时必须
+ * **等被施加者(降神目标)实施一次合格的近战攻击**之后才启动 —— 施加瞬间效果**立即生效**
+ * (与 {@code ZhaoSignItem} 的「白泽赐福」逐字同构)。
+ * <ul>
+ *   <li><b>Phase 1 待启动</b>:施加时写 {@code teru_descent_timer_started=false},效果时长 =
+ *       {@code TeruDescentEffect#PENDING_DURATION_TICKS}({@code -1} = 原版无限时长
+ *       ⇒ {@code tickDownDuration} 跳过 ⇒ **不走动**)。效果完全生效,只是没有倒计时。</li>
+ *   <li><b>启动</b>:{@link #onDescentTimerAttack} 由 {@code combat/DiceCombatEvents} 在
+ *       **近战武器攻击 + 目标是骰神赐福合法目标**(与骰神赐福触发同一道闸门)时调用 ⇒ 写
+ *       {@code timer_started=true} 并把时长改写为 {@link TeruDescentEffect#DURATION_TICKS}(2400)。
+ *       **只启动一次**:已启动后再攻击不重置、不回满。</li>
+ *   <li><b>Phase 2 计时中</b>:原版每 tick 自行扣减;{@link #tickTargetSide} 只做自检与收尾。</li>
+ *   <li><b>移除</b>:剩余时长 ≤ 0(自然到期)⇒ {@link #endDescent}。</li>
+ * </ul>
+ * <b>为什么不用 {@code MobEffectEvent.Expired}</b>:该事件在「效果被外力移除(ModEffectRemoval /
+ * 其它 mod / 死亡 / 重连清场)」时**不触发**(先例:{@code item/HealingManager} 明确说明不可依赖),
+ * 且原版对该事件的派发时机在 1.20.1 / 1.21.1 / 26.1.2 三线并不一致 ⇒ 本类**不**订阅它,
+ * 一律以玩家级 tick 的**时长读数**为唯一收尾判据(自检天然覆盖"外力移除"与"自然到期"两条路径)。
  *
  * <h2>加成归属与生命周期(需求口径)</h2>
  * 降神的**状态真值全部在目标身上**;施法者侧只有「层数」「目标指针」「攻击加成镜像缓存」⇒
@@ -233,15 +255,13 @@ public class TeruSignItem extends BaseSignItem {
         // = 施法者「获得目标 50% 加成后」的快照攻击力(后续攻击力成长不计入;2026-09-21 用户口径)
         int attackBase = Math.max(0, casterAttack) + bonusAtk;
 
-        // ② 状态机初始化(语义与 zhao 的 skip_cycles 逐字相同):
-        //    施加时目标已在骰神赐福 ⇒ skip=1(跳过当前这次结束);否则 0。prev 落成"此刻的骰神赐福真值"。
-        boolean alreadyBlessed = receiver.hasEffect(ModEffects.DICE_BLESSING.get());
+        // ② 状态机初始化(2026-09-27 重写):
+        //    不再读骰神赐福;倒计时**未启动**(等目标首次合格近战攻击才启动,见 onDescentTimerAttack)。
         ModAttachments.setTeruDescentCaster(receiver, Optional.of(caster.getUUID()));
         ModAttachments.setTeruDescentAtkBonus(receiver, bonusAtk);
         ModAttachments.setTeruDescentDefBonus(receiver, bonusDef);
         ModAttachments.setTeruDescentAttackBase(receiver, attackBase);
-        ModAttachments.setTeruDescentSkipCycles(receiver, alreadyBlessed ? 1 : 0);
-        ModAttachments.setTeruPrevBlessing(receiver, alreadyBlessed);
+        ModAttachments.setTeruDescentTimerStarted(receiver, false);
         ModAttachments.setTeruDescentNewTargets(receiver, "");
 
         // ③ 可见载体 + 施法者侧指针/镜像(攻击加成与护甲折算立即生效,不必等下一个 tick)
@@ -261,7 +281,7 @@ public class TeruSignItem extends BaseSignItem {
     }
 
     // ══════════════════════════════════════════════════════════════════════════
-    //  玩家级 tick(施法者侧派生 + 目标侧下降沿状态机 + 狐光镜像)
+    //  玩家级 tick(施法者侧派生 + 目标侧 2 分钟倒计时自检 + 狐光镜像)
     // ══════════════════════════════════════════════════════════════════════════
 
     /**
@@ -271,9 +291,13 @@ public class TeruSignItem extends BaseSignItem {
      * <ol>
      *   <li><b>施法者侧</b>{@link #tickCasterSide}:解析/自愈降神链接,把目标记录里的攻击加成镜像进缓存、
      *       防御加成折算进护甲;链接失效(目标效果结束/死亡/登出)则两者同 tick 归零;</li>
-     *   <li><b>目标侧</b>{@link #tickTargetSide}:骰神赐福**下降沿**检测(两分支)、效果自检与续期;</li>
+     *   <li><b>目标侧</b>{@link #tickTargetSide}:2 分钟倒计时的自检与到期收尾(效果实例被外力移除
+     *       ⇒ {@code endDescent});</li>
      *   <li><b>狐光镜像</b>:把附件层数镜像为 HUD 效果(>0 显示层数,0 移除)。</li>
      * </ol>
+     *
+     * <p>⚠️ 1.20.1 的 {@code TickEvent.PlayerTickEvent} 每 tick 派发 **START + END 两次**:本方法
+     * 对该重复调用**幂等**(全部走"读状态 → 条件不满足即返回",无消费型计数)。
      */
     public static void tick(Player player) {
         if (player == null || player.level().isClientSide()) return;
@@ -301,37 +325,52 @@ public class TeruSignItem extends BaseSignItem {
         DiceCombatModifiers.setDefenseArmorBonus(caster, DEF_ARMOR_KEY, bonusDef);
     }
 
-    /** 目标侧:骰神赐福下降沿状态机(语义与 {@code ZhaoSignItem#tickBlessing} 逐字相同)+ 效果自检/续期 */
+    /**
+     * **近战攻击 → 启动 2 分钟倒计时**(由 {@code combat/DiceCombatEvents} 在「近战武器攻击 +
+     * 目标是骰神赐福合法目标」时调用;挂在被施加者即降神目标身上)。
+     *
+     * <p>幂等且**只启动一次**:已启动则直接返回 ⇒ 后续攻击不回满、不重置。
+     * 未处于生效期(无 {@code teru_descent_caster} 真值)时无操作。
+     */
+    public static void onDescentTimerAttack(Player player) {
+        if (player == null || player.level().isClientSide()) return;
+        if (ModAttachments.getTeruDescentCaster(player).isEmpty()) return;
+        if (ModAttachments.isTeruDescentTimerStarted(player)) return;
+        ModAttachments.setTeruDescentTimerStarted(player, true);
+        TeruDescentEffect.startTimer(player);
+        LOGGER.debug("[Astral Dice][Teru] 2 分钟倒计时启动(首次合格近战攻击): player={}",
+                player.getName().getString());
+    }
+
+    /**
+     * 目标侧:2 分钟倒计时的**自检与到期收尾**(语义与 {@code ZhaoSignItem#tickBlessing} 逐字相同)。
+     *
+     * <p>三条路径全部收敛到 {@link #endDescent}:
+     * <ol>
+     *   <li>效果实例被外力移除(如 {@code /effect clear})⇒ 自检发现实例不存在;</li>
+     *   <li>倒计时已启动且剩余时长 ≤ 0(原版把时长走到 0 时通常已自行摘除实例 ⇒ 落入上一条;
+     *       这里额外兜住"时长已 ≤ 0 但实例仍在"的一拍);</li>
+     *   <li>真值仍在而效果实例没了 ⇒ 按「是否已启动」补齐(见 {@link TeruDescentEffect#refresh})。</li>
+     * </ol>
+     */
     private static void tickTargetSide(Player target) {
-        boolean hasDice = target.hasEffect(ModEffects.DICE_BLESSING.get());
-        if (ModAttachments.getTeruDescentCaster(target).isPresent()) {
-            boolean prev = ModAttachments.isTeruPrevBlessing(target);
-            if (prev && !hasDice) {
-                int skip = ModAttachments.getTeruDescentSkipCycles(target);
-                if (skip > 0) {
-                    // 施加时目标已在骰神赐福 ⇒ 跳过当前这一次结束(skip 递减,降神保留)
-                    ModAttachments.setTeruDescentSkipCycles(target, skip - 1);
-                    LOGGER.debug("[Astral Dice][Teru] 跳过本次骰神赐福结束: player={} remainSkip={}",
-                            target.getName().getString(), skip - 1);
-                } else {
-                    endDescent(target);
-                    if (ModAttachments.isTeruPrevBlessing(target)) {
-                        ModAttachments.setTeruPrevBlessing(target, false);
-                    }
-                    return;
-                }
-            }
-            if (!TeruDescentEffect.has(target)) {
-                // 自检:效果实例被外力移除(如 /effect clear)⇒ 真值复位(两者不允许长期不一致)
-                endDescent(target);
-            } else {
-                TeruDescentEffect.refresh(target);
-            }
+        if (ModAttachments.getTeruDescentCaster(target).isEmpty()) return;
+        net.minecraft.world.effect.MobEffectInstance inst =
+                target.getEffect(ModEffects.TERU_DESCENT.get());
+        if (inst == null) {
+            // 自检:效果实例不存在(外力移除 / 自然到期后原版已自行摘除)⇒ 收尾
+            endDescent(target);
+            return;
         }
-        // 同值不写:本方法是每 tick(1.20.1 每 tick 两次)调用,避免无意义的附件脏化
-        if (ModAttachments.isTeruPrevBlessing(target) != hasDice) {
-            ModAttachments.setTeruPrevBlessing(target, hasDice);
+        boolean started = ModAttachments.isTeruDescentTimerStarted(target);
+        if (started && !inst.isInfiniteDuration() && inst.getDuration() <= 0) {
+            // 时长已耗尽但实例仍在(三线摘除时机不完全一致)⇒ 收尾
+            endDescent(target);
+            return;
         }
+        // 兜住"实例在但状态未被标记"的旧存档:旧存档没有 timer_started 键 ⇒ 默认 false
+        // ⇒ 视作未启动,等待目标攻击,与需求一致(无需额外处理)。
+        TeruDescentEffect.refresh(target, started);
     }
 
     /**
@@ -347,8 +386,7 @@ public class TeruSignItem extends BaseSignItem {
         ModAttachments.setTeruDescentAtkBonus(target, 0);
         ModAttachments.setTeruDescentDefBonus(target, 0);
         ModAttachments.setTeruDescentAttackBase(target, 0);
-        ModAttachments.setTeruDescentSkipCycles(target, 0);
-        ModAttachments.setTeruPrevBlessing(target, false);
+        ModAttachments.setTeruDescentTimerStarted(target, false);
         ModAttachments.setTeruDescentNewTargets(target, "");
         if (TeruDescentEffect.has(target)) {
             TeruDescentEffect.remove(target);

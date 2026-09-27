@@ -1234,6 +1234,34 @@ public class ModAttachments {
     }
 
     /**
+     * 「白泽赐福」的 **2 分钟倒计时是否已启动**(2026-09-27 用户裁决新增)。
+     *
+     * <p><b>需求</b>:白泽赐福/降神不再绑定骰神赐福;改为固定时长 <b>2:00</b>,但**计时必须等
+     * 「被施加者实施一次合格的近战攻击」之后才启动** —— 施加瞬间效果**立即生效**(溢出治疗转攻击力等
+     * 全部照常)，只是**还没开始倒计时**。
+     *
+     * <p><b>为什么单独用本键而不是读效果剩余时长</b>:未启动期间效果的时长被写成
+     * {@code -1}(原版 {@code isInfiniteDuration()} 的判据，见 {@code MobEffectInstance}：
+     * 该值下 {@code tickDownDuration} 直接跳过 ⇒ 永不走动)，而"已启动但刚好被 tick 走到 0"也会是
+     * 0/负数 —— 两种状态在时长字段上无法区分，故必须有一个显式真值。
+     *
+     * <p>写入时机:施加时置 {@code false}；被施加者首次满足条件(主手近战武器 + 目标是骰神赐福合法目标)
+     * 的近战攻击那一刻置 {@code true}，并**只置一次**(之后不再重置 ⇒ 计时不因再次攻击而回满)。
+     */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Boolean>> ZHAO_BLESSING_TIMER_STARTED =
+            ATTACHMENTS.register("zhao_blessing_timer_started", () -> AttachmentType.builder(() -> false)
+                    .serialize(Codec.BOOL.fieldOf("value"))
+                    .build());
+
+    public static boolean isZhaoBlessingTimerStarted(net.minecraft.world.entity.player.Player player) {
+        return player.getData(ZHAO_BLESSING_TIMER_STARTED.get());
+    }
+
+    public static void setZhaoBlessingTimerStarted(net.minecraft.world.entity.player.Player player, boolean value) {
+        player.setData(ZHAO_BLESSING_TIMER_STARTED.get(), value);
+    }
+
+    /**
      * 「白泽赐福」待跳过的骰神赐福**结束次数**(0/1;§4.5 两分支)。
      *
      * <p>语义(需求文本「持续到下一次骰神赐福结束」):
@@ -1433,6 +1461,25 @@ public class ModAttachments {
 
     public static void setTeruDescentAttackBase(net.minecraft.world.entity.player.Player player, int value) {
         player.setData(TERU_DESCENT_ATTACK_BASE.get(), Math.max(0, value));
+    }
+
+    /**
+     * 「降神」的 **2 分钟倒计时是否已启动**(2026-09-27 用户裁决新增;挂在**被指定目标**身上)。
+     *
+     * <p>语义与 {@link #ZHAO_BLESSING_TIMER_STARTED} 逐字相同(同一批裁决):效果施加瞬间即生效,
+     * 但倒计时必须等**被施加者首次实施合格近战攻击**后才启动，且**只启动一次**。
+     */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Boolean>> TERU_DESCENT_TIMER_STARTED =
+            ATTACHMENTS.register("teru_descent_timer_started", () -> AttachmentType.builder(() -> false)
+                    .serialize(Codec.BOOL.fieldOf("value"))
+                    .build());
+
+    public static boolean isTeruDescentTimerStarted(net.minecraft.world.entity.player.Player player) {
+        return player.getData(TERU_DESCENT_TIMER_STARTED.get());
+    }
+
+    public static void setTeruDescentTimerStarted(net.minecraft.world.entity.player.Player player, boolean value) {
+        player.setData(TERU_DESCENT_TIMER_STARTED.get(), value);
     }
 
     /**

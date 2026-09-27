@@ -56,24 +56,29 @@ import java.util.List;
  * 目标选择器类技能({@link TargetType#PLAYER},可选任意玩家或**自身**;按下主动键只开启选择会话,
  * 确认后才施效并起玩家级冷却):
  * <ol>
- *   <li>对目标施加「白泽赐福」({@code astral_dice:zhao_blessing},常驻时长;图标复用风水师立牌贴图);</li>
+ *   <li>对目标施加「白泽赐福」({@code astral_dice:zhao_blessing};时长见下方「2 分钟延迟计时」);</li>
  *   <li>**同时**施法者获得 1 张符卡-福,并把自身持有的**全部**符卡-祸转换为等量符卡-福;</li>
  *   <li>目标装备大当家立牌 ⇒ 1 层养精蓄锐(完美帮手)。</li>
  * </ol>
  *
- * <h2>「白泽赐福」的移除时机(两分支,需求文本「持续到下一次骰神赐福结束」)</h2>
- * <b>冻结口径 = 玩家级 tick 的下降沿检测</b>({@link #tickBlessing},由
- * {@code event/PlayerTickEvents} 每 tick 驱动),状态真值 =
- * {@code ModAttachments#ZHAO_BLESSING_ACTIVE} / {@code #ZHAO_BLESSING_SKIP_CYCLES} /
- * {@code #ZHAO_PREV_BLESSING}:
+ * <h2>「白泽赐福」的时长与移除(2026-09-27 用户裁决重写:不再绑定骰神赐福)</h2>
+ * <b>需求</b>:白泽赐福**不再**以「骰神赐福结束」为移除时机;改为**固定 2:00 时长**,但计时必须
+ * **等被施加者实施一次合格的近战攻击**之后才启动 —— 施加瞬间效果**立即生效**(溢出治疗转攻击力照常)。
  * <ul>
- *   <li>施加时目标**不在**骰神赐福 ⇒ skip=0:其触发骰神赐福、该次进度**结束后**移除;</li>
- *   <li>施加时目标**已在**骰神赐福 ⇒ skip=1:**跳过当前这次**结束,等**下一次**骰神赐福结束后移除。</li>
+ *   <li><b>Phase 1 待启动</b>:施加时写 {@code zhao_blessing_timer_started=false},效果时长 =
+ *       {@code ZhaoBlessingEffect#PENDING_DURATION_TICKS}({@code -1} = 原版无限时长
+ *       ⇒ {@code tickDownDuration} 跳过 ⇒ **不走动**)。效果完全生效,只是没有倒计时。</li>
+ *   <li><b>启动</b>:{@link #onBlessingTimerAttack} 由 {@code combat/DiceCombatEvents} 在
+ *       **近战武器攻击 + 目标是骰神赐福合法目标**(与骰神赐福触发同一道闸门)时调用 ⇒ 写
+ *       {@code timer_started=true} 并把时长改写为 {@link ZhaoBlessingEffect#DURATION_TICKS}(2400)。
+ *       **只启动一次**:已启动后再攻击不重置、不回满。</li>
+ *   <li><b>Phase 2 计时中</b>:原版每 tick 自行扣减;{@link #tickBlessing} 只做自检与收尾。</li>
+ *   <li><b>移除</b>:剩余时长 ≤ 0(自然到期)⇒ {@link #endBlessing}。</li>
  * </ul>
  * **为什么不用 {@code MobEffectEvent.Expired}**:该事件在「效果被外力移除(ModEffectRemoval /
  * 其它 mod / 死亡 / 重连清场)」时**不触发**(先例:{@code item/HealingManager} 明确说明不可依赖),
- * 下降沿把两条结束路径统一,且不会像"同时订阅 Expired"那样**重复消费**跳过计数 ⇒ 本类**不**订阅
- * {@code Expired}({@code DiceCombatEvents#onDiceBlessingExpired} 的既有语义也不得改)。
+ * 且原版对该事件的派发时机在三线并不一致 ⇒ 本类**不**订阅 {@code Expired},一律以玩家级 tick 的
+ * **时长读数**为唯一收尾判据(自检天然覆盖"外力移除"与"自然到期"两条路径)。
  *
  * <h2>溢出治疗 → 攻击力</h2>
  * 赐福生效期内该玩家的一切 {@code LivingEntity#heal} 治疗,只要请求量超过"离满血的缺口",
@@ -195,15 +200,13 @@ public class ZhaoSignItem extends BaseSignItem {
         if (caster.level().isClientSide()) return false;
         if (!(target instanceof Player receiver)) return false;
 
-        // ① 状态机初始化(§4.5 行①/行④):
-        //    施加时目标已在骰神赐福 ⇒ skip=1(跳过当前这次结束);否则 0。prev 一并落成"此刻的骰神赐福真值"。
-        boolean alreadyBlessed = receiver.hasEffect(ModEffects.DICE_BLESSING);
+        // ① 状态机初始化(2026-09-27 重写):
+        //    不再读骰神赐福;倒计时**未启动**(等被施加者首次合格近战攻击才启动,见 onBlessingTimerAttack)。
         ModAttachments.setZhaoBlessingActive(receiver, true);
-        ModAttachments.setZhaoBlessingSkipCycles(receiver, alreadyBlessed ? 1 : 0);
-        ModAttachments.setZhaoPrevBlessing(receiver, alreadyBlessed);
+        ModAttachments.setZhaoBlessingTimerStarted(receiver, false);
         // 新一轮赐福:溢出治疗加成从 0 起算(避免上一轮的残留被继承)
         clearOverflowBonus(receiver);
-        // ② 施加「白泽赐福」(常驻时长;移除完全由下降沿状态机决定)
+        // ② 施加「白泽赐福」(时长 = 未启动占位值;首次攻击时由状态机改写为 2400)
         ZhaoBlessingEffect.apply(receiver);
         // ③ 完美帮手:目标装备大当家立牌 ⇒ 1 层养精蓄锐(复用既有附件计数,不新建效果)
         if (FenSignItem.isEquipped(receiver)) {
@@ -220,51 +223,60 @@ public class ZhaoSignItem extends BaseSignItem {
     }
 
     // ══════════════════════════════════════════════════════════════════════════
-    //  「白泽赐福」的玩家级状态机(下降沿,§4.4/§4.5/§4.6/§4.7)
+    //  「白泽赐福」的玩家级状态机(2 分钟延迟计时,2026-09-27)
     // ══════════════════════════════════════════════════════════════════════════
+
+    /**
+     * **近战攻击 → 启动 2 分钟倒计时**(由 {@code combat/DiceCombatEvents} 在「近战武器攻击 +
+     * 目标是骰神赐福合法目标」时调用;挂在被施加者身上)。
+     *
+     * <p>幂等且**只启动一次**:已启动则直接返回 ⇒ 后续攻击不回满、不重置。
+     * 未处于生效期(无 {@code active} 真值)时无操作。
+     */
+    public static void onBlessingTimerAttack(Player player) {
+        if (player == null || player.level().isClientSide()) return;
+        if (!ModAttachments.isZhaoBlessingActive(player)) return;
+        if (ModAttachments.isZhaoBlessingTimerStarted(player)) return;
+        ModAttachments.setZhaoBlessingTimerStarted(player, true);
+        ZhaoBlessingEffect.startTimer(player);
+        LOGGER.debug("[Astral Dice][Zhao] 2 分钟倒计时启动(首次合格近战攻击): player={}",
+                player.getName().getString());
+    }
 
     /**
      * 玩家级 tick(由 {@code event/PlayerTickEvents} **每 tick** 驱动;仅服务端)。
      *
      * <p>职责(全部收敛在这里,保证"结束路径唯一"):
      * <ol>
-     *   <li><b>下降沿</b>:上一 tick 在骰神赐福、这一 tick 不在 ⇒ 这一次赐福**结束**了。skip &gt; 0
-     *       则减 1 并继续等下一次;否则移除「白泽赐福」({@link #endBlessing});</li>
      *   <li><b>自检</b>:生效期内发现「白泽赐福」效果**自身**被外力移除(如 {@code /effect clear})
-     *       ⇒ 复位真值并回收溢出加成(§4.6④ 的唯一例外方向);</li>
-     *   <li><b>续期</b>:效果存在则刷新/补齐(常驻时长由本 tick 维持,效果自身不承担倒计时语义);</li>
-     *   <li>记录本 tick 的骰神赐福真值到 {@code zhao_prev_blessing}(下一次下降沿的基准)。</li>
+     *       ⇒ 复位真值并回收溢出加成;</li>
+     *   <li><b>到期收尾</b>:倒计时已启动、且剩余时长 ≤ 0 ⇒ {@link #endBlessing}
+     *       (原版把时长走到 0 时会自行移除实例,本拍读到的会是"实例已不在" ⇒ 落入上一条自检;
+     *        这里额外兜住"时长已 ≤ 0 但实例仍在"的一拍,两条路径都收敛到 {@code endBlessing});</li>
+     *   <li><b>补齐</b>:真值仍在而效果实例没了 ⇒ 按「是否已启动」重新施加(见
+     *       {@link ZhaoBlessingEffect#refresh})。</li>
      * </ol>
+     * ⚠️ 本方法**不刷新**已存在效果的剩余时长 —— 那会让 2:00 永远走不完。
      */
     public static void tickBlessing(Player player) {
         if (player == null || player.level().isClientSide()) return;
-        boolean hasDice = player.hasEffect(ModEffects.DICE_BLESSING);
-        if (ModAttachments.isZhaoBlessingActive(player)) {
-            boolean prev = ModAttachments.isZhaoPrevBlessing(player);
-            if (prev && !hasDice) {
-                int skip = ModAttachments.getZhaoBlessingSkipCycles(player);
-                if (skip > 0) {
-                    // §4.5 行⑤:跳过当前这次结束(skip 递减,赐福保留)
-                    ModAttachments.setZhaoBlessingSkipCycles(player, skip - 1);
-                    LOGGER.debug("[Astral Dice][Zhao] 跳过本次骰神赐福结束: player={} remainSkip={}",
-                            player.getName().getString(), skip - 1);
-                } else {
-                    // §4.5 行③/行⑥:这一次/下一次骰神赐福的进度已结束 ⇒ 移除白泽赐福
-                    endBlessing(player);
-                    ModAttachments.setZhaoPrevBlessing(player, false);
-                    return;
-                }
-            }
-            if (!player.hasEffect(ModEffects.ZHAO_BLESSING)) {
-                // 自检:效果实例被外力移除 ⇒ 真值复位(附着状态与效果实例不允许长期不一致)
-                ModAttachments.setZhaoBlessingActive(player, false);
-                ModAttachments.setZhaoBlessingSkipCycles(player, 0);
-                clearOverflowBonus(player);
-            } else {
-                ZhaoBlessingEffect.refresh(player);
-            }
+        if (!ModAttachments.isZhaoBlessingActive(player)) return;
+
+        MobEffectInstance inst = player.getEffect(ModEffects.ZHAO_BLESSING);
+        if (inst == null) {
+            // 自检:效果实例不存在(外力移除 / 自然到期后原版已自行摘除)⇒ 收尾
+            endBlessing(player);
+            return;
         }
-        ModAttachments.setZhaoPrevBlessing(player, hasDice);
+        boolean started = ModAttachments.isZhaoBlessingTimerStarted(player);
+        if (started && !inst.isInfiniteDuration() && inst.getDuration() <= 0) {
+            // 时长已耗尽但实例仍在(1.20.1 / 26.1.2 的摘除时机与 1.21.1 不完全一致)⇒ 收尾
+            endBlessing(player);
+            return;
+        }
+        // 补齐:真值仍在而效果实例没了的情形已在上面 return;此处仅兜住"实例在但状态未被标记"的旧存档
+        // (旧存档没有 timer_started 键 ⇒ 默认 false ⇒ 视作未启动,等待玩家攻击,与需求一致)。
+        ZhaoBlessingEffect.refresh(player, started);
     }
 
     /**
@@ -275,7 +287,7 @@ public class ZhaoSignItem extends BaseSignItem {
      */
     private static void endBlessing(Player player) {
         clearOverflowBonus(player);
-        ModAttachments.setZhaoBlessingSkipCycles(player, 0);
+        ModAttachments.setZhaoBlessingTimerStarted(player, false);
         ModAttachments.setZhaoBlessingActive(player, false);
         if (player.hasEffect(ModEffects.ZHAO_BLESSING)) {
             // 走本模组统一内部移除通道(不会被"外部清除拦截器"拦下)
@@ -293,8 +305,6 @@ public class ZhaoSignItem extends BaseSignItem {
      *
      * <p>与 {@link #tickBlessing} 的自检互为双保险(事件即时、tick 兜底),两者都幂等 ⇒
      * "效果移除后攻击力加成留残留"这一失败模式在两条路径上都被关掉。
-     * 注意:本处理器**不**消费 {@code zhao_blessing_skip_cycles}(那是下降沿的职责,重复消费会导致
-     * "该跳过的一次被吃掉" ⇒ 赐福提前结束)。
      */
     @SubscribeEvent
     public static void onZhaoBlessingRemoved(MobEffectEvent.Remove event) {
@@ -307,9 +317,8 @@ public class ZhaoSignItem extends BaseSignItem {
             return;
         }
         clearOverflowBonus(player);
-        ModAttachments.setZhaoBlessingSkipCycles(player, 0);
+        ModAttachments.setZhaoBlessingTimerStarted(player, false);
         ModAttachments.setZhaoBlessingActive(player, false);
-        ModAttachments.setZhaoPrevBlessing(player, player.hasEffect(ModEffects.DICE_BLESSING));
     }
 
     /**
@@ -317,14 +326,13 @@ public class ZhaoSignItem extends BaseSignItem {
      * 规格 §4.6②)。
      *
      * <p>职责(全部是有真实副作用的清理,不是"逐项写默认值"):① 移除「白泽赐福」与「厄运」效果实例;
-     * ② 溢出治疗加成归零(整数 + 余数);③ 状态机三键与「厄运」计时器复位。
+     * ② 溢出治疗加成归零(整数 + 余数);③ 状态机两键与「厄运」计时器复位。
      */
     public static void onOwnerDeathCleanup(Player player) {
         if (player == null || player.level().isClientSide()) return;
         clearOverflowBonus(player);
         ModAttachments.setZhaoBlessingActive(player, false);
-        ModAttachments.setZhaoBlessingSkipCycles(player, 0);
-        ModAttachments.setZhaoPrevBlessing(player, false);
+        ModAttachments.setZhaoBlessingTimerStarted(player, false);
         ModAttachments.setHuoCardNextDamageTick(player, 0L);
         if (player.hasEffect(ModEffects.ZHAO_BLESSING)) {
             ZhaoBlessingEffect.remove(player);
@@ -336,8 +344,8 @@ public class ZhaoSignItem extends BaseSignItem {
      * **重登复位**(由 {@code PlayerLifecycleHandler#onPlayerLoggedInClearDiceBlessing} 在清除骰神赐福的
      * 同一段调用;规格 §4.7)。
      *
-     * <p>「白泽赐福不跨会话残留」与骰神赐福同口径:移除效果 + 复位 {@code active}/{@code prev}
-     * (清 prev 是防"重登被误判为一次赐福结束")。附件本身(未列 {@code copyOnDeath})随玩家 NBT 保留,
+     * <p>「白泽赐福不跨会话残留」与骰神赐福同口径:移除效果 + 复位 {@code active}/{@code timer_started}。
+     * 附件本身(未列 {@code copyOnDeath})随玩家 NBT 保留,
      * 但**溢出攻击力加成必须回收** —— 否则重登后明明没有赐福却仍吃这份加成(玩家可见残留),
      * 故在此一并归零。「厄运」效果保留:其真值是"持有张数",张数还在,由玩家级 tick 重新镜像。
      */
@@ -345,8 +353,7 @@ public class ZhaoSignItem extends BaseSignItem {
         if (player == null || player.level().isClientSide()) return;
         clearOverflowBonus(player);
         ModAttachments.setZhaoBlessingActive(player, false);
-        ModAttachments.setZhaoBlessingSkipCycles(player, 0);
-        ModAttachments.setZhaoPrevBlessing(player, false);
+        ModAttachments.setZhaoBlessingTimerStarted(player, false);
         if (player.hasEffect(ModEffects.ZHAO_BLESSING)) {
             ZhaoBlessingEffect.remove(player);
         }
