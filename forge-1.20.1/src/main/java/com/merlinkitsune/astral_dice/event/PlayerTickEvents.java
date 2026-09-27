@@ -15,6 +15,8 @@ import net.minecraftforge.event.entity.living.MobEffectEvent;
 
 import com.merlinkitsune.astral_dice.item.card.TemporaryCardUtil;
 import com.merlinkitsune.astral_dice.item.chip.RevengeHalberdChipItem;
+import com.merlinkitsune.astral_dice.item.chip.FlashlightChipItem;
+import com.merlinkitsune.astral_dice.item.StarLightManager;
 
 import com.merlinkitsune.starenginelib.event.ModEffectRemoval;
 @Mod.EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
@@ -99,7 +101,10 @@ public class PlayerTickEvents {
 
     }
 
-    // 美工刀-初级/锋利状态效果:佩戴对应筹码且生命值 ≥60% 或处于"汲取"状态时显示效果图标,否则移除
+    // 美工刀-初级/锋利状态效果:佩戴对应筹码、生命值 ≥60%(或处于"汲取")**且处于骰神赐福状态**时
+    // 显示效果图标,否则移除。⚠️ 追加骰神赐福门控(2026-09-27 用户裁决):美工刀的额外加伤本就在
+    // `DiceCombatEvents` 的赐福门控之后才结算(无赐福时提前 return),故图标**只有当加成真正可能生效时**
+    // 才应显示 —— "跟随骰神赐福显示,不在赐福状态即隐藏"。
     private static void updateCutterEffect(Player player) {
         var curios = CuriosCompat.getCuriosInventory(player);
         boolean hasCutter = false;
@@ -109,9 +114,13 @@ public class PlayerTickEvents {
             hasBlade = curios.get().findFirstCurio(s -> s.is(ModItems.CUTTER_BLADE_CHIP.get())).isPresent();
         }
         boolean fullHp = player.getHealth() >= player.getMaxHealth() * 0.6f || player.hasEffect(ModEffects.PAPARA_BITE.get());
+        boolean blessed = player.hasEffect(ModEffects.DICE_BLESSING.get());
         // 效果存在且剩余时长充足时不重复施加,避免每 tick 触发效果更新/同步包
-        refreshIndicator(player, ModEffects.CUTTER_READY.get(), hasCutter && fullHp);
-        refreshIndicator(player, ModEffects.CUTTER_BLADE_READY.get(), hasBlade && fullHp);
+        refreshIndicator(player, ModEffects.CUTTER_READY.get(), hasCutter && fullHp && blessed);
+        refreshIndicator(player, ModEffects.CUTTER_BLADE_READY.get(), hasBlade && fullHp && blessed);
+        // 手电筒-强光:佩戴筹码、处于骰神赐福状态且**确有加伤**(星光/4 ≥ 1)时显示效果图标
+        refreshIndicator(player, ModEffects.FLASHLIGHT_READY.get(),
+                FlashlightChipItem.isEquipped(player) && blessed && StarLightManager.get(player) / 4 >= 1);
     }
 
     // 显示指示器效果:需要显示且(缺失/即将到期)时施加 5 秒;不需要显示且存在时内部移除

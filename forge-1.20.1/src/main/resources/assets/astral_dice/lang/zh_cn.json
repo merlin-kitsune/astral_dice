@@ -232,6 +232,7 @@
   "effect.astral_dice.fen_frenzy": "战斗爽",
   "effect.astral_dice.fight_poison_with_poison": "以毒攻毒",
   "effect.astral_dice.fight_poison_with_poison.description": "获得 §9中毒 (0:08)§7。随后，移除最多 §e3§7 种原版负面效果并获得 §9生命恢复 II (0:30)§r",
+  "effect.astral_dice.flashlight_ready": "手电筒-强光",
   "effect.astral_dice.healing": "治愈",
   "effect.astral_dice.investigation_bonus": "调查阶段",
   "effect.astral_dice.jasmine_sweep": "扫地机",

@@ -231,6 +231,7 @@
   "effect.astral_dice.fen_frenzy": "バトルフィーバー",
   "effect.astral_dice.fight_poison_with_poison": "毒をもって毒を制す",
   "effect.astral_dice.fight_poison_with_poison.description": "§9毒 (0:08)§7 を獲得。その後、最大 §e3§7 種のバニラのデバフを除去し、§9再生能力 II (0:30)§r を獲得",
+  "effect.astral_dice.flashlight_ready": "懐中電灯 - 強光",
   "effect.astral_dice.healing": "治癒",
   "effect.astral_dice.investigation_bonus": "調査段階",
   "effect.astral_dice.jasmine_sweep": "掃除機",

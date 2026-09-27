@@ -88,6 +88,10 @@ public class ModEffects {
     public static final DeferredHolder<MobEffect, MobEffect> CUTTER_BLADE_READY =
             EFFECTS.register("cutter_blade_ready", () -> new CutterReadyEffect(0x4FC3F7));
 
+    // 手电筒-强光状态:佩戴筹码、处于骰神赐福状态且星光 ≥ 4(确有加伤)时显示(加成生效中)
+    public static final DeferredHolder<MobEffect, MobEffect> FLASHLIGHT_READY =
+            EFFECTS.register("flashlight_ready", () -> new FlashlightReadyEffect(0xFFE082));
+
     // 对怪激光:远程和魔法伤害 +4
     public static final DeferredHolder<MobEffect, MobEffect> MONSTER_LASER =
             EFFECTS.register("monster_laser", () -> new RangedBoostEffect(0xFF3D3D));

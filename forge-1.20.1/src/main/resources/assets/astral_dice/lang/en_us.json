@@ -232,6 +232,7 @@
   "effect.astral_dice.fen_frenzy": "Battle Frenzy",
   "effect.astral_dice.fight_poison_with_poison": "Fight Poison with Poison",
   "effect.astral_dice.fight_poison_with_poison.description": "Grants §9Poison (0:08)§7. Then removes up to §e3§7 vanilla negative effects and grants §9Regeneration II (0:30)§r",
+  "effect.astral_dice.flashlight_ready": "Flashlight Chip",
   "effect.astral_dice.healing": "Healing",
   "effect.astral_dice.investigation_bonus": "Investigation Stage",
   "effect.astral_dice.jasmine_sweep": "Sweep",

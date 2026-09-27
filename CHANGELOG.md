@@ -50,6 +50,11 @@
 
 - **The "hostile target" rule gains one more class: tameable-but-untamed mobs that can be angered** (user request 2026-09-27): the rule was "hostile mobs ∪ neutral mobs (pets excluded)", excluding only **tamed** pets via `TamableAnimal` - but **untamed** llamas / trader llamas are tameable yet are neutral mobs that retaliate once provoked, so **neither tamed nor angered, the target selector could not pick them**, which contradicts the intuition that "anything that can be angered should count as hostile". A class is now added by **capability**: **any mob that can be angered** (`getTarget() != null || getLastHurtByMob() != null`) **and is not already tamed** counts as a hostile target. ⚠️ Measured impact: the newly covered mobs are **llamas / trader llamas** (the only vanilla non-pet mobs that are both tameable and angerable). The criterion is implemented once in the **prerequisite library** `starengine_lib` `1.0.5` (the single entry point `combat/HostileTargets.isAngerableTamedMount`), so every effect that depends on it (Dice Blessing, spell-damage bonuses, the target selector's selectability checks, railgun lightning target selection, …) follows suit.
 
+- **The Cutter / Flashlight chips' HUD icons now follow the Dice Blessing** (user request 2026-09-27): these three chips' bonuses **already only resolve during a Dice Blessing**, but their HUD status icons did not follow it - **Cutter Chip / Cutter Blade Chip** kept the icon shown for as long as they were equipped with health >= 60% (even when no bonus could possibly apply), and **Flashlight Chip** had **no icon at all**. All three are now uniform: **hidden whenever there is no Dice Blessing**:
+  - **Cutter Chip (`cutter_ready`) / Cutter Blade Chip (`cutter_blade_ready`)**: shown only when the corresponding chip is equipped **and** health >= 60% (or the player is under the Sip `papara_bite`) **and** a Dice Blessing is active; hidden otherwise.
+  - **Flashlight Chip (`flashlight_ready`, new icon this round)**: shown only when the chip is equipped **and** a Dice Blessing is active **and** Starlight has reached 4 (every 4 Starlight gives +1 extra damage; below 4 there is **no bonus and no icon**).
+  - The icons reuse each chip's own texture, so no new art assets were added.
+
 <!-- 内容与平衡性调整在此登记 -->
 
 ### Bug Fixes
