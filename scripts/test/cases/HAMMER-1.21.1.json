@@ -1,0 +1,169 @@
+{
+  "case_id": "HAMMER-1.21.1",
+  "title": "星币锤门槛/消耗/封顶取证：31 枚不触发；32 枚（边界含等号）消耗 18 且加成 9；400 枚时加成被上限 100 夹取；卸下筹码后一律不消耗（负对照）。",
+  "version": "1.21.1",
+  "target": {
+    "type": "new",
+    "ref": "star_coin_hammer_chip"
+  },
+  "on_fail": "keep_game_running",
+  "steps": [
+    {
+      "op": "note",
+      "text": "目的：星币锤（星光流派筹码）三项平衡改动的游戏内取证。\n\n**期望值按产品常量独立推算**（不读产品中间量）：THRESHOLD_COINS=32、CONSUME_COINS=18、\nATTACK_RATIO=0.30、MAX_ATTACK_BONUS=100，加成 = min(100, max(1, 持有总数 x 0.30))（基数取**消耗前**总数）。\n  相位 A：31 枚（< 32）⇒ 不消耗（consumed=0）、不加成（bonus 与 bonus_before 一致）。\n  相位 B：32 枚（= 32，边界含等号）⇒ consumed=18、after=14、bonus=min(100,max(1,9))=9。\n  相位 C：400 枚 ⇒ consumed=18、after=382、bonus=min(100,120)=**100（封顶生效）**。\n  相位 D：卸下筹码后 32 枚 ⇒ 产品早退，consumed=0（负对照：加成只随装备生效）。\n\n⚠️ 加成基数取「消耗前」总数 ⇒ after 与 bonus 必须分别按 before 与 before 推算，不能互相代换。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear @s",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/give @s astral_dice:golden_dice 1"
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe equipslot dice \"astral_dice:golden_dice\" HS"
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe equipslot chip \"astral_dice:star_coin_hammer_chip\" HQ",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1000
+    },
+    {
+      "op": "note",
+      "text": "相位 A：31 枚 < 门槛 32 ⇒ 拒绝。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe hammerbless A 31",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "note",
+      "text": "相位 B：32 枚 ⇒ 消耗 18、加成 9。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe hammerbless B 32",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "note",
+      "text": "相位 C：400 枚 ⇒ 400x0.3=120 被上限 100 夹取。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe hammerbless C 400",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "note",
+      "text": "相位 D（负对照）：卸下筹码 ⇒ 不再消耗。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe equipslot chip air HZ",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe hammerbless D 32",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear @s",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_A_HAMMER:equipped=1:added=31:set=31:before=31:after=31:consumed=0:[^\\n]*:threshold=32:consume=18:cap=100(:|\\n|$)"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_B_HAMMER:equipped=1:added=32:set=32:before=32:after=14:consumed=18:bonus=9:[^\\n]*:threshold=32:consume=18:cap=100(:|\\n|$)"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_C_HAMMER:equipped=1:added=400:set=400:before=400:after=382:consumed=18:bonus=100:[^\\n]*:threshold=32:consume=18:cap=100(:|\\n|$)"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_D_HAMMER:equipped=0:[^\\n]*:set=32:before=32:after=32:consumed=0(:|\\n|$)"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_[A-Z0-9]+_ERR"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_[A-Z0-9]+_EX:"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "Unknown or incomplete command|Incorrect argument for command|Expected whitespace to end one argument|Unknown command|Expected literal|Unclosed quoted string|Expected quote to start a string|Invalid (integer|long|double|float|bool|escape sequence)|Expected (integer|long|double|float|bool)|<--\\[|错误的命令参数"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "redeclared|redeclaration of var"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "crash"
+    }
+  ],
+  "evidence": []
+}

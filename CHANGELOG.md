@@ -63,6 +63,8 @@
 
 - **Unequipping the Oasis Queen sign now clears "Queen's Privilege" and the temporary cards along with it**: previously unequipping the sign only removed the armor granted by its passive, so the **"Queen's Privilege" effect (the HUD timer) and every temporary card stayed on you** for up to the effect's full 3:00 duration - inconsistent with the "clean up on unequip" convention every other sign follows. Unequipping the sign now **removes the "Queen's Privilege" effect** and **purges all temporary cards** (inventory, offhand, those equipped into the dice, and any on an open card-panel or the cursor) at the same instant, matching exactly how natural expiry, external removal and player death already clean up.
 
+- **Loot chests were rolling this mod's items twice; the rates are back to their stated values**: every vanilla loot chest rolls both the vanilla table and this mod's added "star plate" table, and the four pools (star coin / blank chip / star plate / glass dice) had been injected into **both** of them, roughly doubling the effective chances (star coin 5% → 9.75%, blank chip 3% → 5.91%, glass dice 2% → 3.96%, star plate "1% + 5% from the added table" → 6.89%). The added table is no longer injected a second time, so every pool is back to its stated chance (star coin 5%, blank chip 3%, glass dice 2%, star plate 1%; End City stays at star coin 9% / star plate 5% / glass dice 5%, and Buried Treasure still guarantees the blank chip at 100%).
+
 <!-- 已修复BUG在此登记 -->
 
 ## 1.3.1

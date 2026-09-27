@@ -452,6 +452,7 @@ pwsh -NoProfile -File tools/check_mod_sources.ps1                    # 模组来
 ```
 
 > ℹ️ **`verify_content_library.ps1` 已移出本节（2026-09-23 用户裁决「按第 2 路修复」）** —— 它是 **1.2.0 冻结期一次性验收工具，不是长期闸门**。
+> **2026-09-27 起已进一步物理迁出守门目录**：`scripts/verify/verify_content_library.ps1` → **`scripts/devtools/verify_content_library.ps1`**（文件名不变）。理由是「`scripts/verify/verify_*.ps1` 通配跑一遍」这类收尾做法会把它一起命中并拿到必红的 RC=1（结构性假红）；迁出后**守门 0 即全绿**，本工具仍可按需手动运行。
 > 其对照件 `docs/1.2.0-content.json` 按设计是「1.2.0 新增了什么」的**冻结快照**（`start_commit = 68dbd59`；采集脚本已于 2026-09-15 随 `temp/` 清理删除），工程推进到新版本后它**必然报偏差**——1.3.0 开发期实测 15 项（1.3.0 的 13 个新物品不在库里 1 项 + 汇总标签/槽位基线陈旧 8 项 + 1.2.0 有而 1.3.0 已移除的 `moses_ready`「待命：破绽」仍被登记 6 项），**不代表回归**。
 > 仅在「**重建某个版本的内容库快照并校验它**」时手动运行（届时须同步切换脚本内的 `$START_COMMIT` / `$BASE_*_COUNTS` / `$NEW_EFFECTS` / `$VERS`）。
 > ⚠️ 另：它依赖的 `docs/1.2.0-content.json` **被 .gitignore 排除**（详见 §11），干净克隆下会因缺文件而无法运行。

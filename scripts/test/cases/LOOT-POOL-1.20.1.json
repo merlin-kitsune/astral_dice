@@ -1,0 +1,149 @@
+{
+  "case_id": "LOOT-POOL-1.20.1",
+  "title": "战利品池注入取证：普通箱/末地城/埋藏宝藏三张表四个 astral_dice:* 池齐全；实滚 1000/500 次计件落在二项 ±3.5σ 带内（玻璃 2%/5%、空白 3%、埋藏宝藏空白筹码 500/500）；负对照 blocks/dirt 池为 none 且四计数全 0。",
+  "version": "1.20.1",
+  "target": {
+    "type": "new",
+    "ref": "loot_injection"
+  },
+  "on_fail": "keep_game_running",
+  "steps": [
+    {
+      "op": "note",
+      "text": "目的：战利品池注入的概率面取证（1.3.2 三项改动：玻璃骰子入池 2%/末地城 5%、空白筹码其余箱子 3%）。\n\n**产品口径**（LootInjectionHandler#onLootTableLoad，只在战利品表 id 落在 `chests/` 前缀下时注入）：\n  星币     5%（末地城 9%），每掷 1~2 枚\n  空白筹码 埋藏的宝藏 **100%**（必出）；其余战利品箱 **3%**\n  星盘     1%（末地城 5%）\n  玻璃骰子 其余战利品箱 **2%**；末地城 **5%**（数量固定 1）\n\n**判据分两层**：① 表上是否挂着四个 `astral_dice:*` 池 —— **确定性**（改名/漏注入/前缀门控失效必被抓）；\n② 实滚计件 —— 概率面，带宽取二项分布 ±3.5σ（误报率 < 0.05%；星币按「命中得 1~2 枚」的复合分布取方差）：\n   1000 掷：2% ⇒ [4,36]；3% ⇒ [11,49]；5% ⇒ [25,75]；星币(1~2 枚)⇒ [45,105]\n\n⚠️ 实滚走 `LootParams(CHEST) + LootTable#getRandomItems(params, seed)`（与 unpackLootTable 同一参数集），\n   不放置方块容器 ⇒ 不污染世界、不受容器容量影响。\n⚠️ 负对照 `minecraft:blocks/dirt` 不是 `chests/` 表 ⇒ pools=none 且四个计数全 0；\n   同时断言 empty=0 —— 证明「0 掉落」不是因为表本身掷空，而是真的没注入。"
+    },
+    {
+      "op": "note",
+      "text": "相位 SD：普通战利品箱（simple_dungeon，1000 掷）⇒ 四个池齐全；玻璃 2%、空白 3%、星币 5%。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe lootprobe SD \"minecraft:chests/simple_dungeon\" 1000",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 8000
+    },
+    {
+      "op": "note",
+      "text": "相位 EC：末地城（end_city_treasure，1000 掷）⇒ 玻璃骰子 5%（高于普通箱 2%，单变量对照）。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe lootprobe EC \"minecraft:chests/end_city_treasure\" 1000",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 8000
+    },
+    {
+      "op": "note",
+      "text": "相位 BT：埋藏的宝藏（500 掷）⇒ 空白筹码 **必须正好等于掷数**（100% 必出）。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe lootprobe BT \"minecraft:chests/buried_treasure\" 500",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 8000
+    },
+    {
+      "op": "note",
+      "text": "相位 NEG（负对照）：minecraft:blocks/dirt 不是 chests/ 表 ⇒ pools=none、四计数全 0、empty=0。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe lootprobe NEG \"minecraft:blocks/dirt\" 500",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 8000
+    },
+    {
+      "op": "note",
+      "text": "相位 SELF（确定性红线，与概率无关）：模组自有的 GLM 表 `astral_dice:chests/star_plate` 其路径同样以 `chests/` 开头 ⇒ 会被 `LootInjectionHandler` 的前缀判据命中、被注入一整套 astral 池；而 GLM `star_plate_all_chests` 是**无条件**（100%）把它挂到 57 张原版箱子表上 ⇒ 等于每开一个箱子都额外多滚一整套，使有效概率≈翻倍。\n\n**正确期望**：模组自有表上 `pools=none`。此断言失败即代表「GLM 自挂表被二次注入」这一泄漏存在。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe lootprobe SELF \"astral_dice:chests/star_plate\" 1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 3000
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe lootprobe SELFG \"astral_dice:chests/golden_star_plate\" 1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 3000
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_SD_LOOT:table=minecraft:chests/simple_dungeon:mounted=1:rolls=1000:empty=[0-9]+:pools=astral_dice:star_coin,astral_dice:blank_chip,astral_dice:star_plate,astral_dice:glass_dice:star_coin=(?:36|37|38|39|40|41|42|43|44|45|46|47|48|49|50|51|52|53|54|55|56|57|58|59|60|61|62|63|64|65|66|67|68|69|70|71|72|73|74|75|76|77|78|79|80|81|82|83|84|85|86|87|88|89|90|91|92|93|94|95|96|97|98|99|100|101|102|103|104|105|106|107|108|109|110|111|112|113|114):blank_chip=(?:11|12|13|14|15|16|17|18|19|20|21|22|23|24|25|26|27|28|29|30|31|32|33|34|35|36|37|38|39|40|41|42|43|44|45|46|47|48|49):star_plate=[0-9]+:glass_dice=(?:4|5|6|7|8|9|10|11|12|13|14|15|16|17|18|19|20|21|22|23|24|25|26|27|28|29|30|31|32|33|34|35|36)(:|\\n|$)"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_EC_LOOT:table=minecraft:chests/end_city_treasure:mounted=1:rolls=1000:empty=[0-9]+:pools=astral_dice:star_coin,astral_dice:blank_chip,astral_dice:star_plate,astral_dice:glass_dice:star_coin=(?:84|85|86|87|88|89|90|91|92|93|94|95|96|97|98|99|100|101|102|103|104|105|106|107|108|109|110|111|112|113|114|115|116|117|118|119|120|121|122|123|124|125|126|127|128|129|130|131|132|133|134|135|136|137|138|139|140|141|142|143|144|145|146|147|148|149|150|151|152|153|154|155|156|157|158|159|160|161|162|163|164|165|166|167|168|169|170|171|172|173|174|175|176|177|178|179|180|181|182|183|184|185|186):blank_chip=(?:11|12|13|14|15|16|17|18|19|20|21|22|23|24|25|26|27|28|29|30|31|32|33|34|35|36|37|38|39|40|41|42|43|44|45|46|47|48|49):star_plate=[0-9]+:glass_dice=(?:25|26|27|28|29|30|31|32|33|34|35|36|37|38|39|40|41|42|43|44|45|46|47|48|49|50|51|52|53|54|55|56|57|58|59|60|61|62|63|64|65|66|67|68|69|70|71|72|73|74|75)(:|\\n|$)"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_BT_LOOT:table=minecraft:chests/buried_treasure:mounted=1:rolls=500:empty=[0-9]+:pools=astral_dice:star_coin,astral_dice:blank_chip,astral_dice:star_plate,astral_dice:glass_dice:star_coin=[0-9]+:blank_chip=500:star_plate=[0-9]+:glass_dice=(?:0|1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16|17|18|19|20|21)(:|\\n|$)"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_NEG_LOOT:table=minecraft:blocks/dirt:mounted=1:rolls=500:empty=0:pools=none:star_coin=0:blank_chip=0:star_plate=0:glass_dice=0(:|\\n|$)"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_SELF_LOOT:table=astral_dice:chests/star_plate:mounted=1:rolls=1:empty=[0-9]+:pools=none:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_SELFG_LOOT:table=astral_dice:chests/golden_star_plate:mounted=1:rolls=1:empty=[0-9]+:pools=none:"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_[A-Z0-9]+_ERR"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_[A-Z0-9]+_EX:"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "Unknown or incomplete command|Incorrect argument for command|Expected whitespace to end one argument|Unknown command|Expected literal|Unclosed quoted string|Expected quote to start a string|Invalid (integer|long|double|float|bool|escape sequence)|Expected (integer|long|double|float|bool)|<--\\[|错误的命令参数"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "redeclared|redeclaration of var"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "crash"
+    }
+  ],
+  "evidence": []
+}

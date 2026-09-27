@@ -46,6 +46,14 @@ public class LootInjectionHandler {
         var name = event.getName();
         if (!name.getPath().startsWith("chests/")) return;
 
+        // ⚠️ 自有命名空间的表必须早退（2026-09-27 修复「双通道重复注入」）：
+        //    下方判据只按**路径前缀**匹配，而自有表 `astral_dice:chests/star_plate` 的 path 同样是 `chests/star_plate`
+        //    ⇒ 它会被一并注入下面这一整套 astral_dice:* 池。偏偏 GLM `star_plate_all_chests` 又是**无条件**（100%）
+        //    把该表挂到原版箱表上（`neoforge:add_table`），于是「开一个箱子 = 主表 + 附加表各滚一遍」——
+        //    星币/空白筹码/玻璃骰子/星盘四池概率被二次注入放大（两次独立判定 ⇒ 合成概率 1−(1−p)²，星币 5% → 9.75%）。
+        //    自有表由 GLM 自行引用，**不得**再由本 handler 注入。
+        if (name.getNamespace().equals(com.merlinkitsune.astral_dice.AstralDiceMod.MODID)) return;
+
         LootTable table = event.getTable();
 
         // Prevent duplicate pool addition on reload

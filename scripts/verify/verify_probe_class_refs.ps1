@@ -15,13 +15,22 @@
     这类「类被搬走、探针没跟」的漂移，靠人眼审 14k 行脚本不可行，必须机器拦。
 
     判据：对每个 `Java.loadClass("X.Y.Z")`，要求 `X/Y/Z.class`（或其内嵌类形式 `X/Y/Z$Inner.class`）
-    出现在下面三处之一：
+    出现在下面四处之一：
       1. 本模组构建产物 `build/libs/astral_dice-*.jar`（**取最新一份** —— build/libs 常残留历史版本）；
       2. `run/<版本>/mods/*.jar` 全量（Curios / Patchouli / KubeJS / Rhino / starengine_lib 都在这）；
       3. `build/moddev/artifacts` 的 merged jar（MC 本体 + 加载器）。
+      4. 上述任意外层 jar 里 **JarJar 内嵌 jar**（`META-INF/jarjar/*.jar`）的全部条目 —— 见下条。
     另外补入 `build.gradle` 里 `maven.modrinth:<slug>:<ver>` 形式的依赖（从 gradle 缓存取 jar）——
     这些第三方模组由 `modImplementation` 在 **dev 运行期**注入 classpath，**不落 `run/mods`**，
     不补这一步会把 `CuriosApi` 之类全判成缺失（实测过）。
+
+    ⚠️ **为什么第 4 处必须有（2026-09-27 修复，此前 17 处假红）**：本模组把前置库 starengine_lib
+    以 JarJar 形式**内嵌**进产物（`META-INF/jarjar/starengine_lib-<平台>-<版本>.jar`）⇒
+    `com.merlinkitsune.starenginelib.*` 那批类**既不在外层 jar 的条目里、也不落 `run/<版本>/mods`**
+    （FML 到启动时才把内嵌 jar 解出来挂 classpath）。不展开就会把 `GameplayConstants` /
+    `StarCoinWalletState` / `BossEntityUtil` / `SignSelectionGate` / `TargetSelectionRegistry`
+    整批判成「不在运行时 classpath」——而它们实际都在，属**脚本盲区**而非真缺陷。
+    递归深度上限 `$script:MaxJarDepth`（防自引用内嵌导致的无限递归）。
 
     已登记的豁免（运行期一定存在，但不在上面三处）：
       · JDK 自带：`java.` / `javax.` / `jdk.` / `sun.` / `com.sun.` / `org.w3c.` / `org.xml.`；
@@ -47,6 +56,8 @@
     用 pwsh 7 运行（与 `scripts/test/**` 一致）。
     实测：2026-09-22 修 1.20.1 / 1.21.1 两处 `SignSelectionGate` 旧包名后，本脚本从
     `FAIL（2 处）` 转为 `PASS`。
+    实测：2026-09-27 补「JarJar 内嵌 jar 展开」后，`verify_probe_class_refs` 的 17 处
+    `com.merlinkitsune.starenginelib.*` 假红清零（此前它把内嵌库整个当不存在）。
 #>
 [CmdletBinding()]
 param(
@@ -92,6 +103,8 @@ $script:Whitelist = @(
 
 $script:ClassRe = [regex]'Java\.loadClass\(\s*[''"]([A-Za-z_$][A-Za-z0-9_$.]*)[''"]\s*\)'
 $script:ModrinthRe = [regex]'maven\.modrinth:([\w.\-]+):([\w.+\-]+)'
+# JarJar 内嵌 jar 的递归深度上限（本模组只有 1 层；上限只为防自引用内嵌导致的无限递归）
+$script:MaxJarDepth = 3
 
 # 条目池与失败计数放脚本域：**不要**用「函数返回集合」—— PowerShell 会把函数返回的
 # IEnumerable 展平进管道，返回值一多（这里 3 万条 class 条目）语义很难控制，实测踩过坑。
@@ -112,10 +125,56 @@ function Get-MtNewestFile {
     return ($hits | Sort-Object LastWriteTime -Descending | Select-Object -First 1)
 }
 
+function Add-NestedJarEntries {
+    <#
+    .SYNOPSIS
+        递归展开一个 zip 流里的 JarJar 内嵌 jar，把它们的条目并入 $script:Entries。
+
+    .NOTES
+        ⚠️ 本模组把 starengine_lib 内嵌成 `META-INF/jarjar/<name>.jar` ⇒ 那批类既不在外层 jar
+        的条目里、也不落 `run/<版本>/mods`。不展开 ⇒ 整库的类被误判为缺失（2026-09-27 实测 17 处）。
+        本函数**不输出任何管道值**（全部 `[void]` / `Dispose()` 均为 void），避免污染调用方的布尔返回。
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]$Stream,
+        [Parameter(Mandatory)][int]$Depth
+    )
+
+    $za = $null
+    try {
+        # leaveOpen = $true：流的释放交给调用方（否则内层 Dispose 会把 MemoryStream 一并关掉）
+        $za = New-Object System.IO.Compression.ZipArchive($Stream, [System.IO.Compression.ZipArchiveMode]::Read, $true)
+        foreach ($e in $za.Entries) { [void]$script:Entries.Add($e.FullName) }
+        if ($Depth -ge $script:MaxJarDepth) { return }
+        foreach ($e in $za.Entries) {
+            if ($e.FullName -notmatch '^META-INF/jarjar/.+\.jar$') { continue }
+            $ms = New-Object System.IO.MemoryStream
+            try {
+                $src = $null
+                try {
+                    $src = $e.Open()
+                    [void]$src.CopyTo($ms)
+                } finally {
+                    if ($src) { $src.Dispose() }
+                }
+                [void]$ms.Seek(0, [System.IO.SeekOrigin]::Begin)
+                Add-NestedJarEntries -Stream $ms -Depth ($Depth + 1)
+            } finally {
+                $ms.Dispose()
+            }
+        }
+    } catch {
+        # 内嵌 jar 读不了不改变外层结论（外层条目已经并入）
+    } finally {
+        if ($za) { $za.Dispose() }
+    }
+}
+
 function Add-ZipEntries {
     <#
     .SYNOPSIS
-        把一个 jar 的全部条目名并入 $script:Entries；读不了返回 $false。
+        把一个 jar（**含其 JarJar 内嵌 jar**）的全部条目名并入 $script:Entries；读不了返回 $false。
     #>
     [CmdletBinding()]
     param([Parameter(Mandatory)][string]$Path)
@@ -124,6 +183,23 @@ function Add-ZipEntries {
     try {
         $zip = [System.IO.Compression.ZipFile]::OpenRead($Path)
         foreach ($e in $zip.Entries) { [void]$script:Entries.Add($e.FullName) }
+        foreach ($e in $zip.Entries) {
+            if ($e.FullName -notmatch '^META-INF/jarjar/.+\.jar$') { continue }
+            $ms = New-Object System.IO.MemoryStream
+            try {
+                $src = $null
+                try {
+                    $src = $e.Open()
+                    [void]$src.CopyTo($ms)
+                } finally {
+                    if ($src) { $src.Dispose() }
+                }
+                [void]$ms.Seek(0, [System.IO.SeekOrigin]::Begin)
+                Add-NestedJarEntries -Stream $ms -Depth 1
+            } finally {
+                $ms.Dispose()
+            }
+        }
         return $true
     } catch {
         return $false

@@ -137,7 +137,7 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --phase stop --purge-
 
 `tools/check_lang_sync.ps1`（双语同步）、`scripts/audit/tooltip_color_audit.ps1`（染色规则）、`verify_chip_recipes.ps1`、`verify_chip_acquisition.ps1`、`verify_bountiful_pools.ps1`、`verify_bountiful_instance_exclusions.ps1`、`tools/check_mod_sources.ps1`（模组来源 Curse/Modrinth 独占口径）、`scripts/devtools/Test-MtSyntax.ps1`（工具链语法门）。
 
-> ℹ️ `scripts/verify/verify_content_library.ps1` **不属本清单**（2026-09-23 裁出）：它是 **1.2.0 冻结期一次性验收工具**，对照件是 1.2.0 的冻结快照 ⇒ 工程推进后必然报偏差（1.3.0 开发期 15 项），不代表回归。详见 `TESTING-SPEC.md` §9。
+> ℹ️ `scripts/devtools/verify_content_library.ps1`（2026-09-27 由 `scripts/verify/` 迁出）**不属本清单**（2026-09-23 裁出）：它是 **1.2.0 冻结期一次性验收工具**，对照件是 1.2.0 的冻结快照 ⇒ 工程推进后必然报偏差（1.3.0 开发期 15 项），不代表回归。详见 `TESTING-SPEC.md` §9。
 
 ## 10. 退出码总表
 
