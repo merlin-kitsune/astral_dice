@@ -189,6 +189,7 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --phase <p> --version <v>
 |---|---|
 | `/astralprobe dumpstate <tag>` | **只读**：转调产品侧 `/astralparty dump`（OP 级 2）。dump 把本模组自身状态按 `APDUMP\|<组>\|<键>=<值>` 同时写聊天栏与 `LOGGER.info`（必然进 `latest.log`） |
 | `/astralprobe opprobe` | **只读**：打印 `AP_OP_PERM:has2=<0\|1>:level=<n>:src=<…>:dump=<…>`；`has2` 的判据与 `/astralparty` 完全相同（玩家命令源上的 `CommandSourceStack#hasPermission(2)`），由 `mt_launch` 作为 cases 阶段的前置闸门 |
+| `/astralprobe cmdcheck <tag> <原始命令>` | **只读（只解析、不执行）**：把命令串送进服务端 `dispatcher.parse(cmd, ctx.source)`，落 `AP_<tag>_CMDCHECK:ok=1:cmd=…` / `ok=0:cmd=…:err=…`（`err` = brigadier **英文**原文，`getMessage` 不参与本地化）。用途 = **命令面闸门**：把「这条命令在本版本到底认不认」变成可断言机器行，堵住「注入器只按键、命令被拒也不报」的静默失效（见 §10-36）。⚠️ 与本表前两条不同，它**不需要** OP 级权限之外的东西，但**会**受 `requires()` 门控影响 —— 非 OP 源上部分命令会判 `ok=0`，故必须用玩家自身的 `ctx.source` |
 
 6 个纯只读命令（`komachiread` / `nancystate` / `airbagread` / `railgunfriendlyread` / `railtruedmgread` / `fensplashread`）**全部**接上 `dumpState`。
 
@@ -548,6 +549,13 @@ pwsh -NoProfile -File tools/check_mod_sources.ps1                    # 模组来
     - **对照（同一探针字节 + 同一产品 jar + 同一用例文件 + 同一世界）**：独立 `--case` 复跑 **PASS 141/141**（两次：本批 09:26 套件第 6 条、10:16 单条复跑），连跑全流程里第 10 条 **FAIL**（`PASS=1137 FAIL=27`）⇒ 判定为**会话序列性抖动**，不是回归。**处置**：`--phase stop --force` → `--phase launch` → **单条复跑**该用例；**禁止**为此改断言或改产品。留痕：`temp/evidence/guard_swallow_1211.md`（FAIL/PASS 两侧日志路径与 10:05–10:06 的原始时间线）。
     - ⚠️ **与 §10-31 的关系**：同属「客户端侧吞掉聊天注入」家族（31 已定位到死亡界面并有源码级归因；本条**触发条件未定位**，只确认与「同一客户端会话内连跑多条用例」相关）。两者的共同判据是「服务端心跳 `AP_NOAI` 仍在 + 用例读数缺失 + 原版回显缺失」，遇到时**先单条复跑**再谈别的。
 
+36. **⚠️【静默失效家族第 4 位，最阴】版本相关命令被「整条拒绝、命令不执行」，而断言照样 PASS（2026-09-27 用户指出，同日在 26.1.2 上完整取证）**：26.1.2 起 Mojang 把 **`GameRules` 全部改名**（camelCase + `do` 前缀 → snake_case 去前缀；`world.level.GameRules` 也迁到 `world.level.gamerules.GameRules`）：`naturalRegeneration`→`natural_health_regeneration`、`doMobSpawning`→`spawn_mobs`、`keepInventory`→`keep_inventory`、`doDaylightCycle`→`advance_time`…（**58 条，逐条 `registerBoolean/registerInteger` 可证**）。`GameRuleCommand.register` 是**按 `gameRule.id()` 逐条生成字面量节点** ⇒ 旧名**在构造上不可能匹配**（不是「语义变了」，是根本没这个节点）。后果：8 条 MEGAS 用例的 setup 命令全废（`naturalRegeneration`/`doMobSpawning` 未生效 = **自然刷怪、自回血都还在**），而**用例逐条 PASS** —— 因为注入器只负责把按键送到窗口、不校验命令是否被接受，断言又只锚探针读数。
+    - **为什么现成的 `absent` 兜底也没拦住（两层失配，务必同时记住）**：① 用例断言写的是 `Unknown or incomplete command`，而 brigadier 1.1.8 的真实内建字面量是 `Incorrect argument for command`（`BuiltInExceptions.java` 实测；前者是另一条分支）；② **MC 屏幕上的错误首行是本地化文案**（`command.context.parse_error`，中文回显「错误的命令参数」）⇒ 在中文客户端上，**任何锚英文文案的日志断言都永远匹配不到**。铁证：`scripts/test/reports/20260926-230116/26.1.2/latest.log` L670-677 —— `[System] [CHAT] 错误的命令参数` + `[System] [CHAT] gamerule naturalRegeneration false<--[此处]`（`doMobSpawning false` 同）。
+    - **正确对策（两条都已在测试资产里落地）**：① **服务端探针只解析不执行**：`/astralprobe cmdcheck <tag> <原始命令>`（见 §6.1），用例断言 `AP_<tag>_CMDCHECK:ok=1`，失败时 `err` 带 brigadier **英文**原文（不本地化）⇒ 精确、给原因、无副作用；② **日志兜底锚 `<--[`**：MC 对被拒命令恒回显两行，第二行是「命令原文 + `<命令上下文标记>`」（en `<--[HERE]` / zh `<--[此处]`），**`<--[` 前缀跨语言一致**，且干净运行中**出现 0 次**（三线快照日志实测 0/0/0）、失败时**恰好每条被拒命令 1 次**（实测 2）⇒ 零误报、全覆盖。断言写法：`"pattern": "<--\\["`（JSON 里双反斜杠）。**禁止**再锚英文错误文案做命令面守门。
+    - **流程固化**：新增闸门用例 `CMDSURF-<ver>.json`（逐条 `cmdcheck` 套件用到的命令 + 断言全 `ok=1` + **一条负对照**断言「另一版本的写法必须 `ok=0`」，否则无法排除「cmdcheck 恒返回 ok=1」的自证式假绿），批量脚本把它放**最前面**、**失败即中止**。⚠️ 用例引入新命令时**必须同步加进闸门**。
+    - **顺带结论（26.1.2 命令面核对，源码级）**：`gamemode survival`（`GameType` 名未变）、`tp @s ~ ~ ~ 0 0`（`RotationArgument` 示例即 `"0 0"`）、`kill @e[type=!player,distance=..128]`（`type`/`distance` 仍在）、`clear` / `give` 均**未变**；⚠️ 但选择器 `tag=` / `team=` / `scores=` / `nbt=` / `dx` 在 26.1.2 的 `EntitySelectorOptions` 里**已不存在**，跨线用例不得使用。**只有 gamerule 名要改。**
+    - **方法论**：查版本命令面**优先读 MC 源码 jar**（`<子项目>/build/moddev/artifacts/minecraft-patched-<ver>-sources.jar` 的 `server/commands/*.java`、`commands/Commands.java`、`world/level/gamerules/GameRules.java`），比 wiki 更权威也更快（wiki 只给命令清单、不给参数细节）。
+
 ---
 ## 12. 超时机制与看门狗（2026-09-15 B6 ⑥；**2026-09-16 收紧为严格预算**，长流程必须遵守）
 > 📌 **2026-09-20 登记（S6）**：下表预算沿用清零前数值，**未随用例重建重新标定**。重建后必须：先跑 1–2 条代表性用例实测单条耗时 → 按 `90s×条数+90s` 复核 cases 预算与全局 2700s → 把标定结果回写本节；在此之前不得把预算数值当作已验证结论。
@@ -707,6 +715,7 @@ pwsh -NoProfile -File scripts/test/mt_watchdog.ps1 -Version 1.21.1 [-StallSecond
 
 | 用例 | 判据要点 |
 |---|---|
+| `CMDSURF-26.1.2`（**三线各一份**，2026-09-27 新增，建议放批量脚本**最前**） | **命令面闸门**：把套件用到的 9 条原版命令逐条经 `/astralprobe cmdcheck` 送进服务端 dispatcher **只解析不执行**，断言全 `ok=1`；另加**负对照**（送另一版本的 gamerule 写法，断言必须 `ok=0`，否则闸门没有判别力）+ `absent <--\[`。动机与取证见 §10-36 |
 | `CRAFT-SMOKE-26.1.2` | ① 日志 `Couldn't parse data file` 计数 0；② `astral_dice:` 配方装载数 == 磁盘文件数（**121**）；③ 13 份手写配方按 `placementInfo` 自建 `CraftingInput` 跑 `matches()+assemble()` **真合成**；④ `meleecheck` 长矛判定 |
 | `CHIP-RELOG-A-26.1.2` | 装 2★ 骰子 + 放筹码（**必须是 `curios:chip` 标签内的物品**）+ `/astralprobe saveall`；断言槽数/cosmetic 相等且筹码在位 |
 | `CHIP-RELOG-B-26.1.2` | 强杀重登后再读：槽数/cosmetic 仍相等（**已 PASS**）；筹码仍在槽内 —— **当前 FAIL，代表 26.1.2 的「重登后筹码被移出栏位」缺陷仍在**（取证与已排除项见 `docs/compat-26.1.2-neoforge.md` §7.6） |

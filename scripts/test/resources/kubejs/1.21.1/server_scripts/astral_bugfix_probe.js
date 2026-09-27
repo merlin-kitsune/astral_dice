@@ -40,6 +40,7 @@
 //  ── 命令一览(用例 mt_case.py 依赖这些名字与参数顺序) ──────────────────────
 //    /astralprobe diag <tag>                          环境自检:API 可见性 + 时间基准 + 雷击计数
 //    /astralprobe opprobe                             只读:打印 hasPermissions(2) 实测值(B6 ④)
+//    /astralprobe cmdcheck <tag> <原始命令>           只解析不执行:本版本认不认这条命令(命令面闸门,2026-09-27)
 //    /astralprobe dumpstate <tag>                     只读:转调 /astralparty dump(B6 ③)
 //    /astralprobe equipslot <slotId> <itemId> <tag>
 //    /astralprobe attack <entityTypeId> <tag>         生成靶子并真实近战命中(仍被 NANCY-LU-CLOAK 复用)
@@ -141,6 +142,46 @@ function exText(e) {
         }
     } catch (x2) { /* 忽略栈获取失败 */ }
     return ("" + msg).replace(/[\r\n]+/g, " ").substring(0, 600);
+}
+
+// ── 命令面校验(2026-09-27)──────────────────────────────────────────────────
+// 背景(实测踩过):用例文件里写死的**版本相关命令**一旦在本版本失效,注入器只负责把
+// 按键送出去 —— 命令被服务器拒绝时**没有任何断言会失败**,整条命令静默 no-op。
+// 实证:26.1.2 上 `/gamerule naturalRegeneration false`(本线写法)完全不生效,而三条
+// 用例照样 PASS。更坑的是**两层失配**:① 拒绝文案是 `Incorrect argument for command`
+// (不是用例 absent 断言的 `Unknown or incomplete command`);② 游戏语言为中文时回显是
+// 「错误的命令参数」⇒ 英文 `absent` 断言**永远匹配不到**,该缺陷永远藏得住。
+//
+// 对策:把「这条命令在本版本到底认不认」变成**与语言无关**的可断言日志行 ——
+// 在服务端按 dispatcher **只解析、不执行**(无副作用),解析结果落成机器行:
+//   /astralprobe cmdcheck <tag> <原始命令,不含前导斜杠>
+//   ⇒ AP_<tag>_CMDCHECK:ok=1:cmd=gamerule doMobSpawning false
+//   ⇒ AP_<tag>_CMDCHECK:ok=0:cmd=...:err=... (brigadier 英文原文,不参与本地化)
+function doCmdCheck(ctx, tag, raw) {
+    var cmd = ("" + raw).replace(/^\s+/, "").replace(/^\/+/, "");
+    var ok = 0;
+    var err = "";
+    try {
+        var dispatcher = ctx.source.getServer().getCommands().getDispatcher();
+        var res = dispatcher.parse(cmd, ctx.source);
+        var ex = res.getExceptions();
+        var rest = ("" + res.getReader().getRemaining()).replace(/\s+/g, "");
+        if (ex != null && !ex.isEmpty()) {
+            try {
+                var it = ex.values().iterator();
+                if (it.hasNext()) err = exText(it.next());
+            } catch (e5) { err = "parse-exception"; }
+        } else if (rest !== "") {
+            err = "trailing-token:" + rest;
+        } else {
+            ok = 1;
+        }
+    } catch (e) {
+        err = exText(e);
+    }
+    send(ctx, "AP_" + tag + "_CMDCHECK:ok=" + ok + ":cmd=" + cmd
+        + (ok === 1 ? "" : ":err=" + err));
+    return ok;
 }
 
 // ── 时间基准(分层回退,首选与生产同源的那一层)────────────────────────────────
@@ -13381,6 +13422,14 @@ ServerEvents.commandRegistry(event => {
                 .executes(ctx => guard(ctx, "OP", function () {
                     return opprobe(ctx);
                 })))
+            // ── 命令面校验(2026-09-27):只解析不执行,把「本版本认不认这条命令」变成断言 ──
+            .then(Commands.literal("cmdcheck")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("raw", StringArg.greedyString())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doCmdCheck(ctx, StringArg.getString(ctx, "tag"),
+                                StringArg.getString(ctx, "raw"));
+                        })))))
             .then(Commands.literal("chargeset")
                 .then(Commands.argument("tag", StringArg.word())
                     .then(Commands.argument("n", IntegerArg.integer(0, 20))
