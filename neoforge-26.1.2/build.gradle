@@ -98,9 +98,18 @@ neoForge {
             client()
 
             // 自动化测试:gradlew runClient -Pquickplay=<世界名> 直接进入指定单机世界
+            // ⚠️⚠️ 26.1.2 必须用 `--quickPlaySingleplayer=<世界名>`（**等号**连接）：
+            //   MC 26.1.2 的 `net.minecraft.client.main.Main` 把该选项声明为
+            //     `parser.accepts("quickPlaySingleplayer").withOptionalArg()`
+            //   （1.21.1 实测是 `.withRequiredArg()`；26.1.2 的 sources jar 实测为 optional）
+            //   ⇒ JOptSimple 对「可选参数」不会吞掉下一个 token，写成
+            //     `--quickPlaySingleplayer testworld`（空格分隔）时 `testworld` 被当成
+            //     positional arg 丢弃 ⇒ **quickplay 静默失效**、客户端停在主菜单。
+            //   症状：工具链 `MT_MARK: 26.1.2 phase=launch — TIMEOUT`（180s 内没进世界），
+            //         而 latest.log 里连一行 quickplay / "main menu to in-game" 都没有。
+            //   2026-09-27 定位并修复（此前 26.1.2 从未真正进过世界）。
             if (project.hasProperty('quickplay')) {
-                programArgument '--quickPlaySingleplayer'
-                programArgument project.findProperty('quickplay')
+                programArguments.add("--quickPlaySingleplayer=${project.findProperty('quickplay')}")
             }
 
             // 自动化测试:固定游戏窗口尺寸 1920x1080(便于 OCR 读取画面与屏幕坐标换算)
@@ -108,6 +117,34 @@ neoForge {
             programArgument '1920'
             programArgument '--height'
             programArgument '1080'
+
+            // ⚠️ KI-D1 规避（2026-09-27 落地）—— 关闭 dev-only 的 GL sampler 校验。
+            //
+            //  症状：26.1.2 + 光影（Iris + ComplementaryReimagined）在 dev 下**随时**可能抛
+            //    `java.lang.IllegalStateException: Missing sampler Sampler1`
+            //  崩溃栈（本次实测，crash-2026-09-27_10.28.05-client.txt）：
+            //    GlCommandEncoder.trySetup(:531) ← executeDraw(:406) ← GlRenderPass.drawIndexed(:145)
+            //     ← RenderPass.drawIndexed(:95) ← RenderType.draw(:112)
+            //     ← MultiBufferSource$BufferSource.endBatch(:99) ← LevelRenderer.lambda$addMainPass$0(:707)
+            //
+            //  根因（Iris 侧，已 A/B + 源码定案，见 KNOWN-ISSUES §7 KI-D1）：
+            //    Iris 把 item/entity 管线的 program 换成光影程序（IrisPipelines + MixinShaderManager_Overrides），
+            //    而该 program 按**顶点格式**推出 overlay 需求并声明 `Sampler1`（ExtendedShader + IrisVertexFormats.ENTITY 含 UV1）；
+            //    通道侧却只按原版 `RenderSetup.useOverlay` 绑 sampler ⇒ 原版校验抛错。
+            //    本模组与该崩溃无关：崩溃报告内 `com.merlinkitsune.*` 帧数 = 0。
+            //    ⇒ `/time set 18000` 这类操作只是**改变主通道渲染内容**、把它更早"踩"出来，不是根因
+            //      （KI-D1 已有对照组：去掉任何玩家操作、同环境同召唤物，照样崩在同一行）。
+            //
+            //  ⚠️ 该断言**只在 dev 生效**：
+            //    GlRenderPass.VALIDATION = SharedConstants.IS_RUNNING_IN_IDE
+            //                              && !Boolean.getBoolean("neoforge.disableGlValidation")
+            //    ⇒ 玩家（生产）环境 `IS_RUNNING_IN_IDE=false`，校验收起、**不会崩**（只静默跳过）。
+            //    故这里关掉它，只为让 dev 冒烟不被上游缺陷阻断，**不改变发货产物的任何行为**。
+            //
+            //  ⚠️ 代价：**自家渲染管线的问题也会被一并静音**（例如 target_prism 这类自定义几何的
+            //    sampler/vertex-format 配置错误将不再报错）。一旦怀疑本模组渲染有问题，**临时注释本行**
+            //    重跑以恢复校验；确认后再决定是否长期保留。
+            jvmArgument '-Dneoforge.disableGlValidation=true'
         }
 
         server {

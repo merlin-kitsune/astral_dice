@@ -32,14 +32,24 @@
       "astral_dice:boost_effect_card_use"
     ]
   },
-  "effect_card_use_target": {
+  "effect_card_use": {
     "sounds": [
-      "astral_dice:effect_card_use_target"
+      "astral_dice:effect_card_use"
     ]
   },
-  "effect_card_use_self": {
+  "skill_use": {
     "sounds": [
-      "astral_dice:effect_card_use_self"
+      "astral_dice:skill_use"
+    ]
+  },
+  "glass_dice_broken": {
+    "sounds": [
+      "astral_dice:glass_dice_broken"
+    ]
+  },
+  "megas_blast": {
+    "sounds": [
+      "astral_dice:megas_blast"
     ]
   }
 }

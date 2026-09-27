@@ -40,6 +40,12 @@
   loot table sits under `chests/` - chests, trapped chests, barrels, shulker boxes, hoppers and minecart chests; the
   jungle temple dispenser is excluded), and chests you place yourself never trigger it.
 
+- **Custom sound effects**: added `skill_use` (active skills taking effect, including entering the target selector), `glass_dice_broken` (dying while wearing the glass dice) and `megas_blast` (Orbital Bombardment impact, played at the hit position); the effect-card use sound is now a single `effect_card_use` for every effect card except Berserk / King's Power / Immovable, and the Living Page / Misfortune Card hit sounds were replaced with the new `hit_normal` / `hit_bighit` samples (split at 8 damage, played at the hit position).
+
+- **Megas Sign (Legendary)**: active **"Orbital Bombardment"** — designate one hostile target, then immediately consume every card in the inventory and call down an orbital bombardment on that target and a 12-block area around it. Every 2 cards consumed adds 1 bombardment (up to 10); each bombardment hits 1 random monster in the area for 2 base damage, plus extra damage equal to the total cost of the battle cards consumed. Passive **"Resupply"**: whenever there are fewer than 6 cards in the inventory, gain 1 random card every 1:00. Consuming 6 or more cards in a single cast triggers **"Precision Strike"**, which permanently raises the orbital bombardment damage that target takes by +1 per stack, until it dies.
+
+<!-- 新内容在此登记 -->
+
 ### Content & Balance
 
 #### Damage & Resolution
@@ -194,6 +200,15 @@
   `DiceBattleResolver.resolve(attack, defense, relativeFloorRatio)` with `RELATIVE_FLOOR_RATIO = 0.15` (the floor is
   "attack power x 15%" instead of a flat 1 point). **Breaking change inside the snapshot line**: the public constant
   `CombatFormula.ARMOR_DIVISOR` has been **removed** - the single shared divisor is replaced by per-side coefficients.
+- **Megas Sign "Orbital Bombardment"**: the battle-card cost bonus is now **1 damage per 1 cost** (was 2 damage per 1 cost), and the target-selector radius is **32** blocks (was 16); a single bombardment now deals at most **80** damage and a single cast deals at most **800** damage in total (bombardments beyond that budget keep only their visuals and sound and deal no damage).
+
+- **All cards are now unstackable**: the 29 cards (12 battle + 17 effect) drop from a stack limit of 64 to 1, so every card takes its own inventory slot; the battle-card special case ("stacks to 64 at full durability, a single card once used") is gone with it.
+
+- **Star Coin Hammer (Starlight chip)**: the trigger threshold is now **holding at least 32 Star Coins** (was "more than 20"), each Dice Blessing consumes **18** Star Coins (was 6), and the Attack Damage bonus is **capped at 100** (still 30% of the Star Coins held; nothing accrues beyond the cap).
+
+- **Oasis Queen's Sign (Rare) "Queen's Privilege" slot requirement reverted to 3**: casting the active skill now requires **3** free main-inventory slots (was 2), matching the fixed 2 battle + 1 effect cards granted per cast (cards no longer stack, so each takes its own slot); with fewer slots the cast is refused at no cost (no cooldown, no effect). The message now reads "3 free slots needed".
+
+<!-- 内容与平衡性调整在此登记 -->
 
 ### Bug Fixes
 

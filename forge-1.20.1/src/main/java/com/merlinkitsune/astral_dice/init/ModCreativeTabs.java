@@ -114,6 +114,7 @@ public class ModCreativeTabs {
                 output.accept(ModItems.ZHAO_SIGN.get());
                 output.accept(ModItems.TERU_SIGN.get());
                 output.accept(ModItems.MAMUSHI_SIGN.get());
+                output.accept(ModItems.MEGAS_SIGN.get());
                 output.accept(ModItems.SHERRY_SIGN.get());
                 output.accept(ModItems.HANNA_SIGN.get());
                 // 筹码

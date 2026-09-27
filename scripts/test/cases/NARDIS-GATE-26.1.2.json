@@ -1,0 +1,210 @@
+{
+  "case_id": "NARDIS-GATE-26.1.2",
+  "title": "绿洲女王立牌(nardis)空槽门槛=3 闸门取证:主物品栏空槽 2(<3)⇒ 释放被拒绝且零消耗(cd_before=cd_after=0 / 未施 nardis_privilege / granted=0);空槽 3(=3)⇒ 允许释放,实发 3 张(2 战斗+1 效果,卡牌不可堆叠)且效果 3600t、冷却 3600t。",
+  "version": "26.1.2",
+  "target": {
+    "type": "new",
+    "ref": "nardis_sign"
+  },
+  "on_fail": "keep_game_running",
+  "steps": [
+    {
+      "op": "note",
+      "text": "目的:绿洲女王立牌主动技能「女王特权」的**主物品栏空槽门槛**取证。\n2026-09-27 用户二次裁决:`TemporaryCardUtil.MIN_FREE_SLOTS_TO_CAST` 由当日更早放宽的 **2** 回调为 **3**\n(放宽理由「卡牌 stacksTo(64) 可堆叠 ⇒ 2 格也收得下 3 张」已随同批「所有卡牌不可堆叠(stacksTo(1))」作废)。\n\n本用例只覆盖这一条契约,驱动方式与历史 NARDIS-SIGN 的 M6 组同源(探针 nardi* 系列,走**真实主动**\n`BaseSignItem#performSkillForCurio`):\n  ① `nardiprep G0 clear` 复位(清 curios/临时牌/效果/主动态,发并装好立牌);\n  ② `nardiinv G1 fill 2` ⇒ 主物品栏**恰好剩 2 格** ⇒ `nardiinv` 读数应含 `reserve=2`/`free_after=2`;\n  ③ `nardiread G2 GATE2` 记录释放前状态(应 `free=2`、无临时牌、无效果、无冷却);\n  ④ `nardicast G3` ⇒ **预期被拒绝**:`cd_before=cd_after=0` + `cd_unchanged=1`、`granted=0`、`fx_dur=-1:n_fx_on=0`;\n  ⑤ `nardiinv G5->G6 fill 3` ⇒ 恰好剩 3 格(= 阈值)⇒ **预期允许**:`granted=3:n_temp=3`、`t_battle=2:t_effect=1`、\n     `fx_dur=3600:n_fx_on=1`、`cool=3600`,且 `free=0`(3 张各占一格,卡牌不可堆叠)。\n\n反面判据(防「拒绝被静默当成成功」):断言 `AP_G3_CAST` 行**不得**出现 `granted=[1-9]` —— 即被拒绝那一次\n确实一张未发,而不是靠 `granted=0` 之外的路径蒙混。另有语言无关的命令面兜底 `<--\\[`(被拒命令回显)。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode survival",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear @s",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardiprep G0 clear",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "note",
+      "text": "① 空槽 2(< 3)⇒ 预期**拒绝释放且零消耗**。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardiinv G1 fill 2",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardiread G2 GATE2",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardicast G3",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardiread G4 AFTER2",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "note",
+      "text": "② 边界:空槽 3(= 3)⇒ 预期**允许释放**,实发 3 张(2 战斗 + 1 效果)。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardiprep G5 clear",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardiinv G6 fill 3",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardiread G7 GATE3",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardicast G8",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardiread G9 AFTER3",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe nardiinv GZ clear",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_G1_INV:mode=fill:reserve=2:[^\\n]*:free_after=2:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_G2_GATE2:[^\\n]*n_temp=0:n_temp_eq=0:[^\\n]*cool=0:lock=0:lock_end=0:cd_end=0:[^\\n]*free=2:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_G3_CAST:who=self:[^\\n]*cd_before=0:cd_after=0:cd_unchanged=1:[^\\n]*temp_before=0:temp_eq_before=0:granted=0:n_temp=0:n_temp_eq=0:[^\\n]*fx_dur=-1:n_fx_on=0:cool=0:[^\\n]*free=2:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_G4_AFTER2:[^\\n]*n_temp=0:n_temp_eq=0:[^\\n]*n_fx_on=0:[^\\n]*cool=0:[^\\n]*free=2:"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_G3_CAST:[^\\n]*granted=[1-9]"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_G6_INV:mode=fill:reserve=3:[^\\n]*:free_after=3:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_G7_GATE3:[^\\n]*n_temp=0:n_temp_eq=0:[^\\n]*cool=0:[^\\n]*free=3:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_G8_CAST:who=self:[^\\n]*granted=3:n_temp=3:n_temp_eq=0:[^\\n]*fx_dur=3600:n_fx_on=1:[^\\n]*cool=3600:[^\\n]*t_battle=2:t_effect=1:t_excl=0:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_G9_AFTER3:[^\\n]*n_temp=3:n_temp_eq=0:[^\\n]*n_fx_on=1:[^\\n]*free=0:"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_[A-Z0-9]+_ERR"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_[A-Z0-9]+_EX:"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "<--\\["
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "crash"
+    }
+  ],
+  "evidence": []
+}

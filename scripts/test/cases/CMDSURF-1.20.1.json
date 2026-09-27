@@ -1,0 +1,194 @@
+{
+  "case_id": "CMDSURF-1.20.1",
+  "title": "命令面闸门(1.20.1)：把测试套件用到的 9 条命令逐条送进服务端 dispatcher **只解析不执行**，断言全部 ok=1。守住「版本相关命令写死在用例里」这一隐患 —— 26.1.2 起全部 gamerule 改名(snake_case)，旧名会被整条拒绝且静默 no-op。",
+  "version": "1.20.1",
+  "target": {
+    "type": "env",
+    "ref": "command_surface"
+  },
+  "on_fail": "keep_game_running",
+  "steps": [
+    {
+      "op": "note",
+      "text": "目的：**命令面闸门**。把本测试套件用到的每一条原版命令送进服务端 dispatcher **只解析、不执行**，逐条断言 `AP_CS<k>_CMDCHECK:ok=1`。\n\n动机（实测踩过）：26.1.2 起 Mojang 把**全部 gamerule 改名**（camelCase + do 前缀 → snake_case）：\n  naturalRegeneration -> natural_health_regeneration；doMobSpawning -> spawn_mobs。\n用例里写死的旧名会被服务器**整条拒绝、命令不执行**（回显「错误的命令参数」/「Incorrect argument for command」），而注入器只负责按键、断言只看探针读数 ⇒ 三条用例照样 PASS，缺陷**完全静默**。\n\n机制：探针 `cmdcheck <tag> <原始命令>` 在服务端 `dispatcher.parse(...)`（无副作用），落\n  AP_<tag>_CMDCHECK:ok=1:cmd=...            本版本接受\n  AP_<tag>_CMDCHECK:ok=0:cmd=...:err=...    本版本拒绝（err = brigadier 英文原文，不本地化）\n\n兜底：另断言 `<--\\[` 不出现。MC 对被拒命令的回显恒为「<本地化文案>」+「<命令原文><--[HERE]」（中文 `<--[此处]`）——`<--[` 前缀与语言无关，且干净运行中 0 次出现（三线快照日志实测），故任何被拒的注入命令都会让本用例响亮失败。\n\n⚠️ 负对照（`CSX`）：额外送一条**另一版本**的 gamerule 写法，断言它**必须** ok=0。没有这一步，「闸门全绿」就无法排除「cmdcheck 恒返回 ok=1」这种自证式假绿。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode survival",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe cmdcheck CS1 gamemode survival",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe cmdcheck CS2 gamerule naturalRegeneration false",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe cmdcheck CS3 gamerule doMobSpawning false",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe cmdcheck CS4 kill @e[type=!player,distance=..128]",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe cmdcheck CS5 tp @s ~ ~ ~ 0 0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe cmdcheck CS6 clear @s",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe cmdcheck CS7 give @s astral_dice:effect_card_hamburger 1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe cmdcheck CS8 gamerule doMobSpawning true",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe cmdcheck CS9 astralprobe megasread AA BB",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe cmdcheck CSX gamerule natural_health_regeneration false",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CS1_CMDCHECK:ok=1:cmd="
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CS2_CMDCHECK:ok=1:cmd="
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CS3_CMDCHECK:ok=1:cmd="
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CS4_CMDCHECK:ok=1:cmd="
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CS5_CMDCHECK:ok=1:cmd="
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CS6_CMDCHECK:ok=1:cmd="
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CS7_CMDCHECK:ok=1:cmd="
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CS8_CMDCHECK:ok=1:cmd="
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CS9_CMDCHECK:ok=1:cmd="
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_CSX_CMDCHECK:ok=0:cmd=gamerule natural_health_regeneration false"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "<--\\["
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "Unknown or incomplete command|Incorrect argument for command|Expected whitespace to end one argument|Unknown command|Expected literal|Unclosed quoted string|Expected quote to start a string|Invalid (integer|long|double|float|bool|escape sequence)|Expected (integer|long|double|float|bool)"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_[A-Z0-9]+_ERR"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_[A-Z0-9]+_EX:"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "crash"
+    }
+  ],
+  "evidence": []
+}

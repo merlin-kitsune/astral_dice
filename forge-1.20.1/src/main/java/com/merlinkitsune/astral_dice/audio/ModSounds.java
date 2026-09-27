@@ -8,7 +8,7 @@ import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.RegistryObject;
 
 /**
- * 本模组自定义音效的**注册表**（8 条）。
+ * 本模组自定义音效的**注册表**（10 条）。
  *
  * <p>每条音效由两部分组成，缺一不可：
  * <ol>
@@ -32,11 +32,13 @@ import net.minecraftforge.registries.RegistryObject;
  *   wallet.wav                    -> wallet_deposit
  *   coin.wav                      -> coin_withdraw
  *   coin1.wav                     -> coin_bag_withdraw
- *   damage_effect_card_hit.wav    -> damage_effect_card_hit
- *   damage_effect_card_bighit.wav -> damage_effect_card_bighit
  *   boost_effect_card_use.wav     -> boost_effect_card_use
- *   effect_card_use1.wav          -> effect_card_use_target
- *   effect_card_use2.wav          -> effect_card_use_self
+ *   effect_card_use.wav           -> effect_card_use
+ *   hit_normal.wav                -> damage_effect_card_hit
+ *   hit_bighit.wav                -> damage_effect_card_bighit
+ *   skill_use.wav                 -> skill_use
+ *   glass_dice_broken.wav         -> glass_dice_broken
+ *   megas_blast.wav               -> megas_blast
  * </pre>
  */
 public final class ModSounds {
@@ -53,20 +55,26 @@ public final class ModSounds {
     /** 取钱：取出**星币袋**（单个或全部）。源素材 {@code coin1.wav}。 */
     public static final RegistryObject<SoundEvent> COIN_BAG_WITHDRAW = register("coin_bag_withdraw");
 
-    /** 活体书页命中目标，本次伤害 **&lt; 8**。源素材 {@code damage_effect_card_hit.wav}。 */
+    /** 活体书页命中目标，本次伤害 **&lt; 8**。源素材 {@code hit_normal.wav}。 */
     public static final RegistryObject<SoundEvent> DAMAGE_EFFECT_CARD_HIT = register("damage_effect_card_hit");
 
-    /** 活体书页命中目标，本次伤害 **&gt;= 8**。源素材 {@code damage_effect_card_bighit.wav}。 */
+    /** 活体书页命中目标，本次伤害 **&gt;= 8**。源素材 {@code hit_bighit.wav}。 */
     public static final RegistryObject<SoundEvent> DAMAGE_EFFECT_CARD_BIGHIT = register("damage_effect_card_bighit");
 
     /** 使用了狂暴 / 王之力 / 岿然不动。源素材 {@code boost_effect_card_use.wav}。 */
     public static final RegistryObject<SoundEvent> BOOST_EFFECT_CARD_USE = register("boost_effect_card_use");
 
-    /** 对**其他人或目标**使用效果牌。源素材 {@code effect_card_use1.wav}。 */
-    public static final RegistryObject<SoundEvent> EFFECT_CARD_USE_TARGET = register("effect_card_use_target");
+    /** 使用效果牌（狂暴 / 王之力 / 岿然不动 除外）。源素材 {@code effect_card_use.wav}。 */
+    public static final RegistryObject<SoundEvent> EFFECT_CARD_USE = register("effect_card_use");
 
-    /** 对**自身**使用效果牌。源素材 {@code effect_card_use2.wav}。 */
-    public static final RegistryObject<SoundEvent> EFFECT_CARD_USE_SELF = register("effect_card_use_self");
+    /** 主动技能**生效**时（含进入目标选择器）。源素材 {@code skill_use.wav}。 */
+    public static final RegistryObject<SoundEvent> SKILL_USE = register("skill_use");
+
+    /** 佩戴玻璃骰子的玩家死亡。源素材 {@code glass_dice_broken.wav}。 */
+    public static final RegistryObject<SoundEvent> GLASS_DICE_BROKEN = register("glass_dice_broken");
+
+    /** 「轨道轰炸」命中目标（在命中位置播放）。源素材 {@code megas_blast.wav}。 */
+    public static final RegistryObject<SoundEvent> MEGAS_BLAST = register("megas_blast");
 
     private ModSounds() {
     }

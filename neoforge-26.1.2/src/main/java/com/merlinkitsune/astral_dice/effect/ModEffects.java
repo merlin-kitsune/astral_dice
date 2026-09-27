@@ -248,6 +248,15 @@ public class ModEffects {
             EFFECTS.register("hanna_float", HannaFloatEffect::new);
 
     /**
+     * 「精准打击」(机械师立牌 megas 的轨道轰炸层数真值效果):每层使该目标受到的轨道轰炸伤害 +1,
+     * 永久持续直到目标死亡(时长 Integer.MAX_VALUE,由原版实体生命周期保证移除);
+     * 层数 = amplifier + 1 = 该目标被轨道轰炸命中的次数。作用对象为 LivingEntity(怪物)。
+     * 图标 = {@code images/精准打击.png}(实装路径 {@code textures/mob_effect/precision_strike.png})。
+     */
+    public static final DeferredHolder<MobEffect, MobEffect> PRECISION_STRIKE =
+            EFFECTS.register("precision_strike", PrecisionStrikeEffect::new);
+
+    /**
      * 本模组已注册的全部效果的**只读**视图(调试命令 {@code /astralparty cleareffect} 用)。
      *
      * <p>直接派生自 {@link #EFFECTS} 的注册条目视图——NeoForge 的 {@code getEntries()} 返回

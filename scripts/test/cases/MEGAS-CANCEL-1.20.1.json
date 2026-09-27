@@ -1,0 +1,212 @@
+{
+  "case_id": "MEGAS-CANCEL-1.20.1",
+  "title": "机械师立牌(megas)取消路径取证：真实入口 performSkillForCurio 开启目标选择会话后不消耗手牌、不写冷却（门控态 sel=1 / hand=4 / cd_rem=0）；cancel 关闭会话（sel=0）且手牌仍 4、冷却仍 0；等待 3.5s 后靶血量仍 500 => 取消路径未调度任何轰炸。",
+  "version": "1.20.1",
+  "target": {
+    "type": "new",
+    "ref": "megas_sign"
+  },
+  "on_fail": "keep_game_running",
+  "steps": [
+    {
+      "op": "note",
+      "text": "目的：机械师立牌(megas)「轨道轰炸 / 物资补充 / 精准打击」游戏内取证。\n本用例组由探针 megas* 系列驱动，**只调产品公开函数**（MegasSignItem / OrbitalBombardmentManager / PrecisionStrikeEffect / ModAttachments），断言锚定 latest.log 的 AP_<tag>_MEGAS 机器行。\n\n**期望值均按产品常量独立推算**（不读产品的中间量）：RADIUS=12、BASE_DAMAGE=2、MAX_STRIKES=10、\nPRECISION_THRESHOLD=6、COST_DAMAGE_MULTIPLIER=1、STRIKE_INTERVAL=10t、FALL=8t、合计单轮约 18t；\n主动冷却 120s=2400t；被动间隔 1200t、阈值 6 张。\n  次数 strikes = min(floor(消耗卡牌数 / 2), 10)；\n  单轮伤害 = BASE(2) + 战斗牌费用总和 x1；若有「精准打击」则该轮再 + 当前层数；\n  总伤害 = strikes x per + (precision ? strikes x (strikes+1)/2 : 0)。\n\n**场景控制**：doMobSpawning false（仅本用例内，末尾恢复）避免自然刷怪混入目标池；\n探针读数里的 near（指定靶 12 格内存活实体数）恒应为 1 —— 若被污染则**响亮失败**，\n不把伤害平摊当成功。\n\nWARN 冷却写在 TargetSelectionAction#apply 内 => 只有 megascast confirm 档能验冷却；\nWARN 轰炸异步（每轮 10t 间隔 + 8t 下落）=> 伤害/层数必须在用例侧 wait 之后读。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode survival",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamerule naturalRegeneration false",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamerule doMobSpawning false",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/kill @e[type=!player,distance=..128]",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/tp @s ~ ~ ~ 0 0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "note",
+      "text": "取消不消耗/不冷却：megascast select 走真实入口(performSkillForCurio) => 进入选择会话(sel=1)，\n  此时**不得**消耗手牌、**不得**写冷却（门控态）；随后 cancel => 会话关闭(sel=0)，手牌仍 4、冷却仍 0。\n  等待 3.5s 后复核靶血量仍 500 => 取消路径确实没有调度任何轰炸。\n  WARN 与 MEGAS-ACTIVE 的 confirm 档形成对照：同一入口 + 唯一差别是「确认 vs 取消」。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear @s",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/give @s astral_dice:effect_card_hamburger 4",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe megasprep X0 500 0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1300
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe megascd X1 fresh",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe megascast X2 select",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe megasread X2 SELECTED",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe megascast X3 cancel",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe megasread X3 CANCELLED",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "wait",
+      "ms": 3500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe megasread X4 AFTER",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe megasclear ZZ9",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamerule doMobSpawning true",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_X2_MEGAS:phase=SELECTED:equipped=1:hand=4:cd_end=0:cd_rem=0:[^\\n]*:sel=1:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_X3_MEGAS:phase=CANCELLED:equipped=1:hand=4:cd_end=0:cd_rem=0:[^\\n]*:sel=0:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_X4_MEGAS:phase=AFTER:[^\\n]*:hand=4:[^\\n]*:dummy=500/500:"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_[A-Z0-9]+_ERR"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_[A-Z0-9]+_EX:"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "Unknown or incomplete command|Incorrect argument for command|Expected whitespace to end one argument|Unknown command|Expected literal|Unclosed quoted string|Expected quote to start a string|Invalid (integer|long|double|float|bool|escape sequence)|Expected (integer|long|double|float|bool)|<--\\[|错误的命令参数"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "redeclared|redeclaration of var"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "crash"
+    }
+  ],
+  "evidence": []
+}

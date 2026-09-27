@@ -1456,6 +1456,22 @@ public class ModTooltipHandler {
             }
             addSignCooldownRemaining(tooltip, event.getEntity());
         }
+        // 机械师立牌(megas):主动「轨道轰炸」(选择器类——指定 1 个敌对目标 => 立即消耗物品栏全部手牌⇒
+        // 以目标为中心 12 格范围轰炸；次数 = min(消耗卡牌数 / 2, 10)、单次基础 2 伤 + 所消耗战斗牌费用总和 ×2)
+        // + 被动「物资补充」(手牌 < 6 张时每 1:00 自动获得 1 张随机卡牌)。
+        // 本立牌**无玩家级动态计数器**(「精准打击」的层数挂在**怪物**身上,不是玩家)，故只出
+        // 「按键提示 + 主动技能名/描述 + 被动技能名/描述 + 冷却行」四段,块末尾必须调 addSignCooldownRemaining。
+        if (stack.is(ModItems.MEGAS_SIGN.get())) {
+            tooltip.add(Component.empty());
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "轨道轰炸");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.megas_active");
+            addSignPassiveTitle(tooltip, "物资补充");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.megas_passive");
+            // 平台差异：forge 1.20.1 的 ItemTooltipEvent#getEntity() 静态类型已是 Player
+            // (neo 1.21.1/26.1.2 返回 Entity 故需 instanceof)；本线既有立牌分支均直接传入。
+            addSignCooldownRemaining(tooltip, event.getEntity());
+        }
         // 蛟龙立牌(mamushi)专属战斗牌:撕咬(费用 2 / 耐久 1 / 定值 +3)与
         // 龙之咆哮(费用 3 / 耐久 5 / 定值 +3;命中施加 缓慢 III 1:00 + 破防 1:00)。
         // 费用行 = 既有战斗牌的既有写法;描述行走规格 §4 冻结键 tooltip.astral_dice.card.bite / .dragon_roar

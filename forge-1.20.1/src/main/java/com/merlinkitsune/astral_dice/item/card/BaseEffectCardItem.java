@@ -509,22 +509,18 @@ public abstract class BaseEffectCardItem extends Item {
      * 出牌音效(仅服务端;在 {@link #applyEffect} 之后调用,失败路径不会走到)。
      *
      * <p>优先级:**狂暴 / 王之力 / 岿然不动** 三张增益牌 → {@link ModSounds#BOOST_EFFECT_CARD_USE};
-     * 其余按**实际受益目标**分流 —— 目标是自己 → {@link ModSounds#EFFECT_CARD_USE_SELF},
-     * 是其他人或生物(玩家 / 敌对目标) → {@link ModSounds#EFFECT_CARD_USE_TARGET}。
+     * 其余**所有**效果牌 → {@link ModSounds#EFFECT_CARD_USE}(不再按对自身 / 对他人分流)。
      *
      * <p>判据用 {@link #cardTypeId()} 而不是物品实例:选择器类效果牌(狂暴)可对他人使用,
      * 与自身牌共用同一条 {@link #tryUseCard} 路径,必须按**同一份**类型 id 判定,
      * 否则会随"这次指定了谁当目标"而漂移。
      */
     private void playUseSound(Level level, Player user, LivingEntity applyTo) {
-        SoundEvent sound;
-        if (isBoostCard(cardTypeId())) {
-            sound = ModSounds.BOOST_EFFECT_CARD_USE.get();
-        } else if (applyTo == user) {
-            sound = ModSounds.EFFECT_CARD_USE_SELF.get();
-        } else {
-            sound = ModSounds.EFFECT_CARD_USE_TARGET.get();
-        }
+        // 2026-09-27 用户裁决：三张增益牌（狂暴 / 王之力 / 岿然不动）之外，**所有效果牌统一**播
+        // effect_card_use —— 不再按「对自身 / 对他人」分流（旧 target/self 两条素材已废弃）。
+        SoundEvent sound = isBoostCard(cardTypeId())
+                ? ModSounds.BOOST_EFFECT_CARD_USE.get()
+                : ModSounds.EFFECT_CARD_USE.get();
         SoundPlayback.playAt(level, user.getX(), user.getY(), user.getZ(), sound);
     }
 

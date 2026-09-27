@@ -272,6 +272,10 @@ public class DiceCurioItem extends Item implements ICurioItem {
                 ItemStack dice = diceHandler.getStacks().getStackInSlot(0);
                 if (!dice.isEmpty() && dice.is(ModItems.GLASS_DICE.get())) {
                     diceHandler.getStacks().setStackInSlot(0, ItemStack.EMPTY);
+                    // 音效：佩戴玻璃骰子并死亡（在死亡玩家位置播放，附近玩家都听得到）
+                    com.merlinkitsune.astral_dice.audio.SoundPlayback.playAt(player.level(),
+                            player.getX(), player.getY(), player.getZ(),
+                            com.merlinkitsune.astral_dice.audio.ModSounds.GLASS_DICE_BROKEN.get());
                     handler.getStacksHandler("chip").ifPresent(chip ->
                             setSlotCount(player, chip, CHIP_NO_DICE_SLOTS, true));
                     LOGGER.info("[Astral Dice] 玻璃骰子死亡丢失: {} 的玻璃骰子及其卡牌已移除", player.getGameProfile().getName());

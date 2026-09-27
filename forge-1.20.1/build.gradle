@@ -258,6 +258,15 @@ dependencies {
     // 与 1.20.1 整合包一致的运行时模组(curse maven,dev 重映射后加载)
     modImplementation "curse.maven:collective-342584:7148968"    // collective-1.20.1-8.13
     modImplementation "curse.maven:superflat-world-no-slimes-344185:6184996" // superflatworldnoslimes-1.20.1-3.5
+    // ⚠️ 这两条会让 `runServer` 起不来 —— Oculus 在 DEDICATED_SERVER 下加载客户端类直接崩：
+    //      LoadingFailedException: Oculus (oculus) has failed to load correctly
+    //        java.lang.RuntimeException: Attempted to load class net/minecraft/client/gui/screens/Screen
+    //        for invalid dist DEDICATED_SERVER
+    //    ⇒ 1.20.1 的测试世界**只能**走种子包恢复：`scripts/test/resources/testworld-seed-1.20.1.zip`
+    //      （mt.ps1 的 env 阶段检测到该 zip 会自动给 mt_env 加 `--seed`，跳过 runServer）。
+    //      种子包生成办法：临时注释下面两行 → `pwsh -File scripts/test/mt_env.ps1 world --version 1.20.1`
+    //      → `Compress-Archive run/1.20.1/saves/testworld → scripts/test/resources/testworld-seed-1.20.1.zip`
+    //      → 恢复这两行。2026-09-27 首次执行，已产出 192758 字节的种子包。
     modImplementation "curse.maven:embeddium-908741:5681725"     // embeddium-0.3.31+mc1.20.1
     modImplementation "curse.maven:oculus-581495:6020952"        // oculus-mc1.20.1-1.8.0(curse 最新 1.20.1 版;本地 1.8.1 未上 curse)
     // JEI(配方查看,测试环境用):2026-09-17 起按统一口径改走 Curse Maven

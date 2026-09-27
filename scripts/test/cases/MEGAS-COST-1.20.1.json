@@ -1,0 +1,189 @@
+{
+  "case_id": "MEGAS-COST-1.20.1",
+  "title": "机械师立牌(megas)「每消耗 1 张战斗牌 + 该牌费用 x1」取证：4 张战斗牌(attack_card_medium, 费用 1) => 次数 2、单轮 2+(1x4)x1=6、总伤害 12 => 靶 500->488。与 MEGAS-ACTIVE 相位 B（同卡数、效果牌 per=2、总伤害 4）构成对照 => 差值 8 全部来自费用加成。",
+  "version": "1.20.1",
+  "target": {
+    "type": "new",
+    "ref": "megas_sign"
+  },
+  "on_fail": "keep_game_running",
+  "steps": [
+    {
+      "op": "note",
+      "text": "目的：机械师立牌(megas)「轨道轰炸 / 物资补充 / 精准打击」游戏内取证。\n本用例组由探针 megas* 系列驱动，**只调产品公开函数**（MegasSignItem / OrbitalBombardmentManager / PrecisionStrikeEffect / ModAttachments），断言锚定 latest.log 的 AP_<tag>_MEGAS 机器行。\n\n**期望值均按产品常量独立推算**（不读产品的中间量）：RADIUS=12、BASE_DAMAGE=2、MAX_STRIKES=10、\nPRECISION_THRESHOLD=6、COST_DAMAGE_MULTIPLIER=1、STRIKE_INTERVAL=10t、FALL=8t、合计单轮约 18t；\n主动冷却 120s=2400t；被动间隔 1200t、阈值 6 张。\n  次数 strikes = min(floor(消耗卡牌数 / 2), 10)；\n  单轮伤害 = BASE(2) + 战斗牌费用总和 x1；若有「精准打击」则该轮再 + 当前层数；\n  总伤害 = strikes x per + (precision ? strikes x (strikes+1)/2 : 0)。\n\n**场景控制**：doMobSpawning false（仅本用例内，末尾恢复）避免自然刷怪混入目标池；\n探针读数里的 near（指定靶 12 格内存活实体数）恒应为 1 —— 若被污染则**响亮失败**，\n不把伤害平摊当成功。\n\nWARN 冷却写在 TargetSelectionAction#apply 内 => 只有 megascast confirm 档能验冷却；\nWARN 轰炸异步（每轮 10t 间隔 + 8t 下落）=> 伤害/层数必须在用例侧 wait 之后读。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode survival",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamerule naturalRegeneration false",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamerule doMobSpawning false",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/kill @e[type=!player,distance=..128]",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/tp @s ~ ~ ~ 0 0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "note",
+      "text": "战斗牌费用加成：4 张 attack_card_medium(费用 1，属战斗牌) =>\n  strikes=min(4/2,10)=2；per=2 + (1x4)x1=6；无精准打击(4<6) => 总伤害 2x6=12 => 靶 500->488。\n  与 MEGAS-ACTIVE 的相位 B（效果牌 per=2）形成同卡数对照 => 差值 8 全部来自费用 x1。\n  WARN 4 张(<6)刻意不触发精准打击，避免层数把费用口径搅在一起。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear @s",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/give @s astral_dice:attack_card_medium 4",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe megasprep C0 500 0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1300
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe megascd C1 fresh",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe megasread C2 PRE",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe megascast C3 confirm",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "wait",
+      "ms": 4500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe megasread C3 AFTER",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe megasclear ZZ9",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamerule doMobSpawning true",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_C2_MEGAS:phase=PRE:[^\\n]*:hand=4:[^\\n]*:dummy=500/500:[^\\n]*:near=1:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_C3_MEGAS:phase=AFTER:[^\\n]*:hand=0:[^\\n]*:dummy=488/500:"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_[A-Z0-9]+_ERR"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_[A-Z0-9]+_EX:"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "Unknown or incomplete command|Incorrect argument for command|Expected whitespace to end one argument|Unknown command|Expected literal|Unclosed quoted string|Expected quote to start a string|Invalid (integer|long|double|float|bool|escape sequence)|Expected (integer|long|double|float|bool)|<--\\[|错误的命令参数"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "redeclared|redeclaration of var"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "crash"
+    }
+  ],
+  "evidence": []
+}

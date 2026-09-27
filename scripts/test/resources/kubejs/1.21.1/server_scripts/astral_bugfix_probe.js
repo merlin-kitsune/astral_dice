@@ -40,6 +40,7 @@
 //  ── 命令一览(用例 mt_case.py 依赖这些名字与参数顺序) ──────────────────────
 //    /astralprobe diag <tag>                          环境自检:API 可见性 + 时间基准 + 雷击计数
 //    /astralprobe opprobe                             只读:打印 hasPermissions(2) 实测值(B6 ④)
+//    /astralprobe cmdcheck <tag> <原始命令>           只解析不执行:本版本认不认这条命令(命令面闸门,2026-09-27)
 //    /astralprobe dumpstate <tag>                     只读:转调 /astralparty dump(B6 ③)
 //    /astralprobe equipslot <slotId> <itemId> <tag>
 //    /astralprobe attack <entityTypeId> <tag>         生成靶子并真实近战命中(仍被 NANCY-LU-CLOAK 复用)
@@ -141,6 +142,46 @@ function exText(e) {
         }
     } catch (x2) { /* 忽略栈获取失败 */ }
     return ("" + msg).replace(/[\r\n]+/g, " ").substring(0, 600);
+}
+
+// ── 命令面校验(2026-09-27)──────────────────────────────────────────────────
+// 背景(实测踩过):用例文件里写死的**版本相关命令**一旦在本版本失效,注入器只负责把
+// 按键送出去 —— 命令被服务器拒绝时**没有任何断言会失败**,整条命令静默 no-op。
+// 实证:26.1.2 上 `/gamerule naturalRegeneration false`(本线写法)完全不生效,而三条
+// 用例照样 PASS。更坑的是**两层失配**:① 拒绝文案是 `Incorrect argument for command`
+// (不是用例 absent 断言的 `Unknown or incomplete command`);② 游戏语言为中文时回显是
+// 「错误的命令参数」⇒ 英文 `absent` 断言**永远匹配不到**,该缺陷永远藏得住。
+//
+// 对策:把「这条命令在本版本到底认不认」变成**与语言无关**的可断言日志行 ——
+// 在服务端按 dispatcher **只解析、不执行**(无副作用),解析结果落成机器行:
+//   /astralprobe cmdcheck <tag> <原始命令,不含前导斜杠>
+//   ⇒ AP_<tag>_CMDCHECK:ok=1:cmd=gamerule doMobSpawning false
+//   ⇒ AP_<tag>_CMDCHECK:ok=0:cmd=...:err=... (brigadier 英文原文,不参与本地化)
+function doCmdCheck(ctx, tag, raw) {
+    var cmd = ("" + raw).replace(/^\s+/, "").replace(/^\/+/, "");
+    var ok = 0;
+    var err = "";
+    try {
+        var dispatcher = ctx.source.getServer().getCommands().getDispatcher();
+        var res = dispatcher.parse(cmd, ctx.source);
+        var ex = res.getExceptions();
+        var rest = ("" + res.getReader().getRemaining()).replace(/\s+/g, "");
+        if (ex != null && !ex.isEmpty()) {
+            try {
+                var it = ex.values().iterator();
+                if (it.hasNext()) err = exText(it.next());
+            } catch (e5) { err = "parse-exception"; }
+        } else if (rest !== "") {
+            err = "trailing-token:" + rest;
+        } else {
+            ok = 1;
+        }
+    } catch (e) {
+        err = exText(e);
+    }
+    send(ctx, "AP_" + tag + "_CMDCHECK:ok=" + ok + ":cmd=" + cmd
+        + (ok === 1 ? "" : ":err=" + err));
+    return ok;
 }
 
 // ── 时间基准(分层回退,首选与生产同源的那一层)────────────────────────────────
@@ -9331,12 +9372,12 @@ function doNardiEquip(ctx, tag, whatText) {
 /**
  * `/astralprobe nardiinv <tag> <fill|clear> [reserve]` —— 控制**主物品栏 0..35** 的可用格数。
  *
- * <p>`fill`(缺省 reserve=2)用 `minecraft:stone` 把空槽填到**恰好剩 `reserve` 格**;
+ * <p>`fill`(缺省 reserve=3)用 `minecraft:stone` 把空槽填到**恰好剩 `reserve` 格**;
  * `clear` 直接清空主物品栏。用途(= **M6** 安全门的三个对照态,阈值
- * `TemporaryCardUtil.MIN_FREE_SLOTS_TO_CAST = 2`,即「可用格 &lt; 2 才拒绝」):
+ * `TemporaryCardUtil.MIN_FREE_SLOTS_TO_CAST = 3`,即「可用格 &lt; 3 才拒绝」):
  * <ul>
- *   <li>`fill 1` ⇒ 可用格 1 (**&lt; 2**) ⇒ **拒绝释放**且零消耗;</li>
- *   <li>`fill 2` ⇒ 可用格 2 (**= 2**) ⇒ **允许释放**(边界组:实发 2 或 3 张,见用例说明);</li>
+ *   <li>`fill 2` ⇒ 可用格 2 (**&lt; 3**) ⇒ **拒绝释放**且零消耗;</li>
+ *   <li>`fill 3` ⇒ 可用格 3 (**= 3**) ⇒ **允许释放**(边界组:卡牌不可堆叠 ⇒ 必发满 3 张);</li>
  *   <li>`clear` ⇒ 腾空后**立刻可释放**。</li>
  * </ul>
  * 只动主物品栏(0..35),不碰副手/骰子/curios。
@@ -9344,7 +9385,7 @@ function doNardiEquip(ctx, tag, whatText) {
 function doNardiInv(ctx, tag, modeText, reserveText) {
     var p = ctx.source.getPlayerOrException();
     var mode = ("" + modeText) === "clear" ? "clear" : "fill";
-    var reserve = teruInt(reserveText, 2);
+    var reserve = teruInt(reserveText, 3);
     if (reserve < 0) reserve = 0;
     var freeBefore = domFreeSlots(p);
     var filler = resolveItem("minecraft:stone");
@@ -13396,6 +13437,135 @@ function doDnumHit(ctx, tag) {
         + ":dealt=" + (Math.round((h0 - h1) * 100) / 100)
         + ":blessed=" + blessed + ":stale=" + stale
         + ":pos=" + dnumPos(d) + (err ? ":err=" + err : ""));
+// ══════════════════════════════════════════════════════════════════════════════
+//  机械师立牌「megas」—— 轨道轰炸 / 物资补充 / 精准打击（2026-09-26 新增）
+//
+//  产品入口（本段**只调产品公开函数**，不复制产品逻辑）：
+//    · MegasSignItem.performOrbitalBombardment(ServerPlayer, LivingEntity)  主动核心
+//    · MegasSignItem.countHandCards / isEquipped / signCooldownTicks
+//    · PrecisionStrikeEffect.getStacks(LivingEntity)                        精准打击层数
+//    · OrbitalBombardmentManager.{RADIUS, MAX_STRIKES, BASE_DAMAGE, PRECISION_THRESHOLD}
+//    · ModAttachments.get/setMegasResupplyNextTick(Player)                   被动计时基准
+//
+//  真实路径（走选择器 ⇒ 同时覆盖门控 + 冷却写入）：
+//    BaseSignItem.performSkillForCurio(p) → TargetSelectionManager.start(...)
+//    TargetSelectionManager.confirm(p, token, dummyId) → TargetSelectionAction#apply
+//      → performOrbitalBombardment + setSignActiveCooldownEnd + CurrentCoreChipItem.onActiveSkillUsed
+//
+//  ⚠️ 冷却写在 apply 内、**不在** performOrbitalBombardment 内 ⇒ 只有 confirm 档能验冷却。
+//  ⚠️ 轰炸是异步的（每 20 tick 一轮 + 下落 12 tick）⇒ 伤害/层数断言必须等用例侧 wait
+//     之后由 megasread 读靶血量，**不能**在 megascast 当拍读。
+//  ⚠️ near 字段（指定靶 RADIUS 内存活实体数）是**场景污染检出**：期望恒为 1；若自然刷怪
+//     混进来 ⇒ near>1，用例应据此响亮失败，不得把伤害平摊当成成功。
+// ══════════════════════════════════════════════════════════════════════════════
+
+var MegasSignItemClass = mamuLoadCls("com.merlinkitsune.astral_dice.item.sign.MegasSignItem");
+var MegasPrecisionClass = mamuLoadCls("com.merlinkitsune.astral_dice.effect.PrecisionStrikeEffect");
+var MegasManagerClass = mamuLoadCls("com.merlinkitsune.astral_dice.combat.OrbitalBombardmentManager");
+
+/** 立牌 id / 效果牌(无费用,不参与伤害加成) / 战斗牌(cost=1) / 防御牌(cost=1,同属战斗牌) */
+var MEGAS_SIGN_ID = "astral_dice:megas_sign";
+var MEGAS_CARD_EFFECT = "astral_dice:effect_card_hamburger";
+var MEGAS_CARD_BATTLE = "astral_dice:attack_card_medium";
+var MEGAS_CARD_DEFENSE = "astral_dice:defense_card_medium";
+
+/** 观测靶(跨命令保持;megasclear / megasprep 归 null) */
+var megasDummy = null;
+var megasDummyFar = null;
+
+/** 造一只定点靶并把血量抬到 hp(属性取不到时回落到默认 20 血,读数会如实反映) */
+function megasMakeDummy(p, dist, hp) {
+    var mob = spawnDummy(p, "minecraft:spider", dist);
+    if (mob == null) return null;
+    // 锁重力:测试世界地面高度不保证,spawnDummy 只把靶放在玩家同一高度 => 不锁会持续摔落
+    // (实测读数量级 ~1 血/秒),污染「轰炸伤害 = 靶血量差」的判据。
+    try { mob.setNoGravity(true); } catch (e0) { /* 忽略 */ }
+    if (hp > 0) {
+        try {
+            var Attrs = Java.loadClass("net.minecraft.world.entity.ai.attributes.Attributes");
+            var a = mob.getAttribute(Attrs.MAX_HEALTH);
+            if (a != null) a.setBaseValue(hp + 0.0);
+            mob.setHealth(hp + 0.0);
+        } catch (e) { /* 忽略:回落到默认血量 */ }
+    }
+    return mob;
+}
+
+/** 指定靶 RADIUS 内存活实体数(玩家除外;-1 = 无靶/读不到) —— 场景污染检出 */
+function megasNear(p) {
+    if (megasDummy == null || MegasManagerClass == null || p == null) return -1;
+    try {
+        var r = MegasManagerClass.RADIUS - 0;
+        var box = megasDummy.getBoundingBox().inflate(r);
+        var list = p.level.getEntitiesOfClass(LivingEntityClass, box);
+        var n = 0;
+        for (var i = 0; i < list.size(); i++) {
+            var e = list.get(i);
+            if (e == null || e == p) continue;
+            try { if (e.isAlive() && !e.isRemoved()) n++; } catch (e2) { /* 忽略 */ }
+        }
+        return n;
+    } catch (e) { return -1; }
+}
+
+/** 单行读数(phase 由调用方给,便于同一用例多相位对照) */
+function megasLine(p, phase) {
+    var eq = -1, hand = -1, cdEnd = -1, cdMax = -1, cdCfg = -1, next = -1, sel = -1, tok = -1;
+    var dHp = "-", dMax = "-", dPrec = -1, fHp = "-", fPrec = -1;
+    var err = "";
+    try { eq = MegasSignItemClass.isEquipped(p) ? 1 : 0; } catch (e1) { err = err + "|eq:" + exText(e1); }
+    try { hand = MegasSignItemClass.countHandCards(p) - 0; } catch (e2) { err = err + "|hand:" + exText(e2); }
+    try { cdEnd = ModAttachments.getSignActiveCooldownEnd(p) - 0; } catch (e3) { }
+    try { cdMax = ModAttachments.getSignActiveMaxCooldown(p) - 0; } catch (e4) { }
+    try { cdCfg = MegasSignItemClass.signCooldownTicks(p) - 0; } catch (e4b) { }
+    try { next = ModAttachments.getMegasResupplyNextTick(p) - 0; } catch (e5) { err = err + "|next:" + exText(e5); }
+    try { sel = TargetSelectionManagerClass.isSelecting(p) ? 1 : 0; } catch (e6) { }
+    try { tok = TargetSelectionManagerClass.sessionTokenForTests(p) - 0; } catch (e7) { }
+    if (megasDummy != null) {
+        try { dHp = "" + rghp(megasDummy); dMax = "" + lpMaxHp(megasDummy); } catch (e8) { }
+        try { dPrec = MegasPrecisionClass.getStacks(megasDummy) - 0; } catch (e9) { }
+    }
+    if (megasDummyFar != null) {
+        try { fHp = "" + rghp(megasDummyFar); } catch (e10) { }
+        try { fPrec = MegasPrecisionClass.getStacks(megasDummyFar) - 0; } catch (e11) { }
+    }
+    var now = nowTick(p) - 0;
+    var cdRem = (cdEnd > 0 && now > 0) ? (cdEnd - now) : 0;
+    return "phase=" + phase + ":equipped=" + eq + ":hand=" + hand
+        + ":cd_end=" + cdEnd + ":cd_rem=" + cdRem + ":cd_max=" + cdMax
+        + ":cd_cfg=" + cdCfg + ":next=" + next + ":sel=" + sel + ":tok=" + tok
+        + ":dummy=" + dHp + "/" + dMax + ":prec=" + dPrec
+        + ":far=" + fHp + ":farprec=" + fPrec + ":near=" + megasNear(p)
+        + ":now=" + now + (err === "" ? "" : ":err=" + err);
+}
+
+/** 清掉旧观测靶(幂等;discard 失败不影响后续) */
+function megasDropDummies() {
+    try { if (megasDummy != null) megasDummy.discard(); } catch (e1) { /* 忽略 */ }
+    try { if (megasDummyFar != null) megasDummyFar.discard(); } catch (e2) { /* 忽略 */ }
+    megasDummy = null;
+    megasDummyFar = null;
+}
+
+/**
+ * megasprep:装配立牌 + 清冷却/被动计时/选择会话 + 清旧靶 + 可选造靶。
+ * hp=0 ⇒ 不造靶(只做立牌与状态归一); farDist=0 ⇒ 不造远靶。
+ */
+function doMegasPrep(ctx, tag, hp, farDist) {
+    var p = ctx.source.getPlayerOrException();
+    var err = equipSign(p, MEGAS_SIGN_ID);
+    if (err != null) { send(ctx, "AP_" + tag + "_ERR:" + err); return 0; }
+    var step = "";
+    try { ModAttachments.setSignActiveCooldownEnd(p, 0); } catch (e1) { step = step + "|cd0:" + exText(e1); }
+    try { ModAttachments.setSignActiveMaxCooldown(p, 0); } catch (e2) { /* 忽略 */ }
+    try { ModAttachments.setMegasResupplyNextTick(p, 0); } catch (e3) { step = step + "|next0:" + exText(e3); }
+    try { TargetSelectionManagerClass.cancelSessionForTests(p); } catch (e4) { /* 忽略 */ }
+    megasDropDummies();
+    if (hp > 0) megasDummy = megasMakeDummy(p, 3, hp);
+    if (farDist > 0) megasDummyFar = megasMakeDummy(p, farDist, hp > 0 ? hp : 100);
+    send(ctx, "AP_" + tag + "_MPREP:" + megasLine(p, "prep")
+        + ":near_ok=" + (megasDummy != null ? 1 : 0) + ":far_ok=" + (megasDummyFar != null ? 1 : 0)
+        + (step === "" ? "" : ":step_err=" + step));
     send(ctx, "AP_" + tag + "_DONE");
     return 1;
 }
@@ -13427,6 +13597,10 @@ function doDnumSpell(ctx, tag) {
         + ":hp_before=" + dnumState.hpBefore + ":exp=" + exp
         + ":blessed=" + ((findEffect(p, DESC_DICE_BLESSING_X) == null) ? 0 : 1)
         + ":stale=" + stale + (err ? ":err=" + err : ""));
+/** megasread:只读读数(不动任何状态) */
+function doMegasRead(ctx, tag, phase) {
+    var p = ctx.source.getPlayerOrException();
+    send(ctx, "AP_" + tag + "_MEGAS:" + megasLine(p, phase));
     send(ctx, "AP_" + tag + "_DONE");
     return 1;
 }
@@ -13471,6 +13645,24 @@ function doDnumEnd(ctx, tag) {
     try { derr = "" + putInSlot(p, "dice", ItemStack.EMPTY, 0); } catch (e2) { derr = exText(e2); }
     runCmd(ctx, "effect clear @s");
     send(ctx, "AP_" + tag + "_DNUM_END:killed=" + killed + ":dice=" + derr);
+/**
+ * megascd:冷却键脚手架。fresh = 清两个冷却键(负控基线); present = 写到 now+2400(60 秒窗口)。
+ * ⚠️ 只动附件键,不冒充产品写入路径 —— 产品写入只在 megascast confirm 档发生。
+ */
+function doMegasCd(ctx, tag, mode) {
+    var p = ctx.source.getPlayerOrException();
+    var now = nowTick(p) - 0;
+    if (mode === "fresh") {
+        ModAttachments.setSignActiveCooldownEnd(p, 0);
+        ModAttachments.setSignActiveMaxCooldown(p, 0);
+    } else if (mode === "present") {
+        ModAttachments.setSignActiveCooldownEnd(p, now + 2400);
+        ModAttachments.setSignActiveMaxCooldown(p, 2400);
+    } else {
+        send(ctx, "AP_" + tag + "_ERR:bad_mode:" + mode);
+        return 0;
+    }
+    send(ctx, "AP_" + tag + "_MCD:" + megasLine(p, "cd_" + mode));
     send(ctx, "AP_" + tag + "_DONE");
     return 1;
 }
@@ -13609,6 +13801,64 @@ function doCutterEnd(ctx, tag) {
     lpSetHand(p, "");
     cutterApBase = null;
     send(ctx, "AP_" + tag + "_CUT_END:unequip=" + n + ":" + cutterReadout(p));
+ * megascast:驱动主动。四档:
+ *   select  = 只走真实入口(performSkillForCurio) ⇒ 应进入选择会话、**不**消耗/不冷却;
+ *   cancel  = 入口 + cancel ⇒ 等同于未使用(不消耗、不冷却、会话关闭);
+ *   confirm = 入口 + confirm(指定靶) ⇒ **完整真实路径**:消耗手牌 + 调度轰炸 + 写冷却;
+ *   direct  = 直调 performOrbitalBombardment(绕过选择器) ⇒ 报产品返回值(ret),用于「<2 张被拒」负控。
+ */
+function doMegasCast(ctx, tag, mode) {
+    var p = ctx.source.getPlayerOrException();
+    var ret = -1, tok = -1, cid = -1;
+    if (mode === "select") {
+        BaseSignItemClass.performSkillForCurio(p);
+    } else if (mode === "cancel") {
+        BaseSignItemClass.performSkillForCurio(p);
+        tok = TargetSelectionManagerClass.sessionTokenForTests(p) - 0;
+        TargetSelectionManagerClass.cancel(p, tok);
+    } else if (mode === "confirm") {
+        BaseSignItemClass.performSkillForCurio(p);
+        tok = TargetSelectionManagerClass.sessionTokenForTests(p) - 0;
+        cid = (megasDummy == null) ? -1 : megasDummy.getId();
+        if (cid <= 0) { send(ctx, "AP_" + tag + "_ERR:no_dummy"); return 0; }
+        TargetSelectionManagerClass.confirm(p, tok, cid);
+        ret = 1;
+    } else if (mode === "direct") {
+        if (megasDummy == null) { send(ctx, "AP_" + tag + "_ERR:no_dummy"); return 0; }
+        ret = MegasSignItemClass.performOrbitalBombardment(p, megasDummy) ? 1 : 0;
+    } else {
+        send(ctx, "AP_" + tag + "_ERR:bad_mode:" + mode);
+        return 0;
+    }
+    send(ctx, "AP_" + tag + "_MCAST:" + megasLine(p, "cast_" + mode)
+        + ":mode=" + mode + ":ret=" + ret + ":tok_seen=" + (tok > 0 ? 1 : 0)
+        + ":target_id=" + cid);
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+/**
+ * megaspassive:把被动计时基准推到「现在」⇒ 下一 tick 的 onCurioTick 应判定到期。
+ * 手牌数由用例侧 /give 与 /clear 控制 ⇒ 同一命令同时覆盖 due(手牌<6 ⇒ 发放)与
+ * notdue(手牌≥6 ⇒ 只推进计时、不发放)两档。
+ */
+function doMegasPassive(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var now = nowTick(p) - 0;
+    ModAttachments.setMegasResupplyNextTick(p, now);
+    send(ctx, "AP_" + tag + "_MPASSIVE:" + megasLine(p, "passive_armed"));
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+/** megasclear:清观测靶 + 清选择会话(状态键由 megasprep / megascd 归一) */
+function doMegasClear(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var err = "";
+    megasDropDummies();
+    try { TargetSelectionManagerClass.cancelSessionForTests(p); } catch (e1) { err = err + "|sel:" + exText(e1); }
+    try { ModAttachments.setMegasResupplyNextTick(p, 0); } catch (e2) { }
+    send(ctx, "AP_" + tag + "_MCLEAR:cleared=1" + (err === "" ? "" : ":err=" + err));
     send(ctx, "AP_" + tag + "_DONE");
     return 1;
 }
@@ -13622,6 +13872,14 @@ ServerEvents.commandRegistry(event => {
                 .executes(ctx => guard(ctx, "OP", function () {
                     return opprobe(ctx);
                 })))
+            // ── 命令面校验(2026-09-27):只解析不执行,把「本版本认不认这条命令」变成断言 ──
+            .then(Commands.literal("cmdcheck")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("raw", StringArg.greedyString())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doCmdCheck(ctx, StringArg.getString(ctx, "tag"),
+                                StringArg.getString(ctx, "raw"));
+                        })))))
             .then(Commands.literal("chargeset")
                 .then(Commands.argument("tag", StringArg.word())
                     .then(Commands.argument("n", IntegerArg.integer(0, 20))
@@ -14396,8 +14654,8 @@ ServerEvents.commandRegistry(event => {
             //    nardiuseup = 把身上临时牌**清到 0**(purgeAll;含装配栏)但**不碰效果** ⇒ M3 主判据
             //                 (新语义下「牌用光」**不得**再结束效果);`drive` 档额外显式驱动产品自检;
             //    nardiinv   = 主物品栏填充到「恰好剩 reserve 格」/ 清空 ⇒ M6 安全门前置
-            //                 (阈值 = TemporaryCardUtil.MIN_FREE_SLOTS_TO_CAST = 2:
-            //                  可用格 < 2 ⇒ 拒绝;= 2 ⇒ 允许;clear ⇒ 腾空后立刻可释放);
+            //                 (阈值 = TemporaryCardUtil.MIN_FREE_SLOTS_TO_CAST = 3:
+            //                  可用格 < 3 ⇒ 拒绝;= 3 ⇒ 允许;clear ⇒ 腾空后立刻可释放);
             //    nardilockback = 通用锁定硬上界脚手架 —— **当前无用例使用**(冻结机械已撤回),
             //                 保留给其它立牌/后续锁定类回归,详见 impl 块的函数注释。
             .then(Commands.literal("nardicd")
@@ -15082,6 +15340,46 @@ ServerEvents.commandRegistry(event => {
                 .then(Commands.argument("tag", StringArg.word())
                     .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
                         return doCutterEnd(ctx, StringArg.getString(ctx, "tag"));
+            // ── 机械师立牌 megas(2026-09-26)────────────────────────────────────
+            .then(Commands.literal("megasprep")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("hp", IntegerArg.integer(0, 5000))
+                        .then(Commands.argument("farDist", IntegerArg.integer(0, 64))
+                            .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                                return doMegasPrep(ctx, StringArg.getString(ctx, "tag"),
+                                    IntegerArg.getInteger(ctx, "hp"),
+                                    IntegerArg.getInteger(ctx, "farDist"));
+                            }))))))
+            .then(Commands.literal("megasread")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("phase", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doMegasRead(ctx, StringArg.getString(ctx, "tag"),
+                                StringArg.getString(ctx, "phase"));
+                        })))))
+            .then(Commands.literal("megascd")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("mode", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doMegasCd(ctx, StringArg.getString(ctx, "tag"),
+                                StringArg.getString(ctx, "mode"));
+                        })))))
+            .then(Commands.literal("megascast")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("mode", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doMegasCast(ctx, StringArg.getString(ctx, "tag"),
+                                StringArg.getString(ctx, "mode"));
+                        })))))
+            .then(Commands.literal("megaspassive")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doMegasPassive(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            .then(Commands.literal("megasclear")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doMegasClear(ctx, StringArg.getString(ctx, "tag"));
                     }))))
     );
 });

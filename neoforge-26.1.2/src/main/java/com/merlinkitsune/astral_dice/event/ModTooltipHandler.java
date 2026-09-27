@@ -1548,6 +1548,24 @@ public class ModTooltipHandler {
             }
             addSignCooldownRemaining(tooltip, event.getEntity() instanceof Player p ? p : null);
         }
+        // 机械师立牌(megas):主动「轨道轰炸」(选择器类——指定 1 个敌对目标 => 立即消耗物品栏全部手牌⇒
+        // 以目标为中心 12 格范围轰炸；次数 = min(消耗卡牌数 / 2, 10)、单次基础 2 伤 + 所消耗战斗牌费用总和 ×2)
+        // + 被动「物资补充」(手牌 < 6 张时每 1:00 自动获得 1 张随机卡牌)。
+        // 本立牌**无玩家级动态计数器**(「精准打击」的层数挂在**怪物**身上,不是玩家)，故只出
+        // 「按键提示 + 主动技能名/描述 + 被动技能名/描述 + 冷却行」四段,块末尾必须调 addSignCooldownRemaining。
+        if (stack.is(ModItems.MEGAS_SIGN.get())) {
+            tooltip.add(Component.empty());
+            addSignKeyHint(tooltip);
+            addSignActiveTitle(tooltip, "轨道轰炸");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.megas_active");
+            addSignPassiveTitle(tooltip, "物资补充");
+            addSignLines(tooltip, "tooltip.astral_dice.sign.megas_passive");
+            // 独立变量名(同 hannaViewer / sherryViewer)：1.20.1 是 Java 17，模式变量
+            // 作用域比 1.21.1/26.1.2 严格 ⇒ 用共名 `p` 会与外层冲突(实测编译报
+            // 「模式类型 Player 是表达式类型 Player 的子类型」)。
+            Player megasViewer = event.getEntity() instanceof Player mp ? mp : null;
+            addSignCooldownRemaining(tooltip, megasViewer);
+        }
         // 符卡-福 / 符卡-祸(风水师立牌专属效果牌);键名 = 规格 §2.6 冻结值
         // (tooltip.astral_dice.fu_card / tooltip.astral_dice.huo_card)
         if (stack.is(ModItems.FU_CARD.get())) {

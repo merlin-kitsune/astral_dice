@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "F": "minecraft:dispenser",
+    "G": "astral_dice:golden_star_plate",
+    "L": "astral_dice:blank_sign",
+    "S": "minecraft:beacon",
+    "X": "minecraft:netherite_block"
+  },
+  "pattern": [
+    "SFS",
+    "XLX",
+    "GGG"
+  ],
+  "result": {
+    "id": "astral_dice:megas_sign"
+  }
+}

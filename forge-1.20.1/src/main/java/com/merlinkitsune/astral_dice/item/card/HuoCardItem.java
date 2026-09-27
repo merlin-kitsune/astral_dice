@@ -83,6 +83,8 @@ public class HuoCardItem extends BaseEffectCardItem {
         // 击杀归属仍记在施放者身上(与「战斗爽·溅射」同一形状,见 damage/ModDamageTypes#trueDamage(Level,Entity))。
         if (applyTo != null && applyTo.isAlive()) {
             applyTo.hurt(ModDamageTypes.trueDamage(level, user), DAMAGE);
+            // 命中音效（2026-09-27 用户裁决）：与活体书页同一分档口径，在**被击中位置**播放
+            playHitSound(applyTo.level(), applyTo, (int) DAMAGE);
         }
         ExclusiveCardUtil.bindIfAbsent(stack, user);
     }
@@ -160,9 +162,17 @@ public class HuoCardItem extends BaseEffectCardItem {
     public static void give(Player receiver, Player owner, int count) {
         if (receiver == null || owner == null || count <= 0) return;
         if (receiver.level().isClientSide()) return;
-        ItemStack stack = new ItemStack(ModItems.HUO_CARD.get(), count);
-        ExclusiveCardUtil.setOwner(stack, owner);
-        VitaminPillChipItem.giveCard(receiver, stack);
+        // ⚠️ 2026-09-27 用户平衡性调整：**所有卡牌不可堆叠**（stacksTo(1)）。
+        //    此处原先一次构造 count 枚的栈 ⇒ 会产出**超过堆叠上限的非法堆**
+        //    （界面上带数量角标，与「每张占一格」的规则矛盾），故改为**逐张**走同一发牌漏斗。
+        //    逐张调用不改变既有钩子语义：giveCard 内 onCardGained / onAttackCardCount 均按数量
+        //    累加（1×count ≡ count×1）；蛟龙「湖沼之王」的觉醒计数按 **tick 内受益人去重 +
+        //    单事件封顶** 统计（见 MamushiSignItem#onCardGivenToOther），同 tick 多次调用不会多算。
+        for (int i = 0; i < count; i++) {
+            ItemStack stack = new ItemStack(ModItems.HUO_CARD.get());
+            ExclusiveCardUtil.setOwner(stack, owner);
+            VitaminPillChipItem.giveCard(receiver, stack);
+        }
     }
 
     /** 发放 1 张已绑定获得者的符卡-祸(便捷重载) */
@@ -224,6 +234,27 @@ public class HuoCardItem extends BaseEffectCardItem {
     private static void applyCurseDamage(Player player, int amount) {
         if (amount <= 0) return;
         player.hurt(ModDamageTypes.trueDamage(player.level()), (float) amount);
+        // 命中音效：周期伤害同样按 < / >= 阈值分档（在持有者位置播放）
+        playHitSound(player.level(), player, amount);
+    }
+
+    /** 「重击」分档阈值（与活体书页的 {@code LIVING_PAGE_BIG_HIT_THRESHOLD} 同值）。 */
+    private static final int BIG_HIT_THRESHOLD = 8;
+
+    /**
+     * 命中音效（2026-09-27 用户裁决：符卡-祸 与活体书页统一分档口径）。
+     *
+     * <p>本次伤害 &lt; {@value #BIG_HIT_THRESHOLD} ⇒ 普通命中音；&gt;= 则该值 ⇒ 重击音。
+     * 在**被击中者位置**播放（附近玩家都听得到）。
+     */
+    private static void playHitSound(net.minecraft.world.level.Level level,
+                                    net.minecraft.world.entity.Entity at, int dealt) {
+        if (level == null || at == null || level.isClientSide()) return;
+        com.merlinkitsune.astral_dice.audio.SoundPlayback.playAt(level,
+                at.getX(), at.getY(), at.getZ(),
+                (dealt >= BIG_HIT_THRESHOLD
+                        ? com.merlinkitsune.astral_dice.audio.ModSounds.DAMAGE_EFFECT_CARD_BIGHIT
+                        : com.merlinkitsune.astral_dice.audio.ModSounds.DAMAGE_EFFECT_CARD_HIT).get());
     }
 
 }

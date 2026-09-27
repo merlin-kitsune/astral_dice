@@ -1202,6 +1202,24 @@ public class ModAttachments {
         SHOOTING_STAR_COOLDOWN_END.set(player, Math.max(0L, value));
     }
 
+    /**
+     * 机械师立牌 megas 被动「物资补充」的下一次发放基准刻（绝对 gameTime，long）。
+     *
+     * <p>手牌 &lt; 6 张时每 1:00（1200 tick）自动获得 1 张随机卡牌；本键记录「下一次允许发放」的
+     * 绝对刻，由 {@code MegasSignItem#onCurioTick} 每 tick 判定到期并推进。仅服务端使用，
+     * <b>不 sync</b>（客户端无需预检，tooltip 不读它）。
+     */
+    public static final AttachedDataKey<Long> MEGAS_RESUPPLY_NEXT_TICK =
+            register(AttachedDataKey.builder("megas_resupply_next_tick", Codec.LONG, () -> 0L).build());
+
+    public static long getMegasResupplyNextTick(net.minecraft.world.entity.player.Player player) {
+        return MEGAS_RESUPPLY_NEXT_TICK.get(player);
+    }
+
+    public static void setMegasResupplyNextTick(net.minecraft.world.entity.player.Player player, long value) {
+        MEGAS_RESUPPLY_NEXT_TICK.set(player, Math.max(0L, value));
+    }
+
     /** synced 键快照发送(登录/重生/切维度时)。 */
     public static void sendSyncSnapshot(ServerPlayer player) {
         com.merlinkitsune.astral_dice.network.ModNetwork.syncSnapshot(player, syncedKeys());
