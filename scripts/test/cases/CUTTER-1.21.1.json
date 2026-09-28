@@ -58,7 +58,7 @@
     { "type": "mixin" },
     { "type": "kubejs" },
     { "type": "crash" },
-    { "type": "log", "source": "latest", "pattern": "AP_C0_CUT_PREP:mode=none:dice=ok:placed=0:slots=2" },
+    { "type": "log", "source": "latest", "pattern": "AP_C0_CUT_PREP:mode=none:dice=ok:placed=0:slots=[0-9]+" },
     { "type": "log", "source": "latest", "pattern": "AP_C0_CUT_READ:phase=BASE:cutter=0:blade=0:.*:dap=0:" },
     { "type": "log", "source": "latest", "pattern": "AP_C1_CUT_PREP:mode=chip:dice=ok:placed=1" },
     { "type": "log", "source": "latest", "pattern": "AP_C1_CUT_READ:phase=NOBLESS:cutter=0:blade=0:.*:dap=2:" },

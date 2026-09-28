@@ -449,6 +449,7 @@ pwsh -NoProfile -File scripts/verify/verify_bountiful_pools.ps1
 pwsh -NoProfile -File scripts/verify/verify_bountiful_instance_exclusions.ps1
 pwsh -NoProfile -File scripts/verify/verify_forge_loader_gate.ps1   # 1.20.1 加载器版本门槛 + Mixin Booster 硬前置（独立离线脚本，零 mt 依赖；0/1/2，见附录 A 续 28）
 pwsh -NoProfile -File tools/check_mod_sources.ps1                    # 模组来源统一口径(Curse/Modrinth Maven);阶段 P 的「模组来源」一项共用本脚本
+pwsh -NoProfile -File scripts/devtools/Test-MtSyntax.ps1              # .ps1/.psm1 解析 + **.js** 的 `node --check`（2026-09-28 扩到 js，见 §10 第 5 条子项）
 ```
 
 > ℹ️ **`verify_content_library.ps1` 已移出本节（2026-09-23 用户裁决「按第 2 路修复」）** —— 它是 **1.2.0 冻结期一次性验收工具，不是长期闸门**。
@@ -466,6 +467,8 @@ pwsh -NoProfile -File tools/check_mod_sources.ps1                    # 模组来
 3. **runData 遮蔽**：`run/<版本>/mods/astral_dice-*.jar` 会与 `build/classes` 同时加载，遮蔽新代码且不报错；生成前先移出旧 jar，比对生成物时间戳与类内新增字面量。
 4. **run-id 粘性**：`mt_report mark` 复用 `.mt_run_state.json` 里的 `run_id`。要开新 run：备份并删除 `scripts/test/cases/.mt_run_state.json`（只删 `.mt_active_run` 不够）。
 5. **`/kubejs reload server-scripts` 不重绑命令 lambda**：探针改动必须冷启动（见 §6）。
+   - **探针成员可见性坑（2026-09-28 实测）**：KubeJS 的 Rhino 里 **`Entity#getUUID()` / `#getStringUUID()` 被整体挡掉** —— 对 `ServerPlayer` 与**新 spawn 的 `Cow`** 报**完全相同**的 `TypeError: Cannot find function getUUID`（而三线 merged jar 的 `javap` 证明二者在 `net.minecraft.world.entity.Entity` 上是 `public`）⇒ 这是 **KubeJS 侧的白名单限制**，不是 Java 层缺失，**换实体类型也绕不过**。⇒ 取玩家 UUID **必须**走三级回退（`getUUID()` → `p.uuid` → `UUIDUtil.uuidFromIntArray(p.nbt.getIntArray("UUID"))`），照抄 `astral_bugfix_probe.js#playerUuid`（实测 1.21.1 上**第 2 级命中**）。更可靠的跨线通道是 `p.getGameProfile().getId()`（authlib 类，不受 MC 类包装影响；1.20.1 / 1.21.1 / 26.1.2 三线 `mprobe` 均实测 `ok`）。⚠️ **1.20.1 线更严**：`getScoreboardName()`（1.21.1 上对非玩家实体可用、返回其 UUID 字符串）在该线对 **`Cow` 与本玩家一律 `TypeError`** ⇒ 不要把它当跨线兜底。诊断入口 = `/astralhostile mprobe <tag>`（本批新增，逐项打印成员可见性）。⚠️ 同一坑曾在 `astral_bugfix_probe.js` 造成 4 条断言假红（读数自相矛盾 `owner_after=err:owner_api=ok`）。
+   - **`.js` 语法必须有独立闸门**：`[Parser]::ParseFile` 只看 `.ps1/.psm1`，看不见 `scripts/test/resources/kubejs/**` 的探针 ⇒ 历史上出现过**函数尾闭合被吞**（少一个括号）但整文件仍被 KubeJS 加载、命令静默不注册的事故。现 `Test-MtSyntax.ps1` 已加 `node --check` 分支（`node` 不在 PATH 时记为 `SKIP`、不改变退出码），并已纳入 §9 清单。
 6. **测试世界规则**：`mt_env world` 强制写入 `allowCommands=1` 与 `GameRules.keepInventory="true"`（新建与种子恢复两条路径都写）；任一规则缺失即 `MT_WORLD: BLOCKED`（退出码 11）。缺 `keepInventory` 会让测试中死亡掉落物品、实验反复被打断。
 7. **逐条结果必须自动入报告**：`mt_case.ps1` 执行完每条即调用 `mt_report mark --case`；漏记会让 `summary` 恒显示「未执行 / 0 条目」并把全绿误判为失败。
 8. **脱离执行**：见 §3 末尾（Start-MtDetached）。
