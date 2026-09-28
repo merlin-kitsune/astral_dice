@@ -178,12 +178,12 @@
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_A2_MCAST:phase=cast_confirm:equipped=1:hand=0:cd_end=[1-9][0-9]*:cd_rem=2[0-9]{3}:[^\\n]*:cd_cfg=2400:[^\\n]*:mode=confirm:ret=1(:|\\n|$)"
+      "pattern": "AP_A2_MCAST:phase=cast_confirm:equipped=1:hand=1[0-9]:cd_end=[1-9][0-9]*:cd_rem=2[0-9]{3}:[^\\n]*:cd_cfg=2400:[^\\n]*:mode=confirm:ret=1(:|\\n|$)"
     },
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_A3_MEGAS:phase=AFTER:[^\\n]*:hand=0:[^\\n]*:dummy=224/1024:prec=10(:|\\n|$)"
+      "pattern": "AP_A3_MEGAS:phase=AFTER:[^\\n]*:hand=1[0-9]:[^\\n]*:dummy=169/1024:prec=10(:|\\n|$)"
     },
     {
       "type": "absent",

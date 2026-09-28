@@ -164,7 +164,7 @@
     {
       "type": "log",
       "source": "latest",
-      "pattern": "AP_P2_MEGAS:phase=PRE:[^\\n]*:hand=6:cd_end=0:cd_rem=0:[^\\n]*:dummy=500/500:prec=0:"
+      "pattern": "AP_P2_MEGAS:phase=PRE:[^\\n]*:hand=[6-9][0-9]*:cd_end=0:cd_rem=0:[^\\n]*:dummy=500/500:prec=0:"
     },
     {
       "type": "log",
