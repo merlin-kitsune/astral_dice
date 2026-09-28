@@ -76,3 +76,6 @@ deploy.ps1
 base-mod-libs/
 base-mod-compile-libs/
 ### AGENTS.md 自 2026-09-15 起纳入版本库(用户要求),不再排除 ###
+
+### 移植参考源(fabric-1.20.1 分支独有,2026-09-29):Fabric/Forge/Trinkets/CCA 等参考仓克隆件,不入库
+ref/
