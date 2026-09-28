@@ -1,0 +1,36 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": {
+      "item": "minecraft:white_concrete"
+    },
+    "F": {
+      "item": "minecraft:pink_concrete"
+    },
+    "L": {
+      "item": "astral_dice:blank_sign"
+    },
+    "P": {
+      "item": "astral_dice:star_plate"
+    },
+    "W": {
+      "item": "minecraft:black_concrete"
+    },
+    "Y": {
+      "item": "minecraft:sculk"
+    },
+    "Z": {
+      "item": "astral_dice:diamond_dice"
+    }
+  },
+  "pattern": [
+    "YFY",
+    "BLW",
+    "PZP"
+  ],
+  "result": {
+    "item": "astral_dice:nancy_lu_sign"
+  },
+  "show_notification": true
+}

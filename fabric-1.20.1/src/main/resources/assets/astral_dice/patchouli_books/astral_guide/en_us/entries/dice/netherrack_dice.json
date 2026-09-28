@@ -1,0 +1,17 @@
+{
+  "name": "item.astral_dice.netherrack_dice",
+  "category": "astral_dice:dice",
+  "icon": "astral_dice:netherrack_dice",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:netherrack_dice",
+      "text": "astral_dice.guide.entry.netherrack_dice.1"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:netherrack_dice"
+    }
+  ],
+  "sortnum": 3
+}

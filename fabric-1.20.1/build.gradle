@@ -1,0 +1,143 @@
+// Astral Dice / Fabric 1.20.1 子项目
+// Java 17 · Mojang 官方映射(officialMojangMappings)· Fabric Loom 1.14.10
+//
+// 基准 = forge-1.20.1(1.3.2-hotfix)的源码;加载器层整体替换:
+//   装饰品栏  Curios 5.14.1            -> Trinkets 3.7.2
+//   玩家/实体数据 Capability/Attachments -> Cardinal Components API 5.2.3
+//   事件总线   Forge EventBus           -> 自建 LoaderBus(保留 EventPriority 语义)+ FAPI 回调/mixin 桥接
+//   网络      SimpleChannel             -> FAPI Networking(channel-handler 形态,1.20.1 无 PayloadTypeRegistry)
+//   战利品    Global Loot Modifier      -> LootTableEvents.MODIFY
+//   注册      DeferredRegister          -> platform/reg 薄包装(声明面不变)
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+    id 'fabric-loom' version '1.14.10'
+    id 'idea'
+}
+
+version = mod_version
+group = mod_group_id
+
+base {
+    archivesName = 'astral_dice'
+}
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(17)
+
+repositories {
+    // 前置库 StarEngine Lib 走本地 Maven(库仓库执行 ./gradlew :fabric-1.20.1:publishToMavenLocal)
+    mavenLocal()
+    mavenCentral()
+    maven { url 'https://api.modrinth.com/maven' }        // 模组工件(Modrinth Maven)
+    maven { url 'https://maven.ladysnake.org/releases' }  // Cardinal Components 官方 maven
+    maven { url 'https://maven.blamejared.com' }          // Patchouli(如需官方 maven)
+
+    // 依赖解析硬约束:模组工件只允许来自 Modrinth Maven(与另三线「只走 curse/modrinth」的口径一致)
+    exclusiveContent {
+        forRepository { maven { url 'https://api.modrinth.com/maven' } }
+        filter { includeGroup 'maven.modrinth' }
+    }
+}
+
+def libVersion = project.starengine_lib_version
+def libGroup = project.starengine_lib_group
+
+dependencies {
+    minecraft "com.mojang:minecraft:${minecraft_version}"
+    mappings loom.officialMojangMappings()
+
+    modImplementation "net.fabricmc:fabric-loader:${loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${fabric_version}"
+
+    // ── 前置库(跨仓硬前置;JarJar 内嵌,替代 Forge 侧的 jarJar) ────────────────
+    // ⚠️ 库必须先 :fabric-1.20.1:publishToMavenLocal。include(...) 会把库 jar 嵌进产物
+    //    (等价于 Forge 侧的 jarJar),玩家无需单独安装;整合包里也不应再放独立库 jar。
+    modImplementation "${libGroup}:starengine_lib-fabric-1.20.1:${libVersion}"
+    include "${libGroup}:starengine_lib-fabric-1.20.1:${libVersion}"
+
+    // ── 硬前置:Trinkets(替代 Curios)。消费方声明必需(fabric.mod.json depends) ──
+    modImplementation "maven.modrinth:trinkets:AHxQGtuC"
+
+    // Cardinal Components(库以 modApi 暴露,这里显式声明以固定版本)
+    modImplementation "dev.onyxstudios.cardinal-components-api:cardinal-components-base:${cca_version}"
+    modImplementation "dev.onyxstudios.cardinal-components-api:cardinal-components-entity:${cca_version}"
+
+    // ── Patchouli(Fabric 版;手册是本模组的核心引导,首个版本即纳入) ─────────
+    modImplementation "maven.modrinth:patchouli:nm6fiGRx"
+
+    // ── 运行时/测试环境依赖(仅 dev runtime;不进发货产物) ──────────────────
+    // 用户要求的测试环境三件套 + 渲染栈
+    modRuntimeOnly "maven.modrinth:sodium:OihdIimA"
+    modRuntimeOnly "maven.modrinth:lithium:iEcXOkz4"
+    modRuntimeOnly "maven.modrinth:indium:nQHYSjxO"
+    modRuntimeOnly "maven.modrinth:starlight:XGIsoVGT"
+    modRuntimeOnly "maven.modrinth:modernfix:rPmgLeZC"
+    modRuntimeOnly "maven.modrinth:ferrite-core:unerR5MN"
+    modRuntimeOnly "maven.modrinth:jade:ahavHbAT"
+    // ⚠️ JEI 15.62.0.216 的 fabric 产物由 **Loom 1.17.20** 构建 ⇒ 被 Loom 1.14.10 的
+    //    「Mod was built with a newer version of Loom」门禁拒绝(实测)。JEI 不参与编译,
+    //    故改为**运行时手工投放**:把 jei-1.20.1-fabric-15.62.0.216.jar 放进 run/server/mods/ 与 run/client/mods/。
+    modRuntimeOnly "maven.modrinth:carpet:K0Wj117C"
+    // KubeJS(测试探针用,与 forge 侧 2001.6.5-build.26 对齐)
+    modRuntimeOnly "maven.modrinth:kubejs:Pu0Ygbq6"
+    modRuntimeOnly "maven.modrinth:rhino:MLIu0Tct"
+}
+
+loom {
+    // ⚠️ Loom 1.14 起 Mixin 注解处理器**默认关闭**;`mixin { }` 配置会被告警要求移除。
+    //    refmap 由 Loom 在 remapJar 阶段依据 mixin 配置自动生成(见 P0 验证步骤)。
+    runs {
+        client {
+            client()
+            ideConfigGenerated = true
+            runDir 'run/client'
+        }
+        server {
+            server()
+            ideConfigGenerated = true
+            runDir 'run/server'
+        }
+    }
+}
+
+// fabric.mod.json 占位符展开(属性必须在配置期取到本地变量,否则 Gradle 9 configuration cache 失效)
+def templateProps = [
+        version                : project.version.toString(),
+        loader_version         : project.loader_version.toString(),
+        minecraft_version_range: project.minecraft_version_range.toString(),
+        trinkets_version       : project.trinkets_version.toString(),
+        cca_version            : project.cca_version.toString(),
+        lib_version_range      : project.starengine_lib_version_range.toString(),
+]
+processResources {
+    inputs.properties(templateProps)
+    filesMatching('fabric.mod.json') { expand(templateProps) }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+// === 产物分发(build 后推 run/ 与仓库根 build/libs;口径对齐另三线) ===
+tasks.register('pushToDevRun', Copy) {
+    dependsOn tasks.named('remapJar')
+    from tasks.named('remapJar').flatMap { it.archiveFile }
+    into rootProject.file('run/fabric-1.20.1/mods')
+}
+
+tasks.register('pushToRootBuild', Copy) {
+    dependsOn tasks.named('remapJar')
+    from tasks.named('remapJar').flatMap { it.archiveFile }
+    into rootProject.file('build/libs')
+}
+
+tasks.named('build') {
+    finalizedBy 'pushToRootBuild'
+}
+
+idea {
+    module {
+        downloadSources = true
+        downloadJavadoc = true
+    }
+}

@@ -1,0 +1,23 @@
+{
+  "type": "astral_dice:dice_upgrade",
+  "category": "equipment",
+  "key": {
+    "G": {
+      "item": "minecraft:emerald_block"
+    },
+    "P": {
+      "item": "astral_dice:star_plate"
+    },
+    "D": {
+      "item": "astral_dice:diamond_dice"
+    }
+  },
+  "pattern": [
+    "GPG",
+    "PDP",
+    "GPG"
+  ],
+  "result": {
+    "item": "astral_dice:emerald_dice"
+  }
+}

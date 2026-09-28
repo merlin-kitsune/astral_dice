@@ -1,0 +1,30 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": {
+      "item": "astral_dice:star_coin"
+    },
+    "C": {
+      "item": "astral_dice:blank_chip"
+    },
+    "H": {
+      "item": "minecraft:piston"
+    },
+    "L": {
+      "item": "astral_dice:conductive_wire"
+    },
+    "S": {
+      "item": "minecraft:flint"
+    }
+  },
+  "pattern": [
+    "SHS",
+    "LCL",
+    "BBB"
+  ],
+  "result": {
+    "item": "astral_dice:energy_recycler_chip"
+  },
+  "show_notification": true
+}

@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "D": {
+      "item": "minecraft:diamond"
+    },
+    "G": {
+      "item": "astral_dice:golden_star_plate"
+    },
+    "R": {
+      "item": "minecraft:redstone"
+    },
+    "T": {
+      "item": "astral_dice:boxing_gloves_medium_chip"
+    }
+  },
+  "pattern": [
+    "RDR",
+    "DTD",
+    "GGG"
+  ],
+  "result": {
+    "item": "astral_dice:boxing_gloves_high_chip"
+  },
+  "show_notification": true
+}

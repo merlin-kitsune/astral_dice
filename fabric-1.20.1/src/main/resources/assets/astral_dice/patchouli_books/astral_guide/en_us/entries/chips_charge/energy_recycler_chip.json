@@ -1,0 +1,17 @@
+{
+  "name": "item.astral_dice.energy_recycler_chip",
+  "category": "astral_dice:chips_charge",
+  "icon": "astral_dice:energy_recycler_chip",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:energy_recycler_chip",
+      "text": "astral_dice.guide.entry.energy_recycler_chip.1"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:energy_recycler_chip"
+    }
+  ],
+  "sortnum": 1
+}

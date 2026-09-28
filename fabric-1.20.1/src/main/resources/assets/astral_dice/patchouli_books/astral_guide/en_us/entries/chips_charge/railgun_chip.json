@@ -1,0 +1,17 @@
+{
+  "name": "item.astral_dice.railgun_chip",
+  "category": "astral_dice:chips_charge",
+  "icon": "astral_dice:railgun_chip",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:railgun_chip",
+      "text": "astral_dice.guide.entry.railgun_chip.1"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:railgun_chip"
+    }
+  ],
+  "sortnum": 8
+}

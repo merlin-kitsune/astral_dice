@@ -1,0 +1,23 @@
+{
+  "type": "astral_dice:dice_upgrade",
+  "category": "equipment",
+  "key": {
+    "Y": {
+      "item": "minecraft:nether_wart_block"
+    },
+    "J": {
+      "item": "minecraft:crimson_fungus"
+    },
+    "D": {
+      "item": "astral_dice:netherite_dice"
+    }
+  },
+  "pattern": [
+    "YJY",
+    "JDJ",
+    "YJY"
+  ],
+  "result": {
+    "item": "astral_dice:crimson_dice"
+  }
+}

@@ -107,7 +107,7 @@ description: 《星之骰戏》(astral_dice) forge-1.20.1 → fabric-1.20.1 移�
 | fabric-loom | 1.14.10（Gradle 9.2 带内；**勿升 1.16+** = 需 wrapper 9.4+） |
 | fabric-api | 0.92.12+1.20.1 |
 | Trinkets | 3.7.2 |
-| Cardinal Components API | 5.2.3 |
+| Cardinal Components API | 5.2.3（groupId = `dev.onyxstudios.cardinal-components-api`） |
 | StarEngine Lib (fabric) | 1.0.6（先行 publishToMavenLocal） |
 | Java toolchain | 17（**gradlew 用 JAVA_HOME=21**） |
 
@@ -170,3 +170,76 @@ description: 《星之骰戏》(astral_dice) forge-1.20.1 → fabric-1.20.1 移�
 ---
 
 > 执行完成判据 = `PORT_ANALYSIS.md` §10 验收判据汇总全绿。执行中遇到的口径分叉（无 FAPI 事件映射、稀有度方案、组件粒度细节）以 `PORT_ANALYSIS.md` §4~§6 为准。
+
+
+---
+
+## 6. 勘误与实测补充（2026-09-29 执行轮）
+
+> 本轮实际执行时以**发行 jar / javap / 实测**为准，推翻/修正了本手册原稿的三处判断。执行者以本节为准。
+
+### 6.1 【重要】1.20.1 Fabric **有** 附件 API —— 「无附件 API」是错的
+
+Fabric API `0.92.12+1.20.1` 的 jar 内**确实**含 `META-INF/jars/fabric-data-attachment-api-v1-0.92.12.jar`：
+
+```
+AttachmentRegistry.create(ResourceLocation) / createDefaulted(id, Supplier) / createPersistent(id, Codec)
+AttachmentRegistry.builder() -> Builder (persistent(Codec) / copyOnDeath() / initializer(Supplier) / syncWith(...))
+AttachmentType<A>: identifier() / persistenceCodec() / isPersistent() / initializer() / copyOnDeath()
+AttachmentTarget: getAttached(...) / setAttached(...) / getAttachedOrCreate(...)
+```
+
+与 NeoForge `AttachmentType` **结构 1:1**，而 mod 的 `component/AttachedDataKey.java`（Forge 侧 shim）本就是为模拟 NeoForge 附件而写
+⇒ **108 键附件层用 FAPI 附件近乎平移**，比 CCA 更贴近原作者设计、风险更低。
+
+⚠️ **核验模块存在性的正确方法 = 读发行 jar**（`META-INF/jars/<module>-<ver>.jar`），
+**不能**用 `ref/fabric-api` 的 `1.20` 分支目录列表 —— 该分支不含此模块，但发行 jar 含。
+
+### 6.2 CCA 坐标（原稿写错）
+
+`groupId` = **`dev.onyxstudios.cardinal-components-api`**（不是 `dev.onyxstudios.cca`）。
+`maven.ladysnake.org/releases` 可解析；Modrinth 的 `maven.modrinth:cardinal-components-api:5.2.3` 亦可。
+
+### 6.3 `Rarity` 5 档扩展 —— 可行，但**只能**用 Unsafe（实测 PASS）
+
+vanilla 1.20.1 `Rarity` = `final` 枚举 + 仅 `public final ChatFormatting color`（Forge 的 `styleModifier`/`create` 是**补丁**）。
+- javac 禁 `new` 枚举（JLS 15.9.1）⇒ Mixin 也帮不上忙（注入的代码同样过 javac）；
+- `Constructor.newInstance` 对枚举被 JDK 硬拒；
+- **唯一可行**：`Unsafe.allocateInstance` + `Unsafe` 字段偏移写 `Enum.name` / `Enum.ordinal` / `Rarity.color`，
+  并把新常量追加进 `$VALUES`。字段偏移写入**绕开 java.base 模块限制，不需要 `--add-opens`**。
+- 已实现于库 `starengine_lib/fabric-1.20.1/.../item/AstralRarities.java`；探针 `temp/unsafeprobe` 在 **JDK 17 与 21** 均 PASS。
+- 收益：`ModItems` 137 处 `.rarity(...)` 与 `RarityTooltipFrame` **零改动**。
+
+### 6.4 伤害修正**必须**自建事件总线 + mixin，不能改写成 FAPI 回调
+
+1.20.1 Fabric **没有**任何「可改伤害值」的事件（`ServerLivingEntityEvents.ALLOW_DAMAGE` 只能取消、不能改 amount）。
+而 `ChipDamageHandler` / `DiceCombatEvents` 的 `EventPriority.LOWEST/HIGHEST` 是**承重语义**
+（源码注释：「气囊恒为第一顺位」「LOWEST = 最终伤害阶段」）⇒ 自建 `LoaderBus` 时必须实现优先级排序，
+并用 mixin（`LivingEntity#actuallyHurt` 的**吸收结算之后、setHealth 之前**）派发以对齐 Forge 的派发点。
+
+### 6.5 Loom 构建版本门禁（原稿未提）
+
+`java.lang.IllegalStateException: Mod was built with a newer version of Loom (X), you are using Loom (Y)`
+—— mod 的 `META-INF/MANIFEST.MF` 带 `Fabric-Loom-Version`，高于本地 Loom 即被拒。
+实测元凶：**`jei-1.20.1-fabric-15.62.0.216.jar`（Fabric-Loom-Version: 1.17.20）**。
+⇒ 定位法：遍历 `~/.gradle/caches/modules-2/files-2.1/**/*.jar` 读 manifest；
+⇒ 绕法：该 mod 移出 Gradle，运行时手工投放 `run/server/mods` / `run/client/mods`。
+
+### 6.6 Loom 1.14 起 Mixin 注解处理器**默认关闭**
+
+`loom { mixin { ... } }` 会被告警要求移除。refmap 改由 `remapJar` 阶段生成 —— **P0 必须实测验证**
+（解包 `build/libs/*.jar` 查 `astral_dice.refmap.json` 是否嵌入、生产环境启动无 mixin 报错）。
+
+### 6.7 Trinkets 槽位数据包格式（实测自 `ref/trinkets` 源码）
+
+```
+data/trinkets/slots/<group>/group.json     {"slot_id": <int>}
+data/trinkets/slots/<group>/<slot>.json    {"icon":"<ns>:<path>","order":<int>,
+                                            "validator_predicates":[...],"drop_rule":"..."}
+data/trinkets/entities/<name>.json         {"slots":["<group>/<slot>",...],"entities":["minecraft:player"]}
+```
+
+⚠️ `SlotLoader` / `EntitySlotLoader` **只接受 namespace = `trinkets` 的路径**
+⇒ 本模组的槽位文件必须放在 jar 内的 `data/trinkets/` 下（不是 `data/astral_dice/`）。
+`SlotType.amount` 是**静态**的；动态槽位（本模组的 chip 槽随骰子星级增长）走
+`TrinketInventory#addModifier(AttributeModifier, ADDITION)` —— **需专门验证**。

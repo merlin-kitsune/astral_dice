@@ -1,0 +1,33 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "D": {
+      "item": "astral_dice:amethyst_dice"
+    },
+    "E": {
+      "item": "astral_dice:blank_sign"
+    },
+    "G": {
+      "item": "astral_dice:golden_star_plate"
+    },
+    "L": {
+      "item": "minecraft:leather"
+    },
+    "Q": {
+      "item": "minecraft:white_wool"
+    },
+    "T": {
+      "item": "minecraft:stick"
+    }
+  },
+  "pattern": [
+    "GQG",
+    "LEL",
+    "TDT"
+  ],
+  "result": {
+    "item": "astral_dice:hanna_sign"
+  },
+  "show_notification": true
+}
