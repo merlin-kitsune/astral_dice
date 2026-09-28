@@ -1,0 +1,304 @@
+{
+  "case_id": "LOOT-FIRST-1.21.1",
+  "title": "首箱赠礼端到端取证（真实右键开箱）：非 chests/ 表的桶开箱后无骰子且不消费标记（负对照）；chests/ 箱子首开必得 1 骰子且标记置 1；同存档第二次开箱不再赠礼。",
+  "version": "1.21.1",
+  "target": {
+    "type": "new",
+    "ref": "first_loot_chest"
+  },
+  "on_fail": "keep_game_running",
+  "steps": [
+    {
+      "op": "note",
+      "text": "目的：首次开箱赠礼（FirstLootChestHandler）的游戏内端到端取证。\n\n**产品口径**：只在战利品表 id 落在 `chests/` 前缀下时生效；每个玩家**每个存档一次**；\n箱子侧**直写** 1 个 `astral_dice:dice`（优先随机空槽，整箱满则顶掉随机槽）。\n\n**手法**：容器放 `~ ~1 ~2`（玩家脚上方一格、正前方两格）后 `/tp @s ~ ~ ~ 0 0` 平视 ——\n站立视高 1.62 落在方块 y+1..y+2 内 ⇒ 准星必然命中，无需 pitch 三角计算；\n再 `inject_key rclick` 走**真实右键**（与真人同一入口 PlayerInteractEvent.RightClickBlock）。\n\n⚠️ **挂表必须走 `chestloot` 探针**（`RandomizableContainerBlockEntity#setLootTable`），\n   **不能**用 `/setblock ...{components:{...}}`：neo 两线 `BlockInput#place` 只调\n   `loadWithComponents`（仅赋值 components 映射），**不调** `applyImplicitComponents`\n   ⇒ 组件里的 container_loot 落不到 `this.lootTable`，开箱掷不出东西且**静默**；\n   legacy `LootTable` 键更被 `removeComponentsFromTag` 直接删掉。\n   故三线统一：`/setblock` 放**无表**容器 → `chestloot` 挂表 → 再开箱。\n\n**相位**：\n  A（负对照）：桶挂 **非 chests/** 表（blocks/dirt）⇒ 开箱后 items>=1（证明真的开了、原版也补了货）\n     但 dice=0、flag=0 —— 证明 `chests/` 前缀门控生效，且**不消费标记**。\n  B：箱子挂 chests/simple_dungeon ⇒ 开箱后 dice=1、dice_slots=1、flag=1、loot=null（表已被 unpack 清空）。\n  C：同存档第二次开同类箱子 ⇒ dice=0（每存档一次），flag 仍为 1。\n\n⚠️ flag 读的是玩家持久化数据 `astral_dice.first_loot_chest_done`，与产品 markDone 同一路径。\n⚠️ `loot=null` 是「确实 unpack 过」的旁证：`RandomizableContainer#unpackLootTable` 先\n   `setLootTable(null)` 再 fill ⇒ 表必被清空（1.20.1 由探针反读 NBT 等效取得）。\n\n⚠️ **先清赠礼标记**：本用例要能**重复跑**（标记一置位就不再赠礼）。`/data remove entity @s <容器键>.astral_dice.first_loot_chest_done` 是原版命令、与本地化无关；相位 C 仍照旧验证「同存档第二次开箱不再赠礼」。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/data remove entity @s NeoForgeData.astral_dice.first_loot_chest_done",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode survival",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamerule doMobSpawning false",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/kill @e[type=!player,distance=..128]",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear @s",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/tp @s ~ ~ ~ 0 0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/setblock ~ ~2 ~2 minecraft:air",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "note",
+      "text": "相位 A（负对照）：非 chests/ 表的桶。\n\n⚠️ **不在开箱前 `chestread`**：该命令走 `be.getItem()`，而 `RandomizableContainerBlockEntity#getItem` 会先 `unpackLootTable(null)` ⇒ 预读会把战利品表消耗掉，随后的 `rclick` 就再也看不到 `getLootTable()` ⇒ 赠送逻辑（判据 = 表 id 前缀）必然不触发。「表已挂上」由上面的 `AP_*_CHESTLOOT` 行证明。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/setblock ~ ~1 ~2 minecraft:barrel",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe chestloot A0 0 1 2 \"minecraft:blocks/dirt\"",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_key",
+      "key": "rclick"
+    },
+    {
+      "op": "wait",
+      "ms": 1800
+    },
+    {
+      "op": "inject_key",
+      "key": "cancel",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe chestread A1 0 1 2",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "note",
+      "text": "相位 B：chests/simple_dungeon 箱子 ⇒ 首箱赠礼（**右键前不得预读**，理由同相位 A）。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/setblock ~ ~1 ~2 minecraft:chest",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe chestloot B0 0 1 2 \"minecraft:chests/simple_dungeon\"",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_key",
+      "key": "rclick"
+    },
+    {
+      "op": "wait",
+      "ms": 1800
+    },
+    {
+      "op": "inject_key",
+      "key": "cancel",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe chestread B1 0 1 2",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "note",
+      "text": "相位 C：同存档第二次开箱 ⇒ 不再赠礼（每存档一次）。\n\n⚠️ **重建箱子前必须先把该位置清成 `air`**：`/setblock ~ ~1 ~2 minecraft:chest` 放**同一种方块**时不会重建方块实体（2026-09-27 实测 26.1.2）⇒ 相位 C 会**复用相位 B 的容器**：B 里那颗赠礼骰子仍在、`chestloot C0` 又挂一次表 ⇒ 开箱时二次补货，读出 `items=27`（满箱）`:dice=1`，「第二次不赠礼」这条断言就会假红。先清成 air 才能保证「全新的第二个箱子」（1.21.1 实测 `items=11:dice=0` 即新容器的形态）。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/setblock ~ ~1 ~2 minecraft:air",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    },
+    {
+      "op": "inject_command",
+      "command": "/setblock ~ ~1 ~2 minecraft:chest",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe chestloot C0 0 1 2 \"minecraft:chests/simple_dungeon\"",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_key",
+      "key": "rclick"
+    },
+    {
+      "op": "wait",
+      "ms": 1800
+    },
+    {
+      "op": "inject_key",
+      "key": "cancel",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe chestread C1 0 1 2",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/setblock ~ ~1 ~2 minecraft:air",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamerule doMobSpawning true",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_A0_CHESTLOOT:set=minecraft:blocks/dirt:loot=minecraft:blocks/dirt(:|\\n|$)"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_A1_CHEST:kind=minecraft:barrel:size=27:items=[1-9][0-9]*:dice=0:dice_slots=0:loot=null:flag=0(:|\\n|$)"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_B0_CHESTLOOT:set=minecraft:chests/simple_dungeon:loot=minecraft:chests/simple_dungeon(:|\\n|$)"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_B1_CHEST:kind=minecraft:chest:size=27:items=[1-9][0-9]*:dice=1:dice_slots=1:loot=null:flag=1(:|\\n|$)"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_C1_CHEST:kind=minecraft:chest:size=27:items=[1-9][0-9]*:dice=0:dice_slots=0:loot=null:flag=1(:|\\n|$)"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_[A-Z0-9]+_ERR"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_[A-Z0-9]+_EX:"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "Unknown or incomplete command|Incorrect argument for command|Expected whitespace to end one argument|Unknown command|Expected literal|Unclosed quoted string|Expected quote to start a string|Invalid (integer|long|double|float|bool|escape sequence)|Expected (integer|long|double|float|bool)|<--\\[|错误的命令参数"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "redeclared|redeclaration of var"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "crash"
+    }
+  ],
+  "evidence": []
+}

@@ -99,6 +99,7 @@ import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
 import com.merlinkitsune.astral_dice.item.chip.CursedSwordChipItem;
 import com.merlinkitsune.astral_dice.item.chip.FriendshipBadgeChipItem;
 import com.merlinkitsune.astral_dice.item.chip.RevengeHalberdChipItem;
+import com.merlinkitsune.astral_dice.item.chip.FlashlightChipItem;
 import com.merlinkitsune.astral_dice.item.chip.SatelliteChipItem;
 import com.merlinkitsune.astral_dice.item.sign.NancyLuSignItem;
 import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
@@ -183,9 +184,10 @@ public class PlayerTickEvents {
 
     }
 
-    // 美工刀-初级/锋利状态效果:佩戴对应筹码 + 生命值 ≥60%(或处于"汲取") + **处于骰神赐福期间**时
-    // 显示效果图标,否则移除。最后一条是 2026-09-26 用户需求:「未触发骰神赐福时仍然显示并且有粒子
-    // (没有骰神赐福状态时应当隐藏)」⇒ 指示器的语义由「加成生效中」收紧为「赐福中且加成生效中」。
+    // 美工刀-初级/锋利状态效果:佩戴对应筹码、生命值 ≥60%(或处于"汲取")**且处于骰神赐福状态**时
+    // 显示效果图标,否则移除。⚠️ 追加骰神赐福门控(2026-09-27 用户裁决):美工刀的额外加伤本就在
+    // `DiceCombatEvents` 的赐福门控之后才结算(无赐福时提前 return),故图标**只有当加成真正可能生效时**
+    // 才应显示 —— "跟随骰神赐福显示,不在赐福状态即隐藏"。
     private static void updateCutterEffect(Player player) {
         var curios = CuriosApi.getCuriosInventory(player);
         boolean hasCutter = false;
@@ -199,6 +201,9 @@ public class PlayerTickEvents {
         // 效果存在且剩余时长充足时不重复施加,避免每 tick 触发效果更新/同步包
         refreshIndicator(player, ModEffects.CUTTER_READY, hasCutter && fullHp && blessed);
         refreshIndicator(player, ModEffects.CUTTER_BLADE_READY, hasBlade && fullHp && blessed);
+        // 手电筒-强光:佩戴筹码、处于骰神赐福状态且**确有加伤**(星光/4 ≥ 1)时显示效果图标
+        refreshIndicator(player, ModEffects.FLASHLIGHT_READY,
+                FlashlightChipItem.isEquipped(player) && blessed && StarLightManager.get(player) / 4 >= 1);
     }
 
     /** 指示器效果的施加时长。⚠️ **必须始终 > 200 tick**:见 {@link #refreshIndicator} 注释。 */

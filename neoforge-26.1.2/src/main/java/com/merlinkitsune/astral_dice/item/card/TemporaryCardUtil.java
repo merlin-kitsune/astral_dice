@@ -40,7 +40,9 @@ import java.util.List;
  *   <li>发放:{@link #grantNardisPrivilege(Player)}(= 2 张战斗牌 + 1 张效果牌,2026-09-27 用户裁决①)
  *       与通用的 {@link #grantRandom(Player, RandomCardHandler.CardCategory, int)}
  *       (两者都走 {@link VitaminPillChipItem#giveCard} 发牌漏斗,保证「获得卡牌」类触发器全部生效);</li>
- *   <li>清理:{@link #purgeAll(Player)}(幂等,调用点 = 释放路径之外的死亡与到期清牌)与玩家级 tick 自检
+ *   <li>清理:{@link #purgeAll(Player)}(幂等,调用点 = 释放路径之外的**死亡**、**卸下绿洲女王立牌**
+ *       (2026-09-27 用户裁决「卸除即清理」,见 {@code NardisSignItem#clearSignData})与到期清牌)
+ *       与玩家级 tick 自检
  *       {@link #tick(Player)}(收口条件只有一条:**无效果 ⇒ 清牌**;
  *       上一版的「无牌 ⇒ 移除效果」反向分支已按 2026-09-27 用户裁决删除 —— 牌被用光**不再**提前结束效果);</li>
  *   <li>保护:不可丢弃见 {@link CardItem#onDroppedByPlayer} 与
@@ -73,9 +75,11 @@ public final class TemporaryCardUtil {
     /** 主动技能的最低可用格数门槛(**3**;2026-09-27 用户二次裁决,由当日更早的 2 回调)。
      *  取值与「每次释放固定发 2 张战斗牌 + 1 张效果牌」对齐 ⇒ 门槛通过时空槽必然够发满一整套,
      *  {@link #grantRandom} 的「少发、绝不落地」截断在正常情况下不可达(它只是安全网)。
-     *  ⚠️ 沿革:当日曾**放宽为 2**,唯一理由是「卡牌可堆叠({@code stacksTo(64)})⇒ 同 id 临时牌会
-     *  并进一格,2 格也收得下 3 张」;同日稍晚卡牌改为**不可堆叠**({@code stacksTo(1)},见 ModItems)
-     *  ⇒ 该理由失效(恰好 2 格时只能发出 2 张、第 3 张被截断),用户遂裁决**回调为 3**。
+     *  ⚠️ 沿革:当日经三轮裁决 —— ① 初始 3;② 曾**放宽为 2**,理由是「卡牌可堆叠
+     *  ({@code stacksTo(64)})⇒ 同 id 临时牌会并进一格,2 格也收得下 3 张」;③ 该放宽仅短暂生效,
+     *  数小时后**回调为 3**(卡牌堆叠一度被取消,上述理由失效);
+     *  随后卡牌堆叠**已恢复**({@code stacksTo(64)},见 ModItems),理由重新成立,
+     *  但用户裁决**维持 3** —— 因为 3 才能保证任何随机结果下都发满一整套,语义更稳。
      *  改动本常量**必须同步**三线 × 三语的 {@code msg.astral_dice.nardis_inventory_full} 文案。 */
     public static final int MIN_FREE_SLOTS_TO_CAST = 3;
 
@@ -357,8 +361,9 @@ public final class TemporaryCardUtil {
      *       它只是安全网(2026-09-27 用户裁决⑦第 5 条:保留不删)。</li>
      * </ol>
      *
-     * <p>⚠️ 卡牌自 2026-09-27 起**不可堆叠**({@code stacksTo(1)})⇒ 两张战斗牌即使随机到**同一张**牌
-     * 也各自独占一格,不再发生「合并进同一格」;本轮实际占用格数 = 实际发放张数。
+     * <p>⚠️ 卡牌**可堆叠**({@code stacksTo(64)},见 ModItems —— 2026-09-27 一度取消、同日已恢复)
+     * ⇒ 两张战斗牌若随机到**同一张**牌,{@code Inventory#add} 会走合并分支把第二张并进既有堆,
+     * 实际占用格数可能少于发放张数(这不影响"发满一整套"的语义)。
      *
      * <p>⚠️ 本方法**不清空**任何既有临时牌(2026-09-27 用户裁决:叠加补给,取消「先清空再发」)。
      */

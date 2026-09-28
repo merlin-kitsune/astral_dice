@@ -1,0 +1,216 @@
+{
+  "case_id": "MEGAS-DMGCAP-26.1.2",
+  "title": "机械师立牌(megas)「轨道轰炸」两级伤害上限取证：36 张蓄力牌(cost 5) ⇒ 未封顶单次 2+180=182、未封顶单轮 10x182+55=1875；实测被单次上限 80 与单轮上限 800 夹取 ⇒ 靶 1024→224、prec=10。同时锁定「单次 80 x 次数 10 = 800」的自洽关系（单轮上限结构性恒不可达）。",
+  "version": "26.1.2",
+  "target": {
+    "type": "new",
+    "ref": "megas_sign"
+  },
+  "on_fail": "keep_game_running",
+  "steps": [
+    {
+      "op": "note",
+      "text": "目的：机械师立牌「轨道轰炸」**新增两级伤害上限**的游戏内取证 —— 单次轰炸 ≤ 80、单轮累计 ≤ 800。\n（此前 MEGAS-CAP 只覆盖「次数上限 10」，80/800 这两个 2026-09-27 新增的上限**无任何覆盖**。）\n\n**期望值按产品常量独立推算**（不读产品中间量）：\n  BASE_DAMAGE=2、COST_DAMAGE_MULTIPLIER=1、MAX_STRIKES=10、PRECISION_THRESHOLD=6、\n  MAX_SINGLE_STRIKE_DAMAGE=80、MAX_TOTAL_DAMAGE_PER_CAST=800；蓄力牌 attack_card_charge 费用=5。\n  36 张蓄力牌（主物品栏 36 格刚好塞满）⇒ totalCards=36\n    strikes     = min(floor(36/2), 10) = 10\n    battleCost  = 5 x 36 = 180\n    未封顶单次  = 2 + 180 x 1 = 182      ⇒ 被单次上限夹到 80\n    未封顶单轮  = 36>=6 ⇒ 触发精准打击，10x182 + (1+..+10) = 1820+55 = 1875 ⇒ 被单轮上限夹到 800\n  （反事实）若这两条上限不存在 ⇒ 总伤 1875 > 香草生命上限 1024 ⇒ 靶当场死亡（读数 0），\n  与本用例断言的 224 明确可分 —— 本用例正是用来区分「封顶生效」与「未封顶」。\n\n**断言锚点**：靶 1024 血（香草 `generic.max_health` 的 Range 上限；请求更高会被**静默夹取**，本次实测已踩）⇒ 结算后 224（=1024-800）；精准打击层数 = 被轰炸次数 = 10。\n⚠️ 附带记录一个结构性事实：**两条上限自洽 ⇒ 单轮上限恒不可达** ——\n   单次已被夹到 ≤80、次数又 ≤10 ⇒ 单轮 ≤ 800 恰好等于上限，`MAX_TOTAL_DAMAGE_PER_CAST`\n   只有在单次上限被放宽后才会真正生效。本用例断言 total 恰为 800，正是对该自洽关系的锁定。\n⚠️ 场景控制：doMobSpawning false（仅本用例内，末尾恢复）避免自然刷怪混入候选池；\n   读数 near 恒应为 1（指定靶 12 格内存活实体数），被污染即响亮失败。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode survival",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamerule natural_health_regeneration false",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamerule spawn_mobs false",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/kill @e[type=!player,distance=..128]",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/tp @s ~ ~ ~ 0 0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "note",
+      "text": "相位 A：36 张蓄力牌（各占一格，卡牌已不可堆叠）⇒ 期望 单次 182→80、总伤 800。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear @s",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/give @s astral_dice:attack_card_charge 36",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe megasprep A0 1024 0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe megascd A1 fresh",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe megasread A1 PRE",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe megascast A2 confirm",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe megasread A2 POSTCAST",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "note",
+      "text": "轰炸异步：9x10t 间隔 + 8t 下落 = 98t ≈ 4.9s ⇒ 等 20s 后读数（充裕）。"
+    },
+    {
+      "op": "wait",
+      "ms": 20000
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe megasread A3 AFTER",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe megasclear ZZ9",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamerule spawn_mobs true",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamerule natural_health_regeneration true",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_A1_MEGAS:phase=PRE:[^\\n]*:hand=36:[^\\n]*:dummy=1024/1024:[^\\n]*:near=1(:|\\n|$)"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_A2_MCAST:phase=cast_confirm:equipped=1:hand=0:cd_end=[1-9][0-9]*:cd_rem=2[0-9]{3}:[^\\n]*:cd_cfg=2400:[^\\n]*:mode=confirm:ret=1(:|\\n|$)"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_A3_MEGAS:phase=AFTER:[^\\n]*:hand=0:[^\\n]*:dummy=224/1024:prec=10(:|\\n|$)"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_[A-Z0-9]+_ERR"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_[A-Z0-9]+_EX:"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "Unknown or incomplete command|Incorrect argument for command|Expected whitespace to end one argument|Unknown command|Expected literal|Unclosed quoted string|Expected quote to start a string|Invalid (integer|long|double|float|bool|escape sequence)|Expected (integer|long|double|float|bool)|<--\\[|错误的命令参数"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "redeclared|redeclaration of var"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "crash"
+    }
+  ],
+  "evidence": []
+}

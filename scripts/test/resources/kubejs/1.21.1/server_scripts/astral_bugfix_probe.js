@@ -13182,7 +13182,10 @@ function doEliteRead(ctx, tag) {
     try { armor = t.getArmorValue() - 0; } catch (e2) { }
     try { boss = BossEntityUtilClass.isBossEntity(t) ? 1 : 0; } catch (e3) { err = err + "|boss:" + exText(e3); }
     try {
-        var pd = t.getPersistentData();
+        // ⚠️ 同 doChestRead：必须走 **Java 通道快照** `t.nbt`（= `Entity#saveWithoutId`）。
+        //    `t.getPersistentData()` 是 KubeJS 自己的脚本通道，而 `/data merge entity`
+        //    写的是 Java 通道那一份 ⇒ 用 KubeJS 通道读**恒得 0**（把「写入成功」误报成 0）。
+        var pd = t.nbt.getCompound(SS_NBT_ROOT);
         ab = pd.getBoolean("apoth.boss") ? 1 : 0;
         am = pd.getBoolean("apoth.miniboss") ? 1 : 0;
     } catch (e4) { err = err + "|pd:" + exText(e4); }
@@ -15381,6 +15384,61 @@ ServerEvents.commandRegistry(event => {
                     .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
                         return doMegasClear(ctx, StringArg.getString(ctx, "tag"));
                     }))))
+            // ── 1.3.2 发布前补测（2026-09-27）：卡牌堆叠 / 星币锤 / 战利品池 / 首箱赠礼 ──
+            .then(Commands.literal("cardstack")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doCardStack(ctx, StringArg.getString(ctx, "tag"), null);
+                    }))
+                    // 可选第二参 = id 过滤（见 doCardStack 头注：世界会周期性凭空发卡，不过滤会被串扰）
+                    // ⚠️ 必须 greedyString：`StringArg.string()`/`word()` 的**未加引号**取值只吃 [0-9A-Za-z_.+-]，
+                    //    而物品 id 里带冒号 ⇒ 实测报「参数后应有空格分隔（Expected whitespace to end one argument）」、
+                    //    整条命令被拒（探针零输出）。greedyString 是末位参数，最省事。
+                    .then(Commands.argument("item", StringArg.greedyString())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doCardStack(ctx, StringArg.getString(ctx, "tag"),
+                                StringArg.getString(ctx, "item"));
+                        })))))
+            .then(Commands.literal("hammerbless")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("coins", IntegerArg.integer(0, 4096))
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doHammerBless(ctx, StringArg.getString(ctx, "tag"),
+                                IntegerArg.getInteger(ctx, "coins"));
+                        })))))
+            .then(Commands.literal("lootprobe")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("table", StringArg.string())
+                        .then(Commands.argument("rolls", IntegerArg.integer(1, 5000))
+                            .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                                return doLootProbe(ctx, StringArg.getString(ctx, "tag"),
+                                    StringArg.getString(ctx, "table"),
+                                    IntegerArg.getInteger(ctx, "rolls"));
+                            }))))))
+            .then(Commands.literal("chestread")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("dx", IntegerArg.integer(-8, 8))
+                        .then(Commands.argument("dy", IntegerArg.integer(-8, 8))
+                            .then(Commands.argument("dz", IntegerArg.integer(-8, 8))
+                                .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                                    return doChestRead(ctx, StringArg.getString(ctx, "tag"),
+                                        IntegerArg.getInteger(ctx, "dx"),
+                                        IntegerArg.getInteger(ctx, "dy"),
+                                        IntegerArg.getInteger(ctx, "dz"));
+                                })))))))
+            .then(Commands.literal("chestloot")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("dx", IntegerArg.integer(-8, 8))
+                        .then(Commands.argument("dy", IntegerArg.integer(-8, 8))
+                            .then(Commands.argument("dz", IntegerArg.integer(-8, 8))
+                                .then(Commands.argument("table", StringArg.string())
+                                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                                        return doChestLoot(ctx, StringArg.getString(ctx, "tag"),
+                                            IntegerArg.getInteger(ctx, "dx"),
+                                            IntegerArg.getInteger(ctx, "dy"),
+                                            IntegerArg.getInteger(ctx, "dz"),
+                                            StringArg.getString(ctx, "table"));
+                                    }))))))))
     );
 });
 
@@ -15705,5 +15763,328 @@ function doNoDiceEnd(ctx, tag) {
     if (ndMob != null) { try { ndMob.discard(); removed = 1; } catch (e0) { /* 忽略 */ } }
     ndMob = null;
     send(ctx, line + ":removed=" + removed);
+// ══════════════════════════════════════════════════════════════════════════════
+//  1.3.2 发布前补测段（2026-09-27）
+//
+//  背景：1.3.2 的四项功能变更此前**没有任何用例覆盖**（覆盖审计见
+//  `scripts/test/reports/<run>/1.3.2-RELEASE-AUDIT.md`），本段把可判定的部分补成机器断言：
+//    ① 全部 29 张卡牌可堆叠（`stacksTo(64)`，29 = combat 12 + effect 17）→ cardstack
+//    ② 星币锤门槛 32 / 消耗 18 / 加成上限 100                → hammerbless
+//    ③ 战利品池注入（玻璃骰子 2%·末地城 5%；空白筹码 3%·埋藏宝藏 100%）→ lootprobe
+//    ④ 首个战利品箱必出 1 骰子 + 每存档一次                  → chestread
+//
+//  ⚠️ 只调产品公开入口，不复制产品逻辑：
+//     ModItems.isCardItem(ItemStack)
+//     StarCoinHammerChipItem.{isEquipped,countStarCoins,onBlessingStart,
+//                            THRESHOLD_COINS,CONSUME_COINS,MAX_ATTACK_BONUS}
+//     ModAttachments.getStarCoinHammerBonus(Player)
+//     `p.nbt`(= `Entity#saveWithoutId` 快照) —— 与 FirstLootChestHandler 的**落盘通道**一致
+//     期望值全部由用例按上述公开常量独立推算（不读产品中间量）。
+//
+//  ⚠️ 战利品实滚走 **LootParams(CHEST) + LootTable#getRandomItems(params)**：
+//     与 `RandomizableContainer#unpackLootTable` 内部构造的是同一个参数集，
+//     但不必真的放置方块容器，故不污染世界、也不受容器容量影响。
+//     池是否落在表上（`getPool(name)`）是**确定性**判据，实滚计件只用于概率面。
+// ══════════════════════════════════════════════════════════════════════════════
+
+var PubItemsClass = mamuLoadCls("com.merlinkitsune.astral_dice.item.ModItems");
+var PubHammerClass = mamuLoadCls("com.merlinkitsune.astral_dice.item.chip.StarCoinHammerChipItem");
+var PubResourceKeyClass = mamuLoadCls("net.minecraft.resources.ResourceKey");
+var PubRegistriesClass = mamuLoadCls("net.minecraft.core.registries.Registries");
+var PubLootParamsBuilderClass = mamuLoadCls("net.minecraft.world.level.storage.loot.LootParams$Builder");
+var PubLootContextParamsClass = mamuLoadCls("net.minecraft.world.level.storage.loot.parameters.LootContextParams");
+var PubLootContextParamSetsClass = mamuLoadCls("net.minecraft.world.level.storage.loot.parameters.LootContextParamSets");
+var PubVec3Class = mamuLoadCls("net.minecraft.world.phys.Vec3");
+
+/** 战利品池名（产品 LootInjectionHandler 里的四个 .name(...)） */
+var PUB_LOOT_POOLS = ["astral_dice:star_coin", "astral_dice:blank_chip",
+                      "astral_dice:star_plate", "astral_dice:glass_dice"];
+var PUB_ID_COIN = "astral_dice:star_coin";
+var PUB_ID_BAG = "astral_dice:star_coin_bag";
+var PUB_ID_DICE = "astral_dice:dice";
+var PUB_GIFT_ROOT = "astral_dice";
+var PUB_GIFT_FLAG = "first_loot_chest_done";
+/** 玩家持久化数据的 NBT 容器键（= 产品 `Entity#getPersistentData()` 的落盘键）。 */
+var PUB_GIFT_NBT = SS_NBT_ROOT;
+
+/**
+ * cardstack:一次吐三条线（同一 tag 前缀）——
+ *   ① `AP_<tag>_CARDSTACK`：**物品栏**实况（占用格数 / 总张数 / 单格最大 / 非 64 项）
+ *      · 可选第二参 = id 过滤：只统计该 id（其余卡计入 `other=`）。
+ *   ② `AP_<tag>_CARDAPI`：**只读物品注册表** —— 遍历 `BuiltInRegistries.ITEM`，
+ *      对每件物品问产品 `ModItems.isCardItem`，再逐张读 `ItemStack#getMaxStackSize()`。
+ *      期望 `cards=29:all_ms64=true:bad=none`（29 = combat_cards ∪ effect_cards，12+17）。
+ *   ③ `AP_<tag>_CARDNEG`：**直查产品判据**（负对照 + 正对照 + 外参照）。
+ *
+ * ⚠️ **为什么必须有 ②③（2026-09-27）**：本测试世界会**周期性凭空向玩家发卡** ——
+ *    实测在「没有任何 /give」的空物品栏里出现过 `astral_dice:defense_card_medium`
+ *    （属产品 `RandomCardHandler.CardCategory.BATTLE` 随机发牌池，**非缺陷**），
+ *    地上也查不到任何掉落物实体。⇒ 任何「物品栏恰好 N 格 / 必须干净」的断言都会被串扰打成假红。
+ *    ②③ 与玩家状态完全解耦（②=注册表、③=构造栈），因此可作确定性判据；
+ *    ① 仍在（照打，供存档查阅），但**相位 B 必须带 id 过滤**才可断言。
+ */
+function doCardStack(ctx, tag, filterId) {
+    var p = ctx.source.getPlayerOrException();
+    var inv = p.getInventory();
+    var filter = (filterId == null) ? "" : String(filterId);
+    var slots = 0, total = 0, maxPer = 0, bad = [], other = 0;
+    for (var i = 0; i < inv.getContainerSize(); i++) {
+        var s = inv.getItem(i);
+        if (s == null || s.isEmpty()) continue;
+        var isCard = false;
+        try { isCard = PubItemsClass.isCardItem(s) === true; } catch (e1) { isCard = false; }
+        if (!isCard) continue;
+        var sid = itemIdOf(s);
+        if (filter.length > 0 && sid !== filter) { other++; continue; }
+        slots++;
+        var n = s.getCount() - 0;
+        total += n;
+        if (n > maxPer) maxPer = n;
+        var ms = -1;
+        try { ms = s.getMaxStackSize() - 0; } catch (e2) { ms = -1; }
+        // ⚠️ 只登记**上限不为 64** 的项（卡牌产品上限 = `stacksTo(64)`，见 ModItems；不按 count 判）
+        if (ms !== 64) { if (bad.length < 8) bad.push(sid + "=" + ms); }
+    }
+    send(ctx, "AP_" + tag + "_CARDSTACK:inv_slots=" + slots + ":inv_total=" + total
+        + ":inv_maxper=" + maxPer + ":bad=" + (bad.length === 0 ? "none" : bad.join(","))
+        + ":filter=" + (filter.length > 0 ? filter : "all") + ":other=" + other);
+    send(ctx, "AP_" + tag + "_CARDAPI:" + cardApiSummary());
+    send(ctx, "AP_" + tag + "_CARDNEG:" + cardNegSummary());
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+/** ② 注册表直查：产品自认为的「卡牌」共几张、是否每张上限都是 64。 */
+function cardApiSummary() {
+    var cards = 0, bad = [], it = null;
+    try { it = BuiltInRegistries.ITEM.iterator(); }
+    catch (e0) { return "cards=-1:all_ms64=false:bad=iterator_error"; }
+    while (it.hasNext()) {
+        var item = it.next();
+        var stack = null;
+        var isCard = false;
+        try {
+            stack = new ItemStack(item, 1);
+            isCard = PubItemsClass.isCardItem(stack) === true;
+        } catch (e1) { continue; }
+        if (!isCard) continue;
+        cards++;
+        var ms = -1;
+        try { ms = stack.getMaxStackSize() - 0; } catch (e2) { ms = -1; }
+        if (ms !== 64) { if (bad.length < 8) bad.push(itemIdOf(stack) + "=" + ms); }
+    }
+    return "cards=" + cards + ":all_ms64=" + (bad.length === 0 ? "true" : "false")
+        + ":bad=" + (bad.length === 0 ? "none" : bad.join(","));
+}
+
+/** ③ 构造栈直查：负对照 star_coin（必须 false）/ 正对照 attack_card_bite（必须 true）/ 外参照 stone（必须 false）。 */
+function cardNegSummary() {
+    return "star_coin_is_card=" + isCardId(PUB_ID_COIN)
+        + ":bite_is_card=" + isCardId("astral_dice:attack_card_bite")
+        + ":stone_is_card=" + isCardId("minecraft:stone");
+}
+
+function isCardId(itemId) {
+    var item = null;
+    try { item = resolveItem(itemId); } catch (e) { item = null; }
+    if (item == null) return "unresolved";
+    try { return PubItemsClass.isCardItem(new ItemStack(item, 1)) === true ? "true" : "false"; }
+    catch (e2) { return "err"; }
+}
+
+/**
+ * hammerbless:把物品栏星币归零后按 coins 枚入包，调用产品入口 onBlessingStart。
+ * 期望（按产品常量独立推算）：coins=31 ⇒ consumed=0:bonus 不变；
+ *                             coins=32 ⇒ consumed=18:bonus=min(100,max(1,32*0.3))=9；
+ *                             coins=400 ⇒ consumed=18:bonus=min(100,120)=100（封顶）。
+ * 未装备筹码 ⇒ 产品早退，consumed=0。
+ */
+function doHammerBless(ctx, tag, coins) {
+    var p = ctx.source.getPlayerOrException();
+    var inv = p.getInventory();
+    for (var i = 0; i < inv.getContainerSize(); i++) {
+        var s = inv.getItem(i);
+        if (s == null || s.isEmpty()) continue;
+        var id = itemIdOf(s);
+        if (id === PUB_ID_COIN || id === PUB_ID_BAG) inv.setItem(i, ItemStack.EMPTY);
+    }
+    var added = 0;
+    if (coins > 0) {
+        var coin = resolveItem(PUB_ID_COIN);
+        if (coin == null) { send(ctx, "AP_" + tag + "_ERR:no_coin_item"); return 0; }
+        var left = coins;
+        while (left > 0) {
+            var put = left > 64 ? 64 : left;
+            if (!inv.add(new ItemStack(coin, put))) break;
+            left -= put;
+            added += put;
+        }
+    }
+    var equipped = -1, before = -1, after = -1, bonus = -1, bonusBefore = -1;
+    try { equipped = PubHammerClass.isEquipped(p) ? 1 : 0; } catch (e1) { equipped = -1; }
+    try { before = PubHammerClass.countStarCoins(p) - 0; } catch (e2) { before = -1; }
+    try { bonusBefore = ModAttachments.getStarCoinHammerBonus(p) - 0; } catch (e3) { bonusBefore = -1; }
+    PubHammerClass.onBlessingStart(p);
+    try { after = PubHammerClass.countStarCoins(p) - 0; } catch (e4) { after = -1; }
+    try { bonus = ModAttachments.getStarCoinHammerBonus(p) - 0; } catch (e5) { bonus = -1; }
+    send(ctx, "AP_" + tag + "_HAMMER:equipped=" + equipped + ":added=" + added + ":set=" + coins
+        + ":before=" + before + ":after=" + after + ":consumed=" + (before - after)
+        + ":bonus=" + bonus + ":bonus_before=" + bonusBefore
+        + ":threshold=" + (PubHammerClass.THRESHOLD_COINS - 0)
+        + ":consume=" + (PubHammerClass.CONSUME_COINS - 0)
+        + ":cap=" + (PubHammerClass.MAX_ATTACK_BONUS - 0));
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+/**
+ * lootprobe <tag> <tableId> <rolls>:① 表上是否挂着四个 astral_dice:* 池（确定性）
+ *                                    ② 实滚 rolls 次、按 id 计件（概率面）
+ * ⚠️ empty 字段 = 掷出 0 件物品的次数，供负对照证明「表本身真的产出了东西」。
+ */
+function doLootProbe(ctx, tag, tableId, rolls) {
+    var p = ctx.source.getPlayerOrException();
+    var lvl = p.level;
+    var srv = lvl.getServer();
+    var table = null;
+    try {
+        table = srv.reloadableRegistries().getLootTable(PubResourceKeyClass.create(PubRegistriesClass.LOOT_TABLE, ResourceLocation.parse(tableId)));
+    } catch (e0) { send(ctx, "AP_" + tag + "_EX:table:" + exText(e0)); return 0; }
+    if (table == null) {
+        send(ctx, "AP_" + tag + "_LOOT:table=" + tableId + ":mounted=0:rolls=0:pools=none");
+        send(ctx, "AP_" + tag + "_DONE");
+        return 1;
+    }
+    var pools = [];
+    for (var i = 0; i < PUB_LOOT_POOLS.length; i++) {
+        try { if (table.getPool(PUB_LOOT_POOLS[i]) != null) pools.push(PUB_LOOT_POOLS[i]); } catch (e1) { }
+    }
+    var params = null;
+    try {
+        var bp = p.blockPosition();
+        var v = new PubVec3Class(bp.getX() + 0.5, bp.getY() + 1.0, bp.getZ() + 0.5);
+        params = new PubLootParamsBuilderClass(lvl)
+            .withParameter(PubLootContextParamsClass.ORIGIN, v)
+            .withParameter(PubLootContextParamsClass.THIS_ENTITY, p)
+            .withLuck(0.0)
+            .create(PubLootContextParamSetsClass.CHEST);
+    } catch (e2) { send(ctx, "AP_" + tag + "_EX:params:" + exText(e2)); return 0; }
+    var counts = {};
+    for (var q = 0; q < PUB_LOOT_POOLS.length; q++) counts[PUB_LOOT_POOLS[q]] = 0;
+    var done = 0, empty = 0, fail = "";
+    try {
+        for (var r = 0; r < rolls; r++) {
+            var list = table.getRandomItems(params)  // 不固定种子：每次新随机;
+            var n = list.size() - 0;
+            if (n === 0) empty++;
+            for (var k = 0; k < n; k++) {
+                var st = list.get(k);
+                if (st == null || st.isEmpty()) continue;
+                var sid = itemIdOf(st);
+                if (counts[sid] === undefined) continue;
+                counts[sid] = counts[sid] + (st.getCount() - 0);
+            }
+            done++;
+        }
+    } catch (e3) { fail = exText(e3); }
+    send(ctx, "AP_" + tag + "_LOOT:table=" + tableId + ":mounted=1:rolls=" + done + ":empty=" + empty
+        + ":pools=" + (pools.length === 0 ? "none" : pools.join(","))
+        + ":star_coin=" + counts["astral_dice:star_coin"]
+        + ":blank_chip=" + counts["astral_dice:blank_chip"]
+        + ":star_plate=" + counts["astral_dice:star_plate"]
+        + ":glass_dice=" + counts["astral_dice:glass_dice"]
+        + (fail === "" ? "" : ":fail=" + fail));
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+/**
+ * chestread <tag> <dx> <dy> <dz>:读玩家脚下方块坐标 + 偏移处的容器内容与「已发过」标记。
+ * ⚠️ loot 字段在 neo 两线读的是容器**当前挂着的**战利品表；玩家开箱后原版会把表清空
+ *    ⇒ 读到 `loot=null` 正是「确实补过货（unpack）」的旁证。1.20.1 无该 getter ⇒ 读到 `?`。
+ */
+function doChestRead(ctx, tag, dx, dy, dz) {
+    var p = ctx.source.getPlayerOrException();
+    var lvl = p.level;
+    var pos = p.blockPosition().offset(dx, dy, dz);
+    var kind = "none", size = -1, items = 0, dice = 0, diceSlots = 0, loot = "-", err = "";
+    try {
+        var be = lvl.getBlockEntity(pos);
+        if (be != null) {
+            try { kind = "" + BuiltInRegistries.BLOCK.getKey(lvl.getBlockState(pos).getBlock()); }
+            catch (e0) { kind = "?"; }
+            try { size = be.getContainerSize() - 0; } catch (e1) { size = -1; }
+            if (size > 0) {
+                for (var i = 0; i < size; i++) {
+                    var s = be.getItem(i);
+                    if (s == null || s.isEmpty()) continue;
+                    items++;
+                    if (itemIdOf(s) === PUB_ID_DICE) { dice += s.getCount() - 0; diceSlots++; }
+                }
+            }
+            try {
+                var lt = be.getLootTable();
+                try { loot = "" + lt.location(); } catch (eLT) { loot = "null"; }
+            } catch (e2) { loot = "?"; }
+        }
+    } catch (e3) { err = exText(e3); }
+    // 「已发过」标记 —— ⚠️ 必须读 **Java 通道**（`Entity#saveWithoutId` 快照 = KubeJS 的 `p.nbt`）。
+    //   **不能**读 `p.getPersistentData()`：KubeJS 的 `WithPersistentData#kjs$getPersistentData()`
+    //   与本模组的 `Entity#getPersistentData()` **不是同一条通道**（2026-09-21 实证，见 ssMakeElite 注释），
+    //   产品 markDone 写的是后者 ⇒ 用前者读**恒为 0**（2026-09-27 实测量到
+    //   `AP_A1/B1/C1_CHEST:…:flag=0` 三相全 0，一度被误判成产品缺陷）。
+    //   `EntityKJS#kjs$getNbt()` 的字节码 = `entity.saveWithoutId(new CompoundTag())`，
+    //   而 `saveWithoutId` 把 persistentData 落成 `NeoForgeData`/`ForgeData` 键
+    //   （1.21.1 Entity.java L1797 / 1.20.1 L1739 / 26.1.2 L2023）⇒ **与产品同源**。
+    var flag = -1;
+    try {
+        // ⚠️ **两层**：`NeoForgeData`（NeoForge/Forge 的容器键）→ `astral_dice`（本模组的根键）。
+        //    少一层就恒读 0（2026-09-27 踩过：漏 `astral_dice` ⇒ B/C 相位假红）。
+        var rootNbt = p.nbt.getCompound(PUB_GIFT_NBT).getCompound(PUB_GIFT_ROOT);
+        flag = rootNbt.getBoolean(PUB_GIFT_FLAG) ? 1 : 0;
+    } catch (e4) { flag = -1; }
+    // 旁证（2026-09-27 诊断）：用**原版 NBT 读取器**核同一路径 —— `p.nbt` 读该键恒 0，
+    //   需确认是「探针读法」还是「产品没落盘」。两条互斥 ⇒ 必有一条命中，读数与本地化无关。
+    var _GIFT_PATH = PUB_GIFT_NBT + "." + PUB_GIFT_ROOT + "." + PUB_GIFT_FLAG;
+    runCmd(ctx, "execute if data entity @s " + _GIFT_PATH + " run say AP_" + tag + "_JFLAG:1");
+    runCmd(ctx, "execute unless data entity @s " + _GIFT_PATH + " run say AP_" + tag + "_JFLAG:0");
+    try {
+        send(ctx, "AP_" + tag + "_NBTKEY:has_nfd=" + (p.nbt.contains(PUB_GIFT_NBT) ? 1 : 0)
+            + ":has_nfd_tag=" + (p.nbt.contains(PUB_GIFT_NBT, 10) ? 1 : 0)
+            + ":top=" + p.nbt.size());
+    } catch (eN) { send(ctx, "AP_" + tag + "_NBTKEY:err=" + exText(eN)); }
+    send(ctx, "AP_" + tag + "_CHEST:kind=" + kind + ":size=" + size + ":items=" + items
+        + ":dice=" + dice + ":dice_slots=" + diceSlots + ":loot=" + loot + ":flag=" + flag
+        + (err === "" ? "" : ":err=" + err));
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+/**
+ * chestloot <tag> <dx> <dy> <dz> <tableId>:把指定位置的容器实体挂上战利品表
+ * （走原版/NeoForge 的 `RandomizableContainerBlockEntity#setLootTable`），随后把表读回来。
+ *
+ * ⚠️ 为什么不用 `/setblock ...{components:{...}}`：见本段脚本头（neo 两线会静默失效）。
+ * 三线同构：都是先 `/setblock` 放一个**无表**的容器，再由本命令挂表 ⇒ 与真实战利品箱的
+ * 「表由 `unpackLootTable` 消费」路径一致（开箱后 `loot=null` 即「确实补过货」的旁证）。
+ */
+function doChestLoot(ctx, tag, dx, dy, dz, tableId) {
+    var p = ctx.source.getPlayerOrException();
+    var lvl = p.level;
+    var pos = p.blockPosition().offset(dx, dy, dz);
+    var be = null;
+    try { be = lvl.getBlockEntity(pos); } catch (e0) { send(ctx, "AP_" + tag + "_EX:be:" + exText(e0)); return 0; }
+    if (be == null) { send(ctx, "AP_" + tag + "_EX:no_block_entity"); return 0; }
+    try {
+        be.setLootTable(PubResourceKeyClass.create(PubRegistriesClass.LOOT_TABLE, ResourceLocation.parse(tableId)));
+    } catch (e1) { send(ctx, "AP_" + tag + "_EX:set:" + exText(e1)); return 0; }
+    var loot = "?";
+    try {
+        var lt = be.getLootTable();
+        try { loot = "" + lt.location(); } catch (eLT) { loot = "null"; }
+    } catch (e2) { loot = "?"; }
+
+    send(ctx, "AP_" + tag + "_CHESTLOOT:set=" + tableId + ":loot=" + loot);
+    send(ctx, "AP_" + tag + "_DONE");
     return 1;
 }

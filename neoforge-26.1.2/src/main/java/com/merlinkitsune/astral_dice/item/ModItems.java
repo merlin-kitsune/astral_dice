@@ -275,43 +275,43 @@ public class ModItems {
 
     public static final DeferredItem<Item> ATTACK_CARD_MEDIUM = registerItem("attack_card_medium",
             props -> new CardItem(props
-                    .stacksTo(1)
+                    .stacksTo(64)
                     .rarity(AstralRarities.rare())
                     .component(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("medium")), "medium"));
 
     public static final DeferredItem<Item> ATTACK_CARD_LARGE = registerItem("attack_card_large",
             props -> new CardItem(props
-                    .stacksTo(1)
+                    .stacksTo(64)
                     .rarity(AstralRarities.rare())
                     .component(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("large")), "large"));
 
     public static final DeferredItem<Item> ATTACK_CARD_EPIC = registerItem("attack_card_epic",
             props -> new CardItem(props
-                    .stacksTo(1)
+                    .stacksTo(64)
                     .rarity(AstralRarities.rare())
                     .component(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("epic")), "epic"));
 
     public static final DeferredItem<Item> ATTACK_CARD_SHADOW_STRIKE = registerItem("attack_card_shadow_strike",
             props -> new CardItem(props
-                    .stacksTo(1)
+                    .stacksTo(64)
                     .rarity(AstralRarities.rare())
                     .component(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("shadow_strike")), "shadow_strike"));
 
     public static final DeferredItem<Item> ATTACK_CARD_MEITO = registerItem("attack_card_meito",
             props -> new CardItem(props
-                    .stacksTo(1)
+                    .stacksTo(64)
                     .rarity(AstralRarities.epic())
                     .component(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("meito")), "meito"));
 
     public static final DeferredItem<Item> ATTACK_CARD_CHARGE = registerItem("attack_card_charge",
             props -> new CardItem(props
-                    .stacksTo(1)
+                    .stacksTo(64)
                     .rarity(AstralRarities.legendary())
                     .component(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("charge")), "charge"));
 
     public static final DeferredItem<Item> ATTACK_CARD_FULL_POWER = registerItem("attack_card_full_power",
             props -> new CardItem(props
-                    .stacksTo(1)
+                    .stacksTo(64)
                     .rarity(AstralRarities.pinnacle())
                     .component(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("full_power")), "full_power"));
 
@@ -321,7 +321,7 @@ public class ModItems {
     // 无配方、不进任何随机池/赏金池。
     public static final DeferredItem<Item> ATTACK_CARD_BITE = registerItem("attack_card_bite",
             props -> new CardItem(props
-                    .stacksTo(1)
+                    .stacksTo(64)
                     .rarity(AstralRarities.bizarre())
                     .component(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("bite")), "bite"));
 
@@ -330,71 +330,71 @@ public class ModItems {
     // 只能由处于真龙形态的蛟龙立牌佩戴者获得(主动发放 / 撕咬转换),无配方、不进任何池。
     public static final DeferredItem<Item> ATTACK_CARD_DRAGON_ROAR = registerItem("attack_card_dragon_roar",
             props -> new CardItem(props
-                    .stacksTo(1)
+                    .stacksTo(64)
                     .rarity(AstralRarities.bizarre())
                     .component(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("dragon_roar")), "dragon_roar"));
 
     public static final DeferredItem<Item> DEFENSE_CARD_MEDIUM = registerItem("defense_card_medium",
             props -> new CardItem(props
-                    .stacksTo(1)
+                    .stacksTo(64)
                     .rarity(AstralRarities.rare())
                     .component(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("defense_medium")), "defense_medium"));
 
     public static final DeferredItem<Item> DEFENSE_CARD_LARGE = registerItem("defense_card_large",
             props -> new CardItem(props
-                    .stacksTo(1)
+                    .stacksTo(64)
                     .rarity(AstralRarities.rare())
                     .component(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("defense_large")), "defense_large"));
 
     public static final DeferredItem<Item> DEFENSE_CARD_EPIC = registerItem("defense_card_epic",
             props -> new CardItem(props
-                    .stacksTo(1)
+                    .stacksTo(64)
                     .rarity(AstralRarities.rare())
                     .component(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("defense_epic")), "defense_epic"));
 
     public static final DeferredItem<Item> EFFECT_CARD_KING_POWER = registerItem("effect_card_king_power",
             props -> new EffectCardItem(props
-                    .stacksTo(1)
+                    .stacksTo(64)
                     .rarity(AstralRarities.legendary())));
 
     public static final DeferredItem<Item> EFFECT_CARD_BERSERK = registerItem("effect_card_berserk",
             props -> new BerserkCardItem(props
-                    .stacksTo(1)
+                    .stacksTo(64)
                     .rarity(AstralRarities.epic())));
 
     public static final DeferredItem<Item> EFFECT_CARD_UNWAVERING = registerItem("effect_card_unwavering",
             props -> new UnwaveringCardItem(props
-                    .stacksTo(1)
+                    .stacksTo(64)
                     .rarity(AstralRarities.epic())));
 
     // 以毒攻毒(效果牌):中毒 8 秒后移除负面效果并获得生命恢复 II 15 秒
     public static final DeferredItem<Item> EFFECT_CARD_FIGHT_POISON_WITH_POISON = registerItem("effect_card_fight_poison_with_poison",
             props -> new FightPoisonWithPoisonCardItem(props
-                    .stacksTo(1)
+                    .stacksTo(64)
                     .rarity(AstralRarities.epic())));
 
     // 对怪激光(伤害效果牌):远程和魔法伤害 +4。品质:青(蓝)
     public static final DeferredItem<Item> MONSTER_LASER_CARD = registerItem("effect_card_monster_laser",
             props -> new MonsterLaserCardItem(props
-                    .stacksTo(1)
+                    .stacksTo(64)
                     .rarity(AstralRarities.rare())));
 
     // 对怪板砖(伤害效果牌):远程和魔法伤害 +6
     public static final DeferredItem<Item> MONSTER_BRICK_CARD = registerItem("effect_card_monster_brick",
             props -> new MonsterBrickCardItem(props
-                    .stacksTo(1)
+                    .stacksTo(64)
                     .rarity(AstralRarities.epic())));
 
     // 轨道炮(伤害效果牌):远程和魔法伤害 +8。品质:黄(金)
     public static final DeferredItem<Item> ORBITAL_STRIKE_CARD = registerItem("effect_card_orbital_strike",
             props -> new OrbitalStrikeCardItem(props
-                    .stacksTo(1)
+                    .stacksTo(64)
                     .rarity(AstralRarities.legendary())));
 
     // 定向爆破(伤害效果牌):远程和魔法伤害 +5,并对目标周围 6 格敌对目标造成同样伤害。品质:黄(金)
     public static final DeferredItem<Item> DIRECTIONAL_BLAST_CARD = registerItem("effect_card_directional_blast",
             props -> new DirectionalBlastCardItem(props
-                    .stacksTo(1)
+                    .stacksTo(64)
                     .rarity(AstralRarities.legendary())));
 
     public static final DeferredItem<Item> STAR_COIN = registerItem("star_coin",
@@ -856,7 +856,7 @@ public class ModItems {
 
     public static final DeferredItem<Item> LIVING_PAGE = registerItem("effect_card_living_page",
             props -> new LivingPageItem(props
-                    .stacksTo(1)
+                    .stacksTo(64)
                     .rarity(AstralRarities.bizarre())));
 
     // 占星师立牌(命名:haiqing)
@@ -868,7 +868,7 @@ public class ModItems {
     // 命运的指引(专属功能效果牌,击杀带虚弱印记的目标获取)
     public static final DeferredItem<Item> FATE_GUIDANCE_CARD = registerItem("effect_card_fate_guidance",
             props -> new FateGuidanceCardItem(props
-                    .stacksTo(1)
+                    .stacksTo(64)
                     .rarity(AstralRarities.bizarre())));
 
     // 吸血鬼立牌(命名:papara):配方=黄金骰子+星盘 → 史诗
@@ -887,31 +887,31 @@ public class ModItems {
     // 巧克力蛋糕:使用后恢复 4 点生命值。品质:青(蓝)
     public static final DeferredItem<Item> CHOCOLATE_CAKE = registerItem("effect_card_chocolate_cake",
             props -> new ChocolateCakeCardItem(props
-                    .stacksTo(1)
+                    .stacksTo(64)
                     .rarity(AstralRarities.rare())));
 
     // 汉堡:使用后恢复 8 点生命值
     public static final DeferredItem<Item> HAMBURGER = registerItem("effect_card_hamburger",
             props -> new HamburgerCardItem(props
-                    .stacksTo(1)
+                    .stacksTo(64)
                     .rarity(AstralRarities.epic())));
 
     // 奢华大餐:治疗目标及周围 6 格内所有玩家 6 点生命值(可对自己/他人使用)
     public static final DeferredItem<Item> LUXURY_FEAST = registerItem("effect_card_luxury_feast",
             props -> new LuxuryFeastCardItem(props
-                    .stacksTo(1)
+                    .stacksTo(64)
                     .rarity(AstralRarities.epic())));
 
     // 你有我有:仅能对其他玩家使用,自身与目标玩家各获得一张随机卡牌
     public static final DeferredItem<Item> YOU_HAVE_I_HAVE = registerItem("effect_card_you_have_i_have",
             props -> new YouHaveIHaveCardItem(props
-                    .stacksTo(1)
+                    .stacksTo(64)
                     .rarity(AstralRarities.epic())));
 
     // 加急加快:使目标获得 迅捷 II 1:00(可对自己/他人使用)
     public static final DeferredItem<Item> EXPRESS_DELIVERY = registerItem("effect_card_express_delivery",
             props -> new ExpressDeliveryCardItem(props
-                    .stacksTo(1)
+                    .stacksTo(64)
                     .rarity(AstralRarities.epic())));
 
     // 大当家立牌(命名:fen):养精蓄锐计数器 + 战斗爽主动;配方=钻石骰子+星盘 → 传奇
@@ -1023,7 +1023,7 @@ public class ModItems {
     // 品质:**稀有**(ASTRAL_DICE_RARE;用户 2026-09-21 裁决,原为传奇 UNCOMMON)。
     public static final DeferredItem<Item> FU_CARD = registerItem("fu_card",
             props -> new FuCardItem(props
-                    .stacksTo(1)
+                    .stacksTo(64)
                     .rarity(AstralRarities.bizarre())));
 
     // 符卡-祸(专属伤害效果牌,风水师立牌专属):只能对敌对目标(含非同队玩家)使用 ⇒ 1 点伤害;
@@ -1031,7 +1031,7 @@ public class ModItems {
     // 品质:**稀有**(ASTRAL_DICE_RARE;用户 2026-09-21 裁决,原为传奇 UNCOMMON)。
     public static final DeferredItem<Item> HUO_CARD = registerItem("huo_card",
             props -> new HuoCardItem(props
-                    .stacksTo(1)
+                    .stacksTo(64)
                     .rarity(AstralRarities.bizarre())));
 
     /**

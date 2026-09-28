@@ -473,6 +473,15 @@ $CasePath = ''
 $GenNew = ''
 $GenFeature = ''
 $GenSpec = ''
+# 🚫 批量编排闸门（2026-09-27 用户规则：禁用自动测试，改为纯手动下达命令）
+#   `$AllowAuto` = 显式放行（--allow-auto / MT_ALLOW_AUTO=1）；闸门拦三处：
+#     ① 无 --phase 的全流程（三线顺序 + 门控 + 自动跑完 cases）
+#     ② --phase cases（自适应预算 + run-dir 自动跑完整个目录）
+#     ③ --phase report（把自动跑出来的结果收集成报告）
+#   **放行**：build / env / launch / stop —— 它们是"把客户端弄起来"的基础设施，
+#   与"自动跑用例"无关；手动测试恰恰需要它们。单条 `--phase cases --case <X>` 也放行。
+$AllowAuto = $false
+if ($env:MT_ALLOW_AUTO -and $env:MT_ALLOW_AUTO -match '^(1|true|yes|on)$') { $AllowAuto = $true }
 $CleanupMode = ''          # '' = 按场景默认；1 = 强制开启；0 = 强制关闭
 $StopForce = $false
 $StopKeepDaemon = $false
@@ -532,6 +541,9 @@ while ($i -lt $args.Count) {
         $StopPurgeSaves = $true; $i++
     } elseif ($key -eq 'keep-saves') {
         $StopPurgeSaves = $false; $i++
+    } elseif ($key -eq 'allow-auto') {
+        # 🚫 批量编排闸门显式放行（仅排查/对照用）；与 MT_ALLOW_AUTO=1 等价
+        $AllowAuto = $true; $i++
     } elseif ($key -eq 'h' -or $key -eq 'help') {
         $ShowHelp = $true; $i++
     } else {
@@ -572,6 +584,47 @@ try {
             if ($rc -ne 0) { exit $MT_EXIT_ERROR }
         }
         exit $MT_EXIT_PASS
+    }
+
+    # ══ 🚫 批量编排闸门（2026-09-27 用户规则：禁用自动测试，改为纯手动下达命令）══════
+    # ⚠️ **必须放在 `stop` / 单阶段分支之前**（实测踩过，2026-09-27）：闸门初次写在单阶段
+    #    分支**之后**，而单阶段分支以 `exit` 收尾 ⇒ `--phase report` 直接绕过闸门跑完了。
+    #    闸门必须覆盖**全部**早退路径，故前移到此处（参数解析完、生成条目分支之后）。
+    #
+    # 为什么只拦这四处（而不是"一律禁"）：手动测试同样需要 build / env / launch 把客户端
+    # 弄起来、需要 stop 收停 —— 把它们一起禁掉等于把测试台废掉，不符合"改为手动"的本意。
+    # 真正要禁的是**「无人干预地自动跑完一批」**这一行为，即：
+    #   ① 无 --phase 的全流程（三线顺序 + 1.21.1→1.20.1 门控 + 自动跑 cases + 自动 report）
+    #   ② --phase cases 且**未**指定 --case（走 run-dir，自动跑完 cases/ 下该线全部用例）
+    #   ③ --phase report（收集自动跑出来的结果）
+    #   ④ 无 --version 的单阶段（对所有版本顺序执行该阶段 = 批量）
+    # 单条 `--phase cases --case <某例>` 是"手动驱动的一次执行"，**放行**。
+    if (-not $AllowAuto) {
+        $autoBlocked = $false
+        $autoWhat = ''
+        if (-not $Phase) {
+            $autoBlocked = $true
+            $autoWhat = '全流程（无 --phase；会三线顺序自动跑完 build→env→launch→cases→report）'
+        } elseif ($Phase -eq 'cases' -and -not $CasePath) {
+            $autoBlocked = $true
+            $autoWhat = '--phase cases 未指定 --case（走 run-dir，自动跑完该线全部用例）'
+        } elseif ($Phase -eq 'report') {
+            $autoBlocked = $true
+            $autoWhat = '--phase report（收集自动跑出来的结果）'
+        } elseif (-not $Version) {
+            $autoBlocked = $true
+            $autoWhat = ('--phase {0} 未指定 --version（会对三线顺序批量执行）' -f $Phase)
+        }
+        if ($autoBlocked) {
+            Write-MtErrLine ('MT_AUTO_DISABLED: {0} —— 已被禁用。' -f $autoWhat)
+            Write-MtErrLine '  当前规则：「纯手动下达命令」——逐条注入、逐条看读数、逐步决策。'
+            Write-MtErrLine '  放行的阶段：build / env / launch / stop（把客户端弄起来/收停所需的基础设施）'
+            Write-MtErrLine '  单条执行：pwsh -File scripts/test/mt.ps1 --version <ver> --phase cases --case scripts/test/cases/<CASE>.json'
+            Write-MtErrLine '  直接注入：pwsh -File scripts/test/mt_inject.ps1 cmd --command "/astralprobe ..."'
+            Write-MtErrLine '  手动读数：pwsh -File scripts/test/mt_assert.ps1 log --version <ver> --pattern "<正则>"'
+            Write-MtErrLine '  临时放行：追加 --allow-auto（或设 MT_ALLOW_AUTO=1）'
+            exit $MT_EXIT_ERROR
+        }
     }
 
     # ── stop 阶段独立可用 ───────────────────────────────────────────────

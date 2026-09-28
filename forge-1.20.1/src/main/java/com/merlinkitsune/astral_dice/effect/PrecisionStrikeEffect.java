@@ -42,11 +42,24 @@ public class PrecisionStrikeEffect extends MobEffect {
 
     /**
      * 给目标叠加 {@code amount} 层「精准打击」。层数只增不减，直接施加更高 amplifier 即可。
+     *
+     * <p><b>参数口径</b>（2026-09-27 修正可见性）：
+     * {@code ambient=false, visible=true, showIcon=true}。
+     * <ul>
+     *   <li>{@code visible=true} ⇒ 怪物身上会飘<b>效果粒子</b>（HARMFUL 档 = 深色漩涡）。
+     *       此前误写为 {@code false} ⇒ 该效果在世界上<b>完全不可见</b>，玩家无从判断
+     *       「这次轰炸有没有上精准打击 / 已经叠到几层」，观感上等同于「效果不存在」
+     *       （2026-09-27 用户报障「没有任何效果指示器」的根因）。</li>
+     *   <li>{@code showIcon=true} ⇒ 若目标被玩家观察（如未来接入旁观者/队伍 HUD），
+     *       图标可正常渲染；本效果挂在 {@link LivingEntity 怪物} 上，<b>不会</b>进玩家 HUD
+     *       （原版 {@code Gui#renderEffects} 只渲染 {@code minecraft.player} 自己的效果），
+     *       故「玩家屏幕上看不到图标」是原版语义，不是缺陷。</li>
+     * </ul>
      */
     public static void addStacks(LivingEntity entity, int amount) {
         if (entity == null || entity.level().isClientSide() || amount <= 0) return;
         int target = getStacks(entity) + amount;
         entity.addEffect(new MobEffectInstance(ModEffects.PRECISION_STRIKE.get(),
-                DURATION_TICKS, target - 1, false, false, true));
+                DURATION_TICKS, target - 1, false, true, true));
     }
 }

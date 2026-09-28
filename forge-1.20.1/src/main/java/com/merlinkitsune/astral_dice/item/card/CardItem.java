@@ -18,10 +18,13 @@ public class CardItem extends Item {
         this.cardType = cardType;
     }
 
-    // 2026-09-27 用户平衡性调整：**所有卡牌不可堆叠**。
-    // 原实现「满耐久可堆叠 64 / 用掉耐久单张」已删除 —— 堆叠上限收敛为**单一权威**：
-    // 物品属性 `stacksTo(1)`（见 ModItems 的卡牌注册）。两处各写一份会让同一上限易漂移，
-    // 且「全部不可堆叠」后该分支已无判别意义。
+    // 未消耗耐久(满耐久)的战斗牌可堆叠 64 个;已消耗耐久后单独存放(单张)
+    @Override
+    public int getMaxStackSize(ItemStack stack) {
+        int max = AppliedStone.defaultUses(cardType);
+        int uses = ModDataComponents.CARD_USES.getOrDefault(stack, max);
+        return uses >= max ? 64 : 1;
+    }
 
     @Override
     public boolean isBarVisible(ItemStack stack) {

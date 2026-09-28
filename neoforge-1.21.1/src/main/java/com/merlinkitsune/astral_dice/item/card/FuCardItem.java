@@ -90,17 +90,9 @@ public class FuCardItem extends BaseEffectCardItem {
     public static void give(Player receiver, Player owner, int count) {
         if (receiver == null || owner == null || count <= 0) return;
         if (receiver.level().isClientSide()) return;
-        // ⚠️ 2026-09-27 用户平衡性调整：**所有卡牌不可堆叠**（stacksTo(1)）。
-        //    此处原先一次构造 count 枚的栈 ⇒ 会产出**超过堆叠上限的非法堆**
-        //    （界面上带数量角标，与「每张占一格」的规则矛盾），故改为**逐张**走同一发牌漏斗。
-        //    逐张调用不改变既有钩子语义：giveCard 内 onCardGained / onAttackCardCount 均按数量
-        //    累加（1×count ≡ count×1）；蛟龙「湖沼之王」的觉醒计数按 **tick 内受益人去重 +
-        //    单事件封顶** 统计（见 MamushiSignItem#onCardGivenToOther），同 tick 多次调用不会多算。
-        for (int i = 0; i < count; i++) {
-            ItemStack stack = new ItemStack(ModItems.FU_CARD.get());
-            ExclusiveCardUtil.setOwner(stack, owner);
-            VitaminPillChipItem.giveCard(receiver, stack);
-        }
+        ItemStack stack = new ItemStack(ModItems.FU_CARD.get(), count);
+        ExclusiveCardUtil.setOwner(stack, owner);
+        VitaminPillChipItem.giveCard(receiver, stack);
     }
 
     /** 发放 1 张已绑定获得者的符卡-福(便捷重载) */

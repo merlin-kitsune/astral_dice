@@ -9,12 +9,18 @@ import net.minecraft.world.entity.player.Player;
 /**
  * 「白泽赐福」(风水师立牌 zhao 主动):无层数、无属性修饰符的**状态载体**。
  *
- * <p><b>为什么用常驻(无限)时长</b>:需求口径是「持续到**下一次**骰神赐福结束」,不是固定时长 ——
- * 用 {@link Integer#MAX_VALUE}(前置库 {@code EffectTimerGuard} 视其为永续,不做计时守卫,与
- * {@code effect/ChargeEffect}、{@code WeaknessRevealEffect} 同一写法)表达"没有自己的倒计时",
- * 移除时机完全由 {@code item/sign/ZhaoSignItem#tickBlessing} 的**骰神赐福下降沿**状态机决定
- * (两分支见 {@code ModAttachments#ZHAO_BLESSING_SKIP_CYCLES});玩家级 tick 每 tick 调
- * {@link #refresh} 续期/补齐,故"时长"永远 ≥ 常驻值,不存在"自己倒计时到了"的路径。
+ * <p><b>时长模型(2026-09-27 用户裁决重写)</b>:不再绑定「骰神赐福」,改为**固定 2:00 倒计时**,
+ * 且倒计时必须等**被施加者首次实施合格近战攻击**后才启动 —— 施加瞬间效果**立即生效**。
+ * 两态用一个常量区分(见 {@code item/sign/ZhaoSignItem#tickBlessing} 的状态机):
+ * <ul>
+ *   <li><b>未启动</b>({@link #PENDING_DURATION_TICKS} = {@code -1}):原版
+ *       {@code MobEffectInstance#isInfiniteDuration()} 只认 {@code -1},该值下
+ *       {@code tickDownDuration} 直接跳过 ⇒ **不会走动**,效果常驻且完全生效;</li>
+ *   <li><b>已启动</b>({@link #DURATION_TICKS} = 2400):正常每 tick −1;归零/被外力移除都由
+ *       {@code ZhaoSignItem#tickBlessing} 的自检收敛到 {@code endBlessing}。</li>
+ * </ul>
+ * ⚠️ 子代理/外部若用 {@code Integer.MAX_VALUE} 来表达"常驻",那**不是**原版无限时长
+ * ({@code isInfiniteDuration} 只认 {@code -1})，{@code tickDownDuration} 会每 tick −1(需约 1243 天)。
  *
  * <p><b>溢出治疗 → 攻击力</b>的加成值不挂在本效果上,而是玩家附件
  * {@code ModAttachments#ZHAO_OVERFLOW_BONUS}(整数)+ {@code #ZHAO_OVERFLOW_REMAINDER}(余数);
@@ -25,8 +31,16 @@ import net.minecraft.world.entity.player.Player;
  * {@code textures/mob_effect/zhao_blessing.png})。
  */
 public class ZhaoBlessingEffect extends MobEffect {
-    /** 效果时长(无限;移除由骰神赐福结束钩子驱动,而非倒计时) */
-    public static final int DURATION_TICKS = Integer.MAX_VALUE;
+    /** **已启动倒计时**后的效果时长 = 2:00(2400 tick);由 {@code ZhaoSignItem} 在首次合格近战攻击时写入 */
+    public static final int DURATION_TICKS = 2400;
+
+    /**
+     * **未启动倒计时**的占位时长 = {@code -1}(原版无限时长)。
+     *
+     * <p>该值下 {@code tickDownDuration()} 不扣减 ⇒ 效果在"等待被施加者攻击"期间**永不自然到期**,
+     * 但图标与全部加成照常生效(需求:「施加效果会立即生效,但是计时器需要等待…」)。
+     */
+    public static final int PENDING_DURATION_TICKS = -1;
 
     public ZhaoBlessingEffect() {
         super(MobEffectCategory.BENEFICIAL, 0x4FC3A1);
@@ -37,32 +51,50 @@ public class ZhaoBlessingEffect extends MobEffect {
         return player != null && player.hasEffect(ModEffects.ZHAO_BLESSING);
     }
 
-    /** 施加「白泽赐福」(已存在时不重复施加) */
+    /** 施加「白泽赐福」(已存在时不重复施加);时长 = 未启动占位值,由状态机在首次攻击时改写 */
     public static void apply(Player player) {
         if (player == null || player.level().isClientSide()) return;
         if (player.hasEffect(ModEffects.ZHAO_BLESSING)) return;
+        // 六参构造:ambient=false, visible=false, showIcon=true ⇒ HUD 效果栏可见(与本模组其它状态效果一致)
+        player.addEffect(new MobEffectInstance(ModEffects.ZHAO_BLESSING,
+                PENDING_DURATION_TICKS, 0, false, false, true));
+    }
+
+    /**
+     * 把「白泽赐福」**切换到已启动态**(时长 = {@link #DURATION_TICKS}),并把剩余时长重置为满值。
+     *
+     * <p>只在「首次合格近战攻击」那一刻调用一次(由状态机保证 {@code timer_started})。重复调用会
+     * 重置剩余时长 ⇒ 只允许一次,勿在 tick 里调用。
+     *
+     * <p>⚠️ <b>必须「先移除再施加」,不能只调 {@code addEffect}</b>:原版
+     * {@code LivingEntity#addEffect} 对已存在的同名效果走 {@code MobEffectInstance#update},
+     * 而 {@code update} 的判据是 {@code isShorterDurationThan(other)} —— 其首项
+     * {@code !this.isInfiniteDuration()} 在**当前是无限时长**时直接为 false ⇒
+     * 「无限 ⇒ 有限」这条路径拿不到任何分支命中,时长**原封不动留在 -1**,
+     * 倒计时永远不启动(三平台 `update` 实现一致,已逐条核对源码)。
+     * 故这里走本模组统一移除通道后重新施加,确保写入 2400。
+     */
+    public static void startTimer(Player player) {
+        if (player == null || player.level().isClientSide()) return;
+        // 先移除再施加(移除走统一通道,保证 MobEffectEvent.Remove 的回收逻辑照常触发)
+        ModEffectRemoval.remove(player, ModEffects.ZHAO_BLESSING);
         player.addEffect(new MobEffectInstance(ModEffects.ZHAO_BLESSING,
                 DURATION_TICKS, 0, false, false, true));
     }
 
     /**
-     * 玩家级 tick 的**续期/补齐**:效果缺失则重新施加;时长意外变短(外力改写 / 旧存档)则补回常驻值。
+     * 玩家级 tick 的**自检/补齐**:效果缺失则重新施加(时长按「是否已启动」取对应值)。
      *
-     * <p>本效果的时长是常驻值({@link #DURATION_TICKS} = {@link Integer#MAX_VALUE}),故"续期"在
-     * 正常路径上是空操作 —— 真正常用的是第一分支(与真值 {@code zhao_blessing_active} 自检配对:
-     * 真值仍在而效果没了 ⇒ 立刻补回,不给"状态与可见载体长期不一致"留窗口)。
+     * <p>⚠️ 本方法**不刷新**已存在效果的剩余时长 —— 时长由原版每 tick 自行扣减,刷新会
+     * 让 2:00 永远走不完。仅用于「真值仍在而效果实例没了」这一条自愈路径。
+     *
+     * @param timerStarted 倒计时是否已启动(决定补齐时写入哪种时长)
      */
-    public static void refresh(Player player) {
+    public static void refresh(Player player, boolean timerStarted) {
         if (player == null || player.level().isClientSide()) return;
-        MobEffectInstance existing = player.getEffect(ModEffects.ZHAO_BLESSING);
-        if (existing == null) {
-            apply(player);
-            return;
-        }
-        if (existing.getDuration() < DURATION_TICKS) {
-            player.addEffect(new MobEffectInstance(ModEffects.ZHAO_BLESSING,
-                    DURATION_TICKS, 0, false, false, true));
-        }
+        if (player.hasEffect(ModEffects.ZHAO_BLESSING)) return;
+        player.addEffect(new MobEffectInstance(ModEffects.ZHAO_BLESSING,
+                timerStarted ? DURATION_TICKS : PENDING_DURATION_TICKS, 0, false, false, true));
     }
 
     /** 移除「白泽赐福」(走本模组统一移除通道,保证 {@code MobEffectEvent.Remove} 的回收逻辑照常触发) */

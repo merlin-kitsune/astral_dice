@@ -317,6 +317,9 @@ while ($i -lt $args.Count) {
         if ($i + 1 -ge $args.Count) { Write-MtErrorLine '缺少 --max-seconds 的值'; exit $MT_EXIT_ERROR }
         if ([string]$args[$i + 1] -notmatch '^\d+$') { Write-MtErrorLine '--max-seconds 需要非负整数'; exit $MT_EXIT_ERROR }
         $MaxSeconds = [int]$args[$i + 1]; $i += 2
+    } elseif ($key -eq 'allowauto') {
+        # 🚫 批量编排闸门显式放行（仅排查/对照用）；与 MT_ALLOW_AUTO=1 等价
+        $script:AllowAutoWd = $true; $i++
     } else {
         Write-MtErrorLine "未知参数 $tok"; exit $MT_EXIT_ERROR
     }
@@ -327,6 +330,22 @@ if (-not (Assert-MtVersion -Version $Version)) { exit $MT_EXIT_ERROR }
 if ($Action -ne 'report' -and $Action -ne 'stop') {
     Write-MtErrorLine ("非法 --action 值 {0}（可选：report stop）" -f $Action); exit $MT_EXIT_ERROR
 }
+
+# 🚫 批量编排闸门（2026-09-27 用户规则：禁用自动测试，改为纯手动下达命令）
+# 看门狗的 `-Action stop` 会在检出停滞时**自动收停客户端** —— 那是为「无人值守跑长流程」
+# 设计的自动编排能力。纯手动模式下没有"无人值守的长流程"可守：人（代理）就在旁边，
+# 停滞了自己 `--phase stop --force` 即可，不需要一个后台进程替他决定何时杀客户端。
+# ⇒ 默认拒绝 `-Action stop`；需要时显式 `--allow-auto` 或 `MT_ALLOW_AUTO=1`。
+# （`-Action report` 只观察不动手，保留可用 —— 但它本身也没有手动场景下的必要。）
+$script:AllowAutoWd = $false
+if ($env:MT_ALLOW_AUTO -and $env:MT_ALLOW_AUTO -match '^(1|true|yes|on)$') { $script:AllowAutoWd = $true }
+if ($Action -eq 'stop' -and -not $script:AllowAutoWd) {
+    Write-MtErrorLine 'MT_AUTO_DISABLED: mt_watchdog -Action stop（停滞即自动收停）已被禁用 —— 当前规则为「纯手动下达命令」。'
+    Write-MtErrorLine '  手动收停：pwsh -File scripts/test/mt.ps1 --version <ver> --phase stop --force'
+    Write-MtErrorLine '  临时放行：追加 --allow-auto（或设 MT_ALLOW_AUTO=1）'
+    exit $MT_EXIT_ERROR
+}
+
 if ($PollSeconds -lt 1) { $PollSeconds = 1 }
 if ($WarnSeconds -le 0) {
     $WarnSeconds = [int][Math]::Min(90, [Math]::Max(30, [Math]::Floor($StallSeconds / 2)))

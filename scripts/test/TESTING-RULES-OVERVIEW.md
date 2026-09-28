@@ -25,12 +25,48 @@
 
 ## 3. 唯一入口与阶段
 
+### 3.1 🚫 现行规则：禁用批量编排，改为纯手动下达命令（2026-09-27 用户裁决）
+
+**用户规则原文**：「禁用自动测试，改为纯手动下达命令」。三项裁决：① 禁用**全部批量编排**（保留单条用例执行与手动命令注入）；② 以**运行时闸门**落地（可开关恢复，改动可逆可审计）；③ 手动粒度 = **命令级**（逐条发注入命令，边发边看回显）。
+
+| 被闸门拦下的能力 | 拦哪一处 | 拒因 |
+|---|---|---|
+| 全流程 | `mt.ps1` **无 `--phase`** | 会三线顺序自动跑完 P→B→E→L→C→R |
+| 整目录批量 | `mt.ps1 --phase cases` **无 `--case`**（走 `run-dir`） | 自动跑完该线全部用例 |
+| 整目录批量 | `mt_case.ps1 run-dir` | 同上（底层入口） |
+| 报告收集 | `mt.ps1 --phase report` | 把自动跑出来的结果收集成报告 |
+| 三线顺序 | `mt.ps1 --phase <p>` **无 `--version`** | 会对三线顺序批量执行 |
+| 停滞自动收停 | `mt_watchdog.ps1 -Action stop` | 「无人值守长流程」的自动编排能力 |
+
+**放行（与「自动跑用例」无关的基础设施，手动测试恰恰需要）**：`--phase build` / `env` / `launch` / `stop`（须带 `--version`）、单条 `--phase cases --case <X>`、`mt_case.ps1 run --case <X>`、`mt_case.ps1 validate`、`mt_watchdog.ps1 -Action report`。
+
+**临放行开关**（仅排查/对照用）：追加 `--allow-auto`，或设环境变量 `MT_ALLOW_AUTO=1`（三脚本统一认这两个开关）。拦截时退出码 **2 / ERROR**，首行 `MT_AUTO_DISABLED: …`。
+
+### 3.2 命令级手动注入（现行推荐范式）
+
 ```powershell
-pwsh -NoProfile -File scripts/test/mt.ps1                      # 全流程（P→B→E→L→C→R，三版本 + 跨版本门控）
-pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1      # 只跑指定版本（无跨版本门控）
-pwsh -NoProfile -File scripts/test/mt.ps1 --phase <p> --version <v>
-pwsh -NoProfile -File scripts/test/mt.ps1 --version <v> --phase stop --purge-saves   # 收尾
+# ① 基础设施（放行）：把客户端弄起来
+pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --phase build
+pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --phase env
+pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --phase launch
+
+# ② 逐条注入命令（命令级手动）——默认 sendinput 通道，**不做** Esc 归一化
+pwsh -NoProfile -File scripts/test/mt_inject.ps1 cmd --command "/astralprobe dumpstate"
+pwsh -NoProfile -File scripts/test/mt_inject.ps1 key --key cancel        # 'cancel' → escape
+
+# ③ 手动读数 / 断言
+pwsh -NoProfile -File scripts/test/mt_assert.ps1 log --version 1.21.1 --pattern "AP_<TAG>_<KEY>:"
+
+# ④ 单条用例（仍可用，但**逐条**指定）
+pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --phase cases --case scripts/test/cases/<CASE>.json
+
+# ⑤ 收尾
+pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --phase stop --purge-saves
 ```
+
+⚠️ 容器界面开着时 `inject_command` 会被吞掉（走聊天通道）⇒ 先 `key --key cancel` 关闭界面（默认通道**不**自动归一化）。
+
+### 3.3 阶段表
 
 | 阶段 | 实现 | 职责 | 终态标记 |
 |---|---|---|---|
@@ -87,6 +123,7 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --version <v> --phase stop --purge-sav
 
 - 等待期可见性：`MT_WAIT:` 心跳（10s）+ 进度信标 `cases/.mt_progress.json`（阶段/用例/步号/op）。
 - `mt_watchdog.ps1` 可独立包裹长流程（`-Action stop`）：进展判据=进度信标内容→run-state→日志**语义标记**（非文件大小）；停滞 180 s ⇒ `MT_WATCHDOG: STALL` + 取证，退出码 **42**。
+  ⚠️ 现行规则下 `-Action stop` **已被批量编排闸门拦下**（§3.1）——它服务的是「无人值守长流程」，手动模式下不存在这种流程。要放行须显式加 `--allow-auto`；`-Action report` 正常可用。
 - 语义边界：`FAIL`=断言不满足；`ERROR`=跑不起来（工具链/前置）；`TIMEOUT`=预算内没跑完。三者不得混同。
 
 ## 8. 清理与收尾（2026-09-17 用户规则）
@@ -100,7 +137,7 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --version <v> --phase stop --purge-sav
 
 `tools/check_lang_sync.ps1`（双语同步）、`scripts/audit/tooltip_color_audit.ps1`（染色规则）、`verify_chip_recipes.ps1`、`verify_chip_acquisition.ps1`、`verify_bountiful_pools.ps1`、`verify_bountiful_instance_exclusions.ps1`、`tools/check_mod_sources.ps1`（模组来源 Curse/Modrinth 独占口径）、`scripts/devtools/Test-MtSyntax.ps1`（工具链语法门）。
 
-> ℹ️ `scripts/verify/verify_content_library.ps1` **不属本清单**（2026-09-23 裁出）：它是 **1.2.0 冻结期一次性验收工具**，对照件是 1.2.0 的冻结快照 ⇒ 工程推进后必然报偏差（1.3.0 开发期 15 项），不代表回归。详见 `TESTING-SPEC.md` §9。
+> ℹ️ `scripts/devtools/verify_content_library.ps1`（2026-09-27 由 `scripts/verify/` 迁出）**不属本清单**（2026-09-23 裁出）：它是 **1.2.0 冻结期一次性验收工具**，对照件是 1.2.0 的冻结快照 ⇒ 工程推进后必然报偏差（1.3.0 开发期 15 项），不代表回归。详见 `TESTING-SPEC.md` §9。
 
 ## 10. 退出码总表
 
@@ -108,11 +145,13 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --version <v> --phase stop --purge-sav
 |---|---|
 | 0 | PASS（该层全部通过） |
 | 1 | FAIL（断言不满足 / 汇总未全绿） |
-| 2 | ERROR / INVALID（跑不起来、用例非法） |
+| 2 | ERROR / INVALID（跑不起来、用例非法；**含批量编排闸门 `MT_AUTO_DISABLED`**） |
 | 10 | preflight FAIL |
 | 11 | BLOCKED（环境/启动被闸门挡下） |
 | 12 | TIMEOUT |
 | 42 | watchdog 检出停滞 |
+
+> ℹ️ **`MT_AUTO_DISABLED`** 走 **2 / ERROR**（§3.1）：它属「调用方式非法」而非「断言不满足」。判据 = stderr 首行含 `MT_AUTO_DISABLED:`。看到它不要当产品缺陷排查，改调用方式（加 `--case <X>` / 加 `--version` / 拆成单阶段）。
 
 ## 11. 26.1.2 一致性测试方法（该线验收口径）
 

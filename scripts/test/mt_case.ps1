@@ -1719,6 +1719,9 @@ if ($MyInvocation.InvocationName -ne '.') {
     $Version = ''
     $CasePath = ''
     $Dir = ''
+    # 🚫 批量编排闸门（2026-09-27）：默认**拒绝** `run-dir`。环境变量 MT_ALLOW_AUTO=1 可全局放行。
+    $AllowAuto = $false
+    if ($env:MT_ALLOW_AUTO -and $env:MT_ALLOW_AUTO -match '^(1|true|yes|on)$') { $AllowAuto = $true }
 
     $i = 0
     while ($i -lt $args.Count) {
@@ -1737,6 +1740,9 @@ if ($MyInvocation.InvocationName -ne '.') {
         } elseif ($key -eq 'dir') {
             if ($i + 1 -ge $args.Count) { Write-MtErrorLine '缺少 --dir 的值'; exit $MT_EXIT_ERROR }
             $Dir = [string]$args[$i + 1]; $i += 2
+        } elseif ($key -eq 'allow-auto') {
+            # 显式放行闸门（仅排查/对照用）；与 MT_ALLOW_AUTO=1 等价
+            $AllowAuto = $true; $i++
         } elseif ($key -eq 'case-timeout') {
             # ⑥-1：单条用例硬超时（秒）；0 = 关闭。优先级：CLI > 环境变量 MT_CASE_TIMEOUT_SEC > 300
             if ($i + 1 -ge $args.Count) { Write-MtErrorLine '缺少 --case-timeout 的值'; exit $MT_EXIT_ERROR }
@@ -1751,6 +1757,21 @@ if ($MyInvocation.InvocationName -ne '.') {
         Write-MtErrorLine '必须指定子命令 run / run-dir / validate'
         exit $MT_EXIT_ERROR
     }
+
+    # ── 🚫 批量编排闸门（2026-09-27 用户规则：禁用自动测试，改为纯手动下达命令）──────
+    # 背景：`run-dir` 会**一次性自动跑完整个目录**（本轮实测 15 例 / 5 批 / 单批 ≤3 例仍可能
+    # 触及工具 600s 上限），过程无法逐步干预，且中途被窗口侧人工操作污染时极难定性。
+    # 用户改为：一切由人（代理）**逐条下达命令**，用 `run --case <某例>`（单条）或
+    # 直接 `mt_inject.ps1 cmd --command "..."`。全量自动并行/批量一律拒绝。
+    # 需要临时恢复旧行为：显式 `--allow-auto`（或环境变量 MT_ALLOW_AUTO=1）。
+    if ($Cmd -eq 'run-dir' -and -not $AllowAuto) {
+        Write-MtErrorLine 'MT_AUTO_DISABLED: `run-dir`（整目录自动批量）已被禁用 —— 当前规则为「纯手动逐条下达命令」。'
+        Write-MtErrorLine '  替代：pwsh -File scripts/test/mt_case.ps1 run --version <ver> --case scripts/test/cases/<CASE>-<ver>.json'
+        Write-MtErrorLine '  或直接注入：pwsh -File scripts/test/mt_inject.ps1 cmd --command "/astralprobe ..."'
+        Write-MtErrorLine '  临时放行：追加 --allow-auto（或设 MT_ALLOW_AUTO=1）'
+        exit $MT_EXIT_ERROR
+    }
+
     if ($Cmd -eq 'validate') {
         if (-not $CasePath) { Write-MtErrorLine 'validate 子命令必须指定 --case'; exit $MT_EXIT_ERROR }
         exit (Invoke-MtCaseValidate -Spec $CasePath)

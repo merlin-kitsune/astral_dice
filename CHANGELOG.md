@@ -160,6 +160,8 @@
   Measured against vanilla (40,000 samples): Sharpness V +42.9% (vanilla +42.9%), Critical +50.1% (vanilla +50.0%),
   Protection IV full set -64.0% (vanilla -64.0%), Resistance II -40.0% (vanilla -40.0%).
 
+- **The "hostile target" rule gains one more class: tameable-but-untamed mobs that can be angered** (user request 2026-09-27): the rule was "hostile mobs ∪ neutral mobs (pets excluded)", excluding only **tamed** pets via `TamableAnimal` - but **untamed** llamas / trader llamas are tameable yet are neutral mobs that retaliate once provoked, so **neither tamed nor angered, the target selector could not pick them**, which contradicts the intuition that "anything that can be angered should count as hostile". A class is now added by **capability**: **any mob that can be angered** (`getTarget() != null || getLastHurtByMob() != null`) **and is not already tamed** counts as a hostile target. ⚠️ Measured impact: the newly covered mobs are **llamas / trader llamas** (the only vanilla non-pet mobs that are both tameable and angerable). The criterion is implemented once in the **prerequisite library StarEngine Lib** (dev line `2.0.0-SNAPSHOT.3`, ported from the release line's `1.0.5`) - its single entry point - so every effect that depends on it (Dice Blessing, spell-damage bonuses, the target selector's selectability checks, railgun lightning target selection, …) follows suit.
+
 #### Chips & Resources
 
 - **The Cutter's base bonus is back on the Attack Power channel** (user ruling 2026-09-26): the **+2 / +4** that
@@ -180,18 +182,23 @@
   from the bounty board). It does not interact with the "first adventure gift": the first chest still grants
   1 extra base die on top, and the Glass Dice is rolled independently, so both can appear in the same chest.
 
+- **Fengshui Master's "Baize's Blessing" and Cult Leader's "Divine Descent" timers are no longer tied to Dice Blessing** (user request 2026-09-27): both effects used to run "until the recipient's next Dice Blessing ends", which made their duration drift with the Dice Blessing cycle and could end the effect the instant a Dice Blessing fired. Both now use a **fixed 2:00** duration, and the timer **starts only once the affected player first lands a qualifying melee attack** - the effect itself is applied **immediately** (it takes effect at once), but the 2:00 countdown does **not** begin until that first melee hit. The qualifying attack is a **melee weapon attack** (sword / axe / mace / trident) against a target that is a player, a hostile mob or a boss - the same gate Dice Blessing uses, so ranged kills do not start the clock. The timer **starts once and never resets** (later hits do not refresh it). When the countdown reaches 0 the effect is removed, together with everything it granted, exactly as before (Baize's Blessing removes the converted attack power; Divine Descent removes the caster's attack / defense bonus). The effect and its timer are separate states, and the "granted immediately, clock not yet running" intermediate state is shown as a **permanent-looking icon** by design.
+
 #### Platform & Compatibility
 
-- **The prerequisite library `starengine_lib` is upgraded to `2.0.0-SNAPSHOT.2`**: the new four-way mob
+- **The prerequisite library `starengine_lib` is upgraded to `2.0.0-SNAPSHOT.3`**: the new four-way mob
   classification and the attack / defense conversion formulas were pushed down into the library's `combat` package
   (`TargetCategory` for the four-way classification, `TargetBattleStats` for the base attack / defense table,
   `CombatFormula` for the pure conversion functions and `DiceBattleResolver` for opposed rolls and damage synthesis),
   so all three lines (1.21.1 / 1.20.1 / 26.1.2) share a single implementation and the formulas cannot drift apart.
-  The library changes live on a separate `next` branch (the main branch stays on `1.0.4`), and all three lines of this
-  mod move their `starengine_lib_version` to `2.0.0-SNAPSHOT.2` together. The library is still **JarJar-embedded**
+  The library changes live on a separate `next` branch (the release line's main branch is on `1.0.5`), and all three lines of this
+  mod move their `starengine_lib_version` to `2.0.0-SNAPSHOT.3` together. The library is still **JarJar-embedded**
   into the artifact as before, so the modpack must **not** carry a standalone library jar. This is a **major version
   bump** (`1.0.4` -> `2.0.0`), matching the library's own rule that changing existing semantics requires a major bump:
   this round removes the 20-point armor cap from the formula, which is exactly such a change.
+  `2.0.0-SNAPSHOT.3` folds in the release line's `1.0.5` change (the "hostile target" item above): the
+  library's `combat/HostileTargets` gains the private predicate `isAngerableTamedMount` (angerable and not
+  tamed => counted as a hostile target), a **purely additive branch that changes no existing semantics**.
   `2.0.0-SNAPSHOT.2` adds the rest of this batch and re-calibrates the numbers: **`VanillaMitigation`** (pure arithmetic
   for the two vanilla magic-reduction channels - the Resistance effect and the Protection enchantment - applied after
   dice resolution), a re-calibrated defense curve (player base `2 -> 4`, armor coefficient `0.5 -> 0.30`, toughness
@@ -202,11 +209,9 @@
   `CombatFormula.ARMOR_DIVISOR` has been **removed** - the single shared divisor is replaced by per-side coefficients.
 - **Megas Sign "Orbital Bombardment"**: the battle-card cost bonus is now **1 damage per 1 cost** (was 2 damage per 1 cost), and the target-selector radius is **32** blocks (was 16); a single bombardment now deals at most **80** damage and a single cast deals at most **800** damage in total (bombardments beyond that budget keep only their visuals and sound and deal no damage).
 
-- **All cards are now unstackable**: the 29 cards (12 battle + 17 effect) drop from a stack limit of 64 to 1, so every card takes its own inventory slot; the battle-card special case ("stacks to 64 at full durability, a single card once used") is gone with it.
-
 - **Star Coin Hammer (Starlight chip)**: the trigger threshold is now **holding at least 32 Star Coins** (was "more than 20"), each Dice Blessing consumes **18** Star Coins (was 6), and the Attack Damage bonus is **capped at 100** (still 30% of the Star Coins held; nothing accrues beyond the cap).
 
-- **Oasis Queen's Sign (Rare) "Queen's Privilege" slot requirement reverted to 3**: casting the active skill now requires **3** free main-inventory slots (was 2), matching the fixed 2 battle + 1 effect cards granted per cast (cards no longer stack, so each takes its own slot); with fewer slots the cast is refused at no cost (no cooldown, no effect). The message now reads "3 free slots needed".
+- **Oasis Queen's Sign (Rare) "Queen's Privilege" slot requirement reverted to 3**: casting the active skill now requires **3** free main-inventory slots (was 2), matching the fixed 2 battle + 1 effect cards granted per cast; with fewer slots the cast is refused at no cost (no cooldown, no effect). The message now reads "3 free slots needed".
 
 <!-- 内容与平衡性调整在此登记 -->
 
@@ -224,6 +229,16 @@
   the indicator is now shown **only while the player actually has Dice Blessing** and is fully hidden otherwise
   (no icon and no particles); its duration no longer falls inside vanilla's "about to expire" blink window,
   **removing the constant blinking**.
+
+- **The Flashlight chip had no HUD icon at all** (user request 2026-09-27): a new `flashlight_ready` icon was added for it, with the same condition as the Cutter - the chip is equipped **and** a Dice Blessing is active **and** Starlight has reached 4 (every 4 Starlight gives +1 extra damage; below 4 there is **no bonus and no icon**). The icon reuses the chip's own texture, so no new art assets were added.
+
+- **The Mechanic sign's "Precision Strike" now shows a visible effect FX**: the effect was previously applied to monsters without **particle display** enabled, making it **entirely invisible** in the world - you could not tell whether an orbital bombardment had triggered Precision Strike or how many stacks a target had already accumulated, so it looked as if the effect did not exist (or vanished once the bombardment ended). Hit targets now continuously emit that effect's particles, making higher stacks easier to identify. The effect's duration and its "permanently retained until the target dies" behaviour are unchanged (the effect was in fact always retained correctly; it simply had no visual indicator at all).
+
+- **Unequipping the Oasis Queen sign now clears "Queen's Privilege" and the temporary cards along with it**: previously unequipping the sign only removed the armor granted by its passive, so the **"Queen's Privilege" effect (the HUD timer) and every temporary card stayed on you** for up to the effect's full 3:00 duration - inconsistent with the "clean up on unequip" convention every other sign follows. Unequipping the sign now **removes the "Queen's Privilege" effect** and **purges all temporary cards** (inventory, offhand, those equipped into the dice, and any on an open card-panel or the cursor) at the same instant, matching exactly how natural expiry, external removal and player death already clean up.
+
+#### Loot & World
+
+- **Loot chests were rolling this mod's items twice; the rates are back to their stated values**: every vanilla loot chest rolls both the vanilla table and this mod's added "star plate" table, and the four pools (star coin / blank chip / star plate / glass dice) had been injected into **both** of them, pushing them up across the board (star coin 5% → 9.75%, blank chip 3% → 5.91%, glass dice 2% → 3.96% - about double their stated values - and star plate 5.95% → 6.89%). The added table is no longer injected a second time, so every pool is back to its stated chance: **star coin 5%, blank chip 3%, glass dice 2%, star plate 5.95%** (star plate = 5% from the added table + 1% from the main table); **End City** is star coin 9% / star plate 9.75% / glass dice 5%, and **Buried Treasure** still guarantees the blank chip at 100%).
 
 #### Platform & Compatibility
 

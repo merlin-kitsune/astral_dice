@@ -243,6 +243,16 @@ public class DiceCombatEvents {
         // 主手必须持有近战武器(排除空手/盾牌/非近战类武器)
         if (!isMeleeWeaponAttack(player)) return;
 
+        // 白泽赐福 / 降神:2 分钟倒计时由「被施加者实施一次合格的近战攻击」启动(2026-09-27 用户裁决)。
+        // 判据与骰神赐福**完全一致**(即本方法上方同一道闸门):近战武器攻击(外层已判 isMeleeWeaponAttack)
+        // + 目标是骰神赐福合法目标(isBlessingTarget)。⚠️ 必须置于 isMeleeWeaponAttack 之后、
+        // 且不受下方「施加者是否佩戴骰子」影响 —— 被施加者身上**不需要**有骰子即可启动计时。
+        // 只启动一次(内部判定 timer_started),之后重复攻击不重置。
+        if (!player.level().isClientSide() && isBlessingTarget(target, player)) {
+            com.merlinkitsune.astral_dice.item.sign.ZhaoSignItem.onBlessingTimerAttack(player);
+            com.merlinkitsune.astral_dice.item.sign.TeruSignItem.onDescentTimerAttack(player);
+        }
+
         // === ATTACKER DICE (unique, via curios dice slot) ===
         ItemStack diceStack = null;
         WeaponEnhancement enhancement = null;
