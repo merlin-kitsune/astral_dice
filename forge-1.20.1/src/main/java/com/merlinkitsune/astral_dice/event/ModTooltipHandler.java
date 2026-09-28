@@ -698,8 +698,9 @@ public class ModTooltipHandler {
             tooltip.add(Component.empty());
             addSignKeyHint(tooltip);
             addSignActiveTitle(tooltip, "治愈粘液");
+            // 2026-09-28:主动技能已移除「对范围内玩家/宠物/可骑乘生物瞬间治疗」⇒ 文案只剩一个范围参数
             addSignLines(tooltip, "tooltip.astral_dice.sign.lulu_active",
-                    GameplayConstants.LULU_ACTIVE_RANGE, GameplayConstants.LULU_ACTIVE_RANGE);
+                    GameplayConstants.LULU_ACTIVE_RANGE);
             addSignPassiveTitle(tooltip, "细胞分裂");
             addSignLines(tooltip, "tooltip.astral_dice.sign.lulu_passive");
             if (event.getEntity() != null) {
