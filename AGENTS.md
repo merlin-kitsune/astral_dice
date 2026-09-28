@@ -321,6 +321,28 @@ When extending this workspace:
 - **不得破坏单机与开发环境**：单人游戏的「内嵌服务端」与客户端来自**同一构建**，互通号必然相同，照常可玩；`scripts/test` 的自动化流程依赖该能力。改动本规则后必须复跑**三线**构建与冒烟流程(版本互通门槛在三个子项目各有一份实现,26.1.2 与另两线同规则)。
 - **兜底顺序**：`VersionGate` 先读构建期资源，读不到才回退到加载器元数据（`ModList` → `IModInfo#getVersion()`）；两者都失败时互通号退化为固定值并打印 ERROR 日志（只为不崩游戏，正常构建绝不会走到）。改动本规则时**必须保留**「读不到就退化」的行为，不得改成抛异常启动失败。
 
+## 版本号递增约定（每提交一版）— 必须遵守（2026-09-29 用户裁决）
+
+**本工作树当前分支（`multi-dev-next`）每提交一次，三线 `mod_version` 的 SNAPSHOT 号 +1**；
+前置库 `starengine_lib` 的 `next` 分支**同规则**（该侧约定见其仓库根 `AGENTS.md`），两侧**各自独立计数**。
+**含只动工具链 / 文档 / CI 的提交（`scripts/**`、`AGENTS.md`、`CHANGELOG`、`build.yml` …）—— 一律 bump，不设例外。**
+
+- **唯一真值字段**：三线 `gradle.properties` 的 `mod_version=2.0.0-SNAPSHOT.<N>+<平台>`
+  ⇒ **只改 `<N>`**；平台后缀不动；**三线永远同号**（本约定自 `.14` 起生效）。
+- **与收尾顺序的关系**：bump 必须在 `gradlew build` **之前** —— jar 名与 jar 内 `mods.toml` / `astral_dice_version.properties`
+  的版本都取自 `mod_version`，否则 `build/libs` 与 `run/*/mods` 里留的是旧版本号的件（提交内版本 ≠ 已部署产物 ⇒ 违反「断言落在最终产物上」）。
+  正确顺序 = **bump → 两份 CHANGELOG 段头同步 → 三线 build → 部署 → 提交**。
+- **CHANGELOG 段头同批改**：两份 CHANGELOG 顶部 `## 未发布（<版本号>）` / `## Unreleased (<版本号>)` 必须等于 bump 后的 `mod_version`。
+  本约定属**工程口径** ⇒ 按「两个 CHANGELOG 是玩家侧文档」一条**不写条目**，只改段头标题。
+- **库 bump 的连带义务（同一批内完成）**：库 `next` 每次提交后，本仓库须同步
+  ① 三线 `starengine_lib_version` pin、② `.github/workflows/build.yml` 的库 checkout `ref`（钉到**携带新版本的库 commit sha**）、
+  ③ 三线重新 `gradlew build` 并部署（库走 JarJar 内嵌，**同版本号就地覆盖** ⇒ 漏接线会留旧内嵌件，症状是隐性 `NoSuchMethodError`）。
+  ⚠️ 该 `ref` 指向的库提交若尚未 `push`，消费方 CI 会断在库的 Checkout。
+- ⚠️ **已知代价（明知并接受）**：版本号自此等价于「提交序号」，纯工具链 / 文档提交也会让它上涨 ⇒
+  **任何一次提交都会让已有 `build/libs/*.jar` 与 `run/*/mods/*.jar` 的版本号过期**，须重跑构建才能对齐。
+  **不要把 bump 拆成单独的「版本号提交」** —— 一次提交 = 一个版本号。
+- **不覆盖发布线**：`multi-main`（封包线）的版本号仍按发布规范（`1.3.x` 等），不受本条约束。
+
 ## 更新日志约定 — 必须遵守
 - **按语言拆分为两个文件**:中文更新日志 = `CHANGELOG_ZH.md`,英文更新日志 = `CHANGELOG.md`。两文件均为**纯单一语言**,禁止再出现另一种语言(不得内联双语)。
 - **严格一一对应**:同一版本号必须在两文件各出现一次,且**条目数量与顺序完全一致**(英文为中文的逐条对应译文);每次改动必须**同时更新两份**,禁止只改一侧。
