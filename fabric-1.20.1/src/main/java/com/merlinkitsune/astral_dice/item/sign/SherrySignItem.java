@@ -11,7 +11,7 @@ import com.merlinkitsune.astral_dice.item.ChargeManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.starenginelib.component.GameplayConstants;
 import com.merlinkitsune.starenginelib.event.EventTargetCollector;
-import com.merlinkitsune.starenginelib.item.CuriosCompat;
+import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.LivingEntity;
@@ -19,10 +19,10 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.event.entity.living.LivingDamageEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import top.theillusivec4.curios.api.SlotContext;
+import com.merlinkitsune.astral_dice.platform.event.entity.living.LivingDamageEvent;
+import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
+import com.merlinkitsune.astral_dice.platform.event.EventPriority;
+import com.merlinkitsune.astral_dice.compat.curios.SlotContext;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -71,7 +71,6 @@ import java.util.List;
  *       (本类内引用见 {@link SherryReasoningEffect})。</li>
  * </ul>
  */
-@net.minecraftforge.fml.common.Mod.EventBusSubscriber(modid = AstralDiceMod.MODID)
 public class SherrySignItem extends BaseSignItem {
 
     /** 立牌注册 id(锁定态/调试用) */
@@ -159,7 +158,7 @@ public class SherrySignItem extends BaseSignItem {
     /** 玩家是否佩戴怪力侦探立牌 */
     public static boolean isEquipped(Player player) {
         if (player == null) return false;
-        var curios = CuriosCompat.getCuriosInventory(player);
+        var curios = CuriosApi.getCuriosInventory(player);
         return curios.isPresent()
                 && curios.get().findFirstCurio(s -> s.is(ModItems.SHERRY_SIGN.get())).isPresent();
     }
@@ -491,7 +490,7 @@ public class SherrySignItem extends BaseSignItem {
 
     /** 该玩家是否在 curios 槽里装着指定注册 id 的立牌(按 id 字符串匹配,见类 javadoc) */
     private static boolean wearsSign(Player player, String itemId) {
-        var curios = CuriosCompat.getCuriosInventory(player);
+        var curios = CuriosApi.getCuriosInventory(player);
         if (curios.isEmpty()) return false;
         return curios.get().findFirstCurio(s -> {
             var key = BuiltInRegistries.ITEM.getKey(s.getItem());

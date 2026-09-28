@@ -18,10 +18,8 @@ import net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.ScreenEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import com.merlinkitsune.astral_dice.platform.client.event.ScreenEvent;
+import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
 
 /**
  * 星币钱包的物品栏控件（Forge 1.20.1 客户端）：**一条余额条 + 三个按钮**。
@@ -54,7 +52,6 @@ import net.minecraftforge.fml.common.Mod;
  * <p>创造栏只有「物品栏」标签页显示控件；位置在每帧渲染时重算（{@code guiLeft/guiTop}
  * 随标签页变化）。钱包功能关闭时一个控件都不创建。
  */
-@Mod.EventBusSubscriber(modid = AstralDiceMod.MODID, value = Dist.CLIENT)
 public final class StarCoinWalletButtons {
 
     /** 星币钱包按钮（左上角）—— 点击 = 把物品栏与副手的全部星币/星币袋存入钱包。 */
@@ -239,8 +236,8 @@ public final class StarCoinWalletButtons {
             //    正是「隐藏即不可点」所需要的语义。
             this.active = !hidden;
             if (hidden) return;
-            setX(parent.getGuiLeft() + offsetX);
-            setY(parent.getGuiTop() + offsetY);
+            setX(parent.leftPos + offsetX);
+            setY(parent.topPos + offsetY);
             if (withBalanceBar) {
                 // 先铺余额条底图：面板压在按钮之下，按钮图标自然完整露出
                 // (Forge 1.20.1 的 blit 比 1.21.1 多一个 blitOffset 参数,固定传 0)

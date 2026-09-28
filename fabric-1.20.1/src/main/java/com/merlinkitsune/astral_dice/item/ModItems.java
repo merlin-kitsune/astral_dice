@@ -9,8 +9,8 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Rarity;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraftforge.registries.RegistryObject;
-import net.minecraftforge.registries.DeferredRegister;
+import com.merlinkitsune.astral_dice.platform.registry.RegistryObject;
+import com.merlinkitsune.astral_dice.platform.registry.DeferredRegister;
 
 import java.util.function.Supplier;
 import com.merlinkitsune.astral_dice.item.chip.StarCoinHammerChipItem;
@@ -107,7 +107,7 @@ import com.merlinkitsune.astral_dice.item.chip.NinjaStarChipItem;
 import com.merlinkitsune.astral_dice.item.chip.FlashlightChipItem;
 
 public class ModItems {
-    public static final DeferredRegister<Item> ITEMS = DeferredRegister.create(net.minecraftforge.registries.ForgeRegistries.ITEMS, AstralDiceMod.MODID);
+    public static final DeferredRegister<Item> ITEMS = DeferredRegister.create(net.minecraft.core.registries.Registries.ITEM, AstralDiceMod.MODID);
 
     private static final net.minecraft.tags.TagKey<Item> COMBAT_CARDS_TAG =
             net.minecraft.tags.ItemTags.create(new ResourceLocation(

@@ -1,17 +1,16 @@
 package com.merlinkitsune.astral_dice.item.chip;
-import com.merlinkitsune.starenginelib.item.CuriosCompat;
+import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 import com.merlinkitsune.starenginelib.combat.HostileTargets;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.event.entity.living.LivingAttackEvent;
-import top.theillusivec4.curios.api.CuriosApi;
-import top.theillusivec4.curios.api.SlotContext;
+import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
+import com.merlinkitsune.astral_dice.platform.event.EventPriority;
+import com.merlinkitsune.astral_dice.platform.event.entity.living.LivingAttackEvent;
+import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
+import com.merlinkitsune.astral_dice.compat.curios.SlotContext;
 
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -23,7 +22,6 @@ import java.util.concurrent.ThreadLocalRandom;
  * - 一般:仅攻防加成(+3,防御按 1 点 = 2 点护甲折算);
  * - 高效额外:触发加成时被敌方攻击,有 20% 概率闪避单次攻击伤害。
  */
-@Mod.EventBusSubscriber(modid = AstralDiceMod.MODID)
 public class AdrenalineChipItem extends BaseChipItem {
     /** 肾上腺素-一般攻防加成 */
     public static final int BONUS_LOW = 3;
@@ -55,7 +53,7 @@ public class AdrenalineChipItem extends BaseChipItem {
 
     private static boolean hasCurio(Player player, net.minecraft.world.item.Item item) {
         if (player == null) return false;
-        var curios = CuriosCompat.getCuriosInventory(player);
+        var curios = CuriosApi.getCuriosInventory(player);
         return curios.isPresent() && curios.get().findFirstCurio(s -> s.is(item)).isPresent();
     }
 

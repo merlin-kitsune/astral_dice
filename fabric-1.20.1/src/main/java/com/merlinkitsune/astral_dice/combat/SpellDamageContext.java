@@ -5,10 +5,10 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
-import com.merlinkitsune.starenginelib.item.CuriosCompat;
-import net.minecraftforge.event.entity.living.LivingDamageEvent;
-import top.theillusivec4.curios.api.CuriosApi;
-import top.theillusivec4.curios.api.type.capability.ICuriosItemHandler;
+import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
+import com.merlinkitsune.astral_dice.platform.event.entity.living.LivingDamageEvent;
+import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
+import com.merlinkitsune.astral_dice.compat.curios.ICuriosItemHandler;
 
 import java.util.Optional;
 import com.merlinkitsune.astral_dice.event.DamageEffectCardHandler;
@@ -44,7 +44,7 @@ public class SpellDamageContext {
     // 攻击者 curios(惰性缓存)
     public Optional<ICuriosItemHandler> curios() {
         if (curiosCache == null) {
-            curiosCache = CuriosCompat.getCuriosInventory(attacker);
+            curiosCache = CuriosApi.getCuriosInventory(attacker);
         }
         return curiosCache;
     }

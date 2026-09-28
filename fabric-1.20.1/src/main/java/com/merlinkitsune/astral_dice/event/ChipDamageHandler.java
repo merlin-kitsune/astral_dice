@@ -7,11 +7,10 @@ import com.merlinkitsune.astral_dice.item.chip.WhetstoneChipItem;
 import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
-import net.minecraftforge.event.entity.living.LivingDamageEvent;
-import net.minecraftforge.event.entity.living.LivingDeathEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import com.merlinkitsune.astral_dice.platform.event.entity.living.LivingDamageEvent;
+import com.merlinkitsune.astral_dice.platform.event.entity.living.LivingDeathEvent;
+import com.merlinkitsune.astral_dice.platform.event.EventPriority;
+import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
 
 /**
  * 筹码受击侧钩子(最终伤害阶段):
@@ -39,7 +38,6 @@ import net.minecraftforge.fml.common.Mod;
  * (生命不会降到 0),两者均不会触发,气囊恒为第一顺位。死亡事件侧的兜底用
  * {@link EventPriority#HIGHEST},同样早于末影骰子的死亡处理(默认优先级)。
  */
-@Mod.EventBusSubscriber(modid = AstralDiceMod.MODID)
 public final class ChipDamageHandler {
 
     private ChipDamageHandler() {

@@ -1,13 +1,14 @@
 package com.merlinkitsune.astral_dice.economy;
 
+import com.merlinkitsune.astral_dice.platform.event.Cancelable;
+
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.event.entity.player.EntityItemPickupEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import com.merlinkitsune.astral_dice.platform.event.entity.player.EntityItemPickupEvent;
+import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
 
 /**
  * 拾取钩子（Forge 1.20.1）：世界里被玩家拾取的**星币与星币袋**默认直接折算入钱包。
@@ -22,7 +23,6 @@ import net.minecraftforge.fml.common.Mod;
  *
  * <p>该事件由原版在逻辑服务端的碰撞拾取路径里触发，无需额外分侧守卫。
  */
-@Mod.EventBusSubscriber(modid = AstralDiceMod.MODID)
 public final class StarCoinPickupHandler {
 
     private StarCoinPickupHandler() {

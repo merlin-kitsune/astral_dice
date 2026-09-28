@@ -3,8 +3,8 @@ package com.merlinkitsune.astral_dice.effect;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.effect.MobEffect;
-import net.minecraftforge.registries.RegistryObject;
-import net.minecraftforge.registries.DeferredRegister;
+import com.merlinkitsune.astral_dice.platform.registry.RegistryObject;
+import com.merlinkitsune.astral_dice.platform.registry.DeferredRegister;
 
 import com.merlinkitsune.starenginelib.effect.BerserkEffect;
 import com.merlinkitsune.starenginelib.effect.CounterEffect;

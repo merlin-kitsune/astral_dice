@@ -6,7 +6,7 @@ import com.merlinkitsune.astral_dice.combat.OrbitalBombardmentManager;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.event.WeirdDiceHandler;
 import com.merlinkitsune.astral_dice.item.ChargeManager;
-import com.merlinkitsune.starenginelib.item.CuriosCompat;
+import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.card.RandomCardHandler;
 import com.merlinkitsune.astral_dice.item.chip.CurrentCoreChipItem;
@@ -20,7 +20,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import top.theillusivec4.curios.api.SlotContext;
+import com.merlinkitsune.astral_dice.compat.curios.SlotContext;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -157,7 +157,7 @@ public class MegasSignItem extends BaseSignItem {
     /** 玩家是否佩戴机械师立牌。 */
     public static boolean isEquipped(Player player) {
         if (player == null) return false;
-        return CuriosCompat.getCuriosInventory(player)
+        return CuriosApi.getCuriosInventory(player)
                 .map(h -> h.findFirstCurio(s -> s.is(ModItems.MEGAS_SIGN.get())).isPresent())
                 .orElse(false);
     }

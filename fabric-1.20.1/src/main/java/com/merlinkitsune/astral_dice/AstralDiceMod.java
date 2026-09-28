@@ -1,88 +1,180 @@
 package com.merlinkitsune.astral_dice;
 
+import com.merlinkitsune.astral_dice.compat.curios.TrinketBridge;
 import com.merlinkitsune.astral_dice.config.ModCommonConfig;
-import com.merlinkitsune.starenginelib.component.GameplayConstants;
-import com.merlinkitsune.astral_dice.effect.ModEffects;
-import com.merlinkitsune.astral_dice.effect.ModEnchantments;
 import com.merlinkitsune.astral_dice.init.ModCompatibilityCheck;
-import com.merlinkitsune.astral_dice.init.MixinRuntimeGate;
-import com.merlinkitsune.astral_dice.init.ModCreativeTabs;
-import com.merlinkitsune.astral_dice.init.ModParticles;
-import com.merlinkitsune.astral_dice.item.ModItems;
-import com.merlinkitsune.astral_dice.network.ModNetwork;
-import com.merlinkitsune.astral_dice.network.VersionGate;
-import com.merlinkitsune.astral_dice.recipe.ModRecipeSerializers;
-import com.merlinkitsune.astral_dice.screen.ModMenuTypes;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.InterModComms;
-import net.minecraftforge.fml.ModLoadingContext;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
-import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
+import com.merlinkitsune.astral_dice.platform.FabricBridges;
+import com.merlinkitsune.astral_dice.platform.event.LoaderBus;
+import com.merlinkitsune.astral_dice.platform.fml.event.lifecycle.FMLCommonSetupEvent;
+import com.merlinkitsune.astral_dice.platform.fml.loading.FMLPaths;
+import com.merlinkitsune.starenginelib.component.GameplayConstants;
+import net.fabricmc.api.ModInitializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import top.theillusivec4.curios.api.CuriosApi;
-import top.theillusivec4.curios.api.SlotTypeMessage;
 
-
-@Mod(AstralDiceMod.MODID)
-public class AstralDiceMod {
+/**
+ * 《星之骰戏》Fabric 1.20.1 入口。
+ *
+ * <h2>与 Forge 侧的结构对应</h2>
+ * <table border="1">
+ *   <caption>入口时序对照</caption>
+ *   <tr><th>步骤</th><th>Forge 1.20.1</th><th>Fabric 1.20.1</th></tr>
+ *   <tr><td>1. 提交注册</td><td>构造器里逐个 {@code ITEMS.register(modBus)}</td>
+ *       <td>{@link #onInitialize()} 里逐个 {@code .register(BUS)}(同一形态)</td></tr>
+ *   <tr><td>2. 注册事件监听</td><td>{@code @Mod.EventBusSubscriber} 注解自动注册 63 个类</td>
+ *       <td>显式 {@code LoaderBus.INSTANCE.register(X.class)}(注解在 Fabric 无对应机制)</td></tr>
+ *   <tr><td>3. 配置注册</td><td>{@code ModLoadingContext.registerConfig(COMMON, SPEC)}</td>
+ *       <td>{@code ModCommonConfig.SPEC.load(...)} + 首次写出默认文件</td></tr>
+ *   <tr><td>4. 通用初始化</td><td>{@code FMLCommonSetupEvent}</td>
+ *       <td>自建总线上派发同名事件(触发 {@link #onCommonSetup})</td></tr>
+ *   <tr><td>5. FAPI 桥接</td><td>—</td><td>{@link FabricBridges#install()}</td></tr>
+ * </table>
+ *
+ * <p><b>已删除的 Forge 专属件</b>:{@code MixinRuntimeGate}(Sinytra Connector 二选一门控 ——
+ * Fabric Loader 自带 Mixin,该门控无意义)、{@code mods.toml} 模板、{@code mixinbooster} 依赖、
+ * Curios IMC 槽位注册(改数据包 {@code data/trinkets/slots/**})、{@code registerDisplayTest}
+ * (版本门槛改由 {@code VersionGate} 的握手包承担)。
+ */
+public class AstralDiceMod implements ModInitializer {
     public static final String MODID = "astral_dice";
-    private static final Logger LOGGER = LoggerFactory.getLogger(AstralDiceMod.class);
+    public static final Logger LOGGER = LoggerFactory.getLogger("AstralDice");
 
-    public AstralDiceMod() {
-        IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
-        // ⚠️ 不兼容模组黑名单(Magic Coins / SG-Economy)的检查**不能放在这里**:它是否拒绝取决于
-        //    「星币钱包」开关(config/ModCommonConfig 的 enable_star_coin_wallet),而配置要到**本阶段之后**
-        //    才加载(装载状态机:CONSTRUCT -> CONFIG_LOAD -> COMMON_SETUP),此处读配置会抛「配置尚未加载」。
-        //    ⇒ 检查已移到 onCommonSetup 的 ModCompatibilityCheck.verifyOrThrow()(详见该类类头)。
-        ModItems.ITEMS.register(modEventBus);
-        ModEffects.EFFECTS.register(modEventBus);
-        com.merlinkitsune.astral_dice.audio.ModSounds.SOUNDS.register(modEventBus);
-        ModEnchantments.ENCHANTMENTS.register(modEventBus);
-        ModRecipeSerializers.RECIPE_SERIALIZERS.register(modEventBus);
-        ModCreativeTabs.CREATIVE_TABS.register(modEventBus);
-        ModMenuTypes.MENU_TYPES.register(modEventBus);
-        ModParticles.PARTICLE_TYPES.register(modEventBus);
-        // 全局战利品修饰符序列化器:1.20.1 的 Forge 自带注册表里**没有任何内置项**
-        // (没有 forge:add_table),必须由本模组注册 astral_dice:add_table,
-        // 否则 data/astral_dice/loot_modifiers/*.json 全部解码失败(详见 loot/AstralLootModifiers)
-        com.merlinkitsune.astral_dice.loot.AstralLootModifiers.SERIALIZERS.register(modEventBus);
-        modEventBus.register(this);
-        // 配置:配置项定义、TOML 读写与配置 GUI 全部留在本模组(见 config/ModCommonConfig)。
-        // 旧版本配置文件先备份,再由 Forge 继承旧值写入新配置(仅公共配置;client 配置已移除)。
-        backupOldConfigIfNeeded("astral_dice-common.toml", ModCommonConfig.CONFIG_VERSION);
-        net.minecraftforge.fml.ModLoadingContext.get().registerConfig(net.minecraftforge.fml.config.ModConfig.Type.COMMON, ModCommonConfig.SPEC);
-        // 版本互通门槛(见 AGENTS.md):多人生服列表的「兼容」标记按 mod_version 的 major.minor 判定,
-        // 与 SimpleChannel 的握手门槛同一判据。Forge 默认的 MATCH_VERSION 要求完整版本号完全相同,
-        // 会把 1.2.0 ↔ 1.2.1 这类同二号位组合误标为不兼容,故显式注册本判据。
-        net.minecraftforge.fml.ModLoadingContext.get().registerDisplayTest(
-                VersionGate::interopVersion,
-                (remoteVersion, isFromServer) -> VersionGate.accepts(remoteVersion));
-        // Iron 的法术与魔法书联动:仅在模组加载时注册其事件处理器(类引用只在加载条件下触发)
-        if (net.minecraftforge.fml.ModList.get().isLoaded("irons_spellbooks")) {
-            MinecraftForge.EVENT_BUS.register(com.merlinkitsune.astral_dice.event.IronSpellbooksCompat.class);
-        }
-        // Waystones 传送联动:仅在模组加载时反射注册事件,未安装时静默跳过
-        com.merlinkitsune.astral_dice.event.WaystoneWarpCompat.init();
+    /** 注册/事件总线(bus 参数保留 Forge 形状:本实现不往总线注册东西,提交即注册)。 */
+    public static final LoaderBus BUS = LoaderBus.INSTANCE;
+
+    @Override
+    public void onInitialize() {
+        FabricBridges.installEarly();
+        commitRegistrations();
+        registerListeners();
+        TrinketBridge.registerAll();
+        setupConfig();
+        // 通用初始化(Forge 的 FMLCommonSetupEvent 等价物)
+        BUS.post(new FMLCommonSetupEvent());
+        LOGGER.info("Astral Dice mod loaded.");
+        LOGGER.info("May the god of the dice be with you!");
     }
 
-    // 若配置文件版本号低于当前版本(新增了配置项):备份旧文件,由 Forge 加载时继承旧值并补齐新项
-    private static void backupOldConfigIfNeeded(String fileName, int currentVersion) {
+    /** 逐个提交 DeferredRegister(声明面与 Forge 侧构造器一致)。 */
+    private static void commitRegistrations() {
+        com.merlinkitsune.astral_dice.item.ModItems.ITEMS.register(BUS);
+        com.merlinkitsune.astral_dice.effect.ModEffects.EFFECTS.register(BUS);
+        com.merlinkitsune.astral_dice.audio.ModSounds.SOUNDS.register(BUS);
+        com.merlinkitsune.astral_dice.effect.ModEnchantments.ENCHANTMENTS.register(BUS);
+        com.merlinkitsune.astral_dice.recipe.ModRecipeSerializers.RECIPE_SERIALIZERS.register(BUS);
+        com.merlinkitsune.astral_dice.init.ModCreativeTabs.CREATIVE_TABS.register(BUS);
+        com.merlinkitsune.astral_dice.screen.ModMenuTypes.MENU_TYPES.register(BUS);
+        com.merlinkitsune.astral_dice.init.ModParticles.PARTICLE_TYPES.register(BUS);
+    }
+
+    /**
+     * 注册全部事件监听类。
+     *
+     * <p>Forge 侧由 {@code @Mod.EventBusSubscriber} 注解自动完成;Fabric 无该机制 ⇒ 显式列全。
+     * ⚠️ **新增订阅类时必须在此登记**,否则其 {@code @SubscribeEvent} 方法不会被调用(静默失效)。
+     */
+    private static void registerListeners() {
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.combat.DiceCombatEvents.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.combat.OrbitalBombardmentManager.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.combat.PlayerHostilityTrackerEvents.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.combat.SherryThrowManager.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.combat.ShootingStarManager.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.command.AstralPartyCommand.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.economy.StarCoinPickupHandler.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.event.AnvilUpgradeHandler.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.event.ChipDamageHandler.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.event.DamageEffectCardHandler.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.event.EnderDiceHandler.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.event.FirstLootChestHandler.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.event.LivingPageFlightScheduler.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.event.LootInjectionHandler.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.event.ModEffectEvents.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.event.ModTooltipHandler.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.event.NetherrackDiceHandler.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.event.ObsidianDiceHandler.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.event.PlayerLifecycleHandler.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.event.PlayerTickEvents.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.event.RailgunStrikeScheduler.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.event.TemporaryCardEvents.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.InvestigationEventUtil.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.MarkManager.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.RenShieldManager.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.card.FateGuidanceCardItem.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.chip.AdrenalineChipItem.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.chip.CursedSwordChipItem.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.chip.ElectricSwordChipItem.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.chip.FlashlightChipItem.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.chip.FriendshipBadgeChipItem.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.chip.SatelliteChipItem.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.chip.SmartWatchChipItem.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.chip.WarpEngineChipItem.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.sign.BonnieSignItem.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.sign.FannySignItem.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.sign.HaiqingSignItem.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.sign.HannaSignItem.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.sign.KomachiSignItem.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.sign.MimiSignItem.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.sign.NancyLuSignItem.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.sign.NardisSignItem.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.sign.PandamanSignItem.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.sign.PaparaSignItem.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.sign.SherrySignItem.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.sign.TeruSignItem.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.sign.ZhaoSignItem.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.platform.event.IEventBus.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.target.TargetSelectionManager.class);
+    }
+
+    /** 客户端订阅类(由 AstralDiceClient 登记,避免专用服务端加载客户端类)。 */
+    static void registerClientListeners() {
+                LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.client.ClientKeyNames.class);
+                LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.client.ClientSessionEvents.class);
+                LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.client.ClientTickHandler.class);
+                LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.client.KeyBindingSetup.class);
+                LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.client.ModClientEvents.class);
+                LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.client.NancyLuClientEvents.class);
+                LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.client.RarityTooltipFrame.class);
+                LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.client.RenShieldRenderer.class);
+                LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.client.TargetOutlineCapture.class);
+                LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.client.TargetSelectionClient.class);
+                LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.client.TargetSelectionHighlighter.class);
+                LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.client.gui.StarCoinWalletButtons.class);
+    }
+
+    /**
+     * 配置:先备份旧版本文件,再读取;文件缺失时写出默认值。
+     * (Forge 侧由 FML 的配置系统承担,逻辑等价。)
+     */
+    private static void setupConfig() {
+        java.nio.file.Path configDir = FMLPaths.CONFIGDIR.get();
+        java.nio.file.Path configPath = configDir.resolve("astral_dice-common.toml");
+        backupOldConfigIfNeeded(configPath, ModCommonConfig.CONFIG_VERSION);
+        boolean existed = ModCommonConfig.SPEC.load(configPath);
+        ModCommonConfig.SPEC.save(configPath);
+        if (!existed) {
+            LOGGER.info("[Astral Dice] 已生成默认配置 {}", configPath);
+        }
+        // 配置已加载:把配置值打成快照推给库的 GameplayConstants(库不读配置文件)
+        GameplayConstants.applyConfig(ModCommonConfig.snapshot());
+    }
+
+    /** 配置文件版本号低于当前值时备份旧文件(口径与 Forge 侧一致)。 */
+    private static void backupOldConfigIfNeeded(java.nio.file.Path configPath, int currentVersion) {
         try {
-            java.nio.file.Path configPath = net.minecraftforge.fml.loading.FMLPaths.CONFIGDIR.get().resolve(fileName);
-            if (!java.nio.file.Files.exists(configPath))
+            if (!java.nio.file.Files.exists(configPath)) {
                 return;
+            }
             int fileVersion = readConfigVersion(configPath);
-            if (fileVersion >= currentVersion)
+            if (fileVersion >= currentVersion) {
                 return;
-            java.nio.file.Path backup = configPath.resolveSibling(fileName + ".bak");
+            }
+            java.nio.file.Path backup = configPath.resolveSibling(configPath.getFileName() + ".bak");
             java.nio.file.Files.copy(configPath, backup, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-            LOGGER.info("[Astral Dice] 配置 {} 版本过旧(v{} < v{}),已备份至 {}", fileName, fileVersion, currentVersion, backup);
+            LOGGER.info("[Astral Dice] 配置 {} 版本过旧(v{} < v{}),已备份至 {}", configPath.getFileName(),
+                    fileVersion, currentVersion, backup);
         } catch (Exception e) {
-            LOGGER.warn("[Astral Dice] 备份旧配置 {} 失败: {}", fileName, e.toString());
+            LOGGER.warn("[Astral Dice] 备份旧配置失败: {}", e.toString());
         }
     }
 
@@ -97,38 +189,20 @@ public class AstralDiceMod {
         }
     }
 
-    @SubscribeEvent
+    /**
+     * 通用初始化(Forge 的 {@code FMLCommonSetupEvent} 处理器,方法体保持原样)。
+     *
+     * <p>⚠️ 顺序有意保持不变:{@link ModCompatibilityCheck#verifyOrThrow()} 仍在
+     * {@code enqueueWork} 之前**同步**执行 —— 不兼容组合必须尽早、干净地失败。
+     */
+    @com.merlinkitsune.astral_dice.platform.event.SubscribeEvent
     public void onCommonSetup(FMLCommonSetupEvent event) {
-        // 不兼容模组黑名单(Magic Coins / SG-Economy):**只有在「星币钱包」启用时才拒绝启动**
-        // (2026-09-22 用户裁决),因此必须等到配置加载完成才能判定 —— 本事件就在 CONFIG_LOAD 之后。
-        // 命中即抛 ModLoadingException ⇒ 游戏停在加载错误界面并显示提示原文(链路见 ModCompatibilityCheck 类头)。
-        // 放在 enqueueWork **之前**:同步执行,不与其它 mod 的延迟任务交错,失败得越干净越好。
         ModCompatibilityCheck.verifyOrThrow();
-        // Mixin 运行时门控(Mixin Booster **或** Sinytra Connector 至少一个):mods.toml 里
-        // mixinbooster 已改为 optional —— Connector 在场时 Booster 会自我禁用、该 mod 条目不注册,
-        // 若仍写 mandatory 会让装了 Connector 的整合包(如 BMC4)直接硬拒启动。
-        // 详见 MixinRuntimeGate 类头(含 2026-09-29 实机定位的日志原文)。
-        MixinRuntimeGate.verifyOrThrow();
         event.enqueueWork(() -> {
-            // 配置已加载:把配置值打成快照推给库的 GameplayConstants(库不读配置文件,见 config/ModCommonConfig)
-            GameplayConstants.applyConfig(ModCommonConfig.snapshot());
-            // 网络通道注册(1.20.1 SimpleChannel)
-            ModNetwork.register();
-            // Curios 槽位类型注册(1.20.1 经 IMC;对应 1.21 的 curios JSON 槽位注册)
-            // dice=骰子(1)、stand=立牌(1)、chip=筹码(默认 0,按骰子星级动态增长)
-            InterModComms.sendTo(CuriosApi.MODID, SlotTypeMessage.REGISTER_TYPE,
-                    () -> new SlotTypeMessage.Builder("dice").size(1)
-                            .icon(new net.minecraft.resources.ResourceLocation(AstralDiceMod.MODID, "slot/empty_dice_slot")).build());
-            InterModComms.sendTo(CuriosApi.MODID, SlotTypeMessage.REGISTER_TYPE,
-                    () -> new SlotTypeMessage.Builder("stand").size(1)
-                            .icon(new net.minecraft.resources.ResourceLocation(AstralDiceMod.MODID, "slot/empty_stand_slot")).build());
-            InterModComms.sendTo(CuriosApi.MODID, SlotTypeMessage.REGISTER_TYPE,
-                    () -> new SlotTypeMessage.Builder("chip").size(0)
-                            .icon(new net.minecraft.resources.ResourceLocation(AstralDiceMod.MODID, "slot/empty_chip_slot")).build());
+            // 网络通道注册(Fabric Networking;协议版本握手见 VersionGate)
+            com.merlinkitsune.astral_dice.network.ModNetwork.register();
             // 卡牌类型注册表初始化(战斗牌定义集中管理)
             com.merlinkitsune.astral_dice.combat.CardRegistry.init();
-            LOGGER.info("Astral Dice mod loaded.");
-            LOGGER.info("May the god of the dice be with you!");
         });
     }
 }

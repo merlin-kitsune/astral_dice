@@ -1,6 +1,6 @@
 package com.merlinkitsune.astral_dice.item.chip;
 
-import com.merlinkitsune.starenginelib.item.CuriosCompat;
+import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import net.minecraft.world.entity.player.Player;
@@ -40,7 +40,7 @@ public class WhetstoneChipItem extends BaseChipItem {
     /** 玩家是否佩戴磨刀石 */
     public static boolean isEquipped(Player player) {
         if (player == null) return false;
-        var curios = CuriosCompat.getCuriosInventory(player);
+        var curios = CuriosApi.getCuriosInventory(player);
         return curios.isPresent()
                 && curios.get().findFirstCurio(s -> s.is(ModItems.WHETSTONE_CHIP.get())).isPresent();
     }

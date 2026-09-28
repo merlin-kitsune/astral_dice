@@ -8,7 +8,7 @@ import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.effect.NardisPrivilegeEffect;
 import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
 import com.merlinkitsune.astral_dice.item.dice.DiceCurioItem;
-import com.merlinkitsune.starenginelib.item.CuriosCompat;
+import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
@@ -457,7 +457,7 @@ public final class TemporaryCardUtil {
     /** 玩家当前佩戴的骰子(骰子饰品槽只有 1 个,不存在多骰子) */
     public static ItemStack findEquippedDice(Player player) {
         if (player == null) return ItemStack.EMPTY;
-        var curios = CuriosCompat.getCuriosInventory(player);
+        var curios = CuriosApi.getCuriosInventory(player);
         if (curios.isEmpty()) return ItemStack.EMPTY;
         var result = curios.get().findFirstCurio(DiceCurioItem::isDiceItem);
         return result.isPresent() ? result.get().stack() : ItemStack.EMPTY;

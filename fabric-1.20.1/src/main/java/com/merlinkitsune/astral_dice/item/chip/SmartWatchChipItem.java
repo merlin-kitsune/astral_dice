@@ -2,14 +2,13 @@ package com.merlinkitsune.astral_dice.item.chip;
 
 import com.merlinkitsune.starenginelib.combat.HostileTargets;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
-import com.merlinkitsune.starenginelib.item.CuriosCompat;
+import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.card.RandomCardHandler;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.event.entity.living.LivingDeathEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import com.merlinkitsune.astral_dice.platform.event.entity.living.LivingDeathEvent;
+import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
 
 /**
  * 智能手表筹码:物品栏中卡牌数量不足 {@link #CARD_THRESHOLD} 张时,
@@ -19,7 +18,6 @@ import net.minecraftforge.fml.common.Mod;
  * <p>无冷却、无计数器:只要当前卡牌数仍低于阈值,每次敌对目标击杀都会补充一张;
  * 达到阈值后不再发放(继续击杀也不会囤积)。
  */
-@Mod.EventBusSubscriber(modid = AstralDiceMod.MODID)
 public class SmartWatchChipItem extends BaseChipItem {
     /** 物品栏卡牌数量低于该值时补充 */
     public static final int CARD_THRESHOLD = 6;
@@ -31,7 +29,7 @@ public class SmartWatchChipItem extends BaseChipItem {
     // 玩家是否佩戴本筹码
     public static boolean isEquipped(Player player) {
         if (player == null) return false;
-        var curios = CuriosCompat.getCuriosInventory(player);
+        var curios = CuriosApi.getCuriosInventory(player);
         return curios.isPresent() && curios.get().findFirstCurio(s -> s.is(ModItems.SMART_WATCH_CHIP.get())).isPresent();
     }
 

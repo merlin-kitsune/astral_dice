@@ -7,15 +7,15 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.merlinkitsune.starenginelib.item.CuriosCompat;
-import top.theillusivec4.curios.api.CuriosApi;
-import top.theillusivec4.curios.api.SlotContext;
-import top.theillusivec4.curios.api.type.capability.ICurioItem;
-import top.theillusivec4.curios.api.type.inventory.ICurioStacksHandler;
+import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
+import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
+import com.merlinkitsune.astral_dice.compat.curios.SlotContext;
+import com.merlinkitsune.astral_dice.compat.curios.ICurioItem;
+import com.merlinkitsune.astral_dice.compat.curios.ICurioStacksHandler;
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.sign.MimiSignItem;
-import top.theillusivec4.curios.api.type.capability.ICuriosItemHandler;
+import com.merlinkitsune.astral_dice.compat.curios.ICuriosItemHandler;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import java.util.UUID;
 
@@ -140,7 +140,7 @@ public class DiceCurioItem extends Item implements ICurioItem {
      */
     private static void refreshChipSlotCount(Player player, Integer forcedTarget, boolean forceRemove, boolean throttledWarn) {
         if (player == null || player.level().isClientSide()) return;
-        CuriosCompat.getCuriosInventory(player).ifPresent(inventory -> {
+        CuriosApi.getCuriosInventory(player).ifPresent(inventory -> {
             ICurioStacksHandler chip = inventory.getStacksHandler("chip").orElse(null);
             if (chip == null) {
                 warnMissingChipHandler(player, inventory, throttledWarn);
@@ -267,7 +267,7 @@ public class DiceCurioItem extends Item implements ICurioItem {
     // 并把筹码栏收缩归零(forceRemove=true,槽内筹码归还物品栏)。
     public static void removeGlassDiceOnDeath(Player player) {
         if (player == null || player.level().isClientSide()) return;
-        CuriosCompat.getCuriosInventory(player).ifPresent(handler -> {
+        CuriosApi.getCuriosInventory(player).ifPresent(handler -> {
             handler.getStacksHandler("dice").ifPresent(diceHandler -> {
                 ItemStack dice = diceHandler.getStacks().getStackInSlot(0);
                 if (!dice.isEmpty() && dice.is(ModItems.GLASS_DICE.get())) {

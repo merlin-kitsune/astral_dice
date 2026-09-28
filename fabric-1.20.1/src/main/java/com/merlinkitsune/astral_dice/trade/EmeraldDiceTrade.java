@@ -1,6 +1,6 @@
 package com.merlinkitsune.astral_dice.trade;
 
-import com.merlinkitsune.starenginelib.item.CuriosCompat;
+import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerPlayer;
@@ -52,7 +52,7 @@ public final class EmeraldDiceTrade {
 
     public static boolean hasEmeraldDice(Player player) {
         if (player == null || player.level().isClientSide()) return false;
-        return CuriosCompat.getCuriosInventory(player)
+        return CuriosApi.getCuriosInventory(player)
                 .map(inv -> inv.findFirstCurio(s -> s.is(ModItems.EMERALD_DICE.get())).isPresent())
                 .orElse(false);
     }

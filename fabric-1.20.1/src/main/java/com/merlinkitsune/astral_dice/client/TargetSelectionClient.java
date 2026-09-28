@@ -19,11 +19,9 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.InputEvent;
-import net.minecraftforge.client.event.ScreenEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import com.merlinkitsune.astral_dice.platform.client.event.InputEvent;
+import com.merlinkitsune.astral_dice.platform.client.event.ScreenEvent;
+import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
 import org.lwjgl.glfw.GLFW;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -63,7 +61,6 @@ import java.util.Optional;
  * 一律走 actionbar —— 每 tick 刷新的**四态**稳态提示（未命中 / 可自身 / 正确目标 / 错误目标，
  * 末尾追加黄色剩余时间，见 {@link #steadyPrompt()}）与瞬态反馈（见 {@link #showPrompt}）。
  */
-@Mod.EventBusSubscriber(modid = AstralDiceMod.MODID, value = Dist.CLIENT)
 public final class TargetSelectionClient {
     private static final Logger LOGGER = LoggerFactory.getLogger(TargetSelectionClient.class);
 

@@ -12,7 +12,7 @@ import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.chip.CurrentCoreChipItem;
 import com.merlinkitsune.astral_dice.network.ModNetwork;
 import com.merlinkitsune.starenginelib.component.GameplayConstants;
-import com.merlinkitsune.starenginelib.item.CuriosCompat;
+import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 import com.merlinkitsune.starenginelib.target.TargetSelectionAction;
 import com.merlinkitsune.starenginelib.target.TargetSelectionRegistry;
 import com.merlinkitsune.starenginelib.target.TargetType;
@@ -22,9 +22,8 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.event.entity.player.PlayerEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import com.merlinkitsune.astral_dice.platform.event.entity.player.PlayerEvent;
+import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,7 +48,7 @@ import java.util.UUID;
  * <p><b>两条防刷守卫(2026-09-27 用户指令)</b>:
  * <ol>
  *   <li><b>拾取不计层</b> —— 本类**不订阅任何拾取事件**(1.20.1 侧对应
- *       {@code net.minecraftforge.event.entity.player.EntityItemPickupEvent} / {@code PlayerEvent.ItemPickupEvent})
+ *       {@code com.merlinkitsune.astral_dice.platform.event.entity.player.EntityItemPickupEvent} / {@code PlayerEvent.ItemPickupEvent})
  *       ⇒ 「丢弃 → 捡起」一层都刷不到(与 {@code item/chip/VitaminPillChipItem} 的既有注释口径一致);</li>
  *   <li><b>装备计层按「历史同时装备张数水位」去重</b> —— 见 {@link #onAttackCardsEquipped}:
  *       同一批战斗牌「插入 → 卸除 → 再插入」只计一次。
@@ -108,7 +107,6 @@ import java.util.UUID;
  * <p>图标 = {@code images/教主立牌.png}(实装路径 {@code textures/item/teru_sign.png});
  * 降神效果图标复用同一张图;狐光效果图标 = {@code images/狐光.png}。
  */
-@Mod.EventBusSubscriber(modid = AstralDiceMod.MODID)
 public class TeruSignItem extends BaseSignItem {
     private static final Logger LOGGER = LoggerFactory.getLogger(TeruSignItem.class);
 
@@ -196,7 +194,7 @@ public class TeruSignItem extends BaseSignItem {
     /** 玩家是否佩戴教主立牌(被动增层/职业判定的佩戴口径) */
     public static boolean isEquipped(Player player) {
         if (player == null) return false;
-        var curios = CuriosCompat.getCuriosInventory(player);
+        var curios = CuriosApi.getCuriosInventory(player);
         return curios.isPresent()
                 && curios.get().findFirstCurio(s -> s.is(ModItems.TERU_SIGN.get())).isPresent();
     }

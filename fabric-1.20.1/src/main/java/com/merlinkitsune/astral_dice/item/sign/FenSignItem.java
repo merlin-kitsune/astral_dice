@@ -1,5 +1,5 @@
 package com.merlinkitsune.astral_dice.item.sign;
-import com.merlinkitsune.starenginelib.item.CuriosCompat;
+import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 
 import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
 
@@ -11,8 +11,8 @@ import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import top.theillusivec4.curios.api.CuriosApi;
-import top.theillusivec4.curios.api.SlotContext;
+import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
+import com.merlinkitsune.astral_dice.compat.curios.SlotContext;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.StarLightManager;
 
@@ -132,7 +132,7 @@ public class FenSignItem extends BaseSignItem {
     // 玩家是否佩戴大当家立牌
     public static boolean isEquipped(Player player) {
         if (player == null) return false;
-        var curios = CuriosCompat.getCuriosInventory(player);
+        var curios = CuriosApi.getCuriosInventory(player);
         return curios.isPresent() && curios.get().findFirstCurio(s -> s.is(ModItems.FEN_SIGN.get())).isPresent();
     }
 

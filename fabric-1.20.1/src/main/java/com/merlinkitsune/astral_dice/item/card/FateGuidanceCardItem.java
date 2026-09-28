@@ -4,8 +4,7 @@ import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.level.Level;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.event.entity.living.LivingEntityUseItemEvent;
+import com.merlinkitsune.astral_dice.platform.event.entity.living.LivingEntityUseItemEvent;
 import net.minecraft.world.food.FoodProperties;
 import net.minecraft.world.food.FoodData;
 import com.merlinkitsune.astral_dice.combat.DiceCombatEvents;
@@ -13,7 +12,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
+import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
 
 /**
  * 命运的指引(专属功能效果牌,击杀带虚弱印记的目标获取)。
@@ -27,7 +26,6 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
  * 功能全部由 attachment(FATE_ACTIVE_UNTIL)驱动;FATE_GUIDANCE 效果仅作状态显示(5:00 倒计时图标)。
  * 专属牌:仅允许获得者使用;赠与他人的专属牌接收者无法使用。
  */
-@Mod.EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public class FateGuidanceCardItem extends BaseEffectCardItem {
 
     public FateGuidanceCardItem(Properties properties) {
@@ -96,17 +94,17 @@ public class FateGuidanceCardItem extends BaseEffectCardItem {
     // 存瞬态附件)+ LivingHurtEvent(LOWEST 读当前伤害)组合还原 1.21 的 original/current 语义。
     // - 骰战攻击(攻击者赐福激活+骰子+近战):不修改模组倍率,仅捕获存至目标侧,由骰战最终伤害使用;
     // - 非骰战攻击:命运的指引激活时按加幅减半(第一诅咒影响 -50%),未激活则保持模组倍率。
-    @SubscribeEvent(priority = net.minecraftforge.eventbus.api.EventPriority.HIGHEST)
+    @SubscribeEvent(priority = com.merlinkitsune.astral_dice.platform.event.EventPriority.HIGHEST)
     public static void onCurseOriginalCapture(
-            net.minecraftforge.event.entity.living.LivingAttackEvent event) {
+            com.merlinkitsune.astral_dice.platform.event.entity.living.LivingAttackEvent event) {
         if (event.getEntity() instanceof Player player && !player.level().isClientSide()) {
             com.merlinkitsune.astral_dice.component.ModAttachments.setCurseOriginalAmount(player, event.getAmount());
         }
     }
 
-    @SubscribeEvent(priority = net.minecraftforge.eventbus.api.EventPriority.LOWEST)
+    @SubscribeEvent(priority = com.merlinkitsune.astral_dice.platform.event.EventPriority.LOWEST)
     public static void onCurseMitigation(
-            net.minecraftforge.event.entity.living.LivingHurtEvent event) {
+            com.merlinkitsune.astral_dice.platform.event.entity.living.LivingHurtEvent event) {
         if (!(event.getEntity() instanceof Player player)) return;
         if (player.level().isClientSide()) return;
         if (!DiceCombatEvents.hasEnigmaticCurse(player)) {
@@ -143,7 +141,7 @@ public class FateGuidanceCardItem extends BaseEffectCardItem {
     // Finish 事件在原版 eat(更新食物数据)之前触发,此处预先补一份饱和度增量。
     @SubscribeEvent
     public static void onEatSaturationDouble(
-            net.minecraftforge.event.entity.living.LivingEntityUseItemEvent.Finish event) {
+            com.merlinkitsune.astral_dice.platform.event.entity.living.LivingEntityUseItemEvent.Finish event) {
         if (!(event.getEntity() instanceof Player player)) return;
         if (player.level().isClientSide()) return;
         if (!isFateGuidanceActive(player)) return;

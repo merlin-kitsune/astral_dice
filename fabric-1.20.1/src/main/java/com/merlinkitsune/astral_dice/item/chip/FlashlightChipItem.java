@@ -1,14 +1,13 @@
 package com.merlinkitsune.astral_dice.item.chip;
 
 import com.merlinkitsune.starenginelib.combat.HostileTargets;
-import com.merlinkitsune.starenginelib.item.CuriosCompat;
+import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.StarLightManager;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
-import net.minecraftforge.event.entity.living.LivingDeathEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import com.merlinkitsune.astral_dice.platform.event.entity.living.LivingDeathEvent;
+import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
 
 /**
  * 手电筒-强光筹码。
@@ -25,7 +24,6 @@ import net.minecraftforge.fml.common.Mod;
  * 「已记录目标达 256 上限后不再发放」这一隐性截断（该截断在击杀口径下会直接破坏
  * 「每击杀一个合格目标 +1」的语义）。星光上限仍由 {@link StarLightManager} 统一管理。
  */
-@Mod.EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public class FlashlightChipItem extends BaseChipItem {
     /** 击杀合格敌对目标时获得的星光层数。 */
     public static final int STARLIGHT_PER_KILL = 1;
@@ -40,7 +38,7 @@ public class FlashlightChipItem extends BaseChipItem {
     // 玩家是否佩戴本筹码
     public static boolean isEquipped(Player player) {
         if (player == null) return false;
-        var curios = CuriosCompat.getCuriosInventory(player);
+        var curios = CuriosApi.getCuriosInventory(player);
         return curios.isPresent() && curios.get().findFirstCurio(s -> s.is(ModItems.FLASHLIGHT_CHIP.get())).isPresent();
     }
 

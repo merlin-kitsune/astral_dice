@@ -1,7 +1,8 @@
 package com.merlinkitsune.astral_dice.config;
 
+import com.merlinkitsune.astral_dice.platform.config.ForgeConfigSpec;
+
 import com.merlinkitsune.starenginelib.component.GameplayConfigValues;
-import net.minecraftforge.common.ForgeConfigSpec;
 
 /**
  * 公共配置:仅保留少量仍允许玩家调整的选项。

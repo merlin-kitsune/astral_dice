@@ -10,10 +10,9 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.event.entity.living.LivingDamageEvent;
+import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
+import com.merlinkitsune.astral_dice.platform.event.EventPriority;
+import com.merlinkitsune.astral_dice.platform.event.entity.living.LivingDamageEvent;
 import com.merlinkitsune.astral_dice.network.ModNetwork.DamageNumberMessage;
 
 /**
@@ -21,7 +20,6 @@ import com.merlinkitsune.astral_dice.network.ModNetwork.DamageNumberMessage;
  * 作用域白名单与加成修饰器见 {@link SpellDamageRegistry};
  * 新增卡牌/筹码/立牌对法伤的作用只需注册修饰器,无需修改本类。
  */
-@Mod.EventBusSubscriber(modid = AstralDiceMod.MODID)
 public class DamageEffectCardHandler {
 
     /** 真伤加成结算的**重入闸门**:真伤伤害源会再次进入本处理器(伤害事件对每一次 hurt 都会触发),

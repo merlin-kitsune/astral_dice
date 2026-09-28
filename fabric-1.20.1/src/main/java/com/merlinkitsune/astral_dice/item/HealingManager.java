@@ -1,5 +1,5 @@
 package com.merlinkitsune.astral_dice.item;
-import com.merlinkitsune.starenginelib.item.CuriosCompat;
+import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.starenginelib.component.GameplayConstants;
@@ -8,7 +8,7 @@ import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.starenginelib.event.ModEffectRemoval;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.player.Player;
-import top.theillusivec4.curios.api.CuriosApi;
+import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 
 /**
  * "治愈"点数管理器(玩家级共享资源,与具体饰品解耦)。
@@ -153,7 +153,7 @@ public final class HealingManager {
 
     /** 装备的医疗箱筹码触发赐福加点(紧急 +1、完备 +3,可叠加,受上限) */
     private static void addMedkitPoints(Player player) {
-        var curios = CuriosCompat.getCuriosInventory(player);
+        var curios = CuriosApi.getCuriosInventory(player);
         if (curios.isEmpty()) return;
         var inventory = curios.get();
         int points = 0;

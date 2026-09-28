@@ -4,7 +4,7 @@ import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.starenginelib.event.ModEffectRemoval;
-import com.merlinkitsune.starenginelib.item.CuriosCompat;
+import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.chip.WarpEngineChipItem;
@@ -26,12 +26,11 @@ import net.minecraft.world.entity.vehicle.Boat;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.event.entity.living.LivingDeathEvent;
-import net.minecraftforge.event.entity.living.LivingHurtEvent;
-import net.minecraftforge.event.entity.living.LivingUseTotemEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import com.merlinkitsune.astral_dice.platform.event.entity.living.LivingDeathEvent;
+import com.merlinkitsune.astral_dice.platform.event.entity.living.LivingHurtEvent;
+import com.merlinkitsune.astral_dice.platform.event.entity.living.LivingUseTotemEvent;
+import com.merlinkitsune.astral_dice.platform.event.EventPriority;
+import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -49,7 +48,6 @@ import java.util.List;
  * - 装备期间处于雨中/水下时,受到的伤害 +40%(注册为 {@link DiceCombatModifiers} 的受击侧伤害修饰器,
  *   由本类 HIGH 监听器与骰战路径共同消费;见 {@link #onLivingHurt})。
  */
-@Mod.EventBusSubscriber(modid = AstralDiceMod.MODID)
 public final class EnderDiceHandler {
 
     /** 不死图腾效果冷却:5:00 = 6000 tick */
@@ -73,7 +71,7 @@ public final class EnderDiceHandler {
     }
 
     public static boolean hasEnderDie(Player player) {
-        return CuriosCompat.getCuriosInventory(player)
+        return CuriosApi.getCuriosInventory(player)
                 .map(h -> h.findFirstCurio(s -> s.is(ModItems.ENDER_DICE.get())).isPresent())
                 .orElse(false);
     }

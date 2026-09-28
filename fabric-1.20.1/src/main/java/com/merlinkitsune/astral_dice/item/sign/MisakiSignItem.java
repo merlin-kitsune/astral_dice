@@ -1,5 +1,5 @@
 package com.merlinkitsune.astral_dice.item.sign;
-import com.merlinkitsune.starenginelib.item.CuriosCompat;
+import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 
 import com.merlinkitsune.astral_dice.component.AppliedStone;
 import com.merlinkitsune.starenginelib.component.GameplayConstants;
@@ -10,7 +10,7 @@ import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import top.theillusivec4.curios.api.CuriosApi;
+import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 
 import java.util.concurrent.ThreadLocalRandom;
 import com.merlinkitsune.astral_dice.item.ModItems;
@@ -74,7 +74,7 @@ public class MisakiSignItem extends BaseSignItem {
     }
 
     public static boolean hasMisakiEquipped(Player player) {
-        var curios = CuriosCompat.getCuriosInventory(player);
+        var curios = CuriosApi.getCuriosInventory(player);
         return curios.isPresent() && curios.get().findFirstCurio(s -> s.is(ModItems.MISAKI_SIGN.get())).isPresent();
     }
 }

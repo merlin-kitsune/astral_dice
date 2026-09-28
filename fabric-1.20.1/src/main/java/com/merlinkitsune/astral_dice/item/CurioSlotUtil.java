@@ -5,10 +5,10 @@ import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import com.merlinkitsune.starenginelib.item.CuriosCompat;
-import top.theillusivec4.curios.api.CuriosApi;
-import top.theillusivec4.curios.api.SlotContext;
-import top.theillusivec4.curios.api.type.inventory.ICurioStacksHandler;
+import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
+import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
+import com.merlinkitsune.astral_dice.compat.curios.SlotContext;
+import com.merlinkitsune.astral_dice.compat.curios.ICurioStacksHandler;
 import com.merlinkitsune.astral_dice.item.dice.DiceCurioItem;
 import com.merlinkitsune.astral_dice.item.sign.BaseSignItem;
 import com.merlinkitsune.starenginelib.component.GameplayConstants;
@@ -30,7 +30,7 @@ public final class CurioSlotUtil {
     // 排除"与传入栈引用相同"的槽位物品:Curios 对已装备物品重新校验 canEquip 时,
     // 传入的栈就是槽位中的栈本身,若不排除会误判"重复装备"导致物品被 Curios 弹出。
     public static boolean hasSameItemEquipped(LivingEntity entity, ItemStack stack) {
-        var curios = CuriosCompat.getCuriosInventory(entity);
+        var curios = CuriosApi.getCuriosInventory(entity);
         if (curios.isEmpty()) return false;
         var handler = curios.get();
         var curiosMap = handler.getCurios();
@@ -65,7 +65,7 @@ public final class CurioSlotUtil {
         if (hasSameItemEquipped(player, stack)) {
             return InteractionResultHolder.fail(stack);
         }
-        var curios = CuriosCompat.getCuriosInventory(player);
+        var curios = CuriosApi.getCuriosInventory(player);
         if (curios.isEmpty()) {
             return InteractionResultHolder.pass(stack);
         }
@@ -140,7 +140,7 @@ public final class CurioSlotUtil {
         }
     }
     private static boolean hasDiceEquipped(Player player) {
-        var curios = CuriosCompat.getCuriosInventory(player);
+        var curios = CuriosApi.getCuriosInventory(player);
         return curios.isPresent() && curios.get().findFirstCurio(DiceCurioItem::isDiceItem).isPresent();
     }
 }

@@ -1,6 +1,6 @@
 package com.merlinkitsune.astral_dice.item.chip;
 
-import com.merlinkitsune.starenginelib.item.CuriosCompat;
+import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
 import com.merlinkitsune.astral_dice.item.EmpowerManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
@@ -24,7 +24,7 @@ public class PrimordialCoreChipItem extends BaseChipItem {
     /** 玩家是否佩戴原初核心(赋能转换的前提) */
     public static boolean isEquipped(Player player) {
         if (player == null) return false;
-        var curios = CuriosCompat.getCuriosInventory(player);
+        var curios = CuriosApi.getCuriosInventory(player);
         return curios.isPresent()
                 && curios.get().findFirstCurio(s -> s.is(ModItems.PRIMORDIAL_CORE_CHIP.get())).isPresent();
     }

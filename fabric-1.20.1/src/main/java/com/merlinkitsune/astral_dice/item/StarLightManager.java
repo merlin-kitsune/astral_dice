@@ -3,8 +3,8 @@ package com.merlinkitsune.astral_dice.item;
 import com.merlinkitsune.starenginelib.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import net.minecraft.world.entity.player.Player;
-import com.merlinkitsune.starenginelib.item.CuriosCompat;
-import top.theillusivec4.curios.api.CuriosApi;
+import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
+import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 import com.merlinkitsune.astral_dice.item.chip.BankCardChipItem;
 
 /**
@@ -40,7 +40,7 @@ public final class StarLightManager {
      * - 银行卡-余额多:+7。
      */
     public static int getBasePoints(Player player) {
-        var curios = CuriosCompat.getCuriosInventory(player);
+        var curios = CuriosApi.getCuriosInventory(player);
         if (curios.isEmpty()) return 0;
         var inventory = curios.get();
         int base = 0;

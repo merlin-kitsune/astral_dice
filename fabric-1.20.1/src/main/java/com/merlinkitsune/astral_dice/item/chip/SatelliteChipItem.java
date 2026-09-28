@@ -1,5 +1,5 @@
 package com.merlinkitsune.astral_dice.item.chip;
-import com.merlinkitsune.starenginelib.item.CuriosCompat;
+import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 import com.merlinkitsune.starenginelib.combat.HostileTargets;
 
 import com.merlinkitsune.astral_dice.component.ModAttachments;
@@ -7,15 +7,14 @@ import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.card.RandomCardHandler;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import top.theillusivec4.curios.api.CuriosApi;
-import top.theillusivec4.curios.api.SlotContext;
+import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
+import com.merlinkitsune.astral_dice.compat.curios.SlotContext;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.event.entity.living.LivingDeathEvent;
+import com.merlinkitsune.astral_dice.platform.event.entity.living.LivingDeathEvent;
 import net.minecraft.world.entity.LivingEntity;
 import com.merlinkitsune.astral_dice.combat.SpellDamageRegistry;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
+import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
 
 /**
  * 探天卫星筹码:
@@ -23,7 +22,6 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
  * - 使用一张"轨道炮"后,本轮出牌数 +1(每 1:00 至多触发一次);
  * - "轨道炮"生效期间,使用远程或魔法击杀一个敌方目标后,获得一张随机效果牌。
  */
-@Mod.EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public class SatelliteChipItem extends BaseChipItem {
     /** 轨道炮库存目标数量 */
     public static final int TARGET_ORBITAL_STRIKE_COUNT = 6;
@@ -39,7 +37,7 @@ public class SatelliteChipItem extends BaseChipItem {
     // 玩家是否佩戴探天卫星
     public static boolean isEquipped(Player player) {
         if (player == null) return false;
-        var curios = CuriosCompat.getCuriosInventory(player);
+        var curios = CuriosApi.getCuriosInventory(player);
         return curios.isPresent() && curios.get().findFirstCurio(s -> s.is(ModItems.SATELLITE_CHIP.get())).isPresent();
     }
 

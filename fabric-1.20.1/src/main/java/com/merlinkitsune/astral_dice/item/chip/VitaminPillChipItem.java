@@ -1,17 +1,16 @@
 package com.merlinkitsune.astral_dice.item.chip;
-import com.merlinkitsune.starenginelib.item.CuriosCompat;
+import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 
 import net.minecraft.world.item.ItemStack;
-import top.theillusivec4.curios.api.CuriosApi;
+import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 import com.merlinkitsune.astral_dice.combat.CardRegistry;
 import com.merlinkitsune.astral_dice.item.sign.MimiSignItem;
 import com.merlinkitsune.astral_dice.item.HealingManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.event.entity.player.PlayerEvent;
+import com.merlinkitsune.astral_dice.platform.event.entity.player.PlayerEvent;
 import net.minecraft.world.entity.player.Player;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
+import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
 
 /**
  * 维生素药丸筹码:通过合成或奖励途径获得任意卡牌时,治愈 +1。
@@ -21,7 +20,6 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
  * 合成由本类自身的 ItemCraftedEvent 监听补充。
  * 拾取地面卡牌不会触发,避免反复丢弃/拾取刷治愈点。
  */
-@Mod.EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public class VitaminPillChipItem extends BaseChipItem {
     /** 获得每张卡牌时增加的治愈点数 */
     public static final int HEALING_POINTS_PER_CARD = 1;
@@ -83,7 +81,7 @@ public class VitaminPillChipItem extends BaseChipItem {
     public static void onCardGained(Player player, int amount) {
         if (player == null || player.level().isClientSide()) return;
         if (amount <= 0) return;
-        var curios = CuriosCompat.getCuriosInventory(player);
+        var curios = CuriosApi.getCuriosInventory(player);
         if (curios.isEmpty()) return;
         if (curios.get().findFirstCurio(s -> s.is(ModItems.VITAMIN_PILL_CHIP.get())).isEmpty()) return;
         HealingManager.add(player, HEALING_POINTS_PER_CARD * amount);

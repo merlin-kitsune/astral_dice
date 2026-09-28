@@ -1,0 +1,12 @@
+accessWidener v1 named
+
+# Forge 把 RenderType.CompositeState 的可见性放开了(其 patch 里为 public);
+# vanilla 1.20.1 里它是 `protected static final class` ⇒ 本模组的两个自绘渲染器
+# (RenShieldRenderer / TargetSelectionHighlighter)在 Fabric 侧需要打开它。
+# 用 accessWidener(Fabric 原生机制)而不是反射/mixin,保持调用面与 Forge 一致。
+accessible class net/minecraft/client/renderer/RenderType$CompositeState
+accessible class net/minecraft/client/renderer/RenderType$CompositeState$CompositeStateBuilder
+
+# Forge 也放开了 RenderStateShard.TransparencyStateShard(vanilla 为 protected);
+# RenShieldRenderer 自建 RenderType 时用它声明透明度状态。
+accessible class net/minecraft/client/renderer/RenderStateShard$TransparencyStateShard

@@ -8,10 +8,10 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraftforge.fml.ModList;
-import net.minecraftforge.registries.RegistryObject;
+import com.merlinkitsune.astral_dice.platform.fml.ModList;
+import com.merlinkitsune.astral_dice.platform.registry.RegistryObject;
 import vazkii.patchouli.common.item.ItemModBook;
-import net.minecraftforge.registries.DeferredRegister;
+import com.merlinkitsune.astral_dice.platform.registry.DeferredRegister;
 
 public class ModCreativeTabs {
 

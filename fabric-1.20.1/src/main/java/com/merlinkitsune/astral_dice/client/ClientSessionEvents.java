@@ -2,10 +2,8 @@ package com.merlinkitsune.astral_dice.client;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.component.ClientAstralData;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import com.merlinkitsune.astral_dice.platform.client.event.ClientPlayerNetworkEvent;
+import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
 
 /**
  * 客户端会话边界清理:断开连接时清空附件同步缓存。
@@ -19,7 +17,6 @@ import net.minecraftforge.fml.common.Mod;
  * 之外的兜底:两者互不依赖,任一单独存在即可覆盖大部分场景(快照覆盖登录/重生/切维度,
  * 本清理覆盖"以后再也不写该键"的离线残留)。
  */
-@Mod.EventBusSubscriber(modid = AstralDiceMod.MODID, value = Dist.CLIENT)
 public class ClientSessionEvents {
 
     @SubscribeEvent

@@ -4,16 +4,16 @@ import com.merlinkitsune.astral_dice.AstralDiceMod;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.item.enchantment.EnchantmentCategory;
-import net.minecraftforge.registries.DeferredRegister;
-import net.minecraftforge.registries.ForgeRegistries;
-import net.minecraftforge.registries.RegistryObject;
+import com.merlinkitsune.astral_dice.platform.registry.DeferredRegister;
+// TODO-PORT-IMPORT net.minecraft.core.registries.BuiltInRegistries
+import com.merlinkitsune.astral_dice.platform.registry.RegistryObject;
 
 /**
  * 附魔注册中心(1.20.1 Forge):1.21 的数据驱动附魔 curse_marker.json 改为代码注册。
  */
 public class ModEnchantments {
     public static final DeferredRegister<Enchantment> ENCHANTMENTS =
-            DeferredRegister.create(ForgeRegistries.ENCHANTMENTS, AstralDiceMod.MODID);
+            DeferredRegister.create(net.minecraft.core.registries.Registries.ENCHANTMENT, AstralDiceMod.MODID);
 
     /**
      * 千咒刻印:诅咒之剑筹码的标记诅咒附魔(仅用于被千咒卷轴识别为 1 点诅咒,无其他效果)。

@@ -16,12 +16,11 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.player.Player;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.event.entity.living.LivingHurtEvent;
-import net.minecraftforge.event.entity.player.PlayerEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import com.merlinkitsune.astral_dice.platform.event.TickEvent;
+import com.merlinkitsune.astral_dice.platform.event.entity.living.LivingHurtEvent;
+import com.merlinkitsune.astral_dice.platform.event.entity.player.PlayerEvent;
+import com.merlinkitsune.astral_dice.platform.event.EventPriority;
+import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,7 +63,6 @@ import java.util.List;
  * <p><b>平台差异</b>:1.20.1 无 {@code MAX_ABSORPTION} 属性、{@code setAbsorptionAmount} 不钳制,
  * 故本类不涉及吸收上限修饰器(1.21.1 侧由效果类自带)。
  */
-@Mod.EventBusSubscriber(modid = AstralDiceMod.MODID)
 public final class RenShieldManager {
     private static final Logger LOGGER = LoggerFactory.getLogger(RenShieldManager.class);
 

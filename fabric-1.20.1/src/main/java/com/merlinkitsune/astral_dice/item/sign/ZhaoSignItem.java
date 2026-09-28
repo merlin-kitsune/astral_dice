@@ -14,7 +14,7 @@ import com.merlinkitsune.astral_dice.network.ModNetwork;
 import com.merlinkitsune.astral_dice.target.SelfTargetable;
 import com.merlinkitsune.starenginelib.component.GameplayConstants;
 import com.merlinkitsune.starenginelib.event.EventTargetCollector;
-import com.merlinkitsune.starenginelib.item.CuriosCompat;
+import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 import com.merlinkitsune.starenginelib.target.TargetSelectionAction;
 import com.merlinkitsune.starenginelib.target.TargetSelectionRegistry;
 import com.merlinkitsune.starenginelib.target.TargetType;
@@ -24,11 +24,10 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
-import net.minecraftforge.event.entity.living.LivingHealEvent;
-import net.minecraftforge.event.entity.living.MobEffectEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import com.merlinkitsune.astral_dice.platform.event.entity.living.LivingHealEvent;
+import com.merlinkitsune.astral_dice.platform.event.entity.living.MobEffectEvent;
+import com.merlinkitsune.astral_dice.platform.event.EventPriority;
+import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -97,7 +96,6 @@ import java.util.List;
  * <p>图标 = {@code images/风水师立牌.png}(实装路径 {@code textures/item/zhao_sign.png});
  * 主动效果图标复用同一张图({@code textures/mob_effect/zhao_blessing.png})。
  */
-@Mod.EventBusSubscriber(modid = AstralDiceMod.MODID)
 public class ZhaoSignItem extends BaseSignItem {
     private static final Logger LOGGER = LoggerFactory.getLogger(ZhaoSignItem.class);
 
@@ -193,7 +191,7 @@ public class ZhaoSignItem extends BaseSignItem {
     /** 玩家是否佩戴风水师立牌(被动"福祸相倚"/"完美帮手"/"心意相连"的佩戴判定) */
     public static boolean isEquipped(Player player) {
         if (player == null) return false;
-        var curios = CuriosCompat.getCuriosInventory(player);
+        var curios = CuriosApi.getCuriosInventory(player);
         return curios.isPresent()
                 && curios.get().findFirstCurio(s -> s.is(ModItems.ZHAO_SIGN.get())).isPresent();
     }

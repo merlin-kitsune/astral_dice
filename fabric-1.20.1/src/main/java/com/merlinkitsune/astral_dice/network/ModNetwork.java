@@ -1,6 +1,10 @@
 package com.merlinkitsune.astral_dice.network;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
+import com.merlinkitsune.astral_dice.platform.network.SimpleChannel;
+import com.merlinkitsune.astral_dice.platform.network.NetworkRegistry;
+import com.merlinkitsune.astral_dice.platform.network.NetworkEvent;
+import com.merlinkitsune.astral_dice.platform.network.PacketDistributor;
 import com.merlinkitsune.astral_dice.component.AttachedDataKey;
 import com.merlinkitsune.astral_dice.component.ClientAstralData;
 import net.minecraft.nbt.CompoundTag;
@@ -8,10 +12,6 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
-import net.minecraftforge.network.NetworkEvent;
-import net.minecraftforge.network.NetworkRegistry;
-import net.minecraftforge.network.PacketDistributor;
-import net.minecraftforge.network.simple.SimpleChannel;
 
 import java.util.List;
 import java.util.function.Supplier;

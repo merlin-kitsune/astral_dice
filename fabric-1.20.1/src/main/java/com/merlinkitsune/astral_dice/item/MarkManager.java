@@ -4,10 +4,9 @@ import com.merlinkitsune.starenginelib.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.event.entity.living.MobEffectEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import com.merlinkitsune.astral_dice.platform.event.TickEvent;
+import com.merlinkitsune.astral_dice.platform.event.entity.living.MobEffectEvent;
+import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -17,7 +16,6 @@ import java.util.List;
  * 数据存储于目标身上的 MARKED 效果(amplifier = 层数-1),本类统一提供施加(层数递增/上限)与读取。
  * 施加来源:普通瞄具/鹰眼瞄具攻击、标靶定时、活体书页远程伤害等。
  */
-@Mod.EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public final class MarkManager {
     // 标记持续时间(tick):默认 60 秒
     public static final int MARK_DURATION_TICKS = 1200;

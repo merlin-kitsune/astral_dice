@@ -2,7 +2,7 @@ package com.merlinkitsune.astral_dice.item.chip;
 
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import top.theillusivec4.curios.api.SlotContext;
+import com.merlinkitsune.astral_dice.compat.curios.SlotContext;
 import com.merlinkitsune.astral_dice.item.HealingManager;
 
 /**

@@ -20,10 +20,9 @@ import net.minecraft.world.level.block.entity.RandomizableContainerBlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.ChestType;
 
-import net.minecraftforge.event.entity.player.PlayerEvent;
-import net.minecraftforge.event.entity.player.PlayerInteractEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import com.merlinkitsune.astral_dice.platform.event.entity.player.PlayerEvent;
+import com.merlinkitsune.astral_dice.platform.event.entity.player.PlayerInteractEvent;
+import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -39,7 +38,7 @@ import java.util.Set;
  * <p><b>本线（Forge 1.20.1-47.4.10）与 NeoForge 线的 API 差异</b>：
  * <ol>
  *   <li>事件注解 {@code @Mod.EventBusSubscriber}（NeoForge 为 {@code @EventBusSubscriber}）；
- *       事件包名 {@code net.minecraftforge.event.*}（NeoForge 为 {@code net.neoforged.neoforge.event.*}）；</li>
+ *       事件包名 {@code com.merlinkitsune.astral_dice.platform.event.*}（NeoForge 为 {@code net.neoforged.neoforge.event.*}）；</li>
  *   <li><b>本线没有 {@code net.minecraft.world.RandomizableContainer} 接口</b>（1.21 才引入，
  *       已核 {@code forge-1.20.1-47.4.10-sources.jar} 内无该类）⇒ 方块容器直接用具体类
  *       {@link RandomizableContainerBlockEntity}（其 {@code getLootTable()} / {@code unpackLootTable(Player)}
@@ -55,7 +54,6 @@ import java.util.Set;
  *       （26.1.2 改名为 {@code getBooleanOr} / {@code getCompoundOrEmpty}）。</li>
  * </ol>
  */
-@Mod.EventBusSubscriber(modid = AstralDiceMod.MODID)
 public final class FirstLootChestHandler {
 
     /** 玩家持久化数据里的根键（= 模组 id，避免与其它模组撞键）。 */

@@ -1,7 +1,7 @@
 package com.merlinkitsune.astral_dice.event;
 
 import com.merlinkitsune.astral_dice.damage.ModDamageTypes;
-import com.merlinkitsune.starenginelib.item.CuriosCompat;
+import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import net.minecraft.world.entity.player.Player;
 
@@ -29,7 +29,7 @@ public final class CrimsonDiceHandler {
     }
 
     public static boolean hasCrimsonDice(Player player) {
-        return CuriosCompat.getCuriosInventory(player)
+        return CuriosApi.getCuriosInventory(player)
                 .map(h -> h.findFirstCurio(s -> s.is(ModItems.CRIMSON_DICE.get())).isPresent())
                 .orElse(false);
     }

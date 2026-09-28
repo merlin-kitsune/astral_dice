@@ -1,5 +1,5 @@
 package com.merlinkitsune.astral_dice.item.sign;
-import com.merlinkitsune.starenginelib.item.CuriosCompat;
+import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 import com.merlinkitsune.astral_dice.network.ModNetwork;
 
 import com.merlinkitsune.starenginelib.component.GameplayConstants;
@@ -15,9 +15,9 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import top.theillusivec4.curios.api.CuriosApi;
-import top.theillusivec4.curios.api.SlotContext;
-import top.theillusivec4.curios.api.type.capability.ICurioItem;
+import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
+import com.merlinkitsune.astral_dice.compat.curios.SlotContext;
+import com.merlinkitsune.astral_dice.compat.curios.ICurioItem;
 import com.merlinkitsune.astral_dice.item.chip.FanBigChipItem;
 import com.merlinkitsune.astral_dice.item.chip.FanSmallChipItem;
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
@@ -63,7 +63,7 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
     public static void performSkillForCurio(Player player) {
         if (player.level().isClientSide()) return;
         // 读取立牌栏(唯一槽位)的立牌:用于技能触发与提示前缀(立牌名称)
-        var curios = CuriosCompat.getCuriosInventory(player);
+        var curios = CuriosApi.getCuriosInventory(player);
         if (curios.isEmpty()) return;
         var handlerOpt = curios.get().getStacksHandler("stand");
         if (handlerOpt.isEmpty()) return;
@@ -148,7 +148,7 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
         //    无任何处理器响应(未注册)时,发送默认提示"xxx立牌:主动技能已启动!"
         com.merlinkitsune.starenginelib.event.SignActiveTriggeredEvent triggered =
                 new com.merlinkitsune.starenginelib.event.SignActiveTriggeredEvent(player, stack);
-        net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(triggered);
+        com.merlinkitsune.astral_dice.platform.event.LoaderBus.INSTANCE.postEvent(triggered);
         if (!triggered.isHandled()) {
             notifyActionBar(player, "msg.astral_dice.sign_active_triggered", signName, ChatFormatting.YELLOW);
         }
@@ -247,7 +247,7 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
         //    提示反馈过,再补发它会成为唯一可见的那条)。
         com.merlinkitsune.starenginelib.event.SignActiveTriggeredEvent triggered =
                 new com.merlinkitsune.starenginelib.event.SignActiveTriggeredEvent(player, stack);
-        net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(triggered);
+        com.merlinkitsune.astral_dice.platform.event.LoaderBus.INSTANCE.postEvent(triggered);
     }
 
     // 立牌主动技能反馈统一发送入口(黄色;供立牌类注册的 SignActiveTriggeredEvent 处理器与 handleUse 调用)
@@ -602,7 +602,7 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
     // 分发:玩家造成击杀时,调用其全部已装备立牌的 onKill 钩子
     public static void invokeKillHooks(Player killer, net.minecraft.world.entity.LivingEntity killed) {
         if (killer == null || killer.level().isClientSide()) return;
-        CuriosCompat.getCuriosInventory(killer).ifPresent(handler -> {
+        CuriosApi.getCuriosInventory(killer).ifPresent(handler -> {
             var results = handler.findCurios(s -> s.getItem() instanceof BaseSignItem);
             for (var r : results) {
                 if (r.stack().getItem() instanceof BaseSignItem sign) {
@@ -615,7 +615,7 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
     // 分发:玩家受到伤害时,调用其全部已装备立牌的 onHurt 钩子
     public static void invokeHurtHooks(Player player, float amount) {
         if (player == null || player.level().isClientSide()) return;
-        CuriosCompat.getCuriosInventory(player).ifPresent(handler -> {
+        CuriosApi.getCuriosInventory(player).ifPresent(handler -> {
             var results = handler.findCurios(s -> s.getItem() instanceof BaseSignItem);
             for (var r : results) {
                 if (r.stack().getItem() instanceof BaseSignItem sign) {

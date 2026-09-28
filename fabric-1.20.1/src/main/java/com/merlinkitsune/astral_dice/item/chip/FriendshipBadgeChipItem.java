@@ -1,21 +1,20 @@
 package com.merlinkitsune.astral_dice.item.chip;
-import com.merlinkitsune.starenginelib.item.CuriosCompat;
+import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 
 import com.merlinkitsune.astral_dice.item.HealingManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
-import top.theillusivec4.curios.api.CuriosApi;
+import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 
 import java.util.HashMap;
 import java.util.Map;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.event.entity.living.MobEffectEvent;
+import com.merlinkitsune.astral_dice.platform.event.entity.living.MobEffectEvent;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.entity.AreaEffectCloud;
 import net.minecraft.world.entity.player.Player;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
+import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
 
 /**
  * 友情徽章筹码:对友方玩家施加任意治疗效果时,使双方各获得 2 点治愈。
@@ -27,7 +26,6 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
  *
  * <p>去重:同一治疗者对同一目标短时间内(1 秒)只触发一次,避免混合/持续治疗重复触发。
  */
-@Mod.EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public class FriendshipBadgeChipItem extends BaseChipItem {
     /** 双方各获得的治愈点数 */
     public static final int HEALING_POINTS = 2;
@@ -43,7 +41,7 @@ public class FriendshipBadgeChipItem extends BaseChipItem {
     // 玩家是否佩戴友情徽章
     public static boolean isEquipped(Player player) {
         if (player == null) return false;
-        var curios = CuriosCompat.getCuriosInventory(player);
+        var curios = CuriosApi.getCuriosInventory(player);
         return curios.isPresent() && curios.get().findFirstCurio(s -> s.is(ModItems.FRIENDSHIP_BADGE.get())).isPresent();
     }
 

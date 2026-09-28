@@ -10,9 +10,8 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import com.merlinkitsune.astral_dice.platform.event.TickEvent;
+import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -41,7 +40,6 @@ import java.util.UUID;
  * <p><b>平台差异(与 1.21.1 逐字等价)</b>:本线用 {@code TickEvent.ServerTickEvent} + {@code phase == END}
  * 早退(1.21.1 为 {@code ServerTickEvent.Post});调度器写法照 {@code event/LivingPageFlightScheduler}。
  */
-@Mod.EventBusSubscriber(modid = AstralDiceMod.MODID)
 public final class SherryThrowManager {
 
     /** 单次飞行时长(tick) —— 0.5 秒,足以看清抛物线又不拖沓 */

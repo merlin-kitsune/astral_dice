@@ -6,10 +6,8 @@ import com.merlinkitsune.starenginelib.item.AstralRarities;
 import com.merlinkitsune.starenginelib.item.Rarity;
 import net.minecraft.Util;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.RenderTooltipEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import com.merlinkitsune.astral_dice.platform.client.event.RenderTooltipEvent;
+import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
 
 /**
  * 本模组**稀有度 → 提示框边框染色**（客户端）。
@@ -35,7 +33,6 @@ import net.minecraftforge.fml.common.Mod;
  *
  * <p>⚠️ 本类只在客户端加载（{@code value = Dist.CLIENT}）且位于 {@code client/} 包内；双端加载类不得引用它。
  */
-@Mod.EventBusSubscriber(modid = AstralDiceMod.MODID, value = Dist.CLIENT)
 public final class RarityTooltipFrame {
     private RarityTooltipFrame() {
     }

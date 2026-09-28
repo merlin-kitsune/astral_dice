@@ -24,10 +24,9 @@ import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.event.entity.living.LivingDeathEvent;
-import net.minecraftforge.event.entity.living.MobEffectEvent;
+import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
+import com.merlinkitsune.astral_dice.platform.event.entity.living.LivingDeathEvent;
+import com.merlinkitsune.astral_dice.platform.event.entity.living.MobEffectEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,7 +43,6 @@ import java.util.UUID;
  * 主动为"目标选择器"类技能:触发后经 {@link TargetSelectionManager} 进入选择模式,
  * 确认时由 {@link TargetSelectionAction#apply} 施加效果并开始玩家级冷却;取消/超时不冷却。
  */
-@Mod.EventBusSubscriber(modid = AstralDiceMod.MODID)
 public class HaiqingSignItem extends BaseSignItem {
     private static final Logger LOGGER = LoggerFactory.getLogger(HaiqingSignItem.class);
 

@@ -1,5 +1,5 @@
 package com.merlinkitsune.astral_dice.event;
-import com.merlinkitsune.starenginelib.item.CuriosCompat;
+import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.item.sign.BaseSignItem;
@@ -8,10 +8,9 @@ import com.merlinkitsune.astral_dice.item.ModItems;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.player.Player;
 
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.event.entity.living.MobEffectEvent;
+import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
+import com.merlinkitsune.astral_dice.platform.event.TickEvent;
+import com.merlinkitsune.astral_dice.platform.event.entity.living.MobEffectEvent;
 
 import com.merlinkitsune.astral_dice.item.card.TemporaryCardUtil;
 import com.merlinkitsune.astral_dice.item.chip.RevengeHalberdChipItem;
@@ -19,7 +18,6 @@ import com.merlinkitsune.astral_dice.item.chip.FlashlightChipItem;
 import com.merlinkitsune.astral_dice.item.StarLightManager;
 
 import com.merlinkitsune.starenginelib.event.ModEffectRemoval;
-@Mod.EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public class PlayerTickEvents {
     @SubscribeEvent
     public static void onPlayerTickPre(TickEvent.PlayerTickEvent event) {
@@ -106,7 +104,7 @@ public class PlayerTickEvents {
     // `DiceCombatEvents` 的赐福门控之后才结算(无赐福时提前 return),故图标**只有当加成真正可能生效时**
     // 才应显示 —— "跟随骰神赐福显示,不在赐福状态即隐藏"。
     private static void updateCutterEffect(Player player) {
-        var curios = CuriosCompat.getCuriosInventory(player);
+        var curios = CuriosApi.getCuriosInventory(player);
         boolean hasCutter = false;
         boolean hasBlade = false;
         if (curios.isPresent()) {

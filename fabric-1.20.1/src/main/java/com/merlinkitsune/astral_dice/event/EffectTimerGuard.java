@@ -77,7 +77,7 @@ public final class EffectTimerGuard {
         int duration = instance.getDuration();
         if (duration >= INFINITE_THRESHOLD) return;
         Map<String, TimerEntry> map = new HashMap<>(ModAttachments.EFFECT_TIMER_ENDS.get(player));
-        ResourceLocation effectId = net.minecraftforge.registries.ForgeRegistries.MOB_EFFECTS
+        ResourceLocation effectId = net.minecraft.core.registries.BuiltInnet.minecraft.core.registries.BuiltInRegistries.MOB_EFFECT
                 .getKey(instance.getEffect());
         if (effectId == null) return;
         String key = effectId.toString();
@@ -104,7 +104,7 @@ public final class EffectTimerGuard {
             var e = it.next();
             String key = e.getKey();
             TimerEntry timer = e.getValue();
-            MobEffect effect = net.minecraftforge.registries.ForgeRegistries.MOB_EFFECTS
+            MobEffect effect = net.minecraft.core.registries.BuiltInnet.minecraft.core.registries.BuiltInRegistries.MOB_EFFECT
                     .getValue(new ResourceLocation(key));
             if (effect == null) {
                 it.remove();

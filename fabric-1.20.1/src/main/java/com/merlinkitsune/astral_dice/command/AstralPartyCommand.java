@@ -19,10 +19,9 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectInstance;
-import net.minecraftforge.event.RegisterCommandsEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.registries.RegistryObject;
+import com.merlinkitsune.astral_dice.platform.event.RegisterCommandsEvent;
+import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
+import com.merlinkitsune.astral_dice.platform.registry.RegistryObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -94,7 +93,6 @@ import java.util.Optional;
  * 模组的状态(效果清单只遍历 {@link ModEffects#ALL},非本模组效果一律不输出)。本类不被任何
  * 游戏内正常玩法路径调用,也不为玩法逻辑开调试分支。
  */
-@Mod.EventBusSubscriber(modid = AstralDiceMod.MODID)
 public final class AstralPartyCommand {
     /** 仅 OP:权限级 2 */
     private static final int REQUIRED_PERMISSION_LEVEL = 2;

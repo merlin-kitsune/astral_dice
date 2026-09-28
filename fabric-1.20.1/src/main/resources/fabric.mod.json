@@ -19,6 +19,7 @@
       "com.merlinkitsune.astral_dice.AstralDiceClient"
     ]
   },
+  "accessWidener": "astral_dice.accesswidener",
   "mixins": [
     "astral_dice.mixins.json"
   ],

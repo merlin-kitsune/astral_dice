@@ -2,15 +2,14 @@ package com.merlinkitsune.astral_dice.loot;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.mojang.serialization.Codec;
-import net.minecraftforge.common.loot.IGlobalLootModifier;
-import net.minecraftforge.registries.DeferredRegister;
-import net.minecraftforge.registries.ForgeRegistries;
-import net.minecraftforge.registries.RegistryObject;
+import com.merlinkitsune.astral_dice.platform.registry.DeferredRegister;
+// TODO-PORT-IMPORT net.minecraft.core.registries.BuiltInRegistries
+import com.merlinkitsune.astral_dice.platform.registry.RegistryObject;
 
 /**
  * 本模组在 1.20.1(Forge)侧自带的全局战利品修饰符序列化器。
  *
- * <p>Forge 47.4.10 的 {@code net.minecraftforge.common.loot} 未提供任何内置序列化器
+ * <p>Forge 47.4.10 的 {@code common.loot} 未提供任何内置序列化器
  * (既没有 {@code forge:add_table},也没有 {@code GlobalLootModifierSerializers} 类),
  * 而 {@code LootModifierManager} 会按 {@code ForgeRegistries.Keys.GLOBAL_LOOT_MODIFIER_SERIALIZERS}
  * 里的注册名去 dispatch json 的 {@code type};因此本模组必须自行注册一个,

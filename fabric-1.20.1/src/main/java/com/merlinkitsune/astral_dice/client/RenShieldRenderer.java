@@ -15,10 +15,8 @@ import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.RenderLevelStageEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import com.merlinkitsune.astral_dice.platform.client.event.RenderLevelStageEvent;
+import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -66,11 +64,10 @@ import java.util.List;
  * 「第一人称 且 视线实体就是自己」时跳过:**相机在球内,外壳会铺满整屏**;第三人称(F5)
  * 照常可见。非本地玩家一律照画 ⇒ 其余玩家看得到你的护盾。
  */
-@Mod.EventBusSubscriber(modid = AstralDiceMod.MODID, value = Dist.CLIENT)
 public final class RenShieldRenderer {
     /** 球面图案贴图(六边能量单元;生成器见 tools/gen_ren_shield_texture.py) */
     private static final ResourceLocation SHIELD_TEXTURE =
-            ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID, "textures/special/ren_shield.png");
+            new ResourceLocation(AstralDiceMod.MODID, "textures/special/ren_shield.png");
 
     /**
      * 球体本体通道:半透明实体着色器 + 半透明混合 + LEQUAL 深度测试 + **只写颜色**。

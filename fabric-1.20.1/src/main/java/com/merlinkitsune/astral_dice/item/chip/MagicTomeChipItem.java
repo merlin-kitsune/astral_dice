@@ -1,5 +1,5 @@
 package com.merlinkitsune.astral_dice.item.chip;
-import com.merlinkitsune.starenginelib.item.CuriosCompat;
+import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
@@ -7,7 +7,7 @@ import com.merlinkitsune.starenginelib.event.ModEffectRemoval;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import top.theillusivec4.curios.api.CuriosApi;
+import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 import com.merlinkitsune.astral_dice.item.card.BaseEffectCardItem;
 import com.merlinkitsune.astral_dice.item.card.ExclusiveCardUtil;
 import com.merlinkitsune.astral_dice.item.ModItems;
@@ -25,7 +25,7 @@ public class MagicTomeChipItem extends BaseChipItem {
     // 被动:每使用第 3 张效果牌时,复制最后一张使用的效果牌并返回物品栏(独立计数)
     public static void onEffectCardUsed(Player player, String cardType) {
         if (player.level().isClientSide()) return;
-        var curios = CuriosCompat.getCuriosInventory(player);
+        var curios = CuriosApi.getCuriosInventory(player);
         if (curios.isEmpty()) return;
         if (curios.get().findFirstCurio(s -> s.is(ModItems.MAGIC_TOME_CHIP.get())).isEmpty()) return;
 

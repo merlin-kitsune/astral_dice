@@ -1,19 +1,19 @@
----
-name: astral-dice-fabric-1.20.1-porting
-description: 《星之骰戏》(astral_dice) forge-1.20.1 → fabric-1.20.1 移植执行手册——把 1.20.1 Forge 线移植为独立 fabric-1.20.1 线的完整可执行流程：前置库 starengine_lib 新增 fabric 平台（先行）、消费方新子项目按 P0~P7 阶段移植（骨架→注册→持久化→饰品→事件/网络→战利品/配置/GUI→mixin/datagen/联动→测试台/CI），命名映射为 Mojang 官方映射（原版名零改名），Curios→Trinkets 3.7.2、Capability/Attachments→Cardinal Components 5.2.3，含版本钉值、文件级任务清单、API 对照、验收判据与踩坑。适用于执行「把 astral_dice 移植到 1.20.1 Fabric」任务的其他大模型/工程师。
----
+\---  
+name: astral-dice-fabric-1.20.1-porting  
+description: 《星之骰戏》(astral_dice) forge-1.20.1 → fabric-1.20.1 移植执行手册——把 1.20.1 Forge 线移植为独立 fabric-1.20.1 线的完整可执行流程：前置库 starengine_lib 新增 fabric 平台（先行）、消费方新子项目按 P0~P7 阶段移植（骨架→注册→持久化→饰品→事件/网络→战利品/配置/GUI→mixin/datagen/联动→测试台/CI），命名映射为 Mojang 官方映射（原版名零改名），Curios→Trinkets 3.7.2、Capability/Attachments→Cardinal Components 5.2.3，含版本钉值、文件级任务清单、API 对照、验收判据与踩坑。适用于执行「把 astral_dice 移植到 1.20.1 Fabric」任务的其他大模型/工程师。  
+\---
 
 # astral_dice forge-1.20.1 → fabric-1.20.1 移植执行手册
 
-> 执行前必读：本文是唯一执行入口。配套件（同目录）：`VERSION_PINS.md`（版本钉值，**先读**）、`API_CHEATSHEET.md`（API 对照）、`PORT_ANALYSIS.md`（分析全文）。
-> 目标仓 worktree：`F://MCProject//astral_dice_multiloader_fabric`（分支 `1.20.1-fabric`）；库仓：`F://MCProject//starengine_lib`。
+> 执行前必读：本文是唯一执行入口。配套件（同目录）：`VERSION_PINS.md`（版本钉值，**先读**）、`API_CHEATSHEET.md`（API 对照）、`PORT_ANALYSIS.md`（分析全文）。  
+> 目标仓 worktree：`F://MCProject//astral_dice_multiloader_fabric`（分支 `1.20.1-fabric`）；库仓：`F://MCProject//starengine_lib`。  
 > ⚠️ 参考源在 worktree 的 `ref/`（fabric-loader / fabric-api / trinkets / cardinal-components-api / minecraftforge / yarn / patchouli），API 取证一律对照 `ref/` 源码，禁止凭记忆写 Fabric API。
 
 ## 0. 硬性约束（红线）
 
 1. **命名映射 = Mojang 官方映射**（`loom.officialMojangMappings()`）——原版类/成员名与 forge 侧**完全一致**，禁改原版引用；只改加载器层（Curios/Forge 事件/Capability/SimpleChannel/GLM/DeferredRegister/mods.toml 等）。
 2. **前置替换**：Curios → **Trinkets 3.7.2**（`dev.emi.trinkets.api`）；Capability/ModAttachments → **Cardinal Components 5.2.3**（`dev.onyxstudios.cca.api.v3`）。
-3. **库先行**：`starengine_lib-fabric-1.20.1` 必须先于消费方 P0 完成 build + `publishToMavenLocal`（lib_version 四线同号 bump → **1.0.6**），消费方 CI 同提交改库 SHA。
+3. **库先行**：`starengine_lib-fabric-1.20.1` 必须先于消费方 P0 完成 build + `publishToMavenLocal`（lib_version 四线同号 bump → **1.0.6**），消费方 CI 同提交改库 S继续移植HA。
 4. **版本全部钉死**（见 VERSION_PINS.md）；fabric-loader **0.19.5**、fabric-loom **1.14.10**（wrapper Gradle 9.2.1 不带升）、fabric-api **0.92.12+1.20.1**、Java toolchain **17**。
 5. **Loom 运行 JVM 21+、编译 toolchain 17** —— 跑 `gradlew` 用 `JAVA_HOME=C://Program Files\Zulu\zulu-21`；不要用 Java 17 跑 gradlew（Loom 会报错）。
 6. **每阶段有可机读判据**，绿了才进下一阶段；🚨 任一阶段出现「换汤不换药的假绿」（编译绿但运行期静默失效）必须停下来取证。
@@ -26,20 +26,20 @@ description: 《星之骰戏》(astral_dice) forge-1.20.1 → fabric-1.20.1 移�
 
 库仓 `F://MCProject//starengine_lib`：建分支 `fabric-1.20.1`（基线 `main @ 1.0.5`）+ worktree（可选）。新建子项目 `fabric-1.20.1/` 共 11 文件（common 44 文件**零改动**）：
 
-| 文件 | 内容要点 |
-|---|---|
-| `fabric-1.20.1/build.gradle` | `id 'fabric-loom' version '1.14.10'` + Java 17 toolchain + `loom.officialMojangMappings()` + `modImplementation "net.fabricmc:fabric-loader:0.19.5"` + `sourceSets.main.java.srcDir('../common/src/main/java')` + 发布 **remapJar**（artifactId `starengine_lib-fabric-1.20.1`）；publishing mavenJava |
-| `fabric-1.20.1/gradle.properties` | `lib_version=1.0.6`、`mod_version=1.0.6+fabric_1.20.1`（四线同号） |
-| `src/main/resources/fabric.mod.json` | id `starengine_lib`；entrypoints.main；depends 仅 fabricloader/minecraft(+fabric-api)；**不声明 trinkets** |
-| `StarEngineLib.java` | `implements ModInitializer`，`onInitialize` 内 `FabricEconomyStorage.install()` |
-| `platform/LoaderEvent.java` | 空 abstract 类 |
-| `platform/LoaderTags.java` | `TagKey.create(Registries.ENTITY_TYPE, new ResourceLocation("c","bosses"))` + `EntityType#is` |
-| `client/ActionBarManager.java` | float partialTick 变体（HUD 回调接线在消费方） |
-| `event/ModEffectRemoval.java` | `remove(Player, MobEffect)`（照 forge 签名） |
-| `economy/FabricEconomyStorage.java` | CCA 实体组件 + `RespawnCopyStrategy`；内层 NBT 保持 `starengine_lib/star_coin_wallet/{balance,name}`；事件 `CommandRegistrationCallback` + `ServerPlayerEvents.COPY_FROM`；离线读 .dat 的 `cardinal_components` 段 |
-| `item/AstralRarities.java` | 方案 A：rare→RARE、epic→EPIC 映射原版常量 + 库 `Rarity` 颜色权威；`tierOf` 读物品 NBT 档位 |
-| `item/TrinketsCompat.java` | 3 方法等价物（对齐 `CuriosCompat`）；`modCompileOnly` trinkets；库不声明前置 |
-| `component/ItemDataKey.java` | 照 forge 版逐字复制 |
+| 文件                                   | 内容要点                                                                                                                                                                                                                                                                                              |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `fabric-1.20.1/build.gradle`         | `id 'fabric-loom' version '1.14.10'` + Java 17 toolchain + `loom.officialMojangMappings()` + `modImplementation "net.fabricmc:fabric-loader:0.19.5"` + `sourceSets.main.java.srcDir('../common/src/main/java')` + 发布 **remapJar**（artifactId `starengine_lib-fabric-1.20.1`）；publishing mavenJava |
+| `fabric-1.20.1/gradle.properties`    | `lib_version=1.0.6`、`mod_version=1.0.6+fabric_1.20.1`（四线同号）                                                                                                                                                                                                                                       |
+| `src/main/resources/fabric.mod.json` | id `starengine_lib`；entrypoints.main；depends 仅 fabricloader/minecraft(+fabric-api)；**不声明 trinkets**                                                                                                                                                                                               |
+| `StarEngineLib.java`                 | `implements ModInitializer`，`onInitialize` 内 `FabricEconomyStorage.install()`                                                                                                                                                                                                                     |
+| `platform/LoaderEvent.java`          | 空 abstract 类                                                                                                                                                                                                                                                                                      |
+| `platform/LoaderTags.java`           | `TagKey.create(Registries.ENTITY_TYPE, new ResourceLocation("c","bosses"))` + `EntityType#is`                                                                                                                                                                                                     |
+| `client/ActionBarManager.java`       | float partialTick 变体（HUD 回调接线在消费方）                                                                                                                                                                                                                                                                |
+| `event/ModEffectRemoval.java`        | `remove(Player, MobEffect)`（照 forge 签名）                                                                                                                                                                                                                                                           |
+| `economy/FabricEconomyStorage.java`  | CCA 实体组件 + `RespawnCopyStrategy`；内层 NBT 保持 `starengine_lib/star_coin_wallet/{balance,name}`；事件 `CommandRegistrationCallback` + `ServerPlayerEvents.COPY_FROM`；离线读 .dat 的 `cardinal_components` 段                                                                                                  |
+| `item/AstralRarities.java`           | 方案 A：rare→RARE、epic→EPIC 映射原版常量 + 库 `Rarity` 颜色权威；`tierOf` 读物品 NBT 档位                                                                                                                                                                                                                             |
+| `item/TrinketsCompat.java`           | 3 方法等价物（对齐 `CuriosCompat`）；`modCompileOnly` trinkets；库不声明前置                                                                                                                                                                                                                                       |
+| `component/ItemDataKey.java`         | 照 forge 版逐字复制                                                                                                                                                                                                                                                                                     |
 
 → `./gradlew :fabric-1.20.1:build` + `./gradlew :fabric-1.20.1:publishToMavenLocal` → 四线 CHANGELOG 段头 + 提交 → 消费方 CI 同提交改库 SHA。
 
@@ -101,56 +101,56 @@ description: 《星之骰戏》(astral_dice) forge-1.20.1 → fabric-1.20.1 移�
 
 ## 2. 版本钉值（照抄 VERSION_PINS.md 核心）
 
-| 项 | 钉值 |
-|---|---|
-| fabric-loader | 0.19.5 |
-| fabric-loom | 1.14.10（Gradle 9.2 带内；**勿升 1.16+** = 需 wrapper 9.4+） |
-| fabric-api | 0.92.12+1.20.1 |
-| Trinkets | 3.7.2 |
+| 项                       | 钉值                                                         |
+| ----------------------- | ---------------------------------------------------------- |
+| fabric-loader           | 0.19.5                                                     |
+| fabric-loom             | 1.14.10（Gradle 9.2 带内；**勿升 1.16+** = 需 wrapper 9.4+）       |
+| fabric-api              | 0.92.12+1.20.1                                             |
+| Trinkets                | 3.7.2                                                      |
 | Cardinal Components API | 5.2.3（groupId = `dev.onyxstudios.cardinal-components-api`） |
-| StarEngine Lib (fabric) | 1.0.6（先行 publishToMavenLocal） |
-| Java toolchain | 17（**gradlew 用 JAVA_HOME=21**） |
+| StarEngine Lib (fabric) | 1.0.6（先行 publishToMavenLocal）                              |
+| Java toolchain          | 17（**gradlew 用 JAVA_HOME=21**）                             |
 
 ## 3. 关键 API 对照（详见 API_CHEATSHEET.md）
 
-| Forge | Fabric |
-|---|---|
-| `@Mod` + mods.toml | `ModInitializer` + fabric.mod.json |
-| DeferredRegister ×9 | `Registry.register` + `ModRegistries` 包装 |
-| 125 @SubscribeEvent | FAPI 回调 / 自写 mixin / 自定义回调 |
-| Capability + ModAttachments(108) | CCA ComponentV3 + RespawnCopyStrategy |
-| SimpleChannel 12 | ServerPlayNetworking/ClientPlayNetworking（channel-handler） |
-| GLM 战利品 | LootTableEvents.MODIFY |
-| Curios（ICurioItem/IMC 槽） | Trinkets（Trinket/数据包槽） |
+| Forge                            | Fabric                                                     |
+| -------------------------------- | ---------------------------------------------------------- |
+| `@Mod` + mods.toml               | `ModInitializer` + fabric.mod.json                         |
+| DeferredRegister ×9              | `Registry.register` + `ModRegistries` 包装                   |
+| 125 @SubscribeEvent              | FAPI 回调 / 自写 mixin / 自定义回调                                 |
+| Capability + ModAttachments(108) | CCA ComponentV3 + RespawnCopyStrategy                      |
+| SimpleChannel 12                 | ServerPlayNetworking/ClientPlayNetworking（channel-handler） |
+| GLM 战利品                          | LootTableEvents.MODIFY                                     |
+| Curios（ICurioItem/IMC 槽）         | Trinkets（Trinket/数据包槽）                                     |
 
 ## 4. 踩坑清单（必须遵守）
 
-| # | 坑 | 规避 |
-|---|---|---|
-| K1 | 用 Yarn 命名 ⇒ 全灭 | 恒用 `loom.officialMojangMappings()` |
-| K2 | 用 Java 17 跑 gradlew | Loom 需 JVM 21+；`JAVA_HOME=C://Program Files\Zulu\zulu-21` 跑 gradlew，toolchain 17 编译 |
-| K3 | loom ≥1.16 需 Gradle 9.4+ | 钉 `fabric-loom:1.14.10`；勿动 wrapper 9.2.1 |
-| K4 | 1.20.1 网络用 PayloadTypeRegistry | 那是 1.20.5+；1.20.1 用 `registerGlobalReceiver(Identifier, PlayChannelHandler)` + PacketByteBufs |
-| K5 | command 用 v1（deprecated） | 用 `fabric-command-api-v2` 的 `CommandRegistrationCallback` |
-| K6 | mixin client 段塞同一个 json | client 段拆 `astral_dice.client.mixins.json` + `entrypoints.client`/`"environment": "client"` |
-| K7 | 库未 publishToMavenLocal 就构建消费方 | 顺序：库 build+publish → 消费方钉 1.0.6 → 再构建 |
-| K8 | CCA 默认不复制死亡数据 | 逐组件显式 `RespawnCopyStrategy` |
-| K9 | remapJar 无 refmap ⇒ 生产环境 mixin 崩 | P0 即验证 remapJar 解包有 refmap（`defaultRefmapName`） |
-| K10 | 交付物写进 `docs/`（被 gitignore） | 写 `porting/fabric-1.20.1/` |
-| K11 | 凭记忆写 Fabric API | 对照 `ref/fabric-api`、`ref/trinkets`、`ref/cardinal-components-api` 源码 |
-| K12 | 换汤不换药的假绿（编译绿运行静默失效） | 每阶段跑运行判据（启动/物品/余额/槽位/战利品），不只编译 |
+| #   | 坑                                | 规避                                                                                            |
+| --- | -------------------------------- | --------------------------------------------------------------------------------------------- |
+| K1  | 用 Yarn 命名 ⇒ 全灭                   | 恒用 `loom.officialMojangMappings()`                                                            |
+| K2  | 用 Java 17 跑 gradlew              | Loom 需 JVM 21+；`JAVA_HOME=C://Program Files\Zulu\zulu-21` 跑 gradlew，toolchain 17 编译           |
+| K3  | loom ≥1.16 需 Gradle 9.4+         | 钉 `fabric-loom:1.14.10`；勿动 wrapper 9.2.1                                                      |
+| K4  | 1.20.1 网络用 PayloadTypeRegistry   | 那是 1.20.5+；1.20.1 用 `registerGlobalReceiver(Identifier, PlayChannelHandler)` + PacketByteBufs |
+| K5  | command 用 v1（deprecated）         | 用 `fabric-command-api-v2` 的 `CommandRegistrationCallback`                                     |
+| K6  | mixin client 段塞同一个 json          | client 段拆 `astral_dice.client.mixins.json` + `entrypoints.client`/`"environment": "client"`   |
+| K7  | 库未 publishToMavenLocal 就构建消费方    | 顺序：库 build+publish → 消费方钉 1.0.6 → 再构建                                                         |
+| K8  | CCA 默认不复制死亡数据                    | 逐组件显式 `RespawnCopyStrategy`                                                                   |
+| K9  | remapJar 无 refmap ⇒ 生产环境 mixin 崩 | P0 即验证 remapJar 解包有 refmap（`defaultRefmapName`）                                               |
+| K10 | 交付物写进 `docs/`（被 gitignore）       | 写 `porting/fabric-1.20.1/`                                                                    |
+| K11 | 凭记忆写 Fabric API                  | 对照 `ref/fabric-api`、`ref/trinkets`、`ref/cardinal-components-api` 源码                           |
+| K12 | 换汤不换药的假绿（编译绿运行静默失效）              | 每阶段跑运行判据（启动/物品/余额/槽位/战利品），不只编译                                                                |
 
 ## 5. 附录
 
 ### 5.1 无 FAPI 对应事件的 mixin 注入点候选（P4 用）
 
-| Forge 事件 | mixin 注入点（Mojmap） |
-|---|---|
-| LivingHealEvent | `LivingEntity.heal(float)` |
-| LivingKnockBackEvent | `LivingEntity.knockback(...)` |
-| EntityTeleportEvent | `Entity.teleportTo(...)` |
-| ItemCrafted 变体 | `ResultSlot.onTake(...)` |
-| （执行时按 PORT_ANALYSIS §4.2 补全） | — |
+| Forge 事件                     | mixin 注入点（Mojmap）             |
+| ---------------------------- | ----------------------------- |
+| LivingHealEvent              | `LivingEntity.heal(float)`    |
+| LivingKnockBackEvent         | `LivingEntity.knockback(...)` |
+| EntityTeleportEvent          | `Entity.teleportTo(...)`      |
+| ItemCrafted 变体               | `ResultSlot.onTake(...)`      |
+| （执行时按 PORT_ANALYSIS §4.2 补全） | —                             |
 
 ### 5.2 Trinkets 槽位 JSON 布局（P3 用）
 
@@ -166,6 +166,8 @@ description: 《星之骰戏》(astral_dice) forge-1.20.1 → fabric-1.20.1 移�
 ### 5.4 删除清单
 
 - `init/MixinRuntimeGate.java`（Connector 门控）、mods.toml 的 `mixinbooster` 依赖、mods.toml/pack.mcmeta 模板（Forge 专属）、enumextensions 相关概念。
+
+
 
 ---
 

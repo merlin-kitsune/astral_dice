@@ -9,15 +9,13 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.storage.loot.LootContext;
 import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.level.storage.loot.predicates.LootItemCondition;
-import net.minecraftforge.common.loot.IGlobalLootModifier;
-import net.minecraftforge.common.loot.LootModifier;
 import org.jetbrains.annotations.NotNull;
 
 /**
  * 全局战利品修饰符:**把另一张战利品表(字段 {@code table})的结果追加到目标表**。
  *
  * <p><b>为什么本模组自带一份:</b>NeoForge(1.21.1)内置 {@code neoforge:add_table},而
- * **Forge 1.20.1-47.4.10 的 {@code net.minecraftforge.common.loot} 里没有 {@code GlobalLootModifierSerializers},
+ * **Forge 1.20.1-47.4.10 的 {@code common.loot} 里没有 {@code GlobalLootModifierSerializers},
  * 也没有 {@code AddTableLootModifier}** —— 全 jar 不含 {@code add_table} 这个注册名(已逐字节核验)。
  * 因此 1.20.1 侧原先照抄 {@code "type": "forge:add_table"} 的 13 个战利品修饰符
  * **永远无法解码**(实机日志:`Could not decode GlobalLootModifier with json id astral_dice:star_plate_*

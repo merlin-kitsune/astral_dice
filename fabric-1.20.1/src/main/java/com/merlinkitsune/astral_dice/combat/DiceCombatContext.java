@@ -5,7 +5,7 @@ import com.merlinkitsune.astral_dice.item.ModItems;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.event.entity.living.LivingDamageEvent;
+import com.merlinkitsune.astral_dice.platform.event.entity.living.LivingDamageEvent;
 
 /**
  * 一次骰神赐福攻击的上下文:由 {@code DiceCombatEvents.onLivingDamagePre} 在攻击链路上构建,

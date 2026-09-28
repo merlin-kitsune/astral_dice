@@ -84,6 +84,7 @@ dependencies {
 }
 
 loom {
+    accessWidenerPath = file('src/main/resources/astral_dice.accesswidener')
     // ⚠️ Loom 1.14 起 Mixin 注解处理器**默认关闭**;`mixin { }` 配置会被告警要求移除。
     //    refmap 由 Loom 在 remapJar 阶段依据 mixin 配置自动生成(见 P0 验证步骤)。
     runs {
@@ -116,6 +117,8 @@ processResources {
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
+    // 移植期需要看到完整错误面(默认 -Xmaxerrs 100 会截断,导致严重低估工作量)
+    options.compilerArgs += ['-Xmaxerrs', '4000']
 }
 
 // === 产物分发(build 后推 run/ 与仓库根 build/libs;口径对齐另三线) ===

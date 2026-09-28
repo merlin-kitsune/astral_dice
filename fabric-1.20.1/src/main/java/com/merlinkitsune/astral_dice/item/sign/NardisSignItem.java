@@ -12,14 +12,14 @@ import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.card.TemporaryCardUtil;
 import com.merlinkitsune.starenginelib.event.ModEffectRemoval;
-import com.merlinkitsune.starenginelib.item.CuriosCompat;
+import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import top.theillusivec4.curios.api.SlotContext;
+import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
+import com.merlinkitsune.astral_dice.compat.curios.SlotContext;
 
 /**
  * 绿洲女王立牌(nardis,稀有 RARE)。
@@ -98,7 +98,6 @@ import top.theillusivec4.curios.api.SlotContext;
  *       (1.20.1 {@code ItemDataKey} = ItemStack NBT,无 {@code stack.get(KEY.get())} 形式)。</li>
  * </ul>
  */
-@net.minecraftforge.fml.common.Mod.EventBusSubscriber(modid = AstralDiceMod.MODID)
 public class NardisSignItem extends BaseSignItem {
     /** 立牌的物品注册 id(调试读数用) */
     public static final String SIGN_ID = AstralDiceMod.MODID + ":nardis_sign";
@@ -302,7 +301,7 @@ public class NardisSignItem extends BaseSignItem {
     /** 玩家是否佩戴绿洲女王立牌(被动「威压」的佩戴判定) */
     public static boolean isEquipped(Player player) {
         if (player == null) return false;
-        var curios = CuriosCompat.getCuriosInventory(player);
+        var curios = CuriosApi.getCuriosInventory(player);
         return curios.isPresent()
                 && curios.get().findFirstCurio(s -> s.is(ModItems.NARDIS_SIGN.get())).isPresent();
     }

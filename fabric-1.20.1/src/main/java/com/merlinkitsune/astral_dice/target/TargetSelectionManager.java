@@ -7,11 +7,10 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.event.entity.living.LivingDeathEvent;
-import net.minecraftforge.event.entity.player.PlayerEvent;
-import net.minecraftforge.event.TickEvent;
+import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
+import com.merlinkitsune.astral_dice.platform.event.entity.living.LivingDeathEvent;
+import com.merlinkitsune.astral_dice.platform.event.entity.player.PlayerEvent;
+import com.merlinkitsune.astral_dice.platform.event.TickEvent;
 import com.merlinkitsune.astral_dice.network.ModNetwork;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,7 +47,6 @@ import com.merlinkitsune.starenginelib.target.SignSelectionGate;
  * **32 格上限**夹取（配置上限不可突破），且**含垂直高度差**（用 {@link ServerPlayer#distanceToSqr} 的三维距离）。
  * 客户端射线半径仅用于 UX，服务端确认时按**本会话实际授予的半径**二次校验。
  */
-@Mod.EventBusSubscriber(modid = AstralDiceMod.MODID)
 public final class TargetSelectionManager {
     private static final Logger LOGGER = LoggerFactory.getLogger(TargetSelectionManager.class);
 

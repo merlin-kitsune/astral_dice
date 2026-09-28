@@ -1,6 +1,6 @@
 package com.merlinkitsune.astral_dice.event;
 
-import com.merlinkitsune.starenginelib.item.CuriosCompat;
+import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
@@ -9,9 +9,8 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraftforge.event.level.BlockEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import com.merlinkitsune.astral_dice.platform.event.level.BlockEvent;
+import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
 
 /**
  * 下界岩骰子:在下界采集矿物时,30% 概率额外掉落 1 枚星币,5% 概率额外掉落 1 个星盘。
@@ -19,7 +18,6 @@ import net.minecraftforge.fml.common.Mod;
  * 判定:玩家佩戴下界岩骰子 + 维度为下界 + 破坏方块为下界矿物(石英矿/下界金矿/远古残骸)。
  * 额外掉落经 Block.popResource 生成于方块位置,与原版掉落一致;同一次采矿最多掉落一种(先判星盘)。
  */
-@Mod.EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public final class NetherrackDiceHandler {
 
     /** 星盘掉落概率 */
@@ -31,7 +29,7 @@ public final class NetherrackDiceHandler {
     }
 
     public static boolean hasNetherrackDice(Player player) {
-        return CuriosCompat.getCuriosInventory(player)
+        return CuriosApi.getCuriosInventory(player)
                 .map(h -> h.findFirstCurio(s -> s.is(ModItems.NETHERRACK_DICE.get())).isPresent())
                 .orElse(false);
     }

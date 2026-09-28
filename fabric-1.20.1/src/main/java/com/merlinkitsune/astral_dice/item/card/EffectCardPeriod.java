@@ -1,5 +1,5 @@
 package com.merlinkitsune.astral_dice.item.card;
-import com.merlinkitsune.starenginelib.item.CuriosCompat;
+import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 
 import com.merlinkitsune.starenginelib.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
@@ -562,7 +562,7 @@ public final class EffectCardPeriod {
     }
 
     private static boolean hasCurio(Player player, net.minecraft.world.item.Item item) {
-        var curios = com.merlinkitsune.starenginelib.item.CuriosCompat.getCuriosInventory(player);
+        var curios = com.merlinkitsune.starenginelib.item.CuriosApi.getCuriosInventory(player);
         return curios.isPresent() && curios.get().findFirstCurio(s -> s.is(item)).isPresent();
     }
 }

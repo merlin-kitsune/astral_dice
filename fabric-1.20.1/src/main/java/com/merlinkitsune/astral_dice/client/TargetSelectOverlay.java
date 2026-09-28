@@ -4,8 +4,8 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraftforge.client.gui.overlay.ForgeGui;
-import net.minecraftforge.client.gui.overlay.IGuiOverlay;
+import com.merlinkitsune.astral_dice.platform.client.gui.overlay.ForgeGui;
+import com.merlinkitsune.astral_dice.platform.client.gui.overlay.IGuiOverlay;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

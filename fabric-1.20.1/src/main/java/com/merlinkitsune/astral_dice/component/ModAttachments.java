@@ -147,7 +147,7 @@ public class ModAttachments {
     // 忍者立牌(komachi):效果牌伤害增益(每使用 3 张效果牌 +1,累计无上限;作为加成生效时静默上限 120,卸下立牌重置;死亡重生保留)
     // 「死亡重生保留」由 AstralData.onPlayerClone 的死亡分支复制本键实现(对应 1.21.1 的 .copyOnDeath())
     public static final AttachedDataKey<Integer> KOMACHI_DAMAGE_BONUS =
-            register(AttachedDataKey.builder("komachi_damage_bonus", Codec.INT, () -> 0).sync().build());
+            register(AttachedDataKey.builder("komachi_damage_bonus", Codec.INT, () -> 0).sync().copyOnDeath().build());
 
     // 小猪存钱罐筹码:效果牌使用计数(每使用 2 张获得 3 星币;卸下筹码重置)
     public static final AttachedDataKey<Integer> PIGGY_BANK_USE_COUNT =
@@ -254,7 +254,7 @@ public class ModAttachments {
     // 调查员立牌(rin):已使用的活体书页数量(活体书页伤害永久+1 的来源,移除立牌后重置;死亡重生保留)
     // 「死亡重生保留」由 AstralData.onPlayerClone 的死亡分支复制本键实现(对应 1.21.1 的 .copyOnDeath())
     public static final AttachedDataKey<Integer> RIN_PAGES =
-            register(AttachedDataKey.builder("rin_pages", Codec.INT, () -> 0).sync().build());
+            register(AttachedDataKey.builder("rin_pages", Codec.INT, () -> 0).sync().copyOnDeath().build());
 
     // 调查员立牌(rin):最近一次获得活体书页的事件签名(触发者 UUID + "|" + 事件 ID)。
     // 用于同一事件在极短窗口(2 tick)内被重复分发时去重(如多立牌槽重复调用 onKill),
@@ -895,7 +895,7 @@ public class ModAttachments {
     // 此后任何情况下都不再自动发放」⇒ 本键必须出现在 AstralData.onPlayerClone 的死亡保留白名单里
     // (对应 1.21.1 的 .copyOnDeath());否则死亡后回默认 false,下次登录会再发一本。
     public static final AttachedDataKey<Boolean> GUIDE_BOOK_GIVEN =
-            register(AttachedDataKey.builder("guide_book_given", Codec.BOOL, () -> false).build());
+            register(AttachedDataKey.builder("guide_book_given", Codec.BOOL, () -> false).copyOnDeath().build());
 
     public static boolean isGuideBookGiven(net.minecraft.world.entity.player.Player player) {
         return GUIDE_BOOK_GIVEN.get(player);
@@ -1032,7 +1032,7 @@ public class ModAttachments {
      * {@link DeathPreservedBonuses} 第 3 槽位(两层缺一不可,理由同 {@code rin_pages})。
      */
     public static final AttachedDataKey<Integer> MAMUSHI_AWAKENING =
-            register(AttachedDataKey.builder("mamushi_awakening", Codec.INT, () -> 0).sync().build());
+            register(AttachedDataKey.builder("mamushi_awakening", Codec.INT, () -> 0).sync().copyOnDeath().build());
 
     /**
      * 撕咬加成**锁存**(纯服务端):触发骰神赐福当刻装备了撕咬 ⇒ 置 true;赐福结束时清除。
@@ -1598,7 +1598,7 @@ public class ModAttachments {
      * **跨死亡保留** ⇒ 必须进 {@code AstralData#onPlayerClone} 死亡白名单。
      */
     public static final AttachedDataKey<Integer> TERU_HUGUANG_LAYERS =
-            register(AttachedDataKey.builder("teru_huguang_layers", Codec.INT, () -> 0).build());
+            register(AttachedDataKey.builder("teru_huguang_layers", Codec.INT, () -> 0).copyOnDeath().build());
 
     public static int getTeruHuguangLayers(net.minecraft.world.entity.player.Player player) {
         return TERU_HUGUANG_LAYERS.get(player);
@@ -1642,7 +1642,7 @@ public class ModAttachments {
      * **跨死亡保留**(否则"死一次再装备一次"可刷层)⇒ 同样进 {@code AstralData#onPlayerClone} 白名单。
      */
     public static final AttachedDataKey<String> TERU_EQUIP_WATERMARK =
-            register(AttachedDataKey.builder("teru_equip_watermark", Codec.STRING, () -> "").build());
+            register(AttachedDataKey.builder("teru_equip_watermark", Codec.STRING, () -> "").copyOnDeath().build());
 
     public static String getTeruEquipWatermark(net.minecraft.world.entity.player.Player player) {
         return TERU_EQUIP_WATERMARK.get(player);

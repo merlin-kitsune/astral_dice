@@ -1,5 +1,5 @@
 package com.merlinkitsune.astral_dice.combat;
-import com.merlinkitsune.starenginelib.item.CuriosCompat;
+import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
@@ -33,7 +33,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.ai.attributes.Attributes;
-import top.theillusivec4.curios.api.CuriosApi;
+import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -224,7 +224,7 @@ public final class DiceCombatModifiers {
     // 玩家是否佩戴指定 Curios 物品
     private static boolean hasCurio(Player player, net.minecraft.world.item.Item item) {
         if (player == null) return false;
-        var curios = CuriosCompat.getCuriosInventory(player);
+        var curios = CuriosApi.getCuriosInventory(player);
         return curios.isPresent() && curios.get().findFirstCurio(s -> s.is(item)).isPresent();
     }
 
@@ -383,7 +383,7 @@ public final class DiceCombatModifiers {
         // === 内置:扫地机立牌(jasmine)攻击力增益 ===
         registerAttackModifier((ctx, ap) -> {
             if (ctx.attacker.level().isClientSide()) return ap;
-            var curios = CuriosCompat.getCuriosInventory(ctx.attacker);
+            var curios = CuriosApi.getCuriosInventory(ctx.attacker);
             if (curios.isPresent()) {
                 var r = curios.get().findFirstCurio(s -> s.is(ModItems.JASMINE_SIGN.get()));
                 if (r.isPresent()) {
@@ -523,7 +523,7 @@ public final class DiceCombatModifiers {
         // === 内置:上班族立牌(padman)攻击力增益 + 破防标志 ===
         registerAttackModifier((ctx, ap) -> {
             if (ctx.attacker.level().isClientSide()) return ap;
-            var curios = CuriosCompat.getCuriosInventory(ctx.attacker);
+            var curios = CuriosApi.getCuriosInventory(ctx.attacker);
             if (curios.isPresent()) {
                 var r = curios.get().findFirstCurio(s -> s.is(ModItems.PADMAN_SIGN.get()));
                 if (r.isPresent()) {
@@ -677,7 +677,7 @@ public final class DiceCombatModifiers {
         if (player == null) return 0;
         WeaponEnhancement enhancement = WeaponEnhancement.EMPTY;
         ItemStack diceStack = ItemStack.EMPTY;
-        var curios = CuriosCompat.getCuriosInventory(player);
+        var curios = CuriosApi.getCuriosInventory(player);
         if (curios.isPresent()) {
             var r = curios.get().findFirstCurio(com.merlinkitsune.astral_dice.item.dice.DiceCurioItem::isDiceItem);
             if (r.isPresent()) {
@@ -698,7 +698,7 @@ public final class DiceCombatModifiers {
     public static int defensePowerOf(Player player) {
         if (player == null) return 0;
         WeaponEnhancement enhancement = WeaponEnhancement.EMPTY;
-        var curios = CuriosCompat.getCuriosInventory(player);
+        var curios = CuriosApi.getCuriosInventory(player);
         if (curios.isPresent()) {
             var r = curios.get().findFirstCurio(com.merlinkitsune.astral_dice.item.dice.DiceCurioItem::isDiceItem);
             if (r.isPresent()) {
@@ -714,7 +714,7 @@ public final class DiceCombatModifiers {
         int misakiStar = enhancement.starLevel();
         int misakiStacks = 0;
         boolean misakiBurst = player.hasEffect(ModEffects.MISAKI_BURST.get());
-        var curios = CuriosCompat.getCuriosInventory(player);
+        var curios = CuriosApi.getCuriosInventory(player);
         if (curios.isPresent()) {
             var r = curios.get().findFirstCurio(s -> s.is(ModItems.MISAKI_SIGN.get()));
             if (r.isPresent()) {

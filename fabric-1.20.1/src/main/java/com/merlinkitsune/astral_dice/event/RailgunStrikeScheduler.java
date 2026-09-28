@@ -7,9 +7,8 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import com.merlinkitsune.astral_dice.platform.event.TickEvent;
+import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,7 +29,6 @@ import java.util.List;
  * <p>因此这里把待触发雷击挂在**服务端 tick 边界**上,按 gameTime 判到期,保证真实延迟 1 秒:
  * 仅服务端、纯内存状态(延迟仅 1 秒,无需持久化/同步)。
  */
-@Mod.EventBusSubscriber(modid = AstralDiceMod.MODID)
 public final class RailgunStrikeScheduler {
 
     /**

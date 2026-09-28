@@ -4,8 +4,8 @@ import com.merlinkitsune.astral_dice.AstralDiceMod;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
-import net.minecraftforge.registries.DeferredRegister;
-import net.minecraftforge.registries.RegistryObject;
+import com.merlinkitsune.astral_dice.platform.registry.DeferredRegister;
+import com.merlinkitsune.astral_dice.platform.registry.RegistryObject;
 
 /**
  * 本模组自定义音效的**注册表**（10 条）。

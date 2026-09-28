@@ -9,7 +9,7 @@ import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import top.theillusivec4.curios.api.SlotContext;
+import com.merlinkitsune.astral_dice.compat.curios.SlotContext;
 
 import java.util.concurrent.ThreadLocalRandom;
 import com.merlinkitsune.astral_dice.resource.ResourceConversion;

@@ -10,7 +10,7 @@ import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.starenginelib.event.ModEffectRemoval;
-import com.merlinkitsune.starenginelib.item.CuriosCompat;
+import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.damagesource.DamageSource;
@@ -22,11 +22,11 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
-import net.minecraftforge.event.entity.living.LivingAttackEvent;
-import net.minecraftforge.event.entity.player.PlayerInteractEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import top.theillusivec4.curios.api.SlotContext;
+import com.merlinkitsune.astral_dice.platform.event.entity.living.LivingAttackEvent;
+import com.merlinkitsune.astral_dice.platform.event.entity.player.PlayerInteractEvent;
+import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
+import com.merlinkitsune.astral_dice.platform.event.EventPriority;
+import com.merlinkitsune.astral_dice.compat.curios.SlotContext;
 
 import java.util.List;
 
@@ -66,7 +66,6 @@ import java.util.List;
  *
  * <p><b>层数真值在附件</b>,效果实例只是 HUD 镜像;**不跨死亡保留**(技能原文未声明)。
  */
-@net.minecraftforge.fml.common.Mod.EventBusSubscriber(modid = AstralDiceMod.MODID)
 public class HannaSignItem extends BaseSignItem {
 
     /** 立牌注册 id */
@@ -167,7 +166,7 @@ public class HannaSignItem extends BaseSignItem {
     /** 玩家是否佩戴人偶师立牌 */
     public static boolean isEquipped(Player player) {
         if (player == null) return false;
-        var curios = CuriosCompat.getCuriosInventory(player);
+        var curios = CuriosApi.getCuriosInventory(player);
         return curios.isPresent()
                 && curios.get().findFirstCurio(s -> s.is(ModItems.HANNA_SIGN.get())).isPresent();
     }
@@ -336,7 +335,7 @@ public class HannaSignItem extends BaseSignItem {
 
     /** 该玩家是否在饰品槽里装着指定注册 id 的立牌(按 id 字符串匹配,与 sherry 同款) */
     private static boolean wearsSign(Player player, String itemId) {
-        var curios = CuriosCompat.getCuriosInventory(player);
+        var curios = CuriosApi.getCuriosInventory(player);
         if (curios.isEmpty()) return false;
         return curios.get().findFirstCurio(s -> {
             var key = BuiltInRegistries.ITEM.getKey(s.getItem());

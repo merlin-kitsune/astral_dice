@@ -1,5 +1,5 @@
 package com.merlinkitsune.astral_dice.item.chip;
-import com.merlinkitsune.starenginelib.item.CuriosCompat;
+import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 import com.merlinkitsune.starenginelib.combat.HostileTargets;
 
 import com.merlinkitsune.starenginelib.component.GameplayConstants;
@@ -14,13 +14,12 @@ import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.enchantment.Enchantment;
-import top.theillusivec4.curios.api.CuriosApi;
-import top.theillusivec4.curios.api.SlotContext;
+import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
+import com.merlinkitsune.astral_dice.compat.curios.SlotContext;
 import com.merlinkitsune.astral_dice.item.ModItems;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.event.entity.living.LivingDeathEvent;
+import com.merlinkitsune.astral_dice.platform.event.entity.living.LivingDeathEvent;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
+import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
 import net.minecraft.world.entity.LivingEntity;
 
 /**
@@ -30,7 +29,6 @@ import net.minecraft.world.entity.LivingEntity;
  * {@link GameplayConstants#CURSED_SWORD_BONUS_MAX} 决定(默认 16,最大 32)。
  * 移除筹码时清除全部攻击力加成与青之诅咒效果。
  */
-@Mod.EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public class CursedSwordChipItem extends BaseChipItem {
     // "千咒刻印"诅咒附魔的资源键(静态缓存,避免每 tick 重新构造 ResourceLocation/ResourceKey)
     private static final ResourceKey<Enchantment> CURSE_MARKER_KEY =
@@ -44,7 +42,7 @@ public class CursedSwordChipItem extends BaseChipItem {
     // 玩家是否佩戴诅咒之剑筹码
     public static boolean isEquipped(Player player) {
         if (player == null) return false;
-        var curios = CuriosCompat.getCuriosInventory(player);
+        var curios = CuriosApi.getCuriosInventory(player);
         return curios.isPresent() && curios.get().findFirstCurio(s -> s.is(ModItems.CURSED_SWORD.get())).isPresent();
     }
 

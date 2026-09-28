@@ -6,7 +6,7 @@ import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.item.ItemStack;
-import top.theillusivec4.curios.api.SlotContext;
+import com.merlinkitsune.astral_dice.compat.curios.SlotContext;
 
 /**
  * 摩托头盔筹码(一般/中级/高级):**防御力** +2/+4/+6;盔甲韧性 +2 仅高级拥有(属性修饰器,装备期间生效)。

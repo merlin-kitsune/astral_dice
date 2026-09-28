@@ -11,23 +11,20 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.RegisterGuiOverlaysEvent;
-import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
-import net.minecraftforge.client.event.RegisterParticleProvidersEvent;
-import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
-import net.minecraftforge.client.gui.overlay.VanillaGuiOverlay;
-import net.minecraftforge.client.gui.overlay.ForgeGui;
-import net.minecraftforge.client.gui.overlay.IGuiOverlay;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import com.merlinkitsune.astral_dice.platform.client.event.RegisterGuiOverlaysEvent;
+import com.merlinkitsune.astral_dice.platform.client.event.RegisterKeyMappingsEvent;
+import com.merlinkitsune.astral_dice.platform.client.event.RegisterParticleProvidersEvent;
+import com.merlinkitsune.astral_dice.platform.fml.event.lifecycle.FMLClientSetupEvent;
+import com.merlinkitsune.astral_dice.platform.client.gui.overlay.VanillaGuiOverlay;
+import com.merlinkitsune.astral_dice.platform.client.gui.overlay.ForgeGui;
+import com.merlinkitsune.astral_dice.platform.client.gui.overlay.IGuiOverlay;
+import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
 import com.mojang.math.Axis;
 import org.joml.Matrix4f;
 import org.joml.Vector4f;
 
 import com.merlinkitsune.starenginelib.client.ActionBarManager;
 import com.merlinkitsune.starenginelib.client.ClientDamageNumbers;
-@Mod.EventBusSubscriber(modid = AstralDiceMod.MODID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.MOD)
 public class ModClientEvents {
 
     /**

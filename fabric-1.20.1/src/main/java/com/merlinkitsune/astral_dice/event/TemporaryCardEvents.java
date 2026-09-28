@@ -5,8 +5,8 @@ import com.merlinkitsune.astral_dice.item.card.TemporaryCardUtil;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.event.entity.item.ItemTossEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
+import com.merlinkitsune.astral_dice.platform.event.entity.item.ItemTossEvent;
+import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,11 +33,10 @@ import org.slf4j.LoggerFactory;
  * <p>{@code stack.setCount(0)} 是双保险:即使有其它处理器在取消后仍拿到同一个实体,它的栈也已经是空的。
  *
  * <h2>1.20.1 平台适配</h2>
- * 事件类与订阅注解来自 Forge({@code net.minecraftforge.event.entity.item.ItemTossEvent} /
+ * 事件类与订阅注解来自 Forge({@code com.merlinkitsune.astral_dice.platform.event.entity.item.ItemTossEvent} /
  * {@code @Mod.EventBusSubscriber});{@code getEntity()}/{@code getPlayer()}/{@code setCanceled}
  * 的语义与 1.21.1 的 NeoForge {@code ItemTossEvent} **逐条相同**。
  */
-@net.minecraftforge.fml.common.Mod.EventBusSubscriber(modid = AstralDiceMod.MODID)
 public class TemporaryCardEvents {
     private static final Logger LOGGER = LoggerFactory.getLogger(TemporaryCardEvents.class);
 

@@ -1,5 +1,5 @@
 package com.merlinkitsune.astral_dice.item.sign;
-import com.merlinkitsune.starenginelib.item.CuriosCompat;
+import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 import com.merlinkitsune.starenginelib.combat.HostileTargets;
 
 import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
@@ -17,22 +17,21 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import top.theillusivec4.curios.api.CuriosApi;
-import top.theillusivec4.curios.api.SlotContext;
+import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
+import com.merlinkitsune.astral_dice.compat.curios.SlotContext;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.event.entity.living.LivingAttackEvent;
-import net.minecraftforge.event.entity.living.LivingDamageEvent;
-import net.minecraftforge.event.entity.player.AttackEntityEvent;
-import net.minecraftforge.event.entity.ProjectileImpactEvent;
+import com.merlinkitsune.astral_dice.platform.event.entity.living.LivingAttackEvent;
+import com.merlinkitsune.astral_dice.platform.event.entity.living.LivingDamageEvent;
+import com.merlinkitsune.astral_dice.platform.event.entity.player.AttackEntityEvent;
+import com.merlinkitsune.astral_dice.platform.event.entity.ProjectileImpactEvent;
 import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.entity.projectile.ThrownEnderpearl;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
+import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
+import com.merlinkitsune.astral_dice.platform.event.EventPriority;
 
 /**
  * 骇客立牌(命名:nancy_lu)。
@@ -48,7 +47,6 @@ import net.minecraftforge.eventbus.api.EventPriority;
  * - 按该牌费用 ×2 提升攻击力,持续 2:00;攻击力加成最低 +2,
  *   主物品栏无战斗牌可消耗时同样获得保底 +2。
  */
-@Mod.EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public class NancyLuSignItem extends BaseSignItem {
     public static final int PASSIVE_NONE = 0;
     public static final int PASSIVE_ATTACK = 1;
@@ -191,7 +189,7 @@ public class NancyLuSignItem extends BaseSignItem {
 
     public static boolean isEquipped(Player player) {
         if (player == null) return false;
-        var curios = CuriosCompat.getCuriosInventory(player);
+        var curios = CuriosApi.getCuriosInventory(player);
         return curios.isPresent() && curios.get().findFirstCurio(s -> s.is(ModItems.NANCY_LU_SIGN.get())).isPresent();
     }
 
@@ -280,7 +278,7 @@ public class NancyLuSignItem extends BaseSignItem {
     // 骇客立牌:完全隐身状态下攻击敌对目标/玩家 → 解除隐身并触发战斗牌加成
     @SubscribeEvent
     public static void onNancyLuAttackWhileHidden(
-            net.minecraftforge.event.entity.player.AttackEntityEvent event) {
+            com.merlinkitsune.astral_dice.platform.event.entity.player.AttackEntityEvent event) {
         Player player = event.getEntity();
         if (player.level().isClientSide()) return;
         if (!NancyLuSignItem.isEquipped(player)) return;

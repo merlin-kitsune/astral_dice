@@ -13,19 +13,17 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.fml.ModList;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.event.entity.living.LivingDeathEvent;
-import net.minecraftforge.event.entity.player.PlayerEvent;
+import com.merlinkitsune.astral_dice.platform.event.EventPriority;
+import com.merlinkitsune.astral_dice.platform.fml.ModList;
+import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
+import com.merlinkitsune.astral_dice.platform.event.entity.living.LivingDeathEvent;
+import com.merlinkitsune.astral_dice.platform.event.entity.player.PlayerEvent;
 import vazkii.patchouli.common.item.ItemModBook;
 
 import com.merlinkitsune.astral_dice.item.card.EffectCardPeriod;
 import com.merlinkitsune.astral_dice.item.card.TemporaryCardUtil;
 
 import com.merlinkitsune.starenginelib.event.ModEffectRemoval;
-@Mod.EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public class PlayerLifecycleHandler {
     // 玩家死亡:移除全部治愈(清零点数并结束"治愈"效果)与骰神赐福效果,防止死亡残留
     // 优先级必须为 LOWEST(2026-09-15 裁决):保命方(末影骰子/安全气囊)在 NORMAL 取消死亡,
@@ -61,7 +59,7 @@ public class PlayerLifecycleHandler {
         // 魔法秘典计数器、骰咒倍率同样无需在此清理:它们都是附件且不在死亡复制集合内。
         // 效果牌伤害加成(忍者立牌 KomachiDamageBonus/调查员立牌 RinPages)死亡保留,不清除
         // 护法立牌:死亡时丢失全部"剑气"层数(死亡时刻即清除装备中的立牌数据,不受 KeepInventory 影响)
-        com.merlinkitsune.starenginelib.item.CuriosCompat.getCuriosInventory(player).ifPresent(handler -> {
+        com.merlinkitsune.astral_dice.compat.curios.CuriosApi.getCuriosInventory(player).ifPresent(handler -> {
             var misaki = handler.findFirstCurio(
                     s -> s.is(com.merlinkitsune.astral_dice.item.ModItems.MISAKI_SIGN.get()));
             if (misaki.isPresent()) {
@@ -120,9 +118,9 @@ public class PlayerLifecycleHandler {
     // 死亡重生克隆:恢复"死亡保留"的数据(充能层数 + 调查员/忍者累计加成)。
     // 必须最后执行(priority = LOWEST):AstralData 的死亡分支复制在此之前完成,否则回写会被复制覆盖成 0。
     // PlayerRespawnEvent 侧再兜底一次(暂存表项取走即为空操作,幂等)。
-    @SubscribeEvent(priority = net.minecraftforge.eventbus.api.EventPriority.LOWEST)
+    @SubscribeEvent(priority = com.merlinkitsune.astral_dice.platform.event.EventPriority.LOWEST)
     public static void onPlayerCloneRestoreDeathPreserved(
-            net.minecraftforge.event.entity.player.PlayerEvent.Clone event) {
+            com.merlinkitsune.astral_dice.platform.event.entity.player.PlayerEvent.Clone event) {
         if (!event.isWasDeath()) return;
         Player player = event.getEntity();
         if (player == null || player.level().isClientSide()) return;
@@ -133,7 +131,7 @@ public class PlayerLifecycleHandler {
     // 玩家退出/重新登录:清除骰神赐福效果(防止退出后重进仍保留战斗状态)
     @SubscribeEvent
     public static void onPlayerLoggedInClearDiceBlessing(
-            net.minecraftforge.event.entity.player.PlayerEvent.PlayerLoggedInEvent event) {
+            com.merlinkitsune.astral_dice.platform.event.entity.player.PlayerEvent.PlayerLoggedInEvent event) {
         Player player = event.getEntity();
         if (player == null) return;
         if (player.level().isClientSide()) return;
@@ -155,7 +153,7 @@ public class PlayerLifecycleHandler {
     // 死亡重生:刷新治愈体系(上限收缩/效果显示)
     @SubscribeEvent
     public static void onPlayerRespawnMedkit(
-            net.minecraftforge.event.entity.player.PlayerEvent.PlayerRespawnEvent event) {
+            com.merlinkitsune.astral_dice.platform.event.entity.player.PlayerEvent.PlayerRespawnEvent event) {
         Player player = event.getEntity();
         if (player == null) return;
         if (player.level().isClientSide()) return;
@@ -188,7 +186,7 @@ public class PlayerLifecycleHandler {
     // 这里用 LOWEST 保证晚于它执行,看到的是同步完成后的最终状态。
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public static void onDatapackSyncRefreshChipSlots(
-            net.minecraftforge.event.OnDatapackSyncEvent event) {
+            com.merlinkitsune.astral_dice.platform.event.OnDatapackSyncEvent event) {
         if (event.getPlayer() != null) {
             DiceCurioItem.refreshChipSlotCount(event.getPlayer());
             return;

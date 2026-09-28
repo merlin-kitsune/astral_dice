@@ -5,11 +5,9 @@ import com.merlinkitsune.astral_dice.item.sign.NancyLuSignItem;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.entity.player.Player;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.RenderHandEvent;
-import net.minecraftforge.client.event.RenderPlayerEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import com.merlinkitsune.astral_dice.platform.client.event.RenderHandEvent;
+import com.merlinkitsune.astral_dice.platform.client.event.RenderPlayerEvent;
+import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
 
 /**
  * 骇客立牌(nancy_lu)主动"远程侵入"的客户端渲染抑制(Forge 事件总线,仅客户端)。
@@ -29,7 +27,6 @@ import net.minecraftforge.fml.common.Mod;
  * <p>仅对本机玩家生效:nancy_lu_hidden_until 的客户端缓存按附件名保存(只承载本地玩家数据),
  * 且"不影响其他玩家"要求不抑制其他人的渲染。
  */
-@Mod.EventBusSubscriber(modid = AstralDiceMod.MODID, value = Dist.CLIENT)
 public class NancyLuClientEvents {
 
     private NancyLuClientEvents() {

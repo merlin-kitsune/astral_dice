@@ -6,8 +6,8 @@ import com.mojang.serialization.Codec;
 import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.core.particles.ParticleType;
 import net.minecraft.core.registries.Registries;
-import net.minecraftforge.registries.DeferredRegister;
-import net.minecraftforge.registries.RegistryObject;
+import com.merlinkitsune.astral_dice.platform.registry.DeferredRegister;
+import com.merlinkitsune.astral_dice.platform.registry.RegistryObject;
 
 /**
  * 本模组自有的粒子类型（目前只有一枚）。

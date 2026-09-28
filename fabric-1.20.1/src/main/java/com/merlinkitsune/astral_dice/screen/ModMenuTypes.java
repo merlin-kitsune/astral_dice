@@ -1,7 +1,7 @@
 package com.merlinkitsune.astral_dice.screen;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
-import com.merlinkitsune.starenginelib.item.CuriosCompat;
+import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 import com.merlinkitsune.astral_dice.item.dice.DiceCurioItem;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
@@ -9,8 +9,8 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.SimpleMenuProvider;
 import net.minecraft.world.flag.FeatureFlags;
 import net.minecraft.world.inventory.MenuType;
-import net.minecraftforge.registries.DeferredRegister;
-import net.minecraftforge.registries.RegistryObject;
+import com.merlinkitsune.astral_dice.platform.registry.DeferredRegister;
+import com.merlinkitsune.astral_dice.platform.registry.RegistryObject;
 
 public class ModMenuTypes {
     public static final DeferredRegister<MenuType<?>> MENU_TYPES =
@@ -21,7 +21,7 @@ public class ModMenuTypes {
 
     /** 服务端打开卡牌栏(原 OpenCardInventoryPayload 的服务端逻辑;需佩戴骰子)。 */
     public static void openCardInventory(ServerPlayer serverPlayer) {
-        var curios = CuriosCompat.getCuriosInventory(serverPlayer);
+        var curios = CuriosApi.getCuriosInventory(serverPlayer);
         if (curios.isEmpty() || curios.get().findFirstCurio(DiceCurioItem::isDiceItem).isEmpty()) {
             serverPlayer.displayClientMessage(Component.translatable("msg.astral_dice.no_dice_equipped"), true);
             return;

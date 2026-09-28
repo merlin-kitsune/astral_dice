@@ -184,3 +184,110 @@ public final class Rarity extends Enum<Rarity> {
 | K16 | `exclusiveContent` 是 `RepositoryHandler` 的方法 | 必须写在 `repositories { }` 内 |
 | K17 | Modrinth maven 坐标大小写/`+` 敏感 | 用 **version id**（如 `nm6fiGRx`） |
 | K18 | `-Xmaxerrs` 默认 100，javac 报错被截断 | 统计错误面时必须区分「截断」与「真实总数」 |
+
+---
+
+## 七、执行进展（第二轮，2026-09-29 03:xx）
+
+### 7.1 已落地的加载器层（全部为新增实现，非 stub）
+
+| 组件 | 文件 | 说明 |
+|---|---|---|
+| 事件总线 | `platform/event/{LoaderBus,IEventBus,Event,EventPriority,SubscribeEvent,Cancelable,HasResult}.java` | 自建，**保留 Forge 的优先级排序语义**（承重）；放宽为可派发任意事件对象（兼容库的 `SignActiveTriggeredEvent`） |
+| 事件类（44 个） | `platform/event/**`、`platform/client/event/**`、`platform/fml/event/**` | **从 Forge sources jar 逐字转译**（类名/构造器/访问器完全一致），非手写近似 |
+| 注册包装 | `platform/registry/{DeferredRegister,RegistryObject}.java` | 9 个注册类共 93 处 `register(...)` 与 1800+ 处 `.get()` **零改动** |
+| 饰品适配 | `compat/curios/*`（`CuriosApi`/`SlotContext`/`ICurioItem`/`ICuriosItemHandler`/`IItemHandler`/`SlotResult`/`TrinketBridge`） | Curios 形状层，底层 Trinkets 3.7.2；`onEquip/onUnequip` 的参数语义映射已逐条写明 |
+| 存档层 | `component/AttachedDataKey.java`（重写） | 改用 **Fabric API 附件**（`fabric-data-attachment-api-v1`，与 NeoForge 附件 1:1）；6 个 death-preserved 键用 `copyOnDeath()` 显式声明；**`AstralData` / `ModCapabilities` 已删除** |
+| 网络层 | `platform/network/{SimpleChannel,NetworkRegistry,NetworkEvent,PacketDistributor}.java` | 前置 VarInt 消息 id 的单通道多路复用；主线程派发语义与 Forge 一致 |
+| 配置层 | `platform/config/ForgeConfigSpec.java` | 自带最小 TOML 读写；`ModCommonConfig`（15 项）仅换 import |
+| FML 工具 shim | `platform/fml/{ModList,IModInfo,ModLoadingStage,ModLoadingException,LogicalSide}`、`platform/fml/loading/{FMLPaths,FMLEnvironment}`、`platform/api/distmarker/Dist` | 让 7 处 `ModList` 等调用点零改动 |
+| FAPI 桥接 | `platform/FabricBridges.java` | tick（server/world/player）、玩家登录/登出/重生、`ALLOW_DAMAGE`→`LivingAttackEvent`、命令注册 |
+| 访问放宽 | `src/main/resources/astral_dice.accesswidener` | `RenderType$CompositeState`、`RenderStateShard$TransparencyStateShard`（Forge 亦为 public） |
+
+### 7.2 编译收敛轨迹（`./gradlew :fabric-1.20.1:compileJava`）
+
+```
+588  → 525 → 344 → 361 → 135 → 6 → 4 → 72 → 71 → 61   （剩余 61 条）
+```
+
+### 7.3 剩余 61 条（全部已定位到具体文件与成因）
+
+| `LivingHurtEvent.java:33` | 程序包eventbus.api不存在 |  |
+| `LivingDropsEvent.java:36` | 程序包eventbus.api不存在 |  |
+| `PlayerLifecycleHandler.java:189` | 找不到符号 | com.merlinkitsune.astral_dice.platform.event.OnDatapackS |
+| `AddTableLootModifier.java:31` | 找不到符号 |  |
+| `AddTableLootModifier.java:62` | 找不到符号 | public Codec<? extends IGlobalLootModifier> codec() { |
+| `AstralLootModifiers.java:22` | 找不到符号 | public static final DeferredRegister<Codec<? extends IGl |
+| `AstralLootModifiers.java:26` | 找不到符号 | public static final RegistryObject<Codec<? extends IGlob |
+| `EntityEvent.java:146` | Deprecated 不是可重复的注释类型 | @Deprecated(forRemoval = true, since = "1.20.1") |
+| `DeferredRegister.java:99` | 不兼容的类型: RegistryObject<CAP#1>无法转换为RegistryObject<? e | out.add(e.holder()); |
+| `StarCoinWalletButtons.java:239` | leftPos 在 AbstractContainerScreen 中是 protected 访问控制 | setX(parent.leftPos + offsetX); |
+| `StarCoinWalletButtons.java:240` | topPos 在 AbstractContainerScreen 中是 protected 访问控制 | setY(parent.topPos + offsetY); |
+| `EliteTargets.java:61` | 找不到符号 | CompoundTag persistent = entity.getPersistentData(); |
+| `EffectTimerGuard.java:80` | 程序包net.minecraft.core.registries.BuiltInnet.minecraf | ResourceLocation effectId = net.minecraft.core.registrie |
+| `EffectTimerGuard.java:107` | 程序包net.minecraft.core.registries.BuiltInnet.minecraf | MobEffect effect = net.minecraft.core.registries.BuiltIn |
+| `ModEffects.java:259` | 不兼容的类型: Collection<RegistryObject<? extends MobEffec | public static final Collection<RegistryObject<MobEffect> |
+| `FirstLootChestHandler.java:192` | 找不到符号 | return player.getPersistentData().getCompound(ROOT_KEY). |
+| `FirstLootChestHandler.java:196` | 找不到符号 | CompoundTag persistent = player.getPersistentData(); |
+| `LootInjectionHandler.java:58` | 找不到符号 | if (table.getPool("astral_dice:star_coin") != null) retu |
+| `LootInjectionHandler.java:69` | 找不到符号 | .name("astral_dice:star_coin") |
+| `LootInjectionHandler.java:78` | 找不到符号 | .name("astral_dice:blank_chip") |
+| `LootInjectionHandler.java:85` | 找不到符号 | .name("astral_dice:blank_chip") |
+| `LootInjectionHandler.java:94` | 找不到符号 | .name("astral_dice:star_plate") |
+| `LootInjectionHandler.java:103` | 找不到符号 | .name("astral_dice:glass_dice") |
+| `ModEffectEvents.java:31` | 程序包net.minecraft.core.registries.BuiltInnet.minecraf | String effectId = net.minecraft.core.registries.BuiltInn |
+| `ModEffectEvents.java:45` | 程序包net.minecraft.core.registries.BuiltInnet.minecraf | String id = net.minecraft.core.registries.BuiltInnet.min |
+| `ModEffectEvents.java:62` | 程序包net.minecraft.core.registries.BuiltInnet.minecraf | EffectTimerGuard.forget(player, net.minecraft.core.regis |
+| `ModCompatibilityCheck.java:102` | 找不到符号 | IModInfo self = ModList.get().getModContainerById(Astral |
+| `ModCompatibilityCheck.java:103` | 找不到符号 | .map(container -> container.getModInfo()) |
+| `ModCreativeTabs.java:22` | 无法将类 CreativeModeTab中的方法 builder应用到给定类型; | .register("dice_tab", () -> CreativeModeTab.builder() |
+| `BaseEffectCardItem.java:573` | 方法不会覆盖或实现超类型的方法 | @Override |
+| `BaseEffectCardItem.java:576` | 找不到符号 | return super.onDroppedByPlayer(stack, player); |
+| `CardItem.java:22` | 方法不会覆盖或实现超类型的方法 | @Override |
+| `CardItem.java:93` | 方法不会覆盖或实现超类型的方法 | @Override |
+| `CardItem.java:96` | 找不到符号 | return super.onDroppedByPlayer(stack, player); |
+| `EffectCardPeriod.java:565` | 找不到符号 | var curios = com.merlinkitsune.starenginelib.item.Curios |
+| `FateGuidanceCardItem.java:150` | 无法将类 Item中的方法 getFoodProperties应用到给定类型; | net.minecraft.world.food.FoodProperties food = stack.get |
+| `CursedSwordChipItem.java:104` | 找不到符号 | if (stack.getEnchantmentLevel(marker) <= 0) { |
+| `FanBigChipItem.java:32` | 找不到符号 | var curios = com.merlinkitsune.starenginelib.item.Curios |
+| `FanSmallChipItem.java:27` | 找不到符号 | var curios = com.merlinkitsune.starenginelib.item.Curios |
+| `MotoHelmetChipItem.java:39` | 方法不会覆盖或实现超类型的方法 | @Override |
+| `RailgunChipItem.java:169` | 找不到符号 | bolt.setDamage(damage); |
+| `SandwichChipItem.java:36` | 方法不会覆盖或实现超类型的方法 | @Override |
+| `SpeedSkatesChipItem.java:31` | 方法不会覆盖或实现超类型的方法 | @Override |
+| `DiceCurioItem.java:250` | 找不到符号 | if (handler.getModifiers().containsKey(CURIO_LEGACY_MODI |
+| `DiceCurioItem.java:251` | 找不到符号 | handler.removeModifier(CURIO_LEGACY_MODIFIER); |
+| `DiceCurioItem.java:256` | 找不到符号 | AttributeModifier existing = handler.getModifiers().get( |
+| `DiceCurioItem.java:260` | 找不到符号 | handler.removeModifier(CHIP_SLOT_MODIFIER); |
+| `DiceCurioItem.java:261` | 找不到符号 | handler.addPermanentModifier(new AttributeModifier(CHIP_ |
+| `DiceCurioItem.java:263` | 找不到符号 | handler.update(); |
+| `ObsidianDiceItem.java:36` | 方法不会覆盖或实现超类型的方法 | @Override |
+| `ModItems.java:113` | 找不到符号 | net.minecraft.tags.ItemTags.create(new ResourceLocation( |
+| `ModItems.java:116` | 找不到符号 | net.minecraft.tags.ItemTags.create(new ResourceLocation( |
+| `BaseSignItem.java:606` | 找不到符号 | var results = handler.findCurios(s -> s.getItem() instan |
+| `BaseSignItem.java:619` | 找不到符号 | var results = handler.findCurios(s -> s.getItem() instan |
+| `AddTableLootModifier.java:33` | 找不到符号 | public static final Codec<AddTableLootModifier> CODEC =  |
+| `AddTableLootModifier.java:49` | 方法不会覆盖或实现超类型的方法 | @Override |
+| `AddTableLootModifier.java:61` | 方法不会覆盖或实现超类型的方法 | @Override |
+| `AstralLootModifiers.java:23` | 程序包ForgeRegistries不存在 | DeferredRegister.create(ForgeRegistries.Keys.GLOBAL_LOOT |
+| `EntityThunderHitMixin.java:61` | 找不到符号 | self.hurt(ModDamageTypes.trueDamage(level), bolt.getDama |
+| `MerchantOfferMixin.java:77` | 找不到符号 | if (itemstack.getItem().isDamageable(itemstack)) { |
+| `VersionGate.java:125` | 找不到符号 | return ModList.get().getModContainerById(AstralDiceMod.M |
+
+### 7.4 明确未完成 / 已知缺口（**必须补齐，否则属静默失效**）
+
+1. **战利品（~20 条错误）**：`AddTableLootModifier` / `AstralLootModifiers`（GLM）需整体替换为
+   `LootTableEvents.MODIFY` + `LootPool`；`LootInjectionHandler` / `FirstLootChestHandler` 的
+   `LootTableLoadEvent` 路径同样要改。
+2. **`getPersistentData()`（4 条）**：`EliteTargets` / `FirstLootChestHandler` → 改用 Fabric 附件。
+3. **客户端（未编译验证）**：`ModClientEvents` 的 HUD/按键/粒子注册需要 `AstralDiceClient` 接线；
+   `RenderTooltipEvent.Color` 无 FAPI 对应 ⇒ 需 mixin `GuiGraphics#renderTooltipInternal`。
+4. **未接线的关键事件（静默风险最高的部分）**：`LivingHurtEvent` / `LivingDamageEvent` /
+   `LivingDeathEvent`（可取消）/ `MobEffectEvent.*` / `LivingHealEvent` / `LivingChangeTargetEvent` /
+   `ProjectileImpactEvent` / `ItemTossEvent` / `EntityTravelToDimensionEvent` / `EntityTeleportEvent` /
+   `LivingDropsEvent` / `AnvilUpdateEvent` / `BlockEvent.BreakEvent` / `ItemCraftedEvent` /
+   `EntityItemPickupEvent` / `AttackEntityEvent` 等 **FAPI 无等价回调**者，需写 mixin 在对应注入点派发。
+   ⚠️ **这批未接线前，游戏能启动但战斗链完全不生效** —— 属必做的下一批。
+5. **dimension 切换**：`PlayerChangedDimensionEvent` 未接线（FAPI 无该回调），需 `ServerPlayer#changeDimension` mixin。
+6. **datagen**：已整体移出（`temp/removed/datagen_*`），需按 FAPI 的 `FabricDataGenerator` 重新实现。
+7. **冒烟测试**：未开始。

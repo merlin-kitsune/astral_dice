@@ -6,7 +6,7 @@ import com.merlinkitsune.astral_dice.damage.ModDamageTypes;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.StarLightManager;
 import com.merlinkitsune.astral_dice.particle.GlowingDustOptions;
-import com.merlinkitsune.starenginelib.item.CuriosCompat;
+import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -17,9 +17,8 @@ import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import com.merlinkitsune.astral_dice.platform.event.TickEvent;
+import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
 import org.joml.Vector3f;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,7 +55,6 @@ import com.merlinkitsune.starenginelib.combat.HostileTargets;
  * {@link GlowingDustOptions}（本模组粒子 {@code astral_dice:glowing_dust}：全亮光照 + 半透明混合，
  * 见 {@code client/GlowingDustParticle}；紫 / 金各一色）。
  */
-@Mod.EventBusSubscriber(modid = AstralDiceMod.MODID)
 public final class ShootingStarManager {
 
     /** 共享触发冷却：10 秒（两枚筹码共用，用户裁决）。 */
@@ -209,7 +207,7 @@ public final class ShootingStarManager {
     private static boolean isEquipped(ServerPlayer player, Item item) {
         // ⚠️ 平台差异：1.20.1 的 CuriosApi.getCuriosInventory 返回 LazyOptional，
         //    本仓统一经库 shim CuriosCompat（返回 Optional）访问，写法与 1.21.1 侧一致。
-        var curios = CuriosCompat.getCuriosInventory(player);
+        var curios = CuriosApi.getCuriosInventory(player);
         if (curios.isEmpty()) return false;
         return curios.get().findFirstCurio(s -> s.is(item)).isPresent();
     }

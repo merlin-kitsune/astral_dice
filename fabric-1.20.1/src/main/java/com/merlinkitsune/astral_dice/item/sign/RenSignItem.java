@@ -9,7 +9,7 @@ import com.merlinkitsune.astral_dice.item.chip.CurrentCoreChipItem;
 import com.merlinkitsune.astral_dice.network.ModNetwork;
 import com.merlinkitsune.astral_dice.target.SelfTargetable;
 import com.merlinkitsune.starenginelib.component.GameplayConstants;
-import com.merlinkitsune.starenginelib.item.CuriosCompat;
+import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 import com.merlinkitsune.starenginelib.target.TargetSelectionAction;
 import com.merlinkitsune.starenginelib.target.TargetSelectionRegistry;
 import com.merlinkitsune.starenginelib.target.TargetType;
@@ -135,7 +135,7 @@ public class RenSignItem extends BaseSignItem {
     /** 玩家是否佩戴游戏大师立牌(被动「鼠鼠救我」的佩戴判定) */
     public static boolean isEquipped(Player player) {
         if (player == null) return false;
-        return CuriosCompat.getCuriosInventory(player)
+        return CuriosApi.getCuriosInventory(player)
                 .map(h -> h.findFirstCurio(s -> s.is(ModItems.REN_SIGN.get())).isPresent())
                 .orElse(false);
     }

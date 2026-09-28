@@ -2,7 +2,7 @@ package com.merlinkitsune.astral_dice.event;
 
 import com.merlinkitsune.astral_dice.item.chip.WarpEngineChipItem;
 import net.minecraft.world.entity.player.Player;
-import net.minecraftforge.fml.ModList;
+import com.merlinkitsune.astral_dice.platform.fml.ModList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -88,9 +88,9 @@ public final class WaystoneWarpCompat {
 
     private static void registerWaystoneTeleportEvent(String className, Consumer<Object> handler) throws Exception {
         Class<?> eventClass = Class.forName(className);
-        Class<?> busClass = Class.forName("net.minecraftforge.common.MinecraftForge");
+        Class<?> busClass = Class.forName("common.MinecraftForge");
         Object bus = busClass.getField("EVENT_BUS").get(null);
-        Class<?> priorityClass = Class.forName("net.minecraftforge.eventbus.api.EventPriority");
+        Class<?> priorityClass = Class.forName("com.merlinkitsune.astral_dice.platform.event.EventPriority");
         Object normalPriority = priorityClass.getField("NORMAL").get(null);
         Method addListener = bus.getClass().getMethod("addListener",
                 priorityClass, boolean.class, Class.class, Consumer.class);

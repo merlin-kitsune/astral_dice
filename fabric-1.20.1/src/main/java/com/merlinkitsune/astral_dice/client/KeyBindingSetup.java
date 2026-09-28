@@ -6,10 +6,8 @@ import com.merlinkitsune.astral_dice.network.ModNetwork.SignActivateMessage;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.event.TickEvent;
+import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
+import com.merlinkitsune.astral_dice.platform.event.TickEvent;
 import com.merlinkitsune.astral_dice.network.ModNetwork;
 import org.lwjgl.glfw.GLFW;
 
@@ -31,7 +29,6 @@ public class KeyBindingSetup {
     // 目标选择器无独立键盘确认键：确认 = 鼠标左键、取消 = 右键+潜行 / ESC 菜单
     // （Create 强力胶式语义；旧的 Enter 确认键与客户端键盘拦截 Mixin 已删除）
 
-    @Mod.EventBusSubscriber(modid = AstralDiceMod.MODID, value = Dist.CLIENT)
     public static class ClientEvents {
         @SubscribeEvent
         public static void onClientTick(TickEvent.ClientTickEvent event) {

@@ -7,10 +7,7 @@ import net.minecraft.client.particle.ParticleProvider;
 import net.minecraft.client.particle.ParticleRenderType;
 import net.minecraft.client.particle.SpriteSet;
 import net.minecraft.core.particles.DustParticleOptions;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
 
-@OnlyIn(Dist.CLIENT)
 public final class GlowingDustParticle extends DustParticle {
     /** 全亮（{@code 0xF000F0}）—— 与 {@code SimpleAnimatedParticle}（{@code END_ROD} 的基类）取值一致。 */
     private static final int FULL_BRIGHT = 15728880;

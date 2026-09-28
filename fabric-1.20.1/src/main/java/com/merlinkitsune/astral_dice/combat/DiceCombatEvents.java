@@ -1,5 +1,5 @@
 package com.merlinkitsune.astral_dice.combat;
-import com.merlinkitsune.starenginelib.item.CuriosCompat;
+import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 import com.merlinkitsune.astral_dice.network.ModNetwork;
 
 import com.merlinkitsune.astral_dice.component.AppliedStone;
@@ -40,15 +40,14 @@ import net.minecraft.world.item.AxeItem;
 import net.minecraft.world.item.SwordItem;
 import net.minecraft.world.item.TridentItem;
 
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import com.merlinkitsune.astral_dice.platform.event.EventPriority;
+import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
 import net.minecraft.tags.DamageTypeTags;
-import net.minecraftforge.event.entity.living.LivingAttackEvent;
-import net.minecraftforge.event.entity.living.LivingChangeTargetEvent;
-import net.minecraftforge.event.entity.living.LivingDamageEvent;
-import net.minecraftforge.event.entity.living.MobEffectEvent;
-import net.minecraftforge.event.TickEvent;
+import com.merlinkitsune.astral_dice.platform.event.entity.living.LivingAttackEvent;
+import com.merlinkitsune.astral_dice.platform.event.entity.living.LivingChangeTargetEvent;
+import com.merlinkitsune.astral_dice.platform.event.entity.living.LivingDamageEvent;
+import com.merlinkitsune.astral_dice.platform.event.entity.living.MobEffectEvent;
+import com.merlinkitsune.astral_dice.platform.event.TickEvent;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -68,7 +67,6 @@ import com.merlinkitsune.astral_dice.item.card.FateGuidanceCardItem;
 import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
 import com.merlinkitsune.starenginelib.combat.HostileTargets;
 
-@Mod.EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public class DiceCombatEvents {
     // === 神秘遗物+ (Enigmatic Legacy+) / 神秘遗物扩展 (Enigmatic Addons) 联动 ===
     // 七咒之戒(神秘遗物+);启示之证(神秘遗物+);倒转之启(神秘遗物+);恩惠之典(神秘遗物扩展)
@@ -124,7 +122,7 @@ public class DiceCombatEvents {
     public static boolean hasEnigmaticCurse(Player player) {
         Item ring = BuiltInRegistries.ITEM.get(new ResourceLocation(ENIGMATIC_CURSED_RING));
         if (ring == Items.AIR) return false;
-        var curios = CuriosCompat.getCuriosInventory(player);
+        var curios = CuriosApi.getCuriosInventory(player);
         return curios.isPresent() && curios.get().findFirstCurio(s -> s.is(ring)).isPresent();
     }
 
@@ -208,7 +206,7 @@ public class DiceCombatEvents {
         // === ATTACKER DICE (unique, via curios dice slot) ===
         ItemStack diceStack = null;
         WeaponEnhancement enhancement = null;
-        var attackerCurios = CuriosCompat.getCuriosInventory(player);
+        var attackerCurios = CuriosApi.getCuriosInventory(player);
         if (attackerCurios.isPresent()) {
             var diceResult = attackerCurios.get().findFirstCurio(DiceCurioItem::isDiceItem);
             if (diceResult.isPresent()) {
@@ -251,7 +249,7 @@ public class DiceCombatEvents {
             ModAttachments.setCursedSwordBlessingTriggered(player, false);
             // 玩家对玩家:若被攻击方也佩戴骰子,则同时触发其骰神赐福(双方都拥有骰子时)
             if (target instanceof Player targetPlayer) {
-                var targetCurios = CuriosCompat.getCuriosInventory(targetPlayer);
+                var targetCurios = CuriosApi.getCuriosInventory(targetPlayer);
                 if (targetCurios.isPresent()) {
                     var targetDiceResult = targetCurios.get().findFirstCurio(DiceCurioItem::isDiceItem);
                     if (targetDiceResult.isPresent() && !targetPlayer.hasEffect(ModEffects.DICE_BLESSING.get())) {
@@ -272,7 +270,7 @@ public class DiceCombatEvents {
                     double nearestDistSqr = Double.MAX_VALUE;
                     net.minecraft.server.level.ServerLevel serverLevel =
                             (net.minecraft.server.level.ServerLevel) player.level();
-                    for (net.minecraft.world.entity.Entity entity : serverLevel.getEntities().getAll()) {
+                    for (net.minecraft.world.entity.Entity entity : serverLevel.getAllEntities()) {
                         if (entity instanceof LivingEntity living
                                 // 上下文重载:攻击者"视谁为敌"(全局规则,含曾主动攻击过攻击者的非同队玩家)
                                 // ⚠️ 排除本次攻击的目标(2026-09-24 用户裁决)与玩家自身
@@ -485,7 +483,7 @@ public class DiceCombatEvents {
         double dodgeFailDamage = 0;
         int defenseBaseDice = 0;
         if (!player.level().isClientSide() && target instanceof Player targetPlayer) {
-            var targetCurios = CuriosCompat.getCuriosInventory(targetPlayer);
+            var targetCurios = CuriosApi.getCuriosInventory(targetPlayer);
             if (targetCurios.isPresent()) {
                 var targetDiceResult = targetCurios.get().findFirstCurio(DiceCurioItem::isDiceItem);
                 if (PLAYER_DODGE_ENABLED && targetDiceResult.isEmpty()) {
@@ -785,7 +783,7 @@ public class DiceCombatEvents {
     private static void consumeDefenseCardDurabilityOnce(Player defender) {
         if (defender.level().isClientSide()) return;
         if (ModAttachments.isDefenseCardConsumedThisBlessing(defender)) return;
-        var curios = CuriosCompat.getCuriosInventory(defender);
+        var curios = CuriosApi.getCuriosInventory(defender);
         if (curios.isEmpty()) return;
         var diceResult = curios.get().findFirstCurio(DiceCurioItem::isDiceItem);
         if (diceResult.isEmpty()) return;
@@ -823,7 +821,7 @@ public class DiceCombatEvents {
             return;
         }
         if (!player.hasEffect(ModEffects.DICE_BLESSING.get())) return;
-        var curios = CuriosCompat.getCuriosInventory(player);
+        var curios = CuriosApi.getCuriosInventory(player);
         if (curios.isEmpty()) return;
         var diceResult = curios.get().findFirstCurio(DiceCurioItem::isDiceItem);
         if (diceResult.isEmpty()) return;
@@ -870,7 +868,7 @@ public class DiceCombatEvents {
         // 规格 §4.4 冻结口径)。理由:Expired 在"效果被外力移除 / 死亡 / 重连清场"时不触发会漏掉结束,
         // 且与下降沿同时订阅会重复消费 skip 计数。本处理器对骰神赐福自身的语义保持原样。
 
-        var curios = CuriosCompat.getCuriosInventory(player);
+        var curios = CuriosApi.getCuriosInventory(player);
         if (curios.isEmpty()) return;
         var diceResult = curios.get().findFirstCurio(DiceCurioItem::isDiceItem);
         if (diceResult.isEmpty()) return;
@@ -1018,7 +1016,7 @@ public class DiceCombatEvents {
 
     // 玩家是否持有骰子(curio 骰子槽)
     public static boolean attackerHasDiceCurio(Player player) {
-        var curios = CuriosCompat.getCuriosInventory(player);
+        var curios = CuriosApi.getCuriosInventory(player);
         return curios.isPresent() && curios.get().findFirstCurio(DiceCurioItem::isDiceItem).isPresent();
     }
 
@@ -1265,7 +1263,7 @@ public class DiceCombatEvents {
         // 骰子与卡牌(与正常攻击路径一致的上下文,仅用于攻击力加成链与攻击牌随机掷骰)
         ItemStack diceStack = null;
         WeaponEnhancement enhancement = null;
-        var curios = CuriosCompat.getCuriosInventory(player);
+        var curios = CuriosApi.getCuriosInventory(player);
         if (curios.isPresent()) {
             var diceResult = curios.get().findFirstCurio(DiceCurioItem::isDiceItem);
             if (diceResult.isPresent()) {
@@ -1325,7 +1323,7 @@ public class DiceCombatEvents {
         for (ItemStack stack : new ItemStack[]{player.getMainHandItem(), player.getOffhandItem()}) {
             if (stack.isEmpty()) continue;
             for (var entry : stack.getItem()
-                    .getAttributeModifiers(net.minecraft.world.entity.EquipmentSlot.MAINHAND, stack).entries()) {
+                    .getDefaultAttributeModifiers(net.minecraft.world.entity.EquipmentSlot.MAINHAND).entries()) {
                 if (entry.getKey() == Attributes.ATTACK_DAMAGE
                         && entry.getValue().getOperation()
                         == net.minecraft.world.entity.ai.attributes.AttributeModifier.Operation.ADDITION) {

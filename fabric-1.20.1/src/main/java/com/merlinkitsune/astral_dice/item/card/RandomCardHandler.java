@@ -86,14 +86,14 @@ public final class RandomCardHandler {
 
     // 专属牌注册表:随机发放强制排除(活体书页/命运的指引/符卡-福祸/撕咬/龙之咆哮)
     // 存储 DeferredItem 引用,isExclusive 时延迟解析——避免静态初始化阶段调用 .get()
-    private static final Set<net.minecraftforge.registries.RegistryObject<net.minecraft.world.item.Item>> EXCLUSIVE_CARDS =
+    private static final Set<com.merlinkitsune.astral_dice.platform.registry.RegistryObject<net.minecraft.world.item.Item>> EXCLUSIVE_CARDS =
             new HashSet<>();
 
     private RandomCardHandler() {
     }
 
     // 注册专属牌(不参与任何随机卡牌池)
-    public static void registerExclusiveCard(net.minecraftforge.registries.RegistryObject<net.minecraft.world.item.Item> item) {
+    public static void registerExclusiveCard(com.merlinkitsune.astral_dice.platform.registry.RegistryObject<net.minecraft.world.item.Item> item) {
         EXCLUSIVE_CARDS.add(item);
     }
 

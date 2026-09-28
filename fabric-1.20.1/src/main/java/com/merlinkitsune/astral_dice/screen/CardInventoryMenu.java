@@ -20,8 +20,8 @@ import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.DataSlot;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
-import com.merlinkitsune.starenginelib.item.CuriosCompat;
-import top.theillusivec4.curios.api.CuriosApi;
+import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
+import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -241,7 +241,7 @@ public class CardInventoryMenu extends AbstractContainerMenu {
         this.maxDefenseCost = GameplayConstants.cardCostForStar(starLevel);
     }
     private ItemStack findEquippedDice() {
-        var curios = CuriosCompat.getCuriosInventory(player);
+        var curios = CuriosApi.getCuriosInventory(player);
         if (curios.isEmpty()) return ItemStack.EMPTY;
         var result = curios.get().findFirstCurio(DiceCurioItem::isDiceItem);
         return result.isPresent() ? result.get().stack() : ItemStack.EMPTY;
@@ -474,7 +474,7 @@ public class CardInventoryMenu extends AbstractContainerMenu {
             int slotCost = stoneCost(type);
             int usedWithoutThis = 0;
             for (int i = 0; i < attackSlots; i++) {
-                if (i == this.getSlotIndex()) continue;
+                if (i == this.index) continue;
                 ItemStack s = cardContainer.getItem(i);
                 if (!s.isEmpty()) {
                     String t = itemToStoneType(s);
@@ -504,7 +504,7 @@ public class CardInventoryMenu extends AbstractContainerMenu {
             int slotCost = stoneCost(type);
             int usedWithoutThis = 0;
             for (int i = attackSlots; i < cardSlots; i++) {
-                if (i == this.getSlotIndex()) continue;
+                if (i == this.index) continue;
                 ItemStack s = cardContainer.getItem(i);
                 if (!s.isEmpty()) {
                     String t = itemToStoneType(s);

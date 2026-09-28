@@ -1,0 +1,167 @@
+/*
+ * Copyright (c) Forge Development LLC and contributors
+ * SPDX-License-Identifier: LGPL-2.1-only
+ */
+
+package com.merlinkitsune.astral_dice.platform.event.entity;
+
+import net.minecraft.core.SectionPos;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityDimensions;
+import net.minecraft.world.entity.Pose;
+// DROPPED-FORGE-IMPORT common.MinecraftForge
+// DROPPED-FORGE-IMPORT common.extensions.IForgeEntity
+import com.merlinkitsune.astral_dice.platform.event.Cancelable;
+import com.merlinkitsune.astral_dice.platform.event.Event;
+
+/**
+ * EntityEvent is fired when an event involving any Entity occurs.<br>
+ * If a method utilizes this {@link com.merlinkitsune.astral_dice.platform.event.Event} as its parameter, the method will
+ * receive every child event of this class.<br>
+ * <br>
+ * {@link #entity} contains the entity that caused this event to occur.<br>
+ * <br>
+ * All children of this event are fired on the {@link MinecraftForge#EVENT_BUS}.<br>
+ **/
+public class EntityEvent extends Event
+{
+    private final Entity entity;
+
+    public EntityEvent(Entity entity)
+    {
+        this.entity = entity;
+    }
+
+    public Entity getEntity()
+    {
+        return entity;
+    }
+
+    /**
+     * EntityConstructing is fired when an Entity is being created. <br>
+     * This event is fired within the constructor of the Entity.<br>
+     * <br>
+     * This event is not {@link eventbus.api.Cancelable}.<br>
+     * <br>
+     * This event does not have a result. {@link HasResult}<br>
+     * <br>
+     * This event is fired on the {@link MinecraftForge#EVENT_BUS}.<br>
+     **/
+    public static class EntityConstructing extends EntityEvent
+    {
+        public EntityConstructing(Entity entity)
+        {
+            super(entity);
+        }
+    }
+
+    /**
+     * This event is fired on server and client after an Entity has entered a different section. <br>
+     * Sections are 16x16x16 block grids of the world.<br>
+     * This event does not fire when a new entity is spawned, only when an entity moves from one section to another one.
+     * Use {@link EntityJoinLevelEvent} to detect new entities joining the world.
+     * <br>
+     * This event is not {@link eventbus.api.Cancelable}.<br>
+     * <br>
+     * This event does not have a result. {@link HasResult}
+     * <br>
+     * This event is fired on the {@link common.MinecraftForge#EVENT_BUS}.<br>
+     **/
+    public static class EnteringSection extends EntityEvent
+    {
+
+        private final long packedOldPos;
+        private final long packedNewPos;
+
+        public EnteringSection(Entity entity, long packedOldPos, long packedNewPos)
+        {
+            super(entity);
+            this.packedOldPos = packedOldPos;
+            this.packedNewPos = packedNewPos;
+        }
+
+        /**
+         * A packed version of the old section's position. This is to be used with the various methods in {@link SectionPos},
+         * such as {@link SectionPos#of(long)} or {@link SectionPos#x(long)} to avoid allocation.
+         * @return the packed position of the old section
+         */
+        public long getPackedOldPos()
+        {
+            return packedOldPos;
+        }
+
+        /**
+         * A packed version of the new section's position. This is to be used with the various methods in {@link SectionPos},
+         * such as {@link SectionPos#of(long)} or {@link SectionPos#x(long)} to avoid allocation.
+         * @return the packed position of the new section
+         */
+        public long getPackedNewPos()
+        {
+            return packedNewPos;
+        }
+
+        /**
+         * @return the position of the old section
+         */
+        public SectionPos getOldPos()
+        {
+            return SectionPos.of(packedOldPos);
+        }
+
+        /**
+         * @return the position of the new section
+         */
+        public SectionPos getNewPos()
+        {
+            return SectionPos.of(packedNewPos);
+        }
+
+        /**
+         * Whether the chunk has changed as part of this event. If this method returns false, only the Y position of the
+         * section has changed.
+         */
+        public boolean didChunkChange()
+        {
+            return SectionPos.x(packedOldPos) != SectionPos.x(packedNewPos) || SectionPos.z(packedOldPos) != SectionPos.z(packedNewPos);
+        }
+
+    }
+
+    /**
+     * CAREFUL: This is also fired in the Entity constructor. Therefore, the entity (subclass) might not be fully initialized. Check {@link Entity#isAddedToWorld()} or {@code !Entity.firstUpdate}.<br>
+     * If you change the player's size, you probably want to set the eye height accordingly as well<br>
+     * <br>
+     * This event is not {@link Cancelable}.<br>
+     * <br>
+     * This event does not have a result. {@link HasResult}
+     * <br>
+     * This event is fired on the {@link MinecraftForge#EVENT_BUS}.<br>
+     **/
+    @Deprecated(forRemoval = true, since = "1.20.1") // Remove Entity Eye/Size hooks, as they need to be redesigned
+
+
+    /**
+     *Remove Entity Eye/Size hooks, as they need to be redesigned, this is no longer fired in any forge/vanilla code.
+     **/
+    @Deprecated(forRemoval = true, since = "1.20.1")
+    public static class EyeHeight extends EntityEvent {
+        private final Pose pose;
+        private final EntityDimensions size;
+        private final float originalEyeHeight;
+        private float newEyeHeight;
+
+        public EyeHeight(Entity entity, Pose pose, EntityDimensions size, float eyeHeight) {
+            super(entity);
+            this.pose = pose;
+            this.size = size;
+            this.originalEyeHeight = eyeHeight;
+            this.newEyeHeight = eyeHeight;
+        }
+
+        public Pose getPose() { return pose; }
+        public EntityDimensions getSize() { return size; }
+        public float getOriginalEyeHeight() { return originalEyeHeight; }
+        public float getNewEyeHeight() { return newEyeHeight; }
+        public void setNewEyeHeight(float newEyeHeight) { this.newEyeHeight = newEyeHeight; }
+    }
+}

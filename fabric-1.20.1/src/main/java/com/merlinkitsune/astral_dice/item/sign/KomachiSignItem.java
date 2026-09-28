@@ -1,5 +1,5 @@
 package com.merlinkitsune.astral_dice.item.sign;
-import com.merlinkitsune.starenginelib.item.CuriosCompat;
+import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 
 import com.merlinkitsune.starenginelib.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
@@ -14,8 +14,7 @@ import com.merlinkitsune.astral_dice.item.card.EffectCardPeriod;
 import com.merlinkitsune.astral_dice.item.card.ExclusiveCardUtil;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
+import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
 
 /**
  * 忍者立牌。
@@ -37,7 +36,6 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
  * </ol>
  * 主动技能自身冷却中的拒绝仍由 {@link BaseSignItem#performSkillForCurio} 统一处理。
  */
-@Mod.EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public class KomachiSignItem extends BaseSignItem {
     /** 锁定(生效中)态的宽限时长(1:00):期内未出任何效果牌 ⇒ 强制重置出牌状态并起主动冷却 */
     public static final int LOCK_GRACE_TICKS = 1200;
@@ -61,7 +59,7 @@ public class KomachiSignItem extends BaseSignItem {
      * 判定入口统一在 {@code SpellDamageRegistry},禁止在别处直接读原附件值做加成或显示加成。
      */
     public static boolean isEquipped(Player player) {
-        var curios = CuriosCompat.getCuriosInventory(player);
+        var curios = CuriosApi.getCuriosInventory(player);
         return curios.isPresent() && curios.get().findFirstCurio(s -> s.is(ModItems.KOMACHI_SIGN.get())).isPresent();
     }
 
@@ -119,7 +117,7 @@ public class KomachiSignItem extends BaseSignItem {
     // 被动:每使用第 3 张效果牌时触发(独立计数)——复制最后一张效果牌 + 主动技能冷却 -30% + 伤害类效果牌伤害加成 +1
     public static void onEffectCardUsed(Player player, String cardType) {
         if (player.level().isClientSide()) return;
-        var curios = CuriosCompat.getCuriosInventory(player);
+        var curios = CuriosApi.getCuriosInventory(player);
         if (curios.isEmpty()) return;
         if (curios.get().findFirstCurio(s -> s.is(ModItems.KOMACHI_SIGN.get())).isEmpty()) return;
 

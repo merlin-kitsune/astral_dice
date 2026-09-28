@@ -5,12 +5,11 @@ import com.merlinkitsune.starenginelib.combat.PlayerHostilityTracker;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
-import net.minecraftforge.event.entity.living.LivingDamageEvent;
-import net.minecraftforge.event.entity.living.LivingDeathEvent;
-import net.minecraftforge.event.entity.player.PlayerEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import com.merlinkitsune.astral_dice.platform.event.entity.living.LivingDamageEvent;
+import com.merlinkitsune.astral_dice.platform.event.entity.living.LivingDeathEvent;
+import com.merlinkitsune.astral_dice.platform.event.entity.player.PlayerEvent;
+import com.merlinkitsune.astral_dice.platform.event.EventPriority;
+import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
 
 /**
  * 敌对玩家记录的**平台事件挂点**(数据表与口径已下沉到库
@@ -36,7 +35,6 @@ import net.minecraftforge.fml.common.Mod;
  * 死亡重生克隆、退出服务器时,把它作为攻击者的记录与作为目标的记录**一并**清除 ⇒
  * 死亡重生后名单为空,不跨死亡残留。
  */
-@Mod.EventBusSubscriber(modid = AstralDiceMod.MODID)
 public final class PlayerHostilityTrackerEvents {
 
     private PlayerHostilityTrackerEvents() {

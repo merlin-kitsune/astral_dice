@@ -122,7 +122,7 @@ public final class VersionGate {
             return fromResource.trim();
         }
         try {
-            return net.minecraftforge.fml.ModList.get().getModContainerById(AstralDiceMod.MODID)
+            return ModList.get().getModContainerById(AstralDiceMod.MODID)
                     .map(container -> container.getModInfo().getVersion().toString())
                     .filter(value -> !value.isBlank())
                     .orElseGet(() -> {

@@ -16,9 +16,8 @@ import com.merlinkitsune.astral_dice.audio.SoundPlayback;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import com.merlinkitsune.astral_dice.platform.event.TickEvent;
+import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
 import org.joml.Vector3f;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,7 +54,6 @@ import java.util.concurrent.ThreadLocalRandom;
  * <p><b>平台差异（与 1.21.1 逐字等价）</b>：本线用 {@code TickEvent.ServerTickEvent} +
  * {@code phase == END} 早退（1.21.1 为 {@code ServerTickEvent.Post}）。
  */
-@Mod.EventBusSubscriber(modid = AstralDiceMod.MODID)
 public final class OrbitalBombardmentManager {
 
     /** 轰炸范围半径（格，以指定目标为中心）。 */

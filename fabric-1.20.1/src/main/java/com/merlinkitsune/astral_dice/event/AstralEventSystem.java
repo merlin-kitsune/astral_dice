@@ -1,5 +1,5 @@
 package com.merlinkitsune.astral_dice.event;
-import com.merlinkitsune.starenginelib.item.CuriosCompat;
+import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 import com.merlinkitsune.astral_dice.network.ModNetwork;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
@@ -87,7 +87,7 @@ public final class AstralEventSystem {
     }
 
     private static boolean holdsSign(Player player, net.minecraft.world.item.Item signItem) {
-        var curios = CuriosCompat.getCuriosInventory(player);
+        var curios = CuriosApi.getCuriosInventory(player);
         return curios.isPresent() && curios.get().findFirstCurio(s -> s.is(signItem)).isPresent();
     }
 

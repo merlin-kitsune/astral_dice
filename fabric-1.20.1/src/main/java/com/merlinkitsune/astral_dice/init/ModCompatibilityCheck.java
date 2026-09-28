@@ -6,10 +6,9 @@ import java.util.List;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.economy.StarCoinCurrency;
 
-import net.minecraftforge.fml.ModList;
-import net.minecraftforge.fml.ModLoadingException;
-import net.minecraftforge.fml.ModLoadingStage;
-import net.minecraftforge.forgespi.language.IModInfo;
+import com.merlinkitsune.astral_dice.platform.fml.ModList;
+import com.merlinkitsune.astral_dice.platform.fml.ModLoadingException;
+import com.merlinkitsune.astral_dice.platform.fml.ModLoadingStage;
 
 /**
  * 不兼容模组黑名单：命中即拒绝启动（抛 {@link ModLoadingException}

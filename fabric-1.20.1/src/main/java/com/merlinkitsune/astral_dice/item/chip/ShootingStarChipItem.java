@@ -3,7 +3,7 @@ package com.merlinkitsune.astral_dice.item.chip;
 import com.merlinkitsune.astral_dice.combat.ShootingStarManager;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
-import top.theillusivec4.curios.api.SlotContext;
+import com.merlinkitsune.astral_dice.compat.curios.SlotContext;
 
 /**
  * 「飞星」筹码（紫色飞星 / 金色飞星）的**物品类**（1.20.1 Forge 移植版）。

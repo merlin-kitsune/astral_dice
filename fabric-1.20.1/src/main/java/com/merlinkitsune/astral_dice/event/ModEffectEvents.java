@@ -5,13 +5,11 @@ import com.merlinkitsune.astral_dice.effect.ModEffects;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.player.Player;
 
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.event.entity.living.MobEffectEvent;
+import com.merlinkitsune.astral_dice.platform.event.EventPriority;
+import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
+import com.merlinkitsune.astral_dice.platform.event.entity.living.MobEffectEvent;
 
 import com.merlinkitsune.starenginelib.event.ModEffectRemoval;
-@Mod.EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public class ModEffectEvents {
     @SubscribeEvent(priority = EventPriority.HIGH)
     public static void onModEffectRemovalPrevented(MobEffectEvent.Remove event) {
@@ -30,7 +28,7 @@ public class ModEffectEvents {
             event.setCanceled(true);
             return;
         }
-        String effectId = net.minecraftforge.registries.ForgeRegistries.MOB_EFFECTS.getKey(effect.getEffect()).toString();
+        String effectId = net.minecraft.core.registries.BuiltInnet.minecraft.core.registries.BuiltInRegistries.MOB_EFFECT.getKey(effect.getEffect()).toString();
         if (effectId != null && effectId.startsWith(AstralDiceMod.MODID + ":")) {
             event.setCanceled(true);
         }
@@ -44,7 +42,7 @@ public class ModEffectEvents {
         if (!(event.getEntity() instanceof Player player)) return;
         MobEffectInstance instance = event.getEffectInstance();
         if (instance == null || instance.getEffect() == null) return;
-        String id = net.minecraftforge.registries.ForgeRegistries.MOB_EFFECTS.getKey(instance.getEffect()).toString();
+        String id = net.minecraft.core.registries.BuiltInnet.minecraft.core.registries.BuiltInRegistries.MOB_EFFECT.getKey(instance.getEffect()).toString();
         if (id == null || !id.startsWith(AstralDiceMod.MODID + ":")) return;
         EffectTimerGuard.record(player, instance);
     }
@@ -61,7 +59,7 @@ public class ModEffectEvents {
         if (!(event.getEntity() instanceof Player player)) return;
         MobEffectInstance instance = event.getEffectInstance();
         if (instance == null || instance.getEffect() == null) return;
-        EffectTimerGuard.forget(player, net.minecraftforge.registries.ForgeRegistries.MOB_EFFECTS.getKey(instance.getEffect()).toString());
+        EffectTimerGuard.forget(player, net.minecraft.core.registries.BuiltInnet.minecraft.core.registries.BuiltInRegistries.MOB_EFFECT.getKey(instance.getEffect()).toString());
     }
 
 }

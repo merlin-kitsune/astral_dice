@@ -15,10 +15,8 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.RenderLevelStageEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import com.merlinkitsune.astral_dice.platform.client.event.RenderLevelStageEvent;
+import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
 
 import java.util.List;
 
@@ -63,7 +61,6 @@ import java.util.List;
  *       {@code addVertex(pose,...).setColor/setUv/setOverlay/setLight/setNormal}）。</li>
  * </ul>
  */
-@Mod.EventBusSubscriber(modid = AstralDiceMod.MODID, value = Dist.CLIENT)
 public final class TargetSelectionHighlighter {
     /** 16×16 纯白全不透明纹理（棱柱颜色 100% 由顶点色决定，纹理只是 shader 的必需采样源） */
     private static final ResourceLocation BLANK_TEXTURE =

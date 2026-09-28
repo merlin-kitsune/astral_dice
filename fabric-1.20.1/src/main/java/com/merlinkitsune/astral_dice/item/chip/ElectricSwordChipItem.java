@@ -3,13 +3,12 @@ package com.merlinkitsune.astral_dice.item.chip;
 import com.merlinkitsune.starenginelib.combat.HostileTargets;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.item.ChargeManager;
-import com.merlinkitsune.starenginelib.item.CuriosCompat;
+import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.event.entity.living.LivingDeathEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import com.merlinkitsune.astral_dice.platform.event.entity.living.LivingDeathEvent;
+import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -22,7 +21,6 @@ import java.util.UUID;
  *   <li>击杀 10 个敌对目标后,获得 2 点充能。</li>
  * </ul>
  */
-@Mod.EventBusSubscriber(modid = AstralDiceMod.MODID)
 public class ElectricSwordChipItem extends BaseChipItem {
     /** 每多少点充能提供 1 点攻击力 */
     public static final int CHARGE_PER_ATTACK = 4;
@@ -39,7 +37,7 @@ public class ElectricSwordChipItem extends BaseChipItem {
 
     public static boolean isEquipped(Player player) {
         if (player == null) return false;
-        var curios = CuriosCompat.getCuriosInventory(player);
+        var curios = CuriosApi.getCuriosInventory(player);
         return curios.isPresent() && curios.get().findFirstCurio(s -> s.is(ModItems.ELECTRIC_SWORD.get())).isPresent();
     }
 

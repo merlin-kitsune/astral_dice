@@ -1,5 +1,7 @@
 package com.merlinkitsune.astral_dice.event;
 
+import com.merlinkitsune.astral_dice.platform.fml.ModList;
+
 import com.merlinkitsune.astral_dice.component.AppliedStone;
 import com.merlinkitsune.starenginelib.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
@@ -16,9 +18,8 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.event.entity.player.ItemTooltipEvent;
+import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
+import com.merlinkitsune.astral_dice.platform.event.entity.player.ItemTooltipEvent;
 
 import java.util.List;
 
@@ -71,7 +72,6 @@ import com.merlinkitsune.astral_dice.item.chip.RevengeHalberdChipItem;
  *
  * <p>审计：{@code pwsh -NoProfile -File scripts/audit/tooltip_color_audit.ps1}（退出码 0 = 无违规）。
  */
-@Mod.EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public class ModTooltipHandler {
     private static void addSignKeyHint(List<Component> tooltip) {
         // 按键名使用独立黄色 Component,避免翻译占位符插入时丢失 §e 染色
@@ -261,7 +261,7 @@ public class ModTooltipHandler {
     // (getstatic 的字段类型须在方法被调用时解析,catch 不包住解析)。
     // 收进 client 包后,本类字节码里不再出现任何客户端类型。
     private static String signKeyName() {
-        if (net.minecraftforge.fml.loading.FMLEnvironment.dist == net.minecraftforge.api.distmarker.Dist.CLIENT) {
+        if (com.merlinkitsune.astral_dice.platform.fml.loading.FMLEnvironment.dist == com.merlinkitsune.astral_dice.platform.api.distmarker.Dist.CLIENT) {
             String name = com.merlinkitsune.astral_dice.client.ClientKeyNames.activateSignKey();
             if (name != null) {
                 return name;
@@ -272,7 +272,7 @@ public class ModTooltipHandler {
 
     // 卡牌栏按键显示名(客户端取实际映射,服务端/异常回退 "H")
     private static String cardInventoryKeyName() {
-        if (net.minecraftforge.fml.loading.FMLEnvironment.dist == net.minecraftforge.api.distmarker.Dist.CLIENT) {
+        if (com.merlinkitsune.astral_dice.platform.fml.loading.FMLEnvironment.dist == com.merlinkitsune.astral_dice.platform.api.distmarker.Dist.CLIENT) {
             String name = com.merlinkitsune.astral_dice.client.ClientKeyNames.cardInventoryKeyName();
             if (name != null) {
                 return name;
@@ -675,7 +675,7 @@ public class ModTooltipHandler {
             addSignPassiveTitle(tooltip, "剑气");
             addSignLines(tooltip, "tooltip.astral_dice.sign.misaki_passive");
             // 神秘遗物+ 联动描述:仅当安装神秘遗物+ 模组时展示(置于备注区,紫色,无标题)
-            if (net.minecraftforge.fml.ModList.get().isLoaded("enigmaticlegacyplus")) {
+            if (ModList.get().isLoaded("enigmaticlegacyplus")) {
                 tooltip.add(Component.empty());
                 addSignNoteLines(tooltip, "tooltip.astral_dice.sign.misaki_enigmatic");
             }
@@ -967,7 +967,7 @@ public class ModTooltipHandler {
             tooltip.add(tt("tooltip.astral_dice.chip.cursed_sword_blue_curse")
                     .withStyle(ChatFormatting.GRAY));
             tooltip.add(Component.empty());
-            if (net.minecraftforge.fml.ModList.get().isLoaded("enigmaticlegacyplus")) {
+            if (ModList.get().isLoaded("enigmaticlegacyplus")) {
                 addChipLines(tooltip, "tooltip.astral_dice.chip.cursed_sword_enigmatic",
                         ChatFormatting.LIGHT_PURPLE);
             }
@@ -1221,10 +1221,10 @@ public class ModTooltipHandler {
             tooltip.add(Component.translatable("tooltip.astral_dice.card.fate_saturation")
                     .withStyle(ChatFormatting.GRAY));
             // 联动条目:仅安装相关模组时显示(备注区,紫色,无编号)
-            if (net.minecraftforge.fml.ModList.get().isLoaded("enigmaticlegacyplus")) {
+            if (ModList.get().isLoaded("enigmaticlegacyplus")) {
                 addSignNoteLines(tooltip, "tooltip.astral_dice.card.fate_curse_mitigation");
             }
-            if (net.minecraftforge.fml.ModList.get().isLoaded("irons_spellbooks")) {
+            if (ModList.get().isLoaded("irons_spellbooks")) {
                 addSignNoteLines(tooltip, "tooltip.astral_dice.card.fate_spell_mana");
             }
             addEffectCardPlayCountTooltip(tooltip, player);

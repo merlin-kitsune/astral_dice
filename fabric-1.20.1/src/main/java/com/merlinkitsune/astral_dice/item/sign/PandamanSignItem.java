@@ -4,7 +4,7 @@ import com.merlinkitsune.starenginelib.combat.HostileTargets;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
-import com.merlinkitsune.starenginelib.item.CuriosCompat;
+import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 import com.merlinkitsune.astral_dice.item.HealingManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.chip.FriendshipBadgeChipItem;
@@ -13,7 +13,7 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffect;
-import net.minecraftforge.event.entity.living.MobEffectEvent;
+import com.merlinkitsune.astral_dice.platform.event.entity.living.MobEffectEvent;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
@@ -23,9 +23,8 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import top.theillusivec4.curios.api.SlotContext;
+import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
+import com.merlinkitsune.astral_dice.compat.curios.SlotContext;
 
 import java.util.List;
 import java.util.Optional;
@@ -49,7 +48,6 @@ import java.util.concurrent.ThreadLocalRandom;
  *   <li>反击时若生命值未满,额外增加缺失生命值等值的伤害(常驻被动)。</li>
  * </ul>
  */
-@Mod.EventBusSubscriber(modid = AstralDiceMod.MODID)
 public class PandamanSignItem extends BaseSignItem {
     /** 被动队友范围 */
     public static final double FRIENDLY_RANGE = 8.0;
@@ -138,7 +136,7 @@ public class PandamanSignItem extends BaseSignItem {
     // 玩家是否佩戴肉弹战车立牌
     public static boolean isEquipped(Player player) {
         if (player == null) return false;
-        var curios = CuriosCompat.getCuriosInventory(player);
+        var curios = CuriosApi.getCuriosInventory(player);
         return curios.isPresent()
                 && curios.get().findFirstCurio(s -> s.is(ModItems.PANDAMAN_SIGN.get())).isPresent();
     }

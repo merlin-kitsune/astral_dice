@@ -7,11 +7,9 @@ import com.merlinkitsune.astral_dice.component.WeaponEnhancement;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import net.minecraft.world.item.ItemStack;
 
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.event.AnvilUpdateEvent;
+import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
+import com.merlinkitsune.astral_dice.platform.event.AnvilUpdateEvent;
 
-@Mod.EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public class AnvilUpgradeHandler {
     @SubscribeEvent
     public static void onAnvilUpdate(AnvilUpdateEvent event) {
