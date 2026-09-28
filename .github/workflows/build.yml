@@ -73,7 +73,12 @@ jobs:
         # (缺它时 Forge 加载界面告警且该模组资源包不注册);两批「原拟 1.0.1」的内容也并入 1.0.0)。
         # `1.0.1`=**从未推送、从未发布**;`1.0.2`=**从未推送、从未发布**(内容 = HostileTargets 新增
         # 「额外敌对判定」注入 seam,库提交 cd579e7)⇒ 按「未发布版本的改动并入原条目」并入 `1.0.3`。
-        # 现行 ref = `1.0.3` = 库提交 e407844(= 该 seam + **敌对目标口径重写**)。
+        # 现行 ref(multi-dev-next 的副本) = 开发线库 `2.0.0-SNAPSHOT.3` = 库 `next` 分支提交 89580f8
+        # (= `2.0.0-SNAPSHOT.2` + 自主线 `1.0.5` 移植「会被激怒的可驯服动物计入敌对目标」)。
+        # ⚠️ 该提交**尚未推送** ⇒ 推库 `next` 之前,本 workflow 必断在 Checkout(2026-09-28 状态)。
+        # ⚠️ 本 workflow 的 `on.push.branches` 同时含 multi-main 与 multi-dev-next,但 GitHub 用的是
+        #    **被推分支各自那份 build.yml** ⇒ 本文件的 ref 只需服务开发线;发布线那份另行钉 1.x 的 SHA。
+        # （历史）1.0.3 = 库提交 e407844(= 「额外敌对判定」seam + **敌对目标口径重写**)。
         # ✅ **2026-09-24:库已推送**(远端 `main` = e407844;其 CI 自动打 tag `1.0.3` 并发布三平台 jar
         #    的 Release;消费方 CI 同日跑绿)⇒ 本 ref 可被 CI 检出,不再存在「库推送前必然断在
         #    Checkout」的窗口。跳号的由来:`1.0.1` 从未发布,但 mavenLocal 留有已撤销版本的残留目录,
@@ -81,7 +86,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: merlin-kitsune/starengine_lib
-          ref: e407844c5efbd39e812c809346ce7bae08186a1f   # = 1.0.3 = HostileTargets 新增「额外敌对判定」注入 seam(ExtraHostileProbe / installExtraHostileProbe,供消费方把试验假人声明为敌对目标)+ **敌对目标口径重写**(敌对生物 ∪ 中立生物(宠物除外));语义变更 ⇒ 消费方区间下界随之收紧为 [1.0.3,2.0)
+          ref: 89580f80b5160a0cdfdd3e3d66d72603b2382c87   # = 开发线库 2.0.0-SNAPSHOT.3 = 库 `next` 分支提交 89580f8（= `2.0.0-SNAPSHOT.2` + 自主线 `1.0.5` 移植「会被激怒的可驯服动物计入敌对目标」= HostileTargets#isAngerableTamedMount）。⚠️ **本 ref 要求库 `next` 分支已推送**(git -C <lib> push origin next)，否则本 job 断在 Checkout；发布线 multi-main 的副本另有自己的 ref（其当前值为库 1.0.5 对应 SHA）
           path: .ci/starengine_lib
           fetch-depth: 1
 
