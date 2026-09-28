@@ -39,7 +39,7 @@ Astral Dice 是一个以「骰子」为核心的生存扩展模组。戴上骰�
 | 支持 | 子项目 | Minecraft | 加载器 | Java | 当前模组版本 | 帕秋莉手册 |
 |---|---|---|---|---|---|---|
 | ✅ | `neoforge-1.21.1` | 1.21.1 | NeoForge 21.1.235 | 21 | 1.3.2 | ✅ |
-| ✅ | `forge-1.20.1` | 1.20.1 | Forge 47.4.10 | 17 | 1.3.2 | ✅ |
+| ✅ | `forge-1.20.1` | 1.20.1 | Forge 47.4.10 | 17 | 1.3.2-hotfix | ✅ |
 | ✅ | `neoforge-26.1.2` | 26.1.2 | NeoForge 26.1.2.109 | 25 | 1.3.2-beta.1 | ✅ |
 
 - `neoforge-1.21.1` 与 `forge-1.20.1` 是**发布线**（功能对等，两者的 jar 随每个 GitHub Release 发布）。
@@ -49,7 +49,7 @@ Astral Dice 是一个以「骰子」为核心的生存扩展模组。戴上骰�
 |---|---|
 | 前置模组（**已内嵌，无需单独安装**） | **StarEngine Lib**（`starengine_lib`）**自 1.3.1 起内嵌于本模组**（当前内嵌 **`1.0.5`**，兼容区间 **`[1.0.5,2.0)`**）：加载器启动时自动载入内嵌副本。⚠️ **请勿**再往 `mods` 里单独放 `starengine_lib-*.jar` —— 加载器按 modId 去重时优先采用那一份，更旧的会盖掉内嵌库 |
 | 前置模组 | Curios API（1.20.1 用 Curios 5.x；1.21.1 用 Curios 9+；**26.1.2 用 Curios 15+**，缺失时会在 NeoForge 依赖排序阶段被拒绝）。⚠️ 该前置**由本模组声明**；StarEngine Lib 本身仅在 forge 侧把它作为**编译期**依赖（不进库的 `mods.toml`） |
-| 前置模组（仅 1.20.1） | **Mixin Booster ≥ 0.1.3**，**强制**：未安装时游戏会在 Forge 依赖排序阶段直接拒绝启动并提示缺少 `mixinbooster`；装旧版本同样会被拒 |
+| 前置模组（仅 1.20.1） | **Mixin 运行时二选一**（自 1.3.2-hotfix 起）：**Mixin Booster ≥ 0.1.3** **或** **Sinytra Connector**。整合包自带 Sinytra Connector 时**无需额外安装**（Connector 自带同一套 Mixin 运行时，此时 Mixin Booster 会自动让位）；两者都没有才会拒绝启动并提示安装方式。装了**旧版** Mixin Booster 仍会被拒 |
 | 可选联动 | Bountiful、帕秋莉手册 |
 
 ---
@@ -58,7 +58,7 @@ Astral Dice 是一个以「骰子」为核心的生存扩展模组。戴上骰�
 
 - **发布页**：[GitHub Releases](https://github.com/merlin-kitsune/astral_dice/releases)（每个版本附**三个** jar：发布线两个 + 26.1.2 的 `-beta` jar）
 - 支持平台：Minecraft 1.21.1 / NeoForge、1.20.1 / Forge（发布线）；Minecraft 26.1.2 / NeoForge（迁移线，不单独发 Release，jar 随发布线 Release 附带）
-- 前置：Curios API（1.20.1 另需 Mixin Booster ≥ 0.1.3）。**StarEngine Lib 已内嵌于本模组，无需单独安装**
+- 前置：Curios API（1.20.1 另需 Mixin 运行时：Mixin Booster ≥0.1.3 **或** Sinytra Connector，二选一）。**StarEngine Lib 已内嵌于本模组，无需单独安装**
 - 构建产物：`neoforge-1.21.1/build/libs/astral_dice-<版本>+neoforge_1.21.1.jar`、`forge-1.20.1/build/libs/astral_dice-<版本>+forge_1.20.1.jar`、`neoforge-26.1.2/build/libs/astral_dice-<版本>+neoforge_26.1.2.jar`；GitHub Release 的 tag 使用无后缀的基础版本号（如 `1.3.2`）
 
 ## 构建

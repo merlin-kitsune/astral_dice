@@ -1,11 +1,19 @@
 # Astral Dice 1.3.2 Changelog
 
+## 1.3.2-hotfix (1.20.1 only)
+
+- **Fixed: on 1.20.1, the game refused to start with "mixinbooster is missing" whenever the pack ships Sinytra Connector — even with Mixin Booster installed.**
+  The fault was not on your side: Sinytra Connector bundles the same Mixin runtime, so **Mixin Booster steps aside on purpose** (the log shows `Disabling Mixin Booster in favor of Connector`) and the `mixinbooster` mod entry is never registered at all — while the 1.20.1 build treated it as a **mandatory** prerequisite, so Forge hard-refused during dependency checking.
+  The rule is now "**either Mixin runtime will do**": with Mixin Booster installed it is used as before; if the pack already ships Sinytra Connector its runtime is used instead (**nothing extra to download in that case**); only when neither is present does the mod refuse to start, telling you which one to install.
+  ⇒ **1.20.1 no longer requires Mixin Booster.**
+- This hotfix changes **1.20.1 only**; the 1.21.1 and 26.1.2 builds keep their versions and content unchanged.
+
 !!! MAJOR UPDATE !!!
 
 Released: 1.3.2 — this release merges everything from 1.3.0 to 1.3.2 (1.3.0 and 1.3.1 were never published on their own; the entries below are merged and deduplicated, with duplicate and intermediate adjustments omitted).
 
 Note! The prerequisite mod StarEngine Lib is now bundled inside this mod (embedded 1.0.5) — you no longer need to install it separately. If your mods folder still contains a manually downloaded starengine_lib-*.jar, delete it: the old file would override the embedded one.
-Note! The 1.20.1 build still requires Mixin Booster as a hard prerequisite (since 1.2.0).
+Note! On 1.20.1 the Mixin runtime can be **Mixin Booster ≥0.1.3** **or** **Sinytra Connector** — pick either one (since 1.3.2-hotfix; previously Mixin Booster was mandatory).
 
 ## Major Updates
 

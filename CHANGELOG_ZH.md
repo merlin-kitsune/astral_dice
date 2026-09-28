@@ -4,6 +4,24 @@
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 
+## 1.3.2-hotfix
+
+> **仅 1.20.1 线**的定点热修（`1.3.2-hotfix+forge_1.20.1`）；1.21.1 与 26.1.2 两线的版本号与产物**保持不变**。
+> 该热修随 tag `1.3.2` 一并发布（CI 刷新同一个 Release），不影响已发布的 1.3.2 其余内容。
+
+### BUG修复
+
+- **修复 1.20.1 整合包内「已正确安装 Mixin Booster 仍报缺少 mixinbooster、游戏拒绝启动」的问题**（2026-09-29 玩家反馈 ⇒ 实机定位）：
+  根因不在玩家 —— 整合包里若含 **Sinytra Connector**（Better MC/BMC4 等常见），Connector 自带的 Mixin 运行时会接管运行时，
+  **Mixin Booster 会主动让位**（实机日志：`[mixin-booster/]: Disabling Mixin Booster in favor of Connector`，该判定写在 Booster 自己的
+  `MixinTransformationService` 里）⇒ `mixinbooster` 这个 mod 条目**根本不会注册**。而 1.20.1 侧此前把它声明为 FML **强制依赖**，
+  于是 FML 在依赖排序阶段直接以「Missing or unsupported mandatory dependencies: `mixinbooster` … Actual version '[MISSING]'」硬拒启动，
+  **玩家装了前置也进不去游戏**。
+  现改为「**Mixin 运行时二选一**」：`mixinbooster` 降为**非强制依赖**（仍保留版本下限 `[0.1.3,)`，装了旧版依旧报错），
+  由新增的运行时门控在通用初始化阶段判定 —— **有 Mixin Booster 时照旧用它；有 Sinytra Connector 时改用 Connector 提供的 Mixin；
+  两者都没有才拒绝启动**并上屏说明（保留「绝不静默失效」的承诺：缺运行时会让 18 处 Mixin 悄悄不生效，那比拒绝启动更糟）。
+  ⚠️ 由此口径变化：**1.20.1 不再需要「必须安装 Mixin Booster」** —— 整合包自带 Sinytra Connector 的玩家无需额外安装任何前置。
+
 ## 1.3.2
 
 ### 新增内容

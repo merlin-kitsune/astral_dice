@@ -1,11 +1,19 @@
 # 星之骰戏 (Astral Dice) 1.3.2 更新日志
 
+## 1.3.2-hotfix（仅 1.20.1）
+
+- **修复：整合包里带了 Sinytra Connector 时，1.20.1 版会拒绝启动并提示缺少 `mixinbooster` —— 即使你确实装了 Mixin Booster。**
+  原因不在玩家：Sinytra Connector 自带同一套 Mixin 运行时，**Mixin Booster 会自动让位**（游戏日志里会看到 `Disabling Mixin Booster in favor of Connector`），于是 `mixinbooster` 这个「模组」根本没有注册；而 1.20.1 版此前把它当作**强制前置**，因此被 Forge 在依赖检查阶段直接拒绝。
+  现在的规则是「**两个 Mixin 运行时，任选其一**」：装了 Mixin Booster 就照旧用它；整合包自带 Sinytra Connector 就用 Connector 的（**这种情况什么都不用额外安装**）；两者都没有时才会拒绝启动，并在错误界面说明该装哪个。
+  ⇒ **1.20.1 不再要求必须安装 Mixin Booster。**
+- 本次热修**只改 1.20.1**；1.21.1 与 26.1.2 的版本号与内容保持不变。
+
 ！！重大更新！！
 
 已发布：1.3.2 —— 本次更新合并了 1.3.0 ~ 1.3.2 的全部内容（1.3.0 与 1.3.1 未曾单独发布，以下条目已合并去重，重复与中间过程的调整不再列出）。
 
 注意！前置模组 StarEngine Lib 已内嵌进本模组（内嵌 1.0.5），玩家无需再单独安装。如果你的 mods 目录里还放着手动下载的 starengine_lib-*.jar，请删掉它 —— 旧文件会盖掉内嵌的新版库。
-注意！1.20.1 版仍然需要 Mixin Booster 硬前置（自 1.2.0 起）。
+注意！1.20.1 的 Mixin 运行时：**Mixin Booster ≥0.1.3** 或 **Sinytra Connector**，**二选一**即可（自 1.3.2-hotfix 起；此前为强制 Mixin Booster）。
 
 ## 重大更新
 

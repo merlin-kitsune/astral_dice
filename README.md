@@ -39,7 +39,7 @@ Astral Dice is a survival expansion mod built around dice. Equip a dice and ever
 | Support | Subproject | Minecraft | Loader | Java | Current Version | Patchouli |
 |---|---|---|---|---|---|---|
 | ✅ | `neoforge-1.21.1` | 1.21.1 | NeoForge 21.1.235 | 21 | 1.3.2 | ✅ |
-| ✅ | `forge-1.20.1` | 1.20.1 | Forge 47.4.10 | 17 | 1.3.2 | ✅ |
+| ✅ | `forge-1.20.1` | 1.20.1 | Forge 47.4.10 | 17 | 1.3.2-hotfix | ✅ |
 | ✅ | `neoforge-26.1.2` | 26.1.2 | NeoForge 26.1.2.109 | 25 | 1.3.2-beta.1 | ✅ |
 
 - `neoforge-1.21.1` and `forge-1.20.1` are the **release lines** (feature-parity pair; both jars are published with every GitHub Release).
@@ -49,7 +49,7 @@ Astral Dice is a survival expansion mod built around dice. Equip a dice and ever
 |---|---|
 | Required (**bundled — no separate install**) | **StarEngine Lib** (`starengine_lib`) **is bundled inside this mod since 1.3.1** (currently embedded **`1.0.5`**, compatible range **`[1.0.5,2.0)`**): the loader picks up the embedded copy at startup. ⚠️ Do **not** also drop a standalone `starengine_lib-*.jar` into `mods`: the loader de-duplicates by modId and prefers that copy, so an older one would shadow the bundled library |
 | Required | Curios API (Curios 5.x on 1.20.1, Curios 9+ on 1.21.1, **Curios 15+ on 26.1.2**; a missing or too-old Curios is rejected during NeoForge's dependency sorting). ⚠️ This prerequisite is declared **by this mod**; StarEngine Lib itself only uses it as a **compile-time** dependency on the Forge side (it is not in the library's `mods.toml`) |
-| Required (1.20.1 only) | **Mixin Booster ≥ 0.1.3**, **mandatory**: when it is missing, the game refuses to start right at Forge's dependency-sorting stage and reports the missing `mixinbooster`; an outdated version is rejected the same way |
+| Required (1.20.1 only) | **Either Mixin runtime** (since 1.3.2-hotfix): **Mixin Booster ≥ 0.1.3** **or** **Sinytra Connector**. If the pack already ships Sinytra Connector, **nothing extra is needed** (Connector bundles the same Mixin runtime and Mixin Booster deliberately steps aside); only when neither is present does the mod refuse to start and explain how to install one. An outdated Mixin Booster is still rejected |
 | Optional | Bountiful, Patchouli |
 
 ---
@@ -58,7 +58,7 @@ Astral Dice is a survival expansion mod built around dice. Equip a dice and ever
 
 - **Releases page**: [GitHub Releases](https://github.com/merlin-kitsune/astral_dice/releases) (each release carries **three** jars: the two release lines plus 26.1.2's `-beta` jar)
 - Supported platforms: Minecraft 1.21.1 / NeoForge, 1.20.1 / Forge (release lines); Minecraft 26.1.2 / NeoForge (migration line — no tag or Release of its own; its jar ships with the release lines' Releases)
-- Requirements: Curios API (plus Mixin Booster ≥ 0.1.3 on 1.20.1). **StarEngine Lib is bundled inside the mod — no separate install needed**
+- Requirements: Curios API (plus a Mixin runtime on 1.20.1: Mixin Booster ≥ 0.1.3 **or** Sinytra Connector). **StarEngine Lib is bundled inside the mod — no separate install needed**
 - Build artefacts: `neoforge-1.21.1/build/libs/astral_dice-<version>+neoforge_1.21.1.jar`, `forge-1.20.1/build/libs/astral_dice-<version>+forge_1.20.1.jar`, `neoforge-26.1.2/build/libs/astral_dice-<version>+neoforge_26.1.2.jar`; GitHub Release tags use the bare base version number (e.g. `1.3.2`)
 
 ## Build

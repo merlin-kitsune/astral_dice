@@ -447,7 +447,7 @@ pwsh -NoProfile -File scripts/verify/verify_crafting_recipe_uniqueness.ps1   # �
 pwsh -NoProfile -File scripts/verify/verify_chip_acquisition.ps1
 pwsh -NoProfile -File scripts/verify/verify_bountiful_pools.ps1
 pwsh -NoProfile -File scripts/verify/verify_bountiful_instance_exclusions.ps1
-pwsh -NoProfile -File scripts/verify/verify_forge_loader_gate.ps1   # 1.20.1 加载器版本门槛 + Mixin Booster 硬前置（独立离线脚本，零 mt 依赖；0/1/2，见附录 A 续 28）
+pwsh -NoProfile -File scripts/verify/verify_forge_loader_gate.ps1   # 1.20.1 加载器版本门槛 + Mixin 运行时二选一门控（Mixin Booster / Sinytra Connector；独立离线脚本，零 mt 依赖；0/1/2，见附录 A 续 28）
 pwsh -NoProfile -File tools/check_mod_sources.ps1                    # 模组来源统一口径(Curse/Modrinth Maven);阶段 P 的「模组来源」一项共用本脚本
 ```
 
@@ -746,7 +746,7 @@ pwsh -NoProfile -File scripts/test/mt_watchdog.ps1 -Version 1.21.1 [-StallSecond
   | 文件 | `astral_dice-1.2.1-hotfix+forge_1.20.1.jar` |
   | 大小 / 条目 | **969960 B** / **1116**（与 2026-09-16 的 CI 产物条目数一致） |
   | SHA-256 / SHA-1 | `B459536551137BA3F1325A3EB002E6A7DDA6CF5A622A9B0746491E9272722B37` / `3ED4C261E807C3BFAC82A429B8FDE5110129B1A4` |
-  | 元数据 | `META-INF/mods.toml`：`modLoader="javafml"`、`version="1.2.1-hotfix+forge_1.20.1"`、`forge [47.4.10,48)`、`minecraft [1.20.1]`、`curios [5,6)`、`mixinbooster [0.1.3,)` |
+  | 元数据 | `META-INF/mods.toml`：`modLoader="javafml"`、`version="1.2.1-hotfix+forge_1.20.1"`、`forge [47.4.10,48)`、`minecraft [1.20.1]`、`curios [5,6)`、`mixinbooster [0.1.3,)`（**optional**，2026-09-29 起：与 Sinytra Connector 二选一，由 `init/MixinRuntimeGate` 在 COMMON_SETUP 门控） |
   | 打包完整性 | `MANIFEST.MF` 含 `MixinConfigs: astral_dice.mixins.json`；`astral_dice.mixins.json` 的 `refmap = astral_dice.refmap.json` 且该文件在包内；`DiceCurioItem.class` 主版本 **61** 且含 `onEquip`/`refreshChipSlotCount`/`clearChipSlotCount`/`applySlotCount`；**无任何 `.cache/` 条目** |
   | 分发去向 | 子项目 `build/libs`（清理后仅此一份）、根 `build/libs`、`D:\...\1.20.1 模组测试\mods` 三处 **同一 SHA256**；`run/1.20.1/mods` 为 dev jar（952328 B，SRG 0 处，同样已无 `.cache`） |
   | 交付暂存 | `temp/reissue-1.2.1-hotfix/`（jar + `SHA256SUMS.txt` + `SHA1SUMS.txt` + `VERIFY.md` 自检说明） |

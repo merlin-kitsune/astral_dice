@@ -4,6 +4,23 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 1.3.2-hotfix
+
+> **1.20.1 line only** hotfix (`1.3.2-hotfix+forge_1.20.1`); the 1.21.1 and 26.1.2 lines keep their version numbers and artifacts **unchanged**.
+> It ships under tag `1.3.2` (CI refreshes the same Release) and does not affect the rest of the published 1.3.2 content.
+
+### Bug Fixes
+
+- **Fixed 1.20.1 modpacks refusing to start with "mixinbooster is missing" even though Mixin Booster is installed correctly** (player report, 2026-09-29 → reproduced and root-caused on a real instance):
+  The fault was not on the player's side. When a pack ships **Sinytra Connector** (common in Better MC / BMC4), Connector's own bundled Mixin runtime takes over and
+  **Mixin Booster deliberately steps aside** (live log: `[mixin-booster/]: Disabling Mixin Booster in favor of Connector` — the decision lives inside Booster's own
+  `MixinTransformationService`), so the `mixinbooster` mod entry is **never registered at all**. The 1.20.1 build previously declared it as a hard FML dependency, so FML
+  hard-refused during dependency sorting with "Missing or unsupported mandatory dependencies: `mixinbooster` … Actual version '[MISSING]'" — **the player could not launch even with the prerequisite installed.**
+  It is now a "**pick either Mixin runtime**" gate: `mixinbooster` is **no longer mandatory** (the `[0.1.3,)` lower bound is kept, so an outdated Booster still errors),
+  and a new runtime gate decides in common setup — **Mixin Booster when present, otherwise Sinytra Connector's Mixin runtime, and only when neither exists does the mod refuse to start**
+  with an on-screen explanation (keeping the "never fail silently" promise: a missing runtime means 18 mixins silently go dead, which is worse than refusing to launch).
+  ⚠️ Consequence: **1.20.1 no longer requires Mixin Booster to be installed** — players on packs that already bundle Sinytra Connector need no extra prerequisite at all.
+
 ## 1.3.2
 
 ### New Content

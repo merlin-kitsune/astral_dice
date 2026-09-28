@@ -97,17 +97,24 @@ config="${mod_id}.mixins.json"
     ordering="AFTER"
     side="BOTH"
 
-# Mixin Booster(强依赖,**未安装即拒绝启动**):Forge 1.20.1 的 FML 没有 Mixin 集成——Sponge Mixin
-# 0.8.5 完全由这个纯 ModLauncher 服务 jar 提供(它内嵌 fabric-mixin.jar;模组条目与版本号由自带
-# IModLocator 读 jar 根 mixinbooster_version.txt 得到,实机 debug.log 原文:
-#   Found valid mod file transmog-mod.jar with {mixinbooster} mods - versions {0.1.3+1.20.1})。
-# **缺它时本模组不报任何错、全部 mixin 静默失效**,故必须在 FML 依赖排序阶段硬拒:
-# mandatory=true;versionRange 的下限卡住实装版本(实装 0.1.3+1.20.1 → 下限 [0.1.3,) —— 旧版本前置
-# 同样是静默失效,所以不能写成 "*" 或省略)。防回归:scripts/test/mt_loadergate.ps1
-# (读数 AP_LG_MB / AP_LG_MB_RANGE,断言在 cases/LOADER-GATE-FORGE-1.20.1.json)。
+# Mixin Booster(**自 2026-09-29 起不再是强制依赖**,改为「Mixin 运行时二选一」的运行时门控):
+# Forge 1.20.1 的 FML 没有 Mixin 集成 —— Sponge Mixin 0.8.5 完全由这个纯 ModLauncher 服务 jar 提供
+# (它内嵌 fabric-mixin.jar;模组条目与版本号由自带 IModLocator 读 jar 根 mixinbooster_version.txt 得到,
+# 实机 debug.log 原文:Found valid mod file transmog-mod.jar with {mixinbooster} mods - versions {0.1.3+1.20.1})。
+#
+# 🚨 **为什么不能再写 mandatory=true**:Sinytra Connector(整合包常见)自带同一套 Mixin 运行时,Booster 检测到
+# Connector 后会**主动关闭自己**(实机日志:`[mixin-booster/]: Disabling Mixin Booster in favor of Connector`,
+# 该判定在 MixinTransformationService 内)⇒ `mixinbooster` 这个 mod 条目**根本不会注册**,FML 便以
+# `Missing or unsupported mandatory dependencies: Mod ID 'mixinbooster' ... Actual version '[MISSING]'` 硬拒启动,
+# 玩家即使**正确安装了** Mixin Booster 也无法进入游戏(2026-09-29 由 Better MC/BMC4 玩家实测报告定位)。
+#
+# ⇒ 依赖改为 optional(不参与 FML 硬拒),改由运行时门控 `init/MixinRuntimeGate` 在 COMMON_SETUP 判定
+#   「Mixin Booster **或** Sinytra Connector 至少存在一个」;两者皆无时本模组**才**拒绝启动并上屏说明
+#   (与旧行为一致的「绝不静默失效」承诺,只是判定点从 FML 依赖排序移到本模组门控)。
+#   ⚠️ versionRange 仍然保留:Booster 在场但版本过低(旧版同样是静默失效)时依旧报错。
 [[dependencies.${mod_id}]]
     modId="mixinbooster"
-    mandatory=true
+    mandatory=false
     versionRange="[0.1.3,)"
     ordering="AFTER"
     side="BOTH"
