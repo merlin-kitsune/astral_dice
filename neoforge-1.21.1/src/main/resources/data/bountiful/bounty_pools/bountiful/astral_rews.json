@@ -162,6 +162,7 @@
 		},
 		"attack_card_medium": {
 			"type": "item",
+			"rarity": "RARE",
 			"content": "astral_dice:attack_card_medium",
 			"amount": {
 				"min": 1,
@@ -181,7 +182,7 @@
 		},
 		"attack_card_epic": {
 			"type": "item",
-			"rarity": "EPIC",
+			"rarity": "RARE",
 			"content": "astral_dice:attack_card_epic",
 			"amount": {
 				"min": 1,
@@ -221,6 +222,7 @@
 		},
 		"defense_card_medium": {
 			"type": "item",
+			"rarity": "RARE",
 			"content": "astral_dice:defense_card_medium",
 			"amount": {
 				"min": 1,
@@ -240,7 +242,7 @@
 		},
 		"defense_card_epic": {
 			"type": "item",
-			"rarity": "EPIC",
+			"rarity": "RARE",
 			"content": "astral_dice:defense_card_epic",
 			"amount": {
 				"min": 1,
@@ -250,7 +252,7 @@
 		},
 		"effect_card_king_power": {
 			"type": "item",
-			"rarity": "LEGENDARY",
+			"rarity": "EPIC",
 			"content": "astral_dice:effect_card_king_power",
 			"amount": {
 				"min": 1,
@@ -260,7 +262,7 @@
 		},
 		"effect_card_berserk": {
 			"type": "item",
-			"rarity": "EPIC",
+			"rarity": "RARE",
 			"content": "astral_dice:effect_card_berserk",
 			"amount": {
 				"min": 1,
@@ -280,7 +282,7 @@
 		},
 		"effect_card_fight_poison_with_poison": {
 			"type": "item",
-			"rarity": "EPIC",
+			"rarity": "RARE",
 			"content": "astral_dice:effect_card_fight_poison_with_poison",
 			"amount": {
 				"min": 1,
@@ -360,7 +362,7 @@
 		},
 		"effect_card_you_have_i_have": {
 			"type": "item",
-			"rarity": "EPIC",
+			"rarity": "RARE",
 			"content": "astral_dice:effect_card_you_have_i_have",
 			"amount": {
 				"min": 1,

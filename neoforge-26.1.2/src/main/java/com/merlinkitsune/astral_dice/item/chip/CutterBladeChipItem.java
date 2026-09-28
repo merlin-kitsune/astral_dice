@@ -4,8 +4,9 @@ import net.minecraft.world.item.ItemStack;
 import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
 
 /**
- * 美工刀-锋利筹码:与美工刀-初级一致,满血时攻击 +4 基础攻击并加上当前治愈点数(结算在 DiceCombatModifiers 攻击修饰器);
- * 与美工刀-初级为不同物品,可同时装备(两者加成叠加)。
+ * 美工刀-锋利筹码:与美工刀-初级同构,生命值不低于 60%(或处于「汲取」)时 **攻击力 +4**、
+ * 并使**攻击伤害**额外增加「当前治愈点数」(攻击力走 {@code ATTACK_MODIFIERS}、治愈点数走额外加伤);
+ * 与美工刀-初级为不同物品,可同时装备(两者的攻击力与治愈点数加成各自叠加)。
  */
 public class CutterBladeChipItem extends BaseChipItem {
     public CutterBladeChipItem(Properties properties) {

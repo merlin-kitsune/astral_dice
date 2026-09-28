@@ -28,9 +28,9 @@
 
 ### Megas Sign (Legendary): Orbital Bombardment + Resupply
 
-- Active **"Orbital Bombardment"**: designate one hostile target, then **immediately consume every card in the inventory** and call down a bombardment on that target and a **12-block** area around it. Every **2** cards consumed adds **1** bombardment (**up to 10**); each bombardment hits **1 random monster** in the area for **2** base damage, plus extra damage equal to **the total cost of the battle cards consumed**.
+- Active **"Orbital Bombardment"**: designate one hostile target, then **take cards in the order "hotbar → offhand → inventory"** (**stopping as soon as the estimated base total damage reaches the per-cast cap; leftover cards are kept**) and call down a bombardment on that target and a **12-block** area around it. Every **2** cards taken adds **1** bombardment (**up to 10**); each bombardment hits **1 random monster** in the area for **2** base damage, plus extra damage equal to **the total cost of the battle cards taken**.
 - Passive **"Resupply"**: whenever there are **fewer than 6** cards in the inventory, gain **1** random card every **1:00**.
-- Consuming **6 or more** cards in a single cast triggers **"Precision Strike"**, which raises the bombardment damage that target takes by **+1 per stack**, **permanently, until it dies**.
+- Taking **6 or more** cards in a single cast triggers **"Precision Strike"**, which raises the bombardment damage that target takes by **+1 per stack**, **permanently, until it dies** (**this bonus damage is independent of the 80-per-hit / 800-per-cast caps**).
 
 ---
 
@@ -45,7 +45,9 @@
 ### Megas Sign "Orbital Bombardment": numbers retuned
 
 - The battle-card cost bonus is now **1 damage per 1 cost** (was 2 damage per 1 cost), and the target-selector radius is **32** blocks (was 16).
-- A single bombardment now deals at most **80** damage, and a single cast deals at most **800** damage in total - bombardments beyond that budget keep **only their visuals and sound and deal no damage**.
+- A single bombardment now deals at most **80** damage, and a single cast deals at most **800** damage in total.
+- **Cards are now taken only up to the damage cap**: casting the active skill no longer **burns every card in the inventory**. Cards are taken one by one in the order **hotbar → offhand → inventory**, and as soon as the **base** total damage reaches the **800**-per-cast cap the skill **stops and leaves the remaining cards in your inventory**; if every card is taken and the cap is still not reached (e.g. nothing but 0-cost cards), all of them are consumed as before. Bombardment count and damage are computed only from the cards **actually taken**.
+- **"Precision Strike" is now truly infinite, and its bonus damage is computed separately**: it really lasts **until the target dies**; its **+1 per stack** is **added on top and does not consume** the 80-per-hit / 800-per-cast budget (the budget is only charged for the base part). Deliberate side effect: once the base budget is exhausted, further bombardments still deal the pure Precision Strike bonus, which is a small amount.
 
 ### Star Coin Hammer: higher threshold, higher cost, capped bonus
 
@@ -80,6 +82,25 @@
 - **Cutter Chip / Cutter Blade Chip**: shown only when the corresponding chip is equipped **and** health ≥ 60% (or you are under the Sip state) **and** a Dice Blessing is active; hidden otherwise.
 - **Flashlight Chip** (**new icon this round**): shown only when the chip is equipped **and** a Dice Blessing is active **and** Starlight has reached **4** (every 4 Starlight gives +1 extra damage; below 4 there is **no bonus and no icon**).
 - The icons reuse each chip's own texture, so **no new art assets** were added.
+
+### Flashlight Chip: Starlight now comes from kills
+
+- The Starlight trigger changes from "attacking a single hostile target (once per target)" to "**killing** a hostile target with at least **20** max health", granting **+1** Starlight each time. The check is the same as the Cursed Sword's (**the target's max health**).
+- Because a kill is inherently one-off, the old UUID bookkeeping and its hidden "no grants after 256 tracked targets" cutoff are gone.
+- The **"every 4 Starlight grants +1 Attack Damage"** bonus is **unchanged**.
+
+### Cutter chips: base +2 / +4 back to Attack Power
+
+- **Cutter Chip / Cutter Blade Chip** now give two **different kinds** of bonus: the **base +2 / +4 directly increases Attack Power**, while the **"current healing layers" part** is resolved as extra **Attack Damage**.
+- Fixed an error where the **base +2 / +4** was also counted as Attack Damage - which made skills that rely on Attack Power under-count those 2 / 4 points. The two parts must stay strictly separate because they affect different skills.
+- The trigger condition is unchanged: health >= 60%, or under Sip.
+
+### Card tiers retuned
+
+- **Attack - Medium / Large / Extra Large** and **Defense - Medium / Large / Extra Large** are now all **blue** (previously white / blue / purple).
+- **Berserk**, **Fight Poison with Poison** and **You Have, I Have** drop from **purple** to **blue**.
+- **King's Power** drops from **gold** to **purple**.
+- Tier only affects the item name colour and (for gold / Legendary and above) the tooltip border: blue and purple **do not change** the border style. Bounty payout values were **not** adjusted this round.
 
 ---
 

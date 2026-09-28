@@ -78,10 +78,15 @@ jobs:
         #    的 Release;消费方 CI 同日跑绿)⇒ 本 ref 可被 CI 检出,不再存在「库推送前必然断在
         #    Checkout」的窗口。跳号的由来:`1.0.1` 从未发布,但 mavenLocal 留有已撤销版本的残留目录,
         #    复用会「同号覆盖」而让本地构建静默解析到旧 jar ⇒ 故逐次另起新号。
+        # ✅ **2026-09-28:现行 ref = `1.0.5`**(库提交 4bea9e7 = 「会被激怒的可驯服动物计入敌对目标」;
+        #    库远端 main 已推送、其 CI 自动打 tag `1.0.5` 并发布三平台 jar 的 Release)。
+        #    三线 gradle.properties 的 `starengine_lib_version` / `_range` 同步为 `1.0.5` / `[1.0.5,2.0)`。
+        #    ⚠️ 再提醒一次:库版本 bump(或语义变更收紧区间下界)时,**本行的 SHA 必须与三线 properties 在同一提交里一起改**
+        #    —— 否则 CI 从源码 publish 出的库版本会低于消费方区间下界,直接断在依赖解析(本地不复现)。
         uses: actions/checkout@v4
         with:
           repository: merlin-kitsune/starengine_lib
-          ref: e407844c5efbd39e812c809346ce7bae08186a1f   # = 1.0.3 = HostileTargets 新增「额外敌对判定」注入 seam(ExtraHostileProbe / installExtraHostileProbe,供消费方把试验假人声明为敌对目标)+ **敌对目标口径重写**(敌对生物 ∪ 中立生物(宠物除外));语义变更 ⇒ 消费方区间下界随之收紧为 [1.0.3,2.0)
+          ref: 4bea9e7d3f55a6692d83e2411bce98321b8b602d   # = 1.0.5 = 可被激怒的可驯服动物(羊驼 / 行商羊驼)计入敌对目标;语义变更 ⇒ 消费方区间下界为 [1.0.5,2.0)(历史钉值:1.0.3 = e407844)
           path: .ci/starengine_lib
           fetch-depth: 1
 

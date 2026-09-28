@@ -280,8 +280,27 @@ public final class DiceCombatModifiers {
         });
 
         // === 额外加伤:美工刀 / 美工刀-锋利(生命值不低于 60% 时,按当前治愈点数加伤) ===
-        // 2026-09-25 用户裁决:由「攻击力修饰器」改为**额外加伤修饰器** —— 独立伤害类型结算,
-        // 不进攻击力(故不会污染降神的攻击力快照),文案称「攻击伤害」。
+        // === 美工刀-初级 / 美工刀-锋利:基础加值走**攻击力**、治愈点数走**额外加伤** ===
+        // ⚠️ 2026-09-28 用户裁决（修正 2026-09-25 的过度搬迁）：两者**伤害类型不同、必须严格区分** ——
+        //   基础 +2 / +4 是**直接增加攻击力**（进 ATTACK_MODIFIERS ⇒ 会被按「攻击力快照」结算的技能读到，
+        //   如教主立牌降神的狐光攻击基数）；只有**当前治愈点数**那一段才是**额外加伤**
+        //   （走 astral_dice:extra_damage 独立结算、不进攻击力，故不污染攻击力快照）。
+        //   两段共用门槛：生命值 ≥ 60% 或处于「汲取」（与 tooltip 一致）。
+        registerAttackModifier((ctx, ap) -> {
+            if (ctx.attacker.level().isClientSide()) return ap;
+            boolean fullHp = ctx.attacker.getHealth() >= ctx.attacker.getMaxHealth() * 0.6f
+                    || ctx.attacker.hasEffect(ModEffects.PAPARA_BITE);
+            if (!fullHp) return ap;
+            if (hasCurio(ctx.attacker, ModItems.CUTTER_CHIP.get())) {
+                ap += 2;
+            }
+            if (hasCurio(ctx.attacker, ModItems.CUTTER_BLADE_CHIP.get())) {
+                ap += 4;
+            }
+            return ap;
+        });
+
+        // 美工刀（额外加伤）：只按当前治愈点数结算；佩戴两枚时各计一份（沿用旧口径）
         registerExtraDamageModifier(ctx -> {
             if (ctx.attacker.level().isClientSide()) return 0;
             boolean fullHp = ctx.attacker.getHealth() >= ctx.attacker.getMaxHealth() * 0.6f
@@ -290,10 +309,10 @@ public final class DiceCombatModifiers {
             int healing = HealingManager.getPoints(ctx.attacker);
             int extra = 0;
             if (hasCurio(ctx.attacker, ModItems.CUTTER_CHIP.get())) {
-                extra += 2 + healing;
+                extra += healing;
             }
             if (hasCurio(ctx.attacker, ModItems.CUTTER_BLADE_CHIP.get())) {
-                extra += 4 + healing;
+                extra += healing;
             }
             return extra;
         });

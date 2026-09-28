@@ -268,6 +268,7 @@ public class ModItems {
     public static final DeferredItem<Item> ATTACK_CARD_MEDIUM = registerItem("attack_card_medium",
             () -> new CardItem(new Item.Properties()
                     .stacksTo(64)
+                    .rarity(AstralRarities.rare())
                     .component(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("medium")), "medium"));
 
     public static final DeferredItem<Item> ATTACK_CARD_LARGE = registerItem("attack_card_large",
@@ -279,7 +280,7 @@ public class ModItems {
     public static final DeferredItem<Item> ATTACK_CARD_EPIC = registerItem("attack_card_epic",
             () -> new CardItem(new Item.Properties()
                     .stacksTo(64)
-                    .rarity(AstralRarities.epic())
+                    .rarity(AstralRarities.rare())
                     .component(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("epic")), "epic"));
 
     public static final DeferredItem<Item> ATTACK_CARD_SHADOW_STRIKE = registerItem("attack_card_shadow_strike",
@@ -328,6 +329,7 @@ public class ModItems {
     public static final DeferredItem<Item> DEFENSE_CARD_MEDIUM = registerItem("defense_card_medium",
             () -> new CardItem(new Item.Properties()
                     .stacksTo(64)
+                    .rarity(AstralRarities.rare())
                     .component(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("defense_medium")), "defense_medium"));
 
     public static final DeferredItem<Item> DEFENSE_CARD_LARGE = registerItem("defense_card_large",
@@ -339,18 +341,18 @@ public class ModItems {
     public static final DeferredItem<Item> DEFENSE_CARD_EPIC = registerItem("defense_card_epic",
             () -> new CardItem(new Item.Properties()
                     .stacksTo(64)
-                    .rarity(AstralRarities.epic())
+                    .rarity(AstralRarities.rare())
                     .component(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("defense_epic")), "defense_epic"));
 
     public static final DeferredItem<Item> EFFECT_CARD_KING_POWER = registerItem("effect_card_king_power",
             () -> new EffectCardItem(new Item.Properties()
                     .stacksTo(64)
-                    .rarity(AstralRarities.legendary())));
+                    .rarity(AstralRarities.epic())));
 
     public static final DeferredItem<Item> EFFECT_CARD_BERSERK = registerItem("effect_card_berserk",
             () -> new BerserkCardItem(new Item.Properties()
                     .stacksTo(64)
-                    .rarity(AstralRarities.epic())));
+                    .rarity(AstralRarities.rare())));
 
     public static final DeferredItem<Item> EFFECT_CARD_UNWAVERING = registerItem("effect_card_unwavering",
             () -> new UnwaveringCardItem(new Item.Properties()
@@ -361,7 +363,7 @@ public class ModItems {
     public static final DeferredItem<Item> EFFECT_CARD_FIGHT_POISON_WITH_POISON = registerItem("effect_card_fight_poison_with_poison",
             () -> new FightPoisonWithPoisonCardItem(new Item.Properties()
                     .stacksTo(64)
-                    .rarity(AstralRarities.epic())));
+                    .rarity(AstralRarities.rare())));
 
     // 对怪激光(伤害效果牌):远程和魔法伤害 +4。品质:青(蓝)
     public static final DeferredItem<Item> MONSTER_LASER_CARD = registerItem("effect_card_monster_laser",
@@ -896,7 +898,7 @@ public class ModItems {
     public static final DeferredItem<Item> YOU_HAVE_I_HAVE = registerItem("effect_card_you_have_i_have",
             () -> new YouHaveIHaveCardItem(new Item.Properties()
                     .stacksTo(64)
-                    .rarity(AstralRarities.epic())));
+                    .rarity(AstralRarities.rare())));
 
     // 加急加快:使目标获得 迅捷 II 1:00(可对自己/他人使用)
     public static final DeferredItem<Item> EXPRESS_DELIVERY = registerItem("effect_card_express_delivery",
