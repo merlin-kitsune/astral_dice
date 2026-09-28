@@ -9,8 +9,13 @@ import net.minecraft.world.entity.LivingEntity;
  * 「精准打击」(机械师立牌 megas 的轨道轰炸**层数真值效果**)。
  *
  * <p><b>语义</b>：每层使该目标受到的「轨道轰炸」伤害 +1，**永久持续直到目标死亡**
- * （时长 {@link #DURATION_TICKS} = {@link Integer#MAX_VALUE}；原版效果随实体死亡自然移除，
- * 故「直到死亡」由原版生命周期保证，无需额外清理）。
+ * （时长 = {@link MobEffectInstance#INFINITE_DURATION}，即原版「真·无限时长」；
+ * 原版效果随实体死亡自然移除，故「直到死亡」由原版生命周期保证，无需额外清理）。
+ *
+ * <p>2026-09-28 用户平衡性调整：① 时长由 {@code Integer.MAX_VALUE} 改为原版的
+ * {@link MobEffectInstance#INFINITE_DURATION}（不再依赖「够大就当作无限」）；② 本加伤
+ * <b>独立于轨道轰炸的两级上限</b>（不占单次 80、不占单轮 800，见
+ * {@code combat/OrbitalBombardmentManager#impact}）。
  *
  * <p><b>层数 == amplifier + 1</b>（与「厄运」「推理时间」等同款口径）。层数来源 = 目标被
  * 「轨道轰炸」命中的**次数**（每命中 1 次 +1 层，由 {@code combat/OrbitalBombardmentManager}
@@ -24,7 +29,7 @@ import net.minecraft.world.entity.LivingEntity;
  */
 public class PrecisionStrikeEffect extends MobEffect {
     /** 效果时长（无限；「直到目标死亡」由原版实体生命周期保证）。 */
-    public static final int DURATION_TICKS = Integer.MAX_VALUE;
+    public static final int DURATION_TICKS = MobEffectInstance.INFINITE_DURATION;
 
     public PrecisionStrikeEffect() {
         super(MobEffectCategory.HARMFUL, 0xFFD700);

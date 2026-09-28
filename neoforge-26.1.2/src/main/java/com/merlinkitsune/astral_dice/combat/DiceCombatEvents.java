@@ -833,9 +833,6 @@ public class DiceCombatEvents {
         if (!player.level().isClientSide() && triggeredBlessing) {
             consumeAttackCardDurabilityOnce(player, diceStack, enhancement);
         }
-
-        // 手电筒筹码:攻击敌对目标时 +1 星光(同一目标仅 +1 层,去重记录见 FlashlightChipItem)
-        com.merlinkitsune.astral_dice.item.chip.FlashlightChipItem.onAttack(player, target);
     }
 
 
