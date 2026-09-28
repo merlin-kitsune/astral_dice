@@ -4,7 +4,7 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
-## Unreleased (1.3.2)
+## 1.3.2
 
 ### New Content
 
@@ -23,7 +23,6 @@
 
 - **Megas Sign (Legendary)**: active **"Orbital Bombardment"** — designate one hostile target, then immediately consume every card in the inventory and call down an orbital bombardment on that target and a 12-block area around it. Every 2 cards consumed adds 1 bombardment (up to 10); each bombardment hits 1 random monster in the area for 2 base damage, plus extra damage equal to the total cost of the battle cards consumed. Passive **"Resupply"**: whenever there are fewer than 6 cards in the inventory, gain 1 random card every 1:00. Consuming 6 or more cards in a single cast triggers **"Precision Strike"**, which permanently raises the orbital bombardment damage that target takes by +1 per stack, until it dies.
 
-<!-- 新内容在此登记 -->
 
 ### Content & Balance
 
@@ -37,7 +36,7 @@
 - **Glass Dice added to loot chests** (user request 2026-09-27): the Glass Dice (`astral_dice:glass_dice`,
   the T1 golden tier) can now be found in loot chests - **2%** in ordinary chests and **5%** in **end city**
   treasure, 1 per roll. Previously loot chests dropped **no dice at all** (dice came only from crafting and
-  from the bounty board). It does not interact with the "first adventure gift": the first chest still grants
+  from the bounty reward pool). It does not interact with the "first adventure gift": the first chest still grants
   1 extra base die on top, and the Glass Dice is rolled independently, so both can appear in the same chest.
 
 - **Megas Sign "Orbital Bombardment"**: the battle-card cost bonus is now **1 damage per 1 cost** (was 2 damage per 1 cost), and the target-selector radius is **32** blocks (was 16); a single bombardment now deals at most **80** damage and a single cast deals at most **800** damage in total (bombardments beyond that budget keep only their visuals and sound and deal no damage).
@@ -48,24 +47,35 @@
 
 - **Fengshui Master's "Baize's Blessing" and Cult Leader's "Divine Descent" timers are no longer tied to Dice Blessing** (user request 2026-09-27): both effects used to run "until the recipient's next Dice Blessing ends", which made their duration drift with the Dice Blessing cycle and could end the effect the instant a Dice Blessing fired. Both now use a **fixed 2:00** duration, and the timer **starts only once the affected player first lands a qualifying melee attack** - the effect itself is applied **immediately** (it takes effect at once), but the 2:00 countdown does **not** begin until that first melee hit. The qualifying attack is a **melee weapon attack** (sword / axe / mace / trident) against a target that is a player, a hostile mob or a boss - the same gate Dice Blessing uses, so ranged kills do not start the clock. The timer **starts once and never resets** (later hits do not refresh it). When the countdown reaches 0 the effect is removed, together with everything it granted, exactly as before (Baize's Blessing removes the converted attack power; Divine Descent removes the caster's attack / defense bonus). The effect and its timer are separate states, and the "granted immediately, clock not yet running" intermediate state is shown as a **permanent-looking icon** by design.
 
-- **The "hostile target" rule gains one more class: tameable-but-untamed mobs that can be angered** (user request 2026-09-27): the rule was "hostile mobs ∪ neutral mobs (pets excluded)", excluding only **tamed** pets via `TamableAnimal` - but **untamed** llamas / trader llamas are tameable yet are neutral mobs that retaliate once provoked, so **neither tamed nor angered, the target selector could not pick them**, which contradicts the intuition that "anything that can be angered should count as hostile". A class is now added by **capability**: **any mob that can be angered** (`getTarget() != null || getLastHurtByMob() != null`) **and is not already tamed** counts as a hostile target. ⚠️ Measured impact: the newly covered mobs are **llamas / trader llamas** (the only vanilla non-pet mobs that are both tameable and angerable). The criterion is implemented once in the **prerequisite library** `starengine_lib` `1.0.5` (the single entry point `combat/HostileTargets.isAngerableTamedMount`), so every effect that depends on it (Dice Blessing, spell-damage bonuses, the target selector's selectability checks, railgun lightning target selection, …) follows suit.
+- **The "hostile target" rule gains one more class: tameable-but-untamed mobs that can be angered** (user request 2026-09-27): the rule was "hostile mobs ∪ neutral mobs (pets excluded)", excluding only **tamed** pets via `TamableAnimal` - but **untamed** llamas / trader llamas are tameable yet are neutral mobs that retaliate once provoked, so **neither tamed nor angered, the target selector could not pick them**, which contradicts the intuition that "anything that can be angered should count as hostile". A class is now added by **capability**: **any mob that can be angered** (`getTarget() != null || getLastHurtByMob() != null`) **and is not already tamed** counts as a hostile target. ⚠️ Measured impact: the newly covered mobs are **llamas / trader llamas** (the only vanilla non-pet mobs that are both tameable and angerable). The criterion is implemented once in the **prerequisite library StarEngine Lib** (`1.0.5`) - its single entry point - so every effect that depends on it (Dice Blessing, spell-damage bonuses, the target selector's selectability checks, railgun lightning target selection, …) follows suit.
 
 - **The Cutter / Flashlight chips' HUD icons now follow the Dice Blessing** (user request 2026-09-27): these three chips' bonuses **already only resolve during a Dice Blessing**, but their HUD status icons did not follow it - **Cutter Chip / Cutter Blade Chip** kept the icon shown for as long as they were equipped with health >= 60% (even when no bonus could possibly apply), and **Flashlight Chip** had **no icon at all**. All three are now uniform: **hidden whenever there is no Dice Blessing**:
   - **Cutter Chip (`cutter_ready`) / Cutter Blade Chip (`cutter_blade_ready`)**: shown only when the corresponding chip is equipped **and** health >= 60% (or the player is under the Sip `papara_bite`) **and** a Dice Blessing is active; hidden otherwise.
   - **Flashlight Chip (`flashlight_ready`, new icon this round)**: shown only when the chip is equipped **and** a Dice Blessing is active **and** Starlight has reached 4 (every 4 Starlight gives +1 extra damage; below 4 there is **no bonus and no icon**).
   - The icons reuse each chip's own texture, so no new art assets were added.
 
-<!-- 内容与平衡性调整在此登记 -->
 
 ### Bug Fixes
 
-- **The Mechanic sign's "Precision Strike" now shows a visible effect FX**: the effect was previously applied to monsters without **particle display** enabled, making it **entirely invisible** in the world - you could not tell whether an orbital bombardment had triggered Precision Strike or how many stacks a target had already accumulated, so it looked as if the effect did not exist (or vanished once the bombardment ended). Hit targets now continuously emit that effect's particles, making higher stacks easier to identify. The effect's duration and its "permanently retained until the target dies" behaviour are unchanged (the effect was in fact always retained correctly; it simply had no visual indicator at all). The parameter documentation for this effect in `AGENTS.md` was corrected as well.
+- **The Mechanic sign's "Precision Strike" now shows a visible effect FX**: the effect was previously applied to monsters without **particle display** enabled, making it **entirely invisible** in the world - you could not tell whether an orbital bombardment had triggered Precision Strike or how many stacks a target had already accumulated, so it looked as if the effect did not exist (or vanished once the bombardment ended). Hit targets now continuously emit that effect's particles, making higher stacks easier to identify. The effect's duration and its "permanently retained until the target dies" behaviour are unchanged (the effect was in fact always retained correctly; it simply had no visual indicator at all).
 
 - **Unequipping the Oasis Queen sign now clears "Queen's Privilege" and the temporary cards along with it**: previously unequipping the sign only removed the armor granted by its passive, so the **"Queen's Privilege" effect (the HUD timer) and every temporary card stayed on you** for up to the effect's full 3:00 duration - inconsistent with the "clean up on unequip" convention every other sign follows. Unequipping the sign now **removes the "Queen's Privilege" effect** and **purges all temporary cards** (inventory, offhand, those equipped into the dice, and any on an open card-panel or the cursor) at the same instant, matching exactly how natural expiry, external removal and player death already clean up.
 
-- **Loot chests were rolling this mod's items twice; the rates are back to their stated values**: every vanilla loot chest rolls both the vanilla table and this mod's added "star plate" table, and the four pools (star coin / blank chip / star plate / glass dice) had been injected into **both** of them, roughly doubling the effective chances (star coin 5% → 9.75%, blank chip 3% → 5.91%, glass dice 2% → 3.96%, star plate "1% + 5% from the added table" → 6.89%). The added table is no longer injected a second time, so every pool is back to its stated chance (star coin 5%, blank chip 3%, glass dice 2%, star plate 1%; End City stays at star coin 9% / star plate 5% / glass dice 5%, and Buried Treasure still guarantees the blank chip at 100%).
+- **Loot chests were rolling this mod's items twice; the rates are back to their stated values**: every vanilla loot chest rolls both the vanilla table and this mod's added "star plate" table, and the four pools (star coin / blank chip / star plate / glass dice) had been injected into **both** of them, pushing them up across the board (star coin 5% → 9.75%, blank chip 3% → 5.91%, glass dice 2% → 3.96% - about double their stated values - and star plate 5.95% → 6.89%). The added table is no longer injected a second time, so every pool is back to its stated chance: **star coin 5%, blank chip 3%, glass dice 2%, star plate 5.95%** (star plate = 5% from the added table + 1% from the main table); **End City** is star coin 9% / star plate 9.75% / glass dice 5%, and **Buried Treasure** still guarantees the blank chip at 100%).
 
-<!-- 已修复BUG在此登记 -->
+
+### Installation Requirements
+
+- ✅ **The StarEngine Lib prerequisite is still bundled with this mod - no separate install needed**: the artifact
+  ships a copy of `starengine_lib` (embedded under `META-INF/jarjar/`) that the loader loads automatically at startup.
+- ⚠️ **As of this version the bundled library moves from `1.0.4` to `1.0.5`**: the compatible range is now
+  **`[1.0.5,2.0)`** (the same range declared in `mods.toml`). This version's looser "hostile target" rule lives in
+  that library, so **the library and the mod must be updated together**.
+- ⚠️ **Do not keep a standalone `starengine_lib-*.jar` next to it**: when the loader de-duplicates by modId it
+  **prefers the copy in `mods` and discards the embedded one** ⇒ if that copy is **older** (`1.0.4` or earlier) it
+  shadows the library bundled with this mod (visible as a prerequisite version mismatch, or a hostile-target rule
+  that is still the old one). **Since 1.3.1 there is no need to install it separately**; only 1.3.0 and earlier did.
+- Library source repository: <https://github.com/merlin-kitsune/starengine_lib>.
 
 ## 1.3.1
 
