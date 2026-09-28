@@ -13440,6 +13440,9 @@ function doDnumHit(ctx, tag) {
         + ":dealt=" + (Math.round((h0 - h1) * 100) / 100)
         + ":blessed=" + blessed + ":stale=" + stale
         + ":pos=" + dnumPos(d) + (err ? ":err=" + err : ""));
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
 // ══════════════════════════════════════════════════════════════════════════════
 //  机械师立牌「megas」—— 轨道轰炸 / 物资补充 / 精准打击（2026-09-26 新增）
 //
@@ -13600,6 +13603,9 @@ function doDnumSpell(ctx, tag) {
         + ":hp_before=" + dnumState.hpBefore + ":exp=" + exp
         + ":blessed=" + ((findEffect(p, DESC_DICE_BLESSING_X) == null) ? 0 : 1)
         + ":stale=" + stale + (err ? ":err=" + err : ""));
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
 /** megasread:只读读数(不动任何状态) */
 function doMegasRead(ctx, tag, phase) {
     var p = ctx.source.getPlayerOrException();
@@ -13648,6 +13654,9 @@ function doDnumEnd(ctx, tag) {
     try { derr = "" + putInSlot(p, "dice", ItemStack.EMPTY, 0); } catch (e2) { derr = exText(e2); }
     runCmd(ctx, "effect clear @s");
     send(ctx, "AP_" + tag + "_DNUM_END:killed=" + killed + ":dice=" + derr);
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
 /**
  * megascd:冷却键脚手架。fresh = 清两个冷却键(负控基线); present = 写到 now+2400(60 秒窗口)。
  * ⚠️ 只动附件键,不冒充产品写入路径 —— 产品写入只在 megascast confirm 档发生。
@@ -13804,6 +13813,11 @@ function doCutterEnd(ctx, tag) {
     lpSetHand(p, "");
     cutterApBase = null;
     send(ctx, "AP_" + tag + "_CUT_END:unequip=" + n + ":" + cutterReadout(p));
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+/**
  * megascast:驱动主动。四档:
  *   select  = 只走真实入口(performSkillForCurio) ⇒ 应进入选择会话、**不**消耗/不冷却;
  *   cancel  = 入口 + cancel ⇒ 等同于未使用(不消耗、不冷却、会话关闭);
@@ -15343,6 +15357,7 @@ ServerEvents.commandRegistry(event => {
                 .then(Commands.argument("tag", StringArg.word())
                     .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
                         return doCutterEnd(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
             // ── 机械师立牌 megas(2026-09-26)────────────────────────────────────
             .then(Commands.literal("megasprep")
                 .then(Commands.argument("tag", StringArg.word())
@@ -15763,6 +15778,8 @@ function doNoDiceEnd(ctx, tag) {
     if (ndMob != null) { try { ndMob.discard(); removed = 1; } catch (e0) { /* 忽略 */ } }
     ndMob = null;
     send(ctx, line + ":removed=" + removed);
+    return 1;
+}
 // ══════════════════════════════════════════════════════════════════════════════
 //  1.3.2 发布前补测段（2026-09-27）
 //
