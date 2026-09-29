@@ -22,6 +22,25 @@
   ⚠️ The defect was **production-only**: the development environment and every existing automated test run under the
   development mapping, so everything was **green yet unusable**.
 
+- **Fixed a crash when entering a world / hovering over a GUI (conflict with Architectury)**: the mixin that
+  colours this mod's tooltip frames used to **rewrite the three colour constants inside vanilla
+  `TooltipRenderUtil`**, and **Architectury API rewrites exactly the same constants**. Mixin's constant-rewriting
+  injection is **exclusive** — only one modifier can win per constant; because this mod applied first,
+  Architectury's injection was skipped as a duplicate, its own injection assertion then failed and it threw a
+  fatal error, **crashing the game**.
+  The symptom is well hidden: the target class is only loaded the **first time a tooltip is rendered**, so the game
+  **reaches the main menu and only crashes when entering a world or hovering a GUI**; and the development
+  environment does not include Architectury at all, so **the dev side never caught it**.
+  It now **wraps the draw calls** instead of rewriting constants — no longer conflicting with constant-rewriting
+  injections, so both take effect **simultaneously**.
+  A **class preloading** capability was added as well: classes that would otherwise only load on player
+  interaction can be loaded at start-up, exposing this class of defect **right away** (fail-loud, never silent).
+
+- **Fixed a manual-recipe parse error when Patchouli is absent**: the guidebook recipe produces an item owned by
+  Patchouli, which this modpack does not install, leaving an "unknown item" parse error in the start-up log.
+  The recipe now carries a **"load only when Patchouli is installed"** condition.
+  ⚠️ **Note: this modpack has no Patchouli, so the guidebook cannot be obtained** — install Patchouli if you want it.
+
 ### Engineering (not game content)
 
 - **Added a "production-environment smoke test"**: all previous verification ran under the development mapping and

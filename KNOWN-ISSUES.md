@@ -791,6 +791,100 @@ fabric.mod.json: version=1.3.2-alpha.1+fabric_1.20.1 / depends.starengine_lib=">
   `~/.m2/.../1.0.8/` 目录仍在。因 `starengine_lib_version` 已不再指向它，**不会被任何构建解析到**；
   若日后要 bump 到 1.0.8，须先删该目录（同号覆盖会静默取旧件，见 `mc-prereq-lib-version-contract` §2①）。
 
+### KI-F14 ＝ tooltip 染色 mixin 与 **Architectury** 抢同一 `@ModifyConstant` 常量 ⇒ **进世界 / 悬停 GUI 时必崩**（已修）
+
+- **现象**：修好 KI-F13 后游戏**能到主菜单**，但**创建世界 / 悬停 GUI 时崩溃**
+  （`crash-2026-09-29_19.22.31-client.txt`，`Description: Rendering screen`）：
+  ```
+  java.lang.RuntimeException: Mixin transformation of net.minecraft.class_8002 failed
+  Caused by: MixinTransformerError: An unexpected critical error was encountered
+  Caused by: InjectionError: Critical injection failure: Constant modifier method
+      modifyTooltipBackgroundColor(I)I in architectury.mixins.json:client.MixinTooltipRenderUtil
+      from mod architectury failed injection check, (0/1) succeeded. Scanned 0 target(s).
+      Using refmap architectury-fabric-refmap.json
+  ```
+- **根因（日志里已有一句话的定论）**：
+  ```
+  @ModifyConstant conflict. Skipping architectury.mixins.json:client.MixinTooltipRenderUtil
+    from mod architectury->@ModifyConstant::modifyTooltipBackgroundColor(I)I with priority 1000,
+    already redirected by astral_dice.mixins.json:bridge.TooltipRenderUtilColorMixin
+    from mod astral_dice->@ModifyConstant::astralDice$backgroundColor(I)I with priority 1000
+  ```
+  本模组的 `TooltipRenderUtilColorMixin` 原用 3 个 `@ModifyConstant` 改写
+  `TooltipRenderUtil#renderTooltipBackground` 里的三个 ldc 常量
+  （`0xF0100010` / `0x505000FF` / `0x5028007F`），而 **Architectury API 的
+  `client.MixinTooltipRenderUtil` 改的正是同一批常量**（那是它「让模组自定义 tooltip 颜色」的 API）。
+  Mixin 对 `@ModifyConstant` 是**排他**语义（同一个 ldc 只能被一个 modifier 改写）⇒ 后到者被 skip；
+  双方 priority 同为 1000、**本模组先应用** ⇒ architectury 的注入落空，而它自身
+  `injectors.defaultRequire = 1` ⇒ 抛 `InjectionError`（致命）→ 崩。
+- **⚠️ 为什么"能启动、进世界才崩"**：目标 `net.minecraft.class_8002` = `TooltipRenderUtil`，
+  **只在首次渲染 tooltip 时**才被类加载 ⇒ 主菜单不加载它，KI-F13 修复后的冒烟（止于主菜单）也看不见。
+- **⚠️ 为什么 dev 全绿**：dev 的 `fabric-1.20.1/run/client/mods` 只有 **5** 个 jar
+  （endec / fiber / gson / netty / puzzlesaccessapi），**根本没有 architectury** ⇒ 又一次「生产独有」缺陷。
+  （本轮实测环境里用户还自行加了 Carpet / PlaceholderAPI / AttributeFix / Carpet-Fixes
+  ⇒ `Loading 148 mods`，覆盖比 143 时更广。）
+- **修法：改用 `@WrapOperation`（MixinExtras）包裹「调用指令」**，四个 wrapper 覆盖全部 6 个调用点：
+  ```
+  renderHorizontalLine(g,x,y-1,w,z,BG)  ×2   → astralDice$background$horizontal
+  renderRectangle     (g,x,y,w,h,z,BG)  ×1   → astralDice$background$rectangle
+  renderVerticalLine  (g,x∓1,y,h,z,BG)  ×2   → astralDice$background$vertical
+  renderFrameGradient (g,x,y+1,w,h,z,TOP,BOT) → astralDice$borderGradient
+  ```
+  `@WrapOperation` 包裹的是 **INVOKESTATIC**，`@ModifyConstant` 改的是 **LDC** —— **不同字节码位置 ⇒ 可共存**
+  （MixinExtras 的注入器本就是为「多模组对同一调用点各自注入」设计的；本项目 `LivingHurtBridgeMixin`
+  早已按这个理由这么写，只有本 mixin 还停留在老的 `@ModifyConstant`）。
+- **产物取证（三级，全是字节码/文件级，不靠"看日志感觉"）**：
+  1. **注解已被 Loom 直接重映射**（jar 内**无** refmap 文件 ⇒ 那条
+     `Reference map 'astral_dice.refmap.json' … could not be read` 警告**无害**）：
+     ```
+     target="Lnet/minecraft/class_8002;method_47951(Lnet/minecraft/class_332;IIIII)V"    // renderHorizontalLine
+     target="Lnet/minecraft/class_8002;method_47950(Lnet/minecraft/class_332;IIIIIII)V"  // renderRectangle
+     target="Lnet/minecraft/class_8002;method_47949(Lnet/minecraft/class_332;IIIII)V"    // renderVerticalLine
+     target="Lnet/minecraft/class_8002;method_47948(Lnet/minecraft/class_332;IIIIIII)V"  // renderFrameGradient
+     ```
+  2. **注入结果**（`-Dmixin.debug.export=true` 导出的 `class_8002.class` 反编译）——
+     4 个 wrapper 覆盖全部 **6 个调用点**，且 **architectury 的注入同时存在**（19 处引用）：
+     ```
+     invokestatic wrapOperation$…$astralDice$background$horizontal  ×2
+     invokestatic wrapOperation$…$astralDice$background$rectangle   ×1
+     invokestatic wrapOperation$…$astralDice$background$vertical    ×2
+     invokestatic wrapOperation$…$astralDice$borderGradient         ×1
+     ```
+  3. **运行期**：生产冒烟（`-PreloadClasses net.minecraft.class_8002` 强制加载该类）
+     ⇒ `[preload] OK   net.minecraft.class_8002 -> net.minecraft.class_8002` + `Sound engine started` +
+     `crash-reports/` 无新增；dev 侧同参数回归同绿。
+
+#### 顺带修的第二个缺陷：`astral_dice:astral_guide` 配方解析失败
+
+- **现象**（同一次启动的日志）：
+  ```
+  [Render thread/ERROR]: Parsing error loading recipe astral_dice:astral_guide
+  com.google.gson.JsonSyntaxException: Unknown item 'patchouli:guide_book'
+  ```
+- **根因**：该配方的产出是 `patchouli:guide_book`，而**整合包并未安装 Patchouli**
+  （`fabric.mod.json` 里 patchouli 既不是 `depends` 也不是 `recommends`
+  ⇒ 属**可选**前置，模组本该优雅降级）。
+- **修法**：加 **`fabric:load_conditions`**（`condition: fabric:mod_loaded` / `modid: patchouli`）
+  ⇒ 未装 Patchouli 时**整条配方不加载**，不再报 `Unknown item`。
+  取证：`fabric-resource-conditions-api-v1` 的 mixin 列表含 **`JsonDataLoaderMixin`**
+  （覆盖通用 JSON 数据加载器 ⇒ 对 `recipes` 生效）；修后日志**不再出现**该 `Parsing error`。
+- ⚠️ **仍然要提醒用户**：整合包没有 Patchouli ⇒ **《星之骰戏》手册在该整合包内不可用**
+  （配方被条件隐藏，也再无其它获取入口）—— 需要手册请自行安装 Patchouli。
+
+#### 本轮新增的测试能力（把这个「看不见的缺陷」变成可测）
+
+1. **类预加载钩子** `-Dastral_dice.preloadClasses=<intermediary 名,逗号分隔>`
+   （`AstralDiceClient#preloadClassesForSmokeTest`）：
+   Mixin 注入在**目标类加载时**才应用，而这类目标类常常「要玩家交互才加载」⇒ 把目标类提前到**启动期**加载，
+   缺陷当场爆出（**fail-loud：记 ERROR 后重新抛出**，不吞异常 —— 吞掉就成了假绿）。
+   类名一律按 **intermediary** 解析（`MappingResolver.mapClassName("intermediary", …)`）
+   ⇒ **同一个参数在 dev 与生产都能用**（生产恒等、dev 转成 named）。
+2. **`ft_prod.ps1` 新增 `-PreloadClasses` / `-ExtraJvmArg`（可重复）**，并新增两条判据：
+   日志出现 `InjectionError|failed injection check` ⇒ 判定 `MIXIN_FAIL`（rc=1，并打印那一行）；
+   启动前**删除实例 `latest.log`** 作为判定基线（否则上一轮崩溃留下的 ERROR 会污染判定 ⇒ **假红**）。
+3. **Loom 侧对称支持**：`:fabric-1.20.1:runClient -PpreloadClasses=<…>`（`vmArg`；
+   ⚠️ **API 不通用** —— ModDevGradle/ForgeGradle 是 `jvmArgument`/`vmArgs`）。
+
 ## 10. 变更记录
 
 | 日期 | 变更 |
@@ -818,3 +912,4 @@ fabric.mod.json: version=1.3.2-alpha.1+fabric_1.20.1 / depends.starengine_lib=">
 | 2026-09-29 | **整合包启动崩溃定位（新增 KI-F13）** —— 用户报「整合包启动失败」。崩溃链 `NoSuchFieldException: color` → `AstralRarities.<clinit>` → `astral_dice` 的 main entrypoint 失败。根因 = 库 `starengine_lib_fabric` 的 `AstralRarities` 静态块**按字符串名反射原版 `Rarity` 字段**（`getDeclaredField("color")` / `getDeclaredField("$VALUES")`），而 **Fabric 的 dev 与生产是两套映射**：dev(named) 字段就叫 `color`/`$VALUES`（所以历次 dev 冒烟全绿），生产(intermediary) 同一个类是 `class_1814`、字段是 `field_8908`/`field_8905` ⇒ **生产环境 100% 启动失败，且所有现有验证手段都测不出来**。证据：整合包 jar 与仓库产物 **sha1 完全相同**（排除陈旧产物）+ 两侧 `javap` 对照（结构同构、仅字段名不同；用「枚举字符串字面量不参与重映射」反查出 `class_1814`）。⚠️ 有两个断点（`color` 先崩、`$VALUES` 紧随其后同样会崩）。全仓扫描确认只有这两处（其余反射目标是 JDK 成员或模组自有名字，安全）；另一库仓 `starengine_lib` 无此模式。修法 = 改为**按类型/修饰符找字段**（映射无关）；修复需库版本 bump + 重发布 + 消费方同步 + 重推整合包（版本号待裁决）。并登记流程缺口：dev 全绿 ≠ 产物可用，建议补「生产映射守门」（静态扫反射字符串常量 / 动态把推给整合包的 jar 真启动一次）。 |
 
 | 2026-09-29 | **KI-F13 已修复并验证** —— 库 `starengine_lib_fabric/fabric-1.20.1` 的 `AstralRarities` 原按**字符串名**反射原版 `Rarity` 字段（`getDeclaredField("color")`/`("$VALUES")`），在 dev(named) 能跑、在整合包(intermediary) **100% 启动崩**。改为按**类型/修饰符**查找（映射无关），只改 fabric 子项目（另三线用 Mojang 官方映射，`color` 本就是 `color`，不受影响）。版本号按用户裁决**退回 1.0.5 基线 + `-alpha.x` 后缀** ⇒ 库 `1.0.5-alpha.1`、主模组 `1.3.2-alpha.1+fabric_1.20.1`。**新增生产映射冒烟工具 `scripts/test/fabric/ft_prod.ps1`**（本轮先以临时探针跑通，后落为正式工具）：在**真实整合包实例**（生产 intermediary 环境）启动一次并按「崩溃报告新增 / 入口点失败 / 到主菜单」三类判据裁决。实测：修复前 `CRASH_REPORT`（19:07，新增崩溃报告）→ 修复后 **`AP_FAB_PROD_READY: elapsed=23s`、crash-reports 无新增**；dev 侧回归同绿。产物实证：内嵌件 `starengine_lib-fabric-1.20.1-1.0.5-alpha.1.jar`；javap 反编译确认 `class_1814` + `lookupColorField`、`String color`/`String $VALUES` 已消失。⚠️ 仍未做：库提交未 push、CI 的库 ref 待同步（属跨仓发布策略）。 |
+| 2026-09-29 | **KI-F14 已修 + 生产冒烟能力再升级** —— 用户报「创建世界时崩，提示 architectury 报错」。定位：本模组 `TooltipRenderUtilColorMixin` 用 3 个 `@ModifyConstant` 改写 `TooltipRenderUtil#renderTooltipBackground` 的三个 ldc 常量，而 **Architectury API 改的正是同一批常量** ⇒ Mixin 的 `@ModifyConstant` 排他语义使 architectury 被 skip、其 `defaultRequire=1` 抛 `InjectionError` → 崩。⚠️ 目标类 `class_8002` 只在**首次渲染 tooltip** 时才加载 ⇒ 「能进主菜单、进世界/悬停 GUI 才崩」；且 dev 的 `run/client/mods` 无 architectury ⇒ **dev 永远绿**（再次「生产独有」）。修法 = 改用 **`@WrapOperation`**（包裹 INVOKESTATIC，与改 LDC 的 `@ModifyConstant` 是不同字节码位置 ⇒ 可共存），四个 wrapper 覆盖全部 6 个调用点。**产物取证三级**：注解已被 Loom 直重映射（jar 内无 refmap ⇒ 那条警告无害）、`-Dmixin.debug.export` 导出的类里 4 个 wrapper 全在**且 architectury 注入同时在**、生产冒烟 PASS（并已强制 preload 该类）。顺带修 **`astral_guide` 配方**（整合包无 Patchouli ⇒ `Unknown item` 报错）：加 `fabric:load_conditions`。**新增能力**：类预加载钩子 `-Dastral_dice.preloadClasses`（把「类加载期才暴露的 mixin 缺陷」提前到启动期，fail-loud）+ `ft_prod.ps1` 的 `-PreloadClasses`/`-ExtraJvmArg` 与 `MIXIN_FAIL` 判据 + Loom 侧 `-PpreloadClasses`。 |

@@ -190,6 +190,14 @@ loom {
             programArg '1920'
             programArg '--height'
             programArg '1080'
+
+            // 自动化测试:gradlew runClient -PpreloadClasses=<intermediary 名,逗号分隔>
+            // 把「只在目标类被加载时才暴露」的 mixin 注入缺陷提前到**启动期**(见
+            // AstralDiceClient#preloadClassesForSmokeTest 与 KNOWN-ISSUES **KI-F14**)。
+            // ⚠️ API 不通用:Loom 是 `vmArg`(单数),ModDevGradle/ForgeGradle 是 `jvmArgument`/`vmArgs`。
+            if (project.hasProperty('preloadClasses')) {
+                vmArg "-Dastral_dice.preloadClasses=${project.findProperty('preloadClasses')}"
+            }
         }
         server {
             server()

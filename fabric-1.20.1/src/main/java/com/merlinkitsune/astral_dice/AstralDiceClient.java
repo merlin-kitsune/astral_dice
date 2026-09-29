@@ -62,6 +62,67 @@ public class AstralDiceClient implements ClientModInitializer {
         // (dispatchReport() 只看得见已注册的事件类,对「忘了 register」是盲区。)
         com.merlinkitsune.astral_dice.platform.event.SubscriptionAudit.verifyClientSide();
 
+        // ── 生产映射冒烟的**类预加载**钩子（测试用；不设该系统属性 = 完全无副作用）──────────
+        // 动机：有一类 mixin 缺陷**只在目标类被加载时**才暴露（典型：与其它模组抢同一个
+        // @ModifyConstant 注入点 ⇒ 对方 InjectionError），而目标类往往要等玩家悬停某个 GUI
+        // 元素才被加载 ⇒ 「只等到主菜单」的冒烟测不到。设
+        //   -Dastral_dice.preloadClasses=<逗号分隔类名>
+        // 可把这些类**提前到启动期**加载，让缺陷当场爆出来。
+        preloadClassesForSmokeTest();
+
         AstralDiceMod.LOGGER.info("Astral Dice client initialized.");
+    }
+
+    /**
+     * 预加载 {@code -Dastral_dice.preloadClasses} 列出的类（逗号分隔）。
+     *
+     * <h2>为什么需要它</h2>
+     * <p>Mixin 的注入在**目标类加载**时应用。若某个注入会失败（例如与其它模组抢同一个
+     * {@code @ModifyConstant} 常量，或目标描述符重映射失误），那么只要目标类**还没被加载**，
+     * 游戏就一直正常 —— 表现为「能进主菜单、玩到某个界面才崩」。把目标类提前加载，可让这类缺陷在
+     * **启动期**（几秒内）暴露，从而被生产映射冒烟自动捕获。
+     *
+     * <p>⚠️ 只在设置了该系统属性时才有行为；不设 ⇒ 直接返回，零副作用。
+     * ⚠️ 加载失败会**记 ERROR 并重新抛出**（fail-loud）—— 这正是判据来源，不要改成静默吞掉。
+     *
+     * <p>⚠️ 参数里写的类名**一律按 intermediary（生产映射）解析**，由 {@code MappingResolver}
+     * 转成当前环境的真名 —— 这样<strong>同一个参数在 dev 与生产都能用</strong>：
+     * <pre>
+     *   dev(named)          : "net.minecraft.class_8002" -&gt; net.minecraft.client.gui.screens.inventory.tooltip.TooltipRenderUtil
+     *   生产(intermediary)  : 恒等返回
+     * </pre>
+     * 不要直接传 named 名：生产环境的 {@code KnotClassLoader} 只认 intermediary，
+     * {@code Class.forName} 会直接 CNFE。
+     */
+    private static void preloadClassesForSmokeTest() {
+        String list = System.getProperty("astral_dice.preloadClasses", "").trim();
+        if (list.isEmpty()) {
+            return;
+        }
+        ClassLoader loader = AstralDiceClient.class.getClassLoader();
+        var resolver = net.fabricmc.loader.api.FabricLoader.getInstance().getMappingResolver();
+        for (String raw : list.split(",")) {
+            String spec = raw.trim();
+            if (spec.isEmpty()) {
+                continue;
+            }
+            String cn;
+            try {
+                cn = resolver.mapClassName("intermediary", spec);
+            } catch (Throwable t) {
+                AstralDiceMod.LOGGER.warn("[preload] 名称无法经映射解析，按原样使用：{} ({})", spec, t.toString());
+                cn = spec;
+            }
+            try {
+                Class.forName(cn, true, loader);
+                AstralDiceMod.LOGGER.info("[preload] OK   {} -> {}", spec, cn);
+            } catch (Throwable t) {
+                AstralDiceMod.LOGGER.error("[preload] FAIL {} -> {} — {}", spec, cn, t.toString());
+                if (t instanceof RuntimeException re) {
+                    throw re;
+                }
+                throw new RuntimeException("astral_dice.preloadClasses failed for " + spec, t);
+            }
+        }
     }
 }

@@ -72,6 +72,8 @@ param(
     [Parameter(Mandatory = $true)][string]$McRoot,
     [Parameter(Mandatory = $true)][string]$Java,
     [int]$TimeoutSec = 300,
+    [string]$PreloadClasses = '',
+    [string[]]$ExtraJvmArg = @(),
     [switch]$KeepAlive,
     [switch]$DryRun
 )
@@ -170,6 +172,17 @@ if (Test-Path -LiteralPath $crashDir -PathType Container) {
     $preCrashes = @(Get-ChildItem -LiteralPath $crashDir -File | ForEach-Object { $_.Name })
 }
 $logPath = Join-Path $Instance 'logs\latest.log'
+# 判据要求「只认本次启动的日志」：本脚本读整文件（见下方 log4j 说明），若不清基线，上一轮崩溃
+# 留下的 InjectionError / 就绪行会污染判定（既可能假红也可能假绿）。log4j 的
+# OnStartupTriggeringPolicy 本来就会在启动瞬间轮转掉旧文件 ⇒ 这里直接删掉更干脆。
+if (Test-Path -LiteralPath $logPath -PathType Leaf) {
+    try {
+        Remove-Item -LiteralPath $logPath -Force -ErrorAction Stop
+        Write-Output 'MT_FAB_PROD_NOTE: 已删除实例 latest.log 作为判定基线'
+    } catch {
+        Write-Output ('MT_FAB_PROD_NOTE: latest.log 无法删除（可能被占用）：' + $_.Exception.Message)
+    }
+}
 
 # log4j：复现原版 client-1.12.xml 的 File + Console 双 appender
 # （⚠️ 含 OnStartupTriggeringPolicy —— 与正式启动器一致：每次冷启动把 latest.log 轮转掉，
@@ -216,6 +229,14 @@ if ($hasNatives) {
 }
 [void]$A.Add('-Dlog4j.configurationFile=' + $log4jXml)
 [void]$A.Add('-Dminecraft.launcher.brand=ft-prod-smoke')
+foreach ($x in $ExtraJvmArg) {
+    if ($x) { [void]$A.Add($x) }
+}
+if ($PreloadClasses) {
+    # 把「只在目标类被加载时才暴露」的 mixin 缺陷提前到启动期（见 ft_prod.ps1 头部说明与
+    # KNOWN-ISSUES KI-F14）。属性由本模组客户端入口读取；不设 = 完全无副作用。
+    [void]$A.Add('-Dastral_dice.preloadClasses=' + $PreloadClasses)
+}
 [void]$A.Add('-cp');          [void]$A.Add($cpString)
 [void]$A.Add($j.mainClass)
 [void]$A.Add('--username');   [void]$A.Add('ProdSmoke')
@@ -258,7 +279,9 @@ while ($sw.Elapsed.TotalSeconds -lt $TimeoutSec) {
             $txt = $sr.ReadToEnd(); $sr.Close(); $fs.Close()
         } catch { $txt = $null }
         if ($txt) {
+            # ⚠️ 顺序即优先级：崩溃类判据先于就绪（日志后段可能仍残留旧的就绪行）
             if ($txt -match 'Could not execute entrypoint stage') { $verdict = 'ENTRYPOINT_FAIL'; break }
+            if ($txt -match 'InjectionError|failed injection check') { $verdict = 'MIXIN_FAIL'; break }
             if ($txt -match 'Sound engine started') { $verdict = 'READY'; break }
         }
     }
@@ -291,6 +314,18 @@ switch ($verdict) {
     'ENTRYPOINT_FAIL' {
         Write-Output ('AP_FAB_PROD_FAIL: reason=entrypoint elapsed={0}s' -f $elapsed)
         Write-Output 'MT_FAB_PROD: FAIL (入口点执行失败 —— 与崩溃报告同类，先看日志 Could not execute entrypoint stage 上下文)'
+        if (-not $KeepAlive) { Stop-ProdGame $proc }
+        exit 1
+    }
+    'MIXIN_FAIL' {
+        # 最新的 InjectionError 行（含 owner 与 require 计数），一眼看出是哪个模组的哪个注入器
+        $line = ''
+        if (Test-Path -LiteralPath $logPath -PathType Leaf) {
+            $line = (@(Get-Content -LiteralPath $logPath -Encoding UTF8 | Where-Object { $_ -match 'InjectionError|failed injection check' } | Select-Object -Last 1)) -join ''
+        }
+        Write-Output ('AP_FAB_PROD_MIXIN_FAIL: elapsed={0}s' -f $elapsed)
+        if ($line) { Write-Output ('AP_FAB_PROD_MIXIN_FAIL_DETAIL: ' + $line.Trim()) }
+        Write-Output 'MT_FAB_PROD: FAIL (mixin 注入失败 —— 多为与其它模组抢同一注入点；先看上面那行的 from mod <谁>)'
         if (-not $KeepAlive) { Stop-ProdGame $proc }
         exit 1
     }

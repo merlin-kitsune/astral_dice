@@ -45,7 +45,7 @@
 | `ft_inject.ps1`                   | 命令注入：`--channel rcon`（**唯一通道**，vanilla 原生、同步返回回显）                                                           | 传 `kubejs` 会**显式失败**并给出实测理由（见 §7.3/D3）                                    |
 | `ft_assert.ps1`                   | 断言引擎：`snapshot` / `log` / `absent` / `case`；窗口 `case`(默认)`\|launch\|whole`                                  | 可 dot-source（`InvocationName` 守卫）供其它脚本复用                                  |
 | `ft_dispatchreport.ps1`           | 抽取 `LoaderBus#dispatchReport()`，**把 0 次派发的事件类单独列出**                                                         | 硬判据：`ServerTickEvent > 0`                                                 |
-| `ft_prod.ps1`                     | **生产映射冒烟**：在**真实整合包实例**（生产 intermediary 环境）启动一次，按「崩溃报告新增 / 入口点失败 / 到主菜单」三类判据裁决（详见 §7.2.2）                    | **只用 PowerShell 7**（依赖 `ProcessStartInfo.ArgumentList`）；实例路径**必须传参**（脚本内不硬编码中文路径）；默认收停，`-KeepAlive` 保留现场 |
+| `ft_prod.ps1`                     | **生产映射冒烟**：在**真实整合包实例**（生产 intermediary 环境）启动一次，按「崩溃报告新增 / 入口点失败 / 注入失败 / 到主菜单」四类判据裁决（详见 §7.2.2）                    | **只用 PowerShell 7**（依赖 `ProcessStartInfo.ArgumentList`）；实例路径**必须传参**（脚本内不硬编码中文路径）；`-PreloadClasses` 提前加载目标类、`-ExtraJvmArg` 透传任意 JVM 参数；默认收停，`-KeepAlive` 保留现场 |
 
 | `cases/FAB-BOOT-EMBED.json`       | ① 服务端启动到 `Done` + 内嵌库自检（9 断言）                                                                               | 只需一次已完成的启动；**刻意不含**派发统计断言（那是 DISPATCH-BASIC 的职责，且会引入 30 s 的隐藏时间耦合）        |
 | `cases/FAB-DISPATCH-BASIC.json`   | ② 派发报告里基础事件为正数（8 断言）                                                                                        | 需服务端跑过 600 tick                                                           |
@@ -181,6 +181,7 @@ pwsh -NoProfile -File scripts/test/fabric/ft_stop.ps1 --side client
 | `AP_FAB_CASE_BEGIN` / `_ENTRY` / `_VALIDATE` / `_VALIDATE_SUMMARY` / `AP_FAB_CASE` | `ft_case` | 用例执行/校验 |
 | `AP_FAB_PHASE_BEGIN` / `AP_FAB_PHASE` / `AP_FAB_REPORT` | `ft.ps1` | 阶段编排 |
 | `AP_FAB_PROD_CP` / `_LAUNCH` / `_READY` / `_CRASH` / `_CRASH_CAUSE` / `_FAIL` | `ft_prod` | 生产映射冒烟：classpath 构造 / 启动 / 就绪 / 崩溃 / 失败原因 |
+| `AP_FAB_PROD_MIXIN_FAIL` / `_MIXIN_FAIL_DETAIL` | `ft_prod` | 注入失败（`InjectionError`）时那一行原文 —— 一眼看出是哪个模组的哪个注入器 |
 
 | `MT_FAB_<NAME>: OK/FAIL/ERROR/BLOCKED` | 全部 | 结论行（stderr 走 FAIL/ERROR，stdout 走 OK） |
 | `MT_FAB_NOTE[n]` / `MT_FAB_INFO` / `MT_FAB_WARN` | 全部 | 过程行 |
@@ -343,6 +344,40 @@ pwsh -NoProfile -File scripts/test/fabric/ft_prod.ps1 `
 ⚠️ **它测什么、不测什么**：只判「**能不能起来**」（入口点 + 到主菜单），**不管玩法**（那仍归 dev 侧用例）。
 但**凡映射相关的缺陷都在它的射程内** —— 反射原版成员、内嵌件重映射错、依赖解析失败、缺失前置，
 而这些恰恰是 dev 侧**永远测不到**的一类。本台原有的"内嵌件产线可加载"缺口（旧 §8 项）由此闭合。
+#### 7.2.2.1 类预加载：把「类加载期才暴露的 mixin 缺陷」提前到启动期（2026-09-29 新增）
+
+⚠️ **只判「到主菜单」还不够** —— 有一类缺陷**只在某个目标类被加载时才暴露**，而那个类常常
+「要玩家交互才加载」。实测事故 **KI-F14**：本模组的 `TooltipRenderUtilColorMixin` 与 Architectury
+抢同一个 `@ModifyConstant` 常量，目标类 `TooltipRenderUtil` 只在**首次渲染 tooltip** 时才加载
+⇒ 能过主菜单、**进世界 / 悬停 GUI 时才崩**，纯启动期冒烟完全看不见。
+
+**做法**：客户端加一个**类预加载钩子**，由本模组在客户端初始化末尾主动 `Class.forName` 加载目标类：
+
+```powershell
+# 生产侧（ft_prod；逗号分隔可传多个）
+pwsh -NoProfile -File scripts/test/fabric/ft_prod.ps1 `
+  -Instance 'D:\.minecraft\versions\1.20.1-Fabric 模组测试' -McRoot 'D:\.minecraft' `
+  -Java 'C:\Program Files\Zulu\zulu-21\bin\java.exe' `
+  -PreloadClasses 'net.minecraft.class_8002'
+
+# 想看注入结果（导出 mixin 应用后的字节码到 <实例>/.mixin.out/）
+#   -ExtraJvmArg '-Dmixin.debug.export=true'
+
+# dev 侧（Loom 对称支持）
+./gradlew :fabric-1.20.1:runClient "-PpreloadClasses=net.minecraft.class_8002"
+```
+
+| 要点 | 说明 |
+|---|---|
+| 类名写法 | 一律写 **intermediary 名**（如 `net.minecraft.class_8002`）。模组侧用 `MappingResolver.mapClassName("intermediary", …)` 转成当前环境真名 ⇒ **同一个参数 dev 与生产都能用**（生产恒等、dev 转成 named） |
+| 失败行为 | **fail-loud**：记 `[preload] FAIL …` 后**重新抛出**（不吞异常）⇒ 崩溃报告与日志双通道可判；吞掉就成了假绿 |
+| 判据 | 日志 `[preload] OK`（证明该类**真的被加载了**，否则"不崩"是假绿）+ `InjectionError` 判据 + `crash-reports/` 无新增 |
+| 不设属性时 | 直接 return，**零副作用**（生产玩家路径完全不受影响） |
+
+**实测（KI-F14，修复后）**：`-PreloadClasses net.minecraft.class_8002` ⇒ `[preload] OK   net.minecraft.class_8002 -> net.minecraft.class_8002`
++ `Sound engine started` + `crash-reports/` 无新增；再用 `-Dmixin.debug.export=true` 导出注入后的字节码，
+直接看到 **4 个 wrapper 覆盖 6 个调用点，且 architectury 的 `@ModifyConstant` 注入同时存在**（19 处引用）
+—— 这就是「包裹调用指令」与「改 ldc 常量」可共存的字节码级证据。
 ### 7.3 已修复的测试台缺陷（7 个；每个都附实测证据）
 
 前两个是**阻断级**：只要有它们，`ft_launch` **每一次启动都必然失败**，连带 env/launch 之后的一切

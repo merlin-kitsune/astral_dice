@@ -183,7 +183,17 @@ When extending this workspace:
 >    在产线是 `class_1814` / `field_8908` ⇒ `NoSuchFieldException` → 入口点失败。**反射原版成员一律按类型/修饰符找，禁止按名字。**
 >    ⇒ 凡改动**库、本线源码、依赖或构建配置**，除 dev 冒烟外**必须**再跑一次：
 >    `pwsh -NoProfile -File scripts/test/fabric/ft_prod.ps1 -Instance <整合包目录> -McRoot <D:\.minecraft> -Java <java.exe>`
->    （在**真实整合包实例**启动一次客户端；判据：崩溃报告新增 / 入口点失败 = **FAIL**，`Sound engine started` = **PASS**）。
+>    （在**真实整合包实例**启动一次客户端；判据：崩溃报告新增 / 入口点失败 / **注入失败（`InjectionError`）** = **FAIL**，
+>    `Sound engine started` = **PASS**）。
+>    ⚠️ **光到主菜单还不够 —— 必须加 `-PreloadClasses`**（2026-09-29 追加，事故 **KI-F14**）：
+>    Mixin 的注入在**目标类被加载时**才应用，而这类目标类常常「要玩家交互才加载」
+>    ⇒ 缺陷会表现为「能进主菜单、进世界/悬停 GUI 才崩」，纯启动期冒烟**看不见**。
+>    故凡本线**改过 mixin**，生产冒烟必须带上**被本线 mixin 的、可能延迟加载的目标类**（写 **intermediary 名**）：
+>    `ft_prod.ps1 … -PreloadClasses 'net.minecraft.class_8002'`（逗号分隔可多个；dev 侧对应
+>    `:fabric-1.20.1:runClient "-PpreloadClasses=net.minecraft.class_8002"`）。
+>    ⚠️ 同类红线：**不得用 `@ModifyConstant` 去改原版常量**（它与其它模组的同点注入**互斥**，
+>    会让对方 `InjectionError` 崩游戏）—— 一律改用 MixinExtras 的 `@WrapOperation` 包裹**调用指令**
+>    （不同字节码位置 ⇒ 可共存），与本项目 `LivingHurtBridgeMixin` 的既有选择一致。
 ### 前置库 starengine_lib 的版本与兼容性契约（全局，2026-09-22 用户裁决）
 
 > 本契约**跨两个仓库生效**（库仓 `F:\MCProject\starengine_lib` ↔ 本仓三条线），是库的**公开兼容性承诺**。
