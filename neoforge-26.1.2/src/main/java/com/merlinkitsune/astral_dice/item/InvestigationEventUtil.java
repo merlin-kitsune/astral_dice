@@ -1,6 +1,5 @@
 package com.merlinkitsune.astral_dice.item;
 
-import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
 
 import com.merlinkitsune.starenginelib.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.event.AstralEventSystem;
@@ -10,7 +9,6 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.PacketDistributor;
-import net.minecraft.world.effect.MobEffects;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -22,6 +20,7 @@ import net.minecraft.world.entity.LivingEntity;
 import com.merlinkitsune.astral_dice.item.MarkManager;
 import net.minecraft.world.entity.player.Player;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
+import com.merlinkitsune.astral_dice.effect.ConcealmentEffect;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -58,14 +57,14 @@ public final class InvestigationEventUtil {
             sendInvestigationActionBar(killer);
     }
 
-    // 应用对应阶段的效果:隐身;阶段 II 及以上施加调查增益(攻击加成在攻击事件中按阶段/目标标记层数结算)
+    /** 隐匿时长(调查阶段四阶段统一 1:00;2026-09-28 用户裁决) */
+    public static final int CONCEALMENT_TICKS = 1200;
+
+    // 应用对应阶段的效果:隐匿(2026-09-28 用户裁决:取代原版「隐身」);
+    // 阶段 II 及以上同时施加调查增益(攻击加成在攻击事件中按阶段/目标标记层数结算)。
+    // ⚠️ 四阶段时长**统一为 1:00**:原来 I/II/III 分别是 0:15 / 0:20 / 0:30。
     private static void applyStageEffects(Player self, Player applier, int stage, int markLevel) {
-        int duration = switch (stage) {
-            case 1 -> 300;   // I: 15 秒
-            case 2 -> 400;   // II: 20 秒
-            case 3 -> 600;   // III: 30 秒
-            default -> 1200; // 真相揭露: 1:00
-        };
+        int duration = CONCEALMENT_TICKS;  // 全线 1:00(2026-09-28 用户裁决)
         List<Player> recipients = new ArrayList<>();
         recipients.add(self);
         if (applier != null && applier != self) {
@@ -89,7 +88,7 @@ public final class InvestigationEventUtil {
             }
         }
         for (Player p : recipients) {
-            EffectTimerGuard.apply(p, new MobEffectInstance(MobEffects.INVISIBILITY, duration, 0, false, true));
+            ConcealmentEffect.apply(p, duration);
             // 调查阶段效果:所有受影响的玩家均显示(amplifier = 阶段序号 1=I,2=II,3=III,4=真相揭露)
             p.addEffect(new MobEffectInstance(ModEffects.INVESTIGATION_BONUS, duration, stage, false, false, true));
         }

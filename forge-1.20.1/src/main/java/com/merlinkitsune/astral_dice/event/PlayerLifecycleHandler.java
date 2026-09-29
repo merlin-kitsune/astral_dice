@@ -54,6 +54,9 @@ public class PlayerLifecycleHandler {
         // 附件默认值)全部删除;下面保留下来的调用都带有附件之外的真实副作用(静态暂存表 / 物品数据 /
         // 移除 MobEffect / 阻止效果被重新施加)。
         player.removeEffect(net.minecraft.world.effect.MobEffects.INVISIBILITY);
+        // 隐匿(秘密侦探调查阶段;2026-09-28 起取代原版隐身):与原「隐身」同口径 —— 死亡即移除,
+        // 避免重生后仍处于"不可被索敌"状态(调查阶段进度本身仍保留,见下方注释)。
+        player.removeEffect(com.merlinkitsune.astral_dice.effect.ModEffects.CONCEALMENT.get());
         player.removeEffect(ModEffects.NANCY_LU_HACK.get());
         player.removeEffect(ModEffects.BLUE_CURSE.get());
         // 秘密侦探:死亡保留调查阶段进度(仅卸牌时清除)

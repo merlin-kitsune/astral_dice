@@ -76,6 +76,12 @@ public class ModEffects {
     public static final RegistryObject<MobEffect> INVESTIGATION_BONUS =
             EFFECTS.register("investigation_bonus", InvestigationBonusEffect::new);
 
+    // 隐匿(秘密侦探立牌「调查阶段」;2026-09-28 用户裁决:取代原版「隐身」):阻止怪物索敌;
+    // 玩家攻击怪物 ⇒ 解除,并在骰战中追加目标「标记」层数的伤害,直到调查阶段增益结束。
+    // 图标沿用原版隐身图标(assets/astral_dice/textures/mob_effect/concealment.png)。
+    public static final RegistryObject<MobEffect> CONCEALMENT =
+            EFFECTS.register("concealment", ConcealmentEffect::new);
+
     // 治愈:显示当前治愈点数(等级=层数,时长=距下次结算);由史莱姆立牌等维护
     public static final RegistryObject<MobEffect> HEALING =
             EFFECTS.register("healing", HealingEffect::new);

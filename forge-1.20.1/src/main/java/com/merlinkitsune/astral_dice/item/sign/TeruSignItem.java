@@ -70,7 +70,8 @@ import java.util.UUID;
  *   <li>目标身上留下「降神」效果(图标复用教主立牌贴图),并记录狐光攻击基数
  *       {@code B = 施加时的施法者攻击力(基础) + ⌊目标攻击力×0.5⌋}(= 获得目标 50% 加成后的快照攻击力);</li>
  *   <li>目标**每攻击一个新目标**(本次降神期内未攻击过的目标,按 UUID 记集合)消耗 1 层狐光,
- *       并按 {@code B + 当前剩余层数} 追加骰战攻击力;⚠️ **同一目标的后续攻击照常吃这份加成**(2026-09-25 用户裁决:旧实现「已攻击过的目标直接返回 0」使加伤只对每个目标第一击生效),而层数已为 0 时攻击新目标**不消耗、不追加**;</li>
+ *       并触发「追击」= 本次攻击**额外造成** {@code B + 当前剩余层数} 的**伤害**(2026-09-28 用户裁决:
+ *       走额外加伤通道,不进骰战攻击力);⚠️ **同一目标的后续攻击照常吃这份加成**(2026-09-25 用户裁决:旧实现「已攻击过的目标直接返回 0」使加伤只对每个目标第一击生效),而层数已为 0 时攻击新目标**不消耗、不追加**;</li>
  *   <li>**持续时间(2026-09-27 用户裁决重写)**:不再绑定「该目标自己的下一次骰神赐福结束」,
  *       改为**固定 2:00 时长**,且倒计时必须等**目标首次实施一次合格的近战攻击**后才启动 ——
  *       施加瞬间效果**立即生效**(50% 攻防加成、狐光基数、狐光追加全部照常)。机制详见下方
@@ -81,14 +82,14 @@ import java.util.UUID;
  *
  * <h2>「降神」的时长与移除(2026-09-27 用户裁决重写:不再绑定骰神赐福)</h2>
  * <b>需求</b>:降神**不再**以「骰神赐福结束」为移除时机;改为**固定 2:00 时长**,但计时必须
- * **等被施加者(降神目标)实施一次合格的近战攻击**之后才启动 —— 施加瞬间效果**立即生效**
+ * **等被施加者(降神目标)实施一次有效攻击(近战或远程,须命中)**之后才启动 —— 施加瞬间效果**立即生效**
  * (与 {@code ZhaoSignItem} 的「白泽赐福」逐字同构)。
  * <ul>
  *   <li><b>Phase 1 待启动</b>:施加时写 {@code teru_descent_timer_started=false},效果时长 =
  *       {@code TeruDescentEffect#PENDING_DURATION_TICKS}({@code -1} = 原版无限时长
  *       ⇒ {@code tickDownDuration} 跳过 ⇒ **不走动**)。效果完全生效,只是没有倒计时。</li>
  *   <li><b>启动</b>:{@link #onDescentTimerAttack} 由 {@code combat/DiceCombatEvents} 在
- *       **近战武器攻击 + 目标是骰神赐福合法目标**(与骰神赐福触发同一道闸门)时调用 ⇒ 写
+ *       **任意攻击行为(近战或远程)命中骰神赐福合法目标**(2026-09-28 用户裁决,不再要求近战武器)时调用 ⇒ 写
  *       {@code timer_started=true} 并把时长改写为 {@link TeruDescentEffect#DURATION_TICKS}(2400)。
  *       **只启动一次**:已启动后再攻击不重置、不回满。</li>
  *   <li><b>Phase 2 计时中</b>:原版每 tick 自行扣减;{@link #tickTargetSide} 只做自检与收尾。</li>
@@ -256,7 +257,7 @@ public class TeruSignItem extends BaseSignItem {
         int attackBase = Math.max(0, casterAttack) + bonusAtk;
 
         // ② 状态机初始化(2026-09-27 重写):
-        //    不再读骰神赐福;倒计时**未启动**(等目标首次合格近战攻击才启动,见 onDescentTimerAttack)。
+        //    不再读骰神赐福;倒计时**未启动**(等目标首次有效攻击才启动,见 onDescentTimerAttack)。
         ModAttachments.setTeruDescentCaster(receiver, Optional.of(caster.getUUID()));
         ModAttachments.setTeruDescentAtkBonus(receiver, bonusAtk);
         ModAttachments.setTeruDescentDefBonus(receiver, bonusDef);
@@ -326,8 +327,8 @@ public class TeruSignItem extends BaseSignItem {
     }
 
     /**
-     * **近战攻击 → 启动 2 分钟倒计时**(由 {@code combat/DiceCombatEvents} 在「近战武器攻击 +
-     * 目标是骰神赐福合法目标」时调用;挂在被施加者即降神目标身上)。
+     * **有效攻击 → 启动 2 分钟倒计时**(由 {@code combat/DiceCombatEvents} 在「**任意攻击行为(近战/远程)命中**
+     * 骰神赐福合法目标」时调用;挂在被施加者即降神目标身上)。
      *
      * <p>幂等且**只启动一次**:已启动则直接返回 ⇒ 后续攻击不回满、不重置。
      * 未处于生效期(无 {@code teru_descent_caster} 真值)时无操作。
@@ -338,7 +339,7 @@ public class TeruSignItem extends BaseSignItem {
         if (ModAttachments.isTeruDescentTimerStarted(player)) return;
         ModAttachments.setTeruDescentTimerStarted(player, true);
         TeruDescentEffect.startTimer(player);
-        LOGGER.debug("[Astral Dice][Teru] 2 分钟倒计时启动(首次合格近战攻击): player={}",
+        LOGGER.debug("[Astral Dice][Teru] 2 分钟倒计时启动(首次有效攻击): player={}",
                 player.getName().getString());
     }
 
@@ -491,22 +492,28 @@ public class TeruSignItem extends BaseSignItem {
     }
 
     /**
-     * 降神目标的**额外攻击**(攻击**新**目标时消耗 1 层狐光;同一目标的后续攻击维持该加成、不再消耗)。
+     * 降神目标的「**追击**」额外伤害(2026-09-28 用户裁决:由「追加攻击力」改为「额外伤害」)。
      *
-     * <p>由 {@code combat/DiceCombatModifiers} 的攻击修饰器调用;返回值直接加进骰战攻击力
-     * (因此受目标防御力抵扣,且参与全力攻击等既有倍率)。
+     * <p><b>口径</b>:获得「降神」的玩家攻击敌对目标时触发「追击」⇒ 本次攻击**额外造成**
+     * (降神施加者自身攻击力快照 + 当前「狐光」层数)的伤害。
+     * ⚠️ 走**额外加伤**通道({@code registerExtraDamageModifier} ⇒ 独立伤害类型
+     * {@code astral_dice:extra_damage},命中落地后单独结算),**不进骰战攻击力** ——
+     * 因此不受目标防御力抵扣、也不参与全力攻击等既有倍率(与美工刀"治愈点"同一条链)。
      *
-     * @return 额外攻击力(0 = 本次不适用:非降神目标 / 施法者离线 / **攻击新目标**且层数已为 0)
+     * <p><b>消耗规则(保留 2026-09-25 口径,本次只换结算通道)</b>:攻击**新**目标时消耗 1 层「狐光」;
+     * 同一目标的后续攻击照常触发追击且**不再消耗**。
+     *
+     * <p>由 {@code combat/DiceCombatModifiers} 的**额外加伤**修饰器调用。
+     *
+     * @return 本次应额外结算的伤害(0 = 不适用:非降神目标 / 施法者离线 / **攻击新目标**且层数已为 0)
      */
-    public static int descendExtraAttack(Player attacker, LivingEntity victim) {
+    public static int descendChaseDamage(Player attacker, LivingEntity victim) {
         if (attacker == null || victim == null) return 0;
         if (attacker.level().isClientSide()) return 0;
-        // ⚠️ 自目标防护(**必须保留**):本方法会被「显示/快照」路径以 `ctx.target == attacker` 调用 ——
-        //   `DiceCombatModifiers#getDisplayAttackRange`(卡牌栏 GUI 攻击力显示)与 `TeruSignItem` 自身的
-        //   施法快照 `attackPowerOf` 都用「player 既是攻击方也是目标」的中立上下文跑**同一套攻击修饰器链**。
-        //   若没有这一行,"打开卡牌栏看一眼攻击力"或"施法瞬间快照"都会**误消耗 1 层狐光并把施法者自己
-        //   记进已攻击目标集**(真值被显示路径污染)。真实骰战链路不可能自目标
-        //   (Forge 侧同为「target == player 直接 return」)⇒ 本防护对实战零影响。
+        // ⚠️ 自目标防护(**必须保留**):本方法可能被「显示/快照」路径以 `ctx.target == attacker` 调用
+        //   (卡牌栏 GUI 攻击力显示与施法快照都用「player 既是攻击方也是目标」的中立上下文跑同一套链)。
+        //   若没有这一行,那些路径会**误消耗 1 层狐光并把施法者自己记进已攻击目标集**(真值被显示路径污染)。
+        //   真实骰战链路不可能自目标(骰战事件里 target == player 直接 return)⇒ 本防护对实战零影响。
         if (victim == attacker) return 0;
         if (ModAttachments.getTeruDescentCaster(attacker).isEmpty()) return 0;
         // 施法者离线时无法写离线玩家数据 ⇒ 本次不加成、不消耗(A3,见规格文档)
@@ -521,14 +528,13 @@ public class TeruSignItem extends BaseSignItem {
             ModAttachments.setTeruDescentNewTargets(attacker, appendTarget(recorded, victimId));
             addLayers(caster, -1);
         }
-        // **维持**:同一目标的后续攻击照常吃「攻击基数 B + 当前剩余层数」,且**不再消耗**。
-        // 2026-09-25 用户裁决:旧实现「已攻击过的目标直接 return 0」使加伤只对每个目标**第一击**生效,
-        // 与设计机制不符(应当对当前目标的伤害维持降神加成)。
-        int bonus = ModAttachments.getTeruDescentAttackBase(attacker) + getLayers(caster);
-        LOGGER.debug("[Astral Dice][Teru] 额外攻击: victim={} visited={} base={} remainLayers={} bonus={}",
+        // **维持**:同一目标的后续攻击照常触发追击(「攻击基数 B + 当前剩余层数」),且**不再消耗**。
+        // 2026-09-25 用户裁决:旧实现「已攻击过的目标直接 return 0」使加伤只对每个目标**第一击**生效。
+        int chase = ModAttachments.getTeruDescentAttackBase(attacker) + getLayers(caster);
+        LOGGER.debug("[Astral Dice][Teru] 追击额外伤害: victim={} visited={} base={} remainLayers={} chase={}",
                 victim.getName().getString(), containsTarget(recorded, victimId),
-                ModAttachments.getTeruDescentAttackBase(attacker), getLayers(caster), bonus);
-        return bonus;
+                ModAttachments.getTeruDescentAttackBase(attacker), getLayers(caster), chase);
+        return chase;
     }
 
     // ══════════════════════════════════════════════════════════════════════════
@@ -589,7 +595,7 @@ public class TeruSignItem extends BaseSignItem {
      * (真值不在立牌物品上,与 ren 护盾同口径)」,现改为**卸下即清狐光**(层数归零 + 移除效果实例)
      * —— 用户报「即使卸除立牌也无法清除狐光效果器」。**生效中的降神链接仍按原口径保留**
      * (它挂在目标身上,与施法者是否佩戴立牌无关):施法者侧 50% 攻防加成与狐光攻击基数 B 照旧,
-     * 只是不再有新层数可消耗 ⇒ 攻击新目标不再产生额外加伤(维持语义见 {@link #descendExtraAttack})。
+     * 只是不再有新层数可消耗 ⇒ 攻击新目标不再产生追击加伤(维持语义见 {@link #descendChaseDamage})。
      */
     @Override
     protected void clearSignData(Player player, ItemStack stack) {

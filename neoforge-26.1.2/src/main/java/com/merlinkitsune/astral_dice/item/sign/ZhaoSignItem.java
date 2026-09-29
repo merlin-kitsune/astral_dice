@@ -48,7 +48,7 @@ import java.util.List;
  * {@link #tryClaimDiceJudgment} 保证「一次结算一次判定」。
  *
  * <h2>被动「完美帮手」</h2>
- * 对**装备大当家立牌**({@code fen_sign})的玩家施加「白泽赐福」时,该玩家额外获得 <b>1 层养精蓄锐</b>
+ * 对**装备大当家立牌**({@code fen_sign})的玩家施加「白泽赐福」时,该玩家的「养精蓄锐」**直接全满**({@code MAX_RECHARGE} = 5 层)
  * —— 复用既有附件计数({@code ModAttachments#FEN_RECHARGE},与「使用治疗类效果牌 +1 层」同一条
  * {@link FenSignItem#addRecharge} 入口),**不新建任何效果**。
  *
@@ -58,12 +58,12 @@ import java.util.List;
  * <ol>
  *   <li>对目标施加「白泽赐福」({@code astral_dice:zhao_blessing};时长见下方「2 分钟延迟计时」);</li>
  *   <li>**同时**施法者获得 1 张符卡-福,并把自身持有的**全部**符卡-祸转换为等量符卡-福;</li>
- *   <li>目标装备大当家立牌 ⇒ 1 层养精蓄锐(完美帮手)。</li>
+ *   <li>目标装备大当家立牌 ⇒ 「养精蓄锐」全满(完美帮手)。</li>
  * </ol>
  *
  * <h2>「白泽赐福」的时长与移除(2026-09-27 用户裁决重写:不再绑定骰神赐福)</h2>
  * <b>需求</b>:白泽赐福**不再**以「骰神赐福结束」为移除时机;改为**固定 2:00 时长**,但计时必须
- * **等被施加者实施一次合格的近战攻击**之后才启动 —— 施加瞬间效果**立即生效**(溢出治疗转攻击力照常)。
+ * **等被施加者实施一次有效攻击(近战或远程,须命中)**之后才启动 —— 施加瞬间效果**立即生效**(溢出治疗转攻击力照常)。
  * <ul>
  *   <li><b>Phase 1 待启动</b>:施加时写 {@code zhao_blessing_timer_started=false},效果时长 =
  *       {@code ZhaoBlessingEffect#PENDING_DURATION_TICKS}({@code -1} = 原版无限时长
@@ -201,16 +201,17 @@ public class ZhaoSignItem extends BaseSignItem {
         if (!(target instanceof Player receiver)) return false;
 
         // ① 状态机初始化(2026-09-27 重写):
-        //    不再读骰神赐福;倒计时**未启动**(等被施加者首次合格近战攻击才启动,见 onBlessingTimerAttack)。
+        //    不再读骰神赐福;倒计时**未启动**(等被施加者首次有效攻击才启动,见 onBlessingTimerAttack)。
         ModAttachments.setZhaoBlessingActive(receiver, true);
         ModAttachments.setZhaoBlessingTimerStarted(receiver, false);
         // 新一轮赐福:溢出治疗加成从 0 起算(避免上一轮的残留被继承)
         clearOverflowBonus(receiver);
         // ② 施加「白泽赐福」(时长 = 未启动占位值;首次攻击时由状态机改写为 2400)
         ZhaoBlessingEffect.apply(receiver);
-        // ③ 完美帮手:目标装备大当家立牌 ⇒ 1 层养精蓄锐(复用既有附件计数,不新建效果)
+        // ③ 完美帮手(2026-09-28 用户裁决):目标装备大当家立牌 ⇒ 养精蓄锐**直接全满**(5 层)。
+        //    复用既有附件计数(ModAttachments#FEN_RECHARGE),不新建效果。
         if (FenSignItem.isEquipped(receiver)) {
-            FenSignItem.addRecharge(receiver, 1);
+            FenSignItem.fillRecharge(receiver);
         }
         // ④ 施法者:1 张符卡-福 + 自身全部符卡-祸 → 符卡-福
         FuCardItem.give(caster, caster, 1);
@@ -227,8 +228,8 @@ public class ZhaoSignItem extends BaseSignItem {
     // ══════════════════════════════════════════════════════════════════════════
 
     /**
-     * **近战攻击 → 启动 2 分钟倒计时**(由 {@code combat/DiceCombatEvents} 在「近战武器攻击 +
-     * 目标是骰神赐福合法目标」时调用;挂在被施加者身上)。
+     * **有效攻击 → 启动 2 分钟倒计时**(由 {@code combat/DiceCombatEvents} 在「**任意攻击行为(近战/远程)命中**
+     * 骰神赐福合法目标」时调用;挂在被施加者身上)。
      *
      * <p>幂等且**只启动一次**:已启动则直接返回 ⇒ 后续攻击不回满、不重置。
      * 未处于生效期(无 {@code active} 真值)时无操作。
@@ -239,7 +240,7 @@ public class ZhaoSignItem extends BaseSignItem {
         if (ModAttachments.isZhaoBlessingTimerStarted(player)) return;
         ModAttachments.setZhaoBlessingTimerStarted(player, true);
         ZhaoBlessingEffect.startTimer(player);
-        LOGGER.debug("[Astral Dice][Zhao] 2 分钟倒计时启动(首次合格近战攻击): player={}",
+        LOGGER.debug("[Astral Dice][Zhao] 2 分钟倒计时启动(首次有效攻击): player={}",
                 player.getName().getString());
     }
 

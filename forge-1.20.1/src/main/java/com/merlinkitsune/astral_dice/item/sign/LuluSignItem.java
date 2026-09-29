@@ -20,11 +20,6 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.TamableAnimal;
-import net.minecraft.world.entity.animal.Pig;
-import net.minecraft.world.entity.animal.camel.Camel;
-import net.minecraft.world.entity.animal.horse.AbstractHorse;
-import net.minecraft.world.entity.monster.Strider;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.AABB;
 import org.slf4j.Logger;
@@ -41,15 +36,18 @@ import java.util.List;
  *   <li><b>主动「治愈粘液」</b>:走<b>目标选择器</b>({@link TargetType#PLAYER} + {@link SelfTargetable#allowSelf()}
  *       ⇒ 可选任意玩家,或右键对自身使用),确认后把效果施加到**被指向的目标**(自身目标时即原来「对自己」的行为):
  *       ① 主体 +3 点治愈 + 瞬间治疗;② 以目标为中心 {@link GameplayConstants#LULU_ACTIVE_RANGE} 格内的
- *       玩家/宠物/可骑乘生物获得瞬间治疗;③ 同范围内敌对生物获得缓慢 1:00;</li>
+ *       **敌对生物**获得缓慢 1:00(2026-09-28 用户裁决:移除原「对范围内玩家/宠物/可骑乘生物施加瞬间治疗」);</li>
  *   <li>卸载立牌不做任何扣除(治愈点数保留,避免卸下/重载丢失点数)。</li>
  * </ul>
  *
  * <p><b>2026-09-19 用户裁决</b>:主动改为目标选择器技能,并把原本「自身 +3 治愈 + 瞬间治疗」改为
- * 「向自身或选择的玩家目标施加」,另两项范围能力(友方瞬间治疗 / 敌对缓慢)改为以**被指向的目标**为中心
- * (选自身时即以自己为中心,与旧行为逐字一致)。范围判定的两条口径**有意保持不变**:
- * 宠物归属仍按**施放者**判定({@link #isHealTarget}),敌对判定仍以**施放者**为参照
+ * 「向自身或选择的玩家目标施加」,范围能力(敌对缓慢)改为以**被指向的目标**为中心
+ * (选自身时即以自己为中心,与旧行为逐字一致)。敌对判定仍以**施放者**为参照
  * ({@code HostileTargets.isHostile(player, entity)}) —— 本次只把范围中心从施放者换成目标。
+ *
+ * <p><b>2026-09-28 用户裁决</b>:移除主动技能里「以其为中心,对周围 16 格内的玩家/宠物/可骑乘生物施加
+ * 瞬间治疗」这一整段(**描述与代码一并删除**)⇒ 范围部分只剩「敌对生物缓慢 1:00」;
+ * 主体效果(目标 +3 治愈 + 瞬间治疗)不变。
  *
  * <p>主动为「门控」技能:按下主动键只开启选择会话,冷却与电流核心充能由本类注册的
  * {@link TargetSelectionAction#apply} 在确认时写入({@code BaseSignItem} 的门控分支会 return,
@@ -100,7 +98,7 @@ public class LuluSignItem extends BaseSignItem {
             }
             target.addEffect(new MobEffectInstance(MobEffects.HEAL, 1, 0, false, true));
 
-            // ── 2/3. 两项范围能力:以**被指向的目标**为中心(旧实现以施放者为中心)──────────
+            // ── 2. 范围能力(2026-09-28 起仅剩「敌对生物缓慢」):以**被指向的目标**为中心 ──────
             // 目标自身已吃到主体效果,故与旧实现排除施放者同构,这里排除目标本身。
             AABB aabb = target.getBoundingBox().inflate(GameplayConstants.LULU_ACTIVE_RANGE);
             List<LivingEntity> nearby = target.level().getEntitiesOfClass(LivingEntity.class, aabb,
@@ -110,13 +108,6 @@ public class LuluSignItem extends BaseSignItem {
                     // 敌对生物:缓慢 1:00
                     EffectTimerGuard.apply(entity,
                             new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, SLOWDOWN_TICKS, 0, false, true));
-                } else if (isHealTarget(entity, player)) {
-                    // 玩家/宠物/可骑乘生物:瞬间治疗 1
-                    entity.addEffect(new MobEffectInstance(MobEffects.HEAL, 1, 0, false, true));
-                    // 友情徽章:对友方玩家施加治疗时,双方各获得 2 点治愈
-                    if (entity instanceof Player healedPlayer) {
-                        FriendshipBadgeChipItem.onHealApplied(player, healedPlayer);
-                    }
                 }
             }
 
@@ -185,15 +176,4 @@ public class LuluSignItem extends BaseSignItem {
         HealingManager.add(player, 1);
     }
 
-    // 判定可治疗的友好目标:玩家、玩家驯服的宠物、可骑乘生物(马/驴/骡等、猪、炽足兽、骆驼)
-    // ⚠️ 归属与参照**仍是施放者**(2026-09-19 迁移到目标选择器时有意不改):本次只把范围中心从施放者
-    //    换成被指向的目标,治疗判定规则逐字保持,避免「换个目标就换一套规则」的隐性扩张。
-    private static boolean isHealTarget(LivingEntity entity, Player player) {
-        if (entity instanceof Player) return true;
-        if (entity instanceof TamableAnimal tame && tame.isOwnedBy(player)) return true;
-        return entity instanceof AbstractHorse
-                || entity instanceof Pig
-                || entity instanceof Strider
-                || entity instanceof Camel;
-    }
 }
