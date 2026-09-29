@@ -1048,7 +1048,9 @@ When extending this workspace:
    ⚠️ **禁止第三种颜色**：`item/chip/CurrentCoreChipItem` 的 `AQUA` 已拆为「充能不足 ⇒ 红 / 冷却立即完成 ⇒ 黄」，其 `sendActionBar(Player, ChatFormatting, String, Object...)` 形参即色档，勿再写死颜色。
 4. **三线同一条消息必须同色**：同一 lang 键在三线不得出现不同色档（历史缺陷：`msg.astral_dice.mamushi_cooldown_locked` 在 1.21.1/26.1.2 经 `CurrentCoreChipItem` 为青、在 1.20.1 经 `MamushiSignItem#notifyForcedCooldown` 为白）。
 5. **`withStyle` 在 `MutableComponent` 上，不在 `Component` 接口上**：写法只能是「`Component.translatable(...).withStyle(...)`」（`translatable` 返回 `MutableComponent`）。把样式套在**形参类型为 `Component`** 的变量上会编译失败（`符号: 方法 withStyle(ChatFormatting)` 位置: 类型为Component的变量）⇒ 需要着色的 helper 其形参类型要写 `MutableComponent`，或把着色放到调用点。
-6. **取证**：动作栏是客户端可见状态，服务端探针判不了；改动的可断言面 = 语言键存在性（三线 × 三语，`826` 键）+ `msg`/`hud` 前缀值内 `§` 计数为 **0** + 开 jar 核对。守卫脚本另跑 `tools/check_lang_sync.ps1`（0 = 通过，注意它走 `[Console]::Out.Write` ⇒ 须 `[Console]::SetOut([StringWriter])` 捕获）与 `scripts/audit/tooltip_color_audit.ps1`。
+6. **取证**：动作栏是客户端可见状态，服务端探针判不了；改动的可断言面 = 语言键存在性（三线 × 三语，`826` 键）+ `msg`/`hud` 前缀值内 `§` 计数为 **0** + 开 jar 核对。
+   守门脚本：**`python tools/audit_actionbar.py`（退出码 0 = 通过）** —— 一次跑齐三条硬约束（值内禁 `§` / 键三线×三语齐 / 原版覆盖层通道白名单），实现要点：扫「helper 名并集 + 直接构造 + 原版通道」三类落点、**先去注释再扫**（否则 26.1.2 javadoc 里的 `{@code sendOverlayMessage(...)}` 会误报）、**排除以 `.` 结尾的动态拼接键**（`"msg.astral_dice.fanny_event." + roll`）；新增动作栏 helper 必须登记进该脚本的 `HELPERS`，否则其调用点的键会被漏扫（假绿）。
+   另跑 `tools/check_lang_sync.ps1`（0 = 通过，注意它走 `[Console]::Out.Write` ⇒ 须 `[Console]::SetOut([StringWriter])` 捕获）与 `scripts/audit/tooltip_color_audit.ps1`。
 
 ## 语言文件同步规范（Lang Sync）— 必须遵守
 
