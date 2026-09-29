@@ -147,6 +147,16 @@ public final class PuzzlesBridges {
 
         // ── MobEffectEvent.Remove ← MobEffectEvents.Remove(removeEffect HEAD) ──
         MobEffectEvents.REMOVE.register((entity, effectInstance) -> {
+            // ⚠️ effectInstance **可为 null**:Puzzles 的 REMOVE 回调在「实体本就没有该效果」时同样触发
+            //    (库的 ModEffectRemoval.remove 直接走 LivingEntity#removeEffect,不先判存在性)。
+            //    Forge 侧同一路径**不派发**事件 —— 其 removeEffect 补丁形如
+            //    `MobEffectInstance i = activeEffects.remove(effect); if (i != null) post(new Remove(this, i, effect));`
+            //    ⇒ 这里同样跳过:既对齐 Forge 语义,也避免构造器解引用 null。
+            //    (2026-09-29 实测:玩家登录时 PlayerLifecycleHandler 清理骰神赐福 → 库里 remove →
+            //     本回调传 null → MobEffectEvent.Remove 构造器 NPE → "无效的玩家数据" → **无法进入存档**)
+            if (effectInstance == null) {
+                return EventResult.PASS;
+            }
             MobEffectEvent.Remove event = new MobEffectEvent.Remove(entity, effectInstance);
             LoaderBus.INSTANCE.post(event);
             // Forge 取消 ⇒ 阻止这次移除

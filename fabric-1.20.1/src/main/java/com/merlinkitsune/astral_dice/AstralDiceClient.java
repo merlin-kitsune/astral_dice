@@ -35,6 +35,14 @@ public class AstralDiceClient implements ClientModInitializer {
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.client.ClientSessionEvents.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.client.ClientTickHandler.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.client.KeyBindingSetup.class);
+        // ⚠️ 必须**单独登记内部类**:LoaderBus.scan 只遍历「该类自己声明的方法 + 父类」,
+        //    **不递归内部类**。而另三线(forge/neoforge)是把 @EventBusSubscriber 标在
+        //    KeyBindingSetup.ClientEvents 这个**内部类**上、由平台自动注册的 ⇒ 移植到 Fabric 时
+        //    漏了这一步,导致 J(立牌主动技能)/H(卡牌栏)两个按键**完全不响应**
+        //    (2026-09-29 客户端启动时由 SubscriptionAudit 抓出:枚举 582 个类、50 个已登记、
+        //     这 1 个带 @SubscribeEvent 却未登记)。保留上面外层类的登记:外层目前无处理器,
+        //    但登记它是无害的,且若将来外层类加了 @SubscribeEvent 方法无需再改这里。
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.client.KeyBindingSetup.ClientEvents.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.client.ModClientEvents.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.client.NancyLuClientEvents.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.client.RarityTooltipFrame.class);

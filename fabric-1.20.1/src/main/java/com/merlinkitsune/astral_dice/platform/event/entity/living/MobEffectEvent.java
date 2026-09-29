@@ -57,7 +57,13 @@ public class MobEffectEvent extends LivingEvent
         public Remove(LivingEntity living, MobEffectInstance effectInstance)
         {
             super(living, effectInstance);
-            this.effect = effectInstance.getEffect();
+            // ⚠️ effectInstance **允许为 null** —— 本类 getEffectInstance() 的 javadoc 已明确声明该情形
+            //    ("In the remove event, this can be null if the entity does not have a MobEffect of the
+            //      right type active")。此处必须判空:否则构造器自身 NPE,并把「玩家登录」这类
+            //    与其无关的路径一起打断(2026-09-29 实测:无法进入存档)。
+            //    正常路径已由 PuzzlesBridges 的 REMOVE 回调提前跳过 null(对齐 Forge 语义),
+            //    这里是**第二道防线**,任何未来的调用方传 null 也不会崩。
+            this.effect = effectInstance == null ? null : effectInstance.getEffect();
         }
 
         /**

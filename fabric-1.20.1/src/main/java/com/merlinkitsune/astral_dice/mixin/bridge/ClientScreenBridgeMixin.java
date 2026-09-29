@@ -39,6 +39,16 @@ public abstract class ClientScreenBridgeMixin {
         if (this.astralDice$replacingScreen) {
             return;
         }
+        // ⚠️ newScreen **可以为 null**:MC 内部大量用 `setScreen(null)` 来「关闭当前屏幕、回到游戏画面」,
+        //    最典型的是 ReceivingLevelScreen.onClose(地形加载完成时)。
+        //    Forge 侧同一路径**不派发** Opening —— 其 ScreenEvent 基类构造器同样是
+        //    `Objects.requireNonNull(screen)`(javap 实证),而 Forge 客户端能正常进世界,
+        //    说明它的 setScreen 补丁只在非 null 时构造事件。本类必须照做:
+        //    否则 `Objects.requireNonNull` 抛 NPE → "Ticking screen" → 客户端崩溃。
+        //    (2026-09-29 实测:该 NPE 导致**每次进入世界必崩**,服务端空跑完全测不出。)
+        if (newScreen == null) {
+            return;
+        }
         Screen current = this.screen;
         if (current == newScreen) {
             return;

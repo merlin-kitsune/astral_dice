@@ -534,6 +534,64 @@ GlCommandEncoder.trySetup(:531) ← GlCommandEncoder.executeDraw(:406) ← GlRen
 ⚠️ 脚本内的 `LANG_KEY_ALLOW` 是「已知但暂不修」的**显式白名单**（仍会打印出来，不静默）；
 新增白名单项必须写明「为什么不能修 + 需要谁裁决什么」。当前**白名单为空**。
 
+### KI-F9 ＝ 客户端订阅**内部类**漏登记 ⇒ **J / H 两个按键完全不响应**（已修，仅 fabric）
+
+- **现象**：`KeyBindingSetup.ClientEvents.onClientTick` 负责 **J**（立牌主动技能激活 / 取消目标选择）
+  与 **H**（打开卡牌栏），但该**内部类从未被 `LoaderBus.register(...)` 登记** ⇒ 两个键完全无响应。
+- **根因（移植引入）**：另三线（forge / 1.21.1 / 26.1.2）都把 `@EventBusSubscriber` 标在
+  `KeyBindingSetup.ClientEvents` 这个**内部类**上、由平台自动注册；fabric 侧必须显式登记，
+  而移植时只登记了**外层类** `KeyBindingSetup`（它本身没有任何处理器）。
+  ⚠️ `LoaderBus.scan` 只遍历「该类自己声明的方法 + 父类」，**不递归内部类**。
+- **修复**：`AstralDiceClient#onInitializeClient` 增加
+  `LoaderBus.INSTANCE.register(KeyBindingSetup.ClientEvents.class)`（外层那行保留，无害）。
+- **取证**：修复前客户端日志 `事件订阅审计:发现 1 个带 @SubscribeEvent 却**未登记**的类 → [KeyBindingSetup$ClientEvents]`；
+  修复后 `事件订阅审计通过:61 个订阅类全部已登记`。
+  ⚠️ **这正是 KI-F6 那套审计存在的意义** —— `dispatchReport()` 只看得见「已注册」的事件类，对这类漏接是盲区。
+
+### KI-F10 ＝ `MobEffectEvent.Remove` 构造器对 null 效果实例 NPE ⇒ **玩家无法进入存档**（已修）
+
+- **现象**：客户端进入世界瞬间 `PlayerXXX lost connection: 无效的玩家数据`，玩家被踢回主菜单、
+  **存档无法进入**；服务端日志报 `Couldn't place player in world`。
+- **根因链**：玩家登录 → `PlayerLoggedInEvent` → `PlayerLifecycleHandler#onPlayerLoggedInClearDiceBlessing`
+  清理「骰神赐福」→ 库的 `ModEffectRemoval.remove` 直接走 `LivingEntity#removeEffect`
+  （**不先判该效果是否存在**）→ Puzzles Lib 的 `MobEffectEvents.REMOVE` 回调以 **null** 的
+  `effectInstance` 触发 → `PuzzlesBridges` 原样构造 `new MobEffectEvent.Remove(entity, null)`
+  → 构造器 `this.effect = effectInstance.getEffect()` **解引用 null** ⇒ NPE。
+- **⚠️ 自相矛盾的证据（说明这是纯粹的漏防御）**：同类的 `getEffectInstance()` javadoc **早已声明**
+  「In the remove event, this can be **null** if the entity does not have a MobEffect of the right type active」，
+  且**全部 4 处订阅者**都写了 `if (instance == null || instance.getEffect() == null) return;` ——
+  **只有构造器漏了判空**。
+- **对照 Forge（语义基准）**：Forge 的 `removeEffect` 补丁形如
+  `MobEffectInstance i = activeEffects.remove(effect); if (i != null) post(new Remove(this, i, effect));`
+  ⇒ **效果不存在时不派发事件**。
+- **修复（主 + 防两处）**：
+  1. `PuzzlesBridges` 的 REMOVE 回调：`effectInstance == null` 时**直接 return PASS**（不派发）—— 对齐 Forge 语义；
+  2. `MobEffectEvent.Remove(living, instance)` 构造器：`effectInstance == null ? null : effectInstance.getEffect()`
+     —— 第二道防线（与自身 javadoc 一致，任何未来的调用方传 null 也不会崩）。
+- **取证**：修复前 `Couldn't place player in world` + 完整 NPE 堆栈；修复后同一存档同一路径
+  **无异常、玩家正常留在世界**。
+
+### KI-F11 ＝ `ScreenEvent.Opening` 在 `setScreen(null)` 时 NPE ⇒ **每次进世界客户端必崩**（已修）
+
+- **现象**：`java.lang.NullPointerException: Ticking screen`，堆栈
+  `Objects.requireNonNull → ScreenEvent.<init> → ScreenEvent$Opening.<init> → Minecraft.setScreen 的 mixin
+   → ReceivingLevelScreen.onClose()` ⇒ 客户端直接崩溃退出。
+- **根因**：MC 内部**合法地**用 `setScreen(null)` 关闭当前屏幕（最典型的是「正在加载地形」的
+  `ReceivingLevelScreen` 加载完成后 `onClose()`），而 `ClientScreenBridgeMixin` 在 `setScreen` 的 HEAD
+  **无条件**构造 `ScreenEvent.Opening(current, newScreen)`；`ScreenEvent` 基类构造器是
+  `Objects.requireNonNull(screen)` ⇒ NPE。
+- **对照 Forge（语义基准）**：Forge 的 `ScreenEvent` 构造器**同样**是 `Objects.requireNonNull(screen)`
+  （javap 实证），而 Forge 客户端能正常进世界 ⇒ **Forge 必然在 screen 为 null 时不构造事件**。
+- **修复**：`ClientScreenBridgeMixin#astralDice$bridgeScreenOpening` 开头加 `if (newScreen == null) return;`。
+- **顺带排查**：全仓平台事件类只剩 1 处 `Objects.requireNonNull`（`ProjectileImpactEvent` 的 **setter**，
+  不是构造器）⇒ 该类风险已闭合。
+- **取证**：修复前每次进世界必崩；修复后 `PlayerXXX logged in`、客户端连续运行 600+ tick 并正常渲染。
+
+> ⚠️ **这三条都只在「真带玩家进世界」的客户端验证里才会暴露**：
+> 服务端空跑（无玩家登录）与客户端主菜单阶段**都测不出来** ——
+> KI-F9 要客户端入口、KI-F10 要玩家登录、KI-F11 要真正走完「加载地形」并关闭该屏幕。
+> ⇒ **移植线收尾必须做一次「客户端进世界」验证，不能只跑服务端 + 编译。**
+
 ## 10. 变更记录
 
 | 日期 | 变更 |
@@ -554,3 +612,4 @@ GlCommandEncoder.trySetup(:531) ← GlCommandEncoder.executeDraw(:406) ← GlRen
 | 2026-09-29 | **KI-F1 定案（严格保真）+ 新增 KI-F5 / KI-F6**：1) 两个「指定药水」配方改为自建序列化器 `astral_dice:nbt_shaped` + `NbtShapedRecipe`（覆写 `matches`；JSON 与网络层均委托原版 `ShapedRecipe.Serializer`）⇒ 原「放宽为任意药水」方案作废；语义基准取 **1.21.1 / 26.1.2 的 `DataComponentIngredient.of(true, …)`**（`forge-1.20.1` 的 `PartialNBTIngredient` 按「本分支只改 fabric 端」的裁决**保持原样**，`potionTag(...)` 保留）；2) **KI-F5** = `c:bricks` 在 Forge 47.x 上无任何提供者（`Tags.Items` 里没有 `BRICKS`）⇒「对怪板砖」配方原本永不可合成，现按 NeoForge 的定义在**本线**自建（`#c:bricks/normal` + `#c:bricks/nether` = `minecraft:brick` / `minecraft:nether_brick`），`forge-1.20.1` 侧**未动**；3) **KI-F6** = 新增 `platform/event/SubscriptionAudit`：扫描本包 `@SubscribeEvent` 与已登记集合做差集，补 `dispatchReport()` 看不见的「忘了 register」盲区，`-Dastral_dice.strictBusAudit=true` 可升级为致命错误。 |
 | 2026-09-29 | **撤销 forge 侧改动 + 新增 KI-F7 与本线资源闭环守门**：1) 按用户裁决「本分支只改 fabric 端」，把 `ae76390b` 里属于 forge 的部分全部恢复为 `aadaf8a7`（`ModRecipeProvider` 的 `PartialNBTIngredient` / `potionTag(...)` / generated 配方 / 三个自建 `c:` 标签）⇒ `git diff aadaf8a7 -- forge-1.20.1/` 为空；KI-F1 表格与 KI-F5 的表述同步改为「有意保留的三线差异」；2) **新增 KI-F7** = 手册 `teru_sign.3` 在四线都缺键（玩家会看到原始键名），已取到配方与稀有度依据但**档位词口径不明**（`HANNA_SIGN` / `SHERRY_SIGN` 代码同为 `bizarre()` 而手册写着 `Rare` / `Epic`）⇒ 只登记不补写，附两个可选修法；3) **新增守门脚本 `tools/verify_fabric_assets.py`**（7 项闭环：物品↔模型↔贴图 / 标签↔提供者 / 音效三件套 / 粒子清单 / 三语键集 + java 引用键 / 手册引用 / 创意标签覆盖）—— 本轮体检 12 项里 11 项 PASS、仅 KI-F7 一项 FAIL（已白名单 + 可见打印）。 |
 | 2026-09-29 | **KI-F7 已补齐 + 新增 KI-F8**：为 `teru_sign` 手册第 3 页补上三语键（zh_cn「配方：钻石骰子 + 黄金星盘 ×2（传奇档）。」/ en_us / ja_jp）—— 档位词用**交叉验证**确立（同档的 `megas_sign.3` 手册写「传奇档 / Legendary tier」而代码是 `legendary()`），材料从配方文件逐字读出（Z=diamond_dice、P=golden_star_plate ×2），句式对齐 `hanna_sign.3`；三语键数 828 → 829 且仍互为一致，守门脚本第 6 项 FAIL → PASS，并从 `LANG_KEY_ALLOW` 移除（白名单重新为空）。同时**新增 KI-F8**：`hanna_sign.3` / `sherry_sign.3` 的档位词（稀有档 / 史诗档）与两者代码稀有度（均为 `bizarre()` 奇特）**不符** ⇒ 按同一判据二者至少一条错；因「以代码为准」（需先定 `奇特` 的英/日写法）与「以文案为准」（要改稀有度体系与 tooltip 配色）两条路都需裁决，**只登记未改**。 |
+| 2026-09-29 | **客户端进世界验证：修复 3 个阻断级缺陷（KI-F9 / KI-F10 / KI-F11）** —— 首次带玩家进世界的客户端验证暴露：① **KI-F9** `KeyBindingSetup.ClientEvents` 内部类漏登记 ⇒ **J（立牌主动技能）/ H（卡牌栏）两键完全不响应**（另三线靠 `@EventBusSubscriber` 自动注册内部类，fabric 需显式登记而移植时只登记了外层类；由本轮新增的 `SubscriptionAudit` 抓出）；② **KI-F10** `MobEffectEvent.Remove` 构造器对 null 效果实例 NPE ⇒ **玩家无法进入存档**（登录清理骰神赐福 → 库 remove 不判存在性 → Puzzles 回调传 null → 构造器解引用；Forge 侧同路径**不派发**，且该类 javadoc 与全部 4 处订阅者都按「可为 null」写，只有构造器漏了防御）⇒ 修两处：PuzzlesBridges 回调跳过 null + 构造器判空；③ **KI-F11** `ScreenEvent.Opening` 在 `setScreen(null)`（`ReceivingLevelScreen.onClose`）时 NPE ⇒ **每次进世界必崩**（Forge 的 `ScreenEvent` 构造器同样 requireNonNull ⇒ 它在 null 时不构造事件）⇒ mixin 加 null guard。同轮为 fabric 线补上另三线早已有的 `-Pquickplay` 与固定窗口尺寸的 client run 参数（⚠️ Loom 用 `programArg`，不是 ModDevGradle 的 `programArgument`）。修复后客户端正常进世界、连续运行 600+ tick，`RenderLevelStageEvent=10326` / `RenderHandEvent=3441` 证明世界内渲染链路在派发；物品栏内本模组立牌渲染正常（非紫黑格）。 | 
