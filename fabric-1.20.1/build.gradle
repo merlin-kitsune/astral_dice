@@ -51,6 +51,19 @@ dependencies {
     modImplementation "net.fabricmc:fabric-loader:${loader_version}"
     modImplementation "net.fabricmc.fabric-api:fabric-api:${fabric_version}"
 
+    // ── 事件桥前置:Puzzles Lib(硬依赖,2026-09-29 用户裁决「许可引入」) ──────────
+    // 背景:Fabric API 1.20.1 **没有可改伤害值的事件**(ServerLivingEntityEvents.ALLOW_DAMAGE
+    // 只能取消、不能改 amount),而本模组 109 个事件处理器里承重最重的正是
+    // LivingDamageEvent(11 处)/ LivingHurtEvent(3 处)/ MobEffectEvent.*(10 处)。
+    // Puzzles Lib 以 mixin 提供了一整套「可改数值」的回调(自带 MutableXxx 家族),
+    // 注入点实测与 Forge 的对应 patch 位置一致(见 platform/PuzzlesBridges 的映射表)。
+    // ⚠️ 硬依赖 ⇒ 进 fabric.mod.json 的 depends;它自带 puzzlesaccessapi(内嵌),
+    //    但**不含** Forge Config API Port ⇒ dev 运行期要一并投放。
+    modImplementation "maven.modrinth:puzzles-lib:${puzzleslib_mr_version}"
+    if (providers.gradleProperty('testPuzzles').getOrElse('true') != 'false') {
+        modRuntimeOnly "maven.modrinth:forge-config-api-port:${forgeconfigapiport_mr_version}"
+    }
+
     // ── 前置库(跨仓硬前置;JarJar 内嵌,替代 Forge 侧的 jarJar) ────────────────
     // ⚠️ 库必须先 :fabric-1.20.1:publishToMavenLocal。include(...) 会把库 jar 嵌进产物
     //    (等价于 Forge 侧的 jarJar),玩家无需单独安装;整合包里也不应再放独立库 jar。
@@ -160,6 +173,7 @@ def templateProps = [
         trinkets_version       : project.trinkets_version.toString(),
         cca_version            : project.cca_version.toString(),
         accessories_version_range: project.accessories_version_range.toString(),
+        puzzleslib_version_range: project.puzzleslib_version_range.toString(),
         lib_version_range      : project.starengine_lib_version_range.toString(),
 ]
 processResources {

@@ -63,6 +63,26 @@ public final class FabricBridges {
     public static void installEarly() {
         ServerLifecycleEvents.SERVER_STARTING.register(SimpleChannel::setServer);
         ServerLifecycleEvents.SERVER_STOPPING.register(s -> SimpleChannel.setServer(null));
+        // 事件派发计数报告(诊断):关服时打印一次。
+        ServerLifecycleEvents.SERVER_STOPPING.register(server ->
+                com.merlinkitsune.astral_dice.AstralDiceMod.LOGGER.info(
+                        "[Astral Dice] 事件派发统计(关服){}", LoaderBus.INSTANCE.dispatchReport()));
+        // ⚠️ 再加一个「开局 600 tick 后」的取样点:开发/冒烟环境常常是**强杀进程**收尾
+        //    (拿不到 SERVER_STOPPING),没有这个取样点就永远看不到报告。
+        //    判据:ServerTickEvent 必须为正数 —— 它与所有其它事件走同一条 post 路径,
+        //    它通即桥通;其余为 0 属正常(无玩家交互)。
+        //    600 tick(30s)而非 200:给 kubejs 取证探针(默认 300 tick 触发)留出时间。
+        ServerTickEvents.END_SERVER_TICK.register(new ServerTickEvents.EndTick() {
+            private int ticks = 0;
+
+            @Override
+            public void onEndTick(net.minecraft.server.MinecraftServer server) {
+                if (++this.ticks == 600) {
+                    com.merlinkitsune.astral_dice.AstralDiceMod.LOGGER.info(
+                            "[Astral Dice] 事件派发统计(开局 600 tick){}", LoaderBus.INSTANCE.dispatchReport());
+                }
+            }
+        });
     }
 
     /** 安装全部 FAPI 回调桥接。 */
@@ -75,6 +95,10 @@ public final class FabricBridges {
         installPlayerLifecycle();
         installDamage();
         installCommands();
+        // Puzzles Lib 回调 → 自建事件(伤害/死亡/掉落/目标/效果/铁砧/方块/克隆/拾取)。
+        // ⚠️ Puzzles 是**硬依赖**(fabric.mod.json depends)⇒ 无需守卫,也绝不能被守卫掉:
+        //    否则这些事件会静默永不触发(项目最忌的假绿)。
+        PuzzlesBridges.install();
     }
 
     private static void installTicks() {

@@ -49,6 +49,11 @@ public class AstralDiceMod implements ModInitializer {
         com.merlinkitsune.astral_dice.loot.FabricLootInjector.register();
         commitRegistrations();
         registerListeners();
+        // ⚠️ 必须装桥,否则**全部**事件永不派发(2026-09-29 修:此前只调了 installEarly(),
+        //    install() 从未被调用 ⇒ tick / 登录登出 / 命令 / 伤害 / Puzzles 那一整套
+        //    都处于「代码在、但没接上」的静默失效状态)。位置 = 监听器注册之后,
+        //    这样桥第一次派发时订阅者一定已在总线上。
+        FabricBridges.install();
         TrinketBridge.registerAll();
         // Accessories(软依赖)在场时,再挂一条饰品通道:槽位验证器 + 物品适配器。
         // ⚠️ 守卫不可省 —— AccessoriesCompat 直接引用 io.wispforest.accessories.*,

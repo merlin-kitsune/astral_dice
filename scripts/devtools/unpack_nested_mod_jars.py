@@ -62,7 +62,7 @@ TARGET_DIRS = [
 NESTED_PREFIX = 'META-INF/jars/'
 
 # 只处理这几个 mod 的内嵌库（见模块 docstring 的说明）
-MOD_WHITELIST = ('accessories', 'patchouli')
+MOD_WHITELIST = ('accessories', 'patchouli', 'puzzles-lib', 'forge-config-api-port')
 
 MODRINTH_RE = re.compile(r'maven\.modrinth:([A-Za-z0-9._\-]+):([A-Za-z0-9._\-${}]+)')
 

@@ -51,6 +51,42 @@ public final class LoaderBus implements IEventBus {
     public static final LoaderBus INSTANCE = new LoaderBus();
 
     private final Map<Class<?>, List<Listener>> listeners = new HashMap<>();
+
+    /** 事件类 → 已派发次数(诊断用,见 {@link #dispatchReport()})。 */
+    private final Map<Class<?>, java.util.concurrent.atomic.AtomicInteger> dispatchCounts =
+            new java.util.concurrent.ConcurrentHashMap<>();
+
+    /**
+     * 派发计数报告(诊断用)。
+     *
+     * <p>列出**每一个已注册监听器的事件类**及其派发次数 —— 0 次的一并列出,因为
+     * 「某事件从未派发」正是本类问题的表现形式(桥没接、注入点写错、或注册漏了)。
+     * 判据:至少 {@code ServerTickEvent} 必须是正数(它由 FAPI 的 tick 回调驱动,
+     * 走的与所有其它事件**同一条 {@code post} 路径**)⇒ tick 有计数就说明桥是通的。
+     */
+    public String dispatchReport() {
+        java.util.Set<Class<?>> all = new java.util.TreeSet<>(java.util.Comparator.comparing(Class::getSimpleName));
+        all.addAll(listeners.keySet());
+        all.addAll(dispatchCounts.keySet());
+
+        StringBuilder fired = new StringBuilder();
+        StringBuilder idle = new StringBuilder();
+        int firedCount = 0;
+        int idleCount = 0;
+        for (Class<?> type : all) {
+            java.util.concurrent.atomic.AtomicInteger counter = dispatchCounts.get(type);
+            int n = counter == null ? 0 : counter.get();
+            if (n == 0) {
+                idleCount++;
+                idle.append(type.getSimpleName()).append(' ');
+            } else {
+                firedCount++;
+                fired.append(type.getSimpleName()).append('=').append(n).append(' ');
+            }
+        }
+        return "\n  [已派发 " + firedCount + " 类] " + fired
+                + "\n  [未派发 " + idleCount + " 类] " + idle;
+    }
     private long counter = 0L;
     private boolean dispatching = false;
     private final List<Runnable> pendingAdds = new ArrayList<>();
@@ -144,6 +180,10 @@ public final class LoaderBus implements IEventBus {
      * 其基类在 Fabric 侧是空类)只做普通派发 —— 语义等价于 Forge 侧该事件不可取消。
      */
     public boolean postEvent(Object event) {
+        // 派发计数(诊断):让「桥装了但事件从不触发」这类**静默失效**可被断言 ——
+        // 本项目已经踩过一次「FabricBridges.install() 从未被调用」的坑(见 AstralDiceMod)。
+        dispatchCounts.computeIfAbsent(event.getClass(), k -> new java.util.concurrent.atomic.AtomicInteger())
+                .incrementAndGet();
         List<Listener> chain = collect(event.getClass());
         if (chain.isEmpty()) {
             return event instanceof Event e && e.isCanceled();

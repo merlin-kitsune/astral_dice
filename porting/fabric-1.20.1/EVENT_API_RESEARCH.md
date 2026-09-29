@@ -89,7 +89,12 @@
 
 ## 三、最终决策与理由
 
-**不引入任何第三方事件库**（Architectury / Porting Lib / Puzzles Lib 全部不采用），
+> **⚠️ 2026-09-29 决策已变更（用户裁决「许可引入 Puzzles Lib」）**
+> 用户明确要求「必须解决所有事件 mixin 桥，它是完美移植的必要条件」，并解除「不引入第三方」的约束。
+> 现方案 = **Puzzles Lib 为主 + 自写 mixin 补缺口**，实测已完成并取证（见本文件末「五、实施结果」）。
+> 下面这段历史论证保留，供理解当时的取舍；其中「不引入任何第三方事件库」的结论**已作废**。
+
+**（历史）不引入任何第三方事件库**（Architectury / Porting Lib / Puzzles Lib 全部不采用），
 **自写 mixin 桥**覆盖上表中标注的事件；MixinExtras 作为 Loader 内置能力直接使用。
 
 理由（按权重排序）：
@@ -107,14 +112,94 @@
 
 ## 四、本轮由此产生的两条硬性工程结论
 
-1. **Loom 只重映射「纯方法名」的 `@Inject(method = ...)` 注解值**。
-   实测：`method = "getMaxStackSize"` → `method_7914`（intermediary，✅ 已重映射）；
-   而 `method = "drop(Z)Lnet/minecraft/world/entity/item/ItemEntity;"`（**带描述符**）→ **原样保留**（❌ 未重映射）。
-   在 intermediary 生产环境里后者会「找不到目标方法 → 注入失败 → `defaultRequire: 1` 直接崩」。
-   ⇒ **红线：本线所有 mixin 的 `method` 一律写纯方法名**（重载歧义交给 Mixin 按 handler 签名自动筛选）。
-   已复核：生产 jar 内 **21 个 mixin 类、0 处 Mojmap 残留**。
+1. **~~Loom 只重映射「纯方法名」的 `@Inject(method = ...)` 注解值~~ ⇒ 2026-09-29 实测推翻。**
+
+   **订正后的结论**：Loom 1.14 的 `remapJar`（走 tiny-remapper，`useLegacyMixinAp` 默认关闭）
+   **能够**正确重映射**带描述符**的 mixin 目标，且类名与描述符一并重映射。产物级实证：
+   `method = "drop(Lnet/minecraft/world/item/ItemStack;ZZ)Lnet/minecraft/world/entity/item/ItemEntity;"`
+   在 jar 内变成 `method_7329(Lnet/minecraft/class_1799;ZZ)Lnet/minecraft/class_1542;`。
+
+   ⇒ 原先「一律写纯方法名」的红线**应当放宽为**：
+   - 目标方法在目标类上**唯一**时，纯方法名即可（更抗重载变动）；
+   - 目标类有**同名重载**（如 `Player#drop` / `ServerPlayer#drop`）时，**必须**写描述符
+     锁定目标 —— 只写纯名会让 Mixin 逐个试重载并与签名不符者相撞，
+     抛 `InvalidInjectionException` 直接让整个 mod 的 mixin 应用失败（实测崩溃）。
+   - 写描述符时**返回类型必须核对**（`ServerPlayer#drop(boolean)` 返回 `boolean`，
+     不是 `ItemEntity` —— 写错会得到「could not find any targets matching ...」）。
 
 2. **1.20.1 的战利品表不是注册表条目**。没有 `Registries.LOOT_TABLE`，
    `LootTableReference.lootTableReference(...)` 收 **`ResourceLocation`**（不是 1.21 的 `ResourceKey<LootTable>`），
    `LootTable.Builder#pool(...)` 收 **`LootPool`**（不是 `LootPool.Builder`，需 `.build()`）。
    这三处是 1.20.1 ↔ 1.21 最容易误写的地方。
+
+---
+
+## 五、实施结果（2026-09-29，实机取证）
+
+### 5.1 依赖
+
+| 依赖 | 版本 | 定位 |
+|---|---|---|
+| Puzzles Lib | `8.1.33-1.20.1-Fabric` | **硬依赖**（`fabric.mod.json` 的 `depends.puzzleslib`） |
+| Forge Config API Port | `8.0.3-1.20.1-Fabric` | Puzzles 的**传递硬前置**（玩家由 Loader 提示安装；dev 需投放） |
+| puzzlesaccessapi | 20.1.1 | Puzzles 内嵌（`META-INF/jars/`）；dev 靠 `scripts/devtools/unpack_nested_mod_jars.py` 展开 |
+
+### 5.2 映射表（**已按注入点逐条核对，不能按名字理解**）
+
+| Puzzles 回调 | 其注入点 | 对应 Forge 事件 |
+|---|---|---|
+| `LivingHurtCallback` | **`LivingEntity#actuallyHurt` 的 HEAD** | **`LivingDamageEvent`**（Forge 的 `onLivingDamage` 正是此位置） |
+| `LivingAttackCallback` | `hurt` 的 HEAD | `LivingAttackEvent`（已由 FAPI `ALLOW_DAMAGE` 覆盖，未重复注册） |
+| `LivingDeathCallback` | `die` 的 HEAD | `LivingDeathEvent` |
+| `LivingDropsCallback` | `dropAllDeathLoot` 的 TAIL | `LivingDropsEvent` |
+| `MobEffectEvents.Apply / Remove / Expire` | `addEffect` STORE / `removeEffect` HEAD / `tickEffects` 的 `Iterator.remove` | `MobEffectEvent.Added / Remove / Expired` |
+| `LivingChangeTargetCallback` | `Mob#setTarget` | `LivingChangeTargetEvent`（`targetType = MOB_TARGET`） |
+| `AnvilUpdateCallback` | — | `AnvilUpdateEvent`（output 非空才回写 cost/materialCost，避免覆盖原版计算） |
+| `BlockEvents.Break` | — | `BlockEvent.BreakEvent` |
+| `PlayerEvents.COPY / ITEM_PICKUP` | — | `PlayerEvent.Clone` / `EntityItemPickupEvent` |
+
+⚠️ **`LivingHurtCallback` 的名字有误导性**：它拿到的 `MutableFloat` 是 `actuallyHurt` 的**入参**，
+语义等于 Forge 的 `LivingDamageEvent`。Forge 的 `LivingHurtEvent`（在 `hurt()` 内、`actuallyHurt` **之前**）
+Puzzles **没有** ⇒ 自写 mixin。
+
+### 5.3 自写 mixin（补 Puzzles 缺口）
+
+| mixin | 目标 | 说明 |
+|---|---|---|
+| `bridge.LivingHurtBridgeMixin` | `LivingEntity#hurt` 的 `actuallyHurt` 调用 | 用 MixinExtras `@WrapOperation` 包裹该调用：可改值 + 可取消（取消即不进入 `actuallyHurt`，等价 Forge 的 `onLivingHurt` 返回 0 后的早退） |
+| `bridge.LivingUseTotemBridgeMixin` | `LivingEntity#checkTotemDeathProtection`（private，HEAD） | 遍历双手找不死图腾，派发可取消事件 |
+| `bridge.ItemCraftedBridgeMixin` | `ResultSlot#onTake`（HEAD） | `FurnaceResultSlot` / `MerchantResultSlot` 不继承 `ResultSlot` ⇒ 不会把烧炼/交易误报为合成；`craftMatrix` 用 `@Shadow` 取真实字段 |
+
+### 5.4 关键修复：桥**从未被安装**
+
+🚨 `FabricBridges.install()` **此前从未被任何地方调用**（`AstralDiceMod.onInitialize` 只调了
+`installEarly()`）⇒ tick / 登录登出 / 命令 / 伤害 / Puzzles 那一整套都处于
+「代码在、但没接上」的**静默失效**状态。已在 `onInitialize` 里补上调用
+（位置 = `registerListeners()` 之后）。
+
+### 5.5 取证（实机，可复现）
+
+新增 `LoaderBus#dispatchReport()` —— 把「每个已注册监听器的事件类 → 派发次数」打出来，
+**0 次的也一并列出**，以证伪「静默失效」。两个取样点：开局 600 tick 与关服时。
+
+无玩家时：
+```
+[已派发 4 类] FMLCommonSetupEvent=1 LevelTickEvent=1797 RegisterCommandsEvent=1 ServerTickEvent=599
+[未派发 32 类] Added AnvilUpdateEvent … LivingDamageEvent … LivingHurtEvent …
+```
+⇒ tick 有计数即证明**桥是通的**（与所有其它事件走同一条 `post` 路径）；其余 0 属正常。
+
+KubeJS 探针（`scripts/test/fabric/event_bridge_probe.js`，生成僵尸 → 施加伤害 → 击杀 → 上效果）之后：
+```
+[已派发 10 类] Added=1 … LivingAttackEvent=2 LivingDamageEvent=2 LivingDeathEvent=1
+              LivingDropsEvent=1 LivingHurtEvent=2 … ServerTickEvent=599
+```
+⇒ **完整伤害链 + 死亡 + 掉落 + 效果全部真实派发** ✅
+
+### 5.6 仍未完成
+
+**客户端事件桥**（12 个处理器：`RenderLevelStageEvent` / `RenderHandEvent` / `RenderPlayerEvent.Pre` /
+`RenderLivingEvent.Post` / `RenderTooltipEvent.Color` / `InputEvent.*` / `RegisterGuiOverlaysEvent` /
+`RegisterParticleProvidersEvent` / `RegisterKeyMappingsEvent` / `FMLClientSetupEvent` /
+`ClientPlayerNetworkEvent.LoggingOut` / `ScreenEvent.Opening`）。
+`platform/FabricBridges` 仍**没有**客户端对应物 ⇒ 这批 `@SubscribeEvent` 目前注册了但不派发。
