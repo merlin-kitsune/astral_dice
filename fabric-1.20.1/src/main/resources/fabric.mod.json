@@ -36,6 +36,7 @@
   },
   "recommends": {
     "trinkets": ">=${trinkets_version}",
-    "accessories": "${accessories_version_range}"
+    "accessories": "${accessories_version_range}",
+    "patchouli": "*"
   }
 }

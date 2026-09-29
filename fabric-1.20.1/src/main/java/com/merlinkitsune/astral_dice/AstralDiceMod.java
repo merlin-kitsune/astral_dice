@@ -49,6 +49,12 @@ public class AstralDiceMod implements ModInitializer {
         //    先做「Trinkets 或 Accessories 二选一」判定,玩家看到的就是完整的中文说明
         //    而不是一个 NoClassDefFoundError 堆栈(2026-09-29 用户裁决)。
         ModCompatibilityCheck.verifyAccessoryProviderOrThrow();
+        // ⚠️ 必须在这里(**mod 初始化期**)强制附件键注册 —— 它的静态初始化是惰性的,
+        //    若推迟到「第一次读写附件」(= 玩家登录处理器)才跑,则玩家 NBT 反序列化时
+        //    注册表里还没有这些 id,Fabric 会逐条 "Unknown attachment type ... skipping"
+        //    **静默丢弃**全部持久化值(实测一次登录丢 33 个键,含 guide_book_given
+        //    ⇒ 手册每次登录补发一本)。详见 ModAttachments#ensureRegistered 与 KI-F17。
+        com.merlinkitsune.astral_dice.component.ModAttachments.ensureRegistered();
         FabricBridges.installEarly();
         // 战利品注入(FAPI LootTableEvents.MODIFY):替代 Forge 侧的 GLM + LootTableLoadEvent 两条通道
         com.merlinkitsune.astral_dice.loot.FabricLootInjector.register();

@@ -257,6 +257,59 @@ def check_creative_tabs(failures):
         failures.append('不在创造栏的物品: %s' % missing)
 
 
+def check_slot_icons(failures):
+    """饰品栏槽位图标闭环（2026-09-29 新增）。
+
+    ⚠️ 判据有两条，缺一不可 —— 只查「文件在不在」会**误报通过**（实测踩坑）：
+      ① 文件：`<ns>:<path>` → `assets/<ns>/textures/<path>.png` 必须存在；
+      ② **图集**：Accessories 的槽位图标不是直接绑贴图，而是从**原版 `minecraft:blocks` 图集**
+         取 sprite —— 它往该图集加了一条 source `{type:directory, source:"gui/slot", prefix:"gui/slot/"}`
+         ⇒ 图标**必须**放在 `assets/<ns>/textures/gui/slot/` 且 id 写成 `<ns>:gui/slot/<name>`。
+         放别处（哪怕文件真实存在、路径自洽）会取不到 sprite ⇒ 界面画成**洋红/黑缺失贴图**，
+         而且**不留任何告警**（missingno 兜底不打 warning）⇒ 只能靠人眼发现。
+    （Trinkets 侧是直接绑贴图 `textures/` + path + `.png`，所以 `gui/slot/...` 这份路径对两边都成立。）
+    """
+    import json as _json
+
+    problems = []
+    checked = 0
+    roots = [
+        ('accessories', os.path.join(RES, 'data', 'astral_dice', 'accessories')),
+        ('trinkets', os.path.join(RES, 'data', 'trinkets', 'slots')),
+    ]
+    for flavor, root in roots:
+        if not os.path.isdir(root):
+            continue
+        for dp, _, fns in os.walk(root):
+            for fn in fns:
+                if not fn.endswith('.json'):
+                    continue
+                full = os.path.join(dp, fn)
+                try:
+                    doc = _json.load(open(full, encoding='utf-8'))
+                except Exception as exc:
+                    problems.append('%s 解析失败: %s' % (os.path.relpath(full, REPO), exc))
+                    continue
+                icon = doc.get('icon')
+                if not icon:
+                    continue
+                checked += 1
+                rel = os.path.relpath(full, REPO)
+                ns, _, path = icon.partition(':')
+                tex = os.path.join(RES, 'assets', ns, 'textures', path + '.png')
+                if not os.path.isfile(tex):
+                    problems.append('%s 的 icon=%s 指向不存在的贴图 %s' %
+                                    (rel, icon, os.path.relpath(tex, REPO)))
+                if flavor == 'accessories' and not path.startswith('gui/slot/'):
+                    problems.append('%s 的 icon=%s 不在 gui/slot/ 下 ⇒ Accessories 的 '
+                                    'minecraft:blocks 图集不会收录它，界面会画成紫黑格'
+                                    '（必须写成 <ns>:gui/slot/<name>）' % (rel, icon))
+
+    print('[8] 饰品槽位图标: 检查 %d 条 icon' % checked)
+    if problems:
+        failures.extend(problems)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument('--jar', default=None, help='产物 jar 路径（默认取 build/libs 最新）')
@@ -277,6 +330,7 @@ def main() -> int:
     check_lang(failures)
     check_manual(failures)
     check_creative_tabs(failures)
+    check_slot_icons(failures)
 
     print()
     if failures:
@@ -284,7 +338,7 @@ def main() -> int:
         for f in failures:
             print('  ✗ %s' % f)
         return 1
-    print('=== PASS: 7 项闭环全部通过 ===')
+    print('=== PASS: 8 项闭环全部通过 ===')
     return 0
 
 

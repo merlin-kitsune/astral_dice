@@ -6,5 +6,5 @@
     "stand",
     "chip"
   ],
-  "icon": "astral_dice:slot/empty_dice_slot"
+  "icon": "astral_dice:gui/slot/empty_dice_slot"
 }

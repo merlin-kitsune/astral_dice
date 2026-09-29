@@ -62,6 +62,12 @@ public class AstralDiceClient implements ClientModInitializer {
         // (dispatchReport() 只看得见已注册的事件类,对「忘了 register」是盲区。)
         com.merlinkitsune.astral_dice.platform.event.SubscriptionAudit.verifyClientSide();
 
+        // 饰品栏槽位图标自检(仅 Accessories 在场时):进世界后跑一次,把「哪个槽位的图标贴图
+        // 根本不存在」打进日志 —— 这类「路径写错」在画面上只表现为一格紫黑格,不报错、不一定留日志。
+        if (com.merlinkitsune.astral_dice.init.ModCompatibilityCheck.isAccessoriesPresent()) {
+            com.merlinkitsune.astral_dice.compat.accessories.AccessoriesClientIconCheck.install();
+        }
+
         // ── 生产映射冒烟的**类预加载**钩子（测试用；不设该系统属性 = 完全无副作用）──────────
         // 动机：有一类 mixin 缺陷**只在目标类被加载时**才暴露（典型：与其它模组抢同一个
         // @ModifyConstant 注入点 ⇒ 对方 InjectionError），而目标类往往要等玩家悬停某个 GUI

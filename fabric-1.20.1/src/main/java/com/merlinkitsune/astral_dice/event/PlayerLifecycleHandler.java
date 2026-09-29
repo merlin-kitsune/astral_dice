@@ -207,13 +207,48 @@ public class PlayerLifecycleHandler {
 
     // 首次加入世界:若配置开启且玩家尚未领过,赠送《恋的规则书》(每个玩家在每个世界只发一次)
     private static void giveGuideBookOnFirstJoin(Player player) {
+        // ⚠️ 常驻诊断机器行(2026-09-29 加):「重复发放手册」这条缺陷**已复发两次**
+        //    (2026-09-15 修过一次死亡路径;2026-09-29 又在整合包里出现),
+        //    而现场的唯一可判读数就是「守卫读到什么」与「背包里已有几本」。
+        //    ⇒ 每次登录都留一条 INFO 机器行,便于日志考古/冒烟断言;不设开关,开销可忽略。
+        final boolean givenBefore = ModAttachments.isGuideBookGiven(player);
+        final int booksBefore = countGuideBooks(player);
+        AstralDiceMod.LOGGER.info(
+                "AP_FAB_GUIDEBOOK: uuid={} call={} given={} patchouli={} enabled={} books={}",
+                player.getUUID(), GUIDE_BOOK_CALLS.incrementAndGet(), givenBefore,
+                ModList.get().isLoaded("patchouli"), GameplayConstants.GIVE_GUIDE_BOOK_ON_FIRST_JOIN,
+                booksBefore);
+
         if (!GameplayConstants.GIVE_GUIDE_BOOK_ON_FIRST_JOIN) return;
-        if (ModAttachments.isGuideBookGiven(player)) return;
+        if (givenBefore) return;
         if (!ModList.get().isLoaded("patchouli")) return;
         ItemStack book = ItemModBook.forBook(new ResourceLocation(AstralDiceMod.MODID, "astral_guide"));
         if (!player.getInventory().add(book)) {
             player.drop(book, false);
         }
         ModAttachments.setGuideBookGiven(player, true);
+        // 写回后**立刻回读**:若这里读到 false,说明「写进去的值取不出来」——
+        // 那正是「每次登录各发一本」的机理(守卫永远读 false),而不是发放时机问题。
+        AstralDiceMod.LOGGER.info("AP_FAB_GUIDEBOOK: GIVEN uuid={} reread={} books={}",
+                player.getUUID(), ModAttachments.isGuideBookGiven(player), countGuideBooks(player));
+    }
+
+    /** 本进程内 {@link #giveGuideBookOnFirstJoin} 的累计调用次数(诊断用)。 */
+    private static final java.util.concurrent.atomic.AtomicInteger GUIDE_BOOK_CALLS =
+            new java.util.concurrent.atomic.AtomicInteger();
+
+    /** 背包里 {@code patchouli:guide_book} 的总数(诊断用;含叠加数)。 */
+    private static int countGuideBooks(Player player) {
+        final ResourceLocation id = new ResourceLocation("patchouli", "guide_book");
+        int n = 0;
+        var inv = player.getInventory();
+        for (int i = 0; i < inv.getContainerSize(); i++) {
+            ItemStack st = inv.getItem(i);
+            if (!st.isEmpty() && id.equals(
+                    net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(st.getItem()))) {
+                n += st.getCount();
+            }
+        }
+        return n;
     }
 }

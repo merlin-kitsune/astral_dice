@@ -207,6 +207,18 @@ loom {
             programArg '--height'
             programArg '1080'
 
+            // 自动化测试:gradlew runClient -PdevUsername=<名字> 固定玩家名
+            // 为什么需要:Loom 默认每次给**随机**用户名(Player353/Player705…),而离线 UUID 由玩家名派生
+            //   ⇒ 每次运行都是一个**全新玩家**、玩家数据互不相通 —— 任何「跨会话」缺陷(重复发放、
+            //   记忆标记、冷却残留)在 dev 里**根本不可能复现**。固定玩家名后,重复运行 = 同一玩家
+            //   反复登录/死亡重生,这类缺陷才可测(2026-09-29 加,为排查「手册重复发放」)。
+            // ⚠️ 单机下还存在 `level.dat` 的 `Player` 标签这条通路(`PlayerList#load` 对单人房主优先读它),
+            //    因此「固定玩家名」只保证玩家身份稳定,不等于数据一定从 `playerdata/<uuid>.dat` 读。
+            if (project.hasProperty('devUsername')) {
+                programArg '--username'
+                programArg project.findProperty('devUsername')
+            }
+
             // 自动化测试:gradlew runClient -PpreloadClasses=<intermediary 名,逗号分隔>
             // 把「只在目标类被加载时才暴露」的 mixin 注入缺陷提前到**启动期**(见
             // AstralDiceClient#preloadClassesForSmokeTest 与 KNOWN-ISSUES **KI-F14**)。

@@ -1,5 +1,5 @@
 {
-  "icon": "astral_dice:slot/empty_dice_slot",
+  "icon": "astral_dice:gui/slot/empty_dice_slot",
   "order": 100,
   "amount": 1,
   "validator_predicates": [

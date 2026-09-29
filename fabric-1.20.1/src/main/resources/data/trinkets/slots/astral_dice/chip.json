@@ -1,5 +1,5 @@
 {
-  "icon": "astral_dice:slot/empty_chip_slot",
+  "icon": "astral_dice:gui/slot/empty_chip_slot",
   "order": 120,
   "amount": 0,
   "validator_predicates": [

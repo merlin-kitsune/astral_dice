@@ -24,8 +24,39 @@ public class ModAttachments {
     /** 需要客户端同步的键(登录/重生/切维度时发送完整快照)。 */
     private static final List<AttachedDataKey<?>> SYNCED_KEYS = new ArrayList<>();
 
+    /** 已注册的附件键总数(仅用于启动日志/诊断)。 */
+    private static int registeredCount = 0;
+
     private static <T> AttachedDataKey<T> register(AttachedDataKey<T> key) {
+        registeredCount++;
         return key;
+    }
+
+    /**
+     * <b>强制本类的静态初始化</b>(= 把全部附件键注册进 Fabric 的附件注册表)。
+     *
+     * <h2>⚠️ 必须在 mod 初始化期调用,而且要早于任何实体/玩家数据加载</h2>
+     * <p><b>为什么必须有这个方法(2026-09-29 实测缺陷,症状=「帕秋莉手册每次登录都补发一本」)</b>:
+     * Java 的静态初始化是<b>惰性</b>的 —— 本类的 {@code <clinit>} 只在**第一次真正使用**时才跑。
+     * 而 mod 初始化路径上原本**没有任何代码触碰 {@code ModAttachments}**,于是它的静态初始化被推迟到
+     * 「第一次有代码读写附件」的那一刻 —— 也就是<b>玩家登录处理器里</b>,而那时玩家的 NBT
+     * <b>已经反序列化完了</b>。
+     *
+     * <p>Fabric 的附件反序列化按 id 查注册表:查不到就打一条
+     * {@code Unknown attachment type astral_dice:xxx found when deserializing, skipping}
+     * 并<b>静默丢弃该键</b> ⇒ 该次登录里所有本模组的持久化值**全部回默认值**。
+     * 实测(整合包玩家):一次登录里被丢弃 **33 个键**,含 {@code guide_book_given}
+     * ⇒ 发放守卫永远读到 {@code false} ⇒ **每次登录都补发一本手册**(NBT 里标记一直是 1,
+     * 但读不出来);其余被丢弃的是治愈点数、立牌锁定/冷却、白泽赐福、教主降神、怪力侦探层数等
+     * <b>玩家可感知的战斗状态</b>。见 KNOWN-ISSUES <b>KI-F17</b>。
+     *
+     * <p>修复方式就是在 {@code AstralDiceMod#onInitialize()} 里调用本方法(空实现,只为触发 {@code <clinit>})。
+     * <b>不要再删除这个调用</b>:删掉它不会编译报错、也不会在测试世界暴露(测试世界玩家数据少),
+     * 只会让线上玩家每次重开游戏丢掉一次战斗状态。
+     */
+    public static void ensureRegistered() {
+        AstralDiceMod.LOGGER.info("AP_FAB_ATTACHMENTS: 附件键已注册 {} 个(必须先于任何玩家数据反序列化)",
+                registeredCount);
     }
 
     public static final AttachedDataKey<Integer> PLAYER_STARLIGHT =

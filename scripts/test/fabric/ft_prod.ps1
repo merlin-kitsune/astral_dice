@@ -74,11 +74,40 @@ param(
     [int]$TimeoutSec = 300,
     [string]$PreloadClasses = '',
     [string[]]$ExtraJvmArg = @(),
+    # 追加到游戏参数**末尾**（如 `--quickPlaySingleplayer`, `<世界名>`）——
+    # 让生产冒烟能真的**进世界**：不少缺陷只在「玩家数据加载 / 世界内」才暴露
+    # （实测 2026-09-29：附件类型注册晚于玩家 NBT 反序列化 ⇒ 整批持久化键被静默丢弃，
+    #  只有加载玩家时日志里才会出现 `Unknown attachment type … skipping`）。
+    [string[]]$ExtraGameArg = @(),
+    # 冒烟时伪装的玩家 UUID（默认一个占位值）。要复现「某个真实玩家的数据」时传入其 UUID，
+    # 例如验证「已有存档的玩家登录后读数是否正确」。
+    [string]$Uuid = '00000000000000000000000000000001',
     [switch]$KeepAlive,
-    [switch]$DryRun
+    [switch]$DryRun,
+    # 🚨 安全护栏开关：放行 `--quickPlay*` 类游戏参数。默认**拦下**（见下方守卫的说明）。
+    [switch]$AcknowledgeQuickPlayDestructive
 )
 
 $ErrorActionPreference = 'Stop'
+
+# ══ 🚨 安全护栏：`--quickPlaySingleplayer` 绝不可指向真实存档 ══════════════════════════════
+# 实测事故（2026-09-29，本轮）：用它指向整合包里**已存在**的世界 `新的世界`，客户端却走了
+# 「创建世界」流程 —— 日志先出现 `Deleting level 新的世界`，随后重新生成地形：
+#     20:53:08 Deleting level 新的世界 / 20:53:09 Starting runtime resource generation…
+# 即 **同名世界被删除重建**，原区域文件不可恢复（仅救回 level.dat 与 playerdata）。
+# ⇒ 本护栏默认拒绝任何 `--quickPlay*` 参数；确实要用时，**必须**同时满足：
+#    ① 目标世界是**一次性临时世界**（可随时重建，不承载任何真实进度）；
+#    ② 显式加 `-AcknowledgeQuickPlayDestructive` 表明已理解风险。
+foreach ($x in (@($ExtraGameArg) + @($args))) {
+    if ([string]$x -like '--quickPlay*') {
+        if (-not $AcknowledgeQuickPlayDestructive) {
+            Write-Output ('AP_FAB_PROD_FAIL: reason=quickplay-guard arg=' + $x)
+            Write-Output ('MT_FAB_PROD: ERROR (--quickPlay* 被安全护栏拦下：实测它会以「创建世界」语义处理同名世界并**删除该世界目录**。只可指向一次性临时世界；确认后再加 -AcknowledgeQuickPlayDestructive 放行)')
+            exit 2
+        }
+        Write-Output ('AP_FAB_PROD_WARN: quickplay 已放行 arg=' + $x + '（请确认目标是一次性临时世界）')
+    }
+}
 
 if ($PSVersionTable.PSVersion.Major -lt 7) {
     Write-Output 'AP_FAB_PROD_FAIL: reason=powershell-too-old (need >= 7 for ProcessStartInfo.ArgumentList)'
@@ -244,12 +273,15 @@ if ($PreloadClasses) {
 [void]$A.Add('--gameDir');    [void]$A.Add($Instance)
 [void]$A.Add('--assetsDir');  [void]$A.Add((Join-Path $McRoot 'assets'))
 [void]$A.Add('--assetIndex'); [void]$A.Add([string]$j.assets)
-[void]$A.Add('--uuid');       [void]$A.Add('00000000000000000000000000000001')
+[void]$A.Add('--uuid');       [void]$A.Add($Uuid)
 [void]$A.Add('--accessToken');[void]$A.Add('0')
 [void]$A.Add('--userType');   [void]$A.Add('legacy')
 [void]$A.Add('--versionType');[void]$A.Add('release')
 [void]$A.Add('--width');      [void]$A.Add('1280')
 [void]$A.Add('--height');     [void]$A.Add('720')
+foreach ($x in $ExtraGameArg) {
+    if ($x) { [void]$A.Add($x) }
+}
 
 $sw = [System.Diagnostics.Stopwatch]::StartNew()
 $proc = [System.Diagnostics.Process]::Start($psi)
