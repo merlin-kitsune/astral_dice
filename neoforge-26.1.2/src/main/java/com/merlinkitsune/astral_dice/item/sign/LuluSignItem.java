@@ -14,6 +14,7 @@ import com.merlinkitsune.starenginelib.target.TargetSelectionAction;
 import com.merlinkitsune.starenginelib.target.TargetSelectionRegistry;
 import com.merlinkitsune.starenginelib.target.TargetType;
 import net.minecraft.ChatFormatting;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -36,7 +37,7 @@ import java.util.List;
  * 史莱姆立牌。
  * 治愈点数已解耦至 {@link HealingManager}(玩家级共享资源),本类仅负责:
  * <ul>
- *   <li><b>被动「细胞分裂」</b>:受到伤害 +1 点治愈(受击钩子 {@link #onHurt},本类不持有治愈数据),
+ *   <li><b>被动「细胞分裂」</b>:被敌对目标攻击 +1 点治愈(受击钩子 {@link #onHurt},本类不持有治愈数据),
  *       并使主动技能冷却 -10 秒;</li>
  *   <li><b>主动「治愈粘液」</b>:走<b>目标选择器</b>({@link TargetType#PLAYER} + {@link SelfTargetable#allowSelf()}
  *       ⇒ 可选任意玩家,或右键对自身使用),确认后把效果施加到**被指向的目标**(自身目标时即原来「对自己」的行为):
@@ -166,11 +167,13 @@ public class LuluSignItem extends BaseSignItem {
         return ACTION_ID;
     }
 
-    // 被动:受到伤害时,获得 1 点"治愈"(上限为玩家最大生命值的一半,即 ♥ 数),并使主动技能冷却 -10 秒。
-    // 任何来源的伤害均触发(近战/远程/环境等),与骰神赐福的玩家攻击链路相互独立。
+    // 被动:被敌对目标攻击时,获得 1 点"治愈"(上限为玩家最大生命值的一半,即 ♥ 数),并使主动技能冷却 -10 秒。
+    // 2026-09-29 用户裁决:只有**敌对目标**的攻击触发 —— 环境伤害(摔落/仙人掌/着火…)与自伤不再算数;
+    // 闸门在 BaseSignItem#invokeHurtHooks 分发处,本类无需自判。
+    // 与骰神赐福的玩家攻击链路相互独立。
     // 受击 +1 有 1 秒冷却(20 tick),防止被围攻时治愈点数暴涨。
     @Override
-    protected void onHurt(Player player, float amount) {
+    protected void onHurt(Player player, DamageSource source, float amount) {
         long nowTick = player.level().getGameTime();
         if (nowTick - com.merlinkitsune.astral_dice.component.ModAttachments.getLuluLastHurtTick(player) < 20) {
             return;

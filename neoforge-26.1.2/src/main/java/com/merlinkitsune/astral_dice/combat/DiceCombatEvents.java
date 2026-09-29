@@ -214,9 +214,10 @@ public class DiceCombatEvents {
 
         // 立牌受击钩子分发(史莱姆立牌等受击类被动由各立牌 onHurt 实现,不再在此硬编码)
         if (!target.level().isClientSide() && target instanceof Player targetPlayer) {
-            BaseSignItem.invokeHurtHooks(targetPlayer, event.getNewDamage());
-            // 缓冲盾牌筹码:受到攻击时 +2 治愈 +3 星币(每 15 秒一次)
-            com.merlinkitsune.astral_dice.item.chip.BufferShieldChipItem.onHurt(targetPlayer, event.getNewDamage());
+            BaseSignItem.invokeHurtHooks(targetPlayer, event.getSource(), event.getNewDamage());
+            // 缓冲盾牌筹码:受到**敌对目标**攻击时 +2 治愈 +3 星币(每 15 秒一次;
+            // 2026-09-29 收紧 —— 环境伤害与自伤不再触发,判定见 DiceCombatEvents#isHostileAttack)
+            com.merlinkitsune.astral_dice.item.chip.BufferShieldChipItem.onHurt(targetPlayer, event.getSource(), event.getNewDamage());
         }
 
         // AOE(顺劈/溅射)波及的目标不进入骰战结算,避免二次吃到完整骰战;
@@ -1120,6 +1121,32 @@ public class DiceCombatEvents {
         return false;
     }
 
+    /**
+     * 「本次伤害是否来自**敌对目标的攻击**」——玩家侧受击类效果的**唯一闸门**(2026-09-29 用户裁决)。
+     *
+     * <p>三条缺一不可:
+     * <ol>
+     *   <li>必须存在**实际攻击者**({@code source.getEntity()})⇒ 排除环境伤害(摔落 / 仙人掌 / 着火 /
+     *       溺水 / 饥饿 / 虚空…)与「无来源实体」的真伤(如符卡-祸:其直接伤害实体与击杀归属均为 null);</li>
+     *   <li>攻击者不得是自己 ⇒ 排除自伤;</li>
+     *   <li>攻击者须对该玩家构成敌对目标 —— 走库的唯一入口
+     *       {@link HostileTargets#isHostile(net.minecraft.world.entity.Entity, net.minecraft.world.entity.Entity)}
+     *       的**两参重载**(敌对生物 ∪ 中立生物(宠物除外) ∪ 被激怒的可驯服动物 ∪ 消费方声明的实体
+     *       ∪「非同队伍、且曾主动攻击过该玩家」的玩家)。</li>
+     * </ol>
+     *
+     * <p>消费者:{@link BaseSignItem#invokeHurtHooks}(立牌受击被动)、
+     * {@code item/chip/BufferShieldChipItem#onHurt}、{@code item/sign/PaparaSignItem#onPaparaBiteHurtHeal}。
+     * <p>不额外判 {@code amount > 0} —— 与本模组受击钩子的既有约定一致(该数值仅用于「是否受击」判定;
+     * 闪避取消路径传入的是未减免的原始值)。
+     */
+    public static boolean isHostileAttack(Player player, DamageSource source) {
+        if (player == null || source == null) return false;
+        if (!(source.getEntity() instanceof LivingEntity attacker)) return false;
+        if (attacker == player) return false;
+        return HostileTargets.isHostile(player, attacker);
+    }
+
     // 试验假人(dummmmmmy)识别:实体注册 id 命名空间为 dummmmmmy,或类名包含 dummy(兼容不同版本/命名)。
     // 由本类 static 块注入给库的 combat/HostileTargets(ExtraHostileProbe)⇒ 该假人在**所有**
     // 「需要敌对目标」的判定里都算敌对(骰神赐福、法伤修饰符链、导弹/轨道类技能的波及选目标,以及
@@ -1180,8 +1207,8 @@ public class DiceCombatEvents {
         // 取消会跳过整段伤害处理,故在此显式补发一次(取消后伤害阶段不再派发 → 不会重复触发)。
         // 注:此处传入的是减伤前原始值;两个钩子实现都不读取该数值(仅用于"是否受击"判定)。
         if (!target.level().isClientSide() && target instanceof Player player) {
-            BaseSignItem.invokeHurtHooks(player, event.getAmount());
-            com.merlinkitsune.astral_dice.item.chip.BufferShieldChipItem.onHurt(player, event.getAmount());
+            BaseSignItem.invokeHurtHooks(player, event.getSource(), event.getAmount());
+            com.merlinkitsune.astral_dice.item.chip.BufferShieldChipItem.onHurt(player, event.getSource(), event.getAmount());
         }
     }
 
@@ -1245,6 +1272,10 @@ public class DiceCombatEvents {
         if (ModAttachments.getRenCounterCharges(player) <= 0) return;
         if (!(event.getSource().getEntity() instanceof LivingEntity attacker)) return;
         if (attacker == player) return;
+        // 2026-09-29 收紧(与效果文案「佩戴者被攻击时消耗该层」对齐):只有**敌对目标**的攻击
+        // 才消耗反击层数。视者 = 带盾玩家(player);于是队友 / 已驯服宠物 / 未激怒中立生物的
+        // 攻击不再误消耗层数、也不再把反击打在友军身上(自伤已由上一行排除)。
+        if (!HostileTargets.isHostile(player, attacker)) return;
         // 一次性充能:先消耗层数(并同步摘掉「反击」图标),再注入伤害
         ModAttachments.setRenCounterCharges(player, 0);
         RenShieldManager.refreshCounterEffect(player);

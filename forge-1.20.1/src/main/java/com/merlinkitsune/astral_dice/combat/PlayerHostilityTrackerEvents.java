@@ -24,7 +24,7 @@ import net.minecraftforge.fml.common.Mod;
  * 时,把 A 记入 B 的敌对名单。挂点选在最终伤害事件 {@link LivingDamageEvent} —— 它晚于
  * {@code LivingAttackEvent}:被最前置取消的攻击(骇客隐身免疫、枪匠破绽闪避等)不会产生该事件,
  * 故不计入"主动攻击过";而被安全气囊/磨刀石无效化的攻击仍算主动攻击
- * (本记录为默认优先级,早于 LOWEST 的保命处理)。
+ * (本记录为 HIGH 优先级,早于 LOWEST 的保命处理)。
  *
  * <p><b>不记录的情形</b>(口径 = 只记「主动攻击」):① 本模组内部的范围/波及伤害
  * ({@code DiceCombatEvents.aoeProcessing} 窗口:大当家溅射、电击手套/定向爆破 AOE)与反击注入
@@ -42,9 +42,18 @@ public final class PlayerHostilityTrackerEvents {
     private PlayerHostilityTrackerEvents() {
     }
 
-    /** 记录「攻击者主动攻击过受害者」(仅玩家对玩家,且非本人;仅服务端) */
-    @SubscribeEvent(priority = EventPriority.NORMAL)
+    /**
+     * 记录「攻击者主动攻击过受害者」(仅玩家对玩家,且非本人;仅服务端)。
+     *
+     * <p><b>2026-09-29:优先级 NORMAL ⇒ HIGH</b>。同一事件的消费方(如 {@code DiceCombatEvents}
+     * 中缓冲盾牌的「被敌对目标袭击」判定)必须在**同一次伤害实例**里就能读到本次记录,
+     * 否则非同队伍玩家打来的**第一击**会被误判为非敌对(两个监听器原本同为默认优先级,
+     * 执行先后取决于注册顺序,不可依赖)。记录本身仍早于 LOWEST 的保命处理。
+     */
+    @SubscribeEvent(priority = EventPriority.HIGH)
     public static void onLivingDamage(LivingDamageEvent event) {
+        // 只记"确实成立的伤害":LivingDamageEvent 在 Forge 可取消(被取消 ⇒ 该伤害不生效)
+        if (event.isCanceled()) return;
         // 只记"确实成立的伤害":LivingDamageEvent 在 Forge 可取消(被取消 ⇒ 该伤害不生效)
         if (event.isCanceled()) return;
         // 只记「**主动**攻击」:本模组内部的范围/波及伤害(大当家溅射、电击手套/定向爆破 AOE)与

@@ -29,6 +29,25 @@
   of UI rendered by two different systems with different colours and positions. All four are now routed through the mod's action bar
   channel and coloured (yellow for the airbag / wallet, red for "need a die equipped" / "out of plays").
 
+- **Four "on being hit" effects used to trigger on environmental damage and self-inflicted damage; they now require a hostile attack** (player report, 2026-09-29 - full audit, fixed together):
+  All four keyed off "the player took **any** damage", so fall / cactus / fire / drowning / starvation and other
+  **environmental damage**, plus this mod's own "Misfortune Card" self-inflicted true damage (its damage source has **no entity**
+  and counts as nobody's attack) and any self-damage, all triggered them - the player could farm rewards without ever meeting an enemy
+  (Star Coins have no cap, so it was farmable):
+  1. **Buffer Shield** (healing-school chip): +2 healing / +3 Star Coins on being hit;
+  2. the **Mouse Shield** counter: *any* creature's attack consumed its single counter charge - including a teammate player's,
+   a tamed pet's or an unangered neutral mob's - and the counter was then dealt back to the ally;
+  3. the **Slime Sign**'s "Cell Division": +1 healing layer and -10s active-skill cooldown on being hit;
+  4. the **Vampire Sign**'s "Drain" (the taking-damage clause): heals half of the damage taken.
+  All four now require **a hostile attack**, on three conditions that must all hold: there is an **actual attacker**
+  (ruling out environmental damage and entity-less true damage), the attacker is not the player, and the attacker is a
+  **hostile target** for that player (hostile mobs, neutral mobs except tamed pets, angerable tameable animals, and
+  "non-teammate players who have actively attacked you"). The descriptions of 2/3/4 and their handbook entries were updated to match
+  (2: "consumed when the wearer is attacked"; 3: from "on taking damage" to "when attacked by a hostile target";
+  4: from "on taking damage" to "when attacked by a hostile target").
+  NOTE: the **Hanna Sign**'s "Witch Float" is **not** part of this - its text already says "*any* melee attack against you is dodged",
+  and it was confirmed to be an intended **feature**, left unchanged.
+
 ### Project
 
 - **Pack deploy targets corrected on this machine (2026-09-29)**: the `pushToGame` task of the 1.20.1 and 26.1.2 lines pointed at pack directories that **no longer exist on disk** (`1.20.1 模组测试` / `26.1.2 模组测试` - the packs had been renamed to carry a platform suffix), so both tasks had been printing `pushToGame: pack dir not found, skipped` and **silently deploying nothing** - the jars sitting in the packs were frozen at the last moment the paths still existed. They now point at the real directories `1.20.1-Forge 模组测试` / `26.1.2-NeoForge 模组测试`. This is a **build-script-only** change: no version bump, no artifact change, nothing player-visible. The lesson is recorded in `AGENTS.md`: `packModsDir` must **never** be inferred from a naming convention - after a machine swap or a pack rename, list `D:/.minecraft/versions/` and confirm a `pushToGame: pushed … -> <target>` line in the build log **for every line**, because `BUILD SUCCESSFUL` on its own hides a silent skip.

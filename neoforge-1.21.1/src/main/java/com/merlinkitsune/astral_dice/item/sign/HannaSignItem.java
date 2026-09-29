@@ -377,6 +377,8 @@ public class HannaSignItem extends BaseSignItem {
         }
         if (DiceCombatEvents.isInCounterChain()) return;
         if (!(source.getDirectEntity() instanceof LivingEntity attacker) || attacker == player) return;
+        // 2026-09-29 用户裁决:本闪避**有意不限定敌对** —— 文案即「任何对你的近战攻击都会被闪避」,
+        // 队友 / 宠物 / 中立生物的近战同样会被闪避,此为**特性**,勿按「受击类闸门」顺手收紧。
         DiceCombatEvents.applyDodgeCancel(event);
         sendSignActionBar(player, "msg.astral_dice.hanna_dodge");
     }
