@@ -50,14 +50,11 @@ EXTRA_MODEL_ALLOW = {'astral_guide'}
 
 # 手册里允许缺键的键（每条都要写明理由，否则视为缺陷）
 LANG_KEY_ALLOW = {
-    # 2026-09-29 登记：teru_sign 的手册条目写了 3 个文本页，但 lang 只定义了 .1/.2 ⇒ 第 3 页
-    # 显示原始键名。**这是四条线共有的既有内容缺失**（不是移植引入），且补写需要文案裁决：
-    #   · 配方依据（可复算）：`Z` = diamond_dice、`P` = golden_star_plate（P 在 pattern 中出现 2 次）；
-    #   · 稀有度：TERU_SIGN = AstralRarities.legendary()；
-    #   · ⚠️ 但「档位词」口径不明 —— HANNA_SIGN / SHERRY_SIGN 的代码稀有度同为 bizarre()，
-    #     手册里却分别写着 "Rare tier" / "Epic tier" ⇒ 手册的档位词与 AstralRarities 不必然对应。
-    # ⇒ 在档位口径裁决前不擅自补写（否则等于给玩家一条可能与实际不符的品质说明）。
-    'astral_dice.guide.entry.teru_sign.3',
+    # 2026-09-29：`teru_sign.3` 曾在此（条目 3 页 / lang 2 键）—— 已按下列依据补齐，故移出白名单：
+    #   档位词依据 = `TERU_SIGN` 是 `AstralRarities.legendary()`，而同档的 `megas_sign.3` 手册里
+    #   写的是「传奇档 / Legendary tier / レジェンダリー段階」⇒ 两者一一对应（用 megas 验证过）；
+    #   材料依据 = 配方 pattern `GCG/LEL/ZPZ`，`Z` = diamond_dice、`P` = golden_star_plate 出现 2 次。
+    # ⚠️ 后续新增白名单项必须写明：为什么不能修 + 需要谁裁决什么。
 }
 
 MODS_DIRS = [

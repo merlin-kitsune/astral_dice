@@ -744,6 +744,7 @@
   "tooltip.astral_dice.sign.teru_layers": "Fox Light: §e%s§7 / §e%s§r",
   "astral_dice.guide.entry.teru_sign.1": "Cult Leader Sign. Active \"Divine Descent\": designate a player and apply Descent to them, so you gain 50%% of that player's attack and defense power. Each time the target attacks a new target, 1 Fox Light stack is spent and the attack against that target gains extra attack power equal to the caster's own attack power plus the current Fox Light stacks. Descent lasts 2:00, the timer starts only after the affected player first makes a melee attack against a hostile target, and it is removed when it ends. When it ends, the caster's attack and defense bonus is removed.",
   "astral_dice.guide.entry.teru_sign.2": "Passive \"Fox Light\": casting the active skill immediately grants 3 Fox Light stacks. Whenever you or your Descent target crafts, obtains or equips an attack card, you gain 1 Fox Light stack.",
+  "astral_dice.guide.entry.teru_sign.3": "Recipe: diamond dice + golden star plate ×2 (Legendary tier).",
   "item.astral_dice.nardis_sign": "Oasis Queen's Sign",
   "effect.astral_dice.nardis_privilege": "Queen's Privilege",
   "effect.astral_dice.nardis_privilege.description": "Grants §e3§7 random temporary cards for §93:00§7; when the timer ends all temporary cards are discarded (including the equipped ones)",

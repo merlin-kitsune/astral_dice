@@ -744,6 +744,7 @@
   "tooltip.astral_dice.sign.teru_layers": "狐光：§e%s§7 / §e%s§r",
   "astral_dice.guide.entry.teru_sign.1": "教主立牌。主动「降神」：指定一个玩家，对其施加「降神」，使自身获得目标玩家 50%% 的攻击力和防御力。目标每攻击一个新目标，消耗 1 层「狐光」，并使攻击该目标时额外增加施加者自身攻击力和当前「狐光」层数的攻击力。「降神」效果持续 2:00，需被施加者首次近战攻击敌对目标后开始计时，结束时移除。当效果结束后，施加者自身攻击力防御力加成将被移除。",
   "astral_dice.guide.entry.teru_sign.2": "被动「狐光」：使用主动技能后，立即获得 3 层「狐光」。当自身或「降神」目标合成、获得或装备攻击牌时，使自身获得一层「狐光」。",
+  "astral_dice.guide.entry.teru_sign.3": "配方：钻石骰子 + 黄金星盘 ×2（传奇档）。",
   "item.astral_dice.nardis_sign": "绿洲女王立牌",
   "effect.astral_dice.nardis_privilege": "女王特权",
   "effect.astral_dice.nardis_privilege.description": "获得 §e3§7 张随机临时牌，持续 §93:00§7；计时结束后丢弃所有临时牌（包括已装备的）",

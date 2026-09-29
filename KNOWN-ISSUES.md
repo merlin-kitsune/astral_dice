@@ -479,31 +479,60 @@ GlCommandEncoder.trySetup(:531) ← GlCommandEncoder.executeDraw(:406) ← GlRen
   —— 但存在**对称的另一类**风险（注解参数写错、或注解类里无 `@SubscribeEvent` 方法，NeoForge 会直接抛）。
   两条线的护栏**不可互相替代**，故本线保留自有审计而不去复用生产线的检查。
 
-### KI-F7 ＝ 手册 `teru_sign.3` 缺键（**四条线共有；已登记，待文案裁决**）
+### KI-F7 ＝ 手册 `teru_sign.3` 缺键（**已补齐**，仅 fabric；另三线仍缺）
 
-- **现象**：`assets/astral_dice/patchouli_books/astral_guide/*/entries/signs/teru_sign.json` 写了 **3 个文本页**
-  （`.1` 主动 / `.2` 被动 / `.3`），但 `lang/{zh_cn,en_us,ja_jp}.json` 只定义了 **`.1` 与 `.2`**
-  ⇒ 玩家翻到第 3 页会看到**原始键名** `astral_dice.guide.entry.teru_sign.3`。
+- **现象（修复前）**：`assets/astral_dice/patchouli_books/astral_guide/*/entries/signs/teru_sign.json`
+  写了 **3 个文本页**（`.1` 主动 / `.2` 被动 / `.3`），但 `lang/{zh_cn,en_us,ja_jp}.json` 只定义了
+  **`.1` 与 `.2`** ⇒ 玩家翻到第 3 页会看到**原始键名** `astral_dice.guide.entry.teru_sign.3`。
 - **范围**：对照 23 个立牌条目，**只有 teru_sign 页数与键数不成对**（其余 22 个全部一致）
-  ⇒ 是这一条的**漏写**，不是系统性机制问题。⚠️ 但**四条线都缺**（forge / 1.21.1 / 26.1.2 同样），
-  属**既有内容缺失**，非移植引入。
-- **为什么不擅自补**（已取到的依据 + 卡点）：
-  - 可复算的配方依据：`Z` = `diamond_dice`、`P` = `golden_star_plate`（P 在 pattern 中出现 2 次）；
-  - 稀有度依据：`TERU_SIGN` = `AstralRarities.legendary()`；
-  - ⚠️ **卡在「档位词」的口径**：`.3` 里同类文案会用 `(Rare tier)` / `(Epic tier)` 这类词，
-    但实测 `HANNA_SIGN` 与 `SHERRY_SIGN` 的代码稀有度**同为 `bizarre()`**，手册里却分别写着
-    `Rare tier` 与 `Epic tier` ⇒ **手册的档位词与 `AstralRarities` 并不对应**（已有两条疑似本身就不准）。
-  - ⇒ 在档位口径裁决前补写，等于给玩家一条**可能与实际不符的品质说明**，故只登记不写。
-- **两个可选修法**（择一，由用户裁决）：
-  1. **补键**：三语各加一条 `.3`（英文可按 `hanna_sign.3` 的句式：
-     `Recipe: diamond dice + golden star plate ×2 (<档位词> tier).`，档位词待定）；
-  2. **删页**：把 `teru_sign.json` 的第 3 个 `patchouli:text` 页删掉（承认该立牌只有 2 页内容）。
-- **附：本线的资源/注册闭环守门脚本**（正是发现本条的检查）
-  `tools/verify_fabric_assets.py` —— 7 项闭环一次跑完（物品↔模型↔贴图 / 标签↔提供者 /
-  音效↔sounds.json↔ogg / 粒子↔贴图清单 / 三语键集 + java 引用键 / 手册引用物品·配方·键 /
-  创意标签覆盖）。**只读，退出码 0=PASS、1=存在缺陷、2=缺产物 jar**。
-  ⚠️ 脚本内的 `LANG_KEY_ALLOW` 是「已知但暂不修」的**显式白名单**（仍会打印出来，不静默）；
-  新增白名单项必须写明理由。
+  ⇒ 这一条的**漏写**，不是系统性机制问题。⚠️ forge / 1.21.1 / 26.1.2 **同样缺**
+  （既有内容缺失、非移植引入）；按「本分支只改 fabric 端」的裁决**只补了 fabric**，
+  另三线若要一并补，直接套用下表同样的文案即可。
+- **补齐依据（三条全部可复算，无杜撰）**：
+  1. **档位词** = `AstralRarities` 的档位 —— `TERU_SIGN` 是 `legendary()`；同档的 `megas_sign.3`
+     手册里写的是「传奇档 / Legendary tier / レジェンダリー段階」⇒ 用 megas 交叉验证了
+     「手册档位词 ↔ 代码稀有度」的对应关系（该对应关系也是判定 **KI-F8** 的依据）；
+  2. **材料** = 配方文件逐字读出：pattern `GCG/LEL/ZPZ`，`Z` = `diamond_dice`、`P` = `golden_star_plate`
+     且 `P` 在 pattern 中出现 **2 次** ⇒「钻石骰子 + 黄金星盘 ×2」；
+  3. **句式与术语** = 对齐 `hanna_sign.3` 的既有结构；物品译名取自各语言文件里已有的 `item.astral_dice.*`。
+- **落地文案**（三语各 +1 行，键数 828 → **829**，三语仍互为一致）：
+
+  | 语言 | 值 |
+  |---|---|
+  | `zh_cn` | `配方：钻石骰子 + 黄金星盘 ×2（传奇档）。` |
+  | `en_us` | `Recipe: diamond dice + golden star plate ×2 (Legendary tier).` |
+  | `ja_jp` | `レシピ：ダイヤモンドのダイス + 黄金の星盤 ×2（レジェンダリー段階）。` |
+
+- **验收**：`tools/verify_fabric_assets.py` 第 6 项（手册闭环）已由 FAIL 转 **PASS**，
+  该键也从脚本的 `LANG_KEY_ALLOW` 白名单**移除**（白名单重新为空）。
+
+### KI-F8 ＝ 两个立牌手册的「档位词」与代码稀有度不符（**四线共有；只登记，未改**）
+
+- **现象**：`hanna_sign.3` 写「稀有档 / Rare tier」、`sherry_sign.3` 写「史诗档 / Epic tier」，
+  但两者的代码稀有度**都是** `AstralRarities.bizarre()`（奇特）。
+- **判据（第三个样本交叉验证）**：`megas_sign` 代码 = `legendary()`，手册写「传奇档 / Legendary tier」
+  ⇒ **手册的档位词应与代码稀有度一致**；据此 hanna / sherry 的手册文案**至少有一条错**
+  （实际是两条都与代码不符）。
+- **影响**：玩家在手册里读到的品质档位与物品实际稀有度（tooltip 边框 / 文字色，见 KI-F1 的 `RarityTooltipFrame`）
+  **不一致** ⇒ 属**内容错误**（与 KI-F7 的"显示键名"性质不同）。
+- **档位体系（照 `starengine_lib` 的 `Rarity`，供后续裁决用）**：
+  `RARE`（稀有 #55FFFF）/ `EPIC`（史诗 #FF55FF）/ `LEGENDARY`（传奇 #FFC24B）/
+  `PINNACLE`（巅峰 #FF4D4D）/ `BIZARRE`（奇特 #FF4D4D）。
+- **为什么只登记不改**：修它必须先定「以代码为准还是以文案为准」——
+  - 以**代码**为准：两条要改成「奇特档」，但 **`奇特(bizarre)` 这个档位词在手册里没有先例**，
+    英/日文写法需要定（`BIZARRE` 的序列化名是 `astral_dice:bizarre`，可作英文候选；日文无先例）；
+  - 以**文案**为准：要改**代码里的稀有度**（`bizarre()` → `rare()` / `epic()`），
+    会连带改 tooltip 配色与整个稀有度体系的分布。
+  两条路都需要裁决，故本轮不动。
+- **注意**：这是**内容层面的既有问题、与移植无关**，四条线表现一致。
+
+### 附：本线的资源/注册闭环守门脚本（发现 KI-F7 的那套检查）
+
+`tools/verify_fabric_assets.py` —— 7 项闭环一次跑完（物品↔模型↔贴图 / 标签↔提供者 /
+音效↔sounds.json↔ogg / 粒子↔贴图清单 / 三语键集 + java 引用键 / 手册引用物品·配方·键 /
+创意标签覆盖）。**只读，退出码 0=PASS、1=存在缺陷、2=缺产物 jar**。
+⚠️ 脚本内的 `LANG_KEY_ALLOW` 是「已知但暂不修」的**显式白名单**（仍会打印出来，不静默）；
+新增白名单项必须写明「为什么不能修 + 需要谁裁决什么」。当前**白名单为空**。
 
 ## 10. 变更记录
 
@@ -524,3 +553,4 @@ GlCommandEncoder.trySetup(:531) ← GlCommandEncoder.executeDraw(:406) ← GlRen
 | 2026-09-29 | 新增 **§9 F 组（Fabric 1.20.1 移植线）** —— 本仓第四条线（子项目 `fabric-1.20.1` / 分支 `1.20.1-fabric`）的已知问题：**KI-F1** = 两个配方因 1.20.1 原版**无 `IngredientType`**（`unzip -l` 实证）而从「指定药水」放宽为「任意药水」，属**平台能力限制的真缺口**，已按「保功能 + 显式登记」处理，严格保真需自建 `RecipeSerializer`+`Ingredient`（待裁决）；**KI-F2** = 跨加载器存档不互通（附件 vs Capability/ForgeData；Trinkets/Accessories vs Curios），平台差异、不修补；**KI-F3** = 双饰品通道的槽位聚合语义（`data/curios/tags/items/*.json` 是本线的物品清单单一事实源，**勿因命名空间而删**；门面改动须验三种组合）；**KI-F4** = datagen 已按 Fabric 体系重建，并登记「重写构建脚本漏搬 `sourceSets.srcDir('src/generated/resources')` ⇒ 255 个生成资源不进产物」这一**编译期与启动期均无感**的缺陷模式（收尾须开包核对）。同轮修复的四个 fabric 线硬缺陷（产物资源缺失 / `onCommonSetup` 未注册导致网络与卡牌注册表从未初始化 / 12 个事件有 handler 无派发源 / `data/bountiful` 未裁剪）已并入上述条目与 CHANGELOG。 |
 | 2026-09-29 | **KI-F1 定案（严格保真）+ 新增 KI-F5 / KI-F6**：1) 两个「指定药水」配方改为自建序列化器 `astral_dice:nbt_shaped` + `NbtShapedRecipe`（覆写 `matches`；JSON 与网络层均委托原版 `ShapedRecipe.Serializer`）⇒ 原「放宽为任意药水」方案作废；语义基准取 **1.21.1 / 26.1.2 的 `DataComponentIngredient.of(true, …)`**（`forge-1.20.1` 的 `PartialNBTIngredient` 按「本分支只改 fabric 端」的裁决**保持原样**，`potionTag(...)` 保留）；2) **KI-F5** = `c:bricks` 在 Forge 47.x 上无任何提供者（`Tags.Items` 里没有 `BRICKS`）⇒「对怪板砖」配方原本永不可合成，现按 NeoForge 的定义在**本线**自建（`#c:bricks/normal` + `#c:bricks/nether` = `minecraft:brick` / `minecraft:nether_brick`），`forge-1.20.1` 侧**未动**；3) **KI-F6** = 新增 `platform/event/SubscriptionAudit`：扫描本包 `@SubscribeEvent` 与已登记集合做差集，补 `dispatchReport()` 看不见的「忘了 register」盲区，`-Dastral_dice.strictBusAudit=true` 可升级为致命错误。 |
 | 2026-09-29 | **撤销 forge 侧改动 + 新增 KI-F7 与本线资源闭环守门**：1) 按用户裁决「本分支只改 fabric 端」，把 `ae76390b` 里属于 forge 的部分全部恢复为 `aadaf8a7`（`ModRecipeProvider` 的 `PartialNBTIngredient` / `potionTag(...)` / generated 配方 / 三个自建 `c:` 标签）⇒ `git diff aadaf8a7 -- forge-1.20.1/` 为空；KI-F1 表格与 KI-F5 的表述同步改为「有意保留的三线差异」；2) **新增 KI-F7** = 手册 `teru_sign.3` 在四线都缺键（玩家会看到原始键名），已取到配方与稀有度依据但**档位词口径不明**（`HANNA_SIGN` / `SHERRY_SIGN` 代码同为 `bizarre()` 而手册写着 `Rare` / `Epic`）⇒ 只登记不补写，附两个可选修法；3) **新增守门脚本 `tools/verify_fabric_assets.py`**（7 项闭环：物品↔模型↔贴图 / 标签↔提供者 / 音效三件套 / 粒子清单 / 三语键集 + java 引用键 / 手册引用 / 创意标签覆盖）—— 本轮体检 12 项里 11 项 PASS、仅 KI-F7 一项 FAIL（已白名单 + 可见打印）。 |
+| 2026-09-29 | **KI-F7 已补齐 + 新增 KI-F8**：为 `teru_sign` 手册第 3 页补上三语键（zh_cn「配方：钻石骰子 + 黄金星盘 ×2（传奇档）。」/ en_us / ja_jp）—— 档位词用**交叉验证**确立（同档的 `megas_sign.3` 手册写「传奇档 / Legendary tier」而代码是 `legendary()`），材料从配方文件逐字读出（Z=diamond_dice、P=golden_star_plate ×2），句式对齐 `hanna_sign.3`；三语键数 828 → 829 且仍互为一致，守门脚本第 6 项 FAIL → PASS，并从 `LANG_KEY_ALLOW` 移除（白名单重新为空）。同时**新增 KI-F8**：`hanna_sign.3` / `sherry_sign.3` 的档位词（稀有档 / 史诗档）与两者代码稀有度（均为 `bizarre()` 奇特）**不符** ⇒ 按同一判据二者至少一条错；因「以代码为准」（需先定 `奇特` 的英/日写法）与「以文案为准」（要改稀有度体系与 tooltip 配色）两条路都需裁决，**只登记未改**。 |
