@@ -90,7 +90,12 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: merlin-kitsune/starengine_lib
-          ref: 4bea9e7d3f55a6692d83e2411bce98321b8b602d   # = 1.0.5 = 可被激怒的可驯服动物(羊驼 / 行商羊驼)计入敌对目标;语义变更 ⇒ 消费方区间下界为 [1.0.5,2.0)(历史钉值:1.0.3 = e407844)
+          ref: 5aa084bdd44af620b61aa68e29a6e1b013c57a58   # = 库分支 `fabric-1.20.1` 的 HEAD:三线仍是 1.0.5(neoforge/forge/26.1.2)+ **新增 fabric 子项目 1.0.5-alpha.1**(含 AstralRarities 按类型查字段的生产映射修复)。一个 ref 同时满足四条线。
+          #   ⚠️ 2026-09-30 修复 CI 失败:旧钉值 `4bea9e7d` 位于 `next` 线上,**其 tree 里根本没有 `fabric-1.20.1` 目录**
+          #   ⇒ CI 解析 `:fabric-1.20.1:modImplementation` 时找不到 `starengine_lib-fabric-1.20.1:1.0.5-alpha.1`,
+          #   直接 `Could not resolve all files for configuration ':fabric-1.20.1:modImplementation'` 失败
+          #   (本地不复现——本地 mavenLocal 里有手工 publish 的那一版)。
+          #   (历史钉值:1.0.3 = e407844;1.0.5 = 4bea9e7d)
           path: .ci/starengine_lib
           fetch-depth: 1
 
