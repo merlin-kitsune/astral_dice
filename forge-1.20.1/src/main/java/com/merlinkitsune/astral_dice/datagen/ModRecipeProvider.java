@@ -932,8 +932,11 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .pattern("ZXZ")
                 .pattern("DCD")
                 .pattern("PPP")
-                .define('Z', net.minecraftforge.common.crafting.PartialNBTIngredient.of(Items.POTION,
-                        potionTag("minecraft:regeneration")))
+                // strict(与友情徽章一致,也对齐 1.21.1 / 26.1.2 的 DataComponentIngredient.of(true, …))
+                .define('Z', net.minecraftforge.common.crafting.StrictNBTIngredient.of(
+                        net.minecraft.world.item.alchemy.PotionUtils.setPotion(
+                                new net.minecraft.world.item.ItemStack(Items.POTION),
+                                net.minecraft.world.item.alchemy.Potions.REGENERATION)))
                 .define('X', Items.NETHER_STAR)
                 .define('D', Items.WITHER_ROSE)
                 .define('C', ModItems.BLANK_CHIP.get())
@@ -1439,10 +1442,9 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
         // 符卡-福 / 符卡-祸:**无配方**(专属牌,仅由风水师立牌的被动「福祸相倚」与主动「白泽赐福」
         // 及「心意相连」发放,与活体书页/命运的指引等专属牌同一口径:不进随机池、不进合成表)。
     }
-    // 1.20.1 无 1.21 的 DataComponentIngredient:以 PartialNBTIngredient 匹配指定药水
-    private static net.minecraft.nbt.CompoundTag potionTag(String potionId) {
-        net.minecraft.nbt.CompoundTag tag = new net.minecraft.nbt.CompoundTag();
-        tag.putString("Potion", potionId);
-        return tag;
-    }
+    // 1.20.1 无 1.21 的 DataComponentIngredient ⇒ 两个「指定药水」配方一律用
+    // StrictNBTIngredient（与 1.21.1 / 26.1.2 的 DataComponentIngredient.of(true, …) 同义）。
+    // ⚠️ 2026-09-29 统一：此前肾上腺素-一般用的是 PartialNBTIngredient（NBT 子集），
+    //    与同一文件里友情徽章的 StrictNBTIngredient 并存，且与两条 NeoForge 线不一致；
+    //    现三线统一为 strict（精确匹配）。原 `potionTag(...)` 辅助方法随之删除。
 }

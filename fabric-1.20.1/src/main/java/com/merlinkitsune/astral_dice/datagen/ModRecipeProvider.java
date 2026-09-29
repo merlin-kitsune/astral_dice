@@ -910,13 +910,17 @@ public class ModRecipeProvider extends FabricRecipeProvider {
                 .pattern("ZXZ")
                 .pattern("RBR")
                 .pattern("PPP")
+                // 基础 ingredient = 任意药水（原版 Ingredient 完全不看 NBT）；
+                // 「必须是治疗药水」由下面 astral_nbt 约束在 NbtShapedRecipe#matches 阶段补齐。
                 .define('Z', Items.POTION)
                 .define('X', Items.ENCHANTED_GOLDEN_APPLE)
                 .define('R', ModItems.REGENERATION_REAGENT.get())
                 .define('B', ModItems.BLANK_CHIP.get())
                 .define('P', ModItems.STAR_PLATE.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
-                .save(output::accept);
+                // strict=true ⇒ 与 1.21.1 / 26.1.2 的 DataComponentIngredient.of(true, …) 同义
+                .save(NbtAugmentedRecipe.wrap(output,
+                        java.util.Map.of("Z", NbtAugmentedRecipe.nbtKey(healingPotion(), true))));
 
         // 探天卫星:红石块上排 + 轨道炮/空白筹码中轴 + 黄金星盘下排
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.SATELLITE_CHIP.get())
@@ -935,13 +939,16 @@ public class ModRecipeProvider extends FabricRecipeProvider {
                 .pattern("ZXZ")
                 .pattern("DCD")
                 .pattern("PPP")
+                // 基础 ingredient = 任意药水；「必须是再生药水」由下面 astral_nbt 约束补齐。
                 .define('Z', Items.POTION)
                 .define('X', Items.NETHER_STAR)
                 .define('D', Items.WITHER_ROSE)
                 .define('C', ModItems.BLANK_CHIP.get())
                 .define('P', ModItems.STAR_PLATE.get())
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
-                .save(output::accept);
+                // strict=true ⇒ 与 1.21.1 / 26.1.2 的 DataComponentIngredient.of(true, …) 同义
+                .save(NbtAugmentedRecipe.wrap(output,
+                        java.util.Map.of("Z", NbtAugmentedRecipe.nbtKey(regenerationPotion(), true))));
 
         // 肾上腺素-高效:紫→金升级配方 RZR/ZOZ/PPP
         // (R=红石粉,Z=钻石,O=史诗品质筹码(本例肾上腺素-一般),P=黄金星盘;遵循通用紫-金配方)
@@ -1441,8 +1448,30 @@ public class ModRecipeProvider extends FabricRecipeProvider {
         // 符卡-福 / 符卡-祸:**无配方**(专属牌,仅由风水师立牌的被动「福祸相倚」与主动「白泽赐福」
         // 及「心意相连」发放,与活体书页/命运的指引等专属牌同一口径:不进随机池、不进合成表)。
     }
-    // ⚠️ 2026-09-29(移植):原 Forge 版此处有 `potionTag(...)` 辅助方法，供 `PartialNBTIngredient` / `StrictNBTIngredient` 匹配「指定药水」。
-    // 1.20.1 **原版没有** IngredientType 扩展点（`unzip -l` 原版 jar 只有 `Ingredient$Value/$ItemValue/$TagValue`）⇒ Fabric 侧无法表达 NBT 匹配，
-    // 两个配方（肾上腺素·低 / 心意相连徽章）的药水材料已放宽为 `Items.POTION`（任意药水）。
-    // 详见 KNOWN-ISSUES **KI-F1**。
+    // ==== 指定药水的 NBT 约束（2026-09-29 起：由 astral_dice:nbt_shaped 严格保真）====
+    // 原版 Ingredient 完全不看 NBT，且它 final + 私有构造器 + 包私有 Value 接口（javap 实证）
+    // ⇒ 无法在原版 Ingredient 层表达「指定药水」。本模组的做法：基础 ingredient 仍写
+    // `Items.POTION`（保证形状/种类匹配与客户端显示），再加一条 astral_nbt 约束，
+    // 由 NbtShapedRecipe#matches 在匹配阶段补齐 NBT 判定。
+    //
+    // ⚠️ 三条线统一用 **strict（完全一致）**，基准取 NeoForge 主线：
+    //   1.21.1 / 26.1.2 均为 `DataComponentIngredient.of(true, DataComponents.POTION_CONTENTS, …)`
+    //   （NeoForge 的 strict 分支内部走 ItemStack.isSameItemSameComponents ⇒ 精确匹配）。
+    //   本线等价实现 = `StackConstraint(strict = true)` ⇒ `ItemStack.isSameItemSameTags`。
+    //   `strict = false`（NBT 子集，对齐 Forge 1.20.1 的 PartialNBTIngredient）保留在
+    //   StackConstraint 里备用，但**当前无配方使用** —— 三条线已统一为 strict。
+
+    /** 治疗药水（`{Potion:"minecraft:healing"}`）—— 友情徽章配方的 NBT 依据。 */
+    private static net.minecraft.world.item.ItemStack healingPotion() {
+        return net.minecraft.world.item.alchemy.PotionUtils.setPotion(
+                new net.minecraft.world.item.ItemStack(Items.POTION),
+                net.minecraft.world.item.alchemy.Potions.HEALING);
+    }
+
+    /** 再生药水（`{Potion:"minecraft:regeneration"}`）—— 肾上腺素-一般配方的 NBT 依据。 */
+    private static net.minecraft.world.item.ItemStack regenerationPotion() {
+        return net.minecraft.world.item.alchemy.PotionUtils.setPotion(
+                new net.minecraft.world.item.ItemStack(Items.POTION),
+                net.minecraft.world.item.alchemy.Potions.REGENERATION);
+    }
 }

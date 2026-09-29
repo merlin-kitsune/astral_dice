@@ -35,6 +35,12 @@
   the immunity window on ender pearl impact, the warp engine's charge gain when crossing dimensions, temporary cards
   refusing to be dropped, the Overflow accumulation of the Guardian's Blessing, the doubled saturation from Fate's Guide
   while eating, and the item models and crafting recipes of every item.
+- **The two "specific potion" recipes match exactly again**: Adrenaline (Low) requires a Potion of Regeneration and the
+  Friendship Badge requires a Potion of Healing; both previously accepted *any* potion (plain water bottles, Awkward
+  Potions and so on). They now match the intended potion exactly, in line with all three production lines.
+- **Fixed the "Monster Brick" card recipe being impossible to craft**: it required an ingredient from the `#c:bricks` tag,
+  which nothing provided on 1.20.1, so the condition could never be satisfied (no error in-game — it simply never worked).
+  The mod now supplies that tag itself; both Brick and Nether Brick work.
 
 ### Requirements
 

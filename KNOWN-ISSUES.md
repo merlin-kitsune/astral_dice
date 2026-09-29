@@ -356,24 +356,43 @@ GlCommandEncoder.trySetup(:531) ← GlCommandEncoder.executeDraw(:406) ← GlRen
 > 规则边界见 `AGENTS.md`「多版本子项目矩阵」的第四条线说明。
 > ⚠️ 下列 KI-F* **只适用于 fabric 线**；不要把它们当成三条生产线的缺陷，反向亦然。
 
-### KI-F1 ＝ 两个配方从「指定药水」放宽为「任意药水」（**平台能力限制 ⇒ 真缺口，已登记**）
+### KI-F1 ＝ 两个「指定药水」配方（**已按 `astral_dice:nbt_shaped` 严格保真；原「放宽为任意药水」方案作废**）
 
-- **现象**：`adrenaline_low_chip`（肾上腺素·低）与 `friendship_badge_chip`（心意相连徽章）两个配方，
-  在 Forge 版要求**指定药水**（再生 / 治疗）—— 由 `forge:partial_nbt` 与 `forge:nbt` 两种 NBT Ingredient 匹配。
-  本线的生成配方改为 `"Z": {"item": "minecraft:potion"}`（**任意药水**）。
-- **根因（实证，非推测）**：1.20.1 **原版没有** `IngredientType` 机制 —— `unzip -l` 原版
-  `minecraft-merged` jar 下只有 `Ingredient.class` / `Ingredient$Value.class` / `Ingredient$ItemValue.class` /
-  `Ingredient$TagValue.class`，**没有** `IngredientType`（那是 1.20.5+ 才引入的扩展点）。
-  ⇒ 原版 `Ingredient` 的反序列化只认 `item` / `tag` 两种写法，**不存在可注册的自定义类型**；
-  Forge 是靠 patch 原版类塞进 `forge:nbt` / `forge:partial_nbt` 分支，Fabric 侧没有等价补丁。
-- **影响**：这两个配方**仍可合成**（不再被原版配方加载器静默丢弃），但材料门槛**放宽** ——
-  任意药水（水药水 / 粗制药水等）都能用。其余材料（星盘 / 下界之星 / 强化金苹果 / 再生试剂）不变。
-- **处置**：本轮按「**保功能 + 显式登记**」处理（配方存在且可合成 > 配方缺失）。
-  若需严格保真，唯一干净路径 = **自建 `RecipeSerializer` + `Ingredient` 子类**
-  （约 200 行 + 注册 + 网络同步面 + 配方查看器适配），成本显著高于两个配方的收益 ⇒ 待用户裁决。
-- **取证**：原版类清单 = `unzip -l <fabric-loom 的 minecraft-merged jar> | grep Ingredient`；
-  Forge 侧实现 = `forge-1.20.1/src/main/java/com/merlinkitsune/astral_dice/datagen/ModRecipeProvider.java`
-  里 `StrictNBTIngredient.of(...)` 与 `PartialNBTIngredient` 的调用点。
+- **背景**：`adrenaline_low_chip`（肾上腺素·低）与 `friendship_badge_chip`（心意相连徽章）两个配方，
+  在 Forge 版要求**指定药水**（再生 / 治疗）。2026-09-29 移植初期因「1.20.1 原版没有 `IngredientType`」
+  而一度放宽为「任意药水」（`"Z": {"item": "minecraft:potion"}`）—— 该放宽**已作废**，同日晚改为严格保真。
+- **原版为什么做不到（实证，非推测）**：原版 `Ingredient` 是 `final class`、构造器 `private`、
+  内部 `Value` 接口**包私有** —— 三个方向都封死（javap 实证）；且其 `test(ItemStack)` 的字节码
+  **只调 `ItemStack.is(Item)`**，连 `getItems()` 里的 NBT 都不比较。
+  ⇒ 无法在原版 `Ingredient` 层表达「指定药水」（Forge 是靠 patch 原版类塞进 `forge:nbt` /
+  `forge:partial_nbt` 分支，Fabric 侧没有等价补丁）。1.20.1 亦**没有** `IngredientType`
+  （`unzip -l` 原版 jar 只有 `Ingredient$Value/$ItemValue/$TagValue`）。
+- **本线的实现（不依赖任何第三方模组）**：
+  1. 自建序列化器 `astral_dice:nbt_shaped`（`crafting/AstralRecipeSerializers`）—— JSON 与网络
+     **都委托原版 `ShapedRecipe.Serializer`**（`fromJson` / `toNetwork` / `fromNetwork`），
+     只额外读写一个 `astral_nbt` 字段 ⇒ 不随版本补丁产生格式漂移；
+  2. `crafting/NbtShapedRecipe extends ShapedRecipe`，覆写 `matches(CraftingContainer, Level)`：
+     先 `super.matches` 过形状与种类级，再按**原版同一套 offset / 镜像枚举**复算一遍并附加 NBT 校验；
+  3. `crafting/StackConstraint` 承载单格约束：严格模式 = `ItemStack.isSameItemSameTags`
+     （等价于 NeoForge `DataComponentIngredient.of(true, …)` 内部的 `isSameItemSameComponents`）；
+     子集模式 = `NbtUtils.compareNbt(expected, actual, true)`（对齐 Forge 的 `PartialNBTIngredient`，
+     **当前无配方使用**，保留以备回归对照）。
+- **与另两条线的语义对齐（2026-09-29 以 1.21.1 为基准校正）**：
+
+  | 线 | 肾上腺素·低 原实现 | 现实现 |
+  |---|---|---|
+  | `neoforge-1.21.1` | `DataComponentIngredient.of(true, …)`（strict） | 不变（基准） |
+  | `neoforge-26.1.2` | `DataComponentIngredient.of(true, …)`（strict） | 不变 |
+  | `forge-1.20.1` | `PartialNBTIngredient`（NBT **子集**） | **改 `StrictNBTIngredient`**（对齐两条 NeoForge 线） |
+  | `fabric-1.20.1` | 放宽为任意药水 | **`astral_nbt` + `strict=true`**（本条目） |
+
+  同时 1.20.1 两条线的 `potionTag(...)` 辅助方法随之删除（失去唯一使用者）。
+- **取证**：原版类清单与 `test` 字节码 = `javap -p -c <fabric-loom 的 minecraft-merged jar> net.minecraft.world.item.crafting.Ingredient`；
+  生成结果 = `{fabric-1.20.1,forge-1.20.1}/src/generated/resources/data/astral_dice/recipes/adrenaline_low_chip.json`
+  与 `friendship_badge_chip.json`；加载期取证 = 起一次 fabric 服务端，日志内无配方解析错误。
+- **残留（已知并登记）**：客户端配方查看器（JEI 等）显示的仍是基础 ingredient（`minecraft:potion`），
+  不体现 NBT 条件 —— 这是原版 `Ingredient` 不可扩展导致的**显示层**措辞差异；服务端匹配与
+  客户端配方书 ghost 预览**都按约束执行**（约束随 `toNetwork` 同步到客户端），非功能缺口。
 
 ### KI-F2 ＝ 跨加载器存档不互通（**平台差异，非缺陷，不修补**）
 
@@ -406,6 +425,54 @@ GlCommandEncoder.trySetup(:531) ← GlCommandEncoder.executeDraw(:406) ← GlRen
   自写 mixin，而非 Forge 的 `@Mod.EventBusSubscriber`），故**测试流程与守门脚本需要单独一套**；
   详见 `scripts/test/fabric/` 与该目录下的说明。**不得**直接复用 `mt.ps1` 的生产线口径。
 
+### KI-F5 ＝ `c:bricks` 标签由本线自建（**补齐无提供者**）
+
+- **现象**：`effect_card_monster_brick`（对怪板砖）配方需要 `#c:bricks`。该标签在
+  **Forge 47.x 上没有任何提供者**（`unzip -l forge-*-universal.jar` 只有 `data/forge/**`，
+  `Tags.Items` 里也只有 `INGOTS_BRICK` / `FENCES_NETHER_BRICK`，**无 `BRICKS`**）
+  ⇒ 原版/Forge 会创建**空标签**，配方**永不可合成**（静默失效，不报错）。
+- **处置（2026-09-29）**：在无提供者的两条线上**自建**该标签，内容**对齐 NeoForge 的定义**：
+  ```
+  c:bricks          = [ #c:bricks/normal, #c:bricks/nether ]
+  c:bricks/normal   = [ minecraft:brick ]
+  c:bricks/nether   = [ minecraft:nether_brick ]
+  ```
+  写入 `{fabric-1.20.1,forge-1.20.1}/src/main/resources/data/c/tags/items/{bricks,bricks/normal,bricks/nether}.json`
+  （⚠️ 1.20.1 的目录是 **`tags/items`（复数）**；1.21+ 才是 `tags/item`）。
+- **依据（逐字核对，非推测）**：`neoforge-21.1.235-universal.jar` 的 `data/c/tags/item/bricks.json`
+  = `["#c:bricks/normal", "#c:bricks/nether"]`，`bricks/normal.json` = `["minecraft:brick"]`，
+  `bricks/nether.json` = `["minecraft:nether_brick"]`；`neoforge-26.1.2.109` 的 `bricks.json`
+  多一项 `#c:bricks/resin`（= `minecraft:resin_brick`），但**树脂砖是 1.21.5+ 的物品，1.20.1 不存在**
+  ⇒ 本线按 1.21.1 的形态对齐（两个子标签）。
+- **兼容性**：标签默认**合并**（不写 `replace: true`），若玩家整合包另有模组提供 `c:bricks`，
+  两方内容取并集，不会互相覆盖。
+- **注意**：`c:bricks` 的内容是**砖物品**（`minecraft:brick` / `minecraft:nether_brick`），
+  **不是**砖块方块（`minecraft:bricks`）—— 名字相近，改动该标签前务必对照 NeoForge 的原定义。
+- 两条 NeoForge 线**无需自建**（由 NeoForge 自身提供）；它们各自的 `.minecraft` 整合包内
+  该标签由 NeoForge 注入，不存在此问题。
+
+### KI-F6 ＝ 自建总线的「登记完整性」靠注解扫描兜底（**工具化，含局限**）
+
+- **风险源**：本线的 `platform/event/LoaderBus` 是**反射式自建总线**，订阅类必须被
+  `LoaderBus.INSTANCE.register(X.class)` 显式登记（Fabric 侧没有 `@EventBusSubscriber` 的自动注册）。
+  漏登记 ⇒ 处理器**永不触发**，且不报错（2026-09-29 真实事故：`onCommonSetup` 因漏登记，
+  连带兼容性校验 / 网络注册 / 卡牌注册表三者从未执行）。
+- **两道护栏**：
+  1. `LoaderBus#dispatchReport()` —— 列出每个**已注册**事件类的派发次数，**0 次的也列**
+     （抓「桥没接 / 注入点写错」）；判据：`ServerTickEvent` 必须为正数。
+  2. `platform/event/SubscriptionAudit` —— 扫描本模组类根下所有带 `@SubscribeEvent` 的类，
+     与**已登记集合**做差集，列出「带注解却从未登记」的类（抓 `dispatchReport()` 看不见的盲区）。
+     - 扫描方式：`FabricLoader#getModContainer(...).getRootPaths()` ⇒ dev 走目录 `Files.walk`、
+       生产走 jar 条目；类用 `Class.forName(name, false, loader)` **不初始化**加载。
+     - 默认 **WARN** + 列清单；加 `-Dastral_dice.strictBusAudit=true` 升级为**抛异常**（供测试台断言）。
+     - 入口：服务端 `AstralDiceMod#onInitialize` 末尾（排除客户端专属包 —— 此时客户端尚未登记），
+       客户端 `AstralDiceClient#onInitializeClient` 末尾（不排除，最完整）。
+     - ⚠️ **局限**：若一个类都没扫到，只打「审计未生效」WARN（**不得**当成通过）；
+       且客户端专属包在**服务端**那次审计里被有意跳过（属预期，非漏检）。
+- **与另三条线的差异**：它们用 `@EventBusSubscriber`（编译期自动注册），不存在「漏登记」这一类风险
+  —— 但存在**对称的另一类**风险（注解参数写错、或注解类里无 `@SubscribeEvent` 方法，NeoForge 会直接抛）。
+  两条线的护栏**不可互相替代**，故本线保留自有审计而不去复用生产线的检查。
+
 ## 10. 变更记录
 
 | 日期 | 变更 |
@@ -423,3 +490,4 @@ GlCommandEncoder.trySetup(:531) ← GlCommandEncoder.executeDraw(:406) ← GlRen
 | 2026-09-19 | 新增 **§8 E 组（测试工具链与探针口径）**：**KI-E1** = `AP_NOAI` 心跳/闸门读数在确有靶生物时恒为 `mobs=0`（假阴性 ⇒ 「禁用生物 AI」硬闸门 `mobs == noai` 恒成立、形同空洞；嫌疑在 `astral_test_noai.js` 侧，未改该文件）；**KI-E2** = 探针 `typeIdOf(entity)` 对**所有**实体返回同一类型串（实测 `census=minecraft:pig@12\|minecraft:pig@6\|minecraft:pig@16` ⇒ 三条实体的身份/血量全对、只有类型串是常量），按类型取靶因此不可用 —— 探针已改为「setup 发布句柄 + 判据只读句柄」，并**更正**前序把症状解释为「`apply` 之后搜不到实体」的误判（`scan8=3` 证明搜索正常）。KI-M2 补登既有缺陷：四个门控立牌（ren/bonnie/haiqing/moses）**漏写 `sign_active_max_cooldown`**（电流核心档位分母偏），史莱姆立牌已按正确口径成对写入 |
 | 2026-09-27 | **KI-D1 复现 + dev 规避落地（已实测闭环）**：用户手动 `/time set 18000` 后崩，报告 `run/26.1.2/crash-reports/crash-2026-09-27_10.28.05-client.txt`，栈与 §7 记载**逐帧一致**（B 组形态：`MultiBufferSource$BufferSource.endBatch(:99)` 与 `LevelRenderer.lambda$addMainPass$0(:707)` 之间**没有任何 ImmediatelyFast 帧**）；Iris jar sha256 `32d672a8…22be5` 与定案版一致；报告内 `com.merlinkitsune.*` 帧数 = **0**。⚠️ **`/time set` 是触发条件而非根因**——它只改变主通道（`addMainPass`）的渲染内容，把上游缺陷更早"踩"出来；KI-D1 既有对照组（去掉任何玩家操作、同环境同召唤物）已证明崩溃不依赖特定玩家操作。**已落地规避**：`neoforge-26.1.2/build.gradle` 的 `client` run 加 `jvmArgument '-Dneoforge.disableGlValidation=true'`，正对那处 **dev-only** 断言 （`GlRenderPass.VALIDATION = SharedConstants.IS_RUNNING_IN_IDE && !Boolean.getBoolean("neoforge.disableGlValidation")`，`GlCommandEncoder.trySetup` 的整段 sampler 校验被 `if (GlRenderPass.VALIDATION)` 包住）⇒ 生产环境校验收起、不受影响。**验证证据**（同环境 + 光影）：会话 `latest.log` 10:36:15→10:37:37，10:36:28 `Time from main menu to in-game was 3.89s`（真进世界），10:37:16 注入 `/time set 18000` → `[Dev: 已将minecraft:overworld设为18000刻]`（真执行），其后 21 s 观察窗内 **new crashes = 0 / `Missing sampler` 命中 = 0 / 客户端存活**。⚠️ **代价**：该校验是 dev 下唯一会报「自家渲染管线 sampler/vertex-format 配错」的闸门，关掉后这类问题会被一并静音 ⇒ 一旦怀疑本模组自定义几何（target_prism 等）有渲染问题，**须临时注释该行**恢复校验。 |
 | 2026-09-29 | 新增 **§9 F 组（Fabric 1.20.1 移植线）** —— 本仓第四条线（子项目 `fabric-1.20.1` / 分支 `1.20.1-fabric`）的已知问题：**KI-F1** = 两个配方因 1.20.1 原版**无 `IngredientType`**（`unzip -l` 实证）而从「指定药水」放宽为「任意药水」，属**平台能力限制的真缺口**，已按「保功能 + 显式登记」处理，严格保真需自建 `RecipeSerializer`+`Ingredient`（待裁决）；**KI-F2** = 跨加载器存档不互通（附件 vs Capability/ForgeData；Trinkets/Accessories vs Curios），平台差异、不修补；**KI-F3** = 双饰品通道的槽位聚合语义（`data/curios/tags/items/*.json` 是本线的物品清单单一事实源，**勿因命名空间而删**；门面改动须验三种组合）；**KI-F4** = datagen 已按 Fabric 体系重建，并登记「重写构建脚本漏搬 `sourceSets.srcDir('src/generated/resources')` ⇒ 255 个生成资源不进产物」这一**编译期与启动期均无感**的缺陷模式（收尾须开包核对）。同轮修复的四个 fabric 线硬缺陷（产物资源缺失 / `onCommonSetup` 未注册导致网络与卡牌注册表从未初始化 / 12 个事件有 handler 无派发源 / `data/bountiful` 未裁剪）已并入上述条目与 CHANGELOG。 |
+| 2026-09-29 | **KI-F1 定案（严格保真）+ 新增 KI-F5 / KI-F6**：1) 两个「指定药水」配方改为自建序列化器 `astral_dice:nbt_shaped` + `NbtShapedRecipe`（覆写 `matches`；JSON 与网络层均委托原版 `ShapedRecipe.Serializer`）⇒ 原「放宽为任意药水」方案作废；语义基准取 **1.21.1 / 26.1.2 的 `DataComponentIngredient.of(true, …)`**，并据此把 **forge-1.20.1 的 `PartialNBTIngredient` 统一为 `StrictNBTIngredient`**（该线两种做法并存属历史遗留，`potionTag(...)` 随之删除）；2) **KI-F5** = `c:bricks` 在 Forge 47.x 上无任何提供者（`Tags.Items` 里没有 `BRICKS`）⇒「对怪板砖」配方原本永不可合成，现按 NeoForge 的定义在 1.20.1 两条线自建（`#c:bricks/normal` + `#c:bricks/nether` = `minecraft:brick` / `minecraft:nether_brick`）；3) **KI-F6** = 新增 `platform/event/SubscriptionAudit`：扫描本包 `@SubscribeEvent` 与已登记集合做差集，补 `dispatchReport()` 看不见的「忘了 register」盲区，`-Dastral_dice.strictBusAudit=true` 可升级为致命错误。 |

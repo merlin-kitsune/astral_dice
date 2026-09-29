@@ -49,6 +49,11 @@ public class AstralDiceClient implements ClientModInitializer {
         //    全部「注册了但从不派发」。必须放在监听器注册之后。
         com.merlinkitsune.astral_dice.platform.client.FabricClientBridges.install();
 
+        // 订阅类审计:此时服务端(AstralDiceMod)与客户端(本类)两批 register 都已完成,
+        // 故这是最完整的一次扫描 —— 把「带 @SubscribeEvent 却从未登记」的类全列出来。
+        // (dispatchReport() 只看得见已注册的事件类,对「忘了 register」是盲区。)
+        com.merlinkitsune.astral_dice.platform.event.SubscriptionAudit.verifyClientSide();
+
         AstralDiceMod.LOGGER.info("Astral Dice client initialized.");
     }
 }

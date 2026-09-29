@@ -48,6 +48,10 @@ public class AstralDiceMod implements ModInitializer {
         // 战利品注入(FAPI LootTableEvents.MODIFY):替代 Forge 侧的 GLM + LootTableLoadEvent 两条通道
         com.merlinkitsune.astral_dice.loot.FabricLootInjector.register();
         commitRegistrations();
+        // 自建配方序列化器(astral_dice:nbt_shaped;用于「指定药水」的 NBT 精确匹配)。
+        // ⚠️ 必须在数据包加载之前 —— 否则带 astral_nbt 约束的两条配方会因找不到 serializer
+        //    而整条加载失败(而不是退回宽松匹配)。onInitialize 全程早于 datapack 装载,故安全。
+        com.merlinkitsune.astral_dice.crafting.AstralRecipeSerializers.register();
         registerListeners();
         // ⚠️ 必须装桥,否则**全部**事件永不派发(2026-09-29 修:此前只调了 installEarly(),
         //    install() 从未被调用 ⇒ tick / 登录登出 / 命令 / 伤害 / Puzzles 那一整套
@@ -66,6 +70,10 @@ public class AstralDiceMod implements ModInitializer {
         setupConfig();
         // 通用初始化(Forge 的 FMLCommonSetupEvent 等价物)
         BUS.post(new FMLCommonSetupEvent());
+        // 订阅类审计(服务端视角):扫描本包下带 @SubscribeEvent 的类,列出「带注解却从未登记」的
+        // —— 补上 dispatchReport() 的盲区(它只列已注册的事件类)。客户端包在此被排除,
+        // 因为 AstralDiceClient 的 register 晚于本入口,由客户端侧的 verifyClientSide() 收口。
+        com.merlinkitsune.astral_dice.platform.event.SubscriptionAudit.verifyServerSide();
         LOGGER.info("Astral Dice mod loaded.");
         LOGGER.info("May the god of the dice be with you!");
     }

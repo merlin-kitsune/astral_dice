@@ -52,6 +52,15 @@ public final class LoaderBus implements IEventBus {
 
     private final Map<Class<?>, List<Listener>> listeners = new HashMap<>();
 
+    /**
+     * 曾被 {@code register(...)} 扫描过的宿主类(审计用)。
+     *
+     * <p>记录它的原因:{@link #dispatchReport()} 只能看见**已注册**的事件类,
+     * 「带 {@code SubscribeEvent} 却从未登记」的类是盲区 —— 由
+     * {@link SubscriptionAudit} 用它做差集补上。
+     */
+    private final java.util.Set<Class<?>> registeredOwners = java.util.concurrent.ConcurrentHashMap.newKeySet();
+
     /** 事件类 → 已派发次数(诊断用,见 {@link #dispatchReport()})。 */
     private final Map<Class<?>, java.util.concurrent.atomic.AtomicInteger> dispatchCounts =
             new java.util.concurrent.ConcurrentHashMap<>();
@@ -119,7 +128,13 @@ public final class LoaderBus implements IEventBus {
         scan(target, null);
     }
 
+    /** 已登记的宿主类(只读视图,供 {@link SubscriptionAudit} 做差集)。 */
+    public java.util.Set<Class<?>> registeredOwners() {
+        return java.util.Collections.unmodifiableSet(registeredOwners);
+    }
+
     private void scan(Class<?> owner, Object instance) {
+        registeredOwners.add(owner);
         for (Method m : owner.getDeclaredMethods()) {
             SubscribeEvent ann = m.getAnnotation(SubscribeEvent.class);
             if (ann == null || m.getParameterCount() != 1) {

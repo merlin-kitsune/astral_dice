@@ -1,5 +1,12 @@
 {
-  "type": "minecraft:crafting_shaped",
+  "type": "astral_dice:nbt_shaped",
+  "astral_nbt": {
+    "Z": {
+      "item": "minecraft:potion",
+      "nbt": "{Potion:\"minecraft:regeneration\"}",
+      "strict": true
+    }
+  },
   "category": "misc",
   "key": {
     "C": {
