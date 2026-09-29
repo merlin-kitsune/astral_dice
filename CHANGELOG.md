@@ -69,6 +69,34 @@
   ⚠️ This class of defect **never crashes and never logs an error**, and a single-player test world holds too little player
   data for it to surface.
 
+- **The 8-point cost of "King's Power" is now always applied**: previously the 8 damage you are supposed to take when
+  playing the card **frequently did not land at all** (stacks were gained, health bar unchanged). The reason was that this
+  self-damage used a channel that is **not registered as "ignores the hurt invulnerability window"** — so whenever you had
+  just been hit (or played two King's Power cards in a row), the 8 points were **discarded wholesale** as a "lower damage
+  during invulnerability" (and Creative mode ignored it entirely). It now uses a dedicated "**card cost**" damage channel
+  registered as ignoring the invulnerability window, so it resolves normally.
+  ⚠️ It deliberately does **not** bypass armour: this is a *cost*, not true damage, so armour, resistance and protection
+  still reduce it — matching the old rules.
+
+- **The Sweeper sign's attack/defence bonuses are now kept through death**: previously dying **wiped** both bonuses
+  (the old rule aligned it with the Guardian sign's "lose stacks on death"). Death no longer clears them — they now follow
+  the same rule as the Investigator / Ninja / Flood Dragon / Great Detective signs: **kept through death and respawn**,
+  only an explicit unequip resets them.
+
+- **Permanent status effects now uniformly show ∞ (infinite)**: the "Magic Tome plays" counter used to carry an 8:20
+  countdown, and most other permanent effects (Blue Curse, Foxlight, True Dragon Form, Misfortune, Reasoning Time,
+  Weakness Reveal, Doll Crafting/Complete, Undercover Investigation, and more) never actually expired yet displayed
+  **an enormous countdown** (about three and a half years). All of them now use vanilla's **true infinite duration**,
+  so the interface shows **∞**.
+  ⚠️ This unifies the *display* only; no effect's strength or duration changed (they were never supposed to expire).
+  ⚠️ A related timer-correctness defect that made permanent effects "vanish the moment they were applied" (it mistook
+  "infinite" for "already expired") was fixed at the same time.
+
+- **Status effects now show their description**: every status effect in this mod has explanatory text (values, duration,
+  trigger conditions), but there was previously **no rendering channel that surfaced it in game** — hovering an effect
+  icon showed only the name and remaining time. The description is now appended to the hover tooltip in the inventory's
+  effect panel (only for effects that actually have one; vanilla and other mods' effects are unaffected).
+
 ### Prerequisite changes
 
 - **Accessory slots are now either-or: Trinkets alone, or Accessories alone, both work — only "neither" is refused**:

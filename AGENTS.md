@@ -218,6 +218,19 @@ When extending this workspace:
 >    （同一个字符串对两条通道同时成立）。放错目录 = **文件明明存在却显示紫黑格**，且**不报错、日志无痕迹**。
 >    ⇒ 收尾两道门：`tools/verify_fabric_assets.py` 第 8 项 + 客户端 `AccessoriesClientIconCheck`
 >    —— ⚠️ **必须同时查「文件是否存在」与「是否被图集收录」**，只查前者查不出本缺陷（它正是「文件在、位置错」）。
+> ⑫ **同步 dev/main 线的既有修复：按文件移植，不要整分支 merge**（2026-09-30 用户裁决「直接同步 `multi-dev-next` 的改动，避免重复造轮」）：
+>    本线的目录**不在** dev 线的改动范围内（dev-next 的提交改的是三线 `neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2`），
+>    而 dev-next 通常领先本分支数十个提交（版本号 / 目标选择器 / 工具链等）⇒ **整分支 merge 带不来任何 fabric 代码改动，只会把开发线灌进移植线**。
+>    正确做法：`git show <commit> -- forge-1.20.1/` 取蓝本（同为 MC 1.20.1、同 `RegistryObject` 风格、同 Mojmap 方法引用）
+>    → `sed 's|forge-1.20.1/|fabric-1.20.1/|g'` 改写补丁路径 → `git apply --3way` → 冲突逐处手工合并
+>    （典型冲突：`ModEffects.java` 的 import 区 —— forge 是 `net.minecraftforge.registries.*`，本线是
+>    `com.merlinkitsune.astral_dice.platform.registry.*`；**保留本线平台注册表**，只采纳 patch 新增的原版 import）。
+>    ⚠️ **移植后必须核对三件事**：① 本线**特有**内容没有被覆盖（例：`EffectRenderingInventoryScreenMixin` 的等级角标 `@Inject`
+>    与移植进来的注释 `@Redirect` 必须**并存**）；② 上游 patch 里的 mixin **注入点与 `require` 必须按本线字节码复核** ——
+>    `require` 是「注入点**最少**命中次数」（未写时取 `injectors.defaultRequire`），**写大了会在运行时抛 `InjectionError`**
+>    （编译与 `build` 都不校验，只有类被加载时才炸）；③ 语言键集三语一致。见 `KNOWN-ISSUES.md` **KI-F19 / KI-F20**。
+>    ⚠️ 同类教训重复出现：**上游 patch 的注释也会写错**（`731e3855` 把 `require = 2` 注释成「至少命中 1 次」）
+>    ⇒ 移植时**以本线字节码为准**，不以注释为准。
 ### 前置库 starengine_lib 的版本与兼容性契约（全局，2026-09-22 用户裁决）
 
 > 本契约**跨两个仓库生效**（库仓 `F:\MCProject\starengine_lib` ↔ 本仓三条线），是库的**公开兼容性承诺**。

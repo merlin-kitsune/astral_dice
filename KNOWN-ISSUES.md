@@ -1024,6 +1024,55 @@ fabric.mod.json: version=1.3.2-alpha.1+fabric_1.20.1 / depends.starengine_lib=">
   其余 12 个为 Accessories 自带槽位（同样 `inBlocksAtlas=yes`）。
   ⚠️ 该自检跑在 dev（named）下，但**图集是资源层产物、与映射无关**（同一份 jar 的资源），故对生产同样成立。
 
+### KI-F19 ＝ 五项「玩家可见」缺陷按 dev-next 已修方案同步落地（**已修，2026-09-30**）—— 含一处**只有本线才暴露**的移植适配
+
+- **背景**：用户在主线/dev 线实机发现 5 项缺陷，并要求「**直接同步 `multi-dev-next` 的改动、合并到当前分支，避免重复造轮**」。
+  经核实，该线 HEAD 即修复提交 **`731e3855`**（`fix(balance): 修复五项 —— 王之力自伤必定生效 / 扫地机加成死亡保留 /
+  常驻效果统一 ∞ / 效果注释接通道`，与用户报障**逐条对应**）。
+- **⚠️ 为什么不直接 `git merge multi-dev-next`**：`731e3855` 改的是**三线**（`neoforge-1.21.1` / `forge-1.20.1` /
+  `neoforge-26.1.2`），**不含 `fabric-1.20.1`**。而 `multi-dev-next` 领先本分支 **30 个提交**（含 `2.0.0-SNAPSHOT.14`
+  版本号、目标选择器改造、工具链改动等与本任务无关的内容）⇒ 整分支合并**不会给 fabric 带来任何代码改动**，
+  只会把 2.0.0 开发线整体灌进移植线。故改用**按文件移植**：以 `forge-1.20.1` 侧为蓝本
+  （同为 MC 1.20.1、同为 `RegistryObject` 风格、同为 Mojmap 方法引用），改写路径后 `git apply --3way`，冲突逐处手工合并。
+- **五项落地清单**（本线对应文件）：
+  | 项 | dev-next 方案 | 本线落地 |
+  |---|---|---|
+  | 王之力自伤不生效 | 新增 `astral_dice:card_cost`（**卡牌代价**）类型并登记 `bypasses_cooldown`；**刻意不登记 `bypasses_armor`**（代价不是真伤，仍受护甲/抗性/保护减免）；`EffectCardItem` 改 `cardCost` | 逐字一致（含 `card_cost.json`、`bypasses_cooldown.json` 新增项、`ModDamageTypes.CARD_COST/cardCost`、lang 三语 `death.attack.card_cost{,.player,.item}`） |
+  | 扫地机加成死亡被抹 | **删除** `PlayerLifecycleHandler` 死亡清理里的 `JASMINE_ATK/DEF_BONUS` 清零块（**padman 的清零保留不动**），清零唯一路径回归 `JasmineSignItem#clearSignData` | 一致（jasmine 段删除 + 就地留注释说明裁决来源） |
+  | 常驻效果未统一 ∞ | `magic_tome_count`（原写死 10000 tick）+ 8 个效果类的 `DURATION_TICKS`（Charge / HannaDollCraft / HannaDollComplete / Huguang / MamushiDragon / Misfortune / SherryReasoning / WeaknessReveal）+ 2 处施加点（`CursedSwordChipItem` 青之诅咒、`BonnieSignItem` 隐匿调查）由 `Integer.MAX_VALUE` → `MobEffectInstance.INFINITE_DURATION`（= `-1`，唯一会渲染 ∞ 的值） | 一致（**8 个效果类 + `BonnieSignItem` + `CursedSwordChipItem` + `MagicTomeChipItem` 全覆盖**） |
+  | 无限时长判据连带 | `EffectTimerGuard.record()` 的永续判据加 `duration == INFINITE_DURATION`（⚠️ 原判据只认 `>= INFINITE_THRESHOLD`，而 `-1` **不满足** ⇒ 会被登记为有限时长、被 `tick()` 按「已到期仍残留」forceRemove + 重加 1 tick ⇒ 常驻效果一施加就没）；`MamushiDragonEffect.refresh` 判据改 `!existing.isInfiniteDuration()`；`ModEffects` / `GuiMixin` 过时注释同步 | 一致 |
+  | 效果注释不显示 | 1.21.1/26.1.2 走 NeoForge 事件 `GatherEffectScreenTooltipsEvent`；**1.20.1 无该事件** ⇒ 扩展 `mixin/client/EffectRenderingInventoryScreenMixin`：**双 `@Redirect` + 一个 `ThreadLocal`**（`formatDuration` 先捕获实例 → `List.of` 改写列表），仅当 `I18n.exists(key)` 时追加一行灰色描述 | 一致；⚠️ 本线该文件**同时保留**原有的等级角标 `@Inject`（`astralDice$numericEffectLevelBadge`）⇒ 角标 + 注释并存（已核对） |
+- **⚠️ 移植适配点（本线唯一需要动脑的地方）**：`ModEffects.java` 的 import 区冲突 —— forge 侧是 `net.minecraftforge.registries.{RegistryObject,DeferredRegister}`，
+  本线是 `com.merlinkitsune.astral_dice.platform.registry.*` ⇒ **保留本线平台注册表两行 + 采纳 patch 新增的
+  `net.minecraft.world.effect.MobEffectInstance`**（新注释用 `{@link MobEffectInstance#INFINITE_DURATION}`，javadoc 解析需要它）。
+- **验证**：`compileJava` / `build` 均 SUCCESSFUL；产物已推送整合包；静态守门 `tools/verify_fabric_assets.py` **8/8 PASS**
+  （语言闭环 zh_cn/en_us/ja_jp **832/832/832** —— 恰为新增 3 个 `death.attack.card_cost*` 键）；**客户端预加载验证**
+  `[preload] OK net.minecraft.client.gui.screens.inventory.EffectRenderingInventoryScreen`、
+  `InjectionError` 命中 **0**（⇒ 该 mixin 的两处 `@Redirect` 均成功命中，见下条）。
+- **⚠️ 已知未做**：`InjectionError` 之外的**视觉确认**（进世界 → 打开物品栏 → 悬停效果图标看到描述行/∞ 符）
+  与**生产映射冒烟**未跑（用户本轮未授权跑游戏内验证）。
+
+### KI-F20 ＝ 🚨 三线共有的 `require = 2` 误写：`renderEffects` 内每个注入点**只出现 1 次**（**本线已修正为 1；三线待回补**）
+
+- **现象（潜在崩溃，尚未在任何线上暴露）**：`731e3855` 给 1.20.1 的 `EffectRenderingInventoryScreenMixin`
+  写了两处 `@Redirect(method = "renderEffects", require = 2, …)`，其注释声称
+  「两处都用 `require = 2`（**至少命中 1 次**）」—— **该注释误解了 `require` 的语义**：
+  Mixin 的 `require` 是「注入点**最少**命中次数」（未写时取 `injectors.defaultRequire`，本仓 = 1），
+  **不是上限、也不是「至少 1 次」**。⇒ `require = 2` 要求**至少 2 个注入点**。
+- **字节码实证（本线实际产物）**：对 1.20.1 反编译产物 `javap -c` 核实，
+  `EffectRenderingInventoryScreen#renderEffects`（方法体 **50–273 行**）内
+  `MobEffectUtil.formatDuration` 与 `java.util.List.of(Object,Object)` **各只出现 1 次**
+  （另一次 `formatDuration` 在 **`renderLabels`**（274 行起）内，已被 `method = "renderEffects"` 排除）
+  ⇒ `require = 2` 必然抛 `InjectionError`，**触发时机是「打开物品栏」**（该类只在渲染效果面板时加载）。
+- **为什么至今没炸**：`731e3855` 的提交信息自己写明「**实机验证未做**：mt_launch 防撞预检拦下
+  （PID 19796 父进程 = Plain Craft Launcher 2.exe，用户自己的游戏，未杀）」⇒ 三线均只做了构建与静态核对，
+  而**注入次数只有运行时才校验**（编译与 `build` 都不查）。
+- **本线处置**：`require = 2` → **`require = 1`**（两处），并在类注释里写明证据与修正原因。
+  **验证**：预加载该类后客户端正常启动、`InjectionError` = 0 ⇒ 两处均命中。
+- **⚠️ 待办（跨三线）**：`neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2` 的同名 mixin（1.20.1）与
+  事件实现（1.21.1/26.1.2 走 `GatherEffectScreenTooltipsEvent`，**不受影响**）需要同样核对 ——
+  **本线按「只改 fabric 端」的既有裁决未动那三线**，请在主仓工作树内单独裁决。
+
 ## 10. 变更记录
 
 | 日期 | 变更 |
@@ -1054,3 +1103,4 @@ fabric.mod.json: version=1.3.2-alpha.1+fabric_1.20.1 / depends.starengine_lib=">
 | 2026-09-29 | **KI-F14 已修 + 生产冒烟能力再升级** —— 用户报「创建世界时崩，提示 architectury 报错」。定位：本模组 `TooltipRenderUtilColorMixin` 用 3 个 `@ModifyConstant` 改写 `TooltipRenderUtil#renderTooltipBackground` 的三个 ldc 常量，而 **Architectury API 改的正是同一批常量** ⇒ Mixin 的 `@ModifyConstant` 排他语义使 architectury 被 skip、其 `defaultRequire=1` 抛 `InjectionError` → 崩。⚠️ 目标类 `class_8002` 只在**首次渲染 tooltip** 时才加载 ⇒ 「能进主菜单、进世界/悬停 GUI 才崩」；且 dev 的 `run/client/mods` 无 architectury ⇒ **dev 永远绿**（再次「生产独有」）。修法 = 改用 **`@WrapOperation`**（包裹 INVOKESTATIC，与改 LDC 的 `@ModifyConstant` 是不同字节码位置 ⇒ 可共存），四个 wrapper 覆盖全部 6 个调用点。**产物取证三级**：注解已被 Loom 直重映射（jar 内无 refmap ⇒ 那条警告无害）、`-Dmixin.debug.export` 导出的类里 4 个 wrapper 全在**且 architectury 注入同时在**、生产冒烟 PASS（并已强制 preload 该类）。顺带修 **`astral_guide` 配方**（整合包无 Patchouli ⇒ `Unknown item` 报错）：加 `fabric:load_conditions`。**新增能力**：类预加载钩子 `-Dastral_dice.preloadClasses`（把「类加载期才暴露的 mixin 缺陷」提前到启动期，fail-loud）+ `ft_prod.ps1` 的 `-PreloadClasses`/`-ExtraJvmArg` 与 `MIXIN_FAIL` 判据 + Loom 侧 `-PpreloadClasses`。 |
 | 2026-09-29 | **饰品栏前置改为「二选一」+ 修 dev 开关（新增 KI-F15 / KI-F16）** —— 用户报「调整前置要求：装了 accessories 就不再强制 Trinkets，反之亦然，只有两个都不存在才报错」。**KI-F15**：`fabric.mod.json` 原把 `trinkets` 写在 `depends` ⇒ 只装 Accessories 的整合包被加载器直接拒绝（`HARD_DEP_NO_CANDIDATE … {depends trinkets @ [>=3.7.2]}`），与本线把 Accessories 定为「主通道」的既有设计**自相矛盾**。Fabric 的 `depends` 是 **AND 语义、表达不了 OR** ⇒ `trinkets` / `accessories` 双双移入 `recommends`，权威判定改为运行时 `ModCompatibilityCheck#verifyAccessoryProviderOrThrow()`（在 `onInitialize()` 的**第一条**语句执行，两个都不在才抛 `ModLoadingException` 并给出完整中文说明；每次启动打 `AP_FAB_ACCESSORY_PROVIDER: OK|FAIL (trinkets=… accessories=…)` 供冒烟断言）。同时补齐三处硬引用守卫（`CuriosApi` 的 Trinkets 源 + `TrinketBridge.registerAll()` 的**调用点** + 方法体内第二道防线）—— ⚠️ `TrinketBridge` 硬引用 `dev.emi.trinkets.api.*`，缺席时**整个类都加载不了**，守卫必须放在**调用点**。**KI-F16**：dev 开关 `-PtestAccessories=false` **从来不能通过编译**（`StarCoinWalletButtons:311 错误: 方法不会覆盖或实现超类型的方法`）—— 根因是 Loom 的**依赖方接口注入**随「依赖是否进入**运行期**」而开关（Accessories 的 `custom.loom:injected_interfaces` 把 `AbstractButtonExtension` 注入 `AbstractButton`；移出运行期后注入消失 ⇒ 那个为「必须补上注入来的抽象方法」而写的 `@Override` 失效），而 `compileClasspath` 里 accessories **仍在** ⇒ 失效的是**注入**而不是类路径；修法 = 去掉该 `@Override`（保留方法体与 javadoc）⇒ **两种注入态都成立**。⚠️ 该开关的注释一直声称可用 ⇒ **「给了开关」≠「开关可用」**（凡承诺「用某参数可跑某态」就必须实跑一次）。实测：dev 四态（仅 Accessories / 仅 Trinkets / 两者同装 / 两者皆无）各起一次客户端 —— 前三种均 `Sound engine started` 且 `AP_FAB_ACCESSORY_PROVIDER` 读数与预期逐条一致（仅 Accessories 时**无** `NoClassDefFoundError`、Accessories 适配器注册而 Trinkets 适配器不注册；两者同装时两个适配器都注册），第四种按设计**拒绝启动**并给出中文说明。 |
 | 2026-09-29 | **修「饰品栏贴图错误」+「手册重复发放」（新增 KI-F17 / KI-F18，两条都是**玩家可见**缺陷）** —— 用户报「饰品栏贴图错误（附截图）+ 重复发放帕秋莉手册再次出现」，并在上一轮修复后回复「问题依旧」⇒ 两条都**重新定位根因**（不是上次没修干净）。**KI-F17**＝**Fabric 附件键注册晚于玩家数据反序列化** ⇒ 一次登录**静默丢弃 33 个键**（含 `guide_book_given` ⇒ 守卫永远读 `false` ⇒ 每次登录补发一本；其余为治疗点数 / 立牌锁定冷却 / 白泽赐福 / 教主降神 / 怪力侦探层数等可感知战斗状态）。根因是 `ModAttachments` 的**静态初始化惰性**：mod 初始化路径上没代码触碰它，`<clinit>` 被推迟到玩家登录处理器 ⇒ 那时 NBT 已反序列化完 ⇒ Fabric 打 `Unknown attachment type … skipping` **静默丢键**（⚠️ 缺陷静默、测试世界数据少、NBT 里标记一直是 1 只是**读不出** ⇒ 三种取证方式都会漏掉）。修法 = `ModAttachments#ensureRegistered()`（空实现，只为触发 `<clinit>`，打 `AP_FAB_ATTACHMENTS: 附件键已注册 109 个`）+ 在 `onInitialize()` 紧随前置守卫后调用；另加常驻诊断 `AP_FAB_GUIDEBOOK`（含**写后立刻回读** `reread=`，正是靠它把方向从「发放时机」扭到「存取通路」）。**A/B 跨会话实测**（`-PdevUsername=AstralDev` 固定玩家名、两轮同一玩家）：session1 `given=false books=0`→`GIVEN reread=true books=1`；session2（21:01:37 注册 → 21:01:41 登录）`given=true books=1` ⇒ **不补发**；`latest.log`/`debug.log` 中 `Unknown attachment type` 命中 **0**。**KI-F18**＝**Accessories 槽位图标走原版 `minecraft:blocks` 图集**（`assets/minecraft/atlases/blocks.json` 声明 `{type:directory, source:gui/slot}`），而 Trinkets 是 `icon` 路径直连 ⇒ 图标必须在 `assets/<ns>/textures/gui/slot/`、`icon` 写**图集 sprite 名** `astral_dice:gui/slot/…`（同时满足两条通道）；原先放 `textures/slot/` ⇒ **文件在、图集里没有** ⇒ 紫黑格（这就是「改一轮还没好」的原因：不是文件缺失而是路径不在图集目录）。改 3 个文件移动 + 7 处 `icon` 改写；新增守门 `tools/verify_fabric_assets.py` 第 8 项（已做正/反向验证）+ 客户端自检 `AccessoriesClientIconCheck`（**同时查文件存在与图集成员资格**，⚠️ 只查文件存在不够）⇒ 实测 `AP_FAB_SLOT_ICON: 槽位=15 文件缺失=0 图集未收录=0`，本模组 3 槽位逐条 `file=yes inBlocksAtlas=yes`。同轮新增测试能力 **`-PdevUsername` 固定玩家名**（Loom 默认给**随机**用户名 ⇒ 离线 UUID 每次都变 ⇒ **跨会话缺陷在 dev 里根本不可能复现**，这才是「重复发放」这类缺陷长期隐藏的结构性原因）。详见 `scripts/test/fabric/README.md` §7.2.4。 |
+| 2026-09-30 | **五项玩家可见缺陷按 dev-next 已修方案同步落地（新增 KI-F19）+ 发现并修正一处三线共有的 mixin 误写（新增 KI-F20）** —— 用户报「在主线版本中发现的 bug，在该分支中也应该存在」并要求「**直接同步 `multi-dev-next` 的改动，避免重复造轮**」。核实 dev-next HEAD = **`731e3855`**，与用户报的 5 条**逐条对应**。⚠️ **未做整分支 merge**：该提交只改三线（neoforge-1.21.1 / forge-1.20.1 / neoforge-26.1.2）、**不含 fabric**，而 dev-next 领先本分支 **30 个提交**（2.0.0-SNAPSHOT.14 版本号 / 目标选择器 / 工具链）⇒ 合并只会污染移植线、带不来任何 fabric 代码改动；故改为**以 forge-1.20.1 为蓝本按文件移植**（路径改写 + `git apply --3way`，冲突逐处手工合并）。落地五项：① 王之力自伤改用新类型 `astral_dice:card_cost`（登记 `bypasses_cooldown`、**刻意不登记 `bypasses_armor`**）⇒ 不再被受击无敌帧整段吞掉（旧口径走 `dice_damage`，不在 `bypasses_cooldown` 内 ⇒ `invulnerableTime > 10 && amount <= lastHurt` 时 `hurt` 直接 false）；② 删除 `PlayerLifecycleHandler` 里**主动清零** jasmine 攻/防计数的那段（padman 保留），清零唯一路径回归 `clearSignData` ⇒ 扫地机加成死亡保留；③ `magic_tome_count`（原 10000 tick）与 8 个效果类的 `DURATION_TICKS` + 2 处施加点统一为 `MobEffectInstance.INFINITE_DURATION`（唯一渲染 ∞ 的值）；④ 连带修 `EffectTimerGuard` 永续判据（`-1` **不满足** `>= INFINITE_THRESHOLD` ⇒ 会被当成有限时长 forceRemove + 重加，常驻效果一施加就没）与 `MamushiDragonEffect.refresh` 判据；⑤ 1.20.1 无 NeoForge 的 `GatherEffectScreenTooltipsEvent` ⇒ 扩展 `EffectRenderingInventoryScreenMixin`（双 `@Redirect` + `ThreadLocal`，`formatDuration` 捕获实例 → `List.of` 改写列表）把 `effect.<id>.description` 追加进悬停 tooltip，且**与本线原有的等级角标 `@Inject` 并存**。**KI-F20**＝该 patch 的两处 `@Redirect` 写了 `require = 2` 并注释为「至少命中 1 次」——⚠️ `require` 语义是**最少**命中次数，而 `javap -c` 实证 `renderEffects`（50–273 行）内 `formatDuration` 与 `List.of` **各只 1 次**（另一次 `formatDuration` 在 `renderLabels`，已被 method 限定排除）⇒ 必然 `InjectionError`、**触发时机是打开物品栏**；之所以没炸是因为该提交自述「实机验证未做」（mt_launch 防撞预检拦下）。本线改为 `require = 1` 并留证；**三线待回补**（按「只改 fabric 端」裁决未动）。**验证**：compileJava / build SUCCESSFUL、产物已推整合包、静态守门 8/8 PASS（语言三语 **832/832/832** = 新增 3 个 `death.attack.card_cost*` 键）、**客户端预加载** `[preload] OK …EffectRenderingInventoryScreen` 且 `InjectionError` 命中 **0**。⚠️ 未做：进世界的**视觉确认**（注释行 / ∞ 符）与**生产映射冒烟**。 |
