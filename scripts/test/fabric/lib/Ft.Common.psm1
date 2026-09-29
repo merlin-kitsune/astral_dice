@@ -130,7 +130,10 @@ function Invoke-FtChildProcess {
              `AP_FAB_PHASE: build rc=System.Object[]`；
           ② PowerShell 对原生命令的 `>` / `2>` 重定向会按 `$OutputEncoding` **二次解码再编码**，
              中文直接变乱码（实测：子进程写出的 GBK stderr 被当 UTF-8 解码，文件里成了 `涓枃` 之类）。
-        本实现改为 Start-Process + 临时文件 + 原始字节转发，两个问题一并消除。
+          ③ **`Start-Process -Wait` 会等整棵进程树** ⇒ 对 `ft_launch.ps1`（孵化游戏后立刻返回）
+             会把调用方挂到**游戏退出**为止（实测：驱动卡在 launch 步 6 分钟不返回，而子脚本早已打印 OK）。
+             这正是 `TESTING-RULES-OVERVIEW.md` §13 记过的坑。故改用 `-PassThru` + 只等该进程本身。
+        本实现改为 Start-Process + 临时文件 + 原始字节转发，三个问题一并消除。
 
     .PARAMETER ScriptPath
         子脚本绝对路径。
@@ -167,16 +170,33 @@ function Invoke-FtChildProcess {
     $argStr = (@('-NoProfile', '-File', $ScriptPath) + $quoted) -join ' '
 
     $psExe = (Get-Process -Id $PID).Path
+
+    # ⚠️ 这里**不能**用 `-Wait`（实测缺陷，见 README §7.3/D6）：
+    #    `Start-Process -Wait` 会等**整棵进程树**，而 `ft_launch.ps1` 是「后台孵化 + 立刻返回」的语义
+    #    —— 它把游戏进程 detached 地起出去后自己就退出了。用 `-Wait` 会让调用方（`ft.ps1 --phase launch`）
+    #    一直挂到**游戏退出**为止（实测：批处理驱动卡在 launch 步 6 分钟不返回，而子脚本早已打印 OK）。
+    #    这正是 `TESTING-RULES-OVERVIEW.md` §13 记过的坑：「`-Wait` 会等整棵进程树」。
+    #    正确做法 = `-PassThru` + 只对**该进程本身** `WaitForExit()`（不递归后代）。
     $proc = Start-Process -FilePath $psExe -ArgumentList $argStr -NoNewWindow -PassThru `
-        -RedirectStandardOutput $outFile -RedirectStandardError $errFile -Wait
+        -RedirectStandardOutput $outFile -RedirectStandardError $errFile
+    $proc.WaitForExit()
+    $childRc = [int]$proc.ExitCode
+    # 先释放 Process 句柄（它会持有重定向文件），再回读 —— 见下方 ReadAllBytes 的说明。
+    try { $proc.Dispose() } catch { }
 
     # 原始字节转发（先刷我们自己的 Console.Out 缓冲，避免与子进程输出交错错位）
     try { [Console]::Out.Flush() } catch { }
     try { [Console]::Error.Flush() } catch { }
     foreach ($pair in @(@{ f = $outFile; s = 'out' }, @{ f = $errFile; s = 'err' })) {
         if (-not (Test-Path -LiteralPath $pair.f -PathType Leaf)) { continue }
-        $bytes = [System.IO.File]::ReadAllBytes($pair.f)
-        if ($bytes.Length -eq 0) { continue }
+        # ⚠️ 不能用 [System.IO.File]::ReadAllBytes（实测缺陷，见 README §7.3/D7）：
+        #    它与 D2 是**同一个共享模式陷阱** —— ReadAllBytes 的共享模式是 FileShare.Read，
+        #    而重定向文件在子进程退出后仍被本方（父进程）的写句柄持有一小段时间 ⇒ 抛
+        #    `The process cannot access the file … because it is being used by another process.`
+        #    （把 `-Wait` 换成 `WaitForExit()` 之后这个竞态才暴露：`-Wait` 顺带等了整棵树，恰好掩盖了它。）
+        #    改用共享读写打开（与日志读取同一条实现）。
+        $bytes = Read-FtFileBytesShared -Path $pair.f
+        if ($null -eq $bytes -or $bytes.Length -eq 0) { continue }
         if ($pair.s -eq 'out') {
             $stream = [Console]::OpenStandardOutput()
         } else {
@@ -188,7 +208,7 @@ function Invoke-FtChildProcess {
 
     Remove-Item -LiteralPath $outFile -Force -ErrorAction SilentlyContinue
     Remove-Item -LiteralPath $errFile -Force -ErrorAction SilentlyContinue
-    return [int]$proc.ExitCode
+    return $childRc
 }
 
 # ── 路径派生（一律绝对路径，由 $PSScriptRoot 派生；依据 AGENTS「工作树与路径纪律」）──

@@ -592,12 +592,12 @@ GlCommandEncoder.trySetup(:531) ← GlCommandEncoder.executeDraw(:406) ← GlRen
 > KI-F9 要客户端入口、KI-F10 要玩家登录、KI-F11 要真正走完「加载地形」并关闭该屏幕。
 > ⇒ **移植线收尾必须做一次「客户端进世界」验证，不能只跑服务端 + 编译。**
 
-### KI-F12 ＝ fabric 测试台自身的 5 个缺陷（**已修；其中 2 个是阻断级**）—— 「测试流程完全不可用」的根因
+### KI-F12 ＝ fabric 测试台自身的 7 个缺陷（**已修；其中 2 个是阻断级**）—— 「测试流程完全不可用」的根因
 
 - **背景**：`fabric-1.20.1` 是「自建事件总线 + 四路桥接」的移植线，测试台只能另起一套
   （`scripts/test/fabric/`，见该目录 `README.md`）。此前这套台子**只做过静态校验与部分读数**，
-  从未真机跑过 `env → launch → inject` 这条主干 ⇒ 下面 5 个缺陷一直没暴露。
-- **本轮真机实跑**（服务端 + 客户端各起一次、RCON 注入、收停、5 条用例）后修复：
+  从未真机跑过 `env → launch → inject` 这条主干 ⇒ 下面 7 个缺陷一直没暴露（**D6/D7 是后来真跑冒烟时才暴露的**，见本条末的冒烟记录）。
+- **本轮真机实跑**（服务端 + 客户端各起一次、RCON 注入、收停、5 条用例）后修复；D6/D7 由随后的**完整冒烟**（批次 A/B/C，用户显式要求）暴露并修好：
 
   | 编号 | 缺陷 | 影响 | 根因（实测，非推测） |
   |---|---|---|---|
@@ -607,6 +607,10 @@ GlCommandEncoder.trySetup(:531) ← GlCommandEncoder.executeDraw(:406) ← GlRen
   | D4 | `ft_launch` 无法向 gradlew 透参 | 客户端在本机 dev 环境**必然**启动失败，无绕过手段 | Sodium 要求 LWJGL **3.3.1**、而 dev 环境装的是 **3.3.2-snapshot** ⇒ 启动期硬失败；旧实现只能起裸 `gradlew :fabric-1.20.1:runClient`，带不上工程既有的 `-PtestSodium=false` |
 
   | D5 | 用例里的**固定 `wait`** 把「等待条件未满足」伪装成「断言失败」 | 采样点未到时报 6 条断言失败，**现场看起来像产品缺陷**（桥没派发？内嵌库坏了？），把排查方向带偏 | 本线有读数只在**开局 600 tick（约 30 s）**才打印；旧用例靠固定 `wait 25000` + 注释提醒纪律 ⇒ 就绪后 25 s 跑用例实测：`FAB-BOOT-EMBED` **1/10**、`FAB-DISPATCH-BASIC` **6/8**，报「未找到派发报告」。**修法两层**：① 新增 `wait_for` 步骤（有界轮询，命中即继续；超时报 **TIMEOUT(12)** 并给手动读数指引 —— 与「断言失败 = 1」明确区分，语义边界同 TESTING-RULES §7）；② 把 `事件派发统计` 断言从 `FAB-BOOT-EMBED` **移出**（10 → 9 条），消除隐藏的 30 s 时间耦合 |
+
+  | D6 | `Invoke-FtChildProcess` 的 **`-Wait` 会等整棵进程树** | **`ft.ps1 --phase launch` 挂到游戏退出为止**（把游戏拉起来这条唯一编排入口从设计上就不可能返回） | `ft_launch.ps1` 是「孵化游戏后立刻返回」的语义（游戏进程 detached），而 `Invoke-FtChildProcess` 用 `Start-Process -Wait` 等它 ⇒ 一并等到了 detached 的游戏进程。**冒烟实测**：批处理驱动卡在 launch 步 **6 分钟**不返回，而子脚本输出文件里早已有 `AP_FAB_LAUNCH: OK`（就绪 11 s 就捕获了）、服务端日志里连 600-tick 派发报告都打出来了。⚠️ 这个坑**项目自己的文档里就写着**（`TESTING-RULES-OVERVIEW.md` §13「`-Wait` 会等整棵进程树」），但该封装仍然用了它。修法 `-PassThru` + 只对该进程本身 `WaitForExit()`；验证 `ft.ps1 --phase launch` **11.4 s** 返回 rc=0。影响面精确为这一处（`ft_build` 用按进程的 `WaitForExit(timeout)`、`ft_stop` 的 `taskkill /T` 是**故意**杀树，都正确） |
+
+  | D7 | 子进程输出回读撞上**同一个共享模式陷阱**（D2 的镜像） | 修好 D6 后 `ft.ps1 --phase launch` 立刻以 rc=1 失败：`ReadAllBytes … The process cannot access the file …ft_child_*.out.txt … used by another process` | `Invoke-FtChildProcess` 用 `[System.IO.File]::ReadAllBytes` 回读子进程的重定向输出，而该文件在子进程退出后仍被**本方（父进程）的写句柄**持有一小段时间 ⇒ 与 D2 同一个根因（`ReadAllBytes` 共享模式 = `FileShare.Read`）。`-Wait` 顺带等整棵树，恰好把这个竞态**掩盖**了。修法：① `WaitForExit()` 后先 `$proc.Dispose()`；② 回读改走 `Read-FtFileBytesShared`（与日志读取**同一条**共享读写实现）。教训 = **同一类问题要收敛到同一套原语**（D2 修好后没把「读文件」收敛成一个入口，才有了 D7） |
 
 - **修法**：
   - D1/D2 —— 把「字节位置」换成「**文件身份锚点**」＝ 创建时间(UTC ticks) + 头部 4 KiB 的 SHA1 + 长度
@@ -626,11 +630,20 @@ GlCommandEncoder.trySetup(:531) ← GlCommandEncoder.executeDraw(:406) ← GlRen
   `FAB-BOOT-EMBED` 10/10、`FAB-DISPATCH-BASIC` 8/8、`FAB-JAR-ASSETS` 1/1、
   **`FAB-CLIENT-BOOT` 8/8（本轮新增）**、`FAB-INJECT-ROUNDTRIP` 3/3（本轮改为 rcon 通道）；
   闸门与显式失败路径退出码逐条正确（`MT_AUTO_DISABLED`=2 / 断言不满足=1 / PASS=0）。
+- **冒烟（2026-09-29 18:40–18:44，用户显式要求，全清单）**：分三批执行，**全绿** ——
+  批 A（服务端）：构建+开包核对 rc=0（1.7s）、env rc=0、**经编排入口 `ft.ps1 --phase launch` 起服务端 rc=0（11.5s，D6 回归）**、
+  在线断言 rc=0（0.6s，D2 回归）、`FAB-JAR-ASSETS` 1/1、`FAB-BOOT-EMBED` 9/9、`FAB-DISPATCH-BASIC` 8/8（27.8s，其中 ~27s 是 wait_for 等采样点）、
+  `FAB-INJECT-ROUNDTRIP` 3/3、在线派发统计 rc=0（`ServerTickEvent=599 fired=10 idle=26`）、收停 rc=0；
+  批 B（客户端）：经编排入口带 `-PtestSodium=false` 起客户端 rc=0（12.4s）、`FAB-CLIENT-BOOT` 8/8、收停 rc=0；
+  批 C（静态闸门）：lang 三语 829×3 一致 rc=0、工具链语法门 53 文件 0 失败 rc=0、模组来源 `violations=0` rc=0、
+  本线资源/注册闭环 7 项 PASS rc=0。**合计 5/5 用例 + 4/4 静态闸门 + 无残留进程。**
+  未纳入：`tooltip_color_audit` / `verify_chip_*` / `verify_bountiful_*` / `verify_forge_loader_gate`（作用域只覆盖两条生产线，与本线无关）。
+  逐项读数与耗时见 README §7.2.1；驱动脚本 `temp/smoke.ps1` / `temp/smoke_c.ps1`（temp 被 .gitignore 忽略）。
 - **取证与全文**：`scripts/test/fabric/README.md` —— §7.2（实跑清单 34 项，含退出码）、
   §7.3（4 个缺陷的根因与现场证据：轮转时间戳、异常原文、`javap`/`unzip` 读数）、
   §7.4（仍未实跑项）、§9（依据索引，含「latest.log 每次启动被轮转」「运行时被独占」
   「KubeJS 类过滤与全局移除」三条平台事实）。
-- **等级说明**：D1–D5 属**测试台缺陷**，不是产品缺陷；但它们会让「测试台报绿」这件事本身失去意义
+- **等级说明**：D1–D7 属**测试台缺陷**，不是产品缺陷；但它们会让「测试台报绿」这件事本身失去意义
   （D1 让启动阶段永远失败、D2 让在线读数整体不可用），故按缺陷等级登记。
 - **遗留**：客户端 GUI 键鼠注入仍未覆盖（只有服务端命令通道）；客户端**世界内**用例
   （渲染 / HUD / tooltip）与 `ft.ps1 --phase report` 的放行后路径仍未实跑，均已在 README §7.4 / §8 登记。
@@ -657,3 +670,5 @@ GlCommandEncoder.trySetup(:531) ← GlCommandEncoder.executeDraw(:406) ← GlRen
 | 2026-09-29 | **KI-F7 已补齐 + 新增 KI-F8**：为 `teru_sign` 手册第 3 页补上三语键（zh_cn「配方：钻石骰子 + 黄金星盘 ×2（传奇档）。」/ en_us / ja_jp）—— 档位词用**交叉验证**确立（同档的 `megas_sign.3` 手册写「传奇档 / Legendary tier」而代码是 `legendary()`），材料从配方文件逐字读出（Z=diamond_dice、P=golden_star_plate ×2），句式对齐 `hanna_sign.3`；三语键数 828 → 829 且仍互为一致，守门脚本第 6 项 FAIL → PASS，并从 `LANG_KEY_ALLOW` 移除（白名单重新为空）。同时**新增 KI-F8**：`hanna_sign.3` / `sherry_sign.3` 的档位词（稀有档 / 史诗档）与两者代码稀有度（均为 `bizarre()` 奇特）**不符** ⇒ 按同一判据二者至少一条错；因「以代码为准」（需先定 `奇特` 的英/日写法）与「以文案为准」（要改稀有度体系与 tooltip 配色）两条路都需裁决，**只登记未改**。 |
 | 2026-09-29 | **客户端进世界验证：修复 3 个阻断级缺陷（KI-F9 / KI-F10 / KI-F11）** —— 首次带玩家进世界的客户端验证暴露：① **KI-F9** `KeyBindingSetup.ClientEvents` 内部类漏登记 ⇒ **J（立牌主动技能）/ H（卡牌栏）两键完全不响应**（另三线靠 `@EventBusSubscriber` 自动注册内部类，fabric 需显式登记而移植时只登记了外层类；由本轮新增的 `SubscriptionAudit` 抓出）；② **KI-F10** `MobEffectEvent.Remove` 构造器对 null 效果实例 NPE ⇒ **玩家无法进入存档**（登录清理骰神赐福 → 库 remove 不判存在性 → Puzzles 回调传 null → 构造器解引用；Forge 侧同路径**不派发**，且该类 javadoc 与全部 4 处订阅者都按「可为 null」写，只有构造器漏了防御）⇒ 修两处：PuzzlesBridges 回调跳过 null + 构造器判空；③ **KI-F11** `ScreenEvent.Opening` 在 `setScreen(null)`（`ReceivingLevelScreen.onClose`）时 NPE ⇒ **每次进世界必崩**（Forge 的 `ScreenEvent` 构造器同样 requireNonNull ⇒ 它在 null 时不构造事件）⇒ mixin 加 null guard。同轮为 fabric 线补上另三线早已有的 `-Pquickplay` 与固定窗口尺寸的 client run 参数（⚠️ Loom 用 `programArg`，不是 ModDevGradle 的 `programArgument`）。修复后客户端正常进世界、连续运行 600+ tick，`RenderLevelStageEvent=10326` / `RenderHandEvent=3441` 证明世界内渲染链路在派发；物品栏内本模组立牌渲染正常（非紫黑格）。 | 
 | 2026-09-29 | **测试台修复：fabric 侧「完全不可用」的根因（新增 KI-F12）** —— 首次真机跑通 `env→launch→inject→stop` 主干，修掉 4 个测试台缺陷：**D1** `ft_launch` 的就绪游标被 log4j「每次冷启动轮转 latest.log」击穿 ⇒ 启动阶段**必然假超时**（实测服务端 9 s 就绪、台子干等 240 s）；**D2** 游戏运行时 latest.log 被独占而 `File.ReadAllBytes` 是 `FileShare.Read` ⇒ 「在线读日志」全线不可用（此前被 D1 掩盖，读分支从未真正执行）。二者改用**文件身份锚点**（创建时间 + 头部 SHA1 + 长度）+ 共享读写打开，并加「超时时若日志已有就绪标记则报 ready-but-undetected」的反向自检；**D3** KubeJS 命令队列通道经实测**从根上不可实现**（类过滤挡住 `java.nio.file`/`java.io`、bindings 无文件包装器、`java`/`Packages` 全局已移除）⇒ 整体撤除，命令注入统一走 RCON，KubeJS 收敛为读数探针；**D4** 补 `--gradle-arg` 透传，客户端得以带 `-PtestSodium=false` 启动。新增客户端启动用例 `FAB-CLIENT-BOOT`，`FAB-INJECT-ROUNDTRIP` 改用 rcon；5 条用例全绿，闸门 / FAIL / PASS 退出码逐条实证。 |
+| 2026-09-29 | **fabric 侧完整冒烟（用户显式要求）跑通并抓出 D6/D7（KI-F12 扩为 7 项）** —— 按 `TESTING-SPEC.md` §1.1，用户显式要求是全清单的唯一自动放行条件。三批全绿：批 A（构建 / env / **经编排入口起服务端 11.5s** / 在线断言 / 4 条用例 / 在线派发读 / 收停）、批 B（客户端 12.4s + `FAB-CLIENT-BOOT` 8/8）、批 C（4 个本线静态闸门）。合计 5/5 用例 + 4/4 闸门、无残留。**首次跑批 A 时卡在 launch 步 6 分钟不返回**，顺「子脚本早已打印 OK」这条线索查出两个新缺陷：**D6** `Invoke-FtChildProcess` 用 `Start-Process -Wait`（会等整棵进程树）⇒ `ft.ps1 --phase launch` 挂到游戏退出（项目自己的 §13 就记过这个坑）；**D7** 修好 D6 后暴露：该封装用 `ReadAllBytes` 回读子进程重定向输出，与 D2 是同一个 `FileShare.Read` 共享模式陷阱 ⇒ 改走 `Read-FtFileBytesShared` + `Dispose()`。 |
+
