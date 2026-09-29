@@ -483,7 +483,7 @@
   "tooltip.astral_dice.card.exclusive_owner": "Exclusive card: usable only by the obtainer",
   "tooltip.astral_dice.card.express_delivery": "§eLeft click§7 to use on another player, §eright click§7 to use on yourself\nThe target gains §9Speed II (1:00)§7",
   "tooltip.astral_dice.card.fate_curse_mitigation": "Enigmatic Legacy+ link:\nwearing the Cursed Ring corrects Curse 1: incoming damage doubling reduced by §e50%%§7 for §95:00§r",
-  "tooltip.astral_dice.card.fate_guidance_desc": "On use, gain the following abilities:\n- §e+1§7 play count\n- Instantly halve the current maximum active skill cooldown countdown\n- Your combat dice roll is always 6\n- §e+20%%§7 damage to targets with Weak Mark for §95:00§r",
+  "tooltip.astral_dice.card.fate_guidance_desc": "On use, gain the following abilities:\n- §e+1§7 play count\n- Instantly halve the current maximum active skill cooldown countdown\n- Your combat dice roll is always §e6§7\n- §e+20%%§7 damage to targets with Weak Mark for §95:00§r",
   "tooltip.astral_dice.card.fate_saturation": "- Saturation from all food is doubled for §95:00§r",
   "tooltip.astral_dice.card.fate_spell_mana": "Iron's Spells 'n Spellbooks link:\nspell mana cost halved for §95:00§r",
   "tooltip.astral_dice.card.full_power": "Attack §e+6§7, final attack §e+50%%§7 | Uses: §e%s§r",

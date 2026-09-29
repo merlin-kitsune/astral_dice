@@ -483,7 +483,7 @@
   "tooltip.astral_dice.card.exclusive_owner": "专属效果牌：仅允许获得者使用",
   "tooltip.astral_dice.card.express_delivery": "§e左键§7 对准其他玩家使用，§e右键§7 对自身使用\n使目标获得 §9迅捷 II (1:00)§7",
   "tooltip.astral_dice.card.fate_curse_mitigation": "神秘遗物+联动：\n佩戴七咒之戒时，修正第一诅咒：受到伤害的加倍效果降低 §e50%%§7，持续 §95:00§r",
-  "tooltip.astral_dice.card.fate_guidance_desc": "使用后，获得以下能力：\n- 出牌数 §e+1§7\n- 立刻减少主动技能最大冷却倒计时一半的时间\n- 玩家战斗骰点始终为 6\n- 对拥有「虚弱印记」的目标额外增加 §e20%%§7 伤害，持续 §95:00§r",
+  "tooltip.astral_dice.card.fate_guidance_desc": "使用后，获得以下能力：\n- 出牌数 §e+1§7\n- 立刻减少主动技能最大冷却倒计时一半的时间\n- 玩家战斗骰点始终为 §e6§7\n- 对拥有「虚弱印记」的目标额外增加 §e20%%§7 伤害，持续 §95:00§r",
   "tooltip.astral_dice.card.fate_saturation": "- 所有食物提供的饱和度翻倍，持续 §95:00§r",
   "tooltip.astral_dice.card.fate_spell_mana": "Iron的法术与魔法书联动：\n魔力消耗减半，持续 §95:00§r",
   "tooltip.astral_dice.card.full_power": "攻击力 §e+6§7，本次攻击的最终攻击力 §e+50%%§7 | 剩余次数：§e%s§r",
