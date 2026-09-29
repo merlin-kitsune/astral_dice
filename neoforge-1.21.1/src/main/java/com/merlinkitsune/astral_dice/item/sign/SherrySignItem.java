@@ -191,11 +191,11 @@ public class SherrySignItem extends BaseSignItem {
         int thrown = castThrow(player);
         if (thrown == THROW_BAD_GROUND) {
             // 面前 1–6 格内均无可落地面(被方块阻挡) ⇒ 提示 + 拒绝使用主动(返回 FAIL = 不进冷却、不消耗)
-            sendSignActionBar(player, "msg.astral_dice.sherry_bad_ground");
+            sendSignActionBarColored(player, net.minecraft.ChatFormatting.RED, "msg.astral_dice.sherry_bad_ground");
             return InteractionResultHolder.fail(stack);
         }
         if (thrown <= 0) {
-            sendSignActionBar(player, "msg.astral_dice.sherry_no_target");
+            sendSignActionBarColored(player, net.minecraft.ChatFormatting.RED, "msg.astral_dice.sherry_no_target");
             return InteractionResultHolder.fail(stack);
         }
         sendSignActionBar(player, "msg.astral_dice.sherry_throw", thrown);

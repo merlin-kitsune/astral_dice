@@ -301,7 +301,7 @@ idea {
 //  于是 pushToGame 每次都只打印 "pack dir not found, skipped" 而静默不部署;
 //  现按 1.20.1 侧 `1.20.1 模组测试` 的同名规则改为 `26.1.2 模组测试`。)
 def devRunModsDir = rootProject.file('run/26.1.2/mods')
-def packModsDir = file('D:/.minecraft/versions/26.1.2 模组测试/mods')
+def packModsDir = file('D:/.minecraft/versions/26.1.2-NeoForge 模组测试/mods')
 
 //
 // ⚠️ 约定(2026-09-12 起,同日修订为白名单):**只有发布线分支推送整合包。**

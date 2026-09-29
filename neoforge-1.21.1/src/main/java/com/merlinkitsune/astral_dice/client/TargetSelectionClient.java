@@ -687,8 +687,9 @@ public final class TargetSelectionClient {
         }
         if (!com.merlinkitsune.astral_dice.item.card.EffectCardPeriod.isBlocked(player)) return;
         int seconds = com.merlinkitsune.astral_dice.item.card.EffectCardPeriod.getRemainingBlockSeconds(player);
-        player.displayClientMessage(
-                Component.translatable("msg.astral_dice.effect_card_burst_full", seconds), true);
+        ActionBarManager.show(
+                Component.translatable("msg.astral_dice.effect_card_burst_full", seconds)
+                        .withStyle(ChatFormatting.RED), ACTIONBAR_TICKS);
     }
 
     /**

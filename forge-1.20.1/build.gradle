@@ -413,7 +413,7 @@ tasks.withType(org.gradle.api.tasks.bundling.Jar).configureEach {
 //   ⚠️ 用 -PdeployToPack 强推本 mod 时,务必确认整合包内 starengine_lib-*.jar 与之成对
 //      (下方会读 starengine_lib_version 做一次比对并告警)。
 def devRunModsDir = rootProject.file('run/1.20.1/mods')
-def packModsDir = file('D:/.minecraft/versions/1.20.1 模组测试/mods')
+def packModsDir = file('D:/.minecraft/versions/1.20.1-Forge 模组测试/mods')
 
 // --- 整合包推送的 git 分支守卫(配合上方约定) ---
 // 分支判定放在**执行期**(见 pushToGame 的 doLast),不做配置期求值:

@@ -46,7 +46,7 @@ public class ParunanSignItem extends BaseSignItem {
         // 并给出 ActionBar 提示,避免"3 选 1 增益 + 180 秒冷却"被白嫖。
         int gained = ResourceConversion.starlightToStarCoins(player, -1);
         if (gained <= 0) {
-            sendSignActionBar(player, "msg.astral_dice.parunan_active_no_starlight");
+            sendSignActionBarColored(player, net.minecraft.ChatFormatting.RED, "msg.astral_dice.parunan_active_no_starlight");
             return InteractionResult.FAIL;
         }
 

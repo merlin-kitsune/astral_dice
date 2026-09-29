@@ -32,7 +32,10 @@ public record OpenCardInventoryPayload() implements CustomPacketPayload {
             if (context.player() instanceof ServerPlayer serverPlayer) {
                 var curios = CuriosApi.getCuriosInventory(serverPlayer);
                 if (curios.isEmpty() || curios.get().findFirstCurio(DiceCurioItem::isDiceItem).isEmpty()) {
-                    serverPlayer.sendOverlayMessage(Component.translatable("msg.astral_dice.no_dice_equipped"));
+                    net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(serverPlayer,
+                            new com.merlinkitsune.astral_dice.network.ActionBarPayload(
+                                    Component.translatable("msg.astral_dice.no_dice_equipped").withStyle(net.minecraft.ChatFormatting.RED),
+                                    com.merlinkitsune.starenginelib.component.GameplayConstants.ACTIONBAR_DURATION_TICKS));
                     return;
                 }
                 serverPlayer.openMenu(new SimpleMenuProvider(

@@ -1828,3 +1828,11 @@ custom_frames.json 恢复 5 档全写；包内原版稀有/史诗与本模组稀
   `TESTING-SPEC.md`、`TESTING-RULES-OVERVIEW.md`、`reports/_template.md`。
 - **判据**：`git diff --cached --name-status` 计 `D` = 116 条（93 cases + 23 resources），
   与 `git ls-files scripts/test/{cases,resources}/` 逐项吻合；temp 备份 139 文件可回滚。
+
+## 附录 A 续 33. 动作栏（ActionBar）修复移植 + 本机整合包部署路径修正（2026-09-29）
+
+**背景**：动作栏修复在发布线 `multi-main` 完成（`163605f0` / `e94ef711` / `421be121`），按本仓约定「两个 CHANGELOG 是玩家侧文档」，其中的**工程类**内容（部署路径修正）移出 CHANGELOG，在此归档；玩家可见的文案 / 配色条目仍留在本分支 CHANGELOG 的「未发布」小节。
+
+- **修正本机整合包部署目标（2026-09-29）**：1.20.1 与 26.1.2 两线的 `pushToGame` 指向的整合包目录在本机**已不存在**（`1.20.1 模组测试` / `26.1.2 模组测试` —— 整合包目录已被重命名为带平台后缀的名字），两个任务因此一直在打印 `pushToGame: pack dir not found, skipped`、**静默不部署** —— 整合包里的 jar 停在上次路径仍存在的时刻。现改为与磁盘实况一致的 `1.20.1-Forge 模组测试` / `26.1.2-NeoForge 模组测试`。**纯构建脚本改动**：不 bump 版本号、不改变产物、对玩家不可见。教训已记入 `AGENTS.md`：`packModsDir` **禁止按命名规则推测** —— 换机或整合包改名后必须 `ls D:/.minecraft/versions/` 核对磁盘上真实存在的目录名，并在构建日志里确认出现 `pushToGame: pushed … -> <目标>` 一行（**每一条线都要各看一遍**），只看 `BUILD SUCCESSFUL` 会漏掉静默跳过。
+
+**移植方式**：子集移植（非整分支合并），文件分流与验证读数见 `.workbuddy/memory/2026-09-29.md`；`25 个文件逐字节搬运 + 17 个定向补丁`，提交 `23c22131`（单亲）。

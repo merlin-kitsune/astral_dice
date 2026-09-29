@@ -1093,6 +1093,24 @@ When extending this workspace:
 
 落地流程、实现细节词表与校验见技能 `astral-dice-tooltip-optimizer`；染色另见 `tooltip-color-rules`。
 
+## 动作栏（ActionBar）口径 — 必须遵守（2026-09-29 成文）
+
+> 背景：tooltip 染色规则**明确不适用于动作栏**（见 `docs/tooltip-color-rules.md` 首部「不适用」名单），而动作栏此前**没有任何成文规范** ⇒ 同一条 UI 长期存在「值内自带 `§` 码 vs 外层 `withStyle`」的冲突、拒绝类该红却黄、以及两套渲染通道并存。本节把现行做法固化，三线一致。
+
+1. **唯一通道 = `ActionBarPayload`（三线）**：1.21.1 / 26.1.2 走 `PacketDistributor.sendToPlayer(sp, new ActionBarPayload(msg, ticks))`，1.20.1 走 `ModNetwork.sendToPlayer(sp, new ModNetwork.ActionBarMessage(msg, ticks))`；客户端侧本机提示走 `ActionBarManager.show(msg, ticks)`。
+   ⚠️ **禁止**用裸 `player.displayClientMessage(msg, true)`（或 26.1.2 的 `sendOverlayMessage`）发动作栏 —— 那是**原版覆盖层**：白色、绘制在 `guiHeight-68`、原版计时，与模组动作栏（带样式、`guiHeight-58`、时长由 `ACTIONBAR_DURATION_TICKS` 配置）**不是同一块 UI**，混用会出现「颜色与位置都不一致」。**例外（唯一）**：双端加载类（如 `item/card/BaseEffectCardItem` 的 `isBlockedOnClient`）**不得**引用客户端类 `ActionBarManager`（否则专用服务端 `NoClassDefFoundError`），此类只能保留原版通道，但**必须显式 `.withStyle(...)` 着色**，不得留默认白。
+2. **文案值内禁止任何 `§` 色码，整条颜色由外层 `.withStyle(...)` 决定**（用户 2026-09-27 裁决，`BaseSignItem#sendSignActionBarColored` 类头有原始记录）。
+   原因：外层统一是 `YELLOW`，此时 `§e` 是**空操作**，而收尾的 `§7` 会把后半句**重置成灰色** ⇒ 出现「**前半黄、后半灰**」的断层（实测：机械师「手牌不足」）。⇒ 语言值里**一律不写** `§e`/`§7`/`§9`；需要强调数值时改文案措辞，不改颜色。
+   ⚠️ 动作栏**时间也不用蓝**（与 tooltip 的 `§9` 口径不同）：`target_select.time` 的既有口径就是黄色，故 `hanna_float` 的 `§9魔女漂浮 (1:00)§7` 已按本条清掉。
+3. **配色只有两档**：**正常 / 成功 / 引导 = 黄**（`ChatFormatting.YELLOW`），**拒绝 / 阻止 / 失败 = 红**（`ChatFormatting.RED`）。判据看**文案本身**是否在说「无法 / 未释放 / 不足 / 没有 / 已达上限 / 生效中（拒绝）」。
+   落点：立牌类走 `BaseSignItem#sendSignActionBar`（黄）与 `#sendSignActionBarColored(player, RED, …)`（红）；`notifyActionBar(player, key, signName, color)` 为带色重载。⚠️ **`sendSignActionBarColored` 不是留给个别消息的特例** —— 2026-09-27 只改了机械师一条，其余 11 条拒绝类长期留黄（2026-09-29 补齐）；今后新增拒绝类提示**必须**用它。
+   ⚠️ **禁止第三种颜色**：`item/chip/CurrentCoreChipItem` 的 `AQUA` 已拆为「充能不足 ⇒ 红 / 冷却立即完成 ⇒ 黄」，其 `sendActionBar(Player, ChatFormatting, String, Object...)` 形参即色档，勿再写死颜色。
+4. **三线同一条消息必须同色**：同一 lang 键在三线不得出现不同色档（历史缺陷：`msg.astral_dice.mamushi_cooldown_locked` 在 1.21.1/26.1.2 经 `CurrentCoreChipItem` 为青、在 1.20.1 经 `MamushiSignItem#notifyForcedCooldown` 为白）。
+5. **`withStyle` 在 `MutableComponent` 上，不在 `Component` 接口上**：写法只能是「`Component.translatable(...).withStyle(...)`」（`translatable` 返回 `MutableComponent`）。把样式套在**形参类型为 `Component`** 的变量上会编译失败（`符号: 方法 withStyle(ChatFormatting)` 位置: 类型为Component的变量）⇒ 需要着色的 helper 其形参类型要写 `MutableComponent`，或把着色放到调用点。
+6. **取证**：动作栏是客户端可见状态，服务端探针判不了；改动的可断言面 = 语言键存在性（三线 × 三语）+ `msg`/`hud` 前缀值内 `§` 计数为 **0** + 开 jar 核对。
+   守门脚本：**`python tools/audit_actionbar.py`（退出码 0 = 通过）** —— 一次跑齐三条硬约束（值内禁 `§` / 键三线×三语齐 / 原版覆盖层通道白名单），实现要点：扫「helper 名并集 + 直接构造 + 原版通道」三类落点、**先去注释再扫**（否则 26.1.2 javadoc 里的 `{@code sendOverlayMessage(...)}` 会误报）、**排除以 `.` 结尾的动态拼接键**（`"msg.astral_dice.fanny_event." + roll`）；新增动作栏 helper 必须登记进该脚本的 `HELPERS`，否则其调用点的键会被漏扫（假绿）。键数由脚本自行报告，**规范里不写死数字**（各分支键数不同，写死必然漂移）。
+   另跑 `tools/check_lang_sync.ps1`（0 = 通过，注意它走 `[Console]::Out.Write` ⇒ 须 `[Console]::SetOut([StringWriter])` 捕获）与 `scripts/audit/tooltip_color_audit.ps1`。
+
 ## 语言文件同步规范（Lang Sync）— 必须遵守
 
 - 语言文件位于 `src/main/resources/assets/astral_dice/lang/`:`zh_cn.json`(中文)、`en_us.json`(英文)与 `ja_jp.json`(日语,2026-09-22 起三线各一份);三者 key 必须一一对应(**以 `zh_cn.json` 为基线**)。
