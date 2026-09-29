@@ -353,3 +353,75 @@ public final class Rarity extends Enum<Rarity> {
    删 `data/forge/**`（若还有残留）。
 5. **冒烟测试**：`run/server` + `run/client`；测试环境需装 lithium / indium / starlight（已进 `modRuntimeOnly`）；
    ⚠️ **JEI 不能走 Gradle**（其 manifest `Fabric-Loom-Version: 1.17.20` 被 Loom 1.14.10 门禁拒绝）⇒ 手工投放 `run/mods`。
+
+---
+
+## 9. 本轮追加：Accessories 兼容 + dev 环境阻塞修复（2026-09-29）
+
+### 9.1 需求与方案
+
+用户需求：**饰品同时可以在 Trinkets 和 Accessories 上正常工作**。
+Accessories（Wisp Forest）是**数据驱动**饰品库，API 与 Trinkets 完全不同 ⇒ 走**原生适配**，
+不依赖已停更的官方 Trinkets 兼容层（理由见 `VERSION_PINS.md` 的追加段）。
+
+**架构：单门面多源聚合。** 全部 94 处消费方调用都收敛在
+`compat/curios/CuriosApi.getCuriosInventory(...)`，所以只改门面即可让所有消费方零改动双平台化：
+
+| 操作 | 聚合语义 |
+|---|---|
+| `findFirstCurio` / `findCurios` | 按优先级遍历两源取并集（并集按 `ItemStack` **实例同一性**去重 —— 防玩家另装官方 compat layer 时两源指向同一库存而重复） |
+| `getStacksHandler(id)` | 同名槽位两边都在时返回 `MergedHandler`：**读优先取非空侧、写落到持有侧**（都空则落主源 = 下蹲右键自动装备的落点） |
+| `getModifiers` / `addPermanentModifier` / `removeModifier` / `update` | **两侧同写**，保证「筹码栏位数 = 骰子星级」在两套系统里始终一致 |
+| 主源方向 | **Accessories 在场时为主源**；只装 Trinkets 的玩家走单源快路径，行为与本轮改动前完全一致 |
+
+### 9.2 新增/修改文件
+
+**新增**：`compat/accessories/AccessoriesCompat.java`（验证器注册 + `ICurioItem`→`Accessory` 适配器 +
+`AccessoriesCapability`→`ICursiosItemHandler` 视图 + 启动自检）、`AstralDiceClient.java`（客户端入口）、
+`data/astral_dice/accessories/{slot,group,entity}/*.json`、`data/trinkets/{slots,entities,tags}/**`、
+`scripts/devtools/unpack_nested_mod_jars.py`。
+
+**修改**：`CuriosApi`（多源聚合）、`AstralDiceMod`（守卫内注册 Accessories 适配器）、
+`build.gradle`（可选依赖 + `interfaceInjection` 注释 + 渲染栈开关）、`gradle.properties`（谓词语法 + 钉值）、
+`fabric.mod.json`（`recommends`）、三份 lang（`accessories.slot.*` / `trinkets.slot.astral_dice.*`）、
+两个 drop-guard mixin（描述符）。
+
+### 9.3 本轮修掉的三个**启动级**阻塞（均为移植遗留缺陷，非 Accessories 引入）
+
+1. **Fabric 版本谓词不能写 Forge 语法**：`minecraft_version_range=[1.20.1]`（Maven 区间）被
+   `VersionPredicateParser` 当成字面量 ⇒ `HARD_DEP_INCOMPATIBLE_PRESELECTED`。
+   ⇒ 改 `~1.20.1`；`starengine_lib_version_range` 由 `[1.0.6,2.0)` 改 `>=1.0.7 <2.0`（空格 = AND）。
+   **库侧同步修复并 bump 到 1.0.7**（`gradle.properties`）。
+2. **mixin 注入目标歧义**：`@Inject(method = "drop")` 在 `Player` / `ServerPlayer` 上有多个重载 ⇒
+   `InvalidInjectionException`。必须写**完整描述符**，且 `ServerPlayer#drop(boolean)` 返回 **boolean**（不是 ItemEntity）。
+   ℹ️ 同时**订正一条旧结论**：Loom 1.14 的 `remapJar` **能够**正确重映射带描述符的 mixin 目标
+   （产物实证 `drop(...)` → `method_7329(Lnet/minecraft/class_1799;ZZ)Lnet/minecraft/class_1542;`）。
+3. **Loom interface injection 的双向副作用**：Accessories 的 `custom.loom:injected_interfaces` 把
+   `AbstractButtonExtension` 注入 `AbstractButton` ⇒ 本模组自己的 `WalletButton` 被要求实现
+   `getRenderingEvent()`（编译失败）。该开关**不能关**（Fabric API 的 `LootTable.Builder#pool` 依赖同款机制），
+   故在源码侧补一个**编译期占位实现**（返回 null；私有内部类、无外部调用方，且 JVM 不校验抽象方法实现）。
+
+### 9.4 本轮实测判据
+
+| 判据 | 结果 |
+|---|---|
+| `:fabric-1.20.1:build` | ✅ SUCCESSFUL，产物 `astral_dice-1.3.2+fabric_1.20.1.jar`（1,560,637 B） |
+| jar 内 `fabric.mod.json` | ✅ `recommends.accessories = ">=1.0.0-beta.48"`，**不在 `depends`** |
+| jar 内数据 | ✅ `data/astral_dice/accessories/{slot,group,entity}` + `data/trinkets/{slots,entities,tags}` 全部入包 |
+| **服务端启动** | ✅ `Loading 67 mods`（含 `accessories 1.0.0-beta.48+1.20.1` / `cloth-config 11.1.136` / `trinkets 3.7.2`）→ `Done (0.622s)!` |
+| **双通道适配器** | ✅ `已为 98 件饰品物品注册 Trinkets 适配器` + `已为 98 件饰品物品注册 Accessories 适配器,槽位验证器 = astral_dice:curio_slot` |
+| **槽位准入链** | ✅ 启动自检：`dice -> [dice]` / `stand -> [stand]` / `chip -> [chip]` —— 同时验证槽位定义、entity 绑定与自定义验证器三者生效且不串槽 |
+| **客户端启动** | ✅ `Astral Dice client initialized.` → `Sound engine started` → 纹理图集全部创建（4 个 client mixin 无错） |
+| 槽位解析告警 | ✅ 无 `Unable to locate a given slot` / strictMode 告警 |
+
+### 9.5 仍未完成（更新 8.4）
+
+1. **🚨 事件 mixin 桥**（不变，最高优先）：见 `EVENT_API_RESEARCH.md`。
+2. **客户端接线**：`AstralDiceClient` 入口已补（客户端**能启动**），但
+   `platform/FabricBridges` **没有客户端对应物** ⇒ 按键 / 粒子 / HUD overlay / tooltip 边框 /
+   `ScreenEvent` / 渲染阶段的 `@SubscribeEvent` 目前**注册了但不派发**。
+3. **datagen**：仍待按 `FabricDataGenerator` 重做。
+4. ~~资源重排~~ ⇒ **Trinkets / Accessories 两侧槽位数据本轮已完成**（`data/curios/tags/items/**` 仍是物品清单的
+   单一事实源，`trinkets` 侧标签用 `#curios:<slot>` 引用它）。
+5. **玩家侧实机装填验证**：本轮验到「槽位准入链通」；「GUI 拖拽装备 + 筹码栏随星级增长 + 卸载回调」
+   仍需要一个在线玩家（测试台 `mt.ps1` 或手工）复验。

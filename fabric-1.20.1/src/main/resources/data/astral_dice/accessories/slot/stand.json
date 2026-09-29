@@ -1,0 +1,10 @@
+{
+  "replace": false,
+  "amount": 1,
+  "operation": "set",
+  "order": 110,
+  "icon": "astral_dice:slot/empty_stand_slot",
+  "validators": [
+    "astral_dice:curio_slot"
+  ]
+}

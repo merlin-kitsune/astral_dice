@@ -1,0 +1,8 @@
+{
+  "icon": "astral_dice:slot/empty_chip_slot",
+  "order": 120,
+  "amount": 0,
+  "validator_predicates": [
+    "trinkets:tag"
+  ]
+}

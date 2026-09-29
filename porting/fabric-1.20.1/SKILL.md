@@ -376,3 +376,104 @@ Curios/战利品/附件 43 → 18 → 3 → 0  ✅ BUILD SUCCESSFUL
   `repo.maven.apache.org` 返回 **403 Forbidden** ⇒ 整条 `:compileJava` 因依赖解析失败而挂（实测 2m44s 失败）。
 - 正确做法：**只清该 artifact 的缓存条目**（`~/.gradle/caches/modules-2/files-2.1/<group>/` 与
   `metadata-*/descriptors/<group>/`，移走而非删除），或按项目规范 **bump 库版本号**再发布。
+
+---
+
+## 8. 给 Fabric 侧接第二套饰品系统（Accessories）—— 方法论与踩坑（2026-09-29）
+
+### 8.1 先量「门面收敛度」，它决定改造成本
+
+`grep -rn "CuriosApi\." src/main/java | wc -l` ⇒ 本轮是 **94 处**，但**几乎全部**收敛成
+`CuriosApi.getCuriosInventory(x).findFirstCurio(pred)` 一种形状。
+⇒ 结论：**不要在 94 个调用点做双写**，而是把「多源聚合」压在门面里
+（`findFirstCurio/findCurios` 取并集；`getStacksHandler` 冲突时返回合并 handler）。
+若调用点形态发散（直接摸 `getCurios().get(k).getStacks()` 之类），先做一层归一化再聚合。
+
+### 8.2 Accessories 的机制事实（javap / sources 实证，1.0.0-beta.48）
+
+| 概念 | Trinkets 3.7.2 | Accessories | 语义是否同构 |
+|---|---|---|---|
+| 实体库存 | `TrinketComponent` | `AccessoriesCapability`（`AccessoriesCapability.get(entity)`） | ✔ |
+| 槽位组 | `TrinketInventory` | `AccessoriesContainer` | ✔ |
+| 槽位数 | `getContainerSize()` | `getSize()` / `getAccessories().getContainerSize()` | ✔ |
+| **槽位修饰符** | `getModifiers() : Map<UUID, AttributeModifier>` | **同类型同名** | ✔✔ 零转换 |
+| 增删修饰符 | `addPersistentModifier` / `removeModifier` / `update` | 同名 | ✔ |
+| 物品契约 | `Trinket`（`TrinketsApi.registerTrinket`） | `Accessory`（`AccessoriesAPI.registerAccessory`） | 回调基本 1:1 |
+| 槽位验证 | 物品标签 `trinkets:<group>/<slot>` | predicate：内建 `accessories:tag` 或**自定义** | ✘ 见 8.3 |
+
+⚠️ 三条容易翻车的细节：
+1. **槽位名 = 文件名（无命名空间）**：`ResourceReloadListener` 走 `FileToIdConverter`，
+   前缀 `accessories/slot` 与 `.json` 都被剥掉 ⇒ `data/astral_dice/accessories/slot/dice.json`
+   注册出来的槽位就叫 `dice`，**全局共享**。想命名空间化只能放子目录
+   （`.../slot/astral_dice/dice.json` → `astral_dice:dice`），但那会被判为 *unique slot*
+   （名字含冒号）⇒ 语义变成「不出现在 Accessories 界面里」⇒ **别这么做**。
+2. **`strictMode` 默认 false**（`ExtraSlotTypeProperties.DEFAULT = (allowResizing=true, strictMode=false, …)`）
+   ⇒ 数据包定义的槽位**可以**被 `EntitySlotLoader` 挂到实体上，也能读 `amount`。
+   若误用 unique slot（代码注册，默认 `strictMode=true`），实体绑定那步会**只打 WARN 然后跳过**。
+3. **图标路径**：`icon` 与 group `icon` 都按 `textures/` + `<path>` + `.png` 拼
+   （`AccessoriesScreen` 里的 `withPrefix("textures/")` 实证）⇒ 填 `astral_dice:slot/empty_dice_slot`
+   正好命中既有的 `assets/astral_dice/textures/slot/empty_dice_slot.png`，**零新增纹理**。
+   同理 Trinkets 侧 `SlotData.create()` 也是 `textures/` + path + `.png`。
+
+### 8.3 用**自定义 predicate**做槽位准入，不要往别人命名空间塞标签
+
+- 内建 `accessories:tag` 验证器查的是 **`accessories:<槽位名>`**（含 `accessories:any`）——
+  也就是说「让物品进 dice 槽」要写 `data/accessories/tags/items/dice.json`，**污染他人命名空间**
+  且与 Accessories 将来可能新增的同名槽位冲突。
+- 正解：`AccessoriesAPI.registerPredicate(自有的 ResourceLocation, SlotBasedPredicate)`，
+  再在 `slot/*.json` 的 `validators` 里引用它。predicate 是**静态注册表**（不随数据包重载清空）
+  ⇒ 在 mod init 注册一次即可覆盖后续所有 reload，且**双端都要注册**（客户端也要用它渲染/校验）。
+- ⚠️ 返回值用 `TriState.DEFAULT`（而不是 `FALSE`）表示「本验证器不表态」，让同槽位的其它验证器继续判。
+- ⚠️ **物品清单只保留一份**：本模组让三套系统都指向同一份 `data/curios/tags/items/<slot>.json`
+  （Trinkets 侧标签写成 `{"values": ["#curios:dice"]}`，Accessories 侧 predicate 直接读同一个 TagKey），
+  避免「加物品时漏补某一套」——这正是本项目历史上踩过的坑。
+
+### 8.4 动态槽位（筹码栏随星级增长）在 Accessories 上怎么落地
+
+链路与 Curios/Trinkets **完全同构**：往槽位组挂一个 `AttributeModifier.Operation.ADDITION` 的绝对修饰符，
+值 = 目标槽位数，再 `update()` 触发 resize。
+- Trinkets：`TrinketInventory.addPersistentModifier / removeModifier / update`
+- Accessories：`AccessoriesContainer.addPersistentModifier / removeModifier / update`
+  （或 capability 级 `addPersistentSlotModifiers(Multimap<String, AttributeModifier>)`，key = 槽位名）
+- ⇒ 已有代码无需改语义；**两侧同写**即可保证两套系统的槽位数一致。
+
+### 8.5 ⚠️ 可选依赖的**类加载隔离**写法（必须照做）
+
+直接引用第三方类型的适配类，**绝不能在依赖缺席时被加载**：
+
+```java
+// 门面里：只放一个静态布尔（类名是字符串，不触发加载）
+private static final boolean X_LOADED = FabricLoader.getInstance().isModLoaded(X.MOD_ID);
+
+public static Optional<...> get(...) {
+    if (X_LOADED) {                          // ← 守卫
+        XCompat.getInventory(entity).ifPresent(list::add);   // invokestatic 在未执行时不解析
+    }
+    ...
+}
+```
+三条硬约束：
+1. 适配类的**公开签名里不出现第三方类型**（否则门面类的常量池就有它，类加载即失败）；
+2. 对第三方 MC mod 内嵌的 **impl 包**类型（如 `AccessoriesContainer#getAccessories()` 返回
+   `io.wispforest.accessories.impl.ExpandedSimpleContainer`）尽量当原版接口用
+   （`net.minecraft.world.Container`），只依赖签名本身、不碰 impl 独有成员；
+3. 资源清单（`fabric.mod.json`）里写 `recommends` 而**不是** `depends`。
+
+### 8.6 接入任何「自带 `loom:injected_interfaces`」的 mod 之前，先看它的注入面
+
+Accessories 往 `LivingEntity` 注入了 `AccessoriesAPIAccess`、往 **`AbstractButton` 注入了
+`AbstractButtonExtension`**。后者会波及**本模组自己的所有按钮类**（编译期被要求实现其抽象方法）。
+- **不能**用 `loom { interfaceInjection { enableDependencyInterfaceInjection = false } }` 关掉：
+  Fabric API 自己的 `LootTable.Builder#pool` 等 API 同款机制 ⇒ 关掉会连带消失（实测 7 处「找不到符号」）。
+- 正解：在源码侧补一个**编译期占位实现**。安全性来自两点：
+  ① 该类是 `private static final` 内部类，外部拿不到实例 ⇒ 没人会调它；
+  ② JVM 的类加载与实例化**都不校验抽象方法是否实现**，只有真正调用才抛 `AbstractMethodError`
+  ⇒ 第三方缺席时该方法永不执行，方法体里也不必引用它的任何类型（此处返回 `null` 即可；
+  泛型实参只出现在 `Signature` 属性里，对 JVM 惰性）。
+
+### 8.7 ⚠️ Fabric 侧「版本谓词」不是 Maven 区间 —— 迁移时必查
+
+`VersionPredicateParser` 只解析 `= / > / >= / < / <= / ~ / ^` 与通配符，**没有** `[` `(` `)` 的处理。
+从 Forge 线搬过来的 `"minecraft": "[1.20.1]"`、`"[1.0.6,2.0)"` 会被当成**字面量版本串**，
+报「需要 X 的 [1.20.1] 版本，但已经安装了的版本 1.20.1 不对」（看起来自相矛盾，极易误判）。
+⇒ 一律改写：`~1.20.1`（= `>=1.20.1 <1.21.0`）、`>=1.0.7 <2.0`（**空格分隔 = AND**）。

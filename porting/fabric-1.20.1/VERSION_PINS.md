@@ -88,3 +88,34 @@
 | Trinkets | 3.7.2 | `Trinket.getModifiers(...)` / `TrinketInventory` 动态槽位 API 实测确认 |
 | CCA | 5.2.3 | **仅 `modCompileOnly`** |
 | fabric-api | 0.92.12+1.20.1 | 内含 `fabric-data-attachment-api-v1`（`META-INF/jars/`）+ `fabric-loot-api-v2` |
+
+---
+
+## 追加：Accessories 兼容接入（2026-09-29 实测）
+
+用户需求：「饰品**同时**可以在 Trinkets 和 Accessories 上正常工作」。
+定位 = **软依赖** —— `fabric.mod.json` 里只进 `recommends`、**绝不进 `depends`**；
+缺席时照旧走 Trinkets，在场时 Accessories 成为主通道（双源聚合，见 `compat/curios/CuriosApi`）。
+
+| 依赖 | 钉值 | Modrinth versionId | 说明 |
+|---|---|---|---|
+| Accessories | `1.0.0-beta.48+1.20.1` | `A7wwzJ0e` | Wisp Forest 数据驱动饰品库。**1.20.1 线官方已停更**（见其 issue #271 与 `INFO_ABOUT_UPDATES.md`）⇒ 钉死不再跟随 |
+| Cloth Config | `11.1.136+fabric` | `2xQdCMyG` | **Accessories 的硬前置**（其 `fabric.mod.json` `depends: cloth-config >=11.1.118`）⇒ dev 运行期必须一并投放 |
+| Architectury | `9.2.14+fabric` | `WbL7MStR` | **KubeJS 的硬前置**（`>=9.1.12`）。与本模组无关，但 dev 测试环境装了 KubeJS ⇒ 必须补 |
+| CCA | `5.2.3` | ladysnake maven | 编译期 `modCompileOnly` **+ dev 运行期 `modRuntimeOnly`**；生产由 Trinkets 的传递依赖满足 |
+
+### ⚠️ 不要用官方的 Trinkets 兼容层
+
+`Trinkets Compat Layer for Accessories`（Modrinth `accessories-tc-layer`）在 **1.20.1 已停更**，
+1.21.1+ 的 `Accessories Compatibility Layer` 也不覆盖 1.20.1；且兼容层本身只能解决
+「Trinkets API 被重定向」，**槽位数据仍要本模组自己写**。
+结论：走**原生适配**（`io.wispforest.accessories.api`），见 `SKILL.md` §8。
+
+### dev 环境实测缺口（与本模组代码无关，但会挡住启动）
+
+1. **Loom 1.14 在 dev 环境不展开 mod 依赖的内嵌 JarJar**：
+   `accessories` 内嵌 `endec/gson/netty`、`patchouli` 内嵌 `fiber` ⇒ 两者 entrypoint 初始化即
+   `NoClassDefFoundError`。修复脚本 = `scripts/devtools/unpack_nested_mod_jars.py`（只解**纯库**白名单，
+   不能解内嵌的 MC mod，否则 intermediary 版在 dev 加载不了）。
+2. **Sodium 0.5.x 在 dev 要求 LWJGL 3.3.2**（1.20.1 自带 3.3.1）⇒ 客户端启动即
+   `currently active LWJGL version is not compatible`；本轮用 `-PtestSodium=false` 临时排除。

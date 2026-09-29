@@ -60,6 +60,24 @@ dependencies {
     // ── 硬前置:Trinkets(替代 Curios)。消费方声明必需(fabric.mod.json depends) ──
     modImplementation "maven.modrinth:trinkets:AHxQGtuC"
 
+    // ── 可选兼容:Accessories(替代 Trinkets 的第二条饰品通道;2026-09-29 新增) ──
+    // 用户需求:「饰品同时可以在 Trinkets 和 Accessories 上正常工作」。
+    // 生产定位 = **软依赖** —— fabric.mod.json 只进 recommends,不进 depends;
+    //   缺席时本模组照旧走 Trinkets;在场时 Accessories 成为**主通道**(见 compat/curios/CuriosApi)。
+    // ⚠️ 编译期需要:物品要实现 io.wispforest.accessories.api.Accessory 适配器,
+    //    门面要能读 AccessoriesCapability。而 Accessories 用 Loom 的
+    //    `custom.loom:injected_interfaces` 给 LivingEntity 注入了 AccessoriesAPIAccess
+    //    (其 fabric.mod.json 实证)⇒ 必须让 Loom 处理该 mod 的元数据,故用 modCompileOnly 而非普通 compileOnly。
+    // ⚠️ Accessories 硬前置 Cloth Config >= 11.1.118 ⇒ 编译期一并声明(同样是软依赖,玩家侧由 Accessories 自己拉)。
+    // ⚠️ dev 运行期默认投放(否则 dev 里永远看不到 Accessories 分支);
+    //    跑「仅 Trinkets」那一态时用 -PtestAccessories=false 关掉。
+    modCompileOnly "maven.modrinth:accessories:${accessories_mr_version}"
+    modCompileOnly "maven.modrinth:cloth-config:${cloth_config_mr_version}"
+    if (providers.gradleProperty('testAccessories').getOrElse('true') != 'false') {
+        modRuntimeOnly "maven.modrinth:accessories:${accessories_mr_version}"
+        modRuntimeOnly "maven.modrinth:cloth-config:${cloth_config_mr_version}"
+    }
+
     // Cardinal Components(库以 modApi 暴露,这里显式声明以固定版本)
     // ⚠️ 曾经的 Cardinal Components API **运行前置**已按用户裁决移除：
     //    组件/持久化全部改用 **Fabric API 自带的 fabric-data-attachment-api-v1**
@@ -71,15 +89,28 @@ dependencies {
     // 运行期 CCA 由 **Trinkets 自己** hard-depends(其 fabric.mod.json 声明
     // cardinal-components-base/entity >=3.0.0-0)⇒ 玩家不再需要为「本模组」单独装 CCA。
     modCompileOnly "dev.onyxstudios.cardinal-components-api:cardinal-components-base:${cca_version}"
+    // ⚠️ 2026-09-29 实机修正:CCA 不只是编译期需要 —— Trinkets 3.7.2 **声明**了对
+    //    cardinal-components-base/entity 的硬依赖,但**没有内嵌**它们 ⇒ dev 运行环境
+    //    必须显式投放,否则 Fabric Loader 在解析阶段就硬拒(mod resolution failed)。
+    //    生产环境:该依赖是 Trinkets 的传递依赖,由 Loader 提示玩家自行安装,不算本模组的前置。
+    modRuntimeOnly "dev.onyxstudios.cardinal-components-api:cardinal-components-base:${cca_version}"
+    modRuntimeOnly "dev.onyxstudios.cardinal-components-api:cardinal-components-entity:${cca_version}"
 
     // ── Patchouli(Fabric 版;手册是本模组的核心引导,首个版本即纳入) ─────────
     modImplementation "maven.modrinth:patchouli:nm6fiGRx"
 
     // ── 运行时/测试环境依赖(仅 dev runtime;不进发货产物) ──────────────────
     // 用户要求的测试环境三件套 + 渲染栈
-    modRuntimeOnly "maven.modrinth:sodium:OihdIimA"
+    // ⚠️ Sodium 0.5.x 在 **dev 环境**要求 LWJGL 3.3.2(1.20.1 自带 3.3.1),
+    //    否则客户端启动即 "The game failed to start because the currently active
+    //    LWJGL version is not compatible"(实测 2026-09-29)。要跑 Sodium 需另加
+    //    resolutionStrategy 强制 org.lwjgl:*:3.3.2;本轮只验证本模组自身时用
+    //    `-PtestSodium=false` 临时排除,避免为了跑一次 GUI 验证去动 LWJGL。
+    if (providers.gradleProperty('testSodium').getOrElse('true') != 'false') {
+        modRuntimeOnly "maven.modrinth:sodium:OihdIimA"
+        modRuntimeOnly "maven.modrinth:indium:nQHYSjxO"
+    }
     modRuntimeOnly "maven.modrinth:lithium:iEcXOkz4"
-    modRuntimeOnly "maven.modrinth:indium:nQHYSjxO"
     modRuntimeOnly "maven.modrinth:starlight:XGIsoVGT"
     modRuntimeOnly "maven.modrinth:modernfix:rPmgLeZC"
     modRuntimeOnly "maven.modrinth:ferrite-core:unerR5MN"
@@ -89,11 +120,21 @@ dependencies {
     //    故改为**运行时手工投放**:把 jei-1.20.1-fabric-15.62.0.216.jar 放进 run/server/mods/ 与 run/client/mods/。
     modRuntimeOnly "maven.modrinth:carpet:K0Wj117C"
     // KubeJS(测试探针用,与 forge 侧 2001.6.5-build.26 对齐)
+    // ⚠️ KubeJS 声明 architectury >= 9.1.12 硬依赖 ⇒ 必须一并投放,否则 Loader 解析阶段硬拒。
+    modRuntimeOnly "maven.modrinth:architectury-api:${architectury_mr_version}"
     modRuntimeOnly "maven.modrinth:kubejs:Pu0Ygbq6"
     modRuntimeOnly "maven.modrinth:rhino:MLIu0Tct"
 }
 
 loom {
+    // ⚠️ interfaceInjection.enableDependencyInterfaceInjection 保持**开启**(Loom 1.14 的既有行为),
+    //    虽然它会被 Accessories 的 custom.loom:injected_interfaces 顺手利用
+    //    (把 AccessoriesAPIAccess 注入 LivingEntity、把 AbstractButtonExtension 注入 AbstractButton)。
+    //    不能关:本模组的 FabricLootInjector 依赖 **Fabric API 自己的注入**
+    //    (fabric-loot-api-v2 把 LootTable.Builder#pool/pools 注入到原版 LootTable.Builder 上),
+    //    关掉会连它一起消失(实测:7 处「找不到符号: tableBuilder.pool(...)」)。
+    //    ⇒ 接入 Accessories 带来的编译期污染改为在**源码侧**消化:见
+    //      client/gui/StarCoinWalletButtons$WalletButton#getRenderingEvent 的说明。
     accessWidenerPath = file('src/main/resources/astral_dice.accesswidener')
     // ⚠️ Loom 1.14 起 Mixin 注解处理器**默认关闭**;`mixin { }` 配置会被告警要求移除。
     //    refmap 由 Loom 在 remapJar 阶段依据 mixin 配置自动生成(见 P0 验证步骤)。
@@ -118,6 +159,7 @@ def templateProps = [
         minecraft_version_range: project.minecraft_version_range.toString(),
         trinkets_version       : project.trinkets_version.toString(),
         cca_version            : project.cca_version.toString(),
+        accessories_version_range: project.accessories_version_range.toString(),
         lib_version_range      : project.starengine_lib_version_range.toString(),
 ]
 processResources {

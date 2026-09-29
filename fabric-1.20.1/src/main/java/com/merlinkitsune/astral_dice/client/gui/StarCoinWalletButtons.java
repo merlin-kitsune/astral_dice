@@ -21,6 +21,12 @@ import net.minecraft.resources.ResourceLocation;
 import com.merlinkitsune.astral_dice.platform.client.event.ScreenEvent;
 import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
 
+// ⚠️ 下面两个 import 只服务于 WalletButton#getRenderingEvent 的**编译期占位实现**
+//    (Accessories 的接口注入要求;见该方法的 javadoc)。两者都是可选依赖侧的类型,
+//    Accessories 缺席时本文件仍可正常加载 —— 详见方法注释。
+import io.wispforest.accessories.client.gui.ButtonEvents;
+import net.fabricmc.fabric.api.event.Event;
+
 /**
  * 星币钱包的物品栏控件（Forge 1.20.1 客户端）：**一条余额条 + 三个按钮**。
  *
@@ -275,6 +281,36 @@ public final class StarCoinWalletButtons {
         private void sendClick(StarCoinWalletActions.Action action) {
             if (action == null) return;
             ModNetwork.sendToServer(new ModNetwork.StarCoinWalletMessage(action.ordinal()));
+        }
+
+        /**
+         * Accessories 接口注入的**编译期占位实现**(2026-09-29)。
+         *
+         * <h2>为什么必须存在</h2>
+         * <p>Accessories 的 {@code fabric.mod.json} 声明了
+         * {@code custom.loom:injected_interfaces: net/minecraft/class_4264 → AbstractButtonExtension},
+         * 而 Loom 的「依赖方接口注入」是**全局开关**(本模组的战利品注入依赖 Fabric API 的同款机制,
+         * 不能关 —— 见 build.gradle 的 loom 段)。于是编译期 {@link AbstractButton} 被视作实现了
+         * {@code AbstractButtonExtension},它那唯一的抽象方法 {@code getRenderingEvent()}
+         * 就必须由每一个子类补上,否则编译直接失败。
+         *
+         * <h2>为什么可以返回 null</h2>
+         * <ul>
+         *   <li><b>没有任何调用方</b>:本类是 {@code private static final} 的内部类,外部代码拿不到实例;
+         *       而 Accessories 只对**它自己的**按钮调用 {@code ButtonEvents.adjustRendering(...)}
+         *       (即从这里取 Event 去注册渲染回调)。本模组不使用该渲染调整能力。</li>
+         *   <li><b>JVM 不校验抽象方法的实现</b>:类加载与实例化都不会因为「继承了一个未实现的接口方法」
+         *       而失败,只有**真正调用**它才抛 {@code AbstractMethodError} ⇒ Accessories 缺席时
+         *       本方法永远不会被执行,方法体里也不引用任何 Accessories 类型(常量池里只有
+         *       Fabric API 的 {@link Event},那是硬依赖)。</li>
+         *   <li>⚠️ 类型参数 {@code ButtonEvents.AdjustRendering} 只出现在 {@code Signature} 属性里,
+         *       该属性对 JVM 是**惰性**的(不参与类加载与字节码校验),故不会把 Accessories 变成硬依赖。</li>
+         * </ul>
+         * <p>若将来本模组要用 Accessories 的按钮渲染调整,则应改为委托 Accessories 侧的真实实现。
+         */
+        @Override
+        public Event<ButtonEvents.AdjustRendering> getRenderingEvent() {
+            return null;
         }
 
         @Override

@@ -50,6 +50,14 @@ public class AstralDiceMod implements ModInitializer {
         commitRegistrations();
         registerListeners();
         TrinketBridge.registerAll();
+        // Accessories(软依赖)在场时,再挂一条饰品通道:槽位验证器 + 物品适配器。
+        // ⚠️ 守卫不可省 —— AccessoriesCompat 直接引用 io.wispforest.accessories.*,
+        //    软依赖缺席时必须让它**永不被加载**(见 CuriosApi 的类加载隔离说明)。
+        if (com.merlinkitsune.astral_dice.compat.curios.CuriosApi.isAccessoriesPresent()) {
+            com.merlinkitsune.astral_dice.compat.accessories.AccessoriesCompat.register();
+            // 启动自检:把三条「物品→槽位」准入链的判据打进日志(数据包加载后执行)
+            com.merlinkitsune.astral_dice.compat.accessories.AccessoriesCompat.installSlotDiagnostics();
+        }
         setupConfig();
         // 通用初始化(Forge 的 FMLCommonSetupEvent 等价物)
         BUS.post(new FMLCommonSetupEvent());
@@ -129,21 +137,6 @@ public class AstralDiceMod implements ModInitializer {
     }
 
     /** 客户端订阅类(由 AstralDiceClient 登记,避免专用服务端加载客户端类)。 */
-    static void registerClientListeners() {
-                LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.client.ClientKeyNames.class);
-                LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.client.ClientSessionEvents.class);
-                LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.client.ClientTickHandler.class);
-                LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.client.KeyBindingSetup.class);
-                LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.client.ModClientEvents.class);
-                LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.client.NancyLuClientEvents.class);
-                LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.client.RarityTooltipFrame.class);
-                LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.client.RenShieldRenderer.class);
-                LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.client.TargetOutlineCapture.class);
-                LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.client.TargetSelectionClient.class);
-                LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.client.TargetSelectionHighlighter.class);
-                LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.client.gui.StarCoinWalletButtons.class);
-    }
-
     /**
      * 配置:先备份旧版本文件,再读取;文件缺失时写出默认值。
      * (Forge 侧由 FML 的配置系统承担,逻辑等价。)

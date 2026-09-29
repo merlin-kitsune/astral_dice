@@ -30,5 +30,8 @@
     "trinkets": ">=${trinkets_version}",
     "fabric-data-attachment-api-v1": "*",
     "starengine_lib": "${lib_version_range}"
+  },
+  "recommends": {
+    "accessories": "${accessories_version_range}"
   }
 }

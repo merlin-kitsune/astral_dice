@@ -22,16 +22,19 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(ServerPlayer.class)
 public abstract class ServerPlayerDropGuardMixin {
 
-    // ⚠️ method 必须写**纯方法名**（不带描述符）：Loom 在 remapJar 阶段只重映射纯名
-    //    （实测：`method_7914` = getMaxStackSize 被正确重映射，而 `drop(Z)Lnet/...ItemEntity;`
-    //    原样保留 ⇒ 生产 intermediary 环境下找不到该方法、注入失败、defaultRequire=1 直接崩）。
-    //    ServerPlayer 只声明一个 drop，纯名无歧义。
-    @Inject(method = "drop", at = @At("HEAD"), cancellable = true)
-    private void astralDice$refuseGuardedDrop(boolean fullStack, CallbackInfoReturnable<net.minecraft.world.entity.item.ItemEntity> cir) {
+    // ⚠️ ServerPlayer **继承** Player,所以它同样能看到 drop 的多个重载
+    //    (自己的 drop(boolean) + 继承来的 drop(ItemStack,boolean) / drop(ItemStack,boolean,boolean))
+    //    ⇒ 只写纯名 "drop" 会被 Mixin 判定为歧义并与签名不符的那个相撞而失败
+    //    (实测 2026-09-29)。这里写**完整描述符**锁定 ServerPlayer 自己的那个。
+    // ⚠️ 返回类型是 **boolean**(「是否真的丢出去了」),不是 ItemEntity ——
+    //    javap 实证:`public boolean drop(boolean)`。写 ItemEntity 会得到
+    //    「could not find any targets matching 'drop(Z)L...ItemEntity;'」。
+    @Inject(method = "drop(Z)Z", at = @At("HEAD"), cancellable = true)
+    private void astralDice$refuseGuardedDrop(boolean fullStack, CallbackInfoReturnable<Boolean> cir) {
         ServerPlayer self = (ServerPlayer) (Object) this;
         ItemStack selected = self.getInventory().getSelected();
         if (selected.getItem() instanceof DropGuardItem guard && !guard.onDroppedByPlayer(selected, self)) {
-            cir.setReturnValue(null);
+            cir.setReturnValue(false);
         }
     }
 }
