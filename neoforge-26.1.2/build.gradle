@@ -301,12 +301,18 @@ idea {
 // === 编译产物分发规则 ===
 // 默认行为:每次构建完成后自动推送到仓库根 run/26.1.2/mods(本机 runClient 调试)、
 // 仓库根目录 build/libs,并推送到整合包 mods 目录(删除旧版后复制新版)。
-// 整合包位置:D:/.minecraft/versions/26.1.2 模组测试/mods
+// 整合包位置:D:/.minecraft/versions/26.1.2-NeoForge 模组测试/mods
 // (2026-09-17 修正:原指向 `26.1.2-NeoForge_26.1.2.109`,该目录在本机**并不存在**,
 //  于是 pushToGame 每次都只打印 "pack dir not found, skipped" 而静默不部署;
 //  现按 1.20.1 侧 `1.20.1 模组测试` 的同名规则改为 `26.1.2 模组测试`。)
+// ⚠️ 2026-09-29 **二次修正**:上一版改到的 `26.1.2 模组测试` 本机同样不存在(整合包目录现名带
+//  `-NeoForge` 平台后缀),该缺口又静默了一个批次;现按本机**实测存在**的目录名
+//  `26.1.2-NeoForge 模组测试` 落定,同批 1.20.1 侧改为 `1.20.1-Forge 模组测试`。
+//  ⚠️ 教训(必守):`packModsDir` **禁止凭命名规则推测** —— 换机/整合包改名后必须
+//  `ls D:/.minecraft/versions/` 核对真实目录名,并在构建日志里确认出现
+//  `pushToGame: pushed … -> <目标>` 一行;只看 `BUILD SUCCESSFUL` 会漏掉静默跳过。
 def devRunModsDir = rootProject.file('run/26.1.2/mods')
-def packModsDir = file('D:/.minecraft/versions/26.1.2 模组测试/mods')
+def packModsDir = file('D:/.minecraft/versions/26.1.2-NeoForge 模组测试/mods')
 
 //
 // ⚠️ 约定(2026-09-12 起,同日修订为白名单):**只有发布线分支推送整合包。**

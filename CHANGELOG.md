@@ -4,6 +4,35 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## Unreleased
+
+### Bug Fixes
+
+- **Fixed the action bar's text colouring and missing text (player report, 2026-09-29)**:
+  1. **Missing text** - the two success messages of the Secret Detective Sign's "Undercover Operation" and the Astrologer Sign's
+  "Weak Mark" referenced language keys (`msg.astral_dice.bonnie_undercover_applied` / `msg.astral_dice.haiqing_weak_mark_applied`)
+  that were **missing on all three version lines**, so confirming a target showed a raw key instead of a sentence. Both keys are now
+  supplied in Chinese, English and Japanese, worded like their sibling messages.
+  2. **Broken colouring** - 11 action bar messages carried their own `§e…§7` colour codes while the sender coloured the whole line
+  with `withStyle(YELLOW)`, so `§e` was a no-op on a yellow base and the trailing `§7` reset the second half back to grey - a visible
+  **"yellow front half, grey back half"** seam (Hanna / Zhao / Sherry / Teru / Mamushi / Mouse Rescue and others). All embedded colour
+  codes were removed, following the established rule that **a message carries no `§` codes and the whole line takes its colour from
+  the outer style**.
+  3. **Inconsistent palette** - following the standing ruling that **refusal / blocking messages must be red**, 11 such messages that
+  were still yellow are now **red** (the three Komachi "not cast" notices, Nardis temporary-card cap / not enough free slots, Parunan
+  nothing to exchange, Sherry blocked ground / no target, Hanna ender pearl blocked, Teru descent already in effect, Mamushi forced
+  cooldown). "Current Core" changed from **AQUA** to red when charging is insufficient and yellow when the cooldown is finished; the
+  Mamushi forced-cooldown colour also differed per line (cyan on 1.21.1 / 26.1.2, white on 1.20.1) and is now red everywhere.
+  4. **Two parallel channels merged** - airbag trigger, wallet deposit/withdraw feedback, the card inventory's "you need a die equipped"
+  and the client-side "out of plays this round" were drawn through the **vanilla overlay** (white, at `guiHeight-68`, vanilla timing)
+  while roughly 60 other messages went through this mod's own action bar (styled, `guiHeight-58`, configurable duration) - the same piece
+  of UI rendered by two different systems with different colours and positions. All four are now routed through the mod's action bar
+  channel and coloured (yellow for the airbag / wallet, red for "need a die equipped" / "out of plays").
+
+### Project
+
+- **Pack deploy targets corrected on this machine (2026-09-29)**: the `pushToGame` task of the 1.20.1 and 26.1.2 lines pointed at pack directories that **no longer exist on disk** (`1.20.1 模组测试` / `26.1.2 模组测试` - the packs had been renamed to carry a platform suffix), so both tasks had been printing `pushToGame: pack dir not found, skipped` and **silently deploying nothing** - the jars sitting in the packs were frozen at the last moment the paths still existed. They now point at the real directories `1.20.1-Forge 模组测试` / `26.1.2-NeoForge 模组测试`. This is a **build-script-only** change: no version bump, no artifact change, nothing player-visible. The lesson is recorded in `AGENTS.md`: `packModsDir` must **never** be inferred from a naming convention - after a machine swap or a pack rename, list `D:/.minecraft/versions/` and confirm a `pushToGame: pushed … -> <target>` line in the build log **for every line**, because `BUILD SUCCESSFUL` on its own hides a silent skip.
+
 ## 1.3.2-hotfix
 
 > **1.20.1 line only** hotfix (`1.3.2-hotfix+forge_1.20.1`); the 1.21.1 and 26.1.2 lines keep their version numbers and artifacts **unchanged**.

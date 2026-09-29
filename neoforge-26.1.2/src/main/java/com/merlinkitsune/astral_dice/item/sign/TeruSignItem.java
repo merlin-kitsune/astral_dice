@@ -195,7 +195,7 @@ public class TeruSignItem extends BaseSignItem {
     protected boolean canBeginSelectorSession(Player player) {
         if (player == null) return false;
         if (resolveTarget(player) == null) return true;
-        sendSignActionBar(player, "msg.astral_dice.teru_descent_in_effect");
+        sendSignActionBarColored(player, net.minecraft.ChatFormatting.RED, "msg.astral_dice.teru_descent_in_effect");
         return false;
     }
 
@@ -247,7 +247,7 @@ public class TeruSignItem extends BaseSignItem {
         if (receiver == caster) return false;
         // 生效中不可重复施放(门控已在 canBeginSelectorSession 拦下;此处为服务端二次校验)
         if (resolveTarget(caster) != null) {
-            sendSignActionBar(caster, "msg.astral_dice.teru_descent_in_effect");
+            sendSignActionBarColored(caster, net.minecraft.ChatFormatting.RED, "msg.astral_dice.teru_descent_in_effect");
             return false;
         }
 

@@ -5,6 +5,7 @@ import com.merlinkitsune.astral_dice.audio.SoundPlayback;
 import com.merlinkitsune.astral_dice.item.ModItems;
 
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -93,8 +94,10 @@ public final class StarCoinWalletActions {
         }
     }
 
-    private static void send(ServerPlayer player, Component message) {
-        // 26.1.2 平台差异:Player#displayClientMessage(text, true) 已改名 ⇒ sendOverlayMessage(Component)
-        player.sendOverlayMessage(message);
+    private static void send(ServerPlayer player, MutableComponent message) {
+        net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(player,
+                new com.merlinkitsune.astral_dice.network.ActionBarPayload(
+                        message.withStyle(net.minecraft.ChatFormatting.YELLOW),
+                        com.merlinkitsune.starenginelib.component.GameplayConstants.ACTIONBAR_DURATION_TICKS));
     }
 }

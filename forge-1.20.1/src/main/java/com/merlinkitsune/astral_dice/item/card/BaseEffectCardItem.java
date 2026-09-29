@@ -433,7 +433,8 @@ public abstract class BaseEffectCardItem extends Item {
         if (EffectCardPeriod.isBurstFull(player)) {
             int seconds = EffectCardPeriod.getRemainingBlockSeconds(player);
             player.displayClientMessage(
-                    Component.translatable("msg.astral_dice.effect_card_burst_full", seconds), true);
+                    Component.translatable("msg.astral_dice.effect_card_burst_full", seconds)
+                            .withStyle(net.minecraft.ChatFormatting.RED), true);
             return true;
         }
         return EffectCardPeriod.isBlocked(player);

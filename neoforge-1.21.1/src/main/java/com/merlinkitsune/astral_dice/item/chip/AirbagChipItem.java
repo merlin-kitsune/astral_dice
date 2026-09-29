@@ -50,8 +50,12 @@ public class AirbagChipItem extends BaseChipItem {
 
         ChargeManager.consume(player, CHARGE_COST);
         ModAttachments.setAirbagCooldownEnd(player, player.level().getGameTime() + COOLDOWN_TICKS);
-        player.displayClientMessage(
-                Component.translatable("hud.astral_dice.airbag_trigger", CHARGE_COST), true);
+        if (player instanceof net.minecraft.server.level.ServerPlayer sp) {
+            net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(sp,
+                    new com.merlinkitsune.astral_dice.network.ActionBarPayload(
+                            Component.translatable("hud.astral_dice.airbag_trigger", CHARGE_COST).withStyle(net.minecraft.ChatFormatting.YELLOW),
+                            com.merlinkitsune.starenginelib.component.GameplayConstants.ACTIONBAR_DURATION_TICKS));
+        }
         player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
                 SoundEvents.SHIELD_BLOCK, SoundSource.PLAYERS, 1.0F, 0.8F);
         return true;
