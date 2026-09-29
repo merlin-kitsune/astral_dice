@@ -137,11 +137,8 @@ public class EntityEvent extends Event
      * <br>
      * This event is fired on the {@link MinecraftForge#EVENT_BUS}.<br>
      **/
-    @Deprecated(forRemoval = true, since = "1.20.1") // Remove Entity Eye/Size hooks, as they need to be redesigned
-
-
     /**
-     *Remove Entity Eye/Size hooks, as they need to be redesigned, this is no longer fired in any forge/vanilla code.
+     * Remove Entity Eye/Size hooks, as they need to be redesigned, this is no longer fired in any forge/vanilla code.
      **/
     @Deprecated(forRemoval = true, since = "1.20.1")
     public static class EyeHeight extends EntityEvent {

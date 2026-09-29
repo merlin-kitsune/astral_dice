@@ -117,6 +117,14 @@ public final class FabricBridges {
     }
 
     private static void installCommands() {
+        // OnDatapackSyncEvent:Forge 在「玩家进服」与「/reload」时触发(下发标签/配方之前)。
+        // FAPI 的对应回调是 ServerLifecycleEvents.SYNC_DATA_PACK_CONTENTS —— 它**逐玩家**触发,
+        // 故这里对每个玩家各派发一次;消费方(PlayerLifecycleHandler)的 getPlayer()!=null 分支
+        // 与 getAllPlayers() 分支都零改动可用。
+        ServerLifecycleEvents.SYNC_DATA_PACK_CONTENTS.register((player, joined) ->
+                LoaderBus.INSTANCE.post(new com.merlinkitsune.astral_dice.platform.event.OnDatapackSyncEvent(
+                        player.getServer().getPlayerList(), player)));
+
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
                 LoaderBus.INSTANCE.post(new RegisterCommandsEvent(dispatcher, environment, registryAccess)));
     }

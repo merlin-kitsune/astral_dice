@@ -147,7 +147,7 @@ public class FateGuidanceCardItem extends BaseEffectCardItem {
         if (!isFateGuidanceActive(player)) return;
         net.minecraft.world.item.ItemStack stack = event.getItem();
         if (stack.isEmpty()) return;
-        net.minecraft.world.food.FoodProperties food = stack.getItem().getFoodProperties(stack, player);
+        net.minecraft.world.food.FoodProperties food = stack.getItem().getFoodProperties();
         if (food == null) return;
         // 原版单次进食的饱和度增量 = 营养 × 饱食度修正 × 2
         float delta = food.getNutrition() * food.getSaturationModifier() * 2.0f;

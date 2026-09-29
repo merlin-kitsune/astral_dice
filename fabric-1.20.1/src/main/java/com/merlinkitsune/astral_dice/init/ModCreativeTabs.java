@@ -5,6 +5,7 @@ import com.merlinkitsune.astral_dice.item.ModItems;
 
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
+import net.fabricmc.fabric.api.itemgroup.v1.FabricItemGroup;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.resources.ResourceLocation;
@@ -19,9 +20,8 @@ public class ModCreativeTabs {
             .create(Registries.CREATIVE_MODE_TAB, AstralDiceMod.MODID);
 
     public static final RegistryObject<CreativeModeTab> DICE_TAB = CREATIVE_TABS
-            .register("dice_tab", () -> CreativeModeTab.builder()
+            .register("dice_tab", () -> FabricItemGroup.builder()
             .title(Component.translatable("itemGroup." + AstralDiceMod.MODID))
-            .withTabsBefore(CreativeModeTabs.COMBAT)
             .icon(() -> ModItems.DICE.get().getDefaultInstance())
             .displayItems((params, output) -> {
                 // 恋的规则书（帕秋莉手册，置顶）

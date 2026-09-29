@@ -29,8 +29,10 @@ repositories {
     mavenLocal()
     mavenCentral()
     maven { url 'https://api.modrinth.com/maven' }        // 模组工件(Modrinth Maven)
-    maven { url 'https://maven.ladysnake.org/releases' }  // Cardinal Components 官方 maven
     maven { url 'https://maven.blamejared.com' }          // Patchouli(如需官方 maven)
+    // ⚠️ 仅 **编译期** 需要:Trinkets 3.7.2 的 TrinketComponent 继承 CCA 的 ComponentV3
+    //    (javap 实证),javac 解析 TrinketsApi 签名时必须能加载 CCA 类型。见 dependencies 注释。
+    maven { url 'https://maven.ladysnake.org/releases' }
 
     // 依赖解析硬约束:模组工件只允许来自 Modrinth Maven(与另三线「只走 curse/modrinth」的口径一致)
     exclusiveContent {
@@ -59,8 +61,16 @@ dependencies {
     modImplementation "maven.modrinth:trinkets:AHxQGtuC"
 
     // Cardinal Components(库以 modApi 暴露,这里显式声明以固定版本)
-    modImplementation "dev.onyxstudios.cardinal-components-api:cardinal-components-base:${cca_version}"
-    modImplementation "dev.onyxstudios.cardinal-components-api:cardinal-components-entity:${cca_version}"
+    // ⚠️ 曾经的 Cardinal Components API **运行前置**已按用户裁决移除：
+    //    组件/持久化全部改用 **Fabric API 自带的 fabric-data-attachment-api-v1**
+    //    (随 fabric-api 分发 ⇒ 零第三方前置)。见 component/AttachedDataKey.java。
+    //
+    // 但 CCA 仍在**编译期**必要：Trinkets 3.7.2 的 `TrinketComponent extends ComponentV3`
+    // (javap 实证)，javac 解析 `TrinketsApi#getTrinketComponent` 的签名时必须能加载 CCA 类型。
+    // ⇒ modCompileOnly(不进运行前置、不写进 fabric.mod.json)。
+    // 运行期 CCA 由 **Trinkets 自己** hard-depends(其 fabric.mod.json 声明
+    // cardinal-components-base/entity >=3.0.0-0)⇒ 玩家不再需要为「本模组」单独装 CCA。
+    modCompileOnly "dev.onyxstudios.cardinal-components-api:cardinal-components-base:${cca_version}"
 
     // ── Patchouli(Fabric 版;手册是本模组的核心引导,首个版本即纳入) ─────────
     modImplementation "maven.modrinth:patchouli:nm6fiGRx"

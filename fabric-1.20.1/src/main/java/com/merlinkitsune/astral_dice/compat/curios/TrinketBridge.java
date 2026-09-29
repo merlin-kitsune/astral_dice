@@ -2,10 +2,14 @@ package com.merlinkitsune.astral_dice.compat.curios;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 
+import com.google.common.collect.Multimap;
+
 import dev.emi.trinkets.api.SlotReference;
 import dev.emi.trinkets.api.Trinket;
 import dev.emi.trinkets.api.TrinketsApi;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.world.entity.ai.attributes.Attribute;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.Item;
@@ -78,6 +82,12 @@ public final class TrinketBridge {
         @Override
         public boolean canUnequip(ItemStack stack, SlotReference slot, LivingEntity entity) {
             return delegate.canUnequip(context(slot, entity), stack);
+        }
+
+        @Override
+        public Multimap<Attribute, AttributeModifier> getModifiers(ItemStack stack, SlotReference slot,
+                                                                  LivingEntity entity, java.util.UUID uuid) {
+            return delegate.getAttributeModifiers(context(slot, entity), uuid, stack);
         }
     }
 

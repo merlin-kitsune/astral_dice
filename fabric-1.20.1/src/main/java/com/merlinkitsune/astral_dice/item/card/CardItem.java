@@ -6,7 +6,8 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
-public class CardItem extends Item {
+public class CardItem extends Item implements com.merlinkitsune.astral_dice.platform.item.StackCountOverrideItem,
+        com.merlinkitsune.astral_dice.platform.item.DropGuardItem {
     private final String cardType;
 
     public String getCardType() {
@@ -19,8 +20,10 @@ public class CardItem extends Item {
     }
 
     // 未消耗耐久(满耐久)的战斗牌可堆叠 64 个;已消耗耐久后单独存放(单张)
+    // ⚠️ 方法名刻意**不**叫 getMaxStackSize:原版 Item 的 getMaxStackSize() 无参,
+    //    同名重载在 mixin 侧不易区分;本模组用自有契约 StackCountOverrideItem。
     @Override
-    public int getMaxStackSize(ItemStack stack) {
+    public int maxStackSize(ItemStack stack) {
         int max = AppliedStone.defaultUses(cardType);
         int uses = ModDataComponents.CARD_USES.getOrDefault(stack, max);
         return uses >= max ? 64 : 1;
@@ -93,7 +96,7 @@ public class CardItem extends Item {
     @Override
     public boolean onDroppedByPlayer(ItemStack stack, Player player) {
         if (TemporaryCardUtil.isTemporary(stack)) return false;
-        return super.onDroppedByPlayer(stack, player);
+        return true;
     }
 
     // ⚠️ 1.20.1 **没有** stack-aware 的 {@code canFitInsideContainerItems(ItemStack)}

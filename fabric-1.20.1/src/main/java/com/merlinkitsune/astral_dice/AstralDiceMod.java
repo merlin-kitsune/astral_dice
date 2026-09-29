@@ -45,6 +45,8 @@ public class AstralDiceMod implements ModInitializer {
     @Override
     public void onInitialize() {
         FabricBridges.installEarly();
+        // 战利品注入(FAPI LootTableEvents.MODIFY):替代 Forge 侧的 GLM + LootTableLoadEvent 两条通道
+        com.merlinkitsune.astral_dice.loot.FabricLootInjector.register();
         commitRegistrations();
         registerListeners();
         TrinketBridge.registerAll();

@@ -58,7 +58,13 @@ public final class EliteTargets {
         // ② Boss：c:bosses 通用标签 / 屏幕上方 boss 血条
         if (BossEntityUtil.isBossEntity(entity)) return true;
         // ③ 神化（Apotheosis）标记：apoth.boss（Invader）/ apoth.miniboss（Elite）
-        CompoundTag persistent = entity.getPersistentData();
-        return persistent.getBoolean(APOTH_BOSS_KEY) || persistent.getBoolean(APOTH_MINIBOSS_KEY);
+        //
+        // ⚠️ **Fabric 1.20.1 裁剪**：该判据读的是 Apotheosis 写进
+        // `Entity#getPersistentData()` 的 NBT 键（`apoth.boss` / `apoth.miniboss`）。
+        // ① `getPersistentData()` 是 Forge/NeoForge 的补丁（原版 1.20.1 无此方法）；
+        // ② Apotheosis 无 Fabric 1.20.1 版 ⇒ 本线按既定口径**裁掉该 Forge-only 联动**。
+        // 影响：仅「Apotheosis 自造的 Invader/miniboss」不再被识别为精英；Boss 判定（②）
+        // 与原版阈值判定（①）**完全不受影响**。已登记在 PORT_STATUS 文档的裁剪清单里。
+        return false;
     }
 }

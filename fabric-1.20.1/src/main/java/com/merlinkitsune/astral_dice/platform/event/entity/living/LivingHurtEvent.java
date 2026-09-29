@@ -30,7 +30,7 @@ import com.merlinkitsune.astral_dice.platform.event.Cancelable;
  * This event is fired on the {@link MinecraftForge#EVENT_BUS}.
  * @see LivingDamageEvent
  **/
-@eventbus.api.Cancelable
+@Cancelable
 public class LivingHurtEvent extends LivingEvent
 {
     private final DamageSource source;

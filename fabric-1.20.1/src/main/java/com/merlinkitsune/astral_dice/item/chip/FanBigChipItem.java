@@ -29,7 +29,7 @@ public class FanBigChipItem extends BaseChipItem {
     // 主动技能触发成功后调用:佩戴本筹码时获得随机效果牌并对周围敌对目标施加标记
     public static void applyAfterSignSkill(Player player) {
         if (player.level().isClientSide()) return;
-        var curios = com.merlinkitsune.starenginelib.item.CuriosApi.getCuriosInventory(player);
+        var curios = com.merlinkitsune.astral_dice.compat.curios.CuriosApi.getCuriosInventory(player);
         if (curios.isEmpty()) return;
         if (curios.get().findFirstCurio(s -> s.is(ModItems.HAND_FAN_BIG_CHIP.get())).isEmpty()) return;
 

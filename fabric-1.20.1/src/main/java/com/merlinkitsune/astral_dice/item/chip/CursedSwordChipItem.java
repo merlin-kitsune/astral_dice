@@ -101,7 +101,7 @@ public class CursedSwordChipItem extends BaseChipItem {
         if (stack == null || stack.isEmpty()) return;
         Enchantment marker = com.merlinkitsune.astral_dice.effect.ModEnchantments.CURSE_MARKER.get();
         if (marker == null) return;
-        if (stack.getEnchantmentLevel(marker) <= 0) {
+        if (net.minecraft.world.item.enchantment.EnchantmentHelper.getItemEnchantmentLevel(marker, stack) <= 0) {
             stack.enchant(marker, 1);
         }
     }

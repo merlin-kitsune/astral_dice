@@ -188,15 +188,20 @@ public final class FirstLootChestHandler {
         return path.startsWith(CHEST_TABLE_PREFIX) && !EXCLUDED_TABLES.contains(path);
     }
 
+    /**
+     * 是否已发放过首箱赠礼。
+     *
+     * <p>⚠️ **Fabric 1.20.1 平台差异**:Forge/NeoForge 侧这里读
+     * {@code Player#getPersistentData()}(Forge 补丁方法);原版 1.20.1 的 {@code Entity}
+     * **没有**该方法(javap 实证),故改用本模组的 FAPI 附件键
+     * {@link com.merlinkitsune.astral_dice.component.ModAttachments#FIRST_LOOT_CHEST_GIVEN}
+     * —— 与另 107 个键同一条持久化通道,语义(是否发放)与死亡保留口径一致。
+     */
     private static boolean isDone(Player player) {
-        return player.getPersistentData().getCompound(ROOT_KEY).getBoolean(FLAG_KEY);
+        return com.merlinkitsune.astral_dice.component.ModAttachments.FIRST_LOOT_CHEST_GIVEN.get(player);
     }
 
     private static void markDone(Player player) {
-        CompoundTag persistent = player.getPersistentData();
-        // ⚠️ getCompound 在缺键时返回的是**新实例**（不会挂回父标签）⇒ 改完必须 put 回去
-        CompoundTag root = persistent.getCompound(ROOT_KEY);
-        root.putBoolean(FLAG_KEY, true);
-        persistent.put(ROOT_KEY, root);
+        com.merlinkitsune.astral_dice.component.ModAttachments.FIRST_LOOT_CHEST_GIVEN.set(player, true);
     }
 }

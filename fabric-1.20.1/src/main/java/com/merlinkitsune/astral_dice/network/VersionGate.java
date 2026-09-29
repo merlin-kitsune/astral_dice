@@ -1,6 +1,7 @@
 package com.merlinkitsune.astral_dice.network;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
+import com.merlinkitsune.astral_dice.platform.fml.ModList;
 import java.io.InputStream;
 import java.util.Properties;
 import org.slf4j.Logger;

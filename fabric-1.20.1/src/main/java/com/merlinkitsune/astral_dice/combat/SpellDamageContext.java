@@ -8,7 +8,7 @@ import net.minecraft.world.item.Item;
 import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 import com.merlinkitsune.astral_dice.platform.event.entity.living.LivingDamageEvent;
 import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
-import com.merlinkitsune.astral_dice.compat.curios.ICuriosItemHandler;
+import com.merlinkitsune.astral_dice.compat.curios.ICursiosItemHandler;
 
 import java.util.Optional;
 import com.merlinkitsune.astral_dice.event.DamageEffectCardHandler;
@@ -30,7 +30,7 @@ public class SpellDamageContext {
     /** 直接伤害实体(弹射物/施法者等) */
     public final Entity directEntity;
 
-    private Optional<ICuriosItemHandler> curiosCache = null;
+    private Optional<ICursiosItemHandler> curiosCache = null;
 
     public SpellDamageContext(Player attacker, LivingEntity target, LivingDamageEvent event,
                               DamageSource source, Entity directEntity) {
@@ -42,7 +42,7 @@ public class SpellDamageContext {
     }
 
     // 攻击者 curios(惰性缓存)
-    public Optional<ICuriosItemHandler> curios() {
+    public Optional<ICursiosItemHandler> curios() {
         if (curiosCache == null) {
             curiosCache = CuriosApi.getCuriosInventory(attacker);
         }

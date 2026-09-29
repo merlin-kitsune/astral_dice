@@ -76,7 +76,7 @@ import com.merlinkitsune.starenginelib.target.SelectorTargets;
  * {@link #cardByTypeId(String)} 映射,无排除项);**魔法箭袋例外** —— 只统计
  * {@link #isDamageEffectCard 伤害效果牌}(2026-09-24 用户裁决第二版)。
  */
-public abstract class BaseEffectCardItem extends Item {
+public abstract class BaseEffectCardItem extends Item implements com.merlinkitsune.astral_dice.platform.item.DropGuardItem {
 
     public BaseEffectCardItem(Properties properties) {
         super(properties);
@@ -573,7 +573,7 @@ public abstract class BaseEffectCardItem extends Item {
     @Override
     public boolean onDroppedByPlayer(ItemStack stack, Player player) {
         if (TemporaryCardUtil.isTemporary(stack)) return false;
-        return super.onDroppedByPlayer(stack, player);
+        return true;
     }
 }
 

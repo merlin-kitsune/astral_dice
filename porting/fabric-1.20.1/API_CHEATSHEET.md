@@ -37,7 +37,7 @@
 | 登录/登出/重生 | `ServerPlayConnectionEvents.JOIN / DISCONNECT`、`ServerPlayerEvents.AFTER_RESPAWN` | `fabric-networking-api-v1` / `fabric-entity-events-v1` |
 | 实体加入世界 | `ServerEntityEvents.ENTITY_LOAD / ENTITY_UNLOAD` | `fabric-entity-events-v1` |
 | `RegisterCommandsEvent` | `CommandRegistrationCallback`（v2） | 见 §2 |
-| `LootTableLoadEvent` / GLM 战利品注入 | `LootTableEvents.MODIFY.register((key, tableBuilder, source) -> ...)` + `LootPool` | `fabric-loot-api-v2/.../LootTableEvents.java` |
+| `LootTableLoadEvent` / GLM 战利品注入 | `LootTableEvents.MODIFY.register((resourceManager, lootManager, id, tableBuilder, source) -> ...)` — **5 参**（原稿误写 3 参）+ `LootPool`（收 `LootPool` 而非 Builder，需 `.build()`） | `fabric-loot-api-v2/.../LootTableEvents.java` |
 | 玩家交互（右键物品/方块/实体） | `UseItemCallback`、`UseBlockCallback`、`UseEntityCallback` | `fabric-events-interaction-v0/...` |
 | 渲染 HUD | `HudRenderCallback.EVENT.register((drawContext, tickDelta) -> ...)`（1.20.1 = `MatrixStack`） | `fabric-rendering-v1/src/client/.../HudRenderCallback.java` |
 | 屏幕事件（按钮注入/afterInit） | `ScreenEvents.AFTER_INIT.register((client, screen, scaledWidth, scaledHeight) -> ...)` + `Screens.getButtons(screen)` | `fabric-screen-api-v1/src/client/.../ScreenEvents.java` |
@@ -48,10 +48,10 @@
 
 | 主题 | Forge 1.20.1（现状） | Fabric（CCA 5.2.3） | 证据（ref/cardinal-components-api 内路径） |
 |---|---|---|---|
-| 注册容器 | `ModCapabilities.register(...)` + `AttachCapabilitiesEvent<Entity>`（108 键经 `AstralData/AttachedDataKey`） | `ComponentRegistryV3.INSTANCE.getOrCreate(ResourceLocation, Class)` 返回 `ComponentKey<T>`；`EntityComponentInitializer.register(Entity.class, key, factory)` | `cardinal-components-base/.../ComponentRegistryV3.java`、`cardinal-components-entity/.../EntityComponentInitializer.java` |
-| 组件契约 | `INBTSerializable<CompoundTag>`（readNbt/writeNbt） | `ComponentV3`（`readFromNbt(NbtCompound)` / `writeToNbt(NbtCompound)`） | `cardinal-components-base/.../ComponentV3.java` |
-| 同步 | 自定义包（SimpleChannel） | 需同步者实现 `sync.AutoSyncedComponent`（自动 S2C） | `cardinal-components-base/.../sync/AutoSyncedComponent.java` |
-| 死亡重生保留 | `PlayerEvent.Clone` 手工复制 ×5 | 逐组件显式 `entity.RespawnCopyStrategy`（`INVENTORY / CHARACTER / ALWAYS_COPY / NEVER_COPY / LOST_AFTER_DEATH`） | `cardinal-components-entity/.../RespawnCopyStrategy.java` |
+| 注册容器 | ~~CCA~~ → **Fabric API 附件**（用户裁决）：`AttachmentRegistry.builder().persistent(Codec).copyOnDeath().initializer(...).buildAndRegister(id)`；108 键经 `AttachedDataKey`（`ModCapabilities`/`AstralData` 已删除） | `ComponentRegistryV3.INSTANCE.getOrCreate(ResourceLocation, Class)` 返回 `ComponentKey<T>`；`EntityComponentInitializer.register(Entity.class, key, factory)` | `cardinal-components-base/.../ComponentRegistryV3.java`、`cardinal-components-entity/.../EntityComponentInitializer.java` |
+| 组件契约 | `INBTSerializable<CompoundTag>`（readNbt/writeNbt） | **FAPI `AttachmentType<A>` + `Codec<A>`**（本线载荷用 `CompoundTag.CODEC`）；CCA 的 `ComponentV3` **不再使用** | `cardinal-components-base/.../ComponentV3.java` |
+| 同步 | 自定义包（SimpleChannel） | 自定义包（本线自建 `platform/network/SimpleChannel`，走 FAPI Networking） | `cardinal-components-base/.../sync/AutoSyncedComponent.java` |
+| 死亡重生保留 | `PlayerEvent.Clone` 手工复制 ×5 | 附件 `.copyOnDeath()`（由 `fabric-entity-events-v1` 调 `AttachmentTargetImpl.transfer` 驱动）；FAPI 另有 `ServerPlayerEvents.COPY_FROM` | `cardinal-components-entity/.../RespawnCopyStrategy.java` |
 | 直接 NBT（getPersistentData ×4） | FML patch | CCA 组件或自挂 NBT（按域归属；钱包走库的 `FabricEconomyStorage`，见库方案） | — |
 
 ## 5. 网络（SimpleChannel → FAPI Networking）
@@ -101,3 +101,17 @@
 | Iron's Spells / Bountiful | **裁剪**（无 Fabric 1.20.1 版） | 联动整段删除 |
 
 > 全部证据路径均指向 worktree 内 `ref/`（已克隆）。事件/回调的完整「逐事件」对照（约 40 种）在 `PORT_ANALYSIS.md` §4.2。
+
+
+---
+
+## 10. 订正记录（2026-09-29 实测）
+
+- **`LootTableEvents.MODIFY` 是 5 参**（原稿 §6 写成 3 参）：`(ResourceManager, LootManager, Identifier, LootTable.Builder, LootTableSource)`。
+- **持久化方案已从 CCA 改为 Fabric API 附件**（用户裁决）：§4 表格中的 `ComponentV3` / `RespawnCopyStrategy` /
+  `AutoSyncedComponent` 一列**全部作废**，以实际实现（`component/AttachedDataKey.java` + FAPI
+  `AttachmentRegistry` / `AttachmentType` / `AttachmentTarget`）为准。
+- **1.20.1 战利品表不是注册表条目**：`ResourceLocation`（非 `ResourceKey<LootTable>`）、
+  `LootTableReference.lootTableReference(ResourceLocation)`、`LootTable.Builder#pool(LootPool)`。
+- **`@Inject(method = ...)` 必须写纯方法名**（Loom 只重映射纯名；带描述符者不重映射 ⇒ 生产崩）。
+- 事件是否「有第三方可替代」的完整调研见 **`EVENT_API_RESEARCH.md`**。

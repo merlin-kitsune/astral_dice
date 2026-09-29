@@ -291,3 +291,65 @@ public final class Rarity extends Enum<Rarity> {
 5. **dimension 切换**：`PlayerChangedDimensionEvent` 未接线（FAPI 无该回调），需 `ServerPlayer#changeDimension` mixin。
 6. **datagen**：已整体移出（`temp/removed/datagen_*`），需按 FAPI 的 `FabricDataGenerator` 重新实现。
 7. **冒烟测试**：未开始。
+
+
+---
+
+## 八、第三轮执行记录（2026-09-29 10:00–11:00）：CCA 移除 + 编译归零 + 产物级验证
+
+### 8.1 用户裁决执行：移除 CCA → Fabric API 附件
+
+| 位置 | 改动 |
+|---|---|
+| 库 `FabricEconomyStorage` | CCA 组件 → `AttachmentRegistry.builder().persistent(CompoundTag.CODEC).copyOnDeath().buildAndRegister(id)`；离线读档改走 `fabric:attachments` |
+| 库 `build.gradle` / `gradle.properties` / `fabric.mod.json` | 删 CCA 运行依赖与 entrypoint；`depends` 改 `fabric-data-attachment-api-v1`；**保留 `modCompileOnly` CCA base**（Trinkets 的 `TrinketComponent` 继承 `ComponentV3`，编译期必须可见） |
+| 库 `StarEngineLib` | 补调 `FabricEconomyStorage.registerCommands()`（原实现里 `/starcoin` 命令**从未接线**，属既有缺陷） |
+| 消费方 `build.gradle` / `gradle.properties` / `fabric.mod.json` | 同上（`modCompileOnly` + 删运行前置） |
+| 消费方 源码 | 无 CCA 引用（`AttachedDataKey` 早已是 FAPI 附件） |
+
+**关键事实（必须登记）**：**Trinkets 3.7.2 自己 hard-depends CCA**
+（`fabric.mod.json` 声明 `cardinal-components-base/entity >=3.0.0-0`，且 `TrinketComponent extends ComponentV3`）。
+⇒ CCA 无法从运行环境消失，但已降级为「**Trinkets 的传递前置 + 我们的编译期 only**」，玩家不再为**本模组**单独安装它。
+
+**产物核验**：库 jar `starengine_lib-fabric-1.20.1-1.0.6.jar`（72822 B）内 `fabric.mod.json` 的 `depends`
+= `{fabricloader, minecraft, fabric-api, fabric-data-attachment-api-v1}`，**无 CCA** ✅。
+
+### 8.2 编译归零（588 → 0）
+
+| 阶段 | 处理内容 |
+|---|---|
+| 事件层 | 21 个 mixin（含新增 3 个）；`@eventbus.api.X` → `@X`；`EntityEvent` 重复 `@Deprecated` |
+| 生命周期 | 生成 `OnDatapackSyncEvent` shim + `FabricBridges` 桥接 `SYNC_DATA_PACK_CONTENTS` |
+| 注册/工具 | `ModList` 返回**真实** `ModContainer`/`IModInfo`（含 `getVersion()`，VersionGate 依赖它）；`IModInfo` 补 `getVersion()` |
+| 战利品 | GLM 两文件 + 13 JSON + `data/forge/loot_modifiers` 移出（`temp/removed_glm/`）；新建 `loot/FabricLootInjector`（43 箱表 + 12 实体表，逐字取自原 GLM JSON） |
+| 饰品 | `ICuriosItemHandler` → `ICursiosItemHandler`（文件/接口名对齐）；`ICurioStacksHandler` 补 `getModifiers/removeModifier/addPermanentModifier/update`；`ICursiosItemHandler` 补 `findCurios`；`ICurioItem` 补 `getAttributeModifiers`；`TrinketBridge` 桥接 `getModifiers` |
+| Forge 补丁 API | `getPersistentData` → FAPI 附件（`FIRST_LOOT_CHEST_GIVEN`）；`ItemTags.create` → `TagKey.create`；`isDamageable(stack)` → `isDamageableItem()`；`getFoodProperties(stack,player)` → `getFoodProperties()`；`getEnchantmentLevel` → `EnchantmentHelper`（`world.item.enchantment` 包）；`getGuiLeft/Top` → `leftPos/topPos`（AW 放宽）；`CreativeModeTab.builder()` → `FabricItemGroup.builder()`（删 Forge 的 `withTabsBefore`）；`Item#onDroppedByPlayer` → 自有 `DropGuardItem` + 2 mixin；`Item#getMaxStackSize(stack)` → 自有 `StackCountOverrideItem` + 1 mixin；`LightningBolt#setDamage/getDamage` → `RailgunBolts` 弱引用表 |
+| 裁剪 | `Apotheosis` 精英判据（无 Fabric 1.20.1 版）；Iron's Spells 联动 |
+
+### 8.3 产物级验证（本轮最重要的可交付证据）
+
+| 判据 | 结果 |
+|---|---|
+| `:fabric-1.20.1:build` | ✅ SUCCESSFUL，产物 `astral_dice-1.3.2+fabric_1.20.1.jar`（**1,539,193 B**） |
+| jar 内 `fabric.mod.json` | ✅ 占位符已展开：`id=astral_dice`、`version=1.3.2+fabric_1.20.1`、`depends` 含 `fabric-data-attachment-api-v1` 与 `trinkets>=3.7.2`、**无 CCA**；`accessWidener` + `mixins` 均在 |
+| **mixin 重映射**（R3） | ✅ 21 个 mixin 类，**0 处 Mojmap 残留**；`@Inject` 注解值已是 intermediary（`method_7914` / `method_7328` / `method_7329` …） |
+| refmap | 无 refmap 文件（**预期**：Loom 1.14+ 在 `remapJar` 阶段直接重映射注解值，不再需要 refmap） |
+
+### 8.4 仍未完成（下一轮必做，按优先级）
+
+1. **🚨 事件 mixin 桥（最高优先，未接线 = 战斗链静默失效）**：
+   `LivingDamageEvent`(11 处) / `LivingDeathEvent`(13) / `LivingHurtEvent`(4) / `MobEffectEvent.{Added,Pre,Remove,Expired}`(14) /
+   `LivingHealEvent` / `LivingChangeTargetEvent` / `LivingUseTotemEvent` / `LivingDropsEvent` / `EntityItemPickupEvent` /
+   `AttackEntityEvent` / `ItemTossEvent` / `ItemCraftedEvent` / `AnvilUpdateEvent` / `ProjectileImpactEvent` /
+   `EntityTravelToDimensionEvent` / `EntityTeleportEvent` / `BlockEvent.BreakEvent`。
+   共 47 种事件类型 / 109 个处理器，其中 **FAPI 已覆盖 9 类**（tick / 登录登出 / clone / respawn / 命令 / 数据包同步 /
+   ALLOW_DAMAGE / 交互 / tooltip），**其余需 mixin 或 FAPI 交互回调补齐**。
+   第三方可行性结论见 **`EVENT_API_RESEARCH.md`**（结论：不引入，自写；MixinExtras 已内置可用）。
+2. **客户端接线**：`AstralDiceClient`（`ClientModInitializer`）+ HUD（`HudRenderCallback`）+ 按键（`KeyBindingHelper`）+
+   粒子（`ParticleFactoryRegistry`）+ `HandledScreens.register`（容器）+ tooltip 边框 mixin
+   （Forge 的 `RenderTooltipEvent.Color` 无 FAPI 对应）+ `RenderLevelStageEvent` → `WorldRenderEvents`。
+3. **datagen**：按 `FabricDataGenerator` 重做（现整体移出）。
+4. **资源重排**：`data/curios/slots|tags` → `data/trinkets/slots/<group>/{group,<slot>}.json` + `data/trinkets/entities/astral_dice.json`；
+   删 `data/forge/**`（若还有残留）。
+5. **冒烟测试**：`run/server` + `run/client`；测试环境需装 lithium / indium / starlight（已进 `modRuntimeOnly`）；
+   ⚠️ **JEI 不能走 Gradle**（其 manifest `Fabric-Loom-Version: 1.17.20` 被 Loom 1.14.10 门禁拒绝）⇒ 手工投放 `run/mods`。

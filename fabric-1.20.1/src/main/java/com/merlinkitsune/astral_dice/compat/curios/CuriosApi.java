@@ -2,13 +2,16 @@ package com.merlinkitsune.astral_dice.compat.curios;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.function.Predicate;
 
 import com.merlinkitsune.starenginelib.item.TrinketsCompat;
 
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.item.ItemStack;
 
 /**
@@ -28,7 +31,7 @@ public final class CuriosApi {
     public static final String MODID = "trinkets";
 
     /** 饰品库存(对应 Curios 的 {@code getCuriosInventory},返回 Optional)。 */
-    public static Optional<ICuriosItemHandler> getCuriosInventory(LivingEntity entity) {
+    public static Optional<ICursiosItemHandler> getCuriosInventory(LivingEntity entity) {
         return TrinketsCompat.getCuriosInventory(entity).map(View::new);
     }
 
@@ -39,10 +42,10 @@ public final class CuriosApi {
 
     /** 全部槽位组(对应 Forge 侧 {@code CuriosCompat.getCuriosMap})。 */
     public static Map<String, ICurioStacksHandler> getCuriosMap(LivingEntity entity) {
-        return getCuriosInventory(entity).map(ICuriosItemHandler::getCurios).orElseGet(Collections::emptyMap);
+        return getCuriosInventory(entity).map(ICursiosItemHandler::getCurios).orElseGet(Collections::emptyMap);
     }
 
-    private static final class View implements ICuriosItemHandler {
+    private static final class View implements ICursiosItemHandler {
         private final TrinketsCompat.InventoryView delegate;
         private final Map<String, ICurioStacksHandler> handlers;
 
@@ -68,6 +71,13 @@ public final class CuriosApi {
             return delegate.findFirstCurio(predicate)
                     .map(r -> new SlotResult(r.slotId(), r.index(), r.stack()));
         }
+
+        @Override
+        public List<SlotResult> findCurios(Predicate<ItemStack> predicate) {
+            return delegate.findCurios(predicate).stream()
+                    .map(r -> new SlotResult(r.slotId(), r.index(), r.stack()))
+                    .toList();
+        }
     }
 
     private static final class Handler implements ICurioStacksHandler {
@@ -85,6 +95,26 @@ public final class CuriosApi {
         @Override
         public int getSlots() {
             return delegate.getSlots();
+        }
+
+        @Override
+        public Map<UUID, AttributeModifier> getModifiers() {
+            return delegate.getModifiers();
+        }
+
+        @Override
+        public void removeModifier(UUID id) {
+            delegate.removeModifier(id);
+        }
+
+        @Override
+        public void addPermanentModifier(AttributeModifier modifier) {
+            delegate.addPermanentModifier(modifier);
+        }
+
+        @Override
+        public void update() {
+            delegate.update();
         }
     }
 

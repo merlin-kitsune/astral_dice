@@ -10,3 +10,8 @@ accessible class net/minecraft/client/renderer/RenderType$CompositeState$Composi
 # Forge 也放开了 RenderStateShard.TransparencyStateShard(vanilla 为 protected);
 # RenShieldRenderer 自建 RenderType 时用它声明透明度状态。
 accessible class net/minecraft/client/renderer/RenderStateShard$TransparencyStateShard
+
+# Forge 把 AbstractContainerScreen 的 leftPos/topPos 从 protected 放成 public;
+# 钱包叠层按钮(StarCoinWalletButtons)读父屏幕坐标时依赖该可见性。
+accessible field net/minecraft/client/gui/screens/inventory/AbstractContainerScreen leftPos I
+accessible field net/minecraft/client/gui/screens/inventory/AbstractContainerScreen topPos I

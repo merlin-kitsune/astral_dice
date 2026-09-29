@@ -245,3 +245,134 @@ data/trinkets/entities/<name>.json         {"slots":["<group>/<slot>",...],"enti
 ⇒ 本模组的槽位文件必须放在 jar 内的 `data/trinkets/` 下（不是 `data/astral_dice/`）。
 `SlotType.amount` 是**静态**的；动态槽位（本模组的 chip 槽随骰子星级增长）走
 `TrinketInventory#addModifier(AttributeModifier, ADDITION)` —— **需专门验证**。
+
+
+---
+
+## 7. 勘误与实测补充（第二轮执行，2026-09-29）
+
+> 本节全部为**实机/字节码级实测结论**，与上文原稿冲突时**以本节为准**。
+
+### 7.1 【用户裁决】移除 Cardinal Components API，持久化改用 Fabric API 附件
+
+- **落点**：库 `starengine_lib/fabric-1.20.1/.../economy/FabricEconomyStorage.java`
+  （`ComponentRegistryV3` + `EntityComponentInitializer` + `RespawnCopyStrategy.ALWAYS_COPY`
+  → `AttachmentRegistry.<CompoundTag>builder().persistent(CompoundTag.CODEC).copyOnDeath().initializer(CompoundTag::new).buildAndRegister(id)`）；
+  消费方 `component/AttachedDataKey.java`（108 键）与 `component/AstralData`、`ModCapabilities` **全部删除**。
+- **附件 API 的真实签名**（javap 实测，务必照抄）：
+  - `AttachmentRegistry.create(id)` / `createDefaulted(id, supplier)` / `createPersistent(id, codec)` / `builder()`
+  - `Builder` 只有 4 个方法：`persistent(Codec)` / `copyOnDeath()` / `initializer(Supplier)` / **`buildAndRegister(ResourceLocation)`**
+    —— ⚠️ **没有 `build()`**（原稿若写 `build()` 会编译失败）。
+  - `AttachmentTarget`：`getAttached` / `getAttachedOrCreate` / `getAttachedOrElse` / `setAttached` / `hasAttached` / `removeAttached` / `modifyAttached`。
+  - 附件是**引用类型**：只改内容不会触发「已变更」⇒ 改完必须 `setAttached(...)` 重新挂一次。
+- **玩家 .dat 的 NBT 布局（决定性）**：根键 = **`fabric:attachments`**（`AttachmentTarget.NBT_ATTACHMENT_KEY` 的字节码常量），
+  其下以**附件的 `identifier()` 字符串**为键：
+  ```
+  玩家 .dat
+    └─ fabric:attachments
+         └─ starengine_lib:star_coin_wallet
+              ├─ balance : Long
+              └─ name    : String
+  ```
+  ⇒ 离线读档的路径与 Forge 线（`ForgeData`）/ NeoForge 线（`NeoForgeData`）不同，`readOfflineWallet` 已按此改写。
+- **`copyOnDeath` 的驱动方**：`fabric-data-attachment-api-v1` 的 mixin 列表里**没有** Player mixin ——
+  真正的复制由 **`fabric-entity-events-v1`** 调 `AttachmentTargetImpl.transfer(...)` 完成
+  （这正是附件模块 `depends` 里声明 `fabric-entity-events-v1` 的原因）。
+- ⚠️ **CCA 无法从运行环境彻底消失，但已不是「我们的前置」**：
+  **Trinkets 3.7.2 自身的 `fabric.mod.json` hard-depends `cardinal-components-base/entity >=3.0.0-0`**
+  （且 `TrinketComponent extends ComponentV3` —— javap 实证）。
+  ⇒ ① CCA 变成「**Trinkets 的传递前置**」，玩家不再需要为**本模组**单独安装；
+  ② 但它仍必须在**编译期**可见（否则 javac 解析 `TrinketsApi#getTrinketComponent` 的签名时报
+  「无法访问 ComponentV3」）⇒ 库与消费方各保留一条 **`modCompileOnly`**（**不写进 `fabric.mod.json`**）。
+  ③ 若将来要彻底摆脱 CCA，只能换饰品方案（另议）。
+
+### 7.2 🚨 红线：Loom 只重映射「纯方法名」的 `@Inject(method = ...)`
+
+Bytecode 级实测（javap -v 读生产 jar 的注解值）：
+
+| 源码写法 | 生产 jar 内的注解值 | 结果 |
+|---|---|---|
+| `method = "getMaxStackSize"` | **`method_7914`** | ✅ 已重映射 |
+| `method = "drop(Z)Lnet/minecraft/world/entity/item/ItemEntity;"` | 原样保留（含 Mojmap `ItemEntity`） | ❌ **未重映射** |
+
+Loom 1.14 起 Mixin 注解处理器默认关闭、改由 `remapJar` 阶段重映射注解值，
+**它只认纯方法名**；带描述符者原样透传 ⇒ intermediary 生产环境「找不到目标方法 → 注入失败 → `defaultRequire: 1` 直接崩」。
+⇒ **本线所有 mixin 的 `method` 一律写纯方法名**；重载歧义交给 Mixin 按 handler 签名自动筛选（不匹配的跳过）。
+**交付前必跑**：解包生产 jar，断言所有 `mixin/**` class 内**不含 `net/minecraft/<小写包>/` 形态的 Mojmap 路径**。
+（当前 21 个 mixin 类、0 处残留。）
+
+### 7.3 战利品：1.20.1 ↔ 1.21 的三处易错差异
+
+1. **没有 `Registries.LOOT_TABLE`** —— 战利品表不是注册表条目 ⇒ 引用一律走 `ResourceLocation`
+   （不是 1.21 的 `ResourceKey<LootTable>`）。
+2. `LootTableReference.lootTableReference(...)` 收 **`ResourceLocation`**。
+3. `LootTable.Builder#pool(...)` 收 **`LootPool`**（不是 `LootPool.Builder`）⇒ 必须 `.build()`。
+4. **`LootTableEvents.MODIFY` 是 5 参 lambda**：`(ResourceManager, LootManager, Identifier, LootTable.Builder, LootTableSource)`
+   —— 本仓 `API_CHEATSHEET.md` 原稿写成 3 参，**已订正**。
+5. **不需要** Forge 那套「`table.getPool("astral_dice:xxx") != null` 幂等早退」：MODIFY 每次重载作用在**新建的 Builder** 上，天然幂等；
+   1.20.1 的 `LootTable` 也没有 `getPool(String)` 这种 Forge 补丁 API。
+6. **自有命名空间早退必须保留**（`astral_dice` 直接 return）：自有表 `astral_dice:chests/star_plate` 的 path 也是 `chests/...`，
+   会被前缀判据命中（项目历史上的「双通道重复注入、概率 1−(1−p)² 放大」就是它）。
+7. **GLM 整体不存在**：Fabric 没有 `forge:global_loot_modifier_serializers` 注册表 ⇒
+   原 `loot/AddTableLootModifier.java` + `loot/AstralLootModifiers.java` + 13 份 `data/astral_dice/loot_modifiers/*.json`
+   + `data/forge/loot_modifiers/global_loot_modifiers.json` **全部移出**（备份在 `temp/removed_glm/`），
+   等价物 = `loot/FabricLootInjector.java` 用 `LootTableReference` 把星盘子表挂上去。
+   ⚠️ 注入面**逐字取自原 GLM JSON**（43 个箱表 + 12 个实体表，写成 `Set`/`Map` 常量），
+   **不要用 `chests/` 前缀近似** —— 那会让概率口径与 Forge 线不一致。
+
+### 7.4 饰品适配层：Trinkets 的动态槽位是**原生支持**的（最大功能风险解除）
+
+`TrinketInventory`（javap 实证）：
+```
+private final int baseSize;
+private final Map<UUID, AttributeModifier> modifiers;
+getModifiers() / addModifier(AttributeModifier) / addPersistentModifier(AttributeModifier)
+removeModifier(UUID) / update() / getModifiersByOperation(Operation)
+```
+⇒ 槽位数 = `baseSize` + 修饰符运算结果，**与 Curios 用修饰符增量控制槽位数的机制同源**。
+且本模组的两个槽位修饰符常量（`CHIP_SLOT_MODIFIER` / `CURIO_LEGACY_MODIFIER`）**本身就是 `UUID`**
+⇒ 适配层零转换，`ICurioStacksHandler#getModifiers()` 直接返回 `Map<UUID, AttributeModifier>`；
+`addPermanentModifier`（Curios 名）→ `addPersistentModifier`（Trinkets 名）。
+
+另外：`Trinket` 接口的 `getModifiers(ItemStack, SlotReference, LivingEntity, UUID): Multimap<Attribute, AttributeModifier>`
+正是 Curios `ICurioItem#getAttributeModifiers(SlotContext, UUID, ItemStack)` 的等价物 ⇒ 桥接写法见 `compat/curios/TrinketBridge.Adapter`。
+
+### 7.5 FAPI 在 1.20.1 **没有** stack-aware 堆叠上限
+
+`FabricItem` 只有 6 个方法（`allowNbtUpdateAnimation` / `allowContinuingBlockBreaking` / `getAttributeModifiers` /
+`isSuitableFor` / `getRecipeRemainder` …），**没有** `getMaxStackSize(ItemStack)`（那是 Forge 补丁）。
+⇒ 本模组自建契约 `platform/item/StackCountOverrideItem` + 极小 mixin `mixin/ItemStackMaxCountMixin`
+（注 `ItemStack#getMaxStackSize` 的 HEAD，对实现该接口的物品返回栈级值，其余物品字节码路径不变）。
+
+### 7.6 Forge 补丁方法「没有 FAPI 等价物」时的通用套路（本轮共用到 3 次）
+
+`Item#onDroppedByPlayer` / `Item#getMaxStackSize(ItemStack)` / `LightningBolt#setDamage` 三者共用同一模式：
+
+1. 在 `platform/` 下定义**自有契约接口**（`DropGuardItem` / `StackCountOverrideItem`）；
+2. 让原类 `implements` 它，方法体**零改动**（只把 `super.xxx(...)` 换成语义等价返回值）；
+3. 写一个**极小的 mixin** 在原版对应方法的 HEAD 询问该接口，未实现者**不改返回值**（原版路径字节码不变）。
+
+例外：`LightningBolt#setDamage/getDamage` 连接口都不必 —— 直接把这一个 `float` 放进既有的
+`damage/RailgunBolts` 弱引用表（`mark(bolt, damage)` / `damageOf(bolt)`），零 mixin。
+
+### 7.7 编译收敛轨迹（可复用的工作量标尺）
+
+```
+javac 首轮        588 错（全部是 net.minecraftforge.* / top.theillusivec4.* 未解析 ⇒ 无隐藏第二类问题）
+机械 import 重写   525
+平台 shim 补齐     344
+清 FQN 残留        6   ← 此处的「6」是假象：语法错误会让 javac 提前中止，掩盖语义错误
+Loops 修复后       61
+Curios/战利品/附件 43 → 18 → 3 → 0  ✅ BUILD SUCCESSFUL
+```
+⚠️ **javac 报错数不是单调下降的**：语法错误（如方法调用参数列表的尾逗号）会让 javac 在 parse 阶段中止，
+此时「错误数很少」是**假绿**，修掉语法后语义错误会一次性全部浮出。**每修一批都要看完整日志，不要相信数量下降。**
+
+### 7.8 库侧版本/缓存的坑（本轮实测）
+
+- 库改了 `TrinketsCompat`（新增 4 个方法 + `findCurios`）后 `publishToMavenLocal` 成功、jar 内**确实含新方法**，
+  但消费方仍报「找不到符号」⇒ **Gradle 对同名同版本 artifact 有缓存**。
+- ⚠️ **不能用 `--refresh-dependencies`**：它会强制重新解析**全部**依赖，而本机沙箱访问
+  `repo.maven.apache.org` 返回 **403 Forbidden** ⇒ 整条 `:compileJava` 因依赖解析失败而挂（实测 2m44s 失败）。
+- 正确做法：**只清该 artifact 的缓存条目**（`~/.gradle/caches/modules-2/files-2.1/<group>/` 与
+  `metadata-*/descriptors/<group>/`，移走而非删除），或按项目规范 **bump 库版本号**再发布。

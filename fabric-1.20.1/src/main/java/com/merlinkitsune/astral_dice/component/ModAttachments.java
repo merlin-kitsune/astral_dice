@@ -897,6 +897,17 @@ public class ModAttachments {
     public static final AttachedDataKey<Boolean> GUIDE_BOOK_GIVEN =
             register(AttachedDataKey.builder("guide_book_given", Codec.BOOL, () -> false).copyOnDeath().build());
 
+    /**
+     * 「本存档第一个战利品箱的赠礼已发放」标记。
+     *
+     * <p>⚠️ **移植说明**:Forge 侧 {@code event/FirstLootChestHandler} 用
+     * {@code Player#getPersistentData()} 存这个 flag —— 那是 Forge/NeoForge 的补丁
+     * (javap 实证:1.20.1 原版 {@code Entity} 没有该方法)。Fabric 侧改用本附件键,
+     * 与另 107 个键走同一条持久化通道。
+     */
+    public static final AttachedDataKey<Boolean> FIRST_LOOT_CHEST_GIVEN =
+            register(AttachedDataKey.builder("first_loot_chest_given", Codec.BOOL, () -> false).copyOnDeath().build());
+
     public static boolean isGuideBookGiven(net.minecraft.world.entity.player.Player player) {
         return GUIDE_BOOK_GIVEN.get(player);
     }

@@ -20,7 +20,7 @@
 | 模组 | 钉值（文件名） | 坐标参考 | 替代关系 |
 |---|---|---|---|
 | **Trinkets** | **3.7.2**（`trinkets-3.7.2.jar`） | `maven.modrinth:trinkets:3.7.2` / `curse.maven:trinkets-341284:5173501` | **替 Curios**（饰品栏；包 `dev.emi.trinkets.api`） |
-| **Cardinal Components API** | **5.2.3**（`cardinal-components-base-5.2.3.jar` / `-entity`） | ⚠️ **实测坐标 = `dev.onyxstudios.cardinal-components-api:cardinal-components-base:5.2.3`**（groupId **不是** `dev.onyxstudios.cca`；可从 `https://maven.ladysnake.org/releases` 解析）。包名仍为 `dev.onyxstudios.cca.api.v3` | **替 Capability/Attachments**（⚠️ 但 1.20.1 Fabric **另有** `fabric-data-attachment-api-v1`，见 SKILL §勘误） |
+| **Cardinal Components API** | **5.2.3**（**仅编译期，已从运行前置移除**） | ⚠️ **实测坐标 = `dev.onyxstudios.cardinal-components-api:cardinal-components-base:5.2.3`**（groupId **不是** `dev.onyxstudios.cca`；可从 `https://maven.ladysnake.org/releases` 解析）。包名仍为 `dev.onyxstudios.cca.api.v3` | **替 Capability/Attachments**（⚠️ 但 1.20.1 Fabric **另有** `fabric-data-attachment-api-v1`，见 SKILL §勘误） |
 | **Fabric API** | **0.92.12+1.20.1**（`fabric-api-0.92.12+1.20.1.jar`） | `maven.modrinth:fabric-api:0.92.12+1.20.1` | 运行必需（1.20.1 支持止于 0.92 线） |
 | **StarEngine Lib（fabric 变体）** | **1.0.6**（库新增平台后发布） | `com.merlinkitsune.starenginelib:starengine_lib-fabric-1.20.1:1.0.6`（mavenLocal） | 跨仓硬前置；**先行发布**（四线同号 bump） |
 | Patchouli（手册，**纳入首版**） | **1.20.1-85-FABRIC**（`Patchouli-1.20.1-85-FABRIC.jar`） | `maven.modrinth:patchouli:1.20.1-85-fabric`（待反查确切 versionId） | 手册（Forge 版为 1.20.1-85-forge，同 build 号有 Fabric 变体） |
@@ -59,3 +59,32 @@
 | `ref/patchouli` | `1.20.x`（f561109，多平台 Fabric/NeoForge/Xplat 结构） | Patchouli Fabric 版结构 |
 
 > ⚠️ 上表坐标列为「建议坐标」，**逐一以 `tools/check_mod_sources.ps1`（R1/R1b/R2/R3 守门）反查的最终坐标为准**；Modrinth/CF 的 fileId 精确值在执行移植时用 Modrinth API `v2/project/<slug>/version?loaders=["fabric"]&game_versions=["1.20.1"]` 重新反查一次（本表版本号已为当时实测值）。
+
+
+---
+
+## 订正（2026-09-29 实测）
+
+### CCA 已从「运行前置」降级为「编译期 only」
+
+- **用户裁决**：移除 CCA，组件/持久化改用 **Fabric API 自带的 `fabric-data-attachment-api-v1`**（随 `fabric-api` 分发）。
+- 库与消费方的 `fabric.mod.json` `depends` 里 **不再有 `cardinal-components-*`**，
+  改为声明 `fabric-data-attachment-api-v1`。
+- 但 `cca_version=5.2.3` **必须保留**，且依赖降级为 **`modCompileOnly`**：
+  **Trinkets 3.7.2 的 `TrinketComponent extends ComponentV3`**（javap 实证），
+  javac 解析 `TrinketsApi#getTrinketComponent` 的签名时必须能加载 CCA 类型，
+  否则报「无法访问 ComponentV3」。
+- 同理，`maven.ladysnake.org` 仓库也只为**编译期解析**而保留。
+- **运行期 CCA 由 Trinkets 自己 hard-depends**（其 `fabric.mod.json` 声明
+  `cardinal-components-base/entity >=3.0.0-0`）⇒ 玩家不再需要为**本模组**单独安装 CCA；
+  但要彻底摆脱它只能更换饰品方案。
+
+### 实测确认的钉值（与原表一致，附证据）
+
+| 项 | 钉值 | 证据 |
+|---|---|---|
+| fabric-loom | 1.14.10 | 与 wrapper 9.2.1 实测兼容（`BUILD SUCCESSFUL`） |
+| fabric-loader | 0.19.5 | **内置 MixinExtras**（0.17.0+）⇒ `@WrapOperation` 等零依赖可用 |
+| Trinkets | 3.7.2 | `Trinket.getModifiers(...)` / `TrinketInventory` 动态槽位 API 实测确认 |
+| CCA | 5.2.3 | **仅 `modCompileOnly`** |
+| fabric-api | 0.92.12+1.20.1 | 内含 `fabric-data-attachment-api-v1`（`META-INF/jars/`）+ `fabric-loot-api-v2` |

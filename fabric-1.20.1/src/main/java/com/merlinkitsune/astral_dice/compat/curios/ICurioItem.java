@@ -1,5 +1,10 @@
 package com.merlinkitsune.astral_dice.compat.curios;
 
+import com.google.common.collect.HashMultimap;
+import com.google.common.collect.Multimap;
+
+import net.minecraft.world.entity.ai.attributes.Attribute;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.item.ItemStack;
 
 /**
@@ -42,5 +47,16 @@ public interface ICurioItem {
 
     default boolean canUnequip(SlotContext slotContext, ItemStack stack) {
         return true;
+    }
+
+    /**
+     * 装备在饰品槽时提供的属性修饰符(Curios 5.x 的 {@code ICurioItem#getAttributeModifiers})。
+     *
+     * <p>映射到 Trinkets 的 {@code Trinket#getModifiers(ItemStack, SlotReference, LivingEntity, UUID)}
+     * (javap 实证签名一致:返回 {@code Multimap<Attribute, AttributeModifier>})。
+     */
+    default Multimap<Attribute, AttributeModifier> getAttributeModifiers(
+            SlotContext slotContext, java.util.UUID id, ItemStack stack) {
+        return HashMultimap.create();
     }
 }

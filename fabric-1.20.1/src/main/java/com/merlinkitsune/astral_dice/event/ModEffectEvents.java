@@ -28,7 +28,7 @@ public class ModEffectEvents {
             event.setCanceled(true);
             return;
         }
-        String effectId = net.minecraft.core.registries.BuiltInnet.minecraft.core.registries.BuiltInRegistries.MOB_EFFECT.getKey(effect.getEffect()).toString();
+        String effectId = net.minecraft.core.registries.BuiltInRegistries.MOB_EFFECT.getKey(effect.getEffect()).toString();
         if (effectId != null && effectId.startsWith(AstralDiceMod.MODID + ":")) {
             event.setCanceled(true);
         }
@@ -42,7 +42,7 @@ public class ModEffectEvents {
         if (!(event.getEntity() instanceof Player player)) return;
         MobEffectInstance instance = event.getEffectInstance();
         if (instance == null || instance.getEffect() == null) return;
-        String id = net.minecraft.core.registries.BuiltInnet.minecraft.core.registries.BuiltInRegistries.MOB_EFFECT.getKey(instance.getEffect()).toString();
+        String id = net.minecraft.core.registries.BuiltInRegistries.MOB_EFFECT.getKey(instance.getEffect()).toString();
         if (id == null || !id.startsWith(AstralDiceMod.MODID + ":")) return;
         EffectTimerGuard.record(player, instance);
     }
@@ -59,7 +59,7 @@ public class ModEffectEvents {
         if (!(event.getEntity() instanceof Player player)) return;
         MobEffectInstance instance = event.getEffectInstance();
         if (instance == null || instance.getEffect() == null) return;
-        EffectTimerGuard.forget(player, net.minecraft.core.registries.BuiltInnet.minecraft.core.registries.BuiltInRegistries.MOB_EFFECT.getKey(instance.getEffect()).toString());
+        EffectTimerGuard.forget(player, net.minecraft.core.registries.BuiltInRegistries.MOB_EFFECT.getKey(instance.getEffect()).toString());
     }
 
 }

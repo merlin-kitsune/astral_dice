@@ -110,10 +110,10 @@ public class ModItems {
     public static final DeferredRegister<Item> ITEMS = DeferredRegister.create(net.minecraft.core.registries.Registries.ITEM, AstralDiceMod.MODID);
 
     private static final net.minecraft.tags.TagKey<Item> COMBAT_CARDS_TAG =
-            net.minecraft.tags.ItemTags.create(new ResourceLocation(
+            net.minecraft.tags.TagKey.create(net.minecraft.core.registries.Registries.ITEM, new ResourceLocation(
                     AstralDiceMod.MODID, "combat_cards"));
     private static final net.minecraft.tags.TagKey<Item> EFFECT_CARDS_TAG =
-            net.minecraft.tags.ItemTags.create(new ResourceLocation(
+            net.minecraft.tags.TagKey.create(net.minecraft.core.registries.Registries.ITEM, new ResourceLocation(
                     AstralDiceMod.MODID, "effect_cards"));
 
     // ═══════════════════════════════════════════════════════════════════════════

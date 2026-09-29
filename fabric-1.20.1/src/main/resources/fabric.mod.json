@@ -28,8 +28,7 @@
     "minecraft": "${minecraft_version_range}",
     "fabric-api": "*",
     "trinkets": ">=${trinkets_version}",
-    "cardinal-components-base": ">=${cca_version}",
-    "cardinal-components-entity": ">=${cca_version}",
+    "fabric-data-attachment-api-v1": "*",
     "starengine_lib": "${lib_version_range}"
   }
 }

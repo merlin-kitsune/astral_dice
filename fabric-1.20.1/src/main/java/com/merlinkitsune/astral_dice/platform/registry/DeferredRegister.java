@@ -93,10 +93,11 @@ public final class DeferredRegister<T> {
     }
 
     /** 全部已登记句柄(对齐 Forge 的 {@code DeferredRegister#getEntries})。 */
-    public java.util.Collection<RegistryObject<? extends T>> getEntries() {
-        java.util.List<RegistryObject<? extends T>> out = new ArrayList<>(entries.size());
+    @SuppressWarnings("unchecked")
+    public java.util.Collection<RegistryObject<T>> getEntries() {
+        java.util.List<RegistryObject<T>> out = new ArrayList<>(entries.size());
         for (Entry<?> e : entries) {
-            out.add(e.holder());
+            out.add((RegistryObject<T>) e.holder());
         }
         return out;
     }

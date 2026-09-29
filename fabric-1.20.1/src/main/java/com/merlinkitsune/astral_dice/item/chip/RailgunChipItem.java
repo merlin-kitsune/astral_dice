@@ -166,9 +166,8 @@ public class RailgunChipItem extends BaseChipItem {
         if (bolt == null) return;
         bolt.moveTo(pos);
         bolt.setVisualOnly(false);
-        bolt.setDamage(damage);
         bolt.setCause(cause);
-        com.merlinkitsune.astral_dice.damage.RailgunBolts.mark(bolt);
+        com.merlinkitsune.astral_dice.damage.RailgunBolts.mark(bolt, damage);
         level.addFreshEntity(bolt);
     }
 }

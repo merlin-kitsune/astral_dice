@@ -58,7 +58,7 @@ public abstract class EntityThunderHitMixin {
             self.setSecondsOnFire(8);
         }
         // 真伤伤害源:无来源实体(与旧的原版闪电一致,不构成玩家攻击、无击杀归属)
-        self.hurt(ModDamageTypes.trueDamage(level), bolt.getDamage());
+        self.hurt(ModDamageTypes.trueDamage(level), RailgunBolts.damageOf(bolt));
         ci.cancel();
     }
 }

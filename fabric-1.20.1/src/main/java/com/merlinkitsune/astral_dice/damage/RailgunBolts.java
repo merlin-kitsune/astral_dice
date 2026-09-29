@@ -22,14 +22,36 @@ public final class RailgunBolts {
     private static final Set<LightningBolt> RAILGUN_BOLTS =
             Collections.newSetFromMap(new WeakHashMap<>());
 
+    /**
+     * 电磁炮雷击的伤害值(替代 Forge 给 {@code LightningBolt} 打的
+     * {@code setDamage}/{@code getDamage} 补丁 —— 原版 1.20.1 的 {@code LightningBolt}
+     * **没有** damage 字段,javap 实证)。原版 {@code thunderHit} 硬编码 5.0F,
+     * 本模组需要能改,故把这份数据放在本类的弱引用表里。
+     */
+    private static final java.util.Map<LightningBolt, Float> RAILGUN_DAMAGE =
+            Collections.synchronizedMap(new WeakHashMap<>());
+
+    /** 原版 {@code Entity#thunderHit} 的硬编码闪电伤害(未标记时的退化值)。 */
+    public static final float VANILLA_LIGHTNING_DAMAGE = 5.0F;
+
     private RailgunBolts() {
     }
 
-    /** 标记该闪电为电磁炮雷击(须在 {@code level.addFreshEntity(bolt)} 之前调用)。 */
-    public static void mark(LightningBolt bolt) {
+    /** 标记该闪电为电磁炮雷击并写入伤害值(须在 {@code level.addFreshEntity(bolt)} 之前调用)。 */
+    public static void mark(LightningBolt bolt, float damage) {
         if (bolt != null) {
             RAILGUN_BOLTS.add(bolt);
+            RAILGUN_DAMAGE.put(bolt, damage);
         }
+    }
+
+    /** 该闪电的电磁炮伤害值(未标记时退化为原版 5.0F,不抛异常)。 */
+    public static float damageOf(LightningBolt bolt) {
+        if (bolt == null) {
+            return VANILLA_LIGHTNING_DAMAGE;
+        }
+        Float damage = RAILGUN_DAMAGE.get(bolt);
+        return damage == null ? VANILLA_LIGHTNING_DAMAGE : damage;
     }
 
     /**

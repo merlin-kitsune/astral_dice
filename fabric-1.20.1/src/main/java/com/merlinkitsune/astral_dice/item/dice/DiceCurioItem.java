@@ -15,7 +15,7 @@ import com.merlinkitsune.astral_dice.compat.curios.ICurioStacksHandler;
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.sign.MimiSignItem;
-import com.merlinkitsune.astral_dice.compat.curios.ICuriosItemHandler;
+import com.merlinkitsune.astral_dice.compat.curios.ICursiosItemHandler;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import java.util.UUID;
 
@@ -169,7 +169,7 @@ public class DiceCurioItem extends Item implements ICurioItem {
     // 找不到 chip 栏位处理器时不能静默:旧实现是 flatMap(...).ifPresent(...),这种情况什么都不做,
     // 日志里也没有任何痕迹。该支(Curios 时序 / 槽位表问题)与「有 chip 但尺寸没长」(本模组逻辑问题)
     // 的修复方向完全不同,必须能一眼区分,故带上当前 curiosKeys。
-    private static void warnMissingChipHandler(Player player, ICuriosItemHandler inventory, boolean throttled) {
+    private static void warnMissingChipHandler(Player player, ICursiosItemHandler inventory, boolean throttled) {
         if (throttled && player.tickCount % 200 != 0) return;
         LOGGER.warn("[Astral Dice][chip] 未找到 chip 槽位处理器,筹码栏位未调整:player={}, curiosKeys={}",
                 player.getGameProfile().getName(), inventory.getCurios().keySet());

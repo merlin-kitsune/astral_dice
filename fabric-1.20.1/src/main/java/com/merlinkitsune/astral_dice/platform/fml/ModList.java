@@ -4,16 +4,15 @@ import java.util.Optional;
 
 import net.fabricmc.loader.api.FabricLoader;
 
-
 /**
  * 已加载模组清单 shim(对齐 Forge 的 {@code fml.ModList})。
  *
  * <p>Fabric 侧由 {@link FabricLoader} 提供同样的信息;保留 Forge 的
- * {@code ModList.get().isLoaded(id)} 调用面可让 7 处调用点**零改动**。
+ * {@code ModList.get().isLoaded(id)} / {@code getModContainerById(id)} 调用面可让 7 处调用点
+ * **零改动**。
  *
- * <p>{@link #getModContainerById(String)} 返回的 {@link IModInfo} 只是占位
- * (Forge 用它构造 {@code ModLoadingException});Fabric 侧的启动失败提示走
- * {@code platform.fml.ModLoadingException},不再强依赖真实元数据。
+ * <p>⚠️ {@link #getModContainerById(String)} **返回真实数据**(不是占位):
+ * {@code VersionGate} 靠它读本模组版本号做握手互通,占位会让互通号恒为 UNRESOLVED。
  */
 public final class ModList {
 
@@ -28,9 +27,25 @@ public final class ModList {
         return modId != null && FabricLoader.getInstance().isModLoaded(modId);
     }
 
-    /** 占位实现:仅用于满足 Forge 形状的调用点。 */
-    public Optional<IModInfo> getModContainerById(String modId) {
-        return Optional.empty();
+    /** 取模组容器(含元数据);未加载时为 empty。 */
+    public Optional<ModContainer> getModContainerById(String modId) {
+        if (modId == null) {
+            return Optional.empty();
+        }
+        return FabricLoader.getInstance().getModContainer(modId).map(container -> {
+            var metadata = container.getMetadata();
+            return new ModContainer(new IModInfo() {
+                @Override
+                public String getModId() {
+                    return metadata.getId();
+                }
+
+                @Override
+                public String getVersion() {
+                    return metadata.getVersion().getFriendlyString();
+                }
+            });
+        });
     }
 
     private ModList() {

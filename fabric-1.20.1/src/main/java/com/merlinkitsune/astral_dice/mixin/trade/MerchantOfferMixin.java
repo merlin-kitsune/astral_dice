@@ -74,7 +74,7 @@ public abstract class MerchantOfferMixin {
             return true;
         }
         ItemStack itemstack = offer.copy();
-        if (itemstack.getItem().isDamageable(itemstack)) {
+        if (itemstack.isDamageableItem()) {
             itemstack.setDamageValue(itemstack.getDamageValue());
         }
         return ItemStack.isSameItem(itemstack, cost)
