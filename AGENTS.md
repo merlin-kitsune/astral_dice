@@ -152,6 +152,8 @@ When extending this workspace:
 >    `AstralRecipeSerializers` / `NbtShapedRecipe` / `NbtShapedRecipeSerializer` / `StackConstraint`）承载 NBT 约束，
 >    JSON 与网络层均委托原版 `ShapedRecipe.Serializer`。**语义基准 = 1.21.1 / 26.1.2 的
 >    `DataComponentIngredient.of(true, …)`（strict，精确匹配）**，改动前先对齐它。详见 `KNOWN-ISSUES.md` **KI-F1**。
+>    ⚠️ **本分支只改 fabric 端**（2026-09-29 用户裁决）：`forge-1.20.1` 的 `PartialNBTIngredient`（NBT **子集**）
+>    与 `potionTag(...)` **保持原样**，那是一条已登记的既有差异，**不要**在 fabric 分支顺手统一它。
 > ⑥ **`c:` 社区标签在 1.20.1 上无提供者，本线自建**：Forge 47.x 只提供 `forge:` 命名空间、**没有 `c:`**
 >    （实测其 `Tags.Items` 连 `BRICKS` 常量都没有）⇒ 被本模组引用的 `c:` 标签必须自建，内容**对齐 NeoForge 定义**：
 >    `c:bricks` 是**砖物品**（`minecraft:brick` / `minecraft:nether_brick` 两条子标签），**不是砖块方块**
