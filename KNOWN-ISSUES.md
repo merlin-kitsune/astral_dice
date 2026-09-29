@@ -648,6 +648,81 @@ GlCommandEncoder.trySetup(:531) ← GlCommandEncoder.executeDraw(:406) ← GlRen
 - **遗留**：客户端 GUI 键鼠注入仍未覆盖（只有服务端命令通道）；客户端**世界内**用例
   （渲染 / HUD / tooltip）与 `ft.ps1 --phase report` 的放行后路径仍未实跑，均已在 README §7.4 / §8 登记。
 
+### KI-F13 ＝ 整合包启动崩溃：库里**按字符串名反射原版字段**（dev=named / 生产=intermediary 名字不同）—— **生产环境 100% 起不来，但 dev 与所有现有测试都看不见**
+
+- **现象**：把 `fabric-1.20.1` 的产物 jar 推进整合包（`D:\.minecraft\versions\1.20.1-Fabric 模组测试`）后，
+  客户端**启动期直接崩溃**（`crash-2026-09-29_18.53.24-client.txt`）：
+  ```
+  java.lang.RuntimeException: Could not execute entrypoint stage 'main' due to errors,
+      provided by 'astral_dice' at 'com.merlinkitsune.astral_dice.AstralDiceMod'!
+  Caused by: java.lang.ExceptionInInitializerError
+      at com.merlinkitsune.starenginelib.item.AstralRarities.<clinit>(AstralRarities.java:95)
+      at com.merlinkitsune.astral_dice.item.ModItems.lambda$static$1(ModItems.java:153)
+      …  → AstralDiceMod.onInitialize(AstralDiceMod.java:50)
+  Caused by: java.lang.NoSuchFieldException: color
+      at java.base/java.lang.Class.getDeclaredField(Class.java:2382)
+      at com.merlinkitsune.starenginelib.item.AstralRarities.<clinit>(AstralRarities.java:90)
+  ```
+- **根因**：`starengine_lib_fabric/fabric-1.20.1/.../AstralRarities.java` 的静态块用**字符串字段名**
+  反射原版 `Rarity`：
+  ```java
+  RARITY_COLOR_OFFSET = UNSAFE.objectFieldOffset(Rarity.class.getDeclaredField("color"));   // line 90
+  Field values        = Rarity.class.getDeclaredField("$VALUES");                            // line 91
+  ```
+  而 **Fabric 的 dev 与生产用的是两套映射**：
+  - **dev（Loom named/Mojang 映射）**：`Rarity` = `net.minecraft.world.item.Rarity`，
+    字段真的是 `color` / `$VALUES` ⇒ **代码能跑**（所以历次 dev 冒烟、服务端/客户端验证全绿）；
+  - **生产（intermediary + fabric-loader 运行期重映射）**：同一个类是 `net.minecraft.class_1814`，
+    字段被重命名 ⇒ `getDeclaredField("color")` 抛 `NoSuchFieldException`。
+- **证据链（全部实测，可复算）**：
+
+  | 环节 | 读数 |
+  |---|---|
+  | 整合包里的 jar = 仓库产物？ | **sha1 完全相同** `241f9af97319d48306c76c3ba63124372b4b8c5e`（排除"陈旧产物"） |
+  | dev（named）侧字段名 | `javap -p <loom 的 minecraft-merged jar> net.minecraft.world.item.Rarity` → `public final net.minecraft.ChatFormatting **color**;`、`private static final Rarity[] **$VALUES**;` |
+  | 生产（intermediary）侧字段名 | `javap -p <minecraft-merged-**intermediary** jar> net.minecraft.class_1814` → `public final net.minecraft.class_124 **field_8908**;`、`private static final class_1814[] **field_8905**;` |
+  | 两侧结构 | 完全同构（4 个静态常量 + `values()`/`valueOf()` + `private ctor(ChatFormatting)` + `static{}`），**只有字段名不同** |
+  | 类定位方式 | 枚举常量的**字符串字面量不会被重映射** ⇒ 用 `class_124`（ChatFormatting，常量池里 `LIGHT_PURPLE` 等仍在）+ `java/lang/Enum` 双重特征反查出 `class_1814` |
+- **⚠️ 有两个断点，本轮只崩了第一个**：`"color"`（line 90）先抛；紧随其后的 `"$VALUES"`（line 91）
+  在生产环境**同样会抛**（`$VALUES` → `field_8905`）。修只修一个等于没修。
+- **影响面**：**fabric 线的生产环境 100% 启动失败**（该路径 = 玩家装整合包/正常游戏）。
+  且**所有现有验证手段都测不出来** —— dev 冒烟、服务端/客户端用例、5 条 case、静态闸门，**全部跑在 named 映射下**。
+  这是本仓"测试与发布环境非同构"造成的一次**假绿**。
+- **修法（库仓 `starengine_lib_fabric`，映射无关化：按**类型**找字段，不按名字）**：
+  ```java
+  // ① color：Rarity 里唯一的 ChatFormatting 字段
+  Field colorField = null;
+  for (Field f : Rarity.class.getDeclaredFields()) {
+      if (f.getType() == ChatFormatting.class) { colorField = f; break; }
+  }
+  if (colorField == null) throw new IllegalStateException("Rarity 里找不到 ChatFormatting 字段");
+  RARITY_COLOR_OFFSET = UNSAFE.objectFieldOffset(colorField);
+
+  // ② $VALUES：Rarity[] 类型的静态字段
+  Field values = null;
+  for (Field f : Rarity.class.getDeclaredFields()) {
+      if (Modifier.isStatic(f.getModifiers()) && f.getType().isArray()
+              && f.getType().getComponentType() == Rarity.class) { values = f; break; }
+  }
+  if (values == null) throw new IllegalStateException("Rarity 里找不到 $VALUES 数组字段");
+  ```
+  其余三处反射是安全的：`Unsafe.class.getDeclaredField("theUnsafe")`、`Enum.class.getDeclaredField("name"/"ordinal")`
+  **都是 JDK 成员，不参与 MC 重映射**。
+- **全仓扫描结论**：`starengine_lib_fabric` 里只有 `AstralRarities:90/91` 两处属于该模式；
+  `EventTargetCollector`（FTB Teams / OPAC 反射）与 `BossEntityUtil`（`getBossEvent`/`getBossBar` 约定名 + try/catch）
+  反射的是**模组自有名字**，安全；`astral_dice` 侧 `WaystoneWarpCompat`（`common.MinecraftForge` / `EVENT_BUS`）
+  与 `SubscriptionAudit`（自身类名）同样安全。另一个库仓 `starengine_lib`（非 fabric）源码里**没有**该模式。
+- **修好之后需要做的（版本契约，待裁决）**：库版本 bump（1.0.7 → ？）→ `publishToMavenLocal` →
+  消费方 `astral_dice/fabric-1.20.1` 的库依赖与 `lib_version_range` 同步 → 重新构建 →
+  重新 `pushToGame` → 整合包再启动一次验证。
+- **顺带发现的流程缺口（比这个 bug 更值得修）**：本仓的"验证"与"发布"长期不在同一映射下 ——
+  **dev 全绿 ≠ 产物可用**。建议补一道**生产映射守门**（二选一或都做）：
+  ① **静态**：扫产物 jar 里 `getDeclaredField("…")` / `getField("…")` / `getMethod("…")` 的**字符串常量**，
+     凡不在 intermediary 名集合里、且不是 JDK 成员的 ⇒ 报缺陷；
+  ② **动态**：每次改动后除了 dev 冒烟，**把推给整合包的那份 jar 真启动一次**（生产映射下的最小启动用例）。
+- **取证**：崩溃报告 `D:\.minecraft\versions\1.20.1-Fabric 模组测试\crash-reports\crash-2026-09-29_18.53.24-client.txt`；
+  整合包日志 `…/logs/latest.log`（`astral_dice 1.3.2+fabric_1.20.1` / `\-- starengine_lib 1.0.7`，其余仅良性 WARN）。
+
 ## 10. 变更记录
 
 | 日期 | 变更 |
@@ -671,4 +746,6 @@ GlCommandEncoder.trySetup(:531) ← GlCommandEncoder.executeDraw(:406) ← GlRen
 | 2026-09-29 | **客户端进世界验证：修复 3 个阻断级缺陷（KI-F9 / KI-F10 / KI-F11）** —— 首次带玩家进世界的客户端验证暴露：① **KI-F9** `KeyBindingSetup.ClientEvents` 内部类漏登记 ⇒ **J（立牌主动技能）/ H（卡牌栏）两键完全不响应**（另三线靠 `@EventBusSubscriber` 自动注册内部类，fabric 需显式登记而移植时只登记了外层类；由本轮新增的 `SubscriptionAudit` 抓出）；② **KI-F10** `MobEffectEvent.Remove` 构造器对 null 效果实例 NPE ⇒ **玩家无法进入存档**（登录清理骰神赐福 → 库 remove 不判存在性 → Puzzles 回调传 null → 构造器解引用；Forge 侧同路径**不派发**，且该类 javadoc 与全部 4 处订阅者都按「可为 null」写，只有构造器漏了防御）⇒ 修两处：PuzzlesBridges 回调跳过 null + 构造器判空；③ **KI-F11** `ScreenEvent.Opening` 在 `setScreen(null)`（`ReceivingLevelScreen.onClose`）时 NPE ⇒ **每次进世界必崩**（Forge 的 `ScreenEvent` 构造器同样 requireNonNull ⇒ 它在 null 时不构造事件）⇒ mixin 加 null guard。同轮为 fabric 线补上另三线早已有的 `-Pquickplay` 与固定窗口尺寸的 client run 参数（⚠️ Loom 用 `programArg`，不是 ModDevGradle 的 `programArgument`）。修复后客户端正常进世界、连续运行 600+ tick，`RenderLevelStageEvent=10326` / `RenderHandEvent=3441` 证明世界内渲染链路在派发；物品栏内本模组立牌渲染正常（非紫黑格）。 | 
 | 2026-09-29 | **测试台修复：fabric 侧「完全不可用」的根因（新增 KI-F12）** —— 首次真机跑通 `env→launch→inject→stop` 主干，修掉 4 个测试台缺陷：**D1** `ft_launch` 的就绪游标被 log4j「每次冷启动轮转 latest.log」击穿 ⇒ 启动阶段**必然假超时**（实测服务端 9 s 就绪、台子干等 240 s）；**D2** 游戏运行时 latest.log 被独占而 `File.ReadAllBytes` 是 `FileShare.Read` ⇒ 「在线读日志」全线不可用（此前被 D1 掩盖，读分支从未真正执行）。二者改用**文件身份锚点**（创建时间 + 头部 SHA1 + 长度）+ 共享读写打开，并加「超时时若日志已有就绪标记则报 ready-but-undetected」的反向自检；**D3** KubeJS 命令队列通道经实测**从根上不可实现**（类过滤挡住 `java.nio.file`/`java.io`、bindings 无文件包装器、`java`/`Packages` 全局已移除）⇒ 整体撤除，命令注入统一走 RCON，KubeJS 收敛为读数探针；**D4** 补 `--gradle-arg` 透传，客户端得以带 `-PtestSodium=false` 启动。新增客户端启动用例 `FAB-CLIENT-BOOT`，`FAB-INJECT-ROUNDTRIP` 改用 rcon；5 条用例全绿，闸门 / FAIL / PASS 退出码逐条实证。 |
 | 2026-09-29 | **fabric 侧完整冒烟（用户显式要求）跑通并抓出 D6/D7（KI-F12 扩为 7 项）** —— 按 `TESTING-SPEC.md` §1.1，用户显式要求是全清单的唯一自动放行条件。三批全绿：批 A（构建 / env / **经编排入口起服务端 11.5s** / 在线断言 / 4 条用例 / 在线派发读 / 收停）、批 B（客户端 12.4s + `FAB-CLIENT-BOOT` 8/8）、批 C（4 个本线静态闸门）。合计 5/5 用例 + 4/4 闸门、无残留。**首次跑批 A 时卡在 launch 步 6 分钟不返回**，顺「子脚本早已打印 OK」这条线索查出两个新缺陷：**D6** `Invoke-FtChildProcess` 用 `Start-Process -Wait`（会等整棵进程树）⇒ `ft.ps1 --phase launch` 挂到游戏退出（项目自己的 §13 就记过这个坑）；**D7** 修好 D6 后暴露：该封装用 `ReadAllBytes` 回读子进程重定向输出，与 D2 是同一个 `FileShare.Read` 共享模式陷阱 ⇒ 改走 `Read-FtFileBytesShared` + `Dispose()`。 |
+
+| 2026-09-29 | **整合包启动崩溃定位（新增 KI-F13）** —— 用户报「整合包启动失败」。崩溃链 `NoSuchFieldException: color` → `AstralRarities.<clinit>` → `astral_dice` 的 main entrypoint 失败。根因 = 库 `starengine_lib_fabric` 的 `AstralRarities` 静态块**按字符串名反射原版 `Rarity` 字段**（`getDeclaredField("color")` / `getDeclaredField("$VALUES")`），而 **Fabric 的 dev 与生产是两套映射**：dev(named) 字段就叫 `color`/`$VALUES`（所以历次 dev 冒烟全绿），生产(intermediary) 同一个类是 `class_1814`、字段是 `field_8908`/`field_8905` ⇒ **生产环境 100% 启动失败，且所有现有验证手段都测不出来**。证据：整合包 jar 与仓库产物 **sha1 完全相同**（排除陈旧产物）+ 两侧 `javap` 对照（结构同构、仅字段名不同；用「枚举字符串字面量不参与重映射」反查出 `class_1814`）。⚠️ 有两个断点（`color` 先崩、`$VALUES` 紧随其后同样会崩）。全仓扫描确认只有这两处（其余反射目标是 JDK 成员或模组自有名字，安全）；另一库仓 `starengine_lib` 无此模式。修法 = 改为**按类型/修饰符找字段**（映射无关）；修复需库版本 bump + 重发布 + 消费方同步 + 重推整合包（版本号待裁决）。并登记流程缺口：dev 全绿 ≠ 产物可用，建议补「生产映射守门」（静态扫反射字符串常量 / 动态把推给整合包的 jar 真启动一次）。 |
 
