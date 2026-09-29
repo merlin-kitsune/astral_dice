@@ -1,28 +1,27 @@
 {
   "case_id": "FAB-INJECT-ROUNDTRIP",
-  "title": "手动注入往返（kubejs 通道）：把一条命令投进 KubeJS 队列，观察端必须打出 [ft-inject] ran rc= 行，且不得出现 [ft-inject] ERR。",
+  "title": "手动注入往返（rcon 通道）：命令必须真的到达服务端并执行 —— 以 /say <tag> 的【控制台回声】作为日志可断言锚点；并显式排除「命令无效」这一假通过路径。",
   "side": "server",
   "window": "case",
   "on_fail": "keep_game_running",
   "steps": [
     {
       "op": "note",
-      "text": "前置（本用例**需要活着且已装观察者的服务端**，否则 inject 步骤会显式 ERROR 中止 —— 这是刻意设计：命令缺失必须失败，绝不静默降级）：\n ① pwsh -File scripts/test/fabric/ft_env.ps1 --side server --install-watcher\n ② pwsh -File scripts/test/fabric/ft_launch.ps1 --side server        （冷启动，让 KubeJS 加载 ft_cmd_watcher.js）\n ③ 再跑本用例。\n\n为什么用 kubejs 通道而不是 rcon 通道做**日志断言**：\n · rcon 通道的回显只回到 RCON 客户端（也就是 ft_inject 的 stdout），**不保证**落进 latest.log；\n · kubejs 通道由观察者脚本自己打 `[ft-inject] ran rc=<n> :: <cmd>`（ft_cmd_watcher.js 的 console.info），\n   一定落 `run/server/logs/latest.log` ⇒ 可断言。\n\n命令取 vanilla 的 /time set day：不依赖本模组的任何命令注册，把「注入通道本身」与「模组命令面」解耦。"
+      "text": "前置（本用例**需要活着且已启用 RCON 的服务端**，否则 inject 步骤会显式 ERROR 中止 —— 刻意的：命令缺失必须失败，绝不静默降级）：\n ① pwsh -File scripts/test/fabric/ft_env.ps1 --side server --enable-rcon\n ② pwsh -File scripts/test/fabric/ft_launch.ps1 --side server     （server.properties 只在启动期读取 ⇒ 必须重启）\n ③ 再跑本用例。\n\n为什么用 rcon 通道（本台现为唯一通道）：\n · 它是 vanilla 专用服务端的**原生**能力，协议固定、不依赖任何模组 API，且**同步返回**回显；\n · 曾经的 kubejs 文件队列通道已废除 —— 实测 KubeJS 6+ 的类过滤不放行 java.nio.file.*/java.io.*、\n   脚本 bindings 无文件包装器、java/Packages 全局已移除 ⇒ 观察者无法读队列，从未成功执行过命令。\n\n为什么断言打的是 /say <tag>：\n · RCON 的回显只回到 ft_inject 进程的 stdout（AP_FAB_INJECT_RESP），**不保证**进 latest.log；\n · /say 的输出经控制台留痕，实测形如 `[Not Secure] [Rcon] <tag>`，落在 run/server/logs/latest.log ⇒ 可断言。\n · 用例步的 rc 判据另有价值：ft_inject 只在「连接 + 认证 + 下发 + 读回」四步都成功时才返回 0。\n\n命令取 vanilla 的 /say：不依赖本模组任何命令注册，把「注入通道本身」与「模组命令面」解耦。"
     },
     {
       "op": "inject_command",
-      "command": "/time set day",
-      "channel": "kubejs"
+      "command": "/say FT-INJECT-ROUNDTRIP-OK",
+      "channel": "rcon"
     },
     {
       "op": "wait",
-      "ms": 2000
+      "ms": 1500
     }
   ],
   "asserts": [
-    { "type": "log", "pattern": "\\[ft-inject\\] ran rc=" },
-    { "type": "log", "pattern": "\\[ft-inject\\] queue drained" },
-    { "type": "absent", "pattern": "\\[ft-inject\\] ERR" },
+    { "type": "log", "pattern": "\\[Rcon\\]\\s+FT-INJECT-ROUNDTRIP-OK" },
+    { "type": "absent", "pattern": "Unknown or incomplete command" },
     { "type": "crash" }
   ],
   "evidence": []

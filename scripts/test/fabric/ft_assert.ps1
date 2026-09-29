@@ -17,8 +17,10 @@
       launch  自最近一次 `snapshot --window launch` 起
     为什么必须有窗口：整文件 grep 会让历史运行留下的同名标记造成**假 PASS**
     （生产线的实测记录：命中数随用例递增 14→28→…→126）。
-    ⚠️ 已知简化：生产线用「文件身份锚点（ctime + 头部指纹）」处理 log4j 跨零点日切；
-    本台只记字节长度，长度回退时 WARN 并退化为整文件读取（见 lib/Ft.Common.psm1 的 Save-FtSnapshot 注释）。
+    ⚠️ 窗口实现已改为**文件身份锚点**（创建时间 + 头部指纹 + 长度），与生产线 mt_assert.ps1 同口径。
+    原因：latest.log 每次冷启动都被 log4j 轮转，纯字节偏移游标在每次启动后都会失效
+    （旧实现只在「长度回退」时报 WARN，长度重新长过旧偏移时**静默**给出错误窗口 —— 假绿来源）。
+    详见 lib/Ft.Common.psm1 的 Get-FtLogAnchor / Get-FtLogWindowFromAnchor。
 
     断言类型（case JSON 的 asserts[].type）：
       log                  正则必须命中（spec.pattern）

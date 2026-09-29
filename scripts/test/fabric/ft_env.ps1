@@ -31,13 +31,20 @@
     服务端：把 `enable-rcon=true` / `rcon.port` / `rcon.password` 写进 `run/server/server.properties`，
     供 ft_inject 的 rcon 通道使用（默认端口 25575，默认口令 astralft）。
 
-.PARAMETER InstallWatcher
-    把 KubeJS 队列观察脚本装进 `run/<side>/kubejs/{server_scripts|client_scripts}/ft_cmd_watcher.js`，
-    供 ft_inject 的 kubejs 通道使用（该通道需冷启动或 `/kubejs reload` 才生效）。
+.PARAMETER InstallProbe
+    把 KubeJS **读数探针**脚本拷进 `run/<side>/kubejs/{server_scripts|client_scripts}/`。
+    可跟一个脚本名（默认 `event_bridge_probe.js`），源目录 = 本测试台目录 `scripts/test/fabric/`。
+    ⚠️ KubeJS 只在**冷启动**或 `/kubejs reload <type>` 后加载脚本 ⇒ 装完必须重启才生效。
+    ⚠️ 为什么不再提供「命令队列观察者」（旧 `--install-watcher`）：实测 KubeJS 6+ 的类过滤
+       不放行 `java.nio.file.*` / `java.io.*`、脚本 bindings 无文件包装器、`java`/`Packages`
+       全局已移除 ⇒ 观察者无法读队列文件，**从未成功执行过一条命令**。KubeJS 在本台的正确定位是
+       **「产出读数的探针」**（往日志打 `AP_…` / 自定义标记行，供 ft_assert 断言），
+       而**命令注入统一走 RCON**（见 ft_inject.ps1 的说明）。
 
 .EXAMPLE
     pwsh -NoProfile -File scripts/test/fabric/ft_env.ps1 --side both
-    pwsh -NoProfile -File scripts/test/fabric/ft_env.ps1 --side server --enable-rcon --install-watcher
+    pwsh -NoProfile -File scripts/test/fabric/ft_env.ps1 --side server --enable-rcon
+    pwsh -NoProfile -File scripts/test/fabric/ft_env.ps1 --side server --install-probe
     pwsh -NoProfile -File scripts/test/fabric/ft_env.ps1 --side server --mode install
 
 .NOTES
@@ -114,7 +121,7 @@ $Side = 'both'
 $Mode = 'verify'
 $FromDir = ''
 $EnableRcon = $false
-$InstallWatcher = $false
+$InstallProbe = ''
 $RconPort = 25575
 $RconPassword = 'astralft'
 $ArgList = @($args)
@@ -140,13 +147,19 @@ while ($i -lt $args.Count) {
     } elseif ($key -eq 'rconpassword') {
         if ($i + 1 -ge $args.Count) { Write-FtErrorLine '缺少 --rcon-password 的值'; exit $FT_EXIT_ERROR }
         $RconPassword = [string]$args[$i + 1]; $i += 2
-    } elseif ($key -eq 'installwatcher') {
-        $InstallWatcher = $true; $i++
+    } elseif ($key -eq 'installprobe') {
+        # 可选跟一个脚本名；缺省用 event_bridge_probe.js
+        $InstallProbe = 'event_bridge_probe.js'
+        if ($i + 1 -lt $args.Count -and -not ([string]$args[$i + 1]).StartsWith('-')) {
+            $InstallProbe = [string]$args[$i + 1]; $i += 2
+        } else {
+            $i++
+        }
     } elseif ($key -eq 'allowauto') {
         $i++
     } elseif ($key -eq 'h' -or $key -eq 'help') {
         Write-FtLine '用法: ft_env.ps1 [--side client|server|both] [--mode verify|install] [--from <dir>]'
-        Write-FtLine '                  [--enable-rcon] [--rcon-port N] [--rcon-password P] [--install-watcher]'
+        Write-FtLine '                  [--enable-rcon] [--rcon-port N] [--rcon-password P] [--install-probe [脚本名]]'
         exit $FT_EXIT_PASS
     } else {
         Write-FtErrorLine "未知参数 $tok"; exit $FT_EXIT_ERROR
@@ -270,29 +283,20 @@ foreach ($s in $sides) {
         }
     }
 
-    # ④ KubeJS 队列观察脚本（ft_inject 的 kubejs 通道；**仅服务端**）
-    if ($InstallWatcher) {
-        if ($s -ne 'server') {
-            # 不猜客户端 API：KubeJS 客户端侧没有等效的「执行任意命令」入口（服务端有
-            # MinecraftServer#runCommand，客户端没有），故本台 v1 不为客户端提供 kubejs 注入通道。
-            Write-FtLine ("AP_FAB_ENV_WATCHER: side={0} installed=unsupported" -f $s)
-            Write-FtWarn 'kubejs 注入通道仅服务端可用（客户端无 runCommand 等价入口）；客户端注入本台 v1 未提供。'
+    # ④ KubeJS 读数探针（往日志打标记行，供 ft_assert 断言；**不是**命令注入通道）
+    if ($InstallProbe) {
+        $probeSrc = Join-Path (Get-FtSelfDir) $InstallProbe
+        if (-not (Test-Path -LiteralPath $probeSrc -PathType Leaf)) {
+            $problems.Add("找不到探针脚本：$probeSrc")
         } else {
-            $watcherTpl = Join-Path (Get-FtSelfDir) 'ft_cmd_watcher.js'
-            if (-not (Test-Path -LiteralPath $watcherTpl -PathType Leaf)) {
-                $problems.Add("找不到观察脚本模板：$watcherTpl")
-            } else {
-                $queuePath = (Join-Path (Get-FtSideDir -Side $s) 'kubejs\.ft_cmd_queue.txt') -replace '\\', '/'
-                $target = Join-Path (Get-FtKubejsScriptDir -Side $s) 'ft_cmd_watcher.js'
-                $tpl = [System.IO.File]::ReadAllText($watcherTpl)
-                $body = $tpl.Replace('__FT_QUEUE_PATH__', $queuePath)
-                [System.IO.File]::WriteAllText($target, $body, [System.Text.UTF8Encoding]::new($false))
-                # 队列文件置空：观察者用「读走即清空」语义，但**重启后**观察者内存态归零，
-                # 若队列里还留着上次没跑完的行会被重放 ⇒ 安装时先清空一次。
-                [System.IO.File]::WriteAllText((Join-Path (Get-FtSideDir -Side $s) 'kubejs\.ft_cmd_queue.txt'), '', [System.Text.UTF8Encoding]::new($false))
-                Write-FtLine ("AP_FAB_ENV_WATCHER: side={0} installed={1} queue={2}" -f $s, $target, $queuePath)
-                Write-FtWarn 'KubeJS 脚本只在**冷启动**或 `/kubejs reload server_scripts` 后生效（队列已清空）。'
+            $target = Join-Path (Get-FtKubejsScriptDir -Side $s) $InstallProbe
+            $targetDir = Split-Path -Parent $target
+            if (-not (Test-Path -LiteralPath $targetDir -PathType Container)) {
+                [void](New-Item -ItemType Directory -Force -Path $targetDir)
             }
+            Copy-Item -LiteralPath $probeSrc -Destination $target -Force
+            Write-FtLine ("AP_FAB_ENV_PROBE: side={0} installed={1}" -f $s, $target)
+            Write-FtWarn 'KubeJS 只在**冷启动**或 `/kubejs reload <type>` 后加载脚本 ⇒ 装完必须重启服务端才生效。'
         }
     }
 

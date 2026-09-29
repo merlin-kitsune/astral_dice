@@ -592,6 +592,49 @@ GlCommandEncoder.trySetup(:531) ← GlCommandEncoder.executeDraw(:406) ← GlRen
 > KI-F9 要客户端入口、KI-F10 要玩家登录、KI-F11 要真正走完「加载地形」并关闭该屏幕。
 > ⇒ **移植线收尾必须做一次「客户端进世界」验证，不能只跑服务端 + 编译。**
 
+### KI-F12 ＝ fabric 测试台自身的 5 个缺陷（**已修；其中 2 个是阻断级**）—— 「测试流程完全不可用」的根因
+
+- **背景**：`fabric-1.20.1` 是「自建事件总线 + 四路桥接」的移植线，测试台只能另起一套
+  （`scripts/test/fabric/`，见该目录 `README.md`）。此前这套台子**只做过静态校验与部分读数**，
+  从未真机跑过 `env → launch → inject` 这条主干 ⇒ 下面 5 个缺陷一直没暴露。
+- **本轮真机实跑**（服务端 + 客户端各起一次、RCON 注入、收停、5 条用例）后修复：
+
+  | 编号 | 缺陷 | 影响 | 根因（实测，非推测） |
+  |---|---|---|---|
+  | D1 | 就绪游标被 log4j「启动轮转」击穿 | **每次启动必然假超时**（`rc=12`），其后一切读数/注入/用例统统不可用 | latest.log **每一次冷启动**都被改名成 `YYYY-MM-DD-N.log.gz` 并**重建**；旧实现拿「启动前的字节长度」当游标 ⇒ 判定条件 `len > preLen` 永不成立（实测：服务端 **9 秒**就打出 `Done (0.333s)!`，而 `ft_launch` 干等 240 秒后报 TIMEOUT，进程还成了 orphan）。**次生伤害**：新文件长过旧偏移之后，窗口偏移落进**新文件中间** ⇒ `case`/`launch` 窗口**静默**返回错误内容，是「假 PASS / 假 FAIL」的来源 |
+  | D2 | 游戏运行时 `latest.log` 被独占 | **「服务端活着时读日志」全线不可用**（`ft_assert` / `ft_dispatchreport` / 启动轮询 / 回显校验） | `[System.IO.File]::ReadAllBytes` 的共享模式是 `FileShare.Read`，而 Windows 的共享检查是**对称**的 ⇒ 无法与仍持有**写**句柄的游戏进程共存（实测抛 `The process cannot access the file … being used by another process`）。此前因 D1 使读分支**从未真正执行**而被掩盖 |
+  | D3 | KubeJS 命令队列通道**从根上不可实现** | 观察者**从未成功执行过一条命令**（每 20 tick 抛 `TypeError: Cannot call method "get" of null`，`FT_Paths` 恒为 null） | KubeJS 6+ 三重封死：① 类过滤不放行 `java.nio.file.*` / `java.io.*`（`Java.loadClass('java.nio.file.Paths')` 返回 null，无 `Loaded Java class '…'` 行）；② 面向脚本的 bindings **无任何文件/路径包装器**（实测 `bindings/` 只有 8 个 Wrapper）；③ `java` / `Packages` 全局已移除（实测 `'java()' is no longer supported!`）⇒ 无法构造 `Path` |
+  | D4 | `ft_launch` 无法向 gradlew 透参 | 客户端在本机 dev 环境**必然**启动失败，无绕过手段 | Sodium 要求 LWJGL **3.3.1**、而 dev 环境装的是 **3.3.2-snapshot** ⇒ 启动期硬失败；旧实现只能起裸 `gradlew :fabric-1.20.1:runClient`，带不上工程既有的 `-PtestSodium=false` |
+
+  | D5 | 用例里的**固定 `wait`** 把「等待条件未满足」伪装成「断言失败」 | 采样点未到时报 6 条断言失败，**现场看起来像产品缺陷**（桥没派发？内嵌库坏了？），把排查方向带偏 | 本线有读数只在**开局 600 tick（约 30 s）**才打印；旧用例靠固定 `wait 25000` + 注释提醒纪律 ⇒ 就绪后 25 s 跑用例实测：`FAB-BOOT-EMBED` **1/10**、`FAB-DISPATCH-BASIC` **6/8**，报「未找到派发报告」。**修法两层**：① 新增 `wait_for` 步骤（有界轮询，命中即继续；超时报 **TIMEOUT(12)** 并给手动读数指引 —— 与「断言失败 = 1」明确区分，语义边界同 TESTING-RULES §7）；② 把 `事件派发统计` 断言从 `FAB-BOOT-EMBED` **移出**（10 → 9 条），消除隐藏的 30 s 时间耦合 |
+
+- **修法**：
+  - D1/D2 —— 把「字节位置」换成「**文件身份锚点**」＝ 创建时间(UTC ticks) + 头部 4 KiB 的 SHA1 + 长度
+    （`Ft.Common.psm1` 新增 `Get-FtLogAnchor` / `Test-FtAnchorReplaced` / `Get-FtLogWindowFromAnchor` /
+    `Read-FtFileBytesShared`）：身份变了 ⇒ 整个新文件就是「本次新增」；身份没变才做前向字节切分。
+    另加**反向自检**：超时时若整份日志里**已有**就绪标记，报 `reason=ready-but-undetected`
+    （与普通 timeout 明确分开）—— 把「工具缺陷」与「游戏没起来」彻底剥离，不制造第二个假绿。
+  - D3 —— **整体撤除**该通道与观察脚本 `ft_cmd_watcher.js`；`--channel kubejs` 保留为**显式失败**
+    （`reason=unsupported-by-platform` + 完整实测理由）。理由：一条「看起来能用、实际永远失败」的通道
+    比没有更危险。KubeJS 在本台的定位收敛为**「产出读数的探针」**（`ft_env --install-probe` 装
+    `event_bridge_probe.js` 一类），**命令注入统一走 RCON**（vanilla 原生、同步返回回显）。
+  - D4 —— 新增可重复的 `--gradle-arg <x>` 透传（同时写进状态文件与 `AP_FAB_LAUNCH_TASK` 读数行）。
+- **验收读数（全部实跑）**：`ft_launch --side server` rc=0（`cursor=22827`）、
+  `--side client --gradle-arg -PtestSodium=false` rc=0（`Sound engine started`、`cursor=23798`）；
+  服务端存活期间 `ft_assert` / `ft_dispatchreport` 正常出数；RCON 注入 rc=0 且 `/say` 回声落日志
+  （`[Not Secure] [Rcon] <tag>`）；`ft_stop` 对真在跑的实例 rc=0 且不残留；5 条用例全绿 ——
+  `FAB-BOOT-EMBED` 10/10、`FAB-DISPATCH-BASIC` 8/8、`FAB-JAR-ASSETS` 1/1、
+  **`FAB-CLIENT-BOOT` 8/8（本轮新增）**、`FAB-INJECT-ROUNDTRIP` 3/3（本轮改为 rcon 通道）；
+  闸门与显式失败路径退出码逐条正确（`MT_AUTO_DISABLED`=2 / 断言不满足=1 / PASS=0）。
+- **取证与全文**：`scripts/test/fabric/README.md` —— §7.2（实跑清单 34 项，含退出码）、
+  §7.3（4 个缺陷的根因与现场证据：轮转时间戳、异常原文、`javap`/`unzip` 读数）、
+  §7.4（仍未实跑项）、§9（依据索引，含「latest.log 每次启动被轮转」「运行时被独占」
+  「KubeJS 类过滤与全局移除」三条平台事实）。
+- **等级说明**：D1–D5 属**测试台缺陷**，不是产品缺陷；但它们会让「测试台报绿」这件事本身失去意义
+  （D1 让启动阶段永远失败、D2 让在线读数整体不可用），故按缺陷等级登记。
+- **遗留**：客户端 GUI 键鼠注入仍未覆盖（只有服务端命令通道）；客户端**世界内**用例
+  （渲染 / HUD / tooltip）与 `ft.ps1 --phase report` 的放行后路径仍未实跑，均已在 README §7.4 / §8 登记。
+
 ## 10. 变更记录
 
 | 日期 | 变更 |
@@ -613,3 +656,4 @@ GlCommandEncoder.trySetup(:531) ← GlCommandEncoder.executeDraw(:406) ← GlRen
 | 2026-09-29 | **撤销 forge 侧改动 + 新增 KI-F7 与本线资源闭环守门**：1) 按用户裁决「本分支只改 fabric 端」，把 `ae76390b` 里属于 forge 的部分全部恢复为 `aadaf8a7`（`ModRecipeProvider` 的 `PartialNBTIngredient` / `potionTag(...)` / generated 配方 / 三个自建 `c:` 标签）⇒ `git diff aadaf8a7 -- forge-1.20.1/` 为空；KI-F1 表格与 KI-F5 的表述同步改为「有意保留的三线差异」；2) **新增 KI-F7** = 手册 `teru_sign.3` 在四线都缺键（玩家会看到原始键名），已取到配方与稀有度依据但**档位词口径不明**（`HANNA_SIGN` / `SHERRY_SIGN` 代码同为 `bizarre()` 而手册写着 `Rare` / `Epic`）⇒ 只登记不补写，附两个可选修法；3) **新增守门脚本 `tools/verify_fabric_assets.py`**（7 项闭环：物品↔模型↔贴图 / 标签↔提供者 / 音效三件套 / 粒子清单 / 三语键集 + java 引用键 / 手册引用 / 创意标签覆盖）—— 本轮体检 12 项里 11 项 PASS、仅 KI-F7 一项 FAIL（已白名单 + 可见打印）。 |
 | 2026-09-29 | **KI-F7 已补齐 + 新增 KI-F8**：为 `teru_sign` 手册第 3 页补上三语键（zh_cn「配方：钻石骰子 + 黄金星盘 ×2（传奇档）。」/ en_us / ja_jp）—— 档位词用**交叉验证**确立（同档的 `megas_sign.3` 手册写「传奇档 / Legendary tier」而代码是 `legendary()`），材料从配方文件逐字读出（Z=diamond_dice、P=golden_star_plate ×2），句式对齐 `hanna_sign.3`；三语键数 828 → 829 且仍互为一致，守门脚本第 6 项 FAIL → PASS，并从 `LANG_KEY_ALLOW` 移除（白名单重新为空）。同时**新增 KI-F8**：`hanna_sign.3` / `sherry_sign.3` 的档位词（稀有档 / 史诗档）与两者代码稀有度（均为 `bizarre()` 奇特）**不符** ⇒ 按同一判据二者至少一条错；因「以代码为准」（需先定 `奇特` 的英/日写法）与「以文案为准」（要改稀有度体系与 tooltip 配色）两条路都需裁决，**只登记未改**。 |
 | 2026-09-29 | **客户端进世界验证：修复 3 个阻断级缺陷（KI-F9 / KI-F10 / KI-F11）** —— 首次带玩家进世界的客户端验证暴露：① **KI-F9** `KeyBindingSetup.ClientEvents` 内部类漏登记 ⇒ **J（立牌主动技能）/ H（卡牌栏）两键完全不响应**（另三线靠 `@EventBusSubscriber` 自动注册内部类，fabric 需显式登记而移植时只登记了外层类；由本轮新增的 `SubscriptionAudit` 抓出）；② **KI-F10** `MobEffectEvent.Remove` 构造器对 null 效果实例 NPE ⇒ **玩家无法进入存档**（登录清理骰神赐福 → 库 remove 不判存在性 → Puzzles 回调传 null → 构造器解引用；Forge 侧同路径**不派发**，且该类 javadoc 与全部 4 处订阅者都按「可为 null」写，只有构造器漏了防御）⇒ 修两处：PuzzlesBridges 回调跳过 null + 构造器判空；③ **KI-F11** `ScreenEvent.Opening` 在 `setScreen(null)`（`ReceivingLevelScreen.onClose`）时 NPE ⇒ **每次进世界必崩**（Forge 的 `ScreenEvent` 构造器同样 requireNonNull ⇒ 它在 null 时不构造事件）⇒ mixin 加 null guard。同轮为 fabric 线补上另三线早已有的 `-Pquickplay` 与固定窗口尺寸的 client run 参数（⚠️ Loom 用 `programArg`，不是 ModDevGradle 的 `programArgument`）。修复后客户端正常进世界、连续运行 600+ tick，`RenderLevelStageEvent=10326` / `RenderHandEvent=3441` 证明世界内渲染链路在派发；物品栏内本模组立牌渲染正常（非紫黑格）。 | 
+| 2026-09-29 | **测试台修复：fabric 侧「完全不可用」的根因（新增 KI-F12）** —— 首次真机跑通 `env→launch→inject→stop` 主干，修掉 4 个测试台缺陷：**D1** `ft_launch` 的就绪游标被 log4j「每次冷启动轮转 latest.log」击穿 ⇒ 启动阶段**必然假超时**（实测服务端 9 s 就绪、台子干等 240 s）；**D2** 游戏运行时 latest.log 被独占而 `File.ReadAllBytes` 是 `FileShare.Read` ⇒ 「在线读日志」全线不可用（此前被 D1 掩盖，读分支从未真正执行）。二者改用**文件身份锚点**（创建时间 + 头部 SHA1 + 长度）+ 共享读写打开，并加「超时时若日志已有就绪标记则报 ready-but-undetected」的反向自检；**D3** KubeJS 命令队列通道经实测**从根上不可实现**（类过滤挡住 `java.nio.file`/`java.io`、bindings 无文件包装器、`java`/`Packages` 全局已移除）⇒ 整体撤除，命令注入统一走 RCON，KubeJS 收敛为读数探针；**D4** 补 `--gradle-arg` 透传，客户端得以带 `-PtestSodium=false` 启动。新增客户端启动用例 `FAB-CLIENT-BOOT`，`FAB-INJECT-ROUNDTRIP` 改用 rcon；5 条用例全绿，闸门 / FAIL / PASS 退出码逐条实证。 |

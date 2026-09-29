@@ -17,9 +17,11 @@
 | 构建 | `gradlew :forge-1.20.1:build` | `gradlew :fabric-1.20.1:build` | 任务名不同 |
 | 依赖 | Curios / Mixin Booster | Trinkets 3.7.2（+ Accessories 可选）+ Puzzles Lib 8.1.33 + Forge Config API Port + Fabric API + Cardinal Components（`build.gradle:65-158`、`gradle.properties`） | `mt_env.ps1` 装的前置清单完全不适用 |
 | 探测手段 | KubeJS 探针 + `/astralparty` 管理员命令 | 同样 KubeJS（已在 `modRuntimeOnly`），**外加** fabric 专属 `LoaderBus#dispatchReport()` | 生产线没有 dispatchReport，抓不到「0 次派发」 |
-| 判定读数 | `AP_<tag>_<KEY>:` 聊天通道机器行 | 本台沿用 `AP_` 前缀族，但读数源改为：加载器日志 + 派发统计 + 开包条目 + （RCON/KubeJS 注入回显） | 断言对象不同 |
+| 判定读数 | `AP_<tag>_<KEY>:` 聊天通道机器行 | 本台沿用 `AP_` 前缀族，但读数源改为：加载器日志 + 派发统计 + 开包条目 + （RCON 注入回显） | 断言对象不同 |
 | 收停 | `mt_cleanup.ps1` 按 gradle 选择器 + run 目录匹配 | Loom dev-run 入口主类 `net.fabricmc.devlaunchinjector.Main` + 命令行含 `fabric-1.20.1`（实测 `dev-launch-injector-0.2.1+build.8.jar` 内 `net/fabricmc/devlaunchinjector/Main.class`，其属性名实测为 `fabric.dli.config` / `fabric.dli.env` / `fabric.dli.main`） | 判据不同 |
-| 输入注入 | Win32 `PostMessage` 键鼠（`mt_inject.ps1` + `Mt.Win32.psm1`，依赖 en-US 键盘布局与窗口线程输入法） | 本台面向**服务端命令**：RCON（默认）+ KubeJS 队列脚本 | 客户端 GUI 键鼠注入本台 v1 未覆盖（缺口，见 §8） |
+| 输入注入 | Win32 `PostMessage` 键鼠（`mt_inject.ps1` + `Mt.Win32.psm1`，依赖 en-US 键盘布局与窗口线程输入法） | 本台面向**服务端命令**：**RCON（唯一通道）** | 客户端 GUI 键鼠注入本台未覆盖（缺口，见 §8） |
+| 日志窗口 | 文件身份锚点（ctime + 头部指纹 + 长度） | **同口径**（`Get-FtLogAnchor`）—— 因为 latest.log **每次冷启动都被 log4j 轮转**，纯字节偏移游标在每次启动都失效（实测缺陷，见 §7.4） | 旧实现用「启动前字节长度」当游标 ⇒ 每次启动必然假超时 |
+| 日志读取 | 文件空闲时读（可 `ReadAllBytes`） | **必须共享读写打开**（`FileShare.ReadWrite`）—— 游戏运行时 latest.log 被独占，`File.ReadAllBytes`（share=Read）**每次**都抛「being used by another process」（实测缺陷，见 §7.4） | 不共享打开 ⇒「服务端还活着时读日志」全线不可用 |
 | 批量编排闸门 | `mt.ps1` / `mt_case.ps1` / `mt_watchdog.ps1`（三处 + watchdog） | `ft.ps1` / `ft_case.ps1` / `ft_launch.ps1 --side both` | 闸门维度不同：fabric 单版本 ⇒「三线顺序」与 `watchdog -Action stop` **N/A** |
 
 **从第一性看**：生产线测试台的每一个共享函数（`Mt.Paths` 的版本→子项目映射、`Mt.Phase` 的三线门控、
@@ -35,18 +37,18 @@
 | `lib/Ft.Common.psm1` | 共享原语：路径派生（全部 `$PSScriptRoot` 绝对路径）、统一输出、退出码、**批量编排闸门**、日志窗口读取、jar 开包统计、字节透传子进程 | 退出码与 `scripts/test/lib/Mt.Phase.psm1:29-36` 逐值一致 |
 | `ft.ps1` | 阶段编排入口（`--phase build\|env\|launch\|stop\|case\|report`）+ 闸门（无 `--phase` / `case` 无 `--case` / `report`） | 逐字节透传子脚本输出；只返回退出码 |
 | `ft_build.ps1` | `gradlew :fabric-1.20.1:build` + **开包核对**（models/item、recipes、bountiful=0、trinkets、`META-INF/jars`） | 读数行 `AP_FAB_*`；核对失败 = FAIL(1)，跑不起来 = ERROR(2) |
-| `ft_env.ps1` | 运行环境装配/校验：目录骨架、`eula.txt`、前置可得性（Loom 缓存 / `mods` 双查）、可选装 RCON、装 KubeJS 观察者 | `--mode verify`（默认，只读）/ `install` |
-| `ft_launch.ps1` | 后台起 `:fabric-1.20.1:runServer\|runClient` + 就绪轮询（字节游标，只认本次新写入的日志）+ 冻结 launch 窗口 | 就绪标记：服务端 `Done (…)`/客户端 `Sound engine started` |
+| `ft_env.ps1` | 运行环境装配/校验：目录骨架、`eula.txt`、前置可得性（Loom 缓存 / `mods` 双查）、可选装 RCON、可选装 KubeJS **读数探针** | `--mode verify`（默认，只读）/ `install`；`--enable-rcon`；`--install-probe [脚本名]` |
+| `ft_launch.ps1` | 后台起 `:fabric-1.20.1:runServer\|runClient` + 就绪轮询（**文件身份锚点**，只认本次启动新写入的日志）+ 冻结 launch 窗口 + `--gradle-arg` 透传 | 就绪标记：服务端 `Done (…)`/客户端 `Sound engine started` |
 | `ft_stop.ps1` | 状态文件 PID 树 + CIM 扫描 `devlaunchinjector` 进程，只杀本线；可选 `--stop-daemon` / `--purge-saves` | 绝不 taskkill 无关 java |
-| `ft_inject.ps1` | 手动命令注入：`--channel rcon`（默认）/ `kubejs` | 手动粒度 = 命令级，一次一条 |
+| `ft_inject.ps1` | 命令注入：`--channel rcon`（**唯一通道**，vanilla 原生、同步返回回显） | 传 `kubejs` 会**显式失败**并给出实测理由（见 §7.3/D3） |
 | `ft_assert.ps1` | 断言引擎：`snapshot` / `log` / `absent` / `case`；窗口 `case`(默认)`\|launch\|whole` | 可 dot-source（`InvocationName` 守卫）供其它脚本复用 |
 | `ft_dispatchreport.ps1` | 抽取 `LoaderBus#dispatchReport()`，**把 0 次派发的事件类单独列出** | 硬判据：`ServerTickEvent > 0` |
-| `ft_cmd_watcher.js` | KubeJS 服务端观察者（队列 `→ server.runCommand`），供 `ft_inject --channel kubejs` | 需冷启动或 `/kubejs reload server_scripts` |
-| `cases/FAB-BOOT-EMBED.json` | ① 启动到 `Done` + 内嵌库自检 | 只需一次已完成的启动 |
-| `cases/FAB-DISPATCH-BASIC.json` | ② 派发报告里基础事件为正数 | 需服务端跑过 600 tick |
-| `cases/FAB-JAR-ASSETS.json` | ③ 产物资源完整性（**不需要游戏**） | 只需 `ft_build` |
-| `cases/FAB-INJECT-ROUNDTRIP.json` | ④（附加）注入往返 | 需活着且装了观察者的服务端 |
-| `event_bridge_probe.js` | **既有文件，原样保留**：人工取证脚本（造僵尸/伤害/效果来区分「桥没接」与「确实没发生」） | 用户手动放进 `run/server/kubejs/server_scripts/` |
+| `cases/FAB-BOOT-EMBED.json` | ① 服务端启动到 `Done` + 内嵌库自检（9 断言） | 只需一次已完成的启动；**刻意不含**派发统计断言（那是 DISPATCH-BASIC 的职责，且会引入 30 s 的隐藏时间耦合） |
+| `cases/FAB-DISPATCH-BASIC.json` | ② 派发报告里基础事件为正数（8 断言） | 需服务端跑过 600 tick |
+| `cases/FAB-JAR-ASSETS.json` | ③ 产物资源完整性（1 断言，**不需要游戏**） | 只需 `ft_build` |
+| `cases/FAB-CLIENT-BOOT.json` | ④ 客户端启动期事实：桥已安装 / 注册桥读数 / 审计通过 / 无类加载与崩溃（8 断言） | 需 `ft_launch --side client --gradle-arg -PtestSodium=false` |
+| `cases/FAB-INJECT-ROUNDTRIP.json` | ⑤ 注入往返（3 断言） | 需活着且已启 RCON 的服务端；锚点 = `/say <tag>` 的控制台回声 |
+| `event_bridge_probe.js` | **既有文件，原样保留**：人工取证脚本（造僵尸/伤害/效果来区分「桥没接」与「确实没发生」） | 由 `ft_env --install-probe` 装进 `run/server/kubejs/server_scripts/` |
 | `.syntax-check.txt` | 全部 `.ps1/.psm1` 的 PowerShell 语法解析自检结果（见 §7） | 每次改动后重跑（命令见 §7） |
 
 ---
@@ -57,18 +59,27 @@
 # ── 基础设施（放行清单：把运行环境弄起来 / 收停）────────────────────────────
 pwsh -NoProfile -File scripts/test/fabric/ft_build.ps1                  # 构建 + 开包核对
 pwsh -NoProfile -File scripts/test/fabric/ft_env.ps1 --side both        # 前置/目录校验（只读）
-pwsh -NoProfile -File scripts/test/fabric/ft_env.ps1 --side server --enable-rcon --install-watcher
-pwsh -NoProfile -File scripts/test/fabric/ft_launch.ps1 --side server    # 起服务端并等就绪
-pwsh -NoProfile -File scripts/test/fabric/ft_launch.ps1 --side client --timeout 420
+pwsh -NoProfile -File scripts/test/fabric/ft_env.ps1 --side server --enable-rcon   # 开 RCON（注入的唯一通道）
+pwsh -NoProfile -File scripts/test/fabric/ft_env.ps1 --side server --install-probe # 装 KubeJS 读数探针
+pwsh -NoProfile -File scripts/test/fabric/ft_launch.ps1 --side server   # 起服务端并等就绪
+# 客户端：本机 dev 环境**必须**带 -PtestSodium=false（Sodium 要 LWJGL 3.3.1，环境是 3.3.2-snapshot）
+pwsh -NoProfile -File scripts/test/fabric/ft_launch.ps1 --side client --timeout 420 --gradle-arg -PtestSodium=false
+# 客户端直接进世界（需要已有存档）：再加一个
+#   --gradle-arg -Pquickplay=<世界名>
 
 # ── 手动读数 / 手动注入（逐条、边发边看）──────────────────────────────────
 pwsh -NoProfile -File scripts/test/fabric/ft_dispatchreport.ps1 --side server
 pwsh -NoProfile -File scripts/test/fabric/ft_assert.ps1 snapshot --side server --window case
 pwsh -NoProfile -File scripts/test/fabric/ft_assert.ps1 log --pattern '事件派发统计' --window whole
-pwsh -NoProfile -File scripts/test/fabric/ft_assert.ps1 absent --pattern '\[ft-inject\] ERR'
+pwsh -NoProfile -File scripts/test/fabric/ft_assert.ps1 absent --pattern 'Unknown or incomplete command'
 pwsh -NoProfile -File scripts/test/fabric/ft_inject.ps1 cmd --command "/give @s astral_dice:star_coin 3"
-pwsh -NoProfile -File scripts/test/fabric/ft_inject.ps1 cmd --command "/time set day" --channel kubejs
+pwsh -NoProfile -File scripts/test/fabric/ft_inject.ps1 cmd --command "/say FT-ANCHOR-1"    # 可被日志断言
+```
 
+> ⚠️ **读数类脚本在服务端活着时也能跑**（这是本轮修掉的一个致命缺陷）：日志走共享读写打开
+> （`Read-FtFileBytesShared`），不再用会被独占挡住的 `File.ReadAllBytes`。
+
+```powershell
 # ── 单条用例（放行）─────────────────────────────────────────────────────
 pwsh -NoProfile -File scripts/test/fabric/ft_case.ps1 list
 pwsh -NoProfile -File scripts/test/fabric/ft_case.ps1 validate --all
@@ -77,11 +88,12 @@ pwsh -NoProfile -File scripts/test/fabric/ft.ps1 --phase case --case scripts/tes
 
 # ── 收尾 ───────────────────────────────────────────────────────────────
 pwsh -NoProfile -File scripts/test/fabric/ft_stop.ps1 --side server --purge-saves
+pwsh -NoProfile -File scripts/test/fabric/ft_stop.ps1 --side client
 ```
 
-推荐顺序（与 §1 的差异对应）：`ft_build` → `ft_env --side both` → `ft_env --side server --enable-rcon --install-watcher`
-→ `ft_launch --side server`（冷启动让观察者生效）→ 手动 `ft_inject`/`ft_assert` → 逐条 `ft_case run --case`
-→ `ft_stop`。
+推荐顺序（与 §1 的差异对应）：`ft_build` → `ft_env --side both` → `ft_env --side server --enable-rcon`
+（→ 想用探针再加 `--install-probe`）→ `ft_launch --side server`（冷启动，让 RCON 与探针生效）
+→ 手动 `ft_inject`/`ft_assert` → 逐条 `ft_case run --case` → `ft_stop`。
 
 ---
 
@@ -117,8 +129,9 @@ pwsh -NoProfile -File scripts/test/fabric/ft_stop.ps1 --side server --purge-save
   "on_fail": "keep_game_running",            // 仅为与生产线用例形似；本台 v1 未实现该行为
   "steps": [
     { "op": "note",           "text": "…" },
-    { "op": "inject_command", "command": "/time set day", "channel": "rcon" },
+    { "op": "inject_command", "command": "/say FT-ANCHOR-1", "channel": "rcon" },
     { "op": "wait",           "ms": 1500 },
+    { "op": "wait_for",       "pattern": "事件派发统计", "timeout_ms": 120000, "interval_ms": 1500 },
     { "op": "snapshot",       "window": "case" }
   ],
   "asserts": [
@@ -133,7 +146,14 @@ pwsh -NoProfile -File scripts/test/fabric/ft_stop.ps1 --side server --purge-save
 }
 ```
 
-* `op` 全集：`note` / `wait` / `snapshot` / `inject_command`（`command` 或 `text`；`channel` 默认 `rcon`；`side` 取用例级）。
+* `op` 全集：`note` / `wait`（`ms`）/ **`wait_for`**（`pattern` + `timeout_ms` + `interval_ms` + 可选 `window`）/
+  `snapshot` / `inject_command`（`command` 或 `text`；`channel` 默认且**只能**是 `rcon`；`side` 取用例级）。
+* **`wait_for` 为什么必要**（真实教训）：本线有读数只在**开局 600 tick（约 30 s）**才打印。用固定 `wait 25000`
+  时采样点没到 ⇒ 6 条断言集体失败，现场看起来像**产品缺陷**（「未找到派发报告」），实际只是**等待条件未满足**。
+  固定等待要么太短（假 FAIL）要么太长（白等）。`wait_for` 命中即继续；超时则以 **TIMEOUT(12)** 中止
+  并提示去用 `ft_dispatchreport.ps1` 手动读数 —— 与「断言失败 = 1」明确区分
+  （语义边界同 `TESTING-RULES-OVERVIEW.md` §7：FAIL = 断言不满足，TIMEOUT = 预算内没跑完）。
+* 退出码：`0` PASS / `1` 断言失败 / `2` ERROR（参数或用例非法、注入失败、闸门拦截）/ `12` TIMEOUT（`wait_for` 超时）。
 * `assert.type` 全集见上；`log`/`absent` 的 `window` 可逐条覆盖用例级默认值。
 * 用例级 `window: "whole"` 用于**启动期事实**（如 mods 清单打印在 launch 窗口起点之前）；写成 `case` 会必然假 FAIL。
 * 校验：`pwsh -File scripts/test/fabric/ft_case.ps1 validate --all`（schema 检查，不碰游戏）。
@@ -146,7 +166,7 @@ pwsh -NoProfile -File scripts/test/fabric/ft_stop.ps1 --side server --purge-save
 | 前缀 | 出现脚本 | 含义 |
 |---|---|---|
 | `AP_FAB_JAR` / `_MODELS` / `_RECIPES` / `_BOUNTIFUL` / `_TRINKETS` / `_EMBED` / `_EMBED_LIB` / `_BUILD` | `ft_build` | 开包核对读数（jar vs 磁盘源对照） |
-| `AP_FAB_ENV_DIR` / `_SUBDIRS` / `_EULA` / `_SURFACE` / `_MODS_LIST` / `_REQ` / `_RCON` / `_WATCHER` / `_INSTALL` / `AP_FAB_ENV` | `ft_env` | 环境实况与前置判定 |
+| `AP_FAB_ENV_DIR` / `_SUBDIRS` / `_EULA` / `_SURFACE` / `_MODS_LIST` / `_REQ` / `_RCON` / `_PROBE` / `_INSTALL` / `AP_FAB_ENV` | `ft_env` | 环境实况与前置判定、RCON 开关、探针安装 |
 | `AP_FAB_LAUNCH_TASK` / `_PID` / `_READY` / `AP_FAB_LAUNCH` | `ft_launch` | 启动与就绪 |
 | `AP_FAB_STOP_STATE` / `_KILL` / `_DAEMON` / `_PURGE` / `_KILLED` / `AP_FAB_STOP` | `ft_stop` | 收停 |
 | `AP_FAB_INJECT_TARGET` / `AP_FAB_INJECT` / `AP_FAB_INJECT_RESP` | `ft_inject` | 注入与回显 |
@@ -188,89 +208,160 @@ pwsh -NoProfile -Command "$errs=$null; [void][System.Management.Automation.Langu
 > 首轮 `ft_env.ps1` 曾报 3 处 `变量引用无效。“:”后没有有效的变量名称字符`（`"$s: …"` 被解析成
 > `$s:` 作用域限定）—— 已改为 `"${s}: …"`，复检 0 错误。
 
-### 7.2 **实际跑过**的清单（30 个调用，含退出码）
+### 7.2 **真机实跑**过的清单（含退出码）— 2026-09-29 复验
 
-用 `Start-Process -RedirectStandardOutput/-RedirectStandardError` 逐条跑（刻意**不用** `2>` 原生重定向：
-它会把子进程输出二次解码，中文变乱码）。
+方法：`Start-Process -RedirectStandardOutput/-RedirectStandardError` 逐条跑、落盘再读
+（刻意**不用** `2>` 原生重定向：它会把子进程输出二次解码，中文变乱码）。
+下表是**修复后**的复验结果；修复前的失败读数见 §7.3。
 
-| # | 调用 | 退出码 | 结论 |
+| # | 调用 | 退出码 | 读数 |
 |---|---|---|---|
-| 01 | `ft_build.ps1 --jar <产物>` | 0 | `AP_FAB_MODELS: jar=138 src=137 ok=true`、`recipes jar=132 src=118 ok=true`、`bountiful jar=0 ok=true`、`trinkets jar=15 src=8 ok=true`、`EMBED_LIB present=true` |
-| 02 | `ft_env.ps1 --side server --mode verify` | 0 | 8 项前置全 `present=true source=loom`；`AP_FAB_ENV_RCON: enabled=false`（并给出 WARN） |
-| 03 | `ft_env.ps1 --side client --mode verify` | 0 | 同上（客户端侧） |
-| 04 | `ft_dispatchreport.ps1 --side server` | 0 | `fired=10 idle=26 ServerTickEvent=599`，26 个 0 次事件逐条列出 |
-| 05 | `ft_assert.ps1 log --pattern 'Done \(\d' --window whole` | 0 | `hits=1` |
-| 06 | `ft_assert.ps1 absent --pattern <不存在>` | 0 | `hits=0` |
-| 07 | `ft_assert.ps1 log --pattern <不存在>`（**期望 FAIL**） | 1 | `ok=false`，stderr `MT_FAB_ASSERT: FAIL` ✔ 语义正确 |
-| 08 | `ft_assert.ps1 snapshot --side server --window case` | 0 | `cursor=19523` |
-| 09 | `ft_case.ps1 list` | 0 | 4 条用例 |
-| 10 | `ft_case.ps1 validate --all` | 0 | `total=4 bad=0` |
-| 11 | `ft_case.ps1 run --case FAB-DISPATCH-BASIC.json` | 0 | 8/8 断言通过 |
-| 12 | `ft_case.ps1 run --case FAB-BOOT-EMBED.json` | 0 | 10/10 断言通过 |
-| 13 | `ft_case.ps1 run --case FAB-JAR-ASSETS.json` | 0 | 1/1 断言通过 |
-| 14 | `ft_stop.ps1 --side server`（无实例在跑） | 0 | `AP_FAB_STOP: OK`（0 个进程，无残留） |
-| 15 | `ft.ps1`（无 `--phase`）| **2** | stderr 首行 `MT_AUTO_DISABLED: 全流程（无 --phase…）` ✔ |
-| 16 | `ft.ps1 --phase case`（无 `--case`）| **2** | `MT_AUTO_DISABLED: --phase case 未指定 --case…` ✔ |
-| 17 | `ft.ps1 --phase report` | **2** | `MT_AUTO_DISABLED: --phase report…` ✔ |
-| 18 | `ft_case.ps1 run-dir` | **2** | `MT_AUTO_DISABLED: run-dir…` ✔ |
-| 19 | `ft_launch.ps1 --side both` | **2** | `MT_AUTO_DISABLED: --side both…` ✔ |
-| 20 | `ft_inject.ps1 cmd --command "/say hi"`（无服务端）| 2 | `AP_FAB_INJECT: FAIL (channel=rcon reason=connect-or-auth)` + ERROR（真实错误路径）|
-| 21 | `ft_inject.ps1 cmd … --channel kubejs`（无观察者）| 2 | `reason=watcher-missing` + 指引 ✔ |
-| 22 | `ft_build.ps1 --help` | 0 | 用法 |
-| 23 | `ft.ps1 --phase report --allow-auto` | 0 | 临放行生效：产出 `reports/<ts>/report.md` ✔ |
-| 24 | `ft.ps1 --phase build --jar <产物>` | 0 | 阶段透传 ✔（**修 bug 前此处打印的是 `rc=System.Object[]`**，见下） |
-| 25 | `ft_case.ps1 run-dir --allow-auto` | 2 | 临放行生效：不再打 `MT_AUTO_DISABLED`，改打「即使放行也未实现」✔ |
-| 26 | `MT_ALLOW_AUTO=1 pwsh … ft.ps1 --phase report` | 0 | 环境变量开关生效 ✔ |
-| 27 | `ft_assert.ps1 frobnicate` | 2 | `MT_ERROR: 未知子命令 'frobnicate'` ✔ |
-| 28 | `ft_assert.ps1 case --case FAB-JAR-ASSETS.json` | 0 | 直接跑用例断言 ✔ |
-| 29 | `ft.ps1 --phase env --side server --mode verify` | 0 | 阶段透传 ✔ |
-| 30 | `ft_case.ps1 run --case FAB-INJECT-ROUNDTRIP.json`（无服务端）| 2 | 注入步骤**显式 ERROR 中止**（`reason=inject-failed step=2 rc=2`）✔ 不静默降级；同时证明带空格的命令参数透传正确 |
+| 01 | `ft_build.ps1`（**完整路径**，含真实 `gradlew :fabric-1.20.1:build`） | 0 | `[尝试 1/2]` → `构建成功，耗时 0.6s`（up-to-date）→ 开包核对全绿 |
+| 02 | `ft_build.ps1 --jar <产物>` | 0 | `models jar=138 src=137 ok=true`、`recipes jar=132 src=118 ok=true`、`bountiful jar=0 ok=true`、`trinkets jar=15 src=8 ok=true`、`EMBED_LIB present=true`（jar=1 773 251 B / 1581 entries） |
+| 03 | `ft_env.ps1 --side server --mode verify` | 0 | 8 项前置全 `present=true source=loom` |
+| 04 | `ft_env.ps1 --side server --enable-rcon` | 0 | `enabled=true port=25575 password_set=true changed=true`（写进 `server.properties`，**重启**生效） |
+| 05 | `ft_env.ps1 --side server --install-probe` | 0 | `AP_FAB_ENV_PROBE: installed=…\event_bridge_probe.js`；冷启动后该探针确有执行 |
+| 06 | `ft_launch.ps1 --side server` | 0 | `AP_FAB_LAUNCH_READY: pattern=Done \(\d+(\.\d+)?s\)! For help cursor=22827`（**修复前此项恒为 12/TIMEOUT**，见 §7.3/D1） |
+| 07 | `ft_launch.ps1 --side client --gradle-arg -PtestSodium=false` | 0 | `AP_FAB_LAUNCH_READY: pattern=Sound engine started cursor=23798` |
+| 08 | `ft_assert.ps1 log --pattern 'Done \(\d' --side server --window whole`（**服务端活着时**） | 0 | `hits=1` ⇒ 在线读日志可用（修复前这条必然抛 IOException，见 §7.3/D2） |
+| 09 | `ft_assert.ps1 log --pattern 'Sound engine started' --side client --window whole`（在线） | 0 | `hits=1` |
+| 10 | `ft_assert.ps1 log --pattern '事件订阅审计' --side client --window whole`（在线） | 0 | `hits=2`（服务端 50 类 + 客户端 61 类各一条） |
+| 11 | `ft_dispatchreport.ps1 --side server` | 0 | `fired=10 idle=26 ServerTickEvent=599`，26 个 0 次事件逐条列出 |
+| 12 | `ft_assert.ps1 snapshot --side server --window case` + 前向断言 | 0 / **1** | `cursor=19707`；窗口内找不到时 `ok=false` 且 rc=**1** ✔（FAIL 语义正确） |
+| 13 | `ft_inject.ps1 cmd --command /list --channel kubejs`（**已废除的通道**） | **2** | `reason=unsupported-by-platform` + 完整实测理由 ✔ 显式失败，不静默 |
+| 14 | `ft_inject.ps1 cmd --command /list --side client` | **2** | `reason=client-unsupported` ✔ |
+| 15 | `ft_inject.ps1 cmd --command "/say ft-inject-ok" --channel rcon`（**无服务端**） | 2 | `reason=connect-or-auth` + 检查指引（真实错误路径） |
+| 16 | `ft_inject.ps1 cmd --command "/say ft-inject-ok" --channel rcon`（**有服务端**） | 0 | `AP_FAB_INJECT: OK`、`AP_FAB_INJECT_RESP: [1] (empty)`；服务端日志出现 `[Not Secure] [Rcon] ft-inject-ok` |
+| 17 | `ft_case.ps1 list` | 0 | 5 条用例 |
+| 18 | `ft_case.ps1 validate --all` | 0 | `total=5 bad=0` |
+| 19 | `ft_case.ps1 run --case FAB-BOOT-EMBED.json` | 0 | **9/9** 断言通过（原 10 条里的 `事件派发统计` 已移出 —— 见 §7.3/D5） |
+| 20 | `ft_case.ps1 run --case FAB-DISPATCH-BASIC.json` | 0 | **8/8** 通过（`ServerTickEvent=599`）；先经 `wait_for` 等到采样点 |
+| 21 | `ft_case.ps1 run --case FAB-JAR-ASSETS.json` | 0 | **1/1** 通过 |
+| 22 | `ft_case.ps1 run --case FAB-CLIENT-BOOT.json`（**本轮新增**） | 0 | **8/8** 通过 |
+| 23 | `ft_case.ps1 run --case FAB-INJECT-ROUNDTRIP.json`（改 rcon，**有服务端**） | 0 | **3/3** 通过 |
+| 24 | `ft_case.ps1 run --case FAB-INJECT-ROUNDTRIP.json`（**无服务端**） | 2 | 注入步骤**显式 ERROR 中止**（`reason=inject-failed step=2`）✔ 不静默降级 |
+| 25 | `wait_for` 超时路径（等待条件在预算内不满足） | **12** | `reason=wait-for-timeout` + `MT_FAB_CASE: ERROR` ⇒ TIMEOUT 与 FAIL 明确区分 ✔ |
+| 26 | `ft_stop.ps1 --side server`（**真在跑**的实例） | 0 | `KILL target=launcher pid=… tree=true`、`count=1`；随后 java 进程消失、`latest.log` 文件锁释放 |
+| 27 | `ft_stop.ps1 --side client`（真在跑的实例） | 0 | 同上（`latest.log` 可读写且未残留） |
+| 28 | `ft.ps1`（无 `--phase`） | **2** | `MT_AUTO_DISABLED: 全流程…` ✔ |
+| 29 | `ft.ps1 --phase case`（无 `--case`） | **2** | `MT_AUTO_DISABLED: --phase case 未指定 --case…` ✔ |
+| 30 | `ft.ps1 --phase report` | **2** | `MT_AUTO_DISABLED: --phase report…` ✔ |
+| 31 | `ft_case.ps1 run-dir` | **2** | `MT_AUTO_DISABLED: run-dir…` ✔ |
+| 32 | `ft_launch.ps1 --side both` | **2** | `MT_AUTO_DISABLED: --side both…` ✔ |
+| 33 | `ft.ps1 --phase case --case FAB-JAR-ASSETS.json`（阶段透传） | 0 | `AP_FAB_PHASE: case rc=0` ✔ |
+| 34 | `ft_assert.ps1 log --pattern ZZZ_NOT_EXIST_ZZZ`（**期望 FAIL**） | 1 | `MT_FAB_ASSERT: FAIL — hits=0` ✔ |
+| 35 | `ft_env.ps1 --help` / `ft_launch.ps1 --help` | 0 | 用法（`ft_launch` 含 `--gradle-arg`） |
 
-**实测中修掉的两个真实缺陷**（都是这套代码自己的，不是既有生产线的）：
+### 7.3 已修复的测试台缺陷（5 个；每个都附实测证据）
 
-1. **子进程输出被管道吞掉 ⇒ 退出码变成数组**：`ft.ps1` 原用 `& pwsh -File …; return $LASTEXITCODE`，
-   而 `&` 会把子进程 stdout 收进当前管道 ⇒ `ft.ps1 --phase build` 打印 `AP_FAB_PHASE: build rc=System.Object[]`。
-   修法 = 新增 `lib/Ft.Common.psm1#Invoke-FtChildProcess`（`Start-Process` + 临时文件 + 原始字节转发），
-   `ft.ps1` 与 `ft_case.ps1` 的注入调用都改走它。
-2. **`&` + `2>` 会二次解码 ⇒ 中文乱码**：实测子进程 UTF-8 的 stderr 经 PowerShell 原生命令重定向后
-   在文件里变成 `涓枃` 一类乱码（同一进程写文件直接读字节则完全正确：`e6 b6 93…` vs `e4 b8 ad…`）。
-   同一条 `Invoke-FtChildProcess` 一并解决（字节转发不经过 PowerShell 的文本层）。
+前两个是**阻断级**：只要有它们，`ft_launch` **每一次启动都必然失败**，连带 env/launch 之后的一切
+（在线读数、命令注入、全部用例）统统不可用 —— 这就是「测试流程完全不可用」的根因。
 
-另外修掉 1 处**判定误报**：`ft_env.ps1` 的 fabric-api 正则写成
-`fabric-api-fabric-api-\d`，而 Loom 缓存实际命名是 `<group>-<artifact>-<hash8>-<version>.jar`
-⇒ 首轮实测把 `fabric-api` 判成 `present=false source=absent`（**假 FAIL**）。已改为
-`fabric-api-fabric-api-[0-9a-f]{8}-\d`，复跑 `present=true source=loom`。
+#### D1 就绪游标被 log4j 的「启动轮转」击穿 ⇒ 每次启动必然假超时
 
-### 7.3 **只做了静态校验、没有实跑**的清单（必须在真机上补验）
+- **现象（修复前实测）**：`ft_launch.ps1 --side server --timeout 240` → `rc=12`、
+  `AP_FAB_LAUNCH: FAIL (reason=timeout timeout=240s)`；而同一时刻 `run/server/logs/latest.log` 里
+  早已有 `[18:06:04] Done (0.333s)! For help, type "help"`（启动后 **9 秒**就绪）。
+  超时后**进程仍在跑**（orphan），日志里连完整的 600-tick 派发报告都产出了。
+- **根因**：Minecraft 的 log4j 配置带 `OnStartupTriggeringPolicy` —— **每一次冷启动**都把 `latest.log`
+  改名成 `2026-09-29-7.log.gz`（实测时间戳 18:05:55 = 启动瞬间）再**新建**一个空 `latest.log`。
+  旧实现拿「启动前记录的字节长度」当游标，且只在 `len > preLen` 时才读 ⇒ 要等新文件长过旧长度
+  （约 20 KiB）条件才成立，而就绪行**早在文件前部**，因此**永远匹配不到**。
+- **次生伤害（更隐蔽）**：新文件长过旧长度之后，那个偏移量落进**新文件中间**，
+  `Get-FtLogWindow('case'|'launch')` 会**静默**返回一个错误窗口（漏启动行、混进无关行）——
+  这正是「假 PASS / 假 FAIL」的来源。旧实现只在「长度回退」时报 WARN，覆盖不到这种情形。
+- **修法**：把「字节位置」换成「**文件身份锚点**」= 创建时间(UTC ticks) + 头部 4 KiB 的 SHA1 + 长度
+  （`Ft.Common.psm1#Get-FtLogAnchor` / `Get-FtLogWindowFromAnchor`）：身份变了 ⇒ 整个新文件就是
+  「本次新增」；身份没变才做前向切片。另加**反向自检**：超时时若整份日志里已有就绪标记，
+  报 `reason=ready-but-undetected`（与普通 timeout 区分）—— 把「工具缺陷」与「游戏没起来」彻底分开。
+
+#### D2 游戏运行时 `latest.log` 被独占 ⇒「在线读日志」全线不可用
+
+- **现象**：服务端运行期间读日志抛
+  `The process cannot access the file '…latest.log' because it is being used by another process.`
+- **根因**：`[System.IO.File]::ReadAllBytes` 内部的共享模式是 `FileShare.Read`，而 Windows 的共享
+  检查是**对称**的 —— 只允许别人「读」，就无法与仍持有**写**句柄的游戏进程共存。
+  ⚠️ 这个缺陷此前**一直被掩盖**：旧 `ft_launch` 的读分支因 D1 的判定条件恒不成立而**从未真正执行**，
+  也就是说「起服务端 → 在线读数」这条主干（`ft_assert` / `ft_dispatchreport` / 轮询 / 回显校验）
+  从来就没跑通过。
+- **修法**：新增 `Read-FtFileBytesShared`（`FileShare.ReadWrite`），`Read-FtLogText` 与窗口切分全走它。
+
+#### D3 KubeJS 命令队列通道从根上不可实现 ⇒ 已废除（附证据链）
+
+- **现象**：观察脚本 `ft_cmd_watcher.js` 每 20 tick 抛一次
+  `[ft-inject] ERR 读队列失败: TypeError: Cannot call method "get" of null`（`FT_Paths` 恒为 null），
+  **从未成功执行过一条命令**。而宽模式 `\[ft-inject\]` 会把这一堆 ERROR 行当成"命中" —— 本轮正是靠
+  `FAB-INJECT-ROUNDTRIP` 的精细断言把它揪出来（`ran rc=` 命中 0、`ERR` 命中 3）。
+- **实证（全部可复算）**：
+  1. KubeJS 的类过滤不放行 `java.nio.file.*` / `java.io.*`：`Java.loadClass('java.nio.file.Paths')`
+     不产生 `Loaded Java class '…'` 行且返回 null；`java.lang.String` / `dev.latvian.mods.kubejs.*` 才会；
+  2. 面向脚本的 bindings **没有**任何文件/路径包装器（`unzip -l` 实测只有
+     Block / DamageSource / Ingredient / Item / Java / KMath / Text / Utils 八个 Wrapper）；
+  3. Rhino 的 `java` / `Packages` 全局已移除 —— 实测报错
+     `Line 57: 'java()' is no longer supported! Read more on wiki: https://kubejs.com/kjs6`。
+  ⇒ 三条路全断，「往文件写队列让 KubeJS 读」在 KubeJS 6+ 上**无法实现**。
+- **修法**：整体移除该通道与观察脚本；`--channel kubejs` 保留为**显式失败**
+  （`reason=unsupported-by-platform` + 完整理由）—— 比「看起来能用、实际永远失败」安全得多。
+  KubeJS 在本台的定位收敛为**「产出读数的探针」**（`ft_env --install-probe`），命令注入统一走 RCON。
+
+#### D4 `ft_launch` 无法向 gradlew 透参 ⇒ 客户端在本机 dev 环境必然启动失败
+
+- **现象**：旧 `ft_launch --side client` 只会起 `gradlew :fabric-1.20.1:runClient`，而本机 dev 环境里
+  Sodium 要求 LWJGL 3.3.1、环境装的是 3.3.2-snapshot ⇒ 启动期硬失败，且没有任何绕过手段。
+- **修法**：新增可重复的 `--gradle-arg <x>` 透传（同时写进状态文件与 `AP_FAB_LAUNCH_TASK` 读数行）。
+  实跑：`--side client --gradle-arg -PtestSodium=false` → `AP_FAB_LAUNCH_READY … Sound engine started`，rc=0。
+  该开关是工程 `build.gradle` **既有**的测试开关（注释写明用于「只为跑一次 GUI 验证」）；
+  跑渲染 / tooltip 类验证时排除 Sodium 反而更干净（不被第三方渲染模组干扰）。
+
+#### D5 用例里的**固定 `wait`** 把「等待条件未满足」伪装成「断言失败」⇒ 新增 `wait_for` 步骤
+
+- **现象（本轮复验时真实踩到）**：`ft_launch --side server` 就绪后等 25 s 再跑用例，
+  `FAB-BOOT-EMBED` **1/10** 失败、`FAB-DISPATCH-BASIC` **6/8** 失败，两条都是
+  `事件派发统计` 相关断言报 `未找到派发报告` —— 现场读起来像**产品缺陷**（桥没派发？内嵌库坏了？），
+  实际只是**采样点没到**（该报告在开局 600 tick ≈ 30 s 才打印）。用例自己的注释里就写着
+  「⚠️ 若在 600 tick 之前断言，请改用 ft_dispatchreport 手动读数」—— 靠注释提醒纪律，不如靠机制。
+- **修法（两层）**：
+  1. 新增 `wait_for` 步骤（`pattern` + `timeout_ms` + `interval_ms` + 可选 `window`）：命中即继续，
+     超时以 **ERROR(12) TIMEOUT** 中止并在信息里给出「去用 `ft_dispatchreport.ps1` 手动读数」的指引
+     —— 与「断言失败 = 1」明确区分（语义边界同 `TESTING-RULES-OVERVIEW.md` §7）。
+     `FAB-DISPATCH-BASIC` 改用它，不再依赖任何固定等待。
+  2. **解耦**：把 `事件派发统计` 断言从 `FAB-BOOT-EMBED` 里**移出**（10 → 9 条）。它是「派发」这个
+     独立关注点，归 `FAB-DISPATCH-BASIC` 管；留在启动期用例里就制造了一个隐藏的 30 s 时间耦合。
+- **教训（通用）**：**用例里的固定 `sleep` 会把时序问题伪装成功能缺陷**。凡「等某个读数出现」的场合，
+  都应换成「有界轮询 + 超时给出不同结论」；否则失败现场会把排查方向带偏（本轮如果直接信那 6 条 FAIL，
+  就会去查事件桥，而真相是等太短）。
+
+### 7.4 仍未实跑 / 仍未覆盖
 
 | 项 | 为什么没跑 | 补验方式 |
 |---|---|---|
-| `ft_build.ps1` 的**完整构建**（不带 `--jar`） | 会跑 `gradlew :fabric-1.20.1:build`（分钟级 + 写产物目录） | `pwsh -NoProfile -File scripts/test/fabric/ft_build.ps1` |
-| `ft_launch.ps1` 真正起客户端/服务端 | 会拉起游戏进程与 gradle 守护 | `--side server`（先，快）/ `--side client` |
-| `ft_stop.ps1` 对**真在跑**的实例收停（CIM 路径只跑到「枚举为空」） | 同上 | 起实例后 `--side server`，再看 `AP_FAB_STOP: OK/PARTIAL` |
-| `ft_env.ps1 --mode install`（拷前置进 `mods`） | 会写运行目录（且与 gradle classpath 重复投放有风险，脚本已 WARN） | 仅在「直接 java 启动」路径下用 |
-| `ft_env.ps1 --enable-rcon`（改 `server.properties`） | 会改运行环境配置 | 需要 RCON 通道时再执行，然后**重启**服务端 |
-| `ft_inject.ps1` 的 **RCON 成功路径**（认证 + 命令 + 回显解析） | 本机没有跑着的 RCON 服务端（`enable-rcon=false`） | `--enable-rcon` → 重启 → `ft_inject cmd --command "/say hi"`，看 `AP_FAB_INJECT_RESP:` |
-| `ft_inject.ps1 --channel kubejs` 的成功路径 + `ft_cmd_watcher.js` | 需冷启动服务端让 KubeJS 加载观察者；且脚本里的 `Java.loadClass('…JsonIO')` / `java.nio.file.Paths` / `Files.writeString` 三处 Java 互操作**未在 KubeJS 的 ClassFilter 下冒烟**（依据来自 `javap`，见脚本头注释） | `ft_env --install-watcher` → 冷启动 → 跑 `cases/FAB-INJECT-ROUNDTRIP.json`；若被 ClassFilter 拒绝，日志会打 `[ft-inject] ERR`，脚本会显式失败（不会静默） |
-| `--fg` 前台启动模式 | 同「真正起游戏」 | `ft_launch --side server --fg` |
-| 客户端侧 `Sound engine started` 就绪标记 | 需要起客户端 | `ft_launch --side client` |
+| `ft_build.ps1` 的 `--timeout` / `--retries` **超时与重试分支** | 需要构造一次真实超时（分钟级 + 破坏构建） | 影响面小，按需验 |
+| `ft_env.ps1 --mode install`（拷前置进 `mods`） | 会写运行目录，且与 gradle classpath 重复投放有风险（脚本已 WARN） | 仅在「直接 java 启动」路径下用 |
+| `--fg` 前台启动模式 | 会占住当前控制台（分钟级） | `ft_launch --side server --fg` |
+| 客户端**世界内**用例（渲染 / HUD / tooltip） | 需要 quickplay 进世界 + 存档准备；且 GUI 悬停无法可靠自动化 | `--gradle-arg -Pquickplay=<世界>` 后另写用例 |
+| `ft.ps1 --phase report` 的**放行后路径** | 默认被批量编排闸门拦下（刻意） | 加 `--allow-auto` 才可达；本轮只验了拦截码 = 2 |
 
-**没有任何一项结论是我「猜」的**：所有路径/类名/方法名/日志前缀都来自 §9 的依据索引，或来自
-`javap`／开包／实跑读数。
+**没有一项结论是「猜」的**：路径 / 类名 / 方法名 / 日志前缀都来自 §9 的依据索引，或来自
+`javap` / 开包 / **真机实跑读数**；§7.3 的每个根因都附了可复算的现场证据（时间戳、压缩包名、异常原文）。
 
 ---
 
 ## 8. 已知覆盖缺口与限制（如实标注）
 
 1. **客户端 GUI 键鼠注入未覆盖**：生产线的 `mt_inject.ps1`（Win32 `PostMessage` + en-US 键盘布局 + 窗口线程
-   输入法切换）未移植；fabric 台 v1 的注入只面向**服务端命令**（RCON / KubeJS 队列）。客户端的
-   渲染/输入类缺陷本台**抓不到**。
-2. **客户端派发报告未断言**：`ft_dispatchreport.ps1 --side client` 已实现读取，但没有对应用例
-   （需要起客户端 + 走到会派发的客户端事件）。
+   输入法切换）未移植；本台的注入只面向**服务端命令**，且只有 RCON 一条通道。客户端的
+   渲染 / 输入类缺陷本台**抓不到**（本轮实测也印证了这一点：`computer_control` 的按键到 MC 极不稳定）。
+2. **客户端派发统计未断言**：`ft_dispatchreport.ps1 --side client` 已实现读取，但**拿不到数据** ——
+   原因是平台事实而非本台缺陷：`事件派发统计` 的打印点是 FabricBridges 的「开局 600 tick」
+   （服务端 tick 回调）与「关服」；客户端只有**进入世界**（内置服务端跑起来）才会出现该块，
+   且关服那份需要**优雅退出**，而 `ft_stop` 是收停进程（`taskkill /T`）。
+   ⇒ 客户端侧证据链 = `FAB-CLIENT-BOOT`（桥已安装 + 注册桥读数 + 审计 61 类通过）；
+   需要「世界内渲染确实在派发」时另跑一次 quickplay 进世界的用例（见 §7.4）。
 3. **无 watchdog / 无停滞自动收停**：按现行规则这是刻意缺省（无人值守长流程已被闸门禁用）。
-4. **断言窗口是简化版**：生产线 `mt_assert.ps1` 用「文件身份锚点（ctime + 头部 64 KiB 指纹）」处理
-   log4j 跨零点日切；本台只记字节长度，长度回退时 WARN 并退化为整文件读取（见 `lib/Ft.Common.psm1`
-   的 `Save-FtSnapshot` 注释）。
+4. **断言窗口已改为「文件身份锚点」**（与生产线 `mt_assert.ps1` 同口径）：创建时间 + 头部 4 KiB SHA1 + 长度。
+   之所以必须这样，是因为 latest.log **每次冷启动都被轮转**（见 §7.3/D1）—— 纯字节偏移游标在每次启动
+   都会失效，且会在「长度重新长过旧偏移」时**静默**给出错误窗口。读到旧格式（裸字节长度）快照时
+   只 WARN 并退化为整文件，不静默沿用错误偏移。
 5. **`on_fail: keep_game_running` 未实现**（生产线的「保留现场」机制）；失败时实例照常留着，由人工决定收停。
 6. **未做「清场 `/kill @e`」与「禁用生物 AI」硬闸门**（生产线 §2 强制项）：fabric 侧需要时经
    `ft_inject` 的 RCON 通道手动下发 `/kill @e[type=!player,distance=..128]`。
@@ -297,14 +388,22 @@ pwsh -NoProfile -Command "$errs=$null; [void][System.Management.Automation.Langu
 | 必须装桥否则全不派发（真实事故） | `.../AstralDiceMod.java:47-56` |
 | entrypoint | `fabric-1.20.1/src/main/resources/fabric.mod.json:14-24` |
 | dev-run 主类与 `fabric.dli.*` 属性 | 实测 `net.fabricmc:dev-launch-injector:0.2.1+build.8` 内 `net/fabricmc/devlaunchinjector/Main.class`（jar 列目录 + 常量池 `grep`） |
+| ⚠️ **latest.log 每次冷启动都被轮转**（本台最关键的平台事实） | 实测 2026-09-29：启动瞬间 `run/server/logs/2026-09-29-7.log.gz` 被写出（时间戳 18:05:55 = 启动时刻），`latest.log` 被重建。⇒ 字节偏移游标在每次启动都失效，必须用文件身份锚点（`Ft.Common.psm1#Get-FtLogAnchor`） |
+| ⚠️ **游戏运行时 latest.log 被独占** | 实测：`[System.IO.File]::ReadAllBytes(latest.log)` 在服务端运行期间抛 `The process cannot access the file … because it is being used by another process.` ⇒ 必须用 `FileShare.ReadWrite` 打开（`Read-FtFileBytesShared`） |
+| ⚠️ **KubeJS 6+ 不放行 `java.nio.file.*` / `java.io.*`** | 实测：`Java.loadClass('java.nio.file.Paths')` 返回 null 且不产生 `Loaded Java class '…'` 行；`java.lang.String` / `dev.latvian.mods.kubejs.*` 才有该行。⇒ 观察者无法构造 `Path` |
+| ⚠️ **KubeJS 6+ 已移除 `java` / `Packages` 全局** | 实测日志：`Line 57: 'java()' is no longer supported! Read more on wiki: https://kubejs.com/kjs6` |
+| KubeJS 面向脚本的 bindings 清单（无文件/路径包装器） | `unzip -l <loom-cache 的 kubejs jar>` → `bindings/` 下只有 Block/DamageSource/Ingredient/Item/Java/KMath/Text/Utils 八个 Wrapper |
+| KubeJS 的类过滤入口 | `javap` → `KubeJSPlugins.createClassFilter(ScriptType)`；`ScriptManager.loadJavaClass(String, boolean)` 的拒绝文案 = `Failed to load Java class '%s': Class is not allowed by class filter!` |
 | KubeJS `server.runCommand` | `javap dev.latvian.mods.kubejs.core.MinecraftServerKJS` → `kjs$runCommand(String):int`、`kjs$runCommandSilent(String):int` |
 | KubeJS `Java.loadClass` | `javap dev.latvian.mods.kubejs.bindings.JavaWrapper#loadClass(String):Object` |
 | KubeJS `JsonIO.readString(Path)` | `javap dev.latvian.mods.kubejs.util.JsonIO#readString(java.nio.file.Path):String` |
-| `ServerEvents.tick` + `console.info` 可用 | `run/server/kubejs/server_scripts/event_bridge_probe.js` 实测执行（`run/server/logs/latest.log:222-229`） |
-| 服务端就绪标记 `Done (…)!` | 实测 `run/server/logs/latest.log:213` |
-| 客户端就绪标记 `Sound engine started` | 实测 `run/client/logs/latest.log:372` |
-| RCON 键存在 | 实测 `run/server/server.properties:4,33,41`（`rcon.port=25575` / `enable-rcon=false` / `rcon.password=`） |
-| 日志实测样例（派发报告 / 内嵌库） | `run/server/logs/latest.log:70`（`- starengine_lib 1.0.7`）、`:230-232`（派发统计） |
+| `ServerEvents.tick` + `console.info` 可用（探针模式成立） | `event_bridge_probe.js` 实测执行并打印 `[event-probe] …`（KubeJS 在本台的定位 = 读数探针） |
+| 服务端就绪标记 `Done (…)!` | 实测 `run/server/logs/latest.log`（多轮，最近一轮在启动后 9–12 s） |
+| 客户端就绪标记 `Sound engine started` | 实测 `run/client/logs/debug.log`（`[Render thread/INFO] (net.minecraft.client.sounds.SoundEngine) Sound engine started`） |
+| 客户端 run 的必需参数 `-PtestSodium=false` | `fabric-1.20.1/build.gradle` 的 client run 段（工程既有测试开关）；不带则 Sodium 因 LWJGL 版本不符在启动期硬失败 |
+| RCON 键存在 | 实测 `run/server/server.properties`（`rcon.port=25575` / `enable-rcon` / `rcon.password`）；`ft_env --enable-rcon` 写入后**重启**生效 |
+| `/say` 经 RCON 的控制台回声（可断言锚点） | 实测 `[18:19:30] [Server thread/INFO] (Minecraft) [Not Secure] [Rcon] ft-inject-ok` |
+| 日志实测样例（派发报告 / 内嵌库） | `run/server/logs/latest.log`（`- starengine_lib 1.0.7`、`[已派发 10 类] … ServerTickEvent=599`） |
 
 ---
 
@@ -312,8 +411,13 @@ pwsh -NoProfile -Command "$errs=$null; [void][System.Management.Automation.Langu
 
 * **未改动**任何生产线文件：`src/` 源码、`scripts/test/mt*.ps1`、`scripts/test/lib/*.psm1`、
   `scripts/test/cases/*.json`、`scripts/test/TESTING-SPEC.md`、`TESTING-RULES-OVERVIEW.md` 全部原样。
-* `scripts/test/fabric/event_bridge_probe.js` **原样保留**（它是既有人工取证脚本，本台不接管它）。
+* `scripts/test/fabric/event_bridge_probe.js` **原样保留**（它是既有人工取证脚本，本台不接管它，
+  只提供 `ft_env --install-probe` 把它拷进运行目录）。
+* ⚠️ **已删除**：`scripts/test/fabric/ft_cmd_watcher.js`（KubeJS 命令队列观察者）。删除理由见 §7.3/D3 ——
+  它在 KubeJS 6+ 上**从根上不可实现**，且「看起来存在、实际永远失败」比没有更危险。
+  对应的 `ft_env --install-watcher` / `ft_inject --channel kubejs` 一并撤除
+  （后者保留为**显式失败**，附完整实测理由）。
 * 本台运行时只写三类位置：`scripts/test/fabric/`（`.ft_offsets.json` / `.ft_launch_state.json` /
   `reports/`，见 `.gitignore`）、仓库根 `temp/`（子进程日志）、以及 fabric 的运行目录
-  （`fabric-1.20.1/run/**`，仅 `ft_env --mode install/--enable-rcon`、`ft_launch`、`ft_stop --purge-saves`
-  会写；默认的 `verify` / 读数类脚本**只读**）。
+  （`fabric-1.20.1/run/**`，仅 `ft_env --mode install/--enable-rcon/--install-probe`、`ft_launch`、
+  `ft_stop --purge-saves` 会写；默认的 `verify` / 读数类脚本**只读**）。

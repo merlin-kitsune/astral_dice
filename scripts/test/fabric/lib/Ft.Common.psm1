@@ -18,6 +18,7 @@ scripts/test/TESTING-RULES-OVERVIEW.md §3.1 的「禁用批量编排」闸门�
 | datagen 运行目录 `fabric-1.20.1/run/datagen` | `fabric-1.20.1/build.gradle:189-200` |
 | 产物 jar 名 `astral_dice-<version>+fabric_1.20.1.jar` | `fabric-1.20.1/gradle.properties`（`mod_version=1.3.2+fabric_1.20.1`）+ `build.gradle:22` |
 | 日志路径 `run/<side>/logs/latest.log` | 实测 `fabric-1.20.1/run/{client,server}/logs/latest.log` 存在（log4j 默认 layout） |
+| ⚠️ **latest.log 每次冷启动都被轮转**（本台最关键的一条平台事实） | 实测 2026-09-29：启动瞬间 `run/server/logs/latest.log` 被改名为 `2026-09-29-7.log.gz`（时间戳 18:05:55 = 启动时刻）并新建空的 `latest.log`。⇒ **任何「字节偏移游标」在每次启动都失效**，必须改用「文件身份锚点」（见 `Get-FtLogAnchor`） |
 | KubeJS 服务端脚本目录 `run/server/kubejs/server_scripts/` | 实测该目录存在且 `event_bridge_probe.js` 在内；日志证明其被执行（`latest.log:222-229`） |
 | KubeJS 客户端脚本目录 `run/client/kubejs/client_scripts/` | 实测该目录存在 |
 | 事件派发统计行前缀 | `platform/FabricBridges.java:87,99-100`（`"[Astral Dice] 事件派发统计(关服){}"` / `"(开局 600 tick){}"`） |
@@ -374,16 +375,67 @@ function Get-FtJarStats {
 }
 
 # ── 日志读取与断言原语 ─────────────────────────────────────────────────────
+function Read-FtFileBytesShared {
+    <#
+    .SYNOPSIS
+        以**共享读写**方式整读一个文件（文件被别的进程独占写入时也能读）。
+    .DESCRIPTION
+        ⚠️ 不能直接用 `[System.IO.File]::ReadAllBytes`：它内部的共享模式是 `FileShare.Read`，
+        而 Windows 的共享检查是**对称**的 —— 我们只允许别人「读」，就无法与仍持有**写**句柄的
+        游戏进程共存 ⇒ 抛
+          `The process cannot access the file '…latest.log' because it is being used by another process.`
+        实测 2026-09-29：服务端运行期间 `ReadAllBytes(latest.log)` **每次**都失败。
+        ⇒ 本台「服务端还活着时读日志」这条主干（ft_assert / ft_dispatchreport / ft_launch 轮询 /
+        ft_inject 回显校验）在旧实现下**根本不可用**（旧 ft_launch 的读分支因判定条件恒不成立
+        而从未真正执行，所以这个缺陷一直被掩盖）。
+
+        这里显式用 `FileShare.ReadWrite`：既允许对方继续持有写句柄，也允许我们自己读。
+    .OUTPUTS
+        [byte[]]（失败时为空数组，不抛）
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$Path)
+
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return , ([byte[]]@()) }
+    $fs = $null
+    $buf = [byte[]]@()
+    try {
+        $fs = [System.IO.File]::Open($Path, [System.IO.FileMode]::Open,
+                                     [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
+        $len = [int64]$fs.Length
+        if ($len -gt 0) {
+            $buf = New-Object byte[] ([int]$len)
+            $read = 0
+            while ($read -lt $len) {
+                $k = $fs.Read($buf, $read, [int]($len - $read))
+                if ($k -le 0) { break }
+                $read += $k
+            }
+            if ($read -le 0) { $buf = [byte[]]@() }
+            elseif ($read -lt $len) { $buf = $buf[0..($read - 1)] }
+        }
+    } catch {
+        return , ([byte[]]@())
+    } finally {
+        if ($null -ne $fs) { $fs.Dispose() }
+    }
+    return , $buf
+}
+
 function Read-FtLogText {
     <#
     .SYNOPSIS
-        以 UTF-8（非法字节替换）整读日志文件；文件不存在返回 ''。
+        以 UTF-8（非法字节替换）整读日志文件；文件不存在/读不到返回 ''。
+    .NOTES
+        走 Read-FtFileBytesShared（共享读写）—— 见该函数的说明：游戏运行时日志被独占，
+        File.ReadAllBytes 读不了。
     #>
     [CmdletBinding()]
     param([Parameter(Mandatory)][string]$Path)
 
     if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return '' }
-    $bytes = [System.IO.File]::ReadAllBytes($Path)
+    $bytes = Read-FtFileBytesShared -Path $Path
+    if ($null -eq $bytes -or $bytes.Length -eq 0) { return '' }
     $enc = [System.Text.UTF8Encoding]::new($false, $false)
     return $enc.GetString($bytes)
 }
@@ -394,22 +446,174 @@ function Get-FtOffsetsPath {
     return (Join-Path (Get-FtSelfDir) '.ft_offsets.json')
 }
 
+function Get-FtHeadHash {
+    <#
+    .SYNOPSIS
+        文件头部 N 字节的 SHA1（取前 16 个十六进制字符）。
+    .NOTES
+        共享打开（FileShare.ReadWrite）：日志正被游戏进程写入时也要能读。
+        .NET 的 File.ReadAllBytes 用的是 FileShare.Read，对「别人仍持有写句柄」不友好。
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$Path, [int]$HeadBytes = 4096)
+
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return '' }
+    $buf = [byte[]]@()
+    $fs = $null
+    try {
+        $fs = [System.IO.File]::Open($Path, [System.IO.FileMode]::Open,
+                                     [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
+        $n = [Math]::Min([int64]$HeadBytes, $fs.Length)
+        if ($n -gt 0) {
+            $buf = New-Object byte[] ([int]$n)
+            $read = 0
+            while ($read -lt $n) {
+                $k = $fs.Read($buf, $read, [int]($n - $read))
+                if ($k -le 0) { break }
+                $read += $k
+            }
+            if ($read -le 0) {
+                $buf = [byte[]]@()
+            } elseif ($read -lt $n) {
+                $buf = $buf[0..($read - 1)]
+            }
+        }
+    } catch {
+        return ''
+    } finally {
+        if ($null -ne $fs) { $fs.Dispose() }
+    }
+    $sha = [System.Security.Cryptography.SHA1]::Create()
+    try {
+        $hash = $sha.ComputeHash($buf)
+        return ([BitConverter]::ToString($hash)).Replace('-', '').Substring(0, 16)
+    } finally {
+        $sha.Dispose()
+    }
+}
+
+function Get-FtLogAnchor {
+    <#
+    .SYNOPSIS
+        日志文件**身份锚点**：创建时间(UTC ticks) + 长度 + 头部指纹。
+    .DESCRIPTION
+        ⚠️ 为什么必须记「身份」而不是「字节位置」（本台最大的一个真实缺陷的修法）：
+        Minecraft 的 log4j 配置带 OnStartupTriggeringPolicy —— **每一次冷启动**都会把
+        `latest.log` 改名成 `YYYY-MM-DD-N.log.gz` 再**新建**一个空的 `latest.log`。
+        于是「用启动前的字节长度当游标」在**每一次启动**都失效：
+
+          · 旧长度(~20 KiB) > 新文件长出该长度之前的长度 ⇒ 旧实现 `len -gt preLen` 永不成立
+            ⇒ `ft_launch` **每次启动都超时**（实测 2026-09-29：服务端 9 秒就打出 `Done (…)`，
+              但 `ft_launch` 干等 240 秒后报 TIMEOUT）；
+          · 新文件长过旧长度之后，那个偏移量落进**新文件的中间** ⇒ 「窗口」既漏掉启动行、
+            又混进无关行。旧实现只在「长度回退」时报 WARN，这种情况**静默**给出错误窗口
+            —— 正是「假绿 / 假 FAIL」的来源。
+
+        判据改为：只要 (创建时间, 头部指纹) 与锚点不一致，就认定**换了文件** ⇒ 窗口 = 整个新文件；
+        只有身份一致时才按长度做前向切片。这样「旋转」与「同文件追加」两种情况都被正确区分。
+    .OUTPUTS
+        [pscustomobject]@{ Exists; Length; CreationTicks; HeadHash }
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$Path)
+
+    $o = [pscustomobject]@{
+        Exists        = $false
+        Length        = [int64]0
+        CreationTicks = [int64]0
+        HeadHash      = ''
+    }
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return $o }
+    try {
+        $fi = Get-Item -LiteralPath $Path -Force -ErrorAction Stop
+        $o.Exists = $true
+        $o.Length = [int64]$fi.Length
+        $o.CreationTicks = [int64]$fi.CreationTimeUtc.Ticks
+        $o.HeadHash = Get-FtHeadHash -Path $Path
+    } catch {
+        # 打不开/瞬时不可见 ⇒ 保持 Exists=false，调用方按「无锚点」退化处理（不抛）
+    }
+    return $o
+}
+
+function Test-FtAnchorReplaced {
+    <#
+    .SYNOPSIS
+        锚点是否已被轮转/替换（创建时间或头部指纹变化）。
+    .NOTES
+        Length 回退也算（有些轮转实现是「原地截断」而非「改名+新建」，那时创建时间不变，
+        但长度回退 + 头部指纹变化能兜住）。
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][object]$Anchor,
+        [Parameter(Mandatory)][object]$Current
+    )
+    if (-not $Current.Exists) { return $true }
+    if ($Current.CreationTicks -ne $Anchor.CreationTicks) { return $true }
+    if ($Current.HeadHash -ne $Anchor.HeadHash) { return $true }
+    if ($Current.Length -lt $Anchor.Length) { return $true }
+    return $false
+}
+
+function Get-FtLogWindowFromAnchor {
+    <#
+    .SYNOPSIS
+        以锚点为起点返回「之后新写入」的日志文本。
+    .DESCRIPTION
+         · 锚点缺失 / 起点为 0 / 身份已变（轮转） ⇒ **整文件**（此时整文件本身就是新一轮内容）
+         · 身份未变                                  ⇒ UTF-8 字节前向切片
+        ⚠️ 与旧实现的关键差别：轮转时返回整文件而不是「退化为整文件 + 静默算错偏移」。
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$Path,
+        [AllowNull()][object]$Anchor,
+        [string]$Label = '窗口'
+    )
+
+    $whole = Read-FtLogText -Path $Path
+    if ($null -eq $Anchor) { return $whole }
+    if ([int64]$Anchor.Length -le 0) { return $whole }
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return '' }
+
+    $cur = Get-FtLogAnchor -Path $Path
+    if (-not $cur.Exists) { return '' }
+
+    if (Test-FtAnchorReplaced -Anchor $Anchor -Current $cur) {
+        # 启动期轮转是**预期**行为（latest.log 每次冷启动都重建）⇒ 只提示一次，不刷屏。
+        if (-not $script:FtAnchorNotice) { $script:FtAnchorNotice = @{} }
+        if (-not $script:FtAnchorNotice.ContainsKey($Label)) {
+            $script:FtAnchorNotice[$Label] = $true
+            Write-FtInfo ('日志' + $Label + ' 已轮转（latest.log 每次冷启动都会重建）⇒ 本轮按【整文件】判读（同一条只提示一次）')
+        }
+        return $whole
+    }
+    if ($cur.Length -le [int64]$Anchor.Length) { return '' }
+
+    $bytes = Read-FtFileBytesShared -Path $Path
+    $off = [int][int64]$Anchor.Length
+    if ($null -eq $bytes -or $off -ge $bytes.Length) { return '' }
+    $enc = [System.Text.UTF8Encoding]::new($false, $false)
+    return $enc.GetString($bytes, $off, $bytes.Length - $off)
+}
+
 function Save-FtSnapshot {
     <#
     .SYNOPSIS
-        记录 <side> 的日志窗口起点（字节长度）。窗口名 case / launch。
+        记录 <side> 的日志窗口起点（**身份锚点**）。窗口名 case / launch。
+    .OUTPUTS
+        [int64] 起点字节长度（仅为兼容调用方的 `cursor=` 打印；判据本身是锚点对象）
     .NOTES
-        ⚠️ 简化说明（与生产线 mt_assert.ps1 的差异，已知并登记）：
-        生产线用「文件身份锚点（ctime + 头部指纹 + 长度）」处理 log4j 跨零点日切；
-        本台只记字节长度，日切/重启后长度变小会触发 WARN 并退化为整文件读取。
-        fabric 侧冒烟/取证窗口很短（分钟级），未引入锚点机制。
+        存储格式（`.ft_offsets.json`）：`"<side>_<window>"` → `{ Length; CreationTicks; HeadHash }`。
+        ⚠️ 旧格式是裸 int64（纯字节长度）。读到旧格式时 `Get-FtLogWindow` 会 WARN 并退化为整文件，
+        不静默沿用错误偏移 —— 换台机器/旧快照不会给出假窗口。
     #>
     [CmdletBinding()]
     param([Parameter(Mandatory)][string]$Side, [Parameter(Mandatory)][string]$Window)
 
     $log = Get-FtLogPath -Side $Side
-    $len = 0
-    if (Test-Path -LiteralPath $log -PathType Leaf) { $len = (Get-Item -LiteralPath $log).Length }
+    $anchor = Get-FtLogAnchor -Path $log
 
     $state = @{}
     $p = Get-FtOffsetsPath
@@ -419,10 +623,14 @@ function Save-FtSnapshot {
             if ($raw -is [hashtable]) { $state = $raw }
         } catch { $state = @{} }
     }
-    $state["${Side}_${Window}"] = [int64]$len
+    $state["${Side}_${Window}"] = @{
+        Length        = [int64]$anchor.Length
+        CreationTicks = [int64]$anchor.CreationTicks
+        HeadHash      = [string]$anchor.HeadHash
+    }
     $state["${Side}_${Window}_ts"] = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
-    ($state | ConvertTo-Json -Depth 5) | Set-Content -LiteralPath $p -Encoding utf8
-    return [int64]$len
+    ($state | ConvertTo-Json -Depth 6) | Set-Content -LiteralPath $p -Encoding utf8
+    return [int64]$anchor.Length
 }
 
 function Get-FtLogWindow {
@@ -462,16 +670,17 @@ function Get-FtLogWindow {
         Write-FtWarn "无 '$key' 快照 ⇒ 窗口 '$Window' 退化为整文件读取"
         return $whole
     }
-    $off = [int64]$state[$key]
-
-    # UTF-8 字节游标：按字节切片后解码，避免「按字符切片」在中文日志上的偏移漂移
-    $bytes = [System.IO.File]::ReadAllBytes($log)
-    if ($off -gt $bytes.Length) {
-        Write-FtWarn "窗口 '$key' 起点($off) > 当前日志长度($($bytes.Length))⇒ 疑似日切/重启，退化为整文件读取"
+    $anchorRaw = $state[$key]
+    if ($anchorRaw -isnot [hashtable]) {
+        Write-FtWarn "快照 '$key' 是旧格式（裸字节长度）⇒ 窗口 '$Window' 退化为整文件读取；请重跑一次 snapshot 刷新为身份锚点"
         return $whole
     }
-    $enc = [System.Text.UTF8Encoding]::new($false, $false)
-    return $enc.GetString($bytes, [int]$off, $bytes.Length - [int]$off)
+    $anchor = [pscustomobject]@{
+        Length        = [int64]$anchorRaw['Length']
+        CreationTicks = [int64]$anchorRaw['CreationTicks']
+        HeadHash      = [string]$anchorRaw['HeadHash']
+    }
+    return (Get-FtLogWindowFromAnchor -Path $log -Anchor $anchor -Label "窗口 '$key'")
 }
 
 function Test-FtLogPattern {
@@ -557,7 +766,8 @@ Export-ModuleMember -Function @(
     'Get-FtRepoRoot', 'Get-FtSubprojectRoot', 'Get-FtSelfDir', 'Get-FtRunRoot',
     'Assert-FtSide', 'Get-FtSideDir', 'Get-FtLogPath', 'Get-FtModsDir', 'Get-FtKubejsScriptDir',
     'Get-FtProductJar', 'Get-FtJarStats',
-    'Read-FtLogText', 'Get-FtOffsetsPath', 'Save-FtSnapshot', 'Get-FtLogWindow', 'Test-FtLogPattern',
+    'Read-FtLogText', 'Read-FtFileBytesShared', 'Get-FtOffsetsPath', 'Save-FtSnapshot', 'Get-FtLogWindow', 'Test-FtLogPattern',
+    'Get-FtHeadHash', 'Get-FtLogAnchor', 'Test-FtAnchorReplaced', 'Get-FtLogWindowFromAnchor',
     'Get-FtAllowAuto', 'Assert-FtAutoGate'
 ) -Variable @(
     'FT_EXIT_PASS', 'FT_EXIT_FAIL', 'FT_EXIT_ERROR', 'FT_EXIT_BLOCKED', 'FT_EXIT_TIMEOUT'

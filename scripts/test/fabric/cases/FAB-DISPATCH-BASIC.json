@@ -11,7 +11,13 @@
     },
     {
       "op": "note",
-      "text": "无需注入：服务端跑到 600 tick 时会自动打印一份报告（FabricBridges.installEarly 的取样点），关服时再打一份。实测样例见 run/server/logs/latest.log:230-232（ServerTickEvent=599 LevelTickEvent=1797 RegisterCommandsEvent=1）。\n\n⚠️ 若在 600 tick 之前断言，请改用 ft_dispatchreport.ps1 手动读数，或等就绪后 30 秒再跑本用例。"
+      "text": "无需注入：服务端跑到 600 tick 时会自动打印一份报告（FabricBridges.installEarly 的取样点），关服时再打一份。实测样例见 run/server/logs/latest.log:230-232（ServerTickEvent=599 LevelTickEvent=1797 RegisterCommandsEvent=1）。\n\n⚠️ 本用例用 `wait_for` 等这个采样点（约 30 s），而不是固定 `wait`。原因是一次真实教训：\n 用固定 `wait 25000` 时采样点还没到 ⇒ 6 条断言集体失败，现场看起来像**产品缺陷**（「未找到派发报告」），\n 实际只是**等待条件未满足**。固定等待要么太短（假 FAIL）、要么太长（白等）。\n wait_for 命中即继续；超时则以 **TIMEOUT(12)** 中止并提示去用 ft_dispatchreport.ps1 手动读数\n —— 与「断言失败 = 1」明确区分（TESTING-RULES-OVERVIEW §7 的语义边界）。"
+    },
+    {
+      "op": "wait_for",
+      "pattern": "事件派发统计",
+      "timeout_ms": 120000,
+      "interval_ms": 1500
     }
   ],
   "asserts": [

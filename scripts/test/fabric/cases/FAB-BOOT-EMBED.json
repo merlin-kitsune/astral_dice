@@ -11,7 +11,7 @@
     },
     {
       "op": "note",
-      "text": "注意：本用例**不注入**任何命令 —— 它验证的是「启动期事实」，注入会引入无关变量。"
+      "text": "注意：本用例**不注入**任何命令 —— 它验证的是「启动期事实」，注入会引入无关变量。\n\n⚠️ 本用例**刻意不包含** `事件派发统计` 断言（曾经有过，已移出）。两个理由：\n ① 它是**派发**这个独立关注点，归 FAB-DISPATCH-BASIC 管（职责分离）；\n ② 它引入了一个**隐藏的时间耦合** —— 该报告在开局 600 tick（约 30 s）才打印，\n    而本用例只要求「启动到 Done」，于是「跑得太早」会伪装成启动期缺陷（实测踩过：\n    就绪后 25 s 跑本用例 ⇒ 1/10 失败，现场看起来像内嵌库坏了，其实只是采样点没到）。\n ⇒ 需要那条读数就跑 FAB-DISPATCH-BASIC（它用 `wait_for` 等采样点，超时报 TIMEOUT/12 而非 FAIL）。"
     }
   ],
   "asserts": [
@@ -19,7 +19,6 @@
     { "type": "log", "pattern": "- astral_dice \\S+" },
     { "type": "log", "pattern": "- starengine_lib \\S+" },
     { "type": "log", "pattern": "Done \\(\\d+(\\.\\d+)?s\\)! For help" },
-    { "type": "log", "pattern": "事件派发统计" },
     { "type": "absent", "pattern": "HARD_DEP_INCOMPATIBLE|Mod resolution failed|Incompatible mod set" },
     { "type": "absent", "pattern": "NoClassDefFoundError|NoSuchMethodError" },
     { "type": "absent", "pattern": "Failed to start the minecraft server|A fatal error has been detected" },

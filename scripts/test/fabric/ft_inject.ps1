@@ -4,32 +4,38 @@
     ft_inject — fabric-1.20.1 线的手动命令注入（逐条下达、边发边看回显）。
 
 .DESCRIPTION
-    两条通道（**手动粒度 = 命令级**，与 TESTING-RULES-OVERVIEW.md §3.2 的现行范式一致）：
+    通道：`--channel rcon`（**唯一通道**，默认，仅服务端）
+      走 vanilla 专用服务端的原生 RCON：`run/server/server.properties` 的
+      `enable-rcon` / `rcon.port` / `rcon.password`（实测该文件三键存在）。
+      优点：**不需要冷启动**（只要服务端启动时已 enable-rcon=true）、协议固定、
+      不依赖任何模组 API、且**同步返回**服务端回显。
+      启用：`pwsh -File scripts/test/fabric/ft_env.ps1 --side server --enable-rcon` 后重启服务端。
 
-      ① `--channel rcon`（**默认**，仅服务端）
-         走 vanilla 专用服务端的原生 RCON：`run/server/server.properties` 的
-         `enable-rcon` / `rcon.port` / `rcon.password`（实测该文件:4,33,41 三个键已存在）。
-         优点：**不需要冷启动**（只要服务端启动时已 enable-rcon=true），协议固定、不依赖任何模组 API。
-         启用：`pwsh -File scripts/test/fabric/ft_env.ps1 --side server --enable-rcon` 后重启服务端。
-
-      ② `--channel kubejs`（次通道，仅服务端）
-         往 `run/server/kubejs/.ft_cmd_queue.txt` **追加一行**；由已安装的 KubeJS 观察脚本
-         `ft_cmd_watcher.js`（ft_env --install-watcher 安装）每 20 tick 读走并
-         `server.runCommand(...)` 执行。
-         ⚠️ 生效前提：观察脚本必须在游戏启动前就位（KubeJS 只在**冷启动/`/kubejs reload server_scripts`**
-            时加载脚本）；因此首次使用请先跑 `ft_env --side server --install-watcher` 再启动。
+    ⚠️ 曾经的 `--channel kubejs`（往文件队列追加、由 KubeJS 观察脚本读出执行）**已废除**，
+       原因是**实测证明它在 KubeJS 6+ 上不可实现**（不是没调好）：
+         · KubeJS 的类过滤 `KubeJSPlugins.createClassFilter` **不放行** `java.nio.file.*`
+           与 `java.io.*`（实测：`Java.loadClass('java.nio.file.Paths')` 不产出
+           `Loaded Java class '…'` 行、返回 null；`java.lang.String` / `dev.latvian.mods.kubejs.*` 才放行）；
+         · 面向脚本的 bindings 里**没有任何文件/路径包装器**（`unzip -l` 实测只有
+           Block/DamageSource/Ingredient/Item/Java/KMath/Text/Utils 八个 Wrapper）；
+         · Rhino 的 `java` / `Packages` 全局已被移除 —— 实测报错
+           `Line 57: 'java()' is no longer supported! Read more on wiki: https://kubejs.com/kjs6`。
+       ⇒ 观察脚本每次轮询都抛 `TypeError: Cannot call method "get" of null`（`FT_Paths` 恒为 null），
+         **从未成功执行过一条命令**。保留一条"看起来能用、实际永远失败"的通道比删掉它更危险，
+         故整体移除；需要「命令可被日志断言」时，用 `/say <tag>` 打一条可 grep 的锚点
+         （实测回声形如 `[Not Secure] [Rcon] <tag>`，落在 `run/server/logs/latest.log`）。
 
     为什么不照搬生产线的 mt_inject.ps1：那是 Win32 `PostMessage` 键鼠注入（依赖 Mt.Win32 模块、
-    en-US 键盘布局、窗口线程输入法切换），面向**客户端 GUI** 的键鼠动作；fabric 台 v1 的注入
-    目标是**服务端命令**（探针读数、/give、/kill 等），走 RCON/脚本队列即可，
+    en-US 键盘布局、窗口线程输入法切换），面向**客户端 GUI** 的键鼠动作；fabric 台的注入
+    目标是**服务端命令**（探针读数、/give、/kill 等），走 RCON 即可，
     不需要引入窗口与输入法这一整层（也就不会受「容器界面吞掉注入」的坑影响）。
-    ⇒ 已知缺口：**客户端 GUI 键鼠注入本台 v1 未覆盖**（已在 README 的覆盖缺口里如实登记）。
+    ⇒ 已知缺口：**客户端 GUI 键鼠注入本台未覆盖**（已在 README 的覆盖缺口里如实登记）。
 
 .PARAMETER Channel
-    rcon（默认）| kubejs。
+    rcon（默认，唯一支持值）。传 kubejs 会**显式失败**并给出上面的实测理由。
 
 .PARAMETER Side
-    server | client（默认 server；kubejs 通道仅服务端，client 会被拒）。
+    server（默认）。RCON 是服务端特性；client 会被拒。
 
 .PARAMETER Port / Password / Host
     RCON 连接参数；缺省从 `run/server/server.properties` 的 `rcon.port` / `rcon.password` 读取，
@@ -38,7 +44,7 @@
 .EXAMPLE
     pwsh -NoProfile -File scripts/test/fabric/ft_inject.ps1 cmd --command "/give @s astral_dice:star_coin 3"
     pwsh -NoProfile -File scripts/test/fabric/ft_inject.ps1 cmd --command "time set day"
-    pwsh -NoProfile -File scripts/test/fabric/ft_inject.ps1 cmd --command "/say hi" --channel kubejs
+    pwsh -NoProfile -File scripts/test/fabric/ft_inject.ps1 cmd --command "/say FT-ANCHOR-1"   # 可被日志断言
 
 .NOTES
     输出：AP_FAB_INJECT: … / AP_FAB_INJECT_RESP: …；退出码 0 = 已投递（含服务端回显）；2 = 通道不可用。
@@ -202,7 +208,7 @@ while ($i -lt $args.Count) {
     } elseif ($key -eq 'allowauto') {
         $i++
     } elseif ($key -eq 'h' -or $key -eq 'help') {
-        Write-FtLine '用法: ft_inject.ps1 cmd --command "<命令>" [--channel rcon|kubejs] [--side server]'
+        Write-FtLine '用法: ft_inject.ps1 cmd --command "<命令>" [--channel rcon] [--side server]'
         Write-FtLine '                       [--host 127.0.0.1] [--port 25575] [--password <pw>]'
         exit $FT_EXIT_PASS
     } else {
@@ -219,34 +225,29 @@ if ($Command.Contains("`n") -or $Command.Contains("`r")) {
     Write-FtErrorLine '--command 里不允许换行（一次只发一条，手动粒度 = 命令级）'
     exit $FT_EXIT_ERROR
 }
-if ($Channel -notin @('rcon', 'kubejs')) {
-    Write-FtErrorLine "非法 --channel '$Channel'（只接受 rcon | kubejs）"; exit $FT_EXIT_ERROR
+if ($Channel -ne 'rcon') {
+    if ($Channel -eq 'kubejs') {
+        Write-FtLine 'AP_FAB_INJECT: FAIL (channel=kubejs reason=unsupported-by-platform)'
+        Write-FtError 'INJECT' @'
+kubejs 通道已废除。实测证明它在 KubeJS 6+ 上**不可实现**：
+  · 类过滤不放行 java.nio.file.* / java.io.*（Java.loadClass('java.nio.file.Paths') 返回 null）；
+  · 面向脚本的 bindings 无任何文件/路径包装器；
+  · Rhino 的 java / Packages 全局已移除（'java()' is no longer supported）。
+原观察脚本 ft_cmd_watcher.js 每次轮询都抛 TypeError: Cannot call method "get" of null，从未成功执行过。
+改用：--channel rcon（`ft_env --side server --enable-rcon` 后重启服务端）；需要日志锚点时下发 /say <tag>。
+'@
+        exit $FT_EXIT_ERROR
+    }
+    Write-FtErrorLine "非法 --channel '$Channel'（只接受 rcon）"; exit $FT_EXIT_ERROR
 }
 [void](Assert-FtSide -Side $Side)
-
-# ══ 通道 ②：kubejs 队列 ══════════════════════════════════════════════════
-if ($Channel -eq 'kubejs') {
-    if ($Side -ne 'server') {
-        Write-FtLine ("AP_FAB_INJECT: FAIL (channel=kubejs reason=client-unsupported)")
-        Write-FtError 'INJECT' 'kubejs 通道仅服务端可用（客户端没有 runCommand 等价入口）；客户端注入本台 v1 未提供。'
-        exit $FT_EXIT_ERROR
-    }
-    $queue = Join-Path (Get-FtSideDir -Side $Side) 'kubejs\.ft_cmd_queue.txt'
-    $watcher = Join-Path (Get-FtKubejsScriptDir -Side $Side) 'ft_cmd_watcher.js'
-    if (-not (Test-Path -LiteralPath $watcher -PathType Leaf)) {
-        Write-FtLine 'AP_FAB_INJECT: FAIL (channel=kubejs reason=watcher-missing)'
-        Write-FtError 'INJECT' ("观察脚本不在位：$watcher —— 先跑 `pwsh -File scripts/test/fabric/ft_env.ps1 --side server --install-watcher` 再冷启动服务端")
-        exit $FT_EXIT_ERROR
-    }
-    $queueDir = Split-Path -Parent $queue
-    if (-not (Test-Path -LiteralPath $queueDir -PathType Container)) { [void](New-Item -ItemType Directory -Force -Path $queueDir) }
-    [System.IO.File]::AppendAllText($queue, ($Command + "`n"), [System.Text.UTF8Encoding]::new($false))
-    Write-FtLine ("AP_FAB_INJECT: OK (channel=kubejs side={0} queue={1} cmd={2})" -f $Side, $queue, $Command)
-    Write-FtWarn 'kubejs 通道是异步的：观察脚本每 20 tick 轮询一次；用 ft_assert 找到 `[ft-inject] ran rc=` 行才算真正执行。'
-    exit $FT_EXIT_PASS
+if ($Side -ne 'server') {
+    Write-FtLine 'AP_FAB_INJECT: FAIL (channel=rcon reason=client-unsupported)'
+    Write-FtError 'INJECT' 'RCON 是服务端特性（run/server/server.properties）；客户端命令注入本台未提供。'
+    exit $FT_EXIT_ERROR
 }
 
-# ══ 通道 ①：RCON（默认）═══════════════════════════════════════════════════
+# ══ RCON（唯一通道）═══════════════════════════════════════════════════════
 $props = Join-Path (Get-FtSideDir -Side 'server') 'server.properties'
 $propsText = ''
 if (Test-Path -LiteralPath $props -PathType Leaf) { $propsText = Read-FtLogText -Path $props }
@@ -288,4 +289,7 @@ foreach ($r in $responses) {
     }
 }
 Write-FtOk 'INJECT' ("channel=rcon cmd=$Command")
+if ($Command -notmatch '(?i)^/?say\b') {
+    Write-FtInfo '要让「这条命令确实执行了」可被**日志断言**：改用 /say <tag>（回声实测形如 `[Not Secure] [Rcon] <tag>`，落在 run/server/logs/latest.log），或另选一条会在控制台留痕的命令。RCON 回显只回到本进程的 stdout（AP_FAB_INJECT_RESP），不保证进日志。'
+}
 exit $FT_EXIT_PASS

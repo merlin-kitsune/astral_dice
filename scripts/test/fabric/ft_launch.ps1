@@ -8,9 +8,12 @@
     的 `runs { client { client(); runDir 'run/client' } server { server(); runDir 'run/server' } }`；
     Loom 的 `runDir` 相对**子项目**解析 ⇒ 实际运行目录 = `fabric-1.20.1/run/{client,server}`）。
 
-    就绪判定（**只认启动之后新写入的日志**，用字节游标锚定，不认历史行）：
+    就绪判定（**只认本次启动之后新写入的日志**，用「文件身份锚点」判定，不认历史行）：
       服务端：`Done (0.307s)! For help, type "help"`（实测 run/server/logs/latest.log:213）
-      客户端：`Sound engine started`（实测 run/client/logs/latest.log:372）
+      客户端：`Sound engine started`（实测 run/client/logs/debug.log:4686）
+      ⚠️ 锚点 = (创建时间, 头部指纹, 长度)，**不是**字节偏移 —— 因为 latest.log 每次冷启动
+        都会被 log4j 轮转成 `YYYY-MM-DD-N.log.gz` 并新建，用旧长度做游标会**每次启动都假超时**
+        （实测 2026-09-29，见 lib/Ft.Common.psm1#Get-FtLogAnchor 的说明）。
 
     与生产线 mt_launch.ps1 的差异（本台 v1 明确不做，见 README）：
       · 不做「清场」（`/kill @e`）与「禁用生物 AI」硬闸门 —— 需要时经 ft_inject 的 rcon 通道手动下发；
@@ -28,6 +31,15 @@
 
 .PARAMETER NoWait
     后台模式下不等待就绪，起进程即返回。
+
+.PARAMETER GradleArg
+    （可重复）透传给 gradlew 的额外参数。用于本机 dev 环境的**已知冲突**：
+      · `--gradle-arg -PtestSodium=false`
+        Sodium 要求 LWJGL 3.3.1，而本工程 dev 环境装的是 3.3.2-snapshot ⇒ 不带这个开关，
+        客户端会在启动期硬失败（`Installed version: 3.3.2-snapshot`）。该开关是工程 build.gradle
+        里**既有的**测试开关（注释写明用于「只为跑一次 GUI 验证」的场景）；跑 tooltip / 渲染类
+        验证时排除 Sodium 反而更干净（不被第三方渲染模组干扰）。
+      · `--gradle-arg -Pquickplay=<世界名>`（客户端）直接进入指定单机世界。
 
 .PARAMETER AllowAuto
     放行批量编排闸门。
@@ -54,6 +66,7 @@ $Side = ''
 $Fg = $false
 $TimeoutSec = 300
 $NoWait = $false
+$GradleArgs = New-Object System.Collections.Generic.List[string]
 $ArgList = @($args)
 
 $i = 0
@@ -71,10 +84,13 @@ while ($i -lt $args.Count) {
         if ($i + 1 -ge $args.Count) { Write-FtErrorLine '缺少 --timeout 的值'; exit $FT_EXIT_ERROR }
         if ([string]$args[$i + 1] -notmatch '^\d+$') { Write-FtErrorLine '--timeout 需要非负整数（秒）'; exit $FT_EXIT_ERROR }
         $TimeoutSec = [int]$args[$i + 1]; $i += 2
+    } elseif ($key -eq 'gradlearg') {
+        if ($i + 1 -ge $args.Count) { Write-FtErrorLine '缺少 --gradle-arg 的值'; exit $FT_EXIT_ERROR }
+        $GradleArgs.Add([string]$args[$i + 1]); $i += 2
     } elseif ($key -eq 'allowauto') {
         $i++
     } elseif ($key -eq 'h' -or $key -eq 'help') {
-        Write-FtLine '用法: ft_launch.ps1 --side client|server [--fg] [--no-wait] [--timeout N]'
+        Write-FtLine '用法: ft_launch.ps1 --side client|server [--fg] [--no-wait] [--timeout N] [--gradle-arg <x>]…'
         exit $FT_EXIT_PASS
     } else {
         Write-FtErrorLine "未知参数 $tok"; exit $FT_EXIT_ERROR
@@ -111,20 +127,14 @@ if (-not (Test-Path -LiteralPath $sideDir -PathType Container)) {
     [void](New-Item -ItemType Directory -Force -Path $sideDir)
 }
 
-# 启动前：清空 KubeJS 注入队列（观察者重启后内存态归零，残留行会被重放）
-$queue = Join-Path $sideDir 'kubejs\.ft_cmd_queue.txt'
-if (Test-Path -LiteralPath $queue -PathType Leaf) {
-    [System.IO.File]::WriteAllText($queue, '', [System.Text.UTF8Encoding]::new($false))
-}
-
 $task = ":fabric-1.20.1:run$($Side.Substring(0,1).ToUpperInvariant())$($Side.Substring(1))"
 $readyPattern = if ($Side -eq 'server') { 'Done \(\d+(\.\d+)?s\)! For help' } else { 'Sound engine started' }
 
-Write-FtLine ("AP_FAB_LAUNCH_TASK: side={0} task={1} runDir={2}" -f $Side, $task, $sideDir)
+Write-FtLine ("AP_FAB_LAUNCH_TASK: side={0} task={1} runDir={2} gradleArgs={3}" -f $Side, $task, $sideDir, (@($GradleArgs) -join ' '))
 
 # ══ 前台 ══════════════════════════════════════════════════════════════════
 if ($Fg) {
-    & cmd.exe /c $gradlewBat $task --console=plain
+    & cmd.exe /c $gradlewBat $task --console=plain @($GradleArgs)
     $rc = $LASTEXITCODE
     Write-FtLine ("AP_FAB_LAUNCH: FINISHED (rc={0})" -f $rc)
     if ($rc -eq 0) { exit $FT_EXIT_PASS } else { exit $FT_EXIT_ERROR }
@@ -137,23 +147,29 @@ $stamp = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
 $outLog = Join-Path $tempDir "ft_launch_${Side}_${stamp}.out.log"
 $errLog = Join-Path $tempDir "ft_launch_${Side}_${stamp}.err.log"
 
-# 就绪游标：只认「本次启动之后新写入」的日志字节（历史行不算，避免假就绪）
-$preLen = 0
-if (Test-Path -LiteralPath $logPath -PathType Leaf) { $preLen = (Get-Item -LiteralPath $logPath).Length }
+# 就绪游标：只认「本次启动之后新写入」的日志（历史行不算，避免假就绪）。
+#
+# ⚠️ 这里必须用「文件身份锚点」而不是「字节长度」，否则**每一次启动都会假超时**。
+#    Minecraft 的 log4j 带 OnStartupTriggeringPolicy ⇒ 每次冷启动都把 latest.log
+#    改名成 `YYYY-MM-DD-N.log.gz` 再新建一个空文件（实测 2026-09-29 18:05:55，
+#    服务端 9 秒就打出 `Done (…)`，但用旧长度的实现干等 240 秒后报 TIMEOUT）。
+#    锚点 = (创建时间, 头部指纹, 长度)：身份变了 ⇒ 整个新文件都是「本次新增」。
+$preAnchor = Get-FtLogAnchor -Path $logPath
 
 $proc = Start-Process -FilePath 'cmd.exe' `
-    -ArgumentList @('/c', $gradlewBat, $task, '--console=plain') `
+    -ArgumentList (@('/c', $gradlewBat, $task, '--console=plain') + @($GradleArgs)) `
     -WorkingDirectory $root -NoNewWindow -PassThru `
     -RedirectStandardOutput $outLog -RedirectStandardError $errLog
 
 $state = @{
-    side      = $Side
-    pid       = $proc.Id
-    startedAt = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
-    outLog    = $outLog
-    errLog    = $errLog
-    runDir    = $sideDir
-    task      = $task
+    side       = $Side
+    pid        = $proc.Id
+    startedAt  = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+    outLog     = $outLog
+    errLog     = $errLog
+    runDir     = $sideDir
+    task       = $task
+    gradleArgs = @($GradleArgs)
 }
 $statePath = Join-Path (Get-FtSelfDir) '.ft_launch_state.json'
 ($state | ConvertTo-Json) | Set-Content -LiteralPath $statePath -Encoding utf8
@@ -170,15 +186,8 @@ $exited = $false
 while ([DateTimeOffset]::UtcNow -lt $deadline) {
     if ($proc.HasExited) { $exited = $true; break }
 
-    if (Test-Path -LiteralPath $logPath -PathType Leaf) {
-        $len = (Get-Item -LiteralPath $logPath).Length
-        if ($len -gt $preLen) {
-            $bytes = [System.IO.File]::ReadAllBytes($logPath)
-            $enc = [System.Text.UTF8Encoding]::new($false, $false)
-            $tail = $enc.GetString($bytes, [int]$preLen, $bytes.Length - [int]$preLen)
-            if ($tail -match $readyPattern) { $ready = $true; break }
-        }
-    }
+    $tail = Get-FtLogWindowFromAnchor -Path $logPath -Anchor $preAnchor -Label "就绪窗口($Side)"
+    if ($tail -and ($tail -match $readyPattern)) { $ready = $true; break }
     Start-Sleep -Milliseconds 1000
 }
 
@@ -198,6 +207,21 @@ if ($exited) {
     }
     Write-FtLine ("AP_FAB_LAUNCH: FAIL (reason=exited rc={0})" -f $proc.ExitCode)
     Write-FtError 'LAUNCH' ("进程在就绪前退出（rc=$($proc.ExitCode)）：$tail")
+    exit $FT_EXIT_ERROR
+}
+
+# ⚠️ 超时 ≠ 游戏没起来。这里做一次**反向自检**（防「假超时」再次静默发生）：
+#    若整份 latest.log 里其实已经出现了就绪标记，说明游戏早就绪、是**本台的窗口逻辑**没抓到
+#    （例如日志被轮转、锚点语义退化）。这时必须报 ready-but-undetected 这个**不同的结论**，
+#    绝不能报成「游戏 240 秒没起来」—— 那会把工具缺陷伪装成被测对象的问题。
+$wholeText = Read-FtLogText -Path $logPath
+if ($wholeText -and ($wholeText -match $readyPattern)) {
+    $curAnchor = Get-FtLogAnchor -Path $logPath
+    Write-FtLine ("AP_FAB_LAUNCH: FAIL (reason=ready-but-undetected timeout={0}s)" -f $TimeoutSec)
+    Write-FtLine ("AP_FAB_LAUNCH_ANCHOR: preLen={0} preCtime={1} preHead={2} curLen={3} curCtime={4} curHead={5}" -f `
+            $preAnchor.Length, $preAnchor.CreationTicks, $preAnchor.HeadHash,
+        $curAnchor.Length, $curAnchor.CreationTicks, $curAnchor.HeadHash)
+    Write-FtError 'LAUNCH' ("日志里**已有**就绪标记 /{0}/，但窗口未捕获 ⇒ 本台窗口/锚点逻辑失效（不是游戏没起来）。请附上一行的 ANCHOR 读数登记缺陷。" -f $readyPattern)
     exit $FT_EXIT_ERROR
 }
 

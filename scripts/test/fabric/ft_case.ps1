@@ -20,7 +20,8 @@
         "steps":   [ … ],               // 可选
         "asserts": [ … ]                // 必填
       }
-    step.op：inject_command（command/text/channel/no_esc）| wait（ms）| note（text）| snapshot（window）
+    step.op：inject_command（command/text/channel/no_esc）| wait（ms）| wait_for（pattern/timeout_ms/interval_ms/window）
+             | note（text）| snapshot（window）
     assert.type：log | absent | crash | dispatch_tick | dispatch_fired | dispatch_zero_absent | jar
     （类型与字段定义见 ft_assert.ps1 的 Invoke-FtSpecAssert）
 
@@ -34,7 +35,8 @@
     pwsh -NoProfile -File scripts/test/fabric/ft_case.ps1 validate --all
 
 .NOTES
-    退出码：0 = PASS；1 = 断言失败；2 = ERROR（参数/用例非法、注入失败、闸门拦截）；12 = 超时（未实现，保留）。
+    退出码：0 = PASS；1 = 断言失败；2 = ERROR（参数/用例非法、注入失败、闸门拦截）；
+    12 = TIMEOUT（`wait_for` 等待条件在预算内未满足 —— 与 1 明确区分：FAIL 是断言不满足，TIMEOUT 是没跑完）。
 #>
 
 $ErrorActionPreference = 'Stop'
@@ -70,11 +72,12 @@ function Test-FtCaseSpec {
     if ($Case.side -and $Case.side -notin @('server', 'client')) { $errs.Add("side 非法：$($Case.side)") }
     if ($Case.window -and $Case.window -notin @('case', 'launch', 'whole')) { $errs.Add("window 非法：$($Case.window)") }
 
-    $ops = @('inject_command', 'wait', 'note', 'snapshot')
+    $ops = @('inject_command', 'wait', 'note', 'snapshot', 'wait_for')
     foreach ($s in @($Case.steps)) {
         if (-not $s.op) { $errs.Add('steps 里有一项缺 op'); continue }
         if ([string]$s.op -notin $ops) { $errs.Add("未知 step.op：$($s.op)") }
         if ($s.op -eq 'wait' -and -not $s.ms) { $errs.Add('wait 缺 ms') }
+        if ($s.op -eq 'wait_for' -and -not $s.pattern) { $errs.Add('wait_for 缺 pattern') }
         if ($s.op -eq 'inject_command' -and -not ($s.command -or $s.text)) { $errs.Add('inject_command 缺 command/text') }
     }
 
@@ -132,6 +135,43 @@ function Invoke-FtCase {
                 $ms = [int]$s.ms
                 Write-FtLine ("MT_FAB_INFO: step[{0}] wait {1}ms" -f $stepNo, $ms)
                 Start-Sleep -Milliseconds $ms
+            }
+            'wait_for' {
+                <#
+                .SYNOPSIS
+                    阻塞等待某个正则**出现在日志里**（有界），而不是盲等固定毫秒。
+                .NOTES
+                    为什么需要它（真实教训）：本线两条用例依赖「服务端跑到 600 tick 时会打印派发报告」
+                    （约 30 s）。用固定 `wait 25000` 时，采样点还没到就会让 6 条断言集体失败，
+                    现场看起来像**产品缺陷**（"未找到派发报告"），实际是**等待条件未满足**。
+                    固定等待要么太短（假 FAIL）、要么太长（白等）。本步把两者都消掉：
+                      · 命中即继续（通常是几秒）；
+                      · 超时则以 **ERROR(12) TIMEOUT** 中止（**不是** FAIL）—— 语义边界与
+                        TESTING-RULES-OVERVIEW §7 一致：FAIL=断言不满足，TIMEOUT=预算内没跑完。
+                    超时信息里直接给出「去用 ft_dispatchreport 手动读数」的指引，避免看不出所以然。
+                #>
+                $pat = [string]$s.pattern
+                if (-not $pat) { Write-FtErrorLine 'wait_for 缺 pattern'; return $FT_EXIT_ERROR }
+                $tmo = 60000
+                if ($null -ne $s.PSObject.Properties['timeout_ms'] -and $s.timeout_ms) { $tmo = [int]$s.timeout_ms }
+                $iv = 1000
+                if ($null -ne $s.PSObject.Properties['interval_ms'] -and $s.interval_ms) { $iv = [int]$s.interval_ms }
+                $w = $window
+                if ($s.window) { $w = [string]$s.window }
+                Write-FtLine ("MT_FAB_INFO: step[{0}] wait_for pattern='{1}' window={2} timeout={3}ms" -f $stepNo, $pat, $w, $tmo)
+                $deadline = [DateTimeOffset]::UtcNow.AddMilliseconds($tmo)
+                $hit = $false
+                while ([DateTimeOffset]::UtcNow -lt $deadline) {
+                    $t = Get-FtLogWindow -Side $side -Window $w
+                    if ((Test-FtLogPattern -Text $t -Pattern $pat) -gt 0) { $hit = $true; break }
+                    Start-Sleep -Milliseconds $iv
+                }
+                if (-not $hit) {
+                    Write-FtLine ("AP_FAB_CASE: ERROR (case={0} reason=wait-for-timeout step={1} pattern={2})" -f $case.case_id, $stepNo, $pat)
+                    Write-FtError 'CASE' ("wait_for 超时：{0} ms 内未在 [{1}] 窗口看到 /{2}/。这是**等待条件未满足**（记 TIMEOUT/12），**不是断言失败**（那是 1）。先用 ft_dispatchreport.ps1 手动读数确认服务端是否已到采样点。" -f $tmo, $w, $pat)
+                    return $FT_EXIT_TIMEOUT
+                }
+                Write-FtLine ("MT_FAB_INFO: step[{0}] wait_for 命中" -f $stepNo)
             }
             'snapshot' {
                 $w = 'case'
