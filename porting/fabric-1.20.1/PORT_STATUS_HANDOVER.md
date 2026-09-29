@@ -425,3 +425,65 @@ Accessories（Wisp Forest）是**数据驱动**饰品库，API 与 Trinkets 完�
    单一事实源，`trinkets` 侧标签用 `#curios:<slot>` 引用它）。
 5. **玩家侧实机装填验证**：本轮验到「槽位准入链通」；「GUI 拖拽装备 + 筹码栏随星级增长 + 卸载回调」
    仍需要一个在线玩家（测试台 `mt.ps1` 或手工）复验。
+
+---
+
+## 10. 本轮追加：事件桥全面接线（2026-09-29，用户裁决「许可引入 Puzzles Lib」）
+
+用户要求：「必须解决所有事件 mixin 桥，它是完美移植的必要条件」。
+
+### 10.1 🚨 首要发现：桥**从未被安装**
+
+`FabricBridges.install()` 此前**从未被任何地方调用**（`AstralDiceMod.onInitialize` 只调了
+`installEarly()`）⇒ tick / 登录登出 / 命令 / 伤害 / Puzzles 整套都处于「代码在、但没接上」的
+**静默失效**状态。已在 `registerListeners()` 之后补上调用。
+
+### 10.2 服务端：Puzzles Lib + 自写 mixin
+
+- 依赖：`puzzleslib 8.1.33`（**硬依赖**）+ Forge Config API Port 8.0.3（其传递前置）+
+  `puzzlesaccessapi`（内嵌，dev 需解包）。
+- 新 `platform/PuzzlesBridges.java`：按**注入点**（不是名字！）映射 10 类事件，详见
+  `EVENT_API_RESEARCH.md` §5.2。核心：`LivingHurtCallback` 注入 `actuallyHurt` 的 HEAD
+  ⇒ 语义是 Forge 的 **`LivingDamageEvent`**。
+- 自写 mixin 补 3 个缺口：`bridge.LivingHurtBridgeMixin`（`@WrapOperation` 包裹 `hurt` 内对
+  `actuallyHurt` 的调用，可改值 + 可取消）、`bridge.LivingUseTotemBridgeMixin`、
+  `bridge.ItemCraftedBridgeMixin`。
+- 排序仍由自建 `LoaderBus` 负责 ⇒ 伤害链的 `EventPriority` 承重语义不受影响。
+
+### 10.3 客户端：新建客户端桥
+
+- 新 `platform/client/FabricClientBridges.java` + `mixin/bridge/ScreenInvokerMixin`
+  （`@Invoker` 打开 `Screen#addRenderableWidget`）。
+- 注册类（派发一次 → 落到 FAPI）：FMLClientSetup / KeyMappings（2 个）/ ParticleProviders（1 个）/
+  GuiOverlays（3 个，走 `HudRenderCallback`）。
+- 生命周期：ClientTick / LoggingOut。界面：`ScreenEvent.Init.Post`（钱包按钮挂件）。
+  世界渲染：`RenderLevelStageEvent` ← `WorldRenderEvents` 的 3 个阶段。
+- 新增 4 个 client mixin：`ClientMouseBridgeMixin`（鼠标按键/滚轮，可取消）、
+  `ClientScreenBridgeMixin`（`setScreen` → `ScreenEvent.Opening`，含防自递归标志）、
+  `ClientHandBridgeMixin`（`renderArmWithItem` → `RenderHandEvent`，可取消）、
+  `ClientEntityRenderBridgeMixin`（`LivingEntityRenderer#render` → `RenderPlayerEvent.Pre` +
+  `RenderLivingEvent.Post`）。
+
+### 10.4 判据
+
+| 判据 | 结果 |
+|---|---|
+| 编译 | ✅ `BUILD SUCCESSFUL` |
+| 服务端 | ✅ `Done (…)!`，桥安装日志可见，3 个新 mixin 无注入错误 |
+| **派发统计（无玩家）** | ✅ `ServerTickEvent=599 / LevelTickEvent=1797 / RegisterCommandsEvent=1` ⇒ 桥是通的 |
+| **派发统计（KubeJS 探针）** | ✅ `LivingAttackEvent=2` **`LivingHurtEvent=2` `LivingDamageEvent=2`** `LivingDeathEvent=1` `LivingDropsEvent=1` `MobEffectEvent.Added=1` ⇒ 完整伤害/死亡/掉落/效果链**真实派发** |
+| 客户端 | ✅ `客户端注册桥:按键 2 个 / 粒子 1 个 / HUD 覆盖层 3 个` + 启动到主菜单，无注入错误 |
+
+取证工具：`LoaderBus#dispatchReport()`（列出**每个已注册事件类的派发次数，0 次的也列**，
+用于证伪静默失效）+ `scripts/test/fabric/event_bridge_probe.js`（KubeJS 探针）。
+
+### 10.5 仍未完成
+
+1. **客户端渲染/输入桥的「进世界」验证**：4 个新 client mixin 已注入成功，但它们只在
+   实际渲染时才会派发 ⇒ 需进世界/GUI 才能确认（无头环境只能验到「注入不报错」）。
+2. **`RenderTooltipEvent.Color`（tooltip 边框染色）未接线**：它是唯一需要**跨方法传递
+   `ItemStack`** 的（`renderTooltip(ItemStack)` 里拿得到物品、而颜色常量在
+   `renderTooltipInternal` 里）⇒ 需 ThreadLocal + 改该私有方法内的颜色常量，实现方式
+   偏 hacky，草率做易引入静默失效。已登记为**已知缺口**（纯视觉，不影响玩法逻辑）。
+3. 事件 mixin 桥之外的两项仍未动：**datagen**（按 `FabricDataGenerator` 重做）、
+   **玩家侧实机装填验证**（饰品 GUI 拖拽 + 筹码栏随星级增长）。

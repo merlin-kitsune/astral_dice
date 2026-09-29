@@ -119,3 +119,28 @@
    不能解内嵌的 MC mod，否则 intermediary 版在 dev 加载不了）。
 2. **Sodium 0.5.x 在 dev 要求 LWJGL 3.3.2**（1.20.1 自带 3.3.1）⇒ 客户端启动即
    `currently active LWJGL version is not compatible`；本轮用 `-PtestSodium=false` 临时排除。
+
+---
+
+## 追加：事件桥前置 Puzzles Lib（2026-09-29，用户裁决「许可引入」）
+
+**背景**：Fabric API 1.20.1 **没有可改伤害值的事件**（`ServerLivingEntityEvents.ALLOW_DAMAGE`
+只能取消、不能改 `amount`），而本模组 109 个处理器里承重最重的正是伤害/死亡/效果这一族。
+用户要求「必须解决所有事件 mixin 桥，它是完美移植的必要条件」，并解除「不引入第三方」的约束。
+
+| 依赖 | 钉值 | Modrinth versionId | 定位 |
+|---|---|---|---|
+| Puzzles Lib | `8.1.33-1.20.1-Fabric` | `N8gFdljq` | **硬依赖**（`fabric.mod.json` 的 `depends.puzzleslib = >=8.1.33`） |
+| Forge Config API Port | `8.0.3-1.20.1-Fabric` | `HvR3IdRE` | Puzzles 的**传递硬前置**（dev 运行期需投放；玩家由 Loader 提示安装） |
+| puzzlesaccessapi | 20.1.1 | — | Puzzles **内嵌**（`META-INF/jars/`）⇒ dev 需 `scripts/devtools/unpack_nested_mod_jars.py` 展开 |
+
+### ⚠️ 玩家安装面变化（必须在发布说明里写清）
+
+安装本模组后会**多出两个前置**：Puzzles Lib 与 Forge Config API Port。
+
+### ⚠️ 映射必须按注入点核对，不能按名字
+
+实测 Puzzles 的 `LivingEntityFabricMixin` 字节码后确认：其 `LivingHurtCallback` 注入在
+**`LivingEntity#actuallyHurt` 的 HEAD** —— 而 Forge 的 `ForgeHooks.onLivingDamage` 正是这个位置
+⇒ 它对应的是 **`LivingDamageEvent`**，**不是** `LivingHurtEvent`（后者在 `hurt()` 内、
+`actuallyHurt` 调用之前）。完整映射表见 `EVENT_API_RESEARCH.md` §5.2。

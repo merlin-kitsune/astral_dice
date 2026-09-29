@@ -31,7 +31,11 @@
     "client.LocalPlayerDropGuardMixin",
     "client.EffectRenderingInventoryScreenMixin",
     "client.GuiMixin",
-    "bridge.ScreenInvokerMixin"
+    "bridge.ScreenInvokerMixin",
+    "bridge.ClientMouseBridgeMixin",
+    "bridge.ClientScreenBridgeMixin",
+    "bridge.ClientHandBridgeMixin",
+    "bridge.ClientEntityRenderBridgeMixin"
   ],
   "injectors": {
     "defaultRequire": 1
