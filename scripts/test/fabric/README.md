@@ -45,6 +45,8 @@
 | `ft_inject.ps1`                   | 命令注入：`--channel rcon`（**唯一通道**，vanilla 原生、同步返回回显）                                                           | 传 `kubejs` 会**显式失败**并给出实测理由（见 §7.3/D3）                                    |
 | `ft_assert.ps1`                   | 断言引擎：`snapshot` / `log` / `absent` / `case`；窗口 `case`(默认)`\|launch\|whole`                                  | 可 dot-source（`InvocationName` 守卫）供其它脚本复用                                  |
 | `ft_dispatchreport.ps1`           | 抽取 `LoaderBus#dispatchReport()`，**把 0 次派发的事件类单独列出**                                                         | 硬判据：`ServerTickEvent > 0`                                                 |
+| `ft_prod.ps1`                     | **生产映射冒烟**：在**真实整合包实例**（生产 intermediary 环境）启动一次，按「崩溃报告新增 / 入口点失败 / 到主菜单」三类判据裁决（详见 §7.2.2）                    | **只用 PowerShell 7**（依赖 `ProcessStartInfo.ArgumentList`）；实例路径**必须传参**（脚本内不硬编码中文路径）；默认收停，`-KeepAlive` 保留现场 |
+
 | `cases/FAB-BOOT-EMBED.json`       | ① 服务端启动到 `Done` + 内嵌库自检（9 断言）                                                                               | 只需一次已完成的启动；**刻意不含**派发统计断言（那是 DISPATCH-BASIC 的职责，且会引入 30 s 的隐藏时间耦合）        |
 | `cases/FAB-DISPATCH-BASIC.json`   | ② 派发报告里基础事件为正数（8 断言）                                                                                        | 需服务端跑过 600 tick                                                           |
 | `cases/FAB-JAR-ASSETS.json`       | ③ 产物资源完整性（1 断言，**不需要游戏**）                                                                                   | 只需 `ft_build`                                                             |
@@ -178,6 +180,8 @@ pwsh -NoProfile -File scripts/test/fabric/ft_stop.ps1 --side client
 | `AP_FAB_DISPATCH` / `_FIRED` / `_ZERO` / `_ZERO_LIST` / `_ZERO_COUNT` / `_TICK` / `_RESULT` | `ft_dispatchreport` | 派发统计（**`_ZERO` 是护栏主体**） |
 | `AP_FAB_CASE_BEGIN` / `_ENTRY` / `_VALIDATE` / `_VALIDATE_SUMMARY` / `AP_FAB_CASE` | `ft_case` | 用例执行/校验 |
 | `AP_FAB_PHASE_BEGIN` / `AP_FAB_PHASE` / `AP_FAB_REPORT` | `ft.ps1` | 阶段编排 |
+| `AP_FAB_PROD_CP` / `_LAUNCH` / `_READY` / `_CRASH` / `_CRASH_CAUSE` / `_FAIL` | `ft_prod` | 生产映射冒烟：classpath 构造 / 启动 / 就绪 / 崩溃 / 失败原因 |
+
 | `MT_FAB_<NAME>: OK/FAIL/ERROR/BLOCKED` | 全部 | 结论行（stderr 走 FAIL/ERROR，stdout 走 OK） |
 | `MT_FAB_NOTE[n]` / `MT_FAB_INFO` / `MT_FAB_WARN` | 全部 | 过程行 |
 
@@ -294,6 +298,51 @@ pwsh -NoProfile -Command "$errs=$null; [void][System.Management.Automation.Langu
 `verify_forge_loader_gate.ps1` —— 它们的作用域**只覆盖两条生产线**（实测：`$SUBPROJECTS = @('neoforge-1.21.1','forge-1.20.1')`），
 与本线无关；`verify_content_library.ps1` 已被 §9 裁出，且其对照件 `docs/1.2.0-content.json` 在本仓不存在。
 
+### 7.2.2 生产映射冒烟（2026-09-29 19:05–19:14，**本台新增能力**）
+
+**为什么必须有它**（实测事故 **KI-F13**）：Fabric 的 **dev 与生产是两套映射** —— 本台此前**全部**手段
+（`ft_launch` 的 dev 客户端、5 条用例、4 个静态闸门）**都跑在 named 映射下**。于是「按**字符串名**反射原版成员」
+这类代码（如 `Rarity.class.getDeclaredField("color")`）**在 dev 全绿、在整合包里 100% 崩**，且**谁也测不出来**：
+
+| | 类 | `color` | `$VALUES` |
+|---|---|---|---|
+| dev（Loom named / Mojang） | `net.minecraft.world.item.Rarity` | `color` ✅ | `$VALUES` ✅ |
+| 生产（intermediary） | `net.minecraft.class_1814` | `field_8908` ❌ | `field_8905` ❌ |
+
+⇒ 唯一可靠判据 = **把要发布的那份 jar 在真实生产环境启动一次**。
+
+**工具**：`ft_prod.ps1`（自包含，不 `Import` `Ft.Common`）。它 ① 从实例版本 JSON 构造生产 classpath
+（rules 按 OS 过滤 + 缺 `artifact.path` 时按 Maven 坐标推导）；② 自备 log4j 配置（复现原版 `client-1.12.xml`
+的 File+Console 双 appender）；③ 启动后轮询三类判据 —— **崩溃报告新增 → FAIL(1)** / **入口点失败 → FAIL(1)** /
+**`Sound engine started` → PASS(0)**；超时 12、前置不足 2。
+
+```powershell
+# 先干跑（只构造 classpath，核对前置文件；不启动游戏）
+pwsh -NoProfile -File scripts/test/fabric/ft_prod.ps1 -DryRun `
+  -Instance 'D:\.minecraft\versions\1.20.1-Fabric 模组测试' `
+  -McRoot 'D:\.minecraft' -Java 'C:\Program Files\Zulu\zulu-21\bin\java.exe'
+
+# 真跑（默认到主菜单后收停；要人工进游戏取证时加 -KeepAlive）
+pwsh -NoProfile -File scripts/test/fabric/ft_prod.ps1 `
+  -Instance 'D:\.minecraft\versions\1.20.1-Fabric 模组测试' `
+  -McRoot 'D:\.minecraft' -Java 'C:\Program Files\Zulu\zulu-21\bin\java.exe' -TimeoutSec 300
+```
+
+| # | 命令 | rc | 读数 |
+|---|---|---|---|
+| 26 | `ft_prod.ps1 -DryRun` | 0 | `AP_FAB_PROD_CP: libraries=96 inCP=73 missing=0 natives=1` |
+| 27 | 修复**前**（19:07，当时用等价临时探针） | **1** | `VERDICT = CRASH_REPORT` → 新增 `crash-…19.07.04-client.txt`（`NoSuchFieldException: color`） |
+| 28 | 修复**后**（19:11，正式工具） | **0** | `AP_FAB_PROD_READY: elapsed=23s`；日志 `Sound engine started`；`crash-reports/` **无新增** |
+
+**同一对 jar，只差库版本**：
+```
+修复前：astral_dice 1.3.2+fabric_1.20.1         \-- starengine_lib 1.0.7          → 崩
+修复后：astral_dice 1.3.2-alpha.1+fabric_1.20.1 \-- starengine_lib 1.0.5-alpha.1  → PASS（23 s 到主菜单）
+```
+
+⚠️ **它测什么、不测什么**：只判「**能不能起来**」（入口点 + 到主菜单），**不管玩法**（那仍归 dev 侧用例）。
+但**凡映射相关的缺陷都在它的射程内** —— 反射原版成员、内嵌件重映射错、依赖解析失败、缺失前置，
+而这些恰恰是 dev 侧**永远测不到**的一类。本台原有的"内嵌件产线可加载"缺口（旧 §8 项）由此闭合。
 ### 7.3 已修复的测试台缺陷（7 个；每个都附实测证据）
 
 前两个是**阻断级**：只要有它们，`ft_launch` **每一次启动都必然失败**，连带 env/launch 之后的一切
@@ -438,6 +487,11 @@ pwsh -NoProfile -Command "$errs=$null; [void][System.Management.Automation.Langu
    `ft_inject` 的 RCON 通道手动下发 `/kill @e[type=!player,distance=..128]`。
 7. **`run/fabric-1.20.1/mods`（`build.gradle:248,313-326` 的 `pushToDevRun` 目标）与 Loom dev-run 的
    classpath 是两套投放面**，本台的 `ft_env` 只校验后者（`loom-cache/remapped_working`）+ `run/<side>/mods`。
+8. **生产映射冒烟只判「能不能起来」**：`ft_prod.ps1`（§7.2.2）补上了此前最大的缺口
+   ——「dev 全绿 ≠ 产物可用」（KI-F13 正是在这个缺口里潜伏到整合包才炸）。但它的判据止于
+   「入口点未失败 + 到主菜单」；**游戏内玩法、渲染细节、按键响应**仍需 dev 侧用例与人工取证。
+   ⚠️ 它读的是**真实整合包目录**：会触发实例 `logs/latest.log` 轮转（与本台其它脚本同口径，读整文件）；
+   默认收停不留进程，`-KeepAlive` 才会保留现场。
 
 ---
 

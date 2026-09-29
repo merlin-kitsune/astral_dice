@@ -134,10 +134,10 @@ When extending this workspace:
 | `neoforge-1.21.1` | `1.21.1-main` | 1.21.1 | NeoForge | 21 | `1.3.1+neoforge_1.21.1` | `x.y.z[-rcN|hotfix]+neoforge_1.21.1` |
 | `forge-1.20.1` | `1.20.1-forge` | 1.20.1 | Forge | 17 | `1.3.1+forge_1.20.1` | `x.y.z[-rcN|preN|hotfix]+forge_1.20.1` |
 | `neoforge-26.1.2` | 本仓 `multi-26.1.2-neoforge` 分支新增（基线 = 主线 `1.2.1`/`fda8ca9` 的 `neoforge-1.21.1` 源码）；**2026-09-17 已合并进当时的主线 `multi-1.20.1-1.21.1`（该分支已于 2026-09-22 改名为 `multi-main`）**（与主线同目录同树，原独立 worktree 已移除）；**2026-09-22 完整移植后版本号与另两线同批升版（26.1.2 取 `1.3.0-beta.1`）** | 26.1.2 | NeoForge | 25 | `1.3.0-beta.1+neoforge_26.1.2` | `x.y.z[-rcN]+neoforge_26.1.2` |
-| `fabric-1.20.1` | **本仓 `1.20.1-fabric` 分支新增**（2026-09-29 接入；基准 = `forge-1.20.1` 的 `1.3.2-hotfix` 源码，**加载器层整体替换**：Curios→Trinkets(+Accessories 软依赖) · Capability→Fabric API 附件 · Forge EventBus→自建 `LoaderBus`+Puzzles Lib/FAPI 回调/mixin · GLM→`LootTableEvents.MODIFY`）。⚠️ **独立的移植/测试线，不在 `multi-main` 上** | 1.20.1 | Fabric | 17 | `1.3.2+fabric_1.20.1` | `x.y.z[-rcN|hotfix]+fabric_1.20.1` |
+| `fabric-1.20.1` | **本仓 `1.20.1-fabric` 分支新增**（2026-09-29 接入；基准 = `forge-1.20.1` 的 `1.3.2-hotfix` 源码，**加载器层整体替换**：Curios→Trinkets(+Accessories 软依赖) · Capability→Fabric API 附件 · Forge EventBus→自建 `LoaderBus`+Puzzles Lib/FAPI 回调/mixin · GLM→`LootTableEvents.MODIFY`）。⚠️ **独立的移植/测试线，不在 `multi-main` 上** | 1.20.1 | Fabric | 17 | `1.3.2-alpha.1+fabric_1.20.1` | `x.y.z[-alpha.N|rcN|hotfix]+fabric_1.20.1` |
 
 > ⚠️ **第四条线（`fabric-1.20.1`）的规则边界（2026-09-29 用户裁决，必须遵守）**：
-> 上表前三线是**生产线**，`fabric-1.20.1` 是**移植/测试线**，两者在七件事上口径不同：
+> 上表前三线是**生产线**，`fabric-1.20.1` 是**移植/测试线**，两者在九件事上口径不同：
 > ① **同步范围**：前三线的「同批实施」约束**不自动扩到** fabric 线 —— 该线由用户在需要时单独下达移植批次
 >    （本线基线 = `forge-1.20.1` 的 1.3.2-hotfix，后续按批次从 forge 线搬运）；
 > ② **平台差异必须逐条登记**：裁剪项（无 Fabric 版的三方模组）见 `porting/fabric-1.20.1/VERSION_PINS.md`「裁剪」；
@@ -169,6 +169,21 @@ When extending this workspace:
 > ⚠️ 历史上另有一条 dev 分支 **`wt/2.0.0-vnext`**（连带独立 worktree `C:/Users/xmace/.dsh/worktrees/astral_dice_multiloader-a03b2df2/2.0.0-vnext`）——2026-09-17 用户裁决「移除 wt/2.0.0-vnext 分支，仅保留当前分支」后**已删除**：worktree 与分支一并移除，`git branch -d` 成功即证明其 tip **`d7e4ac8f4f1c31484bf4366caa4e144aec45979f`** 的全部提交都已被 `multi-dev-next` 包含（`multi-dev-next..wt/2.0.0-vnext` 为空）⇒ **未丢失任何提交**；该分支从未推到远端（`origin` 只有 `multi-1.20.1-1.21.1` 与 `multi-dev-next`），故无需远端清理。`multi-26.1.2-neoforge` 作为合并前历史分支**保留**（未在本次裁决范围内）。
 
 > **第三条线(26.1.2)的规则边界(2026-09-19 用户裁决修订 —— 26.1.2 已纳入主线,必须遵守)**:自本裁决起「同步修改」约束**三个版本**(`neoforge-1.21.1` + `forge-1.20.1` + `neoforge-26.1.2`):任何功能/修复/平衡/文案改动一律**三线同批实施**(实施方式见下方「### 子项目修改默认规则」与「### 模组内容更新规则(三线同步)」),26.1.2 **不再**是「发布线完成后再迁移」的低优先级移植线。三条线各自按 `docs/compat-26.1.2-neoforge.md`(26.1.2 相对 1.21.1)、`docs/compat-1.20.1-forge.md`(1.20.1 相对 1.21.1)的差异映射实现,**平台差异必须逐条登记**;三线落地后按 `scripts/test/TESTING-SPEC.md` §13.2 做一致性测试。三子项目的 `mod_version`/`mods.toml` 门槛仍各自独立。
+> ⑧ **版本号一律带 `-alpha.x` 预发布后缀**（2026-09-29 用户裁决 —— 本线是**开发线**）：
+>    `mod_version` 与所依赖的库版本**同步带 alpha**，现为 **`1.3.2-alpha.1+fabric_1.20.1`** /
+>    **`starengine_lib_version = 1.0.5-alpha.1`**（`_version_range = >=1.0.5-alpha.1 <2.0`）。
+>    库侧基线**退回 `1.0.5`**（`1.0.6` / `1.0.7` / `1.0.8` 系本地临时构建，**不作为对外号**），
+>    后续每批改动 `-alpha.x` 递增；预发布号在库仓 CI 里**不会**打 tag（workflow 只认裸 `x.y.z`）⇒ 正合开发线口径。
+>    ⚠️ 因此本线推进整合包的产物**不是「正式版」**（该整合包 `1.20.1-Fabric 模组测试` 亦为本线专属测试环境）。
+> ⑨ **收尾必做：生产映射冒烟**（2026-09-29 新增能力；判据与事故记录见 `KNOWN-ISSUES.md` **KI-F13**）：
+>    fabric 的 dev 与生产是**两套映射**（dev = Loom named/Mojang，生产 = intermediary）—— 本线此前的**全部**验证
+>    （dev 冒烟、5 条用例、4 个静态闸门）都跑在 named 下 ⇒「按**字符串名**反射原版成员」「内嵌件重映射错」
+>    这类缺陷**在 dev 全绿、在整合包里 100% 崩**，且**谁也测不出来**（KI-F13 就是这么潜伏到整合包才炸的）。
+>    ⚠️ 曾实测：`Rarity.class.getDeclaredField("color")` 在 dev 命中（字段真叫 `color`），
+>    在产线是 `class_1814` / `field_8908` ⇒ `NoSuchFieldException` → 入口点失败。**反射原版成员一律按类型/修饰符找，禁止按名字。**
+>    ⇒ 凡改动**库、本线源码、依赖或构建配置**，除 dev 冒烟外**必须**再跑一次：
+>    `pwsh -NoProfile -File scripts/test/fabric/ft_prod.ps1 -Instance <整合包目录> -McRoot <D:\.minecraft> -Java <java.exe>`
+>    （在**真实整合包实例**启动一次客户端；判据：崩溃报告新增 / 入口点失败 = **FAIL**，`Sound engine started` = **PASS**）。
 ### 前置库 starengine_lib 的版本与兼容性契约（全局，2026-09-22 用户裁决）
 
 > 本契约**跨两个仓库生效**（库仓 `F:\MCProject\starengine_lib` ↔ 本仓三条线），是库的**公开兼容性承诺**。

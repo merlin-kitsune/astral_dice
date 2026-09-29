@@ -648,7 +648,7 @@ GlCommandEncoder.trySetup(:531) ← GlCommandEncoder.executeDraw(:406) ← GlRen
 - **遗留**：客户端 GUI 键鼠注入仍未覆盖（只有服务端命令通道）；客户端**世界内**用例
   （渲染 / HUD / tooltip）与 `ft.ps1 --phase report` 的放行后路径仍未实跑，均已在 README §7.4 / §8 登记。
 
-### KI-F13 ＝ 整合包启动崩溃：库里**按字符串名反射原版字段**（dev=named / 生产=intermediary 名字不同）—— **生产环境 100% 起不来，但 dev 与所有现有测试都看不见**
+### KI-F13 ＝ 整合包启动崩溃：库里**按字符串名反射原版字段**（dev=named / 生产=intermediary 名字不同）—— **生产环境 100% 起不来，但 dev 与所有现有测试都看不见**（**已修：库 1.0.5-alpha.1；生产冒烟 PASS**）
 
 - **现象**：把 `fabric-1.20.1` 的产物 jar 推进整合包（`D:\.minecraft\versions\1.20.1-Fabric 模组测试`）后，
   客户端**启动期直接崩溃**（`crash-2026-09-29_18.53.24-client.txt`）：
@@ -712,16 +712,84 @@ GlCommandEncoder.trySetup(:531) ← GlCommandEncoder.executeDraw(:406) ← GlRen
   `EventTargetCollector`（FTB Teams / OPAC 反射）与 `BossEntityUtil`（`getBossEvent`/`getBossBar` 约定名 + try/catch）
   反射的是**模组自有名字**，安全；`astral_dice` 侧 `WaystoneWarpCompat`（`common.MinecraftForge` / `EVENT_BUS`）
   与 `SubscriptionAudit`（自身类名）同样安全。另一个库仓 `starengine_lib`（非 fabric）源码里**没有**该模式。
-- **修好之后需要做的（版本契约，待裁决）**：库版本 bump（1.0.7 → ？）→ `publishToMavenLocal` →
+- ~~**修好之后需要做的（版本契约，待裁决）**：库版本 bump（1.0.7 → ？）~~ ⇒ **已按用户裁决完成，见下方「修复实施与验证」**：
   消费方 `astral_dice/fabric-1.20.1` 的库依赖与 `lib_version_range` 同步 → 重新构建 →
   重新 `pushToGame` → 整合包再启动一次验证。
-- **顺带发现的流程缺口（比这个 bug 更值得修）**：本仓的"验证"与"发布"长期不在同一映射下 ——
+- **顺带发现的流程缺口（**已落地为工具**：`scripts/test/fabric/ft_prod.ps1`，见 README §7.2.2）**：本仓的"验证"与"发布"长期不在同一映射下 ——
   **dev 全绿 ≠ 产物可用**。建议补一道**生产映射守门**（二选一或都做）：
   ① **静态**：扫产物 jar 里 `getDeclaredField("…")` / `getField("…")` / `getMethod("…")` 的**字符串常量**，
      凡不在 intermediary 名集合里、且不是 JDK 成员的 ⇒ 报缺陷；
   ② **动态**：每次改动后除了 dev 冒烟，**把推给整合包的那份 jar 真启动一次**（生产映射下的最小启动用例）。
 - **取证**：崩溃报告 `D:\.minecraft\versions\1.20.1-Fabric 模组测试\crash-reports\crash-2026-09-29_18.53.24-client.txt`；
   整合包日志 `…/logs/latest.log`（`astral_dice 1.3.2+fabric_1.20.1` / `\-- starengine_lib 1.0.7`，其余仅良性 WARN）。
+
+#### KI-F13 修复实施与验证（2026-09-29 19:05–19:14，跨两仓）
+
+**① 库侧修源码** —— `starengine_lib_fabric/fabric-1.20.1/src/main/java/com/merlinkitsune/starenginelib/item/AstralRarities.java`
+改为**按类型 / 修饰符**定位，两套映射同时成立：
+```java
+private static Field lookupColorField(Class<?> rarityClass) {
+    for (Field field : rarityClass.getDeclaredFields())
+        if (field.getType() == ChatFormatting.class) return field;
+    throw new IllegalStateException("vanilla Rarity has no ChatFormatting-typed field: " + rarityClass.getName());
+}
+private static Field lookupValuesField(Class<?> rarityClass) {
+    for (Field field : rarityClass.getDeclaredFields())
+        if (java.lang.reflect.Modifier.isStatic(field.getModifiers())
+                && field.getType().isArray()
+                && field.getType().getComponentType() == rarityClass) return field;
+    throw new IllegalStateException("vanilla Rarity has no Rarity[] static field: " + rarityClass.getName());
+}
+```
+static 块的 `catch (ReflectiveOperationException)` 一并放宽为 `catch (Throwable)` —— 新抛的是 `IllegalStateException`，
+不属 `ReflectiveOperationException`，需同样包成 `ExceptionInInitializerError`（否则失败形态变成裸 RuntimeException）。
+⚠️ **只改 fabric 子项目**：forge-1.20.1 / neoforge-1.21.1 / neoforge-26.1.2 生产用 **Mojang 官方映射**（`color` 就叫 `color`），
+不受影响；本仓其它三个子项目同文件**未改动**（属**平台必需差异**，已在文件 javadoc 里写明理由）。
+
+**② 版本号（按用户 2026-09-29 裁决：退回 1.0.5 基线 + `-alpha.x` 预发布后缀）**
+| 位置 | 值 |
+|---|---|
+| 库 `fabric-1.20.1/gradle.properties` | `lib_version=1.0.5-alpha.1` / `mod_version=1.0.5-alpha.1+fabric_1.20.1` |
+| 消费方 `fabric-1.20.1/gradle.properties` | `starengine_lib_version=1.0.5-alpha.1` / `starengine_lib_version_range=>=1.0.5-alpha.1 <2.0` |
+| 消费方主模组 | `mod_version=1.3.2-alpha.1+fabric_1.20.1` |
+
+预发布号在库仓 CI 里**不会**打 tag（workflow 只认裸 `x.y.z`）；Fabric 的版本比较按 semver ⇒ `1.0.5-alpha.1 < 1.0.5 < 1.0.6`
+⇒ 该 range 下界同时收 alpha 与后续正式号。
+
+**③ 发布与内嵌**：库 `:fabric-1.20.1:build publishToMavenLocal` → `~/.m2/.../1.0.5-alpha.1/` 出新件 →
+消费方 `:fabric-1.20.1:build` → Loom `include` 内嵌。产物实证：
+```
+pushToGame: pushed astral_dice-1.3.2-alpha.1+fabric_1.20.1.jar -> …\1.20.1-Fabric 模组测试\mods
+pushToGame: 内嵌前置自检 OK — META-INF/jars/starengine_lib-fabric-1.20.1-1.0.5-alpha.1.jar
+pushToGame: 整合包内无独立库 jar(符合内嵌口径)
+fabric.mod.json: version=1.3.2-alpha.1+fabric_1.20.1 / depends.starengine_lib=">=1.0.5-alpha.1 <2.0"
+```
+（三个分发任务均执行：`pushToRootBuild` / `pushToDevRun` / `pushToGame`；旧版 jar 按 `+fabric_1.20.1` 后缀先行清理。）
+
+**④ 修复真的进了产物**（javap 反编译**内嵌件**，不是只看源码）：
+```
+59: ldc #139  // class net/minecraft/class_1814        ← 原版 Rarity 在产物里确实叫 class_1814
+61: invokestatic lookupColorField                       ← 已改为按类型查找
+（String color / String $VALUES 已从常量池消失）
+（保留的 String theUnsafe / name / ordinal 指向 sun.misc.Unsafe 与 java.lang.Enum —— JDK 成员，不参与重映射）
+```
+
+**⑤ 生产映射冒烟**（本轮**新增的工具**，见 `scripts/test/fabric/ft_prod.ps1` 与 README §7.2.2）
+| 项 | 修复前（19:07） | 修复后（19:11） |
+|---|---|---|
+| 判定 | `VERDICT = CRASH_REPORT` | **`AP_FAB_PROD_READY: elapsed=23s`** |
+| 证据 | 新增 `crash-2026-09-29_19.07.04-client.txt`（`NoSuchFieldException: color`） | 日志出现 `Sound engine started`；`crash-reports/` **无新增** |
+| 加载清单 | `astral_dice 1.3.2+fabric_1.20.1 \-- starengine_lib 1.0.7` | `astral_dice 1.3.2-alpha.1+fabric_1.20.1 \-- starengine_lib 1.0.5-alpha.1` |
+
+**⑥ dev 侧回归**（确认修复未破坏 dev）：`ft_launch --side client -PtestSodium=false` →
+`AP_FAB_LAUNCH_READY pattern=Sound engine started`，日志内 `starengine_lib 1.0.5-alpha.1`，无崩溃。
+⇒ 同一份源码在 **named 与 intermediary 两套映射下都能定位到字段**（这正是"按类型找"的意义）。
+
+- ⚠️ **仍未做（跨仓发布面，属策略，未自行决定）**：库提交尚未 `push` 到远端；消费方 CI 若钉了库 `ref` 需同步。
+  本批只做**本地闭环**（源码 → mavenLocal → 构建 → 推整合包 → 生产冒烟 → dev 回归）。
+- ⚠️ **mavenLocal 残留**：本轮先试过 `1.0.8`（随后按用户裁决改基线为 1.0.5-alpha.1）⇒
+  `~/.m2/.../1.0.8/` 目录仍在。因 `starengine_lib_version` 已不再指向它，**不会被任何构建解析到**；
+  若日后要 bump 到 1.0.8，须先删该目录（同号覆盖会静默取旧件，见 `mc-prereq-lib-version-contract` §2①）。
 
 ## 10. 变更记录
 
@@ -749,3 +817,4 @@ GlCommandEncoder.trySetup(:531) ← GlCommandEncoder.executeDraw(:406) ← GlRen
 
 | 2026-09-29 | **整合包启动崩溃定位（新增 KI-F13）** —— 用户报「整合包启动失败」。崩溃链 `NoSuchFieldException: color` → `AstralRarities.<clinit>` → `astral_dice` 的 main entrypoint 失败。根因 = 库 `starengine_lib_fabric` 的 `AstralRarities` 静态块**按字符串名反射原版 `Rarity` 字段**（`getDeclaredField("color")` / `getDeclaredField("$VALUES")`），而 **Fabric 的 dev 与生产是两套映射**：dev(named) 字段就叫 `color`/`$VALUES`（所以历次 dev 冒烟全绿），生产(intermediary) 同一个类是 `class_1814`、字段是 `field_8908`/`field_8905` ⇒ **生产环境 100% 启动失败，且所有现有验证手段都测不出来**。证据：整合包 jar 与仓库产物 **sha1 完全相同**（排除陈旧产物）+ 两侧 `javap` 对照（结构同构、仅字段名不同；用「枚举字符串字面量不参与重映射」反查出 `class_1814`）。⚠️ 有两个断点（`color` 先崩、`$VALUES` 紧随其后同样会崩）。全仓扫描确认只有这两处（其余反射目标是 JDK 成员或模组自有名字，安全）；另一库仓 `starengine_lib` 无此模式。修法 = 改为**按类型/修饰符找字段**（映射无关）；修复需库版本 bump + 重发布 + 消费方同步 + 重推整合包（版本号待裁决）。并登记流程缺口：dev 全绿 ≠ 产物可用，建议补「生产映射守门」（静态扫反射字符串常量 / 动态把推给整合包的 jar 真启动一次）。 |
 
+| 2026-09-29 | **KI-F13 已修复并验证** —— 库 `starengine_lib_fabric/fabric-1.20.1` 的 `AstralRarities` 原按**字符串名**反射原版 `Rarity` 字段（`getDeclaredField("color")`/`("$VALUES")`），在 dev(named) 能跑、在整合包(intermediary) **100% 启动崩**。改为按**类型/修饰符**查找（映射无关），只改 fabric 子项目（另三线用 Mojang 官方映射，`color` 本就是 `color`，不受影响）。版本号按用户裁决**退回 1.0.5 基线 + `-alpha.x` 后缀** ⇒ 库 `1.0.5-alpha.1`、主模组 `1.3.2-alpha.1+fabric_1.20.1`。**新增生产映射冒烟工具 `scripts/test/fabric/ft_prod.ps1`**（本轮先以临时探针跑通，后落为正式工具）：在**真实整合包实例**（生产 intermediary 环境）启动一次并按「崩溃报告新增 / 入口点失败 / 到主菜单」三类判据裁决。实测：修复前 `CRASH_REPORT`（19:07，新增崩溃报告）→ 修复后 **`AP_FAB_PROD_READY: elapsed=23s`、crash-reports 无新增**；dev 侧回归同绿。产物实证：内嵌件 `starengine_lib-fabric-1.20.1-1.0.5-alpha.1.jar`；javap 反编译确认 `class_1814` + `lookupColorField`、`String color`/`String $VALUES` 已消失。⚠️ 仍未做：库提交未 push、CI 的库 ref 待同步（属跨仓发布策略）。 |

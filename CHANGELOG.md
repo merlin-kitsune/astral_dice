@@ -4,6 +4,32 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## Unreleased (1.3.2-alpha.1)
+
+> Decided by the user on 2026-09-29: this line is a **development line**, so version numbers now carry
+> an **`-alpha.x` pre-release suffix** (`1.3.2-alpha.1` at present), and the prerequisite library moves to
+> `1.0.5-alpha.1` (its baseline rolled back to 1.0.5).
+
+### Critical fixes
+
+- **Production-environment crash on start-up (100% unlaunchable) fixed**: the prerequisite library
+  `starengine_lib` looked up vanilla `Rarity` fields **by their string names** (`Rarity.color` / `Rarity.$VALUES`)
+  while initialising the rarity tiers. Fabric uses **two different mappings for development and production** —
+  in development the fields really are named `color` / `$VALUES`, in production they are renamed to
+  `field_8908` / `field_8905` — so the production environment **crashed during start-up**
+  (`NoSuchFieldException: color` → entrypoint failure) and the game could not be launched at all.
+  The lookup is now **by field type**, which holds under both mappings.
+  ⚠️ The defect was **production-only**: the development environment and every existing automated test run under the
+  development mapping, so everything was **green yet unusable**.
+
+### Engineering (not game content)
+
+- **Added a "production-environment smoke test"**: all previous verification ran under the development mapping and
+  could not detect the class of defect above. There is now a check that launches the game once inside the
+  **real modpack environment** (verdicts: crash report / entrypoint failure / reached main menu). Both
+  "**never reflect on vanilla members by string name — match by type or modifiers**" and
+  "**run the production smoke before shipping**" are written into the line's rule boundary in `AGENTS.md`.
+
 ## 1.3.2+fabric_1.20.1
 
 > **First release of the Fabric 1.20.1 port line** (2026-09-29). Content is **feature-equivalent** to the
