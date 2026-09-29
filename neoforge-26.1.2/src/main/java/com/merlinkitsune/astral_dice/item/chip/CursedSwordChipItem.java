@@ -112,7 +112,7 @@ public class CursedSwordChipItem extends BaseChipItem {
 
     private static void applyBlueCurse(Player player) {
         if (!player.hasEffect(ModEffects.BLUE_CURSE)) {
-            player.addEffect(new MobEffectInstance(ModEffects.BLUE_CURSE, Integer.MAX_VALUE, 0, false, true, true));
+            player.addEffect(new MobEffectInstance(ModEffects.BLUE_CURSE, MobEffectInstance.INFINITE_DURATION, 0, false, true, true));
         }
     }
 

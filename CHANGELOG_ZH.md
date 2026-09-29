@@ -8,6 +8,16 @@
 
 ### BUG修复
 
+- **「王之力」的 8 点自伤代价在战斗中经常完全不生效**（2026-09-30 用户报告）：该自伤走的是骰子伤害类型 `astral_dice:dice_damage`，而它**不在** `minecraft:tags/damage_type/bypasses_cooldown` 内 ⇒ 受原版受击无敌帧约束。原版 `LivingEntity#hurt` 的判定是「`invulnerableTime > 10` 且本次伤害 `<= lastHurt` ⇒ **直接 `return false`**」—— 刚被怪物打过（或连续使用王之力）时，这 8 点被整段吞掉：层数照加、血条不动，代价形同虚设（创造模式的 `abilities.invulnerable` 同样整体免疫）。现新增独立的 `astral_dice:card_cost`（**卡牌代价**）伤害类型并登记进 `bypasses_cooldown`，「王之力」改用它 ⇒ 无敌帧内照常结算，**每次使用必定扣血**。该类型**刻意不**登记 `bypasses_armor`：与旧口径一致，仍受护甲 / 抗性 / 保护减免（代价不是真伤，不穿透防御）。
+
+- **扫地机立牌的攻/防加成在死亡时会掉一部分**（2026-09-30 用户报告）：死亡清理里有一段「主动把 `jasmine_atk_bonus` / `jasmine_def_bonus` 清零」的代码（2026-09-15 为对齐护法立牌「死亡掉层」而加），而这两个值写在立牌自身的物品数据组件上 ⇒ 死亡掉落 / 保留时被连带抹掉。现按用户裁决**改为死亡保留**（与忍者 `komachi_damage_bonus`、调查员 `rin_pages`、蛟龙 `mamushi_awakening` 同口径）：加成挂在立牌物品上、由物品自身携带，死亡掉落与重生拾回都完整保留；**唯一**的清零路径是真正卸下立牌（`JasmineSignItem#clearSignData`）。上班族立牌的同类清零保持不变。
+
+- **魔法秘典的出牌计数效果带着 8:20 倒计时，而它本来没有时长概念**（2026-09-30 用户报告）：该效果（`magic_tome_count`，等级 = 当前已使用的效果牌张数）每 tick 由筹码续期、计数归零时移除，本身没有倒计时语义，但施加时写的是固定 `10000` tick ⇒ HUD 与物品栏面板上始终显示一个巨大的剩余时间。现改用原版「真·无限时长」（`MobEffectInstance.INFINITE_DURATION`），显示为 **∞**。
+
+- **全模组「常驻」效果统一改为原版无限时长（∞ 符号）**（2026-09-30 用户报告）：此前只有「精准打击」用原版无限时长，其余 8 个常驻效果（**充能 / 人偶制作 / 人偶完成 / 狐光 / 真龙形态 / 厄运 / 推理时间 / 弱点识破**）以及青之诅咒、隐匿调查两处施加点写的是 `Integer.MAX_VALUE` ⇒ 显示为一个几十万小时的倒计时而不是 ∞。现全部改为 `MobEffectInstance.INFINITE_DURATION`。⚠️ 计时守卫（`EffectTimerGuard`）必须同步放行该值：它按「时长 ≥ 阈值」判定永续，旧实现只认 `Integer.MAX_VALUE` 一档，**若不同步改，`-1` 会被当成「已到期仍残留」而把效果立刻清掉**（本次最隐蔽的一处连带）。判据：上述十类效果在物品栏效果面板上显示 ∞。
+
+- **状态效果的「注释」（描述文本）在游戏里一直看不到**（2026-09-30 用户报告）：语言文件里早已写好 21 条 `effect.astral_dice.<id>.description`（狂暴 / 隐匿 / 赋能 / 推理时间 / 白泽赐福 等），但**没有任何渲染通道** —— 此前只有狂暴、岿然不动、以毒攻毒这**三张效果牌物品**的 tooltip 读过描述键（`event/ModTooltipHandler`），玩家把鼠标悬停在**状态效果本身**上时只能看到「效果名 + 剩余时长」。现按平台各接一条通道：NeoForge 两线用官方事件 `GatherEffectScreenTooltipsEvent`，1.20.1（Forge 无此事件）用 Mixin 改写原版 `EffectRenderingInventoryScreen#renderEffects` 内构造的工具提示列表。三线口径一致：**只在对应语言键确实存在时**追加一行灰色描述，未写描述的效果不加空行。
+
 ## 1.3.3
 
 ### 内容与平衡性调整

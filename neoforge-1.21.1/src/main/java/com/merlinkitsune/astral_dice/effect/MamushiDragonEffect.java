@@ -10,7 +10,7 @@ import net.minecraft.world.entity.player.Player;
  * 「真龙形态」(蛟龙立牌 mamushi 的**锁存态**):无层数、无属性修饰符的**状态载体**。
  *
  * <p><b>为什么用常驻(无限)时长</b>:形态是锁存态(「觉醒 ≥ 8 且佩戴立牌」),没有自己的倒计时 ——
- * 用 {@link Integer#MAX_VALUE}(前置库 {@code EffectTimerGuard} 视其为永续、不做计时守卫,
+ * 用 {@link MobEffectInstance#INFINITE_DURATION}(前置库 {@code EffectTimerGuard} 视其为永续、不做计时守卫,
  * 与 {@code effect/ChargeEffect}、{@link ZhaoBlessingEffect} 同一写法)表达"没有自己的倒计时",
  * 施加/移除时机完全由 {@code item/sign/MamushiSignItem#onCurioTick} 的
  * {@code isDragonForm} 判定驱动(满足即 {@link #refresh} 续期,不满足即 {@link #remove})。
@@ -28,7 +28,7 @@ import net.minecraft.world.entity.player.Player;
  */
 public class MamushiDragonEffect extends MobEffect {
     /** 效果时长(无限;移除由 {@code MamushiSignItem#isDragonForm} 的 tick 判定驱动,而非倒计时) */
-    public static final int DURATION_TICKS = Integer.MAX_VALUE;
+    public static final int DURATION_TICKS = MobEffectInstance.INFINITE_DURATION;
 
     public MamushiDragonEffect() {
         super(MobEffectCategory.BENEFICIAL, 0x2E8B57);
@@ -60,7 +60,9 @@ public class MamushiDragonEffect extends MobEffect {
             apply(player);
             return;
         }
-        if (existing.getDuration() < DURATION_TICKS) {
+        // 无限时长不随 tick 递减，故判据是"当前实例不是无限时长"
+        // （兼容旧存档里曾被改写成有限时长的实例）
+        if (!existing.isInfiniteDuration()) {
             player.addEffect(new MobEffectInstance(ModEffects.MAMUSHI_DRAGON,
                     DURATION_TICKS, 0, false, false, true));
         }

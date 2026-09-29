@@ -37,7 +37,8 @@ import org.spongepowered.asm.mixin.injection.Redirect;
  * 标记的实例时长本身就是递减计时(1200 tick 到期即减 1 层,见
  * {@code MarkManager#onMarkExpired});治愈的实例时长跟随骰神赐福/治愈计时器剩余
  * (见 {@code HealingManager#updateEffect});赋能为「递减间隔 600 + 20 余量」的既有设计
- * ({@code EmpowerEffect.DURATION_TICKS = 620});弱点识破为 {@code Integer.MAX_VALUE}。
+ * ({@code EmpowerEffect.DURATION_TICKS = 620});弱点识破为 {@code Integer.MAX_VALUE}(2026-09-30 起改为
+ * 原版无限时长 {@code MobEffectInstance.INFINITE_DURATION}，本注入随即成为冗余保险)。
  * 拉长时长必然改动递减间隔或倒计时语义,故只在渲染侧消除闪烁表现。
  *
  * <p><b>影响面</b>:只有本模组这四类效果返回 {@code false}(其中弱点识破原本就因无限时长

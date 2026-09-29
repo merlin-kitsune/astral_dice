@@ -69,7 +69,7 @@ public class BonnieSignItem extends BaseSignItem {
                 // 施加"隐匿调查"(永久,直到目标死亡/消失),记录施加者(击杀触发调查阶段事件)
                 ModAttachments.setUndercoverSource(target, Optional.of(player.getUUID()));
                 target.addEffect(new MobEffectInstance(ModEffects.UNDERCOVER_INVESTIGATION.get(),
-                        Integer.MAX_VALUE, 0, false, true));
+                        MobEffectInstance.INFINITE_DURATION, 0, false, true));
                 // 目标带"标记"时:按标记层数 ×2 获得星币
                 int markLevel = MarkManager.getLevel(target);
                 if (markLevel > 0) {

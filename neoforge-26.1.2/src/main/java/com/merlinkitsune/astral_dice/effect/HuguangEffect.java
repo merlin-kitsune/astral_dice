@@ -25,7 +25,7 @@ import net.minecraft.world.entity.player.Player;
  */
 public class HuguangEffect extends MobEffect {
     /** 效果时长(无限;层数归 0 时由镜像方移除) */
-    public static final int DURATION_TICKS = Integer.MAX_VALUE;
+    public static final int DURATION_TICKS = MobEffectInstance.INFINITE_DURATION;
 
     public HuguangEffect() {
         super(MobEffectCategory.BENEFICIAL, 0xFFA64D);

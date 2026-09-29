@@ -74,6 +74,24 @@ public class ModDamageTypes {
             Identifier.fromNamespaceAndPath(AstralDiceMod.MODID, "extra_damage")
     );
 
+    /**
+     * **卡牌代价**（2026-09-30 新增）:效果牌「王之力」使用时的**自伤代价**（受到 8 点伤害）。
+     *
+     * <p><b>为什么不能复用 {@link #DICE_DAMAGE}</b>:骰子伤害类型不在
+     * {@code minecraft:tags/damage_type/bypasses_cooldown} 里 ⇒ 受原版受击无敌帧约束
+     * （原版 {@code LivingEntity#hurt} 在 {@code invulnerableTime > 10} 且 {@code amount <= lastHurt} 时
+     * <b>直接 return false</b>）⇒ 战斗中（刚被其它伤害打过）使用王之力**完全不掉血**，代价形同虚设；
+     * 创造模式下 {@code abilities.invulnerable} 亦会整体免疫。本类型登记于 {@code bypasses_cooldown}
+     * ⇒ 无敌帧内照常结算，代价必定生效。
+     *
+     * <p><b>不</b>登记 {@code bypasses_armor} 与 {@code bypasses_invulnerability}:与旧口径一致，
+     * 仍受护甲/抗性/保护减免，创造模式仍免疫 —— 「代价」不是真伤、不穿透防御。
+     */
+    public static final ResourceKey<DamageType> CARD_COST = ResourceKey.create(
+            Registries.DAMAGE_TYPE,
+            Identifier.fromNamespaceAndPath(AstralDiceMod.MODID, "card_cost")
+    );
+
     public static DamageSource diceDamage(Level level, Entity source) {
         return new DamageSource(trueHolder(level, DICE_DAMAGE), source);
     }
@@ -120,6 +138,18 @@ public class ModDamageTypes {
      */
     public static DamageSource extraDamage(Level level, Entity causing) {
         return new DamageSource(trueHolder(level, EXTRA_DAMAGE), null, causing);
+    }
+
+
+    /**
+     * 卡牌代价伤害源:**直接伤害实体 = 使用者本人**（与 {@link #diceDamage} 同形，
+     * 沿用「玩家自伤」的既有链路判定）。骰战对 {@code target == attacker} 已在
+     * {@code DiceCombatEvents#onLivingDamagePre} 中先行 {@code return} ⇒ 不会重走骰战；
+     * 赐福/降神计时器与隐匿解除两处挂点都有 {@code attacker != target} / {@code !(target instanceof Player)}
+     * 前置 ⇒ 自伤不误触发。
+     */
+    public static DamageSource cardCost(Level level, Entity source) {
+        return new DamageSource(trueHolder(level, CARD_COST), source);
     }
 
     private static Holder<DamageType> trueHolder(Level level, ResourceKey<DamageType> key) {

@@ -11,7 +11,7 @@ import net.minecraft.world.entity.player.Player;
  *
  * <h2>为什么用无限时长</h2>
  * 判据是「觉醒 ≥ {@code MamushiSignItem.AWAKEN_MAX}(8) **且**佩戴立牌」,不是一个固定时长 —— 用
- * {@link Integer#MAX_VALUE} 表达"没有自己的倒计时"(先例:{@link ZhaoBlessingEffect} 的白泽赐福、
+ * {@link MobEffectInstance#INFINITE_DURATION} 表达"没有自己的倒计时"(先例:{@link ZhaoBlessingEffect} 的白泽赐福、
  * {@code effect/ChargeEffect}),移除时机完全由立牌 tick 的
  * {@code isDragonForm(player)} 谓词决定:{@code true} ⇒ {@link #refresh},否则 {@link #remove}。
  *
@@ -35,7 +35,7 @@ import net.minecraft.world.entity.player.Player;
  */
 public class MamushiDragonEffect extends MobEffect {
     /** 效果时长(无限;移除由立牌 tick 的层数/佩戴判据驱动,而非倒计时) */
-    public static final int DURATION_TICKS = Integer.MAX_VALUE;
+    public static final int DURATION_TICKS = MobEffectInstance.INFINITE_DURATION;
 
     public MamushiDragonEffect() {
         super(MobEffectCategory.BENEFICIAL, 0x8B00FF);
@@ -61,7 +61,7 @@ public class MamushiDragonEffect extends MobEffect {
      * (与层数判据自检配对:仍处于真龙形态而效果没了 ⇒ 立刻补回,不给"状态与可见载体不一致"留窗口)。
      *
      * <p>施加走原版 {@code addEffect}:已存在时其内部 {@code MobEffectInstance#update} 只在
-     * "新时长严格更长且放大器相同"时改写剩余时长 —— 本效果时长恒为 {@code MAX_VALUE},
+     * "新时长严格更长且放大器相同"时改写剩余时长 —— 本效果时长恒为 {@link MobEffectInstance#INFINITE_DURATION},
      * 因此刷新不会把已有的更长值改短(不会与外部施加打架)。
      */
     public static void refresh(Player player) {
@@ -71,7 +71,9 @@ public class MamushiDragonEffect extends MobEffect {
             apply(player);
             return;
         }
-        if (existing.getDuration() < DURATION_TICKS) {
+        // 无限时长不随 tick 递减，故判据是"当前实例不是无限时长"
+        // （兼容旧存档里曾被改写成有限时长的实例）
+        if (!existing.isInfiniteDuration()) {
             player.addEffect(new MobEffectInstance(ModEffects.MAMUSHI_DRAGON.get(),
                     DURATION_TICKS, 0, false, false, true));
         }
