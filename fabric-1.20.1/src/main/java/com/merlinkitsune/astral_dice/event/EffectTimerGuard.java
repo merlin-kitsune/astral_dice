@@ -31,7 +31,10 @@ import java.util.Map;
  * </ul>
  */
 public final class EffectTimerGuard {
-    /** 视为“无限时长”的门槛(等于或大于该值时效果视为永续,不做计时守卫) */
+    /**
+     * 视为“无限时长”的门槛:原版「真·无限时长」({@link MobEffectInstance#INFINITE_DURATION} = {@code -1})
+     * 或等于/大于该阈值的历史常驻值,一律视为永续、不做计时守卫。
+     */
     public static final int INFINITE_THRESHOLD = Integer.MAX_VALUE / 2;
     /** 减速截断容差(tick):剩余超出预期该值以上才移除重加,避免每 tick 抖动 */
     private static final int CLAMP_TOLERANCE = 20;
@@ -75,7 +78,7 @@ public final class EffectTimerGuard {
         if (player.level().isClientSide()) return;
         if (instance == null || instance.getEffect() == null) return;
         int duration = instance.getDuration();
-        if (duration >= INFINITE_THRESHOLD) return;
+        if (duration == MobEffectInstance.INFINITE_DURATION || duration >= INFINITE_THRESHOLD) return;
         Map<String, TimerEntry> map = new HashMap<>(ModAttachments.EFFECT_TIMER_ENDS.get(player));
         ResourceLocation effectId = net.minecraft.core.registries.BuiltInRegistries.MOB_EFFECT
                 .getKey(instance.getEffect());

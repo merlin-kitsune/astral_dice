@@ -26,7 +26,7 @@ import net.minecraft.world.entity.player.Player;
  */
 public class MisfortuneEffect extends MobEffect {
     /** 效果时长(无限;层数归 0 时由镜像方移除) */
-    public static final int DURATION_TICKS = Integer.MAX_VALUE;
+    public static final int DURATION_TICKS = MobEffectInstance.INFINITE_DURATION;
 
     public MisfortuneEffect() {
         super(MobEffectCategory.HARMFUL, 0x5B2C6F);

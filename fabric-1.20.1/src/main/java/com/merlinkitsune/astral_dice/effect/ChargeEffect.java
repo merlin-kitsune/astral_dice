@@ -19,7 +19,7 @@ import net.minecraft.world.entity.player.Player;
  */
 public class ChargeEffect extends MobEffect {
     /** 效果时长(无限,清空/层数归零时移除) */
-    public static final int DURATION_TICKS = Integer.MAX_VALUE;
+    public static final int DURATION_TICKS = MobEffectInstance.INFINITE_DURATION;
 
     public ChargeEffect() {
         super(MobEffectCategory.BENEFICIAL, 0xFFC800);
