@@ -44,6 +44,11 @@ public class AstralDiceMod implements ModInitializer {
 
     @Override
     public void onInitialize() {
+        // ⚠️ 必须是第一条语句:下面第 7 步的 TrinketBridge.registerAll() 会触碰
+        //    dev.emi.trinkets.api.*,而 Trinkets 缺席时那个类**无法加载**。
+        //    先做「Trinkets 或 Accessories 二选一」判定,玩家看到的就是完整的中文说明
+        //    而不是一个 NoClassDefFoundError 堆栈(2026-09-29 用户裁决)。
+        ModCompatibilityCheck.verifyAccessoryProviderOrThrow();
         FabricBridges.installEarly();
         // 战利品注入(FAPI LootTableEvents.MODIFY):替代 Forge 侧的 GLM + LootTableLoadEvent 两条通道
         com.merlinkitsune.astral_dice.loot.FabricLootInjector.register();
@@ -58,11 +63,17 @@ public class AstralDiceMod implements ModInitializer {
         //    都处于「代码在、但没接上」的静默失效状态)。位置 = 监听器注册之后,
         //    这样桥第一次派发时订阅者一定已在总线上。
         FabricBridges.install();
-        TrinketBridge.registerAll();
+        // Trinkets 通道(硬→软:2026-09-29 起 Trinkets 与 Accessories **二选一**即可)。
+        // ⚠️ 守卫放在**调用点**而不是方法体内 —— TrinketBridge 直接引用
+        //    dev.emi.trinkets.api.*(含内部 record Adapter implements Trinket),
+        //    Trinkets 缺席时必须让这个类**永不被加载**(与下面 AccessoriesCompat 同一纪律)。
+        if (ModCompatibilityCheck.isTrinketsPresent()) {
+            TrinketBridge.registerAll();
+        }
         // Accessories(软依赖)在场时,再挂一条饰品通道:槽位验证器 + 物品适配器。
         // ⚠️ 守卫不可省 —— AccessoriesCompat 直接引用 io.wispforest.accessories.*,
         //    软依赖缺席时必须让它**永不被加载**(见 CuriosApi 的类加载隔离说明)。
-        if (com.merlinkitsune.astral_dice.compat.curios.CuriosApi.isAccessoriesPresent()) {
+        if (ModCompatibilityCheck.isAccessoriesPresent()) {
             com.merlinkitsune.astral_dice.compat.accessories.AccessoriesCompat.register();
             // 启动自检:把三条「物品→槽位」准入链的判据打进日志(数据包加载后执行)
             com.merlinkitsune.astral_dice.compat.accessories.AccessoriesCompat.installSlotDiagnostics();

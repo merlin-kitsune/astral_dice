@@ -88,13 +88,24 @@ dependencies {
     modImplementation "${libGroup}:starengine_lib-fabric-1.20.1:${libVersion}"
     include "${libGroup}:starengine_lib-fabric-1.20.1:${libVersion}"
 
-    // ── 硬前置:Trinkets(替代 Curios)。消费方声明必需(fabric.mod.json depends) ──
-    modImplementation "maven.modrinth:trinkets:AHxQGtuC"
+    // ── 饰品栏提供方之一:Trinkets(替代 Curios;本线的原始移植目标) ──────────
+    // ⚠️ 2026-09-29 用户裁决:Trinkets 与 Accessories **二选一**即可 ⇒ 由「硬前置」改为**软前置**:
+    //    fabric.mod.json 里 trinkets 从 depends 移入 recommends(与 accessories 并列)。
+    //    Loader 的 depends 是 AND 语义、表达不了「任选其一」⇒ 权威判定在运行时
+    //    (ModCompatibilityCheck#verifyAccessoryProviderOrThrow:两个都没有才拒绝启动)。
+    // ⚠️ 拆成 modCompileOnly + 条件 modRuntimeOnly(对齐下面 Accessories 的既有做法),
+    //    这样才能在 dev 里造出「仅 Accessories」与「两者皆无」两态 —— 否则 modImplementation
+    //    会把 Trinkets 钉在运行期,四态里的两态永远测不到。
+    //    编译期仍需要它:TrinketBridge 要实现 dev.emi.trinkets.api.Trinket。
+    modCompileOnly "maven.modrinth:trinkets:AHxQGtuC"
+    if (providers.gradleProperty('testTrinkets').getOrElse('true') != 'false') {
+        modRuntimeOnly "maven.modrinth:trinkets:AHxQGtuC"
+    }
 
-    // ── 可选兼容:Accessories(替代 Trinkets 的第二条饰品通道;2026-09-29 新增) ──
-    // 用户需求:「饰品同时可以在 Trinkets 和 Accessories 上正常工作」。
-    // 生产定位 = **软依赖** —— fabric.mod.json 只进 recommends,不进 depends;
-    //   缺席时本模组照旧走 Trinkets;在场时 Accessories 成为**主通道**(见 compat/curios/CuriosApi)。
+    // ── 饰品栏提供方之二:Accessories(Wisp Forest 的数据驱动饰品栏;2026-09-29 新增) ──
+    // 用户需求:「装了 Accessories 就不该再强制要求 Trinkets,反之亦然」。
+    // 生产定位 = **软前置** —— fabric.mod.json 只进 recommends,不进 depends;
+    //   缺席时本模组走 Trinkets;在场时 Accessories 成为**主通道**(见 compat/curios/CuriosApi)。
     // ⚠️ 编译期需要:物品要实现 io.wispforest.accessories.api.Accessory 适配器,
     //    门面要能读 AccessoriesCapability。而 Accessories 用 Loom 的
     //    `custom.loom:injected_interfaces` 给 LivingEntity 注入了 AccessoriesAPIAccess
@@ -108,6 +119,11 @@ dependencies {
         modRuntimeOnly "maven.modrinth:accessories:${accessories_mr_version}"
         modRuntimeOnly "maven.modrinth:cloth-config:${cloth_config_mr_version}"
     }
+    // dev 四态(对应生产可能的四种安装组合;四态都必须能跑到「就绪/或给出明确拒绝」):
+    //   (默认)                          → 两者都在
+    //   -PtestTrinkets=false            → 仅 Accessories   ← 与用户当前整合包一致
+    //   -PtestAccessories=false         → 仅 Trinkets
+    //   -PtestTrinkets=false -PtestAccessories=false → 两者皆无 ⇒ 期望本模组给出明确中文拒绝
 
     // Cardinal Components(库以 modApi 暴露,这里显式声明以固定版本)
     // ⚠️ 曾经的 Cardinal Components API **运行前置**已按用户裁决移除：

@@ -30,12 +30,12 @@
     "fabricloader": ">=${loader_version}",
     "minecraft": "${minecraft_version_range}",
     "fabric-api": "*",
-    "trinkets": ">=${trinkets_version}",
     "fabric-data-attachment-api-v1": "*",
     "puzzleslib": "${puzzleslib_version_range}",
     "starengine_lib": "${lib_version_range}"
   },
   "recommends": {
+    "trinkets": ">=${trinkets_version}",
     "accessories": "${accessories_version_range}"
   }
 }

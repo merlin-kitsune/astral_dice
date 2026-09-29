@@ -11,9 +11,19 @@ import com.merlinkitsune.astral_dice.platform.fml.ModList;
 import com.merlinkitsune.astral_dice.platform.fml.ModLoadingException;
 import com.merlinkitsune.astral_dice.platform.fml.ModLoadingStage;
 
+import net.fabricmc.loader.api.FabricLoader;
+
 /**
- * 不兼容模组黑名单：命中即拒绝启动（抛 {@link ModLoadingException}
- * ⇒ 游戏停在加载错误界面并**把下面的提示原文显示出来**，不会进入主菜单）。
+ * 装载期前置校验，两类：
+ *
+ * <ol>
+ *   <li><b>不兼容模组黑名单</b>（{@link #verifyOrThrow()}）：命中即拒绝启动；</li>
+ *   <li><b>饰品栏提供方二选一</b>（{@link #verifyAccessoryProviderOrThrow()}）：
+ *       Trinkets 与 Accessories <b>至少装一个</b>，两个都没有才拒绝启动。</li>
+ * </ol>
+ *
+ * 两者都抛 {@link ModLoadingException}
+ * ⇒ 游戏停在加载错误界面并**把下面的提示原文显示出来**，不会进入主菜单。
  *
  * <p><b>为什么是硬拒绝而不是「功能自动关闭」</b>：本模组的「星币钱包」已经把这两个模组的能力内置
  * （星币 / 星币袋的面额折算、玩家级余额账本、存入与取出、获得星币直接入钱包），而它们各自也在玩家身上
@@ -75,6 +85,78 @@ public final class ModCompatibilityCheck {
             new Entry("sg_economy", "SG-Economy", true));
 
     private ModCompatibilityCheck() {
+    }
+
+    // ==================================================================
+    // 饰品栏提供方:Trinkets 或 Accessories 二选一
+    // ==================================================================
+
+    /** Trinkets 的 modId(FluffyWolf 的 Fabric 原生饰品栏;本线的原始移植目标)。 */
+    public static final String TRINKETS_MOD_ID = "trinkets";
+
+    /** Accessories 的 modId(Wisp Forest 的数据驱动饰品栏;1.20.1 上为 1.0.0-beta.x)。 */
+    public static final String ACCESSORIES_MOD_ID = "accessories";
+
+    /** Trinkets 是否在场(只读字符串判定,不触发对方任何类加载)。 */
+    public static boolean isTrinketsPresent() {
+        return FabricLoader.getInstance().isModLoaded(TRINKETS_MOD_ID);
+    }
+
+    /** Accessories 是否在场(只读字符串判定,不触发对方任何类加载)。 */
+    public static boolean isAccessoriesPresent() {
+        return FabricLoader.getInstance().isModLoaded(ACCESSORIES_MOD_ID);
+    }
+
+    /**
+     * 校验「饰品栏提供方」:Trinkets 与 Accessories <b>至少存在一个</b>。
+     *
+     * <p><b>为什么必须是运行时校验、而不是写进 {@code fabric.mod.json} 的 {@code depends}</b>:
+     * Fabric Loader 的依赖声明是 <b>AND 语义</b>,<b>不支持 OR</b>(没有「任选其一」的写法)。
+     * 而本模组的骰子 / 立牌 / 筹码必须装进玩家的饰品栏,缺少饰品栏时这些核心玩法**完全不可用** ——
+     * 既不能放宽成可选(那样玩家会拿到一个「物品能拿到但装不上」的残废状态,且不报错),
+     * 也不能只声明其中一个(2026-09-29 用户裁决:玩家装哪个都应该能玩)。
+     * ⇒ 唯一正确的表达方式 = 两者都进 {@code recommends}(软提示),
+     * 由本方法在 mod 初始化最早期做**权威判定**。
+     *
+     * <p><b>调用时机必须是 {@code onInitialize()} 的<b>第一条</b>语句</b>:
+     * 后文会经 {@code TrinketBridge.registerAll()} 触碰 {@code dev.emi.trinkets.api.*},
+     * 而那个类在 Trinkets 缺席时**无法加载**;先判定 ⇒ 玩家看到的是本方法给出的
+     * 完整中文说明,而不是一个 {@code NoClassDefFoundError} 堆栈。
+     *
+     * @throws ModLoadingException 两个饰品栏模组都不存在时抛出;异常携带的即为给玩家的提示文本
+     */
+    public static void verifyAccessoryProviderOrThrow() {
+        final boolean trinkets = isTrinketsPresent();
+        final boolean accessories = isAccessoriesPresent();
+        AstralDiceMod.LOGGER.info("AP_FAB_ACCESSORY_PROVIDER: {} (trinkets={} accessories={})",
+                trinkets || accessories ? "OK" : "FAIL", trinkets, accessories);
+        if (trinkets || accessories) {
+            return;
+        }
+        IModInfo self = ModList.get().getModContainerById(AstralDiceMod.MODID)
+                .map(container -> container.getModInfo())
+                .orElse(null);
+        throw new ModLoadingException(self, ModLoadingStage.COMMON_SETUP, buildProviderMessage(), null);
+    }
+
+    /**
+     * 「两个饰品栏都没装」时的提示。
+     *
+     * <p>⚠️ 与黑名单提示同一约束:文案里**不要出现 `%` 与 `{}`**(会被当格式化占位符),
+     * 且**不要**把这几个串写进语言文件(否则会被翻译覆盖)。
+     */
+    private static String buildProviderMessage() {
+        return "[星之骰戏] 缺少饰品栏前置：既没有检测到 Trinkets，也没有检测到 Accessories。\n\n"
+                + "本模组的骰子、立牌与筹码都需要装备进玩家的饰品栏，"
+                + "因此必须至少安装下面二者之一：\n\n"
+                + "【一】Trinkets\n"
+                + "  在 CurseForge 或 Modrinth 搜索 Trinkets（Fabric 1.20.1 版本）。\n\n"
+                + "【二】Accessories\n"
+                + "  在 CurseForge 或 Modrinth 搜索 Accessories（Fabric 1.20.1 版本）。\n"
+                + "  Accessories 需要 Cloth Config，通常随它一起自动安装。\n\n"
+                + "两者同时安装也可以：本模组会把 Accessories 作为主通道、Trinkets 作为兜底，"
+                + "并自动在两边同时生效，玩家把饰品装在哪一边都认。\n\n"
+                + "装好其中一个之后重新启动游戏即可。";
     }
 
     /**

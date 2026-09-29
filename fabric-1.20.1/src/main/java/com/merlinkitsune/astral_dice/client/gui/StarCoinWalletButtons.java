@@ -307,8 +307,18 @@ public final class StarCoinWalletButtons {
          *       该属性对 JVM 是**惰性**的(不参与类加载与字节码校验),故不会把 Accessories 变成硬依赖。</li>
          * </ul>
          * <p>若将来本模组要用 Accessories 的按钮渲染调整,则应改为委托 Accessories 侧的真实实现。
+         *
+         * <h2>⚠️ 为什么这里<b>故意不写</b> {@code @Override}（2026-09-29 修）</h2>
+         * <p>Loom 的依赖方接口注入会随**依赖是否进入运行期**而开关:
+         * 用 {@code -PtestAccessories=false} 跑「仅 Trinkets」或「两者皆无」两态时,
+         * Accessories 不在运行期 ⇒ 注入**消失** ⇒ {@code AbstractButton} 不再被视作实现了
+         * {@code AbstractButtonExtension} ⇒ 这个 {@code @Override} 就变成「不覆盖任何方法」而**编译失败**
+         * (实测:错误 "方法不会覆盖或实现超类型的方法" @ 本行)。
+         * 去掉注解后**两种注入态都成立**:
+         * 注入在 ⇒ 本方法按签名实现该接口方法(仍满足「必须补上抽象方法」的要求);
+         * 注入不在 ⇒ 它就是一个普通方法,无人引用。
+         * 方法体与返回类型不变,行为与之前**完全一致**。
          */
-        @Override
         public Event<ButtonEvents.AdjustRendering> getRenderingEvent() {
             return null;
         }

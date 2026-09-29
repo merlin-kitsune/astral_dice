@@ -39,7 +39,23 @@
 - **Fixed a manual-recipe parse error when Patchouli is absent**: the guidebook recipe produces an item owned by
   Patchouli, which this modpack does not install, leaving an "unknown item" parse error in the start-up log.
   The recipe now carries a **"load only when Patchouli is installed"** condition.
-  ⚠️ **Note: this modpack has no Patchouli, so the guidebook cannot be obtained** — install Patchouli if you want it.
+  ⚠️ Because that recipe only loads **when Patchouli is installed**, the **guidebook cannot be obtained without
+  Patchouli** (expected behaviour, not a defect) — install Patchouli if you want it.
+
+### Prerequisite changes
+
+- **Accessory slots are now either-or: Trinkets alone, or Accessories alone, both work — only "neither" is refused**:
+  Trinkets used to be a **hard dependency** (declared in `fabric.mod.json` → `depends`), so players who only had
+  Accessories **could not launch the game at all** (the loader reported
+  `HARD_DEP_NO_CANDIDATE … {depends trinkets @ [>=3.7.2]}`). Trinkets has been moved out of `depends` into
+  `recommends`; both accessory mods are now merely **recommended**, and this mod decides at the **very start of
+  initialisation**: as long as at least one of them is present it proceeds normally, and when **neither** is present it
+  emits a **complete explanation** (which to install, where, how the two differ, and that installing both is fine too).
+  ⚠️ Why it has to work this way: Fabric dependency declarations are **AND** semantics — there is **no "either-or"
+  syntax** — so the choice can only be resolved at runtime.
+  ⚠️ A matching rule was established as well: every call site that touches an accessory mod's API must first check
+  whether that mod is installed, otherwise a missing mod surfaces as a class-loading stack trace rather than a
+  human-readable message.
 
 ### Engineering (not game content)
 

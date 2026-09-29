@@ -402,7 +402,7 @@ GlCommandEncoder.trySetup(:531) ← GlCommandEncoder.executeDraw(:406) ← GlRen
 - 本线的持久化由 **Fabric API 附件**（`fabric-data-attachment-api-v1`，随 fabric-api 分发）承载；
   Forge / NeoForge 侧为 Capability + `ForgeData` 段 / 数据组件。落盘位置与结构不同
   ⇒ **存档不能跨加载器迁移**。
-- 饰品数据同理：本线用 **Trinkets**（+ 可选 **Accessories**），另三线用 **Curios**。
+- 饰品数据同理：本线用 **Trinkets 或 Accessories（二选一，见 KI-F15）**，另三线用 **Curios**。
 - 写安装说明与迁移指引时必须如实说明「换加载器 = 换存档」。
 
 ### KI-F3 ＝ 两条饰品通道共存时的槽位聚合语义（**已设计处理，登记以免日后误改**）
@@ -410,11 +410,15 @@ GlCommandEncoder.trySetup(:531) ← GlCommandEncoder.executeDraw(:406) ← GlRen
 - 本线的 `data/curios/tags/items/{dice,stand,chip}.json` **不是** Curios 的运行时数据
   （本线没有 Curios）——它是「物品清单的单一事实源」，Trinkets 侧用 `#curios:<slot>` 引用它；
   Accessories 侧走自定义 predicate `astral_dice:curio_slot`。**不要因为命名空间写着 `curios` 就删除它**。
+  ⚠️ 它是普通物品标签（由原版标签加载器读，不依赖任何饰品模组）⇒ 两个饰品栏模组**都没装**时它依然生效。
+- ⚠️ **前置是「二选一」不是「都要」**（2026-09-29 用户裁决，见 **KI-F15**）：`trinkets` 与 `accessories`
+  都只进 `fabric.mod.json` 的 `recommends`，两个都没有时才由运行时守卫拒绝启动。
 - Trinkets 与 Accessories **同装**时，`compat/curios/CuriosApi` 作为多源聚合门面：
   `findCurios` 取并集（按 `ItemStack` 实例去重，防「官方兼容层把两源指向同一库存」时重复）、
   `getStacksHandler` 同名冲突时返回 `MergedHandler`（读优先非空侧、写落持有侧）、
   槽位修饰符**两侧同写**（保证「筹码栏位数 = 骰子星级」在两套系统里一致）。
-  ⚠️ 改动该门面时必须同步验证**三种组合**：仅 Trinkets / 仅 Accessories / 两者同装。
+  ⚠️ 改动该门面时必须同步验证**四种组合**：仅 Trinkets / 仅 Accessories / 两者同装 / 两者皆无
+  （最后一态验证的是「拒绝启动」这条路径本身，dev 用 `-PtestTrinkets=false -PtestAccessories=false` 构造）。
 
 ### KI-F4 ＝ 测试资产与 datagen 的当前状态（**2026-09-29 登记**）
 
@@ -885,6 +889,73 @@ fabric.mod.json: version=1.3.2-alpha.1+fabric_1.20.1 / depends.starengine_lib=">
 3. **Loom 侧对称支持**：`:fabric-1.20.1:runClient -PpreloadClasses=<…>`（`vmArg`；
    ⚠️ **API 不通用** —— ModDevGradle/ForgeGradle 是 `jvmArgument`/`vmArgs`）。
 
+### KI-F15 ＝ 饰品栏前置：从「Trinkets 硬必需」改为「Trinkets 或 Accessories 二选一」（**已修，2026-09-29 用户裁决**）
+
+- **现象**：只装 **Accessories** 的玩家**完全无法启动** —— 加载器直接拒绝（实测 19:59）：
+  ```
+  Immediate reason: [HARD_DEP_NO_CANDIDATE astral_dice 1.3.2-alpha.1+fabric_1.20.1 {depends trinkets @ [>=3.7.2]}]
+  Fix: add [add:trinkets 3.7.2 ([[3.7.2,∞)])], remove [], replace []
+  ```
+  ⚠️ 这与本线的**既有设计自相矛盾**：`CuriosApi` 早就把 Accessories 定为**主通道**（KI-F3），
+  可声明面却把 Trinkets 写成**硬前置** ⇒ 「主通道」在声明层面根本进不来。
+- **根因（两层）**：
+  1. **声明层**：`fabric.mod.json` 的 `trinkets` 写在 **`depends`** 里。而 Fabric 的依赖声明是
+     **AND 语义** —— **没有「任选其一」的写法**（`recommends` / `suggests` 都只是软提示，
+     无法表达「这两个里至少一个」）⇒ **二选一只能运行时判定**。
+  2. **代码层**：三处把 Trinkets 当硬前置，缺席时会以**类加载失败**（一堆 `NoClassDefFoundError`
+     堆栈）而非一句人话收场：
+     - `compat/curios/TrinketBridge` —— 硬引用 `dev.emi.trinkets.api.*`（含内部
+       `record Adapter implements Trinket`）；
+     - `compat/curios/CuriosApi#getCuriosInventory` —— **无条件**查询 Trinkets 源；
+     - `AstralDiceMod#onInitialize` —— **无条件**调 `TrinketBridge.registerAll()`。
+- **修法（四处）**：
+  1. `trinkets` 从 `depends` **移入 `recommends`**（与 `accessories` 并列）；
+  2. 新增 `ModCompatibilityCheck#verifyAccessoryProviderOrThrow()`：在 **`onInitialize()` 的第一条语句**
+     执行（必须先于任何触碰 Trinkets 的代码），**两个都不在**时才抛 `ModLoadingException`
+     （完整中文说明：装哪个、去哪装、两者差异、同时装也可以）；每次启动打一条机器行
+     `AP_FAB_ACCESSORY_PROVIDER: OK|FAIL (trinkets=… accessories=…)` 供冒烟断言；
+  3. `CuriosApi` 的 Trinkets 源加 `TRINKETS_LOADED` 守卫（与既有的 `ACCESSORIES_LOADED` 对称）；
+  4. `TrinketBridge.registerAll()` 的**调用点**加守卫 —— ⚠️ **守卫必须在调用点**：
+     `TrinketBridge` 缺席时**整个类都加载不了**，写在方法体内等于没写（方法体要先加载类才有机会执行）；
+     方法体内再留一道防线仅为将来调用方的兜底。
+  另：两个 modId 常量与两个布尔**单一权威**在 `ModCompatibilityCheck`，`CuriosApi` 委托它（避免两处各判一次而漂移）。
+- **实测（dev 四态 + 生产）**：
+  | 态 | 构造方式 | 读数 |
+  |---|---|---|
+  | **仅 Accessories**（= 用户整合包现状） | `-PtestTrinkets=false` | 加载 82 模组；`AP_FAB_ACCESSORY_PROVIDER: OK (trinkets=false accessories=true)`；`Sound engine started`；Accessories 适配器已注册、**无** Trinkets 适配器；**无** `NoClassDefFoundError` |
+  | **仅 Trinkets** | `-PtestAccessories=false` | 加载 81 模组；`OK (trinkets=true accessories=false)`；`Sound engine started`；Trinkets 适配器已注册 |
+  | **两者同装** | 默认 | 加载 83 模组；`OK (trinkets=true accessories=true)`；**两个适配器都注册**（聚合门面语义不变，见 KI-F3） |
+  | **两者皆无** | `-PtestTrinkets=false -PtestAccessories=false` | 加载 80 模组；`AP_FAB_ACCESSORY_PROVIDER: FAIL (trinkets=false accessories=false)` ⇒ **拒绝启动**。⚠️ 文案**不在 `latest.log`**（日志在抛出处断掉），而在 `run/client/crash-reports/crash-*.txt`：`Description: Initializing game` → `Caused by: …ModLoadingException: [星之骰戏] 缺少饰品栏前置：既没有检测到 Trinkets，也没有检测到 Accessories。` + 一整段中文操作指引（首行即可读，与既有黑名单检查同一可见性口径） |
+  | **生产**（整合包实况 = 只有 Accessories） | `ft_prod.ps1` | **PASS**（修复前为 `HARD_DEP_NO_CANDIDATE` 拒绝启动） |
+- **对下游的影响**：饰品栏提供方变了但**槽位与物品清单不变** —— `data/curios/tags/items/*.json`
+  是普通物品标签（由**原版**标签加载器读，不依赖任何饰品模组），Accessories 侧走自定义 predicate
+  `astral_dice:curio_slot`，两侧共用同一份清单（KI-F3）。
+
+### KI-F16 ＝ dev 开关 `-PtestAccessories=false` **从来无法通过编译**（**已修**）—— 「注释声称可用、实际从没跑过」
+
+- **现象**：`./gradlew :fabric-1.20.1:compileJava -PtestAccessories=false` 直接失败：
+  ```
+  StarCoinWalletButtons.java:311: 错误: 方法不会覆盖或实现超类型的方法
+          @Override
+  ```
+  而 `build.gradle` 的注释**一直写着**「跑『仅 Trinkets』那一态时用 `-PtestAccessories=false` 关掉」
+  ⇒ **该开关从来没有被真正执行过**（所以这个矛盾一直没被发现）。
+- **根因**：Loom 的**依赖方接口注入**会随「依赖是否进入**运行期**」而开关。
+  Accessories 的 `fabric.mod.json` 声明 `custom.loom:injected_interfaces: net/minecraft/class_4264 →
+  AbstractButtonExtension`，把 `AbstractButtonExtension` 注入 `AbstractButton`；把 Accessories
+  移出**运行期**后注入**消失** ⇒ 为「必须补上注入来的抽象方法」而写的
+  `@Override getRenderingEvent()` 立刻变成「不覆盖任何方法」⇒ 编译失败。
+  ⚠️ 佐证这不是类路径问题：`compileClasspath` 里 accessories **仍在**（`modCompileOnly` 是无条件的）
+  —— 失效的是**注入**本身。
+- **修法**：去掉该方法的 `@Override`（**保留方法体、返回类型与整段 javadoc**）⇒ **两种注入态都成立**：
+  注入在 ⇒ 按签名实现该接口方法（仍满足「必须补上抽象方法」）；注入不在 ⇒ 它就是普通方法、无人引用。
+  行为与改动前**完全一致**（该方法体返回 `null`，Accessories 只对**它自己的**按钮调用
+  `ButtonEvents.adjustRendering(...)`，从不调本模组的）。
+- **实测**：四态 `compileJava` 均 `BUILD SUCCESSFUL`：
+  默认 / `-PtestAccessories=false` / `-PtestTrinkets=false` / `-PtestTrinkets=false -PtestAccessories=false`。
+- **教训（通用）**：**「给了开关」≠「开关可用」** —— 凡在注释/文档里承诺「用某参数可以跑某态」，
+  就必须至少实跑一次该参数；否则它只是一个会把人引向错误结论的假入口（本轮四态矩阵正是靠实跑才暴露它）。
+
 ## 10. 变更记录
 
 | 日期 | 变更 |
@@ -913,3 +984,4 @@ fabric.mod.json: version=1.3.2-alpha.1+fabric_1.20.1 / depends.starengine_lib=">
 
 | 2026-09-29 | **KI-F13 已修复并验证** —— 库 `starengine_lib_fabric/fabric-1.20.1` 的 `AstralRarities` 原按**字符串名**反射原版 `Rarity` 字段（`getDeclaredField("color")`/`("$VALUES")`），在 dev(named) 能跑、在整合包(intermediary) **100% 启动崩**。改为按**类型/修饰符**查找（映射无关），只改 fabric 子项目（另三线用 Mojang 官方映射，`color` 本就是 `color`，不受影响）。版本号按用户裁决**退回 1.0.5 基线 + `-alpha.x` 后缀** ⇒ 库 `1.0.5-alpha.1`、主模组 `1.3.2-alpha.1+fabric_1.20.1`。**新增生产映射冒烟工具 `scripts/test/fabric/ft_prod.ps1`**（本轮先以临时探针跑通，后落为正式工具）：在**真实整合包实例**（生产 intermediary 环境）启动一次并按「崩溃报告新增 / 入口点失败 / 到主菜单」三类判据裁决。实测：修复前 `CRASH_REPORT`（19:07，新增崩溃报告）→ 修复后 **`AP_FAB_PROD_READY: elapsed=23s`、crash-reports 无新增**；dev 侧回归同绿。产物实证：内嵌件 `starengine_lib-fabric-1.20.1-1.0.5-alpha.1.jar`；javap 反编译确认 `class_1814` + `lookupColorField`、`String color`/`String $VALUES` 已消失。⚠️ 仍未做：库提交未 push、CI 的库 ref 待同步（属跨仓发布策略）。 |
 | 2026-09-29 | **KI-F14 已修 + 生产冒烟能力再升级** —— 用户报「创建世界时崩，提示 architectury 报错」。定位：本模组 `TooltipRenderUtilColorMixin` 用 3 个 `@ModifyConstant` 改写 `TooltipRenderUtil#renderTooltipBackground` 的三个 ldc 常量，而 **Architectury API 改的正是同一批常量** ⇒ Mixin 的 `@ModifyConstant` 排他语义使 architectury 被 skip、其 `defaultRequire=1` 抛 `InjectionError` → 崩。⚠️ 目标类 `class_8002` 只在**首次渲染 tooltip** 时才加载 ⇒ 「能进主菜单、进世界/悬停 GUI 才崩」；且 dev 的 `run/client/mods` 无 architectury ⇒ **dev 永远绿**（再次「生产独有」）。修法 = 改用 **`@WrapOperation`**（包裹 INVOKESTATIC，与改 LDC 的 `@ModifyConstant` 是不同字节码位置 ⇒ 可共存），四个 wrapper 覆盖全部 6 个调用点。**产物取证三级**：注解已被 Loom 直重映射（jar 内无 refmap ⇒ 那条警告无害）、`-Dmixin.debug.export` 导出的类里 4 个 wrapper 全在**且 architectury 注入同时在**、生产冒烟 PASS（并已强制 preload 该类）。顺带修 **`astral_guide` 配方**（整合包无 Patchouli ⇒ `Unknown item` 报错）：加 `fabric:load_conditions`。**新增能力**：类预加载钩子 `-Dastral_dice.preloadClasses`（把「类加载期才暴露的 mixin 缺陷」提前到启动期，fail-loud）+ `ft_prod.ps1` 的 `-PreloadClasses`/`-ExtraJvmArg` 与 `MIXIN_FAIL` 判据 + Loom 侧 `-PpreloadClasses`。 |
+| 2026-09-29 | **饰品栏前置改为「二选一」+ 修 dev 开关（新增 KI-F15 / KI-F16）** —— 用户报「调整前置要求：装了 accessories 就不再强制 Trinkets，反之亦然，只有两个都不存在才报错」。**KI-F15**：`fabric.mod.json` 原把 `trinkets` 写在 `depends` ⇒ 只装 Accessories 的整合包被加载器直接拒绝（`HARD_DEP_NO_CANDIDATE … {depends trinkets @ [>=3.7.2]}`），与本线把 Accessories 定为「主通道」的既有设计**自相矛盾**。Fabric 的 `depends` 是 **AND 语义、表达不了 OR** ⇒ `trinkets` / `accessories` 双双移入 `recommends`，权威判定改为运行时 `ModCompatibilityCheck#verifyAccessoryProviderOrThrow()`（在 `onInitialize()` 的**第一条**语句执行，两个都不在才抛 `ModLoadingException` 并给出完整中文说明；每次启动打 `AP_FAB_ACCESSORY_PROVIDER: OK|FAIL (trinkets=… accessories=…)` 供冒烟断言）。同时补齐三处硬引用守卫（`CuriosApi` 的 Trinkets 源 + `TrinketBridge.registerAll()` 的**调用点** + 方法体内第二道防线）—— ⚠️ `TrinketBridge` 硬引用 `dev.emi.trinkets.api.*`，缺席时**整个类都加载不了**，守卫必须放在**调用点**。**KI-F16**：dev 开关 `-PtestAccessories=false` **从来不能通过编译**（`StarCoinWalletButtons:311 错误: 方法不会覆盖或实现超类型的方法`）—— 根因是 Loom 的**依赖方接口注入**随「依赖是否进入**运行期**」而开关（Accessories 的 `custom.loom:injected_interfaces` 把 `AbstractButtonExtension` 注入 `AbstractButton`；移出运行期后注入消失 ⇒ 那个为「必须补上注入来的抽象方法」而写的 `@Override` 失效），而 `compileClasspath` 里 accessories **仍在** ⇒ 失效的是**注入**而不是类路径；修法 = 去掉该 `@Override`（保留方法体与 javadoc）⇒ **两种注入态都成立**。⚠️ 该开关的注释一直声称可用 ⇒ **「给了开关」≠「开关可用」**（凡承诺「用某参数可跑某态」就必须实跑一次）。实测：dev 四态（仅 Accessories / 仅 Trinkets / 两者同装 / 两者皆无）各起一次客户端 —— 前三种均 `Sound engine started` 且 `AP_FAB_ACCESSORY_PROVIDER` 读数与预期逐条一致（仅 Accessories 时**无** `NoClassDefFoundError`、Accessories 适配器注册而 Trinkets 适配器不注册；两者同装时两个适配器都注册），第四种按设计**拒绝启动**并给出中文说明。 |

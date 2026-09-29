@@ -25,6 +25,19 @@ import net.minecraft.world.item.ItemStack;
  * <p>回调映射与「易错的参数语义」见 {@link ICurioItem} 的类注释
  * (核心:{@code onEquip} 的 prevStack、{@code onUnequip} 的 newStack 在 Trinkets 侧一律补
  * {@link ItemStack#EMPTY},以保持本模组既有判据的语义)。
+ *
+ * <h2>⚠️ 前置由「硬依赖」改为「二选一」(2026-09-29)</h2>
+ * <p>Trinkets 与 Accessories 现在**至少装一个**即可(由
+ * {@code ModCompatibilityCheck#verifyAccessoryProviderOrThrow()} 在 mod 初始化最早期校验)。
+ * 本类**直接引用 {@code dev.emi.trinkets.api.*}**(含内部 record {@code Adapter implements Trinket}),
+ * Trinkets 缺席时整个类都无法加载 ⇒ <b>守卫必须放在调用点</b>:
+ * <pre>{@code
+ * if (ModCompatibilityCheck.isTrinketsPresent()) {
+ *     TrinketBridge.registerAll();
+ * }
+ * }</pre>
+ * {@link #registerAll()} 内部的判空只是**第二道防线**(它本身也要先把类加载起来才有机会执行,
+ * 救不了调用点漏判的情形),不能替代调用点守卫。
  */
 public final class TrinketBridge {
 
@@ -33,6 +46,12 @@ public final class TrinketBridge {
     /** 为所有本模组的 {@link ICurioItem} 注册 Trinkets 适配器(幂等)。 */
     public static void registerAll() {
         if (registered) {
+            return;
+        }
+        // 第二道防线(第一道在调用点):Trinkets 缺席时直接返回,不触碰 TrinketsApi。
+        if (!com.merlinkitsune.astral_dice.init.ModCompatibilityCheck.isTrinketsPresent()) {
+            AstralDiceMod.LOGGER.warn("[Astral Dice] Trinkets 不在场 ⇒ 跳过 Trinkets 适配器注册"
+                    + "(饰品通道由 Accessories 承担)");
             return;
         }
         registered = true;

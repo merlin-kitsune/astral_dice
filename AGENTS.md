@@ -145,8 +145,15 @@ When extending this workspace:
 >    ⇒ 其数据文件、lang 键、手册条目、伤害类型 key、tooltip 分支**均不得出现在本线**；
 > ③ **发布口径**：fabric 产物**绝不并入**生产线 Release —— 见「编译产物上传规则」表；
 >    CI 为其单独出 tag（`fabric-<裸版本>`）与 `--prerelease` Release；
-> ④ **前置面不同**：玩家侧必需前置 = Fabric Loader/API + Trinkets + Puzzles Lib + Forge Config API Port
->    （Accessories 为可选）—— 与前三线的 Curios/Mixin Booster 那一套**完全不通用**，写安装说明时勿套用。
+> ④ **前置面不同**：玩家侧必需前置 = Fabric Loader/API + **Trinkets 或 Accessories（二选一）** + Puzzles Lib + Forge Config API Port
+>    —— 与前三线的 Curios/Mixin Booster 那一套**完全不通用**，写安装说明时勿套用。
+>    ⚠️ **饰品栏是「二选一」，不是「两个都要」**（2026-09-29 用户裁决）：Fabric 的 `depends` 是 **AND 语义、表达不了 OR**
+>    ⇒ `trinkets` 与 `accessories` **都只进 `recommends`**（软提示，缺席只警告），权威判定在
+>    `ModCompatibilityCheck#verifyAccessoryProviderOrThrow()` —— 它在 `onInitialize()` 的**第一条**语句执行，
+>    只有**两个都不在**时才抛 `ModLoadingException`（附完整中文说明：怎么装、装哪个、有什么差别）。
+>    ⇒ **任何触碰 `dev.emi.trinkets.api.*` / `io.wispforest.accessories.*` 的调用点都必须先过 `isModLoaded` 守卫**
+>    （`TrinketBridge` / `AccessoriesCompat` 里都是硬引用，缺席时那个类**根本加载不了**；
+>    守卫必须放在**调用点**，只放方法体内救不了漏判）。见 `KNOWN-ISSUES.md` **KI-F15**。
 > ⑤ **配方里的「指定药水」走自建序列化器**：原版 `Ingredient` 不看 NBT、且**不可扩展**（`final class` +
 >    `private` 构造器 + 包私有 `Value` 接口，javap 实证）⇒ 本线用 `astral_dice:nbt_shaped`（`crafting/` 包：
 >    `AstralRecipeSerializers` / `NbtShapedRecipe` / `NbtShapedRecipeSerializer` / `StackConstraint`）承载 NBT 约束，

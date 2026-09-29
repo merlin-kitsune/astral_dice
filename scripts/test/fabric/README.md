@@ -378,6 +378,59 @@ pwsh -NoProfile -File scripts/test/fabric/ft_prod.ps1 `
 + `Sound engine started` + `crash-reports/` 无新增；再用 `-Dmixin.debug.export=true` 导出注入后的字节码，
 直接看到 **4 个 wrapper 覆盖 6 个调用点，且 architectury 的 `@ModifyConstant` 注入同时存在**（19 处引用）
 —— 这就是「包裹调用指令」与「改 ldc 常量」可共存的字节码级证据。
+#### 7.2.3 饰品前置四态矩阵：把「声明层面表达不了的事」变成可跑的四态（2026-09-29 新增）
+
+本线的饰品栏前置是 **「Trinkets 或 Accessories 二选一」**（KI-F15）。⚠️ Fabric 的 `depends` 是
+**AND 语义、表达不了 OR** ⇒ 两个都只进 `recommends`，权威判定在运行时
+（`ModCompatibilityCheck#verifyAccessoryProviderOrThrow()`，`onInitialize()` 第一条语句）。
+
+⇒ **四种安装组合都要能跑到「就绪」或「明确拒绝」**，dev 侧用两个开关构造（两者都在 `build.gradle`）：
+
+```powershell
+# ① 仅 Accessories（= 生产整合包现状）
+pwsh -NoProfile -File scripts/test/fabric/ft_launch.ps1 --side client --timeout 300 `
+  --gradle-arg -PtestSodium=false --gradle-arg -PtestTrinkets=false
+
+# ② 仅 Trinkets
+pwsh -NoProfile -File scripts/test/fabric/ft_launch.ps1 --side client --timeout 300 `
+  --gradle-arg -PtestSodium=false --gradle-arg -PtestAccessories=false
+
+# ③ 两者同装（默认，不传开关）
+
+# ④ 两者皆无 ⇒ 期望**拒绝启动**并给出中文说明（无需等满超时）
+pwsh -NoProfile -File scripts/test/fabric/ft_launch.ps1 --side client --timeout 150 `
+  --gradle-arg -PtestSodium=false --gradle-arg -PtestTrinkets=false --gradle-arg -PtestAccessories=false
+```
+
+**判据**（每次启动都会打，可直接 grep）：
+
+| 机器行 / 读数 | 含义 |
+|---|---|
+| `AP_FAB_ACCESSORY_PROVIDER: OK (trinkets=… accessories=…)` | 守卫放行；括号里是**实际判定结果** |
+| `AP_FAB_ACCESSORY_PROVIDER: FAIL (…)` | 两者皆无 ⇒ 紧随其后抛 `ModLoadingException`。⚠️ **拒绝文案不在 `latest.log` 里**（日志在抛出处就断了），而在**崩溃报告** `run/client/crash-reports/crash-*.txt`：`Description: Initializing game` → `Caused by: …ModLoadingException: [星之骰戏] 缺少饰品栏前置：既没有检测到 Trinkets，也没有检测到 Accessories。` + 后面一整段中文操作指引 |
+| `[Astral Dice] 已为 N 件饰品物品注册 Trinkets 适配器` | 仅当 Trinkets 在场才出现 |
+| `[Astral Dice] 已为 N 件饰品物品注册 Accessories 适配器` | 仅当 Accessories 在场才出现 |
+| `NoClassDefFoundError`（`dev/emi/trinkets` 或 `io/wispforest/accessories`） | **反面判据**：守卫漏了才会出现 ⇒ 一旦出现即为缺陷 |
+
+**四态实测读数（2026-09-29 20:08–20:12）**：
+
+| 态 | 加载模组数 | 就绪 | `AP_FAB_ACCESSORY_PROVIDER` | Trinkets 适配器 | Accessories 适配器 | rc |
+|---|---|---|---|---|---|---|
+| 仅 Accessories | 82 | ✅ `Sound engine started` | `OK (trinkets=false accessories=true)` | — | ✅ | 0 |
+| 仅 Trinkets | 81 | ✅ `Sound engine started` | `OK (trinkets=true accessories=false)` | ✅ | — | 0 |
+| 两者同装 | 83 | ✅ `Sound engine started` | `OK (trinkets=true accessories=true)` | ✅ | ✅ | 0 |
+| **两者皆无** | 80 | ⛔ 拒绝启动 | `FAIL (trinkets=false accessories=false)` | — | — | 非 0 |
+
+⚠️ 四态里 **`NoClassDefFoundError` 均为 False**（含「仅 Accessories」）—— 这正是守卫到位的直接证据。
+
+⚠️ **一条踩过的坑（KI-F16）**：`-PtestAccessories=false` 这个开关**曾经从来不能通过编译** ——
+Loom 的**依赖方接口注入**会随「依赖是否进入**运行期**」而开关（Accessories 的
+`custom.loom:injected_interfaces` 把 `AbstractButtonExtension` 注入 `AbstractButton`；
+移出运行期后注入消失，源码里那个 `@Override` 就变成「不覆盖任何方法」）。
+修法是去掉该 `@Override`（两种注入态都成立）。
+**教训：凡在注释/文档里承诺「用某参数可以跑某态」，就必须实跑一次该参数** ——
+否则它只是一个会把人引向错误结论的假入口。
+
 ### 7.3 已修复的测试台缺陷（7 个；每个都附实测证据）
 
 前两个是**阻断级**：只要有它们，`ft_launch` **每一次启动都必然失败**，连带 env/launch 之后的一切

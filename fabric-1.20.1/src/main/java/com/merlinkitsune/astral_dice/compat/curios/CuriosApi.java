@@ -12,9 +12,9 @@ import java.util.UUID;
 import java.util.function.Predicate;
 
 import com.merlinkitsune.astral_dice.compat.accessories.AccessoriesCompat;
+import com.merlinkitsune.astral_dice.init.ModCompatibilityCheck;
 import com.merlinkitsune.starenginelib.item.TrinketsCompat;
 
-import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.item.ItemStack;
@@ -29,10 +29,15 @@ import net.minecraft.world.item.ItemStack;
  * <table border="1">
  *   <caption>数据源与优先级</caption>
  *   <tr><th>优先级</th><th>来源</th><th>前置</th><th>何时生效</th></tr>
- *   <tr><td>1(主源)</td><td>{@link AccessoriesCompat}(Accessories)</td><td>软依赖</td>
+ *   <tr><td>1(主源)</td><td>{@link AccessoriesCompat}(Accessories)</td><td>二选一之一</td>
  *       <td>装了 Accessories <b>且</b>该实体有 Accessories 能力</td></tr>
- *   <tr><td>2(兜底)</td><td>{@link TrinketsCompat}(Trinkets)</td><td>硬依赖</td><td>总是</td></tr>
+ *   <tr><td>2(兜底)</td><td>{@link TrinketsCompat}(Trinkets)</td><td>二选一之一</td>
+ *       <td>装了 Trinkets(2026-09-29 起由硬依赖改为软依赖)</td></tr>
  * </table>
+ * ⚠️ <b>两个模组「至少装一个」由 {@code ModCompatibilityCheck#verifyAccessoryProviderOrThrow()}
+ * 在 mod 初始化最早期保证</b>(Fabric 的 {@code depends} 是 AND 语义、表达不了 OR,
+ * 故两个都只进 {@code recommends});本类只负责「装了哪个就走哪条通道」,
+ * 两者皆缺时本类的两个分支都为空集(那种情况游戏已在该检查处停下)。
  * <ul>
  *   <li><b>读</b>{@code findFirstCurio / findCurios}:按优先级依次查,取并集 ⇒ 玩家把饰品装在
  *       哪一边都认得出<b>功能都生效</b>;</li>
@@ -55,14 +60,29 @@ import net.minecraft.world.item.ItemStack;
 public final class CuriosApi {
 
     /** 兼容用常量:Curios 侧为 "curios";Fabric 侧槽位由数据包定义,不再使用该值。 */
-    public static final String MODID = "trinkets";
+    public static final String MODID = ModCompatibilityCheck.TRINKETS_MOD_ID;
 
-    /** Accessories 是否在场(软依赖判定;类加载期求值,只读字符串,不触发其类加载)。 */
-    private static final boolean ACCESSORIES_LOADED = FabricLoader.getInstance().isModLoaded(AccessoriesCompat.MOD_ID);
+    /**
+     * 两条饰品通道是否在场。
+     *
+     * <p><b>单一权威</b>在 {@link ModCompatibilityCheck}(它同时负责「至少装一个」的装载期校验);
+     * 这里的静态布尔只是**为热路径缓存**一次 {@code FabricLoader} 查询 ——
+     * 二者取值来源同一常量,不会漂移。
+     *
+     * <p>⚠️ 两者都是<b>类加载期求值、只读字符串</b> —— 不触碰对方任何类型,
+     * 因此可以在本门面里安全地判空(见类头「类加载隔离」)。
+     */
+    private static final boolean ACCESSORIES_LOADED = ModCompatibilityCheck.isAccessoriesPresent();
+    private static final boolean TRINKETS_LOADED = ModCompatibilityCheck.isTrinketsPresent();
 
     /** Accessories 是否在场(供诊断/日志使用)。 */
     public static boolean isAccessoriesPresent() {
         return ACCESSORIES_LOADED;
+    }
+
+    /** Trinkets 是否在场(供诊断/日志使用;调用 {@code TrinketBridge} 前必须先过这一关)。 */
+    public static boolean isTrinketsPresent() {
+        return TRINKETS_LOADED;
     }
 
     /** 饰品库存(对应 Curios 的 {@code getCuriosInventory},返回 Optional)。 */
@@ -74,7 +94,11 @@ public final class CuriosApi {
         if (ACCESSORIES_LOADED) {
             AccessoriesCompat.getInventory(entity).ifPresent(sources::add);
         }
-        TrinketsCompat.getCuriosInventory(entity).map(View::new).ifPresent(sources::add);
+        // ⚠️ 必须判空:Fabric 侧 Trinkets 与 Accessories 二选一,Trinkets 缺席时
+        //    裸调 TrinketsCompat 会在类解析阶段抛 NoClassDefFoundError。
+        if (TRINKETS_LOADED) {
+            TrinketsCompat.getCuriosInventory(entity).map(View::new).ifPresent(sources::add);
+        }
 
         if (sources.isEmpty()) {
             return Optional.empty();
