@@ -134,7 +134,7 @@ When extending this workspace:
 | `neoforge-1.21.1` | `1.21.1-main` | 1.21.1 | NeoForge | 21 | `1.3.1+neoforge_1.21.1` | `x.y.z[-rcN|hotfix]+neoforge_1.21.1` |
 | `forge-1.20.1` | `1.20.1-forge` | 1.20.1 | Forge | 17 | `1.3.1+forge_1.20.1` | `x.y.z[-rcN|preN|hotfix]+forge_1.20.1` |
 | `neoforge-26.1.2` | 本仓 `multi-26.1.2-neoforge` 分支新增（基线 = 主线 `1.2.1`/`fda8ca9` 的 `neoforge-1.21.1` 源码）；**2026-09-17 已合并进当时的主线 `multi-1.20.1-1.21.1`（该分支已于 2026-09-22 改名为 `multi-main`）**（与主线同目录同树，原独立 worktree 已移除）；**2026-09-22 完整移植后版本号与另两线同批升版（26.1.2 取 `1.3.0-beta.1`）** | 26.1.2 | NeoForge | 25 | `1.3.0-beta.1+neoforge_26.1.2` | `x.y.z[-rcN]+neoforge_26.1.2` |
-| `fabric-1.20.1` | **本仓 `1.20.1-fabric` 分支新增**（2026-09-29 接入；基准 = `forge-1.20.1` 的 `1.3.2-hotfix` 源码，**加载器层整体替换**：Curios→Trinkets(+Accessories 软依赖) · Capability→Fabric API 附件 · Forge EventBus→自建 `LoaderBus`+Puzzles Lib/FAPI 回调/mixin · GLM→`LootTableEvents.MODIFY`）。⚠️ **独立的移植/测试线，不在 `multi-main` 上** | 1.20.1 | Fabric | 17 | `1.3.2-alpha.1+fabric_1.20.1` | `x.y.z[-alpha.N|rcN|hotfix]+fabric_1.20.1` |
+| `fabric-1.20.1` | **本仓 `1.20.1-fabric` 分支新增**（2026-09-29 接入；基准 = `forge-1.20.1` 的 `1.3.2-hotfix` 源码，**加载器层整体替换**：Curios→Trinkets(+Accessories 软依赖) · Capability→Fabric API 附件 · Forge EventBus→自建 `LoaderBus`+Puzzles Lib/FAPI 回调/mixin · GLM→`LootTableEvents.MODIFY`）。⚠️ **独立的移植/测试线，不在 `multi-main` 上** | 1.20.1 | Fabric | 17 | `1.3.4-alpha.1+fabric_1.20.1` | `x.y.z[-alpha.N|rcN|hotfix]+fabric_1.20.1` |
 
 > ⚠️ **第四条线（`fabric-1.20.1`）的规则边界（2026-09-29 用户裁决，必须遵守）**：
 > 上表前三线是**生产线**，`fabric-1.20.1` 是**移植/测试线**，两者在九件事上口径不同：
@@ -177,7 +177,7 @@ When extending this workspace:
 
 > **第三条线(26.1.2)的规则边界(2026-09-19 用户裁决修订 —— 26.1.2 已纳入主线,必须遵守)**:自本裁决起「同步修改」约束**三个版本**(`neoforge-1.21.1` + `forge-1.20.1` + `neoforge-26.1.2`):任何功能/修复/平衡/文案改动一律**三线同批实施**(实施方式见下方「### 子项目修改默认规则」与「### 模组内容更新规则(三线同步)」),26.1.2 **不再**是「发布线完成后再迁移」的低优先级移植线。三条线各自按 `docs/compat-26.1.2-neoforge.md`(26.1.2 相对 1.21.1)、`docs/compat-1.20.1-forge.md`(1.20.1 相对 1.21.1)的差异映射实现,**平台差异必须逐条登记**;三线落地后按 `scripts/test/TESTING-SPEC.md` §13.2 做一致性测试。三子项目的 `mod_version`/`mods.toml` 门槛仍各自独立。
 > ⑧ **版本号一律带 `-alpha.x` 预发布后缀**（2026-09-29 用户裁决 —— 本线是**开发线**）：
->    `mod_version` 与所依赖的库版本**同步带 alpha**，现为 **`1.3.2-alpha.1+fabric_1.20.1`** /
+>    `mod_version` 与所依赖的库版本**同步带 alpha**，现为 **`1.3.4-alpha.1+fabric_1.20.1`** /
 >    **`starengine_lib_version = 1.0.5-alpha.1`**（`_version_range = >=1.0.5-alpha.1 <2.0`）。
 >    库侧基线**退回 `1.0.5`**（`1.0.6` / `1.0.7` / `1.0.8` 系本地临时构建，**不作为对外号**），
 >    后续每批改动 `-alpha.x` 递增；预发布号在库仓 CI 里**不会**打 tag（workflow 只认裸 `x.y.z`）⇒ 正合开发线口径。

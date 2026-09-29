@@ -4,10 +4,10 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
-## Unreleased (1.3.2-alpha.1)
+## Unreleased (1.3.4-alpha.1)
 
 > Decided by the user on 2026-09-29: this line is a **development line**, so version numbers now carry
-> an **`-alpha.x` pre-release suffix** (`1.3.2-alpha.1` at present), and the prerequisite library moves to
+> an **`-alpha.x` pre-release suffix** (1.3.4-alpha.1 at present), and the prerequisite library moves to
 > `1.0.5-alpha.1` (its baseline rolled back to 1.0.5).
 
 ### Critical fixes
