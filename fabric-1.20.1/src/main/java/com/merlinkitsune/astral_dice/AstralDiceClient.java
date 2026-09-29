@@ -45,6 +45,11 @@ public class AstralDiceClient implements ClientModInitializer {
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.client.TargetSelectionHighlighter.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.client.gui.StarCoinWalletButtons.class);
 
+        // 客户端事件桥:把 FAPI 的客户端回调接到自建事件上。
+        // ⚠️ 与服务端的 FabricBridges.install() 同理 —— 不装则 client/* 的处理器
+        //    全部「注册了但从不派发」。必须放在监听器注册之后。
+        com.merlinkitsune.astral_dice.platform.client.FabricClientBridges.install();
+
         AstralDiceMod.LOGGER.info("Astral Dice client initialized.");
     }
 }
