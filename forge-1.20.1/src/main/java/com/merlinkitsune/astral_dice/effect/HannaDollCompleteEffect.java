@@ -1,6 +1,7 @@
 package com.merlinkitsune.astral_dice.effect;
 
 import net.minecraft.world.effect.MobEffect;
+import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffectCategory;
 import net.minecraft.world.entity.player.Player;
 
@@ -19,7 +20,7 @@ import net.minecraft.world.entity.player.Player;
  */
 public class HannaDollCompleteEffect extends MobEffect {
     /** 效果时长(无限;卸下立牌时移除) */
-    public static final int DURATION_TICKS = Integer.MAX_VALUE;
+    public static final int DURATION_TICKS = MobEffectInstance.INFINITE_DURATION;
 
     public HannaDollCompleteEffect() {
         super(MobEffectCategory.BENEFICIAL, 0xE8C547);

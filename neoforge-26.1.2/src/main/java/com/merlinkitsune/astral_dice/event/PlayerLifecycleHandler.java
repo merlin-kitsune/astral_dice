@@ -154,17 +154,14 @@ public class PlayerLifecycleHandler {
                 misaki.get().stack().set(
                         com.merlinkitsune.astral_dice.component.ModDataComponents.MISAKI_SIGN_STACKS.get(), 0);
             }
-            // 扫地机/上班族立牌:与护法同理——攻防/移动累计值写在**立牌物品数据组件**上,
+            // 上班族立牌:与护法同理——攻防/移动累计值写在**立牌物品数据组件**上,
             // 而死亡掉落走 Curios handleDrops(不回调 onUnequip),没有任何其它清理路径会归零它们
             // (2026-09-15 P5 审计发现),故在这里按 MISAKI 同款方式清除(不受 KeepInventory 影响)。
-            var jasmine = handler.findFirstCurio(
-                    s -> s.is(com.merlinkitsune.astral_dice.item.ModItems.JASMINE_SIGN.get()));
-            if (jasmine.isPresent()) {
-                jasmine.get().stack().set(
-                        com.merlinkitsune.astral_dice.component.ModDataComponents.JASMINE_ATK_BONUS.get(), 0);
-                jasmine.get().stack().set(
-                        com.merlinkitsune.astral_dice.component.ModDataComponents.JASMINE_DEF_BONUS.get(), 0);
-            }
+            //
+            // ⚠️ **扫地机立牌(jasmine)已按 2026-09-30 用户裁决移出本段**:其攻/防加成改为
+            // **死亡保留**(与忍者 komachi_damage_bonus / 调查员 rin_pages / 蛟龙 mamushi_awakening 同口径)——
+            // 加成写在立牌物品的数据组件上,死亡掉落与保留都由物品自身携带,
+            // 不需要暂存表;唯一的清零路径是 {@code JasmineSignItem#clearSignData}(真正卸下立牌时)。
             var padman = handler.findFirstCurio(
                     s -> s.is(com.merlinkitsune.astral_dice.item.ModItems.PADMAN_SIGN.get()));
             if (padman.isPresent()) {

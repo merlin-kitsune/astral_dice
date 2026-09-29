@@ -25,8 +25,8 @@ public class EffectCardItem extends BaseEffectCardItem {
 
     @Override
     protected void applyEffect(Level level, Player user, LivingEntity applyTo, ItemStack stack) {
-        // 受到 8 点伤害(骰子伤害类型)
-        user.hurt(ModDamageTypes.diceDamage(level, user), 8.0f);
+        // 受到 8 点伤害(「卡牌代价」类型:登记 bypasses_cooldown ⇒ 不受受击无敌帧约束,代价必定生效)
+        user.hurt(ModDamageTypes.cardCost(level, user), 8.0f);
 
         // 王之力效果:层数叠加(上限 3 层),时长刷新为 3:00
         var existing = user.getEffect(ModEffects.KING_POWER);

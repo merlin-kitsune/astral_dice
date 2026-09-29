@@ -3,6 +3,7 @@ package com.merlinkitsune.astral_dice.effect;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.effect.MobEffect;
+import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraftforge.registries.RegistryObject;
 import net.minecraftforge.registries.DeferredRegister;
 
@@ -202,7 +203,7 @@ public class ModEffects {
     /**
      * 「真龙形态」(蛟龙立牌 mamushi 的锁存态载体,2026-09-27)。
      *
-     * <p>常驻效果({@code Integer.MAX_VALUE}),由立牌 tick 每 tick {@code refresh}、
+     * <p>常驻效果({@link MobEffectInstance#INFINITE_DURATION}),由立牌 tick 每 tick {@code refresh}、
      * 判据不成立时 {@code remove} —— 与 {@code zhao_blessing} 同一写法。
      * **不登记 {@code EffectTimerGuard}**:它没有自己的倒计时,移除时机完全由层数与佩戴判定驱动
      * (规格 §1 效果表 + §2.2)。图标 = {@code images/蛟龙立牌.png}
@@ -245,7 +246,7 @@ public class ModEffects {
 
     /**
      * 「精准打击」(机械师立牌 megas 的轨道轰炸层数真值效果):每层使该目标受到的轨道轰炸伤害 +1,
-     * 永久持续直到目标死亡(时长 Integer.MAX_VALUE,由原版实体生命周期保证移除);
+     * 永久持续直到目标死亡(时长 MobEffectInstance.INFINITE_DURATION,由原版实体生命周期保证移除);
      * 层数 = amplifier + 1 = 该目标被轨道轰炸命中的次数。作用对象为 LivingEntity(怪物)。
      * 图标 = {@code images/精准打击.png}(实装路径 {@code textures/mob_effect/precision_strike.png})。
      *

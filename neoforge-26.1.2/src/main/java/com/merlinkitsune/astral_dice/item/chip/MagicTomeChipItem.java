@@ -57,7 +57,7 @@ public class MagicTomeChipItem extends BaseChipItem {
             ModEffectRemoval.remove(player, ModEffects.MAGIC_TOME_COUNT);
             return;
         }
-        player.addEffect(new MobEffectInstance(ModEffects.MAGIC_TOME_COUNT, 10000, count - 1, false, true, true));
+        player.addEffect(new MobEffectInstance(ModEffects.MAGIC_TOME_COUNT, MobEffectInstance.INFINITE_DURATION, count - 1, false, true, true));
     }
 
     // 卸下筹码(真正卸下):重置效果牌计数并移除计数效果

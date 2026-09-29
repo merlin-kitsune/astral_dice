@@ -14,7 +14,7 @@ public class WeaknessRevealEffect extends MobEffect {
     /** 最大层数 */
     public static final int MAX_STACKS = 4;
     /** 效果时长(无限,卸下立牌/清空时移除) */
-    public static final int DURATION_TICKS = Integer.MAX_VALUE;
+    public static final int DURATION_TICKS = MobEffectInstance.INFINITE_DURATION;
 
     public WeaknessRevealEffect() {
         super(MobEffectCategory.BENEFICIAL, 0xC8A415);

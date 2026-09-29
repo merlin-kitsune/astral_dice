@@ -3,6 +3,7 @@ package com.merlinkitsune.astral_dice.effect;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.effect.MobEffect;
+import net.minecraft.world.effect.MobEffectInstance;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
@@ -213,7 +214,7 @@ public class ModEffects {
      * (图标 = 立牌贴图),由 {@code MamushiSignItem#onCurioTick} 每 tick {@link MamushiDragonEffect#refresh}
      * 续期、条件不再成立时 {@link MamushiDragonEffect#remove} 移除。
      *
-     * <p>时长 = {@link Integer#MAX_VALUE}(常驻),**不参与** {@code EffectTimerGuard} 的计时守卫
+     * <p>时长 = {@link MobEffectInstance#INFINITE_DURATION}(原版真·无限时长,常驻),**不参与** {@code EffectTimerGuard} 的计时守卫
      * (守卫本身按 {@code INFINITE_THRESHOLD} 跳过无限时长效果,故无需任何登记;口径同 zhao 赐福 / teru 降神)。
      */
     public static final DeferredHolder<MobEffect, MobEffect> MAMUSHI_DRAGON =
@@ -259,7 +260,7 @@ public class ModEffects {
 
     /**
      * 「精准打击」(机械师立牌 megas 的轨道轰炸层数真值效果):每层使该目标受到的轨道轰炸伤害 +1,
-     * 永久持续直到目标死亡(时长 Integer.MAX_VALUE,由原版实体生命周期保证移除);
+     * 永久持续直到目标死亡(时长 MobEffectInstance.INFINITE_DURATION,由原版实体生命周期保证移除);
      * 层数 = amplifier + 1 = 该目标被轨道轰炸命中的次数。作用对象为 LivingEntity(怪物)。
      * 图标 = {@code images/精准打击.png}(实装路径 {@code textures/mob_effect/precision_strike.png})。
      */

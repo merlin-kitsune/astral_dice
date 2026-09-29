@@ -4,7 +4,7 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
-## Unreleased (2.0.0-SNAPSHOT.15)
+## Unreleased (2.0.0-SNAPSHOT.16)
 
 ### New Content
 
@@ -250,6 +250,18 @@
   the position is fixed at the moment the damage resolves and sent by the server; the existing drift-and-fade
   effect is kept, with an added **±30° random spread** so simultaneous numbers no longer overlap exactly.
 
+    - **King Power's 8-point self-damage often did nothing at all in combat** (user report 2026-09-30): the cost went
+      through the dice damage type `astral_dice:dice_damage`, which is **not** listed in
+      `minecraft:tags/damage_type/bypasses_cooldown`, so it obeyed the vanilla invulnerability window - vanilla
+      `LivingEntity#hurt` **returns false outright** when `invulnerableTime > 10` and the incoming amount is
+      `<= lastHurt`. Right after being hit by a mob (or on a second King Power in a row) the 8 points were
+      swallowed whole: the stacks went up while the health bar did not move, making the cost purely cosmetic
+      (creative mode's `abilities.invulnerable` negates it entirely as well). A dedicated `astral_dice:card_cost`
+      damage type is added and registered in `bypasses_cooldown`, and King Power now uses it, so the cost settles
+      even inside the invulnerability window and **always lands**. It is deliberately **not** in
+      `bypasses_armor`: armor / resistance / protection still apply, exactly as before (a cost is not true damage).
+
+
 #### Chips & Resources
 
 - **The Cutter's status indicator kept blinking and appeared without Dice Blessing** (user report 2026-09-26):
@@ -264,6 +276,34 @@
 - **The Mechanic sign's "Precision Strike" now shows a visible effect FX**: the effect was previously applied to monsters without **particle display** enabled, making it **entirely invisible** in the world - you could not tell whether an orbital bombardment had triggered Precision Strike or how many stacks a target had already accumulated, so it looked as if the effect did not exist (or vanished once the bombardment ended). Hit targets now continuously emit that effect's particles, making higher stacks easier to identify. The effect's duration and its "permanently retained until the target dies" behaviour are unchanged (the effect was in fact always retained correctly; it simply had no visual indicator at all).
 
 - **Unequipping the Oasis Queen sign now clears "Queen's Privilege" and the temporary cards along with it**: previously unequipping the sign only removed the armor granted by its passive, so the **"Queen's Privilege" effect (the HUD timer) and every temporary card stayed on you** for up to the effect's full 3:00 duration - inconsistent with the "clean up on unequip" convention every other sign follows. Unequipping the sign now **removes the "Queen's Privilege" effect** and **purges all temporary cards** (inventory, offhand, those equipped into the dice, and any on an open card-panel or the cursor) at the same instant, matching exactly how natural expiry, external removal and player death already clean up.
+
+    - **The Jasmine Sweep sign lost part of its attack/defense passive on death** (user report 2026-09-30): the death
+      cleanup carried a block that **actively zeroed** `jasmine_atk_bonus` / `jasmine_def_bonus` (added 2026-09-15
+      to mirror the Misaki sign's "lose stacks on death"). Both values live on the sign's own data components, so
+      dropping or keeping the item wiped them along the way. Per the user's ruling this is now **kept on death**
+      (same stance as the ninja's `komachi_damage_bonus`, the investigator's `rin_pages` and the dragon's
+      `mamushi_awakening`): the bonuses ride on the item itself and survive both the death drop and the respawn
+      pickup. The **only** path that clears them is genuinely unequipping the sign
+      (`JasmineSignItem#clearSignData`). The equivalent reset on the Salaryman sign is unchanged.
+
+    - **The Magic Tome's play-count effect showed an 8:20 countdown although it has no timer by design** (user
+      report 2026-09-30): the effect (`magic_tome_count`, amplifier = number of effect cards used so far) is
+      refreshed every tick by the chip and removed when the count returns to zero - it never had countdown
+      semantics - yet it was applied with a hard-coded `10000` ticks, so the HUD and the inventory panel always
+      displayed a huge remaining time. It now uses the vanilla "truly infinite" duration
+      (`MobEffectInstance.INFINITE_DURATION`) and renders as **∞**.
+
+    - **Every "permanent" effect in the mod now uses the vanilla infinite duration (the ∞ symbol)** (user report
+      2026-09-30): only Precision Strike used it before; the other 8 permanent effects (**Charge, Doll Crafting,
+      Doll Complete, Foxfire, True Dragon Form, Misfortune, Reasoning Time, Weakness Reveal**) plus two application
+      sites (Blue Curse, Undercover Investigation) wrote `Integer.MAX_VALUE`, so they rendered as a countdown of
+      several hundred thousand hours rather than ∞. All of them now use `MobEffectInstance.INFINITE_DURATION`.
+      Note the timer guard (`EffectTimerGuard`) had to be widened in the same change: it treats a duration as
+      permanent by comparing it against a high threshold and used to accept only the `Integer.MAX_VALUE` form, so
+      **without that edit `-1` would have been read as "already expired but still present" and the effect would
+      have been cleared immediately** - the most hidden knock-on of this batch. Criteria: the ten effects above
+      show ∞ in the inventory effect panel.
+
 
 #### Loot & World
 
@@ -323,6 +363,17 @@
   while roughly 60 other messages went through this mod's own action bar (styled, `guiHeight-58`, configurable duration) - the same piece
   of UI rendered by two different systems with different colours and positions. All four are now routed through the mod's action bar
   channel and coloured (yellow for the airbag / wallet, red for "need a die equipped" / "out of plays").
+
+    - **Status effect "notes" (the description text) were never visible in game** (user report 2026-09-30): the
+      language files already carry 21 `effect.astral_dice.<id>.description` entries (Berserk, Concealment, Empower,
+      Reasoning Time, Zhao's Blessing, ...), but there was **no rendering path at all** - only the three effect-card
+      **items** (Berserk / Unwavering / Fight Poison with Poison) read those keys, for their item tooltips, so
+      hovering the **status effect itself** showed nothing but "name + remaining time". Each platform now wires its
+      own channel: the two NeoForge lines use the official `GatherEffectScreenTooltipsEvent`, while 1.20.1 (Forge has
+      no such event) injects the tooltip list built inside vanilla `EffectRenderingInventoryScreen#renderEffects` through a Mixin. All three lines share one rule:
+      a grey description line is appended **only when the matching language key actually exists**, so effects
+      without a description get no blank line.
+
 
 ## 1.3.1
 
