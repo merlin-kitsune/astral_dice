@@ -15,9 +15,7 @@
       "item": "minecraft:nether_star"
     },
     "Z": {
-      "type": "forge:partial_nbt",
-      "item": "minecraft:potion",
-      "nbt": "{Potion:\"minecraft:regeneration\"}"
+      "item": "minecraft:potion"
     }
   },
   "pattern": [

@@ -1224,9 +1224,9 @@ public class ModTooltipHandler {
             if (ModList.get().isLoaded("enigmaticlegacyplus")) {
                 addSignNoteLines(tooltip, "tooltip.astral_dice.card.fate_curse_mitigation");
             }
-            if (ModList.get().isLoaded("irons_spellbooks")) {
-                addSignNoteLines(tooltip, "tooltip.astral_dice.card.fate_spell_mana");
-            }
+            // ⚠️ 2026-09-29 裁剪:此处原有 `isLoaded("irons_spellbooks")` 分支
+            //   (tooltip.astral_dice.card.fate_spell_mana)。Iron's Spells 'n Spellbooks
+            //   没有 1.20.1 的 Fabric 版 ⇒ fabric 线整体裁剪该联动(连同 lang 键一起删)。
             addEffectCardPlayCountTooltip(tooltip, player);
             tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown",
                             effectCardCooldownSeconds(player))

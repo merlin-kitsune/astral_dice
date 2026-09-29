@@ -33,9 +33,9 @@ import com.merlinkitsune.starenginelib.combat.HostileTargets;
  * 3. 新生魔艺(ars_nouveau):generic_spell_damage/windshear/cold_snap/flare/crush;
  * 4. 诡厄巫法(goety):summon/shock/freeze/hellfire/magic_fire/magic_fireball/magic_bolt 等法术伤害类型
  *    (排除近战类 goety:sword);
- * 5. Iron 的法术与魔法书(irons_spellbooks):fire_magic/ice_magic/lightning_magic/holy_magic/ender_magic/
- *    blood_magic/evocation_magic/eldritch_magic/nature_magic 等;
- * 6. 本模组「活体书页」命中伤害(astral_dice:card_spell,2026-09-25 起;见 {@link LivingPageImpact})。
+ * 5. 本模组「活体书页」命中伤害(astral_dice:card_spell,2026-09-25 起;见 {@link LivingPageImpact})。
+ *    ⚠️ 2026-09-29 裁剪:原第 5 项「Iron 的法术与魔法书(irons_spellbooks)」整段删除 ——
+ *    该模组没有 1.20.1 的 Fabric 版,fabric 线不建立该联动(见 VERSION_PINS.md「裁剪」)。
  * 排除:枪械/炮弹/炸药/火箭等军火类(tacZ、维克斯的武器、卓越前线、气动工艺、机械动力:火炮、通用机械:武器、
  * 沉浸工程等)——其弹丸实体不属于白名单,黑名单关键词仅作"弹丸继承原生类"场景的保险。
  * 该排除由公共配置 {@code allow_firearm_damage} 控制(**默认 false 即默认继续排除**);设为 true 时,
@@ -73,22 +73,10 @@ public final class SpellDamageRegistry {
             key("goety", "fire_breath"),
             key("goety", "frost_breath"),
             key("goety", "bubble_stream"),
-            key("goety", "magic_bolt"),
-            // Iron 的法术与魔法书 (irons_spellbooks)
-            key("irons_spellbooks", "fire_magic"),
-            key("irons_spellbooks", "ice_magic"),
-            key("irons_spellbooks", "lightning_magic"),
-            key("irons_spellbooks", "holy_magic"),
-            key("irons_spellbooks", "ender_magic"),
-            key("irons_spellbooks", "blood_magic"),
-            key("irons_spellbooks", "evocation_magic"),
-            key("irons_spellbooks", "eldritch_magic"),
-            key("irons_spellbooks", "nature_magic"),
-            key("irons_spellbooks", "cauldron"),
-            key("irons_spellbooks", "heartstop"),
-            key("irons_spellbooks", "dragon_breath_pool"),
-            key("irons_spellbooks", "fire_field"),
-            key("irons_spellbooks", "poison_cloud"));
+            key("goety", "magic_bolt"));
+            // ⚠️ 2026-09-29 裁剪:`irons_spellbooks` 的 14 个法术伤害类型 key 已删除 ——
+            //   Iron's Spells 'n Spellbooks **没有 1.20.1 的 Fabric 版**(Modrinth 反查),
+            //   fabric 线整体裁剪该联动。保留死 key 不会报错,但会让这张表误导后续维护者。
 
     // === 作用域 matcher 注册表(附属模组可注册自定义判定) ===
     @FunctionalInterface

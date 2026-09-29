@@ -349,7 +349,64 @@ GlCommandEncoder.trySetup(:531) ← GlCommandEncoder.executeDraw(:406) ← GlRen
   跨命令沿用），判据一律读句柄；类型匹配只留在诊断字段里。⇒ **不要**再用 `typeIdOf` 写新判据；依赖它的既有命令
   （如 `countLightning` 的通用回退分支、`slimecheck` 等）需一并复核。
 
-## 9. 变更记录
+## 9. F 组 — Fabric 1.20.1 移植线（2026-09-29 起）
+
+> 本条线（子项目 `fabric-1.20.1` / 分支 `1.20.1-fabric`）与三条生产线**不共用存档、不共用前置**，
+> 且单独以 **pre-release** 发布。平台差异的完整清单见 `porting/fabric-1.20.1/VERSION_PINS.md`「裁剪」，
+> 规则边界见 `AGENTS.md`「多版本子项目矩阵」的第四条线说明。
+> ⚠️ 下列 KI-F* **只适用于 fabric 线**；不要把它们当成三条生产线的缺陷，反向亦然。
+
+### KI-F1 ＝ 两个配方从「指定药水」放宽为「任意药水」（**平台能力限制 ⇒ 真缺口，已登记**）
+
+- **现象**：`adrenaline_low_chip`（肾上腺素·低）与 `friendship_badge_chip`（心意相连徽章）两个配方，
+  在 Forge 版要求**指定药水**（再生 / 治疗）—— 由 `forge:partial_nbt` 与 `forge:nbt` 两种 NBT Ingredient 匹配。
+  本线的生成配方改为 `"Z": {"item": "minecraft:potion"}`（**任意药水**）。
+- **根因（实证，非推测）**：1.20.1 **原版没有** `IngredientType` 机制 —— `unzip -l` 原版
+  `minecraft-merged` jar 下只有 `Ingredient.class` / `Ingredient$Value.class` / `Ingredient$ItemValue.class` /
+  `Ingredient$TagValue.class`，**没有** `IngredientType`（那是 1.20.5+ 才引入的扩展点）。
+  ⇒ 原版 `Ingredient` 的反序列化只认 `item` / `tag` 两种写法，**不存在可注册的自定义类型**；
+  Forge 是靠 patch 原版类塞进 `forge:nbt` / `forge:partial_nbt` 分支，Fabric 侧没有等价补丁。
+- **影响**：这两个配方**仍可合成**（不再被原版配方加载器静默丢弃），但材料门槛**放宽** ——
+  任意药水（水药水 / 粗制药水等）都能用。其余材料（星盘 / 下界之星 / 强化金苹果 / 再生试剂）不变。
+- **处置**：本轮按「**保功能 + 显式登记**」处理（配方存在且可合成 > 配方缺失）。
+  若需严格保真，唯一干净路径 = **自建 `RecipeSerializer` + `Ingredient` 子类**
+  （约 200 行 + 注册 + 网络同步面 + 配方查看器适配），成本显著高于两个配方的收益 ⇒ 待用户裁决。
+- **取证**：原版类清单 = `unzip -l <fabric-loom 的 minecraft-merged jar> | grep Ingredient`；
+  Forge 侧实现 = `forge-1.20.1/src/main/java/com/merlinkitsune/astral_dice/datagen/ModRecipeProvider.java`
+  里 `StrictNBTIngredient.of(...)` 与 `PartialNBTIngredient` 的调用点。
+
+### KI-F2 ＝ 跨加载器存档不互通（**平台差异，非缺陷，不修补**）
+
+- 本线的持久化由 **Fabric API 附件**（`fabric-data-attachment-api-v1`，随 fabric-api 分发）承载；
+  Forge / NeoForge 侧为 Capability + `ForgeData` 段 / 数据组件。落盘位置与结构不同
+  ⇒ **存档不能跨加载器迁移**。
+- 饰品数据同理：本线用 **Trinkets**（+ 可选 **Accessories**），另三线用 **Curios**。
+- 写安装说明与迁移指引时必须如实说明「换加载器 = 换存档」。
+
+### KI-F3 ＝ 两条饰品通道共存时的槽位聚合语义（**已设计处理，登记以免日后误改**）
+
+- 本线的 `data/curios/tags/items/{dice,stand,chip}.json` **不是** Curios 的运行时数据
+  （本线没有 Curios）——它是「物品清单的单一事实源」，Trinkets 侧用 `#curios:<slot>` 引用它；
+  Accessories 侧走自定义 predicate `astral_dice:curio_slot`。**不要因为命名空间写着 `curios` 就删除它**。
+- Trinkets 与 Accessories **同装**时，`compat/curios/CuriosApi` 作为多源聚合门面：
+  `findCurios` 取并集（按 `ItemStack` 实例去重，防「官方兼容层把两源指向同一库存」时重复）、
+  `getStacksHandler` 同名冲突时返回 `MergedHandler`（读优先非空侧、写落持有侧）、
+  槽位修饰符**两侧同写**（保证「筹码栏位数 = 骰子星级」在两套系统里一致）。
+  ⚠️ 改动该门面时必须同步验证**三种组合**：仅 Trinkets / 仅 Accessories / 两者同装。
+
+### KI-F4 ＝ 测试资产与 datagen 的当前状态（**2026-09-29 登记**）
+
+- **datagen**：已按 Fabric 的 `FabricDataGenerator` 体系重建（见 `fabric-1.20.1/build.gradle` 的
+  datagen 运行配置与 `src/generated/resources` 的 sourceSets 接入）。
+  ⚠️ 重建前本线曾出现「生成了 137 个物品模型 + 118 个配方却**不进产物**」——根因是移植时重写
+  `build.gradle` **漏搬** `sourceSets.main.resources.srcDir('src/generated/resources')`。
+  该类缺陷编译期与启动期**均无感**，只在游戏里表现为「物品紫黑、配方不存在」⇒
+  改动构建脚本后必须**开包核对** `unzip -l` 的资源条目数，而不是只看 `BUILD SUCCESSFUL`。
+- **测试资产**：fabric 线与三条生产线的测试机制差异极大（自建 `LoaderBus` + Puzzles Lib + FAPI 回调 +
+  自写 mixin，而非 Forge 的 `@Mod.EventBusSubscriber`），故**测试流程与守门脚本需要单独一套**；
+  详见 `scripts/test/fabric/` 与该目录下的说明。**不得**直接复用 `mt.ps1` 的生产线口径。
+
+## 10. 变更记录
 
 | 日期 | 变更 |
 |---|---|
@@ -365,3 +422,4 @@ GlCommandEncoder.trySetup(:531) ← GlCommandEncoder.executeDraw(:406) ← GlRen
 | 2026-09-19 | **KI-D1 源码级定案 = Iris 侧缺陷 + 两处旧记载更正**：Iris 26.1 线 commit `bff1e69c…`（无 tag，用三重替代证据补强，jar sha256 `32D672A8…22BE5`）。机制链确认：Iris 用**顶点格式**推出 overlay 需求（`ExtendedShader.java:119-121` + `IrisVertexFormats.java:52`）并**替换 item 管线的 program**（`IrisPipelines.java:36-37`/`:188-222`、`MixinShaderManager_Overrides.java:53-66`），而通道侧只按原版 `RenderSetup.useOverlay` 绑 sampler（`RenderPipelines.java:75-82`、`RenderTypes.java:151-174`）⇒ 只有这次替换会索要 `Sampler1`，由**原版**校验 `GlCommandEncoder.java:526-532` 抛出。**更正①**：「`trySetup` 被 Iris 替换」不成立（Iris 仅在 HEAD 对自定义通道条件性 cancel、RETURN 追加状态，对 `samplers` 表只读不写）。**更正②**：「`getOrCompilePipeline` 抛 `Throwable`」不成立（`MixinShaderManager_Overrides.java:67-72` 只打日志，返回 `null` 回落原版 program）。**新增定性**：该断言 **dev-only**（`GlRenderPass.java:25` 的 `VALIDATION`，生产只 `continue`），故玩家侧影响面小；上游 issue 英文草稿已备（`temp/t50/iris-sampler1-source-analysis.md` §4.2），未提交 |
 | 2026-09-19 | 新增 **§8 E 组（测试工具链与探针口径）**：**KI-E1** = `AP_NOAI` 心跳/闸门读数在确有靶生物时恒为 `mobs=0`（假阴性 ⇒ 「禁用生物 AI」硬闸门 `mobs == noai` 恒成立、形同空洞；嫌疑在 `astral_test_noai.js` 侧，未改该文件）；**KI-E2** = 探针 `typeIdOf(entity)` 对**所有**实体返回同一类型串（实测 `census=minecraft:pig@12\|minecraft:pig@6\|minecraft:pig@16` ⇒ 三条实体的身份/血量全对、只有类型串是常量），按类型取靶因此不可用 —— 探针已改为「setup 发布句柄 + 判据只读句柄」，并**更正**前序把症状解释为「`apply` 之后搜不到实体」的误判（`scan8=3` 证明搜索正常）。KI-M2 补登既有缺陷：四个门控立牌（ren/bonnie/haiqing/moses）**漏写 `sign_active_max_cooldown`**（电流核心档位分母偏），史莱姆立牌已按正确口径成对写入 |
 | 2026-09-27 | **KI-D1 复现 + dev 规避落地（已实测闭环）**：用户手动 `/time set 18000` 后崩，报告 `run/26.1.2/crash-reports/crash-2026-09-27_10.28.05-client.txt`，栈与 §7 记载**逐帧一致**（B 组形态：`MultiBufferSource$BufferSource.endBatch(:99)` 与 `LevelRenderer.lambda$addMainPass$0(:707)` 之间**没有任何 ImmediatelyFast 帧**）；Iris jar sha256 `32d672a8…22be5` 与定案版一致；报告内 `com.merlinkitsune.*` 帧数 = **0**。⚠️ **`/time set` 是触发条件而非根因**——它只改变主通道（`addMainPass`）的渲染内容，把上游缺陷更早"踩"出来；KI-D1 既有对照组（去掉任何玩家操作、同环境同召唤物）已证明崩溃不依赖特定玩家操作。**已落地规避**：`neoforge-26.1.2/build.gradle` 的 `client` run 加 `jvmArgument '-Dneoforge.disableGlValidation=true'`，正对那处 **dev-only** 断言 （`GlRenderPass.VALIDATION = SharedConstants.IS_RUNNING_IN_IDE && !Boolean.getBoolean("neoforge.disableGlValidation")`，`GlCommandEncoder.trySetup` 的整段 sampler 校验被 `if (GlRenderPass.VALIDATION)` 包住）⇒ 生产环境校验收起、不受影响。**验证证据**（同环境 + 光影）：会话 `latest.log` 10:36:15→10:37:37，10:36:28 `Time from main menu to in-game was 3.89s`（真进世界），10:37:16 注入 `/time set 18000` → `[Dev: 已将minecraft:overworld设为18000刻]`（真执行），其后 21 s 观察窗内 **new crashes = 0 / `Missing sampler` 命中 = 0 / 客户端存活**。⚠️ **代价**：该校验是 dev 下唯一会报「自家渲染管线 sampler/vertex-format 配错」的闸门，关掉后这类问题会被一并静音 ⇒ 一旦怀疑本模组自定义几何（target_prism 等）有渲染问题，**须临时注释该行**恢复校验。 |
+| 2026-09-29 | 新增 **§9 F 组（Fabric 1.20.1 移植线）** —— 本仓第四条线（子项目 `fabric-1.20.1` / 分支 `1.20.1-fabric`）的已知问题：**KI-F1** = 两个配方因 1.20.1 原版**无 `IngredientType`**（`unzip -l` 实证）而从「指定药水」放宽为「任意药水」，属**平台能力限制的真缺口**，已按「保功能 + 显式登记」处理，严格保真需自建 `RecipeSerializer`+`Ingredient`（待裁决）；**KI-F2** = 跨加载器存档不互通（附件 vs Capability/ForgeData；Trinkets/Accessories vs Curios），平台差异、不修补；**KI-F3** = 双饰品通道的槽位聚合语义（`data/curios/tags/items/*.json` 是本线的物品清单单一事实源，**勿因命名空间而删**；门面改动须验三种组合）；**KI-F4** = datagen 已按 Fabric 体系重建，并登记「重写构建脚本漏搬 `sourceSets.srcDir('src/generated/resources')` ⇒ 255 个生成资源不进产物」这一**编译期与启动期均无感**的缺陷模式（收尾须开包核对）。同轮修复的四个 fabric 线硬缺陷（产物资源缺失 / `onCommonSetup` 未注册导致网络与卡牌注册表从未初始化 / 12 个事件有 handler 无派发源 / `data/bountiful` 未裁剪）已并入上述条目与 CHANGELOG。 |

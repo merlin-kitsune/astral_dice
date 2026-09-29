@@ -137,7 +137,12 @@ public class AstralDiceMod implements ModInitializer {
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.sign.SherrySignItem.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.sign.TeruSignItem.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.sign.ZhaoSignItem.class);
-        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.platform.event.IEventBus.class);
+        // ⚠️ 本类自身的处理器(见 onCommonSetup)。必须**注册本类**而不是某个接口 ——
+        //    2026-09-29 修:此处原为 `register(IEventBus.class)`,而 IEventBus 是接口、不含任何
+        //    @SubscribeEvent 方法 ⇒ 扫描结果为空集;叠加 onCommonSetup 当时是**实例方法**
+        //    (LoaderBus.scan 对 instance==null 的非静态方法直接 continue)⇒ 该事件派发到空链,
+        //    其内部三个初始化(兼容性校验 / 网络通道注册 / 卡牌注册表)全部从未执行。
+        LoaderBus.INSTANCE.register(AstralDiceMod.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.target.TargetSelectionManager.class);
     }
 
@@ -194,9 +199,17 @@ public class AstralDiceMod implements ModInitializer {
      *
      * <p>⚠️ 顺序有意保持不变:{@link ModCompatibilityCheck#verifyOrThrow()} 仍在
      * {@code enqueueWork} 之前**同步**执行 —— 不兼容组合必须尽早、干净地失败。
+     *
+     * <p>⚠️ 必须是 {@code static}(2026-09-29 修):本模组的自建总线用反射扫描
+     * {@code @SubscribeEvent} 方法,而 {@code LoaderBus.scan} 对**非静态**方法在
+     * {@code instance == null} 时会直接跳过(见 {@code LoaderBus.java} 的
+     * {@code if (!isStatic && instance == null) continue;})。此前该方法是实例方法、
+     * 且 {@link #registerListeners()} 从未注册本类 ⇒ 派发落到空链,
+     * {@link ModCompatibilityCheck#verifyOrThrow()}、网络通道注册、卡牌注册表三者**全部从未执行**。
+     * 现有调用方均无实例状态依赖,故改为静态是安全的最小修法。
      */
     @com.merlinkitsune.astral_dice.platform.event.SubscribeEvent
-    public void onCommonSetup(FMLCommonSetupEvent event) {
+    public static void onCommonSetup(FMLCommonSetupEvent event) {
         ModCompatibilityCheck.verifyOrThrow();
         event.enqueueWork(() -> {
             // 网络通道注册(Fabric Networking;协议版本握手见 VersionGate)

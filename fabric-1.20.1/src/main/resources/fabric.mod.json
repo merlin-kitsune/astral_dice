@@ -17,6 +17,9 @@
     ],
     "client": [
       "com.merlinkitsune.astral_dice.AstralDiceClient"
+    ],
+    "fabric-datagen": [
+      "com.merlinkitsune.astral_dice.datagen.AstralDataGenerator"
     ]
   },
   "accessWidener": "astral_dice.accesswidener",

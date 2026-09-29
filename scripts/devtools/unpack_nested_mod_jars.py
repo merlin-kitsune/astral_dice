@@ -58,6 +58,14 @@ TARGET_DIRS = [
     #    (run/fabric-1.20.1/mods),给整合包/手工测试用,不是 Loom 的 runDir。
     os.path.join(REPO_ROOT, 'fabric-1.20.1', 'run', 'server', 'mods'),
     os.path.join(REPO_ROOT, 'fabric-1.20.1', 'run', 'client', 'mods'),
+    # ⚠️ 2026-09-29 补:数据生成运行目录。`gradlew :fabric-1.20.1:runDatagen` 是**独立的一次
+    #    Fabric Loader 启动**(runDir = `run/datagen`),它同样会做依赖校验 ——
+    #    Puzzles Lib 声明需要 puzzlesaccessapi,而该库内嵌在 puzzles-lib 里、Loom 不展开
+    #    ⇒ 不投放时 datagen 直接以
+    #    `FormattedException: Some of your mods are incompatible …需要 puzzlesaccessapi`
+    #    失败(实测 2026-09-29)。它与 server/client 是**三个互不相通的 mods 目录**,
+    #    故必须逐个投放,不能只装一个。
+    os.path.join(REPO_ROOT, 'fabric-1.20.1', 'run', 'datagen', 'mods'),
 ]
 NESTED_PREFIX = 'META-INF/jars/'
 

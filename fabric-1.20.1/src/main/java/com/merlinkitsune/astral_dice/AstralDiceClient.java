@@ -15,18 +15,17 @@ import net.fabricmc.api.ClientModInitializer;
  * 现改由本类承担:{@code fabric.mod.json} 的 {@code client} entrypoint 指向这里,
  * Fabric Loader 只在客户端加载它。
  *
- * <h2>⚠️ 尚未接线(移植线既有待办,非本轮 Accessories 兼容的范围)</h2>
- * <ul>
- *   <li>客户端 FAPI 桥:{@code platform/FabricBridges} 目前只装了
- *       {@code installEarly/installTicks/installPlayerLifecycle/installDamage/installCommands},
- *       <b>没有</b>客户端对应物。因此 {@code client/*} 里的 {@code @SubscribeEvent} 方法
- *       及其依赖的 {@code platform/client/event/*} 事件(<code>RegisterKeyMappingsEvent</code> /
- *       <code>RegisterParticleProvidersEvent</code> / <code>RegisterGuiOverlaysEvent</code> /
- *       <code>ScreenEvent</code> / <code>RenderTooltipEvent</code> / <code>ClientPlayerNetworkEvent</code> /
- *       <code>RenderLevelStageEvent</code> 等)目前<strong>不会被派发</strong>
- *       —— 即「注册了但不触发」,不会崩,但按键/HUD/粒子等客户端表现缺失。</li>
- *   <li>datagen 尚未按 {@code FabricDataGenerator} 重做;槽位图标以外的资源已随源文件打包。</li>
- * </ul>
+ * <h2>客户端事件桥的接线状态(2026-09-29 复核)</h2>
+ * <p>客户端桥 {@link com.merlinkitsune.astral_dice.platform.client.FabricClientBridges}
+ * 已在本方法末尾安装,{@code client/*} 里的处理器均已实际派发:
+ * {@code RegisterKeyMappingsEvent} / {@code RegisterParticleProvidersEvent} /
+ * {@code RegisterGuiOverlaysEvent} / {@code ScreenEvent.Init.Post} / {@code ScreenEvent.Opening} /
+ * {@code ClientPlayerNetworkEvent.LoggingOut} / {@code RenderLevelStageEvent} /
+ * {@code RenderHandEvent} / {@code RenderPlayerEvent.Pre} / {@code RenderLivingEvent.Post} /
+ * {@code InputEvent.MouseButton.Pre} / {@code InputEvent.MouseScrollingEvent} /
+ * {@code TickEvent.ClientTickEvent} / {@code ItemTooltipEvent} / {@code RenderTooltipEvent.Color}。
+ * <p>⚠️ 本类注释此前曾写「客户端桥不存在、按键/HUD/粒子表现缺失」—— 那是**尚未安装桥时**的
+ * 状态描述,已在 2026-09-29 的复核中订正(实际安装点在 {@link #onInitializeClient()} 末尾)。
  */
 public class AstralDiceClient implements ClientModInitializer {
 

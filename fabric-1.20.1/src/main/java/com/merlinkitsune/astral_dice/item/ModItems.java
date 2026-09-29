@@ -133,10 +133,9 @@ public class ModItems {
     //   ⇒ 原版 tooltip 链路(ItemStack#getTooltipLines → Rarity#getStyleModifier)会自动套用该颜色,
     //     本模组**不写任何 tooltip 染色代码**;改色 = 改库里 Rarity 的那一个常量。
     //   ⚠️ 附魔**不再**改变档位:原版「附魔升一档」的 switch 只覆盖原版 4 档,自有档走 default 原样返回。
-    // Bountiful 赏金联动数据层(data/bountiful/bounty_pools/bountiful/astral_*):
-    //   稀有 → "rarity": "RARE"、史诗 → "EPIC"、传奇 → "LEGENDARY"、普通 → "COMMON"(一一对应);
-    //   传奇档的筹码与立牌不进入奖励池 astral_rews。
-    //   ⚠️ 巅峰档**没有**数据层对应值 ⇒ 巅峰物品不得写入任何赏金池(守门脚本会报错,属预期的 fail-loud)。
+    //   ⚠️ 2026-09-29 裁剪:原「Bountiful 赏金联动数据层(data/bountiful/bounty_pools/bountiful/astral_*)」
+    //    整段删除 —— Bountiful **没有 Fabric 版**,fabric 线不发布该联动数据(见 VERSION_PINS.md「裁剪」)。
+    //    因此本线不存在「赏金池 rarity 对齐 / 巅峰档不得入池」那套约束;rarity 仅决定 tooltip 边框与文字色。
     // 骰子品质按升级链配色:基础=普通(白)、黄金=稀有(浅蓝)、钻石=史诗(粉紫)、合金=传奇(金)、
     //   下界之星骰子=巅峰(亮红,T4 奇异品阶);合金与下界之星骰子均不参与赏金板。
     // 新增物品时按此标准选择 rarity,并保持与图标边框颜色一致;若参与赏金,同步维护 astral_objs/astral_rews。

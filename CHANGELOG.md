@@ -4,6 +4,45 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 1.3.2+fabric_1.20.1
+
+> **First release of the Fabric 1.20.1 port line** (2026-09-29). Content is **feature-equivalent** to the
+> contemporary releases of the three production lines (NeoForge 1.21.1 / Forge 1.20.1 / NeoForge 26.1.2);
+> only the mod loader differs (the version number carries the `+fabric_1.20.1` suffix).
+> ⚠️ This is a **port / test line**: on GitHub it ships as a **pre-release** and never enters Latest.
+
+### Content & Balance
+
+#### Items, Chips & Trading
+
+- **(platform difference) The bounty reward-pool integration is no longer offered**: Bountiful has no Fabric build
+  for 1.20.1, so this line ships neither bounty decrees nor reward-pool data, and the matching handbook entry is gone.
+- **(platform difference) The Iron's Spells 'n Spellbooks integration is no longer offered**: that mod has no Fabric
+  build for 1.20.1, so the corresponding Fate's Guide note no longer appears; ranged / magic damage detection still
+  covers vanilla and the remaining supported spell mods.
+
+#### State, Persistence & Sync
+
+- **(platform difference) Trinkets replaces the accessory slots**: how accessories are equipped, their slot icons and
+  their screen position differ from the Forge build; the datapack slot definitions change with the platform.
+- **(platform difference) Player save data uses a different format**: this line stores its persistent data through
+  Fabric API's data attachment mechanism, so **saves are not interchangeable with the Forge / NeoForge builds**
+  (cross-loader save migration is unsupported).
+
+### Bug Fixes
+
+- **A batch of mechanisms that had not been wired up during the port is now fully connected**: the first-loot-chest gift,
+  the immunity window on ender pearl impact, the warp engine's charge gain when crossing dimensions, temporary cards
+  refusing to be dropped, the Overflow accumulation of the Guardian's Blessing, the doubled saturation from Fate's Guide
+  while eating, and the item models and crafting recipes of every item.
+
+### Requirements
+
+- Fabric Loader 0.19.x + Fabric API (1.20.1 line, 0.92.12)
+- Trinkets 3.7.2 — accessory slots, required
+- Puzzles Lib 8.1.33 + Forge Config API Port 8.0.3 — event bridge, required
+- Optional: Accessories 1.0.0-beta.48 (used first when installed; both channels work when it coexists with Trinkets)
+
 ## 1.3.2-hotfix
 
 > **1.20.1 line only** hotfix (`1.3.2-hotfix+forge_1.20.1`); the 1.21.1 and 26.1.2 lines keep their version numbers and artifacts **unchanged**.

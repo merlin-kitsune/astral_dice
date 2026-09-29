@@ -50,8 +50,13 @@ ServerEvents.tick(function (event) {
     level.addFreshEntity(cow);
     cow.potionEffects.add('minecraft:poison', 40, 0);
     console.info('[event-probe] 已上中毒(期望 MobEffectEvent.Added)');
-    cow.potionEffects.remove('minecraft:poison');
-    console.info('[event-probe] 已移除中毒(期望 MobEffectEvent.Remove)');
+    // ⚠️ 2026-09-29 实测修正:`potionEffects.remove(id)` **不存在** ——
+    //    KubeJS 的 `EntityPotionEffectsJS` 只有 add / clear 一类方法,没有按 id 移除;
+    //    旧写法让本探针在 228 行抛 `TypeError: Cannot find function remove in object
+    //    …EntityPotionEffectsJS` ⇒ MobEffectEvent.Remove 的举证**从未完成**。
+    //    改走原版方法 `removeAllEffects()`(LivingEntity 自带,KubeJS 代理原版方法名)。
+    cow.removeAllEffects();
+    console.info('[event-probe] 已移除全部效果(期望 MobEffectEvent.Remove)');
   } catch (err) {
     console.error('[event-probe] 效果探针异常: ' + err);
   }

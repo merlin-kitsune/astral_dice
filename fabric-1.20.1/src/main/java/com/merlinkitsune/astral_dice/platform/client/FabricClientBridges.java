@@ -49,11 +49,19 @@ import net.minecraft.client.gui.narration.NarratableEntry;
  *   <li><b>世界渲染</b>：{@code RenderLevelStageEvent} ← {@code WorldRenderEvents} 的对应阶段。</li>
  * </ol>
  *
- * <h2>⚠️ 仍未接线的客户端事件（见 PORT_STATUS_HANDOVER）</h2>
- * 需要精确注入点、且必须在 GUI 环境逐个核对才能确认不静默失效的四个渲染/输入事件：
- * {@code RenderHandEvent}（手持物品渲染）、{@code RenderPlayerEvent.Pre}、
- * {@code RenderLivingEvent.Post}（实体描边）、{@code RenderTooltipEvent.Color}（tooltip 边框染色）、
- * {@code InputEvent.MouseButton.Pre} / {@code MouseScrollingEvent}、{@code ScreenEvent.Opening}。
+ * <h2>覆盖状态(2026-09-29 复核,逐条与实现对齐)</h2>
+ * 本类已接管:{@code FMLClientSetupEvent} / {@code RegisterKeyMappingsEvent} /
+ * {@code RegisterParticleProvidersEvent} / {@code RegisterGuiOverlaysEvent} /
+ * {@code TickEvent.ClientTickEvent} / {@code ClientPlayerNetworkEvent.LoggingOut} /
+ * {@code ScreenEvent.Init.Post} / {@code RenderLevelStageEvent} / {@code ItemTooltipEvent}。
+ * 另由 {@code mixin/bridge} 下的客户端 mixin 接管:{@code ScreenEvent.Opening} /
+ * {@code InputEvent.MouseButton.Pre} / {@code InputEvent.MouseScrollingEvent} /
+ * {@code RenderHandEvent} / {@code RenderPlayerEvent.Pre} / {@code RenderLivingEvent.Post} /
+ * {@code RenderTooltipEvent.Color}。
+ *
+ * <p>⚠️ 本节此前列了一份「仍未接线」清单(RenderHand / RenderPlayer 等) —— 那份清单在
+ * 客户端 mixin 与 {@code ClientTooltipBridgeMixin} 落地后**已全部关闭**,于 2026-09-29 订正。
+ * 新增客户端事件时必须同步维护本节,否则会重演「注册了但从不派发」的静默失效。
  */
 public final class FabricClientBridges {
 
@@ -69,7 +77,29 @@ public final class FabricClientBridges {
         installLifecycle();
         installScreens();
         installWorldRender();
-        AstralDiceMod.LOGGER.info("[Astral Dice] 客户端事件桥已安装(注册类/生命周期/界面/世界渲染)");
+        installTooltips();
+        AstralDiceMod.LOGGER.info("[Astral Dice] 客户端事件桥已安装(注册类/生命周期/界面/世界渲染/tooltip)");
+    }
+
+    /**
+     * 物品 tooltip → {@link ItemTooltipEvent}。
+     *
+     * <p>2026-09-29 补:此前该事件**无任何派发源** ⇒ {@code event/ModTooltipHandler}
+     * (1552 行,覆盖立牌 / 卡牌 / 筹码 / 骰子的全部 tooltip 文案、计数与按键提示)
+     * **永不执行** —— 游戏里所有本模组物品只剩原版那一行物品名。
+     *
+     * <p><b>为何走 FAPI 而不是 mixin</b>:{@code ItemTooltipCallback} 的回调点
+     * (「原版基础行已追加完毕、尚未渲染」)与 Forge 的 {@code ItemTooltipEvent} 语义一致,
+     * 且它本身就是客户端专属接口 —— 无需自建注入点,也不会在专用服务端误加载。
+     *
+     * <p>⚠️ 该事件只在**客户端**派发(Forge 侧亦然):服务端不组装 tooltip。
+     * {@code ModTooltipHandler} 虽在双端注册,但只有客户端这条路径会被调用。
+     */
+    private static void installTooltips() {
+        net.fabricmc.fabric.api.client.item.v1.ItemTooltipCallback.EVENT.register(
+                (stack, tooltipFlag, lines) -> LoaderBus.INSTANCE.post(
+                        new com.merlinkitsune.astral_dice.platform.event.entity.player.ItemTooltipEvent(
+                                stack, net.minecraft.client.Minecraft.getInstance().player, lines, tooltipFlag)));
     }
 
     // ------------------------------------------------------------------

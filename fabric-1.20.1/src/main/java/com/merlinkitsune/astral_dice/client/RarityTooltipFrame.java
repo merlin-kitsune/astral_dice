@@ -1,4 +1,4 @@
-// Forge 47.4.x / MC 1.20.1
+// Fabric Loader 0.19.x / Fabric API 0.92.12 / MC 1.20.1
 package com.merlinkitsune.astral_dice.client;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;

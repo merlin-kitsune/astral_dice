@@ -14,6 +14,14 @@
     "bridge.LivingHurtBridgeMixin",
     "bridge.LivingUseTotemBridgeMixin",
     "bridge.ItemCraftedBridgeMixin",
+    "bridge.ProjectileImpactBridgeMixin",
+    "bridge.EnderPearlTeleportBridgeMixin",
+    "bridge.EntityDimensionTravelBridgeMixin",
+    "bridge.ServerPlayerDimensionTravelBridgeMixin",
+    "bridge.PlayerAttackBridgeMixin",
+    "bridge.LivingHealBridgeMixin",
+    "bridge.LivingUseItemFinishBridgeMixin",
+    "bridge.ItemTossBridgeMixin",
     "container.BundleInsertGuardMixin",
     "container.ContainerMoveGuardMixin",
     "container.ShulkerBoxBlockEntityGuardMixin",
@@ -35,7 +43,9 @@
     "bridge.ClientMouseBridgeMixin",
     "bridge.ClientScreenBridgeMixin",
     "bridge.ClientHandBridgeMixin",
-    "bridge.ClientEntityRenderBridgeMixin"
+    "bridge.ClientEntityRenderBridgeMixin",
+    "bridge.ClientTooltipBridgeMixin",
+    "bridge.TooltipRenderUtilColorMixin"
   ],
   "injectors": {
     "defaultRequire": 1

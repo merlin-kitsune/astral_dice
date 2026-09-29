@@ -1,0 +1,29 @@
+{
+  "case_id": "FAB-INJECT-ROUNDTRIP",
+  "title": "手动注入往返（kubejs 通道）：把一条命令投进 KubeJS 队列，观察端必须打出 [ft-inject] ran rc= 行，且不得出现 [ft-inject] ERR。",
+  "side": "server",
+  "window": "case",
+  "on_fail": "keep_game_running",
+  "steps": [
+    {
+      "op": "note",
+      "text": "前置（本用例**需要活着且已装观察者的服务端**，否则 inject 步骤会显式 ERROR 中止 —— 这是刻意设计：命令缺失必须失败，绝不静默降级）：\n ① pwsh -File scripts/test/fabric/ft_env.ps1 --side server --install-watcher\n ② pwsh -File scripts/test/fabric/ft_launch.ps1 --side server        （冷启动，让 KubeJS 加载 ft_cmd_watcher.js）\n ③ 再跑本用例。\n\n为什么用 kubejs 通道而不是 rcon 通道做**日志断言**：\n · rcon 通道的回显只回到 RCON 客户端（也就是 ft_inject 的 stdout），**不保证**落进 latest.log；\n · kubejs 通道由观察者脚本自己打 `[ft-inject] ran rc=<n> :: <cmd>`（ft_cmd_watcher.js 的 console.info），\n   一定落 `run/server/logs/latest.log` ⇒ 可断言。\n\n命令取 vanilla 的 /time set day：不依赖本模组的任何命令注册，把「注入通道本身」与「模组命令面」解耦。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/time set day",
+      "channel": "kubejs"
+    },
+    {
+      "op": "wait",
+      "ms": 2000
+    }
+  ],
+  "asserts": [
+    { "type": "log", "pattern": "\\[ft-inject\\] ran rc=" },
+    { "type": "log", "pattern": "\\[ft-inject\\] queue drained" },
+    { "type": "absent", "pattern": "\\[ft-inject\\] ERR" },
+    { "type": "crash" }
+  ],
+  "evidence": []
+}

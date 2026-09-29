@@ -134,6 +134,19 @@ When extending this workspace:
 | `neoforge-1.21.1` | `1.21.1-main` | 1.21.1 | NeoForge | 21 | `1.3.1+neoforge_1.21.1` | `x.y.z[-rcN|hotfix]+neoforge_1.21.1` |
 | `forge-1.20.1` | `1.20.1-forge` | 1.20.1 | Forge | 17 | `1.3.1+forge_1.20.1` | `x.y.z[-rcN|preN|hotfix]+forge_1.20.1` |
 | `neoforge-26.1.2` | 本仓 `multi-26.1.2-neoforge` 分支新增（基线 = 主线 `1.2.1`/`fda8ca9` 的 `neoforge-1.21.1` 源码）；**2026-09-17 已合并进当时的主线 `multi-1.20.1-1.21.1`（该分支已于 2026-09-22 改名为 `multi-main`）**（与主线同目录同树，原独立 worktree 已移除）；**2026-09-22 完整移植后版本号与另两线同批升版（26.1.2 取 `1.3.0-beta.1`）** | 26.1.2 | NeoForge | 25 | `1.3.0-beta.1+neoforge_26.1.2` | `x.y.z[-rcN]+neoforge_26.1.2` |
+| `fabric-1.20.1` | **本仓 `1.20.1-fabric` 分支新增**（2026-09-29 接入；基准 = `forge-1.20.1` 的 `1.3.2-hotfix` 源码，**加载器层整体替换**：Curios→Trinkets(+Accessories 软依赖) · Capability→Fabric API 附件 · Forge EventBus→自建 `LoaderBus`+Puzzles Lib/FAPI 回调/mixin · GLM→`LootTableEvents.MODIFY`）。⚠️ **独立的移植/测试线，不在 `multi-main` 上** | 1.20.1 | Fabric | 17 | `1.3.2+fabric_1.20.1` | `x.y.z[-rcN|hotfix]+fabric_1.20.1` |
+
+> ⚠️ **第四条线（`fabric-1.20.1`）的规则边界（2026-09-29 用户裁决，必须遵守）**：
+> 上表前三线是**生产线**，`fabric-1.20.1` 是**移植/测试线**，两者在四件事上口径不同：
+> ① **同步范围**：前三线的「同批实施」约束**不自动扩到** fabric 线 —— 该线由用户在需要时单独下达移植批次
+>    （本线基线 = `forge-1.20.1` 的 1.3.2-hotfix，后续按批次从 forge 线搬运）；
+> ② **平台差异必须逐条登记**：裁剪项（无 Fabric 版的三方模组）见 `porting/fabric-1.20.1/VERSION_PINS.md`「裁剪」；
+>    其中 **Bountiful 与 Iron's Spells 'n Spellbooks 已整线裁剪**（无 1.20.1 Fabric 版）
+>    ⇒ 其数据文件、lang 键、手册条目、伤害类型 key、tooltip 分支**均不得出现在本线**；
+> ③ **发布口径**：fabric 产物**绝不并入**生产线 Release —— 见「编译产物上传规则」表；
+>    CI 为其单独出 tag（`fabric-<裸版本>`）与 `--prerelease` Release；
+> ④ **前置面不同**：玩家侧必需前置 = Fabric Loader/API + Trinkets + Puzzles Lib + Forge Config API Port
+>    （Accessories 为可选）—— 与前三线的 Curios/Mixin Booster 那一套**完全不通用**，写安装说明时勿套用。
 
 > 版本号各 git 分支独立（AGENTS.md 自 2026-09-15 起**已纳入版本库**，各分支各自维护一份）：**发布线 `multi-main`**（2026-09-22 由 `multi-1.20.1-1.21.1` 改名；连带项已同批处理：三线 `build.gradle` 的 `packPushBranches → ['multi-main']`、`.github/workflows/build.yml` 的 5 处分支名与触发条件，以及 `.github/workflows/build.yml` 里 checkout 前置库的 `ref:` 钉值）当前 = **`1.3.0`**（2026-09-22 用户裁决：把 `multi-dev-next` 整体收编后统一升版 —— 1.21.1 / 1.20.1 = `1.3.0`，26.1.2 = `1.3.0-beta.1`；按发布规范 tag 解析为裸版本 **`1.3.0`**）；`multi-dev-next` 当前 = **`2.0.0-SNAPSHOT.13`**（2026-09-17 用户裁决：`2.0.0-SNAPSHOT.5` 封包，版本号升至 `.10`；**2026-09-22 用户裁决：SNAPSHOT 数值按提交数下沉，档位 = 提交数 / 37，自 `.10` 起累计 104 提交 ⇒ 向上取整 3 档 ⇒ `.13`**；后续改动一律记入两个 CHANGELOG 顶部的 `未发布（2.0.0-SNAPSHOT.13）` 小节；该线已于 **2026-09-22 整体合并进发布线 `multi-main`**（合并提交 `7b726617`，收编 160 个提交），自此不再单独演进）；`neoforge-26.1.2` 子项目当前 = **`1.3.0-beta.1`**（2026-09-17 用户裁决 + **2026-09-19 修订：26.1.2 已纳入主线、三线同步（不再是低优先级线）**；**2026-09-22 用户裁决：三线同批升版，26.1.2 取 `1.3.0-beta.1`** —— 此前 `.13` 时代「与另两线版本号对齐、不再单独加 `-beta`」的口径随之作废；`multi-26.1.2-neoforge` 分支自此只作为合并前历史，不再单独开发）。上表「当前版本」以发布线工作分支 `multi-main` 为准。
 > ⚠️ 历史上另有一条 dev 分支 **`wt/2.0.0-vnext`**（连带独立 worktree `C:/Users/xmace/.dsh/worktrees/astral_dice_multiloader-a03b2df2/2.0.0-vnext`）——2026-09-17 用户裁决「移除 wt/2.0.0-vnext 分支，仅保留当前分支」后**已删除**：worktree 与分支一并移除，`git branch -d` 成功即证明其 tip **`d7e4ac8f4f1c31484bf4366caa4e144aec45979f`** 的全部提交都已被 `multi-dev-next` 包含（`multi-dev-next..wt/2.0.0-vnext` 为空）⇒ **未丢失任何提交**；该分支从未推到远端（`origin` 只有 `multi-1.20.1-1.21.1` 与 `multi-dev-next`），故无需远端清理。`multi-26.1.2-neoforge` 作为合并前历史分支**保留**（未在本次裁决范围内）。

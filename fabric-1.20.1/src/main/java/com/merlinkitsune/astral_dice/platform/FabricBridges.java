@@ -8,6 +8,7 @@ import com.merlinkitsune.astral_dice.platform.event.entity.living.LivingDropsEve
 import com.merlinkitsune.astral_dice.platform.event.entity.living.LivingUseTotemEvent;
 import com.merlinkitsune.astral_dice.platform.event.entity.player.EntityItemPickupEvent;
 import com.merlinkitsune.astral_dice.platform.event.entity.player.PlayerEvent;
+import com.merlinkitsune.astral_dice.platform.event.entity.player.PlayerInteractEvent;
 import com.merlinkitsune.astral_dice.platform.event.level.BlockEvent;
 import com.merlinkitsune.astral_dice.platform.event.AnvilUpdateEvent;
 // (无对应物:Forge 内部工具类 / 嵌套枚举 Event.Result)
@@ -28,6 +29,7 @@ import net.fabricmc.fabric.api.event.player.UseItemCallback;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.InteractionResultHolder;
 
 /**
@@ -42,17 +44,33 @@ import net.minecraft.world.InteractionResultHolder;
  *
  * <h2>覆盖状态(必须逐条维护,否则事件会「静默永不触发」)</h2>
  * <table border="1">
- *   <caption>桥接覆盖表</caption>
- *   <tr><th>事件</th><th>来源</th></tr>
- *   <tr><td>{@code TickEvent.ServerTickEvent / LevelTickEvent / PlayerTickEvent}</td><td>本类(FAPI tick)</td></tr>
- *   <tr><td>{@code PlayerEvent.PlayerLoggedInEvent / PlayerLoggedOutEvent}</td><td>本类(FAPI 连接事件)</td></tr>
- *   <tr><td>{@code PlayerEvent.PlayerRespawnEvent}</td><td>本类(FAPI AFTER_RESPAWN)</td></tr>
- *   <tr><td>{@code LivingAttackEvent}</td><td>本类(FAPI ALLOW_DAMAGE)</td></tr>
- *   <tr><td>{@code RegisterCommandsEvent}</td><td>本类(FAPI 命令回调)</td></tr>
- *   <tr><td>{@code LivingHurtEvent / LivingDamageEvent / LivingHealEvent / LivingDeathEvent}</td>
- *       <td>mixin(DamageBridgeMixin / DeathBridgeMixin / HealBridgeMixin)</td></tr>
- *   <tr><td>{@code MobEffectEvent.Added / Remove / Expired}</td><td>mixin(EffectBridgeMixin)</td></tr>
+ *   <caption>桥接覆盖表(2026-09-29 全量复核)</caption>
+ *   <tr><th>事件</th><th>派发来源</th></tr>
+ *   <tr><td>{@code TickEvent.ServerTickEvent / LevelTickEvent / PlayerTickEvent}</td><td>本类 installTicks(FAPI tick)</td></tr>
+ *   <tr><td>{@code PlayerEvent.PlayerLoggedInEvent / PlayerLoggedOutEvent}</td><td>本类 installPlayerLifecycle(FAPI 连接事件)</td></tr>
+ *   <tr><td>{@code PlayerEvent.PlayerRespawnEvent}</td><td>本类 installPlayerLifecycle(FAPI AFTER_RESPAWN)</td></tr>
+ *   <tr><td>{@code LivingAttackEvent}</td><td>本类 installDamage(FAPI ALLOW_DAMAGE)</td></tr>
+ *   <tr><td>{@code RegisterCommandsEvent} / {@code OnDatapackSyncEvent}</td><td>本类 installCommands</td></tr>
+ *   <tr><td>{@code PlayerInteractEvent.RightClickBlock / EntityInteract / RightClickItem}</td><td>本类 installInteractions(FAPI Use*Callback)</td></tr>
+ *   <tr><td>{@code LivingDamageEvent / LivingDeathEvent / LivingDropsEvent / LivingChangeTargetEvent}</td><td>PuzzlesBridges</td></tr>
+ *   <tr><td>{@code MobEffectEvent.Added / Remove / Expired}</td><td>PuzzlesBridges</td></tr>
+ *   <tr><td>{@code BlockEvent.BreakEvent / AnvilUpdateEvent / EntityItemPickupEvent}</td><td>PuzzlesBridges</td></tr>
+ *   <tr><td>{@code PlayerEvent.Clone}</td><td>PuzzlesBridges</td></tr>
+ *   <tr><td>{@code LivingHurtEvent}</td><td>mixin bridge/LivingHurtBridgeMixin</td></tr>
+ *   <tr><td>{@code LivingUseTotemEvent}</td><td>mixin bridge/LivingUseTotemBridgeMixin</td></tr>
+ *   <tr><td>{@code PlayerEvent.ItemCraftedEvent}</td><td>mixin bridge/ItemCraftedBridgeMixin</td></tr>
+ *   <tr><td>{@code LivingHealEvent}</td><td>mixin bridge/LivingHealBridgeMixin</td></tr>
+ *   <tr><td>{@code AttackEntityEvent}</td><td>mixin bridge/PlayerAttackBridgeMixin</td></tr>
+ *   <tr><td>{@code ProjectileImpactEvent}</td><td>mixin bridge/ProjectileImpactBridgeMixin(+ 珍珠专用桥)</td></tr>
+ *   <tr><td>{@code EntityTeleportEvent.EnderPearl} / {@code ProjectileImpactEvent}(珍珠)</td><td>mixin bridge/EnderPearlTeleportBridgeMixin</td></tr>
+ *   <tr><td>{@code EntityTravelToDimensionEvent}(玩家 / 非玩家两条)</td><td>mixin bridge/{ServerPlayer,Entity}DimensionTravelBridgeMixin</td></tr>
+ *   <tr><td>{@code LivingEntityUseItemEvent.Finish}</td><td>mixin bridge/LivingUseItemFinishBridgeMixin</td></tr>
+ *   <tr><td>{@code ItemTossEvent}</td><td>mixin bridge/ItemTossBridgeMixin</td></tr>
+ *   <tr><td>{@code SignActiveTriggeredEvent}(前置库)</td><td>消费方自身({@code item/sign/BaseSignItem})</td></tr>
  * </table>
+ * <p>客户端侧见 {@code platform/client/FabricClientBridges} 与 {@code mixin/bridge/Client*}。
+ * <p>回归护栏:{@code LoaderBus#dispatchReport()} 会列出**每个已注册事件类的派发次数(0 次的也列)** ——
+ * 新增事件后必须用它证伪「桥装了但从不触发」。
  */
 public final class FabricBridges {
 
@@ -95,6 +113,7 @@ public final class FabricBridges {
         installPlayerLifecycle();
         installDamage();
         installCommands();
+        installInteractions();
         // Puzzles Lib 回调 → 自建事件(伤害/死亡/掉落/目标/效果/铁砧/方块/克隆/拾取)。
         // ⚠️ Puzzles 是**硬依赖**(fabric.mod.json depends)⇒ 无需守卫,也绝不能被守卫掉:
         //    否则这些事件会静默永不触发(项目最忌的假绿)。
@@ -124,11 +143,13 @@ public final class FabricBridges {
                 LoaderBus.INSTANCE.post(new PlayerEvent.PlayerLoggedOutEvent(handler.getPlayer())));
         ServerPlayerEvents.AFTER_RESPAWN.register((oldPlayer, newPlayer, alive) ->
                 LoaderBus.INSTANCE.post(new PlayerEvent.PlayerRespawnEvent(newPlayer, alive)));
-        // ⚠️ 未接线(必须补齐,否则 PlayerChangedDimensionEvent 永不触发):
-        //    Fabric API 1.20.1 没有「玩家切换维度」回调(ENTITY_LOAD 无法区分「同维度重载」
-        //    与「跨维度」,用它派发会给出错误的 from/to)。计划由 mixin 注入
-        //    `ServerPlayer#changeDimension` 派发。影响面:跨维度后客户端 synced 键快照不刷新
-        //    (登录/重生路径仍会刷新),属已知功能缺口,登记在 PORT_STATUS 文档。
+        // 跨维度:由 mixin 在 `ServerPlayer#changeDimension` 的 HEAD 派发
+        // EntityTravelToDimensionEvent(见 mixin/bridge/ServerPlayerDimensionTravelBridgeMixin),
+        // 那条路径同时覆盖非玩家的 `Entity#changeDimension`。
+        // ⚠️ `PlayerEvent.PlayerChangedDimensionEvent`(切换**之后**的那个)当前**没有任何订阅者**,
+        //    故未派发 —— 需要时在对应 mixin 的 @At("RETURN") 处补一行即可,不要凭猜测预先派发。
+        // ⚠️ 本注释此前写「未接线、跨维度后客户端 synced 键快照不刷新」,已于 2026-09-29 按实际
+        //    订阅面订正:无订阅者 ⇒ 不存在可见影响。
     }
 
     private static void installDamage() {
@@ -151,6 +172,47 @@ public final class FabricBridges {
 
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
                 LoaderBus.INSTANCE.post(new RegisterCommandsEvent(dispatcher, environment, registryAccess)));
+    }
+
+    /**
+     * 玩家交互三回调(FAPI {@code Use*Callback} → {@code PlayerInteractEvent.*})。
+     *
+     * <p>2026-09-29 补:此前本类**已 import** 这三个回调却从未 register ⇒
+     * {@code RightClickBlock / EntityInteract / RightClickItem} 三个事件「有 handler、无派发源」,
+     * 表现为「首箱赠礼不触发」「Hanna 立牌漂浮期仍能用末影珍珠」。
+     *
+     * <p>返回语义对齐 Forge 的 {@code cancellationResult}:
+     * <ul>
+     *   <li>只读型事件(前两者)**恒返回 PASS** —— 返回 SUCCESS 会吞掉原版后续处理
+     *       (箱子打不开等),这不是消费方的意图;</li>
+     *   <li>可取消的事件(RightClickItem)取消时返回 {@code fail} —— 原版据此
+     *       不消耗物品、不进入 {@code Item#use}。</li>
+     * </ul>
+     * ⚠️ {@code UseItemCallback} 在**双端**触发;服务端取消即可阻止实际使用
+     * (客户端侧的预测由原版自身的 server-authoritative 流程收敛)。
+     */
+    private static void installInteractions() {
+        // 方块容器右键(首箱赠礼:箱子/木桶/潜影盒/漏斗…)
+        UseBlockCallback.EVENT.register((player, world, hand, hitResult) -> {
+            LoaderBus.INSTANCE.post(new PlayerInteractEvent.RightClickBlock(
+                    player, hand, hitResult.getBlockPos(), hitResult));
+            return InteractionResult.PASS;
+        });
+        // 实体交互(首箱赠礼:运输矿车)
+        UseEntityCallback.EVENT.register((player, world, hand, entity, hitResult) -> {
+            LoaderBus.INSTANCE.post(new PlayerInteractEvent.EntityInteract(player, hand, entity));
+            return InteractionResult.PASS;
+        });
+        // 物品右键(Hanna 立牌:魔女漂浮期间禁止使用末影珍珠)
+        UseItemCallback.EVENT.register((player, world, hand) -> {
+            PlayerInteractEvent.RightClickItem event =
+                    new PlayerInteractEvent.RightClickItem(player, hand);
+            LoaderBus.INSTANCE.post(event);
+            if (event.isCanceled()) {
+                return InteractionResultHolder.fail(player.getItemInHand(hand));
+            }
+            return InteractionResultHolder.pass(player.getItemInHand(hand));
+        });
     }
 
     private FabricBridges() {
