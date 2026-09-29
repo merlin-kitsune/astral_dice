@@ -27,20 +27,19 @@ Astral Dice 是一个以「骰子」为核心的生存扩展模组。戴上骰�
 - 事件系统：大侦探、调查员、秘密侦探等立牌联动
 - Bountiful 赏金板联动
 
-## 本版更新（1.3.2）
+## 本版更新（1.3.3）
 
-- **新立牌「机械师」（传奇）**：主动「轨道轰炸」—— 指定一个敌对目标后，按「快捷栏 → 副手 → 背包」的顺序取用卡牌（取至总伤害达上限即停，多余卡牌保留），对目标及其周围 12 格范围进行轰炸；被动「物资补充」定时补牌。
-- **初次冒险赠礼**：在本存档开启的**第一个战利品箱子**必定包含 1 个骰子（同存档仅一次，死亡重生与跨维度不重复）。
-- **自定义音效**：技能生效、玻璃骰子碎裂、轨道轰炸命中、效果牌使用等一批新音效。
-- **平衡性调整与修复**：骰神赐福相关的加伤通道口径（攻击力 / 攻击伤害）、手电筒-强光星光获取条件、卡牌品阶重排、战利品箱概率修正等 —— 完整清单见 [Releases 页面的发布说明](https://github.com/merlin-kitsune/astral_dice/releases)。
-
+- **九项平衡与技能调整**：风水师「完美帮手」把目标的「养精蓄锐」直接补满到 5 层；「白泽赐福」与「降神」的 2:00 倒计时改为「任意攻击命中」即可启动（此前限近战）；教主「降神」的狐光追加改为独立的「追击」额外伤害；秘密侦探「调查阶段」的原版隐身整体替换为新效果「隐匿」；命运的指引新增「战斗骰点始终为 6」；岿然不动与蓄力的文案精简；史莱姆立牌移除主动技能的范围治疗；大碗炖肉不再治疗友方生物、治愈点由 1 提到 2。
+- **四个「受击类」效果收紧为「只有敌对目标的攻击才触发」**：缓冲盾牌、鼠鼠护盾的「反击」、史莱姆立牌「细胞分裂」、吸血鬼立牌的「汲取」—— 此前摔落 / 仙人掌 / 着火等环境伤害与自伤同样能触发（可白刷收益），现在只有敌对目标的攻击才算。
+- **动作栏（ActionBar）修复**：补齐两条缺失的提示文案；清除 11 条文案内嵌色码造成的「前半黄、后半灰」断层；拒绝类提示统一为红色；安全气囊 / 钱包 / 卡牌栏 / 客户端「出牌数已用完」四处从原版覆盖层合并回模组动作栏。
+- 完整清单见 [Releases 页面的发布说明](https://github.com/merlin-kitsune/astral_dice/releases)。
 ## 支持版本 / 环境要求
 
 | 支持 | 子项目 | Minecraft | 加载器 | Java | 当前模组版本 | 帕秋莉手册 |
 |---|---|---|---|---|---|---|
-| ✅ | `neoforge-1.21.1` | 1.21.1 | NeoForge 21.1.235 | 21 | 1.3.2 | ✅ |
-| ✅ | `forge-1.20.1` | 1.20.1 | Forge 47.4.10 | 17 | 1.3.2-hotfix | ✅ |
-| ✅ | `neoforge-26.1.2` | 26.1.2 | NeoForge 26.1.2.109 | 25 | 1.3.2-beta.1 | ✅ |
+| ✅ | `neoforge-1.21.1` | 1.21.1 | NeoForge 21.1.235 | 21 | 1.3.3 | ✅ |
+| ✅ | `forge-1.20.1` | 1.20.1 | Forge 47.4.10 | 17 | 1.3.3 | ✅ |
+| ✅ | `neoforge-26.1.2` | 26.1.2 | NeoForge 26.1.2.109 | 25 | 1.3.3-beta.1 | ✅ |
 
 - `neoforge-1.21.1` 与 `forge-1.20.1` 是**发布线**（功能对等，两者的 jar 随每个 GitHub Release 发布）。
 - `neoforge-26.1.2` 是**迁移线**（2026-09-19 起已纳入主线、与另两线同级同步；2026-09-22 起由客户端实验性支持转为**正式迁移线**）：**不单独打 tag / 发 Release**，但其 jar 作为**第三个附件随发布线的 Release 一并发布**（CI 三线同批构建，见 `.github/workflows/build.yml`）。该线**无** Iron's Spells 'n Spellbooks 联动（上游无 26.1.x 构建）。
@@ -59,7 +58,7 @@ Astral Dice 是一个以「骰子」为核心的生存扩展模组。戴上骰�
 - **发布页**：[GitHub Releases](https://github.com/merlin-kitsune/astral_dice/releases)（每个版本附**三个** jar：发布线两个 + 26.1.2 的 `-beta` jar）
 - 支持平台：Minecraft 1.21.1 / NeoForge、1.20.1 / Forge（发布线）；Minecraft 26.1.2 / NeoForge（迁移线，不单独发 Release，jar 随发布线 Release 附带）
 - 前置：Curios API（1.20.1 另需 Mixin 运行时：Mixin Booster ≥0.1.3 **或** Sinytra Connector，二选一）。**StarEngine Lib 已内嵌于本模组，无需单独安装**
-- 构建产物：`neoforge-1.21.1/build/libs/astral_dice-<版本>+neoforge_1.21.1.jar`、`forge-1.20.1/build/libs/astral_dice-<版本>+forge_1.20.1.jar`、`neoforge-26.1.2/build/libs/astral_dice-<版本>+neoforge_26.1.2.jar`；GitHub Release 的 tag 使用无后缀的基础版本号（如 `1.3.2`）
+- 构建产物：`neoforge-1.21.1/build/libs/astral_dice-<版本>+neoforge_1.21.1.jar`、`forge-1.20.1/build/libs/astral_dice-<版本>+forge_1.20.1.jar`、`neoforge-26.1.2/build/libs/astral_dice-<版本>+neoforge_26.1.2.jar`；GitHub Release 的 tag 使用无后缀的基础版本号（如 `1.3.3`）
 
 ## 构建
 
