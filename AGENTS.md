@@ -201,6 +201,23 @@ When extending this workspace:
 >    ⚠️ 同类红线：**不得用 `@ModifyConstant` 去改原版常量**（它与其它模组的同点注入**互斥**，
 >    会让对方 `InjectionError` 崩游戏）—— 一律改用 MixinExtras 的 `@WrapOperation` 包裹**调用指令**
 >    （不同字节码位置 ⇒ 可共存），与本项目 `LivingHurtBridgeMixin` 的既有选择一致。
+> ⑩ **Fabric 附件（`AttachmentRegistry`）的键注册必须早于任何玩家数据反序列化**（2026-09-29 实测，见 **KI-F17**）：
+>    Java 静态初始化是**惰性**的 —— `ModAttachments` 若在 mod 初始化路径上**无人触碰**，它的静态块会被推迟到
+>    「第一次读写附件」（＝玩家登录处理器），而那时玩家 NBT **已经反序列化完** ⇒ Fabric 按 id 查不到就打
+>    `Unknown attachment type … skipping` 并**静默丢弃全部键**（实测一次登录丢 **33** 个，含 `guide_book_given`
+>    ⇒ 发放守卫永远读 `false` ⇒ **每次登录补发一本手册**；其余为治疗点数 / 立牌锁定冷却 / 白泽赐福 / 教主降神 /
+>    怪力侦探层数等**可感知的战斗状态**）。
+>    ⇒ 本线在 `AstralDiceMod#onInitialize()` 里显式调用 `ModAttachments#ensureRegistered()`（**空实现，只为触发静态块**，
+>    并打 `AP_FAB_ATTACHMENTS: 附件键已注册 N 个`）—— **该调用不得删除**：删掉不报编译错、测试世界也看不出来，
+>    只会让线上玩家每次重开游戏丢一次状态。
+>    ⇒ 凡改动**附件键集合或任何持久化 schema**，收尾**必须** grep 日志确认 `Unknown attachment type` 命中为 **0**。
+> ⑪ **Accessories 的槽位图标必须落在原版 blocks 图集目录**（2026-09-29 实测，见 **KI-F18**）：
+>    Trinkets 按 `icon` **路径直连** `textures/<icon>.png`；**Accessories 走原版 `minecraft:blocks` 图集**
+>    （`assets/minecraft/atlases/blocks.json` 声明 `{type:directory, source:gui/slot, prefix:gui/slot/}`）
+>    ⇒ 图标**必须**放在 `assets/<ns>/textures/gui/slot/*.png`，且 `icon` 要写**图集 sprite 名** `astral_dice:gui/slot/…`
+>    （同一个字符串对两条通道同时成立）。放错目录 = **文件明明存在却显示紫黑格**，且**不报错、日志无痕迹**。
+>    ⇒ 收尾两道门：`tools/verify_fabric_assets.py` 第 8 项 + 客户端 `AccessoriesClientIconCheck`
+>    —— ⚠️ **必须同时查「文件是否存在」与「是否被图集收录」**，只查前者查不出本缺陷（它正是「文件在、位置错」）。
 ### 前置库 starengine_lib 的版本与兼容性契约（全局，2026-09-22 用户裁决）
 
 > 本契约**跨两个仓库生效**（库仓 `F:\MCProject\starengine_lib` ↔ 本仓三条线），是库的**公开兼容性承诺**。

@@ -956,6 +956,74 @@ fabric.mod.json: version=1.3.2-alpha.1+fabric_1.20.1 / depends.starengine_lib=">
 - **教训（通用）**：**「给了开关」≠「开关可用」** —— 凡在注释/文档里承诺「用某参数可以跑某态」，
   就必须至少实跑一次该参数；否则它只是一个会把人引向错误结论的假入口（本轮四态矩阵正是靠实跑才暴露它）。
 
+### KI-F17 ＝ 玩家持久化附件**每次登录被静默丢弃**：附件键**注册晚于**玩家数据反序列化（症状＝「帕秋莉手册每次登录都补发一本」）（**已修**）
+
+- **现象**（用户 2026-09-29 第二次反馈，原话「重复发放帕秋莉手册的问题再次出现」）：整合包玩家**每次重开游戏**，
+  背包里都会多出一本《恋的规则书》。⚠️ 该缺陷**此前修过一次**（2026-09-15，死亡路径的赠书守卫），
+  所以第一次看到「又出现了」很容易被误判为「上次没修干净」——**实际是两条完全不同的根因**。
+- **根因**：`ModAttachments` 的**静态初始化是惰性的**。Java 的 `<clinit>` 只在**第一次真正使用该类**时才跑，
+  而 mod 初始化路径上原本**没有任何代码触碰 `ModAttachments`** ⇒ 它的静态初始化被推迟到
+  「**第一次有代码读写附件**」的那一刻 —— 也就是**玩家登录处理器** `PlayerLifecycleHandler#giveGuideBookOnFirstJoin`，
+  而那时玩家的 NBT **已经反序列化完了**。
+  Fabric 的附件反序列化**按 id 查注册表**：查不到就打一条
+  `Unknown attachment type astral_dice:xxx found when deserializing, skipping` 并**静默丢弃该键**（不报错、不崩）。
+- **影响面（实测）**：一次登录被丢弃 **33 个键**。除 `guide_book_given`（⇒ 发放守卫永远读到 `false`
+  ⇒ **每次登录补发一本**）之外，其余是**玩家可感知的战斗状态**：治疗点数、立牌锁定与冷却、
+  白泽赐福、教主降神、怪力侦探层数等。
+- **为什么此前测不出来**：① 缺陷是**静默的**（无异常、无崩溃、无 WARN 级以上的本模组栈帧）；
+  ② **测试世界的玩家数据少** —— 键丢得少、也更不容易被察觉；③ 玩家 NBT 里的标记**一直是 1**
+  （写是写进去了的），只是**读不出来**，所以「打开 NBT 看有没有」这种取证方式会得到「有」。
+- **修法**：`ModAttachments#ensureRegistered()`（**空实现，只为触发 `<clinit>`**）+ 打一条机器行
+  `AP_FAB_ATTACHMENTS: 附件键已注册 109 个(必须先于任何玩家数据反序列化)`；调用点放在
+  `AstralDiceMod#onInitialize()` 里、**紧随前置守卫之后**（`FabricBridges.installEarly()` 之前）。
+  ⚠️ **不要再删除这个调用**：删掉它**不会编译报错、也不会在测试世界暴露**，只会让线上玩家每次重开游戏
+  丢掉一次战斗状态。
+  另加**常驻诊断**（`PlayerLifecycleHandler`）：每次登录打
+  `AP_FAB_GUIDEBOOK: uuid=… call=… given=… patchouli=… enabled=… books=…`，
+  并在**写回后立刻回读**打出 `GIVEN uuid=… reread=… books=…` —— 这一条「写后回读」是把病因
+  从「发放时机」区分到「**存取通路**」的决定性读数（本次正是靠它把方向从「守卫写错」扭到「值读不出」）。
+- **实测证据（跨会话 A/B，2026-09-29 20:55 / 21:01，`-PdevUsername=AstralDev` 固定玩家名 ⇒ 两轮是同一玩家）**：
+  - session1（首登）：`given=false … books=0` → 发放 → `GIVEN … reread=true books=1`
+    （`reread=true` 证明 109 个键**注册成功且没有丢**）。
+  - session2（重登，同一 UUID）：`AP_FAB_ATTACHMENTS: 附件键已注册 109 个` 打在 **21:01:37**、
+    登录在 **21:01:41**（注册**早于**玩家数据反序列化）→ `given=true … books=1` ⇒ **不补发、仍只有 1 本**。
+  - `latest.log` 与 `debug.log` 全文扫描 `Unknown attachment type` 命中数 = **0**。
+- **教训（通用）**：Fabric 附件 API 的**键注册必须在 mod 初始化期完成**；凡改动附件键集合或
+  任何持久化 schema，收尾**必须 grep 日志确认没有 `Unknown attachment type`**（这是唯一能看见它的读数）。
+
+### KI-F18 ＝ Accessories 槽位图标「文件存在但不显示」：图标必须落在**原版 blocks 图集**的目录 `assets/<ns>/textures/gui/slot/`（**已修**）
+
+- **现象**（用户 2026-09-29 反馈，附截图）：**Accessories 饰品栏的槽位图标显示为紫黑格 / 空白**。
+  ⚠️ 提交证据时用户明确说「问题依旧」——即上一轮「把图标文件放到 `textures/slot/`」并没有解决。
+- **根因**：**两个饰品通道取图标的机制完全不同**：
+  | 通道 | 取图标方式 | 因此图标该放哪 | `icon` 字段该写什么 |
+  |---|---|---|---|
+  | Trinkets | **路径直连**：拼 `textures/<icon>.png` | `assets/<ns>/textures/<任意路径>.png` | **文件路径**（如 `astral_dice:slot/x`） |
+  | Accessories | 走**原版 `minecraft:blocks` 图集** | **必须** `assets/<ns>/textures/gui/slot/*.png` | **图集内 sprite 名**（如 `astral_dice:gui/slot/x`） |
+  Accessories 的图集成员资格来自原版 `assets/minecraft/atlases/blocks.json` 的声明
+  `{"type": "directory", "source": "gui/slot", "prefix": "gui/slot/"}` ⇒ **只有该目录下的贴图会被收录**。
+  原先图标放在 `textures/slot/`（Trinkets 口径）⇒ **文件明明存在，但 Accessories 在图集里找不到对应 sprite**
+  ⇒ 紫黑格。**这就是「改一轮还没好」的原因：缺陷不是「文件缺失」，而是「路径不在图集目录里」。**
+- **修法（同时满足两条通道）**：把图标移入图集目录，`icon` **统一改写为图集 sprite 名**——
+  对 Accessories 是 sprite 名 `gui/slot/…`，对 Trinkets 它同时就是文件路径 `textures/gui/slot/….png`
+  ⇒ **同一份文件、同一个 `icon` 字符串，两条通道都成立**：
+  - `assets/astral_dice/textures/slot/*.png` → `assets/astral_dice/textures/gui/slot/*.png`（3 个）；
+  - `icon` 由 `astral_dice:slot/empty_*_slot` 改为 `astral_dice:gui/slot/empty_*_slot`，共 7 处：
+    `data/astral_dice/accessories/slot/{chip,dice,stand}.json`、
+    `data/astral_dice/accessories/group/astral_dice.json`、
+    `data/trinkets/slots/astral_dice/{chip,dice,stand}.json`。
+- **双层守门（本轮新增）**：
+  1. **静态**：`tools/verify_fabric_assets.py` 新增第 8 项「槽位图标必须位于图集目录」，已做**正/反向**各验一次
+     （反向 = 故意把图标放回 `textures/slot/` 时该项必须 FAIL）。
+  2. **客户端自检**：新增 `compat/accessories/AccessoriesClientIconCheck`（仅当 Accessories 在场）
+     —— 进世界后跑一次，**同时检查「文件存在」与「是否被图集收录」**，打
+     `AP_FAB_SLOT_ICON: 槽位图标自检 槽位=15 文件缺失=0 图集未收录=0` + 逐槽位明细。
+     ⚠️ **只查「文件存在」是不够的** —— 本缺陷恰恰是「文件在、路径错」，必须查图集成员资格。
+- **实测证据**（2026-09-29 21:01:42，客户端日志）：自检读数 `槽位=15 文件缺失=0 图集未收录=0`；
+  明细里本模组 3 个槽位为 `icon=astral_dice:gui/slot/empty_{chip,dice,stand}_slot  file=yes inBlocksAtlas=yes`，
+  其余 12 个为 Accessories 自带槽位（同样 `inBlocksAtlas=yes`）。
+  ⚠️ 该自检跑在 dev（named）下，但**图集是资源层产物、与映射无关**（同一份 jar 的资源），故对生产同样成立。
+
 ## 10. 变更记录
 
 | 日期 | 变更 |
@@ -985,3 +1053,4 @@ fabric.mod.json: version=1.3.2-alpha.1+fabric_1.20.1 / depends.starengine_lib=">
 | 2026-09-29 | **KI-F13 已修复并验证** —— 库 `starengine_lib_fabric/fabric-1.20.1` 的 `AstralRarities` 原按**字符串名**反射原版 `Rarity` 字段（`getDeclaredField("color")`/`("$VALUES")`），在 dev(named) 能跑、在整合包(intermediary) **100% 启动崩**。改为按**类型/修饰符**查找（映射无关），只改 fabric 子项目（另三线用 Mojang 官方映射，`color` 本就是 `color`，不受影响）。版本号按用户裁决**退回 1.0.5 基线 + `-alpha.x` 后缀** ⇒ 库 `1.0.5-alpha.1`、主模组 `1.3.2-alpha.1+fabric_1.20.1`。**新增生产映射冒烟工具 `scripts/test/fabric/ft_prod.ps1`**（本轮先以临时探针跑通，后落为正式工具）：在**真实整合包实例**（生产 intermediary 环境）启动一次并按「崩溃报告新增 / 入口点失败 / 到主菜单」三类判据裁决。实测：修复前 `CRASH_REPORT`（19:07，新增崩溃报告）→ 修复后 **`AP_FAB_PROD_READY: elapsed=23s`、crash-reports 无新增**；dev 侧回归同绿。产物实证：内嵌件 `starengine_lib-fabric-1.20.1-1.0.5-alpha.1.jar`；javap 反编译确认 `class_1814` + `lookupColorField`、`String color`/`String $VALUES` 已消失。⚠️ 仍未做：库提交未 push、CI 的库 ref 待同步（属跨仓发布策略）。 |
 | 2026-09-29 | **KI-F14 已修 + 生产冒烟能力再升级** —— 用户报「创建世界时崩，提示 architectury 报错」。定位：本模组 `TooltipRenderUtilColorMixin` 用 3 个 `@ModifyConstant` 改写 `TooltipRenderUtil#renderTooltipBackground` 的三个 ldc 常量，而 **Architectury API 改的正是同一批常量** ⇒ Mixin 的 `@ModifyConstant` 排他语义使 architectury 被 skip、其 `defaultRequire=1` 抛 `InjectionError` → 崩。⚠️ 目标类 `class_8002` 只在**首次渲染 tooltip** 时才加载 ⇒ 「能进主菜单、进世界/悬停 GUI 才崩」；且 dev 的 `run/client/mods` 无 architectury ⇒ **dev 永远绿**（再次「生产独有」）。修法 = 改用 **`@WrapOperation`**（包裹 INVOKESTATIC，与改 LDC 的 `@ModifyConstant` 是不同字节码位置 ⇒ 可共存），四个 wrapper 覆盖全部 6 个调用点。**产物取证三级**：注解已被 Loom 直重映射（jar 内无 refmap ⇒ 那条警告无害）、`-Dmixin.debug.export` 导出的类里 4 个 wrapper 全在**且 architectury 注入同时在**、生产冒烟 PASS（并已强制 preload 该类）。顺带修 **`astral_guide` 配方**（整合包无 Patchouli ⇒ `Unknown item` 报错）：加 `fabric:load_conditions`。**新增能力**：类预加载钩子 `-Dastral_dice.preloadClasses`（把「类加载期才暴露的 mixin 缺陷」提前到启动期，fail-loud）+ `ft_prod.ps1` 的 `-PreloadClasses`/`-ExtraJvmArg` 与 `MIXIN_FAIL` 判据 + Loom 侧 `-PpreloadClasses`。 |
 | 2026-09-29 | **饰品栏前置改为「二选一」+ 修 dev 开关（新增 KI-F15 / KI-F16）** —— 用户报「调整前置要求：装了 accessories 就不再强制 Trinkets，反之亦然，只有两个都不存在才报错」。**KI-F15**：`fabric.mod.json` 原把 `trinkets` 写在 `depends` ⇒ 只装 Accessories 的整合包被加载器直接拒绝（`HARD_DEP_NO_CANDIDATE … {depends trinkets @ [>=3.7.2]}`），与本线把 Accessories 定为「主通道」的既有设计**自相矛盾**。Fabric 的 `depends` 是 **AND 语义、表达不了 OR** ⇒ `trinkets` / `accessories` 双双移入 `recommends`，权威判定改为运行时 `ModCompatibilityCheck#verifyAccessoryProviderOrThrow()`（在 `onInitialize()` 的**第一条**语句执行，两个都不在才抛 `ModLoadingException` 并给出完整中文说明；每次启动打 `AP_FAB_ACCESSORY_PROVIDER: OK|FAIL (trinkets=… accessories=…)` 供冒烟断言）。同时补齐三处硬引用守卫（`CuriosApi` 的 Trinkets 源 + `TrinketBridge.registerAll()` 的**调用点** + 方法体内第二道防线）—— ⚠️ `TrinketBridge` 硬引用 `dev.emi.trinkets.api.*`，缺席时**整个类都加载不了**，守卫必须放在**调用点**。**KI-F16**：dev 开关 `-PtestAccessories=false` **从来不能通过编译**（`StarCoinWalletButtons:311 错误: 方法不会覆盖或实现超类型的方法`）—— 根因是 Loom 的**依赖方接口注入**随「依赖是否进入**运行期**」而开关（Accessories 的 `custom.loom:injected_interfaces` 把 `AbstractButtonExtension` 注入 `AbstractButton`；移出运行期后注入消失 ⇒ 那个为「必须补上注入来的抽象方法」而写的 `@Override` 失效），而 `compileClasspath` 里 accessories **仍在** ⇒ 失效的是**注入**而不是类路径；修法 = 去掉该 `@Override`（保留方法体与 javadoc）⇒ **两种注入态都成立**。⚠️ 该开关的注释一直声称可用 ⇒ **「给了开关」≠「开关可用」**（凡承诺「用某参数可跑某态」就必须实跑一次）。实测：dev 四态（仅 Accessories / 仅 Trinkets / 两者同装 / 两者皆无）各起一次客户端 —— 前三种均 `Sound engine started` 且 `AP_FAB_ACCESSORY_PROVIDER` 读数与预期逐条一致（仅 Accessories 时**无** `NoClassDefFoundError`、Accessories 适配器注册而 Trinkets 适配器不注册；两者同装时两个适配器都注册），第四种按设计**拒绝启动**并给出中文说明。 |
+| 2026-09-29 | **修「饰品栏贴图错误」+「手册重复发放」（新增 KI-F17 / KI-F18，两条都是**玩家可见**缺陷）** —— 用户报「饰品栏贴图错误（附截图）+ 重复发放帕秋莉手册再次出现」，并在上一轮修复后回复「问题依旧」⇒ 两条都**重新定位根因**（不是上次没修干净）。**KI-F17**＝**Fabric 附件键注册晚于玩家数据反序列化** ⇒ 一次登录**静默丢弃 33 个键**（含 `guide_book_given` ⇒ 守卫永远读 `false` ⇒ 每次登录补发一本；其余为治疗点数 / 立牌锁定冷却 / 白泽赐福 / 教主降神 / 怪力侦探层数等可感知战斗状态）。根因是 `ModAttachments` 的**静态初始化惰性**：mod 初始化路径上没代码触碰它，`<clinit>` 被推迟到玩家登录处理器 ⇒ 那时 NBT 已反序列化完 ⇒ Fabric 打 `Unknown attachment type … skipping` **静默丢键**（⚠️ 缺陷静默、测试世界数据少、NBT 里标记一直是 1 只是**读不出** ⇒ 三种取证方式都会漏掉）。修法 = `ModAttachments#ensureRegistered()`（空实现，只为触发 `<clinit>`，打 `AP_FAB_ATTACHMENTS: 附件键已注册 109 个`）+ 在 `onInitialize()` 紧随前置守卫后调用；另加常驻诊断 `AP_FAB_GUIDEBOOK`（含**写后立刻回读** `reread=`，正是靠它把方向从「发放时机」扭到「存取通路」）。**A/B 跨会话实测**（`-PdevUsername=AstralDev` 固定玩家名、两轮同一玩家）：session1 `given=false books=0`→`GIVEN reread=true books=1`；session2（21:01:37 注册 → 21:01:41 登录）`given=true books=1` ⇒ **不补发**；`latest.log`/`debug.log` 中 `Unknown attachment type` 命中 **0**。**KI-F18**＝**Accessories 槽位图标走原版 `minecraft:blocks` 图集**（`assets/minecraft/atlases/blocks.json` 声明 `{type:directory, source:gui/slot}`），而 Trinkets 是 `icon` 路径直连 ⇒ 图标必须在 `assets/<ns>/textures/gui/slot/`、`icon` 写**图集 sprite 名** `astral_dice:gui/slot/…`（同时满足两条通道）；原先放 `textures/slot/` ⇒ **文件在、图集里没有** ⇒ 紫黑格（这就是「改一轮还没好」的原因：不是文件缺失而是路径不在图集目录）。改 3 个文件移动 + 7 处 `icon` 改写；新增守门 `tools/verify_fabric_assets.py` 第 8 项（已做正/反向验证）+ 客户端自检 `AccessoriesClientIconCheck`（**同时查文件存在与图集成员资格**，⚠️ 只查文件存在不够）⇒ 实测 `AP_FAB_SLOT_ICON: 槽位=15 文件缺失=0 图集未收录=0`，本模组 3 槽位逐条 `file=yes inBlocksAtlas=yes`。同轮新增测试能力 **`-PdevUsername` 固定玩家名**（Loom 默认给**随机**用户名 ⇒ 离线 UUID 每次都变 ⇒ **跨会话缺陷在 dev 里根本不可能复现**，这才是「重复发放」这类缺陷长期隐藏的结构性原因）。详见 `scripts/test/fabric/README.md` §7.2.4。 |

@@ -42,6 +42,33 @@
   ⚠️ Because that recipe only loads **when Patchouli is installed**, the **guidebook cannot be obtained without
   Patchouli** (expected behaviour, not a defect) — install Patchouli if you want it.
 
+- **Fixed the accessory slot icons not showing up (Accessories)**: with Accessories installed, the accessory slot icons
+  rendered as **purple-black squares / blank**. The cause was where the icon files lived: **Accessories does not read slot
+  icons from a file path — it takes them from the vanilla block texture atlas**, so only images under
+  `assets/<mod>/textures/gui/slot/` are picked up, whereas Trinkets reads them by path directly. Our icons only satisfied
+  Trinkets' lookup, so the files **existed but Accessories could not find them** and nothing was drawn. The icons now live
+  where **both** channels can read them, and the icon names in the slot definitions were updated to match, so the icons show
+  correctly **with either Trinkets or Accessories**.
+  ⚠️ This defect throws no error and may leave nothing in the log — it only shows as a blank slot — so both a **static check
+  and an in-game self-check** were added; the self-check verifies **"does the file exist" and "is it included in the texture
+  atlas"** (the defect is precisely "file present, location wrong", which the first check alone cannot catch).
+
+- **Fixed the guidebook being given again on every login**: players received an extra copy of the guidebook **every time they
+  restarted the game**, and although it **had been fixed once before**, it **came back** — this time for a **different reason**.
+  The real cause has nothing to do with when the book is given: this mod's **persistent player data (attachments) was
+  registered too late** — after the game had already read the player's save. When the save was read, all of these entries
+  (including the "already received the guidebook" flag, healing points, stand lock/cooldown, the Guardian's Blessing, the Cult
+  Leader's descent and the Monster Detective's stacks — **33 entries in total**) were **silently discarded** because the entry
+  could not be found (the game treated them as never having existed). So the "already received" flag read as "never received"
+  every time ⇒ one extra book per login; the other 32 entries were **combat state lost once per restart**.
+  Registration now happens **at the very start of mod loading**, **before the player save is read**.
+  ⚠️ This defect **had been fixed once before** (2026-09-15, then on the death path), but the two causes are **completely
+  different** — "an old fixed bug reappeared" does not necessarily mean the previous fix was incomplete. This time a newly
+  added diagnostic (recording the value **immediately after writing it**) redirected the investigation from "the gating logic
+  is wrong" to "the value cannot be read back at all".
+  ⚠️ This class of defect **never crashes and never logs an error**, and a single-player test world holds too little player
+  data for it to surface.
+
 ### Prerequisite changes
 
 - **Accessory slots are now either-or: Trinkets alone, or Accessories alone, both work — only "neither" is refused**:
@@ -64,6 +91,21 @@
   **real modpack environment** (verdicts: crash report / entrypoint failure / reached main menu). Both
   "**never reflect on vanilla members by string name — match by type or modifiers**" and
   "**run the production smoke before shipping**" are written into the line's rule boundary in `AGENTS.md`.
+
+- **Added a "fixed player name" test switch (`-PdevUsername=<name>`)**: the client test build hands out a **random** player
+  name on every run, and in offline mode the player's identity is derived from that name ⇒ **every run is a brand-new player
+  whose data is unrelated to the previous run** — so any **cross-session** defect (duplicate grants, stale cooldowns, memory
+  flags that fail to read back) **cannot possibly be reproduced in development**. This is the **structural reason** the
+  guidebook defect above stayed hidden. With a fixed name, repeated runs become **the same player logging in again**, which is
+  what made these defects testable for the first time.
+
+- **Added three diagnostic readings to the log** (for player reports and automated assertions): the number of registered
+  attachment keys (which must precede the player-data read), the guidebook grant decision (including a **read-back
+  immediately after writing**, which distinguishes "wrong grant logic" from "value not readable"), and an accessory slot icon
+  self-check (checking **both file presence and texture-atlas membership**).
+
+- **The static asset gate gained an 8th item: slot icons must live in the texture-atlas directory** (validated in both the
+  normal and the reversed case — a check that passes for any input is no check at all).
 
 ## 1.3.2+fabric_1.20.1
 

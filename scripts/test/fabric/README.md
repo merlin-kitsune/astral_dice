@@ -431,6 +431,53 @@ Loom 的**依赖方接口注入**会随「依赖是否进入**运行期**」而�
 **教训：凡在注释/文档里承诺「用某参数可以跑某态」，就必须实跑一次该参数** ——
 否则它只是一个会把人引向错误结论的假入口。
 
+#### 7.2.4 跨会话 A/B：把「重开游戏才出现」的缺陷变成可复现（2026-09-29 新增，为排 KI-F17 / KI-F18）
+
+**为什么需要**：`ft_launch` 起的客户端，Loom 默认给一个**随机**玩家名（`Player353` / `Player705`…），
+而**离线模式下玩家身份（UUID）由名字派生** ⇒ **每次运行都是一个全新玩家、玩家数据互不相通**。
+于是「跨会话」缺陷（重复发放、冷却残留、持久化标记读不出来）在 dev 里**从原理上就复现不了** ——
+**这就是 KI-F17（手册每次登录补发一本）能潜伏到整合包才被发现的结构性原因**。
+
+**做法**：`build.gradle` 新增 `-PdevUsername=<名字>`（转发为 `--username`），两轮用**同一个名字** ⇒ 同一玩家反复登录。
+
+```powershell
+# 第一轮：首登（应发一本手册）
+pwsh -NoProfile -File scripts/test/fabric/ft_launch.ps1 --side client --timeout 400 `
+  --gradle-arg -PtestSodium=false --gradle-arg -PtestTrinkets=false --gradle-arg -PdevUsername=AstralDev
+# 收停后再起第二轮：重登（必须**不补发**）
+pwsh -NoProfile -File scripts/test/fabric/ft_launch.ps1 --side client --timeout 400 `
+  --gradle-arg -PtestSodium=false --gradle-arg -PtestTrinkets=false --gradle-arg -PdevUsername=AstralDev
+```
+
+⚠️ 单机下还存在 `level.dat` 的 `Player` 标签这条通路（`PlayerList#load` 对单人房主**优先读它**）
+⇒「固定玩家名」只保证**身份稳定**，不等于数据一定从 `playerdata/<uuid>.dat` 读。
+
+**本轮读数（KI-F17 / KI-F18 双验，2026-09-29 20:55 / 21:01）**：
+
+| 轮次 | 机器行 | 判据 |
+|---|---|---|
+| session1 首登 | `AP_FAB_ATTACHMENTS: 附件键已注册 109 个`（20:55:38，**早于**登录 20:55:42） | 注册必须**早于**玩家数据反序列化 |
+| session1 首登 | `AP_FAB_GUIDEBOOK: … given=false … books=0` → `GIVEN … reread=true books=1` | `reread=true` ⇒ 109 键**注册成功且没丢键** |
+| session2 重登 | `AP_FAB_ATTACHMENTS: … 109 个`（21:01:37）→ 登录（21:01:41）→ `given=true … books=1` | **不补发**、仍只有 1 本 |
+| session2 重登 | `AP_FAB_SLOT_ICON: 槽位图标自检 槽位=15 文件缺失=0 图集未收录=0` + 逐槽位明细 | 贴图修复生效（本模组 3 槽位 `file=yes inBlocksAtlas=yes`） |
+| 两轮全文 | `Unknown attachment type` 命中 = **0**（`latest.log` + `debug.log`） | 丢键缺陷彻底消除 |
+
+**三条新增诊断机器行**（常驻，不带任何开关）：
+
+| 机器行 | 含义 |
+|---|---|
+| `AP_FAB_ATTACHMENTS: 附件键已注册 N 个(必须先于任何玩家数据反序列化)` | 附件键注册数；**出现得比登录行早**才算对 |
+| `AP_FAB_GUIDEBOOK: uuid=… call=… given=… patchouli=… enabled=… books=…`<br>`GIVEN uuid=… reread=… books=…` | 发放判定 + **写后回读**；`books=` 是背包里手册的**实际数量** |
+| `AP_FAB_SLOT_ICON: 槽位图标自检 槽位=N 文件缺失=N 图集未收录=N`<br>`AP_FAB_SLOT_ICON_DETAIL:`（逐槽位明细） | 图标**双层**检查（文件存在 **且** 被图集收录） |
+
+⚠️ **「写后立刻回读」是本轮的关键手法**：`setGuideBookGiven(player, true)` 之后马上 `isGuideBookGiven(player)` ——
+若这里读到 `false`，说明是「值取不出来」（**存取通路**问题）而**不是**「发放时机不对」。
+KI-F17 正是靠这一条读数把方向扭过来的（否则很容易继续在「发放守卫写在哪」上打转）。
+
+⚠️ **读日志的 gitignore 陷阱**：`run/` 被 `.gitignore` 排除 ⇒ `Grep` 之类**遵守 gitignore 的搜索工具
+会静默跳过它**（返回 “No matches” 是**假阴性**，不是「真的没有」）。查 `run/client/logs/**` 必须用不遵守
+gitignore 的方式或显式指定文件路径，否则「`Unknown attachment type` 命中 0」这种结论根本不可信。
+
 ### 7.3 已修复的测试台缺陷（7 个；每个都附实测证据）
 
 前两个是**阻断级**：只要有它们，`ft_launch` **每一次启动都必然失败**，连带 env/launch 之后的一切
