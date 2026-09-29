@@ -187,21 +187,196 @@ tasks.withType(JavaCompile).configureEach {
     options.compilerArgs += ['-Xmaxerrs', '4000']
 }
 
-// === 产物分发(build 后推 run/ 与仓库根 build/libs;口径对齐另三线) ===
-tasks.register('pushToDevRun', Copy) {
-    dependsOn tasks.named('remapJar')
-    from tasks.named('remapJar').flatMap { it.archiveFile }
-    into rootProject.file('run/fabric-1.20.1/mods')
+// === 产物分发(build 后自动触发;口径对齐另三线) ===
+//
+// 三个落点:
+//   ① pushToDevRun    → 仓库根 run/fabric-1.20.1/mods                       (开发测试环境)
+//   ② pushToRootBuild → 仓库根 build/libs                                   (全部版本产物的统一交付目录)
+//   ③ pushToGame      → D:/.minecraft/versions/1.20.1-Fabric 模组测试/mods   (用户测试整合包)
+//
+// ⚠️ 整合包推送的 git 分支守卫(对齐另三线,2026-09-12 起的**白名单**口径):
+//   · 分支在 packPushBranches(白名单)内                        → 允许 pushToGame
+//   · 分支不在白名单 / 无法确定分支(detached HEAD、无 .git,如 CI) → 跳过,只打日志,不算失败
+//   · 传 -PdeployToPack 或 -PpackPush                          → 强制推送,覆盖上述判定(手动出包通道)
+//   理由同另三线:整合包是**需要"成对匹配"的测试环境** —— 前置库 jar 与 mod jar 必须版本互相匹配,
+//   把不匹配的组合灌进测试包会表现为启动期 NoClassDefFoundError / "缺必需前置"。
+//   本线是**独立的第四条线**(分支 `1.20.1-fabric`),其整合包目录 `1.20.1-Fabric 模组测试`
+//   亦为本线专属(与 forge 线的 `1.20.1-Forge 模组测试`、neoforge 线各自的目录互不相干)
+//   ⇒ 白名单只登记本线分支即可,不存在跨分支误写。
+//
+// 分支判定放在**执行期**(见 pushToGame 的 doLast),不做配置期求值:
+//   ① 每次构建都读当时的 .git/HEAD,切分支后立即生效,不存在配置缓存陈旧问题;
+//   ② 不把 Provider/闭包塞进 configuration-cache,避免缓存序列化限制与行为漂移。
+// dotGitEntry 是配置期算好的 File(可序列化),执行期读它即可 —— 普通仓库这里是 .git **目录**;
+// worktree 下它是**文件**,内容为 `gitdir: <path>`,真正的 HEAD 在 gitdir 下。
+def devRunModsDir = rootProject.file('run/fabric-1.20.1/mods')
+def rootBuildLibsDir = rootProject.file('build/libs')
+def packModsDir = file('D:/.minecraft/versions/1.20.1-Fabric 模组测试/mods')
+
+// 【白名单】只有列在这里的分支允许把 jar 推进整合包;其余分支(含 WorkBuddy/DSH 自动建的
+// `wt/*` worktree 分支)一律跳过 —— 白名单优于黑名单:新分支默认落在"不推送"一侧,
+// 不会因为忘了登记而误推、误删整合包里的正式 jar。需要推送时把分支加进本表,或单次
+// 用 -PdeployToPack 强制。
+def packPushBranches = ['1.20.1-fabric']
+def forcePackPush = project.hasProperty('deployToPack') || project.hasProperty('packPush')
+def libVersionLocked = project.findProperty('starengine_lib_version')?.toString()
+def dotGitEntry = rootProject.file('.git')
+
+// 本线(fabric 1.20.1)的旧产物识别规则:**只清理带 `+fabric_1.20.1` 后缀的 jar**。
+// ⚠️ 根 build/libs 是**全版本共用**目录(另三线的 jar 也在其中),宽泛匹配会把它们一并删掉
+// ⇒ 必须按本子项目的**完整版本后缀**过滤(与 AGENTS「后缀必须写全」同口径)。
+def staleJarMatcher = { File f ->
+    f.isFile() && (f.name ==~ /astral_dice-.+\+fabric_1\.20\.1\.jar/)
 }
 
-tasks.register('pushToRootBuild', Copy) {
+// 共用动作:先删除目标目录里的旧产物、再复制新 jar(AGENTS 规则 2/7 的"先删后拷")。
+// 禁止直接覆盖式复制 —— 旧版本号 jar 与新产品并存时游戏会同时加载两个本模组副本,
+// 表现为行为异常甚至 NoSuchFieldError。
+// 刻意**不引用** logger/project:只接收 File 参数、返回一行结果描述,便于在
+// configuration-cache 下被任务 action 安全捕获。
+def deployJar = { File srcJar, File destDir ->
+    if (!destDir.exists()) {
+        destDir.mkdirs()
+    }
+    def stale = destDir.listFiles().findAll(staleJarMatcher)
+    stale.each { it.delete() }
+    def target = new File(destDir, srcJar.name)
+    target.withOutputStream { out ->
+        srcJar.withInputStream { inp -> inp.transferTo(out) }
+    }
+    "pushed ${srcJar.name} -> ${destDir}"
+}
+
+// 执行期读取当前分支(普通仓库 .git 是目录;worktree 的 .git 是文件,内容记录 gitdir)。
+def readGitBranch = { File dotGit ->
+    File headFile = null
+    if (dotGit.isDirectory()) {
+        def hf = new File(dotGit, 'HEAD')
+        headFile = hf.isFile() ? hf : null
+    } else if (dotGit.isFile()) {
+        def m = dotGit.text.trim() =~ /^gitdir:\s*(.+)$/
+        if (m.find()) {
+            def gd = new File(m.group(1).trim())
+            if (!gd.isAbsolute()) {
+                gd = new File(dotGit.parentFile, m.group(1).trim())
+            }
+            def hf = new File(gd, 'HEAD')
+            headFile = hf.isFile() ? hf : null
+        }
+    }
+    if (headFile == null) {
+        return ''
+    }
+    def s = headFile.text.trim()
+    s.startsWith('ref: refs/heads/') ? s.substring('ref: refs/heads/'.length()) : ''
+}
+
+// 生产/交付统一取 remapJar 产物(Loom officialMojangMappings → intermediary,生产环境形态)。
+def remappedJarProvider = tasks.named('remapJar').flatMap { it.archiveFile }
+
+// ① 开发测试环境:仓库根 run/fabric-1.20.1/mods
+tasks.register('pushToDevRun') {
+    group = 'build'
+    description = 'Copy the built mod jar to the dev run mods folder (root run/fabric-1.20.1/mods) and remove old fabric 1.20.1 versions.'
     dependsOn tasks.named('remapJar')
-    from tasks.named('remapJar').flatMap { it.archiveFile }
-    into rootProject.file('build/libs')
+    doLast {
+        def jarFile = remappedJarProvider.get().asFile
+        if (!jarFile.exists()) {
+            logger.warn("pushToDevRun: built jar not found, skipped: ${jarFile}")
+            return
+        }
+        logger.lifecycle("pushToDevRun: " + deployJar(jarFile, devRunModsDir))
+    }
+}
+
+// ② 仓库根 build/libs:全部版本产物的统一交付目录
+tasks.register('pushToRootBuild') {
+    group = 'build'
+    description = 'Copy the built production jar to the repository root build/libs (shared by all versions).'
+    dependsOn tasks.named('remapJar')
+    doLast {
+        def jarFile = remappedJarProvider.get().asFile
+        if (!jarFile.exists()) {
+            logger.warn("pushToRootBuild: built jar not found, skipped: ${jarFile}")
+            return
+        }
+        logger.lifecycle("pushToRootBuild: " + deployJar(jarFile, rootBuildLibsDir))
+    }
+}
+
+// ③ 用户测试整合包:D:/.minecraft/versions/1.20.1-Fabric 模组测试/mods
+tasks.register('pushToGame') {
+    group = 'build'
+    description = 'Copy the built mod jar to the bound game pack mods folder and remove old fabric 1.20.1 versions. Only the release branch (see packPushBranches) pushes; force with -PdeployToPack.'
+    dependsOn tasks.named('remapJar')
+    doLast {
+        // --- 约定:只有白名单分支推送整合包(见文件顶部「产物分发」说明) ---
+        if (!forcePackPush) {
+            def branch = readGitBranch(dotGitEntry)
+            if (branch.isEmpty()) {
+                logger.lifecycle('pushToGame: skipped — 无法确定当前 git 分支(detached HEAD 或无 .git);如需强制推送请加 -PdeployToPack')
+                return
+            }
+            if (!packPushBranches.contains(branch)) {
+                logger.lifecycle("pushToGame: skipped — 分支 '${branch}' 不在整合包推送白名单 ${packPushBranches} 内;如需强制推送请加 -PdeployToPack")
+                return
+            }
+        }
+        def jarFile = remappedJarProvider.get().asFile
+        if (!jarFile.exists()) {
+            logger.warn("pushToGame: built jar not found, skipped: ${jarFile}")
+            return
+        }
+        if (!packModsDir.exists()) {
+            // 仅当整合包根目录存在时才创建 mods 子目录;根目录不存在(如 CI 环境)直接跳过,
+            // 避免在无该盘符的机器上凭空造出半截目录。
+            def packRoot = packModsDir.getParentFile()
+            if (packRoot == null || !packRoot.exists()) {
+                logger.warn("pushToGame: pack dir not found, skipped: ${packModsDir}")
+                return
+            }
+            packModsDir.mkdirs()
+        }
+        logger.lifecycle("pushToGame: " + deployJar(jarFile, packModsDir))
+
+        // --- 内嵌前置自检:库已随本 mod 内嵌(Loom 的 include ⇒ META-INF/jars/*.jar),
+        //     整合包里**不应**再单独放库 jar ---
+        // Fabric Loader 的 Jar-in-Jar 按 modId 识别同源件:顶层 mod 列表里若已有同名 mod,
+        // 内嵌副本会被丢弃(只打一条 WARN)⇒ 独立 jar 版本更旧时会**盖掉**内嵌版本,
+        // 表现为 NoSuchMethodError / NoClassDefFoundError。此处只告警,不阻断构建。
+        def zf = new java.util.zip.ZipFile(jarFile)
+        try {
+            def entries = zf.entries().toList()
+            def nested = entries.findAll {
+                it.name.startsWith('META-INF/jars/') && it.name.endsWith('.jar')
+            }*.name
+            if (nested.isEmpty()) {
+                logger.warn("pushToGame: 产物 ${jarFile.name} 内未发现 META-INF/jars/(Loom 的 include 配置未生效?)")
+            } else {
+                logger.lifecycle("pushToGame: 内嵌前置自检 OK — ${nested.join(', ')}")
+            }
+        } finally {
+            zf.close()
+        }
+        if (libVersionLocked) {
+            def libJars = packModsDir.listFiles()?.findAll { File f ->
+                f.isFile() && f.name.startsWith('starengine_lib-') && f.name.endsWith('.jar')
+            } ?: []
+            if (libJars) {
+                logger.warn("pushToGame: 整合包内仍存在独立的 starengine_lib jar ${libJars*.name} —— " +
+                        "库现已内嵌进本 mod,独立 jar 会被优先采用并盖掉内嵌版本(${libVersionLocked});建议删除")
+            } else {
+                logger.lifecycle("pushToGame: 整合包内无独立库 jar(符合内嵌口径)")
+            }
+        }
+    }
 }
 
 tasks.named('build') {
-    finalizedBy 'pushToRootBuild'
+    // 统一推送标准:三个分发任务均在 build 后默认触发(整合包推送受分支白名单限制)
+    finalizedBy tasks.named('pushToDevRun')
+    finalizedBy tasks.named('pushToRootBuild')
+    finalizedBy tasks.named('pushToGame')
 }
 
 idea {
