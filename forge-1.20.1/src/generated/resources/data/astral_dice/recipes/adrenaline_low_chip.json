@@ -6,13 +6,13 @@
       "item": "astral_dice:blank_chip"
     },
     "D": {
-      "item": "minecraft:wither_rose"
+      "item": "minecraft:soul_sand"
     },
     "P": {
       "item": "astral_dice:star_plate"
     },
     "X": {
-      "item": "minecraft:nether_star"
+      "item": "minecraft:ender_pearl"
     },
     "Z": {
       "type": "forge:partial_nbt",

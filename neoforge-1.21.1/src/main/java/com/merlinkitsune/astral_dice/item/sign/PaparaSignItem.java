@@ -73,6 +73,9 @@ public class PaparaSignItem extends BaseSignItem {
         if (!(event.getEntity() instanceof Player player)) return;
         if (player.level().isClientSide()) return;
         if (!player.hasEffect(ModEffects.PAPARA_BITE)) return;
+        // 2026-09-29 用户裁决:只有**敌对目标**的攻击才回血(环境伤害与自伤不算)
+        if (!com.merlinkitsune.astral_dice.combat.DiceCombatEvents
+                .isHostileAttack(player, event.getSource())) return;
         int heal = Math.max(1, (int) event.getNewDamage() / 2);
         player.heal(heal);
     }

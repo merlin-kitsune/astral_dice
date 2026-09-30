@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Optional;
 
 import com.merlinkitsune.starenginelib.item.BossEntityUtil;
+import com.merlinkitsune.astral_dice.combat.PartyRelations;
 /**
  * "调查阶段"事件核心逻辑。
  * 阶段:调查阶段 I / II / III / 真相揭露。仅由击杀"隐匿调查"目标触发(大侦探立牌的 11 项随机事件不包含该事件)。
@@ -71,7 +72,7 @@ public final class InvestigationEventUtil {
         // 真相揭露:队伍/友方内所有玩家,以及"参与 boss 战"的玩家(附近存在 boss 生物时,周围 32 格内的玩家)
         if (stage >= 4) {
             // 触发者已加入队伍时只影响同队玩家;未加入任何队伍时 collectTeamPlayers 返回全服在线玩家
-            for (Player ally : EventTargetCollector.collectTeamPlayers(self)) {
+            for (Player ally : PartyRelations.collectTeamPlayers(self)) {
                 if (!recipients.contains(ally)) {
                     recipients.add(ally);
                 }

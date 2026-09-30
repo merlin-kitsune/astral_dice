@@ -75,9 +75,11 @@ public final class ChargeManager {
         return capByCharge(player, baseTicks, GameplayConstants.CHARGE_SIGN_COOLDOWN_CAP_SECONDS);
     }
 
-    /** 效果牌公共冷却 tick:拥有充能时把**基础值**封顶为 20 秒(2026-09-25 改口径,同上) */
+    /** 效果牌公共冷却 tick:拥有充能时把**基础值**封顶为 30 秒(2026-09-30 用户裁决,20 → 30;
+     *  取值口径统一在 {@link EffectCardPeriod#CHARGE_COOLDOWN_CAP_SECONDS},不再走库常量) */
     public static long effectCardCooldownTicks(Player player, long baseTicks) {
-        return capByCharge(player, baseTicks, GameplayConstants.CHARGE_EFFECT_CARD_COOLDOWN_CAP_SECONDS);
+        return capByCharge(player, baseTicks,
+                com.merlinkitsune.astral_dice.item.card.EffectCardPeriod.CHARGE_COOLDOWN_CAP_SECONDS);
     }
 
     /** 有充能时按上限封顶;无充能、基础值 ≤1 tick 或本就更低时原样返回 */

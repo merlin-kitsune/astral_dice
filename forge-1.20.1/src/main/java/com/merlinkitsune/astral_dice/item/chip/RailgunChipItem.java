@@ -16,6 +16,7 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.List;
+import com.merlinkitsune.astral_dice.combat.PartyRelations;
 
 /**
  * 电磁炮筹码:
@@ -100,7 +101,7 @@ public class RailgunChipItem extends BaseChipItem {
         if (player == null || target == null) return null;
         if (player.level().isClientSide()) return null;
         if (!isEquipped(player)) return null;
-        if (!HostileTargets.isHostile(player, target)) return null;
+        if (!PartyRelations.isHostileTo(player, target)) return null;
         if (!(player.level() instanceof ServerLevel level)) return null;
         if (isOnCooldown(player)) return null;
         if (ChargeManager.getStacks(player) < CHARGE_REQUIRED) return null;
@@ -143,7 +144,7 @@ public class RailgunChipItem extends BaseChipItem {
         AABB aabb = new AABB(center, center).inflate(AOE_RADIUS);
         List<LivingEntity> victims = level.getEntitiesOfClass(LivingEntity.class, aabb,
                 // cause 可能为 null(无归属):此时两参重载退化为"仅生物敌对"的既有语义
-                e -> HostileTargets.isHostile(cause, e) && e.isAlive());
+                e -> PartyRelations.isHostileTo(cause, e) && e.isAlive());
         if (victims.isEmpty()) return false;
         if (cause != null) {
             // 充能在 1 秒延迟内可能已被其它筹码花掉:不足则整次触发作废(不进入冷却)

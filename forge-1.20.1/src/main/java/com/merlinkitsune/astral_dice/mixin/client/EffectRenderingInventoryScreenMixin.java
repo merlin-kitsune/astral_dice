@@ -40,7 +40,8 @@ import java.util.List;
  * {@code List.of(getEffectName(inst), formatDuration(inst, 1.0F))},既拿不到 {@code inst} 的可注入参数,
  * 也不想依赖 LVT(LocalCapture)这种一改上游就崩的脆弱定位。利用 Java「实参从左到右求值」的保证:
  * {@code formatDuration} 一定先于 {@code List.of} 执行 ⇒ 前者把 {@code inst} 记进 ThreadLocal,
- * 后者取出并改写列表。两处都用 {@code require = 2}(至少命中 1 次)⇒ 上游签名一旦变化会<b>启动即报错</b>,
+ * 后者取出并改写列表。两处都用 {@code require = 1}(本方法内这两条调用**各仅 1 处**)⇒ 上游签名一旦变化会<b>启动即报错</b>,
+ * ⚠️ 勿把 {@code require} 当成「允许失败的次数」—— Mixin 的语义是「**最少**匹配数」,写成 2 而方法内只有 1 处 ⇒ 打开物品栏即抛 InjectionError(2026-09-30 实测复现并修正)。
  * 而不是被 Mixin 静默摘掉(本仓既有教训)。
  *
  * <p>1.20.1 的 {@code I18n.exists} 与 1.21.1 同名同签名(已核实 {@code net.minecraft.client.resources.language.I18n}),
@@ -69,7 +70,7 @@ public abstract class EffectRenderingInventoryScreenMixin {
     }
 
     /** ① 先捕获:原版 tooltip 第二行 {@code MobEffectUtil.formatDuration(inst, 1.0F)} 拿到 inst。 */
-    @Redirect(method = "renderEffects", require = 2,
+    @Redirect(method = "renderEffects", require = 1,
             at = @At(value = "INVOKE",
                     target = "Lnet/minecraft/world/effect/MobEffectUtil;formatDuration(Lnet/minecraft/world/effect/MobEffectInstance;F)Lnet/minecraft/network/chat/Component;"))
     private Component astralDice$captureTooltipEffect(MobEffectInstance instance, float factor) {
@@ -78,7 +79,7 @@ public abstract class EffectRenderingInventoryScreenMixin {
     }
 
     /** ② 再改写:{@code List.of(...)} 是<b>不可变</b>列表,换成可变列表后追加描述行。 */
-    @Redirect(method = "renderEffects", require = 2,
+    @Redirect(method = "renderEffects", require = 1,
             at = @At(value = "INVOKE",
                     target = "Ljava/util/List;of(Ljava/lang/Object;Ljava/lang/Object;)Ljava/util/List;"))
     private List<Component> astralDice$appendEffectDescription(Object first, Object second) {

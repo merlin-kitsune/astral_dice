@@ -5,7 +5,7 @@
     "B": "astral_dice:blank_chip",
     "C": "astral_dice:star_coin",
     "L": "minecraft:leather",
-    "S": "minecraft:sponge"
+    "S": "minecraft:white_wool"
   },
   "pattern": [
     "SSS",

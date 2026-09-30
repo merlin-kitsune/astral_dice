@@ -5,6 +5,7 @@ import com.merlinkitsune.starenginelib.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.effect.ModEnchantments;
 import com.merlinkitsune.astral_dice.init.ModCompatibilityCheck;
+import com.merlinkitsune.astral_dice.init.MixinRuntimeGate;
 import com.merlinkitsune.astral_dice.init.ModCreativeTabs;
 import com.merlinkitsune.astral_dice.init.ModParticles;
 import com.merlinkitsune.astral_dice.item.ModItems;
@@ -103,6 +104,11 @@ public class AstralDiceMod {
         // 命中即抛 ModLoadingException ⇒ 游戏停在加载错误界面并显示提示原文(链路见 ModCompatibilityCheck 类头)。
         // 放在 enqueueWork **之前**:同步执行,不与其它 mod 的延迟任务交错,失败得越干净越好。
         ModCompatibilityCheck.verifyOrThrow();
+        // Mixin 运行时门控(Mixin Booster **或** Sinytra Connector 至少一个):mods.toml 里
+        // mixinbooster 已改为 optional —— Connector 在场时 Booster 会自我禁用、该 mod 条目不注册,
+        // 若仍写 mandatory 会让装了 Connector 的整合包(如 BMC4)直接硬拒启动。
+        // 详见 MixinRuntimeGate 类头(含 2026-09-29 实机定位的日志原文)。
+        MixinRuntimeGate.verifyOrThrow();
         event.enqueueWork(() -> {
             // 配置已加载:把配置值打成快照推给库的 GameplayConstants(库不读配置文件,见 config/ModCommonConfig)
             GameplayConstants.applyConfig(ModCommonConfig.snapshot());

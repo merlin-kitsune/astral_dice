@@ -9,13 +9,13 @@
       "item": "astral_dice:golden_star_plate"
     },
     "H": {
-      "item": "minecraft:dragon_head"
+      "item": "minecraft:dragon_breath"
     },
     "W": {
       "item": "astral_dice:conductive_wire"
     },
     "X": {
-      "item": "minecraft:echo_shard"
+      "item": "minecraft:netherite_ingot"
     }
   },
   "pattern": [

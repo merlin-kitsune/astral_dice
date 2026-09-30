@@ -1317,6 +1317,12 @@ public class ModTooltipHandler {
             addSignLines(tooltip, "tooltip.astral_dice.sign.moses_active");
             addSignPassiveTitle(tooltip, "精密技巧");
             addSignLines(tooltip, "tooltip.astral_dice.sign.moses_passive");
+            // 神秘遗物+ 联动描述:仅当安装神秘遗物+ 模组时展示(置于备注区,紫色,无标题)
+            if (net.neoforged.fml.ModList.get().isLoaded("enigmaticlegacyplus")) {
+                tooltip.add(Component.empty());
+                addSignNoteLines(tooltip, "tooltip.astral_dice.sign.moses_enigmatic");
+            }
+
             if (event.getEntity() instanceof Player p) {
                 addSignCounter(tooltip, "tooltip.astral_dice.sign.moses_weakness_reveal",
                         com.merlinkitsune.astral_dice.effect.WeaknessRevealEffect.getStacks(p),
@@ -1541,7 +1547,8 @@ public class ModTooltipHandler {
      * 故客户端可安全读取（参见 {@code EffectCardPeriod#isCooldownActive} 的注释）。
      */
     private static long effectCardCooldownSeconds(Player player) {
-        long baseTicks = GameplayConstants.EFFECT_CARD_COOLDOWN_SECONDS * 20L;
+        // 2026-09-30:与 EffectCardPeriod.COOLDOWN_SECONDS 同源(模组侧口径,45 秒)
+        long baseTicks = com.merlinkitsune.astral_dice.item.card.EffectCardPeriod.COOLDOWN_SECONDS * 20L;
         long ticks = player != null
                 ? com.merlinkitsune.astral_dice.item.ChargeManager.effectCardCooldownTicks(player, baseTicks)
                 : baseTicks;

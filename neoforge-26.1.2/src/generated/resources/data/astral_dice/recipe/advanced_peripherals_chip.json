@@ -3,7 +3,7 @@
   "category": "misc",
   "key": {
     "C": "astral_dice:blank_chip",
-    "E": "minecraft:echo_shard",
+    "E": "minecraft:comparator",
     "L": "astral_dice:conductive_wire",
     "P": "astral_dice:star_plate",
     "T": "minecraft:redstone_torch"

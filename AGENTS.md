@@ -28,6 +28,44 @@ When extending this workspace:
    - 规则：跨工作树的任务**写文件一律用绝对路径**（`F:\MCProject\astral_dice_multiloader-next\...`），或先 `Set-Location` 到目标工作树再操作；`git` 命令用 `-C` 显式指定工作树；脚本内的输出路径同理（相对路径只在「已知 cwd 就是目标工作树」时可用）。
    - 自查：改动后对**另一个**工作树跑一次 `git status --short`，确认没有意外文件。
 
+## 二次验证规范（Independent Second-Pass Verification）— 必须遵守（2026-10-01 用户裁决）
+
+**任何非平凡改动，收尾前必须由一个独立子代理（subagent）做一遍二次验证。** 目的**不是**「再读一遍」，
+而是用**独立证据**去证伪主会话的结论：主会话的自述（「我已核对」「守门全绿」「已落盘」「已全线对等」）
+**不能作为验收依据** —— 它可能就是幻觉或遗漏，且**自证天然有偏**（复用自己的假设去检查自己的结论）。
+
+### 触发面（命中任一即必须做）
+
+- 任何**代码 / 资源改动**（新增、修复、重构、批量替换）提交前；
+- 任何**发布动作**之后（打 tag、建 Release、上传 CurseForge、部署到整合包）；
+- 任何**批量或跨线**改动（三线同改、跨工作树、批量改 lang / 手册 / 配方 / 资源）；
+- 任何**结论型交付**（审计报告、「该缺陷不存在」、「两线已对等」、「已全部覆盖」）；
+- 用户明确要求复核时。
+
+### 怎么派（brief 必须自包含 —— 子代理看不到本会话）
+
+- 🚫 **禁**把主会话的结论、改动清单、「我已经改好了」当**事实**喂给它 —— 那是诱导它附和，等于白做。
+- ✅ **只给**：目标 / 涉及路径 / **期望的不变量** / **可独立执行的判据命令**（守门脚本、`grep -rn`、开包核验…）。
+- ✅ **要求它**：① 先独立取证、后下结论；② 每条结论附**命令 + 原始输出片段**；③ **优先找反例**（差一处、漏一文件、范围跑错）；
+  ④ 取不到证据就说 **「无法判定」**，禁止脑补；⑤ **空结论也要报告**（说明「查了什么」才没发现问题）。
+- 只读查证用 `Explore`；需要跑命令 / 开 jar / 查远端用 `general-purpose`。
+
+### 验收标准（子代理输出必须满足；主会话逐条回应）
+
+1. 结论逐条挂**原始证据**，不是转述；
+2. 覆盖主会话**声称改过的每一处**（数量、路径、内容），并与主会话的自述**对账**（逐项核对差异）；
+3. 明确列出 **不一致 / 无法判定 / 未覆盖** 三类项；
+4. 主会话**必须逐条回应**：认同 ⇒ 立即修；不认同 ⇒ 给出**反证**。**不得静默忽略**；
+5. 子代理的结论本身也**不是事实** ⇒ 它的证据必须能被主会话**复算**（命令可重跑、输出可比对）。
+
+### 与既有守门的关系（两层都要，不得互相替代）
+
+- **第一层 = 机器判据**：`scripts/verify/**`、`tools/audit_*.py`、`tools/check_lang_sync.ps1` 等守门脚本，可重复、可回归。
+- **第二层 = 二次验证**：专治第一层覆盖不到的遗漏 —— **判据本身有漏**（实例：手册悬空键
+  `guide.entry.special_effects.6` / `guide.entry.teru_sign.3` 长期**无任何门禁**，直到 2026-10-01 才补上
+  `tools/audit_patchouli_keys.py`）、**守门跑错范围 / 跑错工作树**、**报告与实物不符**、**声称已改而实际未落盘**。
+- ⇒ **守门全绿 ≠ 已验收**；只做二次验证而跳过守门同样不合格。
+
 ## 命令执行规范（Shell）— 必须遵守（2026-09-19 用户裁决）
 
 **一律使用 PowerShell 7（`pwsh`）；禁止使用 Windows PowerShell 5.1。**
@@ -53,9 +91,50 @@ When extending this workspace:
 - 若远程操作因代理失败，先检查代理进程（如 Clash/`127.0.0.1:7897` 端口）是否在运行，再排查网络；不要绕过代理直连 GitHub。
 - **默认不执行 `git push`**(见「编译产物上传规则」第 6 条);每次更新由代理自动完成本地提交,推送仅在用户明确要求时执行,且须经上述代理。
 
+## 第三方联动取源与反射纪律（Third-Party Integration Sourcing）— 必须遵守（2026-10-01 用户裁决）
+
+**针对其它模组的联动 / 调用，禁止凭记忆猜 API。** 取源与实现一律以**实物**为准。用户裁决（2026-10-01）三条：
+①「反射可用，但**签名必须来自实物**」；②「用户提供的 jar **只作取证、不进 `build.gradle`**」；
+③「**先问用户要 jar / 源码**；用户给不了再自行核验」。
+
+### 1. 取源顺序（第一步永远是问用户）
+
+1. 🚩 **先向用户索取该模组的 jar 或源代码**（原话：「必须请求用户提供该模组 Jar 或模组源代码，根据其对应接口针对性开发」）。
+   ⇒ **未拿到实物之前，不要开始写联动代码**，也不要先写「占位反射」再等实物。
+2. 用户**无法提供 / 表示不必**时，才退回下方《第三方模组源码核验规则》（自行去官方 GitHub 按 tag / commit 取源码）。
+3. 🚫 **不得**凭记忆、凭旧版本 jar、凭「别的模组长得很像」、凭 Gradle 缓存产物下结论。
+
+### 2. 反射的定位（**可用**，但签名必须来自实物）
+
+反射**仍是**第三方可选依赖的默认隔离手段（对方未安装时不得 `NoClassDefFoundError`、不得崩服）——
+**「允许反射」不等于「允许猜」**：
+
+- ✅ 允许：`Class.forName` 惰性解析 + **失败即永久关闭该后端** + 退回安全默认口径（既有纪律不变）。
+- 🚫 **禁止**任何反射目标（类名 / 方法名 / 字段名 / **参数与返回类型** / **static 还是实例方法** / 内部类名 / 包路径）
+  **来自记忆或推测** —— 必须逐条来自实物取证：jar → `javap -p -c`；源码 → 直接读并记下 `文件:行号`。
+- 🚫 **禁止**「先写个 try/catch 全包住的猜测式反射，跑不通再说」—— 那是把不确定性藏进静默降级里，出问题时表现为「功能不生效」而非报错。
+- 🚫 **禁止**把「反编译大概看懂了」当作源码级结论：`javap` 只用于确认**签名与常量**，**不用于推断逻辑**。
+- ⚠️ **高频易错点（本仓真出过事故）**：**重载形态**（`getTeamForPlayer(Player)` vs `getTeamForPlayer(ServerPlayer)` / `getTeamForPlayerID(UUID)`）、
+  **包路径**（`dev.darkhax.opac.*` vs 真实 `xaero.pac.*`）、**static vs 实例**（同一功能两版形态不同）、**内部类名**（`SoulCrystal$Events`）。
+  这类错误**不报错**：库侧 FTB / OPAC 反射写错签名 ⇒ FTB 玩家被判「未加入任何队伍」 ⇒ 落进「无队伍 ⇒ 全服皆友方」的兜底，
+  **友方效果（大碗炖肉 / 银行卡「用不完」/ 奢华大餐 / 挚友守护 / 挚友祝福）实际扩散到了全服**。
+
+### 3. 用户提供的 jar：**只作取证，不进 `build.gradle`**
+
+- 本地 jar 仅用于 `javap` / 反编译**取接口与签名**。
+- **构建依赖仍必须**走 Curse Maven / Modrinth Maven 坐标 —— `## 模组依赖添加规则` **不因此放宽**（仍禁止 `fileTree`/`files` 作为**模组**来源）。
+- 若对方**没有可用的 Maven 坐标**、却又需要编译期依赖 ⇒ **停下来问用户**，不要自行把本地 jar 塞进构建。
+
+### 4. 落地后**必须**用实物复核（硬要求）
+
+1. **逐条对账**：把实现里**每一个**反射目标与第 1 步取到的实物逐条比对（建议列成表：代码里的目标 | 实物证据 | 是否一致）。
+2. **开产物核验**：`javap` / 开 jar 确认产物中的常量与类引用符合预期。
+3. **留痕**：交付说明里写明每个反射目标的**取证来源**（哪个 jar / 哪个 commit 的源码 / 哪一行），供他人独立复算。
+4. 该复核同时是《二次验证规范》的**必查项**（触发面：跨模组联动）。
+
 ## 第三方模组源码核验规则（必须遵守）
 
-核验任何**第三方模组**（Curios / KubeJS / Sodium / Iris / ModernFix / Patchouli 等）的**行为**时，必须以**该模组自己的 GitHub 源码**为准，并**自行前往其 GitHub 页面查找** —— 不要等用户提供，也不要凭记忆、凭缓存产物或凭反汇编下结论：
+核验任何**第三方模组**（Curios / KubeJS / Sodium / Iris / ModernFix / Patchouli 等）的**行为**时，必须以**该模组自己的 GitHub 源码**为准。⚠️ **取源顺序**：先按上方《第三方联动取源与反射纪律》**向用户索取 jar / 源码**；用户无法提供时才走本流程（**自行**前往其官方 GitHub 页面查找）。两条路径共同的红线：**不得凭记忆、不得凭缓存产物、不得凭「反编译看懂了」下结论**（`javap` 只确认**签名与常量**，不推断逻辑）：
 
 1. **取源**：先在该模组的 GitHub 仓库按版本定位 tag / commit（版本号取自本仓 `gradle.properties`、或目标 jar 内 `META-INF/mods.toml` / `neoforge.mods.toml` / `MANIFEST.MF`），再经上方 Git 代理克隆到**本模组仓库之外**，例如：
    `git -c http.proxy=http://127.0.0.1:7897 -c https.proxy=http://127.0.0.1:7897 clone https://github.com/TheIllusiveC4/Curios F:\MCProject\temp_curios\v9`
@@ -125,6 +204,7 @@ When extending this workspace:
 8. **`fileHashes.lock` 拒绝访问(守护进程占锁)**:构建报 `Could not create service of type FileHasher ... .gradle/<ver>/fileHashes/fileHashes.lock (拒绝访问)` 并非编译错误,而是**上一个 Gradle 守护进程仍占锁**(日志首行常见 `1 busy and N stopped Daemons`;`./gradlew --stop` 可能停不掉 busy 守护进程)。处置:列出 java 进程,只终止 `gradlew` wrapper(`-Dorg.gradle.appname=gradlew`)与 Gradle daemon(`--add-opens=java.base/...`)两类,**绝不可误杀 Minecraft 客户端**(`net.minecraft.client.main.Main`)或用户其它 Java 程序,然后重跑构建。
 
 9. **「构建很快、命令却不返回」≠ 构建慢（2026-09-17 实测取证；**禁止**据此提高超时）**：若日志已出现 BUILD SUCCESSFUL / MT_BUILD: OK (Ns) 而调用方仍在等，那是**进程收尾阻塞** —— `Start-Process -NoNewWindow` 会让 `cmd → gradlew → Gradle 守护进程 / 游戏客户端` 与父 pwsh **共用同一个控制台**，长驻子进程持有它 ⇒ 父 pwsh 执行完脚本 `exit` 后阻塞在**控制台拆卸**（取证：脚本已打印 `MT_BUILD: OK (4s)`、父进程 CPU 仅 0.44s 却存活 20+ 分钟，子进程里挂着一个 `conhost.exe`）。已修：`lib/Mt.Proc.psm1` 的 `Start-MtProcessToFile` 两个分支改用 **`-WindowStyle Hidden`**（新建隐藏控制台），日志落盘口径不变。**判据**：同一条管道调用 `mt_build` 修复后 **1.6s** 返回（修复前 90s 超时 / 20+ 分钟）。**调用方约定**：长驻阶段（build / launch）不要用 `| Select-Object` 之类管道捕获输出，改 `*> 文件`（见「全局测试规则」第 4 条）。
+
 ## 多版本子项目矩阵(Multi-Version Subproject Matrix)— 必须遵守
 
 本仓库以**子项目承载版本**;迁移背景与目录结构见 `docs/multiloader-layout.md`,两子项目的完整 API 差异见 `docs/compat-1.20.1-forge.md`。
@@ -261,6 +341,8 @@ When extending this workspace:
 11. **26.1.2 已接入前置库 starengine_lib(2026-09-17)**:该线原为「完全未接入库」的独立移植线,现与另两线一致消费库 —— `gradle.properties` 新增 `starengine_lib_version=1.0.0-SNAPSHOT.5` / `starengine_lib_group` / `starengine_lib_version_range=[1.0.0-SNAPSHOT.5,2.0)`;`build.gradle` 首位 `mavenLocal()` + `implementation "${starengine_lib_group}:starengine_lib-neoforge-26.1.2:${starengine_lib_version}"` + `generateModMetadata` 增模板占位符;`neoforge.mods.toml` 增 `starengine_lib` required 段。**库已提供的 26 个同名类已删本地副本并改指库包**(18 个 `effect/*Effect`、`client/ClientDamageNumbers`|`ActionBarManager`、`component/GameplayConstants`、`event/AmethystDiceHandler`|`EventTargetCollector`|`ModEffectRemoval`|`SignActiveTriggeredEvent`、`item/BossEntityUtil`);配置缝改为 `GameplayConstants.applyConfig(ModCommonConfig.snapshot())`(库不读配置文件)。**该线原有的本地重复类 `effect/ReadyEffect` 已于 2026-09-19 删除**（⛔ 原文「唯一保留的本地副本是 `effect/ReadyEffect`…该线的旧「待命等待器」机制与 **33 个**效果注册**行为未变**」**已过期，就地更正**）—— 「立牌主动前置门控收口」移植把该线的立牌主动改成发布线同款形态（`BaseSignItem.handleUse` 由 `abstract` 改为「默认实现 + WARN」、删 `isSkillWaiting`/`tickSignReadyTimeout` 及其调用点），随该机制存在的本地 `ReadyEffect` 与 `ModEffects` 的 `haiqing_ready`/`bonnie_ready`/`moses_ready` 三处注册**一并删除**：效果注册 **33 → 32**、id 集合与两个发布线逐项一致；同时删掉仅该线多出的 3 个 `effect.astral_dice.*_ready` lang 键与 3 张 `mob_effect/*_ready.png`（lang **686 → 683**、`textures/mob_effect/` **35 → 32**）。该线现**无**任何「库已删而本地保留」的重复类；`KNOWN-ISSUES` **KI-M5②** 已随之标记**关闭**（其中「禁止删本地副本」一条失效，另三条库侧政策仍适用）。取证见 `scripts/test/TESTING-SPEC.md` 续 18。**库版本沿革（2026-09-19 补记）**：该线的 `starengine_lib_version` 已随批次提升过多次（上文的 `.5` 只是 2026-09-17 接入时的值）—— 充能封顶批次升到 `.11`，`allow_firearm_damage` 批次升到 **`.12`**。⛔ **该段「两条发布线为 `.12`、26.1.2 钉 `.11`」的描述已过期（2026-09-22 更正）**：三条线现**同钉 `1.0.0`**（库的首个正式版，由快照终态 `.16` 规范化而来、库内 Java 源码零改动），26.1.2 亦已于 2026-09-17 接入库 ⇒ 三条线的库接入状态完全一致。三条线的 `starengine_lib_version` 与区间下限一贯**同批同步**；自 `1.0.0` 起库侧另立有**兼容性契约**（见上方「### 前置库 starengine_lib 的版本与兼容性契约」）。⛔ **2026-09-25 起该契约的「区间」部分作废**：三线不再声明 `starengine_lib_version_range`，前置只按「是否存在」校验（见该契约第 3 条）。
 12. **gamerule 族的存放位置与命名随 26.1 全变(2026-09-19 实测,踩过一次假失败)**:① **键名一律 snake_case** —— `naturalRegeneration` → `natural_health_regeneration`、`keepInventory` → `keep_inventory`;`doFireTick` **已被删除**,火势改由整数规则 `fire_spread_radius_around_player`(置 **0** 即等价于旧的 `doFireTick=false`;原版 datafix `GameRuleRegistryFix` 就是这么折算的)表达。⇒ 旧名在 26.1.2 上被 Brigadier **静默拒绝**,`CARD-SELECTOR-26.1.2` 的 4 条 HP 基线断言因此假失败(`naturalRegeneration false` 未生效、自然回血照常,`FoodData` 的分数回血让血量出现 `17.3` 这类小数;修用例、产品未动,复跑后与 1.21.1 读数逐条相同);探针里凡执行该族的命令都按此映射(1.20.1/1.21.1 用 `doFireTick false`,26.1.2 用 `fire_spread_radius_around_player 0`)。② **存储位置**改为 `saves/<world>/data/minecraft/game_rules.dat`(gzip NBT,键带 `minecraft:` 前缀、布尔值是 **TAG_Byte** 0/1 而非旧版 TAG_String),**不再放在 `level.dat` 里**(26.1.2 的 file fix `LevelDatToSavedDataFileFix` 只认 `level.dat` 的 `game_rules` 键,不认旧版 `GameRules`)。⇒ 该线的环境写入一律走该文件(`mt_env.ps1` 的 `Get/Read/Test/Set-MtGameRule*File` 系列;只有 26.1.2 分支会写它,另两线的 `level.dat` 路径与文案逐字不变),且**必须从真实文件读回复核**(读回通过才回显 `MT_WORLD: keepInventory 落地于 …game_rules.dat`),禁止「写进去再读自己刚写的数据」式的自我复核。引用 gamerule 读数时**必须写明观测时刻**——`mt_env world` 重建世界会把规则恢复默认。⚠️ 相关未决项:`AGENTS` 要求的 `mobGriefing=false` 目前**没有代码执行方**(详见 `TESTING-SPEC.md` 续 21),当前靠 2026-09-18 的 noai 硬闸门与本模组用例自带的取证前清理覆盖。
 
+7. **原版类的包结构调整(2026-09-30 实测)**:26.1.2 把部分怪物类**拆进了子包** —— `Zombie` / `ZombifiedPiglin` / `Husk` / `Drowned` / `ZombieVillager` 位于 `net.minecraft.world.entity.monster.**zombie**`(1.21.1 是 `monster.Zombie`);`Piglin` / `PiglinBrute` / `AbstractPiglin` 仍在 `monster.piglin`,`EnderMan` 仍在 `monster`。⚠️ **另有 `WitherSkeleton` 位于 `monster.**skeleton**`**(1.21.1 / 1.20.1 均为 `monster.WitherSkeleton`)—— 与 zombie 拆包同类,2026-09-30 引入「凋灵骷髅 5% 掉星盘」档位时实测踩到;`Ghast` / `Guardian` / `ElderGuardian` 三线均仍在 `monster`。照抄 1.21.1 的 import 会以「找不到符号」编译失败(实测 `event/LootInjectionHandler` 引入僵尸猪灵/猪灵判定,以及其后引入凋灵骷髅判定时两度踩到)。
+
 ## 模组依赖添加规则(统一口径,1.20.1 + 1.21.1)— 必须遵守
 
 **来源只剩两个**:任何第三方**模组**依赖必须经 **Curse Maven**(`https://www.cursemaven.com` → `curse.maven:<slug>-<projectId>:<fileId>`)
@@ -273,9 +355,11 @@ When extending this workspace:
 2. **同一模组跨线同源**:同一模组在 1.20.1 与 1.21.1 必须来自同一来源(现状:Curios / Patchouli / Iron's Spellbooks / mixinbooster / modernfix / **Jade → Modrinth Maven**;**JEI / Architectury API / KubeJS / Rhino / Collective / Superflat No Slimes / Embeddium / Oculus → Curse Maven**)。只有目标 MC 版本在某来源确实没有构建时才允许分叉,并在 build.gradle 注释里写明理由。
 3. **dev 编译 vs 生产运行**:build.gradle 的声明只服务**开发/编译**(1.20.1 走 `modImplementation`/`modCompileOnly` 由 MDG 重映射;1.21.1 / 26.1.2 走 `implementation`/`compileOnly`,NeoForge 侧无 reobf);生产由整合包提供同一模组,**不得**把整合包 jar 复制进仓库或 `run/mods` 当依赖。
 4. **硬前置必须进同一套闸门**(与下方「加载器版本门槛」「版本互通门槛」同一体系):若某模组是**运行期硬前置**(缺失会让本模组不报错却静默失效,如 1.20.1 的 `mixinbooster`),必须
-   ① 在对应 `mods.toml`/`neoforge.mods.toml` 的依赖段声明 `mandatory=true` + **钉死 `versionRange`**(现状:1.20.1 `forge`/`minecraft`/`curios [5,6)`/`mixinbooster [0.1.3,)`;1.21.1 `neoforge [21.1,21.2)`/`curios [9,)`;26.1.2 `neoforge [26.1.0.0,26.2)`/`curios [15,)`),**并且** ② 纳入**独立的离线加载器门槛守门脚本** —— **现行唯一执行体 = `scripts/verify/verify_forge_loader_gate.ps1`**(2026-09-19 用户裁决「将 1.20.1 加载器版本门槛 / Mixin Booster 硬前置**单独置于独立脚本**」);它**不挂 `scripts/test` 用例链**:零 `Import-Module scripts/test/lib/*`、不读写 `run/**`、不读 `cases/*.json`。旧形态(`scripts/test/mt_loadergate.ps1` + `cases/LOADER-GATE-FORGE-1.20.1.json`,读数落 `run/1.20.1/logs/loadergate.log`)已按用户指令**废弃并删除**,取证与恢复口径见 `scripts/test/TESTING-SPEC.md` 附录 A 续 28。
+   ① 在对应 `mods.toml`/`neoforge.mods.toml` 的依赖段声明 `mandatory=true` + **钉死 `versionRange`**(现状:1.20.1 `forge`/`minecraft`/`curios [5,6)`;1.21.1 `neoforge [21.1,21.2)`/`curios [9,)`;26.1.2 `neoforge [26.1.0.0,26.2)`/`curios [15,)`;⚠️ 1.20.1 的 `mixinbooster` 自 2026-09-29 起**不再是 `mandatory=true`**,走 ③),**并且** ② 纳入**独立的离线加载器门槛守门脚本** —— **现行唯一执行体 = `scripts/verify/verify_forge_loader_gate.ps1`**(2026-09-19 用户裁决「将 1.20.1 加载器版本门槛 / Mixin Booster 硬前置**单独置于独立脚本**」);它**不挂 `scripts/test` 用例链**:零 `Import-Module scripts/test/lib/*`、不读写 `run/**`、不读 `cases/*.json`。旧形态(`scripts/test/mt_loadergate.ps1` + `cases/LOADER-GATE-FORGE-1.20.1.json`,读数落 `run/1.20.1/logs/loadergate.log`)已按用户指令**废弃并删除**,取证与恢复口径见 `scripts/test/TESTING-SPEC.md` 附录 A 续 28。
+   ③ **(2026-09-29 新增)两个「运行期硬前置」提供同一能力且互斥时,必须改为 `mandatory=false` + 运行时门控**:先例 = 1.20.1 的 `mixinbooster` ↔ Sinytra Connector(`connectormod`)。Sinytra Connector 自带同一套 Mixin 运行时,**Booster 会在自己的 `MixinTransformationService` 里主动让位**(实机日志 `[mixin-booster/]: Disabling Mixin Booster in favor of Connector`)⇒ `mixinbooster` 这个 mod 条目**根本不会注册**;此时声明式 `mandatory=true` 会把「另一条同样合法的路」判成缺失,FML 在依赖排序阶段以 `Missing or unsupported mandatory dependencies: Mod ID 'mixinbooster' ... Actual version '[MISSING]'` 硬拒 —— **玩家即使正确安装了 Mixin Booster 也进不去游戏**(2026-09-29 BMC4/Better MC 玩家实测报告定位)。写法三件套:①`mandatory=false`(**保留** `versionRange="[0.1.3,)"`:Booster 在场但版本过低仍是静默失效,必须继续报错);②运行时门控类 —— **现行唯一实现 = `forge-1.20.1/src/main/java/com/merlinkitsune/astral_dice/init/MixinRuntimeGate.java`**,在 `FMLCommonSetupEvent` 同步判定「A 或 B 至少一个」,皆无则抛 `ModLoadingException` 逐条上屏;③守门脚本补「门控在位」断言(`verify_forge_loader_gate.ps1` 的 **S2b**:门控源文件存在 + 产物 jar 内该 class 常量池含 `mixinbooster` 与 `connectormod` **两个** modId + 主类 `AstralDiceMod.class` 含调用点 = 真被调用,不是空壳类)。
    ⚠️ **当前只有 1.20.1 有该独立门槛脚本**(`scripts/verify/verify_forge_loader_gate.ps1`):1.21.1 / 26.1.2 侧**新增硬前置前必须先补同形态独立脚本**(同一写法:门控声明三段一致 + 离线判定器复刻 FML 实际比对实现 + `AP_*` 读数 + 退出码 0/1/2),不得只改 toml 了事。
    ⚠️ 门槛必须在 **FML 依赖排序阶段**拒绝不合格环境,不得依赖「先加载再在代码里检查」——mixin 变换早于 mod 构造器。
+   ⚠️ **(2026-09-29 例外,仅限上条 ③ 的互斥硬前置)** 「二选一」关系无法用声明式表达(Forge FML 的 `[[dependencies]]` 只有 mandatory/optional 两态、不支持 OR,`type="incompatible"` 又是 NeoForge 专有),只能退到运行时门控;此时口径变成:**拒绝点从「FML 依赖排序」后移到「本模组 COMMON_SETUP」,承诺不变** —— 玩家仍然进不去游戏、仍会看到原文提示,不会带着「Mixin 静默失效」的状态进入世界。残留差异(必须知情):在「两者皆无」的环境里,Mixin 变换确实**已经**发生且已静默失效(门控无法回退已完成的类变换),门控只是兜住「让这种环境进不去游戏」这一层。⛔ **不得把这条例外扩大到普通硬前置**(如 `curios`):它们没有互斥对象,继续留在 FML 依赖排序阶段拒绝。
 5. **守门(唯一实现)**:`pwsh -NoProfile -File tools/check_mod_sources.ps1` —— 同时挂在阶段 P(`scripts/test/mt_preflight.ps1` 的「模组来源」一项)与 `scripts/test/TESTING-SPEC.md` §9 静态守门。它检查:**R1** 两个发布线都声明了 Curse + Modrinth 两个仓库且同一文件内不得重复声明;**R1b(对三条线全部生效)** 用了 `curse.maven:` / `maven.modrinth:` 坐标就必须声明对应仓库(2026-09-17 实测踩坑:26.1.2 缺 Curse Maven 仓库时用它取 JEI 直接 `BUILD FAILED`);**R2** 模组坐标只能是这两个来源、**实际命中**的本地 jar 兜底一律 FAIL、库按 `$LibraryGroups` 白名单放行;**R3** 未被引用的本地 jar 只回显。**官方 maven 的模组例外当前为空**(`$ModExceptions = @{}`;原 `mezz.jei` / `dev.architectury` 已于 2026-09-17 迁到 Curse Maven);将来若必须临时用官方 maven,须在 `$ModExceptions` 登记(每轮以 `[EXC]` 行回显,不允许静默),新增库同理登记到 `$LibraryGroups` 并写明理由。
 6. **换源必须给等价性证据**:把模组从其它来源改到 Curse/Modrinth Maven 时,必须给出**可核验的等价性证据**并真跑一次依赖解析/编译:
    - 官方 maven **与 CF/Modrinth 提供同一个文件**时 → 直接比 `SHA1`(逐字节相同)。先例:JEI 三个版本(1.20.1 / 1.21.1 / 26.1.2)改 Curse Maven 后解析到的 jar sha1 与官方 maven 逐一相同(`7f64b7f8…` / `6e703a82…` / `2c3ee3d2…`);1.21.1 的 Iron's Spellbooks 由 `base-mod-compile-libs/irons_spellbooks.jar` 换成 `maven.modrinth:irons-spells-n-spellbooks:RtvqnbKi`(sha1 `09907e3b4bfdabd7f1f44bfd25aa6432183f39bb`、13874139 字节,同哈希)。
@@ -288,8 +372,10 @@ When extending this workspace:
   `Missing language javafml version [47.4.10,48) wanted by astral_dice-1.2.1+forge_1.20.1.jar, found 47` **直接拒绝加载本模组**(Forge 自身的 `mods.toml` 也只写 `loaderVersion="[24,]"`)。
   精确下限放在依赖上即达到同一门槛:低于 47.4.10 的环境在 FML 依赖排序阶段报 `Missing or unsupported mandatory dependencies:`。**禁止**再引入 `loader_version_range` 之类的独立属性或硬编码区间。
   曾因 `[47,)` 只卡到 47.0.0,导致 47.0.0~47.4.9 环境照常加载后才在 Mixin 变换阶段报错(2026-09-14 修复)。改动 `forge_version` 时两个区间自动跟随,无需手工同步。
-  **同一门槛体系里的第二道硬前置 = Mixin Booster**(2026-09-15 固化,详见下方「forge-1.20.1 子项目关键差异速记」首条):Forge 1.20.1 的 FML 没有 Mixin 集成,
-  缺 `mixinbooster` 时本模组**不报错、全部 Mixin 静默失效**,故必须声明为 `mandatory=true` + `versionRange="[0.1.3,)"`,未安装即在同一阶段拒绝启动。
+  **同一门槛体系里的「Mixin 运行时」= 二选一**(2026-09-15 固化、**2026-09-29 改为二选一**,详见上方规则 4 的 ③):Forge 1.20.1 的 FML 没有 Mixin 集成,
+  缺 Mixin 运行时本模组**不报错、全部 Mixin 静默失效**,故必须拦住。**两个合法供给方**:①独立前置 **Mixin Booster**(`mixinbooster`,`versionRange="[0.1.3,)"`,低于此版本仍是静默失效);②**Sinytra Connector**(`connectormod`,整合包常见,自带同一套 Sponge Mixin + Mojmap→SRG 重映射)。
+  ⚠️ 二者**互斥**:Connector 在场时 Booster 主动让位、`mixinbooster` 条目不注册 ⇒ 声明式 `mandatory=true` 会误杀 Connector 整合包(2026-09-29 BMC4 实测)。
+  ⇒ 现行写法 = `mandatory=false` + `init/MixinRuntimeGate`(COMMON_SETUP 判定二选一,皆无才拒绝)+ 守门脚本 S2b 断言门控在位;**实测三态**:仅 Booster → `MIXIN-GATE: provider=mixinbooster` + 18 个 mixin 全部 `Mixing … into …` + `Done`;Booster+Connector → `Disabling Mixin Booster in favor of Connector` + `MIXIN-GATE: provider=connectormod` + 同样 18 个 mixin 全部应用(Connector 的重映射器甚至在日志里把归属标为 `from mod astral_dice`)+ `Done`;两者皆无 → `MIXIN-GATE: provider= none` + `LoadingFailedException` 上屏拒绝。
   ⚠️ **模板里的注释也参与 Groovy 展开(2026-09-15 实测踩坑)**:`forge-1.20.1/src/main/templates/META-INF/mods.toml` 由 Groovy `SimpleTemplateEngine` 展开,**不得出现「美元符号 + 标识符」的裸写法**(只有「美元符号 + 花括号 + 键名」合法,即 `${key}` 形式),
   否则 `:forge-1.20.1:generateModMetadata` 以 `Missing property (xxx) for Groovy template expansion` 失败,并把 `build/generated/sources/modMetadata/META-INF/mods.toml` **截断为 0 字节**——随后 `runClient` 直接起不来(表现与"前置门槛"无关,极易误判)。改任何模板注释后**必须真跑一次 `:forge-1.20.1:build` 验证**。
 - **1.21.1(NeoForge)**:`neoforge.mods.toml` 的 `neoforge` 依赖声明为 `[21.1,21.2)`(二号位 band);`loaderVersion` 仍用 `loader_version_range=[1,)`(FML 主版本)。
@@ -356,7 +442,7 @@ When extending this workspace:
   （emoji `##` 小节:`✨ 新增内容 / ⚖️ 平衡与体验调整 / 🐛 问题修复 / 📌 安装要求`;英文 `✨ New Content / ⚖️ Balance & Quality-of-Life / 🐛 Bug Fixes / 📌 Requirements`;内部用**话题式 `###` 分组**）。
   要求:① 条目一条不少（与 CHANGELOG 该版本玩家侧条目数一致）;② 数字、时长、层数、范围、概率、条件**逐字不改**;
   ③ 去掉实现细节（类名/方法名/附件键/文件路径/mixin/NBT/commit 编号）;④ **不含**工程与测试条目;
-  ⑤ 中英两份逐条一一对应;⑥ 安装要求里 **1.20.1 的 Mixin Booster 硬前置必须在列**。现有先例:`release/1.2.0/`、`release/1.2.1/`(两版均含 26.1.2 第三附件与 Curios 15+ 说明)。**CI 直接以这一对文件作为 GitHub Release 正文**(整文件 `--notes-file`,中文在前 + `---` + 英文在后),故缺文件时 Release 只会退化为「附件清单」——发布前必须核对本目录。
+  ⑤ 中英两份逐条一一对应;⑥ 安装要求里 **1.20.1 的 Mixin 运行时要求必须在列**（2026-09-29 起口径为「**Mixin Booster ≥0.1.3 或 Sinytra Connector**」二选一，不再写成 Mixin Booster 硬前置 —— 见规则 4 的 ③）。现有先例:`release/1.2.0/`、`release/1.2.1/`(两版均含 26.1.2 第三附件与 Curios 15+ 说明)。**CI 直接以这一对文件作为 GitHub Release 正文**(整文件 `--notes-file`,中文在前 + `---` + 英文在后),故缺文件时 Release 只会退化为「附件清单」——发布前必须核对本目录。
 - **文档去第三方名(2026-09-22 用户裁决,必须遵守)**:玩家侧发布说明与两份 CHANGELOG 的**内容描述里不得出现其它模组名**(范围 = **本版本小节**;历史小节是已发布版本的记录,**不回溯改写**,但**新增/修改条目时必须遵守**) —— 含:① 操作类比(把本模组的交互写成「某模组的 XX 式」);② 同类模组点名对比;③ 第三方模组清单(军火 / 经济类只写类别);④ 以他方系统命名本模组内容(`XX 手册` / `XX 奖励池` / `XX 标签` / 配方查看器类的他方名)。中性词基准:`强力胶式 → 点选式`、`帕秋莉手册 → 手册`、`赏金板(奖励池) → 赏金奖励池`、`JEI → 配方查看器`、`饰品栏标签 → 饰品槽标签`。**唯一允许出现第三方模组名的位置 = 安装要求 / 前置 / 联动声明**(`📌 安装要求`、`### 安装要求`:StarEngine Lib / Curios API / Mixin Booster / 可选的 Patchouli、Bountiful 等),因为玩家必须照名安装 —— 该节禁止去名化。⚠️ 服务端与仓库内的技术文档(`AGENTS.md`、`TESTING-SPEC.md`、代码注释)不受此约束,该写 API 名就写(如 `ICurioItem`、`Curios handleDrops`)。
 - **合并约定(1.2.0-rc1 起)**:对当前(未发布)版本已记录条目的后续改动,直接合并进原条目,仅保留改动后的最终版本;禁止追加“再次修改/后续调整”类条目。
 - **自动更新约定**:每次增加/修改任何新内容(物品/配方/机制/平衡/修复/版本号等)都必须同步更新两个 CHANGELOG 文件的对应小节;若后续存在重复修改、回滚或删除(如恢复被删物品、配方回滚、数值改回旧值),对应条目也必须按**最新变化**合并改写或删除,禁止保留已失效的旧描述。
@@ -425,7 +511,7 @@ When extending this workspace:
 - 数据包目录 `recipes/advancements/loot_tables/structures`、`data/forge/` 前缀、`pack.mcmeta`(pack_format 15)、`META-INF/mods.toml`。
 - **三个子项目均有帕秋莉手册**(1.21.1 原有;1.20.1 已于 1.1.3 移植,含 Patchouli 1.20.1-85-forge 依赖;26.1.2 同持,依赖取自 `maven.modrinth:patchouli`);手册结构三线一致(`{assets,data}/astral_dice/patchouli_books/`)。
 - 物品类已按 `item.dice/card/chip/sign` 拆分子包,与 1.21.1 结构一致(见「包结构规范」)。
-- 产物清理规则只匹配 `astral_dice-*+forge_1.20.1.jar`,不会误删 1.21.1 产物;部署目标为仓库根 `run/1.20.1/mods`(版本隔离开发测试目录,自动推送)+ `D:/.minecraft/versions/1.20.1 模组测试/mods`(**随 build 默认自动推送**,与 1.21.1 标准一致)。
+- 产物清理规则只匹配 `astral_dice-*+forge_1.20.1.jar`,不会误删 1.21.1 产物;部署目标为仓库根 `run/1.20.1/mods`(版本隔离开发测试目录,自动推送)+ `D:/.minecraft/versions/1.20.1-Forge 模组测试/mods`(**随 build 默认自动推送**,与 1.21.1 标准一致;目录名 2026-09-29 由 `1.20.1 模组测试` 修正为带平台后缀的现名)。
 - **Mixin refmap 是生产硬需求(2026-09-16 生产事故,禁止再删)**:Forge 1.20.1 生产运行的是 **reobf(SRG 名)jar**,而 mixin 的 `@Inject(method = "…")` / `@Shadow` 是**注解里的字符串选择器**(Mojmap 名),reobf **改不动注解字符串** ⇒ 必须由 **refmap** 在运行时翻译成 SRG 名。三处缺一不可:① `build.gradle` 的 `annotationProcessor 'org.spongepowered:mixin:0.8.5'` + gson/guava/asm(注解处理器);② `mixin { add sourceSets.main, 'astral_dice.refmap.json' }`;③ `src/main/resources/astral_dice.mixins.json` 里的 `"refmap": "astral_dice.refmap.json"`(**缺该字段 Mixin 根本不加载 refmap**)。⚠️ **Mixin Booster 不能替代 refmap**:它只提供 `org.sinytra.mixinbooster.MixinModlauncherRemapper` 重映射**字节码引用**,不翻译注解选择器字符串;**dev 永远看不出该缺陷**(dev 类是 Mojmap 名,选择器直接命中,refmap 不参与)⇒ 只有生产会崩。实测故障:`InvalidInjectionException ... could not find any targets matching 'startUseItem()V' ... No refMap loaded` → 启动 FATAL。**已排除加载顺序**(ModLauncher 在 01:06:29.297 就加载了 booster、01:06:29.335 Mixin 子系统已以 booster 为 Source、我们的 config 01:06:31.906 才注册;`mods.toml` 里 `mixinbooster` 为 `mandatory=true` + `ordering="AFTER"`;全部 22 条 mixin 错误只属于本模组,其它带 refmap 的模组无一报错)。历史:`01be1fb` 曾加入该机制修生产 `@Shadow` 映射,`127a2b7` 因「Booster 自动重映射」这一**错误前提**整体移除 ⇒ 生产自此必崩;`7a980b4` 已恢复。**回归判据**(构建后必查):jar 内存在 `astral_dice.refmap.json`、`mixins.json` 声明了它、且配置里的每个 mixin 类在 refmap 中都有条目(1.20.1 目前 11/11)。
 - **客户端 tick 的可视状态推进必须唯一且判相位(2026-09-16 修复,禁止再出现第二个调用点)**:Forge 1.20.1 的 `TickEvent.ClientTickEvent` **每客户端 tick 派发 START + END 两次**(1.21.1 对应 `ClientTickEvent.Post`,每 tick 一次)⇒ 「每客户端 tick 推进一次」的客户端可视状态(伤害数字存活 tick 等)只能有**一个调用点**,且必须写相位判断 `if (event.phase == TickEvent.Phase.END)`(或只在 `ClientTickEvent.Post` 里推进)。历史缺陷:伤害数字在 1.20.1 被推进**三次/tick**(`client/ClientTickHandler` 未判相位 2 次 + `client/KeyBindingSetup` 的 END 回调 1 次),同一个 `DURATION = 40` 只存活约 **13 tick(0.67 秒)**且透明度同步衰减到 0(1.21.1 为 2 秒,故只有 1.20.1 有此问题)。⚠️ **不要把「玩家完全看不到跳字」归因于本条**:1.20.1 当时另有一条更致命的**独立**缺陷——视矩阵算错,正前方目标被判为「相机背后」而**每帧剔除、从不绘制**(见下一条);本条只是让存活窗口偏短。**实机判据**(tick 推进速率 = 存活毫秒 ÷ 50):修复后应读到 **40 次推进 / ≈1963~1970 ms**(即每 tick 恰好一次);取证口径见 `docs` 与本次 CHANGELOG 条目(玩家持剑 + 佩戴骰子近战攻击**存活**怪物 → 服务端 `send` → 客户端 `add … hasEntity=true` → 覆盖层 `draw … alpha=242`)。⚠️ 复现该链路时**不要**用探针的 `/astralprobe spelltdhit` 取证绘制:它在同一 tick 末尾 `discard()` 掉全部靶子,客户端下一帧就查不到实体,只能读到 `reason=no_entity`(是测试资产假象,不是产品缺陷)。
 - **客户端「世界→屏幕」投影必须按**本版本原版**的视图旋转构造,禁止把 1.21.1 的写法照搬到 1.20.1(2026-09-16 生产事故,必须遵守)**:两版本原版的视图旋转**并不等价** —— ① 1.21.1 `GameRenderer#renderLevel`(neoforge 源 1272–1273 行)= `Quaternionf q = camera.rotation().conjugate(new Quaternionf()); Matrix4f view = new Matrix4f().rotation(q);`;② 1.20.1 `GameRenderer#renderLevel`(forge 源 1127–1128 行)= `mulPose(Axis.XP.rotationDegrees(camera.getXRot()))` 紧接 `mulPose(Axis.YP.rotationDegrees(camera.getYRot() + 180.0F))`(roll 单列,来自 `ViewportEvent.ComputeCameraAngles`,相机不保存、正常为 0)。1.20.1 的 `camera.rotation()` 是 `rotationYXZ(-yRot, xRot, 0)`(`Camera#setRotation`),其逆与 ① 只差**绕 Y 的 180°**与 **pitch 符号**,但「正前方」的符号判定正好相反 ⇒ 照搬 ① 会让正前方目标的 `w` 为负,被 `w <= 0` 的「相机背后」分支**每帧**剔除,**跳字永远不绘制**;1.21.1 因公式与自身原版一致而不受影响,故障表现为「**只有 1.20.1 丢跳字**」。**判据**:取证时必须核对目标在**正前方** 3 格时 `w > 0`(照搬错误写法实测恒为 `w = -3.0`,`1064 次 skip / 0 次 draw`;修复后同一构造为 `w = +3.0` 且有 `draw`)。FOV 取 `options.fov()` 原值(原版 `getFov(…, true)` 为 private,冲刺激活时略有偏差)。**推广**:任何手算矩阵的客户端代码(世界→屏幕、朝向、视锥)都**不得跨版本抄公式**,必须先在**目标版本的 sources jar** 里找到同一处原版写法再照抄。
@@ -457,7 +543,7 @@ When extending this workspace:
 | 星币 | `star_coin` | 白(普通 COMMON) | 货币;袋装星币可 9:1 互转(`star_coin_bag`) |
 | 袋装星币 | `star_coin_bag` | 蓝(稀有 RARE) | 9 枚星币打包 |
 | 星盘 | `star_plate` | 紫(史诗 EPIC) | 骰子/立牌/筹码合成材料;可从原版宝箱开出 |
-| 黄金星盘 | `golden_star_plate` | 金(传奇 UNCOMMON) | 星盘升级/下界之星两条配方;不祥宝库可开出 |
+| 黄金星盘 | `golden_star_plate` | 金(传奇 UNCOMMON) | 两条配方(「星盘×1 + 下界之星×1」无序 / 「星盘×3 + 星币×6」有序);击杀掉落:凋灵 100%×5、监守者 100%×3-5、远古守卫者 100%×1-3、恶魂 100%×1、凋灵骷髅 / 守卫者 5%×1;不祥宝库可开出 |
 | 空白立牌 | `blank_sign` | 白(普通) | 立牌合成核心,3×3 中央 |
 | 空白筹码 | `blank_chip` | 白(普通) | 筹码合成核心,3×3 中央 |
 
@@ -722,12 +808,12 @@ When extending this workspace:
 4. 效果注册:在 `ModEffects` 注册对应 MobEffect;法伤/攻防加成结算分别注册到 `SpellDamageRegistry`/`DiceCombatModifiers` 修饰器。
 
 ### 冷却机制(EffectCardPeriod 统一管理,无需在各牌实现)
-- **效果牌轮次定义(必须遵守)**:效果牌轮次指当前出牌周期——**不论出牌数是否已达上限**——只要仍有效果牌的"能力/效果"或"出牌冷却"未结束,周期即未结束。当**所有效果牌进度走完且冷却时间走完**后,该周期才算结束;周期边界用于"每轮一次"类计数清理与新一轮开牌锁判定。**"完全重置"另有专用回调节点 `EffectCardPeriod.onRoundFullyReset`(第二批「三态化」新增)——只在 `tick` 情形 1(冷却到期后计数归零)与 `registerPlay` 的周期边界块两处触发,情形 2/3(未打满的收尾冷却、不变量违例修复)不算完全重置、不得调用;另有 `EffectCardPeriod.forceResetRound`(出牌数、出牌冷却与全部"每轮一次"标记一并归零,且**不**回调 `onRoundFullyReset`,由调用方自行决定后续迁移),忍者立牌主动的宽限保险走它。**轮次归零的统一清理口径 = `EffectCardPeriod.clearRoundBonuses`(2026-09-15 本批 C1 收口)**:它清除"一次性出牌数加成 / 可口糖果 / 探天卫星 / 活体书页本周期累计",**并同时解除电击手套本周期已武装的法伤扩散**(`ElectricGloveChipItem.disarmAoe(player)`,下个周期可重新武装)——该调用此前只写在 `tick` 情形 1,导致忍者宽限期满走的 `forceResetRound` 不解除武装(两条"完全重置"路径口径不等价);现已上移到 `clearRoundBonuses`,三条归零路径(`tick` 情形 1 / `registerPlay` 周期边界 / `forceResetRound`)**共用同一套清理项**,禁止再在任一调用点单独补写(含 `registerPlay` 边界块——那里的解除武装是**期望**行为:轮次完全重置即解除武装)。
+- **效果牌轮次定义(必须遵守)**:效果牌轮次指当前出牌周期——**不论出牌数是否已达上限**——只要**出牌冷却**未结束,周期即未结束。当**出牌冷却走完(出牌数归零)**后,该周期才算结束(**2026-09-30 起不再等待「效果牌自身的效果结束」**);周期边界用于"每轮一次"类计数清理与新一轮开牌锁判定。**"完全重置"另有专用回调节点 `EffectCardPeriod.onRoundFullyReset`(第二批「三态化」新增)——只在 `tick` 情形 1(冷却到期后计数归零)与 `registerPlay` 的周期边界块两处触发,情形 2(不变量违例修复)不算完全重置、不得调用;另有 `EffectCardPeriod.forceResetRound`(出牌数、出牌冷却与全部"每轮一次"标记一并归零,且**不**回调 `onRoundFullyReset`,由调用方自行决定后续迁移),忍者立牌主动的宽限保险走它。**轮次归零的统一清理口径 = `EffectCardPeriod.clearRoundBonuses`(2026-09-15 本批 C1 收口)**:它清除"一次性出牌数加成 / 可口糖果 / 探天卫星 / 活体书页本周期累计",**并同时解除电击手套本周期已武装的法伤扩散**(`ElectricGloveChipItem.disarmAoe(player)`,下个周期可重新武装)——该调用此前只写在 `tick` 情形 1,导致忍者宽限期满走的 `forceResetRound` 不解除武装(两条"完全重置"路径口径不等价);现已上移到 `clearRoundBonuses`,三条归零路径(`tick` 情形 1 / `registerPlay` 周期边界 / `forceResetRound`)**共用同一套清理项**,禁止再在任一调用点单独补写(含 `registerPlay` 边界块——那里的解除武装是**期望**行为:轮次完全重置即解除武装)。
 - **出牌数**:基础 1 + 固定来源(大背包/忍术飞镖)+ 临时来源(活体书页:**命中前已有 ≥3 层标记的目标时累计 +1**(仅当前周期;补记入口 `EffectCardPeriod.grantLivingPageCycleBonus`,在**命中时**结算而非使用时,自带跨轮保护 `getPlayCount(player) > 0` 与封顶);命运指引:效果存在即 +1(覆盖式,不累计);可口糖果满血触发:每周期一次;探天卫星轨道炮触发:每 1:00 一次;立牌主动的**一次性 +1**),由 `registerFixedSource`/`registerTemporarySource` 与 `EffectCardPeriod.grantBonusPlay` 提供;单轮总出牌数**固定封顶 9 张**——`getMaxAllowed` 返回 `min(1 + 全部加成, GameplayConstants.MAX_EFFECT_CARD_PLAYS)`(常量 = 9,**固定常量、不写入配置文件**,原 `max_effect_card_plays` 配置项不再提供),加成来源仍可叠加但不得超过上限。**封顶 9 是全局限制,对全部来源与全部立牌一律生效(不是忍者专属上限):忍者立牌主动的一次性 +1、大背包/忍术飞镖、活体书页/命运指引/可口糖果/探天卫星等任何增加出牌数的手段都只能把上限推到 9,永远不能绕过 9;忍者主动在「已达封顶 9」时拒绝释放,只是在全局上限之外**多加一道「没空间就不释放」的前置检查**,并非独立于 9 的另一套上限。
-  - 忍者立牌主动「忍术连击」= **一次性 +1(2026-09-14 用户裁决后完全重写,必须遵守)**:语义只有一条——**把当前出牌轮的可出牌数 +1**,调用唯一入口 `EffectCardPeriod.grantBonusPlay(player)`(附件 `effect_card_bonus_plays`,0/1,随出牌轮归零清除)。**禁止**再引入任何形式的「出牌银行」或主动技能来源注册:旧附件 `komachi_extra_plays`、旧常量 `GameplayConstants.KOMACHI_EXTRA_PLAYS_CAP`、以及 `EffectCardPeriod` 静态块里为主动注册的 `ExtraPlaySource` **已全部删除**,不得复活(残留检查:`grep -r komachi_extra_plays` 必须 0 命中)。出牌轮清理只有 `EffectCardPeriod.clearRoundBonuses` **一个入口**,现有 **三处**调用——`registerPlay` 的周期边界、`tick` 的周期结束、以及 `forceResetRound`(忍者宽限期满的强重置;三处共用同一套清理项,含 2026-09-15 本批 C1 上移进来的 `ElectricGloveChipItem.disarmAoe`)(**玩家死亡路径 `PlayerLifecycleHandler` 已移除该调用**:相关键都不是 `copyOnDeath`,重生后的新实体上本就是默认值,写它属空操作),禁止在各处再列一遍清理项。立牌装卸**不得**回收已授予的 +1(授予即已消耗;中途回收会造成"上限在周期中途下降"的不变量违例,见下条)。释放前置(任一不满足即**不释放且不进入主动技能冷却**,仅回 ActionBar 提示):① **效果牌冷却进行中**(`EffectCardPeriod.isCooldownActive`,提示 `msg.astral_dice.komachi_active_cooldown`)——此时本轮已无"多出一张"的空间;② 当前出牌数上限已达封顶 9 张(提示 `msg.astral_dice.komachi_active_capped`);③ 本轮已授予过这次 +1(提示 `msg.astral_dice.komachi_active_used`)。主动技能自身冷却中的拒绝仍由 `BaseSignItem.performSkill` 统一拦截。**三态化补充(第二批)**:触发成功后**不立即进入冷却**,锁定跟随出牌周期(**冷却从"该轮出牌状态完全重置那一刻"开始**:`EffectCardPeriod.onRoundFullyReset` → `BaseSignItem.onEffectCardRoundReset`),另有**宽限 1:00** 保险——期内自始至终未出任何效果牌 ⇒ 强制重置出牌状态并进入冷却(`forceResetRound` + 起冷却);一旦出过牌 ⇒ 保险失效、遵循周期;**锁定期间用 `registerPlay` 把 `sign_active_lock_played` 置真**(跨周期边界保持,不能读 `effect_card_play_count`/`effect_card_bonus_plays`,两者都会被周期边界归零)。
+  - 忍者立牌主动「忍术连击」= **一次性 +1(2026-09-14 用户裁决后完全重写,必须遵守)**:语义只有一条——**把当前出牌轮的可出牌数 +1**,调用唯一入口 `EffectCardPeriod.grantBonusPlay(player)`(附件 `effect_card_bonus_plays`,0/1,随出牌轮归零清除)。**禁止**再引入任何形式的「出牌银行」或主动技能来源注册:旧附件 `komachi_extra_plays`、旧常量 `GameplayConstants.KOMACHI_EXTRA_PLAYS_CAP`、以及 `EffectCardPeriod` 静态块里为主动注册的 `ExtraPlaySource` **已全部删除**,不得复活(残留检查:`grep -r komachi_extra_plays` 必须 0 命中)。出牌轮清理只有 `EffectCardPeriod.clearRoundBonuses` **一个入口**,现有 **三处**调用——`registerPlay` 的周期边界、`tick` 的周期结束、以及 `forceResetRound`(忍者宽限期满的强重置;三处共用同一套清理项,含 2026-09-15 本批 C1 上移进来的 `ElectricGloveChipItem.disarmAoe`)(**玩家死亡路径 `PlayerLifecycleHandler` 已移除该调用**:相关键都不是 `copyOnDeath`,重生后的新实体上本就是默认值,写它属空操作),禁止在各处再列一遍清理项。立牌装卸**不得**回收已授予的 +1(授予即已消耗;中途回收会造成"上限在周期中途下降"的不变量违例,见下条)。释放前置(**2026-09-30 用户裁决后只剩两条** —— 任一不满足即**不释放且不进入主动技能冷却**,仅回 ActionBar 提示):① 当前出牌数上限已达封顶 9 张(提示 `msg.astral_dice.komachi_active_capped`)——**只要本轮上限未达 9 就允许释放**,直接 +1 次出牌机会;② 本轮已授予过这次 +1(提示 `msg.astral_dice.komachi_active_used`)。⚠️ 原第 ① 条「效果牌冷却进行中→拒绝」(`EffectCardPeriod.isCooldownActive`,提示键 `msg.astral_dice.komachi_active_cooldown`)**已删除、该语言键已从三线三语一并移除** —— 冷却自 2026-09-30 起每次出牌都会启动,保留该闸门会把主动技能彻底锁死。主动技能自身冷却中的拒绝仍由 `BaseSignItem.performSkill` 统一拦截。**三态化补充(第二批)**:触发成功后**不立即进入冷却**,锁定跟随出牌周期(**冷却从"该轮出牌状态完全重置那一刻"开始**:`EffectCardPeriod.onRoundFullyReset` → `BaseSignItem.onEffectCardRoundReset`),另有**宽限 1:00** 保险——期内自始至终未出任何效果牌 ⇒ 强制重置出牌状态并进入冷却(`forceResetRound` + 起冷却);一旦出过牌 ⇒ 保险失效、遵循周期;**锁定期间用 `registerPlay` 把 `sign_active_lock_played` 置真**(跨周期边界保持,不能读 `effect_card_play_count`/`effect_card_bonus_plays`,两者都会被周期边界归零)。
   - **忍者立牌被动**(`KomachiSignItem.onEffectCardUsed`,每使用 3 张效果牌触发一次):复制最后一张使用的效果牌到物品栏 + 主动技能冷却立即减少 30%(剩余部分) + 伤害类效果牌伤害加成 +1(计数器"效果牌伤害增益",附件 `komachi_damage_bonus`,无上限,卸下立牌重置)。伤害加成经 `SpellDamageRegistry` 计入激光/板砖/轨道炮/定向爆破/活体书页的法伤;tooltip 按观看者实时显示加成后的伤害数值。**活体书页自 2026-09-25 起改为「命中时结算」的法伤伤害**(命中伤害 = 2 + 页数 + 本汇总值,经 `SpellDamageRegistry#livingPageImpactDamage`,伤害类型 `astral_dice:card_spell`);它**不再**附着到其它远程/魔法伤害上,故 `ModTooltipHandler#addActiveDamageBonusTooltip` 不再计入它。
-- **效果待定**:新增效果牌后,在 `EffectCardPeriod` 静态块用 `registerEffectPendingSource(Holder<MobEffect>)` 注册"效果是否在生效"的判定(冷却归零但效果未结束则禁止开新轮;剩余被锁时长由该注册源的效果自动推导,禁止硬编码效果列表)。当前已注册:激光/板砖/轨道炮/定向爆破/命运指引/王之力/狂暴/岿然不动(活体书页 2026-09-19 起不再注册,见下句)。**活体书页自 2026-09-19 起为纯即时伤害牌,不再给玩家施加任何效果**(用户裁决「不应该有持续效果,应转换为及时伤害,移除所有原本效果器」):`LivingPageItem.applyEffect` 只做「绑定获得者 + `rin_pages` +1 + 登记飞行」三件事,曾用的 1:00 标记效果已整段删除,`EffectCardPeriod` 也不再把它注册为「效果待定来源」(出牌轮只由出牌数/冷却推进)。忍术飞镖/贯穿之铳当时靠 `hasEffect(LIVING_PAGE)` 识别的「使用了伤害效果牌」曾改由**伤害类型**判定(`source.is(astral_dice:card_spell)`)。**2026-09-24 起两者都已移除「已使用伤害效果牌」前提**(见下方筹码表),判定方法 `SpellDamageRegistry#isLivingPageImpact` **已随之删除**;`astral_dice:card_spell` 伤害类型本身仍由 `isSpellDamage` 的 matcher 使用。`ModEffects.LIVING_PAGE`/`LivingPageEffect` 的**注册保留**(探针与共享库仍引用该 id,注册项不影响玩法)。
-- **出牌数打满后才进入冷却(2026-09-15 裁决后的最终口径)**:`registerPlay` 在本次出牌使出牌数**达到上限**(`getMaxAllowed`)时启动 30 秒冷却(时长由常量 `EFFECT_CARD_COOLDOWN_SECONDS` = 30 秒,**打满前不开始倒计时**);**未打满的一轮在全部计时器(效果待定/被锁时长,判据 `EffectCardPeriod.getRemainingBlockTicks(player) <= 0`)结束后同样进入一轮 30 秒冷却,但「不作废剩余出牌数」**——该分支**不把计数抬到上限**,故 `isBurstFull` 保持为假、冷却期间**仍可继续出牌**、冷却到期计数归零再开新一轮;且**已在跑的冷却不得被冷却期间的补牌重启或延长**(否则补得越晚冷却越长、持续出牌时周期永不结束)。冷却归零出牌数归零(`tick` 由 `event/PlayerTickEvents.onPlayerTick` 驱动);可口糖果"每轮一次"标记随周期归零清除;探天卫星"每 1:00 一次"由附件 `satellite_play_bonus_cooldown_end` 独立计时。
+- **效果待定(2026-09-30 起不再锁牌)**:该注册表**仍然存在**(`EffectCardPeriod` 静态块里的 `registerEffectPendingSource(Holder<MobEffect>)`),但**已不参与出牌锁** —— 出牌锁只看出牌数,旧语义「冷却归零但效果未结束则禁止开新轮」**已废除**。注册表现在只服务只读入口 `effectPendingEffects()`(调试命令 `/astralparty clearcardeffect`)与 `effectPendingSources()`/`effectPendingSourceIds()`(`/astralparty dump` 的 E 组);新增效果牌**可以不注册**,注册了也不改变出牌行为。当前已注册:激光/板砖/轨道炮/定向爆破/命运指引/王之力/狂暴/岿然不动(活体书页 2026-09-19 起不再注册,其 `applyEffect` 只做「绑定获得者 + `rin_pages` +1 + 登记飞行」三件事,曾用的 1:00 标记效果已整段删除)。
+- **出牌即进入冷却,且同一轮内每次出牌都重置(2026-09-30 用户裁决,取代 2026-09-15 口径)**:`registerPlay` 在**每次出牌**时都把冷却到期时刻写成 `now + COOLDOWN_SECONDS × 20`(模组侧常量 `EffectCardPeriod.COOLDOWN_SECONDS` = **45 秒**;不再要求「打满上限」才进冷却 —— 打满与否走同一条路径)。同一轮内连续出牌会不断把到期时刻推后(最后一次出牌之后 45 秒冷却结束)。**冷却与「效果牌自身的效果时长」彻底分离**:效果时长**不再锁住出牌**(`isBlocked` 只判 `isBurstFull`),冷却归零后即便效果仍在生效也能立即开新一轮。冷却归零出牌数归零(`tick` 由 `event/PlayerTickEvents.onPlayerTick` 驱动),`tick` 现在只保留两条分支:①冷却到期归零;②不变量违例修复(计数已达上限却无冷却在跑,只可能来自「上限在周期中途下降」)。**拥有「充能」时效果牌冷却的封顶由 20 秒改为 30 秒**(`EffectCardPeriod.CHARGE_COOLDOWN_CAP_SECONDS`,取值口径见 `ChargeManager.effectCardCooldownTicks`)。⚠️ 未打满一轮的其余规则不变:冷却期间仍可继续用掉剩余出牌数、`isBurstFull` 在未打满时保持为假、可口糖果「每轮一次」标记随周期归零清除、探天卫星「每 1:00 一次」由附件 `satellite_play_bonus_cooldown_end` 独立计时。⚠️ **历史口径已废止**:2026-09-15「未打满的一轮在全部计时器结束后同样进入一轮收尾冷却」与 2026-09-20「牌类 +1 抬高上限时豁免收尾冷却」**均不再适用**。⚠️ **这两个数值刻意不放进共享库 `GameplayConstants`**(库 `next` 线 2.0.0-SNAPSHOT 与消费方引用的稳定线 1.0.5 有落差,改库需跨分支 bump + 重发 + 三线 refresh),由模组侧持值、`EffectCardPeriod` / `ChargeManager` / `ModTooltipHandler` 三处共源。
 - **出牌周期状态机的不变量(2026-09-14 严重 BUG 后固化,必须遵守)**:`effect_card_play_count`(本轮已出牌数)**只在「周期存活」时有意义**,周期的唯一权威标志是 `effect_card_cooldown_end`(冷却结束时刻):① 计数达到**当轮上限**时 `registerPlay` 必然启动冷却,**禁止**出现「计数 ≥ 上限却没有冷却在跑」的状态;② 上限 `getMaxAllowed` 是**实时**计算的,任何来源变小(卸下大背包/忍术飞镖/可口糖果/探天卫星、命运指引效果到期…)都可能让计数瞬间"超标",故 `tick` **必须**把这种状态当成周期结束处理(补上这一轮冷却),**禁止**像旧实现那样在 `cooldown <= 0` 时直接 `return` —— 那会让 `isBurstFull` 永久为真、**效果牌永久不可用**,且摘掉任何筹码/立牌都救不回来(计数在玩家附件上,与物品无关);③ 新增/修改任何"每轮一次"的临时出牌数来源时,必须同时确认它在周期归零时被清除(`tick` 与 `registerPlay` 的周期边界**两处**都要覆盖)。
 - **长按右键一次按下只出一张牌(2026-09-14 外部 BUG 汇报,必须遵守)**:原版在右键按住时每 4 tick 调一次 `Minecraft#startUseItem`(自动重复),而客户端 `MultiPlayerGameMode#useItem` 在 `startPrediction` 内**无论** `Item#use` 返回什么都会把 `ServerboundUseItemPacket` 发出去(**连物品冷却命中的分支也照样发包**)——所以在 `Item#use` 里返回 `fail` 或做客户端预检都**拦不住服务端**。抑制点必须在 `Minecraft#startUseItem` 的 HEAD(`client/EffectCardUseGuard` + `mixin/client/AstralUseItemGuardMixin`,两子项目同文):同一次按下只放行第一张,**松键后由 `client/ClientTickHandler` 复位**;且只对手持效果牌生效(不影响放置方块/进食/弓箭等右键行为)。**禁止**把该守卫改到 `Item#use` 或 `isBlockedOnClient` 里实现。
 - **效果牌叠层口径(2026-09-13 用户裁决,必须遵守)**:① **活体书页页数永久累计（存储值无上限），但有效加成上限 120**——**每次命中**使 `rin_pages` +1(永久累计),**命中伤害 = 2 + 此前已命中的页数**(该页数经 `SpellDamageRegistry#livingPageBonusPages` 读取时按 `SIGN_DAMAGE_BONUS_CAP = 120` **静默夹取** ⇒ 命中伤害最多 2 + 120;夹取口径见上文「立牌伤害加成的静默安全上限 = 120」;与本周期出牌数加成 `living_page_cycle_bonus` 是两个互不相干的计数)。⚠️ **本次使用的那一页不计入本次伤害**(2026-09-19 用户裁决「先执行伤害,后施加标记,最后使活体书页伤害+1」):出牌时**不再** +1,改由 `combat/LivingPageImpact#resolve` 在命中结算的**最后**补记 ⇒ **首张命中固定 2**(与 tooltip 显示一致;旧行为是 3)、其后 3/4/…;**未命中的书页不计页数**(目标中途死亡/失效/换维度/超龄)。**2026-09-25 重写**:伤害在**命中时**结算(见 `combat/LivingPageImpact`),不再是"效果期间对其它远程/魔法伤害的被动加成";**后续修正(2026-09-19)**:效果已整段移除,该牌为纯即时伤害、不给玩家任何效果。⚠️ **连续出牌(+1)的判定基准 = 命中前层数**(2026-09-19 两发布线实机复验):**把目标打到 3 层的那一次本身不触发** —— 「命中后显示 3 层」≠「命中前 3 层」,只有第 4 次命中(命中前恰 3 层)才补记 +1,补记后本周期上限由 1 变 2(可立即再出一张,不必等冷却)。结算与判定的固定顺序 = **先结算伤害**(忍术飞镖等筹码加成一律按**命中前**层数,即本次新增的 1 层不参与本次伤害)→ **再施加 1 层标记** → **再补记 `rin_pages` +1** → **最后判 `markBefore >= 3`**;顺序、门槛与页数口径各由两发布线的一条回归断言钉死(用例 `LIVING-PAGE-{1.21.1,1.20.1}` 的 `LK1/LK2`(忍术飞镖 0/2 层 ⇒ `dmg=2/4`)、`LS1..LS4`(跨轮累积到命中前 3 层 ⇒ `credit=1:max=2`)与 `LI2/LI3`(佩戴 rin 立牌且页数归零后连续两张 ⇒ **`dmg=2` 然后 `dmg=3`**)步)。② **狂暴/王之力各自最多 3 层**(层数上限由常量 `MAX_EFFECT_STACKS` = 3 支撑:`BerserkCardItem`/`EffectCardItem` 取 `min(已有效果层+1, GameplayConstants.MAX_EFFECT_STACKS-1)`,重复使用同时刷新时长为 `max(旧, 3:00)`);**岿然不动**同属"功能效果牌最多 3 层"的口径,**已按口径实现叠层**(2026-09-13):`UnwaveringCardItem` 取 `min(已有效果层+1, MAX_EFFECT_STACKS-1)`、护甲修饰器随 amplifier 线性放大(1.21.1 用 `MobEffect#addAttributeModifier` 的 curve 重载,1.20.1 覆写 `getAttributeModifierValue`),抗性提升仍固定 II;③ **命运的指引为覆盖式刷新**——不累计:只要效果在生效就 +1 出牌数(覆盖式),重复使用仅刷新 5:00 时长与"主动冷却减半"的即时结算,不叠加层数、不叠加出牌数。
@@ -834,7 +920,7 @@ When extending this workspace:
 注意事项:
 - 充能类筹码的获得/消耗一律经 `ChargeManager.addStacks/consumeOne`(见「充能流派规范」),禁止直接操作 MobEffect 层数。
 - **每个充能筹码的 tooltip 一律追加「当前充能」计数器,统一格式无例外**——新增充能筹码时,除注册/模型/配方/tooltip 文案外,必须在其 `stack.is(...)` 分支调用 `addChargeCounter`(格式与 lang key 见「充能流派规范 → 充能筹码一律追加充能点数计数器」)。
-- 跃迁引擎的 Waystone 联动为**反射式可选接入**:未安装 Waystones 时自动降级,不影响构建与运行。
+- 跃迁引擎的 Waystone 联动为**反射式可选接入**:未安装 Waystones 时自动降级,不影响构建与运行。⚠️ 其反射目标须逐条来自实物（《第三方联动取源与反射纪律》§2）。
 
 ### 无流派（Other）
 
@@ -889,32 +975,41 @@ When extending this workspace:
 
 ## 治愈流派规范（Healing System）— 必须遵守
 
-治愈点数由 `HealingManager` 统一管理(玩家级共享资源,与具体饰品解耦)。**治愈体系使用 30 秒独立计时器**,仅在骰神赐福期间运转。
+治愈点数由 `HealingManager` 统一管理(玩家级共享资源,与具体饰品解耦)。
+**2026-09-30 用户裁决:治愈体系与骰神赐福彻底解绑** —— 使用独立的 **1:00** 计时器,一旦启动就自行运转到点数归 0。
 
 ### 点数构成
 - **治愈点为单一数值池**(存储于附件 `healing_points`,恒 ≥ 0,上限固定 32 点,由 `HealingManager.HEALING_POINT_CAP` 提供,不再随最大生命值变化)。
-- 来源:史莱姆立牌被动(受击 +1)/主动(+3)、缓冲盾牌(受击 +2)、医疗箱(触发赐福时)、维生素药丸(获得卡牌 +1)、可口糖果(使用效果牌 +1)、友情徽章(治疗友方双方 +2)、大碗炖肉(赐福结束后 16 格内友方玩家 +1)。
+- 来源:史莱姆立牌被动(受击 +1)/主动(+3)、缓冲盾牌(受击 +2)、医疗箱(每次结算后)、维生素药丸(获得卡牌 +1)、可口糖果(使用效果牌 +1)、友情徽章(治疗友方双方 +2)、大碗炖肉(赐福结束后 16 格内友方玩家 +1)。
 
-### 运行规则(30 秒治愈计时器)
-1. **触发骰神赐福时**(`combat/DiceCombatEvents.onLivingDamagePre` 的赐福触发块末尾调用 `HealingManager.onBlessingTriggered`):
-   1. 先增加装备的医疗箱筹码治愈点(紧急 +1、完备 +3,可叠加,受上限);
-   2. 再获得 **当前治愈点 × 2** 的治疗量(回血,不扣点;对应 MC 1♥/层);
-   3. 启动/重置 **30 秒治愈计时器**(`healing_timer_end`,tick 由 `GameplayConstants.HEALING_TIMER_TICKS` 控制,禁止硬编码)。
-2. **治愈计时器到期**(`HealingManager.onTimerEnded`,由 `tick` 驱动):
-   治愈点**减半(向下取整)**;若仍处于骰神赐福且治愈点 > 0,则再次按剩余治愈点 ×2 回血并重置计时器;否则保留减半后的点数,等待下次触发。
-3. **骰神赐福结束时**(`onBlessingEnded`,由 `tick` 边沿检测驱动,附件 `healing_prev_blessing` 记录上一周期状态):**仅清除周期标记,不减半**——减半统一由治愈计时器到期处理(避免登录/死亡强制移除效果时误减半)。
-4. **执行优先级最后**:触发赐福时的回血结算置于赐福触发块末尾,晚于同事件内所有影响治愈点数量的效果(史莱姆受击/缓冲盾牌钩子在伤害事件更早处执行;医疗箱加点在回血前完成)。
+### 运行规则(1:00 治愈计时器,与骰神赐福解绑)
+1. **触发骰神赐福时**(`combat/DiceCombatEvents` 赐福触发块末尾调用 `HealingManager.onBlessingTriggered`;**触发点之一,不再是唯一入口**):
+   ① 先增加装备的医疗箱筹码治愈点(紧急 +1、完备 +3,可叠加,受上限);
+   ② 再获得 **当前治愈点 × 2** 的治疗量(回血,不扣点;对应 MC 1♥/层);
+   ③ 启动/重置 **1:00 治愈计时器**(`healing_timer_end`,周期 = `HealingManager.HEALING_TIMER_SECONDS` = 60)。
+   ⚠️ 该周期常量刻意**不放进共享库** `GameplayConstants`(库 `next` 线 2.0.0-SNAPSHOT 与消费方引用的稳定线 1.0.5 有落差,改库要跨分支 bump + 重发 + 三线 refresh)。
+2. **治愈计时器到期**(`HealingManager.onTimerEnded`,由 `tick` 驱动,**与赐福无关**):
+   ① 治愈点**减半(向下取整)** → ② **再**追加医疗箱点数 → ③ 结算后点数 > 0 ⇒ 按 点数 ×2 回血并重起计时器;点数归 0 ⇒ 计时器清零,`updateEffect` 随即移除效果。
+   **示例(用户给定)**:4 点 + 完备医疗箱(3 点) ⇒ 减半 2 → +3 = 5 ⇒ 回血 10 点 ⇒ 开始下一轮 1:00 计时。
+3. **骰神赐福结束不再做任何事**:原 `onBlessingEnded` 与附件 `healing_prev_blessing` **已删除**(2026-09-30),`tick` 不再做赐福边沿检测。
+   ⚠️ **核心不变量:只要有治愈层数,计时器就必须在流动** —— 点数 > 0 而计时器未在跑(仅靠受击/护盾攒点、从未触发过赐福等)时,`updateEffect` 会**立即起一轮完整周期**,不存在「有点数却没倒计时」的状态。结算时**有剩余层数(或医疗箱补上)就继续下一轮,归 0 则计时器清零并移除效果**。
+4. **执行优先级**:回血一律排在该轮点数结算**之后**;触发路径的加点在回血前(医疗箱),到期路径的加点在减半之后、回血之前。
 
 ### 医疗箱筹码
-- **触发骰神赐福时**:增加治愈点(紧急 +1、完备 +3),由 `onBlessingTriggered` 统一结算。
+- **触发骰神赐福时、以及此后每次 1:00 结算时**:增加治愈点(紧急 +1、完备 +3),统一由 `HealingManager.addChipPoints` 结算。
 - **装备不再立即回血**(已移除 `onMedkitEquipped` 与装备回血常量)。
 - **卸下无副作用**:不扣治愈点(治愈点是玩家资源,与装备状态解耦)。
 
+### 美工刀筹码
+- **额外加伤**:生命值 ≥60%(或处于「汲取」)时,初级 +治愈点数、锋利 +治愈点数(两枚各计一份),注册在 `DiceCombatModifiers` 的额外加伤表;**仍只在骰战结算内生效**(`DiceCombatEvents` 的赐福门控之内)—— 2026-09-30 用户裁决:加伤不脱离骰战。
+- **图标显示与骰神赐福完全解绑**(2026-09-30 用户裁决):`event/PlayerTickEvents#updateCutterEffect` 只判「佩戴对应筹码 + 生命值 ≥60%(或汲取)」,用 `refreshIndicatorInfinite` 施加**无限时长**效果 ⇒ 只要自身条件成立就常驻显示。
+  ⚠️ **原版「无限时长」(`INFINITE_DURATION`)在本项目只允许用于「自身条件型」指示器** —— 当前唯一归属就是美工刀这两枚;凡需要绑定倒计时的指示器一律走各自计时器刷新(如治愈),**不得**走 `refreshIndicatorInfinite`。
+
 ### 关键实现
-- `tick`(onPlayerTick 驱动):上限收缩(最大生命降低时收缩点数)+ 赐福结束边沿检测 + 治愈计时器到期检测 + 效果刷新。
+- `tick`(onPlayerTick 驱动):上限收缩(最大生命降低时收缩点数)+ 治愈计时器到期检测 + 效果刷新。
 - `add`/`spend`/`clear`(死亡清零):纯点数增减,不触发回血。
-- 效果显示:等级 = 当前治愈点;时长 = 骰神赐福剩余 tick(赐福中)/固定常显时长(无赐福,持续刷新);归 0 自动移除。
-- 死亡:清空治愈点、边沿标记与计时器(`HealingManager.clear`)。
+- 效果显示:等级 = 当前治愈点;时长 = 治愈计时器**剩余 tick**(HUD 显示 1:00 倒计时)—— **恒为有限值,不使用原版「无限时长」**。⚠️ 因为它是有限时长,会进入 `EffectTimerGuard` 记账(自定义效果由 `MobEffectEvent.Added` 记录);而效果已存在时原版只发 `Changed`、`Added` 不触发 ⇒ 守卫的结束刻不会刷新、下一 tick 会把时长截断回旧值,故 `updateEffect` 在施加后**显式 `EffectTimerGuard.record` 一次**(内部取 max,不会缩短)。点数 > 0 即显示,归 0 自动移除。
+- 死亡:清空治愈点与计时器(`HealingManager.clear`)。
 
 ## 星光流派规范（Starlight System）— 必须遵守
 
@@ -1121,6 +1216,7 @@ When extending this workspace:
 - ⚠️ 上述差异**在日语侧同样存在**,翻译时不能三线共用一份:`temp/ja/gen_ja_lang.py` 的 `OVERRIDE` 已按线覆盖这些键。
 - ⚠️ **对齐不变量:三线 × 三语共 805 键逐键一致、取值 diff = 0(2026-09-23 `/astralparty finishsigncooldown` +2)(2026-09-22 怪力侦探批 +1:`msg.astral_dice.sherry_bad_ground`)(2026-09-22 复核;原 805 —— 当日交付清理删掉了只服务于已删测试钩子的 3 条 `msg.astral_dice.target_select.skill.test_echo_{player,enemy,living}`)**。比对必须**逐键比取值**,不能只比键集 —— 26.1.2 的 lang 早期用「缺键就补」的方式同步,**已有键的取值从不回改**,于是单侧漂移会只增不减。当日已据此删除 26.1.2 单侧多出的 3 处**实现细节注释**(属「多余注释」,一律不进 tooltip / 手册):(a) `energy_recycler` 的「单 tick 位移过大视为传送,不累计」(`tooltip.astral_dice.chip.energy_recycler` 与 `guide.entry.energy_recycler_chip.1`);(b) `tooltip.astral_dice.sign.moses_passive` 的首行「装备时,主动技能冷却时间减为 120 秒」—— 该被动(「精密技巧」,`MosesSignItem.ACTIVE_COOLDOWN_SECONDS = 120`)**照旧生效**,只是不进 tooltip(tooltip 唯一基准 = 玩家原文)。配套删除了 `temp/ja/gen_ja_lang.py` 的 `neoforge-26.1.2` 覆盖块(**不要加回来**,否则重跑会把注释写回 ja);该脚本现只剩 `forge-1.20.1` 覆盖块。⚠️ **键序仍未对齐**(不影响运行,JSON 对象无序):26.1.2 把 `hud.astral_dice.target_select.*`(6 键)与 `msg.astral_dice.target_select.*`(38 键)两段放在文件后段,1.20.1 / 1.21.1 放在中段 ⇒ 逐行 `diff` 仍不干净;若要收口需**同时**重排线的 `en_us.json` 并重跑日语生成器(ja 的键序派生自各线 zh 的键序)。
 - 修改后必须运行同步检查:`pwsh -NoProfile -File tools/check_lang_sync.ps1 -LangDir <子项目>/src/main/resources/assets/astral_dice/lang`(对被修改的子项目执行;key 不一致退出码非 0);CI(build.yml)在构建前也会自动对**三个子项目**(`neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2`,三线各一步)执行该检查,key 不一致会导致 CI 失败。
+- 🚨 **删除 lang 键之前，必须先查「谁在引用它」——尤其帕秋莉手册**（2026-10-01 实测缺陷）：本仓已有**两处**「删了 lang 键、手册页没跟着删」的事故 —— `guide.entry.special_effects.6`（随「效果待定」机制取消而删）与 `guide.entry.teru_sign.3`（随「手册无效注释全面清理」而删），两处都使**游戏内手册页直接显示原始键名**（`astral_dice.guide.entry.*`）。⚠️ **`tools/check_lang_sync.ps1` 查不出这类问题**（它只比三语之间的键集，不负责「手册引用 ⊆ lang」）。⇒ 删键前先 `grep -rn "<键名>" */src/main/resources/assets/astral_dice/patchouli_books/`，删完后跑 **`python tools/audit_patchouli_keys.py`**（三线手册引用 ⊆ 同线三语 lang；0 = 通过）。
 - **默认自动本地提交、不推送 GitHub**:每次改动完成后由代理自动执行本地提交(见「子项目修改默认规则」),但**不执行 `git push`**。
 
 ### 日语（ja_jp）本地化 — 2026-09-22 起三线各一份
@@ -1440,6 +1536,21 @@ When extending this workspace:
 - 运行期注入（`LootTableLoadEvent`），**只处理 `name.getPath().startsWith("chests/")`**；**防重复判据 = `table.getPool("<池名>") != null`**（重复注入会让同一池叠加）。
 - 🚨 **前缀判据之后必须再排除本模组命名空间**（2026-09-27「方案 A」修复一例**双通道重复注入**）：上面那条判据只看**路径前缀**，而自有表 `astral_dice:chests/star_plate` / `astral_dice:chests/golden_star_plate` 的 path 正好就是 `chests/...` ⇒ 它们会被一并注入这一整套四池。偏偏数据包 GLM `star_plate_all_chests`（1.21.1/26.1.2 用 `neoforge:add_table`、1.20.1 用 `astral_dice:add_table`）是**无条件（100%）**把 `astral_dice:chests/star_plate` 这张表挂到一长串原版箱表上（`forge:loot_table_id` 的 `any_of` 清单，含 `simple_dungeon` / `end_city_treasure` / `buried_treasure` 等）⇒ 开一个箱子要滚「主表 + 附加表」**两张**表，同一池被**二次判定**：合成概率 `1−(1−p)²` ⇒ **星币 5% → 9.75%、空白筹码 3% → 5.91%、玻璃骰子 2% → 3.96%；星盘为特例（自有表自身另有 5% 星盘权重）⇒ 修复前 6.89%、修复后 5.95%（= 主表 1% + 星盘表 5%；末地城修复后 9.75% = 5% + 5%）**。修法 = 在路径判据**之后**补一行早退 `if (name.getNamespace().equals(com.merlinkitsune.astral_dice.AstralDiceMod.MODID)) return;`（三条线同源写法；1.20.1 编译后是 SRG 名 `m_135827_`）。**自有表由 GLM 自行引用，本 handler 不得再注入**；新增任何自有 `chests/*` 表时同样自动被这条早退保护。回归判据 = 用例 `LOOT-POOL-<版本>` 的 `AP_SELF_LOOT` / `AP_SELFG_LOOT`（断言 `pools=none`，即「自有表上没有任何 astral 池」）。
 - 现有池：星币 5%（末地城 9%，1~2 个）、**空白筹码（埋藏宝藏 100% 必出；其余箱子 3% —— 2026-09-27 起）**、星盘 1%（末地城 5%）、**玻璃骰子 2%（末地城 5% —— 2026-09-27 起；此前战利品箱不出任何骰子）**。
+- 🆕 **生物击杀掉落（`onLivingDrops`，与上面的箱表池是两条独立通道；两者对同一只怪各自判定、互不影响）**：
+  - **星币**（`rollKillStarCoin`，2026-09-30 用户指定）：**仅当击杀者为玩家**时判定
+    （`DamageSource#getEntity()` ⇒ 箭矢 / 投掷物等间接击杀同样计入）；僵尸 / 僵尸猪灵 **1%**、
+    末影人 / 猪灵 **3%**、猪灵蛮兵 **20%**，每次 1 枚。⚠️ `PiglinBrute` **不是** `Piglin` 的子类
+    （两者同继承 `AbstractPiglin`）⇒ 必须先判蛮兵，否则 20% 会被 3% 吞掉；「僵尸」按 `Zombie` 类族
+    （含尸壳 / 溺尸 / 僵尸村民，僵尸猪灵亦继承自 `Zombie`，概率一致故归并）。
+  - **星盘**（`starPlateDropCount`，2026-09-30 用户指定扩展为分档）：凋灵 **5 个**、监守者 **3-5 个**、
+    远古守卫者 **1-3 个**、恶魂 **1 个**（四者均 100%）；凋灵骷髅 / 守卫者 **5%** 掉 1 个；
+    其余 `Monster` **0.3%** 掉 1 个。
+    ⚠️ **判定顺序即优先级、所有档位互斥**（同一只怪不会被判两次）：① `ElderGuardian` **继承** `Guardian`
+    ⇒ 远古守卫者必须先判（否则 100% 被 5% 档吞掉）；② 恶魂 / 凋灵骷髅 / 守卫者 / 远古守卫者 / 监守者
+    **都是** `Monster` 子类 ⇒ 必须排在 0.3% 兜底档**之前**（否则双档命中，概率 1−(1−p)²）。
+    ⚠️ 凋灵（`WitherBoss`）与凋灵骷髅（`WitherSkeleton`）是两个互不相干的类。
+    ⚠️ **26.1.2 包差异**：`WitherSkeleton` 在 `monster.**skeleton**`、`Zombie` 在 `monster.**zombie**`
+    （1.21.1 / 1.20.1 均在 `monster`）。
 - ⚠️ **调整任何战利品概率一律改这里**，不要在数据包 GLM 里另开一套；三线同步 + 重跑构建 + **开 jar 核符号与常量**。
 
 ### 取证红线
@@ -1512,6 +1623,71 @@ When extending this workspace:
 - 新增物品后对照 `entries/` 目录逐一核对:每个注册物品都有条目、条目内 icon/text 键无拼写错误、crafting 页引用的配方文件存在。
 - 手册文件是纯数据包 JSON(不参与 datagen),直接写 `src/main/resources/data/...` 即可,无需重新运行 runData。
 
+## 神秘遗物(+) 联动适配（Enigmatic Legacy Link）— 必读（2026-09-30 成文）
+
+- 🚨 **物品 id：两版 path 完全相同，只有命名空间不同**（2026-09-30 逐项核对两版 jar 的 lang 物品表）：
+
+  | path | 1.21.1 / 26.1.2 | 1.20.1（2.30.1） |
+  |---|---|---|
+  | `cursed_ring` 七咒之戒 | ✓ | ✓ |
+  | `the_acknowledgment` 启示之证 | ✓ | ✓ |
+  | `the_twist` 倒转之启 | ✓ | ✓ |
+  | `the_bless` 恩惠之典 | ✓ | **✗ 该版无此物品** |
+  | `cursed_scroll` 千咒卷轴 | ✓ | ✓ |
+  | `soul_crystal` 灵魂水晶 | ✓ | ✓ |
+  | `dimness_charm` 黯淡之证 | ✓ | ✗ |
+
+  ⇒ `ENIGMATIC_*` 常量**必须按线取值**。⚠️ **曾整条链静默失效**：1.20.1 侧照抄了 `enigmaticlegacyplus:`，
+  `hasEnigmaticCurse()` 恒 false ⇒ 骰点七咒减益 −40%、启示之证 −20%、倒转之启免疫、第一诅咒修正、
+  `MosesEnigmaticLink` 两条诅咒修正**全部不生效**，tooltip 备注区门控同样恒 false（2026-09-30 修复）。
+  ⚠️ `the_bless` 属 `enigmaticlegacyplus` 自身，**不是** `enigmaticaddons`（本仓两整合包都没有后者这个 id）。
+- ⚠️ **千咒刻印（`astral_dice:curse_marker`）的计数口径两版等价、实现方式不同**：1.21.1 移植版按
+  `EnchantmentTags.CURSE`（⇒ 必须落 `data/minecraft/tags/enchantment/curse.json`，本仓已有）；
+  1.20.1 按 `Enchantment#isCurse()`（⇒ 附魔类必须覆写 `isCurse()` 返回 true，本仓已有）。**两者都不能漏**。
+
+- **两条线的第三方是两个不同模组**：`neoforge-1.21.1` / `neoforge-26.1.2` 用 **神秘遗物+**
+  （modId `enigmaticlegacyplus`，1.21 移植版）；`forge-1.20.1` 用 **神秘遗物**
+  （modId `enigmaticlegacy`，原版 2.30.1）。**物品 id 与内部实现都不同** ⇒ 任何联动都要分线取值，
+  且备注区文案也随之分线（`moses_enigmatic` 首行：「神秘遗物+联动：」↔「神秘遗物联动：」）。
+- ⚠️ **护甲诅咒的修饰器 id 两版不同**（已反编译取证）：移植版用 `IItemHelper.getLocation(item)`
+  = **物品注册 id**（`enigmaticlegacyplus:cursed_ring`）；原版用**固定 UUID**
+  （ARMOR `457d0ac3-69e4-482f-b636-22e0802da6bd`、ARMOR_TOUGHNESS
+  `95e70d83-3d50-4241-a835-996e1ef039bb`，name 为 `enigmaticlegacy:armor_modifier` /`…armor_toughness_modifier`）。
+- ⚠️ **摘护甲诅咒必须在「服务器 tick 末尾」**：第三方 `CursedRing#curioTick` **每 tick 重挂**瞬时修饰器，
+  早于它的移除会被加回。范本 = `item/sign/MosesEnigmaticLink#onServerTick`。
+- ⚠️ **第三方 `SoulCrystal` 的调用形态两版不同**（移植版 `static`、原版**实例方法**）⇒
+  **一律反射 + 失败即永久关闭**，禁止硬引用第三方类（未装该模组时 `NoClassDefFoundError`）；⚠️ **但反射目标必须逐条来自实物**（见《第三方联动取源与反射纪律》§2）。
+- 🚨 **「死亡不掉落灵魂水晶」纯本模组侧只能「死后补偿」**：第三方在 `LivingDropsEvent`(**LOWEST**)
+  里调 `SoulCrystal#createCrystalFrom(player)`（内部只做 `lostCrystals + 1`）并生成
+  `PermanentItemEntity`；最后优先级**无法**被更晚的监听覆盖 ⇒ 正解 = 死亡瞬间快照 `lostCrystals`，
+  玩家重生后（下一 tick）① 还原计数并 `updatePlayerSoulMap` ② 回收死亡点附近的灵魂水晶掉落物。
+  ⚠️ 只还原计数不回收掉落物 ⇒ 玩家捡回后**双倍收益**。
+- 门控一律 `ModList.get().isLoaded("<本线 modId>")`（**1.20.1 的 ModList 在 `net.minecraftforge.fml`**，
+  另两线在 `net.neoforged.fml`）；tooltip 备注区渲染走 `ModTooltipHandler#addSignNoteLines`
+  （紫色 `§d`、无标题、独立空行段，范本 = `misaki_enigmatic`）。
+
+## Mixin 注入规范（Mixin Injection）— 必须遵守（2026-09-30 成文）
+
+- 🚨 **`require` 是「最少匹配数」，不是「容忍失败的次数」**：`@Inject` / `@Redirect` / `@ModifyVariable`
+  的 `require = N` 表示**该方法内至少要有 N 个匹配的注入点**，不足即抛 `InjectionError`（fatal）。
+  只写 `require = 1`（或留空、走 `injectors.defaultRequire`）就已获得「上游签名一变就报错」的 fail-loud 效果，
+  **不要**为了「允许失败 1 次」而写 2。实测教训：`forge-1.20.1` 的
+  `mixin/client/EffectRenderingInventoryScreenMixin` 两处 `@Redirect(method = "renderEffects")`
+  写了 `require = 2`，而该方法内 `MobEffectUtil.formatDuration` 与 `List.of` **各只有 1 处**
+  ⇒ 首次加载该类（打开物品栏）即崩，且**同时让 1.20.1 的 datagen 整体失败**（见下条）。
+
+- ⚠️ **1.20.1 的 datagen 会加载客户端类、并应用 `client` 组 Mixin**：该线的 JEI / Embeddium / Oculus /
+  KubeJS 等是由 `build.gradle` 的 `modImplementation` 引入（**不是**放进 `run/1.20.1/mods`），
+  故 `runData` 时它们也在 classpath 上；加上 datagen 带 `--all` 会生成 assets（物品模型），
+  客户端类被真实加载 ⇒ **`astral_dice.mixins.json` 的 `client` 数组里的 Mixin 会在 datagen 阶段被应用**。
+  ⇒ 任何 client Mixin 的注入错误都会**先炸 datagen**；这是好事（比进游戏才炸便宜得多），
+  故「三线 build SUCCESSFUL」**不等于** Mixin 正确 —— 至少要让 1.20.1 跑过一次 datagen。
+
+- ⚠️ **datagen 的 JVM 可能不退出**（1.20.1 尤其明显）：成功判据是日志出现
+  `[minecraft/HashCache]: ... written: N`（数据已落盘），**不要**等 `BUILD SUCCESSFUL`。
+  确认落盘后手工结束进程时，只杀命令行含 `fml.modFolders`（datagen JVM）与 `gradle-wrapper.jar`（wrapper）的
+  java 进程 —— **玩家的 Minecraft 是 `net.minecraft.client.main.Main`（常伴随 `net.caffeinemc.sodium`），绝不能杀**。
+
 ## 编译产物上传规则（Build Deploy Rule）— 必须遵守
 
 各子项目 `build.gradle` 已内置分发任务，`gradlew build` **构建后自动触发**，无需手动指定任务。部署目标按子项目区分：
@@ -1527,14 +1703,14 @@ When extending this workspace:
 | 子项目 | 项目测试环境(pushToDevRun) | 整合包/用户测试环境(pushToGame) | pushToGame 触发条件 |
 |---|---|---|---|
 | `neoforge-1.21.1` | `run/1.21.1/mods`（仓库根 run/） | `D:\.minecraft\versions\狐の航空学 Voxy Edition\mods` | 随 build 触发；**仅发布线分支 `multi-1.20.1-1.21.1` 会真正推送整合包**，其它分支（含 `multi-dev-next`）**严格跳过**并只打印 `pushToGame: skipped — 分支 '…' 不在整合包推送白名单 …` |
-| `forge-1.20.1` | `run/1.20.1/mods`（仓库根 run/） | `D:\.minecraft\versions\1.20.1 模组测试\mods` | 随 build 触发；**仅发布线分支 `multi-1.20.1-1.21.1` 会真正推送整合包**，其它分支（含 `multi-dev-next`）**严格跳过**并只打印 `pushToGame: skipped — 分支 '…' 不在整合包推送白名单 …` |
-| `neoforge-26.1.2` | `run/26.1.2/mods`（仓库根 run/） | `D:\.minecraft\versions\26.1.2 模组测试\mods` | 随 build 触发；**仅发布线分支 `multi-1.20.1-1.21.1` 会真正推送整合包**，其它分支（含 `multi-dev-next`）**严格跳过**并只打印 `pushToGame: skipped — 分支 '…' 不在整合包推送白名单 …` |
+| `forge-1.20.1` | `run/1.20.1/mods`（仓库根 run/） | `D:\.minecraft\versions\1.20.1-Forge 模组测试\mods` | 随 build 触发；**仅发布线分支 `multi-1.20.1-1.21.1` 会真正推送整合包**，其它分支（含 `multi-dev-next`）**严格跳过**并只打印 `pushToGame: skipped — 分支 '…' 不在整合包推送白名单 …` |
+| `neoforge-26.1.2` | `run/26.1.2/mods`（仓库根 run/） | `D:\.minecraft\versions\26.1.2-NeoForge 模组测试\mods` | 随 build 触发；**仅发布线分支 `multi-1.20.1-1.21.1` 会真正推送整合包**，其它分支（含 `multi-dev-next`）**严格跳过**并只打印 `pushToGame: skipped — 分支 '…' 不在整合包推送白名单 …` |
 
 规则要点：
 1. **推送任务随 build 触发，但整合包推送受分支白名单限制**：`pushToDevRun`/`pushToRootBuild`/`pushToGame` 三个任务均由 `finalizedBy` 随 build 触发；**`pushToGame` 在 `doLast` 里先做执行期分支判定** —— 分支不在白名单 `packPushBranches = ['multi-1.20.1-1.21.1']` 内（或无法确定分支，如 detached HEAD / 无 `.git`）时只打印 `pushToGame: skipped — 分支 '…' 不在整合包推送白名单 …` 并 `return`，**不写整合包目录**（`multi-dev-next` 即属此类，见上方「整合包推送的分支口径」）。**`-PdeployToPack` / `-PpackPush` 仍被任务读取**（三条线 `build.gradle` 均有 `def forcePackPush = project.hasProperty('deployToPack') || project.hasProperty('packPush')`，并在 `pushToGame` 的 `doLast` 里以 `if (!forcePackPush) { … }` 包裹上述白名单判定）—— 作用 = **跳过白名单手动强推整合包**（手动出包通道，保留）；强推时同时会触发「库 jar 与 mod jar 成对自检」的告警（1.21.1 / 1.20.1 原有，26.1.2 自 2026-09-17 接入库后同形）。
    ⚠️ **原文档此处曾称「该参数不再被任何任务读取（源码中仅存注释）」，与代码矛盾，已于 2026-09-17 以代码为准更正**（三线定义行/使用行：`neoforge-1.21.1/build.gradle:295`+`:335`、`forge-1.20.1/build.gradle:333`+`:381`、`neoforge-26.1.2/build.gradle:277`+`:314`）。
 2. 推送时**先删除、后复制**:`pushToDevRun`/`pushToGame`/`pushToRootBuild` 三个任务均先清空目标目录中的旧产物、再复制新 jar,各目录只保留本次构建产物。清理匹配范围(**实测**,勿按"都会按后缀过滤"理解):forge-1.20.1 三个任务统一用 `/astral_dice-.+\+forge_1\.20\.1\.jar/`(仅带 `+forge_1.20.1` 后缀);`neoforge-1.21.1` 与 `neoforge-26.1.2` 的 `pushToRootBuild` 带**各自完整后缀**过滤(`contains('+neoforge_1.21.1')` / `contains('+neoforge_26.1.2')`,根目录 `build/libs/` 多版本共存,不得写成宽泛的 `+neoforge_`);`neoforge-26.1.2` 的 `pushToGame` **同样**带 `contains('+neoforge_26.1.2')`(2026-09-17 收紧:整合包目录属用户环境,不得误删其它分支放进去的产物),仅 `pushToDevRun` 与 1.21.1 侧的 `pushToGame` 匹配**任意** `astral_dice-*.jar`(这两个目标目录本身只放单一版本,故无需过滤,同时也保证旧版本号残留会被清掉)。
-3. 整合包根目录不存在时（如 CI 环境）`pushToGame` 自动跳过并仅输出警告，不影响构建。⚠️ 因此**静默不部署**是最容易发生的形态(2026-09-17 实测:26.1.2 侧的 `pushToGame` 长期指向并不存在的 `D:\.minecraft\versions\26.1.2-NeoForge_26.1.2.109`,只打印 `pack dir not found, skipped`,整合包里的 jar 一直是旧时间戳)——改动 `packModsDir` 或换机后,必须**核对构建日志里确有 `pushToGame: pushed … -> <目标>` 一行**,不得只看 `BUILD SUCCESSFUL`。
+3. 整合包根目录不存在时（如 CI 环境）`pushToGame` 自动跳过并仅输出警告，不影响构建。⚠️ 因此**静默不部署**是最容易发生的形态，且**本类缺口已实测复发两次**：① 26.1.2 侧长期指向并不存在的 `D:\.minecraft\versions\26.1.2-NeoForge_26.1.2.109`；② **2026-09-29 实测** —— 1.20.1 与 26.1.2 两侧**同时**指向已不存在的 `1.20.1 模组测试` / `26.1.2 模组测试`（整合包目录已被重命名为带平台后缀的 `1.20.1-Forge 模组测试` / `26.1.2-NeoForge 模组测试`），产物停在上次路径尚存在的时刻。⇒ **`packModsDir` 禁止凭命名规则推测**：换机、整合包改名或新开子项目后，必须 `ls D:/.minecraft/versions/` 核对**本机实测存在**的目录名，并在构建日志里确认出现 `pushToGame: pushed … -> <目标>` 一行（两条线都要各看一遍——只改一侧是常见疏漏），**不得只看 `BUILD SUCCESSFUL`**。
 4. forge-1.20.1 子项目产物分两级：`pushToDevRun` 取 `build/devlibs` 未重混淆 jar（dev 环境 Mojmap 名），`pushToGame` 取 `build/libs` 重混淆 jar（生产 SRG 名），推错方向会 `NoSuchFieldError`——不要改动该取值逻辑。
 5. **禁止自动启动 runClient / 冒烟测试（自动化测试流程子配置例外）**：无流程的手动 runClient / 冒烟测试一律禁止，游戏内验证默认由用户手动运行；**仅当经「自动化测试流程（Automated Testing）」子配置（见下方章节）启动的自动化 runClient 允许**，且必须按该流程执行并产出报告。
    **⚠️ 2026-09-27 用户裁决——进一步收紧：禁用批量编排，改为纯手动下达命令。** 测试台保留「单条用例执行」与「手动命令注入」两种能力，**禁掉一切自动批量编排**。落地形式 = **运行时闸门**（可开关恢复，改动可逆可审计），拦截清单与放行清单见 `scripts/test/TESTING-RULES-OVERVIEW.md` §3.1。要点：
@@ -1568,6 +1744,15 @@ When extending this workspace:
 3. 若改过 lang 文件，分别对**三个**子项目跑 `pwsh -NoProfile -File tools/check_lang_sync.ps1 -LangDir <子项目>/src/main/resources/assets/astral_dice/lang`；
 4. `gradlew build` 同时编译并部署**三个**版本(26.1.2 与另两线同规则)——`pushToDevRun` / `pushToRootBuild` / `pushToGame`(整合包) 均默认随 build 自动触发（整合包推送仅发布线分支执行，本流程即运行在发布线上；失败则回滚版本号，不提交）；
 5. **自动本地提交**（`deploy.ps1` 自动提交 `release: v<版本>`，或手工 `chore: bump version to X.Y.Z` 等），**默认不执行 `git push`**。
+
+### CurseForge 上传（2026-09-30 起；**发布动作，与本地部署无关**）
+
+- 工具 = `tools/curseforge_upload.py`（**纯标准库**）。**`--dry-run` 是默认动作** —— 先看计划，确认无误再去掉它。
+- 凭据解析顺序：`--token` > 环境变量 `CURSEFORGE_TOKEN`（CI 用 GitHub secret）> `<仓库根>/.curseforge/token`（**已 gitignore，不入库**）。⚠️ token 是账号级凭据，任何情况下都不得写进入库文件。
+- ⚠️ 站点域**必须**是 `minecraft.curseforge.com`（换 `www.` 会拿到**另一个游戏**的版本表）；**直连必被 Cloudflare 403**（加浏览器 UA 也无效）⇒ 本机一律加 `--proxy http://127.0.0.1:7897`。
+- 版本 id **动态解析**（`/api/game/version-types` + `/api/game/versions`，缓存 7 天），提交的 `gameVersions` = `Client` + `Server` + MC 版本 + 加载器。
+- 项目 `projectId = 1662159`（slug `astral-dice`）；完整实测口径与踩坑见 `scripts/test/TESTING-SPEC.md` **附录 A 续 33**。
+- ⚠️ **自动推送规则（触发时机 / 是否并入 CI）待用户设定** —— 在此之前**不要**把上传接进 `build` 或 CI 流程。
 
 ## 自动化测试流程（Automated Testing）— 必须遵守（子配置）
 
@@ -2091,7 +2276,7 @@ pwsh -NoProfile -File scripts/test/mt_report.ps1 summary
 | 渲染兼容断言 | `SODIUM_LOADED` / `IRIS_LOADED` | dev 不适用（见阶段 E） |
 | DEBUG 标记 | `run/1.21.1/logs/debug.log` | `run/1.20.1/logs/debug.log` |
 | KubeJS | `run/1.21.1/kubejs/server_scripts/` | `run/1.20.1/kubejs/server_scripts/`（`ResourceLocation(...)` 替代 `.parse`） |
-| Mixin 差异 | MDG + refmap（注解选择器翻译） | **Mixin Booster 硬前置**（Sponge Mixin 运行时）**+ refmap**：Booster 只重映射**字节码引用**、**不翻译注解选择器**，缺 refmap 时生产 reobf jar 启动即 FATAL（见「forge-1.20.1 子项目关键差异速记」） |
+| Mixin 差异 | MDG + refmap（注解选择器翻译） | **Mixin 运行时二选一**（Mixin Booster `mixinbooster [0.1.3,)` **或** Sinytra Connector `connectormod`；`mandatory=false` + `init/MixinRuntimeGate` 门控，2026-09-29 起）**+ refmap**：两者只重映射**字节码引用**、**不翻译注解选择器**，缺 refmap 时生产 reobf jar 启动即 FATAL（见「forge-1.20.1 子项目关键差异速记」） |
 
 **KubeJS 辅助命令（权威数值出口，供 `log` 断言使用）**：
 - 1.21.1 / 1.20.1：`/astraldice_ts_count <半径>`、`/astraldice_ts_present <实体id> <半径>`、`/astraldice_ts_equip <sign>`、`/astraldice_ts_clearcd`；
@@ -2219,10 +2404,14 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --new <注册id>
   ⇒ **凡 `isBlessingTarget` 已放行的地方，不得再用 `HostileTargets` 二次收窄**（那会静默漏掉三类目标：① **非同队但从未攻击过你的玩家**；② **Boss 实体**（不属 `Enemy`/`NeutralMob` 时）；③ **`isAggressive()` / `getTarget()==player` 为真却不属上述两类**的怪 —— 典型就是**山羊/狐狸/熊猫**等「会反击但原版未标中立」的生物；⚠️ **羊驼/行商羊驼自 2026-09-27 起已归入 `HostileTargets` 第三类**，不再属于本条的收窄理由）。
   2026-09-24 已按此修掉 5 处：贯穿之铳的目标判定、枪匠被动、定向爆破与电击手套的范围波及、大当家立牌溅射、骰战「调查阶段增益」**（`SpellDamageRegistry` 内亦同）。
 - **判定顺序固定**：先 `Enemy`，再 `NeutralMob` 且**非已驯服宠物**（`!TamableAnimal#isTame()`）。三条禁令：① **禁止**只写 `instanceof Enemy` 就宣称覆盖了「中立生物」；② **禁止**用全限定名 `net.minecraft.world.entity.monster.Enemy` 绕过统一入口（历史上正是这种写法让 5 处判据点漏改）；③ **禁止**用 `instanceof Monster` 代替（`Monster ⊂ Enemy`，会漏掉恶魂/幻翼/岩浆怪/末影龙等）。
-- **唯一豁免（它根本不是敌对判定）**：`event/LootInjectionHandler` 用 `instanceof Monster` 选**战利品注入池**（怪物类实体 0.3% 掉星盘）。这是掉落池口径，**不得**改调 `HostileTargets`（改了会让岩浆怪/幻翼/恶魂/末影龙开始掉星盘）。
+- **唯一豁免（它根本不是敌对判定）**：`event/LootInjectionHandler#starPlateDropCount` 用 `instanceof` 选**星盘掉落档位**（2026-09-30 起为分档：凋灵 / 监守者 / 远古守卫者 / 恶魂必掉、凋灵骷髅 / 守卫者 5%、其余 `Monster` 0.3%，详见「战利品概率注入」节）。这是掉落池口径，**不得**改调 `HostileTargets`（改了会让**未列档位**的怪 —— 岩浆怪 / 幻翼 / 末影龙等 —— 也开始掉星盘）。⚠️ **旧文把「恶魂」列为「不该掉星盘」的举例已过时** —— 恶魂自 2026-09-30 起被用户显式指定为 100% 掉 1 个；档位表仍**只按生物类型**判，与敌对 / 中立立场无关。
 - **第二处豁免（有意的玩法收窄，2026-09-24 用户裁决「飞星应当只对敌对目标生效」）**：`combat/ShootingStarManager#isStarTarget`（飞星 = 被动自动触发）只认「敌对生物 ∪ **已被激怒**的中立生物 ∪ 消费方额外声明者 ∪ 敌对玩家」，即回到 2026-09-24 重写**之前**的中立判据 —— 为了保住「平静的末影人 / 僵尸猪灵」，该处**先判 `Enemy` 再判 `NeutralMob#isAngry()`**（这两者同时实现两个接口，顺序颠倒会错杀），其余情形仍**完全交给入口**。允许在此内联这两步的理由：宽口径（中立一律计入）是为**主动技能**的释放目标判定（秘密侦探 / 枪匠）定的，而飞星是**被动自动触发**（路过即落星）—— 不该凭空砸到未激怒的狼 / 铁傀儡 / 北极熊 / 蜜蜂。🚫 **禁止**把它当成放宽上面三条禁令的借口：其它任何判据点仍必须只调入口。
 - **敌对玩家规则与带上下文重载（全局，2026-09-15 用户裁决，必须遵守）**：`HostileTargets` 新增带上下文重载 `isHostile(Entity viewer, Entity target)`，把「**非同队伍、且曾主动攻击过 viewer 的玩家**」计入敌对目标（故大当家溅射等范围/波及效果、以及**电磁炮落雷**（2026-09-15 本批 D-B2 对齐，viewer = `LightningBolt#getCause()`，见下条）现在对这类玩家生效）；记录表为 `combat/PlayerHostilityTracker`（服务端内存静态表，不持久化）。口径细节：① **记录 = 只记「主动攻击」** —— 排除本模组内部 AOE/溅射/反击结算（`DiceCombatEvents.isInternalAoe()` / `isInCounterChain()` 闸门）、自伤、任一侧非玩家、以及被取消的伤害（挂点在最终伤害事件，晚于可取消的减伤前事件）；② **双方都没有队伍时可互为敌对**（同队才豁免；任何一方无队伍都不算同队——`EventTargetCollector`「未加入队伍视为全服玩家」的发奖约定**不适用于此处**）；③ 玩家**死亡**（`LivingDeathEvent`，`priority=LOWEST`，晚于保命方的「取消死亡」）/死亡克隆/登出时**双向**清除该立场（作为攻击者与作为目标的记录一并清）；④ **例外**：`PandamanSignItem` 的嘲讽**刻意只对敌对生物生效**（单参 `isHostile(e)` + `!(e instanceof Player)` 守卫，保持既有约定，永不施加给玩家）。
 - **统一现状（2026-09-15 复核；2026-09-15 本批 D-B2 后更新计数）**：双版本各 **24 处玩法判据点**已改调该入口，另有 `damage/RailgunBolts#isValidLightningTarget` 委托同一入口，合计 **25 个调用点 / 17 个文件**（两版本行号同构、逐条 `Compare-Object` 零差异）。其中 **23 个调用点**改用带上下文的 `isHostile(viewer, target)` 重载（含本批改口径的 `RailgunBolts#isValidLightningTarget`，viewer = `LightningBolt#getCause()`），仍用单参的 2 处为：`DiceCombatEvents.isBlessingTarget`（口径含「非队友玩家」，无法交给本入口）、`PandamanSignItem` 的嘲讽（**刻意**只对敌对生物生效，见上条）。判据同族的既有分支（`DiceCombatEvents.isBlessingTarget` 的「Boss 或正在追打该玩家的生物」、`NancyLuSignItem#clearNearbyMobTargets` 的 `mob.getTarget() == player`、`BossEntityUtil.isBossEntity`）**不是** `Enemy` 判定，保持原样。
+- **🆕 队友 / 盟友判定的唯一入口 = `combat/PartyRelations`（2026-09-30 用户裁决，必须遵守）**：此前全仓队友判定一律是裸原版计分板 `getTeam()` —— 而整合包里的队伍**不一定**走计分板：`FTB Teams` 与 `Open Parties and Claims`（OPAC）各有独立的一套队伍数据，这类玩家的 `getTeam()` 恒为 `null` ⇒ 队友判定**完全失效**（用户实报：同一 FTB 队伍内仍能互相造成伤害、电磁炮仍命中友方）。现统一走 `combat/PartyRelations`：`isSameTeam(a, b)` = 原版计分板 ∪ FTB ∪ OPAC（含 OPAC 的**盟友队伍**）；`hasTeam(e)` = 任一队伍系统中已入队（供「任一方无队伍即友方」这类宽松口径）；`isHostileTo(viewer, target)` = **先做盟友豁免，再委托库 `HostileTargets.isHostile`**（故**上一条「敌对唯一入口」不变**，只是前面多一道盟友闸门）；`collectTeamPlayers(Player)` = 队伍收集（语义与库 `EventTargetCollector` 一致，含「未加入任何队伍 ⇒ 返回全服在线玩家」的兜底）。**新增或修改任何队友判定（含「同队才生效」的加成 / 波及 / 治疗范围）一律调本类，不得再写裸 `getTeam()`。**
+  两条实现纪律：① **两个第三方后端一律走反射 + `Class.forName` 惰性解析**（⚠️ 反射目标须逐条来自实物：《第三方联动取源与反射纪律》§2 —— 本条下面的签名清单即该纪律的产物）（安装实况：1.21.1 包有 FTB Teams + Library；**1.20.1 完全没有 FTB**；26.1.2 只有 Library、**没有 Teams**；三个包**均未安装** OPAC）⇒ 解析或调用失败**一次即永久关闭该后端**并退回原版计分板口径，**绝不因第三方模组改版而崩溃**；② FTB 按 `isClientSide()` **分流**：客户端 `ClientTeamManager#getTeamForPlayer(Player)`、服务端 `TeamManager#arePlayersInSameTeam(UUID, UUID)`（先 `isManagerLoaded()`；`getManager()` 在客户端会抛 NPE）—— **不要用 `isManagerLoaded()` 猜侧**，客户端连远程服务器时集成服务端可能同时存在，会读到错误的队伍数据。
+  ⚠️ `starengine_lib` 的 `event/EventTargetCollector` **同名功能已坏**（其 FTB 反射查的是并不存在的 `getTeamForPlayer(Player)` / `getTeamForPlayer(UUID)`，真实签名是 `getTeamForPlayer(ServerPlayer)` / `getTeamForPlayerID(UUID)`；OPAC 分支查的 `dev.darkhax.opac.*` 亦不存在，真实包名为 `xaero.pac.*`）⇒ FTB 玩家被判为「未加入任何队伍」并落进「无队伍 ⇒ 全服皆友方」的兜底，**友方效果（大碗炖肉 / 银行卡「用不完」/ 奢华大餐 / 挚友守护 / 挚友祝福）实际扩散到了全服**。**该缺陷属库侧，应在库的下一次发版中一并修**；当前由 `PartyRelations` 顶住（本仓不改库、不动库版本 pin）。
+  ✅ **为什么不必给库加 seam**：库 `target/SelectorTargets` 用的是**单参** `isHostile(target)`（类注释明确「不含玩家」）⇒ 目标选择器**天然不存在**队友缺口 ⇒ 无需 bump 库版本即可闭环。
 
 
 
@@ -2271,9 +2460,9 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --new <注册id>
 
 目标参数可选(`@a`/玩家名),省略时作用于执行者自己;执行者不是玩家且未给参数、或选择器解析不出玩家时返回可读失败文案而**不抛异常**。反馈文案一律走 lang key(`command.astral_dice.astralparty.*`,经 `Component.translatable`),禁止内联文本。
 
-**出牌锁三条判据与分工**(判据见 `EffectCardPeriod#isBlocked`):①出牌数达当轮上限(`isBurstFull`)、②出牌冷却进行中(`isCooldownActive`)、③**效果待定**(`isEffectPending`)。
+**出牌锁的唯一判据**(2026-09-30 起,判据见 `EffectCardPeriod#isBlocked`):**出牌数达当轮上限**(`isBurstFull`)—— `isBlocked` 只返回它。冷却进行中**不**拦(玩家仍可用掉本轮剩余出牌数);原第 ③ 条「效果待定」(`isEffectPending`)**已废除**。
 
-- `resetcardlock` **只解 ①②** —— 调 `EffectCardPeriod.forceResetRound(player)`:出牌数、出牌冷却、全部「每轮一次」标记(含电击手套本周期武装)一并归零。**明确不做 ③**:不清 `EFFECT_PENDING_SOURCES` 对应的效果、**不清立牌锁定态 `sign_active_lock_*`**、**不清待命等待器 `sign_ready_*`**、不补 `onRoundFullyReset` 回调。该入口对「未处于任何轮次状态」的玩家**幂等安全**(全是无条件写默认值,不读旧值)。
+- `resetcardlock` **只解 ①(出牌数)与出牌冷却** —— 调 `EffectCardPeriod.forceResetRound(player)`:出牌数、出牌冷却、全部「每轮一次」标记(含电击手套本周期武装)一并归零。**明确不做 ③**:不清 `EFFECT_PENDING_SOURCES` 对应的效果、**不清立牌锁定态 `sign_active_lock_*`**、**不清待命等待器 `sign_ready_*`**、不补 `onRoundFullyReset` 回调。该入口对「未处于任何轮次状态」的玩家**幂等安全**(全是无条件写默认值,不读旧值)。
 - ③ **只能靠清掉效果实例**解除(`forceResetRound` 覆盖不到),由 `clearcardeffect` 负责。
 - `cleareffect` 与 `clearcardeffect` 的区别:前者 = **全部本模组效果**(含立牌主动效果 `misaki_burst`/`papara_bite`/`nancy_lu_hack`/`weak_mark` 等);后者 = **仅效果牌留下的那批效果**(= 出牌锁第 ③ 条的权威来源),不碰立牌主动效果,也不碰效果牌顺带施加的原版 rider(迅捷/中毒/生命恢复/抗性提升——它们不参与出牌锁且来源众多)。
 

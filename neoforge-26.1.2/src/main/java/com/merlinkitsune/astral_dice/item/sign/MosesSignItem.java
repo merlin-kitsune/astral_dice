@@ -27,7 +27,7 @@ import top.theillusivec4.curios.api.SlotContext;
 /**
  * 枪匠立牌(命名:moses,史诗)。
  *
- * 弱点识破:每层攻击/防御 +1、骰点最低数 +1,骰神赐福结束减 1 层,最多 4 层。
+ * 弱点识破:每层攻击/防御 +1、骰点最低数 +1,**每分钟(效果自然到期)减 1 层**,最多 4 层。
  * 被动「精密技巧」:装备时主动冷却减为 120 秒。
  * 主动「弱点反击」:使用目标选择器选择普通敌对目标并施加「破绽」2:00
  * (选择器目标规则:{@code TargetType.ENEMY} 经 {@code SelectorTargets} 委托到全局唯一入口
@@ -177,16 +177,4 @@ public class MosesSignItem extends BaseSignItem {
         ModAttachments.setMosesDodgeCounterRewarded(target, true);
     }
 
-    /**
-     * 骰神赐福结束:弱点识破减少 1 层。
-     */
-    public static void onDiceBlessingEnded(Player player) {
-        if (player == null || player.level().isClientSide()) return;
-        if (!isEquipped(player)) return;
-        if (WeaknessRevealEffect.getStacks(player) > 0) {
-            WeaknessRevealEffect.consumeOne(player);
-        }
-        DiceCombatModifiers.setDefenseArmorBonus(player, "moses_weakness_armor",
-                WeaknessRevealEffect.getStacks(player));
-    }
 }

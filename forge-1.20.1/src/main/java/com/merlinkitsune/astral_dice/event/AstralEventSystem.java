@@ -13,6 +13,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 
 import com.merlinkitsune.starenginelib.event.EventTargetCollector;
+import com.merlinkitsune.astral_dice.combat.PartyRelations;
 /**
  * 事件系统:事件触发后的统一附加效果。
  * 事件本体由各立牌自行实现(大侦探主动的随机事件、秘密侦探击杀「隐匿调查」目标触发的调查阶段);
@@ -62,7 +63,7 @@ public final class AstralEventSystem {
         if (!(triggerer.level() instanceof ServerLevel serverLevel)) return;
         long now = serverLevel.getGameTime();
         // 团队/友方目标:若触发者未加入任何队伍,collectTeamPlayers 会返回全服在线玩家
-        java.util.List<Player> teamPlayers = EventTargetCollector.collectTeamPlayers(triggerer);
+        java.util.List<Player> teamPlayers = PartyRelations.collectTeamPlayers(triggerer);
         String signature = triggerer.getUUID() + "|" + eventId;
         for (ServerPlayer sp : serverLevel.players()) {
             if (!holdsSign(sp, ModItems.RIN_SIGN.get())) continue;

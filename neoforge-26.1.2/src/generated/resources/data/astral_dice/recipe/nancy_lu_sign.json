@@ -7,7 +7,7 @@
     "L": "astral_dice:blank_sign",
     "P": "astral_dice:star_plate",
     "W": "minecraft:black_concrete",
-    "Y": "minecraft:sculk",
+    "Y": "minecraft:cyan_concrete",
     "Z": "astral_dice:diamond_dice"
   },
   "pattern": [

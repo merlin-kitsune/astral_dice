@@ -31,6 +31,7 @@ import top.theillusivec4.curios.api.CuriosApi;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import com.merlinkitsune.astral_dice.combat.PartyRelations;
 
 /**
  * 怪力侦探立牌(sherry,史诗)。
@@ -52,7 +53,7 @@ import java.util.List;
  * 每攻击一个**新的**、最大生命值 ≥ {@value #HIGH_HEALTH_THRESHOLD} 的敌对目标,获得 1 层「推理时间」
  * —— **每个目标只提供 1 层**(已提供过的目标 UUID 记在 {@code ModAttachments#SHERRY_REASONING_TARGETS},
  * 首次命中即登记;2026-09-25 用户裁决「每攻击一下给一层」为缺陷);上限 {@value #MAX_REASONING} 层;
- * 每层 **+1 攻击力、减少 1 点受到的伤害**;**骰神赐福结束后扣除 1 层**。
+ * 每层 **+1 攻击力、减少 1 点受到的伤害**;**每分钟(效果自然到期)扣除 1 层**。
  *
  * <p><b>层数真值在附件 {@code ModAttachments#SHERRY_REASONING_LAYERS}</b>(带 {@code .copyOnDeath()},
  * ⇒ **死亡不清**「推理时间」,与「弱点识破」那种"层数放效果里"的写法**不同**);
@@ -77,7 +78,7 @@ public class SherrySignItem extends BaseSignItem {
      * <p>上限数值（256）与手电筒筹码**曾用**的目标记录上限相同,但**淘汰策略不同**（手电筒筹码自 2026-09-28 改为「击杀触发」后已不再需要任何目标记录,故此处只作历史对照）:
      * 手电筒发的是**星光货币**,故取「记录满则不再发放」以求严格;本条记录键按目标**实体实例** UUID 计,
      * 长局里 256 个目标很容易达到,若也「满则停发」会让玩家长时间游戏后**静默失去整个被动**;
-     * 而「推理时间」本身有 {@link #MAX_REASONING} 层上限、且每次赐福结束 −1 层,
+     * 而「推理时间」本身有 {@link #MAX_REASONING} 层上限、且每分钟 −1 层,
      * 重复发放(前提是先打过 256 个其它目标)不构成刷取 ⇒ 取**按最旧淘汰**。
      */
     public static final int MAX_TRACKED_TARGETS = 256;
@@ -238,7 +239,7 @@ public class SherrySignItem extends BaseSignItem {
         List<LivingEntity> targets = new ArrayList<>();
         for (LivingEntity candidate : level.getEntitiesOfClass(LivingEntity.class,
                 player.getBoundingBox().inflate(THROW_RADIUS), e -> e != player && e.isAlive())) {
-            if (!HostileTargets.isHostile(player, candidate)) continue;
+            if (!PartyRelations.isHostileTo(player, candidate)) continue;
             // 隔墙不拉:只投掷玩家**视线可达**的目标(与「从墙后把怪拉出来」互斥)
             if (!player.hasLineOfSight(candidate)) continue;
             targets.add(candidate);
@@ -452,13 +453,6 @@ public class SherrySignItem extends BaseSignItem {
         return new ArrayList<>(Arrays.asList(raw.split(",")));
     }
 
-    /** 骰神赐福结束后扣除 1 层(由 {@code combat/DiceCombatEvents} 的赐福结束段调用) */
-    public static void onDiceBlessingEnded(Player player) {
-        if (player == null || player.level().isClientSide()) return;
-        if (getLayers(player) > 0) {
-            addLayers(player, -1);
-        }
-    }
 
     /**
      * 「挚友守护」:玩家 {@code victim} 若与某个佩戴怪力侦探立牌的玩家**同队**,则其受到的伤害 −1。
@@ -468,7 +462,7 @@ public class SherrySignItem extends BaseSignItem {
     public static float guardianReductionFor(Player victim) {
         if (victim == null || victim.level().isClientSide()) return 0.0F;
         if (!hasTeam(victim)) return 0.0F;      // 无队伍 ⇒ 不生效
-        for (Player ally : EventTargetCollector.collectTeamPlayers(victim)) {
+        for (Player ally : PartyRelations.collectTeamPlayers(victim)) {
             if (ally == victim) continue;
             if (!isEquipped(ally)) continue;
             if (wearsSign(victim, HANNA_SIGN_ID)) return 1.0F;
@@ -478,7 +472,7 @@ public class SherrySignItem extends BaseSignItem {
 
     /** 是否存在队伍(无队伍时「同队伍内」条件不成立) */
     private static boolean hasTeam(Player player) {
-        return EventTargetCollector.hasAnyTeam(player);
+        return PartyRelations.hasTeam(player);
     }
 
     /** 该玩家是否在 curios 槽里装着指定注册 id 的立牌(按 id 字符串匹配,见类 javadoc) */

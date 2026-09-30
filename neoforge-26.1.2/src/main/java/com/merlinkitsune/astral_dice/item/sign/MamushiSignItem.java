@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import com.merlinkitsune.astral_dice.combat.PartyRelations;
 
 /**
  * 蛟龙立牌(mamushi,传奇 UNCOMMON)。
@@ -411,9 +412,9 @@ public class MamushiSignItem extends BaseSignItem {
      */
     private static List<Player> collectActiveTargets(Player wearer, boolean dragon) {
         List<Player> candidates = new ArrayList<>();
-        if (EventTargetCollector.hasAnyTeam(wearer)) {
+        if (PartyRelations.hasTeam(wearer)) {
             // ③ 有队伍 ⇒ 只取同队成员(库侧可能返回其它维度的 FTB/OPAC 队友 ⇒ 交给下方同维度过滤)
-            candidates.addAll(EventTargetCollector.collectTeamPlayers(wearer));
+            candidates.addAll(PartyRelations.collectTeamPlayers(wearer));
         } else if (wearer.level() instanceof ServerLevel serverLevel) {
             // ③ 未组队 ⇒ 不做队伍过滤:本维度在线玩家(自己稍后排除)
             candidates.addAll(serverLevel.players());

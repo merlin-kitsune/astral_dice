@@ -134,21 +134,6 @@ public class ModAttachments {
         player.setData(HEALING_POINTS.get(), Math.max(0, value));
     }
 
-    // 治愈:上一检测周期玩家是否处于"骰神赐福"(服务端边沿检测用,判断赐福结束时刻以执行治愈减半;
-    // 仅服务端使用,无需同步)
-    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Boolean>> HEALING_PREV_BLESSING =
-            ATTACHMENTS.register("healing_prev_blessing", () -> AttachmentType.builder(() -> false)
-                    .serialize(Codec.BOOL)
-                    .build());
-
-    public static boolean isHealingPrevBlessing(net.minecraft.world.entity.player.Player player) {
-        return player.getData(HEALING_PREV_BLESSING.get());
-    }
-
-    public static void setHealingPrevBlessing(net.minecraft.world.entity.player.Player player, boolean value) {
-        player.setData(HEALING_PREV_BLESSING.get(), value);
-    }
-
     // 治愈:独立 30 秒计时器结束 tick(服务端使用;0 表示无计时器)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> HEALING_TIMER_END =
             ATTACHMENTS.register("healing_timer_end", () -> AttachmentType.builder(() -> 0L)
@@ -1207,7 +1192,7 @@ public class ModAttachments {
     //  键名与口径 = docs/features/fengshui-sign-spec.md §9.1(**冻结**)。
     //  同步策略:五个键一律**只** .serialize(...),**不** .sync(...) —— 它们的读取方全在服务端
     //  (玩家级 tick 的状态机/周期伤害、骰战攻击修饰器),玩家可见载体是**效果实例**(由原版效果
-    //  同步包呈现),故不额外写包(同口径先例:healing_prev_blessing 的"仅服务端使用,无需同步")。
+    //  同步包呈现),故不额外写包(同口径先例见下方 zhao_prev_blessing 的"仅服务端使用,无需同步")。
     // ══════════════════════════════════════════════════════════════════════════
 
     /**

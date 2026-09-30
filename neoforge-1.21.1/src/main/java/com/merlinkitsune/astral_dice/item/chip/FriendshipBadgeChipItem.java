@@ -15,6 +15,7 @@ import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.entity.AreaEffectCloud;
 import net.minecraft.world.entity.player.Player;
 import net.neoforged.bus.api.SubscribeEvent;
+import com.merlinkitsune.astral_dice.combat.PartyRelations;
 
 /**
  * 友情徽章筹码:对友方玩家施加任意治疗效果时,使双方各获得 2 点治愈。
@@ -67,8 +68,10 @@ public class FriendshipBadgeChipItem extends BaseChipItem {
     }
 
     // 友方判定:同队伍,或任意一方无队伍(与奢华大餐/史莱姆立牌的治疗范围规则一致)
+    // 队伍识别统一走 PartyRelations(原版计分板 ∪ FTB Teams ∪ OPAC)
     private static boolean isFriendly(Player healer, Player target) {
-        return healer.getTeam() == null || target.getTeam() == null || healer.getTeam() == target.getTeam();
+        return !PartyRelations.hasTeam(healer) || !PartyRelations.hasTeam(target)
+                || PartyRelations.isSameTeam(healer, target);
     }
 
     // 友情徽章:友方玩家获得治疗类效果(瞬间治疗/生命恢复)时,若来源为佩戴徽章的玩家,双方各获得 2 点治愈

@@ -27,20 +27,19 @@ Astral Dice is a survival expansion mod built around dice. Equip a dice and ever
 - Event system featuring Detective, Investigator, and Secret Detective signs
 - Bountiful bounty board integration
 
-## What's New in 1.3.2
+## What's New in 1.3.3
 
-- **New sign "Mechanic" (Legendary)**: active **Orbital Bombardment** — designate one hostile target, then take cards in the order "hotbar → offhand → inventory" (stopping as soon as the total damage reaches the cap; leftover cards are kept) and bombard the target plus a 12-block area around it; passive **Resupply** hands out cards on a timer.
-- **First Adventure Gift**: the **first loot chest** you open in a save always contains 1 die (once per save; not repeated on death/respawn or dimension travel).
-- **Custom sound effects**: a batch of new sounds for skill activation, glass dice shattering, bombardment impacts and effect-card use.
-- **Balance changes and fixes**: the damage-channel convention for Blessing-related bonuses (Attack Power vs. Attack Damage), the Flashlight's Starlight trigger, card tier retuning, and loot-chest probability corrections — see the [release notes](https://github.com/merlin-kitsune/astral_dice/releases) for the full list.
-
+- **Nine balance and skill adjustments**: the Fengshui Master's "Perfect Helper" now fills the target's Recharged Energy straight to 5 stacks; the "Baize's Blessing" / "Divine Descent" 2:00 countdown now starts on any landed attack (previously melee only); the Cult Leader's Fox Light bonus became a separate "Pursuit" extra damage instance; the Detective's Investigation Phase swaps the vanilla Invisibility for a new "Concealment" effect; Destiny's Guidance gains "your combat dice roll is always 6"; Unwavering and Charge card wording trimmed; the Slime Sign loses the area healing on its active; Big Bowl of Stew no longer heals friendly creatures and its healing points go from 1 to 2.
+- **Four "on being hit" effects now require a hostile attack**: Buffer Shield, the Mouse Shield counter, the Slime Sign's "Cell Division" and the Vampire Sign's "Drain" used to trigger on environmental damage (fall / cactus / fire) and self-inflicted damage too, which made them farmable; only a hostile attack counts now.
+- **Action bar fixes**: two missing messages restored; the "yellow front half, grey back half" seam caused by 11 messages carrying their own colour codes removed; refusal messages unified to red; the airbag / wallet / card inventory / client-side "out of plays" feedback moved from the vanilla overlay back onto the mod's own action bar.
+- Full list: see the [release notes on the Releases page](https://github.com/merlin-kitsune/astral_dice/releases).
 ## Supported Versions / Requirements
 
 | Support | Subproject | Minecraft | Loader | Java | Current Version | Patchouli |
 |---|---|---|---|---|---|---|
-| ✅ | `neoforge-1.21.1` | 1.21.1 | NeoForge 21.1.235 | 21 | 1.3.2 | ✅ |
-| ✅ | `forge-1.20.1` | 1.20.1 | Forge 47.4.10 | 17 | 1.3.2 | ✅ |
-| ✅ | `neoforge-26.1.2` | 26.1.2 | NeoForge 26.1.2.109 | 25 | 1.3.2-beta.1 | ✅ |
+| ✅ | `neoforge-1.21.1` | 1.21.1 | NeoForge 21.1.235 | 21 | 1.3.3 | ✅ |
+| ✅ | `forge-1.20.1` | 1.20.1 | Forge 47.4.10 | 17 | 1.3.3 | ✅ |
+| ✅ | `neoforge-26.1.2` | 26.1.2 | NeoForge 26.1.2.109 | 25 | 1.3.3-beta.1 | ✅ |
 
 - `neoforge-1.21.1` and `forge-1.20.1` are the **release lines** (feature-parity pair; both jars are published with every GitHub Release).
 - `neoforge-26.1.2` is the **migration line** (since 2026-09-19 it belongs to the mainline and is synchronised at the same level as the other two; since 2026-09-22 it is a **fully supported migration line** rather than experimental client-side support): it **never gets its own tag or Release**, but its jar is shipped as a **third attachment on the release lines' Releases** (CI builds all three lines together, see `.github/workflows/build.yml`). This line has **no** Iron's Spells 'n Spellbooks integration (upstream ships no 26.1.x build).
@@ -49,7 +48,7 @@ Astral Dice is a survival expansion mod built around dice. Equip a dice and ever
 |---|---|
 | Required | **StarEngine Lib** (`starengine_lib`) **is bundled inside this mod since 1.3.1** (embedded `1.0.4`): **you do not install it separately** — the loader picks up the embedded copy at startup. ⚠️ Do **not** also drop a standalone `starengine_lib-*.jar` into `mods`: the loader de-duplicates by modId and prefers that copy, so an older one would shadow the bundled library. ⚠️ No version range is declared any more (since 2026-09-25): the prerequisite is checked by **presence** only, and the required version is expressed by the single `starengine_lib_version` pin in `gradle.properties` |
 | Required | Curios API (Curios 5.x on 1.20.1, Curios 9+ on 1.21.1, **Curios 15+ on 26.1.2**; a missing or too-old Curios is rejected during NeoForge's dependency sorting). ⚠️ This prerequisite is declared **by this mod**; StarEngine Lib itself only uses it as a **compile-time** dependency on the Forge side (it is not in the library's `mods.toml`) |
-| Required (1.20.1 only) | **Mixin Booster ≥ 0.1.3**, **mandatory**: when it is missing, the game refuses to start right at Forge's dependency-sorting stage and reports the missing `mixinbooster`; an outdated version is rejected the same way |
+| Required (1.20.1 only) | **Either Mixin runtime** (since 1.3.2-hotfix): **Mixin Booster ≥ 0.1.3** **or** **Sinytra Connector**. If the pack already ships Sinytra Connector, **nothing extra is needed** (Connector bundles the same Mixin runtime and Mixin Booster deliberately steps aside); only when neither is present does the mod refuse to start and explain how to install one. An outdated Mixin Booster is still rejected |
 | Optional | Bountiful, Patchouli |
 
 ---
@@ -58,8 +57,8 @@ Astral Dice is a survival expansion mod built around dice. Equip a dice and ever
 
 - **Releases page**: [GitHub Releases](https://github.com/merlin-kitsune/astral_dice/releases) (each release carries **three** jars: the two release lines plus 26.1.2's `-beta` jar)
 - Supported platforms: Minecraft 1.21.1 / NeoForge, 1.20.1 / Forge (release lines); Minecraft 26.1.2 / NeoForge (migration line — no tag or Release of its own; its jar ships with the release lines' Releases)
-- Requirements: Curios API (plus Mixin Booster ≥ 0.1.3 on 1.20.1). **StarEngine Lib is bundled inside the mod — no separate install needed**
-- Build artefacts: `neoforge-1.21.1/build/libs/astral_dice-<version>+neoforge_1.21.1.jar`, `forge-1.20.1/build/libs/astral_dice-<version>+forge_1.20.1.jar`, `neoforge-26.1.2/build/libs/astral_dice-<version>+neoforge_26.1.2.jar`; GitHub Release tags use the bare base version number (e.g. `1.3.2`)
+- Requirements: Curios API (plus a Mixin runtime on 1.20.1: Mixin Booster ≥ 0.1.3 **or** Sinytra Connector). **StarEngine Lib is bundled inside the mod — no separate install needed**
+- Build artefacts: `neoforge-1.21.1/build/libs/astral_dice-<version>+neoforge_1.21.1.jar`, `forge-1.20.1/build/libs/astral_dice-<version>+forge_1.20.1.jar`, `neoforge-26.1.2/build/libs/astral_dice-<version>+neoforge_26.1.2.jar`; GitHub Release tags use the bare base version number (e.g. `1.3.3`)
 
 ## Build
 

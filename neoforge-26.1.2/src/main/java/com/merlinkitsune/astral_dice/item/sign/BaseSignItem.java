@@ -9,6 +9,7 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.level.Level;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -570,10 +571,11 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
     }
 
     /**
-     * 佩戴本立牌的玩家受到伤害时触发(由 {@link #invokeHurtHooks} 分发)。
+     * 佩戴本立牌的玩家被**敌对目标攻击**时触发(由 {@link #invokeHurtHooks} 分发,并在此统一过闸门)。
+     * 环境伤害(摔落 / 仙人掌 / 着火 / 饥饿…)与自伤**不算**(2026-09-29 用户裁决)。
      * 子类覆写以实现受击类被动(如史莱姆立牌的受击 +1 治愈)。
      */
-    protected void onHurt(Player player, float amount) {
+    protected void onHurt(Player player, DamageSource source, float amount) {
     }
 
     // 分发:玩家造成击杀时,调用其全部已装备立牌的 onKill 钩子
@@ -589,14 +591,18 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
         });
     }
 
-    // 分发:玩家受到伤害时,调用其全部已装备立牌的 onHurt 钩子
-    public static void invokeHurtHooks(Player player, float amount) {
+    // 分发:玩家被**敌对目标攻击**时,调用其全部已装备立牌的 onHurt 钩子
+    // 2026-09-29 用户裁决:受击类被动一律只在该条件下触发 —— 此前是「任何来源的伤害」,
+    // 于是摔落 / 仙人掌 / 着火等环境伤害、以及本模组「符卡-祸」的无来源真伤都会算数。
+    // 闸门放在**分发处**而非各立牌内部 ⇒ 整族口径一致,将来新增受击被动默认即安全。
+    public static void invokeHurtHooks(Player player, DamageSource source, float amount) {
         if (player == null || player.level().isClientSide()) return;
+        if (!com.merlinkitsune.astral_dice.combat.DiceCombatEvents.isHostileAttack(player, source)) return;
         CuriosApi.getCuriosInventory(player).ifPresent(handler -> {
             var results = handler.findCurios(s -> s.getItem() instanceof BaseSignItem);
             for (var r : results) {
                 if (r.stack().getItem() instanceof BaseSignItem sign) {
-                    sign.onHurt(player, amount);
+                    sign.onHurt(player, source, amount);
                 }
             }
         });

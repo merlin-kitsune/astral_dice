@@ -133,6 +133,12 @@ $EXPECT_OLD_RANGE = '[47,)'
 $EXPECT_NEW_RANGE = '[47.4.10,48)'
 $EXPECT_LOADER_RANGE = '[47,48)'
 $EXPECT_MB_RANGE = '[0.1.3,)'
+# 2026-09-29（BMC4 玩家实测定位）：mixinbooster 由 **mandatory** 改为 **optional**。
+# 根因：Sinytra Connector 在场时 Mixin Booster 会主动关闭自己（实机日志
+# `[mixin-booster/]: Disabling Mixin Booster in favor of Connector`），`mixinbooster` 这个 mod 条目
+# 根本不会注册 ⇒ 若仍写 mandatory=true，装了 Connector 的整合包一律被 FML 硬拒（玩家「装了前置仍报缺失」）。
+# ⇒ 硬拒改为运行时门控（init/MixinRuntimeGate：Booster 或 Connector 至少一个，两者皆无才拒绝）。
+$EXPECT_MB_MANDATORY = 'false'
 
 # ── 输出 / 记账（统一 LF，与 scripts/verify 既有脚本同契约）──────────────────
 function Write-Out {
@@ -476,7 +482,7 @@ foreach ($pair in @(
     }
     $d = Get-DepFromToml -Toml $pair.t -ModId 'mixinbooster'
     if (-not $d.present) { Add-Fail "mb_absent_in_$($pair.k)"; continue }
-    if ($d.mandatory -ne 'true') { Add-Fail "mb_mandatory_$($pair.k)=$($d.mandatory)" }
+    if ($d.mandatory -ne $EXPECT_MB_MANDATORY) { Add-Fail "mb_mandatory_$($pair.k)=$($d.mandatory)" }
     if ($d.range -ne $EXPECT_MB_RANGE) { Add-Fail "mb_range_$($pair.k)=$($d.range)" }
     if ($d.ordering -ne 'AFTER') { Add-Fail "mb_ordering_$($pair.k)=$($d.ordering)" }
     if ($d.side -ne 'BOTH') { Add-Fail "mb_side_$($pair.k)=$($d.side)" }
@@ -525,6 +531,45 @@ if ($reasonKey -ne 'none') { Add-Fail 'unsupported_reason_key_in_template' }
 Add-Reading ("AP_LG_MB:src={0}:modId=mixinbooster:mandatory={1}:range={2}:ordering={3}:side={4}:present={5}:artifact_version={6}:build_dep={7}:reason_key={8}" -f `
         ($mbSrc -join '+'), $mbSeen.mandatory, $mbSeen.range, $mbSeen.ordering, $mbSeen.side,
         (($mbSrc.Count -gt 0) ? 1 : 0), $mbArtifactVersion, $mbBuildDep, $reasonKey)
+
+# ── S2b：取代硬依赖的**运行时门控**必须在位（源码 + 产物字节码双证）───────────────
+# 判据：① 门控源文件存在；② 产物 jar 内有 init/MixinRuntimeGate.class，且常量池同时含
+#       'mixinbooster' 与 'connectormod'（= 真的做了二选一判定，不是空壳类）；
+#       ③ AstralDiceMod.class 引用 MixinRuntimeGate（= 真被调用，不是写了没用）。
+# ⚠️ .class 是二进制，这里按文本读只用于**ASCII 常量池子串**检索，不做解码断言。
+$gateSrcRel = 'src/main/java/com/merlinkitsune/astral_dice/init/MixinRuntimeGate.java'
+$gateSrcPath = Join-Path $Sub $gateSrcRel
+$gateSrcState = 'absent'
+if (Test-Path -LiteralPath $gateSrcPath) { $gateSrcState = 'present' } else { Add-Fail 'mb_gate_src_absent' }
+
+$gateClassState = 'skipped'
+$gateIdsState = 'skipped'
+$gateCallState = 'skipped'
+if ($SkipArtifacts) {
+    Add-Reading 'AP_LG_MB_GATE:src=present:class=skipped(artifacts=skipped)'
+} elseif ($null -ne $jar) {
+    $gateCls = Get-JarEntryText -JarPath $jar -EntryName 'com/merlinkitsune/astral_dice/init/MixinRuntimeGate.class'
+    if ($null -ne $gateCls) {
+        $gateClassState = 'present'
+        $hasBoosterId = $gateCls.Contains('mixinbooster')
+        $hasConnectorId = $gateCls.Contains('connectormod')
+        $gateIdsState = if ($hasBoosterId -and $hasConnectorId) { 'both' } else { 'partial' }
+        if ($gateIdsState -ne 'both') { Add-Fail "mb_gate_ids_$gateIdsState" }
+    } else {
+        Add-Fail 'mb_gate_class_absent'
+    }
+    $mainCls = Get-JarEntryText -JarPath $jar -EntryName 'com/merlinkitsune/astral_dice/AstralDiceMod.class'
+    if ($null -ne $mainCls -and $mainCls.Contains('MixinRuntimeGate')) {
+        $gateCallState = 'present'
+    } else {
+        Add-Fail 'mb_gate_call_absent'
+    }
+    Add-Reading ("AP_LG_MB_GATE:src={0}:class={1}:ids={2}:call={3}" -f $gateSrcState, $gateClassState, $gateIdsState, $gateCallState)
+} else {
+    Add-Reading 'AP_LG_MB_GATE:src=present:class=absent(no jar)'
+    Add-Undecidable 'mb_gate_jar_absent' '缺少构建产物 jar，无法核对门控类是否真被打进产物' `
+        'gradlew :forge-1.20.1:build'
+}
 
 # ── S3：FML 同一实现的核对（jar + POM + 字节码引用）─────────────────────────
 Write-Out 'LG_STEP:3/6 核对 FML 依赖排序的同一实现(fmlloader POM → maven-artifact → ModSorter)'

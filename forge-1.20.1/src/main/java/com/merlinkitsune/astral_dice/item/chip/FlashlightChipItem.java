@@ -9,6 +9,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
+import com.merlinkitsune.astral_dice.combat.PartyRelations;
 
 /**
  * 手电筒-强光筹码。
@@ -57,7 +58,7 @@ public class FlashlightChipItem extends BaseChipItem {
         // 先取击杀者再判定敌对:视者 = 击杀者(全局敌对玩家规则)
         if (!(event.getSource().getEntity() instanceof Player killer)) return;
         if (!isEquipped(killer)) return;
-        if (!HostileTargets.isHostile(killer, target)) return;
+        if (!PartyRelations.isHostileTo(killer, target)) return;
         if (target.getMaxHealth() < MIN_KILL_MAX_HEALTH) return;
         StarLightManager.add(killer, STARLIGHT_PER_KILL);
     }
