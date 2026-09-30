@@ -1,0 +1,14 @@
+{
+  "_comment": "CurseForge 项目绑定（2026-10-01 用户指定）。凭据**不在此文件** —— 见 .curseforge/token（本地、已 gitignore）或环境变量 CURSEFORGE_TOKEN（CI secret）。",
+  "projectId": 1662159,
+  "slug": "astral-dice",
+  "gameId": 432,
+  "site": "minecraft",
+  "_siteNote": "上传/版本 API 的站点域固定为 minecraft.curseforge.com；换成 www. 会拿到另一个游戏的版本表。",
+  "apiBase": "https://minecraft.curseforge.com/api",
+  "lines": [
+    { "key": "neoforge_1.21.1", "loader": "neoforge", "mc": "1.21.1", "jar": "neoforge-1.21.1/build/libs/astral_dice-*.jar" },
+    { "key": "forge_1.20.1", "loader": "forge", "mc": "1.20.1", "jar": "forge-1.20.1/build/libs/astral_dice-*.jar" },
+    { "key": "neoforge_26.1.2", "loader": "neoforge", "mc": "26.1.2", "jar": "neoforge-26.1.2/build/libs/astral_dice-*.jar" }
+  ]
+}

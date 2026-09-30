@@ -65,7 +65,8 @@ import urllib.request
 import uuid
 
 API_BASE = "https://minecraft.curseforge.com/api"
-DEFAULT_PROJECT_ID = "1662159"  # Astral Dice（slug: astral-dice）
+DEFAULT_PROJECT_ID = "1662159"  # 兜底值；正式绑定见 tools/curseforge.json
+BINDING_FILE = "tools/curseforge.json"
 UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
 JAR_RE = re.compile(r"^astral_dice-(?P<ver>[^+]+)\+(?P<loader>[a-z]+)_(?P<mc>.+)\.jar$")
@@ -74,6 +75,22 @@ CACHE_DAYS = 7
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 CACHE_DIR = REPO_ROOT / ".curseforge"
 VERSIONS_CACHE = CACHE_DIR / "versions.json"
+
+
+# ---------------------------------------------------------------- 项目绑定
+def load_binding():
+    """读 tools/curseforge.json（**项目 id 的正式落点**，2026-10-01 用户指定）。
+
+    该文件**入库**，因此只放非敏感信息（projectId / slug / 站点 / 三线映射），
+    token 一律走 .curseforge/token 或环境变量。
+    """
+    p = REPO_ROOT / BINDING_FILE
+    if not p.is_file():
+        return {}
+    try:
+        return json.loads(p.read_text(encoding="utf-8"))
+    except Exception as e:
+        raise SystemExit(f"[ERR] {BINDING_FILE} 解析失败：{e}")
 
 
 # ---------------------------------------------------------------- 凭据
@@ -224,7 +241,8 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--jar", action="append", required=True, metavar="PATH",
                     help="要上传的 jar（可重复；相对路径按当前目录解析）")
-    ap.add_argument("--project-id", default=DEFAULT_PROJECT_ID)
+    ap.add_argument("--project-id", default=None,
+                    help=f"覆盖项目 id（默认取 {BINDING_FILE} 的 projectId，兜底 {DEFAULT_PROJECT_ID}）")
     ap.add_argument("--token")
     ap.add_argument("--proxy", default=None,
                     help="本地代理，如 http://127.0.0.1:7897（也可用环境变量 HTTPS_PROXY）")
@@ -240,6 +258,9 @@ def main():
     ap.add_argument("--dry-run", action="store_true", help="只打印计划，不发请求")
     ap.add_argument("--refresh-versions", action="store_true", help="忽略缓存重新拉取版本表")
     args = ap.parse_args()
+
+    binding = load_binding()
+    project_id = str(args.project_id or binding.get("projectId") or DEFAULT_PROJECT_ID)
 
     import os
     proxy = args.proxy or os.environ.get("HTTPS_PROXY") or os.environ.get("https_proxy")
@@ -268,7 +289,9 @@ def main():
             cache[j["ver"]] = pick_changelog(j["ver"], args.changelog)
         j["_changelog"] = cache[j["ver"]]
 
-    print(f"项目 projectId = {args.project_id}")
+    slug = binding.get("slug")
+    src = BINDING_FILE if binding.get("projectId") else "脚本内置兜底值"
+    print(f"项目 projectId = {project_id}" + (f"（slug: {slug}，来源 {src}）" if binding else ""))
     print(f"凭据           = {token_src}")
     print(f"代理           = {proxy or '（直连；若被 Cloudflare 403 请加 --proxy）'}")
     print(f"版本表         = {ver_src}")
@@ -302,7 +325,7 @@ def main():
             metadata["changelog"] = cl.read_text(encoding="utf-8")
         if args.manual_release:
             metadata["isMarkedForManualRelease"] = True
-        code, body = api_upload(opener, args.project_id, token, metadata, j["jar"])
+        code, body = api_upload(opener, project_id, token, metadata, j["jar"])
         ok = 200 <= code < 300
         print(f"[{'OK ' if ok else 'FAIL'}] {j['jar'].name}  HTTP {code}  {body[:200]}")
         if not ok:
