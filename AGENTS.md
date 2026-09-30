@@ -91,9 +91,50 @@ When extending this workspace:
 - 若远程操作因代理失败，先检查代理进程（如 Clash/`127.0.0.1:7897` 端口）是否在运行，再排查网络；不要绕过代理直连 GitHub。
 - **默认不执行 `git push`**(见「编译产物上传规则」第 6 条);每次更新由代理自动完成本地提交,推送仅在用户明确要求时执行,且须经上述代理。
 
+## 第三方联动取源与反射纪律（Third-Party Integration Sourcing）— 必须遵守（2026-10-01 用户裁决）
+
+**针对其它模组的联动 / 调用，禁止凭记忆猜 API。** 取源与实现一律以**实物**为准。用户裁决（2026-10-01）三条：
+①「反射可用，但**签名必须来自实物**」；②「用户提供的 jar **只作取证、不进 `build.gradle`**」；
+③「**先问用户要 jar / 源码**；用户给不了再自行核验」。
+
+### 1. 取源顺序（第一步永远是问用户）
+
+1. 🚩 **先向用户索取该模组的 jar 或源代码**（原话：「必须请求用户提供该模组 Jar 或模组源代码，根据其对应接口针对性开发」）。
+   ⇒ **未拿到实物之前，不要开始写联动代码**，也不要先写"占位反射"再等实物。
+2. 用户**无法提供 / 表示不必**时，才退回下方《第三方模组源码核验规则》（自行去官方 GitHub 按 tag / commit 取源码）。
+3. 🚫 **不得**凭记忆、凭旧版本 jar、凭"别的模组长得很像"、凭 Gradle 缓存产物下结论。
+
+### 2. 反射的定位（**可用**，但签名必须来自实物）
+
+反射**仍是**第三方可选依赖的默认隔离手段（对方未安装时不得 `NoClassDefFoundError`、不得崩服）——
+**"允许反射"不等于"允许猜"**：
+
+- ✅ 允许：`Class.forName` 惰性解析 + **失败即永久关闭该后端** + 退回安全默认口径（既有纪律不变）。
+- 🚫 **禁止**任何反射目标（类名 / 方法名 / 字段名 / **参数与返回类型** / **static 还是实例方法** / 内部类名 / 包路径）
+  **来自记忆或推测** —— 必须逐条来自实物取证：jar → `javap -p -c`；源码 → 直接读并记下 `文件:行号`。
+- 🚫 **禁止**"先写个 try/catch 全包住的猜测式反射，跑不通再说"—— 那是把不确定性藏进静默降级里，出问题时表现为"功能不生效"而非报错。
+- 🚫 **禁止**把"反编译大概看懂了"当作源码级结论：`javap` 只用于确认**签名与常量**，**不用于推断逻辑**。
+- ⚠️ **高频易错点（本仓真出过事故）**：**重载形态**（`getTeamForPlayer(Player)` vs `getTeamForPlayer(ServerPlayer)` / `getTeamForPlayerID(UUID)`）、
+  **包路径**（`dev.darkhax.opac.*` vs 真实 `xaero.pac.*`）、**static vs 实例**（同一功能两版形态不同）、**内部类名**（`SoulCrystal$Events`）。
+  这类错误**不报错**：库侧 FTB / OPAC 反射写错签名 ⇒ FTB 玩家被判"未加入任何队伍" ⇒ 落进"无队伍 ⇒ 全服皆友方"的兜底，
+  **友方效果（大碗炖肉 / 银行卡「用不完」/ 奢华大餐 / 挚友守护 / 挚友祝福）实际扩散到了全服**。
+
+### 3. 用户提供的 jar：**只作取证，不进 `build.gradle`**
+
+- 本地 jar 仅用于 `javap` / 反编译**取接口与签名**。
+- **构建依赖仍必须**走 Curse Maven / Modrinth Maven 坐标 —— `## 模组依赖添加规则` **不因此放宽**（仍禁止 `fileTree`/`files` 作为**模组**来源）。
+- 若对方**没有可用的 Maven 坐标**、却又需要编译期依赖 ⇒ **停下来问用户**，不要自行把本地 jar 塞进构建。
+
+### 4. 落地后**必须**用实物复核（硬要求）
+
+1. **逐条对账**：把实现里**每一个**反射目标与第 1 步取到的实物逐条比对（建议列成表：代码里的目标 | 实物证据 | 是否一致）。
+2. **开产物核验**：`javap` / 开 jar 确认产物中的常量与类引用符合预期。
+3. **留痕**：交付说明里写明每个反射目标的**取证来源**（哪个 jar / 哪个 commit 的源码 / 哪一行），供他人独立复算。
+4. 该复核同时是《二次验证规范》的**必查项**（触发面：跨模组联动）。
+
 ## 第三方模组源码核验规则（必须遵守）
 
-核验任何**第三方模组**（Curios / KubeJS / Sodium / Iris / ModernFix / Patchouli 等）的**行为**时，必须以**该模组自己的 GitHub 源码**为准，并**自行前往其 GitHub 页面查找** —— 不要等用户提供，也不要凭记忆、凭缓存产物或凭反汇编下结论：
+核验任何**第三方模组**（Curios / KubeJS / Sodium / Iris / ModernFix / Patchouli 等）的**行为**时，必须以**该模组自己的 GitHub 源码**为准。⚠️ **取源顺序**：先按上方《第三方联动取源与反射纪律》**向用户索取 jar / 源码**；用户无法提供时才走本流程（**自行**前往其官方 GitHub 页面查找）。两条路径共同的红线：**不得凭记忆、不得凭缓存产物、不得凭「反编译看懂了」下结论**（`javap` 只确认**签名与常量**，不推断逻辑）：
 
 1. **取源**：先在该模组的 GitHub 仓库按版本定位 tag / commit（版本号取自本仓 `gradle.properties`、或目标 jar 内 `META-INF/mods.toml` / `neoforge.mods.toml` / `MANIFEST.MF`），再经上方 Git 代理克隆到**本模组仓库之外**，例如：
    `git -c http.proxy=http://127.0.0.1:7897 -c https.proxy=http://127.0.0.1:7897 clone https://github.com/TheIllusiveC4/Curios F:\MCProject\temp_curios\v9`
@@ -816,7 +857,7 @@ When extending this workspace:
 注意事项:
 - 充能类筹码的获得/消耗一律经 `ChargeManager.addStacks/consumeOne`(见「充能流派规范」),禁止直接操作 MobEffect 层数。
 - **每个充能筹码的 tooltip 一律追加「当前充能」计数器,统一格式无例外**——新增充能筹码时,除注册/模型/配方/tooltip 文案外,必须在其 `stack.is(...)` 分支调用 `addChargeCounter`(格式与 lang key 见「充能流派规范 → 充能筹码一律追加充能点数计数器」)。
-- 跃迁引擎的 Waystone 联动为**反射式可选接入**:未安装 Waystones 时自动降级,不影响构建与运行。
+- 跃迁引擎的 Waystone 联动为**反射式可选接入**:未安装 Waystones 时自动降级,不影响构建与运行。⚠️ 其反射目标须逐条来自实物（《第三方联动取源与反射纪律》§2）。
 
 ### 无流派（Other）
 
@@ -1552,7 +1593,7 @@ When extending this workspace:
 - ⚠️ **摘护甲诅咒必须在「服务器 tick 末尾」**：第三方 `CursedRing#curioTick` **每 tick 重挂**瞬时修饰器，
   早于它的移除会被加回。范本 = `item/sign/MosesEnigmaticLink#onServerTick`。
 - ⚠️ **第三方 `SoulCrystal` 的调用形态两版不同**（移植版 `static`、原版**实例方法**）⇒
-  **一律反射 + 失败即永久关闭**，禁止硬引用第三方类（未装该模组时 `NoClassDefFoundError`）。
+  **一律反射 + 失败即永久关闭**，禁止硬引用第三方类（未装该模组时 `NoClassDefFoundError`）；⚠️ **但反射目标必须逐条来自实物**（见《第三方联动取源与反射纪律》§2）。
 - 🚨 **「死亡不掉落灵魂水晶」纯本模组侧只能「死后补偿」**：第三方在 `LivingDropsEvent`(**LOWEST**)
   里调 `SoulCrystal#createCrystalFrom(player)`（内部只做 `lostCrystals + 1`）并生成
   `PermanentItemEntity`；最后优先级**无法**被更晚的监听覆盖 ⇒ 正解 = 死亡瞬间快照 `lostCrystals`，
@@ -2305,7 +2346,7 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --new <注册id>
 - **敌对玩家规则与带上下文重载（全局，2026-09-15 用户裁决，必须遵守）**：`HostileTargets` 新增带上下文重载 `isHostile(Entity viewer, Entity target)`，把「**非同队伍、且曾主动攻击过 viewer 的玩家**」计入敌对目标（故大当家溅射等范围/波及效果、以及**电磁炮落雷**（2026-09-15 本批 D-B2 对齐，viewer = `LightningBolt#getCause()`，见下条）现在对这类玩家生效）；记录表为 `combat/PlayerHostilityTracker`（服务端内存静态表，不持久化）。口径细节：① **记录 = 只记「主动攻击」** —— 排除本模组内部 AOE/溅射/反击结算（`DiceCombatEvents.isInternalAoe()` / `isInCounterChain()` 闸门）、自伤、任一侧非玩家、以及被取消的伤害（挂点在最终伤害事件，晚于可取消的减伤前事件）；② **双方都没有队伍时可互为敌对**（同队才豁免；任何一方无队伍都不算同队——`EventTargetCollector`「未加入队伍视为全服玩家」的发奖约定**不适用于此处**）；③ 玩家**死亡**（`LivingDeathEvent`，`priority=LOWEST`，晚于保命方的「取消死亡」）/死亡克隆/登出时**双向**清除该立场（作为攻击者与作为目标的记录一并清）；④ **例外**：`PandamanSignItem` 的嘲讽**刻意只对敌对生物生效**（单参 `isHostile(e)` + `!(e instanceof Player)` 守卫，保持既有约定，永不施加给玩家）。
 - **统一现状（2026-09-15 复核；2026-09-15 本批 D-B2 后更新计数）**：双版本各 **24 处玩法判据点**已改调该入口，另有 `damage/RailgunBolts#isValidLightningTarget` 委托同一入口，合计 **25 个调用点 / 17 个文件**（两版本行号同构、逐条 `Compare-Object` 零差异）。其中 **23 个调用点**改用带上下文的 `isHostile(viewer, target)` 重载（含本批改口径的 `RailgunBolts#isValidLightningTarget`，viewer = `LightningBolt#getCause()`），仍用单参的 2 处为：`DiceCombatEvents.isBlessingTarget`（口径含「非队友玩家」，无法交给本入口）、`PandamanSignItem` 的嘲讽（**刻意**只对敌对生物生效，见上条）。判据同族的既有分支（`DiceCombatEvents.isBlessingTarget` 的「Boss 或正在追打该玩家的生物」、`NancyLuSignItem#clearNearbyMobTargets` 的 `mob.getTarget() == player`、`BossEntityUtil.isBossEntity`）**不是** `Enemy` 判定，保持原样。
 - **🆕 队友 / 盟友判定的唯一入口 = `combat/PartyRelations`（2026-09-30 用户裁决，必须遵守）**：此前全仓队友判定一律是裸原版计分板 `getTeam()` —— 而整合包里的队伍**不一定**走计分板：`FTB Teams` 与 `Open Parties and Claims`（OPAC）各有独立的一套队伍数据，这类玩家的 `getTeam()` 恒为 `null` ⇒ 队友判定**完全失效**（用户实报：同一 FTB 队伍内仍能互相造成伤害、电磁炮仍命中友方）。现统一走 `combat/PartyRelations`：`isSameTeam(a, b)` = 原版计分板 ∪ FTB ∪ OPAC（含 OPAC 的**盟友队伍**）；`hasTeam(e)` = 任一队伍系统中已入队（供「任一方无队伍即友方」这类宽松口径）；`isHostileTo(viewer, target)` = **先做盟友豁免，再委托库 `HostileTargets.isHostile`**（故**上一条「敌对唯一入口」不变**，只是前面多一道盟友闸门）；`collectTeamPlayers(Player)` = 队伍收集（语义与库 `EventTargetCollector` 一致，含「未加入任何队伍 ⇒ 返回全服在线玩家」的兜底）。**新增或修改任何队友判定（含「同队才生效」的加成 / 波及 / 治疗范围）一律调本类，不得再写裸 `getTeam()`。**
-  两条实现纪律：① **两个第三方后端一律走反射 + `Class.forName` 惰性解析**（安装实况：1.21.1 包有 FTB Teams + Library；**1.20.1 完全没有 FTB**；26.1.2 只有 Library、**没有 Teams**；三个包**均未安装** OPAC）⇒ 解析或调用失败**一次即永久关闭该后端**并退回原版计分板口径，**绝不因第三方模组改版而崩溃**；② FTB 按 `isClientSide()` **分流**：客户端 `ClientTeamManager#getTeamForPlayer(Player)`、服务端 `TeamManager#arePlayersInSameTeam(UUID, UUID)`（先 `isManagerLoaded()`；`getManager()` 在客户端会抛 NPE）—— **不要用 `isManagerLoaded()` 猜侧**，客户端连远程服务器时集成服务端可能同时存在，会读到错误的队伍数据。
+  两条实现纪律：① **两个第三方后端一律走反射 + `Class.forName` 惰性解析**（⚠️ 反射目标须逐条来自实物：《第三方联动取源与反射纪律》§2 —— 本条下面的签名清单即该纪律的产物）（安装实况：1.21.1 包有 FTB Teams + Library；**1.20.1 完全没有 FTB**；26.1.2 只有 Library、**没有 Teams**；三个包**均未安装** OPAC）⇒ 解析或调用失败**一次即永久关闭该后端**并退回原版计分板口径，**绝不因第三方模组改版而崩溃**；② FTB 按 `isClientSide()` **分流**：客户端 `ClientTeamManager#getTeamForPlayer(Player)`、服务端 `TeamManager#arePlayersInSameTeam(UUID, UUID)`（先 `isManagerLoaded()`；`getManager()` 在客户端会抛 NPE）—— **不要用 `isManagerLoaded()` 猜侧**，客户端连远程服务器时集成服务端可能同时存在，会读到错误的队伍数据。
   ⚠️ `starengine_lib` 的 `event/EventTargetCollector` **同名功能已坏**（其 FTB 反射查的是并不存在的 `getTeamForPlayer(Player)` / `getTeamForPlayer(UUID)`，真实签名是 `getTeamForPlayer(ServerPlayer)` / `getTeamForPlayerID(UUID)`；OPAC 分支查的 `dev.darkhax.opac.*` 亦不存在，真实包名为 `xaero.pac.*`）⇒ FTB 玩家被判为「未加入任何队伍」并落进「无队伍 ⇒ 全服皆友方」的兜底，**友方效果（大碗炖肉 / 银行卡「用不完」/ 奢华大餐 / 挚友守护 / 挚友祝福）实际扩散到了全服**。**该缺陷属库侧，应在库的下一次发版中一并修**；当前由 `PartyRelations` 顶住（本仓不改库、不动库版本 pin）。
   ✅ **为什么不必给库加 seam**：库 `target/SelectorTargets` 用的是**单参** `isHostile(target)`（类注释明确「不含玩家」）⇒ 目标选择器**天然不存在**队友缺口 ⇒ 无需 bump 库版本即可闭环。
 
