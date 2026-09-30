@@ -28,6 +28,44 @@ When extending this workspace:
    - 规则：跨工作树的任务**写文件一律用绝对路径**（`F:\MCProject\astral_dice_multiloader-next\...`），或先 `Set-Location` 到目标工作树再操作；`git` 命令用 `-C` 显式指定工作树；脚本内的输出路径同理（相对路径只在「已知 cwd 就是目标工作树」时可用）。
    - 自查：改动后对**另一个**工作树跑一次 `git status --short`，确认没有意外文件。
 
+## 二次验证规范（Independent Second-Pass Verification）— 必须遵守（2026-10-01 用户裁决）
+
+**任何非平凡改动，收尾前必须由一个独立子代理（subagent）做一遍二次验证。** 目的**不是**「再读一遍」，
+而是用**独立证据**去证伪主会话的结论：主会话的自述（「我已核对」「守门全绿」「已落盘」「已全线对等」）
+**不能作为验收依据** —— 它可能就是幻觉或遗漏，且**自证天然有偏**（复用自己的假设去检查自己的结论）。
+
+### 触发面（命中任一即必须做）
+
+- 任何**代码 / 资源改动**（新增、修复、重构、批量替换）提交前；
+- 任何**发布动作**之后（打 tag、建 Release、上传 CurseForge、部署到整合包）；
+- 任何**批量或跨线**改动（三线同改、跨工作树、批量改 lang / 手册 / 配方 / 资源）；
+- 任何**结论型交付**（审计报告、「该缺陷不存在」、「两线已对等」、「已全部覆盖」）；
+- 用户明确要求复核时。
+
+### 怎么派（brief 必须自包含 —— 子代理看不到本会话）
+
+- 🚫 **禁**把主会话的结论、改动清单、「我已经改好了」当**事实**喂给它 —— 那是诱导它附和，等于白做。
+- ✅ **只给**：目标 / 涉及路径 / **期望的不变量** / **可独立执行的判据命令**（守门脚本、`grep -rn`、开包核验…）。
+- ✅ **要求它**：① 先独立取证、后下结论；② 每条结论附**命令 + 原始输出片段**；③ **优先找反例**（差一处、漏一文件、范围跑错）；
+  ④ 取不到证据就说 **「无法判定」**，禁止脑补；⑤ **空结论也要报告**（说明「查了什么」才没发现问题）。
+- 只读查证用 `Explore`；需要跑命令 / 开 jar / 查远端用 `general-purpose`。
+
+### 验收标准（子代理输出必须满足；主会话逐条回应）
+
+1. 结论逐条挂**原始证据**，不是转述；
+2. 覆盖主会话**声称改过的每一处**（数量、路径、内容），并与主会话的自述**对账**（逐项核对差异）；
+3. 明确列出 **不一致 / 无法判定 / 未覆盖** 三类项；
+4. 主会话**必须逐条回应**：认同 ⇒ 立即修；不认同 ⇒ 给出**反证**。**不得静默忽略**；
+5. 子代理的结论本身也**不是事实** ⇒ 它的证据必须能被主会话**复算**（命令可重跑、输出可比对）。
+
+### 与既有守门的关系（两层都要，不得互相替代）
+
+- **第一层 = 机器判据**：`scripts/verify/**`、`tools/audit_*.py`、`tools/check_lang_sync.ps1` 等守门脚本，可重复、可回归。
+- **第二层 = 二次验证**：专治第一层覆盖不到的遗漏 —— **判据本身有漏**（实例：手册悬空键
+  `guide.entry.special_effects.6` / `guide.entry.teru_sign.3` 长期**无任何门禁**，直到 2026-10-01 才补上
+  `tools/audit_patchouli_keys.py`）、**守门跑错范围 / 跑错工作树**、**报告与实物不符**、**声称已改而实际未落盘**。
+- ⇒ **守门全绿 ≠ 已验收**；只做二次验证而跳过守门同样不合格。
+
 ## 命令执行规范（Shell）— 必须遵守（2026-09-19 用户裁决）
 
 **一律使用 PowerShell 7（`pwsh`）；禁止使用 Windows PowerShell 5.1。**
@@ -125,6 +163,7 @@ When extending this workspace:
 8. **`fileHashes.lock` 拒绝访问(守护进程占锁)**:构建报 `Could not create service of type FileHasher ... .gradle/<ver>/fileHashes/fileHashes.lock (拒绝访问)` 并非编译错误,而是**上一个 Gradle 守护进程仍占锁**(日志首行常见 `1 busy and N stopped Daemons`;`./gradlew --stop` 可能停不掉 busy 守护进程)。处置:列出 java 进程,只终止 `gradlew` wrapper(`-Dorg.gradle.appname=gradlew`)与 Gradle daemon(`--add-opens=java.base/...`)两类,**绝不可误杀 Minecraft 客户端**(`net.minecraft.client.main.Main`)或用户其它 Java 程序,然后重跑构建。
 
 9. **「构建很快、命令却不返回」≠ 构建慢（2026-09-17 实测取证；**禁止**据此提高超时）**：若日志已出现 BUILD SUCCESSFUL / MT_BUILD: OK (Ns) 而调用方仍在等，那是**进程收尾阻塞** —— `Start-Process -NoNewWindow` 会让 `cmd → gradlew → Gradle 守护进程 / 游戏客户端` 与父 pwsh **共用同一个控制台**，长驻子进程持有它 ⇒ 父 pwsh 执行完脚本 `exit` 后阻塞在**控制台拆卸**（取证：脚本已打印 `MT_BUILD: OK (4s)`、父进程 CPU 仅 0.44s 却存活 20+ 分钟，子进程里挂着一个 `conhost.exe`）。已修：`lib/Mt.Proc.psm1` 的 `Start-MtProcessToFile` 两个分支改用 **`-WindowStyle Hidden`**（新建隐藏控制台），日志落盘口径不变。**判据**：同一条管道调用 `mt_build` 修复后 **1.6s** 返回（修复前 90s 超时 / 20+ 分钟）。**调用方约定**：长驻阶段（build / launch）不要用 `| Select-Object` 之类管道捕获输出，改 `*> 文件`（见「全局测试规则」第 4 条）。
+
 ## 多版本子项目矩阵(Multi-Version Subproject Matrix)— 必须遵守
 
 本仓库以**子项目承载版本**;迁移背景与目录结构见 `docs/multiloader-layout.md`,两子项目的完整 API 差异见 `docs/compat-1.20.1-forge.md`。
