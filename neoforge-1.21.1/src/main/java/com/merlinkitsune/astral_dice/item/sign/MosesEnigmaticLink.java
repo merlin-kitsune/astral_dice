@@ -56,8 +56,10 @@ import java.util.UUID;
  *   <li>模组 id / 物品 id:{@code enigmaticlegacyplus} ↔ {@code enigmaticlegacy};</li>
  *   <li>护甲诅咒修饰器:<b>1.21.1 移植版</b>用「物品注册 id」作 modifier id
  *       ⇒ 可直接按 {@link ResourceLocation} 匹配;</li>
- *   <li>第三方 {@code SoulCrystal} 的类名与调用形态(static ↔ 实例)不同 ⇒ **一律反射**,
- *       失败即永久关闭(未安装该模组时不会有任何日志噪音/异常)。</li>
+ *   <li>第三方 {@code SoulCrystal} 的类名与调用形态(static ↔ 实例)不同 ⇒ **一律反射**
+ *       (⚠️ 但**反射目标——类名/方法名/参数与返回类型/static-还是-实例/包路径——必须逐条来自实物**,
+ *       禁止凭记忆或推测;见 AGENTS《第三方联动取源与反射纪律》),失败即永久关闭
+ *       (未安装该模组时不会有任何日志噪音/异常)。</li>
  * </ul>
  *
  * <p>本类不持有任何玩法状态(仅死亡待办 Map),所有判定都以第三方物品/效果为准。
