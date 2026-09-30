@@ -28,17 +28,17 @@ import com.merlinkitsune.astral_dice.item.ModItems;
  *   立牌主动技能一次性 +1({@link #grantBonusPlay},同样只作用于当前出牌轮)。
  * - 出牌数上限:min(1 + 固定 + 临时, {@link GameplayConstants#MAX_EFFECT_CARD_PLAYS})
  *   实时计算,加成来源可叠加,但单轮总出牌数固定封顶 9 张(固定常量,非配置文件项)。
- * - 出牌数打满上限后立即开始冷却倒计时(30 秒);未打满的一轮在**本轮所有计时器(效果待定/被锁时长)
- *   都结束后**同样进入一轮 30 秒冷却(2026-09-15 用户裁决,选项 2),冷却归零时出牌数归零。
- *   **例外(2026-09-20 用户裁决 C)**:当轮上限被「出牌数 +1」类**牌**(符卡-福 / 活体书页的本周期
- *   累加计数)抬高时,未打满的一轮**不**启动这轮收尾冷却(走规格 §14.2 收支表口径),其余牌不变。
- *   效果牌本身的效果单独计算;单个轮询内所有已出效果牌的效果全部结束后才可重新出牌
- *   (冷却已归零但效果仍在生效时,出牌被锁定)。
- * - 效果牌轮次(出牌周期)定义:指当前出牌周期——不论出牌数是否已达上限——只要仍有
- *   效果牌的"能力/效果"或"出牌冷却"未结束,周期即未结束。当所有效果牌进度走完
- *   **且** 出牌冷却时间走完后,这一周期才算结束;周期边界用于"每轮一次"类计数清理
+ * - **冷却与效果时长彻底分离(2026-09-30 用户裁决)**:只要出牌即启动冷却,且**同一轮内每次出牌都把它
+ *   重置**为 {@link #COOLDOWN_SECONDS} 秒(30 → 45);出牌数打满不再单独判定,同样由该次出牌重置。
+ *   冷却归零时出牌数归零(该周期结束)。
+ *   效果牌自身的「效果时长」不再锁住出牌 —— 冷却归零后即便效果仍在生效,也可以立即开新一轮;
+ *   出牌锁只看出牌数(见 {@link #isBlocked})。
+ * - 效果牌轮次(出牌周期)定义:指当前出牌周期——不论出牌数是否已达上限——只要出牌冷却未结束,
+ *   周期即未结束;冷却走完(出牌数归零)即周期结束。周期边界用于"每轮一次"类计数清理
  *   与新一轮开牌锁判定。
- * - 冷却期间允许继续出牌累积出牌数(上限内),冷却不会被后续出牌重置。
+ *   ⚠️ 2026-09-30 起周期**不再**等待"效果牌自身的效果结束"。
+ * - 冷却期间允许继续出牌累积出牌数(上限内);但**每次出牌都会把冷却重置**
+ *   (2026-09-30 用户裁决)。
  * - 出牌数来源与上限全部实时计算(不缓存),卸载大背包/忍术飞镖立即生效,
  *   更换立牌/骰子无法刷新出牌锁。
  * - 出牌数/冷却/忍者临时出牌附件均已 .sync() 到客户端,客户端可执行与
@@ -53,6 +53,14 @@ public final class EffectCardPeriod {
     private EffectCardPeriod() {
     }
 
+    // === 冷却时长(模组侧口径,2026-09-30 用户裁决) ===
+    // ⚠️ 刻意**不**复用库 GameplayConstants 的 30/20 秒:库的工作树(next, 2.0.0-SNAPSHOT)与
+    //    消费方引用的稳定线(1.0.5)存在版本落差,改库要跨分支 bump + 重发 + 三线 refresh;
+    //    故本模块自行持值,并由 EffectCardPeriod / ChargeManager / ModTooltipHandler 三处共源。
+    /** 效果牌冷却基础时长(秒):30 → 45(2026-09-30 用户裁决) */
+    public static final int COOLDOWN_SECONDS = 45;
+    /** 拥有「充能」时效果牌冷却的封顶秒数:20 → 30(2026-09-30 用户裁决) */
+    public static final int CHARGE_COOLDOWN_CAP_SECONDS = 30;
     // === 出牌数来源(可扩展) ===
     @FunctionalInterface
     public interface ExtraPlaySource {
@@ -395,15 +403,9 @@ public final class EffectCardPeriod {
     // 剩余被锁 tick:取“全局冷却结束时间”与“所有效果牌效果中最长的结束时间”的较大值
     // (遍历 EFFECT_PENDING_SOURCES,由各来源的 effect() 推导剩余时长,与出牌锁判定保持单一注册源)
     public static long getRemainingBlockTicks(Player player) {
+        // 2026-09-30:只反映**出牌冷却**剩余(效果牌自身的效果时长不再计入出牌锁)
         long now = player.level().getGameTime();
-        long maxEnd = ModAttachments.getEffectCardCooldownEnd(player);
-        for (EffectPendingSource source : EFFECT_PENDING_SOURCES) {
-            Holder<MobEffect> effect = source.effect();
-            if (effect != null) {
-                maxEnd = Math.max(maxEnd, now + remainingEffectTicks(player, effect));
-            }
-        }
-        return Math.max(0, maxEnd - now);
+        return Math.max(0, ModAttachments.getEffectCardCooldownEnd(player) - now);
     }
 
     // 剩余被锁秒数(向上取整)
@@ -418,22 +420,23 @@ public final class EffectCardPeriod {
 
 
     /**
-     * 出牌锁判定:
-     * 1. 本轮出牌数已达上限 → 阻止;
-     * 2. 冷却进行中(仅在打满上限后才开始) → 允许继续出牌累积(上限内);
-     * 3. 冷却已归零(或未开始)但效果牌效果仍在生效 → 阻止开始新一轮(效果结束后才可重新出牌)。
+     * 出牌锁判定:**只看本轮出牌数是否已达上限**。
+     *
+     * <p>2026-09-30 用户裁决后:冷却进行中<b>不</b>拦(玩家可继续用掉本轮剩余出牌数);
+     * 「效果待定」(效果牌留下的效果仍在生效)<b>不再</b>锁住出牌 —— 出牌锁与效果时长彻底分离。
      */
     public static boolean isBlocked(Player player) {
-        if (isBurstFull(player)) return true;
-        if (isCooldownActive(player)) return false;
-        return isEffectPending(player);
+        // 2026-09-30 用户裁决:出牌锁只看出牌数 —— 「效果待定」不再锁牌(冷却与效果时长彻底分离);
+        // 冷却进行中同样不拦(玩家仍可用掉本轮剩余的出牌数)。
+        return isBurstFull(player);
     }
 
     /**
      * 出牌登记:出牌数 +1(调用前需通过 {@link #isBlocked} 校验)。
      *
-     * <p><b>冷却严格按照「出牌数打满后才进入冷却」</b>:未打满时**不启动**冷却倒计时,
-     * 只在本次出牌使出牌数达到上限({@link #getMaxAllowed})时才开始 30 秒冷却;
+     * <p><b>冷却在每次出牌时启动/重置(2026-09-30 用户裁决)</b>:不再要求"打满上限"才进冷却 ——
+     * 出任何一张牌都会把冷却到期时刻写成 {@code now + EffectCardPeriod.COOLDOWN_SECONDS}(45 秒),
+     * 同一轮内连续出牌会不断把到期时刻推后(最后一次出牌之后 45 秒冷却结束);
      * 冷却归零后由 {@link #tick} 清空出牌数占用。任何增加出牌数的手段(固定/临时来源、立牌主动的一次性 +1)
      * 都只能提高上限,不能绕过 {@link GameplayConstants#MAX_EFFECT_CARD_PLAYS} 这一最高优先级封顶。
      */
@@ -473,13 +476,11 @@ public final class EffectCardPeriod {
         // 判据用"是否仍在进行中"(cooldown > 0 && now < cooldown):仍在进行中 ⇒ 保持原到期时刻
         // 不变(什么都不写);仅当没有冷却在跑(为 0 或已到期)时才写入 now + cooldownTicks。
         // 正常打满路径(无冷却在跑)与改动前逐字等价。
-        if (count >= getMaxAllowed(player)) {
-            long cooldownTicks = ChargeManager.effectCardCooldownTicks(player,
-                    GameplayConstants.EFFECT_CARD_COOLDOWN_SECONDS * 20L);
-            if (cooldown <= now) {
-                ModAttachments.setEffectCardCooldownEnd(player, now + cooldownTicks);
-            }
-        }
+        // 2026-09-30 用户裁决:冷却与「效果牌自身的效果时长」彻底分离 —— **每次出牌都启动/重置**冷却。
+        // 同一轮内连续出牌会不断把到期时刻推后(最后一张牌之后 COOLDOWN_SECONDS 秒冷却结束);
+        // 打满上限时同样走这一行(不再单独判「已打满」)。
+        long cooldownTicks = ChargeManager.effectCardCooldownTicks(player, COOLDOWN_SECONDS * 20L);
+        ModAttachments.setEffectCardCooldownEnd(player, now + cooldownTicks);
     }
 
     /**
@@ -488,22 +489,6 @@ public final class EffectCardPeriod {
      * <p>三种情形:
      * <ol>
      *   <li><b>冷却已到期</b>:出牌数与全部"每轮一次"标记归零,周期结束(原有行为);</li>
-     *   <li><b>未打满的一轮在计时器全部结束后收尾(2026-09-15 用户裁决)</b>:出牌数未达上限、
-     *       但本轮的"剩余被锁时长"({@link #getRemainingBlockTicks},由 {@code EFFECT_PENDING_SOURCES}
-     *       的效果自动推导,不硬编码效果列表)已归 0 时,同样启动一轮 30 秒冷却(时长与"打满上限"复用
-     *       同一 {@code ChargeManager.effectCardCooldownTicks} 口径)。判据:{@code played > 0 &&
-     *       played < getMaxAllowed(player)} 且 {@code getRemainingBlockTicks(player) <= 0};
-     *       仍有计时器在跑时继续等待(即正常累积中)。
-     *       <b>最终语义(2026-09-15 用户裁决)</b>:未打满的一轮在所有计时器结束后也会进入一轮冷却,
-     *       但<b>不</b>作废剩余出牌数;冷却期间仍可继续出牌,冷却到期后计数归零。
-     *       为此本分支<b>不</b>把出牌数补齐到当轮上限——{@link #isBurstFull} 因而保持为假,
-     *       玩家不会在冷却期间被"已打满"提前拦住({@link #isBlocked} 对"冷却进行中"本身并不拦截),
-     *       剩余出牌数得以在冷却期间继续使用,冷却不会被后续出牌重置。
-     *       <b>2026-09-20 用户裁决 C 的豁免</b>:当轮上限被「出牌数 +1」类<b>牌</b>抬高时
-     *       ({@code FU_CARD_CYCLE_BONUS} / {@code LIVING_PAGE_CYCLE_BONUS} &gt; 0,判据与注释见
-     *       {@link #tick} 本分支内),本情形<b>不</b>启动收尾冷却 —— 这类牌走规格 §14.2 收支表口径
-     *       (「本轮冷却未启动」,只有 {@code count ≥ max} 即打满时才启动 30 秒)。
-     *       其余牌仍保留上述 2026-09-15 的收尾冷却规则。</li>
      *   <li><b>不变量违例的修复(2026-09-14 严重 BUG)</b>:出牌数已达当轮上限、却<b>没有</b>冷却在跑。
      *       该状态只可能来自「上限在周期中途下降」——卸下大背包/忍术飞镖(固定 +1)、
      *       卸下可口糖果/探天卫星筹码、命运的指引效果到期等,
@@ -522,33 +507,10 @@ public final class EffectCardPeriod {
         if (cooldown > 0 && now < cooldown) return;          // 冷却进行中:不动
         if (cooldown <= 0) {
             if (played <= 0) return;                          // 无残留(不凭空开冷却)
-            int maxAllowed = getMaxAllowed(player);
-            if (played < maxAllowed) {
-                // 未打满:仍有计时器在跑(剩余被锁时长 > 0)时继续等待,即正常累积中;
-                // 本轮所有计时器结束后按 2026-09-15 用户裁决同样进入一轮冷却(下方统一启动),
-                // 但**不**作废剩余出牌数(不再把计数补齐到当轮上限):冷却期间仍可继续出牌,
-                // 冷却到期后计数归零。
-                if (getRemainingBlockTicks(player) > 0) return;
-                // ⚠️ 2026-09-20 用户裁决 C:当轮上限被「出牌数 +1」类**牌**抬高时,情形 2(未打满的
-                // 收尾冷却)**不启动** —— 这类牌走规格 §14.2 收支表口径(打出后「本轮冷却**未启动**」,
-                // 只有 count ≥ max = 打满当轮上限时才启动 30 秒冷却,那条路径在下方同一块的
-                // 「不变量违例/已打满」分支与 registerPlay 里,不受本豁免影响)。
-                // 判据 = 两个由**打出牌**驱动、本周期内累加的出牌数计数器(与 getMaxAllowed 的 extra 同源):
-                //   · FU_CARD_CYCLE_BONUS  符卡-福:每次打出 +1(FuCardItem:78 → grantFuCardBonusPlay);
-                //   · LIVING_PAGE_CYCLE_BONUS 活体书页:命中「命中前已有 ≥3 层标记」的目标时 +1
-                //     (LivingPageImpact:41 → grantLivingPageCycleBonus)。
-                // 不纳入(均非「打出即 +1 的牌」,继续适用 2026-09-15 的收尾冷却):
-                //   · EFFECT_CARD_BONUS_PLAYS 立牌主动一次性槽位(技能授予,见 grantBonusPlay);
-                //   · 可口糖果/探天卫星筹码的「每轮一次」开关:candyChipPlayBonusActive /
-                //     satellitePlayBonusActive(筹码状态,非牌);
-                //   · 固定来源 大背包 +1 / 忍术飞镖 +1(佩戴即提供,非牌);
-                //   · 命运的指引:效果存在即 +1(覆盖式,且自身就是 EFFECT_PENDING_SOURCE,
-                //     情形 2 已由上方「剩余被锁时长 > 0」等到它结束)。
-                if (ModAttachments.getFuCardCycleBonus(player) > 0
-                        || ModAttachments.getLivingPageCycleBonus(player) > 0) return;
-            }
-            long recoverTicks = ChargeManager.effectCardCooldownTicks(player,
-                    GameplayConstants.EFFECT_CARD_COOLDOWN_SECONDS * 20L);
+            // 不变量违例:出牌数已达当轮上限、却**没有**冷却在跑(只可能来自"上限在周期中途下降",
+            // 见 2026-09-14 的说明)⇒ 按「打满即进入冷却」补上这一轮,使其在一轮冷却后正常清除。
+            if (played < getMaxAllowed(player)) return;
+            long recoverTicks = ChargeManager.effectCardCooldownTicks(player, COOLDOWN_SECONDS * 20L);
             ModAttachments.setEffectCardCooldownEnd(player, now + recoverTicks);
             return;
         }
