@@ -1453,6 +1453,28 @@ When extending this workspace:
 - 新增物品后对照 `entries/` 目录逐一核对:每个注册物品都有条目、条目内 icon/text 键无拼写错误、crafting 页引用的配方文件存在。
 - 手册文件是纯数据包 JSON(不参与 datagen),直接写 `src/main/resources/data/...` 即可,无需重新运行 runData。
 
+## Mixin 注入规范（Mixin Injection）— 必须遵守（2026-09-30 成文）
+
+- 🚨 **`require` 是「最少匹配数」，不是「容忍失败的次数」**：`@Inject` / `@Redirect` / `@ModifyVariable`
+  的 `require = N` 表示**该方法内至少要有 N 个匹配的注入点**，不足即抛 `InjectionError`（fatal）。
+  只写 `require = 1`（或留空、走 `injectors.defaultRequire`）就已获得「上游签名一变就报错」的 fail-loud 效果，
+  **不要**为了「允许失败 1 次」而写 2。实测教训：`forge-1.20.1` 的
+  `mixin/client/EffectRenderingInventoryScreenMixin` 两处 `@Redirect(method = "renderEffects")`
+  写了 `require = 2`，而该方法内 `MobEffectUtil.formatDuration` 与 `List.of` **各只有 1 处**
+  ⇒ 首次加载该类（打开物品栏）即崩，且**同时让 1.20.1 的 datagen 整体失败**（见下条）。
+
+- ⚠️ **1.20.1 的 datagen 会加载客户端类、并应用 `client` 组 Mixin**：该线的 JEI / Embeddium / Oculus /
+  KubeJS 等是由 `build.gradle` 的 `modImplementation` 引入（**不是**放进 `run/1.20.1/mods`），
+  故 `runData` 时它们也在 classpath 上；加上 datagen 带 `--all` 会生成 assets（物品模型），
+  客户端类被真实加载 ⇒ **`astral_dice.mixins.json` 的 `client` 数组里的 Mixin 会在 datagen 阶段被应用**。
+  ⇒ 任何 client Mixin 的注入错误都会**先炸 datagen**；这是好事（比进游戏才炸便宜得多），
+  故「三线 build SUCCESSFUL」**不等于** Mixin 正确 —— 至少要让 1.20.1 跑过一次 datagen。
+
+- ⚠️ **datagen 的 JVM 可能不退出**（1.20.1 尤其明显）：成功判据是日志出现
+  `[minecraft/HashCache]: ... written: N`（数据已落盘），**不要**等 `BUILD SUCCESSFUL`。
+  确认落盘后手工结束进程时，只杀命令行含 `fml.modFolders`（datagen JVM）与 `gradle-wrapper.jar`（wrapper）的
+  java 进程 —— **玩家的 Minecraft 是 `net.minecraft.client.main.Main`（常伴随 `net.caffeinemc.sodium`），绝不能杀**。
+
 ## 编译产物上传规则（Build Deploy Rule）— 必须遵守
 
 各子项目 `build.gradle` 已内置分发任务，`gradlew build` **构建后自动触发**，无需手动指定任务。部署目标按子项目区分：
