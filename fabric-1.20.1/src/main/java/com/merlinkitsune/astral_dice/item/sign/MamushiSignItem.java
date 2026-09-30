@@ -8,7 +8,6 @@ import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.card.DragonCardUtil;
 import com.merlinkitsune.astral_dice.item.card.RandomCardHandler;
-import com.merlinkitsune.starenginelib.event.EventTargetCollector;
 import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionResultHolder;
@@ -223,8 +222,8 @@ public class MamushiSignItem extends BaseSignItem {
      * <ol>
      *   <li>候选 = 佩戴者**所在维度**的在线玩家(**严格同维度**,绝不并入其它维度的队友);</li>
      *   <li>排除自己(已死亡者同样排除 —— 沿用原 {@code RandomCardHandler.collectTargets} 的既有口径);</li>
-     *   <li>佩戴者**有队伍** ⇒ 只保留**同队**成员({@link EventTargetCollector#hasAnyTeam} 为真时取
-     *       {@link EventTargetCollector#collectTeamPlayers});**未组队** ⇒ **不做**队伍过滤
+     *   <li>佩戴者**有队伍** ⇒ 只保留**同队**成员({@link PartyRelations#hasTeam} 为真时取
+     *       {@link PartyRelations#collectTeamPlayers});**未组队** ⇒ **不做**队伍过滤
      *       (该维度所有其他玩家都算"符合条件");未组队分支自己从本维度取候选,**不依赖**库侧
      *       "无队伍 ⇒ 全服在线玩家"的既有回退;</li>
      *   <li>距离过滤:非真龙形态 ⇒ 距离 ≤ {@link #ACTIVE_RANGE};真龙形态 ⇒ 不限制(同维度全体);</li>

@@ -5,7 +5,6 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
-import com.merlinkitsune.starenginelib.event.EventTargetCollector;
 import com.merlinkitsune.astral_dice.item.chip.FriendshipBadgeChipItem;
 import com.merlinkitsune.astral_dice.combat.PartyRelations;
 
@@ -52,7 +51,7 @@ public class LuxuryFeastCardItem extends BaseEffectCardItem {
     protected void applyEffect(Level level, Player user, LivingEntity applyTo, ItemStack stack) {
         int heal = Math.max(1, (int) (user.getMaxHealth() * HEAL_RATIO));
         AABB aabb = applyTo.getBoundingBox().inflate(RANGE);
-        // 队伍过滤:统一经 EventTargetCollector.collectTeamPlayers ——
+        // 队伍过滤:统一经 PartyRelations.collectTeamPlayers ——
         // 已加入队伍时仅影响同队/队友;未加入任何队伍时目标为全服在线玩家
         java.util.List<Player> allies = PartyRelations.collectTeamPlayers(user);
         var nearby = level.getEntitiesOfClass(Player.class, aabb, p -> p.isAlive());

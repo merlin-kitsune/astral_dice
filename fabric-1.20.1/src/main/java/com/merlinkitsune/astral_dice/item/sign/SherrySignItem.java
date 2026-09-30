@@ -10,7 +10,6 @@ import com.merlinkitsune.astral_dice.event.WeirdDiceHandler;
 import com.merlinkitsune.astral_dice.item.ChargeManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.starenginelib.component.GameplayConstants;
-import com.merlinkitsune.starenginelib.event.EventTargetCollector;
 import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.InteractionResultHolder;

@@ -1,6 +1,5 @@
 package com.merlinkitsune.astral_dice.item.chip;
 
-import com.merlinkitsune.starenginelib.event.EventTargetCollector;
 import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 import com.merlinkitsune.astral_dice.item.HealingManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
@@ -21,7 +20,7 @@ import com.merlinkitsune.astral_dice.combat.PartyRelations;
  * <p>友方判定:
  * <ul>
  *   <li>玩家:自身 + 队友(已加入队伍时 = 同队在线玩家;未加入任何队伍时 = 全服在线玩家,经
- *       {@link EventTargetCollector#collectTeamPlayers}),且距离不超过 {@link #RANGE} 格;
+ *       {@link PartyRelations#collectTeamPlayers}),且距离不超过 {@link #RANGE} 格;
  *       玩家获得治愈点数并回血。</li>
  *   <li>非玩家友方(玩家驯服的宠物、可骑乘生物):同样在 {@link #RANGE} 格内则恢复 2 点生命值
  *       (治愈点数是玩家级资源,不适用于生物)。</li>
@@ -96,6 +95,7 @@ public class BigBowlStewChipItem extends BaseChipItem {
         if (server == null) return false;
         Player petOwner = server.getPlayerList().getPlayer(ownerId);
         if (petOwner == null) return false;
-        return owner.getTeam() != null && owner.getTeam() == petOwner.getTeam();
+        // 必须走统一入口:裸 getTeam() 只认原版计分板,FTB Teams / OPAC 的队友会被漏判
+        return com.merlinkitsune.astral_dice.combat.PartyRelations.isSameTeam(owner, petOwner);
     }
 }

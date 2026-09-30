@@ -13,7 +13,6 @@ import com.merlinkitsune.astral_dice.item.chip.CurrentCoreChipItem;
 import com.merlinkitsune.astral_dice.network.ModNetwork;
 import com.merlinkitsune.astral_dice.target.SelfTargetable;
 import com.merlinkitsune.starenginelib.component.GameplayConstants;
-import com.merlinkitsune.starenginelib.event.EventTargetCollector;
 import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 import com.merlinkitsune.starenginelib.target.TargetSelectionAction;
 import com.merlinkitsune.starenginelib.target.TargetSelectionRegistry;
@@ -90,8 +89,8 @@ import com.merlinkitsune.astral_dice.combat.PartyRelations;
  * <h2>「心意相连」(由大当家立牌调用)</h2>
  * {@link #onAllyActiveSkill}:大当家立牌使用主动技能时,**同队**中装备风水师立牌的玩家各获得
  * 1 张符卡-福;**未组队时不生效**。组队判定**必须**先经
- * {@link EventTargetCollector#hasAnyTeam}(否则会被该收集器"无队伍 ⇒ 全服在线玩家"的既有回退
- * 放大成全服发牌),再取 {@link EventTargetCollector#collectTeamPlayers}(原生 team / FTB Teams /
+ * {@link PartyRelations#hasTeam}(否则会被该收集器"无队伍 ⇒ 全服在线玩家"的既有回退
+ * 放大成全服发牌),再取 {@link PartyRelations#collectTeamPlayers}(原生 team / FTB Teams /
  * OPAC 三套系统一处收口)。
  *
  * <p>图标 = {@code images/风水师立牌.png}(实装路径 {@code textures/item/zhao_sign.png});
@@ -448,11 +447,11 @@ public class ZhaoSignItem extends BaseSignItem {
     /**
      * 「心意相连」:大当家立牌使用主动技能时,**同队**中装备风水师立牌的玩家各获得 1 张符卡-福。
      *
-     * <p>**未组队时不生效**:先判 {@link EventTargetCollector#hasAnyTeam} —— 这一步**不能省**,
-     * 否则"无队伍"会被 {@link EventTargetCollector#collectTeamPlayers} 的既有回退把全服在线玩家
+     * <p>**未组队时不生效**:先判 {@link PartyRelations#hasTeam} —— 这一步**不能省**,
+     * 否则"无队伍"会被 {@link PartyRelations#collectTeamPlayers} 的既有回退把全服在线玩家
      * 当成队友(全服发牌)。
      *
-     * <p>组队口径 = 共享库 {@link EventTargetCollector}(原生 team / FTB Teams / OPAC 三套系统一处
+     * <p>组队口径 = 共享库 {@link PartyRelations}(原生 team / FTB Teams / OPAC 三套系统一处
      * 收口),与该库驱动的奢华大餐、银行卡、随机卡等既有"同队"路径同源。
      *
      * @return 实际收到符卡-福的队友数量(自己不在发放集合内:立牌栏只有一个槽位,佩戴大当家者不可能同时佩戴风水师)

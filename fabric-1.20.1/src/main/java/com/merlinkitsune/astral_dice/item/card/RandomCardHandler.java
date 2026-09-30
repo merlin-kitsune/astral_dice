@@ -1,6 +1,5 @@
 package com.merlinkitsune.astral_dice.item.card;
 
-import com.merlinkitsune.starenginelib.event.EventTargetCollector;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;

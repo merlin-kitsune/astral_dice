@@ -237,6 +237,12 @@ public class AstralDiceMod implements ModInitializer {
     @com.merlinkitsune.astral_dice.platform.event.SubscribeEvent
     public static void onCommonSetup(FMLCommonSetupEvent event) {
         ModCompatibilityCheck.verifyOrThrow();
+        // 队伍后端接入状态诊断(machine line: AP_FAB_PARTY)。
+        // ⚠️ 放这里而不是 onInitialize():三条队伍系统的**启用开关**由公共配置驱动
+        //    (GameplayConstants.applyConfig),此阶段配置已加载,读数才是真实生效值。
+        //    三个后端全是反射,契约不符时会静默退回原版计分板 —— 这条机器行让
+        //    「装了 FTB Teams / OPAC 却没生效」在日志里一眼可断言(2026-10-01 新增)。
+        com.merlinkitsune.astral_dice.combat.PartyRelations.reportBackends();
         event.enqueueWork(() -> {
             // 网络通道注册(Fabric Networking;协议版本握手见 VersionGate)
             com.merlinkitsune.astral_dice.network.ModNetwork.register();

@@ -6,7 +6,6 @@ import com.merlinkitsune.starenginelib.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.event.AstralEventSystem;
-import com.merlinkitsune.starenginelib.event.EventTargetCollector;
 import com.merlinkitsune.astral_dice.network.ModNetwork.ActionBarMessage;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
