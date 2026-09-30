@@ -1,0 +1,21 @@
+{
+  "name": "item.astral_dice.parunan_sign",
+  "category": "astral_dice:signs",
+  "icon": "astral_dice:parunan_sign",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:parunan_sign",
+      "text": "astral_dice.guide.entry.parunan_sign.1"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.parunan_sign.2"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:parunan_sign"
+    }
+  ],
+  "sortnum": 0
+}

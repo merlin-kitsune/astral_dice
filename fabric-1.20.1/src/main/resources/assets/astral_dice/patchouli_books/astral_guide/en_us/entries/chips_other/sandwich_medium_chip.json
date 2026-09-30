@@ -1,0 +1,17 @@
+{
+  "name": "item.astral_dice.sandwich_medium_chip",
+  "category": "astral_dice:chips_other",
+  "icon": "astral_dice:sandwich_medium_chip",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:sandwich_medium_chip",
+      "text": "astral_dice.guide.entry.sandwich_medium_chip.1"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:sandwich_medium_chip"
+    }
+  ],
+  "sortnum": 12
+}

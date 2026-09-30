@@ -1,0 +1,156 @@
+package com.merlinkitsune.astral_dice.client;
+
+import com.merlinkitsune.astral_dice.AstralDiceMod;
+import com.merlinkitsune.astral_dice.init.ModParticles;
+import com.merlinkitsune.astral_dice.screen.CardInventoryScreen;
+import com.merlinkitsune.astral_dice.screen.ModMenuTypes;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.phys.Vec3;
+import com.merlinkitsune.astral_dice.platform.client.event.RegisterGuiOverlaysEvent;
+import com.merlinkitsune.astral_dice.platform.client.event.RegisterKeyMappingsEvent;
+import com.merlinkitsune.astral_dice.platform.client.event.RegisterParticleProvidersEvent;
+import com.merlinkitsune.astral_dice.platform.fml.event.lifecycle.FMLClientSetupEvent;
+import com.merlinkitsune.astral_dice.platform.client.gui.overlay.VanillaGuiOverlay;
+import com.merlinkitsune.astral_dice.platform.client.gui.overlay.ForgeGui;
+import com.merlinkitsune.astral_dice.platform.client.gui.overlay.IGuiOverlay;
+import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
+import com.mojang.math.Axis;
+import org.joml.Matrix4f;
+import org.joml.Vector4f;
+
+import com.merlinkitsune.starenginelib.client.ActionBarManager;
+import com.merlinkitsune.starenginelib.client.ClientDamageNumbers;
+public class ModClientEvents {
+
+    /**
+     * 自发光「发光尘」的客户端 provider（飞星拖尾用）。贴图集合取原版 dust 的 {@code generic_0..generic_7}，
+     * 见 {@code assets/astral_dice/particles/glowing_dust.json} —— {@code registerSpriteSet} 要求该 json 存在。
+     */
+    @SubscribeEvent
+    public static void registerParticleProviders(RegisterParticleProvidersEvent event) {
+        event.registerSpriteSet(ModParticles.GLOWING_DUST.get(), GlowingDustParticle.Provider::new);
+    }
+
+    @SubscribeEvent
+    public static void registerGuiOverlays(RegisterGuiOverlaysEvent event) {
+        // 1.20.1:registerAbove 的 id 参数是纯 path,Forge 自动拼 modid 前缀
+        event.registerAbove(VanillaGuiOverlay.CROSSHAIR.id(),
+                "damage_number", DamageNumberOverlay.INSTANCE);
+        event.registerAbove(VanillaGuiOverlay.CROSSHAIR.id(),
+                "target_select", TargetSelectOverlay.INSTANCE);
+        event.registerAbove(VanillaGuiOverlay.AIR_LEVEL.id(),
+                "action_bar", ActionBarOverlay.INSTANCE);
+    }
+
+    @SubscribeEvent
+    public static void onClientSetup(FMLClientSetupEvent event) {
+        event.enqueueWork(() ->
+                net.minecraft.client.gui.screens.MenuScreens.register(
+                        ModMenuTypes.CARD_INVENTORY.get(), CardInventoryScreen::new));
+    }
+
+    public static class ActionBarOverlay implements IGuiOverlay {
+        public static final ActionBarOverlay INSTANCE = new ActionBarOverlay();
+
+        @Override
+        public void render(ForgeGui gui, GuiGraphics guiGraphics, float partialTick, int width, int height) {
+            // F1（隐藏 HUD）守卫:本线原版门槛是 `!hideGui || screen != null`,故同条件守卫是**逐例 no-op**;
+            // 写成裸 `hideGui` 会在「F1 + 界面打开」时多隐藏一层（R2-04）。此处只求与 1.21.1 同形。
+            Minecraft mc = Minecraft.getInstance();
+            if (mc.options.hideGui && mc.screen == null) return;
+            ActionBarManager.render(guiGraphics, partialTick);
+        }
+    }
+
+    @SubscribeEvent
+    public static void registerKeyMappings(RegisterKeyMappingsEvent event) {
+        event.register(KeyBindingSetup.ACTIVATE_SIGN_KEY);
+        event.register(KeyBindingSetup.OPEN_CARD_INVENTORY_KEY);
+        // 目标选择器不注册键盘确认键：确认 = 鼠标左键、取消 = 右键+潜行 / ESC 菜单（强力胶式语义）
+    }
+
+    public static class DamageNumberOverlay implements IGuiOverlay {
+        public static final DamageNumberOverlay INSTANCE = new DamageNumberOverlay();
+
+        @Override
+        public void render(ForgeGui gui, GuiGraphics guiGraphics, float partialTick, int width, int height) {
+            Minecraft mc = Minecraft.getInstance();
+            LocalPlayer player = mc.player;
+            if (player == null || mc.level == null || mc.options.hideGui) return;
+
+            var activeNumbers = ClientDamageNumbers.getActiveNumbers();
+            if (activeNumbers.isEmpty()) return;
+
+            int screenWidth = guiGraphics.guiWidth();
+            int screenHeight = guiGraphics.guiHeight();
+
+            var poseStack = guiGraphics.pose();
+            poseStack.pushPose();
+
+            for (var entry : activeNumbers.entrySet()) {
+                Entity entity = mc.level.getEntity(entry.getKey());
+                if (entity == null) continue;
+                if (!(entity instanceof LivingEntity living)) continue;
+
+                var number = entry.getValue();
+                Vec3 pos = entity.getEyePosition().add(0, -0.5, 0);
+                var camera = mc.gameRenderer.getMainCamera();
+                var camPos = camera.getPosition();
+                var clipPos = new Vector4f(
+                    (float)(pos.x - camPos.x),
+                    (float)(pos.y - camPos.y),
+                    (float)(pos.z - camPos.z),
+                    1.0f
+                );
+                // 视矩阵必须与**本版本原版的世界渲染**同构(1.20.1 GameRenderer#renderLevel:1127-1128):
+                //     poseStack.mulPose(Axis.XP.rotationDegrees(camera.getXRot()));
+                //     poseStack.mulPose(Axis.YP.rotationDegrees(camera.getYRot() + 180.0F));
+                // ⚠️ 禁止照搬 1.21.1 的写法 `new Matrix4f().rotation(camera.rotation().conjugate())`:
+                //    1.21.1 原版确实用该式(neoforge 源 GameRenderer#renderLevel:1272-1273),
+                //    但 1.20.1 原版的视图旋转与它**相差绕 Y 的 180° 与 pitch 符号**
+                //    (1.20.1 相机四元数是 rotationYXZ(-yRot, xRot, 0),不等于该式的逆)。
+                //    照搬的后果:正前方的目标算出 w<0,被下面的「相机背后」分支整段丢弃,
+                //    伤害数字**永远**不绘制(生产环境实测:正前方 3 格目标 w=-3.0,1064 次 skip / 0 次 draw)。
+                // 说明:ComputeCameraAngles 的 roll 只存在于事件对象里(相机不保存),正常为 0,故不参与;
+                //      FOV 取 options.fov() 原值(原版 getFov(...,true) 为 private,冲刺激活时会有极小偏差)。
+                var viewMatrix = new Matrix4f()
+                        .rotate(Axis.XP.rotationDegrees(camera.getXRot()))
+                        .rotate(Axis.YP.rotationDegrees(camera.getYRot() + 180.0F));
+                double fov = mc.options.fov().get();
+                var projMatrix = mc.gameRenderer.getProjectionMatrix(fov);
+                var mvp = new Matrix4f(projMatrix);
+                mvp.mul(viewMatrix);
+                mvp.transform(clipPos);
+                if (clipPos.w <= 0) continue;
+                clipPos.div(clipPos.w);
+                Vec3 screenPos = new Vec3(clipPos.x, clipPos.y, clipPos.z);
+
+                double x = screenPos.x * (double) screenWidth / 2.0 + (double) screenWidth / 2.0;
+                double y = -screenPos.y * (double) screenHeight / 2.0 + (double) screenHeight / 2.0;
+
+                if (x < 0 || x > screenWidth || y < 0 || y > screenHeight) continue;
+
+                float progress = 1.0f - (float) number.remaining / 40.0f;
+                int alpha = (int) ((1.0f - progress) * 255);
+                int color = (alpha << 24) | (number.color & 0xFFFFFF);
+                int yOffset = -(int) (progress * 30);
+
+                // 数显只给数值、不加 "+" 前缀(2026-09-19 用户要求:攻击伤与法伤一并移除)
+                String text = Integer.toString(number.damage);
+                int textWidth = mc.font.width(text);
+                poseStack.pushPose();
+                poseStack.translate(x - textWidth / 2.0f, y + yOffset, 0);
+                poseStack.scale(1.2f, 1.2f, 1.2f);
+                guiGraphics.drawString(mc.font, text, 0, 0, color, true);
+                poseStack.popPose();
+            }
+
+            poseStack.popPose();
+        }
+    }
+}

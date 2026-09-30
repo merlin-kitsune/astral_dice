@@ -5,7 +5,6 @@
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
 ## 1.3.5
-
 ### Content & Balance
 
 - **The decay of the Gunsmith's "Weakness Insight" and the Great Detective's "Reasoning Time" is now an independent 1-minute timer** (user ruling 2026-09-30): both passives used to hang off "when a Dice Blessing ends" - one stack per blessing, so their decay was entirely bound to the blessing's start/end. They now run on **their own 1-minute timer**: the effect duration changes from infinite to **1 minute**, and when it expires naturally the stack count drops by 1 and the timer restarts (at zero stacks the effect is simply gone). For the Gunsmith the stack count lives in the effect itself (each stack: attack/defense +1 and minimum dice roll +1, up to 4); for the Great Detective it lives in player data (**not lost on death**), and both now decay identically. NOTE the UI follows: these two effects are no longer "permanent icons without a countdown" and now show their remaining time. Gaining a new stack **resets** the timer.
@@ -44,9 +43,230 @@
 
 - **Two handbook pages displayed a raw translation key** (2026-10-01; one reported by the fabric branch, the second found by a full local audit): page 6 of the handbook's "Special Effects" entry and page 3 of the "Cult Leader Sign" entry referenced **language keys that no longer exist** - the former's "effect pending" note was removed together with that mechanic (the effect-card cooldown rework in this release), the latter's "anti-farming" note was removed by the handbook redundant-note cleanup, but **the handbook pages were not removed along with them** - so in game those two pages displayed the raw key `astral_dice.guide.entry.*`. Both pages have now been removed, matching the intent of those two cleanups. NOTE this class of defect was **undetectable by any existing gate** (`check_lang_sync` only compares the key sets of the three languages against each other, not "handbook references are a subset of lang") - a new gate, **`tools/audit_patchouli_keys.py`**, was added in the same batch (it walks every translation-key reference in the three lines' handbook JSON and checks it against that line's three languages, including item-name keys such as `item.astral_dice.*`; currently 1161 references / 0 dangling).
 
+## Unreleased (1.3.5-alpha.1)
+> Decided by the user on 2026-09-29: this line is a **development line**, so version numbers now carry
+> an **`-alpha.x` pre-release suffix** (1.3.5-alpha.1 at present), and the prerequisite library moves to
+> `1.0.5-alpha.1` (its baseline rolled back to 1.0.5).
+
+### Content & balance changes
+
+- **Effect-card cooldown reworked: fully decoupled from the effect's own duration — the cooldown now starts the moment you play a card**:
+  previously a round only entered cooldown once you had **used up the play limit**; a round that was not maxed out had to wait for
+  **every effect played in that round to expire** before its cooldown was applied, so the cooldown was dragged along by effect durations and
+  the pacing was unpredictable. Now **playing any card starts the cooldown, and every card played in the same round resets it to 45 seconds**
+  (was 30 seconds) — i.e. the round ends 45 seconds after your last card and the play count resets. **Effect duration no longer locks further plays**:
+  once the cooldown reaches zero you can start a new round even if effects are still active (the old "effect pending" rule is gone).
+  Related: with Charge, the effect-card cooldown cap changes from **20 to 30 seconds**.
+
+- **Healing timer decoupled from Dice Blessing — it now settles automatically every 1:00**: previously healing layers only settled while Dice Blessing was active
+  — once it ended they neither decayed nor healed. It is now a **fully independent 1:00 timer**: a Blessing still settles it once, and afterwards it settles
+  automatically every 1:00 regardless of Blessing — **halve the healing layers (rounded down) → the medkit chip tops up its fixed amount →
+  if layers remain, heal for "layers × 2" and start the next 1:00 timer; at zero the "Healing" effect is removed**.
+  The "Healing" icon is decoupled from Blessing too: **it shows whenever layers > 0**, and its indicator always shows the **remaining 1:00 countdown**.
+  The medkit chip's description is now simply "**healing layers +1 / +3**".
+
+- **Gunsmith "Weakness Reveal" and Great Detective "Reasoning Time" now decay on their own 1-minute timers**: previously both passives were tied to
+  "when Dice Blessing ends" — each Blessing end removed 1 layer, so their decay was bound to the Blessing cycle. They now each run an
+  **independent 1-minute timer**: the effect duration changes from "infinite" to **1 minute**, and on natural expiry it **removes 1 layer and restarts the timer**.
+  ⚠️ Visible change: these two effects are **no longer "no-countdown" permanent icons — they now show a remaining time**.
+
+- **Gunsmith sign active/passive rewritten + two Enigmatic Legacy "curse corrections"**: the active "Weakness Counter" becomes "mark one target with
+  'Opening (2:00)': the target's combat dice are locked to 0, and it can **only be applied to targets that do not already have 'Opening'**";
+  the passive becomes "when a target bearing 'Opening' attacks you, **dodge the attack and counter**", and each dodge / counter / attacking an 'Opening'
+  target grants 1 layer of "Weakness Reveal" (max 4; each layer gives +1 attack/defence and +1 minimum dice value).
+  **New link**: while wearing the Cursed Ring and holding "Weakness Reveal" — corrects the third curse: **removes the armour reduction**;
+  corrects the sixth curse: **no soul crystal is dropped on death**. ⚠️ This line links **Enigmatic Legacy 1.20.1** (`enigmaticlegacy`), whose armour-curse
+  modifier uses a **fixed UUID** (unlike the other three lines); it **never references third-party internal classes** (soul-crystal counting goes through reflection)
+  and stays silent when that mod is absent.
+
+- **Crafting changes + new kill drops for Star Coin / Star Plate**: ① **Golden Star Plate now has two coexisting recipes** — "Star Plate ×1 + Nether Star ×1"
+  (shapeless) and "Star Plate ×3 + Star Coin ×6" (shaped); ② **Star Coin now drops from player kills** (1 each): Zombie / Zombified Piglin **1%**,
+  Enderman / Piglin **3%**, Piglin Brute **20%** (indirect kills such as arrows count too); ③ **Star Plate expands to tiered kill drops**:
+  Wither **5**, Warden **3-5**, Elder Guardian **1-3**, Ghast **1**, Wither Skeleton / Guardian **5%**, other monsters still **0.3%**
+  (previously the Wither / Warden dropped exactly 1; quantities now follow this table).
+
+- **16 sign / chip recipes re-ingredientised**: signs (5) — Salaryman sign Wither Skeleton Skull ×2 → **Black Stained Glass ×2**,
+  Ninja sign Echo Shard → **Amethyst Shard**, Hacker sign Sculk Block ×2 → **Cyan Concrete ×2**, Secret Detective sign Beacon → **End Crystal**,
+  Mechanic sign Beacon ×2 → **Gold Ingot ×2**; chips (11) — Magic Quiver Echo Shard → **Spectral Arrow**, Advanced Peripherals Echo Shard → **Redstone Comparator**,
+  Perpetual Motion Nether Star → **Netherite Ingot**, Primordial Core Echo Shard ×2 → **Netherite Ingot ×2** and Dragon Head → **Dragon's Breath**,
+  Magic Tome Echo Shard → **Eye of Ender**, Boxing Gloves (low) Sponge ×3 → **White Wool ×3**, Speed Skates (low) Blue Ice ×2 → **Ice ×2**,
+  Adrenaline (normal) Nether Star → **Ender Pearl** and Wither Rose ×2 → **Soul Sand ×2**, Member Recommendation Ink Sac → **Book**,
+  Cursed Sword Chorus Fruit ×2 → **Soul Campfire ×2**, Piercing Gun Echo Shard ×2 → **Amethyst Shard ×2**.
+
+- **High Priest sign tooltip trimmed**: two redundant notes — "(not counted toward attack power)" and "(melee or ranged, must hit)" — were removed
+  from the "Descent" tooltip and the matching handbook entry, leaving only the mechanics themselves.
+
+### Bug fixes (1.3.5)
+
+- **Party detection was entirely broken: same-team players could still damage each other and the railgun still hit allies**: this mod previously used
+  **vanilla scoreboard teams** for every ally check, but modpacks do not necessarily use them (FTB Teams and Open Parties and Claims keep their own data),
+  so for such players the scoreboard team is always `null` ⇒ ally detection **failed completely**. A single entry point `combat/PartyRelations`
+  (vanilla scoreboard ∪ FTB Teams ∪ OPAC, including OPAC **ally parties**) was added, and roughly 30 hostility checks and 5 ally checks across the mod
+  now route through it.
+  ⚠️ **The FTB Teams / OPAC backends are reached by reflection** (`Class.forName`, lazily resolved, behind a mod-presence guard — a missing or
+  changed third-party mod silently falls back to the vanilla scoreboard rule and never crashes). On 2026-10-01 these reflective contracts were
+  **verified method by method and fixed**: the four FTB accessors it used (`isManagerLoaded` / `getManager` / `isClientManagerLoaded` /
+  `getClientManager`) are declared on a **nested interface** `FTBTeamsAPI$API`, not on the outer class, and the client entry point
+  `ClientTeamManager#getTeamForPlayer(Player)` **does not exist** (the real one is `getKnownPlayer(UUID)`) ⇒ resolution threw at the very first
+  lookup and the **whole FTB backend was permanently disabled**, with only a single debug line to show for it. Now: accessors are resolved on the
+  nested interface, the client path uses `getKnownPlayer(UUID)`, **same-team is compared by party team id** (`Team#getId()` equals the player's own
+  UUID for a player team, so two members of one party differ — `teamId` is the correct value), and `hasTeam` tests **party / server team** (FTB
+  creates a personal team for every player, so "a Team object exists" is always true and would have killed the "not in a team ⇒ allies are everyone"
+  fallback). **Measured across four states** (nothing installed / FTB Teams / plus OPAC / dedicated server): `back_ftb=off→on→on→on` and
+  `back_opac=off→off→on→on`, assertable directly from the new machine line **`AP_FAB_PARTY`**. Also fixed one place that **bypassed the unified
+  entry point** with a bare `getTeam()` (Big Bowl Stew treated the owner of a pet as a non-ally when that owner was an FTB / OPAC teammate).
+  ⇒ **Modpacks that do install FTB Teams or OPAC now genuinely take effect**; none of this line's three modpacks install either, so the effective
+  rule remains **vanilla scoreboard** (same as before the fix), minus the old "no team ⇒ everyone is an ally" fallback.
+
+- **Third-party melee weapons could not trigger Dice Blessing — weapon recognition switched from whitelist to blacklist**: the old rule was a **whitelist**
+  (only vanilla `SwordItem` / `AxeItem` / `MaceItem` / `TridentItem` counted), and most modded melee weapons **do not extend** those vanilla classes
+  ⇒ attacking with them never triggered Dice Blessing at all. It is now a **blacklist**: only "empty hand / shield / tools (pickaxe / shovel / hoe —
+  **axes stay**, they are melee weapons) / ranged weapons (bow / crossbow) / blocks" are excluded, and everything else counts as a triggering melee weapon.
+  The rule now uses only vanilla **item tags** (`pickaxes` / `shovels` / `hoes`) and interfaces (`ProjectileWeaponItem` / `BlockItem`),
+  never `SwordItem` / `DiggerItem` class names.
+
+- **Mobs repeatedly drinking milk to clear effects caused server lag — mobs may now clear their own effects**: this mod guards its effect namespace
+  against all external removal (milk, `/effect clear`). Mobs whose AI relies on "drinking milk to cleanse" (e.g. Goety casters, vanilla witches)
+  had that removal blocked ⇒ the effect never went away ⇒ the AI **kept retrying**, lagging the server. An exception was added:
+  **when the target is not a player, removal is always allowed**; the player-side rule is unchanged.
+
+- **"Marked" no longer resists cleansing — players can clear it with milk**: the strength of Marked lives in its **layers**, and it is a debuff
+  applied to a **target**, so players have good reason to clear it ⇒ external removal of "Marked" is now allowed (milk or `/effect clear`).
+  ⚠️ One known cosmetic residue: the glow that accompanies Marked still shares its lifetime, so if a bulk cleanse removes the glow first it lingers
+  until natural expiry (≤60 s).
+
+- **The Ninja sign's active skill was nearly unusable — it now requires only "this round's play cap has not reached 9"**: the cooldown rework above made
+  **every card play start a cooldown**, while the Ninja active's first precondition ("effect-card cooldown running → refuse") became **almost always true**
+  under the new rule ⇒ the active was effectively locked out. That gate is removed: **as long as this round's play cap has not reached the cap of 9,
+  the skill can be used and grants +1 play**; the other two preconditions are unchanged. The message `msg.astral_dice.komachi_active_cooldown`
+  is retired (removed from all three languages).
+
+### Critical fixes
+
+- **Production-environment crash on start-up (100% unlaunchable) fixed**: the prerequisite library
+  `starengine_lib` looked up vanilla `Rarity` fields **by their string names** (`Rarity.color` / `Rarity.$VALUES`)
+  while initialising the rarity tiers. Fabric uses **two different mappings for development and production** —
+  in development the fields really are named `color` / `$VALUES`, in production they are renamed to
+  `field_8908` / `field_8905` — so the production environment **crashed during start-up**
+  (`NoSuchFieldException: color` → entrypoint failure) and the game could not be launched at all.
+  The lookup is now **by field type**, which holds under both mappings.
+  ⚠️ The defect was **production-only**: the development environment and every existing automated test run under the
+  development mapping, so everything was **green yet unusable**.
+
+- **Fixed a crash when entering a world / hovering over a GUI (conflict with Architectury)**: the mixin that
+  colours this mod's tooltip frames used to **rewrite the three colour constants inside vanilla
+  `TooltipRenderUtil`**, and **Architectury API rewrites exactly the same constants**. Mixin's constant-rewriting
+  injection is **exclusive** — only one modifier can win per constant; because this mod applied first,
+  Architectury's injection was skipped as a duplicate, its own injection assertion then failed and it threw a
+  fatal error, **crashing the game**.
+  The symptom is well hidden: the target class is only loaded the **first time a tooltip is rendered**, so the game
+  **reaches the main menu and only crashes when entering a world or hovering a GUI**; and the development
+  environment does not include Architectury at all, so **the dev side never caught it**.
+  It now **wraps the draw calls** instead of rewriting constants — no longer conflicting with constant-rewriting
+  injections, so both take effect **simultaneously**.
+  A **class preloading** capability was added as well: classes that would otherwise only load on player
+  interaction can be loaded at start-up, exposing this class of defect **right away** (fail-loud, never silent).
+
+- **Fixed a manual-recipe parse error when Patchouli is absent**: the guidebook recipe produces an item owned by
+  Patchouli, which this modpack does not install, leaving an "unknown item" parse error in the start-up log.
+  The recipe now carries a **"load only when Patchouli is installed"** condition.
+  ⚠️ Because that recipe only loads **when Patchouli is installed**, the **guidebook cannot be obtained without
+  Patchouli** (expected behaviour, not a defect) — install Patchouli if you want it.
+
+- **Fixed the accessory slot icons not showing up (Accessories)**: with Accessories installed, the accessory slot icons
+  rendered as **purple-black squares / blank**. The cause was where the icon files lived: **Accessories does not read slot
+  icons from a file path — it takes them from the vanilla block texture atlas**, so only images under
+  `assets/<mod>/textures/gui/slot/` are picked up, whereas Trinkets reads them by path directly. Our icons only satisfied
+  Trinkets' lookup, so the files **existed but Accessories could not find them** and nothing was drawn. The icons now live
+  where **both** channels can read them, and the icon names in the slot definitions were updated to match, so the icons show
+  correctly **with either Trinkets or Accessories**.
+  ⚠️ This defect throws no error and may leave nothing in the log — it only shows as a blank slot — so both a **static check
+  and an in-game self-check** were added; the self-check verifies **"does the file exist" and "is it included in the texture
+  atlas"** (the defect is precisely "file present, location wrong", which the first check alone cannot catch).
+
+- **Fixed the guidebook being given again on every login**: players received an extra copy of the guidebook **every time they
+  restarted the game**, and although it **had been fixed once before**, it **came back** — this time for a **different reason**.
+  The real cause has nothing to do with when the book is given: this mod's **persistent player data (attachments) was
+  registered too late** — after the game had already read the player's save. When the save was read, all of these entries
+  (including the "already received the guidebook" flag, healing points, stand lock/cooldown, the Guardian's Blessing, the Cult
+  Leader's descent and the Monster Detective's stacks — **33 entries in total**) were **silently discarded** because the entry
+  could not be found (the game treated them as never having existed). So the "already received" flag read as "never received"
+  every time ⇒ one extra book per login; the other 32 entries were **combat state lost once per restart**.
+  Registration now happens **at the very start of mod loading**, **before the player save is read**.
+  ⚠️ This defect **had been fixed once before** (2026-09-15, then on the death path), but the two causes are **completely
+  different** — "an old fixed bug reappeared" does not necessarily mean the previous fix was incomplete. This time a newly
+  added diagnostic (recording the value **immediately after writing it**) redirected the investigation from "the gating logic
+  is wrong" to "the value cannot be read back at all".
+  ⚠️ This class of defect **never crashes and never logs an error**, and a single-player test world holds too little player
+  data for it to surface.
+
+- **The 8-point cost of "King's Power" is now always applied**: previously the 8 damage you are supposed to take when
+  playing the card **frequently did not land at all** (stacks were gained, health bar unchanged). The reason was that this
+  self-damage used a channel that is **not registered as "ignores the hurt invulnerability window"** — so whenever you had
+  just been hit (or played two King's Power cards in a row), the 8 points were **discarded wholesale** as a "lower damage
+  during invulnerability" (and Creative mode ignored it entirely). It now uses a dedicated "**card cost**" damage channel
+  registered as ignoring the invulnerability window, so it resolves normally.
+  ⚠️ It deliberately does **not** bypass armour: this is a *cost*, not true damage, so armour, resistance and protection
+  still reduce it — matching the old rules.
+
+- **The Sweeper sign's attack/defence bonuses are now kept through death**: previously dying **wiped** both bonuses
+  (the old rule aligned it with the Guardian sign's "lose stacks on death"). Death no longer clears them — they now follow
+  the same rule as the Investigator / Ninja / Flood Dragon / Great Detective signs: **kept through death and respawn**,
+  only an explicit unequip resets them.
+
+- **Permanent status effects now uniformly show ∞ (infinite)**: the "Magic Tome plays" counter used to carry an 8:20
+  countdown, and most other permanent effects (Blue Curse, Foxlight, True Dragon Form, Misfortune, Reasoning Time,
+  Weakness Reveal, Doll Crafting/Complete, Undercover Investigation, and more) never actually expired yet displayed
+  **an enormous countdown** (about three and a half years). All of them now use vanilla's **true infinite duration**,
+  so the interface shows **∞**.
+  ⚠️ This unifies the *display* only; no effect's strength or duration changed (they were never supposed to expire).
+  ⚠️ A related timer-correctness defect that made permanent effects "vanish the moment they were applied" (it mistook
+  "infinite" for "already expired") was fixed at the same time.
+
+- **Status effects now show their description**: every status effect in this mod has explanatory text (values, duration,
+  trigger conditions), but there was previously **no rendering channel that surfaced it in game** — hovering an effect
+  icon showed only the name and remaining time. The description is now appended to the hover tooltip in the inventory's
+  effect panel (only for effects that actually have one; vanilla and other mods' effects are unaffected).
+
+### Prerequisite changes
+
+- **Accessory slots are now either-or: Trinkets alone, or Accessories alone, both work — only "neither" is refused**:
+  Trinkets used to be a **hard dependency** (declared in `fabric.mod.json` → `depends`), so players who only had
+  Accessories **could not launch the game at all** (the loader reported
+  `HARD_DEP_NO_CANDIDATE … {depends trinkets @ [>=3.7.2]}`). Trinkets has been moved out of `depends` into
+  `recommends`; both accessory mods are now merely **recommended**, and this mod decides at the **very start of
+  initialisation**: as long as at least one of them is present it proceeds normally, and when **neither** is present it
+  emits a **complete explanation** (which to install, where, how the two differ, and that installing both is fine too).
+  ⚠️ Why it has to work this way: Fabric dependency declarations are **AND** semantics — there is **no "either-or"
+  syntax** — so the choice can only be resolved at runtime.
+  ⚠️ A matching rule was established as well: every call site that touches an accessory mod's API must first check
+  whether that mod is installed, otherwise a missing mod surfaces as a class-loading stack trace rather than a
+  human-readable message.
+
+### Engineering (not game content)
+
+- **Added a "production-environment smoke test"**: all previous verification ran under the development mapping and
+  could not detect the class of defect above. There is now a check that launches the game once inside the
+  **real modpack environment** (verdicts: crash report / entrypoint failure / reached main menu). Both
+  "**never reflect on vanilla members by string name — match by type or modifiers**" and
+  "**run the production smoke before shipping**" are written into the line's rule boundary in `AGENTS.md`.
+
+- **Added a "fixed player name" test switch (`-PdevUsername=<name>`)**: the client test build hands out a **random** player
+  name on every run, and in offline mode the player's identity is derived from that name ⇒ **every run is a brand-new player
+  whose data is unrelated to the previous run** — so any **cross-session** defect (duplicate grants, stale cooldowns, memory
+  flags that fail to read back) **cannot possibly be reproduced in development**. This is the **structural reason** the
+  guidebook defect above stayed hidden. With a fixed name, repeated runs become **the same player logging in again**, which is
+  what made these defects testable for the first time.
+
+- **Added three diagnostic readings to the log** (for player reports and automated assertions): the number of registered
+  attachment keys (which must precede the player-data read), the guidebook grant decision (including a **read-back
+  immediately after writing**, which distinguishes "wrong grant logic" from "value not readable"), and an accessory slot icon
+  self-check (checking **both file presence and texture-atlas membership**).
+
+- **The static asset gate gained an 8th item: slot icons must live in the texture-atlas directory** (validated in both the
+  normal and the reversed case — a check that passes for any input is no check at all).
 
 ## 1.3.4
-
 ### Bug Fixes
 
 - **King's Power's 8-point self-damage often did nothing at all in combat** (user report 2026-09-30): the cost went through the dice damage type `astral_dice:dice_damage`, which is **not** listed in `minecraft:tags/damage_type/bypasses_cooldown`, so it obeyed the vanilla invulnerability window - vanilla `LivingEntity#hurt` **returns false outright** when `invulnerableTime > 10` and the incoming amount is `<= lastHurt`. Right after being hit by a mob (or on a second King's Power in a row) the 8 points were swallowed whole: the stacks went up while the health bar did not move, making the cost purely cosmetic (creative mode's `abilities.invulnerable` negates it entirely as well). A dedicated `astral_dice:card_cost` damage type is added and registered in `bypasses_cooldown`, and King's Power now uses it, so the cost settles even inside the invulnerability window and **always lands**. It is deliberately **not** in `bypasses_armor`: armor / resistance / protection still apply, exactly as before (a cost is not true damage).
@@ -60,7 +280,6 @@
 - **Status effect "notes" (the description text) were never visible in game** (user report 2026-09-30): the language files already carry 21 `effect.astral_dice.<id>.description` entries (Berserk, Concealment, Empower, Reasoning Time, Baize's Blessing, ...), but there was **no rendering path at all** - only the three effect-card **items** (Berserk, Unwavering, Fight Poison with Poison) read those keys for their item tooltips (`event/ModTooltipHandler`), so hovering the **status effect itself** showed nothing but "name + remaining time". Each platform now wires its own channel: the two NeoForge lines use the official `GatherEffectScreenTooltipsEvent`, while 1.20.1 (Forge has no such event) injects the tooltip list built inside vanilla `EffectRenderingInventoryScreen#renderEffects` through a Mixin. All three lines share one rule: a grey description line is appended **only when the matching language key actually exists**, so effects without a description get no blank line.
 
 ## 1.3.3
-
 ### Content & Balance
 
 - **Fengshui Master's "Perfect Helper" now fills Recharged Energy to the maximum** (user request 2026-09-28): applying Baize's Blessing to a player wearing the Boss Sign no longer grants just **+1 stack** - it now **tops that player's Recharged Energy straight up to the cap of 5 stacks** (new `FenSignItem#fillRecharge` is the "fill" entry point, sharing the same counter). Tooltip and handbook entry updated.
@@ -120,6 +339,50 @@
 ### Project
 
 - **Pack deploy targets corrected on this machine (2026-09-29)**: the `pushToGame` task of the 1.20.1 and 26.1.2 lines pointed at pack directories that **no longer exist on disk** (`1.20.1 模组测试` / `26.1.2 模组测试` - the packs had been renamed to carry a platform suffix), so both tasks had been printing `pushToGame: pack dir not found, skipped` and **silently deploying nothing** - the jars sitting in the packs were frozen at the last moment the paths still existed. They now point at the real directories `1.20.1-Forge 模组测试` / `26.1.2-NeoForge 模组测试`. This is a **build-script-only** change: no version bump, no artifact change, nothing player-visible. The lesson is recorded in `AGENTS.md`: `packModsDir` must **never** be inferred from a naming convention - after a machine swap or a pack rename, list `D:/.minecraft/versions/` and confirm a `pushToGame: pushed … -> <target>` line in the build log **for every line**, because `BUILD SUCCESSFUL` on its own hides a silent skip.
+
+## 1.3.2+fabric_1.20.1
+> **First release of the Fabric 1.20.1 port line** (2026-09-29). Content is **feature-equivalent** to the
+> contemporary releases of the three production lines (NeoForge 1.21.1 / Forge 1.20.1 / NeoForge 26.1.2);
+> only the mod loader differs (the version number carries the `+fabric_1.20.1` suffix).
+> ⚠️ This is a **port / test line**: on GitHub it ships as a **pre-release** and never enters Latest.
+
+### Content & Balance
+
+#### Items, Chips & Trading
+
+- **(platform difference) The bounty reward-pool integration is no longer offered**: Bountiful has no Fabric build
+  for 1.20.1, so this line ships neither bounty decrees nor reward-pool data, and the matching handbook entry is gone.
+- **(platform difference) The Iron's Spells 'n Spellbooks integration is no longer offered**: that mod has no Fabric
+  build for 1.20.1, so the corresponding Fate's Guide note no longer appears; ranged / magic damage detection still
+  covers vanilla and the remaining supported spell mods.
+
+#### State, Persistence & Sync
+
+- **(platform difference) Trinkets replaces the accessory slots**: how accessories are equipped, their slot icons and
+  their screen position differ from the Forge build; the datapack slot definitions change with the platform.
+- **(platform difference) Player save data uses a different format**: this line stores its persistent data through
+  Fabric API's data attachment mechanism, so **saves are not interchangeable with the Forge / NeoForge builds**
+  (cross-loader save migration is unsupported).
+
+### Bug Fixes
+
+- **A batch of mechanisms that had not been wired up during the port is now fully connected**: the first-loot-chest gift,
+  the immunity window on ender pearl impact, the warp engine's charge gain when crossing dimensions, temporary cards
+  refusing to be dropped, the Overflow accumulation of the Guardian's Blessing, the doubled saturation from Fate's Guide
+  while eating, and the item models and crafting recipes of every item.
+- **The two "specific potion" recipes match exactly again**: Adrenaline (Low) requires a Potion of Regeneration and the
+  Friendship Badge requires a Potion of Healing; both previously accepted *any* potion (plain water bottles, Awkward
+  Potions and so on). They now match the intended potion exactly, in line with all three production lines.
+- **Fixed the "Monster Brick" card recipe being impossible to craft**: it required an ingredient from the `#c:bricks` tag,
+  which nothing provided on 1.20.1, so the condition could never be satisfied (no error in-game — it simply never worked).
+  The mod now supplies that tag itself; both Brick and Nether Brick work.
+
+### Requirements
+
+- Fabric Loader 0.19.x + Fabric API (1.20.1 line, 0.92.12)
+- Trinkets 3.7.2 — accessory slots, required
+- Puzzles Lib 8.1.33 + Forge Config API Port 8.0.3 — event bridge, required
+- Optional: Accessories 1.0.0-beta.48 (used first when installed; both channels work when it coexists with Trinkets)
 
 ## 1.3.2-hotfix
 

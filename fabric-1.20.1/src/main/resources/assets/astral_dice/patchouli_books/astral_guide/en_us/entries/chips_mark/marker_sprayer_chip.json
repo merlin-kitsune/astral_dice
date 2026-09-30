@@ -1,0 +1,17 @@
+{
+  "name": "item.astral_dice.marker_sprayer_chip",
+  "category": "astral_dice:chips_mark",
+  "icon": "astral_dice:marker_sprayer_chip",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:marker_sprayer_chip",
+      "text": "astral_dice.guide.entry.marker_sprayer_chip.1"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:marker_sprayer_chip"
+    }
+  ],
+  "sortnum": 3
+}

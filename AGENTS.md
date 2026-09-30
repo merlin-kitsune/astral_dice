@@ -214,11 +214,123 @@ When extending this workspace:
 | `neoforge-1.21.1` | `1.21.1-main` | 1.21.1 | NeoForge | 21 | `1.3.1+neoforge_1.21.1` | `x.y.z[-rcN|hotfix]+neoforge_1.21.1` |
 | `forge-1.20.1` | `1.20.1-forge` | 1.20.1 | Forge | 17 | `1.3.1+forge_1.20.1` | `x.y.z[-rcN|preN|hotfix]+forge_1.20.1` |
 | `neoforge-26.1.2` | 本仓 `multi-26.1.2-neoforge` 分支新增（基线 = 主线 `1.2.1`/`fda8ca9` 的 `neoforge-1.21.1` 源码）；**2026-09-17 已合并进当时的主线 `multi-1.20.1-1.21.1`（该分支已于 2026-09-22 改名为 `multi-main`）**（与主线同目录同树，原独立 worktree 已移除）；**2026-09-22 完整移植后版本号与另两线同批升版（26.1.2 取 `1.3.0-beta.1`）** | 26.1.2 | NeoForge | 25 | `1.3.0-beta.1+neoforge_26.1.2` | `x.y.z[-rcN]+neoforge_26.1.2` |
+| `fabric-1.20.1` | **本仓 `1.20.1-fabric` 分支新增**（2026-09-29 接入；基准 = `forge-1.20.1` 的 `1.3.2-hotfix` 源码，**加载器层整体替换**：Curios→Trinkets(+Accessories 软依赖) · Capability→Fabric API 附件 · Forge EventBus→自建 `LoaderBus`+Puzzles Lib/FAPI 回调/mixin · GLM→`LootTableEvents.MODIFY`）。⚠️ **独立的移植/测试线，不在 `multi-main` 上** | 1.20.1 | Fabric | 17 | `1.3.5-alpha.1+fabric_1.20.1` | `x.y.z[-alpha.N|rcN|hotfix]+fabric_1.20.1` |
+
+> ⚠️ **第四条线（`fabric-1.20.1`）的规则边界（2026-09-29 用户裁决，必须遵守）**：
+> 上表前三线是**生产线**，`fabric-1.20.1` 是**移植/测试线**，两者在九件事上口径不同：
+> ① **同步范围**：前三线的「同批实施」约束**不自动扩到** fabric 线 —— 该线由用户在需要时单独下达移植批次
+>    （本线基线 = `forge-1.20.1` 的 1.3.2-hotfix，后续按批次从 forge 线搬运）；
+> ② **平台差异必须逐条登记**：裁剪项（无 Fabric 版的三方模组）见 `porting/fabric-1.20.1/VERSION_PINS.md`「裁剪」；
+>    其中 **Bountiful 与 Iron's Spells 'n Spellbooks 已整线裁剪**（无 1.20.1 Fabric 版）
+>    ⇒ 其数据文件、lang 键、手册条目、伤害类型 key、tooltip 分支**均不得出现在本线**；
+> ③ **发布口径**：fabric 产物**绝不并入**生产线 Release —— 见「编译产物上传规则」表；
+>    CI 为其单独出 tag（`fabric-<裸版本>`）与 `--prerelease` Release；
+> ④ **前置面不同**：玩家侧必需前置 = Fabric Loader/API + **Trinkets 或 Accessories（二选一）** + Puzzles Lib + Forge Config API Port
+>    —— 与前三线的 Curios/Mixin Booster 那一套**完全不通用**，写安装说明时勿套用。
+>    ⚠️ **饰品栏是「二选一」，不是「两个都要」**（2026-09-29 用户裁决）：Fabric 的 `depends` 是 **AND 语义、表达不了 OR**
+>    ⇒ `trinkets` 与 `accessories` **都只进 `recommends`**（软提示，缺席只警告），权威判定在
+>    `ModCompatibilityCheck#verifyAccessoryProviderOrThrow()` —— 它在 `onInitialize()` 的**第一条**语句执行，
+>    只有**两个都不在**时才抛 `ModLoadingException`（附完整中文说明：怎么装、装哪个、有什么差别）。
+>    ⇒ **任何触碰 `dev.emi.trinkets.api.*` / `io.wispforest.accessories.*` 的调用点都必须先过 `isModLoaded` 守卫**
+>    （`TrinketBridge` / `AccessoriesCompat` 里都是硬引用，缺席时那个类**根本加载不了**；
+>    守卫必须放在**调用点**，只放方法体内救不了漏判）。见 `KNOWN-ISSUES.md` **KI-F15**。
+> ⑤ **配方里的「指定药水」走自建序列化器**：原版 `Ingredient` 不看 NBT、且**不可扩展**（`final class` +
+>    `private` 构造器 + 包私有 `Value` 接口，javap 实证）⇒ 本线用 `astral_dice:nbt_shaped`（`crafting/` 包：
+>    `AstralRecipeSerializers` / `NbtShapedRecipe` / `NbtShapedRecipeSerializer` / `StackConstraint`）承载 NBT 约束，
+>    JSON 与网络层均委托原版 `ShapedRecipe.Serializer`。**语义基准 = 1.21.1 / 26.1.2 的
+>    `DataComponentIngredient.of(true, …)`（strict，精确匹配）**，改动前先对齐它。详见 `KNOWN-ISSUES.md` **KI-F1**。
+>    ⚠️ **本分支只改 fabric 端**（2026-09-29 用户裁决）：`forge-1.20.1` 的 `PartialNBTIngredient`（NBT **子集**）
+>    与 `potionTag(...)` **保持原样**，那是一条已登记的既有差异，**不要**在 fabric 分支顺手统一它。
+> ⑥ **`c:` 社区标签在 1.20.1 上无提供者，本线自建**：Forge 47.x 只提供 `forge:` 命名空间、**没有 `c:`**
+>    （实测其 `Tags.Items` 连 `BRICKS` 常量都没有）⇒ 被本模组引用的 `c:` 标签必须自建，内容**对齐 NeoForge 定义**：
+>    `c:bricks` 是**砖物品**（`minecraft:brick` / `minecraft:nether_brick` 两条子标签），**不是砖块方块**
+>    （`minecraft:bricks`）—— 名字相近，**勿删、勿改写语义**。⚠️ 1.20.1 的标签目录是 `data/<ns>/tags/items/`（**复数**）。
+>    见 **KI-F5**。
+> ⑦ **收尾必做：核对两条订阅护栏**（本线总线是自建的，没有 `@EventBusSubscriber` 那种自动注册）：
+>    ① 读日志里的 `[Astral Dice] 事件订阅审计…` 行（`platform/event/SubscriptionAudit`）—— 它扫描本包
+>    `@SubscribeEvent` 与已登记集合做差集，抓「带注解却忘了 `register`」；加 `-Dastral_dice.strictBusAudit=true`
+>    可把它升级为**致命错误**。② 调用 `LoaderBus#dispatchReport()` 核对**没有**关键事件的派发次数为 0
+>    （判据：`ServerTickEvent` 必须为正数）。⚠️ 审计若报「未生效（没扫到任何类）」，**不得**当成通过。见 **KI-F6**。
 
 > 版本号各 git 分支独立（AGENTS.md 自 2026-09-15 起**已纳入版本库**，各分支各自维护一份）：**发布线 `multi-main`**（2026-09-22 由 `multi-1.20.1-1.21.1` 改名；连带项已同批处理：三线 `build.gradle` 的 `packPushBranches → ['multi-main']`、`.github/workflows/build.yml` 的 5 处分支名与触发条件，以及 `.github/workflows/build.yml` 里 checkout 前置库的 `ref:` 钉值）当前 = **`1.3.0`**（2026-09-22 用户裁决：把 `multi-dev-next` 整体收编后统一升版 —— 1.21.1 / 1.20.1 = `1.3.0`，26.1.2 = `1.3.0-beta.1`；按发布规范 tag 解析为裸版本 **`1.3.0`**）；`multi-dev-next` 当前 = **`2.0.0-SNAPSHOT.13`**（2026-09-17 用户裁决：`2.0.0-SNAPSHOT.5` 封包，版本号升至 `.10`；**2026-09-22 用户裁决：SNAPSHOT 数值按提交数下沉，档位 = 提交数 / 37，自 `.10` 起累计 104 提交 ⇒ 向上取整 3 档 ⇒ `.13`**；后续改动一律记入两个 CHANGELOG 顶部的 `未发布（2.0.0-SNAPSHOT.13）` 小节；该线已于 **2026-09-22 整体合并进发布线 `multi-main`**（合并提交 `7b726617`，收编 160 个提交），自此不再单独演进）；`neoforge-26.1.2` 子项目当前 = **`1.3.0-beta.1`**（2026-09-17 用户裁决 + **2026-09-19 修订：26.1.2 已纳入主线、三线同步（不再是低优先级线）**；**2026-09-22 用户裁决：三线同批升版，26.1.2 取 `1.3.0-beta.1`** —— 此前 `.13` 时代「与另两线版本号对齐、不再单独加 `-beta`」的口径随之作废；`multi-26.1.2-neoforge` 分支自此只作为合并前历史，不再单独开发）。上表「当前版本」以发布线工作分支 `multi-main` 为准。
 > ⚠️ 历史上另有一条 dev 分支 **`wt/2.0.0-vnext`**（连带独立 worktree `C:/Users/xmace/.dsh/worktrees/astral_dice_multiloader-a03b2df2/2.0.0-vnext`）——2026-09-17 用户裁决「移除 wt/2.0.0-vnext 分支，仅保留当前分支」后**已删除**：worktree 与分支一并移除，`git branch -d` 成功即证明其 tip **`d7e4ac8f4f1c31484bf4366caa4e144aec45979f`** 的全部提交都已被 `multi-dev-next` 包含（`multi-dev-next..wt/2.0.0-vnext` 为空）⇒ **未丢失任何提交**；该分支从未推到远端（`origin` 只有 `multi-1.20.1-1.21.1` 与 `multi-dev-next`），故无需远端清理。`multi-26.1.2-neoforge` 作为合并前历史分支**保留**（未在本次裁决范围内）。
 
 > **第三条线(26.1.2)的规则边界(2026-09-19 用户裁决修订 —— 26.1.2 已纳入主线,必须遵守)**:自本裁决起「同步修改」约束**三个版本**(`neoforge-1.21.1` + `forge-1.20.1` + `neoforge-26.1.2`):任何功能/修复/平衡/文案改动一律**三线同批实施**(实施方式见下方「### 子项目修改默认规则」与「### 模组内容更新规则(三线同步)」),26.1.2 **不再**是「发布线完成后再迁移」的低优先级移植线。三条线各自按 `docs/compat-26.1.2-neoforge.md`(26.1.2 相对 1.21.1)、`docs/compat-1.20.1-forge.md`(1.20.1 相对 1.21.1)的差异映射实现,**平台差异必须逐条登记**;三线落地后按 `scripts/test/TESTING-SPEC.md` §13.2 做一致性测试。三子项目的 `mod_version`/`mods.toml` 门槛仍各自独立。
+> ⑧ **版本号一律带 `-alpha.x` 预发布后缀**（2026-09-29 用户裁决 —— 本线是**开发线**）：
+>    `mod_version` 与所依赖的库版本**同步带 alpha**，现为 **`1.3.5-alpha.1+fabric_1.20.1`** /
+>    **`starengine_lib_version = 1.0.5-alpha.1`**（`_version_range = >=1.0.5-alpha.1 <2.0`）。
+>    库侧基线**退回 `1.0.5`**（`1.0.6` / `1.0.7` / `1.0.8` 系本地临时构建，**不作为对外号**），
+>    后续每批改动 `-alpha.x` 递增；预发布号在库仓 CI 里**不会**打 tag（workflow 只认裸 `x.y.z`）⇒ 正合开发线口径。
+>    ⚠️ 因此本线推进整合包的产物**不是「正式版」**（该整合包 `1.20.1-Fabric 模组测试` 亦为本线专属测试环境）。
+> ⑨ **收尾必做：生产映射冒烟**（2026-09-29 新增能力；判据与事故记录见 `KNOWN-ISSUES.md` **KI-F13**）：
+>    fabric 的 dev 与生产是**两套映射**（dev = Loom named/Mojang，生产 = intermediary）—— 本线此前的**全部**验证
+>    （dev 冒烟、5 条用例、4 个静态闸门）都跑在 named 下 ⇒「按**字符串名**反射原版成员」「内嵌件重映射错」
+>    这类缺陷**在 dev 全绿、在整合包里 100% 崩**，且**谁也测不出来**（KI-F13 就是这么潜伏到整合包才炸的）。
+>    ⚠️ 曾实测：`Rarity.class.getDeclaredField("color")` 在 dev 命中（字段真叫 `color`），
+>    在产线是 `class_1814` / `field_8908` ⇒ `NoSuchFieldException` → 入口点失败。**反射原版成员一律按类型/修饰符找，禁止按名字。**
+>    ⇒ 凡改动**库、本线源码、依赖或构建配置**，除 dev 冒烟外**必须**再跑一次：
+>    `pwsh -NoProfile -File scripts/test/fabric/ft_prod.ps1 -Instance <整合包目录> -McRoot <D:\.minecraft> -Java <java.exe>`
+>    （在**真实整合包实例**启动一次客户端；判据：崩溃报告新增 / 入口点失败 / **注入失败（`InjectionError`）** = **FAIL**，
+>    `Sound engine started` = **PASS**）。
+>    ⚠️ **光到主菜单还不够 —— 必须加 `-PreloadClasses`**（2026-09-29 追加，事故 **KI-F14**）：
+>    Mixin 的注入在**目标类被加载时**才应用，而这类目标类常常「要玩家交互才加载」
+>    ⇒ 缺陷会表现为「能进主菜单、进世界/悬停 GUI 才崩」，纯启动期冒烟**看不见**。
+>    故凡本线**改过 mixin**，生产冒烟必须带上**被本线 mixin 的、可能延迟加载的目标类**（写 **intermediary 名**）：
+>    `ft_prod.ps1 … -PreloadClasses 'net.minecraft.class_8002'`（逗号分隔可多个；dev 侧对应
+>    `:fabric-1.20.1:runClient "-PpreloadClasses=net.minecraft.class_8002"`）。
+>    ⚠️ 同类红线：**不得用 `@ModifyConstant` 去改原版常量**（它与其它模组的同点注入**互斥**，
+>    会让对方 `InjectionError` 崩游戏）—— 一律改用 MixinExtras 的 `@WrapOperation` 包裹**调用指令**
+>    （不同字节码位置 ⇒ 可共存），与本项目 `LivingHurtBridgeMixin` 的既有选择一致。
+> ⑩ **Fabric 附件（`AttachmentRegistry`）的键注册必须早于任何玩家数据反序列化**（2026-09-29 实测，见 **KI-F17**）：
+>    Java 静态初始化是**惰性**的 —— `ModAttachments` 若在 mod 初始化路径上**无人触碰**，它的静态块会被推迟到
+>    「第一次读写附件」（＝玩家登录处理器），而那时玩家 NBT **已经反序列化完** ⇒ Fabric 按 id 查不到就打
+>    `Unknown attachment type … skipping` 并**静默丢弃全部键**（实测一次登录丢 **33** 个，含 `guide_book_given`
+>    ⇒ 发放守卫永远读 `false` ⇒ **每次登录补发一本手册**；其余为治疗点数 / 立牌锁定冷却 / 白泽赐福 / 教主降神 /
+>    怪力侦探层数等**可感知的战斗状态**）。
+>    ⇒ 本线在 `AstralDiceMod#onInitialize()` 里显式调用 `ModAttachments#ensureRegistered()`（**空实现，只为触发静态块**，
+>    并打 `AP_FAB_ATTACHMENTS: 附件键已注册 N 个`）—— **该调用不得删除**：删掉不报编译错、测试世界也看不出来，
+>    只会让线上玩家每次重开游戏丢一次状态。
+>    ⇒ 凡改动**附件键集合或任何持久化 schema**，收尾**必须** grep 日志确认 `Unknown attachment type` 命中为 **0**。
+> ⑪ **Accessories 的槽位图标必须落在原版 blocks 图集目录**（2026-09-29 实测，见 **KI-F18**）：
+>    Trinkets 按 `icon` **路径直连** `textures/<icon>.png`；**Accessories 走原版 `minecraft:blocks` 图集**
+>    （`assets/minecraft/atlases/blocks.json` 声明 `{type:directory, source:gui/slot, prefix:gui/slot/}`）
+>    ⇒ 图标**必须**放在 `assets/<ns>/textures/gui/slot/*.png`，且 `icon` 要写**图集 sprite 名** `astral_dice:gui/slot/…`
+>    （同一个字符串对两条通道同时成立）。放错目录 = **文件明明存在却显示紫黑格**，且**不报错、日志无痕迹**。
+>    ⇒ 收尾两道门：`tools/verify_fabric_assets.py` 第 8 项 + 客户端 `AccessoriesClientIconCheck`
+>    —— ⚠️ **必须同时查「文件是否存在」与「是否被图集收录」**，只查前者查不出本缺陷（它正是「文件在、位置错」）。
+> ⑫ **同步 dev/main 线的既有修复：按文件移植，不要整分支 merge**（2026-09-30 用户裁决「直接同步 `multi-dev-next` 的改动，避免重复造轮」）：
+>    本线的目录**不在** dev 线的改动范围内（dev-next 的提交改的是三线 `neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2`），
+>    而 dev-next 通常领先本分支数十个提交（版本号 / 目标选择器 / 工具链等）⇒ **整分支 merge 带不来任何 fabric 代码改动，只会把开发线灌进移植线**。
+>    正确做法：`git show <commit> -- forge-1.20.1/` 取蓝本（同为 MC 1.20.1、同 `RegistryObject` 风格、同 Mojmap 方法引用）
+>    → `sed 's|forge-1.20.1/|fabric-1.20.1/|g'` 改写补丁路径 → `git apply --3way` → 冲突逐处手工合并
+>    （典型冲突：`ModEffects.java` 的 import 区 —— forge 是 `net.minecraftforge.registries.*`，本线是
+>    `com.merlinkitsune.astral_dice.platform.registry.*`；**保留本线平台注册表**，只采纳 patch 新增的原版 import）。
+>    ⚠️ **移植后必须核对三件事**：① 本线**特有**内容没有被覆盖（例：`EffectRenderingInventoryScreenMixin` 的等级角标 `@Inject`
+>    与移植进来的注释 `@Redirect` 必须**并存**）；② 上游 patch 里的 mixin **注入点与 `require` 必须按本线字节码复核** ——
+>    `require` 是「注入点**最少**命中次数」（未写时取 `injectors.defaultRequire`），**写大了会在运行时抛 `InjectionError`**
+>    （编译与 `build` 都不校验，只有类被加载时才炸）；③ 语言键集三语一致。见 `KNOWN-ISSUES.md` **KI-F19 / KI-F20**。
+>    ⚠️ 同类教训重复出现：**上游 patch 的注释也会写错**（`731e3855` 把 `require = 2` 注释成「至少命中 1 次」）
+>    ⇒ 移植时**以本线字节码为准**，不以注释为准。
+> ⑬ **接第三方模组的反射后端必须按「发布产物」核验签名，且必须给出可断言的接入状态**（2026-10-01 实测，见 **KI-F22**）：
+>    `PartyRelations` 用 `Class.forName` + `getMethod` 接 FTB Teams / OPAC（不能编译期依赖：四条线装的第三方模组不同）。
+>    反射的致命弱点是**签名对不上时既不编译报错、也不崩溃**，只在运行时静默失效 —— 而「失败方向安全」的设计
+>    （退回原版计分板）**同时**掩盖了「从来没成功过」。实测踩到的两个具体陷阱：
+>    ① **方法可能声明在嵌套接口上**（`FTBTeamsAPI` 外层类只有 `api()/rl()/_init()`，四个访问器在 `FTBTeamsAPI$API` 上；
+>    `Class#getMethod` **不会**跨到嵌套接口）⇒ 解析必须落在**声明该方法的那个类型**上；
+>    ② **record 的访问器没有 `get` 前缀**（`KnownClientPlayer#teamId()`，不是 `getTeamId()`）。
+>    ⇒ 规则三条：
+>    （a）**核验基准用发布 jar，不用记忆也不用注释** —— 下载真实产物 + `javap -p` 逐条比；
+>    上游源码也要核（并可回溯最早版本，确认契约在**整个版本区间**是否成立）；
+>    （b）**每条后端都要有起步诊断机器行**（本线是 `AP_FAB_PARTY: sw_* back_ftb/back_opac why_ftb/why_opac`，
+>    由 `PartyRelations#reportBackends()` 在 common setup 打印）⇒「装了却没生效」一眼可见，
+>    `why_*` 直接写明是哪个类/方法没找到；
+>    （c）**静态闸门入库**（`tools/verify_party_api.py`：自动从源码抽取反射契约 ↔ 真实 jar 比对，输出 PASS/FAIL）
+>    + **测试台用例**（`FAB-PARTY-BACKENDS`）——一静一动，缺一不可。
+>    ⚠️ 失败日志要分档：`ClassNotFoundException`（= 没装，绝大多数玩家的正常状态）走 **debug**；
+>    其余（= 装了但签名不符，开发者才需要看）走 **warn**，否则每次启动都刷一条无意义告警。
+>    ⚠️ 语义也要一并核：FTB 的「同队」必须比 **party 团队 id**（`Team#getId()` 对玩家队伍等于该玩家自己的 UUID，
+>    同一 party 的两名成员各不相同）；`hasTeam` 必须判 **party / server team**（FTB 给每个玩家都建个人队伍，
+>    用「存在 Team 对象」会恒为真，把「未组队 ⇒ 友方作用于全服」的兜底堵死）。
 ### 前置库 starengine_lib 的版本与兼容性契约（全局，2026-09-22 用户裁决）
 
 > 本契约**跨两个仓库生效**（库仓 `F:\MCProject\starengine_lib` ↔ 本仓三条线），是库的**公开兼容性承诺**。
@@ -1642,6 +1754,7 @@ When extending this workspace:
 | `neoforge-1.21.1` | `run/1.21.1/mods`（仓库根 run/） | `D:\.minecraft\versions\狐の航空学 Voxy Edition\mods` | 随 build 触发；**仅发布线分支 `multi-1.20.1-1.21.1` 会真正推送整合包**，其它分支（含 `multi-dev-next`）**严格跳过**并只打印 `pushToGame: skipped — 分支 '…' 不在整合包推送白名单 …` |
 | `forge-1.20.1` | `run/1.20.1/mods`（仓库根 run/） | `D:\.minecraft\versions\1.20.1-Forge 模组测试\mods` | 随 build 触发；**仅发布线分支 `multi-1.20.1-1.21.1` 会真正推送整合包**，其它分支（含 `multi-dev-next`）**严格跳过**并只打印 `pushToGame: skipped — 分支 '…' 不在整合包推送白名单 …` |
 | `neoforge-26.1.2` | `run/26.1.2/mods`（仓库根 run/） | `D:\.minecraft\versions\26.1.2-NeoForge 模组测试\mods` | 随 build 触发；**仅发布线分支 `multi-1.20.1-1.21.1` 会真正推送整合包**，其它分支（含 `multi-dev-next`）**严格跳过**并只打印 `pushToGame: skipped — 分支 '…' 不在整合包推送白名单 …` |
+| `fabric-1.20.1` | `run/fabric-1.20.1/mods`（仓库根 run/） | `D:\.minecraft\versions\1.20.1-Fabric 模组测试\mods` | 随 build 触发；**2026-09-29 接入**。本线是**独立的第四条线**（分支 `1.20.1-fabric`），其整合包目录 `1.20.1-Fabric 模组测试` 亦为**本线专属**（与 forge 线的 `1.20.1-Forge 模组测试` 互不相干，不存在跨分支误写）⇒ 白名单 = `packPushBranches = ['1.20.1-fabric']`，**本线分支上会真正推送**；其余分支（含 worktree 的 `wt/*`）**严格跳过**并只打印 `pushToGame: skipped — 分支 '…' 不在整合包推送白名单 …` |
 
 规则要点：
 1. **推送任务随 build 触发，但整合包推送受分支白名单限制**：`pushToDevRun`/`pushToRootBuild`/`pushToGame` 三个任务均由 `finalizedBy` 随 build 触发；**`pushToGame` 在 `doLast` 里先做执行期分支判定** —— 分支不在白名单 `packPushBranches = ['multi-1.20.1-1.21.1']` 内（或无法确定分支，如 detached HEAD / 无 `.git`）时只打印 `pushToGame: skipped — 分支 '…' 不在整合包推送白名单 …` 并 `return`，**不写整合包目录**（`multi-dev-next` 即属此类，见上方「整合包推送的分支口径」）。**`-PdeployToPack` / `-PpackPush` 仍被任务读取**（三条线 `build.gradle` 均有 `def forcePackPush = project.hasProperty('deployToPack') || project.hasProperty('packPush')`，并在 `pushToGame` 的 `doLast` 里以 `if (!forcePackPush) { … }` 包裹上述白名单判定）—— 作用 = **跳过白名单手动强推整合包**（手动出包通道，保留）；强推时同时会触发「库 jar 与 mod jar 成对自检」的告警（1.21.1 / 1.20.1 原有，26.1.2 自 2026-09-17 接入库后同形）。

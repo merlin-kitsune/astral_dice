@@ -1,0 +1,34 @@
+{
+  "case_id": "FAB-DISPATCH-BASIC",
+  "title": "事件派发报告里基础事件为正数：ServerTickEvent / LevelTickEvent / RegisterCommandsEvent 都必须出现在「已派发」清单（证伪「桥装了但事件从不触发」）。",
+  "side": "server",
+  "window": "whole",
+  "on_fail": "keep_game_running",
+  "steps": [
+    {
+      "op": "note",
+      "text": "这是 fabric 线**最重要的一条回归护栏**（三条生产线没有对应物）：\n fabric 侧没有 Forge 的 @Mod.EventBusSubscriber 自动注册，事件靠自建 LoaderBus + FAPI 回调 + Puzzles Lib + 自写 mixin 四路桥接；\n 任一路漏接都**不报错**，只在玩法上表现为「立牌/筹码没反应」。\n 判据：LoaderBus#dispatchReport() 列出每个已注册事件类的派发次数（0 次的也列）—— platform/event/LoaderBus.java:67-89。\n ServerTickEvent 由 FAPI 的 END_SERVER_TICK 回调驱动（platform/FabricBridges.java:93-103, 124-136），与所有其它事件走**同一条 post 路径** ⇒ 它为正数即证明桥是通的。"
+    },
+    {
+      "op": "note",
+      "text": "无需注入：服务端跑到 600 tick 时会自动打印一份报告（FabricBridges.installEarly 的取样点），关服时再打一份。实测样例见 run/server/logs/latest.log:230-232（ServerTickEvent=599 LevelTickEvent=1797 RegisterCommandsEvent=1）。\n\n⚠️ 本用例用 `wait_for` 等这个采样点（约 30 s），而不是固定 `wait`。原因是一次真实教训：\n 用固定 `wait 25000` 时采样点还没到 ⇒ 6 条断言集体失败，现场看起来像**产品缺陷**（「未找到派发报告」），\n 实际只是**等待条件未满足**。固定等待要么太短（假 FAIL）、要么太长（白等）。\n wait_for 命中即继续；超时则以 **TIMEOUT(12)** 中止并提示去用 ft_dispatchreport.ps1 手动读数\n —— 与「断言失败 = 1」明确区分（TESTING-RULES-OVERVIEW §7 的语义边界）。"
+    },
+    {
+      "op": "wait_for",
+      "pattern": "事件派发统计",
+      "timeout_ms": 120000,
+      "interval_ms": 1500
+    }
+  ],
+  "asserts": [
+    { "type": "log", "pattern": "事件派发统计" },
+    { "type": "log", "pattern": "\\[已派发 \\d+ 类\\]" },
+    { "type": "log", "pattern": "\\[未派发 \\d+ 类\\]" },
+    { "type": "dispatch_tick" },
+    { "type": "dispatch_fired", "events": ["ServerTickEvent", "LevelTickEvent", "RegisterCommandsEvent"] },
+    { "type": "dispatch_zero_absent", "events": ["ServerTickEvent"] },
+    { "type": "absent", "pattern": "dispatchReport|Event listener not accessible" },
+    { "type": "crash" }
+  ],
+  "evidence": []
+}

@@ -1,0 +1,10 @@
+{
+  "replace": false,
+  "order": 100,
+  "slots": [
+    "dice",
+    "stand",
+    "chip"
+  ],
+  "icon": "astral_dice:gui/slot/empty_dice_slot"
+}

@@ -1,0 +1,253 @@
+package com.merlinkitsune.astral_dice.event;
+
+import com.merlinkitsune.astral_dice.AstralDiceMod;
+import com.merlinkitsune.starenginelib.component.GameplayConstants;
+import com.merlinkitsune.astral_dice.component.ModAttachments;
+import com.merlinkitsune.astral_dice.component.ModDataComponents;
+import com.merlinkitsune.astral_dice.effect.ModEffects;
+import com.merlinkitsune.astral_dice.item.dice.DiceCurioItem;
+import com.merlinkitsune.astral_dice.item.HealingManager;
+import com.merlinkitsune.astral_dice.item.ChargeManager;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+
+import com.merlinkitsune.astral_dice.platform.event.EventPriority;
+import com.merlinkitsune.astral_dice.platform.fml.ModList;
+import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
+import com.merlinkitsune.astral_dice.platform.event.entity.living.LivingDeathEvent;
+import com.merlinkitsune.astral_dice.platform.event.entity.player.PlayerEvent;
+import vazkii.patchouli.common.item.ItemModBook;
+
+import com.merlinkitsune.astral_dice.item.card.EffectCardPeriod;
+import com.merlinkitsune.astral_dice.item.card.TemporaryCardUtil;
+
+import com.merlinkitsune.starenginelib.event.ModEffectRemoval;
+public class PlayerLifecycleHandler {
+    // 玩家死亡:移除全部治愈(清零点数并结束"治愈"效果)与骰神赐福效果,防止死亡残留
+    // 优先级必须为 LOWEST(2026-09-15 裁决):保命方(末影骰子/安全气囊)在 NORMAL 取消死亡,
+    // 本清理必须晚于它们执行,否则同优先级顺序反转时被救回的玩家仍被按死亡清理(玻璃骰销毁、计数清空)
+    @SubscribeEvent(priority = EventPriority.LOWEST)
+    public static void onPlayerDeathClearEffects(LivingDeathEvent event) {
+        if (!(event.getEntity() instanceof Player player)) return;
+        if (player.level().isClientSide()) return;
+        // 不死图腾等取消死亡:不视为死亡,不执行任何清理
+        if (event.isCanceled()) return;
+        // 充能流派:死亡不丢失充能层数,先暂存等待重生恢复
+        ChargeManager.preserveOnDeath(player);
+        // 调查员/忍者立牌累计加成:死亡暂存(默认 gamerule 下立牌会因死亡掉落被 Curios 判定"已卸下",
+        // 其 clearSignData 会在克隆之前清零这两个键,故必须在此先存下——见 DeathPreservedBonuses)
+        com.merlinkitsune.astral_dice.component.DeathPreservedBonuses.preserveOnDeath(player);
+        // 玻璃骰子死亡惩罚:丢失玻璃骰子本体及其已装备的全部卡牌(同时收缩筹码栏)
+        DiceCurioItem.removeGlassDiceOnDeath(player);
+        HealingManager.clear(player);
+        // 计时器守卫:清空效果结束时刻记录,防止死亡后守卫重新施加效果(有真实副作用:阻止已移除的效果被重新施加)
+        EffectTimerGuard.clear(player);
+        // 附件类"计数器/状态"不再逐项写默认值(2026-09-15 用户裁决「S4-C6 清理无效项」):
+        // 死亡克隆只复制 rin_pages 与 komachi_damage_bonus(见 component/AstralData#onPlayerClone),其余附件键
+        // 在重生后的**新实体**上一律回默认值;而本清单唯一真正生效的"死亡被取消"路径已由上面的
+        // isCanceled() 早退挡住 —— 即"把附件设为 0/false/空串"在真实死亡路径上是空操作(写了也没人读)。
+        // 故原清单的 23 个附件键逐项清零(外加 EffectCardPeriod.clearRoundBonuses —— 它同样只是写 4 个
+        // 附件默认值)全部删除;下面保留下来的调用都带有附件之外的真实副作用(静态暂存表 / 物品数据 /
+        // 移除 MobEffect / 阻止效果被重新施加)。
+        player.removeEffect(net.minecraft.world.effect.MobEffects.INVISIBILITY);
+        player.removeEffect(ModEffects.NANCY_LU_HACK.get());
+        player.removeEffect(ModEffects.BLUE_CURSE.get());
+        // 秘密侦探:死亡保留调查阶段进度(仅卸牌时清除)
+        // 效果牌出牌轮状态(出牌数/冷却/一次性加成/可口糖果/探天卫星/活体书页本周期累计)、忍者与
+        // 魔法秘典计数器、骰咒倍率同样无需在此清理:它们都是附件且不在死亡复制集合内。
+        // 效果牌伤害加成(忍者立牌 KomachiDamageBonus/调查员立牌 RinPages)死亡保留,不清除
+        // 护法立牌:死亡时丢失全部"剑气"层数(死亡时刻即清除装备中的立牌数据,不受 KeepInventory 影响)
+        com.merlinkitsune.astral_dice.compat.curios.CuriosApi.getCuriosInventory(player).ifPresent(handler -> {
+            var misaki = handler.findFirstCurio(
+                    s -> s.is(com.merlinkitsune.astral_dice.item.ModItems.MISAKI_SIGN.get()));
+            if (misaki.isPresent()) {
+                ModDataComponents.MISAKI_SIGN_STACKS.set(misaki.get().stack(), 0);
+            }
+            // 上班族立牌:与护法同理——攻防/移动累计值写在**立牌物品数据组件**上,
+            // 而死亡掉落走 Curios handleDrops(不回调 onUnequip),没有任何其它清理路径会归零它们
+            // (2026-09-15 P5 审计发现),故在这里按 MISAKI 同款方式清除(不受 KeepInventory 影响)。
+            //
+            // ⚠️ **扫地机立牌(jasmine)已按 2026-09-30 用户裁决移出本段**:其攻/防加成改为
+            // **死亡保留**(与忍者 komachi_damage_bonus / 调查员 rin_pages / 蛟龙 mamushi_awakening 同口径)——
+            // 加成写在立牌物品的数据组件上,死亡掉落与保留都由物品自身携带,
+            // 不需要暂存表;唯一的清零路径是 {@code JasmineSignItem#clearSignData}(真正卸下立牌时)。
+            var padman = handler.findFirstCurio(
+                    s -> s.is(com.merlinkitsune.astral_dice.item.ModItems.PADMAN_SIGN.get()));
+            if (padman.isPresent()) {
+                ModDataComponents.PADMAN_ATK_BONUS.set(padman.get().stack(), 0);
+                ModDataComponents.PADMAN_DEF_BONUS.set(padman.get().stack(), 0);
+                ModDataComponents.PADMAN_LAST_REFRESH.set(padman.get().stack(), 0L);
+            }
+        });
+        player.removeEffect(ModEffects.DICE_BLESSING.get());
+        // 风水师立牌「白泽赐福」(规格 §4.6②):与 DICE_BLESSING **同段**清理 —— 这里保住的是
+        // 「移除 MobEffect」+「清零有真实读取方的附件」两类真实副作用:
+        //   ① 效果实例本身(可见载体,死亡后不该留在尸体上);
+        //   ② 溢出治疗转化的攻击力(有真实读取方 = 骰战攻击修饰器;救回/重生等路径下会残留);
+        //   ③ 状态机三键(玩家级 tick 每 tick 读取)+「厄运」计时器。
+        // 厄运效果同样移除(其真值"持有张数"不在触发死亡时清空,重登时由 tick 重新镜像)。
+        com.merlinkitsune.astral_dice.item.sign.ZhaoSignItem.onOwnerDeathCleanup(player);
+        // 教主立牌「降神」:与 DICE_BLESSING **同段**清理 —— 本人是降神目标 ⇒ 结束降神;本人是施法者 ⇒
+        // 派生值清零。狐光层数与装备水位经 AstralData#onPlayerClone 白名单跨死亡保留。
+        com.merlinkitsune.astral_dice.item.sign.TeruSignItem.onOwnerDeathCleanup(player);
+        player.removeEffect(ModEffects.INVESTIGATION_BONUS.get());
+        player.removeEffect(ModEffects.FATE_GUIDANCE.get());
+        player.removeEffect(ModEffects.FEN_FRENZY.get());
+        player.removeEffect(ModEffects.PAPARA_BITE.get());
+        player.removeEffect(ModEffects.MAGIC_TOME_COUNT.get());
+        // 绿洲女王立牌(nardis)「女王特权」:清空全部临时牌(物品栏 + 副手 + 骰子已装配的)。
+        // **1.20.1 时序结论(源码级核对,不必新增订阅)**:
+        //   · 本处理器订阅的是 LivingDeathEvent(优先级 LOWEST,只为晚于"保命方"的取消)——
+        //     而该事件在 Forge 侧由 **`ServerPlayer#die` 的第一行**抛出
+        //     (`ForgeHooks.onLivingDeath` → `MinecraftForge.EVENT_BUS.post(new LivingDeathEvent(...))`,
+        //      实测 `ForgeHooks.java:304-307`;调用点实测 `ServerPlayer.java:591`,且事件被取消时
+        //      `die()` 直接 `return`),**远早于** `dropAllDeathLoot`(实测 `ServerPlayer.java:624`);
+        //     事件的全部处理器(含 LOWEST)都在 `onLivingDeath` 返回之前跑完 ⇒ 挂在这里一定**早于掉落**。
+        //   · 因此**不需要**再新增一个默认优先级的 LivingDeathEvent 订阅(那只会是同一事件的第二份重复清理)。
+        //   · 死亡路径与玩家级 tick 自检都幂等(见 TemporaryCardUtil#purgeAll / #tick),重复调用无副作用。
+        TemporaryCardUtil.purgeAll(player);
+        // 效果实例本身也一并移除(状态迁移表「死亡 ⇒ 效果移除 + 清空」):宠物模式/规则保留效果时,
+        // 只清牌不清效果会留下「HUD 还在倒计时、牌却没了」的不一致状态。
+        // 1.20.1 差异:效果常量是 RegistryObject ⇒ 必须 .get()。
+        player.removeEffect(ModEffects.NARDIS_PRIVILEGE.get());
+    }
+
+    // 死亡重生克隆:恢复"死亡保留"的数据(充能层数 + 调查员/忍者累计加成)。
+    // 必须最后执行(priority = LOWEST):AstralData 的死亡分支复制在此之前完成,否则回写会被复制覆盖成 0。
+    // PlayerRespawnEvent 侧再兜底一次(暂存表项取走即为空操作,幂等)。
+    @SubscribeEvent(priority = com.merlinkitsune.astral_dice.platform.event.EventPriority.LOWEST)
+    public static void onPlayerCloneRestoreDeathPreserved(
+            com.merlinkitsune.astral_dice.platform.event.entity.player.PlayerEvent.Clone event) {
+        if (!event.isWasDeath()) return;
+        Player player = event.getEntity();
+        if (player == null || player.level().isClientSide()) return;
+        ChargeManager.restoreAfterDeath(player);
+        com.merlinkitsune.astral_dice.component.DeathPreservedBonuses.restoreAfterDeath(player);
+    }
+
+    // 玩家退出/重新登录:清除骰神赐福效果(防止退出后重进仍保留战斗状态)
+    @SubscribeEvent
+    public static void onPlayerLoggedInClearDiceBlessing(
+            com.merlinkitsune.astral_dice.platform.event.entity.player.PlayerEvent.PlayerLoggedInEvent event) {
+        Player player = event.getEntity();
+        if (player == null) return;
+        if (player.level().isClientSide()) return;
+        ModAttachments.setDefenseCardConsumedThisBlessing(player, false);
+        // 计时器守卫:清空效果结束时刻记录,避免重登后守卫重新施加旧效果
+        EffectTimerGuard.clear(player);
+        ModEffectRemoval.remove(player, ModEffects.DICE_BLESSING.get());
+        // 风水师立牌「白泽赐福」(规格 §4.7):与骰神赐福同口径"不跨会话残留" —— 移除效果实例 + 复位
+        // active/prev(防止重登被误判为一次赐福结束)+ 回收溢出治疗转化的攻击力(否则无赐福仍吃加成)。
+        com.merlinkitsune.astral_dice.item.sign.ZhaoSignItem.onOwnerRelogin(player);
+        // 教主立牌「降神」:目标重登 ⇒ 不跨会话残留(与白泽赐福同口径);施法者重登 ⇒ 保留并重建链接与镜像缓存。
+        com.merlinkitsune.astral_dice.item.sign.TeruSignItem.onOwnerRelogin(player);
+        // 重连后刷新治愈体系(上限收缩/效果显示;赐福边沿 prev 标记初始 false,不会误触发减半)
+        HealingManager.tick(player);
+        // 首次加入世界赠送《恋的规则书》(开关见 common 配置)
+        giveGuideBookOnFirstJoin(player);
+    }
+
+    // 死亡重生:刷新治愈体系(上限收缩/效果显示)
+    @SubscribeEvent
+    public static void onPlayerRespawnMedkit(
+            com.merlinkitsune.astral_dice.platform.event.entity.player.PlayerEvent.PlayerRespawnEvent event) {
+        Player player = event.getEntity();
+        if (player == null) return;
+        if (player.level().isClientSide()) return;
+        HealingManager.tick(player);
+        // 充能流派:死亡不丢失充能层数,重生后恢复
+        ChargeManager.restoreAfterDeath(player);
+        // 调查员/忍者立牌累计加成:重生后再兜底恢复(克隆已恢复过则此处空操作)
+        com.merlinkitsune.astral_dice.component.DeathPreservedBonuses.restoreAfterDeath(player);
+    }
+
+    // 筹码栏位对账(2026-09-17):登录 / 数据包同步 / 复活克隆后按当前佩戴的骰子重算尺寸。
+    // 背景:Curios 的 onEquip 第 2 参是 prevStack(普通装备时为空栈),旧实现把它当骰子 ⇒ 目标恒为 0,
+    // 「装备即加筹码栏」整条路径是空操作,只能靠 curioTick 每 20 tick 兜底;而尺寸是存档里的修饰符,
+    // 一旦漂移(/curios reset 清掉修饰符、同步包丢失、旧存档残值)不会自愈,故必须主动对账。
+    @SubscribeEvent
+    public static void onPlayerLoggedInRefreshChipSlots(PlayerEvent.PlayerLoggedInEvent event) {
+        Player player = event.getEntity();
+        if (player == null || player.level().isClientSide()) return;
+        DiceCurioItem.refreshChipSlotCount(player);
+        // 临时牌到期刻对齐:效果时长只在玩家在线时流逝,而到期刻是绝对 gameTime
+        // (多人服务器离线期间照走)⇒ 重登时按效果剩余重写一次,避免把仍然有效的牌判成过期。
+        com.merlinkitsune.astral_dice.item.card.TemporaryCardUtil.realignExpiry(player);
+        // 星币钱包余额条:登录时客户端缓存不可信(可能是上次会话残值) ⇒ 无条件重发一次
+        if (player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
+            com.merlinkitsune.astral_dice.economy.StarCoinBalanceSync.forceResend(serverPlayer);
+        }
+    }
+
+    // 数据包同步(进入世界 / 数据包重载):Curios 自己的处理器在 NORMAL 重建/同步栏位,
+    // 这里用 LOWEST 保证晚于它执行,看到的是同步完成后的最终状态。
+    @SubscribeEvent(priority = EventPriority.LOWEST)
+    public static void onDatapackSyncRefreshChipSlots(
+            com.merlinkitsune.astral_dice.platform.event.OnDatapackSyncEvent event) {
+        if (event.getPlayer() != null) {
+            DiceCurioItem.refreshChipSlotCount(event.getPlayer());
+            return;
+        }
+        for (ServerPlayer player : event.getPlayerList().getPlayers()) {
+            DiceCurioItem.refreshChipSlotCount(player);
+        }
+    }
+
+    // 复活/换维度克隆:Curios 在 playerClone 里把旧档案交给新实体(保留筹码栏的永久修饰符),
+    // 此处再按当前骰子对账一次,覆盖「克隆期间骰子槽瞬时为空」等状态。
+    @SubscribeEvent(priority = EventPriority.LOWEST)
+    public static void onPlayerCloneRefreshChipSlots(PlayerEvent.Clone event) {
+        Player player = event.getEntity();
+        if (player == null || player.level().isClientSide()) return;
+        DiceCurioItem.refreshChipSlotCount(player);
+    }
+
+    // 首次加入世界:若配置开启且玩家尚未领过,赠送《恋的规则书》(每个玩家在每个世界只发一次)
+    private static void giveGuideBookOnFirstJoin(Player player) {
+        // ⚠️ 常驻诊断机器行(2026-09-29 加):「重复发放手册」这条缺陷**已复发两次**
+        //    (2026-09-15 修过一次死亡路径;2026-09-29 又在整合包里出现),
+        //    而现场的唯一可判读数就是「守卫读到什么」与「背包里已有几本」。
+        //    ⇒ 每次登录都留一条 INFO 机器行,便于日志考古/冒烟断言;不设开关,开销可忽略。
+        final boolean givenBefore = ModAttachments.isGuideBookGiven(player);
+        final int booksBefore = countGuideBooks(player);
+        AstralDiceMod.LOGGER.info(
+                "AP_FAB_GUIDEBOOK: uuid={} call={} given={} patchouli={} enabled={} books={}",
+                player.getUUID(), GUIDE_BOOK_CALLS.incrementAndGet(), givenBefore,
+                ModList.get().isLoaded("patchouli"), GameplayConstants.GIVE_GUIDE_BOOK_ON_FIRST_JOIN,
+                booksBefore);
+
+        if (!GameplayConstants.GIVE_GUIDE_BOOK_ON_FIRST_JOIN) return;
+        if (givenBefore) return;
+        if (!ModList.get().isLoaded("patchouli")) return;
+        ItemStack book = ItemModBook.forBook(new ResourceLocation(AstralDiceMod.MODID, "astral_guide"));
+        if (!player.getInventory().add(book)) {
+            player.drop(book, false);
+        }
+        ModAttachments.setGuideBookGiven(player, true);
+        // 写回后**立刻回读**:若这里读到 false,说明「写进去的值取不出来」——
+        // 那正是「每次登录各发一本」的机理(守卫永远读 false),而不是发放时机问题。
+        AstralDiceMod.LOGGER.info("AP_FAB_GUIDEBOOK: GIVEN uuid={} reread={} books={}",
+                player.getUUID(), ModAttachments.isGuideBookGiven(player), countGuideBooks(player));
+    }
+
+    /** 本进程内 {@link #giveGuideBookOnFirstJoin} 的累计调用次数(诊断用)。 */
+    private static final java.util.concurrent.atomic.AtomicInteger GUIDE_BOOK_CALLS =
+            new java.util.concurrent.atomic.AtomicInteger();
+
+    /** 背包里 {@code patchouli:guide_book} 的总数(诊断用;含叠加数)。 */
+    private static int countGuideBooks(Player player) {
+        final ResourceLocation id = new ResourceLocation("patchouli", "guide_book");
+        int n = 0;
+        var inv = player.getInventory();
+        for (int i = 0; i < inv.getContainerSize(); i++) {
+            ItemStack st = inv.getItem(i);
+            if (!st.isEmpty() && id.equals(
+                    net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(st.getItem()))) {
+                n += st.getCount();
+            }
+        }
+        return n;
+    }
+}

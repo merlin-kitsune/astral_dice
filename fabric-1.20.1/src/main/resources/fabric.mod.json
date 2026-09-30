@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "id": "astral_dice",
+  "version": "${version}",
+  "name": "Astral Dice",
+  "description": "《星之骰戏》—— 骰子、卡牌、筹码与立牌的 Roguelike 战斗玩法。Fabric 1.20.1 移植线。",
+  "authors": [
+    "Merlin Kitsune"
+  ],
+  "contact": {},
+  "license": "MIT License",
+  "icon": "icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.merlinkitsune.astral_dice.AstralDiceMod"
+    ],
+    "client": [
+      "com.merlinkitsune.astral_dice.AstralDiceClient"
+    ],
+    "fabric-datagen": [
+      "com.merlinkitsune.astral_dice.datagen.AstralDataGenerator"
+    ]
+  },
+  "accessWidener": "astral_dice.accesswidener",
+  "mixins": [
+    "astral_dice.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "minecraft": "${minecraft_version_range}",
+    "fabric-api": "*",
+    "fabric-data-attachment-api-v1": "*",
+    "puzzleslib": "${puzzleslib_version_range}",
+    "starengine_lib": "${lib_version_range}"
+  },
+  "recommends": {
+    "trinkets": ">=${trinkets_version}",
+    "accessories": "${accessories_version_range}",
+    "patchouli": "*"
+  }
+}

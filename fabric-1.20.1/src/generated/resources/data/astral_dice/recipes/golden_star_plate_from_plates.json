@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": {
+      "item": "astral_dice:star_coin"
+    },
+    "P": {
+      "item": "astral_dice:star_plate"
+    }
+  },
+  "pattern": [
+    "PPP",
+    "CCC",
+    "CCC"
+  ],
+  "result": {
+    "item": "astral_dice:golden_star_plate"
+  },
+  "show_notification": true
+}

@@ -80,3 +80,6 @@ base-mod-compile-libs/
 ### token 放 .curseforge/token(本地)或环境变量 CURSEFORGE_TOKEN(CI secret);
 ### 用法见 tools/curseforge_upload.py --help
 .curseforge/
+
+### 移植参考源(fabric-1.20.1 第四线,2026-09-29 接入):Fabric/Forge/Trinkets/CCA 等参考仓克隆件,不入库
+ref/

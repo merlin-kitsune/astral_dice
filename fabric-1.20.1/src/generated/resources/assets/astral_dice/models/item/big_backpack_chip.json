@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "astral_dice:item/big_backpack_chip"
+  }
+}

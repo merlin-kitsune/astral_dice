@@ -1,0 +1,17 @@
+{
+  "name": "item.astral_dice.effect_card_luxury_feast",
+  "category": "astral_dice:cards_effect",
+  "icon": "astral_dice:effect_card_luxury_feast",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:effect_card_luxury_feast",
+      "text": "astral_dice.guide.entry.effect_card_luxury_feast.1"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:effect_card_luxury_feast"
+    }
+  ],
+  "sortnum": 6
+}

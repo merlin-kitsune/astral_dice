@@ -1,0 +1,37 @@
+{
+  "type": "astral_dice:nbt_shaped",
+  "astral_nbt": {
+    "Z": {
+      "item": "minecraft:potion",
+      "nbt": "{Potion:\"minecraft:regeneration\"}",
+      "strict": true
+    }
+  },
+  "category": "misc",
+  "key": {
+    "C": {
+      "item": "astral_dice:blank_chip"
+    },
+    "D": {
+      "item": "minecraft:soul_sand"
+    },
+    "P": {
+      "item": "astral_dice:star_plate"
+    },
+    "X": {
+      "item": "minecraft:ender_pearl"
+    },
+    "Z": {
+      "item": "minecraft:potion"
+    }
+  },
+  "pattern": [
+    "ZXZ",
+    "DCD",
+    "PPP"
+  ],
+  "result": {
+    "item": "astral_dice:adrenaline_low_chip"
+  },
+  "show_notification": true
+}
