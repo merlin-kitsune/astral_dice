@@ -291,7 +291,7 @@ tasks.withType(JavaCompile).configureEach {
 //   本线是**独立的第四条线**,其整合包目录 `1.20.1-Fabric 模组测试` 亦为本线专属
 //   (与 forge 线的 `1.20.1-Forge 模组测试`、neoforge 线各自的目录互不相干)
 //   ⇒ 白名单只登记**发布线分支**即可,不存在跨分支误写。
-//   ⚠️ 2026-10-01:本线原独立分支 `1.20.1-fabric` 已并入 `multi-main` 并从本地/远端删除
+//   ⚠️ 2026-10-01:本线原独立分支 `1.20.1-fabric` 已并入 `multi-main`（本地 worktree 与分支已删；远端分支待 push 放行）
 //   ⇒ 白名单由 `['1.20.1-fabric']` 改为 `['multi-main']`。**不改则本模块静默不再部署整合包**
 //   (不在白名单 ⇒ pushToGame 只打一行 skipped 日志、不算失败,极易漏检)。
 //

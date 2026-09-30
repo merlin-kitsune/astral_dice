@@ -1946,6 +1946,20 @@ custom_frames.json 恢复 5 档全写；包内原版稀有/史诗与本模组稀
   因为反斜杠后跟字母 a / b / f / v 都是**合法转义**（依次对应 BEL / 退格 / 换页 / 垂直制表），
   会**静默**吃掉一个字符且**不报错**（伴生信号只有一句极易被忽略的 `SyntaxWarning`）。
   **判据**：任何脚本化写盘之后，对目标文件做一次「0x07 字节计数」自检（应为 0）。
+- **worktree 清理（2026-10-01，用户指令「合并完成后清理 worktree」）**：
+  - **先做「会不会丢东西」的前置核查**：`git rev-list --left-right --count multi-main...1.20.1-fabric` = `41 0`
+    ⇒ 分支独有提交 **0 个**；`git merge-base --is-ancestor a89487ac multi-main` 成立 ⇒ **删除零丢失**。
+  - **保全了两类不该销毁的东西**（原 worktree 里 `git status -uall` 有 **3 个未忽略的未跟踪文件**）：
+    ① `backup/`（**用户测试世界的 level.dat + playerdata，不可再生**，12 KB）⇒ 移到
+    `temp/preserved-from-fabric-worktree/backup/`（`temp/` 已 gitignore）；
+    ② `ref/`（**10 个上游取证克隆**：fabric-loader / fabric-api / trinkets / cardinal-components-api /
+    minecraftforge / yarn / patchouli / puzzles-lib / ftb-teams / open-parties-and-claims，76 MB）
+    ⇒ 迁到新树根目录 `ref/`（`.gitignore` 已排除），并在移植手册里同步改口径。
+  - 其余（`.gradle/` 744 MB、`build/` 27 MB、`run/` 1.8 MB）**均为可再生**，随 worktree 一并移除。
+  - `git worktree remove` → 目录消失；`git branch -D 1.20.1-fabric`（`-d` 被「与 upstream 比对」拦下 ——
+    本地领先 `origin/1.20.1-fabric` 3 个提交；已按上面的祖先取证改用 `-D`）。
+  - ⚠️ **未做**：`git push origin --delete 1.20.1-fabric` —— 远端分支的删除需要一个 push 动作，
+    且推 `multi-main` 会连带触发 CI 的 tag/Release/pre-release 判定 ⇒ **待用户放行**。
 - **未做 / 遗留（如实登记）**：① 未 `git push`（本仓默认）⇒ 远端分支删除与 GitHub/CF 的真实发布待用户放行；
   ② fabric 线**尚缺 1.3.3 批次**（本批实测发现：无 `ConcealmentEffect`、lang 少 7 个键、`msg.astral_dice.*`
   仍内嵌 `§`、4 个文件走原版覆盖层通道未进白名单）⇒ 需用户单独下达移植批次；

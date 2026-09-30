@@ -2,7 +2,7 @@
 
 > ⚠️ **历史快照**：本文写于移植进行中，文中「分支 `1.20.1-fabric` / 工作树
 > `F:\MCProjectastral_dice_multiloader_fabric`」**已于 2026-10-01 变更**（并入 `multi-main`，
-> 原 worktree 与分支均删除）。该线**移植早已完成**，本文仅作过程留档。
+> 原 worktree 与**本地**分支均已删除；远端分支的删除需 push、尚未执行）。该线**移植早已完成**，本文仅作过程留档。
 
 > 执行者：本次会话（自主决策轮）。基线：`1.20.1-fabric` 分支 / 工作树 `F:\MCProject\astral_dice_multiloader_fabric`。
 > 前置库工作树：`F:\MCProject\starengine_lib_fabric`（分支 `fabric-1.20.1`，基线 `main @ 1.0.5`）。

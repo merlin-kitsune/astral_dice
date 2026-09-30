@@ -7,9 +7,9 @@ description: 《星之骰戏》(astral_dice) forge-1.20.1 → fabric-1.20.1 移�
 
 > ⚠️ **2026-10-01 状态变更（先读这条）**：本线**已并入 `multi-main`**，成为该仓的**第四条线**
 > （同树同仓；原独立 worktree `F:\MCProjectastral_dice_multiloader_fabric` 与分支 `1.20.1-fabric`
-> 均已从本地与远端删除）。⇒ 本文所有 `astral_dice_multiloader_fabric` 路径**一律改指**
-> `F:\MCProjectastral_dice_multiloader`；`ref/`（参考源克隆件）在**合并后的树里已不存在**
-> （`.gitignore` 仍排除 `ref/`，需要时在新树内按 `VERSION_PINS.md` 重新克隆）。
+> 本地 worktree 与分支均已删除（**远端分支的删除需 push，尚未执行**，待用户放行）。⇒ 本文所有 `astral_dice_multiloader_fabric` 路径**一律改指**
+> `F:\MCProjectastral_dice_multiloader`；`ref/`（10 个上游参考源克隆件，约 76 MB）**已随本次清理迁移到新树根目录**
+> `astral_dice_multiloader/ref/`（`.gitignore` 仍排除 `ref/`）⇒ 无需重新克隆；确需重建时按 `VERSION_PINS.md`。
 > 其余口径（版本钉值、API 对照、平台差异）**不变**；本线仍是**移植线**、版本号仍带 `-alpha.x`。
 
 > 执行前必读：本文是唯一执行入口。配套件（同目录）：`VERSION_PINS.md`（版本钉值，**先读**）、`API_CHEATSHEET.md`（API 对照）、`PORT_ANALYSIS.md`（分析全文）。  
