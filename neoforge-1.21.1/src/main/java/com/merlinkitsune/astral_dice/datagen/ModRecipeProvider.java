@@ -437,7 +437,15 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
                 .save(output);
 
-        // 黄金星盘:唯一配方 = 星盘×3 + 星币×6。(2026-09-30 用户裁决:删除原先并存的「星盘 + 下界之星×2」无序配方,只保留本配方)
+        // 黄金星盘:配方 ①「星盘×1 + 下界之星×1」无序(2026-09-30 用户指定新增)。
+        // 沿革:当日稍早曾删去「星盘 + 下界之星×2」——**数量不同,与本次的 ×1 版并非同一配方**;同日按用户口径以 ×1 加入本条 ⇒ 当前两条并存。
+        ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ModItems.GOLDEN_STAR_PLATE.get())
+                .requires(ModItems.STAR_PLATE.get())
+                .requires(Items.NETHER_STAR)
+                .unlockedBy("has_star_plate", has(ModItems.STAR_PLATE.get()))
+                .save(output, ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID, "golden_star_plate_from_nether_star"));
+
+        // 黄金星盘:配方 ②「星盘×3 + 星币×6」有序(与配方 ① 并存)
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.GOLDEN_STAR_PLATE.get())
                 .pattern("PPP")
                 .pattern("CCC")

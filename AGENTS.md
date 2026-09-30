@@ -420,7 +420,7 @@ When extending this workspace:
 | 星币 | `star_coin` | 白(普通 COMMON) | 货币;袋装星币可 9:1 互转(`star_coin_bag`) |
 | 袋装星币 | `star_coin_bag` | 蓝(稀有 RARE) | 9 枚星币打包 |
 | 星盘 | `star_plate` | 紫(史诗 EPIC) | 骰子/立牌/筹码合成材料;可从原版宝箱开出 |
-| 黄金星盘 | `golden_star_plate` | 金(传奇 UNCOMMON) | 星盘升级/下界之星两条配方;不祥宝库可开出 |
+| 黄金星盘 | `golden_star_plate` | 金(传奇 UNCOMMON) | 两条配方(「星盘×1 + 下界之星×1」无序 / 「星盘×3 + 星币×6」有序);击杀掉落:凋灵 100%×5、监守者 100%×3-5、远古守卫者 100%×1-3、恶魂 100%×1、凋灵骷髅 / 守卫者 5%×1;不祥宝库可开出 |
 | 空白立牌 | `blank_sign` | 白(普通) | 立牌合成核心,3×3 中央 |
 | 空白筹码 | `blank_chip` | 白(普通) | 筹码合成核心,3×3 中央 |
 
@@ -1392,6 +1392,21 @@ When extending this workspace:
 - 运行期注入（`LootTableLoadEvent`），**只处理 `name.getPath().startsWith("chests/")`**；**防重复判据 = `table.getPool("<池名>") != null`**（重复注入会让同一池叠加）。
 - 🚨 **前缀判据之后必须再排除本模组命名空间**（2026-09-27「方案 A」修复一例**双通道重复注入**）：上面那条判据只看**路径前缀**，而自有表 `astral_dice:chests/star_plate` / `astral_dice:chests/golden_star_plate` 的 path 正好就是 `chests/...` ⇒ 它们会被一并注入这一整套四池。偏偏数据包 GLM `star_plate_all_chests`（1.21.1/26.1.2 用 `neoforge:add_table`、1.20.1 用 `astral_dice:add_table`）是**无条件（100%）**把 `astral_dice:chests/star_plate` 这张表挂到一长串原版箱表上（`forge:loot_table_id` 的 `any_of` 清单，含 `simple_dungeon` / `end_city_treasure` / `buried_treasure` 等）⇒ 开一个箱子要滚「主表 + 附加表」**两张**表，同一池被**二次判定**：合成概率 `1−(1−p)²` ⇒ **星币 5% → 9.75%、空白筹码 3% → 5.91%、玻璃骰子 2% → 3.96%；星盘为特例（自有表自身另有 5% 星盘权重）⇒ 修复前 6.89%、修复后 5.95%（= 主表 1% + 星盘表 5%；末地城修复后 9.75% = 5% + 5%）**。修法 = 在路径判据**之后**补一行早退 `if (name.getNamespace().equals(com.merlinkitsune.astral_dice.AstralDiceMod.MODID)) return;`（三条线同源写法；1.20.1 编译后是 SRG 名 `m_135827_`）。**自有表由 GLM 自行引用，本 handler 不得再注入**；新增任何自有 `chests/*` 表时同样自动被这条早退保护。回归判据 = 用例 `LOOT-POOL-<版本>` 的 `AP_SELF_LOOT` / `AP_SELFG_LOOT`（断言 `pools=none`，即「自有表上没有任何 astral 池」）。
 - 现有池：星币 5%（末地城 9%，1~2 个）、**空白筹码（埋藏宝藏 100% 必出；其余箱子 3% —— 2026-09-27 起）**、星盘 1%（末地城 5%）、**玻璃骰子 2%（末地城 5% —— 2026-09-27 起；此前战利品箱不出任何骰子）**。
+- 🆕 **生物击杀掉落（`onLivingDrops`，与上面的箱表池是两条独立通道；两者对同一只怪各自判定、互不影响）**：
+  - **星币**（`rollKillStarCoin`，2026-09-30 用户指定）：**仅当击杀者为玩家**时判定
+    （`DamageSource#getEntity()` ⇒ 箭矢 / 投掷物等间接击杀同样计入）；僵尸 / 僵尸猪灵 **1%**、
+    末影人 / 猪灵 **3%**、猪灵蛮兵 **20%**，每次 1 枚。⚠️ `PiglinBrute` **不是** `Piglin` 的子类
+    （两者同继承 `AbstractPiglin`）⇒ 必须先判蛮兵，否则 20% 会被 3% 吞掉；「僵尸」按 `Zombie` 类族
+    （含尸壳 / 溺尸 / 僵尸村民，僵尸猪灵亦继承自 `Zombie`，概率一致故归并）。
+  - **星盘**（`starPlateDropCount`，2026-09-30 用户指定扩展为分档）：凋灵 **5 个**、监守者 **3-5 个**、
+    远古守卫者 **1-3 个**、恶魂 **1 个**（四者均 100%）；凋灵骷髅 / 守卫者 **5%** 掉 1 个；
+    其余 `Monster` **0.3%** 掉 1 个。
+    ⚠️ **判定顺序即优先级、所有档位互斥**（同一只怪不会被判两次）：① `ElderGuardian` **继承** `Guardian`
+    ⇒ 远古守卫者必须先判（否则 100% 被 5% 档吞掉）；② 恶魂 / 凋灵骷髅 / 守卫者 / 远古守卫者 / 监守者
+    **都是** `Monster` 子类 ⇒ 必须排在 0.3% 兜底档**之前**（否则双档命中，概率 1−(1−p)²）。
+    ⚠️ 凋灵（`WitherBoss`）与凋灵骷髅（`WitherSkeleton`）是两个互不相干的类。
+    ⚠️ **26.1.2 包差异**：`WitherSkeleton` 在 `monster.**skeleton**`、`Zombie` 在 `monster.**zombie**`
+    （1.21.1 / 1.20.1 均在 `monster`）。
 - ⚠️ **调整任何战利品概率一律改这里**，不要在数据包 GLM 里另开一套；三线同步 + 重跑构建 + **开 jar 核符号与常量**。
 
 ### 取证红线
@@ -2236,7 +2251,7 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --new <注册id>
   ⇒ **凡 `isBlessingTarget` 已放行的地方，不得再用 `HostileTargets` 二次收窄**（那会静默漏掉三类目标：① **非同队但从未攻击过你的玩家**；② **Boss 实体**（不属 `Enemy`/`NeutralMob` 时）；③ **`isAggressive()` / `getTarget()==player` 为真却不属上述两类**的怪 —— 典型就是**山羊/狐狸/熊猫**等「会反击但原版未标中立」的生物；⚠️ **羊驼/行商羊驼自 2026-09-27 起已归入 `HostileTargets` 第三类**，不再属于本条的收窄理由）。
   2026-09-24 已按此修掉 5 处：贯穿之铳的目标判定、枪匠被动、定向爆破与电击手套的范围波及、大当家立牌溅射、骰战「调查阶段增益」**（`SpellDamageRegistry` 内亦同）。
 - **判定顺序固定**：先 `Enemy`，再 `NeutralMob` 且**非已驯服宠物**（`!TamableAnimal#isTame()`）。三条禁令：① **禁止**只写 `instanceof Enemy` 就宣称覆盖了「中立生物」；② **禁止**用全限定名 `net.minecraft.world.entity.monster.Enemy` 绕过统一入口（历史上正是这种写法让 5 处判据点漏改）；③ **禁止**用 `instanceof Monster` 代替（`Monster ⊂ Enemy`，会漏掉恶魂/幻翼/岩浆怪/末影龙等）。
-- **唯一豁免（它根本不是敌对判定）**：`event/LootInjectionHandler` 用 `instanceof Monster` 选**战利品注入池**（怪物类实体 0.3% 掉星盘）。这是掉落池口径，**不得**改调 `HostileTargets`（改了会让岩浆怪/幻翼/恶魂/末影龙开始掉星盘）。
+- **唯一豁免（它根本不是敌对判定）**：`event/LootInjectionHandler#starPlateDropCount` 用 `instanceof` 选**星盘掉落档位**（2026-09-30 起为分档：凋灵 / 监守者 / 远古守卫者 / 恶魂必掉、凋灵骷髅 / 守卫者 5%、其余 `Monster` 0.3%，详见「战利品概率注入」节）。这是掉落池口径，**不得**改调 `HostileTargets`（改了会让**未列档位**的怪 —— 岩浆怪 / 幻翼 / 末影龙等 —— 也开始掉星盘）。⚠️ **旧文把「恶魂」列为「不该掉星盘」的举例已过时** —— 恶魂自 2026-09-30 起被用户显式指定为 100% 掉 1 个；档位表仍**只按生物类型**判，与敌对 / 中立立场无关。
 - **第二处豁免（有意的玩法收窄，2026-09-24 用户裁决「飞星应当只对敌对目标生效」）**：`combat/ShootingStarManager#isStarTarget`（飞星 = 被动自动触发）只认「敌对生物 ∪ **已被激怒**的中立生物 ∪ 消费方额外声明者 ∪ 敌对玩家」，即回到 2026-09-24 重写**之前**的中立判据 —— 为了保住「平静的末影人 / 僵尸猪灵」，该处**先判 `Enemy` 再判 `NeutralMob#isAngry()`**（这两者同时实现两个接口，顺序颠倒会错杀），其余情形仍**完全交给入口**。允许在此内联这两步的理由：宽口径（中立一律计入）是为**主动技能**的释放目标判定（秘密侦探 / 枪匠）定的，而飞星是**被动自动触发**（路过即落星）—— 不该凭空砸到未激怒的狼 / 铁傀儡 / 北极熊 / 蜜蜂。🚫 **禁止**把它当成放宽上面三条禁令的借口：其它任何判据点仍必须只调入口。
 - **敌对玩家规则与带上下文重载（全局，2026-09-15 用户裁决，必须遵守）**：`HostileTargets` 新增带上下文重载 `isHostile(Entity viewer, Entity target)`，把「**非同队伍、且曾主动攻击过 viewer 的玩家**」计入敌对目标（故大当家溅射等范围/波及效果、以及**电磁炮落雷**（2026-09-15 本批 D-B2 对齐，viewer = `LightningBolt#getCause()`，见下条）现在对这类玩家生效）；记录表为 `combat/PlayerHostilityTracker`（服务端内存静态表，不持久化）。口径细节：① **记录 = 只记「主动攻击」** —— 排除本模组内部 AOE/溅射/反击结算（`DiceCombatEvents.isInternalAoe()` / `isInCounterChain()` 闸门）、自伤、任一侧非玩家、以及被取消的伤害（挂点在最终伤害事件，晚于可取消的减伤前事件）；② **双方都没有队伍时可互为敌对**（同队才豁免；任何一方无队伍都不算同队——`EventTargetCollector`「未加入队伍视为全服玩家」的发奖约定**不适用于此处**）；③ 玩家**死亡**（`LivingDeathEvent`，`priority=LOWEST`，晚于保命方的「取消死亡」）/死亡克隆/登出时**双向**清除该立场（作为攻击者与作为目标的记录一并清）；④ **例外**：`PandamanSignItem` 的嘲讽**刻意只对敌对生物生效**（单参 `isHostile(e)` + `!(e instanceof Player)` 守卫，保持既有约定，永不施加给玩家）。
 - **统一现状（2026-09-15 复核；2026-09-15 本批 D-B2 后更新计数）**：双版本各 **24 处玩法判据点**已改调该入口，另有 `damage/RailgunBolts#isValidLightningTarget` 委托同一入口，合计 **25 个调用点 / 17 个文件**（两版本行号同构、逐条 `Compare-Object` 零差异）。其中 **23 个调用点**改用带上下文的 `isHostile(viewer, target)` 重载（含本批改口径的 `RailgunBolts#isValidLightningTarget`，viewer = `LightningBolt#getCause()`），仍用单参的 2 处为：`DiceCombatEvents.isBlessingTarget`（口径含「非队友玩家」，无法交给本入口）、`PandamanSignItem` 的嘲讽（**刻意**只对敌对生物生效，见上条）。判据同族的既有分支（`DiceCombatEvents.isBlessingTarget` 的「Boss 或正在追打该玩家的生物」、`NancyLuSignItem#clearNearbyMobTargets` 的 `mob.getTarget() == player`、`BossEntityUtil.isBossEntity`）**不是** `Enemy` 判定，保持原样。
