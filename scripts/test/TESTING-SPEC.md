@@ -1859,3 +1859,76 @@ custom_frames.json 恢复 5 档全写；包内原版稀有/史诗与本模组稀
   `python tools/curseforge_upload.py --jar <jar> [--jar <jar> ...] --proxy <代理> [--dry-run]`
 - **未做**：真实上传（含首个文件的 `--manual-release` 验证）；CI 侧接线（GitHub Actions 加 secret 与步骤）；
   本地 `gradlew` 任务包装。以上均待用户设定自动推送规则后再落地。
+
+## 附录 A 续 34. 第四条线 `fabric-1.20.1` 并入 `multi-main`（2026-10-01）
+
+- **需求**（用户原话）：「将 `1.20.1-fabric` 合并进本分支，并创建第四线。fabric 端使用独立的 alpha 版本号
+  （与 26.1.2 使用 beta 版本号行为类似）。合并完成后清理 worktree」。
+- **三项发布语义裁决**（问答确认，非代理自定）：① **Release 形态 = 独立 pre-release**（保留 2026-09-29 既有裁决：
+  单独 tag + `--prerelease`，**绝不并入**生产线 Release），只把触发条件改挂 `multi-main`；
+  ② **分支去留 = 一并删除**（本地 + 远端 `1.20.1-fabric`），worktree 一并移除；
+  ③ **CurseForge = 纳入**（四线映射，fabric 走 `-alpha` ⇒ alpha 渠道）。
+- **版本号口径**：fabric 保持**独立** `1.3.5-alpha.1+fabric_1.20.1`（`-alpha.x` 预发布后缀），与 26.1.2 的
+  `-beta.x` 同构 —— 两条线都是预发布号线，**永不占用发布线的裸版本号**、也不单独打裸版本 tag。
+- **合并面判据（融合前先算，据此选路径）**：base `34e8f7cf`；ours `18302522`（multi-main）；
+  theirs `a89487ac`（1.20.1-fabric）。**两侧相对 base 的删除数均为 0**（`diff --diff-filter=D`）
+  ⇒ 按「删除数 = 0 直接 `git merge`」口径执行，未走 plumbing 剧本；实测合并 **44 s** 完成，
+  未触发本机「删除单文件 ~80 ms」病理。**交叉修改集恰为 4 个文件**
+  （`.gitignore` / `AGENTS.md` / `CHANGELOG.md` / `CHANGELOG_ZH.md`）⇒ **代码零重叠**。
+- **冲突解法（一律「两侧条目全保留」，**未**使用 `checkout --ours/--theirs`）**：`.gitignore` = ours 的
+  `.curseforge/` 段 + theirs 的 `ref/` 段；`AGENTS.md` = ours **已修正的整合包实名**行
+  （`1.20.1-Forge 模组测试` / `26.1.2-NeoForge 模组测试`）+ theirs 新增的 `fabric-1.20.1` 行；
+  两份 CHANGELOG = 两侧版本段按**版本降序交错**（`1.3.5` / `未发布(1.3.5-alpha.1)` / `1.3.4` / `1.3.3` /
+  `1.3.2+fabric_1.20.1`），**逐段与来源 blob 比对：中英各 5/5 段逐字一致**（零丢失、零改写）。
+- **合并提交**：`73002120`，**双亲** `[18302522 a89487ac]`；`--diff-filter=U` 为空；四份冲突文件行尾仍为
+  **纯 CRLF**（裸 LF / 双 CR 均 0）。
+- **四棵树集合比对（**提交之后**跑，最强证据）**：ours 3697 / theirs 4928 / **union 4956 = HEAD 4956**，
+  **`extra` 与 `lost` 双空** ⇒ 合并结果**恰等于**两侧并集。
+- **第四线集成落点（合并提交之后的独立提交）**：
+  - `fabric-1.20.1/build.gradle`：`packPushBranches` 由 `['1.20.1-fabric']` 改 **`['multi-main']`**
+    —— ⚠️ **不改则本模块静默不再部署整合包**（不在白名单 ⇒ `pushToGame` 只打跳过日志、不算失败）。
+  - `.github/workflows/build.yml`：`on.push.branches` 删去已删分支 `1.20.1-fabric`；**fabric pre-release 步骤的
+    `if` 由 `refs/heads/1.20.1-fabric` 改挂 `refs/heads/multi-main`**（原条件随分支删除**永久不成立** =
+    静默失效类缺陷）；tag 形如 `fabric-1.3.5-alpha.1`（只剥 `+加载器`、保留 `-alpha.N`）。
+  - `README.md` / `README_ZH.md`：支持表补第四行（`fabric-1.20.1` / Fabric Loader 0.19.5 / Java 17 /
+    `1.3.5-alpha.1`）、前置表补 fabric 专有前置（Fabric Loader/API + **Trinkets 或 Accessories 二选一** +
+    Puzzles Lib + Forge Config API Port）、下载段补「独立 pre-release」、构建段补 `:fabric-1.20.1:build`；
+    顺带把三行「当前版本」由过期的 `1.3.3` 更正为 `1.3.5` / `1.3.5-beta.1`。
+  - `AGENTS.md`：项目基线补第四条线一条（含合并事实与原 worktree 已移除）；矩阵表 `fabric` 行改为
+    「2026-10-01 已并入 `multi-main`」；《第四条线规则边界》标注「**九项仍全适用**，变的只有树与仓」；
+    ⑧ 号版本号条目写明「与 26.1.2 的 `-beta.x` 是同套安排」；`packPushBranches` 表四行统一为 `multi-main`
+    （顺带清掉 3 行残留旧分支名 `multi-1.20.1-1.21.1`）；收尾流程的整合包**实名**落地。
+  - `tools/curseforge.json`：新增 `fabric_1.20.1` 行（`channel=alpha`）＋三条说明性 `_*Note`
+    （脚本现状只读 projectId/slug、后缀 ⇒ 渠道的派生规则、fabric 更新日志**不得**沿用生产线那两份）。
+  - `tools/audit_patchouli_keys.py`：`LINES` 增 `fabric-1.20.1` ⇒ 手册键悬空审计**覆盖第四线**
+    （实测 fabric 引用 388 处 / 悬空 0）。
+  - `tools/audit_actionbar.py`：**有意不加第四线**并在文件内写明理由（fabric 侧 `ActionBarPayload` 引用为 0，
+    不走本闸门所守通道；实测纳入会报出一批**fabric 尚未移植 1.3.3** 带来的既存缺口 ⇒ 会让闸门长期常态变红、
+    掩盖真回归）。待该线补完 1.3.3 批次后再加回。
+  - `tools/fabric_datagen_convert.py`：修掉**硬编码** `astral_dice_multiloader_fabric` 死路径，改 `__file__` 相对解析。
+  - `porting/fabric-1.20.1/SKILL.md` 加合并后状态横幅并改指新路径；`PORT_ANALYSIS.md` /
+    `PORT_STATUS_HANDOVER.md` 标注为**历史快照**；`scripts/test/fabric/lib/Ft.Common.psm1` 注释改口径。
+  - **顺带修**（既有缺陷，非本批引入）：`README×2` 各 1 处**裸 LF**（缺空行）归并为 CRLF。
+- **验证读数（全部实测）**：
+  - 四线 `gradlew build`：**BUILD SUCCESSFUL in 43 s**，`compileJava` 三线 UP-TO-DATE（源码未被合并改动）
+    + fabric **FROM-CACHE**；再对 fabric 跑 `:fabric-1.20.1:compileJava --rerun-tasks --no-build-cache`
+    ⇒ **真实重编成功**（6 s，既非 UP-TO-DATE 也非缓存）。`settings.gradle` 变更已触发配置缓存重建。
+  - **四线部署全部真实命中**：`pushToRootBuild` ×4 → 根 `build/libs` **4 个 jar**；`pushToDevRun` ×4；
+    `pushToGame` ×4（含 `1.20.1-Fabric 模组测试` ⇒ **新白名单已生效**）。
+  - **开 jar 取证**：四 jar 的 class 主版本分别 65 / 61 / 69 / **61**；元数据分别为 `neoforge.mods.toml`（×2）、
+    `mods.toml`（reobf/SRG）、根 `fabric.mod.json`；fabric 内嵌件 =
+    `META-INF/jars/starengine_lib-fabric-1.20.1-1.0.5-alpha.1.jar`；`fabric.mod.json` 的
+    `depends` / `recommends` / entrypoints / accessWidener 逐条正确。
+  - **静态闸门**：`audit_actionbar` / `audit_mixin_injection`（硬违规 0）/ `audit_patchouli_keys`（悬空 0）/
+    `verify_fabric_assets`（8/8）/ `tooltip_color_audit` / `check_lang_sync` ×4（830/830/830 ×3 + **832**）/
+    `verify_crafting_recipe_uniqueness`（collisions=0）/ `verify_bountiful_pools`（ALL OK）/
+    `verify_chip_acquisition` / `verify_resource_integrity` / `verify_forge_loader_gate` /
+    `verify_probe_class_refs`（不可解析 **0**）/ `verify_chip_recipes` / `check_mod_sources` /
+    `Test-MtSyntax`（**54** 文件 0 失败，含 `scripts/test/fabric/**`）/
+    `verify_bountiful_instance_exclusions`（ALL CLEAR；`1.20.1-Fabric 模组测试` 无 bountiful jar ⇒ 正确跳过）。
+    ⚠️ 唯一 FAIL = `scripts/devtools/verify_content_library.ps1`，该脚本自述为 **1.2.0 冻结期一次性验收工具、
+    不属常规守门清单**，15 项偏差全部是 1.2.0 之后新增内容 ⇒ **非回归**。
+- **未做 / 遗留（如实登记）**：① 未 `git push`（本仓默认）⇒ 远端分支删除与 GitHub/CF 的真实发布待用户放行；
+  ② fabric 线**尚缺 1.3.3 批次**（本批实测发现：无 `ConcealmentEffect`、lang 少 7 个键、`msg.astral_dice.*`
+  仍内嵌 `§`、4 个文件走原版覆盖层通道未进白名单）⇒ 需用户单独下达移植批次；
+  ③ 本地 tag `fabric-1.3.4-alpha.1` 属历史遗留，是否需要清理待裁决。

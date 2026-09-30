@@ -31,7 +31,7 @@ import re
 import sys
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
-LINES = ["neoforge-1.21.1", "forge-1.20.1", "neoforge-26.1.2"]
+LINES = ["neoforge-1.21.1", "forge-1.20.1", "neoforge-26.1.2", "fabric-1.20.1"]
 BOOK = "src/main/resources/assets/astral_dice/patchouli_books"
 LANG_DIR = "src/main/resources/assets/astral_dice/lang"
 LANGS = ["zh_cn", "en_us", "ja_jp"]

@@ -288,9 +288,12 @@ tasks.withType(JavaCompile).configureEach {
 //   · 传 -PdeployToPack 或 -PpackPush                          → 强制推送,覆盖上述判定(手动出包通道)
 //   理由同另三线:整合包是**需要"成对匹配"的测试环境** —— 前置库 jar 与 mod jar 必须版本互相匹配,
 //   把不匹配的组合灌进测试包会表现为启动期 NoClassDefFoundError / "缺必需前置"。
-//   本线是**独立的第四条线**(分支 `1.20.1-fabric`),其整合包目录 `1.20.1-Fabric 模组测试`
-//   亦为本线专属(与 forge 线的 `1.20.1-Forge 模组测试`、neoforge 线各自的目录互不相干)
-//   ⇒ 白名单只登记本线分支即可,不存在跨分支误写。
+//   本线是**独立的第四条线**,其整合包目录 `1.20.1-Fabric 模组测试` 亦为本线专属
+//   (与 forge 线的 `1.20.1-Forge 模组测试`、neoforge 线各自的目录互不相干)
+//   ⇒ 白名单只登记**发布线分支**即可,不存在跨分支误写。
+//   ⚠️ 2026-10-01:本线原独立分支 `1.20.1-fabric` 已并入 `multi-main` 并从本地/远端删除
+//   ⇒ 白名单由 `['1.20.1-fabric']` 改为 `['multi-main']`。**不改则本模块静默不再部署整合包**
+//   (不在白名单 ⇒ pushToGame 只打一行 skipped 日志、不算失败,极易漏检)。
 //
 // 分支判定放在**执行期**(见 pushToGame 的 doLast),不做配置期求值:
 //   ① 每次构建都读当时的 .git/HEAD,切分支后立即生效,不存在配置缓存陈旧问题;
@@ -305,7 +308,7 @@ def packModsDir = file('D:/.minecraft/versions/1.20.1-Fabric 模组测试/mods')
 // `wt/*` worktree 分支)一律跳过 —— 白名单优于黑名单:新分支默认落在"不推送"一侧,
 // 不会因为忘了登记而误推、误删整合包里的正式 jar。需要推送时把分支加进本表,或单次
 // 用 -PdeployToPack 强制。
-def packPushBranches = ['1.20.1-fabric']
+def packPushBranches = ['multi-main']
 def forcePackPush = project.hasProperty('deployToPack') || project.hasProperty('packPush')
 def libVersionLocked = project.findProperty('starengine_lib_version')?.toString()
 def dotGitEntry = rootProject.file('.git')

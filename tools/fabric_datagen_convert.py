@@ -10,7 +10,10 @@ import pathlib
 import re
 import sys
 
-ROOT = pathlib.Path(r"F:\MCProject\astral_dice_multiloader_fabric")
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+# ⚠️ 2026-10-01 修正:原为**硬编码**独立 worktree 路径(`astral_dice_multiloader_fabric`)——
+#    该 worktree 已随第四条线并入 `multi-main` 而删除 ⇒ 硬编码会指向不存在的路径。
+#    改为 `__file__` 相对解析(与本目录其它脚本同口径),在合并后的四线树里直接可用。
 SRC = ROOT / "forge-1.20.1/src/main/java/com/merlinkitsune/astral_dice/datagen"
 DST = ROOT / "fabric-1.20.1/src/main/java/com/merlinkitsune/astral_dice/datagen"
 DST.mkdir(parents=True, exist_ok=True)

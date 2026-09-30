@@ -6,9 +6,13 @@
   "site": "minecraft",
   "_siteNote": "上传/版本 API 的站点域固定为 minecraft.curseforge.com；换成 www. 会拿到另一个游戏的版本表。",
   "apiBase": "https://minecraft.curseforge.com/api",
+  "_lineNote": "本数组是「产物 → (加载器, MC 版本, 渠道)」的**映射说明**，供人工/未来接线使用；脚本 tools/curseforge_upload.py 目前只读 projectId 与 slug，加载器/MC/版本一律**从 jar 文件名解析**（astral_dice-<版本>+<加载器>_<MC版本>.jar）。2026-10-01 前为三线，现为四线（fabric 并入 multi-main）。",
+  "_channelNote": "releaseType **由版本号后缀自动派生**：`-alpha` ⇒ alpha 渠道、`-beta`/`-rc`/`-pre` ⇒ beta 渠道、无后缀 ⇒ release 渠道。四线现状：1.21.1 / 1.20.1 无后缀 ⇒ release；26.1.2 = `-beta.x` ⇒ beta；fabric = `-alpha.x` ⇒ alpha。",
   "lines": [
-    { "key": "neoforge_1.21.1", "loader": "neoforge", "mc": "1.21.1", "jar": "neoforge-1.21.1/build/libs/astral_dice-*.jar" },
-    { "key": "forge_1.20.1", "loader": "forge", "mc": "1.20.1", "jar": "forge-1.20.1/build/libs/astral_dice-*.jar" },
-    { "key": "neoforge_26.1.2", "loader": "neoforge", "mc": "26.1.2", "jar": "neoforge-26.1.2/build/libs/astral_dice-*.jar" }
-  ]
+    { "key": "neoforge_1.21.1", "loader": "neoforge", "mc": "1.21.1", "channel": "release", "jar": "neoforge-1.21.1/build/libs/astral_dice-*.jar" },
+    { "key": "forge_1.20.1", "loader": "forge", "mc": "1.20.1", "channel": "release", "jar": "forge-1.20.1/build/libs/astral_dice-*.jar" },
+    { "key": "neoforge_26.1.2", "loader": "neoforge", "mc": "26.1.2", "channel": "beta", "jar": "neoforge-26.1.2/build/libs/astral_dice-*.jar" },
+    { "key": "fabric_1.20.1", "loader": "fabric", "mc": "1.20.1", "channel": "alpha", "jar": "fabric-1.20.1/build/libs/astral_dice-*.jar" }
+  ],
+  "_fabricNote": "fabric 线（2026-09-29 接入，2026-10-01 并入 multi-main）是**独立的移植线**：版本号带 `-alpha.x` ⇒ 上传时自动走 **alpha 渠道**，与 26.1.2 的 `-beta.x` ⇒ beta 渠道同构。⚠️ 上传 fabric jar **不要**沿用 release/<裸版本>/PLAYER_CHANGELOG*.md（那是三条生产线的玩家日志）；该线的发布说明由 CI 在 `fabric-<版本>` pre-release 步骤内联生成，若要上传 CurseForge 请用 `--changelog <自备文件>` 显式指定。"
 }

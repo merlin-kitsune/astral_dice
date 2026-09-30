@@ -27,6 +27,11 @@
         --jar build/libs/astral_dice-1.3.5+forge_1.20.1.jar \
         --jar build/libs/astral_dice-1.3.5-beta.1+neoforge_26.1.2.jar
 
+    # 第四条线 fabric（2026-10-01 起并入 multi-main）：版本号带 -alpha ⇒ 自动走 alpha 渠道
+    python tools/curseforge_upload.py \
+        --jar build/libs/astral_dice-1.3.5-alpha.1+fabric_1.20.1.jar \
+        --changelog <该线自备的发布说明.md>
+
     # 本机直连会被 Cloudflare 拦（403）；走本地代理即可
     python tools/curseforge_upload.py --jar <...> --proxy http://127.0.0.1:7897
 
@@ -81,8 +86,11 @@ VERSIONS_CACHE = CACHE_DIR / "versions.json"
 def load_binding():
     """读 tools/curseforge.json（**项目 id 的正式落点**，2026-10-01 用户指定）。
 
-    该文件**入库**，因此只放非敏感信息（projectId / slug / 站点 / 三线映射），
+    该文件**入库**，因此只放非敏感信息（projectId / slug / 站点 / 四线映射），
     token 一律走 .curseforge/token 或环境变量。
+    ⚠️ 四线（2026-10-01 起）= neoforge-1.21.1 / forge-1.20.1 / neoforge-26.1.2 / **fabric-1.20.1**；
+    fabric 那条带 `-alpha.x` ⇒ `infer_release_type` 自动判为 **alpha 渠道**
+    （与 26.1.2 的 `-beta.x` ⇒ beta 渠道同构）。
     """
     p = REPO_ROOT / BINDING_FILE
     if not p.is_file():

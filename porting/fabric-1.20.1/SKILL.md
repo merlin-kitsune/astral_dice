@@ -5,6 +5,13 @@ description: 《星之骰戏》(astral_dice) forge-1.20.1 → fabric-1.20.1 移�
 
 # astral_dice forge-1.20.1 → fabric-1.20.1 移植执行手册
 
+> ⚠️ **2026-10-01 状态变更（先读这条）**：本线**已并入 `multi-main`**，成为该仓的**第四条线**
+> （同树同仓；原独立 worktree `F:\MCProjectstral_dice_multiloader_fabric` 与分支 `1.20.1-fabric`
+> 均已从本地与远端删除）。⇒ 本文所有 `astral_dice_multiloader_fabric` 路径**一律改指**
+> `F:\MCProjectstral_dice_multiloader`；`ref/`（参考源克隆件）在**合并后的树里已不存在**
+> （`.gitignore` 仍排除 `ref/`，需要时在新树内按 `VERSION_PINS.md` 重新克隆）。
+> 其余口径（版本钉值、API 对照、平台差异）**不变**；本线仍是**移植线**、版本号仍带 `-alpha.x`。
+
 > 执行前必读：本文是唯一执行入口。配套件（同目录）：`VERSION_PINS.md`（版本钉值，**先读**）、`API_CHEATSHEET.md`（API 对照）、`PORT_ANALYSIS.md`（分析全文）。  
 > 目标仓 worktree：`F://MCProject//astral_dice_multiloader_fabric`（分支 `1.20.1-fabric`）；库仓：`F://MCProject//starengine_lib`。  
 > ⚠️ 参考源在 worktree 的 `ref/`（fabric-loader / fabric-api / trinkets / cardinal-components-api / minecraftforge / yarn / patchouli），API 取证一律对照 `ref/` 源码，禁止凭记忆写 Fabric API。

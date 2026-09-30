@@ -21,6 +21,14 @@ from collections import defaultdict
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LINES = ['neoforge-1.21.1', 'forge-1.20.1', 'neoforge-26.1.2']
+# ⚠️ **第四线 `fabric-1.20.1` 有意不纳入本闸门**(2026-10-01 实测结论,勿凭直觉加回来):
+#   ① 该线**不走本闸门所守的那条通道** —— fabric 侧 `ActionBarPayload` 引用数为 **0**
+#      (独占通道本身是 neb/forge 两条生产线的口径,fabric 走自己的动作栏实现);
+#   ② 实测把它加进 LINES 会报出**一批既存的 1.3.3 动作栏改造缺口**(大量 `msg.astral_dice.*`
+#      的中/英/日值里仍内嵌 `§` 色码 + 4 个文件用原版覆盖层通道未进白名单)。
+#      **那是 fabric 线尚未移植 1.3.3 内容所致,与本闸门无关** ⇒ 在本线完成该批移植并把
+#      白名单补齐之前,贸然纳入只会让仓库闸门**长期常态变红**,反而掩盖真正的回归。
+#    ⇒ 待该线补完 1.3.3 批次后,再把 `fabric-1.20.1` 加回本列表(并同步核对上述白名单)。
 LANGS = ['zh_cn', 'en_us', 'ja_jp']
 JR = 'src/main/java/com/merlinkitsune/astral_dice/'
 LANG_REL = 'src/main/resources/assets/astral_dice/lang/'

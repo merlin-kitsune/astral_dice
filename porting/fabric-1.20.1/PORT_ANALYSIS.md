@@ -1,5 +1,9 @@
 # 《星之骰戏》forge-1.20.1 → fabric-1.20.1 移植分析报告
 
+> ⚠️ **历史快照（2026-09-29 定稿）**：本文记录「移植开始前」的分析结论，其中的分支/工作树拓扑
+> （`1.20.1-fabric` 分支 + `astral_dice_multiloader_fabric` worktree）**已于 2026-10-01 变更** ——
+> 该线已并入 `multi-main` 成为第四条线、原 worktree 与分支均已删除。分析结论本身仍然有效。
+
 > 版本：2026-09-29（分析定稿）。目标读者 = 后续执行移植的大模型/工程师。
 > 配套件：`VERSION_PINS.md`（版本钉值）、`API_CHEATSHEET.md`（API 差异对照）、`SKILL.md`（可执行移植 SKILL）。
 > 分析基准：消费方 `forge-1.20.1`（包 `com.merlinkitsune.astral_dice`，254 个 .java，版本 `1.3.2-hotfix+forge_1.20.1`）+ 前置库 `starengine_lib`（common 44 文件 + forge 平台 9 文件）。
