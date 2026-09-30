@@ -28,10 +28,12 @@ import net.neoforged.bus.api.SubscribeEvent;
  *
  * <p>主动(忍术连击)= <b>一次性</b>:只把<b>当前出牌轮</b>的可出牌数 +1
  * ({@link EffectCardPeriod#grantBonusPlay});不累积、不跨轮保留、不产生任何常驻状态,
- * 周期结束时由 {@link EffectCardPeriod} 的出牌轮清理统一归零。释放前置(任一不满足即不释放,
+ * 周期结束时由 {@link EffectCardPeriod} 的出牌轮清理统一归零。
+ * ⚠️ 2026-09-30 用户裁决:释放前置**只看「本轮出牌数上限是否已达封顶 9 张」** —— 
+ * 原「效果牌冷却进行中则拒绝」一条**已删除**(冷却自 2026-09-30 起每次出牌都会启动,该闸门会把主动技能彻底锁死)。
+ * 释放前置(任一不满足即不释放,
  * 且<b>不消耗</b>主动技能冷却 —— performSkill 以 SUCCESS 判定是否起冷却):
  * <ol>
- *   <li>效果牌已进入冷却({@link EffectCardPeriod#isCooldownActive})→ 拒绝;</li>
  *   <li>出牌数上限已达封顶 {@link GameplayConstants#MAX_EFFECT_CARD_PLAYS} → 拒绝(+1 无意义,且不得绕过封顶);</li>
  *   <li>本轮已授予过这次 +1 → 拒绝(一次性;同一轮内不叠加)。</li>
  * </ol>
@@ -70,12 +72,7 @@ public class KomachiSignItem extends BaseSignItem {
         if (level.isClientSide) {
             return InteractionResultHolder.success(stack);
         }
-        // 主动(忍术连击):一次性 —— 仅当前出牌轮 +1 张出牌数。释放前置见类注释(三条)。
-        // 效果牌冷却中(本周期已打满并进入 30 秒冷却)时不释放:此时 +1 已无意义。
-        if (EffectCardPeriod.isCooldownActive(player)) {
-            sendSignActionBarColored(player, net.minecraft.ChatFormatting.RED, "msg.astral_dice.komachi_active_cooldown");
-            return InteractionResultHolder.fail(stack);
-        }
+        // 主动(忍术连击):一次性 —— 仅当前出牌轮 +1 张出牌数。释放前置见类注释(两条)。
         if (EffectCardPeriod.getMaxAllowed(player) >= GameplayConstants.MAX_EFFECT_CARD_PLAYS) {
             sendSignActionBarColored(player, net.minecraft.ChatFormatting.RED, "msg.astral_dice.komachi_active_capped",
                     GameplayConstants.MAX_EFFECT_CARD_PLAYS);

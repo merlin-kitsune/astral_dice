@@ -603,7 +603,6 @@
   "msg.astral_dice.komachi_active": "コマチのスタンド：効果カードのプレイ可能枚数 +1 を獲得、残り枚数：%d",
   "msg.astral_dice.komachi_active_capped": "コマチのスタンド：プレイ可能枚数が上限（%d 枚）に達したため、アクティブスキルは発動しませんでした",
   "msg.astral_dice.komachi_active_used": "コマチのスタンド：今回のプレイ可能枚数 +1 は適用済み（使い切り）のため、アクティブスキルは発動しませんでした",
-  "msg.astral_dice.komachi_active_cooldown": "コマチのスタンド：効果カードがクールダウン中のため、アクティブスキルは発動しませんでした",
   "msg.astral_dice.mimi_active": "ミミのスタンド：新しいカードを %d 枚獲得し、%d 枚のスターコインを獲得しました",
   "msg.astral_dice.nancy_lu_active": "ナンシー・ローのスタンド：完全ステルスを発動 (%d 秒)。任意のターゲットを攻撃すると攻撃力ボーナスを獲得し、完全ステルスは解除されます",
   "msg.astral_dice.parunan_active_no_starlight": "パルナンのスタンド：交換可能なスターライトがありません（キャッシュカードが提供する基本スターライトは交換不可）のため、アクティブスキルは発動しませんでした",

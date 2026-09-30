@@ -604,7 +604,6 @@
   "msg.astral_dice.komachi_active": "Ninja sign: effect card play count +1 granted. Remaining plays: %d",
   "msg.astral_dice.komachi_active_capped": "Komachi Sign: play limit reached (%d cards), active skill not used",
   "msg.astral_dice.komachi_active_used": "Komachi Sign: this round's one-shot +1 play is already granted, active skill not used",
-  "msg.astral_dice.komachi_active_cooldown": "Komachi Sign: effect cards are on cooldown, active skill not used",
   "msg.astral_dice.mimi_active": "Kanban Musume Sign: got %d new cards and %d Star Coins",
   "msg.astral_dice.nancy_lu_active": "Hacker sign: full invisibility triggered (%d s) — attack any target to gain an attack bonus and end the invisibility",
   "msg.astral_dice.parunan_active_no_starlight": "Merchant Sign: no convertible starlight (starlight from bank cards cannot be converted), active skill not used",

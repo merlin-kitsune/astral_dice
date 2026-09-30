@@ -645,7 +645,6 @@
   "msg.astral_dice.komachi_active": "忍者立牌：已获得效果牌出牌数+1，剩余出牌数：%d",
   "msg.astral_dice.komachi_active_capped": "忍者立牌：出牌数已达上限（%d 张），主动技能未释放",
   "msg.astral_dice.komachi_active_used": "忍者立牌：本轮出牌数 +1 已生效（一次性），主动技能未释放",
-  "msg.astral_dice.komachi_active_cooldown": "忍者立牌：效果牌冷却中，主动技能未释放",
   "msg.astral_dice.mimi_active": "看板娘立牌：已获得%d张新卡牌，并获得了%d枚星币",
   "msg.astral_dice.nancy_lu_active": "骇客立牌：已触发完全隐身 (%d 秒)，攻击任意一个目标获得攻击力加成并移除完全隐身",
   "msg.astral_dice.parunan_active_no_starlight": "经商立牌:没有可兑换的星光（银行卡提供的基础星光不可兑换），主动技能未释放",
