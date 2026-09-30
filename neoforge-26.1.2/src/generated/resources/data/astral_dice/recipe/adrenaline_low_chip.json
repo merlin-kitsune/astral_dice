@@ -3,9 +3,9 @@
   "category": "misc",
   "key": {
     "C": "astral_dice:blank_chip",
-    "D": "minecraft:wither_rose",
+    "D": "minecraft:soul_sand",
     "P": "astral_dice:star_plate",
-    "X": "minecraft:nether_star",
+    "X": "minecraft:ender_pearl",
     "Z": {
       "neoforge:ingredient_type": "neoforge:components",
       "components": {

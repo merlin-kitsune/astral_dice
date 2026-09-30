@@ -153,6 +153,8 @@ $V = New-PyMapFrom ([ordered]@{
     'FEATHER'                  = '羽毛'; 'STRING' = '线'; 'PORKCHOP' = '生猪排'; 'BRICK' = '红砖'; 'CLOCK' = '时钟'
     'GRINDSTONE'               = '砂轮'; 'BOWL' = '碗'; 'COOKED_BEEF' = '牛排'; 'WHITE_WOOL' = '白色羊毛'; 'IRON_BLOCK' = '铁块'
     'BAMBOO'                   = '竹子'; 'END_CRYSTAL' = '末地水晶'; 'DRAGON_HEAD' = '龙首'
+    'SOUL_CAMPFIRE'            = '灵魂营火'; 'SOUL_SAND' = '灵魂沙'; 'ENDER_EYE' = '末影之眼'
+    'ICE'                      = '冰'; 'DRAGON_BREATH' = '龙息'; 'BOOK' = '书'
 })
 $SYM = New-PyMapFrom ([ordered]@{
     'C' = '星币'; 'P' = '星盘'; 'G' = '黄金星盘'; 'B' = '空白筹码'; 'W' = '导电线材'
@@ -231,14 +233,14 @@ $GRID = New-PyMapFrom ([ordered]@{
     'WARP_ENGINE_CHIP'            = @(@('MC:ENDER_PEARL', 'MC:ENDER_PEARL', 'MC:ENDER_PEARL'), @('W', 'B', 'W'), @('C', 'C', 'C'))
     'ENERGY_RECYCLER'             = @(@('MC:FLINT', 'MC:PISTON', 'MC:FLINT'), @('W', 'B', 'W'), @('C', 'C', 'C'))
     'ELECTRIC_SWORD'              = @(@('MC:REDSTONE', 'MC:DIAMOND_SWORD', 'MC:REDSTONE'), @('W', 'B', 'W'), @('C', 'C', 'C'))
-    'ADVANCED_PERIPHERALS'        = @(@('MC:REDSTONE_TORCH', 'MC:ECHO_SHARD', 'MC:REDSTONE_TORCH'), @('W', 'B', 'W'), @('P', 'P', 'P'))
+    'ADVANCED_PERIPHERALS'        = @(@('MC:REDSTONE_TORCH', 'MC:COMPARATOR', 'MC:REDSTONE_TORCH'), @('W', 'B', 'W'), @('P', 'P', 'P'))
     'CURRENT_CORE_CHIP'           = @(@('MC:COMPARATOR', 'MC:LIGHTNING_ROD', 'MC:COMPARATOR'), @('W', 'B', 'W'), @('P', 'P', 'P'))
-    'PERPETUAL_MOTION'            = @(@('MC:GOLD_BLOCK', 'MC:NETHER_STAR', 'MC:GOLD_BLOCK'), @('W', 'B', 'W'), @('G', 'G', 'G'))
+    'PERPETUAL_MOTION'            = @(@('MC:GOLD_BLOCK', 'MC:NETHERITE_INGOT', 'MC:GOLD_BLOCK'), @('W', 'B', 'W'), @('G', 'G', 'G'))
     # 充能类 · 新补
     'ELECTRIC_GLOVE_CHIP'         = @(@('MC:REDSTONE', 'MC:LEATHER', 'MC:REDSTONE'), @('W', 'B', 'W'), @('P', 'P', 'P'))
     'AIRBAG_CHIP'                 = @(@('MC:LEATHER', 'MC:WHITE_WOOL', 'MC:LEATHER'), @('W', 'B', 'W'), @('P', 'P', 'P'))
     'RAILGUN_CHIP'                = @(@('MC:REDSTONE_BLOCK', 'MC:END_CRYSTAL', 'MC:REDSTONE_BLOCK'), @('W', 'B', 'W'), @('G', 'G', 'G'))
-    'PRIMORDIAL_CORE_CHIP'        = @(@('MC:ECHO_SHARD', 'MC:DRAGON_HEAD', 'MC:ECHO_SHARD'), @('W', 'B', 'W'), @('G', 'G', 'G'))
+    'PRIMORDIAL_CORE_CHIP'        = @(@('MC:NETHERITE_INGOT', 'MC:DRAGON_BREATH', 'MC:NETHERITE_INGOT'), @('W', 'B', 'W'), @('G', 'G', 'G'))
     # 星光类
     'FLASHLIGHT_CHIP'             = @(@('MC:REDSTONE_LAMP', 'MC:YELLOW_STAINED_GLASS', 'MC:REDSTONE_LAMP'), @('D', 'B', 'D'), @('P', 'P', 'P'))
     'PURPLE_SHOOTING_STAR_CHIP'   = @(@('MC:AMETHYST_SHARD', 'MC:AMETHYST_SHARD', 'MC:AMETHYST_SHARD'), @('D', 'B', 'D'), @('P', 'P', 'P'))
@@ -261,22 +263,22 @@ $GRID = New-PyMapFrom ([ordered]@{
     'MARKER_SPRAYER_CHIP'         = @(@('MC:NETHER_WART', 'MC:LAPIS_LAZULI', 'MC:NETHER_WART'), @('M', 'B', 'M'), @('C', 'C', 'C'))
     'NINJA_STAR_CHIP'             = @(@('MC:NETHERITE_INGOT', 'MC:REDSTONE_BLOCK', 'MC:NETHERITE_INGOT'), @('M', 'B', 'M'), @('G', 'G', 'G'))
     'HAND_FAN_SMALL_CHIP'         = @(@('MC:FEATHER', 'MC:BAMBOO', 'MC:FEATHER'), @('M', 'B', 'M'), @('C', 'C', 'C'))
-    'MAGIC_QUIVER'                = @(@('MC:SPECTRAL_ARROW', 'MC:ECHO_SHARD', 'MC:SPECTRAL_ARROW'), @('M', 'B', 'M'), @('P', 'P', 'P'))
+    'MAGIC_QUIVER'                = @(@('MC:SPECTRAL_ARROW', 'MC:SPECTRAL_ARROW', 'MC:SPECTRAL_ARROW'), @('M', 'B', 'M'), @('P', 'P', 'P'))
     # 无流派(基底)
-    'MAGIC_TOME_CHIP'             = @(@('MC:WRITABLE_BOOK', 'MC:ECHO_SHARD', 'MC:WRITABLE_BOOK'), @('MC:EXPERIENCE_BOTTLE', 'B', 'MC:EXPERIENCE_BOTTLE'), @('P', 'P', 'P'))
+    'MAGIC_TOME_CHIP'             = @(@('MC:WRITABLE_BOOK', 'MC:ENDER_EYE', 'MC:WRITABLE_BOOK'), @('MC:EXPERIENCE_BOTTLE', 'B', 'MC:EXPERIENCE_BOTTLE'), @('P', 'P', 'P'))
     'BIG_BACKPACK_CHIP'           = @(@('MC:LEATHER', 'MC:LEATHER', 'MC:LEATHER'), @('MC:IRON_INGOT', 'B', 'MC:IRON_INGOT'), @('P', 'P', 'P'))
-    'BOXING_GLOVES_LOW'           = @(@('MC:SPONGE', 'MC:SPONGE', 'MC:SPONGE'), @('MC:LEATHER', 'B', 'MC:LEATHER'), @('C', 'C', 'C'))
-    'SPEED_SKATES_LOW'            = @(@('MC:BLUE_ICE', 'MC:LEATHER_BOOTS', 'MC:BLUE_ICE'), @('MC:IRON_INGOT', 'B', 'MC:IRON_INGOT'), @('C', 'C', 'C'))
+    'BOXING_GLOVES_LOW'           = @(@('MC:WHITE_WOOL', 'MC:WHITE_WOOL', 'MC:WHITE_WOOL'), @('MC:LEATHER', 'B', 'MC:LEATHER'), @('C', 'C', 'C'))
+    'SPEED_SKATES_LOW'            = @(@('MC:ICE', 'MC:LEATHER_BOOTS', 'MC:ICE'), @('MC:IRON_INGOT', 'B', 'MC:IRON_INGOT'), @('C', 'C', 'C'))
     'MOTO_HELMET_LOW'             = @(@('MC:GLASS_PANE', 'MC:LEATHER_HELMET', 'MC:GLASS_PANE'), @('MC:IRON_INGOT', 'B', 'MC:IRON_INGOT'), @('C', 'C', 'C'))
     'SANDWICH_LOW'                = @(@('MC:COOKIE', 'MC:EGG', 'MC:COOKIE'), @('MC:MILK_BUCKET', 'B', 'MC:MILK_BUCKET'), @('C', 'C', 'C'))
-    'ADRENALINE_LOW'              = @(@('POTION_REGEN', 'MC:NETHER_STAR', 'POTION_REGEN'), @('MC:WITHER_ROSE', 'B', 'MC:WITHER_ROSE'), @('P', 'P', 'P'))
+    'ADRENALINE_LOW'              = @(@('POTION_REGEN', 'MC:ENDER_PEARL', 'POTION_REGEN'), @('MC:SOUL_SAND', 'B', 'MC:SOUL_SAND'), @('P', 'P', 'P'))
     'SATELLITE_CHIP'              = @(@('MC:REDSTONE_BLOCK', 'MOD:ORBITAL_STRIKE_CARD', 'MC:REDSTONE_BLOCK'), @('MOD:ORBITAL_STRIKE_CARD', 'B', 'MOD:ORBITAL_STRIKE_CARD'), @('G', 'G', 'G'))
-    'CURSED_SWORD'                = @(@('MC:GOLDEN_SWORD', 'MC:CRYING_OBSIDIAN', 'MC:GOLDEN_SWORD'), @('MC:POPPED_CHORUS_FRUIT', 'B', 'MC:POPPED_CHORUS_FRUIT'), @('C', 'C', 'C'))
+    'CURSED_SWORD'                = @(@('MC:GOLDEN_SWORD', 'MC:CRYING_OBSIDIAN', 'MC:GOLDEN_SWORD'), @('MC:SOUL_CAMPFIRE', 'B', 'MC:SOUL_CAMPFIRE'), @('C', 'C', 'C'))
     'REVENGE_HALBERD'             = @(@('MC:WITHER_SKELETON_SKULL', 'MC:DIAMOND_SWORD', 'MC:WITHER_SKELETON_SKULL'), @('MC:DIAMOND_SWORD', 'B', 'MC:DIAMOND_SWORD'), @('P', 'P', 'P'))
-    'PIERCING_GUN'                = @(@('MC:NETHERITE_INGOT', 'MC:CONDUIT', 'MC:NETHERITE_INGOT'), @('MC:ECHO_SHARD', 'B', 'MC:ECHO_SHARD'), @('G', 'G', 'G'))
+    'PIERCING_GUN'                = @(@('MC:NETHERITE_INGOT', 'MC:CONDUIT', 'MC:NETHERITE_INGOT'), @('MC:AMETHYST_SHARD', 'B', 'MC:AMETHYST_SHARD'), @('G', 'G', 'G'))
     # 无流派 · 新补
     'BOOKMARK_CHIP'               = @(@('MC:PAPER', 'MC:LEATHER', 'MC:PAPER'), @('MC:STRING', 'B', 'MC:STRING'), @('C', 'C', 'C'))
-    'MEMBER_RECOMMENDATION_CHIP'  = @(@('MC:PAPER', 'MC:INK_SAC', 'MC:PAPER'), @('MC:FEATHER', 'B', 'MC:FEATHER'), @('C', 'C', 'C'))
+    'MEMBER_RECOMMENDATION_CHIP'  = @(@('MC:PAPER', 'MC:BOOK', 'MC:PAPER'), @('MC:FEATHER', 'B', 'MC:FEATHER'), @('C', 'C', 'C'))
     'PIGGY_BANK_CHIP'             = @(@('MC:GOLD_INGOT', 'MC:PORKCHOP', 'MC:GOLD_INGOT'), @('MC:BRICK', 'B', 'MC:BRICK'), @('C', 'C', 'C'))
     'SMART_WATCH_CHIP'            = @(@('MC:GOLD_INGOT', 'MC:CLOCK', 'MC:GOLD_INGOT'), @('MC:REDSTONE', 'B', 'MC:REDSTONE'), @('P', 'P', 'P'))
     'WHETSTONE_CHIP'              = @(@('MC:NETHERITE_INGOT', 'MC:GRINDSTONE', 'MC:NETHERITE_INGOT'), @('MC:FLINT', 'B', 'MC:FLINT'), @('P', 'P', 'P'))
