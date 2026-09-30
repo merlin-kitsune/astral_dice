@@ -437,6 +437,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
                 .save(output);
 
+        // 黄金星盘:唯一配方 = 星盘×3 + 星币×6。(2026-09-30 用户裁决:删除原先并存的「星盘 + 下界之星×2」无序配方,只保留本配方)
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.GOLDEN_STAR_PLATE.get())
                 .pattern("PPP")
                 .pattern("CCC")
@@ -445,12 +446,6 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('C', ModItems.STAR_COIN.get())
                 .unlockedBy("has_star_plate", has(ModItems.STAR_PLATE.get()))
                 .save(output, ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID, "golden_star_plate_from_plates"));
-
-        ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ModItems.GOLDEN_STAR_PLATE.get())
-                .requires(ModItems.STAR_PLATE.get())
-                .requires(Items.NETHER_STAR, 2)
-                .unlockedBy("has_star_plate", has(ModItems.STAR_PLATE.get()))
-                .save(output, ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID, "golden_star_plate_from_nether_star"));
 
         // 八面骰:上排 金锭·骰子·金锭｜中排 星币尘·空白筹码·星币尘｜下排 星币·星币·星币 [稀有·星光]
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.EIGHT_SIDED_DICE.get())

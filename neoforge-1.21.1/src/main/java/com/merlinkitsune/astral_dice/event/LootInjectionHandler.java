@@ -2,8 +2,13 @@ package com.merlinkitsune.astral_dice.event;
 
 import com.merlinkitsune.astral_dice.item.ModItems;
 import net.minecraft.world.entity.boss.wither.WitherBoss;
+import net.minecraft.world.entity.monster.EnderMan;
 import net.minecraft.world.entity.monster.Monster;
+import net.minecraft.world.entity.monster.Zombie;
+import net.minecraft.world.entity.monster.piglin.Piglin;
+import net.minecraft.world.entity.monster.piglin.PiglinBrute;
 import net.minecraft.world.entity.monster.warden.Warden;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 
 import net.neoforged.bus.api.SubscribeEvent;
@@ -39,6 +44,8 @@ public class LootInjectionHandler {
                         new ItemStack(ModItems.STAR_PLATE.get(), 1)));
             }
         }
+
+        rollKillStarCoin(event);
     }
 
     @SubscribeEvent
@@ -104,6 +111,41 @@ public class LootInjectionHandler {
                 .add(LootItem.lootTableItem(ModItems.GLASS_DICE.get()))
                 .name("astral_dice:glass_dice")
                 .build());
+    }
+
+
+    /**
+     * 击杀者专属的星币掉落(2026-09-30 用户指定)。
+     *
+     * <p>仅当**击杀者是玩家**时判定(间接击杀如箭矢/投掷物同样算,{@code DamageSource#getEntity}
+     * 返回的是施加者);被击杀生物按类别取概率:僵尸 / 僵尸猪灵 1%、末影人 / 猪灵 3%、猪灵蛮兵 20%,
+     * 每次死亡独立判定一次,掉落 1 枚星币。
+     *
+     * <p>⚠️ 与上面的星盘掉落**互不影响** —— 星盘仍按原规则(凋灵/监守者必掉、其它 Monster 0.3%)
+     * 独立判定,本方法只做叠加。
+     *
+     * <p>⚠️ 类别判定顺序有讲究:{@code PiglinBrute} **不是** {@code Piglin} 的子类(两者都直接继承
+     * {@code AbstractPiglin}),所以必须先判蛮兵,否则会被 3% 档吞掉;
+     * 「僵尸」按 {@link Zombie} 类族判定(含尸壳 / 溺尸 / 僵尸村民,僵尸猪灵也继承自 Zombie,
+     * 三者的用户口径概率一致故可归并)。
+     */
+    private static void rollKillStarCoin(LivingDropsEvent event) {
+        var entity = event.getEntity();
+        if (!(event.getSource().getEntity() instanceof Player)) return;
+        double chance;
+        if (entity instanceof PiglinBrute) {
+            chance = 0.20;
+        } else if (entity instanceof Piglin || entity instanceof EnderMan) {
+            chance = 0.03;
+        } else if (entity instanceof Zombie) {
+            chance = 0.01;
+        } else {
+            return;
+        }
+        if (ThreadLocalRandom.current().nextDouble() >= chance) return;
+        event.getDrops().add(new net.minecraft.world.entity.item.ItemEntity(
+                entity.level(), entity.getX(), entity.getY(), entity.getZ(),
+                new ItemStack(ModItems.STAR_COIN.get(), 1)));
     }
 
 }
