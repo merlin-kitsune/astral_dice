@@ -1073,6 +1073,54 @@ fabric.mod.json: version=1.3.2-alpha.1+fabric_1.20.1 / depends.starengine_lib=">
   事件实现（1.21.1/26.1.2 走 `GatherEffectScreenTooltipsEvent`，**不受影响**）需要同样核对 ——
   **本线按「只改 fabric 端」的既有裁决未动那三线**，请在主仓工作树内单独裁决。
 
+### KI-F21 ＝ 1.3.5（`1.3.4..multi-main`）同步落地到本线（**已完成，2026-10-01**）—— 含两处**平台机制**适配与一处上游缺陷
+
+- **范围界定**：`multi-main` 上 `1.3.4..HEAD` 共 **20+ 提交**（1.3.5 开发周期），`git diff --name-only 1.3.4..multi-main | grep '^fabric'` = **0**
+  ⇒ 与 KI-F19 同类：**改动只落在三线 + tools/release，不含 `fabric-1.20.1`**，故继续按文件移植（`forge-1.20.1` 为蓝本 + 路径改写 + `git apply --3way`）。
+- **移植规模**：`git diff 1.3.4..multi-main -- forge-1.20.1/`（排除 `gradle.properties`）= **65 个文件 / 3452 行**；
+  其中 62 个（非语言文件）一次性 `--3way` 应用，**11 个文件 15 处冲突**逐处手工解决；lang 三语**不**走 patch，
+  改用 **JSON 键级合并**（基线 `1.3.4` ↔ 目标 `multi-main`，只把「新增 / 值变更」写进本线，保留本线独有的键）。
+- **11 处冲突的解决口径**：
+  | 文件 | 冲突性质 | 解法 |
+  |---|---|---|
+  | `DiceCombatEvents`（2 块） | ours 为空、theirs 新增 `isHostileAttack` + 敌对判定 | 取 theirs |
+  | `ModTooltipHandler`（3 块） | modId `enigmaticlegacyplus` ↔ `enigmaticlegacy` | 取 theirs 的 modId，**保留本线 `ModList` 入口** |
+  | 4 个 chip + `NancyLuSignItem`（各 1 块） | import：Forge 事件 ↔ 本线 `platform.event.*` | **保留本线 import**，只追加 `<br>` 新增的 `PartyRelations` |
+  | `KomachiSignItem`（1 块） | theirs 删除了「冷却中拒绝」闸门 | 取 theirs（连带下线 `msg.*_cooldown` 键） |
+  | `EffectRenderingInventoryScreenMixin`（1 块） | 注释：两线**都**已把 `require` 修成 1 | 取 theirs（注释更完整） |
+  | `ModRecipeProvider`（1 块） | theirs 用 `PartialNBTIngredient`（**Forge 专有类**） | ⚠️ **手工**：Z 保留本线写法（`Items.POTION` + 下方 `NbtAugmentedRecipe` 的 `regenerationPotion()` 约束），**只采纳 X / D 换料**（末影珍珠 / 灵魂沙） |
+  | `LootInjectionHandler`（2 块） | theirs 含 `onLootTableLoad(LootTableLoadEvent)` —— **Forge 事件** | ⚠️ **手工**：只保留 `starPlateDropCount` / `rollKillStarCoin`，**舍去整个箱子注入方法**（本线由 `loot/FabricLootInjector` 用 Fabric API 的 `LootTableEvents.MODIFY` 承担） |
+- **编译暴露的平台差异（cleanly 应用的补丁也带 Forge API）**：`grep -rn "net.minecraftforge" src/main/java/` 命中 2 处需改 ——
+  - **`item/sign/MosesEnigmaticLink.java`（新移植文件）**：4 行 `net.minecraftforge.*` import + `@Mod.EventBusSubscriber`。
+    本线的 `platform/event/TickEvent.ServerTickEvent` **已有** `phase` / `getServer()`（与 Forge 同形）⇒ 只换 import；
+    ⚠️ `@Mod.EventBusSubscriber` 在本线**无对应机制**（Fabric 注解不参与事件注册）⇒ 删除注解，改为在
+    `AstralDiceMod#onInitialize` 里 `LoaderBus.INSTANCE.register(MosesEnigmaticLink.class)`（按字母序插在 `MimiSignItem` 之后）。
+  - **`ModTooltipHandler:1299`**：脚本的 `modid` 规则只覆盖了 3 个块，第 4 处（非冲突区、由补丁 cleanly 带入）残留
+    `net.minecraftforge.fml.ModList` ⇒ 一并改为本线 `ModList`。
+- **datagen 必须重跑（本仓硬要求）**：`ModRecipeProvider` 改了 16 件配方 ⇒ `:fabric-1.20.1:runDatagen` **重新生成 17 个文件**
+  （`written: 17`），实测产物取证：`komachi_sign.json` 用 `minecraft:amethyst_shard`、`adrenaline_low_chip.json` 用
+  `minecraft:ender_pearl` + `minecraft:soul_sand` 且 `astral_nbt` 的再生药水约束保留 ✅。⚠️ datagen **正常退出**（11s），
+  未出现 1.3.5 文档提到的「datagen JVM 不退出」（本线 `require` 已修，见 KI-F20）。
+- **lang 合并结果**：三语各 **832 键**（合并前 832；`+1` 新增 `tooltip.astral_dice.sign.moses_enigmatic`、`-1` 移除
+  `msg.astral_dice.komachi_active_cooldown`、21 个键值更新）。⚠️ `main` 侧另删了 `astral_dice.guide.entry.special_effects.6`，
+  **但本线手册 `patchouli_books/.../en_us/entries/getting_started/special_effects.json:28` 仍引用该键** ⇒
+  **本线刻意保留该键**（删掉会让手册显示原始键名）。⚠️ 同一问题在 `main` 侧同样存在（其手册未改、键被删）⇒ 属**上游缺陷**，见下。
+- **版本号**：本线 `1.3.5-alpha.1+fabric_1.20.1`（与主线 `1.3.5` 对齐、保留本线 `-alpha.x` 口径）；库不动（仍 `1.0.5-alpha.1`）。
+- **验证读数（全部实测）**：
+  | 批 | 内容 | 结果 |
+  |---|---|---|
+  | A | 构建 + 开包核对 / env（both + rcon）/ 服务端启动 13.4s / 4 条用例 / 在线派发 / 收停 | rc 全 0；`FAB-JAR-ASSETS` 1、`FAB-BOOT-EMBED` 9、`FAB-DISPATCH-BASIC` 8、`FAB-INJECT-ROUNDTRIP` 3 —— **全 PASS**；无残留进程 |
+  | B | 客户端启动 19.5s + `FAB-CLIENT-BOOT` | rc 0；**8/8 PASS**；无残留 |
+  | C | lang 三语一致 / 工具链语法门 54 文件 / 模组来源口径 / 资源闭环 | 三语 **832/832/832** 一致；语法失败 **0**；`violations=0`；**8 项闭环全 PASS** |
+  | **生产** | `ft_prod.ps1` 在**真实整合包**启动 36s + `-PreloadClasses 'class_485,class_329,class_310,class_746,class_8002'` | **PASS**（`Sound engine started`；加载清单 `astral_dice 1.3.5-alpha.1+fabric_1.20.1` + `starengine_lib 1.0.5-alpha.1`）⇒ **生产映射下 mixin 注入成功** |
+- **⚠️ 未做（如实说明）**：**进世界**的验证未跑 —— `ft_prod.ps1` 的 quickplay 通道曾于 2026-09-29 误删玩家存档
+  （`Deleting level 新的世界`），故本轮**刻意不使用** `--quickPlay*`（该参数已加安全护栏，须显式
+  `-AcknowledgeQuickPlayDestructive` 才放行）。⇒ 世界内的行为（附件注册、效果面板悬停注释、∞ 显示、配方实际可合成）
+  **尚未在实机确认**，需要时请明确授权并接受存档风险（或先备份存档）。
+- **⚠️ 顺带发现的上游缺陷（登记，未改主仓）**：`multi-main` 删除了 lang 键 `astral_dice.guide.entry.special_effects.6`，
+  但 `forge-1.20.1` 的手册条目 `getting_started/special_effects.json` **仍引用它** ⇒ 手册该行会显示原始键名。
+  本线以「保留键」规避；主仓需在其工作树内单独裁决（改手册 or 恢复键）。
+
 ## 10. 变更记录
 
 | 日期 | 变更 |
@@ -1104,3 +1152,4 @@ fabric.mod.json: version=1.3.2-alpha.1+fabric_1.20.1 / depends.starengine_lib=">
 | 2026-09-29 | **饰品栏前置改为「二选一」+ 修 dev 开关（新增 KI-F15 / KI-F16）** —— 用户报「调整前置要求：装了 accessories 就不再强制 Trinkets，反之亦然，只有两个都不存在才报错」。**KI-F15**：`fabric.mod.json` 原把 `trinkets` 写在 `depends` ⇒ 只装 Accessories 的整合包被加载器直接拒绝（`HARD_DEP_NO_CANDIDATE … {depends trinkets @ [>=3.7.2]}`），与本线把 Accessories 定为「主通道」的既有设计**自相矛盾**。Fabric 的 `depends` 是 **AND 语义、表达不了 OR** ⇒ `trinkets` / `accessories` 双双移入 `recommends`，权威判定改为运行时 `ModCompatibilityCheck#verifyAccessoryProviderOrThrow()`（在 `onInitialize()` 的**第一条**语句执行，两个都不在才抛 `ModLoadingException` 并给出完整中文说明；每次启动打 `AP_FAB_ACCESSORY_PROVIDER: OK|FAIL (trinkets=… accessories=…)` 供冒烟断言）。同时补齐三处硬引用守卫（`CuriosApi` 的 Trinkets 源 + `TrinketBridge.registerAll()` 的**调用点** + 方法体内第二道防线）—— ⚠️ `TrinketBridge` 硬引用 `dev.emi.trinkets.api.*`，缺席时**整个类都加载不了**，守卫必须放在**调用点**。**KI-F16**：dev 开关 `-PtestAccessories=false` **从来不能通过编译**（`StarCoinWalletButtons:311 错误: 方法不会覆盖或实现超类型的方法`）—— 根因是 Loom 的**依赖方接口注入**随「依赖是否进入**运行期**」而开关（Accessories 的 `custom.loom:injected_interfaces` 把 `AbstractButtonExtension` 注入 `AbstractButton`；移出运行期后注入消失 ⇒ 那个为「必须补上注入来的抽象方法」而写的 `@Override` 失效），而 `compileClasspath` 里 accessories **仍在** ⇒ 失效的是**注入**而不是类路径；修法 = 去掉该 `@Override`（保留方法体与 javadoc）⇒ **两种注入态都成立**。⚠️ 该开关的注释一直声称可用 ⇒ **「给了开关」≠「开关可用」**（凡承诺「用某参数可跑某态」就必须实跑一次）。实测：dev 四态（仅 Accessories / 仅 Trinkets / 两者同装 / 两者皆无）各起一次客户端 —— 前三种均 `Sound engine started` 且 `AP_FAB_ACCESSORY_PROVIDER` 读数与预期逐条一致（仅 Accessories 时**无** `NoClassDefFoundError`、Accessories 适配器注册而 Trinkets 适配器不注册；两者同装时两个适配器都注册），第四种按设计**拒绝启动**并给出中文说明。 |
 | 2026-09-29 | **修「饰品栏贴图错误」+「手册重复发放」（新增 KI-F17 / KI-F18，两条都是**玩家可见**缺陷）** —— 用户报「饰品栏贴图错误（附截图）+ 重复发放帕秋莉手册再次出现」，并在上一轮修复后回复「问题依旧」⇒ 两条都**重新定位根因**（不是上次没修干净）。**KI-F17**＝**Fabric 附件键注册晚于玩家数据反序列化** ⇒ 一次登录**静默丢弃 33 个键**（含 `guide_book_given` ⇒ 守卫永远读 `false` ⇒ 每次登录补发一本；其余为治疗点数 / 立牌锁定冷却 / 白泽赐福 / 教主降神 / 怪力侦探层数等可感知战斗状态）。根因是 `ModAttachments` 的**静态初始化惰性**：mod 初始化路径上没代码触碰它，`<clinit>` 被推迟到玩家登录处理器 ⇒ 那时 NBT 已反序列化完 ⇒ Fabric 打 `Unknown attachment type … skipping` **静默丢键**（⚠️ 缺陷静默、测试世界数据少、NBT 里标记一直是 1 只是**读不出** ⇒ 三种取证方式都会漏掉）。修法 = `ModAttachments#ensureRegistered()`（空实现，只为触发 `<clinit>`，打 `AP_FAB_ATTACHMENTS: 附件键已注册 109 个`）+ 在 `onInitialize()` 紧随前置守卫后调用；另加常驻诊断 `AP_FAB_GUIDEBOOK`（含**写后立刻回读** `reread=`，正是靠它把方向从「发放时机」扭到「存取通路」）。**A/B 跨会话实测**（`-PdevUsername=AstralDev` 固定玩家名、两轮同一玩家）：session1 `given=false books=0`→`GIVEN reread=true books=1`；session2（21:01:37 注册 → 21:01:41 登录）`given=true books=1` ⇒ **不补发**；`latest.log`/`debug.log` 中 `Unknown attachment type` 命中 **0**。**KI-F18**＝**Accessories 槽位图标走原版 `minecraft:blocks` 图集**（`assets/minecraft/atlases/blocks.json` 声明 `{type:directory, source:gui/slot}`），而 Trinkets 是 `icon` 路径直连 ⇒ 图标必须在 `assets/<ns>/textures/gui/slot/`、`icon` 写**图集 sprite 名** `astral_dice:gui/slot/…`（同时满足两条通道）；原先放 `textures/slot/` ⇒ **文件在、图集里没有** ⇒ 紫黑格（这就是「改一轮还没好」的原因：不是文件缺失而是路径不在图集目录）。改 3 个文件移动 + 7 处 `icon` 改写；新增守门 `tools/verify_fabric_assets.py` 第 8 项（已做正/反向验证）+ 客户端自检 `AccessoriesClientIconCheck`（**同时查文件存在与图集成员资格**，⚠️ 只查文件存在不够）⇒ 实测 `AP_FAB_SLOT_ICON: 槽位=15 文件缺失=0 图集未收录=0`，本模组 3 槽位逐条 `file=yes inBlocksAtlas=yes`。同轮新增测试能力 **`-PdevUsername` 固定玩家名**（Loom 默认给**随机**用户名 ⇒ 离线 UUID 每次都变 ⇒ **跨会话缺陷在 dev 里根本不可能复现**，这才是「重复发放」这类缺陷长期隐藏的结构性原因）。详见 `scripts/test/fabric/README.md` §7.2.4。 |
 | 2026-09-30 | **五项玩家可见缺陷按 dev-next 已修方案同步落地（新增 KI-F19）+ 发现并修正一处三线共有的 mixin 误写（新增 KI-F20）** —— 用户报「在主线版本中发现的 bug，在该分支中也应该存在」并要求「**直接同步 `multi-dev-next` 的改动，避免重复造轮**」。核实 dev-next HEAD = **`731e3855`**，与用户报的 5 条**逐条对应**。⚠️ **未做整分支 merge**：该提交只改三线（neoforge-1.21.1 / forge-1.20.1 / neoforge-26.1.2）、**不含 fabric**，而 dev-next 领先本分支 **30 个提交**（2.0.0-SNAPSHOT.14 版本号 / 目标选择器 / 工具链）⇒ 合并只会污染移植线、带不来任何 fabric 代码改动；故改为**以 forge-1.20.1 为蓝本按文件移植**（路径改写 + `git apply --3way`，冲突逐处手工合并）。落地五项：① 王之力自伤改用新类型 `astral_dice:card_cost`（登记 `bypasses_cooldown`、**刻意不登记 `bypasses_armor`**）⇒ 不再被受击无敌帧整段吞掉（旧口径走 `dice_damage`，不在 `bypasses_cooldown` 内 ⇒ `invulnerableTime > 10 && amount <= lastHurt` 时 `hurt` 直接 false）；② 删除 `PlayerLifecycleHandler` 里**主动清零** jasmine 攻/防计数的那段（padman 保留），清零唯一路径回归 `clearSignData` ⇒ 扫地机加成死亡保留；③ `magic_tome_count`（原 10000 tick）与 8 个效果类的 `DURATION_TICKS` + 2 处施加点统一为 `MobEffectInstance.INFINITE_DURATION`（唯一渲染 ∞ 的值）；④ 连带修 `EffectTimerGuard` 永续判据（`-1` **不满足** `>= INFINITE_THRESHOLD` ⇒ 会被当成有限时长 forceRemove + 重加，常驻效果一施加就没）与 `MamushiDragonEffect.refresh` 判据；⑤ 1.20.1 无 NeoForge 的 `GatherEffectScreenTooltipsEvent` ⇒ 扩展 `EffectRenderingInventoryScreenMixin`（双 `@Redirect` + `ThreadLocal`，`formatDuration` 捕获实例 → `List.of` 改写列表）把 `effect.<id>.description` 追加进悬停 tooltip，且**与本线原有的等级角标 `@Inject` 并存**。**KI-F20**＝该 patch 的两处 `@Redirect` 写了 `require = 2` 并注释为「至少命中 1 次」——⚠️ `require` 语义是**最少**命中次数，而 `javap -c` 实证 `renderEffects`（50–273 行）内 `formatDuration` 与 `List.of` **各只 1 次**（另一次 `formatDuration` 在 `renderLabels`，已被 method 限定排除）⇒ 必然 `InjectionError`、**触发时机是打开物品栏**；之所以没炸是因为该提交自述「实机验证未做」（mt_launch 防撞预检拦下）。本线改为 `require = 1` 并留证；**三线待回补**（按「只改 fabric 端」裁决未动）。**验证**：compileJava / build SUCCESSFUL、产物已推整合包、静态守门 8/8 PASS（语言三语 **832/832/832** = 新增 3 个 `death.attack.card_cost*` 键）、**客户端预加载** `[preload] OK …EffectRenderingInventoryScreen` 且 `InjectionError` 命中 **0**。⚠️ 未做：进世界的**视觉确认**（注释行 / ∞ 符）与**生产映射冒烟**。 |
+| 2026-10-01 | **1.3.5（`1.3.4..multi-main`）同步落地本线（新增 KI-F21）+ 三批冒烟与生产映射冒烟全绿** —— 用户要求「合并 1.3.5 更新内容，并执行行为测试和游戏内测试（冒烟）」。范围实测：`1.3.4..multi-main` 20+ 提交、**`grep '^fabric'` = 0** ⇒ 依旧只改三线，按文件移植（`forge-1.20.1` 为蓝本，65 文件 / 3452 行，`--3way` 后 11 文件 15 处冲突逐处手工解决）。**三处需要平台判断的地方**（本任务的技术核心）：① `ModRecipeProvider` 的肾上腺素配方 —— 上游用 `PartialNBTIngredient`（Forge 专有）⇒ 本线保留 `Items.POTION` + `NbtAugmentedRecipe` 约束、只采纳 X/D 换料；② `LootInjectionHandler` 上游新增的 `onLootTableLoad(LootTableLoadEvent)`（**Forge 事件**）⇒ **整方法舍去**（本线箱子注入由 `loot/FabricLootInjector` 的 `LootTableEvents.MODIFY` 承担），只保留 `starPlateDropCount` / `rollKillStarCoin`；③ 新移植的 `MosesEnigmaticLink` 带 4 行 `net.minecraftforge.*` import + `@Mod.EventBusSubscriber` ⇒ 换本线 `platform.event.*`（`TickEvent.ServerTickEvent` 的 `phase`/`getServer()` 与 Forge 同形）并删除注解、改 `LoaderBus.INSTANCE.register(...)`（Fabric 无注解自动注册）。lang 三语**不走 patch** 改用 **JSON 键级合并**（基线 `1.3.4` ↔ `multi-main`）⇒ 832/832/832 一致。**datagen 必跑并已跑**（`written: 17`，实测 `komachi_sign` 用紫水晶碎片、`adrenaline_low_chip` 用末影珍珠+灵魂沙且 `astral_nbt` 约束保留）。**验证**：批 A（服务端 13.4s + 4 用例 1/9/8/3 全 PASS + 收停无残留）、批 B（客户端 19.5s + `FAB-CLIENT-BOOT` 8/8）、批 C（三语一致 / 语法门 54 文件 0 失败 / 模组来源 `violations=0` / 资源闭环 **8/8**）、**生产映射冒烟 `ft_prod.ps1` PASS（36s 到主菜单，带 `-PreloadClasses class_485,class_329,class_310,class_746,class_8002`）**。⚠️ **未做**：进世界验证（quickplay 曾误删存档，本轮刻意不用；该参数已有护栏需显式 `-AcknowledgeQuickPlayDestructive`）⇒ 世界内行为待用户授权。⚠️ **上游缺陷登记**：`multi-main` 删了 lang 键 `guide.entry.special_effects.6` 但其手册仍引用 ⇒ 本线保留该键规避，主仓需单独裁决。 |

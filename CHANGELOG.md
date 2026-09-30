@@ -4,11 +4,94 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
-## Unreleased (1.3.4-alpha.1)
+## Unreleased (1.3.5-alpha.1)
 
 > Decided by the user on 2026-09-29: this line is a **development line**, so version numbers now carry
-> an **`-alpha.x` pre-release suffix** (1.3.4-alpha.1 at present), and the prerequisite library moves to
+> an **`-alpha.x` pre-release suffix** (1.3.5-alpha.1 at present), and the prerequisite library moves to
 > `1.0.5-alpha.1` (its baseline rolled back to 1.0.5).
+
+### Content & balance changes
+
+- **Effect-card cooldown reworked: fully decoupled from the effect's own duration — the cooldown now starts the moment you play a card**:
+  previously a round only entered cooldown once you had **used up the play limit**; a round that was not maxed out had to wait for
+  **every effect played in that round to expire** before its cooldown was applied, so the cooldown was dragged along by effect durations and
+  the pacing was unpredictable. Now **playing any card starts the cooldown, and every card played in the same round resets it to 45 seconds**
+  (was 30 seconds) — i.e. the round ends 45 seconds after your last card and the play count resets. **Effect duration no longer locks further plays**:
+  once the cooldown reaches zero you can start a new round even if effects are still active (the old "effect pending" rule is gone).
+  Related: with Charge, the effect-card cooldown cap changes from **20 to 30 seconds**.
+
+- **Healing timer decoupled from Dice Blessing — it now settles automatically every 1:00**: previously healing layers only settled while Dice Blessing was active
+  — once it ended they neither decayed nor healed. It is now a **fully independent 1:00 timer**: a Blessing still settles it once, and afterwards it settles
+  automatically every 1:00 regardless of Blessing — **halve the healing layers (rounded down) → the medkit chip tops up its fixed amount →
+  if layers remain, heal for "layers × 2" and start the next 1:00 timer; at zero the "Healing" effect is removed**.
+  The "Healing" icon is decoupled from Blessing too: **it shows whenever layers > 0**, and its indicator always shows the **remaining 1:00 countdown**.
+  The medkit chip's description is now simply "**healing layers +1 / +3**".
+
+- **Gunsmith "Weakness Reveal" and Great Detective "Reasoning Time" now decay on their own 1-minute timers**: previously both passives were tied to
+  "when Dice Blessing ends" — each Blessing end removed 1 layer, so their decay was bound to the Blessing cycle. They now each run an
+  **independent 1-minute timer**: the effect duration changes from "infinite" to **1 minute**, and on natural expiry it **removes 1 layer and restarts the timer**.
+  ⚠️ Visible change: these two effects are **no longer "no-countdown" permanent icons — they now show a remaining time**.
+
+- **Gunsmith sign active/passive rewritten + two Enigmatic Legacy "curse corrections"**: the active "Weakness Counter" becomes "mark one target with
+  'Opening (2:00)': the target's combat dice are locked to 0, and it can **only be applied to targets that do not already have 'Opening'**";
+  the passive becomes "when a target bearing 'Opening' attacks you, **dodge the attack and counter**", and each dodge / counter / attacking an 'Opening'
+  target grants 1 layer of "Weakness Reveal" (max 4; each layer gives +1 attack/defence and +1 minimum dice value).
+  **New link**: while wearing the Cursed Ring and holding "Weakness Reveal" — corrects the third curse: **removes the armour reduction**;
+  corrects the sixth curse: **no soul crystal is dropped on death**. ⚠️ This line links **Enigmatic Legacy 1.20.1** (`enigmaticlegacy`), whose armour-curse
+  modifier uses a **fixed UUID** (unlike the other three lines); it **never references third-party internal classes** (soul-crystal counting goes through reflection)
+  and stays silent when that mod is absent.
+
+- **Crafting changes + new kill drops for Star Coin / Star Plate**: ① **Golden Star Plate now has two coexisting recipes** — "Star Plate ×1 + Nether Star ×1"
+  (shapeless) and "Star Plate ×3 + Star Coin ×6" (shaped); ② **Star Coin now drops from player kills** (1 each): Zombie / Zombified Piglin **1%**,
+  Enderman / Piglin **3%**, Piglin Brute **20%** (indirect kills such as arrows count too); ③ **Star Plate expands to tiered kill drops**:
+  Wither **5**, Warden **3-5**, Elder Guardian **1-3**, Ghast **1**, Wither Skeleton / Guardian **5%**, other monsters still **0.3%**
+  (previously the Wither / Warden dropped exactly 1; quantities now follow this table).
+
+- **16 sign / chip recipes re-ingredientised**: signs (5) — Salaryman sign Wither Skeleton Skull ×2 → **Black Stained Glass ×2**,
+  Ninja sign Echo Shard → **Amethyst Shard**, Hacker sign Sculk Block ×2 → **Cyan Concrete ×2**, Secret Detective sign Beacon → **End Crystal**,
+  Mechanic sign Beacon ×2 → **Gold Ingot ×2**; chips (11) — Magic Quiver Echo Shard → **Spectral Arrow**, Advanced Peripherals Echo Shard → **Redstone Comparator**,
+  Perpetual Motion Nether Star → **Netherite Ingot**, Primordial Core Echo Shard ×2 → **Netherite Ingot ×2** and Dragon Head → **Dragon's Breath**,
+  Magic Tome Echo Shard → **Eye of Ender**, Boxing Gloves (low) Sponge ×3 → **White Wool ×3**, Speed Skates (low) Blue Ice ×2 → **Ice ×2**,
+  Adrenaline (normal) Nether Star → **Ender Pearl** and Wither Rose ×2 → **Soul Sand ×2**, Member Recommendation Ink Sac → **Book**,
+  Cursed Sword Chorus Fruit ×2 → **Soul Campfire ×2**, Piercing Gun Echo Shard ×2 → **Amethyst Shard ×2**.
+
+- **High Priest sign tooltip trimmed**: two redundant notes — "(not counted toward attack power)" and "(melee or ranged, must hit)" — were removed
+  from the "Descent" tooltip and the matching handbook entry, leaving only the mechanics themselves.
+
+### Bug fixes (1.3.5)
+
+- **Party detection was entirely broken: same-team players could still damage each other and the railgun still hit allies**: this mod previously used
+  **vanilla scoreboard teams** for every ally check, but modpacks do not necessarily use them (FTB Teams and Open Parties and Claims keep their own data),
+  so for such players the scoreboard team is always `null` ⇒ ally detection **failed completely**. A single entry point `combat/PartyRelations`
+  (vanilla scoreboard ∪ FTB Teams ∪ OPAC, including OPAC **ally parties**) was added, and roughly 30 hostility checks and 5 ally checks across the mod
+  now route through it.
+  ⚠️ **What actually applies on this line (1.20.1 Fabric)**: 1.20.1 modpacks ship **no FTB Teams / Library**, and OPAC is not installed here either
+  ⇒ both backends are pure **reflection behind a mod-presence guard** (`Class.forName`, lazily resolved); if resolution or a call fails it
+  **permanently falls back to the vanilla scoreboard rule** and never crashes when a third-party mod updates. On this line the effective rule remains
+  **vanilla scoreboard** (same as before the fix), minus the old "no team ⇒ everyone is an ally" fallback.
+
+- **Third-party melee weapons could not trigger Dice Blessing — weapon recognition switched from whitelist to blacklist**: the old rule was a **whitelist**
+  (only vanilla `SwordItem` / `AxeItem` / `MaceItem` / `TridentItem` counted), and most modded melee weapons **do not extend** those vanilla classes
+  ⇒ attacking with them never triggered Dice Blessing at all. It is now a **blacklist**: only "empty hand / shield / tools (pickaxe / shovel / hoe —
+  **axes stay**, they are melee weapons) / ranged weapons (bow / crossbow) / blocks" are excluded, and everything else counts as a triggering melee weapon.
+  The rule now uses only vanilla **item tags** (`pickaxes` / `shovels` / `hoes`) and interfaces (`ProjectileWeaponItem` / `BlockItem`),
+  never `SwordItem` / `DiggerItem` class names.
+
+- **Mobs repeatedly drinking milk to clear effects caused server lag — mobs may now clear their own effects**: this mod guards its effect namespace
+  against all external removal (milk, `/effect clear`). Mobs whose AI relies on "drinking milk to cleanse" (e.g. Goety casters, vanilla witches)
+  had that removal blocked ⇒ the effect never went away ⇒ the AI **kept retrying**, lagging the server. An exception was added:
+  **when the target is not a player, removal is always allowed**; the player-side rule is unchanged.
+
+- **"Marked" no longer resists cleansing — players can clear it with milk**: the strength of Marked lives in its **layers**, and it is a debuff
+  applied to a **target**, so players have good reason to clear it ⇒ external removal of "Marked" is now allowed (milk or `/effect clear`).
+  ⚠️ One known cosmetic residue: the glow that accompanies Marked still shares its lifetime, so if a bulk cleanse removes the glow first it lingers
+  until natural expiry (≤60 s).
+
+- **The Ninja sign's active skill was nearly unusable — it now requires only "this round's play cap has not reached 9"**: the cooldown rework above made
+  **every card play start a cooldown**, while the Ninja active's first precondition ("effect-card cooldown running → refuse") became **almost always true**
+  under the new rule ⇒ the active was effectively locked out. That gate is removed: **as long as this round's play cap has not reached the cap of 9,
+  the skill can be used and grants +1 play**; the other two preconditions are unchanged. The message `msg.astral_dice.komachi_active_cooldown`
+  is retired (removed from all three languages).
 
 ### Critical fixes
 
