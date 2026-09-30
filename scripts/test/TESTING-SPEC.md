@@ -15,7 +15,10 @@
 
 **保留（供用户核验）**：测试流程实现 `scripts/test/mt*.ps1` + `lib/` + `scripts/devtools/`；规则文本 `scripts/test/TESTING-SPEC.md` 与本节。用户核验通过并**重新授权**后，才可按新口径重建用例与探针。
 
-**当前可运行性**：用例目录为空 ⇒ `--phase cases` 无可执行条目，**任何「全绿」结论都不可能成立**；探针已删 ⇒ 依赖探针读数的闸门（`APDUMP|…`、`opprobe`）与「禁用生物 AI」硬闸门（`AP_NOAI:`）都取不到读数，`--phase launch` 预期以 `ERROR` 结束（对照实验可临时设 `MT_ALLOW_MOB_AI=1`，见「全局测试规则」）。**重建测试资产前，不得把本流程的任何输出当作验收证据。**
+**当前可运行性（2026-10-01 复核并更新 —— 原「用例目录为空 / 探针已删」的描述已过时）**：测试资产**已重建**（重建批次见 `scripts/test/cases/`、`scripts/test/resources/` 的最近提交，1.3.2 批次 `c01ace50` 等）：用例 **45 个**（15 组 × 三线：`CMDSURF` / `HAMMER` / `LOOT-FIRST` / `LOOT-POOL` / `MEGAS-*`×8 / `NARDIS-GATE` / `STACK`）、KubeJS 探针 **22 个**（三线各 server/client）、测试世界种子 2 个（1.20.1 / 26.1.2）。⇒ `--phase cases` 与 `--phase launch` 的探针闸门（`APDUMP|…`、`AP_NOAI:`）**均可用**。
+⚠️ **但覆盖范围有限**：上述 15 组用例只覆盖命令面、卡牌堆叠、看板娘（megas）、绿洲女王门槛与战利品池；**不覆盖**效果牌冷却、治愈计时、枪匠 / 神秘遗物联动、星盘配方与击杀掉落等 1.3.3–1.3.5 的新功能 ⇒ 对这批改动**没有游戏内断言**，只能靠静态守门 + 人工冒烟（`--phase launch` 能证明「模组可加载、探针通路正常」，不等于新功能行为正确）。
+⚠️ **`--phase` 白名单**：`build` / `env` / `launch` / `stop` 可单跑，**无 `--phase` 的全流程被禁用**（`MT_AUTO_DISABLED`）⇒ 需 `--allow-auto`（或 `MT_ALLOW_AUTO=1`）显式放行；单条用例写法为 `--phase cases --case scripts/test/cases/<CASE>.json`。
+⚠️ **`scripts/test/mt.conf` 是机器本地配置且不入库**（`.gitignore` 的 `scripts/test/mt.conf`）—— 2026-10-01 实测其两条整合包路径已因**目录改名**而失效（`1.20.1 模组测试` / `26.1.2 模组测试` → 实际 `1.20.1-Forge 模组测试` / `26.1.2-NeoForge 模组测试`）；换机器或整合包改名后**必须先核对本文件**，否则 `--phase env` 取不到兼容模组、`--phase launch` 起不来。
 
 **完整展示**：`scripts/test/TESTING-RULES-OVERVIEW.md`（测试流程与规则总览，2026-09-20 生成）。
 
@@ -448,6 +451,7 @@ pwsh -NoProfile -File scripts/verify/verify_chip_acquisition.ps1
 pwsh -NoProfile -File scripts/verify/verify_bountiful_pools.ps1
 pwsh -NoProfile -File scripts/verify/verify_bountiful_instance_exclusions.ps1
 pwsh -NoProfile -File scripts/verify/verify_forge_loader_gate.ps1   # 1.20.1 加载器版本门槛 + Mixin 运行时二选一门控（Mixin Booster / Sinytra Connector；独立离线脚本，零 mt 依赖；0/1/2，见附录 A 续 28）
+python tools/audit_mixin_injection.py   # Mixin 注入参数门禁（2026-10-01 新增，0/1）：禁止 `require >= 2`（require 是「**最少**匹配数」，写大于实际注入点数即 InjectionError —— 1.3.4 的线上崩溃根因）、`expect` 必须配 `require = 1`、三线 `injectors.defaultRequire >= 1`；加 `--hint-sources` 可打印每个 `@Redirect` 目标方法的源码粗算次数供人工核对（**仅参考**，源码计数 != 字节码指令计数）
 pwsh -NoProfile -File tools/check_mod_sources.ps1                    # 模组来源统一口径(Curse/Modrinth Maven);阶段 P 的「模组来源」一项共用本脚本
 ```
 
