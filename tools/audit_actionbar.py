@@ -22,8 +22,9 @@ from collections import defaultdict
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LINES = ['neoforge-1.21.1', 'forge-1.20.1', 'neoforge-26.1.2']
 # ⚠️ **第四线 `fabric-1.20.1` 有意不纳入本闸门**(2026-10-01 实测结论,勿凭直觉加回来):
-#   ① 该线**不走本闸门所守的那条通道** —— fabric 侧 `ActionBarPayload` 引用数为 **0**
-#      (独占通道本身是 neb/forge 两条生产线的口径,fabric 走自己的动作栏实现);
+#   ① 该线**不走本闸门所守的那条通道** —— `ActionBarPayload` 这个类**只存在于两条 neoforge 线**:
+#      实测 `git grep ActionBarPayload` 分别为 1.21.1 = 52 处 / 26.1.2 = 57 处 / **forge-1.20.1 = 0** /
+#      **fabric-1.20.1 = 0**(1.20.1 两条线各走自己的动作栏实现)⇒ 本闸门的通道白名单对它们本就不适用。
 #   ② 实测把它加进 LINES 会报出**一批既存的 1.3.3 动作栏改造缺口**(大量 `msg.astral_dice.*`
 #      的中/英/日值里仍内嵌 `§` 色码 + 4 个文件用原版覆盖层通道未进白名单)。
 #      **那是 fabric 线尚未移植 1.3.3 内容所致,与本闸门无关** ⇒ 在本线完成该批移植并把

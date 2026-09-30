@@ -5,6 +5,7 @@
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
 ## 1.3.5
+
 ### Content & Balance
 
 - **The decay of the Gunsmith's "Weakness Insight" and the Great Detective's "Reasoning Time" is now an independent 1-minute timer** (user ruling 2026-09-30): both passives used to hang off "when a Dice Blessing ends" - one stack per blessing, so their decay was entirely bound to the blessing's start/end. They now run on **their own 1-minute timer**: the effect duration changes from infinite to **1 minute**, and when it expires naturally the stack count drops by 1 and the timer restarts (at zero stacks the effect is simply gone). For the Gunsmith the stack count lives in the effect itself (each stack: attack/defense +1 and minimum dice roll +1, up to 4); for the Great Detective it lives in player data (**not lost on death**), and both now decay identically. NOTE the UI follows: these two effects are no longer "permanent icons without a countdown" and now show their remaining time. Gaining a new stack **resets** the timer.
@@ -43,7 +44,9 @@
 
 - **Two handbook pages displayed a raw translation key** (2026-10-01; one reported by the fabric branch, the second found by a full local audit): page 6 of the handbook's "Special Effects" entry and page 3 of the "Cult Leader Sign" entry referenced **language keys that no longer exist** - the former's "effect pending" note was removed together with that mechanic (the effect-card cooldown rework in this release), the latter's "anti-farming" note was removed by the handbook redundant-note cleanup, but **the handbook pages were not removed along with them** - so in game those two pages displayed the raw key `astral_dice.guide.entry.*`. Both pages have now been removed, matching the intent of those two cleanups. NOTE this class of defect was **undetectable by any existing gate** (`check_lang_sync` only compares the key sets of the three languages against each other, not "handbook references are a subset of lang") - a new gate, **`tools/audit_patchouli_keys.py`**, was added in the same batch (it walks every translation-key reference in the three lines' handbook JSON and checks it against that line's three languages, including item-name keys such as `item.astral_dice.*`; currently 1161 references / 0 dangling).
 
+
 ## Unreleased (1.3.5-alpha.1)
+
 > Decided by the user on 2026-09-29: this line is a **development line**, so version numbers now carry
 > an **`-alpha.x` pre-release suffix** (1.3.5-alpha.1 at present), and the prerequisite library moves to
 > `1.0.5-alpha.1` (its baseline rolled back to 1.0.5).
@@ -267,6 +270,7 @@
   normal and the reversed case — a check that passes for any input is no check at all).
 
 ## 1.3.4
+
 ### Bug Fixes
 
 - **King's Power's 8-point self-damage often did nothing at all in combat** (user report 2026-09-30): the cost went through the dice damage type `astral_dice:dice_damage`, which is **not** listed in `minecraft:tags/damage_type/bypasses_cooldown`, so it obeyed the vanilla invulnerability window - vanilla `LivingEntity#hurt` **returns false outright** when `invulnerableTime > 10` and the incoming amount is `<= lastHurt`. Right after being hit by a mob (or on a second King's Power in a row) the 8 points were swallowed whole: the stacks went up while the health bar did not move, making the cost purely cosmetic (creative mode's `abilities.invulnerable` negates it entirely as well). A dedicated `astral_dice:card_cost` damage type is added and registered in `bypasses_cooldown`, and King's Power now uses it, so the cost settles even inside the invulnerability window and **always lands**. It is deliberately **not** in `bypasses_armor`: armor / resistance / protection still apply, exactly as before (a cost is not true damage).
@@ -280,6 +284,7 @@
 - **Status effect "notes" (the description text) were never visible in game** (user report 2026-09-30): the language files already carry 21 `effect.astral_dice.<id>.description` entries (Berserk, Concealment, Empower, Reasoning Time, Baize's Blessing, ...), but there was **no rendering path at all** - only the three effect-card **items** (Berserk, Unwavering, Fight Poison with Poison) read those keys for their item tooltips (`event/ModTooltipHandler`), so hovering the **status effect itself** showed nothing but "name + remaining time". Each platform now wires its own channel: the two NeoForge lines use the official `GatherEffectScreenTooltipsEvent`, while 1.20.1 (Forge has no such event) injects the tooltip list built inside vanilla `EffectRenderingInventoryScreen#renderEffects` through a Mixin. All three lines share one rule: a grey description line is appended **only when the matching language key actually exists**, so effects without a description get no blank line.
 
 ## 1.3.3
+
 ### Content & Balance
 
 - **Fengshui Master's "Perfect Helper" now fills Recharged Energy to the maximum** (user request 2026-09-28): applying Baize's Blessing to a player wearing the Boss Sign no longer grants just **+1 stack** - it now **tops that player's Recharged Energy straight up to the cap of 5 stacks** (new `FenSignItem#fillRecharge` is the "fill" entry point, sharing the same counter). Tooltip and handbook entry updated.
@@ -341,6 +346,7 @@
 - **Pack deploy targets corrected on this machine (2026-09-29)**: the `pushToGame` task of the 1.20.1 and 26.1.2 lines pointed at pack directories that **no longer exist on disk** (`1.20.1 模组测试` / `26.1.2 模组测试` - the packs had been renamed to carry a platform suffix), so both tasks had been printing `pushToGame: pack dir not found, skipped` and **silently deploying nothing** - the jars sitting in the packs were frozen at the last moment the paths still existed. They now point at the real directories `1.20.1-Forge 模组测试` / `26.1.2-NeoForge 模组测试`. This is a **build-script-only** change: no version bump, no artifact change, nothing player-visible. The lesson is recorded in `AGENTS.md`: `packModsDir` must **never** be inferred from a naming convention - after a machine swap or a pack rename, list `D:/.minecraft/versions/` and confirm a `pushToGame: pushed … -> <target>` line in the build log **for every line**, because `BUILD SUCCESSFUL` on its own hides a silent skip.
 
 ## 1.3.2+fabric_1.20.1
+
 > **First release of the Fabric 1.20.1 port line** (2026-09-29). Content is **feature-equivalent** to the
 > contemporary releases of the three production lines (NeoForge 1.21.1 / Forge 1.20.1 / NeoForge 26.1.2);
 > only the mod loader differs (the version number carries the `+fabric_1.20.1` suffix).
