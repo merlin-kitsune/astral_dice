@@ -452,6 +452,7 @@ pwsh -NoProfile -File scripts/verify/verify_bountiful_pools.ps1
 pwsh -NoProfile -File scripts/verify/verify_bountiful_instance_exclusions.ps1
 pwsh -NoProfile -File scripts/verify/verify_forge_loader_gate.ps1   # 1.20.1 加载器版本门槛 + Mixin 运行时二选一门控（Mixin Booster / Sinytra Connector；独立离线脚本，零 mt 依赖；0/1/2，见附录 A 续 28）
 python tools/audit_mixin_injection.py   # Mixin 注入参数门禁（2026-10-01 新增，0/1）：禁止 `require >= 2`（require 是「**最少**匹配数」，写大于实际注入点数即 InjectionError —— 1.3.4 的线上崩溃根因）、`expect` 必须配 `require = 1`、三线 `injectors.defaultRequire >= 1`；加 `--hint-sources` 可打印每个 `@Redirect` 目标方法的源码粗算次数供人工核对（**仅参考**，源码计数 != 字节码指令计数）
+python tools/audit_patchouli_keys.py    # 帕秋莉手册键名引用门禁（2026-10-01 新增，0/1）：三线手册 JSON 里的全部翻译键引用必须存在于同线三语 lang —— 否则游戏内该页显示**原始键名**（`astral_dice.guide.entry.*`）。⚠️ `check_lang_sync` 查不出这类（它只比三语键集，不负责「手册引用 ⊆ lang」）；实测 1161 处引用 / 悬空 0
 pwsh -NoProfile -File tools/check_mod_sources.ps1                    # 模组来源统一口径(Curse/Modrinth Maven);阶段 P 的「模组来源」一项共用本脚本
 ```
 
