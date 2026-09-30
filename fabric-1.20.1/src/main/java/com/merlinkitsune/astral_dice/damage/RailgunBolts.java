@@ -8,6 +8,7 @@ import net.minecraft.world.entity.OwnableEntity;
 import java.util.Collections;
 import java.util.Set;
 import java.util.WeakHashMap;
+import com.merlinkitsune.astral_dice.combat.PartyRelations;
 
 /**
  * 电磁炮雷击的识别标记:记录**由本模组电磁炮降下的闪电实体**,供
@@ -83,7 +84,7 @@ public final class RailgunBolts {
         if (target == null) return false;
         // 「视谁为敌」的上下文 = 落雷来源玩家(无闪电实例时 viewer 为 null ⇒ 玩家一律不计入敌对)
         ServerPlayer cause = bolt == null ? null : bolt.getCause();
-        if (!HostileTargets.isHostile(cause, target)) return false;
+        if (!PartyRelations.isHostileTo(cause, target)) return false;
         if (target instanceof OwnableEntity ownable) {
             if (cause != null && cause.getUUID().equals(ownable.getOwnerUUID())) return false;
         }

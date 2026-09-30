@@ -21,6 +21,7 @@ import com.merlinkitsune.astral_dice.platform.event.entity.living.LivingDeathEve
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
 import net.minecraft.world.entity.LivingEntity;
+import com.merlinkitsune.astral_dice.combat.PartyRelations;
 
 /**
  * 诅咒之剑筹码:装备时始终受到"青之诅咒"影响。
@@ -119,7 +120,7 @@ public class CursedSwordChipItem extends BaseChipItem {
         if (target.level().isClientSide()) return;
         // 先取击杀者再判定敌对:视者 = 击杀者(全局敌对玩家规则)
         if (!(event.getSource().getEntity() instanceof Player killer)) return;
-        if (!HostileTargets.isHostile(killer, target) || target.getMaxHealth() < 20) return;
+        if (!PartyRelations.isHostileTo(killer, target) || target.getMaxHealth() < 20) return;
         CursedSwordChipItem.onKill(killer);
     }
 

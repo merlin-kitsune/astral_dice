@@ -15,6 +15,7 @@ import net.minecraft.world.entity.LivingEntity;
 import com.merlinkitsune.astral_dice.combat.SpellDamageRegistry;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
+import com.merlinkitsune.astral_dice.combat.PartyRelations;
 
 /**
  * 探天卫星筹码:
@@ -99,7 +100,7 @@ public class SatelliteChipItem extends BaseChipItem {
         if (target.level().isClientSide()) return;
         // 先取击杀者再判定敌对:视者 = 击杀者(全局敌对玩家规则)
         if (!(event.getSource().getEntity() instanceof Player killer)) return;
-        if (!HostileTargets.isHostile(killer, target)) return;
+        if (!PartyRelations.isHostileTo(killer, target)) return;
         if (!killer.hasEffect(ModEffects.ORBITAL_STRIKE.get())) return;
         if (!com.merlinkitsune.astral_dice.combat.SpellDamageRegistry.isSpellDamage(
                 event.getSource(), event.getSource().getDirectEntity())) return;

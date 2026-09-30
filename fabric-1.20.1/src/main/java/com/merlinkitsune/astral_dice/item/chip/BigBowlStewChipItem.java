@@ -12,6 +12,7 @@ import net.minecraft.world.entity.animal.Pig;
 import net.minecraft.world.entity.animal.horse.AbstractHorse;
 import net.minecraft.world.entity.monster.Strider;
 import net.minecraft.world.entity.player.Player;
+import com.merlinkitsune.astral_dice.combat.PartyRelations;
 
 /**
  * 大碗炖肉筹码:骰神赐福效果结束后,使 16 格范围内所有友方目标获得 1 点治愈并恢复 2 点生命值
@@ -57,7 +58,7 @@ public class BigBowlStewChipItem extends BaseChipItem {
         if (!(player.level() instanceof ServerLevel serverLevel)) return;
 
         double rangeSqr = RANGE * RANGE;
-        java.util.List<Player> allies = EventTargetCollector.collectTeamPlayers(player);
+        java.util.List<Player> allies = PartyRelations.collectTeamPlayers(player);
         for (ServerPlayer sp : serverLevel.players()) {
             if (sp != player && !allies.contains(sp)) continue;
             if (sp.distanceToSqr(player) > rangeSqr) continue;

@@ -31,6 +31,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import com.merlinkitsune.astral_dice.combat.PartyRelations;
 
 /**
  * 目标选择器客户端状态机（第一人称 UX，**Create 强力胶式按键语义**）。
@@ -204,9 +205,10 @@ public final class TargetSelectionClient {
         return entity instanceof Enemy;
     }
 
+    // 友方判定:同一队伍(原版计分板 ∪ FTB Teams ∪ OPAC) —— 统一走 PartyRelations,见其类注释
     public static boolean isFriendly(Player selector, LivingEntity entity) {
         if (entity instanceof Player other) {
-            return selector.getTeam() != null && selector.getTeam() == other.getTeam();
+            return PartyRelations.isSameTeam(selector, other);
         }
         if (entity instanceof OwnableEntity ownable) {
             return selector.getUUID().equals(ownable.getOwnerUUID());

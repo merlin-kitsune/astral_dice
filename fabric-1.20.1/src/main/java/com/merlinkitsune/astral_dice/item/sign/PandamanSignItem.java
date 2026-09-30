@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
+import com.merlinkitsune.astral_dice.combat.PartyRelations;
 
 /**
  * 肉弹战车立牌(命名:pandaman,稀有)。
@@ -165,9 +166,10 @@ public class PandamanSignItem extends BaseSignItem {
     }
 
     // 友方判定:自己 / 双方无队伍 / 同队(与奢华大餐、史莱姆立牌规则一致)
+    // 队伍识别统一走 PartyRelations(原版计分板 ∪ FTB Teams ∪ OPAC)
     private static boolean isFriendly(Player self, Player other) {
-        return self == other || self.getTeam() == null || other.getTeam() == null
-                || self.getTeam() == other.getTeam();
+        return self == other || !PartyRelations.hasTeam(self) || !PartyRelations.hasTeam(other)
+                || PartyRelations.isSameTeam(self, other);
     }
 
     // 吃汉堡累计最大生命加成

@@ -9,6 +9,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import com.merlinkitsune.astral_dice.platform.event.entity.living.LivingDeathEvent;
 import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
+import com.merlinkitsune.astral_dice.combat.PartyRelations;
 
 /**
  * 智能手表筹码:物品栏中卡牌数量不足 {@link #CARD_THRESHOLD} 张时,
@@ -47,7 +48,7 @@ public class SmartWatchChipItem extends BaseChipItem {
         if (event.getEntity().level().isClientSide()) return;
         // 先取击杀者再判定敌对:视者 = 击杀者(全局敌对玩家规则)
         if (!(event.getSource().getEntity() instanceof Player killer)) return;
-        if (!HostileTargets.isHostile(killer, event.getEntity())) return;
+        if (!PartyRelations.isHostileTo(killer, event.getEntity())) return;
         onHostileKilled(killer);
     }
 

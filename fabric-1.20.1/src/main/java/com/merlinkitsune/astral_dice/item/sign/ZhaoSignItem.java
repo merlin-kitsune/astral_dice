@@ -33,6 +33,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+import com.merlinkitsune.astral_dice.combat.PartyRelations;
 
 /**
  * 风水师立牌(全局命名 {@code zhao};传奇品质)。
@@ -458,9 +459,9 @@ public class ZhaoSignItem extends BaseSignItem {
      */
     public static int onAllyActiveSkill(Player fenOwner) {
         if (fenOwner == null || fenOwner.level().isClientSide()) return 0;
-        if (!EventTargetCollector.hasAnyTeam(fenOwner)) return 0;
+        if (!PartyRelations.hasTeam(fenOwner)) return 0;
         int granted = 0;
-        for (Player other : EventTargetCollector.collectTeamPlayers(fenOwner)) {
+        for (Player other : PartyRelations.collectTeamPlayers(fenOwner)) {
             if (other == null || other == fenOwner) continue;
             if (!isEquipped(other)) continue;
             FuCardItem.give(other, other, 1);
@@ -481,8 +482,8 @@ public class ZhaoSignItem extends BaseSignItem {
     public static List<String> linkedReceiverIds(Player fenOwner) {
         List<String> ids = new ArrayList<>();
         if (fenOwner == null || fenOwner.level().isClientSide()) return ids;
-        if (!EventTargetCollector.hasAnyTeam(fenOwner)) return ids;
-        for (Player other : EventTargetCollector.collectTeamPlayers(fenOwner)) {
+        if (!PartyRelations.hasTeam(fenOwner)) return ids;
+        for (Player other : PartyRelations.collectTeamPlayers(fenOwner)) {
             if (other == null || other == fenOwner) continue;
             if (!isEquipped(other)) continue;
             ids.add(other.getUUID().toString());
@@ -492,6 +493,6 @@ public class ZhaoSignItem extends BaseSignItem {
 
     /** 只读读数辅助(探针/调试用):当前是否满足"组队"这一前置(未组队 ⇒ 心意相连整体不生效) */
     public static boolean teamGateOpen(Player player) {
-        return player != null && EventTargetCollector.hasAnyTeam(player);
+        return player != null && PartyRelations.hasTeam(player);
     }
 }

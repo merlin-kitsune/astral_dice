@@ -675,7 +675,7 @@ public class ModTooltipHandler {
             addSignPassiveTitle(tooltip, "剑气");
             addSignLines(tooltip, "tooltip.astral_dice.sign.misaki_passive");
             // 神秘遗物+ 联动描述:仅当安装神秘遗物+ 模组时展示(置于备注区,紫色,无标题)
-            if (ModList.get().isLoaded("enigmaticlegacyplus")) {
+            if (ModList.get().isLoaded("enigmaticlegacy")) {
                 tooltip.add(Component.empty());
                 addSignNoteLines(tooltip, "tooltip.astral_dice.sign.misaki_enigmatic");
             }
@@ -967,7 +967,7 @@ public class ModTooltipHandler {
             tooltip.add(tt("tooltip.astral_dice.chip.cursed_sword_blue_curse")
                     .withStyle(ChatFormatting.GRAY));
             tooltip.add(Component.empty());
-            if (ModList.get().isLoaded("enigmaticlegacyplus")) {
+            if (ModList.get().isLoaded("enigmaticlegacy")) {
                 addChipLines(tooltip, "tooltip.astral_dice.chip.cursed_sword_enigmatic",
                         ChatFormatting.LIGHT_PURPLE);
             }
@@ -1221,7 +1221,7 @@ public class ModTooltipHandler {
             tooltip.add(Component.translatable("tooltip.astral_dice.card.fate_saturation")
                     .withStyle(ChatFormatting.GRAY));
             // 联动条目:仅安装相关模组时显示(备注区,紫色,无编号)
-            if (ModList.get().isLoaded("enigmaticlegacyplus")) {
+            if (ModList.get().isLoaded("enigmaticlegacy")) {
                 addSignNoteLines(tooltip, "tooltip.astral_dice.card.fate_curse_mitigation");
             }
             // ⚠️ 2026-09-29 裁剪:此处原有 `isLoaded("irons_spellbooks")` 分支
@@ -1295,6 +1295,12 @@ public class ModTooltipHandler {
             addSignLines(tooltip, "tooltip.astral_dice.sign.moses_active");
             addSignPassiveTitle(tooltip, "精密技巧");
             addSignLines(tooltip, "tooltip.astral_dice.sign.moses_passive");
+            // 神秘遗物 联动描述:仅当安装神秘遗物 模组时展示(置于备注区,紫色,无标题)
+            if (ModList.get().isLoaded("enigmaticlegacy")) {
+                tooltip.add(Component.empty());
+                addSignNoteLines(tooltip, "tooltip.astral_dice.sign.moses_enigmatic");
+            }
+
             if (event.getEntity() != null) {
                 addSignCounter(tooltip, "tooltip.astral_dice.sign.moses_weakness_reveal",
                         com.merlinkitsune.astral_dice.effect.WeaknessRevealEffect.getStacks(player),
@@ -1536,7 +1542,8 @@ public class ModTooltipHandler {
      * 故客户端可安全读取（参见 {@code EffectCardPeriod#isCooldownActive} 的注释）。
      */
     private static long effectCardCooldownSeconds(Player player) {
-        long baseTicks = GameplayConstants.EFFECT_CARD_COOLDOWN_SECONDS * 20L;
+        // 2026-09-30:与 EffectCardPeriod.COOLDOWN_SECONDS 同源(模组侧口径,45 秒)
+        long baseTicks = com.merlinkitsune.astral_dice.item.card.EffectCardPeriod.COOLDOWN_SECONDS * 20L;
         long ticks = player != null
                 ? com.merlinkitsune.astral_dice.item.ChargeManager.effectCardCooldownTicks(player, baseTicks)
                 : baseTicks;

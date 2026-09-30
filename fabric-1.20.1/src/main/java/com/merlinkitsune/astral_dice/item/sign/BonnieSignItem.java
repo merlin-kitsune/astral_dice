@@ -33,6 +33,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
+import com.merlinkitsune.astral_dice.combat.PartyRelations;
 
 /**
  * 秘密侦探立牌(命名:bonnie)。
@@ -120,7 +121,7 @@ public class BonnieSignItem extends BaseSignItem {
         // 被动 2:击杀带"标记"的目标 → 获得一张随机战斗牌
         if (MarkManager.getLevel(killed) > 0
                 && !(killed instanceof Player)
-                && HostileTargets.isHostile(killer, killed)
+                && PartyRelations.isHostileTo(killer, killed)
                 && killed.getMaxHealth() >= 20) {
             giveRandomBattleCard(killer);
         }

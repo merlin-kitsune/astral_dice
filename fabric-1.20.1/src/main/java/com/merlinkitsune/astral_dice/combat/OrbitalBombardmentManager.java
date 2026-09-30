@@ -274,7 +274,7 @@ public final class OrbitalBombardmentManager {
         List<LivingEntity> candidates = new ArrayList<>();
         for (LivingEntity e : job.level.getEntitiesOfClass(LivingEntity.class, box)) {
             if (e == job.caster || !e.isAlive() || e.isRemoved()) continue;
-            if (!HostileTargets.isHostile(job.caster, e)) continue;
+            if (!PartyRelations.isHostileTo(job.caster, e)) continue;
             candidates.add(e);
         }
         if (candidates.isEmpty()) return null;

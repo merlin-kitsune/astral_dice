@@ -32,6 +32,7 @@ import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.entity.projectile.ThrownEnderpearl;
 import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
 import com.merlinkitsune.astral_dice.platform.event.EventPriority;
+import com.merlinkitsune.astral_dice.combat.PartyRelations;
 
 /**
  * 骇客立牌(命名:nancy_lu)。
@@ -242,7 +243,7 @@ public class NancyLuSignItem extends BaseSignItem {
         if (!isEquipped(player)) return;
         boolean hostileNearby = !player.level().getEntitiesOfClass(LivingEntity.class,
                 player.getBoundingBox().inflate(PASSIVE_RANGE),
-                e -> HostileTargets.isHostile(player, e) && e.isAlive()).isEmpty();
+                e -> PartyRelations.isHostileTo(player, e) && e.isAlive()).isEmpty();
         if (hostileNearby) {
             ModAttachments.setNancyLuPassiveType(player, PASSIVE_DEFENSE);
         } else {
@@ -285,7 +286,7 @@ public class NancyLuSignItem extends BaseSignItem {
         net.minecraft.world.entity.Entity target = event.getTarget();
         // 敌对判定统一走带上下文的两参重载(全局规则):只有"非同队且曾主动攻击过本玩家的玩家"才算敌对,
         // 不再"任意玩家都算"(旧写法 `|| target instanceof Player` 会把队友与无关玩家也当作可攻击目标)
-        if (!HostileTargets.isHostile(player, target)) return;
+        if (!PartyRelations.isHostileTo(player, target)) return;
         NancyLuSignItem.onAttackWhileHidden(player);
     }
 
@@ -298,7 +299,7 @@ public class NancyLuSignItem extends BaseSignItem {
         if (player == event.getEntity()) return;
         LivingEntity victim = event.getEntity();
         // 同上:两参判定取代旧的 `|| victim instanceof Player`(队友/无关玩家不再算敌对)
-        if (!HostileTargets.isHostile(player, victim)) return;
+        if (!PartyRelations.isHostileTo(player, victim)) return;
         if (!isEquipped(player)) return;
         onAttackWhileHidden(player);
     }

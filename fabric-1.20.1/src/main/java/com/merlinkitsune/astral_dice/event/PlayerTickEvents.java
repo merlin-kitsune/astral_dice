@@ -99,10 +99,9 @@ public class PlayerTickEvents {
 
     }
 
-    // 美工刀-初级/锋利状态效果:佩戴对应筹码、生命值 ≥60%(或处于"汲取")**且处于骰神赐福状态**时
-    // 显示效果图标,否则移除。⚠️ 追加骰神赐福门控(2026-09-27 用户裁决):美工刀的额外加伤本就在
-    // `DiceCombatEvents` 的赐福门控之后才结算(无赐福时提前 return),故图标**只有当加成真正可能生效时**
-    // 才应显示 —— "跟随骰神赐福显示,不在赐福状态即隐藏"。
+    // 美工刀-初级/锋利状态效果:佩戴对应筹码且生命值 ≥60%(或处于「汲取」)时**常驻显示**。
+    // 2026-09-30 用户裁决:显示与骰神赐福**完全解绑**、时长改为无限 —— 只要自身触发条件成立就一直显示。
+    // (其额外加伤仍只在骰战结算内生效:DiceCombatEvents 的赐福门控决定是否真的加伤。)
     private static void updateCutterEffect(Player player) {
         var curios = CuriosApi.getCuriosInventory(player);
         boolean hasCutter = false;
@@ -114,11 +113,34 @@ public class PlayerTickEvents {
         boolean fullHp = player.getHealth() >= player.getMaxHealth() * 0.6f || player.hasEffect(ModEffects.PAPARA_BITE.get());
         boolean blessed = player.hasEffect(ModEffects.DICE_BLESSING.get());
         // 效果存在且剩余时长充足时不重复施加,避免每 tick 触发效果更新/同步包
-        refreshIndicator(player, ModEffects.CUTTER_READY.get(), hasCutter && fullHp && blessed);
-        refreshIndicator(player, ModEffects.CUTTER_BLADE_READY.get(), hasBlade && fullHp && blessed);
+        // 2026-09-30 用户裁决:美工刀的**显示**与骰神赐福完全解绑,计时器改为无限 ——
+        // 只要自身触发条件(生命值 ≥60% 或处于「汲取」)成立就常驻显示;
+        // 其额外加伤仍只在骰战结算内生效(DiceCombatEvents 的赐福门控内)。
+        refreshIndicatorInfinite(player, ModEffects.CUTTER_READY.get(), hasCutter && fullHp);
+        refreshIndicatorInfinite(player, ModEffects.CUTTER_BLADE_READY.get(), hasBlade && fullHp);
         // 手电筒-强光:佩戴筹码、处于骰神赐福状态且**确有加伤**(星光/4 ≥ 1)时显示效果图标
         refreshIndicator(player, ModEffects.FLASHLIGHT_READY.get(),
                 FlashlightChipItem.isEquipped(player) && blessed && StarLightManager.get(player) / 4 >= 1);
+    }
+
+    /**
+     * 显示指示器效果(无限时长版本):需要显示且缺失时施加 ∞;不需要显示且存在时移除。
+     *
+     * <p>⚠️ **仅供「自身条件型」指示器使用**(当前唯一调用方 = 美工刀-初级/锋利):
+     * 这类指示器的存在与否完全由玩家自身状态决定、与任何计时器无关,故用 ∞ 常驻。
+     * 需要绑定倒计时的指示器(如「治愈」)必须走各自的计时器刷新,不得走本方法
+     * (治愈见 {@code HealingManager#updateEffect})。
+     */
+    private static void refreshIndicatorInfinite(Player player, net.minecraft.world.effect.MobEffect effect,
+                                         boolean shouldShow) {
+        if (shouldShow) {
+            if (!player.hasEffect(effect)) {
+                player.addEffect(new MobEffectInstance(effect, MobEffectInstance.INFINITE_DURATION,
+                        0, false, true, true));
+            }
+        } else if (player.hasEffect(effect)) {
+            ModEffectRemoval.remove(player, effect);
+        }
     }
 
     // 显示指示器效果:需要显示且(缺失/即将到期)时施加 5 秒;不需要显示且存在时内部移除

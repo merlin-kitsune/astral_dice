@@ -133,19 +133,6 @@ public class ModAttachments {
         HEALING_POINTS.set(player, Math.max(0, value));
     }
 
-    // 治愈:上一检测周期玩家是否处于"骰神赐福"(服务端边沿检测用,判断赐福结束时刻以执行治愈减半;
-    // 仅服务端使用,无需同步)
-    public static final AttachedDataKey<Boolean> HEALING_PREV_BLESSING =
-            register(AttachedDataKey.builder("healing_prev_blessing", Codec.BOOL, () -> false).build());
-
-    public static boolean isHealingPrevBlessing(net.minecraft.world.entity.player.Player player) {
-        return HEALING_PREV_BLESSING.get(player);
-    }
-
-    public static void setHealingPrevBlessing(net.minecraft.world.entity.player.Player player, boolean value) {
-        HEALING_PREV_BLESSING.set(player, value);
-    }
-
     // 治愈:独立 30 秒计时器结束 tick(服务端使用;0 表示无计时器)
     public static final AttachedDataKey<Long> HEALING_TIMER_END =
             register(AttachedDataKey.builder("healing_timer_end", Codec.LONG, () -> 0L).build());
@@ -1408,7 +1395,7 @@ public class ModAttachments {
     /**
      * 上一拍的「骰神赐福存在性」(下降沿检测的**基准**;仅服务端,每 tick 读取)。
      *
-     * <p>不 {@code .sync()}:同步会让每 tick 都写包(同口径先例:{@code healing_prev_blessing})。
+     * <p>不 {@code .sync()}:同步会让每 tick 都写包(同口径先例见下方 {@code zhao_prev_blessing})。
      */
     public static final AttachedDataKey<Boolean> ZHAO_PREV_BLESSING =
             register(AttachedDataKey.builder("zhao_prev_blessing", Codec.BOOL, () -> false).build());

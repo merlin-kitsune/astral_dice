@@ -7,6 +7,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import com.merlinkitsune.starenginelib.event.EventTargetCollector;
 import com.merlinkitsune.astral_dice.item.chip.FriendshipBadgeChipItem;
+import com.merlinkitsune.astral_dice.combat.PartyRelations;
 
 /**
  * 奢华大餐(治疗效果牌):**目标选择器类(手持即选择)** —— 主手手持本牌即自动进入目标选择模式(移出手持立即退出),瞄准玩家后左键确认,
@@ -53,7 +54,7 @@ public class LuxuryFeastCardItem extends BaseEffectCardItem {
         AABB aabb = applyTo.getBoundingBox().inflate(RANGE);
         // 队伍过滤:统一经 EventTargetCollector.collectTeamPlayers ——
         // 已加入队伍时仅影响同队/队友;未加入任何队伍时目标为全服在线玩家
-        java.util.List<Player> allies = EventTargetCollector.collectTeamPlayers(user);
+        java.util.List<Player> allies = PartyRelations.collectTeamPlayers(user);
         var nearby = level.getEntitiesOfClass(Player.class, aabb, p -> p.isAlive());
         for (Player p : nearby) {
             if (p != user && !allies.contains(p)) continue;
