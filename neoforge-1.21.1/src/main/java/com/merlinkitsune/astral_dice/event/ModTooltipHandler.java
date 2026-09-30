@@ -1317,6 +1317,12 @@ public class ModTooltipHandler {
             addSignLines(tooltip, "tooltip.astral_dice.sign.moses_active");
             addSignPassiveTitle(tooltip, "精密技巧");
             addSignLines(tooltip, "tooltip.astral_dice.sign.moses_passive");
+            // 神秘遗物+ 联动描述:仅当安装神秘遗物+ 模组时展示(置于备注区,紫色,无标题)
+            if (net.neoforged.fml.ModList.get().isLoaded("enigmaticlegacyplus")) {
+                tooltip.add(Component.empty());
+                addSignNoteLines(tooltip, "tooltip.astral_dice.sign.moses_enigmatic");
+            }
+
             if (event.getEntity() instanceof Player p) {
                 addSignCounter(tooltip, "tooltip.astral_dice.sign.moses_weakness_reveal",
                         com.merlinkitsune.astral_dice.effect.WeaknessRevealEffect.getStacks(p),

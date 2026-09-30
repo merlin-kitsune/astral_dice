@@ -1462,6 +1462,29 @@ When extending this workspace:
 - 新增物品后对照 `entries/` 目录逐一核对:每个注册物品都有条目、条目内 icon/text 键无拼写错误、crafting 页引用的配方文件存在。
 - 手册文件是纯数据包 JSON(不参与 datagen),直接写 `src/main/resources/data/...` 即可,无需重新运行 runData。
 
+## 神秘遗物(+) 联动适配（Enigmatic Legacy Link）— 必读（2026-09-30 成文）
+
+- **两条线的第三方是两个不同模组**：`neoforge-1.21.1` / `neoforge-26.1.2` 用 **神秘遗物+**
+  （modId `enigmaticlegacyplus`，1.21 移植版）；`forge-1.20.1` 用 **神秘遗物**
+  （modId `enigmaticlegacy`，原版 2.30.1）。**物品 id 与内部实现都不同** ⇒ 任何联动都要分线取值，
+  且备注区文案也随之分线（`moses_enigmatic` 首行：「神秘遗物+联动：」↔「神秘遗物联动：」）。
+- ⚠️ **护甲诅咒的修饰器 id 两版不同**（已反编译取证）：移植版用 `IItemHelper.getLocation(item)`
+  = **物品注册 id**（`enigmaticlegacyplus:cursed_ring`）；原版用**固定 UUID**
+  （ARMOR `457d0ac3-69e4-482f-b636-22e0802da6bd`、ARMOR_TOUGHNESS
+  `95e70d83-3d50-4241-a835-996e1ef039bb`，name 为 `enigmaticlegacy:armor_modifier` /`…armor_toughness_modifier`）。
+- ⚠️ **摘护甲诅咒必须在「服务器 tick 末尾」**：第三方 `CursedRing#curioTick` **每 tick 重挂**瞬时修饰器，
+  早于它的移除会被加回。范本 = `item/sign/MosesEnigmaticLink#onServerTick`。
+- ⚠️ **第三方 `SoulCrystal` 的调用形态两版不同**（移植版 `static`、原版**实例方法**）⇒
+  **一律反射 + 失败即永久关闭**，禁止硬引用第三方类（未装该模组时 `NoClassDefFoundError`）。
+- 🚨 **「死亡不掉落灵魂水晶」纯本模组侧只能「死后补偿」**：第三方在 `LivingDropsEvent`(**LOWEST**)
+  里调 `SoulCrystal#createCrystalFrom(player)`（内部只做 `lostCrystals + 1`）并生成
+  `PermanentItemEntity`；最后优先级**无法**被更晚的监听覆盖 ⇒ 正解 = 死亡瞬间快照 `lostCrystals`，
+  玩家重生后（下一 tick）① 还原计数并 `updatePlayerSoulMap` ② 回收死亡点附近的灵魂水晶掉落物。
+  ⚠️ 只还原计数不回收掉落物 ⇒ 玩家捡回后**双倍收益**。
+- 门控一律 `ModList.get().isLoaded("<本线 modId>")`（**1.20.1 的 ModList 在 `net.minecraftforge.fml`**，
+  另两线在 `net.neoforged.fml`）；tooltip 备注区渲染走 `ModTooltipHandler#addSignNoteLines`
+  （紫色 `§d`、无标题、独立空行段，范本 = `misaki_enigmatic`）。
+
 ## Mixin 注入规范（Mixin Injection）— 必须遵守（2026-09-30 成文）
 
 - 🚨 **`require` 是「最少匹配数」，不是「容忍失败的次数」**：`@Inject` / `@Redirect` / `@ModifyVariable`
