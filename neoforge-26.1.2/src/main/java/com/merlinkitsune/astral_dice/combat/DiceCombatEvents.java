@@ -114,12 +114,13 @@ import com.merlinkitsune.starenginelib.combat.HostileTargets;
 
 @EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public class DiceCombatEvents {
-    // === 神秘遗物+ (Enigmatic Legacy+) / 神秘遗物扩展 (Enigmatic Addons) 联动 ===
-    // 七咒之戒(神秘遗物+);启示之证(神秘遗物+);倒转之启(神秘遗物+);恩惠之典(神秘遗物扩展)
+    // === 神秘遗物+ (Enigmatic Legacy+, modId `enigmaticlegacyplus`) 联动 ===
+    // ⚠️ **物品 path 与 1.20.1 原版完全相同,只有命名空间不同**(2026-09-30 逐项核对两版 jar 的 lang 物品表):
+    //    七咒之戒 / 启示之证 / 倒转之启 / 恩惠之典 全在本线命名空间下。改任一侧前先核另一侧,别照抄。
     private static final String ENIGMATIC_CURSED_RING = "enigmaticlegacyplus:cursed_ring";
     private static final String ENIGMATIC_ACKNOWLEDGMENT = "enigmaticlegacyplus:the_acknowledgment";
     private static final String ENIGMATIC_TWIST = "enigmaticlegacyplus:the_twist";
-    private static final String ENIGMATIC_BLESS = "enigmaticaddons:the_bless";
+    private static final String ENIGMATIC_BLESS = "enigmaticlegacyplus:the_bless";
 
     /**
      * 玩家侧闪避判定开关:当前 false(玩家侧闪避已移除,目标未佩戴骰子时直接进入常规防御结算)。

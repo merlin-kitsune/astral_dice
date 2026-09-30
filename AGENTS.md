@@ -1464,6 +1464,26 @@ When extending this workspace:
 
 ## 神秘遗物(+) 联动适配（Enigmatic Legacy Link）— 必读（2026-09-30 成文）
 
+- 🚨 **物品 id：两版 path 完全相同，只有命名空间不同**（2026-09-30 逐项核对两版 jar 的 lang 物品表）：
+
+  | path | 1.21.1 / 26.1.2 | 1.20.1（2.30.1） |
+  |---|---|---|
+  | `cursed_ring` 七咒之戒 | ✓ | ✓ |
+  | `the_acknowledgment` 启示之证 | ✓ | ✓ |
+  | `the_twist` 倒转之启 | ✓ | ✓ |
+  | `the_bless` 恩惠之典 | ✓ | **✗ 该版无此物品** |
+  | `cursed_scroll` 千咒卷轴 | ✓ | ✓ |
+  | `soul_crystal` 灵魂水晶 | ✓ | ✓ |
+  | `dimness_charm` 黯淡之证 | ✓ | ✗ |
+
+  ⇒ `ENIGMATIC_*` 常量**必须按线取值**。⚠️ **曾整条链静默失效**：1.20.1 侧照抄了 `enigmaticlegacyplus:`，
+  `hasEnigmaticCurse()` 恒 false ⇒ 骰点七咒减益 −40%、启示之证 −20%、倒转之启免疫、第一诅咒修正、
+  `MosesEnigmaticLink` 两条诅咒修正**全部不生效**，tooltip 备注区门控同样恒 false（2026-09-30 修复）。
+  ⚠️ `the_bless` 属 `enigmaticlegacyplus` 自身，**不是** `enigmaticaddons`（本仓两整合包都没有后者这个 id）。
+- ⚠️ **千咒刻印（`astral_dice:curse_marker`）的计数口径两版等价、实现方式不同**：1.21.1 移植版按
+  `EnchantmentTags.CURSE`（⇒ 必须落 `data/minecraft/tags/enchantment/curse.json`，本仓已有）；
+  1.20.1 按 `Enchantment#isCurse()`（⇒ 附魔类必须覆写 `isCurse()` 返回 true，本仓已有）。**两者都不能漏**。
+
 - **两条线的第三方是两个不同模组**：`neoforge-1.21.1` / `neoforge-26.1.2` 用 **神秘遗物+**
   （modId `enigmaticlegacyplus`，1.21 移植版）；`forge-1.20.1` 用 **神秘遗物**
   （modId `enigmaticlegacy`，原版 2.30.1）。**物品 id 与内部实现都不同** ⇒ 任何联动都要分线取值，

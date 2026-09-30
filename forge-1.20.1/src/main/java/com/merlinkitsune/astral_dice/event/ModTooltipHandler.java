@@ -675,7 +675,7 @@ public class ModTooltipHandler {
             addSignPassiveTitle(tooltip, "剑气");
             addSignLines(tooltip, "tooltip.astral_dice.sign.misaki_passive");
             // 神秘遗物+ 联动描述:仅当安装神秘遗物+ 模组时展示(置于备注区,紫色,无标题)
-            if (net.minecraftforge.fml.ModList.get().isLoaded("enigmaticlegacyplus")) {
+            if (net.minecraftforge.fml.ModList.get().isLoaded("enigmaticlegacy")) {
                 tooltip.add(Component.empty());
                 addSignNoteLines(tooltip, "tooltip.astral_dice.sign.misaki_enigmatic");
             }
@@ -968,7 +968,7 @@ public class ModTooltipHandler {
             tooltip.add(tt("tooltip.astral_dice.chip.cursed_sword_blue_curse")
                     .withStyle(ChatFormatting.GRAY));
             tooltip.add(Component.empty());
-            if (net.minecraftforge.fml.ModList.get().isLoaded("enigmaticlegacyplus")) {
+            if (net.minecraftforge.fml.ModList.get().isLoaded("enigmaticlegacy")) {
                 addChipLines(tooltip, "tooltip.astral_dice.chip.cursed_sword_enigmatic",
                         ChatFormatting.LIGHT_PURPLE);
             }
@@ -1222,7 +1222,7 @@ public class ModTooltipHandler {
             tooltip.add(Component.translatable("tooltip.astral_dice.card.fate_saturation")
                     .withStyle(ChatFormatting.GRAY));
             // 联动条目:仅安装相关模组时显示(备注区,紫色,无编号)
-            if (net.minecraftforge.fml.ModList.get().isLoaded("enigmaticlegacyplus")) {
+            if (net.minecraftforge.fml.ModList.get().isLoaded("enigmaticlegacy")) {
                 addSignNoteLines(tooltip, "tooltip.astral_dice.card.fate_curse_mitigation");
             }
             if (net.minecraftforge.fml.ModList.get().isLoaded("irons_spellbooks")) {
