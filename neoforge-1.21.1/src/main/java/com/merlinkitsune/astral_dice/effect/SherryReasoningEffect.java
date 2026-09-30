@@ -24,8 +24,12 @@ import net.minecraft.world.entity.player.Player;
  * 自 {@code textures/item/sherry_sign.png} 逐字节复制)。
  */
 public class SherryReasoningEffect extends MobEffect {
-    /** 效果时长(无限;层数归 0 时由镜像方移除) */
-    public static final int DURATION_TICKS = MobEffectInstance.INFINITE_DURATION;
+    /**
+     * 效果时长(2026-09-30 用户裁决):由「无限」改为 **1 分钟** —— 与「弱点识破」同款的独立计时器,
+     * 效果自然到期即把附件真值减 1 并重置本时长(见 {@code combat/DiceCombatEvents#onPassiveStackExpired})。
+     * 层数归 0 时仍由镜像方移除。
+     */
+    public static final int DURATION_TICKS = 20 * 60;
 
     public SherryReasoningEffect() {
         super(MobEffectCategory.BENEFICIAL, 0x8C5A3C);

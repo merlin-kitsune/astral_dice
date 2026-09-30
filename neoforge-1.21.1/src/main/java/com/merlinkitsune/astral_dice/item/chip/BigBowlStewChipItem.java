@@ -7,6 +7,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import top.theillusivec4.curios.api.CuriosApi;
+import com.merlinkitsune.astral_dice.combat.PartyRelations;
 
 /**
  * 大碗炖肉筹码:骰神赐福效果结束后,使 16 格范围内所有友方目标获得 1 点治愈并恢复 2 点生命值
@@ -54,7 +55,7 @@ public class BigBowlStewChipItem extends BaseChipItem {
         if (!(player.level() instanceof ServerLevel serverLevel)) return;
 
         double rangeSqr = RANGE * RANGE;
-        java.util.List<Player> allies = EventTargetCollector.collectTeamPlayers(player);
+        java.util.List<Player> allies = PartyRelations.collectTeamPlayers(player);
         for (ServerPlayer sp : serverLevel.players()) {
             // 自身无条件在列(用户口径:「使自身和 16 格范围内所有友方玩家」)
             if (sp != player && !allies.contains(sp)) continue;

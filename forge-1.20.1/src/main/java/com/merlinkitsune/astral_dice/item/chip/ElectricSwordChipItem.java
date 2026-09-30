@@ -14,6 +14,7 @@ import net.minecraftforge.fml.common.Mod;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import com.merlinkitsune.astral_dice.combat.PartyRelations;
 
 /**
  * 电流剑筹码:
@@ -77,7 +78,7 @@ public class ElectricSwordChipItem extends BaseChipItem {
         if (event.getEntity().level().isClientSide()) return;
         // 先取击杀者再判定敌对:视者 = 击杀者(全局敌对玩家规则)
         if (!(event.getSource().getEntity() instanceof Player killer)) return;
-        if (!HostileTargets.isHostile(killer, event.getEntity())) return;
+        if (!PartyRelations.isHostileTo(killer, event.getEntity())) return;
         onHostileKilled(killer);
     }
 }

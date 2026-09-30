@@ -7,6 +7,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.AABB;
 import com.merlinkitsune.astral_dice.item.MarkManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
+import com.merlinkitsune.astral_dice.combat.PartyRelations;
 
 /**
  * 手持风扇-小筹码:使用(立牌)主动技能后,对自身周围 16 格范围内所有敌对目标施加一层标记。
@@ -29,7 +30,7 @@ public class FanSmallChipItem extends BaseChipItem {
 
         AABB aabb = player.getBoundingBox().inflate(RANGE);
         for (LivingEntity entity : player.level().getEntitiesOfClass(LivingEntity.class, aabb,
-                e -> HostileTargets.isHostile(player, e) && e.isAlive())) {
+                e -> PartyRelations.isHostileTo(player, e) && e.isAlive())) {
             MarkManager.apply(entity);
         }
     }

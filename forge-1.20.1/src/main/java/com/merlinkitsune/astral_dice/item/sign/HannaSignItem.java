@@ -29,6 +29,7 @@ import net.minecraftforge.eventbus.api.EventPriority;
 import top.theillusivec4.curios.api.SlotContext;
 
 import java.util.List;
+import com.merlinkitsune.astral_dice.combat.PartyRelations;
 
 /**
  * 人偶师立牌(hanna,稀有)1.20.1 Forge 移植版。
@@ -328,10 +329,11 @@ public class HannaSignItem extends BaseSignItem {
         return best;
     }
 
-    /** 友方判定:对方与自己同队(或任一方无队伍) —— 与肉弹战车、奢华大餐、史莱姆立牌同一口径 */
+    /** 友方判定:对方与自己同队(或任一方无队伍) —— 与肉弹战车、奢华大餐、史莱姆立牌同一口径;
+     * 队伍识别统一走 {@code combat/PartyRelations}(原版计分板 ∪ FTB Teams ∪ OPAC) */
     private static boolean isFriendly(Player self, Player other) {
-        return self.getTeam() == null || other.getTeam() == null
-                || self.getTeam() == other.getTeam();
+        return !PartyRelations.hasTeam(self) || !PartyRelations.hasTeam(other)
+                || PartyRelations.isSameTeam(self, other);
     }
 
     /** 该玩家是否在饰品槽里装着指定注册 id 的立牌(按 id 字符串匹配,与 sherry 同款) */

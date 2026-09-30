@@ -265,7 +265,7 @@ public final class ShootingStarManager {
     private static boolean isStarTarget(ServerPlayer player, LivingEntity candidate) {
         if (candidate instanceof Enemy) return true;
         if (candidate instanceof NeutralMob neutral) return neutral.isAngry();
-        return HostileTargets.isHostile(player, candidate);
+        return PartyRelations.isHostileTo(player, candidate);
     }
 
     /**

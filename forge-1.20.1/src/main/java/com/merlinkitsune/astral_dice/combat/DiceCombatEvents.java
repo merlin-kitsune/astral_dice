@@ -288,7 +288,7 @@ public class DiceCombatEvents {
                                 // 上下文重载:攻击者"视谁为敌"(全局规则,含曾主动攻击过攻击者的非同队玩家)
                                 // ⚠️ 排除本次攻击的目标(2026-09-24 用户裁决)与玩家自身
                                 && living != target && living != player
-                                && HostileTargets.isHostile(player, living) && living.isAlive()) {
+                                && PartyRelations.isHostileTo(player, living) && living.isAlive()) {
                             double distSqr = living.distanceToSqr(player);
                             if (distSqr < nearestDistSqr) {
                                 nearestDistSqr = distSqr;
@@ -876,13 +876,10 @@ public class DiceCombatEvents {
         com.merlinkitsune.astral_dice.item.chip.BigBowlStewChipItem.onBlessingEnd(player);
         // 骇客立牌:赐福结束刷新被动(攻击/防御,覆盖旧类型)
         NancyLuSignItem.onDiceBlessingEnded(player);
-        // 枪匠立牌:赐福结束弱点识破减少 1 层 —— **延到下一 tick**(见 BLESSING_END_PENDING 注释)
         // 蛟龙立牌(mamushi):赐福结束清除撕咬加成锁存(立牌 tick 另有"无赐福且锁存为真 ⇒ 清"的兜底)
         MamushiSignItem.onDiceBlessingEnded(player);
-        // 怪力侦探立牌(sherry):赐福结束「推理时间」减少 1 层(层数真值在附件,死亡不清)
-        //   —— 与「弱点识破」一并延到下一 tick:两者都会改 activeEffects,在本回调里直接执行会触发 CME
-        //   (见 BLESSING_END_PENDING 注释);此处只登记待办
-        BLESSING_END_PENDING.add(player);
+        // 枪匠「弱点识破」/ 怪力侦探「推理时间」的减层**自 2026-09-30 起不再挂在本事件上**:
+        //   两者改为**独立的 1 分钟计时器**(各自效果自然到期时扣 1 层并重置计时),见 onPassiveStackExpired。
         // 风水师立牌(zhao)的「白泽赐福」两分支收尾**不在这里**,也**不**订阅本 Expired 事件:
         // 判定入口 = 玩家级 tick 的下降沿(ZhaoSignItem#tickBlessing,由 PlayerTickEvents 每 tick 驱动;
         // 规格 §4.4 冻结口径)。理由:Expired 在"效果被外力移除 / 死亡 / 重连清场"时不触发会漏掉结束,
@@ -929,7 +926,7 @@ public class DiceCombatEvents {
     }
 
     /**
-     * 待办的「赐福结束」减层(怪力侦探「推理时间」/ 枪匠「弱点识破」),下一 tick 服务端 tick 末尾统一执行。
+     * 待办的「弱点识破 / 推理时间」自然到期减层,下一 tick 服务端 tick 末尾统一执行。
      *
      * <p>⚠️ <b>为什么必须在下一 tick 执行</b>:{@code MobEffectEvent.Expired} 在
      * {@code LivingEntity#tickEffects} 的 {@code iterator.remove()} <b>之前</b>发出 —— 此刻处理器若
@@ -939,27 +936,60 @@ public class DiceCombatEvents {
      * ⇒ <b>该效果本拍不被移除</b>,且其 duration 已为 0 ⇒ 下一拍 {@code tick()} 直接返回 false
      * ⇒ {@code Expired} <b>再发一次</b> ⇒ 减层被逐拍重放,直到「不再改 map」为止。
      *
-     * <p>而这两条减层的镜像实现都必然「先 removeEffect 再 addEffect」(原版 {@code MobEffectInstance#update}
-     * 只接受更高的 amplifier)⇒ 必然命中上述陷阱。<b>2026-09-25 两轮实测</b>:一次赐福结束时减层次数
-     * <b>恰等于当时层数</b>(4 层 ⇒ 连续 4 拍各扣 1、直接归 0;3 层 ⇒ 3 拍),即用户所报「骰神赐福结束变成全扣」。
+     * <p><b>2026-09-25 两轮实测</b>(当时仍挂在骰神赐福结束上):一次减层调用次数
+     * <b>恰等于当时层数</b>(4 层 ⇒ 连续 4 拍各扣 1、直接归 0),即用户所报「骰神赐福结束变成全扣」。
      *
-     * <p>范式同 {@code MarkManager#PENDING_DECAY}(标记减层同样不能在 Expired 里直接补写)。
+     * <p>两条减层的补写实现都必然「先 removeEffect 再 addEffect」(原版 {@code MobEffectInstance#update}
+     * 只接受更高的 amplifier)⇒ 必然命中上述陷阱。范式同 {@code MarkManager#PENDING_DECAY}。
      */
-    private static final List<Player> BLESSING_END_PENDING = new ArrayList<>();
+    private record PassiveDecay(Player player, boolean sherry, int expiredAmplifier) {
+    }
 
+    private static final List<PassiveDecay> PASSIVE_DECAY_PENDING = new ArrayList<>();
+
+    /**
+     * 「弱点识破」/「推理时间」效果<b>自然到期</b>时登记减层。
+     *
+     * <p>2026-09-30 用户裁决:这两个被动由「骰神赐福结束时扣 1 层」改为
+     * <b>独立的 1 分钟计时器</b>(各自的效果时长 = {@code 20 * 60} tick,自然到期即扣 1 层并重置计时)
+     * ⇒ 衰减不再与骰神赐福的起止绑定。
+     */
     @SubscribeEvent
-    public static void onBlessingEndPending(TickEvent.ServerTickEvent event) {
-        if (event.phase != TickEvent.Phase.END) return;
-        if (BLESSING_END_PENDING.isEmpty()) return;
-        List<Player> pending = new ArrayList<>(BLESSING_END_PENDING);
-        BLESSING_END_PENDING.clear();
-        for (Player player : pending) {
+    public static void onPassiveStackExpired(MobEffectEvent.Expired event) {
+        if (!(event.getEntity() instanceof Player player)) return;
+        if (player.level().isClientSide()) return;
+        MobEffectInstance effect = event.getEffectInstance();
+        if (effect == null || effect.getEffect() == null) return;
+        net.minecraft.world.effect.MobEffect type = effect.getEffect();
+        boolean sherry;
+        if (type == ModEffects.SHERRY_REASONING.get()) {
+            sherry = true;
+        } else if (type == ModEffects.WEAKNESS_REVEAL.get()) {
+            sherry = false;
+        } else {
+            return;
+        }
+        PASSIVE_DECAY_PENDING.add(new PassiveDecay(player, sherry, effect.getAmplifier()));
+    }
+
+    /** 下一 tick 补写「弱点识破 / 推理时间」减 1 层(见 {@link #onPassiveStackExpired} 注释)。 */
+    @SubscribeEvent
+    public static void onPassiveStackDecay(TickEvent.ServerTickEvent event) {
+        if (PASSIVE_DECAY_PENDING.isEmpty()) return;
+        List<PassiveDecay> pending = new ArrayList<>(PASSIVE_DECAY_PENDING);
+        PASSIVE_DECAY_PENDING.clear();
+        for (PassiveDecay decay : pending) {
+            Player player = decay.player();
             if (player == null || player.isRemoved() || !player.isAlive()) continue;
             if (player.level().isClientSide()) continue;
-            // 枪匠立牌:弱点识破 −1 层(层数真值 = 效果实例本身)
-            MosesSignItem.onDiceBlessingEnded(player);
-            // 怪力侦探立牌(sherry):「推理时间」−1 层(层数真值在附件,死亡不清)
-            com.merlinkitsune.astral_dice.item.sign.SherrySignItem.onDiceBlessingEnded(player);
+            if (decay.sherry()) {
+                // 「推理时间」层数真值在附件:到期前层数 = amplifier + 1 ⇒ 新层数 = amplifier
+                com.merlinkitsune.astral_dice.item.sign.SherrySignItem
+                        .setLayers(player, decay.expiredAmplifier());
+            } else {
+                // 「弱点识破」层数真值 = 效果实例本身:还有剩余层数时按更低层数重施加(重置 1 分钟计时)
+                WeaknessRevealEffect.applyDecayed(player, decay.expiredAmplifier());
+            }
         }
     }
 
@@ -1091,12 +1121,13 @@ public class DiceCombatEvents {
         return true;
     }
 
-    // 骰神赐福触发目标判定:敌对生物、非团队内玩家、中立生物(宠物除外),以及其余非被动动物实体
+    // 骰神赐福触发目标判定:敌对生物、非团队内玩家(队伍识别统一走 PartyRelations:
+    // 原版计分板 ∪ FTB Teams ∪ OPAC)、中立生物(宠物除外),以及其余非被动动物实体
     // ⚠️ 试验假人不再在此单列特例 —— 它已由库的 HostileTargets「额外敌对判定」seam 统一计入敌对目标
     // (注入见本类 static 块),故下一行 HostileTargets.isHostile 即覆盖它,与其它调用点口径一致。
     public static boolean isBlessingTarget(LivingEntity target, Player player) {
         if (target instanceof Player other) {
-            return other.getTeam() == null || other.getTeam() != player.getTeam();
+            return !PartyRelations.isSameTeam(player, other);
         }
         if (HostileTargets.isHostile(target)) return true;
         if (target instanceof Mob mob) {
@@ -1131,7 +1162,7 @@ public class DiceCombatEvents {
         if (player == null || source == null) return false;
         if (!(source.getEntity() instanceof LivingEntity attacker)) return false;
         if (attacker == player) return false;
-        return HostileTargets.isHostile(player, attacker);
+        return PartyRelations.isHostileTo(player, attacker);
     }
 
     // 试验假人(dummmmmmy)识别:实体注册 id 命名空间为 dummmmmmy,或类名包含 dummy(兼容不同版本/命名)。
@@ -1253,7 +1284,7 @@ public class DiceCombatEvents {
         if (!player.isAlive()) return;
         if (!(event.getSource().getEntity() instanceof LivingEntity attacker)) return;
         // 视者 = 被攻击的玩家(player):被嘲讽目标若为"曾主动攻击过本玩家的非同队玩家"同样计入敌对
-        if (!HostileTargets.isHostile(player, attacker)) return;
+        if (!PartyRelations.isHostileTo(player, attacker)) return;
         if (!attacker.hasEffect(ModEffects.PANDAMAN_TAUNT.get())) return;
         Optional<UUID> tauntSource = ModAttachments.getPandamanTauntSource(attacker);
         if (tauntSource.isEmpty() || !tauntSource.get().equals(player.getUUID())) return;
@@ -1279,7 +1310,7 @@ public class DiceCombatEvents {
         // 2026-09-29 收紧(与效果文案「佩戴者被攻击时消耗该层」对齐):只有**敌对目标**的攻击
         // 才消耗反击层数。视者 = 带盾玩家(player);于是队友 / 已驯服宠物 / 未激怒中立生物的
         // 攻击不再误消耗层数、也不再把反击打在友军身上(自伤已由上一行排除)。
-        if (!HostileTargets.isHostile(player, attacker)) return;
+        if (!PartyRelations.isHostileTo(player, attacker)) return;
         // 一次性充能:先消耗层数(并同步摘掉「反击」图标),再注入伤害
         ModAttachments.setRenCounterCharges(player, 0);
         RenShieldManager.refreshCounterEffect(player);

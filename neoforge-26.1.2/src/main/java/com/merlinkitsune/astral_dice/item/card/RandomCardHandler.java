@@ -14,6 +14,7 @@ import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
+import com.merlinkitsune.astral_dice.combat.PartyRelations;
 
 /**
  * 随机卡牌处理类:随机卡牌的类型筛选、专属牌强制排除与向其他玩家发放的统一逻辑。
@@ -216,7 +217,7 @@ public final class RandomCardHandler {
                     giver.getBoundingBox().inflate(scope.range)));
         }
         if (scope.applyTeam) {
-            targets.addAll(EventTargetCollector.collectTeamPlayers(giver));
+            targets.addAll(PartyRelations.collectTeamPlayers(giver));
         }
         if (!scope.includeSelf) {
             targets.remove(giver);

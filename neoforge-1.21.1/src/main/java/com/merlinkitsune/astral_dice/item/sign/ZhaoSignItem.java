@@ -36,6 +36,7 @@ import top.theillusivec4.curios.api.CuriosApi;
 
 import java.util.ArrayList;
 import java.util.List;
+import com.merlinkitsune.astral_dice.combat.PartyRelations;
 
 /**
  * 风水师立牌(全局命名 {@code zhao};传奇品质)。
@@ -454,9 +455,9 @@ public class ZhaoSignItem extends BaseSignItem {
      */
     public static int onAllyActiveSkill(Player fenOwner) {
         if (fenOwner == null || fenOwner.level().isClientSide()) return 0;
-        if (!EventTargetCollector.hasAnyTeam(fenOwner)) return 0;
+        if (!PartyRelations.hasTeam(fenOwner)) return 0;
         int granted = 0;
-        for (Player ally : EventTargetCollector.collectTeamPlayers(fenOwner)) {
+        for (Player ally : PartyRelations.collectTeamPlayers(fenOwner)) {
             if (ally == null || ally == fenOwner) continue;
             if (!isEquipped(ally)) continue;      // 只发给"装备风水师立牌"的同队者
             FuCardItem.give(ally, ally, 1);       // 绑定**受赠者**(§7.2 发放路径 3)
@@ -477,8 +478,8 @@ public class ZhaoSignItem extends BaseSignItem {
     public static List<String> linkedReceiverIds(Player fenOwner) {
         List<String> ids = new ArrayList<>();
         if (fenOwner == null || fenOwner.level().isClientSide()) return ids;
-        if (!EventTargetCollector.hasAnyTeam(fenOwner)) return ids;
-        for (Player ally : EventTargetCollector.collectTeamPlayers(fenOwner)) {
+        if (!PartyRelations.hasTeam(fenOwner)) return ids;
+        for (Player ally : PartyRelations.collectTeamPlayers(fenOwner)) {
             if (ally == null || ally == fenOwner) continue;
             if (!isEquipped(ally)) continue;
             ids.add(ally.getUUID().toString());
@@ -488,6 +489,6 @@ public class ZhaoSignItem extends BaseSignItem {
 
     /** 只读读数辅助(探针/调试用):当前是否满足"组队"这一前置(未组队 ⇒ 心意相连整体不生效) */
     public static boolean teamGateOpen(Player player) {
-        return player != null && EventTargetCollector.hasAnyTeam(player);
+        return player != null && PartyRelations.hasTeam(player);
     }
 }

@@ -13,6 +13,7 @@ import top.theillusivec4.curios.api.CuriosApi;
 import top.theillusivec4.curios.api.SlotContext;
 
 import java.util.concurrent.ThreadLocalRandom;
+import com.merlinkitsune.astral_dice.combat.PartyRelations;
 
 /**
  * 肾上腺素筹码(一般/高效):生命值为 50% 或更低时,攻击力/防御力 +3/+8。
@@ -93,7 +94,7 @@ public class AdrenalineChipItem extends BaseChipItem {
         if (!hasHighEquipped(player)) return;
         // 敌方攻击(视者 = 受击玩家:敌对生物,或"非同队且曾主动攻击过本玩家"的玩家;排除摔落/火焰等环境伤害)
         if (!(event.getSource().getEntity() instanceof net.minecraft.world.entity.LivingEntity attacker)) return;
-        if (!HostileTargets.isHostile(player, attacker)) return;
+        if (!PartyRelations.isHostileTo(player, attacker)) return;
         if (tryDodge()) {
             com.merlinkitsune.astral_dice.combat.DiceCombatEvents.applyDodgeCancel(event);
             // 枪匠立牌:任意来源的闪避都会尝试获得 1 层弱点识破(每目标一次)

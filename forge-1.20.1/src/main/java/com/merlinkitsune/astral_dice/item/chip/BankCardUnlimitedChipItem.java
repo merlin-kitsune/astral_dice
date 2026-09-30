@@ -11,6 +11,7 @@ import top.theillusivec4.curios.api.CuriosApi;
 import top.theillusivec4.curios.api.SlotContext;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.StarLightManager;
+import com.merlinkitsune.astral_dice.combat.PartyRelations;
 
 /**
  * 银行卡-用不完筹码:装备时获得 3 点星光(一次性);
@@ -62,7 +63,7 @@ public class BankCardUnlimitedChipItem extends BaseChipItem {
         if (!isEquipped(player)) return;
         if (player.isDeadOrDying()) return;
         if (!(player.level() instanceof ServerLevel serverLevel)) return;
-        java.util.List<Player> allies = EventTargetCollector.collectTeamPlayers(player);
+        java.util.List<Player> allies = PartyRelations.collectTeamPlayers(player);
         for (ServerPlayer sp : serverLevel.players()) {
             if (sp == player || allies.contains(sp)) {
                 giveCoins(sp);

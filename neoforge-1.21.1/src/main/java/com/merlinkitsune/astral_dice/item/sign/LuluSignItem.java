@@ -27,6 +27,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import com.merlinkitsune.astral_dice.combat.PartyRelations;
 
 /**
  * 史莱姆立牌。
@@ -102,7 +103,7 @@ public class LuluSignItem extends BaseSignItem {
             List<LivingEntity> nearby = target.level().getEntitiesOfClass(LivingEntity.class, aabb,
                     e -> e != target);
             for (LivingEntity entity : nearby) {
-                if (HostileTargets.isHostile(player, entity)) {
+                if (PartyRelations.isHostileTo(player, entity)) {
                     // 敌对生物:缓慢 1:00
                     EffectTimerGuard.apply(entity,
                             new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, SLOWDOWN_TICKS, 0, false, true));
