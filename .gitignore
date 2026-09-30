@@ -76,3 +76,7 @@ deploy.ps1
 base-mod-libs/
 base-mod-compile-libs/
 ### AGENTS.md 自 2026-09-15 起纳入版本库(用户要求),不再排除 ###
+### CurseForge 上传凭据与版本 id 缓存(2026-09-30):**不入库** ###
+### token 放 .curseforge/token(本地)或环境变量 CURSEFORGE_TOKEN(CI secret);
+### 用法见 tools/curseforge_upload.py --help
+.curseforge/

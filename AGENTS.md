@@ -1601,6 +1601,15 @@ When extending this workspace:
 4. `gradlew build` 同时编译并部署**三个**版本(26.1.2 与另两线同规则)——`pushToDevRun` / `pushToRootBuild` / `pushToGame`(整合包) 均默认随 build 自动触发（整合包推送仅发布线分支执行，本流程即运行在发布线上；失败则回滚版本号，不提交）；
 5. **自动本地提交**（`deploy.ps1` 自动提交 `release: v<版本>`，或手工 `chore: bump version to X.Y.Z` 等），**默认不执行 `git push`**。
 
+### CurseForge 上传（2026-09-30 起；**发布动作，与本地部署无关**）
+
+- 工具 = `tools/curseforge_upload.py`（**纯标准库**）。**`--dry-run` 是默认动作** —— 先看计划，确认无误再去掉它。
+- 凭据解析顺序：`--token` > 环境变量 `CURSEFORGE_TOKEN`（CI 用 GitHub secret）> `<仓库根>/.curseforge/token`（**已 gitignore，不入库**）。⚠️ token 是账号级凭据，任何情况下都不得写进入库文件。
+- ⚠️ 站点域**必须**是 `minecraft.curseforge.com`（换 `www.` 会拿到**另一个游戏**的版本表）；**直连必被 Cloudflare 403**（加浏览器 UA 也无效）⇒ 本机一律加 `--proxy http://127.0.0.1:7897`。
+- 版本 id **动态解析**（`/api/game/version-types` + `/api/game/versions`，缓存 7 天），提交的 `gameVersions` = `Client` + `Server` + MC 版本 + 加载器。
+- 项目 `projectId = 1662159`（slug `astral-dice`）；完整实测口径与踩坑见 `scripts/test/TESTING-SPEC.md` **附录 A 续 33**。
+- ⚠️ **自动推送规则（触发时机 / 是否并入 CI）待用户设定** —— 在此之前**不要**把上传接进 `build` 或 CI 流程。
+
 ## 自动化测试流程（Automated Testing）— 必须遵守（子配置）
 
 ### ⚠️ 测试资产已全部清零（2026-09-20 用户指令）— 现行状态，先读本节

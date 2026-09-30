@@ -1825,3 +1825,32 @@ custom_frames.json 恢复 5 档全写；包内原版稀有/史诗与本模组稀
   `TESTING-SPEC.md`、`TESTING-RULES-OVERVIEW.md`、`reports/_template.md`。
 - **判据**：`git diff --cached --name-status` 计 `D` = 116 条（93 cases + 23 resources），
   与 `git ls-files scripts/test/{cases,resources}/` 逐项吻合；temp 备份 139 文件可回滚。
+
+## 附录 A 续 33. CurseForge 自动上传接入（2026-09-30）
+
+- **背景**：用户要求「接入 CurseForge API、添加自动上传到指定项目的功能」并提供账号级 API token。
+  本批只做**能力接入 + 凭据落地 + 口径实测**，**未执行任何真实上传**（自动推送规则待用户另行设定）。
+- **落点**：`tools/curseforge_upload.py`（**纯标准库**，无第三方依赖）。
+- **凭据解析顺序**：`--token` > 环境变量 `CURSEFORGE_TOKEN`（CI 走 GitHub secret）> `<仓库根>/.curseforge/token`。
+  `.curseforge/` 已加入 `.gitignore`（**token 与版本缓存一律不入库**）。
+- **项目**：`projectId = 1662159`（slug `astral-dice`）。脚本内为默认值，可用 `--project-id` 覆盖。
+- **API 口径（2026-09-30 实测，已逐条写进脚本 docstring）**：
+  - ⚠️ 站点域**必须**是 `minecraft.curseforge.com` —— 换成 `www.curseforge.com` 会返回
+    **另一个游戏**的版本表（实测 HTTP 200 但 `gameVersionTypeID` 全不同）；`/api/game/dependencies`
+    在该域已下线（404），`/api/game/versions` 与 `/api/game/version-types` 仍有效。
+  - 认证头 `X-Api-Token`；上传端点 `POST /api/projects/{projectId}/upload-file`，
+    `multipart/form-data`，字段 = `metadata`（JSON 字符串）+ `file`（jar 本体）；成功返回 `{"id": <fileId>}`。
+  - 版本 id **动态解析**（`/api/game/version-types` 给出每个 type 的名字，据此区分
+    `Minecraft 1.20/1.21/26.1`、`Modloader`、`Environment`），结果缓存 7 天到
+    `.curseforge/versions.json`。⚠️ 冷启动时 API 返回的 type 键是 **int**、缓存回读是 **str** ——
+    已统一为 str，否则首次运行必然误报「没有该 MC 版本」（实测踩到）。
+  - `gameVersions` 提交**四件套** = `Client` + `Server` + MC 版本 + 加载器，与项目既有文件的
+    展示口径一致（反查 CurseForge 上本项目的历史文件得到）。
+  - ⚠️ **直连会被 Cloudflare 拦（403）**，加浏览器 UA 也无效；本机需 `--proxy http://127.0.0.1:7897`。
+- **自动推导**：版本 / 加载器 / MC 版本从 jar 名（`astral_dice-<版本>+<加载器>_<MC版本>.jar`）解析；
+  release 类型按版本号后缀推断（含 `-alpha` ⇒ alpha，含 `-beta`/`-rc`/`-pre` ⇒ beta，无后缀 ⇒ release）；
+  更新日志默认取 `release/<基础版本>/PLAYER_CHANGELOG.md`（面向国际社区），缺失时退回中文版。
+- **当前可用命令**（先 `--dry-run` 看计划，确认后再去掉）：
+  `python tools/curseforge_upload.py --jar <jar> [--jar <jar> ...] --proxy <代理> [--dry-run]`
+- **未做**：真实上传（含首个文件的 `--manual-release` 验证）；CI 侧接线（GitHub Actions 加 secret 与步骤）；
+  本地 `gradlew` 任务包装。以上均待用户设定自动推送规则后再落地。

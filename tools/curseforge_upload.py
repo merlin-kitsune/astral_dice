@@ -1,0 +1,314 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""把构建产物上传到 CurseForge（纯标准库，无第三方依赖）。
+
+=====================================================================
+凭据
+=====================================================================
+按以下顺序解析（先命中者生效）：
+  1. ``--token <token>``
+  2. 环境变量 ``CURSEFORGE_TOKEN``（CI 里走 GitHub secret）
+  3. ``<仓库根>/.curseforge/token``（**已被 .gitignore 排除**，本地开发用）
+
+⚠️ token 是账号级凭据，**绝对不要**写进任何入库文件。
+
+=====================================================================
+用法
+=====================================================================
+    # 先看计划（不发请求）
+    python tools/curseforge_upload.py --jar build/libs/astral_dice-1.3.5+neoforge_1.21.1.jar --dry-run
+
+    # 真上传
+    python tools/curseforge_upload.py --jar build/libs/astral_dice-1.3.5+neoforge_1.21.1.jar
+
+    # 一次传多个（各线产物可混在一起传）
+    python tools/curseforge_upload.py \
+        --jar build/libs/astral_dice-1.3.5+neoforge_1.21.1.jar \
+        --jar build/libs/astral_dice-1.3.5+forge_1.20.1.jar \
+        --jar build/libs/astral_dice-1.3.5-beta.1+neoforge_26.1.2.jar
+
+    # 本机直连会被 Cloudflare 拦（403）；走本地代理即可
+    python tools/curseforge_upload.py --jar <...> --proxy http://127.0.0.1:7897
+
+版本号 / 加载器 / MC 版本一律**从 jar 文件名解析**（``astral_dice-<版本>+<加载器>_<MC版本>.jar``），
+release 类型由版本号里的 ``-alpha`` / ``-beta`` / ``-rc`` 后缀决定（无后缀 ⇒ release）。
+可用 ``--mc-version`` / ``--loader`` / ``--release-type`` / ``--display-name`` 显式覆盖。
+
+发布说明默认取 ``release/<基础版本>/PLAYER_CHANGELOG.md``（英文，面向 CurseForge 国际社区）；
+不存在时退回 ``PLAYER_CHANGELOG_ZH.md``；也可用 ``--changelog <文件>`` 显式指定。
+
+=====================================================================
+CurseForge 上传 API 要点（2026-09-30 实测）
+=====================================================================
+* **站点域必须是 ``minecraft.curseforge.com``** —— 换成 ``www.curseforge.com`` 会拿到
+  **另一个游戏**的版本列表（实测返回 200 但内容是别的游戏）。
+* 认证头 = ``X-Api-Token``（也可用 ``?token=`` 查询参数，本脚本用头）。
+* 上传端点 = ``POST /api/projects/{projectId}/upload-file``，``multipart/form-data``，
+  字段 = ``metadata``（JSON 字符串）+ ``file``（jar 本体）。成功返回 ``{"id": <fileId>}``。
+* 版本 id 一律**动态解析**（``/api/game/version-types`` + ``/api/game/versions``），
+  不要硬编码 —— CF 侧会新增/调整；解析结果缓存到 ``.curseforge/versions.json``。
+* ``gameVersions`` 提交四件套：``Client`` + ``Server`` + MC 版本 + 加载器（与项目已有文件口径一致）。
+* ⚠️ 请求会被 Cloudflare 拦代理/脚本 UA ⇒ 必须带浏览器 User-Agent（脚本已内置）。
+"""
+
+import argparse
+import json
+import os
+import pathlib
+import re
+import ssl
+import sys
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
+import uuid
+
+API_BASE = "https://minecraft.curseforge.com/api"
+DEFAULT_PROJECT_ID = "1662159"  # Astral Dice（slug: astral-dice）
+UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+      "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
+JAR_RE = re.compile(r"^astral_dice-(?P<ver>[^+]+)\+(?P<loader>[a-z]+)_(?P<mc>.+)\.jar$")
+CACHE_DAYS = 7
+
+REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
+CACHE_DIR = REPO_ROOT / ".curseforge"
+VERSIONS_CACHE = CACHE_DIR / "versions.json"
+
+
+# ---------------------------------------------------------------- 凭据
+def resolve_token(explicit):
+    if explicit:
+        return explicit.strip(), "--token"
+    env = (os.environ.get("CURSEFORGE_TOKEN") or "").strip()
+    if env:
+        return env, "环境变量 CURSEFORGE_TOKEN"
+    f = CACHE_DIR / "token"
+    if f.is_file():
+        return f.read_text(encoding="utf-8").strip(), str(f.relative_to(REPO_ROOT))
+    raise SystemExit(
+        "[ERR] 未找到 CurseForge token。三种方式任选：\n"
+        "      --token <t>  |  环境变量 CURSEFORGE_TOKEN  |  写成 .curseforge/token")
+
+
+# ---------------------------------------------------------------- HTTP
+def make_opener(proxy):
+    handlers = []
+    if proxy:
+        handlers.append(urllib.request.ProxyHandler({"http": proxy, "https": proxy}))
+    ctx = ssl.create_default_context()
+    handlers.append(urllib.request.HTTPSHandler(context=ctx))
+    return urllib.request.build_opener(*handlers)
+
+
+def api_get(opener, path, token):
+    req = urllib.request.Request(API_BASE + path, headers={
+        "X-Api-Token": token, "User-Agent": UA, "Accept": "application/json"})
+    with opener.open(req, timeout=60) as r:
+        return json.loads(r.read().decode("utf-8"))
+
+
+def api_upload(opener, project_id, token, metadata, jar_path):
+    boundary = "----AstralDiceBoundary" + uuid.uuid4().hex
+    meta = json.dumps(metadata, ensure_ascii=False).encode("utf-8")
+    data = b"".join([
+        f"--{boundary}\r\n".encode(),
+        b'Content-Disposition: form-data; name="metadata"\r\n',
+        b"Content-Type: application/json\r\n\r\n",
+        meta, b"\r\n",
+        f"--{boundary}\r\n".encode(),
+        f'Content-Disposition: form-data; name="file"; filename="{jar_path.name}"\r\n'.encode(),
+        b"Content-Type: application/java-archive\r\n\r\n",
+        jar_path.read_bytes(), b"\r\n",
+        f"--{boundary}--\r\n".encode(),
+    ])
+    req = urllib.request.Request(
+        f"{API_BASE}/projects/{project_id}/upload-file", data=data, method="POST",
+        headers={"X-Api-Token": token, "User-Agent": UA,
+                 "Content-Type": f"multipart/form-data; boundary={boundary}",
+                 "Content-Length": str(len(data))})
+    try:
+        with opener.open(req, timeout=600) as r:
+            return r.status, r.read().decode("utf-8", "replace")
+    except urllib.error.HTTPError as e:
+        return e.code, e.read().decode("utf-8", "replace")
+
+
+# ---------------------------------------------------------------- 版本 id
+def load_catalog(opener, token, force=False):
+    """返回 (catalog, 来源说明)。"""
+    if not force and VERSIONS_CACHE.is_file():
+        age = time.time() - VERSIONS_CACHE.stat().st_mtime
+        if age < CACHE_DAYS * 86400:
+            return (json.loads(VERSIONS_CACHE.read_text(encoding="utf-8")),
+                    f"缓存 {VERSIONS_CACHE.relative_to(REPO_ROOT)}（{age / 3600:.1f} 小时前）")
+    types = {t["id"]: t["name"] for t in api_get(opener, "/game/version-types", token)}
+    versions = api_get(opener, "/game/versions", token)
+    # ⚠️ 刚从 API 拿到的 types 是 **int 键**，而读缓存回来的是 str 键 ⇒ 统一成 str，
+    #    否则首次运行（无缓存）时按 str 查找永远落空、报「没有该 MC 版本」。
+    cat = {"fetchedAt": int(time.time()),
+           "types": {str(k): v for k, v in types.items()},
+           "versions": versions}
+    CACHE_DIR.mkdir(exist_ok=True)
+    VERSIONS_CACHE.write_text(json.dumps(cat, ensure_ascii=False), encoding="utf-8")
+    return cat, f"已从 CurseForge 拉取 → {VERSIONS_CACHE.relative_to(REPO_ROOT)}"
+
+
+def resolve_ids(cat, mc, loader):
+    """返回 (gameVersionIds, 明细)。四件套 = Client + Server + MC 版本 + 加载器。"""
+    types = cat["types"]
+    out, detail = [], {}
+
+    def pick(type_name_exact=None, type_name_prefix=None, version_name=None, ci=False):
+        for v in cat["versions"]:
+            tname = types.get(str(v["gameVersionTypeID"]), "")
+            if type_name_exact is not None and tname != type_name_exact:
+                continue
+            if type_name_prefix is not None and not tname.startswith(type_name_prefix):
+                continue
+            a, b = (v["name"].lower(), version_name.lower()) if ci else (v["name"], version_name)
+            if a == b:
+                return v
+        return None
+
+    for env in ("Client", "Server"):
+        v = pick(type_name_exact="Environment", version_name=env)
+        if v:
+            out.append(v["id"]); detail[env] = v["id"]
+    v = pick(type_name_prefix="Minecraft ", version_name=mc)
+    if not v:
+        raise SystemExit(f"[ERR] CurseForge 上没有 MC 版本 {mc!r}（可用 --refresh-versions 重取后再试）")
+    out.append(v["id"]); detail[mc] = v["id"]
+    v = pick(type_name_exact="Modloader", version_name=loader, ci=True)
+    if not v:
+        raise SystemExit(f"[ERR] CurseForge 上没有加载器 {loader!r}")
+    out.append(v["id"]); detail[loader] = v["id"]
+    return out, detail
+
+
+# ---------------------------------------------------------------- 元数据
+def parse_jar(jar):
+    m = JAR_RE.match(jar.name)
+    if not m:
+        raise SystemExit(f"[ERR] jar 名不符合 astral_dice-<版本>+<加载器>_<MC版本>.jar：{jar.name}")
+    return m.group("ver"), m.group("loader"), m.group("mc")
+
+
+def infer_release_type(ver):
+    v = ver.lower()
+    if "-alpha" in v:
+        return "alpha"
+    if "-beta" in v or "-rc" in v or "-pre" in v:
+        return "beta"
+    return "release"
+
+
+def pick_changelog(ver, explicit):
+    if explicit:
+        p = pathlib.Path(explicit)
+        if not p.is_file():
+            raise SystemExit(f"[ERR] 指定的更新日志不存在：{p}")
+        return p
+    base = ver.split("-")[0]
+    for name in ("PLAYER_CHANGELOG.md", "PLAYER_CHANGELOG_ZH.md"):
+        p = REPO_ROOT / "release" / base / name
+        if p.is_file():
+            return p
+    return None
+
+
+# ---------------------------------------------------------------- main
+def main():
+    ap = argparse.ArgumentParser(
+        description="上传 Astral Dice 构建产物到 CurseForge",
+        formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--jar", action="append", required=True, metavar="PATH",
+                    help="要上传的 jar（可重复；相对路径按当前目录解析）")
+    ap.add_argument("--project-id", default=DEFAULT_PROJECT_ID)
+    ap.add_argument("--token")
+    ap.add_argument("--proxy", default=None,
+                    help="本地代理，如 http://127.0.0.1:7897（也可用环境变量 HTTPS_PROXY）")
+    ap.add_argument("--changelog", help="更新日志文件（默认自动取 release/<版本>/PLAYER_CHANGELOG*.md）")
+    ap.add_argument("--changelog-type", default="markdown", choices=["markdown", "html", "text"])
+    ap.add_argument("--display-name", help="站点显示名（默认 = jar 文件名）")
+    ap.add_argument("--mc-version", help="覆盖从文件名解析出的 MC 版本")
+    ap.add_argument("--loader", help="覆盖从文件名解析出的加载器（如 neoforge / forge）")
+    ap.add_argument("--release-type", choices=["release", "beta", "alpha"],
+                    help="覆盖按版本号推断的发布类型")
+    ap.add_argument("--manual-release", action="store_true",
+                    help="标记为「手动发布」（审核通过后不自动公开）")
+    ap.add_argument("--dry-run", action="store_true", help="只打印计划，不发请求")
+    ap.add_argument("--refresh-versions", action="store_true", help="忽略缓存重新拉取版本表")
+    args = ap.parse_args()
+
+    import os
+    proxy = args.proxy or os.environ.get("HTTPS_PROXY") or os.environ.get("https_proxy")
+    token, token_src = resolve_token(args.token)
+    opener = make_opener(proxy)
+
+    cat, ver_src = load_catalog(opener, token, force=args.refresh_versions)
+
+    jobs = []
+    for raw in args.jar:
+        jar = pathlib.Path(raw).resolve()
+        if not jar.is_file():
+            raise SystemExit(f"[ERR] 找不到 jar：{jar}")
+        ver, loader, mc = parse_jar(jar)
+        loader = args.loader or loader
+        mc = args.mc_version or mc
+        rtype = args.release_type or infer_release_type(ver)
+        ids, detail = resolve_ids(cat, mc, loader)
+        jobs.append({"jar": jar, "ver": ver, "loader": loader, "mc": mc,
+                     "releaseType": rtype, "gameVersions": ids, "_detail": detail})
+
+    # 更新日志：同一批次内同版本只读一次
+    cache = {}
+    for j in jobs:
+        if j["ver"] not in cache:
+            cache[j["ver"]] = pick_changelog(j["ver"], args.changelog)
+        j["_changelog"] = cache[j["ver"]]
+
+    print(f"项目 projectId = {args.project_id}")
+    print(f"凭据           = {token_src}")
+    print(f"代理           = {proxy or '（直连；若被 Cloudflare 403 请加 --proxy）'}")
+    print(f"版本表         = {ver_src}")
+    print("-" * 72)
+    for j in jobs:
+        cl = j["_changelog"]
+        if cl:
+            cl_desc = f"{cl.relative_to(REPO_ROOT)}（{len(cl.read_text(encoding='utf-8'))} 字符）"
+        else:
+            cl_desc = "（无，留空）"
+        print(f"  {j['jar'].name}")
+        print(f"    版本 {j['ver']} | {j['loader']} | MC {j['mc']} | 类型 {j['releaseType']}")
+        print(f"    gameVersions = {j['gameVersions']}  {j['_detail']}")
+        print(f"    更新日志 = {cl_desc}")
+
+    if args.dry_run:
+        print("-" * 72)
+        print("DRY-RUN：未发送任何请求。去掉 --dry-run 即真实上传。")
+        return 0
+
+    fail = 0
+    for j in jobs:
+        cl = j["_changelog"]
+        metadata = {
+            "displayName": args.display_name or j["jar"].name,
+            "releaseType": j["releaseType"],
+            "gameVersions": j["gameVersions"],
+            "changelogType": args.changelog_type,
+        }
+        if cl:
+            metadata["changelog"] = cl.read_text(encoding="utf-8")
+        if args.manual_release:
+            metadata["isMarkedForManualRelease"] = True
+        code, body = api_upload(opener, args.project_id, token, metadata, j["jar"])
+        ok = 200 <= code < 300
+        print(f"[{'OK ' if ok else 'FAIL'}] {j['jar'].name}  HTTP {code}  {body[:200]}")
+        if not ok:
+            fail += 1
+    return 1 if fail else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
