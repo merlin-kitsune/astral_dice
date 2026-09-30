@@ -3,6 +3,7 @@ package com.merlinkitsune.astral_dice.item;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 
 import com.merlinkitsune.astral_dice.effect.ModEffects;
+import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
 import com.merlinkitsune.starenginelib.event.ModEffectRemoval;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.player.Player;
@@ -22,7 +23,7 @@ import top.theillusivec4.curios.api.CuriosApi;
  * 例:4 点 + 完备医疗箱(3 点) ⇒ 减半 2 → +3 = 5 ⇒ 回血 10 点 ⇒ 开始下一轮 1:00 计时。
  *
  * <p>治愈点为单一数值池(附件 healing_points),由史莱姆立牌被动/主动、缓冲盾牌、
- * 医疗箱等来源增加;点数 &gt; 0 即显示「治愈」效果(计时器未在跑时显示 ∞),归 0 即移除。
+ * 医疗箱等来源增加;点数 &gt; 0 即显示「治愈」效果(时长 = 治愈计时器**剩余倒计时**,恒为有限值,**不再使用无限时长**),归 0 即移除。
  *
  * <p>执行优先级:触发时的回血结算由 {@link #onBlessingTriggered} 统一在
  * 事件块末尾调用,晚于所有影响治愈点数量的效果(史莱姆受击 +1、缓冲盾牌 +2 等
@@ -94,12 +95,6 @@ public final class HealingManager {
 
     // ── 治愈计时器/骰神赐福结算 ──────────────────────────────────────────────
 
-    /**
-     * 触发骰神赐福时调用:
-     * 1. 先追加所有筹码提供的初始治愈点;
-     * 2. 再按当前治愈点×2 回血;
-     * 3. 启动/重置 30 秒治愈计时器。
-     */
     /**
      * 触发骰神赐福时调用(治愈体系的**触发点之一**,不再是唯一触发点):
      * 1. 先追加所有筹码提供的治愈点(医疗箱);
@@ -202,11 +197,13 @@ public final class HealingManager {
     // ── 效果显示 ───────────────────────────────────────────────────────────────
 
     /**
-     * 刷新「治愈」效果:等级 = 当前治愈点(层数),时长 = 治愈计时器剩余 tick;
-     * 治愈计时器未在跑时用原版「真·无限时长」(显示 ∞)。
+     * 刷新「治愈」效果:等级 = 当前治愈点(层数),时长 = 治愈计时器**剩余 tick**(HUD 显示 1:00 倒计时)。
      *
-     * <p>2026-09-30 用户裁决:与骰神赐福**解绑** —— 只要治愈点 &gt; 0 就显示
-     * (不再要求赐福生效或计时器在跑);点数归 0 即移除。
+     * <p>2026-09-30 用户裁决(第 2 版):与骰神赐福**解绑**,且指示器**不再使用原版「无限时长」** ——
+     * 无限时长只留给美工刀这类「自身条件型」指示器({@code PlayerTickEvents#refreshIndicatorInfinite})。
+     * 因此点数 &gt; 0 而计时器未在跑时(仅靠受击/护盾攒点、从未触发过赐福等),
+     * 此处立即起一轮完整 {@link #HEALING_TIMER_SECONDS} 计时器,保证剩余时长恒为正常倒计时;
+     * 点数归 0 则移除效果(计时器由 {@link #onTimerEnded} 归零)。
      */
     public static void updateEffect(Player player) {
         if (player.level().isClientSide()) return;
@@ -217,23 +214,30 @@ public final class HealingManager {
         }
         long now = player.level().getGameTime();
         long timerEnd = ModAttachments.getHealingTimerEnd(player);
-        int remain = timerEnd > now
-                ? (int) (timerEnd - now)
-                : MobEffectInstance.INFINITE_DURATION;
-        // 效果已存在且层级一致、时长充足时不重复施加,避免每 tick 触发效果更新/同步包。
-        // ⚠️ 无限时长用 INFINITE_DURATION(-1)判定,不能与普通剩余 tick 比大小。
-        MobEffectInstance existing = player.getEffect(ModEffects.HEALING);
-        if (existing != null && existing.getAmplifier() == total - 1) {
-            int d = existing.getDuration();
-            boolean sameInfinite = d == MobEffectInstance.INFINITE_DURATION
-                    && remain == MobEffectInstance.INFINITE_DURATION;
-            if (sameInfinite || (d > 20 && remain != MobEffectInstance.INFINITE_DURATION)) return;
+        if (timerEnd <= now) {
+            // 点数 > 0 却没有在跑的计时器(仅靠受击/护盾攒点、尚未触发过赐福)
+            // ⇒ 立即起一轮 1:00 计时,使指示器始终绑定倒计时而不是 ∞。
+            timerEnd = now + (long) HEALING_TIMER_SECONDS * 20L;
+            ModAttachments.setHealingTimerEnd(player, timerEnd);
         }
+        int remain = (int) Math.max(1L, timerEnd - now);
+        // 效果已存在、层级一致且剩余充足时不重复施加,避免每 tick 触发效果更新/同步包。
+        MobEffectInstance existing = player.getEffect(ModEffects.HEALING);
+        if (existing != null && existing.getAmplifier() == total - 1 && existing.getDuration() > 20) return;
         // 层级下降(治愈点被减半/消耗)时必须先移除旧实例:原版 MobEffectInstance#update 只接受
         // 更高的 amplifier,直接 addEffect 低层实例会被忽略(只进 hiddenEffect),HUD 等级会停在旧值。
         if (existing != null && existing.getAmplifier() > total - 1) {
             ModEffectRemoval.remove(player, ModEffects.HEALING);
         }
-        player.addEffect(new MobEffectInstance(ModEffects.HEALING, remain, total - 1, false, false, true));
+        MobEffectInstance instance =
+                new MobEffectInstance(ModEffects.HEALING, remain, total - 1, false, false, true);
+        player.addEffect(instance);
+        // ⚠️ 本效果自 2026-09-30 起是**有限时长**,会进入 EffectTimerGuard 的记账
+        // (自定义效果由 MobEffectEvent.Added 统一记录);而效果已存在时原版只发 Changed、
+        // Added 不触发 ⇒ 守卫的结束刻不会刷新,下一 tick 会把时长截断回旧值。
+        // 故此处显式同步一次(record 内部取 max,不会缩短)。
+        if (existing != null) {
+            EffectTimerGuard.record(player, instance);
+        }
     }
 }

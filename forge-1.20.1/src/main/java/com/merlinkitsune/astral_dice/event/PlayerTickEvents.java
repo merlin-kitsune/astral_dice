@@ -125,7 +125,14 @@ public class PlayerTickEvents {
                 FlashlightChipItem.isEquipped(player) && blessed && StarLightManager.get(player) / 4 >= 1);
     }
 
-    /** 显示指示器效果(无限时长版本):需要显示且缺失时施加 ∞;不需要显示且存在时移除。 */
+    /**
+     * 显示指示器效果(无限时长版本):需要显示且缺失时施加 ∞;不需要显示且存在时移除。
+     *
+     * <p>⚠️ **仅供「自身条件型」指示器使用**(当前唯一调用方 = 美工刀-初级/锋利):
+     * 这类指示器的存在与否完全由玩家自身状态决定、与任何计时器无关,故用 ∞ 常驻。
+     * 需要绑定倒计时的指示器(如「治愈」)必须走各自的计时器刷新,不得走本方法
+     * (治愈见 {@code HealingManager#updateEffect})。
+     */
     private static void refreshIndicatorInfinite(Player player, net.minecraft.world.effect.MobEffect effect,
                                          boolean shouldShow) {
         if (shouldShow) {
