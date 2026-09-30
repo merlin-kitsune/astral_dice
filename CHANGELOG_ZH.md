@@ -56,9 +56,18 @@
   而整合包里的队伍并不一定走计分板（FTB Teams / Open Parties and Claims 各有独立数据），这类玩家的计分板队伍恒为 `null`
   ⇒ 队友判定**完全失效**。现新增统一入口 `combat/PartyRelations`（原版计分板 ∪ FTB Teams ∪ OPAC，含 OPAC 的**盟友队伍**），
   并把全模组约 30 处敌对判定与 5 处队友判定全部改为经它中转。
-  ⚠️ **本线（1.20.1 Fabric）的实机范围**：1.20.1 整合包**没有 FTB Teams / Library**，本线也**未安装 OPAC**
-  ⇒ FTB / OPAC 两个后端均走**反射 + 模组存在性守卫**（`Class.forName` 惰性解析），解析或调用失败即**永久退回原版计分板口径**，
-  不会因第三方模组改版而崩溃；本线**实际生效的是原版计分板口径**（与修复前一致，但不再有「无队伍 ⇒ 全服皆友方」的兜底扩散）。
+  ⚠️ **FTB Teams / OPAC 两个后端走反射接入**（`Class.forName` 惰性解析 + 模组存在性守卫，第三方缺席或改版时静默退回原版计分板，绝不崩溃）。
+  2026-10-01 对这两个后端的**反射契约逐条核验并修正**：此前 FTB 分支取的 4 个访问器（`isManagerLoaded` / `getManager` /
+  `isClientManagerLoaded` / `getClientManager`）声明在**嵌套接口** `FTBTeamsAPI$API` 上、外层类上没有，客户端入口
+  `ClientTeamManager#getTeamForPlayer(Player)` 也**不存在**（真实为 `getKnownPlayer(UUID)`）⇒ 解析在第一处就抛异常，
+  **整个 FTB 后端恒为未启用**（且只打一条 debug 日志，长期无人察觉）。现改为：访问器从嵌套接口解析、客户端走
+  `getKnownPlayer(UUID)`、**同队改比 party 团队 id**（`Team#getId()` 对玩家队伍等于该玩家自己的 UUID，同一 party 的两名成员
+  各不相同，必须用 `teamId`）、`hasTeam` 改判 **party / server team**（FTB 给每个玩家都建个人队伍，用「存在 Team 对象」
+  会恒为真并堵死「未组队 ⇒ 友方作用于全服」的兜底）。**四态实测**（未装 / 装 FTB Teams / 再加 OPAC / 专用服务端）
+  依次得到 `back_ftb=off→on→on→on`、`back_opac=off→off→on→on`，可直接由新增机器行 **`AP_FAB_PARTY`** 断言。
+  同时修掉一处**绕过统一入口**的裸 `getTeam()`（大碗炖菜对宠物的治疗曾把 FTB / OPAC 队友的主人漏判为非友方）。
+  ⇒ **装上 FTB Teams 或 OPAC 的整合包现在能真正生效**；本线三个整合包均未安装这两者，故**实际生效的仍是原版计分板口径**
+  （与修复前一致，但不再有「无队伍 ⇒ 全服皆友方」的兜底扩散）。
 
 - **第三方近战武器无法触发骰神赐福，现改为「黑名单」识别**：原判据是**白名单** —— 只有原版 `SwordItem` / `AxeItem` / `MaceItem` / `TridentItem`
   四种才被认作近战武器，而绝大多数模组的近战武器**不继承**这些原版类 ⇒ 拿着它们攻击时骰神赐福整类不触发。

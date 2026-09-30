@@ -231,6 +231,26 @@ When extending this workspace:
 >    （编译与 `build` 都不校验，只有类被加载时才炸）；③ 语言键集三语一致。见 `KNOWN-ISSUES.md` **KI-F19 / KI-F20**。
 >    ⚠️ 同类教训重复出现：**上游 patch 的注释也会写错**（`731e3855` 把 `require = 2` 注释成「至少命中 1 次」）
 >    ⇒ 移植时**以本线字节码为准**，不以注释为准。
+> ⑬ **接第三方模组的反射后端必须按「发布产物」核验签名，且必须给出可断言的接入状态**（2026-10-01 实测，见 **KI-F22**）：
+>    `PartyRelations` 用 `Class.forName` + `getMethod` 接 FTB Teams / OPAC（不能编译期依赖：四条线装的第三方模组不同）。
+>    反射的致命弱点是**签名对不上时既不编译报错、也不崩溃**，只在运行时静默失效 —— 而「失败方向安全」的设计
+>    （退回原版计分板）**同时**掩盖了「从来没成功过」。实测踩到的两个具体陷阱：
+>    ① **方法可能声明在嵌套接口上**（`FTBTeamsAPI` 外层类只有 `api()/rl()/_init()`，四个访问器在 `FTBTeamsAPI$API` 上；
+>    `Class#getMethod` **不会**跨到嵌套接口）⇒ 解析必须落在**声明该方法的那个类型**上；
+>    ② **record 的访问器没有 `get` 前缀**（`KnownClientPlayer#teamId()`，不是 `getTeamId()`）。
+>    ⇒ 规则三条：
+>    （a）**核验基准用发布 jar，不用记忆也不用注释** —— 下载真实产物 + `javap -p` 逐条比；
+>    上游源码也要核（并可回溯最早版本，确认契约在**整个版本区间**是否成立）；
+>    （b）**每条后端都要有起步诊断机器行**（本线是 `AP_FAB_PARTY: sw_* back_ftb/back_opac why_ftb/why_opac`，
+>    由 `PartyRelations#reportBackends()` 在 common setup 打印）⇒「装了却没生效」一眼可见，
+>    `why_*` 直接写明是哪个类/方法没找到；
+>    （c）**静态闸门入库**（`tools/verify_party_api.py`：自动从源码抽取反射契约 ↔ 真实 jar 比对，输出 PASS/FAIL）
+>    + **测试台用例**（`FAB-PARTY-BACKENDS`）——一静一动，缺一不可。
+>    ⚠️ 失败日志要分档：`ClassNotFoundException`（= 没装，绝大多数玩家的正常状态）走 **debug**；
+>    其余（= 装了但签名不符，开发者才需要看）走 **warn**，否则每次启动都刷一条无意义告警。
+>    ⚠️ 语义也要一并核：FTB 的「同队」必须比 **party 团队 id**（`Team#getId()` 对玩家队伍等于该玩家自己的 UUID，
+>    同一 party 的两名成员各不相同）；`hasTeam` 必须判 **party / server team**（FTB 给每个玩家都建个人队伍，
+>    用「存在 Team 对象」会恒为真，把「未组队 ⇒ 友方作用于全服」的兜底堵死）。
 ### 前置库 starengine_lib 的版本与兼容性契约（全局，2026-09-22 用户裁决）
 
 > 本契约**跨两个仓库生效**（库仓 `F:\MCProject\starengine_lib` ↔ 本仓三条线），是库的**公开兼容性承诺**。

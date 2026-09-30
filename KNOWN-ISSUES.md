@@ -1121,6 +1121,97 @@ fabric.mod.json: version=1.3.2-alpha.1+fabric_1.20.1 / depends.starengine_lib=">
   但 `forge-1.20.1` 的手册条目 `getting_started/special_effects.json` **仍引用它** ⇒ 手册该行会显示原始键名。
   本线以「保留键」规避；主仓需在其工作树内单独裁决（改手册 or 恢复键）。
 
+### KI-F22 ＝ 队友判定（FTB Teams / OPAC）后端**恒为未启用**：反射契约 5 处签名对不上，且失败只打一条 debug（**已修，2026-10-01**）
+
+**一句话**：`PartyRelations` 里接 FTB Teams 的那段反射**从来没有生效过** —— 它取的 4 个访问器方法在**嵌套接口**上、
+外层类上没有；取客户端队伍用的 `ClientTeamManager#getTeamForPlayer(Player)` 这个方法也**不存在**。
+而 `resolve()` 把所有解析放在同一个 `try` 里 ⇒ 第一处就抛 `NoSuchMethodException` ⇒ 整个 FTB 后端被关掉，
+**只留一条 debug 日志**。装 FTB Teams 的整合包里，队友照样可以互相伤害、电磁炮照样把队友算敌对目标。
+
+#### 为什么一直没被发现
+
+| 因素 | 说明 |
+|---|---|
+| 不会编译报错 | 全是字符串 + 反射，`Class.forName` / `getMethod` 的签名不参与编译期检查 |
+| 不会崩溃 | `catch (Throwable)` 吞掉，`enabled=false`，退回原版计分板 —— 「失败方向安全」这个设计**同时**掩盖了「从来没成功过」 |
+| 只打 debug | `resolve()` 失败走 `LOGGER.debug`；正式日志级别下不可见 |
+| 三个整合包都没装 | 1.20.1 包完全没有 FTB、三个包都没装 OPAC ⇒ 连「装了却不生效」都没人碰到（`why_ftb` 一直是 `ClassNotFoundException`） |
+
+#### 核验基准（可复跑）
+
+- **上游源码**：FTB Teams `1.20.1/main` @ `f7dcaa9c`（`mod_version=2001.3.2`），并**回溯核对最早 1.20.1 版本 `v2001.1.2-alpha`** —— 两版 API 形态一致（即此契约**从未**匹配过任何 1.20.1 版本）；
+  OPAC `1.20` @ `3d73aae`（与类注释里记的 SHA 一致）。
+- **发布产物**（比源码更权威）：`ftb-teams-fabric-2001.3.2.jar`、`ftb-library-fabric-2001.2.0.jar`、`open-parties-and-claims-fabric-1.20.1-0.31.6.jar`，逐个 `javap`。
+- **脚本**：`tools/verify_party_api.py` —— 自动从 `PartyRelations.java` 抽取反射契约、与 jar 逐个比对，输出 PASS/FAIL。
+
+#### 逐条契约对照（`javap` 实测）
+
+| # | 本类原写法 | 真实产物 | 结论 |
+|---|---|---|---|
+| 1 | `FTBTeamsAPI.isManagerLoaded()` | **不存在**（在嵌套接口 `FTBTeamsAPI$API` 上） | ❌ |
+| 2 | `FTBTeamsAPI.getManager()` | 同上 | ❌ |
+| 3 | `FTBTeamsAPI.isClientManagerLoaded()` | 同上 | ❌ |
+| 4 | `FTBTeamsAPI.getClientManager()` | 同上 | ❌ |
+| 5 | `ClientTeamManager.getTeamForPlayer(Player)` | **无此方法**；真实入口 `getKnownPlayer(UUID) → Optional<KnownClientPlayer>` | ❌ |
+| — | `FTBTeamsAPI.api()` | `static FTBTeamsAPI$API api()` | ✅ |
+| — | `TeamManager.arePlayersInSameTeam(UUID,UUID)` / `getTeamForPlayerID(UUID)` | 一致（返回 `Optional<Team>`） | ✅ |
+| — | `Team.getId()` | 一致 | ✅ |
+| — | OPAC 五处（`OpenPACServerAPI.get/getPartyManager`、`IPartyManagerAPI.getPartyByMember`、`IServerPartyAPI.getId/isAlly`） | **全部一致** | ✅ |
+
+#### 修法（不止「让方法找到」）
+
+1. **访问器改在嵌套接口上解析**：`Class.forName("dev.ftb.mods.ftbteams.api.FTBTeamsAPI$API")`；
+   若某版把方法挪回外层类，代码里保留了 fallback（先试嵌套接口，失败退回外层类）。
+2. **客户端改走 `getKnownPlayer(UUID)`**；⚠️ `KnownClientPlayer` 是 **record**，访问器是 **`teamId()`（没有 `get` 前缀）**。
+3. **「同队」比的必须是 party 团队 id**：`Team#getId()` 对玩家队伍等于**该玩家自己的 UUID**
+   （同一 party 的两名成员 `getId()` 各不相同）⇒ 客户端改用 `KnownClientPlayer#teamId()`
+   （其值在 FTB 侧就是 `PlayerTeam#getTeamId()`，与服务端 `arePlayersInSameTeam` 同源）。
+4. **`hasTeam` 不能用「存在 Team 对象」判定**：FTB 给**每个玩家**都建了个人队伍 ⇒ 恒为真
+   ⇒ 会把 `collectTeamPlayers` 的「未组队 ⇒ 友方作用于全服」兜底彻底堵死。
+   判据改为 `Team#isPartyTeam() || Team#isServerTeam()`（缺这两个方法时退回「有队伍」，
+   刻意的偏向 = 宁可少走兜底，也不要把它放大成对全服生效）。
+5. **日志噪音**：失败原因分两档 —— `ClassNotFoundException`（= 没装，绝大多数玩家的正常状态）走 debug；
+   其余（= 装了但签名不符，开发者才需要看）走 warn。
+6. **新增可断言机器行** `AP_FAB_PARTY`（`PartyRelations#reportBackends()`，挂在 `AstralDiceMod#onCommonSetup`，
+   与其它 `AP_FAB_*` 同族）：
+   ```
+   AP_FAB_PARTY: sw_mc=.. sw_ftb=.. sw_opac=.. back_ftb=on|off back_opac=on|off why_ftb=.. why_opac=..
+   ```
+   从此「装了 FTB Teams 却 `back_ftb=off`」在日志里一眼可见，`why_*` 直接写明是哪个类/方法没找到。
+
+#### 同一轮附带修掉的同类问题
+
+- **绕过统一入口 1 处**：`BigBowlStewChipItem#isOwnedByAlly` 用裸 `owner.getTeam() == petOwner.getTeam()`
+  ⇒ FTB / OPAC 的队友被漏判，改为 `PartyRelations.isSameTeam`。
+- **失效引用 9 处**：「同队收集」从库侧 `EventTargetCollector` 迁到模组侧 `PartyRelations` 时只改了调用点，
+  留下 9 个文件的 `import`（其中 4 个已完全无引用）与 3 处仍指向库的 javadoc `{@link}`（误导性文档）。
+  已全部清除；`grep -rn "EventTargetCollector" fabric-1.20.1/src/main/java/` 现在只命中 `PartyRelations`
+  自身「为什么不用库那份」的说明注释。
+- **库侧仍未修（交库处理）**：`starengine_lib` 的 `EventTargetCollector` 有两个同类缺陷，本线已全部改走
+  `PartyRelations`、不再依赖它：
+  1. `findFtbTeam` 在 `TeamManager` 上反射 `getTeamForPlayer(Player)` / `getTeamForPlayer(UUID)` —— 两者都不存在
+     （真实签名 `getTeamForPlayer(ServerPlayer)` / `getTeamForPlayerID(UUID)`）⇒ 恒返回 `null`；
+  2. `findOpacParty` 查的类名 `dev.darkhax.opac.api.OpenPartiesAndClaimsAPI` **不存在**（真实为 `xaero.pac.*`）。
+  ⚠️ 该缺陷影响**另外三条线**（它们没有 `PartyRelations`，仍走库那份），应在库下一次发版中一并修。
+
+#### 验证读数（四态运行时 A/B/C/D + 两道静态闸门，全部实测）
+
+| 轮次 | 环境 | `AP_FAB_PARTY` 读数 |
+|---|---|---|
+| A | dev 客户端，未装 FTB / OPAC | `back_ftb=off back_opac=off why_ftb=ClassNotFoundException:…FTBTeamsAPI why_opac=ClassNotFoundException:…OpenPACServerAPI` |
+| B | dev 客户端 + FTB Teams 2001.3.2 + FTB Library 2001.2.0 + Architectury 9.1.13 | `back_ftb=on back_opac=off why_ftb=OK` |
+| C | 同 B + OPAC 0.31.6 | `back_ftb=on back_opac=on why_ftb=OK why_opac=OK` |
+| D | **专用服务端** + FTB + OPAC（队友判定的实际执行侧） | `back_ftb=on back_opac=on why_ftb=OK why_opac=OK`，启动干净、零告警 |
+
+- **静态契约闸门** `tools/verify_party_api.py`：**修复前 `PASS=9 / FAIL=5`**（红灯精确指出那 5 处）
+  → **修复后 `PASS=17 / FAIL=0`**。
+- **静态资源闸门** `tools/verify_fabric_assets.py`：**8/8 PASS**（三语 832/832/832）。
+- **测试台**：新增用例 `FAB-PARTY-BACKENDS`（6 条断言）已入批 A，**PASS**；批 A 五条用例全绿、派发 `ServerTickEvent=599`、收停无残留。
+- 原始读数留档：`temp/party_verify/READINGS.txt`；jar 与修复前快照：`temp/party_verify/`。
+
+⚠️ **未做**：进世界的**行为级**确认（两名玩家组队后互相攻击是否真的免伤）—— 需要双人实机，dev 单进程无法覆盖；
+当前证据到「后端已启用 + 契约与发布产物逐条一致」为止。
+
 ## 10. 变更记录
 
 | 日期 | 变更 |
@@ -1153,3 +1244,4 @@ fabric.mod.json: version=1.3.2-alpha.1+fabric_1.20.1 / depends.starengine_lib=">
 | 2026-09-29 | **修「饰品栏贴图错误」+「手册重复发放」（新增 KI-F17 / KI-F18，两条都是**玩家可见**缺陷）** —— 用户报「饰品栏贴图错误（附截图）+ 重复发放帕秋莉手册再次出现」，并在上一轮修复后回复「问题依旧」⇒ 两条都**重新定位根因**（不是上次没修干净）。**KI-F17**＝**Fabric 附件键注册晚于玩家数据反序列化** ⇒ 一次登录**静默丢弃 33 个键**（含 `guide_book_given` ⇒ 守卫永远读 `false` ⇒ 每次登录补发一本；其余为治疗点数 / 立牌锁定冷却 / 白泽赐福 / 教主降神 / 怪力侦探层数等可感知战斗状态）。根因是 `ModAttachments` 的**静态初始化惰性**：mod 初始化路径上没代码触碰它，`<clinit>` 被推迟到玩家登录处理器 ⇒ 那时 NBT 已反序列化完 ⇒ Fabric 打 `Unknown attachment type … skipping` **静默丢键**（⚠️ 缺陷静默、测试世界数据少、NBT 里标记一直是 1 只是**读不出** ⇒ 三种取证方式都会漏掉）。修法 = `ModAttachments#ensureRegistered()`（空实现，只为触发 `<clinit>`，打 `AP_FAB_ATTACHMENTS: 附件键已注册 109 个`）+ 在 `onInitialize()` 紧随前置守卫后调用；另加常驻诊断 `AP_FAB_GUIDEBOOK`（含**写后立刻回读** `reread=`，正是靠它把方向从「发放时机」扭到「存取通路」）。**A/B 跨会话实测**（`-PdevUsername=AstralDev` 固定玩家名、两轮同一玩家）：session1 `given=false books=0`→`GIVEN reread=true books=1`；session2（21:01:37 注册 → 21:01:41 登录）`given=true books=1` ⇒ **不补发**；`latest.log`/`debug.log` 中 `Unknown attachment type` 命中 **0**。**KI-F18**＝**Accessories 槽位图标走原版 `minecraft:blocks` 图集**（`assets/minecraft/atlases/blocks.json` 声明 `{type:directory, source:gui/slot}`），而 Trinkets 是 `icon` 路径直连 ⇒ 图标必须在 `assets/<ns>/textures/gui/slot/`、`icon` 写**图集 sprite 名** `astral_dice:gui/slot/…`（同时满足两条通道）；原先放 `textures/slot/` ⇒ **文件在、图集里没有** ⇒ 紫黑格（这就是「改一轮还没好」的原因：不是文件缺失而是路径不在图集目录）。改 3 个文件移动 + 7 处 `icon` 改写；新增守门 `tools/verify_fabric_assets.py` 第 8 项（已做正/反向验证）+ 客户端自检 `AccessoriesClientIconCheck`（**同时查文件存在与图集成员资格**，⚠️ 只查文件存在不够）⇒ 实测 `AP_FAB_SLOT_ICON: 槽位=15 文件缺失=0 图集未收录=0`，本模组 3 槽位逐条 `file=yes inBlocksAtlas=yes`。同轮新增测试能力 **`-PdevUsername` 固定玩家名**（Loom 默认给**随机**用户名 ⇒ 离线 UUID 每次都变 ⇒ **跨会话缺陷在 dev 里根本不可能复现**，这才是「重复发放」这类缺陷长期隐藏的结构性原因）。详见 `scripts/test/fabric/README.md` §7.2.4。 |
 | 2026-09-30 | **五项玩家可见缺陷按 dev-next 已修方案同步落地（新增 KI-F19）+ 发现并修正一处三线共有的 mixin 误写（新增 KI-F20）** —— 用户报「在主线版本中发现的 bug，在该分支中也应该存在」并要求「**直接同步 `multi-dev-next` 的改动，避免重复造轮**」。核实 dev-next HEAD = **`731e3855`**，与用户报的 5 条**逐条对应**。⚠️ **未做整分支 merge**：该提交只改三线（neoforge-1.21.1 / forge-1.20.1 / neoforge-26.1.2）、**不含 fabric**，而 dev-next 领先本分支 **30 个提交**（2.0.0-SNAPSHOT.14 版本号 / 目标选择器 / 工具链）⇒ 合并只会污染移植线、带不来任何 fabric 代码改动；故改为**以 forge-1.20.1 为蓝本按文件移植**（路径改写 + `git apply --3way`，冲突逐处手工合并）。落地五项：① 王之力自伤改用新类型 `astral_dice:card_cost`（登记 `bypasses_cooldown`、**刻意不登记 `bypasses_armor`**）⇒ 不再被受击无敌帧整段吞掉（旧口径走 `dice_damage`，不在 `bypasses_cooldown` 内 ⇒ `invulnerableTime > 10 && amount <= lastHurt` 时 `hurt` 直接 false）；② 删除 `PlayerLifecycleHandler` 里**主动清零** jasmine 攻/防计数的那段（padman 保留），清零唯一路径回归 `clearSignData` ⇒ 扫地机加成死亡保留；③ `magic_tome_count`（原 10000 tick）与 8 个效果类的 `DURATION_TICKS` + 2 处施加点统一为 `MobEffectInstance.INFINITE_DURATION`（唯一渲染 ∞ 的值）；④ 连带修 `EffectTimerGuard` 永续判据（`-1` **不满足** `>= INFINITE_THRESHOLD` ⇒ 会被当成有限时长 forceRemove + 重加，常驻效果一施加就没）与 `MamushiDragonEffect.refresh` 判据；⑤ 1.20.1 无 NeoForge 的 `GatherEffectScreenTooltipsEvent` ⇒ 扩展 `EffectRenderingInventoryScreenMixin`（双 `@Redirect` + `ThreadLocal`，`formatDuration` 捕获实例 → `List.of` 改写列表）把 `effect.<id>.description` 追加进悬停 tooltip，且**与本线原有的等级角标 `@Inject` 并存**。**KI-F20**＝该 patch 的两处 `@Redirect` 写了 `require = 2` 并注释为「至少命中 1 次」——⚠️ `require` 语义是**最少**命中次数，而 `javap -c` 实证 `renderEffects`（50–273 行）内 `formatDuration` 与 `List.of` **各只 1 次**（另一次 `formatDuration` 在 `renderLabels`，已被 method 限定排除）⇒ 必然 `InjectionError`、**触发时机是打开物品栏**；之所以没炸是因为该提交自述「实机验证未做」（mt_launch 防撞预检拦下）。本线改为 `require = 1` 并留证；**三线待回补**（按「只改 fabric 端」裁决未动）。**验证**：compileJava / build SUCCESSFUL、产物已推整合包、静态守门 8/8 PASS（语言三语 **832/832/832** = 新增 3 个 `death.attack.card_cost*` 键）、**客户端预加载** `[preload] OK …EffectRenderingInventoryScreen` 且 `InjectionError` 命中 **0**。⚠️ 未做：进世界的**视觉确认**（注释行 / ∞ 符）与**生产映射冒烟**。 |
 | 2026-10-01 | **1.3.5（`1.3.4..multi-main`）同步落地本线（新增 KI-F21）+ 三批冒烟与生产映射冒烟全绿** —— 用户要求「合并 1.3.5 更新内容，并执行行为测试和游戏内测试（冒烟）」。范围实测：`1.3.4..multi-main` 20+ 提交、**`grep '^fabric'` = 0** ⇒ 依旧只改三线，按文件移植（`forge-1.20.1` 为蓝本，65 文件 / 3452 行，`--3way` 后 11 文件 15 处冲突逐处手工解决）。**三处需要平台判断的地方**（本任务的技术核心）：① `ModRecipeProvider` 的肾上腺素配方 —— 上游用 `PartialNBTIngredient`（Forge 专有）⇒ 本线保留 `Items.POTION` + `NbtAugmentedRecipe` 约束、只采纳 X/D 换料；② `LootInjectionHandler` 上游新增的 `onLootTableLoad(LootTableLoadEvent)`（**Forge 事件**）⇒ **整方法舍去**（本线箱子注入由 `loot/FabricLootInjector` 的 `LootTableEvents.MODIFY` 承担），只保留 `starPlateDropCount` / `rollKillStarCoin`；③ 新移植的 `MosesEnigmaticLink` 带 4 行 `net.minecraftforge.*` import + `@Mod.EventBusSubscriber` ⇒ 换本线 `platform.event.*`（`TickEvent.ServerTickEvent` 的 `phase`/`getServer()` 与 Forge 同形）并删除注解、改 `LoaderBus.INSTANCE.register(...)`（Fabric 无注解自动注册）。lang 三语**不走 patch** 改用 **JSON 键级合并**（基线 `1.3.4` ↔ `multi-main`）⇒ 832/832/832 一致。**datagen 必跑并已跑**（`written: 17`，实测 `komachi_sign` 用紫水晶碎片、`adrenaline_low_chip` 用末影珍珠+灵魂沙且 `astral_nbt` 约束保留）。**验证**：批 A（服务端 13.4s + 4 用例 1/9/8/3 全 PASS + 收停无残留）、批 B（客户端 19.5s + `FAB-CLIENT-BOOT` 8/8）、批 C（三语一致 / 语法门 54 文件 0 失败 / 模组来源 `violations=0` / 资源闭环 **8/8**）、**生产映射冒烟 `ft_prod.ps1` PASS（36s 到主菜单，带 `-PreloadClasses class_485,class_329,class_310,class_746,class_8002`）**。⚠️ **未做**：进世界验证（quickplay 曾误删存档，本轮刻意不用；该参数已有护栏需显式 `-AcknowledgeQuickPlayDestructive`）⇒ 世界内行为待用户授权。⚠️ **上游缺陷登记**：`multi-main` 删了 lang 键 `guide.entry.special_effects.6` 但其手册仍引用 ⇒ 本线保留该键规避，主仓需单独裁决。 |
+| 2026-10-01 | **队友判定后端「从来没生效过」定位并修复（新增 KI-F22）+ 四态运行时取证** —— 用户要求「搜索 FTB Teams / OPAC 的 1.20.1 Fabric 源代码，执行团队功能实现验证」。取证方式 = **克隆上游源码 + 下载发布 jar + `javap` 逐条比对反射契约**（并回溯到 1.20.1 最早版 `v2001.1.2-alpha`，确认该契约**从未**匹配过任何 1.20.1 版本）。**核心发现**：`PartyRelations` 接 FTB Teams 的反射**从头到尾没生效** —— 它取的 4 个访问器（`isManagerLoaded` / `getManager` / `isClientManagerLoaded` / `getClientManager`）声明在**嵌套接口 `FTBTeamsAPI$API`** 上、外层类上没有（`Class#getMethod` 不会跨到嵌套接口），客户端入口 `ClientTeamManager#getTeamForPlayer(Player)` 也**不存在**（真实为 `getKnownPlayer(UUID) → Optional<KnownClientPlayer>`）；而 `resolve()` 把全部解析放在同一个 `try` 内 ⇒ 第一处即抛 `NoSuchMethodException` ⇒ **整个 FTB 后端恒为未启用、只打一条 debug**（「失败方向安全」的设计同时掩盖了「从来没成功过」）。**修法**：访问器改从嵌套接口解析（保留「方法挪回外层类」的 fallback）；客户端改走 `getKnownPlayer(UUID)`，⚠️ `KnownClientPlayer` 是 **record**、访问器为 **`teamId()`（无 `get` 前缀）**；「同队」改比 **party 团队 id**（`Team#getId()` 对玩家队伍=该玩家自己的 UUID，同 party 两人各不相同）；`hasTeam` 判据改 `isPartyTeam() \|\| isServerTeam()`（FTB 给每个玩家都建个人队伍 ⇒ 用「存在 Team 对象」会恒真、把「未组队⇒友方作用于全服」的兜底堵死）；失败日志分两档（`ClassNotFoundException`=没装 ⇒ debug，其余=签名不符 ⇒ warn，避免给绝大多数玩家制造日志噪音）。**新增可断言机器行** `AP_FAB_PARTY: sw_* back_ftb/back_opac why_ftb/why_opac`（`PartyRelations#reportBackends()`，挂 `AstralDiceMod#onCommonSetup`，与其它 `AP_FAB_*` 同族）。**同轮附带**：修 `BigBowlStewChipItem#isOwnedByAlly` 一处**绕过统一入口**的裸 `getTeam()`；清掉迁移遗留的 **9 处失效引用**（9 个 `import` 中 4 个已完全无引用 + 3 处仍指向库的 javadoc `{@link}`）；登记**库侧两个同类缺陷**（`EventTargetCollector` 在 `TeamManager` 上反射 `getTeamForPlayer(Player)/(UUID)` 均不存在；OPAC 类名 `dev.darkhax.opac.*` 不存在）—— 影响另三条线，交库侧下次发版。**验证**：四态运行时 A/B/C/D（无第三方 / 装 FTB / 再加 OPAC / **专用服务端**）读数逐态符合预期（`off/off` → `on/off` → `on/on` → `on/on`，`why_*` 分别给出 `ClassNotFoundException:…` 与 `OK`）；新增静态闸门 **`tools/verify_party_api.py`**（自动抽取契约 ↔ 真实 jar 比对）**修复前 `PASS=9/FAIL=5` ⇒ 修复后 `PASS=17/FAIL=0`**；新增测试台用例 **`FAB-PARTY-BACKENDS`**（6 条断言）入批 A 并 PASS；批 A 五条用例全绿、派发 `ServerTickEvent=599`、收停无残留；资源闸门 **8/8 PASS**（三语 832/832/832）。⚠️ **未做**：进世界的**双人行为级**确认（组队后互相攻击是否真的免伤）—— dev 单进程覆盖不到。 |

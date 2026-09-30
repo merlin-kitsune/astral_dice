@@ -182,6 +182,7 @@ pwsh -NoProfile -File scripts/test/fabric/ft_stop.ps1 --side client
 | `AP_FAB_PHASE_BEGIN` / `AP_FAB_PHASE` / `AP_FAB_REPORT` | `ft.ps1` | 阶段编排 |
 | `AP_FAB_PROD_CP` / `_LAUNCH` / `_READY` / `_CRASH` / `_CRASH_CAUSE` / `_FAIL` | `ft_prod` | 生产映射冒烟：classpath 构造 / 启动 / 就绪 / 崩溃 / 失败原因 |
 | `AP_FAB_PROD_MIXIN_FAIL` / `_MIXIN_FAIL_DETAIL` | `ft_prod` | 注入失败（`InjectionError`）时那一行原文 —— 一眼看出是哪个模组的哪个注入器 |
+| `AP_FAB_PARTY` | **模组侧**（非本台脚本） | 队伍判定三条后端的接入状态：`sw_mc/sw_ftb/sw_opac`（配置开关）+ `back_ftb/back_opac`（反射契约是否解析成功）+ `why_ftb/why_opac`（失败原因）。由 `PartyRelations#reportBackends()` 在 common setup 打印，用例 `FAB-PARTY-BACKENDS` 断言其形态 |
 
 | `MT_FAB_<NAME>: OK/FAIL/ERROR/BLOCKED` | 全部 | 结论行（stderr 走 FAIL/ERROR，stdout 走 OK） |
 | `MT_FAB_NOTE[n]` / `MT_FAB_INFO` / `MT_FAB_WARN` | 全部 | 过程行 |
@@ -477,6 +478,35 @@ KI-F17 正是靠这一条读数把方向扭过来的（否则很容易继续在�
 ⚠️ **读日志的 gitignore 陷阱**：`run/` 被 `.gitignore` 排除 ⇒ `Grep` 之类**遵守 gitignore 的搜索工具
 会静默跳过它**（返回 “No matches” 是**假阴性**，不是「真的没有」）。查 `run/client/logs/**` 必须用不遵守
 gitignore 的方式或显式指定文件路径，否则「`Unknown attachment type` 命中 0」这种结论根本不可信。
+
+### 7.2.5 第三方接入后端的「注入第三方模组」验证法（2026-10-01，`AP_FAB_PARTY` / `FAB-PARTY-BACKENDS`）
+
+**要验证的问题**：`PartyRelations` 用反射接 FTB Teams / OPAC（不能编译期依赖）。这类「后端」在**没装**第三方模组时
+必然走「未安装」分支 ⇒ **只跑常规冒烟永远测不到真正生效的那条路径**（本线三个整合包都没装 FTB、也都没装 OPAC，
+所以那段代码从来没人验过 —— 它实际上**一直是坏的**，见 KI-F22）。
+
+**做法 = 把第三方 jar 丢进 `run/<side>/mods/` 再跑，用机器行做 A/B/C/D 对照**：
+
+| 轮次 | 放入 `run/client/mods/` 的东西 | 预期 `AP_FAB_PARTY` |
+|---|---|---|
+| A | （无，基线） | `back_ftb=off back_opac=off why_*=ClassNotFoundException:…` |
+| B | `ftb-teams-fabric-2001.3.2` + `ftb-library-fabric-2001.2.0` + `architectury-9.1.13-fabric` | `back_ftb=on why_ftb=OK` |
+| C | B + `open-parties-and-claims-fabric-1.20.1-0.31.6` | `back_ftb=on back_opac=on why_*=OK` |
+| D | 同 C，但 `run/server/mods/` + `--side server`（**队友判定的实际执行侧**） | 同上，且启动干净、零告警 |
+
+⚠️ **跑完必须把 jar 从 `run/*/mods/` 移除**（还原 dev 环境）；`run/` 本就被 gitignore，不会被误提交。
+jar 与原始读数留档在 `temp/party_verify/`（含修复前源码快照 `PartyRelations.prefix.java`）。
+
+**配套的静态闸门（可与运行时独立复跑）**：`tools/verify_party_api.py`
+—— 自动从 `PartyRelations.java` 抽取反射契约（`Class.forName` 绑定 + `getMethod` 签名），逐个与**真实 jar** 比对。
+```bash
+python tools/verify_party_api.py            # 校验当前源码        → 期望 PASS=17 FAIL=0
+python tools/verify_party_api.py --pre-fix  # 校验修复前快照      → 期望 PASS=9  FAIL=5（红灯）
+```
+实现上有两个**坑**（都已在脚本里注释）：① 两个内部类 `Ftb` / `Opac` **共用** `apiCls` / `API_CLASS` 等变量名
+⇒ 必须**按内部类分段解析**，否则后者的绑定会覆盖前者、把 FTB 的方法算到 OPAC 类名下；
+② 不同发布方 remap 口径不同（FTB 产物是 **intermediary** 类名 `net.minecraft.class_1657`，OPAC 产物是 **Mojmap**），
+⇒ 参数类型比对要**两种写法都接受**，映射取自 Loom 的 `mappings.tiny`（权威）。
 
 ### 7.3 已修复的测试台缺陷（7 个；每个都附实测证据）
 

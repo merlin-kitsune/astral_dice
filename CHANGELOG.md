@@ -65,10 +65,20 @@
   so for such players the scoreboard team is always `null` ⇒ ally detection **failed completely**. A single entry point `combat/PartyRelations`
   (vanilla scoreboard ∪ FTB Teams ∪ OPAC, including OPAC **ally parties**) was added, and roughly 30 hostility checks and 5 ally checks across the mod
   now route through it.
-  ⚠️ **What actually applies on this line (1.20.1 Fabric)**: 1.20.1 modpacks ship **no FTB Teams / Library**, and OPAC is not installed here either
-  ⇒ both backends are pure **reflection behind a mod-presence guard** (`Class.forName`, lazily resolved); if resolution or a call fails it
-  **permanently falls back to the vanilla scoreboard rule** and never crashes when a third-party mod updates. On this line the effective rule remains
-  **vanilla scoreboard** (same as before the fix), minus the old "no team ⇒ everyone is an ally" fallback.
+  ⚠️ **The FTB Teams / OPAC backends are reached by reflection** (`Class.forName`, lazily resolved, behind a mod-presence guard — a missing or
+  changed third-party mod silently falls back to the vanilla scoreboard rule and never crashes). On 2026-10-01 these reflective contracts were
+  **verified method by method and fixed**: the four FTB accessors it used (`isManagerLoaded` / `getManager` / `isClientManagerLoaded` /
+  `getClientManager`) are declared on a **nested interface** `FTBTeamsAPI$API`, not on the outer class, and the client entry point
+  `ClientTeamManager#getTeamForPlayer(Player)` **does not exist** (the real one is `getKnownPlayer(UUID)`) ⇒ resolution threw at the very first
+  lookup and the **whole FTB backend was permanently disabled**, with only a single debug line to show for it. Now: accessors are resolved on the
+  nested interface, the client path uses `getKnownPlayer(UUID)`, **same-team is compared by party team id** (`Team#getId()` equals the player's own
+  UUID for a player team, so two members of one party differ — `teamId` is the correct value), and `hasTeam` tests **party / server team** (FTB
+  creates a personal team for every player, so "a Team object exists" is always true and would have killed the "not in a team ⇒ allies are everyone"
+  fallback). **Measured across four states** (nothing installed / FTB Teams / plus OPAC / dedicated server): `back_ftb=off→on→on→on` and
+  `back_opac=off→off→on→on`, assertable directly from the new machine line **`AP_FAB_PARTY`**. Also fixed one place that **bypassed the unified
+  entry point** with a bare `getTeam()` (Big Bowl Stew treated the owner of a pet as a non-ally when that owner was an FTB / OPAC teammate).
+  ⇒ **Modpacks that do install FTB Teams or OPAC now genuinely take effect**; none of this line's three modpacks install either, so the effective
+  rule remains **vanilla scoreboard** (same as before the fix), minus the old "no team ⇒ everyone is an ally" fallback.
 
 - **Third-party melee weapons could not trigger Dice Blessing — weapon recognition switched from whitelist to blacklist**: the old rule was a **whitelist**
   (only vanilla `SwordItem` / `AxeItem` / `MaceItem` / `TridentItem` counted), and most modded melee weapons **do not extend** those vanilla classes
