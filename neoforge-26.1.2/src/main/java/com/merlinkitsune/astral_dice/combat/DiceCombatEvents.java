@@ -50,9 +50,6 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.ProjectileWeaponItem;
-import net.minecraft.world.item.AxeItem;
-import net.minecraft.world.item.MaceItem;
-import net.minecraft.world.item.TridentItem;
 
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -1108,20 +1105,28 @@ public class DiceCombatEvents {
         return roll;
     }
 
-    // 近战武器攻击判定:仅允许剑/斧/重锤/三叉戟/长矛等近战武器触发骰神赐福
+    // 近战武器攻击判定(**黑名单模式**,2026-09-30 用户裁决):
+    // 只排除「空手 / 盾牌 / 工具类 / 远程武器 / 方块」,其余一律视为可触发骰神赐福的近战武器 ——
+    // 目的是兼容匠魂、灾变等第三方模组的近战武器(它们大多**不继承** SwordItem,白名单写法会把它们整类漏掉)。
+    // ⚠️ 三线同构:**只按原版物品标签 + 接口判定,不用 SwordItem / DiggerItem 之类的类名** ——
+    //   26.1.2 已把 DiggerItem / SwordItem / TieredItem 整体重构掉(物品包内已无这三类),
+    //   而 PICKAXES / SHOVELS / HOES / AXES / SWORDS 五个标签三线俱在(已用 sources jar 实证)。
+    // ⚠️ 斧子(axes)**不在**黑名单内 —— 斧属近战武器;镐 / 锹 / 锄是工具,排除。
+    //   剑 / 长矛(26.1.2)/ 重锤 / 三叉戟,以及各模组的近战武器,全部落在「默认允许」一侧。
     public static boolean isMeleeWeaponAttack(Player player) {
         ItemStack held = player.getMainHandItem();
         if (held.isEmpty()) return false;
+        // 盾牌:不是武器
         if (held.is(Items.SHIELD)) return false;
-        return held.is(net.minecraft.tags.ItemTags.SWORDS)
-                // 26.1.2 新增「长矛」(木/石/铜/铁/金/钻石/下界合金 共 7 种):与剑/斧同属近战武器,纳入骰神赐福判定。
-                // 按 vanilla 物品标签 minecraft:spears 判定(而非逐个 Item / 按类判断):
-                // 26.1.2 的长矛**没有独立物品类**,是 `Item.Properties#spear(...)` 参数化的普通 Item,
-                // 用标签可自动覆盖后续版本新增的长矛与其它模组的长矛。
-                || held.is(net.minecraft.tags.ItemTags.SPEARS)
-                || held.getItem() instanceof AxeItem
-                || held.getItem() instanceof MaceItem
-                || held.getItem() instanceof TridentItem;
+        // 工具类(斧子除外):镐 / 锹 / 锄
+        if (held.is(net.minecraft.tags.ItemTags.PICKAXES)
+                || held.is(net.minecraft.tags.ItemTags.SHOVELS)
+                || held.is(net.minecraft.tags.ItemTags.HOES)) return false;
+        // 远程武器:弓 / 弩
+        if (held.getItem() instanceof net.minecraft.world.item.ProjectileWeaponItem) return false;
+        // 方块:拿着方块打人不算「近战武器攻击」
+        if (held.getItem() instanceof net.minecraft.world.item.BlockItem) return false;
+        return true;
     }
 
     // 骰神赐福触发目标判定:敌对生物、非团队内玩家、中立生物(宠物除外),以及其余非被动动物实体

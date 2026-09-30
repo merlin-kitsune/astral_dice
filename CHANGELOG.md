@@ -10,6 +10,13 @@
 
 ### Bug Fixes
 
+- **Third-party melee weapons on 1.20.1 (Tinkers' Construct, Cataclysm, ...) could not trigger the Dice God's Blessing - the check is now a blacklist** (user report 2026-09-30): the old check was a **whitelist** - only vanilla `SwordItem` / `AxeItem` / `MaceItem` / `TridentItem` counted as melee weapons, while most modded melee weapons **do not extend** those vanilla classes (Tinkers' Construct and Cataclysm especially) - so attacking with them never triggered the blessing at all. It is now inverted into a **blacklist**: only "empty hand / shield / tools (pickaxe / shovel / hoe, **axes kept** - an axe is a melee weapon) / ranged weapons (bow / crossbow) / blocks" are excluded; everything else counts as a melee weapon that can trigger. The check now uses only vanilla **item tags** (`pickaxes` / `shovels` / `hoes`) and interfaces (`ProjectileWeaponItem` / `BlockItem`) and **no longer references class names such as `SwordItem` / `DiggerItem`** - 26.1.2 has refactored all three away; the method body is byte-identical across the three lines (tag availability verified from the sources jars).
+
+- **Goety's sorcerers (and similar mobs) kept drinking milk to clear effects, causing server lag - mobs may now clear their own effects** (user report 2026-09-30): this mod has a namespace guard that cancels every external removal of `astral_dice:*` effects (milk / `/effect clear`). Goety's sorcerer AI clears its abnormal effects by drinking milk - with the removal cancelled the effect is never actually cleared, so the AI **retries forever** and the server lags (vanilla witches and similar units from other mods behave the same way). An exception is added: **when the target is not a player the removal is always allowed** (the effects this mod applies to mobs are mostly debuffs - Mark / Weak Mark / Broken / Misfortune / Undercover Investigation - so letting them clear those is harmless); the player-side rule is unchanged.
+
+- **"Mark" is no longer protected from clearing - players can now remove it with milk** (user ruling 2026-09-30): Mark used to be protected by the same namespace guard as every other effect of this mod, so players could not clear it themselves. Mark's strength lives in its **stack count**, and it is a debuff applied to a **target**, so players have a legitimate reason to want it gone - external removal of `MARKED` is now allowed (milk or `/effect clear`). NOTE a known minor visual residue: the glow that accompanies Mark still shares its lifetime (it cannot be cleared separately while Mark is present), so if a bulk clear processes the glow before the mark, the glow lingers until it expires naturally (at most 60 seconds).
+
+
 ## 1.3.4
 
 ### Bug Fixes
