@@ -607,9 +607,9 @@ GlCommandEncoder.trySetup(:531) ← GlCommandEncoder.executeDraw(:406) ← GlRen
 |---|---|
 | 原始 Modrinth 产物 | `puzzles-lib-…jar` 的 `fabric.mod.json` = `jars: [{"file": "META-INF/jars/puzzlesaccessapi-fabric-20.1.1.jar"}]` |
 | Loom 重映射后 | `.gradle/loom-cache/remapped_mods/…/puzzles-lib-c2d2b86c-N8gFdljq.jar` 的 `jars = None`；`META-INF/jars/puzzlesaccessapi-fabric-20.1.1.jar` **仍在**，内含 `class_xxxx` ⇒ 未重映射 |
-| 不是缓存陈旧 | 把整棵 `remapped_mods` 移走、删配置缓存后**重新生成**，结果**逐字相同**（Loom 1.14.10 的确定行为） |
+| 不是缓存陈旧 | 把整棵 `remapped_mods` 移走、删配置缓存后**重新生成**，结果**内容相同**（`jars=None`、`fabric.mod.json` sha1 一致、条目数一致；⚠️ **原始字节不同**—— zip 时间戳，由独立子代理实测抓出，勿写成“逐字相同”）（Loom 1.14.10 的确定行为） |
 | 启动期故障 | `HARD_DEP_NO_CANDIDATE puzzleslib … {depends puzzlesaccessapi}`；补上后又依次暴露 `NoClassDefFoundError: io/wispforest/endec/util/MapCarrier`（Accessories）、`io/github/fablabsmc/fablabs/api/fiber/v1/…/ConfigType`（Patchouli） |
-| 命中面 | 8 个 remapped mod jar 含 `META-INF/jars`，其中 **7 个内嵌库的 mod id 在 Loom classpath 上不存在**（另 60 个是 Fabric API 子模块 / CCA，classpath 上已有独立条目，**不能重复投放**，否则 Loader 判 duplicate mod 直接拒启） |
+| 命中面 | 口径必须写清：**宿主 jar 8 个**含 `META-INF/jars`，其中 **7 个内嵌库的 mod id 在 Loom classpath 上不存在**（另 60 个是 Fabric API 子模块 / CCA，classpath 上已有独立条目，**不能重复投放**，否则 Loader 判 duplicate mod 直接拒启） |
 
 #### 缓解（已落地）
 

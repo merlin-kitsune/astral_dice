@@ -309,8 +309,11 @@ foreach ($s in $sides) {
     #      （文件本体还在、但仍是 intermediary）⇒ 依赖内嵌库的 mod 在 dev 里全部起不来。
     #      详见 tools/loom_embedded_jars.py 的模块注释与 KNOWN-ISSUES §9 KI-F23。
     if ($InstallEmbedded) {
-        $tool = Join-Path (Split-Path -Parent (Get-FtSelfDir)) '..\tools\loom_embedded_jars.py'
-        $tool = [System.IO.Path]::GetFullPath($tool)
+        # ⚠️ 必须用 Get-FtRepoRoot（= <root>/scripts/test/fabric/lib 上溯四级）：
+        #    首版写成 Split-Path -Parent(Get-FtSelfDir) + '..\tools\…' ⇒ 归一成 scripts\tools\…
+        #    （少上溯一级），两种 cwd 下都指向不存在的文件、开关静默不可用
+        #    （2026-10-01 由独立子代理实跑抓出，见 KNOWN-ISSUES KI-F23 的验证记录）。
+        $tool = Join-Path (Get-FtRepoRoot) 'tools\loom_embedded_jars.py'
         if (-not (Test-Path -LiteralPath $tool -PathType Leaf)) {
             $problems.Add("找不到 tools/loom_embedded_jars.py：$tool")
         } else {

@@ -560,6 +560,16 @@ python tools/verify_party_api.py --pre-fix  # 校验修复前快照      → 期
 
 **四态结论**：A ≡ B ≡ C（后端行为等价、聚合视图在两个单源态下也自洽）；D 按设计**拒绝启动**并给出完整中文说明
 （两条安装路径 + 双装说明 + 重启提示），`ModLoadingException` 落在 `ModCompatibilityCheck#verifyAccessoryProviderOrThrow`。
+⚠️ D 态的原文**只在** `temp/gate/server_none.out.txt`（`temp/` 不入库，且 `latest.log`
+**每轮冷启动都会被轮转** ⇒ 复跑该断言时别去 `latest.log` 里找，会假红）。关键原文：
+```
+[21:58:01] [main/INFO] (AstralDice) AP_FAB_ACCESSORY_PROVIDER: FAIL (trinkets=false accessories=false)
+java.lang.RuntimeException: Could not execute entrypoint stage 'main' due to errors, provided by 'astral_dice'
+Caused by: com.merlinkitsune.astral_dice.platform.fml.ModLoadingException: [星之骰戏] 缺少饰品栏前置：既没有检测到 Trinkets，也没有检测到 Accessories。
+  … 【一】Trinkets …【二】Accessories … 两者同时安装也可以 … 装好其中一个之后重新启动游戏即可。
+  at …ModCompatibilityCheck.verifyAccessoryProviderOrThrow(ModCompatibilityCheck.java:139)
+```
+（同轮 `grep -c` 统计 `Done (` 命中 = 0 ⇒ 确实没起到完成态。）
 
 ⚠️ **本轮的 dev 环境前置**：Loom 1.14.10 重映射第三方 mod 时会剥离 `fabric.mod.json` 的 `jars` 声明
 ⇒ Puzzles Lib / Accessories / Patchouli / Cloth Config / KubeJS **全部起不来**。处置见 **KI-F23** 与
@@ -572,6 +582,14 @@ python tools/verify_party_api.py --pre-fix  # 校验修复前快照      → 期
 - **立牌被动/主动技能在闸门下的行为**未在游戏内断言（本轮只断言 `hasDice` 这个判据本身）；
   `BaseSignItem#curioTick` / `performSkill` 等闸门点仍是源码级结论。
 - **客户端渲染面**（饰品栏 GUI 布局、槽位图标）未覆盖，属本台既有缺口（§8.1）。
+- **探针里的 `refresh` / `enforce` 两个子命令在本轮 24 条命令里一次都没下达**：四态读数依赖的是**隐式回调**
+  （`onEquip` / `onUnequip` / `curioTick` 对账 / 登录钩子），不是这两条显式入口。它们确实存在且指向产品入口，
+  但**本轮没有实机调用证据**。（“重进复位”走的是真实的 `/player Bot kill` + `/player Bot spawn`
+  登出→登录路径，比显式调 `enforce` 更强。）
+- **槽位读数无法单独区分“防御分支跑了”与“回调根本没触发”**：两条路径都产 `slots` 不变，
+  且防御分支**不打日志**（只有 forceRemove 分支打 WARN）。本轮靠“forceRemove=false 会把 target 抬到
+  最靠后非空槽 +1 ⇒ 满槽时缩不动”这条推理排除了“对账干的”；若将来要直接断言，
+  需要给防御分支补一条机器行。
 
 ### 7.3 已修复的测试台缺陷（7 个；每个都附实测证据）
 
