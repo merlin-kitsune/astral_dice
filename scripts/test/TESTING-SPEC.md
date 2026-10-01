@@ -2112,3 +2112,69 @@ custom_frames.json 恢复 5 档全写；包内原版稀有/史诗与本模组稀
 - **未做 / 遗留（如实登记）**：① **未 `git push`**（用户明确要求）；② CI 的库 `ref` 已跟到 `d9380241`，但**库提交未
   push** ⇒ CI 仍会断在库的 Checkout（既定代价）；③ 远端分支 `origin/1.20.1-fabric` 仍未删；④ fabric 线仍缺 1.3.3 批次；
   ⑤ 本地 tag `fabric-1.3.4-alpha.1` 未清理。
+
+## 附录 A 续 37. 推送 1.3.5-hotfix + fabric 线、删远端旧分支、CurseForge 发布（2026-10-01）
+
+- **需求**（用户原话）：「推送1.3.5-hotfix以及fabric端版本，清理远端旧分支。随后将新版本发布到curseforge」。
+- **执行顺序刻意如此**：**先推前置库、再推消费方** —— 消费方 CI 的 `Checkout StarEngine Lib` 步骤按**提交 SHA**
+  检库（`d938024…`），库没推则该步必然失败。实测库 `origin/fabric-1.20.1`：`5aa084b` → `d938024`。
+- **推送读数**：消费方 `origin/multi-main`：`9949a7e6` → `13717aba`（快进，45 个提交）；CI run **#80**
+  （head `13717aba`）**success**，26 步全绿，含 `Checkout StarEngine Lib` / `Create Git tag` /
+  `Create/Update Fabric release` 三步。
+- **远端旧分支删除（零丢失取证先于动作）**：`origin/1.20.1-fabric`(`11e1c778`) 删除前已证
+  `merge-base --is-ancestor 11e1c778 multi-main` 成立、独有提交 **0** 个，且另有 tag `fabric-1.3.4-alpha.1`
+  指向同一提交（删分支后仍可达）。删除后远端仅剩 `multi-main` / `multi-dev-next`。
+- **`-hotfix` 守卫首次真实生效（本批的核心目的之一）**：`Create Git tag` 步骤对
+  `1.3.5-hotfix+neoforge_1.21.1` 判定为**非预发布** ⇒ 走到 `TAG=1.3.5` 分支；因 tag 已存在而**复用（不新建、不移动）**。
+  ⚠️ **副作用（本次实测）**：发布线 Release 用 `gh release upload --clobber`，**只覆盖同名文件** ⇒
+  改名后的新 jar 与旧 jar **并存**：`1.3.5` Release 现有 **6 个附件**（旧 `1.3.5+*` / `1.3.5-beta.1` 三个
+  + 新 `1.3.5-hotfix+*` / `1.3.5-beta.2` 三个）。玩家在 1.3.5 页面可能下到**不含 hotfix 的旧件**。
+  ⇒ 待人工清理（本机 `gh` 未登录，代理侧无凭据，**未擅自删除**）。
+- **fabric 预发布**：新建 tag `fabric-1.3.5-alpha.1` + **prerelease Release**（1 个附件，非 latest），
+  与生产线 Release 完全隔离 —— 与既定设计一致。
+- **CurseForge 发布（4 个 jar 全部受理）**：
+  | file id | 文件 | 渠道 | 说明 |
+  |---|---|---|---|
+  | 9024344 | `astral_dice-1.3.5-hotfix+neoforge_1.21.1.jar` | release | Client+Server+1.21.1+neoforge |
+  | 9024345 | `astral_dice-1.3.5-hotfix+forge_1.20.1.jar` | release | Client+Server+1.20.1+forge |
+  | 9024346 | `astral_dice-1.3.5-beta.2+neoforge_26.1.2.jar` | beta | Client+Server+26.1.2+neoforge |
+  | 9024347 | `astral_dice-1.3.5-alpha.1+fabric_1.20.1.jar` | alpha | Client+Server+1.20.1+fabric |
+  - 三条生产线共用 `release/1.3.5/PLAYER_CHANGELOG.md`（英文）；**fabric 用自备的那份**（见下）。
+  - 上游均为 `HTTP 200` + `{"id": …}`；与上传前 28 个文件名**交集为空**（无重名重复）。
+- **fabric 线专用发布说明（新增）**：`release/fabric-1.3.5-alpha.1/PLAYER_CHANGELOG{,_ZH}.md`
+  —— 目录名 = 该线的 **GitHub 预发布 tag 名**，与生产线 `release/<裸版本>/` 同构。
+  刻意**不复用**生产线那份（后者只描述三条生产线的改动面；fabric 线缺 1.3.3 批次，沿用会失真，
+  已实测 `fabric-1.20.1` 无 `ConcealmentEffect` 而三线均有）。`check_player_changelog.py` **PASS**。
+- **本批修掉的两个真缺陷（都会直接阻断上传，均为实测踩到）**：
+  1. `tools/curseforge.json` **被我写坏成非法 JSON**：用补丁脚本改 `_fabricNote` 时把**真实换行**塞进 JSON
+     字符串字面量 ⇒ 先报 `Invalid control character`；改单行后又留下**末键多余逗号**
+     （`_fabricNote` 是该对象最后一个键）⇒ `load_binding()` 直接 SystemExit。
+     **教训**：改 JSON 一定用 `json.dumps` 造串、并**写盘后立刻 `json.load` 自检**；
+     往「最后一个键」后面插内容时不要顺手加逗号。
+  2. `tools/curseforge_upload.py` 的 `--changelog` 传**相对路径必然崩溃**（既有缺陷，本批首次暴露）：
+     `pick_changelog()` 对 `--changelog` 未 `resolve()`，而打印计划时无条件 `cl.relative_to(REPO_ROOT)`
+     ⇒ `ValueError`；该打印位于**上传之前**（`--dry-run` 同路径）⇒ 命令在「打印计划」阶段即崩。
+     修法：`pick_changelog` 统一 `resolve()`（与 `--jar` 口径一致）+ 新增 `rel_display()` 容错。
+- **CI 注释失实修正（3 处，其中 1 处是我上批留下的重复行）**：`build.yml` 的
+  「远端分支待 push 放行」→ 改为「已删除」；「该库提交尚未 push ⇒ CI 会在库的 Checkout 断掉」
+  → 改为「已 push、实测 run #80 该步 success」；并删掉一行**与相邻行逐字重复**的注释。
+- **独立子代理二次验证（按《二次验证规范》，非主会话自述）**：9 项断言逐条复核，判定**有条件通过**。
+  通过项：库钉值可达（API 200）+ CI 三步 success、tag 复用结论、Release 附件现状（6 / 1 / 非 latest）、
+  删分支零丢失、**CF 四个 id 逐个查得 releaseType 1/1/2/3 且与 `infer_release_type` 复算一致**、
+  两处代码修复、发布说明文件（LF/控制字符 0/中英对齐/内容真实性抽查）、四线 jar 元数据。
+  **复核者独立发现的 6 项，均已登记**：
+  ① tag `1.3.5` 指旧提交 `389b56f4`（落后 HEAD 46 提交）而 Release 附件是新构建 ⇒
+     「按 tag 检出的源码 ≠ Release 里的 jar」（复用旧 tag 的既有语义，需用户裁决是否前移）；
+  ② `1.3.5` Release 新旧 jar 并存（见上，待清理）；
+  ③ **GitHub Release 附件与本地 `build/libs`、与 CF 三处字节不同**：本地件与 CF 文件**逐字节同尺寸**
+     （1495455/1540424/1533289/1810473），而 GH 附件是 CI **另建**、各差 960～2690 B
+     ⇒ 同一版本在 GH 与 CF 上是**字节不同**的两个 jar（构建不可复现所致；CF 上传用的是本地件）；
+  ④ **CurseForge 公开列表端点滞后**：上传后列表 `totalCount` 长时间不动、`/files/<id>` 一度返回
+     `{"data":null}` —— 但数分钟后逐个 id 查询均可读到完整内容 ⇒
+     **判「是否上传成功」必须用 `…/files/<id>`，不能只看列表或单次 null**（主会话本轮一度据此误判「未公开」）；
+  ⑤ `build.yml` 残留失实注释（已修，见上）；
+  ⑥ 发布说明与 metadata 的小口径差（`fabric-data-attachment-api-v1` 未在说明中列出；说明写 Fabric API
+     `0.92.12` 而 `depends` 是 `fabric-api: *`）—— 不影响正确性，未改。
+- **未做 / 待用户裁决**：① 清理 `1.3.5` Release 上 3 个旧附件（需 GitHub 凭据，本机未登录）；
+  ② 是否把 tag `1.3.5` 前移到 `13717aba`；③ CurseForge 侧旧的 `1.3.5` 三件（9020649/51/53）是否下架；
+  ④ fabric 线仍缺 1.3.3 批次；⑤ 本地 tag `fabric-1.3.4-alpha.1` 未清理。

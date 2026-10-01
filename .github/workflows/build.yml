@@ -17,7 +17,7 @@ on:
       # 版本号形如 `1.3.5-alpha.1+fabric_1.20.1`(`-alpha.x` 预发布后缀,与 26.1.2 线 `-beta.x` 同构)。
       # ⚠️ 它的产物**不并入**(也绝不能被并入)发布线的 Release —— 见文末 `fabric pre-release` 步骤:
       #    该线单独出一个 Release 并标记 `--prerelease`,避免玩家把移植线产物当正式版下载。
-      # ⚠️ 原独立分支 `1.20.1-fabric` 已于 2026-10-01 并入 `multi-main`（本地 worktree 与分支已删；远端分支待 push 放行）
+      # ⚠️ 原独立分支 `1.20.1-fabric` 已于 2026-10-01 并入 `multi-main`（本地 worktree 与分支、以及**远端分支 `origin/1.20.1-fabric`** 均已删除；删前已取证其 tip `11e1c778` 是新 `multi-main` 的祖先、独有提交 0 个，且另有 tag `fabric-1.3.4-alpha.1` 兜底可达）
       #    ⇒ 本线的构建与 pre-release **改由 `multi-main` 的 push 触发**(见文末步骤的 `if` 条件);
       #    此处不再登记该分支,避免留下「分支已删、workflow 仍在等它触发」的死条目。
     tags:
@@ -97,8 +97,7 @@ jobs:
           #   (含 `EventTargetCollector` 的 FTB Teams / OPAC 反射修正)。一个 ref 同时满足四条线。
           #   ⚠️ fabric 子项目那次换号(`1.0.5-alpha.2` → `1.0.6-alpha.1`,2026-10-01 用户裁决)只改版本号、
           #    **不动字节码**;三平台版本号不变。
-          #   (含 `EventTargetCollector` 的 FTB Teams / OPAC 反射修正)。一个 ref 同时满足四条线。
-          #   ⚠️ **该库提交尚未 push** ⇒ 远端不可达,CI 会在库的 Checkout 断掉(既定代价,与消费方代码无关)。
+          #   ✅ **2026-10-01:该库提交已 push**(`origin/fabric-1.20.1`: `5aa084b` → `d938024`)⇒ 远端可达、CI 的库 Checkout 可正常解析（实测 run #80 该步 success）。
           #   ⚠️ 2026-09-30 修复 CI 失败:旧钉值 `4bea9e7d` 位于 `next` 线上,**其 tree 里根本没有 `fabric-1.20.1` 目录**
           #   ⇒ CI 解析 `:fabric-1.20.1:modImplementation` 时找不到 `starengine_lib-fabric-1.20.1:1.0.5-alpha.1`（历史值；现行为 `1.0.6-alpha.1`）,
           #   直接 `Could not resolve all files for configuration ':fabric-1.20.1:modImplementation'` 失败
