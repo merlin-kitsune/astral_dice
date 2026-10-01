@@ -1170,7 +1170,7 @@ public class DiceCombatEvents {
      * 只能按具体类型判定。本版重锤 / 长枪尚不存在、玩家近战只有 {@code player_attack}，两者等价。
      */
     private static boolean isPlayerAttackType(DamageSource source) {
-        return source.is(net.minecraft.world.damagesource.DamageTypes.PLAYER_ATTACK);
+        return source.is(DamageTypes.PLAYER_ATTACK);
     }
 
     // 骰神赐福触发目标判定:敌对生物、非团队内玩家(队伍识别统一走 PartyRelations:

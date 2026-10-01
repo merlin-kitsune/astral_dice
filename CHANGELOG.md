@@ -98,7 +98,7 @@
   (reusing `#isMeleeWeaponAttack` - **the same threshold as dice-combat resolution**).
   Item tooltip and guide text changed from "On attacking a hostile target" to "On a **melee** attack against a hostile target".
   (Known boundary, logged honestly: if a third-party mod uses `damageSources().playerAttack(owner)` to strike on a pet's behalf,
-  that damage is identical to a real player attack at the damage-source level and cannot be told apart - the project's own
+  that damage is identical to a real player attack at the damage-source level and cannot be told apart (a bytecode scan of the `[车万女仆] touhoulittlemaid-1.5.3` jar shipped in this pack found zero `playerAttack` references and `EntityMaid` using `mob_attack`, so no pet attack in the current pack slips through) - the project's own
   "skill damage" type exists precisely to avoid that shape.)
 
 

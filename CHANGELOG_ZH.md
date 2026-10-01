@@ -73,7 +73,7 @@
   也没有 `is_player_attack` 这个 tag 文件 ⇒ 按 `DamageTypes.PLAYER_ATTACK` 判定）、主手持有近战武器
   （复用 `#isMeleeWeaponAttack`，**与骰战结算同门槛**）。文案同步：物品提示与手册的「攻击敌对目标时」改为「**近战**攻击敌对目标时」。
   ⚠️ **已知边界（如实登记）**：若第三方模组用 `damageSources().playerAttack(owner)` 替宠物出刀，该伤害在伤害源层面与本尊攻击
-  完全同形、无法区分 —— 项目内既有的「技能类伤害」正是为避开该形态才另立 `astral_dice:skill_damage`（见 `SherryThrowManager` 注释）。
+  完全同形、无法区分（**本轮对整合包实装的 `[车万女仆] touhoulittlemaid-1.5.3` 做了字节码扫描：`playerAttack` 命中 0 个类、`EntityMaid` 走 `mob_attack` ⇒ 当前整合包内不存在走该形态的宠物攻击**）—— 项目内既有的「技能类伤害」正是为避开该形态才另立 `astral_dice:skill_damage`（见 `SherryThrowManager` 注释）。
 
 
 ### BUG修复

@@ -1208,7 +1208,7 @@ public class DiceCombatEvents {
      * 与骰战门槛（任意近战武器）保持一致。
      */
     private static boolean isPlayerAttackType(DamageSource source) {
-        return source.is(net.minecraft.tags.DamageTypeTags.IS_PLAYER_ATTACK);
+        return source.is(DamageTypeTags.IS_PLAYER_ATTACK);
     }
 
     // 骰神赐福触发目标判定:敌对生物、非团队内玩家(队伍识别统一走 PartyRelations:
