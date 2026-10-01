@@ -93,7 +93,9 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: merlin-kitsune/starengine_lib
-          ref: 006e8241005bb1bf3ec0cc6b448a3aa4bc9e28ec   # = 库分支 `fabric-1.20.1` 的 HEAD:三平台 **1.0.6** + fabric 子项目 **1.0.5-alpha.2**
+          ref: 697f254174513b5f69a6e9fc9ed40489be6dc39b   # = 库分支 `fabric-1.20.1` 的 HEAD:三平台 **1.0.6** + fabric 子项目 **1.0.5-alpha.2**
+          #   (含 `EventTargetCollector` 的 FTB Teams / OPAC 反射修正;末次提交 `697f2541` 为**纯文档更正**,
+          #    已实证不改字节码 ⇒ 与 `006e8241` 的产物逐字节等价,仅调试行号位移)。一个 ref 同时满足四条线。
           #   (含 `EventTargetCollector` 的 FTB Teams / OPAC 反射修正)。一个 ref 同时满足四条线。
           #   ⚠️ **该库提交尚未 push** ⇒ 远端不可达,CI 会在库的 Checkout 断掉(既定代价,与消费方代码无关)。
           #   ⚠️ 2026-09-30 修复 CI 失败:旧钉值 `4bea9e7d` 位于 `next` 线上,**其 tree 里根本没有 `fabric-1.20.1` 目录**

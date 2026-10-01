@@ -2015,6 +2015,21 @@ custom_frames.json 恢复 5 档全写；包内原版稀有/史诗与本模组稀
     `verify_bountiful_pools`、`verify_crafting_recipe_uniqueness`、`verify_resource_integrity`、
     `Test-MtSyntax` **全部 EXIT=0**；python 侧 `audit_actionbar` / `audit_patchouli_keys` /
     `audit_mixin_injection` / `verify_fabric_assets` 亦全 0。
+- **独立子代理二次验证（按《二次验证规范》）**：10 项断言逐条复核，**核心事实全部被独立实物证据证实** ——
+  反射目标 **31/31** 真实存在（含负向 5 项：旧目标确实不存在）、公共 API **只增不减**（字节码级比对）、
+  四个新产物（嵌套类里）新串全在 / 旧错串 0、内嵌件与 mavenLocal **md5 四方一致**、forge SRG **76**、
+  pin / range / CI ref 三者自洽、四线 `mod_version` 未动、**14 道闸门独立复跑全 EXIT=0**、
+  生产冒烟不崩且加载新库 ⇒ 判定「**有条件通过**」。复核者另指出 **3 处需处置项，已全部处理**：
+  ⚠️ **(实质) 我把「旧代码首个失败点」写错了** —— 库侧旧代码走 `api.getClass()`（`api()` 返回的**实现类**，
+  实现了嵌套接口 ⇒ 那一步**能**解析），真正的首个失败点是 `getTeamForPlayer`；「在外层类上取 ⇒ 当场抛」
+  是**下游消费方模组** `astral_dice` 的写法。已在**库侧**更正（javadoc + 两份 CHANGELOG，提交 `697f2541`），
+  并**实证该更正不改字节码**（三个 class 的**常量池逐字节相同**，差异全部落在常量池之后 = `LineNumberTable`）
+  ⇒ 已发布的 1.0.6 / 1.0.5-alpha.2 **无需重新发布**。
+  ⚠️ **消费方 CHANGELOG 的 fabric 小节仍写库 `1.0.5-alpha.1`** —— 已更新为 `1.0.5-alpha.2`（中英各 1 处）。
+  ⚠️ **CI ref 指向的库提交未 push** ⇒ 当前 CI 必然在库的 Checkout 断掉（需先 push 库）。
+  （复核者另建议：现冒烟实例**未装** FTB / OPAC ⇒ 只证明「缺席时优雅退化、不崩、到主菜单」，
+   **未触达修复后的正向反射路径**；正向证据目前只有 jar 级 `javap` + 产物字节码。若要实机正向证据，
+   需在装了 FTB / OPAC 的实例再跑一次并读 `AP_LIB_PARTY: back_ftb=on back_opac=on`。**本批未做**。）
 - **未做 / 遗留（如实登记）**：
   ① **库提交未 push**（`006e8241`）⇒ 消费方 CI 会在「Checkout StarEngine Lib」断掉（既定代价，
      与消费方代码无关）；须先把库推上去。

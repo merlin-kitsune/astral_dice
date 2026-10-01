@@ -49,7 +49,7 @@
 
 > Decided by the user on 2026-09-29: this line is a **development line**, so version numbers now carry
 > an **`-alpha.x` pre-release suffix** (1.3.5-alpha.1 at present), and the prerequisite library moves to
-> `1.0.5-alpha.1` (its baseline rolled back to 1.0.5).
+> `1.0.5-alpha.2` (its baseline rolled back to 1.0.5; includes the FTB Teams / OPAC reflection fix).
 
 ### Content & balance changes
 
