@@ -1,0 +1,17 @@
+{
+  "name": "item.astral_dice.primordial_core_chip",
+  "category": "astral_dice:chips_charge",
+  "icon": "astral_dice:primordial_core_chip",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:primordial_core_chip",
+      "text": "astral_dice.guide.entry.primordial_core_chip.1"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:primordial_core_chip"
+    }
+  ],
+  "sortnum": 9
+}

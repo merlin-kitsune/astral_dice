@@ -1,0 +1,17 @@
+{
+  "name": "item.astral_dice.effect_card_berserk",
+  "category": "astral_dice:cards_effect",
+  "icon": "astral_dice:effect_card_berserk",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:effect_card_berserk",
+      "text": "astral_dice.guide.entry.effect_card_berserk.1"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:effect_card_berserk"
+    }
+  ],
+  "sortnum": 1
+}

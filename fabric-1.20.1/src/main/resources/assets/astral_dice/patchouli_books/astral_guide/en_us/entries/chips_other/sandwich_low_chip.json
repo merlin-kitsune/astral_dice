@@ -1,0 +1,17 @@
+{
+  "name": "item.astral_dice.sandwich_low_chip",
+  "category": "astral_dice:chips_other",
+  "icon": "astral_dice:sandwich_low_chip",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:sandwich_low_chip",
+      "text": "astral_dice.guide.entry.sandwich_low_chip.1"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:sandwich_low_chip"
+    }
+  ],
+  "sortnum": 11
+}

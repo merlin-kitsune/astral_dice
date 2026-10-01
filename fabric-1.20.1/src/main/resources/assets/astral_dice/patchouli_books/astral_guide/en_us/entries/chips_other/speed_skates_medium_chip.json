@@ -1,0 +1,17 @@
+{
+  "name": "item.astral_dice.speed_skates_medium_chip",
+  "category": "astral_dice:chips_other",
+  "icon": "astral_dice:speed_skates_medium_chip",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:speed_skates_medium_chip",
+      "text": "astral_dice.guide.entry.speed_skates_medium_chip.1"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:speed_skates_medium_chip"
+    }
+  ],
+  "sortnum": 6
+}

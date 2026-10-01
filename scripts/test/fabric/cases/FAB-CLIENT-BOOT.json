@@ -1,0 +1,28 @@
+{
+  "case_id": "FAB-CLIENT-BOOT",
+  "title": "客户端启动期事实：事件桥（注册类/生命周期/界面/世界渲染/tooltip）已安装、按键/粒子/HUD 注册桥有读数、订阅类扫描审计通过（61 类），且无类加载/崩溃错误。",
+  "side": "client",
+  "window": "whole",
+  "on_fail": "keep_game_running",
+  "steps": [
+    {
+      "op": "note",
+      "text": "前置：pwsh -File scripts/test/fabric/ft_launch.ps1 --side client --gradle-arg -PtestSodium=false\n（本机 dev 环境**必须**带 -PtestSodium=false：Sodium 要求 LWJGL 3.3.1 而环境是 3.3.2-snapshot，不带会在启动期硬失败。）\n\nwindow=whole 是刻意的：这些行打在启动早期；写成 case/launch 窗口会必然假 FAIL。\n\n⚠️ 本用例**不断言客户端派发统计**。原因是平台事实而非本台缺陷：\n · `事件派发统计` 的两处打印点是 FabricBridges 的「开局 600 tick」（服务端 tick 回调）与「关服」；\n · 客户端只有**进入世界**（内置服务端跑起来）才会出现该块；且关服那份需要**优雅退出**，\n   而 ft_stop 是收停进程（taskkill /T），拿不到优雅退出的那份。\n ⇒ 客户端侧「事件桥是否真的在派发」的证据链 = 本用例的『桥已安装 + 注册桥读数 + 审计通过』\n   ＋ 需要世界内渲染证据时另跑一次 quickplay 进世界的用例。该边界已在 README 覆盖缺口里登记。"
+    },
+    {
+      "op": "wait",
+      "ms": 200
+    }
+  ],
+  "asserts": [
+    { "type": "log", "pattern": "客户端事件桥已安装\\(注册类/生命周期/界面/世界渲染/tooltip\\)" },
+    { "type": "log", "pattern": "Puzzles 事件桥已安装" },
+    { "type": "log", "pattern": "客户端注册桥:按键 \\d+ 个 / 粒子 \\d+ 个 / HUD 覆盖层 \\d+ 个" },
+    { "type": "log", "pattern": "事件订阅审计通过:\\d+ 个订阅类全部已登记" },
+    { "type": "log", "pattern": "Astral Dice client initialized" },
+    { "type": "absent", "pattern": "NoClassDefFoundError|NoSuchMethodError" },
+    { "type": "absent", "pattern": "Mixin apply failed|InjectionError" },
+    { "type": "crash" }
+  ],
+  "evidence": []
+}

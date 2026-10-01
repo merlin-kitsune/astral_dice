@@ -1,0 +1,17 @@
+{
+  "name": "item.astral_dice.atm_chip",
+  "category": "astral_dice:chips_starlight",
+  "icon": "astral_dice:atm_chip",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:atm_chip",
+      "text": "astral_dice.guide.entry.atm_chip.1"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:atm_chip"
+    }
+  ],
+  "sortnum": 2
+}

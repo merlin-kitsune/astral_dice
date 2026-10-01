@@ -1,0 +1,17 @@
+{
+  "name": "item.astral_dice.attack_card_bite",
+  "category": "astral_dice:cards_attack",
+  "icon": "astral_dice:attack_card_bite",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:attack_card_bite",
+      "text": "astral_dice.guide.entry.attack_card_bite.1"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.attack_card_bite.2"
+    }
+  ],
+  "sortnum": 7
+}

@@ -1,0 +1,16 @@
+{
+  "name": "astral_dice.guide.entry.integration.name",
+  "category": "astral_dice:getting_started",
+  "icon": "astral_dice:golden_star_plate",
+  "pages": [
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.integration.1"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.integration.2"
+    }
+  ],
+  "sortnum": 4
+}

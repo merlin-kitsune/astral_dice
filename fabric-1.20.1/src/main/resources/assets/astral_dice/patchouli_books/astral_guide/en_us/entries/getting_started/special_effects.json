@@ -1,0 +1,32 @@
+{
+  "name": "astral_dice.guide.entry.special_effects.name",
+  "category": "astral_dice:getting_started",
+  "icon": "astral_dice:effect_card_king_power",
+  "pages": [
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.special_effects.1"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.special_effects.2"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.special_effects.3"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.special_effects.4"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.special_effects.5"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.special_effects.6"
+    }
+  ],
+  "sortnum": 2
+}

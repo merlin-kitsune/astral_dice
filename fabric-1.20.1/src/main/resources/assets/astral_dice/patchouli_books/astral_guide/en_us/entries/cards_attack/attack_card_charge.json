@@ -1,0 +1,17 @@
+{
+  "name": "item.astral_dice.attack_card_charge",
+  "category": "astral_dice:cards_attack",
+  "icon": "astral_dice:attack_card_charge",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:attack_card_charge",
+      "text": "astral_dice.guide.entry.attack_card_charge.1"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:attack_card_charge"
+    }
+  ],
+  "sortnum": 5
+}

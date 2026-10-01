@@ -1,0 +1,17 @@
+{
+  "name": "item.astral_dice.warp_engine_chip",
+  "category": "astral_dice:chips_charge",
+  "icon": "astral_dice:warp_engine_chip",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:warp_engine_chip",
+      "text": "astral_dice.guide.entry.warp_engine_chip.1"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:warp_engine_chip"
+    }
+  ],
+  "sortnum": 0
+}

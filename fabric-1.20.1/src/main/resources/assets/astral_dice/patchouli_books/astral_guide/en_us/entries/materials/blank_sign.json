@@ -1,0 +1,17 @@
+{
+  "name": "item.astral_dice.blank_sign",
+  "category": "astral_dice:materials",
+  "icon": "astral_dice:blank_sign",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:blank_sign",
+      "text": "astral_dice.guide.entry.blank_sign.1"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:blank_sign"
+    }
+  ],
+  "sortnum": 4
+}

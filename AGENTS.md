@@ -1,12 +1,13 @@
 # Agent Instructions
 
-> **子项目默认规则(必须遵守)**:所有功能/修复默认**同步修改三个版本**(`neoforge-1.21.1` + `forge-1.20.1` + `neoforge-26.1.2`),三线保持功能对等(无法对等的项必须按平台差异逐条登记,见 `docs/compat-26.1.2-neoforge.md`;**不再存在"只同步两个版本"的口径**);每次改动完成后由代理**自动本地提交**并**自动部署到整合包**(随 `gradlew build` 触发,**三线各自推往自己的整合包**:`狐の航空学 Voxy Edition` / `1.20.1 模组测试` / `26.1.2 模组测试`),但**默认不执行 `git push`**。
+> **子项目默认规则(必须遵守)**:所有功能/修复默认**同步修改四个版本**(`neoforge-1.21.1` + `forge-1.20.1` + `neoforge-26.1.2` + `fabric-1.20.1`),四线保持功能对等(无法对等的项必须按平台差异逐条登记,见 `docs/compat-26.1.2-neoforge.md`;**不再存在"只同步两个版本"的口径**);每次改动完成后由代理**自动本地提交**并**自动部署到整合包**(随 `gradlew build` 触发,**四线各自推往自己的整合包**:`狐の航空学 Voxy Edition` / `1.20.1 模组测试` / `26.1.2 模组测试` / `1.20.1-Fabric 模组测试`),但**默认不执行 `git push`**。
 
 项目基线:
 - 主线子项目 `neoforge-1.21.1`:MC 1.21.1 / NeoForge 21.1.235 / Java 21 / ModDevGradle(`net.neoforged.moddev` 2.0.141)
 - 移植子项目 `forge-1.20.1`:MC 1.20.1 / Forge 1.20.1-47.4.10 / Java 17 / ModDevGradle LegacyForge(`net.neoforged.moddev.legacyforge` 2.0.144)
 - 第三条线 `neoforge-26.1.2`:MC 26.1.2 / NeoForge 26.1.2.109 / Java 25 / ModDevGradle 2.0.147;由 1.21.1 源码整体迁移,差异见 `docs/compat-26.1.2-neoforge.md`。**2026-09-17 起已并入主线目录**(原独立 worktree `F:\MCProject\astral_dice_multiloader-26.1.2` / 分支 `multi-26.1.2-neoforge` 已合并进 `multi-1.20.1-1.21.1`,现行工作目录即主线根目录,三子项目同树)。
-- Base package/group: com.merlinkitsune.astral_dice;各子项目产物名均为 `astral_dice-<版本>.jar`,版本号自带加载器后缀(1.21.1 带 `+neoforge_1.21.1`,1.20.1 带 `+forge_1.20.1`,26.1.2 带 `+neoforge_26.1.2`,下划线分隔)。
+- 第四条线 `fabric-1.20.1`:Fabric Loom 1.14.10 / Mojang 官方映射(officialMojangMappings)/ Java 17(gradlew 需 JVM 21)/ MC 1.20.1 / 前置 = Fabric API + Trinkets + Puzzles Lib + Accessories(软);**2026-10-01 起并入本分支 `multi-dev-next`**(此前只在发布线 `multi-main` 存在)。
+- Base package/group: com.merlinkitsune.astral_dice;各子项目产物名均为 `astral_dice-<版本>.jar`,版本号自带加载器后缀(1.21.1 带 `+neoforge_1.21.1`,1.20.1 带 `+forge_1.20.1`,26.1.2 带 `+neoforge_26.1.2`,fabric 1.20.1 带 `+fabric_1.20.1`,下划线分隔)。
 
 When extending this workspace:
 - Prefer editing the existing Gradle configuration before creating new files.
@@ -191,11 +192,12 @@ When extending this workspace:
 5. 推荐使用本地脚本 `scripts/test/mt_build.ps1` 执行(已内置超时强退与「日志 + 产物」双重验证):
    `pwsh -NoProfile -File scripts/test/mt_build.ps1 --version 1.21.1 [--timeout 60] [--retries 3]`。
    该脚本同时是「自动化测试流程」阶段 B 的实现；单独构建时也可直接调用。
-6. 常用构建入口(在仓库根目录执行;**三条线规则完全一致**,26.1.2 与另两线同规则、同产物去向):
+6. 常用构建入口(在仓库根目录执行;**四条线规则完全一致**,fabric-1.20.1 与另三线同规则、同产物去向):
    - `./gradlew :neoforge-1.21.1:build` — 仅构建 1.21.1 NeoForge;
    - `./gradlew :forge-1.20.1:build` — 仅构建 1.20.1 Forge;
    - `./gradlew :neoforge-26.1.2:build` — 仅构建 26.1.2 NeoForge;
-   - `./gradlew build` — 三个子项目全部构建(部署任务随各子项目 build 触发)。
+   - `./gradlew :fabric-1.20.1:build` — 仅构建 1.20.1 Fabric;
+   - `./gradlew build` — 四个子项目全部构建(部署任务随各子项目 build 触发)。
 7. **数据生成(runData)前必须移开 run 目录中的旧产物 jar**:`run/1.21.1/mods/astral_dice-*.jar`(forge 同理 `run/1.20.1/mods/`,26.1.2 同理 `run/26.1.2/mods/`)会与 `build/classes/java/main` 同时被加载,**遮蔽刚编译的 dev 类**,导致 `runData` 用旧代码生成资源却**不报任何错误**(表现为"改了 Provider 但生成结果没变")。执行 `:neoforge-1.21.1:runData` / `:forge-1.20.1:runData`(26.1.2 为**两段式**:`:neoforge-26.1.2:runClientData :neoforge-26.1.2:runServerData`,且 `run/26.1.2/mods` 里的探针运行时 KubeJS/Rhino/BAT 也要一并移出,见下方 26.1.2 速记第 6 条)前先把该 jar 移出(如 `temp/shadow_jars/`),生成后再 `gradlew build` 重新推回。判定是否被遮蔽:比对 `build/classes/.../ModRecipeProvider.class` 中是否含新增字面量(如新筹码模式串),同时确认生成文件时间戳已更新(不要只看日志的 `written: N`)。
    - **⚠️ `runData` 的游戏 JVM 可能写盘完成后不退出(2026-09-23 实测,forge-1.20.1)**:日志出现 `[minecraft/HashCache]: … written: 370` 之后进程仍在(CPU 归零、日志停滞),把整个 Gradle 调用挂住 19 分钟。**判据 = `HashCache … written: N` 出现即产物已落盘**,此时可安全终止该 JVM(`Stop-Process -Id <pid>`),Gradle 会以该 task 失败继续、后续命令照常(多 task 一条命令时要写成「逐条执行、不看 `&&`」,否则前一条失败会掐掉后面的线)。排查手法:`Get-CimInstance Win32_Process -Filter "Name='java.exe'"` 看命令行里带 `fml.modFolders=…\<line>\build\classes` 的那个就是数据生成 JVM。
    - **⚠️ datagen 会顺带重写大量既有生成物,且部分会产生真实字节差异(2026-09-23)**:本轮 `build` 前跑三线 datagen,status 出现 **1255** 条 ` M`,其中 1211 条为**纯 stat 噪声**(工作区 blob hash 与索引**完全相同**,`git diff --name-only` = 0;本机 git 无法把刷新后的 stat 写回索引,故 `git status` 一直显示它们,`git update-index --refresh/--really-refresh` 也清不掉 ⇒ **`git status` 不再是「是否干净」的可靠判据,以 `git diff --name-only` 为准**),另 26 条为**缺尾换行**的真实差异(HEAD 以 `}\n` 结尾、生成物无尾换行)⇒ 与本次改动无关的一律 `git restore -- <逐个路径>` 回退,**提交前用 `git diff --numstat` 逐条确认只含目标文件**。
@@ -221,13 +223,14 @@ When extending this workspace:
 > **第三条线(26.1.2)的规则边界(2026-09-19 用户裁决修订 —— 26.1.2 已纳入主线,必须遵守)**:自本裁决起「同步修改」约束**三个版本**(`neoforge-1.21.1` + `forge-1.20.1` + `neoforge-26.1.2`):任何功能/修复/平衡/文案改动一律**三线同批实施**(实施方式见下方「### 子项目修改默认规则」与「### 模组内容更新规则(三线同步)」),26.1.2 **不再**是「发布线完成后再迁移」的低优先级移植线。三条线各自按 `docs/compat-26.1.2-neoforge.md`(26.1.2 相对 1.21.1)、`docs/compat-1.20.1-forge.md`(1.20.1 相对 1.21.1)的差异映射实现,**平台差异必须逐条登记**;三线落地后按 `scripts/test/TESTING-SPEC.md` §13.2 做一致性测试。三子项目的 `mod_version`/`mods.toml` 门槛仍各自独立。
 ### 前置库 starengine_lib 的版本与兼容性契约（全局，2026-09-22 用户裁决）
 
-> 本契约**跨两个仓库生效**（库仓 `F:\MCProject\starengine_lib` ↔ 本仓三条线），是库的**公开兼容性承诺**。
+> 本契约**跨两个仓库生效**（库仓 `F:\MCProject\starengine_lib` ↔ 本仓四条线），是库的**公开兼容性承诺**。
 > 库侧原文见其 `README_ZH.md` §6「版本与兼容」（英文版为 `README.md` §6 "Versions and compatibility"）、双 `CHANGELOG`、以及三处 `gradle.properties` 的 `1.0.0` 条目。
+> ⚠️ **2026-10-01 起**:fabric 平台子项目已并入库的 `next` 分支(库侧 `settings.gradle` 现含 `neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1` 四个平台子项目),库侧 artifactId = `starengine_lib-fabric-1.20.1`,与本仓四线同号。
 
 1. **禁止破坏性更新（第一位数字不变时）**：凡**主版本号（第一位数字）不变**的库版本（当前 = `1.x`），
    **不得**删除或改名任何 public 类型 / 方法 / 字段 / 常量，**不得**改变其可见性、签名或既有语义；
    只允许**新增**（新类型、新成员、新可选入口）与不改变契约的行为修正。
-2. **破坏性变更必须升第一位**（`1.x` → `2.x`），并在**同一次**发布里把三条线的 `starengine_lib_version`
+2. **破坏性变更必须升第一位**（`1.x` → `2.x`），并在**同一次**发布里把四条线的 `starengine_lib_version`
    一起升到新版本 ⇒ **破坏性变更不允许藏在次版本/补丁位里**。
 3. ⛔ **版本区间已于 2026-09-25 移除（用户裁决：「移除本分支内 starengine_lib 版本限制规则，只按需求版本
    引入实际发布版本」）**：三条线 `gradle.properties` **不再有 `starengine_lib_version_range`**，
@@ -265,15 +268,16 @@ When extending this workspace:
    消费方必须把下界**精确到序号**（历史口径与实测矩阵见各线 `gradle.properties` 注释与库 README §4.2）；
    **自 `1.0.0` 起不再需要精确序号**，`[1.0.5,2.0)` 一条即可。
 6. ⚠️ **升级库的固定动作（缺一即断）**：① 库侧 bump `lib_version`/`mod_version` 并
-   `./gradlew build publishToMavenLocal`（三平台同号）；② 本仓三条线 `gradle.properties` 的
+   `./gradlew build publishToMavenLocal`（四平台同号）；② 本仓四条线 `gradle.properties` 的
    `starengine_lib_version` 更新到新版本（**唯一的版本量**；自 2026-09-25 起已无区间可同步）；③ `.github/workflows/build.yml` 的库 `ref:`
-   钉值改为库的**新提交 SHA**（该提交须已推送到远端，否则 CI 检不出）；④ 三条线**重新构建**，让产物内的
+   钉值改为库的**新提交 SHA**（该提交须已推送到远端，否则 CI 检不出）；④ 四条线**重新构建**，让产物内的
    内嵌副本（`META-INF/jarjar/`）跟上新版本 —— 整合包里**不再**放独立库 jar（见第 7 条）；⑤ 三个
    `run/<版本>/mods` 仍各持一份**与引脚同版本**的库 jar（dev 的手工启动路径要用，`Start-*.bat` 会以
    exit 10 拒绝版本不一致的环境；forge 线必须是库仓库 `build/devlibs` 的 dev 形态）。
-7. **库随产物内嵌（JarJar，2026-09-24 起，三线同口径）**：三条线各用 ModDevGradle 的 `jarJar` 配置把
-   `starengine_lib-<平台>-<版本>.jar` 打进 `astral_dice` 产物（生成 `META-INF/jarjar/metadata.json` +
-   `META-INF/jarjar/<库 jar>`），理由 = **CurseForge / Modrinth 不收录纯库型工程**，库无法作为独立前置分发。
+7. **库随产物内嵌（JarJar，2026-09-24 起，四线同口径）**：四线各把
+   `starengine_lib-<平台>-<版本>.jar` 打进 `astral_dice` 产物（`neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2`
+   三线用 ModDevGradle 的 `jarJar` 配置，生成 `META-INF/jarjar/metadata.json` + `META-INF/jarjar/<库 jar>`；
+   `fabric-1.20.1` 线用 Fabric Loom 的 `include` 配置，内嵌到 `META-INF/jars/`），理由 = **CurseForge / Modrinth 不收录纯库型工程**，库无法作为独立前置分发。
    - DSL **只写坐标**（`jarJar("…:${starengine_lib_version}")`，**不写 `version { }` 块**）：ModDevGradle 按
      「严格版本 → 需求版本 → 首选版本」的顺序取值，落到**需求版本** ⇒ `metadata.json` 的区间自动成为
      `[<starengine_lib_version>,)`（实测：有下界、无上界、`hasRestrictions()=true`），**没有手工同步点**；
@@ -284,11 +288,11 @@ When extending this workspace:
      副本打进生产包。NeoForge 两线编译与生产同为 Mojmap，无此风险。
    - ⚠️ **独立 jar 会被优先采用**：FML 的 `JarJarSelector` 按 **modId** 识别同源件（NeoForge 的
      `JarInJarDependencyLocator.identifyMod` 返回 modId 拼接；Forge 1.20.1 同源实现），顶层 mod 列表里
-     若已有同名 mod，内嵌副本被丢弃且只打一条 WARN ⇒ 更旧的独立 jar 会盖掉内嵌版本。三条线的
+     若已有同名 mod，内嵌副本被丢弃且只打一条 WARN ⇒ 更旧的独立 jar 会盖掉内嵌版本。四条线的
      `pushToGame` 会在发现整合包内仍有独立库 jar 时告警（只告警，不阻断）。
-   - 三条线的 `pushToDevRun`（1.20.1 线为 `pushToRootBuild`）每次构建打印一行「内嵌前置自检」
+   - 四条线的 `pushToDevRun`（1.20.1 线为 `pushToRootBuild`）每次构建打印一行「内嵌前置自检」
      （内嵌件名 + version + range），作为「jarJar 配置失效」的回归护栏。
-8. ⚠️ **推送整合包的分支白名单**：库侧 `packPushBranches = ['main']`、本仓三线 `packPushBranches = ['multi-main']`
+8. ⚠️ **推送整合包的分支白名单**：库侧 `packPushBranches = ['main']`、本仓四线 `packPushBranches = ['multi-main']`
    （2026-09-22 起两侧同构；此前是黑名单，已改白名单 ⇒ 新分支默认不推，不会误删整合包里的正式 jar）。
 
 ### neoforge-26.1.2 关键差异速记(相对 neoforge-1.21.1)
@@ -404,25 +408,25 @@ When extending this workspace:
   - `1.21.1`：客户端进入 NeoForge 的「连接已丢失 / Connection Lost」**模组版本不匹配**屏幕，表格「通道名称」列出本模组的载荷 id、「原因」为「模组网络通道 "Astral Dice" 连接失败：…版本…」（同一失配原因的多条通道会合并为一行 + `[+N more]`）。⚠️ **已知 NeoForge 自身文案缺陷**：`NetworkComponentNegotiator` 传参为 `(服务端版本, 客户端版本)`，而语言文件把第一个占位符写成「客户端期望」——两个版本号本身正确，但角色标签是反的；这是上游措辞问题，不要为此放弃原生门槛。
   - `1.20.1`：客户端显示 Forge 的**模组不匹配**屏幕（`fml.modmismatchscreen.mismatchedmods` + 表格「模组名称 / 你拥有 / 服务端拥有」），列出模组名与**两端完整 `mod_version`**，并明确提示「安装与服务端相同版本的这些模组以加入此服务器」。
   - 两侧服务端日志都会留痕（NeoForge 协商失败原因 / Forge `Channels [...] rejected their client side version number`）。
-- **不得破坏单机与开发环境**：单人游戏的「内嵌服务端」与客户端来自**同一构建**，互通号必然相同，照常可玩；`scripts/test` 的自动化流程依赖该能力。改动本规则后必须复跑**三线**构建与冒烟流程(版本互通门槛在三个子项目各有一份实现,26.1.2 与另两线同规则)。
+- **不得破坏单机与开发环境**：单人游戏的「内嵌服务端」与客户端来自**同一构建**，互通号必然相同，照常可玩；`scripts/test` 的自动化流程依赖该能力。改动本规则后必须复跑**四线**构建与冒烟流程(版本互通门槛在四个子项目各有一份实现,fabric-1.20.1 与另三线同规则)。
 - **兜底顺序**：`VersionGate` 先读构建期资源，读不到才回退到加载器元数据（`ModList` → `IModInfo#getVersion()`）；两者都失败时互通号退化为固定值并打印 ERROR 日志（只为不崩游戏，正常构建绝不会走到）。改动本规则时**必须保留**「读不到就退化」的行为，不得改成抛异常启动失败。
 
 ## 版本号递增约定（每提交一版）— 必须遵守（2026-09-29 用户裁决）
 
-**本工作树当前分支（`multi-dev-next`）每提交一次，三线 `mod_version` 的 SNAPSHOT 号 +1**；
+**本工作树当前分支（`multi-dev-next`）每提交一次，四线 `mod_version` 的 SNAPSHOT 号 +1**；
 前置库 `starengine_lib` 的 `next` 分支**同规则**（该侧约定见其仓库根 `AGENTS.md`），两侧**各自独立计数**。
 **含只动工具链 / 文档 / CI 的提交（`scripts/**`、`AGENTS.md`、`CHANGELOG`、`build.yml` …）—— 一律 bump，不设例外。**
 
-- **唯一真值字段**：三线 `gradle.properties` 的 `mod_version=2.0.0-SNAPSHOT.<N>+<平台>`
-  ⇒ **只改 `<N>`**；平台后缀不动；**三线永远同号**（本约定自 `.14` 起生效）。
+- **唯一真值字段**：四线 `gradle.properties` 的 `mod_version=2.0.0-SNAPSHOT.<N>+<平台>`
+  ⇒ **只改 `<N>`**；平台后缀不动（1.21.1 为 `+neoforge_1.21.1`、1.20.1 为 `+forge_1.20.1`、26.1.2 为 `+neoforge_26.1.2`、fabric 1.20.1 为 `+fabric_1.20.1`）；**四线永远同号**（本约定自 `.14` 起生效）。
 - **与收尾顺序的关系**：bump 必须在 `gradlew build` **之前** —— jar 名与 jar 内 `mods.toml` / `astral_dice_version.properties`
   的版本都取自 `mod_version`，否则 `build/libs` 与 `run/*/mods` 里留的是旧版本号的件（提交内版本 ≠ 已部署产物 ⇒ 违反「断言落在最终产物上」）。
-  正确顺序 = **bump → 两份 CHANGELOG 段头同步 → 三线 build → 部署 → 提交**。
+  正确顺序 = **bump → 两份 CHANGELOG 段头同步 → 四线 build → 部署 → 提交**。
 - **CHANGELOG 段头同批改**：两份 CHANGELOG 顶部 `## 未发布（<版本号>）` / `## Unreleased (<版本号>)` 必须等于 bump 后的 `mod_version`。
   本约定属**工程口径** ⇒ 按「两个 CHANGELOG 是玩家侧文档」一条**不写条目**，只改段头标题。
 - **库 bump 的连带义务（同一批内完成）**：库 `next` 每次提交后，本仓库须同步
-  ① 三线 `starengine_lib_version` pin、② `.github/workflows/build.yml` 的库 checkout `ref`（钉到**携带新版本的库 commit sha**）、
-  ③ 三线重新 `gradlew build` 并部署（库走 JarJar 内嵌，**同版本号就地覆盖** ⇒ 漏接线会留旧内嵌件，症状是隐性 `NoSuchMethodError`）。
+  ① 四线 `starengine_lib_version` pin、② `.github/workflows/build.yml` 的库 checkout `ref`（钉到**携带新版本的库 commit sha**）、
+  ③ 四线重新 `gradlew build` 并部署（库走 JarJar 内嵌，**同版本号就地覆盖** ⇒ 漏接线会留旧内嵌件，症状是隐性 `NoSuchMethodError`）。
   ⚠️ 该 `ref` 指向的库提交若尚未 `push`，消费方 CI 会断在库的 Checkout。
 - ⚠️ **已知代价（明知并接受）**：版本号自此等价于「提交序号」，纯工具链 / 文档提交也会让它上涨 ⇒
   **任何一次提交都会让已有 `build/libs/*.jar` 与 `run/*/mods/*.jar` 的版本号过期**，须重跑构建才能对齐。
@@ -1707,7 +1711,7 @@ When extending this workspace:
 | `neoforge-26.1.2` | `run/26.1.2/mods`（仓库根 run/） | `D:\.minecraft\versions\26.1.2-NeoForge 模组测试\mods` | 随 build 触发；**仅发布线分支 `multi-1.20.1-1.21.1` 会真正推送整合包**，其它分支（含 `multi-dev-next`）**严格跳过**并只打印 `pushToGame: skipped — 分支 '…' 不在整合包推送白名单 …` |
 
 规则要点：
-1. **推送任务随 build 触发，但整合包推送受分支白名单限制**：`pushToDevRun`/`pushToRootBuild`/`pushToGame` 三个任务均由 `finalizedBy` 随 build 触发；**`pushToGame` 在 `doLast` 里先做执行期分支判定** —— 分支不在白名单 `packPushBranches = ['multi-1.20.1-1.21.1']` 内（或无法确定分支，如 detached HEAD / 无 `.git`）时只打印 `pushToGame: skipped — 分支 '…' 不在整合包推送白名单 …` 并 `return`，**不写整合包目录**（`multi-dev-next` 即属此类，见上方「整合包推送的分支口径」）。**`-PdeployToPack` / `-PpackPush` 仍被任务读取**（三条线 `build.gradle` 均有 `def forcePackPush = project.hasProperty('deployToPack') || project.hasProperty('packPush')`，并在 `pushToGame` 的 `doLast` 里以 `if (!forcePackPush) { … }` 包裹上述白名单判定）—— 作用 = **跳过白名单手动强推整合包**（手动出包通道，保留）；强推时同时会触发「库 jar 与 mod jar 成对自检」的告警（1.21.1 / 1.20.1 原有，26.1.2 自 2026-09-17 接入库后同形）。
+1. **推送任务随 build 触发，但整合包推送受分支白名单限制**：`pushToDevRun`/`pushToRootBuild`/`pushToGame` 三个任务均由 `finalizedBy` 随 build 触发；**`pushToGame` 在 `doLast` 里先做执行期分支判定** —— 分支不在白名单 `packPushBranches = ['multi-1.20.1-1.21.1']` 内（或无法确定分支，如 detached HEAD / 无 `.git`）时只打印 `pushToGame: skipped — 分支 '…' 不在整合包推送白名单 …` 并 `return`，**不写整合包目录**（`multi-dev-next` 即属此类，见上方「整合包推送的分支口径」）。**`-PdeployToPack` / `-PpackPush` 仍被任务读取**（四条线 `build.gradle` 均有 `def forcePackPush = project.hasProperty('deployToPack') || project.hasProperty('packPush')`，并在 `pushToGame` 的 `doLast` 里以 `if (!forcePackPush) { … }` 包裹上述白名单判定）—— 作用 = **跳过白名单手动强推整合包**（手动出包通道，保留）；强推时同时会触发「库 jar 与 mod jar 成对自检」的告警（1.21.1 / 1.20.1 原有，26.1.2 自 2026-09-17 接入库后同形）。
    ⚠️ **原文档此处曾称「该参数不再被任何任务读取（源码中仅存注释）」，与代码矛盾，已于 2026-09-17 以代码为准更正**（三线定义行/使用行：`neoforge-1.21.1/build.gradle:295`+`:335`、`forge-1.20.1/build.gradle:333`+`:381`、`neoforge-26.1.2/build.gradle:277`+`:314`）。
 2. 推送时**先删除、后复制**:`pushToDevRun`/`pushToGame`/`pushToRootBuild` 三个任务均先清空目标目录中的旧产物、再复制新 jar,各目录只保留本次构建产物。清理匹配范围(**实测**,勿按"都会按后缀过滤"理解):forge-1.20.1 三个任务统一用 `/astral_dice-.+\+forge_1\.20\.1\.jar/`(仅带 `+forge_1.20.1` 后缀);`neoforge-1.21.1` 与 `neoforge-26.1.2` 的 `pushToRootBuild` 带**各自完整后缀**过滤(`contains('+neoforge_1.21.1')` / `contains('+neoforge_26.1.2')`,根目录 `build/libs/` 多版本共存,不得写成宽泛的 `+neoforge_`);`neoforge-26.1.2` 的 `pushToGame` **同样**带 `contains('+neoforge_26.1.2')`(2026-09-17 收紧:整合包目录属用户环境,不得误删其它分支放进去的产物),仅 `pushToDevRun` 与 1.21.1 侧的 `pushToGame` 匹配**任意** `astral_dice-*.jar`(这两个目标目录本身只放单一版本,故无需过滤,同时也保证旧版本号残留会被清掉)。
 3. 整合包根目录不存在时（如 CI 环境）`pushToGame` 自动跳过并仅输出警告，不影响构建。⚠️ 因此**静默不部署**是最容易发生的形态，且**本类缺口已实测复发两次**：① 26.1.2 侧长期指向并不存在的 `D:\.minecraft\versions\26.1.2-NeoForge_26.1.2.109`；② **2026-09-29 实测** —— 1.20.1 与 26.1.2 两侧**同时**指向已不存在的 `1.20.1 模组测试` / `26.1.2 模组测试`（整合包目录已被重命名为带平台后缀的 `1.20.1-Forge 模组测试` / `26.1.2-NeoForge 模组测试`），产物停在上次路径尚存在的时刻。⇒ **`packModsDir` 禁止凭命名规则推测**：换机、整合包改名或新开子项目后，必须 `ls D:/.minecraft/versions/` 核对**本机实测存在**的目录名，并在构建日志里确认出现 `pushToGame: pushed … -> <目标>` 一行（两条线都要各看一遍——只改一侧是常见疏漏），**不得只看 `BUILD SUCCESSFUL`**。
@@ -1740,9 +1744,9 @@ When extending this workspace:
 
 完成一个新版本的功能/修复后，由代理自动执行（无需用户逐项指示）：
 1. 更新两个更新日志文件（`CHANGELOG_ZH.md` + `CHANGELOG.md`，条目一一对应）；
-2. 递增**三个**子项目 `gradle.properties` 的 `mod_version`（`deploy.ps1 -Target neoforge|forge` 可自动递增 `x.y-SNAPSHOT.N` / `x.y.z-rcN` / `x.y.z`，或用 `-Version` 显式指定；三线保持同号，后缀各自为 `+neoforge_1.21.1` / `+forge_1.20.1` / `+neoforge_26.1.2`；⚠️ 本工作树无 `deploy.ps1`，该工具的覆盖范围以仓库实际存在的脚本为准）；
-3. 若改过 lang 文件，分别对**三个**子项目跑 `pwsh -NoProfile -File tools/check_lang_sync.ps1 -LangDir <子项目>/src/main/resources/assets/astral_dice/lang`；
-4. `gradlew build` 同时编译并部署**三个**版本(26.1.2 与另两线同规则)——`pushToDevRun` / `pushToRootBuild` / `pushToGame`(整合包) 均默认随 build 自动触发（整合包推送仅发布线分支执行，本流程即运行在发布线上；失败则回滚版本号，不提交）；
+2. 递增**四个**子项目 `gradle.properties` 的 `mod_version`（`deploy.ps1 -Target neoforge|forge` 可自动递增 `x.y-SNAPSHOT.N` / `x.y.z-rcN` / `x.y.z`，或用 `-Version` 显式指定；四线保持同号，后缀各自为 `+neoforge_1.21.1` / `+forge_1.20.1` / `+neoforge_26.1.2` / `+fabric_1.20.1`；⚠️ 本工作树无 `deploy.ps1`，该工具的覆盖范围以仓库实际存在的脚本为准）；
+3. 若改过 lang 文件，分别对**四个**子项目跑 `pwsh -NoProfile -File tools/check_lang_sync.ps1 -LangDir <子项目>/src/main/resources/assets/astral_dice/lang`；
+4. `gradlew build` 同时编译并部署**四个**版本(fabric-1.20.1 与另三线同规则)——`pushToDevRun` / `pushToRootBuild` / `pushToGame`(整合包) 均默认随 build 自动触发（整合包推送仅发布线分支执行，本流程即运行在发布线上；失败则回滚版本号，不提交）；
 5. **自动本地提交**（`deploy.ps1` 自动提交 `release: v<版本>`，或手工 `chore: bump version to X.Y.Z` 等），**默认不执行 `git push`**。
 
 ### CurseForge 上传（2026-09-30 起；**发布动作，与本地部署无关**）

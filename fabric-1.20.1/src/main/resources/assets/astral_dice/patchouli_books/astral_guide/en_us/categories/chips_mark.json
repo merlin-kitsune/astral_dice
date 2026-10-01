@@ -1,0 +1,7 @@
+{
+  "name": "astral_dice.guide.category.chips_mark",
+  "description": "astral_dice.guide.category.chips_mark.desc",
+  "icon": "astral_dice:scope_chip",
+  "sortnum": 43,
+  "parent": "astral_dice:chips"
+}

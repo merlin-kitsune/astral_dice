@@ -1,0 +1,17 @@
+{
+  "name": "item.astral_dice.weird_dice",
+  "category": "astral_dice:dice",
+  "icon": "astral_dice:weird_dice",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:weird_dice",
+      "text": "astral_dice.guide.entry.weird_dice.1"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:weird_dice"
+    }
+  ],
+  "sortnum": 8
+}

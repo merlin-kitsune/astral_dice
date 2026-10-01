@@ -1,0 +1,25 @@
+{
+  "name": "item.astral_dice.fanny_sign",
+  "category": "astral_dice:signs",
+  "icon": "astral_dice:fanny_sign",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:fanny_sign",
+      "text": "astral_dice.guide.entry.fanny_sign.1"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.fanny_sign.2"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.fanny_sign.3"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:fanny_sign"
+    }
+  ],
+  "sortnum": 7
+}

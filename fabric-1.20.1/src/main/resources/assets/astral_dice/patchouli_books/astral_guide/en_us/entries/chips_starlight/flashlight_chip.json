@@ -1,0 +1,17 @@
+{
+  "name": "item.astral_dice.flashlight_chip",
+  "category": "astral_dice:chips_starlight",
+  "icon": "astral_dice:flashlight_chip",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:flashlight_chip",
+      "text": "astral_dice.guide.entry.flashlight_chip.1"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:flashlight_chip"
+    }
+  ],
+  "sortnum": 0
+}

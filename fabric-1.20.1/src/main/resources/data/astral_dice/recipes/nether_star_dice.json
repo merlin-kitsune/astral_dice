@@ -1,0 +1,20 @@
+{
+  "type": "astral_dice:dice_upgrade",
+  "category": "equipment",
+  "key": {
+    "N": {
+      "item": "minecraft:nether_star"
+    },
+    "D": {
+      "tag": "astral_dice:dice_t3"
+    }
+  },
+  "pattern": [
+    " N ",
+    "NDN",
+    " N "
+  ],
+  "result": {
+    "item": "astral_dice:nether_star_dice"
+  }
+}

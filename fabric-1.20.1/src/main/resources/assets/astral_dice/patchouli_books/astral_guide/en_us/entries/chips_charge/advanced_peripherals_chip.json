@@ -1,0 +1,17 @@
+{
+  "name": "item.astral_dice.advanced_peripherals_chip",
+  "category": "astral_dice:chips_charge",
+  "icon": "astral_dice:advanced_peripherals_chip",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:advanced_peripherals_chip",
+      "text": "astral_dice.guide.entry.advanced_peripherals_chip.1"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:advanced_peripherals_chip"
+    }
+  ],
+  "sortnum": 3
+}

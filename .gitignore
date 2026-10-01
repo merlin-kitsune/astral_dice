@@ -68,6 +68,10 @@ deploy.ps1
 .zcode/
 .workbuddy/
 
+### 上游参考源码克隆件(仅作 API 取证;2026-10-01 随 fabric 第四条线并入本分支) ###
+### 清单见 porting/fabric-1.20.1/VERSION_PINS.md;体积大、永不入库。
+ref/
+
 ### CI 前置库检出目录(见 .github/workflows/build.yml) ###
 .ci/
 .dsh/

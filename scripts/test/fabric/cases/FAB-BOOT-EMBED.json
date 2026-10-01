@@ -1,0 +1,29 @@
+{
+  "case_id": "FAB-BOOT-EMBED",
+  "title": "启动到 Done 且内嵌库（starengine_lib）自检通过：Loader 的 mods 清单里必须出现 starengine_lib（证明 Loom include 的内嵌 jar 被真正加载），不得出现依赖解析失败；同时核对产物 jar 的 META-INF/jars 内嵌件。",
+  "side": "server",
+  "window": "whole",
+  "on_fail": "keep_game_running",
+  "steps": [
+    {
+      "op": "note",
+      "text": "前置：先 pwsh -File scripts/test/fabric/ft_build.ps1（产物 + 开包核对），再 ft_launch.ps1 --side server 到就绪。本用例只读启动期事实，故 window=whole（mods 清单在 launch 窗口起点之前打印，不能用 case/launch 窗口，否则必然假 FAIL）。\n\n判据依据：\n · fabric.mod.json:36 —— depends 里声明 starengine_lib（${lib_version_range}）；\n · build.gradle:85-89 —— Loom 的 include(...) 把库 jar 嵌进产物（等价 Forge 侧 jarJar），玩家无需单独安装；\n · 实测 run/server/logs/latest.log:70 —— mods 清单里出现 `- starengine_lib 1.0.7`。\n若内嵌没生效，Loader 会在解析期硬拒（HARD_DEP / Mod resolution failed），故这两条 absent 断言正是「内嵌成功」的负向证据。"
+    },
+    {
+      "op": "note",
+      "text": "注意：本用例**不注入**任何命令 —— 它验证的是「启动期事实」，注入会引入无关变量。\n\n⚠️ 本用例**刻意不包含** `事件派发统计` 断言（曾经有过，已移出）。两个理由：\n ① 它是**派发**这个独立关注点，归 FAB-DISPATCH-BASIC 管（职责分离）；\n ② 它引入了一个**隐藏的时间耦合** —— 该报告在开局 600 tick（约 30 s）才打印，\n    而本用例只要求「启动到 Done」，于是「跑得太早」会伪装成启动期缺陷（实测踩过：\n    就绪后 25 s 跑本用例 ⇒ 1/10 失败，现场看起来像内嵌库坏了，其实只是采样点没到）。\n ⇒ 需要那条读数就跑 FAB-DISPATCH-BASIC（它用 `wait_for` 等采样点，超时报 TIMEOUT/12 而非 FAIL）。"
+    }
+  ],
+  "asserts": [
+    { "type": "log", "pattern": "Loading \\d+ mods:" },
+    { "type": "log", "pattern": "- astral_dice \\S+" },
+    { "type": "log", "pattern": "- starengine_lib \\S+" },
+    { "type": "log", "pattern": "Done \\(\\d+(\\.\\d+)?s\\)! For help" },
+    { "type": "absent", "pattern": "HARD_DEP_INCOMPATIBLE|Mod resolution failed|Incompatible mod set" },
+    { "type": "absent", "pattern": "NoClassDefFoundError|NoSuchMethodError" },
+    { "type": "absent", "pattern": "Failed to start the minecraft server|A fatal error has been detected" },
+    { "type": "jar", "embed_lib": true },
+    { "type": "crash" }
+  ],
+  "evidence": []
+}

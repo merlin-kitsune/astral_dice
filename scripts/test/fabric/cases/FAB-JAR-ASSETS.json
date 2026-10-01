@@ -1,0 +1,17 @@
+{
+  "case_id": "FAB-JAR-ASSETS",
+  "title": "产物资源完整性（**不需要启动游戏**）：开包核对 models/item、recipes、data/bountiful=0、data/trinkets、META-INF/jars 内嵌库。",
+  "side": "server",
+  "window": "whole",
+  "on_fail": "keep_game_running",
+  "steps": [
+    {
+      "op": "note",
+      "text": "本用例是纯静态判据（只解 jar、不读游戏日志），用于把「产物缺资源」这类缺陷从游戏内表现（物品紫黑 / 配方不存在）提前到构建期。\n\n为什么必须与磁盘源对照而不是只看 jar 自身数量：本项目真实踩过一次 —— 从 forge-1.20.1 移植构建脚本时漏抄 sourceSets 的 srcDir('src/generated/resources')，137 个物品模型 + 118 个配方 + 118 个进度**全部不进产物**，编译与启动俱无感（见 fabric-1.20.1/build.gradle:27-30 的登记）。\n\n判据来源（全部实测）：\n · src/generated/resources/assets/astral_dice/models/item/*.json = 137\n · src/generated/resources/data/astral_dice/recipes/*.json       = 118\n · src/main/resources/data/trinkets/**/*.json                    = 8（替代 Forge 侧 Curios 的饰品数据，build.gradle:91-92）\n · src 工作树里 data/bountiful 已被删除（git status 显示 D：4 个 json）⇒ 产物里也必须是 0（bountiful 是生产线 1.20.1/1.21.1 的联动模组，不属本线）。本台据此设 bountiful_max=0：**若将来把 bountiful 数据加回本线，这条断言会立即变红**（ft_build 同时校验磁盘源数量，不只看 jar）。\n · META-INF/jars/ 必须含 starengine_lib-fabric-1.20.1-*.jar（build.gradle:85-89 的 include）\n\n前置：先跑一次 pwsh -File scripts/test/fabric/ft_build.ps1 产出 jar（本用例也会自行取 build/libs 下 mtime 最新的产物）。"
+    }
+  ],
+  "asserts": [
+    { "type": "jar", "models_min": 137, "recipes_min": 118, "bountiful_max": 0, "trinkets_min": 8, "embed_lib": true }
+  ],
+  "evidence": []
+}

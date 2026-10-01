@@ -1,0 +1,17 @@
+{
+  "name": "item.astral_dice.magic_tome_chip",
+  "category": "astral_dice:chips_other",
+  "icon": "astral_dice:magic_tome_chip",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:magic_tome_chip",
+      "text": "astral_dice.guide.entry.magic_tome_chip.1"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:magic_tome_chip"
+    }
+  ],
+  "sortnum": 0
+}

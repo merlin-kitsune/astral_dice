@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "minecraft:diamond"
+    },
+    {
+      "item": "astral_dice:star_coin"
+    },
+    {
+      "item": "astral_dice:star_coin"
+    },
+    {
+      "item": "astral_dice:star_coin"
+    }
+  ],
+  "result": {
+    "item": "astral_dice:attack_card_meito"
+  }
+}

@@ -352,6 +352,27 @@ GlCommandEncoder.trySetup(:531) ← GlCommandEncoder.executeDraw(:406) ← GlRen
   跨命令沿用），判据一律读句柄；类型匹配只留在诊断字段里。⇒ **不要**再用 `typeIdOf` 写新判据；依赖它的既有命令
   （如 `countLightning` 的通用回退分支、`slimecheck` 等）需一并复核。
 
+## 8.5 F 组 — fabric-1.20.1 第四条线并入后的遗留项（2026-10-01 登记）
+
+### KI-F1 ＝ Jade 集成的护甲显示在 fabric 线**未实现**
+
+- **现状**：`neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2` 三线通过
+  `mixin/jade/ArmorValueProviderMixin` + `ArmorElementIconMixin`（neo 线为 `DisplayHelperArmorIconMixin`）
+  把 Jade 悬浮框里的**护甲图标与数值**改成本模组防御力；**fabric 线没有对应实现** ——
+  本次并入已把误搬入的 `astral_dice.jade.mixins.json` 移除（它引用了 fabric 侧不存在的
+  `ArmorElementIconMixin`），故 fabric 线上 Jade 仍显示**原版护甲值**（本模组自己的战斗数值 HUD
+  不受影响，防御力条照常工作）。
+- **为什么本次没做**：Fabric 侧 Jade 的内部类结构与 Forge 不同（`ArmorElement` / `DisplayHelper`
+  的类名与方法面必须按 **Jade-Fabric 1.20.1** 反编译确认），注入点写错会在**运行时**崩溃；
+  而本机 `ref/` 参考源里**没有** Jade 源码。⇒ 属「需要专门取证」的独立任务，
+  不宜混在本次骨架/功能并入里草率落地。
+- **修补要求**：①反编译 `Jade-1.20-Fabric-11.13.3.jar` 确认护甲渲染的类与方法签名；
+  ②新增 fabric 专用 `mixin/jade/**` + `astral_dice.jade.mixins.json`（`client` 段）；
+  ③在 `fabric-1.20.1/src/main/resources/fabric.mod.json` 的 `mixins` 数组登记该 json；
+  ④**判据**：装 Jade 后看向玩家 / 生物，悬浮框的护甲图标与数值显示本模组防御力
+  —— ⚠️ 这是**视觉**结果，`scripts/test/fabric/ft.ps1` 的 `FAB-*` 用例覆盖不到，**必须实机验证**。
+- **同步口径**：本项只影响 fabric 线（另三线已实现），**不适用**「四线同改」默认规则。
+
 ## 9. 变更记录
 
 | 日期 | 变更 |

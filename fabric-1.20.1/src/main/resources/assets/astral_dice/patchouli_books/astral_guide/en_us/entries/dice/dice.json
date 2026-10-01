@@ -1,0 +1,17 @@
+{
+  "name": "item.astral_dice.dice",
+  "category": "astral_dice:dice",
+  "icon": "astral_dice:dice",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:dice",
+      "text": "astral_dice.guide.entry.dice.1"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:dice"
+    }
+  ],
+  "sortnum": 0
+}

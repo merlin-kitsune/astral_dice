@@ -1,0 +1,26 @@
+{
+  "case_id": "FAB-PARTY-BACKENDS",
+  "title": "队伍判定三条后端的接入状态可断言：必须打印 AP_FAB_PARTY 机器行，且不得出现「运行时停用」或反射类缺失。",
+  "side": "server",
+  "window": "whole",
+  "on_fail": "keep_game_running",
+  "steps": [
+    {
+      "op": "note",
+      "text": "判据依据（2026-10-01 新增）：\n · PartyRelations#reportBackends() 在 common setup 打印 AP_FAB_PARTY 机器行（AstralDiceMod#onCommonSetup）；\n · 行内含 back_ftb / back_opac（反射契约是否解析成功）与 why_ftb / why_opac（失败原因）。\n\n⚠️ 本用例**只断言行的存在与形态**，不断言 back_ftb 的具体取值 —— 该值取决于 run/{server,client}/mods 里\n有没有装 FTB Teams / OPAC，是**环境变量**而非模组属性。硬编码取值会在「测试台装了 FTB」时假 FAIL。\n若确实要断言取值，请另建带前置条件的用例（把第三方 jar 放进 run 目录再跑）。"
+    },
+    {
+      "op": "note",
+      "text": "为什么这条机器行值得一个用例：\n三个后端**全是反射**，签名对不上时既不编译报错、也不崩溃，只会静默退回原版计分板 ——\n即「装了 FTB Teams 的队伍仍然可以互相伤害」这类**只有玩家能发现**的缺陷（用户实报过）。\n2026-10-01 实测的修复前状态就是如此：FTBTeamsAPI 上 4 个访问器 + ClientTeamManager#getTeamForPlayer\n全部落空，整个 FTB 后端恒为未启用，只打一条 debug，无人察觉。\n\n配套的静态闸门是 tools/verify_party_api.py（把 PartyRelations 源码里的反射契约与真实 jar 逐个比对，\n修复前 PASS=9/FAIL=5，修复后 PASS=17/FAIL=0）。两者一静一动，缺一不可。"
+    }
+  ],
+  "asserts": [
+    { "type": "log", "pattern": "AP_FAB_PARTY: sw_mc=\\S+ sw_ftb=\\S+ sw_opac=\\S+ back_ftb=(on|off) back_opac=(on|off) why_ftb=\\S+ why_opac=\\S+" },
+    { "type": "absent", "pattern": "队伍判定已停用" },
+    { "type": "absent", "pattern": "队伍判定接入失败" },
+    { "type": "absent", "pattern": "NoClassDefFoundError|NoSuchMethodError|NoSuchMethodException" },
+    { "type": "absent", "pattern": "A fatal error has been detected" },
+    { "type": "crash" }
+  ],
+  "evidence": []
+}

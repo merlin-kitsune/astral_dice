@@ -1,0 +1,17 @@
+{
+  "name": "item.astral_dice.effect_card_hamburger",
+  "category": "astral_dice:cards_effect",
+  "icon": "astral_dice:effect_card_hamburger",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:effect_card_hamburger",
+      "text": "astral_dice.guide.entry.effect_card_hamburger.1"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:effect_card_hamburger"
+    }
+  ],
+  "sortnum": 5
+}

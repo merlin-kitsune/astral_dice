@@ -1,0 +1,17 @@
+{
+  "name": "item.astral_dice.ender_dice",
+  "category": "astral_dice:dice",
+  "icon": "astral_dice:ender_dice",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:ender_dice",
+      "text": "astral_dice.guide.entry.ender_dice.1"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_dice:ender_dice"
+    }
+  ],
+  "sortnum": 11
+}

@@ -1,0 +1,17 @@
+{
+  "name": "item.astral_dice.fu_card",
+  "category": "astral_dice:cards_effect",
+  "icon": "astral_dice:fu_card",
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_dice:fu_card",
+      "text": "astral_dice.guide.entry.fu_card.1"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "astral_dice.guide.entry.fu_card.2"
+    }
+  ],
+  "sortnum": 10
+}
