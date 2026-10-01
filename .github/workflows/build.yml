@@ -93,13 +93,14 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: merlin-kitsune/starengine_lib
-          ref: 697f254174513b5f69a6e9fc9ed40489be6dc39b   # = 库分支 `fabric-1.20.1` 的 HEAD:三平台 **1.0.6** + fabric 子项目 **1.0.5-alpha.2**
-          #   (含 `EventTargetCollector` 的 FTB Teams / OPAC 反射修正;末次提交 `697f2541` 为**纯文档更正**,
-          #    已实证不改字节码 ⇒ 与 `006e8241` 的产物逐字节等价,仅调试行号位移)。一个 ref 同时满足四条线。
+          ref: d938024133a5e8b02d1cf0adccdc9fe9c3873b79   # = 库分支 `fabric-1.20.1` 的 HEAD:三平台 **1.0.6** + fabric 子项目 **1.0.6-alpha.1**
+          #   (含 `EventTargetCollector` 的 FTB Teams / OPAC 反射修正)。一个 ref 同时满足四条线。
+          #   ⚠️ fabric 子项目那次换号(`1.0.5-alpha.2` → `1.0.6-alpha.1`,2026-10-01 用户裁决)只改版本号、
+          #    **不动字节码**;三平台版本号不变。
           #   (含 `EventTargetCollector` 的 FTB Teams / OPAC 反射修正)。一个 ref 同时满足四条线。
           #   ⚠️ **该库提交尚未 push** ⇒ 远端不可达,CI 会在库的 Checkout 断掉(既定代价,与消费方代码无关)。
           #   ⚠️ 2026-09-30 修复 CI 失败:旧钉值 `4bea9e7d` 位于 `next` 线上,**其 tree 里根本没有 `fabric-1.20.1` 目录**
-          #   ⇒ CI 解析 `:fabric-1.20.1:modImplementation` 时找不到 `starengine_lib-fabric-1.20.1:1.0.5-alpha.1`,
+          #   ⇒ CI 解析 `:fabric-1.20.1:modImplementation` 时找不到 `starengine_lib-fabric-1.20.1:1.0.5-alpha.1`（历史值；现行为 `1.0.6-alpha.1`）,
           #   直接 `Could not resolve all files for configuration ':fabric-1.20.1:modImplementation'` 失败
           #   (本地不复现——本地 mavenLocal 里有手工 publish 的那一版)。
           #   (历史钉值:1.0.3 = e407844;1.0.5 = 4bea9e7d)
@@ -167,13 +168,20 @@ jobs:
       - name: Create Git tag (release branch push only)
         id: tag
         # 仅在发布线分支(multi-main)自动打 tag:tag = 基础版本号(去掉 -rc/-pre 与 +后缀),如 1.1.3。
-        # ⚠️ 该分支推送时若 mod_version 不含 '-',会自动建 tag;Release 由**同一 job 的下一步**直接发布。
+        # ⚠️ 该分支推送时若 mod_version 是**正式版或补丁版**(1.3.5 / 1.3.5-hotfix),会自动打(或复用)
+        #    base tag(1.3.5),并由**同一 job 的下一步**发布或**刷新**该 Release(edit + --clobber);
+        #    只有**预发布**后缀才跳过 —— 预发布号线不占用发布线的裸版本号。
         # 不再依赖「tag push 触发 Release」:GITHUB_TOKEN 推送的 tag 不会再触发本 workflow。
         if: github.event_name == 'push' && github.ref == 'refs/heads/multi-main' && steps.version.outputs.skip_tag == '0'
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          if [[ "$VERSION" == *-* ]]; then
-            echo "Version $VERSION is a pre-release/snapshot (contains '-'), skip auto tagging"
+          # 预发布守卫（2026-10-01 修正）：**原判据是「含 '-' 一律跳过」**，它把 `-hotfix` 这类补丁发布
+          # 也一并挡掉了 ⇒ 「版本号已改成 hotfix，却不打 tag、不刷新 Release」，而且**没有任何报错**
+          # （静默失效；`1.3.2-hotfix` 那轮就是这种状态，见 forge/gradle.properties 的旧注释）。
+          # 现只对真正的**预发布**后缀跳过；比较前统一转小写，避免大小写差异漏判。
+          LOWER="${VERSION,,}"
+          if [[ "$LOWER" =~ -(alpha|beta|rc|pre|snapshot)([.+-]|$) ]]; then
+            echo "Version $VERSION is a pre-release/snapshot, skip auto tagging"
             exit 0
           fi
           TAG="${{ steps.version.outputs.base }}"

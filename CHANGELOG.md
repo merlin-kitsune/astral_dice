@@ -4,6 +4,45 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 1.3.5-hotfix
+
+> A **patch release** on top of 1.3.5 (the same fix shared by the three production lines). Per the release rules a
+> `-hotfix` version lands on the **same `1.3.5` tag** and **refreshes that Release** (no new tag is created). The
+> bundled prerequisite library is updated to `1.0.6` (`1.0.6-alpha.1` on the port line).
+
+### Bug Fixes
+
+- **The party-detection fix had only landed on the port line; this hotfix applies the same defect fix to all three
+  production lines (1.21.1 / 1.20.1 / 26.1.2)** (found in a self-review on 2026-10-01): 1.3.5 already fixed party
+  detection for parties that do not live on the scoreboard, but on the **three production lines** the reflection
+  code that hooks up to party mods **never worked at all** - the four manager accessors it looked up are declared on
+  a **nested interface** (the outer class does not have them, and `Class#getMethod` does not cross into a nested
+  interface), and the client-side entry point **does not exist**; the failure was swallowed by the same `catch`, so
+  the backend **was silently never enabled** and always fell back to the vanilla scoreboard - with exactly the
+  consequences described in 1.3.5: **players in the same party could still damage each other, the railgun still hit
+  allies, and friendly effects still leaked to the whole server**. Every signature is now corrected against the
+  **real published artifacts**: the accessors are resolved from the nested interface; the client side goes through
+  `getKnownPlayer(UUID)` (its accessor has **no `get` prefix**); "same party" is compared by **party id** (not the
+  per-player personal party id, which differs for every player).
+- **`hasTeam` now tests "party / team organisation" instead of "a team object exists"**: these mods **create a
+  personal party for every player**, so the old test was always true and completely blocked the
+  "no party means friendly effects hit the whole server" fallback. It now tests party / server team.
+- **A startup log line now reports each party backend's status** (three production lines `AP_PARTY:`, port line
+  `AP_FAB_PARTY:`): per backend it prints `back_ftb=on|off` / `back_opac=on|off` plus the failure reason, so
+  "installed but not working" is no longer a guessing game.
+- **The bundled prerequisite library is updated to `1.0.6` (`1.0.6-alpha.1` on the port line)**: the library's
+  "friendly target collection" depended on the **same** wrong third-party signatures and has been fixed on the
+  library side as well - honouring the note in 1.3.5 that "this defect is on the library side and will be fixed in
+  its next release".
+
+> NOTE **Verified in game (this retracts the caveat from 1.3.5)**: 1.3.5 said the third-party party-mod support was
+> "wired up and will activate once installed, but not verified in game". This time the party mods were **actually
+> installed** in the test environment and a real launch was performed; the startup log shows **both backends
+> connected successfully** (`back_ftb=on back_opac=on`, with no runtime disable) - so that caveat is retracted.
+> NOTE The **behavioural** check ("do two players in the same party really stop hurting each other?") is still not
+> done (a single process cannot cover it), so the evidence here is at the **backend-connection** level, not at the
+> gameplay level.
+
 ## 1.3.5
 
 ### Content & Balance

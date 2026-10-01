@@ -37,9 +37,9 @@ Astral Dice is a survival expansion mod built around dice. Equip a dice and ever
 
 | Support | Subproject | Minecraft | Loader | Java | Current Version | Patchouli |
 |---|---|---|---|---|---|---|
-| ✅ | `neoforge-1.21.1` | 1.21.1 | NeoForge 21.1.235 | 21 | 1.3.5 | ✅ |
-| ✅ | `forge-1.20.1` | 1.20.1 | Forge 47.4.10 | 17 | 1.3.5 | ✅ |
-| ✅ | `neoforge-26.1.2` | 26.1.2 | NeoForge 26.1.2.109 | 25 | 1.3.5-beta.1 | ✅ |
+| ✅ | `neoforge-1.21.1` | 1.21.1 | NeoForge 21.1.235 | 21 | 1.3.5-hotfix | ✅ |
+| ✅ | `forge-1.20.1` | 1.20.1 | Forge 47.4.10 | 17 | 1.3.5-hotfix | ✅ |
+| ✅ | `neoforge-26.1.2` | 26.1.2 | NeoForge 26.1.2.109 | 25 | 1.3.5-beta.2 | ✅ |
 | ✅ | `fabric-1.20.1` | 1.20.1 | Fabric Loader 0.19.5 | 17 | 1.3.5-alpha.1 | ✅ |
 
 - `neoforge-1.21.1` and `forge-1.20.1` are the **release lines** (feature-parity pair; both jars are published with every GitHub Release).

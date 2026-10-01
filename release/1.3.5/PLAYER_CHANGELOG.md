@@ -1,8 +1,29 @@
 # Astral Dice 1.3.5 Changelog
 
+## 1.3.5-hotfix
+
+- **Party detection fixed: the previous fix only covered the port line; all three official lines (1.21.1 / 1.20.1 /
+  26.1.2) are covered now.** 1.3.5 already fixed detection of **party-mod** parties, but that fix only landed on the
+  port line; on the official lines **the code that recognises a party never worked at all** - the entry points it
+  looked for simply **do not exist** in those mods, and the failure was **silent**: no error, no crash, it just
+  quietly fell back to the vanilla scoreboard every time. The consequences are the ones described in 1.3.5:
+  **players in the same party could still hurt each other, the railgun still hit allies, and friendly effects still
+  leaked to the whole server.** Every entry point has now been corrected against the mods' **real interfaces**, and
+  each of the two backends now prints a **startup log line** (`back_ftb` / `back_opac` showing `on` or `off`) - so
+  "installed but not working" is visible at a glance from now on.
+- **The bundled prerequisite library is updated too (bundled 1.0.5 -> 1.0.6)**: the library's "friendly target
+  collection" depended on the **same** wrong interfaces and has been fixed as well - this delivers what 1.3.5
+  promised with "this will be fixed in the library's next release".
+- **Verified in game**: this time the party mods were **actually installed** in the test environment and a launch
+  was performed; the startup log confirms **both backends connected successfully** (`back_ftb=on back_opac=on`).
+  => The note in 1.3.5 saying "wired up and will activate once installed, but not verified in game" is **retracted
+  as of this release**. NOTE The **gameplay-level** check ("do two players in the same party really stop hurting
+  each other?") is still not done (a single client process cannot cover it), so what is provided here is
+  **connection-level** evidence.
+
 Released: 1.3.5 — a **balance and bug-fix** release with no new items. Five headline changes: (1) the effect-card cooldown, the Healing timer, and the stack decay of the Gunsmith and Great Detective passives are all decoupled from the Dice Blessing and now run on their own timers; (2) 16 sign and chip recipes were re-materialised, the Golden Star Plate gained a second recipe, and Star Coins / Star Plates gained kill drops; (3) the Gunsmith Sign's active and passive were reworked and now link with the Cursed Ring; (4) three detection rules were fixed (party detection, third-party melee weapons, and mobs clearing their own effects); (5) opening the inventory on 1.20.1 no longer crashes the client.
 
-Note! The prerequisite mod StarEngine Lib is bundled inside this mod (embedded 1.0.5) — you no longer need to install it separately. If your mods folder still contains a manually downloaded starengine_lib-*.jar, delete it: the old file would override the embedded one.
+Note! The prerequisite mod StarEngine Lib is bundled inside this mod (embedded 1.0.6) — you no longer need to install it separately. If your mods folder still contains a manually downloaded starengine_lib-*.jar, delete it: the old file would override the embedded one.
 Note! On 1.20.1 the Mixin runtime can be **Mixin Booster ≥0.1.3** **or** **Sinytra Connector** — pick either one (since 1.3.2-hotfix; previously Mixin Booster was mandatory).
 
 ## Balance & Quality-of-Life

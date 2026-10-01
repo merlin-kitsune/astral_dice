@@ -112,6 +112,12 @@ public class AstralDiceMod {
         event.enqueueWork(() -> {
             // 配置已加载:把配置值打成快照推给库的 GameplayConstants(库不读配置文件,见 config/ModCommonConfig)
             GameplayConstants.applyConfig(ModCommonConfig.snapshot());
+            // 队伍后端接入状态诊断(machine line: AP_PARTY)。
+            // ⚠️ 挂在 applyConfig **之后**:三个队伍系统的启用开关由公共配置驱动
+            //    (GameplayConstants.applyConfig),此前的读数只是默认值,不是真实生效值。
+            //    三个后端全是反射,契约不符时会静默退回原版计分板 —— 这条机器行让
+            //    「装了 FTB Teams / OPAC 却没生效」在日志里一眼可断言(2026-10-01 新增)。
+            com.merlinkitsune.astral_dice.combat.PartyRelations.reportBackends();
             // 网络通道注册(1.20.1 SimpleChannel)
             ModNetwork.register();
             // Curios 槽位类型注册(1.20.1 经 IMC;对应 1.21 的 curios JSON 槽位注册)

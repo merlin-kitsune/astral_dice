@@ -138,14 +138,13 @@ public final class PartyRelations {
      * 收集「与 {@code triggerer} 同队」的在线玩家（排除自己）；语义与库的
      * {@code EventTargetCollector#collectTeamPlayers} 一致：<b>未加入任何队伍 ⇒ 返回全服在线玩家</b>。
      *
-     * <p><b>为什么不用库那份</b>（2026-09-30 实测，2026-10-01 复核）：库侧 {@code EventTargetCollector}
-     * 的 FTB 分支在 {@code TeamManager} 上反射 {@code getTeamForPlayer(Player)} /
-     * {@code getTeamForPlayer(UUID)}，而 FTB Teams 的真实服务端签名只有
-     * {@code getTeamForPlayer(ServerPlayer)} 与 {@code getTeamForPlayerID(UUID)}
-     * ⇒ 两次 {@code NoSuchMethodException} 都被最外层 {@code catch (Exception ignored)} 吞掉、恒返回
-     * {@code null}；OPAC 分支查的类名 {@code dev.darkhax.opac.*} 也不存在（真实为 {@code xaero.pac.*}）。
-     * ⇒ 装了 FTB Teams 的玩家被库判为「无队伍」，从而落进「全服皆友方」兜底 —— 队友判定失效的另一面。
-     * 该缺陷属**库侧**，应在其下一次发版中一并修（本类不改库）；此处先用模组侧实现顶住。
+     * <p><b>为什么保留模组侧实现（而不是直接改调库那份）</b>：库侧 {@code EventTargetCollector} 曾有
+     * 一处**同类**缺陷（FTB 分支在 {@code TeamManager} 上反射 {@code getTeamForPlayer(Player)} /
+     * {@code getTeamForPlayer(UUID)} 两者都不存在；OPAC 分支查的 {@code dev.darkhax.opac.*} 整条包不存在）
+     * —— 该缺陷已于 **库 1.0.6 / 1.0.6-alpha.1（2026-10-01）修复**，现网不再需要「用模组侧顶住」。
+     * 本类仍保留自己的实现，是因为本类是模组侧「同队 / 盟友」判定的**唯一入口**，需额外承担三件事：
+     * 三条队伍系统的**启用开关**口径、{@code hasTeam} 的 party/server-team 语义、以及
+     * {@link #reportBackends()} 打出的**可断言机器行**（见类头）。
      *
      * <p>三个队伍系统的启用开关沿用库的 {@code GameplayConstants.EVENT_APPLY_MC_TEAM / _FTB_TEAM / _OPAC}
      * （三者默认均 {@code true}），口径与库完全一致。

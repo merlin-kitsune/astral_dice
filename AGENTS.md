@@ -213,9 +213,9 @@ When extending this workspace:
 
 | 子项目 | 来源分支(原 astra_dice 仓库) | MC | 加载器 | Java | 当前版本 | 版本号格式 |
 |---|---|---|---|---|---|---|
-| `neoforge-1.21.1` | `1.21.1-main` | 1.21.1 | NeoForge | 21 | `1.3.5+neoforge_1.21.1` | `x.y.z[-rcN|hotfix]+neoforge_1.21.1` |
-| `forge-1.20.1` | `1.20.1-forge` | 1.20.1 | Forge | 17 | `1.3.5+forge_1.20.1` | `x.y.z[-rcN|preN|hotfix]+forge_1.20.1` |
-| `neoforge-26.1.2` | 本仓 `multi-26.1.2-neoforge` 分支新增（基线 = 主线 `1.2.1`/`fda8ca9` 的 `neoforge-1.21.1` 源码）；**2026-09-17 已合并进当时的主线 `multi-1.20.1-1.21.1`（该分支已于 2026-09-22 改名为 `multi-main`）**（与主线同目录同树，原独立 worktree 已移除）；**2026-09-22 完整移植后版本号与另两线同批升版**（26.1.2 取 `-beta.x` 后缀；现为 `1.3.5-beta.1`）** | 26.1.2 | NeoForge | 25 | `1.3.5-beta.1+neoforge_26.1.2` | `x.y.z[-rcN|-beta.N]+neoforge_26.1.2` |
+| `neoforge-1.21.1` | `1.21.1-main` | 1.21.1 | NeoForge | 21 | `1.3.5-hotfix+neoforge_1.21.1` | `x.y.z[-rcN|hotfix]+neoforge_1.21.1` |
+| `forge-1.20.1` | `1.20.1-forge` | 1.20.1 | Forge | 17 | `1.3.5-hotfix+forge_1.20.1` | `x.y.z[-rcN|preN|hotfix]+forge_1.20.1` |
+| `neoforge-26.1.2` | 本仓 `multi-26.1.2-neoforge` 分支新增（基线 = 主线 `1.2.1`/`fda8ca9` 的 `neoforge-1.21.1` 源码）；**2026-09-17 已合并进当时的主线 `multi-1.20.1-1.21.1`（该分支已于 2026-09-22 改名为 `multi-main`）**（与主线同目录同树，原独立 worktree 已移除）；**2026-09-22 完整移植后版本号与另两线同批升版**（26.1.2 取 `-beta.x` 后缀；现为 `1.3.5-beta.2`）** | 26.1.2 | NeoForge | 25 | `1.3.5-beta.2+neoforge_26.1.2` | `x.y.z[-rcN|-beta.N]+neoforge_26.1.2` |
 | `fabric-1.20.1` | **本仓 `1.20.1-fabric` 分支新增**（2026-09-29 接入；基准 = `forge-1.20.1` 的 `1.3.2-hotfix` 源码，**加载器层整体替换**：Curios→Trinkets(+Accessories 软依赖) · Capability→Fabric API 附件 · Forge EventBus→自建 `LoaderBus`+Puzzles Lib/FAPI 回调/mixin · GLM→`LootTableEvents.MODIFY`）。**2026-10-01 已并入 `multi-main` 成为第四条线**（同树同仓；原独立 worktree `F:\MCProject\astral_dice_multiloader_fabric` 与分支 `1.20.1-fabric` 均已移除）| 1.20.1 | Fabric | 17 | `1.3.5-alpha.1+fabric_1.20.1` | `x.y.z[-alpha.N|rcN|hotfix]+fabric_1.20.1` |
 
 > ⚠️ **第四条线（`fabric-1.20.1`）的规则边界（2026-09-29 用户裁决；2026-10-01 并入 `multi-main` 后本条**全九项仍适用**，必须遵守）**：
@@ -258,7 +258,7 @@ When extending this workspace:
 >    可把它升级为**致命错误**。② 调用 `LoaderBus#dispatchReport()` 核对**没有**关键事件的派发次数为 0
 >    （判据：`ServerTickEvent` 必须为正数）。⚠️ 审计若报「未生效（没扫到任何类）」，**不得**当成通过。见 **KI-F6**。
 
-> 版本号各 git 分支独立（AGENTS.md 自 2026-09-15 起**已纳入版本库**，各分支各自维护一份）：**发布线 `multi-main`**（2026-09-22 由 `multi-1.20.1-1.21.1` 改名；连带项已同批处理：三线 `build.gradle` 的 `packPushBranches → ['multi-main']`、`.github/workflows/build.yml` 的 5 处分支名与触发条件，以及 `.github/workflows/build.yml` 里 checkout 前置库的 `ref:` 钉值）**当前 = `1.3.5`**（2026-09-22 那次收编后统一升版为 `1.3.0` —— 1.21.1 / 1.20.1 = `1.3.0`，26.1.2 = `1.3.0-beta.1`，按发布规范 tag 解析为裸版本 `1.3.0`；此后逐版递增至 **1.3.5**，以矩阵表「当前版本」列与各线 `gradle.properties` 为准。⚠️ 本处曾长期停留在 `1.3.0`、与矩阵表自相矛盾，2026-10-01 二次验证时一并更正）；`multi-dev-next` 当前 = **`2.0.0-SNAPSHOT.13`**（2026-09-17 用户裁决：`2.0.0-SNAPSHOT.5` 封包，版本号升至 `.10`；**2026-09-22 用户裁决：SNAPSHOT 数值按提交数下沉，档位 = 提交数 / 37，自 `.10` 起累计 104 提交 ⇒ 向上取整 3 档 ⇒ `.13`**；后续改动一律记入两个 CHANGELOG 顶部的 `未发布（2.0.0-SNAPSHOT.13）` 小节；该线已于 **2026-09-22 整体合并进发布线 `multi-main`**（合并提交 `7b726617`，收编 160 个提交），自此不再单独演进）；`neoforge-26.1.2` 子项目当前 = **`1.3.0-beta.1`**（2026-09-17 用户裁决 + **2026-09-19 修订：26.1.2 已纳入主线、三线同步（不再是低优先级线）**；**2026-09-22 用户裁决：三线同批升版，26.1.2 取 `1.3.0-beta.1`** —— 此前 `.13` 时代「与另两线版本号对齐、不再单独加 `-beta`」的口径随之作废；`multi-26.1.2-neoforge` 分支自此只作为合并前历史，不再单独开发）。上表「当前版本」以发布线工作分支 `multi-main` 为准。
+> 版本号各 git 分支独立（AGENTS.md 自 2026-09-15 起**已纳入版本库**，各分支各自维护一份）：**发布线 `multi-main`**（2026-09-22 由 `multi-1.20.1-1.21.1` 改名；连带项已同批处理：三线 `build.gradle` 的 `packPushBranches → ['multi-main']`、`.github/workflows/build.yml` 的 5 处分支名与触发条件，以及 `.github/workflows/build.yml` 里 checkout 前置库的 `ref:` 钉值）**当前 = `1.3.5-hotfix`**（2026-10-01：承接 1.3.5 的补丁发布——FTB 队友判定后端修复；见下方「发布规范」对 `-hotfix` 打 tag 的说明）（2026-09-22 那次收编后统一升版为 `1.3.0` —— 1.21.1 / 1.20.1 = `1.3.0`，26.1.2 = `1.3.0-beta.1`，按发布规范 tag 解析为裸版本 `1.3.0`；此后逐版递增至 **1.3.5**；2026-10-01 起为 **`1.3.5-hotfix`**，以矩阵表「当前版本」列与各线 `gradle.properties` 为准。⚠️ 本处曾长期停留在 `1.3.0`、与矩阵表自相矛盾，2026-10-01 二次验证时一并更正）；`multi-dev-next` 当前 = **`2.0.0-SNAPSHOT.13`**（2026-09-17 用户裁决：`2.0.0-SNAPSHOT.5` 封包，版本号升至 `.10`；**2026-09-22 用户裁决：SNAPSHOT 数值按提交数下沉，档位 = 提交数 / 37，自 `.10` 起累计 104 提交 ⇒ 向上取整 3 档 ⇒ `.13`**；后续改动一律记入两个 CHANGELOG 顶部的 `未发布（2.0.0-SNAPSHOT.13）` 小节；该线已于 **2026-09-22 整体合并进发布线 `multi-main`**（合并提交 `7b726617`，收编 160 个提交），自此不再单独演进）；`neoforge-26.1.2` 子项目当前 = **`1.3.0-beta.1`**（2026-09-17 用户裁决 + **2026-09-19 修订：26.1.2 已纳入主线、三线同步（不再是低优先级线）**；**2026-09-22 用户裁决：三线同批升版，26.1.2 取 `1.3.0-beta.1`** —— 此前 `.13` 时代「与另两线版本号对齐、不再单独加 `-beta`」的口径随之作废；`multi-26.1.2-neoforge` 分支自此只作为合并前历史，不再单独开发）。上表「当前版本」以发布线工作分支 `multi-main` 为准。
 > ⚠️ 历史上另有一条 dev 分支 **`wt/2.0.0-vnext`**（连带独立 worktree `C:/Users/xmace/.dsh/worktrees/astral_dice_multiloader-a03b2df2/2.0.0-vnext`）——2026-09-17 用户裁决「移除 wt/2.0.0-vnext 分支，仅保留当前分支」后**已删除**：worktree 与分支一并移除，`git branch -d` 成功即证明其 tip **`d7e4ac8f4f1c31484bf4366caa4e144aec45979f`** 的全部提交都已被 `multi-dev-next` 包含（`multi-dev-next..wt/2.0.0-vnext` 为空）⇒ **未丢失任何提交**；该分支从未推到远端（`origin` 只有 `multi-1.20.1-1.21.1` 与 `multi-dev-next`），故无需远端清理。`multi-26.1.2-neoforge` 作为合并前历史分支**保留**（未在本次裁决范围内）。
 
 > **第三条线(26.1.2)的规则边界(2026-09-19 用户裁决修订 —— 26.1.2 已纳入主线,必须遵守)**:自本裁决起「同步修改」约束**三个版本**(`neoforge-1.21.1` + `forge-1.20.1` + `neoforge-26.1.2`):任何功能/修复/平衡/文案改动一律**三线同批实施**(实施方式见下方「### 子项目修改默认规则」与「### 模组内容更新规则(三线同步)」),26.1.2 **不再**是「发布线完成后再迁移」的低优先级移植线。三条线各自按 `docs/compat-26.1.2-neoforge.md`(26.1.2 相对 1.21.1)、`docs/compat-1.20.1-forge.md`(1.20.1 相对 1.21.1)的差异映射实现,**平台差异必须逐条登记**;三线落地后按 `scripts/test/TESTING-SPEC.md` §13.2 做一致性测试。三子项目的 `mod_version`/`mods.toml` 门槛仍各自独立。⚠️ **第四条线 `fabric-1.20.1` 不参与本条的「三线同批实施」约束** —— 其边界见上一条 ①（由用户按批次单独下达移植任务）。
@@ -267,9 +267,12 @@ When extending this workspace:
 >    两条线都是**独立的预发布号线** —— **永不占用发布线的裸版本号**、**不单独打裸版本 tag**；
 >    差别只在后缀（`-alpha.x` ↔ `-beta.x`）与发布形态（fabric 走自己的 `fabric-*` pre-release，见 ③）。
 >    `mod_version` 与所依赖的库版本**同步带 alpha**，现为 **`1.3.5-alpha.1+fabric_1.20.1`** /
->    **`starengine_lib_version = 1.0.5-alpha.1`**（`_version_range = >=1.0.5-alpha.1 <2.0`）。
->    库侧基线**退回 `1.0.5`**（`1.0.6` / `1.0.7` / `1.0.8` 系本地临时构建，**不作为对外号**），
->    后续每批改动 `-alpha.x` 递增；预发布号在库仓 CI 里**不会**打 tag（workflow 只认裸 `x.y.z`）⇒ 正合开发线口径。
+>    **`starengine_lib_version = 1.0.6-alpha.1`**（`_version_range = >=1.0.6-alpha.1 <2.0`）。
+>    ⚠️ **2026-10-01 用户裁决（更新）**：库侧**大版本号与三平台同步为 `1.0.6`**、保留 `-alpha.N` 后缀 ⇒
+>    现号为 **`1.0.6-alpha.1`**（2026-09-29 那次「基线退回 `1.0.5`」的口径随之作废）。那三个**裸**号
+>    `1.0.6` / `1.0.7` / `1.0.8` 仍属「本地临时构建、不作对外号」，已从 mavenLocal 移入隔离目录；
+>    `1.0.6-alpha.1` 与它们**不是同一字符串**，不构成复用。三平台（`1.0.6`，发布号）与本线
+>    （`1.0.6-alpha.1`，预发布号）仍各自独立递增。后续每批改动 `-alpha.x` 递增；预发布号在库仓 CI 里**不会**打 tag（workflow 只认裸 `x.y.z`）⇒ 正合开发线口径。
 >    ⚠️ 因此本线推进整合包的产物**不是「正式版」**（该整合包 `1.20.1-Fabric 模组测试` 亦为本线专属测试环境）。
 > ⑨ **收尾必做：生产映射冒烟**（2026-09-29 新增能力；判据与事故记录见 `KNOWN-ISSUES.md` **KI-F13**）：
 >    fabric 的 dev 与生产是**两套映射**（dev = Loom named/Mojang，生产 = intermediary）—— 本线此前的**全部**验证
@@ -330,10 +333,15 @@ When extending this workspace:
 >    ⇒ 规则三条：
 >    （a）**核验基准用发布 jar，不用记忆也不用注释** —— 下载真实产物 + `javap -p` 逐条比；
 >    上游源码也要核（并可回溯最早版本，确认契约在**整个版本区间**是否成立）；
->    （b）**每条后端都要有起步诊断机器行**（本线是 `AP_FAB_PARTY: sw_* back_ftb/back_opac why_ftb/why_opac`，
->    由 `PartyRelations#reportBackends()` 在 common setup 打印）⇒「装了却没生效」一眼可见，
+>    （b）**每条后端都要有起步诊断机器行**（fabric 线是 `AP_FAB_PARTY:`，三条生产线是 **`AP_PARTY:`**
+>    —— 字段同为 `sw_* back_ftb/back_opac why_ftb/why_opac`，由 `PartyRelations#reportBackends()` 在 common setup 打印）
+>    ⇒「装了却没生效」一眼可见，
 >    `why_*` 直接写明是哪个类/方法没找到；
->    （c）**静态闸门入库**（`tools/verify_party_api.py`：自动从源码抽取反射契约 ↔ 真实 jar 比对，输出 PASS/FAIL）
+>    （c）**静态闸门入库**（`tools/verify_party_api.py`：自动从源码抽取反射契约 ↔ 真实 jar 比对。
+>    ⚠️ **2026-10-01 扩展为四线分线校验**：逐线解析各自源码，再按**显式登记的产物名模式**定位该线的 jar
+>    （`LINE_JARS`）；产物缺失只**跳过对应后端**（SKIP 并计入摘要，`--strict` 可判红）。
+>    **不做「找不到就按加载器通配」的模糊回退** —— 实测踩到过 26.1.2 线拿 **1.21.1 的**产物校验并全绿的**假绿**。
+>    取证：`--pre-fix` 对修复前契约 `PASS=9/FAIL=5`，修复后 `forge-1.20.1` `PASS=17/FAIL=0`）
 >    + **测试台用例**（`FAB-PARTY-BACKENDS`）——一静一动，缺一不可。
 >    ⚠️ 失败日志要分档：`ClassNotFoundException`（= 没装，绝大多数玩家的正常状态）走 **debug**；
 >    其余（= 装了但签名不符，开发者才需要看）走 **warn**，否则每次启动都刷一条无意义告警。
@@ -342,8 +350,8 @@ When extending this workspace:
 >    用「存在 Team 对象」会恒为真，把「未组队 ⇒ 友方作用于全服」的兜底堵死）。
 ### 前置库 starengine_lib 的版本与兼容性契约（全局，2026-09-22 用户裁决）
 
-> 本契约**跨两个仓库生效**（库仓 `F:\MCProject\starengine_lib` ↔ 本仓三条线），是库的**公开兼容性承诺**。
-> 库侧原文见其 `README_ZH.md` §6「版本与兼容」（英文版为 `README.md` §6 "Versions and compatibility"）、双 `CHANGELOG`、以及三处 `gradle.properties` 的 `1.0.0` 条目。
+> 本契约**跨两个仓库生效**（库仓 `F:\MCProject\starengine_lib` ↔ 本仓**四条线**），是库的**公开兼容性承诺**。
+> 库侧原文见其 `README_ZH.md` §6「版本与兼容」（英文版为 `README.md` §6 "Versions and compatibility"）、双 `CHANGELOG`、以及四平台 `gradle.properties` 的 `1.0.0` 条目。
 
 1. **禁止破坏性更新（第一位数字不变时）**：凡**主版本号（第一位数字）不变**的库版本（当前 = `1.x`），
    **不得**删除或改名任何 public 类型 / 方法 / 字段 / 常量，**不得**改变其可见性、签名或既有语义；
@@ -482,7 +490,8 @@ When extending this workspace:
 - 两侧门槛都必须在 **mods.toml 解析 / 依赖排序阶段**拒绝不合格环境(FML 会给出可读提示:语言提供者版本不符 = `fml.language.missingversion`;
   强制依赖不满足 = `Missing or unsupported mandatory dependencies:`),**不得**依赖"先加载、再在代码里检查"——mixin 变换早于 mod 构造器,那样只会得到 mixin 报错。
 
-发布规范:GitHub **Release tag 使用无后缀的基础版本号**(如 `1.1.3`,禁止 `v` 前缀与 `+加载器` 后缀),tag 推送即触发 CI 自动构建并发布**三个 jar**(1.21.1 + 1.20.1 + 26.1.2,第三个是 26.1.2 的 `-beta` jar);⚠️ **第四条线 fabric 不进这条 Release** —— 它有**自己的** `fabric-<版本>` pre-release(见「第四条线规则边界」③),两者附件互不掺入;发布线分支 `multi-main`（2026-09-22 由 `multi-1.20.1-1.21.1` 改名）推送时 CI 会从 `mod_version` 剥离 `-rc/-pre` 与后缀自动打 tag。⚠️ **剥离规则是「先剥 `+后缀`,再剥第一个 `-` 之后的一切」**(`BASE=${VERSION%%+*}; BASE=${BASE%%-*}`)⇒ **`1.2.1-hotfix` 打出的 tag 是裸版本 `1.2.1`**(2026-09-18 实测确认),tag 已存在时 CI 会走 `gh release edit` + `gh release upload --clobber` **刷新同一个 Release**,不会再建新 tag/Release。**26.1.2 永远只作为附件随发布线 Release 发布,不生成自己的 tag/Release**(其 `1.2.1-beta.2` 不是裸 `x.y.z`);CI 侧实现见 `.github/workflows/build.yml` 的 `Create/Update GitHub Release (three JARs, notes from release/<tag>/)`。
+发布规范:GitHub **Release tag 使用无后缀的基础版本号**(如 `1.1.3`,禁止 `v` 前缀与 `+加载器` 后缀),tag 推送即触发 CI 自动构建并发布**三个 jar**(1.21.1 + 1.20.1 + 26.1.2,第三个是 26.1.2 的 `-beta` jar);⚠️ **第四条线 fabric 不进这条 Release** —— 它有**自己的** `fabric-<版本>` pre-release(见「第四条线规则边界」③),两者附件互不掺入;发布线分支 `multi-main`（2026-09-22 由 `multi-1.20.1-1.21.1` 改名）推送时 CI 会从 `mod_version` 剥离 `-rc/-pre` 与后缀自动打 tag。⚠️ **剥离规则是「先剥 `+后缀`,再剥第一个 `-` 之后的一切」**(`BASE=${VERSION%%+*}; BASE=${BASE%%-*}`)⇒ `-hotfix` 打出的 tag 是裸版本(如 `1.3.5-hotfix` → **`1.3.5`**),tag 已存在时 CI 走 `gh release edit` + `gh release upload --clobber` **刷新同一个 Release**,不新建 tag/Release。
+⚠️ **2026-10-01 订正**(原注释失实):此前写「`1.2.1-hotfix` 已按上述规则打到 `1.2.1`」—— 查证发现 `Create Git tag` 步骤里有一条「`mod_version` 含 `-` 即静默跳过」的预发布守卫,它把 `-hotfix` 也一并挡掉了(既不建 tag、也不刷 Release,**且没有任何报错**)。守卫已改为**只跳过 `-alpha/-beta/-rc/-pre/-snapshot`**;`-hotfix` 自 2026-10-01 起才真正按本段口径执行。**26.1.2 永远只作为附件随发布线 Release 发布,不生成自己的 tag/Release**(其 `1.3.5-beta.2` 不是裸 `x.y.z`);CI 侧实现见 `.github/workflows/build.yml` 的 `Create/Update GitHub Release (three JARs, notes from release/<tag>/)`。
 **Release 正文取自玩家侧发布说明**(2026-09-17 起,用户要求):`release/<tag>/PLAYER_CHANGELOG_ZH.md` + `release/<tag>/PLAYER_CHANGELOG.md`,中文在前、中间插 `---`、英文在后,经 `gh release ... --notes-file` 整文件传入(不再用内联单行 `--notes`);两份文件都不存在时只打 `::warning::` 并退回「附件清单」兜底,**不阻断发布**。⇒ 发布前必须确认该版本目录的两份文件已存在且与 `CHANGELOG_(ZH|EN).md` 同步(见「更新日志约定」)。
 **CI / Actions 状态由用户自行观察(2026-09-17 用户裁决,必须遵守)**:本机无 GitHub token、不安装 `gh`,因此**代理不得监视、轮询或尝试查询** GitHub Actions / Release 状态(不跑 `gh run view|list`、不装 CLI、不改用 API 轮询)。推送后代理只在交付说明里列明**预期结果**与失败时的排查入口(远端 job 日志),由用户到 Actions 页面自行核对;禁止把「本机看不到 CI」写成未完成事项反复追问。
 
@@ -575,7 +584,7 @@ When extending this workspace:
    ⚠️ **2026-09-27 起叠加用户新规**：本条约束的是「谁来跑」，**不改变**「能跑什么」——`mt.ps1` 全流程与阶段 C 的整目录批量此时**已被闸门禁用**（见下方第 5 条与 `TESTING-RULES-OVERVIEW.md` §3.1）。主 agent 亲自执行时同样受闸门约束，须改用「单条用例 + 手动逐条注入」范式；要恢复批量执行需用户显式裁决或临时加 `--allow-auto`。
 3. **平台差异**：按 `docs/compat-26.1.2-neoforge.md`（26.1.2 相对 1.21.1）与 `docs/compat-1.20.1-forge.md`（1.20.1 相对 1.21.1）的差异映射实现，允许并**必须逐条登记**平台差异（如 26.1.2 无 Iron's Spells 联动、`ItemTags.SPEARS` 只在 26.1.2 存在、26.1.2 的 KubeJS 探针 API 形态不同等）。**禁止**用「能启动/跑通了」代替一致性结论。
 4. **一致性测试**：三线落地后按 `scripts/test/TESTING-SPEC.md` §13.2 的方法（**同探针 + 同用例 + 三侧读数 diff**）在 26.1.2 上复跑 1.21.1 已通过的用例，逐条比对读数；差异要么修掉、要么作为**平台差异**登记并写明原因。
-5. **版本号与发布**：26.1.2 子项目当前版本号 = **`1.2.1-beta.2+neoforge_26.1.2`**（保留 `-beta` 以与发布线 `1.2.1` 的发布态区分；改动只动 `neoforge-26.1.2/gradle.properties`，**不得**连带改 1.20.1 / 1.21.1）；26.1.2 **不单独发版** —— CI 对其跑 lang 同步 + 三子项目构建，并把**已构建出的 jar 作为第三个附件附到发布线的 Release**（2026-09-17 用户要求「将 26.1.2 加入 Action 和 Release」），但**不打自己的 tag、不建自己的 Release**（版本号不是裸 `x.y.z`，不满足打 tag 门槛）；tag/Release 的创建仍只在发布线分支触发。
+5. **版本号与发布**：26.1.2 子项目当前版本号 = **`1.3.5-beta.2+neoforge_26.1.2`**（保留 `-beta` 以与发布线 `1.3.5-hotfix` 的发布态区分；改动只动 `neoforge-26.1.2/gradle.properties`，**不得**连带改 1.20.1 / 1.21.1）；26.1.2 **不单独发版** —— CI 对其跑 lang 同步 + 三子项目构建，并把**已构建出的 jar 作为第三个附件附到发布线的 Release**（2026-09-17 用户要求「将 26.1.2 加入 Action 和 Release」），但**不打自己的 tag、不建自己的 Release**（版本号不是裸 `x.y.z`，不满足打 tag 门槛）；tag/Release 的创建仍只在发布线分支触发。
 6. **一次内容更新的验收口径**：① 三线均已落地且各自构建通过；② 核心改动按「变更分级与验证口径」跑**定向最小冒烟**（**只跑与该改动直接相关的用例**，三线各一遍；顺序 1.21.1 → 1.20.1 → 26.1.2，逐线出结论）；命中该节的「**完整冒烟**」五种情形之一（发版批次 / 跨模块公共路径 / 门槛类规则自身改动 / 用户显式要求 / 26.1.2 迁移与一致性验收批次）时才跑**全清单**；纯脚本/文本/tooltip/文档/注释类改动免冒烟，但仍须构建 + 静态闸门全绿；③ 两份 CHANGELOG 同步且条目数一致；④ 26.1.2 侧的一致性测试结论已写入 `scripts/test/TESTING-SPEC.md`（工程口径记录写§附录 A，不写玩家侧 CHANGELOG）。
    ⚠️ **2026-09-27 起**：②的「跑用例」在**执行方式上**受批量编排闸门约束（§第 5 条）——「定向最小冒烟」仍按本节判定**该跑哪些**，但落地时逐条发（`--case <X>` 或 `mt_inject.ps1 cmd`），不再用 `run-dir` / 全流程一次性跑完。这是**用户可见性**上的收紧，不改变本节的分级判据。7. **禁止「顺路一起改」与「分批补线」**：不得以某条线更快为由先把该线改完、另两条线留待以后（同批必须三线对齐）；确需分步时必须由用户明确裁决，并把未落地的那条线登记为**阻塞项**（不是「以后再说」）。
 
