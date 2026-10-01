@@ -224,6 +224,8 @@ public final class DiceCombatModifiers {
     // 玩家是否佩戴指定 Curios 物品
     private static boolean hasCurio(Player player, net.minecraft.world.item.Item item) {
         if (player == null) return false;
+        // 总闸门:未佩戴骰子 ⇒ 立牌/筹码的战斗数值加成一律不生效(数值仍保留在附件/物品上)
+        if (!com.merlinkitsune.astral_dice.item.CurioSlotUtil.hasDiceEquipped(player)) return false;
         var curios = CuriosCompat.getCuriosInventory(player);
         return curios.isPresent() && curios.get().findFirstCurio(s -> s.is(item)).isPresent();
     }

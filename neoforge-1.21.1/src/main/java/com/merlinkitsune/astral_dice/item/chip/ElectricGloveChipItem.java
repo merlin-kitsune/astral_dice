@@ -1,5 +1,6 @@
 package com.merlinkitsune.astral_dice.item.chip;
 
+import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.item.ChargeManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
@@ -34,6 +35,8 @@ public class ElectricGloveChipItem extends BaseChipItem {
 
     /** 玩家是否佩戴电击手套 */
     public static boolean isEquipped(Player player) {
+        // 总闸门(骰子装备和卸除调整):未佩戴骰子 ⇒ 本件功能一律不生效(数值保留)
+        if (!CurioSlotUtil.hasDiceEquipped(player)) return false;
         if (player == null) return false;
         var curios = CuriosApi.getCuriosInventory(player);
         return curios.isPresent()

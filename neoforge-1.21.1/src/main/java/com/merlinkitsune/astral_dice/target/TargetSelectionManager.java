@@ -1,5 +1,6 @@
 package com.merlinkitsune.astral_dice.target;
 
+import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.starenginelib.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.network.ActionBarPayload;
@@ -271,6 +272,8 @@ public final class TargetSelectionManager {
         // 而各动作的专属提示(bonnie_undercover_applied / haiqing_weak_mark_applied / ren_privilege_applied 等)
         // 都在 apply 里发出 ⇒ 只有让通用提示先发,玩家才看得到专属提示;无专属提示的动作照旧显示通用提示。
         notifyActionBar(player, "msg.astral_dice.target_select.applied", ChatFormatting.YELLOW, target.getDisplayName());
+        // 总闸门:未佩戴骰子 ⇒ 选择器类立牌的主动效果也不执行(与 BaseSignItem#performSkill 同口径)
+        if (!CurioSlotUtil.hasDiceEquipped(player)) return;
         action.apply(player, target);
         // 立牌主动技能前置门控(2026-09-17):由立牌登记的会话在**确认成功**后才恢复原流程剩余步骤
         // (风扇筹码发牌 + 立牌主动响应事件/默认提示);非立牌会话无记录 ⇒ 空操作。

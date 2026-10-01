@@ -1463,6 +1463,23 @@ When extending this workspace:
 - **立牌品质由合成配方决定**(见「立牌品质(配方决定)」表;立牌本身的 `.rarity(...)` 与配方分级保持一致)。
 
 - **立牌栏固定 1**(`stand.json size=1`),所有骰子一致,不随骰子/星级变化——`DiceTier` 无立牌加成字段,`DiceCurioItem` 不做立牌槽位动态调整。
+- **骰子闸门（2026-10-01 用户裁定「骰子装备和卸除调整」）**：筹码与立牌的**一切功能**都以「已佩戴骰子」为前提 ——
+  未佩戴时功能一律不生效，但**已经累计的数值保留**（不清零，仍在附件 / 物品数据上）。实现分两层，缺一会漏：
+  ① **不经 `isEquipped` 的路径**在统一入口拦截：`BaseSignItem#curioTick`（覆盖 12 个覆写 `onCurioTick` 的立牌持续被动）、
+  `BaseSignItem#performSkill`（全部立牌主动）、`TargetSelectionManager` 的 `action.apply`（选择器类主动）、
+  `DiceCombatModifiers#hasCurio`（战斗数值修饰器总入口）、`PlayerTickEvents`（立牌 / 筹码的玩家级状态机）、
+  5 个覆写 `curioTick` 的筹码；
+  ② **其余**在各自的 `XxxItem#isEquipped(Player)` 首行统一加闸门（四线各 43 处）。
+  闸门本体 = `CurioSlotUtil#hasDiceEquipped`（本次由 private 提升为 public）。
+  **强制复位**只在 **登录 / 克隆（重生）** 两处触发（`DiceCurioItem#enforceNoDiceState` ⇒ 未佩戴骰子时把筹码栏收缩为 0 并把筹码退回物品栏），
+  **不**挂在 `/reload` 的全量数据包同步分支上（重载不应改变玩家状态）。
+  **换装强制收缩**：`DiceCurioItem#onEquip` 按**刚装上的那件骰子**算目标尺寸并走 `forceRemove=true` ⇒ 佩戴可用筹码栏更少的骰子时，超出的筹码当场退回物品栏；
+  与此相对，登录 / 数据包同步 / 每 20 tick 对账仍走 `forceRemove=false` 的**防御式**路径（那些路径下 dice 槽可能瞬时为空、目标会算成 0）。
+  ⚠️ 筹码栏尺寸**只走**「自有 `chip_slots` 绝对修饰符 + `update()`」：Curios 15.0.0 已把 `grow/shrink/getSizeShift` 从 `ICurioStacksHandler` 移除，
+  绝对修饰符是 9.5.1 / 5.14.1 / 15.0.0 三版**唯一都成立**的写法（另注：1.20.1 的修饰符 key 是 `UUID`，1.21+ 是 `ResourceLocation` / `Identifier`）。
+  ⚠️ 三版的「槽位激活」API 不一致（1.20.1 无 `setSlotActive`）⇒ **不要**用 `active` 做闸门。
+
+
 - **立牌无独立升星**(骰子升星不受影响,仍走数据组件 `weapon_enhancement.starLevel`):立牌铁砧升星与 `SIGN_STAR_LEVEL` 数据组件已移除;护法立牌(misaki)爆发/名刀的星级加成一律取**玩家装备骰子的星级**(`WeaponEnhancement.starLevel`,经 `DiceCombatContext.misakiStar` 传递),未装备骰子或 0 星骰子则无星级加成。
 - 筹码栏必须佩戴骰子才有(`chip.json size=0`;1.20.1 侧 base=0 来自 IMC 注册,不是数据包 JSON),数量由 `DiceTier.chipBonus` 按星级计算(基础=星级;金=1+星级;钻石=2+星级;合金=3+星级,即 0★~3★ 分别为 0/1/2/3、1/2/3/4、2/3/4/5、3/4/5/6),由 `DiceCurioItem` 动态调整。
   - **`onEquip(SlotContext, ItemStack prevStack, ItemStack stack)` 的第 2 参是 prevStack、第 3 参才是刚装上的骰子**(Curios 5.14.1 `ICurioItem.java:81-90` / 9.5.1 `:83-92` 的 javadoc,与 `ItemizedCurioCapability#onEquip` 的 `(slotContext, prevStack, this.getStack())` 转发同构)。**禁止**把第 2 参当「刚装备的那件」用:往空槽装备时它是 `ItemStack.EMPTY`,按它推导的逻辑会**静默变成空操作**(2026-09-18 筹码栏「偶发不增加」的根因即此 —— 目标恒 0,只能靠 `curioTick` 每 20 tick 兜底,表现为「装备后要等约 1 秒」)。要「当前佩戴的那件」就**回读栏位**(`getStacksHandler("dice").getStacks().getStackInSlot(0)`),不要信任事件入参。(`onUnequip` 相反:第 3 参才是被卸下的那件。)⚠️ **同款参数误用已于 2026-09-24 全仓清完(六处)**:`AtmChipItem` / `StarCoinHammerChipItem` / `BankCardChipItem` / `BankCardUnlimitedChipItem` 的 `if (!prevStack.isEmpty()) return;` 全部写在第 3 参上 ⇒ **恒 return、装备时星光从未发放**(用户实报「所有银行卡都无法提供星光点数」)；`CursedSwordChipItem` 把「千咒刻印」写到第 2 参 ⇒ 往空槽装备时写进了 `ItemStack.EMPTY` **全局单例**并立刻丢弃；`FenSignItem` 的「装备时重置计时起点」同样恒 no-op。🚨 **更隐蔽的一条:一次性发放不能用「空槽守卫」挡重放** —— Curios 只持久化 `stacks`、**不持久化 `previousStacks`**(`DynamicStackHandler.previousStacks` 是纯内存字段,`deserializeNBT` 不写它)⇒ **登录 / 重生 / 切维度**后首 tick 的 `prevStack` 恒为空栈而槽里有物品 ⇒ `!ItemStack.matches(stack, prevStack)` 成立 ⇒ Curios **重放 `onEquip`**;而重放时 `prevStack` 恰好就是空栈 ⇒ `prevStack.isEmpty()` 守卫**放行**。故「装备时一次性发放」必须走**玩家级持久化闸门**(`claimEquipGrant`,见附件 `starlight_equip_grant_flags`):装备时置位、卸下时释放 —— 装卸循环照旧每次装备发一次,但不吃登录重放。**幂等的基础值下限**(银行卡-余额少/多 = 4/7,`set` 只在低于基础值时抬升)才**不需要**闸门,且应**不加守卫**(否则「换装进非空槽」这条路径会漏掉)。

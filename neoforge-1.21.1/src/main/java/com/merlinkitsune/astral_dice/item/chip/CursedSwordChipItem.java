@@ -1,5 +1,6 @@
 package com.merlinkitsune.astral_dice.item.chip;
 
+import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
 import com.merlinkitsune.starenginelib.component.GameplayConstants;
 import com.merlinkitsune.starenginelib.combat.HostileTargets;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
@@ -43,6 +44,8 @@ public class CursedSwordChipItem extends BaseChipItem {
 
     // 玩家是否佩戴诅咒之剑筹码
     public static boolean isEquipped(Player player) {
+        // 总闸门(骰子装备和卸除调整):未佩戴骰子 ⇒ 本件功能一律不生效(数值保留)
+        if (!CurioSlotUtil.hasDiceEquipped(player)) return false;
         if (player == null) return false;
         var curios = CuriosApi.getCuriosInventory(player);
         return curios.isPresent() && curios.get().findFirstCurio(s -> s.is(ModItems.CURSED_SWORD.get())).isPresent();
@@ -63,6 +66,11 @@ public class CursedSwordChipItem extends BaseChipItem {
     public void curioTick(SlotContext slotContext, ItemStack stack) {
         if (!(slotContext.entity() instanceof Player player)) return;
         if (player.level().isClientSide()) return;
+        // 总闸门:未佩戴骰子 ⇒ 本筹码的持续效果不生效(数值保留)
+        if (slotContext.entity() instanceof net.minecraft.world.entity.player.Player gatePlayer
+                && !CurioSlotUtil.hasDiceEquipped(gatePlayer)) {
+            return;
+        }
         // 持续保持青之诅咒,防止效果因任何原因消失
         applyBlueCurse(player);
         // 确保装备中的诅咒之剑带有青之诅咒,使千咒卷轴将其计入诅咒数量

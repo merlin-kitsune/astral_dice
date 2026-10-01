@@ -1,5 +1,6 @@
 package com.merlinkitsune.astral_dice.item.chip;
 
+import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
 import com.merlinkitsune.starenginelib.combat.HostileTargets;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.item.ModItems;
@@ -63,6 +64,11 @@ public class AdrenalineChipItem extends BaseChipItem {
     public void curioTick(SlotContext slotContext, ItemStack stack) {
         if (!(slotContext.entity() instanceof Player player)) return;
         if (player.level().isClientSide()) return;
+        // 总闸门:未佩戴骰子 ⇒ 本筹码的持续效果不生效(数值保留)
+        if (slotContext.entity() instanceof net.minecraft.world.entity.player.Player gatePlayer
+                && !CurioSlotUtil.hasDiceEquipped(gatePlayer)) {
+            return;
+        }
         // 防御力折算真实护甲(1 防御力 = 2 护甲值):触发加成状态生效,否则移除
         com.merlinkitsune.astral_dice.combat.DiceCombatModifiers.setDefenseArmorBonus(
                 player, "adrenaline_def_armor" + bonus, isLowHp(player) ? bonus : 0);

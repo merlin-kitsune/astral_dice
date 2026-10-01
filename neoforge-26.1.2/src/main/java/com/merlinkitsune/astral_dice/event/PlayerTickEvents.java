@@ -127,16 +127,21 @@ public class PlayerTickEvents {
     public static void onPlayerTick(PlayerTickEvent.Post event) {
         Player player = event.getEntity();
         if (player.level().isClientSide()) return;
+        // 总闸门(需求「骰子装备和卸除调整」):未佩戴骰子 ⇒ 立牌与筹码的一切玩法功能都不生效，
+        // 但其数值保留在附件/物品数据上。此处拦的是**不经 isEquipped 判定**的几条玩家级状态机
+        // (美工刀指示器、复仇之戟/原初核心的护甲折算、各立牌的状态机、治愈与赋能)。
+        // 注意:与筹码/立牌无关的系统(临时牌自检、出牌周期、星币同步、效果牌手持选择)不受影响。
+        final boolean diceGated = !CurioSlotUtil.hasDiceEquipped(player);
         // 治愈:每 tick 驱动(内部按 30 秒结算 + 每 tick 刷新效果倒计时)
-        HealingManager.tick(player);
+        if (!diceGated) HealingManager.tick(player);
         // 美工刀状态效果:装备且满血时显示效果图标,否则移除
-        updateCutterEffect(player);
+        if (!diceGated) updateCutterEffect(player);
         // 复仇之戟:任意加成触发时显示效果图标,全部消失时移除
-        RevengeHalberdChipItem.updateDisplayEffect(player);
+        if (!diceGated) RevengeHalberdChipItem.updateDisplayEffect(player);
         // 复仇之戟:防御力折算为真实护甲(1 防御力 = 2 护甲值)
-        RevengeHalberdChipItem.updateArmorBonus(player);
+        if (!diceGated) RevengeHalberdChipItem.updateArmorBonus(player);
         // 原初核心:赋能层数折算为真实护甲(1 防御力 = 2 护甲值)
-        com.merlinkitsune.astral_dice.item.chip.PrimordialCoreChipItem.updateArmorBonus(player);
+        if (!diceGated) com.merlinkitsune.astral_dice.item.chip.PrimordialCoreChipItem.updateArmorBonus(player);
         // 效果牌「手持即选择」(2026-09-25 用户裁决):主手持有选择器类效果牌 ⇒ 自动开启目标选择会话
         // (门槛与按键兜底同源;移出手持的收官在 TargetSelectionManager.tick 侧,reason=released)
         // 26.1.2 平台差异:`ServerPlayer` 在本文件已由 `net.minecraft.server.level` 导入,直接用短名即可。
@@ -154,11 +159,11 @@ public class PlayerTickEvents {
         // 风水师立牌「白泽赐福」状态机:**每 tick** 做骰神赐福的下降沿检测 + 自检 + 效果续期
         // (不用 MobEffectEvent.Expired:该事件在外力移除/死亡/重连清场时不触发,会漏掉"赐福结束";
         //  下降沿把两条结束路径统一,且不会重复消费跳过计数 —— 见 ZhaoSignItem#tickBlessing)
-        com.merlinkitsune.astral_dice.item.sign.ZhaoSignItem.tickBlessing(player);
+        if (!diceGated) com.merlinkitsune.astral_dice.item.sign.ZhaoSignItem.tickBlessing(player);
         // 教主立牌「降神 / 狐光」:**每 tick** 驱动 —— 施法者侧派生加成缓存与护甲折算、目标侧骰神赐福下降沿
         // 状态机、狐光层数镜像为 HUD 效果(见 TeruSignItem#tick)。必须放在 tickCount % 20 早退之前:
         // 下降沿检测一旦漏 tick 就会错过"赐福结束"这一拍。
-        com.merlinkitsune.astral_dice.item.sign.TeruSignItem.tick(player);
+        if (!diceGated) com.merlinkitsune.astral_dice.item.sign.TeruSignItem.tick(player);
         // 绿洲女王立牌(nardis)「女王特权」:临时牌自检(**幂等**)——真值 = 原生效果实例;
         // 「身上/骰子里还有临时牌,但玩家已没有 nardis_privilege 效果」⇒ 清空全部临时牌
         // (效果自然到期 / 被 /effect clear / 离线到期后重登 / 异常残留,四条路径都走这一条);
@@ -168,16 +173,16 @@ public class PlayerTickEvents {
         // 人偶师立牌(hanna)「幻想千金」/「挚友祝福」:路过友方玩家的判定。
         // 两条被动各有独立的 1:00 冷却 ⇒ 冷却内只读两个 long 即早退,每 tick 调用安全;
         // 放在 % 20 早退**之前**,避免"擦身而过只停留几拍"被 20 tick 采样漏掉。
-        com.merlinkitsune.astral_dice.item.sign.HannaSignItem.tickPassing(player);
+        if (!diceGated) com.merlinkitsune.astral_dice.item.sign.HannaSignItem.tickPassing(player);
         if (player.tickCount % 20 != 0) return;
         // 赋能:每 0:30 减少 1 层(剩余 1 层时直接归 0)
-        com.merlinkitsune.astral_dice.item.EmpowerManager.tick(player);
+        if (!diceGated) com.merlinkitsune.astral_dice.item.EmpowerManager.tick(player);
         // 效果牌出牌周期计时
         com.merlinkitsune.astral_dice.item.card.EffectCardPeriod.tick(player);
         // 以毒攻毒:中毒结束后给予隐藏图标的生命恢复 II
         com.merlinkitsune.astral_dice.item.card.FightPoisonWithPoisonCardItem.tick(player);
         // 大当家立牌:1 分钟内没有触发骰神赐福 → 养精蓄锐 +1 层
-        com.merlinkitsune.astral_dice.item.sign.FenSignItem.tick(player);
+        if (!diceGated) com.merlinkitsune.astral_dice.item.sign.FenSignItem.tick(player);
         // 符卡-祸「厄运」:层数镜像 == 当前持有张数 + 每 2:00 按结算时刻张数的周期伤害
         // (计时器只在首次持有时起算一次,张数增减不改写它 —— 计时器与结算分离)
         com.merlinkitsune.astral_dice.item.card.HuoCardItem.tick(player);

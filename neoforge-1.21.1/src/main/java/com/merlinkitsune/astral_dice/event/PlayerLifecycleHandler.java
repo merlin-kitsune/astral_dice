@@ -201,6 +201,9 @@ public class PlayerLifecycleHandler {
         if (!(event.getEntity() instanceof Player player)) return;
         if (player.level().isClientSide()) return;
         DiceCurioItem.refreshChipSlotCount(player);
+        // 兜底复位（需求）：重生 / 重新进入时**仍未佩戴骰子** ⇒ 强制恢复无筹码栏的初始状态，
+        // 并把占位的筹码退回物品栏。与上面那条防御式对账互补（它绝不缩掉占用中的槽位）。
+        DiceCurioItem.enforceNoDiceState(player);
         // 临时牌到期刻对齐:效果时长只在玩家在线时流逝,而到期刻是绝对 gameTime
         // (多人服务器离线期间照走)⇒ 重登时按效果剩余重写一次,避免把仍然有效的牌判成过期。
         com.merlinkitsune.astral_dice.item.card.TemporaryCardUtil.realignExpiry(player);
@@ -231,6 +234,9 @@ public class PlayerLifecycleHandler {
         if (!(event.getEntity() instanceof Player player)) return;
         if (player.level().isClientSide()) return;
         DiceCurioItem.refreshChipSlotCount(player);
+        // 兜底复位（需求）：重生 / 重新进入时**仍未佩戴骰子** ⇒ 强制恢复无筹码栏的初始状态，
+        // 并把占位的筹码退回物品栏。与上面那条防御式对账互补（它绝不缩掉占用中的槽位）。
+        DiceCurioItem.enforceNoDiceState(player);
     }
 
     // 首次加入世界:若配置开启且玩家尚未领过,赠送《恋的规则书》(每个玩家在每个世界只发一次)

@@ -249,6 +249,9 @@ public class PlayerLifecycleHandler {
         // (HIGHEST 快照 + LOWEST 恢复,并已内含 refreshChipSlotCount),故本类**不再**订阅该事件;
         // 但「登录」「克隆」两条路径在该类里没有任何覆盖 ⇒ 仍须在此对账,否则尺寸漂移不会自愈。
         DiceCurioItem.refreshChipSlotCount(player);
+        // 兜底复位（需求）：重生 / 重新进入时**仍未佩戴骰子** ⇒ 强制恢复无筹码栏的初始状态，
+        // 并把占位的筹码退回物品栏。与上面那条防御式对账互补（它绝不缩掉占用中的槽位）。
+        DiceCurioItem.enforceNoDiceState(player);
         // 星币钱包余额条:登录时客户端缓存不可信(可能是上次会话残值) ⇒ 无条件重发一次
         if (player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
             com.merlinkitsune.astral_dice.economy.StarCoinBalanceSync.forceResend(serverPlayer);
@@ -295,6 +298,9 @@ public class PlayerLifecycleHandler {
         if (!(event.getEntity() instanceof Player player)) return;
         if (player.level().isClientSide()) return;
         DiceCurioItem.refreshChipSlotCount(player);
+        // 兜底复位（需求）：重生 / 重新进入时**仍未佩戴骰子** ⇒ 强制恢复无筹码栏的初始状态，
+        // 并把占位的筹码退回物品栏。与上面那条防御式对账互补（它绝不缩掉占用中的槽位）。
+        DiceCurioItem.enforceNoDiceState(player);
     }
 
     // 首次加入世界:若配置开启且玩家尚未领过,赠送《恋的规则书》(每个玩家在每个世界只发一次)

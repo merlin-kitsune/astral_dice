@@ -1,5 +1,6 @@
 package com.merlinkitsune.astral_dice.item.chip;
 
+import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
 import com.merlinkitsune.astral_dice.item.ChargeManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import net.minecraft.resources.ResourceLocation;
@@ -47,6 +48,8 @@ public class EnergyRecyclerChipItem extends BaseChipItem {
     }
 
     public static boolean isEquipped(Player player) {
+        // 总闸门(骰子装备和卸除调整):未佩戴骰子 ⇒ 本件功能一律不生效(数值保留)
+        if (!CurioSlotUtil.hasDiceEquipped(player)) return false;
         if (player == null) return false;
         var curios = CuriosApi.getCuriosInventory(player);
         return curios.isPresent() && curios.get().findFirstCurio(s -> s.is(ModItems.ENERGY_RECYCLER.get())).isPresent();
@@ -56,6 +59,11 @@ public class EnergyRecyclerChipItem extends BaseChipItem {
     public void curioTick(SlotContext slotContext, ItemStack stack) {
         if (!(slotContext.entity() instanceof Player player)) return;
         if (player.level().isClientSide()) return;
+        // 总闸门:未佩戴骰子 ⇒ 本筹码的持续效果不生效(数值保留)
+        if (slotContext.entity() instanceof net.minecraft.world.entity.player.Player gatePlayer
+                && !CurioSlotUtil.hasDiceEquipped(gatePlayer)) {
+            return;
+        }
         tickMovement(player);
         updateSpeedBonus(player);
     }

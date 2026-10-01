@@ -10,6 +10,20 @@
 
 ### Content & Balance Changes
 
+- **Stricter dice equip/unequip rules** (ruled by the user on 2026-10-01): previously, removing the dice neither refreshed the
+  chip slots nor pushed the installed chips back, so a player could keep the chip/sign bonuses without wearing dice. Three rules
+  are now enforced: (1) **without dice equipped, every sign and chip feature is disabled** - continuous passives, active skills,
+  target-selector effects, combat modifiers, player-level tick state machines and each item's own `isEquipped` check are all
+  gated - while **already accumulated values are kept** (not cleared, they stay on the attachments / item data);
+  (2) **switching to dice with fewer chip slots shrinks immediately**, returning the surplus chips to the inventory (the target is
+  derived from the dice that was just equipped, instead of waiting for the next reconcile); (3) **respawning or rejoining while
+  still not wearing dice** forces the "no chip slots" initial state and returns the chips to the inventory.
+  Chip-slot sizing still uses the mod's own absolute `chip_slots` modifier plus `update()` - the only approach valid across
+  Curios 9.5.1 / 5.14.1 / 15.0.0 (15.0.0 removed `grow/shrink/getSizeShift` from the interface). The gate itself is
+  `CurioSlotUtil#hasDiceEquipped`.
+  NOTE: the three production lines compile, but **in-game verification has not been done**; the Fabric line reuses the existing
+  `compat/curios` shim (backed by Trinkets / Accessories) and **needs its own in-game verification**.
+
 - **The Cursed Sword chip's attack bonus no longer resets on death - only a genuine unequip clears it** (ruled by the
   user on 2026-10-01): the bonus lives on a player attachment, and on death the chip leaves the curio slot with the
   drops, so Curios immediately fires `onChipUnequip` and zeroes it. That callback runs **before** the attachment copy

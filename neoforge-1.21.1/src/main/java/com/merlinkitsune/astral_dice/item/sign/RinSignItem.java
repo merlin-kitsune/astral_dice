@@ -1,5 +1,6 @@
 package com.merlinkitsune.astral_dice.item.sign;
 
+import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
 import com.merlinkitsune.starenginelib.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
@@ -31,6 +32,8 @@ public class RinSignItem extends BaseSignItem {
      * 判定入口统一在 {@code SpellDamageRegistry},禁止在别处直接读原附件值做加成或显示加成。
      */
     public static boolean isEquipped(Player player) {
+        // 总闸门(骰子装备和卸除调整):未佩戴骰子 ⇒ 本件功能一律不生效(数值保留)
+        if (!CurioSlotUtil.hasDiceEquipped(player)) return false;
         var curios = CuriosApi.getCuriosInventory(player);
         return curios.isPresent() && curios.get().findFirstCurio(s -> s.is(ModItems.RIN_SIGN.get())).isPresent();
     }

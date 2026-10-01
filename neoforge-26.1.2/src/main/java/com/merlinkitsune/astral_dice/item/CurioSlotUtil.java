@@ -139,7 +139,15 @@ public final class CurioSlotUtil {
         }
     }
     // 是否佩戴了任意骰子
-    private static boolean hasDiceEquipped(Player player) {
+    /**
+     * 玩家是否佩戴着骰子 —— 全部立牌 / 筹码功能的**总闸门**。
+     *
+     * <p>口径（2026-10-01 用户裁定「骰子装备和卸除调整」）：筹码栏与立牌栏的一切功能都以
+     * 「已佩戴骰子」为前提；未佩戴时**功能一律不生效**，但已经累计的**数值保留**（不清零），
+     * 直到重生 / 重新进入仍未佩戴时由 {@code DiceCurioItem#enforceNoDiceState} 强制复位。
+     */
+    public static boolean hasDiceEquipped(Player player) {
+        if (player == null) return false;
         var curios = CuriosApi.getCuriosInventory(player);
         return curios.isPresent() && curios.get().findFirstCurio(DiceCurioItem::isDiceItem).isPresent();
     }
