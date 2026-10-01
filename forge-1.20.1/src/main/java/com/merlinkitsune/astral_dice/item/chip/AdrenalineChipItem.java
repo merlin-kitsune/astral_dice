@@ -57,6 +57,13 @@ public class AdrenalineChipItem extends BaseChipItem {
 
     private static boolean hasCurio(Player player, net.minecraft.world.item.Item item) {
         if (player == null) return false;
+        // 总闸门(骰子装备和卸除调整):未佩戴骰子 ⇒ 本件功能一律不生效(数值保留)。
+        // ⚠️ 2026-10-01 补齐:本类此前是全 item/chip 目录里**唯一**漏掉这道闸门的
+        //    (它没有 isEquipped,判据直接查 Curios)。漏掉的连带后果有三条,补上后一并消除:
+        //      · 未佩戴骰子时高效肾上腺素的 20% 闪避仍在事件总线上判定(与 1.3.6 口径冲突);
+        //      · 与 DiceCombatModifiers 里**带闸门**的同名判据不同源 ⇒「图标亮着但没加成」;
+        //      · 新增的 adrenaline(_high)_ready 指示器卸下骰子后不会熄灭。
+        if (!CurioSlotUtil.hasDiceEquipped(player)) return false;
         var curios = CuriosCompat.getCuriosInventory(player);
         return curios.isPresent() && curios.get().findFirstCurio(s -> s.is(item)).isPresent();
     }

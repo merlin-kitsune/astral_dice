@@ -144,8 +144,11 @@ public class PlayerTickEvents {
      * 伤害增加型筹码的「就位 / 生效中」指示器（2026-10-01 用户裁决）。
      *
      * <p>口径：**只要加成可生效就常驻显示，时长一律无限**（不走倒计时）；条件消失即移除。
-     * 与 {@link #updateCutterEffect} 同一范式，同属 {@code !diceGated} 分支 ——
-     * 未佩戴骰子时这些筹码的功能一律不生效，图标随之熄灭。
+     * 与 {@link #updateCutterEffect} 同一范式；⚠️ 两者都**不在** {@code !diceGated} 分支内 ——
+     * 必须每 tick 都跑，否则卸下骰子后没有代码负责移除图标（见下）。
+     * 闸门下沉在各自条件里：筹码侧经 {@code XxxChipItem.isEquipped}（其首行即 {@code hasDiceEquipped}），
+     * 美工刀的 {@code hasCutter/hasBlade} 由 {@link #updateCutterEffect} 的 {@code onDice} 显式补上
+     * ⇒ 未佩戴骰子时条件为假、图标被移除，而累计数值仍保留。
      *
      * <p>6 枚的判据各自取「加成真的 > 0」那一档，与各自的攻击修饰器同源：
      * 磨刀石/肾上腺素 = 低血阈值；诅咒之剑 = 累计加成 > 0；

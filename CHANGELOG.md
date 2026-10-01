@@ -75,6 +75,15 @@
   which already carries the gate; the Cutter's `hasCutter` / `hasBlade` now apply it explicitly) - so the icons are
   removed without dice while the accumulated values are still kept.
 
+  (5) **follow-up fix for a pre-existing leak found by the independent second-pass verification**:
+  **Adrenaline was the only chip in `item/chip` missing the "is dice equipped" gate** - it has no `isEquipped`
+  and both its checks and its defence conversion query Curios directly, so **without dice the High-Grade
+  Adrenaline 20% dodge still resolved on the event bus**, contradicting the 1.3.6 rule that without dice every
+  feature is disabled. The same omission meant the two new Adrenaline icons **would not go dark after removing
+  the dice** and that the icon predicate diverged from the gated predicate in `DiceCombatModifiers` (producing an
+  "icon lit but no bonus" state). Fixed by adding the gate to that class curio lookup, the same way every other
+  chip `isEquipped` starts.
+
 
 ### Bug Fixes
 
