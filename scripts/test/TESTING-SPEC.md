@@ -2547,3 +2547,74 @@ CF 文件按 id 独立、同名不去重不覆盖 ⇒ 后台不删就会看到�
 - 📌 两个项目处于 `status='processing'`，匿名 API 仍 404（网页与 CDN 正常）。若长时间不过审，
   需在 Modrinth 后台查看审核状态。
 - 📌 `CurseForge` 上传**仍未接入 CI**（用户尚未设定触发时机），`AGENTS.md` 中该条注明保持不变。
+
+## 附录 A 续 41. 1.3.6 —— 「史诗提示框边框残留上一个物品的颜色」根因定位与修复（2026-10-01）
+
+> 用户实报（附两张截图）：「tooltip 中史诗的原版染色框又不对了，变成了传奇染色（金色），请恢复为原版 Epic 级的颜色」，
+> 随后补充「实际上 tooltip 边框整体出现了 bug，**epic 物品会残留上次指向物品的颜色**」，并确认环境 = 整合包
+> `狐の航空学 Voxy Edition`(1.21.1)、期望颜色 = **原版 EPIC 配色 `#FF55FF`**、版本号 = **四线全改 1.3.6**。
+
+### 症状与截图取证
+
+- 截图 ①：`oritech:adamant_block`（**与本模组无关的物品**）边框 = **纯色 `#FFC24B`**（逐像素采样，边框列 x=40..43 在
+  多个 y 上恒为该值）。
+- 截图 ②：本模组 `astral_dice:ren_sign`（**史诗**）物品名已是正确的淡紫，**边框却是金色**。
+- 关键判据：**「整圈纯色」是本模组的绘制风格**（`setBorderStart(c) / setBorderEnd(c)` 同值），原版是紫蓝**渐变**、
+  TO 的调色板是**三段渐变** ⇒ 截图里那个纯色帧只可能来自本模组。
+
+### 根因链（四条独立证据）
+
+1. **色值归属**：对 `D://.minecraft//versions//狐の航空学 Voxy Edition\mods` 下 **491 个 jar 递归展开（含 JarJar 内嵌 jar）**
+   扫描 4 字节模式 `00 FF C2 4B`（int 16760395 = `#FFC24B`）：作为**提示框边框色**的命中**只有本模组内嵌的
+   `com/merlinkitsune/starenginelib/item/Rarity.class`**（另有 `ysm` 的 native dll 里一处巧合字节，与 tooltip 无关）。
+2. **原版绘制确实使用事件值**：`neoforge-21.1.235-sources.jar` 的 `GuiGraphics.java:1516` 取
+   `ClientHooks.onRenderTooltipColor(...)` 的返回值，**`:1517`** 把 `colorEvent.getBorderStart()/getBorderEnd()`
+   直接传给 `TooltipRenderUtil.renderTooltipBackground(...)` ⇒ **我们写进事件的颜色一定送达绘制**。
+3. **泄漏机制（真正源头 = Iceberg）**：`[冰山] Iceberg-1.21.1-neoforge-1.3.2`（由「进度牌匾」带入，**TO 在该包已 `.disabled`**）
+   的 `Tooltips.currentColors` 是 `public static` 可变字段；其 `TooltipRenderUtilMixin`（`iceberg.mixins.json` client 列表、
+   `required:true`）在「传入色 ≠ 原版哨兵色」时 `putstatic currentColors`，在「传入色 == 哨兵色」时**用缓存色绘制并 `cancel` 原版**。
+   `currentColors` 的 `putstatic` **只有「类初始化」与「line-handler」两处，无逐 tooltip 复位**
+   ⇒ **任何保持原版边框色的 tooltip 都会沿用上一次的自定义颜色**。
+4. **本模组此前对该症状是「受害者放大器」**：`client/RarityTooltipFrame` 对**稀有/史诗**采取「不干预边框」（早退 return）
+   ⇒ 这两档永远是「保持原版色」的 tooltip ⇒ **必然被残留污染**。
+
+### 修法
+
+- `client/RarityTooltipFrame`（1.21.1 / 1.20.1-forge / fabric 三线）守卫由
+  `tier == null || tier == Rarity.RARE || tier == Rarity.EPIC` 改为 `tier == null || tier == Rarity.RARE`
+  ⇒ **史诗改走「显式写档位色」**（`frameColor(now)` = `0xFF000000|0xFF55FF` = `0xFFFF55FF`）。
+  设计准则（已写入类头 javadoc 与 AGENTS）：**凡是我们「不写色」的档位都会成为别人缓存的受害者；只要我们自己写色，
+  该 tooltip 就一定用我们的值。**
+- 四线 `assets/astral_dice/tooltipoverhaul/custom_frames.json`：史诗帧由 TO 的 EPIC 三段渐变
+  （`#B14BE0/#7A28A8/#431463` + `borderType:"gradient"`）改为**纯色 `#FF55FF` ×3 + `borderType:"static"`**，四线同字节
+  ⇒ 装了 TO 时两条路径同色。（⚠️ 该文件只在**装了 TO** 的环境被消费；当前包 TO 已停用，它就是惰性数据。）
+- 四线 `mod_version` → `1.3.6` / `1.3.6` / `1.3.6-beta.1` / `1.3.6-alpha.1`；两份 CHANGELOG 各加 `## 1.3.6`；AGENTS 更新三处描述。
+- ⚠️ **26.1.2 不接**：该线边框是**九宫格贴图**，平台给的是 `ClientHooks#onRenderTooltipTexture` 的**贴图 ID**（非颜色）
+  ⇒ 无等价修法，按平台差异登记（已写入该线 `ModItems` 注释）。
+
+### 验证
+
+- `./gradlew build` → **BUILD SUCCESSFUL in 5m 37s**（37 tasks）；四线 `build/libs` 与 `run/<ver>/mods`、
+  四个整合包 `mods` 均为新 jar，**每处恰 1 个**本模组 jar。
+- **开包 + 反汇编取证**：三线 jar 内 `RarityTooltipFrame.class` 的守卫里 **`Rarity.EPIC` 引用数 = 0**、
+  只比较 `Rarity.RARE`（字节码 `22: ifnull / 26: getstatic Rarity.RARE / 29: if_acmpne / 32: return`）；
+  `Rarity#frameColor` = `0xFF000000 | rgb()`、`Rarity.EPIC.rgb() = 0x00FF55FF` ⇒ 边框 `0xFFFF55FF`。
+  jar 内 `custom_frames.json` 与源码**8 份 md5 全同**（`34803463352e…`）。
+- **守门**：`scripts/verify/verify_*.ps1` **8/8 exit 0** + `tools/audit_actionbar.py` + `tools/verify_party_api.py` 均 0；
+  其中 `verify_chip_recipes` 读数 `61 | 一致61 | 不一致0`（与既定判据一致）。
+- **独立子代理二次验证**（只读复算）：A–H 八节全部现场重跑；确认守卫/字节码/资源/版本三口径/CHANGELOG 一一对应、
+  无 CRCRLF、`git diff --numstat` 与 `--ignore-cr-at-eol` 逐文件一致；并**纠正了主会话两处中间结论**（见下）。
+
+### 二次验证提出的更正与残留（已回修 / 待裁决）
+
+- ✅ **已回修（措辞失真）**：主会话中间稿曾说「`#FFC24B` 恰好等于 Iceberg/LegendaryTooltips 的默认边框色」——
+  **不成立**（Iceberg `DEFAULT_COLORS` 的边框是 `0x505000FF/0x5028007F` 紫蓝）；该色只来自本模组传奇档，已在 CHANGELOG 订正。
+- ✅ **已回修（文档自相矛盾）**：AGENTS 里「第三方模组**完全忽略**事件」这句原是对 **Tooltip Overhaul** 的实测
+  （而 TO 在当前包已 `.disabled`）⇒ 已改写为「先确认启用状态」+ 新增 **Iceberg 泄漏**的独立条目。
+- ⚠️ **待裁决 1**：**稀有档仍不写色**，按同一机理同样会被残留污染（用户本次只要求改史诗）。改动量 = 守卫去掉一个条件。
+- ⚠️ **待裁决 2**：**泄漏本身未消除** —— 「其它模组的物品 / 原版物品」仍会继承上一次的自定义色（如截图 ①）。
+  这条**无法由本模组消除**（除却反射去动别家的静态字段）；选项：上报 Iceberg 上游 / 整合包侧处理 / 接受。
+- ⚠️ **待裁决 3**：`run/better-mc-bmc4-1.20.1/mods`（`1.3.2-hotfix`）与 `E://merlin-serverfile-v1.0-openbeta//mods`（`1.3.1`）
+  有陈旧 jar，**不属本轮四条交付线**，但若它们是活目标会误判「改动未生效」。
+- 📌 备查：`neoforge-1.21.1` / `forge-1.20.1` 的 `RarityTooltipFrame.java` 工作区行尾为 **LF**（项目惯例为 CRLF），
+  系**改动前既存**、非本轮引入（本轮 diff 与 `--ignore-cr-at-eol` 完全一致，无行尾噪声）；未擅自整文件转换以免制造 no-op 变更。

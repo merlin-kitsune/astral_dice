@@ -25,11 +25,11 @@
         "ASTRAL_DICE_EPIC"
       ],
       "gradientType": "custom",
-      "borderType": "gradient",
+      "borderType": "static",
       "gradientColors": [
-        "#B14BE0",
-        "#7A28A8",
-        "#431463"
+        "#FF55FF",
+        "#FF55FF",
+        "#FF55FF"
       ],
       "dividerLineColor": "match_inner_frame_color",
       "priority": 10

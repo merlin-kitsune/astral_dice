@@ -1307,11 +1307,21 @@ When extending this workspace:
     **粉紫 `#FF55FF`** = 原版 EPIC(`ChatFormatting.LIGHT_PURPLE`)= 史诗 → `ASTRAL_DICE_EPIC`;
     金 `#FFC24B` = 传奇 → `ASTRAL_DICE_LEGENDARY`;亮红 `#FF4D4D` = 巅峰 → `ASTRAL_DICE_PINNACLE`;
     **彩虹(流动)** = 奇特 → `ASTRAL_DICE_BIZARRE`(⚠️ 文字色 = 亮红,与巅峰同色 `#FF4D4D`;流动彩虹只在边框上)。
-  - ⚠️ **边框策略(2026-09-25 二次裁决:「文字与边框严格同色」的约定作废)**:
-    **稀有 / 史诗 = 完全随原版**(消费方不干预边框 —— 原版边框与稀有度无关的紫蓝渐变保留,只染物品名,
-    与原版稀有/史诗物品观感一致;用户以原版稀有物品「神秘蠕虫」截图定调:文字水蓝、边框紫蓝,两者本就不同色);
-    **传奇 / 巅峰 = 自定义单色边框**(`Rarity#frameColor(long)` = `0xFF000000|rgb()`,与物品名同色);
+  - ⚠️ **边框策略(2026-10-01 三次修订:史诗从「随原版」改为「显式写入档位色」)**:
+    **稀有 = 完全随原版**(消费方不干预边框 —— 原版边框与稀有度无关的紫蓝渐变保留,只染物品名,
+    与原版稀有物品观感一致;用户以原版稀有物品「神秘蠕虫」截图定调:文字水蓝、边框紫蓝,两者本就不同色);
+    **史诗 / 传奇 / 巅峰 = 自定义单色边框**(`Rarity#frameColor(long)` = `0xFF000000|rgb()`,与物品名同色)
+    ⇒ 史诗 = 原版 EPIC 配色 `#FF55FF`;
     **奇特 = 两色流动渐变**(`rainbowBorderStart/End` 写进边框起/止色 ⇒ 原版竖直渐变随时间流动;实现面见下方「边框的实现面」条)。
+    🚨 **史诗为什么必须「写色」而不是「不动」(2026-10-01 实测根因)**:整合包里**本模组没有写色的 tooltip 会沿用
+    上一次的边框色**(被第三方缓存后回灌)。判据三条:① 与本模组无关的 `oritech:adamant_block` 边框实测为**纯色 `#FFC24B`**
+    (= 本模组传奇档的档位色,且「整圈纯色」正是本类的绘制风格,原版是紫蓝渐变);② 全包 **491 个 jar 递归展开
+    (含 JarJar 内嵌)**扫描色值 `0x00FFC24B`,命中的类**只有本模组内嵌的 `Rarity.class`**;③ 本模组史诗物品
+    `ren_sign` 物品名已是正确的淡紫、边框却是金色。
+    ⇒ **设计准则:凡是我们「不写色」的档位都会成为别人缓存的受害者;只要我们自己写色,该 tooltip 就一定用我们的值**
+    (事件值直送原版绘制:`ClientHooks.onRenderTooltipColor` → 事件 → `renderTooltipBackground(..., event.getBorderStart(), event.getBorderEnd())`)。
+    ⚠️ **稀有档目前仍不写色**(用户 2026-10-01 明确只要求改史诗),按同一机理它同样可能被残留污染 ——
+    要一并改就删掉 `client/RarityTooltipFrame` 守卫里的 `tier == Rarity.RARE`(稀有档色 = `#55FFFF`)。
   - **奇特档当前挂载**(2026-09-25 用户裁决;⚠️ **2026-09-25 二次修正:上一批把「人偶师」误认成 `ren_sign`(实际 = 游戏大师)
     ⇒ `ren_sign` 被误改奇特、`hanna_sign` 漏改,本批纠正**):6 张**专属牌**(= `is_exclusive.json` 全表:`effect_card_living_page` /
     `effect_card_fate_guidance` / `fu_card` / `huo_card` / `attack_card_bite` / `attack_card_dragon_roar`)
@@ -1348,12 +1358,26 @@ When extending this workspace:
     (`renderFrameGradient`:上横线=start/下横线=end/左右竖线=竖直渐变)。**放弃**「沿边框顺时针环绕」的诉求
     (那需要逐像素按周长相位取色、必走 Mixin,实测三线都有 lambda 包裹/签名陷阱),改回最初的**两色流动渐变**:
     · 1.21.1/1.20.1 = `client/RarityTooltipFrame`(`@EventBusSubscriber(Dist.CLIENT)` + `RenderTooltipEvent.Color`):
-      稀有/史诗/原版/其它模组 = **return 不动**(随原版边框);传奇/巅峰 = `frameColor(now)` 单色(起=止);
-      奇特 = `rainbowBorderStart(now)` / `rainbowBorderEnd(now)` 两色 ⇒ 原版画出的竖直渐变随时间流动。
-      26.1.2 **无此事件**(贴图边框)⇒ 不接,保持原版贴图(奇特在该线无动画,已登记缺口)。
+      非本模组档位(原版/其它模组物品)+ **本模组稀有档** = **return 不动**(随原版边框);
+      **史诗 / 传奇 / 巅峰 = `frameColor(now)` 单色(起=止)**;奇特 = `rainbowBorderStart(now)` / `rainbowBorderEnd(now)` 两色
+      ⇒ 原版画出的竖直渐变随时间流动。⚠️ **史诗必须走这条,别改回「不动」**(残留根因见上方「边框策略」条)。
+      26.1.2 **无颜色事件**(边框是九宫格贴图;平台给的是 `ClientHooks#onRenderTooltipTexture` 的**贴图 ID**,不是颜色)
+      ⇒ 不接,保持原版贴图(史诗/奇特在该线无自定义边框,已登记平台差异)。
     · 色环周期 = `Rarity.RAINBOW_CYCLE_MILLIS`(3000ms);`rainbowBorderEnd` 相位 = 起始 + 1/3 圈(120°)。
-    · 🚨 **第三方 tooltip 模组会整个接管边框**(2026-09-25 实测,整合包 `狐の航空学 Voxy Edition`):它们**自己画**提示框
-      ⇒ 上面的事件被**完全忽略**,而且「自定义稀有度」会落进那家的**未知档位兜底色**。实测 Tooltip Overhaul 2.0.4:
+    · 🚨 **Iceberg(`[冰山]`,由「进度牌匾」/LegendaryTooltips 带入)会把「上一次的自定义边框色」缓存并回灌给下一个保持原版色的 tooltip**
+      (2026-10-01 字节码实证,这是「边框残留」在**当前整合包**里的真正源头):`Tooltips.currentColors` 是 `public static`
+      **可变**字段,其 `TooltipRenderUtilMixin`(在 `iceberg.mixins.json` 的 client 列表里,`required:true`)拦截
+      `TooltipRenderUtil` 的逐线绘制原语:**传入色 ≠ 原版哨兵色** ⇒ `new TooltipColors(..., 传入色, ...)` 并 `putstatic currentColors`;
+      **传入色 = 原版哨兵色**(`BACKGROUND_COLOR`/`BORDER_COLOR_TOP`/`BORDER_COLOR_BOTTOM`) ⇒ **改用缓存的 `horizontalLineColor` 绘制并 `cancel` 原版**。
+      `currentColors` 的写入点只有「类静态初始化(= `DEFAULT_COLORS`,原版紫蓝)」与「line-handler」两处,**没有任何逐 tooltip 复位**
+      ⇒ **凡是保持原版边框色的 tooltip(本模组稀有档、其它模组物品、原版物品)都会沿用上一次的自定义颜色**。
+      实测症状就是用户截图里的 `oritech:adamant_block`(与本模组无关)拿到**纯色 `#FFC24B`** = 本模组传奇档色。
+      ⚠️ **结论:只要我们自己写色,该 tooltip 就一定用我们的值;不写色的档位必然被残留污染** —— 这正是「史诗必须显式写色」的依据。
+      ⚠️ 该泄漏**无法由本模组消除**(除却反射去动别家的静态字段)⇒ 已在 CHANGELOG 登记待裁决(上报上游 / 整合包侧处理 / 稀有档一并写色)。
+    · 🚨 **另一类接管者:Tooltip Overhaul(自己画整个提示框)**(2026-09-25 实测,整合包 `狐の航空学 Voxy Edition`;
+      ⚠️ **当前该包里的 TO 已是 `.jar.disabled`,故这条现在不生效,别再据它下结论** —— 先 `ls mods | grep <modid>` 确认启用状态,
+      并用 `logs/latest.log` 的 `Reloading ResourceManager:` 长串 `mod/<modid>` 复核「本局到底加载了谁」):它**自己画**提示框
+      ⇒ 我们写进事件的颜色被**完全忽略**,而且「自定义稀有度」会落进那家的**未知档位兜底色**。实测 Tooltip Overhaul 2.0.4:
       `ColorUtils#getColorsPerRarity` 用 `==` 比原版 `COMMON/UNCOMMON/RARE/EPIC`,其余一律 `Palette.CUSTOM_RARITY`
       (= 配置 `CUSTOM_RARITY_PALETTE_COLORS` 默认 `0xFFE8B84A, 0xFFB5832A, 0xFF6B4A12`,**金→褐**)⇒
       **症状 = 「物品名按档位变色,但边框一律金色」**(自有档位越多越明显)。
@@ -1363,10 +1387,19 @@ When extending this workspace:
         `gradientType:"custom"` + 3 个 `gradientColors` 会**覆盖**兜底调色板(`getInnerOverlayColors` 先判 `gradientType == CUSTOM`),
         `priority` 高者胜(`findMatch` 先比 priority 再比 score)⇒ 本仓三线内置
         `assets/astral_dice/tooltipoverhaul/custom_frames.json`(**5 档全写**,priority 10;非 TO 环境惰性数据)。
-        ⚠️ **稀有/史诗必须写进去,且照抄 TO 画原版档的确切调色板**(2026-09-25 四次裁决:上一批「删条目=退回原版」是错的 ——
-        TO 的 `getColorsPerRarity` 用 `==` 比原版枚举,自有枚举**永远**掉金兜底;删条目 = 稀有/史诗变金框)。
-        从 TO jar 反汇编 `TooltipsConfig` 默认值取真值:RARE = `#4D9BE8/#2B66B5/#123A6B`(蓝渐变)、
-        EPIC = `#B14BE0/#7A28A8/#431463`(紫渐变),`borderType:"gradient"` 与它画原版档一致 ⇒ TO 环境下与原版稀有/史诗**同框**。
+        ⚠️ **每一档都必须写进去**(2026-09-25 四次裁决:上一批「删条目=退回原版」是错的 ——
+        TO 的 `getColorsPerRarity` 用 `==` 比原版枚举,自有枚举**永远**掉金兜底;删条目 = 该档变金框)。
+        **帧没命中 ⇒ `getInnerOverlayColors` 走 `getColorsPerRarity` ⇒ 非原版档位一律 `CUSTOM_RARITY`(金色)**
+        ⇒ **「某档位显示金色」的唯一判据就是「那条 frame 没命中」**,候选只有四个:文件没扫到 / `rarities` 字符串
+        与 `Rarity#name()` 不符 / 被更高 priority 或 matchScore 抢走 / 压根没写。
+        · RARE = `#4D9BE8/#2B66B5/#123A6B`(蓝渐变,`borderType:"gradient"`)= **照抄 TO 画原版 RARE 的确切调色板**
+          (从 TO jar 反汇编 `TooltipsConfig` 默认值取真值)⇒ TO 环境下与原版稀有档**同框**。
+        · EPIC = **纯色 `#FF55FF`**(`borderType:"static"`,2026-10-01 三次修订)= 与本模组自绘路径的史诗档一致;
+          **不再**沿用 TO 的 EPIC 渐变(`#B14BE0/#7A28A8/#431463`)—— 用户口径是「史诗 = 原版 EPIC 色」,
+          两条路径(自绘 / TO 对接)必须同色。
+        · 2.0.6 复核(2026-10-01):包名改为 `dev.xylonity.tooltipoverhaul.*`,但发现谓词(`p.getPath().endsWith("custom_frames.json")`)、
+          `rarities` 匹配、`matchScore` 权重(4/3/2/1)、`priority` 语义、`gradientType` 解析(`toUpperCase()+valueOf`,小写合法)**均未变**
+          ⇒ 本仓那份文件不需要为 2.0.6 改写;新增的是 7 个预设枚举(`COMMON…CHAOS/CUSTOM_RARITY`,可直接写 `"gradientType":"epic"`)。
       · ⚠️ 该模组**没有逐帧动画能力**(特效表 + 调色板全查过,无 rainbow)⇒ 奇特在它下面用**静态三段彩虹渐变**
         (`borderType:"gradient"`,取库 `hsvToRgb(h,0.85,1.0)` 的相位 0 / 1/3 / 2/3 = `#FF2626` / `#26FF26` / `#2626FF`);
         不装它时 = 真·两色流动渐变。传奇/巅峰 = 档位色(与文字同色,`#FFC24B` / `#FF4D4D`)。
