@@ -1,14 +1,21 @@
 # 已知问题与未来版本修补清单（KNOWN-ISSUES）
 
 > **本文件是「未修项」的唯一版本化载体**。本地 `docs/` 目录被 `.gitignore` 忽略、不随仓库分发，故凡需要跨会话/跨分支可见的未修项一律登记在此。
-> 本文件**只登记「尚未实施」的事项**；每条的最终状态必须如实反映现实，**禁止为了缩短清单而删除条目**。
+> 本文件**只登记「尚未实施」的事项**；每条的最终状态必须如实反映现实。
+> ⚠️ **未修项禁止为缩短清单而删除**；**已处理项**按 §0 第 4 条清理（移入 **§1.1 已处理索引**，正文留在 git 历史里）。
 
 ## 0. 使用纪律（必须遵守）
 
 1. **实施前必须先复核，不得直接照文档改**：本清单多数条目的定性来自 **2026-09-15 15:45 的扫描快照**，其后本批已改动过 `combat/DiceCombatModifiers`、`combat/SpellDamageRegistry`、`combat/HostileTargets` 等文件 ⇒ 「仍存在/未修」**不等于当前 HEAD 仍存在**。按 `mc-two-round-verification` 流程，先做**独立代码复核**（第一遍，验证者 ≠ 实现者），把「文档定性」与「当前 HEAD 实况」逐条对齐，再交用户定夺。
 2. **三版本同步**：所有修补一律 `neoforge-1.21.1` + `forge-1.20.1` + `neoforge-26.1.2` 同时实施，保持功能对等（项目默认规则）。
 3. **必须能被验证**：每条修补都要有可判定的判据（游戏内用例、或新增用例；`scripts/test/cases/` 与 `scripts/test/TESTING-SPEC.md`）。**不得**用「代码看起来对了」结案。
-4. **结案方式**：改为「已修复」并注明 **commit + 验证证据**（用例名/读数），**同时**在两个 `CHANGELOG` 的对应小节按「合并约定」记录；**不要**删条目。
+4. **结案方式与清理规则（2026-10-01 修订）**：条目修好后**不再留在本清单正文里**。顺序是 ——
+   ① 把结论与证据落到正确的位置：玩家可见的写两个 `CHANGELOG`；工程细节写 `scripts/test/TESTING-SPEC.md` 附录 A；
+   长期约定写 `AGENTS.md`（若涉及）。② **整块删除**该条目。③ 在 **§1.1 已处理索引**留一行（id + 一句话结论 + 证据落点），
+   并在 **变更记录**留一条日期行。
+   ⚠️ 原文「**禁止为了缩短清单而删除条目**」**仍然有效** —— 它禁止的是**删未修项**（那是掩盖问题）；**已修项**的清理
+   不属于该禁令（正文在 git 历史里可追）。
+   ⚠️ 删除前必须 `grep` 该 id 的引用：若其它**未修**条目引用了它，把引用改指 §1.1（**不得删引用**）。
 5. **行号会漂移**：本文件引用的行号取自扫描时的快照，复核时请**以引用的原文串/标识符为准**重新定位。
 
 ## 1. 登记信息
@@ -16,9 +23,44 @@
 - 登记日期：2026-09-15
 - 登记来源：B7 交付后遗漏审计（用户裁定「纪录上述问题，作为未来版本修补内容」）
 - 目标版本：**下一版本**（1.2.1 之后；是否并入 1.2.1 需用户另行裁定）
-- 条目总数：**11**（数值修饰器 7 + 未核验 1 + 更早扫描未决 3）
+- 条目总数（2026-10-01 清理后）：**23** 条未修/未决 = A 组 7（KI-1…KI-7）+ B 组 1（KI-8）+ C 组 3（KI-9…KI-11）
+  + M 组 3（KI-M2/M3/M4）+ D 组 1（KI-D1）+ E 组 2（KI-E1/E2）+ F 组 6（KI-F4/F7/F8/F20/F21/F22），
+  另有 §5 的 **2** 条「测试资产待修项」。**已处理条目见 §1.1 索引。**
 
 ---
+
+## 1.1 已处理索引（2026-10-01 首次清理）
+
+> **已修好的条目不再留在本清单的正文里**（清理规则见 §0 第 4 条）。本表只留「id + 一句话结论 + 证据落点」；
+> 条目的完整正文、机制分析与验证细节在 **git 历史**里（清理提交的前一个版本），玩家可见结论见 `CHANGELOG{,_ZH}.md`，
+> 工程细节见 `scripts/test/TESTING-SPEC.md` 附录 A。
+
+| KI | 结论（一句话） | 证据落点 |
+| --- | --- | --- |
+| KI-M1 | 旧「待命等待器」由**目标选择器**取代（已裁决，非缺陷；主线的等待器代码与三个 `*_ready` 效果已随合并移除；`SIGN_READY_*` 保留为废弃键） | 变更记录 2026-09-17；TESTING-SPEC 续 18；KI-M4② 仍跟踪这两个废弃键的去留 |
+| KI-D2 | Iceberg `Tooltips.currentColors` 的**回灌**（1.3.2 一代）⇒ 已由 `client/IcebergTooltipCacheGuard` 缓解（四线，按 Iceberg 两代架构自适应跳过） | CHANGELOG 1.3.6；TESTING-SPEC 续 42；`AGENTS.md` 边框策略条；技能 `mc-thirdparty-tooltip-frame` §4.3 |
+| KI-G1 | 看板娘立牌（mimi）筹码池**硬编码**（41 of 61）⇒ 改为**运行时从物品注册表派生**（`BaseChipItem` + `AstralRarities.tierOf` 分三档） | CHANGELOG 1.3.6；TESTING-SPEC 续 43 |
+| KI-F1 | 两个「指定药水」配方已按 `astral_dice:nbt_shaped` **严格保真**（原「放宽为任意药水」方案作废） | TESTING-SPEC 附录 A F 组相关续；`NbtShapedRecipe` |
+| KI-F2 | 跨加载器存档不互通（**平台差异、非缺陷、不修补**；饰品数据同理） | 同上；KI-F3 行 |
+| KI-F3 | 两条饰品通道共存的槽位聚合语义（**已设计处理**；`data/curios/tags/items/*.json` 是本线物品清单的**单一事实源**，勿因命名空间而删） | 同上 |
+| KI-F5 | `c:bricks` 在本线自建（补齐 Forge 47.x 无提供者） | 同上 |
+| KI-F6 | 自建总线的「登记完整性」由 `platform/event/SubscriptionAudit` 注解扫描兜底（**局限**：`dispatchReport()` 对「漏 `register`」仍是盲区） | 同上 |
+| KI-F9 | （**仅 fabric 线**）客户端订阅**内部类**漏登记 ⇒ J（立牌主动）/ H（卡牌栏）两键完全不响应（已修） | TESTING-SPEC 附录 A；KI-F6 的审计能力 |
+| KI-F10 | （**仅 fabric 线**）`MobEffectEvent.Remove` 构造器对 null 效果实例 NPE ⇒ 玩家无法进入存档（已修） | 同上 |
+| KI-F11 | （**仅 fabric 线**）`ScreenEvent.Opening` 在 `setScreen(null)` 时 NPE ⇒ 每次进世界客户端必崩（已修） | 同上 |
+| KI-F12 | fabric 测试台自身 7 个缺陷（**已修**；其中 2 个阻断级）—— 「测试流程完全不可用」的根因 | `scripts/test/fabric/README.md`；TESTING-SPEC 附录 A |
+| KI-F13 | 库按**字符串名**反射原版字段 ⇒ 生产 100% 起不来（已修：库 `1.0.5-alpha.1`；生产映射冒烟 PASS） | TESTING-SPEC 附录 A；`scripts/test/fabric/ft_prod.ps1` |
+| KI-F14 | tooltip 染色 mixin 与 Architectury 抢同一 `@ModifyConstant` 常量 ⇒ 悬停 GUI 必崩（**已修**：改 `@WrapOperation`） | TESTING-SPEC 附录 A |
+| KI-F15 | 饰品栏前置从「Trinkets 硬必需」改为「**Trinkets 或 Accessories 二选一**」（已修，用户裁决） | TESTING-SPEC 附录 A；KI-F3 |
+| KI-F16 | dev 开关 `-PtestAccessories=false` **从来无法通过编译**（已修）—— 「注释声称可用、实际从没跑过」 | 同上 |
+| KI-F17 | 玩家持久化附件**注册晚于**数据反序列化 ⇒ 每次登录静默丢键（症状＝手册重复补发）（已修） | 同上 |
+| KI-F18 | Accessories 槽位图标必须落在**原版 blocks 图集**目录 `assets/<ns>/textures/gui/slot/`（已修） | 同上 |
+| KI-F19 | 五项「玩家可见」缺陷按 dev-next 已修方案同步落地（已修） | 同上；KI-F20 是其连带项 |
+| KI-M5 | 26.1.2 接入库后的两项开放项 —— ①「库 jar 与 mod jar **成对推送**」规则**已作废**（库改为 **JarJar 内嵌**，整合包只放 `astral_dice-*.jar`；反过来**残留**独立库 jar 会被 JarJar 选择器按 `modId` 优先采用并盖掉内嵌件 ⇒ 应删）；② `effect/ReadyEffect` 本地副本已随波次 2b 删除（已关闭）。**实测四个整合包 `starengine` 残留 = 0** | 变更记录 2026-09-24；`AGENTS.md`「库的 jar 分发」 |
+| §5 的 7 行（含 `P5-equip-paths-linkage` 13 处 `✘1需改`、`NancyLuSignItem` 的 `isHostile` 过宽、P2-C1/C3/C4 与安全气囊基准、`mt_assert` 断言窗口、`LOOT-MODIFIER` 反向断言、追加 A《恋的规则书》重复补发、追加 B 死亡保留集合一致） | 全部**已闭环**（2026-09-15/16 实测；含 commit `cc49f0d` / `c0ad51f`） | 变更记录 2026-09-15 / 2026-09-16 两行 |
+
+---
+
 
 ## 2. A 组 — 数值与伤害修饰器（来源 `docs/scan2/P2-numeric-modifiers.md`）
 
@@ -122,47 +164,20 @@
 
 ---
 
-## 5. 已闭环但当日文档未回写（列此以免重复劳动）
+## 5. 测试资产待修项（原「已闭环但当日文档未回写」表 —— **仅剩这 2 条**未闭环）
 
-| 曾标记 | 现状（2026-09-15 实测） |
+> 该表原 9 行已于 2026-10-01 清理（其余 7 行均已闭环，见 **§1.1 已处理索引**）；下表是**仍未闭环**的两条
+> 「测试资产自身」缺陷（**不是产品缺陷**，故不写进 CHANGELOG）。
+
+| 曾标记 | 现状 |
 |---|---|
-| `docs/scan2/P5-equip-paths-linkage.md` 的 **13 处 `✘1需改`**（上下文可用却仍用单参 `isHostile`） | **已全部闭合**：当前代码实测 **双参 27 处 / 单参 5 处**；5 处分别为重载定义（`HostileTargets.java:39`）、javadoc（`:31`）、内部委托（`:55`）、`isBlessingTarget`（P5 自标 `—1`，有意）、`PandamanSignItem`（文档化的「嘲讽不施予玩家」） |
-| `NancyLuSignItem` 的 `isHostile(target) \|\| target instanceof Player`（P5 #23/#24 ⚠️ 过宽） | **已替换为两参判定**（源码注释明写「旧写法会把队友与无关玩家也当作可攻击目标」，1.21.1 `:273-274` / `:286-287`，1.20.1 同构） |
-| P2-C1 / P2-C3 / P2-C4 / 安全气囊致命判定基准 | 文档自标「已修」 |
-| `mt_assert` 断言窗口「自 launch 起」 | **已改为自本用例起**（commit `cc49f0d`；`assert.scope` = `case`/`launch`/`whole`） |
-| `LOOT-MODIFIER` 反向断言丢启动期覆盖 | **已修**（补 `scope: whole`，commit `c0ad51f`，实测读数 `@0B(win=whole)`） |
-| **追加 A**：《恋的规则书》「仅首次进入世界发放一次」被违反 —— 死亡重生后再登录会**补发**一本 | **已闭环（2026-09-16 实测）**：守卫附件 `guide_book_given` 原先不随死亡复制 ⇒ 死亡后新实体回默认 `false`，而发放挂在 `PlayerLoggedInEvent` ⇒ 重登必补发。修补 = 把该键纳入**死亡保留集合**（1.21.1 `component/ModAttachments.java` 的 `GUIDE_BOOK_GIVEN` 加 `.copyOnDeath()`；1.20.1 `component/AstralData.java#onPlayerClone` 死亡白名单加同键），两侧键集合保持三个（`rin_pages` / `komachi_damage_bonus` / `guide_book_given`）。用例 `GUIDE-BOOK-FIRST-JOIN-ONLY-{1.21.1,1.20.1}` 必须**跑两次**（首登 + 不跑 env 的重登）：1.21.1 两轮均 **7/7 PASS**（重登读数 `AP_G1_GUIDE:given=1:count=1`，2026-09-16 00:47，耗时 29 s）；**1.20.1 两轮同样 7/7 PASS**（首登 + 不跑 env 的重登，2026-09-16 00:52 前后，读数同为 `AP_G1_GUIDE:given=1:count=1` / `AP_G3_GUIDE:given=1:count=1`）⇒ **双版本均严格遵循「仅第一次进入世界发放一次」** |
 | **追加 D**：`SPELL-TRUE-DAMAGE` 的**护甲读取在 1.21.1 上失效、且用例断言过弱**（测试资产缺陷） | **已登记，待修**（2026-09-16 实测）：同一用例两边都判 PASS，但取证读数质量天差地别 —— 1.20.1 读到 `AP_SD_ARMOR_CTRL:armor=rc=1:tough=rc=1:read=rc=2` 与 `AP_SD_ARMOR_EFFECTIVE:ctrl_arm=armor=20:tough=8:test_arm=armor=20:tough=8`（真实护甲 20 / 韧性 8），**1.21.1 读到 `rc=undefined`、四组全为 `armor=0:tough=0`**（护甲属性根本没读上）。因该用例的断言**只匹配键名前缀**（`AP_SD_ARMOR_EFFECTIVE:`），1.21.1 侧「基础伤害吃护甲」这一条实际是**空证据**仍判 PASS。修法：① 探针在 1.21.1 侧改用能读到护甲/韧性的属性入口；② 断言加严为「必须读到 armor=20:tough=8 之类非零值」，读不到即 `ERROR`（**禁止**为变绿而放宽） |
-| **追加 B**：双版本「死亡保留集合」是否一致 | **一致**（两侧均为 `rin_pages` / `komachi_damage_bonus` / `guide_book_given`；`AGENTS.md` 与代码逐条对应），不属差异项 |
-| **追加 C**：新用例 `ELECTRIC-GLOVE-AOE-BASE` 的**探针取数缺陷**（测试资产缺陷，**不是产品缺陷**） | **已登记，待修**（2026-09-16 实测）：首次执行即 FAIL，取证读数 `AP_GB_ERR:base_source:no_read:calls=0` + `AP_GB_GA:base=-1:raw=8:self=2.24:nbr=2.24:armor=20:rarmor=0:mode=forced_survival:armed=1:bsrc=no_read`。**判据**：`self == nbr == 2.24` —— 真正重要的**对等不变量成立**；失败的是「读 `base`」那一路（`bsrc=no_read`，注册进生产修饰器表的探针读取器**一次都没被调用**）⇒ 断言 7/8/9 因 `base=-1` 不匹配而 FAIL，断言 12（absent）又抓到探针自己吐出的 `AP_GB_ERR`。**结论**：该用例当前**不可用**，在任何版本上都会 FAIL；KI-5 的**游戏内**数值验证因此**尚未完成**（代码级证据见本文件 KI-5 段：事件映射 + jar 内 class 常量池 `LivingHurtEvent=0 / LivingDamageEvent=4`）。修法方向（择一，需先复现 `calls=0` 的原因）：① 让探针改从**已确定会被调用**的路径取 `ctx.event` 的值；② 或改判据为「同一版本内 `self == nbr` 且跨版本同值」这类不依赖生产修饰器被调用的对照。**禁止**为了让它变绿而放宽断言 |
-
-
----
+| **追加 C**：新用例 `ELECTRIC-GLOVE-AOE-BASE` 的**探针取数缺陷**（测试资产缺陷，**不是产品缺陷**） | **已登记，待修**（2026-09-16 实测）：首次执行即 FAIL，取证读数 `AP_GB_ERR:base_source:no_read:calls=0` + `AP_GB_GA:base=-1:raw=8:self=2.24:nbr=2.24:armor=20:rarmor=0:mode=forced_survival:armed=1:bsrc=no_read`。**判据**：`self == nbr == 2.24` —— 真正重要的**对等不变量成立**；失败的是「读 `base`」那一路（`bsrc=no_read`，注册进生产修饰器表的探针读取器**一次都没被调用**）⇒ 断言 7/8/9 因 `base=-1` 不匹配而 FAIL，断言 12（absent）又抓到探针自己吐出的 `AP_GB_ERR`。**结论**：该用例当前**不可用**，在任何版本上都会 FAIL；KI-5 的**游戏内**数值验证因此**尚未完成**（代码级证据见本文件 KI-5 段）。修法方向（择一，需先复现 `calls=0` 的原因）：① 让探针改从**已确定会被调用**的路径取 `ctx.event` 的值；② 或改判据为「同一版本内 `self == nbr` 且跨版本同值」这类不依赖生产修饰器被调用的对照。**禁止**为了让它变绿而放宽断言 |
 
 ## 6. 主线 → multi-dev-next 合并（2026-09-17）的并入裁决与遗留项
 
 > 本节记录 `multi-1.20.1-1.21.1`（`8f68482`）→ `multi-dev-next` 的合并中，两套「立牌主动技能释放模型」的
 > 取舍与遗留项。合并提交（merge commit）的提交信息里有同一份结论（本节为可版本化载体）。
-
-### KI-M1 ＝ 旧「待命等待器」由目标选择器取代（已裁决，非缺陷）
-
-- **dev-next 侧（采用）**：`target/TargetSelectionManager` + `TargetSelectionAction` /
-  `TargetSelectionRegistry` / `TargetType` —— 按下主动键即进入**目标选择会话**，确认目标后**即时释放**；
-  取消/超时不消耗冷却。
-- **主线侧（未采用，已随合并移除）**：基于 `sign_ready_type` / `sign_ready_expire` 的「待命等待器」+
-  `BaseSignItem.isSkillWaiting` / `tickSignReadyTimeout` + 三个立牌的 `*_ready` 提示效果
-  （`haiqing_ready` / `bonnie_ready` / `moses_ready`）—— 按下主动键进入待命，**等下一次攻击命中**才释放。
-- 取舍理由：两者是同一功能的两种实现，**不能并存**（否则同一按键存在两条释放路径）；dev-next 的选择器
-  已是三线共享库的一部分，且 2.0.0 的界面、文案与服务端校验都按它书写。故合并方向 = **选择器胜出**，
-  主线的等待器代码与其专属效果一并移除；`SIGN_READY_TYPE` / `SIGN_READY_EXPIRE` 附件保留为**废弃键**
-  （已无任何写入方）。⚠️ 原「待库侧过渡符号清理任务一并删除」的预期已被实测**更正**：这两个键定义在
-  **消费方**（三线各自的 `component/ModAttachments`），且三线仍有 22 处引用 ⇒ 去留见 **KI-M4②**，
-  **不得静默删除**。
-- **对脚本侧读数的影响（重要）**：自动化用例的 `astraldice_ts_*` 读数**只反映选择器会话**
-  （`TargetSelectionManager` 的状态），`sign_ready_type` / `sign_ready_expire` 恒为 `0` / `0`；
-  任何断言「按主动键后 `sign_ready_type > 0`」「等待窗口 30 秒内不进入冷却」的旧用例**必然失效**，
-  必须改写为选择器语义（进会话 → 选目标 → 确认；取消/超时不计冷却）。
-  `/astralparty dump` 仍会回显这两行（占位 0）以及 `is_sign_active_locked`，便于对照取证。
 
 ### KI-M2 ＝ 三态化（锁定-生效中）与选择器**共存**（已裁决）
 
@@ -210,7 +225,7 @@
      `EVENT_APPLY_MC_TEAM` / `EVENT_APPLY_FTB_TEAM` / `EVENT_APPLY_OPAC` 与
      `EventTargetCollector.collectTeamPlayers`（清单原件见 `temp/sink-manifest-20260917.md` §6）。
 
-### KI-M4 ＝ 待用户裁决 / 待办的两项开放项（2026-09-17 登记）
+### KI-M4 ＝ 待用户裁决 / 待办的开放项（2026-09-17 登记；**原 2 项，第 1 项已于 2026-09-24 闭环**，仅剩下面第 2 项）
 
 1. **库仓库未 push ⇒ CI 的前置库 checkout 在推送前必然失败。** 消费方 `.github/workflows/build.yml`
    已把检出 ref 钉到 `d5b077692058ebca752e9ef68ef18ffcc18e5fa2`（= `1.0.0-SNAPSHOT.5` 终态，改动提交
@@ -223,38 +238,13 @@
    `1.0.3` 并发布三平台 jar 的 Release；消费方 CI（库检出 `ref: e407844`）同日跑绿 ⇒ 上述两条「待办」路径均不再需要。
    ⚠️ 本条正文里的 `d5b0776` / `1.0.0-SNAPSHOT.5` / `ce583a9` 均为 2026-09-17 登记时的快照，现仅作历史记录。
 2. **消费方 `SIGN_READY_TYPE` / `SIGN_READY_EXPIRE` 废弃键的去留（待裁决，不得静默删除）。**
-   这两个附件键是旧「待命等待器」的载体（见 KI-M1），等待器已在合并中由目标选择器取代、**无任何写入方**，
+   这两个附件键是旧「待命等待器」的载体（见 §1.1 索引中的 KI-M1），等待器已在合并中由目标选择器取代、**无任何写入方**，
    但**三线仍在引用**：实测 `git grep -E 'SIGN_READY_TYPE|SIGN_READY_EXPIRE' -- '*.java'` 命中 **22 处**，
    全部落在三条线各自的 `component/ModAttachments`（键定义 + `get/set` 包装器；`1.20.1` 8 处 /
    `1.21.1` 8 处 / `26.1.2` 6 处，其中 1.20.1 还有 `SYNCED_KEYS` 登记，属同步协议面）。
    **候选**：(a) 三线同步删除（注意 1.20.1 的同步协议面与老存档里的废弃键残留）；
    (b) 保留为「废弃但可用」的占位键（**现状**），仅在注释里标注废弃；
    (c) 其它（如仅在下一大版本随存档迁移一起清）。**裁决前维持现状（b）。**
-
-### KI-M5 ＝ 26.1.2 接入 starengine_lib 后的两项开放项（2026-09-17 登记）
-
-1. **三个整合包目录目前都没有 `starengine_lib-*.jar` ⇒ 迁移后把 26.1.2 产物推入整合包会被 FML 拒绝启动。**
-   26.1.2 自 2026-09-17 起接入前置库，其 `neoforge.mods.toml` 已声明 `starengine_lib` 为 `required`
-   （`versionRange="[1.0.0-SNAPSHOT.5,2.0)"`）；实测 `D:/.minecraft/versions/26.1.2 模组测试/mods`、
-   `狐の航空学 Voxy Edition/mods`（1.21.1）、`1.20.1 模组测试/mods` **三个目录都没有库 jar**，
-   而 1.21.1 / 1.20.1 两条*已接入库*的线的整合包同样缺库 jar（属既有缺口，非本次迁移引入）。
-   **待裁决**：(a) 推整合包时成对放入 `starengine_lib-<平台>-1.0.0-SNAPSHOT.5.jar`；
-   (b) 暂不推该线产物（现状）。推送守卫未改动：`multi-dev-next` 上 `pushToGame` 仍为 skipped，
-   仅 `-PdeployToPack` 可强推；`pushToGame` 已按另两线同形补**纯防御**的「库 jar 成对自检」（只告警，不阻断）。
-   **限域（2026-09-17 用户裁决补记）**：本风险**在 `multi-dev-next` 上不会触发** —— 用户裁决「该分支内所有内容均不推送整合包（严格），只推送到游戏测试目录。除非用户另行规定。」该分支上 `pushToGame` 在**执行期**即因分支不在白名单而 `skipped`（实测三线均为 skipped；本次未跑 Gradle，证据引自 t12 报告 §5 与 `temp/merge-t2/t12-verify-build-*.log`），整合包目录不会被写入、旧 jar 也不会被删。
-   只有当**发布线 `multi-1.20.1-1.21.1`**（或用户显式 `-PdeployToPack` 强推）真正推送整合包时，才必须把**库 jar 与本模组 jar 成对推送** —— 即 `starengine_lib-<平台>-1.0.0-SNAPSHOT.5.jar` 与 `astral_dice-*.jar` 同批放入同一个 `mods` 目录，否则 FML 在依赖排序阶段以「缺必需前置」拒绝启动。2. **【2026-09-19 已关闭】`effect/ReadyEffect` 是本线唯一保留的本地重复类（库内已按 KI-M3 删除）** —— 波次 2b（立牌主动前置门控收口移植）已把该线的立牌主动收口到发布线形态，本副本与三处注册**已实际删除**（见下方保留理由段的关闭说明）。
-   保留理由：本线的旧「待命等待器」仍在用（`ModEffects` 的三处注册 `haiqing_ready`/`bonnie_ready`/`moses_ready`），
-   而库 `.5` 已删除该符号 —— 若改为库引用会引用库中不存在的类，若删本地副本则三处注册编译失败。
-   **禁止**为它复活库中已删符号、**禁止** bump 库版本、**禁止**改 CI 的库检出 ref（均属用户已明确暂缓事项）。
-   **已于 2026-09-19 执行（本条关闭）**：26.1.2 的立牌主动已随波次 2b 迁到目标选择器（`BaseSignItem.handleUse` 由 `abstract` 改为发布线同款「默认实现 + WARN」、删 `isSkillWaiting`/`tickSignReadyTimeout`），`effect/ReadyEffect.java` 与 `ModEffects` 的 `haiqing_ready`/`bonnie_ready`/`moses_ready` 三处注册随另两线一并删除（该线效果注册数 **33→32**，与两个发布线 id 集合逐项一致），并一并删掉该线多出的 3 个 `effect.astral_dice.*_ready` lang 键与 3 张 `mob_effect/*_ready.png`（lang 686→683、贴图 35→32）。上面那四条「禁止」中只有后三条仍适用（属库侧政策：不为库复活已删符号、不 bump 库版本、不改 CI 检出 ref）；「禁止删本地副本」一条随本副本删除而失效。
-**⚠️ 2026-09-24 更新：本条①（「库 jar 与 mod jar 必须成对推送」）的前提已消失，该规则作废。**
-消费方已把前置库改为 **JarJar 内嵌**（`48976cb1`，三线 `build.gradle`；`pushToGame` 末尾留「整合包内不应
-存在独立库 jar」的自检告警），且**库侧 `pushToPack` 已整体移除**（库仓同批提交）⇒
-① **整合包 `mods` 里只应放 `astral_dice-*.jar`**，库由它内嵌携带，不再需要「成对推送」；
-② 方向反过来才是风险：整合包里若**残留**独立库 jar，会被 FML 的 JarInJar 选择器按 `modId` 优先采用并
-盖掉内嵌副本（独立件更旧时 ⇒ `NoSuchMethodError` / `NoClassDefFoundError`）⇒ **残留件应删除**。
-实测 2026-09-24：`1.20.1 模组测试/mods` 与 `26.1.2 模组测试/mods` **仍各有一个**
-`starengine_lib-*-1.0.3.jar`（1.21.1 的 `狐の航空学 Voxy Edition/mods` 已无），属待清理残留（未代删）。
 
 ## 7. D 组 — 平台 / 第三方冲突（2026-09-18 起）
 
@@ -316,66 +306,6 @@ GlCommandEncoder.trySetup(:531) ← GlCommandEncoder.executeDraw(:406) ← GlRen
   - **已回答（2026-09-19）**：见上方「机制（源码级确认）」段 —— 根因不是「Iris 跳过重绑」，而是 **Iris 用顶点格式推出 overlay 需求（`Sampler1`）并替换了 program，而通道侧仍只按原版 `RenderSetup.useOverlay` 绑 sampler**。已观测到的直接线索 `temp/t48/A-if-on/debug.log:1712` = `mixins.iris.json:MixinShaderManager_Overrides from mod iris->@Inject::redirectIrisProgram(…RenderPipeline;…)` 正是该替换点。
 - **ImmediatelyFast（已由 A/B 实测排除，降级为附录）**：<https://github.com/RaphiMC/ImmediatelyFast> —— 克隆点 `F:\MCProject\temp_immediatelyfast\26.1`，已按版本钉到 **tag `v1.15.3` / commit `c010c5d5`**（对应现场 `ImmediatelyFast-NeoForge-1.15.3+26.1.jar`，312 276 B）。其既有分析**不得**作为崩溃成因引用；只在「为何 A 组栈里多一层 `BatchableBufferSource` 帧」这类旁证语境下使用（IF 自身确有两个 `GlCommandEncoder` mixin：`immediatelyfast-common.mixins.json:avoid_redundant_framebuffer_switching.MixinGlCommandEncoder`、`fix_slow_buffer_upload_on_apple_gpu.MixinGlCommandEncoder` —— 但 B 组证明没有它们**照样崩**）。
 
-### KI-D2 ＝ Iceberg 的 tooltip 颜色缓存**回灌**（1.3.2 那一代）⇒ 保持原版边框色的提示框会**沿用上一个物品的颜色**（**已缓解，2026-10-01**）
-
-**现象**（2026-10-01 用户实报 + 两张截图）：① 与本模组无关的物品 `oritech:adamant_block` 的提示框边框是**纯色 `#FFC24B`**；② 本模组**史诗**物品 `astral_dice:ren_sign` 的物品名已是正确的淡紫、边框却是金色。用户原话：「实际上 tooltip 边框整体出现了 bug，**epic 物品会残留上次指向物品的颜色**」。
-
-**归因链（三条独立证据）**：
-1. **色值归属**：截图逐像素采样，边框列 `x=40..43` 在多个 y 上恒为 `#FFC24B`；对报障包 `狐の航空学 Voxy Edition/mods` 下 **491 个 jar 递归展开（含 JarJar 内嵌）**扫描 4 字节 `00 FF C2 4B`（int 16760395），作为提示框边框色的命中**只有本模组内嵌的 `com/merlinkitsune/starenginelib/item/Rarity.class`**（另一处是 ysm 的 native dll 里的巧合字节）。⇒ 这个颜色只可能来自本模组 ⇒ **泄漏方向 = 本模组的颜色漏给了别人**。
-2. **原版确实使用事件值**：`neoforge-21.1.235-sources.jar` 的 `GuiGraphics.java:1516` 取 `ClientHooks.onRenderTooltipColor` 的返回值，`:1517` 把 `getBorderStart()/getBorderEnd()` 直送 `TooltipRenderUtil.renderTooltipBackground` ⇒ 写进事件的颜色一定送达绘制（排除「写了不生效」这条路）。
-3. **回灌源 = Iceberg**：报障那一刻（当日 13:0x）该包里的 `tooltipoverhaul-neoforge-1.21.1-2.0.6.jar` **是 `.jar.disabled`**、日志的资源重载清单里也没有它；真正接管边框的是 `[冰山] Iceberg-1.21.1-neoforge-1.3.2`（由「进度牌匾」带入，**不需要装 LegendaryTooltips**）。
-   ⚠️ **该状态会被玩家改回**（当天 15:02 的日志里 TO 又被加载了；`mods/` 下已是普通 `.jar`）⇒ 任何以「TO 已停用」为前提的结论都必须**带时间点**陈述；本缓解对 TO 开/关**都无害**（TO 若接管，它自己画整个提示框，Iceberg 的绘制原语不会被执行，复位退化为 no-op）。
-
-**机制（`javap -p -c` 逐条实证）—— ⚠️ 两代架构不同，本节先说报障包那一代（1.3.2）**：
-```
-// com/anthonyhilyard/iceberg/util/Tooltips（1.3.2，javap -p 实证）
-public static Tooltips$TooltipColors currentColors;         // 可变静态、全进程唯一
-public static final Tooltips$TooltipColors DEFAULT_COLORS;  // = (0xF0100010, 0xF0100010, 0x505000FF, 0x5028007F)，即原版四色
-static { currentColors = DEFAULT_COLORS; }                  // 此后**再无任何逐 tooltip 复位**
-// com/anthonyhilyard/iceberg/mixin/TooltipRenderUtilMixin（iceberg.mixins.json 的 client 列表、required:true）
-//   传入色 != 原版哨兵色（BACKGROUND_COLOR / BORDER_COLOR_TOP / BORDER_COLOR_BOTTOM）
-//       ⇒ currentColors = new TooltipColors(..., 传入色, ...)        // 缓存
-//   传入色 == 原版哨兵色
-//       ⇒ 用 currentColors 里的颜色绘制，并 CallbackInfo.cancel()      // 回灌
-```
-在 1.3.2 上，`currentColors` 的**写点只有绘制原语**（全包扫描：引用该字段的类只有 `Tooltips`、`Tooltips$TooltipColors` 与两个平台的 `TooltipRenderUtilMixin`；`mixin/GuiGraphicsMixin#preRenderTooltipInternal` 只碰 `currentRenderContext` / `anyTooltipsVisible`，**不碰颜色**）⇒ **只要上一次有人写过自定义色，之后所有「保持原版色」的 tooltip 都会继承它**。
-
-**⚠️ 但 1.4.1.1（26.1.2 包）已经是另一代实现（独立复验时实测，2026-10-01）**：
-```
-// com/anthonyhilyard/iceberg/neoforge/mixin/GuiGraphicsMixin#preRenderTooltipForge
-//   （签名 = GuiGraphicsExtractor#tooltip(Font, List, int, int, ClientTooltipPositioner, Identifier, ItemStack)）
-//   §229 命中 RenderTooltipEvents.ColorExt ⇒ currentColors = 别家给的四色 + gradientBackground/gradientBorder = 结果值
-//   §251/§254 未命中（或 §317 异常路径）   ⇒ currentColors = DEFAULT_COLORS + 两个标志 = false
-// ⇒ 它自己**在每个 tooltip 开头就把缓存写掉**，回灌链路在该版本上已经不存在
-// ⇒ 且该版本的 DEFAULT_COLORS = TextColor.fromRgb(-1) ×4 = **纯白**（不是原版四色）
-```
-⇒ **结论：本缺陷只确认存在于 1.3.2 那一代；26.1.2 的 1.4.1.1 已自行修复。**
-若本模组在那一代上「照旧硬复位」，反而会把 Iceberg 刚设好的颜色（例如 LegendaryTooltips 经 `ColorExt` 给的）
-抹成白色 ⇒ **会引入新缺陷**，因此缓解必须**按代自适应**（见下）。
-
-**为什么本模组在这条缺陷上是「放大器」**：本模组此前对**稀有/史诗**采取「不干预边框」（早退 `return`）⇒ 这两档永远是「保持原版色」的那一类 ⇒ 必然被污染（史诗档已在 1.3.6 改为显式写色，见 CHANGELOG）。
-
-**✅ 缓解措施（2026-10-01，四线各一份 `client/IcebergTooltipCacheGuard`，并按代自适应）**：在**每次 tooltip 渲染的最开头**把 `Tooltips.currentColors` 反射写回 `Tooltips.DEFAULT_COLORS`（两个字段都是 `public`，无需 `setAccessible`）。
-- **按代自适应（关键）**：探测 `Tooltips` 上是否存在 1.4.1.1 引入的两个 `public static boolean` 标志 `gradientBackground` / `gradientBorder`：
-  - **字段不存在**（＝1.3.2 一代）⇒ **每次都复位**（该代 `DEFAULT_COLORS` 恰好就是原版四色，复位＝回到原版边框）；
-  - **字段存在且任一为 true** ⇒ 该 tooltip 的颜色由 Iceberg 自己按 `ColorExt` 设置 ⇒ **跳过本次复位**，绝不覆盖别家；
-  - **字段存在且都为 false** ⇒ Iceberg 已自行把缓存写回它自己的默认值 ⇒ 本模组再写一次是**等值 no-op**。
-  ⇒ 在**两代架构上都不改变别家既有行为**，只在「没人管颜色」的那一代修掉残留。
-- **落点**：neo-1.21.1 / forge-1.20.1 / neo-26.1.2 = `RenderTooltipEvent.Pre`（`GuiGraphics#renderTooltipInternal` 的**第一条语句**，1.21.1 源码 `:1495`；26.1.2 落在 `GuiGraphicsExtractor#tooltip` `:1148` —— ⚠️ Iceberg 1.4.1.1 的方法头注入在它**之前**，这正是必须做「被管理态跳过」的原因）；fabric-1.20.1 **没有该事件的派发源** ⇒ 在 `mixin/bridge/ClientTooltipBridgeMixin` 的 `renderTooltipInternal` `HEAD` 里**先复位、再派发 `Color`**。
-- **语义**：主动设色的 tooltip 行为**完全不变**（复位发生在设色之前，颜色仍在自己的绘制过程中被缓存并立即生效）；**没设色**的 tooltip 画出真正的原版边框 ⇒ **其它模组的物品、原版物品一并修好**（这是本模组**唯一**能消除该泄漏的手段）。
-- **边界**：不硬依赖 Iceberg（目标类按字符串名探测、缺席走 debug 级、不给多数玩家制造噪音）；**只写 `currentColors` 一个字段**，Iceberg 的两个标志**只读不写**；任何失败都**永久停用**该缓解并只打一条 warn，**绝不抛出**（渲染线程抛异常 = 崩客户端）；逃生口 `-Dastral_dice.icebergTooltipGuard=false`。
-- ⚠️ **复位点必须在「同一次 tooltip 渲染之前」**，不可改到帧末：缓存的写入发生在绘制过程中，帧末复位会让同一次绘制的后半段读到已复位的值。
-
-**验证**：`./gradlew compileJava` / `./gradlew build` BUILD SUCCESSFUL（四线）；开包反汇编确认四个 jar 内都有 `client/IcebergTooltipCacheGuard`、常量池含点号形式的 `com.anthonyhilyard.iceberg.util.Tooltips`；四线构建 / 守门 / 独立子代理复验见 `scripts/test/TESTING-SPEC.md` **附录 A 续 42**。
-
-**🔍 独立复验提出的反例与回修（2026-10-01，三条已修 + 一条被判定为复验方失真）**：
-1. ✅ 初稿称「报障包里的 TO 仍是 `.jar.disabled`」⇒ 复核发现**当天 15:02 的日志里 TO 已被重新加载**（`mods/` 下为普通 `.jar`，日志 5 处命中）⇒ 已改为**带时间点**的表述，并补上「缓解对 TO 开/关都无害」。
-2. ✅ 初稿称 `DEFAULT_COLORS` ＝原版四色 ⇒ 只对 **1.3.2** 成立，**1.4.1.1 是纯白**（`TextColor.fromRgb(-1) ×4`）⇒ 已限定版本范围。
-3. ✅ 初稿称 Iceberg「从不复位 `currentColors`」⇒ 只对 **1.3.2** 成立；**1.4.1.1 的 `preRenderTooltipForge` 自己就写**（§229 / §251·254 / §317）⇒ **实现随之加固**（新增「被管理态跳过」判别），否则会在 26.1.2 上抹掉 LegendaryTooltips 的颜色 = 引入新缺陷。
-4. ⚠️ 复验方还提出「`TESTING-SPEC.md` 声称把附录追加到 **2618** 行」⇒ **不成立**：本仓任何文档都没有该断言（`grep -rn 2618` 为空，实测行数 2618 → 2700），属复验方的转述失真，**未据此改动**。
-
-**遗留（不在本模组可控范围）**：① 缓解是「每个 tooltip 前复位」的**打补丁**，不是上游修复 —— 建议同时上报 Iceberg 上游（1.3.2 一代的 `currentColors` 本应在每次 tooltip 结束时复位；1.4.1.1 已自查）；② 若某模组**故意**依赖该缓存跨 tooltip 持久（本仓未观测到此类），本缓解会改变其表现，此时用逃生口关闭即可。
-
 ## 8. E 组 — 测试工具链与探针口径（2026-09-19 起）
 
 ### KI-E1 ＝ `AP_NOAI` 心跳/闸门读数恒为 `mobs=0`（**假阴性 ⇒ 进入世界那道「禁用生物 AI」闸门形同空洞**）
@@ -416,70 +346,6 @@ static { currentColors = DEFAULT_COLORS; }                  // 此后**再无任
 > 规则边界见 `AGENTS.md`「多版本子项目矩阵」的第四条线说明。
 > ⚠️ 下列 KI-F* **只适用于 fabric 线**；不要把它们当成三条生产线的缺陷，反向亦然。
 
-### KI-F1 ＝ 两个「指定药水」配方（**已按 `astral_dice:nbt_shaped` 严格保真；原「放宽为任意药水」方案作废**）
-
-- **背景**：`adrenaline_low_chip`（肾上腺素·低）与 `friendship_badge_chip`（心意相连徽章）两个配方，
-  在 Forge 版要求**指定药水**（再生 / 治疗）。2026-09-29 移植初期因「1.20.1 原版没有 `IngredientType`」
-  而一度放宽为「任意药水」（`"Z": {"item": "minecraft:potion"}`）—— 该放宽**已作废**，同日晚改为严格保真。
-- **原版为什么做不到（实证，非推测）**：原版 `Ingredient` 是 `final class`、构造器 `private`、
-  内部 `Value` 接口**包私有** —— 三个方向都封死（javap 实证）；且其 `test(ItemStack)` 的字节码
-  **只调 `ItemStack.is(Item)`**，连 `getItems()` 里的 NBT 都不比较。
-  ⇒ 无法在原版 `Ingredient` 层表达「指定药水」（Forge 是靠 patch 原版类塞进 `forge:nbt` /
-  `forge:partial_nbt` 分支，Fabric 侧没有等价补丁）。1.20.1 亦**没有** `IngredientType`
-  （`unzip -l` 原版 jar 只有 `Ingredient$Value/$ItemValue/$TagValue`）。
-- **本线的实现（不依赖任何第三方模组）**：
-  1. 自建序列化器 `astral_dice:nbt_shaped`（`crafting/AstralRecipeSerializers`）—— JSON 与网络
-     **都委托原版 `ShapedRecipe.Serializer`**（`fromJson` / `toNetwork` / `fromNetwork`），
-     只额外读写一个 `astral_nbt` 字段 ⇒ 不随版本补丁产生格式漂移；
-  2. `crafting/NbtShapedRecipe extends ShapedRecipe`，覆写 `matches(CraftingContainer, Level)`：
-     先 `super.matches` 过形状与种类级，再按**原版同一套 offset / 镜像枚举**复算一遍并附加 NBT 校验；
-  3. `crafting/StackConstraint` 承载单格约束：严格模式 = `ItemStack.isSameItemSameTags`
-     （等价于 NeoForge `DataComponentIngredient.of(true, …)` 内部的 `isSameItemSameComponents`）；
-     子集模式 = `NbtUtils.compareNbt(expected, actual, true)`（对齐 Forge 的 `PartialNBTIngredient`，
-     **当前无配方使用**，保留以备回归对照）。
-- **与另两条线的语义对齐（2026-09-29 以 1.21.1 为基准校正）**：
-
-  | 线 | 肾上腺素·低 的实现 | 状态 |
-  |---|---|---|
-  | `neoforge-1.21.1` | `DataComponentIngredient.of(true, …)`（strict） | **基准** |
-  | `neoforge-26.1.2` | `DataComponentIngredient.of(true, …)`（strict） | 与基准一致 |
-  | `fabric-1.20.1` | 原「放宽为任意药水」 | **已改为 `astral_nbt` + `strict=true`**（本条目落地） |
-  | `forge-1.20.1` | `PartialNBTIngredient`（NBT **子集**） | ⚠️ **保持原样** |
-
-  ⚠️ **这是一条有意保留的三线差异**（2026-09-29 用户裁决：**本分支只修改 fabric 端**）：
-  `forge-1.20.1` 的「肾上腺素·低」仍是 NBT **子集**语义（带额外 NBT 的再生药水也能用），
-  与另三线不同；该线的 `potionTag(...)` 辅助方法**保留**。**不是遗漏**，勿在 fabric 分支顺手改它。
-- **取证**：原版类清单与 `test` 字节码 = `javap -p -c <fabric-loom 的 minecraft-merged jar> net.minecraft.world.item.crafting.Ingredient`；
-  生成结果 = `fabric-1.20.1/src/generated/resources/data/astral_dice/recipes/adrenaline_low_chip.json`
-  与 `friendship_badge_chip.json` 的 `astral_nbt` 字段；加载期取证 = 起一次 fabric 服务端，
-  日志内 `Parsing error loading recipe` 与「未知 recipe serializer」均为 **0 次**（实测）。
-- **残留（已知并登记）**：客户端配方查看器（JEI 等）显示的仍是基础 ingredient（`minecraft:potion`），
-  不体现 NBT 条件 —— 这是原版 `Ingredient` 不可扩展导致的**显示层**措辞差异；服务端匹配与
-  客户端配方书 ghost 预览**都按约束执行**（约束随 `toNetwork` 同步到客户端），非功能缺口。
-
-### KI-F2 ＝ 跨加载器存档不互通（**平台差异，非缺陷，不修补**）
-
-- 本线的持久化由 **Fabric API 附件**（`fabric-data-attachment-api-v1`，随 fabric-api 分发）承载；
-  Forge / NeoForge 侧为 Capability + `ForgeData` 段 / 数据组件。落盘位置与结构不同
-  ⇒ **存档不能跨加载器迁移**。
-- 饰品数据同理：本线用 **Trinkets 或 Accessories（二选一，见 KI-F15）**，另三线用 **Curios**。
-- 写安装说明与迁移指引时必须如实说明「换加载器 = 换存档」。
-
-### KI-F3 ＝ 两条饰品通道共存时的槽位聚合语义（**已设计处理，登记以免日后误改**）
-
-- 本线的 `data/curios/tags/items/{dice,stand,chip}.json` **不是** Curios 的运行时数据
-  （本线没有 Curios）——它是「物品清单的单一事实源」，Trinkets 侧用 `#curios:<slot>` 引用它；
-  Accessories 侧走自定义 predicate `astral_dice:curio_slot`。**不要因为命名空间写着 `curios` 就删除它**。
-  ⚠️ 它是普通物品标签（由原版标签加载器读，不依赖任何饰品模组）⇒ 两个饰品栏模组**都没装**时它依然生效。
-- ⚠️ **前置是「二选一」不是「都要」**（2026-09-29 用户裁决，见 **KI-F15**）：`trinkets` 与 `accessories`
-  都只进 `fabric.mod.json` 的 `recommends`，两个都没有时才由运行时守卫拒绝启动。
-- Trinkets 与 Accessories **同装**时，`compat/curios/CuriosApi` 作为多源聚合门面：
-  `findCurios` 取并集（按 `ItemStack` 实例去重，防「官方兼容层把两源指向同一库存」时重复）、
-  `getStacksHandler` 同名冲突时返回 `MergedHandler`（读优先非空侧、写落持有侧）、
-  槽位修饰符**两侧同写**（保证「筹码栏位数 = 骰子星级」在两套系统里一致）。
-  ⚠️ 改动该门面时必须同步验证**四种组合**：仅 Trinkets / 仅 Accessories / 两者同装 / 两者皆无
-  （最后一态验证的是「拒绝启动」这条路径本身，dev 用 `-PtestTrinkets=false -PtestAccessories=false` 构造）。
-
 ### KI-F4 ＝ 测试资产与 datagen 的当前状态（**2026-09-29 登记**）
 
 - **datagen**：已按 Fabric 的 `FabricDataGenerator` 体系重建（见 `fabric-1.20.1/build.gradle` 的
@@ -491,57 +357,6 @@ static { currentColors = DEFAULT_COLORS; }                  // 此后**再无任
 - **测试资产**：fabric 线与三条生产线的测试机制差异极大（自建 `LoaderBus` + Puzzles Lib + FAPI 回调 +
   自写 mixin，而非 Forge 的 `@Mod.EventBusSubscriber`），故**测试流程与守门脚本需要单独一套**；
   详见 `scripts/test/fabric/` 与该目录下的说明。**不得**直接复用 `mt.ps1` 的生产线口径。
-
-### KI-F5 ＝ `c:bricks` 标签由本线自建（**补齐无提供者**）
-
-- **现象**：`effect_card_monster_brick`（对怪板砖）配方需要 `#c:bricks`。该标签在
-  **Forge 47.x 上没有任何提供者**（`unzip -l forge-*-universal.jar` 只有 `data/forge/**`，
-  `Tags.Items` 里也只有 `INGOTS_BRICK` / `FENCES_NETHER_BRICK`，**无 `BRICKS`**）
-  ⇒ 原版/Forge 会创建**空标签**，配方**永不可合成**（静默失效，不报错）。
-- **处置（2026-09-29）**：在**本线（fabric）**自建该标签，内容**对齐 NeoForge 的定义**：
-  ```
-  c:bricks          = [ #c:bricks/normal, #c:bricks/nether ]
-  c:bricks/normal   = [ minecraft:brick ]
-  c:bricks/nether   = [ minecraft:nether_brick ]
-  ```
-  写入 `fabric-1.20.1/src/main/resources/data/c/tags/items/{bricks,bricks/normal,bricks/nether}.json`
-  （⚠️ 1.20.1 的目录是 **`tags/items`（复数）**；1.21+ 才是 `tags/item`）。
-- ⚠️ **`forge-1.20.1` 侧未动**（2026-09-29 用户裁决：**本分支只修改 fabric 端**）⇒ 该线的
-  `#c:bricks` **仍然没有提供者**，「对怪板砖」配方在那条线上依旧不可合成。
-  这是一条**已知且已登记的既有缺口**（真实存在、不报错），留待该线自己的批次处理，别在 fabric 分支顺手补。
-- **依据（逐字核对，非推测）**：`neoforge-21.1.235-universal.jar` 的 `data/c/tags/item/bricks.json`
-  = `["#c:bricks/normal", "#c:bricks/nether"]`，`bricks/normal.json` = `["minecraft:brick"]`，
-  `bricks/nether.json` = `["minecraft:nether_brick"]`；`neoforge-26.1.2.109` 的 `bricks.json`
-  多一项 `#c:bricks/resin`（= `minecraft:resin_brick`），但**树脂砖是 1.21.5+ 的物品，1.20.1 不存在**
-  ⇒ 本线按 1.21.1 的形态对齐（两个子标签）。
-- **兼容性**：标签默认**合并**（不写 `replace: true`），若玩家整合包另有模组提供 `c:bricks`，
-  两方内容取并集，不会互相覆盖。
-- **注意**：`c:bricks` 的内容是**砖物品**（`minecraft:brick` / `minecraft:nether_brick`），
-  **不是**砖块方块（`minecraft:bricks`）—— 名字相近，改动该标签前务必对照 NeoForge 的原定义。
-- 两条 NeoForge 线**无需自建**（由 NeoForge 自身提供）；它们各自的 `.minecraft` 整合包内
-  该标签由 NeoForge 注入，不存在此问题。
-
-### KI-F6 ＝ 自建总线的「登记完整性」靠注解扫描兜底（**工具化，含局限**）
-
-- **风险源**：本线的 `platform/event/LoaderBus` 是**反射式自建总线**，订阅类必须被
-  `LoaderBus.INSTANCE.register(X.class)` 显式登记（Fabric 侧没有 `@EventBusSubscriber` 的自动注册）。
-  漏登记 ⇒ 处理器**永不触发**，且不报错（2026-09-29 真实事故：`onCommonSetup` 因漏登记，
-  连带兼容性校验 / 网络注册 / 卡牌注册表三者从未执行）。
-- **两道护栏**：
-  1. `LoaderBus#dispatchReport()` —— 列出每个**已注册**事件类的派发次数，**0 次的也列**
-     （抓「桥没接 / 注入点写错」）；判据：`ServerTickEvent` 必须为正数。
-  2. `platform/event/SubscriptionAudit` —— 扫描本模组类根下所有带 `@SubscribeEvent` 的类，
-     与**已登记集合**做差集，列出「带注解却从未登记」的类（抓 `dispatchReport()` 看不见的盲区）。
-     - 扫描方式：`FabricLoader#getModContainer(...).getRootPaths()` ⇒ dev 走目录 `Files.walk`、
-       生产走 jar 条目；类用 `Class.forName(name, false, loader)` **不初始化**加载。
-     - 默认 **WARN** + 列清单；加 `-Dastral_dice.strictBusAudit=true` 升级为**抛异常**（供测试台断言）。
-     - 入口：服务端 `AstralDiceMod#onInitialize` 末尾（排除客户端专属包 —— 此时客户端尚未登记），
-       客户端 `AstralDiceClient#onInitializeClient` 末尾（不排除，最完整）。
-     - ⚠️ **局限**：若一个类都没扫到，只打「审计未生效」WARN（**不得**当成通过）；
-       且客户端专属包在**服务端**那次审计里被有意跳过（属预期，非漏检）。
-- **与另三条线的差异**：它们用 `@EventBusSubscriber`（编译期自动注册），不存在「漏登记」这一类风险
-  —— 但存在**对称的另一类**风险（注解参数写错、或注解类里无 `@SubscribeEvent` 方法，NeoForge 会直接抛）。
-  两条线的护栏**不可互相替代**，故本线保留自有审计而不去复用生产线的检查。
 
 ### KI-F7 ＝ 手册 `teru_sign.3` 缺键（**已补齐**，仅 fabric；另三线仍缺）
 
@@ -577,7 +392,7 @@ static { currentColors = DEFAULT_COLORS; }                  // 此后**再无任
 - **判据（第三个样本交叉验证）**：`megas_sign` 代码 = `legendary()`，手册写「传奇档 / Legendary tier」
   ⇒ **手册的档位词应与代码稀有度一致**；据此 hanna / sherry 的手册文案**至少有一条错**
   （实际是两条都与代码不符）。
-- **影响**：玩家在手册里读到的品质档位与物品实际稀有度（tooltip 边框 / 文字色，见 KI-F1 的 `RarityTooltipFrame`）
+- **影响**：玩家在手册里读到的品质档位与物品实际稀有度（tooltip 边框 / 文字色，见 §1.1 索引中的 KI-F1 与 `RarityTooltipFrame`）
   **不一致** ⇒ 属**内容错误**（与 KI-F7 的"显示键名"性质不同）。
 - **档位体系（照 `starengine_lib` 的 `Rarity`，供后续裁决用）**：
   `RARE`（稀有 #55FFFF）/ `EPIC`（史诗 #FF55FF）/ `LEGENDARY`（传奇 #FFC24B）/
@@ -597,520 +412,6 @@ static { currentColors = DEFAULT_COLORS; }                  // 此后**再无任
 创意标签覆盖）。**只读，退出码 0=PASS、1=存在缺陷、2=缺产物 jar**。
 ⚠️ 脚本内的 `LANG_KEY_ALLOW` 是「已知但暂不修」的**显式白名单**（仍会打印出来，不静默）；
 新增白名单项必须写明「为什么不能修 + 需要谁裁决什么」。当前**白名单为空**。
-
-### KI-F9 ＝ 客户端订阅**内部类**漏登记 ⇒ **J / H 两个按键完全不响应**（已修，仅 fabric）
-
-- **现象**：`KeyBindingSetup.ClientEvents.onClientTick` 负责 **J**（立牌主动技能激活 / 取消目标选择）
-  与 **H**（打开卡牌栏），但该**内部类从未被 `LoaderBus.register(...)` 登记** ⇒ 两个键完全无响应。
-- **根因（移植引入）**：另三线（forge / 1.21.1 / 26.1.2）都把 `@EventBusSubscriber` 标在
-  `KeyBindingSetup.ClientEvents` 这个**内部类**上、由平台自动注册；fabric 侧必须显式登记，
-  而移植时只登记了**外层类** `KeyBindingSetup`（它本身没有任何处理器）。
-  ⚠️ `LoaderBus.scan` 只遍历「该类自己声明的方法 + 父类」，**不递归内部类**。
-- **修复**：`AstralDiceClient#onInitializeClient` 增加
-  `LoaderBus.INSTANCE.register(KeyBindingSetup.ClientEvents.class)`（外层那行保留，无害）。
-- **取证**：修复前客户端日志 `事件订阅审计:发现 1 个带 @SubscribeEvent 却**未登记**的类 → [KeyBindingSetup$ClientEvents]`；
-  修复后 `事件订阅审计通过:61 个订阅类全部已登记`。
-  ⚠️ **这正是 KI-F6 那套审计存在的意义** —— `dispatchReport()` 只看得见「已注册」的事件类，对这类漏接是盲区。
-
-### KI-F10 ＝ `MobEffectEvent.Remove` 构造器对 null 效果实例 NPE ⇒ **玩家无法进入存档**（已修）
-
-- **现象**：客户端进入世界瞬间 `PlayerXXX lost connection: 无效的玩家数据`，玩家被踢回主菜单、
-  **存档无法进入**；服务端日志报 `Couldn't place player in world`。
-- **根因链**：玩家登录 → `PlayerLoggedInEvent` → `PlayerLifecycleHandler#onPlayerLoggedInClearDiceBlessing`
-  清理「骰神赐福」→ 库的 `ModEffectRemoval.remove` 直接走 `LivingEntity#removeEffect`
-  （**不先判该效果是否存在**）→ Puzzles Lib 的 `MobEffectEvents.REMOVE` 回调以 **null** 的
-  `effectInstance` 触发 → `PuzzlesBridges` 原样构造 `new MobEffectEvent.Remove(entity, null)`
-  → 构造器 `this.effect = effectInstance.getEffect()` **解引用 null** ⇒ NPE。
-- **⚠️ 自相矛盾的证据（说明这是纯粹的漏防御）**：同类的 `getEffectInstance()` javadoc **早已声明**
-  「In the remove event, this can be **null** if the entity does not have a MobEffect of the right type active」，
-  且**全部 4 处订阅者**都写了 `if (instance == null || instance.getEffect() == null) return;` ——
-  **只有构造器漏了判空**。
-- **对照 Forge（语义基准）**：Forge 的 `removeEffect` 补丁形如
-  `MobEffectInstance i = activeEffects.remove(effect); if (i != null) post(new Remove(this, i, effect));`
-  ⇒ **效果不存在时不派发事件**。
-- **修复（主 + 防两处）**：
-  1. `PuzzlesBridges` 的 REMOVE 回调：`effectInstance == null` 时**直接 return PASS**（不派发）—— 对齐 Forge 语义；
-  2. `MobEffectEvent.Remove(living, instance)` 构造器：`effectInstance == null ? null : effectInstance.getEffect()`
-     —— 第二道防线（与自身 javadoc 一致，任何未来的调用方传 null 也不会崩）。
-- **取证**：修复前 `Couldn't place player in world` + 完整 NPE 堆栈；修复后同一存档同一路径
-  **无异常、玩家正常留在世界**。
-
-### KI-F11 ＝ `ScreenEvent.Opening` 在 `setScreen(null)` 时 NPE ⇒ **每次进世界客户端必崩**（已修）
-
-- **现象**：`java.lang.NullPointerException: Ticking screen`，堆栈
-  `Objects.requireNonNull → ScreenEvent.<init> → ScreenEvent$Opening.<init> → Minecraft.setScreen 的 mixin
-   → ReceivingLevelScreen.onClose()` ⇒ 客户端直接崩溃退出。
-- **根因**：MC 内部**合法地**用 `setScreen(null)` 关闭当前屏幕（最典型的是「正在加载地形」的
-  `ReceivingLevelScreen` 加载完成后 `onClose()`），而 `ClientScreenBridgeMixin` 在 `setScreen` 的 HEAD
-  **无条件**构造 `ScreenEvent.Opening(current, newScreen)`；`ScreenEvent` 基类构造器是
-  `Objects.requireNonNull(screen)` ⇒ NPE。
-- **对照 Forge（语义基准）**：Forge 的 `ScreenEvent` 构造器**同样**是 `Objects.requireNonNull(screen)`
-  （javap 实证），而 Forge 客户端能正常进世界 ⇒ **Forge 必然在 screen 为 null 时不构造事件**。
-- **修复**：`ClientScreenBridgeMixin#astralDice$bridgeScreenOpening` 开头加 `if (newScreen == null) return;`。
-- **顺带排查**：全仓平台事件类只剩 1 处 `Objects.requireNonNull`（`ProjectileImpactEvent` 的 **setter**，
-  不是构造器）⇒ 该类风险已闭合。
-- **取证**：修复前每次进世界必崩；修复后 `PlayerXXX logged in`、客户端连续运行 600+ tick 并正常渲染。
-
-> ⚠️ **这三条都只在「真带玩家进世界」的客户端验证里才会暴露**：
-> 服务端空跑（无玩家登录）与客户端主菜单阶段**都测不出来** ——
-> KI-F9 要客户端入口、KI-F10 要玩家登录、KI-F11 要真正走完「加载地形」并关闭该屏幕。
-> ⇒ **移植线收尾必须做一次「客户端进世界」验证，不能只跑服务端 + 编译。**
-
-### KI-F12 ＝ fabric 测试台自身的 7 个缺陷（**已修；其中 2 个是阻断级**）—— 「测试流程完全不可用」的根因
-
-- **背景**：`fabric-1.20.1` 是「自建事件总线 + 四路桥接」的移植线，测试台只能另起一套
-  （`scripts/test/fabric/`，见该目录 `README.md`）。此前这套台子**只做过静态校验与部分读数**，
-  从未真机跑过 `env → launch → inject` 这条主干 ⇒ 下面 7 个缺陷一直没暴露（**D6/D7 是后来真跑冒烟时才暴露的**，见本条末的冒烟记录）。
-- **本轮真机实跑**（服务端 + 客户端各起一次、RCON 注入、收停、5 条用例）后修复；D6/D7 由随后的**完整冒烟**（批次 A/B/C，用户显式要求）暴露并修好：
-
-  | 编号 | 缺陷 | 影响 | 根因（实测，非推测） |
-  |---|---|---|---|
-  | D1 | 就绪游标被 log4j「启动轮转」击穿 | **每次启动必然假超时**（`rc=12`），其后一切读数/注入/用例统统不可用 | latest.log **每一次冷启动**都被改名成 `YYYY-MM-DD-N.log.gz` 并**重建**；旧实现拿「启动前的字节长度」当游标 ⇒ 判定条件 `len > preLen` 永不成立（实测：服务端 **9 秒**就打出 `Done (0.333s)!`，而 `ft_launch` 干等 240 秒后报 TIMEOUT，进程还成了 orphan）。**次生伤害**：新文件长过旧偏移之后，窗口偏移落进**新文件中间** ⇒ `case`/`launch` 窗口**静默**返回错误内容，是「假 PASS / 假 FAIL」的来源 |
-  | D2 | 游戏运行时 `latest.log` 被独占 | **「服务端活着时读日志」全线不可用**（`ft_assert` / `ft_dispatchreport` / 启动轮询 / 回显校验） | `[System.IO.File]::ReadAllBytes` 的共享模式是 `FileShare.Read`，而 Windows 的共享检查是**对称**的 ⇒ 无法与仍持有**写**句柄的游戏进程共存（实测抛 `The process cannot access the file … being used by another process`）。此前因 D1 使读分支**从未真正执行**而被掩盖 |
-  | D3 | KubeJS 命令队列通道**从根上不可实现** | 观察者**从未成功执行过一条命令**（每 20 tick 抛 `TypeError: Cannot call method "get" of null`，`FT_Paths` 恒为 null） | KubeJS 6+ 三重封死：① 类过滤不放行 `java.nio.file.*` / `java.io.*`（`Java.loadClass('java.nio.file.Paths')` 返回 null，无 `Loaded Java class '…'` 行）；② 面向脚本的 bindings **无任何文件/路径包装器**（实测 `bindings/` 只有 8 个 Wrapper）；③ `java` / `Packages` 全局已移除（实测 `'java()' is no longer supported!`）⇒ 无法构造 `Path` |
-  | D4 | `ft_launch` 无法向 gradlew 透参 | 客户端在本机 dev 环境**必然**启动失败，无绕过手段 | Sodium 要求 LWJGL **3.3.1**、而 dev 环境装的是 **3.3.2-snapshot** ⇒ 启动期硬失败；旧实现只能起裸 `gradlew :fabric-1.20.1:runClient`，带不上工程既有的 `-PtestSodium=false` |
-
-  | D5 | 用例里的**固定 `wait`** 把「等待条件未满足」伪装成「断言失败」 | 采样点未到时报 6 条断言失败，**现场看起来像产品缺陷**（桥没派发？内嵌库坏了？），把排查方向带偏 | 本线有读数只在**开局 600 tick（约 30 s）**才打印；旧用例靠固定 `wait 25000` + 注释提醒纪律 ⇒ 就绪后 25 s 跑用例实测：`FAB-BOOT-EMBED` **1/10**、`FAB-DISPATCH-BASIC` **6/8**，报「未找到派发报告」。**修法两层**：① 新增 `wait_for` 步骤（有界轮询，命中即继续；超时报 **TIMEOUT(12)** 并给手动读数指引 —— 与「断言失败 = 1」明确区分，语义边界同 TESTING-RULES §7）；② 把 `事件派发统计` 断言从 `FAB-BOOT-EMBED` **移出**（10 → 9 条），消除隐藏的 30 s 时间耦合 |
-
-  | D6 | `Invoke-FtChildProcess` 的 **`-Wait` 会等整棵进程树** | **`ft.ps1 --phase launch` 挂到游戏退出为止**（把游戏拉起来这条唯一编排入口从设计上就不可能返回） | `ft_launch.ps1` 是「孵化游戏后立刻返回」的语义（游戏进程 detached），而 `Invoke-FtChildProcess` 用 `Start-Process -Wait` 等它 ⇒ 一并等到了 detached 的游戏进程。**冒烟实测**：批处理驱动卡在 launch 步 **6 分钟**不返回，而子脚本输出文件里早已有 `AP_FAB_LAUNCH: OK`（就绪 11 s 就捕获了）、服务端日志里连 600-tick 派发报告都打出来了。⚠️ 这个坑**项目自己的文档里就写着**（`TESTING-RULES-OVERVIEW.md` §13「`-Wait` 会等整棵进程树」），但该封装仍然用了它。修法 `-PassThru` + 只对该进程本身 `WaitForExit()`；验证 `ft.ps1 --phase launch` **11.4 s** 返回 rc=0。影响面精确为这一处（`ft_build` 用按进程的 `WaitForExit(timeout)`、`ft_stop` 的 `taskkill /T` 是**故意**杀树，都正确） |
-
-  | D7 | 子进程输出回读撞上**同一个共享模式陷阱**（D2 的镜像） | 修好 D6 后 `ft.ps1 --phase launch` 立刻以 rc=1 失败：`ReadAllBytes … The process cannot access the file …ft_child_*.out.txt … used by another process` | `Invoke-FtChildProcess` 用 `[System.IO.File]::ReadAllBytes` 回读子进程的重定向输出，而该文件在子进程退出后仍被**本方（父进程）的写句柄**持有一小段时间 ⇒ 与 D2 同一个根因（`ReadAllBytes` 共享模式 = `FileShare.Read`）。`-Wait` 顺带等整棵树，恰好把这个竞态**掩盖**了。修法：① `WaitForExit()` 后先 `$proc.Dispose()`；② 回读改走 `Read-FtFileBytesShared`（与日志读取**同一条**共享读写实现）。教训 = **同一类问题要收敛到同一套原语**（D2 修好后没把「读文件」收敛成一个入口，才有了 D7） |
-
-- **修法**：
-  - D1/D2 —— 把「字节位置」换成「**文件身份锚点**」＝ 创建时间(UTC ticks) + 头部 4 KiB 的 SHA1 + 长度
-    （`Ft.Common.psm1` 新增 `Get-FtLogAnchor` / `Test-FtAnchorReplaced` / `Get-FtLogWindowFromAnchor` /
-    `Read-FtFileBytesShared`）：身份变了 ⇒ 整个新文件就是「本次新增」；身份没变才做前向字节切分。
-    另加**反向自检**：超时时若整份日志里**已有**就绪标记，报 `reason=ready-but-undetected`
-    （与普通 timeout 明确分开）—— 把「工具缺陷」与「游戏没起来」彻底剥离，不制造第二个假绿。
-  - D3 —— **整体撤除**该通道与观察脚本 `ft_cmd_watcher.js`；`--channel kubejs` 保留为**显式失败**
-    （`reason=unsupported-by-platform` + 完整实测理由）。理由：一条「看起来能用、实际永远失败」的通道
-    比没有更危险。KubeJS 在本台的定位收敛为**「产出读数的探针」**（`ft_env --install-probe` 装
-    `event_bridge_probe.js` 一类），**命令注入统一走 RCON**（vanilla 原生、同步返回回显）。
-  - D4 —— 新增可重复的 `--gradle-arg <x>` 透传（同时写进状态文件与 `AP_FAB_LAUNCH_TASK` 读数行）。
-- **验收读数（全部实跑）**：`ft_launch --side server` rc=0（`cursor=22827`）、
-  `--side client --gradle-arg -PtestSodium=false` rc=0（`Sound engine started`、`cursor=23798`）；
-  服务端存活期间 `ft_assert` / `ft_dispatchreport` 正常出数；RCON 注入 rc=0 且 `/say` 回声落日志
-  （`[Not Secure] [Rcon] <tag>`）；`ft_stop` 对真在跑的实例 rc=0 且不残留；5 条用例全绿 ——
-  `FAB-BOOT-EMBED` 10/10、`FAB-DISPATCH-BASIC` 8/8、`FAB-JAR-ASSETS` 1/1、
-  **`FAB-CLIENT-BOOT` 8/8（本轮新增）**、`FAB-INJECT-ROUNDTRIP` 3/3（本轮改为 rcon 通道）；
-  闸门与显式失败路径退出码逐条正确（`MT_AUTO_DISABLED`=2 / 断言不满足=1 / PASS=0）。
-- **冒烟（2026-09-29 18:40–18:44，用户显式要求，全清单）**：分三批执行，**全绿** ——
-  批 A（服务端）：构建+开包核对 rc=0（1.7s）、env rc=0、**经编排入口 `ft.ps1 --phase launch` 起服务端 rc=0（11.5s，D6 回归）**、
-  在线断言 rc=0（0.6s，D2 回归）、`FAB-JAR-ASSETS` 1/1、`FAB-BOOT-EMBED` 9/9、`FAB-DISPATCH-BASIC` 8/8（27.8s，其中 ~27s 是 wait_for 等采样点）、
-  `FAB-INJECT-ROUNDTRIP` 3/3、在线派发统计 rc=0（`ServerTickEvent=599 fired=10 idle=26`）、收停 rc=0；
-  批 B（客户端）：经编排入口带 `-PtestSodium=false` 起客户端 rc=0（12.4s）、`FAB-CLIENT-BOOT` 8/8、收停 rc=0；
-  批 C（静态闸门）：lang 三语 829×3 一致 rc=0、工具链语法门 53 文件 0 失败 rc=0、模组来源 `violations=0` rc=0、
-  本线资源/注册闭环 7 项 PASS rc=0。**合计 5/5 用例 + 4/4 静态闸门 + 无残留进程。**
-  未纳入：`tooltip_color_audit` / `verify_chip_*` / `verify_bountiful_*` / `verify_forge_loader_gate`（作用域只覆盖两条生产线，与本线无关）。
-  逐项读数与耗时见 README §7.2.1；驱动脚本 `temp/smoke.ps1` / `temp/smoke_c.ps1`（temp 被 .gitignore 忽略）。
-- **取证与全文**：`scripts/test/fabric/README.md` —— §7.2（实跑清单 34 项，含退出码）、
-  §7.3（4 个缺陷的根因与现场证据：轮转时间戳、异常原文、`javap`/`unzip` 读数）、
-  §7.4（仍未实跑项）、§9（依据索引，含「latest.log 每次启动被轮转」「运行时被独占」
-  「KubeJS 类过滤与全局移除」三条平台事实）。
-- **等级说明**：D1–D7 属**测试台缺陷**，不是产品缺陷；但它们会让「测试台报绿」这件事本身失去意义
-  （D1 让启动阶段永远失败、D2 让在线读数整体不可用），故按缺陷等级登记。
-- **遗留**：客户端 GUI 键鼠注入仍未覆盖（只有服务端命令通道）；客户端**世界内**用例
-  （渲染 / HUD / tooltip）与 `ft.ps1 --phase report` 的放行后路径仍未实跑，均已在 README §7.4 / §8 登记。
-
-### KI-F13 ＝ 整合包启动崩溃：库里**按字符串名反射原版字段**（dev=named / 生产=intermediary 名字不同）—— **生产环境 100% 起不来，但 dev 与所有现有测试都看不见**（**已修：库 1.0.5-alpha.1；生产冒烟 PASS**）
-
-- **现象**：把 `fabric-1.20.1` 的产物 jar 推进整合包（`D:\.minecraft\versions\1.20.1-Fabric 模组测试`）后，
-  客户端**启动期直接崩溃**（`crash-2026-09-29_18.53.24-client.txt`）：
-  ```
-  java.lang.RuntimeException: Could not execute entrypoint stage 'main' due to errors,
-      provided by 'astral_dice' at 'com.merlinkitsune.astral_dice.AstralDiceMod'!
-  Caused by: java.lang.ExceptionInInitializerError
-      at com.merlinkitsune.starenginelib.item.AstralRarities.<clinit>(AstralRarities.java:95)
-      at com.merlinkitsune.astral_dice.item.ModItems.lambda$static$1(ModItems.java:153)
-      …  → AstralDiceMod.onInitialize(AstralDiceMod.java:50)
-  Caused by: java.lang.NoSuchFieldException: color
-      at java.base/java.lang.Class.getDeclaredField(Class.java:2382)
-      at com.merlinkitsune.starenginelib.item.AstralRarities.<clinit>(AstralRarities.java:90)
-  ```
-- **根因**：`starengine_lib_fabric/fabric-1.20.1/.../AstralRarities.java` 的静态块用**字符串字段名**
-  反射原版 `Rarity`：
-  ```java
-  RARITY_COLOR_OFFSET = UNSAFE.objectFieldOffset(Rarity.class.getDeclaredField("color"));   // line 90
-  Field values        = Rarity.class.getDeclaredField("$VALUES");                            // line 91
-  ```
-  而 **Fabric 的 dev 与生产用的是两套映射**：
-  - **dev（Loom named/Mojang 映射）**：`Rarity` = `net.minecraft.world.item.Rarity`，
-    字段真的是 `color` / `$VALUES` ⇒ **代码能跑**（所以历次 dev 冒烟、服务端/客户端验证全绿）；
-  - **生产（intermediary + fabric-loader 运行期重映射）**：同一个类是 `net.minecraft.class_1814`，
-    字段被重命名 ⇒ `getDeclaredField("color")` 抛 `NoSuchFieldException`。
-- **证据链（全部实测，可复算）**：
-
-  | 环节 | 读数 |
-  |---|---|
-  | 整合包里的 jar = 仓库产物？ | **sha1 完全相同** `241f9af97319d48306c76c3ba63124372b4b8c5e`（排除"陈旧产物"） |
-  | dev（named）侧字段名 | `javap -p <loom 的 minecraft-merged jar> net.minecraft.world.item.Rarity` → `public final net.minecraft.ChatFormatting **color**;`、`private static final Rarity[] **$VALUES**;` |
-  | 生产（intermediary）侧字段名 | `javap -p <minecraft-merged-**intermediary** jar> net.minecraft.class_1814` → `public final net.minecraft.class_124 **field_8908**;`、`private static final class_1814[] **field_8905**;` |
-  | 两侧结构 | 完全同构（4 个静态常量 + `values()`/`valueOf()` + `private ctor(ChatFormatting)` + `static{}`），**只有字段名不同** |
-  | 类定位方式 | 枚举常量的**字符串字面量不会被重映射** ⇒ 用 `class_124`（ChatFormatting，常量池里 `LIGHT_PURPLE` 等仍在）+ `java/lang/Enum` 双重特征反查出 `class_1814` |
-- **⚠️ 有两个断点，本轮只崩了第一个**：`"color"`（line 90）先抛；紧随其后的 `"$VALUES"`（line 91）
-  在生产环境**同样会抛**（`$VALUES` → `field_8905`）。修只修一个等于没修。
-- **影响面**：**fabric 线的生产环境 100% 启动失败**（该路径 = 玩家装整合包/正常游戏）。
-  且**所有现有验证手段都测不出来** —— dev 冒烟、服务端/客户端用例、5 条 case、静态闸门，**全部跑在 named 映射下**。
-  这是本仓"测试与发布环境非同构"造成的一次**假绿**。
-- **修法（库仓 `starengine_lib_fabric`，映射无关化：按**类型**找字段，不按名字）**：
-  ```java
-  // ① color：Rarity 里唯一的 ChatFormatting 字段
-  Field colorField = null;
-  for (Field f : Rarity.class.getDeclaredFields()) {
-      if (f.getType() == ChatFormatting.class) { colorField = f; break; }
-  }
-  if (colorField == null) throw new IllegalStateException("Rarity 里找不到 ChatFormatting 字段");
-  RARITY_COLOR_OFFSET = UNSAFE.objectFieldOffset(colorField);
-
-  // ② $VALUES：Rarity[] 类型的静态字段
-  Field values = null;
-  for (Field f : Rarity.class.getDeclaredFields()) {
-      if (Modifier.isStatic(f.getModifiers()) && f.getType().isArray()
-              && f.getType().getComponentType() == Rarity.class) { values = f; break; }
-  }
-  if (values == null) throw new IllegalStateException("Rarity 里找不到 $VALUES 数组字段");
-  ```
-  其余三处反射是安全的：`Unsafe.class.getDeclaredField("theUnsafe")`、`Enum.class.getDeclaredField("name"/"ordinal")`
-  **都是 JDK 成员，不参与 MC 重映射**。
-- **全仓扫描结论**：`starengine_lib_fabric` 里只有 `AstralRarities:90/91` 两处属于该模式；
-  `EventTargetCollector`（FTB Teams / OPAC 反射）与 `BossEntityUtil`（`getBossEvent`/`getBossBar` 约定名 + try/catch）
-  反射的是**模组自有名字**，安全；`astral_dice` 侧 `WaystoneWarpCompat`（`common.MinecraftForge` / `EVENT_BUS`）
-  与 `SubscriptionAudit`（自身类名）同样安全。另一个库仓 `starengine_lib`（非 fabric）源码里**没有**该模式。
-- ~~**修好之后需要做的（版本契约，待裁决）**：库版本 bump（1.0.7 → ？）~~ ⇒ **已按用户裁决完成，见下方「修复实施与验证」**：
-  消费方 `astral_dice/fabric-1.20.1` 的库依赖与 `lib_version_range` 同步 → 重新构建 →
-  重新 `pushToGame` → 整合包再启动一次验证。
-- **顺带发现的流程缺口（**已落地为工具**：`scripts/test/fabric/ft_prod.ps1`，见 README §7.2.2）**：本仓的"验证"与"发布"长期不在同一映射下 ——
-  **dev 全绿 ≠ 产物可用**。建议补一道**生产映射守门**（二选一或都做）：
-  ① **静态**：扫产物 jar 里 `getDeclaredField("…")` / `getField("…")` / `getMethod("…")` 的**字符串常量**，
-     凡不在 intermediary 名集合里、且不是 JDK 成员的 ⇒ 报缺陷；
-  ② **动态**：每次改动后除了 dev 冒烟，**把推给整合包的那份 jar 真启动一次**（生产映射下的最小启动用例）。
-- **取证**：崩溃报告 `D:\.minecraft\versions\1.20.1-Fabric 模组测试\crash-reports\crash-2026-09-29_18.53.24-client.txt`；
-  整合包日志 `…/logs/latest.log`（`astral_dice 1.3.2+fabric_1.20.1` / `\-- starengine_lib 1.0.7`，其余仅良性 WARN）。
-
-#### KI-F13 修复实施与验证（2026-09-29 19:05–19:14，跨两仓）
-
-**① 库侧修源码** —— `starengine_lib_fabric/fabric-1.20.1/src/main/java/com/merlinkitsune/starenginelib/item/AstralRarities.java`
-改为**按类型 / 修饰符**定位，两套映射同时成立：
-```java
-private static Field lookupColorField(Class<?> rarityClass) {
-    for (Field field : rarityClass.getDeclaredFields())
-        if (field.getType() == ChatFormatting.class) return field;
-    throw new IllegalStateException("vanilla Rarity has no ChatFormatting-typed field: " + rarityClass.getName());
-}
-private static Field lookupValuesField(Class<?> rarityClass) {
-    for (Field field : rarityClass.getDeclaredFields())
-        if (java.lang.reflect.Modifier.isStatic(field.getModifiers())
-                && field.getType().isArray()
-                && field.getType().getComponentType() == rarityClass) return field;
-    throw new IllegalStateException("vanilla Rarity has no Rarity[] static field: " + rarityClass.getName());
-}
-```
-static 块的 `catch (ReflectiveOperationException)` 一并放宽为 `catch (Throwable)` —— 新抛的是 `IllegalStateException`，
-不属 `ReflectiveOperationException`，需同样包成 `ExceptionInInitializerError`（否则失败形态变成裸 RuntimeException）。
-⚠️ **只改 fabric 子项目**：forge-1.20.1 / neoforge-1.21.1 / neoforge-26.1.2 生产用 **Mojang 官方映射**（`color` 就叫 `color`），
-不受影响；本仓其它三个子项目同文件**未改动**（属**平台必需差异**，已在文件 javadoc 里写明理由）。
-
-**② 版本号（按用户 2026-09-29 裁决：退回 1.0.5 基线 + `-alpha.x` 预发布后缀）**
-| 位置 | 值 |
-|---|---|
-| 库 `fabric-1.20.1/gradle.properties` | `lib_version=1.0.5-alpha.1` / `mod_version=1.0.5-alpha.1+fabric_1.20.1` |
-| 消费方 `fabric-1.20.1/gradle.properties` | `starengine_lib_version=1.0.5-alpha.1` / `starengine_lib_version_range=>=1.0.5-alpha.1 <2.0` |
-| 消费方主模组 | `mod_version=1.3.2-alpha.1+fabric_1.20.1` |
-
-预发布号在库仓 CI 里**不会**打 tag（workflow 只认裸 `x.y.z`）；Fabric 的版本比较按 semver ⇒ `1.0.5-alpha.1 < 1.0.5 < 1.0.6`
-⇒ 该 range 下界同时收 alpha 与后续正式号。
-
-**③ 发布与内嵌**：库 `:fabric-1.20.1:build publishToMavenLocal` → `~/.m2/.../1.0.5-alpha.1/` 出新件 →
-消费方 `:fabric-1.20.1:build` → Loom `include` 内嵌。产物实证：
-```
-pushToGame: pushed astral_dice-1.3.2-alpha.1+fabric_1.20.1.jar -> …\1.20.1-Fabric 模组测试\mods
-pushToGame: 内嵌前置自检 OK — META-INF/jars/starengine_lib-fabric-1.20.1-1.0.5-alpha.1.jar
-pushToGame: 整合包内无独立库 jar(符合内嵌口径)
-fabric.mod.json: version=1.3.2-alpha.1+fabric_1.20.1 / depends.starengine_lib=">=1.0.5-alpha.1 <2.0"
-```
-（三个分发任务均执行：`pushToRootBuild` / `pushToDevRun` / `pushToGame`；旧版 jar 按 `+fabric_1.20.1` 后缀先行清理。）
-
-**④ 修复真的进了产物**（javap 反编译**内嵌件**，不是只看源码）：
-```
-59: ldc #139  // class net/minecraft/class_1814        ← 原版 Rarity 在产物里确实叫 class_1814
-61: invokestatic lookupColorField                       ← 已改为按类型查找
-（String color / String $VALUES 已从常量池消失）
-（保留的 String theUnsafe / name / ordinal 指向 sun.misc.Unsafe 与 java.lang.Enum —— JDK 成员，不参与重映射）
-```
-
-**⑤ 生产映射冒烟**（本轮**新增的工具**，见 `scripts/test/fabric/ft_prod.ps1` 与 README §7.2.2）
-| 项 | 修复前（19:07） | 修复后（19:11） |
-|---|---|---|
-| 判定 | `VERDICT = CRASH_REPORT` | **`AP_FAB_PROD_READY: elapsed=23s`** |
-| 证据 | 新增 `crash-2026-09-29_19.07.04-client.txt`（`NoSuchFieldException: color`） | 日志出现 `Sound engine started`；`crash-reports/` **无新增** |
-| 加载清单 | `astral_dice 1.3.2+fabric_1.20.1 \-- starengine_lib 1.0.7` | `astral_dice 1.3.2-alpha.1+fabric_1.20.1 \-- starengine_lib 1.0.5-alpha.1` |
-
-**⑥ dev 侧回归**（确认修复未破坏 dev）：`ft_launch --side client -PtestSodium=false` →
-`AP_FAB_LAUNCH_READY pattern=Sound engine started`，日志内 `starengine_lib 1.0.5-alpha.1`，无崩溃。
-⇒ 同一份源码在 **named 与 intermediary 两套映射下都能定位到字段**（这正是"按类型找"的意义）。
-
-- ⚠️ **仍未做（跨仓发布面，属策略，未自行决定）**：库提交尚未 `push` 到远端；消费方 CI 若钉了库 `ref` 需同步。
-  本批只做**本地闭环**（源码 → mavenLocal → 构建 → 推整合包 → 生产冒烟 → dev 回归）。
-- ⚠️ **mavenLocal 残留**：本轮先试过 `1.0.8`（随后按用户裁决改基线为 1.0.5-alpha.1）⇒
-  `~/.m2/.../1.0.8/` 目录仍在。因 `starengine_lib_version` 已不再指向它，**不会被任何构建解析到**；
-  若日后要 bump 到 1.0.8，须先删该目录（同号覆盖会静默取旧件，见 `mc-prereq-lib-version-contract` §2①）。
-
-### KI-F14 ＝ tooltip 染色 mixin 与 **Architectury** 抢同一 `@ModifyConstant` 常量 ⇒ **进世界 / 悬停 GUI 时必崩**（已修）
-
-- **现象**：修好 KI-F13 后游戏**能到主菜单**，但**创建世界 / 悬停 GUI 时崩溃**
-  （`crash-2026-09-29_19.22.31-client.txt`，`Description: Rendering screen`）：
-  ```
-  java.lang.RuntimeException: Mixin transformation of net.minecraft.class_8002 failed
-  Caused by: MixinTransformerError: An unexpected critical error was encountered
-  Caused by: InjectionError: Critical injection failure: Constant modifier method
-      modifyTooltipBackgroundColor(I)I in architectury.mixins.json:client.MixinTooltipRenderUtil
-      from mod architectury failed injection check, (0/1) succeeded. Scanned 0 target(s).
-      Using refmap architectury-fabric-refmap.json
-  ```
-- **根因（日志里已有一句话的定论）**：
-  ```
-  @ModifyConstant conflict. Skipping architectury.mixins.json:client.MixinTooltipRenderUtil
-    from mod architectury->@ModifyConstant::modifyTooltipBackgroundColor(I)I with priority 1000,
-    already redirected by astral_dice.mixins.json:bridge.TooltipRenderUtilColorMixin
-    from mod astral_dice->@ModifyConstant::astralDice$backgroundColor(I)I with priority 1000
-  ```
-  本模组的 `TooltipRenderUtilColorMixin` 原用 3 个 `@ModifyConstant` 改写
-  `TooltipRenderUtil#renderTooltipBackground` 里的三个 ldc 常量
-  （`0xF0100010` / `0x505000FF` / `0x5028007F`），而 **Architectury API 的
-  `client.MixinTooltipRenderUtil` 改的正是同一批常量**（那是它「让模组自定义 tooltip 颜色」的 API）。
-  Mixin 对 `@ModifyConstant` 是**排他**语义（同一个 ldc 只能被一个 modifier 改写）⇒ 后到者被 skip；
-  双方 priority 同为 1000、**本模组先应用** ⇒ architectury 的注入落空，而它自身
-  `injectors.defaultRequire = 1` ⇒ 抛 `InjectionError`（致命）→ 崩。
-- **⚠️ 为什么"能启动、进世界才崩"**：目标 `net.minecraft.class_8002` = `TooltipRenderUtil`，
-  **只在首次渲染 tooltip 时**才被类加载 ⇒ 主菜单不加载它，KI-F13 修复后的冒烟（止于主菜单）也看不见。
-- **⚠️ 为什么 dev 全绿**：dev 的 `fabric-1.20.1/run/client/mods` 只有 **5** 个 jar
-  （endec / fiber / gson / netty / puzzlesaccessapi），**根本没有 architectury** ⇒ 又一次「生产独有」缺陷。
-  （本轮实测环境里用户还自行加了 Carpet / PlaceholderAPI / AttributeFix / Carpet-Fixes
-  ⇒ `Loading 148 mods`，覆盖比 143 时更广。）
-- **修法：改用 `@WrapOperation`（MixinExtras）包裹「调用指令」**，四个 wrapper 覆盖全部 6 个调用点：
-  ```
-  renderHorizontalLine(g,x,y-1,w,z,BG)  ×2   → astralDice$background$horizontal
-  renderRectangle     (g,x,y,w,h,z,BG)  ×1   → astralDice$background$rectangle
-  renderVerticalLine  (g,x∓1,y,h,z,BG)  ×2   → astralDice$background$vertical
-  renderFrameGradient (g,x,y+1,w,h,z,TOP,BOT) → astralDice$borderGradient
-  ```
-  `@WrapOperation` 包裹的是 **INVOKESTATIC**，`@ModifyConstant` 改的是 **LDC** —— **不同字节码位置 ⇒ 可共存**
-  （MixinExtras 的注入器本就是为「多模组对同一调用点各自注入」设计的；本项目 `LivingHurtBridgeMixin`
-  早已按这个理由这么写，只有本 mixin 还停留在老的 `@ModifyConstant`）。
-- **产物取证（三级，全是字节码/文件级，不靠"看日志感觉"）**：
-  1. **注解已被 Loom 直接重映射**（jar 内**无** refmap 文件 ⇒ 那条
-     `Reference map 'astral_dice.refmap.json' … could not be read` 警告**无害**）：
-     ```
-     target="Lnet/minecraft/class_8002;method_47951(Lnet/minecraft/class_332;IIIII)V"    // renderHorizontalLine
-     target="Lnet/minecraft/class_8002;method_47950(Lnet/minecraft/class_332;IIIIIII)V"  // renderRectangle
-     target="Lnet/minecraft/class_8002;method_47949(Lnet/minecraft/class_332;IIIII)V"    // renderVerticalLine
-     target="Lnet/minecraft/class_8002;method_47948(Lnet/minecraft/class_332;IIIIIII)V"  // renderFrameGradient
-     ```
-  2. **注入结果**（`-Dmixin.debug.export=true` 导出的 `class_8002.class` 反编译）——
-     4 个 wrapper 覆盖全部 **6 个调用点**，且 **architectury 的注入同时存在**（19 处引用）：
-     ```
-     invokestatic wrapOperation$…$astralDice$background$horizontal  ×2
-     invokestatic wrapOperation$…$astralDice$background$rectangle   ×1
-     invokestatic wrapOperation$…$astralDice$background$vertical    ×2
-     invokestatic wrapOperation$…$astralDice$borderGradient         ×1
-     ```
-  3. **运行期**：生产冒烟（`-PreloadClasses net.minecraft.class_8002` 强制加载该类）
-     ⇒ `[preload] OK   net.minecraft.class_8002 -> net.minecraft.class_8002` + `Sound engine started` +
-     `crash-reports/` 无新增；dev 侧同参数回归同绿。
-
-#### 顺带修的第二个缺陷：`astral_dice:astral_guide` 配方解析失败
-
-- **现象**（同一次启动的日志）：
-  ```
-  [Render thread/ERROR]: Parsing error loading recipe astral_dice:astral_guide
-  com.google.gson.JsonSyntaxException: Unknown item 'patchouli:guide_book'
-  ```
-- **根因**：该配方的产出是 `patchouli:guide_book`，而**整合包并未安装 Patchouli**
-  （`fabric.mod.json` 里 patchouli 既不是 `depends` 也不是 `recommends`
-  ⇒ 属**可选**前置，模组本该优雅降级）。
-- **修法**：加 **`fabric:load_conditions`**（`condition: fabric:mod_loaded` / `modid: patchouli`）
-  ⇒ 未装 Patchouli 时**整条配方不加载**，不再报 `Unknown item`。
-  取证：`fabric-resource-conditions-api-v1` 的 mixin 列表含 **`JsonDataLoaderMixin`**
-  （覆盖通用 JSON 数据加载器 ⇒ 对 `recipes` 生效）；修后日志**不再出现**该 `Parsing error`。
-- ⚠️ **仍然要提醒用户**：整合包没有 Patchouli ⇒ **《星之骰戏》手册在该整合包内不可用**
-  （配方被条件隐藏，也再无其它获取入口）—— 需要手册请自行安装 Patchouli。
-
-#### 本轮新增的测试能力（把这个「看不见的缺陷」变成可测）
-
-1. **类预加载钩子** `-Dastral_dice.preloadClasses=<intermediary 名,逗号分隔>`
-   （`AstralDiceClient#preloadClassesForSmokeTest`）：
-   Mixin 注入在**目标类加载时**才应用，而这类目标类常常「要玩家交互才加载」⇒ 把目标类提前到**启动期**加载，
-   缺陷当场爆出（**fail-loud：记 ERROR 后重新抛出**，不吞异常 —— 吞掉就成了假绿）。
-   类名一律按 **intermediary** 解析（`MappingResolver.mapClassName("intermediary", …)`）
-   ⇒ **同一个参数在 dev 与生产都能用**（生产恒等、dev 转成 named）。
-2. **`ft_prod.ps1` 新增 `-PreloadClasses` / `-ExtraJvmArg`（可重复）**，并新增两条判据：
-   日志出现 `InjectionError|failed injection check` ⇒ 判定 `MIXIN_FAIL`（rc=1，并打印那一行）；
-   启动前**删除实例 `latest.log`** 作为判定基线（否则上一轮崩溃留下的 ERROR 会污染判定 ⇒ **假红**）。
-3. **Loom 侧对称支持**：`:fabric-1.20.1:runClient -PpreloadClasses=<…>`（`vmArg`；
-   ⚠️ **API 不通用** —— ModDevGradle/ForgeGradle 是 `jvmArgument`/`vmArgs`）。
-
-### KI-F15 ＝ 饰品栏前置：从「Trinkets 硬必需」改为「Trinkets 或 Accessories 二选一」（**已修，2026-09-29 用户裁决**）
-
-- **现象**：只装 **Accessories** 的玩家**完全无法启动** —— 加载器直接拒绝（实测 19:59）：
-  ```
-  Immediate reason: [HARD_DEP_NO_CANDIDATE astral_dice 1.3.2-alpha.1+fabric_1.20.1 {depends trinkets @ [>=3.7.2]}]
-  Fix: add [add:trinkets 3.7.2 ([[3.7.2,∞)])], remove [], replace []
-  ```
-  ⚠️ 这与本线的**既有设计自相矛盾**：`CuriosApi` 早就把 Accessories 定为**主通道**（KI-F3），
-  可声明面却把 Trinkets 写成**硬前置** ⇒ 「主通道」在声明层面根本进不来。
-- **根因（两层）**：
-  1. **声明层**：`fabric.mod.json` 的 `trinkets` 写在 **`depends`** 里。而 Fabric 的依赖声明是
-     **AND 语义** —— **没有「任选其一」的写法**（`recommends` / `suggests` 都只是软提示，
-     无法表达「这两个里至少一个」）⇒ **二选一只能运行时判定**。
-  2. **代码层**：三处把 Trinkets 当硬前置，缺席时会以**类加载失败**（一堆 `NoClassDefFoundError`
-     堆栈）而非一句人话收场：
-     - `compat/curios/TrinketBridge` —— 硬引用 `dev.emi.trinkets.api.*`（含内部
-       `record Adapter implements Trinket`）；
-     - `compat/curios/CuriosApi#getCuriosInventory` —— **无条件**查询 Trinkets 源；
-     - `AstralDiceMod#onInitialize` —— **无条件**调 `TrinketBridge.registerAll()`。
-- **修法（四处）**：
-  1. `trinkets` 从 `depends` **移入 `recommends`**（与 `accessories` 并列）；
-  2. 新增 `ModCompatibilityCheck#verifyAccessoryProviderOrThrow()`：在 **`onInitialize()` 的第一条语句**
-     执行（必须先于任何触碰 Trinkets 的代码），**两个都不在**时才抛 `ModLoadingException`
-     （完整中文说明：装哪个、去哪装、两者差异、同时装也可以）；每次启动打一条机器行
-     `AP_FAB_ACCESSORY_PROVIDER: OK|FAIL (trinkets=… accessories=…)` 供冒烟断言；
-  3. `CuriosApi` 的 Trinkets 源加 `TRINKETS_LOADED` 守卫（与既有的 `ACCESSORIES_LOADED` 对称）；
-  4. `TrinketBridge.registerAll()` 的**调用点**加守卫 —— ⚠️ **守卫必须在调用点**：
-     `TrinketBridge` 缺席时**整个类都加载不了**，写在方法体内等于没写（方法体要先加载类才有机会执行）；
-     方法体内再留一道防线仅为将来调用方的兜底。
-  另：两个 modId 常量与两个布尔**单一权威**在 `ModCompatibilityCheck`，`CuriosApi` 委托它（避免两处各判一次而漂移）。
-- **实测（dev 四态 + 生产）**：
-  | 态 | 构造方式 | 读数 |
-  |---|---|---|
-  | **仅 Accessories**（= 用户整合包现状） | `-PtestTrinkets=false` | 加载 82 模组；`AP_FAB_ACCESSORY_PROVIDER: OK (trinkets=false accessories=true)`；`Sound engine started`；Accessories 适配器已注册、**无** Trinkets 适配器；**无** `NoClassDefFoundError` |
-  | **仅 Trinkets** | `-PtestAccessories=false` | 加载 81 模组；`OK (trinkets=true accessories=false)`；`Sound engine started`；Trinkets 适配器已注册 |
-  | **两者同装** | 默认 | 加载 83 模组；`OK (trinkets=true accessories=true)`；**两个适配器都注册**（聚合门面语义不变，见 KI-F3） |
-  | **两者皆无** | `-PtestTrinkets=false -PtestAccessories=false` | 加载 80 模组；`AP_FAB_ACCESSORY_PROVIDER: FAIL (trinkets=false accessories=false)` ⇒ **拒绝启动**。⚠️ 文案**不在 `latest.log`**（日志在抛出处断掉），而在 `run/client/crash-reports/crash-*.txt`：`Description: Initializing game` → `Caused by: …ModLoadingException: [星之骰戏] 缺少饰品栏前置：既没有检测到 Trinkets，也没有检测到 Accessories。` + 一整段中文操作指引（首行即可读，与既有黑名单检查同一可见性口径） |
-  | **生产**（整合包实况 = 只有 Accessories） | `ft_prod.ps1` | **PASS**（修复前为 `HARD_DEP_NO_CANDIDATE` 拒绝启动） |
-- **对下游的影响**：饰品栏提供方变了但**槽位与物品清单不变** —— `data/curios/tags/items/*.json`
-  是普通物品标签（由**原版**标签加载器读，不依赖任何饰品模组），Accessories 侧走自定义 predicate
-  `astral_dice:curio_slot`，两侧共用同一份清单（KI-F3）。
-
-### KI-F16 ＝ dev 开关 `-PtestAccessories=false` **从来无法通过编译**（**已修**）—— 「注释声称可用、实际从没跑过」
-
-- **现象**：`./gradlew :fabric-1.20.1:compileJava -PtestAccessories=false` 直接失败：
-  ```
-  StarCoinWalletButtons.java:311: 错误: 方法不会覆盖或实现超类型的方法
-          @Override
-  ```
-  而 `build.gradle` 的注释**一直写着**「跑『仅 Trinkets』那一态时用 `-PtestAccessories=false` 关掉」
-  ⇒ **该开关从来没有被真正执行过**（所以这个矛盾一直没被发现）。
-- **根因**：Loom 的**依赖方接口注入**会随「依赖是否进入**运行期**」而开关。
-  Accessories 的 `fabric.mod.json` 声明 `custom.loom:injected_interfaces: net/minecraft/class_4264 →
-  AbstractButtonExtension`，把 `AbstractButtonExtension` 注入 `AbstractButton`；把 Accessories
-  移出**运行期**后注入**消失** ⇒ 为「必须补上注入来的抽象方法」而写的
-  `@Override getRenderingEvent()` 立刻变成「不覆盖任何方法」⇒ 编译失败。
-  ⚠️ 佐证这不是类路径问题：`compileClasspath` 里 accessories **仍在**（`modCompileOnly` 是无条件的）
-  —— 失效的是**注入**本身。
-- **修法**：去掉该方法的 `@Override`（**保留方法体、返回类型与整段 javadoc**）⇒ **两种注入态都成立**：
-  注入在 ⇒ 按签名实现该接口方法（仍满足「必须补上抽象方法」）；注入不在 ⇒ 它就是普通方法、无人引用。
-  行为与改动前**完全一致**（该方法体返回 `null`，Accessories 只对**它自己的**按钮调用
-  `ButtonEvents.adjustRendering(...)`，从不调本模组的）。
-- **实测**：四态 `compileJava` 均 `BUILD SUCCESSFUL`：
-  默认 / `-PtestAccessories=false` / `-PtestTrinkets=false` / `-PtestTrinkets=false -PtestAccessories=false`。
-- **教训（通用）**：**「给了开关」≠「开关可用」** —— 凡在注释/文档里承诺「用某参数可以跑某态」，
-  就必须至少实跑一次该参数；否则它只是一个会把人引向错误结论的假入口（本轮四态矩阵正是靠实跑才暴露它）。
-
-### KI-F17 ＝ 玩家持久化附件**每次登录被静默丢弃**：附件键**注册晚于**玩家数据反序列化（症状＝「帕秋莉手册每次登录都补发一本」）（**已修**）
-
-- **现象**（用户 2026-09-29 第二次反馈，原话「重复发放帕秋莉手册的问题再次出现」）：整合包玩家**每次重开游戏**，
-  背包里都会多出一本《恋的规则书》。⚠️ 该缺陷**此前修过一次**（2026-09-15，死亡路径的赠书守卫），
-  所以第一次看到「又出现了」很容易被误判为「上次没修干净」——**实际是两条完全不同的根因**。
-- **根因**：`ModAttachments` 的**静态初始化是惰性的**。Java 的 `<clinit>` 只在**第一次真正使用该类**时才跑，
-  而 mod 初始化路径上原本**没有任何代码触碰 `ModAttachments`** ⇒ 它的静态初始化被推迟到
-  「**第一次有代码读写附件**」的那一刻 —— 也就是**玩家登录处理器** `PlayerLifecycleHandler#giveGuideBookOnFirstJoin`，
-  而那时玩家的 NBT **已经反序列化完了**。
-  Fabric 的附件反序列化**按 id 查注册表**：查不到就打一条
-  `Unknown attachment type astral_dice:xxx found when deserializing, skipping` 并**静默丢弃该键**（不报错、不崩）。
-- **影响面（实测）**：一次登录被丢弃 **33 个键**。除 `guide_book_given`（⇒ 发放守卫永远读到 `false`
-  ⇒ **每次登录补发一本**）之外，其余是**玩家可感知的战斗状态**：治疗点数、立牌锁定与冷却、
-  白泽赐福、教主降神、怪力侦探层数等。
-- **为什么此前测不出来**：① 缺陷是**静默的**（无异常、无崩溃、无 WARN 级以上的本模组栈帧）；
-  ② **测试世界的玩家数据少** —— 键丢得少、也更不容易被察觉；③ 玩家 NBT 里的标记**一直是 1**
-  （写是写进去了的），只是**读不出来**，所以「打开 NBT 看有没有」这种取证方式会得到「有」。
-- **修法**：`ModAttachments#ensureRegistered()`（**空实现，只为触发 `<clinit>`**）+ 打一条机器行
-  `AP_FAB_ATTACHMENTS: 附件键已注册 109 个(必须先于任何玩家数据反序列化)`；调用点放在
-  `AstralDiceMod#onInitialize()` 里、**紧随前置守卫之后**（`FabricBridges.installEarly()` 之前）。
-  ⚠️ **不要再删除这个调用**：删掉它**不会编译报错、也不会在测试世界暴露**，只会让线上玩家每次重开游戏
-  丢掉一次战斗状态。
-  另加**常驻诊断**（`PlayerLifecycleHandler`）：每次登录打
-  `AP_FAB_GUIDEBOOK: uuid=… call=… given=… patchouli=… enabled=… books=…`，
-  并在**写回后立刻回读**打出 `GIVEN uuid=… reread=… books=…` —— 这一条「写后回读」是把病因
-  从「发放时机」区分到「**存取通路**」的决定性读数（本次正是靠它把方向从「守卫写错」扭到「值读不出」）。
-- **实测证据（跨会话 A/B，2026-09-29 20:55 / 21:01，`-PdevUsername=AstralDev` 固定玩家名 ⇒ 两轮是同一玩家）**：
-  - session1（首登）：`given=false … books=0` → 发放 → `GIVEN … reread=true books=1`
-    （`reread=true` 证明 109 个键**注册成功且没有丢**）。
-  - session2（重登，同一 UUID）：`AP_FAB_ATTACHMENTS: 附件键已注册 109 个` 打在 **21:01:37**、
-    登录在 **21:01:41**（注册**早于**玩家数据反序列化）→ `given=true … books=1` ⇒ **不补发、仍只有 1 本**。
-  - `latest.log` 与 `debug.log` 全文扫描 `Unknown attachment type` 命中数 = **0**。
-- **教训（通用）**：Fabric 附件 API 的**键注册必须在 mod 初始化期完成**；凡改动附件键集合或
-  任何持久化 schema，收尾**必须 grep 日志确认没有 `Unknown attachment type`**（这是唯一能看见它的读数）。
-
-### KI-F18 ＝ Accessories 槽位图标「文件存在但不显示」：图标必须落在**原版 blocks 图集**的目录 `assets/<ns>/textures/gui/slot/`（**已修**）
-
-- **现象**（用户 2026-09-29 反馈，附截图）：**Accessories 饰品栏的槽位图标显示为紫黑格 / 空白**。
-  ⚠️ 提交证据时用户明确说「问题依旧」——即上一轮「把图标文件放到 `textures/slot/`」并没有解决。
-- **根因**：**两个饰品通道取图标的机制完全不同**：
-  | 通道 | 取图标方式 | 因此图标该放哪 | `icon` 字段该写什么 |
-  |---|---|---|---|
-  | Trinkets | **路径直连**：拼 `textures/<icon>.png` | `assets/<ns>/textures/<任意路径>.png` | **文件路径**（如 `astral_dice:slot/x`） |
-  | Accessories | 走**原版 `minecraft:blocks` 图集** | **必须** `assets/<ns>/textures/gui/slot/*.png` | **图集内 sprite 名**（如 `astral_dice:gui/slot/x`） |
-  Accessories 的图集成员资格来自原版 `assets/minecraft/atlases/blocks.json` 的声明
-  `{"type": "directory", "source": "gui/slot", "prefix": "gui/slot/"}` ⇒ **只有该目录下的贴图会被收录**。
-  原先图标放在 `textures/slot/`（Trinkets 口径）⇒ **文件明明存在，但 Accessories 在图集里找不到对应 sprite**
-  ⇒ 紫黑格。**这就是「改一轮还没好」的原因：缺陷不是「文件缺失」，而是「路径不在图集目录里」。**
-- **修法（同时满足两条通道）**：把图标移入图集目录，`icon` **统一改写为图集 sprite 名**——
-  对 Accessories 是 sprite 名 `gui/slot/…`，对 Trinkets 它同时就是文件路径 `textures/gui/slot/….png`
-  ⇒ **同一份文件、同一个 `icon` 字符串，两条通道都成立**：
-  - `assets/astral_dice/textures/slot/*.png` → `assets/astral_dice/textures/gui/slot/*.png`（3 个）；
-  - `icon` 由 `astral_dice:slot/empty_*_slot` 改为 `astral_dice:gui/slot/empty_*_slot`，共 7 处：
-    `data/astral_dice/accessories/slot/{chip,dice,stand}.json`、
-    `data/astral_dice/accessories/group/astral_dice.json`、
-    `data/trinkets/slots/astral_dice/{chip,dice,stand}.json`。
-- **双层守门（本轮新增）**：
-  1. **静态**：`tools/verify_fabric_assets.py` 新增第 8 项「槽位图标必须位于图集目录」，已做**正/反向**各验一次
-     （反向 = 故意把图标放回 `textures/slot/` 时该项必须 FAIL）。
-  2. **客户端自检**：新增 `compat/accessories/AccessoriesClientIconCheck`（仅当 Accessories 在场）
-     —— 进世界后跑一次，**同时检查「文件存在」与「是否被图集收录」**，打
-     `AP_FAB_SLOT_ICON: 槽位图标自检 槽位=15 文件缺失=0 图集未收录=0` + 逐槽位明细。
-     ⚠️ **只查「文件存在」是不够的** —— 本缺陷恰恰是「文件在、路径错」，必须查图集成员资格。
-- **实测证据**（2026-09-29 21:01:42，客户端日志）：自检读数 `槽位=15 文件缺失=0 图集未收录=0`；
-  明细里本模组 3 个槽位为 `icon=astral_dice:gui/slot/empty_{chip,dice,stand}_slot  file=yes inBlocksAtlas=yes`，
-  其余 12 个为 Accessories 自带槽位（同样 `inBlocksAtlas=yes`）。
-  ⚠️ 该自检跑在 dev（named）下，但**图集是资源层产物、与映射无关**（同一份 jar 的资源），故对生产同样成立。
-
-### KI-F19 ＝ 五项「玩家可见」缺陷按 dev-next 已修方案同步落地（**已修，2026-09-30**）—— 含一处**只有本线才暴露**的移植适配
-
-- **背景**：用户在主线/dev 线实机发现 5 项缺陷，并要求「**直接同步 `multi-dev-next` 的改动、合并到当前分支，避免重复造轮**」。
-  经核实，该线 HEAD 即修复提交 **`731e3855`**（`fix(balance): 修复五项 —— 王之力自伤必定生效 / 扫地机加成死亡保留 /
-  常驻效果统一 ∞ / 效果注释接通道`，与用户报障**逐条对应**）。
-- **⚠️ 为什么不直接 `git merge multi-dev-next`**：`731e3855` 改的是**三线**（`neoforge-1.21.1` / `forge-1.20.1` /
-  `neoforge-26.1.2`），**不含 `fabric-1.20.1`**。而 `multi-dev-next` 领先本分支 **30 个提交**（含 `2.0.0-SNAPSHOT.14`
-  版本号、目标选择器改造、工具链改动等与本任务无关的内容）⇒ 整分支合并**不会给 fabric 带来任何代码改动**，
-  只会把 2.0.0 开发线整体灌进移植线。故改用**按文件移植**：以 `forge-1.20.1` 侧为蓝本
-  （同为 MC 1.20.1、同为 `RegistryObject` 风格、同为 Mojmap 方法引用），改写路径后 `git apply --3way`，冲突逐处手工合并。
-- **五项落地清单**（本线对应文件）：
-  | 项 | dev-next 方案 | 本线落地 |
-  |---|---|---|
-  | 王之力自伤不生效 | 新增 `astral_dice:card_cost`（**卡牌代价**）类型并登记 `bypasses_cooldown`；**刻意不登记 `bypasses_armor`**（代价不是真伤，仍受护甲/抗性/保护减免）；`EffectCardItem` 改 `cardCost` | 逐字一致（含 `card_cost.json`、`bypasses_cooldown.json` 新增项、`ModDamageTypes.CARD_COST/cardCost`、lang 三语 `death.attack.card_cost{,.player,.item}`） |
-  | 扫地机加成死亡被抹 | **删除** `PlayerLifecycleHandler` 死亡清理里的 `JASMINE_ATK/DEF_BONUS` 清零块（**padman 的清零保留不动**），清零唯一路径回归 `JasmineSignItem#clearSignData` | 一致（jasmine 段删除 + 就地留注释说明裁决来源） |
-  | 常驻效果未统一 ∞ | `magic_tome_count`（原写死 10000 tick）+ 8 个效果类的 `DURATION_TICKS`（Charge / HannaDollCraft / HannaDollComplete / Huguang / MamushiDragon / Misfortune / SherryReasoning / WeaknessReveal）+ 2 处施加点（`CursedSwordChipItem` 青之诅咒、`BonnieSignItem` 隐匿调查）由 `Integer.MAX_VALUE` → `MobEffectInstance.INFINITE_DURATION`（= `-1`，唯一会渲染 ∞ 的值） | 一致（**8 个效果类 + `BonnieSignItem` + `CursedSwordChipItem` + `MagicTomeChipItem` 全覆盖**） |
-  | 无限时长判据连带 | `EffectTimerGuard.record()` 的永续判据加 `duration == INFINITE_DURATION`（⚠️ 原判据只认 `>= INFINITE_THRESHOLD`，而 `-1` **不满足** ⇒ 会被登记为有限时长、被 `tick()` 按「已到期仍残留」forceRemove + 重加 1 tick ⇒ 常驻效果一施加就没）；`MamushiDragonEffect.refresh` 判据改 `!existing.isInfiniteDuration()`；`ModEffects` / `GuiMixin` 过时注释同步 | 一致 |
-  | 效果注释不显示 | 1.21.1/26.1.2 走 NeoForge 事件 `GatherEffectScreenTooltipsEvent`；**1.20.1 无该事件** ⇒ 扩展 `mixin/client/EffectRenderingInventoryScreenMixin`：**双 `@Redirect` + 一个 `ThreadLocal`**（`formatDuration` 先捕获实例 → `List.of` 改写列表），仅当 `I18n.exists(key)` 时追加一行灰色描述 | 一致；⚠️ 本线该文件**同时保留**原有的等级角标 `@Inject`（`astralDice$numericEffectLevelBadge`）⇒ 角标 + 注释并存（已核对） |
-- **⚠️ 移植适配点（本线唯一需要动脑的地方）**：`ModEffects.java` 的 import 区冲突 —— forge 侧是 `net.minecraftforge.registries.{RegistryObject,DeferredRegister}`，
-  本线是 `com.merlinkitsune.astral_dice.platform.registry.*` ⇒ **保留本线平台注册表两行 + 采纳 patch 新增的
-  `net.minecraft.world.effect.MobEffectInstance`**（新注释用 `{@link MobEffectInstance#INFINITE_DURATION}`，javadoc 解析需要它）。
-- **验证**：`compileJava` / `build` 均 SUCCESSFUL；产物已推送整合包；静态守门 `tools/verify_fabric_assets.py` **8/8 PASS**
-  （语言闭环 zh_cn/en_us/ja_jp **832/832/832** —— 恰为新增 3 个 `death.attack.card_cost*` 键）；**客户端预加载验证**
-  `[preload] OK net.minecraft.client.gui.screens.inventory.EffectRenderingInventoryScreen`、
-  `InjectionError` 命中 **0**（⇒ 该 mixin 的两处 `@Redirect` 均成功命中，见下条）。
-- **⚠️ 已知未做**：`InjectionError` 之外的**视觉确认**（进世界 → 打开物品栏 → 悬停效果图标看到描述行/∞ 符）
-  与**生产映射冒烟**未跑（用户本轮未授权跑游戏内验证）。
 
 ### KI-F20 ＝ 🚨 三线共有的 `require = 2` 误写：`renderEffects` 内每个注入点**只出现 1 次**（**本线已修正为 1；三线待回补**）
 
@@ -1136,7 +437,7 @@ fabric.mod.json: version=1.3.2-alpha.1+fabric_1.20.1 / depends.starengine_lib=">
 ### KI-F21 ＝ 1.3.5（`1.3.4..multi-main`）同步落地到本线（**已完成，2026-10-01**）—— 含两处**平台机制**适配与一处上游缺陷
 
 - **范围界定**：`multi-main` 上 `1.3.4..HEAD` 共 **20+ 提交**（1.3.5 开发周期），`git diff --name-only 1.3.4..multi-main | grep '^fabric'` = **0**
-  ⇒ 与 KI-F19 同类：**改动只落在三线 + tools/release，不含 `fabric-1.20.1`**，故继续按文件移植（`forge-1.20.1` 为蓝本 + 路径改写 + `git apply --3way`）。
+  ⇒ 与 KI-F19（已处理，见 §1.1）同类：**改动只落在三线 + tools/release，不含 `fabric-1.20.1`**，故继续按文件移植（`forge-1.20.1` 为蓝本 + 路径改写 + `git apply --3way`）。
 - **移植规模**：`git diff 1.3.4..multi-main -- forge-1.20.1/`（排除 `gradle.properties`）= **65 个文件 / 3452 行**；
   其中 62 个（非语言文件）一次性 `--3way` 应用，**11 个文件 15 处冲突**逐处手工解决；lang 三语**不**走 patch，
   改用 **JSON 键级合并**（基线 `1.3.4` ↔ 目标 `multi-main`，只把「新增 / 值变更」写进本线，保留本线独有的键）。
@@ -1272,32 +573,7 @@ fabric.mod.json: version=1.3.2-alpha.1+fabric_1.20.1 / depends.starengine_lib=">
 ⚠️ **未做**：进世界的**行为级**确认（两名玩家组队后互相攻击是否真的免伤）—— 需要双人实机，dev 单进程无法覆盖；
 当前证据到「后端已启用 + 契约与发布产物逐条一致」为止。
 
-## 10. G 组 — 游戏内内容与获取途径（2026-10-01 起）
-
-> 本组登记**玩法内容层面的缺陷**（「内容没接上」类问题）：获取途径缺失、池子漏项、文案与实际不符等。
-> 处置口径 = **先登记、后由用户裁决**；改动前必须确认「这是不是有意的设计取舍」。
-
-### KI-G1 ＝ 看板娘立牌（mimi）被动「每累计 25 张战斗牌送 1 个随机筹码」的筹码池是**硬编码**⇒ 后加的筹码一个都拿不到（**2026-10-01 用户实报，只登记未改**）
-
-- **用户原话**：「另外登记一个新BUG：看板娘立牌被动 25 张战斗牌获得 1 个筹码，筹码不包含后面新增的筹码（含飞星、充能类等）」。
-- **现象**：`item/sign/MimiSignItem` 的 `giveRandomChip` 从三张**手写清单**里取件 —— `blueChips()`（60%）/ `purpleChips()`（35%）/ `goldChips()`（5%），三张表**合计 41 个筹码**（13 / 16 / 12）。
-- **根因（机械核对，四线同源）**：筹码的**档位权威**是 `ModItems` 里的 `.rarity(AstralRarities.x())`（即 `scripts/verify/ChipCommon.psm1` 与 `verify_chip_recipes.ps1` 用的**同一口径**：蓝=RARE / 紫=EPIC / 金=LEGENDARY），而这三张表是**独立手写的 `List<ItemStack>`**，**没有任何守门脚本**核对「表 ⊇ 按档位分组的筹码全集」⇒ 每次新增筹码都会漏。
-  实测（2026-10-01，正则扫 `neoforge-1.21.1/.../item/ModItems.java` 的 `registerItem("<id>", ...)` 且 id 含 `chip`、排除 `blank_chip`）：
-  - 注册筹码 **61** 个 ＝ RARE **19** / EPIC **24** / LEGENDARY **18**；
-  - 三张表 **41** 个（13 / 16 / 12）⇒ **缺 20 个**（RARE 6 / EPIC 8 / LEGENDARY 6），按流派分：**充能 10 / 无流派 7 / 星光 2 / 治愈 1**：
-    - **充能类 10 个**：`energy_recycler_chip`(RARE)、`electric_sword_chip`(RARE)、`warp_engine_chip`(RARE)、`advanced_peripherals_chip`(EPIC)、`airbag_chip`(EPIC)、`current_core_chip`(EPIC)、`electric_glove_chip`(EPIC)、`perpetual_motion_chip`(LEGENDARY)、`primordial_core_chip`(LEGENDARY)、`railgun_chip`(LEGENDARY)；
-    - **飞星（星光类）2 个**：`purple_shooting_star_chip`(EPIC)、`golden_shooting_star_chip`(LEGENDARY)；
-    - **其余 8 个**：`adrenaline_low_chip`(EPIC)、`adrenaline_high_chip`(LEGENDARY)、`big_bowl_stew_chip`(LEGENDARY，治愈类)、`bookmark_chip`(RARE)、`member_recommendation_chip`(RARE)、`piggy_bank_chip`(RARE)、`smart_watch_chip`(EPIC)、`whetstone_chip`(EPIC)。
-  - ⚠️ **缺项清单以机械差集为准**（上表即脚本输出）；与用户措辞（「飞星、充能类等」）不一致时同样以脚本为准。
-- **判据命令（可重跑，四线通用）**：从 `ModItems.java` 用正则抽 `(字段名, id, rarity)` 三元组（id 含 `chip` 且非 `blank_chip`），再从 `MimiSignItem` 的三个 `xxxChips()` 方法里抽 `ModItems.<FIELD>.get()`，取差集即得缺项。
-- **候选修法（需用户裁决，勿擅自实施）**：
-  1. **派生式（推荐）**：三张表改为**运行时按 `stack.getRarity()` 过滤全量筹码**（数据源 = 物品注册表里 id 以 `_chip` 结尾者，排除 `blank_chip`）⇒ 以后新增筹码**自动进池**、永不再漏。
-     ⚠️ 需先确认「进阶筹码是否都要进池」—— 现有三张表**已含**进阶件（`cutter_blade_chip` / `eagle_scope_chip` / `medkit_complete_chip` / `ninja_star_chip` 等）⇒ 现状口径是「都要」。
-  2. **补表式**：仅把上述 20 个缺项补进三张表 —— 改动最小，但**下次加筹码还会再漏**（与 KI-F4 同属「清单与实际不同源」的缺陷模式）。
-  3. **守门式（与 1 配套）**：新增 `scripts/verify/verify_mimi_chip_pool.ps1`，断言「按档位分组的筹码全集 ⊆ 三张表」，否则 exit 1，防止再退化。
-  ⚠️ 无论选哪条，都**不得**改变 `RETURNED_CARD_THRESHOLD = 25`、三档概率（60 / 35 / 5）、以及「专属牌不进池」的既有口径。
-
-## 11. 变更记录
+## 10. 变更记录
 
 | 日期 | 变更 |
 |---|---|
@@ -1331,3 +607,4 @@ fabric.mod.json: version=1.3.2-alpha.1+fabric_1.20.1 / depends.starengine_lib=">
 | 2026-10-01 | **1.3.5（`1.3.4..multi-main`）同步落地本线（新增 KI-F21）+ 三批冒烟与生产映射冒烟全绿** —— 用户要求「合并 1.3.5 更新内容，并执行行为测试和游戏内测试（冒烟）」。范围实测：`1.3.4..multi-main` 20+ 提交、**`grep '^fabric'` = 0** ⇒ 依旧只改三线，按文件移植（`forge-1.20.1` 为蓝本，65 文件 / 3452 行，`--3way` 后 11 文件 15 处冲突逐处手工解决）。**三处需要平台判断的地方**（本任务的技术核心）：① `ModRecipeProvider` 的肾上腺素配方 —— 上游用 `PartialNBTIngredient`（Forge 专有）⇒ 本线保留 `Items.POTION` + `NbtAugmentedRecipe` 约束、只采纳 X/D 换料；② `LootInjectionHandler` 上游新增的 `onLootTableLoad(LootTableLoadEvent)`（**Forge 事件**）⇒ **整方法舍去**（本线箱子注入由 `loot/FabricLootInjector` 的 `LootTableEvents.MODIFY` 承担），只保留 `starPlateDropCount` / `rollKillStarCoin`；③ 新移植的 `MosesEnigmaticLink` 带 4 行 `net.minecraftforge.*` import + `@Mod.EventBusSubscriber` ⇒ 换本线 `platform.event.*`（`TickEvent.ServerTickEvent` 的 `phase`/`getServer()` 与 Forge 同形）并删除注解、改 `LoaderBus.INSTANCE.register(...)`（Fabric 无注解自动注册）。lang 三语**不走 patch** 改用 **JSON 键级合并**（基线 `1.3.4` ↔ `multi-main`）⇒ 832/832/832 一致。**datagen 必跑并已跑**（`written: 17`，实测 `komachi_sign` 用紫水晶碎片、`adrenaline_low_chip` 用末影珍珠+灵魂沙且 `astral_nbt` 约束保留）。**验证**：批 A（服务端 13.4s + 4 用例 1/9/8/3 全 PASS + 收停无残留）、批 B（客户端 19.5s + `FAB-CLIENT-BOOT` 8/8）、批 C（三语一致 / 语法门 54 文件 0 失败 / 模组来源 `violations=0` / 资源闭环 **8/8**）、**生产映射冒烟 `ft_prod.ps1` PASS（36s 到主菜单，带 `-PreloadClasses class_485,class_329,class_310,class_746,class_8002`）**。⚠️ **未做**：进世界验证（quickplay 曾误删存档，本轮刻意不用；该参数已有护栏需显式 `-AcknowledgeQuickPlayDestructive`）⇒ 世界内行为待用户授权。⚠️ **上游缺陷登记**：`multi-main` 删了 lang 键 `guide.entry.special_effects.6` 但其手册仍引用 ⇒ 本线保留该键规避，主仓需单独裁决。 |
 | 2026-10-01 | **队友判定后端「从来没生效过」定位并修复（新增 KI-F22）+ 四态运行时取证** —— 用户要求「搜索 FTB Teams / OPAC 的 1.20.1 Fabric 源代码，执行团队功能实现验证」。取证方式 = **克隆上游源码 + 下载发布 jar + `javap` 逐条比对反射契约**（并回溯到 1.20.1 最早版 `v2001.1.2-alpha`，确认该契约**从未**匹配过任何 1.20.1 版本）。**核心发现**：`PartyRelations` 接 FTB Teams 的反射**从头到尾没生效** —— 它取的 4 个访问器（`isManagerLoaded` / `getManager` / `isClientManagerLoaded` / `getClientManager`）声明在**嵌套接口 `FTBTeamsAPI$API`** 上、外层类上没有（`Class#getMethod` 不会跨到嵌套接口），客户端入口 `ClientTeamManager#getTeamForPlayer(Player)` 也**不存在**（真实为 `getKnownPlayer(UUID) → Optional<KnownClientPlayer>`）；而 `resolve()` 把全部解析放在同一个 `try` 内 ⇒ 第一处即抛 `NoSuchMethodException` ⇒ **整个 FTB 后端恒为未启用、只打一条 debug**（「失败方向安全」的设计同时掩盖了「从来没成功过」）。**修法**：访问器改从嵌套接口解析（保留「方法挪回外层类」的 fallback）；客户端改走 `getKnownPlayer(UUID)`，⚠️ `KnownClientPlayer` 是 **record**、访问器为 **`teamId()`（无 `get` 前缀）**；「同队」改比 **party 团队 id**（`Team#getId()` 对玩家队伍=该玩家自己的 UUID，同 party 两人各不相同）；`hasTeam` 判据改 `isPartyTeam() \|\| isServerTeam()`（FTB 给每个玩家都建个人队伍 ⇒ 用「存在 Team 对象」会恒真、把「未组队⇒友方作用于全服」的兜底堵死）；失败日志分两档（`ClassNotFoundException`=没装 ⇒ debug，其余=签名不符 ⇒ warn，避免给绝大多数玩家制造日志噪音）。**新增可断言机器行** `AP_FAB_PARTY: sw_* back_ftb/back_opac why_ftb/why_opac`（`PartyRelations#reportBackends()`，挂 `AstralDiceMod#onCommonSetup`，与其它 `AP_FAB_*` 同族）。**同轮附带**：修 `BigBowlStewChipItem#isOwnedByAlly` 一处**绕过统一入口**的裸 `getTeam()`；清掉迁移遗留的 **9 处失效引用**（9 个 `import` 中 4 个已完全无引用 + 3 处仍指向库的 javadoc `{@link}`）；登记**库侧两个同类缺陷**（`EventTargetCollector` 在 `TeamManager` 上反射 `getTeamForPlayer(Player)/(UUID)` 均不存在；OPAC 类名 `dev.darkhax.opac.*` 不存在）—— 影响另三条线，交库侧下次发版。**验证**：四态运行时 A/B/C/D（无第三方 / 装 FTB / 再加 OPAC / **专用服务端**）读数逐态符合预期（`off/off` → `on/off` → `on/on` → `on/on`，`why_*` 分别给出 `ClassNotFoundException:…` 与 `OK`）；新增静态闸门 **`tools/verify_party_api.py`**（自动抽取契约 ↔ 真实 jar 比对）**修复前 `PASS=9/FAIL=5` ⇒ 修复后 `PASS=17/FAIL=0`**；新增测试台用例 **`FAB-PARTY-BACKENDS`**（6 条断言）入批 A 并 PASS；批 A 五条用例全绿、派发 `ServerTickEvent=599`、收停无残留；资源闸门 **8/8 PASS**（三语 832/832/832）。⚠️ **未做**：进世界的**双人行为级**确认（组队后互相攻击是否真的免伤）—— dev 单进程覆盖不到。 |
 | 2026-10-01 | **新增 KI-D2（Iceberg tooltip 颜色缓存残留）+ 缓解措施落地**：四线各新增 `client/IcebergTooltipCacheGuard`，在每次 tooltip 渲染开头把 `Tooltips.currentColors` 反射复位为 `DEFAULT_COLORS`（并按 Iceberg 是否自己管色自适应跳过）（三条 NeoForge/Forge 线走 `RenderTooltipEvent.Pre`，fabric 线走 `ClientTooltipBridgeMixin` 的 `renderTooltipInternal` HEAD），使**其它模组物品与原版物品**也不再继承上一个 tooltip 的颜色；同时**新增 §10 G 组**并登记 **KI-G1**（看板娘立牌 25 张战斗牌送筹码的池子硬编码、缺 20 个后加筹码，含充能类 10 个与飞星 2 个；只登记未改） |
+| 2026-10-01 | **KNOWN-ISSUES 首次清理**（用户指令「检查是否还有未处理项，清理所有已处理项」）：把 20 个**已处理**条目（KI-M1 / KI-M5 / KI-D2 / KI-G1 / KI-F1·F2·F3·F5·F6·F9·F10·F11·F12·F13·F14·F15·F16·F17·F18·F19）与 §5 表中 7 行已闭环记录**移出正文**，改为 **§1.1 已处理索引**（id + 结论 + 证据落点）；§0 第 4 条「不要删条目」修订为「**已修项清理、未修项禁删**」并补「删前 grep 引用」要求；§1 计数更新为 **23 条未修/未决 + §5 的 2 条测试资产待修项**；KI-M4 标题更正为「原 2 项，第 1 项已闭环」；§10 G 组因条目清空而撤销、变更记录顺位为 §10。同批修复 **KI-G1**（看板娘筹码池改派生式，见 CHANGELOG 1.3.6 与 TESTING-SPEC 续 43） |
