@@ -50,6 +50,31 @@
   `BlueCurseEffect` goes from `-1.0` to `-0.5` (the -20% armour value is unchanged); the effect description, the item
   tooltip and the guide text are updated to match.
 
+- **Chip status icons completed + all damage-boost chip indicators switched to infinite duration**
+  (ruled by the user on 2026-10-01): (1) **five chips that previously had no HUD icon at all now have one** -
+  Whetstone, Adrenaline (one icon each for Common / High-Grade), Cursed Sword, Electric Sword and Railgun;
+  (2) **every damage-boost chip indicator now follows "shown permanently while it can take effect"**, i.e. infinite
+  duration instead of a short countdown - Flashlight (- Strong Light) and Revenge Halberd go from a 5-second countdown
+  to infinite (the Cutter chips were already infinite);
+  (3) the six new indicators share the exact predicate of their attack modifier and go dark together with the global
+  gate when no dice is equipped (the accumulated values are still kept): Whetstone = below 50%% health (attack +4 /
+  damage taken -2); Adrenaline = below 50%% health (attack & defence +3 Common / +8 High-Grade); Cursed Sword =
+  accumulated attack bonus > 0; Electric Sword = charge ≥ 4 (one point of attack per 4 charge); **Railgun = charge ≥ 6
+  (attack +5 active, i.e. "ready")**. Implementation: a new marker effect class `effect/ChipReadyEffect`, six
+  registrations in `ModEffects`, and per-tick maintenance in `PlayerTickEvents#updateChipBonusIndicators` (all via
+  `refreshIndicatorInfinite`); the icons are byte-for-byte copies of `images/<chip>.png`, the same spec as the existing
+  status icons. As the only remaining caller of the finite-duration `refreshIndicator` disappeared with this change, it
+  has been removed. A new gate `tools/verify_effect_icons.py` (every `MOB_EFFECT` registration must have a matching
+  `mob_effect/*.png`) now covers all four lines at 100%%, so "registered an effect but forgot the texture" can no longer
+  slip through.
+
+  (4) **a related hazard was fixed along the way**: the per-tick maintenance of these indicators used to be
+  short-circuited by `if (!diceGated)`, so **after removing the dice nothing would remove the icons** and they
+  stayed as a stale "feature off, icon still on" state. The three maintainers now run every tick regardless of that
+  short-circuit, with the gate pushed down into their own conditions (chip conditions go through `isEquipped`,
+  which already carries the gate; the Cutter's `hasCutter` / `hasBlade` now apply it explicitly) - so the icons are
+  removed without dice while the accumulated values are still kept.
+
 
 ### Bug Fixes
 

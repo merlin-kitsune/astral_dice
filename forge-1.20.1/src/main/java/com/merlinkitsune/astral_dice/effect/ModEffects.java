@@ -99,6 +99,34 @@ public class ModEffects {
     public static final RegistryObject<MobEffect> FLASHLIGHT_READY =
             EFFECTS.register("flashlight_ready", () -> new FlashlightReadyEffect(0xFFE082));
 
+    // ── 伤害增加型筹码的「就位 / 生效中」指示器（2026-10-01 用户裁决）──
+    // 口径：只要加成**可生效**就常驻显示，时长一律无限（不走倒计时）；
+    //       显示条件由 PlayerTickEvents#updateChipBonusIndicators 每 tick 维护；
+    //       图标 = images/<筹码名>.png 的逐字节副本（与既有状态图标同规格）。
+    // 磨刀石：低血（≤50%）时攻击 +4 / 受伤 -2 生效中
+    public static final RegistryObject<MobEffect> WHETSTONE_READY =
+            EFFECTS.register("whetstone_ready", () -> new ChipReadyEffect(0xCFD8DC));
+
+    // 肾上腺素-一般：低血（≤50%）时攻防 +3 生效中
+    public static final RegistryObject<MobEffect> ADRENALINE_READY =
+            EFFECTS.register("adrenaline_ready", () -> new ChipReadyEffect(0xA5D6A7));
+
+    // 肾上腺素-高效：低血（≤50%）时攻防 +8 生效中
+    public static final RegistryObject<MobEffect> ADRENALINE_HIGH_READY =
+            EFFECTS.register("adrenaline_high_ready", () -> new ChipReadyEffect(0x69F0AE));
+
+    // 诅咒之剑：已累计攻击力加成（>0）时显示
+    public static final RegistryObject<MobEffect> CURSED_SWORD_READY =
+            EFFECTS.register("cursed_sword_ready", () -> new ChipReadyEffect(0xB39DDB));
+
+    // 电流剑：充能 ≥ 4（攻击力 +1 生效）时显示
+    public static final RegistryObject<MobEffect> ELECTRIC_SWORD_READY =
+            EFFECTS.register("electric_sword_ready", () -> new ChipReadyEffect(0xFFF176));
+
+    // 电磁炮：充能 ≥ 6（攻击力 +5 生效）时显示
+    public static final RegistryObject<MobEffect> RAILGUN_READY =
+            EFFECTS.register("railgun_ready", () -> new ChipReadyEffect(0x81D4FA));
+
     // 对怪激光:远程和魔法伤害 +4
     public static final RegistryObject<MobEffect> MONSTER_LASER =
             EFFECTS.register("monster_laser", () -> new RangedBoostEffect(0xFF3D3D));

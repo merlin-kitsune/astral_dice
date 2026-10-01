@@ -706,6 +706,15 @@ When extending this workspace:
 
 ### 筹码（chips）— 一览见「筹码一览」节
 
+> **筹码状态图标口径（2026-10-01 用户裁决）— 必须遵守**：筹码的 HUD 状态图标就是一枚本模组的 `MobEffect`，
+> 显示条件由 `event/PlayerTickEvents#updateChipBonusIndicators`（或各筹码自己的 `updateXxxEffect`）**每 tick 维护**。
+> 🚨 **伤害增加型筹码的指示器时长一律 `MobEffectInstance.INFINITE_DURATION`**（口径 = 「可生效即常驻」），
+> 禁止再用短倒计时（会误导玩家以为加成只剩几秒）；条件消失即移除，移除走 `ModEffectRemoval`。
+> ⚠️ 维护点**不得**放进 `if (!diceGated)` 这类短路分支里 —— 一旦短路，图标就再没人负责移除，
+> 卸下骰子后会残留成「功能已关、图标还在」（2026-10-01 实测踩中）：正确写法是**每 tick 都跑**，把闸门下沉进各自条件。
+> 新增指示器三步缺一不可：① `ModEffects` 注册（四线）；② `mob_effect/<id>.png`（= `images/<筹码名>.png` 的逐字节副本，
+> 32×32）；③ 三语 `effect.astral_dice.<id>`。守门 = `tools/verify_effect_icons.py`（② 的机器判据）。
+
 ## 立牌命名规范（Sign Naming Convention）— 必须遵守
 
 立牌使用**固定的英文 id** 作为其唯一标识，贯穿 Java 代码（类名/字段/方法/注册名/注释中的英文标识）与 MC 数据包（lang key、效果注册 id、纹理文件名）。**禁止**再使用中文翻译生成的英文词（如 guardian/sweeper/business/ninja/vampire/investigator）作为标识符。
