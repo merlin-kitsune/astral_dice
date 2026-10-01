@@ -52,6 +52,7 @@
 | `cases/FAB-JAR-ASSETS.json`       | ③ 产物资源完整性（1 断言，**不需要游戏**）                                                                                   | 只需 `ft_build`                                                             |
 | `cases/FAB-CLIENT-BOOT.json`      | ④ 客户端启动期事实：桥已安装 / 注册桥读数 / 审计通过 / 无类加载与崩溃（8 断言）                                                              | 需 `ft_launch --side client --gradle-arg -PtestSodium=false`               |
 | `cases/FAB-INJECT-ROUNDTRIP.json` | ⑤ 注入往返（3 断言）                                                                                                | 需活着且已启 RCON 的服务端；锚点 = `/say <tag>` 的控制台回声                                 |
+| `astral_fabric_curio_probe.js`    | **饰品后端取证探针**（2026-10-01 新增）：命令 `/astralfab <env\|sources\|groups\|state\|equip\|unequip\|clear\|fillchip\|refresh\|enforce\|clearinv>`；权威出口是 `console.info`（→ `run/server/logs/latest.log`），`sendFailure` 只作 RCON 同步回显。用于「Trinkets / Accessories 两后端行为等价性」取证 | 见 §7.2.6；探针**只读写观测**，槽位增减全部走产品入口 |
 | `event_bridge_probe.js`           | **既有文件，原样保留**：人工取证脚本（造僵尸/伤害/效果来区分「桥没接」与「确实没发生」）                                                             | 由 `ft_env --install-probe` 装进 `run/server/kubejs/server_scripts/`         |
 | `.syntax-check.txt`               | 全部 `.ps1/.psm1` 的 PowerShell 语法解析自检结果（见 §7）                                                                 | 每次改动后重跑（命令见 §7）                                                           |
 
@@ -65,6 +66,7 @@ pwsh -NoProfile -File scripts/test/fabric/ft_build.ps1                  # 构建
 pwsh -NoProfile -File scripts/test/fabric/ft_env.ps1 --side both        # 前置/目录校验（只读）
 pwsh -NoProfile -File scripts/test/fabric/ft_env.ps1 --side server --enable-rcon   # 开 RCON（注入的唯一通道）
 pwsh -NoProfile -File scripts/test/fabric/ft_env.ps1 --side server --install-probe # 装 KubeJS 读数探针
+pwsh -NoProfile -File scripts/test/fabric/ft_env.ps1 --side both --install-embedded # 补 Loom 剥离的 JiJ 内嵌库（**dev 必做**，见 §7.2.6 与 KI-F23）
 pwsh -NoProfile -File scripts/test/fabric/ft_launch.ps1 --side server   # 起服务端并等就绪
 # 客户端：本机 dev 环境**必须**带 -PtestSodium=false（Sodium 要 LWJGL 3.3.1，环境是 3.3.2-snapshot）
 pwsh -NoProfile -File scripts/test/fabric/ft_launch.ps1 --side client --timeout 420 --gradle-arg -PtestSodium=false
@@ -507,6 +509,69 @@ python tools/verify_party_api.py --pre-fix  # 校验修复前快照      → 期
 ⇒ 必须**按内部类分段解析**，否则后者的绑定会覆盖前者、把 FTB 的方法算到 OPAC 类名下；
 ② 不同发布方 remap 口径不同（FTB 产物是 **intermediary** 类名 `net.minecraft.class_1657`，OPAC 产物是 **Mojmap**），
 ⇒ 参数类型比对要**两种写法都接受**，映射取自 Loom 的 `mappings.tiny`（权威）。
+
+### 7.2.6 饰品后端（Trinkets / Accessories）四态实机验证（2026-10-01，`AP_FAB_ACCESSORY_PROVIDER` / `AP_<tag>_SRC`）
+
+**要验证的问题**：`compat/curios/CuriosApi` 门面把 Accessories（主源）与 Trinkets（兜底）聚合成同一视图，
+消费方 94 处 `CuriosApi.*` 调用一行不改。但**两个后端在「槽位组尺寸」上的机制是否真的等价**从未进游戏验证过 ——
+尤其是「筹码栏随骰子星级增减」依赖的
+`addPersistentModifier(Operation.ADDITION) → update() → 容器尺寸变化` 这条链路。
+
+**驱动方式**：专用 dev 服务端（`gradlew :fabric-1.20.1:runServer`）+ **RCON** + **Carpet 假玩家**。
+本台此前的缺口是「客户端 GUI 键鼠注入未覆盖」（§8.1），本轮绕开它的办法是：
+`/player Bot spawn` 造一个**真实 ServerPlayer**（`PlayerList#placeNewPlayer` 入表，实测于 jar 字节码），
+再用 `/astralfab` 探针（KubeJS）对它做装备/读数。装备走**产品入口** `CurioSlotUtil#tryAutoEquip`
+（等价于真人下蹲右键自动装备，仅少一层按键判定）。
+
+**四态**（`build.gradle` 既有开关）+ 逐态读数：
+
+| 轮次 | 启动参数 | `AP_FAB_ACCESSORY_PROVIDER` | `AP_<tag>_SRC` | 合并视图 `groups` |
+|---|---|---|---|---|
+| A 双装 | （默认） | `OK (trinkets=true accessories=true)` | `trinkets_on=1 accessories_on=1 trinkets_groups=3 accessories_used_slots=3 accessories_groups=15` | Accessories 15 组（含 chip/dice/stand 与 Accessories 默认槽） |
+| B 仅 Accessories | `-PtestTrinkets=false` | `OK (trinkets=false accessories=true)` | `trinkets_on=0 … trinkets_groups=off accessories_groups=15` | 同 A |
+| C 仅 Trinkets | `-PtestAccessories=false` | `OK (trinkets=true accessories=false)` | `trinkets_on=1 … trinkets_groups=3 accessories_*=off` | **仅 `chip=0,dice=1,stand=1`** |
+| D 皆无 | `-PtestTrinkets=false -PtestAccessories=false` | `FAIL (trinkets=false accessories=false)` | — | —（**按设计拒绝启动**） |
+
+⚠️ `_SRC` 子命令是专门为 A 轮加的：**双装态下聚合视图把同名槽位并集了，门面读数分辨不出来源**
+（并集后 `chip` 只有一个）。它绕过门面直接问两条通道各自的原始 API
+（`TrinketsCompat.getCuriosMap` / `AccessoriesAPI.getUsedSlotsFor`）。
+⚠️ 它必须**先过 `ModCompatibilityCheck.isTrinketsPresent()/isAccessoriesPresent()` 再触碰对应类** ——
+实测：Accessories 缺席时调 `AccessoriesAPI.*` 会抛 `java.lang.NoClassDefFoundError: io/wispforest/accessories/api/Accessory`，
+而 **`java.lang.Error` 不会被探针的 `catch` 接住** ⇒ 整条命令硬中止、一行读数都不出（首版踩中，已修）。
+
+**A/B/C 三轮的行为读数逐条一致**（同一份命令序列 `temp/gate/cmds_p1.txt`，24 条）：
+
+| 步骤 | 期望 | A 双装 | B 仅 Acc | C 仅 Trk |
+|---|---|---|---|---|
+| 装 `nether_star_dice`(0★=4 格) | chip 栏长到 4 | `slots=4`、`mods=[a5d1c9e2-…=4*]` ✔ | 同 ✔ | 同 ✔ |
+| 塞 4 枚筹码 | `cap=4 filled=4` | ✔ | ✔ | ✔ |
+| 取走骰子 | **防御式：槽位与筹码都不缩** | `slots=4`、4 枚仍在 ✔ | ✔ | ✔ |
+| 此时闸门 | `hasDice=0` | ✔ | ✔ | ✔ |
+| 换装 `golden_dice`(0★=1 格) | **强制收缩到 1，3 枚退回物品栏** | 下一拍 `slots=1`、`INV total=3 chips=3` ✔ | ✔ | ✔ |
+| 登出→登录（未佩戴骰子） | **槽位归零 + 全部筹码退回物品栏** | `slots=0`、`INV total=4 chips=4` ✔ | ✔ | ✔ |
+
+**两条独立结论**：
+1. **`addPermanentModifier(ADDITION) + update()` 在 Accessories 上确实改变 `getSize()`** —— 这是本轮最核心的假设，
+   静态分析时一度因为 `AccessoriesContainerImpl#update()` 里有个 `allowResizing()` 闸门而疑似会失败；
+   实测 `slots=0 → 4` 且 `mods` 里出现本模组固定 UUID 的绝对修饰符 ⇒ 闸门默认放行（`ExtraSlotTypeProperties.DEFAULT.allowResizing = true`）。
+2. **`onEquip` 在 Accessories 上的生效比 Curios 晚一拍**：`equip` 命令的**同一拍**读数是旧尺寸，
+   下一个动作（间隔 ≈1.6 s）读到新尺寸。Trinkets 侧同样如此。⇒ 换装后的强制收缩**不是同 tick 完成**的，
+   任何「装备后立刻断言」的用例都会假红 —— 读数必须留一拍。
+
+**四态结论**：A ≡ B ≡ C（后端行为等价、聚合视图在两个单源态下也自洽）；D 按设计**拒绝启动**并给出完整中文说明
+（两条安装路径 + 双装说明 + 重启提示），`ModLoadingException` 落在 `ModCompatibilityCheck#verifyAccessoryProviderOrThrow`。
+
+⚠️ **本轮的 dev 环境前置**：Loom 1.14.10 重映射第三方 mod 时会剥离 `fabric.mod.json` 的 `jars` 声明
+⇒ Puzzles Lib / Accessories / Patchouli / Cloth Config / KubeJS **全部起不来**。处置见 **KI-F23** 与
+`tools/loom_embedded_jars.py`（`ft_env --install-embedded` 已接线）。**换后端态后必须重跑一次**。
+
+#### 仍未覆盖（如实标注）
+
+- **双装态下「两边都装、各装一件」的写入落点**未测：探针只覆盖「同槽位空 → 落主源」这一支；
+  `MergedSlots.setStackInSlot` 的「写当前持有内容的那一侧」需要玩家用两套 GUI 各自装备一次，dev 单进程驱动不到。
+- **立牌被动/主动技能在闸门下的行为**未在游戏内断言（本轮只断言 `hasDice` 这个判据本身）；
+  `BaseSignItem#curioTick` / `performSkill` 等闸门点仍是源码级结论。
+- **客户端渲染面**（饰品栏 GUI 布局、槽位图标）未覆盖，属本台既有缺口（§8.1）。
 
 ### 7.3 已修复的测试台缺陷（7 个；每个都附实测证据）
 

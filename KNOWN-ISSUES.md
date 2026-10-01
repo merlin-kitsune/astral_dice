@@ -23,8 +23,8 @@
 - 登记日期：2026-09-15
 - 登记来源：B7 交付后遗漏审计（用户裁定「纪录上述问题，作为未来版本修补内容」）
 - 目标版本：**下一版本**（1.2.1 之后；是否并入 1.2.1 需用户另行裁定）
-- 条目总数（2026-10-01 清理后）：**25** 条未修/未决 = A 组 7（KI-1…KI-7）+ B 组 1（KI-8）+ C 组 3（KI-9…KI-11）
-  + M 组 3（KI-M2/M3/M4）+ D 组 1（KI-D1）+ E 组 3（KI-E1/E2/E3）+ F 组 6（KI-F4/F7/F8/F20/F21/F22）
+- 条目总数（2026-10-01 清理后）：**26** 条未修/未决 = A 组 7（KI-1…KI-7）+ B 组 1（KI-8）+ C 组 3（KI-9…KI-11）
+  + M 组 3（KI-M2/M3/M4）+ D 组 1（KI-D1）+ E 组 3（KI-E1/E2/E3）+ F 组 7（KI-F4/F7/F8/F20/F21/F22/F23）
   + G 组 1（KI-G2，2026-10-01 新增），
   另有 §5 的 **2** 条「测试资产待修项」。**已处理条目见 §1.1 索引。**
 
@@ -595,6 +595,40 @@ GlCommandEncoder.trySetup(:531) ← GlCommandEncoder.executeDraw(:406) ← GlRen
 ⚠️ **未做**：进世界的**行为级**确认（两名玩家组队后互相攻击是否真的免伤）—— 需要双人实机，dev 单进程无法覆盖；
 当前证据到「后端已启用 + 契约与发布产物逐条一致」为止。
 
+### KI-F23 ＝ 🚨 **dev 环境启动阻断**：Loom 重映射第三方 mod 时**剥掉 `fabric.mod.json` 的 `jars` 声明**，导致依赖内嵌库（JiJ）的 mod 在本线 dev 里全部起不来（**已缓解并落工具，2026-10-01**）
+
+**一句话**：本线 dev 环境下，凡「自带内嵌库」的第三方 mod（Puzzles Lib / Accessories / Patchouli / Cloth Config / KubeJS）
+都**无法启动** —— Loom 把它们重映射进 `.gradle/loom-cache/remapped_mods/` 时，把产物 `fabric.mod.json` 里的
+`jars` 字段**整条删掉**，而 `META-INF/jars/*.jar` 文件本体仍留在包里（且**未经重映射**，仍是 intermediary 名称）。
+
+#### 复现与判定（可复跑）
+
+| 证据 | 读数 |
+|---|---|
+| 原始 Modrinth 产物 | `puzzles-lib-…jar` 的 `fabric.mod.json` = `jars: [{"file": "META-INF/jars/puzzlesaccessapi-fabric-20.1.1.jar"}]` |
+| Loom 重映射后 | `.gradle/loom-cache/remapped_mods/…/puzzles-lib-c2d2b86c-N8gFdljq.jar` 的 `jars = None`；`META-INF/jars/puzzlesaccessapi-fabric-20.1.1.jar` **仍在**，内含 `class_xxxx` ⇒ 未重映射 |
+| 不是缓存陈旧 | 把整棵 `remapped_mods` 移走、删配置缓存后**重新生成**，结果**逐字相同**（Loom 1.14.10 的确定行为） |
+| 启动期故障 | `HARD_DEP_NO_CANDIDATE puzzleslib … {depends puzzlesaccessapi}`；补上后又依次暴露 `NoClassDefFoundError: io/wispforest/endec/util/MapCarrier`（Accessories）、`io/github/fablabsmc/fablabs/api/fiber/v1/…/ConfigType`（Patchouli） |
+| 命中面 | 8 个 remapped mod jar 含 `META-INF/jars`，其中 **7 个内嵌库的 mod id 在 Loom classpath 上不存在**（另 60 个是 Fabric API 子模块 / CCA，classpath 上已有独立条目，**不能重复投放**，否则 Loader 判 duplicate mod 直接拒启） |
+
+#### 缓解（已落地）
+
+`tools/loom_embedded_jars.py` —— 扫描 Loom 重映射产物，把「内嵌且 classpath 上不存在」的 jar 抽出来投放到
+`run/<side>/mods/`。**之所以投放即可生效**：Loom 的 dev 启动配置写了
+`-Dfabric.remapClasspathFile=<subproject>/.gradle/loom-cache/remapClasspath.txt`
+（见 `fabric-1.20.1/.gradle/loom-cache/launch.cfg`）⇒ **Fabric Loader 在 dev 模式会对 `mods/` 目录里的 jar 做运行时重映射**，
+故原样投放未重映射的内嵌 jar 即可，无需自行 remap。与测试台既有的「第三方 jar 丢进 run 目录」手法同源（README §7.2.5）。
+
+- 只报告：`python tools/loom_embedded_jars.py`
+- 投放：`python tools/loom_embedded_jars.py --apply`（默认两侧）；或经 `ft_env.ps1 --install-embedded`
+- 回收：`python tools/loom_embedded_jars.py --clean`（按 `run/<side>/mods/.astral_embedded_jars.json` 清单精确回收，
+  **不动**他人手工投放的 jar）
+
+⚠️ **换后端态后必须重跑一次**（`-PtestTrinkets` / `-PtestAccessories` 会改变 classpath ⇒ 去重集合会变）。
+
+⚠️ **未做的**：根因在 Loom 一侧，本仓只能缓解。若将来 Loom 修好（保留 `jars`），本工具会退化为「无待补项」并打印
+`need=0`，可安全保留。
+
 ## 10. G 组 — 游戏内内容与获取途径（2026-10-01 重建）
 
 > 本组登记**玩法内容层面的缺陷**，以及**「用户裁决的必然推论」形成的可刷路径**：
@@ -660,4 +694,5 @@ GlCommandEncoder.trySetup(:531) ← GlCommandEncoder.executeDraw(:406) ← GlRen
 | 2026-10-01 | **KNOWN-ISSUES 首次清理**（用户指令「检查是否还有未处理项，清理所有已处理项」）：把 20 个**已处理**条目（KI-M1 / KI-M5 / KI-D2 / KI-G1 / KI-F1·F2·F3·F5·F6·F9·F10·F11·F12·F13·F14·F15·F16·F17·F18·F19）与 §5 表中 7 行已闭环记录**移出正文**，改为 **§1.1 已处理索引**（id + 结论 + 证据落点）；§0 第 4 条「不要删条目」修订为「**已修项清理、未修项禁删**」并补「删前 grep 引用」要求；§1 计数更新为 **23 条未修/未决 + §5 的 2 条测试资产待修项**；KI-M4 标题更正为「原 2 项，第 1 项已闭环」；§10 G 组因条目清空而撤销、变更记录顺位为 §10。同批修复 **KI-G1**（看板娘筹码池改派生式，见 CHANGELOG 1.3.6 与 TESTING-SPEC 续 43） |
 | 2026-10-01 | **新增 §10 G 组 与 KI-G2**：登记「医疗箱筹码的重登 / 切维度触发可被反复利用」（用户裁决「这两个时点各触发一次」的必然推论 —— 层数满 32 时也会按 32×2 回血）；同时记录 §1 计数 23 → 24，原 §10 变更记录顺位为 §11 |
 | 2026-10-01 | **新增 KI-E3**：`tools/audit_mixin_injection.py` 的 `LINES` 不含 `fabric-1.20.1` ⇒ fabric 全部 mixin 无自动守门（本轮新增的切维度 mixin 正落在该缺口内，仅有「人工反汇编 + 与既有同构 mixin 逐字比对」一条证据链）；§1 计数 24 → 25（E 组 2 → 3） |
+| 2026-10-01 | **新增 KI-F23（dev 环境启动阻断）**：Loom 1.14.10 重映射第三方 mod 时剥离 `fabric.mod.json` 的 `jars` 声明 ⇒ 本线 dev 里 Puzzles Lib / Accessories / Patchouli / Cloth Config / KubeJS 全部起不来（`HARD_DEP_NO_CANDIDATE` 与连续两条 `NoClassDefFoundError`）。判定链：原始产物有 `jars` / 重映射后 `jars=None` 而文件本体仍在且仍是 intermediary / 移走整棵缓存重新生成结果逐字相同（⇒ 确定行为，非缓存陈旧）；命中面 8 个 jar，其中 7 个内嵌库 id 在 classpath 上不存在。缓解 = 新增 `tools/loom_embedded_jars.py`（按 id 去重后投放到 `run/<side>/mods/`，靠 Loom 的 `fabric.remapClasspathFile` 运行时重映射生效）+ `ft_env.ps1 --install-embedded` 开关；§1 计数 25 → 26（F 组 6 → 7） |
 | 2026-10-01 | **KI-E3 扩项**：该覆盖缺口不止 `audit_mixin_injection` —— `tools/check_lang_sync.ps1` 与 `tools/audit_actionbar.py` 同样只登记三线（fabric 的 lang / 动作栏变更须人工核验） |

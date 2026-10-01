@@ -122,6 +122,7 @@ $Mode = 'verify'
 $FromDir = ''
 $EnableRcon = $false
 $InstallProbe = ''
+$InstallEmbedded = $false
 $RconPort = 25575
 $RconPassword = 'astralft'
 $ArgList = @($args)
@@ -155,11 +156,14 @@ while ($i -lt $args.Count) {
         } else {
             $i++
         }
+    } elseif ($key -eq 'installembedded') {
+        $InstallEmbedded = $true; $i++
     } elseif ($key -eq 'allowauto') {
         $i++
     } elseif ($key -eq 'h' -or $key -eq 'help') {
         Write-FtLine '用法: ft_env.ps1 [--side client|server|both] [--mode verify|install] [--from <dir>]'
         Write-FtLine '                  [--enable-rcon] [--rcon-port N] [--rcon-password P] [--install-probe [脚本名]]'
+    Write-FtLine '                  [--install-embedded]'
         exit $FT_EXIT_PASS
     } else {
         Write-FtErrorLine "未知参数 $tok"; exit $FT_EXIT_ERROR
@@ -297,6 +301,21 @@ foreach ($s in $sides) {
             Copy-Item -LiteralPath $probeSrc -Destination $target -Force
             Write-FtLine ("AP_FAB_ENV_PROBE: side={0} installed={1}" -f $s, $target)
             Write-FtWarn 'KubeJS 只在**冷启动**或 `/kubejs reload <type>` 后加载脚本 ⇒ 装完必须重启服务端才生效。'
+        }
+    }
+
+    # ④.5 Loom 剥离的 JiJ 内嵌库（**dev 环境的启动阻断项**）
+    #      Loom 重映射第三方 mod 时会把产物 fabric.mod.json 里的 `jars` 声明整条删掉
+    #      （文件本体还在、但仍是 intermediary）⇒ 依赖内嵌库的 mod 在 dev 里全部起不来。
+    #      详见 tools/loom_embedded_jars.py 的模块注释与 KNOWN-ISSUES §9 KI-F23。
+    if ($InstallEmbedded) {
+        $tool = Join-Path (Split-Path -Parent (Get-FtSelfDir)) '..\tools\loom_embedded_jars.py'
+        $tool = [System.IO.Path]::GetFullPath($tool)
+        if (-not (Test-Path -LiteralPath $tool -PathType Leaf)) {
+            $problems.Add("找不到 tools/loom_embedded_jars.py：$tool")
+        } else {
+            Write-FtLine ("AP_FAB_ENV_EMBED: side={0} tool={1}" -f $s, $tool)
+            & python $tool --apply --side $s 2>&1 | ForEach-Object { Write-FtLine ("  " + $_) }
         }
     }
 
