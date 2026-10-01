@@ -238,6 +238,10 @@ public class PlayerLifecycleHandler {
         // 教主立牌「降神」(规格 A2):目标重登 ⇒ 降神不跨会话残留(与白泽赐福同口径);
         // 施法者重登 ⇒ 降神**保留**,就地重建"我 → 目标"指针与攻击加成镜像缓存(目标记录是唯一真值)。
         com.merlinkitsune.astral_dice.item.sign.TeruSignItem.onOwnerRelogin(player);
+        // 医疗箱筹码:重新登录视为「新的装备会话」⇒ 先释放闸门再触发一次(闸门保证与
+        // Curios 的重放二选一,不会触发两次)。
+        HealingManager.refreshMedkitEquipSession(player);
+        HealingManager.triggerMedkitOnEquip(player);
         // 重连后刷新治愈体系(上限收缩/效果显示;赐福边沿 prev 标记初始 false,不会误触发减半)
         HealingManager.tick(player);
         // 筹码栏位对账(筹码栏尺寸完全由骰子修饰符给出):重登后必须按当前佩戴的骰子重算一次。
@@ -260,10 +264,28 @@ public class PlayerLifecycleHandler {
         if (!(event.getEntity() instanceof Player player)) return;
         if (player.level().isClientSide()) return;
         HealingManager.tick(player);
+        // 医疗箱筹码:重生后完整触发一次治愈(加点 → 回血 → 起计时器)。
+        // ⚠️ 此处**只申领闸门、不释放** —— 释放的语义是「新装备会话开始」,
+        // 而这个边界已由**死亡**的 HealingManager#clear 划定(它本身就会 release)。
+        // 实测时序:PlayerRespawnEvent 在 PlayerList#respawn 里同步发出,Curios 的重放
+        // 发生在其后一个 tick ⇒ 无论这里是否 release,重放都会被本次触发置位的闸门挡掉。
+        HealingManager.triggerMedkitOnEquip(player);
         // 充能流派:死亡不丢失充能层数,重生后恢复
         ChargeManager.restoreAfterDeath(player);
         // 调查员/忍者立牌累计加成:重生后再兜底恢复(克隆已恢复过则此处空操作)
         com.merlinkitsune.astral_dice.component.DeathPreservedBonuses.restoreAfterDeath(player);
+    }
+
+    // 切换维度:医疗箱筹码同样算一次「装备触发」。与登录同口径 —— 先释放闸门再触发,
+    // 使「Curios 重放」与「本次显式触发」二选一(fabric 侧的派发见
+    // mixin/bridge/ServerPlayerDimensionTravelBridgeMixin 的 RETURN 注入)。
+    @SubscribeEvent
+    public static void onPlayerChangedDimensionTriggerMedkit(
+            PlayerEvent.PlayerChangedDimensionEvent event) {
+        if (!(event.getEntity() instanceof Player player)) return;
+        if (player.level().isClientSide()) return;
+        HealingManager.refreshMedkitEquipSession(player);
+        HealingManager.triggerMedkitOnEquip(player);
     }
 
     // 复活/换维度克隆:Curios 在 playerClone 里把旧档案交给新实体(保留筹码栏的永久修饰符),

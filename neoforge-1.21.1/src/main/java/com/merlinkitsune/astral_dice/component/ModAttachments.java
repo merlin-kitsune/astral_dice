@@ -682,6 +682,25 @@ public class ModAttachments {
                     .serialize(Codec.INT)
                     .build());
 
+    // 医疗箱筹码「装备触发」的**发放闸门**(位掩码;位含义见 HealingManager.GRANT_BIT_MEDKIT_*)。
+    // 为什么需要:Curios 只持久化 stacks、**不持久化 previousStacks** ⇒ 登录 / 重生 / 切维度后首 tick 的
+    // prevStack 恒为空栈而槽里有物品,Curios 会把这判成一次装备变化并**重放 onEquip** ⇒ "空槽守卫"挡不住。
+    // 闸门的作用是把「Curios 重放」与「我们自己发起的生命周期触发」**二选一**(否则同一时点会触发两次)。
+    // 必须持久化(随附件存档)且**不 `.sync()`/不进 SYNCED_KEYS**(仅服务端判定,客户端不读)。
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> MEDKIT_EQUIP_GRANT_FLAGS =
+            ATTACHMENTS.register("medkit_equip_grant_flags", () -> AttachmentType.builder(() -> 0)
+                    .serialize(Codec.INT)
+                    .build());
+
+    // 医疗箱筹码「装备触发」的**发放账本**:每件 4 bit 存「本次装备会话**实际**获得的治愈层数」(0..15),
+    // 槽位顺序 = `HealingManager.GRANT_BIT_MEDKIT_*` 的位号(bit0 → 最低 4 bit)。
+    // 为什么必须记账:层数已到上限(32)时装备**一点没涨**,照名义值回撤就是白扣玩家自己攒的层数。
+    // 必须持久化且**不 `.sync()`/不进 SYNCED_KEYS**(仅服务端判定)。
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> MEDKIT_EQUIP_GRANT_AMOUNTS =
+            ATTACHMENTS.register("medkit_equip_grant_amounts", () -> AttachmentType.builder(() -> 0)
+                    .serialize(Codec.INT)
+                    .build());
+
     // 诅咒之剑筹码:累计击杀不少于 20 血的敌对目标获得的攻击力加成(移除筹码/死亡清除)
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Integer>> CURSED_SWORD_BONUS =
             ATTACHMENTS.register("cursed_sword_bonus", () -> AttachmentType.builder(() -> 0)
@@ -817,6 +836,22 @@ public class ModAttachments {
 
     public static void setStarlightEquipGrantAmounts(net.minecraft.world.entity.player.Player player, int value) {
         player.setData(STARLIGHT_EQUIP_GRANT_AMOUNTS.get(), value);
+    }
+
+    public static int getMedkitEquipGrantFlags(net.minecraft.world.entity.player.Player player) {
+        return player.getData(MEDKIT_EQUIP_GRANT_FLAGS.get());
+    }
+
+    public static void setMedkitEquipGrantFlags(net.minecraft.world.entity.player.Player player, int value) {
+        player.setData(MEDKIT_EQUIP_GRANT_FLAGS.get(), value);
+    }
+
+    public static int getMedkitEquipGrantAmounts(net.minecraft.world.entity.player.Player player) {
+        return player.getData(MEDKIT_EQUIP_GRANT_AMOUNTS.get());
+    }
+
+    public static void setMedkitEquipGrantAmounts(net.minecraft.world.entity.player.Player player, int value) {
+        player.setData(MEDKIT_EQUIP_GRANT_AMOUNTS.get(), value);
     }
 
     public static int getCursedSwordBonus(net.minecraft.world.entity.player.Player player) {

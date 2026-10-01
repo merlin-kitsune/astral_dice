@@ -2797,3 +2797,127 @@ KI-G1 的 **61 / 41 / 缺 20（6·8·6）** 与流派分组（充能 10 / 无流
 
 ⚠️ **通用教训（已写进 `MimiSignItem` 的 javadoc）**：任何「缓存一批 `ItemStack` 当模板」的池，
 **交付给背包/容器前必须 `copy()`** —— `Inventory#add`、`ItemStack#shrink`、`setCount` 都会**就地改写**对象。
+
+## 附录 A 续 44. 1.3.6 —— 医疗箱筹码「装备 / 重生 / 重登 / 切维度」四时点完整触发 + 卸下账本回撤（2026-10-01）
+
+> 用户实报：「两个医疗箱筹码装备后未能立即触发治愈，且重生后也不触发治愈，需要修复」。
+> 三轮问答裁决：① 触发语义 = **完整触发**（加点 → 按当前层数×2 回血 → 起/重置 1:00 计时器）；
+> ② 触发时点 = **装备时 + 死亡重生后 + 重新登录后 + 切换维度后**（后三者筹码仍在槽位）；
+> ③ 防刷 = **装备会话闸门 + 卸下按账本回撤层数**。
+
+### 根因（四线同源）
+
+两个医疗箱筹码**完全没有 `onEquip` 入口**：
+
+- `0be84b24`（1.2.0-rc1 平衡性调整）删除了 `onEquip`（当时的行为 = 装备立即回血 2 / 6 点、**不产生治愈层数**），
+  文案同步改为「装备不再立即回血」，但**没有建立任何替代的装备侧入口** ⇒ 自那以后把筹码装进筹码栏
+  不发生任何事。
+- 重生同理：Curios 只持久化 `stacks`、**不持久化 `previousStacks`** ⇒ 重生 / 重登 / 切维度后首 tick 的
+  `prevStack` 恒为空栈，Curios 把这判成一次装备变化并**重放 `onEquip`**；而筹码没实现该回调，重放也就空转。
+- `PlayerLifecycleHandler#onPlayerRespawnMedkit` 名字里带 Medkit，实现却只有 `HealingManager.tick(player)`
+  （只做上限收缩与效果刷新，**不改点数**）—— 名字与实现脱节，容易让人误以为这条路已经接过。
+- ⚠️ `BaseChipItem` 的 javadoc 一直在引用一个**并不存在的钩子** `onChipEquip`（类里只有 `onChipUnequip`）
+  —— 本轮未据它实现（改用 `ICurioItem#onEquip` 直接覆写），属**既存文档失真**，已登记待清理。
+
+### 交付物
+
+| 文件 | 改动 |
+| --- | --- |
+| `component/ModAttachments`（四线） | 新增 `medkit_equip_grant_flags`（位掩码闸门）与 `medkit_equip_grant_amounts`（每件 4 bit 账本）+ 4 个访问器 |
+| `item/HealingManager`（四线） | `GRANT_BIT_MEDKIT_EMERGENCY/COMPLETE`、`claim/releaseMedkitEquipGrant`、`grantedMedkitPoints`、`triggerMedkitOnEquip`（完整触发）、`revokeMedkitOnUnequip`（回撤 + 释放）、`refreshMedkitEquipSession`；`clear()` 释放闸门并清零账本 |
+| `item/chip/Medkit{Emergency,Complete}ChipItem`（四线 ×2） | 新增 `onEquip` → `triggerMedkitOnEquip`；`onChipUnequip` → `revokeMedkitOnUnequip` |
+| `event/PlayerLifecycleHandler`（四线） | 登录 / 重生显式触发；新增 `onPlayerChangedDimensionTriggerMedkit` |
+| `mixin/bridge/ServerPlayerDimensionTravelBridgeMixin`（**fabric 专属**） | `@Unique` origin 字段 + `@At("RETURN")` 注入派发 `PlayerChangedDimensionEvent` |
+| 手册条目 `guide.entry.medkit_{emergency,complete}_chip.1`（四线 × 三语） | 补「装备时（重生 / 重登 / 切换维度后同样触发）」 |
+
+### ⚠️ 闸门的必要性（本轮最容易做错的地方）
+
+**Curios 会在登录 / 重生 / 切维度后重放 `onEquip`** ⇒ 若同时保留「重放触发」与「生命周期事件显式触发」，
+同一时点会**触发两次**。闸门把两者**二选一**：
+
+| 路径 | 闸门操作 | 理由 |
+| --- | --- | --- |
+| 装备（`onEquip`） | `claim` ⇒ 成功才触发 | Curios 重放时闸门已置位 ⇒ 不会二次触发 |
+| 卸下（`onChipUnequip`） | `release` + 按账本回撤 | 再次装备可再触发 |
+| 死亡（`HealingManager#clear`） | `release ×2` + 账本清零 | 层数已清零；账本再留着会让下次卸下回撤到玩家自己攒的层数 |
+| 重生（`PlayerRespawnEvent`） | **仅** `claim`（**刻意不 release**） | 死亡已释放过一次；若这里再释放，Curios 的重放会与显式触发**各成功一次、撞成两次** |
+| 登录（`PlayerLoggedInEvent`） | `release ×2` ⇒ `claim` ⇒ 触发 | 视为新会话；无论重放先/后，都只触发一次 |
+| 切维度（`PlayerChangedDimensionEvent`） | 同登录 | 同上 |
+
+⚠️ fabric 线的 `PlayerChangedDimensionEvent` **此前没有任何派发源**（`FabricBridges#installPlayerLifecycle`
+的注释当时就写着「需要时在对应 mixin 的 `@At("RETURN")` 处补一行即可,不要凭猜测预先派发」）⇒ 本次按该口径补上，
+并把那条注释更新为「已接线」。
+
+### 口径（不做任何行为调整的部分）
+
+- 三档概率、`RETURNED_CARD_THRESHOLD = 25`、`HEALING_TIMER_SECONDS = 60`、`HEALING_POINT_CAP = 32` 全不变。
+- 赐福触发（`onBlessingTriggered`）与 1:00 结算（`onTimerEnded`）**继续不记账** —— 它们给的点数是战局表现
+  奖励，**不随卸下回撤**；只有装备触发（四时点）给的点数进账本。
+- 回撤按 `max(0, ...)` 截断（层数可能已被 1:00 减半或被其它来源消耗），**绝不回退到负值**；已结算过的回血不追回。
+- 层数已到上限 32 时装备：加点为 0 ⇒ 账本记 **0**（**按实际抬升量**，与星光「卸除即扣除」红线同一条理由）。
+
+### 验证（三重取证）
+
+- **构建**：`./gradlew compileJava` / `./gradlew build` 均 **BUILD SUCCESSFUL**；四份产物时间戳刷新为 18:06，
+  四个整合包 `mods`、四个 `run/<ver>/mods`、根 `build/libs` 全部更新，**每处恰 1 个**本模组 jar。
+  ⚠️ 中途一次编译失败：`forge` / `fabric` 的平台事件 `getEntity()` 返回的**已经是 `Player`**，
+  `instanceof Player player` 模式被判「模式类型是表达式类型的子类型」⇒ 已改为 `Player player = event.getEntity()`
+  （与该两线既有写法一致）；neo 两线的 `getEntity()` 返回 `Entity`，仍用 `instanceof` 模式。
+- **开包反汇编**（四 jar 全查）：
+  - `HealingManager` 含 `triggerMedkitOnEquip` / `revokeMedkitOnUnequip` / `claimMedkitEquipGrant` /
+    `refreshMedkitEquipSession`；`ModAttachments` 常量池含 `medkit_equip_grant_flags` 与 `_amounts`；
+    `PlayerLifecycleHandler` 含 `onPlayerChangedDimensionTriggerMedkit`；两个筹码类均含 `onEquip` 且引用新入口。
+  - `claimMedkitEquipGrant` 字节码 = `(flags & bit) != 0 ⇒ false`，否则 `flags | bit` 写入 ⇒ `true`；
+  - `equipTrigger` 顺序 = `claim` → `getPoints(before)` → `add` → `getPoints` → （`granted > 0` 时）记账 →
+    `triggerHealing` → `updateEffect`，**加点确在回血之前**；
+  - `revokeMedkitOnUnequip` = 取账本 → 清账本 → 释放闸门 → `Math.max(0, points - granted)` → 写回 → 刷新效果；
+  - `clear()` = 清点 / 清计时器 / 移效果 → `refreshMedkitEquipSession` → `clearGrantedMedkitPoints ×2`。
+  - fabric 的 mixin：`@Inject` 目标被 Loom 正确重映射为
+    `method_5731(Lnet/minecraft/class_3218;)Lnet/minecraft/class_1297;`（与既有
+    `EntityDimensionTravelBridgeMixin` **逐字相同**），HEAD + RETURN 两个注入齐全，`@Unique` 字段在。
+- **守门**（本仓**完整**清单，13 + 3 项）：`scripts/verify/verify_*.ps1` **8/8**（含 `verify_bountiful_pools`
+  必传 `-Root`、`verify_bountiful_instance_exclusions` 不传）+ `tools/audit_actionbar.py` +
+  `tools/verify_party_api.py` + `tools/audit_mixin_injection.py` + `tools/audit_patchouli_keys.py` +
+  `tools/verify_fabric_assets.py` **全 0**；另补跑三个**不在 `scripts/verify/` 下**的守门 ——
+  `tools/check_lang_sync.ps1`（三线 **830 keys** 三语一致，exit 0）、
+  `scripts/audit/tooltip_color_audit.ps1`（PASS，无违规）、`tools/check_mod_sources.ps1`（violations=0）。
+  ⚠️ **教训**：守门脚本分散在 `scripts/verify/`、`scripts/audit/`、`tools/` **三处**，只跑 `verify_*.ps1` 会漏检
+  （lang 同步 / tooltip 染色 / 依赖来源三道），本轮即因此漏跑一次后补上。
+- ⚠️ **未做**：进世界的实机验证（装备 → 观察层数与回血、卸下 → 观察层数回撤、重生 / 重登 / 切维度各一次）。
+  未获授权跑测试台；建议后续冒烟至少覆盖「装 → 卸」与「死亡重生」两条。
+
+### 独立子代理二次验证（按《二次验证规范》，非主会话自述）
+
+复验方用**只读**手段独立复算 A–J 十节，并**自己重跑了 16 项守门**（含刚补上的 lang / 染色 / 依赖来源三道）
+⇒ 全部 exit 0。硬事实全部被证实：四线 `equipTrigger` 语句顺序与字节码一致、`claimMedkitEquipGrant` 的
+`(flags & bit) != 0` 语义、`revokeMedkitOnUnequip` 的 `Math.max`、四份 jar 方法齐全、四份 jar **无任何
+`onChipEquip` 残留**、fabric mixin 的 `@Inject` 目标被 Loom 重映射为
+`method_5731(Lnet/minecraft/class_3218;)Lnet/minecraft/class_1297;`（与既有 `EntityDimensionTravelBridgeMixin`
+**逐字相同**）、既有 `HealingManager` 方法**逐方法比对未变**、赐福与 1:00 结算**仍不记账**、
+手册条目四线三语齐全且语义一致、行尾无 `\r\r\n`。
+
+它对**六条路径做了闸门时序推演**（装备 / 卸下 / 死亡 / 重生 / 登录 / 切维度），结论：**均为「恰好 1 次」**，
+未发现漏触发或双触发；并实测 `CuriosCommonEvents#tick` 用 `prevStack` 比对后重放 `onEquip`
+（`previousStacks` 不落盘）⇒ **闸门确有必要**。
+
+它抓出 **3 处真问题**，全部已处置：
+
+1. 🚨 **我引入的重复调用**：登录处理器里 `HealingManager.tick(player);` **连续出现两次**（两行注释还逐字相同）
+   —— 根因是我的补丁脚本把锚点（自带一份 `tick`）与新增块（又带一份）拼接在一起。行为上幂等无害，
+   但属未申报的多余改动 ⇒ **已删除重复的一行**（四线），四线 tick 出现次数回到 2（登录 1 + 重生 1）。
+2. ⚠️ **归因错误（结论对、理由错）**：我原先在源码 javadoc / `AGENTS.md` / 本附录里都写「重生不 release，
+   否则 Curios 的重放会与显式触发**各成功一次、撞成两次**」。复验方实测时序后指出该归因**不成立** ——
+   `PlayerRespawnEvent` / `AFTER_RESPAWN` 在 `PlayerList#respawn` 里**同步**发出，而 Curios 的重放在
+   **其后一个 tick** ⇒ 无论是否 release，显式触发都会先 `claim` 并置位闸门、把重放挡掉。
+   ⇒ **已订正**为「不 release 是为了让『释放 = 新会话开始』只有一个语义落点」，并在三处同步改写。
+3. 🚨 **未登记的残余**：登录 / 切维度每次都 `refresh` ⇒ **每次重登 / 过门都会再完整触发一次**
+   （层数满 32 时仍按 32×2 回血）。这是用户裁决的**数学推论**，但我在 CHANGELOG 里只写了「避免同一时点触发两次」，
+   **没有披露这条可刷路径** ⇒ 已补：`KNOWN-ISSUES` 新建 **§10 G 组 + KI-G2**（含三条候选处置）、
+   `AGENTS.md` 与两份 `CHANGELOG` 同步如实披露。
+
+另有两项**覆盖缺口/限制**（非本轮引入，如实记录）：
+
+- ⚠️ `tools/audit_mixin_injection.py` 的 `LINES` **只登记三线、不含 fabric** ⇒ 本轮新增的 fabric mixin
+  **不在任何自动守门覆盖内**，其可用性只有「人工反汇编 + 与既有同构 mixin 逐字比对」这一条证据链。
+- ⚠️ 复验方的方法学更正：本仓多数守门脚本用 `[Console]::Out.Write` **直写进程 stdout**，用管道捕获会得到空输出
+  ⇒ 必须用 `Start-Process -RedirectStandardOutput` 做**进程级重定向**才能拿到真值（本轮主会话已复跑并留日志）。

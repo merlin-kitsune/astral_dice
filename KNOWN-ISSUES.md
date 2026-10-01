@@ -23,8 +23,9 @@
 - 登记日期：2026-09-15
 - 登记来源：B7 交付后遗漏审计（用户裁定「纪录上述问题，作为未来版本修补内容」）
 - 目标版本：**下一版本**（1.2.1 之后；是否并入 1.2.1 需用户另行裁定）
-- 条目总数（2026-10-01 清理后）：**23** 条未修/未决 = A 组 7（KI-1…KI-7）+ B 组 1（KI-8）+ C 组 3（KI-9…KI-11）
-  + M 组 3（KI-M2/M3/M4）+ D 组 1（KI-D1）+ E 组 2（KI-E1/E2）+ F 组 6（KI-F4/F7/F8/F20/F21/F22），
+- 条目总数（2026-10-01 清理后）：**25** 条未修/未决 = A 组 7（KI-1…KI-7）+ B 组 1（KI-8）+ C 组 3（KI-9…KI-11）
+  + M 组 3（KI-M2/M3/M4）+ D 组 1（KI-D1）+ E 组 3（KI-E1/E2/E3）+ F 组 6（KI-F4/F7/F8/F20/F21/F22）
+  + G 组 1（KI-G2，2026-10-01 新增），
   另有 §5 的 **2** 条「测试资产待修项」。**已处理条目见 §1.1 索引。**
 
 ---
@@ -339,6 +340,22 @@ GlCommandEncoder.trySetup(:531) ← GlCommandEncoder.executeDraw(:406) ← GlRen
   跨命令沿用），判据一律读句柄；类型匹配只留在诊断字段里。⇒ **不要**再用 `typeIdOf` 写新判据；依赖它的既有命令
   （如 `countLightning` 的通用回退分支、`slimecheck` 等）需一并复核。
 
+### KI-E3 ＝ `tools/audit_mixin_injection.py` **不扫 fabric 线** ⇒ 该线全部 mixin 无自动守门（2026-10-01 登记）
+
+- **现象**：该脚本的 `LINES = ["neoforge-1.21.1", "forge-1.20.1", "neoforge-26.1.2"]`（`tools/audit_mixin_injection.py:48`）
+  **不含 `fabric-1.20.1`** ⇒ fabric 线（`astral_dice.mixins.json` 里登记的全部 mixin，含 `bridge/` 平台桥）
+  的 `require` / `expect` 计数、`method` 目标、`@Mixin` 目标**完全不在任何自动守门覆盖内**；
+  守门读数「合计注解 77 | 硬违规 0」**只统计三线**。
+- **风险（本轮实证）**：2026-10-01 新增的 `bridge/ServerPlayerDimensionTravelBridgeMixin#astralDice$afterPlayerChangeDimension`
+  （`@At("RETURN")` 派发 `PlayerChangedDimensionEvent`，供医疗箱筹码的「切维度触发」使用）**恰好落在这个缺口里** ——
+  它的可用性当时只有「人工反汇编 + 与既有同构 mixin 逐字比对」这一条证据链
+  （已实测通过：`@Inject` 的 `method` 被 Loom 重映射为 `method_5731(Lnet/minecraft/class_3218;)Lnet/minecraft/class_1297;`，
+  与既有 `EntityDimensionTravelBridgeMixin` **逐字相同**）。**「守门全绿」在此不等于「fabric mixin 被守门」。**
+- **候选处置（需裁决）**：把 `fabric-1.20.1` 加进 `LINES`。⚠️ 但这会让守门**立即暴露 fabric 既存全部 mixin 的读数**
+  —— 可能出现既存硬违规（含 `intermediary` 名与描述符的解析差异），需要先做一次 baseline 采集与逐条裁决，
+  **不宜与功能修复混批**。
+- **判据（可重跑）**：`python tools/audit_mixin_injection.py` 的输出里**只有三线小节、没有 fabric 小节**。
+
 ## 9. F 组 — Fabric 1.20.1 移植线（2026-09-29 起）
 
 > 本条线（子项目 `fabric-1.20.1` / 分支 `1.20.1-fabric`）与三条生产线**不共用存档、不共用前置**，
@@ -573,7 +590,35 @@ GlCommandEncoder.trySetup(:531) ← GlCommandEncoder.executeDraw(:406) ← GlRen
 ⚠️ **未做**：进世界的**行为级**确认（两名玩家组队后互相攻击是否真的免伤）—— 需要双人实机，dev 单进程无法覆盖；
 当前证据到「后端已启用 + 契约与发布产物逐条一致」为止。
 
-## 10. 变更记录
+## 10. G 组 — 游戏内内容与获取途径（2026-10-01 重建）
+
+> 本组登记**玩法内容层面的缺陷**，以及**「用户裁决的必然推论」形成的可刷路径**：
+> 获取途径缺失、池子漏项、文案与实际不符等。处置口径 = **先登记、后由用户裁决**；
+> 改动前必须确认「这是不是有意的设计取舍」。
+
+### KI-G2 ＝ 医疗箱筹码的「重登 / 切维度触发」可被反复利用（**用户裁决的必然推论；只登记，未改**）
+
+- **背景**：2026-10-01 用户裁决医疗箱筹码在**四个时点**各完整触发一次治愈（加点 → 按当前层数×2 回血 →
+  起/重置 1:00 计时器），其中包含「**重新登录后**」与「**切换维度后**」（筹码仍在槽位）。
+- **现象（该裁决的数学推论）**：这两条路径的触发判据是「闸门未置位」，而登录 / 切维度事件都会**先释放闸门**
+  （`HealingManager#refreshMedkitEquipSession`，语义 = 「新的装备会话开始」）⇒ **每次重登、每次过门都会再完整触发一次**：
+  未满层时 +1/+3 层；**层数已满 32 时仍会直接按 32×2 回血**（`equipTrigger` 里的 `triggerHealing` 与层数是否满无关）。
+- **性质**：这不是实现缺陷，而是「裁决要求这两处触发」的**必然结果**。但它在效果上等价于
+  **「反复重登 / 反复过门 ⇒ 反复免费回血」**，与项目既有红线（星光「卸除即扣除」是为了防「反复装卸刷资源」）
+  属同一类风险面；差别在于治愈点**不能兑换任何东西**、且 1:00 会自然减半 ⇒ 危害等级低于星光那条。
+- **判据（可重跑）**：`event/PlayerLifecycleHandler` 的 `PlayerLoggedInEvent` 与 `PlayerChangedDimensionEvent`
+  处理器里都有 `HealingManager.refreshMedkitEquipSession(player);` + `HealingManager.triggerMedkitOnEquip(player);`；
+  且 `item/HealingManager#equipTrigger` 中 `triggerHealing(player)` 是**无条件**调用。
+- **候选处置（需用户裁决，勿擅自实施）**：
+  1. **接受为设计**（改动量 0）：把「重登 / 过门各触发一次」视为裁决的一部分，仅在文档里如实披露；
+  2. **节流**：为这两条路径加冷却（例如同一玩家 N 秒内最多一次），或只在「闸门上次因**死亡**释放」时才触发；
+  3. **撤掉这两个时点**：只保留「装备时」与「重生后」（改动量 = 删除两处调用 + 手册文案回退）。
+  ⚠️ 无论选哪条，都**不得**改动已裁决的「装备时 / 重生后必须触发」，也不得改动三档概率、
+  `HEALING_TIMER_SECONDS = 60`、`HEALING_POINT_CAP = 32`。
+- **相关文档**：`AGENTS.md`「治愈流派规范 → 医疗箱筹码」；两份 `CHANGELOG` 的 `1.3.6`；
+  `scripts/test/TESTING-SPEC.md` 附录 A 续 44。
+
+## 11. 变更记录
 
 | 日期 | 变更 |
 |---|---|
@@ -608,3 +653,5 @@ GlCommandEncoder.trySetup(:531) ← GlCommandEncoder.executeDraw(:406) ← GlRen
 | 2026-10-01 | **队友判定后端「从来没生效过」定位并修复（新增 KI-F22）+ 四态运行时取证** —— 用户要求「搜索 FTB Teams / OPAC 的 1.20.1 Fabric 源代码，执行团队功能实现验证」。取证方式 = **克隆上游源码 + 下载发布 jar + `javap` 逐条比对反射契约**（并回溯到 1.20.1 最早版 `v2001.1.2-alpha`，确认该契约**从未**匹配过任何 1.20.1 版本）。**核心发现**：`PartyRelations` 接 FTB Teams 的反射**从头到尾没生效** —— 它取的 4 个访问器（`isManagerLoaded` / `getManager` / `isClientManagerLoaded` / `getClientManager`）声明在**嵌套接口 `FTBTeamsAPI$API`** 上、外层类上没有（`Class#getMethod` 不会跨到嵌套接口），客户端入口 `ClientTeamManager#getTeamForPlayer(Player)` 也**不存在**（真实为 `getKnownPlayer(UUID) → Optional<KnownClientPlayer>`）；而 `resolve()` 把全部解析放在同一个 `try` 内 ⇒ 第一处即抛 `NoSuchMethodException` ⇒ **整个 FTB 后端恒为未启用、只打一条 debug**（「失败方向安全」的设计同时掩盖了「从来没成功过」）。**修法**：访问器改从嵌套接口解析（保留「方法挪回外层类」的 fallback）；客户端改走 `getKnownPlayer(UUID)`，⚠️ `KnownClientPlayer` 是 **record**、访问器为 **`teamId()`（无 `get` 前缀）**；「同队」改比 **party 团队 id**（`Team#getId()` 对玩家队伍=该玩家自己的 UUID，同 party 两人各不相同）；`hasTeam` 判据改 `isPartyTeam() \|\| isServerTeam()`（FTB 给每个玩家都建个人队伍 ⇒ 用「存在 Team 对象」会恒真、把「未组队⇒友方作用于全服」的兜底堵死）；失败日志分两档（`ClassNotFoundException`=没装 ⇒ debug，其余=签名不符 ⇒ warn，避免给绝大多数玩家制造日志噪音）。**新增可断言机器行** `AP_FAB_PARTY: sw_* back_ftb/back_opac why_ftb/why_opac`（`PartyRelations#reportBackends()`，挂 `AstralDiceMod#onCommonSetup`，与其它 `AP_FAB_*` 同族）。**同轮附带**：修 `BigBowlStewChipItem#isOwnedByAlly` 一处**绕过统一入口**的裸 `getTeam()`；清掉迁移遗留的 **9 处失效引用**（9 个 `import` 中 4 个已完全无引用 + 3 处仍指向库的 javadoc `{@link}`）；登记**库侧两个同类缺陷**（`EventTargetCollector` 在 `TeamManager` 上反射 `getTeamForPlayer(Player)/(UUID)` 均不存在；OPAC 类名 `dev.darkhax.opac.*` 不存在）—— 影响另三条线，交库侧下次发版。**验证**：四态运行时 A/B/C/D（无第三方 / 装 FTB / 再加 OPAC / **专用服务端**）读数逐态符合预期（`off/off` → `on/off` → `on/on` → `on/on`，`why_*` 分别给出 `ClassNotFoundException:…` 与 `OK`）；新增静态闸门 **`tools/verify_party_api.py`**（自动抽取契约 ↔ 真实 jar 比对）**修复前 `PASS=9/FAIL=5` ⇒ 修复后 `PASS=17/FAIL=0`**；新增测试台用例 **`FAB-PARTY-BACKENDS`**（6 条断言）入批 A 并 PASS；批 A 五条用例全绿、派发 `ServerTickEvent=599`、收停无残留；资源闸门 **8/8 PASS**（三语 832/832/832）。⚠️ **未做**：进世界的**双人行为级**确认（组队后互相攻击是否真的免伤）—— dev 单进程覆盖不到。 |
 | 2026-10-01 | **新增 KI-D2（Iceberg tooltip 颜色缓存残留）+ 缓解措施落地**：四线各新增 `client/IcebergTooltipCacheGuard`，在每次 tooltip 渲染开头把 `Tooltips.currentColors` 反射复位为 `DEFAULT_COLORS`（并按 Iceberg 是否自己管色自适应跳过）（三条 NeoForge/Forge 线走 `RenderTooltipEvent.Pre`，fabric 线走 `ClientTooltipBridgeMixin` 的 `renderTooltipInternal` HEAD），使**其它模组物品与原版物品**也不再继承上一个 tooltip 的颜色；同时**新增 §10 G 组**并登记 **KI-G1**（看板娘立牌 25 张战斗牌送筹码的池子硬编码、缺 20 个后加筹码，含充能类 10 个与飞星 2 个；只登记未改） |
 | 2026-10-01 | **KNOWN-ISSUES 首次清理**（用户指令「检查是否还有未处理项，清理所有已处理项」）：把 20 个**已处理**条目（KI-M1 / KI-M5 / KI-D2 / KI-G1 / KI-F1·F2·F3·F5·F6·F9·F10·F11·F12·F13·F14·F15·F16·F17·F18·F19）与 §5 表中 7 行已闭环记录**移出正文**，改为 **§1.1 已处理索引**（id + 结论 + 证据落点）；§0 第 4 条「不要删条目」修订为「**已修项清理、未修项禁删**」并补「删前 grep 引用」要求；§1 计数更新为 **23 条未修/未决 + §5 的 2 条测试资产待修项**；KI-M4 标题更正为「原 2 项，第 1 项已闭环」；§10 G 组因条目清空而撤销、变更记录顺位为 §10。同批修复 **KI-G1**（看板娘筹码池改派生式，见 CHANGELOG 1.3.6 与 TESTING-SPEC 续 43） |
+| 2026-10-01 | **新增 §10 G 组 与 KI-G2**：登记「医疗箱筹码的重登 / 切维度触发可被反复利用」（用户裁决「这两个时点各触发一次」的必然推论 —— 层数满 32 时也会按 32×2 回血）；同时记录 §1 计数 23 → 24，原 §10 变更记录顺位为 §11 |
+| 2026-10-01 | **新增 KI-E3**：`tools/audit_mixin_injection.py` 的 `LINES` 不含 `fabric-1.20.1` ⇒ fabric 全部 mixin 无自动守门（本轮新增的切维度 mixin 正落在该缺口内，仅有「人工反汇编 + 与既有同构 mixin 逐字比对」一条证据链）；§1 计数 24 → 25（E 组 2 → 3） |
