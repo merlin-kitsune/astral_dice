@@ -55,7 +55,7 @@
   "astral_dice.guide.entry.buffer_shield_chip.1": "When damaged, gain 2 healing layers and 3 Star Coins, once per 15 seconds.",
   "astral_dice.guide.entry.candy_chip.1": "Each effect card used grants +1 Healing layer and restores 1 health; at full health, this round's card slots +1 (at most once per round).",
   "astral_dice.guide.entry.cursed_sword_chip.1": "While equipped you always suffer the Blue Curse: Armor -20%%, Armor Toughness -50%%.",
-  "astral_dice.guide.entry.cursed_sword_chip.2": "During a Dice Blessing, killing a hostile with at least 20 HP grants +1 attack (at most 1 per blessing), up to +16; removing the chip clears all bonuses and the Blue Curse.",
+  "astral_dice.guide.entry.cursed_sword_chip.2": "During a Dice Blessing, killing a hostile with at least 20 HP grants +1 attack (at most 1 per blessing), up to +32; removing the chip clears all bonuses and the Blue Curse.",
   "astral_dice.guide.entry.cursed_sword_chip.3": "Enigmatic Legacy+ link: while equipped, the Scroll of a Thousand Curses' curse count +1.",
   "astral_dice.guide.entry.cutter_blade_chip.1": "At 60%% health or above, Attack Power +4, plus extra Attack Damage equal to your current healing layers.",
   "astral_dice.guide.entry.cutter_chip.1": "At 60%% health or above, Attack Power +2, plus extra Attack Damage equal to your current healing layers.",

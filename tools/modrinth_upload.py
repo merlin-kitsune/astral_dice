@@ -27,7 +27,7 @@
 
     # 前置库产物（文件名前缀 starengine_lib- ⇒ **自动路由到库项目**，无需额外参数）
     python tools/modrinth_upload.py \\
-        --jar ../starengine_lib_fabric/neoforge-1.21.1/build/libs/starengine_lib-neoforge-1.21.1-1.0.6.jar
+        --jar ../starengine_lib_fabric/neoforge-1.21.1/build/libs/starengine_lib-neoforge-1.21.1-1.0.7.jar
 
     # 看某项目上已有的版本号（幂等核对 / 发布后复查）
     python tools/modrinth_upload.py --list --project-id 5xDtrJ8X
@@ -95,7 +95,7 @@ DEP_TYPES = ("required", "optional", "incompatible", "embedded")
 MAIN_RE = re.compile(r"^astral_dice-(?P<ver>[^+]+)\+(?P<loader>[a-z]+)_(?P<mc>.+)\.jar$")
 # 前置库产物：starengine_lib-<加载器>-<MC版本>-<版本>.jar
 #   ⚠️ MC 版本段用 `\d+(?:\.\d+)+`（数字点号）而不是 `.+?`：后者在
-#   `starengine_lib-neoforge-26.1.2-1.0.6.jar` 上会与版本段争抢，把 MC 切成 `26.1`、版本切成 `2-1.0.6`。
+#   `starengine_lib-neoforge-26.1.2-1.0.7.jar` 上会与版本段争抢，把 MC 切成 `26.1`、版本切成 `2-1.0.7`。
 LIB_RE = re.compile(
     r"^starengine_lib-(?P<loader>neoforge|forge|fabric)-(?P<mc>\d+(?:\.\d+)+)-(?P<ver>\d[^/]*)\.jar$")
 
@@ -235,7 +235,7 @@ def parse_jar(jar):
 
     # 🚨 先挡掉构建的分类器产物(`-sources` / `-javadoc` / `-dev`)。
     #    它们**能通过**下面两个正则：库的版本段 `(\\d[^/]*)` 会把 `-sources` 吃进版本号
-    #    （解析成 `1.0.6-sources`，mc/loader 都合法，项目级预检也照过）⇒ 会**静默上传一个垃圾版本**。
+    #    （解析成 `1.0.7-sources`，mc/loader 都合法，项目级预检也照过）⇒ 会**静默上传一个垃圾版本**。
     #    主模组那条虽然会因为 mc 段变成 `1.21.1-sources` 被预检拦下，但报错信息指向「MC 版本不存在」，
     #    与真实原因（这是个 sources jar）相去甚远。这里统一给出一句能看懂的话。
     stem = jar.name[:-4] if jar.name.endswith(".jar") else jar.name

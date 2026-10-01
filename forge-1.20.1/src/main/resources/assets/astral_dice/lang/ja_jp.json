@@ -55,7 +55,7 @@
   "astral_dice.guide.entry.buffer_shield_chip.1": "攻撃を受けた時 +2 治癒と 3 スターコイン、15 秒毎に 1 回のみ発動。",
   "astral_dice.guide.entry.candy_chip.1": "効果カードを 1 枚使用する毎に「治癒」+1 スタック、体力を 1 回復；体力が満タンの時、今回の出牌数 +1（1 ラウンドにつき最大 1 回）。",
   "astral_dice.guide.entry.cursed_sword_chip.1": "装備中は常に青の呪いを受ける：防具値 -20%%、防具強度 -50%%。",
-  "astral_dice.guide.entry.cursed_sword_chip.2": "ダイス神の加護中、20 以上の体力を持つ敵対ターゲットを 1 体撃破する毎に攻撃力 +1（加護 1 回につき最大 1 回）、最大累計 +16；チップを外すとすべてのボーナスと青の呪いが解除される。",
+  "astral_dice.guide.entry.cursed_sword_chip.2": "ダイス神の加護中、20 以上の体力を持つ敵対ターゲットを 1 体撃破する毎に攻撃力 +1（加護 1 回につき最大 1 回）、最大累計 +32；チップを外すとすべてのボーナスと青の呪いが解除される。",
   "astral_dice.guide.entry.cursed_sword_chip.3": "神秘の遺物+連動：このチップを装備中、千呪の巻物の呪いの数 +1。",
   "astral_dice.guide.entry.cutter_blade_chip.1": "体力が 60%% 以上の時、攻撃力 +4、さらに現在の治癒スタック数分の攻撃ダメージを加算。",
   "astral_dice.guide.entry.cutter_chip.1": "体力が 60%% 以上の時、攻撃力 +2、さらに現在の治癒スタック数分の攻撃ダメージを加算。",

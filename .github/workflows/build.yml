@@ -93,15 +93,18 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: merlin-kitsune/starengine_lib
-          ref: d938024133a5e8b02d1cf0adccdc9fe9c3873b79   # = 库分支 `fabric-1.20.1` 的 HEAD:三平台 **1.0.6** + fabric 子项目 **1.0.6-alpha.1**
-          #   (含 `EventTargetCollector` 的 FTB Teams / OPAC 反射修正)。一个 ref 同时满足四条线。
-          #   ⚠️ fabric 子项目那次换号(`1.0.5-alpha.2` → `1.0.6-alpha.1`,2026-10-01 用户裁决)只改版本号、
-          #    **不动字节码**;三平台版本号不变。
-          #   ✅ **2026-10-01:该库提交已 push**(`origin/fabric-1.20.1`: `5aa084b` → `d938024`)⇒ 远端可达、CI 的库 Checkout 可正常解析（实测 run #80 该步 success）。
+          ref: 9640af72428108bed77290d9575d043fcd7d203f   # = 库分支 `fabric-1.20.1` 的 HEAD:三平台 **1.0.7** + fabric 子项目 **1.0.6-alpha.2**
+          #   (含 `component/GameplayConstants#CURSED_SWORD_BONUS_MAX` 由 16 上调为 32)。一个 ref 同时满足四条线。
+          #   ⚠️ 本次为**纯数值调整**,不动任何 public 签名;三平台 `1.0.6` → `1.0.7`、
+          #    fabric 子项目 `1.0.6-alpha.1` → `1.0.6-alpha.2`(两条线各自独立递增)。
+          #   🚨 **该库提交尚未 push**(2026-10-02) ⇒ **push 顺序必须先库后消费方**:`actions/checkout` 只能检出
+          #    远端可达的提交;若先推消费方,CI 会在库的 Checkout 步直接失败(本地不复现)。
+          #    push 库之后请把本行注记改为「已 push + 实测 run 编号」。
+          #   --- 以下为历史钉值(勿再当现行值) ---
+          #   `1.0.6-alpha.1` = d938024(三平台 1.0.6 + fabric 1.0.6-alpha.1;`EventTargetCollector` 的 FTB / OPAC 反射修正);
+          #    ✅ 2026-10-01 已 push(`origin/fabric-1.20.1`: `5aa084b` → `d938024`)⇒ 远端可达,CI 的库 Checkout 可正常解析(实测 run #80 该步 success)。
           #   ⚠️ 2026-09-30 修复 CI 失败:旧钉值 `4bea9e7d` 位于 `next` 线上,**其 tree 里根本没有 `fabric-1.20.1` 目录**
-          #   ⇒ CI 解析 `:fabric-1.20.1:modImplementation` 时找不到 `starengine_lib-fabric-1.20.1:1.0.5-alpha.1`（历史值；现行为 `1.0.6-alpha.1`）,
-          #   直接 `Could not resolve all files for configuration ':fabric-1.20.1:modImplementation'` 失败
-          #   (本地不复现——本地 mavenLocal 里有手工 publish 的那一版)。
+          #   ⇒ CI 解析 `:fabric-1.20.1:modImplementation` 时找不到库产物,直接 `Could not resolve all files for configuration` 失败(本地不复现)。
           #   (历史钉值:1.0.3 = e407844;1.0.5 = 4bea9e7d)
           path: .ci/starengine_lib
           fetch-depth: 1
