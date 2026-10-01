@@ -26,6 +26,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
@@ -183,10 +184,15 @@ public class DiceCombatEvents {
         if (target == player) return;
 
         // 电磁炮筹码:对敌对目标发起攻击时消耗 6 层充能,延迟 1 秒对目标 3 格内敌对目标降下雷击。
+        // ⚠️ **触发限「该玩家本人的近战武器攻击」**（2026-10-01 用户裁决）：判据见
+        //    {@link #isPlayerMeleeAttack} —— 排除任意非近战 / 非玩家自身的攻击、荆棘与其它反伤
+        //    （以玩家为归属但非其挥击）、宠物（狼与车万女仆均走 mob_attack）。
         // 雷击伤害 = 本次攻击伤害的 50%:此处骰战尚未结算,先按即时伤害兜底登记,
         // 骰战最终伤害确定后(下方 setAmount 之后)回填。
-        var railgunStrike = com.merlinkitsune.astral_dice.item.chip.RailgunChipItem.onAttack(
-                player, target, event.getAmount());
+        var railgunStrike = isPlayerMeleeAttack(player, source)
+                ? com.merlinkitsune.astral_dice.item.chip.RailgunChipItem.onAttack(
+                        player, target, event.getAmount())
+                : null;
 
         // 骰神赐福仅能由近战武器攻击触发与生效:直接伤害来源必须为玩家(已排除弓/弩/三叉戟投掷等远程),
         // 主手必须持有近战武器(排除空手/盾牌/非近战类武器)
@@ -1098,6 +1104,50 @@ public class DiceCombatEvents {
         // 方块:拿着方块打人不算「近战武器攻击」
         if (held.getItem() instanceof net.minecraft.world.item.BlockItem) return false;
         return true;
+    }
+
+    /**
+     * 「本次伤害是否来自**该玩家本人的近战武器攻击（骰战）**」——
+     * 筹码侧「仅玩家自身攻击可触发」类判定的**唯一入口**（2026-10-01 用户裁决：
+     * 电磁炮不得由任意攻击、荆棘 / 反伤、宠物攻击触发）。
+     *
+     * <p>三条缺一不可：
+     * <ol>
+     *   <li>伤害的 <b>归属者</b>（{@code getEntity()}）与 <b>直接制造者</b>（{@code getDirectEntity()}）
+     *       都必须是该玩家本人 ⇒ 排除宠物攻击（狼与车万女仆的攻击都走 {@code mob_attack}、
+     *       来源是宠物实体本身）、弹射物（箭 / 三叉戟，直接制造者是弹射物实体）、
+     *       以及一切没有来源实体的环境伤害；</li>
+     *   <li>伤害类型必须是 <b>玩家攻击类型</b> ⇒ 排除「以玩家为归属、但并非玩家挥击」的伤害：
+     *       荆棘附魔反伤（{@code minecraft:thorns} —— 其归属者正是被攻击的玩家本人，
+     *       这正是旧判据漏掉的那条路径）、其它反伤机制，以及法术 / 技能 / 爆炸等各自独立的伤害类型；</li>
+     *   <li>主手必须持有 <b>近战武器</b>（复用 {@link #isMeleeWeaponAttack(Player)}，与骰战结算同门槛）
+     *       ⇒ 与「骰战」口径一致：能结算骰战的攻击才触发电磁炮。</li>
+     * </ol>
+     *
+     * <p>⚠️ 本判据<b>故意不覆盖</b>「玩家以玩家身份伪造的其他攻击」（例如某模组用
+     * {@code damageSources().playerAttack(owner)} 替宠物出刀）—— 那类伤害在伤害源层面与本尊攻击
+     * 完全同形、无法区分；项目内既有的「技能类伤害」正是为避开该形态才另立
+     * {@code astral_dice:skill_damage}（见 {@code SherryThrowManager} 注释）。
+     */
+    public static boolean isPlayerMeleeAttack(Player player, DamageSource source) {
+        if (player == null || source == null) return false;
+        // ① 归属者与直接制造者都必须是玩家本人
+        if (source.getEntity() != player || source.getDirectEntity() != player) return false;
+        // ② 伤害类型必须是「玩家攻击」类型
+        if (!isPlayerAttackType(source)) return false;
+        // ③ 与骰战结算同门槛:主手必须持有近战武器
+        return isMeleeWeaponAttack(player);
+    }
+
+    /**
+     * 本次伤害的类型是否为原版「玩家攻击」类型。
+     * <p>⚠️ 平台差异：1.20.1 <b>没有</b> {@code DamageTypeTags.IS_PLAYER_ATTACK} 常量，且原版数据包
+     * 本版也没有 {@code is_player_attack} 这个 tag 文件（已核 {@code client-extra} 的 24 个
+     * {@code damage_type} tag 里没有它）⇒ 自建 TagKey 会恒空、判据永不成立；
+     * 只能按具体类型判定。本版重锤 / 长枪尚不存在、玩家近战只有 {@code player_attack}，两者等价。
+     */
+    private static boolean isPlayerAttackType(DamageSource source) {
+        return source.is(net.minecraft.world.damagesource.DamageTypes.PLAYER_ATTACK);
     }
 
     // 骰神赐福触发目标判定:敌对生物、非团队内玩家(队伍识别统一走 PartyRelations:

@@ -84,6 +84,23 @@
   "icon lit but no bonus" state). Fixed by adding the gate to that class curio lookup, the same way every other
   chip `isEquipped` starts.
 
+- **Railgun lightning is now gated to "the player's own melee weapon attack (dice combat)"** (ruled by the user on 2026-10-01):
+  previously any damage whose **direct entity** was the player registered a strike, so three kinds of attacks misfired:
+  (1) any non-melee attack whose direct entity is recorded as the player (ranged / spell / skill damage);
+  (2) **Thorns and other damage reflection** - `damageSources().thorns(owner)` sets *both* the causing entity and the direct
+  entity to the attacked player themselves, which under the old check is indistinguishable from a player swing;
+  (3) **pet attacks** - both vanilla wolves and the Touhou Little Maid `EntityMaid` use `mob_attack` (the source entity is the
+  pet itself), but the old check never verified the causing entity.
+  The single entry point is now `DiceCombatEvents#isPlayerMeleeAttack(player, source)`, whose three conditions are all required:
+  the causing entity and the direct entity are both that player; the damage type is a **player-attack type**
+  (1.21.1 / 26.1.2 use `DamageTypeTags.IS_PLAYER_ATTACK`; 1.20.1 has neither that constant nor an `is_player_attack` tag file in
+  its vanilla data pack, so it matches `DamageTypes.PLAYER_ATTACK` directly); and the main hand holds a melee weapon
+  (reusing `#isMeleeWeaponAttack` - **the same threshold as dice-combat resolution**).
+  Item tooltip and guide text changed from "On attacking a hostile target" to "On a **melee** attack against a hostile target".
+  (Known boundary, logged honestly: if a third-party mod uses `damageSources().playerAttack(owner)` to strike on a pet's behalf,
+  that damage is identical to a real player attack at the damage-source level and cannot be told apart - the project's own
+  "skill damage" type exists precisely to avoid that shape.)
+
 
 ### Bug Fixes
 

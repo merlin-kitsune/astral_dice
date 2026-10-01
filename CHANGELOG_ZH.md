@@ -63,6 +63,18 @@
   并新增守门 `tools/verify_effect_icons.py`（每个 `MOB_EFFECT` 注册必须有同名 `mob_effect/*.png`，
   现四线 100%% 覆盖）——「注册了效果却漏放图标」这类紫黑方块缺陷从此有机器判据。
 
+- **电磁炮的雷击触发收紧为「仅该玩家本人的近战武器攻击（骰战）」**（2026-10-01 用户裁定）：
+  此前只要伤害的**直接制造者**是玩家就登记雷击，于是三类攻击都误触发 ——
+  ① 任意非近战攻击（远程、法术、技能等，只要其直接实体被记为玩家）；
+  ② **荆棘附魔与其它反伤**（`damageSources().thorns(owner)` 的归属者与直接制造者**都是被攻击的玩家本人**，与玩家挥击在旧判据下同形）；
+  ③ **宠物攻击**（狼与「车万女仆」的 `EntityMaid` 走的都是 `mob_attack`，伤害来源实体本是宠物本身，但旧判据未校验归属者）。
+  现新增唯一入口 `DiceCombatEvents#isPlayerMeleeAttack(player, source)`，三条缺一不可：归属者与直接制造者都是该玩家本人、
+  伤害类型为**玩家攻击类型**（1.21.1 / 26.1.2 走 `DamageTypeTags.IS_PLAYER_ATTACK`；1.20.1 既没有该常量、原版数据包本版
+  也没有 `is_player_attack` 这个 tag 文件 ⇒ 按 `DamageTypes.PLAYER_ATTACK` 判定）、主手持有近战武器
+  （复用 `#isMeleeWeaponAttack`，**与骰战结算同门槛**）。文案同步：物品提示与手册的「攻击敌对目标时」改为「**近战**攻击敌对目标时」。
+  ⚠️ **已知边界（如实登记）**：若第三方模组用 `damageSources().playerAttack(owner)` 替宠物出刀，该伤害在伤害源层面与本尊攻击
+  完全同形、无法区分 —— 项目内既有的「技能类伤害」正是为避开该形态才另立 `astral_dice:skill_damage`（见 `SherryThrowManager` 注释）。
+
 
 ### BUG修复
 
