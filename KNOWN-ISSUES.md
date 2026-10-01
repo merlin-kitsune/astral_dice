@@ -340,7 +340,7 @@ GlCommandEncoder.trySetup(:531) ← GlCommandEncoder.executeDraw(:406) ← GlRen
   跨命令沿用），判据一律读句柄；类型匹配只留在诊断字段里。⇒ **不要**再用 `typeIdOf` 写新判据；依赖它的既有命令
   （如 `countLightning` 的通用回退分支、`slimecheck` 等）需一并复核。
 
-### KI-E3 ＝ `tools/audit_mixin_injection.py` **不扫 fabric 线** ⇒ 该线全部 mixin 无自动守门（2026-10-01 登记）
+### KI-E3 ＝ **三个守门脚本不覆盖 fabric 线**（`audit_mixin_injection` / `check_lang_sync` / `audit_actionbar`）⇒ 该线对应面无自动守门（2026-10-01 登记）
 
 - **现象**：该脚本的 `LINES = ["neoforge-1.21.1", "forge-1.20.1", "neoforge-26.1.2"]`（`tools/audit_mixin_injection.py:48`）
   **不含 `fabric-1.20.1`** ⇒ fabric 线（`astral_dice.mixins.json` 里登记的全部 mixin，含 `bridge/` 平台桥）
@@ -351,7 +351,12 @@ GlCommandEncoder.trySetup(:531) ← GlCommandEncoder.executeDraw(:406) ← GlRen
   它的可用性当时只有「人工反汇编 + 与既有同构 mixin 逐字比对」这一条证据链
   （已实测通过：`@Inject` 的 `method` 被 Loom 重映射为 `method_5731(Lnet/minecraft/class_3218;)Lnet/minecraft/class_1297;`，
   与既有 `EntityDimensionTravelBridgeMixin` **逐字相同**）。**「守门全绿」在此不等于「fabric mixin 被守门」。**
-- **候选处置（需裁决）**：把 `fabric-1.20.1` 加进 `LINES`。⚠️ 但这会让守门**立即暴露 fabric 既存全部 mixin 的读数**
+- **同源缺口（2026-10-01 同日补记）**：本仓另有**两个**守门脚本同样只登记三线、不含 fabric ——
+  - `tools/check_lang_sync.ps1`（硬编码 `@('neoforge-1.21.1','forge-1.20.1','neoforge-26.1.2')`）⇒
+    **fabric 的三语一致性没有任何自动守门**（fabric 的键数也与三线不同：832 vs 830，属既存差异）；
+  - `tools/audit_actionbar.py` ⇒ fabric 的动作栏键存在性未自动核验。
+  ⇒ 凡改动 fabric 的 lang / 动作栏文案，**必须人工逐键核验**（本轮改看板娘 tooltip 与手册条目时即如此）。
+- **候选处置（需裁决）**：把 `fabric-1.20.1` 加进上述脚本的 `LINES`。⚠️ 但这会让守门**立即暴露 fabric 既存全部 mixin 的读数**
   —— 可能出现既存硬违规（含 `intermediary` 名与描述符的解析差异），需要先做一次 baseline 采集与逐条裁决，
   **不宜与功能修复混批**。
 - **判据（可重跑）**：`python tools/audit_mixin_injection.py` 的输出里**只有三线小节、没有 fabric 小节**。
@@ -655,3 +660,4 @@ GlCommandEncoder.trySetup(:531) ← GlCommandEncoder.executeDraw(:406) ← GlRen
 | 2026-10-01 | **KNOWN-ISSUES 首次清理**（用户指令「检查是否还有未处理项，清理所有已处理项」）：把 20 个**已处理**条目（KI-M1 / KI-M5 / KI-D2 / KI-G1 / KI-F1·F2·F3·F5·F6·F9·F10·F11·F12·F13·F14·F15·F16·F17·F18·F19）与 §5 表中 7 行已闭环记录**移出正文**，改为 **§1.1 已处理索引**（id + 结论 + 证据落点）；§0 第 4 条「不要删条目」修订为「**已修项清理、未修项禁删**」并补「删前 grep 引用」要求；§1 计数更新为 **23 条未修/未决 + §5 的 2 条测试资产待修项**；KI-M4 标题更正为「原 2 项，第 1 项已闭环」；§10 G 组因条目清空而撤销、变更记录顺位为 §10。同批修复 **KI-G1**（看板娘筹码池改派生式，见 CHANGELOG 1.3.6 与 TESTING-SPEC 续 43） |
 | 2026-10-01 | **新增 §10 G 组 与 KI-G2**：登记「医疗箱筹码的重登 / 切维度触发可被反复利用」（用户裁决「这两个时点各触发一次」的必然推论 —— 层数满 32 时也会按 32×2 回血）；同时记录 §1 计数 23 → 24，原 §10 变更记录顺位为 §11 |
 | 2026-10-01 | **新增 KI-E3**：`tools/audit_mixin_injection.py` 的 `LINES` 不含 `fabric-1.20.1` ⇒ fabric 全部 mixin 无自动守门（本轮新增的切维度 mixin 正落在该缺口内，仅有「人工反汇编 + 与既有同构 mixin 逐字比对」一条证据链）；§1 计数 24 → 25（E 组 2 → 3） |
+| 2026-10-01 | **KI-E3 扩项**：该覆盖缺口不止 `audit_mixin_injection` —— `tools/check_lang_sync.ps1` 与 `tools/audit_actionbar.py` 同样只登记三线（fabric 的 lang / 动作栏变更须人工核验） |

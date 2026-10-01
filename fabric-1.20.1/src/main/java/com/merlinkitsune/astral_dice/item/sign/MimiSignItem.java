@@ -31,6 +31,8 @@ import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
  * - 装备时,筹码栏位 +1;
  * - 每次主动技能返还累计 25 张战斗牌后,获得 1 个随机筹码
  *   (蓝色 60%,紫色 35%,金色 5%;筹码池**由物品注册表派生**,见 {@link #chipPool(Rarity)} 的说明)。
+ *   ⚠️ **一次主动技能至多产出 1 个** —— 一次返还再多张也只发 1 个,超出阈值的份额保留到下次
+ *   (2026-10-01 用户裁决:玩家持大量卡牌时一次连发多个筹码过于超模)。
  *
  * <p>主动:将物品栏中所有卡牌回收(包括专属牌),并返还 N+1 张随机卡牌;
  * 返还的随机卡牌不会包含专属牌。
@@ -66,12 +68,14 @@ public class MimiSignItem extends BaseSignItem {
         for (int i = 0; i < recycled + 1; i++) {
             RandomCardHandler.giveCardTo(player, RandomCardHandler.CardCategory.ALL);
         }
-        // 被动:返还的战斗牌每张 +1 星币,并累计返还计数(每 25 张获得随机筹码)
+        // 被动:返还的战斗牌每张 +1 星币(逐张结算)
         int battleGained = countBattleCards(player) - battleBefore;
         for (int i = 0; i < battleGained; i++) {
             onBattleCardGained(player);
-            onBattleCardReturned(player);
         }
+        // ⚠️ 筹码计数必须**整批**结算,不能逐张 —— 逐张会在玩家持有大量卡牌时
+        //    一次连发多个筹码(见 onBattleCardsReturned 的说明)。
+        onBattleCardsReturned(player, battleGained);
         // 主动技能 ActionBar:新卡牌数(回收数+1)与被动触发的星币数
         sendSignActionBar(player, "msg.astral_dice.mimi_active",
                 recycled + 1, countStarCoins(player) - coinsBefore);
@@ -122,17 +126,35 @@ public class MimiSignItem extends BaseSignItem {
         giveStarCoin(player);
     }
 
-    // 被动:主动技能返还的战斗牌计数(每累计 25 张获得一个随机筹码)
-    public static void onBattleCardReturned(Player player) {
+    /**
+     * 被动:主动技能返还的战斗牌计数(每累计 {@link #RETURNED_CARD_THRESHOLD} 张获得一个随机筹码)。
+     *
+     * <p>⚠️ <b>一次主动技能至多产出 1 个筹码</b>(2026-10-01 用户裁决):玩家身上带大量卡牌时,
+     * 旧实现按张逐次结算 —— 一次返还 100 张战斗牌会连发 4 个筹码(25/50/75/100),过于超模。
+     * 因此改为**整批一次性结算**:
+     * <ul>
+     *   <li>累计值 = 旧计数 + 本次返还张数;</li>
+     *   <li>不足阈值 ⇒ 只累加,**不发**;</li>
+     *   <li>达到/超过阈值 ⇒ **只发 1 个**,累计值**减去一个阈值** —— 超出的部分**保留到下次**,
+     *       不白费玩家的进度(下次主动只要再凑够一个阈值就又能拿 1 个)。</li>
+     * </ul>
+     *
+     * <p>⚠️ 本方法刻意**不提供**「单张」版本:逐张入口会让调用方绕过这条限制
+     * (旧 {@code onBattleCardReturned(Player)} 已删除)。
+     *
+     * @param returned 本次主动技能返还的**战斗牌张数**(由 {@code handleUse} 统计)
+     */
+    public static void onBattleCardsReturned(Player player, int returned) {
         if (player == null || player.level().isClientSide()) return;
+        if (returned <= 0) return;
         if (!isEquipped(player)) return;
-        int counter = ModAttachments.getMimiReturnedCardCount(player) + 1;
-        if (counter >= RETURNED_CARD_THRESHOLD) {
-            ModAttachments.setMimiReturnedCardCount(player, 0);
-            giveRandomChip(player);
-        } else {
+        int counter = ModAttachments.getMimiReturnedCardCount(player) + returned;
+        if (counter < RETURNED_CARD_THRESHOLD) {
             ModAttachments.setMimiReturnedCardCount(player, counter);
+            return;
         }
+        ModAttachments.setMimiReturnedCardCount(player, counter - RETURNED_CARD_THRESHOLD);
+        giveRandomChip(player);
     }
 
     // 回收物品栏中所有卡牌(包括专属牌),返回回收数量
