@@ -594,7 +594,7 @@ When extending this workspace:
 - **伤害事件映射(2026-09-15 校正,旧写法作废)**:`LivingIncomingDamageEvent` ↔ 1.20.1 `LivingAttackEvent`(**减伤前**、可取消);**`LivingDamageEvent.Pre` ↔ 1.20.1 `LivingDamageEvent`(护甲 + 附魔减免之后)**。1.20.1 侧另在 `LivingAttackEvent`(HIGHEST 记原始值)+ `LivingHurtEvent`(LOWEST 读当前伤害)组合还原 original/current 语义(见 `FateGuidanceCardItem.onCurseMitigation`)。⚠️ 旧写「`LivingDamageEvent.Pre` → `LivingHurtEvent`」是**错误映射**:1.20.1 的 `LivingHurtEvent` 派发于**护甲前**(`LivingEntity.java:1665`,早于 `:1667-1668` 的护甲/附魔减免),在 1.21.1 **没有对应事件**(NeoForge `CommonHooks` 无 `onLivingHurt`)。**吸收(黄心)阶段两版本相反**:1.20.1 的 `LivingDamageEvent` 在**吸收之后**(吸收 `:1669-1670` 早于派发 `:1680`),1.21.1 的 `LivingDamageEvent.Pre` 在**吸收之前**(`:1789` 早于 `:1790-1792`)。**法伤主链路必须按本映射挂事件(2026-09-15 用户裁决,必须遵守)**:`event/DamageEffectCardHandler` 在 1.21.1 挂 `LivingDamageEvent.Pre`、1.20.1 挂 `LivingDamageEvent`,其 `combat/SpellDamageContext.event` 的类型随之同步(1.20.1 曾挂 `LivingHurtEvent = 护甲前`,导致**电击手套 3 格 AOE 以「护甲前原始值」为基准**、带甲目标周围多打一截 —— 已按本口径统一,取证见 `docs/scan2/P2-numeric-modifiers.md` 的 `P2-C7`);**禁止**再把 1.20.1 的法伤主链路挂回 `LivingHurtEvent`。残余(平台固有):目标带**吸收(黄心)**时两侧基准仍有差(1.20.1 在吸收后派发、1.21.1 在吸收前),普通目标无吸收故实际影响可忽略。
 - Curios:槽位经 FMLCommonSetup IMC 注册(`SlotTypeMessage`,dice=1/stand=1/chip=0);`CuriosApi.getCuriosInventory` 返回 LazyOptional,统一经 `item/CuriosCompat` 包装为 Optional。
 - 神秘遗物+ 联动 ID 两子项目**均为 `enigmaticlegacyplus:`**(`cursed_ring`/`the_acknowledgment`/`the_twist`);`enigmaticaddons:the_bless` 保留(forge `templates/META-INF/mods.toml` 里的 `enigmaticlegacy` 仅出现在注释,非依赖声明)。
-- 千咒刻印附魔代码注册于 `effect/ModEnchantments`(1.21 分支为数据驱动 JSON:`data/astral_dice/enchantment/curse_marker.json`)。
+- 「青之诅咒」附魔(注册名仍是 `astral_dice:curse_marker`)代码注册于 `effect/ModEnchantments`(1.21 分支为数据驱动 JSON:`data/astral_dice/enchantment/curse_marker.json`)。它是**内部标记附魔**(仅供千咒卷轴计 1 点诅咒),已做三处隐藏(见 `event/HiddenCurseEnchantment`):从创造栏「材料/搜索」页与 JEI 摘除附魔书条目、tooltip 不显示附魔行、1.20.1 侧关 `isDiscoverable`/`isAllowedOnBooks`/`canApplyAtEnchantingTable`(1.21 侧由「不在 `#minecraft:in_enchanting_table` + `supported_items` 不含书」天然阻断)。⚠️ 隐藏不得触及诅咒计数判据(`#minecraft:curse` 标签 / `isCurse()`)。
 - 数据包目录 `recipes/advancements/loot_tables/structures`、`data/forge/` 前缀、`pack.mcmeta`(pack_format 15)、`META-INF/mods.toml`。
 - **三个子项目均有帕秋莉手册**(1.21.1 原有;1.20.1 已于 1.1.3 移植,含 Patchouli 1.20.1-85-forge 依赖;26.1.2 同持,依赖取自 `maven.modrinth:patchouli`);手册结构三线一致(`{assets,data}/astral_dice/patchouli_books/`)。
 - 物品类已按 `item.dice/card/chip/sign` 拆分子包,与 1.21.1 结构一致(见「包结构规范」)。
@@ -1002,7 +1002,7 @@ When extending this workspace:
 | 肾上腺素-一般 | `adrenaline_low_chip` | 紫 | 生命值为 50% 或更低时:攻击力/防御力 +3(1 防御力 = 2 护甲值,代码折算为真实护甲) |
 | 肾上腺素-高效 | `adrenaline_high_chip` | 金 | 生命值为 50% 或更低时:攻击力/防御力 +8(1 防御力 = 2 护甲值,代码折算为真实护甲);触发加成时被敌方攻击:20% 概率闪避单次攻击 |
 | 磨刀石 | `whetstone_chip` | 紫 | 生命值为 50% 或更低时:攻击力 +4、受到伤害 -2;生命值 > 1 点时:使受到的伤害不超过剩余生命值(至多扣到剩 1 点,不会因一次伤害被击倒;⚠️ **入参口径 = 吸收(黄心)之后仍会扣的生命** —— 1.21.1/26.1.2 由 `ChipDamageHandler` 换算后传入、并把省下的部分扣回事件(黄心消耗量不变),1.20.1 事件天然在吸收之后;**该保命能力每次生效后进入 1:00 冷却**(附件 `whetstone_guard_cooldown_end`,只在 cap 实际削减了伤害时写入),冷却中该保护不生效、-2 减伤与攻击力 +4 不受影响;**保命优先级低于安全气囊** —— 致命一击先由气囊接,气囊不可用(未佩戴 / 冷却中 / 充能不足)才轮到本条) |
-| 诅咒之剑 | `cursed_sword_chip` | 蓝 | 装备时始终受到青之诅咒(护甲 -20%、韧性 -100%);骰神赐福期间每击杀 1 个不少于 20 血的敌对目标攻击力 +1(每次赐福至多触发 1 次,上限取常量 `GameplayConstants.CURSED_SWORD_BONUS_MAX`(默认 16,原配置文件项已移除);移除筹码清除加成与诅咒) |
+| 诅咒之剑 | `cursed_sword_chip` | 蓝 | 装备时始终受到青之诅咒(护甲 -20%、韧性 -50%);骰神赐福期间每击杀 1 个不少于 20 血的敌对目标攻击力 +1(每次赐福至多触发 1 次,上限取常量 `GameplayConstants.CURSED_SWORD_BONUS_MAX`(默认 16,原配置文件项已移除);**累计加成死亡不清、只有真正卸下筹码才清除**,青之诅咒效果仍在卸下时移除) |
 | 复仇之戟 | `revenge_halberd_chip` | 紫 | 装备时若身上出现指定负面/诅咒效果(攻击类:虚弱/缓慢/挖掘疲劳/失明/黑暗/蓄风/盘丝/渗浆/寄生/青之诅咒;防御类:饥饿/反胃/中毒/凋零/袭击之兆/试炼之兆/标记),攻击力 +6、防御力 +6(代码折算护甲 +12)(每类只触发一次,不叠加)。 ⚠️ 2026-09-24:文案(tooltip + 手册)已**删去「每类只触发一次」与「不叠加」**——行为不变,只是不再说明。**1.20.1 侧仅支持该版本存在的效果**:攻击类只有 虚弱/缓慢/挖掘疲劳/失明/黑暗/青之诅咒,防御类只有 饥饿/反胃/中毒/凋零/标记(蓄风/盘丝/渗浆/寄生 为 1.21 新增、袭击之兆/试炼之兆 为 1.21 新增),故 1.20.1 的 lang 文案按此删减——**这是两子项目 lang 允许差异的唯一登记项** |
 | 贯穿之铳 | `piercing_gun_chip` | 金 | **佩戴时**对目标造成的远程/魔法伤害额外增加目标防御力点数(**无「已使用伤害效果牌」前提、无任何目标范围判定**,2026-09-24 起与忍术飞镖**完全同形**;目标侧由法伤链的 `isBlessingTarget` 闸门统一把关)(**公式 = 2 + min(护甲,20)÷2 + 1.4×韧性,结果向下取整**;与骰战 `defensePower` 前三项逐字同构、与骰战界面显示口径一致;不含防御骰/防御卡。护甲上限 20 与骰战一致,来源为原版 `CombatRules.MAX_ARMOR`) |
 | 探天卫星 | `satellite_chip` | 金 | 物品栏中轨道炮少于 6 张时每 1:00 补充 1 张;使用轨道炮后本轮出牌数 +1(每 1:00 仅一次);轨道炮生效期间远程/魔法击杀敌方目标后获得一张随机效果牌 |
@@ -1784,7 +1784,7 @@ When extending this workspace:
   `hasEnigmaticCurse()` 恒 false ⇒ 骰点七咒减益 −40%、启示之证 −20%、倒转之启免疫、第一诅咒修正、
   `MosesEnigmaticLink` 两条诅咒修正**全部不生效**，tooltip 备注区门控同样恒 false（2026-09-30 修复）。
   ⚠️ `the_bless` 属 `enigmaticlegacyplus` 自身，**不是** `enigmaticaddons`（本仓两整合包都没有后者这个 id）。
-- ⚠️ **千咒刻印（`astral_dice:curse_marker`）的计数口径两版等价、实现方式不同**：1.21.1 移植版按
+- ⚠️ **「青之诅咒」附魔（旧显示名「千咒刻印」；注册名仍是 `astral_dice:curse_marker`，改名只动显示名）的计数口径两版等价、实现方式不同**：1.21.1 移植版按
   `EnchantmentTags.CURSE`（⇒ 必须落 `data/minecraft/tags/enchantment/curse.json`，本仓已有）；
   1.20.1 按 `Enchantment#isCurse()`（⇒ 附魔类必须覆写 `isCurse()` 返回 true，本仓已有）。**两者都不能漏**。
 

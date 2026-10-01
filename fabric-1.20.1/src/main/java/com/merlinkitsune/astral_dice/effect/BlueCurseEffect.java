@@ -7,7 +7,7 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 
 /**
  * 青之诅咒:负面效果。
- * 效果期间护甲值 -20%(最终护甲值向下取整),盔甲韧性 -100%(归 0)。
+ * 效果期间护甲值 -20%(最终护甲值向下取整),盔甲韧性 -50%。
  * 暂未配置任何触发条件。
  *
  * 注意:1.20.1 的 addAttributeModifier(Attribute, String, ...) 要求 UUID 字符串
@@ -20,6 +20,6 @@ public class BlueCurseEffect extends MobEffect {
         this.addAttributeModifier(Attributes.ARMOR, "35d97c55-f446-5313-b56e-a200101bd0dd",
                 -0.2, AttributeModifier.Operation.MULTIPLY_TOTAL);
         this.addAttributeModifier(Attributes.ARMOR_TOUGHNESS, "fa11733c-38c7-5f3d-aabb-967339705ba0",
-                -1.0, AttributeModifier.Operation.MULTIPLY_TOTAL);
+                -0.5, AttributeModifier.Operation.MULTIPLY_TOTAL);
     }
 }

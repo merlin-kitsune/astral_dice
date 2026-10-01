@@ -31,7 +31,7 @@ import com.merlinkitsune.astral_dice.combat.PartyRelations;
  * 移除筹码时清除全部攻击力加成与青之诅咒效果。
  */
 public class CursedSwordChipItem extends BaseChipItem {
-    // "千咒刻印"诅咒附魔的资源键(静态缓存,避免每 tick 重新构造 ResourceLocation/ResourceKey)
+    // "青之诅咒"诅咒附魔的资源键(静态缓存,避免每 tick 重新构造 ResourceLocation/ResourceKey)
     private static final ResourceKey<Enchantment> CURSE_MARKER_KEY =
             ResourceKey.create(Registries.ENCHANTMENT,
                     new ResourceLocation(AstralDiceMod.MODID, "curse_marker"));
@@ -52,7 +52,7 @@ public class CursedSwordChipItem extends BaseChipItem {
         if (!(slotContext.entity() instanceof Player player)) return;
         if (player.level().isClientSide()) return;
         // ⚠️ 第 2 参 prevStack 是槽位原内容(**往空槽装备时即 EMPTY**),第 3 参 stack 才是刚装上的那件。
-        // 旧代码把「千咒刻印」写到了第 2 参上 —— 空槽装备时那正是 `ItemStack.EMPTY` 这个全局单例,
+        // 旧代码把「青之诅咒」写到了第 2 参上 —— 空槽装备时那正是 `ItemStack.EMPTY` 这个全局单例,
         // 于是装备时从未刻印成功(全靠 curioTick 每 tick 兜底才看似正常;EMPTY 单例被写组件本身也是隐患)。
         applyBlueCurse(player);
         ensureCurseMarker(player, stack);
@@ -64,7 +64,7 @@ public class CursedSwordChipItem extends BaseChipItem {
         if (player.level().isClientSide()) return;
         // 持续保持青之诅咒,防止效果因任何原因消失
         applyBlueCurse(player);
-        // 确保装备中的诅咒之剑带有千咒刻印,使千咒卷轴将其计入诅咒数量
+        // 确保装备中的诅咒之剑带有青之诅咒,使千咒卷轴将其计入诅咒数量
         ensureCurseMarker(player, stack);
     }
 
@@ -97,7 +97,7 @@ public class CursedSwordChipItem extends BaseChipItem {
         }
     }
 
-    // 为诅咒之剑附加"千咒刻印"诅咒附魔(仅用于被千咒卷轴识别为 1 点诅咒,无其他效果)
+    // 为诅咒之剑附加"青之诅咒"诅咒附魔(仅用于被千咒卷轴识别为 1 点诅咒,无其他效果)
     private static void ensureCurseMarker(Player player, ItemStack stack) {
         if (stack == null || stack.isEmpty()) return;
         Enchantment marker = com.merlinkitsune.astral_dice.effect.ModEnchantments.CURSE_MARKER.get();

@@ -8,6 +8,35 @@
 
 > One batch across all four lines (three production lines `1.3.6`, migration line `1.3.6-beta.1`, port line `1.3.6-alpha.1`).
 
+### Content & Balance Changes
+
+- **The Cursed Sword chip's attack bonus no longer resets on death - only a genuine unequip clears it** (ruled by the
+  user on 2026-10-01): the bonus lives on a player attachment, and on death the chip leaves the curio slot with the
+  drops, so Curios immediately fires `onChipUnequip` and zeroes it. That callback runs **before** the attachment copy
+  performed on player clone, so even a `copyOnDeath` flag cannot save it - one death wipes everything. It now uses the
+  **same two-layer scheme** as the Investigator `rin_pages` / Ninja `komachi_damage_bonus` / Mamushi `mamushi_awakening`
+  bonuses: a `copyOnDeath` attachment flag (plus the clone whitelist on 1.20.1), and a dedicated
+  `DeathPreservedBonuses` slot that snapshots the value on death and writes it back after respawn/clone.
+  Whether the bonus **applies** is still decided by "is the chip equipped", so an unequipped player gains nothing.
+
+- **The "Thousand-Curse Mark" enchantment is renamed to "Blue Curse" and hidden from JEI and the creative menu**
+  (Chinese 「青之诅咒」 / English `Blue Curse` / Japanese 「青の呪い」): it is an internal marker (its only purpose is to
+  make the Thousand-Curse Scroll count it as one curse), yet vanilla auto-generates an enchanted-book entry for
+  **every** enchantment and puts it into both the Ingredients and the Search creative tabs, and JEI indexes creative
+  items - so it kept showing up as an enchanted book. Those two entries are now stripped
+  (`event/HiddenCurseEnchantment`) and the enchantment line vanilla appends to the chip's tooltip is removed as well.
+  On 1.20.1 `isDiscoverable` / `isAllowedOnBooks` / `canApplyAtEnchantingTable` are additionally disabled
+  (`isAllowedOnBooks` alone already makes vanilla 1.20.1 filter that book entry out, so the code-side strip is
+  belt-and-braces there; vanilla 1.21 does **not** consult that flag, so the strip is mandatory); on 1.21 the
+  data tags already block it (it is not listed in `#minecraft:in_enchanting_table`, and its `supported_items` do not
+  include books). Hiding only affects "visible / obtainable" and **not functionality** - both curse-counting criteria
+  (the `#minecraft:curse` tag on 1.21, `isCurse()` on 1.20.1) are kept unchanged.
+
+- **Blue Curse armour-toughness penalty changed from -100% to -50%**: the armour-toughness modifier of
+  `BlueCurseEffect` goes from `-1.0` to `-0.5` (the -20% armour value is unchanged); the effect description, the item
+  tooltip and the guide text are updated to match.
+
+
 ### Bug Fixes
 
 - **An Epic item's tooltip frame showed the colour of the previously hovered item (observed as gold, i.e. the Legendary tier colour); Epic now writes its tier colour explicitly** (reported by the user on 2026-10-01, with screenshots): two symptoms with the same root cause appeared in the modpack — ① one of this mod's **Epic** items ("Game Master Sign"; the item name was already the correct light purple) had a **gold** frame; ② an item belonging to an entirely different mod (`oritech:adamant_block`) also had a **flat gold `#FFC24B`** frame. **Root-cause evidence** (three independent facts): a recursive scan of all **491 jars in the pack (including JarJar-embedded ones)** for the colour value `0xFFC24B` matched **exactly one class — this mod's own embedded `Rarity.class`** ⇒ the colour can only have come from us; and because this mod used to leave **Rare/Epic** frames untouched, **any tooltip that does not write its own colour inherits whatever a third party cached from the previous tooltip** ⇒ every tier we do not paint becomes a victim of that residue. **Fix**: the Epic tier changes from "leave it to vanilla" to **explicitly writing its tier colour** (= the vanilla EPIC colour `#FF55FF`) — as soon as we write the colour ourselves, that tooltip is guaranteed to use our value and is no longer affected by any third-party cache. ⚠️ **The Rare tier is deliberately left untouched this time** (the user asked for Epic only); by the same mechanism it can still be polluted by residue — if you want it painted as well (vanilla RARE colour `#55FFFF`), that needs a separate decision. ⚠️ **Not applicable to the 26.1.2 line**: its tooltip frame is a nine-slice texture and the platform exposes no colour event (`ClientHooks#onRenderTooltipTexture` hands out a texture ID) ⇒ the vanilla texture is kept; this is a registered platform difference.

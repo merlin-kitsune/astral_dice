@@ -64,6 +64,10 @@ public class AstralDiceMod implements ModInitializer {
         //    而整条加载失败(而不是退回宽松匹配)。onInitialize 全程早于 datapack 装载,故安全。
         com.merlinkitsune.astral_dice.crafting.AstralRecipeSerializers.register();
         registerListeners();
+        // 「青之诅咒」附魔(内部标记)的隐藏:Fabric 侧用 FAPI 的 ItemGroupEvents 摘掉原版
+        // 为每个附魔自动生成的附魔书条目(创造栏「材料」页 + 「搜索」页,JEI 随之消失)。
+        // tooltip 侧的整行抹除在 ModTooltipHandler#onItemTooltip 内完成。
+        com.merlinkitsune.astral_dice.event.HiddenCurseEnchantment.register();
         // ⚠️ 必须装桥,否则**全部**事件永不派发(2026-09-29 修:此前只调了 installEarly(),
         //    install() 从未被调用 ⇒ tick / 登录登出 / 命令 / 伤害 / Puzzles 那一整套
         //    都处于「代码在、但没接上」的静默失效状态)。位置 = 监听器注册之后,
