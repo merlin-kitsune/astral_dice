@@ -2618,3 +2618,121 @@ CF 文件按 id 独立、同名不去重不覆盖 ⇒ 后台不删就会看到�
   有陈旧 jar，**不属本轮四条交付线**，但若它们是活目标会误判「改动未生效」。
 - 📌 备查：`neoforge-1.21.1` / `forge-1.20.1` 的 `RarityTooltipFrame.java` 工作区行尾为 **LF**（项目惯例为 CRLF），
   系**改动前既存**、非本轮引入（本轮 diff 与 `--ignore-cr-at-eol` 完全一致，无行尾噪声）；未擅自整文件转换以免制造 no-op 变更。
+
+## 附录 A 续 42. 1.3.6 —— Iceberg 提示框颜色缓存**缓解措施**落地（四线）+ 看板娘筹码池 BUG 登记（2026-10-01）
+
+> 用户指令：「全量修补其他tooltip污染问题，针对iceberg单独开发缓解措施。
+> 另外登记一个新BUG：看板娘立牌被动 25 张战斗牌获得 1 个筹码，筹码不包含后面新增的筹码（含飞星、充能类等）」。
+>
+> 续 41 已定位「史诗边框残留」的根因 = **Iceberg 的全局颜色缓存 `Tooltips.currentColors` 从不按 tooltip 复位**，
+> 当时的处置是「本模组自保（史诗显式写色）+ 登记待裁决」。**本轮把泄漏本身修掉**，并登记新的内容缺陷。
+
+### 交付物
+
+| 文件 | 作用 |
+| --- | --- |
+| `{neoforge-1.21.1, forge-1.20.1, neoforge-26.1.2, fabric-1.20.1}/src/main/java/com/merlinkitsune/astral_dice/client/IcebergTooltipCacheGuard.java`（四线新增） | 缓解本体：每个 tooltip 渲染前把 `Tooltips.currentColors` 反射复位为 `DEFAULT_COLORS` |
+| `fabric-1.20.1/src/main/java/.../mixin/bridge/ClientTooltipBridgeMixin.java`（改） | 本线无 `RenderTooltipEvent.Pre` 派发源 ⇒ 在 `renderTooltipInternal` 的 HEAD 里**先复位、再派发 Color** |
+| `KNOWN-ISSUES.md`（改） | 新增 **KI-D2**（Iceberg 缓存残留 + 缓解）；新增 **§10 G 组**与 **KI-G1**（看板娘筹码池） |
+| `CHANGELOG.md` / `CHANGELOG_ZH.md`（改） | 1.3.6 追加条目：「残留」的源头（Iceberg）已在本次一并消除 |
+| `AGENTS.md`（改） | 「Iceberg 泄漏」条补上缓解措施、落点表与四条纪律 |
+
+### 落点与顺序（本轮的技术核心）
+
+`currentColors` 必须在「**同一次 tooltip 渲染之前**」复位，**不能放帧末**：缓存的写入发生在**绘制过程中**，
+帧末复位会让同一次绘制的后半段读到已复位的值。
+
+| 线 | 复位点 | 证据 |
+| --- | --- | --- |
+| neoforge-1.21.1 | `RenderTooltipEvent.Pre` | `GuiGraphics#renderTooltipInternal` 的**第一条语句**（源码 `:1495`），早于 `Color`（`:1516`）与绘制（`:1517`） |
+| forge-1.20.1 | 同上（`net.minecraftforge.client.event.RenderTooltipEvent.Pre`） | `forge-1.20.1-47.4.10-sources.jar` 的 `RenderTooltipEvent.java:211 public static class Pre` |
+| neoforge-26.1.2 | 同一 NeoForge 事件 | `GuiGraphicsExtractor#tooltip` 源码 `:1148`，早于边框贴图事件 `:1173`；`neoforge-26.1.2.109-sources.jar` 的 `RenderTooltipEvent.java:191 public static class Pre` |
+| fabric-1.20.1 | `ClientTooltipBridgeMixin` 的 `renderTooltipInternal` HEAD | 本线的 `RenderTooltipEvent` 是**自建平台事件**，只为 `Color` 备了派发洞、**没有 `Pre` 的派发源** ⇒ 复用既有 HEAD 注入，**顺序必须是「复位 → 派发 Color」** |
+
+⚠️ **顺序安全性单独取证**：Iceberg 自己的 `com/anthonyhilyard/iceberg/mixin/GuiGraphicsMixin#preRenderTooltipInternal`
+（同样是 `renderTooltipInternal` 的 HEAD 注入）**只用** `currentRenderContext` / `anyTooltipsVisible`
+（`javap -p -c` 逐条读出，无颜色引用）⇒ 我们的复位既不会被它覆盖，也不会破坏它。
+且 `currentColors` 的**写点全包只有一个类**（`com/anthonyhilyard/iceberg/mixin/TooltipRenderUtilMixin`，
+对 491 个 jar 递归展开扫描该字段的引用者得到的结论），而那些写点全部发生在**绘制期**（在复位之后）。
+
+### 实测固化的接口口径
+
+1. `Tooltips.currentColors` 与 `Tooltips.DEFAULT_COLORS` **都是 `public`**（`javap -p` 实证）⇒ `Class#getField` 即可，
+   **不需要 `setAccessible`**（1.21.1 的 Iceberg 1.3.2 与 26.1.2 的 1.4.1.1 都一样）。
+2. `DEFAULT_COLORS` 的取值由 `javap -c Tooltips.<clinit>` 实证 = `(0xF0100010, 0xF0100010, 0x505000FF, 0x5028007F)`
+   —— **正好是原版四色** ⇒ 「复位为 `DEFAULT_COLORS`」= 「回到原版边框」，不是换一种配色。
+3. ⚠️ **Iceberg 两个主版本的机制不同，但缓解对两者都成立**：1.21.1 的 1.3.2 是「传入色 ≠ 原版哨兵色 ⇒ 缓存 /
+   = 哨兵色 ⇒ 用缓存色画并 `cancel`」；26.1.2 的 1.4.1.1 改成「由 `Tooltips.gradientBackground` / `gradientBorder`
+   两个标志决定是否接管，接管时直接用 `currentColors`」⇒ **只写 `currentColors`、不碰那两个标志**，
+   两种机制下语义都是「回到原版」。
+4. 26.1.2 的 `TooltipColors` 把字段类型由 `int` 改成 `net.minecraft.network.chat.TextColor`；
+   本缓解只做「整体赋值 `currentColors = DEFAULT_COLORS`」、**不读组件** ⇒ 类型变化不影响。
+
+### 验证（三重取证）
+
+- **构建**：`./gradlew compileJava` → **BUILD SUCCESSFUL（48s）**（四线，仅既存 `[removal]` 弃用警告）；
+  `./gradlew build` → **BUILD SUCCESSFUL（11s / 37 tasks，18 executed）**，四个 `build/libs` 产物时间戳均为当日 14:39，
+  四个整合包 `mods`、四个 `run/<ver>/mods` 与根 `build/libs` 均**恰 1 个**本模组 jar（版本号与 `gradle.properties` 一致）。
+- **开包取证**：四个 jar 内都有 `client/IcebergTooltipCacheGuard.class`，常量池含**点号形式**的
+  `com.anthonyhilyard.iceberg.util.Tooltips` 与字段名 `DEFAULT_COLORS` / `currentColors`；
+  `probe()` 字节码顺序 = 系统属性闸门 → `Class.forName` → `getField("DEFAULT_COLORS").get(null)` → 判空 →
+  `getField("currentColors")` → `Field.set(null, defaults)`；三条 NeoForge/Forge 线的 class 常量池同时含
+  `Lnet/…/fml/common/EventBusSubscriber;` + `.../distmarker/Dist;` + `CLIENT`（与既有 `RarityTooltipFrame` 同构，
+  ⇒ 专用服务端不会被加载）；fabric 的 `ClientTooltipBridgeMixin` 反汇编里 `IcebergTooltipCacheGuard.reset()V`
+  位于**字节码偏移 0**（早于 `TooltipFrameColors.stack()` 与事件派发），且该 jar 已重映射到 intermediary（证明 remap 跑过）。
+- **守门**：`scripts/verify/verify_*.ps1` **7/7 exit 0**（含 `verify_bountiful_pools` 必传 `-Root`、`verify_bountiful_instance_exclusions` 不传）
+  ＋ `verify_chip_acquisition` / `verify_chip_recipes`（读数 `配方文件 132 | 筹码 61 | 一致 61 | 不一致 0`）/
+  `verify_crafting_recipe_uniqueness` / `verify_forge_loader_gate` / `verify_probe_class_refs` / `verify_resource_integrity` 全 0；
+  `tools/audit_actionbar.py` 0、`tools/verify_party_api.py` 0（带 SKIP，第三方 jar 未在本机）、
+  **`tools/audit_mixin_injection.py` 0**（合计 77 处注解、硬违规 0、提示 2）、`tools/audit_patchouli_keys.py` 0、
+  `tools/verify_fabric_assets.py` 8/8。
+  ⚠️ `scripts/devtools/verify_content_library.ps1` 为 **exit 1**，但它是**对照 1.2.0 冻结快照**的告警型脚本、
+  脚本头部即声明「不参与常规门禁」；报的是 `forge-1.20.1/en_us` 少 `effect.astral_dice.moses_ready`，
+  **本轮未改任何 lang / 物品注册** ⇒ 属既存偏差，非本轮引入。
+
+### 看板娘筹码池 BUG（**只登记，未改**）
+
+- 见 `KNOWN-ISSUES.md` **§10 G 组 KI-G1**：`MimiSignItem` 的三张手写筹码表共 **41** 个（`blueChips` 13 / `purpleChips` 16 /
+  `goldChips` 12），而注册筹码 **61** 个（RARE 19 / EPIC 24 / LEGENDARY 18）⇒ **缺 20 个**
+  （RARE 6 / EPIC 8 / LEGENDARY 6；按流派 = 充能 10 / 无流派 7 / 星光 2 / 治愈 1），
+  含用户点名的**充能类 10 个**与**飞星 2 个**（`purple_shooting_star_chip` / `golden_shooting_star_chip`）。
+- 机械差集命令、候选修法（派生式 / 补表式 / 守门式）与「不得改动的既有口径」已一并写入该条。
+- ⚠️ 用户用词是「**登记**」而不是「修复」⇒ 本轮**未改任何玩法代码**；修法需用户裁决（尤其「进阶筹码是否都要进池」）。
+
+### 独立子代理二次验证（按《二次验证规范》，非主会话自述）—— 抓出 3 处真反例并全部回修
+
+复验方用**只读**手段独立复算 A–I 九节。**硬事实全部证实**：四份 Guard 的差异只在 import / 类注解 / 事件方法；
+四个 jar 都含该 class 且 `probe()` 字节码顺序正确、`reset()` 只写一个字段、失败路径 `catch (Throwable)` 后永久停用；
+fabric 侧 `IcebergTooltipCacheGuard.reset()V` 在**字节码偏移 0**；八个部署目录**各恰 1 个**本模组 jar；
+KI-G1 的 **61 / 41 / 缺 20（6·8·6）** 与流派分组（充能 10 / 无流派 7 / 星光 2 / 治愈 1）**逐条复现一致**；
+`verify_chip_recipes` 读数 `配方文件 132 | 筹码 61 | 一致 61 | 不一致 0` 独立复现；行尾纪律成立。
+它同时抓出 **3 处真反例**（全部已回修）与 1 处失真转述：
+
+1. 🚨 **26.1.2 的 Iceberg 是「另一代」实现**（最关键）—— 复验方实测 `Iceberg-26.1.2-neoforge-1.4.1.1` 的
+   `neoforge/mixin/GuiGraphicsMixin#preRenderTooltipForge`（注入点 = `GuiGraphicsExtractor#tooltip` 的**方法头**）
+   **自己就在每个 tooltip 开头写 `currentColors`**（字节码 §229 命中 ColorExt / §251·254 未命中 / §317 异常路径），
+   且该代 `DEFAULT_COLORS = TextColor.fromRgb(-1) ×4` = **纯白**，**不是**原版四色。
+   ⇒ 初稿「Iceberg 从不复位」「`DEFAULT_COLORS` = 原版四色」两句**只对 1.3.2 成立**；
+   更要紧的是：初稿的**硬复位**在 26.1.2 上会**把 Iceberg 刚按 `ColorExt` 设好的颜色抹成白色**
+   （影响 LegendaryTooltips 这类模组）= **引入新缺陷**。
+   **已回修（实现 + 文档）**：`reset()` 增加**按代判别** —— 反射探测 `Tooltips` 上是否存在 1.4.1.1 引入的两个
+   `public static boolean` 标志 `gradientBackground` / `gradientBorder`（1.3.2 上**没有**这两个字段，已用 `javap -p` 复核两版）：
+   字段不存在 ⇒ **每次复位**；存在且任一为 true ⇒ **跳过**（别家管色）；存在且皆 false ⇒ **等值 no-op**。
+2. ✅ **报障包里的 Tooltip Overhaul 现已重新启用** —— 初稿按当日 13:0x 的现场写死「TO 是 `.jar.disabled`」；
+   复验时（同日 15:02 的 `latest.log`）TO **已被加载**（`mods/` 下为普通 `.jar`）。
+   **已回修**：所有归因陈述改为**带时间点**，并补上「本缓解对 TO 开/关都无害」（TO 接管时它自己画整个提示框、
+   Iceberg 的绘制原语不执行 ⇒ 复位退化为 no-op）。
+3. ⚠️ 复验方还称「`TESTING-SPEC.md` 声称把附录追加到 **2618** 行」⇒ **不成立**：本仓任何文档都没有该断言
+   （`grep -rn 2618` 为空；实测 2618 → 2700），属复验方的转述失真，**未据此改动**。
+
+### 二次验证后重新取证（回修后的最终验证）
+
+- `./gradlew compileJava` → **BUILD SUCCESSFUL**（四线，含新增的按代判别代码）。
+- `./gradlew build` → **BUILD SUCCESSFUL**；四个 `build/libs` 产物、四个整合包 `mods`、`run/<ver>/mods` 全部刷新。
+- 开包反汇编：四个 jar 内 `IcebergTooltipCacheGuard` 的 `reset()` 分支含 `icebergManagesColors()`
+  （`getField("gradientBackground")` / `getField("gradientBorder")` 的探测在 `probe()` 内、失败走 `NoSuchFieldException` 分支）。
+- 两代判别的**存在性证据**（`javap -p` 逐版复核）：
+  `Iceberg-1.21.1-neoforge-1.3.2` 的 `Tooltips` **无** `gradientBackground`/`gradientBorder`；
+  `Iceberg-26.1.2-neoforge-1.4.1.1` 的 `Tooltips` **有** `public static boolean gradientBackground; public static boolean gradientBorder;`。
+- 守门复跑：`scripts/verify/verify_*.ps1` 全 0 + `tools/audit_actionbar.py` / `verify_party_api.py` /
+  `audit_mixin_injection.py` / `audit_patchouli_keys.py` / `verify_fabric_assets.py` 全 0。

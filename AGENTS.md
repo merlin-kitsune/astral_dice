@@ -1373,7 +1373,25 @@ When extending this workspace:
       ⇒ **凡是保持原版边框色的 tooltip(本模组稀有档、其它模组物品、原版物品)都会沿用上一次的自定义颜色**。
       实测症状就是用户截图里的 `oritech:adamant_block`(与本模组无关)拿到**纯色 `#FFC24B`** = 本模组传奇档色。
       ⚠️ **结论:只要我们自己写色,该 tooltip 就一定用我们的值;不写色的档位必然被残留污染** —— 这正是「史诗必须显式写色」的依据。
-      ⚠️ 该泄漏**无法由本模组消除**(除却反射去动别家的静态字段)⇒ 已在 CHANGELOG 登记待裁决(上报上游 / 整合包侧处理 / 稀有档一并写色)。
+      ✅ **2026-10-01 已针对 Iceberg 单独开发缓解措施**(`client/IcebergTooltipCacheGuard`,四线各一份,并**按 Iceberg 两代实现自适应**)——
+      在**每次 tooltip 渲染的最开头**把 `Tooltips.currentColors` 反射写回**它自己的** `DEFAULT_COLORS`(不是我们发明的颜色)。
+      · 🚨 **必须按代判别**(独立复验实测的反例):**1.3.2 一代**(1.21.1 报障包)该字段**只在绘制期被写、无逐 tooltip 复位**,且
+      `DEFAULT_COLORS` = 原版四色 ⇒ **每次都复位**(这才是本类存在的理由);**1.4.1.1 一代**(26.1.2 测试包)的
+      `neoforge/mixin/GuiGraphicsMixin#preRenderTooltipForge`(注入点 = `GuiGraphicsExtractor#tooltip` 的**方法头**,早于我们的 `Pre` 事件)
+      **自己就在每个 tooltip 开头写这个缓存**,且它的 `DEFAULT_COLORS` = **纯白**(`TextColor.fromRgb(-1)×4`)
+      ⇒ **硬复位会把 LegendaryTooltips 经 `RenderTooltipEvents.ColorExt` 设好的颜色抹白 = 引入新缺陷**。
+      判据 = 反射探测 `Tooltips` 上是否存在 1.4.1.1 引入的两个 `public static boolean` 标志
+      `gradientBackground`/`gradientBorder`(1.3.2 上**没有**这两个字段):不存在 ⇒ 每次复位;存在且任一为 true ⇒ **跳过**;存在且皆 false ⇒ 等值 no-op。
+      落点:neo-1.21.1 / forge-1.20.1 / neo-26.1.2 = `RenderTooltipEvent.Pre`(1.21.1 源码 `GuiGraphics:1495`,早于 `Color` `:1516` 与绘制 `:1517`;
+      26.1.2 落 `GuiGraphicsExtractor#tooltip` `:1148`);fabric-1.20.1 **没有该事件的派发源** ⇒ 在
+      `mixin/bridge/ClientTooltipBridgeMixin` 的 `renderTooltipInternal` `HEAD` 里**先复位、再派发 `Color`**(顺序不可颠倒)。
+      ⚠️ **纪律**:① 复位点必须是「**同一次 tooltip 渲染之前**」,不能放帧末(缓存写在绘制过程中,帧末复位会让同一次绘制后半段读到已复位值);
+      ② **只写 `currentColors` 一个字段**,`gradientBackground`/`gradientBorder` **只读不写**;③ 不硬依赖 Iceberg(字符串名探测、缺席走 debug);
+      失败**永久停用**并打一条 warn,**绝不抛**(渲染线程抛异常 = 崩客户端);④ 逃生口 `-Dastral_dice.icebergTooltipGuard=false`。
+      ⚠️ 该缓解**不改**本模组「稀有档仍随原版不干预」的既有裁决 —— 有了它,稀有档不再需要靠「自己写色」自保。
+      ⚠️ **归因陈述必须带时间点**:报障当时(当日 13:0x)该包的 TO 是 `.jar.disabled`,但**当天 15:02 的日志里它又被加载了**(玩家可随时改回)
+      ⇒ 别在文档里写死「TO 已停用」;本缓解对 TO 开/关都无害(TO 若接管,它自己画整个提示框,Iceberg 的绘制原语根本不执行,复位退化为 no-op)。
+      完整取证见 `KNOWN-ISSUES.md` **KI-D2** 与技能 `mc-thirdparty-tooltip-frame` §4.3
     · 🚨 **另一类接管者:Tooltip Overhaul(自己画整个提示框)**(2026-09-25 实测,整合包 `狐の航空学 Voxy Edition`;
       ⚠️ **当前该包里的 TO 已是 `.jar.disabled`,故这条现在不生效,别再据它下结论** —— 先 `ls mods | grep <modid>` 确认启用状态,
       并用 `logs/latest.log` 的 `Reloading ResourceManager:` 长串 `mod/<modid>` 复核「本局到底加载了谁」):它**自己画**提示框

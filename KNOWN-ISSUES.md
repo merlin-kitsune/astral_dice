@@ -316,6 +316,66 @@ GlCommandEncoder.trySetup(:531) ← GlCommandEncoder.executeDraw(:406) ← GlRen
   - **已回答（2026-09-19）**：见上方「机制（源码级确认）」段 —— 根因不是「Iris 跳过重绑」，而是 **Iris 用顶点格式推出 overlay 需求（`Sampler1`）并替换了 program，而通道侧仍只按原版 `RenderSetup.useOverlay` 绑 sampler**。已观测到的直接线索 `temp/t48/A-if-on/debug.log:1712` = `mixins.iris.json:MixinShaderManager_Overrides from mod iris->@Inject::redirectIrisProgram(…RenderPipeline;…)` 正是该替换点。
 - **ImmediatelyFast（已由 A/B 实测排除，降级为附录）**：<https://github.com/RaphiMC/ImmediatelyFast> —— 克隆点 `F:\MCProject\temp_immediatelyfast\26.1`，已按版本钉到 **tag `v1.15.3` / commit `c010c5d5`**（对应现场 `ImmediatelyFast-NeoForge-1.15.3+26.1.jar`，312 276 B）。其既有分析**不得**作为崩溃成因引用；只在「为何 A 组栈里多一层 `BatchableBufferSource` 帧」这类旁证语境下使用（IF 自身确有两个 `GlCommandEncoder` mixin：`immediatelyfast-common.mixins.json:avoid_redundant_framebuffer_switching.MixinGlCommandEncoder`、`fix_slow_buffer_upload_on_apple_gpu.MixinGlCommandEncoder` —— 但 B 组证明没有它们**照样崩**）。
 
+### KI-D2 ＝ Iceberg 的 tooltip 颜色缓存**回灌**（1.3.2 那一代）⇒ 保持原版边框色的提示框会**沿用上一个物品的颜色**（**已缓解，2026-10-01**）
+
+**现象**（2026-10-01 用户实报 + 两张截图）：① 与本模组无关的物品 `oritech:adamant_block` 的提示框边框是**纯色 `#FFC24B`**；② 本模组**史诗**物品 `astral_dice:ren_sign` 的物品名已是正确的淡紫、边框却是金色。用户原话：「实际上 tooltip 边框整体出现了 bug，**epic 物品会残留上次指向物品的颜色**」。
+
+**归因链（三条独立证据）**：
+1. **色值归属**：截图逐像素采样，边框列 `x=40..43` 在多个 y 上恒为 `#FFC24B`；对报障包 `狐の航空学 Voxy Edition/mods` 下 **491 个 jar 递归展开（含 JarJar 内嵌）**扫描 4 字节 `00 FF C2 4B`（int 16760395），作为提示框边框色的命中**只有本模组内嵌的 `com/merlinkitsune/starenginelib/item/Rarity.class`**（另一处是 ysm 的 native dll 里的巧合字节）。⇒ 这个颜色只可能来自本模组 ⇒ **泄漏方向 = 本模组的颜色漏给了别人**。
+2. **原版确实使用事件值**：`neoforge-21.1.235-sources.jar` 的 `GuiGraphics.java:1516` 取 `ClientHooks.onRenderTooltipColor` 的返回值，`:1517` 把 `getBorderStart()/getBorderEnd()` 直送 `TooltipRenderUtil.renderTooltipBackground` ⇒ 写进事件的颜色一定送达绘制（排除「写了不生效」这条路）。
+3. **回灌源 = Iceberg**：报障那一刻（当日 13:0x）该包里的 `tooltipoverhaul-neoforge-1.21.1-2.0.6.jar` **是 `.jar.disabled`**、日志的资源重载清单里也没有它；真正接管边框的是 `[冰山] Iceberg-1.21.1-neoforge-1.3.2`（由「进度牌匾」带入，**不需要装 LegendaryTooltips**）。
+   ⚠️ **该状态会被玩家改回**（当天 15:02 的日志里 TO 又被加载了；`mods/` 下已是普通 `.jar`）⇒ 任何以「TO 已停用」为前提的结论都必须**带时间点**陈述；本缓解对 TO 开/关**都无害**（TO 若接管，它自己画整个提示框，Iceberg 的绘制原语不会被执行，复位退化为 no-op）。
+
+**机制（`javap -p -c` 逐条实证）—— ⚠️ 两代架构不同，本节先说报障包那一代（1.3.2）**：
+```
+// com/anthonyhilyard/iceberg/util/Tooltips（1.3.2，javap -p 实证）
+public static Tooltips$TooltipColors currentColors;         // 可变静态、全进程唯一
+public static final Tooltips$TooltipColors DEFAULT_COLORS;  // = (0xF0100010, 0xF0100010, 0x505000FF, 0x5028007F)，即原版四色
+static { currentColors = DEFAULT_COLORS; }                  // 此后**再无任何逐 tooltip 复位**
+// com/anthonyhilyard/iceberg/mixin/TooltipRenderUtilMixin（iceberg.mixins.json 的 client 列表、required:true）
+//   传入色 != 原版哨兵色（BACKGROUND_COLOR / BORDER_COLOR_TOP / BORDER_COLOR_BOTTOM）
+//       ⇒ currentColors = new TooltipColors(..., 传入色, ...)        // 缓存
+//   传入色 == 原版哨兵色
+//       ⇒ 用 currentColors 里的颜色绘制，并 CallbackInfo.cancel()      // 回灌
+```
+在 1.3.2 上，`currentColors` 的**写点只有绘制原语**（全包扫描：引用该字段的类只有 `Tooltips`、`Tooltips$TooltipColors` 与两个平台的 `TooltipRenderUtilMixin`；`mixin/GuiGraphicsMixin#preRenderTooltipInternal` 只碰 `currentRenderContext` / `anyTooltipsVisible`，**不碰颜色**）⇒ **只要上一次有人写过自定义色，之后所有「保持原版色」的 tooltip 都会继承它**。
+
+**⚠️ 但 1.4.1.1（26.1.2 包）已经是另一代实现（独立复验时实测，2026-10-01）**：
+```
+// com/anthonyhilyard/iceberg/neoforge/mixin/GuiGraphicsMixin#preRenderTooltipForge
+//   （签名 = GuiGraphicsExtractor#tooltip(Font, List, int, int, ClientTooltipPositioner, Identifier, ItemStack)）
+//   §229 命中 RenderTooltipEvents.ColorExt ⇒ currentColors = 别家给的四色 + gradientBackground/gradientBorder = 结果值
+//   §251/§254 未命中（或 §317 异常路径）   ⇒ currentColors = DEFAULT_COLORS + 两个标志 = false
+// ⇒ 它自己**在每个 tooltip 开头就把缓存写掉**，回灌链路在该版本上已经不存在
+// ⇒ 且该版本的 DEFAULT_COLORS = TextColor.fromRgb(-1) ×4 = **纯白**（不是原版四色）
+```
+⇒ **结论：本缺陷只确认存在于 1.3.2 那一代；26.1.2 的 1.4.1.1 已自行修复。**
+若本模组在那一代上「照旧硬复位」，反而会把 Iceberg 刚设好的颜色（例如 LegendaryTooltips 经 `ColorExt` 给的）
+抹成白色 ⇒ **会引入新缺陷**，因此缓解必须**按代自适应**（见下）。
+
+**为什么本模组在这条缺陷上是「放大器」**：本模组此前对**稀有/史诗**采取「不干预边框」（早退 `return`）⇒ 这两档永远是「保持原版色」的那一类 ⇒ 必然被污染（史诗档已在 1.3.6 改为显式写色，见 CHANGELOG）。
+
+**✅ 缓解措施（2026-10-01，四线各一份 `client/IcebergTooltipCacheGuard`，并按代自适应）**：在**每次 tooltip 渲染的最开头**把 `Tooltips.currentColors` 反射写回 `Tooltips.DEFAULT_COLORS`（两个字段都是 `public`，无需 `setAccessible`）。
+- **按代自适应（关键）**：探测 `Tooltips` 上是否存在 1.4.1.1 引入的两个 `public static boolean` 标志 `gradientBackground` / `gradientBorder`：
+  - **字段不存在**（＝1.3.2 一代）⇒ **每次都复位**（该代 `DEFAULT_COLORS` 恰好就是原版四色，复位＝回到原版边框）；
+  - **字段存在且任一为 true** ⇒ 该 tooltip 的颜色由 Iceberg 自己按 `ColorExt` 设置 ⇒ **跳过本次复位**，绝不覆盖别家；
+  - **字段存在且都为 false** ⇒ Iceberg 已自行把缓存写回它自己的默认值 ⇒ 本模组再写一次是**等值 no-op**。
+  ⇒ 在**两代架构上都不改变别家既有行为**，只在「没人管颜色」的那一代修掉残留。
+- **落点**：neo-1.21.1 / forge-1.20.1 / neo-26.1.2 = `RenderTooltipEvent.Pre`（`GuiGraphics#renderTooltipInternal` 的**第一条语句**，1.21.1 源码 `:1495`；26.1.2 落在 `GuiGraphicsExtractor#tooltip` `:1148` —— ⚠️ Iceberg 1.4.1.1 的方法头注入在它**之前**，这正是必须做「被管理态跳过」的原因）；fabric-1.20.1 **没有该事件的派发源** ⇒ 在 `mixin/bridge/ClientTooltipBridgeMixin` 的 `renderTooltipInternal` `HEAD` 里**先复位、再派发 `Color`**。
+- **语义**：主动设色的 tooltip 行为**完全不变**（复位发生在设色之前，颜色仍在自己的绘制过程中被缓存并立即生效）；**没设色**的 tooltip 画出真正的原版边框 ⇒ **其它模组的物品、原版物品一并修好**（这是本模组**唯一**能消除该泄漏的手段）。
+- **边界**：不硬依赖 Iceberg（目标类按字符串名探测、缺席走 debug 级、不给多数玩家制造噪音）；**只写 `currentColors` 一个字段**，Iceberg 的两个标志**只读不写**；任何失败都**永久停用**该缓解并只打一条 warn，**绝不抛出**（渲染线程抛异常 = 崩客户端）；逃生口 `-Dastral_dice.icebergTooltipGuard=false`。
+- ⚠️ **复位点必须在「同一次 tooltip 渲染之前」**，不可改到帧末：缓存的写入发生在绘制过程中，帧末复位会让同一次绘制的后半段读到已复位的值。
+
+**验证**：`./gradlew compileJava` / `./gradlew build` BUILD SUCCESSFUL（四线）；开包反汇编确认四个 jar 内都有 `client/IcebergTooltipCacheGuard`、常量池含点号形式的 `com.anthonyhilyard.iceberg.util.Tooltips`；四线构建 / 守门 / 独立子代理复验见 `scripts/test/TESTING-SPEC.md` **附录 A 续 42**。
+
+**🔍 独立复验提出的反例与回修（2026-10-01，三条已修 + 一条被判定为复验方失真）**：
+1. ✅ 初稿称「报障包里的 TO 仍是 `.jar.disabled`」⇒ 复核发现**当天 15:02 的日志里 TO 已被重新加载**（`mods/` 下为普通 `.jar`，日志 5 处命中）⇒ 已改为**带时间点**的表述，并补上「缓解对 TO 开/关都无害」。
+2. ✅ 初稿称 `DEFAULT_COLORS` ＝原版四色 ⇒ 只对 **1.3.2** 成立，**1.4.1.1 是纯白**（`TextColor.fromRgb(-1) ×4`）⇒ 已限定版本范围。
+3. ✅ 初稿称 Iceberg「从不复位 `currentColors`」⇒ 只对 **1.3.2** 成立；**1.4.1.1 的 `preRenderTooltipForge` 自己就写**（§229 / §251·254 / §317）⇒ **实现随之加固**（新增「被管理态跳过」判别），否则会在 26.1.2 上抹掉 LegendaryTooltips 的颜色 = 引入新缺陷。
+4. ⚠️ 复验方还提出「`TESTING-SPEC.md` 声称把附录追加到 **2618** 行」⇒ **不成立**：本仓任何文档都没有该断言（`grep -rn 2618` 为空，实测行数 2618 → 2700），属复验方的转述失真，**未据此改动**。
+
+**遗留（不在本模组可控范围）**：① 缓解是「每个 tooltip 前复位」的**打补丁**，不是上游修复 —— 建议同时上报 Iceberg 上游（1.3.2 一代的 `currentColors` 本应在每次 tooltip 结束时复位；1.4.1.1 已自查）；② 若某模组**故意**依赖该缓存跨 tooltip 持久（本仓未观测到此类），本缓解会改变其表现，此时用逃生口关闭即可。
+
 ## 8. E 组 — 测试工具链与探针口径（2026-09-19 起）
 
 ### KI-E1 ＝ `AP_NOAI` 心跳/闸门读数恒为 `mobs=0`（**假阴性 ⇒ 进入世界那道「禁用生物 AI」闸门形同空洞**）
@@ -1212,7 +1272,32 @@ fabric.mod.json: version=1.3.2-alpha.1+fabric_1.20.1 / depends.starengine_lib=">
 ⚠️ **未做**：进世界的**行为级**确认（两名玩家组队后互相攻击是否真的免伤）—— 需要双人实机，dev 单进程无法覆盖；
 当前证据到「后端已启用 + 契约与发布产物逐条一致」为止。
 
-## 10. 变更记录
+## 10. G 组 — 游戏内内容与获取途径（2026-10-01 起）
+
+> 本组登记**玩法内容层面的缺陷**（「内容没接上」类问题）：获取途径缺失、池子漏项、文案与实际不符等。
+> 处置口径 = **先登记、后由用户裁决**；改动前必须确认「这是不是有意的设计取舍」。
+
+### KI-G1 ＝ 看板娘立牌（mimi）被动「每累计 25 张战斗牌送 1 个随机筹码」的筹码池是**硬编码**⇒ 后加的筹码一个都拿不到（**2026-10-01 用户实报，只登记未改**）
+
+- **用户原话**：「另外登记一个新BUG：看板娘立牌被动 25 张战斗牌获得 1 个筹码，筹码不包含后面新增的筹码（含飞星、充能类等）」。
+- **现象**：`item/sign/MimiSignItem` 的 `giveRandomChip` 从三张**手写清单**里取件 —— `blueChips()`（60%）/ `purpleChips()`（35%）/ `goldChips()`（5%），三张表**合计 41 个筹码**（13 / 16 / 12）。
+- **根因（机械核对，四线同源）**：筹码的**档位权威**是 `ModItems` 里的 `.rarity(AstralRarities.x())`（即 `scripts/verify/ChipCommon.psm1` 与 `verify_chip_recipes.ps1` 用的**同一口径**：蓝=RARE / 紫=EPIC / 金=LEGENDARY），而这三张表是**独立手写的 `List<ItemStack>`**，**没有任何守门脚本**核对「表 ⊇ 按档位分组的筹码全集」⇒ 每次新增筹码都会漏。
+  实测（2026-10-01，正则扫 `neoforge-1.21.1/.../item/ModItems.java` 的 `registerItem("<id>", ...)` 且 id 含 `chip`、排除 `blank_chip`）：
+  - 注册筹码 **61** 个 ＝ RARE **19** / EPIC **24** / LEGENDARY **18**；
+  - 三张表 **41** 个（13 / 16 / 12）⇒ **缺 20 个**（RARE 6 / EPIC 8 / LEGENDARY 6），按流派分：**充能 10 / 无流派 7 / 星光 2 / 治愈 1**：
+    - **充能类 10 个**：`energy_recycler_chip`(RARE)、`electric_sword_chip`(RARE)、`warp_engine_chip`(RARE)、`advanced_peripherals_chip`(EPIC)、`airbag_chip`(EPIC)、`current_core_chip`(EPIC)、`electric_glove_chip`(EPIC)、`perpetual_motion_chip`(LEGENDARY)、`primordial_core_chip`(LEGENDARY)、`railgun_chip`(LEGENDARY)；
+    - **飞星（星光类）2 个**：`purple_shooting_star_chip`(EPIC)、`golden_shooting_star_chip`(LEGENDARY)；
+    - **其余 8 个**：`adrenaline_low_chip`(EPIC)、`adrenaline_high_chip`(LEGENDARY)、`big_bowl_stew_chip`(LEGENDARY，治愈类)、`bookmark_chip`(RARE)、`member_recommendation_chip`(RARE)、`piggy_bank_chip`(RARE)、`smart_watch_chip`(EPIC)、`whetstone_chip`(EPIC)。
+  - ⚠️ **缺项清单以机械差集为准**（上表即脚本输出）；与用户措辞（「飞星、充能类等」）不一致时同样以脚本为准。
+- **判据命令（可重跑，四线通用）**：从 `ModItems.java` 用正则抽 `(字段名, id, rarity)` 三元组（id 含 `chip` 且非 `blank_chip`），再从 `MimiSignItem` 的三个 `xxxChips()` 方法里抽 `ModItems.<FIELD>.get()`，取差集即得缺项。
+- **候选修法（需用户裁决，勿擅自实施）**：
+  1. **派生式（推荐）**：三张表改为**运行时按 `stack.getRarity()` 过滤全量筹码**（数据源 = 物品注册表里 id 以 `_chip` 结尾者，排除 `blank_chip`）⇒ 以后新增筹码**自动进池**、永不再漏。
+     ⚠️ 需先确认「进阶筹码是否都要进池」—— 现有三张表**已含**进阶件（`cutter_blade_chip` / `eagle_scope_chip` / `medkit_complete_chip` / `ninja_star_chip` 等）⇒ 现状口径是「都要」。
+  2. **补表式**：仅把上述 20 个缺项补进三张表 —— 改动最小，但**下次加筹码还会再漏**（与 KI-F4 同属「清单与实际不同源」的缺陷模式）。
+  3. **守门式（与 1 配套）**：新增 `scripts/verify/verify_mimi_chip_pool.ps1`，断言「按档位分组的筹码全集 ⊆ 三张表」，否则 exit 1，防止再退化。
+  ⚠️ 无论选哪条，都**不得**改变 `RETURNED_CARD_THRESHOLD = 25`、三档概率（60 / 35 / 5）、以及「专属牌不进池」的既有口径。
+
+## 11. 变更记录
 
 | 日期 | 变更 |
 |---|---|
@@ -1245,3 +1330,4 @@ fabric.mod.json: version=1.3.2-alpha.1+fabric_1.20.1 / depends.starengine_lib=">
 | 2026-09-30 | **五项玩家可见缺陷按 dev-next 已修方案同步落地（新增 KI-F19）+ 发现并修正一处三线共有的 mixin 误写（新增 KI-F20）** —— 用户报「在主线版本中发现的 bug，在该分支中也应该存在」并要求「**直接同步 `multi-dev-next` 的改动，避免重复造轮**」。核实 dev-next HEAD = **`731e3855`**，与用户报的 5 条**逐条对应**。⚠️ **未做整分支 merge**：该提交只改三线（neoforge-1.21.1 / forge-1.20.1 / neoforge-26.1.2）、**不含 fabric**，而 dev-next 领先本分支 **30 个提交**（2.0.0-SNAPSHOT.14 版本号 / 目标选择器 / 工具链）⇒ 合并只会污染移植线、带不来任何 fabric 代码改动；故改为**以 forge-1.20.1 为蓝本按文件移植**（路径改写 + `git apply --3way`，冲突逐处手工合并）。落地五项：① 王之力自伤改用新类型 `astral_dice:card_cost`（登记 `bypasses_cooldown`、**刻意不登记 `bypasses_armor`**）⇒ 不再被受击无敌帧整段吞掉（旧口径走 `dice_damage`，不在 `bypasses_cooldown` 内 ⇒ `invulnerableTime > 10 && amount <= lastHurt` 时 `hurt` 直接 false）；② 删除 `PlayerLifecycleHandler` 里**主动清零** jasmine 攻/防计数的那段（padman 保留），清零唯一路径回归 `clearSignData` ⇒ 扫地机加成死亡保留；③ `magic_tome_count`（原 10000 tick）与 8 个效果类的 `DURATION_TICKS` + 2 处施加点统一为 `MobEffectInstance.INFINITE_DURATION`（唯一渲染 ∞ 的值）；④ 连带修 `EffectTimerGuard` 永续判据（`-1` **不满足** `>= INFINITE_THRESHOLD` ⇒ 会被当成有限时长 forceRemove + 重加，常驻效果一施加就没）与 `MamushiDragonEffect.refresh` 判据；⑤ 1.20.1 无 NeoForge 的 `GatherEffectScreenTooltipsEvent` ⇒ 扩展 `EffectRenderingInventoryScreenMixin`（双 `@Redirect` + `ThreadLocal`，`formatDuration` 捕获实例 → `List.of` 改写列表）把 `effect.<id>.description` 追加进悬停 tooltip，且**与本线原有的等级角标 `@Inject` 并存**。**KI-F20**＝该 patch 的两处 `@Redirect` 写了 `require = 2` 并注释为「至少命中 1 次」——⚠️ `require` 语义是**最少**命中次数，而 `javap -c` 实证 `renderEffects`（50–273 行）内 `formatDuration` 与 `List.of` **各只 1 次**（另一次 `formatDuration` 在 `renderLabels`，已被 method 限定排除）⇒ 必然 `InjectionError`、**触发时机是打开物品栏**；之所以没炸是因为该提交自述「实机验证未做」（mt_launch 防撞预检拦下）。本线改为 `require = 1` 并留证；**三线待回补**（按「只改 fabric 端」裁决未动）。**验证**：compileJava / build SUCCESSFUL、产物已推整合包、静态守门 8/8 PASS（语言三语 **832/832/832** = 新增 3 个 `death.attack.card_cost*` 键）、**客户端预加载** `[preload] OK …EffectRenderingInventoryScreen` 且 `InjectionError` 命中 **0**。⚠️ 未做：进世界的**视觉确认**（注释行 / ∞ 符）与**生产映射冒烟**。 |
 | 2026-10-01 | **1.3.5（`1.3.4..multi-main`）同步落地本线（新增 KI-F21）+ 三批冒烟与生产映射冒烟全绿** —— 用户要求「合并 1.3.5 更新内容，并执行行为测试和游戏内测试（冒烟）」。范围实测：`1.3.4..multi-main` 20+ 提交、**`grep '^fabric'` = 0** ⇒ 依旧只改三线，按文件移植（`forge-1.20.1` 为蓝本，65 文件 / 3452 行，`--3way` 后 11 文件 15 处冲突逐处手工解决）。**三处需要平台判断的地方**（本任务的技术核心）：① `ModRecipeProvider` 的肾上腺素配方 —— 上游用 `PartialNBTIngredient`（Forge 专有）⇒ 本线保留 `Items.POTION` + `NbtAugmentedRecipe` 约束、只采纳 X/D 换料；② `LootInjectionHandler` 上游新增的 `onLootTableLoad(LootTableLoadEvent)`（**Forge 事件**）⇒ **整方法舍去**（本线箱子注入由 `loot/FabricLootInjector` 的 `LootTableEvents.MODIFY` 承担），只保留 `starPlateDropCount` / `rollKillStarCoin`；③ 新移植的 `MosesEnigmaticLink` 带 4 行 `net.minecraftforge.*` import + `@Mod.EventBusSubscriber` ⇒ 换本线 `platform.event.*`（`TickEvent.ServerTickEvent` 的 `phase`/`getServer()` 与 Forge 同形）并删除注解、改 `LoaderBus.INSTANCE.register(...)`（Fabric 无注解自动注册）。lang 三语**不走 patch** 改用 **JSON 键级合并**（基线 `1.3.4` ↔ `multi-main`）⇒ 832/832/832 一致。**datagen 必跑并已跑**（`written: 17`，实测 `komachi_sign` 用紫水晶碎片、`adrenaline_low_chip` 用末影珍珠+灵魂沙且 `astral_nbt` 约束保留）。**验证**：批 A（服务端 13.4s + 4 用例 1/9/8/3 全 PASS + 收停无残留）、批 B（客户端 19.5s + `FAB-CLIENT-BOOT` 8/8）、批 C（三语一致 / 语法门 54 文件 0 失败 / 模组来源 `violations=0` / 资源闭环 **8/8**）、**生产映射冒烟 `ft_prod.ps1` PASS（36s 到主菜单，带 `-PreloadClasses class_485,class_329,class_310,class_746,class_8002`）**。⚠️ **未做**：进世界验证（quickplay 曾误删存档，本轮刻意不用；该参数已有护栏需显式 `-AcknowledgeQuickPlayDestructive`）⇒ 世界内行为待用户授权。⚠️ **上游缺陷登记**：`multi-main` 删了 lang 键 `guide.entry.special_effects.6` 但其手册仍引用 ⇒ 本线保留该键规避，主仓需单独裁决。 |
 | 2026-10-01 | **队友判定后端「从来没生效过」定位并修复（新增 KI-F22）+ 四态运行时取证** —— 用户要求「搜索 FTB Teams / OPAC 的 1.20.1 Fabric 源代码，执行团队功能实现验证」。取证方式 = **克隆上游源码 + 下载发布 jar + `javap` 逐条比对反射契约**（并回溯到 1.20.1 最早版 `v2001.1.2-alpha`，确认该契约**从未**匹配过任何 1.20.1 版本）。**核心发现**：`PartyRelations` 接 FTB Teams 的反射**从头到尾没生效** —— 它取的 4 个访问器（`isManagerLoaded` / `getManager` / `isClientManagerLoaded` / `getClientManager`）声明在**嵌套接口 `FTBTeamsAPI$API`** 上、外层类上没有（`Class#getMethod` 不会跨到嵌套接口），客户端入口 `ClientTeamManager#getTeamForPlayer(Player)` 也**不存在**（真实为 `getKnownPlayer(UUID) → Optional<KnownClientPlayer>`）；而 `resolve()` 把全部解析放在同一个 `try` 内 ⇒ 第一处即抛 `NoSuchMethodException` ⇒ **整个 FTB 后端恒为未启用、只打一条 debug**（「失败方向安全」的设计同时掩盖了「从来没成功过」）。**修法**：访问器改从嵌套接口解析（保留「方法挪回外层类」的 fallback）；客户端改走 `getKnownPlayer(UUID)`，⚠️ `KnownClientPlayer` 是 **record**、访问器为 **`teamId()`（无 `get` 前缀）**；「同队」改比 **party 团队 id**（`Team#getId()` 对玩家队伍=该玩家自己的 UUID，同 party 两人各不相同）；`hasTeam` 判据改 `isPartyTeam() \|\| isServerTeam()`（FTB 给每个玩家都建个人队伍 ⇒ 用「存在 Team 对象」会恒真、把「未组队⇒友方作用于全服」的兜底堵死）；失败日志分两档（`ClassNotFoundException`=没装 ⇒ debug，其余=签名不符 ⇒ warn，避免给绝大多数玩家制造日志噪音）。**新增可断言机器行** `AP_FAB_PARTY: sw_* back_ftb/back_opac why_ftb/why_opac`（`PartyRelations#reportBackends()`，挂 `AstralDiceMod#onCommonSetup`，与其它 `AP_FAB_*` 同族）。**同轮附带**：修 `BigBowlStewChipItem#isOwnedByAlly` 一处**绕过统一入口**的裸 `getTeam()`；清掉迁移遗留的 **9 处失效引用**（9 个 `import` 中 4 个已完全无引用 + 3 处仍指向库的 javadoc `{@link}`）；登记**库侧两个同类缺陷**（`EventTargetCollector` 在 `TeamManager` 上反射 `getTeamForPlayer(Player)/(UUID)` 均不存在；OPAC 类名 `dev.darkhax.opac.*` 不存在）—— 影响另三条线，交库侧下次发版。**验证**：四态运行时 A/B/C/D（无第三方 / 装 FTB / 再加 OPAC / **专用服务端**）读数逐态符合预期（`off/off` → `on/off` → `on/on` → `on/on`，`why_*` 分别给出 `ClassNotFoundException:…` 与 `OK`）；新增静态闸门 **`tools/verify_party_api.py`**（自动抽取契约 ↔ 真实 jar 比对）**修复前 `PASS=9/FAIL=5` ⇒ 修复后 `PASS=17/FAIL=0`**；新增测试台用例 **`FAB-PARTY-BACKENDS`**（6 条断言）入批 A 并 PASS；批 A 五条用例全绿、派发 `ServerTickEvent=599`、收停无残留；资源闸门 **8/8 PASS**（三语 832/832/832）。⚠️ **未做**：进世界的**双人行为级**确认（组队后互相攻击是否真的免伤）—— dev 单进程覆盖不到。 |
+| 2026-10-01 | **新增 KI-D2（Iceberg tooltip 颜色缓存残留）+ 缓解措施落地**：四线各新增 `client/IcebergTooltipCacheGuard`，在每次 tooltip 渲染开头把 `Tooltips.currentColors` 反射复位为 `DEFAULT_COLORS`（并按 Iceberg 是否自己管色自适应跳过）（三条 NeoForge/Forge 线走 `RenderTooltipEvent.Pre`，fabric 线走 `ClientTooltipBridgeMixin` 的 `renderTooltipInternal` HEAD），使**其它模组物品与原版物品**也不再继承上一个 tooltip 的颜色；同时**新增 §10 G 组**并登记 **KI-G1**（看板娘立牌 25 张战斗牌送筹码的池子硬编码、缺 20 个后加筹码，含充能类 10 个与飞星 2 个；只登记未改） |
