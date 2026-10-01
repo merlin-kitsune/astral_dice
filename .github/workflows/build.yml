@@ -93,7 +93,9 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: merlin-kitsune/starengine_lib
-          ref: 9640af72428108bed77290d9575d043fcd7d203f   # = 库分支 `fabric-1.20.1` 的 HEAD:三平台 **1.0.7** + fabric 子项目 **1.0.6-alpha.2**
+          ref: e99cb800ba97fb8f0e4861e824fa90f49334fa98   # = 库分支 `fabric-1.20.1` 的 HEAD:三平台 **1.0.7** + fabric 子项目 **1.0.6-alpha.2**
+          #   ℹ️ 该提交由 `9640af7` **amend** 而来(仅追加两份库 CHANGELOG 的「定性说明」段,字节码与版本号完全未变)
+          #   —— 保持「一个版本号 = 一个提交」;若你看到 `9640af7` 这个旧 SHA,那是 amend 前的形态。
           #   (含 `component/GameplayConstants#CURSED_SWORD_BONUS_MAX` 由 16 上调为 32)。一个 ref 同时满足四条线。
           #   ⚠️ 本次为**纯数值调整**,不动任何 public 签名;三平台 `1.0.6` → `1.0.7`、
           #    fabric 子项目 `1.0.6-alpha.1` → `1.0.6-alpha.2`(两条线各自独立递增)。

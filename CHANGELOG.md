@@ -110,6 +110,11 @@
   The field's name / type / visibility are unchanged, so this is a non-breaking fix allowed by the 1.x compatibility
   contract and consumers need no code change; the chip tooltip uses a `%s` placeholder and follows the constant
   automatically, while the **hard-coded `+16` in this mod's own guide was updated to `+32`** (four lines x three languages).
+  Classification: this cap is a **player-visible balance value** (not merely a bug fix) and ships in a patch position
+  under the library 1.x contract's "**behaviour fixes that do not change the contract**" - the field's contract semantics
+  ("the cap on the Cursed Sword's stacking bonus"), type, name, visibility and signature are all unchanged and consumers
+  need zero code changes. **This follows the library's `1.0.3` "gameplay-criteria special case" precedent** (user ruling
+  2026-09-24); both library CHANGELOGs carry an explicit note on this classification.
 
 ### Bug Fixes
 

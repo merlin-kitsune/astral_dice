@@ -28,8 +28,8 @@ import com.merlinkitsune.astral_dice.combat.PartyRelations;
 /**
  * 诅咒之剑筹码:装备时始终受到"青之诅咒"影响。
  * 骰神赐福期间,每击杀 1 个不少于 20 血的敌对目标,攻击力 +1;
- * 每个骰神赐福效果期间最多触发一次,上限由配置
- * {@link GameplayConstants#CURSED_SWORD_BONUS_MAX} 决定(默认 16,最大 32)。
+ * 每个骰神赐福效果期间最多触发一次,上限由**前置库常量**
+ * {@link GameplayConstants#CURSED_SWORD_BONUS_MAX} 决定(2026-10-02 由 16 上调为 32;该字段不读配置文件)。
  * 移除筹码时清除全部攻击力加成与青之诅咒效果。
  */
 @Mod.EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
