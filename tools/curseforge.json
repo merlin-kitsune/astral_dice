@@ -14,8 +14,5 @@
     { "key": "neoforge_26.1.2", "loader": "neoforge", "mc": "26.1.2", "channel": "beta", "jar": "neoforge-26.1.2/build/libs/astral_dice-*.jar" },
     { "key": "fabric_1.20.1", "loader": "fabric", "mc": "1.20.1", "channel": "alpha", "jar": "fabric-1.20.1/build/libs/astral_dice-*.jar" }
   ],
-  "_fabricNote": "fabric 线（2026-09-29 接入，2026-10-01 并入 multi-main）是**独立的移植线**：版本号带 `-alpha.x` ⇒ 上传时自动走 **alpha 渠道**，与 26.1.2 的 `-beta.x` ⇒ beta 渠道同构。⚠️ 上传 fabric jar **不要**沿用 release/<裸版本>/PLAYER_CHANGELOG*.md（那是三条生产线的玩家日志）；该线的发布说明由 CI 在 `fabric-<版本>` pre-release 步骤内联生成；上传 CurseForge 时**必须**用
-  `--changelog release/fabric-<fabric裸版本>/PLAYER_CHANGELOG.md` 显式指定（现行 = `release/fabric-1.3.5-alpha.1/PLAYER_CHANGELOG.md`）。
-  该自备文件**刻意不复用**生产线的 `release/<裸版本>/PLAYER_CHANGELOG*.md`：后者只描述三条生产线的改动面，
-  而 fabric 线内容面不同（例：1.3.3 那批尚未移植）⇒ 沿用会给出失真说明。"
+  "_fabricNote": "fabric 线（2026-09-29 接入，2026-10-01 并入 multi-main）是**独立的移植线**：版本号带 `-alpha.x` ⇒ 上传时自动走 **alpha 渠道**，与 26.1.2 的 `-beta.x` ⇒ beta 渠道同构。⚠️ 上传 fabric jar **不要**沿用 release/<裸版本>/PLAYER_CHANGELOG*.md（那是三条生产线的玩家日志），**必须**用 --changelog 显式指定本线自备文件（现行 = release/fabric-1.3.5-alpha.1/PLAYER_CHANGELOG.md，目录名 = 该线的 GitHub 预发布 tag 名）。该自备文件刻意不复用生产线那份：后者只描述三条生产线的改动面，而 fabric 线内容面不同（例：1.3.3 那批尚未移植）⇒ 沿用会给出失真说明。"
 }

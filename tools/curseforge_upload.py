@@ -228,9 +228,26 @@ def infer_release_type(ver):
     return "release"
 
 
+def rel_display(p):
+    """展示用路径：在仓库内则给相对路径，否则原样给出。
+
+    ⚠️ 不能无条件 `p.relative_to(REPO_ROOT)`：`--changelog` 传的是**相对路径**时
+    （脚本自身文档示例就是这种写法），未 resolve 的 Path 会让 relative_to 抛
+    ValueError，而该打印发生在**上传之前** ⇒ 整条命令（含 `--dry-run`）在「打印计划」
+    阶段就崩掉，表现为「`--changelog` 这个功能是坏的」。绝对路径之所以没暴露它，
+    只是因为仓库内的绝对路径恰好能满足 relative_to。
+    """
+    try:
+        return p.relative_to(REPO_ROOT)
+    except ValueError:
+        return p
+
+
 def pick_changelog(ver, explicit):
     if explicit:
-        p = pathlib.Path(explicit)
+        # ⚠️ 必须 resolve()：把相对路径按**当前工作目录**解析成绝对路径，
+        #    否则上面 rel_display 会退化（且与 --jar 的处理口径不一致）。
+        p = pathlib.Path(explicit).resolve()
         if not p.is_file():
             raise SystemExit(f"[ERR] 指定的更新日志不存在：{p}")
         return p
@@ -307,7 +324,7 @@ def main():
     for j in jobs:
         cl = j["_changelog"]
         if cl:
-            cl_desc = f"{cl.relative_to(REPO_ROOT)}（{len(cl.read_text(encoding='utf-8'))} 字符）"
+            cl_desc = f"{rel_display(cl)}（{len(cl.read_text(encoding='utf-8'))} 字符）"
         else:
             cl_desc = "（无，留空）"
         print(f"  {j['jar'].name}")
