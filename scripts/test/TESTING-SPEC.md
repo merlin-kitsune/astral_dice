@@ -2447,3 +2447,103 @@ CF 文件按 id 独立、同名不去重不覆盖 ⇒ 后台不删就会看到�
   以便把这条记录补成确定事实。
 - ⚠️ 库仓三分支的 `README` 与 `build.yml` 从此保持一致，但 **`next` 的 `AGENTS.md` §0 仍写「三个
   平台子项目」**（`next` 上确实只有三平台，fabric 子项目不在该线）⇒ 属正常，不是缺陷。
+
+## 附录 A 续 40. Modrinth 发布链路接入 + 1.3.5 四线产物与前置库上架（2026-10-01）
+
+> 用户指令：「添加 modrinth api token … 主项目 id `5xDtrJ8X` / StarEngine Lib 项目 id `2dIXA5wO`；
+> 将新版本同步上传至 modrinth，StarEngine Lib 产物**单独上传到对应项目**；后续同步上传 modrinth。
+> 补充：1.20.1 fabric 版本前置使用 **Trinkets 为必需、Accessories 为可选**（curseforge 上没有 Trinkets），
+> 其他前置与 CurseForge 保持一致。」
+
+### 交付物
+
+| 文件 | 作用 |
+| --- | --- |
+| `tools/modrinth_upload.py`（新增，纯标准库） | 上传器；按产物**文件名前缀**自动路由主项目 / 库项目；幂等、预检、`--dry-run` 免 token |
+| `tools/modrinth.json`（新增，入库） | 绑定：主项目 `5xDtrJ8X`、库项目 `2dIXA5wO`、四线依赖登记、更新日志模板 |
+| `.github/workflows/build.yml`（改） | 末步 `Publish to Modrinth (main project + prerequisite library)` |
+| `release/starengine-lib/1.0.6/PLAYER_CHANGELOG.md`（新增） | 库在 Modrinth 上的版本说明（中英合一的英文稿） |
+| `.gitignore` / `AGENTS.md` / `README.md` / `README_ZH.md`（改） | 凭据忽略、发布约定小节、对外渠道与「库 jar 请勿单独安装」警示 |
+
+### 实测结论（对外交付面）
+
+- **8 个产物全部上传成功**（HTTP 200），并经 **sha512 逐字节比对一致**（8/8 `MATCH`，size 亦相等）：
+  - 主项目（`astral-dice`，`5xDtrJ8X`）：`1.3.5-hotfix+neoforge_1.21.1`（`RkFinbv9`）、
+    `1.3.5-hotfix+forge_1.20.1`（`nTYej3D3`）、`1.3.5-beta.2+neoforge_26.1.2`（`eFpNaQ3I`）、
+    `1.3.5-alpha.1+fabric_1.20.1`（`Wals5cEC`）。
+  - 库项目（`starengine-lib`，`2dIXA5wO`）：`1.0.6+neoforge_1.21.1`（`VKZlWPLZ`）、
+    `1.0.6+forge_1.20.1`（`yO47qA9w`）、`1.0.6+neoforge_26.1.2`（`PneeSjRP`）、
+    `1.0.6-alpha.1+fabric_1.20.1`（`85cO2zQf`）。
+- **版本号口径与用户既有手工发布完全吻合**（并非本次发明）：上传前主项目已有 **25** 个版本、
+  库项目已有 **3** 个，形态一律是 `<版本>+<加载器>_<MC版本>`（如 `1.3.4+neoforge_1.21.1`）。
+  ⇒ 工具沿用了同一形态，`1.3.5` 家族正是缺口。
+- 渠道派生与 CurseForge 同口径：`-alpha` ⇒ alpha、`-beta` ⇒ beta、`-hotfix`/无后缀 ⇒ release。
+- 依赖登记：三线 = Curios；forge 另加 Mixin Booster；fabric = Fabric API + Puzzles Lib +
+  **Trinkets(required)** + Accessories(optional)。**这是商店页面口径，不是 `fabric.mod.json` 的改动** ——
+  模组自身仍把三者也写在 `recommends`（硬改 `depends` 会让「只装 Accessories」的玩家起不来）。
+- 项目可见性：两个项目 `status='processing'`（审核态）⇒ **匿名 API 仍 404**，但
+  `https://modrinth.com/mod/<slug>` 与 `.../versions` 均 **200**、CDN 直链 **HEAD 200** 且长度正确
+  ⇒ 对外实际可用；只是「匿名 API 读数」不能当作「是否已发布」的判据。
+
+### 本轮实测固化的接口口径（均已写入工具 docstring 与 `AGENTS.md`）
+
+1. 🚨 **multipart 的 `data` 字段必须排在最前**。服务端取**第一个字段**当 `data`；文件在前时它拿 jar
+   字节去 parse JSON，回 `400 invalid_input: Error while parsing JSON: expected value at line 1 column 1`
+   —— 报错**完全看不出是顺序问题**。对照实验（同一份合法 JSON、只换顺序）：`data` 在前 ⇒ 报错推进到
+   ``missing field `file_parts` ``（证明 JSON 已正确解析）；文件在前 ⇒ 恒为 `expected value at line 1 column 1`。
+2. 🚨 **`dependencies` 是必填字段**：缺了直接 400 ``missing field `dependencies` ``。官方文档把
+   「没有依赖」表述成「不传该字段」是**误导** ⇒ 无依赖也必须送 `[]`。（库产物首轮正是踩这条。）
+3. 🚨 **`GET /v2/user` 的 401 ≠ 令牌失效**：该路由要 `USER_READ` 权限域，缺域时返回的也是
+   `Invalid Authentication Credentials`，与「令牌本身无效」**字面完全相同**。本次因此一度误判「令牌被拒」，
+   并向用户提了错误结论。**正确判据 = 「能否带 token 读到目标（未公开）项目与其版本列表」**：
+   同一条令牌 `/v2/user` 恒 401，却能 200 读到 `processing` 项目、并成功 `POST /version`。
+   写入路由真正需要的域是 `VERSION_CREATE`。
+4. 🚨 **项目声明的 `loaders` / `game_versions` 是硬边界，但会自动扩张**：库项目原本只声明
+   `forge`/`neoforge`（无 `fabric`），上传 fabric 产物时若不预检会「前三个成功、第四个失败」。
+   实测：**服务端接受**带新加载器的版本，随后项目 `loaders` 自动变成 `['fabric','forge','neoforge']`
+   ⇒ 该字段由版本**派生**，不是人工白名单。
+5. Modrinth **不能覆盖已发布文件**（无 CurseForge `--clobber` 的对等物）⇒ 幂等只能靠上传前
+   `GET /project/{id}/version` 比对 `version_number`。⚠️ 与 CurseForge 相反的是：**已发布版本可用
+   `PATCH /v2/version/{id}` 就地改 `dependencies`**，无需重传。
+6. Modrinth 与 CurseForge 是**两套 id 体系**（CurseForge 数字 `curios=309927`；Modrinth base62
+   `curios=vvuO3ImH`）——本批 6 个依赖项目已逐个用 `GET /project/<id>` 反查标题确认，无搬运错误。
+
+### CI 步骤（`Publish to Modrinth`）
+
+- 触发口径与两个 Release 步骤**近似**（发布线 `multi-main` push 或 `refs/tags/*`）；**刻意不设**
+  `steps.tag.outputs.tag != ''` 守卫，因为预发布线（`-beta.x` / `-alpha.x`）同样要同步。
+- 缺 `MODRINTH_TOKEN` secret 时只 `::warning::` 并 `exit 0`（不影响构建与 GitHub Release）。
+- 库产物取自 `.ci/starengine_lib/*/build/libs`（同 job 的 `Publish to mavenLocal` 已构建），
+  并显式过滤 `-sources.jar`/`-javadoc.jar`；fabric 主产物缺席时降级为 warning（旧 tag 的树里没有该子项目），
+  三条生产线缺席仍是硬错误。
+
+### 独立子代理二次验证（按《二次验证规范》，非主会话自述）
+
+复核者用**只读**手段独立复算，判定「**基本完成、但不能判为零保留完成**」。核心事实全部被证实
+（A 节 6 个依赖 id 逐个反查标题一致；B 节 8 个产物 sha512 全串相等 + size 相等 + 主项目 4 个
+`dependencies` 集合相等；D 节 CI 脚本在沙盒里 `set -euo pipefail` 干跑通过、空数组在 `set -u` 下安全）。
+它抓出 **5 处真问题**，全部已修：
+
+1. ✅ `LIB_RE` 会**吞掉** `-sources`/`-javadoc`（把 `1.0.6-sources` 当版本号，能过所有预检）
+   ⇒ 会静默上传垃圾版本；仅靠 CI 的 `case` 兜底。**已修**：`parse_jar` 先统一拒绝分类器产物。
+2. ✅ 未登记到 binding 的 loader/mc 组合会**静默以零依赖发布**（`find_line` 返回 `None` ⇒ `[]`，无报错）。
+   **已修**：改为硬错误，并给出 `--no-dependencies` 显式逃生口。
+3. ✅ CI 日志计数失真：`${#ARGS[@]}` 把每个 `--jar` 标志也计入 ⇒ 8 个文件报成 `16 file(s)`。**已修**。
+4. ✅ CI 对 fabric 缺席无守卫，旧 tag 补推会因 `[ -e ]` 失败而**红掉 job**。**已修**：fabric 降级为 warning。
+5. ✅ 文档失真 2 处：`tools/modrinth.json` 与 `AGENTS.md` 以**现在时**断言「主项目版本已登记 `embedded`
+   库依赖」，而实测 4 个版本 `dependencies` 里都没有库项目；两个 README 又说「库仓不提供任何 jar 下载」，
+   与本次**把库 jar 发到 Modrinth** 并置会产生误导。**已修**：文档改为「当前未登记 + 过审后用 PATCH 补」，
+   并在 README 与库更新日志里加**「请勿单独安装独立库 jar」**的显著警示。
+
+### 遗留 / 待裁决（如实登记）
+
+- ❓ **主项目 4 个版本未登记 `embedded` 库依赖**：用户本次只要求「库产物传到库项目」，未要求改主项目
+  版本的依赖面。该引用要求库项目已公开，而库项目仍在 `processing` ⇒ 待过审后可一条 `PATCH /v2/version/{id}`
+  补上（**无需重传**）。
+- ⚠️ **库 jar 公开分发与既有裁决的张力**：2026-10-01 早先裁决「库不再上传任何 jar（避免误下）」
+  是针对**库仓 GitHub Release**；本次用户明确要求库产物上 Modrinth ⇒ 已按新指令执行，并在
+  库项目说明与两个 README 里加了「已内嵌、勿单独安装」的警示。若希望改为「只登记依赖、不发 jar」，
+  撤下即可（Modrinth 支持删除版本）。
+- 📌 两个项目处于 `status='processing'`，匿名 API 仍 404（网页与 CDN 正常）。若长时间不过审，
+  需在 Modrinth 后台查看审核状态。
+- 📌 `CurseForge` 上传**仍未接入 CI**（用户尚未设定触发时机），`AGENTS.md` 中该条注明保持不变。
