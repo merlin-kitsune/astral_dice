@@ -2974,3 +2974,56 @@ KI-G1 的 **61 / 41 / 缺 20（6·8·6）** 与流派分组（充能 10 / 无流
 - 英 / 日 同义（`(at most §e1§7 per use)` / `（1 回のアクティブにつき最大 §e1§7 個）`）。
 - ⚠️ 本仓**新值**由模型拟稿（tooltip 的唯一基准是玩家原文）⇒ 若用户另有措辞，按新原文替换即可，
   三语须同步。
+
+
+## 附录 A 续 46. 1.3.6 收尾 —— 发布前审计、fabric 两个语言键补齐、测试台诊断缺陷、实机回归受阻（2026-10-02）
+
+### A. fabric 线两个动作栏文案缺键（**已修**）
+
+- **现象**：`fabric-1.20.1` 的 `item/sign/BonnieSignItem.java` 与 `item/sign/HaiqingSignItem.java` 调用了
+  `msg.astral_dice.bonnie_undercover_applied` / `msg.astral_dice.haiqing_weak_mark_applied`，
+  而该线三语 lang **都没有这两个键** ⇒ 动作栏直接显示原始键名。三线（1.21.1 / 1.20.1-forge / 26.1.2）**都有**。
+- **发现方式（可复用）**：全量对账「代码里 `Component.translatable(...)` 引用的键 ↔ lang 实际键」，四线全量 java 扫一遍。
+  ⚠️ 字符串拼接前缀（`enchantment.level.`、`itemGroup.`、`msg.astral_dice.fanny_event.` 等）不是真键，
+  会对账出假阳性，必须逐条判。
+- **修法**：把三线的键**逐字照搬**到 fabric 三语（zh/en/ja），插入位置与三线同构
+  （`bonnie_ready` 之后、`haiqing_ready` 之后）。
+- **判据**：三语 `json.load` 可解析、两键存在；行尾仍为 CRLF（bare LF = 0）。
+
+### B. 测试台诊断缺陷：`mt_launch.ps1` 的 `-f` 运算符优先级（**已修**）
+
+- **现象**：`mt_launch.ps1` 报「未取到 AP_OP_PERM 读数」时，日志里恒显示字面 `注入返回码 {0}` ——
+  排查时读不到真正的注入返回码，无法区分「注入器没投递」与「命令送达但探针没响应」。
+- **根因**：`'A' + 'B' -f $x` 里 `-f` 的优先级低于 `+`，格式串只解析到第二段。
+- **修法**：整串显式加括号，并在原处写明原因。
+- **判据**：修后实跑，诊断行显示 `注入返回码 0/0`（而非 `{0}`）—— 据此判定「注入器自报成功、命令未送达」。
+
+### C. 实机回归在**无人值守**下不可用（**未解决，需用户在电脑前**）
+
+- **结论**：`1.21.1` 的 15 条既有用例**一条都没能判定**，所有断言均因**测不到读数**而失败。
+  **这不是 1.3.6 的产品缺陷** —— 是注入通道的前置条件未满足。
+- **根因（源码级）**：`scripts/test/mt_inject.ps1:502` 注释即写明 —— 注入走 `PostMessage(WM_KEYDOWN/WM_CHAR)`，
+  而 **GLFW 忽略非前台窗口收到的按键**；窗口一旦失焦，命令被**静默丢弃而脚本仍打印成功**。
+  注入前虽有 `SetForegroundWindow` + `AttachThreadInput` 的前台激活，但**受 Windows 前台锁限制**，
+  在「无人与桌面交互」的时段成功率不稳定。
+- **本轮实测记录**：
+  - 三次 `--phase launch`：**成功 2 次 / 失败 1 次**（成功时 `AP_OP_PERM:has2=1:level=4:src=cmdsource+profile`）。
+  - 「把 launch 与用例串在同一条长驻命令里」（绕开宿主在命令返回时清理进程树、连带杀掉 `runClient` 的问题）⇒
+    `launch` 通过但 `cases` 阶段注入**全部不投递**：窗口内只有 `AP_CRAR`（客户端心跳）与 `AP_NOAI`（服务端心跳），
+    `grep astralprobe latest.log` = 0、连 `Unknown command` 都没有 ⇒ `/astralprobe …` 根本没进服务端。
+  - 追加实验：用窗口控制工具把 Minecraft 窗口激活（`activate_window` 报成功）后再跑，**仍失败** ⇒
+    「窗口在前台」不是充分条件（还叠了输入法状态 / 焦点归属等因素）。
+- **产品侧证据（可独立复核）**：KubeJS `server.log` 0 errors、探针与模板 md5 一致、`astralprobe` 命令已注册、
+  无崩溃报告、无 `AP_*_ERR`、无 `Unknown command`。
+- **⇒ 待办**：**在用户位于电脑前（有真实鼠标键盘活动）时重跑**。一键命令：
+  `pwsh -File scripts/test/mt.ps1 --version 1.21.1 --phase launch`（成功后客户端保持运行）
+  → `pwsh -File scripts/test/mt.ps1 --version 1.21.1 --phase cases --case scripts/test/cases/<CASE>.json`（逐条）
+  → `pwsh -File scripts/test/mt.ps1 --version 1.21.1 --phase stop --purge-saves`。
+  注：`--phase env` 会重建世界；`--phase report` 与整目录批量当前被闸门禁用（需显式授权才可放行）。
+
+### D. 本轮未做（如实登记）
+
+- **1.3.6 全部 10 项改动的游戏内行为验证**：一条都没跑成（见 C）。静态可复核的项已在发布前审计中逐条核对
+  （青之诅咒韧性 −50% / 史诗不再豁免 / 6 枚新效果注册 / 图标 100% 覆盖）。
+- **1.20.1 / 26.1.2 / fabric 三线的实机回归**：未开始（1.21.1 已受阻，无意义地扩大尝试面）。
+- **提交 `03eb2297` / `e654dae5` 的工程记录**：由本节补上（此前无续 46）。

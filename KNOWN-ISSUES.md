@@ -27,6 +27,7 @@
   + M 组 3（KI-M2/M3/M4）+ D 组 1（KI-D1）+ E 组 3（KI-E1/E2/E3）+ F 组 7（KI-F4/F7/F8/F20/F21/F22/F23）
   + G 组 1（KI-G2，2026-10-01 新增），
   另有 §5 的 **2** 条「测试资产待修项」。**已处理条目见 §1.1 索引。**
+  ⚠️ **2026-10-02 澄清（发布前审计）**：上列 26 条里有 **3 条（`KI-F21`/`KI-F22`/`KI-F23`）标题自述「已完成 / 已修 / 已缓解」**，但正文各自写明**尚未做实机验证**（前两条各有一项「进世界未跑」）。它们**保留在正文**是为了不丢失「待实机确认」这个待办，**不计入「未修缺陷」**；数值 26 = **23 条未修/未决 + 3 条已修待实机**。
 
 ---
 
@@ -59,6 +60,7 @@
 | KI-F19 | 五项「玩家可见」缺陷按 dev-next 已修方案同步落地（已修） | 同上；KI-F20 是其连带项 |
 | KI-M5 | 26.1.2 接入库后的两项开放项 —— ①「库 jar 与 mod jar **成对推送**」规则**已作废**（库改为 **JarJar 内嵌**，整合包只放 `astral_dice-*.jar`；反过来**残留**独立库 jar 会被 JarJar 选择器按 `modId` 优先采用并盖掉内嵌件 ⇒ 应删）；② `effect/ReadyEffect` 本地副本已随波次 2b 删除（已关闭）。**实测四个整合包 `starengine` 残留 = 0** | 变更记录 2026-09-24；`AGENTS.md`「库的 jar 分发」 |
 | §5 的 7 行（含 `P5-equip-paths-linkage` 13 处 `✘1需改`、`NancyLuSignItem` 的 `isHostile` 过宽、P2-C1/C3/C4 与安全气囊基准、`mt_assert` 断言窗口、`LOOT-MODIFIER` 反向断言、追加 A《恋的规则书》重复补发、追加 B 死亡保留集合一致） | 全部**已闭环**（2026-09-15/16 实测；含 commit `cc49f0d` / `c0ad51f`） | 变更记录 2026-09-15 / 2026-09-16 两行 |
+| KI-F20 | 三线 `require = 2` 误写 —— **已全部闭环**：`forge-1.20.1` 两处已为 `require = 1`（`cba8e956`，早于 1.3.6 周期）；`neoforge-1.21.1` 的同名类走 `@Inject(... at = RETURN)`、**不涉及 `require`**；`neoforge-26.1.2` 无该文件（走 `GatherEffectScreenTooltipsEvent`）；全仓 `grep "require = 2"` 仅剩 fabric 类注释文字 | 2026-10-02 发布前审计逐文件核实（`KNOWN-ISSUES.md` 变更记录同日） |
 
 ---
 
@@ -435,27 +437,6 @@ GlCommandEncoder.trySetup(:531) ← GlCommandEncoder.executeDraw(:406) ← GlRen
 ⚠️ 脚本内的 `LANG_KEY_ALLOW` 是「已知但暂不修」的**显式白名单**（仍会打印出来，不静默）；
 新增白名单项必须写明「为什么不能修 + 需要谁裁决什么」。当前**白名单为空**。
 
-### KI-F20 ＝ 🚨 三线共有的 `require = 2` 误写：`renderEffects` 内每个注入点**只出现 1 次**（**本线已修正为 1；三线待回补**）
-
-- **现象（潜在崩溃，尚未在任何线上暴露）**：`731e3855` 给 1.20.1 的 `EffectRenderingInventoryScreenMixin`
-  写了两处 `@Redirect(method = "renderEffects", require = 2, …)`，其注释声称
-  「两处都用 `require = 2`（**至少命中 1 次**）」—— **该注释误解了 `require` 的语义**：
-  Mixin 的 `require` 是「注入点**最少**命中次数」（未写时取 `injectors.defaultRequire`，本仓 = 1），
-  **不是上限、也不是「至少 1 次」**。⇒ `require = 2` 要求**至少 2 个注入点**。
-- **字节码实证（本线实际产物）**：对 1.20.1 反编译产物 `javap -c` 核实，
-  `EffectRenderingInventoryScreen#renderEffects`（方法体 **50–273 行**）内
-  `MobEffectUtil.formatDuration` 与 `java.util.List.of(Object,Object)` **各只出现 1 次**
-  （另一次 `formatDuration` 在 **`renderLabels`**（274 行起）内，已被 `method = "renderEffects"` 排除）
-  ⇒ `require = 2` 必然抛 `InjectionError`，**触发时机是「打开物品栏」**（该类只在渲染效果面板时加载）。
-- **为什么至今没炸**：`731e3855` 的提交信息自己写明「**实机验证未做**：mt_launch 防撞预检拦下
-  （PID 19796 父进程 = Plain Craft Launcher 2.exe，用户自己的游戏，未杀）」⇒ 三线均只做了构建与静态核对，
-  而**注入次数只有运行时才校验**（编译与 `build` 都不查）。
-- **本线处置**：`require = 2` → **`require = 1`**（两处），并在类注释里写明证据与修正原因。
-  **验证**：预加载该类后客户端正常启动、`InjectionError` = 0 ⇒ 两处均命中。
-- **⚠️ 待办（跨三线）**：`neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2` 的同名 mixin（1.20.1）与
-  事件实现（1.21.1/26.1.2 走 `GatherEffectScreenTooltipsEvent`，**不受影响**）需要同样核对 ——
-  **本线按「只改 fabric 端」的既有裁决未动那三线**，请在主仓工作树内单独裁决。
-
 ### KI-F21 ＝ 1.3.5（`1.3.4..multi-main`）同步落地到本线（**已完成，2026-10-01**）—— 含两处**平台机制**适配与一处上游缺陷
 
 - **范围界定**：`multi-main` 上 `1.3.4..HEAD` 共 **20+ 提交**（1.3.5 开发周期），`git diff --name-only 1.3.4..multi-main | grep '^fabric'` = **0**
@@ -629,6 +610,22 @@ GlCommandEncoder.trySetup(:531) ← GlCommandEncoder.executeDraw(:406) ← GlRen
 ⚠️ **未做的**：根因在 Loom 一侧，本仓只能缓解。若将来 Loom 修好（保留 `jars`），本工具会退化为「无待补项」并打印
 `need=0`，可安全保留。
 
+### KI-F24 ＝ Fabric 移植线的两处**内容缺口 / 结构分叉**（**只登记，未改** —— 2026-10-02 发布前审计新增）
+
+**来源**：1.3.6 发布前审计（`03eb2297`/`e654dae5` 那批的连带发现）。此前**未见于任何登记**，容易被当成「未修 bug」反复排查。
+
+- ① **`concealment`（秘密侦探「隐匿」）整条特性在 fabric 线不存在**：三线各有 `effect/ConcealmentEffect.java` 与
+  `ModEffects.CONCEALMENT` 注册，并在 `DiceCombatEvents#onLivingDamagePre` 里有「玩家对非玩家实体造成有效伤害即解除隐匿」的判定；
+  fabric 线**既无该类、也无该效果注册、也无那段解除逻辑**。判据：`tools/verify_effect_icons.py` 的注册计数
+  **52（三线）vs 51（fabric）**，差集恰为 `concealment`；`grep -rn "ConcealmentEffect|concealment" fabric-1.20.1/src` 命中 0。
+  ⚠️ 这是**整条玩家侧特性缺失**，不是键或文案问题。
+- ② **`DiceCombatEvents#onLivingDamagePre` 与三线**结构不同构：fabric 把 `directEntity instanceof Player` 闸门提到计时器逻辑**之前**，
+  因此「白泽赐福 / 降神计时器」在 fabric 只认近战（用 `player`），而三线挂在闸门**之前**、按「任意攻击」启表（用 `source.getEntity()`）。
+  ⇒ **既存**语义分叉（非 1.3.6 引入），需单独裁决是否对齐。
+- **另**：本轮已顺带修掉一条同源缺陷 —— fabric 的 `BonnieSignItem` / `HaiqingSignItem` 调用了三线有、fabric **三语全缺**的两个
+  `msg.astral_dice.*` 键（动作栏会直接显示原始键名）。修法与判据见 `TESTING-SPEC.md` 附录 A 续 46 §A。
+
+
 ## 10. G 组 — 游戏内内容与获取途径（2026-10-01 重建）
 
 > 本组登记**玩法内容层面的缺陷**，以及**「用户裁决的必然推论」形成的可刷路径**：
@@ -696,3 +693,4 @@ GlCommandEncoder.trySetup(:531) ← GlCommandEncoder.executeDraw(:406) ← GlRen
 | 2026-10-01 | **新增 KI-E3**：`tools/audit_mixin_injection.py` 的 `LINES` 不含 `fabric-1.20.1` ⇒ fabric 全部 mixin 无自动守门（本轮新增的切维度 mixin 正落在该缺口内，仅有「人工反汇编 + 与既有同构 mixin 逐字比对」一条证据链）；§1 计数 24 → 25（E 组 2 → 3） |
 | 2026-10-01 | **新增 KI-F23（dev 环境启动阻断）**：Loom 1.14.10 重映射第三方 mod 时剥离 `fabric.mod.json` 的 `jars` 声明 ⇒ 本线 dev 里 Puzzles Lib / Accessories / Patchouli / Cloth Config / KubeJS 全部起不来（`HARD_DEP_NO_CANDIDATE` 与连续两条 `NoClassDefFoundError`）。判定链：原始产物有 `jars` / 重映射后 `jars=None` 而文件本体仍在且仍是 intermediary / 移走整棵缓存重新生成结果逐字相同（⇒ 确定行为，非缓存陈旧）；命中面 8 个 jar，其中 7 个内嵌库 id 在 classpath 上不存在。缓解 = 新增 `tools/loom_embedded_jars.py`（按 id 去重后投放到 `run/<side>/mods/`，靠 Loom 的 `fabric.remapClasspathFile` 运行时重映射生效）+ `ft_env.ps1 --install-embedded` 开关；§1 计数 25 → 26（F 组 6 → 7） |
 | 2026-10-01 | **KI-E3 扩项**：该覆盖缺口不止 `audit_mixin_injection` —— `tools/check_lang_sync.ps1` 与 `tools/audit_actionbar.py` 同样只登记三线（fabric 的 lang / 动作栏变更须人工核验） |
+| 2026-10-02 | 发布前审计处置：`KI-F20` **整块移出**（三面已全部闭环，证据见 §1.1）→ 移入 §1.1 索引；**新增 `KI-F24`**（fabric 移植线两处内容缺口 / 结构分叉，此前无登记）；§1 补澄清「26 = 23 条未修 + 3 条已修待实机」；顺带修掉 fabric 两个动作栏语言键缺失（见 `TESTING-SPEC.md` 附录 A 续 46 §A） |
