@@ -91,7 +91,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: merlin-kitsune/starengine_lib
-          ref: c1f7029348efd23061444bad8d8d5965932dd58a   # = 开发线库 2.0.0-SNAPSHOT.4 = 库 `next` 分支提交 c1f7029（本批为**纯工程口径**变更：新增库仓库根 `AGENTS.md`（含「每提交一版」版本递增约定）⇒ 无 API / 源码改动）。⚠️ **本 ref 要求库 `next` 分支已推送**(git -C <lib> push origin next)，否则本 job 断在 Checkout；发布线 multi-main 的副本另有自己的 ref（其当前值为库 1.0.5 对应 SHA）
+          ref: 9362869a991be0560b6232ba599997a52f771222   # = 开发线库 2.0.0-SNAPSHOT.7 = 库 `next` 分支提交 9362869（本批含 `event/EventTargetCollector` 的 FTB Teams / OPAC 反射修复，自库 `main` 线 `1.0.6` 移植）。⚠️ **本 ref 要求库 `next` 分支已推送**(git -C <lib> push origin next)，否则本 job 断在 Checkout；发布线 multi-main 的副本另有自己的 ref
           path: .ci/starengine_lib
           fetch-depth: 1
 

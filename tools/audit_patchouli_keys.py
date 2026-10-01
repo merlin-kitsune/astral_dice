@@ -30,6 +30,15 @@ import pathlib
 import re
 import sys
 
+# 输出编码固定为 UTF-8：脚本会打印 ✓ / ✅ / ❌ / ⇒ / ⊆ 等非 GBK 字符，
+# 而 Windows 中文控制台与「重定向到文件」默认都是 GBK ⇒ 会抛 UnicodeEncodeError 并
+# 以 RC=1 退出（看着像门禁失败，实际结论是 PASS）⇒ 在这里显式重配一次。
+for _s in (sys.stdout, sys.stderr):
+    try:
+        _s.reconfigure(encoding='utf-8', errors='replace')
+    except Exception:
+        pass
+
 REPO = pathlib.Path(__file__).resolve().parent.parent
 LINES = ["neoforge-1.21.1", "forge-1.20.1", "neoforge-26.1.2"]
 BOOK = "src/main/resources/assets/astral_dice/patchouli_books"

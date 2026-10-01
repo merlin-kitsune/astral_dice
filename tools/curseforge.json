@@ -6,9 +6,15 @@
   "site": "minecraft",
   "_siteNote": "上传/版本 API 的站点域固定为 minecraft.curseforge.com；换成 www. 会拿到另一个游戏的版本表。",
   "apiBase": "https://minecraft.curseforge.com/api",
+  "_lineNote": "本数组是「产物 → (加载器, MC 版本, 渠道)」的**映射说明**，供人工/未来接线使用；脚本 tools/curseforge_upload.py 目前只读 projectId 与 slug，加载器/MC/版本一律**从 jar 文件名解析**（astral_dice-<版本>+<加载器>_<MC版本>.jar）。本仓为三线。",
+  "_channelNote": "releaseType **由版本号后缀自动派生**：`-alpha` ⇒ alpha 渠道、`-beta`/`-rc`/`-pre` ⇒ beta 渠道、无后缀 ⇒ release 渠道。三线现状：1.21.1 / 1.20.1 无后缀 ⇒ release；26.1.2 形如 `-beta.x` ⇒ beta。",
+  "_relationsNote": "relations = 上传时声明的**必需依赖关系**（schema 见 CurseForge 官方 Upload API：{\"projects\":[{\"slug\",\"projectID\"(整数),\"type\"}]}；type 仅 5 值，无 include）。脚本 tools/curseforge_upload.py 按 loader+mc 匹配本数组的线并自动带上；也可用 --update-file <fileID> 给**已发布**文件补关系（官方 Project File Management API，不重传、不产生同名重复）。⚠️ 这里只登记**真·硬前置**（对应各线 mods.toml 的 mandatory / depends）：三线 = Curios；forge 另加 Mixin Booster（⚠️ 实为「Mixin Booster 或 Sinytra Connector 二选一」，CF 关系表达不了 OR ⇒ 按用户 2026-10-01 裁决写 requiredDependency，启动器会装 Booster；装了 Connector 的整合包由模组自身的运行期门控 MixinRuntimeGate 放行）；26.1.2 与另两线同为 Curios。",
   "lines": [
-    { "key": "neoforge_1.21.1", "loader": "neoforge", "mc": "1.21.1", "jar": "neoforge-1.21.1/build/libs/astral_dice-*.jar" },
-    { "key": "forge_1.20.1", "loader": "forge", "mc": "1.20.1", "jar": "forge-1.20.1/build/libs/astral_dice-*.jar" },
-    { "key": "neoforge_26.1.2", "loader": "neoforge", "mc": "26.1.2", "jar": "neoforge-26.1.2/build/libs/astral_dice-*.jar" }
+    { "key": "neoforge_1.21.1", "loader": "neoforge", "mc": "1.21.1", "channel": "release", "jar": "neoforge-1.21.1/build/libs/astral_dice-*.jar",
+      "relations": [ { "slug": "curios", "projectID": 309927, "type": "requiredDependency" } ] },
+    { "key": "forge_1.20.1", "loader": "forge", "mc": "1.20.1", "channel": "release", "jar": "forge-1.20.1/build/libs/astral_dice-*.jar",
+      "relations": [ { "slug": "curios", "projectID": 309927, "type": "requiredDependency" }, { "slug": "mixinbooster", "projectID": 980731, "type": "requiredDependency" } ] },
+    { "key": "neoforge_26.1.2", "loader": "neoforge", "mc": "26.1.2", "channel": "beta", "jar": "neoforge-26.1.2/build/libs/astral_dice-*.jar",
+      "relations": [ { "slug": "curios", "projectID": 309927, "type": "requiredDependency" } ] }
   ]
 }
