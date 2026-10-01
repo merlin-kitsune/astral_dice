@@ -1964,3 +1964,73 @@ custom_frames.json 恢复 5 档全写；包内原版稀有/史诗与本模组稀
   ② fabric 线**尚缺 1.3.3 批次**（本批实测发现：无 `ConcealmentEffect`、lang 少 7 个键、`msg.astral_dice.*`
   仍内嵌 `§`、4 个文件走原版覆盖层通道未进白名单）⇒ 需用户单独下达移植批次；
   ③ 本地 tag `fabric-1.3.4-alpha.1` 属历史遗留，是否需要清理待裁决。
+
+## 附录 A 续 35. 前置库 1.0.6 / 1.0.5-alpha.2 —— `EventTargetCollector` 的 FTB Teams / OPAC 反射修复接线（2026-10-01）
+
+- **需求**（用户原话）：「starengine_lib fabric 侧需要修补此前 FTB Teams 和 OPAC 反射不存在的问题，
+  根据主模组已有更改进行修复」。
+- **根因**（库侧，四平台共用 `common` 代码）：`event/EventTargetCollector` 的两个第三方后端
+  **反射目标根本不存在**，而最外层 `catch (Exception ignored)` 把失败全部吞掉
+  ⇒ 两个后端**恒为未启用且毫无声响**。后果：装了 FTB Teams 或 OPAC 的玩家被库判为「没有任何队伍」
+  ⇒ 落进「全服皆友方」兜底 ⇒ **队友判定整体失效**（本模组多处
+  `EventTargetCollector.hasAnyTeam / collectTeamPlayers` 调用点一并受影响）。
+- **逐条改正（证据 = 真实产物 jar 的 `javap`，**非**凭记忆）**：
+  | 旧目标（不存在） | 新目标（实测存在） |
+  |---|---|
+  | 外层类 `FTBTeamsAPI` 上的 `isManagerLoaded/getManager/isClientManagerLoaded/getClientManager` | **嵌套接口** `FTBTeamsAPI$API` 上（`javap` 实证；`Class#getMethod` 不跨嵌套接口） |
+  | `TeamManager#getTeamForPlayer(Player)` / `(UUID)` | `TeamManager#getTeamForPlayerID(UUID)` ／ 另有 `getTeamForPlayer(ServerPlayer)` |
+  | `ClientTeamManager#getTeamForPlayer(Player)` | `ClientTeamManager#getKnownPlayer(UUID)` + `KnownClientPlayer#teamId()`（record 访问器、无 get 前缀）+ `getTeamByID(UUID)` |
+  | `dev.darkhax.opac.api.OpenPartiesAndClaimsAPI`（**整条包路径不存在**） | `xaero.pac.common.server.api.OpenPACServerAPI.get(MinecraftServer)` → `getPartyManager()` → `IPartyManagerAPI#getPartyByMember(UUID)` |
+  | `IServerPartyAPI#getPartyMembers()` | `IServerPartyAPI#getOnlineMemberStream()`（回退 `getMemberInfoStream()` + `IPartyMemberAPI#getUUID()`） |
+  - **负向断言（同样实测）**：`TeamManager` 上 `getTeamForPlayer(Player)` / `(UUID)` **不存在**、
+    `ClientTeamManager` 上 `getTeamForPlayer` **不存在**、`dev.darkhax.opac.*` **不存在**、
+    `IServerPartyAPI#getPartyMembers()` **不存在** ⇒ 旧代码必然每次都抛，且被静默吞掉。
+  - **`hasAnyTeam` 的 FTB 判据由「Team 对象非空」改为 `isPartyTeam() || isServerTeam()`**：
+    FTB 给每个玩家都建个人队伍 ⇒ 旧判据恒为真，把「未组队 ⇒ 作用于全服」的兜底堵死。
+  - 新增 `public static String describeBackends()` 打 `AP_LIB_PARTY:` 机器行；
+    「没装」记 debug、「装了但签名不符」记 warn。**公共 API 只增不减**（1.x 契约）。
+- **版本决策**：三平台 `1.0.5` → **`1.0.6`**；fabric 子项目 `1.0.5-alpha.1` → **`1.0.5-alpha.2`**。
+  ⚠️ **fabric 侧不复用 `1.0.6`** —— 该子项目的 `1.0.6/1.0.7/1.0.8` 已被 2026-09-29 裁决明确为
+  「本地临时构建、不作为对外号」（mavenLocal 里这三个目录仍在，复用即同号覆盖陷阱）。
+  ⚠️ 改动落在**四平台共用 `common`** ⇒ 四个 artifact 必须同批换号（否则三平台留在 1.0.5 就是同号覆盖）。
+- **消费方接线**：四线 `gradle.properties` 的 `starengine_lib_version` 与 `_version_range`
+  同批更新（`[1.0.6,2.0)` / `>=1.0.5-alpha.2 <2.0`）+ `.github/workflows/build.yml` 的库 `ref` 钉值
+  改 `006e8241`（库分支 `fabric-1.20.1` 新 HEAD）。**未改任何模组源码 ⇒ 四线 `mod_version` 不动**。
+- **验证读数（全部实测）**：
+  - 库：`gradlew build publishToMavenLocal` **BUILD SUCCESSFUL（57s）**；mavenLocal 四坐标齐
+    （三平台 `1.0.6` + fabric `1.0.5-alpha.2`）。
+  - 库**开 jar 核符号（四平台各一遍）**：`$Ftb` / `$Opac` **嵌套类**里必需串全在、旧错串零残留。
+    ⚠️ **教训**：这些串**不在外层 class**（在嵌套类）——只查外层会得到**假零**
+    （首轮就因此误判一次，补查嵌套类才纠正）。
+  - 消费方四线 `gradlew build` **BUILD SUCCESSFUL（121s）**；`pushToGame` ×4 真实命中。
+  - **内嵌件三重取证**：① 内嵌件与 mavenLocal 生产件 **md5 逐字节一致**（四线各一）；
+    ② forge 生产件 SRG 成员名 **76 处**（>0 = 生产/重混淆件，非 dev Mojmap 件）；
+    ③ 内嵌前置自检行逐线打印 `starengine_lib-<平台>-1.0.6.jar (version=1.0.6, range=[1.0.6,2.0))`、
+    fabric 走 `META-INF/jars/starengine_lib-fabric-1.20.1-1.0.5-alpha.2.jar`，
+    且 `fabric.mod.json` 的 `starengine_lib` 依赖更新为 `>=1.0.5-alpha.2 <2.0`。
+  - **生产映射冒烟（本仓规定：凡改库必跑）**：`ft_prod.ps1` 在真实整合包实例启动一次 ⇒
+    包内加载 `starengine_lib 1.0.5-alpha.2`、日志出现 `Sound engine started`、
+    `crash-reports/` **无新增**、无残留 java 进程 ⇒ **PASS**。
+  - **静态闸门**：`check_lang_sync` ×4、`check_mod_sources`、`verify_chip_recipes`、
+    `verify_bountiful_pools`、`verify_crafting_recipe_uniqueness`、`verify_resource_integrity`、
+    `Test-MtSyntax` **全部 EXIT=0**；python 侧 `audit_actionbar` / `audit_patchouli_keys` /
+    `audit_mixin_injection` / `verify_fabric_assets` 亦全 0。
+- **未做 / 遗留（如实登记）**：
+  ① **库提交未 push**（`006e8241`）⇒ 消费方 CI 会在「Checkout StarEngine Lib」断掉（既定代价，
+     与消费方代码无关）；须先把库推上去。
+  ② 🚨 **三条生产线（1.21.1 / 1.20.1 / 26.1.2）的 `combat/PartyRelations` 的 FTB 后端同样是坏的**
+     —— 它们的 `Ftb.resolve()` **首行**就在外层类上取 `isManagerLoaded`（该访问器在嵌套接口上），
+     而后是客户端 `ClientTeamManager#getTeamForPlayer(Player)`（不存在），**两步都在同一个 `try` 内**
+     ⇒ 一次 `NoSuchMethodException` 让**整个 FTB 后端**（含服务端路径）失效。
+     只有 fabric 线在 2026-10-01 修对了。**本批未动**（属模组侧代码改动，需三线同批 + `mod_version` bump +
+     玩家侧 CHANGELOG，另请裁决）。判据：`grep -c 'FTBTeamsAPI$API' <线>/.../PartyRelations.java` ⇒
+     三线 **0**、fabric **3**。
+  ③ ⚠️ **技能《mc-prereq-lib-version-contract》§9.6 称「版本区间规则已于 2026-09-25 移除」，
+     但本仓三线 `gradle.properties` 与 `mods.toml` / `jarJar { strictly }` **仍在使用**
+     `starengine_lib_version_range`** —— 文档与现状不符。本批按「区间仍生效」处理（下界随引脚同步收紧到
+     `[1.0.6,2.0)`），是否需要按 §9.6 整体拆除**另请裁决**。
+  ④ ⚠️ **OPAC 的盟友队伍未并入成员收集**：库只收「自己 party 的在线成员」，
+     而本模组 `PartyRelations#isSameTeam` 额外把盟友视为同队 ⇒ 两者目前**有意不同**；
+     若要统一需另行裁决（`IServerPartyAPI#getAllyPartiesStream()` 是可行入口，但契约面更大）。
+  ⑤ 本地 tag `fabric-1.3.4-alpha.1`（消费方）与 mavenLocal 里 fabric 库的 `1.0.6/1.0.7/1.0.8`
+     残留目录属历史遗留，未清理。
