@@ -267,12 +267,14 @@ When extending this workspace:
 >    两条线都是**独立的预发布号线** —— **永不占用发布线的裸版本号**、**不单独打裸版本 tag**；
 >    差别只在后缀（`-alpha.x` ↔ `-beta.x`）与发布形态（fabric 走自己的 `fabric-*` pre-release，见 ③）。
 >    `mod_version` 与所依赖的库版本**同步带 alpha**，现为 **`1.3.5-alpha.1+fabric_1.20.1`** /
->    **`starengine_lib_version = 1.0.6-alpha.1`**（`_version_range = >=1.0.6-alpha.1 <2.0`）。
->    ⚠️ **2026-10-01 用户裁决（更新）**：库侧**大版本号与三平台同步为 `1.0.6`**、保留 `-alpha.N` 后缀 ⇒
->    现号为 **`1.0.6-alpha.1`**（2026-09-29 那次「基线退回 `1.0.5`」的口径随之作废）。那三个**裸**号
+>    **`starengine_lib_version = 1.0.6-alpha.2`**（`_version_range = >=1.0.6-alpha.2 <2.0`）。
+>    ⚠️ **2026-10-02 更新**：库侧与三平台同批改「诅咒之剑攻击力加成上限 16 → 32」⇒ 三平台 `1.0.6` → `1.0.7`、
+>    本线 `1.0.6-alpha.1` → **`1.0.6-alpha.2`**（两条线按各自 scheme 独立递增）。
+>    沿革：**2026-10-01 用户裁决**：库侧**大版本号与三平台同步为 `1.0.6`**、保留 `-alpha.N` 后缀 ⇒
+>    当时现号为 **`1.0.6-alpha.1`**（2026-09-29 那次「基线退回 `1.0.5`」的口径随之作废）。那三个**裸**号
 >    `1.0.6` / `1.0.7` / `1.0.8` 仍属「本地临时构建、不作对外号」，已从 mavenLocal 移入隔离目录；
->    `1.0.6-alpha.1` 与它们**不是同一字符串**，不构成复用。三平台（`1.0.6`，发布号）与本线
->    （`1.0.6-alpha.1`，预发布号）仍各自独立递增。后续每批改动 `-alpha.x` 递增；预发布号在库仓 CI 里**不会**打 tag（workflow 只认裸 `x.y.z`）⇒ 正合开发线口径。
+>    `1.0.6-alpha.N` 与它们**不是同一字符串**，不构成复用。三平台（发布号）与本线
+>    （预发布号）各自独立递增。后续每批改动 `-alpha.x` 递增；预发布号在库仓 CI 里**不会**打 tag（workflow 只认裸 `x.y.z`）⇒ 正合开发线口径。
 >    ⚠️ 因此本线推进整合包的产物**不是「正式版」**（该整合包 `1.20.1-Fabric 模组测试` 亦为本线专属测试环境）。
 > ⑨ **收尾必做：生产映射冒烟**（2026-09-29 新增能力；判据与事故记录见 `KNOWN-ISSUES.md` **KI-F13**）：
 >    fabric 的 dev 与生产是**两套映射**（dev = Loom named/Mojang，生产 = intermediary）—— 本线此前的**全部**验证
@@ -358,26 +360,28 @@ When extending this workspace:
    只允许**新增**（新类型、新成员、新可选入口）与不改变契约的行为修正。
 2. **破坏性变更必须升第一位**（`1.x` → `2.x`），并在**同一次**发布里收紧三条线 `gradle.properties` 的
    `starengine_lib_version_range` 下界 ⇒ **破坏性变更不允许藏在次版本/补丁位里**。
-3. **区间即契约**：三条线现声明 `starengine_lib_version_range=[1.0.5,2.0)` —— 这是上述承诺的**机器可读表达**：
+3. **区间即契约**：三条线现声明 `starengine_lib_version_range=[1.0.7,2.0)` —— 这是上述承诺的**机器可读表达**：
    区间内任何 `1.x` 版本都可**原位替换**，无需改动本模组的任何代码或配置。
-4. **当前版本 = `1.0.5`**（2026-09-27，**纯新增**）：
-   **「会被激怒的可驯服动物计入敌对目标」** —— `HostileTargets` 口径由「敌对生物 ∪ 中立生物(宠物除外)」
-   扩展为「… ∪ 可驯服但未驯服且会被激怒的动物(宠物除外)」，新增私有谓词 `isAngerableTamedMount`
-   （`getOwner() == null` 且非已驯服 `TamableAnimal`，且 `Mob#getTarget() != null || LivingEntity#getLastHurtByMob() != null`）；
-   覆盖原版**羊驼 / 行商羊驼**。**纯新增一条判定分支、不改动既有分支语义** ⇒ 按补丁位发布，消费方无需改代码。
-   ⇒ 三条线 `starengine_lib_version=1.0.5`。
-   沿革：`1.0.4` = 「稀有度等级 API」（`item/Rarity` + `item/AstralRarities`）；
+4. **当前版本 = `1.0.7`**（2026-10-02，**纯数值调整**）：
+   诅咒之剑筹码的累计攻击力加成上限 `component/GameplayConstants#CURSED_SWORD_BONUS_MAX` 由 **16 上调为 32**。
+   该字段是 `public static int`、名称与位置不变 ⇒ **不改任何 public 签名 / 可见性 / 语义形状**，属 1.x 允许的非破坏性修正。
+   ⇒ 三条线 `starengine_lib_version=1.0.7`（fabric 线为 `1.0.6-alpha.2`）。
+   沿革：`1.0.6`（2026-10-01）＝ 修 `event/EventTargetCollector` 的 FTB Teams / OPAC 两处反射「目标不存在」；
+   `1.0.5`（2026-09-27，**纯新增**）＝ **「会被激怒的可驯服动物计入敌对目标」** —— `HostileTargets` 口径由
+   「敌对生物 ∪ 中立生物(宠物除外)」扩展为「… ∪ 可驯服但未驯服且会被激怒的动物(宠物除外)」，新增私有谓词
+   `isAngerableTamedMount`（`getOwner() == null` 且非已驯服 `TamableAnimal`，且 `Mob#getTarget() != null || LivingEntity#getLastHurtByMob() != null`），覆盖原版**羊驼 / 行商羊驼**（纯新增判定分支、不改既有语义）；
+   `1.0.4` = 「稀有度等级 API」（`item/Rarity` + `item/AstralRarities`）；
    `1.0.3`（2026-09-24，两批内容）：① **「额外敌对判定」注入 seam**（`ExtraHostileProbe` / `installExtraHostileProbe`，供本模组把**试验假人** `dummmmmmy` 声明为敌对目标），纯新增；② ⚠️ **敌对目标口径重写**：`isHostile` 由「敌对生物 ∪ 已被激怒的中立生物」改为「敌对生物 ∪ 中立生物(宠物除外)」—— **语义变更**，按本契约本应升主版本，经用户 2026-09-24 裁决作**玩法口径特例**按补丁位发布；消费方下界随之收紧（而非按契约升主版本）。
    ⚠️ `1.0.2` 已提交但**从未推送、从未发布**（内容已并入 `1.0.3`）；`1.0.1` 亦从未发布（内容并入 `1.0.0`）。
    沿革：`1.0.0` = 库的**首个正式版**（2026-09-22 由快照终态 `1.0.0-SNAPSHOT.16` 规范化而来，库内 Java 源码
    零改动，产物名由 `…-1.0.0-SNAPSHOT.16.jar` 变为 `…-1.0.0.jar`）。
 5. ⛔ **快照系列（`1.0.0-SNAPSHOT.*`）已终止，不受本契约保护**：那时相邻快照之间二进制不兼容且 `modId` 相同，
    消费方必须把下界**精确到序号**（历史口径与实测矩阵见各线 `gradle.properties` 注释与库 README §4.2）；
-   **自 `1.0.0` 起不再需要精确序号**，`[1.0.5,2.0)` 一条即可。
+   **自 `1.0.0` 起不再需要精确序号**，`[1.0.7,2.0)` 一条即可。
 6. ⚠️ **升级库的固定动作（缺一即断）**：① 库侧 bump `lib_version`/`mod_version` 并
-   `./gradlew build publishToMavenLocal`（三平台同号）；② 本仓三条线 `gradle.properties` 的
+   `./gradlew build publishToMavenLocal`（三平台同号；**fabric 子项目另有自己的 `-alpha.N` 号**）；② 本仓**四条线** `gradle.properties` 的
    `starengine_lib_version` 与 `_version_range` **同批**更新；③ `.github/workflows/build.yml` 的库 `ref:`
-   钉值改为库的**新提交 SHA**（该提交须已推送到远端，否则 CI 检不出）；④ 三条线**重新构建**，让产物内的
+   钉值改为库的**新提交 SHA**（该提交须已推送到远端，否则 CI 检不出；⚠️ **push 顺序 = 先库后消费方**）；④ 各线**重新构建**，让产物内的
    内嵌副本（`META-INF/jarjar/`）跟上新版本 —— 整合包里**不再**放独立库 jar（见第 7 条）；⑤ 三个
    `run/<版本>/mods` 仍各持一份**与引脚同版本**的库 jar（dev 的手工启动路径要用，`Start-*.bat` 会以
    exit 10 拒绝版本不一致的环境；forge 线必须是库仓库 `build/devlibs` 的 dev 形态）。

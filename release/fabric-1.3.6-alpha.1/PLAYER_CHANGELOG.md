@@ -9,7 +9,7 @@
 
 - **Fabric Loader 0.19.5+**
 - **Fabric API** (1.20.1 line, 0.92.12)
-- **StarEngine Lib - embedded, do NOT install it separately.** Bundled via Jar-in-Jar (`1.0.6-alpha.1`).
+- **StarEngine Lib - embedded, do NOT install it separately.** Bundled via Jar-in-Jar (`1.0.6-alpha.2`).
   If your mods folder still holds `starengine_lib-*.jar`, delete it: a loose file outranks the embedded copy and will shadow it.
 - **Puzzles Lib 8.1.33+** (event bridge; install it together with its own prerequisite **Forge Config API Port 8.0.3**)
 - **Accessory provider - Trinkets 3.7.2+ or Accessories 1.0.0-beta.48+, either one.** Fabric's `depends`
@@ -35,6 +35,7 @@ The following matches 1.3.6 on the three stable lines (this line carries the sam
 - **The Railgun's lightning now only triggers on "your own melee attack"**: previously any damage whose **direct source** was you registered a strike, so three cases misfired: **Thorns and other damage reflection** (reflection records you as the attacker), **your pets' attacks** (wolves and maids), and **spells / skills / ranged** non-melee damage. It is now tightened to **only an attack you personally land while holding a melee weapon**. The line "On attacking a hostile target" in the item tooltip and the guide was changed to "On a **melee** attack against a hostile target".
 - **The "Thousand-Curse Mark" enchantment is renamed "Blue Curse" and hidden from JEI and the creative menu**: this enchantment is an internal marker (its only purpose is to make the Thousand-Curse Scroll count it as one curse), but vanilla automatically generates an "enchanted book" entry in the creative menu for every enchantment, and JEI indexes it too. It no longer appears there, and the enchantment line appended to the item tooltip is removed as well. **Only "visible / obtainable" changes - the function is untouched** (curse counting still works).
 - **Blue Curse's armour-toughness penalty changed from -100% to -50%**: the -20% armour value is unchanged, and the effect description and item tooltip were updated to match.
+- **The Cursed Sword's stacked attack-power cap is raised from 16 to 32**: each hostile with 20+ HP killed during a Dice Blessing stacks 1 point; it used to cap at 16 and now caps at 32. (Tooltips and the in-game guide are updated to match.)
 - **Chip status icons completed, and all damage-boost chip icons no longer count down**:
   - (1) **Five chips that had no icons at all are now covered** - **Whetstone**, **Adrenaline** (one icon each for Common / High-Grade), **Cursed Sword**, **Electric Sword** and **Railgun**.
   - (2) **Damage-boost chip statuses are now "shown as long as they can take effect"** (no more short countdowns): **Flashlight Chip** and **Revenge Halberd** changed from a 5-second countdown to permanent (**Cutter Chip** already was).

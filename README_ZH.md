@@ -48,7 +48,7 @@ Astral Dice 是一个以「骰子」为核心的生存扩展模组。戴上骰�
 
 | 前置/联动 | 要求 |
 |---|---|
-| 前置模组（**已内嵌，无需单独安装**） | **StarEngine Lib**（`starengine_lib`）**自 1.3.1 起内嵌于本模组**（当前内嵌 **`1.0.6`**（三条发布/迁移线）、**`1.0.6-alpha.1`**（Fabric 线），兼容区间 **`[1.0.6,2.0)`** / **`>=1.0.6-alpha.1 <2.0`**）：加载器启动时自动载入内嵌副本。⚠️ **请勿**再往 `mods` 里单独放 `starengine_lib-*.jar` —— 加载器按 modId 去重时优先采用那一份，更旧的会盖掉内嵌库。⚠️ 库仓**本身不提供任何 jar 下载**（2026-10-01 起只保留源码），本来也无从下载 |
+| 前置模组（**已内嵌，无需单独安装**） | **StarEngine Lib**（`starengine_lib`）**自 1.3.1 起内嵌于本模组**（当前内嵌 **`1.0.7`**（三条发布/迁移线）、**`1.0.6-alpha.2`**（Fabric 线），兼容区间 **`[1.0.7,2.0)`** / **`>=1.0.6-alpha.2 <2.0`**）：加载器启动时自动载入内嵌副本。⚠️ **请勿**再往 `mods` 里单独放 `starengine_lib-*.jar` —— 加载器按 modId 去重时优先采用那一份，更旧的会盖掉内嵌库。⚠️ 库仓**本身不提供任何 jar 下载**（2026-10-01 起只保留源码），本来也无从下载 |
 | 前置模组 | Curios API（1.20.1 用 Curios 5.x；1.21.1 用 Curios 9+；**26.1.2 用 Curios 15+**，缺失时会在 NeoForge 依赖排序阶段被拒绝）。⚠️ 该前置**由本模组声明**；StarEngine Lib 本身仅在 forge 侧把它作为**编译期**依赖（不进库的 `mods.toml`） |
 | 前置模组（仅 1.20.1） | **Mixin 运行时二选一**（自 1.3.2-hotfix 起）：**Mixin Booster ≥ 0.1.3** **或** **Sinytra Connector**。整合包自带 Sinytra Connector 时**无需额外安装**（Connector 自带同一套 Mixin 运行时，此时 Mixin Booster 会自动让位）；两者都没有才会拒绝启动并提示安装方式。装了**旧版** Mixin Booster 仍会被拒 |
 | 前置（仅 fabric-1.20.1） | **Fabric Loader 0.19.x + Fabric API**（1.20.1 线，0.92.12），外加**饰品栏二选一**：**Trinkets 3.7.2** **或** **Accessories 1.0.0-beta.48**（装任一即可；Fabric 的 `depends` 是 AND 语义、表达不了 OR，故两者都声明为 `recommends`，由模组自己在启动时校验，**只有两个都不在**时才拒绝启动）。另需 **Puzzles Lib 8.1.33 + Forge Config API Port 8.0.3** 作为事件桥。发布线的 Curios / Mixin Booster 那一套前置在本线**完全不适用**。**Modrinth** 上本线把 **Trinkets** 登记为*必需*、**Accessories** 登记为*可选*；CurseForge 上没有 Trinkets 条目，故那边保留 Accessories 作为可选那条 |

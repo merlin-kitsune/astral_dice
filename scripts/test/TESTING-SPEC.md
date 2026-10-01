@@ -3027,3 +3027,52 @@ KI-G1 的 **61 / 41 / 缺 20（6·8·6）** 与流派分组（充能 10 / 无流
   （青之诅咒韧性 −50% / 史诗不再豁免 / 6 枚新效果注册 / 图标 100% 覆盖）。
 - **1.20.1 / 26.1.2 / fabric 三线的实机回归**：未开始（1.21.1 已受阻，无意义地扩大尝试面）。
 - **提交 `03eb2297` / `e654dae5` 的工程记录**：由本节补上（此前无续 46）。
+
+
+## 附录 A 续 47. 1.3.6 —— 诅咒之剑攻击力加成上限 16 → 32（随本次改动 bump 前置库）（2026-10-02）
+
+### A. 为什么这次是「改库」
+
+- 该上限取自**前置库**常量 `component/GameplayConstants#CURSED_SWORD_BONUS_MAX`（`public static int`，
+  **不读配置文件** —— `applyConfig` 不写它）⇒ 改值只能改库 ⇒ 按 `mc-prereq-lib-version-contract` §2
+  必须 **bump 库版本 + `publishToMavenLocal`**（改的是整型常量的 `<clinit>` 字节码，非纯注释，不能免 bump）。
+- 库仓权威分支 = **`fabric-1.20.1`**（工作树 `F://MCProject//starengine_lib_fabric`；一个 ref 同供四条线）。
+  该分支上三平台 = `1.0.6`、fabric 子项目 = `1.0.6-alpha.1`，与消费方四线 pin 完全对应。
+- 新号：三平台 `1.0.6` → **`1.0.7`**；fabric 子项目 `1.0.6-alpha.1` → **`1.0.6-alpha.2`**
+  （两条线**各自独立递增**；fabric 的历史**裸**号 `1.0.6/1.0.7/1.0.8` 已按 2026-09-29 裁决作废，**不复用**）。
+  发布前已确认 mavenLocal 中 `starengine_lib-{neoforge-1.21.1,forge-1.20.1,neoforge-26.1.2}/1.0.7`
+  与 `starengine_lib-fabric-1.20.1/1.0.6-alpha.2` **目录均不存在**（非同号覆盖）。
+- 库提交 = `9640af7`（**尚未 push**）⇒ 消费方 CI 的 `ref:` 钉此 SHA，**push 顺序必须先库后消费方**。
+
+### B. 落点清单
+
+| 面 | 落点 |
+|---|---|
+| 库源码 | `common/.../component/GameplayConstants.java`（`16` → `32`，javadoc 补沿革） |
+| 库版本 | 四平台 `gradle.properties` 的 `lib_version` / `mod_version`（三平台 + fabric 子项目） |
+| 库 CHANGELOG | 中英各新增一节 `## 1.0.7 / 1.0.6-alpha.2` |
+| 消费方引脚 | **四线** `gradle.properties` 的 `starengine_lib_version` + `_version_range`（四个落点同批：properties / `mods.toml` 模板 / `build.gradle` 的 `jarJar{strictly,prefer}` / `generateModMetadata` 映射表） |
+| 消费方 CI | `.github/workflows/build.yml` 的库 `ref:` → `9640af7`（含「尚未 push」的如实注记） |
+| 消费方文案 | 手册三语（四线 × 3 = 12 处）写死的 `+16` → `+32`；tooltip 走 `%s` 占位符，随常量自动跟随 |
+| 消费方文档 | `AGENTS.md`（fabric ⑧ 段 + 契约第 3/4/5/6 条）、`README{,_ZH}.md`、两份 CHANGELOG、4 份玩家日志 |
+
+### C. 判据（全部已实测）
+
+- 库四产物 `javap -p -c` ⇒ `bipush 32` → `putstatic CURSED_SWORD_BONUS_MAX`。
+- 消费方四线 `build` 成功（BUILD SUCCESSFUL）+ `pushToGame` **4 次**；四个整合包 jar 同批时间戳。
+- 四线产物内嵌件：`artifactVersion` = `1.0.7`（三线）/ `1.0.6-alpha.2`（fabric），`range` = `[1.0.7,2.0)`；
+  **内嵌件 md5 == mavenLocal 生产件**（三线逐字节相同）；把内嵌件解出来再 `javap` ⇒ 亦为 `bipush 32`。
+- `mods.toml` / `neoforge.mods.toml` 的 `starengine_lib` `versionRange` = `[1.0.7,2.0)`；
+  `fabric.mod.json` 的 `depends.starengine_lib` = `>=1.0.6-alpha.2 <2.0`。
+- 四线 jar 内三语手册文案均为 `+32`。
+- 全量守门 16/16 `exit=0`；4 份玩家日志过 `check_player_changelog.py`（PASS）。
+
+### D. 未做 / 边界（如实登记）
+
+- **实机进世界验证未做**：与续 46 §C 同一约束（测试台注入走 `PostMessage`、GLFW 忽略非前台窗口的按键
+  ⇒ agent 无人值守跑不通）。可静态复核的面已全部核对。
+- **存档兼容（推理，非实测）**：`cursed_sword_bonus` 是玩家附件里的**运行期读取值**（非存档结构字段），
+  上限只参与 `current < max` 判断 ⇒ 已有存档中已累计的加成不受影响，提升后可在后续赐福继续累加至 32。
+- **`next` 分支未同步**：库仓 `next` 线（`2.0.0-SNAPSHOT.8`）共用同一份 `common` 源码，
+  本次**未**改它（消费方当前四条线都 pin `fabric-1.20.1` 分支的号）⇒ 若开发线（`multi-dev-next`）也要带上
+  这个新上限，需在 `next` 线另行 bump 一次。

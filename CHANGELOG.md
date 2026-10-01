@@ -102,6 +102,15 @@
   "skill damage" type exists precisely to avoid that shape.)
 
 
+- **The Cursed Sword's stacking attack-power cap is raised from 16 to 32** (user ruling, 2026-10-02): the cap comes
+  from the prerequisite library's constant `GameplayConstants#CURSED_SWORD_BONUS_MAX` (a `public static int`, not a
+  config entry), so **the library was bumped in the same batch** - the three release/migration lines `1.0.6` -> `1.0.7`,
+  the port line `1.0.6-alpha.1` -> `1.0.6-alpha.2`, and all four consumer lines tightened their pin and runtime range
+  lower bound (`[1.0.6,2.0)` -> `[1.0.7,2.0)`; fabric line `>=1.0.6-alpha.1 <2.0` -> `>=1.0.6-alpha.2 <2.0`).
+  The field's name / type / visibility are unchanged, so this is a non-breaking fix allowed by the 1.x compatibility
+  contract and consumers need no code change; the chip tooltip uses a `%s` placeholder and follows the constant
+  automatically, while the **hard-coded `+16` in this mod's own guide was updated to `+32`** (four lines x three languages).
+
 ### Bug Fixes
 
 - **An Epic item's tooltip frame showed the colour of the previously hovered item (observed as gold, i.e. the Legendary tier colour); Epic now writes its tier colour explicitly** (reported by the user on 2026-10-01, with screenshots): two symptoms with the same root cause appeared in the modpack — ① one of this mod's **Epic** items ("Game Master Sign"; the item name was already the correct light purple) had a **gold** frame; ② an item belonging to an entirely different mod (`oritech:adamant_block`) also had a **flat gold `#FFC24B`** frame. **Root-cause evidence** (three independent facts): a recursive scan of all **491 jars in the pack (including JarJar-embedded ones)** for the colour value `0xFFC24B` matched **exactly one class — this mod's own embedded `Rarity.class`** ⇒ the colour can only have come from us; and because this mod used to leave **Rare/Epic** frames untouched, **any tooltip that does not write its own colour inherits whatever a third party cached from the previous tooltip** ⇒ every tier we do not paint becomes a victim of that residue. **Fix**: the Epic tier changes from "leave it to vanilla" to **explicitly writing its tier colour** (= the vanilla EPIC colour `#FF55FF`) — as soon as we write the colour ourselves, that tooltip is guaranteed to use our value and is no longer affected by any third-party cache. ⚠️ **The Rare tier is deliberately left untouched this time** (the user asked for Epic only); by the same mechanism it can still be polluted by residue — if you want it painted as well (vanilla RARE colour `#55FFFF`), that needs a separate decision. ⚠️ **Not applicable to the 26.1.2 line**: its tooltip frame is a nine-slice texture and the platform exposes no colour event (`ClientHooks#onRenderTooltipTexture` hands out a texture ID) ⇒ the vanilla texture is kept; this is a registered platform difference.
