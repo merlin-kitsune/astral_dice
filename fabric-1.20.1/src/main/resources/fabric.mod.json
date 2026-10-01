@@ -24,7 +24,8 @@
   },
   "accessWidener": "astral_dice.accesswidener",
   "mixins": [
-    "astral_dice.mixins.json"
+    "astral_dice.mixins.json",
+    "astral_dice.jade.mixins.json"
   ],
   "depends": {
     "fabricloader": ">=${loader_version}",

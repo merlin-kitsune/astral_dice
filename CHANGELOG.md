@@ -4,7 +4,7 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
-## Unreleased (2.0.0-SNAPSHOT.19)
+## Unreleased (2.0.0-SNAPSHOT.20)
 
 ### New Content
 
@@ -15,6 +15,11 @@
   **Fabric API** and **Puzzles Lib** (which brings **Forge Config API Port** as its own dependency);
   accessories use **Trinkets** (with optional **Accessories** support — used when present, ignored otherwise);
   combat stat bars, damage numbers, signs / chips / cards / dice all behave exactly as on the other three lines.
+
+- **Jade armor readout added to the Fabric build**: with Jade installed, the **armor icon and value** in the
+  player info overlay now show this mod's **Defense** as well (using this mod's **full / half / empty** shield
+  icons, same shapes as vanilla), matching the other three lines; mobs still show their vanilla armor value.
+  **Without Jade nothing changes** (no extra dependency is required of players).
 
 #### Input & UI
 

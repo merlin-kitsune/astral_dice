@@ -372,6 +372,32 @@ GlCommandEncoder.trySetup(:531) ← GlCommandEncoder.executeDraw(:406) ← GlRen
   ④**判据**：装 Jade 后看向玩家 / 生物，悬浮框的护甲图标与数值显示本模组防御力
   —— ⚠️ 这是**视觉**结果，`scripts/test/fabric/ft.ps1` 的 `FAB-*` 用例覆盖不到，**必须实机验证**。
 - **同步口径**：本项只影响 fabric 线（另三线已实现），**不适用**「四线同改」默认规则。
+- **✅ 结案（2026-10-01，提交见本版 CHANGELOG 段）**：已按本节修补要求补齐。落点 =
+  `fabric-1.20.1/src/main/java/.../mixin/jade/{ArmorValueProviderMixin,ArmorElementIconMixin}.java`
+  + `src/main/resources/astral_dice.jade.mixins.json`（已登记进 `fabric.mod.json` 的 `mixins` 数组）。
+  - **取证**：按 **Jade-Fabric 生产 jar**（Modrinth `maven.modrinth:jade:ahavHbAT` =
+    `Jade-1.20-Fabric-11.13.3.jar`）反编译确证，其类结构与 forge 线**逐项同构** ——
+    `EntityArmorProvider.appendTooltip` 内 `getArmorValue`（intermediary `method_6096`）**仅 1 次**调用；
+    `DisplayHelper.renderIcon` 为 **static**、入参 `(GuiGraphics,float,float,int,int,IconUI)`；
+    `IconUI` 有 `ARMOR`/`HALF_ARMOR`/`EMPTY_ARMOR` 三态；`OverlayRenderer.alpha` 为 `public static float`。
+  - **两处平台差异（与 forge 线**相反**，已写入两个 mixin 的类头 javadoc）**：
+    ① fabric 无 Mixin AP ⇒ **不需要** `remap = false`，且 `@At` 的 target 含原版成员**必须**走重映射；
+    ② `ArmorElementIconMixin` 的 `method` **只能写纯方法名**（其描述符含原版 `GuiGraphics`，
+    Loom 对带描述符的 `method` 原样透传 ⇒ 照抄 forge 写法会静默失效）。
+  - **验证读数**：`:fabric-1.20.1:build` SUCCESSFUL；开 jar 读 class 常量池确认
+    `@At` target 已重映射为 `Lsnownee/jade/overlay/DisplayHelper;renderIcon(Lnet/minecraft/class_332;FFIIL…;)V`
+    与 `(Lnet/minecraft/class_1309;method_6096()I`，**Jade 自身类名与方法名保持原样**（Jade 不混淆）。
+  - **启动验证（已做，2026-10-01）**：`ft_launch.ps1 --side client` +
+    `-PpreloadClasses=snownee.jade.impl.ui.ArmorElement,snownee.jade.addon.vanilla.EntityArmorProvider` 实测 ——
+    两个目标类均 `[preload] OK`（**类加载即触发 mixin 应用**），全日志
+    **`InjectionError` / `Critical injection failure` / `Mixin apply failed` 命中 0**；
+    同时确认 `jade 11.13.3+fabric` 正常加载（3 条 `Start loading plugin from Jade`）、
+    `客户端注册桥:按键 2 个 / 粒子 1 个 / HUD 覆盖层 5 个`（含新增的 defense_bar / attack_bar）、
+    `事件订阅审计通过:63 个订阅类全部已登记`。
+    ⚠️ 唯一告警 = `Reference map 'astral_dice.refmap.json' ... could not be read`
+    （**dev 环境可忽略**；与本模组既有 `astral_dice.mixins.json` 同款告警 —— Loom 1.14 不生成 refmap、注解已就地重映射）。
+  - ⚠️ **视觉结果仍未验证**：「悬浮框里的护甲图标与数值**实际显示为防御力**」需**装 Jade 进世界看向实体**查看
+    —— `preload` 只能证明**注入点命中**，证明不了观感（见本节修补要求 ④）。
 
 ## 9. 变更记录
 

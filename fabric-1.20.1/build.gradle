@@ -161,7 +161,14 @@ dependencies {
     modRuntimeOnly "maven.modrinth:starlight:XGIsoVGT"
     modRuntimeOnly "maven.modrinth:modernfix:rPmgLeZC"
     modRuntimeOnly "maven.modrinth:ferrite-core:unerR5MN"
-    modRuntimeOnly "maven.modrinth:jade:ahavHbAT"
+    // Jade（方块/实体信息 HUD；测试环境用,不进发货产物）
+    // ⚠️ 2026-10-01 起由 `modRuntimeOnly` 改为 **`modImplementation`**：`mixin/jade/**`
+    //    需要**编译期**引用 Jade 的类（`snownee.jade.addon.vanilla.EntityArmorProvider` /
+    //    `snownee.jade.impl.ui.ArmorElement` / `snownee.jade.overlay.DisplayHelper|IconUI|OverlayRenderer`）。
+    //    Jade 是**可选依赖**：**不写进** `fabric.mod.json` 的 depends；mixin 配置用
+    //    `required:false` + 字符串 `targets` ⇒ Jade 缺席时整条 mixin 静默跳过、不影响启动。
+    //    Modrinth version id `ahavHbAT` = `Jade-1.20-Fabric-11.13.3.jar`（与 forge 线 11.13.3 同版）。
+    modImplementation "maven.modrinth:jade:ahavHbAT"
     // ⚠️ JEI 15.62.0.216 的 fabric 产物由 **Loom 1.17.20** 构建 ⇒ 被 Loom 1.14.10 的
     //    「Mod was built with a newer version of Loom」门禁拒绝(实测)。JEI 不参与编译,
     //    故改为**运行时手工投放**:把 jei-1.20.1-fabric-15.62.0.216.jar 放进 run/server/mods/ 与 run/client/mods/。
