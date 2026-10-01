@@ -2736,3 +2736,64 @@ KI-G1 的 **61 / 41 / 缺 20（6·8·6）** 与流派分组（充能 10 / 无流
   `Iceberg-26.1.2-neoforge-1.4.1.1` 的 `Tooltips` **有** `public static boolean gradientBackground; public static boolean gradientBorder;`。
 - 守门复跑：`scripts/verify/verify_*.ps1` 全 0 + `tools/audit_actionbar.py` / `verify_party_api.py` /
   `audit_mixin_injection.py` / `audit_patchouli_keys.py` / `verify_fabric_assets.py` 全 0。
+
+## 附录 A 续 43. 1.3.6 —— 看板娘立牌筹码池「硬编码 ⇒ 派生式」重构（2026-10-01）
+
+> 用户指令：「修复看板娘筹码池问题，随后检查 KNOWN-ISSUES 中是否还有未处理项，清理所有已处理项」。
+> KI-G1 的登记（2026-10-01，见本附录续 42 与 `KNOWN-ISSUES.md`）：三张手写筹码表共 **41** 个，注册筹码 **61** 个 ⇒ 缺 **20** 个。
+
+### 交付物
+
+| 文件 | 改动 |
+| --- | --- |
+| `{neoforge-1.21.1, forge-1.20.1, neoforge-26.1.2, fabric-1.20.1}/src/main/java/com/merlinkitsune/astral_dice/item/sign/MimiSignItem.java` | 删掉三张手写清单（`blueChips`/`purpleChips`/`goldChips`，共 41 条 `ModItems.X.get()`），新增 `chipPool(Rarity)` —— **运行时遍历 `BuiltInRegistries.ITEM` 派生**；新增 `Logger` 与池缓存 |
+
+### 实现口径（为什么是这三个判据）
+
+1. **筹码的归属判据 = `instanceof BaseChipItem`**，不是 id 后缀、不是手写表：
+   - 61 个注册筹码**全部**继承 `item/chip/BaseChipItem`（`javap`/源码核对，四线同构）；
+   - `blank_chip`（空白筹码）是**普通 `Item`** ⇒ 天然不进池 —— 与旧清单口径一致（旧清单里也没有它）；
+   - 也不依赖命名约定：`eight_sided_dice_chip`、`atm_chip`、`bank_card_low_chip` 这类**id 各异的筹码同样覆盖**。
+2. **档位判据 = 库的 `AstralRarities.tierOf(stack.getRarity())`**（`com.merlinkitsune.starenginelib.item`）：
+   筹码注册时写的是 `.rarity(AstralRarities.rare()/epic()/legendary())`，`tierOf` 正是「原版 `Rarity` 常量 → 本模组档位」的**唯一官方入口**（消费方不得自己写 `==` 链）⇒ 分桶与注册侧**同源**，不会漂移。
+3. **不新增手写清单**：这正是本条缺陷的成因。派生后 **加筹码不用改本文件**。
+
+### 保持不变的既有口径（不做任何行为调整）
+
+- 三档概率：蓝（RARE）60% / 紫（EPIC）35% / 金（LEGENDARY）5%；阈值 `RETURNED_CARD_THRESHOLD = 25`。
+- **进阶筹码照旧进池**（旧清单本就含 `cutter_blade_chip` / `eagle_scope_chip` / `medkit_complete_chip` / `ninja_star_chip` 等）。
+- **巅峰 / 奇特不进池**（与「不进池 = 巅峰 + 奇特」既有裁决一致；当前无此类筹码）。
+  ⚠️ 为**避免静默**：首次建池时若发现「档位不在蓝/紫/金三档内」或「没有档位（漏标 `.rarity(...)`）」的筹码，会分别打一条 `info` / `warn` 说明数量。
+- 「专属牌不进池」不涉及（筹码无专属变体）。
+
+### 验证（三重取证）
+
+- **静态重算**：按「注册项 → 构造类 → 是否继承 `BaseChipItem`」重算得 **61** 个（RARE 19 / EPIC 24 / LEGENDARY 18）——与 KI-G1 登记的数字一致；按 id 含 `chip` 的旧口径同样得 61（两口径互为交叉验证，且确认没有 `chip` 命名之外的筹码被漏掉）。
+- **构建 + 开包**：`./gradlew compileJava`（18s）与 `./gradlew build` 均 **BUILD SUCCESSFUL**；四个 jar 的 `MimiSignItem.class` 里
+  `BaseChipItem` / `BuiltInRegistries` / `AstralRarities.tierOf` **都在**，而**旧手写清单的字段引用残留 = 0/6**（抽样 6 个新筹码字段名逐一检查）；
+  四份产物时间戳刷新，四个整合包 `mods` 与 `run/<ver>/mods` 各**恰 1 个**新 jar。
+  ⚠️ fabric 线 jar 经 Loom 重映射：`BuiltInRegistries.ITEM` 显示为 `net/minecraft/class_7923.field_41178`（间接名），
+  但 `instanceof BaseChipItem` 与 `tierOf(class_1814)` 都在 ⇒ 派生链路完整。
+- **运行时读数（留给冒烟）**：首次建池打 `AP_MIMI_CHIP_POOL: blue=19 purple=24 gold=18 total=61 unbucketed=0 no_tier=0`
+  （数字由静态重算给出**期望值**；建成后即可作为断言）。
+- **守门**：`scripts/verify/verify_*.ps1` 全 0（含 `verify_chip_recipes` 读数 `配方文件 132 | 筹码 61 | 一致 61 | 不一致 0`）
+  ＋ `tools/audit_actionbar.py` / `verify_party_api.py` / `audit_mixin_injection.py` / `audit_patchouli_keys.py` /
+  `verify_fabric_assets.py`(8/8) 全 0。
+- ⚠️ **未做**：进世界的**实际抽筹码**验证（本轮未获授权跑测试台全清单；建议后续用一次冒烟读 `AP_MIMI_CHIP_POOL` + 观察金色档能抽到 `golden_shooting_star_chip`）。
+
+### ⚠️ 独立复验抓出的回归（已回修）—— 「缓存池里的 `ItemStack` 被 `Inventory.add` 掏空」
+
+初版把三档池改成**静态缓存**后，`giveRandomChip` 直接把**池中的那个 `ItemStack`** 交给背包。而原版
+`Inventory#add`（`neoforge-21.1.235-sources.jar` 的 `Inventory.java:245 → :252 → :189`）在**成功时会
+`stack.setCount(0)` 改写传入栈** ⇒ 每成功抽一次就把池里那一条清空；之后再抽到该条目时
+`add(empty) = false` → `drop(empty)` 在 `Player#drop` 里因 `isEmpty()` 直接 `return null`
+⇒ **这一抽什么都拿不到，而且完全静默**（`pool.isEmpty()` 守卫与建池期的空档告警**都拦不住**）。
+旧实现每次调用都 `new ItemStack(...)` 重建列表，故这是**本轮引入的回归**（不是历史缺陷）。
+
+**已回修（四线同改）**：
+1. `pool.get(...).copy()` 再交给背包 —— 池里存的是**模板栈**，javadoc 已把这条写成硬约束；
+2. 建池改为「先在**局部**表里建好、全部成功后再 `addAll` 发布」，且 `chipPoolsBuilt` 置位**移到填充之后**
+   ⇒ 中途抛异常不会留下「半成品池」，下次调用会重试（初版是**先置位后填充**）。
+
+⚠️ **通用教训（已写进 `MimiSignItem` 的 javadoc）**：任何「缓存一批 `ItemStack` 当模板」的池，
+**交付给背包/容器前必须 `copy()`** —— `Inventory#add`、`ItemStack#shrink`、`setCount` 都会**就地改写**对象。

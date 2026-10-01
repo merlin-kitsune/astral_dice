@@ -4,8 +4,13 @@ import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.card.RandomCardHandler;
+import com.merlinkitsune.astral_dice.item.chip.BaseChipItem;
+import com.merlinkitsune.starenginelib.item.AstralRarities;
+import com.merlinkitsune.starenginelib.item.Rarity;
 import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
@@ -14,6 +19,8 @@ import com.merlinkitsune.astral_dice.compat.curios.SlotContext;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
 
 /**
@@ -23,12 +30,14 @@ import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
  * - 合成或返还卡牌时,每获得一张战斗牌,增加 1 星币;
  * - 装备时,筹码栏位 +1;
  * - 每次主动技能返还累计 25 张战斗牌后,获得 1 个随机筹码
- *   (蓝色 60%,紫色 35%,金色 5%)。
+ *   (蓝色 60%,紫色 35%,金色 5%;筹码池**由物品注册表派生**,见 {@link #chipPool(Rarity)} 的说明)。
  *
  * <p>主动:将物品栏中所有卡牌回收(包括专属牌),并返还 N+1 张随机卡牌;
  * 返还的随机卡牌不会包含专属牌。
  */
 public class MimiSignItem extends BaseSignItem {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(MimiSignItem.class);
     /** 主动返还战斗牌累计阈值(达到后获得随机筹码) */
     public static final int RETURNED_CARD_THRESHOLD = 25;
     /** 随机筹码概率 */
@@ -152,72 +161,109 @@ public class MimiSignItem extends BaseSignItem {
         double roll = ThreadLocalRandom.current().nextDouble();
         List<ItemStack> pool;
         if (roll < BLUE_CHANCE) {
-            pool = blueChips();
+            pool = chipPool(Rarity.RARE);
         } else if (roll < BLUE_CHANCE + PURPLE_CHANCE) {
-            pool = purpleChips();
+            pool = chipPool(Rarity.EPIC);
         } else {
-            pool = goldChips();
+            pool = chipPool(Rarity.LEGENDARY);
         }
         if (pool.isEmpty()) return;
-        ItemStack chip = pool.get(ThreadLocalRandom.current().nextInt(pool.size()));
+        // ⚠️ 池里存的是**模板栈** ⇒ 必须 copy 后再交给背包:原版 Inventory#add 成功时会
+        //    对传入栈 setCount(0)(Inventory.java 的 add/addResource 路径) ⇒ 直接交出池中对象
+        //    会把池里那一条清空,之后抽到同一档的该条目就**什么都拿不到**(add(empty)=false、
+        //    drop(empty)=null,静默失败,且 pool.isEmpty() 拦不住)。
+        ItemStack chip = pool.get(ThreadLocalRandom.current().nextInt(pool.size())).copy();
         if (!player.getInventory().add(chip)) {
             player.drop(chip, false);
         }
     }
 
-    private static List<ItemStack> blueChips() {
-        List<ItemStack> list = new ArrayList<>();
-        list.add(new ItemStack(ModItems.MEDKIT_EMERGENCY_CHIP.get()));
-        list.add(new ItemStack(ModItems.TARGET_CHIP.get()));
-        list.add(new ItemStack(ModItems.MARKER_SPRAYER_CHIP.get()));
-        list.add(new ItemStack(ModItems.HAND_FAN_SMALL_CHIP.get()));
-        list.add(new ItemStack(ModItems.EIGHT_SIDED_DICE.get()));
-        list.add(new ItemStack(ModItems.ATM.get()));
-        list.add(new ItemStack(ModItems.BANK_CARD_LOW.get()));
-        list.add(new ItemStack(ModItems.BOXING_GLOVES_LOW.get()));
-        list.add(new ItemStack(ModItems.SPEED_SKATES_LOW.get()));
-        list.add(new ItemStack(ModItems.MOTO_HELMET_LOW.get()));
-        list.add(new ItemStack(ModItems.SANDWICH_LOW.get()));
-        list.add(new ItemStack(ModItems.BUFFER_SHIELD.get()));
-        list.add(new ItemStack(ModItems.CURSED_SWORD.get()));
-        return list;
+    // === 筹码池:由物品注册表**派生**,不是手写清单(2026-10-01 重构) ===
+
+    /**
+     * 按档位取随机筹码池(**派生式**)。
+     *
+     * <h2>为什么不再手写清单</h2>
+     * <p>原实现是三张手写的 {@code List<ItemStack>}(蓝 13 / 紫 16 / 金 12),**没有任何守门**核对
+     * 「表 ⊇ 注册筹码按档位分组的全集」⇒ 每加一个筹码就会漏一个。2026-10-01 实测:注册筹码 **61** 个,
+     * 三张表只有 **41** 个,**缺 20 个**(含充能类 10 个、飞星 2 个) —— 见 `KNOWN-ISSUES.md` KI-G1。
+     * 现改为**运行时遍历物品注册表派生**:取所有 {@link BaseChipItem} 的子类,按
+     * {@link AstralRarities#tierOf(net.minecraft.world.item.Rarity)} 的档位分桶
+     * ⇒ **以后新增筹码自动进池,不需要再动本文件**。
+     *
+     * <h2>口径(与手写清单时代保持一致)</h2>
+     * <ul>
+     *   <li>只认**继承 {@link BaseChipItem} 的物品** ⇒ `blank_chip`(空白筹码,普通 {@code Item})天然不进池,
+     *       与旧行为一致;也不依赖物品 id 的命名约定(`eight_sided_dice_chip` 这类照样覆盖);</li>
+     *   <li>**进阶筹码照样进池**(旧清单里本来就有 `cutter_blade_chip` / `eagle_scope_chip` /
+     *       `medkit_complete_chip` / `ninja_star_chip` 等,&nbsp;本实现保持同一口径);</li>
+     *   <li>**巅峰 / 奇特不进池**(与「不进池 = 巅峰 + 奇特」的既有裁决一致;当前无此类筹码。
+     *       若将来出现,会在首次建池时打一条 warn,**不静默**);</li>
+     *   <li>三档概率不变:蓝(RARE) 60% / 紫(EPIC) 35% / 金(LEGENDARY) 5%。</li>
+     * </ul>
+     *
+     * <p>⚠️ 池**惰性构建一次并缓存**:注册表内容在加载完成后稳定,而本方法只会在服务端线程被调用。
+     *
+     * @param tier 本模组档位({@link Rarity#RARE} / {@link Rarity#EPIC} / {@link Rarity#LEGENDARY})
+     * ⚠️ **池里存的是「模板栈」**:调用方取出后**必须 {@link ItemStack#copy()}** 再交给背包 ——
+     * 原版 {@code Inventory#add} 在成功时会 {@code setCount(0)} 改写传入的那个栈,直接交出池中对象会把
+     * 池里那一条清空(之后抽到它就静默拿不到任何东西)。
+     *
+     * @return 本类内部持有的**模板栈列表**(只读使用,不得改写其中的栈);非三档档位返回空表
+     */
+    private static List<ItemStack> chipPool(Rarity tier) {
+        if (!chipPoolsBuilt) {
+            // 先在**局部**表里建好、全部成功后再一次性发布 ⇒ 中途抛异常不会留下"半成品池"
+            //(标志位最后才置,下次调用会重试)。
+            List<ItemStack> blue = new ArrayList<>();
+            List<ItemStack> purple = new ArrayList<>();
+            List<ItemStack> gold = new ArrayList<>();
+            int unbucketed = 0;
+            int noTier = 0;
+            for (Item item : BuiltInRegistries.ITEM) {
+                if (!(item instanceof BaseChipItem)) {
+                    continue; // 非筹码(含 blank_chip)不进池
+                }
+                ItemStack stack = new ItemStack(item);
+                Rarity itemTier = AstralRarities.tierOf(stack.getRarity());
+                if (itemTier == Rarity.RARE) {
+                    blue.add(stack);
+                } else if (itemTier == Rarity.EPIC) {
+                    purple.add(stack);
+                } else if (itemTier == Rarity.LEGENDARY) {
+                    gold.add(stack);
+                } else if (itemTier == null) {
+                    noTier++; // 筹码没标 .rarity(...) —— 属配置遗漏
+                } else {
+                    unbucketed++; // 巅峰/奇特:按「不进池」口径排除
+                }
+            }
+            blueChipPool.addAll(blue);
+            purpleChipPool.addAll(purple);
+            goldChipPool.addAll(gold);
+            chipPoolsBuilt = true; // 置位必须在填充**之后**
+            LOGGER.info("[Astral Dice] AP_MIMI_CHIP_POOL: blue={} purple={} gold={} total={} unbucketed={} no_tier={}",
+                    blueChipPool.size(), purpleChipPool.size(), goldChipPool.size(),
+                    blueChipPool.size() + purpleChipPool.size() + goldChipPool.size(), unbucketed, noTier);
+            if (blueChipPool.isEmpty() || purpleChipPool.isEmpty() || goldChipPool.isEmpty()) {
+                LOGGER.warn("[Astral Dice] 看板娘筹码池有一档为空 —— 随机筹码会退化,检查筹码注册与 rarity 标注");
+            }
+            if (noTier > 0) {
+                LOGGER.warn("[Astral Dice] 有 {} 个筹码没有档位(未标 .rarity(...)),它们不会进随机池", noTier);
+            }
+            if (unbucketed > 0) {
+                LOGGER.info("[Astral Dice] 有 {} 个筹码是巅峰/奇特档,按既有「不进池」口径排除", unbucketed);
+            }
+        }
+        if (tier == Rarity.RARE) return blueChipPool;
+        if (tier == Rarity.EPIC) return purpleChipPool;
+        if (tier == Rarity.LEGENDARY) return goldChipPool;
+        return List.of();
     }
 
-    private static List<ItemStack> purpleChips() {
-        List<ItemStack> list = new ArrayList<>();
-        list.add(new ItemStack(ModItems.FLASHLIGHT_CHIP.get()));
-        list.add(new ItemStack(ModItems.CUTTER_CHIP.get()));
-        list.add(new ItemStack(ModItems.SCOPE_CHIP.get()));
-        list.add(new ItemStack(ModItems.VITAMIN_PILL_CHIP.get()));
-        list.add(new ItemStack(ModItems.MAGIC_TOME_CHIP.get()));
-        list.add(new ItemStack(ModItems.BIG_BACKPACK_CHIP.get()));
-        list.add(new ItemStack(ModItems.HAND_FAN_BIG_CHIP.get()));
-        list.add(new ItemStack(ModItems.BANK_CARD_HIGH.get()));
-        list.add(new ItemStack(ModItems.BOXING_GLOVES_MEDIUM.get()));
-        list.add(new ItemStack(ModItems.SPEED_SKATES_MEDIUM.get()));
-        list.add(new ItemStack(ModItems.MOTO_HELMET_MEDIUM.get()));
-        list.add(new ItemStack(ModItems.SANDWICH_MEDIUM.get()));
-        list.add(new ItemStack(ModItems.MAGIC_QUIVER.get()));
-        list.add(new ItemStack(ModItems.REVENGE_HALBERD.get()));
-        list.add(new ItemStack(ModItems.CANDY_CHIP.get()));
-        list.add(new ItemStack(ModItems.FRIENDSHIP_BADGE.get()));
-        return list;
-    }
-
-    private static List<ItemStack> goldChips() {
-        List<ItemStack> list = new ArrayList<>();
-        list.add(new ItemStack(ModItems.CUTTER_BLADE_CHIP.get()));
-        list.add(new ItemStack(ModItems.EAGLE_SCOPE_CHIP.get()));
-        list.add(new ItemStack(ModItems.MEDKIT_COMPLETE_CHIP.get()));
-        list.add(new ItemStack(ModItems.NINJA_STAR_CHIP.get()));
-        list.add(new ItemStack(ModItems.BANK_CARD_UNLIMITED.get()));
-        list.add(new ItemStack(ModItems.BOXING_GLOVES_HIGH.get()));
-        list.add(new ItemStack(ModItems.SPEED_SKATES_HIGH.get()));
-        list.add(new ItemStack(ModItems.MOTO_HELMET_HIGH.get()));
-        list.add(new ItemStack(ModItems.SANDWICH_HIGH.get()));
-        list.add(new ItemStack(ModItems.STAR_COIN_HAMMER.get()));
-        list.add(new ItemStack(ModItems.PIERCING_GUN.get()));
-        list.add(new ItemStack(ModItems.SATELLITE_CHIP.get()));
-        return list;
-    }
+    /** 蓝/紫/金三档的派生池:**模板栈**(惰性构建一次,见 {@link #chipPool};取出必须 copy)。 */
+    private static final List<ItemStack> blueChipPool = new ArrayList<>();
+    private static final List<ItemStack> purpleChipPool = new ArrayList<>();
+    private static final List<ItemStack> goldChipPool = new ArrayList<>();
+    private static boolean chipPoolsBuilt;
 }
