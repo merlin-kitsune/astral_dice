@@ -2274,3 +2274,176 @@ CF 文件按 id 独立、同名不去重不覆盖 ⇒ 后台不删就会看到�
   ⇒ 最终以 CF 后台 Files 页的 Relations 区为准（待用户核对）。
 - 另：`/api/v1/mods/<id>/files/<fileId>` 对新上传文件存在**聚合滞后**（上传后数分钟内 `data:null`，
   实测本轮 5 次轮询内未见）—— 与续 37 登记的同一条，判「是否上传成功」仍以上传响应为准。
+
+## 附录 A 续 39. 前置库不再对外分发任何 jar（源码-only）+ 消费方 README 接线（2026-10-01）
+
+- **需求**（用户原话）：「同步 push StarEngine Lib 并更新 readme 和 changelog。starengine_lib 不再上传
+  任何 jar，只保留 source code，已有的也需要全部删除（避免误下）」。
+- **动机**（与库侧 `pushToPack` 那条同源，见续 34）：本库自 2026-09-24 起由消费方 `astral_dice` 以
+  **JarJar 内嵌**携带；FML 的 JarInJar 选择器按 **modId** 去重 ⇒ 玩家/整合包作者若另下了一份独立库
+  jar，**那一份会被优先采用**，版本比内嵌件旧时表现为 `NoSuchMethodError` / `NoClassDefFoundError`，
+  且极难定位（现象与「库没随模组更新」完全相同）。⇒ 与其在下载页上写「请勿单独安装」，不如**根本
+  不提供下载**。
+
+### 已执行的存量清理（不可逆动作，先取证再动）
+
+- **远端 `starengine_lib-jars` artifacts：12 个全部删除**。`DELETE /repos/{owner}/{repo}/actions/artifacts/{id}`
+  —— 先删 **1 个**验证写权限（HTTP **204**、复查 12 → 11），再删剩余 11（全 204），最后复查
+  `total_count = **0**`。令牌取自 git 的凭据助手（与 push 同一份，**未回显**）。
+  ⚠️ 这 12 个是**唯一真实存在的 jar 分发口** —— 它们是 `main`/PR 推送时 `upload-artifact` 的产物，
+  **未过期**（`expired=false`），任何有仓读权限的人都能下。
+- **Release 侧：0 个**（逐 tag 交叉核验 `1.0.0` / `1.0.3` / `1.0.4` / `1.0.5` **全部 404**，
+  `GET /releases` 返回 `[]`）⇒ **无附件可删**。⚠️ 不存在 Release **不等于**没东西可下：同一 tag 的
+  「Source code (zip/tar.gz)」是 GitHub 自动生成的，任何 tag 都有 —— 那正是本政策**要保留**的部分。
+- ⚠️ **Actions 日志本身仍可读**，但日志里不含 jar 字节，不构成分发口。
+
+### 库侧改动（三分支同源）
+
+`main` `16a0d65`→`09f5ec1` / `next` `f905882`→`8225e59`（含两次 bump）/ `fabric-1.20.1` `e523ecb`→`fea5f06`；三分支的
+`build.yml` / `README.md` / `README_ZH.md` **内容逐字节一致**（仅工作树行尾形态不同，见下）。
+
+- **CI（`.github/workflows/build.yml`）**：
+  - 删除 `Upload StarEngine Lib JARs`（`actions/upload-artifact@v4`）整步 ⇒ **上下文中不再有
+    `upload-artifact`**；jar 只作为 runner 上的构建产物存在（`build` 仍跑，构建校验不丢）。
+  - `Create/Update GitHub Release (source code only — no JAR assets)`：**不带任何附件**
+    （`gh release create` 去掉文件参数 ⇒ 只剩 GitHub 自动生成的源码归档），并新增**自愈清理** ——
+    `gh release view --json assets -q '.assets[].name'` 逐项判断，命中 `*.jar` 即
+    `gh release delete-asset --yes`（**重复执行幂等**，历史遗留/误传都会被这一步清掉）。
+  - 说明正文重写：删去「请把与你的 MC 版本对应的 jar 放进 `mods/`」，改为「本库不分发 jar、
+    **请勿**单独安装」。
+  - 顺带把与平台数相关的陈述改为**平台中立**（该文件三分支共用，而 `main` 是三平台、
+    `fabric-1.20.1` 分支是四平台）：步骤名 `all three targets` → `all platforms`、
+    `Gradle build OK (all three targets)` → `(all platforms)`、「common 会被三个平台各编译一次」→
+    「每个平台」、产物清单加注分支差异。
+- **README ×2**：§4.3 删去「确需单独放一份库 jar 时请从**本仓 Release 手动取用**」，改为「本仓
+  **不提供任何 jar 下载**；确实需要请自行从源码构建」；§4.4 补政策顶注，表格两行改为
+  「只做编译校验：**什么都不上传**」与「Release **附件：无**（只有源码归档）；发现 jar 附件即删除」；
+  顺带把 JDK 计数由「双（21 + 17）」订正为**三套 toolchain 21 / 17 / 25**（实测 CI 确有三步
+  `setup-java`；fabric 子项目同为 17，由 17 那步覆盖）。
+- **CHANGELOG ×2**：`main` / `fabric-1.20.1` 追加到既有 `## 未发布` 的 `### 工程`（该线口径 =
+  构建脚本/文档改动 **不 bump 版本号**）；`next` 则按该线 `AGENTS.md` §1「**每提交一版**，含只动
+  文档 / CI 的提交，**不设例外**」把 `2.0.0-SNAPSHOT.4` → **`2.0.0-SNAPSHOT.5`**（三平台同号）并
+  同步两份 CHANGELOG 段头为 `## 未发布（2.0.0-SNAPSHOT.5）`。
+- **三平台 `build.gradle` 的旧注释**（`// 需要单独放一份库 jar 做 A/B 时请从本仓 Release 手动取用`）
+  与新政策直接矛盾，三条线分别订正：`main` `09f5ec1`、`fabric-1.20.1` `fea5f06`；`next` 由
+  **二次验证**指出漏改后于 `8225e59` 补齐（该线按自身约定**必须再 bump** ⇒ `2.0.0-SNAPSHOT.5`
+  → **`2.0.0-SNAPSHOT.6`**，两份 CHANGELOG 段头随之改为 `（2.0.0-SNAPSHOT.6）`）。
+
+### 消费方接线（本提交）
+
+- `README.md` / `README_ZH.md` 的前置表第 51 行**本身已过期**：仍写「当前内嵌 **`1.0.5`**，
+  兼容区间 **`[1.0.5,2.0)`**」，而实测四线已是 **`1.0.6`**（三平台）/ **`1.0.6-alpha.1`**（fabric，
+  区间 `>=1.0.6-alpha.1 <2.0`）—— 这是续 36 改 `gradle.properties` 时漏掉的文档面。本次一并订正，
+  并补一句「库仓**本身不提供任何 jar 下载**（只保留源码）」。
+- 「Download」小节的前置行同步补「库仓只提供源码（不提供 jar 下载）」。
+- 代码 / `gradle.properties` / CI 的库 `ref` 钉值：**一律未动** —— 本次库侧只改 CI 与文档，
+  `lib_version`（`main` 1.0.5 / `fabric-1.20.1` 1.0.6 / `next` 2.0.0-SNAPSHOT.5）与**产出的 jar
+  字节码无关** ⇒ 消费方 pin（`starengine_lib_version`）与 CI `ref` 无需跟。
+
+### 验证读数（全部实测）
+
+- **库 CI run #16**（`main` push，head `16a0d653`）**success**；各步骤含
+  `Create Git tag (main push only, stable versions only)` 与
+  `Create/Update GitHub Release (source code only — no JAR assets)` 均 success。
+- **工件复查**：`GET /actions/artifacts` → `total_count = **0**`（清理后未被新 CI 重新生成
+  ⇒ 「不再上传」在 CI 层真实生效，不是只删了历史）。
+- **Release 复查（此处曾被我写得过简，二次验证据 `created_at` 提出质疑，已查清）**：现状 =
+  1 个 Release（`1.0.5`，`draft=false`）、**附件 0 个**、正文为新口径。⚠️ **两个时间字段必须分清**：
+  `created_at = 2026-09-28T02:04:29Z`（**恰好等于** annotated tag `1.0.5` 的 tagger 日期 —— GitHub 对
+  「基于**既有** annotated tag 创建的 Release」就是这么填的），而
+  **`published_at = 2026-10-01T03:58:01Z` = 本次 CI run #16 的发布时刻**。
+  **三条独立证据一致指向「今天这次是首次发布」**：① 仓库公开事件流（窗口 `09-12 → 10-01`）里
+  **唯一一条 `ReleaseEvent` 就是 `action=published @ 2026-10-01T03:58:01Z`**（作者
+  `github-actions[bot]`），**09-28 那天没有任何发布记录**；② 我在动手**之前**的首次查询
+  （`GET /releases` 与逐 tag 查）就已返回 **0 个 Release**；③ run #16 的 release 步骤日志里
+  **没有任何 `removing jar asset` 行**（该行只在「Release 已存在」的编辑分支打印）⇒ 当时它不存在，
+  走的是创建分支。
+  ⚠️ **同时必须如实登记的相反事实**：09-28 的 run #15 的确**曾经**创建过一个**带 3 个 jar** 的
+  `1.0.5` Release（run #15 日志可见 `collected jars: neoforge-1.21.1/build/libs/…-1.0.5.jar …` 与
+  `release notes: 826 bytes`）。**它在我开始操作前就已不存在**（见 ②）⇒ **不是被我删的**：我全程只
+  删了 12 个 artifacts，删前删后都没碰过任何 Release（最初 0 个、现在 1 个且 0 附件）。
+  **谁删的无法确定**：公开事件流只保留近 300 条 / 90 天采样，未捕获 `deleted` 事件。
+- 工作流 YAML 合法（steps **10 → 9**）；四个 `run` 脚本逐个 `bash -n` **全部通过**。
+- 三分支 `build.yml` / `README×2` **内容逐字节一致**（`main` 与 `fabric-1.20.1` 的 HEAD blob 归一
+  行尾后 `md5` 相同）。
+- `next`：`gradlew build publishToMavenLocal` 两次均 **EXIT=0**（`.5` 那次 = `24 actionable tasks:
+  18 executed`，含 `jar` ×3 / `reobfJar` / `processResources` ×3 / `generateModMetadata` ×3 /
+  `publishToMavenLocal` ×3；`.6` 那次首次执行同样触发 `jar` ×3，复跑为
+  `24 actionable tasks: 8 executed, 16 up-to-date`）。两次都 `compileJava` **UP-TO-DATE** —— 这两个
+  提交都未改源码。mavenLocal 三平台 `2.0.0-SNAPSHOT.5` 与 `2.0.0-SNAPSHOT.6` 均已生成，
+  开包核对 `mods.toml` 版本 = `2.0.0-SNAPSHOT.<5|6>+<平台>` ✓。
+- 客户端不需要任何同步改动：仍按 `starengine_lib_version` 硬 pin + JarJar 内嵌。
+
+### 本轮踩到的坑（登记，避免重犯）
+
+1. **换行转义字面量经本工具链的 heredoc 会丢掉一层反斜杠**（第二次踩，见续 34 的 BEL 同源问题）——
+   写补丁脚本时**一律用 `chr(10)` / `chr(13)` 拼**，不要写字面反斜杠转义；本次因此把
+   `lib_nojar_patch.py` 写坏过一次。
+2. **补丁脚本的「旧文本」锚点不能顺手一起改成新措辞**：为统一措辞我把 `dual JDK` 也替换进了
+   `sub()` 的 **old** 参数 ⇒ 锚点失配（`命中 0 次`）。判据 = 锚点必须**逐字等于目标文件现状**。
+3. **`git show <rev>:...` 取的 rev 若已含本次改动，就是把成品当输入验成品（假绿）** —— 第一版
+   一致性验证用 `HEAD`（已提交），全绿但**无意义**；改用 `HEAD~1` 才真验到。
+4. **行尾不能假设统一**：同一个库仓里 `build.yml` 在 `fabric-1.20.1` 工作树是 **CRLF**、
+   在 `next` 工作树是 **LF**（git 侧都是 LF blob，靠 `core.autocrlf=true` 还原）⇒ 补丁脚本已改为
+   **记住并保留每个文件自己的行尾**，避免「顺手」把行尾整体改一遍。
+5. 🚨 **在 CRLF 文件上做「先插入 CRLF 内容、再整体 LF 转 CRLF」的双重转换 ⇒ 写出「双 CR 紧跟 LF」**
+   （本轮真实事故，波及库仓 `fabric-1.20.1` 的三个 `build.gradle`）。机制：替换文本里已经是 CRLF 的
+   行尾，在外层「LF 转 CRLF」时那个 LF 又被换成 CRLF ⇒ 变成「CR 紧跟 CRLF」。
+   后果**不报错**但很隐蔽：git 把该文件判为 `w/-text`（不再做行尾归一）⇒ `git diff` 退化成
+   **整文件重写**（`112 / 110` 而不是 `3 / 1`），提交下去会把整个文件的行尾从 LF 翻成 CRLF。
+   **正确写法 = 全程在 LF 形态下替换，最后只做一次「LF 转目标行尾」**（库侧 `lib_nojar_patch.py`
+   的 `load` / `save` 就是这个形状；出问题的是我临时手写的那段）。
+   **判据（三条一起看，缺一会误判）**：
+   - `git ls-files --eol <path>`：正常是 `i/lf w/crlf`；出现 `w/-text` 或 `w/mixed` 即异常；
+   - `git diff --numstat` 与 `git diff --ignore-cr-at-eol --numstat` **必须一致**，不一致即行尾噪声；
+   - 自检「CR 计数 == CRLF 计数」（**写盘前后都要查**）。
+   ⚠️ `git checkout-index -f --prefix=<tmp>/ -- <path>` 是判断「该文件**应有的**工作树形态」的干净
+   办法（它跑全套 smudge 过滤），比凭猜测可靠。
+6. **「逐字一致」的验证口径**再确认：判三分支同源时要**先归一行尾**再比内容，否则 CRLF/LF 会给出
+   假不一致；反之判同文件同源时要**连行尾一起比**（续 34 的教训）。
+7. **写 Markdown 文本文件必须显式控制换行**：Python 的 `Path.write_text()` 在 Windows 上默认走文本
+   模式、会把 LF 翻成 CRLF —— 本次因此把本文件整体刷成 CRLF（2384 行），已还原。**一律用
+   `write_bytes()`**（或 `write_text(..., newline="")`）。
+### 独立子代理二次验证（按《二次验证规范》派独立 subagent，非主会话自述）
+
+12 项断言逐条复核，**核心事实全部被独立证据证实**：三分支推送同步（`main` `09f5ec1` / `next` `8225e59` /
+`fabric-1.20.1` `fea5f06`，三支 `0 0`）；CI 源码级已无 `upload-artifact`、`gh release create` 无文件参数、
+自愈循环在位；三支 `bash -n` **12/12** 通过、YAML 合法且 steps 均为 **9**（步骤名三支一致）；
+`build.yml` / `README×2` 三支**内容一致**（md5 同）；artifacts `total_count = 0`；唯一 Release 附件 **0**；
+`publishing {}` 内**无任何远端 repository**（只能 `publishToMavenLocal`）；消费方 README 第 51 行与四线
+`gradle.properties` **完全吻合**；tag 仍在且 GitHub 仍提供 Source code 归档（`tarball` 303 → codeload）。
+⇒ 判定「**有条件通过**」。
+
+复核者提出 **2 项条件 + 2 项备查**，逐条处置：
+
+1. ✅ **（真问题，已修）`next` 漏改三平台 `build.gradle` 的旧注释** —— `main` / `fabric-1.20.1` 各有一个
+   提交专修此三处，`next` 的 `f905882` 未触及任何 `build.gradle`。已按该线 `AGENTS.md` §1 于 `8225e59`
+   补齐并**再 bump 到 `2.0.0-SNAPSHOT.6`**。
+2. ⚠️ **（我原表述过简，已重写）Release `created_at` 质疑** —— 复核者据 run #15 的旧步骤均为 success
+   推断「`1.0.5` Release 自 09-28 起持续存在、由 run #15 创建」，因而判定「本次 CI 新建」失实。
+   我按上面「Release 复查」的三条独立证据**反查后确认原结论成立**（今天 `published_at` + 唯一
+   `published` 事件 + 动手前 0 个 Release + run #16 日志无 `removing jar asset`）；但**同时**补记了
+   「09-28 那个带 3 jar 的 Release 曾经存在、且在本次操作前已被他人移除」这一相反事实 —— 该事实
+   **复核者是对的**，我原先没写。
+3. 📌 备查：`next` 的 CHANGELOG 段头是**滚动窗口**写法（`.3`→`.4`→`.5`→`.6` 原地改名），与更早的
+   `1.0.0-SNAPSHOT.13/.14/.15` 各自独立小节不同 —— 属该线既定写法，无硬性矛盾，登记备查。
+4. 📌 复核者标注「未验证」的两项已由我补测：`.6` 构建的 `24 actionable tasks: 8 executed, 16 up-to-date`
+   （其首次执行触发的 `jar` ×3 见上）；「12 个 artifacts」为**历史值**，清理后 `total_count = 0` 使该数字
+   无法再被独立复读 —— 已在正文注明其为历史读数。
+
+⚠️ 提醒：**这份记录本身也修正过一次**（Release 叙事 + `next` 补修）—— 说明「先写记录再复核」的顺序
+下，记录必然要先于复核完成，故复核提出的**任何**差异都必须回写记录，不能只在对话里说明。
+### 遗留 / 待裁决（如实登记）
+
+- 🚨 **既存缺陷（非本次引入）**：`main` 与 `next` 的
+  `common/.../event/EventTargetCollector` **仍是旧版（158 行）**，含两处「反射目标根本不存在」的
+  缺陷；只有 `fabric-1.20.1` 分支是修好的 **630 行**版（即续 35 那批修复**没往另两线移植**）。
+  判据：三平台 `2.0.0-SNAPSHOT.5` 产物内 `EventTargetCollector.class`（含嵌套类）中
+  `FTBTeamsAPI$API` / `describeBackends` / `getTeamForPlayerID` / `xaero.pac` **命中数全为 0**。
+  ⇒ 消费方**当前不受影响**（它 pin 的正是 `fabric-1.20.1` 线），但 `main` 作为发布线若再被消费
+  就会带着这个缺陷。**未修，留待裁决。**
+- ❓ **未知项**：09-28 run #15 创建的那个**带 3 个 jar** 的 `1.0.5` Release 是谁、何时移除的**无法确定**
+  （公开事件流未捕获 `deleted`；我只删过 artifacts，未碰任何 Release）。若您有印象，请确认一句，
+  以便把这条记录补成确定事实。
+- ⚠️ 库仓三分支的 `README` 与 `build.yml` 从此保持一致，但 **`next` 的 `AGENTS.md` §0 仍写「三个
+  平台子项目」**（`next` 上确实只有三平台，fabric 子项目不在该线）⇒ 属正常，不是缺陷。
