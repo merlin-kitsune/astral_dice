@@ -610,7 +610,7 @@ public class ModAttachments {
     public static final AttachedDataKey<Integer> MEDKIT_EQUIP_GRANT_AMOUNTS =
             register(AttachedDataKey.builder("medkit_equip_grant_amounts", Codec.INT, () -> 0).build());
 
-    // 诅咒之剑筹码:累计击杀不少于 20 血的敌对目标获得的攻击力加成(移除筹码/死亡清除)
+    // 诅咒之剑筹码:累计击杀不少于 20 血的敌对目标获得的攻击力加成(只有真正卸下筹码才清除;死亡不清)
     public static final AttachedDataKey<Integer> CURSED_SWORD_BONUS =
             register(AttachedDataKey.builder("cursed_sword_bonus", Codec.INT, () -> 0).sync().build());
 

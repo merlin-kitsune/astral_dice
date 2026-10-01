@@ -7,7 +7,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * 死亡保留的三个立牌累计值:调查员 {@code rin_pages}、忍者 {@code komachi_damage_bonus}
+ * 死亡保留的立牌累计值与诅咒之剑筹码加成:调查员 {@code rin_pages}、忍者 {@code komachi_damage_bonus}
  * 与蛟龙 {@code mamushi_awakening}(第三槽位为 2026-09-27 规格 §1 附件表新增)。
  *
  * <p><b>为什么需要暂存:</b>死亡掉落在默认 gamerule({@code keepInventory=false})下会把立牌从饰品槽丢出,
@@ -38,6 +38,9 @@ public final class DeathPreservedBonuses {
     /** 第 4 槽位:怪力侦探立牌(sherry)「推理时间」层数(2026-09-21) */
     private static final int SHERRY_REASONING_LAYERS = 3;
 
+    /** 第 5 槽位:诅咒之剑筹码({@code cursed_sword_bonus})累计攻击力加成(2026-10-01) */
+    private static final int CURSED_SWORD_BONUS = 4;
+
     private static final Map<UUID, int[]> PRESERVED = new ConcurrentHashMap<>();
 
     private DeathPreservedBonuses() {
@@ -50,7 +53,8 @@ public final class DeathPreservedBonuses {
                 ModAttachments.getRinPages(player),
                 ModAttachments.getKomachiDamageBonus(player),
                 ModAttachments.getMamushiAwakening(player),
-                ModAttachments.getSherryReasoningLayers(player)
+                ModAttachments.getSherryReasoningLayers(player),
+                ModAttachments.getCursedSwordBonus(player)
         });
     }
 
@@ -73,6 +77,10 @@ public final class DeathPreservedBonuses {
         // 怪力侦探「推理时间」同理:只由赐福结束 / 卸下立牌减少 ⇒ 取较大值幂等
         if (preserved[SHERRY_REASONING_LAYERS] > ModAttachments.getSherryReasoningLayers(player)) {
             ModAttachments.setSherryReasoningLayers(player, preserved[SHERRY_REASONING_LAYERS]);
+        }
+        // 诅咒之剑筹码:累计攻击力加成死亡不清(只有真正卸下筹码才归零)⇒ 取较大值幂等
+        if (preserved[CURSED_SWORD_BONUS] > ModAttachments.getCursedSwordBonus(player)) {
+            ModAttachments.setCursedSwordBonus(player, preserved[CURSED_SWORD_BONUS]);
         }
     }
 }
