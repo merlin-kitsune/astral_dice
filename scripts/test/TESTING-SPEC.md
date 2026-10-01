@@ -2178,3 +2178,99 @@ custom_frames.json 恢复 5 档全写；包内原版稀有/史诗与本模组稀
 - **未做 / 待用户裁决**：① 清理 `1.3.5` Release 上 3 个旧附件（需 GitHub 凭据，本机未登录）；
   ② 是否把 tag `1.3.5` 前移到 `13717aba`；③ CurseForge 侧旧的 `1.3.5` 三件（9020649/51/53）是否下架；
   ④ fabric 线仍缺 1.3.3 批次；⑤ 本地 tag `fabric-1.3.4-alpha.1` 未清理。
+
+## 附录 A 续 38. CurseForge `relations`（必需/可选依赖关系）接入（2026-10-01）
+
+- **需求**（用户原话，两条）：① 「forge版本缺少mixin booster硬前置，需要补上」；
+  ② 「fabric测也缺少必要前置：Accessories和Puzzles Lib，一并补全」＋「fabric的饰品栏修改为可选」。
+- **释义裁决（问答确认，代理不自定）**：用户选定「**CurseForge 必需依赖关系**」这一读法 ——
+  **不动 FML 声明**（`mods.toml` 的 `mixinbooster` 保持 `mandatory=false` + 运行期门控）。
+  ⚠️ 这条很关键：改回 `mandatory=true` 会原样搬回 2026-09-29 已定位的玩家事故
+  （Sinytra Connector 在场时 Booster 自我禁用 ⇒ `mixinbooster` mod 条目不注册 ⇒ FML
+  `Missing or unsupported mandatory dependencies` 硬拒，玩家装了 Booster 也进不去，
+  BMC4/Better MC 实测报障）。两条 AGENTS 规则（§592「硬前置不得删除」与规则 4 ③ 的互斥例外）
+  互相冲突，故**必须由用户裁决**，本轮按用户的答案执行。
+
+### relations 的 schema（以**服务端实测**为准，官方文档有一处是错的）
+
+```
+relations = { "projects": [ { "slug": "<CF slug>", "projectID": <整数>, "type": "<camelCase>" } ] }
+```
+
+- `type` 只认 5 个 **camelCase** 字符串：`requiredDependency` / `optionalDependency` /
+  `embeddedLibrary` / `incompatible` / `tool`（**没有** `include`）。给整数（2/3）或 PascalCase
+  均被拒：`Value ... is not defined in enum. Path 'relations.projects[0].type'`。
+- **`slug` 必填**：只给 `projectID` 会 400 `Required properties are missing from object: slug`。
+- 🚨 **`projectID` 必须是 Integer**。官方文档示例写成字符串（`projectID: "74924"`）是**错的**，
+  照抄会 400 `Invalid type. Expected Integer but got String. Path 'relations.projects[0].projectID'`。
+  （对照：`fileID` 同样必须是 Integer —— 文档示例的写法不能全信，**以服务端校验为准**。）
+
+### projectId 取证（两条独立来源交叉）
+
+`api.cfwidget.com/minecraft/mc-mods/<slug>`（CF 数据镜像）+ 其返回的 `urls.curseforge` 反查 slug 一致：
+
+| slug | projectID | 用途 |
+|---|---|---|
+| `curios` | 309927 | 三线 `mandatory=true` |
+| `mixinbooster` | 980731 | forge 的 Mixin 运行时 |
+| `fabric-api` | 306612 | fabric `depends` |
+| `puzzles-lib` | 495476 | fabric `depends` |
+| `accessories` | 938917 | fabric 饰品栏（**可选**） |
+| `trinkets` | 341284 | fabric 饰品栏的另一条路（未登记） |
+| `patchouli` | 306770 | 手册（未登记） |
+
+⚠️ `www.curseforge.com/api/v1/mods/search`（含按 slug 直查）被 CF 负载均衡 **403 `_cf-lb_`** 拦，
+`/api/v1/mods/<id>` 也取不到 ⇒ 找 projectId 走 cfwidget。
+
+### 🚨 关键发现：`update-file` 端点**对 relations 不可用**（CF 服务端缺陷）
+
+给**已发布**文件补关系本应走官方《Project File Management API》`POST /projects/{id}/update-file`
+（metadata 带 `fileID`，文档称同样支持 `relations`）。实测（受控探针，同一 fileID 逐个变量）：
+
+| 探针 payload | 结果 |
+|---|---|
+| 空 metadata（只有 `fileID`） | **400 `1014 You must specify something to update`** ⇒ 路由与校验**正常** |
+| 只改 `displayName`（幂等值） | **200 `{"id":…}`** ⇒ handler 可用 |
+| 只改 `releaseType` / 只改 `gameVersions` | **500** unhandled exception |
+| 带 `relations`（各种形状，含只给 slug） | **500** unhandled exception |
+| `fileID` 写成字符串 | 400 `Expected Integer but got String. Path 'fileID'` |
+| 文件域路径 `/files/{id}/update-file` 等 | **403 Cloudflare**（`Just a moment...`）⇒ 非 API 路由 |
+
+⇒ **`relations` 只能在上传时设置**；给已发布文件补关系**只能重传**（`upload-file` 实测接受 relations，
+返回 200 + 新 fileId）。旧件 API **删不掉**（`DELETE /api/projects/{id}/files/{fileId}` 302 → `/error`）
+⇒ 只能在 CF 后台 Files 页人工删。
+
+### 落地
+
+- `tools/curseforge_upload.py`：新增 `--line` / `--update-file <fileID>` / `--no-relations`；
+  上传时按 **loader + mc** 匹配 `tools/curseforge.json` 的线并自动带上 relations（`--dry-run` 会打印）。
+  `--update-file` 保留为「CF 修好后即可直接补关系」的修复路径 + 探针，并在干跑时打印上述已知 500 警告。
+  ⚠️ 本次实现踩过一次「补丁脚本里 `\n` 被写成真换行 ⇒ 语法错」—— 与既有教训同源，改成**单行隐式拼接**后收口。
+- `tools/curseforge.json`：各线登记 relations（三线 Curios；forge 另加 Mixin Booster；
+  fabric = Fabric API + Puzzles Lib 为 required、**Accessories 为 optional**）。
+  ⚠️ fabric 的饰品栏在 `fabric.mod.json` 里是 `recommends`（Trinkets **或** Accessories 二选一）
+  ⇒ 关系上标 `optionalDependency` 才与元数据一致（标 required 会强制启动器给所有玩家装 Accessories）。
+
+### 最终发布件与需人工清理的重复件
+
+| 线 | 保留件（带 relations） | 旧件（**需在 CF 后台删除**） |
+|---|---|---|
+| neoforge-1.21.1 | **9024516** | 9024344 |
+| forge-1.20.1 | **9024498** | 9024345 |
+| neoforge-26.1.2 | **9024517** | 9024346 |
+| fabric-1.20.1 | **9024518**（accessories=optional） | 9024347、**9024510**（该次误标 required，故重发） |
+
+（9024344/45/46/47 是上一批**不带 relations** 的四个；9024510 是 fabric 的中间件。
+CF 文件按 id 独立、同名不去重不覆盖 ⇒ 后台不删就会看到同一版本多份。）
+
+### 验证与**边界**（如实登记）
+
+- 4 次 `upload-file` 均 **HTTP 200 + `{"id": …}`**（脚本自述的成功判据）；上传前 `--dry-run` 逐条核对
+  relations 文本与 gameVersions 四件套。
+- 🚨 **relations 目前无法从外部读回认证**：CF 公开 JSON（`/api/v1/mods/<id>/files/<fileId>`）的对象里
+  **没有** relations/dependencies 字段，cfwidget 也不暴露 ⇒ 第三方无从核对。
+  现有证据只有两条：① 上传端点 **接受**该字段（200）；② 服务端 schema **确实在解析它**
+  （缺 `slug` / `projectID` 类型错 / `type` 非枚举都会报 `1002`）。
+  ⇒ 最终以 CF 后台 Files 页的 Relations 区为准（待用户核对）。
+- 另：`/api/v1/mods/<id>/files/<fileId>` 对新上传文件存在**聚合滞后**（上传后数分钟内 `data:null`，
+  实测本轮 5 次轮询内未见）—— 与续 37 登记的同一条，判「是否上传成功」仍以上传响应为准。

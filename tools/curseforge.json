@@ -8,11 +8,16 @@
   "apiBase": "https://minecraft.curseforge.com/api",
   "_lineNote": "本数组是「产物 → (加载器, MC 版本, 渠道)」的**映射说明**，供人工/未来接线使用；脚本 tools/curseforge_upload.py 目前只读 projectId 与 slug，加载器/MC/版本一律**从 jar 文件名解析**（astral_dice-<版本>+<加载器>_<MC版本>.jar）。2026-10-01 前为三线，现为四线（fabric 并入 multi-main）。",
   "_channelNote": "releaseType **由版本号后缀自动派生**：`-alpha` ⇒ alpha 渠道、`-beta`/`-rc`/`-pre` ⇒ beta 渠道、无后缀 ⇒ release 渠道。四线现状：1.21.1 / 1.20.1 无后缀 ⇒ release；26.1.2 = `-beta.x` ⇒ beta；fabric = `-alpha.x` ⇒ alpha。",
+  "_relationsNote": "relations = 上传时声明的**必需依赖关系**（schema 见 CurseForge 官方 Upload API：{\"projects\":[{\"slug\",\"projectID\"(整数),\"type\"}]}；type 仅 5 值，无 include）。脚本 tools/curseforge_upload.py 按 loader+mc 匹配本数组的线并自动带上；也可用 --update-file <fileID> 给**已发布**文件补关系（官方 Project File Management API，不重传、不产生同名重复）。⚠️ 这里只登记**真·硬前置**（对应各线 mods.toml/fabric.mod.json 的 mandatory/ depends）：三线 = Curios；forge 另加 Mixin Booster（⚠️ 实为「Mixin Booster 或 Sinytra Connector 二选一」，CF 关系表达不了 OR ⇒ 按用户 2026-10-01 裁决写 requiredDependency，启动器会装 Booster；装了 Connector 的整合包由模组自身的运行期门控 MixinRuntimeGate 放行）；fabric = Fabric API + Puzzles Lib + Accessories（饰品栏在 fabric.mod.json 里是 Trinkets **或** Accessories 二选一、同为 OR ⇒ 按用户裁决登记 Accessories；Trinkets/Patchouli 属可选，未登记）。",
   "lines": [
-    { "key": "neoforge_1.21.1", "loader": "neoforge", "mc": "1.21.1", "channel": "release", "jar": "neoforge-1.21.1/build/libs/astral_dice-*.jar" },
-    { "key": "forge_1.20.1", "loader": "forge", "mc": "1.20.1", "channel": "release", "jar": "forge-1.20.1/build/libs/astral_dice-*.jar" },
-    { "key": "neoforge_26.1.2", "loader": "neoforge", "mc": "26.1.2", "channel": "beta", "jar": "neoforge-26.1.2/build/libs/astral_dice-*.jar" },
-    { "key": "fabric_1.20.1", "loader": "fabric", "mc": "1.20.1", "channel": "alpha", "jar": "fabric-1.20.1/build/libs/astral_dice-*.jar" }
+    { "key": "neoforge_1.21.1", "loader": "neoforge", "mc": "1.21.1", "channel": "release", "jar": "neoforge-1.21.1/build/libs/astral_dice-*.jar",
+      "relations": [ { "slug": "curios", "projectID": 309927, "type": "requiredDependency" } ] },
+    { "key": "forge_1.20.1", "loader": "forge", "mc": "1.20.1", "channel": "release", "jar": "forge-1.20.1/build/libs/astral_dice-*.jar",
+      "relations": [ { "slug": "curios", "projectID": 309927, "type": "requiredDependency" }, { "slug": "mixinbooster", "projectID": 980731, "type": "requiredDependency" } ] },
+    { "key": "neoforge_26.1.2", "loader": "neoforge", "mc": "26.1.2", "channel": "beta", "jar": "neoforge-26.1.2/build/libs/astral_dice-*.jar",
+      "relations": [ { "slug": "curios", "projectID": 309927, "type": "requiredDependency" } ] },
+    { "key": "fabric_1.20.1", "loader": "fabric", "mc": "1.20.1", "channel": "alpha", "jar": "fabric-1.20.1/build/libs/astral_dice-*.jar",
+      "relations": [ { "slug": "fabric-api", "projectID": 306612, "type": "requiredDependency" }, { "slug": "puzzles-lib", "projectID": 495476, "type": "requiredDependency" }, { "slug": "accessories", "projectID": 938917, "type": "optionalDependency" } ] }
   ],
   "_fabricNote": "fabric 线（2026-09-29 接入，2026-10-01 并入 multi-main）是**独立的移植线**：版本号带 `-alpha.x` ⇒ 上传时自动走 **alpha 渠道**，与 26.1.2 的 `-beta.x` ⇒ beta 渠道同构。⚠️ 上传 fabric jar **不要**沿用 release/<裸版本>/PLAYER_CHANGELOG*.md（那是三条生产线的玩家日志），**必须**用 --changelog 显式指定本线自备文件（现行 = release/fabric-1.3.5-alpha.1/PLAYER_CHANGELOG.md，目录名 = 该线的 GitHub 预发布 tag 名）。该自备文件刻意不复用生产线那份：后者只描述三条生产线的改动面，而 fabric 线内容面不同（例：1.3.3 那批尚未移植）⇒ 沿用会给出失真说明。"
 }
