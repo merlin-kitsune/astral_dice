@@ -1,0 +1,62 @@
+{
+  "_comment": "Modrinth 项目绑定（2026-10-01 用户指定）。凭据**不在此文件** —— 见 .modrinth/token（本地、已 gitignore）或环境变量 MODRINTH_TOKEN（CI secret）。",
+  "site": "https://api.modrinth.com/v2",
+  "_projectNote": "主项目 = 《星之骰戏》本体，四线产物全部传到这里（与 CurseForge 同为「一个项目多加载器」）。库项目见下方 lib 段。",
+  "projectId": "5xDtrJ8X",
+  "_libNote": "前置库 StarEngine Lib 的**独立项目**（2026-10-01 用户指定 id = 2dIXA5wO，slug `starengine-lib`）。库产物名形如 starengine_lib-<加载器>-<MC版本>-<版本>.jar，由 tools/modrinth_upload.py 按文件名前缀自动路由到本项目；它的更新日志落在下方 changelogDir。⚠️ 前置库在主项目版本里的依赖登记走 --with-lib-dep（**默认关**，因为该引用要求库项目已公开；库项目状态还是 processing）。⚠️ 库被四条线 JarJar 内嵌，因此登记类型是 **embedded** 而不是 required（Modrinth 启动器不会因 embedded 去装它）。⚠️ 但库 jar **确实**发布在本项目上 ⇒ 页面/README 必须显式提醒玩家「不要单独安装」，否则会踩 README 里那条「独立库 jar 按 modId 覆盖内嵌件」的坑。",
+  "lib": {
+    "projectId": "2dIXA5wO",
+    "changelogDir": "release/starengine-lib/{base}"
+  },
+  "_lineNote": "本数组是「产物 → (加载器, MC 版本, 依赖关系)」的**映射说明**。加载器 / MC 版本 / 版本号一律**从 jar 文件名解析**（主模组 astral_dice-<版本>+<加载器>_<MC版本>.jar；库 starengine_lib-<加载器>-<MC版本>-<版本>.jar），渠道由版本号后缀自动派生。",
+  "_channelNote": "version_type **由版本号后缀自动派生**（与 CurseForge 口径一致）：`-alpha` ⇒ alpha、`-beta`/`-rc`/`-pre` ⇒ beta、无后缀（含 `-hotfix`）⇒ release。四线现状：1.21.1 / 1.20.1（`1.3.5-hotfix`）⇒ release；26.1.2（`1.3.5-beta.2`）⇒ beta；fabric（`1.3.5-alpha.1`）⇒ alpha。",
+  "_dependencyNote": "dependencies 的 schema 取自 Modrinth 官方《Create a version》文档：每项 = { slug?, project_id, dependency_type }，dependency_type 只能取 required / optional / incompatible / embedded。这里**projectID 存 Modrinth 的 base62 id**（与 CurseForge 的数字 id 是两套体系，勿混用）；slug 仅作可读性冗余，上传时优先用 id。",
+  "_fabricNote": "fabric 线的饰品栏是「Trinkets 或 Accessories」双源聚合。2026-10-01 用户裁决：**Modrinth 上 Trinkets = required、Accessories = optional**（CurseForge 上没有 Trinkets，故那边只登记 Accessories 为 optional）；其余前置两边一致（Fabric API + Puzzles Lib = required）。⚠️ 这是**商店页面上的依赖声明**，不是 fabric.mod.json 的改动 —— 模组自身的 `recommends` 段保持 Trinkets/Accessories/Patchouli 皆可选，因为硬写 depends 会让「只装 Accessories」的玩家直接起不来。",
+  "lines": [
+    {
+      "key": "neoforge_1.21.1",
+      "loader": "neoforge",
+      "mc": "1.21.1",
+      "channel": "release",
+      "changelogDir": "release/{base}",
+      "dependencies": [
+        { "slug": "curios", "projectID": "vvuO3ImH", "type": "required" }
+      ]
+    },
+    {
+      "key": "forge_1.20.1",
+      "loader": "forge",
+      "mc": "1.20.1",
+      "channel": "release",
+      "changelogDir": "release/{base}",
+      "dependencies": [
+        { "slug": "curios", "projectID": "vvuO3ImH", "type": "required" },
+        { "slug": "mixinbooster", "projectID": "bxn6Iwdo", "type": "required" }
+      ]
+    },
+    {
+      "key": "neoforge_26.1.2",
+      "loader": "neoforge",
+      "mc": "26.1.2",
+      "channel": "beta",
+      "changelogDir": "release/{base}",
+      "dependencies": [
+        { "slug": "curios", "projectID": "vvuO3ImH", "type": "required" }
+      ]
+    },
+    {
+      "key": "fabric_1.20.1",
+      "loader": "fabric",
+      "mc": "1.20.1",
+      "channel": "alpha",
+      "changelogDir": "release/fabric-{version}",
+      "dependencies": [
+        { "slug": "fabric-api", "projectID": "P7dR8mSH", "type": "required" },
+        { "slug": "puzzles-lib", "projectID": "QAGBst4M", "type": "required" },
+        { "slug": "trinkets", "projectID": "5aaWibi9", "type": "required" },
+        { "slug": "accessories", "projectID": "jtmvUHXj", "type": "optional" }
+      ]
+    }
+  ],
+  "_changelogNote": "changelogDir 是**模板**：`{base}` = 版本号剥掉 `-后缀`（26.1.2 的 `1.3.5-beta.2` ⇒ `1.3.5`，与三条生产线共用 release/1.3.5/ 那份玩家日志）、`{version}` = 完整版本号（fabric 的 `1.3.5-alpha.1` ⇒ release/fabric-1.3.5-alpha.1/）。⚠️ fabric 线**不得**沿用生产线那份日志：它的改动面不同（例：1.3.3 那批尚未移植）⇒ 沿用会给出失真说明。"
+}

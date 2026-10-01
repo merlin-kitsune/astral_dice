@@ -44,6 +44,9 @@ temp/
 
 ### 脚本目录:脚本本身入库,**运行时产物不入库** (2026-09-12 起;原先整目录排除 scripts/) ###
 scripts/**/__pycache__/
+### tools/ 同理(2026-10-01):`python tools/<x>.py` 会在 tools/ 下留 __pycache__,
+### 原先只有 scripts/ 被覆盖 ⇒ tools/__pycache__ 每次都冒成未跟踪文件。
+tools/**/__pycache__/
 scripts/temp/
 scripts/devtools/tmp/
 scripts/test/reports/*
@@ -80,6 +83,11 @@ base-mod-compile-libs/
 ### token 放 .curseforge/token(本地)或环境变量 CURSEFORGE_TOKEN(CI secret);
 ### 用法见 tools/curseforge_upload.py --help
 .curseforge/
+
+### Modrinth 上传凭据与标签表缓存(2026-10-01):**不入库** ###
+### token 放 .modrinth/token(本地)或环境变量 MODRINTH_TOKEN(CI secret);
+### 用法见 tools/modrinth_upload.py --help
+.modrinth/
 
 ### 移植参考源(fabric-1.20.1 第四线,2026-09-29 接入):Fabric/Forge/Trinkets/CCA 等参考仓克隆件,不入库
 ref/

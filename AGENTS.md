@@ -1820,7 +1820,26 @@ When extending this workspace:
 - ⚠️ 站点域**必须**是 `minecraft.curseforge.com`（换 `www.` 会拿到**另一个游戏**的版本表）；**直连必被 Cloudflare 403**（加浏览器 UA 也无效）⇒ 本机一律加 `--proxy http://127.0.0.1:7897`。
 - 版本 id **动态解析**（`/api/game/version-types` + `/api/game/versions`，缓存 7 天），提交的 `gameVersions` = `Client` + `Server` + MC 版本 + 加载器。
 - 项目 `projectId = 1662159`（slug `astral-dice`）；完整实测口径与踩坑见 `scripts/test/TESTING-SPEC.md` **附录 A 续 33**。
-- ⚠️ **自动推送规则（触发时机 / 是否并入 CI）待用户设定** —— 在此之前**不要**把上传接进 `build` 或 CI 流程。
+- ⚠️ **自动推送规则（触发时机 / 是否并入 CI）待用户设定** —— 在此之前**不要**把 CurseForge 上传接进 `build` 或 CI 流程。
+
+### Modrinth 上传（2026-10-01 起；**发布动作，与本地部署无关**）
+
+- 工具 = `tools/modrinth_upload.py`（**纯标准库**）。`--dry-run` **不需要 token**（只读公开标签表与依赖项目名），先看计划再去掉它。
+- 绑定 = `tools/modrinth.json`（**入库**，只放非敏感信息）。主项目 id = `5xDtrJ8X`；前置库 StarEngine Lib 是**独立项目** id = `2dIXA5wO`。
+- 凭据解析顺序：`--token` > 环境变量 `MODRINTH_TOKEN`（CI 用 GitHub secret）> `<仓库根>/.modrinth/token`（**已 gitignore，不入库**）。⚠️ token 形如 `mrp_` + 60 字符，是账号级凭据，任何情况下不得写进入库文件。
+- ⚠️ 三个**极易写错**的接口细节（2026-10-01 实测）：
+  1. 认证头 = `Authorization: <裸 token>` —— **不要加 `Bearer`**（那是 OAuth 的写法；加前缀会得到 `Invalid Authentication Credentials`）。
+  2. `User-Agent` 是**硬要求**且必须能唯一识别调用方（官方原文：只写 `okhttp/4.9.3` 这类会被拦）。脚本内置 `merlin-kitsune/astral-dice-publisher/1.0.0 (…)`。
+  3. 建版本走 `POST /v2/version` 的 multipart：`data`（JSON 字符串）+ **至少一个文件字段**，且该字段名必须出现在 `data.file_parts` 里。
+- ⚠️ **Modrinth 与 CurseForge 是两套 id 体系**：CurseForge 用数字 projectID（curios = 309927），Modrinth 用 base62 project id（curios = `vvuO3ImH`）。绑定文件里存的是后者，**不要互相搬运**。
+- 路由：**按产物文件名前缀**自动分流 —— `astral_dice-*` ⇒ 主项目、`starengine_lib-*` ⇒ 库项目。库产物**必须**另传它自己的项目，不得混进主项目。
+- 版本号 = `<版本>+<加载器>_<MC版本>`：一个项目下四条线并存，裸版本号在 1.21.1 与 1.20.1 上**同名**（都是 `1.3.5-hotfix`）⇒ 带上加载器/MC 才可区分，而这正是 jar 文件名与 GitHub 产物本来的写法。
+- 渠道 `version_type` 与 CurseForge **同口径**（由版本号后缀派生）：`-alpha` ⇒ alpha、`-beta`/`-rc`/`-pre` ⇒ beta、其余（含 `-hotfix`）⇒ release。
+- ⚠️ **Modrinth 没有覆盖已发布文件的能力**（不存在 `--clobber` 的对等物）⇒ 幂等只能靠「先查后跳」：脚本上传前 `GET /v2/project/{id}/version`，`version_number` 已存在即 `SKIP`（`--force` 可强制重传）。⚠️ 项目若处于 draft/unlisted，**匿名**查版本会被 404 挡掉 ⇒ 此时只告警、不拦（宁可漏判也不要误拦）。
+- 依赖登记（`tools/modrinth.json` 的 `dependencies`；type 仅 `required` / `optional` / `incompatible` / `embedded`）：三线 = Curios；forge 另加 Mixin Booster；**fabric = Fabric API + Puzzles Lib + Trinkets（required）+ Accessories（optional）**。⚠️ fabric 那条 `Trinkets required` 是**商店页面口径**（2026-10-01 用户裁决），**不是** `fabric.mod.json` 的改动 —— 模组自身仍把 Trinkets / Accessories / Patchouli 都写在 `recommends`，因为硬改成 `depends` 会让「只装 Accessories」的玩家直接起不来。⚠️ **CurseForge 那边没有 Trinkets**，故它只登记 Accessories（optional）。
+- 前置库在主项目的版本里**可以**登记为 **`embedded`**（JarJar 内嵌）：Modrinth 启动器**不会**因为 embedded 去装它，页面上又能说明「本模组已内嵌该库」。⚠️ **当前并未登记**（2026-10-01 实测：刚发的 4 个主项目版本 `dependencies` 里都没有 `2dIXA5wO`）—— 该引用要求库项目**已公开**，而库项目状态仍是 `processing`。待过审后两种补法任选：新版本走 `--with-lib-dep`；**已发布**的版本走 `PATCH /v2/version/{id}`（Modrinth 支持就地改 `dependencies`，无需重传，这点与 CurseForge 的 relations 只能重传**正好相反**）。
+- CI：`.github/workflows/build.yml` 末步 `Publish to Modrinth`，触发口径与上方两个 Release 步骤一致（发布线分支 push 或 tag push）；**缺 `MODRINTH_TOKEN` secret 只告警不失败**。库产物取自 `.ci/starengine_lib/*/build/libs`（同 job 的 `Publish to mavenLocal` 已经构建过），并**显式过滤** `-sources.jar` / `-javadoc.jar` —— 它们过不了文件名解析，会把整批判非法而中止。
+- ⚠️ **触发时机的边界**：Modrinth 已按用户 2026-10-01 要求接入 CI（见上）；**CurseForge 仍待用户设定** —— 在此之前不要把它接进 `build` 或 CI。
 
 ## 自动化测试流程（Automated Testing）— 必须遵守（子配置）
 

@@ -324,3 +324,73 @@ jobs:
               --notes-file "$NOTES_FILE" \
               --prerelease
           fi
+
+      - name: Publish to Modrinth (main project + prerequisite library)
+        # 发布动作，与本地部署无关。2026-10-01 用户要求「后续同步上传 Modrinth」⇒ 与上方两个 Release
+        # 步骤**同一触发口径**（发布线分支 push 或 tag push），而不是挂在普通 PR / 开发分支上。
+        #
+        # 设计要点：
+        #   ① **幂等由脚本自己保证**（tools/modrinth_upload.py 先查 `GET /project/{id}/version`，
+        #      version_number 已存在即 SKIP）⇒ 同一版本重复触发不会产生重复文件，这一点与 GitHub
+        #      Release 的 `--clobber` 语义不同（Modrinth 无法覆盖已发布文件，只能新建版本）。
+        #   ② **缺 secret 只告警不失败**：MODRINTH_TOKEN 未配置时跳过，构建与 GitHub Release 照常完成。
+        #   ③ 前置库 starengine_lib 的**四平台产物单独进它自己的项目**（按文件名前缀自动路由，
+        #      见 tools/modrinth.json 的 lib 段）—— 库在本 job 里已经构建过（Publish to mavenLocal），
+        #      产物就在 .ci/starengine_lib/*/build/libs 下，无需二次构建。
+        #   ④ **不用 glob 直接展开**：本地 build/libs 常留有历史 jar，CI 虽是全新检出，但库那边
+        #      `publishToMavenLocal` 可能额外产出 `-sources.jar` / `-javadoc.jar`，这些文件过不了
+        #      tools/modrinth_upload.py 的文件名解析 ⇒ 显式过滤掉，避免整批发布被判非法而中止。
+        #   ⑤ ⚠️ **触发口径与上方 Release 步骤「近似」而非「相同」**：Release 步骤额外要求
+        #      `steps.tag.outputs.tag != ''`（base 不是裸 x.y.z 时不发）。本步骤**刻意不设该守卫** ——
+        #      预发布线（26.1.2 的 `-beta.x` / fabric 的 `-alpha.x`）同样要同步到 Modrinth，
+        #      而它们正是「base 不带裸版本号」的那批。重复触发不会产生重复文件（靠脚本幂等）。
+        if: |
+          (github.event_name == 'push' && github.ref == 'refs/heads/multi-main') ||
+          startsWith(github.ref, 'refs/tags/')
+        env:
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${MODRINTH_TOKEN:-}" ]; then
+            echo "::warning::MODRINTH_TOKEN secret is not configured - skipping Modrinth publishing (build and GitHub Release are unaffected)"
+            exit 0
+          fi
+
+          JARS=()
+          for j in \
+            neoforge-1.21.1/build/libs/astral_dice-*.jar \
+            forge-1.20.1/build/libs/astral_dice-*.jar \
+            neoforge-26.1.2/build/libs/astral_dice-*.jar \
+            fabric-1.20.1/build/libs/astral_dice-*.jar ; do
+            if [ ! -e "$j" ]; then
+              # ⚠️ fabric 允许缺席：本步骤的 `if` 含 `refs/tags/*`，对**旧 tag**（其树里还没有
+              #    fabric 子项目）补发时不该把 job 弄红。三条生产线缺席则仍是硬错误。
+              case "$j" in fabric-1.20.1/*)
+                echo "::warning::fabric jar not present in this checkout, skipping: $j"
+                continue ;;
+              esac
+              echo "::error::expected jar not found: $j"
+              exit 1
+            fi
+            case "$j" in *-sources.jar|*-javadoc.jar) continue ;; esac
+            JARS+=("$j")
+          done
+
+          LIBS=()
+          for j in .ci/starengine_lib/*/build/libs/starengine_lib-*.jar ; do
+            [ -e "$j" ] || continue
+            case "$j" in *-sources.jar|*-javadoc.jar) continue ;; esac
+            LIBS+=("$j")
+          done
+          if [ "${#LIBS[@]}" -eq 0 ]; then
+            echo "::warning::no StarEngine Lib jar found under .ci/starengine_lib/*/build/libs - the library project on Modrinth will not be updated this run"
+          fi
+
+          ARGS=()
+          for j in "${JARS[@]}" "${LIBS[@]}"; do ARGS+=(--jar "$j"); done
+          # ⚠️ 计数必须用 JARS/LIBS 的长度：`${#ARGS[@]}` 里每个文件还带一个 `--jar` 标志位
+          #    ⇒ 会数成两倍（实测 8 个文件报成 16）。
+          echo "publishing ${#JARS[@]} mod jar(s) + ${#LIBS[@]} library jar(s):"
+          for j in "${JARS[@]}" "${LIBS[@]}"; do echo "  - $j"; done
+
+          python3 tools/modrinth_upload.py "${ARGS[@]}"

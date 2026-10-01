@@ -51,7 +51,7 @@ Astral Dice 是一个以「骰子」为核心的生存扩展模组。戴上骰�
 | 前置模组（**已内嵌，无需单独安装**） | **StarEngine Lib**（`starengine_lib`）**自 1.3.1 起内嵌于本模组**（当前内嵌 **`1.0.6`**（三条发布/迁移线）、**`1.0.6-alpha.1`**（Fabric 线），兼容区间 **`[1.0.6,2.0)`** / **`>=1.0.6-alpha.1 <2.0`**）：加载器启动时自动载入内嵌副本。⚠️ **请勿**再往 `mods` 里单独放 `starengine_lib-*.jar` —— 加载器按 modId 去重时优先采用那一份，更旧的会盖掉内嵌库。⚠️ 库仓**本身不提供任何 jar 下载**（2026-10-01 起只保留源码），本来也无从下载 |
 | 前置模组 | Curios API（1.20.1 用 Curios 5.x；1.21.1 用 Curios 9+；**26.1.2 用 Curios 15+**，缺失时会在 NeoForge 依赖排序阶段被拒绝）。⚠️ 该前置**由本模组声明**；StarEngine Lib 本身仅在 forge 侧把它作为**编译期**依赖（不进库的 `mods.toml`） |
 | 前置模组（仅 1.20.1） | **Mixin 运行时二选一**（自 1.3.2-hotfix 起）：**Mixin Booster ≥ 0.1.3** **或** **Sinytra Connector**。整合包自带 Sinytra Connector 时**无需额外安装**（Connector 自带同一套 Mixin 运行时，此时 Mixin Booster 会自动让位）；两者都没有才会拒绝启动并提示安装方式。装了**旧版** Mixin Booster 仍会被拒 |
-| 前置（仅 fabric-1.20.1） | **Fabric Loader 0.19.x + Fabric API**（1.20.1 线，0.92.12），外加**饰品栏二选一**：**Trinkets 3.7.2** **或** **Accessories 1.0.0-beta.48**（装任一即可；Fabric 的 `depends` 是 AND 语义、表达不了 OR，故两者都声明为 `recommends`，由模组自己在启动时校验，**只有两个都不在**时才拒绝启动）。另需 **Puzzles Lib 8.1.33 + Forge Config API Port 8.0.3** 作为事件桥。发布线的 Curios / Mixin Booster 那一套前置在本线**完全不适用** |
+| 前置（仅 fabric-1.20.1） | **Fabric Loader 0.19.x + Fabric API**（1.20.1 线，0.92.12），外加**饰品栏二选一**：**Trinkets 3.7.2** **或** **Accessories 1.0.0-beta.48**（装任一即可；Fabric 的 `depends` 是 AND 语义、表达不了 OR，故两者都声明为 `recommends`，由模组自己在启动时校验，**只有两个都不在**时才拒绝启动）。另需 **Puzzles Lib 8.1.33 + Forge Config API Port 8.0.3** 作为事件桥。发布线的 Curios / Mixin Booster 那一套前置在本线**完全不适用**。**Modrinth** 上本线把 **Trinkets** 登记为*必需*、**Accessories** 登记为*可选*；CurseForge 上没有 Trinkets 条目，故那边保留 Accessories 作为可选那条 |
 | 可选（仅 fabric-1.20.1） | 帕秋莉手册。（本线**无** Bountiful —— 该模组无 1.20.1 Fabric 版） |
 | 可选联动 | Bountiful、帕秋莉手册 |
 
@@ -61,6 +61,7 @@ Astral Dice 是一个以「骰子」为核心的生存扩展模组。戴上骰�
 
 - **发布页**：[GitHub Releases](https://github.com/merlin-kitsune/astral_dice/releases)（每个版本附**三个** jar：发布线两个 + 26.1.2 的 `-beta` jar）
 - **Fabric 移植线**：单独发一个**预发布（pre-release）** `fabric-<版本>`（标记为 pre-release、不占「Latest」位），附件**只有它自己那一个** jar —— 刻意与发布线的 Release 分开，避免被当成正式版下载
+- **Modrinth**：四个构建同批发布到主项目（id `5xDtrJ8X`）；内嵌的前置库 **StarEngine Lib** 发布到**它自己的**项目（id `2dIXA5wO`）—— 库产物绝不混进本模组的项目。Modrinth 上的版本号保留 `+<加载器>_<MC版本>` 后缀（如 `1.3.5-hotfix+neoforge_1.21.1`），四条线因此可区分；发布渠道由版本号后缀决定（`-alpha` → alpha、`-beta` → beta、其余 → release）。⚠️ 库项目上的 jar 是为了让 `embedded` 依赖引用可解析而发布的，**请勿单独安装**：库已内嵌于本模组，加载器按 modId 去重时优先采用独立那份 ⇒ 独立副本会盖掉内嵌库
 - 支持平台：Minecraft 1.21.1 / NeoForge、1.20.1 / Forge（发布线）；Minecraft 26.1.2 / NeoForge（迁移线，不单独发 Release，jar 随发布线 Release 附带）；Minecraft 1.20.1 / Fabric（移植线，单独预发布、不与发布线 Release 混装）
 - 前置：Curios API（1.20.1 另需 Mixin 运行时：Mixin Booster ≥0.1.3 **或** Sinytra Connector，二选一）。**StarEngine Lib 已内嵌于本模组，无需单独安装**；库仓本身**只提供源码**（不提供 jar 下载）
 - 构建产物：`neoforge-1.21.1/build/libs/astral_dice-<版本>+neoforge_1.21.1.jar`、`forge-1.20.1/build/libs/astral_dice-<版本>+forge_1.20.1.jar`、`neoforge-26.1.2/build/libs/astral_dice-<版本>+neoforge_26.1.2.jar`、`fabric-1.20.1/build/libs/astral_dice-<版本>+fabric_1.20.1.jar`；GitHub Release 的 tag 使用无后缀的基础版本号（如 `1.3.5`），Fabric 移植线则用 `fabric-<版本>` 预发布 tag
