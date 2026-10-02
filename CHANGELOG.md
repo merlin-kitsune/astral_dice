@@ -116,6 +116,35 @@
   need zero code changes. **This follows the library's `1.0.3` "gameplay-criteria special case" precedent** (user ruling
   2026-09-24); both library CHANGELOGs carry an explicit note on this classification.
 
+- **Gunsmith sign (moses): three logic fixes + unified damage-increase / damage-reduction settlement** (user ruling, 2026-10-02):
+  (1) **Weakness Insight now grants a stack on every attack**: it used to be limited to one stack per Broken segment
+  (attachments `moses_broken_attack_rewarded` / `moses_dodge_counter_rewarded`), so only the first hit on a target granted
+  a stack. It now grants **1 stack per attack and per incoming attack from a Broken target**, up to 4; **once capped, further
+  attacks still refresh the 1-minute timer** (same-amplifier refresh in `WeaknessRevealEffect#addStacks` - vanilla
+  `MobEffectInstance#update` refreshes duration when the amplifier is equal and the new duration is longer). Both
+  bookkeeping attachments are no longer read or written (kept for save compatibility only).
+  (2) **King Power's self-damage now really costs 8**: `astral_dice:card_cost` used to be registered only in
+  `bypasses_cooldown`, so armour / protection / resistance shaved it away and the cost was effectively nil. It is now
+  registered in `bypasses_armor` + `bypasses_enchantments` + `bypasses_resistance`, skipping all three conventional
+  reductions, and is covered by the new "unreducible" check (see 3) so this mod's flat reductions no longer apply either.
+  **Life-saving paths still work** (airbag, totem, ender dice, whetstone's "cannot be one-shot"); `bypasses_invulnerability`
+  is still **not** registered (creative mode / respawn invulnerability still immune).
+  (3) **"Damage increase" moved to an independent true-damage segment**: Berserk's "take +1 damage per stack" used to be
+  merged into the incoming damage at `LivingDamageEvent` (priority LOW) => it was shaved by armour / protection / resistance
+  and eaten by flat reductions such as the whetstone, the two cancelling each other out. It is now a **separate segment of the
+  new `astral_dice:unreducible_damage` type** (`bypasses_armor` + `bypasses_enchantments` + `bypasses_resistance` +
+  `bypasses_cooldown`), following the same pattern as the spell-damage bonus in `DamageEffectCardHandler` (ThreadLocal
+  re-entry guard `BERSERK_BACKLASH_APPLYING` + independent `hurt`), and does **not** participate in the lethal check of the
+  original hit.
+  (4) **"Damage reduction" verified across the codebase (2026-10-02)**: the whetstone `-2` and the Muscle Detective sign
+  `-N` already run in the **final damage stage** (`LivingDamageEvent` at `LOWEST`, after armour and absorption) on the
+  **heart damage the player would actually take** (1.21.1 / 26.1.2 additionally back-fill the saved part so absorption
+  consumption stays unchanged) => consistent with "deduct from the damage actually taken"; their settlement stage was
+  **not** changed. Those are the only two flat reductions in the repo (the obsidian dice explosion reduction and Fate
+  Guidance are **percentage** reductions, out of scope and untouched).
+  Implementation: new `ModDamageTypes#UNREDUCIBLE_DAMAGE` plus an "unreducible" check in `ChipDamageHandler`; a
+  `flatReductionEnabled` parameter added to `WhetstoneChipItem#modifyIncomingDamage` (the **life-saving part is unaffected**).
+
 ### Bug Fixes
 
 - **An Epic item's tooltip frame showed the colour of the previously hovered item (observed as gold, i.e. the Legendary tier colour); Epic now writes its tier colour explicitly** (reported by the user on 2026-10-01, with screenshots): two symptoms with the same root cause appeared in the modpack — ① one of this mod's **Epic** items ("Game Master Sign"; the item name was already the correct light purple) had a **gold** frame; ② an item belonging to an entirely different mod (`oritech:adamant_block`) also had a **flat gold `#FFC24B`** frame. **Root-cause evidence** (three independent facts): a recursive scan of all **491 jars in the pack (including JarJar-embedded ones)** for the colour value `0xFFC24B` matched **exactly one class — this mod's own embedded `Rarity.class`** ⇒ the colour can only have come from us; and because this mod used to leave **Rare/Epic** frames untouched, **any tooltip that does not write its own colour inherits whatever a third party cached from the previous tooltip** ⇒ every tier we do not paint becomes a victim of that residue. **Fix**: the Epic tier changes from "leave it to vanilla" to **explicitly writing its tier colour** (= the vanilla EPIC colour `#FF55FF`) — as soon as we write the colour ourselves, that tooltip is guaranteed to use our value and is no longer affected by any third-party cache. ⚠️ **The Rare tier is deliberately left untouched this time** (the user asked for Epic only); by the same mechanism it can still be polluted by residue — if you want it painted as well (vanilla RARE colour `#55FFFF`), that needs a separate decision. ⚠️ **Not applicable to the 26.1.2 line**: its tooltip frame is a nine-slice texture and the platform exposes no colour event (`ClientHooks#onRenderTooltipTexture` hands out a texture ID) ⇒ the vanilla texture is kept; this is a registered platform difference.

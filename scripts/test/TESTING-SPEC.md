@@ -3079,3 +3079,77 @@ KI-G1 的 **61 / 41 / 缺 20（6·8·6）** 与流派分组（充能 10 / 无流
 - **`next` 分支未同步**：库仓 `next` 线（`2.0.0-SNAPSHOT.8`）共用同一份 `common` 源码，
   本次**未**改它（消费方当前四条线都 pin `fabric-1.20.1` 分支的号）⇒ 若开发线（`multi-dev-next`）也要带上
   这个新上限，需在 `next` 线另行 bump 一次。
+
+
+## 附录 A 续 48. 1.3.6 —— 枪匠「弱点识破」叠层修复 + 王之力真伤 / 加伤真伤段 / 减伤口径核对（2026-10-02）
+
+### A. 枪匠「弱点识破」叠层（问题 1）
+
+- **缺陷**：`MosesSignItem#onAttackBrokenTarget` 与 `#onDodgeCounter` 各带一个「已奖励」附件早退
+  （`moses_broken_attack_rewarded` / `moses_dodge_counter_rewarded`）⇒ 对同一目标连续攻击只有第一下给层数；
+  `applyBroken` 还会在重新施加破绽时重置它们。
+- **修法**：删除两处早退（与 `applyBroken` 的重置）；两个附件**保留定义但不读写**（存档兼容）。
+- **满层刷新**：`WeaknessRevealEffect#addStacks` 在满层时 `total = min(4, 4+1) = 4`、amplifier 不变 ⇒
+  走原版 `LivingEntity#addEffect` → `MobEffectInstance#update` 的 `isShorterDurationThan` 分支
+  ⇒ **同层刷新 duration**（已核 1.21.1 sources：`other.amplifier == this.amplifier && this.duration < other.duration`
+  ⇒ `this.duration = other.duration`）⇒ 无需改 effect 类。
+- **触发面**：攻击带破绽目标（`DiceCombatEvents` 的骰神赐福闸门内）、被带破绽目标攻击而闪避
+  （`onMosesBrokenDodge`）、肾上腺素闪避（`AdrenalineChipItem`）三处都走这两个方法。
+
+### B. 王之力自伤改真扣（问题 2）
+
+- **缺陷**：`astral_dice:card_cost` 只登记 `bypasses_cooldown` ⇒ 8 点先过护甲/保护/抗性，实战中被抹平。
+- **修法**：`card_cost` 追加登记 `bypasses_armor` + `bypasses_enchantments` + `bypasses_resistance`
+  （两个新标签文件为**追加式**，原版同名 tag 默认合并）；**不**加 `bypasses_invulnerability`
+  （创造模式/重生无敌期仍免疫 ⇒ 不死图腾照常触发）。
+- **固定减伤跳过**：`ChipDamageHandler` 新增「不可削减」判定（`CARD_COST` 或 `UNREDUCIBLE_DAMAGE`）
+  ⇒ 磨刀石 `-2` 与怪力侦探立牌 `-N` 跳过；**保命**（气囊、磨刀石「不可被一次击倒」）照常。
+
+### C. 「伤害增加」改独立真伤段（问题 3）
+
+- **缺陷**：`onBerserkDamageTaken` 在 `LivingDamageEvent`(LOW) 把 `+1×层数` 并入本次伤害
+  ⇒ 被护甲/保护/抗性削减，又被 `ChipDamageHandler`(LOWEST) 的固定减伤吃掉（净效果可能为负）。
+- **修法**：改为**独立真伤段** —— 新类型 `astral_dice:unreducible_damage`
+  （`bypasses_armor` + `bypasses_enchantments` + `bypasses_resistance` + `bypasses_cooldown`），
+  在 `LivingDamageEvent`(LOW) 里 `target.hurt(...)` 另打一次，配 ThreadLocal 重入闸门
+  `BERSERK_BACKLASH_APPLYING`（与 `DamageEffectCardHandler` 的法伤真伤段同范式）。
+- ⚠️ **时点说明（与最初设想的差异）**：NeoForge 两线有 `LivingDamageEvent.Post`，但 Forge 1.20.1 与
+  fabric 的自建同名事件**只有「最终值、应用前」一种**（无 Post）⇒ 为保四线同构，统一采用**既有的 Pre 嵌套范式**，
+  而非「严格落地后」。副作用：真伤段在本次伤害落地**之前**结算（与既有法伤真伤段完全一致）；
+  因其实体为 `null`（`unreducibleDamage(level, causing)` 的 directEntity = null），不会被骰战闸门重走。
+
+### D. 「减伤」口径核对（问题 4）
+
+全仓**固定点数减伤**仅两处，均在最终阶段（`LivingDamageEvent` LOWEST、护甲与吸收之后）：
+
+| 位置 | 口径 |
+|---|---|
+| `WhetstoneChipItem#modifyIncomingDamage`（磨刀石 -2） | 1.21.1/26.1.2 先换算「扣黄心后的净掉血」再减、并把省下的部分回填（黄心消耗量不变）；1.20.1/fabric 事件天然在吸收之后 |
+| `ChipDamageHandler` 的 sherry 段（推理时间 -N / 挚友守护 -1） | 同一阶段，按 `event.getNewDamage()/getAmount()` 递减，下限 0 |
+
+⇒ **与「从玩家实际受到的伤害中扣除对应数值」一致**，本次**未改其结算阶段**。
+**比例**减伤（黑曜石骰子爆炸减伤 `ObsidianDiceHandler`、命运指引 -50% `FateGuidanceCardItem`）不属本口径，未动。
+本次唯一变化 = 让「不可削减」段（B/C）跳过上述两处固定减伤。
+
+### E. 验证状态
+
+- 四线 `build` 成功 + `pushToGame` 4 次；开包核对：`bypasses_armor`/`bypasses_enchantments`/`bypasses_resistance`/
+  `bypasses_cooldown` 四份标签与 `unreducible_damage.json` 四线齐备；`javap` 确认 `unreducibleDamage` 方法、
+  `BERSERK_BACKLASH_APPLYING` 字段、`modifyIncomingDamage` 双载均进产物。
+- **实机验证（2026-10-02，服务端 + RCON）**：用 fabric 线 dev 服务端 + RCON + Carpet 假玩家 + 专用探针
+  `scripts/test/fabric/astral_gs_probe.js` 取证（读 `run/server/logs/latest.log` 的 `AP_GS_*` 机器行）：
+
+  | 读数 | 结论 |
+  |---|---|
+  | `AP_GS_STACK_1..6: stacks=1,2,3,4,4,4`，且**每次 `duration=1200`** | 每次攻击 +1 层、至上限 4；**满层后继续攻击刷新 1 分钟计时器**（问题 1 攻击路径）✅ |
+  | `AP_GS_DODGE_1..6: stacks=1,2,3,4,4,4`（Bot 装备骰子 + 枪匠立牌后） | 「被带破绽目标攻击」路径同样每次 +1 层（问题 1 受击路径）✅ |
+  | `AP_GS_SRC: costIsCardCost=true trueIsUnreducible=true diceIsUnreducible=false diceIsCardCost=false` | 「不可削减」判据精确命中 `card_cost` 与 `unreducible_damage`、且不误伤骰子伤害（问题 2/3 的判据面）✅ |
+  | `AP_GS_FN: hp=4/20 lowHealth=true flatOn=3 flatOff=10`；`hp=20/20 flatOn=10 flatOff=10` | 低血时走「-2 → 再按实际血量钳到 4−1=3」并**写入保命冷却**，同 tick 第二次调用（`false`）因冷却中不再钳 ⇒ **-2 与实际血量钳制都在生效**（问题 4）✅ |
+
+  ⚠️ **未覆盖（如实登记）**：`player.hurt(...)` 的**端到端扣血数值** —— KubeJS 的 bean 映射把 `hurt` 解析为
+  属性（`TypeError: Cannot call property hurt ... it is boolean`），探针无法直接发起伤害事件。
+  问题 2/3 的「数据标签 + 伤害源判据 + 字节码」已证，「实际扣 8 点 / 加伤真伤段落地数值」这一层
+  待**客户端/真人**或改用其它注入通道补验。
+  ⚠️ **驱动要点**：`/astralfab equip` 的 item 参数是 `StringArgumentType.string()`（**非** `word()`）⇒
+  带命名空间的 id **必须加引号**（`"astral_dice:moses_sign"`），否则报
+  `Expected whitespace to end one argument, but found trailing data`。
