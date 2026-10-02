@@ -89,7 +89,13 @@ public final class ChipDamageHandler {
         //    红心一点不掉,却被削成 4 ⇒ 连黄心都少吃了)。故先换算成净掉血 damageAfterAbsorption 交给磨刀石,
         //    再把「它省下的那部分」从事件伤害里扣回去(damage - raw + fixed)⇒ **黄心消耗量保持不变**,
         //    只有红心扣血被磨刀石改动,与 1.20.1 逐点一致。
-        float modified = WhetstoneChipItem.modifyIncomingDamage(player, damageAfterAbsorption);
+        // 「不可削减」伤害段（王之力代价 card_cost / 狂暴反噬 unreducible_damage，2026-10-02 用户裁决）：
+        // 跳过本模组的**固定点数减伤**（下面磨刀石 -2、怪力侦探立牌 -N）—— 但**保命**机制照常：
+        // 安全气囊在上面已处理（致命即 return），磨刀石「不可被一次击倒」在下面仍然生效。
+        boolean unreducible = event.getSource().is(com.merlinkitsune.astral_dice.damage.ModDamageTypes.CARD_COST)
+                || event.getSource().is(com.merlinkitsune.astral_dice.damage.ModDamageTypes.UNREDUCIBLE_DAMAGE);
+
+        float modified = WhetstoneChipItem.modifyIncomingDamage(player, damageAfterAbsorption, !unreducible);
         if (modified != damageAfterAbsorption) {
             event.setNewDamage(Math.max(0.0F, damage - damageAfterAbsorption + modified));
         }
@@ -100,7 +106,7 @@ public final class ChipDamageHandler {
         int sherryCut = com.merlinkitsune.astral_dice.item.sign.SherrySignItem.getLayers(player);
         float guardian = com.merlinkitsune.astral_dice.item.sign.SherrySignItem.guardianReductionFor(player);
         float totalCut = sherryCut + guardian;
-        if (totalCut > 0.0F) {
+        if (!unreducible && totalCut > 0.0F) {
             float current = event.getNewDamage();
             float capped = Math.max(0.0F, current - totalCut);
             if (capped != current) {

@@ -146,14 +146,14 @@ public class MosesSignItem extends BaseSignItem {
 
     /**
      * 对符合骰神赐福触发条件的目标施加"破绽"(持续 2:00)。
-     * 若目标已带破绽则不再重复施加;重新施加时重置该目标的"每段破绽奖励"标记,
-     * 使新一段破绽可以重新获得一次弱点识破层数。
+     * <p>若目标已带破绽则不再重复施加(此时不消耗冷却)。
+     * <p>⚠️ 2026-10-02:原先这里还会重置「每段破绽奖励」标记,以配合「每段破绽只 +1 层」的限制;
+     * 该限制已废除(改为每次攻击都给层数),两个标记附件不再被读写,故不再重置。
      */
     public static boolean applyBroken(Player player, LivingEntity target) {
         if (target == null || target.level().isClientSide()) return false;
         if (target.hasEffect(ModEffects.MOSES_BROKEN.get())) return false;
-        ModAttachments.setMosesBrokenAttackRewarded(target, false);
-        ModAttachments.setMosesDodgeCounterRewarded(target, false);
+        // 2026-10-02:两个「已奖励」标记已废弃(每次攻击都给层数),不再重置。
         target.addEffect(new MobEffectInstance(ModEffects.MOSES_BROKEN.get(),
                 MosesBrokenEffect.DURATION_TICKS, 0, false, true));
         sendSignActionBar(player, "msg.astral_dice.moses_apply");
@@ -161,25 +161,32 @@ public class MosesSignItem extends BaseSignItem {
     }
 
     /**
-     * 攻击已带破绽的目标:每段破绽只获得 1 层弱点识破。
+     * 攻击已带破绽的目标:**每次攻击各获得 1 层**弱点识破(2026-10-02 用户裁决)。
+     *
+     * <p>此前带「每段破绽只 +1 层」限制(读附件 {@code moses_broken_attack_rewarded}),
+     * 导致对同一目标连续攻击时只有第一下给层数;现改为**每次攻击都 +1 层**,直至上限
+     * {@link WeaknessRevealEffect#MAX_STACKS}。**满层后继续攻击仍会刷新 1 分钟计时器** ——
+     * 由 {@link WeaknessRevealEffect#addStacks} 的同层刷新完成(原版
+     * {@code MobEffectInstance#update} 在「amplifier 相同且新时长更长」时刷新 duration)。
+     *
+     * <p>⚠️ 附件 {@code moses_broken_attack_rewarded} / {@code moses_dodge_counter_rewarded}
+     * 自本改动起**不再被读写**(保留定义仅为存档兼容),{@link #applyBroken} 也不再重置它们。
      */
     public static void onAttackBrokenTarget(Player player, LivingEntity target) {
         if (target == null || target.level().isClientSide()) return;
         if (!target.hasEffect(ModEffects.MOSES_BROKEN.get())) return;
-        if (ModAttachments.isMosesBrokenAttackRewarded(target)) return;
         WeaknessRevealEffect.addStacks(player, 1);
-        ModAttachments.setMosesBrokenAttackRewarded(target, true);
     }
 
     /**
-     * 触发闪避/反击(任意来源):每名目标只获得 1 层弱点识破。
+     * 触发闪避/反击(任意来源):**每次各获得 1 层**弱点识破(2026-10-02 用户裁决)。
+     * <p>与 {@link #onAttackBrokenTarget} 同口径:不再受「每目标每段破绽只 +1 层」限制,
+     * 满层后继续触发仍刷新计时器。
      */
     public static void onDodgeCounter(Player player, LivingEntity target) {
         if (player == null || target == null || player.level().isClientSide()) return;
         if (!isEquipped(player)) return;
-        if (ModAttachments.isMosesDodgeCounterRewarded(target)) return;
         WeaknessRevealEffect.addStacks(player, 1);
-        ModAttachments.setMosesDodgeCounterRewarded(target, true);
     }
 
 }

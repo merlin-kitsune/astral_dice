@@ -83,11 +83,21 @@ public class WhetstoneChipItem extends BaseChipItem {
      * 保证不会被一次伤害击倒(至少保留 1 点生命值;该保命能力带 1:00 冷却,见 {@link #GUARD_COOLDOWN_TICKS})。
      */
     public static float modifyIncomingDamage(Player player, float damage) {
+        return modifyIncomingDamage(player, damage, true);
+    }
+
+    /**
+     * @param flatReductionEnabled 是否启用「低血 -2」的**固定点数减伤**（2026-10-02 新增）。
+     *        「不可削减」伤害段（王之力代价 {@code card_cost}、狂暴反噬 {@code unreducible_damage}）传
+     *        {@code false} —— 此时「-2」被跳过，但「不可被一次击倒」的**保命**部分**仍然生效**
+     *        （用户裁决：「8 点必须真扣，仅保命生效」）。
+     */
+    public static float modifyIncomingDamage(Player player, float damage, boolean flatReductionEnabled) {
         if (damage <= 0) return damage;
         if (!isEquipped(player)) return damage;
 
         float reduced = damage;
-        if (isLowHealth(player)) {
+        if (flatReductionEnabled && isLowHealth(player)) {
             reduced = Math.max(0.0F, reduced - DAMAGE_REDUCTION);
         }
         float health = player.getHealth();

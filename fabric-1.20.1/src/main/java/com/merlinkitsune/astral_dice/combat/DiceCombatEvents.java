@@ -984,14 +984,33 @@ public class DiceCombatEvents {
     // ZhaoSignItem#onLivingHeal 自己挂在 Forge 的 LivingHealEvent 上(与 1.21.1 侧同一形状:
     // 处理逻辑与状态归立牌类所有,骰战类只保留"骰点定稿后发放符卡"这一处挂点)。
 
-    // 伤害放大须先于 ChipDamageHandler(安全气囊,LOWEST)执行,故用 LOW
+    /** 狂暴「伤害增加」真伤段的**重入闸门**:该段真伤自身也会派发伤害事件 ⇒ 不加闸门会无限递归。
+     *  与 {@code DamageEffectCardHandler} 的法伤真伤段同范式(ThreadLocal,只覆盖本处理器自己发起的那一次)。 */
+    private static final ThreadLocal<Boolean> BERSERK_BACKLASH_APPLYING =
+            ThreadLocal.withInitial(() -> Boolean.FALSE);
+
+    // 「伤害增加」口径(2026-10-02 用户裁决):狂暴的「受到任意伤害 +1/层」**不再并入本次伤害**
+    // (并入会被护甲/保护/抗性削减,并被磨刀石等固定点数减伤吃掉),改为**独立真伤段** ——
+    // 与 DamageEffectCardHandler 的法伤加成同范式(重入闸门 + ModDamageTypes.unreducibleDamage)。
+    // ⚠️ 该段登记 bypasses_armor/enchantments/resistance ⇒ 护甲/保护/抗性全跳过;
+    //    并被 ChipDamageHandler 识别为「不可削减」⇒ 磨刀石 -2 与怪力侦探立牌 -N 也跳过;
+    //    **保命**机制仍对这一段独立结算(安全气囊/不死图腾/末影骰子/磨刀石「不可被一次击倒」)。
     @SubscribeEvent(priority = EventPriority.LOW)
     public static void onBerserkDamageTaken(LivingDamageEvent event) {
         LivingEntity target = event.getEntity();
         if (target.level().isClientSide()) return;
+        if (BERSERK_BACKLASH_APPLYING.get()) return;
         var berserk = target.getEffect(ModEffects.BERSERK.get());
         if (berserk == null) return;
-        event.setAmount(event.getAmount() + 1 * (berserk.getAmplifier() + 1));
+        int extra = berserk.getAmplifier() + 1;
+        if (extra <= 0) return;
+        BERSERK_BACKLASH_APPLYING.set(Boolean.TRUE);
+        try {
+            target.hurt(com.merlinkitsune.astral_dice.damage.ModDamageTypes
+                    .unreducibleDamage(target.level(), event.getSource().getEntity()), extra);
+        } finally {
+            BERSERK_BACKLASH_APPLYING.set(Boolean.FALSE);
+        }
     }
 
     // 虚弱印记:目标受到任意伤害 +10%;攻击者拥有"命运的指引"效果时对带虚弱印记的目标额外 +20%
