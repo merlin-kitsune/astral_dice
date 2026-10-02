@@ -32,6 +32,10 @@
     # 看某项目上已有的版本号（幂等核对 / 发布后复查）
     python tools/modrinth_upload.py --list --project-id 5xDtrJ8X
 
+    # 统一已发布版本的**标题**（规则 = `<前缀> <基础版本>`，例：Astral Dice 1.3.6）；先看计划再执行
+    python tools/modrinth_upload.py --rename-versions --dry-run
+    python tools/modrinth_upload.py --rename-versions --proxy http://127.0.0.1:7897
+
     # 本机直连可通；若被网络策略拦，可加 --proxy http://127.0.0.1:7897
     python tools/modrinth_upload.py --jar <...> --proxy http://127.0.0.1:7897
 
@@ -161,6 +165,34 @@ def api_get(opener, token, path):
             return e.code, body
 
 
+def api_patch(opener, token, path, body):
+    """PATCH（JSON 体），返回 (status, 解析后的 JSON 或原始文本)。"""
+    headers = {"User-Agent": UA, "Accept": "application/json",
+               "Content-Type": "application/json"}
+    if token:
+        headers["Authorization"] = token
+    req = urllib.request.Request(API_BASE + path,
+                                 data=json.dumps(body, ensure_ascii=False).encode("utf-8"),
+                                 headers=headers, method="PATCH")
+    try:
+        with opener.open(req, timeout=60) as r:
+            # 🚨 PATCH /version/{id} 成功时返回 **204 No Content（空体）** ⇒ 不能无条件 json.loads
+            #    （POST 上传有 JSON 体，2026-10-02 改名才暴露）。
+            raw = r.read().decode("utf-8", "replace")
+            if not raw.strip():
+                return r.status, ""
+            try:
+                return r.status, json.loads(raw)
+            except Exception:
+                return r.status, raw
+    except urllib.error.HTTPError as e:
+        raw = e.read().decode("utf-8", "replace")
+        try:
+            return e.code, json.loads(raw)
+        except Exception:
+            return e.code, raw
+
+
 def _multipart(field_name, meta, jar_path):
     """按 RFC 2388 拼 multipart：`data` 字段（JSON）+ 一个文件字段。
 
@@ -276,6 +308,24 @@ def version_number(ver, loader, mc):
     return f"{ver}+{loader}_{mc}"
 
 
+_PRERELEASE_SUFFIX = re.compile(r"-(?:alpha|beta|rc|pre|snapshot|hotfix)(?:[.\-]?\d+)?$", re.I)
+
+
+def version_display_name(vn, prefix):
+    """版本**标题**统一口径（2026-10-02 用户裁决）：`<前缀> <基础版本>`。
+
+    剥掉 `+<加载器>_<MC版本>` 与预发布后缀（`-alpha.N` / `-beta.N` / `-rc.N` / `-pre.N` / `-hotfix`）
+    ⇒ 同一基础版本的四条线**标题完全一致**（例：`1.3.6+neoforge_1.21.1`、
+    `1.3.6-beta.1+neoforge_26.1.2`、`1.3.6-alpha.1+fabric_1.20.1` 都叫 `Astral Dice 1.3.6`），
+    四条线仍靠 `version_number` 与 Modrinth 的加载器/游戏版本标签区分。**version_number 不改**。
+
+    旧写法（裸 `1.3.5-hotfix+forge_1.20.1`、`Astral Dice 1.2.1 (Forge 1.20.1)`、`… Hotfix` 等）
+    已造成版本列表难以辨认 ⇒ 由 `--rename-versions` 全量归一。
+    """
+    base = vn.split("+", 1)[0]
+    return f"{prefix} {_PRERELEASE_SUFFIX.sub('', base)}"
+
+
 def rel_display(p):
     """展示用路径：在仓库内给相对路径，否则原样给出（相对路径未 resolve 时 relative_to 会抛）。"""
     try:
@@ -384,6 +434,8 @@ def main():
                     help="本地代理，如 http://127.0.0.1:7897（也可用环境变量 HTTPS_PROXY）")
     ap.add_argument("--changelog", help="更新日志文件（覆盖按模板自动解析的结果）")
     ap.add_argument("--version-number", help="覆盖自动生成的 version_number（单 jar 时才有意义）")
+    ap.add_argument("--version-name", help="覆盖版本标题（默认 = `<项目前缀> <基础版本>`，规则见 "
+                                          "tools/modrinth.json 的 _nameNote）")
     ap.add_argument("--release-type", choices=["release", "beta", "alpha"],
                     help="覆盖按版本号推断的 version_type")
     ap.add_argument("--loader", help="覆盖从文件名解析出的加载器（如 neoforge / forge / fabric）")
@@ -397,17 +449,22 @@ def main():
     ap.add_argument("--draft", action="store_true", help="以 draft 状态上传（不公开；库项目未定稿时可先试传）")
     ap.add_argument("--force", action="store_true", help="即使该 version_number 已存在也照传")
     ap.add_argument("--list", action="store_true", help="只列出目标项目上已有的版本号，不上传")
+    ap.add_argument("--rename-versions", action="store_true",
+                    help="把两个项目上**已发布**版本的标题统一成现行规则（PATCH /version/{id}，"
+                         "不动 version_number）；配 --dry-run 先看计划")
     ap.add_argument("--dry-run", action="store_true", help="只打印计划，不发请求")
     ap.add_argument("--refresh-tags", action="store_true", help="忽略缓存重新拉取标签表")
     args = ap.parse_args()
 
-    if not args.jar and not args.list:
-        ap.error("--jar 至少给一个（或改用 --list）")
+    if not args.jar and not (args.list or args.rename_versions):
+        ap.error("--jar 至少给一个（或改用 --list / --rename-versions）")
 
     binding = load_binding()
     main_pid = str(args.project_id or binding.get("projectId") or DEFAULT_PROJECT_ID)
     lib_sec = binding.get("lib") or {}
     lib_pid = str(args.lib_project_id or lib_sec.get("projectId") or "")
+    main_prefix = str(binding.get("namePrefix") or "Astral Dice")
+    lib_prefix = str(lib_sec.get("namePrefix") or "StarEngine Lib")
     proxy = args.proxy or os.environ.get("HTTPS_PROXY") or os.environ.get("https_proxy")
     opener = make_opener(proxy)
 
@@ -426,6 +483,47 @@ def main():
             for vn in sorted(known):
                 print(f"    {vn}  (id {known[vn]})")
         return 0
+
+    # ---------- 模式：统一已发布版本的标题（PATCH /version/{id}，不动 version_number） ----------
+    if args.rename_versions:
+        token, token_src = resolve_token(args.token)
+        print(f"凭据   = {token_src} | 代理 = {proxy or '（直连）'}")
+        plan = []
+        for pid, label, prefix in ((main_pid, "主项目", main_prefix), (lib_pid, "库项目", lib_prefix)):
+            if not pid:
+                continue
+            s, body = api_get(opener, token, f"/project/{pid}/version")
+            if s != 200:
+                print(f"[WARN] {label} {pid} 读不到版本列表（HTTP {s}）—— 跳过")
+                continue
+            print(f"{label} {pid} 已有 {len(body)} 个版本")
+            for v in body:
+                want = version_display_name(v["version_number"], prefix)
+                if v["name"] != want:
+                    plan.append((label, v["id"], v["version_number"], v["name"], want))
+        if not plan:
+            print("所有版本的标题都已符合现行规则，无需改动。")
+            return 0
+        print(f"待改标题 {len(plan)} 条：")
+        for label, vid, vn, old, want in plan:
+            print(f"  [{label}] {vn}\n      {old!r} -> {want!r}")
+        if args.dry_run:
+            print("-" * 78)
+            print("DRY-RUN：未发送任何 PATCH。去掉 --dry-run 即真实改名。")
+            return 0
+        ok = fail = 0
+        for label, vid, vn, old, want in plan:
+            s, body = api_patch(opener, token, f"/version/{vid}", {"name": want})
+            if 200 <= s < 300:
+                print(f"[OK  ] {vn}  ->  {want}")
+                ok += 1
+            else:
+                print(f"[FAIL] {vn}  ->  {want}  HTTP {s}  {body}")
+                fail += 1
+        print("-" * 78)
+        print(f"改名成功 {ok} / 失败 {fail}")
+        return 0 if fail == 0 else 1
+
 
     gvs, loaders, tag_src = load_tags(opener, force=args.refresh_tags)
 
@@ -450,10 +548,13 @@ def main():
         deps = dependencies_payload(line, lib_pid, args.with_lib_dep, args.no_dependencies) \
             if role == "main" else []
         cl = pick_changelog(binding, line, lib_sec, role, ver, args.changelog)
+        vn = args.version_number or version_number(ver, loader, mc)
+        prefix = main_prefix if role == "main" else lib_prefix
         jobs.append({
             "jar": jar, "role": role, "ver": ver, "loader": loader, "mc": mc,
             "projectId": main_pid if role == "main" else lib_pid,
-            "version_number": args.version_number or version_number(ver, loader, mc),
+            "version_number": vn,
+            "display_name": args.version_name or version_display_name(vn, prefix),
             "version_type": args.release_type or infer_version_type(ver),
             "game_versions": [mc], "loaders": [loader],
             "dependencies": deps, "changelog": cl,
@@ -483,6 +584,7 @@ def main():
         cl_desc = f"{rel_display(cl)}（{len(cl.read_bytes())} 字节）" if cl else "（无，留空）"
         print(f"  {j['jar'].name}")
         print(f"    [{j['role']}] 项目 {j['projectId']} | version_number {j['version_number']}")
+        print(f"    版本标题 = {j['display_name']}")
         print(f"    渠道 {j['version_type']} | loaders {j['loaders']} | game_versions {j['game_versions']}")
         print(f"    更新日志 = {cl_desc}")
         tag = f"  [{j['_line']}]" if j.get("_line") else ("  [库产物]" if j["role"] == "lib" else "  [未匹配到线]")
@@ -539,7 +641,7 @@ def main():
             continue
         meta = {
             "project_id": j["projectId"],
-            "name": j["version_number"],
+            "name": j["display_name"],
             "version_number": j["version_number"],
             "version_type": j["version_type"],
             "loaders": j["loaders"],

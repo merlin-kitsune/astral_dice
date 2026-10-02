@@ -3,9 +3,12 @@
   "site": "https://api.modrinth.com/v2",
   "_projectNote": "主项目 = 《星之骰戏》本体，四线产物全部传到这里（与 CurseForge 同为「一个项目多加载器」）。库项目见下方 lib 段。",
   "projectId": "5xDtrJ8X",
+  "namePrefix": "Astral Dice",
+  "_nameNote": "版本**标题**（Modrinth 的 version name）统一口径（2026-10-02 用户裁决）= `<namePrefix> <基础版本>` —— 剥掉 `+<加载器>_<MC版本>` 与预发布后缀（`-alpha.N`/`-beta.N`/`-rc.N`/`-pre.N`/`-hotfix`）⇒ 同一基础版本的四条线标题完全一致（例：1.3.6 的 neoforge_1.21.1 / forge_1.20.1 / 26.1.2-beta.1 / fabric-alpha.1 都叫 `Astral Dice 1.3.6`），四条线改用 version_number 与加载器/游戏版本标签区分。⚠️ **version_number 不改**（它才是唯一标识，且与 jar 文件名一致）。工具：上传时自动按该规则生成；已发布版本用 `--rename-versions` 全量归一（PATCH /version/{id}）。",
   "_libNote": "前置库 StarEngine Lib 的**独立项目**（2026-10-01 用户指定 id = 2dIXA5wO，slug `starengine-lib`）。库产物名形如 starengine_lib-<加载器>-<MC版本>-<版本>.jar，由 tools/modrinth_upload.py 按文件名前缀自动路由到本项目；它的更新日志落在下方 changelogDir。⚠️ 前置库在主项目版本里的依赖登记走 --with-lib-dep（**默认关**，因为该引用要求库项目已公开；库项目状态还是 processing）。⚠️ 库被四条线 JarJar 内嵌，因此登记类型是 **embedded** 而不是 required（Modrinth 启动器不会因 embedded 去装它）。⚠️ 但库 jar **确实**发布在本项目上 ⇒ 页面/README 必须显式提醒玩家「不要单独安装」，否则会踩 README 里那条「独立库 jar 按 modId 覆盖内嵌件」的坑。",
   "lib": {
     "projectId": "2dIXA5wO",
+    "namePrefix": "StarEngine Lib",
     "changelogDir": "release/starengine-lib/{base}"
   },
   "_lineNote": "本数组是「产物 → (加载器, MC 版本, 依赖关系)」的**映射说明**。加载器 / MC 版本 / 版本号一律**从 jar 文件名解析**（主模组 astral_dice-<版本>+<加载器>_<MC版本>.jar；库 starengine_lib-<加载器>-<MC版本>-<版本>.jar），渠道由版本号后缀自动派生。",
