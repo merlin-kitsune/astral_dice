@@ -111,7 +111,7 @@ public class AdrenalineChipItem extends BaseChipItem {
         if (!PartyRelations.isHostileTo(player, attacker)) return;
         if (tryDodge()) {
             com.merlinkitsune.astral_dice.combat.DiceCombatEvents.applyDodgeCancel(event);
-            // 枪匠立牌:任意来源的闪避都会尝试获得 1 层弱点识破(每目标一次)
+            // 枪匠立牌:任意来源的闪避都会尝试获得 1 层弱点识破(2026-10-02 起:每次都给)
             com.merlinkitsune.astral_dice.item.sign.MosesSignItem.onDodgeCounter(player, attacker);
         }
     }

@@ -279,7 +279,7 @@ public class DiceCombatEvents {
         // TargetSelectionAction.apply),不再于攻击时自动释放,此处无攻击释放逻辑。
         // 枪匠立牌主动同样已迁移至目标选择器(见 MosesSignItem 注册的 TargetSelectionAction),此处仅保留其被动:
         if (!player.level().isClientSide() && attackerCurios.isPresent() && isBlessingTarget(target, player)) {
-            // 枪匠立牌被动:攻击已带"破绽"的目标,每段破绽获得 1 层弱点识破
+            // 枪匠立牌被动:攻击已带"破绽"的目标,每次攻击获得 1 层(2026-10-02 起)弱点识破
             // 触发条件与骰神赐福完全一致:近战武器(外层已判定)+ isBlessingTarget(外层已判定),
             // 因此不再额外限制"普通敌对生物"。
             if (MosesSignItem.isEquipped(player) && target.hasEffect(ModEffects.MOSES_BROKEN)) {
@@ -1341,7 +1341,7 @@ public class DiceCombatEvents {
 
     // === 枪匠立牌(Moses)破绽闪避/反击 ===
     // 破绽持续 2:00,期间**每一次**目标攻击都会被闪避并触发反击(不再被"每目标已发放"标记拦掉);
-    // 「弱点识破」层数的"每目标每段破绽只 +1"限制由 MosesSignItem.onDodgeCounter 内部判定。
+    // 「弱点识破」层数的"每次都给 +1 层(2026-10-02 起)"限制由 MosesSignItem.onDodgeCounter 内部判定。
     // 闪避改在伤害判定最前置处"取消"(LivingIncomingDamageEvent)而不是在伤害阶段把伤害改成 0:
     // 只有前者能让攻击方 Mob#doHurtTarget 拿到 hurt()==false,从而不施加尸壳饥饿等命中附加效果、
     // 也不产生红屏/屏幕震动/受伤音效与击退同步。详见 applyDodgeCancel 的注释。
@@ -1358,7 +1358,7 @@ public class DiceCombatEvents {
         if (!attacker.hasEffect(ModEffects.MOSES_BROKEN)) return;
         // 闪避本次攻击(最前置取消)
         applyDodgeCancel(event);
-        // 获得弱点识破并标记该目标已闪避(每目标每段破绽最多 1 层)
+        // 获得弱点识破并标记该目标已闪避(每次都给 +1 层(2026-10-02 起))
         MosesSignItem.onDodgeCounter(player, attacker);
         // 单次反击伤害注入(不进入反击效果/层数体系)
         injectCounterDamage(player, attacker);

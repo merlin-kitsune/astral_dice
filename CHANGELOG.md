@@ -134,8 +134,11 @@
   and eaten by flat reductions such as the whetstone, the two cancelling each other out. It is now a **separate segment of the
   new `astral_dice:unreducible_damage` type** (`bypasses_armor` + `bypasses_enchantments` + `bypasses_resistance` +
   `bypasses_cooldown`), following the same pattern as the spell-damage bonus in `DamageEffectCardHandler` (ThreadLocal
-  re-entry guard `BERSERK_BACKLASH_APPLYING` + independent `hurt`), and does **not** participate in the lethal check of the
-  original hit.
+  re-entry guard `BERSERK_BACKLASH_APPLYING` + independent `hurt`).
+  Note on timing: the segment settles **before** the original hit lands (the existing pre-nested pattern used by the
+  spell-damage true-damage segment), so it **does** affect the lethal check of the original hit (the airbag reads a
+  `getHealth()` already reduced by this segment). That is not in conflict with "settled independently and unaffected by
+  reductions", but it is **not** "does not affect the lethal check" - the earlier wording is retracted.
   (4) **"Damage reduction" verified across the codebase (2026-10-02)**: the whetstone `-2` and the Muscle Detective sign
   `-N` already run in the **final damage stage** (`LivingDamageEvent` at `LOWEST`, after armour and absorption) on the
   **heart damage the player would actually take** (1.21.1 / 26.1.2 additionally back-fill the saved part so absorption

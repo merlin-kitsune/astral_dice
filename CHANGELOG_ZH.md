@@ -101,7 +101,10 @@
   ⇒ 会被护甲 / 保护 / 抗性削减，并被磨刀石等固定减伤吃掉 —— 两项互相抵消。现改为**落地后另打一段
   `astral_dice:unreducible_damage`**（新类型：`bypasses_armor` + `bypasses_enchantments` + `bypasses_resistance` +
   `bypasses_cooldown`），与 `DamageEffectCardHandler` 的法伤加成同范式（ThreadLocal 重入闸门
-  `BERSERK_BACKLASH_APPLYING` + 独立 `hurt`），**不参与本段伤害的致命判定**。
+  `BERSERK_BACKLASH_APPLYING` + 独立 `hurt`）。
+  ⚠️ **时点**：该段在本次伤害**落地之前**结算（沿用既有法伤真伤段的 Pre 嵌套范式）⇒ 它**会**影响本段伤害的
+  致命判定（安全气囊读到的 `getHealth()` 已被该段扣过）。这与「独立结算、不受减伤」不矛盾，但**不是**
+  「不影响致命判定」—— 原措辞已作废。
   ④ **「减伤」口径核对（2026-10-02 全量排查）**：磨刀石 `-2` 与怪力侦探立牌 `-N` 本就在**最终伤害阶段**
   （`LivingDamageEvent` 的 `LOWEST`、护甲与吸收之后）按**玩家实际会扣的红心伤害**扣除（1.21.1 / 26.1.2 另有把
   「省下的部分」回填以保持黄心消耗量不变）⇒ 与「从实际受到的伤害中扣除对应数值」一致，**本次未改其结算阶段**；
