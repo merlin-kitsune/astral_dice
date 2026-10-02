@@ -1931,6 +1931,7 @@ When extending this workspace:
 - 版本 id **动态解析**（`/api/game/version-types` + `/api/game/versions`，缓存 7 天），提交的 `gameVersions` = `Client` + `Server` + MC 版本 + 加载器。
 - 项目 `projectId = 1662159`（slug `astral-dice`）；完整实测口径与踩坑见 `scripts/test/TESTING-SPEC.md` **附录 A 续 33**。
 - ⚠️ **自动推送规则（触发时机 / 是否并入 CI）待用户设定** —— 在此之前**不要**把 CurseForge 上传接进 `build` 或 CI 流程。
+- ⚠️ **项目说明（Description）无法经 API 修改（2026-10-02 实测，别再试）**：`.curseforge/token` 是**legacy 上传 token** —— `https://api.curseforge.com/v1/mods/{id}/description` 对它返回 **403**（0 字节，非 Cloudflare 页），Core API 的 `PUT /v1/mods/{id}` 同理不可用；legacy 上传 API 本身**没有**改描述的接口；项目页 `/minecraft/mc-mods/astral-dice` 与站点 JSON `/api/v1/mods/{id}` 均被 **Cloudflare 403**（即使挂了 `--proxy` 也一样，拿不到现有正文）。⇒ **说明全文维护在 `tools/curseforge-description.md`**（中英各一份，含 Fabric 前置），改版时由人工在项目页 Description 编辑器整段替换；产物上传仍走上面的脚本（`--jar` / `--update-file`）。
 
 ### Modrinth 上传（2026-10-01 起；**发布动作，与本地部署无关**）
 
