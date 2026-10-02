@@ -1951,6 +1951,7 @@ When extending this workspace:
 - 前置库在主项目的版本里**可以**登记为 **`embedded`**（JarJar 内嵌）：Modrinth 启动器**不会**因为 embedded 去装它，页面上又能说明「本模组已内嵌该库」。⚠️ **当前并未登记**（2026-10-01 实测：刚发的 4 个主项目版本 `dependencies` 里都没有 `2dIXA5wO`）—— 该引用要求库项目**已公开**，而库项目状态仍是 `processing`。待过审后两种补法任选：新版本走 `--with-lib-dep`；**已发布**的版本走 `PATCH /v2/version/{id}`（Modrinth 支持就地改 `dependencies`，无需重传，这点与 CurseForge 的 relations 只能重传**正好相反**）。
 - CI：`.github/workflows/build.yml` 末步 `Publish to Modrinth`，触发口径与上方两个 Release 步骤一致（发布线分支 push 或 tag push）；**缺 `MODRINTH_TOKEN` secret 只告警不失败**。库产物取自 `.ci/starengine_lib/*/build/libs`（同 job 的 `Publish to mavenLocal` 已经构建过），并**显式过滤** `-sources.jar` / `-javadoc.jar` —— 它们过不了文件名解析，会把整批判非法而中止。
 - ⚠️ **触发时机的边界**：Modrinth 已按用户 2026-10-01 要求接入 CI（见上）；**CurseForge 仍待用户设定** —— 在此之前不要把它接进 `build` 或 CI。
+- ⚠️ **发布后必须核对 Modrinth 是否真的上了该版本（2026-10-02 实测教训）**：本机同日 CI 三次全绿，但 Modrinth 主项目上**仍只有 1.3.5** —— 因为 `MODRINTH_TOKEN` secret 未配置 ⇒ 该步**静默跳过**（只打 warning）。核对 = `python tools/modrinth_upload.py --list --project-id 5xDtrJ8X`（脚本自身先查后跳）；缺失时本地补发，**必须带 `--proxy http://127.0.0.1:7897`**（`--dry-run` 免 token，可先看计划）。⚠️ 项目 `status=processing` 时**匿名** `GET /v2/project/{id}/version` 返回 **404** —— 那不是「项目不存在」，带上 `Authorization: <token>` 即可读到（主项目 5xDtrJ8X 当前即处于该状态）。⚠️ 补发时**别忘库项目**：同一次跳步也会漏掉库产物（当前库项目 2dIXA5wO 最新仍为 `1.0.6`，而消费方已 bump 到 `1.0.7` / `1.0.6-alpha.2`）。
 
 ## 自动化测试流程（Automated Testing）— 必须遵守（子配置）
 
