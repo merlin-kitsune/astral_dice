@@ -11,7 +11,7 @@
   "_lineNote": "本数组是「产物 → (加载器, MC 版本, 依赖关系)」的**映射说明**。加载器 / MC 版本 / 版本号一律**从 jar 文件名解析**（主模组 astral_dice-<版本>+<加载器>_<MC版本>.jar；库 starengine_lib-<加载器>-<MC版本>-<版本>.jar），渠道由版本号后缀自动派生。",
   "_channelNote": "version_type **由版本号后缀自动派生**（与 CurseForge 口径一致）：`-alpha` ⇒ alpha、`-beta`/`-rc`/`-pre` ⇒ beta、无后缀（含 `-hotfix`）⇒ release。四线现状：1.21.1 / 1.20.1（`1.3.5-hotfix`）⇒ release；26.1.2（`1.3.5-beta.2`）⇒ beta；fabric（`1.3.5-alpha.1`）⇒ alpha。",
   "_dependencyNote": "dependencies 的 schema 取自 Modrinth 官方《Create a version》文档：每项 = { slug?, project_id, dependency_type }，dependency_type 只能取 required / optional / incompatible / embedded。这里**projectID 存 Modrinth 的 base62 id**（与 CurseForge 的数字 id 是两套体系，勿混用）；slug 仅作可读性冗余，上传时优先用 id。",
-  "_fabricNote": "fabric 线的饰品栏是「Trinkets 或 Accessories」双源聚合。2026-10-01 用户裁决：**Modrinth 上 Trinkets = required、Accessories = optional**（CurseForge 上没有 Trinkets，故那边只登记 Accessories 为 optional）；其余前置两边一致（Fabric API + Puzzles Lib = required）。⚠️ 这是**商店页面上的依赖声明**，不是 fabric.mod.json 的改动 —— 模组自身的 `recommends` 段保持 Trinkets/Accessories/Patchouli 皆可选，因为硬写 depends 会让「只装 Accessories」的玩家直接起不来。",
+  "_fabricNote": "fabric 线的饰品栏是「Trinkets 或 Accessories」双源聚合。2026-10-01 用户裁决：**Modrinth 上 Trinkets = required、Accessories = optional**（CurseForge 自 2026-10-02 起为**同口径**：Trinkets = required、Accessories = optional）；其余前置两边一致（Fabric API + Puzzles Lib = required）。⚠️ 这是**商店页面上的依赖声明**，不是 fabric.mod.json 的改动 —— 模组自身的 `recommends` 段保持 Trinkets/Accessories/Patchouli 皆可选，因为硬写 depends 会让「只装 Accessories」的玩家直接起不来。",
   "lines": [
     {
       "key": "neoforge_1.21.1",

@@ -70,7 +70,7 @@ The Fabric port line uses a **different prerequisite set** — the release lines
 | — | **Not applicable on this line** | Curios API, Mixin Booster / Sinytra Connector, Bountiful, Iron's Spells 'n Spellbooks |
 
 - The accessory provider is an **either-or**: Fabric's `depends` is AND-only and cannot express OR, so Trinkets and Accessories are both declared as `recommends`; the mod verifies at startup itself and refuses to start **only when neither** is present.
-- **Store listings**: on **Modrinth** this line declares **Trinkets** as *required* and **Accessories** as *optional*; on **CurseForge** there is no Trinkets entry, so **Accessories** is this line's optional entry there.
+- **Store listings**: on **both** Modrinth and CurseForge this line declares **Trinkets** as a *required* dependency and **Accessories** as an *optional* one. That is a store-page declaration only — the mod's own `fabric.mod.json` keeps both in `recommends`, so an Accessories-only setup still starts normally.
 
 ---
 

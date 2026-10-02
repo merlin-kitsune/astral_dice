@@ -2247,9 +2247,11 @@ relations = { "projects": [ { "slug": "<CF slug>", "projectID": <整数>, "type"
   `--update-file` 保留为「CF 修好后即可直接补关系」的修复路径 + 探针，并在干跑时打印上述已知 500 警告。
   ⚠️ 本次实现踩过一次「补丁脚本里 `\n` 被写成真换行 ⇒ 语法错」—— 与既有教训同源，改成**单行隐式拼接**后收口。
 - `tools/curseforge.json`：各线登记 relations（三线 Curios；forge 另加 Mixin Booster；
-  fabric = Fabric API + Puzzles Lib 为 required、**Accessories 为 optional**）。
-  ⚠️ fabric 的饰品栏在 `fabric.mod.json` 里是 `recommends`（Trinkets **或** Accessories 二选一）
-  ⇒ 关系上标 `optionalDependency` 才与元数据一致（标 required 会强制启动器给所有玩家装 Accessories）。
+  fabric = Fabric API + Puzzles Lib + **Trinkets 为 required**、**Accessories 为 optional**）。
+  ⚠️ fabric 的饰品栏在 `fabric.mod.json` 里是 `recommends`（Trinkets **或** Accessories 二选一）；
+  **商店关系表达不了 OR**，故按用户 **2026-10-02 裁决**：Trinkets 记 `requiredDependency`、Accessories 记 `optionalDependency`
+  （启动器会为这些玩家装 Trinkets；只装 Accessories 的环境由模组自身在启动时放行，不会起不来）。
+  ⚠️ 该裁决**只改商店页面声明**，不动 `fabric.mod.json`。
 
 ### 最终发布件与需人工清理的重复件
 

@@ -39,7 +39,7 @@ Installed automatically by the launcher from the dependency relations on each fi
 
 - **Curios API** — on the three NeoForge / Forge builds. Curios 9+ on 1.21.1, Curios 5.x on 1.20.1 Forge, **Curios 15+** on 26.1.2.
 - **Mixin runtime (1.20.1 Forge only)** — **Mixin Booster 0.1.3+** *or* **Sinytra Connector**, either one. If your pack already ships Sinytra Connector, install nothing extra.
-- **Fabric (1.20.1) build** — Fabric API + **Puzzles Lib 8.1.33+** (plus its own prerequisite **Forge Config API Port 8.0.3**) + an accessory provider, **either Trinkets 3.7.2+ or Accessories 1.0.0-beta.48+**. Curios and the Mixin runtime do **not** apply to this build. *(CurseForge lists Accessories as this build's optional dependency; Trinkets is available on Modrinth.)*
+- **Fabric (1.20.1) build** — Fabric API + **Puzzles Lib 8.1.33+** (plus its own prerequisite **Forge Config API Port 8.0.3**) + an accessory provider, **either Trinkets 3.7.2+ or Accessories 1.0.0-beta.48+**. Curios and the Mixin runtime do **not** apply to this build. *(On CurseForge **Trinkets** is listed as this build's required dependency and **Accessories** as the optional one — the mod itself only *recommends* either, so an Accessories-only setup still starts.)*
 
 ### Bundled — do NOT install separately
 
@@ -102,7 +102,7 @@ Suggested one-line **Summary** for the project header:
 
 - **Curios API** —— 三条 NeoForge / Forge 线上必需：1.21.1 用 Curios 9+、1.20.1 Forge 用 Curios 5.x、**26.1.2 用 Curios 15+**。
 - **Mixin 运行时（仅 1.20.1 Forge）** —— **Mixin Booster 0.1.3+** **或** **Sinytra Connector**，二选一。整合包自带 Sinytra Connector 时无需再装。
-- **Fabric（1.20.1）构建** —— Fabric API + **Puzzles Lib 8.1.33+**（连同它自己的前置 **Forge Config API Port 8.0.3**）+ 饰品栏提供者 **Trinkets 3.7.2+** **或** **Accessories 1.0.0-beta.48+**（二选一）。本线**不适用** Curios 与 Mixin 运行时。*（CurseForge 上本线把 Accessories 登记为可选依赖；Trinkets 见 Modrinth。）*
+- **Fabric（1.20.1）构建** —— Fabric API + **Puzzles Lib 8.1.33+**（连同它自己的前置 **Forge Config API Port 8.0.3**）+ 饰品栏提供者 **Trinkets 3.7.2+** **或** **Accessories 1.0.0-beta.48+**（二选一）。本线**不适用** Curios 与 Mixin 运行时。*（CurseForge 上本线把 **Trinkets** 登记为**必需**、**Accessories** 登记为**可选** —— 模组自身只把两者写在 `recommends`，因此「只装 Accessories」的环境照样能启动。）*
 
 ### 已内嵌 · 请勿单独安装
 

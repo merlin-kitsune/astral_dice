@@ -70,7 +70,7 @@ Fabric 移植线用的是**另一套前置** —— 发布线的 Curios / Mixin 
 | — | **本线不适用** | Curios API、Mixin Booster / Sinytra Connector、Bountiful、Iron's Spells 'n Spellbooks |
 
 - 饰品栏是**二选一**：Fabric 的 `depends` 是 AND 语义、表达不了 OR，故 Trinkets 与 Accessories 都声明为 `recommends`；模组自己在启动时校验，**只有两个都不在**时才拒绝启动。
-- **商店登记**：**Modrinth** 上本线把 **Trinkets** 记为*必需*、**Accessories** 记为*可选*；**CurseForge** 上没有 Trinkets 条目，故那边可选条目是 **Accessories**。
+- **商店登记**：**Modrinth 与 CurseForge 同口径** —— 本线把 **Trinkets** 记为*必需*、**Accessories** 记为*可选*。这只是商店页面上的声明：模组自身的 `fabric.mod.json` 仍把两者写在 `recommends`，因此「只装 Accessories」的环境照样能正常启动。
 
 ---
 
