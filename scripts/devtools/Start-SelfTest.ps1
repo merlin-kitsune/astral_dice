@@ -114,7 +114,9 @@ param(
 
     [int]$BuildTimeoutSec = 180,
 
-    # 库仓库磁盘路径（缺省 = dev 工作树的同级 starengine_lib；仅 forge dev 形态需要它）
+    # 库仓库磁盘路径（缺省 = dev 工作树的同级 starengine_lib_next —— 库 'next' 分支的专用工作树；
+    # 仅 forge dev 形态需要它）。2026-10-02 用户裁决：库的开发线工作树 = F:\MCProject\starengine_lib_next，
+    # 主工作树 F:\MCProject\starengine_lib 常驻 main（发布线），故默认值**不得**再指向它。
     [string]$LibRepoPath
 )
 
@@ -127,7 +129,7 @@ $ErrorActionPreference = 'Stop'
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $RepoRoot = (Resolve-Path (Join-Path $ScriptDir '..\..')).Path
 $RepoParent = Split-Path -Parent $RepoRoot
-if (-not $LibRepoPath) { $LibRepoPath = Join-Path $RepoParent 'starengine_lib' }
+if (-not $LibRepoPath) { $LibRepoPath = Join-Path $RepoParent 'starengine_lib_next' }
 
 $LibGroupPath = 'com\merlinkitsune\starenginelib'
 $M2RepoRoot = Join-Path $env:USERPROFILE ".m2\repository\$LibGroupPath"

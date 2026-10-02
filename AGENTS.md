@@ -223,7 +223,10 @@ When extending this workspace:
 > **第三条线(26.1.2)的规则边界(2026-09-19 用户裁决修订 —— 26.1.2 已纳入主线,必须遵守)**:自本裁决起「同步修改」约束**三个版本**(`neoforge-1.21.1` + `forge-1.20.1` + `neoforge-26.1.2`):任何功能/修复/平衡/文案改动一律**三线同批实施**(实施方式见下方「### 子项目修改默认规则」与「### 模组内容更新规则(三线同步)」),26.1.2 **不再**是「发布线完成后再迁移」的低优先级移植线。三条线各自按 `docs/compat-26.1.2-neoforge.md`(26.1.2 相对 1.21.1)、`docs/compat-1.20.1-forge.md`(1.20.1 相对 1.21.1)的差异映射实现,**平台差异必须逐条登记**;三线落地后按 `scripts/test/TESTING-SPEC.md` §13.2 做一致性测试。三子项目的 `mod_version`/`mods.toml` 门槛仍各自独立。
 ### 前置库 starengine_lib 的版本与兼容性契约（全局，2026-09-22 用户裁决）
 
-> 本契约**跨两个仓库生效**（库仓 `F:\MCProject\starengine_lib` ↔ 本仓四条线），是库的**公开兼容性承诺**。
+> 本契约**跨两个仓库生效**（库仓开发线工作树 `F:\MCProject\starengine_lib_next`（分支 `next`）↔ 本仓四条线），是库的**公开兼容性承诺**。
+> ⚠️ **库仓工作树布局（2026-10-02 用户裁决）**：`F:\MCProject\starengine_lib` 常驻 **`main`**（发布线）；
+> `F:\MCProject\starengine_lib_next` = 分支 **`next`** 的独立工作树，**本仓四线的一切库改动 / 构建 / `publishToMavenLocal` 只在该工作树进行**（消费方侧默认路径已同步：见 `scripts/devtools/Start-SelfTest.ps1` 的 `$LibRepoPath` 缺省值）。
+> 原独立 worktree `F:\MCProject\starengine_lib_fabric`（分支 `fabric-1.20.1`）已于 2026-10-02 删除 —— 该平台的 `common` 与 9 个平台接线类**早已并入 `next`**，其分支上唯一未并入的实质改动（`component/GameplayConstants#CURSED_SWORD_BONUS_MAX` 16 → 32）已收编进 `next`。
 > 库侧原文见其 `README_ZH.md` §6「版本与兼容」（英文版为 `README.md` §6 "Versions and compatibility"）、双 `CHANGELOG`、以及三处 `gradle.properties` 的 `1.0.0` 条目。
 > ⚠️ **2026-10-01 起**:fabric 平台子项目已并入库的 `next` 分支(库侧 `settings.gradle` 现含 `neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1` 四个平台子项目),库侧 artifactId = `starengine_lib-fabric-1.20.1`,与本仓四线同号。
 

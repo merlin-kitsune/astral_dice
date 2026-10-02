@@ -4,7 +4,7 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
-## Unreleased (2.0.0-SNAPSHOT.20)
+## Unreleased (2.0.0-SNAPSHOT.21)
 
 ### New Content
 
@@ -179,6 +179,12 @@
 - **Combat / effect card tiers retuned** (user decision 2026-09-28): **Attack - Medium / Large / Extra Large** and **Defense - Medium / Large / Extra Large** are now all **blue (Rare)** (previously white / blue / purple on both sides); **Berserk**, **Fight Poison with Poison** and **You Have, I Have** drop from **purple (Epic) to blue (Rare)**; **King's Power** drops from **gold (Legendary) to purple (Epic)**. The `rarity` fields of these 10 entries in the bounty reward pool `astral_rews` were updated to match (`RARE` / `EPIC`), and `scripts/verify/verify_bountiful_pools.ps1` reports **ALL OK** on all three lines (set equality, cross-line md5 and the value-balance formula all pass). ⚠️ Their `unitWorth` (bounty payout) was **left unchanged** this round: under the AGENTS "same-tier value band" convention those 9 down-tiered cards now fall outside their band - a **convention-level deviation, not a gate failure** (the gate does not check tier vs. worth); whether to re-map them is pending a decision.
 
 #### Chips & Resources
+
+- **The Cursed Sword chip's cumulative attack-bonus cap is raised from 16 to 32** (user ruling, 2026-10-02):
+  while the chip is worn, killing a hostile target with at least 20 health grants a cumulative **+1** attack
+  bonus once per **Dice Blessing** cycle (accumulating across cycles); the **cumulative cap** rises from
+  +16 to **+32**. The bonus is cleared when the chip is removed or on death. The cap shown in the tooltip
+  now reads **32**.
 
 - **The Cutter's base bonus is back on the Attack Power channel** (user ruling 2026-09-26): the **+2 / +4** that
   Cutter (Basic) / Cutter (Sharp) grant while health is at or above 60% is **Attack Power** (it counts towards

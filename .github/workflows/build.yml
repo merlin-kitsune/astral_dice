@@ -97,7 +97,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: merlin-kitsune/starengine_lib
-          ref: ba3ec3d2f6f4ebd6aefb5391a471854efcde552c   # = 库 `next` 分支提交 ba3ec3d（= 库版本 `2.0.0-SNAPSHOT.8`），含**四平台**（neoforge-1.21.1 / forge-1.20.1 / neoforge-26.1.2 / **fabric-1.20.1**；本次在该库新增 fabric-1.20.1 平台子项目，并把四平台版本号统一升到 .8）。⚠️ **本 ref 要求库 `next` 分支已推送**(git -C <lib> push origin next)，否则本 job 断在 Checkout；发布线 multi-main 的副本另有自己的 ref
+          ref: a2998ff61e27229a357c8109bacffdc122f5cd8b   # = 库 `next` 分支提交 a2998ff（= 库版本 `2.0.0-SNAPSHOT.9`），含**四平台**（neoforge-1.21.1 / forge-1.20.1 / neoforge-26.1.2 / **fabric-1.20.1**）；本版把原独立分支 `fabric-1.20.1` 上唯一未并入的改动（`component/GameplayConstants#CURSED_SWORD_BONUS_MAX` 16 → 32）收编进 `next`，四平台同号升至 `.9`。⚠️ **本 ref 要求库 `next` 分支已推送**(git -C <lib> push origin next)，否则本 job 断在 Checkout；发布线 multi-main 的副本另有自己的 ref
           path: .ci/starengine_lib
           fetch-depth: 1
 

@@ -4,6 +4,12 @@
 > 侦察基线：`astral_dice_multiloader-next @ 833392b9`（`multi-dev-next`，ahead 96）、
 > `astral_dice_multiloader @ 9b422213`（`multi-main`）、`starengine_lib @ 9362869`（`next`）。
 > 侦察日期：2026-10-01。
+>
+> ⚠️ **2026-10-02 状态更新（本方案已执行完毕，其后又有变更）**：① fabric 线已并入本分支（提交 `693850ce`）；
+> ② 本文 §1 表中「库 `next` @ `9362869` / `2.0.0-SNAPSHOT.7`」与「`starengine_lib_fabric @ fea5f06` / `1.0.6-alpha.1`」
+> 均为**侦察当时的快照**；③ 库的工作树布局改为 `F:\MCProject\starengine_lib` = **`main`**（发布线）、
+> `F:\MCProject\starengine_lib_next` = **`next`**（本仓开发线绑定），`starengine_lib_fabric` 已删除，
+> 其分支上唯一未并入的实质改动（`GameplayConstants#CURSED_SWORD_BONUS_MAX` 16 → 32）已收编进 `next` ⇒ 库 `2.0.0-SNAPSHOT.9`。
 
 ---
 

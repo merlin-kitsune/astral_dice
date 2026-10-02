@@ -38,7 +38,7 @@ PKG = 'com/merlinkitsune/astral_dice'
 NEO_PKG = ROOT / 'neoforge-1.21.1' / 'src' / 'main' / 'java' / PKG
 FORGE_PKG = ROOT / 'forge-1.20.1' / 'src' / 'main' / 'java' / PKG
 
-LIB = Path('F:/MCProject/starengine_lib')
+LIB = Path('F:/MCProject/starengine_lib_next')
 LIB_NEW_PKG = 'com/merlinkitsune/starengine'
 LIB_COMMON = LIB / 'common' / 'src' / 'main' / 'java' / LIB_NEW_PKG
 LIB_NEO = LIB / 'neoforge-1.21.1' / 'src' / 'main' / 'java' / LIB_NEW_PKG
