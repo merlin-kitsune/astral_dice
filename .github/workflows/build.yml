@@ -114,16 +114,17 @@ jobs:
           #    未改 `HostileTargets.isHostile` 语义 ⇒ 补丁位)。
           #    三线 `starengine_lib_version` / `_range` 同步为 `1.0.9` / `[1.0.9,2.0)`;
           #    fabric 线 `1.0.6-alpha.4` / `>=1.0.6-alpha.4 <2.0`。
-          # 🚨 **2026-10-03(第四批)现状 —— ref 已指向 `main` 的新 HEAD，但该提交尚未 push**:
-          #    ① 库的 `fabric-1.20.1` 分支已**并入 `main` 并删除本地分支**（合并提交即本行 SHA
-          #       `7ae16c8`；合并结果与该分支 tip **树等价** —— 实测 `git diff 6c2a76e 7ae16c8` 为空，
-          #       即无任何内容丢失）；
-          #    ② 本行 ref 随之由 `3652b58`(旧 `fabric-1.20.1` 分支 HEAD) 改为 **`7ae16c8`(`main` 上的合并提交)**；
-          #    ③ ⚠️ 库 `main` 目前**领先 `origin/main` 17 个提交**（尚未 push）⇒ `actions/checkout`
-          #       检不到该 SHA ⇒ **CI 会在 Checkout StarEngine Lib 步直接失败**（本地不复现）。
-          #    恢复动作（顺序不可颠倒）:① `git -C <库仓> push origin main`（⚠️ 会触发库 CI 打 tag `1.0.11`
-          #       并建 Release，无附件）；② `git -C <库仓> push origin --delete fabric-1.20.1` 删远端分支；
-          #       ③ 把本注记更新为「已 push + 实测 run 编号」；④ 消费方再 push。
+          # ✅ **2026-10-03(第四批)已完结 —— 库已 push，实测全绿**:
+          #    ① 库 `fabric-1.20.1` 已并入 `main` 并删除（**本地分支 + 远端分支**均已删；远端删除后
+          #       `origin` 只剩 `main` / `next`）；合并提交即本行 SHA `7ae16c8`，与原分支 tip **树等价**；
+          #    ② 本行 ref 由 `3652b58`(旧分支 HEAD) 改指 **`7ae16c8`**；
+          #    ③ 库 push 后其 CI 自动打 tag `1.0.11` 并建 Release（**0 附件**，符合「本库不分发 jar」）；
+          #    ④ 实测 **run #87** 全绿：`Checkout StarEngine Lib` / `Publish … to mavenLocal` / 四线 lang 同步 /
+          #       `Build with Gradle (all targets)` / 两个 Release 步骤 —— **全部 success**。
+          #    ⚠️ **该次 `Publish to Modrinth` 步骤虽报 success，实际未上传**（`MODRINTH_TOKEN` secret
+          #       当时未配置 ⇒ 只打 warning 就 exit 0）⇒ 已在本机用 `.modrinth/token` **补发 8 件**
+          #       （主项目 `1.3.7` ×4 + 库项目 `1.0.11` ×4，全部 HTTP 200），并把 secret **配好**
+          #       （`pynacl` sealed box 经 Actions API 写入，HTTP 201）⇒ 此后 push 会自动上传。
           path: .ci/starengine_lib
           fetch-depth: 1
 
