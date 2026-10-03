@@ -33,6 +33,7 @@
 //    /astralprobe dumpstate <tag>                     只读:转调 /astralparty dump(B6 ③)
 //    /astralprobe equipslot <slotId> <itemId> <tag>
 //    /astralprobe attack <entityTypeId> <tag>         生成靶子并真实近战命中(仍被 NANCY-LU-CLOAK 复用)
+//    /astralprobe meleebless <itemId> <tag>        近战黑名单取证:装骰子+清赐福+设主手+近战命中,读 BLESS
 //    /astralprobe railguncd <tag>
 //    /astralprobe railgunfriendly|railgunfriendlyread|railgunfriendlyend <tag>
 //                                                    电磁炮雷击命中范围取证(自己/中立/友方/敌方)
@@ -645,6 +646,48 @@ function doAttack(ctx, typeId, tag) {
     var hit = meleeHit(p, mob);
     send(ctx, "AP_" + tag + "_MELEE:" + hit.api + ":dealt=" + hit.dealt);
     send(ctx, "AP_" + tag + "_ATTACK:" + typeId + ":" + mob.getId());
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
+/**
+ * 实机取证:近战黑名单（`/astralprobe meleebless <itemId> <tag>`）。
+ *
+ * 一步完成一次**独立**测量:装骰子 → 清掉骰神赐福 → 把 `<itemId>` 放进主手 →
+ * 生成僵尸靶子并**真实近战命中** → 读是否获得骰神赐福。
+ *
+ * ⚠️ 清赐福**必须走 `ModEffectRemoval`**:`ModEffectEvents#onModEffectRemovalPrevented` 以 HIGH
+ * 优先级取消玩家身上 `astral_dice:*` 的普通移除 ⇒ 直接 `removeEffect()` 无效、赐福会残留,
+ * 于是下一次测量必然「已有赐福 ⇒ 不触发」⇒ 假阴性。
+ *
+ * 机器行:`AP_<tag>_HOLD:<实际主手id>:req=<请求id>:set=<1|ERR:…>:before=<true|false>` /
+ *        `AP_<tag>_MELEE:<api>:dealt=N` / `AP_<tag>_BLESS:<true|false>` / `AP_<tag>_DONE`
+ * 判据:黑名单物品(剪刀/钓竿/打火石/刷子/空手/盾牌/方块/枪械)与远程专用物品 ⇒ `BLESS:false`;
+ *       近战武器(剑/斧/镐/各模组武器) ⇒ `BLESS:true`。
+ */
+function doMeleeBless(ctx, itemId, tag) {
+    var p = ctx.source.getPlayerOrException();
+    // 1) 装骰子(幂等:固定写骰子槽 0 号;已戴则覆盖为同一物)
+    try { doEquipSlot(ctx, "dice", "astral_dice:dice", tag + "_EQ"); } catch (e0) { /* 由读数行体现 */ }
+    // 2) 清赐福(⚠️ 必须走 ModEffectRemoval 通道,见函数头注释)
+    try { ModEffectRemoval.remove(p, teruBlessing()); } catch (e1) { /* 忽略 */ }
+    var before = "?";
+    try { before = "" + p.hasEffect(teruBlessing()); } catch (e2) { before = "ERR:" + exText(e2); }
+    // 3) 主手 = itemId
+    var set = lpSetHand(p, itemId);
+    var hand = "?";
+    try { hand = itemIdOf(p.getMainHandItem()); } catch (e3) { hand = "ERR:" + exText(e3); }
+    // 4) 靶子 + 真实近战命中(与真人左键同源:Player#attack)
+    var mob = spawnDummy(p, "minecraft:zombie", 3);
+    if (mob == null) { send(ctx, "AP_" + tag + "_ERR:spawn_failed"); return 0; }
+    var hit = meleeHit(p, mob);
+    var bless = "?";
+    try { bless = "" + p.hasEffect(teruBlessing()); } catch (e4) { bless = "ERR:" + exText(e4); }
+    send(ctx, "AP_" + tag + "_HOLD:" + hand + ":req=" + itemId + ":set=" + set + ":before=" + before);
+    send(ctx, "AP_" + tag + "_MELEE:" + hit.api + ":dealt=" + hit.dealt);
+    send(ctx, "AP_" + tag + "_BLESS:" + bless);
+    try { mob.discard(); } catch (e5) { /* 忽略 */ }
+    try { ModEffectRemoval.remove(p, teruBlessing()); } catch (e6) { /* 忽略 */ }
     send(ctx, "AP_" + tag + "_DONE");
     return 1;
 }
@@ -13600,6 +13643,13 @@ ServerEvents.commandRegistry(event => {
                     .then(Commands.argument("tag", StringArg.word())
                         .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
                             return doAttack(ctx, StringArg.getString(ctx, "type"),
+                                StringArg.getString(ctx, "tag"));
+                        })))))
+            .then(Commands.literal("meleebless")
+                .then(Commands.argument("item", StringArg.string())
+                    .then(Commands.argument("tag", StringArg.word())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doMeleeBless(ctx, StringArg.getString(ctx, "item"),
                                 StringArg.getString(ctx, "tag"));
                         })))))
             .then(Commands.literal("railguncd")

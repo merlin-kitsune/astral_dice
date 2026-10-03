@@ -27,8 +27,9 @@
   "melee weapon attack" check had been switched to a "weapon/tool item-tag whitelist", but that rule
   dropped whole categories of third-party weapons - namely any mod that keeps its weapons out of the
   vanilla tags and ships its own item system. It is now **reverted to the blacklist**: only
-  **empty hand / shields / ranged-only items (bow / crossbow / slingshot) / blocks / guns themselves**
-  are excluded, and everything else counts - **including every tool and every mod weapon**. NOTE:
+  **empty hand / shields / ranged-only items (bow / crossbow / slingshot) / blocks / guns themselves /
+  non-combat tools (shears / fishing rod / flint and steel / brush)** are excluded, and everything else
+  counts - **including every mining tool (pickaxe / shovel / hoe / axe) and every mod weapon**. NOTE:
   weapons that are both melee and ranged are **not** excluded (e.g. the trident).
 - **Two "Voracious Pans" now trigger the dice blessing** (2026-10-03, user decision): two linked mods
   each ship a pan used as a weapon - one sits in **no item tag at all**, and the other is **also a

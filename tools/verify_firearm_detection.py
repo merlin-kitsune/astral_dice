@@ -87,9 +87,13 @@ for ln in LINES:
         "meleeChecksInclude": "if (isExplicitMeleeWeapon(held)) return true;" in dice,
         "meleeIncludesEldritchPan": '"enigmaticlegacy:eldritch_pan"' in dice,
         "meleeIncludesVoraciousPan": '"enigmaticdelicacy:voracious_pan"' in dice,
+        # 非武器工具(剪刀/钓竿/打火石/刷子)—— 2026-10-03 同日二版**重新纳入黑名单**(用户裁决)
+        "meleeChecksNonCombatTools": all(
+            s in dice for s in ("held.is(Items.SHEARS)", "held.is(Items.FISHING_ROD)",
+                                "held.is(Items.FLINT_AND_STEEL)", "held.is(Items.BRUSH)")),
         # 白名单形态必须彻底消失(否则宁可报错也不要静默留下半套逻辑)
         "meleeWhitelistHelperLeft": "isWeaponOrTool" in dice,
-        "meleeNonCombatToolsLeft": "VANILLA_NON_COMBAT_TOOLS" in dice,
+        "meleeNonCombatToolsConstantLeft": "VANILLA_NON_COMBAT_TOOLS" in dice,
         # 顺序判据要用原文(不参与上面按 key 的同构比对)
         "_dice": dice,
     }
@@ -101,20 +105,29 @@ for ln in LINES[1:]:
             fails.append("四线不同构: %s 的 %s 与 %s 不一致" % (ln, k, LINES[0]))
 
 # --------------------------------------------------- ③ 近战判定的硬约束
+# ⚠️ 移植线豁免（**仅限本批新增的「非武器工具」判据**）：按 AGENTS 第 221 行 ①，`fabric-1.20.1`
+#    不参与三线的「同批实施」—— 这四件是否重新纳入黑名单由用户单独下达移植批次。
+#    此处**记为 SKIP 并打印在摘要里**，不判 FAIL（判据不许模糊回退：SKIP 必须有存在感，
+#    不能靠静默通过）。
+TRANSPLANT_SKIPS = {"fabric-1.20.1": {"meleeChecksNonCombatTools"}}
+skips = []
+
 for ln in LINES:
     d = data[ln]
     if not d["hasIsFirearmItem"]:
         fails.append("%s: 缺少 isFirearmItem(ItemStack)" % ln)
     if d["meleeWhitelistHelperLeft"]:
         fails.append("%s: 近战判定仍残留 isWeaponOrTool(白名单形态未清理干净)" % ln)
-    if d["meleeNonCombatToolsLeft"]:
-        fails.append("%s: 近战判定仍残留 VANILLA_NON_COMBAT_TOOLS(剪刀/钓竿/打火石/刷子的显式排除 "
-                     "属已回退的白名单批次,黑名单下应整体移除)" % ln)
+    if d["meleeNonCombatToolsConstantLeft"]:
+        fails.append("%s: 近战判定仍残留 VANILLA_NON_COMBAT_TOOLS(白名单批次的命名常量 —— "
+                     "黑名单形态应改用 Items.SHEARS 等直接判定)" % ln)
     for flag, desc in (("meleeChecksEmptyHand", "未排除空手"),
                        ("meleeChecksShield", "未排除盾牌"),
                        ("meleeChecksProjectileWeapon", "未排除 ProjectileWeaponItem(弓/弩/弹弓)"),
                        ("meleeChecksBlock", "未排除方块"),
                        ("meleeChecksFirearm", "未调用 isFirearmItem(枪械本体应被排除)"),
+                       ("meleeChecksNonCombatTools", "未排除非武器工具(剪刀 / 钓竿 / 打火石 / 刷子 —— "
+                        "2026-10-03 同日二版按用户裁决重新纳入黑名单)"),
                        ("meleeReturnsTrue", "未以无条件 `return true;` 收尾(黑名单模式未生效)"),
                        ("meleeHasIncludeList", "缺少 MELEE_WEAPON_EXTRA_INCLUDES 显式纳入清单"),
                        ("meleeHasIncludeHelper", "缺少 isExplicitMeleeWeapon 辅助方法"),
@@ -122,6 +135,9 @@ for ln in LINES:
                        ("meleeIncludesEldritchPan", "显式纳入清单缺 enigmaticlegacy:eldritch_pan(1.20.1 饕餮之锅)"),
                        ("meleeIncludesVoraciousPan", "显式纳入清单缺 enigmaticdelicacy:voracious_pan(1.21.1 饕餮之锅)")):
         if not d[flag]:
+            if flag in TRANSPLANT_SKIPS.get(ln, ()):
+                skips.append("%s: %s（移植线滞后，待用户下达批次）" % (ln, desc))
+                continue
             fails.append("%s: %s" % (ln, desc))
     # ★ 顺序判据:显式纳入必须**先于** BlockItem 排除 —— 1.21.1 的饕餮之锅正是 BlockItem,
     #   顺序写反 = 该锅被排除,而上面所有「存在性」断言仍会通过(典型的假绿)。
@@ -130,8 +146,16 @@ for ln in LINES:
         i_blk = d["_dice"].index("BlockItem) return false;")
         if i_inc > i_blk:
             fails.append("%s: 显式纳入判定写在 BlockItem 排除之后 ⇒ 方块化的饕餮之锅仍会被排除" % ln)
+        # ★ 同理:显式纳入也必须先于「非武器工具」排除 —— 否则将来某模组的合法武器若恰好是
+        #   剪刀/钓竿/打火石/刷子的同 id 或子类,会被这一条静默杀掉,而存在性断言照样全绿。
+        if "meleeChecksNonCombatTools" in TRANSPLANT_SKIPS.get(ln, ()):
+            pass                       # 该线未纳入本批 ⇒ 顺序判据随之豁免（已在 skips 里登记）
+        else:
+            i_tools = d["_dice"].index("held.is(Items.SHEARS)")
+            if i_inc > i_tools:
+                fails.append("%s: 「非武器工具」排除写在显式纳入之后面（顺序写反）⇒ 同名合法武器无法被清单救回" % ln)
     except (ValueError, KeyError) as e:
-        fails.append("%s: 无法校验「显式纳入先于方块排除」的顺序: %s" % (ln, e))
+        fails.append("%s: 无法校验近战排除项的顺序判据: %s" % (ln, e))
     if not d["damageTypes"]:
         fails.append("%s: FIREARM_DAMAGE_TYPES 为空(解析失败?)" % ln)
     if not d["namespaces"]:
@@ -244,6 +268,8 @@ print("  projectilePackages(%d): %s" % (len(base["packages"]), base["packages"])
 print("  evidence mods        : %d" % len(ev["mods"]))
 for n in notes:
     print("  note: " + n)
+for s in skips:
+    print("  skip: " + s)
 if fails:
     print("\nFAIL (%d)" % len(fails))
     for f in fails:

@@ -1,0 +1,264 @@
+{
+  "case_id": "MELEE-BLACKLIST-1.21.1",
+  "title": "骰战近战黑名单（六项）实机取证：剪刀 / 钓竿 / 打火石 / 刷子 / 空手 / 盾牌 ⇒ 不触发骰神赐福；铁剑 / 铁镐 ⇒ 触发。",
+  "version": "1.21.1",
+  "target": {
+    "type": "new",
+    "ref": "melee_blacklist"
+  },
+  "on_fail": "keep_game_running",
+  "steps": [
+    {
+      "op": "note",
+      "text": "目的：验证 DiceCombatEvents.isMeleeWeaponAttack 的**黑名单六项**在实机生效。\n\n判据（探针 /astralprobe meleebless <itemId> <tag> 的机器行）：\n  黑名单物品 ⇒ AP_<tag>_BLESS:false；近战武器 ⇒ AP_<tag>_BLESS:true。\n  每条 HOLD 行必须 before=false —— 证明测量前赐福已被真正清掉（若为 true 则本次测量无效）。\n  ⚠️ 清赐福必须走 ModEffectRemoval 通道：普通 removeEffect 会被 ModEffectEvents 以 HIGH 优先级取消。\n\n被测八件：剪刀 / 钓竿 / 打火石 / 刷子（本次新增排除，期望 false）、空手 / 盾牌（既有排除，期望 false）、\n铁剑 / 铁镐（正对照，期望 true —— 若这两个也为 false，说明测量通道本身坏了，结论不成立）。"
+    },
+    {
+      "op": "note",
+      "text": "前置：清背包 + 装骰子（骰神赐福需要玩家佩戴骰子才会触发）。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear @s",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe equipslot dice \"astral_dice:dice\" MBD",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1000
+    },
+    {
+      "op": "note",
+      "text": "M1 剪刀（黑名单，期望 BLESS:false）"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe meleebless \"minecraft:shears\" SH",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "note",
+      "text": "M2 钓竿（黑名单，期望 BLESS:false）"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe meleebless \"minecraft:fishing_rod\" FR",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "note",
+      "text": "M3 打火石（黑名单，期望 BLESS:false）"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe meleebless \"minecraft:flint_and_steel\" FS",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "note",
+      "text": "M4 刷子（黑名单，期望 BLESS:false）"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe meleebless \"minecraft:brush\" BR",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "note",
+      "text": "M5 空手（既有排除，期望 BLESS:false）"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe meleebless \"\" EH",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "note",
+      "text": "M6 盾牌（既有排除，期望 BLESS:false）"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe meleebless \"minecraft:shield\" SG",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "note",
+      "text": "M7 铁剑（正对照，期望 BLESS:true）"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe meleebless \"minecraft:iron_sword\" SW",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "note",
+      "text": "M8 铁镐（正对照，期望 BLESS:true —— 挖掘工具仍在黑名单之外）"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe meleebless \"minecraft:iron_pickaxe\" PK",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "note",
+      "text": "收尾：清掉测量用的靶子"
+    },
+    {
+      "op": "inject_command",
+      "command": "/kill @e[type=minecraft:zombie]",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 400
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_SH_HOLD:minecraft:shears:req=minecraft:shears:set=1:before=false"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_SH_BLESS:false"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_FR_HOLD:minecraft:fishing_rod:req=minecraft:fishing_rod:set=1:before=false"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_FR_BLESS:false"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_FS_HOLD:minecraft:flint_and_steel:req=minecraft:flint_and_steel:set=1:before=false"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_FS_BLESS:false"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_BR_HOLD:minecraft:brush:req=minecraft:brush:set=1:before=false"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_BR_BLESS:false"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_EH_HOLD:[^:]*:req=:set=1:before=false"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_EH_BLESS:false"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_SG_HOLD:minecraft:shield:req=minecraft:shield:set=1:before=false"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_SG_BLESS:false"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_SW_HOLD:minecraft:iron_sword:req=minecraft:iron_sword:set=1:before=false"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_SW_BLESS:true"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_PK_HOLD:minecraft:iron_pickaxe:req=minecraft:iron_pickaxe:set=1:before=false"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_PK_BLESS:true"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_[A-Z0-9_]+_ERR"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_[A-Z0-9_]+_EX:"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "Unknown or incomplete command|Incorrect argument for command|Expected whitespace to end one argument|Unknown command|Expected literal|Unclosed quoted string|Expected quote to start a string|Invalid (integer|long|double|float|bool|escape sequence)|Expected (integer|long|double|float|bool)|<--\\[|错误的命令参数"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "redeclared|redeclaration of var"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "crash"
+    }
+  ],
+  "evidence": []
+}

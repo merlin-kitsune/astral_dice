@@ -1224,10 +1224,11 @@ public class DiceCombatEvents {
         return id != null && MELEE_WEAPON_EXTRA_INCLUDES.contains(id.toString());
     }
 
-    // 近战武器攻击判定(**黑名单模式**,2026-10-03 用户裁决回退 —— 恢复「为兼容匠魂/灾变」的原始设计):
-    // 只排除「空手 / 盾牌 / 远程专用武器(弓、弩、弹弓) / 方块 / 枪械类武器本体」,
-    // 其余一律视为可触发骰神赐福的近战武器 —— **包括全部工具类物品**
-    // (镐 / 锹 / 锄 / 斧 / 剪刀 / 钓竿 / 打火石 / 刷子…以及未知模组的工具与武器)。
+    // 近战武器攻击判定(**黑名单模式**,2026-10-03 用户裁决;同日二版把「非武器工具」重新纳入黑名单):
+    // 只排除「空手 / 盾牌 / 远程专用武器(弓、弩、弹弓) / 方块 / 枪械类武器本体 /
+    // 非武器工具(剪刀 / 钓竿 / 打火石 / 刷子)」,
+    // 其余一律视为可触发骰神赐福的近战武器 —— **包括全部挖掘工具与各模组的武器**
+    // (镐 / 锹 / 锄 / 斧…以及未知模组的工具与武器)。
     // 目的是兼容匠魂、灾变等第三方模组 —— 它们大多**不继承** SwordItem/PickaxeItem,
     // 2026-10-03 一度改成「按原版物品标签的白名单」正是栽在这一点上(已回退)。
     // ⚠️ 只按**原版物品标签 + 接口 + 注册名**判定,不用 SwordItem / DiggerItem / TieredItem 之类的类名
@@ -1245,6 +1246,11 @@ public class DiceCombatEvents {
         if (isExplicitMeleeWeapon(held)) return true;
         // 盾牌:不是武器
         if (held.is(Items.SHIELD)) return false;
+        // 非武器工具:剪刀 / 钓竿 / 打火石 / 刷子 —— 拿着它们打人不算「近战武器攻击」
+        // (2026-10-03 用户裁决,同日二版重新纳入黑名单。⚠️ 必须排在「显式纳入清单」之后 ——
+        //  将来若有某模组的合法武器恰好是这几件的子类/同 id,靠那条清单才能救回来)
+        if (held.is(Items.SHEARS) || held.is(Items.FISHING_ROD)
+                || held.is(Items.FLINT_AND_STEEL) || held.is(Items.BRUSH)) return false;
         // 远程专用武器:弓 / 弩 / 各模组弹弓(三叉戟等双模武器不在内)
         if (held.getItem() instanceof net.minecraft.world.item.ProjectileWeaponItem) return false;
         // 方块:拿着方块打人不算「近战武器攻击」

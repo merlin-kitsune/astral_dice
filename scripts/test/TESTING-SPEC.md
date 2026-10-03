@@ -3385,6 +3385,8 @@ brief 内**不喂结论**。结论与处置：
 删掉白名单引入的 `isWeaponOrTool` 与 `VANILLA_NON_COMBAT_TOOLS`（剪刀/钓竿/打火石/刷子的显式排除
 **来自已回退的那一批**，按「合并约定」一并移除）；`isMeleeWeaponAttack` 恢复 `f3ab60a7` 的形态：
 空手 → **显式清单** → 盾牌 → `ProjectileWeaponItem` → `BlockItem` → `isFirearmItem` → `true`。
+⛔ **该形态已于 2026-10-03 同日二版再次改写**（盾牌之后新增「非武器工具」`Items.SHEARS` /
+`FISHING_ROD` / `FLINT_AND_STEEL` / `BRUSH` 一条排除）—— 见本文件末尾「2026-10-03（续 2）：近战黑名单补入「非武器工具」」。
 
 ### 3. 效果牌目标口径（库 1.0.9 / 1.0.6-alpha.4）
 - 新增 `common/combat/CreatureTargets`：`isCreatureTarget(e)` = `HostileTargets.isHostile(e)` ∪
@@ -3411,7 +3413,50 @@ brief 内**不喂结论**。结论与处置：
 - 独立子代理只读复核见 §5。
 
 ### 5. 已知边界（如实记录）
-- **剪刀 / 钓竿 / 打火石 / 刷子 现在重新算作近战武器**（会触发骰神赐福）—— 这是「回退到原始黑名单设计」
-  的直接后果（该设计自己的 javadoc 就把它们列为**允许**）。若用户要恢复排除，加回一行显式排除即可。
+- ~~**剪刀 / 钓竿 / 打火石 / 刷子 现在重新算作近战武器**（会触发骰神赐福）~~ ——
+  ⛔ **已被 2026-10-03 同日二次裁决推翻**：四件已重新纳入黑名单，不再触发骰神赐福（见本文件末尾
+  「2026-10-03（续 2）：近战黑名单补入「非武器工具」」）。
 - 效果牌口径只覆盖**伤害效果牌**；立牌选择器（含同样「指定敌方」的枪匠/大侦探/占星师）**未放宽**。
 - 未做实机运行时验证（未在游戏内实际用两口锅挥击、也未实际对未驯服猫/马使用效果牌）。
+
+
+---
+
+## 2026-10-03（续 2）：近战黑名单补入「非武器工具」
+
+> 触发：用户裁决 ——「剪刀 / 钓竿 / 打火石 / 刷子 重新加入黑名单」。本文件上文「已知边界」里
+> 「四件重新算作近战武器」一条据此**作废**（已就地标注）。
+
+### 变更
+- `DiceCombatEvents.isMeleeWeaponAttack` 新增一条排除（**盾牌之后、远程专用之前**）：
+  `Items.SHEARS` / `Items.FISHING_ROD` / `Items.FLINT_AND_STEEL` / `Items.BRUSH`。
+  写法与原版 `Items.SHIELD` 同款（`ItemStack#is(Item)`）；⚠️ 26.1.2 的 `ItemStack` 自身只声明
+  `is(Predicate)`，该调用解析到 NeoForge 的 `IItemStackExtension` —— 与既有 `Items.SHIELD`
+  **同一条通道**（字节码：`invokevirtual ItemStack.is:(Ljava/lang/Object;)Z`）。
+- 黑名单现为 **六项**：空手 / 盾牌 / 远程专用（`ProjectileWeaponItem`）/ 方块（`BlockItem`）/
+  枪械本体（`isFirearmItem`）/ 非武器工具（四件）。
+- 显式纳入清单 `MELEE_WEAPON_EXTRA_INCLUDES`（两口饕餮之锅）**仍优先于全部排除**。
+- 三线（`neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2`）同批；
+  **`fabric-1.20.1` 按 AGENTS 第 221 行 ① 未纳入本批**。
+
+### 新增实机取证手段
+- 三线探针新增 `/astralprobe meleebless <itemId> <tag>`（`doMeleeBless`）：
+  装骰子 → 清骰神赐福（⚠️ **必须走 `ModEffectRemoval`**：`ModEffectEvents#onModEffectRemovalPrevented`
+  以 HIGH 优先级取消 `astral_dice:*` 的普通移除 ⇒ 直接 `removeEffect()` 无效；赐福一旦残留，
+  下一次测量必然「已有赐福 ⇒ 不触发」= **假阴性**）→ 设主手 → 生成僵尸靶子并真实近战命中 →
+  读 `DICE_BLESSING`。
+- 机器行：`AP_<tag>_HOLD:<实际主手id>:req=<请求id>:set=<1|ERR:…>:before=<true|false>` /
+  `AP_<tag>_MELEE:<api>:dealt=N` / `AP_<tag>_BLESS:<true|false>` / `AP_<tag>_DONE`。
+
+### 验证
+- 守卫 `tools/verify_firearm_detection.py`：**PASS** —— 新增「四件必须被排除」存在性判据 +
+  「非武器工具排除必须晚于显式纳入」**顺序判据**（顺序写反时存在性断言仍会全绿，属典型假绿）；
+  `fabric-1.20.1` 在该项上记为 **SKIP 并打印在摘要里**（移植线边界，不是模糊回退）。
+- 字节码取证：1.21.1 / 26.1.2 的 `build/libs`，与 1.20.1 的 **`build/devlibs`**（Mojmap；
+  生产 `build/libs` 已被 `reobfJar` 换 SRG 名，直接扫字符串会得到假阴性）里，
+  `isMeleeWeaponAttack` 均含四件 `getstatic`，且**位于 `isExplicitMeleeWeapon` 之后**。
+- 三线 `BUILD SUCCESSFUL` + 三条 `pushToGame: pushed … ->`。
+
+### 已知边界（如实记录）
+- `fabric-1.20.1` **未**同步本项（其四件仍计为近战）；守卫已按移植线规则登记为 SKIP。
+- 「非武器工具」按**物品实例**判定（`Items.*`），第三方模组自建的剪刀/钓竿类物品不受影响（仍计入近战）。
