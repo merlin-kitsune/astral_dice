@@ -39,12 +39,12 @@ public class KeyBindingSetup {
             if (player == null) return;
 
             while (ACTIVATE_SIGN_KEY.consumeClick()) {
-                // 「按键开启」的选择会话(立牌主动技能的目标选择)才把主动技能键当作「取消选择」;
-                // ⚠️ 「手持即选择」会话(效果牌握在主手时自动开启,玩家从未按过键)不得吞掉该键 ——
-                //    否则玩家只要握着选择器类效果牌就永远触发不了立牌主动技能(2026-09-24 用户报
-                //    BUG:「手持活体书页时,无法触发主动技能」)。该类会话的取消手势是 下蹲+右键 / 移出主手。
-                if (TargetSelectionClient.isActive() && !TargetSelectionClient.isHoldToSelect()) {
-                    // 目标选择期间再次按下主动技能键 = 取消选择(不触发立牌技能)
+                // 2026-10-03 用户裁决「按键收口」:选择会话期间(含「手持即选择」的效果牌会话),
+                // 主动技能键 = **收起**(取消选择器),不再穿透成立牌主动技能;
+                // 收起后服务端写抑制闩(牌仍在主手期间选择器不自动重开) ⇒ 之后再按 J 自然落到立牌主动技能,
+                // 该键不会被永久吞掉(本行撤销 2026-09-24 对「手持即选择」会话的豁免)。
+                if (TargetSelectionClient.isActive()) {
+                    // 目标选择期间按下主动技能键 = 收起(取消选择,不触发立牌技能)
                     TargetSelectionClient.logPrompt("j", "cancel");
                     TargetSelectionClient.cancel("key");
                 } else {
@@ -52,7 +52,10 @@ public class KeyBindingSetup {
                 }
             }
             while (OPEN_CARD_INVENTORY_KEY.consumeClick()) {
-                if (!TargetSelectionClient.isActive()) {
+                // 2026-10-03「按键收口」:卡牌栏键不再被「手持即选择」会话吞掉 —— 该类会话**本来就不因
+                // 开界面而取消**(见 TargetSelectionClient#onScreenOpening),吞掉它两者自相矛盾;
+                // 按键开启的立牌会话照旧不放行(它一开界面就取消,让 H 生效只会白丢会话)。
+                if (!TargetSelectionClient.isActive() || TargetSelectionClient.isHoldToSelect()) {
                     PacketDistributor.sendToServer(new OpenCardInventoryPayload());
                 }
             }

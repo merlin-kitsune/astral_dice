@@ -45,12 +45,14 @@ import com.merlinkitsune.astral_dice.combat.PartyRelations;
  * <ul>
  *   <li><b>左键</b> = 确认目标（发送 {@link TargetSelectConfirmPayload}）；</li>
  *   <li><b>右键</b> = 对自身使用 —— 会话允许自身目标（{@link #allowSelf()}）时提交对自身的确认；
- *       否则（{@code allowSelf=false} 的动作：bonnie / haiqing / moses 三个立牌动作，以及「你有我有」you_have_i_have）只弹 actionbar 提示
- *       {@code msg.astral_dice.target_select.self_unsupported}，**不提交选择**（会话保留）；</li>
+ *       否则（{@code allowSelf=false} 的动作 =「只能对目标释放」的主动技能：占星师 / 秘密侦探 / 枪匠 /
+ *       商人 megas 的立牌动作，以及效果牌「你有我有」/「活体书页」/「符卡-祸」）= **收起（取消选择）**
+ *       （2026-10-03 用户裁决：右键改为取消而不是只拦截 —— 旧行为只弹 actionbar 提示
+ *       {@code msg.astral_dice.target_select.self_unsupported} 并保留会话，该 lang 键自此零引用）；</li>
  *   <li><b>右键 + 潜行</b> = 取消选择；</li>
  *   <li><b>ESC</b> = 原版照常打开暂停菜单，菜单一打开（{@code ScreenEvent.Opening}）即取消选择
  *       （**手持即选择类会话例外**：开着菜单也保留会话，见 {@link #onScreenOpening}）；</li>
- *   <li><b>J</b>（主动技能键）= 取消**按键开启的**选择会话；「手持即选择」类会话（效果牌握在主手时自动开启）**不吞此键** —— 照常触发立牌主动技能（2026-09-24 用户报 BUG 后修正）；</li>
+ *   <li><b>J</b>（主动技能键）= 收起（取消选择），**含「手持即选择」类会话**（2026-10-03 用户裁决「按键收口」，撤销 2026-09-24 对该类会话的豁免）；收起后服务端写抑制闩（牌仍在主手期间选择器不自动重开）⇒ 之后再按 J 会自然落到立牌主动技能，该键不会被永久吞掉；</li>
  *   <li><b>移出主手</b> = 手持即选择类会话（四张效果牌）的收官方式：物品离开主手即退出选择
  *       （{@code reason=released}，无瞬态提示），此类会话**没有倒计时**、提示里也不出现剩余时间；</li>
  *   <li>选择期间滚轮拦截、{@link ChatScreen} 豁免（命令聊天/自动化注入命令）均保留。</li>
@@ -170,9 +172,8 @@ public final class TargetSelectionClient {
     /**
      * 当前会话是否由「主手手持物品」驱动（=「手持即选择」类，无倒计时，物品离开主手即退出）。
      *
-     * <p>供 {@code client/KeyBindingSetup} 分流主动技能键：手持类会话是**由物品而非按键**开启的，
-     * 玩家从未按过键 ⇒ 不得把它当作「按 J 取消选择」，否则握着选择器类效果牌时触发不了立牌主动技能
-     * （2026-09-24 用户报 BUG「手持活体书页时，无法触发主动技能」）。
+     * <p>供 {@code client/KeyBindingSetup} 分流**卡牌栏键**（2026-10-03「按键收口」后仅此一处消费点：
+     * 该键只被这类会话放行；主动技能键 J 已不再按本标志分流，改为「会话期一律收起」）。
      */
     public static boolean isHoldToSelect() {
         return holdToSelect;
@@ -310,11 +311,14 @@ public final class TargetSelectionClient {
     }
 
     /**
-     * 右键 = 对自身使用。
+     * 右键（不潜行）：先按「能否对自身使用」分流 ——
      *
-     * <p>会话允许自身目标（{@link #allowSelf()}）时提交对自身的确认包并退出选择模式；
-     * 否则（{@code allowSelf=false} 的动作，如 bonnie / haiqing / moses 与 you_have_i_have）只弹 actionbar {@code self_unsupported} 提示，
-     * **不提交选择**、会话保留。
+     * <ul>
+     *   <li>{@link #allowSelf()} 为真 ⇒ 提交对自身的确认包（对自身使用）并退出选择模式；</li>
+     *   <li>为假（{@code allowSelf=false} 的动作，即「只能对目标释放」的主动技能）⇒ **收起（取消选择）**
+     *       （2026-10-03 用户裁决：右键改为取消而不是只拦截；旧行为只弹 {@code self_unsupported} 提示
+     *       并保留会话，该 lang 键自此零引用）。</li>
+     * </ul>
      */
     public static void useOnSelfBySecondaryClick() {
         if (!isActive()) return;
@@ -328,8 +332,9 @@ public final class TargetSelectionClient {
             deactivate();
             return;
         }
-        logPrompt("right", "self_unsupported");
-        showPrompt(Component.translatable("msg.astral_dice.target_select.self_unsupported"));
+        // 只能对目标释放 ⇒ 右键 = 收起（走与服务端 cancel 同一条路径:清会话 / 手持类写抑制闩 / 抛「已取消」提示）
+        logPrompt("right", "cancel");
+        cancel("right");
     }
 
     /** 确认：向服务端发送确认包并退出选择模式（调用方保证 currentTarget 有效） */
@@ -620,7 +625,7 @@ public final class TargetSelectionClient {
 
     /**
      * 选择期间接管鼠标（强力胶式按键语义）：
-     * 左键 = 确认目标；右键 = 对自身使用（只提示，不提交）；右键 + 潜行 = 取消。
+     * 左键 = 释放（确认目标）；右键 = 对自身使用（会话允许时）或收起（只能对目标释放时）；右键 + 潜行 = 收起。
      *
      * <p>用 `InputEvent.MouseButton.Pre` 而非 KeyMapping：选择期间必须**先于原版**截住左键攻击
      * 与右键使用，原版逻辑与其它模组的鼠标绑定都不应生效（事件一律取消）。
@@ -667,8 +672,12 @@ public final class TargetSelectionClient {
                 }
             }
         }
-        // 选择期间接管鼠标:所有按键（左键攻击/右键原使用/中键）都不进原版逻辑
-        event.setCanceled(true);
+        // 2026-10-03「按键收口」:选择期间只接管「释放」（左键）与「收起」（右键，含 +潜行）两个按键 ——
+        // 中键 / 侧键一律放行（原实现无条件 setCanceled(true),把选取方块等也一并吞掉了）。
+        if (event.getButton() == GLFW.GLFW_MOUSE_BUTTON_LEFT
+                || event.getButton() == GLFW.GLFW_MOUSE_BUTTON_RIGHT) {
+            event.setCanceled(true);
+        }
     }
 
     /**

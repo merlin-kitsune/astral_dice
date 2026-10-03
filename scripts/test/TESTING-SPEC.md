@@ -3477,3 +3477,41 @@ brief 内**不喂结论**。结论与处置：
   **判据应看 `MT_CASE_RESULT` / 子报告，不要只看退出码。**
 - ⚠️ 跑法（本次实测）：`--phase stop` 必须带 `--version`；`--case`（= 全流程）需追加 `--allow-auto`
   放行开关，否则被「批量编排闸门」拦成 `MT_AUTO_DISABLED`。
+
+
+### 选择会话输入收口（2026-10-03，三线；用户裁决「仅控制释放按键和收起按键」）
+
+#### 改动（三线同构；`fabric-1.20.1` 按 AGENTS 边界**未**同步）
+- `client/KeyBindingSetup.java`：① 主动技能键 J 的判据由 `isActive() && !isHoldToSelect()` 收为
+  `isActive()` —— **会话期一律「收起」**（撤销 2026-09-24 对「手持即选择」会话的豁免）；
+  ② 卡牌栏键 H 的判据由 `!isActive()` 改为 `!isActive() || isHoldToSelect()` ——
+  **「手持即选择」会话放行**（该类会话本来就不因开界面而取消）。
+- `client/TargetSelectionClient.java`：① `useOnSelfBySecondaryClick()` 在 `allowSelf=false` 时
+  由「弹 `self_unsupported` 并保留会话」改为 **`logPrompt("right","cancel")` + `cancel("right")`**；
+  ② `onMouseButton` 尾部的无条件 `event.setCanceled(true)` 收为**只对左键与右键**取消（中键/侧键放行）。
+- lang（三线 × 中/英/日）：`prompt.hold.{valid,no_target,no_target_self,rejected}` 四键追加「按 J 收起」
+  （`rejected` 同步补，四态提示口径一致）。
+
+#### 验证
+- 编译/部署：三线 `BUILD SUCCESSFUL` + 三条 `pushToGame: pushed … ->`（产物时间戳为本批）。
+- 开 jar 字节码取证（`javap -p -c`，最终产物 18:30 / 18:31）：
+  - `KeyBindingSetup$ClientEvents.onClientTick`：J 分支只有 `TargetSelectionClient.isActive()` 一次调用
+    （偏移 21，`ifeq` 分叉到 `SignActivatePayload`），**不再出现 `isHoldToSelect`**；H 分支为
+    `isActive()`（偏移 68，假 ⇒ 发包）**或** `isHoldToSelect()`（偏移 74，假 ⇒ 发包）——
+    即「非会话中」或「手持即选择会话」才发 `OpenCardInventoryPayload`。
+  - `TargetSelectionClient.useOnSelfBySecondaryClick`：尾部 = `ldc "cancel"` → `logPrompt` → `cancel`；
+    全类**已无** `self_unsupported` 字面量（三线 count=0 ⇒ 该 lang 键确为死键）。
+  - `TargetSelectionClient.onMouseButton`：尾部 `setCanceled(true)` 由**两次 `getButton()` 比较**守卫
+    （`ifeq` = 左键 0；`iconst_1; if_icmpne` = 右键 1），不再是无条件取消（GLFW 键码是编译期常量，
+    字节码里内联为 0/1，故判据看**结构**而不是常量名）。
+- 守门：`tools/check_lang_sync.ps1`（三线逐键值一致）、`scripts/audit/tooltip_color_audit.ps1`、
+  `tools/audit_patchouli_keys.py` 等本批相关门禁全绿。
+
+#### 已知边界（如实记录）
+- **本树无自动化用例覆盖本项**：按键语义的用例组 `SELECTOR-KEYS-*` 位于 2.0.0 开发线
+  （`scripts/test/**` 按 AGENTS 属开发线文件，主线保持封包版本）⇒ 本批只做**字节码 + 文档**层取证，
+  未做实机按键回放。实机建议：手持效果牌后依次验证 ① 左键释放 ② 右键（不可自用的牌）收起
+  ③ 下蹲+右键收起 ④ J 收起（且下一次 J 能起立牌主动技能）⑤ 中键选取方块可用 ⑥ H 能开卡牌栏。
+- `fabric-1.20.1` 未同步：该线仍是旧口径（J 被豁免、中键被吞、H 被吞、右键只提示）。
+- `neoforge-26.1.2` 的 `onMouseButton` 仍**缺** `if (Minecraft.getInstance().screen != null) return;`
+  守卫（AGENTS 第 14 条已登记：界面打开时暂停菜单按键点不动），本批**未**顺带修（属另一缺陷）。

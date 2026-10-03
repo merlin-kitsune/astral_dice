@@ -120,6 +120,25 @@
   and reclaims **from the death tick onward, every tick** (no longer waiting for a respawn), restricted
   by "owner + held item + freshly created" so that a legitimate older crystal of the same player is
   never touched, and so that the storage crystal dropped by that mod's other branch is left alone.
+- **Effect-card sessions swallowed/hijacked too many inputs - selection input scope narrowed** (reported
+  2026-10-03: "effect cards lock up the active skill key"): while holding a selector-type effect card (the
+  target selector opens automatically while the card sits in the main hand), the mod turned off or captured
+  far more input than it needed - (1) the active-skill key J was forwarded straight to the sign's active
+  skill, and because such skills "open a session first and only apply on confirm", the **card's own selector
+  got displaced by the sign's session**, making the key's ownership unpredictable; (2) the **middle/side
+  mouse buttons** were cancelled together with the left button (even pick-block stopped working); (3) the
+  card-inventory key H was swallowed, even though this kind of session **deliberately survives opening a
+  GUI** (backpack / ESC do not end it) - a straight contradiction. Per the user's ruling the session's input
+  is now **narrowed to "release key + collapse key"**: **left click = release (confirm target)**; **right
+  click = use on yourself / collapse** - for active skills that can only be released on a target (the
+  Astrologer / Detective / Gunsmith / Merchant / Cultist sign actions, plus "You Have I Have" / "Living
+  Page" / "Talisman - Misfortune") right click now **cancels the selection outright** (it used to only print
+  "this skill cannot be used on yourself" and keep the session); **sneak + right click = collapse**; **the
+  active-skill key J = collapse** (it no longer falls through to the sign's active skill). Everything else
+  is **left alone**: **middle/side mouse buttons** and the **card-inventory key H** (the card panel can now
+  be opened while holding an effect card). NOTE: collapsing is **not** disabling - the server remembers
+  "this card is still in the main hand", so the selector does **not** pop back on the next tick; put the
+  card away and hold it again to re-open it, and J returns to casting the sign's active skill.
 
 ## 1.3.6
 
