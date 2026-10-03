@@ -8,6 +8,21 @@
 
 ### Content & Balance Changes
 
+- **"Usable on others" healing / utility cards can now target friendly or neutral creatures**
+  (2026-10-03, user decision): the target selectors of **Berserk**, **Luxury Feast** and
+  **Express Delivery** could previously only pick players; they can now pick **any living entity within
+  16 blocks that is not a hostile target** - players, tamed pets (wolf / cat / parrot), passive
+  livestock and villagers. NOTE: **anything that falls into this mod's "hostile target" scope is never
+  selectable** - hostile mobs, plus untamed wolves / iron golems / polar bears / bees, which this mod
+  counts as hostile targets. NOTE: right-click still uses the card on yourself. NOTE: a creature target
+  now **actually receives the effect** - the primary target is no longer taken only from the player
+  list, fixing "using the card on a creature did nothing".
+- **Luxury Feast now damages undead targets** (2026-10-03, user decision): the healing card
+  "Luxury Feast" now matches **vanilla healing potions** - if the healed target is **undead**
+  (zombie / skeleton / wither / phantom ...), it takes **the same amount as magic damage** instead of
+  being healed. NOTE: this is **faction-independent** - tamed undead pets and undead players on the
+  same team take the damage too.
+
 - **Melee-weapon detection reverted to the blacklist** (2026-10-03, user decision): the dice-blessing
   "melee weapon attack" check had been switched to a "weapon/tool item-tag whitelist", but that rule
   dropped whole categories of third-party weapons - namely any mod that keeps its weapons out of the

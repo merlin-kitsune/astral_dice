@@ -1228,6 +1228,18 @@ When extending this workspace:
     - **提示**：手持类会话用 `msg.astral_dice.target_select.prompt.hold.{no_target,no_target_self,rejected,valid}`（末句「移出手持即退出选择」），`steadyPrompt()` **不追加**「（剩余 N 秒）」；立牌等按键类会话仍用原四态 + 时间后缀、仍走 `GameplayConstants.SKILL_WAIT_SECONDS`（30 秒）窗口。
     - **移植检查**：`target/HoldToSelect.java`（`boolean stillHeld(Player)`）与 `BaseEffectCardItem#tickHeldSelector` / `#heldCardMatches` / `selectorActionId()` 的 **`public` 可见性**缺一不可；只补 `use()` 而不补 tick 触发会退化成「必须按键」，漏 `HoldToSelect` 则会话不会随松手关闭。
     - **目标类型（2026-09-25 追加）**：`BaseEffectCardItem#registerSelectorAction(String, TargetType, boolean)` 显式传入目标类型（两参重载 = `TargetType.PLAYER`，既有四张牌逐字不变）；**活体书页 `living_page` 是首个 `TargetType.ENEMY` 的效果牌**（仅敌对生物 ∪ 中立生物(宠物除外)；不含玩家、不可对自己使用）。可选中判定仍统一走 `target/SelectorTargets`，**禁止**在效果牌侧另写判定；`SelectorAction` 因而持有 `targetType` 字段（构造注入），`targetType()` 不再是常量。
+    - **治疗 / 功能效果牌 = `TargetType.NON_HOSTILE`（2026-10-03 用户裁决；库 `1.0.10` 起）**：**狂暴 / 奢华大餐 /
+      加急加快** 三张「可对他人使用」的牌由 `PLAYER` 改注册为 `NON_HOSTILE`（`SelectorTargets` 把该类型路由到
+      `!HostileTargets.isHostile(target)`）⇒ 可选集合 = **不属于「敌方判定」的活体**（玩家 / 已驯服的宠物 /
+      被动家畜 / 村民…），**凡落入敌方判定的生物一律不可选**（敌对生物，以及未驯服的狼 / 铁傀儡 / 北极熊 / 蜜蜂
+      等被本模组计为敌方目标的中立生物）。⚠️ 与**伤害**效果牌的 `CREATURE` 系**方向相反**（那条含未驯服的可驯服
+      生物、**排除**村民），两者不得混用；三个常量（`CREATURE` / `CREATURE_OR_RIVAL` / `NON_HOSTILE`）均
+      **追加在 `TargetType` 末尾** —— 既有 ordinal 不变，`values()[ordinal]` 的会话网络编码因此兼容。
+      ⚠️ **`LuxuryFeastCardItem#applyEffect` 的主目标必须单列一次**（它可能**不是玩家**）：旧实现只遍历
+      `Player`，对生物使用会**整张牌空放**（效果、扩散全落空、卡牌照样消耗）。⚠️ 同牌对**亡灵目标**
+      （口径 = 原版 `#minecraft:undead`：1.21.1 / 26.1.2 走 `EntityType#builtInRegistryHolder().is(EntityTypeTags.UNDEAD)`，
+      **1.20.1 的 `EntityTypeTags` 无该常量、改用 `LivingEntity#getMobType() == MobType.UNDEAD`**）改为
+      `hurt(damageSources().magic(), …)` —— **与阵营无关**，友方亡灵同样受伤（原版治疗药水语义）。
 
 15. **锁定范围（半径）与「指向」判定（2026-09-19 用户要求，两发布线同构）**：
     - **半径来源**：`BaseEffectCardItem#registerSelectorAction(String, TargetType, boolean, double radius)` 四参重载（2026-09-19 新增）让**单张牌**声明自己的锁定范围；{@code radius <= 0}（= 三参重载）继续沿用前置库配置 `GameplayConstants.TARGET_SELECT_RADIUS`。`SelectorAction#radius()` 覆写：显式声明者原样返回，否则 `TargetSelectionAction.super.radius()`。
