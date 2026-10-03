@@ -1850,8 +1850,28 @@ When extending this workspace:
 - 🚨 **「死亡不掉落灵魂水晶」纯本模组侧只能「死后补偿」**：第三方在 `LivingDropsEvent`(**LOWEST**)
   里调 `SoulCrystal#createCrystalFrom(player)`（内部只做 `lostCrystals + 1`）并生成
   `PermanentItemEntity`；最后优先级**无法**被更晚的监听覆盖 ⇒ 正解 = 死亡瞬间快照 `lostCrystals`，
-  玩家重生后（下一 tick）① 还原计数并 `updatePlayerSoulMap` ② 回收死亡点附近的灵魂水晶掉落物。
+  ① **每 tick**（含死亡当 tick）回收死亡点新生成的灵魂水晶 ② 玩家重生后还原计数并 `updatePlayerSoulMap`。
   ⚠️ 只还原计数不回收掉落物 ⇒ 玩家捡回后**双倍收益**。
+- 🚨 **载体实体 `PermanentItemEntity` 是 `extends Entity`，不是原版 `ItemEntity`**（2026-10-03 修的缺陷，必须遵守）：
+  旧实现用 `level.getEntitiesOfClass(ItemEntity.class, box)` 找水晶 ⇒ **永远匹配不到** ⇒ 回收是**静默的
+  no-op**，水晶永久残留；又因为计数已被本类还原，`SoulCrystal#retrieveSoulFromCrystal` 在
+  `lostCrystals <= 0` 时返回 **false** ⇒ **连水晶主人也捡不起来**（实测症状：「死亡点留一个无法拾取的
+  灵魂水晶」，而最大生命值确实已恢复）。⇒ **必须按第三方实体类检索**，类名是**分线常量**（已用实物 jar 的
+  `javap` 取证）：1.21.1 / 26.1.2 = `auviotre.enigmatic.legacy.contents.entity.misc.PermanentItemEntity`；
+  1.20.1 = `com.aizistral.enigmaticlegacy.entities.PermanentItemEntity`。
+  ⚠️ **该反射解析与 `SoulCrystal` 的那套相互独立**（`holderClass()` vs `initSoulApi()`）：载体类解析失败
+  只停用「回收」，**不影响计数还原** —— 避免第三方改包名时把整条修正一起拖死。
+  判定**四连**（缺一不动）：① 实体是该载体类 ② 主人 UUID == **本次死亡**的玩家（防误删他人水晶）
+  ③ 持有物 == 灵魂水晶 ④ 实体 `age <= FRESH_SOUL_CRYSTAL_MAX_AGE`(40t)（防误删该玩家**早先**留在附近的
+  合法水晶 —— 那是可以从死亡点捡回灵魂的正经物品）。
+  ⚠️ `discard()` 会走到它的 `remove(DISCARDED)` 覆写 ⇒ **自动** `SoulArchive.removeItem(this)`；
+  若绕过 `discard()` 自行移除，灵魂罗盘会指向一个不存在的水晶。
+  ⚠️ 第三方在「飞升护符 + 存储水晶」分支里掉的是**存储水晶**（不同物品），**不得**一起删 —— 那是它的
+  保底功能；本类只按「持有物 == 灵魂水晶」过滤，天然不会命中。
+  ⚠️ **回收必须从死亡当 tick 开始、每 tick 做**，不能只在重生后做：水晶在死亡当 tick 的
+  `LivingDropsEvent`(LOWEST) 里生成，而 `onServerTick` 跑在 `ServerTickEvent.Post`（当 tick 末尾）⇒
+  同一拍就能看到；只在重生后回收会留窗口，且玩家掉线/服务端重启时 `PENDING`（内存 Map）丢失 ⇒ 水晶
+  **永久残留**。
 - 门控一律 `ModList.get().isLoaded("<本线 modId>")`（**1.20.1 的 ModList 在 `net.minecraftforge.fml`**，
   另两线在 `net.neoforged.fml`）；tooltip 备注区渲染走 `ModTooltipHandler#addSignNoteLines`
   （紫色 `§d`、无标题、独立空行段，范本 = `misaki_enigmatic`）。

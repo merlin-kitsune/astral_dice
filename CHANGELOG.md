@@ -83,6 +83,18 @@
   valid key as-is, the number stayed at the old value and a **content-identical `.bak` was written on
   every launch**. The version is now written back after backing up, making "one version = one migration"
   actually hold.
+- **The linked "no soul crystal is torn off a dying player" correction was in fact a no-op - a
+  permanently unpickable crystal was left at the death site** (reported 2026-10-03): the correction is
+  supposed to reclaim the soul crystal torn off by the linked mod (with max health already restored as
+  designed) when a player wearing that mod's cursed trinket and holding Weakness Insight stacks dies.
+  But the reclaim filtered on the **vanilla dropped-item type**, while that mod's crystal is carried by
+  **its own entity** (whose base class is not a vanilla dropped item) - so the filter never matched and
+  the reclaim **silently did nothing**. Because max health had already been restored, the crystal's own
+  "reclaim your soul" logic then found nothing to reclaim, so **not even its owner could pick it up**,
+  leaving a dead prop at the death site forever. It now queries that mod's carrier entity class directly
+  and reclaims **from the death tick onward, every tick** (no longer waiting for a respawn), restricted
+  by "owner + held item + freshly created" so that a legitimate older crystal of the same player is
+  never touched, and so that the storage crystal dropped by that mod's other branch is left alone.
 
 ## 1.3.6
 

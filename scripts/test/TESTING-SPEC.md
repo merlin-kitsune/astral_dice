@@ -3305,3 +3305,57 @@ brief 内**不喂结论**。结论与处置：
 - 未做实机运行时验证（未启动游戏、未实际用镐/锹/锄/剪刀/三叉戟挥击验证触发）。
 - 未验证 26.1.2 长矛物品在注册表层面是否真被 `minecraft:spears` 覆盖（只验了数据包 JSON）。
 - 「34 → 42」的起点数字 34 由 `续 49` 文本反推，未做 git 历史还原。
+
+## 续 51（2026-10-03）枪匠×神秘遗物「死亡不掉落灵魂水晶」回收失效 —— 根因与修复
+
+> 用户实报：「安装神秘遗物/神秘遗物+ 时，枪匠在拥有弱点识破的状态下死亡，尽管不会因为七咒影响减少
+> 最大生命值，但仍然会掉落一个**无法被拾取**的灵魂水晶。」
+> 取证素材（**实物 jar，非猜测**）：`temp/t05/enig/enigmaticlegacyplus-1.21.1-1.1.2.jar`（1.21.1/26.1.2）、
+> `temp/t05/enig/EnigmaticLegacy-2.30.1.jar`（1.20.1）。反汇编脚本 `/javap` 输出见 `temp/t05/`。
+
+### 1. 第三方机制（逐条来自字节码，非推测）
+`<ns>.items.CursedRing$Events`：
+- `onLivingDropsLowest(LivingDropsEvent)`（**LOWEST**）是唯一掉落点：
+  `canDropSoulCrystal(player, POSSESSIONS.containsEntry(player, CURSED_RING))` 为真时
+  调 `SoulCrystal#createCrystalFrom(player)`（内部只做 `setLostCrystals(getLostCrystals+1)` 并返回物品），
+  然后 `new PermanentItemEntity(level, x, y+1, z, stack)` → `setThrowerId/setOwnerId(player.getUUID())`
+  → `level.addFreshEntity(entity)` → `SoulArchive.getInstance().addItem(entity)`。
+- `EnigmaticHandler#canDropSoulCrystal(p, ringKept) = isAffectedBySoulLoss(p, ringKept) && getLostCrystals(p) < maxSoulCrystalLoss.getAsInt()`；
+  `isAffectedBySoulLoss` 取决于 **`keepInventory` 游戏规则 + 该模组的 `soulCrystalsMode` 配置** ⇒ 本模组**无法**从这侧关掉掉落。
+- 🚨 **载体实体 `PermanentItemEntity extends net.minecraft.world.entity.Entity` —— 不是 `ItemEntity`**（两线均如此，`javap` 实测）。
+- `SoulCrystal#retrieveSoulFromCrystal(p)`：`lost > 0` 才 `setLostCrystals(lost-1)` 并返回 true，**否则返回 false**。
+- `PermanentItemEntity#playerTouch(p)`：只对**主人**生效（`p.getUUID().equals(getOwnerId())`），且会经
+  `retrieveSoulFromCrystal` 判定 ⇒ **计数已被还原时该分支什么都不做**（外观即「捡不起来」）。
+- `PermanentItemEntity#remove(DISCARDED|KILLED)` 覆写：`SoulArchive.getInstance().removeItem(this)` 后 `super.remove(...)`
+  ⇒ **`discard()` 会自动从第三方档案注销**。
+
+### 2. 根因（本仓缺陷）
+`item/sign/MosesEnigmaticLink#discardDroppedCrystals` 用
+`level.getEntitiesOfClass(ItemEntity.class, box)` 检索 ⇒ 与载体实体类型**不相交** ⇒ 过滤恒空 ⇒
+回收是**静默 no-op**（四线皆有，2026-09-30 引入时即存在）。叠加「计数已被还原」⇒ 水晶既不会被本模组
+回收、主人也捡不起来 ⇒ 死亡点永久残留一枚死物。用户报告与该机制**逐条吻合**。
+
+### 3. 修复（四线同批，行尾均纯 CRLF）
+1. 新增分线常量 `PERMANENT_ITEM_ENTITY_CLASS`（1.21.1/26.1.2 = `auviotre.enigmatic.legacy.contents.entity.misc.PermanentItemEntity`；
+   1.20.1 = `com.aizistral.enigmaticlegacy.entities.PermanentItemEntity`，两者**均已 `javap` 核实**）。
+2. 新增**独立**的懒解析 `holderClass()`（`getItem` / `getOwnerId` 必需、`getAge` 可缺省）；
+   ⚠️ 与 `initSoulApi()` **解耦**：载体类解析失败只停用回收，计数还原照常。
+3. `discardDroppedCrystals(UUID, Pending)` 改为按载体类检索，判定四连：**类 · 主人 UUID · 持有物 · `age`**；
+   新增 `FRESH_SOUL_CRYSTAL_MAX_AGE = 40`（`age` 在 `tick()` 里**无条件自增**，已核实）。
+4. `processPending` 改为**每 tick**先回收、再（若玩家已重生）还原计数；回收不再依赖重生。
+
+### 4. 验证
+- 四线 `compileJava` / `build` **BUILD SUCCESSFUL**；四线 `MosesEnigmaticLink.java` 除分线常量与
+  `@Mod.EventBusSubscriber`/事件类名外逐字同构。
+- 断言：全仓 `getEntitiesOfClass(ItemEntity` 在 `MosesEnigmaticLink` 内**归零**（其余命中在
+  `TemporaryCardUtil`，与本缺陷无关）。
+- 独立子代理只读复核（结论与处置见 §5）。
+
+### 5. 已知边界（如实记录）
+- **历史遗留水晶不会自动清掉**：回收只在「该玩家本次死亡 → 重生」的 `PENDING` 窗口内进行
+  （这是刻意的 —— 该玩家早先留下的合法水晶不该被删）。修复前已残留在存档里的水晶需人工清理
+  （`/kill @e[type=...]` 或删除实体）。
+- `PENDING` 仍是**内存 Map**：服务端在「玩家死亡 → 重生」之间重启，计数还原仍会丢失
+  （水晶回收窗口也随之丢失）。本轮未做持久化。
+- 未做实机运行时验证（未启动游戏实测「死亡 → 重生后死亡点无水晶」）。数值与实体层面的判据均为
+  字节码 + 静态断言，运行时行为待用户实机确认。
