@@ -21,8 +21,10 @@ import net.minecraft.world.effect.MobEffectCategory;
  * 效果实例即真值(与「白泽赐福」「降神」等同款)。立牌的持续加成(活体书页伤害 +1)仍按「佩戴时
  * 生效」由 {@code SpellDamageRegistry} 判定,两者互不影响。
  *
- * <p>图标 = {@code textures/mob_effect/rin_page_range.png},生成器
- * {@code tools/gen_rin_page_range_texture.py}(书页 + 蓝色双向箭头)。
+ * <p>图标 = {@code textures/mob_effect/rin_page_range.png} = {@code images/调查员立牌.png}
+ * (与 {@code textures/item/rin_sign.png} 同一张)**逐字节复制** —— **复用调查员本身图标、不自创**
+ * (2026-10-03 用户裁决;与本模组立牌类状态的既有惯例同款:{@code zhao_blessing} /
+ * {@code mamushi_dragon} / {@code sherry_reasoning} 的图标一律取立牌贴图)。
  */
 public class RinPageRangeEffect extends MobEffect {
     /** 状态时长(tick,2:00) */

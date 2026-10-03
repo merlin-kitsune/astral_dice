@@ -3492,6 +3492,9 @@ brief 内**不喂结论**。结论与处置：
   探天卫星（仅效果牌且 `isEquipped`）+「书页射程」（仅 `living_page` 且 `hasEffect`）**相加**。
 - `target/TargetSelectionManager#start`：`声明值 ≤32 → 加成 → ≤64`**两段夹取**（`MAX_SELECT_RADIUS` **仍 32**）。
 - 新图标 `textures/mob_effect/rin_page_range.png`（32×32）+ 生成器 `tools/gen_rin_page_range_texture.py`；
+  ⚠️ **「自创图案 + 生成器」方案已于同日被用户裁决推翻**（「仍然继续使用调查员本身图标，不需要自创图标」）
+  ⇒ 图标改为 `images/调查员立牌.png` **逐字节复制**、生成器**已删除**；本小节以下涉及该生成器与自创图案的
+  记录**仅代表当时状态**，以文件末尾「2026-10-03 第三批」为准。
   lang 三线三语 6 组键；顺手订正手册 `effect_card_living_page.2` 的射程数字 16 → **32**（与 `LOCK_RANGE` 一致）。
 
 #### 验证
@@ -3503,6 +3506,7 @@ brief 内**不喂结论**。结论与处置：
 - 守门 **19/19 rc=0**：含 `verify_effect_icons`（四线 210 注册 / 100% 覆盖）、`check_lang_sync`、
   `tooltip_color_audit`、`check_mod_sources`、`audit_patchouli_keys`、`verify_*` 全套与 `verify_firearm_detection`。
 - 生成器幂等：`python tools/gen_rin_page_range_texture.py --check` → 三线 `OK`（EXPECTED_SHA1 79adef49e428）。
+  ⚠️ **该生成器已删除**（同日裁决改用调查员本身图标）—— 本行仅作历史记录，**不要再执行**。
 - **独立子代理二次验证**：10 组不变量全成立（含「立牌动作拿不到卫星加成」「两者相加 = 64 而非 72/48」
   「`LOCK_RANGE` 仍 32」「`MAX_SELECT_RADIUS` 仍 32」「图标计数 53 与 AGENTS 一致」）；抓出并已修 1 处陈旧注释
   （三线 `ModItems` 里仍写卫星旧口径）。
@@ -3550,3 +3554,33 @@ brief 内**不喂结论**。结论与处置：
 - `fabric-1.20.1` 未同步：该线仍是旧口径（J 被豁免、中键被吞、H 被吞、右键只提示）。
 - `neoforge-26.1.2` 的 `onMouseButton` 仍**缺** `if (Minecraft.getInstance().screen != null) return;`
   守卫（AGENTS 第 14 条已登记：界面打开时暂停菜单按键点不动），本批**未**顺带修（属另一缺陷）。
+
+### 「书页射程」图标改为复用调查员本身图标（2026-10-03，三线；用户裁决「仍然继续使用调查员本身图标，不需要自创图标」）
+
+#### 改动（三线同构；`fabric-1.20.1` 按 AGENTS 边界**未**同步）
+- 三线 `textures/mob_effect/rin_page_range.png` ← `images/调查员立牌.png` **逐字节复制**
+  （与 `textures/item/rin_sign.png` 同一张；md5 `02ff8f9a9a57c62c0e9a52a9ecc80684`）——
+  上一版自创图案（书页 + 蓝色双向箭头，md5 `83b3a9137e8322a346b5a3696b4f37f8`）**废弃**。
+- `tools/gen_rin_page_range_texture.py` **已删除**（`shutil.move` 移入 `temp/t06/removed/`，未 `rm`）——
+  自创图标路径不再保留。
+- 三线 `effect/RinPageRangeEffect` 的类头 javadoc 与 `effect/ModEffects` 的注册注释改为
+  「复用调查员本身图标、不自创」；`AGENTS.md` 效果清单同一处同步。
+
+#### 惯例依据（取证，非推测）
+本模组**立牌类状态的图标一律取立牌贴图**：实测 `images/风水师立牌.png` 与
+`textures/mob_effect/zhao_blessing.png` **md5 相同**（`8c47264027c0d312e27be09f889f9c27`）；
+`mamushi_dragon` / `hanna_float` / `sherry_reasoning` / `dragon_roar_break` 的既有注释均写明
+「从立牌贴图**逐字节复制**」⇒ 本批把 `rin_page_range` 归回该惯例。
+
+#### 验证
+- 三线 `BUILD SUCCESSFUL` + 三条 `pushToGame: pushed … ->`。
+- 开 jar：`assets/astral_dice/textures/mob_effect/rin_page_range.png` 的 md5 == `images/调查员立牌.png`
+  （上值），三线一致。
+- 全仓 `grep gen_rin_page_range_texture`：仅本文件的两处**历史标注**命中，代码引用 0。
+- 守门 `tools/verify_effect_icons.py` 等本批相关门禁全绿（注册数与图标尺寸 32×32 均未变）。
+
+#### 已知边界（如实记录）
+- **未做实机验证**：HUD 图标画面只做「md5 == 立牌贴图」的资源层取证，未进游戏目视。
+- `fabric-1.20.1` **未同步**（该线无 `rin_page_range`，本批只涉及三线）。
+- ⚠️ 本批**删除了一个上一批刚提交的生成器**：若将来仍想要「与立牌图区分」的专属图标，需重新引入
+  —— 届时请先与用户确认口径，**不要默认自创**。
