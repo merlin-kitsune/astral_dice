@@ -1161,50 +1161,50 @@ public class DiceCombatEvents {
         return FIREARM_ITEM_IDS.contains(id.toString());
     }
 
-    // 原版「有功能但不是武器/工具」的物品:明确排除(2026-10-03 用户裁决点名剪刀/钓竿/打火石/刷子)。
-    // ⚠️ 这四件**本来就不在**任何武器/工具物品标签里(已用原版数据包实证:swords/axes/pickaxes/
-    //   shovels/hoes 五个标签里只有对应的原版工具与剑)⇒ 白名单本已能排除;此处显式列出是为了
-    //   **自文档化**,并防止整合包数据包把它们塞进某个武器/工具标签。
-    private static final java.util.Set<Item> VANILLA_NON_COMBAT_TOOLS = java.util.Set.of(
-            Items.SHEARS, Items.FISHING_ROD, Items.FLINT_AND_STEEL, Items.BRUSH);
-
     /**
-     * 「该物品是否算**武器或工具**」 —— 骰战(骰神赐福)白名单的**唯一判据**。
+     * 「饕餮之锅」两口的物品注册名 —— **显式纳入**近战武器(2026-10-03 用户裁决)。
      *
-     * <p>只认**原版武器/工具物品标签**:{@code #minecraft:swords} / {@code #minecraft:axes} /
-     * {@code #minecraft:pickaxes} / {@code #minecraft:shovels} / {@code #minecraft:hoes}(26.1.2 线另认 {@code #minecraft:spears})。
-     * 模组只要把自己的武器/工具加进这些标签就会被自动覆盖 —— 这也是「未知模组的武器/工具」唯一可靠的通用判据。
-     * <p>⚠️ **三叉戟与重锤不在任何物品标签里**(已用原版数据包实证:{@code swords} 只含原版六把剑,
-     * 三叉戟不在其中)⇒ 必须显式放行,否则会把「近战+远程双模武器」误伤。
-     * <p>⚠️ **代价(用户已确认)**:不把自己的武器加进原版标签的模组(自带物品体系、只用自家标签的那类)
-     * 将**不再**触发骰神赐福 —— 这是 2026-10-03 由「黑名单」改为「按标签白名单」的直接后果。
+     * <p>两口锅都按武器使用(各自带 {@code weapon_attributes}),但在「黑名单」判定下各自栽在不同排除项上,
+     * 故必须显式放行。物品 id / 类名逐条取自**实物 jar**(lang 物品表 + {@code javap} 继承链,禁止按命名推测):
+     * <ul>
+     *   <li>{@code enigmaticlegacy:eldritch_pan} —— 1.20.1 联动模组的饕餮之锅
+     *       (英文名 {@code The Voracious Pan};类 {@code EldritchPan extends TieredItem};
+     *       ⚠️ 它**不在任何物品标签里**,黑名单本已放行,列入清单是为了自文档化 + 防日后被塞进「工具」标签);</li>
+     *   <li>{@code enigmaticdelicacy:voracious_pan} —— 1.21.1 联动模组的饕餮之锅
+     *       (中文名直译即「饕餮之锅」;类 {@code VoraciousPan extends BlockItem},
+     *       ⚠️ 它同时是**可放置的方块** ⇒ 「方块不算近战」那条会把它排除,故**必须**显式纳入)。</li>
+     * </ul>
+     * ⚠️ 按**注册名**匹配 ⇒ 四线共用同一份清单,未安装该模组的线永不命中,也不需要任何第三方依赖。
      */
-    private static boolean isWeaponOrTool(ItemStack held) {
-        if (held.is(net.minecraft.tags.ItemTags.SWORDS)
-                || held.is(net.minecraft.tags.ItemTags.AXES)
-                || held.is(net.minecraft.tags.ItemTags.PICKAXES)
-                || held.is(net.minecraft.tags.ItemTags.SHOVELS)
-                || held.is(net.minecraft.tags.ItemTags.HOES)) return true;
-        // 三叉戟:用户点名不得排除的「近战+远程」双模武器,但它不在任何物品标签里
-        if (held.is(Items.TRIDENT)) return true;
-        return false;
+    private static final java.util.Set<String> MELEE_WEAPON_EXTRA_INCLUDES = java.util.Set.of(
+            "enigmaticlegacy:eldritch_pan",
+            "enigmaticdelicacy:voracious_pan");
+
+    /** 该物品是否在「显式纳入的近战武器」清单里(按注册名匹配;未安装对应模组时恒为 false)。 */
+    private static boolean isExplicitMeleeWeapon(ItemStack held) {
+        var id = BuiltInRegistries.ITEM.getKey(held.getItem());
+        return id != null && MELEE_WEAPON_EXTRA_INCLUDES.contains(id.toString());
     }
 
-    // 近战武器攻击判定(2026-10-03 用户裁决,**白名单**模式):
-    // ① 主手必须持有**武器或工具**(见 isWeaponOrTool:原版 swords/axes/pickaxes/shovels/hoes 标签,26.1.2 另有 spears),
-    //    外加三叉戟与重锤) —— **非武器非工具的普通物品与方块**(含其它模组的普通物品,以及不带
-    //    武器/工具标签的物品)一律**不再**触发骰神赐福;
-    // ② 再排除 空手 / 盾牌 / 远程专用武器(弓、弩、各模组弹弓) / 方块 / 枪械类武器本体 /
-    //    原版非战斗工具(剪刀 / 钓竿 / 打火石 / 刷子)。
-    // ⚠️ 只按**原版物品标签 + 接口 + 注册名**判定,不用 SwordItem / DiggerItem / PickaxeItem 之类的类名
-    //   (26.1.2 已把 DiggerItem / SwordItem / TieredItem 整体重构掉,物品包内已无这三类)。
-    // ⚠️ **同时具备近战与远程的武器不排除**(三叉戟;夸克的回旋镐 pickarang 亦属此类)。
-    // ⚠️ 各模组弹弓由 `ProjectileWeaponItem` 覆盖(实物 jar 实证:锦致装饰 `SlingshotItem`、
-    //   铁砧工艺 `SpectralSlingshotItem` 及其子类 `SpectralWeaponLauncherItem` 都是 `extends ProjectileWeaponItem`)。
+    // 近战武器攻击判定(**黑名单模式**,2026-10-03 用户裁决回退 —— 恢复「为兼容匠魂/灾变」的原始设计):
+    // 只排除「空手 / 盾牌 / 远程专用武器(弓、弩、弹弓) / 方块 / 枪械类武器本体」,
+    // 其余一律视为可触发骰神赐福的近战武器 —— **包括全部工具类物品**
+    // (镐 / 锹 / 锄 / 斧 / 剪刀 / 钓竿 / 打火石 / 刷子…以及未知模组的工具与武器)。
+    // 目的是兼容匠魂、灾变等第三方模组 —— 它们大多**不继承** SwordItem/PickaxeItem,
+    // 2026-10-03 一度改成「按原版物品标签的白名单」正是栽在这一点上(已回退)。
+    // ⚠️ 只按**原版物品标签 + 接口 + 注册名**判定,不用 SwordItem / DiggerItem / TieredItem 之类的类名
+    //   (26.1.2 已把这三类整体重构掉,物品包内已无它们)。
+    // ⚠️ **同时具备近战与远程的武器不排除**(例:三叉戟;夸克的回旋镐 pickarang 亦属此类)——
+    //   只有「远程专用」物品才排除,判据是 `ProjectileWeaponItem`(实物 jar 实证覆盖各模组弹弓:
+    //   锦致装饰 `SlingshotItem`、铁砧工艺 `SpectralSlingshotItem` 及其子类 `SpectralWeaponLauncherItem`)。
+    // ⚠️ 盾牌不是武器,仍排除。
+    // ⚠️ **显式纳入清单优先于所有排除**(见 MELEE_WEAPON_EXTRA_INCLUDES)。
     public static boolean isMeleeWeaponAttack(Player player) {
         ItemStack held = player.getMainHandItem();
         // 空手
         if (held.isEmpty()) return false;
+        // 显式纳入的近战武器:命中即算 —— 「方块化的锅」必须走这一步(否则被下面的 BlockItem 排除)
+        if (isExplicitMeleeWeapon(held)) return true;
         // 盾牌:不是武器
         if (held.is(Items.SHIELD)) return false;
         // 远程专用武器:弓 / 弩 / 各模组弹弓(三叉戟等双模武器不在内)
@@ -1213,10 +1213,7 @@ public class DiceCombatEvents {
         if (held.getItem() instanceof net.minecraft.world.item.BlockItem) return false;
         // 枪械类武器本体:不得直接用于近战砸击
         if (isFirearmItem(held)) return false;
-        // 原版非战斗工具:剪刀 / 钓竿 / 打火石 / 刷子
-        if (VANILLA_NON_COMBAT_TOOLS.contains(held.getItem())) return false;
-        // 白名单:必须是武器或工具
-        return isWeaponOrTool(held);
+        return true;
     }
 
     /**

@@ -1,6 +1,6 @@
 package com.merlinkitsune.astral_dice.item.card;
 
-import com.merlinkitsune.starenginelib.combat.HostileTargets;
+import com.merlinkitsune.starenginelib.combat.CreatureTargets;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.event.LivingPageFlightScheduler;
 import com.merlinkitsune.astral_dice.item.ModItems;
@@ -18,7 +18,7 @@ public class LivingPageItem extends BaseEffectCardItem {
     private static final double LOCK_RANGE = 32.0D;
 
     static {
-        registerSelectorAction(ACTION_ID, TargetType.ENEMY, false, LOCK_RANGE);
+        registerSelectorAction(ACTION_ID, TargetType.CREATURE, false, LOCK_RANGE);
     }
 
     public LivingPageItem(Properties properties) {
@@ -45,7 +45,7 @@ public class LivingPageItem extends BaseEffectCardItem {
         ExclusiveCardUtil.bindIfAbsent(stack, user);
 
         if (level instanceof ServerLevel serverLevel && user instanceof ServerPlayer caster
-                && applyTo != null && applyTo != user && HostileTargets.isHostile(applyTo)) {
+                && applyTo != null && applyTo != user && CreatureTargets.isCreatureTarget(applyTo)) {
             LivingPageFlightScheduler.launch(serverLevel, caster, applyTo);
         }
     }

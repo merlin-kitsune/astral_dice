@@ -73,25 +73,25 @@ for ln in LINES:
         "damageTypes": sorted(keys(blk["damageTypes"])),
         "packages": sorted(strings(blk["packages"])),
         "hasIsFirearmItem": "public static boolean isFirearmItem(ItemStack stack)" in dice,
-        # ---- 2026-10-03 白名单化后的近战判据 ----
-        "meleeHasWeaponToolHelper": "private static boolean isWeaponOrTool(ItemStack held)" in dice,
-        "meleeReturnsWhitelist": "return isWeaponOrTool(held);" in dice,
-        "meleeTagSwords": "ItemTags.SWORDS" in dice,
-        "meleeTagAxes": "ItemTags.AXES" in dice,
-        "meleeTagPickaxes": "ItemTags.PICKAXES" in dice,
-        "meleeTagShovels": "ItemTags.SHOVELS" in dice,
-        "meleeTagHoes": "ItemTags.HOES" in dice,
-        "meleeAllowsTrident": "held.is(Items.TRIDENT)" in dice,
-        # 旧的「排除工具」形态必须彻底消失(白名单下工具是放行项)
-        "meleeOldToolExclusion": "if (held.is(net.minecraft.tags.ItemTags.PICKAXES)" in dice,
-        "meleeExcludesNonCombatTools": all(
-            x in dice for x in ("Items.SHEARS", "Items.FISHING_ROD",
-                                "Items.FLINT_AND_STEEL", "Items.BRUSH")),
-        "meleeChecksFirearm": "if (isFirearmItem(held)) return false;" in dice,
-        "meleeChecksProjectileWeapon": "ProjectileWeaponItem) return false;" in dice,
-        "meleeChecksShield": "held.is(Items.SHIELD)" in dice,
-        "meleeChecksBlock": "BlockItem) return false;" in dice,
+        # ---- 2026-10-03 第二批:近战判定**回退为黑名单** + 两口「饕餮之锅」显式纳入 ----
         "meleeChecksEmptyHand": "if (held.isEmpty()) return false;" in dice,
+        "meleeChecksShield": "held.is(Items.SHIELD)" in dice,
+        "meleeChecksProjectileWeapon": "ProjectileWeaponItem) return false;" in dice,
+        "meleeChecksBlock": "BlockItem) return false;" in dice,
+        "meleeChecksFirearm": "if (isFirearmItem(held)) return false;" in dice,
+        # 黑名单收尾:排除完毕后无条件放行(不再有任何「必须是武器/工具」的收口)
+        "meleeReturnsTrue": "        return true;" in dice,
+        # 显式纳入清单(两口锅)—— id 必须逐字来自实物 jar
+        "meleeHasIncludeList": "MELEE_WEAPON_EXTRA_INCLUDES" in dice,
+        "meleeHasIncludeHelper": "private static boolean isExplicitMeleeWeapon(ItemStack held)" in dice,
+        "meleeChecksInclude": "if (isExplicitMeleeWeapon(held)) return true;" in dice,
+        "meleeIncludesEldritchPan": '"enigmaticlegacy:eldritch_pan"' in dice,
+        "meleeIncludesVoraciousPan": '"enigmaticdelicacy:voracious_pan"' in dice,
+        # 白名单形态必须彻底消失(否则宁可报错也不要静默留下半套逻辑)
+        "meleeWhitelistHelperLeft": "isWeaponOrTool" in dice,
+        "meleeNonCombatToolsLeft": "VANILLA_NON_COMBAT_TOOLS" in dice,
+        # 顺序判据要用原文(不参与上面按 key 的同构比对)
+        "_dice": dice,
     }
 
 base = data[LINES[0]]
@@ -105,24 +105,33 @@ for ln in LINES:
     d = data[ln]
     if not d["hasIsFirearmItem"]:
         fails.append("%s: 缺少 isFirearmItem(ItemStack)" % ln)
-    if d["meleeOldToolExclusion"]:
-        fails.append("%s: 近战判定仍是旧的「排除工具」形态(白名单下工具应为放行项)" % ln)
-    for flag, desc in (("meleeHasWeaponToolHelper", "缺少 isWeaponOrTool(白名单判据)"),
-                       ("meleeReturnsWhitelist", "isMeleeWeaponAttack 未以 isWeaponOrTool 收尾(白名单未生效)"),
-                       ("meleeTagSwords", "白名单未包含 #minecraft:swords"),
-                       ("meleeTagAxes", "白名单未包含 #minecraft:axes"),
-                       ("meleeTagPickaxes", "白名单未包含 #minecraft:pickaxes"),
-                       ("meleeTagShovels", "白名单未包含 #minecraft:shovels"),
-                       ("meleeTagHoes", "白名单未包含 #minecraft:hoes"),
-                       ("meleeAllowsTrident", "未显式放行三叉戟(它不在任何物品标签里)"),
-                       ("meleeExcludesNonCombatTools", "未显式排除剪刀/钓竿/打火石/刷子"),
-                       ("meleeChecksFirearm", "未调用 isFirearmItem(枪械本体应被排除)"),
-                       ("meleeChecksProjectileWeapon", "未排除 ProjectileWeaponItem(弓/弩/弹弓)"),
+    if d["meleeWhitelistHelperLeft"]:
+        fails.append("%s: 近战判定仍残留 isWeaponOrTool(白名单形态未清理干净)" % ln)
+    if d["meleeNonCombatToolsLeft"]:
+        fails.append("%s: 近战判定仍残留 VANILLA_NON_COMBAT_TOOLS(剪刀/钓竿/打火石/刷子的显式排除 "
+                     "属已回退的白名单批次,黑名单下应整体移除)" % ln)
+    for flag, desc in (("meleeChecksEmptyHand", "未排除空手"),
                        ("meleeChecksShield", "未排除盾牌"),
+                       ("meleeChecksProjectileWeapon", "未排除 ProjectileWeaponItem(弓/弩/弹弓)"),
                        ("meleeChecksBlock", "未排除方块"),
-                       ("meleeChecksEmptyHand", "未排除空手")):
+                       ("meleeChecksFirearm", "未调用 isFirearmItem(枪械本体应被排除)"),
+                       ("meleeReturnsTrue", "未以无条件 `return true;` 收尾(黑名单模式未生效)"),
+                       ("meleeHasIncludeList", "缺少 MELEE_WEAPON_EXTRA_INCLUDES 显式纳入清单"),
+                       ("meleeHasIncludeHelper", "缺少 isExplicitMeleeWeapon 辅助方法"),
+                       ("meleeChecksInclude", "isMeleeWeaponAttack 未先查显式纳入清单"),
+                       ("meleeIncludesEldritchPan", "显式纳入清单缺 enigmaticlegacy:eldritch_pan(1.20.1 饕餮之锅)"),
+                       ("meleeIncludesVoraciousPan", "显式纳入清单缺 enigmaticdelicacy:voracious_pan(1.21.1 饕餮之锅)")):
         if not d[flag]:
             fails.append("%s: %s" % (ln, desc))
+    # ★ 顺序判据:显式纳入必须**先于** BlockItem 排除 —— 1.21.1 的饕餮之锅正是 BlockItem,
+    #   顺序写反 = 该锅被排除,而上面所有「存在性」断言仍会通过(典型的假绿)。
+    try:
+        i_inc = d["_dice"].index("if (isExplicitMeleeWeapon(held)) return true;")
+        i_blk = d["_dice"].index("BlockItem) return false;")
+        if i_inc > i_blk:
+            fails.append("%s: 显式纳入判定写在 BlockItem 排除之后 ⇒ 方块化的饕餮之锅仍会被排除" % ln)
+    except (ValueError, KeyError) as e:
+        fails.append("%s: 无法校验「显式纳入先于方块排除」的顺序: %s" % (ln, e))
     if not d["damageTypes"]:
         fails.append("%s: FIREARM_DAMAGE_TYPES 为空(解析失败?)" % ln)
     if not d["namespaces"]:

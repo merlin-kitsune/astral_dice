@@ -93,7 +93,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: merlin-kitsune/starengine_lib
-          ref: f8e765913612848f08bf1e6054c19d270a5a6403   # = 库分支 `fabric-1.20.1` 的 HEAD:三平台 **1.0.8** + fabric 子项目 **1.0.6-alpha.3**
+          ref: 3652b5845cb0cdc92ce58d71dca4b4e8f02da09c   # = 库分支 `fabric-1.20.1` 的 HEAD:三平台 **1.0.9** + fabric 子项目 **1.0.6-alpha.4**
           #   ℹ️ 该提交由 `9640af7` **amend** 而来(仅追加两份库 CHANGELOG 的「定性说明」段,字节码与版本号完全未变)
           #   —— 保持「一个版本号 = 一个提交」;若你看到 `9640af7` 这个旧 SHA,那是 amend 前的形态。
           #   (含 `component/GameplayConstants#CURSED_SWORD_BONUS_MAX` 由 16 上调为 32)。一个 ref 同时满足四条线。
@@ -112,6 +112,11 @@ jobs:
           #    + 淡出默认 10 tick」;含 `GameplayConstants#ACTIONBAR_FADE_TICKS` 20 → 10)。
           #    三线 gradle.properties 的 `starengine_lib_version` / `_range` 同步为 `1.0.8` / `[1.0.8,2.0)`;
           #    fabric 线 `1.0.6-alpha.3` / `>=1.0.6-alpha.3 <2.0`。
+          # ✅ **2026-10-03(第二批):现行 ref = `1.0.9`**(库提交 3652b58 = 效果牌专用目标口径
+          #    `combat/CreatureTargets` + `TargetType.CREATURE` / `CREATURE_OR_RIVAL`;**纯新增**,
+          #    未改 `HostileTargets.isHostile` 语义 ⇒ 补丁位)。
+          #    三线 `starengine_lib_version` / `_range` 同步为 `1.0.9` / `[1.0.9,2.0)`;
+          #    fabric 线 `1.0.6-alpha.4` / `>=1.0.6-alpha.4 <2.0`。
           path: .ci/starengine_lib
           fetch-depth: 1
 

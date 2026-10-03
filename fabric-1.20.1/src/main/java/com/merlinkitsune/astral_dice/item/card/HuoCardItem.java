@@ -12,18 +12,19 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import com.merlinkitsune.starenginelib.combat.HostileTargets;
-import com.merlinkitsune.starenginelib.target.SelectorTargets;
 
 /**
  * 「符卡-祸」(风水师立牌 zhao 的专属伤害效果牌)。
  *
  * <h2>使用</h2>
  * 沿用效果牌基类的「手持即选择」路径:主手手持自动开启目标选择会话,目标类型
- * {@link TargetType#ENEMY_OR_RIVAL} —— 即本模组全局口径的**敌对目标**(敌对生物 ∪ 中立生物(宠物除外))
- * **并含「非同队伍的玩家」**({@code target/SelectorTargets} 把该类型并到
- * {@code combat/HostileTargets#isHostile(viewer,target)} 的上下文口径上;
- * 队友玩家 / 被动生物 / 自己**不可选**,{@code allowSelf=false})。确认后对目标造成 <b>1</b> 点伤害。
+ * {@link TargetType#CREATURE_OR_RIVAL} —— 即**效果牌口径**的敌对目标
+ * (敌对生物 ∪ 中立生物(宠物除外) ∪ **未驯服的可驯服生物**,口径见 {@code combat/CreatureTargets})
+ * **并含「非同队伍的玩家」**({@code target/SelectorTargets} 把该类型路由到
+ * {@code CreatureTargets#isCreatureTarget} 与「非队友玩家」两处;
+ * 队友玩家 / 被动生物 / 村民 / 自己**不可选**,{@code allowSelf=false})。确认后对目标造成 <b>1</b> 点伤害。
+ * <p>⚠️ 2026-10-03 用户裁决:本牌与活体书页改用**效果牌专用**口径(比立牌选择器的 {@code ENEMY_OR_RIVAL}
+ * 多出「未驯服的狼/猫/鹦鹉」与「无主的马/驴/骡/骆驼/羊驼」);⚠️ **立牌选择器口径本身不变**。
  *
  * <h2>持有代价(厄运)</h2>
  * <ul>
@@ -54,8 +55,8 @@ public class HuoCardItem extends BaseEffectCardItem {
     public static final int CURSE_PERIOD_TICKS = 2400;
 
     static {
-        // 敌对目标(含非同队玩家):TargetType.ENEMY_OR_RIVAL;不可对自己使用
-        registerSelectorAction(ACTION_ID, TargetType.ENEMY_OR_RIVAL, false);
+        // 效果牌口径的敌对目标(含非同队玩家):TargetType.CREATURE_OR_RIVAL;不可对自己使用
+        registerSelectorAction(ACTION_ID, TargetType.CREATURE_OR_RIVAL, false);
     }
 
     public HuoCardItem(Properties properties) {

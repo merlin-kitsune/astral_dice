@@ -8,16 +8,25 @@
 
 ### Content & Balance Changes
 
-- **Melee-weapon detection is now a weapon/tool whitelist** (2026-10-03, user decision): the
-  dice-blessing "melee weapon attack" check used to be a **blacklist** (everything triggered except a
-  few categories). It is now a **whitelist** - the held item must carry a **weapon or tool item tag**
-  (sword / axe / pickaxe / shovel / hoe; plus spear on 26.1.2) to trigger. **Ordinary items and blocks
-  that are neither weapons nor tools no longer trigger** (diamonds, sticks, food, blocks, and other
-  mods' items that lack a weapon/tool tag). NOTE: weapons that are both melee and ranged are **not**
-  excluded (e.g. the trident - it is in no item tag at all and is allowed explicitly).
-- **Vanilla shears / fishing rod / flint and steel / brush no longer trigger the dice blessing**
-  (2026-10-03, user decision): these are "tools" in spirit but neither weapons nor tagged as weapons or
-  tools, so they are excluded explicitly.
+- **Melee-weapon detection reverted to the blacklist** (2026-10-03, user decision): the dice-blessing
+  "melee weapon attack" check had been switched to a "weapon/tool item-tag whitelist", but that rule
+  dropped whole categories of third-party weapons - namely any mod that keeps its weapons out of the
+  vanilla tags and ships its own item system. It is now **reverted to the blacklist**: only
+  **empty hand / shields / ranged-only items (bow / crossbow / slingshot) / blocks / guns themselves**
+  are excluded, and everything else counts - **including every tool and every mod weapon**. NOTE:
+  weapons that are both melee and ranged are **not** excluded (e.g. the trident).
+- **Two "Voracious Pans" now trigger the dice blessing** (2026-10-03, user decision): two linked mods
+  each ship a pan used as a weapon - one sits in **no item tag at all**, and the other is **also a
+  placeable block** (which the "blocks do not count as melee" clause would have excluded) - so both are
+  now **named explicitly** and a melee attack with either triggers the dice blessing. NOTE: the check
+  matches by **registry name**, so versions without those mods are unaffected.
+- **Effect cards can now target "untamed tamable" creatures** (2026-10-03, user decision): the living
+  page and the damage effect cards (including the Feng Shui master's own damage card) could previously
+  only designate **enemy targets** (hostile mobs plus neutral mobs, pets excluded). They now use an
+  **effect-card-only** scope that adds **untamed** tamables - wolf / cat / parrot and unowned
+  horse / donkey / mule / camel / llama. NOTE: **tamed pets and owned mounts remain unselectable**;
+  **villagers and wandering traders are excluded**; and the **sign selectors (Gunsmith / Great
+  Detective / Astrologer ...) plus the spell-damage checks keep exactly their previous scope**.
 - **Guns themselves can no longer be used to melee-smack** (2026-10-03, user decision): holding a
   modern firearm / shooter-game style weapon, a steampunk firearm or rotary machine gun, a modern
   battlefield-sim weapon, or a gun from the **built-in submodule** of a large crossover mod, no longer

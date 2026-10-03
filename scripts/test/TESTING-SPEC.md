@@ -3359,3 +3359,59 @@ brief 内**不喂结论**。结论与处置：
   （水晶回收窗口也随之丢失）。本轮未做持久化。
 - 未做实机运行时验证（未启动游戏实测「死亡 → 重生后死亡点无水晶」）。数值与实体层面的判据均为
   字节码 + 静态断言，运行时行为待用户实机确认。
+
+## 续 52（2026-10-03）骰战回退黑名单 + 两口饕餮之锅纳入；效果牌目标口径扩到「未驯服的可驯服生物」
+
+> 用户原话三段：「需要改回 改黑名单以兼容匠魂/灾变 的原始设计，另外增加神秘遗物（1.20.1）与
+> 神秘佳肴（1.21.1）的饕餮之锅，这些武器也一律加入骰战（原本会被守卫排除在外）」；
+> 「活体书页与其他伤害效果牌（包括符卡-祸）目标选择判定需要扩大至更多生物（普通中立生物，无主的
+> 可驯服中立生物），建议改法是直接开包神秘遗物+，寻找生灵颂词中对友善生物的判定，但在此基础上
+> 还需要额外排除村民（生灵颂词不包含村民）」。
+> **用户裁决（AskUserQuestion）**：① 范围 = **只加「中立 / 可驯服」类**（不含牛猪羊鸡等被动家畜）；
+> ② 作用层 = **仅效果牌**（不动 `HostileTargets` 全局语义 ⇒ 库侧无需升主版本）。
+
+### 1. 两口「饕餮之锅」的实物取证（禁止按命名推测）
+| 线 | 物品注册名 | 类 | 关键事实 |
+|---|---|---|---|
+| 1.20.1 联动模组 | `enigmaticlegacy:eldritch_pan` | `EldritchPan extends TieredItem` | 英文名 **`The Voracious Pan`**；**不在任何物品标签里**(该 jar 的 **8 个**物品标签文件全扫无命中) |
+| 1.21.1 联动模组 | `enigmaticdelicacy:voracious_pan` | `VoraciousPan extends BlockItem` | zh_cn 直译「饕餮之锅」；**同时注册为方块**(`VoraciousPanBlock` + BlockEntity) ⇒ 被 `BlockItem` 排除 |
+
+- 两者都带 `weapon_attributes/<id>.json`（按武器使用）。
+- ⇒ 「黑名单」下 `eldritch_pan` 本已放行（仅列清单自文档化）；`voracious_pan` **必须**靠显式清单放行。
+- 实现：`MELEE_WEAPON_EXTRA_INCLUDES`（`Set<String>` 注册名）+ `isExplicitMeleeWeapon`，
+  **在空手判断之后、所有排除之前**生效 —— 顺序错了就会被 `BlockItem` 吃掉（守卫已把该顺序机械化，见 §4）。
+
+### 2. 骰战判定回退
+删掉白名单引入的 `isWeaponOrTool` 与 `VANILLA_NON_COMBAT_TOOLS`（剪刀/钓竿/打火石/刷子的显式排除
+**来自已回退的那一批**，按「合并约定」一并移除）；`isMeleeWeaponAttack` 恢复 `f3ab60a7` 的形态：
+空手 → **显式清单** → 盾牌 → `ProjectileWeaponItem` → `BlockItem` → `isFirearmItem` → `true`。
+
+### 3. 效果牌目标口径（库 1.0.9 / 1.0.6-alpha.4）
+- 新增 `common/combat/CreatureTargets`：`isCreatureTarget(e)` = `HostileTargets.isHostile(e)` ∪
+  `isUntamedTamable(e)`，并显式排除 `Npc`；`isUntamedTamable` = 未驯服 `TamableAnimal` 或无主 `OwnableEntity`。
+- `target/TargetType` **末尾追加** `CREATURE` / `CREATURE_OR_RIVAL`（既有 ordinal 不变 ⇒ 与消费方
+  `TargetSelectionClient` 的 `TargetType.values()[ordinal]` 网络编码兼容）；`SelectorTargets` 接路由。
+- 消费方：`LivingPageItem`（动作 + `applyEffect` 闸门）与 `HuoCardItem` 换用新类型；
+  **立牌选择器一律不动**。
+- **生灵颂词的取证**：`auviotre…books/LivingOde$Events` 的「友善生物」判据 = `instanceof
+  net.minecraft.world.entity.animal.Animal`（`onFindTarget` / `onDamageIncoming` 字节码）。
+  ⚠️ **本模组不照搬 `Animal`** —— 那会纳入牛/猪/羊/鸡等被动家畜，与用户裁决不符；
+  但**保留其精神**（村落类不入内）。村民排除的三平台证据：`OwnableEntity` 实现者**只有**
+  `AbstractHorse` 与 `TamableAnimal`；`AbstractVillager` 既不实现它也不是 `NeutralMob`；
+  `Npc` 三平台同 FQN（`world.entity.npc.Npc`）且**只有 `AbstractVillager` 实现**。
+  ⚠️ 故 `AbstractVillager` 的显式排除**无法**写进库 common（26.1.2 已把它移到 `npc/villager/`），
+  改用 `Npc` 作等价护栏。
+
+### 4. 验证
+- 四线 `compileJava` / `build` **BUILD SUCCESSFUL**；守卫 `tools/verify_firearm_detection.py` **PASS**
+  （近战断言已由白名单形态改写为黑名单形态，并新增两条判据：清单必须含两口锅的 id、
+  **「显式纳入」必须出现在 `BlockItem` 排除之前**）。
+- 变异测试（临时镜像，未动仓库文件）：① 把显式纳入挪到方块排除之后 ⇒ FAIL；
+  ② 锅 id 拼错 ⇒ FAIL；③ 把 `isWeaponOrTool` 塞回任一線 ⇒ FAIL。
+- 独立子代理只读复核见 §5。
+
+### 5. 已知边界（如实记录）
+- **剪刀 / 钓竿 / 打火石 / 刷子 现在重新算作近战武器**（会触发骰神赐福）—— 这是「回退到原始黑名单设计」
+  的直接后果（该设计自己的 javadoc 就把它们列为**允许**）。若用户要恢复排除，加回一行显式排除即可。
+- 效果牌口径只覆盖**伤害效果牌**；立牌选择器（含同样「指定敌方」的枪匠/大侦探/占星师）**未放宽**。
+- 未做实机运行时验证（未在游戏内实际用两口锅挥击、也未实际对未驯服猫/马使用效果牌）。
