@@ -262,19 +262,22 @@ When extending this workspace:
 > ⚠️ 历史上另有一条 dev 分支 **`wt/2.0.0-vnext`**（连带独立 worktree `C:/Users/xmace/.dsh/worktrees/astral_dice_multiloader-a03b2df2/2.0.0-vnext`）——2026-09-17 用户裁决「移除 wt/2.0.0-vnext 分支，仅保留当前分支」后**已删除**：worktree 与分支一并移除，`git branch -d` 成功即证明其 tip **`d7e4ac8f4f1c31484bf4366caa4e144aec45979f`** 的全部提交都已被 `multi-dev-next` 包含（`multi-dev-next..wt/2.0.0-vnext` 为空）⇒ **未丢失任何提交**；该分支从未推到远端（`origin` 只有 `multi-1.20.1-1.21.1` 与 `multi-dev-next`），故无需远端清理。`multi-26.1.2-neoforge` 作为合并前历史分支**保留**（未在本次裁决范围内）。
 
 > **第三条线(26.1.2)的规则边界(2026-09-19 用户裁决修订 —— 26.1.2 已纳入主线,必须遵守)**:自本裁决起「同步修改」约束**三个版本**(`neoforge-1.21.1` + `forge-1.20.1` + `neoforge-26.1.2`):任何功能/修复/平衡/文案改动一律**三线同批实施**(实施方式见下方「### 子项目修改默认规则」与「### 模组内容更新规则(三线同步)」),26.1.2 **不再**是「发布线完成后再迁移」的低优先级移植线。三条线各自按 `docs/compat-26.1.2-neoforge.md`(26.1.2 相对 1.21.1)、`docs/compat-1.20.1-forge.md`(1.20.1 相对 1.21.1)的差异映射实现,**平台差异必须逐条登记**;三线落地后按 `scripts/test/TESTING-SPEC.md` §13.2 做一致性测试。三子项目的 `mod_version`/`mods.toml` 门槛仍各自独立。⚠️ **第四条线 `fabric-1.20.1` 不参与本条的「三线同批实施」约束** —— 其边界见上一条 ①（由用户按批次单独下达移植任务）。
-> ⑧ **版本号一律带 `-alpha.x` 预发布后缀**（2026-09-29 用户裁决 —— 本线是**移植线**）：
+> ⑧ **本线自己的版本号一律带 `-alpha.x` 预发布后缀**（2026-09-29 用户裁决 —— 本线是**移植线**）：
 >    ⚠️ **与 26.1.2 线用 `-beta.x` 是同一套安排**（2026-10-01 并入 `multi-main` 后的口径）：
 >    两条线都是**独立的预发布号线** —— **永不占用发布线的裸版本号**、**不单独打裸版本 tag**；
 >    差别只在后缀（`-alpha.x` ↔ `-beta.x`）与发布形态（fabric 走自己的 `fabric-*` pre-release，见 ③）。
->    `mod_version` 与所依赖的库版本**同步带 alpha**，现为 **`1.3.5-alpha.1+fabric_1.20.1`** /
->    **`starengine_lib_version = 1.0.6-alpha.2`**（`_version_range = >=1.0.6-alpha.2 <2.0`）。
->    ⚠️ **2026-10-02 更新**：库侧与三平台同批改「诅咒之剑攻击力加成上限 16 → 32」⇒ 三平台 `1.0.6` → `1.0.7`、
->    本线 `1.0.6-alpha.1` → **`1.0.6-alpha.2`**（两条线按各自 scheme 独立递增）。
+>    **本线 `mod_version` 现为 `1.3.7-alpha.1+fabric_1.20.1`**（本线自己的号，仍带 alpha）。
+>    🔄 **2026-10-03 口径变更（用户裁决「fabric 侧与主线版本号相同」）**：**所依赖的库版本不再带 alpha** ——
+>    库仓 `fabric-1.20.1` 子项目的版本号已由 `1.0.6-alpha.6` **对齐为与三平台完全相同的 `1.0.11`**
+>    ⇒ 库**四平台同号**；本线现为 **`starengine_lib_version = 1.0.11`**（`_version_range = >=1.0.11 <2.0`）。
+>    ⚠️ 原「`mod_version` 与所依赖的库版本**同步带 alpha**」的描述**作废**（仅适用于 2026-10-03 之前的历史版本）。
+>    ⚠️ 库 `fabric-1.20.1` 子项目历史上那三个**裸**号 `1.0.6` / `1.0.7` / `1.0.8` 仍属「本地临时构建、不作对外号」，
+>    已从 mavenLocal 移入隔离目录、**不复用**；本次用的 `1.0.11` 与它们无关。
+>    ⚠️ **2026-10-02 更新（历史）**：库侧与三平台同批改「诅咒之剑攻击力加成上限 16 → 32」⇒ 三平台 `1.0.6` → `1.0.7`、
+>    本线 `1.0.6-alpha.1` → **`1.0.6-alpha.2`**（两条线当时按各自 scheme 独立递增）。
 >    沿革：**2026-10-01 用户裁决**：库侧**大版本号与三平台同步为 `1.0.6`**、保留 `-alpha.N` 后缀 ⇒
->    当时现号为 **`1.0.6-alpha.1`**（2026-09-29 那次「基线退回 `1.0.5`」的口径随之作废）。那三个**裸**号
->    `1.0.6` / `1.0.7` / `1.0.8` 仍属「本地临时构建、不作对外号」，已从 mavenLocal 移入隔离目录；
->    `1.0.6-alpha.N` 与它们**不是同一字符串**，不构成复用。三平台（发布号）与本线
->    （预发布号）各自独立递增。后续每批改动 `-alpha.x` 递增；预发布号在库仓 CI 里**不会**打 tag（workflow 只认裸 `x.y.z`）⇒ 正合开发线口径。
+>    当时现号为 **`1.0.6-alpha.1`**（2026-09-29 那次「基线退回 `1.0.5`」的口径随之作废）。
+>    本线预发布号在库仓 CI 里**不会**打 tag（workflow 只认裸 `x.y.z`）⇒ 正合开发线口径。
 >    ⚠️ 因此本线推进整合包的产物**不是「正式版」**（该整合包 `1.20.1-Fabric 模组测试` 亦为本线专属测试环境）。
 > ⑨ **收尾必做：生产映射冒烟**（2026-09-29 新增能力；判据与事故记录见 `KNOWN-ISSUES.md` **KI-F13**）：
 >    fabric 的 dev 与生产是**两套映射**（dev = Loom named/Mojang，生产 = intermediary）—— 本线此前的**全部**验证
@@ -366,7 +369,7 @@ When extending this workspace:
    ① `target/TargetType` **末尾**追加 `NON_HOSTILE`（治疗 / 功能效果牌的目标口径）；② `1.0.10` 接上路由、
    `1.0.11` 把判据定为 **`!HostileTargets.isHostileMob(target)`**（= **非敌对生物**，只看原版 `Enemy` 标志）；
    ③ 新增 `combat/HostileTargets#isHostileMob(Entity)` —— 「原版敌对标志」的唯一入口，与战斗口径 `isHostile` **并列不互替**。
-   ⇒ 三条线 `starengine_lib_version=1.0.11`（fabric 线为 `1.0.6-alpha.6`）。
+   ⇒ **四条线** `starengine_lib_version=1.0.11`（2026-10-03 起 fabric 线亦同号：库 `fabric-1.20.1` 子项目已由 `1.0.6-alpha.6` 对齐为 `1.0.11`，库**四平台同号**）。
    沿革：`1.0.9`（2026-10-03）＝ 新增 `combat/CreatureTargets` + `TargetType.CREATURE(_OR_RIVAL)`（伤害效果牌口径）；
    `1.0.8`（2026-10-03）＝ ActionBar 文本位置对齐原版 actionbar + 淡出默认 10 tick；
    `1.0.7`（2026-10-02，**纯数值调整**）＝ 诅咒之剑筹码的累计攻击力加成上限
@@ -385,7 +388,7 @@ When extending this workspace:
    消费方必须把下界**精确到序号**（历史口径与实测矩阵见各线 `gradle.properties` 注释与库 README §4.2）；
    **自 `1.0.0` 起不再需要精确序号**，`[1.0.11,2.0)` 一条即可。
 6. ⚠️ **升级库的固定动作（缺一即断）**：① 库侧 bump `lib_version`/`mod_version` 并
-   `./gradlew build publishToMavenLocal`（三平台同号；**fabric 子项目另有自己的 `-alpha.N` 号**）；② 本仓**四条线** `gradle.properties` 的
+   `./gradlew build publishToMavenLocal`（**四平台同号** —— 2026-10-03 起 `fabric-1.20.1` 子项目不再另用 `-alpha.N` 号）；② 本仓**四条线** `gradle.properties` 的
    `starengine_lib_version` 与 `_version_range` **同批**更新；③ `.github/workflows/build.yml` 的库 `ref:`
    钉值改为库的**新提交 SHA**（该提交须已推送到远端，否则 CI 检不出；⚠️ **push 顺序 = 先库后消费方**）；④ 各线**重新构建**，让产物内的
    内嵌副本（`META-INF/jarjar/`）跟上新版本 —— 整合包里**不再**放独立库 jar（见第 7 条）；⑤ `run/<版本>/mods`

@@ -43,7 +43,7 @@ Installed automatically by the launcher from the dependency relations on each fi
 
 ### Bundled — do NOT install separately
 
-**StarEngine Lib** is **bundled inside this mod** (embedded 1.0.7 on the 1.21.1 / 1.20.1 / 26.1.2 builds, 1.0.6-alpha.2 on the Fabric build) — the loader picks the embedded copy up at startup.
+**StarEngine Lib** is **bundled inside this mod** (embedded **1.0.11** on **all four** builds — 1.21.1 / 1.20.1 / 26.1.2 / Fabric; the Fabric build's library version was aligned to the same number on 2026-10-03) — the loader picks the embedded copy up at startup.
 
 **Do not drop a standalone `starengine_lib-*.jar` into your `mods` folder.** The loader de-duplicates by mod id and prefers the loose file, so an older copy would shadow the bundled one. (The library's own repository publishes source only — there is no jar to download there.)
 
@@ -106,7 +106,7 @@ Suggested one-line **Summary** for the project header:
 
 ### 已内嵌 · 请勿单独安装
 
-**StarEngine Lib 已内嵌进本模组**（1.21.1 / 1.20.1 / 26.1.2 内嵌 1.0.7，Fabric 线内嵌 1.0.6-alpha.2），加载器启动时会自动载入内嵌副本。
+**StarEngine Lib 已内嵌进本模组**（1.21.1 / 1.20.1 / 26.1.2 / **Fabric 四条线均内嵌 `1.0.11`** —— Fabric 线的库版本已于 2026-10-03 对齐为与另三线相同的号），加载器启动时会自动载入内嵌副本。
 
 **请勿**再往 `mods` 里单独放 `starengine_lib-*.jar` —— 加载器按 modId 去重时优先采用散装文件，更旧的副本会盖掉内嵌库。（库仓本身只提供源码，没有 jar 可下载。）
 
