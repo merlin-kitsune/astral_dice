@@ -3206,3 +3206,102 @@ KI-G1 的 **61 / 41 / 缺 20（6·8·6）** 与流派分组（充能 10 / 无流
   唯一例外是**命名空间混装**的汇流来世本体（混有整套泰拉近战武器）⇒ 改为按物品 id 点名其枪械。
 - 判定仍为**黑名单**：非工具、非武器的普通物品（如钻石、木棍）**照旧可以触发**骰战
   —— 这一点经用户明确裁决「保留宽口径」，与需求原句最后一条相反，以裁决为准。
+
+## 续 50（2026-10-03）骰战近战判定改为白名单 + 军火表补入激光/爆炸
+
+> 用户 2026-10-03 追加裁决（在续 49 之后）：
+> ①「骰战判定继续排除：非武器/工具（例如本体或模组的普通物品：钻石、木棍等，以及其他模组的普通物品
+> 和方块（不带武器和工具标签））、原版的剪刀/钓竿/打火石/刷子。」
+> ②「枪弹判定需要增加激光武器和爆炸类伤害（如卓越前线）。」
+> ③「补充修改后，使用子代理进行全量复核。」
+
+### 1. 近战判定：由「黑名单」翻转为「武器/工具物品标签白名单」
+- 新增 `DiceCombatEvents#isWeaponOrTool(ItemStack)`（**白名单唯一判据**），只认原版物品标签
+  `#minecraft:swords` / `axes` / `pickaxes` / `shovels` / `hoes`（26.1.2 另认 `#minecraft:spears`），
+  外加 **三叉戟**与**重锤**。
+- `isMeleeWeaponAttack` 现在是「先排除、后白名单」：空手 → 盾牌 → `ProjectileWeaponItem` → 方块 →
+  `isFirearmItem` → `VANILLA_NON_COMBAT_TOOLS`（剪刀/钓竿/打火石/刷子）→ **`return isWeaponOrTool(held);`**。
+- **证据（原版数据包，实证不是推测）**：三叉戟与重锤**不在任何物品标签里** —— 三线
+  `tags/item/swords.json` 只含 6/7 把剑（26.1.2 多 `copper_sword`），`axes`/`pickaxes`/`shovels`/`hoes`
+  同样只含对应工具 ⇒ 若只按标签判定会把「近战+远程双模武器」误伤，故必须显式放行。
+  剪刀/钓竿/打火石/刷子也**不在**这五个标签里 ⇒ 白名单本已能排除，显式列出是自文档化 + 防数据包改写。
+- **版本差异（仅常量可用性，非行为设计）**：`Items.MACE` 在 1.21.1 / 26.1.2 存在、1.20.1 不存在
+  （该物品 1.21 才加入）；`ItemTags.SPEARS` 只有 26.1.2 有。故四线的 `isWeaponOrTool` 在这两行有差异，
+  其余逐字相同。
+
+### 2. 军火证据表：补入激光武器与爆炸类（卓越前线）
+| 类别 | 新增 key | message_id |
+|---|---|---|
+| 激光武器 | `superbwarfare:laser` / `laser_headshot` / `laser_static` | `laser` / `laser_headshot` / `laser`(static 共用) |
+| 爆炸类 | `superbwarfare:projectile_explosion` / `custom_explosion` / `vehicle_explosion` / `mine` / `lunge_mine` | `projectile_explosion`(前两者共用) / `vehicle_explosion` / `mine` / `lunge_mine` |
+
+- 证据表规模：**34 → 42** 个 `ResourceKey<DamageType>`。
+- **为什么必须补**：爆炸类的投射物同样走 `FastThrowableProjectile extends ThrowableItemProjectile`
+  ⇒ 命中法伤白名单 matcher #1；不排除就会被当成远程/魔法伤害吃加成（与续 49 的霰弹同源）。
+- **未纳入（已取证、明确不属军火）**：`air_crash` / `vehicle_strike` / `drone_hit` / `shock` /
+  `super_star_hit` / `super_star_slash`（近战）/ `phosphorus_fire` / `burn` / `ammo_consumption` /
+  `beast` / `repair_tool`。如需一并纳入，改证据 JSON + 四线常量即可（守卫会拦住只改一处）。
+- **其他模组的激光/爆炸伤害类型（已取证但**未**纳入，因不在用户点名的枪械模组清单内）**：
+  铁砧工艺 `anvilcraft:laser` / `gamma_laser` / `plasma_jets` 等；锦致装饰
+  `supplementaries:cannonball` / `player_cannonball` / `bomb_explosion` / `player_bomb_explosion`。
+  需要时告知即可加入。
+
+### 3. 守卫同步改造
+`tools/verify_firearm_detection.py` 的近战段断言已随白名单重写：
+- **必须存在** `isWeaponOrTool` 且 `isMeleeWeaponAttack` 以 `return isWeaponOrTool(held);` 收尾；
+- 必须包含 5 个武器/工具标签、`Items.TRIDENT`、`Items.SHEARS/FISHING_ROD/FLINT_AND_STEEL/BRUSH`；
+- **必须不存在**旧的排除形态 `if (held.is(net.minecraft.tags.ItemTags.PICKAXES)`；
+- 仍断言 `isFirearmItem` 被调用、`ProjectileWeaponItem`/`BlockItem`/盾牌/空手被排除。
+- 实测：`PASS`，并回查实物 jar —— **97 个 damage_type 全部解析，42 个 key 全部命中**。
+- 变异测试（本轮重跑）：① 四线 Java 与证据 JSON 同步改错 key ⇒ FAIL（`实物 jar 中找不到该伤害类型`）；
+  ② 只把旧的工具排除形态加回去 ⇒ FAIL（`仍是旧的「排除工具」形态`）。
+
+### 4. 已知取舍（用户明确选择，非缺陷）
+- **白名单的直接代价**：不把自身武器/工具加进原版标签的模组（自带物品体系、只用自家标签的那类）
+  **不再触发**骰神赐福。这与 2026-09-30「改黑名单以兼容匠魂/灾变」的初衷相反，属本轮用户裁决的
+  有意取舍；日后若要收回，正确做法是把该模组的标签并入白名单，而不是退回关键词/类名判断。
+- 判定仍**排除**盾牌、方块、远程专用物品（弓/弩/弹弓）与枪械本体；三叉戟等双模武器保留。
+
+### 5. 二次验证（独立子代理）与闭环 —— 2026-10-03
+
+按用户要求「使用子代理进行全量复核」派出**两个只读子代理**（一个查近战白名单，一个查军火证据表 + 守卫），
+brief 内**不喂结论**。结论与处置：
+
+#### 5.1 子代理 A（近战白名单）抓到的问题 —— 已全部闭环
+| 发现 | 严重度 | 处置 |
+|---|---|---|
+| `isWeaponOrTool` 的 javadoc 里**模板占位符 `%(EXTRA)s` 泄漏进源码**（四线同现） | 真缺陷（可读性） | 已替换为 `{@code #minecraft:hoes}(26.1.2 线另认 {@code #minecraft:spears})。`，四线统一 |
+| `①` 注释行因按线替换而**四线措辞不一** | 同构性瑕疵 | 已统一为同一行（去掉按线分化的 spears 夹注） |
+| `AGENTS.md:839`（当前态描述）仍写「近战武器攻击(剑/斧/重锤/三叉戟)」——**漏了镐/锹/锄** | 文档与代码不符 | 已改写为指向 `isWeaponOrTool` 白名单 |
+| `AGENTS.md:455`（日期化历史条目）写「`isMeleeWeaponAttack` 现为『剑标签 + 长矛标签 + `AxeItem`/`MaceItem`/`TridentItem`』」 | 陈旧（09-30 已作废） | 正文不回改，尾部追加 ⛔ 作废标记并指向现行红线 |
+| fabric 产物 jar 里 `ItemTags` 字面缺失 | 非缺陷 | 已确认是 `loom.officialMojangMappings()` ⇒ **intermediary 重映射**的必然结果；反汇编证明语义等价（`class_3489.field_42611…` = `ItemTags` 的 5 个 TagKey） |
+| 四线注释/代码整段逐字比对 | — | 除「允许的两行代码差异（`Items.MACE` / `ItemTags.SPEARS`）」外，其余 LF 归一后逐字节一致 |
+
+#### 5.2 子代理 B（军火证据表 + 守卫）抓到的问题 —— 已全部闭环
+| 发现 | 严重度 | 处置 |
+|---|---|---|
+| **守卫假绿路径 A**：不带 `--jars` 且默认 jar 目录不存在时，判据 ④ 静默跳过 ⇒ 「四线 Java 与证据 JSON 一起改错」测不出来 | 真缺陷（守门强度） | 判据 ④ 改为**默认强制**：目录缺失直接 FAIL；要跳过必须显式 `--no-jars`（并打降级警告） |
+| **守卫盲区 B**：`FIREARM_PROJECTILE_PACKAGES` 与证据 `projectileClasses` **完全没有实物校验** | 真缺陷（判据不全） | 新增两条判据：② 每条包名前缀必须在实物 jar 里至少命中一个 `.class`；③ 证据表 `projectileClasses` 的 FQCN 必须落在某条包名前缀之内 |
+| 证据表把 `StarCannonBulletEntity` / `BeeGunBullet` 记在 `projectileClasses` 下，但它们位于**外层** `org.confluence.mod.*` 包，不在任何包名前缀内 | 证据表口径混乱 | 新增判据 ③ 当场命中；已把它们移到新的 `relatedProjectileClasses`（**仅记录、不受包名约束**）并写明理由：外层包里同时有 `BaseArrowEntity extends AbstractArrow`（**会**命中法伤白名单）⇒ 不能整包当军火；这两个类本身 `extends Projectile`、不入 matcher #1，伤害走 `terra_guns:bullet_damage`（已在类型表） |
+| 证据表 `WolfpackShotEntity (extends IEProjectileEntity)` 继承链**不精确**（实际直接父类是 `RevolvershotHomingEntity`） | 证据失真 | 已改为 `extends RevolvershotHomingEntity extends RevolvershotEntity extends IEProjectileEntity` |
+
+#### 5.3 闭环复算（子代理给的命令，主会话原样重跑）
+| 变异场景 | 期望 | 实测（本轮重跑） |
+|---|---|---|
+| 四线 Java 与证据 JSON **同步**改成 `bf:bulletZ` | FAIL | `exit=1`；`实物 jar 中找不到该伤害类型: bf:bulletZ` |
+| 四线 Java 与证据 JSON **同步**把巡航导弹包名改成 `…entity.NOPE.` | FAIL | `exit=1`；`实物 jar 中找不到该弹丸包: me.desht.pneumaticcraft.common.entity.NOPE.` |
+| 只改一线（forge） | FAIL | `exit=1`；`四线不同构: forge-1.20.1 的 damageTypes 与 neoforge-1.21.1 不一致` |
+| **无实物 jar 且不带 `--no-jars`** | FAIL | `exit=1`；`未提供实物 jar … 证据不足,拒绝通过` |
+| 无实物 jar 但显式 `--no-jars` | PASS + 降级警告 | `exit=0`；`已显式 --no-jars ⇒ 仅执行判据 ①②③ … 结论强度下降` |
+| 基线（有 jar） | PASS | `实物回查: damage_type=97, class 条目=28106;42 个 key 全命中=True;5 条包名前缀全存在=True` |
+
+#### 5.4 产物与源码一致性（补证，防「只改源码没重打包」）
+四线 `build/classes/java/main/.../DiceCombatEvents.class` 的 md5 与：
+- `neoforge-1.21.1` / `neoforge-26.1.2` 的**发行 jar** 一致（这两线不需要 reobf）；
+- `forge-1.20.1` / `fabric-1.20.1` 的**发行 jar 不一致**，但与各自的 `build/devlibs/*-1.3.7*` (Mojmap) **逐字节一致**
+  ⇒ 差异**只来自 `reobfJar`(SRG) / loom 的 intermediary 重映射**，不是陈旧产物。
+
+#### 5.5 子代理未覆盖（如实记录）
+- 未做实机运行时验证（未启动游戏、未实际用镐/锹/锄/剪刀/三叉戟挥击验证触发）。
+- 未验证 26.1.2 长矛物品在注册表层面是否真被 `minecraft:spears` 覆盖（只验了数据包 JSON）。
+- 「34 → 42」的起点数字 34 由 `续 49` 文本反推，未做 git 历史还原。

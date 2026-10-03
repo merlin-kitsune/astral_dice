@@ -9,8 +9,12 @@
   ① 四线(`neoforge-1.21.1`/`forge-1.20.1`/`neoforge-26.1.2`/`fabric-1.20.1`)常量**逐项同构**;
   ② Java 常量与 `tools/firearm-detection-evidence.json` **一一对应**(两个方向都比);
   ③ 近战判定的三条硬约束(不再排除工具 / 已调用 isFirearmItem / 仍排除 ProjectileWeaponItem);
-  ④ (可选)每个伤害类型 key 都能在**实物 jar** 里找到对应的
-     `data/<ns>/damage_type/<path>.json` —— 这条才拦得住「四线 Java 与证据表一起改错」的假绿。
+  ④ **实物回查(默认强制)** —— 在真实 jar 里验证三件事:
+     a. 每个伤害类型 key 都能找到 `data/<ns>/damage_type/<path>.json`;
+     b. 每条**弹丸包名前缀**都真的存在对应的包(至少一个 `.class`);
+     c. 证据 JSON 的 `projectileClasses` 的 FQCN 前缀落在上面某条包名前缀之内。
+     ⚠️ 这条才拦得住「四线 Java 与证据表**一起**改错」的假绿(判据 ①②③ 只做三方自洽比对)。
+     jar 目录缺失时**默认判 FAIL**;确实要跳过(如干净检出)必须显式 `--no-jars`。
 
 为什么需要它:枪弹判定表是**逐条从第三方实物 jar 取证**得到的;一旦与证据表脱钩(或四线之间
 不同步),就会静默退化成「部分模组漏判」。本脚本把这条约定机械化。
@@ -69,9 +73,20 @@ for ln in LINES:
         "damageTypes": sorted(keys(blk["damageTypes"])),
         "packages": sorted(strings(blk["packages"])),
         "hasIsFirearmItem": "public static boolean isFirearmItem(ItemStack stack)" in dice,
-        # 工具排除必须已删除:PICKAXES / SHOVELS / HOES 曾是被排除的三项(axes 从未排除,勿误判)
-        "meleeExcludesTools": any(t in dice for t in
-                                  ("ItemTags.PICKAXES", "ItemTags.SHOVELS", "ItemTags.HOES")),
+        # ---- 2026-10-03 白名单化后的近战判据 ----
+        "meleeHasWeaponToolHelper": "private static boolean isWeaponOrTool(ItemStack held)" in dice,
+        "meleeReturnsWhitelist": "return isWeaponOrTool(held);" in dice,
+        "meleeTagSwords": "ItemTags.SWORDS" in dice,
+        "meleeTagAxes": "ItemTags.AXES" in dice,
+        "meleeTagPickaxes": "ItemTags.PICKAXES" in dice,
+        "meleeTagShovels": "ItemTags.SHOVELS" in dice,
+        "meleeTagHoes": "ItemTags.HOES" in dice,
+        "meleeAllowsTrident": "held.is(Items.TRIDENT)" in dice,
+        # 旧的「排除工具」形态必须彻底消失(白名单下工具是放行项)
+        "meleeOldToolExclusion": "if (held.is(net.minecraft.tags.ItemTags.PICKAXES)" in dice,
+        "meleeExcludesNonCombatTools": all(
+            x in dice for x in ("Items.SHEARS", "Items.FISHING_ROD",
+                                "Items.FLINT_AND_STEEL", "Items.BRUSH")),
         "meleeChecksFirearm": "if (isFirearmItem(held)) return false;" in dice,
         "meleeChecksProjectileWeapon": "ProjectileWeaponItem) return false;" in dice,
         "meleeChecksShield": "held.is(Items.SHIELD)" in dice,
@@ -90,9 +105,18 @@ for ln in LINES:
     d = data[ln]
     if not d["hasIsFirearmItem"]:
         fails.append("%s: 缺少 isFirearmItem(ItemStack)" % ln)
-    if d["meleeExcludesTools"]:
-        fails.append("%s: 近战判定仍在排除工具(ItemTags.PICKAXES/SHOVELS/HOES) —— 与 2026-10-03 裁决相反" % ln)
-    for flag, desc in (("meleeChecksFirearm", "未调用 isFirearmItem(枪械本体应被排除)"),
+    if d["meleeOldToolExclusion"]:
+        fails.append("%s: 近战判定仍是旧的「排除工具」形态(白名单下工具应为放行项)" % ln)
+    for flag, desc in (("meleeHasWeaponToolHelper", "缺少 isWeaponOrTool(白名单判据)"),
+                       ("meleeReturnsWhitelist", "isMeleeWeaponAttack 未以 isWeaponOrTool 收尾(白名单未生效)"),
+                       ("meleeTagSwords", "白名单未包含 #minecraft:swords"),
+                       ("meleeTagAxes", "白名单未包含 #minecraft:axes"),
+                       ("meleeTagPickaxes", "白名单未包含 #minecraft:pickaxes"),
+                       ("meleeTagShovels", "白名单未包含 #minecraft:shovels"),
+                       ("meleeTagHoes", "白名单未包含 #minecraft:hoes"),
+                       ("meleeAllowsTrident", "未显式放行三叉戟(它不在任何物品标签里)"),
+                       ("meleeExcludesNonCombatTools", "未显式排除剪刀/钓竿/打火石/刷子"),
+                       ("meleeChecksFirearm", "未调用 isFirearmItem(枪械本体应被排除)"),
                        ("meleeChecksProjectileWeapon", "未排除 ProjectileWeaponItem(弓/弩/弹弓)"),
                        ("meleeChecksShield", "未排除盾牌"),
                        ("meleeChecksBlock", "未排除方块"),
@@ -130,7 +154,8 @@ for m in ev["mods"]:
         if not t.get("messageId"):
             fails.append("证据表缺 messageId: %s" % t.get("key"))
 
-# ------------------------------------------- ④ 可选:回查实物 jar(拦假绿)
+# ------------------------------------------- ④ 实物回查(默认强制,拦假绿)
+allow_no_jars = "--no-jars" in sys.argv
 jar_dir = None
 if "--jars" in sys.argv:
     jar_dir = sys.argv[sys.argv.index("--jars") + 1]
@@ -140,39 +165,65 @@ else:
         jar_dir = cand
 
 if jar_dir and os.path.isdir(jar_dir):
-    present = set()
-    nested = os.path.join(os.path.dirname(jar_dir), "_nested")
+    present = set()       # data/<ns>/damage_type/<path>
+    class_paths = set()   # 全部 class 条目路径(含内嵌 jar)
     roots = [os.path.join(jar_dir, f) for f in sorted(os.listdir(jar_dir)) if f.endswith(".jar")]
-    if os.path.isdir(nested):
-        roots += [os.path.join(nested, f) for f in sorted(os.listdir(nested)) if f.endswith(".jar")]
+    nested_dir = os.path.join(os.path.dirname(jar_dir), "_nested")
+    if os.path.isdir(nested_dir):
+        roots += [os.path.join(nested_dir, f)
+                  for f in sorted(os.listdir(nested_dir)) if f.endswith(".jar")]
+
+    def harvest(names, read):
+        for n in names:
+            if n.endswith(".class"):
+                class_paths.add(n)
+            m = re.match(r"data/([^/]+)/damage_type/(.+)\.json$", n)
+            if m:
+                present.add("%s:%s" % (m.group(1), m.group(2)))
+            if n.endswith(".jar"):
+                try:
+                    with zipfile.ZipFile(io.BytesIO(read(n))) as nz:
+                        harvest(nz.namelist(), nz.read)
+                except Exception:
+                    pass
+
     for jp in roots:
         try:
             with zipfile.ZipFile(jp) as z:
-                for n in z.namelist():
-                    m = re.match(r"data/([^/]+)/damage_type/(.+)\.json$", n)
-                    if m:
-                        present.add("%s:%s" % (m.group(1), m.group(2)))
-                    if n.endswith(".jar"):  # 内嵌 jar(jar-in-jar)
-                        try:
-                            with zipfile.ZipFile(io.BytesIO(z.read(n))) as nz:
-                                for nn in nz.namelist():
-                                    m2 = re.match(r"data/([^/]+)/damage_type/(.+)\.json$", nn)
-                                    if m2:
-                                        present.add("%s:%s" % (m2.group(1), m2.group(2)))
-                        except Exception:
-                            pass
+                harvest(z.namelist(), z.read)
         except Exception as e:
             notes.append("跳过 %s: %s" % (os.path.basename(jp), e))
+
     if not present:
-        notes.append("实物 jar 目录存在但未解析出任何 damage_type —— 跳过 jars 回查")
+        fails.append("实物 jar 目录 %s 存在却未解析出任何 damage_type —— 判据 ④ 不可评估，拒绝通过" % jar_dir)
     else:
-        missing = [k for k in base["damageTypes"] if k not in present]
-        for k in missing:
-            fails.append("实物 jar 中找不到该伤害类型: %s" % k)
-        notes.append("实物 jar 回查: 已解析 %d 个 damage_type,四线 %d 个 key 全部命中=%s"
-                     % (len(present), len(base["damageTypes"]), not missing))
+        for k in base["damageTypes"]:
+            if k not in present:
+                fails.append("实物 jar 中找不到该伤害类型: %s" % k)
+        # b. 包名前缀必须在实物里真实存在
+        for pkg in base["packages"]:
+            prefix = pkg.replace(".", "/")
+            if not any(c.startswith(prefix) for c in class_paths):
+                fails.append("实物 jar 中找不到该弹丸包: %s" % pkg)
+        # c. 证据表里的弹丸类 FQCN 必须落在某条包名前缀内
+        for m in ev["mods"]:
+            for pc in m.get("projectileClasses", []):
+                fqcn = pc.split(" (")[0].strip()
+                if not any(fqcn.startswith(pk) for pk in base["packages"]):
+                    fails.append("证据表 projectileClasses 不落在任何包名前缀内: %s" % fqcn)
+        notes.append("实物回查: damage_type=%d, class 条目=%d;四线 %d 个 key 全命中=%s;%d 条包名前缀全存在=%s"
+                     % (len(present), len(class_paths), len(base["damageTypes"]),
+                        all(k in present for k in base["damageTypes"]),
+                        len(base["packages"]),
+                        all(any(c.startswith(pk.replace(".", "/")) for c in class_paths)
+                            for pk in base["packages"])))
+elif allow_no_jars:
+    notes.append("已显式 --no-jars ⇒ **仅**执行判据 ①②③(三方自洽比对);"
+                 "⚠️ 该模式**拦不住**「四线 Java 与证据表一起改错」的漂移,结论强度下降")
 else:
-    notes.append("未提供 --jars 且 temp/t04/mods 不存在 ⇒ **未**回查实物 jar(判据 ④ 跳过)")
+    fails.append("未提供实物 jar(既无 --jars,默认目录 %s 也不存在)⇒ 判据 ④ 无法执行。"
+                 "证据不足,拒绝通过。确实要跳过请显式加 --no-jars(会降低强度)"
+                 % os.path.join(ROOT, "temp", "t04", "mods"))
 
 # ------------------------------------------------------------------ 输出
 print("FIREARM-DETECTION  verify")

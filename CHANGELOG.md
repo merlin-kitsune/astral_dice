@@ -8,13 +8,16 @@
 
 ### Content & Balance Changes
 
-- **Melee-weapon detection is now "all tools count + firearms excluded wholesale"** (2026-10-03,
-  user decision): the dice-blessing "melee weapon attack" check used to exclude **tools**
-  (pickaxe / shovel / hoe). Now **every tool counts** (pickaxe / shovel / hoe / axe / shears /
-  fishing rod / flint and steel / brush ... as well as unknown mods' tools and weapons); still excluded:
-  **empty hand**, **ranged-only items** (bow / crossbow / slingshot), **blocks**, **shields**, and
-  **guns themselves** (next entry). NOTE: weapons that are both melee and ranged are **not** excluded
-  (e.g. trident).
+- **Melee-weapon detection is now a weapon/tool whitelist** (2026-10-03, user decision): the
+  dice-blessing "melee weapon attack" check used to be a **blacklist** (everything triggered except a
+  few categories). It is now a **whitelist** - the held item must carry a **weapon or tool item tag**
+  (sword / axe / pickaxe / shovel / hoe; plus spear on 26.1.2) to trigger. **Ordinary items and blocks
+  that are neither weapons nor tools no longer trigger** (diamonds, sticks, food, blocks, and other
+  mods' items that lack a weapon/tool tag). NOTE: weapons that are both melee and ranged are **not**
+  excluded (e.g. the trident - it is in no item tag at all and is allowed explicitly).
+- **Vanilla shears / fishing rod / flint and steel / brush no longer trigger the dice blessing**
+  (2026-10-03, user decision): these are "tools" in spirit but neither weapons nor tagged as weapons or
+  tools, so they are excluded explicitly.
 - **Guns themselves can no longer be used to melee-smack** (2026-10-03, user decision): holding a
   modern firearm / shooter-game style weapon, a steampunk firearm or rotary machine gun, a modern
   battlefield-sim weapon, or a gun from the **built-in submodule** of a large crossover mod, no longer
@@ -50,6 +53,12 @@
   check is now driven by a **per-mod evidence table** taken from the real jars: exact damage types
   first, then firearms projectile package names, and keyword matching only as a last-resort fallback
   for mods that have not been analysed.
+- **Firearm detection now also covers laser weapons and explosive damage** (2026-10-03, user request):
+  the evidence table above originally covered only the bullet/shell channels. It now also includes one
+  battlefield-sim mod's **3 laser-weapon damage types** and **5 explosive damage types** (projectile
+  explosion / custom explosion / vehicle explosion / mine / lunge mine) - their projectiles and
+  explosive devices fall inside the ranged/magic scope too, so leaving them out meant they were read as
+  ranged/magic damage and received bonuses.
 
 - **Living page (`effect_card_living_page`) NBT fully unified** (reported 2026-10-03: "living pages
   obtained via the Investigator's active skill or a teammate-triggered event cannot stack"): the 6

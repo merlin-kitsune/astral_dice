@@ -461,7 +461,8 @@ public final class SpellDamageRegistry {
     //   · 沉浸工程左轮全家族 `ieRevolver_*` 的 message_id 里没有 "gun"/"bullet" 子串,
     //     而其弹丸 `RevolvershotEntity extends IEProjectileEntity extends AbstractArrow`
     //     ⇒ 会**命中法伤白名单 matcher #1**。两者此前都会被**漏判成法伤**。
-    // ⚠️ 只登记「枪弹/炮弹」通道;同模组的法术、魔法弹、陷阱(锯片/电击/酸液)不在此列。
+    // ⚠️ 只登记「军火」通道(枪弹 / 炮弹 / **激光武器** / **爆炸类**);同模组的法术、魔法弹、
+    //   陷阱(锯片/电击/酸液)不在此列。2026-10-03 用户要求补入激光与爆炸两类。
     private static final List<ResourceKey<DamageType>> FIREARM_DAMAGE_TYPES = List.of(
             // ── 永恒枪械工坊：零 / 1.21.1 NeoForge 非官方移植(tacz) ── message_id 均为 `tacz.bullet`
             key("tacz", "bullet"),
@@ -503,7 +504,20 @@ public final class SpellDamageRegistry {
             key("superbwarfare", "gunfire_headshot_absolute"),
             key("superbwarfare", "grapeshot_hit"),
             key("superbwarfare", "projectile_hit"),
-            key("superbwarfare", "projectile_hit_headshot"));
+            key("superbwarfare", "projectile_hit_headshot"),
+            // ── 卓越前线的**激光武器**(2026-10-03 用户要求「增加激光武器」) ──
+            //    message_id:`laser` / `laser_headshot` / `laser`(static 与普通激光共用 `laser`)
+            key("superbwarfare", "laser"),
+            key("superbwarfare", "laser_headshot"),
+            key("superbwarfare", "laser_static"),
+            // ── 卓越前线的**爆炸类伤害**(2026-10-03 用户要求「增加爆炸类伤害」) ──
+            //    message_id:`projectile_explosion`(custom_explosion 与 projectile_explosion 共用)/
+            //    `vehicle_explosion` / `mine` / `lunge_mine`
+            key("superbwarfare", "projectile_explosion"),
+            key("superbwarfare", "custom_explosion"),
+            key("superbwarfare", "vehicle_explosion"),
+            key("superbwarfare", "mine"),
+            key("superbwarfare", "lunge_mine"));
 
     // 军火类**弹丸包名**前缀(逐条取自实物 jar 的类继承链)。作为伤害类型之外的兜底:
     // 部分弹丸会复用「通用 / 爆炸」伤害类型,单看伤害类型判不出来。
