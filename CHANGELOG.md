@@ -8,15 +8,15 @@
 
 ### Content & Balance Changes
 
-- **"Usable on others" healing / utility cards can now target friendly or neutral creatures**
+- **"Usable on others" healing / utility cards can now target non-hostile creatures**
   (2026-10-03, user decision): the target selectors of **Berserk**, **Luxury Feast** and
-  **Express Delivery** could previously only pick players; they can now pick **any living entity within
-  16 blocks that is not a hostile target** - players, tamed pets (wolf / cat / parrot), passive
-  livestock and villagers. NOTE: **anything that falls into this mod's "hostile target" scope is never
-  selectable** - hostile mobs, plus untamed wolves / iron golems / polar bears / bees, which this mod
-  counts as hostile targets. NOTE: right-click still uses the card on yourself. NOTE: a creature target
-  now **actually receives the effect** - the primary target is no longer taken only from the player
-  list, fixing "using the card on a creature did nothing".
+  **Express Delivery** could previously only pick players; they can now pick **any non-hostile
+  creature within 16 blocks** - players, tamed pets (wolf / cat / parrot), passive livestock,
+  villagers, and **neutral mobs such as untamed wolves / iron golems / polar bears / bees**.
+  NOTE: **only vanilla hostile mobs are not selectable** (zombie / skeleton / pillager / enderman /
+  piglin ...). NOTE: right-click still uses the card on yourself. NOTE: a creature target now
+  **actually receives the effect** - the primary target is no longer taken only from the player list,
+  fixing "using the card on a creature did nothing".
 - **Luxury Feast now damages undead targets** (2026-10-03, user decision): the healing card
   "Luxury Feast" now matches **vanilla healing potions** - if the healed target is **undead**
   (zombie / skeleton / wither / phantom ...), it takes **the same amount as magic damage** instead of

@@ -360,13 +360,19 @@ When extending this workspace:
    只允许**新增**（新类型、新成员、新可选入口）与不改变契约的行为修正。
 2. **破坏性变更必须升第一位**（`1.x` → `2.x`），并在**同一次**发布里收紧三条线 `gradle.properties` 的
    `starengine_lib_version_range` 下界 ⇒ **破坏性变更不允许藏在次版本/补丁位里**。
-3. **区间即契约**：三条线现声明 `starengine_lib_version_range=[1.0.7,2.0)` —— 这是上述承诺的**机器可读表达**：
+3. **区间即契约**：三条线现声明 `starengine_lib_version_range=[1.0.11,2.0)` —— 这是上述承诺的**机器可读表达**：
    区间内任何 `1.x` 版本都可**原位替换**，无需改动本模组的任何代码或配置。
-4. **当前版本 = `1.0.7`**（2026-10-02，**纯数值调整**）：
-   诅咒之剑筹码的累计攻击力加成上限 `component/GameplayConstants#CURSED_SWORD_BONUS_MAX` 由 **16 上调为 32**。
-   该字段是 `public static int`、名称与位置不变 ⇒ **不改任何 public 签名 / 可见性 / 语义形状**，属 1.x 允许的非破坏性修正。
-   ⇒ 三条线 `starengine_lib_version=1.0.7`（fabric 线为 `1.0.6-alpha.2`）。
-   沿革：`1.0.6`（2026-10-01）＝ 修 `event/EventTargetCollector` 的 FTB Teams / OPAC 两处反射「目标不存在」；
+4. **当前版本 = `1.0.11`**（2026-10-03，**新增 + 不改变契约的修正**）：
+   ① `target/TargetType` **末尾**追加 `NON_HOSTILE`（治疗 / 功能效果牌的目标口径）；② `1.0.10` 接上路由、
+   `1.0.11` 把判据定为 **`!HostileTargets.isHostileMob(target)`**（= **非敌对生物**，只看原版 `Enemy` 标志）；
+   ③ 新增 `combat/HostileTargets#isHostileMob(Entity)` —— 「原版敌对标志」的唯一入口，与战斗口径 `isHostile` **并列不互替**。
+   ⇒ 三条线 `starengine_lib_version=1.0.11`（fabric 线为 `1.0.6-alpha.6`）。
+   沿革：`1.0.9`（2026-10-03）＝ 新增 `combat/CreatureTargets` + `TargetType.CREATURE(_OR_RIVAL)`（伤害效果牌口径）；
+   `1.0.8`（2026-10-03）＝ ActionBar 文本位置对齐原版 actionbar + 淡出默认 10 tick；
+   `1.0.7`（2026-10-02，**纯数值调整**）＝ 诅咒之剑筹码的累计攻击力加成上限
+   `component/GameplayConstants#CURSED_SWORD_BONUS_MAX` 由 **16 上调为 32**（`public static int`、名称与位置不变
+   ⇒ 不改任何 public 签名 / 可见性 / 语义形状，属 1.x 允许的非破坏性修正）；
+   `1.0.6`（2026-10-01）＝ 修 `event/EventTargetCollector` 的 FTB Teams / OPAC 两处反射「目标不存在」；
    `1.0.5`（2026-09-27，**纯新增**）＝ **「会被激怒的可驯服动物计入敌对目标」** —— `HostileTargets` 口径由
    「敌对生物 ∪ 中立生物(宠物除外)」扩展为「… ∪ 可驯服但未驯服且会被激怒的动物(宠物除外)」，新增私有谓词
    `isAngerableTamedMount`（`getOwner() == null` 且非已驯服 `TamableAnimal`，且 `Mob#getTarget() != null || LivingEntity#getLastHurtByMob() != null`），覆盖原版**羊驼 / 行商羊驼**（纯新增判定分支、不改既有语义）；
@@ -377,7 +383,7 @@ When extending this workspace:
    零改动，产物名由 `…-1.0.0-SNAPSHOT.16.jar` 变为 `…-1.0.0.jar`）。
 5. ⛔ **快照系列（`1.0.0-SNAPSHOT.*`）已终止，不受本契约保护**：那时相邻快照之间二进制不兼容且 `modId` 相同，
    消费方必须把下界**精确到序号**（历史口径与实测矩阵见各线 `gradle.properties` 注释与库 README §4.2）；
-   **自 `1.0.0` 起不再需要精确序号**，`[1.0.7,2.0)` 一条即可。
+   **自 `1.0.0` 起不再需要精确序号**，`[1.0.11,2.0)` 一条即可。
 6. ⚠️ **升级库的固定动作（缺一即断）**：① 库侧 bump `lib_version`/`mod_version` 并
    `./gradlew build publishToMavenLocal`（三平台同号；**fabric 子项目另有自己的 `-alpha.N` 号**）；② 本仓**四条线** `gradle.properties` 的
    `starengine_lib_version` 与 `_version_range` **同批**更新；③ `.github/workflows/build.yml` 的库 `ref:`
@@ -1228,12 +1234,16 @@ When extending this workspace:
     - **提示**：手持类会话用 `msg.astral_dice.target_select.prompt.hold.{no_target,no_target_self,rejected,valid}`（末句「移出手持即退出选择」），`steadyPrompt()` **不追加**「（剩余 N 秒）」；立牌等按键类会话仍用原四态 + 时间后缀、仍走 `GameplayConstants.SKILL_WAIT_SECONDS`（30 秒）窗口。
     - **移植检查**：`target/HoldToSelect.java`（`boolean stillHeld(Player)`）与 `BaseEffectCardItem#tickHeldSelector` / `#heldCardMatches` / `selectorActionId()` 的 **`public` 可见性**缺一不可；只补 `use()` 而不补 tick 触发会退化成「必须按键」，漏 `HoldToSelect` 则会话不会随松手关闭。
     - **目标类型（2026-09-25 追加）**：`BaseEffectCardItem#registerSelectorAction(String, TargetType, boolean)` 显式传入目标类型（两参重载 = `TargetType.PLAYER`，既有四张牌逐字不变）；**活体书页 `living_page` 是首个 `TargetType.ENEMY` 的效果牌**（仅敌对生物 ∪ 中立生物(宠物除外)；不含玩家、不可对自己使用）。可选中判定仍统一走 `target/SelectorTargets`，**禁止**在效果牌侧另写判定；`SelectorAction` 因而持有 `targetType` 字段（构造注入），`targetType()` 不再是常量。
-    - **治疗 / 功能效果牌 = `TargetType.NON_HOSTILE`（2026-10-03 用户裁决；库 `1.0.10` 起）**：**狂暴 / 奢华大餐 /
-      加急加快** 三张「可对他人使用」的牌由 `PLAYER` 改注册为 `NON_HOSTILE`（`SelectorTargets` 把该类型路由到
-      `!HostileTargets.isHostile(target)`）⇒ 可选集合 = **不属于「敌方判定」的活体**（玩家 / 已驯服的宠物 /
-      被动家畜 / 村民…），**凡落入敌方判定的生物一律不可选**（敌对生物，以及未驯服的狼 / 铁傀儡 / 北极熊 / 蜜蜂
-      等被本模组计为敌方目标的中立生物）。⚠️ 与**伤害**效果牌的 `CREATURE` 系**方向相反**（那条含未驯服的可驯服
-      生物、**排除**村民），两者不得混用；三个常量（`CREATURE` / `CREATURE_OR_RIVAL` / `NON_HOSTILE`）均
+    - **治疗 / 功能效果牌 = `TargetType.NON_HOSTILE`（2026-10-03 用户裁决；库 `1.0.10` 起，**同日 `1.0.11`
+      定稿口径**）**：**狂暴 / 奢华大餐 / 加急加快** 三张「可对他人使用」的牌由 `PLAYER` 改注册为
+      `NON_HOSTILE`（`SelectorTargets` 把该类型路由到 **`!HostileTargets.isHostileMob(target)`** ——
+      **只看原版 `Enemy` 标志**）⇒ 可选集合 = **非敌对生物**（玩家 / 已驯服宠物 / 被动家畜 / 村民 /
+      **未驯服的狼 / 铁傀儡 / 北极熊 / 蜜蜂等中立生物**），**只有原版敌对生物不可选**。
+      ⚠️ `HostileTargets` 现有**两套并列口径、不得互替**：`isHostile`（**战斗口径**：敌对 ∪ 中立生物(宠物除外)
+      ∪ 会被激怒的可驯服动物 ∪ 消费方额外声明）与 `isHostileMob`（**生物类别口径**：仅 `Enemy`）——
+      两者都是各自场景的**唯一入口**，玩法代码禁写裸 `instanceof Enemy`。
+      ⚠️ 与**伤害**效果牌的 `CREATURE` 系**方向相反**（那条含未驯服的可驯服生物、**排除**村民），两者不得混用；
+      三个常量（`CREATURE` / `CREATURE_OR_RIVAL` / `NON_HOSTILE`）均
       **追加在 `TargetType` 末尾** —— 既有 ordinal 不变，`values()[ordinal]` 的会话网络编码因此兼容。
       ⚠️ **`LuxuryFeastCardItem#applyEffect` 的主目标必须单列一次**（它可能**不是玩家**）：旧实现只遍历
       `Player`，对生物使用会**整张牌空放**（效果、扩散全落空、卡牌照样消耗）。⚠️ 同牌对**亡灵目标**

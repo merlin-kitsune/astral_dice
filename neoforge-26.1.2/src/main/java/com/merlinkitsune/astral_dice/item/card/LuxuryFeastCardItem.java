@@ -12,7 +12,7 @@ import com.merlinkitsune.astral_dice.item.chip.FriendshipBadgeChipItem;
 import com.merlinkitsune.astral_dice.combat.PartyRelations;
 
 /**
- * 奢华大餐(治疗效果牌):**目标选择器类(手持即选择)** —— 主手手持本牌即自动进入目标选择模式(移出手持立即退出),瞄准友方或中立生物后左键确认,
+ * 奢华大餐(治疗效果牌):**目标选择器类(手持即选择)** —— 主手手持本牌即自动进入目标选择模式(移出手持立即退出),瞄准非敌对生物后左键确认,
  * 或按下鼠标右键对自身使用;此类会话**没有倒计时**,取消/移出手持不消耗卡牌(2026-09-25 用户裁决,取代旧的
  * 「右键自身 / 下蹲右键对其他玩家」两段式)。
  * 生效后:治疗目标及周围 6 格范围内的**友方玩家**——已加入队伍时仅同队/队友;
@@ -32,7 +32,7 @@ public class LuxuryFeastCardItem extends BaseEffectCardItem {
     public static final String ACTION_ID = "luxury_feast";
 
     static {
-        // 目标 = 友方或中立生物(敌方判定生物禁用) ∪ 自身;允许对自身使用(旧方案的「右键-自身使用」)
+        // 目标 = 非敌对生物(敌对生物不可选) ∪ 自身;允许对自身使用(旧方案的「右键-自身使用」)
         registerSelectorAction(ACTION_ID, TargetType.NON_HOSTILE, true);
     }
 
@@ -57,7 +57,7 @@ public class LuxuryFeastCardItem extends BaseEffectCardItem {
     @Override
     protected void applyEffect(Level level, Player user, LivingEntity applyTo, ItemStack stack) {
         int amount = Math.max(1, (int) (user.getMaxHealth() * HEAL_RATIO));
-        // 主目标必受效 —— 目标选择器类效果牌的目标**可能不是玩家**(2026-10-03 起为「友方或中立生物」),
+        // 主目标必受效 —— 目标选择器类效果牌的目标**可能不是玩家**(2026-10-03 起为「非敌对生物」),
         // 旧的「只遍历 Player」实现会让「对生物使用」变成空放,故主目标单列一次。
         applyFeast(user, applyTo, amount);
         // 扩散:目标周围 RANGE 格内的友方玩家(已加入队伍时仅同队/队友;未加入任何队伍时为全服在线玩家)
