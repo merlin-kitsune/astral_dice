@@ -1162,27 +1162,66 @@ public class DiceCombatEvents {
         return roll;
     }
 
-    // 近战武器攻击判定(**黑名单模式**,2026-09-30 用户裁决):
-    // 只排除「空手 / 盾牌 / 工具类 / 远程武器 / 方块」,其余一律视为可触发骰神赐福的近战武器 ——
-    // 目的是兼容匠魂、灾变等第三方模组的近战武器(它们大多**不继承** SwordItem,白名单写法会把它们整类漏掉)。
-    // ⚠️ 三线同构:**只按原版物品标签 + 接口判定,不用 SwordItem / DiggerItem 之类的类名** ——
-    //   26.1.2 已把 DiggerItem / SwordItem / TieredItem 整体重构掉(物品包内已无这三类),
-    //   而 PICKAXES / SHOVELS / HOES / AXES / SWORDS 五个标签三线俱在(已用 sources jar 实证)。
-    // ⚠️ 斧子(axes)**不在**黑名单内 —— 斧属近战武器;镐 / 锹 / 锄是工具,排除。
-    //   剑 / 长矛(26.1.2)/ 重锤 / 三叉戟,以及各模组的近战武器,全部落在「默认允许」一侧。
+    // ===== 枪械类武器本体(2026-10-03 用户裁决)=====
+    // 判据全部取自各模组**实物 jar**(见下);不使用反射、不猜类名。
+    /** 「枪械类武器本体」所在的**模组命名空间**:持该命名空间的任何物品都不算近战武器,不得用于近战砸击。 */
+    private static final java.util.Set<String> FIREARM_ITEM_NAMESPACES = java.util.Set.of(
+            "tacz",                 // 永恒枪械工坊：零 + 其 1.21.1 NeoForge 非官方移植(两个 jar 同 modId)
+            "bf",                   // 方块前线 BlockFront(全部类名混淆为 a/b/A…,只能按命名空间识别)
+            "irons_artifice",       // Iron's Arms 'n Artifice
+            "immersiveengineering", // 沉浸工程
+            "pneumaticcraft",       // 气动工艺：重压
+            "superbwarfare",        // 卓越前线
+            "terra_guns");          // 汇流来世**内置子模组**:枪械全部在此
+
+    /**
+     * 「枪械类武器本体」按**物品 id 点名** —— 仅用于命名空间**混装**的模组
+     * (该命名空间同时承载大量近战武器,整段排除会误伤)。
+     * <p>汇流来世本体命名空间 {@code confluence} 即属此类:它既有星炮 / 蜜蜂枪 / 太空枪,
+     * 也有整套泰拉近战武器 ⇒ 只点名枪械本体。三者取自该模组 lang 物品表与 {@code GunItems} 注册表。
+     */
+    private static final java.util.Set<String> FIREARM_ITEM_IDS = java.util.Set.of(
+            "confluence:star_cannon",
+            "confluence:bee_gun",
+            "confluence:space_gun");
+
+    /**
+     * 「该物品是否为**枪械类武器本体**」—— 枪械不得直接用于近战砸击。
+     * <p>先按模组命名空间整段判定(2026-10-03 用户裁决「按命名空间整段排除」),
+     * 再对命名空间混装的模组按物品 id 点名。取 {@code BuiltInRegistries} 的注册名,
+     * 不触碰任何第三方类 ⇒ 未安装对应模组时恒为 {@code false},无副作用。
+     */
+    public static boolean isFirearmItem(ItemStack stack) {
+        if (stack == null || stack.isEmpty()) return false;
+        var id = BuiltInRegistries.ITEM.getKey(stack.getItem());
+        if (id == null) return false;
+        if (FIREARM_ITEM_NAMESPACES.contains(id.getNamespace())) return true;
+        return FIREARM_ITEM_IDS.contains(id.toString());
+    }
+
+    // 近战武器攻击判定(**黑名单模式**,2026-10-03 用户裁决):
+    // 只排除「空手 / 盾牌 / 远程专用武器(弓、弩、弹弓) / 方块 / 枪械类武器本体」,
+    // 其余一律视为可触发骰神赐福的近战武器 —— **包括全部工具类物品**
+    // (镐 / 锹 / 锄 / 斧 / 剪刀 / 钓竿 / 打火石 / 刷子…以及未知模组的工具与武器)。
+    // 目的是兼容匠魂、灾变等第三方模组(它们大多**不继承** SwordItem/PickaxeItem,白名单写法会把它们整类漏掉)。
+    // ⚠️ 三线同构:**只按原版物品标签 + 接口 + 注册名判定,不用 SwordItem / DiggerItem / PickaxeItem 之类的类名** ——
+    //   26.1.2 已把 DiggerItem / SwordItem / TieredItem 整体重构掉(物品包内已无这三类)。
+    // ⚠️ **同时具备近战与远程的武器不排除**(例:三叉戟;夸克的回旋镐 pickarang 亦属此类)——
+    //   只有「远程专用」物品才排除,判据是 `ProjectileWeaponItem`。该接口已用**实物 jar**证实覆盖各模组弹弓:
+    //   锦致装饰 `SlingshotItem`、铁砧工艺 `SpectralSlingshotItem`(及其子类 `SpectralWeaponLauncherItem`)
+    //   都是 `extends ProjectileWeaponItem`;夸克 1.21.1 版**没有弹弓**(只有回旋镐 Flamerang/Pickarang)。
+    // ⚠️ 盾牌不是武器,仍排除。
     public static boolean isMeleeWeaponAttack(Player player) {
         ItemStack held = player.getMainHandItem();
         if (held.isEmpty()) return false;
         // 盾牌:不是武器
         if (held.is(Items.SHIELD)) return false;
-        // 工具类(斧子除外):镐 / 锹 / 锄
-        if (held.is(net.minecraft.tags.ItemTags.PICKAXES)
-                || held.is(net.minecraft.tags.ItemTags.SHOVELS)
-                || held.is(net.minecraft.tags.ItemTags.HOES)) return false;
-        // 远程武器:弓 / 弩
+        // 远程专用武器:弓 / 弩 / 各模组弹弓(ProjectileWeaponItem);三叉戟等双模武器不在内
         if (held.getItem() instanceof net.minecraft.world.item.ProjectileWeaponItem) return false;
         // 方块:拿着方块打人不算「近战武器攻击」
         if (held.getItem() instanceof net.minecraft.world.item.BlockItem) return false;
+        // 枪械类武器本体:不得直接用于近战砸击
+        if (isFirearmItem(held)) return false;
         return true;
     }
 

@@ -8,9 +8,22 @@
 
 ### Content & Balance Changes
 
+- **Melee-weapon detection is now "all tools count + firearms excluded wholesale"** (2026-10-03,
+  user decision): the dice-blessing "melee weapon attack" check used to exclude **tools**
+  (pickaxe / shovel / hoe). Now **every tool counts** (pickaxe / shovel / hoe / axe / shears /
+  fishing rod / flint and steel / brush ... as well as unknown mods' tools and weapons); still excluded:
+  **empty hand**, **ranged-only items** (bow / crossbow / slingshot), **blocks**, **shields**, and
+  **guns themselves** (next entry). NOTE: weapons that are both melee and ranged are **not** excluded
+  (e.g. trident).
+- **Guns themselves can no longer be used to melee-smack** (2026-10-03, user decision): holding a
+  modern firearm / shooter-game style weapon, a steampunk firearm or rotary machine gun, a modern
+  battlefield-sim weapon, or a gun from the **built-in submodule** of a large crossover mod, no longer
+  counts as a melee weapon attack. NOTE: that crossover mod's **own** namespace is not excluded
+  wholesale (it ships both guns and a full set of melee weapons); only its guns are named.
+
 - **Event effects now broadcast over "party + 64 blocks"** (2026-10-03, user decision): the random
-  event rolled by the Gunsmith... _(see ZH for the authoritative text)_; the roll of the Great Detective
-  sign and the "Undercover Investigation" stage event (concealment + investigation buff) previously
+  event rolled by the Great Detective sign's active skill, and the "Undercover Investigation" stage
+  event (concealment + investigation buff), previously
   affected the triggerer only (allies were included only at the final stage, and only when a boss was
   nearby within 32 blocks). New rule: if the triggerer **is in a party** => all party members + every
   non-party player within **64 blocks** (party members are not re-checked by distance); if the triggerer
@@ -25,6 +38,18 @@
   of them restores it immediately.
 
 ### Bug Fixes
+
+- **Bullet detection switched from keyword guessing to per-mod evidence - fixing two cases of
+  firearm damage misread as ranged/magic damage** (reported 2026-10-03: "bullet detection still fails
+  for some mods"): the firearm filter used to look only for the keywords `bullet` / `gun` / `cannon`
+  etc. in the damage identifier or the projectile class name. Two misses were measured: (1) one gun
+  mod's **entire revolver family** - its projectile extends vanilla's arrow base class (so it falls
+  inside the ranged/magic scope) while the damage identifier contains **no keyword at all**; (2) another
+  gun mod's **buckshot** - the projectile likewise falls inside the scope and its identifier has no
+  keyword either. Both were previously read as **ranged/magic damage** and received full bonuses. The
+  check is now driven by a **per-mod evidence table** taken from the real jars: exact damage types
+  first, then firearms projectile package names, and keyword matching only as a last-resort fallback
+  for mods that have not been analysed.
 
 - **Living page (`effect_card_living_page`) NBT fully unified** (reported 2026-10-03: "living pages
   obtained via the Investigator's active skill or a teammate-triggered event cannot stack"): the 6

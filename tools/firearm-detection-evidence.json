@@ -1,0 +1,197 @@
+{
+  "_note": "枪弹/枪械判定证据表 —— 每一条都取自对应模组的**实物 jar**（解包 + javap + data/<ns>/damage_type/*.json + lang 物品表），不使用反射、不做类名猜测。改这里必须同时改四线 Java 常量；tools/verify_firearm_detection.py 会拦截漂移。",
+  "probedAt": "2026-10-03",
+  "probeHost": "astral_dice 开发机（Windows / Zulu 21 javap）",
+  "mods": [
+    {
+      "label": "永恒枪械工坊：零 (Timeless and Classics Zero)",
+      "artifact": "tacz-1.20.1-1.1.8-hotfix2.jar",
+      "modId": "tacz",
+      "namespace": "tacz",
+      "damageTypes": [
+        { "key": "tacz:bullet", "messageId": "tacz.bullet" },
+        { "key": "tacz:bullet_ignore_armor", "messageId": "tacz.bullet" },
+        { "key": "tacz:bullet_void", "messageId": "tacz.bullet" },
+        { "key": "tacz:bullet_void_ignore_armor", "messageId": "tacz.bullet" }
+      ],
+      "projectileClasses": [],
+      "note": "命中判定为**射线(hitscan)**：jar 内无任何弹丸实体类（只有方块实体与 API 接口），故直接伤害实体不是弹丸。关键词法(msgId 含 bullet)可命中。"
+    },
+    {
+      "label": "TaCZ 1.21.1 NeoForge Port UNOFFICIAL",
+      "artifact": "tacz-neoforge-1.21.1-1.1.8-hotfix-r7.jar",
+      "modId": "tacz",
+      "namespace": "tacz",
+      "damageTypes": [
+        { "key": "tacz:bullet", "messageId": "tacz.bullet" },
+        { "key": "tacz:bullet_ignore_armor", "messageId": "tacz.bullet" },
+        { "key": "tacz:bullet_void", "messageId": "tacz.bullet" },
+        { "key": "tacz:bullet_void_ignore_armor", "messageId": "tacz.bullet" }
+      ],
+      "projectileClasses": [],
+      "note": "与正式版共用同一个 modId `tacz` 与同一套伤害类型；同样为射线判定。"
+    },
+    {
+      "label": "方块前线 (BlockFront)",
+      "artifact": "BlockFront-1.21.1-0.9.0.38b-RELEASE.jar",
+      "modId": "bf",
+      "namespace": "bf",
+      "damageTypes": [
+        { "key": "bf:bullet", "messageId": "generic" }
+      ],
+      "projectileClasses": [],
+      "note": "★ 关键：唯一伤害类型的 message_id 是 **`generic`**，与「枪/弹」毫无字面关系 ⇒ 关键词法必然漏判。全部 1690 个类被混淆为 `a`/`b`/`A`… 且无任何弹丸实体类（射线判定）⇒ **只能**按伤害类型 key 与其命名空间识别。"
+    },
+    {
+      "label": "Iron's Arms 'n Artifice",
+      "artifact": "irons_artifice-1.21.1-1.0.1.1.jar",
+      "modId": "irons_artifice",
+      "namespace": "irons_artifice",
+      "damageTypes": [
+        { "key": "irons_artifice:bullet", "messageId": "irons_artifice.bullet" }
+      ],
+      "projectileClasses": [
+        "io.redspace.irons_artifice.entity.Bullet (extends net.minecraft.world.entity.projectile.Projectile)"
+      ],
+      "note": "弹丸 `Bullet extends Projectile`（**不**继承 AbstractArrow / ThrowableProjectile）⇒ 本就不会命中法伤白名单 matcher #1；msgId 含 `bullet`，关键词法可命中。"
+    },
+    {
+      "label": "沉浸工程 (Immersive Engineering)",
+      "artifact": "ImmersiveEngineering-1.21.1-12.4.2-194.jar",
+      "modId": "immersiveengineering",
+      "namespace": "immersiveengineering",
+      "damageTypes": [
+        { "key": "immersiveengineering:railgun", "messageId": "ieRailgun" },
+        { "key": "immersiveengineering:railgun_turret", "messageId": "ieRailgun.turret" },
+        { "key": "immersiveengineering:revolver_armorpiercing", "messageId": "ieRevolver_armorPiercing" },
+        { "key": "immersiveengineering:revolver_armorpiercing_turret", "messageId": "ieRevolver_armorPiercing.turret" },
+        { "key": "immersiveengineering:revolver_buckshot", "messageId": "ieRevolver_buckshot" },
+        { "key": "immersiveengineering:revolver_buckshot_turret", "messageId": "ieRevolver_buckshot.turret" },
+        { "key": "immersiveengineering:revolver_casull", "messageId": "ieRevolver_casull" },
+        { "key": "immersiveengineering:revolver_casull_turret", "messageId": "ieRevolver_casull.turret" },
+        { "key": "immersiveengineering:revolver_dragonsbreath", "messageId": "ieRevolver_dragonsbreath" },
+        { "key": "immersiveengineering:revolver_dragonsbreath_turret", "messageId": "ieRevolver_dragonsbreath.turret" },
+        { "key": "immersiveengineering:revolver_homing", "messageId": "ieRevolver_homing" },
+        { "key": "immersiveengineering:revolver_homing_turret", "messageId": "ieRevolver_homing.turret" },
+        { "key": "immersiveengineering:revolver_potion", "messageId": "ieRevolver_potion" },
+        { "key": "immersiveengineering:revolver_potion_turret", "messageId": "ieRevolver_potion.turret" },
+        { "key": "immersiveengineering:revolver_silver", "messageId": "ieRevolver_silver" },
+        { "key": "immersiveengineering:revolver_silver_turret", "messageId": "ieRevolver_silver.turret" },
+        { "key": "immersiveengineering:revolver_wolfpack", "messageId": "ieRevolver_wolfpack" },
+        { "key": "immersiveengineering:revolver_wolfpack_turret", "messageId": "ieRevolver_wolfpack.turret" }
+      ],
+      "projectileClasses": [
+        "blusunrize.immersiveengineering.common.entities.IEProjectileEntity (extends net.minecraft.world.entity.projectile.AbstractArrow)",
+        "blusunrize.immersiveengineering.common.entities.RevolvershotEntity (extends IEProjectileEntity)",
+        "blusunrize.immersiveengineering.common.entities.RailgunShotEntity (extends IEProjectileEntity)",
+        "blusunrize.immersiveengineering.common.entities.WolfpackShotEntity (extends IEProjectileEntity)",
+        "blusunrize.immersiveengineering.common.entities.ChemthrowerShotEntity (extends IEProjectileEntity)"
+      ],
+      "note": "★★ 最严重的一处漏判：弹丸 `IEProjectileEntity` **继承 `AbstractArrow`** ⇒ 命中法伤白名单 matcher #1；而左轮全家族 18 个伤害类型的 message_id 是 `ieRevolver_*`，**不含 `gun`/`bullet` 子串**（`ieRailgun*` 含 `gun` 故侥幸命中）⇒ 左轮子弹此前被**当成法伤**吃满加成。\\n不登记（非枪弹/属陷阱或法术）：`acid` `crushed` `razor_shock` `razor_wire` `sawblade(_turret)` `sawmill` `tesla` `tesla_primary` `wire_shock`。"
+    },
+    {
+      "label": "气动工艺：重压 (PneumaticCraft: Repressurized)",
+      "artifact": "pneumaticcraft-repressurized-8.2.23+mc1.21.1.jar",
+      "modId": "pneumaticcraft",
+      "namespace": "pneumaticcraft",
+      "damageTypes": [
+        { "key": "pneumaticcraft:minigun", "messageId": "pnc_minigun" },
+        { "key": "pneumaticcraft:minigun_ap", "messageId": "pnc_minigun" }
+      ],
+      "projectileClasses": [
+        "me.desht.pneumaticcraft.common.entity.projectile.MicromissileEntity (extends net.minecraft.world.entity.projectile.ThrowableProjectile)"
+      ],
+      "note": "转轮机枪为射线判定（`Minigun` 直接结算，`DamageTypes.MINIGUN` / `MINIGUN_AP` 两个 key，message_id 均为 `pnc_minigun`）；`MicromissileEntity` 虽继承 `ThrowableProjectile`，但属导弹而非枪弹，未登记其伤害类型（由上方包名前缀兜底覆盖）。不登记：`etching_acid` `plastic_block` `pressure` `security_station`。"
+    },
+    {
+      "label": "卓越前线 (Superb Warfare)",
+      "artifact": "superbwarfare-0.8.9.2-mc1.21.1-c22d98c2.jar",
+      "modId": "superbwarfare",
+      "namespace": "superbwarfare",
+      "damageTypes": [
+        { "key": "superbwarfare:gunfire", "messageId": "gunfire" },
+        { "key": "superbwarfare:gunfire_absolute", "messageId": "gunfire" },
+        { "key": "superbwarfare:gunfire_headshot", "messageId": "gunfire_headshot" },
+        { "key": "superbwarfare:gunfire_headshot_absolute", "messageId": "gunfire_headshot" },
+        { "key": "superbwarfare:grapeshot_hit", "messageId": "grapeshot_hit" },
+        { "key": "superbwarfare:projectile_hit", "messageId": "projectile_hit" },
+        { "key": "superbwarfare:projectile_hit_headshot", "messageId": "projectile_hit_headshot" }
+      ],
+      "projectileClasses": [
+        "com.atsuishio.superbwarfare.entity.projectile.FastThrowableProjectile (extends net.minecraft.world.entity.projectile.ThrowableItemProjectile)",
+        "com.atsuishio.superbwarfare.entity.projectile.GrapeshotEntity (extends FastThrowableProjectile)"
+      ],
+      "note": "★ 第二处真实漏判：枪械本体为射线（`gunfire*`，message_id 含 `gun` 故关键词法侥幸命中），但**霰弹**走实体 `GrapeshotEntity extends FastThrowableProjectile extends ThrowableItemProjectile` ⇒ 命中白名单 matcher #1，而其 message_id 是 `grapeshot_hit`（**无关键词**）⇒ 此前被当成法伤。\\n不登记（非枪弹/属近战或车辆）：`air_crash` `ammo_consumption` `beast` `burn` `custom_explosion` `drone_hit` `laser*`(能量武器，非枪弹) `lunge_mine` `mine` `phosphorus_fire` `projectile_explosion` `repair_tool` `shock` `super_star_hit` `super_star_slash` `vehicle_explosion` `vehicle_strike`。"
+    },
+    {
+      "label": "汇流来世 (Confluence: Otherworld)",
+      "artifact": "ConfluenceOtherworld-1.2.4-260226.jar",
+      "modId": "confluence",
+      "namespace": "confluence",
+      "submodulesInsideJar": [
+        "org.confluence.terra_guns-1.21.1-1.0.jar  (modId `terra_guns` —— 枪械全部在此)",
+        "org.confluence.terra_entity-1.2.1.jar    (modId `terra_entity`)",
+        "org.confluence.terra_curio-1.2.0.jar     (modId `terra_curio`)",
+        "org.confluence.lib.confluence_magic_lib-0.0.8.jar (modId `confluence_magic_lib`)"
+      ],
+      "damageTypes": [
+        { "key": "terra_guns:bullet_damage", "messageId": "bullet_damage" }
+      ],
+      "projectileClasses": [
+        "org.confluence.terra_guns.common.entity.bullet.BaseBulletEntity (extends net.minecraft.world.entity.projectile.Projectile)",
+        "org.confluence.mod.common.entity.projectile.StarCannonBulletEntity (extends terra_guns CustomBulletEntity)",
+        "org.confluence.mod.common.entity.projectile.mana.BeeGunBullet (extends terra_curio BeeProjectile extends Projectile)"
+      ],
+      "gunItems": [
+        "confluence:star_cannon (GunItems 注册表)",
+        "confluence:bee_gun (lang item.confluence.bee_gun)",
+        "confluence:space_gun (lang item.confluence.space_gun)"
+      ],
+      "note": "用户提示「枪械可能位于内置子模组中」—— 实测属实：**枪械本体与弹药全在内嵌 jar `terra_guns`**（`BaseGun`/`CustomGun`/`Shotgun`/`BaseBullet` + 弹药 20 余种），其伤害类型 `terra_guns:bullet_damage`。\\n⚠️ 本体命名空间 `confluence` 是**混装**的（既有星炮/蜜蜂枪/太空枪，也有整套泰拉近战武器），因此枪械本体按**物品 id 点名**而非整段排除（见 itemIdExclusion）。\\n不登记（属魔法/剑弹/箭矢）：`confluence:magical_projectile` `confluence:sword_projectile` `confluence:acid_venom` `confluence:boulder` `confluence:cursed_inferno` `confluence:darkness` `confluence:falling_star` `terra_entity:*` `terra_curio:star_cloak`。"
+    }
+  ],
+  "namespaceWideExclusion": [
+    "tacz",
+    "bf",
+    "irons_artifice",
+    "immersiveengineering",
+    "pneumaticcraft",
+    "superbwarfare",
+    "terra_guns"
+  ],
+  "itemIdExclusion": [
+    "confluence:star_cannon",
+    "confluence:bee_gun",
+    "confluence:space_gun"
+  ],
+  "projectilePackagePrefixes": [
+    "blusunrize.immersiveengineering.common.entities.",
+    "com.atsuishio.superbwarfare.entity.projectile.",
+    "me.desht.pneumaticcraft.common.entity.projectile.",
+    "org.confluence.terra_guns.",
+    "io.redspace.irons_artifice.entity."
+  ],
+  "slingshots": [
+    {
+      "mod": "锦致装饰 (Supplementaries)",
+      "artifact": "supplementaries-1.21.1-3.9.9-neoforge.jar",
+      "itemId": "supplementaries:slingshot",
+      "classChain": "net.mehvahdjukaar.supplementaries.common.items.SlingshotItem extends net.minecraft.world.item.ProjectileWeaponItem",
+      "verdict": "已被 ProjectileWeaponItem 分支排除 —— 无需额外代码"
+    },
+    {
+      "mod": "铁砧工艺 (AnvilCraft)",
+      "artifact": "anvilcraft-neoforge-1.21.1-1.6.0+snapshot.2393.jar",
+      "itemId": "anvilcraft:spectral_slingshot",
+      "classChain": "dev.dubhe.anvilcraft.item.SpectralSlingshotItem extends net.minecraft.world.item.ProjectileWeaponItem；子类 dev.dubhe.anvilcraft.item.weapon.SpectralWeaponLauncherItem 继承之",
+      "verdict": "已被 ProjectileWeaponItem 分支排除 —— 无需额外代码"
+    },
+    {
+      "mod": "夸克 (Quark)",
+      "artifact": "Quark-4.1-486.jar",
+      "itemId": null,
+      "classChain": "无弹弓类（lang 全表无 sling 条目）；只有 pickarang / flamerang —— 属「工具+武器」双模，按裁决**不排除**",
+      "verdict": "该模组无弹弓；其回旋镐属双模武器，保留为近战"
+    }
+  ]
+}

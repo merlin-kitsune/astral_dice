@@ -3155,3 +3155,54 @@ KI-G1 的 **61 / 41 / 缺 20（6·8·6）** 与流派分组（充能 10 / 无流
   ⚠️ **驱动要点**：`/astralfab equip` 的 item 参数是 `StringArgumentType.string()`（**非** `word()`）⇒
   带命名空间的 id **必须加引号**（`"astral_dice:moses_sign"`），否则报
   `Expected whitespace to end one argument, but found trailing data`。
+
+## 续 49（2026-10-03）骰战近战判定重写 + 枪弹判定改为证据表驱动（第三方实物取证）
+
+> 需求（用户原话要点）：「扩大骰战判定范围，将大部分工具类物品（以及未知模组中的工具/武器）纳入
+> 判定列表，但仍需明确排除：空手；远程物品的近战攻击（弓、弩），但不排除同时具备近战与远程的武器
+> （三叉戟）；某些模组的弹弓；枪械类武器本体（此类武器不得直接用于近战砸击）；任何非工具、非武器的
+> 其他物品或方块。此外，枪弹判定在部分模组中仍然失效，因此需下载并解包这些模组，逐一分析其枪弹
+> 类型，确保本模组能够正确捕获，**禁止以猜测方式创建反射**。」
+
+### 1. 取证方式（先取证、后写码）
+- 从 Modrinth API **下载 8 个枪械模组的实物 jar**（恒走 `--proxy http://127.0.0.1:7897`；
+  CurseForge 侧搜索被 Cloudflare 403，改用 Modrinth）。落在 `temp/t04/mods/`。
+- 每个 jar **解包 + 递归展开 jar-in-jar**（汇流来世的内嵌子模组 `terra_guns` 由此发现），
+  逐个读取 `data/<ns>/damage_type/*.json`（拿 `message_id`）、`mods.toml`（拿 modId）、
+  `assets/<ns>/lang/en_us.json`（拿物品 id），并用 `javap -p` 打印弹丸类的**继承链**。
+- 工具：`temp/t04/{fetch_mods,damage_scan,inventory,jprobe,regscan}.py`。**全程零反射、零类名猜测。**
+
+### 2. 八模组的枪弹结论（逐条见 `tools/firearm-detection-evidence.json`）
+| 模组（namespace） | 枪弹伤害类型 | 关键物证 |
+|---|---|---|
+| 永恒枪械工坊：零 / 1.21.1 非官方移植（`tacz`） | `tacz:bullet{,_ignore_armor,_void,_void_ignore_armor}` | 射线判定，jar 内**无**任何弹丸实体类；`message_id` 均为 `tacz.bullet` |
+| 方块前线（`bf`） | `bf:bullet` | ★ `message_id` = **`generic`**（关键词法必漏）；1690 个类**全部混淆**、无弹丸实体 ⇒ 只能按 key 命中 |
+| Iron's Arms 'n Artifice（`irons_artifice`） | `irons_artifice:bullet` | `Bullet extends Projectile`（**不**继承 AbstractArrow/ThrowableProjectile） |
+| 沉浸工程（`immersiveengineering`） | `railgun{,_turret}` + `revolver_*`×16 | ★★ `IEProjectileEntity extends AbstractArrow` ⇒ **命中法伤白名单**；而 `message_id` 是 `ieRevolver_*`，**无 `gun`/`bullet` 子串** ⇒ 此前被当成法伤 |
+| 气动工艺：重压（`pneumaticcraft`） | `minigun`、`minigun_ap` | 射线判定；`DamageTypes.MINIGUN/MINIGUN_AP`，`message_id` 均为 `pnc_minigun` |
+| 卓越前线（`superbwarfare`） | `gunfire{,_absolute,_headshot,_headshot_absolute}`、`grapeshot_hit`、`projectile_hit{,_headshot}` | ★★ `GrapeshotEntity extends FastThrowableProjectile extends ThrowableItemProjectile` ⇒ **命中白名单**；标识 `grapeshot_hit` 无关键词 ⇒ 此前被当成法伤 |
+| 汇流来世（`confluence` + 内嵌 `terra_guns`） | `terra_guns:bullet_damage` | 用户提示属实：枪械**全在内嵌子模组** `terra_guns`；`BaseBulletEntity extends Projectile` |
+
+### 3. 弹弓取证（用户点名的三个模组）
+| 模组 | 物品 | 结论 |
+|---|---|---|
+| 锦致装饰 | `supplementaries:slingshot` | `SlingshotItem extends ProjectileWeaponItem` ⇒ **已被现有分支排除，无需新码** |
+| 铁砧工艺 | `anvilcraft:spectral_slingshot` | `SpectralSlingshotItem extends ProjectileWeaponItem`（其子类 `SpectralWeaponLauncherItem` 亦同）⇒ 同上 |
+| 夸克 | — | 1.21.1 版**没有弹弓**（lang 全表无 sling 条目）；只有回旋镐 pickarang / flamerang，属「工具+武器」双模 ⇒ 按裁决**保留为近战** |
+
+### 4. 落地与守卫
+- `combat/DiceCombatEvents.isMeleeWeaponAttack`：删除工具排除；新增 `isFirearmItem(ItemStack)`
+  （命名空间整段排除 7 个 + 汇流来世本体按物品 id 点名 3 个）。四线同构。
+- `combat/SpellDamageRegistry`：新增 `FIREARM_DAMAGE_TYPES`（34 项）与 `FIREARM_PROJECTILE_PACKAGES`（5 条），
+  `isFirearmDamage` 改为「精确 key → 弹丸包名 → 关键词兜底」。四线同构。
+- **守卫脚本 `tools/verify_firearm_detection.py`**：校验四线常量逐项相同、且与
+  `tools/firearm-detection-evidence.json` 一一对应；并断言「近战判定不再排除工具」「近战判定已调用
+  `isFirearmItem`」「近战判定仍排除 `ProjectileWeaponItem`」。`exit 0` = 通过（实测 PASS）。
+- `gradlew.bat :<line>:compileJava` ×4 = **BUILD SUCCESSFUL**。
+
+### 5. 已知取舍（用户明确选择，非缺陷）
+- 枪械排除的粒度 = **按模组命名空间整段排除**（用户裁决，已在提问中说明「会连带排除它们的近战刀 /
+  枪托」）⇒ 这几个模组的**全部**物品都不再计入近战武器判定（含它们的工具与近战武器）。
+  唯一例外是**命名空间混装**的汇流来世本体（混有整套泰拉近战武器）⇒ 改为按物品 id 点名其枪械。
+- 判定仍为**黑名单**：非工具、非武器的普通物品（如钻石、木棍）**照旧可以触发**骰战
+  —— 这一点经用户明确裁决「保留宽口径」，与需求原句最后一条相反，以裁决为准。

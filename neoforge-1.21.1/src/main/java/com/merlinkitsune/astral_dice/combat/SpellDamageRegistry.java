@@ -36,10 +36,14 @@ import com.merlinkitsune.starenginelib.combat.HostileTargets;
  * 5. Iron 的法术与魔法书(irons_spellbooks):fire_magic/ice_magic/lightning_magic/holy_magic/ender_magic/
  *    blood_magic/evocation_magic/eldritch_magic/nature_magic 等;
  * 6. 本模组「活体书页」命中伤害(astral_dice:card_spell,2026-09-25 起;见 {@link LivingPageImpact})。
- * 排除:枪械/炮弹/炸药/火箭等军火类(tacZ、维克斯的武器、卓越前线、气动工艺、机械动力:火炮、通用机械:武器、
- * 沉浸工程等)——其弹丸实体不属于白名单,黑名单关键词仅作"弹丸继承原生类"场景的保险。
+ * 排除:枪械/炮弹/炸药/火箭等军火类 —— 判据自 2026-10-03 起改为**证据表驱动**:
+ * ① 精确伤害类型 key(逐条取自各模组实物 jar 的 {@code data/<ns>/damage_type/*.json},
+ * 覆盖 永恒枪械工坊：零 / 方块前线 / Iron's Arms 'n Artifice / 汇流来世(内置子模组 terra_guns) /
+ * 沉浸工程 / 气动工艺：重压 / 卓越前线);② 军火弹丸包名前缀;③ 关键词兜底(仅未纳入分析表的模组)。
+ * ⚠️ 旧实现只做 ③,导致「方块前线 `bf:bullet`(message_id = generic)」与「沉浸工程左轮全家族
+ * {@code ieRevolver_*}(其弹丸继承 {@code AbstractArrow} ⇒ 命中白名单 matcher #1)」被漏判成法伤。
  * 该排除由公共配置 {@code allow_firearm_damage} 控制(**默认 false 即默认继续排除**);设为 true 时,
- * 弹丸实体类名或伤害类型关键词命中的军火类伤害也会进入下方白名单 matcher 判定。
+ * 上述命中的军火类伤害会与其他弹射物一样继续走白名单 matcher 判定。
  */
 public final class SpellDamageRegistry {
 
@@ -450,14 +454,87 @@ public final class SpellDamageRegistry {
         com.merlinkitsune.astral_dice.network.DamageNumberPayload.send(target, damage, color);
     }
 
-    // 枪械/火炮类远程弹丸判定(保险):伤害类型与弹丸类名关键词识别
+    // ===== 军火(枪弹/炮弹)伤害类型证据表（2026-10-03,逐条取自各模组实物 jar 的
+    //       data/<ns>/damage_type/*.json 与其 lang 物品表;不猜、不用反射）=====
+    // ⚠️ 为什么必须精确列 key:msgId 关键词法会漏判 —— 已实证两例:
+    //   · 方块前线 `bf:bullet` 的 message_id 是 **`generic`**(关键词一个都不命中);
+    //   · 沉浸工程左轮全家族 `ieRevolver_*` 的 message_id 里没有 "gun"/"bullet" 子串,
+    //     而其弹丸 `RevolvershotEntity extends IEProjectileEntity extends AbstractArrow`
+    //     ⇒ 会**命中法伤白名单 matcher #1**。两者此前都会被**漏判成法伤**。
+    // ⚠️ 只登记「枪弹/炮弹」通道;同模组的法术、魔法弹、陷阱(锯片/电击/酸液)不在此列。
+    private static final List<ResourceKey<DamageType>> FIREARM_DAMAGE_TYPES = List.of(
+            // ── 永恒枪械工坊：零 / 1.21.1 NeoForge 非官方移植(tacz) ── message_id 均为 `tacz.bullet`
+            key("tacz", "bullet"),
+            key("tacz", "bullet_ignore_armor"),
+            key("tacz", "bullet_void"),
+            key("tacz", "bullet_void_ignore_armor"),
+            // ── 方块前线(bf) ── 唯一伤害类型;message_id = `generic`
+            key("bf", "bullet"),
+            // ── Iron's Arms 'n Artifice(irons_artifice) ── message_id = `irons_artifice.bullet`
+            key("irons_artifice", "bullet"),
+            // ── 汇流来世的**内置子模组** terra_guns ── message_id = `bullet_damage`
+            key("terra_guns", "bullet_damage"),
+            // ── 沉浸工程(immersiveengineering) ── message_id = `ieRailgun*` / `ieRevolver_*`
+            key("immersiveengineering", "railgun"),
+            key("immersiveengineering", "railgun_turret"),
+            key("immersiveengineering", "revolver_armorpiercing"),
+            key("immersiveengineering", "revolver_armorpiercing_turret"),
+            key("immersiveengineering", "revolver_buckshot"),
+            key("immersiveengineering", "revolver_buckshot_turret"),
+            key("immersiveengineering", "revolver_casull"),
+            key("immersiveengineering", "revolver_casull_turret"),
+            key("immersiveengineering", "revolver_dragonsbreath"),
+            key("immersiveengineering", "revolver_dragonsbreath_turret"),
+            key("immersiveengineering", "revolver_homing"),
+            key("immersiveengineering", "revolver_homing_turret"),
+            key("immersiveengineering", "revolver_potion"),
+            key("immersiveengineering", "revolver_potion_turret"),
+            key("immersiveengineering", "revolver_silver"),
+            key("immersiveengineering", "revolver_silver_turret"),
+            key("immersiveengineering", "revolver_wolfpack"),
+            key("immersiveengineering", "revolver_wolfpack_turret"),
+            // ── 气动工艺：重压(pneumaticcraft) ── 转轮机枪(含穿甲弹),message_id = `pnc_minigun`
+            key("pneumaticcraft", "minigun"),
+            key("pneumaticcraft", "minigun_ap"),
+            // ── 卓越前线(superbwarfare) ── 枪火(含爆头/绝对档)、霰弹命中、弹丸命中
+            key("superbwarfare", "gunfire"),
+            key("superbwarfare", "gunfire_absolute"),
+            key("superbwarfare", "gunfire_headshot"),
+            key("superbwarfare", "gunfire_headshot_absolute"),
+            key("superbwarfare", "grapeshot_hit"),
+            key("superbwarfare", "projectile_hit"),
+            key("superbwarfare", "projectile_hit_headshot"));
+
+    // 军火类**弹丸包名**前缀(逐条取自实物 jar 的类继承链)。作为伤害类型之外的兜底:
+    // 部分弹丸会复用「通用 / 爆炸」伤害类型,单看伤害类型判不出来。
+    private static final List<String> FIREARM_PROJECTILE_PACKAGES = List.of(
+            "blusunrize.immersiveengineering.common.entities.",   // IEProjectileEntity(extends AbstractArrow) 全家族
+            "com.atsuishio.superbwarfare.entity.projectile.",     // FastThrowableProjectile(extends ThrowableItemProjectile) 全家族
+            "me.desht.pneumaticcraft.common.entity.projectile.",  // MicromissileEntity(extends ThrowableProjectile)
+            "org.confluence.terra_guns.",                         // BaseBulletEntity(extends Projectile)
+            "io.redspace.irons_artifice.entity.");                // Bullet(extends Projectile)
+
+    // 枪械/火炮类远程弹丸判定:
+    //   ① 精确伤害类型(上方证据表) → ② 军火弹丸包名 → ③ 关键词兜底(仅覆盖未纳入分析表的其它模组)。
+    // ⚠️ ①② 为 2026-10-03 逐模组实物取证所得;③ 保留为**兜底**,不再是唯一判据 ——
+    //   它正是「方块前线 `generic`」「沉浸工程 `ieRevolver_*`」两处漏判的成因。
     private static boolean isFirearmDamage(DamageSource source) {
+        for (ResourceKey<DamageType> type : FIREARM_DAMAGE_TYPES) {
+            if (source.is(type)) return true;
+        }
+        Entity direct = source.getDirectEntity();
+        if (direct instanceof net.minecraft.world.entity.projectile.Projectile) {
+            String cls = direct.getClass().getName();
+            for (String pkg : FIREARM_PROJECTILE_PACKAGES) {
+                if (cls.startsWith(pkg)) return true;
+            }
+        }
+        // ③ 兜底:关键词(仅覆盖未纳入分析表的模组)
         String msgId = source.getMsgId().toLowerCase(Locale.ROOT);
         if (msgId.contains("bullet") || msgId.contains("gun") || msgId.contains("firearm")
                 || msgId.contains("cannon") || msgId.contains("shell") || msgId.contains("missile")) {
             return true;
         }
-        Entity direct = source.getDirectEntity();
         if (direct != null) {
             String name = direct.getClass().getSimpleName().toLowerCase(Locale.ROOT);
             if (name.contains("bullet") || name.contains("shell") || name.contains("cannon") || name.contains("gun")) {
