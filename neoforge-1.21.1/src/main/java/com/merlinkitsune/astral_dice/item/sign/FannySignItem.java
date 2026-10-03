@@ -41,7 +41,24 @@ public class FannySignItem extends BaseSignItem {
         }
         // 主动:随机获得以下任一效果(固定 11 项,不含"调查阶段"事件)
         int roll = ThreadLocalRandom.current().nextInt(1, 12);
-        applyEvent(player, roll);
+        // 2026-10-03 用户裁决:大侦探「抽到的效果」按「队伍 + 64 格」广播
+        // (口径见 PartyRelations#collectEventTargets)——
+        //   触发者有队伍 = 全队 ∪ 64 格内非队友;无队伍 = 全部无队伍玩家 ∪ 64 格内所有玩家。
+        // ⚠️ 锁定(主动技能冷却)仍**只由触发者自己**的施加结果决定,广播给他人不影响冷却判定。
+        long lockEnd = 0L;
+        for (Player target : com.merlinkitsune.astral_dice.combat.PartyRelations.collectEventTargets(
+                player, com.merlinkitsune.astral_dice.event.AstralEventSystem.EVENT_TARGET_RADIUS)) {
+            long applied = applyEventTo(target, roll);
+            if (target == player) {
+                lockEnd = applied;
+            }
+        }
+        // 第二批「三态化」:只登记本次**实际施加成功**的计时器 ⇒ 进入锁定(生效中)态;
+        // 只发物品的分支(3/4,分支内不登记任何效果)与未施加成功时都不锁 ⇒ 由 performSkill 立即起冷却。
+        // 判据用"实际施加结果"而不是回读实例剩余时长:后者会把无关来源的同名效果(如金苹果的生命恢复)算进来
+        if (lockEnd > player.level().getGameTime()) {
+            beginActiveLock(player, "astral_dice:fanny_sign", lockEnd);
+        }
         sendEventActionBar(player, roll);
         // 触发统一事件附加效果:大侦探立牌被动(+3 星币)与调查员立牌联动(活体书页)
         // (带独立事件 ID,避免与调查阶段事件在同 tick 触发时互相串扰去重)
@@ -49,8 +66,14 @@ public class FannySignItem extends BaseSignItem {
         return InteractionResultHolder.success(stack);
     }
 
-    private static void applyEvent(Player player, int roll) {
-        long now = player.level().getGameTime();
+    /**
+     * 把抽到的事件效果施加到**单个目标**上,返回该目标「门控计时器」的到期刻
+     * (0 = 未施加成功,不构成门控计时器)。
+     *
+     * <p>2026-10-03:本方法只负责**施加**;**锁定登记**移到 {@link #handleUse},且只按
+     * **触发者自己**的施加结果登记(广播给其他玩家不影响触发者的主动技能冷却判定)。
+     */
+    private static long applyEventTo(Player player, int roll) {
         long lockEnd = 0L;
         switch (roll) {
             case 1 -> lockEnd = applyTimed(player, MobEffects.REGENERATION, 600); // 生命恢复 0:30
@@ -80,12 +103,7 @@ public class FannySignItem extends BaseSignItem {
                         applyTimed(player, MobEffects.DIG_SLOWDOWN, 600));
             }
         }
-        // 第二批「三态化」:只登记本次**实际施加成功**的计时器(取 max)⇒ 进入锁定(生效中)态;
-        // 只发物品的分支(3/4,分支内不登记任何效果)与未施加成功时都不锁 ⇒ 由 performSkill 立即起冷却。
-        // 判据用"实际施加结果"而不是回读实例剩余时长:后者会把无关来源的同名效果(如金苹果的生命恢复)算进来
-        if (lockEnd > now) {
-            beginActiveLock(player, "astral_dice:fanny_sign", lockEnd);
-        }
+        return lockEnd;
     }
 
     // 施加一个带时长效果(经计时器守卫)并返回其到期刻(0 = 未施加成功,不构成门控计时器)
@@ -97,14 +115,14 @@ public class FannySignItem extends BaseSignItem {
     }
 
     // 11 项随机事件里会施加到自身的带时长效果(3/4 两项只发物品,不在此列):锁定态的门控效果来源。
-    // 门控只用于"提前结束"(效果被外力清除),硬上界由 applyEvent 按**实际施加**的时长登记
+    // 门控只用于"提前结束"(效果被外力清除),硬上界由 handleUse 按**实际施加**的时长登记(取自 applyEventTo)
     private static final java.util.List<net.minecraft.core.Holder<net.minecraft.world.effect.MobEffect>> LOCK_GATE_EFFECTS =
             List.of(MobEffects.REGENERATION, MobEffects.DAMAGE_BOOST, MobEffects.MOVEMENT_SPEED,
                     MobEffects.HARM, MobEffects.POISON, MobEffects.HUNGER, MobEffects.CONFUSION,
                     MobEffects.WITHER, MobEffects.DARKNESS, MobEffects.WEAKNESS, MobEffects.DIG_SLOWDOWN,
                     MobEffects.SATURATION);
 
-    // 第二批「三态化」:锁定已在 applyEvent 内登记(仅当本次实际施加成功);此处只回答"是否已进入锁定"
+    // 第二批「三态化」:锁定已在 handleUse 内登记(仅当本次实际施加成功);此处只回答"是否已进入锁定"
     @Override
     protected boolean startActiveLockOnUse(Player player, long now) {
         return isSignActiveLocked(player);

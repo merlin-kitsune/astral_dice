@@ -178,8 +178,11 @@ function Invoke-MtLaunchOpPreflight {
     if (-not $m.Success) {
         return [pscustomobject]@{
             Code   = 'ERROR'
-            Detail = ('未取到 AP_OP_PERM 读数（注入返回码 {0}）—— 探针未加载 / KubeJS 脚本未生效 / ' +
-                '`/astralprobe opprobe` 不存在，属工具链故障而非产品缺陷' -f ($rcs -join '/'))
+            # ⚠️ 2026-10-02：`-f` 的优先级低于 `+`，原写法 `'A' + 'B' -f $x` 只把格式串解析到
+            #    第二段 ⇒ `{0}` 永不替换、日志里恒显示字面 `{0}`（本机实测：排障时读不到注入返回码）。
+            #    整串必须显式加括号。
+            Detail = (('未取到 AP_OP_PERM 读数（注入返回码 {0}）—— 探针未加载 / KubeJS 脚本未生效 / ' +
+                '`/astralprobe opprobe` 不存在，属工具链故障而非产品缺陷') -f ($rcs -join '/'))
         }
     }
 

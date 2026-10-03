@@ -84,12 +84,34 @@ public class ModDamageTypes {
      * 创造模式下 {@code abilities.invulnerable} 亦会整体免疫。本类型登记于 {@code bypasses_cooldown}
      * ⇒ 无敌帧内照常结算，代价必定生效。
      *
-     * <p><b>不</b>登记 {@code bypasses_armor} 与 {@code bypasses_invulnerability}:与旧口径一致，
-     * 仍受护甲/抗性/保护减免，创造模式仍免疫 —— 「代价」不是真伤、不穿透防御。
+     * <p>⚠️ <b>2026-10-02 口径变更（用户裁决）</b>：本类型**改为登记** {@code bypasses_armor} +
+     * {@code bypasses_enchantments} + {@code bypasses_resistance} —— 旧口径（只登记 {@code bypasses_cooldown}、
+     * 仍受护甲/抗性/保护减免）实测「代价极易被减伤抵消、形同虚设」，故改为**必须真扣 8 点**；
+     * 同时 {@code event/ChipDamageHandler} 把本类型识别为**不可削减**，本模组的固定点数减伤
+     * （磨刀石 -2、怪力侦探立牌 -N）对它一律跳过 —— **保命**机制照常（安全气囊、不死图腾、
+     * 末影骰子、磨刀石「不可被一次击倒」）。
+     * <p><b>仍不</b>登记 {@code bypasses_invulnerability}：创造模式 / 重生无敌期仍然免疫。
      */
     public static final ResourceKey<DamageType> CARD_COST = ResourceKey.create(
             Registries.DAMAGE_TYPE,
             ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID, "card_cost")
+    );
+
+    /**
+     * **不可削减真伤**（2026-10-02 新增）：「伤害增加」类机制（如狂暴「受到任意伤害 +1/层」）
+     * 在伤害**落地后**另行结算的那一段**独立真伤**。
+     *
+     * <p>登记于 {@code bypasses_armor} + {@code bypasses_enchantments} + {@code bypasses_resistance}
+     * + {@code bypasses_cooldown} ⇒ 护甲 / 盔甲韧性 / 保护附魔 / 抗性提升**全部跳过**，且不受受击无敌帧约束。
+     * 另外 {@code event/ChipDamageHandler} 把它（与 {@link #CARD_COST}）识别为**不可削减** ⇒
+     * 本模组的固定点数减伤（磨刀石 -2、怪力侦探立牌 -N）对它一律跳过；**保命**机制照常
+     * （安全气囊、不死图腾、末影骰子、磨刀石「不可被一次击倒」）。
+     *
+     * <p><b>不</b>登记 {@code bypasses_invulnerability}：创造模式 / 重生无敌期仍然免疫，与 {@link #CARD_COST} 同口径。
+     */
+    public static final ResourceKey<DamageType> UNREDUCIBLE_DAMAGE = ResourceKey.create(
+            Registries.DAMAGE_TYPE,
+            ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID, "unreducible_damage")
     );
 
     public static DamageSource diceDamage(Level level, Entity source) {
@@ -150,6 +172,14 @@ public class ModDamageTypes {
      */
     public static DamageSource cardCost(Level level, Entity source) {
         return new DamageSource(holder(level, CARD_COST), source);
+    }
+
+    /**
+     * 不可削减真伤伤害源：**直接伤害实体为空、击杀归属 {@code causing}** —— 与
+     * {@link #trueDamage(Level, Entity)} 同形状（不算玩家的直接攻击、不重走骰战，但保留击杀归属）。
+     */
+    public static DamageSource unreducibleDamage(Level level, Entity causing) {
+        return new DamageSource(holder(level, UNREDUCIBLE_DAMAGE), null, causing);
     }
 
     private static Holder<DamageType> holder(Level level, ResourceKey<DamageType> key) {

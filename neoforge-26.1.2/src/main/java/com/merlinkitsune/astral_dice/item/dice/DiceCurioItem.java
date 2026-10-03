@@ -78,10 +78,11 @@ public class DiceCurioItem extends Item implements ICurioItem {
             stack.set(ModDataComponents.WEAPON_ENHANCEMENT.get(), WeaponEnhancement.EMPTY);
         }
         if (slotContext.entity() instanceof Player player && !player.level().isClientSide()) {
-            // 防御式调整(forceRemove=false):目标值在「骰子槽瞬时为空」的读数下会算成 0,
-            // 强制收缩会移出 chip 等槽位的合法物品(弹出 bug);有物品的槽位保持不动,物品安全。
-            // 立牌栏固定 1(stand.json size=1),不做动态调整。
-            refreshChipSlotCount(player);
+            // 装备/换装骰子：此刻 dice 槽里就是**刚装上的**那件（第 3 参 stack），目标尺寸可确定，
+            // 故走**强制收缩**（forceRemove=true）—— 佩戴可用筹码栏更少的骰子时，超出新上限的筹码
+            // 会被取出并退回物品栏（需求）。注意与登录/数据包同步/tick 那条 forceRemove=false 的
+            // 防御式路径区分开：那条路径下 dice 槽可能瞬时为空、目标被算成 0，强制收缩会误伤在用槽位。
+            refreshChipSlotCount(player, chipSlotsFor(player, stack), true, false);
         }
     }
 
@@ -136,14 +137,7 @@ public class DiceCurioItem extends Item implements ICurioItem {
                 ItemStack dice = inventory.getStacksHandler("dice")
                         .map(handler -> handler.getStacks().getStackInSlot(0))
                         .orElse(ItemStack.EMPTY);
-                target = CHIP_NO_DICE_SLOTS;
-                if (!dice.isEmpty()) {
-                    target = targetChipSlots(dice);
-                    // 看板娘立牌被动:装备骰子时筹码栏位 +1;未佩戴骰子时不给,维持「必须佩戴骰子才有筹码栏」
-                    if (MimiSignItem.isEquipped(player)) {
-                        target += 1;
-                    }
-                }
+                target = chipSlotsFor(player, dice);
             }
             setSlotCount(player, chip, target, forceRemove);
         });
@@ -156,6 +150,20 @@ public class DiceCurioItem extends Item implements ICurioItem {
         if (throttled && player.tickCount % 200 != 0) return;
         LOGGER.warn("[Astral Dice][chip] 未找到 chip 槽位处理器,筹码栏位未调整:player={}, curiosKeys={}",
                 player.getGameProfile().name(), inventory.getCurios().keySet());
+    }
+
+    /**
+     * 由**某件骰子**推算筹码栏目标尺寸；骰子为空时为 0（未佩戴骰子就没有筹码栏）。
+     *
+     * <p>看板娘立牌被动的 +1 只在其「已佩戴骰子」的前提下生效，故放在骰子非空分支内。
+     */
+    private static int chipSlotsFor(Player player, ItemStack dice) {
+        if (dice == null || dice.isEmpty()) return CHIP_NO_DICE_SLOTS;
+        int target = targetChipSlots(dice);
+        if (MimiSignItem.isEquipped(player)) {
+            target += 1;
+        }
+        return target;
     }
 
     private static int targetChipSlots(ItemStack stack) {
@@ -269,6 +277,28 @@ public class DiceCurioItem extends Item implements ICurioItem {
         handler.addPermanentModifier(new AttributeModifier(CHIP_SLOT_MODIFIER, wanted,
                 AttributeModifier.Operation.ADD_VALUE));
         handler.update();
+    }
+
+    /**
+     * 兜底复位：玩家**未佩戴骰子**时，把筹码栏强制收缩为 0，并把槽内筹码退回物品栏。
+     *
+     * <p>挂载点 = 登录/重新进入 与 死亡重生克隆 ⇒ 兑现需求「重生或离开后重新进入时仍然不佩戴骰子，
+     * 则强制恢复无筹码栏的初始状态并强制排空安装的筹码（退回物品栏）」。
+     *
+     * <p>与 {@link #refreshChipSlotCount(Player)} 的区别是**强制**：后者为防御式（目标在「骰子槽瞬时
+     * 为空」的读数下会算成 0，故它把目标抬到「最靠后的非空槽位 + 1」、绝不缩掉占用中的槽位）；
+     * 本方法只在**确认 dice 栏为空**的前提下动作，因此可以安全地把占位筹码交给背包。
+     */
+    public static void enforceNoDiceState(Player player) {
+        if (player == null || player.level().isClientSide()) return;
+        CuriosApi.getCuriosInventory(player).ifPresent(inventory -> {
+            ItemStack dice = inventory.getStacksHandler("dice")
+                    .map(handler -> handler.getStacks().getStackInSlot(0))
+                    .orElse(ItemStack.EMPTY);
+            if (!dice.isEmpty()) return;
+            inventory.getStacksHandler("chip").ifPresent(chip ->
+                    setSlotCount(player, chip, CHIP_NO_DICE_SLOTS, true));
+        });
     }
 
     // 玻璃骰子死亡惩罚:移除骰子本体(连同其 WEAPON_ENHANCEMENT 中已装备的全部卡牌),

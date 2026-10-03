@@ -1,5 +1,6 @@
 package com.merlinkitsune.astral_dice.item.sign;
 
+import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
 import com.merlinkitsune.starenginelib.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
@@ -11,7 +12,6 @@ import net.minecraft.world.level.Level;
 import top.theillusivec4.curios.api.CuriosApi;
 import com.merlinkitsune.astral_dice.item.card.BaseEffectCardItem;
 import com.merlinkitsune.astral_dice.item.card.EffectCardPeriod;
-import com.merlinkitsune.astral_dice.item.card.ExclusiveCardUtil;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -63,6 +63,8 @@ public class KomachiSignItem extends BaseSignItem {
      * 判定入口统一在 {@code SpellDamageRegistry},禁止在别处直接读原附件值做加成或显示加成。
      */
     public static boolean isEquipped(Player player) {
+        // 总闸门(骰子装备和卸除调整):未佩戴骰子 ⇒ 本件功能一律不生效(数值保留)
+        if (!CurioSlotUtil.hasDiceEquipped(player)) return false;
         var curios = CuriosApi.getCuriosInventory(player);
         return curios.isPresent() && curios.get().findFirstCurio(s -> s.is(ModItems.KOMACHI_SIGN.get())).isPresent();
     }
@@ -127,11 +129,8 @@ public class KomachiSignItem extends BaseSignItem {
             // 读回附件中的「最后一张效果牌」记录作为唯一来源(方法参数仅作兜底),保证跨周期/跨会话一致
             String lastCardType = ModAttachments.getKomachiLastCard(player);
             if (lastCardType == null || lastCardType.isEmpty()) lastCardType = cardType;
-            ItemStack card = BaseEffectCardItem.cardByTypeId(lastCardType);
-            // 复制的专属效果牌绑定获得者(忍者)
-            if (ExclusiveCardUtil.isExclusive(card)) {
-                ExclusiveCardUtil.setOwner(card, player);
-            }
+            // 复制的专属效果牌由 createCopyFor 统一绑定获得者(单一入口,杜绝漏绑)
+            ItemStack card = BaseEffectCardItem.createCopyFor(lastCardType, player);
             if (!card.isEmpty()) {
                 VitaminPillChipItem.giveCard(player, card);
             }

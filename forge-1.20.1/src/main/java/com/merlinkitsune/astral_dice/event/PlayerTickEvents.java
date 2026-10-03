@@ -1,7 +1,15 @@
 package com.merlinkitsune.astral_dice.event;
+import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
 import com.merlinkitsune.starenginelib.item.CuriosCompat;
 
 import com.merlinkitsune.astral_dice.effect.ModEffects;
+import com.merlinkitsune.astral_dice.item.ChargeManager;
+import com.merlinkitsune.astral_dice.item.chip.AdrenalineChipItem;
+import com.merlinkitsune.astral_dice.item.chip.CursedSwordChipItem;
+import com.merlinkitsune.astral_dice.item.chip.ElectricSwordChipItem;
+import com.merlinkitsune.astral_dice.item.chip.RailgunChipItem;
+import com.merlinkitsune.astral_dice.item.chip.WhetstoneChipItem;
+import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.item.sign.BaseSignItem;
 import com.merlinkitsune.astral_dice.item.HealingManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
@@ -42,16 +50,23 @@ public class PlayerTickEvents {
     public static void onPlayerTick(TickEvent.PlayerTickEvent event) {
         Player player = event.player;
         if (player.level().isClientSide()) return;
+        // 总闸门（需求「骰子装备和卸除调整」）：未佩戴骰子 ⇒ 立牌与筹码的玩法功能都不生效，
+        // 数值仍保留在附件 / 物品数据上。此处拦的是**不经 isEquipped 判定**的玩家级状态机。
+        final boolean diceGated = !CurioSlotUtil.hasDiceEquipped(player);
         // 治愈:每 tick 驱动(内部按 30 秒结算 + 每 tick 刷新效果倒计时)
-        HealingManager.tick(player);
-        // 美工刀状态效果:装备且满血时显示效果图标,否则移除
+        if (!diceGated) HealingManager.tick(player);
+        // 状态图标的维护**不受 diceGated 短路**,必须每 tick 都跑 ——
+        // 否则卸下骰子后这些指示器再没有人负责移除,会留下「功能已关、图标还在」的假象。
+        // 口径:三处的判据内部都含「是否佩戴骰子」(筹码侧的 isEquipped 自带该闸门;
+        //       美工刀的 hasCutter/hasBlade 由 updateCutterEffect 里的 onDice 补上),
+        //       故未佩戴骰子时条件为假 ⇒ 图标被正常移除,而累计数值仍保留在附件/物品数据上。
         updateCutterEffect(player);
-        // 复仇之戟:任意加成触发时显示效果图标,全部消失时移除
+        updateChipBonusIndicators(player);
         RevengeHalberdChipItem.updateDisplayEffect(player);
         // 复仇之戟:防御力折算为真实护甲(1 防御力 = 2 护甲值)
-        RevengeHalberdChipItem.updateArmorBonus(player);
+        if (!diceGated) RevengeHalberdChipItem.updateArmorBonus(player);
         // 原初核心:赋能层数折算为真实护甲(1 防御力 = 2 护甲值)
-        com.merlinkitsune.astral_dice.item.chip.PrimordialCoreChipItem.updateArmorBonus(player);
+        if (!diceGated) com.merlinkitsune.astral_dice.item.chip.PrimordialCoreChipItem.updateArmorBonus(player);
         // 效果牌「手持即选择」(2026-09-25 用户裁决):主手持有选择器类效果牌 ⇒ 自动开启目标选择会话
         // (门槛与按键兜底同源;移出手持的收官在 TargetSelectionManager.tick 侧,reason=released)
         // ⚠️ Forge 的 PlayerTickEvent 每 tick 触发两次(START/END),本入口靠「已在选择中即早退」保证幂等
@@ -68,13 +83,13 @@ public class PlayerTickEvents {
         // (不用 MobEffectEvent.Expired:该事件在外力移除/死亡/重连清场时不触发,会漏掉"赐福结束";
         //  下降沿把两条结束路径统一,且不会重复消费跳过计数 —— 见 ZhaoSignItem#tickBlessing)
         // ⚠️ Forge 每 tick 派发 START+END 两次,tickBlessing 内部靠 prev 落值保证重复调用幂等
-        com.merlinkitsune.astral_dice.item.sign.ZhaoSignItem.tickBlessing(player);
+        if (!diceGated) com.merlinkitsune.astral_dice.item.sign.ZhaoSignItem.tickBlessing(player);
         // 教主立牌「降神 / 狐光」:**每 tick** 驱动 —— 施法者侧派生加成缓存与护甲折算、目标侧骰神赐福下降沿
         // 状态机、狐光层数镜像为 HUD 效果(见 TeruSignItem#tick)。必须放在 tickCount % 20 早退之前:
         // 下降沿检测一旦漏 tick 就会错过"赐福结束"这一拍。
         // ⚠️ Forge 每 tick 派发 START+END 两次 ⇒ 本方法必须幂等:下降沿在第一次调用即落 prev=false,
         // 第二次调用看到 prev=false 不会再消费一次 skip;其余分支都是"同值不写"的镜像写入。
-        com.merlinkitsune.astral_dice.item.sign.TeruSignItem.tick(player);
+        if (!diceGated) com.merlinkitsune.astral_dice.item.sign.TeruSignItem.tick(player);
         // 绿洲女王立牌(nardis)「女王特权」:临时牌自检(**幂等**)——真值 = 原生效果实例;
         // 「身上/骰子里还有临时牌,但玩家已没有 nardis_privilege 效果」⇒ 清空全部临时牌
         // (效果自然到期 / 被 /effect clear / 离线到期后重登 / 异常残留,四条路径都走这一条)。
@@ -82,19 +97,26 @@ public class PlayerTickEvents {
         // ⚠️ Forge 每 tick 派发 START+END 两次 ⇒ tick 会被调两遍;幂等由「有效果 / 无临时牌即早退」保证
         //    (第二遍在清空后自然早退,不会重复扣 usedCost/usedDefenseCost)。
         TemporaryCardUtil.tick(player);
+        // 充能状态图标的可见性(2026-10-03 用户裁决):未装备任何**充能类筹码**时隐藏 HUD 图标,
+        // 装备回筹码后恢复。前置 hasCharge 早退 ⇒ 没有充能的玩家零开销;showIcon 未变时
+        // setIconVisibility 内部直接 return,不会每 tick 重建效果实例。
+        if (com.merlinkitsune.astral_dice.item.ChargeManager.hasCharge(player)) {
+            com.merlinkitsune.astral_dice.effect.ChargeEffect.setIconVisibility(
+                    player, com.merlinkitsune.astral_dice.item.ChargeManager.isChargeChipEquipped(player));
+        }
         // 人偶师立牌(hanna)「幻想千金」/「挚友祝福」:路过友方玩家的判定。
         // 两条被动各有独立的 1:00 冷却 ⇒ 冷却内只读两个 long 即早退,每 tick 调用安全;
         // 放在 % 20 早退**之前**,避免"擦身而过只停留几拍"被 20 tick 采样漏掉。
-        com.merlinkitsune.astral_dice.item.sign.HannaSignItem.tickPassing(player);
+        if (!diceGated) com.merlinkitsune.astral_dice.item.sign.HannaSignItem.tickPassing(player);
         if (player.tickCount % 20 != 0) return;
         // 赋能:每 0:30 减少 1 层(剩余 1 层时直接归 0)
-        com.merlinkitsune.astral_dice.item.EmpowerManager.tick(player);
+        if (!diceGated) com.merlinkitsune.astral_dice.item.EmpowerManager.tick(player);
         // 效果牌出牌周期计时
         com.merlinkitsune.astral_dice.item.card.EffectCardPeriod.tick(player);
         // 以毒攻毒:中毒结束后给予隐藏图标的生命恢复 II
         com.merlinkitsune.astral_dice.item.card.FightPoisonWithPoisonCardItem.tick(player);
         // 大当家立牌:1 分钟内没有触发骰神赐福 → 养精蓄锐 +1 层
-        com.merlinkitsune.astral_dice.item.sign.FenSignItem.tick(player);
+        if (!diceGated) com.merlinkitsune.astral_dice.item.sign.FenSignItem.tick(player);
         // 符卡-祸「厄运」:层数镜像 == 当前持有张数 + 每 2:00 按结算时刻张数的周期伤害
         // (计时器只在首次持有时起算一次,张数增减不改写它 —— 计时器与结算分离)
         com.merlinkitsune.astral_dice.item.card.HuoCardItem.tick(player);
@@ -106,11 +128,15 @@ public class PlayerTickEvents {
     // (其额外加伤仍只在骰战结算内生效:DiceCombatEvents 的赐福门控决定是否真的加伤。)
     private static void updateCutterEffect(Player player) {
         var curios = CuriosCompat.getCuriosInventory(player);
+        // ⚠️ hasCutter/hasBlade 走的是**直接查 Curios**(不经各筹码的 isEquipped),
+        //    因此必须自己带上「是否佩戴骰子」这道总闸门 —— 否则卸下骰子后
+        //    美工刀指示器会因为条件恒真而永远摘不掉(本方法现在每 tick 都会执行)。
+        final boolean onDice = CurioSlotUtil.hasDiceEquipped(player);
         boolean hasCutter = false;
         boolean hasBlade = false;
         if (curios.isPresent()) {
-            hasCutter = curios.get().findFirstCurio(s -> s.is(ModItems.CUTTER_CHIP.get())).isPresent();
-            hasBlade = curios.get().findFirstCurio(s -> s.is(ModItems.CUTTER_BLADE_CHIP.get())).isPresent();
+            hasCutter = onDice && curios.get().findFirstCurio(s -> s.is(ModItems.CUTTER_CHIP.get())).isPresent();
+            hasBlade = onDice && curios.get().findFirstCurio(s -> s.is(ModItems.CUTTER_BLADE_CHIP.get())).isPresent();
         }
         boolean fullHp = player.getHealth() >= player.getMaxHealth() * 0.6f || player.hasEffect(ModEffects.PAPARA_BITE.get());
         boolean blessed = player.hasEffect(ModEffects.DICE_BLESSING.get());
@@ -121,17 +147,52 @@ public class PlayerTickEvents {
         refreshIndicatorInfinite(player, ModEffects.CUTTER_READY.get(), hasCutter && fullHp);
         refreshIndicatorInfinite(player, ModEffects.CUTTER_BLADE_READY.get(), hasBlade && fullHp);
         // 手电筒-强光:佩戴筹码、处于骰神赐福状态且**确有加伤**(星光/4 ≥ 1)时显示效果图标
-        refreshIndicator(player, ModEffects.FLASHLIGHT_READY.get(),
+        // 2026-10-01 用户裁决:伤害增加型筹码的「生效中」指示器**一律无限时长**
+        // (可生效即常驻显示),手电筒随之从 5 秒倒计时改为无限。
+        refreshIndicatorInfinite(player, ModEffects.FLASHLIGHT_READY.get(),
                 FlashlightChipItem.isEquipped(player) && blessed && StarLightManager.get(player) / 4 >= 1);
+    }
+
+    /**
+     * 伤害增加型筹码的「就位 / 生效中」指示器（2026-10-01 用户裁决）。
+     *
+     * <p>口径：**只要加成可生效就常驻显示，时长一律无限**（不走倒计时）；条件消失即移除。
+     * 与 {@link #updateCutterEffect} 同一范式，同属 {@code !diceGated} 分支 ——
+     * 未佩戴骰子时这些筹码的功能一律不生效，图标随之熄灭。
+     *
+     * <p>6 枚的判据各自取「加成真的 > 0」那一档，与各自的攻击修饰器同源：
+     * 磨刀石/肾上腺素 = 低血阈值；诅咒之剑 = 累计加成 > 0；
+     * 电流剑 = 充能 ≥ 4（每 4 点 +1）；电磁炮 = 充能 ≥ 6（+5 生效，"就位"）。
+     */
+    private static void updateChipBonusIndicators(Player player) {
+        refreshIndicatorInfinite(player, ModEffects.WHETSTONE_READY.get(),
+                WhetstoneChipItem.isEquipped(player) && WhetstoneChipItem.isLowHealth(player));
+        refreshIndicatorInfinite(player, ModEffects.ADRENALINE_READY.get(),
+                AdrenalineChipItem.hasLowEquipped(player) && AdrenalineChipItem.isLowHp(player));
+        refreshIndicatorInfinite(player, ModEffects.ADRENALINE_HIGH_READY.get(),
+                AdrenalineChipItem.hasHighEquipped(player) && AdrenalineChipItem.isLowHp(player));
+        refreshIndicatorInfinite(player, ModEffects.CURSED_SWORD_READY.get(),
+                CursedSwordChipItem.isEquipped(player)
+                        && ModAttachments.getCursedSwordBonus(player) > 0);
+        refreshIndicatorInfinite(player, ModEffects.ELECTRIC_SWORD_READY.get(),
+                ElectricSwordChipItem.isEquipped(player)
+                        && ChargeManager.getStacks(player) >= ElectricSwordChipItem.CHARGE_PER_ATTACK);
+        refreshIndicatorInfinite(player, ModEffects.RAILGUN_READY.get(),
+                RailgunChipItem.isEquipped(player)
+                        && ChargeManager.getStacks(player) >= RailgunChipItem.CHARGE_REQUIRED);
     }
 
     /**
      * 显示指示器效果(无限时长版本):需要显示且缺失时施加 ∞;不需要显示且存在时移除。
      *
-     * <p>⚠️ **仅供「自身条件型」指示器使用**(当前唯一调用方 = 美工刀-初级/锋利):
-     * 这类指示器的存在与否完全由玩家自身状态决定、与任何计时器无关,故用 ∞ 常驻。
-     * 需要绑定倒计时的指示器(如「治愈」)必须走各自的计时器刷新,不得走本方法
-     * (治愈见 {@code HealingManager#updateEffect})。
+     * <p>⚠️ **仅供「自身条件型」指示器使用**:这类指示器的存在与否完全由玩家自身状态决定、
+     * 与任何计时器无关,故用 ∞ 常驻。当前调用方 = 美工刀-初级/锋利、手电筒-强光、
+     * 以及 {@link #updateChipBonusIndicators} 的 6 枚(磨刀石 / 肾上腺素两档 / 诅咒之剑 /
+     * 电流剑 / 电磁炮)。
+     *
+     * <p>2026-10-01 用户裁决后,**伤害增加型筹码的指示器一律无限时长**(可生效即常驻),
+     * 因此原先的「有限时长版」{@code refreshIndicator}(5 秒倒计时)已无调用方,随之删除;
+     * 唯一仍需要绑定倒计时的指示器是「治愈」,它走 {@code HealingManager#updateEffect} 自己的计时器。
      */
     private static void refreshIndicatorInfinite(Player player, net.minecraft.world.effect.MobEffect effect,
                                          boolean shouldShow) {
@@ -144,33 +205,4 @@ public class PlayerTickEvents {
             ModEffectRemoval.remove(player, effect);
         }
     }
-
-    /** 指示器效果的施加时长。⚠️ **必须始终 > 200 tick**:见 {@link #refreshIndicator} 注释。 */
-    private static final int INDICATOR_DURATION_TICKS = 1200;
-    /** 剩余时长低于此值即续期,保证实际时长永不低于 200 tick(留足余量,避免边界抖动)。 */
-    private static final int INDICATOR_REFRESH_BELOW = 1000;
-
-    // 显示指示器效果:需要显示且(缺失/即将到期)时续期;不需要显示且存在时内部移除。
-    //
-    // ⚠️ 时长必须 **始终 > 200 tick**,否则图标会**永久闪烁**:
-    //   原版 Gui#renderEffects 对 `mobeffectinstance.endsWithin(200)` 的效果按
-    //   `f = clamp(duration/10/5*0.5,0,0.5) + cos(duration*PI/5) * clamp(l/10*0.25,0,0.25)`
-    //   调制图标 alpha(neoforge 21.1.235 Gui.java:548-553;本线 1.20.1 同构)。
-    //   旧实现施加 100 tick、在 ≤20 tick 时续期 ⇒ 时长**恒在 [21,100] 区间**,永远落在
-    //   `endsWithin(200)` 内 ⇒ 每 tick 都在按余弦改 alpha,表现为「一直闪」。
-    // ⚠️ `visible=false`(第 5 参):不产生持续粒子。既有指示器同口径先例 ——
-    //   RevengeHalberdChipItem:76 / JasmineSignItem:63 均为 (…, false, false, true);
-    //   旧实现用 visible=true,这正是用户看到的「并且有粒子」。
-    private static void refreshIndicator(Player player, net.minecraft.world.effect.MobEffect effect,
-                                         boolean shouldShow) {
-        if (shouldShow) {
-            MobEffectInstance existing = player.getEffect(effect);
-            if (existing == null || existing.getDuration() <= INDICATOR_REFRESH_BELOW) {
-                player.addEffect(new MobEffectInstance(effect, INDICATOR_DURATION_TICKS, 0, false, false, true));
-            }
-        } else if (player.hasEffect(effect)) {
-            ModEffectRemoval.remove(player, effect);
-        }
-    }
-
 }

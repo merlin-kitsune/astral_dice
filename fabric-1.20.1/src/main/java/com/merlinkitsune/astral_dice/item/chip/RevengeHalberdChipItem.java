@@ -1,4 +1,5 @@
 package com.merlinkitsune.astral_dice.item.chip;
+import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
 import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 
 import com.merlinkitsune.astral_dice.effect.ModEffects;
@@ -26,6 +27,8 @@ public class RevengeHalberdChipItem extends BaseChipItem {
 
     // 玩家是否佩戴复仇之戟筹码
     public static boolean isEquipped(Player player) {
+        // 总闸门(骰子装备和卸除调整):未佩戴骰子 ⇒ 本件功能一律不生效(数值保留)
+        if (!CurioSlotUtil.hasDiceEquipped(player)) return false;
         if (player == null) return false;
         var curios = CuriosApi.getCuriosInventory(player);
         return curios.isPresent() && curios.get().findFirstCurio(s -> s.is(ModItems.REVENGE_HALBERD.get())).isPresent();
@@ -61,14 +64,17 @@ public class RevengeHalberdChipItem extends BaseChipItem {
         return isEquipped(player) && hasDefenseTriggerEffect(player) ? BONUS : 0;
     }
 
-    /** 每 tick 驱动:任意加成触发时显示"复仇之戟"效果图标,全部消失时移除 */
+    /** 每 tick 驱动:任意加成触发时显示"复仇之戟"效果图标(无限时长),全部消失时移除 */
     public static void updateDisplayEffect(Player player) {
         if (player.level().isClientSide()) return;
         if (isEquipped(player)
                 && (hasAttackTriggerEffect(player) || hasDefenseTriggerEffect(player))) {
             // 效果已存在时不重复施加,避免每 tick 触发效果更新/同步包
             if (!player.hasEffect(ModEffects.REVENGE_HALBERD.get())) {
-                player.addEffect(new MobEffectInstance(ModEffects.REVENGE_HALBERD.get(), 100, 0, false, false, true));
+                // 2026-10-01 用户裁决:伤害增加型筹码的显示一律**无限时长**
+                // (原为 100 tick / 5 秒倒计时 —— 与「可生效即常驻」的口径不符)。
+                player.addEffect(new MobEffectInstance(ModEffects.REVENGE_HALBERD.get(),
+                        MobEffectInstance.INFINITE_DURATION, 0, false, false, true));
             }
         } else if (player.hasEffect(ModEffects.REVENGE_HALBERD.get())) {
             ModEffectRemoval.remove(player, ModEffects.REVENGE_HALBERD.get());

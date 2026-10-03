@@ -45,6 +45,11 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
     @Override
     public void curioTick(SlotContext slotContext, ItemStack stack) {
         if (slotContext.entity().level().isClientSide()) return;
+        // 总闸门:未佩戴骰子 ⇒ 立牌的一切持续被动都不生效(值保留在物品数据/附件上)
+        if (slotContext.entity() instanceof net.minecraft.world.entity.player.Player gatePlayer
+                && !CurioSlotUtil.hasDiceEquipped(gatePlayer)) {
+            return;
+        }
 
         onCurioTick(slotContext, stack);
     }
@@ -80,6 +85,11 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
     // 3. 触发成功:非选择器类技能立即开始玩家级冷却;选择器类技能待确认目标后再开始冷却(取消/超时不冷却)。
     private static void performSkill(Player player, ItemStack stack) {
         if (!(stack.getItem() instanceof BaseSignItem sign)) return;
+        // 总闸门:未佩戴骰子 ⇒ 立牌主动技能不可用(与被动同一口径)
+        if (!CurioSlotUtil.hasDiceEquipped(player)) {
+            notifyActionBar(player, "msg.astral_dice.need_dice", net.minecraft.network.chat.Component.empty(), ChatFormatting.RED);
+            return;
+        }
         long now = player.level().getGameTime();
         net.minecraft.network.chat.Component signName = stack.getHoverName();
         // 0. 锁定(生效中)态检查(第二批「三态化」第 1/4 条):本主动技能施加的计时器仍在跑时按键无效,

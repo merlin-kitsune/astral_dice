@@ -21,7 +21,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-import com.merlinkitsune.starenginelib.item.BossEntityUtil;
 import com.merlinkitsune.astral_dice.combat.PartyRelations;
 /**
  * "调查阶段"事件核心逻辑。
@@ -58,6 +57,10 @@ public final class InvestigationEventUtil {
     // 应用对应阶段的效果:隐匿(2026-09-28 用户裁决:取代原版「隐身」);
     // 阶段 II 及以上同时施加调查增益(攻击加成在攻击事件中按阶段/目标标记层数结算)。
     // ⚠️ 四阶段时长**统一为 1:00**:原来 I/II/III 分别是 0:15 / 0:20 / 0:30。
+    // 应用对应阶段的效果:隐身;阶段 II 及以上施加调查增益(攻击加成在攻击事件中按阶段/目标标记层数结算)
+    /** 阶段效果的作用半径(格)。2026-10-03 用户裁决:取代旧口径的「仅真相揭露 + 需 boss 附近时 32 格」。 */
+    public static final double EVENT_TARGET_RADIUS = 64.0D;
+
     private static void applyStageEffects(Player self, Player applier, int stage, int markLevel) {
         int duration = CONCEALMENT_TICKS;  // 全线 1:00(2026-09-28 用户裁决)
         List<Player> recipients = new ArrayList<>();
@@ -65,21 +68,15 @@ public final class InvestigationEventUtil {
         if (applier != null && applier != self) {
             recipients.add(applier);
         }
-        // 真相揭露:队伍/友方内所有玩家,以及"参与 boss 战"的玩家(附近存在 boss 生物时,周围 32 格内的玩家)
-        if (stage >= 4) {
-            // 触发者已加入队伍时只影响同队玩家;未加入任何队伍时 collectTeamPlayers 返回全服在线玩家
-            for (Player ally : PartyRelations.collectTeamPlayers(self)) {
-                if (!recipients.contains(ally)) {
-                    recipients.add(ally);
-                }
-            }
-            boolean bossNearby = !self.level().getEntitiesOfClass(net.minecraft.world.entity.Mob.class,
-                    self.getBoundingBox().inflate(64), e -> e.isAlive() && BossEntityUtil.isBossEntity(e)).isEmpty();
-            if (bossNearby) {
-                for (Player p : self.level().getEntitiesOfClass(Player.class,
-                        self.getBoundingBox().inflate(32), p -> !recipients.contains(p))) {
-                    recipients.add(p);
-                }
+        // 2026-10-03 用户裁决:阶段效果按「队伍 + 64 格」广播(口径见 PartyRelations#collectEventTargets)——
+        //   触发者有队伍 = 全队 ∪ 64 格内非队友(同队不重复判定);无队伍 = 全部无队伍玩家 ∪ 64 格内所有玩家。
+        //   取代旧口径:仅 stage>=4 才广播、且必须先满足「64 格内存在 boss」才取 32 格内玩家。
+        // ⚠️ 本条只改「事件目标口径」;本线 applyStageEffects 的时长/效果仍是移植前的旧实现
+        //    (分阶段 15/20/30/60 秒 + 原版隐身),未跟随 2026-09-28「隐匿 + 四阶段统一 1:00」裁决
+        //    —— 属既有移植债,待移植批次统一处理,不在本次范围内。
+        for (Player p : PartyRelations.collectEventTargets(self, EVENT_TARGET_RADIUS)) {
+            if (!recipients.contains(p)) {
+                recipients.add(p);
             }
         }
         for (Player p : recipients) {

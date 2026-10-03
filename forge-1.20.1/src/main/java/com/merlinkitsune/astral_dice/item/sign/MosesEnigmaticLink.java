@@ -7,12 +7,13 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
-import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.phys.AABB;
 import net.minecraftforge.event.TickEvent;
@@ -46,9 +47,12 @@ import java.util.UUID;
  *       {@code EnigmaticHandler#canDropSoulCrystal} 决定是否把玩家的灵魂水晶「撕下」——
  *       真正的剥离动作是 {@code SoulCrystal#createCrystalFrom(player)},它只做一件事:
  *       {@code setLostCrystals(player, getLostCrystals(player) + 1)} 并返回一枚水晶物品;
- *       随后该水晶被塞进 {@code PermanentItemEntity} 掉落。**纯本模组侧无法阻止第三方在最后
- *       优先级生成掉落物**,故改为「死后补偿」:死亡瞬间快照 {@code lostCrystals},待玩家重生后
- *       (下一 tick)① 把计数还原、② 回收死亡点附近的灵魂水晶掉落物,等价于「没有掉落」。</li>
+ *       随后该水晶被装进第三方的「永久掉落物」实体掉落 —— 🚨 该实体 {@code extends Entity}、
+ *       **不是**原版 {@code ItemEntity},必须按第三方实体类检索(2026-10-03 修的缺陷就出在这里:
+ *       旧实现按 {@code ItemEntity} 找,永远匹配不到 ⇒ 回收静默失效,水晶永久残留)。
+ *       **纯本模组侧无法阻止第三方在最后优先级生成掉落物**,故改为「死后补偿」:
+ *       死亡瞬间快照 {@code lostCrystals},此后 ① **每 tick** 回收死亡点附近「本次死亡新生成」的
+ *       灵魂水晶、② 待玩家重生后把计数还原,等价于「没有掉落」。</li>
  * </ul>
  *
  * <p>⚠️ 两条线适配点(neoforge-1.21.1 版不同):
@@ -83,10 +87,30 @@ public final class MosesEnigmaticLink {
     /** 第三方「灵魂水晶」工具类(反射用,避免硬引用第三方内部类) */
     private static final String SOUL_CRYSTAL_CLASS = "com.aizistral.enigmaticlegacy.items.SoulCrystal";
 
+    /**
+     * 第三方「永久掉落物」实体类 —— 灵魂水晶的**载体**。
+     *
+     * <p>🚨 它 {@code extends Entity},**不是**原版 {@code ItemEntity}(已用实物 jar 的 {@code javap} 取证)。
+     * 2026-10-03 修的缺陷正出在这里:旧实现按 {@code ItemEntity} 检索,永远匹配不到水晶 ⇒ 回收是静默的
+     * no-op,水晶永久残留;又因为计数已被本类还原,{@code SoulCrystal#retrieveSoulFromCrystal} 会返回
+     * {@code false} ⇒ **连主人也捡不起来**(实测症状:死亡点留一个无法拾取的灵魂水晶)。
+     */
+    private static final String PERMANENT_ITEM_ENTITY_CLASS =
+            "com.aizistral.enigmaticlegacy.entities.PermanentItemEntity";
+
+    /**
+     * 只回收「本次死亡刚刚生成」的载体:实体自带的 {@code age} 超过该值即视为历史遗留,不动它。
+     *
+     * <p>⚠️ 防误伤:同一玩家早先(未触发本联动时)死在附近留下的灵魂水晶是**合法的灵魂回收物**,
+     * 不该被本类删除。新生成的水晶 {@code age} 为个位数,故 40 tick(2 秒)足够区分。
+     */
+    private static final int FRESH_SOUL_CRYSTAL_MAX_AGE = 40;
+
     /** 回收掉落物时的搜索半径(格):掉落物就生成在死亡点原地,给足余量即可 */
     private static final double SOUL_CLEANUP_RADIUS = 12.0;
 
-    /** 死亡待办:玩家跨过死亡→重生的那几 tick,重生后按此补偿 */
+    /** 死亡待办:记录死亡瞬间的计数与坐标。回收在**死亡当 tick 起每 tick** 做;
+     *  计数还原必须等玩家重生(PlayerEvent.Clone 会用旧计数重算最大生命)。 */
     private record Pending(int lostBefore, ServerLevel level, double x, double y, double z) {
     }
 
@@ -99,6 +123,15 @@ public final class MosesEnigmaticLink {
     /** 反射调用的目标:null = 第三方为 static 方法;否则为灵魂水晶物品实例(本线是实例方法) */
     private static Object soulApiTarget;
     private static boolean soulApiDisabled;
+
+    // 「水晶载体」反射句柄 —— 与上面的灵魂水晶 API **相互独立**:
+    // 解析失败只停用「回收」,不影响「计数还原」(避免因第三方改包名而整体失效)。
+    private static Class<?> holderClass;
+    private static Method holderGetItem;
+    private static Method holderGetOwnerId;
+    /** 可缺省:解析不到就不做「新生」过滤(退回「类 + 主人 + 物品」三重判定)。 */
+    private static Method holderGetAge;
+    private static boolean holderLookupDisabled;
 
     private MosesEnigmaticLink() {
     }
@@ -164,21 +197,26 @@ public final class MosesEnigmaticLink {
 
     // ── 修正第六诅咒:灵魂水晶 ────────────────────────────────────────────────
 
-    /** 玩家重生(下一 tick 起)后:还原丢失计数 + 回收死亡点的灵魂水晶掉落物 */
+    /**
+     * 每 tick 处理死亡待办:① 回收水晶(**死亡当 tick 就能做**)② 计数还原(**必须等重生**)。
+     */
     private static void processPending(MinecraftServer server) {
         List<UUID> finished = new ArrayList<>();
         for (Map.Entry<UUID, Pending> entry : PENDING.entrySet()) {
-            ServerPlayer player = server.getPlayerList().getPlayer(entry.getKey());
-            // 死亡到重生之间玩家不是 alive;等重生那一 tick 再处理
-            if (player == null || !player.isAlive()) continue;
             Pending pending = entry.getValue();
+            // ① 水晶在死亡当 tick 的 LivingDropsEvent(LOWEST) 里生成,而本方法跑在
+            //    ServerTickEvent.Post(当 tick 末尾)⇒ **同一拍**就能看到并回收它。
+            //    这样既不依赖「玩家一定会重生」(掉线/重启都不再留下水晶),也把残留窗口压到 0。
+            discardDroppedCrystals(entry.getKey(), pending);
+            // ② 计数还原必须等重生那一刻:PlayerEvent.Clone 会用「旧计数」重算最大生命修饰器。
+            ServerPlayer player = server.getPlayerList().getPlayer(entry.getKey());
+            if (player == null || !player.isAlive()) continue;
             if (getLostCrystals(player) > pending.lostBefore()) {
                 setLostCrystals(player, pending.lostBefore());
                 refreshSoulMap(player);
                 LOGGER.debug("[Astral Dice][Moses] 第六诅咒已修正:{} 的灵魂水晶计数还原为 {}",
                         player.getName().getString(), pending.lostBefore());
             }
-            discardDroppedCrystals(pending);
             finished.add(entry.getKey());
         }
         for (UUID id : finished) {
@@ -187,22 +225,36 @@ public final class MosesEnigmaticLink {
     }
 
     /**
-     * 回收死亡点附近的灵魂水晶掉落物。
-     * ⚠️ 纯本模组侧无法阻止第三方在 {@code LivingDropsEvent}(LOWEST) 里生成它,故在重生后回收;
-     * 只清**灵魂水晶**这一种物品,不动玩家其余掉落。
+     * 回收死亡点附近、**本次死亡新生成**的灵魂水晶载体。
+     *
+     * <p>判定四连(缺一不动):实体类 = 第三方「永久掉落物」· 主人 = 本次死亡的玩家 · 持有的物品 =
+     * 灵魂水晶 · 实体 {@code age} 未超 {@link #FRESH_SOUL_CRYSTAL_MAX_AGE}(防误伤历史遗留的合法水晶)。
+     *
+     * <p>🚨 载体 {@code extends Entity}(不是 {@code ItemEntity})⇒ **必须按第三方实体类检索**;
+     * 且 {@code discard()} 会走到它的 {@code remove(DISCARDED)} 覆写 ⇒ 自动从第三方
+     * {@code SoulArchive} 注销(否则灵魂罗盘会指向一个不存在的水晶)。
+     *
+     * <p>只清**灵魂水晶**这一种物品;第三方在「飞升护符 + 存储水晶」分支里掉的是**存储水晶**
+     * (物品不同),不会被误删 —— 那是它的「保住掉落物」功能,不该由本类干预。
      */
-    private static void discardDroppedCrystals(Pending pending) {
+    private static void discardDroppedCrystals(UUID playerId, Pending pending) {
         ServerLevel level = pending.level();
         if (level == null) return;
+        Class<?> holder = holderClass();
+        if (holder == null) return;
         Item crystal = soulCrystalItem();
         if (crystal == Items.AIR) return;
         AABB box = new AABB(
                 pending.x() - SOUL_CLEANUP_RADIUS, pending.y() - SOUL_CLEANUP_RADIUS, pending.z() - SOUL_CLEANUP_RADIUS,
                 pending.x() + SOUL_CLEANUP_RADIUS, pending.y() + SOUL_CLEANUP_RADIUS, pending.z() + SOUL_CLEANUP_RADIUS);
-        for (ItemEntity drop : level.getEntitiesOfClass(ItemEntity.class, box)) {
-            if (drop.getItem().is(crystal)) {
-                drop.discard();
-            }
+        for (Entity entity : level.getEntitiesOfClass(Entity.class, box)) {
+            if (!holder.isInstance(entity)) continue;
+            if (!playerId.equals(holderOwnerId(entity))) continue;
+            if (holderGetAge != null && holderAge(entity) > FRESH_SOUL_CRYSTAL_MAX_AGE) continue;
+            ItemStack held = holderItem(entity);
+            if (held.isEmpty() || !held.is(crystal)) continue;
+            entity.discard();
+            LOGGER.debug("[Astral Dice][Moses] 第六诅咒已修正:回收 {} 死亡点新生成的灵魂水晶", playerId);
         }
     }
 
@@ -210,6 +262,62 @@ public final class MosesEnigmaticLink {
 
     private static Item soulCrystalItem() {
         return BuiltInRegistries.ITEM.get(new ResourceLocation(SOUL_CRYSTAL_ID));
+    }
+
+    /**
+     * 解析第三方「永久掉落物」实体类与其读值方法({@code getItem} / {@code getOwnerId} / {@code getAge})。
+     *
+     * <p>⚠️ 与 {@link #initSoulApi()} **相互独立**:这里失败只停用「水晶回收」,计数还原照常工作。
+     * ⚠️ 全程反射(该类是第三方内部类),目标逐条取自实物 jar 的 {@code javap} 输出:
+     * 1.21.1/26.1.2 移植版与 1.20.1 原版**包名不同**,故类名是分线常量。
+     */
+    private static synchronized Class<?> holderClass() {
+        if (holderLookupDisabled) return null;
+        if (holderClass != null) return holderClass;
+        try {
+            Class<?> type = Class.forName(PERMANENT_ITEM_ENTITY_CLASS);
+            holderGetItem = type.getMethod("getItem");
+            holderGetOwnerId = type.getMethod("getOwnerId");
+            try {
+                holderGetAge = type.getMethod("getAge");
+            } catch (NoSuchMethodException ignored) {
+                // 第三方没有 age 读值 ⇒ 退化为三重判定(类 + 主人 + 物品)
+                holderGetAge = null;
+            }
+            holderClass = type;
+            return type;
+        } catch (Throwable t) {
+            holderLookupDisabled = true;
+            LOGGER.warn("[Astral Dice][Moses] 未找到神秘遗物(+)的永久掉落实体类,灵魂水晶回收停用: {}",
+                    t.toString());
+            return null;
+        }
+    }
+
+    /** 读载体持有的物品;失败返回空栈(调用方按「不是灵魂水晶」处理)。 */
+    private static ItemStack holderItem(Entity holder) {
+        try {
+            return (ItemStack) holderGetItem.invoke(holder);
+        } catch (Throwable t) {
+            return ItemStack.EMPTY;
+        }
+    }
+
+    /** 读载体的主人 UUID;失败返回 null(调用方按「不是本次死亡的玩家」处理)。 */
+    private static UUID holderOwnerId(Entity holder) {
+        try {
+            return (UUID) holderGetOwnerId.invoke(holder);
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    private static int holderAge(Entity holder) {
+        try {
+            return (int) holderGetAge.invoke(holder);
+        } catch (Throwable t) {
+            return 0;
+        }
     }
 
     private static synchronized boolean initSoulApi() {

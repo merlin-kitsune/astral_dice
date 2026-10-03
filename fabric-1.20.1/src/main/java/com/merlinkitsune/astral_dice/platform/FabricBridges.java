@@ -146,9 +146,11 @@ public final class FabricBridges {
         // 跨维度:由 mixin 在 `ServerPlayer#changeDimension` 的 HEAD 派发
         // EntityTravelToDimensionEvent(见 mixin/bridge/ServerPlayerDimensionTravelBridgeMixin),
         // 那条路径同时覆盖非玩家的 `Entity#changeDimension`。
-        // ⚠️ `PlayerEvent.PlayerChangedDimensionEvent`(切换**之后**的那个)当前**没有任何订阅者**,
-        //    故未派发 —— 需要时在对应 mixin 的 @At("RETURN") 处补一行即可,不要凭猜测预先派发。
-        // ⚠️ 本注释此前写「未接线、跨维度后客户端 synced 键快照不刷新」,已于 2026-09-29 按实际
+        // ⚠️ `PlayerEvent.PlayerChangedDimensionEvent`(切换**之后**的那个):2026-10-01 起由
+        //    **同一个 mixin** 的 @At("RETURN") 注入派发(见上方 ServerPlayerDimensionTravelBridgeMixin),
+        //    触发方是医疗箱筹码的「切换维度后完整触发一次治愈」。此前它没有任何订阅者、故未派发,
+        //    当时的注释已明确「需要时在对应 mixin 的 @At("RETURN") 处补一行即可」——本次即按该口径补上。
+        // ⚠️ 更早的注释曾写「未接线、跨维度后客户端 synced 键快照不刷新」,已于 2026-09-29 按实际
         //    订阅面订正:无订阅者 ⇒ 不存在可见影响。
     }
 

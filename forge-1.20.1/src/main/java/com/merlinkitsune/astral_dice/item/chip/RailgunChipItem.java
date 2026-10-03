@@ -1,5 +1,6 @@
 package com.merlinkitsune.astral_dice.item.chip;
 
+import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
 import com.merlinkitsune.starenginelib.item.CuriosCompat;
 import com.merlinkitsune.starenginelib.combat.HostileTargets;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
@@ -65,6 +66,8 @@ public class RailgunChipItem extends BaseChipItem {
 
     /** 玩家是否佩戴电磁炮 */
     public static boolean isEquipped(Player player) {
+        // 总闸门(骰子装备和卸除调整):未佩戴骰子 ⇒ 本件功能一律不生效(数值保留)
+        if (!CurioSlotUtil.hasDiceEquipped(player)) return false;
         if (player == null) return false;
         var curios = CuriosCompat.getCuriosInventory(player);
         return curios.isPresent()

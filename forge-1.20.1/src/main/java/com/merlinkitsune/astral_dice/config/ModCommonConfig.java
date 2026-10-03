@@ -20,9 +20,11 @@ import net.minecraftforge.common.ForgeConfigSpec;
  * v3 用于「新增 `allow_firearm_damage`(枪弹/炮弹类伤害是否计入法伤)」。
  * v4 用于「新增星币钱包 7 项配置(`enable_star_coin_wallet` / `deposit_star_coin_on_obtain` +
  * 钱包与两个兑换按钮的 x/y 偏移)」。
+ * v5 用于「**移除 actionbar 两项配置**(`actionbar_duration_ticks` / `actionbar_fade_ticks`)—— 2026-10-03 用户裁决:
+ * 这两项移出配置文件、改为固定常量,以让新值对**所有玩家强制生效**(已装的旧配置不会采纳新默认值)」。
  */
 public final class ModCommonConfig {
-    public static final int CONFIG_VERSION = 4;
+    public static final int CONFIG_VERSION = 5;
 
     public static final ForgeConfigSpec SPEC;
 
@@ -31,8 +33,24 @@ public final class ModCommonConfig {
     public static final ForgeConfigSpec.BooleanValue EVENT_APPLY_MC_TEAM;
     public static final ForgeConfigSpec.BooleanValue EVENT_APPLY_FTB_TEAM;
     public static final ForgeConfigSpec.BooleanValue EVENT_APPLY_OPAC;
-    public static final ForgeConfigSpec.IntValue ACTIONBAR_DURATION_TICKS;
-    public static final ForgeConfigSpec.IntValue ACTIONBAR_FADE_TICKS;
+    /**
+     * actionbar 消息显示总时长上限(tick)。
+     *
+     * <p>⚠️ 2026-10-03 起**已移出配置文件**(不再开放玩家调整):旧配置文件里的 `[actionbar]` 段会被
+     * NeoForge / Forge 在下次加载时自动清除(本类不再定义该键),**所有玩家强制使用此固定值**。
+     * 唯一权威值与说明见前置库 `GameplayConstants#ACTIONBAR_DURATION_TICKS`(同为 60);
+     * 此处只是把它显式注入 {@link #snapshot()},以维持库 `GameplayConfigValues` 的既有记录签名
+     * (1.x 契约不得删字段)。
+     */
+    public static final int ACTIONBAR_DURATION_TICKS = 60;
+
+    /**
+     * actionbar 消息最后淡出时长(tick)。
+     *
+     * <p>同上:已移出配置文件。2026-10-03 由 20(1 秒)**压缩为 10(0.5 秒)** —— 用户实报
+     * 「切出或使用后的淡出时间太长」。
+     */
+    public static final int ACTIONBAR_FADE_TICKS = 10;
     public static final ForgeConfigSpec.BooleanValue ENABLE_STAR_COIN_WALLET;
     public static final ForgeConfigSpec.BooleanValue DEPOSIT_STAR_COIN_ON_OBTAIN;
     public static final ForgeConfigSpec.IntValue STAR_COIN_WALLET_OFFSET_X;
@@ -65,13 +83,6 @@ public final class ModCommonConfig {
                 .define("event_apply_opac", true);
         builder.pop();
 
-
-        builder.push("actionbar").comment("=== actionbar ===");
-        ACTIONBAR_DURATION_TICKS = builder.comment("actionbar 消息显示总时长上限(单位: tick,默认：3 秒; 任何消息最多显示该时长)")
-                .defineInRange("actionbar_duration_ticks", 60, 20, 200);
-        ACTIONBAR_FADE_TICKS = builder.comment("actionbar 消息最后淡出时长(单位: tick,默认：1 秒)")
-                .defineInRange("actionbar_fade_ticks", 20, 1, 60);
-        builder.pop();
 
         // === 星币钱包 ===
         // 面额口径固定为「1 星币 = 1、1 星币袋 = 9」(常量在 item/StarCoinCurrency,不开放配置)。
@@ -120,8 +131,8 @@ public final class ModCommonConfig {
                 EVENT_APPLY_MC_TEAM.get(),
                 EVENT_APPLY_FTB_TEAM.get(),
                 EVENT_APPLY_OPAC.get(),
-                ACTIONBAR_DURATION_TICKS.get(),
-                ACTIONBAR_FADE_TICKS.get(),
+                ACTIONBAR_DURATION_TICKS,
+                ACTIONBAR_FADE_TICKS,
                 ALLOW_FIREARM_DAMAGE.get());
     }
 }

@@ -1,5 +1,6 @@
 package com.merlinkitsune.astral_dice.item.chip;
 
+import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
 import com.merlinkitsune.astral_dice.combat.ShootingStarManager;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
@@ -24,6 +25,11 @@ public class ShootingStarChipItem extends BaseChipItem {
 
     @Override
     public void curioTick(SlotContext slotContext, ItemStack stack) {
+        // 总闸门:未佩戴骰子 ⇒ 流星筹码的持续效果不生效(数值保留)
+        if (slotContext.entity() instanceof net.minecraft.world.entity.player.Player gatePlayer
+                && !CurioSlotUtil.hasDiceEquipped(gatePlayer)) {
+            return;
+        }
         if (slotContext.entity() instanceof ServerPlayer player) {
             ShootingStarManager.tick(player);
         }

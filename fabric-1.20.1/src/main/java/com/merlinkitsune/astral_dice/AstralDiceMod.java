@@ -64,6 +64,10 @@ public class AstralDiceMod implements ModInitializer {
         //    而整条加载失败(而不是退回宽松匹配)。onInitialize 全程早于 datapack 装载,故安全。
         com.merlinkitsune.astral_dice.crafting.AstralRecipeSerializers.register();
         registerListeners();
+        // 「青之诅咒」附魔(内部标记)的隐藏:Fabric 侧用 FAPI 的 ItemGroupEvents 摘掉原版
+        // 为每个附魔自动生成的附魔书条目(创造栏「材料」页 + 「搜索」页,JEI 随之消失)。
+        // tooltip 侧的整行抹除在 ModTooltipHandler#onItemTooltip 内完成。
+        com.merlinkitsune.astral_dice.event.HiddenCurseEnchantment.register();
         // ⚠️ 必须装桥,否则**全部**事件永不派发(2026-09-29 修:此前只调了 installEarly(),
         //    install() 从未被调用 ⇒ tick / 登录登出 / 命令 / 伤害 / Puzzles 那一整套
         //    都处于「代码在、但没接上」的静默失效状态)。位置 = 监听器注册之后,
@@ -207,6 +211,9 @@ public class AstralDiceMod implements ModInitializer {
             }
             java.nio.file.Path backup = configPath.resolveSibling(configPath.getFileName() + ".bak");
             java.nio.file.Files.copy(configPath, backup, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            // ⚠️ 2026-10-03 修复:备份之后必须把版本号**写回**文件 —— 否则该键永不更新,
+            //    且每次启动都会重复备份一份内容相同的 .bak(详见 rewriteConfigVersion 的说明)。
+            rewriteConfigVersion(configPath, currentVersion);
             LOGGER.info("[Astral Dice] 配置 {} 版本过旧(v{} < v{}),已备份至 {}", configPath.getFileName(),
                     fileVersion, currentVersion, backup);
         } catch (Exception e) {
@@ -222,6 +229,39 @@ public class AstralDiceMod implements ModInitializer {
             return m.find() ? Integer.parseInt(m.group(1)) : 0;
         } catch (Exception e) {
             return 0;
+        }
+    }
+
+    /**
+     * 把配置文件里的 {@code config_version} 就地改写为当前版本号。
+     *
+     * <p>⚠️ 2026-10-03 修复(用户实报「配置文件变动的版本号不会更新」):此前只做备份、**不更新
+     * 文件里的版本号** —— 该键由 {@code ModCommonConfig} 用
+     * {@code define("config_version", CONFIG_VERSION)} 定义,而框架对「已存在且校验通过」的键
+     * **原样保留文件中的值**(NeoForge {@code ModConfigSpec.correct} / Forge
+     * {@code ForgeConfigSpec.correct} 都只在**键缺失**或**值未通过校验**时才写入默认值)
+     * ⇒ 版本号永远停在旧值,并且**每次启动都会重复备份**一份内容相同的 {@code .bak}。
+     * 这里在备份之后把版本号显式写回,使「一个版本号 = 一次迁移」成立。
+     *
+     * <p>只做**一处文本替换**(保留其余字节、缩进与换行原样);匹配不到该键时**不动文件**
+     * (下次启动按老逻辑再备份一次,不引入比改动前更坏的行为)。
+     */
+    private static void rewriteConfigVersion(java.nio.file.Path configPath, int version) {
+        try {
+            String content = java.nio.file.Files.readString(configPath, java.nio.charset.StandardCharsets.UTF_8);
+            java.util.regex.Matcher m = java.util.regex.Pattern
+                    .compile("config_version\\s*=\\s*\\d+").matcher(content);
+            if (!m.find()) {
+                LOGGER.warn("[Astral Dice] 配置 {} 中未找到 config_version 键,跳过版本号写回", configPath.getFileName());
+                return;
+            }
+            String updated = m.replaceFirst("config_version = " + version);
+            if (!updated.equals(content)) {
+                java.nio.file.Files.writeString(configPath, updated, java.nio.charset.StandardCharsets.UTF_8);
+                LOGGER.info("[Astral Dice] 配置 {} 版本号已更新为 v{}", configPath.getFileName(), version);
+            }
+        } catch (Exception e) {
+            LOGGER.warn("[Astral Dice] 写回配置版本号失败: {}", e.toString());
         }
     }
 

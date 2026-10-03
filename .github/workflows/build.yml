@@ -89,7 +89,7 @@ jobs:
         #    的 Release;消费方 CI 同日跑绿)⇒ 本 ref 可被 CI 检出,不再存在「库推送前必然断在
         #    Checkout」的窗口。跳号的由来:`1.0.1` 从未发布,但 mavenLocal 留有已撤销版本的残留目录,
         #    复用会「同号覆盖」而让本地构建静默解析到旧 jar ⇒ 故逐次另起新号。
-        # ✅ **2026-09-28:现行 ref = `1.0.5`**(库提交 4bea9e7 = 「会被激怒的可驯服动物计入敌对目标」;
+        # ✅ **2026-09-28(当时现行):ref = `1.0.5`**(库提交 4bea9e7 = 「会被激怒的可驯服动物计入敌对目标」;
         #    库远端 main 已推送、其 CI 自动打 tag `1.0.5` 并发布三平台 jar 的 Release)。
         #    三线 gradle.properties 的 `starengine_lib_version` / `_range` 同步为 `1.0.5` / `[1.0.5,2.0)`。
         #    ⚠️ 再提醒一次:库版本 bump(或语义变更收紧区间下界)时,**本行的 SHA 必须与三线 properties 在同一提交里一起改**
@@ -97,7 +97,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: merlin-kitsune/starengine_lib
-          ref: a2998ff61e27229a357c8109bacffdc122f5cd8b   # = 库 `next` 分支提交 a2998ff（= 库版本 `2.0.0-SNAPSHOT.9`），含**四平台**（neoforge-1.21.1 / forge-1.20.1 / neoforge-26.1.2 / **fabric-1.20.1**）；本版把原独立分支 `fabric-1.20.1` 上唯一未并入的改动（`component/GameplayConstants#CURSED_SWORD_BONUS_MAX` 16 → 32）收编进 `next`，四平台同号升至 `.9`。⚠️ **本 ref 要求库 `next` 分支已推送**(git -C <lib> push origin next)，否则本 job 断在 Checkout；发布线 multi-main 的副本另有自己的 ref
+          ref: 1c0d1282ff0e9169c1654ce2c3ab6dcded7bbae7   # = 库 `next` 分支提交 1c0d128（= 库版本 `2.0.0-SNAPSHOT.10`）：自 `main` 线移植效果牌目标口径（`CreatureTargets` / `TargetType.NON_HOSTILE`）+ actionbar 淡出对齐 ⇒ **本线四线据此可编译**（消费方已引用这些库 API）。⚠️ **本 ref 要求库 `next` 分支已推送**(git -C <lib> push origin next)，否则本 job 断在 Checkout。
           path: .ci/starengine_lib
           fetch-depth: 1
 

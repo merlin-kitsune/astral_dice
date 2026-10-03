@@ -1,5 +1,6 @@
 package com.merlinkitsune.astral_dice.item.sign;
 
+import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.DragonRoarBreakEffect;
 import com.merlinkitsune.astral_dice.effect.MamushiDragonEffect;
@@ -297,6 +298,8 @@ public class MamushiSignItem extends BaseSignItem {
 
     /** 佩戴本立牌(stand 饰品槽) */
     public static boolean isEquipped(Player player) {
+        // 总闸门(骰子装备和卸除调整):未佩戴骰子 ⇒ 本件功能一律不生效(数值保留)
+        if (!CurioSlotUtil.hasDiceEquipped(player)) return false;
         if (player == null) return false;
         var curios = CuriosApi.getCuriosInventory(player);
         return curios.isPresent()

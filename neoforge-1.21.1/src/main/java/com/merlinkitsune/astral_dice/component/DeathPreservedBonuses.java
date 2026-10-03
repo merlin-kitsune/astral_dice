@@ -7,7 +7,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * 死亡保留的立牌累计值(2026-09-15 用户裁决 + 2026-09-27 蛟龙立牌):调查员 {@code rin_pages}、
+ * 死亡保留的立牌累计值与诅咒之剑筹码加成(2026-09-15 用户裁决 + 2026-09-27 蛟龙立牌 + 2026-10-01 诅咒之剑):调查员 {@code rin_pages}、
  * 忍者 {@code komachi_damage_bonus} 与蛟龙 {@code mamushi_awakening}(第 3 个槽位)。
  *
  * <p><b>为什么需要暂存:</b>死亡掉落在默认 gamerule({@code keepInventory=false})下会把立牌从饰品槽丢出,
@@ -40,6 +40,9 @@ public final class DeathPreservedBonuses {
      */
     private static final int MAMUSHI_AWAKENING = 2;
 
+    /** 第 4 槽位:诅咒之剑筹码({@code cursed_sword_bonus})累计攻击力加成(2026-10-01) */
+    private static final int CURSED_SWORD_BONUS = 3;
+
     private static final Map<UUID, int[]> PRESERVED = new ConcurrentHashMap<>();
 
     private DeathPreservedBonuses() {
@@ -51,7 +54,8 @@ public final class DeathPreservedBonuses {
         PRESERVED.put(player.getUUID(), new int[] {
                 ModAttachments.getRinPages(player),
                 ModAttachments.getKomachiDamageBonus(player),
-                ModAttachments.getMamushiAwakening(player)
+                ModAttachments.getMamushiAwakening(player),
+                ModAttachments.getCursedSwordBonus(player)
         });
     }
 
@@ -70,6 +74,10 @@ public final class DeathPreservedBonuses {
         // 蛟龙立牌:觉醒层数同样取较大值(死亡不掉层;重生后由立牌 tick 依据层数自动补回真龙形态效果)
         if (preserved[MAMUSHI_AWAKENING] > ModAttachments.getMamushiAwakening(player)) {
             ModAttachments.setMamushiAwakening(player, preserved[MAMUSHI_AWAKENING]);
+        }
+        // 诅咒之剑筹码:累计攻击力加成死亡不清(只有真正卸下筹码才归零)⇒ 取较大值幂等
+        if (preserved[CURSED_SWORD_BONUS] > ModAttachments.getCursedSwordBonus(player)) {
+            ModAttachments.setCursedSwordBonus(player, preserved[CURSED_SWORD_BONUS]);
         }
     }
 }

@@ -96,7 +96,12 @@ public class AstralData implements INBTSerializable<CompoundTag> {
                         // (1.21.1 侧是同名键的 .copyOnDeath())。与 MAMUSHI_AWAKENING 同构:
                         // 死亡时立牌从饰品槽掉出会先经 onUnequip → clearSignData 清零,
                         // 故除本白名单外还需要 DeathPreservedBonuses 的第 4 槽位(两层缺一不可)。
-                        ModAttachments.SHERRY_REASONING_LAYERS.name()
+                        ModAttachments.SHERRY_REASONING_LAYERS.name(),
+                        // 2026-10-01 诅咒之剑筹码:累计攻击力加成需求为「死亡不清,只有真正卸下筹码才归零」
+                        // (1.21.1 侧是同名键的 .copyOnDeath())。与 MAMUSHI_AWAKENING 同构:死亡时筹码从饰品槽
+                        // 掉出会先经 BaseChipItem#onUnequip → CursedSwordChipItem#onChipUnequip 清零,
+                        // 故除本白名单外还需要 DeathPreservedBonuses 的对应槽位(两层缺一不可)。
+                        ModAttachments.CURSED_SWORD_BONUS.name()
                 };
                 event.getEntity().getCapability(ModCapabilities.ASTRAL_DATA).ifPresent(newData -> {
                     CompoundTag src = oldData.persistentStore();

@@ -1,5 +1,6 @@
 package com.merlinkitsune.astral_dice.item.sign;
 
+import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
 import com.merlinkitsune.starenginelib.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.combat.CardRegistry;
 import com.merlinkitsune.astral_dice.combat.OrbitalBombardmentManager;
@@ -156,6 +157,8 @@ public class MegasSignItem extends BaseSignItem {
 
     /** 玩家是否佩戴机械师立牌。 */
     public static boolean isEquipped(Player player) {
+        // 总闸门(骰子装备和卸除调整):未佩戴骰子 ⇒ 本件功能一律不生效(数值保留)
+        if (!CurioSlotUtil.hasDiceEquipped(player)) return false;
         if (player == null) return false;
         return CuriosApi.getCuriosInventory(player)
                 .map(h -> h.findFirstCurio(s -> s.is(ModItems.MEGAS_SIGN.get())).isPresent())

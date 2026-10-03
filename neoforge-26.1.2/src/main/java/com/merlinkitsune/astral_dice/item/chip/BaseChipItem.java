@@ -26,7 +26,10 @@ import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
  *   如八面骰累计点清空、魔法秘典计数重置、手电筒已发放目标清空等)。
  *
  * 新增筹码时:
- * 1. 继承本类,覆写业务钩子(如 {@link #curioTick} / {@link #onChipEquip} / {@link #onChipUnequip});
+ * 1. 继承本类,覆写业务钩子(如 `curioTick` / `onChipUnequip`);
+ *    「**装备时**」的逻辑直接覆写 `ICurioItem#onEquip`——本类**没有**
+ *    `onChipEquip` 这个钩子(旧 javadoc 误引用了一个不存在的方法,已于 2026-10-01 订正);
+ *    参考 `MedkitEmergencyChipItem#onEquip` 与 `AtmChipItem#onEquip`。
  * 2. 战斗/资源加成统一注册到对应修饰器注册表(DiceCombatModifiers / SpellDamageRegistry / EffectCardPeriod),
  *    不要散落硬编码在事件类中。
  */

@@ -3,6 +3,7 @@
     "astral_dice:true_damage",
     "astral_dice:skill_damage",
     "astral_dice:extra_damage",
-    "astral_dice:card_cost"
+    "astral_dice:card_cost",
+    "astral_dice:unreducible_damage"
   ]
 }

@@ -26,6 +26,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
@@ -215,10 +216,15 @@ public class DiceCombatEvents {
         if (target == player) return;
 
         // 电磁炮筹码:对敌对目标发起攻击时消耗 6 层充能,延迟 1 秒对目标 3 格内敌对目标降下雷击。
+        // ⚠️ **触发限「该玩家本人的近战武器攻击」**（2026-10-01 用户裁决）：判据见
+        //    {@link #isPlayerMeleeAttack} —— 排除任意非近战 / 非玩家自身的攻击、荆棘与其它反伤
+        //    （以玩家为归属但非其挥击）、宠物（狼与车万女仆均走 mob_attack）。
         // 雷击伤害 = 本次攻击伤害的 50%:此处骰战尚未结算,先按即时伤害兜底登记,
         // 骰战最终伤害确定后(下方 setAmount 之后)回填。
-        var railgunStrike = com.merlinkitsune.astral_dice.item.chip.RailgunChipItem.onAttack(
-                player, target, event.getAmount());
+        var railgunStrike = isPlayerMeleeAttack(player, source)
+                ? com.merlinkitsune.astral_dice.item.chip.RailgunChipItem.onAttack(
+                        player, target, event.getAmount())
+                : null;
 
         // 骰神赐福仅能由近战武器攻击触发与生效:直接伤害来源必须为玩家(已排除弓/弩/三叉戟投掷等远程),
         // 主手必须持有近战武器(排除空手/盾牌/非近战类武器)
@@ -239,7 +245,7 @@ public class DiceCombatEvents {
         // 占星师/秘密侦探立牌主动已迁移至目标选择器(TargetSelectionManager + HaiqingSignItem/BonnieSignItem 的
         // TargetSelectionAction.apply),不再于攻击时自动释放,此处无攻击释放逻辑。
         // 枪匠立牌主动同样已迁移至目标选择器(见 MosesSignItem 注册的 TargetSelectionAction),此处仅保留其被动:
-        // 攻击已带"破绽"的目标,每段破绽获得 1 层「弱点识破」。
+        // 攻击已带"破绽"的目标,每次攻击获得 1 层「弱点识破」(2026-10-02 起:每次都给,不再限每段一次)。
         // 触发条件与骰神赐福完全一致:近战武器(外层已判定)+ isBlessingTarget(外层已判定),
         // 因此不再额外限制"普通敌对生物"(2026-09-24 与 26.1.2 线回填对齐;
         // 旧判据 `target instanceof Enemy` 比外层闸门更窄,使中立生物(狼/铁傀儡/北极熊/蜜蜂、山羊等)
@@ -1237,14 +1243,33 @@ public class DiceCombatEvents {
     // ZhaoSignItem#onLivingHeal 自己挂在 Forge 的 LivingHealEvent 上(与 1.21.1 侧同一形状:
     // 处理逻辑与状态归立牌类所有,骰战类只保留"骰点定稿后发放符卡"这一处挂点)。
 
-    // 伤害放大须先于 ChipDamageHandler(安全气囊,LOWEST)执行,故用 LOW
+    /** 狂暴「伤害增加」真伤段的**重入闸门**:该段真伤自身也会派发伤害事件 ⇒ 不加闸门会无限递归。
+     *  与 {@code DamageEffectCardHandler} 的法伤真伤段同范式(ThreadLocal,只覆盖本处理器自己发起的那一次)。 */
+    private static final ThreadLocal<Boolean> BERSERK_BACKLASH_APPLYING =
+            ThreadLocal.withInitial(() -> Boolean.FALSE);
+
+    // 「伤害增加」口径(2026-10-02 用户裁决):狂暴的「受到任意伤害 +1/层」**不再并入本次伤害**
+    // (并入会被护甲/保护/抗性削减,并被磨刀石等固定点数减伤吃掉),改为**独立真伤段** ——
+    // 与 DamageEffectCardHandler 的法伤加成同范式(重入闸门 + ModDamageTypes.unreducibleDamage)。
+    // ⚠️ 该段登记 bypasses_armor/enchantments/resistance ⇒ 护甲/保护/抗性全跳过;
+    //    并被 ChipDamageHandler 识别为「不可削减」⇒ 磨刀石 -2 与怪力侦探立牌 -N 也跳过;
+    //    **保命**机制仍对这一段独立结算(安全气囊/不死图腾/末影骰子/磨刀石「不可被一次击倒」)。
     @SubscribeEvent(priority = EventPriority.LOW)
     public static void onBerserkDamageTaken(LivingDamageEvent event) {
         LivingEntity target = event.getEntity();
         if (target.level().isClientSide()) return;
+        if (BERSERK_BACKLASH_APPLYING.get()) return;
         var berserk = target.getEffect(ModEffects.BERSERK.get());
         if (berserk == null) return;
-        event.setAmount(event.getAmount() + 1 * (berserk.getAmplifier() + 1));
+        int extra = berserk.getAmplifier() + 1;
+        if (extra <= 0) return;
+        BERSERK_BACKLASH_APPLYING.set(Boolean.TRUE);
+        try {
+            target.hurt(com.merlinkitsune.astral_dice.damage.ModDamageTypes
+                    .unreducibleDamage(target.level(), event.getSource().getEntity()), extra);
+        } finally {
+            BERSERK_BACKLASH_APPLYING.set(Boolean.FALSE);
+        }
     }
 
     // 虚弱印记:目标受到任意伤害 +10%;攻击者拥有"命运的指引"效果时对带虚弱印记的目标额外 +20%
@@ -1335,28 +1360,140 @@ public class DiceCombatEvents {
         return roll;
     }
 
-    // 近战武器攻击判定(**黑名单模式**,2026-09-30 用户裁决):
-    // 只排除「空手 / 盾牌 / 工具类 / 远程武器 / 方块」,其余一律视为可触发骰神赐福的近战武器 ——
-    // 目的是兼容匠魂、灾变等第三方模组的近战武器(它们大多**不继承** SwordItem,白名单写法会把它们整类漏掉)。
-    // ⚠️ 三线同构:**只按原版物品标签 + 接口判定,不用 SwordItem / DiggerItem 之类的类名** ——
-    //   26.1.2 已把 DiggerItem / SwordItem / TieredItem 整体重构掉(物品包内已无这三类),
-    //   而 PICKAXES / SHOVELS / HOES / AXES / SWORDS 五个标签三线俱在(已用 sources jar 实证)。
-    // ⚠️ 斧子(axes)**不在**黑名单内 —— 斧属近战武器;镐 / 锹 / 锄是工具,排除。
-    //   剑 / 长矛(26.1.2)/ 重锤 / 三叉戟,以及各模组的近战武器,全部落在「默认允许」一侧。
+    // ===== 枪械类武器本体(2026-10-03 用户裁决)=====
+    // 判据全部取自各模组**实物 jar**(见下);不使用反射、不猜类名。
+    /** 「枪械类武器本体」所在的**模组命名空间**:持该命名空间的任何物品都不算近战武器,不得用于近战砸击。 */
+    private static final java.util.Set<String> FIREARM_ITEM_NAMESPACES = java.util.Set.of(
+            "tacz",                 // 永恒枪械工坊：零 + 其 1.21.1 NeoForge 非官方移植(两个 jar 同 modId)
+            "bf",                   // 方块前线 BlockFront(全部类名混淆为 a/b/A…,只能按命名空间识别)
+            "irons_artifice",       // Iron's Arms 'n Artifice
+            "immersiveengineering", // 沉浸工程
+            "pneumaticcraft",       // 气动工艺：重压
+            "superbwarfare",        // 卓越前线
+            "terra_guns");          // 汇流来世**内置子模组**:枪械全部在此
+
+    /**
+     * 「枪械类武器本体」按**物品 id 点名** —— 仅用于命名空间**混装**的模组
+     * (该命名空间同时承载大量近战武器,整段排除会误伤)。
+     * <p>汇流来世本体命名空间 {@code confluence} 即属此类:它既有星炮 / 蜜蜂枪 / 太空枪,
+     * 也有整套泰拉近战武器 ⇒ 只点名枪械本体。三者取自该模组 lang 物品表与 {@code GunItems} 注册表。
+     */
+    private static final java.util.Set<String> FIREARM_ITEM_IDS = java.util.Set.of(
+            "confluence:star_cannon",
+            "confluence:bee_gun",
+            "confluence:space_gun");
+
+    /**
+     * 「该物品是否为**枪械类武器本体**」—— 枪械不得直接用于近战砸击。
+     * <p>先按模组命名空间整段判定(2026-10-03 用户裁决「按命名空间整段排除」),
+     * 再对命名空间混装的模组按物品 id 点名。取 {@code BuiltInRegistries} 的注册名,
+     * 不触碰任何第三方类 ⇒ 未安装对应模组时恒为 {@code false},无副作用。
+     */
+    public static boolean isFirearmItem(ItemStack stack) {
+        if (stack == null || stack.isEmpty()) return false;
+        var id = BuiltInRegistries.ITEM.getKey(stack.getItem());
+        if (id == null) return false;
+        if (FIREARM_ITEM_NAMESPACES.contains(id.getNamespace())) return true;
+        return FIREARM_ITEM_IDS.contains(id.toString());
+    }
+
+    /**
+     * 「饕餮之锅」两口的物品注册名 —— **显式纳入**近战武器(2026-10-03 用户裁决)。
+     *
+     * <p>两口锅都按武器使用(各自带 {@code weapon_attributes}),但在「黑名单」判定下各自栽在不同排除项上,
+     * 故必须显式放行。物品 id / 类名逐条取自**实物 jar**(lang 物品表 + {@code javap} 继承链,禁止按命名推测):
+     * <ul>
+     *   <li>{@code enigmaticlegacy:eldritch_pan} —— 1.20.1 联动模组的饕餮之锅
+     *       (英文名 {@code The Voracious Pan};类 {@code EldritchPan extends TieredItem};
+     *       ⚠️ 它**不在任何物品标签里**,黑名单本已放行,列入清单是为了自文档化 + 防日后被塞进「工具」标签);</li>
+     *   <li>{@code enigmaticdelicacy:voracious_pan} —— 1.21.1 联动模组的饕餮之锅
+     *       (中文名直译即「饕餮之锅」;类 {@code VoraciousPan extends BlockItem},
+     *       ⚠️ 它同时是**可放置的方块** ⇒ 「方块不算近战」那条会把它排除,故**必须**显式纳入)。</li>
+     * </ul>
+     * ⚠️ 按**注册名**匹配 ⇒ 四线共用同一份清单,未安装该模组的线永不命中,也不需要任何第三方依赖。
+     */
+    private static final java.util.Set<String> MELEE_WEAPON_EXTRA_INCLUDES = java.util.Set.of(
+            "enigmaticlegacy:eldritch_pan",
+            "enigmaticdelicacy:voracious_pan");
+
+    /** 该物品是否在「显式纳入的近战武器」清单里(按注册名匹配;未安装对应模组时恒为 false)。 */
+    private static boolean isExplicitMeleeWeapon(ItemStack held) {
+        var id = BuiltInRegistries.ITEM.getKey(held.getItem());
+        return id != null && MELEE_WEAPON_EXTRA_INCLUDES.contains(id.toString());
+    }
+
+    // 近战武器攻击判定(**黑名单模式**,2026-10-03 用户裁决回退 —— 恢复「为兼容匠魂/灾变」的原始设计):
+    // 只排除「空手 / 盾牌 / 远程专用武器(弓、弩、弹弓) / 方块 / 枪械类武器本体」,
+    // 其余一律视为可触发骰神赐福的近战武器 —— **包括全部工具类物品**
+    // (镐 / 锹 / 锄 / 斧 / 剪刀 / 钓竿 / 打火石 / 刷子…以及未知模组的工具与武器)。
+    // 目的是兼容匠魂、灾变等第三方模组 —— 它们大多**不继承** SwordItem/PickaxeItem,
+    // 2026-10-03 一度改成「按原版物品标签的白名单」正是栽在这一点上(已回退)。
+    // ⚠️ 只按**原版物品标签 + 接口 + 注册名**判定,不用 SwordItem / DiggerItem / TieredItem 之类的类名
+    //   (26.1.2 已把这三类整体重构掉,物品包内已无它们)。
+    // ⚠️ **同时具备近战与远程的武器不排除**(例:三叉戟;夸克的回旋镐 pickarang 亦属此类)——
+    //   只有「远程专用」物品才排除,判据是 `ProjectileWeaponItem`(实物 jar 实证覆盖各模组弹弓:
+    //   锦致装饰 `SlingshotItem`、铁砧工艺 `SpectralSlingshotItem` 及其子类 `SpectralWeaponLauncherItem`)。
+    // ⚠️ 盾牌不是武器,仍排除。
+    // ⚠️ **显式纳入清单优先于所有排除**(见 MELEE_WEAPON_EXTRA_INCLUDES)。
     public static boolean isMeleeWeaponAttack(Player player) {
         ItemStack held = player.getMainHandItem();
+        // 空手
         if (held.isEmpty()) return false;
+        // 显式纳入的近战武器:命中即算 —— 「方块化的锅」必须走这一步(否则被下面的 BlockItem 排除)
+        if (isExplicitMeleeWeapon(held)) return true;
         // 盾牌:不是武器
         if (held.is(Items.SHIELD)) return false;
-        // 工具类(斧子除外):镐 / 锹 / 锄
-        if (held.is(net.minecraft.tags.ItemTags.PICKAXES)
-                || held.is(net.minecraft.tags.ItemTags.SHOVELS)
-                || held.is(net.minecraft.tags.ItemTags.HOES)) return false;
-        // 远程武器:弓 / 弩
+        // 远程专用武器:弓 / 弩 / 各模组弹弓(三叉戟等双模武器不在内)
         if (held.getItem() instanceof net.minecraft.world.item.ProjectileWeaponItem) return false;
         // 方块:拿着方块打人不算「近战武器攻击」
         if (held.getItem() instanceof net.minecraft.world.item.BlockItem) return false;
+        // 枪械类武器本体:不得直接用于近战砸击
+        if (isFirearmItem(held)) return false;
         return true;
+    }
+
+    /**
+     * 「本次伤害是否来自**该玩家本人的近战武器攻击（骰战）**」——
+     * 筹码侧「仅玩家自身攻击可触发」类判定的**唯一入口**（2026-10-01 用户裁决：
+     * 电磁炮不得由任意攻击、荆棘 / 反伤、宠物攻击触发）。
+     *
+     * <p>三条缺一不可：
+     * <ol>
+     *   <li>伤害的 <b>归属者</b>（{@code getEntity()}）与 <b>直接制造者</b>（{@code getDirectEntity()}）
+     *       都必须是该玩家本人 ⇒ 排除宠物攻击（狼与车万女仆的攻击都走 {@code mob_attack}、
+     *       来源是宠物实体本身）、弹射物（箭 / 三叉戟，直接制造者是弹射物实体）、
+     *       以及一切没有来源实体的环境伤害；</li>
+     *   <li>伤害类型必须是 <b>玩家攻击类型</b> ⇒ 排除「以玩家为归属、但并非玩家挥击」的伤害：
+     *       荆棘附魔反伤（{@code minecraft:thorns} —— 其归属者正是被攻击的玩家本人，
+     *       这正是旧判据漏掉的那条路径）、其它反伤机制，以及法术 / 技能 / 爆炸等各自独立的伤害类型；</li>
+     *   <li>主手必须持有 <b>近战武器</b>（复用 {@link #isMeleeWeaponAttack(Player)}，与骰战结算同门槛）
+     *       ⇒ 与「骰战」口径一致：能结算骰战的攻击才触发电磁炮。</li>
+     * </ol>
+     *
+     * <p>⚠️ 本判据<b>故意不覆盖</b>「玩家以玩家身份伪造的其他攻击」（例如某模组用
+     * {@code damageSources().playerAttack(owner)} 替宠物出刀）—— 那类伤害在伤害源层面与本尊攻击
+     * 完全同形、无法区分；项目内既有的「技能类伤害」正是为避开该形态才另立
+     * {@code astral_dice:skill_damage}（见 {@code SherryThrowManager} 注释）。
+     */
+    public static boolean isPlayerMeleeAttack(Player player, DamageSource source) {
+        if (player == null || source == null) return false;
+        // ① 归属者与直接制造者都必须是玩家本人
+        if (source.getEntity() != player || source.getDirectEntity() != player) return false;
+        // ② 伤害类型必须是「玩家攻击」类型
+        if (!isPlayerAttackType(source)) return false;
+        // ③ 与骰战结算同门槛:主手必须持有近战武器
+        return isMeleeWeaponAttack(player);
+    }
+
+    /**
+     * 本次伤害的类型是否为原版「玩家攻击」类型。
+     * <p>⚠️ 平台差异：1.20.1 <b>没有</b> {@code DamageTypeTags.IS_PLAYER_ATTACK} 常量，且原版数据包
+     * 本版也没有 {@code is_player_attack} 这个 tag 文件（已核 {@code client-extra} 的 24 个
+     * {@code damage_type} tag 里没有它）⇒ 自建 TagKey 会恒空、判据永不成立；
+     * 只能按具体类型判定。本版重锤 / 长枪尚不存在、玩家近战只有 {@code player_attack}，两者等价。
+     */
+    private static boolean isPlayerAttackType(DamageSource source) {
+        return source.is(DamageTypes.PLAYER_ATTACK);
     }
 
     // 骰神赐福触发目标判定:敌对生物、非团队内玩家(队伍识别统一走 PartyRelations:
@@ -1479,7 +1616,7 @@ public class DiceCombatEvents {
 
     // === 枪匠立牌(Moses)破绽闪避/反击 ===
     // 破绽持续 2:00,期间**每一次**目标攻击都会被闪避并触发反击(不再被"每目标已发放"标记拦掉);
-    // 「弱点识破」层数的"每目标每段破绽只 +1"限制由 MosesSignItem.onDodgeCounter 内部判定。
+    // 「弱点识破」层数的"每次都给 +1 层(2026-10-02 起)"限制由 MosesSignItem.onDodgeCounter 内部判定。
     // 闪避改在伤害判定最前置处"取消"(LivingAttackEvent)而不是在伤害阶段把伤害改成 0:
     // 只有前者能让攻击方 Mob#doHurtTarget 拿到 hurt()==false,从而不施加尸壳饥饿等命中附加效果、
     // 也不产生红屏/屏幕震动/受伤音效与击退同步。详见 applyDodgeCancel 的注释。
@@ -1498,7 +1635,7 @@ public class DiceCombatEvents {
         if (!attacker.hasEffect(ModEffects.MOSES_BROKEN.get())) return;
         // 闪避本次攻击(最前置取消)
         applyDodgeCancel(event);
-        // 获得弱点识破并标记该目标已闪避(每目标每段破绽最多 1 层)
+        // 获得弱点识破并标记该目标已闪避(每次都给 +1 层(2026-10-02 起))
         MosesSignItem.onDodgeCounter(player, attacker);
         // 单次反击伤害注入(不进入反击效果/层数体系)
         injectCounterDamage(player, attacker);

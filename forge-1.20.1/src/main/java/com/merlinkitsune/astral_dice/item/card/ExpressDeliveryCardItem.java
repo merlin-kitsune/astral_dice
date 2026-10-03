@@ -1,5 +1,6 @@
 package com.merlinkitsune.astral_dice.item.card;
 
+import com.merlinkitsune.starenginelib.target.TargetType;
 import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
 
 import net.minecraft.world.effect.MobEffectInstance;
@@ -10,7 +11,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 
 /**
- * 加急加快(效果牌):**目标选择器类(手持即选择)** —— 主手手持本牌即自动进入目标选择模式(移出手持立即退出),瞄准玩家后左键确认,
+ * 加急加快(效果牌):**目标选择器类(手持即选择)** —— 主手手持本牌即自动进入目标选择模式(移出手持立即退出),瞄准非敌对生物后左键确认,
  * 或按下鼠标右键对自身使用;此类会话**没有倒计时**,取消/移出手持不消耗卡牌(2026-09-25 用户裁决,取代旧的
  * 「右键自身 / 下蹲右键对其他玩家」两段式)。
  * 生效后:使目标获得 迅捷 II 1:00。
@@ -23,8 +24,8 @@ public class ExpressDeliveryCardItem extends BaseEffectCardItem {
     public static final String ACTION_ID = "express_delivery";
 
     static {
-        // 可对自身使用(旧方案的「右键-自身使用」)
-        registerSelectorAction(ACTION_ID, true);
+        // 目标 = 非敌对生物(敌对生物不可选) ∪ 自身;允许对自身使用(旧方案的「右键-自身使用」)
+        registerSelectorAction(ACTION_ID, TargetType.NON_HOSTILE, true);
     }
 
     public ExpressDeliveryCardItem(Properties properties) {

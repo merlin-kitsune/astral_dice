@@ -32,8 +32,12 @@ public class ChargeEffect extends MobEffect {
         int total = Math.min(GameplayConstants.CHARGE_MAX_STACKS, getStacks(player) + stacks);
         if (total > 0) {
             // visible=false:禁用粒子(showIcon 仍为 true → 图标/层数/倒计时照常显示)
+            // visible=false:禁用粒子;showIcon **沿用现有实例**(首次获得默认显示,
+            // 之后由 setIconVisibility 按「是否装备充能类筹码」纠正,见 2026-10-03 用户裁决)
+            MobEffectInstance current = player.getEffect(ModEffects.CHARGE.get());
+            boolean showIcon = current == null || current.showIcon();
             player.addEffect(new MobEffectInstance(ModEffects.CHARGE.get(),
-                    DURATION_TICKS, total - 1, false, false, true));
+                    DURATION_TICKS, total - 1, false, false, showIcon));
         }
         return total;
     }
@@ -63,10 +67,11 @@ public class ChargeEffect extends MobEffect {
         int current = instance.getAmplifier() + 1;
         int consumed = Math.min(current, amount);
         int remaining = current - consumed;
+        boolean showIcon = instance.showIcon();
         ModEffectRemoval.remove(player, ModEffects.CHARGE.get());
         if (remaining > 0) {
             player.addEffect(new MobEffectInstance(ModEffects.CHARGE.get(),
-                    DURATION_TICKS, remaining - 1, false, false, true));
+                    DURATION_TICKS, remaining - 1, false, false, showIcon));
         }
         return consumed;
     }
@@ -77,10 +82,11 @@ public class ChargeEffect extends MobEffect {
         MobEffectInstance instance = player.getEffect(ModEffects.CHARGE.get());
         if (instance == null) return;
         int remaining = instance.getAmplifier();
+        boolean showIcon = instance.showIcon();
         ModEffectRemoval.remove(player, ModEffects.CHARGE.get());
         if (remaining > 0) {
             player.addEffect(new MobEffectInstance(ModEffects.CHARGE.get(),
-                    DURATION_TICKS, remaining - 1, false, false, true));
+                    DURATION_TICKS, remaining - 1, false, false, showIcon));
         }
     }
 
@@ -88,5 +94,25 @@ public class ChargeEffect extends MobEffect {
     public static void removeAll(Player player) {
         if (player == null || player.level().isClientSide()) return;
         ModEffectRemoval.remove(player, ModEffects.CHARGE.get());
+    }
+
+    /**
+     * 设置充能实例的「HUD 图标可见性」。
+     *
+     * <p>用途(2026-10-03 用户裁决):玩家**未装备任何充能类筹码**但身上仍有充能状态时,隐藏
+     * HUD 上的充能图标;装备回充能筹码后恢复显示。判定由调用方给出
+     * (见 {@code event/PlayerTickEvents}),本类**不感知筹码**。
+     *
+     * <p>⚠️ {@code showIcon} 是 {@link MobEffectInstance} 的**构造参数且没有 setter** ⇒ 只能
+     * 移除旧实例后按新值重建(与 {@link #consume} 的既有做法一致);层数不变,只翻转图标位。
+     */
+    public static void setIconVisibility(Player player, boolean showIcon) {
+        if (player == null || player.level().isClientSide()) return;
+        MobEffectInstance instance = player.getEffect(ModEffects.CHARGE.get());
+        if (instance == null || instance.showIcon() == showIcon) return;
+        int stacks = instance.getAmplifier() + 1;
+        ModEffectRemoval.remove(player, ModEffects.CHARGE.get());
+        player.addEffect(new MobEffectInstance(ModEffects.CHARGE.get(), DURATION_TICKS, stacks - 1,
+                false, false, showIcon));
     }
 }

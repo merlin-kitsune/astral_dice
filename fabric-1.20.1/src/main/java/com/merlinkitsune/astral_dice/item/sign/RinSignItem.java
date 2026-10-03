@@ -1,5 +1,6 @@
 package com.merlinkitsune.astral_dice.item.sign;
 
+import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
 import com.merlinkitsune.starenginelib.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
@@ -8,9 +9,9 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import com.merlinkitsune.astral_dice.compat.curios.SlotContext;
-import com.merlinkitsune.astral_dice.item.card.ExclusiveCardUtil;
 import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 import com.merlinkitsune.astral_dice.item.ModItems;
+import com.merlinkitsune.astral_dice.item.card.LivingPageItem;
 import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
 
 public class RinSignItem extends BaseSignItem {
@@ -31,6 +32,8 @@ public class RinSignItem extends BaseSignItem {
      * 判定入口统一在 {@code SpellDamageRegistry},禁止在别处直接读原附件值做加成或显示加成。
      */
     public static boolean isEquipped(Player player) {
+        // 总闸门(骰子装备和卸除调整):未佩戴骰子 ⇒ 本件功能一律不生效(数值保留)
+        if (!CurioSlotUtil.hasDiceEquipped(player)) return false;
         var curios = CuriosApi.getCuriosInventory(player);
         return curios.isPresent() && curios.get().findFirstCurio(s -> s.is(ModItems.RIN_SIGN.get())).isPresent();
     }
@@ -43,9 +46,8 @@ public class RinSignItem extends BaseSignItem {
         // 主动:获得一张"活体书页"(专属牌,绑定获得者);若使用前物品栏中无活体书页则共获得两张
         int giveCount = countLivingPages(player) == 0 ? 2 : 1;
         for (int i = 0; i < giveCount; i++) {
-            ItemStack page = new ItemStack(ModItems.LIVING_PAGE.get());
-            ExclusiveCardUtil.setOwner(page, player);
-            VitaminPillChipItem.giveCard(player, page);
+            // 唯一入口:新建 + 绑定获得者(见 LivingPageItem#createFor 的 javadoc)
+            VitaminPillChipItem.giveCard(player, LivingPageItem.createFor(player));
         }
         return InteractionResultHolder.success(stack);
     }

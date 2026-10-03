@@ -16,7 +16,7 @@ public class ModEnchantments {
             DeferredRegister.create(ForgeRegistries.ENCHANTMENTS, AstralDiceMod.MODID);
 
     /**
-     * 千咒刻印:诅咒之剑筹码的标记诅咒附魔(仅用于被千咒卷轴识别为 1 点诅咒,无其他效果)。
+     * 青之诅咒:诅咒之剑筹码的标记诅咒附魔(仅用于被千咒卷轴识别为 1 点诅咒,无其他效果)。
      * 仅由代码经 ItemStack.enchant 施加,不在附魔台/铁砧出现(BREAKABLE 类别对筹码不生效)。
      */
     public static final RegistryObject<Enchantment> CURSE_MARKER = ENCHANTMENTS.register("curse_marker",
@@ -40,6 +40,26 @@ public class ModEnchantments {
         @Override
         public int getMaxCost(int level) {
             return 10;
+        }
+
+        /**
+         * 内部标记附魔:不出现在附魔台候选。连同 {@code isAllowedOnBooks} /
+         * {@code canApplyAtEnchantingTable} 一并关闭,使玩家无法通过附魔台或附魔书正常获得。
+         * 功能不受影响 —— 千咒卷轴按 {@code isCurse()} 计数。
+         */
+        @Override
+        public boolean isDiscoverable() {
+            return false;
+        }
+
+        @Override
+        public boolean isAllowedOnBooks() {
+            return false;
+        }
+
+        @Override
+        public boolean canApplyAtEnchantingTable(net.minecraft.world.item.ItemStack stack) {
+            return false;
         }
     }
 }

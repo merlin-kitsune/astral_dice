@@ -1,4 +1,5 @@
 package com.merlinkitsune.astral_dice.item.chip;
+import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
 import com.merlinkitsune.starenginelib.item.CuriosCompat;
 import com.merlinkitsune.starenginelib.combat.HostileTargets;
 
@@ -56,6 +57,13 @@ public class AdrenalineChipItem extends BaseChipItem {
 
     private static boolean hasCurio(Player player, net.minecraft.world.item.Item item) {
         if (player == null) return false;
+        // 总闸门(骰子装备和卸除调整):未佩戴骰子 ⇒ 本件功能一律不生效(数值保留)。
+        // ⚠️ 2026-10-01 补齐:本类此前是全 item/chip 目录里**唯一**漏掉这道闸门的
+        //    (它没有 isEquipped,判据直接查 Curios)。漏掉的连带后果有三条,补上后一并消除:
+        //      · 未佩戴骰子时高效肾上腺素的 20% 闪避仍在事件总线上判定(与 1.3.6 口径冲突);
+        //      · 与 DiceCombatModifiers 里**带闸门**的同名判据不同源 ⇒「图标亮着但没加成」;
+        //      · 新增的 adrenaline(_high)_ready 指示器卸下骰子后不会熄灭。
+        if (!CurioSlotUtil.hasDiceEquipped(player)) return false;
         var curios = CuriosCompat.getCuriosInventory(player);
         return curios.isPresent() && curios.get().findFirstCurio(s -> s.is(item)).isPresent();
     }
@@ -64,6 +72,11 @@ public class AdrenalineChipItem extends BaseChipItem {
     public void curioTick(SlotContext slotContext, ItemStack stack) {
         if (!(slotContext.entity() instanceof Player player)) return;
         if (player.level().isClientSide()) return;
+        // 总闸门:未佩戴骰子 ⇒ 本筹码的持续效果不生效(数值保留)
+        if (slotContext.entity() instanceof net.minecraft.world.entity.player.Player gatePlayer
+                && !CurioSlotUtil.hasDiceEquipped(gatePlayer)) {
+            return;
+        }
         // 防御力折算真实护甲(1 防御力 = 2 护甲值):触发加成状态生效,否则移除
         com.merlinkitsune.astral_dice.combat.DiceCombatModifiers.setDefenseArmorBonus(
                 player, "adrenaline_def_armor" + bonus, isLowHp(player) ? bonus : 0);
@@ -100,7 +113,7 @@ public class AdrenalineChipItem extends BaseChipItem {
         if (!PartyRelations.isHostileTo(player, attacker)) return;
         if (tryDodge()) {
             com.merlinkitsune.astral_dice.combat.DiceCombatEvents.applyDodgeCancel(event);
-            // 枪匠立牌:任意来源的闪避都会尝试获得 1 层弱点识破(每目标一次)
+            // 枪匠立牌:任意来源的闪避都会尝试获得 1 层弱点识破(2026-10-02 起:每次都给)
             com.merlinkitsune.astral_dice.item.sign.MosesSignItem.onDodgeCounter(player, attacker);
         }
     }

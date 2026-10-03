@@ -1,4 +1,5 @@
 package com.merlinkitsune.astral_dice.item.chip;
+import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
 import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 
 import com.merlinkitsune.astral_dice.combat.SpellDamageContext;
@@ -34,6 +35,8 @@ public class MagicQuiverChipItem extends BaseChipItem {
 
     // 玩家是否佩戴魔法箭袋筹码
     public static boolean isEquipped(Player player) {
+        // 总闸门(骰子装备和卸除调整):未佩戴骰子 ⇒ 本件功能一律不生效(数值保留)
+        if (!CurioSlotUtil.hasDiceEquipped(player)) return false;
         if (player == null) return false;
         var curios = CuriosApi.getCuriosInventory(player);
         return curios.isPresent() && curios.get().findFirstCurio(s -> s.is(ModItems.MAGIC_QUIVER.get())).isPresent();
@@ -71,8 +74,11 @@ public class MagicQuiverChipItem extends BaseChipItem {
         // 对该目标施加一层标记
         MarkManager.apply(ctx.target);
 
-        // 返还第一张使用的效果牌
-        ItemStack card = BaseEffectCardItem.cardByTypeId(ModAttachments.getMagicQuiverFirstCard(ctx.attacker));
+        // 返还第一张使用的效果牌 —— 走统一入口,专属牌(如活体书页)**一并绑定获得者**。
+        // ⚠️ 2026-10-03 修复:此前这里漏绑 OWNER_UUID,导致返还的活体书页与发放路径产出的
+        //    「有 owner」牌组件不同 ⇒ 同物品无法堆叠(用户实报)。
+        ItemStack card = BaseEffectCardItem.createCopyFor(
+                ModAttachments.getMagicQuiverFirstCard(ctx.attacker), ctx.attacker);
         if (!card.isEmpty()) {
             VitaminPillChipItem.giveCard(ctx.attacker, card);
         }
