@@ -13,6 +13,9 @@ import top.theillusivec4.curios.api.SlotContext;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.card.LivingPageItem;
 import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
+import net.minecraft.world.effect.MobEffectInstance;
+import com.merlinkitsune.astral_dice.effect.ModEffects;
+import com.merlinkitsune.astral_dice.effect.RinPageRangeEffect;
 
 public class RinSignItem extends BaseSignItem {
 
@@ -49,6 +52,9 @@ public class RinSignItem extends BaseSignItem {
             // 唯一入口:新建 + 绑定获得者(见 LivingPageItem#createFor 的 javadoc)
             VitaminPillChipItem.giveCard(player, LivingPageItem.createFor(player));
         }
+        // 追加(2026-10-03 用户裁决):主动追加「书页射程」—— 活体书页使用射程 +50%,持续 2:00
+        player.addEffect(new MobEffectInstance(ModEffects.RIN_PAGE_RANGE,
+                RinPageRangeEffect.DURATION_TICKS, 0, false, false, true));
         return InteractionResult.SUCCESS;
     }
 

@@ -3479,6 +3479,41 @@ brief 内**不喂结论**。结论与处置：
   放行开关，否则被「批量编排闸门」拦成 `MT_AUTO_DISABLED`。
 
 
+### 探天卫星改口径 + 调查员追加「书页射程」+ 选择器半径两段夹取（2026-10-03，三线；用户裁决）
+
+#### 改动（三线同构；`fabric-1.20.1` 按 AGENTS 边界**未**同步）
+- `item/chip/SatelliteChipItem`：**移除**「轨道炮生效期间远程/魔法击杀返还随机效果牌」（连同其
+  `LivingDeathEvent` 订阅器与 `@EventBusSubscriber` 注解 —— ⚠️ 该注解**必须**一并摘掉，neo bus 对
+  「有注解无订阅方法」的类直接抛异常）；改为**佩戴即生效**的 `EFFECT_CARD_RANGE_BONUS = 0.5D`
+  （只作用于**效果牌**动作）。
+- `effect/RinPageRangeEffect`（**新增**，`rin_page_range`/「书页射程」）：2400 tick = 2:00、BENEFICIAL、
+  `false,false,true`（可见图标、无粒子）；`RinSignItem#handleUse` 追加一行 `addEffect`（**不动**冷却/锁定）。
+- `target/SelectorRangeModifiers`（**新增**，唯一加成入口）：`MAX_ENHANCED_RADIUS = 64`；
+  探天卫星（仅效果牌且 `isEquipped`）+「书页射程」（仅 `living_page` 且 `hasEffect`）**相加**。
+- `target/TargetSelectionManager#start`：`声明值 ≤32 → 加成 → ≤64`**两段夹取**（`MAX_SELECT_RADIUS` **仍 32**）。
+- 新图标 `textures/mob_effect/rin_page_range.png`（32×32）+ 生成器 `tools/gen_rin_page_range_texture.py`；
+  lang 三线三语 6 组键；顺手订正手册 `effect_card_living_page.2` 的射程数字 16 → **32**（与 `LOCK_RANGE` 一致）。
+
+#### 验证
+- 三线 `BUILD SUCCESSFUL` + 三条 `pushToGame: pushed … ->`（**三轮**：修「误删方法」后重建、改 `ModItems` 陈旧注释后再建
+  —— ⚠️ 第三轮 `jar` 为 `UP-TO-DATE`（注释不产生字节码差异），故 jar mtime 早于该 `.java`，属正常）。
+- 开 jar 取证：`SatelliteChipItem.class` **无** `onRangedMagicKill`/`LivingDeathEvent`/`EventBusSubscriber`，
+  **有** `onChipUnequip`/`countOrbitalStrike`/`EFFECT_CARD_RANGE_BONUS`；新增两类在包内；
+  `SelectorRangeModifiers` 字节码 = `dadd`×2 + `dmul` + `Math.min(…, 64.0d)`；图标 32×32 三线同哈希；lang 新旧句正确。
+- 守门 **19/19 rc=0**：含 `verify_effect_icons`（四线 210 注册 / 100% 覆盖）、`check_lang_sync`、
+  `tooltip_color_audit`、`check_mod_sources`、`audit_patchouli_keys`、`verify_*` 全套与 `verify_firearm_detection`。
+- 生成器幂等：`python tools/gen_rin_page_range_texture.py --check` → 三线 `OK`（EXPECTED_SHA1 79adef49e428）。
+- **独立子代理二次验证**：10 组不变量全成立（含「立牌动作拿不到卫星加成」「两者相加 = 64 而非 72/48」
+  「`LOCK_RANGE` 仍 32」「`MAX_SELECT_RADIUS` 仍 32」「图标计数 53 与 AGENTS 一致」）；抓出并已修 1 处陈旧注释
+  （三线 `ModItems` 里仍写卫星旧口径）。
+
+#### 已知边界（如实记录）
+- **未做实机验证**：HUD 图标显示、状态悬停、选择器实际半径均只做源码/字节码/资源层取证。
+- `fabric-1.20.1` **未同步**本批（其效果集 51、无 `rin_page_range`，且仍缺 `concealment` 的既存滞后）。
+- **缓存未触动**：`MobEffect` 不走「模板/清单」类硬编码点（那类只需在 `ModEffects` 注册）；若后续把该效果
+  接进 `EffectTooltipDescriptions` 之外的 UI 清单，须复查对应硬编码表。
+
+
 ### 选择会话输入收口（2026-10-03，三线；用户裁决「仅控制释放按键和收起按键」）
 
 #### 改动（三线同构；`fabric-1.20.1` 按 AGENTS 边界**未**同步）

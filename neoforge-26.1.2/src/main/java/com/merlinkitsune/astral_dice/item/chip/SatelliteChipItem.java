@@ -1,30 +1,20 @@
 package com.merlinkitsune.astral_dice.item.chip;
 
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
-import com.merlinkitsune.starenginelib.combat.HostileTargets;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.item.ModItems;
-import com.merlinkitsune.astral_dice.item.card.RandomCardHandler;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import top.theillusivec4.curios.api.CuriosApi;
 import top.theillusivec4.curios.api.SlotContext;
-import com.merlinkitsune.astral_dice.AstralDiceMod;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
-import net.minecraft.world.entity.LivingEntity;
-import com.merlinkitsune.astral_dice.combat.SpellDamageRegistry;
-import com.merlinkitsune.astral_dice.effect.ModEffects;
-import net.neoforged.bus.api.SubscribeEvent;
-import com.merlinkitsune.astral_dice.combat.PartyRelations;
 
 /**
  * 探天卫星筹码:
  * - 物品栏中"轨道炮"少于 6 张时,每 1:00 补充 1 张轨道炮;
  * - 使用一张"轨道炮"后,本轮出牌数 +1(每 1:00 至多触发一次);
- * - "轨道炮"生效期间,使用远程或魔法击杀一个敌方目标后,获得一张随机效果牌。
+ * - 佩戴即生效:效果牌的目标选择距离 +50%(2026-10-03 用户裁决,取代原「"轨道炮"生效期间,
+ *   远程/魔法击杀敌方目标后获得一张随机效果牌」)。
  */
-@EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
 public class SatelliteChipItem extends BaseChipItem {
     /** 轨道炮库存目标数量 */
     public static final int TARGET_ORBITAL_STRIKE_COUNT = 6;
@@ -32,6 +22,16 @@ public class SatelliteChipItem extends BaseChipItem {
     public static final int GIVE_INTERVAL_TICKS = 1200;
     /** "使用轨道炮后出牌数+1"触发冷却(tick,1 分钟) */
     public static final int PLAY_BONUS_COOLDOWN_TICKS = 1200;
+
+    /**
+     * 「效果牌目标选择距离」加成(2026-10-03 用户裁决,取代原「击杀返还随机效果牌」):
+     * **佩戴即生效**的常驻加成,对**全部效果牌**动作生效(立牌动作不受影响)。
+     *
+     * <p>唯一读取点 = {@code target/SelectorRangeModifiers}(与调查员立牌的「书页射程」状态按
+     * **相加**合并,合计后按 {@code SelectorRangeModifiers#MAX_ENHANCED_RADIUS} = 64 格夹取)。
+     * 0.5 = +50%。
+     */
+    public static final double EFFECT_CARD_RANGE_BONUS = 0.5D;
 
     public SatelliteChipItem(Properties properties) {
         super(properties);
@@ -78,13 +78,6 @@ public class SatelliteChipItem extends BaseChipItem {
         ModAttachments.setSatellitePlayBonusCooldownEnd(player, now + PLAY_BONUS_COOLDOWN_TICKS);
     }
 
-    // 轨道炮生效期间远程/魔法击杀敌方目标后调用:获得一张随机效果牌
-    public static void onRangedMagicKill(Player player) {
-        if (player == null || player.level().isClientSide()) return;
-        if (!isEquipped(player)) return;
-        RandomCardHandler.giveCardTo(player, RandomCardHandler.CardCategory.EFFECT);
-    }
-
     @Override
     protected void onChipUnequip(Player player, ItemStack stack) {
         // 卸下筹码:清除"本轮出牌数+1"标记(每 1:00 触发冷却保留,防装卸刷新)
@@ -100,20 +93,6 @@ public class SatelliteChipItem extends BaseChipItem {
             }
         }
         return count;
-    }
-
-    // 探天卫星:轨道炮生效期间,远程/魔法击杀敌方目标后获得一张随机效果牌
-    @SubscribeEvent
-    public static void onSatelliteRangedMagicKill(LivingDeathEvent event) {
-        LivingEntity target = event.getEntity();
-        if (target.level().isClientSide()) return;
-        // 先取击杀者再判定敌对:视者 = 击杀者(全局敌对玩家规则)
-        if (!(event.getSource().getEntity() instanceof Player killer)) return;
-        if (!PartyRelations.isHostileTo(killer, target)) return;
-        if (!killer.hasEffect(ModEffects.ORBITAL_STRIKE)) return;
-        if (!com.merlinkitsune.astral_dice.combat.SpellDamageRegistry.isSpellDamage(
-                event.getSource(), event.getSource().getDirectEntity())) return;
-        SatelliteChipItem.onRangedMagicKill(killer);
     }
 
 }

@@ -64,6 +64,19 @@
   Electric Sword / Advanced Peripherals / Perpetual Motion / Current Core / Electric Glove / Airbag /
   Railgun / Primordial Core — 10 in total), the HUD no longer shows the "Charge" icon; equipping any one
   of them restores it immediately.
+- **Skyward Satellite reworked: "kill refunds a random effect card" -> "effect card target selection distance
+  +50%"** (2026-10-03, user decision): the Skyward Satellite chip **no longer** refunds a random effect card for
+  killing a hostile with ranged/magic damage while Orbital Strike is active. It now grants an **always-on bonus
+  while equipped** - any **effect card** you hold gets its target-selector lock range **+50%** (16 -> 24
+  blocks). NOTE: this affects **effect cards only** - sign active-skill selectors are unchanged; NOTE: it
+  **adds** to the Investigator sign's "Page Range", with a combined ceiling of **64 blocks**.
+- **Investigator sign active skill also grants "Page Range"** (2026-10-03, user decision): the Investigator
+  (rin) active "Living Page" now additionally grants a **2:00** status, "Page Range", on top of the existing
+  "gain 1-2 Living Pages" - while held, **Living Page's lock range is +50%** (32 -> 48 blocks; **64 blocks**
+  when the Skyward Satellite chip is equipped as well). NOTE: the status is **visible** (HUD icon + hover
+  text) and simply expires; re-casting only **refreshes the duration**, never stacks the multiplier. NOTE: the
+  active's existing cooldown rhythm and lock semantics are unchanged (it does not enter the "in effect" lock
+  state, so it can be re-cast to refresh).
 
 ### Bug Fixes
 

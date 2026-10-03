@@ -269,6 +269,16 @@ public abstract class BaseEffectCardItem extends Item {
     }
 
     /**
+     * 该 actionId 是否由**效果牌**注册(= {@link SelectorAction};立牌动作返回 false)。
+     *
+     * <p>供 {@code target/SelectorRangeModifiers} 判定「效果牌目标选择距离」这类**只作用于效果牌**的
+     * 加成。判定走**注册表实例**,不维护第二份 actionId 清单(单一事实源)。
+     */
+    public static boolean isEffectCardAction(String actionId) {
+        return actionId != null && TargetSelectionRegistry.get(actionId) instanceof SelectorAction;
+    }
+
+    /**
      * 目标选择器动作:目标类型取注册时传入的值(缺省 {@link TargetType#PLAYER},选择者自身由
      * {@code allowSelf} 决定),确认后取回按下时登记的待执行记录、按物品找回仍在身上的那张牌并出牌,最后消耗一张。
      *

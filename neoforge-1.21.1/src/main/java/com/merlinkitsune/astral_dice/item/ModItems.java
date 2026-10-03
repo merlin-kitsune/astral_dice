@@ -717,7 +717,7 @@ public class ModItems {
                     .stacksTo(1)
                     .rarity(AstralRarities.epic())));
 
-    // 探天卫星:自动补充轨道炮;使用轨道炮后出牌数+1;轨道炮生效期间远程/魔法击杀给随机效果牌
+    // 探天卫星:自动补充轨道炮;使用轨道炮后出牌数+1;佩戴即生效:效果牌的目标选择距离 +50%
     public static final DeferredItem<Item> SATELLITE_CHIP = registerItem("satellite_chip",
             () -> new SatelliteChipItem(new Item.Properties()
                     .stacksTo(1)
