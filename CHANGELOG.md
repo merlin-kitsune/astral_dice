@@ -4,6 +4,12 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## Unreleased (1.3.7)
+
+### Content & Balance Changes
+
+### Bug Fixes
+
 ## 1.3.6
 
 > One batch across all four lines (three production lines `1.3.6`, migration line `1.3.6-beta.1`, port line `1.3.6-alpha.1`).
