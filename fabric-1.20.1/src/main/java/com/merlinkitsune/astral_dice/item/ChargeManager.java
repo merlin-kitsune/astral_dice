@@ -30,6 +30,42 @@ public final class ChargeManager {
         return ChargeEffect.getStacks(player) > 0;
     }
 
+    /**
+     * 判断某物品是否是「**充能类筹码**」。
+     *
+     * <p>判定用**类**而不是 {@code ModItems} 的静态实例 —— 后者在静态字段里 {@code .get()}
+     * 会有「注册未完成就被类加载」的顺序风险(DeferredItem/RegistryObject 未绑定)。
+     *
+     * <p>⚠️ 名单与筹码 tooltip 调用 {@code addChargeCounter} 的那批**同源**(共 10 枚):
+     * 飞行引擎 / 能量回收器 / 电流剑 / 高级外设 / 永动机 / 电流核心 / 电击手套 / 安全气囊 /
+     * 电磁炮 / 原初核心。**新增充能类筹码时必须在此登记**,否则「未装备筹码 ⇒ 隐藏充能图标」
+     * 的判定会漏(该筹码的持有者会看不到图标)。
+     */
+    private static boolean isChargeChipItem(net.minecraft.world.item.Item item) {
+        return item instanceof com.merlinkitsune.astral_dice.item.chip.WarpEngineChipItem
+                || item instanceof com.merlinkitsune.astral_dice.item.chip.EnergyRecyclerChipItem
+                || item instanceof com.merlinkitsune.astral_dice.item.chip.ElectricSwordChipItem
+                || item instanceof com.merlinkitsune.astral_dice.item.chip.AdvancedPeripheralsChipItem
+                || item instanceof com.merlinkitsune.astral_dice.item.chip.PerpetualMotionChipItem
+                || item instanceof com.merlinkitsune.astral_dice.item.chip.CurrentCoreChipItem
+                || item instanceof com.merlinkitsune.astral_dice.item.chip.ElectricGloveChipItem
+                || item instanceof com.merlinkitsune.astral_dice.item.chip.AirbagChipItem
+                || item instanceof com.merlinkitsune.astral_dice.item.chip.RailgunChipItem
+                || item instanceof com.merlinkitsune.astral_dice.item.chip.PrimordialCoreChipItem;
+    }
+
+    /**
+     * 玩家是否装备了**任一充能类筹码**(饰品栏)。
+     *
+     * <p>用途:充能状态图标的可见性 —— 2026-10-03 用户裁决「玩家未装备任何充能筹码,但是有
+     * 充能状态时,需要隐藏充能状态显示图标,只有装备回充能筹码才应该恢复显示」。
+     */
+    public static boolean isChargeChipEquipped(Player player) {
+        if (player == null) return false;
+        // 饰品遍历收敛到 CurioSlotUtil(各线 Curios 入口不同,统一在那里处理)
+        return CurioSlotUtil.hasAnyCurioMatching(player, s -> isChargeChipItem(s.getItem()));
+    }
+
     public static int getStacks(Player player) {
         return ChargeEffect.getStacks(player);
     }

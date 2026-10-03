@@ -8,7 +8,47 @@
 
 ### Content & Balance Changes
 
+- **Event effects now broadcast over "party + 64 blocks"** (2026-10-03, user decision): the random
+  event rolled by the Gunsmith... _(see ZH for the authoritative text)_; the roll of the Great Detective
+  sign and the "Undercover Investigation" stage event (concealment + investigation buff) previously
+  affected the triggerer only (allies were included only at the final stage, and only when a boss was
+  nearby within 32 blocks). New rule: if the triggerer **is in a party** => all party members + every
+  non-party player within **64 blocks** (party members are not re-checked by distance); if the triggerer
+  **has no party** => all party-less players + every player within **64 blocks** (no party-less filter
+  inside the radius). Sign passives fired by the event (Great Detective +3 star coins / Investigator
+  living page) follow the same target set. NOTE: negative rolls (poison / wither / darkness / weakness /
+  instant damage...) are broadcast over the same range as well.
+- **Charge status icon is hidden while no charge chip is equipped** (2026-10-03, user decision): when a
+  player has the charge effect but **no** charge-type chip equipped (Warp Engine / Energy Recycler /
+  Electric Sword / Advanced Peripherals / Perpetual Motion / Current Core / Electric Glove / Airbag /
+  Railgun / Primordial Core — 10 in total), the HUD no longer shows the "Charge" icon; equipping any one
+  of them restores it immediately.
+
 ### Bug Fixes
+
+- **Living page (`effect_card_living_page`) NBT fully unified** (reported 2026-10-03: "living pages
+  obtained via the Investigator's active skill or a teammate-triggered event cannot stack"): the 6
+  creation paths each built their own stack, and the **Magic Quiver refund** failed to bind the
+  exclusive-card "owner" component => a player could hold both "owned" and "owner-less" forms, and since
+  stacking compares components one by one, the same item **would not stack**. Two **single entry points**
+  are introduced — living pages go through `LivingPageItem#createFor`, copy/refund paths go through
+  `BaseEffectCardItem#createCopyFor` (which binds owners for exclusive cards), and all five paths now use
+  them, so missing a binding is no longer possible.
+- **ActionBar text no longer overlaps the item-name toast + shorter fade** (reported 2026-10-03): the
+  actionbar baseline was `guiHeight-58` while the vanilla hotbar item-name toast sits at `guiHeight-59`
+  (and moves up with armour/health rows) — only **1px apart**, so they overlapped on the same line. It is
+  now `guiHeight-68` (the vanilla actionbar height), leaving at least 9px; the fade was also shortened
+  from 1s to **0.5s**.
+- **Both actionbar options moved out of the config file** (paired with the fix above):
+  `actionbar_duration_ticks` / `actionbar_fade_ticks` are no longer written to the config file — **all
+  players are forced onto the new fixed values** (the old `[actionbar]` section is removed automatically),
+  avoiding the "changing the default does nothing for existing installs" trap.
+- **The config version number is now actually updated** (reported 2026-10-03: "the version number does
+  not update when the config changes"): previously an outdated version was only backed up to `.bak` and
+  the `config_version` value in the file was **never rewritten**; since the framework keeps an existing
+  valid key as-is, the number stayed at the old value and a **content-identical `.bak` was written on
+  every launch**. The version is now written back after backing up, making "one version = one migration"
+  actually hold.
 
 ## 1.3.6
 

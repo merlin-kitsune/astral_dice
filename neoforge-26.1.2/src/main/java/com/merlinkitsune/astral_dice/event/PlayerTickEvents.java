@@ -146,6 +146,13 @@ public class PlayerTickEvents {
         //       故未佩戴骰子时条件为假 ⇒ 图标被正常移除,而累计数值仍保留在附件/物品数据上。
         updateCutterEffect(player);
         updateChipBonusIndicators(player);
+        // 充能状态图标的可见性(2026-10-03 用户裁决):未装备任何**充能类筹码**时隐藏 HUD 图标,
+        // 装备回筹码后恢复。前置 hasCharge 早退 ⇒ 没有充能的玩家零开销;showIcon 未变时
+        // setIconVisibility 内部直接 return,不会每 tick 重建效果实例。
+        if (com.merlinkitsune.astral_dice.item.ChargeManager.hasCharge(player)) {
+            com.merlinkitsune.astral_dice.effect.ChargeEffect.setIconVisibility(
+                    player, com.merlinkitsune.astral_dice.item.ChargeManager.isChargeChipEquipped(player));
+        }
         RevengeHalberdChipItem.updateDisplayEffect(player);
         // 复仇之戟:防御力折算为真实护甲(1 防御力 = 2 护甲值)
         if (!diceGated) RevengeHalberdChipItem.updateArmorBonus(player);

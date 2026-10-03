@@ -1302,7 +1302,7 @@ When extending this workspace:
 > 背景：tooltip 染色规则**明确不适用于动作栏**（见 `docs/tooltip-color-rules.md` 首部「不适用」名单），而动作栏此前**没有任何成文规范** ⇒ 同一条 UI 长期存在「值内自带 `§` 码 vs 外层 `withStyle`」的冲突、拒绝类该红却黄、以及两套渲染通道并存。本节把现行做法固化，三线一致。
 
 1. **唯一通道 = `ActionBarPayload`（三线）**：1.21.1 / 26.1.2 走 `PacketDistributor.sendToPlayer(sp, new ActionBarPayload(msg, ticks))`，1.20.1 走 `ModNetwork.sendToPlayer(sp, new ModNetwork.ActionBarMessage(msg, ticks))`；客户端侧本机提示走 `ActionBarManager.show(msg, ticks)`。
-   ⚠️ **禁止**用裸 `player.displayClientMessage(msg, true)`（或 26.1.2 的 `sendOverlayMessage`）发动作栏 —— 那是**原版覆盖层**：白色、绘制在 `guiHeight-68`、原版计时，与模组动作栏（带样式、`guiHeight-58`、时长由 `ACTIONBAR_DURATION_TICKS` 配置）**不是同一块 UI**，混用会出现「颜色与位置都不一致」。**例外（唯一）**：双端加载类（如 `item/card/BaseEffectCardItem` 的 `isBlockedOnClient`）**不得**引用客户端类 `ActionBarManager`（否则专用服务端 `NoClassDefFoundError`），此类只能保留原版通道，但**必须显式 `.withStyle(...)` 着色**，不得留默认白。
+   ⚠️ **禁止**用裸 `player.displayClientMessage(msg, true)`（或 26.1.2 的 `sendOverlayMessage`）发动作栏 —— 那是**原版覆盖层**：白色、绘制在 `guiHeight-68`、原版计时，与模组动作栏（带样式、`guiHeight-68`、固定时长）**不是同一块 UI**，混用会出现「颜色与位置都不一致」。**例外（唯一）**：双端加载类（如 `item/card/BaseEffectCardItem` 的 `isBlockedOnClient`）**不得**引用客户端类 `ActionBarManager`（否则专用服务端 `NoClassDefFoundError`），此类只能保留原版通道，但**必须显式 `.withStyle(...)` 着色**，不得留默认白。
 2. **文案值内禁止任何 `§` 色码，整条颜色由外层 `.withStyle(...)` 决定**（用户 2026-09-27 裁决，`BaseSignItem#sendSignActionBarColored` 类头有原始记录）。
    原因：外层统一是 `YELLOW`，此时 `§e` 是**空操作**，而收尾的 `§7` 会把后半句**重置成灰色** ⇒ 出现「**前半黄、后半灰**」的断层（实测：机械师「手牌不足」）。⇒ 语言值里**一律不写** `§e`/`§7`/`§9`；需要强调数值时改文案措辞，不改颜色。
    ⚠️ 动作栏**时间也不用蓝**（与 tooltip 的 `§9` 口径不同）：`target_select.time` 的既有口径就是黄色，故 `hanna_float` 的 `§9魔女漂浮 (1:00)§7` 已按本条清掉。
@@ -1314,6 +1314,17 @@ When extending this workspace:
 6. **取证**：动作栏是客户端可见状态，服务端探针判不了；改动的可断言面 = 语言键存在性（三线 × 三语）+ `msg`/`hud` 前缀值内 `§` 计数为 **0** + 开 jar 核对。
    守门脚本：**`python tools/audit_actionbar.py`（退出码 0 = 通过）** —— 一次跑齐三条硬约束（值内禁 `§` / 键三线×三语齐 / 原版覆盖层通道白名单），实现要点：扫「helper 名并集 + 直接构造 + 原版通道」三类落点、**先去注释再扫**（否则 26.1.2 javadoc 里的 `{@code sendOverlayMessage(...)}` 会误报）、**排除以 `.` 结尾的动态拼接键**（`"msg.astral_dice.fanny_event." + roll`）；新增动作栏 helper 必须登记进该脚本的 `HELPERS`，否则其调用点的键会被漏扫（假绿）。键数由脚本自行报告，**规范里不写死数字**（各分支键数不同，写死必然漂移）。
    另跑 `tools/check_lang_sync.ps1`（0 = 通过，注意它走 `[Console]::Out.Write` ⇒ 须 `[Console]::SetOut([StringWriter])` 捕获）与 `scripts/audit/tooltip_color_audit.ps1`。
+
+7. **位置与时长（2026-10-03 用户裁决，必须遵守）**：模组动作栏的文字基线取 **`guiHeight-68`**（与原版 actionbar 同高）。
+   原版 hotbar **物品名提示**固定在 `guiHeight-59` 且随护甲/血量行上移；此前本模组写 `58` ⇒ 二者**仅差 1px**，
+   同时出现时同一行互相压盖（用户实报「ActionBar 文本有时会和物品名称提示重叠」）。**改这个坐标要改前置库**
+   （`client/ActionBarManager#render`，四平台各一份、不在 `common`）。
+   两项时长（原配置 `actionbar_duration_ticks` / `actionbar_fade_ticks`）**已移出配置文件**、改为**固定常量**：
+   **总时长 60 tick = 3 秒、淡出 10 tick = 0.5 秒**。权威常量在**前置库** `GameplayConstants#ACTIONBAR_DURATION_TICKS`
+   / `#ACTIONBAR_FADE_TICKS`；消费方 `config/ModCommonConfig` 保留**同值**的 `public static final int` 并在
+   `snapshot()` 里注入（库 `GameplayConfigValues` 的字段按 1.x 契约不删）。这么做的目的是让新值对**所有玩家
+   强制生效** —— 框架对「已存在且校验通过」的配置键**原样保留文件值**，只改默认值对已安装玩家无效；旧配置里的
+   `[actionbar]` 段会被框架自动清除。⚠️ 改这两项必须**同时改库 + 消费方**，且消费方 `CONFIG_VERSION` 要 +1。
 
 ## 语言文件同步规范（Lang Sync）— 必须遵守
 
@@ -2609,6 +2620,15 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --new <注册id>
 - **敌对玩家规则与带上下文重载（全局，2026-09-15 用户裁决，必须遵守）**：`HostileTargets` 新增带上下文重载 `isHostile(Entity viewer, Entity target)`，把「**非同队伍、且曾主动攻击过 viewer 的玩家**」计入敌对目标（故大当家溅射等范围/波及效果、以及**电磁炮落雷**（2026-09-15 本批 D-B2 对齐，viewer = `LightningBolt#getCause()`，见下条）现在对这类玩家生效）；记录表为 `combat/PlayerHostilityTracker`（服务端内存静态表，不持久化）。口径细节：① **记录 = 只记「主动攻击」** —— 排除本模组内部 AOE/溅射/反击结算（`DiceCombatEvents.isInternalAoe()` / `isInCounterChain()` 闸门）、自伤、任一侧非玩家、以及被取消的伤害（挂点在最终伤害事件，晚于可取消的减伤前事件）；② **双方都没有队伍时可互为敌对**（同队才豁免；任何一方无队伍都不算同队——`EventTargetCollector`「未加入队伍视为全服玩家」的发奖约定**不适用于此处**）；③ 玩家**死亡**（`LivingDeathEvent`，`priority=LOWEST`，晚于保命方的「取消死亡」）/死亡克隆/登出时**双向**清除该立场（作为攻击者与作为目标的记录一并清）；④ **例外**：`PandamanSignItem` 的嘲讽**刻意只对敌对生物生效**（单参 `isHostile(e)` + `!(e instanceof Player)` 守卫，保持既有约定，永不施加给玩家）。
 - **统一现状（2026-09-15 复核；2026-09-15 本批 D-B2 后更新计数）**：双版本各 **24 处玩法判据点**已改调该入口，另有 `damage/RailgunBolts#isValidLightningTarget` 委托同一入口，合计 **25 个调用点 / 17 个文件**（两版本行号同构、逐条 `Compare-Object` 零差异）。其中 **23 个调用点**改用带上下文的 `isHostile(viewer, target)` 重载（含本批改口径的 `RailgunBolts#isValidLightningTarget`，viewer = `LightningBolt#getCause()`），仍用单参的 2 处为：`DiceCombatEvents.isBlessingTarget`（口径含「非队友玩家」，无法交给本入口）、`PandamanSignItem` 的嘲讽（**刻意**只对敌对生物生效，见上条）。判据同族的既有分支（`DiceCombatEvents.isBlessingTarget` 的「Boss 或正在追打该玩家的生物」、`NancyLuSignItem#clearNearbyMobTargets` 的 `mob.getTarget() == player`、`BossEntityUtil.isBossEntity`）**不是** `Enemy` 判定，保持原样。
 - **🆕 队友 / 盟友判定的唯一入口 = `combat/PartyRelations`（2026-09-30 用户裁决，必须遵守）**：此前全仓队友判定一律是裸原版计分板 `getTeam()` —— 而整合包里的队伍**不一定**走计分板：`FTB Teams` 与 `Open Parties and Claims`（OPAC）各有独立的一套队伍数据，这类玩家的 `getTeam()` 恒为 `null` ⇒ 队友判定**完全失效**（用户实报：同一 FTB 队伍内仍能互相造成伤害、电磁炮仍命中友方）。现统一走 `combat/PartyRelations`：`isSameTeam(a, b)` = 原版计分板 ∪ FTB ∪ OPAC（含 OPAC 的**盟友队伍**）；`hasTeam(e)` = 任一队伍系统中已入队（供「任一方无队伍即友方」这类宽松口径）；`isHostileTo(viewer, target)` = **先做盟友豁免，再委托库 `HostileTargets.isHostile`**（故**上一条「敌对唯一入口」不变**，只是前面多一道盟友闸门）；`collectTeamPlayers(Player)` = 队伍收集（语义与库 `EventTargetCollector` 一致，含「未加入任何队伍 ⇒ 返回全服在线玩家」的兜底）。**新增或修改任何队友判定（含「同队才生效」的加成 / 波及 / 治疗范围）一律调本类，不得再写裸 `getTeam()`。**
+  - 🆕 **「事件效果目标」= `collectEventTargets(triggerer, radius)`（2026-10-03 用户裁决，必须遵守）**：与 `collectTeamPlayers`
+    的旧口径（无队伍 ⇒ **全服在线玩家**）**不同**，事件广播的目标集合为 —— 触发者**有队伍** ⇒ 全体队友 ∪ 半径内
+    **非队友**（队友不按距离重复判定）；触发者**无队伍** ⇒ 全部**无队伍**在线玩家 ∪ 半径内**所有**玩家（范围内
+    **不**筛选无队伍）。当前半径 = **64 格**（常量 `AstralEventSystem.EVENT_TARGET_RADIUS` /
+    `InvestigationEventUtil.EVENT_TARGET_RADIUS`）。落点三处：① 大侦探主动的 11 项随机事件效果（`FannySignItem`
+    —— 效果**广播**，但**锁定/冷却仍只按触发者自己的施加结果**判定）；② 事件附加被动（`AstralEventSystem`：
+    大侦探 +3 星币、调查员活体书页，均按目标集合逐个持有立牌者发放）；③ 隐匿调查四阶段效果
+    （`InvestigationEventUtil#applyStageEffects`，**不再限定 stage 4、不再要求「附近有 boss」**）。
+    ⚠️ 未装备队伍系统的玩家（三条开关全关）时 `hasTeam` 为假 ⇒ 走「无队伍」分支。
   两条实现纪律：① **两个第三方后端一律走反射 + `Class.forName` 惰性解析**（⚠️ 反射目标须逐条来自实物：《第三方联动取源与反射纪律》§2 —— 本条下面的签名清单即该纪律的产物）（安装实况：1.21.1 包有 FTB Teams + Library；**1.20.1 完全没有 FTB**；26.1.2 只有 Library、**没有 Teams**；三个包**均未安装** OPAC）⇒ 解析或调用失败**一次即永久关闭该后端**并退回原版计分板口径，**绝不因第三方模组改版而崩溃**；② FTB 按 `isClientSide()` **分流**：客户端 `ClientTeamManager#getTeamForPlayer(Player)`、服务端 `TeamManager#arePlayersInSameTeam(UUID, UUID)`（先 `isManagerLoaded()`；`getManager()` 在客户端会抛 NPE）—— **不要用 `isManagerLoaded()` 猜侧**，客户端连远程服务器时集成服务端可能同时存在，会读到错误的队伍数据。
   ⚠️ `starengine_lib` 的 `event/EventTargetCollector` **同名功能已坏**（其 FTB 反射查的是并不存在的 `getTeamForPlayer(Player)` / `getTeamForPlayer(UUID)`，真实签名是 `getTeamForPlayer(ServerPlayer)` / `getTeamForPlayerID(UUID)`；OPAC 分支查的 `dev.darkhax.opac.*` 亦不存在，真实包名为 `xaero.pac.*`）⇒ FTB 玩家被判为「未加入任何队伍」并落进「无队伍 ⇒ 全服皆友方」的兜底，**友方效果（大碗炖肉 / 银行卡「用不完」/ 奢华大餐 / 挚友守护 / 挚友祝福）实际扩散到了全服**。**该缺陷属库侧，应在库的下一次发版中一并修**；当前由 `PartyRelations` 顶住（本仓不改库、不动库版本 pin）。
   ✅ **为什么不必给库加 seam**：库 `target/SelectorTargets` 用的是**单参** `isHostile(target)`（类注释明确「不含玩家」）⇒ 目标选择器**天然不存在**队友缺口 ⇒ 无需 bump 库版本即可闭环。

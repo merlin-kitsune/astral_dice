@@ -136,6 +136,25 @@ public abstract class BaseEffectCardItem extends Item {
     }
 
     /**
+     * 「复制 / 返还最后一张效果牌」的**统一入口**:按类型 id 造牌,并**在专属牌上绑定获得者**。
+     *
+     * <p>⚠️ 2026-10-03 修复:忍者立牌复制 / 魔法秘典返还 / 魔法箭袋返还三条路径此前各自
+     * 手写 {@code if (isExclusive(card)) setOwner(card, player)}(魔法箭袋那条**漏写**)。
+     * 漏绑会让同一个物品出现两种组件形态 ⇒ 不可堆叠(用户实报活体书页)。改为统一入口后,
+     * 新增调用方**不可能**再漏 —— 这是「完全统一 NBT」的落点。
+     *
+     * @param cardTypeId 效果牌类型 id(见 {@link #cardByTypeId(String)})
+     * @param owner      获得者(专属牌绑定其 UUID;非专属牌不受影响)
+     */
+    public static ItemStack createCopyFor(String cardTypeId, net.minecraft.world.entity.player.Player owner) {
+        ItemStack card = cardByTypeId(cardTypeId);
+        if (owner != null && ExclusiveCardUtil.isExclusive(card)) {
+            ExclusiveCardUtil.setOwner(card, owner);
+        }
+        return card;
+    }
+
+    /**
      * 是否为治疗类效果牌(恢复生命值;大当家立牌被动:使用治疗类效果牌时"养精蓄锐"+1 层)。
      * 治疗类:巧克力蛋糕/汉堡/奢华大餐。
      */

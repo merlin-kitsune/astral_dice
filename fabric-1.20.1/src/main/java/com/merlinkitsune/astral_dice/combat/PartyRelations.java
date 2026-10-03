@@ -168,6 +168,45 @@ public final class PartyRelations {
         return members;
     }
 
+    /**
+     * 「**事件效果目标**」的统一收集入口(2026-10-03 用户裁决口径)。
+     *
+     * <p>与 {@link #collectTeamPlayers(Player)} 的区别:后者是「队友 + 无队伍时全服」的**旧**口径,
+     * 本方法按用户新规则给出**事件广播**的目标集合:
+     *
+     * <ul>
+     *   <li><b>触发者已加入队伍</b> ⇒ 全体队友 ∪ 半径内**非队友**玩家
+     *       (队友不再按距离判定,故不存在「同队重复判定」);</li>
+     *   <li><b>触发者未加入任何队伍</b> ⇒ 全部**无队伍**在线玩家 ∪ 半径内**所有**玩家
+     *       (范围内**不做**无队伍筛选 —— 有队伍的玩家同样收到)。</li>
+     * </ul>
+     *
+     * <p>触发者本人**恒**在集合内;队伍判定沿用三条后端的三开关口径
+     * ({@link #sameTeamAmongEnabledSystems}),与 {@link #collectTeamPlayers(Player)} 同源。
+     *
+     * @param radius 半径(格),按**三维距离**判定
+     */
+    public static List<Player> collectEventTargets(Player triggerer, double radius) {
+        List<Player> targets = new ArrayList<>();
+        if (triggerer == null || triggerer.level().isClientSide()) return targets;
+        if (!(triggerer.level() instanceof ServerLevel serverLevel)) return targets;
+        targets.add(triggerer);
+        double r2 = radius * radius;
+        boolean selfHasTeam = hasTeam(triggerer);
+        for (ServerPlayer sp : serverLevel.players()) {
+            if (sp == triggerer) continue;
+            boolean inRange = sp.distanceToSqr(triggerer) <= r2;
+            if (selfHasTeam) {
+                // 有队伍:全队 ∪ 半径内非队友
+                if (sameTeamAmongEnabledSystems(triggerer, sp) || inRange) targets.add(sp);
+            } else {
+                // 无队伍:无队伍者 ∪ 半径内所有玩家
+                if (inRange || !hasTeam(sp)) targets.add(sp);
+            }
+        }
+        return targets;
+    }
+
     /** 按「已启用的队伍系统」判定同队（与库 {@code EventTargetCollector} 的三开关口径一致）。 */
     private static boolean sameTeamAmongEnabledSystems(Player a, Player b) {
         if (GameplayConstants.EVENT_APPLY_MC_TEAM) {

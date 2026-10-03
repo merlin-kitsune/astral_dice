@@ -93,7 +93,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: merlin-kitsune/starengine_lib
-          ref: e99cb800ba97fb8f0e4861e824fa90f49334fa98   # = 库分支 `fabric-1.20.1` 的 HEAD:三平台 **1.0.7** + fabric 子项目 **1.0.6-alpha.2**
+          ref: f8e765913612848f08bf1e6054c19d270a5a6403   # = 库分支 `fabric-1.20.1` 的 HEAD:三平台 **1.0.8** + fabric 子项目 **1.0.6-alpha.3**
           #   ℹ️ 该提交由 `9640af7` **amend** 而来(仅追加两份库 CHANGELOG 的「定性说明」段,字节码与版本号完全未变)
           #   —— 保持「一个版本号 = 一个提交」;若你看到 `9640af7` 这个旧 SHA,那是 amend 前的形态。
           #   (含 `component/GameplayConstants#CURSED_SWORD_BONUS_MAX` 由 16 上调为 32)。一个 ref 同时满足四条线。
@@ -108,6 +108,10 @@ jobs:
           #   ⚠️ 2026-09-30 修复 CI 失败:旧钉值 `4bea9e7d` 位于 `next` 线上,**其 tree 里根本没有 `fabric-1.20.1` 目录**
           #   ⇒ CI 解析 `:fabric-1.20.1:modImplementation` 时找不到库产物,直接 `Could not resolve all files for configuration` 失败(本地不复现)。
           #   (历史钉值:1.0.3 = e407844;1.0.5 = 4bea9e7d)
+          # ✅ **2026-10-03:现行 ref = `1.0.8`**(库提交 f8e7659 = 「ActionBar 文本位置对齐原版 actionbar
+          #    + 淡出默认 10 tick」;含 `GameplayConstants#ACTIONBAR_FADE_TICKS` 20 → 10)。
+          #    三线 gradle.properties 的 `starengine_lib_version` / `_range` 同步为 `1.0.8` / `[1.0.8,2.0)`;
+          #    fabric 线 `1.0.6-alpha.3` / `>=1.0.6-alpha.3 <2.0`。
           path: .ci/starengine_lib
           fetch-depth: 1
 

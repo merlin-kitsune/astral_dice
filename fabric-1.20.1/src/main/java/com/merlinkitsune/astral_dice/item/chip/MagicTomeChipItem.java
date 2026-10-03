@@ -9,7 +9,6 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 import com.merlinkitsune.astral_dice.item.card.BaseEffectCardItem;
-import com.merlinkitsune.astral_dice.item.card.ExclusiveCardUtil;
 import com.merlinkitsune.astral_dice.item.ModItems;
 
 /**
@@ -37,11 +36,8 @@ public class MagicTomeChipItem extends BaseChipItem {
             // 读回附件中的「最后一张效果牌」记录作为唯一来源(方法参数仅作兜底)
             String lastCardType = ModAttachments.getMagicTomeLastCard(player);
             if (lastCardType == null || lastCardType.isEmpty()) lastCardType = cardType;
-            ItemStack card = BaseEffectCardItem.cardByTypeId(lastCardType);
-            // 复制的专属效果牌绑定获得者
-            if (ExclusiveCardUtil.isExclusive(card)) {
-                ExclusiveCardUtil.setOwner(card, player);
-            }
+            // 复制的专属效果牌由 createCopyFor 统一绑定获得者(单一入口,杜绝漏绑)
+            ItemStack card = BaseEffectCardItem.createCopyFor(lastCardType, player);
             if (!card.isEmpty()) {
                 VitaminPillChipItem.giveCard(player, card);
             }

@@ -91,6 +91,13 @@ public class PlayerTickEvents {
         // (效果自然到期 / 被 /effect clear / 离线到期后重登 / 异常残留,四条路径都走这一条)。
         // 必须放在 tickCount % 20 早退**之前**:漏 tick 就会让"效果已结束而临时牌还在"多挂一拍。
         TemporaryCardUtil.tick(player);
+        // 充能状态图标的可见性(2026-10-03 用户裁决):未装备任何**充能类筹码**时隐藏 HUD 图标,
+        // 装备回筹码后恢复。前置 hasCharge 早退 ⇒ 没有充能的玩家零开销;showIcon 未变时
+        // setIconVisibility 内部直接 return,不会每 tick 重建效果实例。
+        if (ChargeManager.hasCharge(player)) {
+            com.merlinkitsune.astral_dice.effect.ChargeEffect.setIconVisibility(
+                    player, ChargeManager.isChargeChipEquipped(player));
+        }
         // 人偶师立牌(hanna)「幻想千金」/「挚友祝福」:路过友方玩家的判定。
         // 两条被动各有独立的 1:00 冷却 ⇒ 冷却内只读两个 long 即早退,每 tick 调用安全;
         // 放在 % 20 早退**之前**,避免"擦身而过只停留几拍"被 20 tick 采样漏掉。

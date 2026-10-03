@@ -97,6 +97,13 @@ public class PlayerTickEvents {
         // ⚠️ Forge 每 tick 派发 START+END 两次 ⇒ tick 会被调两遍;幂等由「有效果 / 无临时牌即早退」保证
         //    (第二遍在清空后自然早退,不会重复扣 usedCost/usedDefenseCost)。
         TemporaryCardUtil.tick(player);
+        // 充能状态图标的可见性(2026-10-03 用户裁决):未装备任何**充能类筹码**时隐藏 HUD 图标,
+        // 装备回筹码后恢复。前置 hasCharge 早退 ⇒ 没有充能的玩家零开销;showIcon 未变时
+        // setIconVisibility 内部直接 return,不会每 tick 重建效果实例。
+        if (com.merlinkitsune.astral_dice.item.ChargeManager.hasCharge(player)) {
+            com.merlinkitsune.astral_dice.effect.ChargeEffect.setIconVisibility(
+                    player, com.merlinkitsune.astral_dice.item.ChargeManager.isChargeChipEquipped(player));
+        }
         // 人偶师立牌(hanna)「幻想千金」/「挚友祝福」:路过友方玩家的判定。
         // 两条被动各有独立的 1:00 冷却 ⇒ 冷却内只读两个 long 即早退,每 tick 调用安全;
         // 放在 % 20 早退**之前**,避免"擦身而过只停留几拍"被 20 tick 采样漏掉。

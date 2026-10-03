@@ -45,6 +45,29 @@ public final class CurioSlotUtil {
         return false;
     }
 
+    /**
+     * 玩家是否装备了**任一满足条件**的饰品(遍历全部饰品槽)。
+     *
+     * <p>2026-10-03 新增:充能类筹码的装备判定需按「物品类型集合」(10 枚)筛选,而四条线的
+     * Curios 入口各不相同(官方 API / 库 `CuriosCompat` / 模组 `compat.curios`)⇒ 统一收敛到
+     * 本类,调用方(如 {@code ChargeManager})不再直接触碰 Curios API。
+     */
+    public static boolean hasAnyCurioMatching(LivingEntity entity, java.util.function.Predicate<ItemStack> predicate) {
+        var curios = CuriosApi.getCuriosInventory(entity);
+        if (curios.isEmpty()) return false;
+        var curiosMap = curios.get().getCurios();
+        for (var key : curiosMap.keySet()) {
+            var stacks = curiosMap.get(key).getStacks();
+            for (int i = 0; i < stacks.getSlots(); i++) {
+                var s = stacks.getStackInSlot(i);
+                if (!s.isEmpty() && predicate.test(s)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     // 下蹲右键自动装备:将手中物品放入指定饰品栏的第一个空槽位(仅服务端执行)
     public static InteractionResultHolder<ItemStack> tryAutoEquip(Player player, ItemStack stack, String slotId) {
         if (player.level().isClientSide()) {
