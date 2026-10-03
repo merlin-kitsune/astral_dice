@@ -3460,3 +3460,20 @@ brief 内**不喂结论**。结论与处置：
 ### 已知边界（如实记录）
 - `fabric-1.20.1` **未**同步本项（其四件仍计为近战）；守卫已按移植线规则登记为 SKIP。
 - 「非武器工具」按**物品实例**判定（`Items.*`），第三方模组自建的剪刀/钓竿类物品不受影响（仍计入近战）。
+
+
+### 实机验证（2026-10-03，1.21.1 线）
+- 用例 `scripts/test/cases/MELEE-BLACKLIST-1.21.1.json`（八件 × 各一次真实近战命中）
+  ⇒ **PASS**（`MT_CASE_RESULT: MELEE-BLACKLIST-1.21.1 = PASS`，**55/55 断言全 PASS**）。
+- 实机读数（`run/1.21.1/logs/latest.log`）：
+  `AP_SH_BLESS:false`（剪刀）/ `AP_FR_BLESS:false`（钓竿）/ `AP_FS_BLESS:false`（打火石）/
+  `AP_BR_BLESS:false`（刷子）/ `AP_EH_BLESS:false`（空手）/ `AP_SG_BLESS:false`（盾牌）；
+  `AP_SW_BLESS:true`（铁剑）/ `AP_PK_BLESS:true`（铁镐）。
+  ⚠️ 8 条 `HOLD` 行**全部** `before=false` ⇒ 每次测量前赐福确实已清掉、**8 次测量全部有效**
+  （若为 `true` 则该次测量无效 —— 这正是探针把 `before` 打进 `HOLD` 行的用途）。
+- 注入 12 次全部 `MT_INJECT_FOCUS: OK`（含 8 次真实命中）；`AP_*_ERR` / `AP_*_EX:` 零命中。
+- ⚠️ **退出码 1 ≠ 用例失败**：测试台 `SUMMARY.md` 按「轮次世代」记账，把同一世代里 2026-09-27 遗留的
+  6 条陈旧 FAIL 标记一并计入 ⇒ 汇总判 FAIL，而 1.21.1 子报告本身是 ✅ PASS。
+  **判据应看 `MT_CASE_RESULT` / 子报告，不要只看退出码。**
+- ⚠️ 跑法（本次实测）：`--phase stop` 必须带 `--version`；`--case`（= 全流程）需追加 `--allow-auto`
+  放行开关，否则被「批量编排闸门」拦成 `MT_AUTO_DISABLED`。
