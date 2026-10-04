@@ -684,8 +684,6 @@ public class ModTooltipHandler {
             }
             int stacks = ModDataComponents.MISAKI_SIGN_STACKS.getOrDefault(stack, 0);
             addSignCounter(tooltip, "tooltip.astral_dice.sign.misaki_stacks", stacks);
-            // 死亡提示:死亡时丢失全部"剑气"层数
-            addSignNoteLines(tooltip, "tooltip.astral_dice.sign.misaki_death_note");
             addSignCooldownRemaining(tooltip, event.getEntity());
         }
         if (stack.is(ModItems.MIMI_SIGN.get())) {
@@ -984,6 +982,7 @@ public class ModTooltipHandler {
             tooltip.add(Component.empty());
             addChipLines(tooltip, "tooltip.astral_dice.chip.revenge_halberd", ChatFormatting.GRAY);
             if (event.getEntity() != null) {
+                tooltip.add(Component.empty());
                 addChipLines(tooltip, "tooltip.astral_dice.chip.revenge_halberd_current", ChatFormatting.GRAY,
                         "§e+" + RevengeHalberdChipItem.currentAttackBonus(player) + "§7",
                         "§e+" + RevengeHalberdChipItem.currentDefenseBonus(player) + "§7");
@@ -1119,7 +1118,7 @@ public class ModTooltipHandler {
             addSignActiveTitle(tooltip, "活体书页");
             addSignLines(tooltip, "tooltip.astral_dice.sign.rin_active");
             addSignPassiveTitle(tooltip, "调查发现");
-            addSignLines(tooltip, "tooltip.astral_dice.sign.rin_passive", 32);
+            addSignLines(tooltip, "tooltip.astral_dice.sign.rin_passive");
             if (event.getEntity() != null) {
                 int pages = com.merlinkitsune.astral_dice.combat.SpellDamageRegistry.livingPageBonusPages(player);
                 addSignCounter(tooltip, "tooltip.astral_dice.sign.rin_bonus", pages);

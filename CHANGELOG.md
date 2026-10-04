@@ -87,6 +87,16 @@
   "(when loose coins are short it breaks open 1 Star Coin Bag, 9 coins per bag, takes only the coins
   needed and leaves the rest in your inventory, and consumes nothing if they cannot be stored safely)"
   and the damage cap "(up to 100)" - and the text now ends with ", up to 100 damage".
+- **Sign / card tooltip wording and formatting cleanup** (2026-10-04, user decision):
+  - **Investigator Sign**: the active tooltip gains the line "If you have no Living Page in your
+    inventory, gain one extra"; the passive tooltip drops "(wearers within 32 blocks or in your
+    team)" - the passive now follows the **latest event rule** and grants a Living Page whenever you
+    are affected by an event, regardless of distance or party.
+  - **Guardian Sign**: the bottom line "All Sword Qi stacks are lost on death" is removed.
+  - Two formatting inconsistencies fixed along the way: the **Revenge Halberd** chip's current
+    attack / defense line no longer uses a leading newline inside the lang value (the blank line is
+    now added in code, matching every other chip); the **Megas Sign (Orbital Bombardment)** tooltip
+    loses its trailing period (single-line tooltips in this mod do not end with a period).
 
 ### Bug Fixes
 
