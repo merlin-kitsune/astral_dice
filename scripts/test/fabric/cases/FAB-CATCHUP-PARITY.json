@@ -55,8 +55,8 @@
       "ms": 1500
     },
     {
-      "op": "snapshot",
-      "window": "case"
+      "op": "note",
+      "text": "⚠️ **不要在这里加尾部 `snapshot` 步**（2026-10-04 修正）：`window: case` 的起点已由 ft_case 在**用例开始时**冻结；末尾再 snapshot 一次会把起点推到日志末尾 ⇒ 窗口变空 ⇒ 全部 `log` 断言假 FAIL（`hits=0`）。本条曾因该步必然失败，已删除。"
     }
   ],
   "asserts": [

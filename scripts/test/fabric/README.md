@@ -681,7 +681,55 @@ AP_CATCHUP_LEGACY: thr=1073741823 dur0=1200000000 gt_thr=1 ticked=24 dur_after=1
 
 ---
 
-### 7.3 已修复的测试台缺陷（7 个；每个都附实测证据）
+### 7.2.8 Q2 / Q3 实机验证：`/astralcatchup {effremove,medkit}` + `FAB-Q2Q3-INVARIANTS`（2026-10-04 新增）
+
+**要验证的问题**（对应 Q1~Q8 裁决里的 Q2 / Q3，见 `porting/fabric-1.20.1/FABRIC-DIFFS.md` §4.1/§4.2）：
+
+| 项 | 命题 | 判据锚点 |
+|---|---|---|
+| **Q2** | 登录 / 切换维度**不再**触发医疗箱装备治愈（原实现使反复重登 / 反复过门 = 无限刷血） | `PlayerLifecycleHandler#{onPlayerLoggedInClearDiceBlessing,onPlayerChangedDimensionTriggerMedkit}` |
+| **Q3** | 效果移除路径不抛 `CancellationException`，且**拦截能力未被削弱**、库内部通道仍可清 | `ModEffectEvents#onModEffectRemovalPrevented` + `platform/PuzzlesBridges` 的 REMOVE 桥接 |
+
+**做法**：探针新增两个**只读或自恢复**子命令；读数载体仍是 Fabric API 的 `FakePlayer`（零前置、无人连服）：
+
+| 子命令 | 期望机器行（冷启动实测原文） |
+|---|---|
+| `/astralcatchup effremove [player]` | `AP_CATCHUP_EFFREM: absent0=0 fired_absent=0 r_absent=clean absent1=0 present0=1 r_present=clean fired_present=1 kept=1 cleaned=0 cA0=<n> has_at_throw=-1` |
+| `/astralcatchup medkit [player]` | `AP_CATCHUP_MEDKIT: f0=3 p0=7 login=ok flags_login=3 pts_login=7 dim=ok flags_dim=3 pts_dim=7 released_login=0 released_dim=0` |
+
+**`FAB-Q2Q3-INVARIANTS` 结果**：**6/6 PASS**（2026-10-04 冷启动，rc=0；同一会话另有 5 次快连采样全一致）。
+
+**Q3 的两条重要认识（都已写进用例 note，避免被绿灯掩盖）**：
+1. **`fired_absent=0`** ⇒ 目标**没有**该效果时 `MobEffectEvent.Remove` **根本不会派发到桥上**：
+   Puzzles 的注入体（`fuzs.puzzleslib.mixin.LivingEntityFabricMixin#removeEffect`，`javap` 实证）在 `@At("HEAD")`
+   传入的是 `this.getEffect(effect)` —— 无效果时为 `null` ⇒ 命中 `PuzzlesBridges` **2026-09-29 就已存在**的
+   「实例为 null ⇒ 放行」判据。所以 `r_absent=clean` 是**结构性成立**的，Q3 新增的 `hasEffect` 判据在当前调用路径上是
+   **第二道防线**（防将来出现「实例非 null 但效果已不在身上」的调用方），由静态守门 `verify_medkit_and_removal_invariants.py` 的 M2 长期钉住。
+2. 排查途中一度得到自相矛盾的读数（`fired_absent=1` 且 `has_at_throw=0` 且 `r_absent` 抛 `CancellationException`），
+   **根因在探针自身**：探针基线 `p.addEffect(CHARGE, 1200t)` 会经 `ModEffectEvents.onEffectTimerRecord` 在
+   `EffectTimerGuard` 里**留下一条计时记录**；记录残留时，守卫在后续 tick 见到「有记录、无效果」就会
+   **把效果重新施加回来**（`EffectTimerGuard#tick` 的 `inst == null` 分支）⇒ 「效果不存在」这一支被悄悄破坏。
+   **控制实验**：加一行 `EffectTimerGuard.forget(p, "astral_dice:charge")` 后，同一节奏（快连 6 次 + 间隔 40 s + 用例）**7/7 全稳**。
+   ⇒ **探针纪律**：**凡是会 `addEffect` 本模组效果的探针，收尾必须清掉 `EffectTimerGuard` 记录**，否则读数非确定。
+
+**跑法**：
+
+```powershell
+pwsh -NoProfile -File scripts/test/fabric/ft_env.ps1 --side server --enable-rcon
+pwsh -NoProfile -File scripts/test/fabric/ft_env.ps1 --side server --install-probe astral_catchup_probe.js
+# ⚠️ KubeJS 只在冷启动加载脚本；且启动这一步**不要**用 `*>>` 捕获（见 §7.3/D8）
+pwsh -NoProfile -File scripts/test/fabric/ft.ps1 --phase launch --side server
+pwsh -NoProfile -File scripts/test/fabric/ft_case.ps1 run --case scripts/test/fabric/cases/FAB-Q2Q3-INVARIANTS.json
+pwsh -NoProfile -File scripts/test/fabric/ft_stop.ps1 --side server --purge-saves
+```
+
+**静态对偶（可与运行时独立复跑）**：`python tools/verify_medkit_and_removal_invariants.py`
+—— M1 钉住「登录 / 切维度处理器**不得**再引用 `triggerMedkitOnEquip` / `refreshMedkitEquipSession`、重生与 `onEquip` **必须**引用」（四线 × 4 项），
+M2 钉住 fabric 的两条 `hasEffect` 早退判据。期望 `GATE: PASS (22 项)`；已做**反证测试**（注入旧调用 → 精确 FAIL，还原 → PASS）。
+
+---
+
+### 7.3 已修复的测试台缺陷（9 个；每个都附实测证据）
 
 前两个是**阻断级**：只要有它们，`ft_launch` **每一次启动都必然失败**，连带 env/launch 之后的一切
 （在线读数、命令注入、全部用例）统统不可用 —— 这就是「测试流程完全不可用」的根因。
@@ -788,6 +836,33 @@ AP_CATCHUP_LEGACY: thr=1073741823 dur0=1200000000 gt_thr=1 ticked=24 dur_after=1
   （与日志读取**同一条**共享读写实现）。教训：**同一类问题要收敛到同一套原语** —— D2 修好之后
   没顺手把「读文件」这件事收敛成一个入口，才有了 D7。
 
+
+#### D8 `pwsh -File … --phase launch *>> <日志>` **永不返回** ⇒ launch 之后的一切都没跑（2026-10-04 实测，**三次一致**）
+
+- **现象（本轮真实踩到）**：编排命令写成
+  `pwsh -NoProfile -File scripts/test/fabric/ft_launch.ps1 --side server *>> $log`（或 `ft.ps1 --phase launch … *>> $log`）时，
+  `$log` 里能看到 `AP_FAB_LAUNCH: OK`、甚至 `AP_FAB_PHASE: launch rc=0`，但**脚本自身永不继续**：
+  下一句 `"launch rc=…"`、再后面的 `=== case ===` 与用例**一行都不会出现**，看起来像「case 阶段卡住 20 分钟无输出」。
+- **根因**：`*>>` 是**管道重定向**，它要等「写端句柄全部关闭」才结束；而被启动的**游戏进程**从
+  gradle → dev-launch-injector 一路继承了这条管道（Fabric 的 dev 启动器会 `inheritIO`）⇒ 只要游戏还活着，管道就不关，
+  父进程就一直挂着。**这不是游戏没起来，而是重定向语义与「孵化常驻进程」天然冲突**（与 D6/D7 同族，但落在**调用方**）。
+- **判据（一眼分辨）**：`AP_FAB_PHASE: launch rc=0` 已出现，但紧随其后的**调用方自己的 echo 行没有出现** ⇒ 就是它。
+- **修法（编排口径，已写进本节）**：把**常驻启动**与**后续步骤**拆成两次工具调用 ——
+  ① 启动放**保活的后台任务**里（末尾 `Start-Sleep` 一段，让本台脚本的「孵化即返回」语义与宿主「命令返回即清理进程树」共存）；
+  ② 注入 / 断言 / 用例走**独立的前台调用**（RCON 是网络通道，不依赖同一进程树）。
+  ⚠️ 反过来，`ft_build / ft_env / ft_stop / ft_inject / ft_assert / ft_case / ft_dispatchreport` 都**不孵化常驻进程**，可以照旧用 `*>>`。
+
+#### D9 用例里 `window: case` 时**末尾再写 `snapshot` 步** ⇒ 窗口被清空、全部 `log` 断言假 FAIL（2026-10-04 实测）
+
+- **现象**：`FAB-CATCHUP-PARITY`（`window: case`）末尾有一 `{"op":"snapshot","window":"case"}`；
+  改用它跑 `ft_case.ps1 run` 时，两条 `log` 断言全部 `ok=false hits=0`，而同一日志里**明明有**那两行读数。
+- **根因**：`Save-FtSnapshot` 记录的是**窗口起点**（`Ft.Common.psm1#Save-FtSnapshot` → `.ft_offsets.json`），
+  `Get-FtLogWindow -Window case` = 「**自最近一次** `snapshot --window case` 起」。
+  ⇒ 末尾再 snapshot 一次等于把起点推到**日志末尾**，窗口随即变空，之前写进去的读数全被排除。
+- **为什么之前没被发现**：另三条用例用的是 `window: whole`（整文件），尾部 snapshot 对它们**无害**；
+  只有 `window: case` 的用例才会中招 —— 而它此前只被**手工逐条注入**验过、**没有真的跑过 `ft_case run`**。
+- **修法**：`window: case` 的用例**不要写尾部 snapshot**（起点已由 `ft_case` 在用例开始时冻结）；
+  `FAB-CATCHUP-PARITY` 与 `FAB-Q2Q3-INVARIANTS` 均已按此修（改为一条 `note` 说明，避免后人再加回来）。
 
 ### 7.4 仍未实跑 / 仍未覆盖
 

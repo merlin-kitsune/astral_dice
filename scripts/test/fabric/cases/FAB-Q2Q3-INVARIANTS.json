@@ -1,0 +1,61 @@
+{
+  "case_id": "FAB-Q2Q3-INVARIANTS",
+  "title": "Q2/Q3 实机断言：登录/切维度不再触发医疗箱装备治愈（装备闸门与治愈点均不被改动）+ 效果移除路径不抛 CancellationException／拦截能力未被削弱／内部通道仍可清。",
+  "side": "server",
+  "window": "case",
+  "on_fail": "keep_game_running",
+  "steps": [
+    {
+      "op": "note",
+      "text": "判据依据（2026-10-04，**纯 dev 服务端冷启动 + RCON 实跑取数**）：\n · 探针 scripts/test/fabric/astral_catchup_probe.js 新增两个子命令（均**只读或自恢复**）：\n     /astralcatchup effremove [player]   ← Q3\n     /astralcatchup medkit    [player]   ← Q2\n   装探针：`ft_env.ps1 --side server --install-probe astral_catchup_probe.js`，⚠️ **必须冷启动**\n   （`/kubejs reload server_scripts` 不会取到新文件内容 —— 实测：重载后仍执行旧版脚本）。\n · 读数载体 = Fabric API 自带 `net.fabricmc.fabric.api.entity.FakePlayer` ⇒ **不需 Carpet、无人连服**。\n\n【Q3 判据】fabric 侧「阻止效果移除」的落地方式是 Puzzles 的 `EventResult.INTERRUPT`，其注入体\n （`fuzs.puzzleslib.mixin.LivingEntityFabricMixin#removeEffect`，javap 实证）是\n   ① `MOB_EFFECT_REMOVE.invoker().onMobEffectRemove(this, this.getEffect(effect))`\n   ② `if (result.isInterrupt()) cir.setReturnValue(false)`\n 而 Mixin 的 `CallbackInfoReturnable.setReturnValue` 内部会调 `CallbackInfo.cancel()`（javap 实证），\n 若该注入不可取消即抛 `CancellationException: The call … is not cancellable`。\n ⇒ 本模组的自设锚点（`platform/PuzzlesBridges` 的 REMOVE 桥接）必须满足两条：\n   ① 目标**已无该效果** ⇒ 放行（本次 Q3 新增的第二道防线）\n   ② 目标**有该效果** ⇒ 照旧拦截（不得把已有能力削掉）\n\n【Q2 判据】原实现把**每次登录 / 每次过门**都当成「新的装备会话」\n（`refreshMedkitEquipSession` 释放闸门 + `triggerMedkitOnEquip` 完整触发一次治愈）\n ⇒ 反复重登 / 反复过门可**无限刷血**（满 32 层时一次 64 点），属影响平衡性的恶性缺陷（FATAL）。\n ⇒ 本次**删除**这两个处理器里的调用；装备触发点收敛为两处：①筹码真的被装上（`onEquip`）\n   ②**死亡重生后**（`PlayerRespawnEvent`）。\n 判别性来自 `released_login` / `released_dim`：修复**前**投递事件即释放闸门（=1）；\n 修复**后**必须 =0，且 `pts_login==p0`、`pts_dim==p0`（治愈点一分不动）。\n\n📌 2026-10-04 冷启动实测读数（真实日志原文，4 次 effremove + 2 次 medkit 全一致）：\n  AP_CATCHUP_EFFREM: absent0=0 r_absent=clean fired_absent=0 absent1=0 present0=1 r_present=clean fired_present=1 kept=1 cleaned=0\n  AP_CATCHUP_MEDKIT: f0=3 p0=7 login=ok flags_login=3 pts_login=7 dim=ok flags_dim=3 pts_dim=7 released_login=0 released_dim=0\n\n⚠️ **诚实边界（不得被本用例的绿灯掩盖）**：\n  · `fired_absent=0` 说明「目标无该效果」时 `MobEffectEvent.Remove` **根本没有派发到桥上**\n    —— 因为 Puzzles 注入在 HEAD 传入的是 `getEffect(effect)`（无效果时为 `null`），\n    命中 `PuzzlesBridges` **2026-09-29 就已有**的「实例为 null ⇒ 放行」判据。\n    ⇒ 本用例的 `r_absent=clean` 是**结构性成立**的（不是 Q3 新增判据的效果）；\n      Q3 新增的 `hasEffect` 判据在当前调用路径上是**第二道防线**（防未来出现\n      “实例非 null 但效果已不在身上”的调用方），已由静态守门\n      `tools/verify_medkit_and_removal_invariants.py` 的 M2 长期钉住。\n  · 本用例**不覆盖**「装了医疗箱之后的重登回血数值」—— FakePlayer 无法伪造 Curios 装备\n    （筹码栏需先佩戴骰子、`findFirstCurio` 依赖饰品后端）。属人工实机项（Q4 口径：真人玩家进世界）。\n  · 曾观察到**一次**（非冷启动：在 `/kubejs reload server_scripts` 热重载之后的一次调用里）\n    `r_absent` 抛 `CancellationException`；同一会话随后 5 次、以及冷启动 4 次均未复现。\n    已按「观察项（非已确认缺陷）」登记，冷启动会话下不可复现。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralcatchup effremove",
+      "channel": "rcon"
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralcatchup medkit",
+      "channel": "rcon"
+    },
+    {
+      "op": "wait",
+      "ms": 1200
+    },
+    {
+      "op": "note",
+      "text": "⚠️ 本用例**刻意不写尾部 `snapshot` 步**：`window: case` 的起点由 ft_case 在**用例开始时**冻结（`Save-FtSnapshot`），若末尾再 snapshot 一次会把起点推到日志末尾 ⇒ 窗口变空、全部 `log` 断言假 FAIL。既有 `FAB-CATCHUP-PARITY` 就是踩了这个坑（同批已修）。"
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "pattern": "AP_CATCHUP_EFFREM: absent0=0 fired_absent=0 r_absent=clean absent1=0 present0=1 r_present=clean fired_present=1 kept=1 cleaned=0"
+    },
+    {
+      "type": "log",
+      "pattern": "AP_CATCHUP_MEDKIT: f0=3 p0=7 login=ok flags_login=3 pts_login=7 dim=ok flags_dim=3 pts_dim=7 released_login=0 released_dim=0"
+    },
+    {
+      "type": "absent",
+      "pattern": "AP_CATCHUP_ERR:"
+    },
+    {
+      "type": "absent",
+      "pattern": "AP_CATCHUP_MISS:"
+    },
+    {
+      "type": "absent",
+      "pattern": "Unknown or incomplete command|Unknown command"
+    },
+    {
+      "type": "crash"
+    }
+  ],
+  "evidence": []
+}

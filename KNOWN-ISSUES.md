@@ -31,6 +31,10 @@
 
   **不计入「未修缺陷」**；数值 26 = **23 条未修/未决 + 3 条已修待实机**。
 - ⚠️ **2026-10-04**：**KI-E3 已闭环**（三把守门脚本纳入 `fabric-1.20.1`，实测 0 违规）⇒ 按 §0 第 4 条已移入 §1.1 索引。
+- ⚠️ **2026-10-04（Q1~Q8 批次）**：**KI-G2 已闭环**（用户裁决「撤掉重登 / 切维度两个触发点」，四线同批落地；
+  实机用例 `FAB-Q2Q3-INVARIANTS` 6/6 + 静态守门 M1 四线 22 项）⇒ 未修/未决 **26 → 25**（G 组 1 → 0）。
+  同时 **KI-F25② 重新定性为「探针假象、非产品缺陷」**（决定性取证见 F 组该条）⇒ 其「待定缺陷」不再计入未修缺陷；
+  该条目保留，检查项 **①/③/④/⑤** 仍然有效（⑤为本次新增的探针纪律）。
 
 ## 1.1 已处理索引（2026-10-01 首次清理）
 
@@ -608,10 +612,10 @@ GlCommandEncoder.trySetup(:531) ← GlCommandEncoder.executeDraw(:406) ← GlRen
   `msg.astral_dice.*` 键（动作栏会直接显示原始键名）。修法与判据见 `TESTING-SPEC.md` 附录 A 续 46 §A。
 
 
-### KI-F25 ＝ 探针/KubeJS 侧三条实测陷阱 + 一处待定缺陷（2026-10-04 新增 —— fabric 追平探针首跑发现）
+### KI-F25 ＝ 探针/KubeJS 侧五条实测陷阱（2026-10-04 新增 —— fabric 追平探针首跑发现；②已在同日结案）
 
 > 来源：1.20.1 Fabric 追平批的实机断言（`scripts/test/fabric/astral_catchup_probe.js` / `cases/FAB-CATCHUP-PARITY.json`，
-> 见 `scripts/test/fabric/README.md` **§7.2.7**）。四条**互不相关**，但都会让探针**静默失败或误判**。
+> 见 `scripts/test/fabric/README.md` **§7.2.7 / §7.2.8**）。五条**互不相关**，但都会让探针**静默失败或误判**。
 
 - ① **KubeJS 各 `server_scripts` 共享同一全局作用域** ⇒ 探针脚本必须整体包 **IIFE**（或给每个顶层名加唯一前缀）。
   实测：`astral_catchup_probe.js` 与同目录既有的 `astral_gs_probe.js` 都定义了顶层 `guard` / `out` / `exText`
@@ -620,20 +624,31 @@ GlCommandEncoder.trySetup(:531) ← GlCommandEncoder.executeDraw(:406) ← GlRen
   而**本探针一行都不输出**（静默失败 ⇒ 极易被误判成「产品功能没生效」）。
 - ② **清效果必须走库内部通道 `ModEffectRemoval.remove(player, effect)`**：本模组拦截 `astral_dice:` 效果的
   **外部**移除（牛奶 / `/effect clear` / 裸 `removeEffect`）—— 这是**设计**（见 `event/ModEffectEvents#onModEffectRemovalPrevented`）。
-  ⚠️ **副作用（待定缺陷）**：当目标效果**并不存在**时，裸 `removeEffect` 实测会向调用方抛
-  `CancellationException: The call removeEffect is not cancellable`（`org.spongepowered.asm.mixin.injection.callback`）
-  —— 即「拦截器取消了某个**未被声明为可取消**的回调」。**影响面小**（原版与 mod 自身都先判存在性、或走内部通道），
-  但**值得一次决定性复现**：拿一个带 `astral_dice:` 效果的玩家，依次走 **① 裸 `removeEffect`（效果不存在）**、
-  **② `/effect clear`**、**③ 喝牛奶** 三条路径，看是否抛/是否被静默拦下。
+  ✅ **2026-10-04 结案：原记的「裸 `removeEffect` 在效果不存在时抛 `CancellationException`」是探针假象，不是产品缺陷。**
+  **决定性取证**（`FAB-Q2Q3-INVARIANTS`，冷启动）：① 目标**确实没有**该效果时，`LoaderBus` 的 `Remove` 派发计数**不变**
+  （`fired_absent=0`）⇒ 事件**根本没走到桥上** —— 因为 Puzzles 的注入体（`fuzs.puzzleslib.mixin.LivingEntityFabricMixin#removeEffect`）
+  在 `@At("HEAD")` 传入的是 `this.getEffect(effect)`（无效果时为 `null`）⇒ 命中 `PuzzlesBridges` **2026-09-29 就已有**的
+  「实例为 null ⇒ 放行」判据；② 该子命令的**异常读数**只在「探针自己留下的 `EffectTimerGuard` 记录把效果重新施加回来」时出现
+  （见第 ⑤ 条）。⇒ **按「非产品缺陷」从「未修缺陷」中移出**；Q3 的代码改动（两侧各加一条「目标已无该效果 ⇒ 放行」判据）
+  保留为**第二道防线**，由静态守门 `tools/verify_medkit_and_removal_invariants.py` 的 M2 钉住。
 - ③ **Rhino 不允许反射 JDK `Class` 的成员**：`SomeClass.getDeclaredMethod(...)` 直接报
   `InternalError: Java class "…" has no public instance field or method named "getDeclaredMethod"`
   ⇒ 探针**不能**用「直调私有方法」做单元级断言，只能读**公开常量 / 公开方法**。
+  （补充：KubeJS 的类过滤同样不放行 `java.lang.Thread` ⇒ 探针里 `Java.loadClass("java.lang.Thread")` 返回 `null`，
+   拿不到线程名；实验后已从读数中移除该字段。）
 - ④ **正向能力（仍需记一笔边界）**：**Fabric API 自带 `net.fabricmc.fabric.api.entity.FakePlayer`**
   （在 `fabric-events-interaction-v0` 模块里；判据 = 该模块 jar 内含 `net/fabricmc/fabric/api/entity/FakePlayer.class`）
   ⇒ fabric 侧探针可**零前置、无人值守**取得 `ServerPlayer`，**不必再手工投放 Carpet**。
   ⚠️ 但 `FakePlayer` **不进世界的 tick 循环**（实测手动 `p.tick()` 24 次也不触发 `PlayerTickEvents`）
   ⇒ 凡依赖「玩家级每 N tick」的行为（如 `normalizeLegacyInfiniteDurations`）**无法**用它端到端断言，
   仍须带真人玩家 / 客户端进世界。
+- ⑤ **探针凡是 `addEffect` 本模组效果，收尾必须清掉 `EffectTimerGuard` 记录**（2026-10-04 实测踩坑，**新**）：
+  探针的基线 `p.addEffect(...)` 会经 `ModEffectEvents.onEffectTimerRecord` 在 `EffectTimerGuard` 里留下一条计时记录；
+  **记录残留**时，守卫在后续 tick 见到「有记录、无效果」就会**把效果重新施加回来**
+  （`EffectTimerGuard#tick` 的 `inst == null` 分支）⇒ 「效果不存在」这一支被悄悄破坏，读数变成非确定。
+  **控制实验**：加一行 `EffectTimerGuard.forget(p, "astral_dice:charge")` 后，同一节奏（快连 6 次 + 间隔 40 s + 用例）**7/7 全稳**；
+  未加时 6 次里出现过 1 次（且症状自相矛盾：`fired_absent=1` 而 `has_at_throw=0`）。
+  ⇒ **纪律**：探针里对 `astral_dice:*` 效果的 `addEffect` 之后、或整条命令收尾处，**必须**显式 `forget`。
 
 ## 10. G 组 — 游戏内内容与获取途径（2026-10-01 重建）
 
@@ -641,7 +656,19 @@ GlCommandEncoder.trySetup(:531) ← GlCommandEncoder.executeDraw(:406) ← GlRen
 > 获取途径缺失、池子漏项、文案与实际不符等。处置口径 = **先登记、后由用户裁决**；
 > 改动前必须确认「这是不是有意的设计取舍」。
 
-### KI-G2 ＝ 医疗箱筹码的「重登 / 切维度触发」可被反复利用（**用户裁决的必然推论；只登记，未改**）
+### KI-G2 ＝ 医疗箱筹码的「重登 / 切维度触发」可被反复利用（**2026-10-04 用户裁决：彻底封堵 ⇒ 已闭环**）
+
+> ✅ **2026-10-04 处置（用户裁决，见 `porting/fabric-1.20.1/FABRIC-DIFFS.md` §4.2 的 Q2）**：
+> 采取「**撤掉这两个时点**」方案并**四线同批落地** —— 删除 `PlayerLoggedInEvent` 与 `PlayerChangedDimensionEvent`
+> 处理器里的 `refreshMedkitEquipSession + triggerMedkitOnEquip`（四线各 2 处）⇒ 装备触发点收敛为**两个**：
+> ①筹码真的被装上（`onEquip`）②**死亡重生后**（`PlayerRespawnEvent`）。
+> 定性：**影响平衡性 ⇒ 恶性缺陷（FATAL），不得妥协或绕过**；已写入 `AGENTS.md`「平衡性红线」节。
+> 验证：实机用例 `FAB-Q2Q3-INVARIANTS`（`AP_CATCHUP_MEDKIT`，6/6 PASS；判据 = 投递登录 / 切维度事件后
+> **装备闸门与治愈点均被动过 ⇒ `released_login=0 released_dim=0` 且 `pts_*==p0`**）
+> + 静态守门 `tools/verify_medkit_and_removal_invariants.py` 的 M1（四线 × 4 项）。
+> ⚠️ 仍未覆盖：装上真医疗箱之后的重登**回血数值**（FakePlayer 无法伪造 Curios 装备）⇒ 属人工实机项（Q4 口径）。
+>
+> 以下为**闭环前**的原始登记（保留以便追溯「为什么必须封堵」）：
 
 - **背景**：2026-10-01 用户裁决医疗箱筹码在**四个时点**各完整触发一次治愈（加点 → 按当前层数×2 回血 →
   起/重置 1:00 计时器），其中包含「**重新登录后**」与「**切换维度后**」（筹码仍在槽位）。
@@ -706,3 +733,4 @@ GlCommandEncoder.trySetup(:531) ← GlCommandEncoder.executeDraw(:406) ← GlRen
 | 2026-10-04 | **1.20.1 Forge 端两项用户实报缺陷修复（KI-F5 结案 + 新增常驻时长归一）**：① **通用标签命名空间写错** —— `forge-1.20.1` 的 `datagen/ModRecipeProvider` 照搬 NeoForge 侧的 `c:bricks`，而 1.20.1 Forge **只提供 `forge:` 命名空间、没有任何 `c:` 标签的提供者** ⇒「对怪板砖」配方材料永不可满足、**彻底无法合成**（开包实证：旧 jar 内既无 `data/c/tags/items/bricks.json` 也无 `data/forge/tags/...`，配方却写 `"tag": "c:bricks"`）。修法 = 配方改用 `forge:bricks` + 本模组自建 `src/main/resources/data/forge/tags/items/bricks.json`（= `#forge:ingots/brick` ∪ `#forge:ingots/nether_brick`；Forge 47.4.10 实测自带这两条、**无汇总 `forge:bricks`**，`Tags$Items` 亦无 `BRICKS` 常量）⇒ 与 NeoForge `c:bricks` 语义等价。**只改 Forge 端**（NeoForge 两线用自带 `c:bricks`、Fabric 线用其自建 `c:bricks`）。② **常驻效果在 Forge 端仍显示超长倒计时** —— 子代理在整合包存档中取到决定性证据：`astral_dice:charge Duration=2147482289`（旧版 `Integer.MAX_VALUE` 的递减产物，界面显示 `29826:08:34` 而非 `∞`）⇒ 根因是 1.3.4 的「常驻效果统一 ∞」**只改了施加点**，存量实例不会被任何既有路径修正（`EffectTimerGuard.record()` 对 `>= INFINITE_THRESHOLD` 的值直接跳过 ⇒ 不登记 ⇒ 永不校正；`tick()` 只遍历已登记条目且只写有限值；各施加点只在重新获得/消耗/切换装备时走到）。修法 = 三线 `PlayerTickEvents` 新增 `normalizeLegacyInfiniteDurations`（每秒一次，把**本模组**效果里 `duration >= Integer.MAX_VALUE/2` 的实例改写为 `-1`，只改时长、保留层数/粒子/图标位；判据用超长阈值而非效果清单 ⇒ 本模组最大合法有限时长 24000 tick（`RenShieldManager` 护盾 / 抗性刷新窗口;其余 ≤ 3600）、相差约 4.6 个数量级，双态效果 2400 tick 亦不受影响）。**验证**：三线 `build` SUCCESSFUL 且产物落地（实测 jar 内 `PlayerTickEvents` 含新方法、forge jar 含新标签文件、配方 JSON 已为 `forge:bricks`）；三线 jar 时间戳一致并已自动推送至各自整合包。 ⚠️ **未做**：进世界的视觉确认（∞ 是否如期显示）。⚠️ **Fabric 线未同步本批**（按其「独立批次」口径）。 |
 | 2026-10-04 | **KI-E3 结案 + fabric 剩余 5 项待办全部完成**（同一批）：① 三守门脚本的 `LINES` 纳入 `fabric-1.20.1`（`tools/audit_mixin_injection.py` / `tools/audit_actionbar.py` / `tools/check_lang_sync.ps1`），纳入前先修掉它暴露的真实滞后 —— 11 个 `msg.astral_dice.*` 键 × 三语的值内嵌 `§`（对齐三项 P0 线）+ `client/TargetSelectionClient#notifyHeldSelectorBlocked` 由裸 `displayClientMessage(...,true)` 改走库 `ActionBarManager.show(..., RED)`；实测三脚本 **硬违规 0 / PASS / exit=0**。② **Modern UI 提示框边框兼容**（取证 Fabric 版 `ModernUI-Fabric-1.20.1-3.12.0.1`，字段与 P0 同名同型）⇒ 新增 `client/ModernUITooltipCompat` + `ClientTooltipBridgeMixin` 的 HEAD/RETURN 接线 + `ModCommonConfig` 开关（`CONFIG_VERSION` 5→6）。③ **近战黑名单四项**（剪刀/钓竿/打火石/刷子）。④ `DiceCombatEvents#onLivingDamagePre` 的计时器启表口径**对齐 P0**（前移 + `source.getEntity()`）。⑤ 新增 **fabric 追平探针** `scripts/test/fabric/astral_catchup_probe.js`（`/astralcatchup`，用 Fabric API 自带 `FakePlayer` ⇒ 零前置、无人值守）+ 用例 `FAB-CATCHUP-PARITY`。§1 计数 26 → **25**（E 组 3 → 2）。 |
 | 2026-10-04 | **新增 KI-F25**（fabric 追平探针首跑发现：KubeJS 共享全局作用域 ⇒ 探针须 IIFE；清 `astral_dice:` 效果须走库内部通道、裸调在效果不存在时抛 `CancellationException`；Rhino 禁反射 JDK `Class`；Fabric API 自带 `FakePlayer` 可零前置但**不进 tick 循环**）。§1 计数 25 → 26（F 组 7 → 8）。 |
+| 2026-10-04 | **Q2 / Q3 实机验证完成（KI-G2 结案；KI-F25② 撤回为探针假象）**：① **Q2**（医疗箱「重登 / 切维度」可刷血）按用户裁决**撤掉两个触发点**并四线同批落地；实机用例 `FAB-Q2Q3-INVARIANTS` **6/6 PASS**（新探针子命令 `/astralcatchup medkit`，判据 = 投递两个平台事件后**装备闸门与治愈点均不被改动**：`released_login=0 released_dim=0`、`pts_*==p0`；同一会话 5 次采样一致）+ 静态守门 `tools/verify_medkit_and_removal_invariants.py` **M1 四线 22 项 PASS（含反证测试）**。② **Q3**（裸 `removeEffect` 抛 `CancellationException`）经决定性取证**撤回为探针假象**：冷启动下 `fired_absent=0` ⇒ 效果不存在时 `MobEffectEvent.Remove` **根本不派发**（Puzzles 注入传 `getEffect(effect)` = null，命中 2026-09-29 既有的 null 放行判据）；原异常只在「探针自己留下的 `EffectTimerGuard` 记录把效果重新施加回来」时出现，加 `forget` 后 7/7 全稳（控制实验）。Q3 代码改动保留为第二道防线（守门 M2）。③ 同时修掉**两个测试台缺陷**：`*>>` 捕获 `--phase launch` 会因游戏进程继承管道而**永不返回**（此前「case 阶段卡住」的真因）⇒ README §7.3/D8；`window: case` 的用例末尾再 `snapshot` 会**清空窗口**导致全部 `log` 断言假 FAIL ⇒ README §7.3/D9（`FAB-CATCHUP-PARITY` 同批已修）。④ 探针新增纪律：凡是 `addEffect` 本模组效果的探针**必须** `EffectTimerGuard.forget` 收尾（KI-F25⑤）。§1 计数 26 → **25**（G 组 1 → 0；F25② 不再计入未修缺陷）。 |

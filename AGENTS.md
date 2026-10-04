@@ -532,7 +532,13 @@ When extending this workspace:
 - **连带义务**（四件套，缺一不可）：(a) `KNOWN-ISSUES.md` 条目结案；(b) `porting/` 差异清单状态更新；
   (c) 玩家侧 CHANGELOG（玩家可感知时）；(d) 若存在可自动化的核对手段，**一并加入守门脚本**。
 - **历史判例**：`KI-G2` 医疗箱「重登 / 切维度反复白刷回血」→ 2026-10-04 封堵；
-  `KI-F8` 手册档位词与代码稀有度不符 → 2026-10-04 对齐（并新增守门 `tools/verify_rarity_consistency.py`）。
+  `KI-F8` 手册档位词与代码稀有度不符 → 2026-10-04 对齐（并新增守门 `tools/verify_rarity_consistency.py`）；
+  `Q2/Q3` 批次 → 新增守门 **`tools/verify_medkit_and_removal_invariants.py`**
+  （M1 四线：登录 / 切维度处理器**不得**再引用 `triggerMedkitOnEquip` / `refreshMedkitEquipSession`、
+  重生与 `onEquip` **必须**引用；M2 fabric：两侧各一条 `hasEffect` 早退判据。期望 `GATE: PASS (22 项)`）。
+  ⚠️ **注意运行时判据与静态判据的分工**：有些「已修」项在**当前调用路径上不可达**（如 Q3 的 `hasEffect` 判据 ——
+  Puzzles 注入传的是 `getEffect(effect)`，无效果时为 `null` ⇒ 先命中既有的 null 放行判据），
+  这类改动只能靠**静态守门**长期钉住、不能靠运行时读数证明 ⇒ 结案时**必须写明「哪一条读数有判别力、哪一条只是结构性成立」**。
 
 ## 模组依赖添加规则(统一口径,1.20.1 + 1.21.1)— 必须遵守
 

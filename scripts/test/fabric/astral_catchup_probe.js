@@ -30,6 +30,10 @@
 //    /astralcatchup range  [player]              射程两段夹取：无加成 / 书页射程 / 上限夹取
 //    /astralcatchup conc   [player]              隐匿：clean / apply / break 三态
 //    /astralcatchup legacydur [player]           常驻时长归一：造 12e8 tick → 直调归一 → 读 -1
+//    /astralcatchup effremove [player]           **Q3**：效果移除拦截契约（无效果→放行 / 有效果→拦截 /
+//                                                 LoaderBus 直投事件判「是否被取消」/ 内部通道可清）
+//    /astralcatchup medkit    [player]           **Q2**：登录 / 切维度**不再**触发医疗箱装备治愈
+//                                                 （投递两个平台事件 → 读装备闸门与治愈点是否被动过）
 //
 //  ── 判据形状（机器行）──────────────────────────────────────────────────────
 //    AP_CATCHUP_ENV:    rin=1 conc=1 maxrad=64 melee=1 concbreak=1 range=1 thr=1073741823
@@ -37,6 +41,15 @@
 //    AP_CATCHUP_RANGE:  max=64 noeff=32 waneff=48 clamp=64 zero=0
 //    AP_CATCHUP_CONC:   before=0 applied=1 broke=0
 //    AP_CATCHUP_LEGACY: thr=1073741823 dur0=1200000000 gt_thr=1 ticked=24 dur_after=-1 amp=5 ext=<…> ext_kept=1
+//    AP_CATCHUP_EFFREM: absent0=0 fired_absent=0 r_absent=clean absent1=0 present0=1 r_present=clean
+//                       fired_present=1 kept=1 cleaned=0 cA0=<n> has_at_throw=-1
+//                       （`fired_absent` = 裸 removeEffect 前后 `Remove` 事件派发次数差值；
+//                         `has_at_throw` = 抛出 CancellationException 时该效果**是否已在身上**）
+//                       ⚠️ 本子命令跑完后**必须**保证计时守卫无残留记录，否则读数会非确定：
+//                          实测症状 = `fired_absent=1` 且 `has_at_throw=0` 且 `r_absent` 抛
+//                          `CancellationException`（守卫把记录的效果重新施加回来造成的假象）。
+//    AP_CATCHUP_MEDKIT: f0=3 p0=7 login=ok flags_login=3 pts_login=7 dim=ok flags_dim=3 pts_dim=7
+//                       released_login=0 released_dim=0
 //    AP_CATCHUP_ERR:    tag=<t> ex=<…>            （任何异常都落这一行，便于断言 absent）
 //
 //  ── 与产品代码的对应关系（判据锚点，改动请同步）────────────────────────────
@@ -65,6 +78,23 @@
   var PlayerTickEvents = Java.loadClass("com.merlinkitsune.astral_dice.event.PlayerTickEvents");
   var ModEffectRemoval = Java.loadClass("com.merlinkitsune.starenginelib.event.ModEffectRemoval");
   var EffectTimerGuard = Java.loadClass("com.merlinkitsune.astral_dice.event.EffectTimerGuard");
+
+  // ── Q2 / Q3 验证专用（2026-10-04）────────────────────────────────────────
+  //   Q3 = 「效果移除拦截」在**目标已无该效果**时不得再走「阻止移除」路径
+  //        （fabric 侧该路径 = Puzzles `EventResult.INTERRUPT`，注入点不可取消时抛
+  //         `CancellationException: The call removeEffect is not cancellable`）。
+  //   Q2 = 「登录 / 切换维度」**不再**触发医疗箱装备治愈（可被反复重登无限刷血）。
+  //   ⇒ 两者都能用「把平台事件直接投进 LoaderBus」的方式在**无人值守**下拿到判别性读数。
+  var PlayerLoggedInEvent = Java.loadClass(
+      "com.merlinkitsune.astral_dice.platform.event.entity.player.PlayerEvent$PlayerLoggedInEvent");
+  var PlayerChangedDimensionEvent = Java.loadClass(
+      "com.merlinkitsune.astral_dice.platform.event.entity.player.PlayerEvent$PlayerChangedDimensionEvent");
+  var PlayerRespawnEvent = Java.loadClass(
+      "com.merlinkitsune.astral_dice.platform.event.entity.player.PlayerEvent$PlayerRespawnEvent");
+  var LoaderBus = Java.loadClass("com.merlinkitsune.astral_dice.platform.event.LoaderBus");
+  var ModAttachments = Java.loadClass("com.merlinkitsune.astral_dice.component.ModAttachments");
+  var HealingManager = Java.loadClass("com.merlinkitsune.astral_dice.item.HealingManager");
+  var LevelCls = Java.loadClass("net.minecraft.world.level.Level");
 
   function out(key, text) {
       console.info("AP_CATCHUP_" + key + ": " + text);
@@ -186,6 +216,139 @@
       return 1;
   }
 
+  // ══════════════ effremove：Q3 效果移除拦截契约（2026-10-04）══════════════
+  //   判据（判别性来自「目标**无**该效果」那一支）：
+  //     absent0=0            进入判别支前确实没有该效果
+  //     fired_absent=1       裸 removeEffect **把 Remove 事件派发到了桥上**
+  //                          （LoaderBus 派发计数差值；=1 说明桥回调被触发过）
+  //     has_at_throw=-1      未抛异常时为 -1；若抛了，该值 = **抛出时该效果是否已在身上**
+  //     r_absent=clean       裸 removeEffect（效果不存在）**不抛异常**   ← Q3 修复点
+  //     absent1=0            调用后仍然没有该效果（无副作用）
+  //     present0=1           装上后确实有
+  //     fired_present=1      同上（事件确实派发）
+  //     r_present=clean      裸 removeEffect（效果存在）不抛异常
+  //     kept=1               ……且**被拦截**（效果仍在）—— 拦截能力未被削弱
+  //     cleaned=0            库内部通道 `ModEffectRemoval` 仍可清（契约未被破坏）
+  function doEffRemove(ctx, p) {
+      var eff = ModEffects.CHARGE.get();
+
+      function tryBareRemove() {
+          try { p.removeEffect(eff); return "clean"; }
+          catch (e) { return exText(e).replace(/[\s]+/g, "_").substring(0, 200); }
+      }
+      // 派发计数：证明「目标本就没有该效果」的移除**也真的走到了桥上**。
+      //   `LoaderBus#dispatchReport()` 的「已派发」段形如 `… Remove=12 …`
+      //   （`MobEffectEvent$Remove` 的 `getSimpleName()` = `Remove`）。
+      //   ⇒ 裸 removeEffect 前后的差值 > 0 = 桥回调真的被触发过（而不是「事件根本没派发」）。
+      function removeCount() {
+          try {
+              var rep = LoaderBus.INSTANCE.dispatchReport();
+              var m = rep.match(/(?:^| )Remove=(\d+)/);
+              return m ? parseInt(m[1], 10) : -1;
+          } catch (e) { return -1; }
+      }
+      function delta(a, b) { return (a < 0 || b < 0) ? -1 : (b - a); }
+
+      // 基线：先让 `Remove` 至少派发过一次（否则它落在报告里是「无 =n」的未派发段）
+      p.addEffect(new MobEffectInstance(eff, 1200, 0, false, true, true));
+      ModEffectRemoval.remove(p, eff);
+      // ⚠️ 必须顺手**清掉计时守卫的记录**（2026-10-04 实测踩坑）：上面那次 addEffect 会经
+      //    `ModEffectEvents.onEffectTimerRecord` 在 `EffectTimerGuard` 里留下一条 CHARGE 计时记录；
+      //    若记录残留，守卫在后续 tick 见到「有记录、无效果」就会**把效果重新施加回来**
+      //    （`EffectTimerGuard#tick` 的 `inst == null` 分支）⇒ 目标身上会**凭空出现** CHARGE，
+      //    让「效果不存在」这一支的读数变得非确定（实测：间隔数十秒再跑时会命中该支）。
+      try { EffectTimerGuard.forget(p, "astral_dice:charge"); } catch (e) { }
+
+      // ① 目标身上**没有**该效果（Q3 的判别支）
+      var absent0 = p.hasEffect(eff) ? 1 : 0;
+      var cA0 = removeCount();
+      var rAbsent = "clean";
+      var hasAtThrow = -1;
+      try {
+          p.removeEffect(eff);
+      } catch (e) {
+          rAbsent = exText(e).replace(/[\s]+/g, "_").substring(0, 200);
+          // ⚠️ 关键诊断：抛出时该效果**是不是已经在身上**。
+          //    若 =1 ⇒ 说明这次移除根本不是「无效移除」，而是**有该效果**时被拦截
+          //    （Puzzles 的 `cir.setReturnValue(false)` → Mixin `CallbackInfo.cancel()`
+          //     在该注入不可取消时抛 `CancellationException`）。
+          try { hasAtThrow = p.hasEffect(eff) ? 1 : 0; } catch (e2) { hasAtThrow = -2; }
+      }
+      var cA1 = removeCount();
+      var absent1 = p.hasEffect(eff) ? 1 : 0;
+      var firedAbsent = delta(cA0, cA1);
+
+      // ② 目标身上**有**该效果（对照组：拦截能力必须仍在）
+      p.addEffect(new MobEffectInstance(eff, 1200, 0, false, true, true));
+      var present0 = p.hasEffect(eff) ? 1 : 0;
+      var cP0 = removeCount();
+      var rPresent = tryBareRemove();
+      var cP1 = removeCount();
+      var kept = p.hasEffect(eff) ? 1 : 0;
+      var firedPresent = delta(cP0, cP1);
+
+      // ③ 库内部通道仍可清（契约）
+      ModEffectRemoval.remove(p, eff);
+      var cleaned = p.hasEffect(eff) ? 1 : 0;
+
+      out("EFFREM", "absent0=" + absent0 + " fired_absent=" + firedAbsent + " r_absent=" + rAbsent
+          + " absent1=" + absent1 + " present0=" + present0 + " r_present=" + rPresent
+          + " fired_present=" + firedPresent + " kept=" + kept + " cleaned=" + cleaned
+          + " cA0=" + cA0 + " has_at_throw=" + hasAtThrow);
+      return 1;
+  }
+
+  // ══════════════ medkit：Q2 登录/切维度不再触发医疗箱治愈（2026-10-04）══════
+  //   判别性：`HealingManager.refreshMedkitEquipSession`（释放装备触发闸门）**只**被
+  //   登录 / 切维度处理器调用（`clear()` 另有一处）。修复前：这两个事件一投递，闸门就被
+  //   释放（`flags_login=0`），下一拍 Curios 重放 onEquip ⇒ `triggerMedkitOnEquip` 申领成功
+  //   ⇒ **又加一次治愈点并按层数×2 回血** ⇒ 反复重登 / 过门 = 无限刷血。
+  //   修复后：两个事件都不再触碰闸门与治愈点。
+  //     判据：released_login=0 且 released_dim=0，且 pts_login==p0、pts_dim==p0。
+  //   ⚠️ 本探针在 Fabric API 的 FakePlayer 上跑，**无法伪造 Curios 装备**（筹码栏需要先佩戴骰子，
+  //      且 `findFirstCurio` 依赖饰品后端）⇒ 这里断言的是**回归被删掉的那两个调用**本身，
+  //      而不是「装了医疗箱之后回血数值」。后者属人工实机项。
+  function doMedkit(ctx, p) {
+      var F_E = HealingManager.GRANT_BIT_MEDKIT_EMERGENCY;
+      var F_C = HealingManager.GRANT_BIT_MEDKIT_COMPLETE;
+      var ALL = F_E | F_C;
+      function flags() { return ModAttachments.getMedkitEquipGrantFlags(p); }
+      function pts() { return ModAttachments.getHealingPoints(p); }
+      function post(ev) {
+          try { LoaderBus.INSTANCE.post(ev); return "ok"; }
+          catch (e) { return exText(e).replace(/[\s]+/g, "_").substring(0, 70); }
+      }
+
+      // 造一个「装备会话进行中」的状态：闸门已申领、治愈点 = 7
+      ModAttachments.setMedkitEquipGrantAmounts(p, 0);
+      ModAttachments.setHealingPoints(p, 7);
+      ModAttachments.setMedkitEquipGrantFlags(p, ALL);
+      var f0 = flags();
+      var p0 = pts();
+
+      // ① 登录事件
+      var rLogin = post(new PlayerLoggedInEvent(p));
+      var fLogin = flags();
+      var pLogin = pts();
+
+      // ② 切换维度事件（ResourceKey<Level> 取原版常量）
+      var rDim = post(new PlayerChangedDimensionEvent(p, LevelCls.OVERWORLD, LevelCls.NETHER));
+      var fDim = flags();
+      var pDim = pts();
+
+      out("MEDKIT", "f0=" + f0 + " p0=" + p0
+          + " login=" + rLogin + " flags_login=" + fLogin + " pts_login=" + pLogin
+          + " dim=" + rDim + " flags_dim=" + fDim + " pts_dim=" + pDim
+          + " released_login=" + (fLogin !== f0 ? 1 : 0)
+          + " released_dim=" + (fDim !== f0 ? 1 : 0));
+
+      // 复位（只读原则的落点：不把测试状态留给世界）
+      ModAttachments.setHealingPoints(p, 0);
+      ModAttachments.setMedkitEquipGrantFlags(p, 0);
+      ModAttachments.setMedkitEquipGrantAmounts(p, 0);
+      return 1;
+  }
+
   ServerEvents.commandRegistry(event => {
       const { commands: Commands } = event;
       event.register(
@@ -225,6 +388,22 @@
                           var p = resolvePlayer(ctx, StringArg.getString(ctx, "player"));
                           if (p == null) { out("MISS", "legacydur player not found"); return 0; }
                           return doLegacyDur(ctx, p);
+                      }))))
+              .then(Commands.literal("effremove")
+                  .executes(ctx => guard("effremove", function () { return doEffRemove(ctx, resolvePlayer(ctx, "")); }))
+                  .then(Commands.argument("player", StringArg.word())
+                      .executes(ctx => guard("effremove", function () {
+                          var p = resolvePlayer(ctx, StringArg.getString(ctx, "player"));
+                          if (p == null) { out("MISS", "effremove player not found"); return 0; }
+                          return doEffRemove(ctx, p);
+                      }))))
+              .then(Commands.literal("medkit")
+                  .executes(ctx => guard("medkit", function () { return doMedkit(ctx, resolvePlayer(ctx, "")); }))
+                  .then(Commands.argument("player", StringArg.word())
+                      .executes(ctx => guard("medkit", function () {
+                          var p = resolvePlayer(ctx, StringArg.getString(ctx, "player"));
+                          if (p == null) { out("MISS", "medkit player not found"); return 0; }
+                          return doMedkit(ctx, p);
                       }))))
       );
   });

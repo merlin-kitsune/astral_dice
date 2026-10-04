@@ -116,7 +116,7 @@
 |---|---|---|---|---|
 | **Q1** | 两立牌均设为「奇特」、不得出现差异 | **四线**（手册三语文案；代码稀有度本就一致） | `hanna_sign.3` / `sherry_sign.3` 档位词 → `奇特档` / `Bizarre tier` / `ビザール段階`（四线 × 三语 = 24 处）；代码 `.rarity(AstralRarities.bizarre())` 四线已一致（已核对） | 守门 C1 全绿；四线三语无 `稀有档/史诗档/Rare tier/Epic tier/レア段階/エピック段階` 残留 |
 | **Q2** | 彻底封堵漏洞 + 写入 AGENTS 红线 | **四线** | 删除「登录 / 切换维度 = 新装备会话」的 `refreshMedkitEquipSession + triggerMedkitOnEquip`（四线各 2 处）⇒ 装备触发点收敛为**两个**：①真的装上筹码 ②死亡重生后；`AGENTS.md` 新增「平衡性红线」节（FATAL 定性 / 不得绕过 / 四件套连带义务） | 反复重登 / 反复过门**不再**产生治愈点或回血；死亡重生仍触发一次 |
-| **Q3** | 直接修复，不做额外讨论或绕过 | **fabric** | `event/ModEffectEvents#onModEffectRemovalPrevented` 增「目标已无该效果 ⇒ 放行」；`platform/PuzzlesBridges` 的 REMOVE 桥接同判据（不派发事件、不返回 `EventResult.INTERRUPT`）⇒ **正面语义修复**（不存在的效果无需拦截，也就不会走到不可取消的路径） | 裸 `removeEffect`（效果不存在）/ `/effect clear` / 牛奶 三条路径均不再抛 `CancellationException`；**存在时仍照旧拦截** |
+| **Q3** | 直接修复，不做额外讨论或绕过 | **fabric** | `event/ModEffectEvents#onModEffectRemovalPrevented` 增「目标已无该效果 ⇒ 放行」；`platform/PuzzlesBridges` 的 REMOVE 桥接同判据（不派发事件、不返回 `EventResult.INTERRUPT`）⇒ **正面语义修复**（不存在的效果无需拦截，也就不会走到不可取消的路径） | 裸 `removeEffect`（效果不存在）/ `/effect clear` / 牛奶 三条路径均不再抛 `CancellationException`；**存在时仍照旧拦截**（实测：**已通过**，见 §4.3；⚠️ 原记的「不存在时抛异常」经取证**撤回为探针假象**，本改动改按**第二道防线**保留） |
 | **Q4** | 按主线处理方式解决 | **fabric 测试资产** | 采用主线口径 = **真人玩家 / 客户端进世界**取证（不用 `FakePlayer` 的 tick 采样捷径） | 玩家级每-N-tick 类行为（如 `normalizeLegacyInfiniteDurations`）取得端到端读数 |
 | **Q5** | 授权自动化测试、测试环境无需保留存档 | **测试环境** | 允许销毁存档的通道（`ft_prod.ps1 -AcknowledgeQuickPlayDestructive` 等）；测试世界可重建 | 用例可无人值守跑完并出 PASS/FAIL 结论 |
 | **Q6** | 同步修改对应手册内容 | **fabric**（对齐主流三线） | 删除 fabric 多出的 `special_effects` **第 6 页** + 三语 `guide.entry.special_effects.6` 键 ⇒ 与另三线一致（5 页 / 无该键） | 四线 `special_effects.json` 均 5 页；四线三语均无 `.6` 键（守门 C3 覆盖） |
@@ -126,6 +126,24 @@
 **Q8 触发方式**：手动 `python tools/verify_rarity_consistency.py`（支持 `-v` 明细）；
 **建议**纳入「守门三处」清单与 CI 构建后步骤（与 `verify_fabric_assets.py` / `verify_party_api.py` 同批跑）。
 退出码：`0` 通过 / `1` 存在缺陷 / `2` 无法判定（缺 jar 等）。
+
+### 4.3 Q2 / Q3 的验证结果（2026-10-04，实机 + 静态双轨）
+
+> 用例 `scripts/test/fabric/cases/FAB-Q2Q3-INVARIANTS.json`（**6/6 PASS**，冷启动，rc=0）；
+> 探针子命令 `/astralcatchup {effremove,medkit}`（`scripts/test/fabric/astral_catchup_probe.js`，见 fabric README §7.2.8）。
+
+| 项 | 实机读数（原文） | 结论 |
+|---|---|---|
+| **Q2** | `AP_CATCHUP_MEDKIT: f0=3 p0=7 login=ok flags_login=3 pts_login=7 dim=ok flags_dim=3 pts_dim=7 released_login=0 released_dim=0` | ✅ **通过**：投递 `PlayerLoggedInEvent` / `PlayerChangedDimensionEvent` 后，医疗箱装备闸门（`f0=3 → flags_*=3`）与治愈点（`p0=7 → pts_*=7`）**一分不动** ⇒ 两个时点确实不再触发；同一会话 5 次采样一致 |
+| **Q3** | `AP_CATCHUP_EFFREM: absent0=0 fired_absent=0 r_absent=clean absent1=0 present0=1 r_present=clean fired_present=1 kept=1 cleaned=0 cA0=<n> has_at_throw=-1` | ✅ **通过（口径已更正）**：`kept=1` ⇒ 有该效果时**仍被拦截**；`r_absent/r_present=clean` ⇒ 两条路径均不抛异常；`cleaned=0` ⇒ 库内部通道可清；`fired_absent=0` ⇒ 效果不存在时事件**根本不派发**（Puzzles 注入传 `null` ⇒ 命中 2026-09-29 既有的 null 放行判据），故本条**不是 Q3 新增判据的功劳**，新判据是**第二道防线** |
+
+⚠️ **Q3 的一条更正（必须记住）**：登记于 `KNOWN-ISSUES` 的「裸 `removeEffect` 在效果**不存在**时抛 `CancellationException`」
+经决定性取证**撤回为探针假象** —— 异常只在「探针自己留下的 `EffectTimerGuard` 记录把效果重新施加回来」时出现
+（控制实验：加 `EffectTimerGuard.forget` 后 7/7 全稳）。详见 `KNOWN-ISSUES.md` KI-F25②/⑤。
+
+⚠️ **仍未覆盖（如实标注）**：Q2 的「装上真医疗箱之后的重登**回血数值**」未做 —— `FakePlayer` 无法伪造 Curios 装备
+（筹码栏需先佩戴骰子、`findFirstCurio` 依赖饰品后端）⇒ 属人工实机项（Q4 口径：真人玩家进世界）。
+Q4 / Q5 的状态见 fabric README §7.4 与 `KNOWN-ISSUES` KI-F25④ / KI-F21-①。
 
 ---
 
