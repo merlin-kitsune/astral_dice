@@ -153,8 +153,12 @@ public class PlayerLifecycleHandler {
         com.merlinkitsune.astral_dice.item.sign.TeruSignItem.onOwnerRelogin(player);
         // 医疗箱筹码:重新登录视为「新的装备会话」⇒ 先释放闸门再触发一次(闸门保证与
         // Curios 的重放二选一,不会触发两次)。
-        HealingManager.refreshMedkitEquipSession(player);
-        HealingManager.triggerMedkitOnEquip(player);
+        // ⚠️ 2026-10-04 Q2 封堵:登录 / 切换维度**不再**触发医疗箱装备治愈 ——
+        //    原实现(refreshMedkitEquipSession + triggerMedkitOnEquip)把每次登录 / 过门都当成
+        //    「新的装备会话」⇒ 可被**反复重登 / 反复过门无限刷血**(层数满 32 时一次 64 点回血),
+        //    属**影响平衡性的恶性缺陷**(FATAL 级)⇒ 按用户裁决彻底封堵、不得妥协。
+        //    装备触发点现仅两处:①筹码真的被装上(onEquip);②**死亡重生后**(PlayerRespawnEvent;
+        //    死亡时 clear() 已释放闸门,重生再申领一次)⇒ 登录 / 过门都无需也不应再触发。
         // 重连后刷新治愈体系(上限收缩/效果显示;赐福边沿 prev 标记初始 false,不会误触发减半)
         HealingManager.tick(player);
         // 首次加入世界赠送《恋的规则书》(开关见 common 配置)
@@ -188,8 +192,12 @@ public class PlayerLifecycleHandler {
             PlayerEvent.PlayerChangedDimensionEvent event) {
         if (!(event.getEntity() instanceof Player player)) return;
         if (player.level().isClientSide()) return;
-        HealingManager.refreshMedkitEquipSession(player);
-        HealingManager.triggerMedkitOnEquip(player);
+        // ⚠️ 2026-10-04 Q2 封堵:登录 / 切换维度**不再**触发医疗箱装备治愈 ——
+        //    原实现(refreshMedkitEquipSession + triggerMedkitOnEquip)把每次登录 / 过门都当成
+        //    「新的装备会话」⇒ 可被**反复重登 / 反复过门无限刷血**(层数满 32 时一次 64 点回血),
+        //    属**影响平衡性的恶性缺陷**(FATAL 级)⇒ 按用户裁决彻底封堵、不得妥协。
+        //    装备触发点现仅两处:①筹码真的被装上(onEquip);②**死亡重生后**(PlayerRespawnEvent;
+        //    死亡时 clear() 已释放闸门,重生再申领一次)⇒ 登录 / 过门都无需也不应再触发。
     }
 
     // 筹码栏位对账(2026-09-17):登录 / 数据包同步 / 复活克隆后按当前佩戴的骰子重算尺寸。

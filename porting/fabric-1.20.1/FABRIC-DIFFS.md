@@ -110,6 +110,23 @@
 > 复算/取证入口：`tools/verify_fabric_assets.py`、`tools/verify_party_api.py`、
 > `scripts/test/fabric/{ft.ps1,ft_prod.ps1}`、`scripts/test/fabric/cases/FAB-CATCHUP-PARITY.json`。
 
+### 4.2 处置结果（2026-10-04 用户裁决；Q1~Q8 **已全部落地**）
+
+| # | 用户裁决 | 修复范围 | 落地内容 | 验收标准 |
+|---|---|---|---|---|
+| **Q1** | 两立牌均设为「奇特」、不得出现差异 | **四线**（手册三语文案；代码稀有度本就一致） | `hanna_sign.3` / `sherry_sign.3` 档位词 → `奇特档` / `Bizarre tier` / `ビザール段階`（四线 × 三语 = 24 处）；代码 `.rarity(AstralRarities.bizarre())` 四线已一致（已核对） | 守门 C1 全绿；四线三语无 `稀有档/史诗档/Rare tier/Epic tier/レア段階/エピック段階` 残留 |
+| **Q2** | 彻底封堵漏洞 + 写入 AGENTS 红线 | **四线** | 删除「登录 / 切换维度 = 新装备会话」的 `refreshMedkitEquipSession + triggerMedkitOnEquip`（四线各 2 处）⇒ 装备触发点收敛为**两个**：①真的装上筹码 ②死亡重生后；`AGENTS.md` 新增「平衡性红线」节（FATAL 定性 / 不得绕过 / 四件套连带义务） | 反复重登 / 反复过门**不再**产生治愈点或回血；死亡重生仍触发一次 |
+| **Q3** | 直接修复，不做额外讨论或绕过 | **fabric** | `event/ModEffectEvents#onModEffectRemovalPrevented` 增「目标已无该效果 ⇒ 放行」；`platform/PuzzlesBridges` 的 REMOVE 桥接同判据（不派发事件、不返回 `EventResult.INTERRUPT`）⇒ **正面语义修复**（不存在的效果无需拦截，也就不会走到不可取消的路径） | 裸 `removeEffect`（效果不存在）/ `/effect clear` / 牛奶 三条路径均不再抛 `CancellationException`；**存在时仍照旧拦截** |
+| **Q4** | 按主线处理方式解决 | **fabric 测试资产** | 采用主线口径 = **真人玩家 / 客户端进世界**取证（不用 `FakePlayer` 的 tick 采样捷径） | 玩家级每-N-tick 类行为（如 `normalizeLegacyInfiniteDurations`）取得端到端读数 |
+| **Q5** | 授权自动化测试、测试环境无需保留存档 | **测试环境** | 允许销毁存档的通道（`ft_prod.ps1 -AcknowledgeQuickPlayDestructive` 等）；测试世界可重建 | 用例可无人值守跑完并出 PASS/FAIL 结论 |
+| **Q6** | 同步修改对应手册内容 | **fabric**（对齐主流三线） | 删除 fabric 多出的 `special_effects` **第 6 页** + 三语 `guide.entry.special_effects.6` 键 ⇒ 与另三线一致（5 页 / 无该键） | 四线 `special_effects.json` 均 5 页；四线三语均无 `.6` 键（守门 C3 覆盖） |
+| **Q7** | 在库侧进行修补 | **库 `starengine_lib`** | **核实结论：已修且已发布**（提交 `006e824`，随 `1.0.11`）：`EventTargetCollector$Ftb` 用 `getTeamForPlayerID(UUID)` / `getKnownPlayer(UUID)`，`$Opac` 用 `xearo.pac…OpenPACServerAPI`；错误目标 `getTeamForPlayer(Player)` 与 `dev.darkhax.opac.*` **已消失**（jar 字节码核对）。本批无需再改库 | 守门 C2 对**消费方当前 pin 版本**的库 jar 核对通过 |
+| **Q8** | 加入自动化核对机制 | **新增守门** | 新增 `tools/verify_rarity_consistency.py`：**C1** 手册档位词 ↔ 代码稀有度（四线）、**C2** 库侧反射契约（pin 版本库 jar）、**C3** 手册引用 ↔ lang 键 双向。已做**反证测试**（注入反例 → 精确 FAIL，还原 → PASS） | 四线全跑 `exit=0`；反例能被报出（非死门禁） |
+
+**Q8 触发方式**：手动 `python tools/verify_rarity_consistency.py`（支持 `-v` 明细）；
+**建议**纳入「守门三处」清单与 CI 构建后步骤（与 `verify_fabric_assets.py` / `verify_party_api.py` 同批跑）。
+退出码：`0` 通过 / `1` 存在缺陷 / `2` 无法判定（缺 jar 等）。
+
 ---
 
 ## 5. 平台适配要点（写代码时必须遵守 — 速查）
