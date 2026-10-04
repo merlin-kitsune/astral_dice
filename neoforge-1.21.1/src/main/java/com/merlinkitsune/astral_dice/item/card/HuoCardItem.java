@@ -1,11 +1,14 @@
 package com.merlinkitsune.astral_dice.item.card;
 
 import com.merlinkitsune.astral_dice.component.ModAttachments;
+import com.merlinkitsune.astral_dice.combat.DamageNumberAggregator;
+import com.merlinkitsune.astral_dice.combat.DiceCombatEvents;
 import com.merlinkitsune.astral_dice.damage.ModDamageTypes;
 import com.merlinkitsune.astral_dice.effect.MisfortuneEffect;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.starenginelib.target.TargetType;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
@@ -83,7 +86,15 @@ public class HuoCardItem extends BaseEffectCardItem {
         // 对敌对目标造成 1 点伤害:真伤类型(直接伤害实体为空 ⇒ 不会被当成玩家的直接攻击重走命中判定),
         // 击杀归属仍记在施放者身上(与「战斗爽·溅射」同一形状,见 damage/ModDamageTypes#trueDamage(Level,Entity))。
         if (applyTo != null && applyTo.isAlive()) {
-            applyTo.hurt(ModDamageTypes.trueDamage(level, user), DAMAGE);
+            // 2026-10-04 用户裁决：本牌伤害类型由「真伤」改为**法术伤害**（astral_dice:card_spell）——
+            // 与「活体书页」同一条链 ⇒ 完整跑法伤修饰器（忍术飞镖 / 贯穿之铳 / 标记喷罐 / 魔法箭袋 等）。
+            // ⚠️ 持有代价「厄运」的每 2:00 周期伤害**保持真伤不变**（见 applyCurseDamage）：
+            //    那是玩家自身的有害代价，不属于本牌对目标的伤害。
+            DamageSource huoSource = ModDamageTypes.cardSpell(level, user);
+            // 跳数字：不自行发包，登记组别后由 DamageNumberAggregator 取终值
+            DamageNumberAggregator.tag(applyTo, huoSource, DamageNumberAggregator.Group.SPELL);
+            // 法术伤害源 getEntity() 仍指施放者 ⇒ 必须走「内部波及结算窗口」，否则会被当成玩家直接攻击重走骰战
+            DiceCombatEvents.runAsInternalAoe(() -> applyTo.hurt(huoSource, DAMAGE));
             // 命中音效（2026-09-27 用户裁决）：与活体书页同一分档口径，在**被击中位置**播放
             playHitSound(applyTo.level(), applyTo, (int) DAMAGE);
         }

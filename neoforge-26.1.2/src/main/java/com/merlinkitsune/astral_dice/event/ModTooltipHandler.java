@@ -367,22 +367,17 @@ public class ModTooltipHandler {
         }
     }
 
-    // 效果牌 tooltip:当前周期已激活伤害效果牌的总伤害加成
+    // 效果牌 tooltip：当前周期已激活伤害效果牌的**远程 / 魔法增伤**汇总。
+    //
+    // ⚠️ 2026-10-04 用户裁决：四张伤害效果牌（对怪激光 / 对怪板砖 / 轨道炮 / 定向爆破）的「增伤能力」已整体移除
+    //    —— 它们改为「目标选择器 + FX 命中时点结算的法术伤害」（见 combat/DamageCardFxScheduler），
+    //    不再附着到其它远程 / 魔法伤害上；活体书页自 2026-09-25 起同样不再提供「效果期间的被动法伤加成」。
+    //    ⇒ 本汇总**当前恒为 0**。方法骨架与调用点保留（便于日后恢复任一增伤来源），
+    //    但在**无加成时不显示该行**，避免 tooltip 里出现「远程和魔法伤害提升：0」。
+    //    ⚠️ 恢复来源时在此累加 bonus 即可；不要再去读已经停用的 monster_laser 等效果（isActive 恒 false）。
     private static void addActiveDamageBonusTooltip(List<Component> tooltip, Player p) {
-        if (p == null) {
-            tooltip.add(tt("tooltip.astral_dice.card.active_damage_bonus", "?")
-                    .withStyle(ChatFormatting.GRAY));
-            return;
-        }
         int bonus = 0;
-        // 伤害效果牌统一加成 = 忍者立牌「效果牌伤害增益」+ 书签筹码(见 SpellDamageRegistry.effectCardDamageBonus)
-        int cardBonus = com.merlinkitsune.astral_dice.combat.SpellDamageRegistry.effectCardDamageBonus(p);
-        if (p.hasEffect(ModEffects.MONSTER_LASER)) bonus += 4 + cardBonus;
-        if (p.hasEffect(ModEffects.MONSTER_BRICK)) bonus += 6 + cardBonus;
-        if (p.hasEffect(ModEffects.ORBITAL_STRIKE)) bonus += 8 + cardBonus;
-        if (p.hasEffect(ModEffects.DIRECTIONAL_BLAST)) bonus += 5 + cardBonus;
-        // 活体书页不再提供「效果期间的被动法伤加成」(2026-09-25 重写):其伤害是一次**命中结算**,
-        // 不再叠加到其它远程/魔法伤害上 ⇒ 本行不再计入,否则会把一次性命中当成全周期增益重复显示。
+        if (bonus <= 0) return;
         tooltip.add(tt("tooltip.astral_dice.card.active_damage_bonus", bonus)
                 .withStyle(ChatFormatting.GRAY));
     }
@@ -1254,7 +1249,10 @@ public class ModTooltipHandler {
                     ? com.merlinkitsune.astral_dice.combat.SpellDamageRegistry.effectCardDamageBonus(p) : 0;
             tooltip.add(Component.empty());
             // 组件基础色为灰(普通文本);行内颜色码:数值=黄 §e、时间=蓝 §9
-            tooltip.add(Component.translatable(tooltipKey, baseDamage + effectCardBonus)
+            // ⚠️ 数值必须走 tt(...)（String.format 之后整串包成**一个** literal）—— 否则数值参数会作为
+            // 继承父样式的**兄弟组件**出现，行内 §e 只覆盖它前面的文本 ⇒ 数字显示为灰色。
+            // （2026-10-04 修复：与「活体书页」同款写法；见 AGENTS「行内数值染色必须走 tt(...)」。）
+            tooltip.add(tt(tooltipKey, baseDamage + effectCardBonus)
                     .withStyle(ChatFormatting.GRAY));
             addEffectCardPlayCountTooltip(tooltip, player);
             addActiveDamageBonusTooltip(tooltip, player);

@@ -750,6 +750,18 @@ GlCommandEncoder.trySetup(:531) ← GlCommandEncoder.executeDraw(:406) ← GlRen
 - **相关文档**：`AGENTS.md`「治愈流派规范 → 医疗箱筹码」；两份 `CHANGELOG` 的 `1.3.6`；
   `scripts/test/TESTING-SPEC.md` 附录 A 续 44。
 
+### KI-G3 ＝ 「对怪板砖」FX 的 `BlockDisplay` 实体在**非正常关服**时的残留风险（**只登记，未改**）
+
+- **现象**：`combat/DamageCardFxScheduler` 的「大号砖头」用原版 `Display.BlockDisplay` 承载
+  （原版砖块贴图 + 放大 1.35 倍，经 NBT 装配 ⇒ **无需 AT / AW**，`Display` 的 setter 三线都是 private）。
+  该实体是**普通实体**、随区块保存 ⇒ 若服务器在砖头飞行的约 0.5 秒窗口内**崩溃 / 强杀**，或正常关服时
+  恰在飞行中，重启后世界里会留下一个**静止的浮空砖块**。
+- **已做的缓解**：命中 / 目标失效 / `MAX_AGE_TICKS(400)` / 结算异常**四条路径**都会 `discard()`；
+  `view_range=2.0` 且 0.5 秒内即被移除 ⇒ 正常流程不会残留。
+- **为什么只登记未改**：彻底消除需要「启动期扫描并清理带标记实体」（新增事件挂钩 × 四线）
+  或整体改成纯粒子实现；两者都超出本次范围。
+- **建议**：若实机看到残留，用 `/kill @e[type=block_display]` 清理，并按上述两条路线之一修补。
+
 ## 11. 变更记录
 
 | 日期 | 变更 |
@@ -790,3 +802,4 @@ GlCommandEncoder.trySetup(:531) ← GlCommandEncoder.executeDraw(:406) ← GlRen
 | 2026-10-01 | **新增 KI-F23（dev 环境启动阻断）**：Loom 1.14.10 重映射第三方 mod 时剥离 `fabric.mod.json` 的 `jars` 声明 ⇒ 本线 dev 里 Puzzles Lib / Accessories / Patchouli / Cloth Config / KubeJS 全部起不来（`HARD_DEP_NO_CANDIDATE` 与连续两条 `NoClassDefFoundError`）。判定链：原始产物有 `jars` / 重映射后 `jars=None` 而文件本体仍在且仍是 intermediary / 移走整棵缓存重新生成结果逐字相同（⇒ 确定行为，非缓存陈旧）；命中面 8 个 jar，其中 7 个内嵌库 id 在 classpath 上不存在。缓解 = 新增 `tools/loom_embedded_jars.py`（按 id 去重后投放到 `run/<side>/mods/`，靠 Loom 的 `fabric.remapClasspathFile` 运行时重映射生效）+ `ft_env.ps1 --install-embedded` 开关；§1 计数 25 → 26（F 组 6 → 7） |
 | 2026-10-01 | **KI-E3 扩项**：该覆盖缺口不止 `audit_mixin_injection` —— `tools/check_lang_sync.ps1` 与 `tools/audit_actionbar.py` 同样只登记三线（fabric 的 lang / 动作栏变更须人工核验） |
 | 2026-10-02 | 发布前审计处置：`KI-F20` **整块移出**（三面已全部闭环，证据见 §1.1）→ 移入 §1.1 索引；**新增 `KI-F24`**（fabric 移植线两处内容缺口 / 结构分叉，此前无登记）；§1 补澄清「26 = 23 条未修 + 3 条已修待实机」；顺带修掉 fabric 两个动作栏语言键缺失（见 `TESTING-SPEC.md` 附录 A 续 46 §A） |
+| 2026-10-04 | **四张伤害效果牌整体重做（对怪激光 / 对怪板砖 / 轨道炮 / 定向爆破）**：增伤能力移除（修饰器骨架与效果注册保留、`isActive` 恒 false）、改目标选择器（`TargetType.CREATURE`）、新增 FX 且伤害**延迟到 FX 命中时点才结算**（唯一执行器 `combat/DamageCardFxScheduler`，四线各一份）、新增 5 条音效 + 重写 1 条；符卡-祸改法术伤害；顺带修掉四张牌 tooltip 的数值染色缺陷。**新增 KI-G3**（砖头 FX 的 `BlockDisplay` 在非正常关服时的残留风险，只登记未改）。版本 `.22 → .23`。 |

@@ -8,7 +8,7 @@ import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
 /**
- * 本模组自定义音效的**注册表**（10 条）。
+ * 本模组自定义音效的**注册表**（15 条）。
  *
  * <p>每条音效由两部分组成，缺一不可：
  * <ol>
@@ -34,11 +34,16 @@ import net.neoforged.neoforge.registries.DeferredRegister;
  *   coin1.wav                     -> coin_bag_withdraw
  *   boost_effect_card_use.wav     -> boost_effect_card_use
  *   effect_card_use.wav           -> effect_card_use
- *   hit_normal.wav                -> damage_effect_card_hit
- *   hit_bighit.wav                -> damage_effect_card_bighit
+ *   damage_effect_card_hit.wav    -> damage_effect_card_hit
+ *   damage_effect_card_bighit.wav  -> damage_effect_card_bighit
  *   skill_use.wav                 -> skill_use
  *   glass_dice_broken.wav         -> glass_dice_broken
  *   megas_blast.wav               -> megas_blast
+ * effect_card_use1.wav          -> damage_effect_card_cast
+ * laser.wav                     -> monster_laser_hit
+ * brick_hit.wav                 -> monster_brick_hit
+ * laser_big.wav                 -> orbital_strike_hit
+ * blast.wav                     -> directional_blast_hit
  * </pre>
  */
 public final class ModSounds {
@@ -55,10 +60,10 @@ public final class ModSounds {
     /** 取钱：取出**星币袋**（单个或全部）。源素材 {@code coin1.wav}。 */
     public static final DeferredHolder<SoundEvent, SoundEvent> COIN_BAG_WITHDRAW = register("coin_bag_withdraw");
 
-    /** 活体书页命中目标，本次伤害 **&lt; 8**。源素材 {@code hit_normal.wav}。 */
+    /** 活体书页命中目标，本次伤害 **&lt; 8**（符卡-祸命中亦用本音）。源素材 {@code damage_effect_card_hit.wav}（2026-10-04 重写）。 */
     public static final DeferredHolder<SoundEvent, SoundEvent> DAMAGE_EFFECT_CARD_HIT = register("damage_effect_card_hit");
 
-    /** 活体书页命中目标，本次伤害 **&gt;= 8**。源素材 {@code hit_bighit.wav}。 */
+    /** 活体书页命中目标，本次伤害 **&gt;= 8**。源素材 {@code damage_effect_card_bighit.wav}。 */
     public static final DeferredHolder<SoundEvent, SoundEvent> DAMAGE_EFFECT_CARD_BIGHIT =
             register("damage_effect_card_bighit");
 
@@ -76,6 +81,22 @@ public final class ModSounds {
 
     /** 「轨道轰炸」命中目标（在命中位置播放）。源素材 {@code megas_blast.wav}。 */
     public static final DeferredHolder<SoundEvent, SoundEvent> MEGAS_BLAST = register("megas_blast");
+
+    /** 伤害效果牌**释放**时（对怪激光 / 对怪板砖 / 轨道炮 / 定向爆破 共用）。源素材 {@code effect_card_use1.wav}。 */
+    public static final DeferredHolder<SoundEvent, SoundEvent> DAMAGE_EFFECT_CARD_CAST = register("damage_effect_card_cast");
+
+    /** 对怪激光**命中**目标（在命中位置播放）。源素材 {@code laser.wav}。 */
+    public static final DeferredHolder<SoundEvent, SoundEvent> MONSTER_LASER_HIT = register("monster_laser_hit");
+
+    /** 对怪板砖**命中**目标（在命中位置播放）。源素材 {@code brick_hit.wav}。 */
+    public static final DeferredHolder<SoundEvent, SoundEvent> MONSTER_BRICK_HIT = register("monster_brick_hit");
+
+    /** 轨道炮**命中**目标（在命中位置播放）。源素材 {@code laser_big.wav}。 */
+    public static final DeferredHolder<SoundEvent, SoundEvent> ORBITAL_STRIKE_HIT = register("orbital_strike_hit");
+
+    /** 定向爆破**命中**（在爆炸位置播放）。源素材 {@code blast.wav}。 */
+    public static final DeferredHolder<SoundEvent, SoundEvent> DIRECTIONAL_BLAST_HIT = register("directional_blast_hit");
+
 
     private ModSounds() {
     }

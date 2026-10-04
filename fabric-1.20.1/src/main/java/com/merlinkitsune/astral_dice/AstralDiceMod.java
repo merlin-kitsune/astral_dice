@@ -122,6 +122,8 @@ public class AstralDiceMod implements ModInitializer {
      * ⚠️ **新增订阅类时必须在此登记**,否则其 {@code @SubscribeEvent} 方法不会被调用(静默失效)。
      */
     private static void registerListeners() {
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.combat.DamageCardFxScheduler.class);
+        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.combat.DamageCardFxScheduler.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.combat.DamageNumberAggregator.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.combat.DiceCombatEvents.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.combat.OrbitalBombardmentManager.class);

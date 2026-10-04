@@ -11,10 +11,7 @@
   },
   "coin_bag_withdraw": {
     "sounds": [
-      {
-        "name": "astral_dice:coin_bag_withdraw",
-        "volume": 0.6
-      }
+      {"name": "astral_dice:coin_bag_withdraw", "volume": 0.6}
     ]
   },
   "damage_effect_card_hit": {
@@ -50,6 +47,31 @@
   "megas_blast": {
     "sounds": [
       "astral_dice:megas_blast"
+    ]
+  },
+  "damage_effect_card_cast": {
+    "sounds": [
+      "astral_dice:damage_effect_card_cast"
+    ]
+  },
+  "monster_laser_hit": {
+    "sounds": [
+      "astral_dice:monster_laser_hit"
+    ]
+  },
+  "monster_brick_hit": {
+    "sounds": [
+      "astral_dice:monster_brick_hit"
+    ]
+  },
+  "orbital_strike_hit": {
+    "sounds": [
+      "astral_dice:orbital_strike_hit"
+    ]
+  },
+  "directional_blast_hit": {
+    "sounds": [
+      "astral_dice:directional_blast_hit"
     ]
   }
 }

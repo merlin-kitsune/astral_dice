@@ -228,11 +228,18 @@ public final class SpellDamageRegistry {
         // (活体书页原有的「效果期间远程/魔法伤害 +2+页数」修饰器已于 2026-09-25 删除:
         //  该牌已改为「飞向目标并必定命中」的打击牌,伤害在命中时经 LivingPageImpact 登记为
         //  astral_dice:card_spell 结算,不再附着于其它远程/魔法伤害之上。)
+        // ── 2026-10-04 用户裁决：以下四个修饰器**已停用**（isActive 恒 false）──────────────
+        //   四张伤害效果牌（对怪激光 / 对怪板砖 / 轨道炮 / 定向爆破）由「使用后获得 1:00 的
+        //   远程/魔法增伤」改为「目标选择器 + 命中时点结算的法术伤害」（见 combat/DamageCardFxScheduler）。
+        //   ⇒ 它们**不再**附着到其它远程/魔法伤害上。修饰器**骨架与 apply 公式保留**，便于日后恢复；
+        //   ⚠️ 定向爆破原有的 6 格 AOE（onHit）已整段迁到调度器 **resolveBlast** ——
+        //      重新启用本修饰器前必须先删掉那边的 AOE，否则会重复结算。
         // 对怪激光:远程和魔法伤害 +4(+忍者立牌效果牌伤害增益)
         registerModifier(new SpellDamageModifier() {
             @Override
             public boolean isActive(SpellDamageContext ctx) {
-                return ctx.attacker.hasEffect(ModEffects.MONSTER_LASER.get());
+                // 已停用（2026-10-04）：原判据 = ctx.attacker.hasEffect(ModEffects.MONSTER_LASER.get())
+                return false;
             }
 
             @Override
@@ -244,7 +251,8 @@ public final class SpellDamageRegistry {
         registerModifier(new SpellDamageModifier() {
             @Override
             public boolean isActive(SpellDamageContext ctx) {
-                return ctx.attacker.hasEffect(ModEffects.MONSTER_BRICK.get());
+                // 已停用（2026-10-04）：原判据 = ctx.attacker.hasEffect(ModEffects.MONSTER_BRICK.get())
+                return false;
             }
 
             @Override
@@ -256,7 +264,8 @@ public final class SpellDamageRegistry {
         registerModifier(new SpellDamageModifier() {
             @Override
             public boolean isActive(SpellDamageContext ctx) {
-                return ctx.attacker.hasEffect(ModEffects.ORBITAL_STRIKE.get());
+                // 已停用（2026-10-04）：原判据 = ctx.attacker.hasEffect(ModEffects.ORBITAL_STRIKE.get())
+                return false;
             }
 
             @Override
@@ -268,7 +277,8 @@ public final class SpellDamageRegistry {
         registerModifier(new SpellDamageModifier() {
             @Override
             public boolean isActive(SpellDamageContext ctx) {
-                return ctx.attacker.hasEffect(ModEffects.DIRECTIONAL_BLAST.get());
+                // 已停用（2026-10-04）：原判据 = ctx.attacker.hasEffect(ModEffects.DIRECTIONAL_BLAST.get())
+                return false;
             }
 
             @Override
@@ -276,33 +286,9 @@ public final class SpellDamageRegistry {
                 return bonus + 5 + effectCardDamageBonus(ctx.attacker);
             }
 
-            @Override
-            public void onHit(SpellDamageContext ctx, double bonus) {
-                if (bonus <= 0) return;
-                net.minecraft.world.phys.AABB aabb = ctx.target.getBoundingBox().inflate(6);
-                // 2026-09-24 口径统一:波及选目标用法伤链同一闸门(比 HostileTargets 更宽)
-                // e != ctx.attacker:同电击手套 —— 闸门对「施法者本人」不成立,须显式排除(2026-09-24 修复)
-                var nearby = ctx.target.level().getEntitiesOfClass(
-                        net.minecraft.world.entity.LivingEntity.class, aabb,
-                        e -> DiceCombatEvents.isBlessingTarget(e, ctx.attacker)
-                                && e != ctx.target && e != ctx.attacker && e.isAlive());
-                var blastSource = com.merlinkitsune.astral_dice.damage.ModDamageTypes
-                        .trueDamage(ctx.target.level(), ctx.attacker);   // 真伤:效果牌范围波及伤害同样无视护甲值/盔甲韧性
-                // AOE 造成与主目标「同样的伤害」:基础 5 + 效果牌伤害加成(与主目标一致)
-                int aoeDamage = (int) Math.max(1.0, 5 + effectCardDamageBonus(ctx.attacker));
-                // AOE 波及伤害不进入骰战结算(见 DiceCombatEvents.aoeProcessing)
-                DiceCombatEvents.aoeProcessing = true;
-                try {
-                    for (var e : nearby) {
-                        // 跳数字:不再直发,登记组别后由 DamageNumberAggregator 取终值并聚合成总值。
-                        // ⚠️ 必须显式登记:astral_dice:true_damage 被多路复用(大当家溅射=红 / 这里=绿)。
-                        DamageNumberAggregator.tag(e, blastSource, DamageNumberAggregator.Group.SPELL);
-                        e.hurt(blastSource, aoeDamage);
-                    }
-                } finally {
-                    DiceCombatEvents.aoeProcessing = false;
-                }
-            }
+            // ⚠️ 原「定向爆破 6 格 AOE」的 onHit 已整段迁到 combat/DamageCardFxScheduler#resolveBlast
+            //    （2026-10-04 用户裁决：AOE 与主目标改为**在 FX 命中时点同时结算**）。
+            //    本修饰器已停用（isActive 恒 false）⇒ onHit 永不执行。
         });
         // 忍术飞镖:只要佩戴者对目标造成**远程/魔法伤害**即获得「目标标记层数」的伤害加成。
         // (2026-09-24 用户裁决「移除『已使用伤害效果牌』前提,只要是对目标造成远程和魔法伤害就应该生效」)

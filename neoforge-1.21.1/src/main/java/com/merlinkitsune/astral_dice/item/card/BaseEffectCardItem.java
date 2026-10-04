@@ -543,6 +543,10 @@ public abstract class BaseEffectCardItem extends Item {
      * 否则会随"这次指定了谁当目标"而漂移。
      */
     private void playUseSound(Level level, Player user, LivingEntity applyTo) {
+        // 2026-10-04 用户裁决：四张「有 FX 的伤害效果牌」（对怪激光 / 对怪板砖 / 轨道炮 / 定向爆破）改用
+        // **专属释放音效**（源素材 effect_card_use1.wav），由 combat/DamageCardFxScheduler#launch 在
+        // FX 起手时播放 ⇒ 此处不再重复播通用出牌音。
+        if (isDamageFxCard(cardTypeId())) return;
         // 2026-09-27 用户裁决：三张增益牌（狂暴 / 王之力 / 岿然不动）之外，**所有效果牌统一**播
         // effect_card_use —— 不再按「对自身 / 对他人」分流（旧 target/self 两条素材已废弃）。
         SoundEvent sound = isBoostCard(cardTypeId())
@@ -556,6 +560,19 @@ public abstract class BaseEffectCardItem extends Item {
         return "berserk".equals(cardTypeId)
                 || "king_power".equals(cardTypeId)
                 || "unwavering".equals(cardTypeId);
+    }
+
+    /**
+     * 是否为**带 FX 的四张伤害效果牌**（对怪激光 / 对怪板砖 / 轨道炮 / 定向爆破）。
+     *
+     * <p>2026-10-04 起这四张牌改为「目标选择器 + 命中时点结算」，其释放音效由
+     * {@code combat/DamageCardFxScheduler#launch} 播放 ⇒ 基类的通用出牌音对其**静默**。
+     */
+    public static boolean isDamageFxCard(String cardTypeId) {
+        return "monster_laser".equals(cardTypeId)
+                || "monster_brick".equals(cardTypeId)
+                || "orbital_strike".equals(cardTypeId)
+                || "directional_blast".equals(cardTypeId);
     }
 
     // ══════════════════════════════════════════════════════════════════════════

@@ -4,7 +4,7 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
-## Unreleased (2.0.0-SNAPSHOT.22)
+## Unreleased (2.0.0-SNAPSHOT.23)
 
 ### New Content
 
@@ -59,6 +59,15 @@
 
 <!-- 新内容在此登记 -->
 
+#### Sound Effects
+
+- **Five new custom sound effects, one rewritten** (2026-10-04): the four damage effect cards now use
+  **dedicated cast / hit sounds** — cast sound `damage_effect_card_cast` (shared by all four, source
+  `effect_card_use1.wav`), hit sounds `monster_laser_hit` (Monster Laser, `laser.wav`),
+  `monster_brick_hit` (Monster Brick, `brick_hit.wav`), `orbital_strike_hit` (Orbital Strike, `laser_big.wav`)
+  and `directional_blast_hit` (Directional Blast, `blast.wav`); plus a **rewritten** `damage_effect_card_hit`
+  (shared by Living Page hits below **&lt; 8** damage and Suit Card - Misfortune hits).
+
 ### Content & Balance
 
 #### Damage & Resolution
@@ -71,6 +80,11 @@
   skill damage** are always **green** (sources that used to get their own colour, such as the Shock Gloves, now
   use green as well). Multiple hits on the same target within the same colour group in one tick are **merged
   into a single total** instead of overwriting each other.
+- **Suit Card - Misfortune now deals spell damage** (user decision 2026-10-04): damage to the target changed from
+  "true damage" to `astral_dice:card_spell` (the same chain as Living Page) so it runs the full spell modifier chain
+  (Ninja Star / Piercing Gun / Mark Spray / Magic Quiver, etc.). ⚠️ The "Misfortune" holding cost — its periodic
+  damage every 2:00 — **stays true damage** (it is a harmful cost on the holder, not this card's damage to a target).
+
 
 #### Combat Statistics & Resolution
 
@@ -177,6 +191,21 @@
 #### Cards
 
 - **Combat / effect card tiers retuned** (user decision 2026-09-28): **Attack - Medium / Large / Extra Large** and **Defense - Medium / Large / Extra Large** are now all **blue (Rare)** (previously white / blue / purple on both sides); **Berserk**, **Fight Poison with Poison** and **You Have, I Have** drop from **purple (Epic) to blue (Rare)**; **King's Power** drops from **gold (Legendary) to purple (Epic)**. The `rarity` fields of these 10 entries in the bounty reward pool `astral_rews` were updated to match (`RARE` / `EPIC`), and `scripts/verify/verify_bountiful_pools.ps1` reports **ALL OK** on all three lines (set equality, cross-line md5 and the value-balance formula all pass). ⚠️ Their `unitWorth` (bounty payout) was **left unchanged** this round: under the AGENTS "same-tier value band" convention those 9 down-tiered cards now fall outside their band - a **convention-level deviation, not a gate failure** (the gate does not check tier vs. worth); whether to re-map them is pending a decision.
+- **The four damage effect cards (Monster Laser / Monster Brick / Orbital Strike / Directional Blast) were reworked**
+  (user decision 2026-10-04): ① **damage boost removed** — they no longer grant "ranged/magic damage
+  +4 / +6 / +8 / +5 for 1:00" nor attach to other ranged/magic damage (the modifier skeletons and effect
+  registrations are kept but `isActive` is permanently `false`, ready to be restored);
+  ② **now target selectors** — holding the card in the main hand opens the selection session (same target rule as
+  Living Page: hostile ∪ neutral (pets excluded) ∪ untamed tamables, **players excluded**), and the confirmed target
+  takes **spell damage** equal to the fixed base (4 / 6 / 8 / 5) plus the effect-card damage bonus (Ninja Stand
+  "effect card damage boost" + Bookmark); **Directional Blast** additionally deals the **same damage** to other
+  targets within 6 blocks; ③ **new FX, and the damage only lands at the FX hit moment** — Monster Laser spawns a
+  **red laser line (infinite height)** above the target after a 0.5s delay and strikes it, the beam lasting 1 second;
+  Monster Brick hurls a **giant brick** (vanilla brick texture, far larger than the brick item, flying faster than the
+  Living Page) and shatters on impact; Orbital Strike spawns a **golden beacon beam (infinite height)** above the
+  target after a 0.5s delay and strikes it, lasting 1 second with glowing splash particles on hit; Directional Blast
+  detonates at the target after a 0.5s delay.
+
 
 #### Chips & Resources
 
@@ -361,6 +390,12 @@
   ⚠️ **The NeoForge lines keep their `static` handlers**: they run Mixin **0.8.7**, where that same spot was
   relaxed to `checkTargetModifiers(target, false)` and only rejects a non-static handler on a static method.
   Criteria: a cold 1.20.1 start logs zero `Mixin apply for mod` failures and no `InvalidInjectionException`.
+- **Added the missing HUD icon for the "Concealment" effect on Fabric** (2026-10-04): the effect was registered on
+  Fabric but its texture (`textures/mob_effect/concealment.png`) never came over with the port, so the icon rendered as
+  a missing texture. It is now a **byte-for-byte copy** of the texture used by the other three lines (sha1
+  `d099ddc7e9da`, 224 bytes). The `tools/verify_effect_icons.py` gate therefore goes FAIL → PASS (100% icon coverage
+  across 211 effects on four lines).
+
 
 #### Text & Handbook
 
@@ -394,6 +429,12 @@
       no such event) injects the tooltip list built inside vanilla `EffectRenderingInventoryScreen#renderEffects` through a Mixin. All three lines share one rule:
       a grey description line is appended **only when the matching language key actually exists**, so effects
       without a description get no blank line.
+- **Fixed the uncolored damage number on the four damage effect cards, plus a permanently-zero "Ranged and Magic Damage Boost" line**
+  (2026-10-04): ① the damage value used to be passed through `Component.translatable(key, value)`, which makes the value a
+  **sibling component inheriting the parent style** — the inline `§e` never covered it and the number rendered grey; it now
+  goes through `tt(...)` (same pattern as Living Page); ② after the four cards lost their damage boost, the
+  "Ranged and Magic Damage Boost" summary is always 0 ⇒ the line is now hidden when there is no bonus.
+
 
 #### Tooltip Frames & Third-Party Rendering
 

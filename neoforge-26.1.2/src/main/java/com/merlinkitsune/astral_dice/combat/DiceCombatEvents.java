@@ -166,6 +166,29 @@ public class DiceCombatEvents {
         return aoeProcessing;
     }
 
+    /**
+     * 以「本模组内部 AOE / 波及结算窗口」包裹一次伤害结算。
+     *
+     * <p><b>为什么需要它</b>：{@code aoeProcessing} 是**包私有**的内部闸门（跨包的效果牌命中拿不到），
+     * 而法术伤害源（{@code ModDamageTypes.cardSpell} 等：直接伤害实体为空、击杀归属施放者）的
+     * {@code getEntity()} 仍会返回施放者 ⇒ **不加闸门就会被当成玩家的直接攻击重走骰战**。
+     * 本方法供跨包的「立即命中」类效果牌（如符卡-祸）复用，语义与
+     * {@code combat/LivingPageImpact} 内的直接赋值**完全一致**（同为「本模组自己发起的波及结算」）；
+     * 与那处不同的是它会**保存并恢复**原值 ⇒ 嵌套调用安全。
+     *
+     * <p>⚠️ 这是**执行窗口**而非「读标志」的入口：只读判定仍必须用 {@link #isInternalAoe()}。
+     */
+    public static void runAsInternalAoe(Runnable action) {
+        if (action == null) return;
+        boolean previous = aoeProcessing;
+        aoeProcessing = true;
+        try {
+            action.run();
+        } finally {
+            aoeProcessing = previous;
+        }
+    }
+
 
     // 检测玩家是否佩戴了七咒之戒(按物品 ID 识别,未安装该模组时返回 false)
     public static boolean hasEnigmaticCurse(Player player) {
