@@ -1518,6 +1518,32 @@ When extending this workspace:
         (`borderType:"gradient"`,取库 `hsvToRgb(h,0.85,1.0)` 的相位 0 / 1/3 / 2/3 = `#FF2626` / `#26FF26` / `#2626FF`);
         不装它时 = 真·两色流动渐变。传奇/巅峰 = 档位色(与文字同色,`#FFC24B` / `#FF4D4D`)。
       · ⚠️ **别把「颜色不对」直接归因于本模组** —— 先确认整合包是否装了边框类模组(另两条线的包用 **LegendaryTooltips**,
+      · 🚨 **第四家:Modern UI(`现代化 UI`)**(2026-10-04 用户实报 + 实物 jar `ModernUI-NeoForge-1.21.1-3.12.0.2` 反汇编)——
+        **它也不用 Mixin 改 `GuiGraphics`**:两个 mixin 配置里**没有任何 tooltip / `GuiGraphics` 注入**;它改为订阅
+        `RenderTooltipEvent.Pre` 的两个处理器(`UIManagerForge#onRenderTooltipH` @`EventPriority.HIGH` 自己画、
+        `#onRenderTooltipL` @`EventPriority.LOW` `setCanceled(true)`),两者都以 `if (!TooltipRenderer.sTooltip) return;` 开头
+        ⇒ **现代提示框一开,`RenderTooltipEvent.Color` 永不派发**(本模组 `client/RarityTooltipFrame` 整体空转
+        —— 这就是「彩色边框不生效」的根因)。
+        · **框色链**:`TooltipRenderer.sStrokeColor`(4 槽) → `computeWorkingColor()` → `mWorkStrokeColor`
+          → `updateBorderColor()` → `mActiveStrokeColor` → `chooseBorderColor()` 绘制。
+        · ⚠️ **只写 `sStrokeColor` 不够**:`adaptiveColors=true`(默认)时 `computeWorkingColor` **不读**它的 RGB
+          (只借 alpha),颜色改从**物品名逐字色**取(`applyRarityTo` = `Rarity#getStyleModifier()`)并过一步 HSV 压缩
+          (`s = min(s,0.9)` / `v = clamp(v,0.2,0.85)`)⇒ 对我们的影响是**双杀**:① 档位色明度都是 1.0,
+          **必被压暗**(传奇 `#FFC24B` → 约 (217,179,64)),与物品名 / 原生路径 `RarityTooltipFrame` **不同色**;
+          ② 奇特档的名字只有**一个**基准色(`Rarity#styleModifier()` 只能给 `rgb()`),拿不到色环 ⇒ **做不出流动彩虹**。
+          🚨 **别写成「单色物品名下槽 1/2 从未赋值」** —— 那是 2026-10-04 我方的**误读**(源自被截断的反汇编窗口),
+          实物字节码里 `n == 1` 分支连调 3 次 `adjustColor` 填满槽 1/2/3、**四槽都有色**;
+          错的是**取色精度**,不是**槽位缺失**。
+        · **对接方式(已内置,1.21.1 / 1.20.1 两线各一份 `client/ModernUITooltipCompat`)**:写在 `EventPriority.HIGHEST`
+          (早于它的 `HIGH`)、还在 `EventPriority.LOWEST` + **`receiveCanceled = true`**(晚于它的 `LOW`;
+          ⚠️ **该标志不可省** —— Modern UI 正是在 `LOW` 把 Pre 事件取消,而事件总线对已取消事件会**跳过未声明它的处理器**
+          (`SubscribeEventListener#invoke` / `ASMEventHandler#invoke` 都判 `receiveCanceled()`);
+          而 `computeWorkingColor` 只在 `drawTooltip` 内同步跑一次)
+          ⇒ `sStrokeColor` 只在**一次事件派发**期间是脏的;并按需临时把 `sAdaptiveColors` 置 false、随后写回 true。
+          **只碰这三个公开静态成员**,私有字段一概不碰;彩虹档四槽各差 1/4 圈 ⇒ 得整圈流动彩虹。
+        · 开关:配置项 `modernui_tooltip_frame_compat`(默认 true) + 系统属性 `-Dastral_dice.modernUITooltipCompat=false`;
+          ⚠️ 与 TO/Iceberg 不同,它**没有任何资源包级扩展点**(`MuiModApi` 里没有 tooltip 相关 API)⇒ 只能走状态注入。
+        · 🚨 **范围:只做 1.21.1 / 1.20.1** —— 26.1.2 **没有** `client/RarityTooltipFrame`、其提示框边框由原版九宫格贴图决定(**没有颜色钩子**)⇒ 在该线加本层等于**凭空新增行为**,故**不做**;fabric 线**有** `RarityTooltipFrame`,但按「第四条线规则边界」不进本批。
         **未对接**:26.1.2 测试包与 FTB Skies 2 有它)。
   - ⚠️ **附魔不再升档**:原版「附魔升一档」的 switch 只覆盖原版 4 档,自有档走 `default` 原样返回(三线一致,可接受)。
   - ⚠️ **解析面耦合(改语法必改)**:`scripts/verify/ChipCommon.psm1` 与 `scripts/verify/verify_bountiful_pools.ps1`

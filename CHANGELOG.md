@@ -80,6 +80,21 @@
 
 ### Bug Fixes
 
+- **Rarity border colours were discarded entirely when Modern UI is installed with its "modern tooltip" enabled - added a client-side compatibility layer** (reported 2026-10-04: "coloured border not working"):
+  Modern UI does **not** mix into vanilla rendering; it subscribes to `RenderTooltipEvent.Pre` - a high-priority
+  handler draws the whole tooltip itself, then a low-priority handler cancels vanilla rendering, so the border
+  colour we write into `RenderTooltipEvent.Color` is **never dispatched** (`client/RarityTooltipFrame` becomes a
+  complete no-op). A new compatibility layer, `client/ModernUITooltipCompat`, therefore rewrites Modern UI's own
+  four border-colour slots at a **higher** priority, restores them **immediately** after that single draw, and
+  **temporarily steps aside from Modern UI's "adaptive colours"** (that path takes its colours from the item
+  name's per-character colours and then runs them through an HSV clamp that caps brightness at 0.85, so our tier
+  colours would come out **darkened** and off-colour next to the item name and the native path; and the rainbow
+  tier only has one name colour to work with, so no **flowing rainbow** is possible) - **without touching any of
+  Modern UI's persistent settings**. The rainbow tier gains a **full flowing rainbow ring** (the native path is a
+  two-colour gradient). It only steps in for **our own rarity tiers**; vanilla and other mods' items are left
+  untouched, and the rare tier keeps its existing rule (not applied). Switch: the config option
+  `modernui_tooltip_frame_compat` (on by default), plus the system property
+  `-Dastral_dice.modernUITooltipCompat=false` to disable the layer entirely. It covers **1.21.1 and 1.20.1 only** (on 26.1.2 the tooltip frame is decided by a vanilla nine-slice texture and this mod does not colour it at all, so no such need exists).
 - **Bullet detection switched from keyword guessing to per-mod evidence - fixing two cases of
   firearm damage misread as ranged/magic damage** (reported 2026-10-03: "bullet detection still fails
   for some mods"): the firearm filter used to look only for the keywords `bullet` / `gun` / `cannon`
