@@ -58,7 +58,6 @@ scripts/test/mt.conf.bak
 ### 项目级排除(用户要求,与原 astra_dice 仓库一致) ###
 agents/
 build/
-docs/
 run/
 temp/
 images/
