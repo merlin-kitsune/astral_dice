@@ -46,9 +46,9 @@ public class AstralDiceMod {
         backupOldConfigIfNeeded("astral_dice-common.toml", ModCommonConfig.CONFIG_VERSION);
         modContainer.registerConfig(ModConfig.Type.COMMON, ModCommonConfig.SPEC);
         modEventBus.register(this);
-        // 注:Iron's Spells 'n Spellbooks 联动**在 26.1.2 不移植**——该模组在 Modrinth 上最高只发布到
-        //    1.21.1,没有 26.1.x 构建,故 IronSpellbooksCompat 与本子项目一并移除(见 docs/compat-26.1.2-neoforge.md)。
-        //    魔力消耗减半等联动行为随之在 26.1.2 线不可用。
+        // Iron 的法术与魔法书联动:本线**无 compileOnly 依赖**(上游无 26.1.x 构建)⇒ 反射注册。
+        // 按用户裁决(2026-10-04):本线属 NeoForge 端口,**联动保留**,模组未装时 init() 直接返回。
+        com.merlinkitsune.astral_dice.event.IronSpellbooksCompat.init();
         // Waystones 传送联动:仅在模组加载时反射注册事件,未安装时静默跳过
         com.merlinkitsune.astral_dice.event.WaystoneWarpCompat.init();
         // ⚠️ 客户端菜单界面(ModMenuTypes.CARD_INVENTORY → CardInventoryScreen)的注册**不在这里**。

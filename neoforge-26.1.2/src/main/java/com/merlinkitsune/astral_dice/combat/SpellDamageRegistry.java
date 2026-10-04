@@ -41,12 +41,13 @@ import com.merlinkitsune.starenginelib.component.GameplayConstants;
  * ⚠️ 旧实现只做 ③,导致「方块前线 `bf:bullet`(message_id = generic)」与「沉浸工程左轮全家族
  * {@code ieRevolver_*}(其弹丸继承 {@code AbstractArrow} ⇒ 命中白名单 matcher #1)」被漏判成法伤。
  *
- * <p><b>26.1.2 迁移说明(用户裁决「1.21.1 存在的联动模组但 26.1.2 不存在 ⇒ 直接删除联动」):</b>
- * Iron 的法术与魔法书(irons_spellbooks)无 26.1.x 构建 ⇒ <b>其 15 个伤害类型键已整体删除</b>
- * (原第 5 条作用域,以及 {@code fire_magic} 等全部 {@code key("irons_spellbooks", ...)} 条目)。
- * 生效后果:装有 Iron 法术的 26.1.2 整合包里,其法术伤害不再计入本模组法伤加成 ——
- * 这是「无联动模组即无联动」的预期行为,不是缺陷。
- * {@code event/IronSpellbooksCompat} 与本子项目一并移除(见 {@code docs/compat-26.1.2-neoforge.md})。
+ * <p><b>26.1.2 联动保留(用户裁决 2026-10-04:「本线属 NeoForge 端口,联动必须保留,
+ * 即使该模组当前不存在」——取代早前「不存在即删除」的裁定):</b>
+ * Iron 的法术与魔法书(irons_spellbooks):fire_magic/ice_magic/lightning_magic/holy_magic/ender_magic/
+ *    blood_magic/evocation_magic/eldritch_magic/nature_magic 等 —— 本线**无 compileOnly 依赖**
+ *    (上游无 26.1.x 构建),故 {@code event/IronSpellbooksCompat} 改为**反射版**
+ *    (与 {@code WaystoneWarpCompat} 同范式:模组未装时 {@code init()} 直接返回,
+ *    日后发布 26.1.x 版即自动生效);本文件这些键是纯字符串 id,未装时永不命中。
  */
 public final class SpellDamageRegistry {
 
@@ -80,7 +81,23 @@ public final class SpellDamageRegistry {
             key("goety", "fire_breath"),
             key("goety", "frost_breath"),
             key("goety", "bubble_stream"),
-            key("goety", "magic_bolt"));
+            key("goety", "magic_bolt"),
+            // Iron 的法术与魔法书 (irons_spellbooks) —— 26.1.2 无 compileOnly 依赖(上游无构建),
+            // 但按用户裁决(2026-10-04)**保留全部键**:纯字符串 id,模组未装时永不命中,零副作用。
+            key("irons_spellbooks", "fire_magic"),
+            key("irons_spellbooks", "ice_magic"),
+            key("irons_spellbooks", "lightning_magic"),
+            key("irons_spellbooks", "holy_magic"),
+            key("irons_spellbooks", "ender_magic"),
+            key("irons_spellbooks", "blood_magic"),
+            key("irons_spellbooks", "evocation_magic"),
+            key("irons_spellbooks", "eldritch_magic"),
+            key("irons_spellbooks", "nature_magic"),
+            key("irons_spellbooks", "cauldron"),
+            key("irons_spellbooks", "heartstop"),
+            key("irons_spellbooks", "dragon_breath_pool"),
+            key("irons_spellbooks", "fire_field"),
+            key("irons_spellbooks", "poison_cloud"));
             // 注:原 1.21.1 此处还有 15 个 irons_spellbooks 键(fire_magic / ice_magic / lightning_magic /
             // holy_magic / ender_magic / blood_magic / evocation_magic / eldritch_magic / nature_magic /
             // cauldron / heartstop / dragon_breath_pool / fire_field / poison_cloud),已在 26.1.2 删除

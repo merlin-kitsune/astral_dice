@@ -95,40 +95,6 @@ public class FateGuidanceCardItem extends BaseEffectCardItem {
     // 救赎之戒转换等模组内修正),而非固化倍率。
     // - 骰战攻击(攻击者赐福激活+骰子+近战):不修改模组倍率,仅捕获存至目标侧,由骰战最终伤害使用;
     // - 非骰战攻击:命运的指引激活时按加幅减半(第一诅咒影响 -50%),未激活则保持模组倍率。
-    @SubscribeEvent(priority = net.neoforged.bus.api.EventPriority.LOWEST)
-    public static void onCurseMitigation(
-            net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent event) {
-        if (!(event.getEntity() instanceof Player player)) return;
-        if (player.level().isClientSide()) return;
-        if (!DiceCombatEvents.hasEnigmaticCurse(player)) {
-            // 未佩戴七咒(含已转换为救赎之戒):清理捕获,保持无倍率
-            com.merlinkitsune.astral_dice.component.ModAttachments.setDiceCurseRatio(player, 1.0f);
-            return;
-        }
-        float original = event.getOriginalAmount();
-        float current = event.getAmount();
-        float ratio = current > original ? current / original : 1.0f;
-
-        // 是否骰战攻击(骰战攻击的最终伤害由骰战接管,此处仅捕获倍率,不修改伤害链)
-        boolean diceCombat = event.getSource().getEntity() instanceof Player attacker
-                && attacker.hasEffect(ModEffects.DICE_BLESSING)
-                && DiceCombatEvents.attackerHasDiceCurio(attacker)
-                && DiceCombatEvents.isMeleeWeaponAttack(attacker);
-        if (diceCombat) {
-            com.merlinkitsune.astral_dice.component.ModAttachments.setDiceCurseRatio(player, ratio);
-            return;
-        }
-
-        // 非骰战攻击:命运的指引激活时第一诅咒影响 -50%(加幅减半)
-        if (ratio > 1.0f
-                && event.getSource().getEntity() instanceof Player attacker2
-                && isFateGuidanceActive(attacker2)) {
-            event.setAmount(original + (current - original) * 0.5f);
-        }
-        // 非骰战攻击不产生骰战捕获,清理
-        com.merlinkitsune.astral_dice.component.ModAttachments.setDiceCurseRatio(player, 1.0f);
-    }
-
 
     // 命运的指引·福运:激活期间所有食物提供的饱和度翻倍。
     // Finish 事件在原版 eat(更新食物数据)之前触发,此处预先补一份饱和度增量。

@@ -771,11 +771,6 @@ public class ModTooltipHandler {
             addSignLines(tooltip, "tooltip.astral_dice.sign.misaki_active");
             addSignPassiveTitle(tooltip, "剑气");
             addSignLines(tooltip, "tooltip.astral_dice.sign.misaki_passive");
-            // 神秘遗物+ 联动描述:仅当安装神秘遗物+ 模组时展示(置于备注区,紫色,无标题)
-            if (net.neoforged.fml.ModList.get().isLoaded("enigmaticlegacyplus")) {
-                tooltip.add(Component.empty());
-                addSignNoteLines(tooltip, "tooltip.astral_dice.sign.misaki_enigmatic");
-            }
             int stacks = stack.getOrDefault(ModDataComponents.MISAKI_SIGN_STACKS.get(), 0);
             addSignCounter(tooltip, "tooltip.astral_dice.sign.misaki_stacks", stacks);
             addSignCooldownRemaining(tooltip, event.getEntity() instanceof Player p ? p : null);
@@ -1063,10 +1058,6 @@ public class ModTooltipHandler {
             tooltip.add(tt("tooltip.astral_dice.chip.cursed_sword_blue_curse")
                     .withStyle(ChatFormatting.GRAY));
             tooltip.add(Component.empty());
-            if (net.neoforged.fml.ModList.get().isLoaded("enigmaticlegacyplus")) {
-                addChipLines(tooltip, "tooltip.astral_dice.chip.cursed_sword_enigmatic",
-                        ChatFormatting.LIGHT_PURPLE);
-            }
             if (event.getEntity() instanceof Player p) {
                 addSignCounter(tooltip, "tooltip.astral_dice.chip.cursed_sword_bonus",
                         ModAttachments.getCursedSwordBonus(p));
@@ -1308,11 +1299,11 @@ public class ModTooltipHandler {
             addCardLines(tooltip, "tooltip.astral_dice.card.fate_guidance_desc");
             tooltip.add(Component.translatable("tooltip.astral_dice.card.fate_saturation")
                     .withStyle(ChatFormatting.GRAY));
-            // 联动条目:仅安装相关模组时显示(备注区,紫色,无编号)
-            if (net.neoforged.fml.ModList.get().isLoaded("enigmaticlegacyplus")) {
-                addSignNoteLines(tooltip, "tooltip.astral_dice.card.fate_curse_mitigation");
+            // 联动条目:仅安装相关模组时显示(备注区,紫色,无编号);
+            // Iron 仅在本线保留(无 compileOnly 依赖但按用户裁决保留联动)
+            if (net.neoforged.fml.ModList.get().isLoaded("irons_spellbooks")) {
+                addSignNoteLines(tooltip, "tooltip.astral_dice.card.fate_spell_mana");
             }
-            // 注:Iron's Spells 'n Spellbooks 的魔力消耗联动条目在 26.1.2 线移除(上游无 26.1.x 构建)
             addEffectCardPlayCountTooltip(tooltip, player);
             tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown",
                             effectCardCooldownSeconds(player))
@@ -1378,11 +1369,6 @@ public class ModTooltipHandler {
             addSignLines(tooltip, "tooltip.astral_dice.sign.moses_active");
             addSignPassiveTitle(tooltip, "精密技巧");
             addSignLines(tooltip, "tooltip.astral_dice.sign.moses_passive");
-            // 神秘遗物+ 联动描述:仅当安装神秘遗物+ 模组时展示(置于备注区,紫色,无标题)
-            if (net.neoforged.fml.ModList.get().isLoaded("enigmaticlegacyplus")) {
-                tooltip.add(Component.empty());
-                addSignNoteLines(tooltip, "tooltip.astral_dice.sign.moses_enigmatic");
-            }
 
             if (event.getEntity() instanceof Player p) {
                 addSignCounter(tooltip, "tooltip.astral_dice.sign.moses_weakness_reveal",
