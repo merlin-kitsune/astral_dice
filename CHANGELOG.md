@@ -235,6 +235,20 @@
   "this card is still in the main hand", so the selector does **not** pop back on the next tick; put the
   card away and hold it again to re-open it, and J returns to casting the sign's active skill.
 
+- **Medkit chips no longer re-settle healing on "re-login / dimension change"** (2026-10-04, user decision):
+  besides "on equip" and "after respawn", the chip also treated **every re-login** and **every dimension change**
+  as a full trigger (add points -> heal for the current stacks x2 -> restart the 1:00 timer), so repeatedly
+  re-logging or walking through a portal let you **farm healing without limit** (with 32 stacks a single pass
+  healed 64 HP). Per that decision those two moments are now **removed**: the chip triggers in exactly **two**
+  places - "**when the chip is actually equipped**" and "**after respawning from death**".
+  NOTE: this does not depend on the chip still being in a slot - wearing it through a re-login or a dimension
+  change no longer triggers anything either.
+- **In-game manual tier wording for the Hanna Sign / Sherry Sign did not match the items' actual tier**
+  (2026-10-04, user decision): both signs have **always** been the "Bizarre" tier as items, but the manual
+  text called them "Rare" and "Epic". Following the "items are the source of truth" rule, the manual wording
+  is now unified to "**Bizarre tier**" (Chinese / English / Japanese in sync).
+  NOTE: manual text only - item rarities, drops and recipes are unchanged.
+
 ## 1.3.6
 
 > One batch across all four lines (three production lines `1.3.6`, migration line `1.3.6-beta.1`, port line `1.3.6-alpha.1`).
