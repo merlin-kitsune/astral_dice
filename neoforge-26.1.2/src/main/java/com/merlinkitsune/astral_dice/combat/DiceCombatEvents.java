@@ -487,10 +487,8 @@ public class DiceCombatEvents {
             }
         }
 
-        // === 神秘遗物+ 联动:七咒之戒 ===
-        // 佩戴七咒之戒时,骰子伤害加成(骰点 + 卡牌点数)降低 40%;手持"启示之证"攻击时,减益再降低 20%;
-        // 装备"倒转之启"或"恩惠之典"时修正第四诅咒,骰子总能造成全额伤害(完全免疫七咒减益);
-        // 护法立牌"爆发"效果期间同样修正第四诅咒:总能造成全额伤害
+        // 骰子伤害加成 = 骰点 + 卡牌点数。
+        // (1.21.1 / 1.20.1 在此之上还有「神秘遗物+ 七咒之戒」的减益;本线无该模组 ⇒ 无对应减益。)
         double diceAttackBonus = (baseDice + attackCardSum);
         // 基础伤害值(属性 + 立牌/筹码/效果攻击修饰器,不含骰点/卡牌加成):供闪避失败结算使用
         double baseDamage = attackPower;
@@ -1052,9 +1050,11 @@ public class DiceCombatEvents {
         EXTERNAL_DAMAGE_FACTORS.add(factor);
     }
 
-    // 内置因子:目标佩戴七咒之戒时,应用神秘遗物+ 已计算的第一诅咒【实际倍率】
-    // (由 onCurseMitigation 在 LivingIncomingDamageEvent 捕获,动态适配模组配置/修正物品/救赎转换);
-    // "命运的指引"激活时第一诅咒影响 -50%(加幅减半)。使用后清零捕获,避免残留。
+    // 内置因子:对目标应用其「外来伤害倍率」(由平台侧的伤害捕获处理器写入
+    // ModAttachments.DICE_CURSE_RATIO;1.21.1 / 1.20.1 = 神秘遗物+ 的第一诅咒倍率,
+    // 动态适配模组配置/修正物品/救赎转换);"命运的指引"激活时按加幅减半。使用后清零捕获,避免残留。
+    // ⚠️ 本线(26.1.2)已移除神秘遗物+ 联动 ⇒ 该附件无写入者、恒为 1.0,本因子在本线为恒等变换
+    // (保留以维持与另两线的结构同源)。
     static {
         registerDiceCombatFactor((attacker, target, damage) -> {
             if (target instanceof Player cursed) {

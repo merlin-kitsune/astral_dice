@@ -13,10 +13,6 @@
       "text": "astral_dice.guide.entry.cursed_sword_chip.2"
     },
     {
-      "type": "patchouli:text",
-      "text": "astral_dice.guide.entry.cursed_sword_chip.3"
-    },
-    {
       "type": "patchouli:crafting",
       "recipe": "astral_dice:cursed_sword_chip"
     }

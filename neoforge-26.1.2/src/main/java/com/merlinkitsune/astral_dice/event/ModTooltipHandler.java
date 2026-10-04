@@ -1299,11 +1299,6 @@ public class ModTooltipHandler {
             addCardLines(tooltip, "tooltip.astral_dice.card.fate_guidance_desc");
             tooltip.add(Component.translatable("tooltip.astral_dice.card.fate_saturation")
                     .withStyle(ChatFormatting.GRAY));
-            // 联动条目:仅安装相关模组时显示(备注区,紫色,无编号);
-            // Iron 仅在本线保留(无 compileOnly 依赖但按用户裁决保留联动)
-            if (net.neoforged.fml.ModList.get().isLoaded("irons_spellbooks")) {
-                addSignNoteLines(tooltip, "tooltip.astral_dice.card.fate_spell_mana");
-            }
             addEffectCardPlayCountTooltip(tooltip, player);
             tooltip.add(Component.translatable("tooltip.astral_dice.card.effect_cooldown",
                             effectCardCooldownSeconds(player))

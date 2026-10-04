@@ -268,9 +268,10 @@ public class ModAttachments {
         player.setData(FATE_ACTIVE_UNTIL.get(), value);
     }
 
-    // 骰战七咒倍率捕获:神秘遗物+ 模组在 LivingIncomingDamageEvent 应用第一诅咒倍率(含其配置 painMultiplier
-    // 与修正物品,如大地誓约)后,由本模组 LOWEST 处理器捕获实际倍率供骰战最终伤害使用;
-    // 仅内存态(不序列化),骰战结算使用后清零;非骰战攻击不使用。
+    // 骰战「外来伤害倍率」捕获槽:平台侧的伤害捕获处理器把实际倍率写入本槽
+    // (1.21.1 / 1.20.1 = 神秘遗物+ 的第一诅咒倍率,含其配置 painMultiplier 与修正物品如大地誓约),
+    // 供骰战最终伤害使用;仅内存态(不序列化),骰战结算使用后清零;非骰战攻击不使用。
+    // ⚠️ 本线(26.1.2)已移除神秘遗物+ 联动 ⇒ 无写入者,恒为 1.0。
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Float>> DICE_CURSE_RATIO =
             ATTACHMENTS.register("dice_curse_ratio", () -> AttachmentType.builder(() -> 1.0f)
                     .build());

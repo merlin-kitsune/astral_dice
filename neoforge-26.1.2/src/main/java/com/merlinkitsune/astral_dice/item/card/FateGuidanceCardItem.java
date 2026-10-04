@@ -23,9 +23,8 @@ import net.neoforged.bus.api.SubscribeEvent;
  * 2. 主动技能冷却时间减半(实时功能:立刻将当前最大冷却倒计时减少一半的时间)
  * 3. 对拥有"虚弱印记"的目标额外 +20% 伤害
  * 4. 所有食物提供的饱和度翻倍
- * 5. 神秘遗物+联动:装备七咒之戒时,第一诅咒(受到任何来源伤害加倍)影响 -50%
- * 6. Iron 的法术与魔法书联动:魔力消耗减半
  * 功能全部由 attachment(FATE_ACTIVE_UNTIL)驱动;FATE_GUIDANCE 效果仅作状态显示(5:00 倒计时图标)。
+ * ⚠️ 本线(26.1.2)已移除 Iron 的法术与魔法书与神秘遗物+ 两项联动(平台不存在对应模组)。
  * 专属牌:仅允许获得者使用;赠与他人的专属牌接收者无法使用。
  */
 @EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
@@ -89,12 +88,6 @@ public class FateGuidanceCardItem extends BaseEffectCardItem {
         return until > 0 && player.level().getGameTime() < until;
     }
 
-
-    // 七咒第一诅咒处理:神秘遗物+ 模组(默认 NORMAL 优先级)先应用其配置/修正物品后的伤害倍率,
-    // 本处理器在 LOWEST 捕获该【实际倍率】(amount/original,动态适配 painMultiplier 配置、大地誓约、
-    // 救赎之戒转换等模组内修正),而非固化倍率。
-    // - 骰战攻击(攻击者赐福激活+骰子+近战):不修改模组倍率,仅捕获存至目标侧,由骰战最终伤害使用;
-    // - 非骰战攻击:命运的指引激活时按加幅减半(第一诅咒影响 -50%),未激活则保持模组倍率。
 
     // 命运的指引·福运:激活期间所有食物提供的饱和度翻倍。
     // Finish 事件在原版 eat(更新食物数据)之前触发,此处预先补一份饱和度增量。

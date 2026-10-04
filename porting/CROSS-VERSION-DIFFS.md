@@ -93,8 +93,8 @@
 | N10 | **26.1.2 独有**：`ItemTags.SPEARS`（7 种长矛）已纳入骰神赐福近战判定。⚠️ **该常量本线独有，不得回移 1.21.1 / 1.20.1** | ① | 已落地 | `DiceCombatEvents` |
 | N11 | 物品模型定义 `assets/<ns>/items/<id>.json` 是**硬需求**（非 `ModItems` 物品须手工补） | ① | 已落地 | `assets/**/items/` |
 | N12 | `RecipeSerializer` record 化；`runData` 前须移出 `run/26.1.2/mods` 的探针运行时（KubeJS/Rhino/BAT） | ① | 已落地 | `datagen/*` / 工具链 |
-| N13 | **Iron 联动 = 反射版保留**（本线无法声明 `compileOnly` 依赖；模组未装时 `init()` 直接返回）—— **唯一特例** | ②③ | **已落地**（2026-10-04） | `event/IronSpellbooksCompat` |
-| N14 | **神秘遗物+（`enigmaticlegacyplus`）联动整体移除**（平台不存在该模组） | ③ | **已落地**（2026-10-04：删类 `MosesEnigmaticLink` + 4 常量/3 方法 + 4 处 tooltip 判定 + lang 4 键） | — |
+| N13 | **Iron's Spells 'n Spellbooks 联动整体移除**（平台不存在该模组：上游无 26.1.x 构建）⇒ 删 `event/IronSpellbooksCompat` + `SpellDamageRegistry` 的 14 个键 + `ModTooltipHandler` tooltip 分支 + lang 2 键 + 手册条目 | ③ | **已落地**（2026-10-04 二次清理；撤回早前的「反射版保留／唯一特例」） | — |
+| N14 | **神秘遗物+（`enigmaticlegacyplus`）联动整体移除**（平台不存在该模组） | ③ | **已落地**（2026-10-04：删类 `MosesEnigmaticLink` + 4 常量/3 方法 + 4 处 tooltip 判定 + lang 4 键；**二次清理**：删 4 个 guide 手册页 `cursed_sword_chip.3` / `effect_card_fate_guidance.5` / `integration.3` / `misaki_sign.3` + 对应 lang 键，并清掉 `neoforge.mods.toml` 的 `enigmaticlegacyplus` optional 依赖残留） | — |
 | N15 | 保留联动：`patchouli` / `waystones` / `curios` / `bountiful` / JEI | ③ | 无需处置 | — |
 | N16 | Modern UI 提示框机制**本线不存在**（无 `RarityTooltipFrame`）⇒ 属**平台差异**，不做兼容层 | ② | 无需处置（已登记） | — |
 
@@ -185,3 +185,4 @@
 |---|---|
 | 2026-10-04 | 建档：按用户裁决「重新划分优先级等级」建立跨版本差异总表（四线功能差异 + 各平台待解决问题），配套 `AGENTS.md`「版本优先级与跨线移植纪律」与 `porting/fabric-1.20.1/FABRIC-DIFFS.md`。 |
 | 2026-10-04 | **fabric P1-B-1~B-5 全部闭环**（Modern UI 兼容 / 近战黑名单 / `onLivingDamagePre` 对齐 / 三守门纳入 fabric / 追平探针）。§4.3 状态列已更新。 |
+| 2026-10-04 | **26.1.2 联动口径收紧（二次清理）**：删除「26.1.2 属 NeoForge 端口 ⇒ Iron 联动必须保留」的全部声明；按「平台不存在即移除、无例外」撤回 Iron 反射版（N13 改为整项移除）；并清理神秘遗物+ 残留（4 个 guide 手册页 + 对应 lang 键 + `mods.toml` 的 `enigmaticlegacyplus` 依赖）。 |

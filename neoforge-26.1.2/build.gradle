@@ -241,8 +241,9 @@ dependencies {
     compileOnly 'net.fabricmc:sponge-mixin:0.17.3+mixin.0.8.7'
 
     // 注意:Iron's Spells 'n Spellbooks 联动在 26.1.2 **不移植**——该模组在 Modrinth 上最高只发布到 1.21.1,
-    // 没有 26.1.x / 26.2 构建,故 event/IronSpellbooksCompat.java、base-mod-compile-libs/irons_spellbooks.jar
-    // 与本子项目一并移除(SpellDamageRegistry 里的 irons_spellbooks:* 只是字符串 id,保留无害)。
+    // 没有 26.1.x / 26.2 构建。按「平台不存在的模组 ⇒ 该线联动整体移除」口径,本线 Iron 联动
+    // (event/IronSpellbooksCompat、SpellDamageRegistry 的 irons_spellbooks:* 键、tooltip 分支、lang 键、
+    // 手册条目)已于 2026-10-04 全部移除,不留任何残留。
 }
 
 // This block of code expands all declared replace properties in the specified resource targets.

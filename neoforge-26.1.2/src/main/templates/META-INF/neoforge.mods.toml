@@ -105,14 +105,6 @@ config="${mod_id}.mixins.json"
     ordering="AFTER"
     side="BOTH"
 
-# 神秘遗物+ (Enigmatic Legacy+):可选联动,未安装时相关逻辑自动失效
-[[dependencies.${mod_id}]]
-    modId="enigmaticlegacyplus"
-    type="optional"
-    versionRange="*"
-    ordering="AFTER"
-    side="BOTH"
-
 # 帕秋莉手册(可选):未安装时模组正常运行,仅《恋的规则书》不可用
 [[dependencies.${mod_id}]]
     modId="patchouli"

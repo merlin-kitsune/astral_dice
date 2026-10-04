@@ -46,9 +46,6 @@ public class AstralDiceMod {
         backupOldConfigIfNeeded("astral_dice-common.toml", ModCommonConfig.CONFIG_VERSION);
         modContainer.registerConfig(ModConfig.Type.COMMON, ModCommonConfig.SPEC);
         modEventBus.register(this);
-        // Iron 的法术与魔法书联动:本线**无 compileOnly 依赖**(上游无 26.1.x 构建)⇒ 反射注册。
-        // 按用户裁决(2026-10-04):本线属 NeoForge 端口,**联动保留**,模组未装时 init() 直接返回。
-        com.merlinkitsune.astral_dice.event.IronSpellbooksCompat.init();
         // Waystones 传送联动:仅在模组加载时反射注册事件,未安装时静默跳过
         com.merlinkitsune.astral_dice.event.WaystoneWarpCompat.init();
         // ⚠️ 客户端菜单界面(ModMenuTypes.CARD_INVENTORY → CardInventoryScreen)的注册**不在这里**。
