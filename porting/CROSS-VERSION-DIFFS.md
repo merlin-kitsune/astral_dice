@@ -73,7 +73,7 @@
 | F20 | 其它 API：`AttributeModifier(UUID,String,double,Operation)`；`ADDITION/MULTIPLY_TOTAL`；`FoodProperties.getSaturationModifier()`；`ItemStack.consume` → `shrink`；`AbstractContainerScreen.renderSlot` **私有**（卡牌栏「大卡缩放」退化为常规大小，**视觉差异**）；`mouseScrolled` 3 参；`LivingChangeTargetEvent.getNewTarget()`；`NbtOps` 在 `net.minecraft.nbt`；`ForgeGui`/`IGuiOverlay`/`VanillaGuiOverlay` 在 `client.gui.overlay` | ①② | 已落地 | 各调用点 |
 | F21 | 持久化走 Forge Capability / `Entity#getPersistentData()`（**Forge 补丁方法**，原版无） | ② | 已落地 | `component/*` / `EliteTargets` |
 | F22 | 常驻效果时长归一（旧存档 `MAX_VALUE` 递减残留 ⇒ 界面显示超长而非 ∞） | —（跨线同源） | **已落地**（三线同批；判据 `PlayerTickEvents#normalizeLegacyInfiniteDurations`） | 同左 |
-| F23 | Modern UI 提示框边框兼容（`ModernUITooltipCompat`） | ② | 已落地（P0 两线；**26.1.2 无对应机制**、fabric 待办） | `client/ModernUITooltipCompat` |
+| F23 | Modern UI 提示框边框兼容（`ModernUITooltipCompat`） | ② | **已落地三条线**（P0 两线 + `fabric-1.20.1`，2026-10-04）；⚠️ **26.1.2 无该机制**（无 `RarityTooltipFrame`）⇒ 平台差异，不做兼容层 | `client/ModernUITooltipCompat` |
 
 > 完整平台差异（含 33 处查找 API 机械替换、§8 无需处理项、§8.5 编译循环发现的补充差异）见 `docs/compat-1.20.1-forge.md`。
 
@@ -171,7 +171,7 @@
 
 1. **构建**：目标线 `build` SUCCESSFUL（⚠️ 构建日志须用 **Python `subprocess` 直捕 stderr 再 `decode`**，别走管道；本机 PowerShell 工具回显失效 ⇒ 输出 `*> 文件` 落盘再读）。
 2. **产物三件套**：jar 时间戳 + **开包 `javap` 核符号** + 资源条目核对（fabric 尤须）。
-3. **守门**：`scripts/verify/verify_*.ps1` + `scripts/audit/tooltip_color_audit.ps1` + `tools/{check_lang_sync,check_mod_sources,audit_actionbar,verify_party_api,verify_firearm_detection,audit_mixin_injection,audit_patchouli_keys,verify_fabric_assets,verify_effect_icons}` —— ⚠️ **守门 0 ≠ 全绿**（散三处；且其中三项不含 fabric，见 P1-B-4）。
+3. **守门**：`scripts/verify/verify_*.ps1` + `scripts/audit/tooltip_color_audit.ps1` + `tools/{check_lang_sync,check_mod_sources,audit_actionbar,verify_party_api,verify_firearm_detection,audit_mixin_injection,audit_patchouli_keys,verify_fabric_assets,verify_effect_icons}` —— ⚠️ **守门 0 ≠ 全绿**（散三处）。⚠️ `audit_mixin_injection` / `check_lang_sync` / `audit_actionbar` **自 2026-10-04 起已含 `fabric-1.20.1`**（此前不含，见 P1-B-4 ⇒ 已闭环）。
 4. **一致性检查**：抹平平台样板后逐行对比本线 ↔ `neoforge-1.21.1` 的**同一段实现**。
 5. **二次验证**：非平凡改动 / 发布动作 / 批量或跨线改动 ⇒ **必派独立子代理对账**（`AGENTS.md`「二次验证规范」）。
 6. **文档**：`CHANGELOG{,_ZH}.md`（1.21.1 与 20.1 同批；26.1.2/fabric 按其节奏）+ 本表「待解决问题」状态更新 + `KNOWN-ISSUES.md`（未修项禁删、已修项移 §1.1 索引）。

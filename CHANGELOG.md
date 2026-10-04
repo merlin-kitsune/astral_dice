@@ -103,7 +103,9 @@
     **unchanged**).
   - **All cards** (attack / defense / effect cards and the exclusive combat cards - 26 branches in
     total): the **top** blank line is removed, so the cost line or description follows the item name
-    - **The Fabric 1.20.1 line catches up on three player-visible behaviours** (2026-10-04): that line is an
+**directly**. NOTE: signs / chips / materials / dice keep their top blank line.
+
+- **The Fabric 1.20.1 line catches up on three player-visible behaviours** (2026-10-04): that line is an
   independent pre-release port (artifacts carry `-alpha.N` and are never merged into a stable Release).
   This update brings over three decisions already live on the other lines:
   - **Non-weapon tools no longer count as a "melee weapon attack"**: hitting someone with **shears / a
@@ -114,8 +116,6 @@
     enabled**: the tier colour is now written into Modern UI own stroke slots and restored right after
     that render pass. Config: **`modernui_tooltip_frame_compat`** (on by default); when Modern UI is
     absent the compat layer is a no-op.
-
-**directly**. NOTE: signs / chips / materials / dice keep their top blank line.
 
 ### Bug Fixes
 

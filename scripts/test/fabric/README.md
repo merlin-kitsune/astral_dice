@@ -184,7 +184,7 @@ pwsh -NoProfile -File scripts/test/fabric/ft_stop.ps1 --side client
 | `AP_FAB_PHASE_BEGIN` / `AP_FAB_PHASE` / `AP_FAB_REPORT` | `ft.ps1` | 阶段编排 |
 | `AP_FAB_PROD_CP` / `_LAUNCH` / `_READY` / `_CRASH` / `_CRASH_CAUSE` / `_FAIL` | `ft_prod` | 生产映射冒烟：classpath 构造 / 启动 / 就绪 / 崩溃 / 失败原因 |
 | `AP_FAB_PROD_MIXIN_FAIL` / `_MIXIN_FAIL_DETAIL` | `ft_prod` | 注入失败（`InjectionError`）时那一行原文 —— 一眼看出是哪个模组的哪个注入器 |
-| `AP_CATCHUP_ENV` / `_MELEE` / `_RANGE` / `_CONC` / `_LEGACYDUR` / `_ERR` / `_MISS` | **模组侧**（非本台脚本） | 追平批证据读数（`scripts/test/fabric/astral_catchup_probe.js`，见 §7.2.7）：注册面 / 近战黑名单四项 / 射程两段夹取 / 隐匿三态 / 常驻时长归一。`_ERR` 与 `_MISS` 是**失败面**，用例对其断言 absent |
+| `AP_CATCHUP_ENV` / `_MELEE` / `_RANGE` / `_CONC` / `_LEGACY` / `_ERR` / `_MISS` | **模组侧**（非本台脚本） | 追平批证据读数（`scripts/test/fabric/astral_catchup_probe.js`，见 §7.2.7）：注册面 / 近战黑名单四项 / 射程两段夹取 / 隐匿三态 / 常驻时长归一。`_ERR` 与 `_MISS` 是**失败面**，用例对其断言 absent |
 | `AP_FAB_PARTY` | **模组侧**（非本台脚本） | 队伍判定三条后端的接入状态：`sw_mc/sw_ftb/sw_opac`（配置开关）+ `back_ftb/back_opac`（反射契约是否解析成功）+ `why_ftb/why_opac`（失败原因）。由 `PartyRelations#reportBackends()` 在 common setup 打印，用例 `FAB-PARTY-BACKENDS` 断言其形态 |
 
 | `MT_FAB_<NAME>: OK/FAIL/ERROR/BLOCKED` | 全部 | 结论行（stderr 走 FAIL/ERROR，stdout 走 OK） |
@@ -613,18 +613,22 @@ RCON 驱动），配套用例 `cases/FAB-CATCHUP-PARITY.json`。
 
 | 子命令 | 覆盖的产品代码 | 期望机器行 |
 |---|---|---|
-| `env` | 注册面 / 类 / 常量 / 方法符号 | `AP_CATCHUP_ENV: rin=1 conc=1 maxrad=64.0 melee=1 concbreak=1 range=1 legacynorm=1` |
+| `env` | 注册面 / 类 / **公开常量** | `AP_CATCHUP_ENV: rin=1 conc=1 maxrad=64 melee=1 concbreak=1 range=1 thr=1073741823` |
 | `melee [player]` | `DiceCombatEvents#isMeleeWeaponAttack`（近战黑名单四项） | `AP_CATCHUP_MELEE: empty=0 shears=0 rod=0 flint=0 brush=0 sword=1` |
-| `range [player]` | `SelectorRangeModifiers#apply` + `MAX_ENHANCED_RADIUS` | `AP_CATCHUP_RANGE: max=64.0 noeff=32.0 waneff=48.0 clamp=64.0 zero=0.0` |
+| `range [player]` | `SelectorRangeModifiers#apply` + `MAX_ENHANCED_RADIUS` | `AP_CATCHUP_RANGE: max=64 noeff=32 waneff=48 clamp=64 zero=0` |
 | `conc [player]` | `ConcealmentEffect#apply/has/breakOnAttack` | `AP_CATCHUP_CONC: before=0 applied=1 broke=0` |
-| `legacydur [player]` | `PlayerTickEvents#normalizeLegacyInfiniteDurations` | `AP_CATCHUP_LEGACYDUR: dur0=1200000000 dur1=-1 inf=1 amp=5` |
+| `legacydur [player]` | `EffectTimerGuard.INFINITE_THRESHOLD`（归一判据）+「外部移除拦截 / 内部通道清理」契约 | `AP_CATCHUP_LEGACY: thr=1073741823 dur0=1200000000 gt_thr=1 ticked=… dur_after=… amp=5 ext=… ext_kept=1`（⚠️ `dur_after` 实测仍为原值 —— 归一的**效果本身**未覆盖，见 §7.2.7.1） |
 
 异常一律落 `AP_CATCHUP_ERR: tag=… ex=…`（用例断言其 **absent**）；无人可用时落 `AP_CATCHUP_MISS:`。
 
-**⚠️ `legacydur` 为什么用反射直调而不是「施加后等 20 tick」**：归一逻辑由 `PlayerTickEvents` 的**每 20 tick**
-循环触发，而 `FakePlayer` **不进入世界的 tick 循环**（未 `addFreshEntity`）⇒ 「等 tick」在无人值守下**不可靠**。
-故探针直接 `getDeclaredMethod("normalizeLegacyInfiniteDurations", Player).setAccessible(true).invoke(null, p)`：
-既验证**方法符号**（该名字也是开包 javap 的核验对象）又验证**语义**，且确定性。
+**⚠️ `legacydur` 为什么不直调归一方法、也不「等 20 tick」**（实测两条路都走不通，故断言范围已收窄到**判据基座**）：
+- **不能直调**：KubeJS/Rhino **不允许反射 JDK `Class` 的成员** —— `PlayerTickEvents.getDeclaredMethod(...)` 直接报
+  `InternalError: Java class "…" has no public instance field or method named "getDeclaredMethod"`；
+- **不能等 tick**：归一挂在 `PlayerTickEvents` 的 `tickCount % 20 == 0` 之后，而 `FakePlayer` **不进世界的 tick 循环**
+  （实测手动 `p.tick()` 24 次也不触发该事件）⇒ 无人值守下拿不到「已归一」的读数。
+⇒ 探针改为断言**判据基座**：① 公开常量 `EffectTimerGuard.INFINITE_THRESHOLD`（= `Integer.MAX_VALUE/2`）；
+② 存量值 `dur0=1200000000 > thr`（⇒ 该实例**会**命中归一分支）；③ 拦截/清理契约（`ext` / `ext_kept`）。
+**「旧存档超长时长被归一为 -1」这条效果本身仍需带真人玩家（或客户端进世界）确认** —— 见 §7.2.7.1「仍未覆盖」。
 
 **跑法**：
 
