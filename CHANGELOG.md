@@ -97,6 +97,13 @@
     attack / defense line no longer uses a leading newline inside the lang value (the blank line is
     now added in code, matching every other chip); the **Megas Sign (Orbital Bombardment)** tooltip
     loses its trailing period (single-line tooltips in this mod do not end with a period).
+- **Two tooltip blank lines removed per user decision** (2026-10-04):
+  - **Nancy Lu Sign**: the attack / defense counter now sits **flush against** the passive description -
+    this sign no longer uses the counter path that prepends a blank line (every other sign is
+    **unchanged**).
+  - **All cards** (attack / defense / effect cards and the exclusive combat cards - 26 branches in
+    total): the **top** blank line is removed, so the cost line or description follows the item name
+    **directly**. NOTE: signs / chips / materials / dice keep their top blank line.
 
 ### Bug Fixes
 
