@@ -80,6 +80,34 @@
 
 ### Bug Fixes
 
+- **The "Monster Brick" card recipe could never be crafted on 1.20.1 Forge - wrong common tag namespace (`c:` should be `forge:`)** (reported 2026-10-04):
+  On Forge 1.20.1 the common tag namespace is **`forge:`** (`c:` is the community tag system of NeoForge 1.21+
+  and Fabric), but the recipe still used the NeoForge-side `c:bricks` - and **no provider of any `c:` tag exists
+  on 1.20.1**, so the ingredient could never be satisfied and the **"Monster Brick" card was impossible to craft**
+  (its `has_bricks` unlock criterion likewise never fired). It now uses `forge:bricks`. Note that Forge 47.x ships
+  `forge:ingots/brick` and `forge:ingots/nether_brick` but **no combined tag**, so this mod defines the aggregate
+  tag itself in `data/forge/tags/items/bricks.json` pointing at those two - semantically **identical** to
+  NeoForge's `c:bricks` (= `c:bricks/normal` plus `c:bricks/nether`; either a brick or a nether brick works).
+  Only the Forge line changed: the two NeoForge lines keep using their bundled `c:bricks`, and the Fabric line
+  keeps its own self-defined `c:bricks`.
+- **Permanent effects on Forge still showed a huge countdown instead of infinity - added "legacy permanent-duration normalisation"** (reported 2026-10-04: "the charge effect indicator still shows an absurdly long timer"):
+  Since 1.3.4 this mod's permanent effects (Charge / Doll Crafting / Doll Complete / Foxglow / Dragon Form /
+  Misfortune / Precision Strike / Blue Curse, plus the "ready" indicators of the cutter, the flashlight and the
+  six damage chips) all use vanilla's **true infinite duration** (`INFINITE_DURATION` = `-1`, shown as the
+  infinity symbol), but that change only touched the **application sites** - **instances written into player saves
+  by earlier versions are still decremented `Integer.MAX_VALUE` values** (an actual save holds
+  `astral_dice:charge Duration=2147482289`, displayed as `29826:08:34` in the inventory effect panel instead of
+  the infinity symbol). No existing path ever corrects them: the timer guard (`EffectTimerGuard`) treats any
+  over-long value as "permanent" and skips it (**never tracking it, hence never correcting it**), and each
+  effect's application site is only reached when the player re-acquires, consumes, or toggles equipment. A
+  **once-per-second normalisation** has been added: instances of **this mod's** effects whose duration is at or
+  above `Integer.MAX_VALUE / 2` are rewritten to `-1` (duration only; amplifier, ambient, visibility and icon
+  flag are preserved, so no effect semantics change). The predicate deliberately uses an **over-long threshold
+  rather than an effect list**: this mod's legitimate countdowns peak at 24000 ticks (the shield / resistance refresh window in
+  `RenShieldManager`; everything else is at most 3600 ticks), roughly 4.6 orders of magnitude
+  below the threshold, so none of them are affected - and the two-state effects (Zhao Blessing / Descent in their
+  "started" state, 2400 ticks) are equally untouched. This batch lands on the **three production lines**
+  (1.21.1 / 1.20.1 / 26.1.2); the Fabric line follows in a later batch.
 - **Rarity border colours were discarded entirely when Modern UI is installed with its "modern tooltip" enabled - added a client-side compatibility layer** (reported 2026-10-04: "coloured border not working"):
   Modern UI does **not** mix into vanilla rendering; it subscribes to `RenderTooltipEvent.Pre` - a high-priority
   handler draws the whole tooltip itself, then a low-priority handler cancels vanilla rendering, so the border

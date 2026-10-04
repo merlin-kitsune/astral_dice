@@ -18,10 +18,17 @@ import java.util.concurrent.CompletableFuture;
 import com.merlinkitsune.astral_dice.component.WeaponEnhancement;
 
 public class ModRecipeProvider extends RecipeProvider implements IConditionBuilder {
-    // 通用标签 c:bricks(砖块,对怪板砖配方使用)
+    // 「砖物品」汇总标签(对怪板砖配方使用)。
+    // ⚠️ 1.20.1 Forge 的通用标签命名空间是 **forge:**,不是 c:
+    //    —— c: 是 NeoForge / Fabric 的社区标签体系;Forge 47.x 只提供 forge: 命名空间、
+    //    **不会提供任何 c: 标签** ⇒ 写成 c:bricks 时配方材料永不可满足(对怪板砖无法合成)。
+    // ⚠️ Forge 47.x 自带的是 forge:ingots/brick 与 forge:ingots/nether_brick 两条,
+    //    **没有汇总的 forge:bricks** ⇒ 本模组在
+    //    data/forge/tags/items/bricks.json 自建汇总标签(内容指向上述两条),
+    //    语义与 NeoForge 的 c:bricks(= c:bricks/normal ∪ c:bricks/nether)完全等价。
     private static final net.minecraft.tags.TagKey<net.minecraft.world.item.Item> BRICKS_TAG =
             net.minecraft.tags.ItemTags.create(
-                    new net.minecraft.resources.ResourceLocation("c", "bricks"));
+                    new net.minecraft.resources.ResourceLocation("forge", "bricks"));
 
     public ModRecipeProvider(PackOutput output) {
         super(output);
@@ -498,7 +505,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .unlockedBy("has_star_coin", has(ModItems.STAR_COIN.get()))
                 .save(output::accept);
 
-        // 对怪板砖(+6):1 纸 + 1 tag=c:bricks + 1 星币
+        // 对怪板砖(+6):1 纸 + 1 tag=forge:bricks + 1 星币
         ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ModItems.MONSTER_BRICK_CARD.get())
                 .requires(Items.PAPER)
                 .requires(net.minecraft.world.item.crafting.Ingredient.of(BRICKS_TAG))

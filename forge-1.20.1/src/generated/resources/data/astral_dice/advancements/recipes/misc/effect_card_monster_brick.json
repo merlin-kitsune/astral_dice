@@ -5,7 +5,7 @@
       "conditions": {
         "items": [
           {
-            "tag": "c:bricks"
+            "tag": "forge:bricks"
           }
         ]
       },
