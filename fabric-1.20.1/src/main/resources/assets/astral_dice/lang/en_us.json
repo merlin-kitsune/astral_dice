@@ -109,9 +109,6 @@
   "astral_dice.guide.entry.haiqing_sign.2": "Passive Skill - Lucky Star: a roll of 6 during the Dice Blessing immediately grants 6 Star Coins; when a Weak Marked target is killed, the Astrologer gains 3 Star Coins; if the killer is a player, that player gains a Fate's Guide.",
   "astral_dice.guide.entry.hand_fan_big_chip.1": "After using an active skill: gain a random effect card (excl. exclusive) and apply 1 Mark layer to all hostiles within range (for target-waiting signs this only triggers after the target is confirmed).",
   "astral_dice.guide.entry.hand_fan_small_chip.1": "After using an active skill: apply 1 Mark layer to all hostiles within 16 blocks of you (for target-waiting signs this only triggers after the target is confirmed).",
-  "astral_dice.guide.entry.integration.1": "Integrations:",
-  "astral_dice.guide.entry.integration.2": "Enigmatic Legacy+: Fate's Guide corrects the Cursed Ring's curses; the Guardian sign corrects Curse 4 during Burst; the Cursed Sword tugs at the Scroll of a Thousand Curses.",
-  "astral_dice.guide.entry.integration.name": "Mod Integration",
   "astral_dice.guide.entry.jasmine_sign.1": "Active Skill - Energy Overload: for 2:00, movement speed +20%% and armor -30%%, plus one random effect: Resistance (2:00) or Strength (2:00).",
   "astral_dice.guide.entry.jasmine_sign.2": "Passive Skill - Motion Charge: every 300 meters moved, alternately gain +1 attack and +1 defense (each capped); using an Express Delivery card immediately reduces the active skill's max cooldown by 50%%.",
   "astral_dice.guide.entry.komachi_sign.1": "Active - Ninja Combo: this round's card slots +1.",
@@ -490,7 +487,6 @@
   "tooltip.astral_dice.card.exclusive_combat_owner": "Exclusive combat card: usable only by its obtainer",
   "tooltip.astral_dice.card.exclusive_owner": "Exclusive card: usable only by the obtainer",
   "tooltip.astral_dice.card.express_delivery": "§eLeft click§7 to use on another player, §eright click§7 to use on yourself\nThe target gains §9Speed II (1:00)§7",
-  "tooltip.astral_dice.card.fate_curse_mitigation": "Enigmatic Legacy+ link:\nwearing the Cursed Ring corrects Curse 1: incoming damage doubling reduced by §e50%%§7 for §95:00§r",
   "tooltip.astral_dice.card.fate_guidance_desc": "On use, gain the following abilities:\n1. §e+1§7 play count\n2. Instantly halve the current maximum active skill cooldown countdown\n3. §e+20%%§7 damage to targets with Weak Mark for §95:00§r",
   "tooltip.astral_dice.card.fate_saturation": "4. Saturation from all food is doubled for §95:00§r",
   "tooltip.astral_dice.card.full_power": "Attack §e+6§7, final attack §e+50%%§7 | Uses: §e%s§r",
@@ -523,7 +519,6 @@
   "tooltip.astral_dice.chip.cursed_sword": "While equipped you always suffer from the §cBlue Curse§7. During §eDice Blessing§7, every §e1§7 hostile with at least §e20§7 health killed grants Attack Power §e+1§7 (at most once per Dice Blessing), up to §e%s§7",
   "tooltip.astral_dice.chip.cursed_sword_blue_curse": "§cBlue Curse§7: Armor §e-20%%§7, Armor Toughness §e-50%%§r",
   "tooltip.astral_dice.chip.cursed_sword_bonus": "Attack §e+%s§r",
-  "tooltip.astral_dice.chip.cursed_sword_enigmatic": "Enigmatic Legacy link:\nWhile equipped, Scroll of a Thousand Curses' curse count §e+1§r",
   "tooltip.astral_dice.chip.cutter": "At §e60%%§7 health or above: Attack Power §e+2§7, plus extra Attack Damage equal to your current healing layers",
   "tooltip.astral_dice.chip.cutter_blade": "At §e60%%§7 health or above: Attack Power §e+4§7, plus extra Attack Damage equal to your current healing layers",
   "tooltip.astral_dice.chip.eagle_scope": "Hitting a target applies §e1§7 Mark layer. This combat: §e+2§7 attack per target Mark layer",
@@ -628,7 +623,6 @@
   "tooltip.astral_dice.sign.mimi_active": "Recycle all cards in your inventory and receive recycled count §e+1§7 random cards",
   "tooltip.astral_dice.sign.mimi_passive": "Gain §e1§7 Star Coin per battle card gained through crafting or your active skill's returns\nwhile equipped, chip slots §e+1§r\nevery §e25§7 battle cards returned by your active skill grants a random chip (at most §e1§7 per use)",
   "tooltip.astral_dice.sign.misaki_active": "Gain §9Burst(2:00)§7:\n  Attack §e+4§r\n  Dice value + by equipped dice star (§e1★+1§7, §e2★+2§7, §e3★+3§7)\n  Meito damage floor + by equipped dice star (§e1★+2§7, §e2★+3§7, §e3★+5§7)\nIf Sword Energy reaches §e3§7: consume §e2§7 to gain a Meito",
-  "tooltip.astral_dice.sign.misaki_enigmatic": "Enigmatic Legacy link:\nduring Burst, wearing the Cursed Ring corrects Curse 4: always deal full damage",
   "tooltip.astral_dice.sign.misaki_passive": "Gain §e1§7 Sword Qi on Dice Blessing trigger (max §e3§7);\nEach layer: attack §e+1§7, at §e3§7 layers: extra §e+2§7;\nMeito card cost reduced to §e3§r",
   "tooltip.astral_dice.sign.misaki_stacks": "Current Sword Qi: §e%s§7 / §e3§r",
   "tooltip.astral_dice.sign.nancy_lu_active": "Instantly enter full invisibility (up to §930 seconds§7). Attacking a hostile mob or player immediately removes invisibility, consumes one random battle card from your main inventory, and grants attack equal to that card's cost (minimum §e+2§7) for §92:00§7 (a guaranteed §e+2§7 attack still applies when no battle card is available in your main inventory)",
@@ -840,6 +834,5 @@
   "tooltip.astral_dice.chip.golden_shooting_star": "When you pass by a hostile target, it takes §e2§7 damage and you gain §e1§7 Starlight; if the target is an elite or a boss, it takes additional damage equal to your current Starlight. Triggers once every §910s§7; shares its timer with the Purple Shooting Star",
   "tooltip.astral_dice.chip.shooting_star_cooldown": "On cooldown: §c%s§c s",
   "astral_dice.guide.entry.purple_shooting_star_chip.1": "Passing by a hostile target deals 1 damage to it and grants you 1 Starlight. Triggers once every 10 seconds; shares its timer with the Golden Shooting Star.",
-  "astral_dice.guide.entry.golden_shooting_star_chip.1": "Passing by a hostile target deals 2 damage to it and grants you 1 Starlight; if the target is an elite or a boss, it takes additional damage equal to your current Starlight. Triggers once every 10 seconds; shares its timer with the Purple Shooting Star.",
-  "tooltip.astral_dice.sign.moses_enigmatic": "Enigmatic Legacy link:\nwhile wearing the Cursed Ring and having Weakness Insight:\ncorrects Curse 3: removes the armor reduction\ncorrects Curse 6: no longer drops Soul Crystals on death (reduced max health)"
+  "astral_dice.guide.entry.golden_shooting_star_chip.1": "Passing by a hostile target deals 2 damage to it and grants you 1 Starlight; if the target is an elite or a boss, it takes additional damage equal to your current Starlight. Triggers once every 10 seconds; shares its timer with the Purple Shooting Star."
 }

@@ -65,6 +65,35 @@ tooltip.astral_dice.card.fate_spell_mana  Iron 法术联动
 | 通用标签命名空间 | fabric 用**自建 `c:`**（NeoForge 自带 `c:`、Forge 用 `forge:`） |
 | 饰品框架 | fabric 用 `trinkets` / `accessories`（不是 Curios） |
 
+## 四点五、模组联动范围（2026-10-04 用户追加裁决）
+
+**口径**：排除 fabric 端**不存在的**模组的全部联动；fabric 端**存在**的模组的联动照常适配。
+
+| 联动模组 | fabric 是否有 | 处置 |
+|---|---|---|
+| `irons_spellbooks`（Iron 法术） | ❌ 无 1.20.1 Fabric 版 | **已裁**（2026-09-29 已完成，`ModTooltipHandler` 只留说明注释） |
+| `enigmaticlegacy`（神秘遗物 1.20.1） | ❌ 无 | **需移除**（见下） |
+| `bountiful` | ❌ 无 data 联动 | 无需处理（fabric 无 `data/bountiful/`） |
+| `patchouli`（手册） | ✅ 有 | 保留 |
+| `waystones` | ✅ 有 | 保留 |
+| `accessories`（饰品框架） | ✅ 有（fabric 特有） | 保留 |
+| **现代化 UI（Modern UI）** | ✅ 有 | **照常适配**（原清单 #13 保留） |
+
+### 待移除清单（fabric 侧神秘遗物联动）
+
+| # | 位置 | 内容 |
+|---|---|---|
+| 1 | `item/sign/MosesEnigmaticLink.java` | **整个类**（387 行）→ 删除 |
+| 2 | `AstralDiceMod.java:162` | `LoaderBus.INSTANCE.register(MosesEnigmaticLink.class)` → 删除 |
+| 3 | `combat/DiceCombatEvents.java` | 4 个 `ENIGMATIC_*` 常量（71-76）+ `hasEnigmaticCurse`（122-127）+ `isHoldingEnigmaticItem` + 调用点（139-147） |
+| 4 | `item/card/FateGuidanceCardItem.java:110` | `DiceCombatEvents.hasEnigmaticCurse(player)` 调用分支 |
+| 5 | `event/ModTooltipHandler.java` | 4 处 `ModList.get().isLoaded("enigmaticlegacy")` 判定块（misaki / cursed_sword / fate_curse_mitigation / moses） |
+| 6 | lang ×3 语 | `sign.misaki_enigmatic` / `sign.moses_enigmatic` / `chip.cursed_sword_enigmatic` / `card.fate_curse_mitigation`（共 12 键） |
+| 7 | 手册 `integration.json` | 第 2 页（神秘遗物内容）+ 键 `guide.entry.integration.1/.2/.name` |
+
+⚠️ **注意**：fabric 的 `guide.entry.integration.2` 内容是**神秘遗物**（与 forge 的「Bountiful」不同），
+删键后该手册条目将无内容 ⇒ 需**整条删除**或改写（改由后续批次裁决）。
+
 ## 五、平台适配要点（写代码时必须遵守）
 
 1. 事件订阅：**禁 `@Mod.EventBusSubscriber`**（Fabric 无效）⇒ 必须在入口类 `LoaderBus.INSTANCE.register(X.class)`；

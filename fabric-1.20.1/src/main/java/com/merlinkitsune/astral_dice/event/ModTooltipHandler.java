@@ -672,11 +672,6 @@ public class ModTooltipHandler {
             addSignLines(tooltip, "tooltip.astral_dice.sign.misaki_active");
             addSignPassiveTitle(tooltip, "剑气");
             addSignLines(tooltip, "tooltip.astral_dice.sign.misaki_passive");
-            // 神秘遗物+ 联动描述:仅当安装神秘遗物+ 模组时展示(置于备注区,紫色,无标题)
-            if (ModList.get().isLoaded("enigmaticlegacy")) {
-                tooltip.add(Component.empty());
-                addSignNoteLines(tooltip, "tooltip.astral_dice.sign.misaki_enigmatic");
-            }
             int stacks = ModDataComponents.MISAKI_SIGN_STACKS.getOrDefault(stack, 0);
             addSignCounter(tooltip, "tooltip.astral_dice.sign.misaki_stacks", stacks);
             addSignCooldownRemaining(tooltip, event.getEntity());
@@ -963,10 +958,6 @@ public class ModTooltipHandler {
             tooltip.add(tt("tooltip.astral_dice.chip.cursed_sword_blue_curse")
                     .withStyle(ChatFormatting.GRAY));
             tooltip.add(Component.empty());
-            if (ModList.get().isLoaded("enigmaticlegacy")) {
-                addChipLines(tooltip, "tooltip.astral_dice.chip.cursed_sword_enigmatic",
-                        ChatFormatting.LIGHT_PURPLE);
-            }
             if (event.getEntity() != null) {
                 addSignCounter(tooltip, "tooltip.astral_dice.chip.cursed_sword_bonus",
                         ModAttachments.getCursedSwordBonus(player));
@@ -1209,10 +1200,6 @@ public class ModTooltipHandler {
             addCardLines(tooltip, "tooltip.astral_dice.card.fate_guidance_desc");
             tooltip.add(Component.translatable("tooltip.astral_dice.card.fate_saturation")
                     .withStyle(ChatFormatting.GRAY));
-            // 联动条目:仅安装相关模组时显示(备注区,紫色,无编号)
-            if (ModList.get().isLoaded("enigmaticlegacy")) {
-                addSignNoteLines(tooltip, "tooltip.astral_dice.card.fate_curse_mitigation");
-            }
             // ⚠️ 2026-09-29 裁剪:此处原有 `isLoaded("irons_spellbooks")` 分支
             //   (tooltip.astral_dice.card.fate_spell_mana)。Iron's Spells 'n Spellbooks
             //   没有 1.20.1 的 Fabric 版 ⇒ fabric 线整体裁剪该联动(连同 lang 键一起删)。
@@ -1284,11 +1271,6 @@ public class ModTooltipHandler {
             addSignLines(tooltip, "tooltip.astral_dice.sign.moses_active");
             addSignPassiveTitle(tooltip, "精密技巧");
             addSignLines(tooltip, "tooltip.astral_dice.sign.moses_passive");
-            // 神秘遗物 联动描述:仅当安装神秘遗物 模组时展示(置于备注区,紫色,无标题)
-            if (ModList.get().isLoaded("enigmaticlegacy")) {
-                tooltip.add(Component.empty());
-                addSignNoteLines(tooltip, "tooltip.astral_dice.sign.moses_enigmatic");
-            }
 
             if (event.getEntity() != null) {
                 addSignCounter(tooltip, "tooltip.astral_dice.sign.moses_weakness_reveal",

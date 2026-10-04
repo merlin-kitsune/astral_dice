@@ -66,14 +66,6 @@ import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
 import com.merlinkitsune.starenginelib.combat.HostileTargets;
 
 public class DiceCombatEvents {
-    // === 神秘遗物 (Enigmatic Legacy 2.30.1, modId `enigmaticlegacy`) 联动 ===
-    // ⚠️ **物品 path 与 1.21.1 移植版完全相同,只有命名空间不同**(2026-09-30 逐项核对两版 jar 的 lang 物品表)。
-    //    ⚠️ 本线 2.30.1 **没有「恩惠之典」**(the_bless 属移植版) ⇒ `ENIGMATIC_BLESS` 恒取到 AIR、
-    //    该免疫分支在 1.20.1 上**不生效**(保留常量是为了命名空间一致与未来物品补齐)。
-    private static final String ENIGMATIC_CURSED_RING = "enigmaticlegacy:cursed_ring";
-    private static final String ENIGMATIC_ACKNOWLEDGMENT = "enigmaticlegacy:the_acknowledgment";
-    private static final String ENIGMATIC_TWIST = "enigmaticlegacy:the_twist";
-    private static final String ENIGMATIC_BLESS = "enigmaticlegacy:the_bless";
 
     /**
      * 玩家侧闪避判定开关:当前 false(玩家侧闪避已移除,目标未佩戴骰子时直接进入常规防御结算)。
@@ -116,38 +108,6 @@ public class DiceCombatEvents {
     // 语义化只读入口:供受击记录等外部判定区分"主动攻击"与"内部波及"(禁止复制该标志)。
     public static boolean isInternalAoe() {
         return aoeProcessing;
-    }
-
-    // 检测玩家是否佩戴了七咒之戒(按物品 ID 识别,未安装该模组时返回 false)
-    public static boolean hasEnigmaticCurse(Player player) {
-        Item ring = BuiltInRegistries.ITEM.get(new ResourceLocation(ENIGMATIC_CURSED_RING));
-        if (ring == Items.AIR) return false;
-        var curios = CuriosApi.getCuriosInventory(player);
-        return curios.isPresent() && curios.get().findFirstCurio(s -> s.is(ring)).isPresent();
-    }
-
-    // 检测玩家是否手持指定神秘遗物+ 物品(如启示之证)
-    public static boolean isHoldingEnigmaticItem(Player player, String itemId) {
-        Item item = BuiltInRegistries.ITEM.get(new ResourceLocation(itemId));
-        if (item == Items.AIR) return false;
-        return player.getMainHandItem().is(item) || player.getOffhandItem().is(item);
-    }
-
-    // 七咒减益:对骰子/卡牌点数施加 -40%(手持启示之证再 -20%;护法爆发/倒转之启/恩惠之典完全免疫)。
-    // 用于攻击点数(骰点+卡牌)与闪避失败的"攻击点数最大值"结算。
-    private static double applyCurseToDicePoints(Player player, double points) {
-        if (points <= 0 || !hasEnigmaticCurse(player)) return points;
-        if (player.hasEffect(ModEffects.MISAKI_BURST.get())
-                || isHoldingEnigmaticItem(player, ENIGMATIC_TWIST)
-                || isHoldingEnigmaticItem(player, ENIGMATIC_BLESS)) {
-            // 爆发期间/持有免疫物品:不施加减益,造成全额点数
-            return points;
-        }
-        double cursePenalty = 0.4;
-        if (isHoldingEnigmaticItem(player, ENIGMATIC_ACKNOWLEDGMENT)) {
-            cursePenalty = Math.max(0, cursePenalty - 0.2);
-        }
-        return points * (1 - cursePenalty);
     }
 
     @SubscribeEvent(priority = EventPriority.NORMAL)
@@ -467,7 +427,7 @@ public class DiceCombatEvents {
         // 佩戴七咒之戒时,骰子伤害加成(骰点 + 卡牌点数)降低 40%;手持"启示之证"攻击时,减益再降低 20%;
         // 装备"倒转之启"或"恩惠之典"时修正第四诅咒,骰子总能造成全额伤害(完全免疫七咒减益);
         // 护法立牌"爆发"效果期间同样修正第四诅咒:总能造成全额伤害
-        double diceAttackBonus = applyCurseToDicePoints(player, baseDice + attackCardSum);
+        double diceAttackBonus = baseDice + attackCardSum;
         // 基础伤害值(属性 + 立牌/筹码/效果攻击修饰器,不含骰点/卡牌加成):供闪避失败结算使用
         double baseDamage = attackPower;
         attackPower += diceAttackBonus;
@@ -1141,20 +1101,18 @@ public class DiceCombatEvents {
     /**
      * 「饕餮之锅」两口的物品注册名 —— **显式纳入**近战武器(2026-10-03 用户裁决)。
      *
-     * <p>两口锅都按武器使用(各自带 {@code weapon_attributes}),但在「黑名单」判定下各自栽在不同排除项上,
+     * <p>该锅按武器使用(自带 {@code weapon_attributes}),但它在「黑名单」判定下栽在某个排除项上,
      * 故必须显式放行。物品 id / 类名逐条取自**实物 jar**(lang 物品表 + {@code javap} 继承链,禁止按命名推测):
      * <ul>
-     *   <li>{@code enigmaticlegacy:eldritch_pan} —— 1.20.1 联动模组的饕餮之锅
-     *       (英文名 {@code The Voracious Pan};类 {@code EldritchPan extends TieredItem};
-     *       ⚠️ 它**不在任何物品标签里**,黑名单本已放行,列入清单是为了自文档化 + 防日后被塞进「工具」标签);</li>
      *   <li>{@code enigmaticdelicacy:voracious_pan} —— 1.21.1 联动模组的饕餮之锅
      *       (中文名直译即「饕餮之锅」;类 {@code VoraciousPan extends BlockItem},
      *       ⚠️ 它同时是**可放置的方块** ⇒ 「方块不算近战」那条会把它排除,故**必须**显式纳入)。</li>
      * </ul>
-     * ⚠️ 按**注册名**匹配 ⇒ 四线共用同一份清单,未安装该模组的线永不命中,也不需要任何第三方依赖。
+     * ⚠️ 按**注册名**匹配 ⇒ 未安装该模组的线永不命中,也不需要任何第三方依赖。
+     * ⚠️ 2026-10-04 用户裁决:1.20.1 fabric 端**排除全部第三方模组联动** ⇒ 原清单中的
+     * {@code enigmaticlegacy:eldritch_pan}(神秘遗物)已随该联动整体移除。
      */
     private static final java.util.Set<String> MELEE_WEAPON_EXTRA_INCLUDES = java.util.Set.of(
-            "enigmaticlegacy:eldritch_pan",
             "enigmaticdelicacy:voracious_pan");
 
     /** 该物品是否在「显式纳入的近战武器」清单里(按注册名匹配;未安装对应模组时恒为 false)。 */
@@ -1504,7 +1462,7 @@ public class DiceCombatEvents {
         }
         double total = weaponBase + ctx.attackCardSum + modifiersSum;
         // 七咒减益作用于反击总伤害(含修正物:启示之证/倒转之启/恩惠之典/护法爆发)
-        total = applyCurseToDicePoints(player, total);
+        // (七咒减益联动已随神秘遗物联动整体移除)
         // 可受到修正影响:装备「全力攻击」时返还伤害 ×1.5(与正常攻击结算一致)
         boolean hasFullPower = ctx.hasFullPower;
         if (!hasFullPower && enhancement != null) {
