@@ -311,7 +311,9 @@ src/generated/clientResources/   ← runClientData（assets/…：items 123 + mo
   **产物面**：`1.0.11` 四平台 jar 均含该类；消费方 26.1.2 产物内嵌 `starengine_lib-neoforge-26.1.2-1.0.11.jar`
   （9 个 economy 类、入口含 `install()` 调用）；`run/26.1.2/mods` 与整合包 `mods/` 均**无**独立库 jar（无遮蔽）。
   ⇒ **该缺口在代码/产物层已不存在**。运行期读数由用例 `scripts/test/cases/ECON-26.1.2.json`
-  （探针 `/astralprobe econ <tag>` → `AP_<tag>_ECON:available=1:before=…:after_set=4321:…`）承担。
+  （探针 `/astralprobe econ <tag>`）承担 —— **实机已 PASS（2026-10-04）**：12/12 断言通过，
+  机器行 `AP_E1_ECON:available=1:before=<n>:set_ok=1:after_set=4321:restore_ok=1:after_restore=<n>`，
+  无 `AP_*_ERR` / `AP_*_EX` / crash。**三层证据齐备 ⇒ 本条结案。**
 
 
 1. **1.21.1 的 4088 行完整回归探针尚未迁移到 26.1.2**：现在只有迁移期最小探针

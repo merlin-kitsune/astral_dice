@@ -90,6 +90,28 @@
 
 ---
 
+### 4.1 待解决问题与可选处置方案（2026-10-04 汇总；**全部待用户裁决，未擅自实施**）
+
+> §4 的 P1-B-1 ~ P1-B-6 已闭环、KI-F7 / KI-F22 / KI-F23 / KI-E3 已处理；下表是**仍然开放**的项
+> （含「四线共有」中影响本线的部分，以及库侧同类缺陷）。每项给出「问题 / 现状 / 可选方案」，请逐项裁决。
+
+| # | 问题 | 现状 | 可选方案（含代价） | 建议 |
+|---|---|---|---|---|
+| **Q1** | **KI-F8 手册档位词 ≠ 代码稀有度**：`hanna_sign.3` 写「稀有档 Rare」、`sherry_sign.3` 写「史诗档 Epic」，而两者代码都是 `AstralRarities.bizarre()`（奇特） | 只登记未改（**四线共有**，与移植无关） | ①**以代码为准**：两条文案改「奇特档」——需先定 `bizarre` 的英/日写法（`astral_dice:bizarre` 可作英文候选；**日文无先例**）；②**以文案为准**：改代码稀有度（`bizarre()`→`rare()`/`epic()`）——连带改 tooltip 配色与整个稀有度分布；③维持现状 | **①**（改动最小、不动玩法数值）；需先敲定日文术语 |
+| **Q2** | **KI-G2 医疗箱筹码「重登 / 切维度」可反复白刷回血**：`PlayerLoggedInEvent` / `PlayerChangedDimensionEvent` 均 `refreshMedkitEquipSession + triggerMedkitOnEquip`，而 `equipTrigger` 的 `triggerHealing` **无条件** ⇒ 每次重登 / 每次过门再完整触发一次（层数满 32 时直接按 32×2 回血） | 只登记未改 —— 属用户 2026-10-01 裁决「这两个时点各触发一次」的**数学必然推论** | ①**接受为设计**（0 改动，文档如实披露）；②**节流**（同玩家 N 秒内最多一次，或仅当「闸门上次因**死亡**释放」时才触发）；③**撤掉这两个时点**（只留「装备时」+「重生后」；= 删两处调用 + 手册文案回退） | **②**（保留裁决意图、堵住无限刷）；⚠️ 三条均不得改「装备时 / 重生后必触发」与三档概率 / `HEALING_TIMER_SECONDS=60` / `HEALING_POINT_CAP=32` |
+| **Q3** | **KI-F25② 裸 `removeEffect` 在效果不存在时抛 `CancellationException`**（`astral_dice:` 效果的外部移除被**设计性**拦截 ⇒ 拦截器取消了一个未被声明为可取消的回调） | 已登记，**未做决定性复现** | ①跑一次决定性复现（三条路径：裸 `removeEffect`(效果不存在) / `/effect clear` / 喝牛奶），确认后修（拦截器加 `cancellable()` 判定或前置存在性检查）；②维持现状（原版与本模组自身都先判存在性，影响面小） | **①**（探针可做的无人值守项，一次即定性） |
+| **Q4** | **KI-F25④ `FakePlayer` 不进世界 tick 循环** ⇒ 依赖「玩家级每 N tick」的行为（如 `normalizeLegacyInfiniteDurations`）**无法**在本线端到端断言 | 已如实登记（测试能力边界，非产品缺陷） | ①带**真人玩家 / 客户端进世界**验证（需用户在场）；②维持（该特性已有静态判据 + 另三线实机读数） | **②**（不影响产品正确性） |
+| **Q5** | **KI-F21-① 进世界验证未跑**：`ft_prod.ps1` 的 quickplay 通道曾**误删存档** ⇒ 世界内行为（附件注册 / ∞ 显示 / 效果面板悬停注释 / 配方实际可合成）未在 fabric 实机确认 | 刻意未跑（该参数已加护栏，需显式 `-AcknowledgeQuickPlayDestructive`） | ①授权该参数 + **先备份存档**后跑一次；②由**用户手动**进世界目视；③维持不做 | **①或②**（用户在场时一次性做完，覆盖面最大） |
+| **Q6** | **KI-F21-② 上游缺陷（主仓）**：`multi-main` 删了 lang 键 `astral_dice.guide.entry.special_effects.6`，但 `forge-1.20.1` 手册 `getting_started/special_effects.json` 仍引用它 ⇒ 手册该行显示**原始键名**（fabric 线已用「保留键」规避） | 主仓未裁决 | ①改手册（删 / 改该 page）；②恢复该 lang 键；③维持（fabric 已规避） | **①**（与手册条目结构一致；P0 两线同批） |
+| **Q7** | **库侧 2 处同类反射缺陷**（KI-F22 附带，**影响全部四线**）：`EventTargetCollector` 在 `TeamManager` 上反射 `getTeamForPlayer(Player)/(UUID)`（**均不存在**）；OPAC 类名 `dev.darkhax.opac.*` **不存在** | 已登记，交库侧下次发版 | ①库侧修（下次 bump 一并，`tools/verify_party_api.py` 已能自动比对契约）；②维持（该后端本就不生效，仅影响第三方联动） | **①**（修复成本低、已有自动守门） |
+| **Q8** | **纪律项（非缺陷）**：P1-B-8 = 改构建脚本后**必须开包核对**资源条目数（否则生成资源静默不进产物）；P1-B-9 = 跨加载器存档不互通（附件 vs Capability；Trinkets/Accessories vs Curios）**平台差异、不修补**；P1-B-10 = `verify_fabric_assets.py` 白名单为空，新增项须写「为何不能修 + 需谁裁决」 | 已固化 | ①维持现有纪律（人工执行）；②把 P1-B-8 的「开包核对」**自动化**为守门脚本（构建后自动比对产物资源条目数）；P1-B-9 维持（无解，仅文档披露） | **②**（一次性投入，之后自动守门） |
+
+> ⚠️ 上表**所有方案均待用户裁决**；未获裁决前不实施任何一条。
+> 复算/取证入口：`tools/verify_fabric_assets.py`、`tools/verify_party_api.py`、
+> `scripts/test/fabric/{ft.ps1,ft_prod.ps1}`、`scripts/test/fabric/cases/FAB-CATCHUP-PARITY.json`。
+
+---
+
 ## 5. 平台适配要点（写代码时必须遵守 — 速查）
 
 ```

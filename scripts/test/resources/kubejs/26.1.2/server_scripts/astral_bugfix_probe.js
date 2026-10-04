@@ -13823,6 +13823,30 @@ function doMegasClear(ctx, tag) {
     return 1;
 }
 
+// ── 经济存储可用性(2026-10-04) ─────────────────────────────────────────────
+// 目的:验证**前置库 starengine_lib 的 26.1.2 平台侧经济存储**已随库注入
+//   (库入口 StarEngineLib 构造器调用 NeoForgeEconomyStorage.install()),
+//   即 StarEngineEconomy.isAvailable() 必须为 true。
+// 判据:available=1 + 写入/恢复往返闭合(只读+可回滚,不污染存档)。
+// ⚠️ 不能只看「/starcoin 命令是否存在」—— 该命令是**无条件注册**的,
+//    与存储是否就绪无关(它内部才检查 isAvailable)。
+function doEcon(ctx, tag) {
+    var p = ctx.source.getPlayerOrException();
+    var Econ = Java.loadClass("com.merlinkitsune.starenginelib.economy.StarEngineEconomy");
+    var avail = Econ.isAvailable();
+    var before = Econ.getBalance(p);
+    var setOk = Econ.setBalance(p, 4321);
+    var afterSet = Econ.getBalance(p);
+    var restoreOk = Econ.setBalance(p, before);
+    var afterRestore = Econ.getBalance(p);
+    send(ctx, "AP_" + tag + "_ECON:available=" + (avail ? 1 : 0)
+        + ":before=" + before + ":set_ok=" + (setOk ? 1 : 0)
+        + ":after_set=" + afterSet + ":restore_ok=" + (restoreOk ? 1 : 0)
+        + ":after_restore=" + afterRestore);
+    send(ctx, "AP_" + tag + "_DONE");
+    return 1;
+}
+
 ServerEvents.commandRegistry(event => {
     var Commands = event.commands;
     event.register(
@@ -13872,6 +13896,12 @@ ServerEvents.commandRegistry(event => {
                 .then(Commands.argument("tag", StringArg.word())
                     .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
                         return doChargeCd(ctx, StringArg.getString(ctx, "tag"));
+                    }))))
+            // ── 2026-10-04:经济存储可用性(前置库 starengine_lib 平台侧注入) ──
+            .then(Commands.literal("econ")
+                .then(Commands.argument("tag", StringArg.word())
+                    .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                        return doEcon(ctx, StringArg.getString(ctx, "tag"));
                     }))))
             .then(Commands.literal("dumpstate")
                 .then(Commands.argument("tag", StringArg.word())

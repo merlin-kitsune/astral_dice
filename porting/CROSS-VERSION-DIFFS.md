@@ -140,7 +140,7 @@
 
 | # | 问题 | 状态 | 判据 / 落点 |
 |---|---|---|---|
-| P1-N-1 | **库侧缺口：`starengine_lib` 的 26.1.2 子项目无平台侧经济存储实现** ⇒ `StarEngineEconomy.isAvailable()` 恒 `false` ⇒ `/starcoin` 不注册、拾取星币不吸收、**余额条永远显示 0**（钱包**只有 UI、没有可用余额**） | **未决（库侧）** | `docs/compat-26.1.2-neoforge.md` §8 首条 |
+| P1-N-1 | ~~库侧缺口：`starengine_lib` 的 26.1.2 子项目无平台侧经济存储实现（`isAvailable()` 恒 `false`）~~ ⇒ **已由库 `b90a16e`（2026-09-22，随库 `1.0.0`）补齐**。字节码实证：`StarEngineLib.<init>` = `invokestatic …NeoForgeEconomyStorage.install()V`、`isAvailable()` = `iconst_1;ireturn`；1.0.11 四平台 jar 含该类、消费方产物内嵌同版、无遮蔽 jar；**实机 PASS**（2026-10-04，`ECON-26.1.2` 12/12：`AP_E1_ECON:available=1:after_set=4321:restore_ok=1`） | ✅ **已解决**（2026-10-04 结案；代码 + 产物 + 实机三层证据） | 库 `b90a16e` + 本表 §3.2 N 行 + 用例 `scripts/test/cases/ECON-26.1.2.json` |
 | P1-N-2 | 1.21.1 的 **4088 行完整回归探针未迁移**（现仅最小 7 条子命令 + 1 冒烟条目） | 未决 | `docs/compat-26.1.2-neoforge.md` §8 第 1 条 |
 | P1-N-3 | `opprobe` 的 `level` 读数退化为 `-1`（读数残缺，不影响闸门） | 未决（低危） | §8 第 2 条 |
 | P1-N-4 | 手册 / 立牌技能行为 / GUI 屏幕**未做视觉-行为取证** | 未做 | §8 第 3 条 |
