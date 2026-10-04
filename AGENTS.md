@@ -1,6 +1,6 @@
 # Agent Instructions
 
-> **子项目默认规则(必须遵守)**:所有功能/修复默认**同步修改三个版本**(`neoforge-1.21.1` + `forge-1.20.1` + `neoforge-26.1.2` —— 这三条是**生产线**),三线保持功能对等(无法对等的项必须按平台差异逐条登记,见 `docs/compat-26.1.2-neoforge.md`;**不再存在"只同步两个版本"的口径**);⚠️ **第四条线 `fabric-1.20.1`(Fabric 移植线)不在本「同批实施」约束内** —— 它由用户按批次单独下达移植任务,规则边界见下方「第四条线(`fabric-1.20.1`)的规则边界」;每次改动完成后由代理**自动本地提交**并**自动部署到整合包**(随 `gradlew build` 触发,**四条线各自推往自己的整合包**:`狐の航空学 Voxy Edition` / `1.20.1-Forge 模组测试` / `26.1.2-NeoForge 模组测试` / `1.20.1-Fabric 模组测试`),但**默认不执行 `git push`**。
+> **子项目优先级与默认规则(必须遵守,2026-10-04 用户裁决重新划级)**:⛔ **本条原「三条生产线同批实施（含 26.1.2）」的口径已作废** —— 现行**两级优先模型**见下方「## 版本优先级与跨线移植纪律」:**P0 最高 = `neoforge-1.21.1` + `forge-1.20.1`**（功能一致、同批、优先）;**P1 次要 = `neoforge-26.1.2` + `fabric-1.20.1`**（待 P0 完成后移植）。以下为旧文存档 —— 所有功能/修复默认**同步修改三个版本**(`neoforge-1.21.1` + `forge-1.20.1` + `neoforge-26.1.2` —— 这三条是**生产线**),三线保持功能对等(无法对等的项必须按平台差异逐条登记,见 `docs/compat-26.1.2-neoforge.md`;**不再存在"只同步两个版本"的口径**);⚠️ **第四条线 `fabric-1.20.1`(Fabric 移植线)不在本「同批实施」约束内** —— 它由用户按批次单独下达移植任务,规则边界见下方「第四条线(`fabric-1.20.1`)的规则边界」;每次改动完成后由代理**自动本地提交**并**自动部署到整合包**(随 `gradlew build` 触发,**四条线各自推往自己的整合包**:`狐の航空学 Voxy Edition` / `1.20.1-Forge 模组测试` / `26.1.2-NeoForge 模组测试` / `1.20.1-Fabric 模组测试`),但**默认不执行 `git push`**。
 
 项目基线:
 - 主线子项目 `neoforge-1.21.1`:MC 1.21.1 / NeoForge 21.1.235 / Java 21 / ModDevGradle(`net.neoforged.moddev` 2.0.141)
@@ -261,7 +261,7 @@ When extending this workspace:
 > 版本号各 git 分支独立（AGENTS.md 自 2026-09-15 起**已纳入版本库**，各分支各自维护一份）：**发布线 `multi-main`**（2026-09-22 由 `multi-1.20.1-1.21.1` 改名；连带项已同批处理：三线 `build.gradle` 的 `packPushBranches → ['multi-main']`、`.github/workflows/build.yml` 的 5 处分支名与触发条件，以及 `.github/workflows/build.yml` 里 checkout 前置库的 `ref:` 钉值）**当前 = `1.3.5-hotfix`**（2026-10-01：承接 1.3.5 的补丁发布——FTB 队友判定后端修复；见下方「发布规范」对 `-hotfix` 打 tag 的说明）（2026-09-22 那次收编后统一升版为 `1.3.0` —— 1.21.1 / 1.20.1 = `1.3.0`，26.1.2 = `1.3.0-beta.1`，按发布规范 tag 解析为裸版本 `1.3.0`；此后逐版递增至 **1.3.5**；2026-10-01 起为 **`1.3.5-hotfix`**，以矩阵表「当前版本」列与各线 `gradle.properties` 为准。⚠️ 本处曾长期停留在 `1.3.0`、与矩阵表自相矛盾，2026-10-01 二次验证时一并更正）；`multi-dev-next` 当前 = **`2.0.0-SNAPSHOT.13`**（2026-09-17 用户裁决：`2.0.0-SNAPSHOT.5` 封包，版本号升至 `.10`；**2026-09-22 用户裁决：SNAPSHOT 数值按提交数下沉，档位 = 提交数 / 37，自 `.10` 起累计 104 提交 ⇒ 向上取整 3 档 ⇒ `.13`**；后续改动一律记入两个 CHANGELOG 顶部的 `未发布（2.0.0-SNAPSHOT.13）` 小节；该线已于 **2026-09-22 整体合并进发布线 `multi-main`**（合并提交 `7b726617`，收编 160 个提交），自此不再单独演进）；`neoforge-26.1.2` 子项目当前 = **`1.3.0-beta.1`**（2026-09-17 用户裁决 + **2026-09-19 修订：26.1.2 已纳入主线、三线同步（不再是低优先级线）**；**2026-09-22 用户裁决：三线同批升版，26.1.2 取 `1.3.0-beta.1`** —— 此前 `.13` 时代「与另两线版本号对齐、不再单独加 `-beta`」的口径随之作废；`multi-26.1.2-neoforge` 分支自此只作为合并前历史，不再单独开发）。上表「当前版本」以发布线工作分支 `multi-main` 为准。
 > ⚠️ 历史上另有一条 dev 分支 **`wt/2.0.0-vnext`**（连带独立 worktree `C:/Users/xmace/.dsh/worktrees/astral_dice_multiloader-a03b2df2/2.0.0-vnext`）——2026-09-17 用户裁决「移除 wt/2.0.0-vnext 分支，仅保留当前分支」后**已删除**：worktree 与分支一并移除，`git branch -d` 成功即证明其 tip **`d7e4ac8f4f1c31484bf4366caa4e144aec45979f`** 的全部提交都已被 `multi-dev-next` 包含（`multi-dev-next..wt/2.0.0-vnext` 为空）⇒ **未丢失任何提交**；该分支从未推到远端（`origin` 只有 `multi-1.20.1-1.21.1` 与 `multi-dev-next`），故无需远端清理。`multi-26.1.2-neoforge` 作为合并前历史分支**保留**（未在本次裁决范围内）。
 
-> **第三条线(26.1.2)的规则边界(2026-09-19 用户裁决修订 —— 26.1.2 已纳入主线,必须遵守)**:自本裁决起「同步修改」约束**三个版本**(`neoforge-1.21.1` + `forge-1.20.1` + `neoforge-26.1.2`):任何功能/修复/平衡/文案改动一律**三线同批实施**(实施方式见下方「### 子项目修改默认规则」与「### 模组内容更新规则(三线同步)」),26.1.2 **不再**是「发布线完成后再迁移」的低优先级移植线。三条线各自按 `docs/compat-26.1.2-neoforge.md`(26.1.2 相对 1.21.1)、`docs/compat-1.20.1-forge.md`(1.20.1 相对 1.21.1)的差异映射实现,**平台差异必须逐条登记**;三线落地后按 `scripts/test/TESTING-SPEC.md` §13.2 做一致性测试。三子项目的 `mod_version`/`mods.toml` 门槛仍各自独立。⚠️ **第四条线 `fabric-1.20.1` 不参与本条的「三线同批实施」约束** —— 其边界见上一条 ①（由用户按批次单独下达移植任务）。
+> **第三条线(26.1.2)的规则边界(2026-09-19 用户裁决修订 —— 26.1.2 已纳入主线,必须遵守)**:⛔ **2026-10-04 更新:本条「26.1.2 纳入三线同批实施」的口径已作废** —— 现行 **P1 次要优先级**（见下方「## 版本优先级与跨线移植纪律」）;本段其余平台差异说明仍有效。自本裁决起「同步修改」约束**三个版本**(`neoforge-1.21.1` + `forge-1.20.1` + `neoforge-26.1.2`):任何功能/修复/平衡/文案改动一律**三线同批实施**(实施方式见下方「### 子项目修改默认规则」与「### 模组内容更新规则(三线同步)」),26.1.2 **不再**是「发布线完成后再迁移」的低优先级移植线。三条线各自按 `docs/compat-26.1.2-neoforge.md`(26.1.2 相对 1.21.1)、`docs/compat-1.20.1-forge.md`(1.20.1 相对 1.21.1)的差异映射实现,**平台差异必须逐条登记**;三线落地后按 `scripts/test/TESTING-SPEC.md` §13.2 做一致性测试。三子项目的 `mod_version`/`mods.toml` 门槛仍各自独立。⚠️ **第四条线 `fabric-1.20.1` 不参与本条的「三线同批实施」约束** —— 其边界见上一条 ①（由用户按批次单独下达移植任务）。
 > ⑧ **本线自己的版本号一律带 `-alpha.x` 预发布后缀**（2026-09-29 用户裁决 —— 本线是**移植线**）：
 >    ⚠️ **与 26.1.2 线用 `-beta.x` 是同一套安排**（2026-10-01 并入 `multi-main` 后的口径）：
 >    两条线都是**独立的预发布号线** —— **永不占用发布线的裸版本号**、**不单独打裸版本 tag**；
@@ -466,6 +466,57 @@ When extending this workspace:
 12. **gamerule 族的存放位置与命名随 26.1 全变(2026-09-19 实测,踩过一次假失败)**:① **键名一律 snake_case** —— `naturalRegeneration` → `natural_health_regeneration`、`keepInventory` → `keep_inventory`;`doFireTick` **已被删除**,火势改由整数规则 `fire_spread_radius_around_player`(置 **0** 即等价于旧的 `doFireTick=false`;原版 datafix `GameRuleRegistryFix` 就是这么折算的)表达。⇒ 旧名在 26.1.2 上被 Brigadier **静默拒绝**,`CARD-SELECTOR-26.1.2` 的 4 条 HP 基线断言因此假失败(`naturalRegeneration false` 未生效、自然回血照常,`FoodData` 的分数回血让血量出现 `17.3` 这类小数;修用例、产品未动,复跑后与 1.21.1 读数逐条相同);探针里凡执行该族的命令都按此映射(1.20.1/1.21.1 用 `doFireTick false`,26.1.2 用 `fire_spread_radius_around_player 0`)。② **存储位置**改为 `saves/<world>/data/minecraft/game_rules.dat`(gzip NBT,键带 `minecraft:` 前缀、布尔值是 **TAG_Byte** 0/1 而非旧版 TAG_String),**不再放在 `level.dat` 里**(26.1.2 的 file fix `LevelDatToSavedDataFileFix` 只认 `level.dat` 的 `game_rules` 键,不认旧版 `GameRules`)。⇒ 该线的环境写入一律走该文件(`mt_env.ps1` 的 `Get/Read/Test/Set-MtGameRule*File` 系列;只有 26.1.2 分支会写它,另两线的 `level.dat` 路径与文案逐字不变),且**必须从真实文件读回复核**(读回通过才回显 `MT_WORLD: keepInventory 落地于 …game_rules.dat`),禁止「写进去再读自己刚写的数据」式的自我复核。引用 gamerule 读数时**必须写明观测时刻**——`mt_env world` 重建世界会把规则恢复默认。⚠️ 相关未决项:`AGENTS` 要求的 `mobGriefing=false` 目前**没有代码执行方**(详见 `TESTING-SPEC.md` 续 21),当前靠 2026-09-18 的 noai 硬闸门与本模组用例自带的取证前清理覆盖。
 
 7. **原版类的包结构调整(2026-09-30 实测)**:26.1.2 把部分怪物类**拆进了子包** —— `Zombie` / `ZombifiedPiglin` / `Husk` / `Drowned` / `ZombieVillager` 位于 `net.minecraft.world.entity.monster.**zombie**`(1.21.1 是 `monster.Zombie`);`Piglin` / `PiglinBrute` / `AbstractPiglin` 仍在 `monster.piglin`,`EnderMan` 仍在 `monster`。⚠️ **另有 `WitherSkeleton` 位于 `monster.**skeleton**`**(1.21.1 / 1.20.1 均为 `monster.WitherSkeleton`)—— 与 zombie 拆包同类,2026-09-30 引入「凋灵骷髅 5% 掉星盘」档位时实测踩到;`Ghast` / `Guardian` / `ElderGuardian` 三线均仍在 `monster`。照抄 1.21.1 的 import 会以「找不到符号」编译失败(实测 `event/LootInjectionHandler` 引入僵尸猪灵/猪灵判定,以及其后引入凋灵骷髅判定时两度踩到)。
+
+## 版本优先级与跨线移植纪律（2026-10-04 用户裁决）— 必须遵守
+
+> ⚠️ **本节是「哪条线先改、改完怎么传」的唯一权威口径**；与旧文冲突时以本节为准。
+> 旧口径「三条生产线同批实施（含 26.1.2）」**已作废**（沿革见第五节）。
+
+### 一、两级优先模型
+
+| 优先级 | 子项目 | 更新时序 | 一致性要求 |
+|---|---|---|---|
+| **P0 最高** | `neoforge-1.21.1`（**基准线**）· `forge-1.20.1` | 任何功能 / 修复 / 平衡 / 文案改动**默认同批落这两条线**，并**优先于 P1 落地** | 两者必须**功能一致**（逐项对等）；差异只能来自第二节「三类合理差异」，且**必须逐条登记** |
+| **P1 次要** | `neoforge-26.1.2`（**向上移植**）· `fabric-1.20.1`（**向下移植**） | **待 P0 完成后**再分别移植；**不得**早于 P0 单独引入功能 | 各自对照**基准线 `neoforge-1.21.1`** 逐项对等；平台 / 版本差异逐条登记；⚠️ 缺联动模组的线按第三节口径排除 |
+
+- **基准线 = `neoforge-1.21.1`**：一切功能面的差异判定以它为基准。`forge-1.20.1` 是 P0 同侪（功能面与基准线一致，MC 版本差异另计）。
+- **移植方向**：`neoforge-26.1.2` = **向上**（1.21.1 → 26.1.2）；`fabric-1.20.1` = **向下**（MC 1.20.1）。
+- **fabric 的代码蓝本优先取 `forge-1.20.1`**（同为 MC 1.20.1）：凡 forge 已实现的功能，**照搬 forge 对应文件 + 固定平台替换**，天然保留 1.20.1 的配方 / 行为差异；只有 forge 也没有的功能才从 1.21.1 降级移植。⚠️ **但「整文件照搬」只适用于平台中性文件** —— 平台敏感类（含已裁决差异或本线独有内容）**必须逐段局部改**。
+
+### 二、P0 内部允许的三类差异（其余一律要求对等）
+
+| # | 类别 | 判据 | 示例 |
+|---|---|---|---|
+| ① | **游戏版本差异** | MC 版本存废的原版 API / 物品 / 效果 | `MaceItem` / `Items.MACE`（1.21 新增）；`MobEffects.{WIND_CHARGED,WEAVING,OOZING,INFESTED,RAID_OMEN,TRIAL_OMEN}`（1.21 新增）；`ItemTags.SPEARS`（26.1.2 才有） |
+| ② | **平台差异** | 加载器（Forge ↔ NeoForge ↔ Fabric）机制 | 事件系统、注册 API、Capability ↔ 附件、datagen 事件、GUI 渲染入口、Curios ↔ Trinkets/Accessories |
+| ③ | **联动模组本身差异** | 某线装 / 未装某模组，或其注册名不同 | 1.20.1 神秘遗物注册名 = `enigmaticlegacy:` 而非 `enigmaticlegacyplus:` |
+
+### 三、联动口径（P1 两线）
+
+- **平台不存在该模组 ⇒ 该线该联动整体移除**（数据包、lang 键、手册条目、伤害类型 key、tooltip 分支一并删除）：
+  - `neoforge-26.1.2`：**神秘遗物+（`enigmaticlegacyplus`）已移除**；
+  - `fabric-1.20.1`：**Iron's Spells 'n Spellbooks 与神秘遗物均已移除**。
+- ⚠️ **特例（唯一）**：`neoforge-26.1.2` 属 **NeoForge 端口** ⇒ **Iron 联动保留**，以**反射版**实现（本线无法声明 `compileOnly` 依赖；模组未装时 `init()` 直接返回，日后发布 26.1.x 版即自动生效），见 `event/IronSpellbooksCompat`。
+- **平台存在的模组联动一律保留**：`patchouli` / `waystones` / `curios`（P0 + 26.1.2）/ `bountiful` / `trinkets` + `accessories`（fabric）/ **Modern UI**（forge + 1.21.1 + fabric；26.1.2 无对应机制 ⇒ 已登记平台差异）。
+
+### 四、逐项对照清单（移植作业索引）
+
+| 线 | 优先级 | 功能差异清单 | 平台独有待解决问题清单 |
+|---|---|---|---|
+| `neoforge-1.21.1` | P0（**基准**） | —（差异以此为基准） | `KNOWN-ISSUES.md` §2~§8 |
+| `forge-1.20.1` | P0 | `docs/compat-1.20.1-forge.md` §1~§9 | 同文件 §9 + `KNOWN-ISSUES.md` `KI-9` |
+| `neoforge-26.1.2` | P1 | `docs/compat-26.1.2-neoforge.md` + 本文「neoforge-26.1.2 关键差异速记」 | 同文件 §8「尚未完成 / 已知缺口」 |
+| `fabric-1.20.1` | P1 | **`porting/fabric-1.20.1/FABRIC-DIFFS.md`**（专项清单） | 同文件 §4 + `KNOWN-ISSUES.md` §9（KI-F*）+ `KI-E3` |
+
+> ⚠️ `docs/` 是**本机目录**（被 `.gitignore`）⇒ 清单的**可版本化载体**在 **`porting/`** 下：
+> **`porting/CROSS-VERSION-DIFFS.md`**（四线总表：优先级 / 差异项 / 待解决问题）+ **`porting/fabric-1.20.1/FABRIC-DIFFS.md`**（Fabric 专项）。
+> 移植作业的固定收尾动作见 `porting/CROSS-VERSION-DIFFS.md` §5。
+
+### 五、沿革（勿删）
+
+- **2026-09-19 裁决**：26.1.2 纳入主线，「同步修改」约束三个版本（26.1.2 不再是低优先级移植线）。**⛔ 已于 2026-10-04 作废**。
+- **2026-09-29 裁决**：fabric 为移植线，不在「三线同批」约束内（其九项边界见「多版本子项目矩阵」节）。**仍有效**（fabric 现为 P1）。
+- **2026-10-04 裁决（现行）**：重新划级为 **P0 = `neoforge-1.21.1` + `forge-1.20.1`**（必须功能一致、最高优先级更新）、**P1 = `neoforge-26.1.2` + `fabric-1.20.1`**（待 P0 完成后分别向上 / 向下移植）；P1 中缺联动模组的线按「平台存在性」排除不存在的联动（26.1.2 的 Iron 为**特例保留**）。
 
 ## 模组依赖添加规则(统一口径,1.20.1 + 1.21.1)— 必须遵守
 
