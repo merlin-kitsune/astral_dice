@@ -325,8 +325,9 @@ public final class TargetSelectionClient {
             deactivate();
             return;
         }
-        logPrompt("right", "self_unsupported");
-        showPrompt(Component.translatable("msg.astral_dice.target_select.self_unsupported"));
+        // 只能对目标释放 ⇒ 右键 = 收起（走与服务端 cancel 同一条路径:清会话 / 手持类写抑制闩 / 抛「已取消」提示）
+        logPrompt("right", "cancel");
+        cancel("right");
     }
 
     /** 确认：向服务端发送确认包并退出选择模式（调用方保证 currentTarget 有效） */
@@ -667,8 +668,12 @@ public final class TargetSelectionClient {
                 }
             }
         }
-        // 选择期间接管鼠标:所有按键（左键攻击/右键原使用/中键）都不进原版逻辑
-        event.setCanceled(true);
+        // 2026-10-03「按键收口」:选择期间只接管「释放」（左键）与「收起」（右键，含 +潜行）两个按键 ——
+        // 中键 / 侧键一律放行（原实现无条件 setCanceled(true),把选取方块等也一并吞掉了）。
+        if (event.getButton() == GLFW.GLFW_MOUSE_BUTTON_LEFT
+                || event.getButton() == GLFW.GLFW_MOUSE_BUTTON_RIGHT) {
+            event.setCanceled(true);
+        }
     }
 
     /**

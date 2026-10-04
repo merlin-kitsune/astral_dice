@@ -74,13 +74,13 @@ public class KomachiSignItem extends BaseSignItem {
         }
         // 主动(忍术连击):一次性 —— 仅当前出牌轮 +1 张出牌数。释放前置见类注释(两条)。
         if (EffectCardPeriod.getMaxAllowed(player) >= GameplayConstants.MAX_EFFECT_CARD_PLAYS) {
-            sendSignActionBar(player, "msg.astral_dice.komachi_active_capped",
+            sendSignActionBarColored(player, net.minecraft.ChatFormatting.RED, "msg.astral_dice.komachi_active_capped",
                     GameplayConstants.MAX_EFFECT_CARD_PLAYS);
             return InteractionResultHolder.fail(stack);
         }
         // 一次性授予:本轮已授予过则不再释放(不消耗主动技能冷却)
         if (!EffectCardPeriod.grantBonusPlay(player)) {
-            sendSignActionBar(player, "msg.astral_dice.komachi_active_used");
+            sendSignActionBarColored(player, net.minecraft.ChatFormatting.RED, "msg.astral_dice.komachi_active_used");
             return InteractionResultHolder.fail(stack);
         }
         return InteractionResultHolder.success(stack);

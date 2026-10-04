@@ -398,6 +398,6 @@ public class HannaSignItem extends BaseSignItem {
         if (!HannaFloatEffect.has(player)) return;
         if (!event.getItemStack().is(Items.ENDER_PEARL)) return;
         event.setCanceled(true);
-        sendSignActionBar(player, "msg.astral_dice.hanna_no_pearl");
+        sendSignActionBarColored(player, net.minecraft.ChatFormatting.RED, "msg.astral_dice.hanna_no_pearl");
     }
 }

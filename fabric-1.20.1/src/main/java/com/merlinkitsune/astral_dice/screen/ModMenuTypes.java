@@ -23,7 +23,10 @@ public class ModMenuTypes {
     public static void openCardInventory(ServerPlayer serverPlayer) {
         var curios = CuriosApi.getCuriosInventory(serverPlayer);
         if (curios.isEmpty() || curios.get().findFirstCurio(DiceCurioItem::isDiceItem).isEmpty()) {
-            serverPlayer.displayClientMessage(Component.translatable("msg.astral_dice.no_dice_equipped"), true);
+            com.merlinkitsune.astral_dice.network.ModNetwork.sendToPlayer(serverPlayer,
+                    new com.merlinkitsune.astral_dice.network.ModNetwork.ActionBarMessage(
+                            Component.translatable("msg.astral_dice.no_dice_equipped").withStyle(net.minecraft.ChatFormatting.RED),
+                            com.merlinkitsune.starenginelib.component.GameplayConstants.ACTIONBAR_DURATION_TICKS));
             return;
         }
         serverPlayer.openMenu(new SimpleMenuProvider(

@@ -289,7 +289,7 @@ public class MamushiSignItem extends BaseSignItem {
     }
 
     private static void notifyForcedCooldown(Player player) {
-        sendSignActionBar(player, "msg.astral_dice.mamushi_cooldown_locked");
+        sendSignActionBarColored(player, net.minecraft.ChatFormatting.RED, "msg.astral_dice.mamushi_cooldown_locked");
     }
 
     // ══════════════════════════════════════════════════════════════════════════

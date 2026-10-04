@@ -5,6 +5,7 @@ import com.merlinkitsune.astral_dice.audio.SoundPlayback;
 import com.merlinkitsune.astral_dice.item.ModItems;
 
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -93,7 +94,10 @@ public final class StarCoinWalletActions {
         }
     }
 
-    private static void send(ServerPlayer player, Component message) {
-        player.displayClientMessage(message, true);
+    private static void send(ServerPlayer player, MutableComponent message) {
+        com.merlinkitsune.astral_dice.network.ModNetwork.sendToPlayer(player,
+                new com.merlinkitsune.astral_dice.network.ModNetwork.ActionBarMessage(
+                        message.withStyle(net.minecraft.ChatFormatting.YELLOW),
+                        com.merlinkitsune.starenginelib.component.GameplayConstants.ACTIONBAR_DURATION_TICKS));
     }
 }

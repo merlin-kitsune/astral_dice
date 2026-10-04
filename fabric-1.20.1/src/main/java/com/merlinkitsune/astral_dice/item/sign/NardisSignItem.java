@@ -143,7 +143,7 @@ public class NardisSignItem extends BaseSignItem {
         //    「冷却 → 临时牌上限 → 物品栏空位」。
         int currentTemporary = TemporaryCardUtil.countTemporaryTotal(player);
         if (currentTemporary >= TemporaryCardUtil.MAX_TEMPORARY_CARDS) {
-            sendSignActionBar(player, "msg.astral_dice.nardis_card_limit");
+            sendSignActionBarColored(player, net.minecraft.ChatFormatting.RED, "msg.astral_dice.nardis_card_limit");
             return InteractionResultHolder.fail(stack);
         }
         // 1. 安全门(2026-09-27 用户裁决;阈值 = {@link TemporaryCardUtil#MIN_FREE_SLOTS_TO_CAST} = 3):
@@ -156,7 +156,7 @@ public class NardisSignItem extends BaseSignItem {
         //    一格)⇒ 只有 ≥ 3 格才发得满一整套。门槛低于 3 时 {@code grantRandom} 只能"放不下就少发",
         //    玩家会为一次释放拿到不完整的一套却照价进入冷却 ⇒ 宁可**拒绝释放**、零消耗。
         if (TemporaryCardUtil.countFreeSlots(player) < TemporaryCardUtil.MIN_FREE_SLOTS_TO_CAST) {
-            sendSignActionBar(player, "msg.astral_dice.nardis_inventory_full");
+            sendSignActionBarColored(player, net.minecraft.ChatFormatting.RED, "msg.astral_dice.nardis_inventory_full");
             return InteractionResultHolder.fail(stack);
         }
         // 2. 叠加发放(2026-09-27 用户裁决:取消「先清空再发」)。
