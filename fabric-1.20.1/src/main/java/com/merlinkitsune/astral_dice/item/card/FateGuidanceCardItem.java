@@ -102,9 +102,6 @@ public class FateGuidanceCardItem extends BaseEffectCardItem {
         }
     }
 
-    @SubscribeEvent(priority = com.merlinkitsune.astral_dice.platform.event.EventPriority.LOWEST)
-
-
     // 命运的指引·福运:激活期间所有食物提供的饱和度翻倍。
     // Finish 事件在原版 eat(更新食物数据)之前触发,此处预先补一份饱和度增量。
     @SubscribeEvent
