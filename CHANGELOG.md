@@ -161,7 +161,7 @@
   two-colour gradient). It only steps in for **our own rarity tiers**; vanilla and other mods' items are left
   untouched, and the rare tier keeps its existing rule (not applied). Switch: the config option
   `modernui_tooltip_frame_compat` (on by default), plus the system property
-  `-Dastral_dice.modernUITooltipCompat=false` to disable the layer entirely. It covers **1.21.1 and 1.20.1 only** (on 26.1.2 the tooltip frame is decided by a vanilla nine-slice texture and this mod does not colour it at all, so no such need exists).
+  `-Dastral_dice.modernUITooltipCompat=false` to disable the layer entirely. It now covers **all four builds**: 1.21.1 / 1.20.1 / fabric use the native frame-colour event, while **26.1.2** - whose platform only exposes a texture hook and no colour event - uses a layer that writes Modern UI's own stroke colours instead, so on that build the tiers show whenever Modern UI is installed.
 - **Bullet detection switched from keyword guessing to per-mod evidence - fixing two cases of
   firearm damage misread as ranged/magic damage** (reported 2026-10-03: "bullet detection still fails
   for some mods"): the firearm filter used to look only for the keywords `bullet` / `gun` / `cannon`

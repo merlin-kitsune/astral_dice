@@ -22,6 +22,10 @@ import net.neoforged.neoforge.common.ModConfigSpec;
  * 钱包与两个兑换按钮的 x/y 偏移)」。
  * v5 用于「**移除 actionbar 两项配置**(`actionbar_duration_ticks` / `actionbar_fade_ticks`)—— 2026-10-03 用户裁决:
  * 这两项移出配置文件、改为固定常量,以让新值对**所有玩家强制生效**(已装的旧配置不会采纳新默认值)」。
+ * v6 用于「新增 `modernui_tooltip_frame_compat`(Modern UI 提示框边框兼容层开关)—— 2026-10-04 用户裁决:
+ * Modern UI 开启『现代提示框』时会自行绘制整个提示框并取消原版渲染,本模组按稀有度写入的边框色被整体丢弃;
+ * ⚠️ 本线(26.1.2)平台只提供 `RenderTooltipEvent.Texture`(贴图 id)、**没有颜色事件** ⇒ 兼容层改为对接
+ * Modern UI 自身的 `TooltipRenderer#sStrokeColor`(**仅客户端渲染项,不影响服务端玩法**)」。
  */
 public final class ModCommonConfig {
     public static final int CONFIG_VERSION = 6;

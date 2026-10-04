@@ -9,6 +9,7 @@ import com.merlinkitsune.astral_dice.config.ModCommonConfig;
 import com.merlinkitsune.starenginelib.item.AstralRarities;
 import com.merlinkitsune.starenginelib.item.Rarity;
 
+import net.minecraft.util.Util;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.EventPriority;
@@ -167,7 +168,7 @@ public final class ModernUITooltipCompat {
         if (!isOwningTier(tier)) {
             return; // 非本模组档位、或按既有裁决不干预的稀有档 ⇒ 一行都不写，绝不越界
         }
-        pin(strokeColors(tier, System.currentTimeMillis()));
+        pin(strokeColors(tier, Util.getMillis()));
     }
 
     /**

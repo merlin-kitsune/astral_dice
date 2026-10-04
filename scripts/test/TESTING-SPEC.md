@@ -3585,7 +3585,7 @@ brief 内**不喂结论**。结论与处置：
 - ⚠️ 本批**删除了一个上一批刚提交的生成器**：若将来仍想要「与立牌图区分」的专属图标，需重新引入
   —— 届时请先与用户确认口径，**不要默认自创**。
 
-### Modern UI（`现代化 UI`）提示框边框兼容（2026-10-04；**仅 1.21.1 / 1.20.1**；26.1.2 与 fabric 未同步）
+### Modern UI（`现代化 UI`）提示框边框兼容（2026-10-04 建，同日晚收口为**四线**）
 
 #### 症状与根因（实物 jar 反汇编，逐条可复现）
 - 实物：`D:/.minecraft/versions/狐の新冒险/mods/[现代化 UI] ModernUI-NeoForge-1.21.1-3.12.0.2-universal.jar`
@@ -3608,7 +3608,7 @@ brief 内**不喂结论**。结论与处置：
   （源自被 `grep -A3` 截断的反汇编窗口）。真实代价是**取色精度**：v=1.0 的档位色被压到 0.85（变暗、与物品名不同色），
   且奇特档只有一个名字色 ⇒ 做不出流动彩虹。
 
-#### 改动（1.21.1 / 1.20.1 两线同构；26.1.2 与 fabric 均**未**做）
+#### 改动（**四线**；1.21.1 / 1.20.1 / 26.1.2 走事件式，fabric 走 mixin 式）
 - 新增 `client/ModernUITooltipCompat`：`RenderTooltipEvent.Pre` 上
   `@SubscribeEvent(priority = EventPriority.HIGHEST)` 写、`priority = EventPriority.LOWEST` 还
   （必须早于 Modern UI 的 `HIGH`、晚于它的 `LOW`；⚠️ 还原那一个处理器**必须带 `receiveCanceled = true`**
@@ -3620,20 +3620,27 @@ brief 内**不喂结论**。结论与处置：
   奇特 = 四槽各差 1/4 圈（整圈流动彩虹）；**稀有档不干预**；非本模组档位一律不碰。
 
 #### 验证
-- 两线 `BUILD SUCCESSFUL` + 两条 `pushToGame: pushed … ->`（26.1.2 仅 `compileJava UP-TO-DATE`，确认该线零改动）。
-- 开 jar：`client/ModernUITooltipCompat.class` 存在于 **1.21.1 / 1.20.1** 两条产物、**26.1.2 产物里没有**；
+- 四线 `BUILD SUCCESSFUL`；开包核对：`client/ModernUITooltipCompat.class` 在**四条产物**里都有，
   字节码里 `sStrokeColor` / `sAdaptiveColors` / `sTooltip` 三个字段名齐备，
   `javap -v` 显示注解实值为 `priority=HIGHEST` 与 `priority=LOWEST, receiveCanceled=true`。
 - 守门全绿（本批不动资源 / lang / 配方，主要覆盖编译与源一致性）。
-- **未做实机目视**：Modern UI 的边框观感只能在装了它的整合包里人眼看 —— 本仓测试台
-  （`run/<ver>/mods`）没有 Modern UI ⇒ 一定「正常」，验证不出这一项。
+- ✅ **26.1.2 已实机取证（2026-10-04）**：把 `ModernUI-NeoForge-26.1.2-3.13.0.5.jar` 放进 `run/26.1.2/mods/` 后跑
+  用例 `MODERNUI-26.1.2`（`inject_key e` 开物品栏 + `inject_mouse left` 触发一次 tooltip 渲染 ⇒ 懒探测执行）
+  ⇒ **16/16 PASS**，`latest.log` 出现 `[Astral Dice] Modern UI …sStrokeColor`（探测成功那条 info）。
+  ⚠️ 该用例有**环境前置**（`run/26.1.2/mods/` 需有 Modern UI，sha1 `1432b7e3…`）；未装时正断言必然 FAIL，
+  不会静默通过。
+- **仍未做**：**边框观感的人工目视**（颜色"看起来对不对"）—— 机器断言只能证明「探测成功 + 无异常」。
 
 #### 已知边界（如实记录）
 - **只对 1.21.1 / NeoForge 3.12.0.2 做过实物取证**：1.20.1 与其它 Modern UI 版本走同一套
   按**字段名**探测的逻辑，字段名不符即整层静默停用（fail-safe，不做版本猜测）。
-- ⚠️ **26.1.2 未做（平台差异）**：该线**没有** `client/RarityTooltipFrame`，提示框边框由原版九宫格贴图
-  决定、没有颜色钩子，本模组在该线**本就不做**稀有度边框染色 ⇒ 加本层等于凭空新增行为，故不做。
-- `fabric-1.20.1` **未同步**本项（按 AGENTS 第四条线边界）。Modern UI 亦有 Fabric 版本，需要时单独下批。
+- ⚠️ **26.1.2 已于 2026-10-04 收口**：该线**平台**确实没有颜色钩子（1.21.1 的 `RenderTooltipEvent.Color` 已被
+  **`Texture`** 取代 —— `javap` 实证 26.1.2.109 只有 `Pre`/`GatherComponents`/`Texture`），但 **Modern UI 是自绘的**、
+  有 26.1.2 构建（`ModernUI-NeoForge-26.1.2-3.13.0.5`，sha1 `1432b7e3…`），其 `UIManagerForge` 接管链与 1.21.1
+  **逐条同构**（`HIGH` 自绘 + `LOW` `setCanceled(true)`），`TooltipRenderer` 三字段同名同型 ⇒ 已新增该线的
+  `client/ModernUITooltipCompat`（**该线唯一的档位边框染色途径**）。
+  ⚠️ **判据教训**：「平台有无某事件」≠「第三方模组是否影响本模组」—— 第三方自绘时不经过平台事件。
+- `fabric-1.20.1` **已同步**（走 `ClientTooltipBridgeMixin` 的 HEAD/RETURN，Fabric 无事件优先级/`receiveCanceled`）。
 - 只接管**本模组档位**的物品；原版 / 其它模组物品在 Modern UI 下的表现不受影响（含其自身的残缺梯度）。
 
 #### 第二轮独立复核发现并已修（2026-10-04）

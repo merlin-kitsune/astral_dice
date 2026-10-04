@@ -1594,8 +1594,7 @@ When extending this workspace:
           **只碰这三个公开静态成员**,私有字段一概不碰;彩虹档四槽各差 1/4 圈 ⇒ 得整圈流动彩虹。
         · 开关:配置项 `modernui_tooltip_frame_compat`(默认 true) + 系统属性 `-Dastral_dice.modernUITooltipCompat=false`;
           ⚠️ 与 TO/Iceberg 不同,它**没有任何资源包级扩展点**(`MuiModApi` 里没有 tooltip 相关 API)⇒ 只能走状态注入。
-        · 🚨 **范围:只做 1.21.1 / 1.20.1** —— 26.1.2 **没有** `client/RarityTooltipFrame`、其提示框边框由原版九宫格贴图决定(**没有颜色钩子**)⇒ 在该线加本层等于**凭空新增行为**,故**不做**;fabric 线**有** `RarityTooltipFrame`,但按「第四条线规则边界」不进本批。
-        **未对接**:26.1.2 测试包与 FTB Skies 2 有它)。
+        · ✅ **范围:四线均已落地(2026-10-04 收口)** —— 1.21.1 / 1.20.1 / fabric 三线**有** `client/RarityTooltipFrame`(原生路径写 `RenderTooltipEvent.Color` 的 borderStart/End);**26.1.2** 的平台只提供 `RenderTooltipEvent.Texture`(贴图 id)、**没有颜色事件**(1.21.1 的 `Color` 已被取代),但 Modern UI 是**自绘**(实测有 26.1.2 构建,`UIManagerForge` 的接管链与 1.21.1 同构)⇒ 该线改走同一个 `client/ModernUITooltipCompat`(对接 Modern UI 自身的 `sStrokeColor`),是**该线唯一的档位边框染色途径**。⚠️ 判据教训:**「平台有无某事件」≠「第三方模组是否影响本模组」** —— 第三方自绘时不经过平台事件,必须看它自己的接管链(下载实物 jar + `javap`)。
   - ⚠️ **附魔不再升档**:原版「附魔升一档」的 switch 只覆盖原版 4 档,自有档走 `default` 原样返回(三线一致,可接受)。
   - ⚠️ **解析面耦合(改语法必改)**:`scripts/verify/ChipCommon.psm1` 与 `scripts/verify/verify_bountiful_pools.ps1`
     **正则解析 `ModItems` 的 `.rarity(...)`** 推断档位(前者决定进阶配方模板,后者核对赏金池数据层 rarity)⇒ 调用语法一变必须同步

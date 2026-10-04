@@ -117,7 +117,7 @@
 | B9 | 配方「指定药水」走自建 `astral_dice:nbt_shaped` 序列化器 | ② | 已落地 |
 | B10 | Loom 重映射剥掉 `fabric.mod.json` 的 `jars` ⇒ `tools/loom_embedded_jars.py` + `ft_env.ps1 --install-embedded` | ② | 已落地 |
 | B11 | 保留的 **1.20.1 差异**：星币锤配方 / 复仇之戟行为 / `potionTag` 与 `NbtShapedRecipe`（**不得**按 1.21.1 覆盖） | ① | 已落地（用户裁决） |
-| B12 | 联动裁剪：`irons_spellbooks` ❌ / `enigmaticlegacy` ❌ / `bountiful` ❌ 无 data ⇒ 全部移除；`patchouli` / `waystones` / `trinkets` / `accessories` / Modern UI ✅ 保留 | ③ | 大部分已落地；**Modern UI 待适配** |
+| B12 | 联动裁剪：`irons_spellbooks` ❌ / `enigmaticlegacy` ❌ / `bountiful` ❌ 无 data ⇒ 全部移除；`patchouli` / `waystones` / `trinkets` / `accessories` / Modern UI ✅ 保留 | ③ | **已全部落地**（Modern UI 兼容于 2026-10-04 适配，见 `FABRIC-DIFFS.md` §3/§4 P1-B-1） |
 | B13 | 常驻时长归一 / 射程系统 / 隐匿效果 / 效果牌目标口径 / 立牌受击族 / 输入收口 / 动作栏收口 | —（跨线同源） | **已落地**（追平批 1~8） |
 
 ---
