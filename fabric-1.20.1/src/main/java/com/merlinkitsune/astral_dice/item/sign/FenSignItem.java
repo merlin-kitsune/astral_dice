@@ -12,7 +12,6 @@ import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 import com.merlinkitsune.astral_dice.compat.curios.SlotContext;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.StarLightManager;
@@ -151,10 +150,22 @@ public class FenSignItem extends BaseSignItem {
      * 调用方:
      * <ul>
      *   <li>使用治疗类效果牌(既有被动);</li>
-     *   <li>风水师立牌(zhao)被动「完美帮手」:对装备本立牌者施加「白泽赐福」时 +1 层
+     *   <li>风水师立牌(zhao)被动「完美帮手」:对装备本立牌者施加「白泽赐福」时**直接拉满**({@link #fillRecharge})
      *       (见 {@code ZhaoSignItem} 的主动动作 apply)。</li>
      * </ul>
      */
+    /**
+     * 把养精蓄锐**直接拉满**到 {@value #MAX_RECHARGE} 层(2026-09-28 用户裁决:风水师立牌「完美帮手」)。
+     *
+     * <p>与 {@link #addRecharge} 的差别是**语义**:后者是「+N 层」的增量口径,本方法是「全满」的赋值口径
+     * ⇒ 一次写足上限,不再依赖"当前层数 + 1"。两者共用同一附件键
+     * ({@code ModAttachments#FEN_RECHARGE}),不新建效果/计数器;已满时写入同值(幂等)。
+     */
+    public static void fillRecharge(Player player) {
+        if (player == null || player.level().isClientSide()) return;
+        ModAttachments.setFenRecharge(player, MAX_RECHARGE);
+    }
+
     public static void addRecharge(Player player, int amount) {
         if (player == null || amount <= 0) return;
         if (player.level().isClientSide()) return;

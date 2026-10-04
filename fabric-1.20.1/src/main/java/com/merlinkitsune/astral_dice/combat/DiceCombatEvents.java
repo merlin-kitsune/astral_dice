@@ -132,14 +132,22 @@ public class DiceCombatEvents {
 
         // 立牌受击钩子分发(史莱姆立牌等受击类被动由各立牌 onHurt 实现,不再在此硬编码)
         if (!target.level().isClientSide() && target instanceof Player targetPlayer) {
-            BaseSignItem.invokeHurtHooks(targetPlayer, event.getAmount());
+            BaseSignItem.invokeHurtHooks(targetPlayer, event.getSource(), event.getAmount());
             // 缓冲盾牌筹码:受到攻击时 +2 治愈 +3 星币(每 15 秒一次)
-            com.merlinkitsune.astral_dice.item.chip.BufferShieldChipItem.onHurt(targetPlayer, event.getAmount());
+            com.merlinkitsune.astral_dice.item.chip.BufferShieldChipItem.onHurt(targetPlayer, event.getSource(), event.getAmount());
         }
 
         // AOE(顺劈/溅射)波及的目标不进入骰战结算,避免二次吃到完整骰战;
         // 反击链中的伤害不进入骰战结算(已按反击公式自算),同时结构性阻止反击递归
         if (aoeProcessing || counterDepth > 0) return;
+        // 秘密侦探「隐匿」(2026-09-28 用户裁决):玩家对**非玩家实体**造成有效伤害(任意攻击方式均算)
+        // ⇒ 立即解除隐匿;解除后由 DiceCombatModifiers 的额外加伤修饰器追加「目标标记层数」伤害,
+        // 直到调查阶段增益结束。幂等,内部自判是否处于隐匿。
+        if (!target.level().isClientSide()
+                && source.getEntity() instanceof Player concealBreaker
+                && !(target instanceof Player)) {
+            com.merlinkitsune.astral_dice.effect.ConcealmentEffect.breakOnAttack(concealBreaker);
+        }
         if (!(directEntity instanceof Player player)) return;
         if (target == player) return;
 
@@ -779,9 +787,9 @@ public class DiceCombatEvents {
             event.setCanceled(true);
             return;
         }
-        // 秘密侦探"调查阶段":隐身 + 调查阶段加成期间同样不被生物索敌
-        if (player.hasEffect(MobEffects.INVISIBILITY)
-                && player.hasEffect(ModEffects.INVESTIGATION_BONUS.get())) {
+        // 秘密侦探"调查阶段"的「隐匿」(2026-09-28 用户裁决:取代原版「隐身」):持有该效果的玩家
+        // 不会被生物设为索敌目标(攻击怪物后该效果被解除 ⇒ 恢复可被索敌,见 onLivingDamagePre)。
+        if (player.hasEffect(com.merlinkitsune.astral_dice.effect.ModEffects.CONCEALMENT.get())) {
             event.setCanceled(true);
             return;
         }
@@ -1300,8 +1308,8 @@ public class DiceCombatEvents {
         // 取消会跳过整段伤害处理,故在此显式补发一次(取消后伤害阶段不再派发 → 不会重复触发)。
         // 注:此处传入的是减伤前原始值;两个钩子实现都不读取该数值(仅用于"是否受击"判定)。
         if (!target.level().isClientSide() && target instanceof Player player) {
-            BaseSignItem.invokeHurtHooks(player, event.getAmount());
-            com.merlinkitsune.astral_dice.item.chip.BufferShieldChipItem.onHurt(player, event.getAmount());
+            BaseSignItem.invokeHurtHooks(player, event.getSource(), event.getAmount());
+            com.merlinkitsune.astral_dice.item.chip.BufferShieldChipItem.onHurt(player, event.getSource(), event.getAmount());
         }
     }
 

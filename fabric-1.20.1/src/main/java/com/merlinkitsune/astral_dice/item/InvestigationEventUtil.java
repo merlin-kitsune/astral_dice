@@ -1,18 +1,18 @@
 package com.merlinkitsune.astral_dice.item;
 
-import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
 
 import com.merlinkitsune.starenginelib.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
+import com.merlinkitsune.astral_dice.effect.ConcealmentEffect;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.event.AstralEventSystem;
+import com.merlinkitsune.starenginelib.event.EventTargetCollector;
 import com.merlinkitsune.astral_dice.network.ModNetwork.ActionBarMessage;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import com.merlinkitsune.astral_dice.network.ModNetwork;
 import net.minecraft.world.effect.MobEffectInstance;
-import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import com.merlinkitsune.astral_dice.platform.event.entity.living.LivingDeathEvent;
@@ -53,17 +53,17 @@ public final class InvestigationEventUtil {
             sendInvestigationActionBar(killer);
     }
 
-    // 应用对应阶段的效果:隐身;阶段 II 及以上施加调查增益(攻击加成在攻击事件中按阶段/目标标记层数结算)
+    /** 隐匿时长(调查阶段四阶段统一 1:00;2026-09-28 用户裁决) */
+    public static final int CONCEALMENT_TICKS = 1200;
+
     /** 阶段效果的作用半径(格)。2026-10-03 用户裁决:取代旧口径的「仅真相揭露 + 需 boss 附近时 32 格」。 */
     public static final double EVENT_TARGET_RADIUS = 64.0D;
 
+    // 应用对应阶段的效果:隐匿(2026-09-28 用户裁决:取代原版「隐身」);
+    // 阶段 II 及以上同时施加调查增益(攻击加成在攻击事件中按阶段/目标标记层数结算)。
+    // ⚠️ 四阶段时长**统一为 1:00**:原来 I/II/III 分别是 0:15 / 0:20 / 0:30。
     private static void applyStageEffects(Player self, Player applier, int stage, int markLevel) {
-        int duration = switch (stage) {
-            case 1 -> 300;   // I: 15 秒
-            case 2 -> 400;   // II: 20 秒
-            case 3 -> 600;   // III: 30 秒
-            default -> 1200; // 真相揭露: 1:00
-        };
+        int duration = CONCEALMENT_TICKS;  // 全线 1:00(2026-09-28 用户裁决)
         List<Player> recipients = new ArrayList<>();
         recipients.add(self);
         if (applier != null && applier != self) {
@@ -72,16 +72,13 @@ public final class InvestigationEventUtil {
         // 2026-10-03 用户裁决:阶段效果按「队伍 + 64 格」广播(口径见 PartyRelations#collectEventTargets)——
         //   触发者有队伍 = 全队 ∪ 64 格内非队友(同队不重复判定);无队伍 = 全部无队伍玩家 ∪ 64 格内所有玩家。
         //   取代旧口径:仅 stage>=4 才广播、且必须先满足「64 格内存在 boss」才取 32 格内玩家。
-        // ⚠️ 本条只改「事件目标口径」;本线 applyStageEffects 的时长/效果仍是移植前的旧实现
-        //    (分阶段 15/20/30/60 秒 + 原版隐身),未跟随 2026-09-28「隐匿 + 四阶段统一 1:00」裁决
-        //    —— 属既有移植债,待移植批次统一处理,不在本次范围内。
         for (Player p : PartyRelations.collectEventTargets(self, EVENT_TARGET_RADIUS)) {
             if (!recipients.contains(p)) {
                 recipients.add(p);
             }
         }
         for (Player p : recipients) {
-            EffectTimerGuard.apply(p, new MobEffectInstance(MobEffects.INVISIBILITY, duration, 0, false, true));
+            ConcealmentEffect.apply(p, duration);
             // 调查阶段效果:所有受影响的玩家均显示(amplifier = 阶段序号 1=I,2=II,3=III,4=真相揭露)
             p.addEffect(new MobEffectInstance(ModEffects.INVESTIGATION_BONUS.get(), duration, stage, false, false, true));
         }

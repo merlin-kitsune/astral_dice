@@ -1,16 +1,12 @@
 package com.merlinkitsune.astral_dice.item.chip;
 
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
+import com.merlinkitsune.starenginelib.event.EventTargetCollector;
 import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 import com.merlinkitsune.astral_dice.item.HealingManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.TamableAnimal;
-import net.minecraft.world.entity.animal.Pig;
-import net.minecraft.world.entity.animal.horse.AbstractHorse;
-import net.minecraft.world.entity.monster.Strider;
 import net.minecraft.world.entity.player.Player;
 import com.merlinkitsune.astral_dice.combat.PartyRelations;
 
@@ -21,7 +17,7 @@ import com.merlinkitsune.astral_dice.combat.PartyRelations;
  * <p>友方判定:
  * <ul>
  *   <li>玩家:自身 + 队友(已加入队伍时 = 同队在线玩家;未加入任何队伍时 = 全服在线玩家,经
- *       {@link PartyRelations#collectTeamPlayers}),且距离不超过 {@link #RANGE} 格;
+ *       {@link EventTargetCollector#collectTeamPlayers}),且距离不超过 {@link #RANGE} 格;
  *       玩家获得治愈点数并回血。</li>
  *   <li>非玩家友方(玩家驯服的宠物、可骑乘生物):同样在 {@link #RANGE} 格内则恢复 2 点生命值
  *       (治愈点数是玩家级资源,不适用于生物)。</li>
@@ -31,8 +27,8 @@ import com.merlinkitsune.astral_dice.combat.PartyRelations;
 public class BigBowlStewChipItem extends BaseChipItem {
     /** 作用范围(格) */
     public static final double RANGE = 16.0;
-    /** 赐福结束后给予的治愈点数 */
-    public static final int HEALING_POINTS = 1;
+    /** 赐福结束后给予的治愈点数(2026-09-28 用户裁决:1 → 2) */
+    public static final int HEALING_POINTS = 2;
     /** 赐福结束后恢复的生命值(♥) */
     public static final float HEAL_AMOUNT = 2f;
 
@@ -50,8 +46,10 @@ public class BigBowlStewChipItem extends BaseChipItem {
     }
 
     /**
-     * 骰神赐福结束时调用:范围内友方玩家 +{@link #HEALING_POINTS} 治愈、恢复 {@link #HEAL_AMOUNT} 生命值;
-     * 范围内非玩家友方恢复 {@link #HEAL_AMOUNT} 生命值。
+     * 骰神赐福结束时调用:使**自身和** {@link #RANGE} 格范围内所有友方玩家各获得
+     * {@link #HEALING_POINTS} 层治愈、恢复 {@link #HEAL_AMOUNT} 点生命值。
+     *
+     * <p>2026-09-28 用户裁决:移除对**友方生物**的治疗(生物不在作用范围内)。
      */
     public static void onBlessingEnd(Player player) {
         if (player.level().isClientSide()) return;
@@ -62,43 +60,13 @@ public class BigBowlStewChipItem extends BaseChipItem {
         double rangeSqr = RANGE * RANGE;
         java.util.List<Player> allies = PartyRelations.collectTeamPlayers(player);
         for (ServerPlayer sp : serverLevel.players()) {
+            // 自身无条件在列(用户口径:「使自身和 16 格范围内所有友方玩家」)
             if (sp != player && !allies.contains(sp)) continue;
             if (sp.distanceToSqr(player) > rangeSqr) continue;
             HealingManager.add(sp, HEALING_POINTS);
             sp.heal(HEAL_AMOUNT);
         }
 
-        // 非玩家友方(驯服宠物/可骑乘生物):仅回血(治愈点数为玩家级资源)
-        for (LivingEntity entity : serverLevel.getEntitiesOfClass(LivingEntity.class,
-                player.getBoundingBox().inflate(RANGE),
-                e -> !(e instanceof Player) && isFriendlyMob(e, player))) {
-            entity.heal(HEAL_AMOUNT);
-        }
     }
 
-    // 判定非玩家友方目标:仅自己/同队的已驯服宠物与坐骑,以及无归属的被动生物
-    private static boolean isFriendlyMob(LivingEntity entity, Player owner) {
-        // 已驯服的宠物(狼/猫/鹦鹉等):必须已驯服且主人是自己或同队玩家(排除他人宠物)
-        if (entity instanceof TamableAnimal tame) {
-            return tame.isTame() && isOwnedByAlly(tame.getOwnerUUID(), owner);
-        }
-        // 坐骑(马/驴/骡/羊驼/骆驼等):野生(未驯服)不计入,已驯服的同样要求主人是自己或同队玩家
-        if (entity instanceof AbstractHorse horse) {
-            return horse.isTamed() && isOwnedByAlly(horse.getOwnerUUID(), owner);
-        }
-        // 无归属的被动生物:猪/炽足兽视为友方(骆驼属坐骑,已在上面处理)
-        return entity instanceof Pig || entity instanceof Strider;
-    }
-
-    // 目标主人是否为自己或同队玩家(主人离线时按非友方处理,避免给他人离线宠物加血)
-    private static boolean isOwnedByAlly(java.util.UUID ownerId, Player owner) {
-        if (ownerId == null) return false;
-        if (ownerId.equals(owner.getUUID())) return true;
-        var server = owner.getServer();
-        if (server == null) return false;
-        Player petOwner = server.getPlayerList().getPlayer(ownerId);
-        if (petOwner == null) return false;
-        // 必须走统一入口:裸 getTeam() 只认原版计分板,FTB Teams / OPAC 的队友会被漏判
-        return com.merlinkitsune.astral_dice.combat.PartyRelations.isSameTeam(owner, petOwner);
-    }
 }

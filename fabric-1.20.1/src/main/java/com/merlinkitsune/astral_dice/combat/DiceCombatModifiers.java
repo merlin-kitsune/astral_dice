@@ -33,7 +33,6 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.ai.attributes.Attributes;
-import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -522,6 +521,18 @@ public final class DiceCombatModifiers {
             return ap;
         });
 
+        // === 额外加伤:秘密侦探「调查阶段」—— 隐匿被攻击解除后追加「目标标记层数」伤害(2026-09-28 用户裁决) ===
+        // 条件:调查阶段增益仍在 且 隐匿**已解除**(判据见 ConcealmentEffect#revealedMarkDamage);
+        // 走独立伤害类型(不进骰战攻击力),与上方调查阶段的攻击力加成**互不替代**(两者可同时生效)。
+        // ⚠️ 闸门沿用 isBlessingTarget:只有"骰战适用目标"才追加(与上方同源)。
+        registerExtraDamageModifier(ctx -> {
+            if (ctx.attacker.level().isClientSide()) return 0;
+            if (!com.merlinkitsune.astral_dice.combat.DiceCombatEvents
+                    .isBlessingTarget(ctx.target, ctx.attacker)) return 0;
+            return com.merlinkitsune.astral_dice.effect.ConcealmentEffect
+                    .revealedMarkDamage(ctx.attacker, ctx.target);
+        });
+
         // === 内置:上班族立牌(padman)攻击力增益 + 破防标志 ===
         registerAttackModifier((ctx, ap) -> {
             if (ctx.attacker.level().isClientSide()) return ap;
@@ -593,15 +604,16 @@ public final class DiceCombatModifiers {
             return ap + ModAttachments.getTeruAtkBonusCache(ctx.attacker);
         });
 
-        // === 内置:教主立牌(teru)「狐光」—— 降神目标每攻击一个**新目标**,消耗 1 层并追加攻击力 ===
-        // 额外攻击 = 狐光攻击基数(施法者快照攻击力 = 施加时的基础攻击力 + 从目标获得的 50%,施法瞬间快照)
-        //           + 消耗 1 层后的剩余层数;计入骰战**攻击力**(受目标防御力抵扣,并参与全力攻击等既有倍率)。
-        // 「新目标」判定与消耗/登记全部收敛在 TeruSignItem#descendExtraAttack
-        // (层数已为 0 ⇒ 不消耗、不追加;施法者离线 ⇒ 不加成、不消耗)。
-        registerAttackModifier((ctx, ap) -> {
-            if (ctx.attacker.level().isClientSide()) return ap;
-            return ap + com.merlinkitsune.astral_dice.item.sign.TeruSignItem
-                    .descendExtraAttack(ctx.attacker, ctx.target);
+        // === 额外加伤:教主立牌(teru)「狐光」—— 降神目标攻击敌对目标触发「追击」(2026-09-28 用户裁决) ===
+        // 追击伤害 = 狐光攻击基数(施法者快照攻击力 = 施加时的基础攻击力 + 从目标获得的 50%,施法瞬间快照)
+        //           + 当前「狐光」层数;⚠️ **不进骰战攻击力**,按独立伤害类型单独结算(不受目标防御力抵扣、
+        //           不参与全力攻击等倍率)—— 与美工刀"治愈点"同一条链。
+        // 「新目标」判定与消耗/登记全部收敛在 TeruSignItem#descendChaseDamage
+        // (层数已为 0 ⇒ 不消耗、本击不追加;施法者离线 ⇒ 不加成、不消耗)。
+        registerExtraDamageModifier(ctx -> {
+            if (ctx.attacker.level().isClientSide()) return 0;
+            return com.merlinkitsune.astral_dice.item.sign.TeruSignItem
+                    .descendChaseDamage(ctx.attacker, ctx.target);
         });
 
         // === 内置:蛟龙立牌(mamushi)「真龙形态」—— 觉醒 ≥ 8 层且佩戴立牌 ⇒ 攻击力 +5 ===

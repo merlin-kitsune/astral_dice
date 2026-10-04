@@ -77,6 +77,12 @@ public class ModEffects {
     public static final RegistryObject<MobEffect> INVESTIGATION_BONUS =
             EFFECTS.register("investigation_bonus", InvestigationBonusEffect::new);
 
+    // 隐匿(秘密侦探立牌「调查阶段」;2026-09-28 用户裁决:取代原版「隐身」):阻止怪物索敌;
+    // 玩家攻击怪物 ⇒ 解除,并在骰战中追加目标「标记」层数的伤害,直到调查阶段增益结束。
+    // 图标沿用原版隐身图标(assets/astral_dice/textures/mob_effect/concealment.png)。
+    public static final RegistryObject<MobEffect> CONCEALMENT =
+            EFFECTS.register("concealment", ConcealmentEffect::new);
+
     // 治愈:显示当前治愈点数(等级=层数,时长=距下次结算);由史莱姆立牌等维护
     public static final RegistryObject<MobEffect> HEALING =
             EFFECTS.register("healing", HealingEffect::new);
@@ -276,6 +282,16 @@ public class ModEffects {
      */
     public static final RegistryObject<MobEffect> PRECISION_STRIKE =
             EFFECTS.register("precision_strike", PrecisionStrikeEffect::new);
+
+    /**
+     * 「书页射程」(调查员立牌 rin 主动追加的状态;2026-10-03 用户裁决):持有期间**活体书页的目标选择
+     * 距离 +50%**,有限时长 2:00({@link RinPageRangeEffect#DURATION_TICKS})。无属性修饰符、无粒子;
+     * 加成唯一读取点 = {@code target/SelectorRangeModifiers}(与探天卫星筹码的常驻 +50% 相加,上限 64 格)。
+     * 图标 = {@code textures/mob_effect/rin_page_range.png} = {@code images/调查员立牌.png}
+     * ({@code textures/item/rin_sign.png} 同一张)**逐字节复制**(复用调查员本身图标,不自创)。
+     */
+    public static final RegistryObject<MobEffect> RIN_PAGE_RANGE =
+            EFFECTS.register("rin_page_range", RinPageRangeEffect::new);
 
     /**
      * 本模组已注册的全部效果的**只读**视图(调试命令 {@code /astralparty cleareffect} 用)。
