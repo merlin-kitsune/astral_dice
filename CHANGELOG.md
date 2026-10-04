@@ -77,6 +77,16 @@
   text) and simply expires; re-casting only **refreshes the duration**, never stacks the multiplier. NOTE: the
   active's existing cooldown rhythm and lock semantics are unchanged (it does not enter the "in effect" lock
   state, so it can be re-cast to refresh).
+- **"Bite" and "Dragon's Roar" exclusive note moved to its own line** (2026-10-04, user decision):
+  the tooltips of the two Mamushi-sign exclusive combat cards used to inline
+  "Exclusive combat card: usable only by its obtainer" at the **end of the description line**
+  (joined with ` | `). They now match the exclusive **effect** cards such as "Fate's Guidance" and
+  "Living Page" - the note occupies **its own bottom line**, rendered in **dark purple** (`§5`).
+- **"Star Coin Hammer" tooltip simplified** (2026-10-04, user decision): both parenthetical notes are
+  removed - the Star Coin Bag breaking rule
+  "(when loose coins are short it breaks open 1 Star Coin Bag, 9 coins per bag, takes only the coins
+  needed and leaves the rest in your inventory, and consumes nothing if they cannot be stored safely)"
+  and the damage cap "(up to 100)" - and the text now ends with ", up to 100 damage".
 
 ### Bug Fixes
 

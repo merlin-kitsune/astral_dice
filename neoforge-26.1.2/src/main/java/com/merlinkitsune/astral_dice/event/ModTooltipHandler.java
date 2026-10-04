@@ -631,6 +631,7 @@ public class ModTooltipHandler {
         // 蛟龙立牌(mamushi)专属战斗牌:撕咬(费用 2 / 耐久 1 / 定值 +3)与
         // 龙之咆哮(费用 3 / 耐久 5 / 定值 +3;命中施加 缓慢 III 1:00 + 破防 1:00)。
         // 费用行 = 既有战斗牌的既有写法;描述行走规格 §4 冻结键 tooltip.astral_dice.card.bite / .dragon_roar
+        // (专属战斗牌说明走独立行 DARK_PURPLE,与效果牌 tooltip.astral_dice.card.exclusive_owner 同款显示)。
         // (末尾沿用同类战斗牌的"| 剩余次数"尾注,耐久数值与卡牌本体一致)。
         if (stack.is(ModItems.ATTACK_CARD_BITE.get())) {
             tooltip.add(Component.empty());
@@ -640,6 +641,8 @@ public class ModTooltipHandler {
             int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("bite"));
             tooltip.add(tt("tooltip.astral_dice.card.bite", uses)
                     .withStyle(ChatFormatting.GRAY));
+            tooltip.add(Component.translatable("tooltip.astral_dice.card.exclusive_combat_owner")
+                    .withStyle(ChatFormatting.DARK_PURPLE));
         }
         if (stack.is(ModItems.ATTACK_CARD_DRAGON_ROAR.get())) {
             tooltip.add(Component.empty());
@@ -649,6 +652,8 @@ public class ModTooltipHandler {
             int uses = stack.getOrDefault(ModDataComponents.CARD_USES.get(), AppliedStone.defaultUses("dragon_roar"));
             tooltip.add(tt("tooltip.astral_dice.card.dragon_roar", uses)
                     .withStyle(ChatFormatting.GRAY));
+            tooltip.add(Component.translatable("tooltip.astral_dice.card.exclusive_combat_owner")
+                    .withStyle(ChatFormatting.DARK_PURPLE));
         }
         if (stack.is(ModItems.DEFENSE_CARD_MEDIUM.get())) {
             tooltip.add(Component.empty());
