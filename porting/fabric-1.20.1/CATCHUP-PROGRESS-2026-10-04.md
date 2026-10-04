@@ -94,3 +94,44 @@ MinecraftForge.EVENT_BUS.post(        -> LoaderBus.INSTANCE.postEvent(
 2. **Modern UI 提示框兼容**（`ModernUITooltipCompat`，fabric 端有 Modern UI，需照抄两线实现并适配）。
 3. **实机验证**：`/astralprobe` 需先补 fabric 端探针（当前 fabric 无对应命令）。
 4. 每批收尾：`:fabric-1.20.1:build` + 开包核验 + `check_lang_sync` / `tooltip_color_audit` / `audit_patchouli_keys`。
+
+
+## 六、第二批（批 7~8，提交 fd3461a8）
+
+| 批 | 内容 | 关键点 |
+|---|---|---|
+| 7 | **输入收口** | `KeyBindingSetup`：J 键会话期一律「收起」（撤销手持类豁免）、H 键对「手持即选择」放行；`TargetSelectionClient`：右键（allowSelf=false）改**收起**、中键/侧键**放行** |
+| 8 | **动作栏通道与染色收口** | 9 处立牌提示改 `sendSignActionBarColored(..., RED, ...)`；`CurrentCoreChipItem` 私有方法加色参；`AirbagChipItem`/`ModMenuTypes`/`StarCoinWalletActions` 由**裸 `displayClientMessage`** 改为 `ModNetwork.ActionBarMessage`（黄/红） |
+
+## 七、⚠️ 一次失败尝试的教训（批 6 已回滚）
+
+对「语义差测绘」出的 35 个文件**整文件照搬 forge + 平台替换表** ⇒ 构建 **61 错 / 26 文件失败**，已全量 `git checkout` 回滚。根因：
+1. 替换规则 `net.minecraftforge.fml.common.Mod;` **漏写 `import ` 前缀** ⇒ 吃掉换行后与下一行 import 合并成 `import import ...`；
+2. **fabric 的 `platform.*` 与 forge 包路径并非一一对应**：`platform.event.BuildCreativeModeTabContentsEvent` 不存在、fabric 侧 `ICuriosItemHandler` 拼作 `ICursiosItemHandler`、`Compat` 私有方法签名不同。
+
+**结论（已写入 MEMORY）**：**平台敏感的类必须逐段局部改，不可整文件照搬**；「照搬」只适用于平台中性的文件。
+
+## 八、⚠️ 重要判定修正：forge 独有行中很大比例是「有意的平台适配」
+
+逐文件核对后确认以下**不是滞后、不应移植**：
+
+| 文件 | 为何不是滞后 |
+|---|---|
+| `combat/EliteTargets` | 读 `Entity#getPersistentData()`（**Forge 补丁**，原版无）+ Apotheosis（**无 1.20.1 Fabric 版**）⇒ fabric 已按既定口径裁剪该 Forge-only 联动 |
+| `event/FirstLootChestHandler` | 同因；fabric 已改用 `ModAttachments.FIRST_LOOT_CHEST_GIVEN`（与另 107 键同一持久化通道） |
+| `component/AttachedDataKey`、`ModAttachments`、`ModCapabilities`、`AstralData` | fabric attachments 平台实现（FAPI 附件 vs Forge Capability） |
+| `datagen/*`、`AstralDiceMod` | 平台 datagen / 入口（Forge `DeferredRegister` ↔ fabric `platform.registry`） |
+| `ModItems`、`ModEnchantments`、`EffectTimerGuard`、`ModEffectEvents`、`RandomCardHandler` | 注册 API 与 `ForgeRegistries` ↔ `BuiltInRegistries` 映射 |
+| `network/VersionGate`、`event/WaystoneWarpCompat` | `fml.ModList` / 反射探测 Forge Waystones（fabric 版实现不同） |
+| `client/*`（`GlowingDustParticle`/`RenShieldRenderer`/`IcebergTooltipCacheGuard`/`SpellDamageContext`/`DiceCurioItem`/`CardInventoryMenu`/`StarCoinWalletButtons`） | `@OnlyIn`、`RenderLevelStageEvent`、Curios `type.*` 包、GUI 坐标 API 的平台映射 |
+| `init/ModCreativeTabs`、`item/card/CardItem`、`item/chip/*`（CursedSword/Railgun）、`damage/RailgunBolts`、`event/TemporaryCardEvents`、`mixin/*` | 单项平台 API（`withTabsBefore`、`getMaxStackSize`、`ItemTossEvent` 包名等） |
+
+⇒ **判据要更新为「先判滞后 vs 平台适配，再动手」**，不能只看「对端独有行」。
+
+## 九、剩余待办（完全追平的最后一段）
+
+1. **Modern UI 提示框兼容**（清单 #13）—— fabric 端确有 Modern UI，但需**从 fabric 版 Modern UI jar 取证**其描边 API（fabric 分支类名/字段可能不同于 Forge 分支），再照两线 `ModernUITooltipCompat` 结构实现；配套 `ModCommonConfig` 的 `modernui_tooltip_frame_compat` 开关。
+2. `combat/DiceCombatEvents` 余下的「近战黑名单补入非武器工具」（`BRUSH`/`FLINT_AND_STEEL` 等）—— 该文件含已裁决差异，需逐段局部改。
+3. `combat/PartyRelations` 的 `AP_PARTY` 机器行（测试探针用，fabric 无探针，可选）。
+4. fabric 端**测试探针**（`/astralprobe` 系列）补齐后，实机验证本批全部改动。
+5. `audit_actionbar.py` **只覆盖三条线**（不含 fabric）—— 建议扩到四线。
