@@ -10,7 +10,7 @@ verify_medkit_and_removal_invariants.py —— Q2 / Q3 的**静态代码不变�
 
 检查项
 ------
-M1（Q2 · 医疗箱可刷封堵，四线各 4 条）
+M1（Q2 · 医疗箱可刷封堵，四线各 5 条，合计 20 条）
   M1-a `PlayerLifecycleHandler#onPlayerLoggedInClearDiceBlessing`      **不得**引用
        `HealingManager.triggerMedkitOnEquip` / `refreshMedkitEquipSession`
        （原实现使「反复重登」= 反复完整触发治愈 ⇒ 无限刷血）
@@ -20,6 +20,7 @@ M1（Q2 · 医疗箱可刷封堵，四线各 4 条）
        `triggerMedkitOnEquip`（装备触发点之一：死亡重生后）
   M1-d `MedkitEmergencyChipItem#onEquip` / `MedkitCompleteChipItem#onEquip`
        **必须**引用 `triggerMedkitOnEquip`（装备触发点之二：真的装上筹码）
+       （M1-a…c 各 1 条 + M1-d 2 条 = **每线 5 条**，四线合计 **20 条**；加 M2 的 2 条 = 总计 **22 条**）
 
 M2（Q3 · 效果移除拦截在「目标已无该效果」时放行，fabric）
   M2-a `ModEffectEvents#onModEffectRemovalPrevented` **必须**含 `hasEffect` 早退判据

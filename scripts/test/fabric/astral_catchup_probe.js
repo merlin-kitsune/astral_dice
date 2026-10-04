@@ -45,9 +45,11 @@
 //                       fired_present=1 kept=1 cleaned=0 cA0=<n> has_at_throw=-1
 //                       （`fired_absent` = 裸 removeEffect 前后 `Remove` 事件派发次数差值；
 //                         `has_at_throw` = 抛出 CancellationException 时该效果**是否已在身上**）
-//                       ⚠️ 本子命令跑完后**必须**保证计时守卫无残留记录，否则读数会非确定：
-//                          实测症状 = `fired_absent=1` 且 `has_at_throw=0` 且 `r_absent` 抛
-//                          `CancellationException`（守卫把记录的效果重新施加回来造成的假象）。
+//                       ⚠️ 本子命令曾出现 **1 次来源未定位**的偶发异常（14 次采样中 1 次）：
+//                          `fired_absent=1` 且 `has_at_throw=0` 且 `r_absent` 抛
+//                          `CancellationException: The call removeEffect is not cancellable.`
+//                          ⇒ 已登记为未定位观察项（KNOWN-ISSUES KI-F25②(b)），
+//                          **不是**「探针假象」，也**不是**已确认的产品缺陷。
 //    AP_CATCHUP_MEDKIT: f0=3 p0=7 login=ok flags_login=3 pts_login=7 dim=ok flags_dim=3 pts_dim=7
 //                       released_login=0 released_dim=0
 //    AP_CATCHUP_ERR:    tag=<t> ex=<…>            （任何异常都落这一行，便于断言 absent）
@@ -252,11 +254,11 @@
       // 基线：先让 `Remove` 至少派发过一次（否则它落在报告里是「无 =n」的未派发段）
       p.addEffect(new MobEffectInstance(eff, 1200, 0, false, true, true));
       ModEffectRemoval.remove(p, eff);
-      // ⚠️ 必须顺手**清掉计时守卫的记录**（2026-10-04 实测踩坑）：上面那次 addEffect 会经
-      //    `ModEffectEvents.onEffectTimerRecord` 在 `EffectTimerGuard` 里留下一条 CHARGE 计时记录；
-      //    若记录残留，守卫在后续 tick 见到「有记录、无效果」就会**把效果重新施加回来**
-      //    （`EffectTimerGuard#tick` 的 `inst == null` 分支）⇒ 目标身上会**凭空出现** CHARGE，
-      //    让「效果不存在」这一支的读数变得非确定（实测：间隔数十秒再跑时会命中该支）。
+      // 收尾顺手清掉计时守卫的记录 —— **仅为无害卫生**，不是任何已知异常的解药：
+      //   上面那次 `addEffect` 会经 `ModEffectEvents.onEffectTimerRecord` 在 `EffectTimerGuard` 里留一条记录；
+      //   `EffectTimerGuard#tick` 确有「有记录、无效果 ⇒ 重新施加」分支，但 `FakePlayer` 既不在 `PlayerList`
+      //   （`FabricBridges` 只遍历 `getPlayerList().getPlayers()`）、其 `tick()` 也是空实现
+      //   ⇒ 守卫**对本载体永不生效** ⇒ 这条 `forget` 在当前载体上是空操作，换真人载体时才会起作用。
       try { EffectTimerGuard.forget(p, "astral_dice:charge"); } catch (e) { }
 
       // ① 目标身上**没有**该效果（Q3 的判别支）

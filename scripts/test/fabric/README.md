@@ -705,12 +705,16 @@ AP_CATCHUP_LEGACY: thr=1073741823 dur0=1200000000 gt_thr=1 ticked=24 dur_after=1
    传入的是 `this.getEffect(effect)` —— 无效果时为 `null` ⇒ 命中 `PuzzlesBridges` **2026-09-29 就已存在**的
    「实例为 null ⇒ 放行」判据。所以 `r_absent=clean` 是**结构性成立**的，Q3 新增的 `hasEffect` 判据在当前调用路径上是
    **第二道防线**（防将来出现「实例非 null 但效果已不在身上」的调用方），由静态守门 `verify_medkit_and_removal_invariants.py` 的 M2 长期钉住。
-2. 排查途中一度得到自相矛盾的读数（`fired_absent=1` 且 `has_at_throw=0` 且 `r_absent` 抛 `CancellationException`），
-   **根因在探针自身**：探针基线 `p.addEffect(CHARGE, 1200t)` 会经 `ModEffectEvents.onEffectTimerRecord` 在
-   `EffectTimerGuard` 里**留下一条计时记录**；记录残留时，守卫在后续 tick 见到「有记录、无效果」就会
-   **把效果重新施加回来**（`EffectTimerGuard#tick` 的 `inst == null` 分支）⇒ 「效果不存在」这一支被悄悄破坏。
-   **控制实验**：加一行 `EffectTimerGuard.forget(p, "astral_dice:charge")` 后，同一节奏（快连 6 次 + 间隔 40 s + 用例）**7/7 全稳**。
-   ⇒ **探针纪律**：**凡是会 `addEffect` 本模组效果的探针，收尾必须清掉 `EffectTimerGuard` 记录**，否则读数非确定。
+2. ⚠️ **一次未能定位来源的偶发异常（不得写成「探针假象」）**：采样中出现过 **1 次**
+   `CancellationException: The call removeEffect is not cancellable.`，同时 `fired_absent=1`、`has_at_throw=0`
+   （14 次采样中 13 次 `r_absent=clean`）。**两条曾提出的解释都已被独立 javap 复核推翻**：
+  ① 「Puzzles 的 `removeEffect` 注入不可取消 ⇒ `setReturnValue` 抛异常」 —— 实测该 `@Inject` 为
+     **`cancellable=true`**（`javap -v`），而 Mixin 的 `CallbackInfo.cancel()` 只在 `!cancellable` 时才抛 ⇒ 不可能；
+  ② 「`EffectTimerGuard#tick` 把效果重新施加回来」 —— `FakePlayer` 不在 `PlayerList`（`FabricBridges` 只遍历
+     `getPlayerList().getPlayers()`）、其 `tick()` 还是空实现 ⇒ 守卫对它**永不生效**。
+  ⇒ 已把 `loom-cache` 全部 jar 的 class 与 mixin 配置扫过，**除 Puzzles 外无第二处 `removeEffect` 注入点**；
+  下一步见 `KNOWN-ISSUES.md` KI-F25②(b)（扫 `run/*/mods` 与 JiJ、`-Dmixin.debug.verbose=true` 抓真实注入点）。
+  探针里保留的 `EffectTimerGuard.forget(...)` 只是**无害卫生**（换了真人载体时会用到），**不是**该异常的解药。
 
 **跑法**：
 
@@ -724,7 +728,7 @@ pwsh -NoProfile -File scripts/test/fabric/ft_stop.ps1 --side server --purge-save
 ```
 
 **静态对偶（可与运行时独立复跑）**：`python tools/verify_medkit_and_removal_invariants.py`
-—— M1 钉住「登录 / 切维度处理器**不得**再引用 `triggerMedkitOnEquip` / `refreshMedkitEquipSession`、重生与 `onEquip` **必须**引用」（四线 × 4 项），
+—— M1 钉住「登录 / 切维度处理器**不得**再引用 `triggerMedkitOnEquip` / `refreshMedkitEquipSession`、重生与 `onEquip` **必须**引用」（四线 × 5 项 = 20 项），
 M2 钉住 fabric 的两条 `hasEffect` 早退判据。期望 `GATE: PASS (22 项)`；已做**反证测试**（注入旧调用 → 精确 FAIL，还原 → PASS）。
 
 ---

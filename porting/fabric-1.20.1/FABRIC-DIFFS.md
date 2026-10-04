@@ -99,7 +99,7 @@
 |---|---|---|---|---|
 | **Q1** | **KI-F8 手册档位词 ≠ 代码稀有度**：`hanna_sign.3` 写「稀有档 Rare」、`sherry_sign.3` 写「史诗档 Epic」，而两者代码都是 `AstralRarities.bizarre()`（奇特） | 只登记未改（**四线共有**，与移植无关） | ①**以代码为准**：两条文案改「奇特档」——需先定 `bizarre` 的英/日写法（`astral_dice:bizarre` 可作英文候选；**日文无先例**）；②**以文案为准**：改代码稀有度（`bizarre()`→`rare()`/`epic()`）——连带改 tooltip 配色与整个稀有度分布；③维持现状 | **①**（改动最小、不动玩法数值）；需先敲定日文术语 |
 | **Q2** | **KI-G2 医疗箱筹码「重登 / 切维度」可反复白刷回血**：`PlayerLoggedInEvent` / `PlayerChangedDimensionEvent` 均 `refreshMedkitEquipSession + triggerMedkitOnEquip`，而 `equipTrigger` 的 `triggerHealing` **无条件** ⇒ 每次重登 / 每次过门再完整触发一次（层数满 32 时直接按 32×2 回血） | 只登记未改 —— 属用户 2026-10-01 裁决「这两个时点各触发一次」的**数学必然推论** | ①**接受为设计**（0 改动，文档如实披露）；②**节流**（同玩家 N 秒内最多一次，或仅当「闸门上次因**死亡**释放」时才触发）；③**撤掉这两个时点**（只留「装备时」+「重生后」；= 删两处调用 + 手册文案回退） | **②**（保留裁决意图、堵住无限刷）；⚠️ 三条均不得改「装备时 / 重生后必触发」与三档概率 / `HEALING_TIMER_SECONDS=60` / `HEALING_POINT_CAP=32` |
-| **Q3** | **KI-F25② 裸 `removeEffect` 在效果不存在时抛 `CancellationException`**（`astral_dice:` 效果的外部移除被**设计性**拦截 ⇒ 拦截器取消了一个未被声明为可取消的回调） | 已登记，**未做决定性复现** | ①跑一次决定性复现（三条路径：裸 `removeEffect`(效果不存在) / `/effect clear` / 喝牛奶），确认后修（拦截器加 `cancellable()` 判定或前置存在性检查）；②维持现状（原版与本模组自身都先判存在性，影响面小） | **①**（探针可做的无人值守项，一次即定性） |
+| **Q3** | **KI-F25② 裸 `removeEffect` 在效果不存在时抛 `CancellationException`**（`astral_dice:` 效果的外部移除被**设计性**拦截 ⇒ 拦截器取消了一个未被声明为可取消的回调） | 已登记，**未做决定性复现**（⚠️ 本节是**裁决前快照**；处置与更正见 §4.2 与 §4.3） | ①跑一次决定性复现（三条路径：裸 `removeEffect`(效果不存在) / `/effect clear` / 喝牛奶），确认后修（拦截器加 `cancellable()` 判定或前置存在性检查）；②维持现状（原版与本模组自身都先判存在性，影响面小） | **①**（探针可做的无人值守项，一次即定性） |
 | **Q4** | **KI-F25④ `FakePlayer` 不进世界 tick 循环** ⇒ 依赖「玩家级每 N tick」的行为（如 `normalizeLegacyInfiniteDurations`）**无法**在本线端到端断言 | 已如实登记（测试能力边界，非产品缺陷） | ①带**真人玩家 / 客户端进世界**验证（需用户在场）；②维持（该特性已有静态判据 + 另三线实机读数） | **②**（不影响产品正确性） |
 | **Q5** | **KI-F21-① 进世界验证未跑**：`ft_prod.ps1` 的 quickplay 通道曾**误删存档** ⇒ 世界内行为（附件注册 / ∞ 显示 / 效果面板悬停注释 / 配方实际可合成）未在 fabric 实机确认 | 刻意未跑（该参数已加护栏，需显式 `-AcknowledgeQuickPlayDestructive`） | ①授权该参数 + **先备份存档**后跑一次；②由**用户手动**进世界目视；③维持不做 | **①或②**（用户在场时一次性做完，覆盖面最大） |
 | **Q6** | **KI-F21-② 上游缺陷（主仓）**：`multi-main` 删了 lang 键 `astral_dice.guide.entry.special_effects.6`，但 `forge-1.20.1` 手册 `getting_started/special_effects.json` 仍引用它 ⇒ 手册该行显示**原始键名**（fabric 线已用「保留键」规避） | 主仓未裁决 | ①改手册（删 / 改该 page）；②恢复该 lang 键；③维持（fabric 已规避） | **①**（与手册条目结构一致；P0 两线同批） |
@@ -116,7 +116,7 @@
 |---|---|---|---|---|
 | **Q1** | 两立牌均设为「奇特」、不得出现差异 | **四线**（手册三语文案；代码稀有度本就一致） | `hanna_sign.3` / `sherry_sign.3` 档位词 → `奇特档` / `Bizarre tier` / `ビザール段階`（四线 × 三语 = 24 处）；代码 `.rarity(AstralRarities.bizarre())` 四线已一致（已核对） | 守门 C1 全绿；四线三语无 `稀有档/史诗档/Rare tier/Epic tier/レア段階/エピック段階` 残留 |
 | **Q2** | 彻底封堵漏洞 + 写入 AGENTS 红线 | **四线** | 删除「登录 / 切换维度 = 新装备会话」的 `refreshMedkitEquipSession + triggerMedkitOnEquip`（四线各 2 处）⇒ 装备触发点收敛为**两个**：①真的装上筹码 ②死亡重生后；`AGENTS.md` 新增「平衡性红线」节（FATAL 定性 / 不得绕过 / 四件套连带义务） | 反复重登 / 反复过门**不再**产生治愈点或回血；死亡重生仍触发一次 |
-| **Q3** | 直接修复，不做额外讨论或绕过 | **fabric** | `event/ModEffectEvents#onModEffectRemovalPrevented` 增「目标已无该效果 ⇒ 放行」；`platform/PuzzlesBridges` 的 REMOVE 桥接同判据（不派发事件、不返回 `EventResult.INTERRUPT`）⇒ **正面语义修复**（不存在的效果无需拦截，也就不会走到不可取消的路径） | 裸 `removeEffect`（效果不存在）/ `/effect clear` / 牛奶 三条路径均不再抛 `CancellationException`；**存在时仍照旧拦截**（实测：**已通过**，见 §4.3；⚠️ 原记的「不存在时抛异常」经取证**撤回为探针假象**，本改动改按**第二道防线**保留） |
+| **Q3** | 直接修复，不做额外讨论或绕过 | **fabric** | `event/ModEffectEvents#onModEffectRemovalPrevented` 增「目标已无该效果 ⇒ 放行」；`platform/PuzzlesBridges` 的 REMOVE 桥接同判据（不派发事件、不返回 `EventResult.INTERRUPT`）⇒ **正面语义修复**（不存在的效果无需拦截，也就不会走到不可取消的路径） | 裸 `removeEffect`（效果不存在）/ `/effect clear` / 牛奶 三条路径均不再抛 `CancellationException`；**存在时仍照旧拦截**（实测：**部分通过**，见 §4.3 —— 「效果不存在」这条路径已证安全；另有 **1 次来源未定位**的偶发异常，本改动按**第二道防线**保留） |
 | **Q4** | 按主线处理方式解决 | **fabric 测试资产** | 采用主线口径 = **真人玩家 / 客户端进世界**取证（不用 `FakePlayer` 的 tick 采样捷径） | 玩家级每-N-tick 类行为（如 `normalizeLegacyInfiniteDurations`）取得端到端读数 |
 | **Q5** | 授权自动化测试、测试环境无需保留存档 | **测试环境** | 允许销毁存档的通道（`ft_prod.ps1 -AcknowledgeQuickPlayDestructive` 等）；测试世界可重建 | 用例可无人值守跑完并出 PASS/FAIL 结论 |
 | **Q6** | 同步修改对应手册内容 | **fabric**（对齐主流三线） | 删除 fabric 多出的 `special_effects` **第 6 页** + 三语 `guide.entry.special_effects.6` 键 ⇒ 与另三线一致（5 页 / 无该键） | 四线 `special_effects.json` 均 5 页；四线三语均无 `.6` 键（守门 C3 覆盖） |
@@ -137,9 +137,17 @@
 | **Q2** | `AP_CATCHUP_MEDKIT: f0=3 p0=7 login=ok flags_login=3 pts_login=7 dim=ok flags_dim=3 pts_dim=7 released_login=0 released_dim=0` | ✅ **通过**：投递 `PlayerLoggedInEvent` / `PlayerChangedDimensionEvent` 后，医疗箱装备闸门（`f0=3 → flags_*=3`）与治愈点（`p0=7 → pts_*=7`）**一分不动** ⇒ 两个时点确实不再触发；同一会话 5 次采样一致 |
 | **Q3** | `AP_CATCHUP_EFFREM: absent0=0 fired_absent=0 r_absent=clean absent1=0 present0=1 r_present=clean fired_present=1 kept=1 cleaned=0 cA0=<n> has_at_throw=-1` | ✅ **通过（口径已更正）**：`kept=1` ⇒ 有该效果时**仍被拦截**；`r_absent/r_present=clean` ⇒ 两条路径均不抛异常；`cleaned=0` ⇒ 库内部通道可清；`fired_absent=0` ⇒ 效果不存在时事件**根本不派发**（Puzzles 注入传 `null` ⇒ 命中 2026-09-29 既有的 null 放行判据），故本条**不是 Q3 新增判据的功劳**，新判据是**第二道防线** |
 
-⚠️ **Q3 的一条更正（必须记住）**：登记于 `KNOWN-ISSUES` 的「裸 `removeEffect` 在效果**不存在**时抛 `CancellationException`」
-经决定性取证**撤回为探针假象** —— 异常只在「探针自己留下的 `EffectTimerGuard` 记录把效果重新施加回来」时出现
-（控制实验：加 `EffectTimerGuard.forget` 后 7/7 全稳）。详见 `KNOWN-ISSUES.md` KI-F25②/⑤。
+⚠️ **Q3 的口径更正（必须记住，2026-10-04 独立复核后修订）**：
+- **已证**：冷启动下 `fired_absent=0` ⇒ 目标**没有**该效果时 `MobEffectEvent.Remove` **根本不派发** ——
+  Puzzles 注入（`javap -v` 实证）在 `@At("HEAD")` 传的是 `this.getEffect(effect)`（无效果时为 `null`），
+  先命中 `PuzzlesBridges` **2026-09-29 就已有**的「实例为 null ⇒ 放行」判据。
+  ⇒ 「效果不存在」这条路径**本身安全**（14 次采样中 13 次 `r_absent=clean`），Q3 新增的 `hasEffect` 判据是**第二道防线**。
+- **未定位**：采样中出现过 **1 次**真正的 `CancellationException: The call removeEffect is not cancellable.`
+  （同时 `fired_absent=1`、`has_at_throw=0`）。**两条曾提出的解释都已被独立 `javap` 复核推翻**：
+  ① 「Puzzles 该注入不可取消」—— 实测 `cancellable=true`，而 Mixin 的 `CallbackInfo.cancel()` 只在 `!cancellable` 时抛；
+  ② 「`EffectTimerGuard#tick` 把效果重新施加」—— `FakePlayer` 不在 `PlayerList`、`tick()` 还是空实现 ⇒ 守卫对它永不生效。
+  ⇒ 登记为**未定位观察项**（`KNOWN-ISSUES.md` KI-F25②(b)），**不得**写成「非产品缺陷」。
+  下一步取证：扫 `run/*/mods` 与 JiJ 内嵌件；`-Dmixin.debug.verbose=true` 抓真实注入点。
 
 ⚠️ **仍未覆盖（如实标注）**：Q2 的「装上真医疗箱之后的重登**回血数值**」未做 —— `FakePlayer` 无法伪造 Curios 装备
 （筹码栏需先佩戴骰子、`findFirstCurio` 依赖饰品后端）⇒ 属人工实机项（Q4 口径：真人玩家进世界）。
