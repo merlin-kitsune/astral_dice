@@ -1,0 +1,149 @@
+{
+  "case_id": "EFFECT-INFINITE-NORM-1.21.1",
+  "title": "常驻效果时长残留归一（1.21.1）：施加一个 >= Integer.MAX_VALUE/2 的超长时长（模拟旧存档残留）⇒ 玩家 tick 的归一逻辑必须改写为原版无限时长(dur=-1/inf=1) 且层数保留；负对照一个合法有限时长(1200t)不得被改写",
+  "version": "1.21.1",
+  "target": {
+    "type": "env",
+    "ref": "effect_infinite_norm"
+  },
+  "on_fail": "keep_game_running",
+  "steps": [
+    {
+      "op": "note",
+      "text": "目的：**常驻效果时长残留归一**的实机判定（2026-10-04 用户实报「充能效果指示器在 Forge 端计时显示仍为超长数值，而非无限符号」）。\n\n背景：1.3.4 起本模组常驻效果一律改用原版真·无限时长（`INFINITE_DURATION` = `-1`，界面显示 ∞），但那次**只改了施加点** —— 旧存档里已存在的实例仍是 `Integer.MAX_VALUE` 的递减产物（实测整合包存档 `astral_dice:charge Duration=2147482289` ⇒ 面板显示 `29826:08:34`）。而 `EffectTimerGuard.record()` 对 `>= INFINITE_THRESHOLD`(=MAX/2) 的值直接跳过登记 ⇒ **永远不会被校正**。\n修法：三线 `PlayerTickEvents#normalizeLegacyInfiniteDurations` 每 20 tick 一次，把**本模组**效果里 `duration >= MAX_VALUE/2` 的实例改写为 `-1`（只改时长，层数/粒子/图标位保留）。\n\n本用例用探针 `setlegacydur S1 astral_dice:charge` **直接施加** 1200000000 tick 的\n超长时长（≥ 1073741823 阈值；⚠️ 不能用原版 `/effect give` —— 其 `seconds` 上界仅 1000000，\n×20 = 20000000 tick 远低于阈值）⇒ 等 ≥ 20 tick 的归一窗口后，读到的 `inf` 必须为 1（`dur == -1`）。\n\n判据四段：\n  N0 基线：清效果后该效果不存在（`present=0`）—— 排除「读到上一次残留」；\n  N1 **主判据**：超长时长必须被归一为 `dur=-1:inf=1`，且层数 `amp=5` 原样保留；\n  N2 **负对照（防误伤）**：合法有限时长 `astral_dice:weakness_reveal`（60 秒 = 1200 tick，远低于阈值）**不得**被改写 ⇒ `inf=0` 且 `dur` 仍是 4 位数的递减值；\n  NZ 收尾清效果。\n\n⚠️ 归一在 `tickCount % 20 == 0` 之后执行 ⇒ 等待窗口取 1600 ms（> 20 tick）留足余量。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode creative",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/effect clear @s",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe effectdur N0 astral_dice:charge",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "note",
+      "text": "① 主判据：人为施加 1200000000 tick 的超长时长（= 旧版残留形态）⇒ 期望被归一为 `-1`。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe setlegacydur S1 astral_dice:charge",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe effectdur N1 astral_dice:charge",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "note",
+      "text": "② 负对照：合法有限时长（弱点识破 1200 tick）**不得**被归一。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/effect give @s astral_dice:weakness_reveal 60 0 true",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe effectdur N2 astral_dice:weakness_reveal",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "note",
+      "text": "③ 收尾：清空全部效果。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/effect clear @s",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_N0_EFFECTDUR:fx=astral_dice:charge:present=0:dur=na:inf=na:amp=na"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_N1_EFFECTDUR:fx=astral_dice:charge:present=1:dur=-1:inf=1:amp=5"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_S1_SETLEGACYDUR:fx=astral_dice:charge:ok=1:ticks=1200000000"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_N2_EFFECTDUR:fx=astral_dice:weakness_reveal:present=1:dur=1[0-9]{3}:inf=0"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_N[12]_EFFECTDUR:[^\\n]*:inf=(?:na|-[0-9])"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_[A-Z0-9]+_ERR"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_[A-Z0-9]+_EX:"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "<--\\["
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "crash"
+    }
+  ],
+  "evidence": []
+}

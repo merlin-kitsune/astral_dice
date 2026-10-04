@@ -1,0 +1,110 @@
+{
+  "case_id": "FORGE-TAG-1.20.1",
+  "title": "1.20.1 通用标签命名空间 = forge:（不是 c:）：forge:bricks 必须存在且成员含普通砖/下界砖（⇒ 对怪板砖配方材料可满足）；负对照 c:bricks 在本版本必须为空（证明旧写法必然失效）",
+  "version": "1.20.1",
+  "target": {
+    "type": "env",
+    "ref": "tag_namespace"
+  },
+  "on_fail": "keep_game_running",
+  "steps": [
+    {
+      "op": "note",
+      "text": "目的：**1.20.1 通用标签命名空间 = `forge:`（不是 `c:`）** 的实机判定。\n\n背景（2026-10-04 用户实报）：`forge-1.20.1` 的 `datagen/ModRecipeProvider` 照搬了 NeoForge 侧的 `c:bricks`，而 1.20.1 Forge **只提供 `forge:` 命名空间、不存在任何 `c:` 标签的提供者** ⇒ 「对怪板砖」配方（`1 纸 + 1 tag + 1 星币`）的材料**永远无法满足**，且**不报任何错**。\n修法：配方改用 `forge:bricks` + 本模组自建汇总标签 `data/forge/tags/items/bricks.json` = `#forge:ingots/brick` ∪ `#forge:ingots/nether_brick`（Forge 47.x 自带这两条、但没有汇总的 `forge:bricks`）。\n\n探针 `tagcheck <tag> <namespace:path>` 在**物品注册表**上遍历每个物品的 `Holder#tags()`，按 `location()` 字符串比对收集成员（⚠️ 不走 `ItemStack#is(TagKey)`：Rhino 同元重载歧义）。\n\n判据四段：\n  TK1 `forge:bricks` 必须存在且成员含 `minecraft:brick` 与 `minecraft:nether_brick` （⇒ 配方材料可满足，这是修复的**充分条件**）；\n  TK2 **负对照** `c:bricks` 在 1.20.1 上必须为空（`n=0`）—— 直接证明旧实现的 `c:` 写法必然失效；\n  TK3/TK4 两条 Forge 自带子标签的成员必须是那两种砖（锚定 TK1 的语义来源）。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode survival",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe tagcheck TK1 forge:bricks",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe tagcheck TK2 c:bricks",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe tagcheck TK3 forge:ingots/brick",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe tagcheck TK4 forge:ingots/nether_brick",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_TK1_TAGCHECK:tag=forge:bricks:n=(?:[2-9]|[1-9][0-9]+):items=[^\\n]*minecraft:brick"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_TK1_TAGCHECK:tag=forge:bricks:[^\\n]*minecraft:nether_brick"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_TK2_TAGCHECK:tag=c:bricks:n=0:items=-"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_TK3_TAGCHECK:tag=forge:ingots/brick:n=1:items=minecraft:brick"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_TK4_TAGCHECK:tag=forge:ingots/nether_brick:n=1:items=minecraft:nether_brick"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_[A-Z0-9]+_ERR"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_[A-Z0-9]+_EX:"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "<--\\["
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "crash"
+    }
+  ],
+  "evidence": []
+}

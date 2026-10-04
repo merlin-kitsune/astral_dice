@@ -5428,6 +5428,106 @@ function doChargeCd(ctx, tag) {
 }
 
 /** 设置充能层数(0 = 清空),随后打印同一份冷却读数(同一 tag) */
+/** 资源 id 解析器(平台差异:1.20.1 用 new ResourceLocation(String),1.21.1+ 用 ResourceLocation.parse) */
+var RSRC = { ns: function (s) { return Identifier.parse(s); } };
+
+/** 由 `namespace:path` 解析效果对象;失败返回 null */
+function resolveEffectId(fxId) {
+    try { return BuiltInRegistries.MOB_EFFECT.getValue(RSRC.ns(fxId)); }
+    catch (e) { return null; }
+}
+
+/**
+ * 只读:读「物品标签」的成员清单(2026-10-04 新增,服务 forge 端标签命名空间修复的实测判定)。
+ *
+ * <p>判据走 `Holder#tags()` 按 `TagKey#location()` 做**字符串**比对(⚠️ 不得走
+ * `ItemStack#is(TagKey)`:Rhino 同元重载歧义,见本文件上方标签判定处)。
+ * <p>用法:`/astralprobe tagcheck <tag> <namespace:path>`
+ * <p>输出:`AP_<tag>_TAGCHECK:tag=<id>:n=<成员数>:items=<逗号分隔,已排序>`
+ */
+function doTagCheck(ctx, tag, tagId) {
+    var found = [], seen = {}, it = null;
+    try { it = BuiltInRegistries.ITEM.iterator(); }
+    catch (e0) {
+        send(ctx, "AP_" + tag + "_TAGCHECK:tag=" + tagId + ":n=-1:items=iterator_error");
+        return 0;
+    }
+    while (it.hasNext()) {
+        var item = it.next();
+        var hit = false;
+        try {
+            var arr = BuiltInRegistries.ITEM.wrapAsHolder(item).tags().toArray();
+            for (var i = 0; i < arr.length; i++) {
+                if (("" + arr[i].location()) === tagId) { hit = true; break; }
+            }
+        } catch (e1) { continue; }
+        if (!hit) continue;
+        var id = "";
+        try { id = itemIdOf(new ItemStack(item, 1)); } catch (e2) { continue; }
+        if (id === "" || id === "?" || seen[id]) continue;
+        seen[id] = 1; found.push(id);
+    }
+    found.sort();
+    send(ctx, "AP_" + tag + "_TAGCHECK:tag=" + tagId + ":n=" + found.length
+        + ":items=" + (found.length > 0 ? found.join(",") : "-"));
+    return 1;
+}
+
+/**
+ * 只读:读某效果实例的剩余时长,判定「常驻效果是否已归一为原版无限时长(-1)」。
+ * <p>用法:`/astralprobe effectdur <tag> <namespace:path>`
+ * <p>输出:`AP_<tag>_EFFECTDUR:fx=<id>:present=<0|1>:dur=<n|na>:inf=<0|1|na>:amp=<n|na>`
+ * (`inf=1` ⇔ `MobEffectInstance#isInfiniteDuration()`,即 `dur == -1`,界面显示 ∞)
+ */
+function doEffectDur(ctx, tag, fxId) {
+    var p = ctx.source.getPlayerOrException();
+    var inst = null;
+    try { inst = findEffect(p, "effect." + ("" + fxId).replace(":", ".")); } catch (e0) { inst = null; }
+    if (inst == null) {
+        send(ctx, "AP_" + tag + "_EFFECTDUR:fx=" + fxId + ":present=0:dur=na:inf=na:amp=na");
+        return 1;
+    }
+    var dur = "na", inf = "na", amp = "na";
+    try { dur = inst.getDuration() - 0; } catch (e1) { dur = "na"; }
+    try { inf = inst.isInfiniteDuration() ? 1 : 0; } catch (e2) { inf = "na"; }
+    try { amp = inst.getAmplifier() - 0; } catch (e3) { amp = "na"; }
+    send(ctx, "AP_" + tag + "_EFFECTDUR:fx=" + fxId + ":present=1:dur=" + dur + ":inf=" + inf + ":amp=" + amp);
+    return 1;
+}
+
+/**
+ * 直接施加「超长时长」的某效果,用于复现**旧版存档残留**形态的实例。
+ *
+ * <p>为什么需要:原版 `/effect give` 的 `seconds` 上界是 **1000000**
+ * (`EffectCommands` = `IntegerArgumentType.integer(1, 1000000)`)⇒ `1000000 × 20 = 20000000` tick,
+ * **远低于**归一判据阈值 `Integer.MAX_VALUE / 2 ≈ 1073741823` ⇒ 无法用原版命令制造。
+ * <p>时长固定 = **1200000000** tick(≥ 阈值 且未溢出 int 上限);层数固定 amplifier=5(6 层)。
+ * <p>用法:`/astralprobe setlegacydur <tag> <namespace:path>`
+ * <p>输出:`AP_<tag>_SETLEGACYDUR:fx=<id>:ok=<0|1>:ticks=1200000000[:err=…]`
+ */
+function doSetLegacyDur(ctx, tag, fxId) {
+    var ticks = 1200000000;
+    var p = ctx.source.getPlayerOrException();
+    var effect = resolveEffectId(fxId);
+    if (effect == null) {
+        send(ctx, "AP_" + tag + "_SETLEGACYDUR:fx=" + fxId + ":ok=0:ticks=" + ticks + ":err=unresolved");
+        return 0;
+    }
+    var inst = null;
+    try { inst = new MobEffectInstanceClass(BuiltInRegistries.MOB_EFFECT.wrapAsHolder(effect), ticks, 5, false, true, true); }
+    catch (e1) {
+        send(ctx, "AP_" + tag + "_SETLEGACYDUR:fx=" + fxId + ":ok=0:ticks=" + ticks + ":err=" + exText(e1));
+        return 0;
+    }
+    try { p.addEffect(inst); }
+    catch (e2) {
+        send(ctx, "AP_" + tag + "_SETLEGACYDUR:fx=" + fxId + ":ok=0:ticks=" + ticks + ":err=" + exText(e2));
+        return 0;
+    }
+    send(ctx, "AP_" + tag + "_SETLEGACYDUR:fx=" + fxId + ":ok=1:ticks=" + ticks);
+    return 1;
+}
+
 function doChargeSet(ctx, tag, n) {
     var p = ctx.source.getPlayerOrException();
     var Charge = Java.loadClass("com.merlinkitsune.astral_dice.item.ChargeManager");
@@ -13732,6 +13832,27 @@ ServerEvents.commandRegistry(event => {
                 .executes(ctx => guard(ctx, "OP", function () {
                     return opprobe(ctx);
                 })))
+            .then(Commands.literal("tagcheck")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("tagid", StringArg.greedyString())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doTagCheck(ctx, StringArg.getString(ctx, "tag"),
+                                StringArg.getString(ctx, "tagid"));
+                        })))))
+            .then(Commands.literal("effectdur")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("fx", StringArg.greedyString())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doEffectDur(ctx, StringArg.getString(ctx, "tag"),
+                                StringArg.getString(ctx, "fx"));
+                        })))))
+            .then(Commands.literal("setlegacydur")
+                .then(Commands.argument("tag", StringArg.word())
+                    .then(Commands.argument("fx", StringArg.greedyString())
+                        .executes(ctx => guard(ctx, StringArg.getString(ctx, "tag"), function () {
+                            return doSetLegacyDur(ctx, StringArg.getString(ctx, "tag"),
+                                StringArg.getString(ctx, "fx"));
+                        })))))
             // ── 命令面校验(2026-09-27):只解析不执行,把「本版本认不认这条命令」变成断言 ──
             .then(Commands.literal("cmdcheck")
                 .then(Commands.argument("tag", StringArg.word())
