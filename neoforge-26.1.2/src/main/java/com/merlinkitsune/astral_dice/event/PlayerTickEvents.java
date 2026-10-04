@@ -191,6 +191,10 @@ public class PlayerTickEvents {
         // 放在 % 20 早退**之前**,避免"擦身而过只停留几拍"被 20 tick 采样漏掉。
         if (!diceGated) com.merlinkitsune.astral_dice.item.sign.HannaSignItem.tickPassing(player);
         if (player.tickCount % 20 != 0) return;
+        // 「历史常驻写法」残留归一(2026-10-04):把旧版本写入存档、仍是 Integer.MAX_VALUE
+        // 递减产物的本模组常驻效果改写为原版无限时长(-1),使其在界面显示 ∞。
+        // 判据与理由见 normalizeLegacyInfiniteDurations 的 javadoc。放在 % 20 早退之后 = 每秒一次。
+        normalizeLegacyInfiniteDurations(player);
         // 赋能:每 0:30 减少 1 层(剩余 1 层时直接归 0)
         if (!diceGated) com.merlinkitsune.astral_dice.item.EmpowerManager.tick(player);
         // 效果牌出牌周期计时
@@ -287,5 +291,56 @@ public class PlayerTickEvents {
         } else if (player.hasEffect(effect)) {
             ModEffectRemoval.remove(player, effect);
         }
+    }
+    /**
+     * 把「历史常驻写法」的残留实例归一为原版无限时长。
+     *
+     * <p><b>为什么需要这一步</b>:1.3.4 起本模组所有「常驻效果」一律改用原版
+     * {@code MobEffectInstance.INFINITE_DURATION}({@code -1}) 表达无限,但那次只改了
+     * <b>施加点</b> —— 更早版本写进玩家存档的实例仍是 {@code Integer.MAX_VALUE} 的<b>递减产物</b>
+     * (实测存档 {@code astral_dice:charge Duration=2147482289}) ⇒ 物品栏效果面板会显示
+     * {@code 29826:08:34} 而不是 {@code ∞}。这些实例不会被任何既有路径修正:
+     * <ul>
+     *   <li>{@code EffectTimerGuard.record()} 对 {@code >= INFINITE_THRESHOLD} 的值直接
+     *       {@code return}(视为永续、不登记) ⇒ 守卫永远不会注意到它;</li>
+     *   <li>{@code EffectTimerGuard.tick()} 只遍历**已登记**的有限时长条目,且重施加一律写有限值;</li>
+     *   <li>各效果的施加点只在玩家「重新获得 / 消耗 / 切换装备」时才走到,残留可无限期留存。</li>
+     * </ul>
+     *
+     * <p><b>判据刻意只用「超长阈值」而不用效果清单</b>:本模组合法的有限时长最大 24000 tick
+     * ({@code RenShieldManager} 的护盾 / 抗性刷新窗口;其余一律 ≤ 3600),
+     * 与阈值 {@code Integer.MAX_VALUE / 2}(约 1.07e9)相差
+     * 约 4.6 个数量级 ⇒ 不会误伤任何设计上的倒计时;而历史常驻值恰在阈值之上。
+     * 双态效果({@code zhao_blessing} / {@code teru_descent} 的「已启动」态 2400 tick)同样
+     * 远低于阈值、不受影响。再用「效果必须由本模组注册」把原版 / 第三方效果排除在外。
+     *
+     * <p><b>快照遍历</b>:{@code getActiveEffects()} 返回活跃效果表的<b>实时视图</b>,
+     * 边遍历边移除会抛 {@code ConcurrentModificationException} ⇒ 先复制到
+     * {@code ArrayList}(与 {@code FightPoisonWithPoisonCardItem} 的既有做法同源)。
+     *
+     * <p>只改写**时长**,层数 / 环境粒子 / 可见性 / 图标位原样保留,故不影响任何效果语义。
+     */
+    private static void normalizeLegacyInfiniteDurations(Player player) {
+        for (MobEffectInstance instance :
+                new java.util.ArrayList<>(player.getActiveEffects())) {
+            if (instance.getDuration() < EffectTimerGuard.INFINITE_THRESHOLD) continue;
+            net.minecraft.core.Holder<net.minecraft.world.effect.MobEffect> effect = instance.getEffect();
+            if (!isModEffect(effect)) continue;
+            int amplifier = instance.getAmplifier();
+            boolean ambient = instance.isAmbient();
+            boolean visible = instance.isVisible();
+            boolean showIcon = instance.showIcon();
+            ModEffectRemoval.remove(player, effect);
+            player.addEffect(new MobEffectInstance(effect, MobEffectInstance.INFINITE_DURATION,
+                    amplifier, ambient, visible, showIcon));
+        }
+    }
+
+    /** 该效果是否由本模组注册(用于把原版 / 第三方效果排除在时长归一之外)。 */
+    private static boolean isModEffect(net.minecraft.core.Holder<net.minecraft.world.effect.MobEffect> effect) {
+        for (var holder : ModEffects.ALL) {
+            if (holder.value() == effect.value()) return true;
+        }
+        return false;
     }
 }

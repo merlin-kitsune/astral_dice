@@ -156,7 +156,6 @@ public class AstralDiceMod implements ModInitializer {
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.chip.ElectricSwordChipItem.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.chip.FlashlightChipItem.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.chip.FriendshipBadgeChipItem.class);
-        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.chip.SatelliteChipItem.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.chip.SmartWatchChipItem.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.chip.WarpEngineChipItem.class);
@@ -166,7 +165,6 @@ public class AstralDiceMod implements ModInitializer {
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.sign.HannaSignItem.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.sign.KomachiSignItem.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.sign.MimiSignItem.class);
-        LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.sign.MosesEnigmaticLink.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.sign.NancyLuSignItem.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.sign.NardisSignItem.class);
         LoaderBus.INSTANCE.register(com.merlinkitsune.astral_dice.item.sign.PandamanSignItem.class);

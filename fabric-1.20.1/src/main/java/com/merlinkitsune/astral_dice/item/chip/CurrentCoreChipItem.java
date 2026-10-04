@@ -106,7 +106,7 @@ public class CurrentCoreChipItem extends BaseChipItem {
         // 本判据是纵深防御,保证任何到达本方法的路径都无法用充能绕过强制冷却。
         if (com.merlinkitsune.astral_dice.item.sign.MamushiSignItem.isEquipped(player)
                 && now < com.merlinkitsune.astral_dice.item.sign.MamushiSignItem.getForcedCooldownUntil(player)) {
-            sendActionBar(player, "msg.astral_dice.mamushi_cooldown_locked");
+            sendActionBar(player, net.minecraft.ChatFormatting.RED, "msg.astral_dice.mamushi_cooldown_locked");
             return FINISH_NOT_ENOUGH;
         }
         if (!isEquipped(player)) return FINISH_NONE;
@@ -115,7 +115,7 @@ public class CurrentCoreChipItem extends BaseChipItem {
         // 路线 A:档位分母取起冷却时记录的"本次冷却实际使用的最大冷却"(记录缺失时回退硬编码 180 秒)
         int cost = instantCooldownCost(remaining, ModAttachments.getSignActiveMaxCooldown(player));
         if (ChargeManager.getStacks(player) < cost) {
-            sendActionBar(player, "hud.astral_dice.current_core_not_enough", cost);
+            sendActionBar(player, net.minecraft.ChatFormatting.RED, "hud.astral_dice.current_core_not_enough", cost);
             return FINISH_NOT_ENOUGH;
         }
         for (int i = 0; i < cost; i++) {
@@ -124,14 +124,14 @@ public class CurrentCoreChipItem extends BaseChipItem {
         // 立即完成冷却:结束时刻置为当前时刻(后续判定 now < cdEnd 不再成立),并让"本次最大冷却"记录随冷却一起失效
         ModAttachments.setSignActiveCooldownEnd(player, now);
         ModAttachments.setSignActiveMaxCooldown(player, 0);
-        sendActionBar(player, "hud.astral_dice.current_core_finish", cost);
+        sendActionBar(player, net.minecraft.ChatFormatting.YELLOW, "hud.astral_dice.current_core_finish", cost);
         return FINISH_DONE;
     }
 
     // 服务端 ActionBar 提示
-    private static void sendActionBar(Player player, String langKey, Object... args) {
+    private static void sendActionBar(Player player, ChatFormatting color, String langKey, Object... args) {
         if (!(player instanceof net.minecraft.server.level.ServerPlayer serverPlayer)) return;
-        Component msg = Component.translatable(langKey, args).withStyle(ChatFormatting.AQUA);
+        Component msg = Component.translatable(langKey, args).withStyle(color);
         ModNetwork.sendToPlayer(serverPlayer,
                 new ModNetwork.ActionBarMessage(msg, GameplayConstants.ACTIONBAR_DURATION_TICKS));
     }

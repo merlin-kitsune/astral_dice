@@ -41,12 +41,8 @@ import com.merlinkitsune.starenginelib.component.GameplayConstants;
  * ⚠️ 旧实现只做 ③,导致「方块前线 `bf:bullet`(message_id = generic)」与「沉浸工程左轮全家族
  * {@code ieRevolver_*}(其弹丸继承 {@code AbstractArrow} ⇒ 命中白名单 matcher #1)」被漏判成法伤。
  *
- * <p><b>26.1.2 迁移说明(用户裁决「1.21.1 存在的联动模组但 26.1.2 不存在 ⇒ 直接删除联动」):</b>
- * Iron 的法术与魔法书(irons_spellbooks)无 26.1.x 构建 ⇒ <b>其 15 个伤害类型键已整体删除</b>
- * (原第 5 条作用域,以及 {@code fire_magic} 等全部 {@code key("irons_spellbooks", ...)} 条目)。
- * 生效后果:装有 Iron 法术的 26.1.2 整合包里,其法术伤害不再计入本模组法伤加成 ——
- * 这是「无联动模组即无联动」的预期行为,不是缺陷。
- * {@code event/IronSpellbooksCompat} 与本子项目一并移除(见 {@code docs/compat-26.1.2-neoforge.md})。
+ * <p><b>联动口径</b>:平台不存在的模组 ⇒ 该线联动整体移除。本线已移除 Iron 的法术与魔法书
+ * (irons_spellbooks,上游无 26.1.x 构建)与神秘遗物+;本文件不再含任何 Iron 键。
  */
 public final class SpellDamageRegistry {
 
@@ -81,10 +77,8 @@ public final class SpellDamageRegistry {
             key("goety", "frost_breath"),
             key("goety", "bubble_stream"),
             key("goety", "magic_bolt"));
-            // 注:原 1.21.1 此处还有 15 个 irons_spellbooks 键(fire_magic / ice_magic / lightning_magic /
-            // holy_magic / ender_magic / blood_magic / evocation_magic / eldritch_magic / nature_magic /
-            // cauldron / heartstop / dragon_breath_pool / fire_field / poison_cloud),已在 26.1.2 删除
-            // ——Iron 的法术与魔法书无 26.1.x 构建(用户裁决:直接删除相关联动)。
+    // 注:1.21.1 此处另有 14 个 irons_spellbooks 键(Iron 的法术与魔法书)——
+    // 该模组无 26.1.x 构建,按「平台不存在的模组 ⇒ 联动整体移除」口径已在本线删除(2026-10-04)。
 
     // === 作用域 matcher 注册表(附属模组可注册自定义判定) ===
     @FunctionalInterface

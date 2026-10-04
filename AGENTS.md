@@ -1,6 +1,6 @@
 # Agent Instructions
 
-> **子项目默认规则(必须遵守)**:所有功能/修复默认**同步修改四个版本**(`neoforge-1.21.1` + `forge-1.20.1` + `neoforge-26.1.2` + `fabric-1.20.1`),四线保持功能对等(无法对等的项必须按平台差异逐条登记,见 `docs/compat-26.1.2-neoforge.md`;**不再存在"只同步两个版本"的口径**);每次改动完成后由代理**自动本地提交**并**自动部署到整合包**(随 `gradlew build` 触发,**四线各自推往自己的整合包**:`狐の航空学 Voxy Edition` / `1.20.1 模组测试` / `26.1.2 模组测试` / `1.20.1-Fabric 模组测试`),但**默认不执行 `git push`**。
+> **子项目优先级与默认规则(必须遵守,2026-10-04 用户裁决重新划级)**:⛔ **本条原「三条生产线同批实施（含 26.1.2）」的口径已作废** —— 现行**两级优先模型**见下方「## 版本优先级与跨线移植纪律」:**P0 最高 = `neoforge-1.21.1` + `forge-1.20.1`**（功能一致、同批、优先）;**P1 次要 = `neoforge-26.1.2` + `fabric-1.20.1`**（待 P0 完成后移植）。以下为旧文存档 —— 所有功能/修复默认**同步修改三个版本**(`neoforge-1.21.1` + `forge-1.20.1` + `neoforge-26.1.2` —— 这三条是**生产线**),三线保持功能对等(无法对等的项必须按平台差异逐条登记,见 `docs/compat-26.1.2-neoforge.md`;**不再存在"只同步两个版本"的口径**);⚠️ **第四条线 `fabric-1.20.1`(Fabric 移植线)不在本「同批实施」约束内** —— 它由用户按批次单独下达移植任务,规则边界见下方「第四条线(`fabric-1.20.1`)的规则边界」;每次改动完成后由代理**自动本地提交**并**自动部署到整合包**(随 `gradlew build` 触发,**四条线各自推往自己的整合包**:`狐の航空学 Voxy Edition` / `1.20.1-Forge 模组测试` / `26.1.2-NeoForge 模组测试` / `1.20.1-Fabric 模组测试`),但**默认不执行 `git push`**。
 
 项目基线:
 - 主线子项目 `neoforge-1.21.1`:MC 1.21.1 / NeoForge 21.1.235 / Java 21 / ModDevGradle(`net.neoforged.moddev` 2.0.141)
@@ -220,7 +220,108 @@ When extending this workspace:
 > 版本号各 git 分支独立（AGENTS.md 自 2026-09-15 起**已纳入版本库**，各分支各自维护一份）：**发布线 `multi-main`**（2026-09-22 由 `multi-1.20.1-1.21.1` 改名；连带项已同批处理：三线 `build.gradle` 的 `packPushBranches → ['multi-main']`、`.github/workflows/build.yml` 的 5 处分支名与触发条件，以及 `.github/workflows/build.yml` 里 checkout 前置库的 `ref:` 钉值）当前 = **`1.3.0`**（2026-09-22 用户裁决：把 `multi-dev-next` 整体收编后统一升版 —— 1.21.1 / 1.20.1 = `1.3.0`，26.1.2 = `1.3.0-beta.1`；按发布规范 tag 解析为裸版本 **`1.3.0`**）；`multi-dev-next` 当前 = **`2.0.0-SNAPSHOT.13`**（2026-09-17 用户裁决：`2.0.0-SNAPSHOT.5` 封包，版本号升至 `.10`；**2026-09-22 用户裁决：SNAPSHOT 数值按提交数下沉，档位 = 提交数 / 37，自 `.10` 起累计 104 提交 ⇒ 向上取整 3 档 ⇒ `.13`**；后续改动一律记入两个 CHANGELOG 顶部的 `未发布（2.0.0-SNAPSHOT.13）` 小节；该线已于 **2026-09-22 整体合并进发布线 `multi-main`**（合并提交 `7b726617`，收编 160 个提交），自此不再单独演进）；`neoforge-26.1.2` 子项目当前 = **`1.3.0-beta.1`**（2026-09-17 用户裁决 + **2026-09-19 修订：26.1.2 已纳入主线、三线同步（不再是低优先级线）**；**2026-09-22 用户裁决：三线同批升版，26.1.2 取 `1.3.0-beta.1`** —— 此前 `.13` 时代「与另两线版本号对齐、不再单独加 `-beta`」的口径随之作废；`multi-26.1.2-neoforge` 分支自此只作为合并前历史，不再单独开发）。上表「当前版本」以发布线工作分支 `multi-main` 为准。
 > ⚠️ 历史上另有一条 dev 分支 **`wt/2.0.0-vnext`**（连带独立 worktree `C:/Users/xmace/.dsh/worktrees/astral_dice_multiloader-a03b2df2/2.0.0-vnext`）——2026-09-17 用户裁决「移除 wt/2.0.0-vnext 分支，仅保留当前分支」后**已删除**：worktree 与分支一并移除，`git branch -d` 成功即证明其 tip **`d7e4ac8f4f1c31484bf4366caa4e144aec45979f`** 的全部提交都已被 `multi-dev-next` 包含（`multi-dev-next..wt/2.0.0-vnext` 为空）⇒ **未丢失任何提交**；该分支从未推到远端（`origin` 只有 `multi-1.20.1-1.21.1` 与 `multi-dev-next`），故无需远端清理。`multi-26.1.2-neoforge` 作为合并前历史分支**保留**（未在本次裁决范围内）。
 
-> **第三条线(26.1.2)的规则边界(2026-09-19 用户裁决修订 —— 26.1.2 已纳入主线,必须遵守)**:自本裁决起「同步修改」约束**三个版本**(`neoforge-1.21.1` + `forge-1.20.1` + `neoforge-26.1.2`):任何功能/修复/平衡/文案改动一律**三线同批实施**(实施方式见下方「### 子项目修改默认规则」与「### 模组内容更新规则(三线同步)」),26.1.2 **不再**是「发布线完成后再迁移」的低优先级移植线。三条线各自按 `docs/compat-26.1.2-neoforge.md`(26.1.2 相对 1.21.1)、`docs/compat-1.20.1-forge.md`(1.20.1 相对 1.21.1)的差异映射实现,**平台差异必须逐条登记**;三线落地后按 `scripts/test/TESTING-SPEC.md` §13.2 做一致性测试。三子项目的 `mod_version`/`mods.toml` 门槛仍各自独立。
+> **第三条线(26.1.2)的规则边界(2026-09-19 用户裁决修订 —— 26.1.2 已纳入主线,必须遵守)**:⛔ **2026-10-04 更新:本条「26.1.2 纳入三线同批实施」的口径已作废** —— 现行 **P1 次要优先级**（见下方「## 版本优先级与跨线移植纪律」）;本段其余平台差异说明仍有效。自本裁决起「同步修改」约束**三个版本**(`neoforge-1.21.1` + `forge-1.20.1` + `neoforge-26.1.2`):任何功能/修复/平衡/文案改动一律**三线同批实施**(实施方式见下方「### 子项目修改默认规则」与「### 模组内容更新规则(三线同步)」),26.1.2 **不再**是「发布线完成后再迁移」的低优先级移植线。三条线各自按 `docs/compat-26.1.2-neoforge.md`(26.1.2 相对 1.21.1)、`docs/compat-1.20.1-forge.md`(1.20.1 相对 1.21.1)的差异映射实现,**平台差异必须逐条登记**;三线落地后按 `scripts/test/TESTING-SPEC.md` §13.2 做一致性测试。三子项目的 `mod_version`/`mods.toml` 门槛仍各自独立。⚠️ **第四条线 `fabric-1.20.1` 不参与本条的「三线同批实施」约束** —— 其边界见上一条 ①（由用户按批次单独下达移植任务）。
+> ⑧ **本线自己的版本号一律带 `-alpha.x` 预发布后缀**（2026-09-29 用户裁决 —— 本线是**移植线**）：
+>    ⚠️ **与 26.1.2 线用 `-beta.x` 是同一套安排**（2026-10-01 并入 `multi-main` 后的口径）：
+>    两条线都是**独立的预发布号线** —— **永不占用发布线的裸版本号**、**不单独打裸版本 tag**；
+>    差别只在后缀（`-alpha.x` ↔ `-beta.x`）与发布形态（fabric 走自己的 `fabric-*` pre-release，见 ③）。
+>    **本线 `mod_version` 现为 `1.3.7-alpha.1+fabric_1.20.1`**（本线自己的号，仍带 alpha）。
+>    🔄 **2026-10-03 口径变更（用户裁决「fabric 侧与主线版本号相同」）**：**所依赖的库版本不再带 alpha** ——
+>    库仓 `fabric-1.20.1` 子项目的版本号已由 `1.0.6-alpha.6` **对齐为与三平台完全相同的 `1.0.11`**
+>    ⇒ 库**四平台同号**；本线现为 **`starengine_lib_version = 1.0.11`**（`_version_range = >=1.0.11 <2.0`）。
+>    ⚠️ 原「`mod_version` 与所依赖的库版本**同步带 alpha**」的描述**作废**（仅适用于 2026-10-03 之前的历史版本）。
+>    ⚠️ 库 `fabric-1.20.1` 子项目历史上那三个**裸**号 `1.0.6` / `1.0.7` / `1.0.8` 仍属「本地临时构建、不作对外号」，
+>    已从 mavenLocal 移入隔离目录、**不复用**；本次用的 `1.0.11` 与它们无关。
+>    ⚠️ **2026-10-02 更新（历史）**：库侧与三平台同批改「诅咒之剑攻击力加成上限 16 → 32」⇒ 三平台 `1.0.6` → `1.0.7`、
+>    本线 `1.0.6-alpha.1` → **`1.0.6-alpha.2`**（两条线当时按各自 scheme 独立递增）。
+>    沿革：**2026-10-01 用户裁决**：库侧**大版本号与三平台同步为 `1.0.6`**、保留 `-alpha.N` 后缀 ⇒
+>    当时现号为 **`1.0.6-alpha.1`**（2026-09-29 那次「基线退回 `1.0.5`」的口径随之作废）。
+>    本线预发布号在库仓 CI 里**不会**打 tag（workflow 只认裸 `x.y.z`）⇒ 正合开发线口径。
+>    ⚠️ 因此本线推进整合包的产物**不是「正式版」**（该整合包 `1.20.1-Fabric 模组测试` 亦为本线专属测试环境）。
+> ⑨ **收尾必做：生产映射冒烟**（2026-09-29 新增能力；判据与事故记录见 `KNOWN-ISSUES.md` **KI-F13**）：
+>    fabric 的 dev 与生产是**两套映射**（dev = Loom named/Mojang，生产 = intermediary）—— 本线此前的**全部**验证
+>    （dev 冒烟、5 条用例、4 个静态闸门）都跑在 named 下 ⇒「按**字符串名**反射原版成员」「内嵌件重映射错」
+>    这类缺陷**在 dev 全绿、在整合包里 100% 崩**，且**谁也测不出来**（KI-F13 就是这么潜伏到整合包才炸的）。
+>    ⚠️ 曾实测：`Rarity.class.getDeclaredField("color")` 在 dev 命中（字段真叫 `color`），
+>    在产线是 `class_1814` / `field_8908` ⇒ `NoSuchFieldException` → 入口点失败。**反射原版成员一律按类型/修饰符找，禁止按名字。**
+>    ⇒ 凡改动**库、本线源码、依赖或构建配置**，除 dev 冒烟外**必须**再跑一次：
+>    `pwsh -NoProfile -File scripts/test/fabric/ft_prod.ps1 -Instance <整合包目录> -McRoot <D:\.minecraft> -Java <java.exe>`
+>    （在**真实整合包实例**启动一次客户端；判据：崩溃报告新增 / 入口点失败 / **注入失败（`InjectionError`）** = **FAIL**，
+>    `Sound engine started` = **PASS**）。
+>    ⚠️ **光到主菜单还不够 —— 必须加 `-PreloadClasses`**（2026-09-29 追加，事故 **KI-F14**）：
+>    Mixin 的注入在**目标类被加载时**才应用，而这类目标类常常「要玩家交互才加载」
+>    ⇒ 缺陷会表现为「能进主菜单、进世界/悬停 GUI 才崩」，纯启动期冒烟**看不见**。
+>    故凡本线**改过 mixin**，生产冒烟必须带上**被本线 mixin 的、可能延迟加载的目标类**（写 **intermediary 名**）：
+>    `ft_prod.ps1 … -PreloadClasses 'net.minecraft.class_8002'`（逗号分隔可多个；dev 侧对应
+>    `:fabric-1.20.1:runClient "-PpreloadClasses=net.minecraft.class_8002"`）。
+>    ⚠️ 同类红线：**不得用 `@ModifyConstant` 去改原版常量**（它与其它模组的同点注入**互斥**，
+>    会让对方 `InjectionError` 崩游戏）—— 一律改用 MixinExtras 的 `@WrapOperation` 包裹**调用指令**
+>    （不同字节码位置 ⇒ 可共存），与本项目 `LivingHurtBridgeMixin` 的既有选择一致。
+> ⑩ **Fabric 附件（`AttachmentRegistry`）的键注册必须早于任何玩家数据反序列化**（2026-09-29 实测，见 **KI-F17**）：
+>    Java 静态初始化是**惰性**的 —— `ModAttachments` 若在 mod 初始化路径上**无人触碰**，它的静态块会被推迟到
+>    「第一次读写附件」（＝玩家登录处理器），而那时玩家 NBT **已经反序列化完** ⇒ Fabric 按 id 查不到就打
+>    `Unknown attachment type … skipping` 并**静默丢弃全部键**（实测一次登录丢 **33** 个，含 `guide_book_given`
+>    ⇒ 发放守卫永远读 `false` ⇒ **每次登录补发一本手册**；其余为治疗点数 / 立牌锁定冷却 / 白泽赐福 / 教主降神 /
+>    怪力侦探层数等**可感知的战斗状态**）。
+>    ⇒ 本线在 `AstralDiceMod#onInitialize()` 里显式调用 `ModAttachments#ensureRegistered()`（**空实现，只为触发静态块**，
+>    并打 `AP_FAB_ATTACHMENTS: 附件键已注册 N 个`）—— **该调用不得删除**：删掉不报编译错、测试世界也看不出来，
+>    只会让线上玩家每次重开游戏丢一次状态。
+>    ⇒ 凡改动**附件键集合或任何持久化 schema**，收尾**必须** grep 日志确认 `Unknown attachment type` 命中为 **0**。
+> ⑪ **Accessories 的槽位图标必须落在原版 blocks 图集目录**（2026-09-29 实测，见 **KI-F18**）：
+>    Trinkets 按 `icon` **路径直连** `textures/<icon>.png`；**Accessories 走原版 `minecraft:blocks` 图集**
+>    （`assets/minecraft/atlases/blocks.json` 声明 `{type:directory, source:gui/slot, prefix:gui/slot/}`）
+>    ⇒ 图标**必须**放在 `assets/<ns>/textures/gui/slot/*.png`，且 `icon` 要写**图集 sprite 名** `astral_dice:gui/slot/…`
+>    （同一个字符串对两条通道同时成立）。放错目录 = **文件明明存在却显示紫黑格**，且**不报错、日志无痕迹**。
+>    ⇒ 收尾两道门：`tools/verify_fabric_assets.py` 第 8 项 + 客户端 `AccessoriesClientIconCheck`
+>    —— ⚠️ **必须同时查「文件是否存在」与「是否被图集收录」**，只查前者查不出本缺陷（它正是「文件在、位置错」）。
+> ⑫ **同步 dev/main 线的既有修复：按文件移植，不要整分支 merge**（2026-09-30 用户裁决「直接同步 `multi-dev-next` 的改动，避免重复造轮」）：
+>    本线的目录**不在** dev 线的改动范围内（dev-next 的提交改的是三线 `neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2`），
+>    而 dev-next 通常领先本分支数十个提交（版本号 / 目标选择器 / 工具链等）⇒ **整分支 merge 带不来任何 fabric 代码改动，只会把开发线灌进移植线**。
+>    正确做法：`git show <commit> -- forge-1.20.1/` 取蓝本（同为 MC 1.20.1、同 `RegistryObject` 风格、同 Mojmap 方法引用）
+>    → `sed 's|forge-1.20.1/|fabric-1.20.1/|g'` 改写补丁路径 → `git apply --3way` → 冲突逐处手工合并
+>    （典型冲突：`ModEffects.java` 的 import 区 —— forge 是 `net.minecraftforge.registries.*`，本线是
+>    `com.merlinkitsune.astral_dice.platform.registry.*`；**保留本线平台注册表**，只采纳 patch 新增的原版 import）。
+>    ⚠️ **移植后必须核对三件事**：① 本线**特有**内容没有被覆盖（例：`EffectRenderingInventoryScreenMixin` 的等级角标 `@Inject`
+>    与移植进来的注释 `@Redirect` 必须**并存**）；② 上游 patch 里的 mixin **注入点与 `require` 必须按本线字节码复核** ——
+>    `require` 是「注入点**最少**命中次数」（未写时取 `injectors.defaultRequire`），**写大了会在运行时抛 `InjectionError`**
+>    （编译与 `build` 都不校验，只有类被加载时才炸）；③ 语言键集三语一致。见 `KNOWN-ISSUES.md` **KI-F19 / KI-F20**。
+>    ⚠️ 同类教训重复出现：**上游 patch 的注释也会写错**（`731e3855` 把 `require = 2` 注释成「至少命中 1 次」）
+>    ⇒ 移植时**以本线字节码为准**，不以注释为准。
+> ⑬ **接第三方模组的反射后端必须按「发布产物」核验签名，且必须给出可断言的接入状态**（2026-10-01 实测，见 **KI-F22**）：
+>    `PartyRelations` 用 `Class.forName` + `getMethod` 接 FTB Teams / OPAC（不能编译期依赖：四条线装的第三方模组不同）。
+>    反射的致命弱点是**签名对不上时既不编译报错、也不崩溃**，只在运行时静默失效 —— 而「失败方向安全」的设计
+>    （退回原版计分板）**同时**掩盖了「从来没成功过」。实测踩到的两个具体陷阱：
+>    ① **方法可能声明在嵌套接口上**（`FTBTeamsAPI` 外层类只有 `api()/rl()/_init()`，四个访问器在 `FTBTeamsAPI$API` 上；
+>    `Class#getMethod` **不会**跨到嵌套接口）⇒ 解析必须落在**声明该方法的那个类型**上；
+>    ② **record 的访问器没有 `get` 前缀**（`KnownClientPlayer#teamId()`，不是 `getTeamId()`）。
+>    ⇒ 规则三条：
+>    （a）**核验基准用发布 jar，不用记忆也不用注释** —— 下载真实产物 + `javap -p` 逐条比；
+>    上游源码也要核（并可回溯最早版本，确认契约在**整个版本区间**是否成立）；
+>    （b）**每条后端都要有起步诊断机器行**（fabric 线是 `AP_FAB_PARTY:`，三条生产线是 **`AP_PARTY:`**
+>    —— 字段同为 `sw_* back_ftb/back_opac why_ftb/why_opac`，由 `PartyRelations#reportBackends()` 在 common setup 打印）
+>    ⇒「装了却没生效」一眼可见，
+>    `why_*` 直接写明是哪个类/方法没找到；
+>    （c）**静态闸门入库**（`tools/verify_party_api.py`：自动从源码抽取反射契约 ↔ 真实 jar 比对。
+>    ⚠️ **2026-10-01 扩展为四线分线校验**：逐线解析各自源码，再按**显式登记的产物名模式**定位该线的 jar
+>    （`LINE_JARS`）；产物缺失只**跳过对应后端**（SKIP 并计入摘要，`--strict` 可判红）。
+>    **不做「找不到就按加载器通配」的模糊回退** —— 实测踩到过 26.1.2 线拿 **1.21.1 的**产物校验并全绿的**假绿**。
+>    取证：`--pre-fix` 对修复前契约 `PASS=9/FAIL=5`，修复后 `forge-1.20.1` `PASS=17/FAIL=0`）
+>    + **测试台用例**（`FAB-PARTY-BACKENDS`）——一静一动，缺一不可。
+>    ⚠️ 失败日志要分档：`ClassNotFoundException`（= 没装，绝大多数玩家的正常状态）走 **debug**；
+>    其余（= 装了但签名不符，开发者才需要看）走 **warn**，否则每次启动都刷一条无意义告警。
+>    ⚠️ 语义也要一并核：FTB 的「同队」必须比 **party 团队 id**（`Team#getId()` 对玩家队伍等于该玩家自己的 UUID，
+>    同一 party 的两名成员各不相同）；`hasTeam` 必须判 **party / server team**（FTB 给每个玩家都建个人队伍，
+>    用「存在 Team 对象」会恒为真，把「未组队 ⇒ 友方作用于全服」的兜底堵死）。
+>
+> ⛔ **2026-10-04 本分支（`multi-dev-next`）口径注记**：本节 ⑧ 的「本线版本号一律带 `-alpha.x`」是
+>    **发布线 `multi-main` 的 fabric 线**做法。本**开发线**自 fabric 并入起即为**四线同号** ——
+>    `mod_version = 2.0.0-SNAPSHOT.<N>+fabric_1.20.1`（**不带** `-alpha.x`；四线永远同号），
+>    库 pin 同为 `2.0.0-SNAPSHOT.<M>`（fabric 另有 `_version_range = >=2.0.0-SNAPSHOT.<M> <2.1`，
+>    **Fabric 谓词语法**）。⇒ 本节 ⑧ 的版本号**事实与规则仅适用于 `multi-main`**；本分支以
+>    「## 版本号递增约定（每提交一版）」与「## 版本优先级与跨线移植纪律」为准。
+>    ✅ ⑨~⑬ 是 **fabric 平台通用纪律**（生产映射冒烟 / 附件注册时序 / Accessories 图标路径 /
+>    按文件移植 / 反射后端核验），**本分支同样适用**，不因版本号线不同而豁免。
+>
 ### 前置库 starengine_lib 的版本与兼容性契约（全局，2026-09-22 用户裁决）
 
 > 本契约**跨两个仓库生效**（库仓开发线工作树 `F:\MCProject\starengine_lib_next`（分支 `next`）↔ 本仓四条线），是库的**公开兼容性承诺**。
@@ -349,6 +450,79 @@ When extending this workspace:
 12. **gamerule 族的存放位置与命名随 26.1 全变(2026-09-19 实测,踩过一次假失败)**:① **键名一律 snake_case** —— `naturalRegeneration` → `natural_health_regeneration`、`keepInventory` → `keep_inventory`;`doFireTick` **已被删除**,火势改由整数规则 `fire_spread_radius_around_player`(置 **0** 即等价于旧的 `doFireTick=false`;原版 datafix `GameRuleRegistryFix` 就是这么折算的)表达。⇒ 旧名在 26.1.2 上被 Brigadier **静默拒绝**,`CARD-SELECTOR-26.1.2` 的 4 条 HP 基线断言因此假失败(`naturalRegeneration false` 未生效、自然回血照常,`FoodData` 的分数回血让血量出现 `17.3` 这类小数;修用例、产品未动,复跑后与 1.21.1 读数逐条相同);探针里凡执行该族的命令都按此映射(1.20.1/1.21.1 用 `doFireTick false`,26.1.2 用 `fire_spread_radius_around_player 0`)。② **存储位置**改为 `saves/<world>/data/minecraft/game_rules.dat`(gzip NBT,键带 `minecraft:` 前缀、布尔值是 **TAG_Byte** 0/1 而非旧版 TAG_String),**不再放在 `level.dat` 里**(26.1.2 的 file fix `LevelDatToSavedDataFileFix` 只认 `level.dat` 的 `game_rules` 键,不认旧版 `GameRules`)。⇒ 该线的环境写入一律走该文件(`mt_env.ps1` 的 `Get/Read/Test/Set-MtGameRule*File` 系列;只有 26.1.2 分支会写它,另两线的 `level.dat` 路径与文案逐字不变),且**必须从真实文件读回复核**(读回通过才回显 `MT_WORLD: keepInventory 落地于 …game_rules.dat`),禁止「写进去再读自己刚写的数据」式的自我复核。引用 gamerule 读数时**必须写明观测时刻**——`mt_env world` 重建世界会把规则恢复默认。⚠️ 相关未决项:`AGENTS` 要求的 `mobGriefing=false` 目前**没有代码执行方**(详见 `TESTING-SPEC.md` 续 21),当前靠 2026-09-18 的 noai 硬闸门与本模组用例自带的取证前清理覆盖。
 
 7. **原版类的包结构调整(2026-09-30 实测)**:26.1.2 把部分怪物类**拆进了子包** —— `Zombie` / `ZombifiedPiglin` / `Husk` / `Drowned` / `ZombieVillager` 位于 `net.minecraft.world.entity.monster.**zombie**`(1.21.1 是 `monster.Zombie`);`Piglin` / `PiglinBrute` / `AbstractPiglin` 仍在 `monster.piglin`,`EnderMan` 仍在 `monster`。⚠️ **另有 `WitherSkeleton` 位于 `monster.**skeleton**`**(1.21.1 / 1.20.1 均为 `monster.WitherSkeleton`)—— 与 zombie 拆包同类,2026-09-30 引入「凋灵骷髅 5% 掉星盘」档位时实测踩到;`Ghast` / `Guardian` / `ElderGuardian` 三线均仍在 `monster`。照抄 1.21.1 的 import 会以「找不到符号」编译失败(实测 `event/LootInjectionHandler` 引入僵尸猪灵/猪灵判定,以及其后引入凋灵骷髅判定时两度踩到)。
+
+## 版本优先级与跨线移植纪律（2026-10-04 用户裁决）— 必须遵守
+
+> ⚠️ **本节是「哪条线先改、改完怎么传」的唯一权威口径**；与旧文冲突时以本节为准。
+> 旧口径「三条生产线同批实施（含 26.1.2）」**已作废**（沿革见第五节）。
+
+### 一、两级优先模型
+
+| 优先级 | 子项目 | 更新时序 | 一致性要求 |
+|---|---|---|---|
+| **P0 最高** | `neoforge-1.21.1`（**基准线**）· `forge-1.20.1` | 任何功能 / 修复 / 平衡 / 文案改动**默认同批落这两条线**，并**优先于 P1 落地** | 两者必须**功能一致**（逐项对等）；差异只能来自第二节「三类合理差异」，且**必须逐条登记** |
+| **P1 次要** | `neoforge-26.1.2`（**向上移植**）· `fabric-1.20.1`（**向下移植**） | **待 P0 完成后**再分别移植；**不得**早于 P0 单独引入功能 | 各自对照**基准线 `neoforge-1.21.1`** 逐项对等；平台 / 版本差异逐条登记；⚠️ 缺联动模组的线按第三节口径排除 |
+
+- **基准线 = `neoforge-1.21.1`**：一切功能面的差异判定以它为基准。`forge-1.20.1` 是 P0 同侪（功能面与基准线一致，MC 版本差异另计）。
+- **移植方向**：`neoforge-26.1.2` = **向上**（1.21.1 → 26.1.2）；`fabric-1.20.1` = **向下**（MC 1.20.1）。
+- **fabric 的代码蓝本优先取 `forge-1.20.1`**（同为 MC 1.20.1）：凡 forge 已实现的功能，**照搬 forge 对应文件 + 固定平台替换**，天然保留 1.20.1 的配方 / 行为差异；只有 forge 也没有的功能才从 1.21.1 降级移植。⚠️ **但「整文件照搬」只适用于平台中性文件** —— 平台敏感类（含已裁决差异或本线独有内容）**必须逐段局部改**。
+
+### 二、P0 内部允许的三类差异（其余一律要求对等）
+
+| # | 类别 | 判据 | 示例 |
+|---|---|---|---|
+| ① | **游戏版本差异** | MC 版本存废的原版 API / 物品 / 效果 | `MaceItem` / `Items.MACE`（1.21 新增）；`MobEffects.{WIND_CHARGED,WEAVING,OOZING,INFESTED,RAID_OMEN,TRIAL_OMEN}`（1.21 新增）；`ItemTags.SPEARS`（26.1.2 才有） |
+| ② | **平台差异** | 加载器（Forge ↔ NeoForge ↔ Fabric）机制 | 事件系统、注册 API、Capability ↔ 附件、datagen 事件、GUI 渲染入口、Curios ↔ Trinkets/Accessories |
+| ③ | **联动模组本身差异** | 某线装 / 未装某模组，或其注册名不同 | 1.20.1 神秘遗物注册名 = `enigmaticlegacy:` 而非 `enigmaticlegacyplus:` |
+
+### 三、联动口径（P1 两线）
+
+- **平台不存在该模组 ⇒ 该线该联动整体移除**（数据包、lang 键、手册条目、伤害类型 key、tooltip 分支一并删除）：
+  - `neoforge-26.1.2`：**Iron's Spells 'n Spellbooks 与神秘遗物+（`enigmaticlegacyplus`）均已移除**（2026-10-04 二次清理，口径无例外）；
+  - `fabric-1.20.1`：**Iron's Spells 'n Spellbooks 与神秘遗物均已移除**。
+- **平台存在的模组联动一律保留**：`patchouli` / `waystones` / `curios`（P0 + 26.1.2）/ `bountiful` / `trinkets` + `accessories`（fabric）/ **Modern UI**（**四线均已适配**：P0 两线 + fabric 走 `RenderTooltipEvent.Color` 方案；26.1.2 平台只提供 `RenderTooltipEvent.Texture`、无颜色事件 ⇒ 改为对接 Modern UI 自身的 `TooltipRenderer#sStrokeColor`，见 `client/ModernUITooltipCompat`）。
+
+### 四、逐项对照清单（移植作业索引）
+
+| 线 | 优先级 | 功能差异清单 | 平台独有待解决问题清单 |
+|---|---|---|---|
+| `neoforge-1.21.1` | P0（**基准**） | —（差异以此为基准） | `KNOWN-ISSUES.md` §2~§8 |
+| `forge-1.20.1` | P0 | `docs/compat-1.20.1-forge.md` §1~§9 | 同文件 §9 + `KNOWN-ISSUES.md` `KI-9` |
+| `neoforge-26.1.2` | P1 | `docs/compat-26.1.2-neoforge.md` + 本文「neoforge-26.1.2 关键差异速记」 | 同文件 §8「尚未完成 / 已知缺口」 |
+| `fabric-1.20.1` | P1 | **`porting/fabric-1.20.1/FABRIC-DIFFS.md`**（专项清单） | 同文件 §4 + `KNOWN-ISSUES.md` §9（KI-F*）+ `KI-E3` |
+
+> ⚠️ `docs/` 是**本机目录**（被 `.gitignore`）⇒ 清单的**可版本化载体**在 **`porting/`** 下：
+> **`porting/CROSS-VERSION-DIFFS.md`**（四线总表：优先级 / 差异项 / 待解决问题）+ **`porting/fabric-1.20.1/FABRIC-DIFFS.md`**（Fabric 专项）。
+> 移植作业的固定收尾动作见 `porting/CROSS-VERSION-DIFFS.md` §5。
+
+### 五、沿革（勿删）
+
+- **2026-09-19 裁决**：26.1.2 纳入主线，「同步修改」约束三个版本（26.1.2 不再是低优先级移植线）。**⛔ 已于 2026-10-04 作废**。
+- **2026-09-29 裁决**：fabric 为移植线，不在「三线同批」约束内（其九项边界见「多版本子项目矩阵」节）。**仍有效**（fabric 现为 P1）。
+- **2026-10-04 裁决（现行）**：重新划级为 **P0 = `neoforge-1.21.1` + `forge-1.20.1`**（必须功能一致、最高优先级更新）、**P1 = `neoforge-26.1.2` + `fabric-1.20.1`**（待 P0 完成后分别向上 / 向下移植）；P1 中缺联动模组的线按「平台存在性」排除不存在的联动，**无例外**（2026-10-04 二次清理：26.1.2 的 Iron 联动亦已按此口径移除）。
+
+## 平衡性红线（2026-10-04 用户裁决）— 必须遵守
+
+🚨 **不得存在任何影响平衡性的问题。凡影响玩法或平衡性的问题，一律定性为恶性 BUG（FATAL 级），
+严禁出现在生产版本中；此类问题必须修复，不得以任何形式妥协或退让。**
+
+- **适用范围**：任何**可被玩家重复利用**的资源 / 数值增益路径 —— 无限刷血、无限刷牌 / 刷物品、
+  反复领取奖励、因**重登 / 切维度 / 重载 / 反复装卸**而重复触发的收益，以及任何使既有数值口径失真的实现。
+- **定性升级**：该类问题**不得**按「设计取舍」「已知限制」「待用户裁决」处理，**不得**登记成
+  「只登记、未改」后搁置；必须**当批修复**并给出可复跑的实机判据。
+- **不得绕过**：禁止用 try/catch 吞异常、加冷却「缓解」、文档「如实披露」等方式替代正面修复；
+  修复必须落在**触发条件的语义本身**。
+  判例：`Q2 医疗箱` 直接把「登录 / 切维度 = 新装备会话」这条**错误语义删掉**（而不是给它加节流）。
+- **连带义务**（四件套，缺一不可）：(a) `KNOWN-ISSUES.md` 条目结案；(b) `porting/` 差异清单状态更新；
+  (c) 玩家侧 CHANGELOG（玩家可感知时）；(d) 若存在可自动化的核对手段，**一并加入守门脚本**。
+- **历史判例**：`KI-G2` 医疗箱「重登 / 切维度反复白刷回血」→ 2026-10-04 封堵；
+  `KI-F8` 手册档位词与代码稀有度不符 → 2026-10-04 对齐（并新增守门 `tools/verify_rarity_consistency.py`）；
+  `Q2/Q3` 批次 → 新增守门 **`tools/verify_medkit_and_removal_invariants.py`**
+  （M1 四线：登录 / 切维度处理器**不得**再引用 `triggerMedkitOnEquip` / `refreshMedkitEquipSession`、
+  重生与 `onEquip` **必须**引用；M2 fabric：两侧各一条 `hasEffect` 早退判据。期望 `GATE: PASS (22 项)`）。
+  ⚠️ **注意运行时判据与静态判据的分工**：有些「已修」项在**当前调用路径上不可达**（如 Q3 的 `hasEffect` 判据 ——
+  Puzzles 注入传的是 `getEffect(effect)`，无效果时为 `null` ⇒ 先命中既有的 null 放行判据），
+  这类改动只能靠**静态守门**长期钉住、不能靠运行时读数证明 ⇒ 结案时**必须写明「哪一条读数有判别力、哪一条只是结构性成立」**。
 
 ## 模组依赖添加规则(统一口径,1.20.1 + 1.21.1)— 必须遵守
 
@@ -517,6 +691,7 @@ When extending this workspace:
 - 神秘遗物+ 联动 ID 两子项目**均为 `enigmaticlegacyplus:`**(`cursed_ring`/`the_acknowledgment`/`the_twist`);`enigmaticaddons:the_bless` 保留(forge `templates/META-INF/mods.toml` 里的 `enigmaticlegacy` 仅出现在注释,非依赖声明)。
 - 「青之诅咒」附魔(注册名仍是 `astral_dice:curse_marker`)代码注册于 `effect/ModEnchantments`(1.21 分支为数据驱动 JSON:`data/astral_dice/enchantment/curse_marker.json`)。它是**内部标记附魔**(仅供千咒卷轴计 1 点诅咒),已做三处隐藏(见 `event/HiddenCurseEnchantment`):从创造栏「材料/搜索」页与 JEI 摘除附魔书条目、tooltip 不显示附魔行、1.20.1 侧关 `isDiscoverable`/`isAllowedOnBooks`/`canApplyAtEnchantingTable`(1.21 侧由「不在 `#minecraft:in_enchanting_table` + `supported_items` 不含书」天然阻断)。⚠️ 隐藏不得触及诅咒计数判据(`#minecraft:curse` 标签 / `isCurse()`)。
 - 数据包目录 `recipes/advancements/loot_tables/structures`、`data/forge/` 前缀、`pack.mcmeta`(pack_format 15)、`META-INF/mods.toml`。
+- **通用标签命名空间必须用 `forge:`(2026-10-04 用户实报缺陷,必须遵守)**:1.20.1 Forge **只提供 `forge:` 命名空间**、**不存在任何 `c:` 标签的提供者**(`c:` 是 NeoForge 1.21+ 与 Fabric 的社区标签体系)⇒ 配方 / 代码里写 `c:xxx` 会**静默失效**(材料永不可满足 ⇒ 配方永远做不出来,且**不报任何错**)。本线唯一被引用的通用标签是「砖物品」:1.21.1 用 NeoForge 自带的 `c:bricks`(= `c:bricks/normal` ∪ `c:bricks/nether`),本线改用 **`forge:bricks`** 并在 `src/main/resources/data/forge/tags/items/bricks.json` **自建汇总标签**(= `#forge:ingots/brick` ∪ `#forge:ingots/nether_brick`)—— Forge 47.x **自带这两条、但没有汇总的 `forge:bricks`**,故必须自建。⚠️ 语义等价:普通砖或下界砖皆可,与 NeoForge 侧一致。⚠️ 标签目录是 `data/<ns>/tags/items/`(**复数**)。见 `docs/compat-1.20.1-forge.md` 第五节与 `KNOWN-ISSUES.md` KI-F5。
 - **三个子项目均有帕秋莉手册**(1.21.1 原有;1.20.1 已于 1.1.3 移植,含 Patchouli 1.20.1-85-forge 依赖;26.1.2 同持,依赖取自 `maven.modrinth:patchouli`);手册结构三线一致(`{assets,data}/astral_dice/patchouli_books/`)。
 - 物品类已按 `item.dice/card/chip/sign` 拆分子包,与 1.21.1 结构一致(见「包结构规范」)。
 - 产物清理规则只匹配 `astral_dice-*+forge_1.20.1.jar`,不会误删 1.21.1 产物;部署目标为仓库根 `run/1.20.1/mods`(版本隔离开发测试目录,自动推送)+ `D:/.minecraft/versions/1.20.1-Forge 模组测试/mods`(**随 build 默认自动推送**,与 1.21.1 标准一致;目录名 2026-09-29 由 `1.20.1 模组测试` 修正为带平台后缀的现名)。
@@ -1393,7 +1568,32 @@ When extending this workspace:
         (`borderType:"gradient"`,取库 `hsvToRgb(h,0.85,1.0)` 的相位 0 / 1/3 / 2/3 = `#FF2626` / `#26FF26` / `#2626FF`);
         不装它时 = 真·两色流动渐变。传奇/巅峰 = 档位色(与文字同色,`#FFC24B` / `#FF4D4D`)。
       · ⚠️ **别把「颜色不对」直接归因于本模组** —— 先确认整合包是否装了边框类模组(另两条线的包用 **LegendaryTooltips**,
-        **未对接**:26.1.2 测试包与 FTB Skies 2 有它)。
+      · 🚨 **第四家:Modern UI(`现代化 UI`)**(2026-10-04 用户实报 + 实物 jar `ModernUI-NeoForge-1.21.1-3.12.0.2` 反汇编)——
+        **它也不用 Mixin 改 `GuiGraphics`**:两个 mixin 配置里**没有任何 tooltip / `GuiGraphics` 注入**;它改为订阅
+        `RenderTooltipEvent.Pre` 的两个处理器(`UIManagerForge#onRenderTooltipH` @`EventPriority.HIGH` 自己画、
+        `#onRenderTooltipL` @`EventPriority.LOW` `setCanceled(true)`),两者都以 `if (!TooltipRenderer.sTooltip) return;` 开头
+        ⇒ **现代提示框一开,`RenderTooltipEvent.Color` 永不派发**(本模组 `client/RarityTooltipFrame` 整体空转
+        —— 这就是「彩色边框不生效」的根因)。
+        · **框色链**:`TooltipRenderer.sStrokeColor`(4 槽) → `computeWorkingColor()` → `mWorkStrokeColor`
+          → `updateBorderColor()` → `mActiveStrokeColor` → `chooseBorderColor()` 绘制。
+        · ⚠️ **只写 `sStrokeColor` 不够**:`adaptiveColors=true`(默认)时 `computeWorkingColor` **不读**它的 RGB
+          (只借 alpha),颜色改从**物品名逐字色**取(`applyRarityTo` = `Rarity#getStyleModifier()`)并过一步 HSV 压缩
+          (`s = min(s,0.9)` / `v = clamp(v,0.2,0.85)`)⇒ 对我们的影响是**双杀**:① 档位色明度都是 1.0,
+          **必被压暗**(传奇 `#FFC24B` → 约 (217,179,64)),与物品名 / 原生路径 `RarityTooltipFrame` **不同色**;
+          ② 奇特档的名字只有**一个**基准色(`Rarity#styleModifier()` 只能给 `rgb()`),拿不到色环 ⇒ **做不出流动彩虹**。
+          🚨 **别写成「单色物品名下槽 1/2 从未赋值」** —— 那是 2026-10-04 我方的**误读**(源自被截断的反汇编窗口),
+          实物字节码里 `n == 1` 分支连调 3 次 `adjustColor` 填满槽 1/2/3、**四槽都有色**;
+          错的是**取色精度**,不是**槽位缺失**。
+        · **对接方式(已内置,1.21.1 / 1.20.1 两线各一份 `client/ModernUITooltipCompat`)**:写在 `EventPriority.HIGHEST`
+          (早于它的 `HIGH`)、还在 `EventPriority.LOWEST` + **`receiveCanceled = true`**(晚于它的 `LOW`;
+          ⚠️ **该标志不可省** —— Modern UI 正是在 `LOW` 把 Pre 事件取消,而事件总线对已取消事件会**跳过未声明它的处理器**
+          (`SubscribeEventListener#invoke` / `ASMEventHandler#invoke` 都判 `receiveCanceled()`);
+          而 `computeWorkingColor` 只在 `drawTooltip` 内同步跑一次)
+          ⇒ `sStrokeColor` 只在**一次事件派发**期间是脏的;并按需临时把 `sAdaptiveColors` 置 false、随后写回 true。
+          **只碰这三个公开静态成员**,私有字段一概不碰;彩虹档四槽各差 1/4 圈 ⇒ 得整圈流动彩虹。
+        · 开关:配置项 `modernui_tooltip_frame_compat`(默认 true) + 系统属性 `-Dastral_dice.modernUITooltipCompat=false`;
+          ⚠️ 与 TO/Iceberg 不同,它**没有任何资源包级扩展点**(`MuiModApi` 里没有 tooltip 相关 API)⇒ 只能走状态注入。
+        · ✅ **范围:四线均已落地(2026-10-04 收口)** —— 1.21.1 / 1.20.1 / fabric 三线**有** `client/RarityTooltipFrame`(原生路径写 `RenderTooltipEvent.Color` 的 borderStart/End);**26.1.2** 的平台只提供 `RenderTooltipEvent.Texture`(贴图 id)、**没有颜色事件**(1.21.1 的 `Color` 已被取代),但 Modern UI 是**自绘**(实测有 26.1.2 构建,`UIManagerForge` 的接管链与 1.21.1 同构)⇒ 该线改走同一个 `client/ModernUITooltipCompat`(对接 Modern UI 自身的 `sStrokeColor`),是**该线唯一的档位边框染色途径**。⚠️ 判据教训:**「平台有无某事件」≠「第三方模组是否影响本模组」** —— 第三方自绘时不经过平台事件,必须看它自己的接管链(下载实物 jar + `javap`)。
   - ⚠️ **附魔不再升档**:原版「附魔升一档」的 switch 只覆盖原版 4 档,自有档走 `default` 原样返回(三线一致,可接受)。
   - ⚠️ **解析面耦合(改语法必改)**:`scripts/verify/ChipCommon.psm1` 与 `scripts/verify/verify_bountiful_pools.ps1`
     **正则解析 `ModItems` 的 `.rarity(...)`** 推断档位(前者决定进阶配方模板,后者核对赏金池数据层 rarity)⇒ 调用语法一变必须同步

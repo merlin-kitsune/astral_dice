@@ -1,0 +1,2860 @@
+{
+  "schema": "astral_dice.content-library/1",
+  "version": "1.2.0",
+  "start_commit": "68dbd59",
+  "baseline": {
+    "neoforge-1.21.1": "MC 1.21.1 / NeoForge 21.1.235 / Java 21",
+    "forge-1.20.1": "MC 1.20.1 / Forge 47.4.10 / Java 17"
+  },
+  "items": {
+    "adrenaline_high_chip": {
+      "id": "adrenaline_high_chip",
+      "const": "ADRENALINE_HIGH",
+      "category": "筹码",
+      "rarity": "传奇(金)",
+      "item_class": "AdrenalineChipItem",
+      "comment": "肾上腺素-高效:生命值为 50% 或更低时,攻击力/防御力 +8;触发加成时被敌方攻击, 骰点 4-5 → 50% 闪避、6 → 100% 闪避本次伤害(传奇)",
+      "name_zh": "肾上腺素-高效",
+      "name_en": "Adrenaline - High-Grade",
+      "lang_keys_zh": {
+        "astral_dice.guide.entry.adrenaline_high_chip.1": "肾上腺素-高效：生命值为 50%% 或更低时，攻击力/防御力 +8。",
+        "astral_dice.guide.entry.adrenaline_high_chip.2": "触发加成时被敌方攻击，有 20%% 概率闪避单次攻击伤害。",
+        "item.astral_dice.adrenaline_high_chip": "肾上腺素-高效",
+        "tooltip.astral_dice.chip.adrenaline_high": "生命值为 §e50%%§7 或更低时：攻击力/防御力 §e+8§7\n触发加成时被敌方攻击：§e20%%§7 概率闪避单次攻击伤害"
+      },
+      "tags": [
+        "chips"
+      ],
+      "slots": [
+        "chip"
+      ],
+      "recipe": {
+        "file": "adrenaline_high_chip.json",
+        "type": "minecraft:crafting_shaped",
+        "count": 1,
+        "pattern": [
+          "RZR",
+          "ZOZ",
+          "PPP"
+        ],
+        "key": {
+          "O": "astral_dice:adrenaline_low_chip",
+          "P": "astral_dice:golden_star_plate",
+          "R": "minecraft:redstone",
+          "Z": "minecraft:diamond"
+        },
+        "key_raw": {
+          "O": {
+            "item": "astral_dice:adrenaline_low_chip"
+          },
+          "P": {
+            "item": "astral_dice:golden_star_plate"
+          },
+          "R": {
+            "item": "minecraft:redstone"
+          },
+          "Z": {
+            "item": "minecraft:diamond"
+          }
+        }
+      },
+      "manual": {
+        "category": "chips_other",
+        "sortnum": 15,
+        "pages": 3,
+        "page_types": [
+          "patchouli:spotlight",
+          "patchouli:text",
+          "patchouli:crafting"
+        ],
+        "has_crafting": true,
+        "name_key": "item.astral_dice.adrenaline_high_chip"
+      },
+      "parity": {
+        "tags_neo": [
+          "chips"
+        ],
+        "tags_forge": [
+          "chips"
+        ],
+        "slots_neo": [
+          "chip"
+        ],
+        "slots_forge": [
+          "chip"
+        ],
+        "recipe_files": {
+          "neo": "adrenaline_high_chip.json",
+          "forge": "adrenaline_high_chip.json"
+        },
+        "manual_present_neo": true,
+        "manual_present_forge": true
+      }
+    },
+    "adrenaline_low_chip": {
+      "id": "adrenaline_low_chip",
+      "const": "ADRENALINE_LOW",
+      "category": "筹码",
+      "rarity": "史诗(紫)",
+      "item_class": "AdrenalineChipItem",
+      "comment": "肾上腺素-一般:生命值为 50% 或更低时,攻击力/防御力 +3(史诗)",
+      "name_zh": "肾上腺素-一般",
+      "name_en": "Adrenaline - Common",
+      "lang_keys_zh": {
+        "astral_dice.guide.entry.adrenaline_low_chip.1": "肾上腺素-一般：生命值为 50%% 或更低时，攻击力/防御力 +3。",
+        "item.astral_dice.adrenaline_low_chip": "肾上腺素-一般",
+        "tooltip.astral_dice.chip.adrenaline_low": "生命值为 §e50%%§7 或更低时：攻击力/防御力 §e+3§7"
+      },
+      "tags": [
+        "chips"
+      ],
+      "slots": [
+        "chip"
+      ],
+      "recipe": {
+        "file": "adrenaline_low_chip.json",
+        "type": "minecraft:crafting_shaped",
+        "count": 1,
+        "pattern": [
+          "ZXZ",
+          "DCD",
+          "PPP"
+        ],
+        "key": {
+          "C": "astral_dice:blank_chip",
+          "D": "minecraft:wither_rose",
+          "P": "astral_dice:star_plate",
+          "X": "minecraft:nether_star",
+          "Z": "minecraft:potion[minecraft:regeneration]"
+        },
+        "key_raw": {
+          "C": {
+            "item": "astral_dice:blank_chip"
+          },
+          "D": {
+            "item": "minecraft:wither_rose"
+          },
+          "P": {
+            "item": "astral_dice:star_plate"
+          },
+          "X": {
+            "item": "minecraft:nether_star"
+          },
+          "Z": {
+            "type": "neoforge:components",
+            "components": {
+              "minecraft:potion_contents": {
+                "potion": "minecraft:regeneration"
+              }
+            },
+            "items": "minecraft:potion",
+            "strict": true
+          }
+        }
+      },
+      "manual": {
+        "category": "chips_other",
+        "sortnum": 14,
+        "pages": 2,
+        "page_types": [
+          "patchouli:spotlight",
+          "patchouli:crafting"
+        ],
+        "has_crafting": true,
+        "name_key": "item.astral_dice.adrenaline_low_chip"
+      },
+      "parity": {
+        "tags_neo": [
+          "chips"
+        ],
+        "tags_forge": [
+          "chips"
+        ],
+        "slots_neo": [
+          "chip"
+        ],
+        "slots_forge": [
+          "chip"
+        ],
+        "recipe_files": {
+          "neo": "adrenaline_low_chip.json",
+          "forge": "adrenaline_low_chip.json"
+        },
+        "manual_present_neo": true,
+        "manual_present_forge": true
+      }
+    },
+    "advanced_peripherals_chip": {
+      "id": "advanced_peripherals_chip",
+      "const": "ADVANCED_PERIPHERALS",
+      "category": "筹码",
+      "rarity": "史诗(紫)",
+      "item_class": "AdvancedPeripheralsChipItem",
+      "comment": "高级外设:充能 ≥ 4 时攻击力 +4;每次触发骰神赐福移除 1 层充能",
+      "name_zh": "高级外设",
+      "name_en": "Advanced Peripherals",
+      "lang_keys_zh": {
+        "astral_dice.guide.entry.advanced_peripherals_chip.1": "充能层数不低于 4 时，攻击力 +4。每次触发骰神赐福时，充能 -1。",
+        "item.astral_dice.advanced_peripherals_chip": "高级外设",
+        "tooltip.astral_dice.chip.advanced_peripherals": "充能层数不低于 §e4§7 时：攻击力 §e+4§7\n触发骰神赐福时：充能 §e-1§7"
+      },
+      "tags": [
+        "chips"
+      ],
+      "slots": [
+        "chip"
+      ],
+      "recipe": {
+        "file": "advanced_peripherals_chip.json",
+        "type": "minecraft:crafting_shaped",
+        "count": 1,
+        "pattern": [
+          "TET",
+          "LCL",
+          "PPP"
+        ],
+        "key": {
+          "C": "astral_dice:blank_chip",
+          "E": "minecraft:echo_shard",
+          "L": "astral_dice:conductive_wire",
+          "P": "astral_dice:star_plate",
+          "T": "minecraft:redstone_torch"
+        },
+        "key_raw": {
+          "C": {
+            "item": "astral_dice:blank_chip"
+          },
+          "E": {
+            "item": "minecraft:echo_shard"
+          },
+          "L": {
+            "item": "astral_dice:conductive_wire"
+          },
+          "P": {
+            "item": "astral_dice:star_plate"
+          },
+          "T": {
+            "item": "minecraft:redstone_torch"
+          }
+        }
+      },
+      "manual": {
+        "category": "chips_charge",
+        "sortnum": 3,
+        "pages": 2,
+        "page_types": [
+          "patchouli:spotlight",
+          "patchouli:crafting"
+        ],
+        "has_crafting": true,
+        "name_key": "item.astral_dice.advanced_peripherals_chip"
+      },
+      "parity": {
+        "tags_neo": [
+          "chips"
+        ],
+        "tags_forge": [
+          "chips"
+        ],
+        "slots_neo": [
+          "chip"
+        ],
+        "slots_forge": [
+          "chip"
+        ],
+        "recipe_files": {
+          "neo": "advanced_peripherals_chip.json",
+          "forge": "advanced_peripherals_chip.json"
+        },
+        "manual_present_neo": true,
+        "manual_present_forge": true
+      }
+    },
+    "airbag_chip": {
+      "id": "airbag_chip",
+      "const": "AIRBAG_CHIP",
+      "category": "筹码",
+      "rarity": "史诗(紫)",
+      "item_class": "AirbagChipItem",
+      "comment": "安全气囊:受到致命伤害时消耗 6 点充能无效化本次伤害(冷却 1:00,史诗)",
+      "name_zh": "安全气囊",
+      "name_en": "Airbag",
+      "lang_keys_zh": {
+        "astral_dice.guide.entry.airbag_chip.1": "受到致命伤害时，消耗 6 点充能，使本次伤害无效（冷却 1:00）。该保命效果优先于不死图腾与末影骰子。",
+        "hud.astral_dice.airbag_trigger": "安全气囊：消耗 %s 点充能，致命伤害已无效化！",
+        "item.astral_dice.airbag_chip": "安全气囊",
+        "tooltip.astral_dice.chip.airbag": "受到致命伤害时：消耗 §e6§7 点充能，使本次伤害无效\n优先于不死图腾与末影骰子\n冷却 §91:00§7"
+      },
+      "tags": [
+        "chips"
+      ],
+      "slots": [
+        "chip"
+      ],
+      "recipe": {
+        "file": "airbag_chip.json",
+        "type": "minecraft:crafting_shaped",
+        "count": 1,
+        "pattern": [
+          "XLX",
+          "WBW",
+          "PPP"
+        ],
+        "key": {
+          "B": "astral_dice:blank_chip",
+          "L": "minecraft:white_wool",
+          "P": "astral_dice:star_plate",
+          "W": "astral_dice:conductive_wire",
+          "X": "minecraft:leather"
+        },
+        "key_raw": {
+          "B": {
+            "item": "astral_dice:blank_chip"
+          },
+          "L": {
+            "item": "minecraft:white_wool"
+          },
+          "P": {
+            "item": "astral_dice:star_plate"
+          },
+          "W": {
+            "item": "astral_dice:conductive_wire"
+          },
+          "X": {
+            "item": "minecraft:leather"
+          }
+        }
+      },
+      "manual": {
+        "category": "chips_charge",
+        "sortnum": 6,
+        "pages": 1,
+        "page_types": [
+          "patchouli:spotlight"
+        ],
+        "has_crafting": false,
+        "name_key": "item.astral_dice.airbag_chip"
+      },
+      "parity": {
+        "tags_neo": [
+          "chips"
+        ],
+        "tags_forge": [
+          "chips"
+        ],
+        "slots_neo": [
+          "chip"
+        ],
+        "slots_forge": [
+          "chip"
+        ],
+        "recipe_files": {
+          "neo": "airbag_chip.json",
+          "forge": "airbag_chip.json"
+        },
+        "manual_present_neo": true,
+        "manual_present_forge": true
+      }
+    },
+    "amethyst_dice": {
+      "id": "amethyst_dice",
+      "const": "AMETHYST_DICE",
+      "category": "骰子",
+      "rarity": "史诗(紫)",
+      "item_class": "DiceCurioItem",
+      "comment": "紫晶骰子:与钻石骰子同阶(tag dice_t2),可由钻石骰子升级;远程/魔法攻击也触发战斗骰并追加骰点伤害(不触发骰神赐福)",
+      "name_zh": "紫晶骰子",
+      "name_en": "Amethyst Dice",
+      "lang_keys_zh": {
+        "astral_dice.guide.entry.amethyst_dice.1": "紫晶骰子。与钻石骰子同阶，可由钻石骰子升级；你的远程/魔法攻击也会触发战斗骰（1-6）并追加骰点伤害，但不会触发骰神赐福。",
+        "item.astral_dice.amethyst_dice": "紫晶骰子",
+        "tooltip.astral_dice.amethyst_dice_proc": "远程/魔法攻击也触发战斗骰并追加骰点伤害"
+      },
+      "tags": [
+        "dice_t2",
+        "dices"
+      ],
+      "slots": [
+        "dice"
+      ],
+      "recipe": {
+        "file": "amethyst_dice.json",
+        "type": "astral_dice:dice_upgrade",
+        "count": 1,
+        "pattern": [
+          "AAA",
+          "ADA",
+          "AAA"
+        ],
+        "key": {
+          "A": "minecraft:amethyst_block",
+          "D": "astral_dice:diamond_dice"
+        },
+        "key_raw": {
+          "A": {
+            "item": "minecraft:amethyst_block"
+          },
+          "D": {
+            "item": "astral_dice:diamond_dice"
+          }
+        }
+      },
+      "manual": {
+        "category": "dice",
+        "sortnum": 10,
+        "pages": 2,
+        "page_types": [
+          "patchouli:spotlight",
+          "patchouli:crafting"
+        ],
+        "has_crafting": true,
+        "name_key": "item.astral_dice.amethyst_dice"
+      },
+      "parity": {
+        "tags_neo": [
+          "dice_t2",
+          "dices"
+        ],
+        "tags_forge": [
+          "dice_t2",
+          "dices"
+        ],
+        "slots_neo": [
+          "dice"
+        ],
+        "slots_forge": [
+          "dice"
+        ],
+        "recipe_files": {
+          "neo": "amethyst_dice.json",
+          "forge": "amethyst_dice.json"
+        },
+        "manual_present_neo": true,
+        "manual_present_forge": true
+      }
+    },
+    "big_bowl_stew_chip": {
+      "id": "big_bowl_stew_chip",
+      "const": "BIG_BOWL_STEW_CHIP",
+      "category": "筹码",
+      "rarity": "传奇(金)",
+      "item_class": "BigBowlStewChipItem",
+      "comment": "大碗炖肉:骰神赐福结束后,16 格范围内所有友方目标 +1 治愈并恢复 2 点生命值",
+      "name_zh": "大碗炖肉",
+      "name_en": "Big Bowl of Stew",
+      "lang_keys_zh": {
+        "astral_dice.guide.entry.big_bowl_stew_chip.1": "骰神赐福效果结束后，对 16 格范围内所有友方目标增加 1 点治愈并恢复 2 点生命值",
+        "item.astral_dice.big_bowl_stew_chip": "大碗炖肉",
+        "tooltip.astral_dice.chip.big_bowl_stew": "骰神赐福效果结束后，对 §e16§7 格范围内所有友方目标增加 §e1§7 点治愈并恢复 §e2§7 点生命值"
+      },
+      "tags": [
+        "chips"
+      ],
+      "slots": [
+        "chip"
+      ],
+      "recipe": {
+        "file": "big_bowl_stew_chip.json",
+        "type": "minecraft:crafting_shaped",
+        "count": 1,
+        "pattern": [
+          "XLX",
+          "RBR",
+          "GGG"
+        ],
+        "key": {
+          "B": "astral_dice:blank_chip",
+          "G": "astral_dice:golden_star_plate",
+          "L": "minecraft:cooked_beef",
+          "R": "astral_dice:regeneration_reagent",
+          "X": "minecraft:bowl"
+        },
+        "key_raw": {
+          "B": {
+            "item": "astral_dice:blank_chip"
+          },
+          "G": {
+            "item": "astral_dice:golden_star_plate"
+          },
+          "L": {
+            "item": "minecraft:cooked_beef"
+          },
+          "R": {
+            "item": "astral_dice:regeneration_reagent"
+          },
+          "X": {
+            "item": "minecraft:bowl"
+          }
+        }
+      },
+      "manual": {
+        "category": "chips_healing",
+        "sortnum": 8,
+        "pages": 1,
+        "page_types": [
+          "patchouli:spotlight"
+        ],
+        "has_crafting": false,
+        "name_key": "item.astral_dice.big_bowl_stew_chip"
+      },
+      "parity": {
+        "tags_neo": [
+          "chips"
+        ],
+        "tags_forge": [
+          "chips"
+        ],
+        "slots_neo": [
+          "chip"
+        ],
+        "slots_forge": [
+          "chip"
+        ],
+        "recipe_files": {
+          "neo": "big_bowl_stew_chip.json",
+          "forge": "big_bowl_stew_chip.json"
+        },
+        "manual_present_neo": true,
+        "manual_present_forge": true
+      }
+    },
+    "bookmark_chip": {
+      "id": "bookmark_chip",
+      "const": "BOOKMARK_CHIP",
+      "category": "筹码",
+      "rarity": "稀有(蓝)",
+      "item_class": "BookmarkChipItem",
+      "comment": "书签:使伤害效果牌伤害加成 +1",
+      "name_zh": "书签",
+      "name_en": "Bookmark",
+      "lang_keys_zh": {
+        "astral_dice.guide.entry.bookmark_chip.1": "使伤害效果牌伤害加成 +1。",
+        "item.astral_dice.bookmark_chip": "书签",
+        "tooltip.astral_dice.chip.bookmark": "使伤害效果牌伤害加成 §e+1§7"
+      },
+      "tags": [
+        "chips"
+      ],
+      "slots": [
+        "chip"
+      ],
+      "recipe": {
+        "file": "bookmark_chip.json",
+        "type": "minecraft:crafting_shaped",
+        "count": 1,
+        "pattern": [
+          "XLX",
+          "GBG",
+          "CCC"
+        ],
+        "key": {
+          "B": "astral_dice:blank_chip",
+          "C": "astral_dice:star_coin",
+          "G": "minecraft:string",
+          "L": "minecraft:leather",
+          "X": "minecraft:paper"
+        },
+        "key_raw": {
+          "B": {
+            "item": "astral_dice:blank_chip"
+          },
+          "C": {
+            "item": "astral_dice:star_coin"
+          },
+          "G": {
+            "item": "minecraft:string"
+          },
+          "L": {
+            "item": "minecraft:leather"
+          },
+          "X": {
+            "item": "minecraft:paper"
+          }
+        }
+      },
+      "manual": {
+        "category": "chips_other",
+        "sortnum": 17,
+        "pages": 1,
+        "page_types": [
+          "patchouli:spotlight"
+        ],
+        "has_crafting": false,
+        "name_key": "item.astral_dice.bookmark_chip"
+      },
+      "parity": {
+        "tags_neo": [
+          "chips"
+        ],
+        "tags_forge": [
+          "chips"
+        ],
+        "slots_neo": [
+          "chip"
+        ],
+        "slots_forge": [
+          "chip"
+        ],
+        "recipe_files": {
+          "neo": "bookmark_chip.json",
+          "forge": "bookmark_chip.json"
+        },
+        "manual_present_neo": true,
+        "manual_present_forge": true
+      }
+    },
+    "conductive_wire": {
+      "id": "conductive_wire",
+      "const": "CONDUCTIVE_WIRE",
+      "category": "合成材料",
+      "rarity": "普通(白)",
+      "item_class": "Item",
+      "comment": "导电线材:可导引电流的线材(动态贴图,10 帧)",
+      "name_zh": "导电线材",
+      "name_en": "Conductive Wire",
+      "lang_keys_zh": {
+        "astral_dice.guide.entry.conductive_wire.1": "合成材料。储存和传递能量的线材，是充能体系相关合成的基础材料。",
+        "item.astral_dice.conductive_wire": "导电线材",
+        "tooltip.astral_dice.material.conductive_wire": "合成材料。储存和传递能量的线材。"
+      },
+      "tags": [
+        "materials"
+      ],
+      "slots": [],
+      "recipe": {
+        "file": "conductive_wire.json",
+        "type": "minecraft:crafting_shaped",
+        "count": 1,
+        "pattern": [
+          "DLD",
+          "DLD",
+          "RRR"
+        ],
+        "key": {
+          "D": "minecraft:diamond",
+          "L": "minecraft:string",
+          "R": "minecraft:redstone"
+        },
+        "key_raw": {
+          "D": {
+            "item": "minecraft:diamond"
+          },
+          "L": {
+            "item": "minecraft:string"
+          },
+          "R": {
+            "item": "minecraft:redstone"
+          }
+        }
+      },
+      "manual": {
+        "category": "materials",
+        "sortnum": 7,
+        "pages": 1,
+        "page_types": [
+          "patchouli:spotlight"
+        ],
+        "has_crafting": false,
+        "name_key": "item.astral_dice.conductive_wire"
+      },
+      "parity": {
+        "tags_neo": [
+          "materials"
+        ],
+        "tags_forge": [
+          "materials"
+        ],
+        "slots_neo": [],
+        "slots_forge": [],
+        "recipe_files": {
+          "neo": "conductive_wire.json",
+          "forge": "conductive_wire.json"
+        },
+        "manual_present_neo": true,
+        "manual_present_forge": true
+      }
+    },
+    "crimson_dice": {
+      "id": "crimson_dice",
+      "const": "CRIMSON_DICE",
+      "category": "骰子",
+      "rarity": "传奇(金)",
+      "item_class": "DiceCurioItem",
+      "comment": "绯红骰子:与下界合金骰子同阶(tag dice_t3),可由下界合金骰子升级;战斗骰高点数(4-6)概率提升 50%,但骰出 1 时立即受到 6 点伤害",
+      "name_zh": "绯红骰子",
+      "name_en": "Crimson Dice",
+      "lang_keys_zh": {
+        "astral_dice.guide.entry.crimson_dice.1": "绯红骰子。与下界合金骰子同阶，可由下界合金骰子升级；你的战斗骰更容易骰出高点数（4-6），但骰出 1 时立即受到 6 点伤害。",
+        "item.astral_dice.crimson_dice": "绯红骰子",
+        "tooltip.astral_dice.crimson_dice_highroll": "战斗骰高点数（§e4-6§r）概率提升 §e50%%§r",
+        "tooltip.astral_dice.crimson_dice_roll1": "骰出 §c1§r 时立即受到 §c6§r 点伤害"
+      },
+      "tags": [
+        "dice_t3",
+        "dices"
+      ],
+      "slots": [
+        "dice"
+      ],
+      "recipe": {
+        "file": "crimson_dice.json",
+        "type": "astral_dice:dice_upgrade",
+        "count": 1,
+        "pattern": [
+          "YJY",
+          "JDJ",
+          "YJY"
+        ],
+        "key": {
+          "Y": "minecraft:nether_wart_block",
+          "J": "minecraft:crimson_fungus",
+          "D": "astral_dice:netherite_dice"
+        },
+        "key_raw": {
+          "Y": {
+            "item": "minecraft:nether_wart_block"
+          },
+          "J": {
+            "item": "minecraft:crimson_fungus"
+          },
+          "D": {
+            "item": "astral_dice:netherite_dice"
+          }
+        }
+      },
+      "manual": {
+        "category": "dice",
+        "sortnum": 9,
+        "pages": 2,
+        "page_types": [
+          "patchouli:spotlight",
+          "patchouli:crafting"
+        ],
+        "has_crafting": true,
+        "name_key": "item.astral_dice.crimson_dice"
+      },
+      "parity": {
+        "tags_neo": [
+          "dice_t3",
+          "dices"
+        ],
+        "tags_forge": [
+          "dice_t3",
+          "dices"
+        ],
+        "slots_neo": [
+          "dice"
+        ],
+        "slots_forge": [
+          "dice"
+        ],
+        "recipe_files": {
+          "neo": "crimson_dice.json",
+          "forge": "crimson_dice.json"
+        },
+        "manual_present_neo": true,
+        "manual_present_forge": true
+      }
+    },
+    "current_core_chip": {
+      "id": "current_core_chip",
+      "const": "CURRENT_CORE_CHIP",
+      "category": "筹码",
+      "rarity": "史诗(紫)",
+      "item_class": "CurrentCoreChipItem",
+      "comment": "电流核心:使用主动技能时充能 +1;冷却中按下主动技能键时按剩余冷却占比消耗充能并立即使冷却完成",
+      "name_zh": "电流核心",
+      "name_en": "Current Core",
+      "lang_keys_zh": {
+        "astral_dice.guide.entry.current_core_chip.1": "使用主动技能时，获得 1 点充能。",
+        "astral_dice.guide.entry.current_core_chip.2": "主动技能冷却中按下主动技能键：按剩余冷却占比消耗充能，并立即使主动技能冷却完成（完成后需再次按键才释放技能）。消耗档位为剩余冷却 ÷ 180 秒的占比，分为 6 档，最低 1 点、最高 6 点；充能不足则不生效。",
+        "hud.astral_dice.current_core_finish": "电流核心：主动技能冷却已立即完成（消耗 %s 点充能）",
+        "hud.astral_dice.current_core_not_enough": "电流核心：充能不足（需要 %s 点）",
+        "item.astral_dice.current_core_chip": "电流核心",
+        "tooltip.astral_dice.chip.current_core": "使用主动技能时，获得 §e1§7 点充能\n主动技能冷却中按下主动技能键时：按剩余冷却时长占比消耗充能，并立即使主动技能冷却完成\n消耗档位：剩余冷却 ÷ §9180 秒§7的占比切成 §e6§7 档（最低 §e1§7 点、最高 §e6§7 点）"
+      },
+      "tags": [
+        "chips"
+      ],
+      "slots": [
+        "chip"
+      ],
+      "recipe": {
+        "file": "current_core_chip.json",
+        "type": "minecraft:crafting_shaped",
+        "count": 1,
+        "pattern": [
+          "UEU",
+          "WCW",
+          "PPP"
+        ],
+        "key": {
+          "C": "astral_dice:blank_chip",
+          "E": "minecraft:lightning_rod",
+          "P": "astral_dice:star_plate",
+          "U": "minecraft:comparator",
+          "W": "astral_dice:conductive_wire"
+        },
+        "key_raw": {
+          "C": {
+            "item": "astral_dice:blank_chip"
+          },
+          "E": {
+            "item": "minecraft:lightning_rod"
+          },
+          "P": {
+            "item": "astral_dice:star_plate"
+          },
+          "U": {
+            "item": "minecraft:comparator"
+          },
+          "W": {
+            "item": "astral_dice:conductive_wire"
+          }
+        }
+      },
+      "manual": {
+        "category": "chips_charge",
+        "sortnum": 4,
+        "pages": 2,
+        "page_types": [
+          "patchouli:spotlight",
+          "patchouli:text"
+        ],
+        "has_crafting": false,
+        "name_key": "item.astral_dice.current_core_chip"
+      },
+      "parity": {
+        "tags_neo": [
+          "chips"
+        ],
+        "tags_forge": [
+          "chips"
+        ],
+        "slots_neo": [
+          "chip"
+        ],
+        "slots_forge": [
+          "chip"
+        ],
+        "recipe_files": {
+          "neo": "current_core_chip.json",
+          "forge": "current_core_chip.json"
+        },
+        "manual_present_neo": true,
+        "manual_present_forge": true
+      }
+    },
+    "electric_glove_chip": {
+      "id": "electric_glove_chip",
+      "const": "ELECTRIC_GLOVE_CHIP",
+      "category": "筹码",
+      "rarity": "史诗(紫)",
+      "item_class": "ElectricGloveChipItem",
+      "comment": "电击手套:使用效果牌时充能 +1;充能 ≥4 时使用伤害效果牌会消耗 4 层充能,使本周期内远程/魔法伤害 同时命中目标 3 格范围内的其他敌对目标(每周期一次,史诗)",
+      "name_zh": "电击手套",
+      "name_en": "Electric Glove",
+      "lang_keys_zh": {
+        "astral_dice.guide.entry.electric_glove_chip.1": "使用效果牌时，充能 +1。充能不少于 4 层时，使用伤害效果牌会消耗 4 层充能，并使本效果牌周期内的远程和魔法伤害同时对目标 3 格范围内的其他敌对目标造成同样的伤害（每个周期仅触发一次）。",
+        "item.astral_dice.electric_glove_chip": "电击手套",
+        "tooltip.astral_dice.chip.electric_glove": "使用效果牌时：充能 §e+1§7\n充能不少于 §e4§7 点时使用伤害效果牌：消耗 §e4§7 点充能，本周期的远程/魔法伤害同时命中目标 §e3§7 格范围内的其他敌对目标（每周期一次）"
+      },
+      "tags": [
+        "chips"
+      ],
+      "slots": [
+        "chip"
+      ],
+      "recipe": {
+        "file": "electric_glove_chip.json",
+        "type": "minecraft:crafting_shaped",
+        "count": 1,
+        "pattern": [
+          "XLX",
+          "WBW",
+          "PPP"
+        ],
+        "key": {
+          "B": "astral_dice:blank_chip",
+          "L": "minecraft:leather",
+          "P": "astral_dice:star_plate",
+          "W": "astral_dice:conductive_wire",
+          "X": "minecraft:redstone"
+        },
+        "key_raw": {
+          "B": {
+            "item": "astral_dice:blank_chip"
+          },
+          "L": {
+            "item": "minecraft:leather"
+          },
+          "P": {
+            "item": "astral_dice:star_plate"
+          },
+          "W": {
+            "item": "astral_dice:conductive_wire"
+          },
+          "X": {
+            "item": "minecraft:redstone"
+          }
+        }
+      },
+      "manual": {
+        "category": "chips_charge",
+        "sortnum": 5,
+        "pages": 1,
+        "page_types": [
+          "patchouli:spotlight"
+        ],
+        "has_crafting": false,
+        "name_key": "item.astral_dice.electric_glove_chip"
+      },
+      "parity": {
+        "tags_neo": [
+          "chips"
+        ],
+        "tags_forge": [
+          "chips"
+        ],
+        "slots_neo": [
+          "chip"
+        ],
+        "slots_forge": [
+          "chip"
+        ],
+        "recipe_files": {
+          "neo": "electric_glove_chip.json",
+          "forge": "electric_glove_chip.json"
+        },
+        "manual_present_neo": true,
+        "manual_present_forge": true
+      }
+    },
+    "electric_sword_chip": {
+      "id": "electric_sword_chip",
+      "const": "ELECTRIC_SWORD",
+      "category": "筹码",
+      "rarity": "稀有(蓝)",
+      "item_class": "ElectricSwordChipItem",
+      "comment": "电流剑:每 4 点充能攻击力 +1;击杀 10 个敌对目标后获得 2 点充能",
+      "name_zh": "电流剑",
+      "name_en": "Electric Sword",
+      "lang_keys_zh": {
+        "astral_dice.guide.entry.electric_sword_chip.1": "每拥有 4 层充能，攻击力 +1。累计击杀 10 个敌对目标，充能 +2（计数卸下清除）。",
+        "item.astral_dice.electric_sword_chip": "电流剑",
+        "tooltip.astral_dice.chip.electric_sword": "每拥有 §e4§7 层充能：攻击力 §e+1§7\n累计击杀 §e10§7 个敌对目标：充能 §e+2§7"
+      },
+      "tags": [
+        "chips"
+      ],
+      "slots": [
+        "chip"
+      ],
+      "recipe": {
+        "file": "electric_sword_chip.json",
+        "type": "minecraft:crafting_shaped",
+        "count": 1,
+        "pattern": [
+          "HDH",
+          "LCL",
+          "BBB"
+        ],
+        "key": {
+          "B": "astral_dice:star_coin",
+          "C": "astral_dice:blank_chip",
+          "D": "minecraft:diamond_sword",
+          "H": "minecraft:redstone",
+          "L": "astral_dice:conductive_wire"
+        },
+        "key_raw": {
+          "B": {
+            "item": "astral_dice:star_coin"
+          },
+          "C": {
+            "item": "astral_dice:blank_chip"
+          },
+          "D": {
+            "item": "minecraft:diamond_sword"
+          },
+          "H": {
+            "item": "minecraft:redstone"
+          },
+          "L": {
+            "item": "astral_dice:conductive_wire"
+          }
+        }
+      },
+      "manual": {
+        "category": "chips_charge",
+        "sortnum": 2,
+        "pages": 2,
+        "page_types": [
+          "patchouli:spotlight",
+          "patchouli:crafting"
+        ],
+        "has_crafting": true,
+        "name_key": "item.astral_dice.electric_sword_chip"
+      },
+      "parity": {
+        "tags_neo": [
+          "chips"
+        ],
+        "tags_forge": [
+          "chips"
+        ],
+        "slots_neo": [
+          "chip"
+        ],
+        "slots_forge": [
+          "chip"
+        ],
+        "recipe_files": {
+          "neo": "electric_sword_chip.json",
+          "forge": "electric_sword_chip.json"
+        },
+        "manual_present_neo": true,
+        "manual_present_forge": true
+      }
+    },
+    "emerald_dice": {
+      "id": "emerald_dice",
+      "const": "EMERALD_DICE",
+      "category": "骰子",
+      "rarity": "史诗(紫)",
+      "item_class": "DiceCurioItem",
+      "comment": "绿宝石骰子:与钻石骰子同阶(tag dice_t2),可由钻石骰子升级;佩戴后村民交易绿宝石费用改为星币并享 20% 折扣",
+      "name_zh": "绿宝石骰子",
+      "name_en": "Emerald Dice",
+      "lang_keys_zh": {
+        "astral_dice.guide.entry.emerald_dice.1": "绿宝石骰子。与钻石骰子同阶，可由钻石骰子升级；佩戴后与村民交易时用星币代替绿宝石，并享受 20%% 折扣。",
+        "item.astral_dice.emerald_dice": "绿宝石骰子",
+        "tooltip.astral_dice.emerald_dice_trade": "与村民交易时用星币代替绿宝石，并享受 §e20%%§r 折扣"
+      },
+      "tags": [
+        "dice_t2",
+        "dices"
+      ],
+      "slots": [
+        "dice"
+      ],
+      "recipe": {
+        "file": "emerald_dice.json",
+        "type": "astral_dice:dice_upgrade",
+        "count": 1,
+        "pattern": [
+          "GPG",
+          "PDP",
+          "GPG"
+        ],
+        "key": {
+          "G": "minecraft:emerald_block",
+          "P": "astral_dice:star_plate",
+          "D": "astral_dice:diamond_dice"
+        },
+        "key_raw": {
+          "G": {
+            "item": "minecraft:emerald_block"
+          },
+          "P": {
+            "item": "astral_dice:star_plate"
+          },
+          "D": {
+            "item": "astral_dice:diamond_dice"
+          }
+        }
+      },
+      "manual": {
+        "category": "dice",
+        "sortnum": 6,
+        "pages": 2,
+        "page_types": [
+          "patchouli:spotlight",
+          "patchouli:crafting"
+        ],
+        "has_crafting": true,
+        "name_key": "item.astral_dice.emerald_dice"
+      },
+      "parity": {
+        "tags_neo": [
+          "dice_t2",
+          "dices"
+        ],
+        "tags_forge": [
+          "dice_t2",
+          "dices"
+        ],
+        "slots_neo": [
+          "dice"
+        ],
+        "slots_forge": [
+          "dice"
+        ],
+        "recipe_files": {
+          "neo": "emerald_dice.json",
+          "forge": "emerald_dice.json"
+        },
+        "manual_present_neo": true,
+        "manual_present_forge": true
+      }
+    },
+    "ender_dice": {
+      "id": "ender_dice",
+      "const": "ENDER_DICE",
+      "category": "骰子",
+      "rarity": "传奇(金)",
+      "item_class": "DiceCurioItem",
+      "comment": "末影骰子:与下界合金骰子同阶(tag dice_t3),可由下界合金骰子升级;致命伤害触发不死图腾效果(冷却 5:00),但雨中/水下受到的伤害 +40%",
+      "name_zh": "末影骰子",
+      "name_en": "Ender Dice",
+      "lang_keys_zh": {
+        "astral_dice.guide.entry.ender_dice.1": "末影骰子。与下界合金骰子同阶，可由下界合金骰子升级；受到致命伤害时触发一次不死图腾效果（随后冷却 5:00），并瞬移到 16 格内安全地面（玩家在水中不触发传送；若手持原版不死图腾，其触发保命时也会附加该瞬移），但雨中/水下受到的伤害 +40%%。",
+        "item.astral_dice.ender_dice": "末影骰子",
+        "tooltip.astral_dice.ender_dice_totem": "受到致命伤害时触发不死图腾效果（冷却 §95:00§r）",
+        "tooltip.astral_dice.ender_dice_teleport": "末影骰子自身或原版不死图腾触发后，瞬移到 §e16§r 格内安全地面；在水中不会触发传送",
+        "tooltip.astral_dice.ender_dice_rainwater": "雨中/水下受到的伤害 §c+40%%§r"
+      },
+      "tags": [
+        "dice_t3",
+        "dices"
+      ],
+      "slots": [
+        "dice"
+      ],
+      "recipe": {
+        "file": "ender_dice.json",
+        "type": "astral_dice:dice_upgrade",
+        "count": 1,
+        "pattern": [
+          "ZYZ",
+          "YDY",
+          "ZYZ"
+        ],
+        "key": {
+          "Z": "minecraft:ender_pearl",
+          "Y": "minecraft:ender_eye",
+          "D": "astral_dice:netherite_dice"
+        },
+        "key_raw": {
+          "Z": {
+            "item": "minecraft:ender_pearl"
+          },
+          "Y": {
+            "item": "minecraft:ender_eye"
+          },
+          "D": {
+            "item": "astral_dice:netherite_dice"
+          }
+        }
+      },
+      "manual": {
+        "category": "dice",
+        "sortnum": 11,
+        "pages": 2,
+        "page_types": [
+          "patchouli:spotlight",
+          "patchouli:crafting"
+        ],
+        "has_crafting": true,
+        "name_key": "item.astral_dice.ender_dice"
+      },
+      "parity": {
+        "tags_neo": [
+          "dice_t3",
+          "dices"
+        ],
+        "tags_forge": [
+          "dice_t3",
+          "dices"
+        ],
+        "slots_neo": [
+          "dice"
+        ],
+        "slots_forge": [
+          "dice"
+        ],
+        "recipe_files": {
+          "neo": "ender_dice.json",
+          "forge": "ender_dice.json"
+        },
+        "manual_present_neo": true,
+        "manual_present_forge": true
+      }
+    },
+    "energy_recycler_chip": {
+      "id": "energy_recycler_chip",
+      "const": "ENERGY_RECYCLER",
+      "category": "筹码",
+      "rarity": "稀有(蓝)",
+      "item_class": "EnergyRecyclerChipItem",
+      "comment": "能量回收器:每移动 50 米获得 1 点充能",
+      "name_zh": "能量回收器",
+      "name_en": "Energy Recycler",
+      "lang_keys_zh": {
+        "astral_dice.guide.entry.energy_recycler_chip.1": "每累计移动 150 米，充能 +1（单 tick 位移过大视为传送，不累计；卸下清除进度）。当前充能 ≥ 5 层时，移动速度 +5%%。",
+        "item.astral_dice.energy_recycler_chip": "能量回收器",
+        "tooltip.astral_dice.chip.energy_recycler": "每移动 §e150§7 米：充能 §e+1§7\n当前充能不少于 §e5§7 点时：移动速度 §e+5%%§7"
+      },
+      "tags": [
+        "chips"
+      ],
+      "slots": [
+        "chip"
+      ],
+      "recipe": {
+        "file": "energy_recycler_chip.json",
+        "type": "minecraft:crafting_shaped",
+        "count": 1,
+        "pattern": [
+          "SHS",
+          "LCL",
+          "BBB"
+        ],
+        "key": {
+          "B": "astral_dice:star_coin",
+          "C": "astral_dice:blank_chip",
+          "H": "minecraft:piston",
+          "L": "astral_dice:conductive_wire",
+          "S": "minecraft:flint"
+        },
+        "key_raw": {
+          "B": {
+            "item": "astral_dice:star_coin"
+          },
+          "C": {
+            "item": "astral_dice:blank_chip"
+          },
+          "H": {
+            "item": "minecraft:piston"
+          },
+          "L": {
+            "item": "astral_dice:conductive_wire"
+          },
+          "S": {
+            "item": "minecraft:flint"
+          }
+        }
+      },
+      "manual": {
+        "category": "chips_charge",
+        "sortnum": 1,
+        "pages": 2,
+        "page_types": [
+          "patchouli:spotlight",
+          "patchouli:crafting"
+        ],
+        "has_crafting": true,
+        "name_key": "item.astral_dice.energy_recycler_chip"
+      },
+      "parity": {
+        "tags_neo": [
+          "chips"
+        ],
+        "tags_forge": [
+          "chips"
+        ],
+        "slots_neo": [
+          "chip"
+        ],
+        "slots_forge": [
+          "chip"
+        ],
+        "recipe_files": {
+          "neo": "energy_recycler_chip.json",
+          "forge": "energy_recycler_chip.json"
+        },
+        "manual_present_neo": true,
+        "manual_present_forge": true
+      }
+    },
+    "glass_dice": {
+      "id": "glass_dice",
+      "const": "GLASS_DICE",
+      "category": "骰子",
+      "rarity": "稀有(蓝)",
+      "item_class": "DiceCurioItem",
+      "comment": "玻璃骰子:与黄金骰子同阶(tag dice_t1),可由黄金骰子升级;战斗牌点数始终取最大值,但死亡会丢失该骰子及已装备卡牌",
+      "name_zh": "玻璃骰子",
+      "name_en": "Glass Dice",
+      "lang_keys_zh": {
+        "astral_dice.guide.entry.glass_dice.1": "玻璃骰子。与黄金骰子同阶，可由黄金骰子升级；你的战斗牌点数始终取最大值，但死亡会丢失该骰子及其已装备的全部卡牌。",
+        "item.astral_dice.glass_dice": "玻璃骰子",
+        "tooltip.astral_dice.glass_dice_death": "死亡会丢失该骰子及其已装备的全部卡牌",
+        "tooltip.astral_dice.glass_dice_max": "战斗牌点数始终取最大值"
+      },
+      "tags": [
+        "dice_t1",
+        "dices"
+      ],
+      "slots": [
+        "dice"
+      ],
+      "recipe": {
+        "file": "glass_dice.json",
+        "type": "astral_dice:dice_upgrade",
+        "count": 1,
+        "pattern": [
+          "GGG",
+          "GTG",
+          "GGG"
+        ],
+        "key": {
+          "G": "minecraft:glass",
+          "T": "astral_dice:golden_dice"
+        },
+        "key_raw": {
+          "G": {
+            "item": "minecraft:glass"
+          },
+          "T": {
+            "item": "astral_dice:golden_dice"
+          }
+        }
+      },
+      "manual": {
+        "category": "dice",
+        "sortnum": 2,
+        "pages": 2,
+        "page_types": [
+          "patchouli:spotlight",
+          "patchouli:crafting"
+        ],
+        "has_crafting": true,
+        "name_key": "item.astral_dice.glass_dice"
+      },
+      "parity": {
+        "tags_neo": [
+          "dice_t1",
+          "dices"
+        ],
+        "tags_forge": [
+          "dice_t1",
+          "dices"
+        ],
+        "slots_neo": [
+          "dice"
+        ],
+        "slots_forge": [
+          "dice"
+        ],
+        "recipe_files": {
+          "neo": "glass_dice.json",
+          "forge": "glass_dice.json"
+        },
+        "manual_present_neo": true,
+        "manual_present_forge": true
+      }
+    },
+    "mark_paint": {
+      "id": "mark_paint",
+      "const": "MARK_PAINT",
+      "category": "合成材料",
+      "rarity": "稀有(蓝)",
+      "item_class": "Item",
+      "comment": "标记涂料:用于标记目标的涂料(静态贴图)",
+      "name_zh": "标记涂料",
+      "name_en": "Mark Paint",
+      "lang_keys_zh": {
+        "astral_dice.guide.entry.mark_paint.1": "合成材料。用于标记目标的涂料，是标记相关合成的基础材料。",
+        "item.astral_dice.mark_paint": "标记涂料",
+        "tooltip.astral_dice.material.mark_paint": "合成材料。用于标记目标的涂料。"
+      },
+      "tags": [
+        "materials"
+      ],
+      "slots": [],
+      "recipe": {
+        "file": "mark_paint.json",
+        "type": "minecraft:crafting_shaped",
+        "count": 1,
+        "pattern": [
+          " Y ",
+          "IRI",
+          "CGC"
+        ],
+        "key": {
+          "C": "minecraft:copper_ingot",
+          "G": "minecraft:gold_ingot",
+          "I": "minecraft:iron_ingot",
+          "R": "minecraft:redstone",
+          "Y": "minecraft:magma_cream"
+        },
+        "key_raw": {
+          "C": {
+            "item": "minecraft:copper_ingot"
+          },
+          "G": {
+            "item": "minecraft:gold_ingot"
+          },
+          "I": {
+            "item": "minecraft:iron_ingot"
+          },
+          "R": {
+            "item": "minecraft:redstone"
+          },
+          "Y": {
+            "item": "minecraft:magma_cream"
+          }
+        }
+      },
+      "manual": {
+        "category": "materials",
+        "sortnum": 9,
+        "pages": 1,
+        "page_types": [
+          "patchouli:spotlight"
+        ],
+        "has_crafting": false,
+        "name_key": "item.astral_dice.mark_paint"
+      },
+      "parity": {
+        "tags_neo": [
+          "materials"
+        ],
+        "tags_forge": [
+          "materials"
+        ],
+        "slots_neo": [],
+        "slots_forge": [],
+        "recipe_files": {
+          "neo": "mark_paint.json",
+          "forge": "mark_paint.json"
+        },
+        "manual_present_neo": true,
+        "manual_present_forge": true
+      }
+    },
+    "member_recommendation_chip": {
+      "id": "member_recommendation_chip",
+      "const": "MEMBER_RECOMMENDATION_CHIP",
+      "category": "筹码",
+      "rarity": "稀有(蓝)",
+      "item_class": "MemberRecommendationChipItem",
+      "comment": "会员推荐信:每次触发骰神赐福时,获得一张随机卡牌",
+      "name_zh": "会员推荐信",
+      "name_en": "Membership Recommendation Letter",
+      "lang_keys_zh": {
+        "astral_dice.guide.entry.member_recommendation_chip.1": "每次触发骰神赐福时，获得一张随机卡牌。",
+        "item.astral_dice.member_recommendation_chip": "会员推荐信",
+        "tooltip.astral_dice.chip.member_recommendation": "每次触发骰神赐福时，获得一张随机卡牌"
+      },
+      "tags": [
+        "chips"
+      ],
+      "slots": [
+        "chip"
+      ],
+      "recipe": {
+        "file": "member_recommendation_chip.json",
+        "type": "minecraft:crafting_shaped",
+        "count": 1,
+        "pattern": [
+          "XLX",
+          "GBG",
+          "CCC"
+        ],
+        "key": {
+          "B": "astral_dice:blank_chip",
+          "C": "astral_dice:star_coin",
+          "G": "minecraft:feather",
+          "L": "minecraft:ink_sac",
+          "X": "minecraft:paper"
+        },
+        "key_raw": {
+          "B": {
+            "item": "astral_dice:blank_chip"
+          },
+          "C": {
+            "item": "astral_dice:star_coin"
+          },
+          "G": {
+            "item": "minecraft:feather"
+          },
+          "L": {
+            "item": "minecraft:ink_sac"
+          },
+          "X": {
+            "item": "minecraft:paper"
+          }
+        }
+      },
+      "manual": {
+        "category": "chips_other",
+        "sortnum": 16,
+        "pages": 1,
+        "page_types": [
+          "patchouli:spotlight"
+        ],
+        "has_crafting": false,
+        "name_key": "item.astral_dice.member_recommendation_chip"
+      },
+      "parity": {
+        "tags_neo": [
+          "chips"
+        ],
+        "tags_forge": [
+          "chips"
+        ],
+        "slots_neo": [
+          "chip"
+        ],
+        "slots_forge": [
+          "chip"
+        ],
+        "recipe_files": {
+          "neo": "member_recommendation_chip.json",
+          "forge": "member_recommendation_chip.json"
+        },
+        "manual_present_neo": true,
+        "manual_present_forge": true
+      }
+    },
+    "moses_sign": {
+      "id": "moses_sign",
+      "const": "MOSES_SIGN",
+      "category": "立牌",
+      "rarity": "史诗(紫)",
+      "item_class": "MosesSignItem",
+      "comment": "枪匠立牌(命名:moses):弱点识破 + 破绽;主动弱点反击,主动冷却 120 秒(史诗)",
+      "name_zh": "枪匠立牌",
+      "name_en": "Gunsmith Sign",
+      "lang_keys_zh": {
+        "astral_dice.guide.entry.moses_sign.1": "主动技能-弱点反击：激活后 30 秒内攻击普通敌对目标，向其施加「破绽」（持续 2:00）；未攻击到目标不会进入冷却。",
+        "astral_dice.guide.entry.moses_sign.2": "被动技能-精密技巧：装备时主动技能冷却时间减为 120 秒；玩家触发闪避、反击、或攻击带「破绽」的目标后获得 1 层「弱点识破」，最多 4 层。每层攻击力/防御力 +1、骰点最低数 +1；骰神赐福结束后减少 1 层。",
+        "astral_dice.guide.entry.moses_sign.3": "破绽效果：目标与枪匠交战时骰点只能为 0，且会被枪匠闪避；闪避后自动反击，反击增加弱点识破层数的攻击力。",
+        "item.astral_dice.moses_sign": "枪匠立牌",
+        "msg.astral_dice.moses_ready": "枪匠立牌：主动技能已激活，攻击普通敌对目标向其施加「破绽」",
+        "msg.astral_dice.moses_apply": "枪匠立牌：已施加「破绽」",
+        "tooltip.astral_dice.sign.moses_active": "下次攻击的第一个目标将被施加 §9破绽 (2:00)§7 ：目标骰点只能为 §e0§7，会被枪匠闪避；闪避后自动触发反击并获得弱点识破层数加成",
+        "tooltip.astral_dice.sign.moses_passive": "主动技能冷却时间减为 §9120 秒§7\n触发闪避、反击、或攻击带「破绽」的目标后，获得 §e1§7 层弱点识破（最多 §e4§7 层）；\n每层使攻击力/防御力 §e+1§7、骰点最低数 §e+1§7。骰神赐福结束后减少 §e1§7 层「弱点识破」",
+        "tooltip.astral_dice.sign.moses_weakness_reveal": "弱点识破: §e%s§7 / §e%s§7",
+        "effect.astral_dice.moses_broken": "破绽",
+        "effect.astral_dice.moses_ready": "待命：破绽"
+      },
+      "tags": [
+        "signs"
+      ],
+      "slots": [
+        "stand"
+      ],
+      "recipe": {
+        "file": "moses_sign.json",
+        "type": "minecraft:crafting_shaped",
+        "count": 1,
+        "pattern": [
+          "GPG",
+          "TCT",
+          "PZP"
+        ],
+        "key": {
+          "C": "astral_dice:blank_sign",
+          "G": "minecraft:crossbow",
+          "P": "astral_dice:star_plate",
+          "T": "minecraft:redstone_block",
+          "Z": "astral_dice:diamond_dice"
+        },
+        "key_raw": {
+          "C": {
+            "item": "astral_dice:blank_sign"
+          },
+          "G": {
+            "item": "minecraft:crossbow"
+          },
+          "P": {
+            "item": "astral_dice:star_plate"
+          },
+          "T": {
+            "item": "minecraft:redstone_block"
+          },
+          "Z": {
+            "item": "astral_dice:diamond_dice"
+          }
+        }
+      },
+      "manual": {
+        "category": "signs",
+        "sortnum": 11,
+        "pages": 4,
+        "page_types": [
+          "patchouli:spotlight",
+          "patchouli:text",
+          "patchouli:text",
+          "patchouli:crafting"
+        ],
+        "has_crafting": true,
+        "name_key": "item.astral_dice.moses_sign"
+      },
+      "parity": {
+        "tags_neo": [
+          "signs"
+        ],
+        "tags_forge": [
+          "signs"
+        ],
+        "slots_neo": [
+          "stand"
+        ],
+        "slots_forge": [
+          "stand"
+        ],
+        "recipe_files": {
+          "neo": "moses_sign.json",
+          "forge": "moses_sign.json"
+        },
+        "manual_present_neo": true,
+        "manual_present_forge": true
+      }
+    },
+    "nether_star_dice": {
+      "id": "nether_star_dice",
+      "const": "NETHER_STAR_DICE",
+      "category": "骰子",
+      "rarity": "传奇(金)",
+      "item_class": "NetherStarDiceItem",
+      "comment": "下界之星骰子:T4 奇异品阶(tag dice_t4),可由任意 T3 骰子升级;卡牌槽/费用恒为最高档、筹码栏 +1,星级附加攻防",
+      "name_zh": "下界之星骰子",
+      "name_en": "Nether Star Dice",
+      "lang_keys_zh": {
+        "astral_dice.guide.entry.nether_star_dice.1": "下界之星骰子。T4 奇异品阶，可由任意 T3 骰子升级（外圈 4 颗下界之星十字环绕）；卡牌槽与费用点数始终为最高档（12 格/费用上限各 6），可装备筹码数量 +1（0★4/1★5/2★6/3★7）；骰子每提升 1 星级，攻击力 +2、防御力 +2（护甲 +4）。",
+        "item.astral_dice.nether_star_dice": "下界之星骰子",
+        "tooltip.astral_dice.nether_star_dice_maxcard": "卡牌槽与费用点数始终为最高档（§e12§7 格 / 费用上限各 §e6§r）",
+        "tooltip.astral_dice.nether_star_dice_chip": "可装备筹码数量 §e+1§7（T4：§e0★4§7/§e1★5§7/§e2★6§7/§e3★7§7）",
+        "tooltip.astral_dice.nether_star_dice_starattr": "每提升 §e1§7 星级：攻击力 §e+2§r、防御力 §e+2§r（护甲 §e+4§r）"
+      },
+      "tags": [
+        "dice_t4",
+        "dices"
+      ],
+      "slots": [
+        "dice"
+      ],
+      "recipe": {
+        "file": "nether_star_dice.json",
+        "type": "astral_dice:dice_upgrade",
+        "count": 1,
+        "pattern": [
+          " N ",
+          "NDN",
+          " N "
+        ],
+        "key": {
+          "N": "minecraft:nether_star",
+          "D": "#astral_dice:dice_t3"
+        },
+        "key_raw": {
+          "N": {
+            "item": "minecraft:nether_star"
+          },
+          "D": {
+            "tag": "astral_dice:dice_t3"
+          }
+        }
+      },
+      "manual": {
+        "category": "dice",
+        "sortnum": 12,
+        "pages": 2,
+        "page_types": [
+          "patchouli:spotlight",
+          "patchouli:crafting"
+        ],
+        "has_crafting": true,
+        "name_key": "item.astral_dice.nether_star_dice"
+      },
+      "parity": {
+        "tags_neo": [
+          "dice_t4",
+          "dices"
+        ],
+        "tags_forge": [
+          "dice_t4",
+          "dices"
+        ],
+        "slots_neo": [
+          "dice"
+        ],
+        "slots_forge": [
+          "dice"
+        ],
+        "recipe_files": {
+          "neo": "nether_star_dice.json",
+          "forge": "nether_star_dice.json"
+        },
+        "manual_present_neo": true,
+        "manual_present_forge": true
+      }
+    },
+    "netherrack_dice": {
+      "id": "netherrack_dice",
+      "const": "NETHERRACK_DICE",
+      "category": "骰子",
+      "rarity": "稀有(蓝)",
+      "item_class": "DiceCurioItem",
+      "comment": "下界岩骰子:与黄金骰子同阶(tag dice_t1),可由黄金骰子升级;下界挖矿概率掉星币/星盘,猪灵保持中立",
+      "name_zh": "下界岩骰子",
+      "name_en": "Netherrack Dice",
+      "lang_keys_zh": {
+        "astral_dice.guide.entry.netherrack_dice.1": "下界岩骰子。与黄金骰子同阶，可由黄金骰子升级；在下界采集矿物时有 30%% 概率额外获得星币、5%% 概率额外获得星盘，且猪灵对你保持中立。",
+        "item.astral_dice.netherrack_dice": "下界岩骰子",
+        "tooltip.astral_dice.netherrack_dice_mining": "在下界采集矿物时：§e30%%§r 概率掉落星币，§e5%%§r 概率掉落星盘",
+        "tooltip.astral_dice.netherrack_dice_piglin": "猪灵对你保持中立"
+      },
+      "tags": [
+        "dice_t1",
+        "dices"
+      ],
+      "slots": [
+        "dice"
+      ],
+      "recipe": {
+        "file": "netherrack_dice.json",
+        "type": "astral_dice:dice_upgrade",
+        "count": 1,
+        "pattern": [
+          "NNN",
+          "NTN",
+          "NNN"
+        ],
+        "key": {
+          "N": "minecraft:nether_brick",
+          "T": "astral_dice:golden_dice"
+        },
+        "key_raw": {
+          "N": {
+            "item": "minecraft:nether_brick"
+          },
+          "T": {
+            "item": "astral_dice:golden_dice"
+          }
+        }
+      },
+      "manual": {
+        "category": "dice",
+        "sortnum": 3,
+        "pages": 2,
+        "page_types": [
+          "patchouli:spotlight",
+          "patchouli:crafting"
+        ],
+        "has_crafting": true,
+        "name_key": "item.astral_dice.netherrack_dice"
+      },
+      "parity": {
+        "tags_neo": [
+          "dice_t1",
+          "dices"
+        ],
+        "tags_forge": [
+          "dice_t1",
+          "dices"
+        ],
+        "slots_neo": [
+          "dice"
+        ],
+        "slots_forge": [
+          "dice"
+        ],
+        "recipe_files": {
+          "neo": "netherrack_dice.json",
+          "forge": "netherrack_dice.json"
+        },
+        "manual_present_neo": true,
+        "manual_present_forge": true
+      }
+    },
+    "obsidian_dice": {
+      "id": "obsidian_dice",
+      "const": "OBSIDIAN_DICE",
+      "category": "骰子",
+      "rarity": "史诗(紫)",
+      "item_class": "ObsidianDiceItem",
+      "comment": "黑曜石骰子:与钻石骰子同阶(tag dice_t2),可由钻石骰子升级;基础防御力 +3(折算 +6 护甲),火焰伤害 -70%",
+      "name_zh": "黑曜石骰子",
+      "name_en": "Obsidian Dice",
+      "lang_keys_zh": {
+        "astral_dice.guide.entry.obsidian_dice.1": "黑曜石骰子。与钻石骰子同阶，可由钻石骰子升级；佩戴后获得 3 点基础防御力（+6 护甲），且受到的火焰伤害减少 70%%。",
+        "item.astral_dice.obsidian_dice": "黑曜石骰子",
+        "tooltip.astral_dice.obsidian_dice_defense": "基础防御力 §e+3§7（§e+6§7 护甲）",
+        "tooltip.astral_dice.obsidian_dice_fire": "受到的火焰伤害减少 §e70%%§r"
+      },
+      "tags": [
+        "dice_t2",
+        "dices"
+      ],
+      "slots": [
+        "dice"
+      ],
+      "recipe": {
+        "file": "obsidian_dice.json",
+        "type": "astral_dice:dice_upgrade",
+        "count": 1,
+        "pattern": [
+          "OOO",
+          "ODO",
+          "OOO"
+        ],
+        "key": {
+          "O": "minecraft:obsidian",
+          "D": "astral_dice:diamond_dice"
+        },
+        "key_raw": {
+          "O": {
+            "item": "minecraft:obsidian"
+          },
+          "D": {
+            "item": "astral_dice:diamond_dice"
+          }
+        }
+      },
+      "manual": {
+        "category": "dice",
+        "sortnum": 7,
+        "pages": 2,
+        "page_types": [
+          "patchouli:spotlight",
+          "patchouli:crafting"
+        ],
+        "has_crafting": true,
+        "name_key": "item.astral_dice.obsidian_dice"
+      },
+      "parity": {
+        "tags_neo": [
+          "dice_t2",
+          "dices"
+        ],
+        "tags_forge": [
+          "dice_t2",
+          "dices"
+        ],
+        "slots_neo": [
+          "dice"
+        ],
+        "slots_forge": [
+          "dice"
+        ],
+        "recipe_files": {
+          "neo": "obsidian_dice.json",
+          "forge": "obsidian_dice.json"
+        },
+        "manual_present_neo": true,
+        "manual_present_forge": true
+      }
+    },
+    "pandaman_sign": {
+      "id": "pandaman_sign",
+      "const": "PANDAMAN_SIGN",
+      "category": "立牌",
+      "rarity": "稀有(蓝)",
+      "item_class": "PandamanSignItem",
+      "comment": "肉弹战车立牌(命名:pandaman,稀有):治疗/生命上限被动 + 大吃特吃主动",
+      "name_zh": "肉弹战车立牌",
+      "name_en": "Pandaman Sign",
+      "lang_keys_zh": {
+        "item.astral_dice.pandaman_sign": "肉弹战车立牌",
+        "effect.astral_dice.pandaman_taunt": "嘲讽",
+        "effect.astral_dice.pandaman_taunt.description": "使目标只能攻击对其施加嘲讽的玩家；目标攻击施加者时触发反击",
+        "tooltip.astral_dice.sign.pandaman_active": "获得一张随机治疗类效果牌（汉堡/巧克力蛋糕/奢华大餐）\n对 §e16§7 格内所有敌对目标施加 §9嘲讽 (1:00)§7\n被嘲讽目标攻击你时触发 §e反击§7",
+        "tooltip.astral_dice.sign.pandaman_passive": "使用「汉堡」后获得 §e2§7 点最大生命上限（不超过 §e100§7 点，卸下清除）\n使用「汉堡」或「巧克力蛋糕」后，使 §e8§7 格内所有友方玩家获得 §e2§7 点治疗和 §e1§7 点治愈\n反击时若生命未满，增加缺失生命值等值的伤害",
+        "astral_dice.guide.entry.pandaman_sign.1": "肉弹战车立牌（Pandaman，稀有）。主动「大吃特吃」：获得一张随机治疗类效果牌，并对 16 格内所有敌对目标施加嘲讽（1:00）；被嘲讽目标攻击施加者时触发反击。",
+        "astral_dice.guide.entry.pandaman_sign.2": "被动「有好有坏」：使用「汉堡」获得 2 点最大生命上限（不超过 100，卸下清除）；使用「汉堡」或「巧克力蛋糕」后，使 8 格内所有友方玩家获得 2 点治疗和 1 点治愈。",
+        "astral_dice.guide.entry.pandaman_sign.3": "装备时反击若生命未满，增加缺失生命值等值的伤害。嘲讽目标只能攻击对其施加嘲讽的玩家。",
+        "msg.astral_dice.pandaman_active_used": "肉弹战车立牌：大吃特吃！获得了治疗牌并施加嘲讽",
+        "tooltip.astral_dice.sign.pandaman_health_gain": "获得生命值: §e+%s§7"
+      },
+      "tags": [
+        "signs"
+      ],
+      "slots": [
+        "stand"
+      ],
+      "recipe": {
+        "file": "pandaman_sign.json",
+        "type": "minecraft:crafting_shaped",
+        "count": 1,
+        "pattern": [
+          "WHW",
+          "HCH",
+          "BDB"
+        ],
+        "key": {
+          "B": "astral_dice:star_coin",
+          "C": "astral_dice:blank_sign",
+          "D": "astral_dice:dice",
+          "H": "minecraft:black_concrete",
+          "W": "minecraft:white_concrete"
+        },
+        "key_raw": {
+          "B": {
+            "item": "astral_dice:star_coin"
+          },
+          "C": {
+            "item": "astral_dice:blank_sign"
+          },
+          "D": {
+            "item": "astral_dice:dice"
+          },
+          "H": {
+            "item": "minecraft:black_concrete"
+          },
+          "W": {
+            "item": "minecraft:white_concrete"
+          }
+        }
+      },
+      "manual": {
+        "category": "signs",
+        "sortnum": 5,
+        "pages": 4,
+        "page_types": [
+          "patchouli:spotlight",
+          "patchouli:text",
+          "patchouli:text",
+          "patchouli:crafting"
+        ],
+        "has_crafting": true,
+        "name_key": "item.astral_dice.pandaman_sign"
+      },
+      "parity": {
+        "tags_neo": [
+          "signs"
+        ],
+        "tags_forge": [
+          "signs"
+        ],
+        "slots_neo": [
+          "stand"
+        ],
+        "slots_forge": [
+          "stand"
+        ],
+        "recipe_files": {
+          "neo": "pandaman_sign.json",
+          "forge": "pandaman_sign.json"
+        },
+        "manual_present_neo": true,
+        "manual_present_forge": true
+      }
+    },
+    "perpetual_motion_chip": {
+      "id": "perpetual_motion_chip",
+      "const": "PERPETUAL_MOTION",
+      "category": "筹码",
+      "rarity": "传奇(金)",
+      "item_class": "PerpetualMotionChipItem",
+      "comment": "永动机:触发骰神赐福时,充能 +6",
+      "name_zh": "永动机",
+      "name_en": "Perpetual Motion",
+      "lang_keys_zh": {
+        "astral_dice.guide.entry.perpetual_motion_chip.1": "触发骰神赐福时，若当前充能不足 6 点，则补充至 6 点（已达标不再增加）。",
+        "item.astral_dice.perpetual_motion_chip": "永动机",
+        "tooltip.astral_dice.chip.perpetual_motion": "触发骰神赐福时：充能不足 §e6§7 点时补充至 §e6§7 点"
+      },
+      "tags": [
+        "chips"
+      ],
+      "slots": [
+        "chip"
+      ],
+      "recipe": {
+        "file": "perpetual_motion_chip.json",
+        "type": "minecraft:crafting_shaped",
+        "count": 1,
+        "pattern": [
+          "BNB",
+          "LCL",
+          "GGG"
+        ],
+        "key": {
+          "B": "minecraft:gold_block",
+          "C": "astral_dice:blank_chip",
+          "G": "astral_dice:golden_star_plate",
+          "L": "astral_dice:conductive_wire",
+          "N": "minecraft:nether_star"
+        },
+        "key_raw": {
+          "B": {
+            "item": "minecraft:gold_block"
+          },
+          "C": {
+            "item": "astral_dice:blank_chip"
+          },
+          "G": {
+            "item": "astral_dice:golden_star_plate"
+          },
+          "L": {
+            "item": "astral_dice:conductive_wire"
+          },
+          "N": {
+            "item": "minecraft:nether_star"
+          }
+        }
+      },
+      "manual": {
+        "category": "chips_charge",
+        "sortnum": 7,
+        "pages": 2,
+        "page_types": [
+          "patchouli:spotlight",
+          "patchouli:crafting"
+        ],
+        "has_crafting": true,
+        "name_key": "item.astral_dice.perpetual_motion_chip"
+      },
+      "parity": {
+        "tags_neo": [
+          "chips"
+        ],
+        "tags_forge": [
+          "chips"
+        ],
+        "slots_neo": [
+          "chip"
+        ],
+        "slots_forge": [
+          "chip"
+        ],
+        "recipe_files": {
+          "neo": "perpetual_motion_chip.json",
+          "forge": "perpetual_motion_chip.json"
+        },
+        "manual_present_neo": true,
+        "manual_present_forge": true
+      }
+    },
+    "piggy_bank_chip": {
+      "id": "piggy_bank_chip",
+      "const": "PIGGY_BANK_CHIP",
+      "category": "筹码",
+      "rarity": "稀有(蓝)",
+      "item_class": "PiggyBankChipItem",
+      "comment": "小猪存钱罐:每使用 2 张效果牌后,获得 3 星币",
+      "name_zh": "小猪存钱罐",
+      "name_en": "Piggy Bank",
+      "lang_keys_zh": {
+        "astral_dice.guide.entry.piggy_bank_chip.1": "每使用 2 张效果牌，获得 3 星币（计数卸下清除）。",
+        "item.astral_dice.piggy_bank_chip": "小猪存钱罐",
+        "tooltip.astral_dice.chip.piggy_bank": "每使用 §e2§7 张效果牌后，获得 §e3§7 星币"
+      },
+      "tags": [
+        "chips"
+      ],
+      "slots": [
+        "chip"
+      ],
+      "recipe": {
+        "file": "piggy_bank_chip.json",
+        "type": "minecraft:crafting_shaped",
+        "count": 1,
+        "pattern": [
+          "XLX",
+          "GBG",
+          "CCC"
+        ],
+        "key": {
+          "B": "astral_dice:blank_chip",
+          "C": "astral_dice:star_coin",
+          "G": "minecraft:brick",
+          "L": "minecraft:porkchop",
+          "X": "minecraft:gold_ingot"
+        },
+        "key_raw": {
+          "B": {
+            "item": "astral_dice:blank_chip"
+          },
+          "C": {
+            "item": "astral_dice:star_coin"
+          },
+          "G": {
+            "item": "minecraft:brick"
+          },
+          "L": {
+            "item": "minecraft:porkchop"
+          },
+          "X": {
+            "item": "minecraft:gold_ingot"
+          }
+        }
+      },
+      "manual": {
+        "category": "chips_other",
+        "sortnum": 18,
+        "pages": 1,
+        "page_types": [
+          "patchouli:spotlight"
+        ],
+        "has_crafting": false,
+        "name_key": "item.astral_dice.piggy_bank_chip"
+      },
+      "parity": {
+        "tags_neo": [
+          "chips"
+        ],
+        "tags_forge": [
+          "chips"
+        ],
+        "slots_neo": [
+          "chip"
+        ],
+        "slots_forge": [
+          "chip"
+        ],
+        "recipe_files": {
+          "neo": "piggy_bank_chip.json",
+          "forge": "piggy_bank_chip.json"
+        },
+        "manual_present_neo": true,
+        "manual_present_forge": true
+      }
+    },
+    "primordial_core_chip": {
+      "id": "primordial_core_chip",
+      "const": "PRIMORDIAL_CORE_CHIP",
+      "category": "筹码",
+      "rarity": "传奇(金)",
+      "item_class": "PrimordialCoreChipItem",
+      "comment": "原初核心:每消耗 1 层充能获得 1 层赋能(每层 +1 攻击/防御,每 0:30 递减 1 层,传奇)",
+      "name_zh": "原初核心",
+      "name_en": "Primordial Core",
+      "lang_keys_zh": {
+        "astral_dice.guide.entry.primordial_core_chip.1": "每消耗 1 层充能，获得 1 层「赋能」。每层赋能提供攻击力 +1 与防御力 +1，每 0:30 减少 1 层（剩余 1 层时直接归 0）。",
+        "item.astral_dice.primordial_core_chip": "原初核心",
+        "tooltip.astral_dice.chip.primordial_core": "每消耗 §e1§7 点充能：获得 §e1§7 层赋能\n每层赋能：攻击力 §e+1§7、防御力 §e+1§7\n每 §90:30§7 减少 §e1§7 层赋能"
+      },
+      "tags": [
+        "chips"
+      ],
+      "slots": [
+        "chip"
+      ],
+      "recipe": {
+        "file": "primordial_core_chip.json",
+        "type": "minecraft:crafting_shaped",
+        "count": 1,
+        "pattern": [
+          "XHX",
+          "WBW",
+          "GGG"
+        ],
+        "key": {
+          "B": "astral_dice:blank_chip",
+          "G": "astral_dice:golden_star_plate",
+          "H": "minecraft:dragon_head",
+          "W": "astral_dice:conductive_wire",
+          "X": "minecraft:echo_shard"
+        },
+        "key_raw": {
+          "B": {
+            "item": "astral_dice:blank_chip"
+          },
+          "G": {
+            "item": "astral_dice:golden_star_plate"
+          },
+          "H": {
+            "item": "minecraft:dragon_head"
+          },
+          "W": {
+            "item": "astral_dice:conductive_wire"
+          },
+          "X": {
+            "item": "minecraft:echo_shard"
+          }
+        }
+      },
+      "manual": {
+        "category": "chips_charge",
+        "sortnum": 9,
+        "pages": 1,
+        "page_types": [
+          "patchouli:spotlight"
+        ],
+        "has_crafting": false,
+        "name_key": "item.astral_dice.primordial_core_chip"
+      },
+      "parity": {
+        "tags_neo": [
+          "chips"
+        ],
+        "tags_forge": [
+          "chips"
+        ],
+        "slots_neo": [
+          "chip"
+        ],
+        "slots_forge": [
+          "chip"
+        ],
+        "recipe_files": {
+          "neo": "primordial_core_chip.json",
+          "forge": "primordial_core_chip.json"
+        },
+        "manual_present_neo": true,
+        "manual_present_forge": true
+      }
+    },
+    "railgun_chip": {
+      "id": "railgun_chip",
+      "const": "RAILGUN_CHIP",
+      "category": "筹码",
+      "rarity": "传奇(金)",
+      "item_class": "RailgunChipItem",
+      "comment": "电磁炮:充能 ≥6 时攻击力 +5;攻击敌对目标消耗 6 层充能,延迟 1 秒对其 3 格内敌对目标降下雷击,雷击伤害 = 本次攻击(骰战最终)伤害的 50%(传奇)",
+      "name_zh": "电磁炮",
+      "name_en": "Railgun",
+      "lang_keys_zh": {
+        "astral_dice.guide.entry.railgun_chip.1": "充能不少于 6 层时，攻击力 +5。对敌对目标发起攻击时，消耗 6 层充能，并延迟 1 秒对目标 3 格范围内所有敌对目标降下雷击，雷击造成本次攻击（骰战最终）伤害的 50%%（下限 5 点；可点燃并生成闪电苦力怕）。雷击是独立的原版伤害源，不会并入本次攻击的伤害，也不会触发骰神赐福。",
+        "item.astral_dice.railgun_chip": "电磁炮",
+        "tooltip.astral_dice.chip.railgun": "充能不少于 §e6§7 点时：攻击力 §e+5§7\n攻击敌对目标时：消耗 §e6§7 点充能，延迟 §91 秒§7对目标 §e3§7 格范围内的敌对目标降下雷击（雷击伤害 = 本次攻击伤害的 §e50%%§7，下限 §e5§7 点）\n雷击为独立的原版伤害源，不触发骰神赐福"
+      },
+      "tags": [
+        "chips"
+      ],
+      "slots": [
+        "chip"
+      ],
+      "recipe": {
+        "file": "railgun_chip.json",
+        "type": "minecraft:crafting_shaped",
+        "count": 1,
+        "pattern": [
+          "RCR",
+          "WBW",
+          "GGG"
+        ],
+        "key": {
+          "B": "astral_dice:blank_chip",
+          "C": "minecraft:end_crystal",
+          "G": "astral_dice:golden_star_plate",
+          "R": "minecraft:redstone_block",
+          "W": "astral_dice:conductive_wire"
+        },
+        "key_raw": {
+          "B": {
+            "item": "astral_dice:blank_chip"
+          },
+          "C": {
+            "item": "minecraft:end_crystal"
+          },
+          "G": {
+            "item": "astral_dice:golden_star_plate"
+          },
+          "R": {
+            "item": "minecraft:redstone_block"
+          },
+          "W": {
+            "item": "astral_dice:conductive_wire"
+          }
+        }
+      },
+      "manual": {
+        "category": "chips_charge",
+        "sortnum": 8,
+        "pages": 1,
+        "page_types": [
+          "patchouli:spotlight"
+        ],
+        "has_crafting": false,
+        "name_key": "item.astral_dice.railgun_chip"
+      },
+      "parity": {
+        "tags_neo": [
+          "chips"
+        ],
+        "tags_forge": [
+          "chips"
+        ],
+        "slots_neo": [
+          "chip"
+        ],
+        "slots_forge": [
+          "chip"
+        ],
+        "recipe_files": {
+          "neo": "railgun_chip.json",
+          "forge": "railgun_chip.json"
+        },
+        "manual_present_neo": true,
+        "manual_present_forge": true
+      }
+    },
+    "regeneration_reagent": {
+      "id": "regeneration_reagent",
+      "const": "REGENERATION_REAGENT",
+      "category": "合成材料",
+      "rarity": "普通(白)",
+      "item_class": "Item",
+      "comment": "=== 新材料(1.2.0):合成材料,本身不参与配方 === 再生试剂:再生相关的试剂(动态贴图,2 帧)",
+      "name_zh": "再生试剂",
+      "name_en": "Regeneration Reagent",
+      "lang_keys_zh": {
+        "astral_dice.guide.entry.regeneration_reagent.1": "合成材料。蕴含重生之力的试剂，是治愈体系相关合成的基础材料。",
+        "item.astral_dice.regeneration_reagent": "再生试剂",
+        "tooltip.astral_dice.material.regeneration_reagent": "合成材料。蕴含重生之力的试剂。"
+      },
+      "tags": [
+        "materials"
+      ],
+      "slots": [],
+      "recipe": {
+        "file": "regeneration_reagent.json",
+        "type": "minecraft:crafting_shapeless",
+        "count": 1,
+        "ingredients": [
+          {
+            "item": "minecraft:redstone"
+          },
+          {
+            "item": "minecraft:slime_ball"
+          },
+          {
+            "item": "minecraft:glistering_melon_slice"
+          },
+          {
+            "item": "minecraft:honey_bottle"
+          }
+        ]
+      },
+      "manual": {
+        "category": "materials",
+        "sortnum": 6,
+        "pages": 1,
+        "page_types": [
+          "patchouli:spotlight"
+        ],
+        "has_crafting": false,
+        "name_key": "item.astral_dice.regeneration_reagent"
+      },
+      "parity": {
+        "tags_neo": [
+          "materials"
+        ],
+        "tags_forge": [
+          "materials"
+        ],
+        "slots_neo": [],
+        "slots_forge": [],
+        "recipe_files": {
+          "neo": "regeneration_reagent.json",
+          "forge": "regeneration_reagent.json"
+        },
+        "manual_present_neo": true,
+        "manual_present_forge": true
+      }
+    },
+    "smart_watch_chip": {
+      "id": "smart_watch_chip",
+      "const": "SMART_WATCH_CHIP",
+      "category": "筹码",
+      "rarity": "史诗(紫)",
+      "item_class": "SmartWatchChipItem",
+      "comment": "智能手表:物品栏卡牌不足 10 张时,每击杀 1 个敌对目标获得一张随机卡牌",
+      "name_zh": "智能手表",
+      "name_en": "Smart Watch",
+      "lang_keys_zh": {
+        "astral_dice.guide.entry.smart_watch_chip.1": "物品栏中卡牌数量不足 10 张时，每击杀 1 个敌对目标获得一张随机卡牌（达到阈值后不再发放）。",
+        "item.astral_dice.smart_watch_chip": "智能手表",
+        "tooltip.astral_dice.chip.smart_watch": "物品栏中卡牌数量不足 §e10§7 张时，每击杀 §e1§7 个敌对目标获得一张随机手牌"
+      },
+      "tags": [
+        "chips"
+      ],
+      "slots": [
+        "chip"
+      ],
+      "recipe": {
+        "file": "smart_watch_chip.json",
+        "type": "minecraft:crafting_shaped",
+        "count": 1,
+        "pattern": [
+          "XLX",
+          "GBG",
+          "PPP"
+        ],
+        "key": {
+          "B": "astral_dice:blank_chip",
+          "G": "minecraft:redstone",
+          "L": "minecraft:clock",
+          "P": "astral_dice:star_plate",
+          "X": "minecraft:gold_ingot"
+        },
+        "key_raw": {
+          "B": {
+            "item": "astral_dice:blank_chip"
+          },
+          "G": {
+            "item": "minecraft:redstone"
+          },
+          "L": {
+            "item": "minecraft:clock"
+          },
+          "P": {
+            "item": "astral_dice:star_plate"
+          },
+          "X": {
+            "item": "minecraft:gold_ingot"
+          }
+        }
+      },
+      "manual": {
+        "category": "chips_other",
+        "sortnum": 19,
+        "pages": 1,
+        "page_types": [
+          "patchouli:spotlight"
+        ],
+        "has_crafting": false,
+        "name_key": "item.astral_dice.smart_watch_chip"
+      },
+      "parity": {
+        "tags_neo": [
+          "chips"
+        ],
+        "tags_forge": [
+          "chips"
+        ],
+        "slots_neo": [
+          "chip"
+        ],
+        "slots_forge": [
+          "chip"
+        ],
+        "recipe_files": {
+          "neo": "smart_watch_chip.json",
+          "forge": "smart_watch_chip.json"
+        },
+        "manual_present_neo": true,
+        "manual_present_forge": true
+      }
+    },
+    "star_coin_dust": {
+      "id": "star_coin_dust",
+      "const": "STAR_COIN_DUST",
+      "category": "合成材料",
+      "rarity": "普通(白)",
+      "item_class": "Item",
+      "comment": "星币尘:星币研磨而成的粉末(动态贴图,7 帧)",
+      "name_zh": "星币尘",
+      "name_en": "Star Coin Dust",
+      "lang_keys_zh": {
+        "astral_dice.guide.entry.star_coin_dust.1": "合成材料。由星币制成的合金材料，可用于经济相关的合成。",
+        "item.astral_dice.star_coin_dust": "星币尘",
+        "tooltip.astral_dice.material.star_coin_dust": "合成材料。由星币制成的合金材料。"
+      },
+      "tags": [
+        "materials"
+      ],
+      "slots": [],
+      "recipe": {
+        "file": "star_coin_dust.json",
+        "type": "minecraft:crafting_shapeless",
+        "count": 1,
+        "ingredients": [
+          {
+            "item": "astral_dice:star_coin"
+          },
+          {
+            "item": "minecraft:quartz"
+          },
+          {
+            "item": "minecraft:glowstone_dust"
+          }
+        ]
+      },
+      "manual": {
+        "category": "materials",
+        "sortnum": 8,
+        "pages": 1,
+        "page_types": [
+          "patchouli:spotlight"
+        ],
+        "has_crafting": false,
+        "name_key": "item.astral_dice.star_coin_dust"
+      },
+      "parity": {
+        "tags_neo": [
+          "materials"
+        ],
+        "tags_forge": [
+          "materials"
+        ],
+        "slots_neo": [],
+        "slots_forge": [],
+        "recipe_files": {
+          "neo": "star_coin_dust.json",
+          "forge": "star_coin_dust.json"
+        },
+        "manual_present_neo": true,
+        "manual_present_forge": true
+      }
+    },
+    "warp_engine_chip": {
+      "id": "warp_engine_chip",
+      "const": "WARP_ENGINE_CHIP",
+      "category": "筹码",
+      "rarity": "稀有(蓝)",
+      "item_class": "WarpEngineChipItem",
+      "comment": "跃迁引擎:触发指定传送后,获得 2 层充能并获得迅捷 0:10",
+      "name_zh": "跃迁引擎",
+      "name_en": "Warp Engine",
+      "lang_keys_zh": {
+        "astral_dice.guide.entry.warp_engine_chip.1": "触发瞬移时，充能 +2 并获得迅捷 (0:10)。计入的传送：末影珍珠、末影骰子不死图腾后的安全瞬移、维度传送门、Waystone（需安装 Waystones）。传送门与 Waystone 触发共享 5:00 冷却；末影珍珠与末影骰子瞬移不受冷却限制。",
+        "item.astral_dice.warp_engine_chip": "跃迁引擎",
+        "tooltip.astral_dice.chip.warp_engine": "触发瞬移时：充能 §e+2§7，并获得 §9迅捷 (0:10)§7"
+      },
+      "tags": [
+        "chips"
+      ],
+      "slots": [
+        "chip"
+      ],
+      "recipe": {
+        "file": "warp_engine_chip.json",
+        "type": "minecraft:crafting_shaped",
+        "count": 1,
+        "pattern": [
+          "XXX",
+          "WCW",
+          "BBB"
+        ],
+        "key": {
+          "B": "astral_dice:star_coin",
+          "C": "astral_dice:blank_chip",
+          "W": "astral_dice:conductive_wire",
+          "X": "minecraft:ender_pearl"
+        },
+        "key_raw": {
+          "B": {
+            "item": "astral_dice:star_coin"
+          },
+          "C": {
+            "item": "astral_dice:blank_chip"
+          },
+          "W": {
+            "item": "astral_dice:conductive_wire"
+          },
+          "X": {
+            "item": "minecraft:ender_pearl"
+          }
+        }
+      },
+      "manual": {
+        "category": "chips_charge",
+        "sortnum": 0,
+        "pages": 2,
+        "page_types": [
+          "patchouli:spotlight",
+          "patchouli:crafting"
+        ],
+        "has_crafting": true,
+        "name_key": "item.astral_dice.warp_engine_chip"
+      },
+      "parity": {
+        "tags_neo": [
+          "chips"
+        ],
+        "tags_forge": [
+          "chips"
+        ],
+        "slots_neo": [
+          "chip"
+        ],
+        "slots_forge": [
+          "chip"
+        ],
+        "recipe_files": {
+          "neo": "warp_engine_chip.json",
+          "forge": "warp_engine_chip.json"
+        },
+        "manual_present_neo": true,
+        "manual_present_forge": true
+      }
+    },
+    "weird_dice": {
+      "id": "weird_dice",
+      "const": "WEIRD_DICE",
+      "category": "骰子",
+      "rarity": "史诗(紫)",
+      "item_class": "DiceCurioItem",
+      "comment": "诡异骰子:与钻石骰子同阶(tag dice_t2),可由钻石骰子升级;立牌主动冷却 -50%,但战斗骰低点数(1-3)概率提升 50%",
+      "name_zh": "诡异骰子",
+      "name_en": "Weird Dice",
+      "lang_keys_zh": {
+        "astral_dice.guide.entry.weird_dice.1": "诡异骰子。与钻石骰子同阶，可由钻石骰子升级；立牌主动技能冷却时间减半，但你的战斗骰更容易骰出低点数（1-3）。",
+        "item.astral_dice.weird_dice": "诡异骰子",
+        "tooltip.astral_dice.weird_dice_cooldown": "立牌主动技能冷却时间 §e-50%%§r",
+        "tooltip.astral_dice.weird_dice_lowroll": "战斗骰低点数（§e1-3§r）概率提升 §e50%%§r"
+      },
+      "tags": [
+        "dice_t2",
+        "dices"
+      ],
+      "slots": [
+        "dice"
+      ],
+      "recipe": {
+        "file": "weird_dice.json",
+        "type": "astral_dice:dice_upgrade",
+        "count": 1,
+        "pattern": [
+          "CJC",
+          "JDJ",
+          "CJC"
+        ],
+        "key": {
+          "C": "minecraft:twisting_vines",
+          "J": "minecraft:warped_fungus",
+          "D": "astral_dice:diamond_dice"
+        },
+        "key_raw": {
+          "C": {
+            "item": "minecraft:twisting_vines"
+          },
+          "J": {
+            "item": "minecraft:warped_fungus"
+          },
+          "D": {
+            "item": "astral_dice:diamond_dice"
+          }
+        }
+      },
+      "manual": {
+        "category": "dice",
+        "sortnum": 8,
+        "pages": 2,
+        "page_types": [
+          "patchouli:spotlight",
+          "patchouli:crafting"
+        ],
+        "has_crafting": true,
+        "name_key": "item.astral_dice.weird_dice"
+      },
+      "parity": {
+        "tags_neo": [
+          "dice_t2",
+          "dices"
+        ],
+        "tags_forge": [
+          "dice_t2",
+          "dices"
+        ],
+        "slots_neo": [
+          "dice"
+        ],
+        "slots_forge": [
+          "dice"
+        ],
+        "recipe_files": {
+          "neo": "weird_dice.json",
+          "forge": "weird_dice.json"
+        },
+        "manual_present_neo": true,
+        "manual_present_forge": true
+      }
+    },
+    "whetstone_chip": {
+      "id": "whetstone_chip",
+      "const": "WHETSTONE_CHIP",
+      "category": "筹码",
+      "rarity": "史诗(紫)",
+      "item_class": "WhetstoneChipItem",
+      "comment": "磨刀石:生命值为 50% 或更低时攻击力 +4、受到伤害 -2;生命值 >1 时受到的伤害不超过剩余生命值(史诗)",
+      "name_zh": "磨刀石",
+      "name_en": "Whetstone",
+      "lang_keys_zh": {
+        "astral_dice.guide.entry.whetstone_chip.1": "生命值为 50%% 或更低时，攻击力 +4、受到伤害 -2；且生命值大于 1 点时，使受到的伤害不超过剩余生命值。",
+        "item.astral_dice.whetstone_chip": "磨刀石",
+        "tooltip.astral_dice.chip.whetstone": "生命值为 §e50%%§7 或更低时：攻击力 §e+4§7、受到伤害 §e-2§7\n生命值大于 §e1§7 点时：受到的伤害不超过剩余生命值"
+      },
+      "tags": [
+        "chips"
+      ],
+      "slots": [
+        "chip"
+      ],
+      "recipe": {
+        "file": "whetstone_chip.json",
+        "type": "minecraft:crafting_shaped",
+        "count": 1,
+        "pattern": [
+          "XLX",
+          "GBG",
+          "PPP"
+        ],
+        "key": {
+          "B": "astral_dice:blank_chip",
+          "G": "minecraft:flint",
+          "L": "minecraft:grindstone",
+          "P": "astral_dice:star_plate",
+          "X": "minecraft:netherite_ingot"
+        },
+        "key_raw": {
+          "B": {
+            "item": "astral_dice:blank_chip"
+          },
+          "G": {
+            "item": "minecraft:flint"
+          },
+          "L": {
+            "item": "minecraft:grindstone"
+          },
+          "P": {
+            "item": "astral_dice:star_plate"
+          },
+          "X": {
+            "item": "minecraft:netherite_ingot"
+          }
+        }
+      },
+      "manual": {
+        "category": "chips_other",
+        "sortnum": 20,
+        "pages": 1,
+        "page_types": [
+          "patchouli:spotlight"
+        ],
+        "has_crafting": false,
+        "name_key": "item.astral_dice.whetstone_chip"
+      },
+      "parity": {
+        "tags_neo": [
+          "chips"
+        ],
+        "tags_forge": [
+          "chips"
+        ],
+        "slots_neo": [
+          "chip"
+        ],
+        "slots_forge": [
+          "chip"
+        ],
+        "recipe_files": {
+          "neo": "whetstone_chip.json",
+          "forge": "whetstone_chip.json"
+        },
+        "manual_present_neo": true,
+        "manual_present_forge": true
+      }
+    }
+  },
+  "effects": {
+    "charge": {
+      "id": "charge",
+      "name_zh": "充能",
+      "note": "§流派资源：最大 20 层，≥1 层时立牌主动/效果牌冷却 -20%",
+      "kind": "new",
+      "effect_class": "ChargeEffect",
+      "lang_key": "effect.astral_dice.charge",
+      "lang_present": {
+        "neo_zh": true,
+        "neo_en": true,
+        "forge_zh": true,
+        "forge_en": true
+      }
+    },
+    "empower": {
+      "id": "empower",
+      "name_zh": "赋能",
+      "note": "原初核心筹码：每层攻击/防御 +1，每 0:30 递减 1 层",
+      "kind": "new",
+      "effect_class": "EmpowerEffect",
+      "lang_key": "effect.astral_dice.empower",
+      "lang_present": {
+        "neo_zh": true,
+        "neo_en": true,
+        "forge_zh": true,
+        "forge_en": true
+      }
+    },
+    "weakness_reveal": {
+      "id": "weakness_reveal",
+      "name_zh": "弱点识破",
+      "note": "枪匠立牌：每层攻击/防御 +1、骰点最低数 +1，最多 4 层",
+      "kind": "new",
+      "effect_class": "WeaknessRevealEffect",
+      "lang_key": "effect.astral_dice.weakness_reveal",
+      "lang_present": {
+        "neo_zh": true,
+        "neo_en": true,
+        "forge_zh": true,
+        "forge_en": true
+      }
+    },
+    "moses_broken": {
+      "id": "moses_broken",
+      "name_zh": "破绽",
+      "note": "枪匠立牌主动施加：目标骰点只能为 0 且会被闪避",
+      "kind": "new",
+      "effect_class": "MosesBrokenEffect",
+      "lang_key": "effect.astral_dice.moses_broken",
+      "lang_present": {
+        "neo_zh": true,
+        "neo_en": true,
+        "forge_zh": true,
+        "forge_en": true
+      }
+    },
+    "moses_ready": {
+      "id": "moses_ready",
+      "name_zh": "待命：破绽",
+      "note": "枪匠立牌主动待命（ReadyEffect，显示于玩家状态栏）",
+      "kind": "new",
+      "effect_class": "ReadyEffect",
+      "lang_key": "effect.astral_dice.moses_ready",
+      "lang_present": {
+        "neo_zh": true,
+        "neo_en": true,
+        "forge_zh": true,
+        "forge_en": true
+      }
+    },
+    "pandaman_taunt": {
+      "id": "pandaman_taunt",
+      "name_zh": "嘲讽",
+      "note": "肉弹战车立牌：目标只能攻击施加者",
+      "kind": "new",
+      "effect_class": "PandamanTauntEffect",
+      "lang_key": "effect.astral_dice.pandaman_taunt",
+      "lang_present": {
+        "neo_zh": true,
+        "neo_en": true,
+        "forge_zh": true,
+        "forge_en": true
+      }
+    },
+    "living_page": {
+      "id": "living_page",
+      "name_zh": "活体书页",
+      "note": "1.2.0 重命名：living_book_page → living_page（非新增）",
+      "kind": "renamed"
+    }
+  },
+  "parity": {
+    "new_id_count": 33,
+    "tag_overview": {
+      "chips": 60,
+      "combat_cards": 10,
+      "dice_t0": 1,
+      "dice_t1": 3,
+      "dice_t2": 5,
+      "dice_t3": 3,
+      "dice_t4": 1,
+      "dices": 13,
+      "effect_cards": 15,
+      "materials": 14,
+      "signs": 17
+    },
+    "slot_overview": {
+      "chip": 59,
+      "dice": 13,
+      "stand": 16
+    },
+    "slot_overview_forge": {
+      "chip": 59,
+      "dice": 13,
+      "stand": 16
+    },
+    "manual_total": 128,
+    "missing_recipe": [],
+    "missing_manual": [],
+    "slot_mismatch": []
+  }
+}

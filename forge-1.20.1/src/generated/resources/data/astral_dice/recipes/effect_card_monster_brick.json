@@ -6,7 +6,7 @@
       "item": "minecraft:paper"
     },
     {
-      "tag": "c:bricks"
+      "tag": "forge:bricks"
     },
     {
       "item": "astral_dice:star_coin"

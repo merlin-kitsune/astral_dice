@@ -3590,3 +3590,74 @@ brief 内**不喂结论**。结论与处置：
 - `fabric-1.20.1` **未同步**（该线无 `rin_page_range`，本批只涉及三线）。
 - ⚠️ 本批**删除了一个上一批刚提交的生成器**：若将来仍想要「与立牌图区分」的专属图标，需重新引入
   —— 届时请先与用户确认口径，**不要默认自创**。
+
+### Modern UI（`现代化 UI`）提示框边框兼容（2026-10-04 建，同日晚收口为**四线**）
+
+#### 症状与根因（实物 jar 反汇编，逐条可复现）
+- 实物：`D:/.minecraft/versions/狐の新冒险/mods/[现代化 UI] ModernUI-NeoForge-1.21.1-3.12.0.2-universal.jar`
+  （同包 `config/ModernUI/client.toml` 实况：`tooltip.enable=true` / `roundedShape=true` /
+  **`adaptiveColors=true`** / `colorStroke` 4 色 / `borderCycleTime=1000`）。
+- Modern UI **不用 Mixin 改 `GuiGraphics`**：两个 mixin 配置（`mixins.modernui-neoforge.json`、
+  `mixins.modernui-textmc.json`）里**没有任何 tooltip / `GuiGraphics` 注入**。
+- 它订阅 `RenderTooltipEvent.Pre`：`UIManagerForge#onRenderTooltipH`（`EventPriority.HIGH`）调
+  `drawExtTooltip(...)` **自己画**；`#onRenderTooltipL`（`EventPriority.LOW`）`event.setCanceled(true)`
+  **取消原版**。两者方法体首句都是 `if (!TooltipRenderer.sTooltip) return;`。
+- ⇒ 现代提示框开启时 `GuiGraphics#renderTooltipInternal` 被取消，`RenderTooltipEvent.Color` **永不派发**
+  ⇒ 本模组 `client/RarityTooltipFrame` 整体空转（= 用户实报的「彩色边框不生效」）。
+- 框色链：`TooltipRenderer.sStrokeColor`(4 槽) → `computeWorkingColor()` → `mWorkStrokeColor`
+  → `updateBorderColor()` → `mActiveStrokeColor` → `chooseBorderColor()`。
+- ⚠️ `computeWorkingColor` 的 `sAdaptiveColors=false` 分支是
+  `System.arraycopy(sStrokeColor, 0, mWorkStrokeColor, 0, 4)`；`=true` 分支从**物品名逐字色**取值
+  （`applyRarityTo` = `Rarity#getStyleModifier()`）并过一步 HSV 压缩（`s = min(s,0.9)` / `v = clamp(v,0.2,0.85)`）。
+  ⚠️ **实物字节码修正（第二轮复核）**：`n == 1`（单色物品名）分支在 `offset 417~451` **连调 3 次 `adjustColor`
+  并分别 `istore 8 / 9 / 10`**，连同槽 0 共**四槽都有色** —— 我方最初「槽 1/2 从未赋值」的说法是**误读**
+  （源自被 `grep -A3` 截断的反汇编窗口）。真实代价是**取色精度**：v=1.0 的档位色被压到 0.85（变暗、与物品名不同色），
+  且奇特档只有一个名字色 ⇒ 做不出流动彩虹。
+
+#### 改动（**四线**；1.21.1 / 1.20.1 / 26.1.2 走事件式，fabric 走 mixin 式）
+- 新增 `client/ModernUITooltipCompat`：`RenderTooltipEvent.Pre` 上
+  `@SubscribeEvent(priority = EventPriority.HIGHEST)` 写、`priority = EventPriority.LOWEST` 还
+  （必须早于 Modern UI 的 `HIGH`、晚于它的 `LOW`；⚠️ 还原那一个处理器**必须带 `receiveCanceled = true`**
+  —— Modern UI 正是在 `LOW` 把 Pre 取消，总线会跳过未声明该标志的处理器）；写入时保留玩家配置的 alpha；
+  并按需临时置 `sAdaptiveColors=false` 后写回。只反射 `sStrokeColor` / `sAdaptiveColors` / `sTooltip`
+  三个**公开静态成员**；结构校验（`int[]` 且长度 ≥4）不通过即整层停用。
+- 配置：`ModCommonConfig` 新增 `modernui_tooltip_frame_compat`（默认 true），`CONFIG_VERSION` 5 → 6。
+- 档位口径与 `RarityTooltipFrame` 一致：史诗 / 传奇 / 巅峰 = 四槽同色（整圈单色）；
+  奇特 = 四槽各差 1/4 圈（整圈流动彩虹）；**稀有档不干预**；非本模组档位一律不碰。
+
+#### 验证
+- 四线 `BUILD SUCCESSFUL`；开包核对：`client/ModernUITooltipCompat.class` 在**四条产物**里都有，
+  字节码里 `sStrokeColor` / `sAdaptiveColors` / `sTooltip` 三个字段名齐备，
+  `javap -v` 显示注解实值为 `priority=HIGHEST` 与 `priority=LOWEST, receiveCanceled=true`。
+- 守门全绿（本批不动资源 / lang / 配方，主要覆盖编译与源一致性）。
+- ✅ **26.1.2 已实机取证（2026-10-04）**：把 `ModernUI-NeoForge-26.1.2-3.13.0.5.jar` 放进 `run/26.1.2/mods/` 后跑
+  用例 `MODERNUI-26.1.2`（`inject_key e` 开物品栏 + `inject_mouse left` 触发一次 tooltip 渲染 ⇒ 懒探测执行）
+  ⇒ **16/16 PASS**，`latest.log` 出现 `[Astral Dice] Modern UI …sStrokeColor`（探测成功那条 info）。
+  ⚠️ 该用例有**环境前置**（`run/26.1.2/mods/` 需有 Modern UI，sha1 `1432b7e3…`）；未装时正断言必然 FAIL，
+  不会静默通过。
+- **仍未做**：**边框观感的人工目视**（颜色"看起来对不对"）—— 机器断言只能证明「探测成功 + 无异常」。
+
+#### 已知边界（如实记录）
+- **只对 1.21.1 / NeoForge 3.12.0.2 做过实物取证**：1.20.1 与其它 Modern UI 版本走同一套
+  按**字段名**探测的逻辑，字段名不符即整层静默停用（fail-safe，不做版本猜测）。
+- ⚠️ **26.1.2 已于 2026-10-04 收口**：该线**平台**确实没有颜色钩子（1.21.1 的 `RenderTooltipEvent.Color` 已被
+  **`Texture`** 取代 —— `javap` 实证 26.1.2.109 只有 `Pre`/`GatherComponents`/`Texture`），但 **Modern UI 是自绘的**、
+  有 26.1.2 构建（`ModernUI-NeoForge-26.1.2-3.13.0.5`，sha1 `1432b7e3…`），其 `UIManagerForge` 接管链与 1.21.1
+  **逐条同构**（`HIGH` 自绘 + `LOW` `setCanceled(true)`），`TooltipRenderer` 三字段同名同型 ⇒ 已新增该线的
+  `client/ModernUITooltipCompat`（**该线唯一的档位边框染色途径**）。
+  ⚠️ **判据教训**：「平台有无某事件」≠「第三方模组是否影响本模组」—— 第三方自绘时不经过平台事件。
+- `fabric-1.20.1` **已同步**（走 `ClientTooltipBridgeMixin` 的 HEAD/RETURN，Fabric 无事件优先级/`receiveCanceled`）。
+- 只接管**本模组档位**的物品；原版 / 其它模组物品在 Modern UI 下的表现不受影响（含其自身的残缺梯度）。
+
+#### 第二轮独立复核发现并已修（2026-10-04）
+独立子代理用**原始字节码**复核，抓出 2 个实质问题 + 3 处文档不一致，均已处理：
+1. 🚨 **还原处理器缺 `receiveCanceled = true`**（功能隐患）：`RenderTooltipEvent.Pre` 可取消，
+   Modern UI 正是在 `EventPriority.LOW` 把它取消；而 NeoForge bus 8 / Forge eventbus 6 都会
+   **跳过未声明该标志的处理器**（`SubscribeEventListener#invoke` / `ASMEventHandler#invoke` 均判 `receiveCanceled()`）
+   ⇒ 少了它，「画完当帧立刻还原」不成立（只剩下一帧的自愈兜底）。已补，两条线一致。
+2. 🚨 **我方「`n == 1` 时槽 1/2 从未赋值」的说法被实物字节码证伪**（事实错误）：
+   `computeWorkingColor` 的 `n == 1` 分支在 `offset 417~451` 连调 3 次 `adjustColor`
+   （`istore 8 / 9 / 10`），**四槽都有色**。该误读源自被 `grep -A3` 截断的反汇编窗口。
+   已把结论改写为「**取色精度不足**」（HSV 压缩把 v=1.0 压到 0.85、且单色名字产不出彩虹），
+   同步修正源码 javadoc / `AGENTS.md` / 本文件；并在 AGENTS 里留下「别再写成槽位缺失」的反向提示。
+3. **文档不一致**：`AGENTS.md` 与本节原本写「三线各一份 / 三线 BUILD SUCCESSFUL」，与实现（两线）矛盾，已全部改为两线。

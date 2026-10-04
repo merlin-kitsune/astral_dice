@@ -36,7 +36,6 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.ai.attributes.Attributes;
-import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 
 import java.util.ArrayList;
 import java.util.HashSet;

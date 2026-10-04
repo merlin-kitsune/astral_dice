@@ -1,0 +1,86 @@
+{
+  "case_id": "MODERNUI-26.1.2",
+  "title": "26.1.2 Modern UI 提示框边框兼容层**实机启用取证**：装上 Modern UI（run/mods 内）后，第一次 tooltip 渲染必须让反射探测通过并打『已启用』，且不得出现『未启用（接口不匹配）』",
+  "version": "26.1.2",
+  "target": {
+    "type": "env",
+    "ref": "modernui_compat"
+  },
+  "on_fail": "keep_game_running",
+  "steps": [
+    {
+      "op": "note",
+      "text": "目的：证实 26.1.2 线的 Modern UI 兼容层**真的能探测并启用**（而不是只编译通过）。\n\n背景：该线此前登记为「平台无该机制 ⇒ 平台差异，不做兼容层」。2026-10-04 更正并落地\n`client/ModernUITooltipCompat`（对接 Modern UI 自身的 `TooltipRenderer#sStrokeColor`）。\n**前置条件（必须）**：`run/26.1.2/mods/` 内需有 `ModernUI-NeoForge-26.1.2-3.13.0.5-universal.jar`\n（Modrinth `modern-ui`，sha1 1432b7e3…）—— 未装时本用例的『已启用』断言必然失败。\n\n触发机制：本兼容层是**懒探测** —— 探测在第一次 `RenderTooltipEvent.Pre`（即第一次渲染工具提示）\n时执行 ⇒ 本用例用「创造模式 + 打开物品栏 + 中心左键」制造一次悬停/光标持物，从而渲染 tooltip。\n\n判据（全部锚定 latest.log，ASCII 片段）：\n  ① 必须出现 `Modern UI … sStrokeColor`（探测成功那条 info，含两个 ASCII 锚点）；\n  ② 不得出现 `Modern UI … 未启用`（探测失败 / 接口不匹配那条 warn）；\n  ③ 不得有 crash / kubejs 错误。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode creative",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_key",
+      "key": "e",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1000
+    },
+    {
+      "op": "inject_mouse",
+      "button": "left",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1000
+    },
+    {
+      "op": "inject_mouse",
+      "button": "left",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1000
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "\\[Astral Dice\\] Modern UI .{0,80}sStrokeColor"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "Modern UI .{0,40}sStrokeColor 不是 int\\[\\]"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "Modern UI .{0,40}槽位不足"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "Modern UI 提示框边框兼容未启用"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "Modern UI 提示框边框兼容写入失败"
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "crash"
+    }
+  ],
+  "evidence": []
+}

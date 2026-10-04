@@ -26,6 +26,7 @@ import com.merlinkitsune.starenginelib.target.TargetSelectionRegistry;
 import com.merlinkitsune.starenginelib.target.TargetType;
 import com.merlinkitsune.starenginelib.target.SelectorTargets;
 import com.merlinkitsune.starenginelib.target.SignSelectionGate;
+import com.merlinkitsune.astral_dice.target.SelectorRangeModifiers;
 /**
  * 目标选择器服务端管理器（权威）。
  *
@@ -56,6 +57,13 @@ public final class TargetSelectionManager {
      * 「配置上限 32 不可突破」，故显式声明更大范围的动作用本值夹取；配置值仍是**缺省**范围。
      */
     private static final double MAX_SELECT_RADIUS = 32.0D;
+
+    /**
+     * **加成后**会话半径的硬上限(格)= {@link SelectorRangeModifiers#MAX_ENHANCED_RADIUS}
+     * (2026-10-03 用户裁决「两处 +50% 相加」⇒ 活体书页 32 × 2.0 = 64)。
+     * ⚠️ 与上面那个**声明值**契约上限分开:声明值仍不得越 32,加成只放大会话半径。
+     */
+    private static final double MAX_ENHANCED_RADIUS = SelectorRangeModifiers.MAX_ENHANCED_RADIUS;
 
     /** 选择会话（纯内存，瞬态） */
     public static final class Session {
@@ -179,7 +187,12 @@ public final class TargetSelectionManager {
         // 该会话的锁定范围 = 动作声明的范围(缺省 = 配置值),按契约上限 32 格夹取。
         // ⚠️ 这里**不能**再用配置值当硬上限:配置是「缺省范围」,而活体书页显式声明 32 格
         // (2026-09-19 用户要求),若仍按配置默认 16 夹取,声明的 32 会被静默截半。
-        double radius = Math.max(1.0, Math.min(action.radius(), MAX_SELECT_RADIUS));
+        double declaredRadius = Math.max(1.0, Math.min(action.radius(), MAX_SELECT_RADIUS));
+        // 玩家侧加成(2026-10-03 用户裁决):探天卫星筹码常驻 +50%(仅效果牌)与「书页射程」状态
+        // +50%(仅活体书页)按**相加**合并,再按 MAX_ENHANCED_RADIUS(64)夹取 —— 声明值的契约上限
+        // 仍是 32,加成只放大**会话**半径;客户端射线/高亮与服务端确认都读这个夹取后的值。
+        double radius = Math.min(SelectorRangeModifiers.apply(player, actionId, declaredRadius),
+                MAX_ENHANCED_RADIUS);
         // 对自身使用的唯一来源（消费方侧接口，不改前置库）：实现 SelfTargetable 的动作才为 true
         // （当前 allowSelf=true 的动作 = ren_privilege、三张可自用效果牌 express_delivery / luxury_feast / berserk
         //  与 lulu_healing_slime(2026-09-19 追加)；其余动作缺省 false）。

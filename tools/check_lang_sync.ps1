@@ -561,7 +561,7 @@ $targetDirs = [System.Collections.Generic.List[string]]::new()
 if ($PSBoundParameters.ContainsKey('LangDir')) {
     $targetDirs.Add($LangDir)
 } else {
-    foreach ($proj in @('neoforge-1.21.1', 'forge-1.20.1', 'neoforge-26.1.2')) {
+    foreach ($proj in @('neoforge-1.21.1', 'forge-1.20.1', 'neoforge-26.1.2', 'fabric-1.20.1')) {
         $cand = Join-Path $proj 'src/main/resources/assets/astral_dice/lang'
         if (Test-Path -LiteralPath $cand -PathType Container) { $targetDirs.Add($cand) }
     }

@@ -21,6 +21,14 @@ public class LivingPageItem extends BaseEffectCardItem {
         registerSelectorAction(ACTION_ID, TargetType.CREATURE, false, LOCK_RANGE);
     }
 
+    /**
+     * 该 actionId 是否为本牌(活体书页)的动作 —— 供 {@code target/SelectorRangeModifiers}
+     * 判定「书页射程」加成是否作用于本次会话(避免在别处写裸字面量 {@code "living_page"})。
+     */
+    public static boolean isLivingPageAction(String actionId) {
+        return ACTION_ID.equals(actionId);
+    }
+
     public LivingPageItem(Properties properties) {
         super(properties);
     }

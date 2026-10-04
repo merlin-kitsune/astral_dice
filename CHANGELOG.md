@@ -4,7 +4,7 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
-## Unreleased (2.0.0-SNAPSHOT.23)
+## Unreleased (2.0.0-SNAPSHOT.24)
 
 ### New Content
 
@@ -289,6 +289,12 @@
 - **Big Bowl of Stew: friendly-creature healing removed, healing points raised to 2** (user request 2026-09-28): it **no longer heals friendly creatures** when the blessing ends; healing points go from **1 to 2**, and the wording now explicitly says **"you and all friendly players within 16 blocks"**.
 
 <!-- 内容与平衡性调整在此登记 -->
+- **Synced the player-visible changes from the main line's `1.3.7` batch** (merged `multi-main`, 2026-10-04):
+  the medkit re-log / dimension-change heal exploit is closed, sign rarities realigned, a Modern UI tooltip-frame
+  compat layer added, the 26.1.2 economy-storage gap closed, the Fabric line caught up, and more - see the
+  `## 1.3.7` / `## 1.3.6` sections below. Note the "Enigmatic Legacy" integration is removed **only on
+  `fabric-1.20.1` and `neoforge-26.1.2`** (the mod does not exist for those lines); the two P0 lines keep it.
+
 
 ### Bug Fixes
 
@@ -395,6 +401,11 @@
   a missing texture. It is now a **byte-for-byte copy** of the texture used by the other three lines (sha1
   `d099ddc7e9da`, 224 bytes). The `tools/verify_effect_icons.py` gate therefore goes FAIL → PASS (100% icon coverage
   across 211 effects on four lines).
+- **ActionBar text no longer overlaps the item-name tooltip** (library follow-up carried in by this merge):
+  the library's `client/ActionBarManager` render `y` moved from `guiHeight()-58` to **`-68`** (vanilla pins the
+  hotbar item-name tooltip at `guiHeight-max(yShift,59)`, so the old value sat 1 px away on the same row).
+  Library version `2.0.0-SNAPSHOT.10` -> **`.11`**; affects all four lines.
+
 
 
 #### Text & Handbook
@@ -540,9 +551,91 @@
   text) and simply expires; re-casting only **refreshes the duration**, never stacks the multiplier. NOTE: the
   active's existing cooldown rhythm and lock semantics are unchanged (it does not enter the "in effect" lock
   state, so it can be re-cast to refresh).
+- **"Bite" and "Dragon's Roar" exclusive note moved to its own line** (2026-10-04, user decision):
+  the tooltips of the two Mamushi-sign exclusive combat cards used to inline
+  "Exclusive combat card: usable only by its obtainer" at the **end of the description line**
+  (joined with ` | `). They now match the exclusive **effect** cards such as "Fate's Guidance" and
+  "Living Page" - the note occupies **its own bottom line**, rendered in **dark purple** (`§5`).
+- **"Star Coin Hammer" tooltip simplified** (2026-10-04, user decision): both parenthetical notes are
+  removed - the Star Coin Bag breaking rule
+  "(when loose coins are short it breaks open 1 Star Coin Bag, 9 coins per bag, takes only the coins
+  needed and leaves the rest in your inventory, and consumes nothing if they cannot be stored safely)"
+  and the damage cap "(up to 100)" - and the text now ends with ", up to 100 damage".
+- **Sign / card tooltip wording and formatting cleanup** (2026-10-04, user decision):
+  - **Investigator Sign**: the active tooltip gains the line "If you have no Living Page in your
+    inventory, gain one extra"; the passive tooltip drops "(wearers within 32 blocks or in your
+    team)" - the passive now follows the **latest event rule** and grants a Living Page whenever you
+    are affected by an event, regardless of distance or party.
+  - **Guardian Sign**: the bottom line "All Sword Qi stacks are lost on death" is removed.
+  - Two formatting inconsistencies fixed along the way: the **Revenge Halberd** chip's current
+    attack / defense line no longer uses a leading newline inside the lang value (the blank line is
+    now added in code, matching every other chip); the **Megas Sign (Orbital Bombardment)** tooltip
+    loses its trailing period (single-line tooltips in this mod do not end with a period).
+- **Two tooltip blank lines removed per user decision** (2026-10-04):
+  - **Nancy Lu Sign**: the attack / defense counter now sits **flush against** the passive description -
+    this sign no longer uses the counter path that prepends a blank line (every other sign is
+    **unchanged**).
+  - **All cards** (attack / defense / effect cards and the exclusive combat cards - 26 branches in
+    total): the **top** blank line is removed, so the cost line or description follows the item name
+**directly**. NOTE: signs / chips / materials / dice keep their top blank line.
+
+- **The Fabric 1.20.1 line catches up on three player-visible behaviours** (2026-10-04): that line is an
+  independent pre-release port (artifacts carry `-alpha.N` and are never merged into a stable Release).
+  This update brings over three decisions already live on the other lines:
+  - **Non-weapon tools no longer count as a "melee weapon attack"**: hitting someone with **shears / a
+    fishing rod / flint and steel / a brush** no longer triggers the Dice Blessing (dice combat).
+  - **Luck-blessing / Divine Descent countdowns are now started by *any* hit**: a **ranged hit**
+    (bow / crossbow / thrown projectile) also starts the 2-minute countdown (previously melee only).
+  - **Rarity border colours no longer break when "Modern UI" is installed with its modern tooltip
+    enabled**: the tier colour is now written into Modern UI own stroke slots and restored right after
+    that render pass. Config: **`modernui_tooltip_frame_compat`** (on by default); when Modern UI is
+    absent the compat layer is a no-op.
 
 ### Bug Fixes
 
+- **The "Monster Brick" card recipe could never be crafted on 1.20.1 Forge - wrong common tag namespace (`c:` should be `forge:`)** (reported 2026-10-04):
+  On Forge 1.20.1 the common tag namespace is **`forge:`** (`c:` is the community tag system of NeoForge 1.21+
+  and Fabric), but the recipe still used the NeoForge-side `c:bricks` - and **no provider of any `c:` tag exists
+  on 1.20.1**, so the ingredient could never be satisfied and the **"Monster Brick" card was impossible to craft**
+  (its `has_bricks` unlock criterion likewise never fired). It now uses `forge:bricks`. Note that Forge 47.x ships
+  `forge:ingots/brick` and `forge:ingots/nether_brick` but **no combined tag**, so this mod defines the aggregate
+  tag itself in `data/forge/tags/items/bricks.json` pointing at those two - semantically **identical** to
+  NeoForge's `c:bricks` (= `c:bricks/normal` plus `c:bricks/nether`; either a brick or a nether brick works).
+  Only the Forge line changed: the two NeoForge lines keep using their bundled `c:bricks`, and the Fabric line
+  keeps its own self-defined `c:bricks`.
+- **Permanent effects on Forge still showed a huge countdown instead of infinity - added "legacy permanent-duration normalisation"** (reported 2026-10-04: "the charge effect indicator still shows an absurdly long timer"):
+  Since 1.3.4 this mod's permanent effects (Charge / Doll Crafting / Doll Complete / Foxglow / Dragon Form /
+  Misfortune / Precision Strike / Blue Curse, plus the "ready" indicators of the cutter, the flashlight and the
+  six damage chips) all use vanilla's **true infinite duration** (`INFINITE_DURATION` = `-1`, shown as the
+  infinity symbol), but that change only touched the **application sites** - **instances written into player saves
+  by earlier versions are still decremented `Integer.MAX_VALUE` values** (an actual save holds
+  `astral_dice:charge Duration=2147482289`, displayed as `29826:08:34` in the inventory effect panel instead of
+  the infinity symbol). No existing path ever corrects them: the timer guard (`EffectTimerGuard`) treats any
+  over-long value as "permanent" and skips it (**never tracking it, hence never correcting it**), and each
+  effect's application site is only reached when the player re-acquires, consumes, or toggles equipment. A
+  **once-per-second normalisation** has been added: instances of **this mod's** effects whose duration is at or
+  above `Integer.MAX_VALUE / 2` are rewritten to `-1` (duration only; amplifier, ambient, visibility and icon
+  flag are preserved, so no effect semantics change). The predicate deliberately uses an **over-long threshold
+  rather than an effect list**: this mod's legitimate countdowns peak at 24000 ticks (the shield / resistance refresh window in
+  `RenShieldManager`; everything else is at most 3600 ticks), roughly 4.6 orders of magnitude
+  below the threshold, so none of them are affected - and the two-state effects (Zhao Blessing / Descent in their
+  "started" state, 2400 ticks) are equally untouched. This batch lands on the **three production lines**
+  (1.21.1 / 1.20.1 / 26.1.2); the Fabric line follows in a later batch.
+- **Rarity border colours were discarded entirely when Modern UI is installed with its "modern tooltip" enabled - added a client-side compatibility layer** (reported 2026-10-04: "coloured border not working"):
+  Modern UI does **not** mix into vanilla rendering; it subscribes to `RenderTooltipEvent.Pre` - a high-priority
+  handler draws the whole tooltip itself, then a low-priority handler cancels vanilla rendering, so the border
+  colour we write into `RenderTooltipEvent.Color` is **never dispatched** (`client/RarityTooltipFrame` becomes a
+  complete no-op). A new compatibility layer, `client/ModernUITooltipCompat`, therefore rewrites Modern UI's own
+  four border-colour slots at a **higher** priority, restores them **immediately** after that single draw, and
+  **temporarily steps aside from Modern UI's "adaptive colours"** (that path takes its colours from the item
+  name's per-character colours and then runs them through an HSV clamp that caps brightness at 0.85, so our tier
+  colours would come out **darkened** and off-colour next to the item name and the native path; and the rainbow
+  tier only has one name colour to work with, so no **flowing rainbow** is possible) - **without touching any of
+  Modern UI's persistent settings**. The rainbow tier gains a **full flowing rainbow ring** (the native path is a
+  two-colour gradient). It only steps in for **our own rarity tiers**; vanilla and other mods' items are left
+  untouched, and the rare tier keeps its existing rule (not applied). Switch: the config option
+  `modernui_tooltip_frame_compat` (on by default), plus the system property
+  `-Dastral_dice.modernUITooltipCompat=false` to disable the layer entirely. It now covers **all four builds**: 1.21.1 / 1.20.1 / fabric use the native frame-colour event, while **26.1.2** - whose platform only exposes a texture hook and no colour event - uses a layer that writes Modern UI's own stroke colours instead, so on that build the tiers show whenever Modern UI is installed.
 - **Bullet detection switched from keyword guessing to per-mod evidence - fixing two cases of
   firearm damage misread as ranged/magic damage** (reported 2026-10-03: "bullet detection still fails
   for some mods"): the firearm filter used to look only for the keywords `bullet` / `gun` / `cannon`
@@ -615,6 +708,20 @@
   be opened while holding an effect card). NOTE: collapsing is **not** disabling - the server remembers
   "this card is still in the main hand", so the selector does **not** pop back on the next tick; put the
   card away and hold it again to re-open it, and J returns to casting the sign's active skill.
+
+- **Medkit chips no longer re-settle healing on "re-login / dimension change"** (2026-10-04, user decision):
+  besides "on equip" and "after respawn", the chip also treated **every re-login** and **every dimension change**
+  as a full trigger (add points -> heal for the current stacks x2 -> restart the 1:00 timer), so repeatedly
+  re-logging or walking through a portal let you **farm healing without limit** (with 32 stacks a single pass
+  healed 64 HP). Per that decision those two moments are now **removed**: the chip triggers in exactly **two**
+  places - "**when the chip is actually equipped**" and "**after respawning from death**".
+  NOTE: this does not depend on the chip still being in a slot - wearing it through a re-login or a dimension
+  change no longer triggers anything either.
+- **In-game manual tier wording for the Hanna Sign / Sherry Sign did not match the items' actual tier**
+  (2026-10-04, user decision): both signs have **always** been the "Bizarre" tier as items, but the manual
+  text called them "Rare" and "Epic". Following the "items are the source of truth" rule, the manual wording
+  is now unified to "**Bizarre tier**" (Chinese / English / Japanese in sync).
+  NOTE: manual text only - item rarities, drops and recipes are unchanged.
 
 ## 1.3.6
 
@@ -1154,6 +1261,50 @@
 
 - **Pack deploy targets corrected on this machine (2026-09-29)**: the `pushToGame` task of the 1.20.1 and 26.1.2 lines pointed at pack directories that **no longer exist on disk** (`1.20.1 模组测试` / `26.1.2 模组测试` - the packs had been renamed to carry a platform suffix), so both tasks had been printing `pushToGame: pack dir not found, skipped` and **silently deploying nothing** - the jars sitting in the packs were frozen at the last moment the paths still existed. They now point at the real directories `1.20.1-Forge 模组测试` / `26.1.2-NeoForge 模组测试`. This is a **build-script-only** change: no version bump, no artifact change, nothing player-visible. The lesson is recorded in `AGENTS.md`: `packModsDir` must **never** be inferred from a naming convention - after a machine swap or a pack rename, list `D:/.minecraft/versions/` and confirm a `pushToGame: pushed … -> <target>` line in the build log **for every line**, because `BUILD SUCCESSFUL` on its own hides a silent skip.
 
+## 1.3.2+fabric_1.20.1
+
+> **First release of the Fabric 1.20.1 port line** (2026-09-29). Content is **feature-equivalent** to the
+> contemporary releases of the three production lines (NeoForge 1.21.1 / Forge 1.20.1 / NeoForge 26.1.2);
+> only the mod loader differs (the version number carries the `+fabric_1.20.1` suffix).
+> ⚠️ This is a **port / test line**: on GitHub it ships as a **pre-release** and never enters Latest.
+
+### Content & Balance
+
+#### Items, Chips & Trading
+
+- **(platform difference) The bounty reward-pool integration is no longer offered**: Bountiful has no Fabric build
+  for 1.20.1, so this line ships neither bounty decrees nor reward-pool data, and the matching handbook entry is gone.
+- **(platform difference) The Iron's Spells 'n Spellbooks integration is no longer offered**: that mod has no Fabric
+  build for 1.20.1, so the corresponding Fate's Guide note no longer appears; ranged / magic damage detection still
+  covers vanilla and the remaining supported spell mods.
+
+#### State, Persistence & Sync
+
+- **(platform difference) Trinkets replaces the accessory slots**: how accessories are equipped, their slot icons and
+  their screen position differ from the Forge build; the datapack slot definitions change with the platform.
+- **(platform difference) Player save data uses a different format**: this line stores its persistent data through
+  Fabric API's data attachment mechanism, so **saves are not interchangeable with the Forge / NeoForge builds**
+  (cross-loader save migration is unsupported).
+
+### Bug Fixes
+
+- **A batch of mechanisms that had not been wired up during the port is now fully connected**: the first-loot-chest gift,
+  the immunity window on ender pearl impact, the warp engine's charge gain when crossing dimensions, temporary cards
+  refusing to be dropped, the Overflow accumulation of the Guardian's Blessing, the doubled saturation from Fate's Guide
+  while eating, and the item models and crafting recipes of every item.
+- **The two "specific potion" recipes match exactly again**: Adrenaline (Low) requires a Potion of Regeneration and the
+  Friendship Badge requires a Potion of Healing; both previously accepted *any* potion (plain water bottles, Awkward
+  Potions and so on). They now match the intended potion exactly, in line with all three production lines.
+- **Fixed the "Monster Brick" card recipe being impossible to craft**: it required an ingredient from the `#c:bricks` tag,
+  which nothing provided on 1.20.1, so the condition could never be satisfied (no error in-game — it simply never worked).
+  The mod now supplies that tag itself; both Brick and Nether Brick work.
+
+### Requirements
+
+- Fabric Loader 0.19.x + Fabric API (1.20.1 line, 0.92.12)
+- Trinkets 3.7.2 — accessory slots, required
+- Puzzles Lib 8.1.33 + Forge Config API Port 8.0.3 — event bridge, required
+- Optional: Accessories 1.0.0-beta.48 (used first when installed; both channels work when it coexists with Trinkets)
 ## 1.3.2-hotfix
 
 > **1.20.1 line only** hotfix (`1.3.2-hotfix+forge_1.20.1`); the 1.21.1 and 26.1.2 lines keep their version numbers and artifacts **unchanged**.

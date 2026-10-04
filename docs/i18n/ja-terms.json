@@ -1,0 +1,1360 @@
+{
+  "characters": [
+    {
+      "sign_id": "bonnie",
+      "en": "Bonnie",
+      "zh": "邦妮",
+      "title_zh": "毒苹果",
+      "ja": "ボニー",
+      "src": "bili",
+      "ja_wikigg": ""
+    },
+    {
+      "sign_id": "fanny",
+      "en": "Fanny",
+      "zh": "芬妮",
+      "title_zh": "古怪神探",
+      "ja": "ファニィ",
+      "src": "bili",
+      "ja_wikigg": "ファニィ"
+    },
+    {
+      "sign_id": "fen",
+      "en": "Fen",
+      "zh": "姬梦枫",
+      "title_zh": "旗袍娘",
+      "ja": "ヒメ",
+      "src": "bili",
+      "ja_wikigg": "パルナン"
+    },
+    {
+      "sign_id": "haiqing",
+      "en": "HaiQing",
+      "zh": "蓝海晴",
+      "title_zh": "命运少女",
+      "ja": "カイセイ",
+      "src": "bili",
+      "ja_wikigg": ""
+    },
+    {
+      "sign_id": "hanna",
+      "en": "Hanna",
+      "zh": "远野汉娜",
+      "title_zh": "汉娜",
+      "ja": "遠野ハンナ",
+      "src": "bili",
+      "ja_wikigg": ""
+    },
+    {
+      "sign_id": "jasmine",
+      "en": "Jasmine",
+      "zh": "茉莉",
+      "title_zh": "家政机器人",
+      "ja": "ジャスミン",
+      "src": "bili",
+      "ja_wikigg": "ジャスミン"
+    },
+    {
+      "sign_id": "komachi",
+      "en": "Komachi",
+      "zh": "小町",
+      "title_zh": "暗影忍者",
+      "ja": "コマチ",
+      "src": "bili",
+      "ja_wikigg": "コマチ"
+    },
+    {
+      "sign_id": "lulu",
+      "en": "Lulu",
+      "zh": "璐璐",
+      "title_zh": "史莱姆",
+      "ja": "ルル",
+      "src": "bili",
+      "ja_wikigg": "ルル"
+    },
+    {
+      "sign_id": "mamushi",
+      "en": "Mamushi",
+      "zh": "真梦梓",
+      "title_zh": "沼之蛟龙",
+      "ja": "真夢梓",
+      "src": "bili",
+      "ja_wikigg": ""
+    },
+    {
+      "sign_id": "mimi",
+      "en": "Mimi",
+      "zh": "米米",
+      "title_zh": "看板娘",
+      "ja": "ミミ",
+      "src": "bili",
+      "ja_wikigg": "パルナン"
+    },
+    {
+      "sign_id": "misaki",
+      "en": "Misaki",
+      "zh": "美咲",
+      "title_zh": "太刀使",
+      "ja": "ミサキ",
+      "src": "bili",
+      "ja_wikigg": "ミサキ"
+    },
+    {
+      "sign_id": "moses",
+      "en": "Moses",
+      "zh": "摩西",
+      "title_zh": "枪匠",
+      "ja": "モーゼス",
+      "src": "bili",
+      "ja_wikigg": ""
+    },
+    {
+      "sign_id": "nancy_lu",
+      "en": "Nancy Lu",
+      "zh": "南希露",
+      "title_zh": "网络魅影",
+      "ja": "ナンシー・ロー",
+      "src": "bili",
+      "ja_wikigg": "ナンシー・ロー"
+    },
+    {
+      "sign_id": "nardis",
+      "en": "Nardis",
+      "zh": "娜蒂斯",
+      "title_zh": "绿洲女王",
+      "ja": "ナーディス",
+      "src": "bili",
+      "ja_wikigg": "ナーディス"
+    },
+    {
+      "sign_id": "padman",
+      "en": "Padman",
+      "zh": "派德曼",
+      "title_zh": "社员叔叔",
+      "ja": "パッドマン",
+      "src": "bili",
+      "ja_wikigg": "ファニィ"
+    },
+    {
+      "sign_id": "pandaman",
+      "en": "Pandaman",
+      "zh": "潘大猛",
+      "title_zh": "肉弹战车",
+      "ja": "パンダマン",
+      "src": "bili",
+      "ja_wikigg": "パンダマン"
+    },
+    {
+      "sign_id": "papara",
+      "en": "Papara",
+      "zh": "帕帕拉",
+      "title_zh": "猩红辣妹",
+      "ja": "パパラ",
+      "src": "bili",
+      "ja_wikigg": "パパラ"
+    },
+    {
+      "sign_id": "parunan",
+      "en": "Parunan",
+      "zh": "帕露南",
+      "title_zh": "商业之主",
+      "ja": "パルナン",
+      "src": "bili",
+      "ja_wikigg": "パルナン"
+    },
+    {
+      "sign_id": "ren",
+      "en": "Ren",
+      "zh": "恋",
+      "title_zh": "游戏大师",
+      "ja": "レン",
+      "src": "bili",
+      "ja_wikigg": ""
+    },
+    {
+      "sign_id": "rin",
+      "en": "Rin",
+      "zh": "凛",
+      "title_zh": "新人调查员",
+      "ja": "リン",
+      "src": "bili",
+      "ja_wikigg": ""
+    },
+    {
+      "sign_id": "sherry",
+      "en": "Sherry",
+      "zh": "橘雪莉",
+      "title_zh": "雪莉",
+      "ja": "橘シェリー",
+      "src": "bili",
+      "ja_wikigg": ""
+    },
+    {
+      "sign_id": "teru",
+      "en": "Teru",
+      "zh": "照",
+      "title_zh": "三神御主",
+      "ja": "テル",
+      "src": "bili",
+      "ja_wikigg": ""
+    },
+    {
+      "sign_id": "zhao",
+      "en": "Zhao",
+      "zh": "姬梦朝",
+      "title_zh": "风水师",
+      "ja": "ユメ",
+      "src": "bili",
+      "ja_wikigg": ""
+    }
+  ],
+  "world_terms": [
+    {
+      "zh": "星币",
+      "ja": "スターコイン",
+      "note": "JP 官方公告原文"
+    },
+    {
+      "zh": "星盘",
+      "ja": "星盤",
+      "note": "JP 官方公告原文（保留汉字）"
+    },
+    {
+      "zh": "筹码",
+      "ja": "チップ",
+      "note": "JP 官方公告：「チップ解説」"
+    },
+    {
+      "zh": "卡牌",
+      "ja": "カード",
+      "note": "JP 官方公告：「カード詳細」"
+    },
+    {
+      "zh": "地图",
+      "ja": "マップ",
+      "note": "JP 官方公告：「マップマス確認」"
+    },
+    {
+      "zh": "角色",
+      "ja": "キャラクター",
+      "note": "JP 官方公告原文"
+    },
+    {
+      "zh": "皮肤",
+      "ja": "スキン",
+      "note": "JP 官方公告：「スキンごとに追加」"
+    },
+    {
+      "zh": "战斗笔记中级篇",
+      "ja": "バトルノート中級編",
+      "note": "JP 官方公告原文"
+    },
+    {
+      "zh": "抽选券",
+      "ja": "抽選券",
+      "note": "JP 官方公告原文"
+    }
+  ],
+  "items": [
+    {
+      "id": "adrenaline_high_chip",
+      "kind": "筹码",
+      "zh": "肾上腺素-高效",
+      "en_mod": "Adrenaline - High-Grade",
+      "wiki_zh": "肾上腺素-高效",
+      "wiki_en": "",
+      "no": "Enmity",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "adrenaline_low_chip",
+      "kind": "筹码",
+      "zh": "肾上腺素-一般",
+      "en_mod": "Adrenaline - Common",
+      "wiki_zh": "肾上腺素-一般",
+      "wiki_en": "",
+      "no": "Enmity",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "airbag_chip",
+      "kind": "筹码",
+      "zh": "安全气囊",
+      "en_mod": "Airbag",
+      "wiki_zh": "安全气囊",
+      "wiki_en": "",
+      "no": "50086",
+      "ja": "エアバッグ",
+      "status": "official_ja"
+    },
+    {
+      "id": "atm_chip",
+      "kind": "筹码",
+      "zh": "ATM机",
+      "en_mod": "ATM Machine",
+      "wiki_zh": "ATM机",
+      "wiki_en": "",
+      "no": "50042",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "bank_card_high_chip",
+      "kind": "筹码",
+      "zh": "银行卡-余额多",
+      "en_mod": "Bank Card - High Balance",
+      "wiki_zh": "银行卡-余额多",
+      "wiki_en": "",
+      "no": "Gold",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "bank_card_low_chip",
+      "kind": "筹码",
+      "zh": "银行卡-余额少",
+      "en_mod": "Bank Card - Low Balance",
+      "wiki_zh": "银行卡-余额少",
+      "wiki_en": "",
+      "no": "Gold",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "bank_card_unlimited_chip",
+      "kind": "筹码",
+      "zh": "银行卡-用不完",
+      "en_mod": "Bank Card - Unlimited",
+      "wiki_zh": "银行卡-用不完",
+      "wiki_en": "",
+      "no": "Gold",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "big_backpack_chip",
+      "kind": "筹码",
+      "zh": "大背包",
+      "en_mod": "Big Backpack",
+      "wiki_zh": "大背包",
+      "wiki_en": "",
+      "no": "50028",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "big_bowl_stew_chip",
+      "kind": "筹码",
+      "zh": "大碗炖肉",
+      "en_mod": "Big Bowl of Stew",
+      "wiki_zh": "大碗炖肉",
+      "wiki_en": "",
+      "no": "50034",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "bookmark_chip",
+      "kind": "筹码",
+      "zh": "书签",
+      "en_mod": "Bookmark",
+      "wiki_zh": "书签",
+      "wiki_en": "",
+      "no": "50081",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "boxing_gloves_high_chip",
+      "kind": "筹码",
+      "zh": "拳击手套-高级",
+      "en_mod": "Boxing Gloves - Advanced",
+      "wiki_zh": "拳击手套-高级",
+      "wiki_en": "",
+      "no": "Attack",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "boxing_gloves_low_chip",
+      "kind": "筹码",
+      "zh": "拳击手套-初级",
+      "en_mod": "Boxing Gloves - Basic",
+      "wiki_zh": "拳击手套-初级",
+      "wiki_en": "",
+      "no": "Attack",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "boxing_gloves_medium_chip",
+      "kind": "筹码",
+      "zh": "拳击手套-中级",
+      "en_mod": "Boxing Gloves - Medium",
+      "wiki_zh": "拳击手套-中级",
+      "wiki_en": "",
+      "no": "Attack",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "buffer_shield_chip",
+      "kind": "筹码",
+      "zh": "缓冲盾牌",
+      "en_mod": "Buffer Shield",
+      "wiki_zh": "缓冲盾牌",
+      "wiki_en": "",
+      "no": "50040",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "candy_chip",
+      "kind": "筹码",
+      "zh": "可口糖果",
+      "en_mod": "Candy",
+      "wiki_zh": "可口糖果",
+      "wiki_en": "",
+      "no": "50033",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "current_core_chip",
+      "kind": "筹码",
+      "zh": "电流核心",
+      "en_mod": "Current Core",
+      "wiki_zh": "电流核心",
+      "wiki_en": "",
+      "no": "50089",
+      "ja": "ライトニングコア",
+      "status": "official_ja"
+    },
+    {
+      "id": "cursed_sword_chip",
+      "kind": "筹码",
+      "zh": "诅咒之剑",
+      "en_mod": "Cursed Sword",
+      "wiki_zh": "诅咒之剑",
+      "wiki_en": "",
+      "no": "50037",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "cutter_blade_chip",
+      "kind": "筹码",
+      "zh": "美工刀-锋利",
+      "en_mod": "Cutter Blade Chip",
+      "wiki_zh": "美工刀-锋利",
+      "wiki_en": "",
+      "no": "50010",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "cutter_chip",
+      "kind": "筹码",
+      "zh": "美工刀-初级",
+      "en_mod": "Cutter Chip",
+      "wiki_zh": "美工刀-初级",
+      "wiki_en": "",
+      "no": "50010",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "eagle_scope_chip",
+      "kind": "筹码",
+      "zh": "鹰眼瞄具",
+      "en_mod": "Eagle Scope Chip",
+      "wiki_zh": "鹰眼瞄具",
+      "wiki_en": "",
+      "no": "50044",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "electric_glove_chip",
+      "kind": "筹码",
+      "zh": "电击手套",
+      "en_mod": "Electric Glove",
+      "wiki_zh": "电击手套",
+      "wiki_en": "",
+      "no": "50087",
+      "ja": "電撃グローブ",
+      "status": "official_ja"
+    },
+    {
+      "id": "electric_sword_chip",
+      "kind": "筹码",
+      "zh": "电流剑",
+      "en_mod": "Electric Sword",
+      "wiki_zh": "电流剑",
+      "wiki_en": "",
+      "no": "50085",
+      "ja": "エナジーソード",
+      "status": "official_ja"
+    },
+    {
+      "id": "flashlight_chip",
+      "kind": "筹码",
+      "zh": "手电筒-强光",
+      "en_mod": "Flashlight Chip",
+      "wiki_zh": "手电筒-强光",
+      "wiki_en": "",
+      "no": "KillReward",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "golden_shooting_star_chip",
+      "kind": "筹码",
+      "zh": "金色飞星",
+      "en_mod": "Golden Shooting Star",
+      "wiki_zh": "金色飞星",
+      "wiki_en": "",
+      "no": "50078",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "hand_fan_big_chip",
+      "kind": "筹码",
+      "zh": "手持风扇-大",
+      "en_mod": "Hand Fan (Large)",
+      "wiki_zh": "手持风扇-大",
+      "wiki_en": "",
+      "no": "50030",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "hand_fan_small_chip",
+      "kind": "筹码",
+      "zh": "手持风扇-小",
+      "en_mod": "Hand Fan (Small)",
+      "wiki_zh": "手持风扇-小",
+      "wiki_en": "",
+      "no": "50030",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "magic_quiver_chip",
+      "kind": "筹码",
+      "zh": "魔法箭袋",
+      "en_mod": "Magic Quiver",
+      "wiki_zh": "魔法箭袋",
+      "wiki_en": "",
+      "no": "50047",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "magic_tome_chip",
+      "kind": "筹码",
+      "zh": "魔法秘典",
+      "en_mod": "Magic Tome",
+      "wiki_zh": "魔法秘典",
+      "wiki_en": "",
+      "no": "50029",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "marker_sprayer_chip",
+      "kind": "筹码",
+      "zh": "标记喷罐",
+      "en_mod": "Marker Sprayer",
+      "wiki_zh": "标记喷罐",
+      "wiki_en": "",
+      "no": "50032",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "medkit_complete_chip",
+      "kind": "筹码",
+      "zh": "医疗箱-完备治疗",
+      "en_mod": "Medkit - Complete",
+      "wiki_zh": "医疗箱-完备治疗",
+      "wiki_en": "",
+      "no": "Heal",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "medkit_emergency_chip",
+      "kind": "筹码",
+      "zh": "医疗箱-紧急治疗",
+      "en_mod": "Medkit - Emergency",
+      "wiki_zh": "医疗箱-紧急治疗",
+      "wiki_en": "",
+      "no": "Heal",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "member_recommendation_chip",
+      "kind": "筹码",
+      "zh": "会员推荐信",
+      "en_mod": "Membership Recommendation Letter",
+      "wiki_zh": "会员推荐信",
+      "wiki_en": "",
+      "no": "50026",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "moto_helmet_high_chip",
+      "kind": "筹码",
+      "zh": "摩托头盔-高级",
+      "en_mod": "Moto Helmet - Advanced",
+      "wiki_zh": "摩托头盔-高级",
+      "wiki_en": "",
+      "no": "Defend",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "moto_helmet_low_chip",
+      "kind": "筹码",
+      "zh": "摩托头盔-一般",
+      "en_mod": "Moto Helmet - Basic",
+      "wiki_zh": "摩托头盔-一般",
+      "wiki_en": "",
+      "no": "Defend",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "moto_helmet_medium_chip",
+      "kind": "筹码",
+      "zh": "摩托头盔-中级",
+      "en_mod": "Moto Helmet - Medium",
+      "wiki_zh": "摩托头盔-中级",
+      "wiki_en": "",
+      "no": "Defend",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "ninja_star_chip",
+      "kind": "筹码",
+      "zh": "忍术飞镖",
+      "en_mod": "Ninja Star",
+      "wiki_zh": "忍术飞镖",
+      "wiki_en": "",
+      "no": "50045",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "perpetual_motion_chip",
+      "kind": "筹码",
+      "zh": "永动机",
+      "en_mod": "Perpetual Motion",
+      "wiki_zh": "永动机",
+      "wiki_en": "",
+      "no": "50090",
+      "ja": "永久機関",
+      "status": "official_ja"
+    },
+    {
+      "id": "piercing_gun_chip",
+      "kind": "筹码",
+      "zh": "贯穿之铳",
+      "en_mod": "Piercing Gun",
+      "wiki_zh": "贯穿之铳",
+      "wiki_en": "",
+      "no": "50039",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "piggy_bank_chip",
+      "kind": "筹码",
+      "zh": "小猪存钱罐",
+      "en_mod": "Piggy Bank",
+      "wiki_zh": "小猪存钱罐",
+      "wiki_en": "",
+      "no": "50035",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "purple_shooting_star_chip",
+      "kind": "筹码",
+      "zh": "紫色飞星",
+      "en_mod": "Purple Shooting Star",
+      "wiki_zh": "紫色飞星",
+      "wiki_en": "",
+      "no": "50078",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "railgun_chip",
+      "kind": "筹码",
+      "zh": "电磁炮",
+      "en_mod": "Railgun",
+      "wiki_zh": "电磁炮",
+      "wiki_en": "",
+      "no": "50091",
+      "ja": "レールガン",
+      "status": "official_ja"
+    },
+    {
+      "id": "revenge_halberd_chip",
+      "kind": "筹码",
+      "zh": "复仇之戟",
+      "en_mod": "Revenge Halberd",
+      "wiki_zh": "复仇之戟",
+      "wiki_en": "",
+      "no": "50038",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "sandwich_high_chip",
+      "kind": "筹码",
+      "zh": "夹心饼干-美味",
+      "en_mod": "Sandwich - Gourmet",
+      "wiki_zh": "夹心饼干-美味",
+      "wiki_en": "",
+      "no": "Hp",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "sandwich_low_chip",
+      "kind": "筹码",
+      "zh": "夹心饼干-一般",
+      "en_mod": "Sandwich - Basic",
+      "wiki_zh": "夹心饼干-一般",
+      "wiki_en": "",
+      "no": "Hp",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "sandwich_medium_chip",
+      "kind": "筹码",
+      "zh": "夹心饼干-可口",
+      "en_mod": "Sandwich - Delicious",
+      "wiki_zh": "夹心饼干-可口",
+      "wiki_en": "",
+      "no": "Hp",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "satellite_chip",
+      "kind": "筹码",
+      "zh": "探天卫星",
+      "en_mod": "Satellite",
+      "wiki_zh": "探天卫星",
+      "wiki_en": "",
+      "no": "50066",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "scope_chip",
+      "kind": "筹码",
+      "zh": "普通瞄具",
+      "en_mod": "Scope Chip",
+      "wiki_zh": "普通瞄具",
+      "wiki_en": "",
+      "no": "50044",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "smart_watch_chip",
+      "kind": "筹码",
+      "zh": "智能手表",
+      "en_mod": "Smart Watch",
+      "wiki_zh": "智能手表",
+      "wiki_en": "",
+      "no": "50031",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "speed_skates_high_chip",
+      "kind": "筹码",
+      "zh": "速度轮滑-高级",
+      "en_mod": "Speed Skates - Advanced",
+      "wiki_zh": "速度轮滑-高级",
+      "wiki_en": "",
+      "no": "Speed",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "speed_skates_low_chip",
+      "kind": "筹码",
+      "zh": "速度轮滑-初级",
+      "en_mod": "Speed Skates - Basic",
+      "wiki_zh": "速度轮滑-初级",
+      "wiki_en": "",
+      "no": "Speed",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "speed_skates_medium_chip",
+      "kind": "筹码",
+      "zh": "速度轮滑-中级",
+      "en_mod": "Speed Skates - Medium",
+      "wiki_zh": "速度轮滑-中级",
+      "wiki_en": "",
+      "no": "Speed",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "star_coin_hammer_chip",
+      "kind": "筹码",
+      "zh": "星币锤",
+      "en_mod": "Star Coin Hammer",
+      "wiki_zh": "星币锤",
+      "wiki_en": "",
+      "no": "50043",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "target_chip",
+      "kind": "筹码",
+      "zh": "标靶",
+      "en_mod": "Target",
+      "wiki_zh": "标靶",
+      "wiki_en": "",
+      "no": "50046",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "vitamin_pill_chip",
+      "kind": "筹码",
+      "zh": "维生素药丸",
+      "en_mod": "Vitamin Pill",
+      "wiki_zh": "维生素药丸",
+      "wiki_en": "",
+      "no": "50027",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "warp_engine_chip",
+      "kind": "筹码",
+      "zh": "跃迁引擎",
+      "en_mod": "Warp Engine",
+      "wiki_zh": "跃迁引擎",
+      "wiki_en": "",
+      "no": "50088",
+      "ja": "ワープエンジン",
+      "status": "official_ja"
+    },
+    {
+      "id": "whetstone_chip",
+      "kind": "筹码",
+      "zh": "磨刀石",
+      "en_mod": "Whetstone",
+      "wiki_zh": "磨刀石",
+      "wiki_en": "",
+      "no": "50082",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "advanced_peripherals_chip",
+      "kind": "筹码",
+      "zh": "高级外设",
+      "en_mod": "Advanced Peripherals",
+      "wiki_zh": "",
+      "wiki_en": "",
+      "no": "",
+      "ja": "",
+      "status": "original"
+    },
+    {
+      "id": "blank_chip",
+      "kind": "筹码",
+      "zh": "空白筹码",
+      "en_mod": "Blank Chip",
+      "wiki_zh": "",
+      "wiki_en": "",
+      "no": "",
+      "ja": "",
+      "status": "original"
+    },
+    {
+      "id": "eight_sided_dice_chip",
+      "kind": "筹码",
+      "zh": "八面骰",
+      "en_mod": "Eight-Sided Dice",
+      "wiki_zh": "“8面”骰子",
+      "wiki_en": "",
+      "no": "50036",
+      "ja": "",
+      "status": "renamed"
+    },
+    {
+      "id": "energy_recycler_chip",
+      "kind": "筹码",
+      "zh": "能量回收器",
+      "en_mod": "Energy Recycler",
+      "wiki_zh": "能量回收",
+      "wiki_en": "",
+      "no": "50084",
+      "ja": "エネルギー回収",
+      "status": "renamed"
+    },
+    {
+      "id": "friendship_badge_chip",
+      "kind": "筹码",
+      "zh": "友情徽章",
+      "en_mod": "Friendship Badge",
+      "wiki_zh": "友情微章",
+      "wiki_en": "",
+      "no": "50041",
+      "ja": "",
+      "status": "renamed"
+    },
+    {
+      "id": "primordial_core_chip",
+      "kind": "筹码",
+      "zh": "原初核心",
+      "en_mod": "Primordial Core",
+      "wiki_zh": "",
+      "wiki_en": "",
+      "no": "",
+      "ja": "",
+      "status": "original"
+    },
+    {
+      "id": "attack_card_bite",
+      "kind": "卡牌/材料",
+      "zh": "撕咬",
+      "en_mod": "Bite",
+      "wiki_zh": "撕咬",
+      "wiki_en": "Bite",
+      "no": "10012",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "attack_card_charge",
+      "kind": "卡牌/材料",
+      "zh": "蓄力",
+      "en_mod": "Charge",
+      "wiki_zh": "蓄力",
+      "wiki_en": "Charge",
+      "no": "10009",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "attack_card_dragon_roar",
+      "kind": "卡牌/材料",
+      "zh": "龙之咆哮",
+      "en_mod": "Dragon's Roar",
+      "wiki_zh": "龙之咆哮",
+      "wiki_en": "Dragon Roar",
+      "no": "10013",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "attack_card_epic",
+      "kind": "卡牌/材料",
+      "zh": "攻击(特大)",
+      "en_mod": "Attack Card (XL)",
+      "wiki_zh": "攻击(特大)",
+      "wiki_en": "ATK UP(G)",
+      "no": "10005",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "attack_card_full_power",
+      "kind": "卡牌/材料",
+      "zh": "全力攻击",
+      "en_mod": "Full Power Attack",
+      "wiki_zh": "全力攻击",
+      "wiki_en": "Powerful Attack",
+      "no": "10010",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "attack_card_large",
+      "kind": "卡牌/材料",
+      "zh": "攻击(大)",
+      "en_mod": "Attack Card (L)",
+      "wiki_zh": "攻击(大)",
+      "wiki_en": "ATK UP(L)",
+      "no": "10003",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "attack_card_medium",
+      "kind": "卡牌/材料",
+      "zh": "攻击(中)",
+      "en_mod": "Attack Card (M)",
+      "wiki_zh": "攻击(中)",
+      "wiki_en": "ATK UP(M)",
+      "no": "10001",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "attack_card_shadow_strike",
+      "kind": "卡牌/材料",
+      "zh": "暗影突袭",
+      "en_mod": "Shadow Strike",
+      "wiki_zh": "暗影突袭",
+      "wiki_en": "Legendary Sword: Gawu Cut",
+      "no": "10008",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "defense_card_epic",
+      "kind": "卡牌/材料",
+      "zh": "防御(特大)",
+      "en_mod": "Defense Card (XL)",
+      "wiki_zh": "防御(特大)",
+      "wiki_en": "DEF UP(G)",
+      "no": "10006",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "defense_card_large",
+      "kind": "卡牌/材料",
+      "zh": "防御(大)",
+      "en_mod": "Defense Card (L)",
+      "wiki_zh": "防御(大)",
+      "wiki_en": "DEF UP(L)",
+      "no": "10004",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "defense_card_medium",
+      "kind": "卡牌/材料",
+      "zh": "防御(中)",
+      "en_mod": "Defense Card (M)",
+      "wiki_zh": "防御(中)",
+      "wiki_en": "DEF UP(M)",
+      "no": "10002",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "effect_card_berserk",
+      "kind": "卡牌/材料",
+      "zh": "狂暴",
+      "en_mod": "Effect Card: Berserk",
+      "wiki_zh": "狂暴",
+      "wiki_en": "Berserk",
+      "no": "20008",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "effect_card_chocolate_cake",
+      "kind": "卡牌/材料",
+      "zh": "巧克力蛋糕",
+      "en_mod": "Chocolate Cake",
+      "wiki_zh": "巧克力蛋糕",
+      "wiki_en": "Chocolate Cake",
+      "no": "20002",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "effect_card_directional_blast",
+      "kind": "卡牌/材料",
+      "zh": "定向爆破",
+      "en_mod": "Directional Blast",
+      "wiki_zh": "定向爆破",
+      "wiki_en": "Blast",
+      "no": "21007",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "effect_card_express_delivery",
+      "kind": "卡牌/材料",
+      "zh": "加急加快",
+      "en_mod": "Express Delivery",
+      "wiki_zh": "加急加快",
+      "wiki_en": "Hurry Hurry",
+      "no": "21003",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "effect_card_fate_guidance",
+      "kind": "卡牌/材料",
+      "zh": "命运的指引",
+      "en_mod": "Fate's Guide",
+      "wiki_zh": "命运的指引",
+      "wiki_en": "Guidance of Fate",
+      "no": "20032",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "effect_card_fight_poison_with_poison",
+      "kind": "卡牌/材料",
+      "zh": "以毒攻毒",
+      "en_mod": "Fight Poison with Poison",
+      "wiki_zh": "以毒攻毒",
+      "wiki_en": "Fight Fire with Fire",
+      "no": "20006",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "effect_card_hamburger",
+      "kind": "卡牌/材料",
+      "zh": "汉堡",
+      "en_mod": "Hamburger",
+      "wiki_zh": "汉堡",
+      "wiki_en": "Hamburger",
+      "no": "20014",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "effect_card_king_power",
+      "kind": "卡牌/材料",
+      "zh": "王之力",
+      "en_mod": "Effect Card: King's Power",
+      "wiki_zh": "王之力",
+      "wiki_en": "King's Power",
+      "no": "21004",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "effect_card_living_page",
+      "kind": "卡牌/材料",
+      "zh": "活体书页",
+      "en_mod": "Living Page",
+      "wiki_zh": "活体书页",
+      "wiki_en": "Living Book",
+      "no": "20030",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "effect_card_luxury_feast",
+      "kind": "卡牌/材料",
+      "zh": "奢华大餐",
+      "en_mod": "Luxury Feast",
+      "wiki_zh": "奢华大餐",
+      "wiki_en": "Luxurious Feast",
+      "no": "21006",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "effect_card_monster_brick",
+      "kind": "卡牌/材料",
+      "zh": "对怪板砖",
+      "en_mod": "Monster Brick",
+      "wiki_zh": "对怪板砖",
+      "wiki_en": "Anti-Monster Brick",
+      "no": "20013",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "effect_card_monster_laser",
+      "kind": "卡牌/材料",
+      "zh": "对怪激光",
+      "en_mod": "Monster Laser",
+      "wiki_zh": "对怪激光",
+      "wiki_en": "Anti-Monster Laser Beam",
+      "no": "20001",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "effect_card_orbital_strike",
+      "kind": "卡牌/材料",
+      "zh": "轨道炮",
+      "en_mod": "Orbital Strike",
+      "wiki_zh": "轨道炮",
+      "wiki_en": "Railgun",
+      "no": "21001",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "effect_card_unwavering",
+      "kind": "卡牌/材料",
+      "zh": "岿然不动",
+      "en_mod": "Effect Card: Unwavering",
+      "wiki_zh": "岿然不动",
+      "wiki_en": "Immovable",
+      "no": "21005",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "effect_card_you_have_i_have",
+      "kind": "卡牌/材料",
+      "zh": "你有我有",
+      "en_mod": "You Have, I Have",
+      "wiki_zh": "你有我有",
+      "wiki_en": "What you have, I have.",
+      "no": "21002",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "fu_card",
+      "kind": "卡牌/材料",
+      "zh": "符卡-福",
+      "en_mod": "Blessing Talisman",
+      "wiki_zh": "符卡-福",
+      "wiki_en": "Talisman Card - Fortune",
+      "no": "20027",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "huo_card",
+      "kind": "卡牌/材料",
+      "zh": "符卡-祸",
+      "en_mod": "Misfortune Talisman",
+      "wiki_zh": "符卡-祸",
+      "wiki_en": "Talisman Card - Misfortune",
+      "no": "20028",
+      "ja": "",
+      "status": "matched"
+    },
+    {
+      "id": "attack_card_meito",
+      "kind": "卡牌/材料",
+      "zh": "名刀·嘎呜切",
+      "en_mod": "Meito: Gawu Cut",
+      "wiki_zh": "名刀：嘎呜切",
+      "wiki_en": "Legendary Sword: Gawu Cut",
+      "no": "10007",
+      "ja": "",
+      "status": "renamed"
+    },
+    {
+      "id": "conductive_wire",
+      "kind": "卡牌/材料",
+      "zh": "导电线材",
+      "en_mod": "Conductive Wire",
+      "wiki_zh": "",
+      "wiki_en": "",
+      "no": "",
+      "ja": "",
+      "status": "original"
+    },
+    {
+      "id": "dice",
+      "kind": "卡牌/材料",
+      "zh": "骰子",
+      "en_mod": "Basic Dice",
+      "wiki_zh": "",
+      "wiki_en": "",
+      "no": "",
+      "ja": "",
+      "status": "original"
+    },
+    {
+      "id": "golden_star_plate",
+      "kind": "卡牌/材料",
+      "zh": "黄金星盘",
+      "en_mod": "Golden Star Plate",
+      "wiki_zh": "",
+      "wiki_en": "",
+      "no": "",
+      "ja": "",
+      "status": "original"
+    },
+    {
+      "id": "mark_paint",
+      "kind": "卡牌/材料",
+      "zh": "标记涂料",
+      "en_mod": "Mark Paint",
+      "wiki_zh": "",
+      "wiki_en": "",
+      "no": "",
+      "ja": "",
+      "status": "original"
+    },
+    {
+      "id": "regeneration_reagent",
+      "kind": "卡牌/材料",
+      "zh": "再生试剂",
+      "en_mod": "Regeneration Reagent",
+      "wiki_zh": "",
+      "wiki_en": "",
+      "no": "",
+      "ja": "",
+      "status": "original"
+    },
+    {
+      "id": "star_coin",
+      "kind": "卡牌/材料",
+      "zh": "星币",
+      "en_mod": "Star Coin",
+      "wiki_zh": "",
+      "wiki_en": "",
+      "no": "",
+      "ja": "スターコイン",
+      "status": "original"
+    },
+    {
+      "id": "star_coin_bag",
+      "kind": "卡牌/材料",
+      "zh": "袋装星币",
+      "en_mod": "Star Coin Bag",
+      "wiki_zh": "",
+      "wiki_en": "",
+      "no": "",
+      "ja": "",
+      "status": "original"
+    },
+    {
+      "id": "star_coin_dust",
+      "kind": "卡牌/材料",
+      "zh": "星币尘",
+      "en_mod": "Star Coin Dust",
+      "wiki_zh": "",
+      "wiki_en": "",
+      "no": "",
+      "ja": "",
+      "status": "original"
+    },
+    {
+      "id": "star_plate",
+      "kind": "卡牌/材料",
+      "zh": "星盘",
+      "en_mod": "Star Plate",
+      "wiki_zh": "",
+      "wiki_en": "",
+      "no": "",
+      "ja": "星盤",
+      "status": "original"
+    }
+  ]
+}

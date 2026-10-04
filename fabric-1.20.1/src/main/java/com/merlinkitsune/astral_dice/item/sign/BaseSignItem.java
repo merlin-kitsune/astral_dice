@@ -16,7 +16,6 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.level.Level;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 import com.merlinkitsune.astral_dice.compat.curios.SlotContext;
 import com.merlinkitsune.astral_dice.compat.curios.ICurioItem;
 import com.merlinkitsune.astral_dice.item.chip.FanBigChipItem;

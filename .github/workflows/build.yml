@@ -97,7 +97,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: merlin-kitsune/starengine_lib
-          ref: 1c0d1282ff0e9169c1654ce2c3ab6dcded7bbae7   # = 库 `next` 分支提交 1c0d128（= 库版本 `2.0.0-SNAPSHOT.10`）：自 `main` 线移植效果牌目标口径（`CreatureTargets` / `TargetType.NON_HOSTILE`）+ actionbar 淡出对齐 ⇒ **本线四线据此可编译**（消费方已引用这些库 API）。⚠️ **本 ref 要求库 `next` 分支已推送**(git -C <lib> push origin next)，否则本 job 断在 Checkout。
+          ref: d053df57e46e3bcfb98dc3a540d10d3fd41a340b   # = 库 `next` 分支提交 d053df5（= 库版本 `2.0.0-SNAPSHOT.11`）：在 `1c0d128` 之上补齐 `main` 线 `1.0.8` 的 **ActionBar 位置修复**（`client/ActionBarManager` 的 `y` `-58` → `-68`，修「ActionBar 文本与物品名称提示重叠」）。⚠️ **本 ref 要求库 `next` 分支已推送**(git -C <lib> push origin next)，否则本 job 断在 Checkout。
           path: .ci/starengine_lib
           fetch-depth: 1
 

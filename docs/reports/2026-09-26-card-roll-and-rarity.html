@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>战斗牌掷骰口径改造 + 品质统一为蓝 — 验证报告（2026-09-26）</title>
+<style>
+  :root{
+    --bg:#f7f8fa; --panel:#ffffff; --line:#e3e6ea; --ink:#1f2328; --dim:#5b636e;
+    --ok:#1a7f37; --okbg:#e8f5ec; --warn:#9a6700; --warnbg:#fff6e0;
+    --bad:#b3261e; --link:#0b5cad; --code:#f2f4f7;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;padding:28px 20px 60px;background:var(--bg);color:var(--ink);
+       font:15px/1.7 -apple-system,"Segoe UI","Microsoft YaHei",system-ui,sans-serif}
+  .wrap{max-width:1080px;margin:0 auto}
+  h1{font-size:23px;margin:0 0 6px;letter-spacing:.2px}
+  .sub{color:var(--dim);font-size:13.5px;margin-bottom:22px}
+  h2{font-size:17px;margin:30px 0 12px;padding-left:10px;border-left:4px solid #3b6fd4}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+  th{background:#f0f2f5;font-weight:600;color:#333;white-space:nowrap}
+  tr:last-child td{border-bottom:none}
+  code{background:var(--code);padding:1.5px 5px;border-radius:4px;font-size:13px;
+       font-family:"Cascadia Mono",Consolas,monospace}
+  .ok{display:inline-block;background:var(--okbg);color:var(--ok);border:1px solid #bfe3c9;
+      border-radius:5px;padding:1px 7px;font-size:12.5px;font-weight:600;white-space:nowrap}
+  .warn{display:inline-block;background:var(--warnbg);color:var(--warn);border:1px solid #f0dca8;
+      border-radius:5px;padding:1px 7px;font-size:12.5px;font-weight:600;white-space:nowrap}
+  .num{font-variant-numeric:tabular-nums;white-space:nowrap}
+  .kv{display:grid;grid-template-columns:150px 1fr;gap:6px 14px;font-size:14px}
+  .kv div:nth-child(odd){color:var(--dim)}
+  ul{margin:8px 0 0 18px;padding:0}
+  li{margin:5px 0}
+  .note{font-size:13.5px;color:var(--dim);margin-top:10px}
+  .big{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums}
+  .row{display:flex;gap:14px;flex-wrap:wrap;margin-top:12px}
+  .card{flex:1 1 190px;background:var(--panel);border:1px solid var(--line);
+        border-radius:10px;padding:12px 14px}
+  .card .lab{font-size:12.5px;color:var(--dim);margin-bottom:4px}
+  .strike{color:var(--dim);text-decoration:line-through}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>战斗牌掷骰口径改造 + 战斗牌品质统一为蓝</h1>
+  <div class="sub">
+    《星之骰戏》多加载器单仓 · 2026-09-26 · 提交 <code>dcf636ee</code>（<code>multi-dev-next</code>，25 files，+427 / −207）<br>
+    三线同步：<code>neoforge-1.21.1</code> / <code>forge-1.20.1</code> / <code>neoforge-26.1.2</code>
+  </div>
+
+  <h2>一、需求与落点</h2>
+  <div class="panel">
+    <table>
+      <thead><tr><th>用户要求（原话）</th><th>落点</th><th>状态</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>随机数战斗牌的随机值越高命中率越低，中位数控制在该卡牌随机范围的一半位置附近，显著降低满值命中率</td>
+          <td>新增 <code>DiceCombatModifiers.rollDiceDescending(min,max)</code> 为唯一入口；<code>CardRegistry</code> 7 处调用点改为 <code>rollCard(...)</code></td>
+          <td><span class="ok">已落地</span></td>
+        </tr>
+        <tr>
+          <td>移除战斗牌投掷 2 次的机制，改为单次随机数</td>
+          <td>删除 <code>CardRegistry.rollTwoMax</code>（原 <code>Math.max(rollDice, rollDice)</code>）</td>
+          <td><span class="ok">已落地</span></td>
+        </tr>
+        <tr>
+          <td>除名刀·嘎呜切 / 蓄力 / 全力攻击外的战斗牌稀有度降为蓝色（稀有）</td>
+          <td><code>ModItems</code> 7 张常规战斗牌 → <code>AstralRarities.rare()</code>；三线赏金池 <code>rarity</code> 同步</td>
+          <td><span class="ok">已落地</span></td>
+        </tr>
+        <tr>
+          <td>（用户裁决）递减曲线档位</td>
+          <td>「温和 · 中位数贴半程」：最低点 : 最高点权重 ≈ 2 : 1</td>
+          <td><span class="ok">已采纳</span></td>
+        </tr>
+        <tr>
+          <td>（用户裁决）撕咬 / 龙之咆哮</td>
+          <td>保留「奇特」，不列入「统一为蓝」</td>
+          <td><span class="ok">已采纳</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>二、新掷骰口径</h2>
+  <div class="panel">
+    <p style="margin:0 0 10px">
+      权重 <code>w(j) = (2n − 1) − j</code>，其中 <code>n = max − min + 1</code>、<code>j = 结果 − min</code>（0 基）。
+      最低点权重 <code>2n−1</code>、最高点权重 <code>n</code> ⇒ <strong>严格递减</strong>，比值 ≈ <strong>2 : 1</strong>；
+      总权重 <code>n(3n−1)/2</code>（恒为整数）。抽样 = <strong>一次</strong> <code>nextInt(总权重)</code> + 线性累计权重扫描（逆变换法）。
+    </p>
+    <table>
+      <thead><tr>
+        <th>取值范围</th><th>中位数</th><th>满值率（新）</th><th class="strike">满值率（旧）</th>
+        <th>期望（新）</th><th class="strike">期望（旧）</th><th>降幅</th>
+      </tr></thead>
+      <tbody>
+        <tr><td>1~3（中）</td><td class="num">2</td><td class="num"><strong>25%</strong></td><td class="num strike">55.6%</td><td class="num">1.8333</td><td class="num strike">2.44</td><td class="num">−25.0%</td></tr>
+        <tr><td>1~6（大）</td><td class="num">3</td><td class="num"><strong>11.8%</strong></td><td class="num strike">30.6%</td><td class="num">3.1569</td><td class="num strike">4.47</td><td class="num">−29.4%</td></tr>
+        <tr><td>1~10（特大）</td><td class="num">5</td><td class="num"><strong>6.9%</strong></td><td class="num strike">19%</td><td class="num">4.9310</td><td class="num strike">7.15</td><td class="num">−31.0%</td></tr>
+        <tr><td>1~20（名刀）</td><td class="num">9</td><td class="num"><strong>3.4%</strong></td><td class="num strike">9.8%</td><td class="num">9.3729</td><td class="num strike">13.82</td><td class="num">−32.2%</td></tr>
+      </tbody>
+    </table>
+    <div class="note">
+      满值率闭式 = <code>2/(3n−1)</code>；旧口径为 <code>(2n−1)/n²</code> 且中位数被抬到区间 67%~100% 处（10 → 8、20 → 15）——
+      这正是「战斗牌提供的伤害非常可观」的主因。
+    </div>
+  </div>
+
+  <h2>三、证据链</h2>
+
+  <h3 style="font-size:15px;margin:18px 0 8px">① 实际部署 jar 的开包字节码断言（33/33 PASS）</h3>
+  <div class="panel">
+    <p style="margin:0 0 8px;font-size:14px">
+      取证对象 = 游戏真正加载的那份：<code>run/&lt;ver&gt;/mods/</code> 下的三线 jar。
+    </p>
+    <table>
+      <thead><tr><th>断言</th><th>1.21.1</th><th>1.20.1</th><th>26.1.2</th></tr></thead>
+      <tbody>
+        <tr><td><code>rollTwoMax</code> 已删除</td><td><span class="ok">OK</span></td><td><span class="ok">OK</span></td><td><span class="ok">OK</span></td></tr>
+        <tr><td><code>rollCard(int)</code> / <code>rollCard(int,int)</code> 就位</td><td><span class="ok">OK</span></td><td><span class="ok">OK</span></td><td><span class="ok">OK</span></td></tr>
+        <tr><td><code>rollDiceDescending</code> 内 <code>.current()</code> 恰 1 次 · <code>.nextInt()</code> 恰 1 次</td><td><span class="ok">OK</span></td><td><span class="ok">OK</span></td><td><span class="ok">OK</span></td></tr>
+        <tr><td>该法内 <code>Math.max</code> 调用 0 次（无残留「掷两次」）</td><td><span class="ok">OK</span></td><td><span class="ok">OK</span></td><td><span class="ok">OK</span></td></tr>
+        <tr><td><code>rare</code> 调用 = 39、<code>bizarre</code> = 8（见 ②）</td><td><span class="ok">OK</span></td><td><span class="ok">OK</span></td><td><span class="ok">OK</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 style="font-size:15px;margin:18px 0 8px">② 品质改动：源码 ↔ 产物逐档绑定</h3>
+  <div class="panel">
+    <p style="margin:0 0 8px;font-size:14px">
+      判据：<code>ModItems.class</code> 内 <code>invokestatic AstralRarities.&lt;档&gt;</code> 次数应等于源码调用次数
+      <strong>减 1</strong>（差额恒为 1 = 类顶部「稀有度标准块」注释各档各出现一次）。
+    </p>
+    <table>
+      <thead><tr><th>档位</th><th>源码</th><th>jar（实读）</th><th>差值</th></tr></thead>
+      <tbody>
+        <tr><td>rare（稀有 · 水蓝）</td><td class="num">40</td><td class="num">39</td><td class="num">1 ✔</td></tr>
+        <tr><td>epic（史诗）</td><td class="num">47</td><td class="num">46</td><td class="num">1 ✔</td></tr>
+        <tr><td>legendary（传奇）</td><td class="num">34</td><td class="num">33</td><td class="num">1 ✔</td></tr>
+        <tr><td>pinnacle（巅峰）</td><td class="num">3</td><td class="num">2</td><td class="num">1 ✔</td></tr>
+        <tr><td>bizarre（奇特）</td><td class="num">9</td><td class="num">8</td><td class="num">1 ✔</td></tr>
+      </tbody>
+    </table>
+    <div class="note">三线读数完全一致 ⇒ 既证明「源码已编译进产物」，也证明三线品质改动对等。</div>
+  </div>
+
+  <h3 style="font-size:15px;margin:18px 0 8px">③ 分布：离线精确复算 × 30 万次蒙特卡洛交叉验证</h3>
+  <div class="panel">
+    <table>
+      <thead><tr><th>卡牌</th><th>N</th><th>解析期望</th><th>蒙特卡洛期望</th><th>解析满值率</th><th>蒙特卡洛满值率</th><th>中位数</th></tr></thead>
+      <tbody>
+        <tr><td>攻击-中 / 防御-中</td><td class="num">3</td><td class="num">1.8333</td><td class="num">1.8300 / 1.8328</td><td class="num">0.2500</td><td class="num">0.2488 / 0.2502</td><td class="num">2（设计 2）</td></tr>
+        <tr><td>攻击-大 / 防御-大</td><td class="num">6</td><td class="num">3.1569</td><td class="num">3.1543 / 3.1588</td><td class="num">0.1176</td><td class="num">0.1171 / 0.1185</td><td class="num">3（设计 3）</td></tr>
+        <tr><td>攻击-特大 / 防御-特大</td><td class="num">10</td><td class="num">4.9310</td><td class="num">4.9400 / 4.9264</td><td class="num">0.0690</td><td class="num">0.0692 / 0.0688</td><td class="num">5（设计 5）</td></tr>
+        <tr><td>名刀·嘎呜切</td><td class="num">20</td><td class="num">9.3729</td><td class="num">9.3620</td><td class="num">0.0339</td><td class="num">0.0334</td><td class="num">9（设计 9）</td></tr>
+      </tbody>
+    </table>
+    <div class="note">误差均 &lt; 0.02；中位数与设计目标逐项吻合。固定值牌未受影响：暗影突袭 3、蓄力 5、全力攻击 6、撕咬 3、龙之咆哮 3。</div>
+  </div>
+
+  <h3 style="font-size:15px;margin:18px 0 8px">④ 静态守门</h3>
+  <div class="panel">
+    <div class="kv">
+      <div>赏金池</div><div><code>verify_bountiful_pools.ps1</code> → <strong>ALL OK</strong>（objs 16 / rews 120；三线 md5 一致 <code>a7cab83a…</code>；价值平衡式 PASS）</div>
+      <div>语言键集</div><div><code>check_lang_sync.ps1</code> → <strong>EXIT=0</strong>，三线 × 三语各 <strong>812 keys</strong> 完全一致</div>
+      <div>旧文案残留</div><div>「取 2 次最大值」在 zh_cn 中 <strong>0 处</strong>；tooltip 7 处 + 手册 7 处均已改写为「单次掷取…」</div>
+      <div>构建</div><div><code>gradlew build</code> <strong>BUILD SUCCESSFUL</strong>；三线 jar 已推 <code>run/&lt;ver&gt;/mods</code> 与根 <code>build/libs</code></div>
+      <div>行为中性判定</div><div>全量核查 <code>scripts/test/**</code> 与探针 ⇒ <strong>无任何断言依赖随机牌点数</strong>（只依赖物品存在 / 移动 / 光泽 / 容器拦截）</div>
+    </div>
+  </div>
+
+  <h3 style="font-size:15px;margin:18px 0 8px">⑤ 不受影响（已核）</h3>
+  <div class="panel">
+    <ul>
+      <li><strong>玻璃骰子 / 上班族立牌「真的生气了」</strong>的「本次点数取最大值」仍走 <code>CardRegistry.maxRoll</code>（<code>maxMode=true</code> 分支），<strong>不经过新的递减权重</strong>。</li>
+      <li><code>rollDice(int)</code> / <code>rollDice(int,int)</code> <strong>保留不动</strong> —— 八面骰 <code>rollDice(10)</code>、怪物防御骰 <code>rollDice(6)</code> 等仍在用。</li>
+      <li>名刀护法立牌爆发抬高下限（1★→2 / 2★→3 / 3★→5）照常生效，抬升后仍走同一递减权重。</li>
+    </ul>
+  </div>
+
+  <h2>四、未做（如实登记）</h2>
+  <div class="panel">
+    <p style="margin:0 0 8px">
+      <span class="warn">实机（游戏内）行为验证未做</span> —— 本轮经用户裁决选「只提交 + 部署」，沿用既有「实机验证延后」惯例。
+      离线侧证据已齐（① 实际部署 jar 的字节码断言 · ② 源码↔产物逐档绑定 · ③ 30 万次蒙特卡洛 · ④ 两项静态守门 + 行为中性判定）。
+    </p>
+    <p style="margin:0;font-size:14px;color:var(--dim)">
+      另：<code>tools/balance_sim/dice_combat_sim.py</code> 的卡牌模型已重标定（<code>rand2of</code> → <code>decline</code>），
+      但按「保留已提交报告可复现性」惯例，本轮<strong>未重新生成</strong>仿真报告。<br>
+      部署说明：开发分支 <code>multi-dev-next</code> 不在整合包推送白名单（<code>['multi-main']</code>）内，
+      <code>pushToGame</code> 按设计静默跳过 ⇒ 本轮部署范围 = <code>run/&lt;ver&gt;/mods</code> + 根 <code>build/libs</code>。
+    </p>
+  </div>
+
+</div>
+</body>
+</html>

@@ -27,6 +27,13 @@ public class ModEffectEvents {
         //    本模组施加给生物的多为减益(标记 / 虚弱印记 / 破绽 / 厄运 / 隐匿调查),允许其自清无害;
         //    ⚠️ 玩家侧口径不变(下方两条与命名空间守卫仍生效)。
         if (!(event.getEntity() instanceof Player)) return;
+        // ★ 2026-10-04 修复（Q3）：目标身上**已无该效果** ⇒ 本次是「无效移除」，直接放行、不拦截。
+        //    fabric 侧本事件由 `PuzzlesBridges` 从 Puzzles 的 `MobEffectEvents.REMOVE` 桥接而来，
+        //    而「阻止移除」的落地方式是 `EventResult.INTERRUPT`；当注入点不可取消时会抛
+        //    `CancellationException: The call removeEffect is not cancellable`。
+        //    ⚠️ 语义上：**不存在的效果本来就不需要「保留」** ⇒ 这里早退既不改变任何可观察行为，
+        //    也从根上避开那条不可取消的路径（属正面逻辑修复，不是 try/catch 绕过）。
+        if (!event.getEntity().hasEffect(effect.getEffect())) return;
         // ②「标记」不再防清理(2026-09-30 用户裁决):允许玩家用牛奶 / `/effect clear` 清除标记。
         //    标记的强度由"层数"承载,且它是施加给**目标**的减益,玩家有正当理由想清掉它。
         //    ⚠️ 伴随的发光仍受下方"同寿命"规则约束:标记还在时发光不可被单独清除;

@@ -157,6 +157,14 @@ public final class PuzzlesBridges {
             if (effectInstance == null) {
                 return EventResult.PASS;
             }
+            // ★ 2026-10-04 修复（Q3 第二道防线）：实例非 null 但该效果**已不在实体身上**时同样跳过派发。
+            //    本回调的返回值会被 Puzzles 翻译成 `EventResult.INTERRUPT`（= 阻止移除），而该注入点
+            //    不可取消时会抛 `CancellationException: The call removeEffect is not cancellable`。
+            //    既然效果已经不在身上，就没有任何东西需要"阻止" ⇒ 直接放行，既对齐 Forge 语义
+            //    （其补丁在 `activeEffects.remove(effect)` 返回 null 时同样不派发事件），也彻底堵死该路径。
+            if (!entity.hasEffect(effectInstance.getEffect())) {
+                return EventResult.PASS;
+            }
             MobEffectEvent.Remove event = new MobEffectEvent.Remove(entity, effectInstance);
             LoaderBus.INSTANCE.post(event);
             // Forge 取消 ⇒ 阻止这次移除

@@ -22,10 +22,6 @@
     {
       "type": "patchouli:text",
       "text": "astral_dice.guide.entry.special_effects.5"
-    },
-    {
-      "type": "patchouli:text",
-      "text": "astral_dice.guide.entry.special_effects.6"
     }
   ],
   "sortnum": 2

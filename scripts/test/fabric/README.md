@@ -184,6 +184,7 @@ pwsh -NoProfile -File scripts/test/fabric/ft_stop.ps1 --side client
 | `AP_FAB_PHASE_BEGIN` / `AP_FAB_PHASE` / `AP_FAB_REPORT` | `ft.ps1` | 阶段编排 |
 | `AP_FAB_PROD_CP` / `_LAUNCH` / `_READY` / `_CRASH` / `_CRASH_CAUSE` / `_FAIL` | `ft_prod` | 生产映射冒烟：classpath 构造 / 启动 / 就绪 / 崩溃 / 失败原因 |
 | `AP_FAB_PROD_MIXIN_FAIL` / `_MIXIN_FAIL_DETAIL` | `ft_prod` | 注入失败（`InjectionError`）时那一行原文 —— 一眼看出是哪个模组的哪个注入器 |
+| `AP_CATCHUP_ENV` / `_MELEE` / `_RANGE` / `_CONC` / `_LEGACY` / `_ERR` / `_MISS` | **模组侧**（非本台脚本） | 追平批证据读数（`scripts/test/fabric/astral_catchup_probe.js`，见 §7.2.7）：注册面 / 近战黑名单四项 / 射程两段夹取 / 隐匿三态 / 常驻时长归一。`_ERR` 与 `_MISS` 是**失败面**，用例对其断言 absent |
 | `AP_FAB_PARTY` | **模组侧**（非本台脚本） | 队伍判定三条后端的接入状态：`sw_mc/sw_ftb/sw_opac`（配置开关）+ `back_ftb/back_opac`（反射契约是否解析成功）+ `why_ftb/why_opac`（失败原因）。由 `PartyRelations#reportBackends()` 在 common setup 打印，用例 `FAB-PARTY-BACKENDS` 断言其形态 |
 
 | `MT_FAB_<NAME>: OK/FAIL/ERROR/BLOCKED` | 全部 | 结论行（stderr 走 FAIL/ERROR，stdout 走 OK） |
@@ -591,7 +592,148 @@ Caused by: com.merlinkitsune.astral_dice.platform.fml.ModLoadingException: [星�
   最靠后非空槽 +1 ⇒ 满槽时缩不动”这条推理排除了“对账干的”；若将来要直接断言，
   需要给防御分支补一条机器行。
 
-### 7.3 已修复的测试台缺陷（7 个；每个都附实测证据）
+### 7.2.7 追平批实机断言：`/astralcatchup` 探针（2026-10-04 新增，`AP_CATCHUP_*` / `FAB-CATCHUP-PARITY`）
+
+**要验证的问题**：fabric 线此前**没有**与三条 P0 线 `/astralprobe` 等价的通用探针 ⇒ 追平批 1~8 的功能
+（近战黑名单四项 / 射程两段夹取 / 隐匿 / 常驻时长归一 / 效果牌目标口径 …）只有「代码层 + 开包符号」证据，
+**无法实机断言**（KI-E3 同族的测试资产缺口）。
+
+**做法**：服务端 KubeJS 读数探针 `scripts/test/fabric/astral_catchup_probe.js`（命令 `/astralcatchup <sub>`，
+RCON 驱动），配套用例 `cases/FAB-CATCHUP-PARITY.json`。
+
+**🚨 无人值守的关键：用 Fabric API 自带的 `FakePlayer`，不要引 Carpet**
+
+本仓此前驱动的「假玩家」是 Carpet（**外部依赖、手工投放**）。实测 Fabric API 的 `fabric-events-interaction-v0`
+模块自带 `net.fabricmc.fabric.api.entity.FakePlayer`（判据：`.gradle/loom-cache` 的 Fabric API 模块 jar 内含
+`net/fabricmc/fabric/api/entity/FakePlayer.class`；`javap` 可见 `get(ServerLevel)` / `get(ServerLevel, GameProfile)`）
+⇒ 探针在**纯 dev 服务端、零第三方前置、无人连服**的情况下就能拿到一个 `ServerPlayer` 做读数。
+探针的用法是「传了玩家名用真玩家、否则用 FakePlayer」，故既可用于自动化也可人工点名。
+
+**五个子命令与判据**（均为**只读或自恢复**：进入前先清、退出前再清）：
+
+| 子命令 | 覆盖的产品代码 | 期望机器行 |
+|---|---|---|
+| `env` | 注册面 / 类 / **公开常量** | `AP_CATCHUP_ENV: rin=1 conc=1 maxrad=64 melee=1 concbreak=1 range=1 thr=1073741823` |
+| `melee [player]` | `DiceCombatEvents#isMeleeWeaponAttack`（近战黑名单四项） | `AP_CATCHUP_MELEE: empty=0 shears=0 rod=0 flint=0 brush=0 sword=1` |
+| `range [player]` | `SelectorRangeModifiers#apply` + `MAX_ENHANCED_RADIUS` | `AP_CATCHUP_RANGE: max=64 noeff=32 waneff=48 clamp=64 zero=0` |
+| `conc [player]` | `ConcealmentEffect#apply/has/breakOnAttack` | `AP_CATCHUP_CONC: before=0 applied=1 broke=0` |
+| `legacydur [player]` | `EffectTimerGuard.INFINITE_THRESHOLD`（归一判据）+「外部移除拦截 / 内部通道清理」契约 | `AP_CATCHUP_LEGACY: thr=1073741823 dur0=1200000000 gt_thr=1 ticked=… dur_after=… amp=5 ext=… ext_kept=1`（⚠️ `dur_after` 实测仍为原值 —— 归一的**效果本身**未覆盖，见 §7.2.7.1） |
+
+异常一律落 `AP_CATCHUP_ERR: tag=… ex=…`（用例断言其 **absent**）；无人可用时落 `AP_CATCHUP_MISS:`。
+
+**⚠️ `legacydur` 为什么不直调归一方法、也不「等 20 tick」**（实测两条路都走不通，故断言范围已收窄到**判据基座**）：
+- **不能直调**：KubeJS/Rhino **不允许反射 JDK `Class` 的成员** —— `PlayerTickEvents.getDeclaredMethod(...)` 直接报
+  `InternalError: Java class "…" has no public instance field or method named "getDeclaredMethod"`；
+- **不能等 tick**：归一挂在 `PlayerTickEvents` 的 `tickCount % 20 == 0` 之后，而 `FakePlayer` **不进世界的 tick 循环**
+  （实测手动 `p.tick()` 24 次也不触发该事件）⇒ 无人值守下拿不到「已归一」的读数。
+⇒ 探针改为断言**判据基座**：① 公开常量 `EffectTimerGuard.INFINITE_THRESHOLD`（= `Integer.MAX_VALUE/2`）；
+② 存量值 `dur0=1200000000 > thr`（⇒ 该实例**会**命中归一分支）；③ 拦截/清理契约（`ext` / `ext_kept`）。
+**「旧存档超长时长被归一为 -1」这条效果本身仍需带真人玩家（或客户端进世界）确认** —— 见 §7.2.7.1「仍未覆盖」。
+
+**跑法**：
+
+```powershell
+pwsh -NoProfile -File scripts/test/fabric/ft_env.ps1 --side server --enable-rcon
+pwsh -NoProfile -File scripts/test/fabric/ft_env.ps1 --side server --install-probe astral_catchup_probe.js
+# ⚠️ KubeJS 只在**冷启动**加载脚本 ⇒ 装完必须重启服务端
+pwsh -NoProfile -File scripts/test/fabric/ft_launch.ps1 --side server
+pwsh -NoProfile -File scripts/test/fabric/ft_case.ps1 run --case scripts/test/fabric/cases/FAB-CATCHUP-PARITY.json
+pwsh -NoProfile -File scripts/test/fabric/ft_stop.ps1 --side server --purge-saves
+```
+
+> ⚠️ 探针是**读数**脚本，不改产品逻辑；但它会**临时**给目标玩家施加 `astral_dice:charge`（超长时长）与
+> `astral_dice:rin_page_range` / `astral_dice:concealment`，并在同一条命令内全部清掉 —— 只对
+> **传入的玩家/FakePlayer** 生效，不触碰世界状态与存档。
+
+#### 7.2.7.1 首跑实测（2026-10-04，纯 dev 服务端 + RCON；**真实日志原文**）
+
+```
+AP_CATCHUP_ENV: rin=1 conc=1 maxrad=64 melee=1 concbreak=1 range=1 thr=1073741823
+AP_CATCHUP_MELEE: empty=0 shears=0 rod=0 flint=0 brush=0 sword=1
+AP_CATCHUP_RANGE: max=64 noeff=32 waneff=48 clamp=64 zero=0
+AP_CATCHUP_CONC: before=0 applied=1 broke=0
+AP_CATCHUP_LEGACY: thr=1073741823 dur0=1200000000 gt_thr=1 ticked=24 dur_after=1200000000 amp=5 ext=clean ext_kept=1
+```
+
+⇒ 近战黑名单四项（`shears/rod/flint/brush=0`、`sword=1`）、射程两段夹取（`32 → 48`，`clamp=64`）、
+隐匿三态、注册面与阈值常量**全部实机确认**。
+
+**⚠️ 三条实测教训（写探针前必读；已同步 KI-F25）**：
+
+1. **KubeJS 各 `server_scripts` 共享同一全局作用域** ⇒ 探针**必须整体包 IIFE**（或给每个顶层名加唯一前缀）。
+   实测：本探针与 `astral_gs_probe.js` 都定义了顶层 `guard`/`out`/`exText`，后者覆盖前者 ⇒ `/astralcatchup …`
+   的处理器实际调用到对方的 `guard(ctx, tag, fn)`，日志报 `astral_gs_probe.js#41: AP_GS_ERR: tag=Function
+   ex=TypeError: fn is not a function`，而**本探针一行都不输出**（静默失败，极易误判成「产品没生效」）。
+2. **清效果必须走库内部通道 `ModEffectRemoval.remove(player, effect)`** —— 本模组拦截 `astral_dice:` 效果的
+   **外部**移除（牛奶 / `/effect clear` / 裸 `removeEffect`）。⚠️ 裸 `removeEffect` 在**该效果不存在**时实测会
+   向调用方抛 `CancellationException: The call removeEffect is not cancellable`（已登记 **KI-F25②**，待决定性复现）。
+3. **Rhino 不允许反射 JDK `Class` 的成员**：`getDeclaredMethod` 直接报 `InternalError: Java class "…" has no
+   public instance field or method named "getDeclaredMethod"` ⇒ 探针**不能**「直调私有方法」，只能读公开常量/方法。
+
+**✅ 正向能力：本线不再需要 Carpet** —— Fabric API 的 `fabric-events-interaction-v0` 模块自带
+`net.fabricmc.fabric.api.entity.FakePlayer`（判据：该模块 jar 内含 `net/fabricmc/fabric/api/entity/FakePlayer.class`），
+探针据此**零前置、无人值守**即可取得 `ServerPlayer`。
+
+**⚠️ 仍未覆盖（如实标注）**：`legacy` 的 `dur_after` 仍是原值 —— 归一由 `PlayerTickEvents` 的
+`tickCount % 20 == 0` 驱动，而 `FakePlayer` **不进世界的 tick 循环**（手动 `p.tick()` 24 次也不触发该事件）
+⇒ **「旧存档超长时长被归一为 -1」这条效果本身仍需带真人玩家（或客户端进世界）确认**；
+本用例断言的是**判据基座**（阈值常量 + 超阈值的存量值）与**拦截/清理契约**。
+
+---
+
+### 7.2.8 Q2 / Q3 实机验证：`/astralcatchup {effremove,medkit}` + `FAB-Q2Q3-INVARIANTS`（2026-10-04 新增）
+
+**要验证的问题**（对应 Q1~Q8 裁决里的 Q2 / Q3，见 `porting/fabric-1.20.1/FABRIC-DIFFS.md` §4.1/§4.2）：
+
+| 项 | 命题 | 判据锚点 |
+|---|---|---|
+| **Q2** | 登录 / 切换维度**不再**触发医疗箱装备治愈（原实现使反复重登 / 反复过门 = 无限刷血） | `PlayerLifecycleHandler#{onPlayerLoggedInClearDiceBlessing,onPlayerChangedDimensionTriggerMedkit}` |
+| **Q3** | 效果移除路径不抛 `CancellationException`，且**拦截能力未被削弱**、库内部通道仍可清 | `ModEffectEvents#onModEffectRemovalPrevented` + `platform/PuzzlesBridges` 的 REMOVE 桥接 |
+
+**做法**：探针新增两个**只读或自恢复**子命令；读数载体仍是 Fabric API 的 `FakePlayer`（零前置、无人连服）：
+
+| 子命令 | 期望机器行（冷启动实测原文） |
+|---|---|
+| `/astralcatchup effremove [player]` | `AP_CATCHUP_EFFREM: absent0=0 fired_absent=0 r_absent=clean absent1=0 present0=1 r_present=clean fired_present=1 kept=1 cleaned=0 cA0=<n> has_at_throw=-1` |
+| `/astralcatchup medkit [player]` | `AP_CATCHUP_MEDKIT: f0=3 p0=7 login=ok flags_login=3 pts_login=7 dim=ok flags_dim=3 pts_dim=7 released_login=0 released_dim=0` |
+
+**`FAB-Q2Q3-INVARIANTS` 结果**：**6/6 PASS**（2026-10-04 冷启动，rc=0；同一会话另有 5 次快连采样全一致）。
+
+**Q3 的两条重要认识（都已写进用例 note，避免被绿灯掩盖）**：
+1. **`fired_absent=0`** ⇒ 目标**没有**该效果时 `MobEffectEvent.Remove` **根本不会派发到桥上**：
+   Puzzles 的注入体（`fuzs.puzzleslib.mixin.LivingEntityFabricMixin#removeEffect`，`javap` 实证）在 `@At("HEAD")`
+   传入的是 `this.getEffect(effect)` —— 无效果时为 `null` ⇒ 命中 `PuzzlesBridges` **2026-09-29 就已存在**的
+   「实例为 null ⇒ 放行」判据。所以 `r_absent=clean` 是**结构性成立**的，Q3 新增的 `hasEffect` 判据在当前调用路径上是
+   **第二道防线**（防将来出现「实例非 null 但效果已不在身上」的调用方），由静态守门 `verify_medkit_and_removal_invariants.py` 的 M2 长期钉住。
+2. ⚠️ **一次未能定位来源的偶发异常（不得写成「探针假象」）**：采样中出现过 **1 次**
+   `CancellationException: The call removeEffect is not cancellable.`，同时 `fired_absent=1`、`has_at_throw=0`
+   （14 次采样中 13 次 `r_absent=clean`）。**两条曾提出的解释都已被独立 javap 复核推翻**：
+  ① 「Puzzles 的 `removeEffect` 注入不可取消 ⇒ `setReturnValue` 抛异常」 —— 实测该 `@Inject` 为
+     **`cancellable=true`**（`javap -v`），而 Mixin 的 `CallbackInfo.cancel()` 只在 `!cancellable` 时才抛 ⇒ 不可能；
+  ② 「`EffectTimerGuard#tick` 把效果重新施加回来」 —— `FakePlayer` 不在 `PlayerList`（`FabricBridges` 只遍历
+     `getPlayerList().getPlayers()`）、其 `tick()` 还是空实现 ⇒ 守卫对它**永不生效**。
+  ⇒ 已把 `loom-cache` 全部 jar 的 class 与 mixin 配置扫过，**除 Puzzles 外无第二处 `removeEffect` 注入点**；
+  下一步见 `KNOWN-ISSUES.md` KI-F25②(b)（扫 `run/*/mods` 与 JiJ、`-Dmixin.debug.verbose=true` 抓真实注入点）。
+  探针里保留的 `EffectTimerGuard.forget(...)` 只是**无害卫生**（换了真人载体时会用到），**不是**该异常的解药。
+
+**跑法**：
+
+```powershell
+pwsh -NoProfile -File scripts/test/fabric/ft_env.ps1 --side server --enable-rcon
+pwsh -NoProfile -File scripts/test/fabric/ft_env.ps1 --side server --install-probe astral_catchup_probe.js
+# ⚠️ KubeJS 只在冷启动加载脚本；且启动这一步**不要**用 `*>>` 捕获（见 §7.3/D8）
+pwsh -NoProfile -File scripts/test/fabric/ft.ps1 --phase launch --side server
+pwsh -NoProfile -File scripts/test/fabric/ft_case.ps1 run --case scripts/test/fabric/cases/FAB-Q2Q3-INVARIANTS.json
+pwsh -NoProfile -File scripts/test/fabric/ft_stop.ps1 --side server --purge-saves
+```
+
+**静态对偶（可与运行时独立复跑）**：`python tools/verify_medkit_and_removal_invariants.py`
+—— M1 钉住「登录 / 切维度处理器**不得**再引用 `triggerMedkitOnEquip` / `refreshMedkitEquipSession`、重生与 `onEquip` **必须**引用」（四线 × 5 项 = 20 项），
+M2 钉住 fabric 的两条 `hasEffect` 早退判据。期望 `GATE: PASS (22 项)`；已做**反证测试**（注入旧调用 → 精确 FAIL，还原 → PASS）。
+
+---
+
+### 7.3 已修复的测试台缺陷（9 个；每个都附实测证据）
 
 前两个是**阻断级**：只要有它们，`ft_launch` **每一次启动都必然失败**，连带 env/launch 之后的一切
 （在线读数、命令注入、全部用例）统统不可用 —— 这就是「测试流程完全不可用」的根因。
@@ -698,6 +840,33 @@ Caused by: com.merlinkitsune.astral_dice.platform.fml.ModLoadingException: [星�
   （与日志读取**同一条**共享读写实现）。教训：**同一类问题要收敛到同一套原语** —— D2 修好之后
   没顺手把「读文件」这件事收敛成一个入口，才有了 D7。
 
+
+#### D8 `pwsh -File … --phase launch *>> <日志>` **永不返回** ⇒ launch 之后的一切都没跑（2026-10-04 实测，**三次一致**）
+
+- **现象（本轮真实踩到）**：编排命令写成
+  `pwsh -NoProfile -File scripts/test/fabric/ft_launch.ps1 --side server *>> $log`（或 `ft.ps1 --phase launch … *>> $log`）时，
+  `$log` 里能看到 `AP_FAB_LAUNCH: OK`、甚至 `AP_FAB_PHASE: launch rc=0`，但**脚本自身永不继续**：
+  下一句 `"launch rc=…"`、再后面的 `=== case ===` 与用例**一行都不会出现**，看起来像「case 阶段卡住 20 分钟无输出」。
+- **根因**：`*>>` 是**管道重定向**，它要等「写端句柄全部关闭」才结束；而被启动的**游戏进程**从
+  gradle → dev-launch-injector 一路继承了这条管道（Fabric 的 dev 启动器会 `inheritIO`）⇒ 只要游戏还活着，管道就不关，
+  父进程就一直挂着。**这不是游戏没起来，而是重定向语义与「孵化常驻进程」天然冲突**（与 D6/D7 同族，但落在**调用方**）。
+- **判据（一眼分辨）**：`AP_FAB_PHASE: launch rc=0` 已出现，但紧随其后的**调用方自己的 echo 行没有出现** ⇒ 就是它。
+- **修法（编排口径，已写进本节）**：把**常驻启动**与**后续步骤**拆成两次工具调用 ——
+  ① 启动放**保活的后台任务**里（末尾 `Start-Sleep` 一段，让本台脚本的「孵化即返回」语义与宿主「命令返回即清理进程树」共存）；
+  ② 注入 / 断言 / 用例走**独立的前台调用**（RCON 是网络通道，不依赖同一进程树）。
+  ⚠️ 反过来，`ft_build / ft_env / ft_stop / ft_inject / ft_assert / ft_case / ft_dispatchreport` 都**不孵化常驻进程**，可以照旧用 `*>>`。
+
+#### D9 用例里 `window: case` 时**末尾再写 `snapshot` 步** ⇒ 窗口被清空、全部 `log` 断言假 FAIL（2026-10-04 实测）
+
+- **现象**：`FAB-CATCHUP-PARITY`（`window: case`）末尾有一 `{"op":"snapshot","window":"case"}`；
+  改用它跑 `ft_case.ps1 run` 时，两条 `log` 断言全部 `ok=false hits=0`，而同一日志里**明明有**那两行读数。
+- **根因**：`Save-FtSnapshot` 记录的是**窗口起点**（`Ft.Common.psm1#Save-FtSnapshot` → `.ft_offsets.json`），
+  `Get-FtLogWindow -Window case` = 「**自最近一次** `snapshot --window case` 起」。
+  ⇒ 末尾再 snapshot 一次等于把起点推到**日志末尾**，窗口随即变空，之前写进去的读数全被排除。
+- **为什么之前没被发现**：另三条用例用的是 `window: whole`（整文件），尾部 snapshot 对它们**无害**；
+  只有 `window: case` 的用例才会中招 —— 而它此前只被**手工逐条注入**验过、**没有真的跑过 `ft_case run`**。
+- **修法**：`window: case` 的用例**不要写尾部 snapshot**（起点已由 `ft_case` 在用例开始时冻结）；
+  `FAB-CATCHUP-PARITY` 与 `FAB-Q2Q3-INVARIANTS` 均已按此修（改为一条 `note` 说明，避免后人再加回来）。
 
 ### 7.4 仍未实跑 / 仍未覆盖
 

@@ -1,0 +1,68 @@
+{
+  "case_id": "ECON-26.1.2",
+  "title": "26.1.2 经济存储可用性：前置库 starengine_lib 的平台侧钱包存储已注入 ⇒ StarEngineEconomy.isAvailable()=1，且余额写入/恢复往返闭合（余额条/星币吸收的前提）",
+  "version": "26.1.2",
+  "target": {
+    "type": "env",
+    "ref": "econ_available"
+  },
+  "on_fail": "keep_game_running",
+  "steps": [
+    {
+      "op": "note",
+      "text": "目的：证实 26.1.2 线**不再存在「无经济存储」问题**。\n\n背景：该线曾登记为「库侧缺口 —— starengine_lib 的 26.1.2 子项目无平台侧经济存储实现\n⇒ `StarEngineEconomy.isAvailable()` 恒 false ⇒ `/starcoin` 不注册、拾取星币不吸收、余额条恒 0」。\n库侧已由提交 `b90a16e`（2026-09-22）补齐 `neoforge-26.1.2/.../economy/NeoForgeEconomyStorage`\n并在库入口 `StarEngineLib` 构造器调用 `install()`；本用例是**运行期实机判据**。\n\n判据（探针 `econ`，只调库公开静态 API，可回滚不污染存档）：\n  `available=1`      —— 平台存储已安装（若为 0 则该缺口仍然存在）；\n  `set_ok=1` + `after_set=4321` —— 写入路径闭合；\n  `restore_ok=1` + `after_restore=before` —— 读回原始余额（无副作用）。\n\n⚠️ 不能只用「`/starcoin` 命令存在」判定 —— 该命令由库**无条件注册**，\n   与存储是否就绪无关（其内部才检查 `isAvailable()`）。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode creative",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe econ E1",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1000
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "latest",
+      "pattern": "AP_E1_ECON:available=1:before=[0-9]+:set_ok=1:after_set=4321:restore_ok=1:after_restore=[0-9]+"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_E1_ECON:available=0"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_[A-Z0-9]+_ERR"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "AP_[A-Z0-9]+_EX:"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "pattern": "<--\\["
+    },
+    {
+      "type": "kubejs"
+    },
+    {
+      "type": "crash"
+    }
+  ],
+  "evidence": []
+}

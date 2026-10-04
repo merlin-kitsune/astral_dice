@@ -20,7 +20,17 @@ import sys
 from collections import defaultdict
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-LINES = ['neoforge-1.21.1', 'forge-1.20.1', 'neoforge-26.1.2']
+LINES = ['neoforge-1.21.1', 'forge-1.20.1', 'neoforge-26.1.2', 'fabric-1.20.1']
+# ✅ **第四线 `fabric-1.20.1` 已纳入(2026-10-04,KI-E3 闭环)** —— 补完 1.3.3 动作栏改造后实测 **0 违规**:
+#   ① 11 个 `msg.astral_dice.*` 键(ren_passive_granted / zhao_dice_fu / zhao_dice_huo /
+#      xinyi_linked_granted / teru_descent_applied / mamushi_dragon_form / sherry_bad_ground /
+#      sherry_throw / hanna_float / hanna_dice_coin / hanna_pass)× 三语的值已改为与三项 P0 线**逐字相同**
+#      (色码全部移出 lang 值、由 code 侧 `sendSignActionBarColored` 外层定色);
+#   ② `client/TargetSelectionClient.java` 的 `notifyHeldSelectorBlocked` 由裸
+#      `displayClientMessage(..., true)` 改为库 `ActionBarManager.show(..., RED)`(与 forge 同款),
+#      故本线「原版覆盖层通道」使用文件数回到 **1**(= 白名单里的 BaseEffectCardItem)。
+#   ⚠️ 该线仍**不使用** `ActionBarPayload`(那是两条 neoforge 线的通道;1.20.1 两条线各走自己的实现)
+#      —— 但本闸门守的是「lang 值内禁 § / 键三语齐全 / 原版通道白名单」三条,与通道实现无关,故适用。
 LANGS = ['zh_cn', 'en_us', 'ja_jp']
 JR = 'src/main/java/com/merlinkitsune/astral_dice/'
 LANG_REL = 'src/main/resources/assets/astral_dice/lang/'

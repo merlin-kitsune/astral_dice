@@ -107,6 +107,8 @@ public class PlayerTickEvents {
         // 放在 % 20 早退**之前**,避免"擦身而过只停留几拍"被 20 tick 采样漏掉。
         if (!diceGated) com.merlinkitsune.astral_dice.item.sign.HannaSignItem.tickPassing(player);
         if (player.tickCount % 20 != 0) return;
+        // 历史常驻时长残留归一(旧存档里的 Integer.MAX_VALUE 递减值 ⇒ ∞);见方法 javadoc
+        normalizeLegacyInfiniteDurations(player);
         // 赋能:每 0:30 减少 1 层(剩余 1 层时直接归 0)
         if (!diceGated) com.merlinkitsune.astral_dice.item.EmpowerManager.tick(player);
         // 效果牌出牌周期计时
@@ -202,5 +204,47 @@ public class PlayerTickEvents {
         } else if (player.hasEffect(effect)) {
             ModEffectRemoval.remove(player, effect);
         }
+    }
+
+    /**
+     * 把**历史遗留的超长常驻时长**归一为原版真·无限时长({@code INFINITE_DURATION} = {@code -1})。
+     *
+     * <p>背景:本模组的常驻效果已改用无限时长,但更早版本写进玩家存档的实例仍是
+     * {@code Integer.MAX_VALUE} 的递减产物(实测存档 {@code astral_dice:charge Duration=2147482289}
+     * ⇒ 效果面板显示 {@code 29826:08:34} 而非 {@code ∞})。这类残留不会被任何既有路径修正:
+     * {@code EffectTimerGuard.record()} 对 {@code >= INFINITE_THRESHOLD} 的值直接跳过登记
+     * (视为永续),而各效果的施加点只在玩家「重新获得 / 消耗 / 切换装备」时才走到。
+     *
+     * <p><b>判据刻意用「超长阈值」而非效果清单</b>:本模组合法有限时长最大 24000 tick
+     * ({@code RenShieldManager} 的护盾 / 抗性刷新窗口;其余 ≤ 3600),与阈值相差约 4.6 个数量级
+     * ⇒ 不会误伤设计上的倒计时;双态效果(白泽赐福 / 降神 的「已启动」态 2400 tick)同样不受影响。
+     * 再用「效果必须由本模组注册」把原版 / 第三方效果排除在外。
+     *
+     * <p><b>快照遍历</b>:{@code getActiveEffects()} 返回活跃效果表的实时视图,边遍历边移除会抛
+     * {@code ConcurrentModificationException} ⇒ 先复制到 {@code ArrayList}。
+     * 只改写**时长**,层数 / 环境粒子 / 可见性 / 图标位原样保留,不影响任何效果语义。
+     */
+    private static void normalizeLegacyInfiniteDurations(Player player) {
+        for (MobEffectInstance instance :
+                new java.util.ArrayList<>(player.getActiveEffects())) {
+            if (instance.getDuration() < EffectTimerGuard.INFINITE_THRESHOLD) continue;
+            net.minecraft.world.effect.MobEffect effect = instance.getEffect();
+            if (!isModEffect(effect)) continue;
+            int amplifier = instance.getAmplifier();
+            boolean ambient = instance.isAmbient();
+            boolean visible = instance.isVisible();
+            boolean showIcon = instance.showIcon();
+            ModEffectRemoval.remove(player, effect);
+            player.addEffect(new MobEffectInstance(effect, MobEffectInstance.INFINITE_DURATION,
+                    amplifier, ambient, visible, showIcon));
+        }
+    }
+
+    /** 该效果是否由本模组注册(用于把原版 / 第三方效果排除在时长归一之外)。 */
+    private static boolean isModEffect(net.minecraft.world.effect.MobEffect effect) {
+        for (var holder : ModEffects.ALL) {
+            if (holder.get() == effect) return true;
+        }
+        return false;
     }
 }

@@ -1,6 +1,7 @@
 package com.merlinkitsune.astral_dice.item.chip;
 
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
+import com.merlinkitsune.starenginelib.event.EventTargetCollector;
 import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 import com.merlinkitsune.astral_dice.item.HealingManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
@@ -16,7 +17,7 @@ import com.merlinkitsune.astral_dice.combat.PartyRelations;
  * <p>友方判定:
  * <ul>
  *   <li>玩家:自身 + 队友(已加入队伍时 = 同队在线玩家;未加入任何队伍时 = 全服在线玩家,经
- *       {@link PartyRelations#collectTeamPlayers}),且距离不超过 {@link #RANGE} 格;
+ *       {@link EventTargetCollector#collectTeamPlayers}),且距离不超过 {@link #RANGE} 格;
  *       玩家获得治愈点数并回血。</li>
  *   <li>非玩家友方(玩家驯服的宠物、可骑乘生物):同样在 {@link #RANGE} 格内则恢复 2 点生命值
  *       (治愈点数是玩家级资源,不适用于生物)。</li>
