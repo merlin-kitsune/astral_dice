@@ -16,14 +16,14 @@
 用法
 =====================================================================
     # 先看计划（不发请求；dry-run 不需要 token）
-    python tools/modrinth_upload.py --jar neoforge-1.21.1/build/libs/astral_dice-1.3.5-hotfix+neoforge_1.21.1.jar --dry-run
+    python tools/modrinth_upload.py --jar neoforge-1.21.1/build/libs/astral_dice-1.3.7-hotfix+neoforge_1.21.1.jar --dry-run
 
     # 真上传（四条线一次传完）
     python tools/modrinth_upload.py \\
-        --jar neoforge-1.21.1/build/libs/astral_dice-1.3.5-hotfix+neoforge_1.21.1.jar \\
-        --jar forge-1.20.1/build/libs/astral_dice-1.3.5-hotfix+forge_1.20.1.jar \\
-        --jar neoforge-26.1.2/build/libs/astral_dice-1.3.5-beta.2+neoforge_26.1.2.jar \\
-        --jar fabric-1.20.1/build/libs/astral_dice-1.3.5-alpha.1+fabric_1.20.1.jar
+        --jar neoforge-1.21.1/build/libs/astral_dice-1.3.7-hotfix+neoforge_1.21.1.jar \\
+        --jar forge-1.20.1/build/libs/astral_dice-1.3.7-hotfix+forge_1.20.1.jar \\
+        --jar neoforge-26.1.2/build/libs/astral_dice-1.3.7-beta.2+neoforge_26.1.2.jar \\
+        --jar fabric-1.20.1/build/libs/astral_dice-1.3.7-alpha.2+fabric_1.20.1.jar
 
     # 前置库产物（文件名前缀 starengine_lib- ⇒ **自动路由到库项目**，无需额外参数）
     python tools/modrinth_upload.py \\
@@ -302,7 +302,7 @@ def version_number(ver, loader, mc):
     """版本号 = `<版本>+<加载器>_<MC版本>`。
 
     ⚠️ 刻意带上加载器/MC：一个项目下四条线并存，裸版本号在 1.21.1 与 1.20.1 上**同名**
-    （都是 `1.3.5-hotfix`）—— 同名在 Modrinth 上虽不必然被拒，但版本列表会变得无法区分；
+    （都是 `1.3.7-hotfix`）—— 同名在 Modrinth 上虽不必然被拒，但版本列表会变得无法区分；
     而 `+加载器_MC` 正是本模组 jar 文件名与 GitHub 产物本来的写法 ⇒ 既唯一又不失真。
     """
     return f"{ver}+{loader}_{mc}"

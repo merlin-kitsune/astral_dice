@@ -1,6 +1,6 @@
 # 星之骰戏 —— Fabric 1.20.1（移植线）
 
-**版本 `1.3.7-alpha.1`** · alpha 渠道（预发布）· Minecraft 1.20.1 · Fabric
+**版本 `1.3.7-alpha.2`** · alpha 渠道（预发布）· Minecraft 1.20.1 · Fabric
 
 > ⚠️ **这是 Fabric 移植线，不是正式版。** 正式版面向 NeoForge 1.21.1 / Forge 1.20.1 / NeoForge 26.1.2。
 > 本线使用**独立版本号**（`-alpha.N`，与 26.1.2 线的 `-beta.N` 同构）⇒ 永不占用正式版的版本号。

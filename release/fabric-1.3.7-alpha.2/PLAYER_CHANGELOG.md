@@ -1,6 +1,6 @@
 # Astral Dice — Fabric 1.20.1 (port line)
 
-**Version `1.3.7-alpha.1`** · alpha channel (pre-release) · Minecraft 1.20.1 · Fabric
+**Version `1.3.7-alpha.2`** · alpha channel (pre-release) · Minecraft 1.20.1 · Fabric
 
 > ⚠️ **This is the Fabric port line, not a stable release.** Stable releases target NeoForge 1.21.1 / Forge 1.20.1 / NeoForge 26.1.2.
 > This line uses its **own version numbers** (`-alpha.N`, mirroring the 26.1.2 line's `-beta.N`) so it never occupies a stable version number.
