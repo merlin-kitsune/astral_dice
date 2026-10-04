@@ -44,9 +44,11 @@ temp/
 
 ### 脚本目录:脚本本身入库,**运行时产物不入库** (2026-09-12 起;原先整目录排除 scripts/) ###
 scripts/**/__pycache__/
+### tools/ 同理(2026-10-01):`python tools/<x>.py` 会在 tools/ 下留 __pycache__,
+### 原先只有 scripts/ 被覆盖 ⇒ tools/__pycache__ 每次都冒成未跟踪文件。
+tools/**/__pycache__/
 scripts/temp/
 scripts/devtools/tmp/
-tools/**/__pycache__/
 scripts/test/reports/*
 !scripts/test/reports/_template.md
 scripts/test/cases/.mt_*
@@ -67,16 +69,12 @@ deploy.ps1
 .zcode/
 .workbuddy/
 
-### 上游参考源码克隆件(仅作 API 取证;2026-10-01 随 fabric 第四条线并入本分支) ###
-### 清单见 porting/fabric-1.20.1/VERSION_PINS.md;体积大、永不入库。
-ref/
-
 ### CI 前置库检出目录(见 .github/workflows/build.yml) ###
 .ci/
 .dsh/
 ### base-mod 本地 jar 目录(2026-09-17 用户要求排除):模组一律经 Curse Maven / Modrinth Maven 获取,
 ### 不再把第三方模组 jar 放进版本库(见 AGENTS.md「模组依赖添加规则(统一口径)」)。
-### 无斜杠前缀 ⇒ 三个子项目下的同名目录一并生效。
+### 无斜杠前缀 ⇒ 四个子项目下的同名目录一并生效。
 base-mod-libs/
 base-mod-compile-libs/
 ### AGENTS.md 自 2026-09-15 起纳入版本库(用户要求),不再排除 ###
@@ -89,3 +87,6 @@ base-mod-compile-libs/
 ### token 放 .modrinth/token(本地)或环境变量 MODRINTH_TOKEN(CI secret);
 ### 用法见 tools/modrinth_upload.py --help
 .modrinth/
+
+### 移植参考源(fabric-1.20.1 第四线,2026-09-29 接入):Fabric/Forge/Trinkets/CCA 等参考仓克隆件,不入库
+ref/

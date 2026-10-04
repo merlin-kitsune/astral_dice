@@ -3,8 +3,8 @@
 > **用户要求的「Fabric 平台单独差异性清单」**（2026-10-04 建制）。
 > **优先级**：**P1 次要**（待 P0 = `neoforge-1.21.1` + `forge-1.20.1` 落地后再向下移植）。
 > **基准**：功能面 = `neoforge-1.21.1`；**代码蓝本 = `forge-1.20.1`**（同为 MC 1.20.1 ⇒ 照搬 forge 文件 + 固定平台替换，天然保留 1.20.1 的配方 / 行为差异）。
-> **可版本化载体**：本文件（`docs/` 被 `.gitignore`，不进提交）。
-> **配套**：`porting/CROSS-VERSION-DIFFS.md`（四线总表）· `porting/fabric-1.20.1/{VERSION_PINS,CATCHUP-PLAN-2026-10-04,CATCHUP-PROGRESS-2026-10-04}.md` · `KNOWN-ISSUES.md` §9（KI-F*）与 KI-E3。
+> **可版本化载体**：本文件（另：`docs/` **自 2026-10-01 起已纳入版本库**（`.gitignore` 的 `docs/` 排除条目已移除，提交 `d73cf841`；本仓实测 `git ls-files docs/` = 86 项））。
+> **配套**：`porting/CROSS-VERSION-DIFFS.md`（四线总表）· `porting/fabric-1.20.1/{VERSION_PINS,CATCHUP-PLAN-2026-10-04,CATCHUP-PROGRESS-2026-10-04}.md` · `KNOWN-ISSUES.md` §9（KI-F*）+ §1.1（`KI-E3` 已于 2026-10-04 闭环）。
 
 ---
 
@@ -83,7 +83,7 @@
 | **P1-B-4** | 中 | **KI-E3：三个守门脚本不含 fabric** —— `audit_mixin_injection` / `check_lang_sync` / `audit_actionbar` 的 `LINES` 只登记三线 ⇒ 该线 **mixin 计数、三语一致、动作栏键存在性**三面**无自动守门** | ✅ **已闭环**（2026-10-04，KI-E3 结案） | 三个脚本的 `LINES` 均已含 `fabric-1.20.1`；实测**硬违规 0 / PASS / exit=0**。⚠️ 纳入前先修掉真实滞后：11 个 `msg.astral_dice.*` 键 × 三语的值内嵌 `§`（已对齐 P0 值）+ `TargetSelectionClient` 的裸 `displayClientMessage` 改走库 `ActionBarManager.show(..., RED)` |
 | **P1-B-5** | 中 | **KI-F24②：`DiceCombatEvents#onLivingDamagePre` 与三线结构不同构** —— fabric 把 `directEntity instanceof Player` 闸门提到计时器逻辑**之前** ⇒ 白泽赐福 / 降神计时器在 fabric 只认**近战**（用 `player`），三线挂在闸门之前、按「任意攻击」启表（用 `source.getEntity()`） | ✅ **已对齐 P0**（2026-10-04） | `KNOWN-ISSUES.md` KI-F24②（**可结案**）：计时器块已前移到 `directEntity instanceof Player` 闸门**之前**并改用 `source.getEntity()`；与 `forge-1.20.1` 同方法前段**逐行一致**（归一化 `CuriosApi`→`CuriosCompat` 后 diff=0） |
 | **P1-B-6** | — | KI-F24① `concealment`（秘密侦探「隐匿」）整条特性缺失 | ✅ **已闭环**（追平批 5：新增 `ConcealmentEffect` + 注册 + 解除逻辑 + 图标 + lang） | `KNOWN-ISSUES.md` KI-F24① |
-| **P1-B-7** | 中 | **四线共有待裁决**：`KI-F8`（`hanna_sign.3` / `sherry_sign.3` 档位词与代码稀有度不符）、`KI-G2`（医疗箱筹码重登 / 切维度可反复利用） | ⏳ 待裁决 | `KNOWN-ISSUES.md` KI-F8 / KI-G2（**四线共有、与移植无关**） |
+| **P1-B-7** | 中 | **四线共有待裁决**：`KI-F8`（`hanna_sign.3` / `sherry_sign.3` 档位词与代码稀有度不符）、`KI-G2` 已于 2026-10-04 闭环（撤掉重登 / 切维度两个触发点，四线同批） | ⏳ 待裁决（**仅 KI-F8**） | `KNOWN-ISSUES.md` KI-F8 / §1.1（KI-G2） |
 | **P1-B-8** | 低（纪律） | **KI-F4 缺陷模式**：重写构建脚本漏搬 `sourceSets.srcDir('src/generated/resources')` ⇒ 生成资源不进产物 | 已固化 | 收尾必开包核对资源条目数 |
 | **P1-B-9** | — | 跨加载器**存档不互通**（附件 vs Capability/ForgeData；Trinkets/Accessories vs Curios） | 平台差异，**不修补** | `KNOWN-ISSUES.md` KI-F2 |
 | **P1-B-10** | 低（纪律） | `verify_fabric_assets.py` 白名单现**为空**；新增项必须写「为何不能修 + 需谁裁决」 | 纪律 | 同左 |
@@ -98,7 +98,7 @@
 | # | 问题 | 现状 | 可选方案（含代价） | 建议 |
 |---|---|---|---|---|
 | **Q1** | **KI-F8 手册档位词 ≠ 代码稀有度**：`hanna_sign.3` 写「稀有档 Rare」、`sherry_sign.3` 写「史诗档 Epic」，而两者代码都是 `AstralRarities.bizarre()`（奇特） | 只登记未改（**四线共有**，与移植无关） | ①**以代码为准**：两条文案改「奇特档」——需先定 `bizarre` 的英/日写法（`astral_dice:bizarre` 可作英文候选；**日文无先例**）；②**以文案为准**：改代码稀有度（`bizarre()`→`rare()`/`epic()`）——连带改 tooltip 配色与整个稀有度分布；③维持现状 | **①**（改动最小、不动玩法数值）；需先敲定日文术语 |
-| **Q2** | **KI-G2 医疗箱筹码「重登 / 切维度」可反复白刷回血**：`PlayerLoggedInEvent` / `PlayerChangedDimensionEvent` 均 `refreshMedkitEquipSession + triggerMedkitOnEquip`，而 `equipTrigger` 的 `triggerHealing` **无条件** ⇒ 每次重登 / 每次过门再完整触发一次（层数满 32 时直接按 32×2 回血） | 只登记未改 —— 属用户 2026-10-01 裁决「这两个时点各触发一次」的**数学必然推论** | ①**接受为设计**（0 改动，文档如实披露）；②**节流**（同玩家 N 秒内最多一次，或仅当「闸门上次因**死亡**释放」时才触发）；③**撤掉这两个时点**（只留「装备时」+「重生后」；= 删两处调用 + 手册文案回退） | **②**（保留裁决意图、堵住无限刷）；⚠️ 三条均不得改「装备时 / 重生后必触发」与三档概率 / `HEALING_TIMER_SECONDS=60` / `HEALING_POINT_CAP=32` |
+| **Q2** | **KI-G2 医疗箱筹码「重登 / 切维度」可反复白刷回血**：`PlayerLoggedInEvent` / `PlayerChangedDimensionEvent` 均 `refreshMedkitEquipSession + triggerMedkitOnEquip`，而 `equipTrigger` 的 `triggerHealing` **无条件** ⇒ 每次重登 / 每次过门再完整触发一次（层数满 32 时直接按 32×2 回血） | 只登记未改 —— 属用户 2026-10-01 裁决「这两个时点各触发一次」的**数学必然推论**（⚠️ **2026-10-04 已闭环**：按可选方案 ③ 撤掉重登 / 切维度两个触发点，四线同批；实机 `FAB-Q2Q3-INVARIANTS` 6/6） | ①**接受为设计**（0 改动，文档如实披露）；②**节流**（同玩家 N 秒内最多一次，或仅当「闸门上次因**死亡**释放」时才触发）；③**撤掉这两个时点**（只留「装备时」+「重生后」；= 删两处调用 + 手册文案回退） | **②**（保留裁决意图、堵住无限刷）；⚠️ 三条均不得改「装备时 / 重生后必触发」与三档概率 / `HEALING_TIMER_SECONDS=60` / `HEALING_POINT_CAP=32` |
 | **Q3** | **KI-F25② 裸 `removeEffect` 在效果不存在时抛 `CancellationException`**（`astral_dice:` 效果的外部移除被**设计性**拦截 ⇒ 拦截器取消了一个未被声明为可取消的回调） | 已登记，**未做决定性复现**（⚠️ 本节是**裁决前快照**；处置与更正见 §4.2 与 §4.3） | ①跑一次决定性复现（三条路径：裸 `removeEffect`(效果不存在) / `/effect clear` / 喝牛奶），确认后修（拦截器加 `cancellable()` 判定或前置存在性检查）；②维持现状（原版与本模组自身都先判存在性，影响面小） | **①**（探针可做的无人值守项，一次即定性） |
 | **Q4** | **KI-F25④ `FakePlayer` 不进世界 tick 循环** ⇒ 依赖「玩家级每 N tick」的行为（如 `normalizeLegacyInfiniteDurations`）**无法**在本线端到端断言 | 已如实登记（测试能力边界，非产品缺陷） | ①带**真人玩家 / 客户端进世界**验证（需用户在场）；②维持（该特性已有静态判据 + 另三线实机读数） | **②**（不影响产品正确性） |
 | **Q5** | **KI-F21-① 进世界验证未跑**：`ft_prod.ps1` 的 quickplay 通道曾**误删存档** ⇒ 世界内行为（附件注册 / ∞ 显示 / 效果面板悬停注释 / 配方实际可合成）未在 fabric 实机确认 | 刻意未跑（该参数已加护栏，需显式 `-AcknowledgeQuickPlayDestructive`） | ①授权该参数 + **先备份存档**后跑一次；②由**用户手动**进世界目视；③维持不做 | **①或②**（用户在场时一次性做完，覆盖面最大） |

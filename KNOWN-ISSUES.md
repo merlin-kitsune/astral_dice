@@ -1,14 +1,21 @@
 # 已知问题与未来版本修补清单（KNOWN-ISSUES）
 
 > **本文件是「未修项」的唯一版本化载体**。本地 `docs/` 目录被 `.gitignore` 忽略、不随仓库分发，故凡需要跨会话/跨分支可见的未修项一律登记在此。
-> 本文件**只登记「尚未实施」的事项**；每条的最终状态必须如实反映现实，**禁止为了缩短清单而删除条目**。
+> 本文件**只登记「尚未实施」的事项**；每条的最终状态必须如实反映现实。
+> ⚠️ **未修项禁止为缩短清单而删除**；**已处理项**按 §0 第 4 条清理（移入 **§1.1 已处理索引**，正文留在 git 历史里）。
 
 ## 0. 使用纪律（必须遵守）
 
 1. **实施前必须先复核，不得直接照文档改**：本清单多数条目的定性来自 **2026-09-15 15:45 的扫描快照**，其后本批已改动过 `combat/DiceCombatModifiers`、`combat/SpellDamageRegistry`、`combat/HostileTargets` 等文件 ⇒ 「仍存在/未修」**不等于当前 HEAD 仍存在**。按 `mc-two-round-verification` 流程，先做**独立代码复核**（第一遍，验证者 ≠ 实现者），把「文档定性」与「当前 HEAD 实况」逐条对齐，再交用户定夺。
 2. **三版本同步**：所有修补一律 `neoforge-1.21.1` + `forge-1.20.1` + `neoforge-26.1.2` 同时实施，保持功能对等（项目默认规则）。
 3. **必须能被验证**：每条修补都要有可判定的判据（游戏内用例、或新增用例；`scripts/test/cases/` 与 `scripts/test/TESTING-SPEC.md`）。**不得**用「代码看起来对了」结案。
-4. **结案方式**：改为「已修复」并注明 **commit + 验证证据**（用例名/读数），**同时**在两个 `CHANGELOG` 的对应小节按「合并约定」记录；**不要**删条目。
+4. **结案方式与清理规则（2026-10-01 修订）**：条目修好后**不再留在本清单正文里**。顺序是 ——
+   ① 把结论与证据落到正确的位置：玩家可见的写两个 `CHANGELOG`；工程细节写 `scripts/test/TESTING-SPEC.md` 附录 A；
+   长期约定写 `AGENTS.md`（若涉及）。② **整块删除**该条目。③ 在 **§1.1 已处理索引**留一行（id + 一句话结论 + 证据落点），
+   并在 **变更记录**留一条日期行。
+   ⚠️ 原文「**禁止为了缩短清单而删除条目**」**仍然有效** —— 它禁止的是**删未修项**（那是掩盖问题）；**已修项**的清理
+   不属于该禁令（正文在 git 历史里可追）。
+   ⚠️ 删除前必须 `grep` 该 id 的引用：若其它**未修**条目引用了它，把引用改指 §1.1（**不得删引用**）。
 5. **行号会漂移**：本文件引用的行号取自扫描时的快照，复核时请**以引用的原文串/标识符为准**重新定位。
 
 ## 1. 登记信息
@@ -16,9 +23,10 @@
 - 登记日期：2026-09-15
 - 登记来源：B7 交付后遗漏审计（用户裁定「纪录上述问题，作为未来版本修补内容」）
 - 目标版本：**下一版本**（1.2.1 之后；是否并入 1.2.1 需用户另行裁定）
-- 条目总数（2026-10-04 KB 批次后）：**25** 条未修/未决 = A 组 7（KI-1…KI-7）+ B 组 1（KI-8）+ C 组 3（KI-9…KI-11）
+- 条目总数（2026-10-04 KB 批次后）：**26** 条未修/未决 = A 组 7（KI-1…KI-7）+ B 组 1（KI-8）+ C 组 3（KI-9…KI-11）
   + M 组 3（KI-M2/M3/M4）+ D 组 1（KI-D1）+ E 组 2（KI-E1/E2）+ F 组 8（KI-F4/F7/F8/**F21/F22/F23/F24/F25**）
-  + G 组 **0**（KI-G2 已于 2026-10-04 闭环 ⇒ 移入 §1.1），
+  + G 组 **1**（**KI-G3** —— 2026-10-04 随「四张伤害效果牌整体重做」同批登记；
+    KI-G2 已于 2026-10-04 闭环 ⇒ 移入 §1.1），
   另有 §5 的 **2** 条「测试资产待修项」。**已处理条目见 §1.1 索引。**
   ⚠️ **2026-10-02 澄清（发布前审计）**：上列条目里有 **3 条（`KI-F21`/`KI-F22`/`KI-F23`）标题自述「已完成 / 已修 / 已缓解」**，
 
@@ -28,6 +36,8 @@
   实机用例 `FAB-Q2Q3-INVARIANTS` 6/6 + 静态守门 M1 四线 22 项）⇒ 未修/未决 **26 → 25**（G 组 1 → 0）。
   同时 **KI-F25② 重新定性为「探针假象、非产品缺陷」**（决定性取证见 F 组该条）⇒ 其「待定缺陷」不再计入未修缺陷；
   该条目保留，检查项 **①/③/④/⑤** 仍然有效（⑤为本次新增的探针纪律）。
+- ⚠️ **2026-10-04（四张伤害效果牌批次）**：**新增 KI-G3**（「对怪板砖」FX 的 `BlockDisplay` 在非正常关服时的残留风险，
+  只登记未改）⇒ 未修/未决 **25 → 26**（G 组 0 → 1）。
 
 ## 1.1 已处理索引（2026-10-01 首次清理）
 
@@ -120,9 +130,6 @@
   8 断言；核心不变量 = 读数 `base=…:raw=8…:self=…:nbr=…` 中 **base/self/nbr 三者相等**）。
 - 状态：**代码已改 + 已编译通过**；1.20.1 必须在**重新构建**后再跑该用例（否则读到的仍是旧的护甲前基准 `base=8`，用例会正确地 FAIL）。
 - 残余（平台固有，不修）：目标带**吸收（黄心）**时两侧基准仍有差（1.20.1 在吸收后派发、1.21.1 在吸收前），普通目标无吸收故实际影响可忽略。
-  - ⚠️ 上述残余只针对 **AOE 的伤害基准**（`SpellDamageRegistry` 仍读 `ctx.event` 的护甲后值来算波及伤害量）。
-    **跳字的显示口径**已于 2026-09-26 另行统一：三线一律取**伤害管线终值**（= 实际扣血量，见 `AGENTS.md` 的「伤害跳字的口径」条），
-    故「带黄心时两线绿字不同」这一显示层差异**已不再存在**；本条残余仅指伤害数值本身。
 
 ### KI-6 ＝ P2-C10「肾上腺素 / 能量回收 修饰器残留」
 
@@ -170,47 +177,20 @@
 
 ---
 
-## 5. 已闭环但当日文档未回写（列此以免重复劳动）
+## 5. 测试资产待修项（原「已闭环但当日文档未回写」表 —— **仅剩这 2 条**未闭环）
 
-| 曾标记 | 现状（2026-09-15 实测） |
+> 该表原 9 行已于 2026-10-01 清理（其余 7 行均已闭环，见 **§1.1 已处理索引**）；下表是**仍未闭环**的两条
+> 「测试资产自身」缺陷（**不是产品缺陷**，故不写进 CHANGELOG）。
+
+| 曾标记 | 现状 |
 |---|---|
-| `docs/scan2/P5-equip-paths-linkage.md` 的 **13 处 `✘1需改`**（上下文可用却仍用单参 `isHostile`） | **已全部闭合**：当前代码实测 **双参 27 处 / 单参 5 处**；5 处分别为重载定义（`HostileTargets.java:39`）、javadoc（`:31`）、内部委托（`:55`）、`isBlessingTarget`（P5 自标 `—1`，有意）、`PandamanSignItem`（文档化的「嘲讽不施予玩家」） |
-| `NancyLuSignItem` 的 `isHostile(target) \|\| target instanceof Player`（P5 #23/#24 ⚠️ 过宽） | **已替换为两参判定**（源码注释明写「旧写法会把队友与无关玩家也当作可攻击目标」，1.21.1 `:273-274` / `:286-287`，1.20.1 同构） |
-| P2-C1 / P2-C3 / P2-C4 / 安全气囊致命判定基准 | 文档自标「已修」 |
-| `mt_assert` 断言窗口「自 launch 起」 | **已改为自本用例起**（commit `cc49f0d`；`assert.scope` = `case`/`launch`/`whole`） |
-| `LOOT-MODIFIER` 反向断言丢启动期覆盖 | **已修**（补 `scope: whole`，commit `c0ad51f`，实测读数 `@0B(win=whole)`） |
-| **追加 A**：《恋的规则书》「仅首次进入世界发放一次」被违反 —— 死亡重生后再登录会**补发**一本 | **已闭环（2026-09-16 实测）**：守卫附件 `guide_book_given` 原先不随死亡复制 ⇒ 死亡后新实体回默认 `false`，而发放挂在 `PlayerLoggedInEvent` ⇒ 重登必补发。修补 = 把该键纳入**死亡保留集合**（1.21.1 `component/ModAttachments.java` 的 `GUIDE_BOOK_GIVEN` 加 `.copyOnDeath()`；1.20.1 `component/AstralData.java#onPlayerClone` 死亡白名单加同键），两侧键集合保持三个（`rin_pages` / `komachi_damage_bonus` / `guide_book_given`）。用例 `GUIDE-BOOK-FIRST-JOIN-ONLY-{1.21.1,1.20.1}` 必须**跑两次**（首登 + 不跑 env 的重登）：1.21.1 两轮均 **7/7 PASS**（重登读数 `AP_G1_GUIDE:given=1:count=1`，2026-09-16 00:47，耗时 29 s）；**1.20.1 两轮同样 7/7 PASS**（首登 + 不跑 env 的重登，2026-09-16 00:52 前后，读数同为 `AP_G1_GUIDE:given=1:count=1` / `AP_G3_GUIDE:given=1:count=1`）⇒ **双版本均严格遵循「仅第一次进入世界发放一次」** |
 | **追加 D**：`SPELL-TRUE-DAMAGE` 的**护甲读取在 1.21.1 上失效、且用例断言过弱**（测试资产缺陷） | **已登记，待修**（2026-09-16 实测）：同一用例两边都判 PASS，但取证读数质量天差地别 —— 1.20.1 读到 `AP_SD_ARMOR_CTRL:armor=rc=1:tough=rc=1:read=rc=2` 与 `AP_SD_ARMOR_EFFECTIVE:ctrl_arm=armor=20:tough=8:test_arm=armor=20:tough=8`（真实护甲 20 / 韧性 8），**1.21.1 读到 `rc=undefined`、四组全为 `armor=0:tough=0`**（护甲属性根本没读上）。因该用例的断言**只匹配键名前缀**（`AP_SD_ARMOR_EFFECTIVE:`），1.21.1 侧「基础伤害吃护甲」这一条实际是**空证据**仍判 PASS。修法：① 探针在 1.21.1 侧改用能读到护甲/韧性的属性入口；② 断言加严为「必须读到 armor=20:tough=8 之类非零值」，读不到即 `ERROR`（**禁止**为变绿而放宽） |
-| **追加 B**：双版本「死亡保留集合」是否一致 | **一致**（两侧均为 `rin_pages` / `komachi_damage_bonus` / `guide_book_given`；`AGENTS.md` 与代码逐条对应），不属差异项 |
-| **追加 C**：新用例 `ELECTRIC-GLOVE-AOE-BASE` 的**探针取数缺陷**（测试资产缺陷，**不是产品缺陷**） | **已登记，待修**（2026-09-16 实测）：首次执行即 FAIL，取证读数 `AP_GB_ERR:base_source:no_read:calls=0` + `AP_GB_GA:base=-1:raw=8:self=2.24:nbr=2.24:armor=20:rarmor=0:mode=forced_survival:armed=1:bsrc=no_read`。**判据**：`self == nbr == 2.24` —— 真正重要的**对等不变量成立**；失败的是「读 `base`」那一路（`bsrc=no_read`，注册进生产修饰器表的探针读取器**一次都没被调用**）⇒ 断言 7/8/9 因 `base=-1` 不匹配而 FAIL，断言 12（absent）又抓到探针自己吐出的 `AP_GB_ERR`。**结论**：该用例当前**不可用**，在任何版本上都会 FAIL；KI-5 的**游戏内**数值验证因此**尚未完成**（代码级证据见本文件 KI-5 段：事件映射 + jar 内 class 常量池 `LivingHurtEvent=0 / LivingDamageEvent=4`）。修法方向（择一，需先复现 `calls=0` 的原因）：① 让探针改从**已确定会被调用**的路径取 `ctx.event` 的值；② 或改判据为「同一版本内 `self == nbr` 且跨版本同值」这类不依赖生产修饰器被调用的对照。**禁止**为了让它变绿而放宽断言 |
-
-
----
+| **追加 C**：新用例 `ELECTRIC-GLOVE-AOE-BASE` 的**探针取数缺陷**（测试资产缺陷，**不是产品缺陷**） | **已登记，待修**（2026-09-16 实测）：首次执行即 FAIL，取证读数 `AP_GB_ERR:base_source:no_read:calls=0` + `AP_GB_GA:base=-1:raw=8:self=2.24:nbr=2.24:armor=20:rarmor=0:mode=forced_survival:armed=1:bsrc=no_read`。**判据**：`self == nbr == 2.24` —— 真正重要的**对等不变量成立**；失败的是「读 `base`」那一路（`bsrc=no_read`，注册进生产修饰器表的探针读取器**一次都没被调用**）⇒ 断言 7/8/9 因 `base=-1` 不匹配而 FAIL，断言 12（absent）又抓到探针自己吐出的 `AP_GB_ERR`。**结论**：该用例当前**不可用**，在任何版本上都会 FAIL；KI-5 的**游戏内**数值验证因此**尚未完成**（代码级证据见本文件 KI-5 段）。修法方向（择一，需先复现 `calls=0` 的原因）：① 让探针改从**已确定会被调用**的路径取 `ctx.event` 的值；② 或改判据为「同一版本内 `self == nbr` 且跨版本同值」这类不依赖生产修饰器被调用的对照。**禁止**为了让它变绿而放宽断言 |
 
 ## 6. 主线 → multi-dev-next 合并（2026-09-17）的并入裁决与遗留项
 
 > 本节记录 `multi-1.20.1-1.21.1`（`8f68482`）→ `multi-dev-next` 的合并中，两套「立牌主动技能释放模型」的
 > 取舍与遗留项。合并提交（merge commit）的提交信息里有同一份结论（本节为可版本化载体）。
-
-### KI-M1 ＝ 旧「待命等待器」由目标选择器取代（已裁决，非缺陷）
-
-- **dev-next 侧（采用）**：`target/TargetSelectionManager` + `TargetSelectionAction` /
-  `TargetSelectionRegistry` / `TargetType` —— 按下主动键即进入**目标选择会话**，确认目标后**即时释放**；
-  取消/超时不消耗冷却。
-- **主线侧（未采用，已随合并移除）**：基于 `sign_ready_type` / `sign_ready_expire` 的「待命等待器」+
-  `BaseSignItem.isSkillWaiting` / `tickSignReadyTimeout` + 三个立牌的 `*_ready` 提示效果
-  （`haiqing_ready` / `bonnie_ready` / `moses_ready`）—— 按下主动键进入待命，**等下一次攻击命中**才释放。
-- 取舍理由：两者是同一功能的两种实现，**不能并存**（否则同一按键存在两条释放路径）；dev-next 的选择器
-  已是三线共享库的一部分，且 2.0.0 的界面、文案与服务端校验都按它书写。故合并方向 = **选择器胜出**，
-  主线的等待器代码与其专属效果一并移除；`SIGN_READY_TYPE` / `SIGN_READY_EXPIRE` 附件保留为**废弃键**
-  （已无任何写入方）。⚠️ 原「待库侧过渡符号清理任务一并删除」的预期已被实测**更正**：这两个键定义在
-  **消费方**（三线各自的 `component/ModAttachments`），且三线仍有 22 处引用 ⇒ 去留见 **KI-M4②**，
-  **不得静默删除**。
-- **对脚本侧读数的影响（重要）**：自动化用例的 `astraldice_ts_*` 读数**只反映选择器会话**
-  （`TargetSelectionManager` 的状态），`sign_ready_type` / `sign_ready_expire` 恒为 `0` / `0`；
-  任何断言「按主动键后 `sign_ready_type > 0`」「等待窗口 30 秒内不进入冷却」的旧用例**必然失效**，
-  必须改写为选择器语义（进会话 → 选目标 → 确认；取消/超时不计冷却）。
-  `/astralparty dump` 仍会回显这两行（占位 0）以及 `is_sign_active_locked`，便于对照取证。
 
 ### KI-M2 ＝ 三态化（锁定-生效中）与选择器**共存**（已裁决）
 
@@ -258,7 +238,7 @@
      `EVENT_APPLY_MC_TEAM` / `EVENT_APPLY_FTB_TEAM` / `EVENT_APPLY_OPAC` 与
      `EventTargetCollector.collectTeamPlayers`（清单原件见 `temp/sink-manifest-20260917.md` §6）。
 
-### KI-M4 ＝ 待用户裁决 / 待办的两项开放项（2026-09-17 登记）
+### KI-M4 ＝ 待用户裁决 / 待办的开放项（2026-09-17 登记；**原 2 项，第 1 项已于 2026-09-24 闭环**，仅剩下面第 2 项）
 
 1. **库仓库未 push ⇒ CI 的前置库 checkout 在推送前必然失败。** 消费方 `.github/workflows/build.yml`
    已把检出 ref 钉到 `d5b077692058ebca752e9ef68ef18ffcc18e5fa2`（= `1.0.0-SNAPSHOT.5` 终态，改动提交
@@ -271,38 +251,13 @@
    `1.0.3` 并发布三平台 jar 的 Release；消费方 CI（库检出 `ref: e407844`）同日跑绿 ⇒ 上述两条「待办」路径均不再需要。
    ⚠️ 本条正文里的 `d5b0776` / `1.0.0-SNAPSHOT.5` / `ce583a9` 均为 2026-09-17 登记时的快照，现仅作历史记录。
 2. **消费方 `SIGN_READY_TYPE` / `SIGN_READY_EXPIRE` 废弃键的去留（待裁决，不得静默删除）。**
-   这两个附件键是旧「待命等待器」的载体（见 KI-M1），等待器已在合并中由目标选择器取代、**无任何写入方**，
+   这两个附件键是旧「待命等待器」的载体（见 §1.1 索引中的 KI-M1），等待器已在合并中由目标选择器取代、**无任何写入方**，
    但**三线仍在引用**：实测 `git grep -E 'SIGN_READY_TYPE|SIGN_READY_EXPIRE' -- '*.java'` 命中 **22 处**，
    全部落在三条线各自的 `component/ModAttachments`（键定义 + `get/set` 包装器；`1.20.1` 8 处 /
    `1.21.1` 8 处 / `26.1.2` 6 处，其中 1.20.1 还有 `SYNCED_KEYS` 登记，属同步协议面）。
    **候选**：(a) 三线同步删除（注意 1.20.1 的同步协议面与老存档里的废弃键残留）；
    (b) 保留为「废弃但可用」的占位键（**现状**），仅在注释里标注废弃；
    (c) 其它（如仅在下一大版本随存档迁移一起清）。**裁决前维持现状（b）。**
-
-### KI-M5 ＝ 26.1.2 接入 starengine_lib 后的两项开放项（2026-09-17 登记）
-
-1. **三个整合包目录目前都没有 `starengine_lib-*.jar` ⇒ 迁移后把 26.1.2 产物推入整合包会被 FML 拒绝启动。**
-   26.1.2 自 2026-09-17 起接入前置库，其 `neoforge.mods.toml` 已声明 `starengine_lib` 为 `required`
-   （`versionRange="[1.0.0-SNAPSHOT.5,2.0)"`）；实测 `D:/.minecraft/versions/26.1.2 模组测试/mods`、
-   `狐の航空学 Voxy Edition/mods`（1.21.1）、`1.20.1 模组测试/mods` **三个目录都没有库 jar**，
-   而 1.21.1 / 1.20.1 两条*已接入库*的线的整合包同样缺库 jar（属既有缺口，非本次迁移引入）。
-   **待裁决**：(a) 推整合包时成对放入 `starengine_lib-<平台>-1.0.0-SNAPSHOT.5.jar`；
-   (b) 暂不推该线产物（现状）。推送守卫未改动：`multi-dev-next` 上 `pushToGame` 仍为 skipped，
-   仅 `-PdeployToPack` 可强推；`pushToGame` 已按另两线同形补**纯防御**的「库 jar 成对自检」（只告警，不阻断）。
-   **限域（2026-09-17 用户裁决补记）**：本风险**在 `multi-dev-next` 上不会触发** —— 用户裁决「该分支内所有内容均不推送整合包（严格），只推送到游戏测试目录。除非用户另行规定。」该分支上 `pushToGame` 在**执行期**即因分支不在白名单而 `skipped`（实测三线均为 skipped；本次未跑 Gradle，证据引自 t12 报告 §5 与 `temp/merge-t2/t12-verify-build-*.log`），整合包目录不会被写入、旧 jar 也不会被删。
-   只有当**发布线 `multi-1.20.1-1.21.1`**（或用户显式 `-PdeployToPack` 强推）真正推送整合包时，才必须把**库 jar 与本模组 jar 成对推送** —— 即 `starengine_lib-<平台>-1.0.0-SNAPSHOT.5.jar` 与 `astral_dice-*.jar` 同批放入同一个 `mods` 目录，否则 FML 在依赖排序阶段以「缺必需前置」拒绝启动。2. **【2026-09-19 已关闭】`effect/ReadyEffect` 是本线唯一保留的本地重复类（库内已按 KI-M3 删除）** —— 波次 2b（立牌主动前置门控收口移植）已把该线的立牌主动收口到发布线形态，本副本与三处注册**已实际删除**（见下方保留理由段的关闭说明）。
-   保留理由：本线的旧「待命等待器」仍在用（`ModEffects` 的三处注册 `haiqing_ready`/`bonnie_ready`/`moses_ready`），
-   而库 `.5` 已删除该符号 —— 若改为库引用会引用库中不存在的类，若删本地副本则三处注册编译失败。
-   **禁止**为它复活库中已删符号、**禁止** bump 库版本、**禁止**改 CI 的库检出 ref（均属用户已明确暂缓事项）。
-   **已于 2026-09-19 执行（本条关闭）**：26.1.2 的立牌主动已随波次 2b 迁到目标选择器（`BaseSignItem.handleUse` 由 `abstract` 改为发布线同款「默认实现 + WARN」、删 `isSkillWaiting`/`tickSignReadyTimeout`），`effect/ReadyEffect.java` 与 `ModEffects` 的 `haiqing_ready`/`bonnie_ready`/`moses_ready` 三处注册随另两线一并删除（该线效果注册数 **33→32**，与两个发布线 id 集合逐项一致），并一并删掉该线多出的 3 个 `effect.astral_dice.*_ready` lang 键与 3 张 `mob_effect/*_ready.png`（lang 686→683、贴图 35→32）。上面那四条「禁止」中只有后三条仍适用（属库侧政策：不为库复活已删符号、不 bump 库版本、不改 CI 检出 ref）；「禁止删本地副本」一条随本副本删除而失效。
-**⚠️ 2026-09-24 更新：本条①（「库 jar 与 mod jar 必须成对推送」）的前提已消失，该规则作废。**
-消费方已把前置库改为 **JarJar 内嵌**（`48976cb1`，三线 `build.gradle`；`pushToGame` 末尾留「整合包内不应
-存在独立库 jar」的自检告警），且**库侧 `pushToPack` 已整体移除**（库仓同批提交）⇒
-① **整合包 `mods` 里只应放 `astral_dice-*.jar`**，库由它内嵌携带，不再需要「成对推送」；
-② 方向反过来才是风险：整合包里若**残留**独立库 jar，会被 FML 的 JarInJar 选择器按 `modId` 优先采用并
-盖掉内嵌副本（独立件更旧时 ⇒ `NoSuchMethodError` / `NoClassDefFoundError`）⇒ **残留件应删除**。
-实测 2026-09-24：`1.20.1 模组测试/mods` 与 `26.1.2 模组测试/mods` **仍各有一个**
-`starengine_lib-*-1.0.3.jar`（1.21.1 的 `狐の航空学 Voxy Edition/mods` 已无），属待清理残留（未代删）。
 
 ## 7. D 组 — 平台 / 第三方冲突（2026-09-18 起）
 
@@ -397,74 +352,6 @@ GlCommandEncoder.trySetup(:531) ← GlCommandEncoder.executeDraw(:406) ← GlRen
   跨命令沿用），判据一律读句柄；类型匹配只留在诊断字段里。⇒ **不要**再用 `typeIdOf` 写新判据；依赖它的既有命令
   （如 `countLightning` 的通用回退分支、`slimecheck` 等）需一并复核。
 
-## 8.5 F 组 — fabric-1.20.1 第四条线并入后的遗留项（2026-10-01 登记）
-
-### KI-F1 ＝ Jade 集成的护甲显示在 fabric 线**未实现**
-
-- **现状**：`neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2` 三线通过
-  `mixin/jade/ArmorValueProviderMixin` + `ArmorElementIconMixin`（neo 线为 `DisplayHelperArmorIconMixin`）
-  把 Jade 悬浮框里的**护甲图标与数值**改成本模组防御力；**fabric 线没有对应实现** ——
-  本次并入已把误搬入的 `astral_dice.jade.mixins.json` 移除（它引用了 fabric 侧不存在的
-  `ArmorElementIconMixin`），故 fabric 线上 Jade 仍显示**原版护甲值**（本模组自己的战斗数值 HUD
-  不受影响，防御力条照常工作）。
-- **为什么本次没做**：Fabric 侧 Jade 的内部类结构与 Forge 不同（`ArmorElement` / `DisplayHelper`
-  的类名与方法面必须按 **Jade-Fabric 1.20.1** 反编译确认），注入点写错会在**运行时**崩溃；
-  而本机 `ref/` 参考源里**没有** Jade 源码。⇒ 属「需要专门取证」的独立任务，
-  不宜混在本次骨架/功能并入里草率落地。
-- **修补要求**：①反编译 `Jade-1.20-Fabric-11.13.3.jar` 确认护甲渲染的类与方法签名；
-  ②新增 fabric 专用 `mixin/jade/**` + `astral_dice.jade.mixins.json`（`client` 段）；
-  ③在 `fabric-1.20.1/src/main/resources/fabric.mod.json` 的 `mixins` 数组登记该 json；
-  ④**判据**：装 Jade 后看向玩家 / 生物，悬浮框的护甲图标与数值显示本模组防御力
-  —— ⚠️ 这是**视觉**结果，`scripts/test/fabric/ft.ps1` 的 `FAB-*` 用例覆盖不到，**必须实机验证**。
-- **同步口径**：本项只影响 fabric 线（另三线已实现），**不适用**「四线同改」默认规则。
-- **✅ 结案（2026-10-01，提交见本版 CHANGELOG 段）**：已按本节修补要求补齐。落点 =
-  `fabric-1.20.1/src/main/java/.../mixin/jade/{ArmorValueProviderMixin,ArmorElementIconMixin}.java`
-  + `src/main/resources/astral_dice.jade.mixins.json`（已登记进 `fabric.mod.json` 的 `mixins` 数组）。
-  - **取证**：按 **Jade-Fabric 生产 jar**（Modrinth `maven.modrinth:jade:ahavHbAT` =
-    `Jade-1.20-Fabric-11.13.3.jar`）反编译确证，其类结构与 forge 线**逐项同构** ——
-    `EntityArmorProvider.appendTooltip` 内 `getArmorValue`（intermediary `method_6096`）**仅 1 次**调用；
-    `DisplayHelper.renderIcon` 为 **static**、入参 `(GuiGraphics,float,float,int,int,IconUI)`；
-    `IconUI` 有 `ARMOR`/`HALF_ARMOR`/`EMPTY_ARMOR` 三态；`OverlayRenderer.alpha` 为 `public static float`。
-  - **两处平台差异（与 forge 线**相反**，已写入两个 mixin 的类头 javadoc）**：
-    ① fabric 无 Mixin AP ⇒ **不需要** `remap = false`，且 `@At` 的 target 含原版成员**必须**走重映射；
-    ② `ArmorElementIconMixin` 的 `method` **只能写纯方法名**（其描述符含原版 `GuiGraphics`，
-    Loom 对带描述符的 `method` 原样透传 ⇒ 照抄 forge 写法会静默失效）。
-  - **验证读数**：`:fabric-1.20.1:build` SUCCESSFUL；开 jar 读 class 常量池确认
-    `@At` target 已重映射为 `Lsnownee/jade/overlay/DisplayHelper;renderIcon(Lnet/minecraft/class_332;FFIIL…;)V`
-    与 `(Lnet/minecraft/class_1309;method_6096()I`，**Jade 自身类名与方法名保持原样**（Jade 不混淆）。
-  - **启动验证（已做，2026-10-01）**：`ft_launch.ps1 --side client` +
-    `-PpreloadClasses=snownee.jade.impl.ui.ArmorElement,snownee.jade.addon.vanilla.EntityArmorProvider` 实测 ——
-    两个目标类均 `[preload] OK`（**类加载即触发 mixin 应用**），全日志
-    **`InjectionError` / `Critical injection failure` / `Mixin apply failed` 命中 0**；
-    同时确认 `jade 11.13.3+fabric` 正常加载（3 条 `Start loading plugin from Jade`）、
-    `客户端注册桥:按键 2 个 / 粒子 1 个 / HUD 覆盖层 5 个`（含新增的 defense_bar / attack_bar）、
-    `事件订阅审计通过:63 个订阅类全部已登记`。
-    ⚠️ 唯一告警 = `Reference map 'astral_dice.refmap.json' ... could not be read`
-    （**dev 环境可忽略**；与本模组既有 `astral_dice.mixins.json` 同款告警 —— Loom 1.14 不生成 refmap、注解已就地重映射）。
-  - ⚠️ **视觉结果仍未验证**：「悬浮框里的护甲图标与数值**实际显示为防御力**」需**装 Jade 进世界看向实体**查看
-    —— `preload` 只能证明**注入点命中**，证明不了观感（见本节修补要求 ④）。
-
-## 9. 变更记录
-### KI-E3 ＝ **三个守门脚本不覆盖 fabric 线**（`audit_mixin_injection` / `check_lang_sync` / `audit_actionbar`）⇒ 该线对应面无自动守门（2026-10-01 登记）
-
-- **现象**：该脚本的 `LINES = ["neoforge-1.21.1", "forge-1.20.1", "neoforge-26.1.2"]`（`tools/audit_mixin_injection.py:48`）
-  **不含 `fabric-1.20.1`** ⇒ fabric 线（`astral_dice.mixins.json` 里登记的全部 mixin，含 `bridge/` 平台桥）
-  的 `require` / `expect` 计数、`method` 目标、`@Mixin` 目标**完全不在任何自动守门覆盖内**；
-  守门读数「合计注解 77 | 硬违规 0」**只统计三线**。
-- **风险（本轮实证）**：2026-10-01 新增的 `bridge/ServerPlayerDimensionTravelBridgeMixin#astralDice$afterPlayerChangeDimension`
-  （`@At("RETURN")` 派发 `PlayerChangedDimensionEvent`，供医疗箱筹码的「切维度触发」使用）**恰好落在这个缺口里** ——
-  它的可用性当时只有「人工反汇编 + 与既有同构 mixin 逐字比对」这一条证据链
-  （已实测通过：`@Inject` 的 `method` 被 Loom 重映射为 `method_5731(Lnet/minecraft/class_3218;)Lnet/minecraft/class_1297;`，
-  与既有 `EntityDimensionTravelBridgeMixin` **逐字相同**）。**「守门全绿」在此不等于「fabric mixin 被守门」。**
-- **同源缺口（2026-10-01 同日补记）**：本仓另有**两个**守门脚本同样只登记三线、不含 fabric ——
-  - `tools/check_lang_sync.ps1`（硬编码 `@('neoforge-1.21.1','forge-1.20.1','neoforge-26.1.2')`）⇒
-    **fabric 的三语一致性没有任何自动守门**（fabric 的键数也与三线不同：832 vs 830，属既存差异）；
-  - `tools/audit_actionbar.py` ⇒ fabric 的动作栏键存在性未自动核验。
-  ⇒ 凡改动 fabric 的 lang / 动作栏文案，**必须人工逐键核验**（本轮改看板娘 tooltip 与手册条目时即如此）。
-- **候选处置（需裁决）**：把 `fabric-1.20.1` 加进上述脚本的 `LINES`。⚠️ 但这会让守门**立即暴露 fabric 既存全部 mixin 的读数**
-  —— 可能出现既存硬违规（含 `intermediary` 名与描述符的解析差异），需要先做一次 baseline 采集与逐条裁决，
-  **不宜与功能修复混批**。
-- **判据（可重跑）**：`python tools/audit_mixin_injection.py` 的输出里**只有三线小节、没有 fabric 小节**。
 
 ## 9. F 组 — Fabric 1.20.1 移植线（2026-09-29 起）
 
@@ -874,6 +761,7 @@ GlCommandEncoder.trySetup(:531) ← GlCommandEncoder.executeDraw(:406) ← GlRen
 | 2026-10-01 | **KI-E3 扩项**：该覆盖缺口不止 `audit_mixin_injection` —— `tools/check_lang_sync.ps1` 与 `tools/audit_actionbar.py` 同样只登记三线（fabric 的 lang / 动作栏变更须人工核验） |
 | 2026-10-02 | 发布前审计处置：`KI-F20` **整块移出**（三面已全部闭环，证据见 §1.1）→ 移入 §1.1 索引；**新增 `KI-F24`**（fabric 移植线两处内容缺口 / 结构分叉，此前无登记）；§1 补澄清「26 = 23 条未修 + 3 条已修待实机」；顺带修掉 fabric 两个动作栏语言键缺失（见 `TESTING-SPEC.md` 附录 A 续 46 §A） |
 | 2026-10-04 | **四张伤害效果牌整体重做（对怪激光 / 对怪板砖 / 轨道炮 / 定向爆破）**：增伤能力移除（修饰器骨架与效果注册保留、`isActive` 恒 false）、改目标选择器（`TargetType.CREATURE`）、新增 FX 且伤害**延迟到 FX 命中时点才结算**（唯一执行器 `combat/DamageCardFxScheduler`，四线各一份）、新增 5 条音效 + 重写 1 条；符卡-祸改法术伤害；顺带修掉四张牌 tooltip 的数值染色缺陷。**新增 KI-G3**（砖头 FX 的 `BlockDisplay` 在非正常关服时的残留风险，只登记未改）。版本 `.22 → .23`。 |
+| 2026-10-04 | **本文件按主线 `multi-main` 版本重算合并**：§0 第 4 条「已修项清理、未修项禁删」、§5 改名（原「已闭环但当日文档未回写」→「测试资产待修项」，7 行已闭环记录移入 §1.1）、KI-M1 / KI-M5 / KI-D2 / KI-G1 / KI-F1·F2·F3·F5~F19 / KI-F20 / KI-E3 各自移入 §1.1 索引的清理口径**全部并入**；保留本线独有的 **KI-G3** 与「四张伤害效果牌整体重做」变更行。§1 计数 25 → **26**（G 组 0 → 1，含 KI-G3）。 |
 | 2026-10-04 | **1.20.1 Forge 端两项用户实报缺陷修复（KI-F5 结案 + 新增常驻时长归一）**：① **通用标签命名空间写错** —— `forge-1.20.1` 的 `datagen/ModRecipeProvider` 照搬 NeoForge 侧的 `c:bricks`，而 1.20.1 Forge **只提供 `forge:` 命名空间、没有任何 `c:` 标签的提供者** ⇒「对怪板砖」配方材料永不可满足、**彻底无法合成**（开包实证：旧 jar 内既无 `data/c/tags/items/bricks.json` 也无 `data/forge/tags/...`，配方却写 `"tag": "c:bricks"`）。修法 = 配方改用 `forge:bricks` + 本模组自建 `src/main/resources/data/forge/tags/items/bricks.json`（= `#forge:ingots/brick` ∪ `#forge:ingots/nether_brick`；Forge 47.4.10 实测自带这两条、**无汇总 `forge:bricks`**，`Tags$Items` 亦无 `BRICKS` 常量）⇒ 与 NeoForge `c:bricks` 语义等价。**只改 Forge 端**（NeoForge 两线用自带 `c:bricks`、Fabric 线用其自建 `c:bricks`）。② **常驻效果在 Forge 端仍显示超长倒计时** —— 子代理在整合包存档中取到决定性证据：`astral_dice:charge Duration=2147482289`（旧版 `Integer.MAX_VALUE` 的递减产物，界面显示 `29826:08:34` 而非 `∞`）⇒ 根因是 1.3.4 的「常驻效果统一 ∞」**只改了施加点**，存量实例不会被任何既有路径修正（`EffectTimerGuard.record()` 对 `>= INFINITE_THRESHOLD` 的值直接跳过 ⇒ 不登记 ⇒ 永不校正；`tick()` 只遍历已登记条目且只写有限值；各施加点只在重新获得/消耗/切换装备时走到）。修法 = 三线 `PlayerTickEvents` 新增 `normalizeLegacyInfiniteDurations`（每秒一次，把**本模组**效果里 `duration >= Integer.MAX_VALUE/2` 的实例改写为 `-1`，只改时长、保留层数/粒子/图标位；判据用超长阈值而非效果清单 ⇒ 本模组最大合法有限时长 24000 tick（`RenShieldManager` 护盾 / 抗性刷新窗口;其余 ≤ 3600）、相差约 4.6 个数量级，双态效果 2400 tick 亦不受影响）。**验证**：三线 `build` SUCCESSFUL 且产物落地（实测 jar 内 `PlayerTickEvents` 含新方法、forge jar 含新标签文件、配方 JSON 已为 `forge:bricks`）；三线 jar 时间戳一致并已自动推送至各自整合包。 ⚠️ **未做**：进世界的视觉确认（∞ 是否如期显示）。⚠️ **Fabric 线未同步本批**（按其「独立批次」口径）。 |
 | 2026-10-04 | **KI-E3 结案 + fabric 剩余 5 项待办全部完成**（同一批）：① 三守门脚本的 `LINES` 纳入 `fabric-1.20.1`（`tools/audit_mixin_injection.py` / `tools/audit_actionbar.py` / `tools/check_lang_sync.ps1`），纳入前先修掉它暴露的真实滞后 —— 11 个 `msg.astral_dice.*` 键 × 三语的值内嵌 `§`（对齐三项 P0 线）+ `client/TargetSelectionClient#notifyHeldSelectorBlocked` 由裸 `displayClientMessage(...,true)` 改走库 `ActionBarManager.show(..., RED)`；实测三脚本 **硬违规 0 / PASS / exit=0**。② **Modern UI 提示框边框兼容**（取证 Fabric 版 `ModernUI-Fabric-1.20.1-3.12.0.1`，字段与 P0 同名同型）⇒ 新增 `client/ModernUITooltipCompat` + `ClientTooltipBridgeMixin` 的 HEAD/RETURN 接线 + `ModCommonConfig` 开关（`CONFIG_VERSION` 5→6）。③ **近战黑名单四项**（剪刀/钓竿/打火石/刷子）。④ `DiceCombatEvents#onLivingDamagePre` 的计时器启表口径**对齐 P0**（前移 + `source.getEntity()`）。⑤ 新增 **fabric 追平探针** `scripts/test/fabric/astral_catchup_probe.js`（`/astralcatchup`，用 Fabric API 自带 `FakePlayer` ⇒ 零前置、无人值守）+ 用例 `FAB-CATCHUP-PARITY`。§1 计数 26 → **25**（E 组 3 → 2）。 |
 | 2026-10-04 | **新增 KI-F25**（fabric 追平探针首跑发现：KubeJS 共享全局作用域 ⇒ 探针须 IIFE；清 `astral_dice:` 效果须走库内部通道、裸调在效果不存在时抛 `CancellationException`；Rhino 禁反射 JDK `Class`；Fabric API 自带 `FakePlayer` 可零前置但**不进 tick 循环**）。§1 计数 25 → 26（F 组 7 → 8）。 |

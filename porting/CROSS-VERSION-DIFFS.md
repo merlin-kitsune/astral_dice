@@ -2,7 +2,7 @@
 
 > **基准（功能面）**：`neoforge-1.21.1`。
 > **优先级口径**：本表与 `AGENTS.md`「版本优先级与跨线移植纪律（2026-10-04 用户裁决）」同源，冲突时以 AGENTS 为准。
-> **可版本化载体**：本文件与 `porting/fabric-1.20.1/FABRIC-DIFFS.md`（`docs/` 被 `.gitignore`，不进提交）。
+> **可版本化载体**：本文件与 `porting/fabric-1.20.1/FABRIC-DIFFS.md`（另：`docs/` **自 2026-10-01 起已纳入版本库**（`.gitignore` 的 `docs/` 排除条目已移除，提交 `d73cf841`；本仓实测 `git ls-files docs/` = 86 项））。
 > **用途**：AGENT 做功能移植时的**逐项对照清单** —— 每条给出「优先级 / 差异项 / 处置 / 待解决问题」。
 
 ---
@@ -147,7 +147,7 @@
 | P1-N-5 | **二重验证第二轮（修改后回归）未跑** | 未做 | §8 第 5 条 |
 | P1-N-6 | **KI-D1：26.1.2 + 光影（Iris）⇒ `Missing sampler Sampler1` 崩溃**（**dev-only 断言**、与本模组无关；规避 = `-Dneoforge.disableGlValidation=true`，**代价**是会静音自家渲染管线校验） | 已确认 + 已规避 | `KNOWN-ISSUES.md` KI-D1 |
 | P1-N-7 | `ItemTags.SPEARS` 等 26.1.2 独有常量**不得回移** 1.21.1 / 1.20.1 | 纪律 | N10 |
-| P1-N-8 | `docs/` 为**本机目录**（`.gitignore`）⇒ 平台差异文档不随 git 提交，需连同主线 `docs/` 一起备份；**可版本化载体在 `porting/`** | 已知 | 本文件 |
+| P1-N-8 | `docs/` **自 2026-10-01 起已纳入版本库**（`.gitignore` 的 `docs/` 排除条目已移除，提交 `d73cf841`；本仓实测 `git ls-files docs/` = 86 项） ⇒ 平台差异文档随 git 提交（本项**不再是缺口**）；可版本化载体**同时在 `porting/`** | 已解决 | 本文件 + `AGENTS.md`「版本优先级与跨线移植纪律」§四 |
 
 ### 4.3 `fabric-1.20.1`（P1）
 
@@ -160,7 +160,7 @@
 | P1-B-4 | **KI-E3：三个守门脚本不含 fabric**（`audit_mixin_injection` / `check_lang_sync` / `audit_actionbar`）⇒ 该线三面对应面**无自动守门**，须人工核验 | ✅ **已闭环**（2026-10-04，KI-E3 结案）：三守门 `LINES` 均含 fabric，实测 0 违规 | `KNOWN-ISSUES.md` KI-E3 |
 | P1-B-5 | **KI-F24②：`DiceCombatEvents#onLivingDamagePre` 结构分叉** —— fabric 把 `directEntity instanceof Player` 闸门提到计时器逻辑**之前** ⇒ 白泽赐福 / 降神计时器在 fabric 只认**近战**，三线按「任意攻击」启表 | ✅ **已对齐 P0**（2026-10-04）：计时器块前移 + 改用 `source.getEntity()`，与 forge 逐行一致 | `KNOWN-ISSUES.md` KI-F24 |
 | P1-B-6 | KI-F24① `concealment` 整条特性缺失 | **已闭环**（追平批 5） | 同左（本表标注闭环） |
-| P1-B-7 | 四线共有待裁决：**KI-F8**（`hanna_sign.3` / `sherry_sign.3` 档位词与代码稀有度不符）、**KI-G2**（医疗箱筹码重登 / 切维度可反复利用） | 待裁决 | `KNOWN-ISSUES.md` |
+| P1-B-7 | 四线共有待裁决：**KI-F8**（`hanna_sign.3` / `sherry_sign.3` 档位词与代码稀有度不符）；**KI-G2 已于 2026-10-04 闭环**（用户裁决撤掉重登 / 切维度两个触发点，四线同批；实机 `FAB-Q2Q3-INVARIANTS` 6/6）⇒ 移入 `KNOWN-ISSUES.md` §1.1 | 待裁决（仅 KI-F8） | `KNOWN-ISSUES.md` §1.1 / F 组 |
 | P1-B-8 | **KI-F4：重写构建脚本漏搬 `sourceSets.srcDir('src/generated/resources')`** ⇒ 生成资源不进产物（编译期 + 启动期均无感）⇒ 改构建脚本后**必须开包核对资源条目数** | 缺陷模式已固化 | `KNOWN-ISSUES.md` KI-F4 |
 | P1-B-9 | 跨加载器**存档不互通**（附件/Capability；Trinkets/Accessories ↔ Curios） | 平台差异，**不修补** | `KNOWN-ISSUES.md` KI-F2 |
 | P1-B-10 | `verify_fabric_assets.py` 白名单现为空（8 项闭环）；新增白名单项必须写「为何不能修 + 需谁裁决」 | 纪律 | 同左 |
@@ -187,3 +187,4 @@
 | 2026-10-04 | **fabric P1-B-1~B-5 全部闭环**（Modern UI 兼容 / 近战黑名单 / `onLivingDamagePre` 对齐 / 三守门纳入 fabric / 追平探针）。§4.3 状态列已更新。 |
 | 2026-10-04 | **26.1.2 联动口径收紧（二次清理）**：删除「26.1.2 属 NeoForge 端口 ⇒ Iron 联动必须保留」的全部声明；按「平台不存在即移除、无例外」撤回 Iron 反射版（N13 改为整项移除）；并清理神秘遗物+ 残留（4 个 guide 手册页 + 对应 lang 键 + `mods.toml` 的 `enigmaticlegacyplus` 依赖）。 |
 | 2026-10-04 | **Modern UI 兼容落到第四线（N16 更正）**：核实 Modern UI **有 26.1.2 neoforge 构建**、其接管链与 1.21.1 同构 ⇒ 新增 `neoforge-26.1.2` 的 `client/ModernUITooltipCompat`（该线唯一的档位边框染色途径）+ 配置开关；F23 状态由「已落地三条线」改为「已落地四线」。 |
+| 2026-10-04 | **本表按主线 `multi-main` 版本重算合并 + 状态刷新**：合并 `multi-main` 对 `.gitignore` / `AGENTS.md`（fabric 九项规则块、提示框边框 Iceberg/TO 段、`multi-main` 推送白名单、发布规范 `-hotfix` 订正）/ `KNOWN-ISSUES.md`（§0 第 4 条「已修项清理、未修项禁删」、§5 改名并入 §1.1、KI-M1/M5/D2/G1/F1·F2·F3·F5~F19/F20/E3 移入 §1.1）的更新；同时刷新四线「当前版本」矩阵为实测值（1.21.1 / 1.20.1 = **1.3.7**、26.1.2 = **1.3.7-beta.1**、fabric = **1.3.7-alpha.1**；开发线 `multi-dev-next` = **2.0.0-SNAPSHOT.24**）。**优先级模型未变**（仍为 2026-10-04 裁决的 P0 = 1.21.1 + 1.20.1 / P1 = 26.1.2 + fabric）；仅修正 P1-B-7（KI-G2 已闭环）。 |

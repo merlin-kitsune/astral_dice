@@ -5,8 +5,8 @@
 项目基线:
 - 主线子项目 `neoforge-1.21.1`:MC 1.21.1 / NeoForge 21.1.235 / Java 21 / ModDevGradle(`net.neoforged.moddev` 2.0.141)
 - 移植子项目 `forge-1.20.1`:MC 1.20.1 / Forge 1.20.1-47.4.10 / Java 17 / ModDevGradle LegacyForge(`net.neoforged.moddev.legacyforge` 2.0.144)
-- 第三条线 `neoforge-26.1.2`:MC 26.1.2 / NeoForge 26.1.2.109 / Java 25 / ModDevGradle 2.0.147;由 1.21.1 源码整体迁移,差异见 `docs/compat-26.1.2-neoforge.md`。**2026-09-17 起已并入主线目录**(原独立 worktree `F:\MCProject\astral_dice_multiloader-26.1.2` / 分支 `multi-26.1.2-neoforge` 已合并进 `multi-1.20.1-1.21.1`,现行工作目录即主线根目录,三子项目同树)。
-- 第四条线 `fabric-1.20.1`:Fabric Loom 1.14.10 / Mojang 官方映射(officialMojangMappings)/ Java 17(gradlew 需 JVM 21)/ MC 1.20.1 / 前置 = Fabric API + Trinkets + Puzzles Lib + Accessories(软);**2026-10-01 起并入本分支 `multi-dev-next`**(此前只在发布线 `multi-main` 存在)。
+- 第三条线 `neoforge-26.1.2`:MC 26.1.2 / NeoForge 26.1.2.109 / Java 25 / ModDevGradle 2.0.147;由 1.21.1 源码整体迁移,差异见 `docs/compat-26.1.2-neoforge.md`。**2026-09-17 起已并入主线目录**(原独立 worktree `F:\MCProject\astral_dice_multiloader-26.1.2` / 分支 `multi-26.1.2-neoforge` 已合并进 `multi-1.20.1-1.21.1`,现行工作目录即主线根目录,四子项目同树)。
+- 第四条线 `fabric-1.20.1`:MC 1.20.1 / Fabric Loader 0.19.5 + Fabric API 0.92.12 / Java 17 / Fabric Loom(`fabric-loom`);由 `forge-1.20.1` 的 1.3.2-hotfix 源码整体移植(**加载器层整体替换**:Curios→Trinkets(+Accessories 软依赖) · Capability→Fabric API 附件 · Forge EventBus→自建 `LoaderBus`+Puzzles Lib/FAPI 回调/mixin · GLM→`LootTableEvents.MODIFY`),裁剪项与平台差异见 `porting/fabric-1.20.1/VERSION_PINS.md`、`KNOWN-ISSUES.md` §9。**2026-10-01 已并入主线目录**(原独立 worktree `F:\MCProject\astral_dice_multiloader_fabric` / 分支 `1.20.1-fabric` 已合并进 `multi-main` 并**已删除本地 worktree 与分支**（⚠️ **远端分支 `origin/1.20.1-fabric` 的删除需 push，尚未执行**，待用户放行；删除本地分支前已取证其 tip `a89487ac` 是 `multi-main` 的祖先、独有提交 0 个），四条线同一工作树)。⚠️ **本线 dev 环境有一个必须先做的前置**：Loom 重映射第三方 mod 时会剥离产物的 `fabric.mod.json` 的 `jars` 声明 ⇒ 自带内嵌库的 mod（Puzzles Lib / Accessories / Patchouli / Cloth Config / KubeJS）在 dev 里**全部起不来**（`HARD_DEP_NO_CANDIDATE` / `NoClassDefFoundError`）。跑任何 fabric dev 运行前先执行 `pwsh -NoProfile -File scripts/test/fabric/ft_env.ps1 --side both --install-embedded`（= `python tools/loom_embedded_jars.py --apply`，把内嵌库按 id 去重投放到 `run/<side>/mods/`，靠 Loom 的 `fabric.remapClasspathFile` 运行时重映射生效）；**换 `-PtestTrinkets` / `-PtestAccessories` 后必须重跑**。详见 `KNOWN-ISSUES.md` §9 **KI-F23**。
 - Base package/group: com.merlinkitsune.astral_dice;各子项目产物名均为 `astral_dice-<版本>.jar`,版本号自带加载器后缀(1.21.1 带 `+neoforge_1.21.1`,1.20.1 带 `+forge_1.20.1`,26.1.2 带 `+neoforge_26.1.2`,fabric 1.20.1 带 `+fabric_1.20.1`,下划线分隔)。
 
 When extending this workspace:
@@ -22,7 +22,7 @@ When extending this workspace:
 本仓存在**同级的多个 git worktree**，它们的磁盘路径与「会话工作目录」经常不一致，踩过一次真实事故（改动被写到另一个工作树），故固化两条硬规则：
 
 1. **分支归属纪律（禁止镜像/回填）**：任务只属于哪个分支，就**只在那个工作树的磁盘路径**上处理，**禁止**把改动「镜像/回填/同步」到另一个工作树。
-   - 当前两个常驻工作树：**主线** `F:\MCProject\astral_dice_multiloader`（分支 `multi-1.20.1-1.21.1`，含三条发布/移植线，属**封包**状态）与 **2.0.0 开发线** `F:\MCProject\astral_dice_multiloader-next`（分支 `multi-dev-next`）。
+   - 当前两个常驻工作树：**主线** `F:\MCProject\astral_dice_multiloader`（分支 `multi-main`，含**四条线** —— 三条生产线 + `fabric-1.20.1` 移植线，属**封包**状态）与 **2.0.0 开发线** `F:\MCProject\astral_dice_multiloader-next`（分支 `multi-dev-next`）。**fabric 的原独立工作树 `F:\MCProject\astral_dice_multiloader_fabric` 已于 2026-10-01 移除**（分支并入 `multi-main`，故本仓现只余上述两棵常驻树）。
    - dev 分支的任务（如目标选择器改造与其工具链改动）**只能**在 `-next` 工作树落地；主线的 `scripts/test/**` 等文件**必须保持封包版本**（改动若必须进主线，须由用户在主线工作树内单独裁决，不由 dev 任务顺带推送）。
    - 核验方式（收尾必做）：`git -C F:\MCProject\astral_dice_multiloader status --short --untracked-files=all` 除 `?? .agent-teams/**` 外**必须无输出**；`git -C F:\MCProject\astral_dice_multiloader rev-parse --short HEAD` 必须仍是收尾前的封包提交。**所有 git 命令一律带 `-C <工作树绝对路径>`**，不要依赖 cwd。
 2. **相对路径陷阱（必须用绝对路径）**：.NET / `System.IO` / 多数文件 API 的**相对路径按进程 cwd 解析**，而本会话的进程 cwd 往往是**主线工作树** —— 于是「写一个 `scripts/test/cases/xxx.json`」会静默落到**主线**（实测事故：一条 0 字节用例文件落在主线，事后删除复原）。
@@ -192,11 +192,11 @@ When extending this workspace:
 5. 推荐使用本地脚本 `scripts/test/mt_build.ps1` 执行(已内置超时强退与「日志 + 产物」双重验证):
    `pwsh -NoProfile -File scripts/test/mt_build.ps1 --version 1.21.1 [--timeout 60] [--retries 3]`。
    该脚本同时是「自动化测试流程」阶段 B 的实现；单独构建时也可直接调用。
-6. 常用构建入口(在仓库根目录执行;**四条线规则完全一致**,fabric-1.20.1 与另三线同规则、同产物去向):
+6. 常用构建入口(在仓库根目录执行;**四条线共用同一套分发任务口径**(各线构建插件不同:ModDevGradle / LegacyForge / Fabric Loom),产物去向一致):
    - `./gradlew :neoforge-1.21.1:build` — 仅构建 1.21.1 NeoForge;
    - `./gradlew :forge-1.20.1:build` — 仅构建 1.20.1 Forge;
    - `./gradlew :neoforge-26.1.2:build` — 仅构建 26.1.2 NeoForge;
-   - `./gradlew :fabric-1.20.1:build` — 仅构建 1.20.1 Fabric;
+   - `./gradlew :fabric-1.20.1:build` — 仅构建 1.20.1 Fabric(第四线,2026-10-01 起与另三线同树);
    - `./gradlew build` — 四个子项目全部构建(部署任务随各子项目 build 触发)。
 7. **数据生成(runData)前必须移开 run 目录中的旧产物 jar**:`run/1.21.1/mods/astral_dice-*.jar`(forge 同理 `run/1.20.1/mods/`,26.1.2 同理 `run/26.1.2/mods/`)会与 `build/classes/java/main` 同时被加载,**遮蔽刚编译的 dev 类**,导致 `runData` 用旧代码生成资源却**不报任何错误**(表现为"改了 Provider 但生成结果没变")。执行 `:neoforge-1.21.1:runData` / `:forge-1.20.1:runData`(26.1.2 为**两段式**:`:neoforge-26.1.2:runClientData :neoforge-26.1.2:runServerData`,且 `run/26.1.2/mods` 里的探针运行时 KubeJS/Rhino/BAT 也要一并移出,见下方 26.1.2 速记第 6 条)前先把该 jar 移出(如 `temp/shadow_jars/`),生成后再 `gradlew build` 重新推回。判定是否被遮蔽:比对 `build/classes/.../ModRecipeProvider.class` 中是否含新增字面量(如新筹码模式串),同时确认生成文件时间戳已更新(不要只看日志的 `written: N`)。
    - **⚠️ `runData` 的游戏 JVM 可能写盘完成后不退出(2026-09-23 实测,forge-1.20.1)**:日志出现 `[minecraft/HashCache]: … written: 370` 之后进程仍在(CPU 归零、日志停滞),把整个 Gradle 调用挂住 19 分钟。**判据 = `HashCache … written: N` 出现即产物已落盘**,此时可安全终止该 JVM(`Stop-Process -Id <pid>`),Gradle 会以该 task 失败继续、后续命令照常(多 task 一条命令时要写成「逐条执行、不看 `&&`」,否则前一条失败会掐掉后面的线)。排查手法:`Get-CimInstance Win32_Process -Filter "Name='java.exe'"` 看命令行里带 `fml.modFolders=…\<line>\build\classes` 的那个就是数据生成 JVM。
@@ -213,11 +213,52 @@ When extending this workspace:
 
 | 子项目 | 来源分支(原 astra_dice 仓库) | MC | 加载器 | Java | 当前版本 | 版本号格式 |
 |---|---|---|---|---|---|---|
-| `neoforge-1.21.1` | `1.21.1-main` | 1.21.1 | NeoForge | 21 | `1.3.1+neoforge_1.21.1` | `x.y.z[-rcN|hotfix]+neoforge_1.21.1` |
-| `forge-1.20.1` | `1.20.1-forge` | 1.20.1 | Forge | 17 | `1.3.1+forge_1.20.1` | `x.y.z[-rcN|preN|hotfix]+forge_1.20.1` |
-| `neoforge-26.1.2` | 本仓 `multi-26.1.2-neoforge` 分支新增（基线 = 主线 `1.2.1`/`fda8ca9` 的 `neoforge-1.21.1` 源码）；**2026-09-17 已合并进当时的主线 `multi-1.20.1-1.21.1`（该分支已于 2026-09-22 改名为 `multi-main`）**（与主线同目录同树，原独立 worktree 已移除）；**2026-09-22 完整移植后版本号与另两线同批升版（26.1.2 取 `1.3.0-beta.1`）** | 26.1.2 | NeoForge | 25 | `1.3.0-beta.1+neoforge_26.1.2` | `x.y.z[-rcN]+neoforge_26.1.2` |
+| `neoforge-1.21.1` | `1.21.1-main` | 1.21.1 | NeoForge | 21 | `1.3.7+neoforge_1.21.1` | `x.y.z[-rcN|hotfix]+neoforge_1.21.1` |
+| `forge-1.20.1` | `1.20.1-forge` | 1.20.1 | Forge | 17 | `1.3.7+forge_1.20.1` | `x.y.z[-rcN|preN|hotfix]+forge_1.20.1` |
+| `neoforge-26.1.2` | 本仓 `multi-26.1.2-neoforge` 分支新增（基线 = 主线 `1.2.1`/`fda8ca9` 的 `neoforge-1.21.1` 源码）；**2026-09-17 已合并进当时的主线 `multi-1.20.1-1.21.1`（该分支已于 2026-09-22 改名为 `multi-main`）**（与主线同目录同树，原独立 worktree 已移除）；**2026-09-22 完整移植后版本号与另两线同批升版**（26.1.2 取 `-beta.x` 后缀；现为 `1.3.7-beta.1`）** | 26.1.2 | NeoForge | 25 | `1.3.7-beta.1+neoforge_26.1.2` | `x.y.z[-rcN|-beta.N]+neoforge_26.1.2` |
+| `fabric-1.20.1` | **本仓 `1.20.1-fabric` 分支新增**（2026-09-29 接入；基准 = `forge-1.20.1` 的 `1.3.2-hotfix` 源码，**加载器层整体替换**：Curios→Trinkets(+Accessories 软依赖) · Capability→Fabric API 附件 · Forge EventBus→自建 `LoaderBus`+Puzzles Lib/FAPI 回调/mixin · GLM→`LootTableEvents.MODIFY`）。**2026-10-01 已并入 `multi-main` 成为第四条线**（同树同仓；原独立 worktree `F:\MCProject\astral_dice_multiloader_fabric` 与分支 `1.20.1-fabric` 均已移除）| 1.20.1 | Fabric | 17 | `1.3.7-alpha.1+fabric_1.20.1` | `x.y.z[-alpha.N|rcN|hotfix]+fabric_1.20.1` |
 
-> 版本号各 git 分支独立（AGENTS.md 自 2026-09-15 起**已纳入版本库**，各分支各自维护一份）：**发布线 `multi-main`**（2026-09-22 由 `multi-1.20.1-1.21.1` 改名；连带项已同批处理：三线 `build.gradle` 的 `packPushBranches → ['multi-main']`、`.github/workflows/build.yml` 的 5 处分支名与触发条件，以及 `.github/workflows/build.yml` 里 checkout 前置库的 `ref:` 钉值）当前 = **`1.3.0`**（2026-09-22 用户裁决：把 `multi-dev-next` 整体收编后统一升版 —— 1.21.1 / 1.20.1 = `1.3.0`，26.1.2 = `1.3.0-beta.1`；按发布规范 tag 解析为裸版本 **`1.3.0`**）；`multi-dev-next` 当前 = **`2.0.0-SNAPSHOT.13`**（2026-09-17 用户裁决：`2.0.0-SNAPSHOT.5` 封包，版本号升至 `.10`；**2026-09-22 用户裁决：SNAPSHOT 数值按提交数下沉，档位 = 提交数 / 37，自 `.10` 起累计 104 提交 ⇒ 向上取整 3 档 ⇒ `.13`**；后续改动一律记入两个 CHANGELOG 顶部的 `未发布（2.0.0-SNAPSHOT.13）` 小节；该线已于 **2026-09-22 整体合并进发布线 `multi-main`**（合并提交 `7b726617`，收编 160 个提交），自此不再单独演进）；`neoforge-26.1.2` 子项目当前 = **`1.3.0-beta.1`**（2026-09-17 用户裁决 + **2026-09-19 修订：26.1.2 已纳入主线、三线同步（不再是低优先级线）**；**2026-09-22 用户裁决：三线同批升版，26.1.2 取 `1.3.0-beta.1`** —— 此前 `.13` 时代「与另两线版本号对齐、不再单独加 `-beta`」的口径随之作废；`multi-26.1.2-neoforge` 分支自此只作为合并前历史，不再单独开发）。上表「当前版本」以发布线工作分支 `multi-main` 为准。
+> ⚠️ **第四条线（`fabric-1.20.1`）的规则边界（2026-09-29 用户裁决；2026-10-01 并入 `multi-main` 后本条**全九项仍适用**，必须遵守）**：
+> 2026-10-01 的状态变化只有「树与仓」：该线由**独立分支 + 独立 worktree** 变为**与前三线同树同仓（同在 `multi-main`）**；
+> 其**移植线定位与下述九项差异一律不变**。上表前三线是**生产线**，`fabric-1.20.1` 是**移植线**，两者在九件事上口径不同：
+> ① **同步范围**：前三线的「同批实施」约束**不自动扩到** fabric 线 —— 该线由用户在需要时单独下达移植批次
+>    （本线基线 = `forge-1.20.1` 的 1.3.2-hotfix，后续按批次从 forge 线搬运）；
+> ② **平台差异必须逐条登记**：裁剪项（无 Fabric 版的三方模组）见 `porting/fabric-1.20.1/VERSION_PINS.md`「裁剪」；
+>    其中 **Bountiful 与 Iron's Spells 'n Spellbooks 已整线裁剪**（无 1.20.1 Fabric 版）
+>    ⇒ 其数据文件、lang 键、手册条目、伤害类型 key、tooltip 分支**均不得出现在本线**；
+> ③ **发布口径**：fabric 产物**绝不并入**生产线 Release —— 见「编译产物上传规则」表；
+>    CI 为其单独出 tag 与 `--prerelease` Release：tag 形如 **`fabric-1.3.5-alpha.1`**
+>    （只剥 `+加载器` 后缀、**保留 `-alpha.N`**；不以数字开头 ⇒ 不命中 workflow 顶部的 `tags: ['[0-9]*']` 过滤器）。
+>    ⚠️ **2026-10-01 起该步骤的触发条件由 `refs/heads/1.20.1-fabric` 改挂 `refs/heads/multi-main`**
+>    —— 原分支已并入并删除，旧条件会**永久不成立**（属「静默失效」类缺陷，动 CI 时必须同步核对）。
+> ④ **前置面不同**：玩家侧必需前置 = Fabric Loader/API + **Trinkets 或 Accessories（二选一）** + Puzzles Lib + Forge Config API Port
+>    —— 与前三线的 Curios/Mixin Booster 那一套**完全不通用**，写安装说明时勿套用。
+>    ⚠️ **饰品栏是「二选一」，不是「两个都要」**（2026-09-29 用户裁决）：Fabric 的 `depends` 是 **AND 语义、表达不了 OR**
+>    ⇒ `trinkets` 与 `accessories` **都只进 `recommends`**（软提示，缺席只警告），权威判定在
+>    `ModCompatibilityCheck#verifyAccessoryProviderOrThrow()` —— 它在 `onInitialize()` 的**第一条**语句执行，
+>    只有**两个都不在**时才抛 `ModLoadingException`（附完整中文说明：怎么装、装哪个、有什么差别）。
+>    ⇒ **任何触碰 `dev.emi.trinkets.api.*` / `io.wispforest.accessories.*` 的调用点都必须先过 `isModLoaded` 守卫**
+>    （`TrinketBridge` / `AccessoriesCompat` 里都是硬引用，缺席时那个类**根本加载不了**；
+>    守卫必须放在**调用点**，只放方法体内救不了漏判）。见 `KNOWN-ISSUES.md` **KI-F15**。
+> ⑤ **配方里的「指定药水」走自建序列化器**：原版 `Ingredient` 不看 NBT、且**不可扩展**（`final class` +
+>    `private` 构造器 + 包私有 `Value` 接口，javap 实证）⇒ 本线用 `astral_dice:nbt_shaped`（`crafting/` 包：
+>    `AstralRecipeSerializers` / `NbtShapedRecipe` / `NbtShapedRecipeSerializer` / `StackConstraint`）承载 NBT 约束，
+>    JSON 与网络层均委托原版 `ShapedRecipe.Serializer`。**语义基准 = 1.21.1 / 26.1.2 的
+>    `DataComponentIngredient.of(true, …)`（strict，精确匹配）**，改动前先对齐它。详见 `KNOWN-ISSUES.md` **KI-F1**。
+>    ⚠️ **本分支只改 fabric 端**（2026-09-29 用户裁决）：`forge-1.20.1` 的 `PartialNBTIngredient`（NBT **子集**）
+>    与 `potionTag(...)` **保持原样**，那是一条已登记的既有差异，**不要**在 fabric 分支顺手统一它。
+> ⑥ **`c:` 社区标签在 1.20.1 上无提供者，本线自建**：Forge 47.x 只提供 `forge:` 命名空间、**没有 `c:`**
+>    （实测其 `Tags.Items` 连 `BRICKS` 常量都没有）⇒ 被本模组引用的 `c:` 标签必须自建，内容**对齐 NeoForge 定义**：
+>    `c:bricks` 是**砖物品**（`minecraft:brick` / `minecraft:nether_brick` 两条子标签），**不是砖块方块**
+>    （`minecraft:bricks`）—— 名字相近，**勿删、勿改写语义**。⚠️ 1.20.1 的标签目录是 `data/<ns>/tags/items/`（**复数**）。
+>    见 **KI-F5**。
+> ⑦ **收尾必做：核对两条订阅护栏**（本线总线是自建的，没有 `@EventBusSubscriber` 那种自动注册）：
+>    ① 读日志里的 `[Astral Dice] 事件订阅审计…` 行（`platform/event/SubscriptionAudit`）—— 它扫描本包
+>    `@SubscribeEvent` 与已登记集合做差集，抓「带注解却忘了 `register`」；加 `-Dastral_dice.strictBusAudit=true`
+>    可把它升级为**致命错误**。② 调用 `LoaderBus#dispatchReport()` 核对**没有**关键事件的派发次数为 0
+>    （判据：`ServerTickEvent` 必须为正数）。⚠️ 审计若报「未生效（没扫到任何类）」，**不得**当成通过。见 **KI-F6**。
+
+> 版本号各 git 分支独立（AGENTS.md 自 2026-09-15 起**已纳入版本库**，各分支各自维护一份）：**发布线 `multi-main`**（2026-09-22 由 `multi-1.20.1-1.21.1` 改名；连带项已同批处理：三线 `build.gradle` 的 `packPushBranches → ['multi-main']`、`.github/workflows/build.yml` 的 5 处分支名与触发条件，以及 `.github/workflows/build.yml` 里 checkout 前置库的 `ref:` 钉值）**当前 = `1.3.7`**（2026-10-01：承接 1.3.5 的补丁发布——FTB 队友判定后端修复；见下方「发布规范」对 `-hotfix` 打 tag 的说明）（2026-09-22 那次收编后统一升版为 `1.3.0` —— 1.21.1 / 1.20.1 = `1.3.0`，26.1.2 = `1.3.0-beta.1`，按发布规范 tag 解析为裸版本 `1.3.0`；此后逐版递增至 **1.3.5**；2026-10-01 起为 `1.3.5-hotfix`、2026-10-04 起为 **`1.3.7`**，以矩阵表「当前版本」列与各线 `gradle.properties` 为准。⚠️ 本处曾长期停留在 `1.3.0`、与矩阵表自相矛盾，2026-10-01 二次验证时一并更正）；`multi-dev-next` 当前 = **`2.0.0-SNAPSHOT.24`**（2026-10-04；工作树 `F:\MCProject\astral_dice_multiloader-next`。⚠️ **该线并未停止演进** —— 2026-09-22 曾整体并入发布线 `multi-main`（`7b726617`，收编 160 个提交），但此后 `multi-dev-next` **继续独立开发**（目标选择器改造、四张伤害效果牌重做、fabric 第四条线并入等）；现行口径见下方「## 版本号递增约定（每提交一版）」与「## 版本优先级与跨线移植纪律」）；`neoforge-26.1.2` 子项目当前 = **`1.3.0-beta.1`**（2026-09-17 用户裁决 + **2026-09-19 修订：26.1.2 已纳入主线、三线同步（不再是低优先级线）**；**2026-09-22 用户裁决：三线同批升版，26.1.2 取 `1.3.0-beta.1`** —— 此前 `.13` 时代「与另两线版本号对齐、不再单独加 `-beta`」的口径随之作废；`multi-26.1.2-neoforge` 分支自此只作为合并前历史，不再单独开发）。上表「当前版本」以发布线工作分支 `multi-main` 为准。
 > ⚠️ 历史上另有一条 dev 分支 **`wt/2.0.0-vnext`**（连带独立 worktree `C:/Users/xmace/.dsh/worktrees/astral_dice_multiloader-a03b2df2/2.0.0-vnext`）——2026-09-17 用户裁决「移除 wt/2.0.0-vnext 分支，仅保留当前分支」后**已删除**：worktree 与分支一并移除，`git branch -d` 成功即证明其 tip **`d7e4ac8f4f1c31484bf4366caa4e144aec45979f`** 的全部提交都已被 `multi-dev-next` 包含（`multi-dev-next..wt/2.0.0-vnext` 为空）⇒ **未丢失任何提交**；该分支从未推到远端（`origin` 只有 `multi-1.20.1-1.21.1` 与 `multi-dev-next`），故无需远端清理。`multi-26.1.2-neoforge` 作为合并前历史分支**保留**（未在本次裁决范围内）。
 
 > **第三条线(26.1.2)的规则边界(2026-09-19 用户裁决修订 —— 26.1.2 已纳入主线,必须遵守)**:⛔ **2026-10-04 更新:本条「26.1.2 纳入三线同批实施」的口径已作废** —— 现行 **P1 次要优先级**（见下方「## 版本优先级与跨线移植纪律」）;本段其余平台差异说明仍有效。自本裁决起「同步修改」约束**三个版本**(`neoforge-1.21.1` + `forge-1.20.1` + `neoforge-26.1.2`):任何功能/修复/平衡/文案改动一律**三线同批实施**(实施方式见下方「### 子项目修改默认规则」与「### 模组内容更新规则(三线同步)」),26.1.2 **不再**是「发布线完成后再迁移」的低优先级移植线。三条线各自按 `docs/compat-26.1.2-neoforge.md`(26.1.2 相对 1.21.1)、`docs/compat-1.20.1-forge.md`(1.20.1 相对 1.21.1)的差异映射实现,**平台差异必须逐条登记**;三线落地后按 `scripts/test/TESTING-SPEC.md` §13.2 做一致性测试。三子项目的 `mod_version`/`mods.toml` 门槛仍各自独立。⚠️ **第四条线 `fabric-1.20.1` 不参与本条的「三线同批实施」约束** —— 其边界见上一条 ①（由用户按批次单独下达移植任务）。
@@ -489,9 +530,9 @@ When extending this workspace:
 | `neoforge-1.21.1` | P0（**基准**） | —（差异以此为基准） | `KNOWN-ISSUES.md` §2~§8 |
 | `forge-1.20.1` | P0 | `docs/compat-1.20.1-forge.md` §1~§9 | 同文件 §9 + `KNOWN-ISSUES.md` `KI-9` |
 | `neoforge-26.1.2` | P1 | `docs/compat-26.1.2-neoforge.md` + 本文「neoforge-26.1.2 关键差异速记」 | 同文件 §8「尚未完成 / 已知缺口」 |
-| `fabric-1.20.1` | P1 | **`porting/fabric-1.20.1/FABRIC-DIFFS.md`**（专项清单） | 同文件 §4 + `KNOWN-ISSUES.md` §9（KI-F*）+ `KI-E3` |
+| `fabric-1.20.1` | P1 | **`porting/fabric-1.20.1/FABRIC-DIFFS.md`**（专项清单） | 同文件 §4 + `KNOWN-ISSUES.md` §9（KI-F*）+ §1.1（`KI-E3` 已于 2026-10-04 闭环） |
 
-> ⚠️ `docs/` 是**本机目录**（被 `.gitignore`）⇒ 清单的**可版本化载体**在 **`porting/`** 下：
+> ⚠️ `docs/` **自 2026-10-01 起已纳入版本库**（`.gitignore` 的 `docs/` 排除条目已移除，提交 `d73cf841`；本仓实测 `git ls-files docs/` = 86 项） ⇒ 清单的可版本化载体**同时在 `porting/` 下**（下两行的 `porting/` 总分表为权威）：
 > **`porting/CROSS-VERSION-DIFFS.md`**（四线总表：优先级 / 差异项 / 待解决问题）+ **`porting/fabric-1.20.1/FABRIC-DIFFS.md`**（Fabric 专项）。
 > 移植作业的固定收尾动作见 `porting/CROSS-VERSION-DIFFS.md` §5。
 
@@ -563,7 +604,8 @@ When extending this workspace:
 - 两侧门槛都必须在 **mods.toml 解析 / 依赖排序阶段**拒绝不合格环境(FML 会给出可读提示:语言提供者版本不符 = `fml.language.missingversion`;
   强制依赖不满足 = `Missing or unsupported mandatory dependencies:`),**不得**依赖"先加载、再在代码里检查"——mixin 变换早于 mod 构造器,那样只会得到 mixin 报错。
 
-发布规范:GitHub **Release tag 使用无后缀的基础版本号**(如 `1.1.3`,禁止 `v` 前缀与 `+加载器` 后缀),tag 推送即触发 CI 自动构建并发布**三个 jar**(1.21.1 + 1.20.1 + 26.1.2,第三个是 26.1.2 的低优先级 `-beta` jar);发布线分支 `multi-main`（2026-09-22 由 `multi-1.20.1-1.21.1` 改名）推送时 CI 会从 `mod_version` 剥离 `-rc/-pre` 与后缀自动打 tag。⚠️ **剥离规则是「先剥 `+后缀`,再剥第一个 `-` 之后的一切」**(`BASE=${VERSION%%+*}; BASE=${BASE%%-*}`)⇒ **`1.2.1-hotfix` 打出的 tag 是裸版本 `1.2.1`**(2026-09-18 实测确认),tag 已存在时 CI 会走 `gh release edit` + `gh release upload --clobber` **刷新同一个 Release**,不会再建新 tag/Release。**26.1.2 永远只作为附件随发布线 Release 发布,不生成自己的 tag/Release**(其 `1.2.1-beta.2` 不是裸 `x.y.z`);CI 侧实现见 `.github/workflows/build.yml` 的 `Create/Update GitHub Release (three JARs, notes from release/<tag>/)`。
+发布规范:GitHub **Release tag 使用无后缀的基础版本号**(如 `1.1.3`,禁止 `v` 前缀与 `+加载器` 后缀),tag 推送即触发 CI 自动构建并发布**三个 jar**(1.21.1 + 1.20.1 + 26.1.2,第三个是 26.1.2 的 `-beta` jar);⚠️ **第四条线 fabric 不进这条 Release** —— 它有**自己的** `fabric-<版本>` pre-release(见「第四条线规则边界」③),两者附件互不掺入;发布线分支 `multi-main`（2026-09-22 由 `multi-1.20.1-1.21.1` 改名）推送时 CI 会从 `mod_version` 剥离 `-rc/-pre` 与后缀自动打 tag。⚠️ **剥离规则是「先剥 `+后缀`,再剥第一个 `-` 之后的一切」**(`BASE=${VERSION%%+*}; BASE=${BASE%%-*}`)⇒ `-hotfix` 打出的 tag 是裸版本(如 `1.3.5-hotfix` → **`1.3.5`**),tag 已存在时 CI 走 `gh release edit` + `gh release upload --clobber` **刷新同一个 Release**,不新建 tag/Release。
+⚠️ **2026-10-01 订正**(原注释失实):此前写「`1.2.1-hotfix` 已按上述规则打到 `1.2.1`」—— 查证发现 `Create Git tag` 步骤里有一条「`mod_version` 含 `-` 即静默跳过」的预发布守卫,它把 `-hotfix` 也一并挡掉了(既不建 tag、也不刷 Release,**且没有任何报错**)。守卫已改为**只跳过 `-alpha/-beta/-rc/-pre/-snapshot`**;`-hotfix` 自 2026-10-01 起才真正按本段口径执行。**26.1.2 永远只作为附件随发布线 Release 发布,不生成自己的 tag/Release**(其 `1.3.5-beta.2` 不是裸 `x.y.z`);CI 侧实现见 `.github/workflows/build.yml` 的 `Create/Update GitHub Release (three JARs, notes from release/<tag>/)`。
 **Release 正文取自玩家侧发布说明**(2026-09-17 起,用户要求):`release/<tag>/PLAYER_CHANGELOG_ZH.md` + `release/<tag>/PLAYER_CHANGELOG.md`,中文在前、中间插 `---`、英文在后,经 `gh release ... --notes-file` 整文件传入(不再用内联单行 `--notes`);两份文件都不存在时只打 `::warning::` 并退回「附件清单」兜底,**不阻断发布**。⇒ 发布前必须确认该版本目录的两份文件已存在且与 `CHANGELOG_(ZH|EN).md` 同步(见「更新日志约定」)。
 **CI / Actions 状态由用户自行观察(2026-09-17 用户裁决,必须遵守)**:本机无 GitHub token、不安装 `gh`,因此**代理不得监视、轮询或尝试查询** GitHub Actions / Release 状态(不跑 `gh run view|list`、不装 CLI、不改用 API 轮询)。推送后代理只在交付说明里列明**预期结果**与失败时的排查入口(远端 job 日志),由用户到 Actions 页面自行核对;禁止把「本机看不到 CI」写成未完成事项反复追问。
 
@@ -634,7 +676,7 @@ When extending this workspace:
 ### 子项目修改默认规则 — 必须遵守
 - **功能/修复默认同步修改三个版本（2026-09-19 起 26.1.2 纳入主线）**:所有功能、修复、平衡性调整一律在 `neoforge-1.21.1`、`forge-1.20.1`、`neoforge-26.1.2` **同时实施**,三侧保持功能对等。**实施方式**:以 `neoforge-1.21.1` 的实现为**语义基准**,按 `docs/compat-1.20.1-forge.md` / `docs/compat-26.1.2-neoforge.md` 的差异映射在三线各自落地;平台差异逐条登记(不写「看起来一致」的实现)。
 - **实施必须走 subagent(2026-09-19 用户裁决)**:每次代码修改**必须创建 subagent**,**三个版本各一个 subagent 并行实施**(复杂批次再按子系统拆分);同一文件同一时间只能归**一个** subagent 所有(共享文件由主 agent 预先指派 owner,跨文件接口由主 agent 先固定)。详见「### 模组内容更新规则(三线同步)」第 1-2 条。
-- **每次改动完成后自动执行下述收尾(无需用户逐项指示)**:① 同步两个 CHANGELOG 文件 → ② 构建**三个**版本 → ③ **自动部署到整合包**(随 `gradlew build` 触发的 `pushToGame`;**三线各自的推送白名单都是 `['multi-main']`——本开发工作树 `multi-dev-next` 与 `wt/*` 一律跳过,需强推时加 `-PdeployToPack`;三线各推往自己的整合包 `狐の航空学 Voxy Edition` / `1.20.1 模组测试` / `26.1.2 模组测试`**)→ ④ **自动本地提交**。全程**不执行 `git push`**。
+- **每次改动完成后自动执行下述收尾(无需用户逐项指示)**:① 同步两个 CHANGELOG 文件 → ② 构建**三个**版本 → ③ **自动部署到整合包**(随 `gradlew build` 触发的 `pushToGame`;**四条线的推送白名单都是 `['multi-main']`——本开发工作树 `multi-dev-next` 与 `wt/*` 一律跳过,需强推时加 `-PdeployToPack`;四条线各推往自己的整合包 `狐の航空学 Voxy Edition` / `1.20.1-Forge 模组测试` / `26.1.2-NeoForge 模组测试` / `1.20.1-Fabric 模组测试` —— ⚠️ **目录名一律以本机 `ls D:/.minecraft/versions/` 实测为准,禁止按命名规则推测**(本类「目录已改名而配置未跟」的缺口已复发多次)**)→ ④ **自动本地提交**。全程**不执行 `git push`**。
 - **单侧改动仅限用户明确要求**:只有当用户明确说“只改 1.21.1 / 先不移植”时,才允许只改一个版本;禁止擅自只改单侧或长期让三版本功能不对等。
 - 平台差异按各子项目规范实现(1.21.1 / 26.1.2 用数据组件/附件,1.20.1 用 `component/*DataKey` 与 Capability;事件、Curios 注册、Mixin、数据包目录均不同),**不得为了“看起来一致”而破坏目标平台的正确写法**。
 - 用户在任一版本测试时报告的 BUG/需求,默认在**三个版本同步修复**。
@@ -679,7 +721,7 @@ When extending this workspace:
    ⚠️ **2026-09-27 起叠加用户新规**：本条约束的是「谁来跑」，**不改变**「能跑什么」——`mt.ps1` 全流程与阶段 C 的整目录批量此时**已被闸门禁用**（见下方第 5 条与 `TESTING-RULES-OVERVIEW.md` §3.1）。主 agent 亲自执行时同样受闸门约束，须改用「单条用例 + 手动逐条注入」范式；要恢复批量执行需用户显式裁决或临时加 `--allow-auto`。
 3. **平台差异**：按 `docs/compat-26.1.2-neoforge.md`（26.1.2 相对 1.21.1）与 `docs/compat-1.20.1-forge.md`（1.20.1 相对 1.21.1）的差异映射实现，允许并**必须逐条登记**平台差异（如 26.1.2 无 Iron's Spells 联动、`ItemTags.SPEARS` 只在 26.1.2 存在、26.1.2 的 KubeJS 探针 API 形态不同等）。**禁止**用「能启动/跑通了」代替一致性结论。
 4. **一致性测试**：三线落地后按 `scripts/test/TESTING-SPEC.md` §13.2 的方法（**同探针 + 同用例 + 三侧读数 diff**）在 26.1.2 上复跑 1.21.1 已通过的用例，逐条比对读数；差异要么修掉、要么作为**平台差异**登记并写明原因。
-5. **版本号与发布**：26.1.2 子项目当前版本号 = **`1.2.1-beta.2+neoforge_26.1.2`**（保留 `-beta` 以与发布线 `1.2.1` 的发布态区分；改动只动 `neoforge-26.1.2/gradle.properties`，**不得**连带改 1.20.1 / 1.21.1）；26.1.2 **不单独发版** —— CI 对其跑 lang 同步 + 三子项目构建，并把**已构建出的 jar 作为第三个附件附到发布线的 Release**（2026-09-17 用户要求「将 26.1.2 加入 Action 和 Release」），但**不打自己的 tag、不建自己的 Release**（版本号不是裸 `x.y.z`，不满足打 tag 门槛）；tag/Release 的创建仍只在发布线分支触发。
+5. **版本号与发布**：26.1.2 子项目当前版本号 = **`1.3.7-beta.1+neoforge_26.1.2`**（保留 `-beta` 以与发布线 `1.3.7` 的发布态区分；改动只动 `neoforge-26.1.2/gradle.properties`，**不得**连带改 1.20.1 / 1.21.1）；26.1.2 **不单独发版** —— CI 对其跑 lang 同步 + 三子项目构建，并把**已构建出的 jar 作为第三个附件附到发布线的 Release**（2026-09-17 用户要求「将 26.1.2 加入 Action 和 Release」），但**不打自己的 tag、不建自己的 Release**（版本号不是裸 `x.y.z`，不满足打 tag 门槛）；tag/Release 的创建仍只在发布线分支触发。
 6. **一次内容更新的验收口径**：① 三线均已落地且各自构建通过；② 核心改动按「变更分级与验证口径」跑**定向最小冒烟**（**只跑与该改动直接相关的用例**，三线各一遍；顺序 1.21.1 → 1.20.1 → 26.1.2，逐线出结论）；命中该节的「**完整冒烟**」五种情形之一（发版批次 / 跨模块公共路径 / 门槛类规则自身改动 / 用户显式要求 / 26.1.2 迁移与一致性验收批次）时才跑**全清单**；纯脚本/文本/tooltip/文档/注释类改动免冒烟，但仍须构建 + 静态闸门全绿；③ 两份 CHANGELOG 同步且条目数一致；④ 26.1.2 侧的一致性测试结论已写入 `scripts/test/TESTING-SPEC.md`（工程口径记录写§附录 A，不写玩家侧 CHANGELOG）。
    ⚠️ **2026-09-27 起**：②的「跑用例」在**执行方式上**受批量编排闸门约束（§第 5 条）——「定向最小冒烟」仍按本节判定**该跑哪些**，但落地时逐条发（`--case <X>` 或 `mt_inject.ps1 cmd`），不再用 `run-dir` / 全流程一次性跑完。这是**用户可见性**上的收紧，不改变本节的分级判据。7. **禁止「顺路一起改」与「分批补线」**：不得以某条线更快为由先把该线改完、另两条线留待以后（同批必须三线对齐）；确需分步时必须由用户明确裁决，并把未落地的那条线登记为**阻塞项**（不是「以后再说」）。
 
@@ -1072,8 +1114,8 @@ When extending this workspace:
 |---|---|---|---|
 | 医疗箱-紧急/完备 | `medkit_emergency_chip`/`medkit_complete_chip` | 蓝/金 | **装备时** / 重生与重登与切维度后 / 触发骰神赐福时 / 每 1:00 结算时 +1/+3 治愈点(前两者经 `HealingManager#triggerMedkitOnEquip` **完整触发**,后两者经 `addChipPoints`);卸下按账本回撤装备触发累计的层数 |
 | 维生素药丸 | `vitamin_pill_chip` | 紫 | 合成或获得任意卡牌时,治愈 +1(拾取地面卡牌不触发) |
-| 美工刀-初级 | `cutter_chip` | 紫 | 生命值 ≥ 60% 时**攻击力** +2(**攻击力修饰器**通道 —— 2026-09-26 由额外加伤通道改回,走 `ATTACK_MODIFIERS`),外加当前治愈点数(走**额外加伤**通道,每枚各计 1 份);处于汲取 `papara_bite` 状态时视为满血,跳过生命值判定；**HUD 指示器** `cutter_ready` = 佩戴筹码 && 生命 ≥ 60%(或汲取) && **处于骰神赐福中**（2026-09-27 用户裁决） |
-| 美工刀-锋利 | `cutter_blade_chip` | 金 | 与初级一致但基础**攻击力** +4;与初级为不同物品,可同时装备叠加(两枚同时装备时治愈点数**叠加两次**)；**HUD 指示器** `cutter_blade_ready` 条件同初级 |
+| 美工刀-初级 | `cutter_chip` | 紫 | 生命值 ≥ 60% 时**攻击力** +2（**攻击力修饰器** `ATTACK_MODIFIERS`），并额外使**攻击伤害**增加「当前治愈点数」（额外加伤通道，**每枚各计 1 份**）—— ⚠️ **两段伤害类型不同，必须严格区分**（2026-09-28 用户裁决：基础 +2/+4 曾被误并入额外加伤，已修正；本线沿革 = 2026-09-26「由额外加伤通道改回 `ATTACK_MODIFIERS`」）。处于汲取 `papara_bite` 状态时视为满血，跳过生命值判定。**HUD 指示器**（`cutter_ready`）= 佩戴筹码 && 生命≥60%（或汲取）&& **骰神赐福中**（2026-09-27 用户裁决） |
+| 美工刀-锋利 | `cutter_blade_chip` | 金 | 与初级同构但基础**攻击力** +4（治愈点数那一段同为额外加伤，**每枚各计 1 份**）；与初级为不同物品，可同时装备，两者的攻击力与治愈点数加成各自叠加。**HUD 指示器**（`cutter_blade_ready`）条件同初级 |
 | 缓冲盾牌 | `buffer_shield_chip` | 蓝 | 受到攻击时 +2 治愈 +3 星币,每 15 秒一次(冷却附件 `buffer_shield_cooldown_end`) |
 | 可口糖果 | `candy_chip` | 紫 | 每使用一张效果牌治愈 +1 并恢复 1 点生命;满血使用效果牌时本轮出牌数 +1(每个出牌轮次最多一次) |
 | 友情徽章 | `friendship_badge_chip` | 紫 | 对友方玩家施加治疗效果时,双方各获得 2 点治愈(同一治疗者 1 秒内去重) |
@@ -1504,11 +1546,21 @@ When extending this workspace:
     **粉紫 `#FF55FF`** = 原版 EPIC(`ChatFormatting.LIGHT_PURPLE`)= 史诗 → `ASTRAL_DICE_EPIC`;
     金 `#FFC24B` = 传奇 → `ASTRAL_DICE_LEGENDARY`;亮红 `#FF4D4D` = 巅峰 → `ASTRAL_DICE_PINNACLE`;
     **彩虹(流动)** = 奇特 → `ASTRAL_DICE_BIZARRE`(⚠️ 文字色 = 亮红,与巅峰同色 `#FF4D4D`;流动彩虹只在边框上)。
-  - ⚠️ **边框策略(2026-09-25 二次裁决:「文字与边框严格同色」的约定作废)**:
-    **稀有 / 史诗 = 完全随原版**(消费方不干预边框 —— 原版边框与稀有度无关的紫蓝渐变保留,只染物品名,
-    与原版稀有/史诗物品观感一致;用户以原版稀有物品「神秘蠕虫」截图定调:文字水蓝、边框紫蓝,两者本就不同色);
-    **传奇 / 巅峰 = 自定义单色边框**(`Rarity#frameColor(long)` = `0xFF000000|rgb()`,与物品名同色);
+  - ⚠️ **边框策略(2026-10-01 三次修订:史诗从「随原版」改为「显式写入档位色」)**:
+    **稀有 = 完全随原版**(消费方不干预边框 —— 原版边框与稀有度无关的紫蓝渐变保留,只染物品名,
+    与原版稀有物品观感一致;用户以原版稀有物品「神秘蠕虫」截图定调:文字水蓝、边框紫蓝,两者本就不同色);
+    **史诗 / 传奇 / 巅峰 = 自定义单色边框**(`Rarity#frameColor(long)` = `0xFF000000|rgb()`,与物品名同色)
+    ⇒ 史诗 = 原版 EPIC 配色 `#FF55FF`;
     **奇特 = 两色流动渐变**(`rainbowBorderStart/End` 写进边框起/止色 ⇒ 原版竖直渐变随时间流动;实现面见下方「边框的实现面」条)。
+    🚨 **史诗为什么必须「写色」而不是「不动」(2026-10-01 实测根因)**:整合包里**本模组没有写色的 tooltip 会沿用
+    上一次的边框色**(被第三方缓存后回灌)。判据三条:① 与本模组无关的 `oritech:adamant_block` 边框实测为**纯色 `#FFC24B`**
+    (= 本模组传奇档的档位色,且「整圈纯色」正是本类的绘制风格,原版是紫蓝渐变);② 全包 **491 个 jar 递归展开
+    (含 JarJar 内嵌)**扫描色值 `0x00FFC24B`,命中的类**只有本模组内嵌的 `Rarity.class`**;③ 本模组史诗物品
+    `ren_sign` 物品名已是正确的淡紫、边框却是金色。
+    ⇒ **设计准则:凡是我们「不写色」的档位都会成为别人缓存的受害者;只要我们自己写色,该 tooltip 就一定用我们的值**
+    (事件值直送原版绘制:`ClientHooks.onRenderTooltipColor` → 事件 → `renderTooltipBackground(..., event.getBorderStart(), event.getBorderEnd())`)。
+    ⚠️ **稀有档目前仍不写色**(用户 2026-10-01 明确只要求改史诗),按同一机理它同样可能被残留污染 ——
+    要一并改就删掉 `client/RarityTooltipFrame` 守卫里的 `tier == Rarity.RARE`(稀有档色 = `#55FFFF`)。
   - **奇特档当前挂载**(2026-09-25 用户裁决;⚠️ **2026-09-25 二次修正:上一批把「人偶师」误认成 `ren_sign`(实际 = 游戏大师)
     ⇒ `ren_sign` 被误改奇特、`hanna_sign` 漏改,本批纠正**):6 张**专属牌**(= `is_exclusive.json` 全表:`effect_card_living_page` /
     `effect_card_fate_guidance` / `fu_card` / `huo_card` / `attack_card_bite` / `attack_card_dragon_roar`)
@@ -1545,12 +1597,44 @@ When extending this workspace:
     (`renderFrameGradient`:上横线=start/下横线=end/左右竖线=竖直渐变)。**放弃**「沿边框顺时针环绕」的诉求
     (那需要逐像素按周长相位取色、必走 Mixin,实测三线都有 lambda 包裹/签名陷阱),改回最初的**两色流动渐变**:
     · 1.21.1/1.20.1 = `client/RarityTooltipFrame`(`@EventBusSubscriber(Dist.CLIENT)` + `RenderTooltipEvent.Color`):
-      稀有/史诗/原版/其它模组 = **return 不动**(随原版边框);传奇/巅峰 = `frameColor(now)` 单色(起=止);
-      奇特 = `rainbowBorderStart(now)` / `rainbowBorderEnd(now)` 两色 ⇒ 原版画出的竖直渐变随时间流动。
-      26.1.2 **无此事件**(贴图边框)⇒ 不接,保持原版贴图(奇特在该线无动画,已登记缺口)。
+      非本模组档位(原版/其它模组物品)+ **本模组稀有档** = **return 不动**(随原版边框);
+      **史诗 / 传奇 / 巅峰 = `frameColor(now)` 单色(起=止)**;奇特 = `rainbowBorderStart(now)` / `rainbowBorderEnd(now)` 两色
+      ⇒ 原版画出的竖直渐变随时间流动。⚠️ **史诗必须走这条,别改回「不动」**(残留根因见上方「边框策略」条)。
+      26.1.2 **无颜色事件**(边框是九宫格贴图;平台给的是 `ClientHooks#onRenderTooltipTexture` 的**贴图 ID**,不是颜色)
+      ⇒ 不接,保持原版贴图(史诗/奇特在该线无自定义边框,已登记平台差异)。
     · 色环周期 = `Rarity.RAINBOW_CYCLE_MILLIS`(3000ms);`rainbowBorderEnd` 相位 = 起始 + 1/3 圈(120°)。
-    · 🚨 **第三方 tooltip 模组会整个接管边框**(2026-09-25 实测,整合包 `狐の航空学 Voxy Edition`):它们**自己画**提示框
-      ⇒ 上面的事件被**完全忽略**,而且「自定义稀有度」会落进那家的**未知档位兜底色**。实测 Tooltip Overhaul 2.0.4:
+    · 🚨 **Iceberg(`[冰山]`,由「进度牌匾」/LegendaryTooltips 带入)会把「上一次的自定义边框色」缓存并回灌给下一个保持原版色的 tooltip**
+      (2026-10-01 字节码实证,这是「边框残留」在**当前整合包**里的真正源头):`Tooltips.currentColors` 是 `public static`
+      **可变**字段,其 `TooltipRenderUtilMixin`(在 `iceberg.mixins.json` 的 client 列表里,`required:true`)拦截
+      `TooltipRenderUtil` 的逐线绘制原语:**传入色 ≠ 原版哨兵色** ⇒ `new TooltipColors(..., 传入色, ...)` 并 `putstatic currentColors`;
+      **传入色 = 原版哨兵色**(`BACKGROUND_COLOR`/`BORDER_COLOR_TOP`/`BORDER_COLOR_BOTTOM`) ⇒ **改用缓存的 `horizontalLineColor` 绘制并 `cancel` 原版**。
+      `currentColors` 的写入点只有「类静态初始化(= `DEFAULT_COLORS`,原版紫蓝)」与「line-handler」两处,**没有任何逐 tooltip 复位**
+      ⇒ **凡是保持原版边框色的 tooltip(本模组稀有档、其它模组物品、原版物品)都会沿用上一次的自定义颜色**。
+      实测症状就是用户截图里的 `oritech:adamant_block`(与本模组无关)拿到**纯色 `#FFC24B`** = 本模组传奇档色。
+      ⚠️ **结论:只要我们自己写色,该 tooltip 就一定用我们的值;不写色的档位必然被残留污染** —— 这正是「史诗必须显式写色」的依据。
+      ✅ **2026-10-01 已针对 Iceberg 单独开发缓解措施**(`client/IcebergTooltipCacheGuard`,四线各一份,并**按 Iceberg 两代实现自适应**)——
+      在**每次 tooltip 渲染的最开头**把 `Tooltips.currentColors` 反射写回**它自己的** `DEFAULT_COLORS`(不是我们发明的颜色)。
+      · 🚨 **必须按代判别**(独立复验实测的反例):**1.3.2 一代**(1.21.1 报障包)该字段**只在绘制期被写、无逐 tooltip 复位**,且
+      `DEFAULT_COLORS` = 原版四色 ⇒ **每次都复位**(这才是本类存在的理由);**1.4.1.1 一代**(26.1.2 测试包)的
+      `neoforge/mixin/GuiGraphicsMixin#preRenderTooltipForge`(注入点 = `GuiGraphicsExtractor#tooltip` 的**方法头**,早于我们的 `Pre` 事件)
+      **自己就在每个 tooltip 开头写这个缓存**,且它的 `DEFAULT_COLORS` = **纯白**(`TextColor.fromRgb(-1)×4`)
+      ⇒ **硬复位会把 LegendaryTooltips 经 `RenderTooltipEvents.ColorExt` 设好的颜色抹白 = 引入新缺陷**。
+      判据 = 反射探测 `Tooltips` 上是否存在 1.4.1.1 引入的两个 `public static boolean` 标志
+      `gradientBackground`/`gradientBorder`(1.3.2 上**没有**这两个字段):不存在 ⇒ 每次复位;存在且任一为 true ⇒ **跳过**;存在且皆 false ⇒ 等值 no-op。
+      落点:neo-1.21.1 / forge-1.20.1 / neo-26.1.2 = `RenderTooltipEvent.Pre`(1.21.1 源码 `GuiGraphics:1495`,早于 `Color` `:1516` 与绘制 `:1517`;
+      26.1.2 落 `GuiGraphicsExtractor#tooltip` `:1148`);fabric-1.20.1 **没有该事件的派发源** ⇒ 在
+      `mixin/bridge/ClientTooltipBridgeMixin` 的 `renderTooltipInternal` `HEAD` 里**先复位、再派发 `Color`**(顺序不可颠倒)。
+      ⚠️ **纪律**:① 复位点必须是「**同一次 tooltip 渲染之前**」,不能放帧末(缓存写在绘制过程中,帧末复位会让同一次绘制后半段读到已复位值);
+      ② **只写 `currentColors` 一个字段**,`gradientBackground`/`gradientBorder` **只读不写**;③ 不硬依赖 Iceberg(字符串名探测、缺席走 debug);
+      失败**永久停用**并打一条 warn,**绝不抛**(渲染线程抛异常 = 崩客户端);④ 逃生口 `-Dastral_dice.icebergTooltipGuard=false`。
+      ⚠️ 该缓解**不改**本模组「稀有档仍随原版不干预」的既有裁决 —— 有了它,稀有档不再需要靠「自己写色」自保。
+      ⚠️ **归因陈述必须带时间点**:报障当时(当日 13:0x)该包的 TO 是 `.jar.disabled`,但**当天 15:02 的日志里它又被加载了**(玩家可随时改回)
+      ⇒ 别在文档里写死「TO 已停用」;本缓解对 TO 开/关都无害(TO 若接管,它自己画整个提示框,Iceberg 的绘制原语根本不执行,复位退化为 no-op)。
+      完整取证见 `KNOWN-ISSUES.md` **KI-D2** 与技能 `mc-thirdparty-tooltip-frame` §4.3
+    · 🚨 **另一类接管者:Tooltip Overhaul(自己画整个提示框)**(2026-09-25 实测,整合包 `狐の航空学 Voxy Edition`;
+      ⚠️ **当前该包里的 TO 已是 `.jar.disabled`,故这条现在不生效,别再据它下结论** —— 先 `ls mods | grep <modid>` 确认启用状态,
+      并用 `logs/latest.log` 的 `Reloading ResourceManager:` 长串 `mod/<modid>` 复核「本局到底加载了谁」):它**自己画**提示框
+      ⇒ 我们写进事件的颜色被**完全忽略**,而且「自定义稀有度」会落进那家的**未知档位兜底色**。实测 Tooltip Overhaul 2.0.4:
       `ColorUtils#getColorsPerRarity` 用 `==` 比原版 `COMMON/UNCOMMON/RARE/EPIC`,其余一律 `Palette.CUSTOM_RARITY`
       (= 配置 `CUSTOM_RARITY_PALETTE_COLORS` 默认 `0xFFE8B84A, 0xFFB5832A, 0xFF6B4A12`,**金→褐**)⇒
       **症状 = 「物品名按档位变色,但边框一律金色」**(自有档位越多越明显)。
@@ -1560,10 +1644,19 @@ When extending this workspace:
         `gradientType:"custom"` + 3 个 `gradientColors` 会**覆盖**兜底调色板(`getInnerOverlayColors` 先判 `gradientType == CUSTOM`),
         `priority` 高者胜(`findMatch` 先比 priority 再比 score)⇒ 本仓三线内置
         `assets/astral_dice/tooltipoverhaul/custom_frames.json`(**5 档全写**,priority 10;非 TO 环境惰性数据)。
-        ⚠️ **稀有/史诗必须写进去,且照抄 TO 画原版档的确切调色板**(2026-09-25 四次裁决:上一批「删条目=退回原版」是错的 ——
-        TO 的 `getColorsPerRarity` 用 `==` 比原版枚举,自有枚举**永远**掉金兜底;删条目 = 稀有/史诗变金框)。
-        从 TO jar 反汇编 `TooltipsConfig` 默认值取真值:RARE = `#4D9BE8/#2B66B5/#123A6B`(蓝渐变)、
-        EPIC = `#B14BE0/#7A28A8/#431463`(紫渐变),`borderType:"gradient"` 与它画原版档一致 ⇒ TO 环境下与原版稀有/史诗**同框**。
+        ⚠️ **每一档都必须写进去**(2026-09-25 四次裁决:上一批「删条目=退回原版」是错的 ——
+        TO 的 `getColorsPerRarity` 用 `==` 比原版枚举,自有枚举**永远**掉金兜底;删条目 = 该档变金框)。
+        **帧没命中 ⇒ `getInnerOverlayColors` 走 `getColorsPerRarity` ⇒ 非原版档位一律 `CUSTOM_RARITY`(金色)**
+        ⇒ **「某档位显示金色」的唯一判据就是「那条 frame 没命中」**,候选只有四个:文件没扫到 / `rarities` 字符串
+        与 `Rarity#name()` 不符 / 被更高 priority 或 matchScore 抢走 / 压根没写。
+        · RARE = `#4D9BE8/#2B66B5/#123A6B`(蓝渐变,`borderType:"gradient"`)= **照抄 TO 画原版 RARE 的确切调色板**
+          (从 TO jar 反汇编 `TooltipsConfig` 默认值取真值)⇒ TO 环境下与原版稀有档**同框**。
+        · EPIC = **纯色 `#FF55FF`**(`borderType:"static"`,2026-10-01 三次修订)= 与本模组自绘路径的史诗档一致;
+          **不再**沿用 TO 的 EPIC 渐变(`#B14BE0/#7A28A8/#431463`)—— 用户口径是「史诗 = 原版 EPIC 色」,
+          两条路径(自绘 / TO 对接)必须同色。
+        · 2.0.6 复核(2026-10-01):包名改为 `dev.xylonity.tooltipoverhaul.*`,但发现谓词(`p.getPath().endsWith("custom_frames.json")`)、
+          `rarities` 匹配、`matchScore` 权重(4/3/2/1)、`priority` 语义、`gradientType` 解析(`toUpperCase()+valueOf`,小写合法)**均未变**
+          ⇒ 本仓那份文件不需要为 2.0.6 改写;新增的是 7 个预设枚举(`COMMON…CHAOS/CUSTOM_RARITY`,可直接写 `"gradientType":"epic"`)。
       · ⚠️ 该模组**没有逐帧动画能力**(特效表 + 调色板全查过,无 rainbow)⇒ 奇特在它下面用**静态三段彩虹渐变**
         (`borderType:"gradient"`,取库 `hsvToRgb(h,0.85,1.0)` 的相位 0 / 1/3 / 2/3 = `#FF2626` / `#26FF26` / `#2626FF`);
         不装它时 = 真·两色流动渐变。传奇/巅峰 = 档位色(与文字同色,`#FFC24B` / `#FF4D4D`)。
@@ -2024,16 +2117,17 @@ When extending this workspace:
 > ③ **需要时由用户另行规定**：仅当用户显式要求时才出包 —— 用 `-PdeployToPack` / `-PpackPush` 手动强推（跳过白名单），或把目标分支加入 `packPushBranches` 白名单；两种方式都属**用户另行规定**，代理不得自行启用。
 
 **编译产物集中规则(必须遵守)**:任何版本的编译产物统一复制到**仓库根目录 `build/libs/`**(任务 `pushToRootBuild`,随各子项目 build 自动触发;按**本子项目完整版本后缀**清理旧产物,与其他版本互不误删)。根目录 `build/libs/` 为全部版本产物的统一交付目录。
-⚠️ **后缀必须写全(2026-09 三线并存后为硬需求)**:自 `multi-26.1.2-neoforge` 分支起仓库同时存在 `+neoforge_1.21.1` 与 `+neoforge_26.1.2` 两个 neoforge 产物,`pushToRootBuild` 的过滤条件因此从 `contains('+neoforge_')` 收紧为 `contains('+neoforge_1.21.1')` / `contains('+neoforge_26.1.2')`——宽泛前缀会让两个 neoforge 版本**互相删除** jar。
+⚠️ **后缀必须写全(2026-09 三线并存、2026-10-01 四线并存后为硬需求)**:自 `multi-26.1.2-neoforge` 分支起仓库同时存在 `+neoforge_1.21.1` 与 `+neoforge_26.1.2` 两个 neoforge 产物,`pushToRootBuild` 的过滤条件因此从 `contains('+neoforge_')` 收紧为 `contains('+neoforge_1.21.1')` / `contains('+neoforge_26.1.2')`——宽泛前缀会让两个 neoforge 版本**互相删除** jar。**2026-10-01 起第四条线 `+fabric_1.20.1` 也写进同一个根 `build/libs/`**,其清理过滤是正则 `/astral_dice-.+\+fabric_1\.20\.1\.jar/`(与另三线同口径)⇒ **四条线的后缀一个都不能省**。
 
 | 子项目 | 项目测试环境(pushToDevRun) | 整合包/用户测试环境(pushToGame) | pushToGame 触发条件 |
 |---|---|---|---|
-| `neoforge-1.21.1` | `run/1.21.1/mods`（仓库根 run/） | `D:\.minecraft\versions\狐の航空学 Voxy Edition\mods` | 随 build 触发；**仅发布线分支 `multi-1.20.1-1.21.1` 会真正推送整合包**，其它分支（含 `multi-dev-next`）**严格跳过**并只打印 `pushToGame: skipped — 分支 '…' 不在整合包推送白名单 …` |
-| `forge-1.20.1` | `run/1.20.1/mods`（仓库根 run/） | `D:\.minecraft\versions\1.20.1-Forge 模组测试\mods` | 随 build 触发；**仅发布线分支 `multi-1.20.1-1.21.1` 会真正推送整合包**，其它分支（含 `multi-dev-next`）**严格跳过**并只打印 `pushToGame: skipped — 分支 '…' 不在整合包推送白名单 …` |
-| `neoforge-26.1.2` | `run/26.1.2/mods`（仓库根 run/） | `D:\.minecraft\versions\26.1.2-NeoForge 模组测试\mods` | 随 build 触发；**仅发布线分支 `multi-1.20.1-1.21.1` 会真正推送整合包**，其它分支（含 `multi-dev-next`）**严格跳过**并只打印 `pushToGame: skipped — 分支 '…' 不在整合包推送白名单 …` |
+| `neoforge-1.21.1` | `run/1.21.1/mods`（仓库根 run/） | `D:\.minecraft\versions\狐の航空学 Voxy Edition\mods` | 随 build 触发；**仅发布线分支 `multi-main` 会真正推送整合包**，其它分支（含 `multi-dev-next`）**严格跳过**并只打印 `pushToGame: skipped — 分支 '…' 不在整合包推送白名单 …` |
+| `forge-1.20.1` | `run/1.20.1/mods`（仓库根 run/） | `D:\.minecraft\versions\1.20.1-Forge 模组测试\mods` | 随 build 触发；**仅发布线分支 `multi-main` 会真正推送整合包**，其它分支（含 `multi-dev-next`）**严格跳过**并只打印 `pushToGame: skipped — 分支 '…' 不在整合包推送白名单 …` |
+| `neoforge-26.1.2` | `run/26.1.2/mods`（仓库根 run/） | `D:\.minecraft\versions\26.1.2-NeoForge 模组测试\mods` | 随 build 触发；**仅发布线分支 `multi-main` 会真正推送整合包**，其它分支（含 `multi-dev-next`）**严格跳过**并只打印 `pushToGame: skipped — 分支 '…' 不在整合包推送白名单 …` |
+| `fabric-1.20.1` | `run/fabric-1.20.1/mods`（仓库根 run/） | `D:\.minecraft\versions\1.20.1-Fabric 模组测试\mods` | 随 build 触发；**2026-09-29 接入，2026-10-01 并入 `multi-main`**。本线是**独立的第四条线**，其整合包目录 `1.20.1-Fabric 模组测试` 亦为**本线专属**（与 forge 线的 `1.20.1-Forge 模组测试` 互不相干，不存在跨分支误写）⇒ 白名单 = `packPushBranches = ['multi-main']`（**2026-10-01 由 `['1.20.1-fabric']` 改来** —— 原分支已删，不改则本模块**静默不再部署**）、**在发布线分支上会真正推送**；其余分支（含 worktree 的 `wt/*`）**严格跳过**并只打印 `pushToGame: skipped — 分支 '…' 不在整合包推送白名单 …` |
 
 规则要点：
-1. **推送任务随 build 触发，但整合包推送受分支白名单限制**：`pushToDevRun`/`pushToRootBuild`/`pushToGame` 三个任务均由 `finalizedBy` 随 build 触发；**`pushToGame` 在 `doLast` 里先做执行期分支判定** —— 分支不在白名单 `packPushBranches = ['multi-1.20.1-1.21.1']` 内（或无法确定分支，如 detached HEAD / 无 `.git`）时只打印 `pushToGame: skipped — 分支 '…' 不在整合包推送白名单 …` 并 `return`，**不写整合包目录**（`multi-dev-next` 即属此类，见上方「整合包推送的分支口径」）。**`-PdeployToPack` / `-PpackPush` 仍被任务读取**（四条线 `build.gradle` 均有 `def forcePackPush = project.hasProperty('deployToPack') || project.hasProperty('packPush')`，并在 `pushToGame` 的 `doLast` 里以 `if (!forcePackPush) { … }` 包裹上述白名单判定）—— 作用 = **跳过白名单手动强推整合包**（手动出包通道，保留）；强推时同时会触发「库 jar 与 mod jar 成对自检」的告警（1.21.1 / 1.20.1 原有，26.1.2 自 2026-09-17 接入库后同形）。
+1. **推送任务随 build 触发，但整合包推送受分支白名单限制**：`pushToDevRun`/`pushToRootBuild`/`pushToGame` 三个任务均由 `finalizedBy` 随 build 触发；**`pushToGame` 在 `doLast` 里先做执行期分支判定** —— 分支不在白名单 `packPushBranches = ['multi-main']` 内（或无法确定分支，如 detached HEAD / 无 `.git`）时只打印 `pushToGame: skipped — 分支 '…' 不在整合包推送白名单 …` 并 `return`，**不写整合包目录**（`multi-dev-next` 即属此类，见上方「整合包推送的分支口径」）。**`-PdeployToPack` / `-PpackPush` 仍被任务读取**（四条线 `build.gradle` 均有 `def forcePackPush = project.hasProperty('deployToPack') || project.hasProperty('packPush')`，并在 `pushToGame` 的 `doLast` 里以 `if (!forcePackPush) { … }` 包裹上述白名单判定）—— 作用 = **跳过白名单手动强推整合包**（手动出包通道，保留）；强推时同时会触发「库 jar 与 mod jar 成对自检」的告警（1.21.1 / 1.20.1 原有，26.1.2 自 2026-09-17、fabric 自 2026-09-29 接入库后同形）。
    ⚠️ **原文档此处曾称「该参数不再被任何任务读取（源码中仅存注释）」，与代码矛盾，已于 2026-09-17 以代码为准更正**（三线定义行/使用行：`neoforge-1.21.1/build.gradle:295`+`:335`、`forge-1.20.1/build.gradle:333`+`:381`、`neoforge-26.1.2/build.gradle:277`+`:314`）。
 2. 推送时**先删除、后复制**:`pushToDevRun`/`pushToGame`/`pushToRootBuild` 三个任务均先清空目标目录中的旧产物、再复制新 jar,各目录只保留本次构建产物。清理匹配范围(**实测**,勿按"都会按后缀过滤"理解):forge-1.20.1 三个任务统一用 `/astral_dice-.+\+forge_1\.20\.1\.jar/`(仅带 `+forge_1.20.1` 后缀);`neoforge-1.21.1` 与 `neoforge-26.1.2` 的 `pushToRootBuild` 带**各自完整后缀**过滤(`contains('+neoforge_1.21.1')` / `contains('+neoforge_26.1.2')`,根目录 `build/libs/` 多版本共存,不得写成宽泛的 `+neoforge_`);`neoforge-26.1.2` 的 `pushToGame` **同样**带 `contains('+neoforge_26.1.2')`(2026-09-17 收紧:整合包目录属用户环境,不得误删其它分支放进去的产物),仅 `pushToDevRun` 与 1.21.1 侧的 `pushToGame` 匹配**任意** `astral_dice-*.jar`(这两个目标目录本身只放单一版本,故无需过滤,同时也保证旧版本号残留会被清掉)。
 3. 整合包根目录不存在时（如 CI 环境）`pushToGame` 自动跳过并仅输出警告，不影响构建。⚠️ 因此**静默不部署**是最容易发生的形态，且**本类缺口已实测复发两次**：① 26.1.2 侧长期指向并不存在的 `D:\.minecraft\versions\26.1.2-NeoForge_26.1.2.109`；② **2026-09-29 实测** —— 1.20.1 与 26.1.2 两侧**同时**指向已不存在的 `1.20.1 模组测试` / `26.1.2 模组测试`（整合包目录已被重命名为带平台后缀的 `1.20.1-Forge 模组测试` / `26.1.2-NeoForge 模组测试`），产物停在上次路径尚存在的时刻。⇒ **`packModsDir` 禁止凭命名规则推测**：换机、整合包改名或新开子项目后，必须 `ls D:/.minecraft/versions/` 核对**本机实测存在**的目录名，并在构建日志里确认出现 `pushToGame: pushed … -> <目标>` 一行（两条线都要各看一遍——只改一侧是常见疏漏），**不得只看 `BUILD SUCCESSFUL`**。
@@ -2060,7 +2154,7 @@ When extending this workspace:
    **禁止"直接覆盖式复制"**(旧版本号 jar 与新产品并存时游戏会同时加载两个本模组副本,导致行为异常甚至 `NoSuchFieldError`)。判定通过:该目录内本模组 jar **有且仅有一个**,且文件名版本号与 `build/libs` 本次产物一致、修改时间不早于本次构建。
    `pushToDevRun` 已内置该"先删后拷"逻辑(见上表第 2 条),本规则为**代理侧的强制复核要求**——自动推送失败后手工补推、或临时手工部署时同样必须遵守该顺序。
 
-> 「发送到整合包」即上表 `pushToGame`：**随 `gradlew build` 触发**，无需额外参数 —— **但只有发布线分支 `multi-1.20.1-1.21.1` 会真正推送整合包**；其它分支（含 `multi-dev-next`）**严格跳过**，只打印 `pushToGame: skipped — 分支 '…' 不在整合包推送白名单 [multi-1.20.1-1.21.1] 内`，整合包目录不被写入、旧 jar 也不会被删。开发分支每次更新的默认落点是 `run/<版本>/mods`（`pushToDevRun`）与仓库根 `build/libs`（`pushToRootBuild`）。
+> 「发送到整合包」即上表 `pushToGame`：**随 `gradlew build` 触发**，无需额外参数 —— **但只有发布线分支 `multi-main` 会真正推送整合包**；其它分支（含 `multi-dev-next`）**严格跳过**，只打印 `pushToGame: skipped — 分支 '…' 不在整合包推送白名单 [multi-main] 内`，整合包目录不被写入、旧 jar 也不会被删。开发分支每次更新的默认落点是 `run/<版本>/mods`（`pushToDevRun`）与仓库根 `build/libs`（`pushToRootBuild`）。
 
 ### 新版本发布流程（自动本地提交）
 
