@@ -150,6 +150,55 @@ public class DiceCombatEvents {
         }
     }
 
+    // ── 电击手套「本次可扩散」窗口(2026-10-05 重写) ─────────────────────────────
+    // 语义 = 「**这一次**主目标命中,是那张已付费的伤害效果牌自己的伤害」。
+    // 由承载该次使用的那张牌的结算点置位(combat/DamageCardFxScheduler 的主目标命中、
+    // combat/LivingPageImpact),只有在此期间法伤链里的电击手套修饰器才会扩散 ⇒
+    // 原版箭矢 / 别家法术 / 同一张牌的 AOE 波及命中都拿不到扩散。
+    // 旧实现是「玩家级武装、跨伤害实例存活到效果牌周期结束」= 周期溅伤,已废弃(用户 2026-10-05 裁决)。
+    static boolean gloveSplashInstance = false;
+    // 扩散结算重入闸门:扩散自身用的 true_damage 目前不在法伤白名单里,但白名单**可变**
+    // (docs/audit/aoe-recursion-and-self-hit-audit-2026-09-24.md §3 已登记该脆弱点) ⇒
+    // 用独立闸门把「扩散结算期间的重入」结构性挡掉,不再依赖「恰好不被判为法伤」这一事实。
+    static boolean gloveSplashSettling = false;
+
+    /** 当前这一次命中是否属于「已付费的伤害效果牌自己的主目标伤害」(供电击手套修饰器判定)。 */
+    public static boolean isGloveSplashInstance() {
+        return gloveSplashInstance;
+    }
+
+    /** 扩散结算进行中 ⇒ 电击手套修饰器必须直接失效(防指数递归)。 */
+    public static boolean isGloveSplashSettling() {
+        return gloveSplashSettling;
+    }
+
+    /**
+     * 以「电击手套 · 本次可扩散命中」窗口包裹**那一张牌自己的主目标伤害**。
+     * 保存并恢复原值 ⇒ 嵌套安全(与 {@link #runAsInternalAoe} 同款)。
+     */
+    public static void runAsGloveSplashInstance(Runnable action) {
+        if (action == null) return;
+        boolean previous = gloveSplashInstance;
+        gloveSplashInstance = true;
+        try {
+            action.run();
+        } finally {
+            gloveSplashInstance = previous;
+        }
+    }
+
+    /** 以「电击手套 · 扩散结算中」窗口包裹扩散循环(重入闸门;保存并恢复原值)。 */
+    public static void runAsGloveSplashSettlement(Runnable action) {
+        if (action == null) return;
+        boolean previous = gloveSplashSettling;
+        gloveSplashSettling = true;
+        try {
+            action.run();
+        } finally {
+            gloveSplashSettling = previous;
+        }
+    }
+
     // 检测玩家是否佩戴了七咒之戒(按物品 ID 识别,未安装该模组时返回 false)
     public static boolean hasEnigmaticCurse(Player player) {
         Item ring = BuiltInRegistries.ITEM.get(ResourceLocation.parse(ENIGMATIC_CURSED_RING));

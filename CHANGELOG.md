@@ -4,7 +4,7 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
-## Unreleased (2.0.0-SNAPSHOT.25)
+## Unreleased (2.0.0-SNAPSHOT.26)
 
 ### New Content
 
@@ -208,6 +208,13 @@
 
 
 #### Chips & Resources
+
+- **"Electric Glove" chip reworked** (user ruling, 2026-10-05): the previous rule ("**any** ranged/magic damage during
+  this effect-card cycle spreads") is replaced by: **using a damage effect card spends 4 charge so *this card's*
+  ranged/magic damage also hits other targets within 3 blocks of the target** — the spread is now bound strictly to
+  **that single use**, so unrelated ranged/magic damage (vanilla arrows, other mods' spells) no longer spreads.
+  For **"Directional Blast"** the spread is computed **once, from its primary target only**, and resolved
+  independently from the blast's own 6-block area damage — the two no longer trigger each other (no recursive damage).
 
 - **The Cursed Sword chip's cumulative attack-bonus cap is raised from 16 to 32** (user ruling, 2026-10-02):
   while the chip is worn, killing a hostile target with at least 20 health grants a cumulative **+1** attack

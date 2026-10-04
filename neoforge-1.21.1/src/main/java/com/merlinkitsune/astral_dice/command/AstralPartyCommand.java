@@ -274,9 +274,9 @@ public final class AstralPartyCommand {
      * {@code sign_ready_*}、也不补 {@code EffectCardPeriod#onRoundFullyReset} 回调。
      *
      * <p>幂等安全性:{@link EffectCardPeriod#forceResetRound} 只做 4 个轮次附件的**无条件**赋值
-     * (出牌冷却 0 / 出牌数 0 / 一次性出牌数加成与「每轮一次」标记归零)+ 解除电击手套武装
-     * ({@code ElectricGloveChipItem#disarmAoe} 同样是无条件写 false),不读任何旧值、不依赖前置状态,
+     * (出牌冷却 0 / 出牌数 0 / 一次性出牌数加成与「每轮一次」标记归零),不读任何旧值、不依赖前置状态,
      * 因此对「未处于任何轮次状态」的玩家重复调用没有任何副作用。
+     * (2026-10-05 起电击手套已无玩家级武装状态,原先随本条一并复位的 {@code disarmAoe} 已移除。)
      */
     private static int resetCardLock(CommandSourceStack source, List<ServerPlayer> targets) {
         for (ServerPlayer target : targets) {

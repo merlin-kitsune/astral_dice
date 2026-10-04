@@ -134,6 +134,8 @@ public final class DamageCardFxScheduler {
         private int elapsed;
         private boolean hit;
         private Display.BlockDisplay display;
+        /** 本次这一条 FX 是否为「电击手套已付费」的那一次伤害 ⇒ 只有它的**主目标**命中可扩散(见 markLatestGlovePaid)。 */
+        private boolean glovePaid;
 
         private Pending(Kind kind, ServerLevel level, ServerPlayer caster, LivingEntity target,
                         Vec3 pos, int flightTicks) {
@@ -148,6 +150,38 @@ public final class DamageCardFxScheduler {
     }
 
     private DamageCardFxScheduler() {
+    }
+
+    /**
+     * 把「本次可扩散」认领给该玩家**这一张牌**最近一次投出、且尚未命中的伤害载体。
+     *
+     * <p>由 {@code item/chip/ElectricGloveChipItem#onEffectCardUsed} 在 {@code applyEffect} **之后**调用
+     * (那时本次 FX 已经登记)⇒ 认领的必然是**本次这张牌自己**那一条;按 {@link Kind} 配对 ⇒ 不会误认领到
+     * 同一玩家另一张仍在飞行中的牌(例:板砖 0.5s 飞行窗口内又打出一张激光)。
+     *
+     * @return 是否认领成功(false = 本次没投出可用载体 ⇒ 调用方不应扣充能)
+     */
+    public static boolean markLatestGlovePaid(ServerPlayer caster, ItemStack cardStack) {
+        Kind kind = kindOf(cardStack);
+        if (kind == null || caster == null) return false;
+        for (int i = PENDING.size() - 1; i >= 0; i--) {
+            Pending p = PENDING.get(i);
+            if (p.caster == caster && p.kind == kind && !p.glovePaid) {
+                p.glovePaid = true;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** 四张伤害效果牌 → {@link Kind};非本调度器的牌返回 {@code null}。 */
+    private static Kind kindOf(ItemStack cardStack) {
+        if (cardStack == null || cardStack.isEmpty()) return null;
+        if (cardStack.is(com.merlinkitsune.astral_dice.item.ModItems.MONSTER_LASER_CARD.get())) return Kind.LASER;
+        if (cardStack.is(com.merlinkitsune.astral_dice.item.ModItems.MONSTER_BRICK_CARD.get())) return Kind.BRICK;
+        if (cardStack.is(com.merlinkitsune.astral_dice.item.ModItems.ORBITAL_STRIKE_CARD.get())) return Kind.ORBITAL;
+        if (cardStack.is(com.merlinkitsune.astral_dice.item.ModItems.DIRECTIONAL_BLAST_CARD.get())) return Kind.BLAST;
+        return null;
     }
 
     /**
@@ -279,7 +313,7 @@ public final class DamageCardFxScheduler {
         SoundPlayback.playAt(p.level, center.x, center.y, center.z,
                 orbital ? ModSounds.ORBITAL_STRIKE_HIT.get() : ModSounds.MONSTER_LASER_HIT.get());
         applySpellDamage(p.level, p.caster, p.target,
-                orbital ? ORBITAL_DAMAGE : LASER_DAMAGE);
+                orbital ? ORBITAL_DAMAGE : LASER_DAMAGE, p.glovePaid);
     }
 
     /**
@@ -327,24 +361,24 @@ public final class DamageCardFxScheduler {
         SoundPlayback.playAt(p.level, center.x, center.y, center.z, ModSounds.DIRECTIONAL_BLAST_HIT.get());
 
         int damage = BLAST_DAMAGE + SpellDamageRegistry.effectCardDamageBonus(p.caster);
-        // ① 选中目标
-        applySpellDamageAmount(p.level, p.caster, p.target, damage);
+        // ① 选中目标(唯一允许电击手套扩散的那一次命中 —— 见 p.glovePaid)
+        applySpellDamageAmount(p.level, p.caster, p.target, damage, p.glovePaid);
         // ② 半径内其他可命中目标（用法伤链同一闸门：敌对 ∪ 中立(宠物除外) ∪ 非同队玩家）
         //    e != caster / e != target 显式排除（与改造前的口径逐字一致）
         AABB aabb = p.target.getBoundingBox().inflate(BLAST_RADIUS);
         List<LivingEntity> nearby = p.level.getEntitiesOfClass(LivingEntity.class, aabb,
                 e -> DiceCombatEvents.isBlessingTarget(e, p.caster) && e != p.target && e != p.caster && e.isAlive());
         if (nearby.isEmpty()) return;
-        DamageSource source = ModDamageTypes.cardSpell(p.level, p.caster);
-        DiceCombatEvents.aoeProcessing = true;
-        try {
+        final DamageSource source = ModDamageTypes.cardSpell(p.level, p.caster);
+        // ⚠️ 本段刻意**不**走 applySpellDamageAmount ⇒ 不带 runAsGloveSplashInstance:
+        //    定向爆破自身的 6 格波及**不是**「电击手套付费的那一次主目标命中」⇒ 不二次触发手套扩散
+        //    (2026-10-05 用户裁决:手套只从命中的主目标算一次、与爆破自己的 AOE 各自独立结算,避免递归)。
+        DiceCombatEvents.runAsInternalAoe(() -> {
             for (LivingEntity e : nearby) {
                 DamageNumberAggregator.tag(e, source, DamageNumberAggregator.Group.SPELL);
                 e.hurt(source, (float) damage);
             }
-        } finally {
-            DiceCombatEvents.aoeProcessing = false;
-        }
+        });
     }
 
     // ══════════════════════════════════════════════════════════════════════════
@@ -398,7 +432,7 @@ public final class DamageCardFxScheduler {
         p.level.sendParticles(dust(BRICK_TRAIL_COLOR, 0.9F), center.x, center.y, center.z,
                 20, 0.4D, 0.4D, 0.4D, 0.03D);
         SoundPlayback.playAt(p.level, center.x, center.y, center.z, ModSounds.MONSTER_BRICK_HIT.get());
-        applySpellDamage(p.level, p.caster, p.target, BRICK_DAMAGE);
+        applySpellDamage(p.level, p.caster, p.target, BRICK_DAMAGE, p.glovePaid);
     }
 
     /**
@@ -452,20 +486,40 @@ public final class DamageCardFxScheduler {
     //  伤害结算（法术伤害；⚠️ 不自行发包 —— 组别登记后由 DamageNumberAggregator 统一出数）
     // ══════════════════════════════════════════════════════════════════════════
 
-    private static void applySpellDamage(ServerLevel level, ServerPlayer caster, LivingEntity target, int base) {
-        applySpellDamageAmount(level, caster, target, base + SpellDamageRegistry.effectCardDamageBonus(caster));
+    private static void applySpellDamage(ServerLevel level, ServerPlayer caster, LivingEntity target, int base,
+                                        boolean gloveSplash) {
+        applySpellDamageAmount(level, caster, target, base + SpellDamageRegistry.effectCardDamageBonus(caster),
+                gloveSplash);
     }
 
-    private static void applySpellDamageAmount(ServerLevel level, ServerPlayer caster, LivingEntity target, int amount) {
+    /**
+     * 结算一次法术伤害。
+     *
+     * @param gloveSplash 该次命中是否为「这张牌本次投出、且已为电击手套付过充能的那一次**主目标**伤害」。
+     *                    true ⇒ 用 {@link DiceCombatEvents#runAsGloveSplashInstance} 包住 hurt,
+     *                    法伤链里的电击手套修饰器只在这**一个伤害实例**上扩散。
+     *                    ⚠️ 定向爆破的 6 格 AOE **不走本方法**(见 {@link #resolveBlast}),
+     *                    因此不会二次触发手套 ⇒ 不递归。
+     */
+    private static void applySpellDamageAmount(ServerLevel level, ServerPlayer caster, LivingEntity target,
+                                               int amount, boolean gloveSplash) {
         if (target == null || !target.isAlive()) return;
-        DamageSource source = ModDamageTypes.cardSpell(level, caster);
-        DiceCombatEvents.aoeProcessing = true;
-        try {
+        final DamageSource source = ModDamageTypes.cardSpell(level, caster);
+        final Runnable hit = () -> {
             DamageNumberAggregator.tag(target, source, DamageNumberAggregator.Group.SPELL);
             target.hurt(source, (float) Math.max(1, amount));
-        } finally {
-            DiceCombatEvents.aoeProcessing = false;
-        }
+        };
+        // 两层窗口都改用「保存 / 恢复」版本(原实现是裸 boolean 直写 ⇒ 与外层 AOE 嵌套时会提前关掉
+        // 外层窗口,只有 runAsInternalAoe 做了 save/restore):
+        //   runAsInternalAoe         = 波及伤害不进骰战结算;
+        //   runAsGloveSplashInstance = 本次命中可由电击手套扩散。
+        DiceCombatEvents.runAsInternalAoe(() -> {
+            if (gloveSplash) {
+                DiceCombatEvents.runAsGloveSplashInstance(hit);
+            } else {
+                hit.run();
+            }
+        });
     }
 
     /**

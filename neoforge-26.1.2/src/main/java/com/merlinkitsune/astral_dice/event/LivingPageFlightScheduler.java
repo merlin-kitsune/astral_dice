@@ -52,6 +52,8 @@ public final class LivingPageFlightScheduler {
         private final int flightTicks;
         private Vec3 pos;
         private int elapsed;
+        /** 本次这一条飞行是否为「电击手套已付费」⇒ 只有它的命中可扩散(见 markLatestGlovePaid)。 */
+        private boolean glovePaid;
 
         private Pending(ServerLevel level, ServerPlayer caster, LivingEntity target, Vec3 pos, int flightTicks) {
             this.level = level;
@@ -74,6 +76,26 @@ public final class LivingPageFlightScheduler {
         int flightTicks = (int) Math.max(1L, (long) Math.ceil(distance / SPEED_BLOCKS_PER_TICK));
         PENDING.add(new Pending(level, caster, target, start, flightTicks));
         return true;
+    }
+
+    /**
+     * 把「本次可扩散」认领给该玩家最近一次投出、且尚未命中的**活体书页**载体。
+     *
+     * <p>由 {@code item/chip/ElectricGloveChipItem#onEffectCardUsed} 在 {@code applyEffect} **之后**调用
+     * (那时本次飞行已登记)⇒ 认领的必然是本次这张牌自己那一条。
+     *
+     * @return 是否认领成功(false = 本次没投出载体 ⇒ 调用方不应扣充能)
+     */
+    public static boolean markLatestGlovePaid(ServerPlayer caster) {
+        if (caster == null) return false;
+        for (int i = PENDING.size() - 1; i >= 0; i--) {
+            Pending p = PENDING.get(i);
+            if (p.caster == caster && !p.glovePaid) {
+                p.glovePaid = true;
+                return true;
+            }
+        }
+        return false;
     }
 
     private static Vec3 launchOrigin(ServerPlayer caster, LivingEntity target) {
@@ -196,6 +218,6 @@ public final class LivingPageFlightScheduler {
             p.level.sendParticles(ColorParticleOption.create(ParticleTypes.FLASH, 0xFFFFFF),
                     center.x, center.y, center.z, 1, 0.0D, 0.0D, 0.0D, 0.0D);
         }
-        LivingPageImpact.resolve(p.level, p.caster, p.target);
+        LivingPageImpact.resolve(p.level, p.caster, p.target, p.glovePaid);
     }
 }

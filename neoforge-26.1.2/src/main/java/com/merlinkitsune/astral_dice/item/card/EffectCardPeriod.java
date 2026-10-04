@@ -4,7 +4,6 @@ import com.merlinkitsune.starenginelib.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.item.ChargeManager;
-import com.merlinkitsune.astral_dice.item.chip.ElectricGloveChipItem;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.core.Holder;
 import net.minecraft.world.effect.MobEffect;
@@ -315,19 +314,18 @@ public final class EffectCardPeriod {
     }
 
     /**
-     * 出牌轮归零:清除全部"仅当前出牌轮有效"的出牌数加成与标记,
-     * 以及**本周期已武装的电击手套法伤扩散**({@link ElectricGloveChipItem#disarmAoe}——下个周期可重新武装)。
+     * 出牌轮归零:清除全部"仅当前出牌轮有效"的出牌数加成与标记。
      * <b>唯一入口</b> —— 仅由 {@link #registerPlay} 的周期边界、{@link #tick} 的周期结束(情形 1)
      * 与 {@link #forceResetRound}(忍者宽限期满的强重置)调用
      * (玩家死亡清理自 2026-09-15「S4-C6 清理无效项」裁决后不再调用:这些键不是 copyOnDeath,
      * 新实体上本就是默认值),禁止在别处各自列一遍
      * (历史上分散清理曾导致状态残留与"上限中途下降"的永久锁死 BUG)。
      *
-     * <p><b>为什么 disarmAoe 必须放在这里(2026-09-15,本批 C1)</b>:此前它只写在 {@link #tick} 情形 1,
-     * 于是"周期正常到期"会解除武装、而忍者宽限期满走的 {@link #forceResetRound} 不会 ⇒
-     * <b>两条"轮次完全重置"路径的清理口径不等价</b>,宽限强重置后电击手套本周期仍处于武装态。
-     * 上移到本方法后两条路径共用同一套清理口径(它同时也是 {@code registerPlay} 周期边界块的口径,
-     * 那里的调用是<b>期望</b>的:轮次完全重置即解除武装)。
+     * <p>⚠️ 2026-10-05:本方法原有一行 {@code ElectricGloveChipItem.disarmAoe(player)}
+     * (解除电击手套的「周期武装」)随「周期溅伤 → 该牌本次扩散」改造**一并移除** ——
+     * 新版电击手套不再持有任何玩家级武装状态,自然没有「周期归零时要清」的东西。
+     * (旧注释里那条 {@code forceResetRound} 与 {@code tick} 清理口径不等价的教训仍有效:
+     * 本方法仍是"两条轮次完全重置路径共用同一套清理口径"的唯一落点。)
      */
     public static void clearRoundBonuses(Player player) {
         ModAttachments.setEffectCardBonusPlays(player, 0);
@@ -336,8 +334,8 @@ public final class EffectCardPeriod {
         ModAttachments.setLivingPageCycleBonus(player, 0);
         // 符卡-福本周期计数(裁决 B):与活体书页计数器同址清零
         ModAttachments.setFuCardCycleBonus(player, 0);
-        // 周期归零:解除电击手套本周期已武装的法伤扩散(下个周期可重新武装)
-        ElectricGloveChipItem.disarmAoe(player);
+        // ⚠️ 2026-10-05:原有的 ElectricGloveChipItem.disarmAoe(player) 已随电击手套改造移除
+        //    (新版不再持有任何玩家级武装状态)。
     }
 
     /**

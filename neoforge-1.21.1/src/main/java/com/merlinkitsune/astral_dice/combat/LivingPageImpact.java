@@ -15,29 +15,42 @@ public final class LivingPageImpact {
     private LivingPageImpact() {
     }
 
-    public static void resolve(ServerLevel level, ServerPlayer caster, LivingEntity target) {
+    /**
+     * 结算「活体书页」命中。
+     *
+     * @param gloveSplash 本次命中是否为「这张牌本次投出、且已为电击手套付过充能的那一次伤害」。
+     *                    true ⇒ 用 {@link DiceCombatEvents#runAsGloveSplashInstance} 包住 hurt,
+     *                    法伤链里的电击手套修饰器只在这一个伤害实例上扩散。
+     */
+    public static void resolve(ServerLevel level, ServerPlayer caster, LivingEntity target, boolean gloveSplash) {
         if (level == null || caster == null || target == null || !target.isAlive()) return;
 
         int markBefore = MarkManager.getLevel(target);
 
         int base = SpellDamageRegistry.livingPageImpactDamage(caster);
         if (base < 1) base = 1;
+        final int dealt = base;
 
         // ⚠️ 2026-09-26 起本处**不再自行发包** —— 跳数字统一由 combat/DamageNumberAggregator 在
         // LivingDamageEvent.Post 上取「实际扣血量(伤害管线终值)」,并与同 tick 的法伤加成
         // (astral_dice:true_damage,见 event/DamageEffectCardHandler)合并成一个**总值**后一次性下发。
         // 旧实现是「先发 base、再指望被链内那次带加成的包覆盖」(客户端按 entityId 单槽、后到覆盖先到),
         // 正确性挂在两处发包的先后顺序上;现在由聚合器结构性保证。
-        DiceCombatEvents.aoeProcessing = true;
-        try {
-            DamageSource spellSource = ModDamageTypes.cardSpell(level, caster);
-            // 组别:astral_dice:card_spell 即使不登记也会走**类型回落**判为法伤类(绿),
-            // 此处显式登记只为让调用点的意图可读。
-            DamageNumberAggregator.tag(target, spellSource, DamageNumberAggregator.Group.SPELL);
-            target.hurt(spellSource, (float) base);
-        } finally {
-            DiceCombatEvents.aoeProcessing = false;
-        }
+        final DamageSource spellSource = ModDamageTypes.cardSpell(level, caster);
+        // 两层窗口都改用「保存 / 恢复」版本(原实现裸写 boolean ⇒ 与外层 AOE 嵌套时会提前关掉外层窗口)。
+        DiceCombatEvents.runAsInternalAoe(() -> {
+            Runnable hit = () -> {
+                // 组别:astral_dice:card_spell 即使不登记也会走**类型回落**判为法伤类(绿),
+                // 此处显式登记只为让调用点的意图可读。
+                DamageNumberAggregator.tag(target, spellSource, DamageNumberAggregator.Group.SPELL);
+                target.hurt(spellSource, (float) dealt);
+            };
+            if (gloveSplash) {
+                DiceCombatEvents.runAsGloveSplashInstance(hit);
+            } else {
+                hit.run();
+            }
+        });
 
         MarkManager.apply(target);
 

@@ -394,12 +394,17 @@ public final class SpellDamageRegistry {
                 return bonus + AmethystDiceHandler.rollD6(ctx.attacker);
             }
         });
-        // 电击手套:武装期间(使用伤害效果牌时消耗 4 层充能置位),本次远程/魔法伤害同时命中目标 3 格内的
-        // 其他敌对目标(每个效果牌周期仅触发一次,触发后解除武装)
+        // 电击手套:使用伤害效果牌且充能 ≥ 4 时消耗 4 层充能 ⇒ **该牌本次造成的**主目标命中同时命中目标
+        // 3 格内的其他敌对目标。生效窗口由承载该次使用的那张牌置位
+        // (DiceCombatEvents#runAsGloveSplashInstance)⇒ 原版箭矢 / 别家法术 / 本牌自身的 AOE 波及命中
+        // 都不扩散(= 旧「周期溅伤」已按 2026-10-05 用户裁决废弃)。
         registerModifier(new SpellDamageModifier() {
             @Override
             public boolean isActive(SpellDamageContext ctx) {
-                return com.merlinkitsune.astral_dice.item.chip.ElectricGloveChipItem.isAoeArmed(ctx.attacker);
+                // 只在「那一张牌自己的主目标命中」窗口内生效;扩散结算期间一律失效(防递归)
+                return DiceCombatEvents.isGloveSplashInstance()
+                        && !DiceCombatEvents.isGloveSplashSettling()
+                        && com.merlinkitsune.astral_dice.item.chip.ElectricGloveChipItem.isEquipped(ctx.attacker);
             }
 
             @Override
@@ -411,19 +416,22 @@ public final class SpellDamageRegistry {
             public void onHit(SpellDamageContext ctx, double bonus) {
                 float total = ctx.event.getNewDamage();
                 if (total <= 0) return;
-                net.minecraft.world.phys.AABB aabb = ctx.target.getBoundingBox()
+                final net.minecraft.world.phys.AABB aabb = ctx.target.getBoundingBox()
                         .inflate(com.merlinkitsune.astral_dice.item.chip.ElectricGloveChipItem.AOE_RADIUS);
                 // 2026-09-24 口径统一:波及选目标用法伤链同一闸门(比 HostileTargets 更宽)
                 // e != ctx.attacker:闸门把「无队伍玩家」视为敌对(相对他人成立),对**施法者本人**不成立,
                 // 不显式排除自己则近战距离下 AOE 会波及施法者自己(2026-09-24 修复)
-                var nearby = ctx.target.level().getEntitiesOfClass(LivingEntity.class, aabb,
+                final var nearby = ctx.target.level().getEntitiesOfClass(LivingEntity.class, aabb,
                         e -> DiceCombatEvents.isBlessingTarget(e, ctx.attacker)
                                 && e != ctx.target && e != ctx.attacker && e.isAlive());
-                var source = com.merlinkitsune.astral_dice.damage.ModDamageTypes
-                        .trueDamage(ctx.target.level(), ctx.attacker);   // 真伤:效果牌范围波及伤害同样无视护甲值/盔甲韧性
-                // AOE 波及伤害不进入骰战结算(见 DiceCombatEvents.aoeProcessing)
-                DiceCombatEvents.aoeProcessing = true;
-                try {
+                if (nearby.isEmpty()) return;
+                final var source = com.merlinkitsune.astral_dice.damage.ModDamageTypes
+                        .trueDamage(ctx.target.level(), ctx.attacker);   // 真伤:范围波及伤害同样无视护甲值/盔甲韧性
+                // 两层闸门都改用「保存 / 恢复」版本(原实现是裸 boolean 直写 ⇒ 与外层 AOE 嵌套时会提前
+                // 关掉外层的执行窗口,只有 runAsInternalAoe 做了 save/restore):
+                //   runAsGloveSplashSettlement = 扩散重入闸门(防递归);
+                //   runAsInternalAoe          = 波及伤害不进骰战结算。
+                DiceCombatEvents.runAsGloveSplashSettlement(() -> DiceCombatEvents.runAsInternalAoe(() -> {
                     for (LivingEntity e : nearby) {
                         // 跳数字:不再直发 —— 电击手套范围波及原为青色(0x00E5FF),2026-09-26 起
                         // 按用户裁决统一归入**法伤类绿色**(所有法伤/技能伤害共用一个绿色数值)。
@@ -431,11 +439,7 @@ public final class SpellDamageRegistry {
                         DamageNumberAggregator.tag(e, source, DamageNumberAggregator.Group.SPELL);
                         e.hurt(source, total);
                     }
-                } finally {
-                    DiceCombatEvents.aoeProcessing = false;
-                }
-                // 每周期仅触发一次:触发后解除武装
-                com.merlinkitsune.astral_dice.item.chip.ElectricGloveChipItem.disarmAoe(ctx.attacker);
+                }));
             }
         });
     }

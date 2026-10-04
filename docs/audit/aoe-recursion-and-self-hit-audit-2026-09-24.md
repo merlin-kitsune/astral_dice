@@ -149,3 +149,20 @@ e -> DiceCombatEvents.isBlessingTarget(e, ctx.attacker)
 | `item/card/BaseEffectCardItem.java` | 新增 `isDamageEffectCard(ItemStack)`（伤害效果牌单一事实源） |
 | `item/chip/ElectricGloveChipItem.java` | `isDamageEffectCard` 改为委托 |
 | `item/chip/MagicQuiverChipItem.java` | 追踪只统计伤害效果牌；取消活体书页例外 |
+## 5. 2026-10-05：§3 的结构性脆弱点**已结构性修复**（随电击手套重写）
+
+电击手套按用户裁决重写（见两份 `CHANGELOG` 的 `2.0.0-SNAPSHOT.26` 段与 `AGENTS.md`「筹码一览 → 电击手套」），
+**同时**把本文 §3 登记的隐患一并修掉：
+
+1. **不再依赖「白名单恰好不含 `true_damage`」这一可变事实**：扩散改由独立重入闸门
+   `DiceCombatEvents#gloveSplashSettling`（`runAsGloveSplashSettlement`）结构性拦下 —— 即便将来把
+   `astral_dice:true_damage` 加进 `MAGIC_DAMAGE_TYPES`（或把 `message_id` 改成 `magic` / `indirectMagic`），
+   扩散也不会再次进入修饰器链 ⇒ **指数递归在结构上不成立**（不再是"恰好不发生"）。
+2. **四处裸 `boolean` 直写 `aoeProcessing` 改为「保存 / 恢复」式**（`runAsInternalAoe` 或手工 save/restore）：
+   `DamageCardFxScheduler#resolveBlast` 的 AOE 段、`DamageCardFxScheduler#applySpellDamageAmount`、
+   `combat/LivingPageImpact#resolve`、以及手套扩散本身。原写法在**嵌套**时内层 `finally` 会把外层的执行窗口提前关掉
+   —— §3 只记了「扩散期间武装态仍为 true」，未覆盖该嵌套窗口问题，本次一并修。
+3. **「触发后 / 周期结束才解除武装」的时点问题从根上消失**：不再有玩家级武装状态（附件键 `electric_glove_aoe` 已删），
+   扩散绑定在**该牌本次投出的那一次伤害**上（`DamageCardFxScheduler` / `LivingPageFlightScheduler` 的 `Pending#glovePaid`）。
+4. **定向爆破**：手套扩散只从其**主目标**算一次；爆破自身的 6 格 AOE 走独立结算段、**不带扩散窗口**
+   ⇒ 不二次触发、不递归。

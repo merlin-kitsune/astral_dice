@@ -503,7 +503,8 @@ public abstract class BaseEffectCardItem extends Item {
         // 可口糖果:每使用一张效果牌触发(治愈+1、回血+1、满血时本轮出牌数+1)
         CandyChipItem.onEffectCardUsed(player);
 
-        // 电击手套:使用效果牌充能 +1;伤害效果牌且充能 ≥4 时消耗 4 层充能,武装本周期的法伤扩散
+        // 电击手套:使用效果牌充能 +1;伤害效果牌且充能 ≥4 时消耗 4 层充能,
+        // 使**该牌本次造成的**远程/魔法伤害同时命中目标 3 格内的其他目标(绑定该次使用;2026-10-05 重写)
         com.merlinkitsune.astral_dice.item.chip.ElectricGloveChipItem.onEffectCardUsed(player, stack);
 
         // 探天卫星:使用"轨道炮"后本轮出牌数+1(每 1:00 一次)

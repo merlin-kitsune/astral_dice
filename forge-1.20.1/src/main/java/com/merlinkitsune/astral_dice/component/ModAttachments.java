@@ -938,9 +938,10 @@ public class ModAttachments {
     public static final AttachedDataKey<Long> EMPOWER_DECAY_AT =
             register(AttachedDataKey.builder("empower_decay_at", Codec.LONG, () -> 0L).sync().build());
 
-    /** 电击手套:本效果牌周期内是否已武装法伤扩散(触发后/周期结束清除) */
-    public static final AttachedDataKey<Boolean> ELECTRIC_GLOVE_AOE =
-            register(AttachedDataKey.builder("electric_glove_aoe", Codec.BOOL, () -> false).sync().build());
+    // ⚠️ 电击手套的「本周期已武装」键 `electric_glove_aoe` 已于 2026-10-05 **整个移除**:
+    //    扩散改为绑定「该牌本次造成的那一次伤害」(见 item/chip/ElectricGloveChipItem 类头),
+    //    不再存在任何玩家级武装状态 ⇒ 既不需要附件键、也不需要跨线同步键。
+    //    旧存档里残留的同名 NBT 不会被读取(本线 Capability 只按本类**已注册**的键读写)⇒ 无副作用。
 
     /** 安全气囊:触发冷却结束时刻(1:00;0 表示无冷却) */
     public static final AttachedDataKey<Long> AIRBAG_COOLDOWN_END =
@@ -996,14 +997,6 @@ public class ModAttachments {
 
     public static void setEmpowerDecayAt(net.minecraft.world.entity.player.Player player, long value) {
         EMPOWER_DECAY_AT.set(player, Math.max(0, value));
-    }
-
-    public static boolean isElectricGloveAoe(net.minecraft.world.entity.player.Player player) {
-        return ELECTRIC_GLOVE_AOE.get(player);
-    }
-
-    public static void setElectricGloveAoe(net.minecraft.world.entity.player.Player player, boolean value) {
-        ELECTRIC_GLOVE_AOE.set(player, value);
     }
 
     public static long getAirbagCooldownEnd(net.minecraft.world.entity.player.Player player) {
@@ -1268,7 +1261,6 @@ public class ModAttachments {
             SYNCED_KEYS.add(NANCY_LU_HIDDEN_UNTIL);
             SYNCED_KEYS.add(FEN_RECHARGE);
             SYNCED_KEYS.add(EMPOWER_DECAY_AT);
-            SYNCED_KEYS.add(ELECTRIC_GLOVE_AOE);
             SYNCED_KEYS.add(AIRBAG_COOLDOWN_END);
             SYNCED_KEYS.add(RAILGUN_COOLDOWN_END);
             SYNCED_KEYS.add(RIN_PAGES);
