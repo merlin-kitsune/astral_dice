@@ -93,7 +93,10 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: merlin-kitsune/starengine_lib
-          ref: 7ae16c874bc536723dd1983490192d0b3ef1a136   # = 库**单分支 `main`** 上的**合并提交**(2026-10-03):四平台同号 **1.0.11**
+          ref: 4c653231750830824535d5debcfb36f9457278bb   # = 库 **`main`** 上的 **1.0.12**（2026-10-05）：`client/ActionBarManager` 改为复刻原版动态 yShift
+          #   ℹ️ `4c65323` = 「ActionBar 位置改读 `Gui.leftHeight/rightHeight`（仅两条 NeoForge 线）」—— 修用户实报
+          #     「有黄心时 actionbar 仍与物品名重叠」。四平台 `lib_version` / `mod_version` 均为 **1.0.12**；
+          #     消费方四线的 `starengine_lib_version` / `_range` 已同批改为 `1.0.12` / `[1.0.12,2.0)`（fabric 为 `>=1.0.12 <2.0`）。
           #   ℹ️ `7ae16c8` = **合并提交**：把原 `fabric-1.20.1` 分支并入 `main`（两父 = 旧 `main` `09f5ec1` +
           #    原分支 tip `6c2a76e`）；合并结果与原分支 tip **树等价**（`git diff 6c2a76e 7ae16c8` 为空）。
           #    该提交同时满足四条线：库 `settings.gradle` 含四平台、四平台 `lib_version` 与 `mod_version` 均 `1.0.11`。

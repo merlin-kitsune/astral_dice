@@ -3655,3 +3655,50 @@ brief 内**不喂结论**。结论与处置：
    已把结论改写为「**取色精度不足**」（HSV 压缩把 v=1.0 压到 0.85、且单色名字产不出彩虹），
    同步修正源码 javadoc / `AGENTS.md` / 本文件；并在 AGENTS 里留下「别再写成槽位缺失」的反向提示。
 3. **文档不一致**：`AGENTS.md` 与本节原本写「三线各一份 / 三线 BUILD SUCCESSFUL」，与实现（两线）矛盾，已全部改为两线。
+
+## 附录 A 续 49. 1.3.7-hotfix —— 主动技能键退出目标选择器 + ActionBar 随状态条上抬（2026-10-05）
+
+### 需求（用户原话要点）
+1. 「效果牌目标选择器不应该占用主动技能触发，事实上应该完全把主动技能释放控制权交给玩家。在玩家持有目标选择
+   效果牌时，按下主动技能按键应该触发主动技能，而不是取消选择能力。」
+2. 「如果玩家有黄心状态，ActionBar 依然会和物品名重叠，应检查玩家底部状态栏若有黄心等特殊状态条等，应当继续
+   抬升让出位置。」
+
+### ① 主动技能键不再参与选择器（**四线同构**）
+- `client/KeyBindingSetup`：删除 `if (TargetSelectionClient.isActive()) { logPrompt("j","cancel"); cancel("key"); }`
+  整个分支，`ACTIVATE_SIGN_KEY.consumeClick()` 循环改为**无条件**转发（1.21.1 / 26.1.2 =
+  `PacketDistributor` / `ClientPacketDistributor`；forge-1.20.1 / fabric-1.20.1 = `ModNetwork`）。
+  ⇒ 撤销 2026-10-03「按键收口」的「J = 收起」口径。
+- **服务端闸门保留且成为唯一闸门**：`BaseSignItem#performSkill` 第 2 步 `isSelectingByKey(player) ⇒ return`
+  （防重复进入）。「手持即选择」会话 `holdToSelect=true` ⇒ 不在其列 ⇒ **手持效果牌时按键照常生效**。
+- lang：`msg.astral_dice.target_select.prompt.hold.{no_target,no_target_self,rejected,valid}` ×
+  **1.21.1 / 1.20.1 / 26.1.2 × 中英日**去掉「按 J 收起」，**对齐 fabric 线既有口径**（fabric 自 2026-09-24 起
+  文案即无 J）⇒ 四线三语自此逐字一致。
+- javadoc / 注释同步：`TargetSelectionClient`（4 处）、`TargetSelectCancelPayload`、`BaseSignItem`、
+  `KeyBindingSetup`（含 fabric 两处历史口径）。
+- **移除** DEBUG 行 `key=j action=cancel`。
+
+### ② ActionBar 位置改为复刻原版动态 yShift（**仅两条 NeoForge 线**）
+- **取证（官方映射源码，非推测）**：
+  - `neoforge-21.1.235-sources.jar` 与 `minecraft-patched-26.1.2.109-sources.jar` 的 `Gui#renderOverlayMessage`
+    均为 `int yShift = Math.max(leftHeight, rightHeight) + (68 - 59);` +
+    `translate(w/2, guiHeight - Math.max(yShift, 68));`；
+    `leftHeight` / `rightHeight` 被 NeoForge patch 成 **`public`**（1.21.1 `:200/:204`、26.1.2 `:181/:185`），
+    `Minecraft.gui` 亦为 public（1.21.1 `:288`、26.1.2 `:304`）。
+  - `forge-1.20.1-47.4.10-sources.jar` 的 `Gui#renderOverlayMessage` 是**固定** `translate(screenWidth/2, screenHeight-68)`，
+    且 `renderSelectedItemName(guiGraphics)` 走单参重载（`yShift = 0`）⇒ **原版 1.20.1 根本没有这套机制**。
+- 库 `starengine_lib`：`client/ActionBarManager` 在 `neoforge-1.21.1` / `neoforge-26.1.2` 改为读
+  `mc.gui.leftHeight` / `mc.gui.rightHeight` 并复刻上式；`forge-1.20.1` / `fabric-1.20.1` 保持
+  `guiHeight - 68` 并就地注明「平台差异」。四平台 `1.0.11` → **`1.0.12`**（库提交 `4c65323`）。
+- 修前症状：`max(lh, rh) > 59`（黄心 ≥ 3 行，或「护甲 + 黄心」等组合）时原版物品名上抬、本模组文本不动 ⇒ 压盖。
+
+### 验证
+- **库**：`gradlew build publishToMavenLocal` **BUILD SUCCESSFUL**（16s）；m2 四平台 `1.0.12` 就位；
+  字节码核对 `client/ActionBarManager.class`：neo 两线**含** `leftHeight`/`rightHeight` 访问，
+  1.20.1 两线**不含**（保持固定常量）。
+- **消费方**：四线 `gradlew build` 见下方读数；四线 `starengine_lib_version` / `_version_range` 与
+  CI 的库 `ref`（`4c653231750830824535d5debcfb36f9457278bb`）同批同步。
+- **新增守门** `tools/verify_selector_key_ownership.py`（K1 按键分支不得引用 `TargetSelectionClient`；
+  K2 全仓不得再有 `logPrompt("j", …)` / `cancel("key")` 调用（⚠️ 判据于 2026-10-05 由「扫 DEBUG 字面串」改为「扫**调用形态**」—— 前者是**永真**检查，由独立复核抓出并修正）；K3 hold 四键 × 四线三语不得含按键名 `J`）⇒ `GATE: PASS`；
+  **反证测试**：注入 `if (TargetSelectionClient.isActive()) { return; }` ⇒ 精确报 K1 FAIL（rc=1），还原 ⇒ PASS（rc=0）。
+

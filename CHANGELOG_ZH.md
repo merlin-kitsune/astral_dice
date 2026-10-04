@@ -4,6 +4,40 @@
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 
+## 1.3.7-hotfix
+
+> 承接 1.3.7 的**补丁发布**（四线同批）。按发布规范，`-hotfix` 打到**同一个 `1.3.7` tag** 并**刷新该 Release**
+> （不新建 tag/Release）；26.1.2 与 fabric 分别取 `-beta.2` / `-alpha.2`（独立预发布线，不占用正式线裸版本号）。
+
+### 玩家可见变更
+
+- **主动技能键不再参与「目标选择器」**（2026-10-05 用户裁决，四线）：持有「目标选择」类效果牌、选择会话
+  进行中时，按主动技能键（默认 `J`）**照常触发立牌主动技能**，不再被当作「取消选择」（撤销 2026-10-03
+  「按键收口」的 J 口径）。选择器的取消 / 收官改由 **右键**（只能对目标释放的牌 = 收起）、**下蹲 + 右键**、
+  **ESC 菜单**与**超时**承担；「手持即选择」类会话仍以**移出主手**收官。
+  ⚠️ 若正为「需要指定目标」的立牌技能选目标，此时再按主动技能键**静默无效** —— 由服务端
+  `BaseSignItem#performSkill` 第 2 步拦下（防重复进入），属**刻意保留**语义。
+- **修正「有黄心（吸收心）时 ActionBar 与物品名提示重叠」**（2026-10-05 用户实报；**仅两条 NeoForge 线**）：
+  actionbar 位置原硬编码 `guiHeight - 68`（只等价于 `max(左,右状态条高) ≤ 59`）；一旦左侧被堆高
+  （黄心 ≥ 3 行、或「护甲 + 黄心」等组合）或右侧变高，原版物品名**上抬**而本模组文本不动 ⇒ 压盖。
+  现改为**复刻原版 `Gui#renderOverlayMessage` 规则**（`yShift = max(leftHeight, rightHeight) + (68 - 59)`、
+  `y = guiHeight - max(yShift, 68)`）⇒ 随状态条一起上抬，与物品名恒保 9 px 间距。
+  ⚠️ **`forge-1.20.1` / `fabric-1.20.1` 行为不变**：原版 1.20.1 无此机制（物品名与 actionbar 均为固定位置）
+  ⇒ 属**平台差异**，已就地登记。
+
+### 工程
+
+- **前置库 `starengine_lib` `1.0.11` → `1.0.12`**（四平台同号）：`client/ActionBarManager` 在
+  `neoforge-1.21.1` / `neoforge-26.1.2` 改为读 `Gui.leftHeight` / `Gui.rightHeight`（NeoForge 已 patch 为
+  `public`）；`forge-1.20.1` / `fabric-1.20.1` 保持固定 `guiHeight - 68`。消费方四线
+  `starengine_lib_version` / `_version_range` 与 CI 的库 `ref` 同批同步（`4c65323`）。
+- 四线 `client/KeyBindingSetup`：主动技能键分支删除 `TargetSelectionClient.isActive()` 判定与
+  `logPrompt("j","cancel")` 调用，改为**无条件**转发；`TargetSelectionClient` / `TargetSelectCancelPayload` /
+  `BaseSignItem` 的相关 javadoc 与注释同步改写。
+- lang：`msg.astral_dice.target_select.prompt.hold.{no_target,no_target_self,rejected,valid}` ×
+  **三条线 × 三语**去掉「按 J 收起」措辞，统一为 fabric 线口径（四线三语自此全一致）。
+- **移除** DEBUG 行 `key=j action=cancel`（该路径不再存在）。
+
 ## 1.3.7
 
 ### 内容与平衡性调整

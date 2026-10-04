@@ -4,6 +4,50 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 1.3.7-hotfix
+
+> Patch release on top of 1.3.7 (all four lines). Per the release rules a `-hotfix` version lands on the
+> **same `1.3.7` tag** and **refreshes that Release** (no new tag/Release); the 26.1.2 and fabric lines take
+> `-beta.2` / `-alpha.2` (independent pre-release lines that never occupy a stable version number).
+
+### Player-facing changes
+
+- **The active-skill key no longer participates in the target selector** (2026-10-05, all four lines):
+  while a target-selection session is running (holding a target-selector effect card), pressing the
+  active-skill key (default `J`) now **fires the sign's active skill as usual** instead of being treated as
+  "collapse the selection" (reverting the 2026-10-03 behaviour). Cancelling/closing a session is now done
+  with **right click** (on cards that can only target others = collapse), **sneak + right click**,
+  the **ESC menu** or the **timeout**; "hold-to-select" sessions still close by **taking the card off your
+  main hand**.
+  NOTE: if a sign skill is currently **waiting for you to pick a target**, pressing the key again is
+  **silently ignored** - the server-side `BaseSignItem#performSkill` step 2 blocks re-entry. That is
+  intentional.
+- **Fixed the action bar overlapping the item-name tooltip while you have absorption (yellow) hearts**
+  (reported 2026-10-05; **NeoForge lines only**): the action bar used a hard-coded `guiHeight - 68`, which
+  only matched `max(left, right status-bar height) <= 59`. Once the left stack grew taller (3+ rows of
+  absorption hearts, or armour + absorption), vanilla moved the item name **up** while this mod's line
+  stayed put, so they overlapped. It now **mirrors vanilla `Gui#renderOverlayMessage`**
+  (`yShift = max(leftHeight, rightHeight) + (68 - 59)`, `y = guiHeight - max(yShift, 68)`) so it moves up
+  together with the status bars, keeping a constant 9 px gap.
+  NOTE: **`forge-1.20.1` / `fabric-1.20.1` are unchanged** - vanilla 1.20.1 has no such mechanism, so this
+  is a **registered platform difference**.
+
+### Engineering
+
+- **Prerequisite library `starengine_lib` `1.0.11` -> `1.0.12`** (same number on all four platforms):
+  `client/ActionBarManager` now reads `Gui.leftHeight` / `Gui.rightHeight` on `neoforge-1.21.1` /
+  `neoforge-26.1.2` (NeoForge patches both to `public`) and keeps the fixed `guiHeight - 68` on
+  `forge-1.20.1` / `fabric-1.20.1`. The consumer pins (`starengine_lib_version` / `_version_range`) and the
+  CI library `ref` were bumped in the same batch (`4c65323`).
+- `client/KeyBindingSetup` (all four lines): the active-skill branch dropped the
+  `TargetSelectionClient.isActive()` check and the `logPrompt("j","cancel")` call and now forwards
+  unconditionally; related javadoc/comments in `TargetSelectionClient` / `TargetSelectCancelPayload` /
+  `BaseSignItem` were rewritten to match.
+- lang: `msg.astral_dice.target_select.prompt.hold.{no_target,no_target_self,rejected,valid}` on
+  **three lines x three languages** dropped the "press J to collapse" wording and now match the fabric line
+  (all four lines and three languages are consistent again).
+- **Removed** the DEBUG line `key=j action=cancel` (that path no longer exists).
+
 ## 1.3.7
 
 ### Content & Balance Changes

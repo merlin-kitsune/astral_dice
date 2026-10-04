@@ -120,7 +120,9 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
             notifyActionBar(player, "hud.astral_dice.sign_active_cooldown", signName, ChatFormatting.RED);
             return;
         }
-        // 2. 目标选择会话检查:已处于**按键开启的**选择模式时按键无效(防重复进入;客户端按 J 会先取消,此处为服务端兜底)。
+        // 2. 目标选择会话检查:已处于**按键开启的**选择模式时按键无效(防重复进入)。
+        //    ⚠️ 2026-10-05 起客户端主动技能键**不再**先取消选择 ⇒ 本判定是该场景下**唯一**的闸门
+        //    (该会话中按 J 会静默无效;要取消请用 右键+潜行 / ESC / 等超时)。
         //    ⚠️ 「手持即选择」会话(效果牌握在主手时自动开启,由物品而非按键驱动)不在此列 ——
         //    玩家从未按过键开它,故不得拦住主动技能键(2026-09-24 用户报 BUG:
         //    「手持活体书页时,无法触发主动技能」)。

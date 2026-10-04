@@ -12,7 +12,7 @@ import net.neoforged.neoforge.network.handling.IPayloadContext;
 import com.merlinkitsune.astral_dice.target.TargetSelectionManager;
 
 /**
- * 客户端 → 服务端：取消目标选择（右键+潜行 / 主动技能键 J / ESC 菜单 / 第三方界面打开时）。
+ * 客户端 → 服务端：取消目标选择（右键+潜行 / ESC 菜单 / 第三方界面打开时）。
  * 服务端立即清除会话，允许玩家立刻重新触发。
  *
  * <p><b>26.1.2 平台改写点</b>：{@code ResourceLocation} → {@code Identifier}；其余逐字可用。

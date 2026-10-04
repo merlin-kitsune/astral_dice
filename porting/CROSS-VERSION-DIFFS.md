@@ -97,6 +97,7 @@
 | N14 | **神秘遗物+（`enigmaticlegacyplus`）联动整体移除**（平台不存在该模组） | ③ | **已落地**（2026-10-04：删类 `MosesEnigmaticLink` + 4 常量/3 方法 + 4 处 tooltip 判定 + lang 4 键；**二次清理**：删 4 个 guide 手册页 `cursed_sword_chip.3` / `effect_card_fate_guidance.5` / `integration.3` / `misaki_sign.3` + 对应 lang 键，并清掉 `neoforge.mods.toml` 的 `enigmaticlegacyplus` optional 依赖残留） | — |
 | N15 | 保留联动：`patchouli` / `waystones` / `curios` / `bountiful` / JEI | ③ | 无需处置 | — |
 | N16 | **Modern UI 提示框边框兼容已落地**（2026-10-04 更正此前「平台无该机制 ⇒ 不做兼容层」的登记）：该线**原生**路径确无颜色事件（1.21.1 的 `RenderTooltipEvent.Color` 已被 **`Texture`** 取代 —— `javap` 实证 26.1.2.109 只有 `Pre`/`GatherComponents`/`Texture`），但 **Modern UI 本身有 26.1.2 构建**（`ModernUI-NeoForge-26.1.2-3.13.0.5`，sha1 `1432b7e3…`）且其 `UIManagerForge` 接管链与 1.21.1 **逐条同构**（HIGH 自绘 + LOW `setCanceled(true)`；`TooltipRenderer#sStrokeColor/sAdaptiveColors/sTooltip` 同名同型）⇒ 新增 `client/ModernUITooltipCompat`（HIGHEST 写槽、LOWEST `receiveCanceled=true` 还原） | ③ | **已落地**（2026-10-04） | `client/ModernUITooltipCompat` + `ModCommonConfig#MODERNUI_TOOLTIP_FRAME_COMPAT`（`CONFIG_VERSION` 5→6） |
+| N17 | **ActionBar 的 y 位置公式跨线不同**：NeoForge 两线（`neoforge-1.21.1` / `neoforge-26.1.2`）用**动态** yShift —— 复刻原版 `Gui#renderOverlayMessage` 的 `max(max(Gui.leftHeight, Gui.rightHeight) + (68-59), 68)`（NeoForge 把两字段 patch 成 `public`）；`forge-1.20.1` / `fabric-1.20.1` 用**固定** `guiHeight - 68`（原版 1.20.1 **没有**该机制 ⇒ 物品名与 actionbar 均固定位置）。⚠️ 硬凑统一反而错位 | ②（平台差异） | **已落地**（2026-10-05，库 `starengine_lib` 1.0.12） | 库 `client/ActionBarManager`（四平台各一份，就地注明） |
 
 > 完整编译期 API 映射与运行期差异见 `docs/compat-26.1.2-neoforge.md` + `AGENTS.md`「neoforge-26.1.2 关键差异速记（相对 neoforge-1.21.1）」。
 
@@ -187,3 +188,4 @@
 | 2026-10-04 | **fabric P1-B-1~B-5 全部闭环**（Modern UI 兼容 / 近战黑名单 / `onLivingDamagePre` 对齐 / 三守门纳入 fabric / 追平探针）。§4.3 状态列已更新。 |
 | 2026-10-04 | **26.1.2 联动口径收紧（二次清理）**：删除「26.1.2 属 NeoForge 端口 ⇒ Iron 联动必须保留」的全部声明；按「平台不存在即移除、无例外」撤回 Iron 反射版（N13 改为整项移除）；并清理神秘遗物+ 残留（4 个 guide 手册页 + 对应 lang 键 + `mods.toml` 的 `enigmaticlegacyplus` 依赖）。 |
 | 2026-10-04 | **Modern UI 兼容落到第四线（N16 更正）**：核实 Modern UI **有 26.1.2 neoforge 构建**、其接管链与 1.21.1 同构 ⇒ 新增 `neoforge-26.1.2` 的 `client/ModernUITooltipCompat`（该线唯一的档位边框染色途径）+ 配置开关；F23 状态由「已落地三条线」改为「已落地四线」。 |
+| 2026-10-05 | **1.3.7-hotfix：主动技能键退出目标选择器（四线）+ ActionBar 随状态条上抬（仅 NeoForge 两线，新增 N17）**。J 键不再按会话分流（改由 `tools/verify_selector_key_ownership.py` 钉住）；库 `ActionBarManager` 在 neo 两平台改读 `Gui.leftHeight/rightHeight`，1.20.1 两平台保持固定 ⇒ 库 `1.0.12`。 |

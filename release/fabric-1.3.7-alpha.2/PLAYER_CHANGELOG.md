@@ -9,7 +9,7 @@
 
 - **Fabric Loader 0.19.5+**
 - **Fabric API** (1.20.1 line, 0.92.12)
-- **StarEngine Lib — embedded, do NOT install it separately.** It is embedded via Jar-in-Jar (`1.0.11`).
+- **StarEngine Lib — embedded, do NOT install it separately.** It is embedded via Jar-in-Jar (`1.0.12`).
   If your mods folder still has a `starengine_lib-*.jar`, delete it: a loose file takes priority over the embedded copy and will override it.
 - **Puzzles Lib 8.1.33+** (event bridge; install its own prerequisite **Forge Config API Port 8.0.3** alongside it)
 - **Trinket provider — Trinkets 3.7.2+ **or** Accessories 1.0.0-beta.48+ (either one).** Fabric's `depends`
@@ -17,6 +17,17 @@
   startup and refuses to launch **only if neither is present**.
 
 Optional: **Patchouli** (in-game manual). There is no Fabric build of Bountiful for 1.20.1, so this line has no bounty board.
+
+## 1.3.7-hotfix
+
+- **You can now use your active skill while holding a "target selection" effect card.** Previously, as long
+  as the selection prompt was open, pressing the active-skill key was treated as "collapse the selection"
+  and the skill never fired. The key now **only casts the skill** - it no longer steals it.
+  To cancel a selection: **right click** (cards that can only target others), **sneak + right click**, or
+  press **ESC** to open the menu; for hold-to-select cards, simply **take the card off your main hand**.
+  (Tip: if a sign skill is currently "waiting for you to pick a target", pressing the key again does
+  nothing - that is normal, it is waiting for your target.)
+- **Embedded prerequisite library bumped to `1.0.12`** (embedded - **do NOT** install it separately).
 
 ## Changes in this version
 
@@ -44,7 +55,7 @@ with a few items specific to this line.
 
 - **Rarity border colours no longer break when "Modern UI" is installed with its "modern tooltip" enabled**: the Fabric build hooks a **different** render entry point than the stable lines, so a dedicated compatibility layer writes the tier colour into that UI mod's stroke slots and restores the player's own settings **immediately** after that draw, **changing none of its settings**. The rainbow tier also gains a **full flowing rainbow ring**. Config: **`modernui_tooltip_frame_compat`** (on by default); when that UI mod is absent the layer is a complete no-op.
 - **Content for link mods that do not exist in this environment was cleaned up**: this line has none of those link mods, so the related manual pages, item tooltips and config entries were removed to avoid pointing at things that cannot be installed here.
-- **The embedded prerequisite library was upgraded to `1.0.11`** (embedded - **do not** install it separately).
+- **The embedded prerequisite library was upgraded to `1.0.12`** (embedded - **do not** install it separately).
 - **Tests and gates**: this line's static checks (manual keys, actionbar channel, injection wiring, language-key sync, ...) are now part of the same gate list as the stable lines, so later regressions get caught automatically.
 
 ### Bug Fixes

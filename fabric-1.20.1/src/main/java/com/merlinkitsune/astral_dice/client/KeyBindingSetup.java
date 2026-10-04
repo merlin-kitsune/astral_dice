@@ -40,17 +40,13 @@ public class KeyBindingSetup {
             if (player == null) return;
 
             while (ACTIVATE_SIGN_KEY.consumeClick()) {
-                // 「按键开启」的选择会话(立牌主动技能的目标选择)才把主动技能键当作「取消选择」;
-                // ⚠️ 「手持即选择」会话(效果牌握在主手时自动开启,玩家从未按过键)不得吞掉该键 ——
-                //    否则玩家只要握着选择器类效果牌就永远触发不了立牌主动技能(2026-09-24 用户报
-                //    BUG:「手持活体书页时,无法触发主动技能」)。该类会话的取消手势是 下蹲+右键 / 移出主手。
-                if (TargetSelectionClient.isActive()) {
-                    // 目标选择期间再次按下主动技能键 = 取消选择(不触发立牌技能)
-                    TargetSelectionClient.logPrompt("j", "cancel");
-                    TargetSelectionClient.cancel("key");
-                } else {
-                    ModNetwork.sendToServer(new ModNetwork.SignActivateMessage());
-                }
+                // 2026-10-05 用户裁决「主动技能键不再参与选择器」:任何选择会话进行中,按主动技能键
+                // **都照常向服务端请求立牌主动技能**,不再把它当作「取消选择」
+                // (撤销 2026-10-03 的「按键收口」口径)。选择器的取消改由鼠标(右键 / 右键+潜行)与
+                // ESC 菜单承担 —— 主动技能的释放权完全归玩家。
+                // ⚠️ 服务端仍有自己的闸门:BaseSignItem#performSkill 第 2 步对「按键开启的」会话
+                //    直接 return(防重复进入);「手持即选择」会话不在其列 ⇒ 手持效果牌时按键照常生效。
+                ModNetwork.sendToServer(new ModNetwork.SignActivateMessage());
             }
             while (OPEN_CARD_INVENTORY_KEY.consumeClick()) {
                 if (!TargetSelectionClient.isActive() || TargetSelectionClient.isHoldToSelect()) {
