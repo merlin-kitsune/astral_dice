@@ -20,16 +20,17 @@ import sys
 from collections import defaultdict
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-LINES = ['neoforge-1.21.1', 'forge-1.20.1', 'neoforge-26.1.2']
-# ⚠️ **第四线 `fabric-1.20.1` 有意不纳入本闸门**(2026-10-01 实测结论,勿凭直觉加回来):
-#   ① 该线**不走本闸门所守的那条通道** —— `ActionBarPayload` 这个类**只存在于两条 neoforge 线**:
-#      实测 `git grep ActionBarPayload` 分别为 1.21.1 = 52 处 / 26.1.2 = 57 处 / **forge-1.20.1 = 0** /
-#      **fabric-1.20.1 = 0**(1.20.1 两条线各走自己的动作栏实现)⇒ 本闸门的通道白名单对它们本就不适用。
-#   ② 实测把它加进 LINES 会报出**一批既存的 1.3.3 动作栏改造缺口**(大量 `msg.astral_dice.*`
-#      的中/英/日值里仍内嵌 `§` 色码 + 4 个文件用原版覆盖层通道未进白名单)。
-#      **那是 fabric 线尚未移植 1.3.3 内容所致,与本闸门无关** ⇒ 在本线完成该批移植并把
-#      白名单补齐之前,贸然纳入只会让仓库闸门**长期常态变红**,反而掩盖真正的回归。
-#    ⇒ 待该线补完 1.3.3 批次后,再把 `fabric-1.20.1` 加回本列表(并同步核对上述白名单)。
+LINES = ['neoforge-1.21.1', 'forge-1.20.1', 'neoforge-26.1.2', 'fabric-1.20.1']
+# ✅ **第四线 `fabric-1.20.1` 已纳入(2026-10-04,KI-E3 闭环)** —— 补完 1.3.3 动作栏改造后实测 **0 违规**:
+#   ① 11 个 `msg.astral_dice.*` 键(ren_passive_granted / zhao_dice_fu / zhao_dice_huo /
+#      xinyi_linked_granted / teru_descent_applied / mamushi_dragon_form / sherry_bad_ground /
+#      sherry_throw / hanna_float / hanna_dice_coin / hanna_pass)× 三语的值已改为与三项 P0 线**逐字相同**
+#      (色码全部移出 lang 值、由 code 侧 `sendSignActionBarColored` 外层定色);
+#   ② `client/TargetSelectionClient.java` 的 `notifyHeldSelectorBlocked` 由裸
+#      `displayClientMessage(..., true)` 改为库 `ActionBarManager.show(..., RED)`(与 forge 同款),
+#      故本线「原版覆盖层通道」使用文件数回到 **1**(= 白名单里的 BaseEffectCardItem)。
+#   ⚠️ 该线仍**不使用** `ActionBarPayload`(那是两条 neoforge 线的通道;1.20.1 两条线各走自己的实现)
+#      —— 但本闸门守的是「lang 值内禁 § / 键三语齐全 / 原版通道白名单」三条,与通道实现无关,故适用。
 LANGS = ['zh_cn', 'en_us', 'ja_jp']
 JR = 'src/main/java/com/merlinkitsune/astral_dice/'
 LANG_REL = 'src/main/resources/assets/astral_dice/lang/'

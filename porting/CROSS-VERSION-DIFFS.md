@@ -151,13 +151,14 @@
 
 ### 4.3 `fabric-1.20.1`（P1）
 
+> ✅ **2026-10-04：P1-B-1 ~ P1-B-5 全部闭环**（详细证据见 `porting/fabric-1.20.1/FABRIC-DIFFS.md` §4）。
 | # | 问题 | 状态 | 判据 / 落点 |
 |---|---|---|---|
-| P1-B-1 | **Modern UI 提示框兼容未做** —— fabric 端确有 Modern UI；需先下载 **fabric 版** Modern UI jar 取证其描边 API（类名/字段可能与 Forge 分支不同），再照两线 `ModernUITooltipCompat` 结构实现 + `modernui_tooltip_frame_compat` 开关 | **待办（唯一剩余功能缺口）** | `porting/fabric-1.20.1/FABRIC-DIFFS.md` §4 |
-| P1-B-2 | **近战黑名单缺「非武器工具」四项** —— fabric `DiceCombatEvents#isMeleeWeaponAttack` **无** `Items.{SHEARS,FISHING_ROD,FLINT_AND_STEEL,BRUSH}` 排除（实测 grep 命中 0；另三线各 1 处） | **待办** | 同左 |
-| P1-B-3 | **fabric 无测试探针**（`/astralprobe` 系列）⇒ 本线改动无法实机验证 | 待补 | `porting/fabric-1.20.1/CATCHUP-PROGRESS-2026-10-04.md` §9 |
-| P1-B-4 | **KI-E3：三个守门脚本不含 fabric**（`audit_mixin_injection` / `check_lang_sync` / `audit_actionbar`）⇒ 该线三面对应面**无自动守门**，须人工核验 | 未决（需先采 baseline） | `KNOWN-ISSUES.md` KI-E3 |
-| P1-B-5 | **KI-F24②：`DiceCombatEvents#onLivingDamagePre` 结构分叉** —— fabric 把 `directEntity instanceof Player` 闸门提到计时器逻辑**之前** ⇒ 白泽赐福 / 降神计时器在 fabric 只认**近战**，三线按「任意攻击」启表 | **待裁决** | `KNOWN-ISSUES.md` KI-F24 |
+| P1-B-1 | **Modern UI 提示框兼容未做** —— fabric 端确有 Modern UI；需先下载 **fabric 版** Modern UI jar 取证其描边 API（类名/字段可能与 Forge 分支不同），再照两线 `ModernUITooltipCompat` 结构实现 + `modernui_tooltip_frame_compat` 开关 | ✅ **已完成**（2026-10-04）：Fabric 版 jar 取证 → `ModernUITooltipCompat` + mixin 接线 + 配置开关 | `porting/fabric-1.20.1/FABRIC-DIFFS.md` §4 |
+| P1-B-2 | **近战黑名单缺「非武器工具」四项** —— fabric `DiceCombatEvents#isMeleeWeaponAttack` **无** `Items.{SHEARS,FISHING_ROD,FLINT_AND_STEEL,BRUSH}` 排除（实测 grep 命中 0；另三线各 1 处） | ✅ **已完成**（2026-10-04）：四项排除已补，与 forge 同函数逐行一致 | 同左 |
+| P1-B-3 | **fabric 无测试探针**（`/astralprobe` 系列）⇒ 本线改动无法实机验证 | ✅ **已完成**（2026-10-04）：新增 `/astralcatchup` 探针 + `FAB-CATCHUP-PARITY` 用例（零前置、无人值守） | `porting/fabric-1.20.1/CATCHUP-PROGRESS-2026-10-04.md` §9 |
+| P1-B-4 | **KI-E3：三个守门脚本不含 fabric**（`audit_mixin_injection` / `check_lang_sync` / `audit_actionbar`）⇒ 该线三面对应面**无自动守门**，须人工核验 | ✅ **已闭环**（2026-10-04，KI-E3 结案）：三守门 `LINES` 均含 fabric，实测 0 违规 | `KNOWN-ISSUES.md` KI-E3 |
+| P1-B-5 | **KI-F24②：`DiceCombatEvents#onLivingDamagePre` 结构分叉** —— fabric 把 `directEntity instanceof Player` 闸门提到计时器逻辑**之前** ⇒ 白泽赐福 / 降神计时器在 fabric 只认**近战**，三线按「任意攻击」启表 | ✅ **已对齐 P0**（2026-10-04）：计时器块前移 + 改用 `source.getEntity()`，与 forge 逐行一致 | `KNOWN-ISSUES.md` KI-F24 |
 | P1-B-6 | KI-F24① `concealment` 整条特性缺失 | **已闭环**（追平批 5） | 同左（本表标注闭环） |
 | P1-B-7 | 四线共有待裁决：**KI-F8**（`hanna_sign.3` / `sherry_sign.3` 档位词与代码稀有度不符）、**KI-G2**（医疗箱筹码重登 / 切维度可反复利用） | 待裁决 | `KNOWN-ISSUES.md` |
 | P1-B-8 | **KI-F4：重写构建脚本漏搬 `sourceSets.srcDir('src/generated/resources')`** ⇒ 生成资源不进产物（编译期 + 启动期均无感）⇒ 改构建脚本后**必须开包核对资源条目数** | 缺陷模式已固化 | `KNOWN-ISSUES.md` KI-F4 |
@@ -183,3 +184,4 @@
 | 日期 | 变更 |
 |---|---|
 | 2026-10-04 | 建档：按用户裁决「重新划分优先级等级」建立跨版本差异总表（四线功能差异 + 各平台待解决问题），配套 `AGENTS.md`「版本优先级与跨线移植纪律」与 `porting/fabric-1.20.1/FABRIC-DIFFS.md`。 |
+| 2026-10-04 | **fabric P1-B-1~B-5 全部闭环**（Modern UI 兼容 / 近战黑名单 / `onLivingDamagePre` 对齐 / 三守门纳入 fabric / 追平探针）。§4.3 状态列已更新。 |

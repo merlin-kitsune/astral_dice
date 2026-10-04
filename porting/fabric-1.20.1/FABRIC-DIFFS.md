@@ -68,19 +68,20 @@
 | `patchouli`（手册） | ✅ 有 | **保留** | 无需处置 |
 | `waystones` | ✅ 有 | **保留** | 无需处置 |
 | `trinkets` / `accessories` | ✅ 有（fabric 特有） | **保留**（饰品「二选一」，见 A1） | 无需处置 |
-| **现代化 UI（Modern UI）** | ✅ 有 | **照常适配** ⇒ 见 §4 待办 P1-B-1 | ⏳ **待办** |
+| **现代化 UI（Modern UI）** | ✅ 有 | **照常适配** ⇒ 已实现（见 §4 P1-B-1） | ✅ **已适配**（2026-10-04） |
 
 ---
 
 ## 4. 平台独有待解决问题清单（逐项对照）
+> ✅ **2026-10-04：P1-B-1 ~ P1-B-5 全部闭环**（下表保留原条目与本轮证据；B-6 已于追平批 5 闭环，B-7~B-10 为四线共有待裁决项 / 纪律项，非本线缺口）。
 
 | # | 优先级 | 问题 | 状态 | 判据 / 落点 |
 |---|---|---|---|---|
-| **P1-B-1** | **高** | **Modern UI 提示框兼容未做** —— 客户端装 Modern UI 并启用现代化边框时，彩色边框不生效（Modern UI 用自身方法自绘描边，且 `setCanceled(true)` ⇒ 本模组 `RenderTooltipEvent.Color` **永不派发**） | ⏳ **待办**（唯一剩余功能缺口） | 需先下载 **fabric 版** Modern UI jar 取证其描边 API（类名/字段可能与 Forge 分支不同），再照 P0 两线 `client/ModernUITooltipCompat` 结构实现（`@SubscribeEvent(priority=HIGHEST)` 写入 + `priority=LOWEST, receiveCanceled=true` 还原）+ `ModCommonConfig` 的 `modernui_tooltip_frame_compat` 开关 |
-| **P1-B-2** | **高** | **近战黑名单缺「非武器工具」四项** —— `DiceCombatEvents#isMeleeWeaponAttack` **无** `Items.{SHEARS,FISHING_ROD,FLINT_AND_STEEL,BRUSH}` 排除（实测：fabric 该文件命中 0，另三线各 1）⇒ 这四件工具在 fabric 算「近战武器攻击」 | ⏳ **待办** | `fabric-1.20.1/.../combat/DiceCombatEvents.java` `isMeleeWeaponAttack`；蓝本 = `forge-1.20.1` 同函数（同为 1.20.1）。⚠️ 该文件含已裁决差异（神秘遗物移除）⇒ **逐段局部补**，勿整文件照搬 |
-| **P1-B-3** | 中 | **fabric 无测试探针**（`/astralprobe` 系列）⇒ 本线改动无法实机断言 | ⏳ 待补 | `CATCHUP-PROGRESS-2026-10-04.md` §9；fabric 测试机制自建（`scripts/test/fabric/`，**不得**直接复用 `mt.ps1` 生产线口径） |
-| **P1-B-4** | 中 | **KI-E3：三个守门脚本不含 fabric** —— `audit_mixin_injection` / `check_lang_sync` / `audit_actionbar` 的 `LINES` 只登记三线 ⇒ 该线 **mixin 计数、三语一致、动作栏键存在性**三面**无自动守门** | ⚠️ 未决 | 候选处置 = 加入 `LINES`；⚠️ 会**立即暴露** fabric 既存全部 mixin 读数（含 intermediary 名/描述符解析差异）⇒ **必须先采 baseline 并逐条裁决**，不宜与功能修复混批 |
-| **P1-B-5** | 中 | **KI-F24②：`DiceCombatEvents#onLivingDamagePre` 与三线结构不同构** —— fabric 把 `directEntity instanceof Player` 闸门提到计时器逻辑**之前** ⇒ 白泽赐福 / 降神计时器在 fabric 只认**近战**（用 `player`），三线挂在闸门之前、按「任意攻击」启表（用 `source.getEntity()`） | ⏳ **待裁决**（既存语义分叉，非 1.3.6 引入） | `KNOWN-ISSUES.md` KI-F24② |
+| **P1-B-1** | **高** | **Modern UI 提示框兼容未做** —— 客户端装 Modern UI 并启用现代化边框时，彩色边框不生效（Modern UI 用自身方法自绘描边，且 `setCanceled(true)` ⇒ 本模组 `RenderTooltipEvent.Color` **永不派发**） | ✅ **已完成**（2026-10-04） | 取证：`ModernUI-Fabric-1.20.1-3.12.0.1-universal.jar`（Modrinth `modern-ui`，sha1 `90b40fcb82e8…`）——`MixinGuiGraphics` 注入原版 `GuiGraphics`、字段与 P0 **同名同型**。实现：`client/ModernUITooltipCompat`（反射逻辑照 P0）+ `mixin/bridge/ClientTooltipBridgeMixin` 在 `renderTooltip(Font,ItemStack,II)` 的 `HEAD` 写 / `RETURN` 还 + `ModCommonConfig#MODERNUI_TOOLTIP_FRAME_COMPAT`（CONFIG_VERSION 5→6）。⚠️ Fabric 无事件优先级/`receiveCanceled` ⇒ **不能**照抄 P0 的事件写法；实机读数见 README §7.2.7.1 |
+| **P1-B-2** | **高** | **近战黑名单缺「非武器工具」四项** —— `DiceCombatEvents#isMeleeWeaponAttack` **无** `Items.{SHEARS,FISHING_ROD,FLINT_AND_STEEL,BRUSH}` 排除（实测：fabric 该文件命中 0，另三线各 1）⇒ 这四件工具在 fabric 算「近战武器攻击」 | ✅ **已完成**（2026-10-04） | `combat/DiceCombatEvents#isMeleeWeaponAttack` 已补四项排除；实机断言 `AP_CATCHUP_MELEE: empty=0 shears=0 rod=0 flint=0 brush=0 sword=1`；与该函数 `forge-1.20.1` 版本**规范化平台名后逐行一致** |
+| **P1-B-3** | 中 | **fabric 无测试探针**（`/astralprobe` 系列）⇒ 本线改动无法实机断言 | ✅ **已完成**（2026-10-04，**已实跑取数**） | 新增 `scripts/test/fabric/astral_catchup_probe.js`（`/astralcatchup env|melee|range|conc|legacydur`）+ 用例 `cases/FAB-CATCHUP-PARITY.json`；**用 Fabric API 自带 `FakePlayer` ⇒ 零前置、无人值守**（不必再投放 Carpet）。装法/判据/三条实测教训见 `scripts/test/fabric/README.md` **§7.2.7 / §7.2.7.1**；⚠️ 归一效果本身仍需真人玩家（KI-F25④） |
+| **P1-B-4** | 中 | **KI-E3：三个守门脚本不含 fabric** —— `audit_mixin_injection` / `check_lang_sync` / `audit_actionbar` 的 `LINES` 只登记三线 ⇒ 该线 **mixin 计数、三语一致、动作栏键存在性**三面**无自动守门** | ✅ **已闭环**（2026-10-04，KI-E3 结案） | 三个脚本的 `LINES` 均已含 `fabric-1.20.1`；实测**硬违规 0 / PASS / exit=0**。⚠️ 纳入前先修掉真实滞后：11 个 `msg.astral_dice.*` 键 × 三语的值内嵌 `§`（已对齐 P0 值）+ `TargetSelectionClient` 的裸 `displayClientMessage` 改走库 `ActionBarManager.show(..., RED)` |
+| **P1-B-5** | 中 | **KI-F24②：`DiceCombatEvents#onLivingDamagePre` 与三线结构不同构** —— fabric 把 `directEntity instanceof Player` 闸门提到计时器逻辑**之前** ⇒ 白泽赐福 / 降神计时器在 fabric 只认**近战**（用 `player`），三线挂在闸门之前、按「任意攻击」启表（用 `source.getEntity()`） | ✅ **已对齐 P0**（2026-10-04） | `KNOWN-ISSUES.md` KI-F24②（**可结案**）：计时器块已前移到 `directEntity instanceof Player` 闸门**之前**并改用 `source.getEntity()`；与 `forge-1.20.1` 同方法前段**逐行一致**（归一化 `CuriosApi`→`CuriosCompat` 后 diff=0） |
 | **P1-B-6** | — | KI-F24① `concealment`（秘密侦探「隐匿」）整条特性缺失 | ✅ **已闭环**（追平批 5：新增 `ConcealmentEffect` + 注册 + 解除逻辑 + 图标 + lang） | `KNOWN-ISSUES.md` KI-F24① |
 | **P1-B-7** | 中 | **四线共有待裁决**：`KI-F8`（`hanna_sign.3` / `sherry_sign.3` 档位词与代码稀有度不符）、`KI-G2`（医疗箱筹码重登 / 切维度可反复利用） | ⏳ 待裁决 | `KNOWN-ISSUES.md` KI-F8 / KI-G2（**四线共有、与移植无关**） |
 | **P1-B-8** | 低（纪律） | **KI-F4 缺陷模式**：重写构建脚本漏搬 `sourceSets.srcDir('src/generated/resources')` ⇒ 生成资源不进产物 | 已固化 | 收尾必开包核对资源条目数 |
@@ -123,7 +124,8 @@
 | 7 | 输入收口（`KeyBindingSetup` J/H；`TargetSelectionClient` 右键收起 + 中键/侧键放行） | `fd3461a8` |
 | 8 | 动作栏通道与染色收口（9 处立牌 + `CurrentCore` / `Airbag` / `ModMenuTypes` / `StarCoinWalletActions`） | 同上 |
 
-> 剩余：§4 的 **P1-B-1（Modern UI）** 与 **P1-B-2（近战黑名单）** 两项功能缺口 + P1-B-3~B-5 的测试/守门/裁决项。
+| 9 | **追平收尾批**：Modern UI 提示框边框兼容 / 近战黑名单四项 / `onLivingDamagePre` 计时器启表对齐 P0 / 三守门脚本纳入 fabric（并修掉 11 键 `§` 内嵌与裸通道）/ fabric 追平探针 + 用例（**已实跑取数**） | 见本批提交 |
+> ✅ **2026-10-04：以下 5 项已全部闭环** —— 见 §4 与批 9。
 
 ---
 
@@ -142,3 +144,4 @@
 | 日期 | 变更 |
 |---|---|
 | 2026-10-04 | 建档：按用户裁决建立 Fabric 平台专项差异性清单（平台适配 15 项 + 保留差异 5 项 + 联动裁剪表 + 待解决问题 10 项 + 已完成批次 1~8）。 |
+| 2026-10-04 | **剩余 5 项待办全部完成**：Modern UI 兼容（Fabric 版 jar 取证）/ 近战黑名单四项 / `onLivingDamagePre` 对齐 P0 / 三守门纳入 fabric（KI-E3 闭环）/ 追平探针 + 用例（实机取数见 README §7.2.7.1）。§4 状态列已逐项更新。 |

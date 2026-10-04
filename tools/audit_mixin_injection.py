@@ -45,7 +45,7 @@ import sys
 import zipfile
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
-LINES = ["neoforge-1.21.1", "forge-1.20.1", "neoforge-26.1.2"]
+LINES = ["neoforge-1.21.1", "forge-1.20.1", "neoforge-26.1.2", "fabric-1.20.1"]
 MIXIN_JSON = "src/main/resources/astral_dice.mixins.json"
 SRC_ROOT = "src/main/java"
 

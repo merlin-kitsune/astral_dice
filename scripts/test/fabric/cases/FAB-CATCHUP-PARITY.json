@@ -1,0 +1,100 @@
+{
+  "case_id": "FAB-CATCHUP-PARITY",
+  "title": "跨线追平批 1~8 的实机断言：近战黑名单四项 / 射程两段夹取 / 隐匿三态 / 常驻时长归一 / 注册面（FakePlayer 驱动，无需第三方模组）。",
+  "side": "server",
+  "window": "case",
+  "on_fail": "keep_game_running",
+  "steps": [
+    {
+      "op": "note",
+      "text": "判据依据（2026-10-04 新增；**已在纯 dev 服务端实跑取数**）：\n · 探针 scripts/test/fabric/astral_catchup_probe.js（命令 `/astralcatchup <env|melee|range|conc|legacydur>`，RCON 注入）。\n   装探针：`ft_env.ps1 --side server --install-probe astral_catchup_probe.js`（⚠️ 必须**冷启动**，热重载不取新内容）。\n · 读数**不需要真人玩家**：探针用 Fabric API 自带的 `net.fabricmc.fabric.api.entity.FakePlayer`\n   （在 fabric-events-interaction-v0 模块里）拿 ServerPlayer ⇒ **不依赖 Carpet**、无人连服也能跑。\n\n📌 2026-10-04 实测读数（真实日志）：\n  AP_CATCHUP_ENV: rin=1 conc=1 maxrad=64 melee=1 concbreak=1 range=1 thr=1073741823\n  AP_CATCHUP_MELEE: empty=0 shears=0 rod=0 flint=0 brush=0 sword=1\n  AP_CATCHUP_RANGE: max=64 noeff=32 waneff=48 clamp=64 zero=0\n  AP_CATCHUP_CONC: before=0 applied=1 broke=0\n  AP_CATCHUP_LEGACY: thr=1073741823 dur0=1200000000 gt_thr=1 ticked=24 dur_after=1200000000 amp=5 ext=clean ext_kept=1\n\n⚠️ **三条实测教训（写探针时必须遵守）**：\n ① KubeJS 各 server_scripts **共享全局作用域** ⇒ 探针必须整体包 IIFE（否则与 astral_gs_probe.js 的\n    同名 helper `guard`/`out` 互相覆盖，实测表现为「本探针一行都不输出、却打出对方的 AP_GS_ERR」）。\n ② 清效果**必须**走库内部通道 `ModEffectRemoval.remove(player, effect)`：本模组会拦截\n    `astral_dice:` 效果的**外部**移除（牛奶 / `/effect clear` / 裸 `removeEffect`）。\n ③ Rhino **不允许反射 JDK 的 `Class` 成员**（`getDeclaredMethod` 直接报 InternalError）\n    ⇒ 不能「直调私有方法」验证归一；只能读**公开常量**（`EffectTimerGuard.INFINITE_THRESHOLD`）。\n\n ⚠️ **未覆盖（如实标注）**：`legacy` 的 `dur_after` 仍是原值 —— 归一由 `PlayerTickEvents` 的\n `tickCount % 20 == 0` 驱动，而 `FakePlayer` **不进世界的 tick 循环**，手动 `p.tick()` 也不触发该事件\n ⇒ **「旧存档超长时长被归一为 -1」这条效果本身仍需带真人玩家（或客户端进世界）确认**；\n 本用例断言的是**判据基座**（阈值常量 + 超阈值的存量值）与**拦截/清理契约**。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralcatchup env",
+      "channel": "rcon"
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralcatchup melee",
+      "channel": "rcon"
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralcatchup range",
+      "channel": "rcon"
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralcatchup conc",
+      "channel": "rcon"
+    },
+    {
+      "op": "wait",
+      "ms": 900
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralcatchup legacydur",
+      "channel": "rcon"
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "snapshot",
+      "window": "case"
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "pattern": "AP_CATCHUP_ENV: rin=1 conc=1 maxrad=64 melee=1 concbreak=1 range=1 thr=1073741823"
+    },
+    {
+      "type": "log",
+      "pattern": "AP_CATCHUP_MELEE: empty=0 shears=0 rod=0 flint=0 brush=0 sword=1"
+    },
+    {
+      "type": "log",
+      "pattern": "AP_CATCHUP_RANGE: max=64 noeff=32 waneff=48 clamp=64 zero=0"
+    },
+    {
+      "type": "log",
+      "pattern": "AP_CATCHUP_CONC: before=0 applied=1 broke=0"
+    },
+    {
+      "type": "log",
+      "pattern": "AP_CATCHUP_LEGACY: thr=1073741823 dur0=1200000000 gt_thr=1 ticked=\\d+ dur_after=\\d+ amp=5 ext=\\S+ ext_kept=1"
+    },
+    {
+      "type": "absent",
+      "pattern": "AP_CATCHUP_ERR:"
+    },
+    {
+      "type": "absent",
+      "pattern": "AP_CATCHUP_MISS:"
+    },
+    {
+      "type": "absent",
+      "pattern": "Unknown or incomplete command|Unknown command"
+    },
+    {
+      "type": "crash"
+    }
+  ],
+  "evidence": []
+}

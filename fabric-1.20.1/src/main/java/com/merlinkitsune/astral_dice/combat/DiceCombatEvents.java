@@ -133,13 +133,29 @@ public class DiceCombatEvents {
         // 立牌受击钩子分发(史莱姆立牌等受击类被动由各立牌 onHurt 实现,不再在此硬编码)
         if (!target.level().isClientSide() && target instanceof Player targetPlayer) {
             BaseSignItem.invokeHurtHooks(targetPlayer, event.getSource(), event.getAmount());
-            // 缓冲盾牌筹码:受到攻击时 +2 治愈 +3 星币(每 15 秒一次)
+            // 缓冲盾牌筹码:受到**敌对目标**攻击时 +2 治愈 +3 星币(每 15 秒一次;
+            // 2026-09-29 收紧 —— 环境伤害与自伤不再触发,判定见 DiceCombatEvents#isHostileAttack)
             com.merlinkitsune.astral_dice.item.chip.BufferShieldChipItem.onHurt(targetPlayer, event.getSource(), event.getAmount());
         }
 
         // AOE(顺劈/溅射)波及的目标不进入骰战结算,避免二次吃到完整骰战;
         // 反击链中的伤害不进入骰战结算(已按反击公式自算),同时结构性阻止反击递归
         if (aoeProcessing || counterDepth > 0) return;
+
+        // 白泽赐福 / 降神:倒计时由「被施加者实施**一次有效攻击**」启动(2026-09-28 用户裁决)。
+        // 判据 = **任意攻击行为(近战或远程)且必须命中目标** —— 本事件到达本身即"命中"(伤害正在落地),
+        // 故不再要求近战武器;只要求伤害的**来源实体**是该玩家、且目标属于骰神赐福合法目标。
+        // ⚠️ 位置必须在下方 isMeleeWeaponAttack 闸门**之前**:远程(箭/投掷物)的 directEntity 是弹射物,
+        //    走不进下方玩家分支,挂在那之后永远起不了表。
+        // 只启动一次(内部判定 timer_started),之后重复攻击不重置;被施加者身上**不需要**有骰子。
+        if (!target.level().isClientSide()
+                && source.getEntity() instanceof Player timerAttacker
+                && timerAttacker != target
+                && isBlessingTarget(target, timerAttacker)) {
+            com.merlinkitsune.astral_dice.item.sign.ZhaoSignItem.onBlessingTimerAttack(timerAttacker);
+            com.merlinkitsune.astral_dice.item.sign.TeruSignItem.onDescentTimerAttack(timerAttacker);
+        }
+
         // 秘密侦探「隐匿」(2026-09-28 用户裁决):玩家对**非玩家实体**造成有效伤害(任意攻击方式均算)
         // ⇒ 立即解除隐匿;解除后由 DiceCombatModifiers 的额外加伤修饰器追加「目标标记层数」伤害,
         // 直到调查阶段增益结束。幂等,内部自判是否处于隐匿。
@@ -165,16 +181,6 @@ public class DiceCombatEvents {
         // 骰神赐福仅能由近战武器攻击触发与生效:直接伤害来源必须为玩家(已排除弓/弩/三叉戟投掷等远程),
         // 主手必须持有近战武器(排除空手/盾牌/非近战类武器)
         if (!isMeleeWeaponAttack(player)) return;
-
-        // 白泽赐福 / 降神:2 分钟倒计时由「被施加者实施一次合格的近战攻击」启动(2026-09-27 用户裁决)。
-        // 判据与骰神赐福**完全一致**(即本方法上方同一道闸门):近战武器攻击(外层已判 isMeleeWeaponAttack)
-        // + 目标是骰神赐福合法目标(isBlessingTarget)。⚠️ 必须置于 isMeleeWeaponAttack 之后、
-        // 且不受下方「施加者是否佩戴骰子」影响 —— 被施加者身上**不需要**有骰子即可启动计时。
-        // 只启动一次(内部判定 timer_started),之后重复攻击不重置。
-        if (!player.level().isClientSide() && isBlessingTarget(target, player)) {
-            com.merlinkitsune.astral_dice.item.sign.ZhaoSignItem.onBlessingTimerAttack(player);
-            com.merlinkitsune.astral_dice.item.sign.TeruSignItem.onDescentTimerAttack(player);
-        }
 
         // === ATTACKER DICE (unique, via curios dice slot) ===
         ItemStack diceStack = null;
@@ -1150,6 +1156,11 @@ public class DiceCombatEvents {
         if (isExplicitMeleeWeapon(held)) return true;
         // 盾牌:不是武器
         if (held.is(Items.SHIELD)) return false;
+        // 非武器工具:剪刀 / 钓竿 / 打火石 / 刷子 —— 拿着它们打人不算「近战武器攻击」
+        // (2026-10-03 用户裁决,同日二版重新纳入黑名单。⚠️ 必须排在「显式纳入清单」之后 ——
+        //  将来若有某模组的合法武器恰好是这几件的子类/同 id,靠那条清单才能救回来)
+        if (held.is(Items.SHEARS) || held.is(Items.FISHING_ROD)
+                || held.is(Items.FLINT_AND_STEEL) || held.is(Items.BRUSH)) return false;
         // 远程专用武器:弓 / 弩 / 各模组弹弓(三叉戟等双模武器不在内)
         if (held.getItem() instanceof net.minecraft.world.item.ProjectileWeaponItem) return false;
         // 方块:拿着方块打人不算「近战武器攻击」

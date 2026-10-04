@@ -103,7 +103,19 @@
     **unchanged**).
   - **All cards** (attack / defense / effect cards and the exclusive combat cards - 26 branches in
     total): the **top** blank line is removed, so the cost line or description follows the item name
-    **directly**. NOTE: signs / chips / materials / dice keep their top blank line.
+    - **The Fabric 1.20.1 line catches up on three player-visible behaviours** (2026-10-04): that line is an
+  independent pre-release port (artifacts carry `-alpha.N` and are never merged into a stable Release).
+  This update brings over three decisions already live on the other lines:
+  - **Non-weapon tools no longer count as a "melee weapon attack"**: hitting someone with **shears / a
+    fishing rod / flint and steel / a brush** no longer triggers the Dice Blessing (dice combat).
+  - **Luck-blessing / Divine Descent countdowns are now started by *any* hit**: a **ranged hit**
+    (bow / crossbow / thrown projectile) also starts the 2-minute countdown (previously melee only).
+  - **Rarity border colours no longer break when "Modern UI" is installed with its modern tooltip
+    enabled**: the tier colour is now written into Modern UI own stroke slots and restored right after
+    that render pass. Config: **`modernui_tooltip_frame_compat`** (on by default); when Modern UI is
+    absent the compat layer is a no-op.
+
+**directly**. NOTE: signs / chips / materials / dice keep their top blank line.
 
 ### Bug Fixes
 

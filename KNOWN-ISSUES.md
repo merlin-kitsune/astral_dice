@@ -23,13 +23,14 @@
 - 登记日期：2026-09-15
 - 登记来源：B7 交付后遗漏审计（用户裁定「纪录上述问题，作为未来版本修补内容」）
 - 目标版本：**下一版本**（1.2.1 之后；是否并入 1.2.1 需用户另行裁定）
-- 条目总数（2026-10-01 清理后）：**26** 条未修/未决 = A 组 7（KI-1…KI-7）+ B 组 1（KI-8）+ C 组 3（KI-9…KI-11）
-  + M 组 3（KI-M2/M3/M4）+ D 组 1（KI-D1）+ E 组 3（KI-E1/E2/E3）+ F 组 7（KI-F4/F7/F8/F20/F21/F22/F23）
+- 条目总数（2026-10-04 追加 KI-F25 后）：**26** 条未修/未决 = A 组 7（KI-1…KI-7）+ B 组 1（KI-8）+ C 组 3（KI-9…KI-11）
+  + M 组 3（KI-M2/M3/M4）+ D 组 1（KI-D1）+ E 组 2（KI-E1/E2）+ F 组 8（KI-F4/F7/F8/F20/F21/F22/F23/F25）
   + G 组 1（KI-G2，2026-10-01 新增），
   另有 §5 的 **2** 条「测试资产待修项」。**已处理条目见 §1.1 索引。**
-  ⚠️ **2026-10-02 澄清（发布前审计）**：上列 26 条里有 **3 条（`KI-F21`/`KI-F22`/`KI-F23`）标题自述「已完成 / 已修 / 已缓解」**，但正文各自写明**尚未做实机验证**（前两条各有一项「进世界未跑」）。它们**保留在正文**是为了不丢失「待实机确认」这个待办，**不计入「未修缺陷」**；数值 26 = **23 条未修/未决 + 3 条已修待实机**。
+  ⚠️ **2026-10-02 澄清（发布前审计）**：上列条目里有 **3 条（`KI-F21`/`KI-F22`/`KI-F23`）标题自述「已完成 / 已修 / 已缓解」**，
 
----
+  **不计入「未修缺陷」**；数值 26 = **23 条未修/未决 + 3 条已修待实机**。
+- ⚠️ **2026-10-04**：**KI-E3 已闭环**（三把守门脚本纳入 `fabric-1.20.1`，实测 0 违规）⇒ 按 §0 第 4 条已移入 §1.1 索引。
 
 ## 1.1 已处理索引（2026-10-01 首次清理）
 
@@ -61,6 +62,7 @@
 | KI-M5 | 26.1.2 接入库后的两项开放项 —— ①「库 jar 与 mod jar **成对推送**」规则**已作废**（库改为 **JarJar 内嵌**，整合包只放 `astral_dice-*.jar`；反过来**残留**独立库 jar 会被 JarJar 选择器按 `modId` 优先采用并盖掉内嵌件 ⇒ 应删）；② `effect/ReadyEffect` 本地副本已随波次 2b 删除（已关闭）。**实测四个整合包 `starengine` 残留 = 0** | 变更记录 2026-09-24；`AGENTS.md`「库的 jar 分发」 |
 | §5 的 7 行（含 `P5-equip-paths-linkage` 13 处 `✘1需改`、`NancyLuSignItem` 的 `isHostile` 过宽、P2-C1/C3/C4 与安全气囊基准、`mt_assert` 断言窗口、`LOOT-MODIFIER` 反向断言、追加 A《恋的规则书》重复补发、追加 B 死亡保留集合一致） | 全部**已闭环**（2026-09-15/16 实测；含 commit `cc49f0d` / `c0ad51f`） | 变更记录 2026-09-15 / 2026-09-16 两行 |
 | KI-F20 | 三线 `require = 2` 误写 —— **已全部闭环**：`forge-1.20.1` 两处已为 `require = 1`（`cba8e956`，早于 1.3.6 周期）；`neoforge-1.21.1` 的同名类走 `@Inject(... at = RETURN)`、**不涉及 `require`**；`neoforge-26.1.2` 无该文件（走 `GatherEffectScreenTooltipsEvent`）；全仓 `grep "require = 2"` 仅剩 fabric 类注释文字 | 2026-10-02 发布前审计逐文件核实（`KNOWN-ISSUES.md` 变更记录同日） |
+| KI-E3 | 三个守门脚本（`audit_mixin_injection` / `check_lang_sync` / `audit_actionbar`）**不含 fabric 线** ⇒ 该线 mixin 计数 / 三语一致 / 动作栏三面无自动守门 ⇒ **已纳入**（同时修掉纳入后暴露的真实滞后：11 个 `msg.astral_dice.*` 键 × 三语的 `§` 内嵌、`TargetSelectionClient` 的裸 `displayClientMessage` 通道） | `porting/CROSS-VERSION-DIFFS.md` §4.3；`porting/fabric-1.20.1/FABRIC-DIFFS.md` §4 |
 
 ---
 
@@ -342,26 +344,6 @@ GlCommandEncoder.trySetup(:531) ← GlCommandEncoder.executeDraw(:406) ← GlRen
   跨命令沿用），判据一律读句柄；类型匹配只留在诊断字段里。⇒ **不要**再用 `typeIdOf` 写新判据；依赖它的既有命令
   （如 `countLightning` 的通用回退分支、`slimecheck` 等）需一并复核。
 
-### KI-E3 ＝ **三个守门脚本不覆盖 fabric 线**（`audit_mixin_injection` / `check_lang_sync` / `audit_actionbar`）⇒ 该线对应面无自动守门（2026-10-01 登记）
-
-- **现象**：该脚本的 `LINES = ["neoforge-1.21.1", "forge-1.20.1", "neoforge-26.1.2"]`（`tools/audit_mixin_injection.py:48`）
-  **不含 `fabric-1.20.1`** ⇒ fabric 线（`astral_dice.mixins.json` 里登记的全部 mixin，含 `bridge/` 平台桥）
-  的 `require` / `expect` 计数、`method` 目标、`@Mixin` 目标**完全不在任何自动守门覆盖内**；
-  守门读数「合计注解 77 | 硬违规 0」**只统计三线**。
-- **风险（本轮实证）**：2026-10-01 新增的 `bridge/ServerPlayerDimensionTravelBridgeMixin#astralDice$afterPlayerChangeDimension`
-  （`@At("RETURN")` 派发 `PlayerChangedDimensionEvent`，供医疗箱筹码的「切维度触发」使用）**恰好落在这个缺口里** ——
-  它的可用性当时只有「人工反汇编 + 与既有同构 mixin 逐字比对」这一条证据链
-  （已实测通过：`@Inject` 的 `method` 被 Loom 重映射为 `method_5731(Lnet/minecraft/class_3218;)Lnet/minecraft/class_1297;`，
-  与既有 `EntityDimensionTravelBridgeMixin` **逐字相同**）。**「守门全绿」在此不等于「fabric mixin 被守门」。**
-- **同源缺口（2026-10-01 同日补记）**：本仓另有**两个**守门脚本同样只登记三线、不含 fabric ——
-  - `tools/check_lang_sync.ps1`（硬编码 `@('neoforge-1.21.1','forge-1.20.1','neoforge-26.1.2')`）⇒
-    **fabric 的三语一致性没有任何自动守门**（fabric 的键数也与三线不同：832 vs 830，属既存差异）；
-  - `tools/audit_actionbar.py` ⇒ fabric 的动作栏键存在性未自动核验。
-  ⇒ 凡改动 fabric 的 lang / 动作栏文案，**必须人工逐键核验**（本轮改看板娘 tooltip 与手册条目时即如此）。
-- **候选处置（需裁决）**：把 `fabric-1.20.1` 加进上述脚本的 `LINES`。⚠️ 但这会让守门**立即暴露 fabric 既存全部 mixin 的读数**
-  —— 可能出现既存硬违规（含 `intermediary` 名与描述符的解析差异），需要先做一次 baseline 采集与逐条裁决，
-  **不宜与功能修复混批**。
-- **判据（可重跑）**：`python tools/audit_mixin_injection.py` 的输出里**只有三线小节、没有 fabric 小节**。
 
 ## 9. F 组 — Fabric 1.20.1 移植线（2026-09-29 起）
 
@@ -626,6 +608,33 @@ GlCommandEncoder.trySetup(:531) ← GlCommandEncoder.executeDraw(:406) ← GlRen
   `msg.astral_dice.*` 键（动作栏会直接显示原始键名）。修法与判据见 `TESTING-SPEC.md` 附录 A 续 46 §A。
 
 
+### KI-F25 ＝ 探针/KubeJS 侧三条实测陷阱 + 一处待定缺陷（2026-10-04 新增 —— fabric 追平探针首跑发现）
+
+> 来源：1.20.1 Fabric 追平批的实机断言（`scripts/test/fabric/astral_catchup_probe.js` / `cases/FAB-CATCHUP-PARITY.json`，
+> 见 `scripts/test/fabric/README.md` **§7.2.7**）。四条**互不相关**，但都会让探针**静默失败或误判**。
+
+- ① **KubeJS 各 `server_scripts` 共享同一全局作用域** ⇒ 探针脚本必须整体包 **IIFE**（或给每个顶层名加唯一前缀）。
+  实测：`astral_catchup_probe.js` 与同目录既有的 `astral_gs_probe.js` 都定义了顶层 `guard` / `out` / `exText`
+  ⇒ **后加载者覆盖先加载者**，`/astralcatchup …` 的处理器实际调用到对方的 `guard(ctx, tag, fn)`，日志报
+  `astral_gs_probe.js#41: AP_GS_ERR: tag=Function ex=TypeError: fn is not a function, it is undefined.`，
+  而**本探针一行都不输出**（静默失败 ⇒ 极易被误判成「产品功能没生效」）。
+- ② **清效果必须走库内部通道 `ModEffectRemoval.remove(player, effect)`**：本模组拦截 `astral_dice:` 效果的
+  **外部**移除（牛奶 / `/effect clear` / 裸 `removeEffect`）—— 这是**设计**（见 `event/ModEffectEvents#onModEffectRemovalPrevented`）。
+  ⚠️ **副作用（待定缺陷）**：当目标效果**并不存在**时，裸 `removeEffect` 实测会向调用方抛
+  `CancellationException: The call removeEffect is not cancellable`（`org.spongepowered.asm.mixin.injection.callback`）
+  —— 即「拦截器取消了某个**未被声明为可取消**的回调」。**影响面小**（原版与 mod 自身都先判存在性、或走内部通道），
+  但**值得一次决定性复现**：拿一个带 `astral_dice:` 效果的玩家，依次走 **① 裸 `removeEffect`（效果不存在）**、
+  **② `/effect clear`**、**③ 喝牛奶** 三条路径，看是否抛/是否被静默拦下。
+- ③ **Rhino 不允许反射 JDK `Class` 的成员**：`SomeClass.getDeclaredMethod(...)` 直接报
+  `InternalError: Java class "…" has no public instance field or method named "getDeclaredMethod"`
+  ⇒ 探针**不能**用「直调私有方法」做单元级断言，只能读**公开常量 / 公开方法**。
+- ④ **正向能力（仍需记一笔边界）**：**Fabric API 自带 `net.fabricmc.fabric.api.entity.FakePlayer`**
+  （在 `fabric-events-interaction-v0` 模块里；判据 = 该模块 jar 内含 `net/fabricmc/fabric/api/entity/FakePlayer.class`）
+  ⇒ fabric 侧探针可**零前置、无人值守**取得 `ServerPlayer`，**不必再手工投放 Carpet**。
+  ⚠️ 但 `FakePlayer` **不进世界的 tick 循环**（实测手动 `p.tick()` 24 次也不触发 `PlayerTickEvents`）
+  ⇒ 凡依赖「玩家级每 N tick」的行为（如 `normalizeLegacyInfiniteDurations`）**无法**用它端到端断言，
+  仍须带真人玩家 / 客户端进世界。
+
 ## 10. G 组 — 游戏内内容与获取途径（2026-10-01 重建）
 
 > 本组登记**玩法内容层面的缺陷**，以及**「用户裁决的必然推论」形成的可刷路径**：
@@ -695,3 +704,5 @@ GlCommandEncoder.trySetup(:531) ← GlCommandEncoder.executeDraw(:406) ← GlRen
 | 2026-10-01 | **KI-E3 扩项**：该覆盖缺口不止 `audit_mixin_injection` —— `tools/check_lang_sync.ps1` 与 `tools/audit_actionbar.py` 同样只登记三线（fabric 的 lang / 动作栏变更须人工核验） |
 | 2026-10-02 | 发布前审计处置：`KI-F20` **整块移出**（三面已全部闭环，证据见 §1.1）→ 移入 §1.1 索引；**新增 `KI-F24`**（fabric 移植线两处内容缺口 / 结构分叉，此前无登记）；§1 补澄清「26 = 23 条未修 + 3 条已修待实机」；顺带修掉 fabric 两个动作栏语言键缺失（见 `TESTING-SPEC.md` 附录 A 续 46 §A） |
 | 2026-10-04 | **1.20.1 Forge 端两项用户实报缺陷修复（KI-F5 结案 + 新增常驻时长归一）**：① **通用标签命名空间写错** —— `forge-1.20.1` 的 `datagen/ModRecipeProvider` 照搬 NeoForge 侧的 `c:bricks`，而 1.20.1 Forge **只提供 `forge:` 命名空间、没有任何 `c:` 标签的提供者** ⇒「对怪板砖」配方材料永不可满足、**彻底无法合成**（开包实证：旧 jar 内既无 `data/c/tags/items/bricks.json` 也无 `data/forge/tags/...`，配方却写 `"tag": "c:bricks"`）。修法 = 配方改用 `forge:bricks` + 本模组自建 `src/main/resources/data/forge/tags/items/bricks.json`（= `#forge:ingots/brick` ∪ `#forge:ingots/nether_brick`；Forge 47.4.10 实测自带这两条、**无汇总 `forge:bricks`**，`Tags$Items` 亦无 `BRICKS` 常量）⇒ 与 NeoForge `c:bricks` 语义等价。**只改 Forge 端**（NeoForge 两线用自带 `c:bricks`、Fabric 线用其自建 `c:bricks`）。② **常驻效果在 Forge 端仍显示超长倒计时** —— 子代理在整合包存档中取到决定性证据：`astral_dice:charge Duration=2147482289`（旧版 `Integer.MAX_VALUE` 的递减产物，界面显示 `29826:08:34` 而非 `∞`）⇒ 根因是 1.3.4 的「常驻效果统一 ∞」**只改了施加点**，存量实例不会被任何既有路径修正（`EffectTimerGuard.record()` 对 `>= INFINITE_THRESHOLD` 的值直接跳过 ⇒ 不登记 ⇒ 永不校正；`tick()` 只遍历已登记条目且只写有限值；各施加点只在重新获得/消耗/切换装备时走到）。修法 = 三线 `PlayerTickEvents` 新增 `normalizeLegacyInfiniteDurations`（每秒一次，把**本模组**效果里 `duration >= Integer.MAX_VALUE/2` 的实例改写为 `-1`，只改时长、保留层数/粒子/图标位；判据用超长阈值而非效果清单 ⇒ 本模组最大合法有限时长 24000 tick（`RenShieldManager` 护盾 / 抗性刷新窗口;其余 ≤ 3600）、相差约 4.6 个数量级，双态效果 2400 tick 亦不受影响）。**验证**：三线 `build` SUCCESSFUL 且产物落地（实测 jar 内 `PlayerTickEvents` 含新方法、forge jar 含新标签文件、配方 JSON 已为 `forge:bricks`）；三线 jar 时间戳一致并已自动推送至各自整合包。 ⚠️ **未做**：进世界的视觉确认（∞ 是否如期显示）。⚠️ **Fabric 线未同步本批**（按其「独立批次」口径）。 |
+| 2026-10-04 | **新增 KI-F25**（fabric 追平探针首跑发现：KubeJS 共享全局作用域 ⇒ 探针须 IIFE；清 `astral_dice:` 效果须走库内部通道、裸调在效果不存在时抛 `CancellationException`；Rhino 禁反射 JDK `Class`；Fabric API 自带 `FakePlayer` 可零前置但**不进 tick 循环**）。§1 计数 25 → 26（F 组 7 → 8）。 |
+| 2026-10-04 | **KI-E3 结案 + fabric 剩余 5 项待办全部完成**（同一批）：① 三守门脚本的 `LINES` 纳入 `fabric-1.20.1`（`tools/audit_mixin_injection.py` / `tools/audit_actionbar.py` / `tools/check_lang_sync.ps1`），纳入前先修掉它暴露的真实滞后 —— 11 个 `msg.astral_dice.*` 键 × 三语的值内嵌 `§`（对齐三项 P0 线）+ `client/TargetSelectionClient#notifyHeldSelectorBlocked` 由裸 `displayClientMessage(...,true)` 改走库 `ActionBarManager.show(..., RED)`；实测三脚本 **硬违规 0 / PASS / exit=0**。② **Modern UI 提示框边框兼容**（取证 Fabric 版 `ModernUI-Fabric-1.20.1-3.12.0.1`，字段与 P0 同名同型）⇒ 新增 `client/ModernUITooltipCompat` + `ClientTooltipBridgeMixin` 的 HEAD/RETURN 接线 + `ModCommonConfig` 开关（`CONFIG_VERSION` 5→6）。③ **近战黑名单四项**（剪刀/钓竿/打火石/刷子）。④ `DiceCombatEvents#onLivingDamagePre` 的计时器启表口径**对齐 P0**（前移 + `source.getEntity()`）。⑤ 新增 **fabric 追平探针** `scripts/test/fabric/astral_catchup_probe.js`（`/astralcatchup`，用 Fabric API 自带 `FakePlayer` ⇒ 零前置、无人值守）+ 用例 `FAB-CATCHUP-PARITY`。§1 计数 26 → **25**（E 组 3 → 2）。 |

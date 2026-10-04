@@ -3,6 +3,7 @@ package com.merlinkitsune.astral_dice.mixin.bridge;
 import java.util.List;
 
 import com.merlinkitsune.astral_dice.client.IcebergTooltipCacheGuard;
+import com.merlinkitsune.astral_dice.client.ModernUITooltipCompat;
 import com.merlinkitsune.astral_dice.platform.client.TooltipFrameColors;
 import com.merlinkitsune.astral_dice.platform.client.event.RenderTooltipEvent;
 import com.merlinkitsune.astral_dice.platform.event.LoaderBus;
@@ -60,12 +61,19 @@ public abstract class ClientTooltipBridgeMixin {
             at = @At("HEAD"))
     private void astralDice$pushTooltipStack(Font font, ItemStack stack, int x, int y, CallbackInfo ci) {
         TooltipFrameColors.pushStack(stack);
+        // Modern UI(第三方提示框模组)兼容:把本模组档位色写入它的描边槽(未装则空操作)。
+        // ⚠️ **必须写在这里** —— Modern UI 会在本方法的内层自绘并取消原版绘制,
+        //    写晚了(例如写进 renderTooltipInternal)在它接管时根本不会被执行。
+        ModernUITooltipCompat.beginRender(stack);
     }
 
     @Inject(
             method = "renderTooltip(Lnet/minecraft/client/gui/Font;Lnet/minecraft/world/item/ItemStack;II)V",
             at = @At("RETURN"))
     private void astralDice$popTooltipStack(Font font, ItemStack stack, int x, int y, CallbackInfo ci) {
+        // 先还原 Modern UI 的描边配置(它已在本方法内画完;它取消的是内层方法,外层必然返回),
+        // 再清理共用颜色槽。顺序不可颠倒。
+        ModernUITooltipCompat.endRender();
         TooltipFrameColors.clear();
     }
 
