@@ -127,9 +127,12 @@ public class ModItems {
     //   彩虹(流动)   = 奇特 → AstralRarities.bizarre()   扩展常量 ASTRAL_DICE_BIZARRE
     //                 ⚠️ 奇特文字色 = 亮红(与巅峰同色 #FF4D4D);流动彩虹只在边框上(见下一行);
     //                    边框策略(2026-10-01 三次修订):稀有随原版不干预;史诗/传奇/巅峰=档位单色(史诗=#FF55FF)、
-    //                    奇特=两色流动渐变。⚠️ **本线(26.1.2)不接边框染色**:该线边框是九宫格贴图、平台没有颜色
-    //                    事件(ClientHooks#onRenderTooltipTexture 给的是贴图 ID)⇒ 保持原版贴图,与另三线的
-    //                    RenderTooltipEvent.Color 方案按平台差异登记。
+    //                    奇特=两色流动渐变。⚠️ **本线(26.1.2)的原生路径不接边框染色**:该线边框是九宫格贴图、
+    //                    平台只有 RenderTooltipEvent.Texture(贴图 ID)而没有颜色事件(1.21.1 的
+    //                    RenderTooltipEvent.Color 已被取代)⇒ **不装第三方提示框模组时保持原版贴图**。
+    //                    但**装了 Modern UI 时由兼容层接管**:Modern UI 自绘整个提示框(实测有 26.1.2 构建,
+    //                    UIManagerForge 的接管链与 1.21.1 同构),其 TooltipRenderer 的 sStrokeColor 就是边框色槽
+    //                    ⇒ 见 client/ModernUITooltipCompat(该线**唯一**的档位边框染色途径;2026-10-04 落地)。
     // 机制:库里的 item.Rarity 是**唯一色码权威**,其平台接线把这 5 档**扩展进原版 Rarity**
     //   (NeoForge 两线 = 本 mod 的 META-INF/enumextensions.json + 库 AstralRarities 的 EnumProxy 字段;
     //    Forge 1.20.1 = 库 AstralRarities 静态初始化里的 Rarity.create + IExtensibleEnum)

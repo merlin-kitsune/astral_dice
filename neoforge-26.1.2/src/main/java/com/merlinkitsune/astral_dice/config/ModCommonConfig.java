@@ -24,12 +24,20 @@ import net.neoforged.neoforge.common.ModConfigSpec;
  * 这两项移出配置文件、改为固定常量,以让新值对**所有玩家强制生效**(已装的旧配置不会采纳新默认值)」。
  */
 public final class ModCommonConfig {
-    public static final int CONFIG_VERSION = 5;
+    public static final int CONFIG_VERSION = 6;
 
     public static final ModConfigSpec SPEC;
 
     public static final ModConfigSpec.BooleanValue GIVE_GUIDE_BOOK_ON_FIRST_JOIN;
     public static final ModConfigSpec.BooleanValue ALLOW_FIREARM_DAMAGE;
+    /**
+     * Modern UI 提示框边框兼容层开关(**仅客户端渲染项**,实现见 {@code client/ModernUITooltipCompat})。
+     *
+     * <p>放在 COMMON 配置里而不是新建 CLIENT 配置:本仓此前没有客户端配置,为一个渲染开关引入新的配置文件与
+     * 注册流程收益不足;渲染发生在客户端,客户端读到的就是本机文件里的值,不存在「服务端与客户端不一致」问题。
+     * 系统属性 {@code -Dastral_dice.modernUITooltipCompat=false} 优先级更高,可绕过本配置整体停用。
+     */
+    public static final ModConfigSpec.BooleanValue MODERNUI_TOOLTIP_FRAME_COMPAT;
     public static final ModConfigSpec.BooleanValue EVENT_APPLY_MC_TEAM;
     public static final ModConfigSpec.BooleanValue EVENT_APPLY_FTB_TEAM;
     public static final ModConfigSpec.BooleanValue EVENT_APPLY_OPAC;
@@ -73,6 +81,16 @@ public final class ModCommonConfig {
                         "false = 屏蔽枪弹/炮弹等军火类伤害,不计入法伤(与既有行为一致);",
                         "true = 允许伤害类型或弹丸类名关键词命中的军火类伤害进入法伤白名单判定")
                 .define("allow_firearm_damage", false);
+
+        // Modern UI 提示框边框兼容(仅客户端渲染,实现见 client/ModernUITooltipCompat)。
+        // 背景:Modern UI 开启『现代提示框』后由它自己绘制整个提示框并在 RenderTooltipEvent.Pre 里取消原版渲染
+        // ⇒ 任何「按原版路径写色」的方案都不会执行到;本线(26.1.2)平台只提供 RenderTooltipEvent.Texture(贴图 id)、
+        // 没有颜色事件 ⇒ **本层是该线唯一的档位边框染色途径**(2026-10-04 取证 Modern UI 有 26.1.2 构建)。
+        MODERNUI_TOOLTIP_FRAME_COMPAT = builder.comment("是否启用 Modern UI 提示框边框兼容(默认：true; 仅客户端渲染)",
+                        "true = 悬停本模组物品时按稀有度档位写入边框描边色(临时借用 Modern UI 的描边配置,该次渲染结束立即还原);",
+                        "false = 不介入,本模组物品在 Modern UI 下沿用其自身的边框配色;",
+                        "多个第三方提示框模组同时存在时,本项只对 Modern UI 生效")
+                .define("modernui_tooltip_frame_compat", true);
 
         builder.push("event_system").comment("=== 事件系统 ===");
         EVENT_APPLY_MC_TEAM = builder.comment("事件是否作用于 Minecraft 同队玩家")

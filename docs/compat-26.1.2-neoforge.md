@@ -314,6 +314,16 @@ src/generated/clientResources/   ← runClientData（assets/…：items 123 + mo
   （探针 `/astralprobe econ <tag>`）承担 —— **实机已 PASS（2026-10-04）**：12/12 断言通过，
   机器行 `AP_E1_ECON:available=1:before=<n>:set_ok=1:after_set=4321:restore_ok=1:after_restore=<n>`，
   无 `AP_*_ERR` / `AP_*_EX` / crash。**三层证据齐备 ⇒ 本条结案。**
+- ✅ **Modern UI 提示框边框兼容已落地（2026-10-04；更正此前「本线无该机制 ⇒ 平台差异，不做兼容层」的登记）**：
+  该线**原生**路径确无颜色事件（1.21.1 的 `RenderTooltipEvent.Color` 在 26.1.2 已被 **`Texture`** 取代 ——
+  `javap` 实证 26.1.2.109 的 `RenderTooltipEvent` 只有 `Pre` / `GatherComponents` / `Texture`），但
+  **Modern UI 本身有 26.1.2 构建**（Modrinth `modern-ui` 的 `ModernUI-NeoForge-26.1.2-3.13.0.5-universal.jar`，
+  sha1 `1432b7e3…`），其 `icyllis.modernui.mc.neoforge.UIManagerForge` 的接管链与 1.21.1 **逐条同构**
+  （`HIGH` 自绘 + `LOW` `setCanceled(true)`），且 `TooltipRenderer` 的 `sStrokeColor`（`public static final int[]`）/
+  `sAdaptiveColors` / `sTooltip` **同名同型** ⇒ 新增 `client/ModernUITooltipCompat`（`HIGHEST` 写槽 +
+  `LOWEST` 且 `receiveCanceled=true` 还原 + 渲染本模组物品期间临时关 `sAdaptiveColors`）与配置开关
+  `modernui_tooltip_frame_compat`（`CONFIG_VERSION` 5→6）。**这是本线唯一的档位边框染色途径**
+  （不装 Modern UI 时仍沿用原版九宫格贴图）。
 
 
 1. **1.21.1 的 4088 行完整回归探针尚未迁移到 26.1.2**：现在只有迁移期最小探针

@@ -496,7 +496,7 @@ When extending this workspace:
 - **平台不存在该模组 ⇒ 该线该联动整体移除**（数据包、lang 键、手册条目、伤害类型 key、tooltip 分支一并删除）：
   - `neoforge-26.1.2`：**Iron's Spells 'n Spellbooks 与神秘遗物+（`enigmaticlegacyplus`）均已移除**（2026-10-04 二次清理，口径无例外）；
   - `fabric-1.20.1`：**Iron's Spells 'n Spellbooks 与神秘遗物均已移除**。
-- **平台存在的模组联动一律保留**：`patchouli` / `waystones` / `curios`（P0 + 26.1.2）/ `bountiful` / `trinkets` + `accessories`（fabric）/ **Modern UI**（forge + 1.21.1 + fabric；26.1.2 无对应机制 ⇒ 已登记平台差异）。
+- **平台存在的模组联动一律保留**：`patchouli` / `waystones` / `curios`（P0 + 26.1.2）/ `bountiful` / `trinkets` + `accessories`（fabric）/ **Modern UI**（**四线均已适配**：P0 两线 + fabric 走 `RenderTooltipEvent.Color` 方案；26.1.2 平台只提供 `RenderTooltipEvent.Texture`、无颜色事件 ⇒ 改为对接 Modern UI 自身的 `TooltipRenderer#sStrokeColor`，见 `client/ModernUITooltipCompat`）。
 
 ### 四、逐项对照清单（移植作业索引）
 
