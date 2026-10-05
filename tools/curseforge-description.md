@@ -26,10 +26,10 @@ Equip a dice and every melee attack becomes a roll of fate: trigger the **Dice B
 
 | Build | Minecraft | Loader | Java | Current version |
 |---|---|---|---|---|
-| `astral_dice-<version>+neoforge_1.21.1.jar` | 1.21.1 | NeoForge 21.1.235+ | 21 | **1.3.6** |
-| `astral_dice-<version>+forge_1.20.1.jar` | 1.20.1 | Forge 47.4.10+ | 17 | **1.3.6** |
-| `astral_dice-<version>+neoforge_26.1.2.jar` | 26.1.2 | NeoForge 26.1.2.109+ | 25 | **1.3.6-beta.1** |
-| `astral_dice-<version>+fabric_1.20.1.jar` | 1.20.1 | Fabric Loader 0.19.5+ | 17 | **1.3.6-alpha.1** |
+| `astral_dice-<version>+neoforge_1.21.1.jar` | 1.21.1 | NeoForge 21.1.235+ | 21 | **1.3.7-hotfix** |
+| `astral_dice-<version>+forge_1.20.1.jar` | 1.20.1 | Forge 47.4.10+ | 17 | **1.3.7-hotfix** |
+| `astral_dice-<version>+neoforge_26.1.2.jar` | 26.1.2 | NeoForge 26.1.2.109+ | 25 | **1.3.7-beta.2** |
+| `astral_dice-<version>+fabric_1.20.1.jar` | 1.20.1 | Fabric Loader 0.19.5+ | 17 | **1.3.7-alpha.2** |
 
 The 1.21.1 / 1.20.1 builds are the release lines. The 26.1.2 build is the migration line (beta channel). The 1.20.1 **Fabric** build is the port line (alpha channel) and uses a **different prerequisite set** — see below.
 
@@ -43,7 +43,7 @@ Installed automatically by the launcher from the dependency relations on each fi
 
 ### Bundled — do NOT install separately
 
-**StarEngine Lib** is **bundled inside this mod** (embedded **1.0.11** on **all four** builds — 1.21.1 / 1.20.1 / 26.1.2 / Fabric; the Fabric build's library version was aligned to the same number on 2026-10-03) — the loader picks the embedded copy up at startup.
+**StarEngine Lib** is **bundled inside this mod** (embedded **1.0.12** on **all four** builds — 1.21.1 / 1.20.1 / 26.1.2 / Fabric; the Fabric build's library version was aligned to the same number on 2026-10-03) — the loader picks the embedded copy up at startup.
 
 **Do not drop a standalone `starengine_lib-*.jar` into your `mods` folder.** The loader de-duplicates by mod id and prefers the loose file, so an older copy would shadow the bundled one. (The library's own repository publishes source only — there is no jar to download there.)
 
@@ -89,10 +89,10 @@ Suggested one-line **Summary** for the project header:
 
 | 构建 | Minecraft | 加载器 | Java | 当前版本 |
 |---|---|---|---|---|
-| `astral_dice-<版本>+neoforge_1.21.1.jar` | 1.21.1 | NeoForge 21.1.235+ | 21 | **1.3.6** |
-| `astral_dice-<版本>+forge_1.20.1.jar` | 1.20.1 | Forge 47.4.10+ | 17 | **1.3.6** |
-| `astral_dice-<版本>+neoforge_26.1.2.jar` | 26.1.2 | NeoForge 26.1.2.109+ | 25 | **1.3.6-beta.1** |
-| `astral_dice-<版本>+fabric_1.20.1.jar` | 1.20.1 | Fabric Loader 0.19.5+ | 17 | **1.3.6-alpha.1** |
+| `astral_dice-<版本>+neoforge_1.21.1.jar` | 1.21.1 | NeoForge 21.1.235+ | 21 | **1.3.7-hotfix** |
+| `astral_dice-<版本>+forge_1.20.1.jar` | 1.20.1 | Forge 47.4.10+ | 17 | **1.3.7-hotfix** |
+| `astral_dice-<版本>+neoforge_26.1.2.jar` | 26.1.2 | NeoForge 26.1.2.109+ | 25 | **1.3.7-beta.2** |
+| `astral_dice-<版本>+fabric_1.20.1.jar` | 1.20.1 | Fabric Loader 0.19.5+ | 17 | **1.3.7-alpha.2** |
 
 1.21.1 / 1.20.1 两个是**发布线**；26.1.2 是**迁移线**（beta 渠道）；1.20.1 **Fabric** 是**移植线**（alpha 渠道），用的**前置是另一套**（见下）。
 
@@ -106,7 +106,7 @@ Suggested one-line **Summary** for the project header:
 
 ### 已内嵌 · 请勿单独安装
 
-**StarEngine Lib 已内嵌进本模组**（1.21.1 / 1.20.1 / 26.1.2 / **Fabric 四条线均内嵌 `1.0.11`** —— Fabric 线的库版本已于 2026-10-03 对齐为与另三线相同的号），加载器启动时会自动载入内嵌副本。
+**StarEngine Lib 已内嵌进本模组**（1.21.1 / 1.20.1 / 26.1.2 / **Fabric 四条线均内嵌 `1.0.12`** —— Fabric 线的库版本已于 2026-10-03 对齐为与另三线相同的号），加载器启动时会自动载入内嵌副本。
 
 **请勿**再往 `mods` 里单独放 `starengine_lib-*.jar` —— 加载器按 modId 去重时优先采用散装文件，更旧的副本会盖掉内嵌库。（库仓本身只提供源码，没有 jar 可下载。）
 

@@ -27,24 +27,25 @@ Astral Dice 是一个以「骰子」为核心的生存扩展模组。戴上骰�
 - 事件系统：大侦探、调查员、秘密侦探等立牌联动
 - Bountiful 赏金板联动
 
-## 本版更新（1.3.3）
+## 本版更新（1.3.7）
 
-- **九项平衡与技能调整**：风水师「完美帮手」把目标的「养精蓄锐」直接补满到 5 层；「白泽赐福」与「降神」的 2:00 倒计时改为「任意攻击命中」即可启动（此前限近战）；教主「降神」的狐光追加改为独立的「追击」额外伤害；秘密侦探「调查阶段」的原版隐身整体替换为新效果「隐匿」；命运的指引新增「战斗骰点始终为 6」；岿然不动与蓄力的文案精简；史莱姆立牌移除主动技能的范围治疗；大碗炖肉不再治疗友方生物、治愈点由 1 提到 2。
-- **四个「受击类」效果收紧为「只有敌对目标的攻击才触发」**：缓冲盾牌、鼠鼠护盾的「反击」、史莱姆立牌「细胞分裂」、吸血鬼立牌的「汲取」—— 此前摔落 / 仙人掌 / 着火等环境伤害与自伤同样能触发（可白刷收益），现在只有敌对目标的攻击才算。
-- **动作栏（ActionBar）修复**：补齐两条缺失的提示文案；清除 11 条文案内嵌色码造成的「前半黄、后半灰」断层；拒绝类提示统一为红色；安全气囊 / 钱包 / 卡牌栏 / 客户端「出牌数已用完」四处从原版覆盖层合并回模组动作栏。
+- **治疗 / 功能类效果牌现在可指定「非敌对生物」**：狂暴、奢华大餐、加急加快三张牌可指定 16 格内的玩家、已驯服的宠物（狼 / 猫 / 鹦鹉）、被动家畜、村民与中立生物（未驯服的狼 / 铁傀儡 / 北极熊 / 蜜蜂）；只有原版敌对生物不可选。奢华大餐对亡灵改为造成等量魔法伤害，与「原版治疗药水」一致。
+- **近战武器判定改回「黑名单」**：骰神赐福的「近战武器攻击」闸门现在只排除 空手 / 盾牌 / 远程专用物品（弓 / 弩 / 弹弓）/ 方块 / 枪械本体 / 非武器工具（剪刀 / 钓竿 / 打火石 / 刷子），其余一律计入 —— 包括全部挖掘工具（镐 / 锹 / 锄 / 斧）与不继承 `SwordItem` 的第三方武器。两口「饕餮之锅」加入显式白名单（其中一口本身是方块）。
+- **主动技能键不再参与「目标选择器」**：选择会话进行中，按主动技能键（默认 `J`）照常释放立牌主动技能，不再被当作「收起选择」；取消改由 右键 / 下蹲 + 右键 / ESC 菜单 / 超时 承担。同时修正「有黄心（吸收心）时 ActionBar 与物品名提示重叠」—— 现在会随状态条一起上抬。
+- 其他修复：军火伤害不再被误判为远程 / 魔法伤害；激光与爆炸类伤害补入判定表；活体书页堆叠；「现代化 UI」下的稀有度边框色；医疗箱筹码不再能靠重登 / 切换维度刷血；游戏内手册中两枚立牌的稀有度档位写错。
 - 完整清单见 [Releases 页面的发布说明](https://github.com/merlin-kitsune/astral_dice/releases)。
 ## 支持版本 / 环境要求
 
 | 支持 | 子项目 | Minecraft | 加载器 | Java | 当前模组版本 | 帕秋莉手册 |
 |---|---|---|---|---|---|---|
-| ✅ | `neoforge-1.21.1` | 1.21.1 | NeoForge 21.1.235 | 21 | 1.3.6 | ✅ |
-| ✅ | `forge-1.20.1` | 1.20.1 | Forge 47.4.10 | 17 | 1.3.6 | ✅ |
-| ✅ | `neoforge-26.1.2` | 26.1.2 | NeoForge 26.1.2.109 | 25 | 1.3.6-beta.1 | ✅ |
-| ✅ | `fabric-1.20.1` | 1.20.1 | Fabric Loader 0.19.5 | 17 | 1.3.6-alpha.1 | ✅ |
+| ✅ | `neoforge-1.21.1` | 1.21.1 | NeoForge 21.1.235 | 21 | 1.3.7-hotfix | ✅ |
+| ✅ | `forge-1.20.1` | 1.20.1 | Forge 47.4.10 | 17 | 1.3.7-hotfix | ✅ |
+| ✅ | `neoforge-26.1.2` | 26.1.2 | NeoForge 26.1.2.109 | 25 | 1.3.7-beta.2 | ✅ |
+| ✅ | `fabric-1.20.1` | 1.20.1 | Fabric Loader 0.19.5 | 17 | 1.3.7-alpha.2 | ✅ |
 
 - `neoforge-1.21.1` 与 `forge-1.20.1` 是**发布线**（功能对等，两者的 jar 随每个 GitHub Release 发布）。
 - `neoforge-26.1.2` 是**迁移线**（2026-09-19 起已纳入主线、与另两线同级同步；2026-09-22 起由客户端实验性支持转为**正式迁移线**）：**不单独打 tag / 发 Release**，但其 jar 作为**第三个附件随发布线的 Release 一并发布**（CI 三线同批构建，见 `.github/workflows/build.yml`）。该线**无** Iron's Spells 'n Spellbooks 联动（上游无 26.1.x 构建）。
-- `fabric-1.20.1` 是 **Fabric 移植线**（2026-09-29 接入；2026-10-01 作为第四个子项目并入 `multi-main`，原独立分支与独立工作树均已移除）。其版本号**独立维护并一律带 `-alpha.x` 预发布后缀**（当前 `1.3.6-alpha.1`）—— 与 26.1.2 线的 `-beta.x` 是同一套安排：预发布线**永不占用**发布线的裸版本号。该线**单独发一个 `fabric-<版本>` 预发布 Release**，其 jar **绝不**混入发布线的 Release。⚠️ 它的前置是**另一套**（见下表），且**无** Curios / Bountiful / Iron's Spells 'n Spellbooks 联动。
+- `fabric-1.20.1` 是 **Fabric 移植线**（2026-09-29 接入；2026-10-01 作为第四个子项目并入 `multi-main`，原独立分支与独立工作树均已移除）。其版本号**独立维护并一律带 `-alpha.x` 预发布后缀**（当前 `1.3.7-alpha.2`）—— 与 26.1.2 线的 `-beta.x` 是同一套安排：预发布线**永不占用**发布线的裸版本号。该线**单独发一个 `fabric-<版本>` 预发布 Release**，其 jar **绝不**混入发布线的 Release。⚠️ 它的前置是**另一套**（见下表），且**无** Curios / Bountiful / Iron's Spells 'n Spellbooks 联动。
 
 | 前置/联动 | 要求 |
 |---|---|
@@ -78,10 +79,10 @@ Fabric 移植线用的是**另一套前置** —— 发布线的 Curios / Mixin 
 
 - **发布页**：[GitHub Releases](https://github.com/merlin-kitsune/astral_dice/releases)（每个版本附**三个** jar：发布线两个 + 26.1.2 的 `-beta` jar）
 - **Fabric 移植线**：单独发一个**预发布（pre-release）** `fabric-<版本>`（标记为 pre-release、不占「Latest」位），附件**只有它自己那一个** jar —— 刻意与发布线的 Release 分开，避免被当成正式版下载
-- **Modrinth**：四个构建同批发布到主项目（id `5xDtrJ8X`）；内嵌的前置库 **StarEngine Lib** 发布到**它自己的**项目（id `2dIXA5wO`）—— 库产物绝不混进本模组的项目。Modrinth 上的版本号保留 `+<加载器>_<MC版本>` 后缀（如 `1.3.6+neoforge_1.21.1`），四条线因此可区分；发布渠道由版本号后缀决定（`-alpha` → alpha、`-beta` → beta、其余 → release）。⚠️ 库项目上的 jar 是为了让 `embedded` 依赖引用可解析而发布的，**请勿单独安装**：库已内嵌于本模组，加载器按 modId 去重时优先采用独立那份 ⇒ 独立副本会盖掉内嵌库
+- **Modrinth**：四个构建同批发布到主项目（id `5xDtrJ8X`）；内嵌的前置库 **StarEngine Lib** 发布到**它自己的**项目（id `2dIXA5wO`）—— 库产物绝不混进本模组的项目。Modrinth 上的版本号保留 `+<加载器>_<MC版本>` 后缀（如 `1.3.7+neoforge_1.21.1`），四条线因此可区分；发布渠道由版本号后缀决定（`-alpha` → alpha、`-beta` → beta、其余 → release）。⚠️ 库项目上的 jar 是为了让 `embedded` 依赖引用可解析而发布的，**请勿单独安装**：库已内嵌于本模组，加载器按 modId 去重时优先采用独立那份 ⇒ 独立副本会盖掉内嵌库
 - 支持平台：Minecraft 1.21.1 / NeoForge、1.20.1 / Forge（发布线）；Minecraft 26.1.2 / NeoForge（迁移线，不单独发 Release，jar 随发布线 Release 附带）；Minecraft 1.20.1 / Fabric（移植线，单独预发布、不与发布线 Release 混装）
 - 前置：Curios API（1.20.1 另需 Mixin 运行时：Mixin Booster ≥0.1.3 **或** Sinytra Connector，二选一）。**StarEngine Lib 已内嵌于本模组，无需单独安装**；库仓本身**只提供源码**（不提供 jar 下载）。**Fabric 线是另一套前置** —— **Fabric Loader 0.19.x + Fabric API + Puzzles Lib（+ Forge Config API Port）**，再加 **Trinkets 或 Accessories 二选一**；Curios 与 Mixin 运行时在本线**不适用**（详见上方「Fabric（1.20.1）前置一览」）
-- 构建产物：`neoforge-1.21.1/build/libs/astral_dice-<版本>+neoforge_1.21.1.jar`、`forge-1.20.1/build/libs/astral_dice-<版本>+forge_1.20.1.jar`、`neoforge-26.1.2/build/libs/astral_dice-<版本>+neoforge_26.1.2.jar`、`fabric-1.20.1/build/libs/astral_dice-<版本>+fabric_1.20.1.jar`；GitHub Release 的 tag 使用无后缀的基础版本号（如 `1.3.5`），Fabric 移植线则用 `fabric-<版本>` 预发布 tag
+- 构建产物：`neoforge-1.21.1/build/libs/astral_dice-<版本>+neoforge_1.21.1.jar`、`forge-1.20.1/build/libs/astral_dice-<版本>+forge_1.20.1.jar`、`neoforge-26.1.2/build/libs/astral_dice-<版本>+neoforge_26.1.2.jar`、`fabric-1.20.1/build/libs/astral_dice-<版本>+fabric_1.20.1.jar`；GitHub Release 的 tag 使用无后缀的基础版本号（如 `1.3.7`），Fabric 移植线则用 `fabric-<版本>` 预发布 tag
 
 ## 构建
 

@@ -29,10 +29,16 @@ Optional: **Patchouli** (in-game manual). There is no Fabric build of Bountiful 
   nothing - that is normal, it is waiting for your target.)
 - **Embedded prerequisite library bumped to `1.0.12`** (embedded - **do NOT** install it separately).
 
-- **Cleaned up two spots of text on the Game Master Sign**: the Mouse Shield status note said "(no icon)"
+- **Cleaned up three spots of text on the Game Master Sign**: the Mouse Shield status note said "(no icon)"
   even though the effect does show an icon in the status bar (self-contradictory) - removed; the sign's
-  item tooltip also dropped its "(absorption)" and trailing "(your red hearts are unaffected)" notes.
-  Text only - nothing about the effect changed.
+  item tooltip also dropped its "(absorption)" and trailing "(your red hearts are unaffected)" notes, and the
+  in-game guide entry lost its trailing "(your red hearts are unaffected)" as well (the "5 yellow hearts =
+  10 absorption" conversion stays). Text only - nothing about the effect changed.
+
+- **The English "Nancy Lu Sign" tooltip was missing a number**: its active skill grants **twice the consumed
+  card's cost** as attack (minimum +2) for 2:00 - the Chinese and Japanese texts both say so, but the English
+  text read "equal to that card's cost", **half the real value**. Fixed. Text only - nothing about the effect
+  changed.
 ## Changes in this version
 
 This is a **catch-up** release for this line: the decisions and fixes that were previously live only on the stable

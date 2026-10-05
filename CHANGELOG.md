@@ -34,9 +34,17 @@
 
 - **Game Master Sign wording cleanup** (2026-10-05, all four lines x three languages): removed the
   **self-contradictory** "(no icon)" from the status-effect description
-  `effect.astral_dice.ren_shield.description` (the effect does show an icon in the status bar), and dropped
-  the "(§e10§7 absorption)" and "(your red hearts are unaffected)" notes from the sign tooltip
-  `tooltip.astral_dice.sign.ren_active`. Text only - numbers and gameplay are unchanged.
+  `effect.astral_dice.ren_shield.description` (the effect does show an icon in the status bar), dropped the
+  "(§e10§7 absorption)" and "(your red hearts are unaffected)" notes from the sign tooltip
+  `tooltip.astral_dice.sign.ren_active`, and dropped the trailing "(your red hearts are unaffected)" from the
+  guide entry `astral_dice.guide.entry.ren_sign.1` (the "5 yellow hearts = 10 absorption" conversion is kept).
+  Text only - numbers and gameplay are unchanged.
+
+- **Fixed the English "Nancy Lu Sign" tooltip missing its "×2"** (2026-10-05, all four lines): this sign's
+  active skill consumes one random battle card and grants **twice that card's cost** as attack (minimum +2)
+  for 2:00 (`ACTIVE_BONUS_MULTIPLIER = 2`) - the Chinese and Japanese texts both say so, but the English text
+  had always read "attack equal to that card's cost", **halving the stated value**. The "×2" is now restored.
+  Text only - numbers and gameplay are unchanged.
 ### Engineering
 - **Hardened recursion guards for spread damage (all four lines)**: `DiceCombatEvents`' internal AoE
   window went from the **boolean** `aoeProcessing` to a **depth counter** `aoeDepth` plus
