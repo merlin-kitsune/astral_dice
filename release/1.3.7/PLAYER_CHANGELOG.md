@@ -19,6 +19,10 @@ Note! On 1.20.1 the Mixin runtime is **Mixin Booster >=0.1.3** **or** **Sinytra 
   (This only affects the 1.21.1 and 26.1.2 builds; the two 1.20.1 builds have no such shifting mechanism
   and are unchanged.)
 
+- **Cleaned up two spots of text on the Game Master Sign**: the Mouse Shield status note said "(no icon)"
+  even though the effect does show an icon in the status bar (self-contradictory) - removed; the sign's
+  item tooltip also dropped its "(absorption)" and trailing "(your red hearts are unaffected)" notes.
+  Text only - nothing about the effect changed.
 ## Content & Balance Changes
 
 - **"Usable on others" healing / utility cards can now target non-hostile creatures**: the target selectors of **Berserk**, **Luxury Feast** and **Express Delivery** could previously only pick players; they can now pick **any non-hostile creature within 16 blocks** - players, tamed pets (wolf / cat / parrot), passive livestock, villagers, and **neutral mobs such as untamed wolves / iron golems / polar bears / bees**. NOTE: **only vanilla hostile mobs are not selectable** (zombie / skeleton / pillager / enderman / piglin ...). NOTE: right-click still uses the card on yourself. NOTE: a creature target now **actually receives the effect** (this also fixes "using the card on a creature did nothing").

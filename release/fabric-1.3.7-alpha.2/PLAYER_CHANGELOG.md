@@ -29,6 +29,10 @@ Optional: **Patchouli** (in-game manual). There is no Fabric build of Bountiful 
   nothing - that is normal, it is waiting for your target.)
 - **Embedded prerequisite library bumped to `1.0.12`** (embedded - **do NOT** install it separately).
 
+- **Cleaned up two spots of text on the Game Master Sign**: the Mouse Shield status note said "(no icon)"
+  even though the effect does show an icon in the status bar (self-contradictory) - removed; the sign's
+  item tooltip also dropped its "(absorption)" and trailing "(your red hearts are unaffected)" notes.
+  Text only - nothing about the effect changed.
 ## Changes in this version
 
 This is a **catch-up** release for this line: the decisions and fixes that were previously live only on the stable

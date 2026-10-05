@@ -32,6 +32,11 @@
   NOTE: **`forge-1.20.1` / `fabric-1.20.1` are unchanged** - vanilla 1.20.1 has no such mechanism, so this
   is a **registered platform difference**.
 
+- **Game Master Sign wording cleanup** (2026-10-05, all four lines x three languages): removed the
+  **self-contradictory** "(no icon)" from the status-effect description
+  `effect.astral_dice.ren_shield.description` (the effect does show an icon in the status bar), and dropped
+  the "(§e10§7 absorption)" and "(your red hearts are unaffected)" notes from the sign tooltip
+  `tooltip.astral_dice.sign.ren_active`. Text only - numbers and gameplay are unchanged.
 ### Engineering
 
 - **Prerequisite library `starengine_lib` `1.0.11` -> `1.0.12`** (same number on all four platforms):

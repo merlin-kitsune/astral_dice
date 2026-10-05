@@ -25,6 +25,10 @@
   ⚠️ **`forge-1.20.1` / `fabric-1.20.1` 行为不变**：原版 1.20.1 无此机制（物品名与 actionbar 均为固定位置）
   ⇒ 属**平台差异**，已就地登记。
 
+- **游戏大师立牌的两处提示括注清理**（2026-10-05 用户裁决，四线 × 三语）：状态指示器说明
+  `effect.astral_dice.ren_shield.description` 删去**自相矛盾**的「（不显示图标）」（该效果在状态栏本就带图标）；
+  立牌 tooltip `tooltip.astral_dice.sign.ren_active` 删去「（10 点吸收）」与「（不会影响红心）」两处括注。
+  只改文案，效果数值与玩法不变。
 ### 工程
 
 - **前置库 `starengine_lib` `1.0.11` → `1.0.12`**（四平台同号）：`client/ActionBarManager` 在
