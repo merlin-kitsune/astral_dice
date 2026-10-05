@@ -4,7 +4,7 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
-## Unreleased (2.0.0-SNAPSHOT.26)
+## Unreleased (2.0.0-SNAPSHOT.27)
 
 ### New Content
 
@@ -215,6 +215,7 @@
   **that single use**, so unrelated ranged/magic damage (vanilla arrows, other mods' spells) no longer spreads.
   For **"Directional Blast"** the spread is computed **once, from its primary target only**, and resolved
   independently from the blast's own 6-block area damage — the two no longer trigger each other (no recursive damage).
+  **A target that has already taken one spread hit will not take it again**: targets inside the overlap with the blast's own 6-block area are resolved once only (the spread lands first and the blast only fills the outer ring), instead of relying on vanilla's hurt-invulnerability window to cancel the second hit by accident.
 
 - **The Cursed Sword chip's cumulative attack-bonus cap is raised from 16 to 32** (user ruling, 2026-10-02):
   while the chip is worn, killing a hostile target with at least 20 health grants a cumulative **+1** attack

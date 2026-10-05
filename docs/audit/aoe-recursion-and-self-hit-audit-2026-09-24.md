@@ -149,7 +149,7 @@ e -> DiceCombatEvents.isBlessingTarget(e, ctx.attacker)
 | `item/card/BaseEffectCardItem.java` | 新增 `isDamageEffectCard(ItemStack)`（伤害效果牌单一事实源） |
 | `item/chip/ElectricGloveChipItem.java` | `isDamageEffectCard` 改为委托 |
 | `item/chip/MagicQuiverChipItem.java` | 追踪只统计伤害效果牌；取消活体书页例外 |
-## 5. 2026-10-05：§3 的结构性脆弱点**已结构性修复**（随电击手套重写）
+## 7. 2026-10-05：§3 的结构性脆弱点**已结构性修复**（随电击手套重写）
 
 电击手套按用户裁决重写（见两份 `CHANGELOG` 的 `2.0.0-SNAPSHOT.26` 段与 `AGENTS.md`「筹码一览 → 电击手套」），
 **同时**把本文 §3 登记的隐患一并修掉：
@@ -166,3 +166,79 @@ e -> DiceCombatEvents.isBlessingTarget(e, ctx.attacker)
    扩散绑定在**该牌本次投出的那一次伤害**上（`DamageCardFxScheduler` / `LivingPageFlightScheduler` 的 `Pending#glovePaid`）。
 4. **定向爆破**：手套扩散只从其**主目标**算一次；爆破自身的 6 格 AOE 走独立结算段、**不带扩散窗口**
    ⇒ 不二次触发、不递归。
+
+---
+
+## 8. 2026-10-05（第二轮）：一次用量内**同一目标只吃一次扩散/波及**（新增结构性去重）
+
+用户裁决：「**已经吃到一次溅伤的目标应避免重复吃**」。核查后发现这是一条**真实存在、只是恰好被掩盖**
+的重复结算路径 —— 与 §3 同属「保证建立在可变事实上」的同类隐患。
+
+### 8.1 路径（定向爆破 + 电击手套）
+
+同一次用量里有**两条独立枚举**，锚点相同（都是那张牌的主目标）、半径 **3 ⊂ 6** ⇒ **交集必非空**：
+
+| # | 枚举 | 位置 | 半径 | 伤害类型 |
+|---|---|---|---|---|
+| ① | 电击手套扩散 | `combat/SpellDamageRegistry` 手套修饰器 `onHit`（**在** ② 的主目标 `hurt` 内部同步跑完） | `AOE_RADIUS = 3` | `astral_dice:true_damage` |
+| ② | 定向爆破自身 AOE | `combat/DamageCardFxScheduler#resolveBlast` | `BLAST_RADIUS = 6` | `astral_dice:card_spell` |
+
+其余三张 FX 牌（激光 / 板砖 / 轨道炮）与活体书页都只有**一条**枚举 ⇒ 不受影响。
+
+### 8.2 为什么此前「看起来没事」（实证）
+
+原版 `LivingEntity#hurt`（NeoForge 1.21.1 源码 `LivingEntity.java:1190-1206`，四线同形）：
+
+```java
+if ((float)this.invulnerableTime > 10.0F && !source.is(DamageTypeTags.BYPASSES_COOLDOWN)) {
+    if (amount <= this.lastHurt) { this.damageContainers.pop(); return false; }   // ← 整段丢弃
+    ... this.actuallyHurt(source, amount - this.lastHurt);                        // ← 只结算差额
+} else {
+    this.lastHurt = amount;
+    this.invulnerableTime = ...postAttackInvulnerabilityTicks...;
+    this.actuallyHurt(source, amount);
+}
+```
+
+四线标签实测（`data/minecraft/tags/damage_type/bypasses_cooldown.json`）：
+
+| 伤害类型 | 在 `bypasses_cooldown` 内 | 后果 |
+|---|---|---|
+| `astral_dice:true_damage`（手套扩散） | **是** | 走 `else` 分支 ⇒ **免疫无敌帧、永远全额落地**，并写 `lastHurt` / `invulnerableTime` |
+| `astral_dice:card_spell`（爆破 AOE） | **否** | `invulnerableTime > 10` 成立 ⇒ 第二次被**丢弃**（等值时）或**只结算差额**（更大时） |
+
+⇒ **当前「不翻倍」是「① 恰好免无敌帧 + ② 恰好不免 + 顺序恰好是 ①→②」三者共同作用的结果**，
+不是任何一条显式规则。等值伤害时第二次被整段丢弃（看起来"没重复吃"），一旦 `② > ①`
+（例：主目标受减伤而外围目标没有）就会**真的多吃一次差额**；若将来把 `card_spell` 也放进
+`bypasses_cooldown`（或给手套扩散换成不免无敌帧的类型），则**逐字翻倍**。
+
+### 8.3 修复（四线）
+
+新增**一次用量**级别的登记窗口，把「先到先得」显式化：
+
+- `combat/DiceCombatEvents#runAsCardSplashResolution(Runnable)` —— 开一个身份集合
+  （`IdentityHashMap` 支撑），**保存并恢复**原值 ⇒ 与 `runAsInternalAoe` 同款嵌套安全；
+  未开窗口时 `cardSplashResolved == null` ⇒ 登记**恒放行**（单枚举的牌行为完全不变）。
+- `combat/DiceCombatEvents#markCardSplashHit(Entity)` —— 登记一次扩散命中；
+  返回 `false` = 该目标本次用量内已吃过 ⇒ 调用方**必须跳过**。
+- `combat/DamageCardFxScheduler#resolveBlast` —— ① 主目标命中 + ② AOE 循环整体包进窗口；
+  ② 的循环体首行 `if (!markCardSplashHit(e)) continue;` ⇒ **①②的交集只结算一次**。
+- `combat/SpellDamageRegistry` 手套修饰器 —— 扩散循环同样登记（既为自己去重，
+  也让 ② 能看到"这个已经吃过"）。
+
+**语义取向**：手套扩散在 ① 的 `hurt` 内部同步完成 ⇒ 「先到」的必然是手套那一次，
+交集目标按**手套口径**结算（= 主目标实际承伤），爆破 AOE 只补 **3~6 格那一圈**
+（与用户 2026-10-05 首轮裁决「只从命中的主目标计算」一致）。
+
+### 8.4 产物级验证
+
+`javap -c` 反汇编 `build/libs/astral_dice-2.0.0-SNAPSHOT.27+*.jar`（四线同形）：
+
+```
+// SpellDamageRegistry$10#onHit(扩散循环)
+29: invokestatic  DiceCombatEvents.markCardSplashHit:(Lnet/minecraft/world/entity/Entity;)Z
+32: ifne  38        // 登记成功 ⇒ 正常结算
+35: goto  7         // 已登记 ⇒ 跳过该目标
+```
+
+`DamageCardFxScheduler` 内亦可见 `runAsCardSplashResolution` 与同样的 `ifne 38 / goto 7`。

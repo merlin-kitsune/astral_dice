@@ -361,23 +361,32 @@ public final class DamageCardFxScheduler {
         SoundPlayback.playAt(p.level, center.x, center.y, center.z, ModSounds.DIRECTIONAL_BLAST_HIT.get());
 
         int damage = BLAST_DAMAGE + SpellDamageRegistry.effectCardDamageBonus(p.caster);
-        // ① 选中目标(唯一允许电击手套扩散的那一次命中 —— 见 p.glovePaid)
-        applySpellDamageAmount(p.level, p.caster, p.target, damage, p.glovePaid);
-        // ② 半径内其他可命中目标（用法伤链同一闸门：敌对 ∪ 中立(宠物除外) ∪ 非同队玩家）
-        //    e != caster / e != target 显式排除（与改造前的口径逐字一致）
-        AABB aabb = p.target.getBoundingBox().inflate(BLAST_RADIUS);
-        List<LivingEntity> nearby = p.level.getEntitiesOfClass(LivingEntity.class, aabb,
-                e -> DiceCombatEvents.isBlessingTarget(e, p.caster) && e != p.target && e != p.caster && e.isAlive());
-        if (nearby.isEmpty()) return;
-        final DamageSource source = ModDamageTypes.cardSpell(p.level, p.caster);
-        // ⚠️ 本段刻意**不**走 applySpellDamageAmount ⇒ 不带 runAsGloveSplashInstance:
-        //    定向爆破自身的 6 格波及**不是**「电击手套付费的那一次主目标命中」⇒ 不二次触发手套扩散
-        //    (2026-10-05 用户裁决:手套只从命中的主目标算一次、与爆破自己的 AOE 各自独立结算,避免递归)。
-        DiceCombatEvents.runAsInternalAoe(() -> {
-            for (LivingEntity e : nearby) {
-                DamageNumberAggregator.tag(e, source, DamageNumberAggregator.Group.SPELL);
-                e.hurt(source, (float) damage);
-            }
+        // 2026-10-05 用户裁决「已经吃到一次溅伤的目标应避免重复吃」:本次用量开一个**扩散登记窗口**。
+        // ① 的主目标命中会先触发**电击手套的 3 格扩散**,被扩散到的目标登记进来
+        // (见 SpellDamageRegistry 的手套修饰器)⇒ ② 的 6 格 AOE **跳过**它们(3 ⊂ 6 ⇒ 交集必非空)。
+        // 顺序不能反:手套扩散是在 ① 的 hurt 内部同步跑完的,故「先到」的一定是手套那一次;
+        // 交集目标按手套口径结算(= 主目标实际承伤),② 只负责填 3~6 格那一圈。
+        DiceCombatEvents.runAsCardSplashResolution(() -> {
+            // ① 选中目标(唯一允许电击手套扩散的那一次命中 —— 见 p.glovePaid)
+            applySpellDamageAmount(p.level, p.caster, p.target, damage, p.glovePaid);
+            // ② 半径内其他可命中目标（用法伤链同一闸门：敌对 ∪ 中立(宠物除外) ∪ 非同队玩家）
+            //    e != caster / e != target 显式排除（与改造前的口径逐字一致）
+            AABB aabb = p.target.getBoundingBox().inflate(BLAST_RADIUS);
+            List<LivingEntity> nearby = p.level.getEntitiesOfClass(LivingEntity.class, aabb,
+                    e -> DiceCombatEvents.isBlessingTarget(e, p.caster) && e != p.target && e != p.caster && e.isAlive());
+            if (nearby.isEmpty()) return;
+            final DamageSource source = ModDamageTypes.cardSpell(p.level, p.caster);
+            // ⚠️ 本段刻意**不**走 applySpellDamageAmount ⇒ 不带 runAsGloveSplashInstance:
+            //    定向爆破自身的 6 格波及**不是**「电击手套付费的那一次主目标命中」⇒ 不二次触发手套扩散
+            //    (2026-10-05 用户裁决:手套只从命中的主目标算一次、与爆破自己的 AOE 各自独立结算,避免递归)。
+            DiceCombatEvents.runAsInternalAoe(() -> {
+                for (LivingEntity e : nearby) {
+                    // 手套 3 格扩散已经结算过的目标,本次 AOE 不再重复结算(先到先得)
+                    if (!DiceCombatEvents.markCardSplashHit(e)) continue;
+                    DamageNumberAggregator.tag(e, source, DamageNumberAggregator.Group.SPELL);
+                    e.hurt(source, (float) damage);
+                }
+            });
         });
     }
 

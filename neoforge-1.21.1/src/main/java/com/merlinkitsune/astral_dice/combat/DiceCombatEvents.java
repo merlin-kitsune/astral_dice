@@ -199,6 +199,42 @@ public class DiceCombatEvents {
         }
     }
 
+    // ── 「一次用量」内的扩散/波及**已结算目标**登记(2026-10-05 用户裁决) ───────────────────
+    // 同一次牌的结算里可能存在**两条独立枚举**:电击手套的 3 格扩散(在主目标命中内触发)与
+    // 定向爆破自身的 6 格 AOE(combat/DamageCardFxScheduler#resolveBlast)。两者锚点相同
+    // (都是那张牌的主目标)、且 3 ⊂ 6 ⇒ 交集必非空 ⇒ 交集目标会被交给 hurt() 两次。
+    // ⚠️ 这**不是**理论问题:此前只是「恰好」没翻倍 —— 手套扩散用 astral_dice:true_damage
+    //   (在 minecraft:bypasses_cooldown 里)先落地、并写无敌帧;爆破 AOE 用 astral_dice:card_spell
+    //   (不在该标签里)⇒ 被原版「无敌帧内不更高伤害予以差减」的规则削掉。这条保证依赖
+    //   **标签表内容 + 结算顺序**,任一处变化就会变成真·重复吃 ⇒ 改为**显式登记、先到先得**。
+    // 只有「一次用量」期间为集合态(由承载该次用量的牌开启);其余时刻为 null ⇒ 登记恒放行,
+    // 行为与改造前完全一致(单枚举的激光/板砖/轨道炮/活体书页不受影响)。
+    private static java.util.Set<Entity> cardSplashResolved = null;
+
+    /** 开启「本次用量」的扩散登记窗口。保存并恢复原值 ⇒ 与外层嵌套安全(同 {@link #runAsInternalAoe})。 */
+    public static void runAsCardSplashResolution(Runnable action) {
+        if (action == null) return;
+        final java.util.Set<Entity> previous = cardSplashResolved;
+        cardSplashResolved = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+        try {
+            action.run();
+        } finally {
+            cardSplashResolved = previous;
+        }
+    }
+
+    /**
+     * 登记一次扩散/波及命中(先到先得)。
+     *
+     * @return {@code false} = 该目标在**本次用量**内已经吃过一次扩散/波及 ⇒ 调用方**必须跳过它**。
+     *         未开启登记窗口时恒返回 {@code true}(= 不干预)。
+     */
+    public static boolean markCardSplashHit(Entity entity) {
+        final java.util.Set<Entity> set = cardSplashResolved;
+        if (set == null || entity == null) return true;
+        return set.add(entity);
+    }
+
     // 检测玩家是否佩戴了七咒之戒(按物品 ID 识别,未安装该模组时返回 false)
     public static boolean hasEnigmaticCurse(Player player) {
         Item ring = BuiltInRegistries.ITEM.get(ResourceLocation.parse(ENIGMATIC_CURSED_RING));
