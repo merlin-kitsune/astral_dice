@@ -68,6 +68,7 @@
 | §5 的 7 行（含 `P5-equip-paths-linkage` 13 处 `✘1需改`、`NancyLuSignItem` 的 `isHostile` 过宽、P2-C1/C3/C4 与安全气囊基准、`mt_assert` 断言窗口、`LOOT-MODIFIER` 反向断言、追加 A《恋的规则书》重复补发、追加 B 死亡保留集合一致） | 全部**已闭环**（2026-09-15/16 实测；含 commit `cc49f0d` / `c0ad51f`） | 变更记录 2026-09-15 / 2026-09-16 两行 |
 | KI-F20 | 三线 `require = 2` 误写 —— **已全部闭环**：`forge-1.20.1` 两处已为 `require = 1`（`cba8e956`，早于 1.3.6 周期）；`neoforge-1.21.1` 的同名类走 `@Inject(... at = RETURN)`、**不涉及 `require`**；`neoforge-26.1.2` 无该文件（走 `GatherEffectScreenTooltipsEvent`）；全仓 `grep "require = 2"` 仅剩 fabric 类注释文字 | 2026-10-02 发布前审计逐文件核实（`KNOWN-ISSUES.md` 变更记录同日） |
 | KI-E3 | 三个守门脚本（`audit_mixin_injection` / `check_lang_sync` / `audit_actionbar`）**不含 fabric 线** ⇒ 该线 mixin 计数 / 三语一致 / 动作栏三面无自动守门 ⇒ **已纳入**（同时修掉纳入后暴露的真实滞后：11 个 `msg.astral_dice.*` 键 × 三语的 `§` 内嵌、`TargetSelectionClient` 的裸 `displayClientMessage` 通道） | `porting/CROSS-VERSION-DIFFS.md` §4.3；`porting/fabric-1.20.1/FABRIC-DIFFS.md` §4 |
+| KI-E4 | 守门 `tools/verify_firearm_detection.py` 的「两口饕餮之锅」判据**滞后于 2026-10-04 联动裁决**（被写成「四线同构」⇒ `fabric-1.20.1` / `neoforge-26.1.2` 自 10-04 起**恒 FAIL**，源码本身一直正确）⇒ 改为**平台期望矩阵** `PAN_EXPECT`（缺期望项 = FAIL / 非期望项出现 = note），已补两条负控反证 | CHANGELOG `1.3.7-hotfix`「工程」；`tools/verify_firearm_detection.py`；2026-10-05 发布前核查 |
 
 ---
 

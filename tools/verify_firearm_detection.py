@@ -8,7 +8,8 @@
 四道判据:
   ① 四线(`neoforge-1.21.1`/`forge-1.20.1`/`neoforge-26.1.2`/`fabric-1.20.1`)常量**逐项同构**;
   ② Java 常量与 `tools/firearm-detection-evidence.json` **一一对应**(两个方向都比);
-  ③ 近战判定的三条硬约束(不再排除工具 / 已调用 isFirearmItem / 仍排除 ProjectileWeaponItem);
+  ③ 近战判定的硬约束(黑名单六项排除 / 无条件 `return true;` 收尾 / 显式纳入清单及其**平台期望**
+     `PAN_EXPECT`(缺期望项=FAIL,非期望项=note) / 顺序判据:纳入判定必须先于 BlockItem 与非武器工具排除);
   ④ **实物回查(默认强制)** —— 在真实 jar 里验证三件事:
      a. 每个伤害类型 key 都能找到 `data/<ns>/damage_type/<path>.json`;
      b. 每条**弹丸包名前缀**都真的存在对应的包(至少一个 `.class`);
@@ -112,6 +113,27 @@ for ln in LINES[1:]:
 TRANSPLANT_SKIPS = {"fabric-1.20.1": {"meleeChecksNonCombatTools"}}
 skips = []
 
+# ---- 「两口锅」显式纳入项的**平台期望矩阵**（2026-10-05 同步 2026-10-04 的联动裁决）----
+# 为什么不能写「四线同构」:`MELEE_WEAPON_EXTRA_INCLUDES` 是按**注册名**的字符串集合 ——
+#   未装对应模组时恒 false ⇒ **多一项无害**,但**少一项**会让该模组的锅被 `BlockItem` 排除(静默漏判)。
+#   而「哪些线装了哪个模组」是**平台事实**,不是常量漂移 ⇒ 判据必须按线给期望:
+#   缺期望项 = FAIL;非期望项出现 = 记 note(冗余项,不阻断)。
+# · `enigmaticlegacy:eldritch_pan` = **1.20.1 版「神秘遗物」**(modId `enigmaticlegacy`)的饕餮之锅。
+#     forge-1.20.1    → 必须存在(该线实装此模组)
+#     neoforge-1.21.1 → **保留**:2026-10-03 加入时的通用防御;该线实装的是 `enigmaticlegacyplus`,
+#                        故此条属**无害冗余**,有意留作基准线现状(清理须单独裁决,不在守门里静默允许)
+#     fabric-1.20.1   → **不在期望内**:2026-10-04 用户裁决「fabric 端排除全部第三方模组联动
+#                        (该端无神秘遗物)」,提交 45405f0e
+#     neoforge-26.1.2 → **不在期望内**:2026-10-04 裁决「按平台存在性对齐,移除神秘遗物联动」,提交 4ec86207
+# · `enigmaticdelicacy:voracious_pan` = 1.21.1 版「饕餮之锅」,且本身是 **BlockItem**
+#     ⇒ **四线全需**(任一缺失都不得放行;靠本清单才不被 `BlockItem` 排除)
+PAN_EXPECT = {
+    "meleeIncludesEldritchPan": ({"neoforge-1.21.1", "forge-1.20.1"},
+                                 "enigmaticlegacy:eldritch_pan", "1.20.1 版「神秘遗物」的饕餮之锅"),
+    "meleeIncludesVoraciousPan": (set(LINES),
+                                  "enigmaticdelicacy:voracious_pan", "1.21.1 版「饕餮之锅」(本身是 BlockItem)"),
+}
+
 for ln in LINES:
     d = data[ln]
     if not d["hasIsFirearmItem"]:
@@ -131,14 +153,20 @@ for ln in LINES:
                        ("meleeReturnsTrue", "未以无条件 `return true;` 收尾(黑名单模式未生效)"),
                        ("meleeHasIncludeList", "缺少 MELEE_WEAPON_EXTRA_INCLUDES 显式纳入清单"),
                        ("meleeHasIncludeHelper", "缺少 isExplicitMeleeWeapon 辅助方法"),
-                       ("meleeChecksInclude", "isMeleeWeaponAttack 未先查显式纳入清单"),
-                       ("meleeIncludesEldritchPan", "显式纳入清单缺 enigmaticlegacy:eldritch_pan(1.20.1 饕餮之锅)"),
-                       ("meleeIncludesVoraciousPan", "显式纳入清单缺 enigmaticdelicacy:voracious_pan(1.21.1 饕餮之锅)")):
+                       ("meleeChecksInclude", "isMeleeWeaponAttack 未先查显式纳入清单")):
         if not d[flag]:
             if flag in TRANSPLANT_SKIPS.get(ln, ()):
                 skips.append("%s: %s（移植线滞后，待用户下达批次）" % (ln, desc))
                 continue
             fails.append("%s: %s" % (ln, desc))
+    # ★ 「两口锅」按**平台期望矩阵**判定(不做四线同构) —— 由来见上方 PAN_EXPECT 注释。
+    for flag, (expect, pid, why) in PAN_EXPECT.items():
+        if ln in expect and not d[flag]:
+            fails.append("%s: 显式纳入清单缺 %s（%s）—— 缺它会让该锅被 BlockItem 排除"
+                         % (ln, pid, why))
+        elif d[flag] and ln not in expect:
+            notes.append("%s: 显式纳入清单含 %s，但该线按平台口径不含对应联动模组（%s）"
+                         "⇒ 冗余项（无害：未装该模组时恒 false）" % (ln, pid, why))
     # ★ 顺序判据:显式纳入必须**先于** BlockItem 排除 —— 1.21.1 的饕餮之锅正是 BlockItem,
     #   顺序写反 = 该锅被排除,而上面所有「存在性」断言仍会通过(典型的假绿)。
     try:

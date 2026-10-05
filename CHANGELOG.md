@@ -65,6 +65,15 @@
   (all four lines and three languages are consistent again).
 - **Removed** the DEBUG line `key=j action=cancel` (that path no longer exists).
 
+- **Gate `tools/verify_firearm_detection.py` criterion synced** (found in the pre-release check; **not a
+  source defect**): the gate required the melee explicit-include list's two "gluttony pans" on **all four
+  lines**, but the 2026-10-04 integration ruling had already removed `enigmaticlegacy:eldritch_pan` from
+  `fabric-1.20.1` and `neoforge-26.1.2` (that mod does not exist on those platforms) - so the gate failed
+  permanently from 10-04 on: the criterion lagged behind the ruling while the sources stayed correct. It now
+  uses a **per-line expectation matrix** `PAN_EXPECT`: **a missing expected entry = FAIL**, **an unexpected
+  entry = a note** (harmless redundancy, always false when the mod is absent). Negative controls verified:
+  removing the `forge-1.20.1` entry => FAIL; adding it back on `fabric-1.20.1` => note.
+
 ## 1.3.7
 
 ### Content & Balance Changes
