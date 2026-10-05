@@ -138,7 +138,7 @@ public final class DiceCombatModifiers {
     // A3「恰好一次」口径:本次伤害实例已登记的受击侧倍率与受害者。
     // 仅在**单次伤害事件的同步处理链**内存活(下一个伤害实例的前置消费点会整槽刷新,
     // 且读取方必须校验受害者同一),不跨 tick/跨实例持久化;服务端主线程假设与
-    // aoeProcessing / counterDepth 一致(见 docs/scan2/P3 的 A17)。
+    // aoeDepth / counterDepth 一致(见 docs/scan2/P3 的 A17)。
     private static LivingEntity instanceVictim;
     private static double instanceFactor = 1.0;
 

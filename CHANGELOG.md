@@ -38,6 +38,18 @@
   the "(§e10§7 absorption)" and "(your red hearts are unaffected)" notes from the sign tooltip
   `tooltip.astral_dice.sign.ren_active`. Text only - numbers and gameplay are unchanged.
 ### Engineering
+- **Hardened recursion guards for spread damage (all four lines)**: `DiceCombatEvents`' internal AoE
+  window went from the **boolean** `aoeProcessing` to a **depth counter** `aoeDepth` plus
+  `beginAoe()/endAoe()` (the gate line `if (isInternalAoe() || counterDepth > 0) return;` is unchanged).
+  Root cause: a **nested** window exists in practice (a Living Page hit opens the window -> that hit is
+  `astral_dice:card_spell`, which is on the spell-damage whitelist -> it enters the spell chain -> `onHit`
+  opens the Directional Blast / Electric Glove window), and with a boolean the inner `endAoe()` **clears the
+  outer guard early**; this now mirrors the existing `counterDepth`. The Shooting Star chip
+  (`ShootingStarManager`) also got its spread hit wrapped in the window. New gate
+  `tools/verify_aoe_spread_invariants.py` (A1 gate early-return / A2 old boolean retired / A3 window pairing /
+  A4 spread damage must not reuse a type that re-enters the spell chain or dice combat / A5 `beginAoe()` must
+  sit immediately before `try`; all five negative-control tests pass).
+
 
 - **Prerequisite library `starengine_lib` `1.0.11` -> `1.0.12`** (same number on all four platforms):
   `client/ActionBarManager` now reads `Gui.leftHeight` / `Gui.rightHeight` on `neoforge-1.21.1` /

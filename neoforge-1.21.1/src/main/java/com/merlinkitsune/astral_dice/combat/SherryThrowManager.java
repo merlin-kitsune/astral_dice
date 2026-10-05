@@ -150,7 +150,7 @@ public final class SherryThrowManager {
      * 落地结算:**技能类伤害**(2 点 + 额外) + 1 层「标记」,并显示伤害数字。
      *
      * <p>⚠️ **必须走 {@code astral_dice:skill_damage}**(专门的「技能类伤害」类型),
-     * 并以 {@link DiceCombatEvents#aoeProcessing} 包裹。两条排除项都是踩过的坑:
+     * 并以 {@link DiceCombatEvents#aoeDepth} 包裹。两条排除项都是踩过的坑:
      * <ul>
      *   <li>不能用 {@code damageSources().playerAttack(...)} —— 会被当作**玩家近战**,
      *       意外吃骰伤、并触发「战斗伤害类」筹码(用户 2026-09-22 裁决);</li>
@@ -165,11 +165,11 @@ public final class SherryThrowManager {
     private static void settle(LivingEntity target, ServerLevel level, Player caster, int bonusDamage) {
         float damage = 2.0F + bonusDamage;
         if (caster != null && !caster.level().isClientSide()) {
-            DiceCombatEvents.aoeProcessing = true;
+            DiceCombatEvents.beginAoe();
             try {
                 target.hurt(com.merlinkitsune.astral_dice.damage.ModDamageTypes.skillDamage(level, caster), damage);
             } finally {
-                DiceCombatEvents.aoeProcessing = false;
+                DiceCombatEvents.endAoe();
             }
             sendSkillDamageNumber(target, (int) damage);
         } else {

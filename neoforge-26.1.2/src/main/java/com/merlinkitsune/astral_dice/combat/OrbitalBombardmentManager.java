@@ -418,18 +418,18 @@ public final class OrbitalBombardmentManager {
         float precisionBonus = PrecisionStrikeEffect.getStacks(target);
         float damage = base + precisionBonus;
         if (damage > 0.0F) {
-            DiceCombatEvents.aoeProcessing = true;
+            DiceCombatEvents.beginAoe();
             try {
                 target.hurt(ModDamageTypes.skillDamage(job.level, job.caster), damage);
             } finally {
-                DiceCombatEvents.aoeProcessing = false;
+                DiceCombatEvents.endAoe();
             }
             // ⚠️ 额度**只按基础部分记账** ⇒ 精准打击的加伤不会把单轮 800 的额度提前吃光。
             //    副作用（有意）：基础额度用尽后，剩余轰炸仍会以「纯精准加伤」造成伤害（层数只有个位数，量级很小）。
             job.dealtTotal += base;
             // 全局伤害显示规定（AGENTS 第 386 条③）：技能伤害**必须**弹跳字，
             // 与「怪力侦探投掷」「活体书页」同口径（绿字 0x7CFC00；一实体一数字取最新值）。
-            // ⚠️ 不能指望骰战路径代发：本伤害以 aoeProcessing 包裹 ⇒ 骰战结算被早退，
+            // ⚠️ 不能指望骰战路径代发：本伤害以 aoeDepth 包裹 ⇒ 骰战结算被早退，
             //    数字必须在此显式补发（2026-09-27 用户报障「该技能伤害完全不显示伤害数字」）。
             com.merlinkitsune.astral_dice.network.DamageNumberPayload.send(target, Math.round(damage), LivingPageImpact.SPELL_DAMAGE_COLOR);
         }

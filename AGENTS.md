@@ -537,6 +537,14 @@ When extending this workspace:
   `Q2/Q3` 批次 → 新增守门 **`tools/verify_medkit_and_removal_invariants.py`**
   （M1 四线：登录 / 切维度处理器**不得**再引用 `triggerMedkitOnEquip` / `refreshMedkitEquipSession`、
   重生与 `onEquip` **必须**引用；M2 fabric：两侧各一条 `hasEffect` 早退判据。期望 `GATE: PASS (22 项)`）。
+  2026-10-05 扩散伤害批次 → 新增守门 **`tools/verify_aoe_spread_invariants.py`**
+  （A1 四线 `onLivingDamagePre` 的内部窗口早退在位 / A2 旧布尔 `aoeProcessing` 已彻底退役 /
+  A3 六处扩散点（`DiceCombatEvents` 2、`LivingPageImpact` 1、`OrbitalBombardmentManager` 1、
+  `SherryThrowManager` 1、`ShootingStarManager` 1、`SpellDamageRegistry` 2）的 `beginAoe()` 计数与配对 /
+  A4 扩散伤害不得使用会重入法伤链或骰战的类型;
+  A5 每处 `beginAoe();` 的下一行必须是 `try {`。⚠️ **A4 必须分「文件级 / 窗口块级 / 直接实参级」三层** ——
+  只查「直接实参」会漏掉「经局部变量传递」与「跨行调用（`ModDamageTypes\n  .foo(`）」两种形态,那是**永真门**
+  （本轮实测踩到,五条反证现已全部有效）。
   ⚠️ **注意运行时判据与静态判据的分工**：有些「已修」项在**当前调用路径上不可达**（如 Q3 的 `hasEffect` 判据 ——
   Puzzles 注入传的是 `getEffect(effect)`，无效果时为 `null` ⇒ 先命中既有的 null 放行判据），
   这类改动只能靠**静态守门**长期钉住、不能靠运行时读数证明 ⇒ 结案时**必须写明「哪一条读数有判别力、哪一条只是结构性成立」**。
@@ -1132,6 +1140,25 @@ When extending this workspace:
 - **法伤作用域里的「军火类黑名单保险」现由公共配置控制(2026-09-19,必须遵守)**:`SpellDamageRegistry.isSpellDamage()` 的第一道判定是军火类排除(按伤害类型 msgId 与弹丸实体类名关键词 `bullet`/`gun`/`firearm`/`cannon`/`shell`/`missile` 识别,实现在私有方法 `isFirearmDamage`)。该排除原先**写死**,现改由公共配置 **`allow_firearm_damage`(默认 `false`)** 控制,库侧常量为 **`GameplayConstants.ALLOW_FIREARM_DAMAGE`**(库 `1.0.0-SNAPSHOT.12` 起才有该字段):`false` = **默认仍屏蔽**(枪弹/炮弹类伤害不计入法伤、吃不到任何法伤加成,**与历史行为逐字等价**);`true` = 该类伤害不再被关键词直接排除,改为与其他弹射物一样继续走白名单 matcher 判定。⚠️ 三条硬约束:① 该常量由消费方 `ModCommonConfig.snapshot()` 构造 `GameplayConfigValues`(record,**位置即契约**)后经 `GameplayConstants.applyConfig(...)` 推入(库不读配置文件),本次是**末尾追加第 7 分量**`allowFirearmDamage`,消费方实参顺序必须同步,增删/改序会让消费方编译期失败;② 库侧 `applyConfig` 里**必须**有 `ALLOW_FIREARM_DAMAGE = config.allowFirearmDamage();` —— 漏了会**静默**停在默认 `false`(玩家改成 `true` 也不生效、不报错);③ 配置在**启动时**读取(`FMLCommonSetupEvent`,无 reload 监听),改后需重启。另注:该开关只决定「是否被排除」,**不等于**「一定计入法伤」(仍需 matcher 命中)。
 - **军火(枪弹/炮弹/**激光武器**/**爆炸类**)判定自 2026-10-03 起为「证据表驱动」(必须遵守)**:`SpellDamageRegistry.isFirearmDamage` 不再只靠关键词 —— 判定顺序为 ① **42 个精确伤害类型 key**、② 5 条**军火弹丸包名前缀**、③ 关键词兜底(仅服务未纳入分析表的模组)。证据表落在 **`tools/firearm-detection-evidence.json`**(逐条附 `messageId`、弹丸类继承链、jar 名与版本),守卫脚本 **`tools/verify_firearm_detection.py`**(校验四线同构 + 与证据表逐项一致 + 回查实物 jar,0 = 通过)。⚠️ 两处**已修复的漏判**(旧关键词法的必然结果):① **沉浸工程左轮全家族** —— 其弹丸 `IEProjectileEntity extends AbstractArrow`(会命中法伤白名单 matcher #1),而伤害标识 `ieRevolver_*` 里**没有 `gun`/`bullet` 子串** ⇒ 左轮子弹被当成法伤吃满加成;② **卓越前线霰弹** —— `GrapeshotEntity extends FastThrowableProjectile extends ThrowableItemProjectile`(同样命中 matcher #1),标识 `grapeshot_hit` 也无关键词。⚠️ 另记一处**肯定性**证据:**方块前线**唯一伤害类型的标识是 **`generic`**(字面与枪弹无关),且其 1690 个类全部混淆、无任何弹丸实体 ⇒ **只能**按伤害类型 key 命中。🆕 **2026-10-03 用户追加**:证据表补入卓越前线的 **3 个激光武器类型**(`laser`/`laser_headshot`/`laser_static`)与 **5 个爆炸类类型**(`projectile_explosion`/`custom_explosion`/`vehicle_explosion`/`mine`/`lunge_mine`)—— 其弹丸与爆炸装置同样落在 matcher #1 范围内。未纳:载具/近战/维修通道(`air_crash`/`vehicle_strike`/`drone_hit`/`shock`/`super_star_*`/`phosphorus_fire`/`burn`/`ammo_consumption`/`beast`/`repair_tool`)。⚠️ 改这张表必须**同时**改证据 JSON 与四线常量,否则守卫脚本报错。
 - **定向爆破 AOE 伤害口径(2026-09-13 用户裁决 B,必须遵守)**:对目标周围 6 格敌对目标造成的 AOE 伤害 = **定向爆破自身 5 点 + 效果牌伤害加成(书签/忍者)**,**不**计入激光/板砖/轨道炮/活体书页等其它伤害牌自身加成(与 tooltip 展示的 `%s` 同值);改动 AOE 公式或新增伤害牌时必须保持该口径,回归用例 `DIRECTIONAL-BLAST-AOE` 已固化(B1 装齐其它伤害牌后仍须为 5,B2 再装书签须为 6)。
+- **扩散伤害(顺劈/溅射/法伤波及/投掷落地/流星/轨道轰炸)的递归防护口径(2026-10-05,必须遵守)**:
+  ① **扩散/追加伤害的伤害源一律用 `directEntity == null` 的类型**(`ModDamageTypes.trueDamage` / `skillDamage` /
+  `extraDamage` / `unreducibleDamage`)—— 这样 `DiceCombatEvents#onLivingDamagePre` 的
+  `directEntity instanceof Player` 闸门天然早退,被波及目标不会重走骰战结算;**唯一**以玩家为 directEntity 的注入
+  是「反击」(`diceDamage`),它走 `counterDepth` **深度计数**。
+  ② **每次扩散必须包在 `DiceCombatEvents.beginAoe()/endAoe()` 内部波及窗口内**,闸门顶部
+  `if (isInternalAoe() || counterDepth > 0) return;` 统一早退。
+  ③ ⚠️ **窗口必须是深度计数**(2026-10-05 由布尔 `aoeProcessing` 升级):实测存在**嵌套** ——
+  活体书页命中(`LivingPageImpact` 开窗)→ 该伤害是 `astral_dice:card_spell`、命中法伤白名单 ⇒
+  进入 `DamageEffectCardHandler` → `onHit` 再开定向爆破/电击手套的窗 ⇒ 布尔下内层 `endAoe()` 会
+  **提前清零外层守卫**(与已修复的 `counterProcessing` 同类缺陷)。
+  ④ **`ModDamageTypes.cardSpell(...)` 不得用作扩散伤害源**:它是法伤白名单里**唯一**的本模组类型,
+  用作波及即形成「波及 → 法伤链 → 再波及」无限递归(`SherryThrowManager` 的类注释早已记录该裁决)。
+  ⑤ **同一次扩散内目标不重复**:一律用 `getEntitiesOfClass`(天然去重);除大当家「战斗爽·溅射」
+  **刻意含主目标**(且只结算 1 次、对主目标临时清零无敌帧)外,其余扩散点均显式排除主目标与施法者。
+  不变量由 `tools/verify_aoe_spread_invariants.py` 钉住(A1 窗口早退 / A2 旧布尔退役 / A3 开窗配对 /
+  A4 扩散伤害不得用会重入法伤链或骰战的类型 / A5 `beginAoe()` 的**下一行必须**是 `try {`)。
+  ⚠️ **A5 不是形式洁癖**:`beginAoe()` 与 `try` 之间若夹了会抛异常的语句,配对的 `endAoe()` 不会被调用 ⇒
+  守卫卡死,此后**所有**骰战结算都会被早退(表现为「打谁都不结算骰战」)。
 - **文案口径:「攻击时」= 触发骰神赐福的规则(近战武器 + `isBlessingTarget`)**;当描述的是效果伤害时,一律写成「使用远程/魔法伤害」(斜杠可写作「或」),不得混用「攻击时」指代效果伤害。
 - **近战武器攻击判定(骰战 / 骰神赐福门控)自 2026-10-03 起 = **黑名单**(必须遵守)**:`DiceCombatEvents.isMeleeWeaponAttack` 只排除 **空手 / 盾牌 / `ProjectileWeaponItem`(弓/弩/各模组弹弓) / `BlockItem` / 枪械本体(`isFirearmItem`) / 非武器工具(`Items.SHEARS`|`Items.FISHING_ROD`|`Items.FLINT_AND_STEEL`|`Items.BRUSH`)** **六项**,其余**一律计入** —— 包括**全部挖掘工具**(镐/锹/锄/斧)与各模组武器。⚠️ **「非武器工具」一条系 2026-10-03 同日二版按用户裁决补入**(黑名单回退时曾一度重新计入,现已排除);它**必须排在显式纳入清单之后**,否则将来某模组的合法武器若恰好是这四件的子类会被误杀。目的 = 兼容**不继承** `SwordItem`/`PickaxeItem` 的第三方模组(匠魂/灾变那类自带武器体系者)。⚠️ **2026-10-03 当天曾一度改为「按原版物品标签的白名单」,随即按用户裁决回退** —— 白名单会把上述模组整类漏掉;若将来再有同类诉求,**正确做法是给该模组加白名单例外,而不是退回白名单主体**。⚠️ **显式纳入清单 `MELEE_WEAPON_EXTRA_INCLUDES`(按注册名)优先于所有排除**:`enigmaticlegacy:eldritch_pan`(1.20.1 联动模组的饕餮之锅,`TieredItem`,不在任何物品标签里)与 `enigmaticdelicacy:voracious_pan`(1.21.1 联动模组的饕餮之锅,`BlockItem`,同时可放置)⇒ **后者必须靠这一步才不会被 `BlockItem` 排除**。⚠️ 判据一律用**接口 + 注册名**,**不得**引用 `SwordItem`/`PickaxeItem`/`DiggerItem`/`TieredItem` 等类名(26.1.2 已把这几类整体重构掉)。⚠️ 消费方 `isPlayerMeleeAttack`(电磁炮)与 `FateGuidanceCardItem` 自动继承本口径。
 - **效果牌可选中生物自 2026-10-03 起 = `CreatureTargets.isCreatureTarget`(必须遵守)**:**只服务伤害效果牌**(活体书页 `LivingPageItem` / 符卡-祸 `HuoCardItem`),口径 = `HostileTargets.isHostile(e)` ∪ **未驯服的可驯服生物**(`CreatureTargets#isUntamedTamable`:未驯服的 `TamableAnimal`(狼/猫/鹦鹉)或无主的 `OwnableEntity`(马/驴/骡/骆驼/羊驼)),并显式排除 `Npc`(村民/流浪商人)。⚠️ **已驯服的宠物与已被认领的坐骑不计入**。⚠️ **立牌选择器 / 法伤闸门 / 飞星 / 派对关系仍走 `HostileTargets` 原口径** —— 对应 `TargetType.CREATURE` / `CREATURE_OR_RIVAL`(库 `1.0.9` 起;**追加在枚举末尾** ⇒ 既有 ordinal 不变,消费方 `TargetType.values()[ordinal]` 的网络编码兼容)。⚠️ 判据只用三平台签名一致的接口(`TamableAnimal#isTame` / `OwnableEntity#getOwner`);**不得**用 `getOwnerUUID()`(26.1.2 已删)或任何类名/包路径(26.1.2 把 `animal/horse/**` 改名 `animal/equine/**`、把 `AbstractVillager` 移到 `npc/villager/`)。取证与完整理由见 `CreatureTargets` 类注释。
@@ -1232,7 +1259,7 @@ When extending this workspace:
   - 枪匠立牌「破绽」:带破绽目标攻击枪匠被闪避后,自动触发一次反击伤害。
 - **单次伤害公式**:手持(主手+副手)伤害最高的近战武器基础伤害(不含附魔;无近战武器按空手 1.0)+ 骰战攻击力加成链(`DiceCombatModifiers` 攻击修饰器)+ 已装备攻击牌随机掷骰(`ctx.attackCardSum`);**不含 1d6、不自动赐福**。随后对总伤害计算七咒减益(`applyCurseToDicePoints`),并可受「全力攻击」×1.5 修正;肉弹战车立牌装备时若生命未满再附加缺失生命值等值伤害。
 - **注入方式**:以玩家为伤害来源经 `hurt()` 单次结算(目标护甲按原版减伤;击杀计入玩家击杀来源),由 `DiceCombatEvents.injectCounterDamage` 统一执行。
-- **递归保护**:`DiceCombatEvents.counterProcessing` 标记包裹注入伤害结算,`onLivingDamagePre` 顶部跳过该伤害(与 `aoeProcessing` 相同模式),防止注入伤害再次进入骰战结算/递归触发。
+- **递归保护**:`DiceCombatEvents.counterDepth` **深度计数**包裹注入伤害结算,`onLivingDamagePre` 顶部以 `if (isInternalAoe() || counterDepth > 0) return;` 统一早退,防止注入伤害再次进入骰战结算/递归触发。⚠️ **2026-10-05**:AOE 窗口的 `aoeProcessing` **布尔**已同批升级为 `aoeDepth` 深度计数 + `beginAoe()/endAoe()`(理由见本节「扩散伤害…递归防护口径」条)。
 
 ## 充能流派规范（Charge System）— 必须遵守
 

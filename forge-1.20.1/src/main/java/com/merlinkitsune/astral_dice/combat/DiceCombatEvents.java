@@ -83,8 +83,15 @@ public class DiceCombatEvents {
      * {@code onLivingDamagePre} 的 targetDiceResult.isEmpty() 分支内。
      */
     private static final boolean PLAYER_DODGE_ENABLED = false;
-    // AOE(顺劈/溅射)波及伤害处理中:被波及目标不再进入骰战结算
-    static boolean aoeProcessing = false;
+    // AOE(顺劈/溅射/法伤波及)处理中:被波及目标不再进入骰战结算。
+    // 用**深度计数**(与下方 counterDepth 同构)而非布尔:实测存在**嵌套**窗口 ——
+    // 「活体书页命中(LivingPageImpact 开窗)→ 该伤害是 astral_dice:card_spell、命中法伤白名单
+    //   ⇒ 进入 DamageEffectCardHandler → onHit 再触发定向爆破/电击手套的波及(内层再开窗)」。
+    // 布尔实现下内层 endAoe() 会把守卫整体清零 ⇒ 外层剩余过程失去保护;
+    // 深度计数只减回 1 ⇒ 外层始终受保护(与 counterDepth 的①条同理)。
+    // ⚠️ 一个「以玩家为 directEntity」的注入伤害就会让本窗口变成**递归入口** ⇒ 扩散/追加伤害源
+    //    一律用 directEntity=null 的类型(true/skill/extra/unreducible_damage)。
+    private static int aoeDepth = 0;
     // 反击链深度(替代原单层布尔 counterProcessing,结构性阻止"反击→闪避→反击"递归):
     //   >0 表示当前正处于「injectCounterDamage → attacker.hurt(...)」的同步调用链中。
     //   ① 用"深度"而不是布尔:嵌套注入时内层 finally 只把深度减回 1,而不会把守卫整体清零,
@@ -117,7 +124,19 @@ public class DiceCombatEvents {
     // 当前是否处于本模组内部 AOE(顺劈/溅射/法伤波及)结算窗口。
     // 语义化只读入口:供受击记录等外部判定区分"主动攻击"与"内部波及"(禁止复制该标志)。
     public static boolean isInternalAoe() {
-        return aoeProcessing;
+        return aoeDepth > 0;
+    }
+
+    /** 进入「本模组内部波及」窗口(**必须**与 {@link #endAoe()} 严格 try/finally 配对)。
+     *  <p>用深度计数而非布尔:嵌套窗口的内层 {@code endAoe()} 只把深度减回 1,
+     *  不会把守卫整体清零 ⇒ 外层剩余过程仍受保护。 */
+    public static void beginAoe() {
+        aoeDepth++;
+    }
+
+    /** 退出「本模组内部波及」窗口(与 {@link #beginAoe()} 严格配对;深度不会降到 0 以下)。 */
+    public static void endAoe() {
+        if (aoeDepth > 0) aoeDepth--;
     }
 
     // 检测玩家是否佩戴了七咒之戒(按物品 ID 识别,未安装该模组时返回 false)
@@ -182,7 +201,7 @@ public class DiceCombatEvents {
 
         // AOE(顺劈/溅射)波及的目标不进入骰战结算,避免二次吃到完整骰战;
         // 反击链中的伤害不进入骰战结算(已按反击公式自算),同时结构性阻止反击递归
-        if (aoeProcessing || counterDepth > 0) return;
+        if (isInternalAoe() || counterDepth > 0) return;
 
         // 白泽赐福 / 降神:倒计时由「被施加者实施**一次有效攻击**」启动(2026-09-28 用户裁决)。
         // 判据 = **任意攻击行为(近战或远程)且必须命中目标** —— 本事件到达本身即"命中"(伤害正在落地),
@@ -628,8 +647,8 @@ public class DiceCombatEvents {
         if (!player.level().isClientSide()) {
             int extraDamage = com.merlinkitsune.astral_dice.combat.DiceCombatModifiers.extraDamageOf(ctx);
             if (extraDamage > 0) {
-                aoeProcessing = true;
                 int savedInvulnerable = target.invulnerableTime;
+                beginAoe();
                 try {
                     target.invulnerableTime = 0;
                     target.hurt(com.merlinkitsune.astral_dice.damage.ModDamageTypes.extraDamage(
@@ -637,7 +656,7 @@ public class DiceCombatEvents {
                     sendDamageNumber(target, extraDamage);
                 } finally {
                     target.invulnerableTime = savedInvulnerable;
-                    aoeProcessing = false;
+                    endAoe();
                 }
             }
         }
@@ -662,10 +681,10 @@ public class DiceCombatEvents {
         // 伤害类型为**真伤**(astral_dice:true_damage,登记于 minecraft:bypasses_armor →
         // 无视护甲值与盔甲韧性;保护附魔与抗性提升不在此口径内,仍会减免);
         // 只打敌对目标(**无友伤**)、不破坏方块,命中仍附带爆炸粒子与音效(视觉表现与伤害类型无关)。
-        // 递归保护:溅射伤害不进入骰战结算(aoeProcessing 统一闸门),避免二次触发赐福/互相引爆。
+        // 递归保护:溅射伤害不进入骰战结算(aoeDepth 统一闸门),避免二次触发赐福/互相引爆。
         if (!player.level().isClientSide() && fenSplashArmed) {
             com.merlinkitsune.astral_dice.item.sign.FenSignItem.consumeSplashCost(player);
-            aoeProcessing = true;
+            beginAoe();
             try {
                 // 下限取立牌常量(5 点),高于全局"按比例不足 1 时按 1 计"的兜底
                 float splashDmg = (float) Math.max(
@@ -713,7 +732,7 @@ public class DiceCombatEvents {
                     }
                 }
             } finally {
-                aoeProcessing = false;
+                endAoe();
             }
         }
 

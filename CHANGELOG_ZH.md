@@ -30,6 +30,14 @@
   立牌 tooltip `tooltip.astral_dice.sign.ren_active` 删去「（10 点吸收）」与「（不会影响红心）」两处括注。
   只改文案，效果数值与玩法不变。
 ### 工程
+- **扩散伤害的递归防护加固（四线）**：`DiceCombatEvents` 的内部波及窗口由**布尔** `aoeProcessing`
+  升级为**深度计数** `aoeDepth` + `beginAoe()/endAoe()`（闸门 `if (isInternalAoe() || counterDepth > 0) return;`
+  不变）。根因：实测存在**嵌套**窗口（活体书页命中开窗 → 该伤害是 `astral_dice:card_spell`、命中法伤白名单
+  ⇒ 进法伤链 → `onHit` 再开定向爆破/电击手套的窗），布尔下内层 `endAoe()` 会**提前清零外层守卫**；
+  与既有 `counterDepth` 同构。同时给流星筹码（`ShootingStarManager`）的扩散补上窗口包裹。
+  新增守门 `tools/verify_aoe_spread_invariants.py`（A1 窗口早退 / A2 旧布尔退役 / A3 开窗配对 /
+  A4 扩散伤害不得用会重入法伤链或骰战的类型 / A5 `beginAoe()` 必须紧邻 `try`；五条反证均已实测有效）。
+
 
 - **前置库 `starengine_lib` `1.0.11` → `1.0.12`**（四平台同号）：`client/ActionBarManager` 在
   `neoforge-1.21.1` / `neoforge-26.1.2` 改为读 `Gui.leftHeight` / `Gui.rightHeight`（NeoForge 已 patch 为

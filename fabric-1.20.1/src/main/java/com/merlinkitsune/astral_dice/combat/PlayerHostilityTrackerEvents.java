@@ -26,7 +26,7 @@ import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
  * (本记录为默认优先级,早于 LOWEST 的保命处理)。
  *
  * <p><b>不记录的情形</b>(口径 = 只记「主动攻击」):① 本模组内部的范围/波及伤害
- * ({@code DiceCombatEvents.aoeProcessing} 窗口:大当家溅射、电击手套/定向爆破 AOE)与反击注入
+ * ({@code DiceCombatEvents.aoeDepth} 窗口:大当家溅射、电击手套/定向爆破 AOE)与反击注入
  * ({@code counterDepth} 窗口)—— 内部波及不是主动攻击,否则会自建敌对立场并互相升级;
  * ② 自伤(攻击者 == 受击者,如绯红骰/王之力自伤);③ 任一侧不是玩家;④ 被取消的伤害。
  * (②③ 由库的 {@code recordAttack} 兜底,①由 {@code recordAttackIfExternal},④ 见下。)
@@ -46,7 +46,7 @@ public final class PlayerHostilityTrackerEvents {
         // 只记"确实成立的伤害":LivingDamageEvent 在 Forge 可取消(被取消 ⇒ 该伤害不生效)
         if (event.isCanceled()) return;
         // 只记「**主动**攻击」:本模组内部的范围/波及伤害(大当家溅射、电击手套/定向爆破 AOE)与
-        // 反击注入都不是主动攻击 —— 前者在 DiceCombatEvents.aoeProcessing、后者在 counterDepth
+        // 反击注入都不是主动攻击 —— 前者在 DiceCombatEvents.aoeDepth、后者在 counterDepth
         // 窗口内,一律不记录(否则溅射会"自建敌对立场"并互相升级:A 溅射 C ⇒ C 敌视 A ⇒ C 溅射 A ⇒ …)。
         // 窗口开关状态仍由 DiceCombatEvents 持有,通过库的 InternalDamageWindows seam 读取。
         LivingEntity victim = event.getEntity();

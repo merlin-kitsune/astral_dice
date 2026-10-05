@@ -32,11 +32,11 @@ public final class LivingPageImpact {
         // 放在 hurt 之前 = 无加成时它就是最终值，有加成时被链内那次覆盖 ⇒ 两种情况都正确。
         com.merlinkitsune.astral_dice.network.ModNetwork.DamageNumberMessage.send(target, base, SPELL_DAMAGE_COLOR);
 
-        DiceCombatEvents.aoeProcessing = true;
+        DiceCombatEvents.beginAoe();
         try {
             target.hurt(ModDamageTypes.cardSpell(level, caster), (float) base);
         } finally {
-            DiceCombatEvents.aoeProcessing = false;
+            DiceCombatEvents.endAoe();
         }
 
         MarkManager.apply(target);

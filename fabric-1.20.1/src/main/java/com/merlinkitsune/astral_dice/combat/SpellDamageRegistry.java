@@ -290,15 +290,15 @@ public final class SpellDamageRegistry {
                         .trueDamage(ctx.target.level(), ctx.attacker);   // 真伤:效果牌范围波及伤害同样无视护甲值/盔甲韧性
                 // AOE 造成与主目标「同样的伤害」:基础 5 + 效果牌伤害加成(与主目标一致)
                 int aoeDamage = (int) Math.max(1.0, 5 + effectCardDamageBonus(ctx.attacker));
-                // AOE 波及伤害不进入骰战结算(见 DiceCombatEvents.aoeProcessing)
-                DiceCombatEvents.aoeProcessing = true;
+                // AOE 波及伤害不进入骰战结算(见 DiceCombatEvents.aoeDepth)
+                DiceCombatEvents.beginAoe();
                 try {
                     for (var e : nearby) {
                         e.hurt(blastSource, aoeDamage);
                         sendAoeDamageNumber(e, aoeDamage, 0x7CFC00);
                     }
                 } finally {
-                    DiceCombatEvents.aoeProcessing = false;
+                    DiceCombatEvents.endAoe();
                 }
             }
         });
@@ -422,15 +422,15 @@ public final class SpellDamageRegistry {
                                 && e != ctx.target && e != ctx.attacker && e.isAlive());
                 var source = com.merlinkitsune.astral_dice.damage.ModDamageTypes
                         .trueDamage(ctx.target.level(), ctx.attacker);   // 真伤:效果牌范围波及伤害同样无视护甲值/盔甲韧性
-                // AOE 波及伤害不进入骰战结算(见 DiceCombatEvents.aoeProcessing)
-                DiceCombatEvents.aoeProcessing = true;
+                // AOE 波及伤害不进入骰战结算(见 DiceCombatEvents.aoeDepth)
+                DiceCombatEvents.beginAoe();
                 try {
                     for (LivingEntity e : nearby) {
                         e.hurt(source, total);
                         sendAoeDamageNumber(e, (int) total, 0x00E5FF);
                     }
                 } finally {
-                    DiceCombatEvents.aoeProcessing = false;
+                    DiceCombatEvents.endAoe();
                 }
                 // 每周期仅触发一次:触发后解除武装
                 com.merlinkitsune.astral_dice.item.chip.ElectricGloveChipItem.disarmAoe(ctx.attacker);
