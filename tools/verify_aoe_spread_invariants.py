@@ -23,18 +23,45 @@
 - **A4** **扩散/波及伤害不得使用会重入法伤链或骰战的类型**，分三层：
   - **A4a 文件级**：扩散文件里出现的 `ModDamageTypes.X(` 只允许 `null-directEntity` 家族
     （`trueDamage`/`skillDamage`/`extraDamage`/`unreducibleDamage`）；`cardSpell` 仅允许出现在
-    `LivingPageImpact.java`（活体书页**主命中**，非第二次波及）。`cardSpell` 是法伤白名单里
-    **唯一**的本模组类型 ⇒ 一旦被用作 AOE 伤害源即形成「波及 → 法伤链 → 再波及」无限递归。
+    **`A4_ALLOWED_FILES`** 列出的文件里（逐个理由见该集合上方注释；开发线放宽的三项由 **A6** 的补偿断言兜住）。
+    `cardSpell` 是法伤白名单里**唯一**的本模组类型 ⇒ 一旦被用作**波及**伤害源即形成「波及 → 法伤链 → 再波及」无限递归。
   - **A4b 块级**：每个 `beginAoe()…endAoe()` 块内**不得**出现 `diceDamage(`/`cardCost(`/
     `playerAttack(`（以玩家为 directEntity ⇒ 会重入骰战结算 = 递归入口）。
   - **A4c 实参级**：`.hurt(ModDamageTypes.cardSpell(...)` 这种**直接实参**形态同上只允许
-    `LivingPageImpact.java`。
+    `A4_ALLOWED_FILES` 里的文件。
   ⚠️ 三层缺一不可：只查「直接实参」会漏掉「经局部变量传递」的形态（那是**永真门**，已实测）。
 - **A5** 每个 `beginAoe();` 的**下一行必须**是 `try {` —— 保证窗口被 `try/finally` 真正包住：
   `beginAoe()` 与 `try` 之间若夹了任何语句，一旦它抛异常，配对的 `endAoe()` 不会被调用 ⇒
   守卫卡死（此后**所有**骰战结算都会被早退掉，表现为「打谁都不结算骰战」）。
+- **A6**（**开发线专属**）`A4_ALLOWED_FILES` 放宽的**补偿断言** —— 白名单里的 `cardSpell` 之所以安全，
+  是因为开发线另有「扩散去重 + 重入闸门」两道锁；**这两道锁本身必须有断言**，否则把锁删掉 A1~A5 仍会 PASS。
+  ⚠️ 断言必须判**生效形态**，不能只判「出现过」——实测（独立复核的内存变异）「去掉 `!` 取反」「保留调用但忽略返回值」
+  都能骗过子串检查：
+  - **A6a** 手套修饰器 `isActive` 必须**真正**要求 `DiceCombatEvents.isGloveSplashInstance()` **且取反**的
+    `!DiceCombatEvents.isGloveSplashSettling()`（两个精确子串都在，含 `!`）；
+  - **A6b** `DiceCombatEvents` 必须提供 `gloveSplashSettling` / `runAsGloveSplashSettlement` /
+    `runAsCardSplashResolution` / `markCardSplashHit` 四个入口（定义处）；
+  - **A6c** **含第二条 AOE 枚举**的白名单文件（`DamageCardFxScheduler`，其 6 格 AOE 与手套 3 格扩散
+    锚点相同、半径 3 ⊂ 6 ⇒ 交集必非空）必须出现**生效形态**的去重调用
+    `if (!DiceCombatEvents.markCardSplashHit(<x>)) continue;`（正则判定，光出现符号不算）；
+  - **A6d** 两道锁的**调用点**（不只是定义）：`SpellDamageRegistry` 必须既用 `runAsGloveSplashSettlement(`
+    包住手套扩散、又用生效形态去重；`DamageCardFxScheduler` 必须用 `runAsCardSplashResolution(` 开登记窗口。
 
 退出码：0 通过 / 1 存在缺陷。
+
+## ⚠️ 已知边界（诚实声明，2026-10-06 独立复核三轮确认后写定）
+本守门是**文本启发式**判据（读源码 → 剥离注释 → 正则/子串）：它可靠拦住**真实回归**
+（删除锚点、改写调用、去取反、`&&`→`||`、忽略返回值、把去重搬出枚举循环、把原文本藏进注释）——
+本文件随附的 **17 例变异套件**逐条验证过（1 基线 PASS + 16 注入精确 FAIL）。
+但它**无法根治「保留文本、破坏语义」的刻意混淆**，已实测仍能骗过的三类：
+① **布尔短路/死分支**（把闸门写成 `false && <原表达式>`、`<原表达式> || true`，或把调用点包进 `if (false) {}`）；
+② **字符串字面量**（`code_only()` 只剥注释，不剥 `"…"` ⇒ 把被要求文本放进字符串即可命中）；
+③ **诱饵 `for (`**（`dedupe_inside_enumeration_window()` 只要求「某窗口块内同时出现 `for (` 与生效去重」，
+不校验那是**哪个**循环 ⇒ 换个窗口块 + 塞一个空 `for` 即可）。
+⇒ **要彻底闭合，必须换用不依赖文本的判据**：AST 解析循环体 / 先剥字符串字面量再匹配 /
+断言布尔上下文（`isActive` 的主干就是该合取，未被 `false &&` 或 `|| true` 包裹）/
+或补一条**运行时用例**验证「交叠目标只结算一次」。**本轮不做**（威胁模型是"改了扩散逻辑忘了同步"，
+不是"有人刻意骗过门禁"）；如将来要防刻意混淆，按上述四选一升级。
 """
 import os
 import re
@@ -60,22 +87,70 @@ EXPECTED_BEGIN = {
     'item/card/HuoCardItem.java': 1,            # 符卡-祸 立即命中
 }
 
-# A4：允许出现 `cardSpell` 的扩散文件（白名单，逐个都要有理由）
-#   · LivingPageImpact —— 活体书页**主命中**（有意走法伤链）
+# A4：允许出现 `cardSpell` 的扩散文件（白名单，逐个都要有理由；放宽处由 A6 的补偿断言兜住）
+#   · LivingPageImpact —— 活体书页**主命中**（有意走法伤链），全程只有一条枚举 ⇒ 无需去重
 #   · DamageCardFxScheduler —— 四张伤害效果牌的**主命中**与「定向爆破 6 格 AOE」都用 card_spell：
 #     该 AOE **已不在修饰器链里**（由牌的 Pending 驱动）⇒ 不存在「波及 → 法伤链 → 再波及」的自递归；
-#     真正的递归闸门是 `DiceCombatEvents#gloveSplashSettling` + `#markCardSplashHit`。
-#   · HuoCardItem —— 符卡-祸的立即命中（同上，属「牌自己的伤害」）。
+#     与手套 3 格扩散的交叠由 `markCardSplashHit` 去重（**A6c/A6d 强制**）
+#   · HuoCardItem —— 符卡-祸的立即命中（同上，属「牌自己的伤害」；单枚举）
 A4_ALLOWED_FILES = {
     'combat/LivingPageImpact.java',
     'combat/DamageCardFxScheduler.java',
     'item/card/HuoCardItem.java',
 }
 
+# A6：A4 白名单放宽的**补偿断言**（判「生效形态」，不判「出现过」）
+# ⚠️ 必须断言**连续表达式**：只查两个子串会被「去掉 `!`」与「`&&` → `||`」两种语义反转骗过（独立复核实测）。
+A6_GLOVE_GATE_RX = re.compile(
+    r'DiceCombatEvents\s*\.\s*isGloveSplashInstance\(\)\s*&&\s*!\s*'
+    r'DiceCombatEvents\s*\.\s*isGloveSplashSettling\(\)')
+A6_REQUIRED_SYMBOLS = ('gloveSplashSettling', 'runAsGloveSplashSettlement',
+                       'runAsCardSplashResolution', 'markCardSplashHit')
+# A6c：含**第二条 AOE 枚举**的白名单文件（必须生效去重）
+A6_SPREAD_DEDUPE_REQUIRED = ('combat/DamageCardFxScheduler.java',)
+# A6d：两道锁的**调用点**（不只是定义）
+A6_CALL_SITES = {
+    'combat/DamageCardFxScheduler.java': ('runAsCardSplashResolution(', True),
+    'combat/SpellDamageRegistry.java': ('runAsGloveSplashSettlement(', True),
+}
+# 去重的**生效形态**：if (!DiceCombatEvents.markCardSplashHit(<实参>)) continue;
+DEDUPE_EFFECTIVE_RX = re.compile(
+    r'if\s*\(\s*!\s*DiceCombatEvents\s*\.\s*markCardSplashHit\s*\([^)]*\)\s*\)\s*continue\s*;')
+# 波及窗口块（beginAoe()…endAoe()）
+A6_WINDOW_RX = re.compile(r'beginAoe\(\);(.*?)endAoe\(\);', re.S)
+
+
+def dedupe_inside_enumeration_window(src):
+    """去重调用必须落在「同时含多目标枚举（`for (`）」的波及窗口块内。
+
+    ⚠️ 只判「文件内出现过该形态」是不够的（独立复核实测：把去重行搬出 `for (e : nearby)` 循环、
+    作为活代码放到别的方法里，仍能骗过纯子串/全文正则检查）。
+    """
+    for m in A6_WINDOW_RX.finditer(src):
+        body = m.group(1)
+        if 'for (' in body and DEDUPE_EFFECTIVE_RX.search(body):
+            return True
+    return False
+
 
 def read(p):
     with open(p, encoding='utf-8') as fh:
         return fh.read()
+
+
+# ⚠️ 所有判据都在**剥离注释后**的源码上跑：否则「把真码改成失效形态、再在被删位置留一条注释保住原文本」
+#    即可骗过子串/正则检查（独立复核实测的把戏）。本函数是**宽松**剥离（不解析字符串字面量），
+#    对本文件要匹配的模式足够；它只会让判据更严，不会放过真缺口。
+_COMMENT_RX = re.compile(r'/\*.*?\*/|//[^\n]*', re.S)
+
+
+def code_only(src):
+    return _COMMENT_RX.sub('', src)
+
+
+def read_code(p):
+    """读源码并剥离注释（判据统一入口）。"""
+    return code_only(read(p))
 
 
 def java_files(line):
@@ -90,7 +165,7 @@ def check_a1(verbose):
     fails = []
     for line in LINES:
         p = os.path.join(ROOT, line, REL, 'combat/DiceCombatEvents.java')
-        src = read(p)
+        src = read_code(p)
         m = re.search(r'public static void onLivingDamagePre\(.*?\n(.*?\n)    \}', src, re.S)
         body = m.group(1) if m else src
         needle = 'if (isInternalAoe() || counterDepth > 0) return;'
@@ -105,7 +180,7 @@ def check_a2(verbose):
     fails = []
     for line in LINES:
         for p in java_files(line):
-            src = read(p)
+            src = read_code(p)
             if 'aoeProcessing' in src:
                 fails.append(f'A2 {os.path.relpath(p, ROOT)}: 旧布尔字段 aoeProcessing 仍存在（应已改为 aoeDepth）')
         if verbose and not any(line in f for f in fails):
@@ -121,7 +196,7 @@ def check_a3(verbose):
             if not os.path.isfile(p):
                 fails.append(f'A3 {line}/{rel}: 文件不存在')
                 continue
-            src = read(p)
+            src = read_code(p)
             n_begin = len(re.findall(r'beginAoe\(\);', src))
             n_end = len(re.findall(r'endAoe\(\);', src))
             if n_begin != want:
@@ -141,7 +216,7 @@ def check_a4(verbose):
             p = os.path.join(ROOT, line, REL, rel)
             if not os.path.isfile(p):
                 continue
-            src = read(p)
+            src = read_code(p)
 
             # ⚠️ 正则必须容忍 `ModDamageTypes` 与 `.foo(` 之间的**换行与缩进**（本模组普遍写成
             #    `...ModDamageTypes\n        .trueDamage(...)`）—— 否则判据会变成**永真门**
@@ -188,7 +263,7 @@ def check_a5(verbose):
             p = os.path.join(ROOT, line, REL, rel)
             if not os.path.isfile(p):
                 continue
-            src = read(p)
+            src = read_code(p)
             for m in re.finditer(r'beginAoe\(\);(\r?\n[ \t]*)(\S[^\r\n]*)', src):
                 nxt = m.group(2).strip()
                 if not nxt.startswith('try {'):
@@ -196,26 +271,73 @@ def check_a5(verbose):
                                  f'（下一行 = `{nxt[:48]}`）⇒ 窗口未被 try/finally 包住，'
                                  f'异常路径下守卫不归零')
         if verbose and not any(line in f for f in fails):
-            print(f'    ok A5 {line}: 8 处 beginAoe() 均紧邻 try')
+            print(f'    ok A5 {line}: {sum(len(re.findall(r"beginAoe\(\);", read(os.path.join(ROOT, line, REL, rel)))) for rel in EXPECTED_BEGIN)} 处 beginAoe() 均紧邻 try')
+    return fails
+
+
+def check_a6(verbose):
+    """A6（开发线专属）：A4 白名单放宽的补偿断言 —— 扩散去重 / 重入闸门必须**生效**在位。"""
+    fails = []
+    for line in LINES:
+        # A6a 手套修饰器的准入判据（断言**连续表达式**：取反 `!` 与 `&&` 都是判据的一部分）
+        p = os.path.join(ROOT, line, REL, 'combat/SpellDamageRegistry.java')
+        src = read_code(p)
+        if not A6_GLOVE_GATE_RX.search(src):
+            fails.append(f'A6a {line}/combat/SpellDamageRegistry.java: 手套修饰器 isActive 未同时要求 '
+                         f'`DiceCombatEvents.isGloveSplashInstance() && !DiceCombatEvents.isGloveSplashSettling()` '
+                         f'⇒ 扩散失去准入闸门（会递归或越界生效；⚠️ 去掉 `!`、把 `&&` 改成 `||` 都算失效）')
+        # A6b 两道锁的入口定义
+        p = os.path.join(ROOT, line, REL, 'combat/DiceCombatEvents.java')
+        src = read_code(p)
+        for sym in A6_REQUIRED_SYMBOLS:
+            if sym not in src:
+                fails.append(f'A6b {line}/combat/DiceCombatEvents.java: 缺少 `{sym}`'
+                             f'（开发线扩散去重/重入闸门的入口，删掉即静默失效）')
+        # A6c 含第二条枚举的白名单文件必须**生效**去重
+        for rel in A6_SPREAD_DEDUPE_REQUIRED:
+            p = os.path.join(ROOT, line, REL, rel)
+            if not os.path.isfile(p):
+                fails.append(f'A6c {line}/{rel}: 文件不存在')
+                continue
+            if not dedupe_inside_enumeration_window(read_code(p)):
+                fails.append(f'A6c {line}/{rel}: 缺少**生效形态**的去重调用 '
+                             f'`if (!DiceCombatEvents.markCardSplashHit(...)) continue;` ⇒ 与手套 3 格扩散的交叠目标'
+                             f'会**重复吃扩散**（该文件含第二条 AOE 枚举，锚点与半径都构成内包含；'
+                             f'⚠️ 只出现符号、忽略返回值不算生效）')
+        # A6d 两道锁的**调用点**（第二项 True = 该文件还必须出现生效形态的去重）
+        for rel, (sym, need_dedupe) in sorted(A6_CALL_SITES.items()):
+            p = os.path.join(ROOT, line, REL, rel)
+            if not os.path.isfile(p):
+                fails.append(f'A6d {line}/{rel}: 文件不存在')
+                continue
+            src = read_code(p)
+            if sym not in src:
+                fails.append(f'A6d {line}/{rel}: 缺少调用点 `{sym}` ⇒ 去重/重入闸门没有被真正挂上')
+            if need_dedupe and not dedupe_inside_enumeration_window(src):
+                fails.append(f'A6d {line}/{rel}: 缺少**生效形态**的去重调用 '
+                             f'`if (!DiceCombatEvents.markCardSplashHit(...)) continue;`（该文件是登记方）')
+        if verbose and not any(line in f for f in fails):
+            print(f'    ok A6 {line}: 去重+重入闸门四入口在位、调用点挂上、去重为生效形态')
     return fails
 
 
 def main():
     verbose = '-v' in sys.argv
     fails = []
-    print('== 溅射/扩散伤害不变量（A1 窗口早退 / A2 旧布尔退役 / A3 开窗配对 / A4 不重入法伤链 / A5 紧邻 try）==')
+    print('== 溅射/扩散伤害不变量（A1 窗口早退 / A2 旧布尔退役 / A3 开窗配对 / A4 不重入法伤链 / A5 紧邻 try / A6 开发线去重链）==')
     fails += check_a1(verbose)
     fails += check_a2(verbose)
     fails += check_a3(verbose)
     fails += check_a4(verbose)
     fails += check_a5(verbose)
+    fails += check_a6(verbose)
     if fails:
         print()
         for f in fails:
             print('  [FAIL]', f)
         print(f'\nGATE: FAIL（{len(fails)} 项）')
         return 1
-    print('\nGATE: PASS（四线 A1~A5 全部通过）')
+    print('\nGATE: PASS（四线 A1~A6 全部通过）')
     return 0
 
 
