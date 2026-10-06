@@ -413,8 +413,8 @@ When extending this workspace:
      `pushToGame` 会在发现整合包内仍有独立库 jar 时告警（只告警，不阻断）。
    - 三条线的 `pushToDevRun`（1.20.1 线为 `pushToRootBuild`）每次构建打印一行「内嵌前置自检」
      （内嵌件名 + version + range），作为「jarJar 配置失效」的回归护栏。
-8. ⚠️ **推送整合包的分支白名单**：库侧 `packPushBranches = ['main']`、本仓**四线** `packPushBranches = ['multi-main']`
-   （2026-09-22 起两侧同构；此前是黑名单，已改白名单 ⇒ 新分支默认不推，不会误删整合包里的正式 jar）。
+8. ⚠️ **推送整合包的分支白名单**：⚠️ **库侧已无此机制** —— 库仓 `build.gradle` 的 `pushToPack` / `packModsDir` / `packPushBranches` / `forcePackPush` 已于 **2026-09-24 整体移除**（库改 JarJar 内嵌、不再自行推整合包；旧文曾写「库侧 `packPushBranches` = [main]」，与实物不符，2026-10-06 已更正）；**仅本仓四线** `packPushBranches` = [multi-main]
+    （本仓四线**此前是黑名单，已改白名单** ⇒ 新分支默认不推，不会误删整合包里的正式 jar；库侧因已移除推送机制，不再有对应配置）。
 
 ### neoforge-26.1.2 关键差异速记(相对 neoforge-1.21.1)
 
@@ -2126,7 +2126,7 @@ When extending this workspace:
 
 完成一个新版本的功能/修复后，由代理自动执行（无需用户逐项指示）：
 1. 更新两个更新日志文件（`CHANGELOG_ZH.md` + `CHANGELOG.md`，条目一一对应）；
-2. 递增**三个**子项目 `gradle.properties` 的 `mod_version`（`deploy.ps1 -Target neoforge|forge` 可自动递增 `x.y-SNAPSHOT.N` / `x.y.z-rcN` / `x.y.z`，或用 `-Version` 显式指定；三线保持同号，后缀各自为 `+neoforge_1.21.1` / `+forge_1.20.1` / `+neoforge_26.1.2`；⚠️ 本工作树无 `deploy.ps1`，该工具的覆盖范围以仓库实际存在的脚本为准）；
+2. 递增**三个**子项目 `gradle.properties` 的 `mod_version`（`deploy.ps1 -Target neoforge|forge` 可自动递增 `x.y-SNAPSHOT.N` / `x.y.z-rcN` / `x.y.z`，或用 `-Version` 显式指定；三线保持同号，后缀各自为 `+neoforge_1.21.1` / `+forge_1.20.1` / `+neoforge_26.1.2`；`deploy.ps1` **存在于主线树根**（2026-10-06 实测 `Test-Path .\deploy.ps1` = True，8824 B；⚠️ 旧文曾写「本工作树无 `deploy.ps1`」，与实物不符，已更正）；
 3. 若改过 lang 文件，分别对**三个**子项目跑 `pwsh -NoProfile -File tools/check_lang_sync.ps1 -LangDir <子项目>/src/main/resources/assets/astral_dice/lang`；
 4. `gradlew build` 同时编译并部署**三个**版本(26.1.2 与另两线同规则)——`pushToDevRun` / `pushToRootBuild` / `pushToGame`(整合包) 均默认随 build 自动触发（整合包推送仅发布线分支执行，本流程即运行在发布线上；失败则回滚版本号，不提交）；
 5. **自动本地提交**（`deploy.ps1` 自动提交 `release: v<版本>`，或手工 `chore: bump version to X.Y.Z` 等），**默认不执行 `git push`**。
@@ -2726,7 +2726,7 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --new <注册id>
 - **进程泄漏已被自动化拦截**：退出时（正常 / 失败 / Ctrl-C）自动收停本流程进程与 Gradle 守护（详见「退出清理」）。手工收停用 `--phase stop`；失败取证保留的现场要用 `--phase stop --force` 释放，否则会一直堵住下一次前置检查。
 - `AGENTS.md` **自 2026-09-15 起已纳入版本库**（`.gitignore` 中的排除项已移除，随提交进入本仓库；是否推送 GitHub 仍按「仅在用户明确要求时执行」）；`scripts/` 下脚本本身入库，仅 `scripts/test/mt.conf`、`scripts/test/reports/*`、`scripts/test/cases/.mt_*` 为本地忽略的运行时产物（与现有 gitignore 一致）；git 网络操作仍须经代理。
 - 具体用例清单（功能 TC、立牌 S 系列等）以 `scripts/test/cases/` 下的条目文件与 `scripts/test/reports/` 下的历史报告为准；旧版 PowerShell 脚本归档包 `legacy_scripts_20260912.zip`（含 MANIFEST 与逐文件 sha256，可解压取回）已于 2026-09-15 从 `temp/` 移出至 `docs/archive/`，仅供追溯。
-- **仓库内 `.ps1` 共 33 个（2026-09-26 在本 dev 树逐目录重数;另有 6 个 `.psm1` 模块）,全部在用**：`scripts/test/*.ps1`（18 个 + 子目录 `scripts/test/tools/lp_offline_assert.ps1` 1 个）、`scripts/verify/*.ps1`（6 个 = 5 个内容校验 + 新增的门槛独立脚本 `verify_forge_loader_gate.ps1`）、`scripts/maintenance/repair-loose-refs.ps1`、`scripts/audit/tooltip_color_audit.ps1`、`scripts/devtools/*.ps1`（3 个）、`tools/*.ps1`（3 个）;根 `deploy.ps1` **只存在于发布线树**（本 dev 树实测 `Test-Path deploy.ps1` = False,故不计入本树计数）。旧执行体 `scripts/test/mt_loadergate.ps1` 已于 2026-09-26 删除 ⇒ 与本轮新增的独立门槛脚本**净变化 0**。不要删；`.psm1` 为 `scripts/test/lib/*.psm1` 5 个 + `scripts/verify/ChipCommon.psm1`。迁移期比对器 `scripts/devtools/Compare-MtOutput.ps1` 已于 2026-09-15 删除（它比对的 python/bash 原件自 `92fbeaf` 起已不存在）；旧测试 `.ps1` 归档包在 `docs/archive/legacy_scripts_20260912.zip`。
+- **仓库内 `.ps1` 共 48 个 / `.psm1` 共 7 个（2026-10-06 实测；⚠️ 2026-09-26 旧文记作 33 / 6，其后新增多个闸门与测试脚本已漂移）—— 复算命令（勿依赖本数字）：`(Get-ChildItem -Recurse -File -Include '*.ps1','*.psm1' | Where-Object { $_.FullName -notmatch '\\(\.git|build|temp|run)\\' }).Count`**：`scripts/test/*.ps1`（18 个 + 子目录 `scripts/test/tools/lp_offline_assert.ps1` 1 个）、`scripts/verify/*.ps1`（6 个 = 5 个内容校验 + 新增的门槛独立脚本 `verify_forge_loader_gate.ps1`）、`scripts/maintenance/repair-loose-refs.ps1`、`scripts/audit/tooltip_color_audit.ps1`、`scripts/devtools/*.ps1`（3 个）、`tools/*.ps1`（3 个）;根 `deploy.ps1` **只存在于发布线树**（本 dev 树实测 `Test-Path deploy.ps1` = False,故不计入本树计数）。旧执行体 `scripts/test/mt_loadergate.ps1` 已于 2026-09-26 删除 ⇒ 与本轮新增的独立门槛脚本**净变化 0**。不要删；`.psm1` 为 `scripts/test/lib/*.psm1` 5 个 + `scripts/verify/ChipCommon.psm1`。迁移期比对器 `scripts/devtools/Compare-MtOutput.ps1` 已于 2026-09-15 删除（它比对的 python/bash 原件自 `92fbeaf` 起已不存在）；旧测试 `.ps1` 归档包在 `docs/archive/legacy_scripts_20260912.zip`。
 - `scripts/test/TESTING-SPEC.md` 是测试条目 schema 规范；旧功能流程文档 `scripts/test/FLOW_1.20.1_functional.md` 已于 2026-09-12 删除（`git show 57d337f^:scripts/test/FLOW_1.20.1_functional.md` 可取回；归档包内不含此文档），实际执行一律以本章节为准。
 
 ### 测试流程超时与看门狗（Test Timeout & Watchdog）— 必须遵守

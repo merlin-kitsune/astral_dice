@@ -278,6 +278,7 @@ function Invoke-AuditLang {
 # main
 # ---------------------------------------------------------------------------
 $total = 0
+$checked = 0   # 实际审过的 lang 文件数；0 ⇒ 无法判定（防「文件缺 ⇒ 0 违规 ⇒ PASS」的假绿）
 $ctx = Get-TooltipColorContext $Root
 $codesByKey = $ctx[0]
 $translatableKeys = $ctx[1]
@@ -285,6 +286,7 @@ foreach ($sub in $SUBPROJECTS) {
     foreach ($lang in $LANGS) {
         $path = [System.IO.Path]::Combine($Root, $sub, 'src/main/resources/assets/astral_dice/lang', $lang)
         if (-not [System.IO.File]::Exists($path)) { continue }
+        $checked++
         $problems = Invoke-AuditLang $path $codesByKey $translatableKeys
         if ($problems.Count -gt 0) {
             Write-Out ('--- ' + $sub + '/' + $lang + ': ' + $problems.Count + ' 处')
@@ -301,4 +303,9 @@ $verdict = 'FAIL（' + $total + ' 处违规）'
 if ($total -eq 0) { $verdict = 'PASS（无违规）' }
 Write-Out ('tooltip 染色审计： ' + $verdict)
 [Console]::Out.Flush()
+if ($checked -eq 0) {
+    Write-Out 'tooltip 染色审计： ERROR（无法判定）—— 未审到任何 lang 文件（ROOT 错或路径约定变化）'
+    [Console]::Out.Flush()
+    exit 2
+}
 if ($total -eq 0) { exit 0 } else { exit 1 }

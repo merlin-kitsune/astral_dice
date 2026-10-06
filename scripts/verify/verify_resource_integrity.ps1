@@ -53,6 +53,7 @@ Add-Type -AssemblyName System.IO.Compression.FileSystem | Out-Null
 
 $MODID = 'astral_dice'
 $script:Fatal = 0
+$script:Checked = 0   # 实际核过的「线」数；0 ⇒ 无法判定（防「无 jar / 路径变了」被判 PASS 的假绿）
 
 function Get-LineDir([string]$ver) {
     switch ($ver) {
@@ -91,14 +92,17 @@ function Test-Line([string]$ver) {
 
     $ids = Get-RegisteredIds $dir
     if ($null -eq $ids -or @($ids).Count -eq 0) {
-        Write-Output '  [SKIP] 找不到 ModItems.java（路径约定变了？）'
+        Write-Output '  [FATAL] 找不到 ModItems.java（路径约定变了？）'
+        $script:Fatal = 1
         return
     }
     $jar = Get-Jar $dir
     if ($null -eq $jar) {
-        Write-Output ("  [SKIP] 无 jar（先构建）；注册 id 数 = {0}" -f @($ids).Count)
+        Write-Output ("  [FATAL] 无 jar（先构建）；注册 id 数 = {0}" -f @($ids).Count)
+        $script:Fatal = 1
         return
     }
+    $script:Checked++
     Write-Output ("  jar   = {0}" -f $jar.Name)
     Write-Output ("  注册物品 id = {0}" -f @($ids).Count)
 
@@ -144,6 +148,10 @@ $vers = if ($Version -eq 'all') { @('1.21.1', '1.20.1', '26.1.2') } else { @($Ve
 foreach ($v in $vers) { Test-Line $v }
 
 Write-Output ''
+if ($script:Checked -eq 0) {
+    Write-Output 'RESULT: ERROR（无法判定）—— 未核到任何一条线（缺 jar 或路径约定变化）；请先构建再跑'
+    exit 2
+}
 if ($script:Fatal -eq 0) {
     Write-Output 'RESULT: PASS —— 模型链逐条闭合（紫黑格子成因②已排除）'
     exit 0

@@ -23,8 +23,8 @@
 - 登记日期：2026-09-15
 - 登记来源：B7 交付后遗漏审计（用户裁定「纪录上述问题，作为未来版本修补内容」）
 - 目标版本：**下一版本**（1.2.1 之后；是否并入 1.2.1 需用户另行裁定）
-- 条目总数（2026-10-04 KB 批次后）：**25** 条未修/未决 = A 组 7（KI-1…KI-7）+ B 组 1（KI-8）+ C 组 3（KI-9…KI-11）
-  + M 组 3（KI-M2/M3/M4）+ D 组 1（KI-D1）+ E 组 2（KI-E1/E2）+ F 组 8（KI-F4/F7/F8/**F21/F22/F23/F24/F25**）
+- 条目总数（2026-10-04 KB 批次后）：**24** 条未修/未决 = A 组 7（KI-1…KI-7）+ B 组 1（KI-8）+ C 组 3（KI-9…KI-11）
+  + M 组 3（KI-M2/M3/M4）+ D 组 1（KI-D1）+ E 组 2（KI-E1/E2）+ F 组 **7**（KI-F4/F7/**F21/F22/F23/F24/F25**）
   + G 组 **0**（KI-G2 已于 2026-10-04 闭环 ⇒ 移入 §1.1），
   另有 §5 的 **2** 条「测试资产待修项」。**已处理条目见 §1.1 索引。**
   ⚠️ **2026-10-02 澄清（发布前审计）**：上列条目里有 **3 条（`KI-F21`/`KI-F22`/`KI-F23`）标题自述「已完成 / 已修 / 已缓解」**，
@@ -35,6 +35,7 @@
   实机用例 `FAB-Q2Q3-INVARIANTS` 6/6 + 静态守门 M1 四线 22 项）⇒ 未修/未决 **26 → 25**（G 组 1 → 0）。
   同时 **KI-F25② 重新定性为「探针假象、非产品缺陷」**（决定性取证见 F 组该条）⇒ 其「待定缺陷」不再计入未修缺陷；
   该条目保留，检查项 **①/③/④/⑤** 仍然有效（⑤为本次新增的探针纪律）。
+- ⚠️ **2026-10-06**：**KI-F8 已闭环**（四线三语文案已对齐代码稀有度 `bizarre()`，实测守门 `verify_rarity_consistency.py` C1 PASS）⇒ 按 §0 第 4 条已移入 §1.1 索引；未修/未决 **25 → 24**（F 组 8 → 7）。
 
 ## 1.1 已处理索引（2026-10-01 首次清理）
 
@@ -69,6 +70,7 @@
 | KI-F20 | 三线 `require = 2` 误写 —— **已全部闭环**：`forge-1.20.1` 两处已为 `require = 1`（`cba8e956`，早于 1.3.6 周期）；`neoforge-1.21.1` 的同名类走 `@Inject(... at = RETURN)`、**不涉及 `require`**；`neoforge-26.1.2` 无该文件（走 `GatherEffectScreenTooltipsEvent`）；全仓 `grep "require = 2"` 仅剩 fabric 类注释文字 | 2026-10-02 发布前审计逐文件核实（`KNOWN-ISSUES.md` 变更记录同日） |
 | KI-E3 | 三个守门脚本（`audit_mixin_injection` / `check_lang_sync` / `audit_actionbar`）**不含 fabric 线** ⇒ 该线 mixin 计数 / 三语一致 / 动作栏三面无自动守门 ⇒ **已纳入**（同时修掉纳入后暴露的真实滞后：11 个 `msg.astral_dice.*` 键 × 三语的 `§` 内嵌、`TargetSelectionClient` 的裸 `displayClientMessage` 通道） | `porting/CROSS-VERSION-DIFFS.md` §4.3；`porting/fabric-1.20.1/FABRIC-DIFFS.md` §4 |
 | KI-E4 | 守门 `tools/verify_firearm_detection.py` 的「两口饕餮之锅」判据**滞后于 2026-10-04 联动裁决**（被写成「四线同构」⇒ `fabric-1.20.1` / `neoforge-26.1.2` 自 10-04 起**恒 FAIL**，源码本身一直正确）⇒ 改为**平台期望矩阵** `PAN_EXPECT`（缺期望项 = FAIL / 非期望项出现 = note），已补两条负控反证 | CHANGELOG `1.3.7-hotfix`「工程」；`tools/verify_firearm_detection.py`；2026-10-05 发布前核查 |
+| KI-F8 | `hanna_sign.3` / `sherry_sign.3` 的档位词与代码稀有度（均 `AstralRarities.bizarre()`）**不符** ⇒ 已按「以代码为准」对齐：四线三语文案统一为「奇特档 / Bizarre tier / ビザール段階」，与 KI-F7 同批（`hanna_sign.3` 文案同步补 `×2`） | CHANGELOG `1.3.7-hotfix` 玩家可见段；`tools/verify_rarity_consistency.py` **C1 判据**（手册档位词 ↔ 代码稀有度，四线）实测 `GATE: PASS`；2026-10-06 复核 |
 
 ---
 
@@ -175,10 +177,10 @@
 
 ---
 
-## 5. 测试资产待修项（原「已闭环但当日文档未回写」表 —— **仅剩这 2 条**未闭环）
+## 5. 测试资产待修项（原「已闭环但当日文档未回写」表 —— **仅剩这 2 条**未闭环；⚠️ 两个用例文件**均已不存在**，见下）
 
 > 该表原 9 行已于 2026-10-01 清理（其余 7 行均已闭环，见 **§1.1 已处理索引**）；下表是**仍未闭环**的两条
-> 「测试资产自身」缺陷（**不是产品缺陷**，故不写进 CHANGELOG）。
+> 「测试资产自身」缺陷（**不是产品缺陷**，故不写进 CHANGELOG）。⚠️ **2026-10-06 复核**：下表两条所指的用例文件（`scripts/test/cases/SPELL-TRUE-DAMAGE-{1.20.1,1.21.1}.json`、`ELECTRIC-GLOVE-AOE-BASE-{1.20.1,1.21.1}.json`）**已随 2026-09-20「测试资产已全部清零」删除**（提交 `0f6c6fe3`，该批共删 45 个用例文件），两条线上现均无此文件 ⇒ 缺陷定性仍然成立，但**当前无机器判据可复跑**；修复须与用例重建同批进行（重建授权见 `AGENTS.md`「测试资产已全部清零」节）。
 
 | 曾标记 | 现状 |
 |---|---|
@@ -382,7 +384,7 @@ GlCommandEncoder.trySetup(:531) ← GlCommandEncoder.executeDraw(:406) ← GlRen
 - **补齐依据（三条全部可复算，无杜撰）**：
   1. **档位词** = `AstralRarities` 的档位 —— `TERU_SIGN` 是 `legendary()`；同档的 `megas_sign.3`
      手册里写的是「传奇档 / Legendary tier / レジェンダリー段階」⇒ 用 megas 交叉验证了
-     「手册档位词 ↔ 代码稀有度」的对应关系（该对应关系也是判定 **KI-F8** 的依据）；
+     「手册档位词 ↔ 代码稀有度」的对应关系（该对应关系也是判定 KI-F8 的依据，该条已闭环 ⇒ 见 **§1.1**）；
   2. **材料** = 配方文件逐字读出：pattern `GCG/LEL/ZPZ`，`Z` = `diamond_dice`、`P` = `golden_star_plate`
      且 `P` 在 pattern 中出现 **2 次** ⇒「钻石骰子 + 黄金星盘 ×2」；
   3. **句式与术语** = 对齐 `hanna_sign.3` 的既有结构；物品译名取自各语言文件里已有的 `item.astral_dice.*`。
@@ -396,26 +398,6 @@ GlCommandEncoder.trySetup(:531) ← GlCommandEncoder.executeDraw(:406) ← GlRen
 
 - **验收**：`tools/verify_fabric_assets.py` 第 6 项（手册闭环）已由 FAIL 转 **PASS**，
   该键也从脚本的 `LANG_KEY_ALLOW` 白名单**移除**（白名单重新为空）。
-
-### KI-F8 ＝ 两个立牌手册的「档位词」与代码稀有度不符（**四线共有；只登记，未改**）
-
-- **现象**：`hanna_sign.3` 写「稀有档 / Rare tier」、`sherry_sign.3` 写「史诗档 / Epic tier」，
-  但两者的代码稀有度**都是** `AstralRarities.bizarre()`（奇特）。
-- **判据（第三个样本交叉验证）**：`megas_sign` 代码 = `legendary()`，手册写「传奇档 / Legendary tier」
-  ⇒ **手册的档位词应与代码稀有度一致**；据此 hanna / sherry 的手册文案**至少有一条错**
-  （实际是两条都与代码不符）。
-- **影响**：玩家在手册里读到的品质档位与物品实际稀有度（tooltip 边框 / 文字色，见 §1.1 索引中的 KI-F1 与 `RarityTooltipFrame`）
-  **不一致** ⇒ 属**内容错误**（与 KI-F7 的"显示键名"性质不同）。
-- **档位体系（照 `starengine_lib` 的 `Rarity`，供后续裁决用）**：
-  `RARE`（稀有 #55FFFF）/ `EPIC`（史诗 #FF55FF）/ `LEGENDARY`（传奇 #FFC24B）/
-  `PINNACLE`（巅峰 #FF4D4D）/ `BIZARRE`（奇特 #FF4D4D）。
-- **为什么只登记不改**：修它必须先定「以代码为准还是以文案为准」——
-  - 以**代码**为准：两条要改成「奇特档」，但 **`奇特(bizarre)` 这个档位词在手册里没有先例**，
-    英/日文写法需要定（`BIZARRE` 的序列化名是 `astral_dice:bizarre`，可作英文候选；日文无先例）；
-  - 以**文案**为准：要改**代码里的稀有度**（`bizarre()` → `rare()` / `epic()`），
-    会连带改 tooltip 配色与整个稀有度体系的分布。
-  两条路都需要裁决，故本轮不动。
-- **注意**：这是**内容层面的既有问题、与移植无关**，四条线表现一致。
 
 ### 附：本线的资源/注册闭环守门脚本（发现 KI-F7 的那套检查）
 
@@ -751,6 +733,7 @@ GlCommandEncoder.trySetup(:531) ← GlCommandEncoder.executeDraw(:406) ← GlRen
 | 2026-10-04 | **新增 KI-F25**（fabric 追平探针首跑发现：KubeJS 共享全局作用域 ⇒ 探针须 IIFE；清 `astral_dice:` 效果须走库内部通道、裸调在效果不存在时抛 `CancellationException`；Rhino 禁反射 JDK `Class`；Fabric API 自带 `FakePlayer` 可零前置但**不进 tick 循环**）。§1 计数 25 → 26（F 组 7 → 8）。 |
 | 2026-10-04 | **Q2 / Q3 实机验证完成（KI-G2 结案；KI-F25② 撤回为探针假象）**：① **Q2**（医疗箱「重登 / 切维度」可刷血）按用户裁决**撤掉两个触发点**并四线同批落地；实机用例 `FAB-Q2Q3-INVARIANTS` **6/6 PASS**（新探针子命令 `/astralcatchup medkit`，判据 = 投递两个平台事件后**装备闸门与治愈点均不被改动**：`released_login=0 released_dim=0`、`pts_*==p0`；同一会话 5 次采样一致）+ 静态守门 `tools/verify_medkit_and_removal_invariants.py` **M1 四线 20 项 + M2 2 项 = 22 项 PASS（含反证测试）**。② **Q3**（裸 `removeEffect` 抛 `CancellationException`）**部分结案**：冷启动下 `fired_absent=0`
 | 2026-10-05 | **1.3.7-hotfix 发布前核查（新增 KI-E4，已直接落 §1.1）**：核查覆盖四线号源 / 产物与内嵌库 / 四份 Release 玩家日志 / 22 项守门 / 双站路由 / CI 库 ref —— 唯一 FAIL 为 `tools/verify_firearm_detection.py`：它把近战显式纳入清单的两口饕餮之锅写成「四线同构」硬判据，而 2026-10-04 的联动裁决已把 `enigmaticlegacy:eldritch_pan` 从 `fabric-1.20.1`（该端无神秘遗物，提交 `45405f0e`）与 `neoforge-26.1.2`（按平台存在性对齐，提交 `4ec86207`）移除 ⇒ 该守门**自 10-04 起恒 FAIL**，属**判据滞后于裁决**、源码本身正确（两个裁决提交均未触及守门脚本）。改为**平台期望矩阵** `PAN_EXPECT`（缺期望项 = FAIL / 非期望项出现 = note），已补两条负控反证；同批修掉一处**英文 tooltip 数值漏写**（`tooltip.astral_dice.sign.nancy_lu_active` 漏「×2」，代码 `ACTIVE_BONUS_MULTIPLIER = 2` 为准，中/日文均有）与手册 `guide.entry.ren_sign.1` 的「（不会影响红心）」括注，并同步 CF 说明 / README 的版本引用与 `release/starengine-lib/1.0.12/` 库更新日志。§1 计数**不变**（25 条未修/未决；KI-E4 为已修项，直接落 §1.1 索引）。 |
+| 2026-10-06 | **KI-F8 结案（按「以代码为准」对齐）**：复核发现该条**早已闭环但正文未清理** —— 四线三语 `astral_dice.guide.entry.hanna_sign.3` / `.sherry_sign.3` 现均为「奇特档 / Bizarre tier / ビザール段階」，与代码 `AstralRarities.bizarre()` 一致（对齐提交 `c0d4f288`）；机器判据 `tools/verify_rarity_consistency.py` 的 C1（手册档位词 ↔ 代码稀有度）实测 `GATE: PASS（C1/C2/C3 全部通过）` ⇒ 按 §0 第 4 条整块移出正文、入 §1.1 索引。⚠️ 复核同时发现该守门脚本在 Windows 默认代码页 936 下会因打印 `↔` 触发 `UnicodeEncodeError` 而以 **rc=1 崩溃**（＝「门会红但红的原因是崩溃」）⇒ 同批为 `tools/*.py` 全部脚本注入 stdout/stderr 编码自愈块（`sys.stdout.reconfigure(utf-8)`），并补「块必须在所有 import 之后」的 AST 硬校验 + 5 形态自测。§1 计数 25 → **24**。 |
  ⇒ 效果不存在时 `MobEffectEvent.Remove` **根本不派发**（Puzzles 注入传 `getEffect(effect)` = null，命中 2026-09-29 既有的 null 放行判据）
  ⇒ 该路径本身安全、Q3 代码改动保留为第二道防线（守门 M2）。但采样中出现过 **1 次**真正的异常，
  两条曾提出的解释（Puzzles 注入不可取消 / 守卫重新施加效果）**均被独立 javap 复核推翻**
