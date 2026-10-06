@@ -213,10 +213,10 @@ When extending this workspace:
 
 | 子项目 | 来源分支(原 astra_dice 仓库) | MC | 加载器 | Java | 当前版本 | 版本号格式 |
 |---|---|---|---|---|---|---|
-| `neoforge-1.21.1` | `1.21.1-main` | 1.21.1 | NeoForge | 21 | `1.3.7+neoforge_1.21.1` | `x.y.z[-rcN|hotfix]+neoforge_1.21.1` |
-| `forge-1.20.1` | `1.20.1-forge` | 1.20.1 | Forge | 17 | `1.3.7+forge_1.20.1` | `x.y.z[-rcN|preN|hotfix]+forge_1.20.1` |
-| `neoforge-26.1.2` | 本仓 `multi-26.1.2-neoforge` 分支新增（基线 = 主线 `1.2.1`/`fda8ca9` 的 `neoforge-1.21.1` 源码）；**2026-09-17 已合并进当时的主线 `multi-1.20.1-1.21.1`（该分支已于 2026-09-22 改名为 `multi-main`）**（与主线同目录同树，原独立 worktree 已移除）；**2026-09-22 完整移植后版本号与另两线同批升版**（26.1.2 取 `-beta.x` 后缀；现为 `1.3.7-beta.1`）** | 26.1.2 | NeoForge | 25 | `1.3.7-beta.1+neoforge_26.1.2` | `x.y.z[-rcN|-beta.N]+neoforge_26.1.2` |
-| `fabric-1.20.1` | **本仓 `1.20.1-fabric` 分支新增**（2026-09-29 接入；基准 = `forge-1.20.1` 的 `1.3.2-hotfix` 源码，**加载器层整体替换**：Curios→Trinkets(+Accessories 软依赖) · Capability→Fabric API 附件 · Forge EventBus→自建 `LoaderBus`+Puzzles Lib/FAPI 回调/mixin · GLM→`LootTableEvents.MODIFY`）。**2026-10-01 已并入 `multi-main` 成为第四条线**（同树同仓；原独立 worktree `F:\MCProject\astral_dice_multiloader_fabric` 与分支 `1.20.1-fabric` 均已移除）| 1.20.1 | Fabric | 17 | `1.3.7-alpha.1+fabric_1.20.1` | `x.y.z[-alpha.N|rcN|hotfix]+fabric_1.20.1` |
+| `neoforge-1.21.1` | `1.21.1-main` | 1.21.1 | NeoForge | 21 | `1.3.7-hotfix+neoforge_1.21.1` | `x.y.z[-rcN|hotfix]+neoforge_1.21.1` |
+| `forge-1.20.1` | `1.20.1-forge` | 1.20.1 | Forge | 17 | `1.3.7-hotfix+forge_1.20.1` | `x.y.z[-rcN|preN|hotfix]+forge_1.20.1` |
+| `neoforge-26.1.2` | 本仓 `multi-26.1.2-neoforge` 分支新增（基线 = 主线 `1.2.1`/`fda8ca9` 的 `neoforge-1.21.1` 源码）；**2026-09-17 已合并进当时的主线 `multi-1.20.1-1.21.1`（该分支已于 2026-09-22 改名为 `multi-main`）**（与主线同目录同树，原独立 worktree 已移除）；**2026-09-22 完整移植后版本号与另两线同批升版**（26.1.2 取 `-beta.x` 后缀；现为 `1.3.7-beta.2`）** | 26.1.2 | NeoForge | 25 | `1.3.7-beta.2+neoforge_26.1.2` | `x.y.z[-rcN|-beta.N]+neoforge_26.1.2` |
+| `fabric-1.20.1` | **本仓 `1.20.1-fabric` 分支新增**（2026-09-29 接入；基准 = `forge-1.20.1` 的 `1.3.2-hotfix` 源码，**加载器层整体替换**：Curios→Trinkets(+Accessories 软依赖) · Capability→Fabric API 附件 · Forge EventBus→自建 `LoaderBus`+Puzzles Lib/FAPI 回调/mixin · GLM→`LootTableEvents.MODIFY`）。**2026-10-01 已并入 `multi-main` 成为第四条线**（同树同仓；原独立 worktree `F:\MCProject\astral_dice_multiloader_fabric` 与分支 `1.20.1-fabric` 均已移除）| 1.20.1 | Fabric | 17 | `1.3.7-alpha.2+fabric_1.20.1` | `x.y.z[-alpha.N|rcN|hotfix]+fabric_1.20.1` |
 
 > ⚠️ **第四条线（`fabric-1.20.1`）的规则边界（2026-09-29 用户裁决；2026-10-01 并入 `multi-main` 后本条**全九项仍适用**，必须遵守）**：
 > 2026-10-01 的状态变化只有「树与仓」：该线由**独立分支 + 独立 worktree** 变为**与前三线同树同仓（同在 `multi-main`）**；
@@ -227,7 +227,7 @@ When extending this workspace:
 >    其中 **Bountiful 与 Iron's Spells 'n Spellbooks 已整线裁剪**（无 1.20.1 Fabric 版）
 >    ⇒ 其数据文件、lang 键、手册条目、伤害类型 key、tooltip 分支**均不得出现在本线**；
 > ③ **发布口径**：fabric 产物**绝不并入**生产线 Release —— 见「编译产物上传规则」表；
->    CI 为其单独出 tag 与 `--prerelease` Release：tag 形如 **`fabric-1.3.5-alpha.1`**
+>    CI 为其单独出 tag 与 `--prerelease` Release：tag 形如 **`fabric-1.3.7-alpha.2`**
 >    （只剥 `+加载器` 后缀、**保留 `-alpha.N`**；不以数字开头 ⇒ 不命中 workflow 顶部的 `tags: ['[0-9]*']` 过滤器）。
 >    ⚠️ **2026-10-01 起该步骤的触发条件由 `refs/heads/1.20.1-fabric` 改挂 `refs/heads/multi-main`**
 >    —— 原分支已并入并删除，旧条件会**永久不成立**（属「静默失效」类缺陷，动 CI 时必须同步核对）。
@@ -258,7 +258,7 @@ When extending this workspace:
 >    可把它升级为**致命错误**。② 调用 `LoaderBus#dispatchReport()` 核对**没有**关键事件的派发次数为 0
 >    （判据：`ServerTickEvent` 必须为正数）。⚠️ 审计若报「未生效（没扫到任何类）」，**不得**当成通过。见 **KI-F6**。
 
-> 版本号各 git 分支独立（AGENTS.md 自 2026-09-15 起**已纳入版本库**，各分支各自维护一份）：**发布线 `multi-main`**（2026-09-22 由 `multi-1.20.1-1.21.1` 改名；连带项已同批处理：三线 `build.gradle` 的 `packPushBranches → ['multi-main']`、`.github/workflows/build.yml` 的 5 处分支名与触发条件，以及 `.github/workflows/build.yml` 里 checkout 前置库的 `ref:` 钉值）**当前 = `1.3.7`**（2026-10-01：承接 1.3.5 的补丁发布——FTB 队友判定后端修复；见下方「发布规范」对 `-hotfix` 打 tag 的说明）（2026-09-22 那次收编后统一升版为 `1.3.0` —— 1.21.1 / 1.20.1 = `1.3.0`，26.1.2 = `1.3.0-beta.1`，按发布规范 tag 解析为裸版本 `1.3.0`；此后逐版递增至 **1.3.5**；2026-10-01 起为 `1.3.5-hotfix`、2026-10-04 起为 **`1.3.7`**，以矩阵表「当前版本」列与各线 `gradle.properties` 为准。⚠️ 本处曾长期停留在 `1.3.0`、与矩阵表自相矛盾，2026-10-01 二次验证时一并更正）；`multi-dev-next` 当前 = **`2.0.0-SNAPSHOT.24`**（2026-10-04；工作树 `F:\MCProject\astral_dice_multiloader-next`。⚠️ **该线并未停止演进** —— 2026-09-22 曾整体并入发布线 `multi-main`（`7b726617`，收编 160 个提交），但此后 `multi-dev-next` **继续独立开发**（目标选择器改造、四张伤害效果牌重做、fabric 第四条线并入等）；现行口径见下方「## 版本号递增约定（每提交一版）」与「## 版本优先级与跨线移植纪律」）；`neoforge-26.1.2` 子项目当前 = **`1.3.0-beta.1`**（2026-09-17 用户裁决 + **2026-09-19 修订：26.1.2 已纳入主线、三线同步（不再是低优先级线）**；**2026-09-22 用户裁决：三线同批升版，26.1.2 取 `1.3.0-beta.1`** —— 此前 `.13` 时代「与另两线版本号对齐、不再单独加 `-beta`」的口径随之作废；`multi-26.1.2-neoforge` 分支自此只作为合并前历史，不再单独开发）。上表「当前版本」以发布线工作分支 `multi-main` 为准。
+> 版本号各 git 分支独立（AGENTS.md 自 2026-09-15 起**已纳入版本库**，各分支各自维护一份）：**发布线 `multi-main`**（2026-09-22 由 `multi-1.20.1-1.21.1` 改名；连带项已同批处理：三线 `build.gradle` 的 `packPushBranches → ['multi-main']`、`.github/workflows/build.yml` 的 5 处分支名与触发条件，以及 `.github/workflows/build.yml` 里 checkout 前置库的 `ref:` 钉值）**当前 = `1.3.7-hotfix`**（2026-10-01：承接 1.3.5 的补丁发布——FTB 队友判定后端修复；见下方「发布规范」对 `-hotfix` 打 tag 的说明）（2026-09-22 那次收编后统一升版为 `1.3.0` —— 1.21.1 / 1.20.1 = `1.3.0`，26.1.2 = `1.3.0-beta.1`，按发布规范 tag 解析为裸版本 `1.3.0`；此后逐版递增至 **1.3.5**；2026-10-01 起为 `1.3.5-hotfix`、2026-10-04 起为 **`1.3.7`**、2026-10-05 起为 **`1.3.7-hotfix`**，以矩阵表「当前版本」列与各线 `gradle.properties` 为准。⚠️ 本处曾长期停留在 `1.3.0`、与矩阵表自相矛盾，2026-10-01 二次验证时一并更正）；`multi-dev-next` 当前 = **`2.0.0-SNAPSHOT.28`**（2026-10-06；工作树 `F:\MCProject\astral_dice_multiloader-next`。⚠️ **该线并未停止演进** —— 2026-09-22 曾整体并入发布线 `multi-main`（`7b726617`，收编 160 个提交），但此后 `multi-dev-next` **继续独立开发**（目标选择器改造、四张伤害效果牌重做、fabric 第四条线并入等）；现行口径见下方「## 版本号递增约定（每提交一版）」与「## 版本优先级与跨线移植纪律」）；`neoforge-26.1.2` 子项目当前 = **`1.3.0-beta.1`**（2026-09-17 用户裁决 + **2026-09-19 修订：26.1.2 已纳入主线、三线同步（不再是低优先级线）**；**2026-09-22 用户裁决：三线同批升版，26.1.2 取 `1.3.0-beta.1`** —— 此前 `.13` 时代「与另两线版本号对齐、不再单独加 `-beta`」的口径随之作废；`multi-26.1.2-neoforge` 分支自此只作为合并前历史，不再单独开发）。上表「当前版本」以发布线工作分支 `multi-main` 为准。
 > ⚠️ 历史上另有一条 dev 分支 **`wt/2.0.0-vnext`**（连带独立 worktree `C:/Users/xmace/.dsh/worktrees/astral_dice_multiloader-a03b2df2/2.0.0-vnext`）——2026-09-17 用户裁决「移除 wt/2.0.0-vnext 分支，仅保留当前分支」后**已删除**：worktree 与分支一并移除，`git branch -d` 成功即证明其 tip **`d7e4ac8f4f1c31484bf4366caa4e144aec45979f`** 的全部提交都已被 `multi-dev-next` 包含（`multi-dev-next..wt/2.0.0-vnext` 为空）⇒ **未丢失任何提交**；该分支从未推到远端（`origin` 只有 `multi-1.20.1-1.21.1` 与 `multi-dev-next`），故无需远端清理。`multi-26.1.2-neoforge` 作为合并前历史分支**保留**（未在本次裁决范围内）。
 
 > **第三条线(26.1.2)的规则边界(2026-09-19 用户裁决修订 —— 26.1.2 已纳入主线,必须遵守)**:⛔ **2026-10-04 更新:本条「26.1.2 纳入三线同批实施」的口径已作废** —— 现行 **P1 次要优先级**（见下方「## 版本优先级与跨线移植纪律」）;本段其余平台差异说明仍有效。自本裁决起「同步修改」约束**三个版本**(`neoforge-1.21.1` + `forge-1.20.1` + `neoforge-26.1.2`):任何功能/修复/平衡/文案改动一律**三线同批实施**(实施方式见下方「### 子项目修改默认规则」与「### 模组内容更新规则(三线同步)」),26.1.2 **不再**是「发布线完成后再迁移」的低优先级移植线。三条线各自按 `docs/compat-26.1.2-neoforge.md`(26.1.2 相对 1.21.1)、`docs/compat-1.20.1-forge.md`(1.20.1 相对 1.21.1)的差异映射实现,**平台差异必须逐条登记**;三线落地后按 `scripts/test/TESTING-SPEC.md` §13.2 做一致性测试。三子项目的 `mod_version`/`mods.toml` 门槛仍各自独立。⚠️ **第四条线 `fabric-1.20.1` 不参与本条的「三线同批实施」约束** —— 其边界见上一条 ①（由用户按批次单独下达移植任务）。
@@ -266,10 +266,10 @@ When extending this workspace:
 >    ⚠️ **与 26.1.2 线用 `-beta.x` 是同一套安排**（2026-10-01 并入 `multi-main` 后的口径）：
 >    两条线都是**独立的预发布号线** —— **永不占用发布线的裸版本号**、**不单独打裸版本 tag**；
 >    差别只在后缀（`-alpha.x` ↔ `-beta.x`）与发布形态（fabric 走自己的 `fabric-*` pre-release，见 ③）。
->    **本线 `mod_version` 现为 `1.3.7-alpha.1+fabric_1.20.1`**（本线自己的号，仍带 alpha）。
+>    **本线 `mod_version` 现为 `1.3.7-alpha.2+fabric_1.20.1`**（本线自己的号，仍带 alpha）。
 >    🔄 **2026-10-03 口径变更（用户裁决「fabric 侧与主线版本号相同」）**：**所依赖的库版本不再带 alpha** ——
 >    库仓 `fabric-1.20.1` 子项目的版本号已由 `1.0.6-alpha.6` **对齐为与三平台完全相同的 `1.0.11`**
->    ⇒ 库**四平台同号**；本线现为 **`starengine_lib_version = 1.0.11`**（`_version_range = >=1.0.11 <2.0`）。
+>    ⇒ 库**四平台同号**；本线现为 **`starengine_lib_version = 1.0.12`**（`_version_range = >=1.0.12 <2.0`）。
 >    ⚠️ 原「`mod_version` 与所依赖的库版本**同步带 alpha**」的描述**作废**（仅适用于 2026-10-03 之前的历史版本）。
 >    ⚠️ 库 `fabric-1.20.1` 子项目历史上那三个**裸**号 `1.0.6` / `1.0.7` / `1.0.8` 仍属「本地临时构建、不作对外号」，
 >    已从 mavenLocal 移入隔离目录、**不复用**；本次用的 `1.0.11` 与它们无关。
@@ -389,7 +389,7 @@ When extending this workspace:
      该风险改由下方第 7 条的 `pushToGame` 告警、以及「不要往 mods 里放独立库 jar」的玩家口径承担。
    - 内嵌副本仍**自动**满足前置依赖：`metadata.json` 的区间由 ModDevGradle 从坐标派生为
      `[<starengine_lib_version>,)`（见第 7 条），无需手工维护。
-4. **开发线现行版本 = `2.0.0-SNAPSHOT.3`**（2026-09-28）：本轮反向同步（主线 → 开发线，提交 `6c5fe9e1` 一侧）
+4. **开发线现行版本 = `2.0.0-SNAPSHOT.12`**（2026-10-06）：本轮反向合并把发布线库 `1.0.11` / `1.0.12` 的两项修复移植进本线所用的库 `next`（见文末「上游发布线沿革」）。再往前一轮（2026-09-28）反向同步（主线 → 开发线，提交 `6c5fe9e1` 一侧）
    把库 `main` **`1.0.5`** 的「**会被激怒的可驯服动物计入敌对目标**」移植进开发线库。库的
    `combat/HostileTargets` 口径由「敌对生物 ∪ 中立生物(宠物除外)」扩展为
    「… ∪ 会被激怒的可驯服动物(宠物除外)」，新增私有谓词 `isAngerableTamedMount`
@@ -407,11 +407,21 @@ When extending this workspace:
    + ⚠️ 敌对目标口径重写（`isHostile` 由「敌对生物 ∪ 已被激怒的中立生物」改为「敌对生物 ∪ 中立生物(宠物除外)」，
    **语义变更**，经用户 2026-09-24 裁决作**玩法口径特例**按补丁位发布）；`1.0.0` = 首个正式版。
    ⚠️ `1.0.2` 已提交但**从未推送、从未发布**（内容并入 `1.0.3`）；`1.0.1` 亦从未发布（内容并入 `1.0.0`）。
+   **上游发布线沿革（`main` 线，仅作对照；本线只取其修复，不取其区间规则）**：
+   - `1.0.12`（2026-10-05，**纯修正**）＝ `client/ActionBarManager` 在**两条 NeoForge 线**改为复刻原版
+     `Gui#renderOverlayMessage` 的**动态 yShift**（读 NeoForge patch 成 public 的 `Gui.leftHeight` / `Gui.rightHeight`：
+     `yShift = max(lh, rh) + (68 - 59)`、`y = guiHeight - max(yShift, 68)`）⇒ 修「有黄心（吸收心）/ 护甲 / 坐骑血
+     把状态条堆高时 actionbar 与物品名提示重叠」；`forge-1.20.1` / `fabric-1.20.1` **保持固定 `guiHeight - 68`**
+     （原版 1.20.1 无该机制 ⇒ **平台差异**）。本线已按同一实现移植（`2.0.0-SNAPSHOT.12`）。
+   - `1.0.11`（2026-10-03）＝ `target/TargetType` 末尾追加 `NON_HOSTILE` + `combat/HostileTargets#isHostileMob`
+     （本线库早已到位，无需再移植）。
+   - `1.0.9` / `1.0.10` ＝ `combat/CreatureTargets` + `TargetType.CREATURE(_OR_RIVAL)`（本线亦已到位）。
+   - ⚠️ `main` 线仍声明 `starengine_lib_version_range=[1.0.12,2.0)` —— **本线不抄该区间**（见上方第 3 条）。
    沿革：`1.0.0` = 库的**首个正式版**（2026-09-22 由快照终态 `1.0.0-SNAPSHOT.16` 规范化而来，库内 Java 源码
    零改动，产物名由 `…-1.0.0-SNAPSHOT.16.jar` 变为 `…-1.0.0.jar`）。
 5. ⛔ **快照系列（`1.0.0-SNAPSHOT.*`）已终止，不受本契约保护**：那时相邻快照之间二进制不兼容且 `modId` 相同，
    消费方必须把下界**精确到序号**（历史口径与实测矩阵见各线 `gradle.properties` 注释与库 README §4.2）；
-   **自 `1.0.0` 起不再需要精确序号**，`[1.0.11,2.0)` 一条即可。
+   **自 `1.0.0` 起不再需要精确序号**，`[1.0.12,2.0)` 一条即可。
 6. ⚠️ **升级库的固定动作（缺一即断）**：① 库侧 bump `lib_version`/`mod_version` 并
    `./gradlew build publishToMavenLocal`（四平台同号）；② 本仓四条线 `gradle.properties` 的
    `starengine_lib_version` 更新到新版本（**唯一的版本量**；自 2026-09-25 起已无区间可同步）；③ `.github/workflows/build.yml` 的库 `ref:`
@@ -561,6 +571,14 @@ When extending this workspace:
   `Q2/Q3` 批次 → 新增守门 **`tools/verify_medkit_and_removal_invariants.py`**
   （M1 四线：登录 / 切维度处理器**不得**再引用 `triggerMedkitOnEquip` / `refreshMedkitEquipSession`、
   重生与 `onEquip` **必须**引用；M2 fabric：两侧各一条 `hasEffect` 早退判据。期望 `GATE: PASS (22 项)`）。
+  2026-10-05 扩散伤害批次 → 新增守门 **`tools/verify_aoe_spread_invariants.py`**
+  （A1 四线 `onLivingDamagePre` 的内部窗口早退在位 / A2 旧布尔 `aoeProcessing` 已彻底退役 /
+  A3 六处扩散点（`DiceCombatEvents` 2、`LivingPageImpact` 1、`OrbitalBombardmentManager` 1、
+  `SherryThrowManager` 1、`ShootingStarManager` 1、`SpellDamageRegistry` 2）的 `beginAoe()` 计数与配对 /
+  A4 扩散伤害不得使用会重入法伤链或骰战的类型;
+  A5 每处 `beginAoe();` 的下一行必须是 `try {`。⚠️ **A4 必须分「文件级 / 窗口块级 / 直接实参级」三层** ——
+  只查「直接实参」会漏掉「经局部变量传递」与「跨行调用（`ModDamageTypes\n  .foo(`）」两种形态,那是**永真门**
+  （本轮实测踩到,五条反证现已全部有效）。
   ⚠️ **注意运行时判据与静态判据的分工**：有些「已修」项在**当前调用路径上不可达**（如 Q3 的 `hasEffect` 判据 ——
   Puzzles 注入传的是 `getEffect(effect)`，无效果时为 `null` ⇒ 先命中既有的 null 放行判据），
   这类改动只能靠**静态守门**长期钉住、不能靠运行时读数证明 ⇒ 结案时**必须写明「哪一条读数有判别力、哪一条只是结构性成立」**。
@@ -604,7 +622,7 @@ When extending this workspace:
 - 两侧门槛都必须在 **mods.toml 解析 / 依赖排序阶段**拒绝不合格环境(FML 会给出可读提示:语言提供者版本不符 = `fml.language.missingversion`;
   强制依赖不满足 = `Missing or unsupported mandatory dependencies:`),**不得**依赖"先加载、再在代码里检查"——mixin 变换早于 mod 构造器,那样只会得到 mixin 报错。
 
-发布规范:GitHub **Release tag 使用无后缀的基础版本号**(如 `1.1.3`,禁止 `v` 前缀与 `+加载器` 后缀),tag 推送即触发 CI 自动构建并发布**三个 jar**(1.21.1 + 1.20.1 + 26.1.2,第三个是 26.1.2 的 `-beta` jar);⚠️ **第四条线 fabric 不进这条 Release** —— 它有**自己的** `fabric-<版本>` pre-release(见「第四条线规则边界」③),两者附件互不掺入;发布线分支 `multi-main`（2026-09-22 由 `multi-1.20.1-1.21.1` 改名）推送时 CI 会从 `mod_version` 剥离 `-rc/-pre` 与后缀自动打 tag。⚠️ **剥离规则是「先剥 `+后缀`,再剥第一个 `-` 之后的一切」**(`BASE=${VERSION%%+*}; BASE=${BASE%%-*}`)⇒ `-hotfix` 打出的 tag 是裸版本(如 `1.3.5-hotfix` → **`1.3.5`**),tag 已存在时 CI 走 `gh release edit` + `gh release upload --clobber` **刷新同一个 Release**,不新建 tag/Release。
+发布规范:GitHub **Release tag 使用无后缀的基础版本号**(如 `1.1.3`,禁止 `v` 前缀与 `+加载器` 后缀),tag 推送即触发 CI 自动构建并发布**三个 jar**(1.21.1 + 1.20.1 + 26.1.2,第三个是 26.1.2 的 `-beta` jar);⚠️ **第四条线 fabric 不进这条 Release** —— 它有**自己的** `fabric-<版本>` pre-release(见「第四条线规则边界」③),两者附件互不掺入;发布线分支 `multi-main`（2026-09-22 由 `multi-1.20.1-1.21.1` 改名）推送时 CI 会从 `mod_version` 剥离 `-rc/-pre` 与后缀自动打 tag。⚠️ **剥离规则是「先剥 `+后缀`,再剥第一个 `-` 之后的一切」**(`BASE=${VERSION%%+*}; BASE=${BASE%%-*}`)⇒ `-hotfix` 打出的 tag 是裸版本(如 `1.3.7-hotfix` → **`1.3.7`**),tag 已存在时 CI 走 `gh release edit` + `gh release upload --clobber` **刷新同一个 Release**,不新建 tag/Release。
 ⚠️ **2026-10-01 订正**(原注释失实):此前写「`1.2.1-hotfix` 已按上述规则打到 `1.2.1`」—— 查证发现 `Create Git tag` 步骤里有一条「`mod_version` 含 `-` 即静默跳过」的预发布守卫,它把 `-hotfix` 也一并挡掉了(既不建 tag、也不刷 Release,**且没有任何报错**)。守卫已改为**只跳过 `-alpha/-beta/-rc/-pre/-snapshot`**;`-hotfix` 自 2026-10-01 起才真正按本段口径执行。**26.1.2 永远只作为附件随发布线 Release 发布,不生成自己的 tag/Release**(其 `1.3.5-beta.2` 不是裸 `x.y.z`);CI 侧实现见 `.github/workflows/build.yml` 的 `Create/Update GitHub Release (three JARs, notes from release/<tag>/)`。
 **Release 正文取自玩家侧发布说明**(2026-09-17 起,用户要求):`release/<tag>/PLAYER_CHANGELOG_ZH.md` + `release/<tag>/PLAYER_CHANGELOG.md`,中文在前、中间插 `---`、英文在后,经 `gh release ... --notes-file` 整文件传入(不再用内联单行 `--notes`);两份文件都不存在时只打 `::warning::` 并退回「附件清单」兜底,**不阻断发布**。⇒ 发布前必须确认该版本目录的两份文件已存在且与 `CHANGELOG_(ZH|EN).md` 同步(见「更新日志约定」)。
 **CI / Actions 状态由用户自行观察(2026-09-17 用户裁决,必须遵守)**:本机无 GitHub token、不安装 `gh`,因此**代理不得监视、轮询或尝试查询** GitHub Actions / Release 状态(不跑 `gh run view|list`、不装 CLI、不改用 API 轮询)。推送后代理只在交付说明里列明**预期结果**与失败时的排查入口(远端 job 日志),由用户到 Actions 页面自行核对;禁止把「本机看不到 CI」写成未完成事项反复追问。
@@ -721,7 +739,7 @@ When extending this workspace:
    ⚠️ **2026-09-27 起叠加用户新规**：本条约束的是「谁来跑」，**不改变**「能跑什么」——`mt.ps1` 全流程与阶段 C 的整目录批量此时**已被闸门禁用**（见下方第 5 条与 `TESTING-RULES-OVERVIEW.md` §3.1）。主 agent 亲自执行时同样受闸门约束，须改用「单条用例 + 手动逐条注入」范式；要恢复批量执行需用户显式裁决或临时加 `--allow-auto`。
 3. **平台差异**：按 `docs/compat-26.1.2-neoforge.md`（26.1.2 相对 1.21.1）与 `docs/compat-1.20.1-forge.md`（1.20.1 相对 1.21.1）的差异映射实现，允许并**必须逐条登记**平台差异（如 26.1.2 无 Iron's Spells 联动、`ItemTags.SPEARS` 只在 26.1.2 存在、26.1.2 的 KubeJS 探针 API 形态不同等）。**禁止**用「能启动/跑通了」代替一致性结论。
 4. **一致性测试**：三线落地后按 `scripts/test/TESTING-SPEC.md` §13.2 的方法（**同探针 + 同用例 + 三侧读数 diff**）在 26.1.2 上复跑 1.21.1 已通过的用例，逐条比对读数；差异要么修掉、要么作为**平台差异**登记并写明原因。
-5. **版本号与发布**：26.1.2 子项目当前版本号 = **`1.3.7-beta.1+neoforge_26.1.2`**（保留 `-beta` 以与发布线 `1.3.7` 的发布态区分；改动只动 `neoforge-26.1.2/gradle.properties`，**不得**连带改 1.20.1 / 1.21.1）；26.1.2 **不单独发版** —— CI 对其跑 lang 同步 + 三子项目构建，并把**已构建出的 jar 作为第三个附件附到发布线的 Release**（2026-09-17 用户要求「将 26.1.2 加入 Action 和 Release」），但**不打自己的 tag、不建自己的 Release**（版本号不是裸 `x.y.z`，不满足打 tag 门槛）；tag/Release 的创建仍只在发布线分支触发。
+5. **版本号与发布**：26.1.2 子项目当前版本号 = **`1.3.7-beta.2+neoforge_26.1.2`**（保留 `-beta` 以与发布线 `1.3.7-hotfix` 的发布态区分；改动只动 `neoforge-26.1.2/gradle.properties`，**不得**连带改 1.20.1 / 1.21.1）；26.1.2 **不单独发版** —— CI 对其跑 lang 同步 + 三子项目构建，并把**已构建出的 jar 作为第三个附件附到发布线的 Release**（2026-09-17 用户要求「将 26.1.2 加入 Action 和 Release」），但**不打自己的 tag、不建自己的 Release**（版本号不是裸 `x.y.z`，不满足打 tag 门槛）；tag/Release 的创建仍只在发布线分支触发。
 6. **一次内容更新的验收口径**：① 三线均已落地且各自构建通过；② 核心改动按「变更分级与验证口径」跑**定向最小冒烟**（**只跑与该改动直接相关的用例**，三线各一遍；顺序 1.21.1 → 1.20.1 → 26.1.2，逐线出结论）；命中该节的「**完整冒烟**」五种情形之一（发版批次 / 跨模块公共路径 / 门槛类规则自身改动 / 用户显式要求 / 26.1.2 迁移与一致性验收批次）时才跑**全清单**；纯脚本/文本/tooltip/文档/注释类改动免冒烟，但仍须构建 + 静态闸门全绿；③ 两份 CHANGELOG 同步且条目数一致；④ 26.1.2 侧的一致性测试结论已写入 `scripts/test/TESTING-SPEC.md`（工程口径记录写§附录 A，不写玩家侧 CHANGELOG）。
    ⚠️ **2026-09-27 起**：②的「跑用例」在**执行方式上**受批量编排闸门约束（§第 5 条）——「定向最小冒烟」仍按本节判定**该跑哪些**，但落地时逐条发（`--case <X>` 或 `mt_inject.ps1 cmd`），不再用 `run-dir` / 全流程一次性跑完。这是**用户可见性**上的收紧，不改变本节的分级判据。7. **禁止「顺路一起改」与「分批补线」**：不得以某条线更快为由先把该线改完、另两条线留待以后（同批必须三线对齐）；确需分步时必须由用户明确裁决，并把未落地的那条线登记为**阻塞项**（不是「以后再说」）。
 
@@ -1200,6 +1218,26 @@ When extending this workspace:
 - **定向爆破 AOE 伤害口径(2026-09-13 用户裁决 B / 2026-10-04 迁移,必须遵守)**:对选中目标周围 6 格内其他目标造成的 AOE 伤害 = **定向爆破自身 5 点 + 效果牌伤害加成(书签/忍者)**,**不**计入激光/板砖/轨道炮/活体书页等其它伤害牌自身加成;与主目标**同值、同一时点**结算。⚠️ 2026-10-04 起该段实现位于 `combat/DamageCardFxScheduler#resolveBlast`(不再在 `SpellDamageRegistry` 的修饰器里;旧文档所称的回归用例 `DIRECTIONAL-BLAST-AOE` 已不存在,勿引用)。⚠️ **与电击手套的关系(2026-10-05 用户裁决)**:本段 AOE 与电击手套的 3 格扩散**各自独立结算** —— 手套只从**命中的主目标**算一次,且本段的**每一次波及命中都不带手套扩散窗口**(`applySpellDamageAmount` 的 `gloveSplash` 参数在本段传 false / 本段直接 `hurt`)⇒ **不二次触发、不递归**。⚠️ **去重(2026-10-05 第二轮裁决)**:本段 AOE 循环在 `DiceCombatEvents#markCardSplashHit(e)` 返回 `false`(该目标本次用量内已吃过电击手套 3 格扩散)时**跳过**它 ⇒ 一次用量内同一目标只结算一次;本段连同 ① 的主目标命中整体包在 `runAsCardSplashResolution` 窗口内,**未开启窗口时登记恒放行**(激光/板砖/轨道炮/活体书页这些单枚举牌行为不变)。
 - **伤害效果牌(对怪激光 / 对怪板砖 / 轨道炮 / 定向爆破)的 FX 与结算时点(2026-10-04 用户裁决,必须遵守)**:四张牌由「自身牌 + 使用后获得 1:00 远程/魔法增伤」改为「**目标选择器**(`TargetType.CREATURE`,手持即选) + 对选中目标直接造成法术伤害」,且**伤害不落在使用瞬间,而是在 FX 动画播到命中时点才结算**。唯一执行器 = `combat/DamageCardFxScheduler`(四线各一份;fabric 由 `AstralDiceMod#registerListeners` 显式登记)—— 时序(`DELAY_TICKS=10` 起手延迟 / `BEAM_TICKS=20` 光束持续 / `BRICK_SPEED=3.2`)与伤害公式(固定基础值 + `SpellDamageRegistry.effectCardDamageBonus`)都只在那一处,禁止在牌内自行结算或另开通道。伤害类型 = `ModDamageTypes.cardSpell`(法术伤害,与活体书页同链),且必须用 `DiceCombatEvents.runAsInternalAoe(...)` 包裹—— 法术伤害源的 `getEntity()` 仍是施放者,不包裹会被当成玩家直接攻击重走骰战。音效:释放 = `damage_effect_card_cast`(四张共用;`BaseEffectCardItem#playUseSound` 对 `isDamageFxCard(...)` **静默**,避免与通用出牌音叠加)、命中 = `monster_laser_hit` / `monster_brick_hit` / `orbital_strike_hit` / `directional_blast_hit`。
 - **四张伤害效果牌的「增伤能力」已移除但接口保留(2026-10-04)**:`SpellDamageRegistry` 里四个`monster_laser` / `monster_brick` / `orbital_strike` / `directional_blast` 修饰器 `isActive` **恒 false**(骨架与 `apply` 公式保留,便于日后恢复);四个 `MobEffect` 仍在 `ModEffects` 注册但**不再被任何牌施加**;`ModTooltipHandler#addActiveDamageBonusTooltip` 骨架保留但**无加成时不显示该行**(避免出现「…提升:0」)。⚠️ **重新启用任一修饰器前必须先删掉 `DamageCardFxScheduler` 里对应的结算**(定向爆破的 AOE 已整段迁过去),否则重复结算。
+- **扩散伤害(顺劈/溅射/法伤波及/投掷落地/流星/轨道轰炸)的递归防护口径(2026-10-05,必须遵守)**:
+  ① **扩散/追加伤害的伤害源一律用 `directEntity == null` 的类型**(`ModDamageTypes.trueDamage` / `skillDamage` /
+  `extraDamage` / `unreducibleDamage`)—— 这样 `DiceCombatEvents#onLivingDamagePre` 的
+  `directEntity instanceof Player` 闸门天然早退,被波及目标不会重走骰战结算;**唯一**以玩家为 directEntity 的注入
+  是「反击」(`diceDamage`),它走 `counterDepth` **深度计数**。
+  ② **每次扩散必须包在 `DiceCombatEvents.beginAoe()/endAoe()` 内部波及窗口内**,闸门顶部
+  `if (isInternalAoe() || counterDepth > 0) return;` 统一早退。
+  ③ ⚠️ **窗口必须是深度计数**(2026-10-05 由布尔 `aoeProcessing` 升级):实测存在**嵌套** ——
+  活体书页命中(`LivingPageImpact` 开窗)→ 该伤害是 `astral_dice:card_spell`、命中法伤白名单 ⇒
+  进入 `DamageEffectCardHandler` → `onHit` 再开定向爆破/电击手套的窗 ⇒ 布尔下内层 `endAoe()` 会
+  **提前清零外层守卫**(与已修复的 `counterProcessing` 同类缺陷)。
+  ④ **`ModDamageTypes.cardSpell(...)` 不得用作扩散伤害源**:它是法伤白名单里**唯一**的本模组类型,
+  用作波及即形成「波及 → 法伤链 → 再波及」无限递归(`SherryThrowManager` 的类注释早已记录该裁决)。
+  ⑤ **同一次扩散内目标不重复**:一律用 `getEntitiesOfClass`(天然去重);除大当家「战斗爽·溅射」
+  **刻意含主目标**(且只结算 1 次、对主目标临时清零无敌帧)外,其余扩散点均显式排除主目标与施法者。
+  不变量由 `tools/verify_aoe_spread_invariants.py` 钉住(A1 窗口早退 / A2 旧布尔退役 / A3 开窗配对 /
+  A4 扩散伤害不得用会重入法伤链或骰战的类型 / A5 `beginAoe()` 的**下一行必须**是 `try {`)。
+  ⚠️ **A5 不是形式洁癖**:`beginAoe()` 与 `try` 之间若夹了会抛异常的语句,配对的 `endAoe()` 不会被调用 ⇒
+  守卫卡死,此后**所有**骰战结算都会被早退(表现为「打谁都不结算骰战」)。
+  ⚠️ **开发线例外（2026-10-06 反向合并同步）**：四张伤害效果牌的 FX 重做把「定向爆破 AOE」整段搬到了 `combat/DamageCardFxScheduler#resolveBlast`（**已不在修饰器链里**）⇒ 该段的波及用 `astral_dice:card_spell` 也**不会**「再波及」（链里已无对应修饰器可被触发）；符卡-祸的立即命中同属此例外。其递归由**开发线新增的两道闸门**结构性挡住：`combat/DiceCombatEvents#gloveSplashSettling`（扩散结算重入闸门）与 `#markCardSplashHit`（一次用量内同一目标只结算一次，先到先得）。据此 `tools/verify_aoe_spread_invariants.py` 的开窗期望表与 A4 白名单已按开发线架构同步（`SpellDamageRegistry` 2 → 1；新增 `DamageCardFxScheduler` 2、`HuoCardItem` 1）。
 - **文案口径:「攻击时」= 触发骰神赐福的规则(近战武器 + `isBlessingTarget`)**;当描述的是效果伤害时,一律写成「使用远程/魔法伤害」(斜杠可写作「或」),不得混用「攻击时」指代效果伤害。
 - **近战武器攻击判定(骰战 / 骰神赐福门控)自 2026-10-03 起 = **黑名单**(必须遵守)**:`DiceCombatEvents.isMeleeWeaponAttack` 只排除 **空手 / 盾牌 / `ProjectileWeaponItem`(弓/弩/各模组弹弓) / `BlockItem` / 枪械本体(`isFirearmItem`) / 非武器工具(`Items.SHEARS`|`Items.FISHING_ROD`|`Items.FLINT_AND_STEEL`|`Items.BRUSH`)** **六项**,其余**一律计入** —— 包括**全部挖掘工具**(镐/锹/锄/斧)与各模组武器。⚠️ **「非武器工具」一条系 2026-10-03 同日二版按用户裁决补入**(黑名单回退时曾一度重新计入,现已排除);它**必须排在显式纳入清单之后**,否则将来某模组的合法武器若恰好是这四件的子类会被误杀。目的 = 兼容**不继承** `SwordItem`/`PickaxeItem` 的第三方模组(匠魂/灾变那类自带武器体系者)。⚠️ **2026-10-03 当天曾一度改为「按原版物品标签的白名单」,随即按用户裁决回退** —— 白名单会把上述模组整类漏掉;若将来再有同类诉求,**正确做法是给该模组加白名单例外,而不是退回白名单主体**。⚠️ **显式纳入清单 `MELEE_WEAPON_EXTRA_INCLUDES`(按注册名)优先于所有排除**:`enigmaticlegacy:eldritch_pan`(1.20.1 联动模组的饕餮之锅,`TieredItem`,不在任何物品标签里)与 `enigmaticdelicacy:voracious_pan`(1.21.1 联动模组的饕餮之锅,`BlockItem`,同时可放置)⇒ **后者必须靠这一步才不会被 `BlockItem` 排除**。⚠️ 判据一律用**接口 + 注册名**,**不得**引用 `SwordItem`/`PickaxeItem`/`DiggerItem`/`TieredItem` 等类名(26.1.2 已把这几类整体重构掉)。⚠️ 消费方 `isPlayerMeleeAttack`(电磁炮)与 `FateGuidanceCardItem` 自动继承本口径。
 - **效果牌可选中生物自 2026-10-03 起 = `CreatureTargets.isCreatureTarget`(必须遵守)**:**只服务伤害效果牌**(活体书页 `LivingPageItem` / 符卡-祸 `HuoCardItem`),口径 = `HostileTargets.isHostile(e)` ∪ **未驯服的可驯服生物**(`CreatureTargets#isUntamedTamable`:未驯服的 `TamableAnimal`(狼/猫/鹦鹉)或无主的 `OwnableEntity`(马/驴/骡/骆驼/羊驼)),并显式排除 `Npc`(村民/流浪商人)。⚠️ **已驯服的宠物与已被认领的坐骑不计入**。⚠️ **立牌选择器 / 法伤闸门 / 飞星 / 派对关系仍走 `HostileTargets` 原口径** —— 对应 `TargetType.CREATURE` / `CREATURE_OR_RIVAL`(库 `1.0.9` 起;**追加在枚举末尾** ⇒ 既有 ordinal 不变,消费方 `TargetType.values()[ordinal]` 的网络编码兼容)。⚠️ 判据只用三平台签名一致的接口(`TamableAnimal#isTame` / `OwnableEntity#getOwner`);**不得**用 `getOwnerUUID()`(26.1.2 已删)或任何类名/包路径(26.1.2 把 `animal/horse/**` 改名 `animal/equine/**`、把 `AbstractVillager` 移到 `npc/villager/`)。取证与完整理由见 `CreatureTargets` 类注释。
@@ -1300,7 +1338,7 @@ When extending this workspace:
   - 枪匠立牌「破绽」:带破绽目标攻击枪匠被闪避后,自动触发一次反击伤害。
 - **单次伤害公式**:手持(主手+副手)伤害最高的近战武器基础伤害(不含附魔;无近战武器按空手 1.0)+ 骰战攻击力加成链(`DiceCombatModifiers` 攻击修饰器)+ 已装备攻击牌随机掷骰(`ctx.attackCardSum`);**不含 1d6、不自动赐福**。随后对总伤害计算七咒减益(`applyCurseToDicePoints`),并可受「全力攻击」×1.5 修正;肉弹战车立牌装备时若生命未满再附加缺失生命值等值伤害。
 - **注入方式**:以玩家为伤害来源经 `hurt()` 单次结算(目标护甲按原版减伤;击杀计入玩家击杀来源),由 `DiceCombatEvents.injectCounterDamage` 统一执行。
-- **递归保护**:`DiceCombatEvents.counterProcessing` 标记包裹注入伤害结算,`onLivingDamagePre` 顶部跳过该伤害(与 `aoeProcessing` 相同模式),防止注入伤害再次进入骰战结算/递归触发。
+- **递归保护**:`DiceCombatEvents.counterDepth` **深度计数**包裹注入伤害结算,`onLivingDamagePre` 顶部以 `if (isInternalAoe() || counterDepth > 0) return;` 统一早退,防止注入伤害再次进入骰战结算/递归触发。⚠️ **2026-10-05**:AOE 窗口的 `aoeProcessing` **布尔**已同批升级为 `aoeDepth` 深度计数 + `beginAoe()/endAoe()`(理由见本节「扩散伤害…递归防护口径」条)。
 
 ## 充能流派规范（Charge System）— 必须遵守
 
@@ -1340,7 +1378,7 @@ When extending this workspace:
   - `target/TargetSelectionManager`：服务端会话（每玩家一个，token 随机），start/confirm/cancel/过期/登出·死亡清理；确认时二次校验 token、时效、目标存活、类型、距离。
   - `client/TargetSelectionClient`：客户端状态机（准星 `player.pick(radius,...)` 射线、确认/取消、输入接管）。
   - `client/TargetSelectOverlay`：中央 HUD **只画一行**「目标名 + 距离 + 类型标签」（`hud.astral_dice.target_select.target` + 字面量 `" · "` + `hud.astral_dice.target_select.tag.<后缀>`，整行用 `highlightColor` 着色；后缀由 `TargetSelectionClient#targetTagKey(...)` 推导 = hostile / teammate / pet / neutral / player），`Component` 经 `guiGraphics.drawString`，注册于 CROSSHAIR 之上，**F1 隐藏 HUD 时整层不画**；其余提示一律走 actionbar（见 `### 现行口径`）。
-- **确认 / 取消（❌ 旧口径已作废）**：~~确认 = 鼠标右键（默认）或 `CONFIRM_TARGET_KEY`（默认 Enter，可改绑）；取消 = Esc（不打开暂停界面）~~ ⇒ 见下方 `### 现行口径` 第 1–5 条与第 16 条（左键释放 / 右键 = 对自身使用或**收起** / 下蹲+右键 = 收起 / ESC 菜单取消 / J = 收起【**任何**会话，含「手持即选择」；2026-10-03 收口，2026-09-24 的豁免已作废】）。
+- **确认 / 取消（❌ 旧口径已作废）**：~~确认 = 鼠标右键（默认）或 `CONFIRM_TARGET_KEY`（默认 Enter，可改绑）；取消 = Esc（不打开暂停界面）~~ ⇒ 见下方 `### 现行口径` 第 1–5 条与第 16 条（左键释放 / 右键 = 对自身使用或**收起** / 下蹲+右键 = 收起 / ESC 菜单取消；**主动技能键自 2026-10-05 起完全不参与选择器**）。
 - **输入锁定（❌ 旧口径已作废）**：~~键盘经 `mixin/client/KeyboardHandlerMixin`（`KeyboardHandler.keyPress` HEAD）拦截除 移动键(WSAD/跳跃/潜行/疾跑)/Enter/J/Esc 外的全部按键…；`InputEvent.MouseButton.Pre` 右键=确认~~ ⇒ 该 Mixin **已删除**、键盘不再被模组吞掉、右键不再作确认；现行输入锁定口径见下方 `### 现行口径` 第 6 条。
 - **高亮渲染（❌ 旧口径已作废）**：~~`RenderLevelStageEvent.Stage.AFTER_ENTITIES` + `LevelRenderer.renderLineBox` 描边 AABB~~ ⇒ 现为**公开 API 构造的实体棱柱边框** + **可见外框包围盒**，见下方 `### 现行口径` 第 7–8 条；颜色 友方绿 `0x55FF55` / 敌对红 `0xFF5555` / 中立黄 `0xFFFF55`、仅本地渲染（单向）不变。敌我判定：同队玩家 / `OwnableEntity`(owner=选择者) = 友方；`net.minecraft.world.entity.monster.Enemy` = 敌对（**该行口径已过时**：按现行「敌对目标」判定规范，应为 `Enemy` **或**中立生物（宠物除外），见下方「「敌对目标」判定规范」一节）；其余中立。整合包 Sodium 0.8.13 + Iris 1.8.14-beta.1 下须保持正常（自动化测试 TC11 验证）。
 
@@ -1354,7 +1392,7 @@ When extending this workspace:
 2. **右键（不潜行）= 对自身使用 / 收起（2026-10-03 用户裁决「只能对目标释放的主动技能，右键改为取消」）**：分两支 —— ① 动作同时实现 `target/SelfTargetable` 且 `allowSelf()` 为 `true`（`ren_privilege` / `lulu_healing_slime` / `zhao_blessing` 三个立牌动作，以及四张可自用效果牌 `express_delivery` / `luxury_feast` / `berserk` / `fu_card`）⇒ 发 `TargetSelectConfirmPayload(token, 自己)` 并 `deactivate()`，稳态提示走 `prompt.no_target_self`；② 未实现 `SelfTargetable`（`allowSelf()` 恒 `false` =「只能对目标释放」：立牌动作 `haiqing_weak_mark` / `bonnie_undercover` / `moses_apply_broken` / `megas_orbital_bombardment` / `teru_descent`，以及效果牌 `you_have_i_have` / `living_page` / `huo_card`）⇒ **收起（取消选择）**（`TargetSelectionClient.java#useOnSelfBySecondaryClick()`，DEBUG 行 `key=right action=cancel`；走与服务端 `TargetSelectionManager#cancel` 同一路径 = 清会话 + 手持类写抑制闩 + 弹 `cancelled`）。⚠️ 旧行为「只弹 actionbar `msg.astral_dice.target_select.self_unsupported`、**不发包、会话保留**」**已作废**，该 lang 键自此零引用（死键保留、勿删）。**注意**：库内 `TargetType.matches` 仍排除选择者自身 ⇒ 自用放行做在消费方 `SelectorTargets` 4 参重载（见 `target/SelfTargetable` 的 javadoc）。
 3. **右键 + 潜行 = 取消**（`TargetSelectionClient.java#onMouseButton(...)` 的「右键 + 潜行」分支，DEBUG 行 `key=right_sneak action=cancel`）。
 4. **ESC = 原版照常打开暂停菜单，菜单一打开即取消**：键盘 ESC 不再被模组拦截（键盘 Mixin 已删除），取消时机在 `ScreenEvent.Opening` 收到 `PauseScreen` 时（`TargetSelectionClient.java#onScreenOpening(ScreenEvent.Opening)` 的 `PauseScreen` 分支，DEBUG 行 `key=esc action=cancel`）。⚠️ 会打开菜单是**现行为**，不再是旧口径的「不打开暂停界面」。
-5. **J（主动技能键 `ACTIVATE_SIGN_KEY`，默认 J）= 收起（取消选择）【2026-10-03 用户裁决「按键收口」；撤销 2026-09-24 对「手持即选择」会话的豁免】**：走 `KeyMapping#consumeClick` 消费（`client/KeyBindingSetup.java#ClientEvents.onClientTick(...)` 的 `ACTIVATE_SIGN_KEY.consumeClick()`），**不是**键盘拦截；DEBUG 行 `key=j action=cancel`。判据 = `TargetSelectionClient.isActive()` —— **只要在会话中（含效果牌的「手持即选择」会话）就收起**，不再穿透成立牌主动技能；收起后服务端按第 14 条的抑制闩记住「这张牌还在主手」⇒ 选择器**不会下一 tick 自动重开**，故再按 J 时客户端已无会话、自然转发 `SignActivatePayload` 触发立牌主动技能（**该键不会被永久吞掉**）。`target/TargetSelectionManager#isSelectingByKey` 仍是**服务端唯一判据**，但用途只剩第 14 条的「第 2 步守卫 / 第 6 步是否延后冷却」，本键不再按 `holdToSelect` 分流。
+5. **主动技能键 `ACTIVATE_SIGN_KEY`（默认 J）= 完全不参与选择器【2026-10-05 用户裁决；撤销 2026-10-03「按键收口」的「J = 收起」口径】**：仍走 `KeyMapping#consumeClick` 消费（`client/KeyBindingSetup.java#ClientEvents.onClientTick(...)`），**不是**键盘拦截；但**不再判 `TargetSelectionClient.isActive()`**，按键**无条件**转发 `SignActivatePayload`（原 DEBUG 行 `key=j action=cancel` 已随之删除）⇒ 选择会话期间按键**照常触发立牌主动技能**，主动技能的释放权完全归玩家。选择器的取消与收官改由第 3 条（下蹲+右键）、第 4 条（ESC 菜单）、不潜行右键（只能对目标释放时）与超时承担。⚠️ 服务端仍有自己的闸门：`BaseSignItem#performSkill` 的**第 2 步**对「按键开启的」会话直接 `return`（`isSelectingByKey`，防重复进入）⇒ 正在为该技能选目标时再按 J 会**静默无效**；「手持即选择」会话不在其列 ⇒ **手持效果牌时按键照常生效**（2026-09-24 那个 BUG 的根治口径）。`target/TargetSelectionManager#isSelectingByKey` 仍是**服务端唯一判据**，用途只剩第 14 条的「第 2 步守卫 / 第 6 步是否延后冷却」。
 6. **输入锁定（鼠标 + 滚轮 + 界面）**：
    - `InputEvent.MouseButton.Pre`：选择期间按下左键=释放（确认）、右键=对自身使用 / 收起；**只对左键与右键** `setCanceled(true)`（2026-10-03 收口：原实现任何按键都取消，把中键「选取方块」也一并吞掉；`TargetSelectionClient.java#onMouseButton(...)`）；
    - `InputEvent.MouseScrollingEvent`：选择期间**拦截滚轮**（防切栏/缩放；`TargetSelectionClient.java#onMouseScroll(...)`）——⚠️ **「手持即选择」类会话例外（2026-09-19 用户报告并裁决）**：效果牌主手一持就自动开会话，此时**必须放行滚轮**（玩家正是靠滚轮换槽把牌换下主手来收官，见第 14 条与 `target/HoldToSelect#stillHeld`），拦滚轮等于把牌焊在手上（旧行为：可释放时滚轮不可用）。判据 = 客户端会话的 `holdToSelect` 标记（`false` 才 `setCanceled(true)`），故**立牌主动（按键开局）会话的拦截行为逐字不变**；回归由 `LIVING-PAGE-*` 的 `SW1/SW2`（放行：滚一档 ⇒ `selectedSlot` 0→1 且会话按 `cancel (released)` 收官）与 `SELECTOR-KEYS-*` 的 ⑥-a/⑥-b（拦截：会话中滚轮不改槽位；取消后正对照改槽位）双向钉死；
@@ -1375,9 +1413,9 @@ When extending this workspace:
 14. **效果牌「手持即选择」（2026-09-25 用户裁决；两发布线同构，移植必带）**：四张可对他人使用的效果牌（加急加快 `express_delivery` / 奢华大餐 `luxury_feast` / 你有我有 `you_have_i_have` / 狂暴 `berserk`）**不再需要按键** —— 把卡牌拿在**主手**上即自动开启目标选择器，**卡牌离开主手即关闭**，且该会话**没有倒计时**（服务端 `Session.holdToSelect = true` ⇒ `expireTick = 0`、下发载荷 `durationTicks = 0`；客户端 `expireTick = Long.MAX_VALUE`、`remainingSeconds()` 恒 0）。四件套缺一即退化：
     - **服务端触发**：`PlayerTickEvents` 每 tick 对 `ServerPlayer` 调 `BaseEffectCardItem.tickHeldSelector(ServerPlayer)` —— 主手是选择器类效果牌、当前不在会话中、且未被抑制闩挡住时 `TargetSelectionManager.start(...)`；1.20.1 的 `PlayerTickEvent` 每 tick 派发两次，该路径**幂等**（第二次因 `isSelecting` 直接返回），无副作用。
     - **收官两路**：服务端 `TargetSelectionManager#tick` 用 `target/HoldToSelect#stillHeld(player)`（`SelectorAction` 的实现 = 比对主手物品 `heldCardMatches`）判定，松手即 `cleared … reason=released`（手持类会话**不参与** 30 秒超时）；客户端 `client/TargetSelectionClient#tick` 用同源判据 `holdsCardForAction(mc)`，松手走 `releaseByHeldItem()`（**只本地 `deactivate()`、刻意不发取消包** —— 否则服务端收尾会从 `reason=released` 变成 `cancel`，并多写一条无意义的抑制闩）。
-    - **抑制闩**：显式取消（**下蹲+右键 / 不潜行右键（只能对目标释放时）/ J**；2026-10-03 起 J 亦为收起键）会写 `HOLD_SUPPRESSED`（`TargetSelectionManager#cancel`，日志 `hold suppressed … (release the card to re-arm)`）——**只要该牌仍在主手上就不会再次自动开会话**；卡牌离开主手时由 `tick` 清除（日志 `hold suppression cleared`）；登出 / 死亡 / `cancelSessionForTests` 由 `clearSessionState` 一并清理。
-    - **主动技能键（2026-10-03「按键收口」后；三线同构）**：J 在**任何**会话中都先当「收起」（`client/KeyBindingSetup` 判 `isActive()`；⚠️ 2026-09-24 的 `!isHoldToSelect()` 豁免**已作废** —— 该键不再穿透成立牌技能，改为「收起后自然落到技能」，见第 5 条）；`target/TargetSelectionManager#isSelectingByKey`（= 有会话且 `!session.holdToSelect`）仍是**服务端唯一判据**，用途只剩 `BaseSignItem.performSkill` 的**第 2 步守卫**与**第 6 步「是否延后冷却」**：第 6 步若改写成 `isSelecting`，玩家握着效果牌放出的技能会被误判成「本次主动开了选择会话」⇒ **不进冷却/锁定，电流核心也不充能**。手持类会话在技能触发后**保持瞄准**。
-    - **提示**：手持类会话用 `msg.astral_dice.target_select.prompt.hold.{no_target,no_target_self,rejected,valid}`（末句「按 J 收起，移出手持即退出选择」；2026-10-03 补「按 J 收起」三语），`steadyPrompt()` **不追加**「（剩余 N 秒）」；立牌等按键类会话仍用原四态 + 时间后缀、仍走 `GameplayConstants.SKILL_WAIT_SECONDS`（30 秒）窗口。
+    - **抑制闩**：显式取消（**下蹲+右键 / 不潜行右键（只能对目标释放时）**）会写 `HOLD_SUPPRESSED`（`TargetSelectionManager#cancel`，日志 `hold suppressed … (release the card to re-arm)`）——**只要该牌仍在主手上就不会再次自动开会话**；卡牌离开主手时由 `tick` 清除（日志 `hold suppression cleared`）；登出 / 死亡 / `cancelSessionForTests` 由 `clearSessionState` 一并清理。
+    - **主动技能键（2026-10-05 起完全不参与选择器；三线同构）**：`client/KeyBindingSetup` 不再判 `isActive()`，按键**无条件**转发 `SignActivatePayload`（见第 5 条）；`target/TargetSelectionManager#isSelectingByKey`（= 有会话且 `!session.holdToSelect`）仍是**服务端唯一判据**，用途只剩 `BaseSignItem.performSkill` 的**第 2 步守卫**与**第 6 步「是否延后冷却」**：第 6 步若改写成 `isSelecting`，玩家握着效果牌放出的技能会被误判成「本次主动开了选择会话」⇒ **不进冷却/锁定，电流核心也不充能**。手持类会话在技能触发后**保持瞄准**。
+    - **提示**：手持类会话用 `msg.astral_dice.target_select.prompt.hold.{no_target,no_target_self,rejected,valid}`（末句「移出主手即退出选择」；**2026-10-05 起四线三语统一、不再出现「按 J 收起」**），`steadyPrompt()` **不追加**「（剩余 N 秒）」；立牌等按键类会话仍用原四态 + 时间后缀、仍走 `GameplayConstants.SKILL_WAIT_SECONDS`（30 秒）窗口。
     - **移植检查**：`target/HoldToSelect.java`（`boolean stillHeld(Player)`）与 `BaseEffectCardItem#tickHeldSelector` / `#heldCardMatches` / `selectorActionId()` 的 **`public` 可见性**缺一不可；只补 `use()` 而不补 tick 触发会退化成「必须按键」，漏 `HoldToSelect` 则会话不会随松手关闭。
     - **目标类型（2026-09-25 追加）**：`BaseEffectCardItem#registerSelectorAction(String, TargetType, boolean)` 显式传入目标类型（两参重载 = `TargetType.PLAYER`，既有四张牌逐字不变）；**活体书页 `living_page` 是首个 `TargetType.ENEMY` 的效果牌**（仅敌对生物 ∪ 中立生物(宠物除外)；不含玩家、不可对自己使用）。可选中判定仍统一走 `target/SelectorTargets`，**禁止**在效果牌侧另写判定；`SelectorAction` 因而持有 `targetType` 字段（构造注入），`targetType()` 不再是常量。
     - **治疗 / 功能效果牌 = `TargetType.NON_HOSTILE`（2026-10-03 用户裁决；库 `1.0.10` 起，**同日 `1.0.11`
@@ -1409,11 +1447,11 @@ When extending this workspace:
     - **「指向」= 指向外框（不是指向碰撞盒）**：准星判定只认**外框盒**的相交 —— 盒 = `TargetSelectionHighlighter#hitFrameBox(entity)`（与描边同源：`TargetOutlineCapture.outlineOf` 的「碰撞盒 ∪ 逐帧实测模型外框」再按**命中档**半线宽外扩、底面按 `BOTTOM_LIFT` 抬升；⚠️ 命中档 1/16 的盒与「半径内其它可选目标」1/128 描边盒每侧差 0.027 格 —— 判定取前者，故「指向更细的那圈框」自然也算命中）；`TargetSelectionClient#updateRaycastTarget` 用 `pickFrameTarget(...)` 遍历搜索盒内实体、以 `AABB#clip` 求射线与盒的交点并取**沿视线最近**的一个。⚠️⚠️ **视点落在盒内必须单独判为距离 0**（`frame.contains(eye)` 分支）——vanilla `AABB#clip` 只认「严格从板外进入」的相交（`getDirection` → `clipPoint` 的 `startSide < minSide` 条件），起点已在盒内时**必返回 empty**；原版 `ProjectileUtil#getEntityHitResult` 正是靠 `aabb.contains(startVec)` 分支覆盖这种情况（1.21.1 `ProjectileUtil.java:77-82`、1.20.1 `:64-69`）。**贴脸正对时（僵尸伸直双臂使外框盒前伸约 0.75 格，而玩家与生物的最小中心距约 0.6 格）框会把视点整个包住**，漏掉该分支就会「画面里画着框、左键却只弹『没有可用的目标』」，与「指向外框即可选中」的初衷相反（该缺陷由 2026-09-19 独立代码验证发现并当场修掉）。⚠️ **不得**退回原版 `ProjectileUtil.getEntityHitResult`（只测碰撞盒 ⇒ 僵尸抬臂 / 蜘蛛伸腿 / 马头颈这类「可见但在碰撞盒之外」的部位点不中，正是本次要修的观感缺陷）。方块射线截断照旧（`player.pick(radius)` 的终点作为射线末端 ⇒ 墙后目标仍选不中），实体搜索盒 `inflate(1.5)`（已知边界：模型外框比碰撞盒外扩 >1.5 格的巨型实体，以及未被渲染/未被 `isTracked` 收录的实体，其盒退化为碰撞盒 —— 与描边「画不出来的也不参与判定」同源）。
     - **回归**：`SELECTOR-KEYS-*`（按键语义 / 四态读数）与 `LIVING-PAGE-*`（`SW1/SW2` 滚轮放行）不受半径/线宽改动影响；跨版本读数口径见 `scripts/test/TESTING-SPEC.md` 附录 A 的 2026-09-19（续 6）条目。
 
-16. **选择会话的输入收口（2026-10-03 用户裁决「仅控制释放按键和收起按键」；三线同构，移植必带）**：会话期间（含效果牌的「手持即选择」会话）模组**只**接管下列四项，**其余一律放行**：
+16. **选择会话的输入收口（2026-10-05 修订：主动技能键不再参与；三线同构，移植必带）**：会话期间（含效果牌的「手持即选择」会话）模组**只**接管下列三项，**其余一律放行**：
     - **鼠标左键 = 释放**（确认目标；`confirmByPrimaryClick()`，DEBUG `key=left action=confirm|no_target`）；
     - **不潜行的鼠标右键 = 对自身使用**（`allowSelf=true`，见第 2 条 ①）**或 收起**（`allowSelf=false`，见第 2 条 ②，DEBUG `key=right action=cancel`）；
     - **下蹲 + 鼠标右键 = 收起**（DEBUG `key=right_sneak action=cancel`）；
-    - **主动技能键 J = 收起**（含「手持即选择」会话；见第 5 条，DEBUG `key=j action=cancel`）。
+    ⚠️ **主动技能键（默认 J）自 2026-10-05 起放行**（原「J = 收起」口径作废；见第 5 条）—— 不再出现在本清单里（会话中照常触发立牌主动技能）。
     ⚠️ **鼠标中键 / 侧键放行**（原实现无条件 `setCanceled(true)`，连「选取方块」都吞掉；现在**只对左键与右键**取消）。
     ⚠️ **卡牌栏键 H**：只被**按键开启的立牌会话**拦（老口径不变）；**「手持即选择」会话放行** —— 该类会话本来就不因开界面而取消（`onScreenOpening`），吞掉它自相矛盾。
     ⚠️ **滚轮**：立牌会话拦、手持类会话放行（2026-09-19 裁决，见第 6 条第二项；`onMouseScroll` 对 `holdToSelect` 早退）。
@@ -1488,7 +1526,7 @@ When extending this workspace:
 > 背景：tooltip 染色规则**明确不适用于动作栏**（见 `docs/tooltip-color-rules.md` 首部「不适用」名单），而动作栏此前**没有任何成文规范** ⇒ 同一条 UI 长期存在「值内自带 `§` 码 vs 外层 `withStyle`」的冲突、拒绝类该红却黄、以及两套渲染通道并存。本节把现行做法固化，三线一致。
 
 1. **唯一通道 = `ActionBarPayload`（三线）**：1.21.1 / 26.1.2 走 `PacketDistributor.sendToPlayer(sp, new ActionBarPayload(msg, ticks))`，1.20.1 走 `ModNetwork.sendToPlayer(sp, new ModNetwork.ActionBarMessage(msg, ticks))`；客户端侧本机提示走 `ActionBarManager.show(msg, ticks)`。
-   ⚠️ **禁止**用裸 `player.displayClientMessage(msg, true)`（或 26.1.2 的 `sendOverlayMessage`）发动作栏 —— 那是**原版覆盖层**：白色、绘制在 `guiHeight-68`、原版计时，与模组动作栏（带样式、`guiHeight-68`、固定时长）**不是同一块 UI**，混用会出现「颜色与位置都不一致」。**例外（唯一）**：双端加载类（如 `item/card/BaseEffectCardItem` 的 `isBlockedOnClient`）**不得**引用客户端类 `ActionBarManager`（否则专用服务端 `NoClassDefFoundError`），此类只能保留原版通道，但**必须显式 `.withStyle(...)` 着色**，不得留默认白。
+   ⚠️ **禁止**用裸 `player.displayClientMessage(msg, true)`（或 26.1.2 的 `sendOverlayMessage`）发动作栏 —— 那是**原版覆盖层**：白色、绘制在 `guiHeight-68`、原版计时，与模组动作栏（带样式、**位置随状态条动态**、固定时长）**不是同一块 UI**，混用会出现「颜色与位置都不一致」。**例外（唯一）**：双端加载类（如 `item/card/BaseEffectCardItem` 的 `isBlockedOnClient`）**不得**引用客户端类 `ActionBarManager`（否则专用服务端 `NoClassDefFoundError`），此类只能保留原版通道，但**必须显式 `.withStyle(...)` 着色**，不得留默认白。
 2. **文案值内禁止任何 `§` 色码，整条颜色由外层 `.withStyle(...)` 决定**（用户 2026-09-27 裁决，`BaseSignItem#sendSignActionBarColored` 类头有原始记录）。
    原因：外层统一是 `YELLOW`，此时 `§e` 是**空操作**，而收尾的 `§7` 会把后半句**重置成灰色** ⇒ 出现「**前半黄、后半灰**」的断层（实测：机械师「手牌不足」）。⇒ 语言值里**一律不写** `§e`/`§7`/`§9`；需要强调数值时改文案措辞，不改颜色。
    ⚠️ 动作栏**时间也不用蓝**（与 tooltip 的 `§9` 口径不同）：`target_select.time` 的既有口径就是黄色，故 `hanna_float` 的 `§9魔女漂浮 (1:00)§7` 已按本条清掉。
@@ -1511,6 +1549,13 @@ When extending this workspace:
    `snapshot()` 里注入（库 `GameplayConfigValues` 的字段按 1.x 契约不删）。这么做的目的是让新值对**所有玩家
    强制生效** —— 框架对「已存在且校验通过」的配置键**原样保留文件值**，只改默认值对已安装玩家无效；旧配置里的
    `[actionbar]` 段会被框架自动清除。⚠️ 改这两项必须**同时改库 + 消费方**，且消费方 `CONFIG_VERSION` 要 +1。
+8. **位置公式跨线不同（2026-10-05，库 `starengine_lib` 1.0.12）**：模组动作栏的 y 由库 `client/ActionBarManager` 给出 ——
+   **两条 NeoForge 线**（`neoforge-1.21.1` / `neoforge-26.1.2`）**复刻原版** `Gui#renderOverlayMessage`：
+   `y = guiHeight - max(max(Gui.leftHeight, Gui.rightHeight) + (68 - 59), 68)` ⇒ 血条（含**黄心/吸收心**）、护甲、
+   坐骑血、氧气等任一侧状态条堆高时**跟着上抬**，与物品名提示恒保 9 px 间距（NeoForge 把 `Gui.leftHeight` /
+   `Gui.rightHeight` patch 成 `public`，可直读）；`forge-1.20.1` / `fabric-1.20.1` **固定** `guiHeight - 68`
+   （原版 1.20.1 **没有**该机制 —— 其物品名与 actionbar 均为固定位置）⇒ 属**平台差异**，见
+   `porting/CROSS-VERSION-DIFFS.md` **N17**。⚠️ 跨线把位置「统一」成任一写法都会错位。
 
 ## 语言文件同步规范（Lang Sync）— 必须遵守
 
@@ -2186,7 +2231,7 @@ When extending this workspace:
   3. 建版本走 `POST /v2/version` 的 multipart：`data`（JSON 字符串）+ **至少一个文件字段**，且该字段名必须出现在 `data.file_parts` 里。
 - ⚠️ **Modrinth 与 CurseForge 是两套 id 体系**：CurseForge 用数字 projectID（curios = 309927），Modrinth 用 base62 project id（curios = `vvuO3ImH`）。绑定文件里存的是后者，**不要互相搬运**。
 - 路由：**按产物文件名前缀**自动分流 —— `astral_dice-*` ⇒ 主项目、`starengine_lib-*` ⇒ 库项目。库产物**必须**另传它自己的项目，不得混进主项目。
-- 版本号 = `<版本>+<加载器>_<MC版本>`：一个项目下四条线并存，裸版本号在 1.21.1 与 1.20.1 上**同名**（都是 `1.3.5-hotfix`）⇒ 带上加载器/MC 才可区分，而这正是 jar 文件名与 GitHub 产物本来的写法。
+- 版本号 = `<版本>+<加载器>_<MC版本>`：一个项目下四条线并存，裸版本号在 1.21.1 与 1.20.1 上**同名**（都是 `1.3.7-hotfix`）⇒ 带上加载器/MC 才可区分，而这正是 jar 文件名与 GitHub 产物本来的写法。
 - 渠道 `version_type` 与 CurseForge **同口径**（由版本号后缀派生）：`-alpha` ⇒ alpha、`-beta`/`-rc`/`-pre` ⇒ beta、其余（含 `-hotfix`）⇒ release。
 - 🆕 **版本标题（version name）统一口径（2026-10-02 用户裁决）**：**`<项目前缀> <基础版本>`**，前缀取 `tools/modrinth.json` 的 `namePrefix`（主项目 `Astral Dice`、库项目 `StarEngine Lib`），基础版本 = `version_number` 剥掉 `+<加载器>_<MC版本>` 与 `-alpha.N`/`-beta.N`/`-rc.N`/`-pre.N`/`-hotfix` ⇒ **同一基础版本的四条线标题完全一致**（例：1.3.6 的四条线都叫 `Astral Dice 1.3.6`），四线靠 `version_number` 与加载器标签区分。⚠️ **`version_number` 不改**（唯一标识、与 jar 名一致）。上传时由脚本自动生成（`--version-name` 可覆盖）；**已发布**版本用 `python tools/modrinth_upload.py --rename-versions --dry-run` 先看计划、再去掉 `--dry-run` 全量 PATCH 归一（`PATCH /v2/version/{id}` 就地改，不重传）。
 - ⚠️ **Modrinth 没有覆盖已发布文件的能力**（不存在 `--clobber` 的对等物）⇒ 幂等只能靠「先查后跳」：脚本上传前 `GET /v2/project/{id}/version`，`version_number` 已存在即 `SKIP`（`--force` 可强制重传）。⚠️ 项目若处于 draft/unlisted，**匿名**查版本会被 404 挡掉 ⇒ 此时只告警、不拦（宁可漏判也不要误拦）。

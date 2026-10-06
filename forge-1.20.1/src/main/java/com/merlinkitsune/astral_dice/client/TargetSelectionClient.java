@@ -50,7 +50,7 @@ import com.merlinkitsune.astral_dice.combat.PartyRelations;
  *   <li><b>右键 + 潜行</b> = 取消选择；</li>
  *   <li><b>ESC</b> = 原版照常打开暂停菜单，菜单一打开（{@link ScreenEvent.Opening}）即取消选择
  *       （**手持即选择类会话例外**：开着菜单也保留会话，见 {@link #onScreenOpening}）；</li>
- *   <li><b>J</b>（主动技能键）= 收起（取消选择），**含「手持即选择」类会话**（2026-10-03 用户裁决「按键收口」，撤销 2026-09-24 对该类会话的豁免）；收起后服务端写抑制闩（牌仍在主手期间选择器不自动重开）⇒ 之后再按 J 会自然落到立牌主动技能，该键不会被永久吞掉；</li>
+ *   <li><b>主动技能键（默认 J）</b> = **完全不参与选择器**（2026-10-05 用户裁决）：选择会话期间按下它照常向服务端请求立牌主动技能，本类不做任何拦截（撤销 2026-10-03「按键收口」的口径）；</li>
  *   <li><b>移出主手</b> = 手持即选择类会话（四张效果牌）的收官方式：物品离开主手即退出选择
  *       （{@code reason=released}，无瞬态提示），此类会话**没有倒计时**、提示里也不出现剩余时间；</li>
  *   <li>选择期间滚轮拦截、{@link ChatScreen} 豁免（命令聊天/自动化注入命令）均保留。</li>
@@ -60,7 +60,7 @@ import com.merlinkitsune.astral_dice.combat.PartyRelations;
  * 键盘白名单判定、Esc 专用入口（三者均为旧代码里的方法/常量，标识符只留在 git 历史里，
  * 本文件不再出现它们的名字），以及**整个**客户端键盘拦截 Mixin 类
  * （{@code astral_dice.mixins.json} 的客户端清单里对应条目一并移除）—— 强力胶式语义下确认/取消全部
- * 由鼠标（左键/右键[+潜行]）与 ESC 菜单承担，键盘不再被模组吞掉（J 仍作取消，走 KeyMapping 消费）。
+ * 由鼠标（左键/右键[+潜行]）与 ESC 菜单承担；主动技能键只在 {@code client/KeyBindingSetup} 内直接发包，不参与选择器。
  *
  * <p>提示分工：中央 HUD 只画一行「目标名 + 距离 + 类型标签」（见 {@link TargetSelectOverlay}），其余提示
  * 一律走 actionbar —— 每 tick 刷新的**四态**稳态提示（未命中 / 可自身 / 正确目标 / 错误目标，
@@ -173,7 +173,7 @@ public final class TargetSelectionClient {
      * 当前会话是否由「主手手持物品」驱动（=「手持即选择」类，无倒计时，物品离开主手即退出）。
      *
      * <p>供 {@code client/KeyBindingSetup} 分流**卡牌栏键**（2026-10-03「按键收口」后仅此一处消费点：
-     * 该键只被这类会话放行；主动技能键 J 已不再按本标志分流，改为「会话期一律收起」）。
+     * 该键只被这类会话放行；主动技能键自 2026-10-05 起**完全不参与**选择器 ⇒ 也不再按本标志分流）。
      */
     public static boolean isHoldToSelect() {
         return holdToSelect;
@@ -348,13 +348,13 @@ public final class TargetSelectionClient {
     }
 
     /**
-     * 取消选择（右键+潜行 / J / ESC 菜单 / 第三方界面打开 / 倒计时走完时调用）。
+     * 取消选择（右键+潜行 / ESC 菜单 / 第三方界面打开 / 倒计时走完时调用；主动技能键自 2026-10-05 起不再触发本方法）。
      *
      * <p>2026-09-22（用户要求「增加取消选择和超时的提示文本」）：**所有 reason 都给 actionbar
      * 反馈**，按事件分两键 ——
      * <ul>
      *   <li>{@code expired}（倒计时走完）⇒ {@code msg.astral_dice.target_select.expired}；</li>
-     *   <li>其余（{@code right_sneak} / {@code key} / {@code esc} / {@code screen}）⇒
+     *   <li>其余（{@code right_sneak} / {@code esc} / {@code screen}）⇒
      *       {@code msg.astral_dice.target_select.cancelled}。</li>
      * </ul>
      * 改动前只有 {@code right_sneak/key/esc} 有提示（原 {@code isUserCancel} 判定），

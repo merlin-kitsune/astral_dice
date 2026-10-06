@@ -419,23 +419,27 @@ public final class SpellDamageRegistry {
                 if (nearby.isEmpty()) return;
                 final var source = com.merlinkitsune.astral_dice.damage.ModDamageTypes
                         .trueDamage(ctx.target.level(), ctx.attacker);   // 真伤:范围波及伤害同样无视护甲值/盔甲韧性
-                // 两层闸门都改用「保存 / 恢复」版本(原实现是裸 boolean 直写 ⇒ 与外层 AOE 嵌套时会提前
-                // 关掉外层的执行窗口,只有 runAsInternalAoe 做了 save/restore):
+                // 两层闸门(均为「保存 / 恢复」式,与外层嵌套安全):
                 //   runAsGloveSplashSettlement = 扩散重入闸门(防递归);
-                //   runAsInternalAoe          = 波及伤害不进骰战结算。
-                DiceCombatEvents.runAsGloveSplashSettlement(() -> DiceCombatEvents.runAsInternalAoe(() -> {
-                    for (LivingEntity e : nearby) {
-                        // 同一目标在**一次用量**内只吃一次扩散/波及:登记失败 = 本次用量内已吃过 ⇒ 跳过。
-                        // 该登记同时让同一次用量的其它枚举(定向爆破 6 格 AOE)看到"这个已吃过"
-                        // (见 DiceCombatEvents#runAsCardSplashResolution / #markCardSplashHit)。
-                        if (!DiceCombatEvents.markCardSplashHit(e)) continue;
-                        // 跳数字:不再直发 —— 电击手套范围波及原为青色(0x00E5FF),2026-09-26 起
-                        // 按用户裁决统一归入**法伤类绿色**(所有法伤/技能伤害共用一个绿色数值)。
-                        // ⚠️ 必须显式登记:astral_dice:true_damage 被多路复用(大当家溅射=红 / 这里=绿)。
-                        DamageNumberAggregator.tag(e, source, DamageNumberAggregator.Group.SPELL);
-                        e.hurt(source, total);
+                //   beginAoe()/endAoe()        = 波及伤害不进骰战结算(深度计数,配对开窗)。
+                DiceCombatEvents.runAsGloveSplashSettlement(() -> {
+                    DiceCombatEvents.beginAoe();
+                    try {
+                        for (LivingEntity e : nearby) {
+                            // 同一目标在**一次用量**内只吃一次扩散/波及:登记失败 = 本次用量内已吃过 ⇒ 跳过。
+                            // 该登记同时让同一次用量的其它枚举(定向爆破 6 格 AOE)看到"这个已吃过"
+                            // (见 DiceCombatEvents#runAsCardSplashResolution / #markCardSplashHit)。
+                            if (!DiceCombatEvents.markCardSplashHit(e)) continue;
+                            // 跳数字:不再直发 —— 电击手套范围波及原为青色(0x00E5FF),2026-09-26 起
+                            // 按用户裁决统一归入**法伤类绿色**(所有法伤/技能伤害共用一个绿色数值)。
+                            // ⚠️ 必须显式登记:astral_dice:true_damage 被多路复用(大当家溅射=红 / 这里=绿)。
+                            DamageNumberAggregator.tag(e, source, DamageNumberAggregator.Group.SPELL);
+                            e.hurt(source, total);
+                            }
+                    } finally {
+                        DiceCombatEvents.endAoe();
                     }
-                }));
+                });
             }
         });
     }

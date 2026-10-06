@@ -2,9 +2,33 @@
 
 Released: 1.3.7 - a **content-tuning and bug-fix** release with no new items. Tuning side: (1) healing / utility cards usable on others can now target non-hostile creatures; (2) Luxury Feast now damages undead targets; (3) the dice-blessing melee-weapon check reverted to the blacklist; (4) the two "Voracious Pans" now trigger the blessing; (5) effect cards can now target untamed tamable creatures; (6) guns themselves no longer count as melee; (7) event effects now broadcast over "party + 64 blocks"; (8) the charge status icon is hidden while no charge chip is equipped; (9) the Skyward Satellite now grants "effect card target selection distance +50%"; (10) the Investigator sign's active skill additionally grants "Page Range". Bug-fix side: (1) two cases of firearm damage misread as ranged/magic; (2) laser and explosive damage added to the filter; (3) living pages would not stack; (4) actionbar text overlapping the item-name toast; (5) both actionbar options moved out of the config file; (6) the config version number not updating; (7) an unpickable crystal left at the death site; (8) effect-card sessions swallowing/hijacking inputs; (9) rarity border colours not working with "Modern UI" installed; (10) medkit chips letting you farm healing by repeatedly re-logging or walking through portals; (11) wrong tier wording for two signs in the in-game manual.
 
-Note! The StarEngine Lib prerequisite is embedded in this mod (embedded 1.0.11), so you do not need to install it separately. If your mods folder still has a manually downloaded starengine_lib-*.jar, delete it - the loose file overrides the embedded one.
+Note! The StarEngine Lib prerequisite is embedded in this mod (embedded 1.0.12), so you do not need to install it separately. If your mods folder still has a manually downloaded starengine_lib-*.jar, delete it - the loose file overrides the embedded one.
 Note! On 1.20.1 the Mixin runtime is **Mixin Booster >=0.1.3** **or** **Sinytra Connector** - either one works (since 1.3.2-hotfix; previously Mixin Booster was mandatory).
 
+## 1.3.7-hotfix
+
+- **You can now use your active skill while holding a "target selection" effect card.** Previously, as long
+  as the selection prompt was open, pressing the active-skill key was treated as "collapse the selection"
+  and the skill never fired. The key now **only casts the skill** - it no longer steals it.
+  To cancel a selection: **right click** (cards that can only target others), **sneak + right click**, or
+  press **ESC** to open the menu; for hold-to-select cards, simply **take the card off your main hand**.
+  (Tip: if a sign skill is currently "waiting for you to pick a target", pressing the key again does
+  nothing - that is normal, it is waiting for your target.)
+- **Fixed the on-screen prompt overlapping the item name while you have absorption (yellow) hearts** -
+  it now moves up together with the yellow hearts and other status bars.
+  (This only affects the 1.21.1 and 26.1.2 builds; the two 1.20.1 builds have no such shifting mechanism
+  and are unchanged.)
+
+- **Cleaned up three spots of text on the Game Master Sign**: the Mouse Shield status note said "(no icon)"
+  even though the effect does show an icon in the status bar (self-contradictory) - removed; the sign's
+  item tooltip also dropped its "(absorption)" and trailing "(your red hearts are unaffected)" notes, and the
+  in-game guide entry lost its trailing "(your red hearts are unaffected)" as well (the "5 yellow hearts =
+  10 absorption" conversion stays). Text only - nothing about the effect changed.
+
+- **The English "Nancy Lu Sign" tooltip was missing a number**: its active skill grants **twice the consumed
+  card's cost** as attack (minimum +2) for 2:00 - the Chinese and Japanese texts both say so, but the English
+  text read "equal to that card's cost", **half the real value**. Fixed. Text only - nothing about the effect
+  changed.
 ## Content & Balance Changes
 
 - **"Usable on others" healing / utility cards can now target non-hostile creatures**: the target selectors of **Berserk**, **Luxury Feast** and **Express Delivery** could previously only pick players; they can now pick **any non-hostile creature within 16 blocks** - players, tamed pets (wolf / cat / parrot), passive livestock, villagers, and **neutral mobs such as untamed wolves / iron golems / polar bears / bees**. NOTE: **only vanilla hostile mobs are not selectable** (zombie / skeleton / pillager / enderman / piglin ...). NOTE: right-click still uses the card on yourself. NOTE: a creature target now **actually receives the effect** (this also fixes "using the card on a creature did nothing").

@@ -16,13 +16,14 @@
 用法
 =====================================================================
     # 先看计划（不发请求；dry-run 不需要 token）
-    python tools/modrinth_upload.py --jar neoforge-1.21.1/build/libs/astral_dice-1.3.5-hotfix+neoforge_1.21.1.jar --dry-run
+    python tools/modrinth_upload.py --jar neoforge-1.21.1/build/libs/astral_dice-1.3.7-hotfix+neoforge_1.21.1.jar --dry-run
 
-    # 真上传（三条线一次传完）
+    # 真上传（四条线一次传完）
     python tools/modrinth_upload.py \\
-        --jar neoforge-1.21.1/build/libs/astral_dice-1.3.5-hotfix+neoforge_1.21.1.jar \\
-        --jar forge-1.20.1/build/libs/astral_dice-1.3.5-hotfix+forge_1.20.1.jar \\
-        --jar neoforge-26.1.2/build/libs/astral_dice-1.3.5-beta.2+neoforge_26.1.2.jar \\
+        --jar neoforge-1.21.1/build/libs/astral_dice-1.3.7-hotfix+neoforge_1.21.1.jar \\
+        --jar forge-1.20.1/build/libs/astral_dice-1.3.7-hotfix+forge_1.20.1.jar \\
+        --jar neoforge-26.1.2/build/libs/astral_dice-1.3.7-beta.2+neoforge_26.1.2.jar \\
+        --jar fabric-1.20.1/build/libs/astral_dice-1.3.7-alpha.2+fabric_1.20.1.jar
 
     # 前置库产物（文件名前缀 starengine_lib- ⇒ **自动路由到库项目**，无需额外参数）
     python tools/modrinth_upload.py \\
@@ -51,7 +52,7 @@ Modrinth API 要点（2026-10-01 实测 + 官方文档）
   （完全看不出是顺序问题）。对照实验见 `_multipart()` 的 docstring。
 * 版本类型 ``version_type`` ∈ {release, beta, alpha}；``loaders`` ∈ {neoforge, forge, fabric}
   （``/v2/tag/loader`` 动态解析，不硬编码）；``game_versions`` 是字符串数组（``/v2/tag/game_version`` 校验）。
-* ``environment`` = ``client_and_server``（本模组 mods.toml 均为双侧）。
+* ``environment`` = ``client_and_server``（本模组 fabric.mod.json / mods.toml 均为双侧）。
 * 依赖 = ``dependencies[]``，每项 ``{version_id?, project_id?, file_name?, dependency_type}``，
   ``dependency_type`` ∈ {required, optional, incompatible, embedded}（**没有** include/embeddedLibrary）。
   🚨 **`dependencies` 是必填字段**：缺了直接 400
@@ -66,8 +67,8 @@ Modrinth API 要点（2026-10-01 实测 + 官方文档）
   ⇒ **不要用 ``/v2/user`` 判断令牌是否可用**，用「能否带 token 读到目标项目」来判断。
   写入路由真正需要的权限域是 ``VERSION_CREATE``。
 * 🚨 **项目声明的 ``loaders`` / ``game_versions`` 是硬边界**：版本里出现项目未声明的加载器或 MC 版本，
-  服务端直接拒。本脚本在发请求前逐条预检（本项目真实踩到过一次：库项目声明的加载器少于产物
-  实际所需）—— 先拦下来，避免「前几个成功、最后一个失败」的半成品批次。
+  服务端直接拒。本脚本在发请求前逐条预检（本项目真实踩到：库项目只声明了 forge/neoforge，
+  而库的 fabric 产物需要 fabric）—— 先拦下来，避免「前三个成功、第四个失败」的半成品批次。
 * 频控 300 req/min（按 IP，响应头 ``X-Ratelimit-*``）。本脚本每次运行最多十余个请求，无需限速。
 
 ⚠️ 与 CurseForge 的**两套 id 体系**不要混用：CurseForge 用数字 projectID（如 curios=309927），
@@ -301,7 +302,7 @@ def version_number(ver, loader, mc):
     """版本号 = `<版本>+<加载器>_<MC版本>`。
 
     ⚠️ 刻意带上加载器/MC：一个项目下四条线并存，裸版本号在 1.21.1 与 1.20.1 上**同名**
-    （都是 `1.3.5-hotfix`）—— 同名在 Modrinth 上虽不必然被拒，但版本列表会变得无法区分；
+    （都是 `1.3.7-hotfix`）—— 同名在 Modrinth 上虽不必然被拒，但版本列表会变得无法区分；
     而 `+加载器_MC` 正是本模组 jar 文件名与 GitHub 产物本来的写法 ⇒ 既唯一又不失真。
     """
     return f"{ver}+{loader}_{mc}"
@@ -610,7 +611,7 @@ def main():
             print(f"    项目支持 loaders={sorted(covered[pid][0])} game_versions={sorted(covered[pid][1])}")
 
     # 🚨 项目级的 loaders / game_versions 是**硬边界**：版本里出现项目未声明的加载器（或 MC 版本），
-    #    服务端会直接拒（本项目真实踩到过一次：库项目声明的加载器少于产物实际所需）
+    #    服务端会直接拒（本项目真实踩到：库项目只声明了 forge/neoforge，而库的 fabric 产物需要 fabric）
     #    ⇒ 在**发请求之前**逐条拦住，避免「传了三个成功、第四个失败」这种半成品批次。
     blocked = []
     for j in jobs:

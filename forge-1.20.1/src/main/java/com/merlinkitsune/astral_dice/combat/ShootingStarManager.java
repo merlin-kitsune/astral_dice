@@ -386,7 +386,14 @@ public final class ShootingStarManager {
             damage += StarLightManager.get(pending.caster);
         }
         if (damage > 0.0F) {
-            pending.target.hurt(ModDamageTypes.trueDamage(pending.level, pending.caster), damage);
+            // 与其它「本模组主动施加的扩散/追加伤害」同口径:包在内部波及窗口内,
+            // 由 DiceCombatEvents 的统一闸门早退骰战结算(结构上杜绝二次触发赐福/溅射)。
+            DiceCombatEvents.beginAoe();
+            try {
+                pending.target.hurt(ModDamageTypes.trueDamage(pending.level, pending.caster), damage);
+            } finally {
+                DiceCombatEvents.endAoe();
+            }
         }
         // 命中即 +1 层「星光」（两枚筹码一致）
         StarLightManager.add(pending.caster, 1);

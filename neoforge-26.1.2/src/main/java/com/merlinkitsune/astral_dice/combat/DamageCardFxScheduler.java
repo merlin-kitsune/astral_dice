@@ -381,14 +381,17 @@ public final class DamageCardFxScheduler {
             // ⚠️ 本段刻意**不**走 applySpellDamageAmount ⇒ 不带 runAsGloveSplashInstance:
             //    定向爆破自身的 6 格波及**不是**「电击手套付费的那一次主目标命中」⇒ 不二次触发手套扩散
             //    (2026-10-05 用户裁决:手套只从命中的主目标算一次、与爆破自己的 AOE 各自独立结算,避免递归)。
-            DiceCombatEvents.runAsInternalAoe(() -> {
+            DiceCombatEvents.beginAoe();
+            try {
                 for (LivingEntity e : nearby) {
                     // 手套 3 格扩散已经结算过的目标,本次 AOE 不再重复结算(先到先得)
                     if (!DiceCombatEvents.markCardSplashHit(e)) continue;
                     DamageNumberAggregator.tag(e, source, DamageNumberAggregator.Group.SPELL);
                     e.hurt(source, (float) damage);
                 }
-            });
+            } finally {
+                DiceCombatEvents.endAoe();
+            }
         });
     }
 
@@ -524,17 +527,19 @@ public final class DamageCardFxScheduler {
             DamageNumberAggregator.tag(target, source, DamageNumberAggregator.Group.SPELL);
             target.hurt(source, (float) Math.max(1, amount));
         };
-        // 两层窗口都改用「保存 / 恢复」版本(原实现是裸 boolean 直写 ⇒ 与外层 AOE 嵌套时会提前关掉
-        // 外层窗口,只有 runAsInternalAoe 做了 save/restore):
-        //   runAsInternalAoe         = 波及伤害不进骰战结算;
+        // 两层窗口(均为「保存 / 恢复」式,与外层嵌套安全):
+        //   beginAoe()/endAoe()      = 波及伤害不进骰战结算(深度计数,配对开窗);
         //   runAsGloveSplashInstance = 本次命中可由电击手套扩散。
-        DiceCombatEvents.runAsInternalAoe(() -> {
+        DiceCombatEvents.beginAoe();
+        try {
             if (gloveSplash) {
                 DiceCombatEvents.runAsGloveSplashInstance(hit);
             } else {
                 hit.run();
             }
-        });
+        } finally {
+            DiceCombatEvents.endAoe();
+        }
     }
 
     /**

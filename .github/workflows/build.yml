@@ -97,7 +97,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: merlin-kitsune/starengine_lib
-          ref: d053df57e46e3bcfb98dc3a540d10d3fd41a340b   # = 库 `next` 分支提交 d053df5（= 库版本 `2.0.0-SNAPSHOT.11`）：在 `1c0d128` 之上补齐 `main` 线 `1.0.8` 的 **ActionBar 位置修复**（`client/ActionBarManager` 的 `y` `-58` → `-68`，修「ActionBar 文本与物品名称提示重叠」）。⚠️ **本 ref 要求库 `next` 分支已推送**(git -C <lib> push origin next)，否则本 job 断在 Checkout。
+          ref: 22c6a8111d1fa5ee0387605da36742af2177cffe   # = 库 `next` 分支提交 `22c6a81`（= 库版本 `2.0.0-SNAPSHOT.12`，2026-10-06）：自发布线 `main` 的 `1.0.12`（`4c65323`）**整份移植** `client/ActionBarManager` 的**动态 yShift**（neo 两线复刻原版 `Gui#renderOverlayMessage`：`yShift = max(Gui.leftHeight, Gui.rightHeight) + (68 - 59)`；1.20.1 两平台保持固定 `-68`）⇒ 修「有黄心 / 护甲 / 坐骑血把状态条堆高时 ActionBar 与物品名提示重叠」。⚠️ **本 ref 要求库 `next` 分支已推送**(git -C <lib> push origin next)，否则本 job 断在 Checkout。
           path: .ci/starengine_lib
           fetch-depth: 1
 

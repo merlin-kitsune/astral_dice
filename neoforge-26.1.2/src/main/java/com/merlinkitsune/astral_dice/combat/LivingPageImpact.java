@@ -41,7 +41,8 @@ public final class LivingPageImpact {
         // 正确性挂在两处发包的先后顺序上;现在由聚合器结构性保证。
         final DamageSource spellSource = ModDamageTypes.cardSpell(level, caster);
         // 两层窗口都改用「保存 / 恢复」版本(原实现裸写 boolean ⇒ 与外层 AOE 嵌套时会提前关掉外层窗口)。
-        DiceCombatEvents.runAsInternalAoe(() -> {
+        DiceCombatEvents.beginAoe();
+        try {
             Runnable hit = () -> {
                 // 组别:astral_dice:card_spell 即使不登记也会走**类型回落**判为法伤类(绿),
                 // 此处显式登记只为让调用点的意图可读。
@@ -53,7 +54,9 @@ public final class LivingPageImpact {
             } else {
                 hit.run();
             }
-        });
+        } finally {
+            DiceCombatEvents.endAoe();
+        }
 
         MarkManager.apply(target);
 

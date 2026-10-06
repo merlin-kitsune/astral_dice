@@ -16,7 +16,7 @@
 | Java / 构建 | 17 / Fabric Loom |
 | 优先级 | **P1**（次要；待 P0 完成后移植） |
 | 定位 | **移植线**（非生产线）⇒ 不参与 P0 的「同批实施」 |
-| 产物 / 发布 | `astral_dice-1.3.7-alpha.1+fabric_1.20.1.jar`；**绝不并入**生产线 Release；CI 单独出 `fabric-*` pre-release |
+| 产物 / 发布 | `astral_dice-1.3.7-alpha.2+fabric_1.20.1.jar`；**绝不并入**生产线 Release；CI 单独出 `fabric-*` pre-release |
 | 整合包 | `1.20.1-Fabric 模组测试`（本线专属测试环境） |
 | 规则边界 | 见 `AGENTS.md`「多版本子项目矩阵」第四条线说明（九~十三项，仍全部有效） |
 

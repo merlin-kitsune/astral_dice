@@ -420,18 +420,18 @@ public final class OrbitalBombardmentManager {
         float damage = base + precisionBonus;
         if (damage > 0.0F) {
             DamageSource source = ModDamageTypes.skillDamage(job.level, job.caster);
-            DiceCombatEvents.aoeProcessing = true;
+            DiceCombatEvents.beginAoe();
             try {
                 // 全局伤害显示规定（AGENTS 第 386 条③）：技能伤害**必须**弹跳字，
                 // 与「怪力侦探投掷」「活体书页」同口径（绿字 = DamageNumberAggregator.Group.SPELL；
                 // 一实体一数字取最新值）。
-                // ⚠️ 不能指望骰战路径代发：本伤害以 aoeProcessing 包裹 ⇒ 骰战结算被早退，
+                // ⚠️ 不能指望骰战路径代发：本伤害以 aoeDepth 包裹 ⇒ 骰战结算被早退，
                 //    故在此**显式登记组别**，由 combat/DamageNumberAggregator 在 LivingDamageEvent.Post 上
                 //    取「实际扣血量（伤害管线终值）」后统一发包（2026-09-27 用户报障「该技能伤害完全不显示伤害数字」）。
                 DamageNumberAggregator.tag(target, source, DamageNumberAggregator.Group.SPELL);
                 target.hurt(source, damage);
             } finally {
-                DiceCombatEvents.aoeProcessing = false;
+                DiceCombatEvents.endAoe();
             }
             // ⚠️ 额度**只按基础部分记账** ⇒ 精准打击的加伤不会把单轮 800 的额度提前吃光。
             //    副作用（有意）：基础额度用尽后，剩余轰炸仍会以「纯精准加伤」造成伤害（层数只有个位数，量级很小）。

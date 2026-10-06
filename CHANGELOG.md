@@ -4,7 +4,7 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
-## Unreleased (2.0.0-SNAPSHOT.27)
+## Unreleased (2.0.0-SNAPSHOT.28)
 
 ### New Content
 
@@ -375,6 +375,8 @@
 
 #### Platform & Compatibility
 
+- **The ActionBar no longer overlaps the item-name tooltip once absorption hearts / armour / mount health push the status bars higher** (2026-10-06, library `1.0.12` ported in by this reverse merge): on both NeoForge lines `client/ActionBarManager` now replicates vanilla's **dynamic yShift** (`Gui#renderOverlayMessage`), so the line moves up with the bars; the two 1.20.1 platforms keep the fixed `guiHeight - 68` (vanilla 1.20.1 has no such mechanism - a registered platform difference). The library this branch uses moves `2.0.0-SNAPSHOT.11` -> **`.12`** (still embedded via JarJar; nothing for players to install).
+
 - **Fixed Forge 1.20.1 being completely unable to start because the library dependency declared no version
   range**: 1.20.1's `mods.toml` had **dropped `versionRange`** for the `starengine_lib` dependency, following
   the "library is checked for presence only" decision - but the two loaders do not share that semantics. On
@@ -478,13 +480,83 @@
 - **Prerequisite library synced**: the library line this branch uses (`2.0.0-SNAPSHOT`) has the same fix - the library's `event/EventTargetCollector` depended on the **same** wrong third-party signatures and has been fixed on the library side as well (library `2.0.0-SNAPSHOT.7`, ported from the `main` line's `1.0.6`; the `next` line was byte-identical to the pre-fix revision, so the fix landed wholesale with no hand merging).
 
 > NOTE **Where the in-game verification comes from** (stated honestly): on the `main` line the party mods were **actually installed** in the test environment and a real launch was performed; the startup log shows **both backends connected successfully** (`back_ftb=on back_opac=on`, with no runtime disable) - so the caveat from 1.3.5 ("wired up and will activate once installed, but not verified in game") is retracted. NOTE The **behavioural** check ("do two players in the same party really stop hurting each other?") is still not done (a single process cannot cover it), so the evidence here is at the **backend-connection** level, not at the gameplay level.
+## 1.3.7-hotfix
+
+> Patch release on top of 1.3.7 (all four lines). Per the release rules a `-hotfix` version lands on the
+> **same `1.3.7` tag** and **refreshes that Release** (no new tag/Release); the 26.1.2 and fabric lines take
+> `-beta.2` / `-alpha.2` (independent pre-release lines that never occupy a stable version number).
+
+### Player-facing changes
+
+- **The active-skill key no longer participates in the target selector** (2026-10-05, all four lines):
+  while a target-selection session is running (holding a target-selector effect card), pressing the
+  active-skill key (default `J`) now **fires the sign's active skill as usual** instead of being treated as
+  "collapse the selection" (reverting the 2026-10-03 behaviour). Cancelling/closing a session is now done
+  with **right click** (on cards that can only target others = collapse), **sneak + right click**,
+  the **ESC menu** or the **timeout**; "hold-to-select" sessions still close by **taking the card off your
+  main hand**.
+  NOTE: if a sign skill is currently **waiting for you to pick a target**, pressing the key again is
+  **silently ignored** - the server-side `BaseSignItem#performSkill` step 2 blocks re-entry. That is
+  intentional.
+- **Fixed the action bar overlapping the item-name tooltip while you have absorption (yellow) hearts**
+  (reported 2026-10-05; **NeoForge lines only**): the action bar used a hard-coded `guiHeight - 68`, which
+  only matched `max(left, right status-bar height) <= 59`. Once the left stack grew taller (3+ rows of
+  absorption hearts, or armour + absorption), vanilla moved the item name **up** while this mod's line
+  stayed put, so they overlapped. It now **mirrors vanilla `Gui#renderOverlayMessage`**
+  (`yShift = max(leftHeight, rightHeight) + (68 - 59)`, `y = guiHeight - max(yShift, 68)`) so it moves up
+  together with the status bars, keeping a constant 9 px gap.
+  NOTE: **`forge-1.20.1` / `fabric-1.20.1` are unchanged** - vanilla 1.20.1 has no such mechanism, so this
+  is a **registered platform difference**.
+
+- **Game Master Sign wording cleanup** (2026-10-05, all four lines x three languages): removed the
+  **self-contradictory** "(no icon)" from the status-effect description
+  `effect.astral_dice.ren_shield.description` (the effect does show an icon in the status bar), dropped the
+  "(§e10§7 absorption)" and "(your red hearts are unaffected)" notes from the sign tooltip
+  `tooltip.astral_dice.sign.ren_active`, and dropped the trailing "(your red hearts are unaffected)" from the
+  guide entry `astral_dice.guide.entry.ren_sign.1` (the "5 yellow hearts = 10 absorption" conversion is kept).
+  Text only - numbers and gameplay are unchanged.
+
+- **Fixed the English "Nancy Lu Sign" tooltip missing its "×2"** (2026-10-05, all four lines): this sign's
+  active skill consumes one random battle card and grants **twice that card's cost** as attack (minimum +2)
+  for 2:00 (`ACTIVE_BONUS_MULTIPLIER = 2`) - the Chinese and Japanese texts both say so, but the English text
+  had always read "attack equal to that card's cost", **halving the stated value**. The "×2" is now restored.
+  Text only - numbers and gameplay are unchanged.
+### Engineering
+- **Hardened recursion guards for spread damage (all four lines)**: `DiceCombatEvents`' internal AoE
+  window went from the **boolean** `aoeProcessing` to a **depth counter** `aoeDepth` plus
+  `beginAoe()/endAoe()` (the gate line `if (isInternalAoe() || counterDepth > 0) return;` is unchanged).
+  Root cause: a **nested** window exists in practice (a Living Page hit opens the window -> that hit is
+  `astral_dice:card_spell`, which is on the spell-damage whitelist -> it enters the spell chain -> `onHit`
+  opens the Directional Blast / Electric Glove window), and with a boolean the inner `endAoe()` **clears the
+  outer guard early**; this now mirrors the existing `counterDepth`. The Shooting Star chip
+  (`ShootingStarManager`) also got its spread hit wrapped in the window. New gate
+  `tools/verify_aoe_spread_invariants.py` (A1 gate early-return / A2 old boolean retired / A3 window pairing /
+  A4 spread damage must not reuse a type that re-enters the spell chain or dice combat / A5 `beginAoe()` must
+  sit immediately before `try`; all five negative-control tests pass).
 
 
-# Changelog (English)
+- **Prerequisite library `starengine_lib` `1.0.11` -> `1.0.12`** (same number on all four platforms):
+  `client/ActionBarManager` now reads `Gui.leftHeight` / `Gui.rightHeight` on `neoforge-1.21.1` /
+  `neoforge-26.1.2` (NeoForge patches both to `public`) and keeps the fixed `guiHeight - 68` on
+  `forge-1.20.1` / `fabric-1.20.1`. The consumer pins (`starengine_lib_version` / `_version_range`) and the
+  CI library `ref` were bumped in the same batch (`4c65323`).
+- `client/KeyBindingSetup` (all four lines): the active-skill branch dropped the
+  `TargetSelectionClient.isActive()` check and the `logPrompt("j","cancel")` call and now forwards
+  unconditionally; related javadoc/comments in `TargetSelectionClient` / `TargetSelectCancelPayload` /
+  `BaseSignItem` were rewritten to match.
+- lang: `msg.astral_dice.target_select.prompt.hold.{no_target,no_target_self,rejected,valid}` on
+  **three lines x three languages** dropped the "press J to collapse" wording and now match the fabric line
+  (all four lines and three languages are consistent again).
+- **Removed** the DEBUG line `key=j action=cancel` (that path no longer exists).
 
-> This file contains the English changelog only. Chinese version: [`CHANGELOG_ZH.md`](CHANGELOG_ZH.md).
-> The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
-> Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
+- **Gate `tools/verify_firearm_detection.py` criterion synced** (found in the pre-release check; **not a
+  source defect**): the gate required the melee explicit-include list's two "gluttony pans" on **all four
+  lines**, but the 2026-10-04 integration ruling had already removed `enigmaticlegacy:eldritch_pan` from
+  `fabric-1.20.1` and `neoforge-26.1.2` (that mod does not exist on those platforms) - so the gate failed
+  permanently from 10-04 on: the criterion lagged behind the ruling while the sources stayed correct. It now
+  uses a **per-line expectation matrix** `PAN_EXPECT`: **a missing expected entry = FAIL**, **an unexpected
+  entry = a note** (harmless redundancy, always false when the mod is absent). Negative controls verified:
+  removing the `forge-1.20.1` entry => FAIL; adding it back on `fabric-1.20.1` => note.
 
 ## 1.3.7
 

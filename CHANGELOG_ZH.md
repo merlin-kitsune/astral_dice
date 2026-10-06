@@ -4,7 +4,7 @@
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 
-## 未发布（2.0.0-SNAPSHOT.27）
+## 未发布（2.0.0-SNAPSHOT.28）
 
 ### 新增内容
 
@@ -312,6 +312,8 @@
 
 #### 平台与兼容性
 
+- **ActionBar 在有黄心 / 护甲 / 坐骑血时不再与物品名提示重叠**（2026-10-06，随本次反向合并移植库侧 `1.0.12`）：两条 NeoForge 线的 `client/ActionBarManager` 改为复刻原版 `Gui#renderOverlayMessage` 的**动态 yShift**（状态条被堆高时本行跟着上抬）；1.20.1 两平台保持固定 `guiHeight - 68`（原版无该机制，属已登记的平台差异）。本分支所用库 `starengine_lib` 随之 `2.0.0-SNAPSHOT.11` → **`.12`**（仍经 JarJar 内嵌，玩家无需单独安装）。
+
 - **修复 Forge 1.20.1 因前置库依赖缺少版本区间而完全无法启动**：1.20.1 的 `mods.toml` 里
   `starengine_lib` 依赖此前跟随「库前置只判存在」的裁决**省略了 `versionRange`**，但两侧加载器语义并不相同 ——
   Forge 侧 FML 取的是 `IModInfo.UNBOUNDED`，反编译确认它由 `MavenVersionAdapter.createFromVersionSpec("")`
@@ -400,13 +402,64 @@
 - **前置库同步**：本分支所用库线 `2.0.0-SNAPSHOT` 已同步该修复 —— 库的 `event/EventTargetCollector` 依赖的是**同一套**写错的第三方接口，已在库侧一并修好（库 `2.0.0-SNAPSHOT.7`，自 `main` 线 `1.0.6` 移植；`next` 线此前与修复前版本逐字节一致 ⇒ 整份落地、无手工改写）。
 
 > ⚠️ **实机验证的出处（如实说明）**：主线侧在测试环境**真的装上了队伍类模组**并跑了一次实机冒烟，启动日志显示两条后端**都成功接入**（`back_ftb=on back_opac=on`、无运行时停用）⇒ 1.3.5 里那句「装上即生效、尚未实机验证」的保留说明自本次撤回。⚠️ 仍未做「两名玩家组队后互相攻击是否真的免伤」的**行为级**验证（单进程覆盖不到），故证据是**后端接入层**的，不是玩法层的。
+## 1.3.7-hotfix
+
+> 承接 1.3.7 的**补丁发布**（四线同批）。按发布规范，`-hotfix` 打到**同一个 `1.3.7` tag** 并**刷新该 Release**
+> （不新建 tag/Release）；26.1.2 与 fabric 分别取 `-beta.2` / `-alpha.2`（独立预发布线，不占用正式线裸版本号）。
+
+### 玩家可见变更
+
+- **主动技能键不再参与「目标选择器」**（2026-10-05 用户裁决，四线）：持有「目标选择」类效果牌、选择会话
+  进行中时，按主动技能键（默认 `J`）**照常触发立牌主动技能**，不再被当作「取消选择」（撤销 2026-10-03
+  「按键收口」的 J 口径）。选择器的取消 / 收官改由 **右键**（只能对目标释放的牌 = 收起）、**下蹲 + 右键**、
+  **ESC 菜单**与**超时**承担；「手持即选择」类会话仍以**移出主手**收官。
+  ⚠️ 若正为「需要指定目标」的立牌技能选目标，此时再按主动技能键**静默无效** —— 由服务端
+  `BaseSignItem#performSkill` 第 2 步拦下（防重复进入），属**刻意保留**语义。
+- **修正「有黄心（吸收心）时 ActionBar 与物品名提示重叠」**（2026-10-05 用户实报；**仅两条 NeoForge 线**）：
+  actionbar 位置原硬编码 `guiHeight - 68`（只等价于 `max(左,右状态条高) ≤ 59`）；一旦左侧被堆高
+  （黄心 ≥ 3 行、或「护甲 + 黄心」等组合）或右侧变高，原版物品名**上抬**而本模组文本不动 ⇒ 压盖。
+  现改为**复刻原版 `Gui#renderOverlayMessage` 规则**（`yShift = max(leftHeight, rightHeight) + (68 - 59)`、
+  `y = guiHeight - max(yShift, 68)`）⇒ 随状态条一起上抬，与物品名恒保 9 px 间距。
+  ⚠️ **`forge-1.20.1` / `fabric-1.20.1` 行为不变**：原版 1.20.1 无此机制（物品名与 actionbar 均为固定位置）
+  ⇒ 属**平台差异**，已就地登记。
+
+- **游戏大师立牌的三处提示括注清理**（2026-10-05 用户裁决，四线 × 三语）：状态指示器说明
+  `effect.astral_dice.ren_shield.description` 删去**自相矛盾**的「（不显示图标）」（该效果在状态栏本就带图标）；
+  立牌 tooltip `tooltip.astral_dice.sign.ren_active` 删去「（10 点吸收）」与「（不会影响红心）」两处括注；
+  手册条目 `astral_dice.guide.entry.ren_sign.1` 删去句末「（不会影响红心）」（保留「5 黄心 = 10 点吸收」的换算说明）。
+  只改文案，效果数值与玩法不变。
+
+- **修正英文版「骇客立牌」tooltip 少写的「×2」**（2026-10-05，四线）：该立牌主动技能的实际效果是
+  「消耗一张随机战斗牌，按**该牌费用 ×2** 提高攻击力（最低 +2），持续 2:00」（代码 `ACTIVE_BONUS_MULTIPLIER = 2`）
+  —— 中文与日文版都写对了，英文版却一直写成「等于该牌费用的攻击力」，**少算了一倍**。现按中文原文补上「×2」。
+  只改文案，效果数值与玩法不变。
+### 工程
+- **扩散伤害的递归防护加固（四线）**：`DiceCombatEvents` 的内部波及窗口由**布尔** `aoeProcessing`
+  升级为**深度计数** `aoeDepth` + `beginAoe()/endAoe()`（闸门 `if (isInternalAoe() || counterDepth > 0) return;`
+  不变）。根因：实测存在**嵌套**窗口（活体书页命中开窗 → 该伤害是 `astral_dice:card_spell`、命中法伤白名单
+  ⇒ 进法伤链 → `onHit` 再开定向爆破/电击手套的窗），布尔下内层 `endAoe()` 会**提前清零外层守卫**；
+  与既有 `counterDepth` 同构。同时给流星筹码（`ShootingStarManager`）的扩散补上窗口包裹。
+  新增守门 `tools/verify_aoe_spread_invariants.py`（A1 窗口早退 / A2 旧布尔退役 / A3 开窗配对 /
+  A4 扩散伤害不得用会重入法伤链或骰战的类型 / A5 `beginAoe()` 必须紧邻 `try`；五条反证均已实测有效）。
 
 
-# 中文更新日志
+- **前置库 `starengine_lib` `1.0.11` → `1.0.12`**（四平台同号）：`client/ActionBarManager` 在
+  `neoforge-1.21.1` / `neoforge-26.1.2` 改为读 `Gui.leftHeight` / `Gui.rightHeight`（NeoForge 已 patch 为
+  `public`）；`forge-1.20.1` / `fabric-1.20.1` 保持固定 `guiHeight - 68`。消费方四线
+  `starengine_lib_version` / `_version_range` 与 CI 的库 `ref` 同批同步（`4c65323`）。
+- 四线 `client/KeyBindingSetup`：主动技能键分支删除 `TargetSelectionClient.isActive()` 判定与
+  `logPrompt("j","cancel")` 调用，改为**无条件**转发；`TargetSelectionClient` / `TargetSelectCancelPayload` /
+  `BaseSignItem` 的相关 javadoc 与注释同步改写。
+- lang：`msg.astral_dice.target_select.prompt.hold.{no_target,no_target_self,rejected,valid}` ×
+  **三条线 × 三语**去掉「按 J 收起」措辞，统一为 fabric 线口径（四线三语自此全一致）。
+- **移除** DEBUG 行 `key=j action=cancel`（该路径不再存在）。
 
-> 本文件仅收录中文更新日志；英文版见 [`CHANGELOG.md`](CHANGELOG.md)。
-> 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
-> 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
+- **守门 `tools/verify_firearm_detection.py` 判据同步**（发布前核查发现；**非源码问题**）：该守门把近战
+  「显式纳入清单」的两口饕餮之锅写成**四线同构**硬判据，而 2026-10-04 的联动裁决已把
+  `enigmaticlegacy:eldritch_pan` 从 `fabric-1.20.1` 与 `neoforge-26.1.2` 移除（该平台不存在此模组）
+  ⇒ 该守门自 10-04 起**恒 FAIL**（判据滞后于裁决，源码本身一直正确）。现改为**平台期望矩阵**
+  `PAN_EXPECT`：**缺期望项 = FAIL**、**非期望项出现 = note**（冗余无害项，未装该模组时恒 false）。
+  已补负控反证：删 `forge-1.20.1` 项 ⇒ FAIL；给 `fabric-1.20.1` 加回 ⇒ note。
 
 ## 1.3.7
 

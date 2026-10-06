@@ -94,7 +94,12 @@ public class HuoCardItem extends BaseEffectCardItem {
             // 跳数字：不自行发包，登记组别后由 DamageNumberAggregator 取终值
             DamageNumberAggregator.tag(applyTo, huoSource, DamageNumberAggregator.Group.SPELL);
             // 法术伤害源 getEntity() 仍指施放者 ⇒ 必须走「内部波及结算窗口」，否则会被当成玩家直接攻击重走骰战
-            DiceCombatEvents.runAsInternalAoe(() -> applyTo.hurt(huoSource, DAMAGE));
+            DiceCombatEvents.beginAoe();
+            try {
+                applyTo.hurt(huoSource, DAMAGE);
+            } finally {
+                DiceCombatEvents.endAoe();
+            }
             // 命中音效（2026-09-27 用户裁决）：与活体书页同一分档口径，在**被击中位置**播放
             playHitSound(applyTo.level(), applyTo, (int) DAMAGE);
         }
