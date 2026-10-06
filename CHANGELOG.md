@@ -4,7 +4,7 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
-## Unreleased (2.0.0-SNAPSHOT.29)
+## Unreleased (2.0.0-SNAPSHOT.30)
 
 ### New Content
 
@@ -42,23 +42,6 @@
   icon and value** in the entity info overlay show this mod's **Defense** instead (full / half / empty icons
   matching the vanilla shapes; mobs keep their vanilla armor value - only players use this mod's numbers).
 
-#### Loot & World
-
-- **New "first adventure gift": the first loot chest a player opens in a save is guaranteed to contain 1 die**
-  (user request 2026-09-27): when a player enters a new world and opens **their first loot chest**, that chest is
-  **guaranteed** to hold **1 die (`astral_dice:dice`)** - placed into a **random empty slot** or, if the chest is already
-  full of loot (common on heavily modded packs), it **forcibly replaces a random slot** so the die always lands in your
-  hands. Each player gets this **once per save**: the flag lives in the player's saved data, so **a new save counts
-  again** while **respawning or changing dimension does not re-grant it**. Only "loot chests" qualify (containers whose
-  loot table sits under `chests/` - chests, trapped chests, barrels, shulker boxes, hoppers and minecart chests; the
-  jungle temple dispenser is excluded), and chests you place yourself never trigger it.
-
-- **Custom sound effects**: added `skill_use` (active skills taking effect, including entering the target selector), `glass_dice_broken` (dying while wearing the glass dice) and `megas_blast` (Orbital Bombardment impact, played at the hit position); the effect-card use sound is now a single `effect_card_use` for every effect card except Berserk / King's Power / Immovable, and the Living Page / Misfortune Card hit sounds were replaced with the new `hit_normal` / `hit_bighit` samples (split at 8 damage, played at the hit position).
-
-- **Megas Sign (Legendary)**: active **"Orbital Bombardment"** — designate one hostile target, then **take cards in the order "hotbar → offhand → inventory"** (**stopping as soon as the estimated base total damage reaches the per-cast cap; leftover cards are kept**) and call down an orbital bombardment on that target and a 12-block area around it. Every 2 cards taken adds 1 bombardment (up to 10); each bombardment hits 1 random monster in the area for 2 base damage, plus extra damage equal to the total cost of the battle cards taken. Passive **"Resupply"**: whenever there are fewer than 6 cards in the inventory, gain 1 random card every 1:00. Taking 6 or more cards in a single cast triggers **"Precision Strike"**, which permanently raises the orbital bombardment damage that target takes by +1 per stack, until it dies (**this bonus damage is independent of the 80-per-hit / 800-per-cast caps**).
-
-<!-- 新内容在此登记 -->
-
 #### Sound Effects
 
 - **Five new custom sound effects, one rewritten** (2026-10-04): the four damage effect cards now use
@@ -67,6 +50,8 @@
   `monster_brick_hit` (Monster Brick, `brick_hit.wav`), `orbital_strike_hit` (Orbital Strike, `laser_big.wav`)
   and `directional_blast_hit` (Directional Blast, `blast.wav`); plus a **rewritten** `damage_effect_card_hit`
   (shared by Living Page hits below **&lt; 8** damage and Suit Card - Misfortune hits).
+
+<!-- 新内容在此登记 -->
 
 ### Content & Balance
 
@@ -84,7 +69,6 @@
   "true damage" to `astral_dice:card_spell` (the same chain as Living Page) so it runs the full spell modifier chain
   (Ninja Star / Piercing Gun / Mark Spray / Magic Quiver, etc.). ⚠️ The "Misfortune" holding cost — its periodic
   damage every 2:00 — **stays true damage** (it is a harmful cost on the holder, not this card's damage to a target).
-
 
 #### Combat Statistics & Resolution
 
@@ -153,14 +137,6 @@
     wording was removed).
   - The `tools/balance_sim/` card model was recalibrated (`rand2of` -> `decline`).
 
-- **Combat-card rarity unified to blue (Rare)** (user request 2026-09-26): the **7 standard combat cards** (Attack M /
-  L / XL, Shadow Strike, Defense M / L / XL) are now all **Rare (aqua)** (Attack M and Defense M were **promoted** from
-  Common; Attack XL and Defense XL were **lowered** from Epic; Attack L / Shadow Strike / Defense L were already Rare).
-  **Only 3 exceptions keep their rarity**: Meito (Epic), Charge (Legendary) and Full Power (Pinnacle). The
-  Mamushi-exclusive combat cards "Bite" and "Dragon Roar" stay **Bizarre**, following the existing convention. The
-  `"rarity"` field in the three-line bounty pool `astral_rews.json` was updated in step (the gate cross-checks each
-  item's tier against the data-layer rarity).
-
 - **Defense card durability 10 -> 150, drained "1 point from every equipped defense card per dice-combat hit"**
   (user request 2026-09-26): the durability cap of the defense battle cards (Medium / Large / Epic Defense Card)
   rises to **150**, and **each dice-combat hit a player takes now removes 1 point from *every* defense card
@@ -187,10 +163,8 @@
   Measured against vanilla (40,000 samples): Sharpness V +42.9% (vanilla +42.9%), Critical +50.1% (vanilla +50.0%),
   Protection IV full set -64.0% (vanilla -64.0%), Resistance II -40.0% (vanilla -40.0%).
 
-- **The "hostile target" rule gains one more class: tameable-but-untamed mobs that can be angered** (user request 2026-09-27): the rule was "hostile mobs ∪ neutral mobs (pets excluded)", excluding only **tamed** pets via `TamableAnimal` - but **untamed** llamas / trader llamas are tameable yet are neutral mobs that retaliate once provoked, so **neither tamed nor angered, the target selector could not pick them**, which contradicts the intuition that "anything that can be angered should count as hostile". A class is now added by **capability**: **any mob that can be angered** (`getTarget() != null || getLastHurtByMob() != null`) **and is not already tamed** counts as a hostile target. ⚠️ Measured impact: the newly covered mobs are **llamas / trader llamas** (the only vanilla non-pet mobs that are both tameable and angerable). The criterion is implemented once in the **prerequisite library StarEngine Lib** (dev line `2.0.0-SNAPSHOT.3`, ported from the release line's `1.0.5`) - its single entry point - so every effect that depends on it (Dice Blessing, spell-damage bonuses, the target selector's selectability checks, railgun lightning target selection, …) follows suit.
 #### Cards
 
-- **Combat / effect card tiers retuned** (user decision 2026-09-28): **Attack - Medium / Large / Extra Large** and **Defense - Medium / Large / Extra Large** are now all **blue (Rare)** (previously white / blue / purple on both sides); **Berserk**, **Fight Poison with Poison** and **You Have, I Have** drop from **purple (Epic) to blue (Rare)**; **King's Power** drops from **gold (Legendary) to purple (Epic)**. The `rarity` fields of these 10 entries in the bounty reward pool `astral_rews` were updated to match (`RARE` / `EPIC`), and `scripts/verify/verify_bountiful_pools.ps1` reports **ALL OK** on all three lines (set equality, cross-line md5 and the value-balance formula all pass). ⚠️ Their `unitWorth` (bounty payout) was **left unchanged** this round: under the AGENTS "same-tier value band" convention those 9 down-tiered cards now fall outside their band - a **convention-level deviation, not a gate failure** (the gate does not check tier vs. worth); whether to re-map them is pending a decision.
 - **The four damage effect cards (Monster Laser / Monster Brick / Orbital Strike / Directional Blast) were reworked**
   (user decision 2026-10-04): ① **damage boost removed** — they no longer grant "ranged/magic damage
   +4 / +6 / +8 / +5 for 1:00" nor attach to other ranged/magic damage (the modifier skeletons and effect
@@ -206,7 +180,6 @@
   target after a 0.5s delay and strikes it, lasting 1 second with glowing splash particles on hit; Directional Blast
   detonates at the target after a 0.5s delay.
 
-
 #### Chips & Resources
 
 - **"Electric Glove" chip reworked** (user ruling, 2026-10-05): the previous rule ("**any** ranged/magic damage during
@@ -216,32 +189,6 @@
   For **"Directional Blast"** the spread is computed **once, from its primary target only**, and resolved
   independently from the blast's own 6-block area damage — the two no longer trigger each other (no recursive damage).
   **A target that has already taken one spread hit will not take it again**: targets inside the overlap with the blast's own 6-block area are resolved once only (the spread lands first and the blast only fills the outer ring), instead of relying on vanilla's hurt-invulnerability window to cancel the second hit by accident.
-
-- **The Cursed Sword chip's cumulative attack-bonus cap is raised from 16 to 32** (user ruling, 2026-10-02):
-  while the chip is worn, killing a hostile target with at least 20 health grants a cumulative **+1** attack
-  bonus once per **Dice Blessing** cycle (accumulating across cycles); the **cumulative cap** rises from
-  +16 to **+32**. The bonus is cleared when the chip is removed or on death. The cap shown in the tooltip
-  now reads **32**.
-
-- **The Cutter's base bonus is back on the Attack Power channel** (user ruling 2026-09-26): the **+2 / +4** that
-  Cutter (Basic) / Cutter (Sharp) grant while health is at or above 60% is **Attack Power** (it counts towards
-  Attack Power and therefore also feeds snapshot effects that read Attack Power), while the bonus earned from
-  **healing stacks** is separate **attack damage** (which does not count towards Attack Power). When both
-  Cutters are equipped, healing stacks count **once per chip**. The matching tooltips and handbook entries now
-  read "Attack Power +2 / +4".
-
-- **Blank Chip now has a slightly higher loot chance** (user request 2026-09-27): the Blank Chip is still a
-  **guaranteed 100%** drop from **buried treasure**, and it now additionally has a **3%** chance in every other loot
-  chest (those whose loot table sits under `chests/`) - previously **no chest** other than buried treasure could drop
-  one at all.
-
-- **Glass Dice added to loot chests** (user request 2026-09-27): the Glass Dice (`astral_dice:glass_dice`,
-  the T1 golden tier) can now be found in loot chests - **2%** in ordinary chests and **5%** in **end city**
-  treasure, 1 per roll. Previously loot chests dropped **no dice at all** (dice came only from crafting and
-  from the bounty board). It does not interact with the "first adventure gift": the first chest still grants
-  1 extra base die on top, and the Glass Dice is rolled independently, so both can appear in the same chest.
-
-- **Fengshui Master's "Baize's Blessing" and Cult Leader's "Divine Descent" timers are no longer tied to Dice Blessing** (user request 2026-09-27): both effects used to run "until the recipient's next Dice Blessing ends", which made their duration drift with the Dice Blessing cycle and could end the effect the instant a Dice Blessing fired. Both now use a **fixed 2:00** duration, and the timer **starts only once the affected player first lands a qualifying melee attack** - the effect itself is applied **immediately** (it takes effect at once), but the 2:00 countdown does **not** begin until that first melee hit. The qualifying attack is a **melee weapon attack** (sword / axe / mace / trident) against a target that is a player, a hostile mob or a boss - the same gate Dice Blessing uses, so ranged kills do not start the clock. The timer **starts once and never resets** (later hits do not refresh it). When the countdown reaches 0 the effect is removed, together with everything it granted, exactly as before (Baize's Blessing removes the converted attack power; Divine Descent removes the caster's attack / defense bonus). The effect and its timer are separate states, and the "granted immediately, clock not yet running" intermediate state is shown as a **permanent-looking icon** by design. **(2026-09-28 widening)** the qualifying attack is widened from "melee weapon attack" to **any attack behaviour** - **melee or ranged (arrows / thrown weapons / spells, i.e. any damage caused by the player) counts as long as it hits the target**; it must be a real hit (the damage actually lands) and the target must still be a valid Dice Blessing target.
 
 #### Platform & Compatibility
 
@@ -266,43 +213,14 @@
   `DiceBattleResolver.resolve(attack, defense, relativeFloorRatio)` with `RELATIVE_FLOOR_RATIO = 0.15` (the floor is
   "attack power x 15%" instead of a flat 1 point). **Breaking change inside the snapshot line**: the public constant
   `CombatFormula.ARMOR_DIVISOR` has been **removed** - the single shared divisor is replaced by per-side coefficients.
-- **Megas Sign "Orbital Bombardment"**: the battle-card cost bonus is now **1 damage per 1 cost** (was 2 damage per 1 cost), and the target-selector radius is **32** blocks (was 16); a single bombardment now deals at most **80** damage and a single cast deals at most **800** damage in total.
-
-- **Megas Sign "Orbital Bombardment" now takes cards only up to the damage cap** (user request 2026-09-28): casting the active skill no longer **burns every card in the inventory**. Cards are taken one by one in the order **hotbar → offhand → inventory**, and as soon as the **base** total damage reaches the **800**-per-cast cap the skill **stops taking cards and leaves the rest untouched** (previously they were burned just to reach the cap); if every card is taken and the cap is still not reached (e.g. nothing but 0-cost cards), all of them are consumed as before. Bombardment count and damage are computed only from the cards **actually taken**, and so is the "Precision Strike" trigger (actually taken ≥ 6). The tooltip and handbook entry were rewritten to the shorter player-facing wording ("consume cards from your inventory ... no further cards are consumed once the cap is reached").
-
-- **"Precision Strike" is now truly infinite and its bonus damage is computed separately** (user request 2026-09-28): its duration changed from `Integer.MAX_VALUE` to the vanilla infinite duration (`INFINITE_DURATION`), so it really lasts **until the target dies**; and its **+1 per stack bonus no longer consumes** the 80-per-hit / 800-per-cast budget — those two caps now **only constrain the base part** (and the budget is only charged for the base part), while the Precision Strike bonus is **added on top**. Deliberate side effect: once the base budget is exhausted, further bombardments still deal the pure Precision Strike bonus (a single-digit amount, so the magnitude is small). The effect's standalone description line (`effect.astral_dice.precision_strike.description`) was removed to avoid duplicating the tooltip.
-
-- **Flashlight Chip: Starlight now comes from kills** (user request 2026-09-28): the Starlight trigger changed from "attacking a single hostile target (once per target)" to "**killing** a hostile target with at least **20** max health", granting **+1** Starlight each time; the check is the same as the Cursed Sword's (comparing the target's **max health**). Because a kill is inherently one-off, the old UUID bookkeeping and its hidden "no grants after 256 tracked targets" cutoff are gone. The **"every 4 Starlight grants +1 Attack Damage"** bonus is **unchanged**.
-
-- **Star Coin Hammer (Starlight chip)**: the trigger threshold is now **holding at least 32 Star Coins** (was "more than 20"), each Dice Blessing consumes **18** Star Coins (was 6), and the Attack Damage bonus is **capped at 100** (still 30% of the Star Coins held; nothing accrues beyond the cap).
-
-- **Oasis Queen's Sign (Rare) "Queen's Privilege" slot requirement reverted to 3**: casting the active skill now requires **3** free main-inventory slots (was 2), matching the fixed 2 battle + 1 effect cards granted per cast; with fewer slots the cast is refused at no cost (no cooldown, no effect). The message now reads "3 free slots needed".
-
-- **Fengshui Master's "Perfect Helper" now fills Recharged Energy to the maximum** (user request 2026-09-28): applying Baize's Blessing to a player wearing the Boss Sign no longer grants just **+1 stack** - it now **tops that player's Recharged Energy straight up to the cap of 5 stacks** (new `FenSignItem#fillRecharge` is the "fill" entry point, sharing the same counter). Tooltip and handbook entry updated.
-
-- **Cult Leader's Fox Light bonus becomes a "Pursuit" extra damage instance** (user request 2026-09-28): when the player carrying Divine Descent attacks a hostile target it triggers "Pursuit", and that attack **additionally deals** (the caster's own attack-power snapshot + the current Fox Light stacks) as damage. This bonus **no longer counts towards Attack Power** - it is settled separately through its own damage type (`astral_dice:extra_damage`) after the hit lands, so it is **no longer reduced by the target's defense and no longer participates in Full Power and similar multipliers** (it used to be added to Attack Power; this also removes the chance that merely opening the card screen spent a Fox Light stack). **Consumption is unchanged**: 1 Fox Light stack is still spent only when attacking a **new** target, later attacks on the same target keep triggering Pursuit without spending another stack, and attacking a new target with 0 stacks adds nothing (2026-09-25 rule kept).
-
-- **Detective's Investigation Phase: the old "Invisibility" is replaced by a new "Concealment" effect** (user request 2026-09-28): while it is active **mobs cannot select the player as their target** (the check now looks only at this effect, no longer at vanilla invisibility); the moment the player deals effective damage to a **mob** (melee / ranged / magic - any kind of attack counts) Concealment is **removed immediately** and the player's **dice battles then add damage equal to the target's Mark layers** (again a separate damage type, not counted as Attack Power), **until the Investigation bonus ends**. All four stage durations are **unified at 1:00** (previously 0:15 / 0:20 / 0:30 for stages I / II / III). The new effect reuses the vanilla invisibility icon; handbook and tooltip entries updated.
-
-- **Gunsmith's "Broken" wording de-duplicated** (user request 2026-09-28): the duplicated "and it is dodged by the Gunsmith; dodging triggers an automatic counterattack that includes Weakness Insight layers" in the active and passive descriptions now reads **"it is dodged and triggers a counterattack"** (mechanics unchanged).
-
-- **Destiny's Guidance: your combat dice roll is always 6** (user request 2026-09-28): a new ability, "your combat dice roll is always 6" (same convention as the Salaryman Sign's "next roll is 6": **with no dice equipped it is still 0**). The tooltip ability list was revised: the `1./2./3./4.` numbering becomes dashes `-`, and the new entry is inserted after the second one.
-
-- **Unwavering text simplified** (user request 2026-09-28): the first half of the description changed from "armor +8 per stack (equal to +4 defense in dice battles)" to simply **"defense +4"** (text only - the underlying attribute modifier is unchanged).
-
-- **Charge card wording trimmed** (user request 2026-09-28): the redundant "must be placed in the card slot before the blessing" parenthetical was removed.
-
-- **Slime Sign: area healing removed from the active skill** (user request 2026-09-28): the whole "centred on them, apply Instant Health to players/pets/rideables within 16 blocks" clause was deleted (**description and code both removed**). The area part now only applies **Slowness (1:00)** to hostiles; the main effect (the target gains +3 Healing + Instant Health) is unchanged.
-
-- **Big Bowl of Stew: friendly-creature healing removed, healing points raised to 2** (user request 2026-09-28): it **no longer heals friendly creatures** when the blessing ends; healing points go from **1 to 2**, and the wording now explicitly says **"you and all friendly players within 16 blocks"**.
 
 <!-- 内容与平衡性调整在此登记 -->
+
 - **Synced the player-visible changes from the main line's `1.3.7` batch** (merged `multi-main`, 2026-10-04):
   the medkit re-log / dimension-change heal exploit is closed, sign rarities realigned, a Modern UI tooltip-frame
   compat layer added, the 26.1.2 economy-storage gap closed, the Fabric line caught up, and more - see the
   `## 1.3.7` / `## 1.3.6` sections below. Note the "Enigmatic Legacy" integration is removed **only on
   `fabric-1.20.1` and `neoforge-26.1.2`** (the mod does not exist for those lines); the two P0 lines keep it.
-
 
 ### Bug Fixes
 
@@ -312,70 +230,7 @@
   the position is fixed at the moment the damage resolves and sent by the server; the existing drift-and-fade
   effect is kept, with an added **±30° random spread** so simultaneous numbers no longer overlap exactly.
 
-    - **King Power's 8-point self-damage often did nothing at all in combat** (user report 2026-09-30): the cost went
-      through the dice damage type `astral_dice:dice_damage`, which is **not** listed in
-      `minecraft:tags/damage_type/bypasses_cooldown`, so it obeyed the vanilla invulnerability window - vanilla
-      `LivingEntity#hurt` **returns false outright** when `invulnerableTime > 10` and the incoming amount is
-      `<= lastHurt`. Right after being hit by a mob (or on a second King Power in a row) the 8 points were
-      swallowed whole: the stacks went up while the health bar did not move, making the cost purely cosmetic
-      (creative mode's `abilities.invulnerable` negates it entirely as well). A dedicated `astral_dice:card_cost`
-      damage type is added and registered in `bypasses_cooldown`, and King Power now uses it, so the cost settles
-      even inside the invulnerability window and **always lands**. It is deliberately **not** in
-      `bypasses_armor`: armor / resistance / protection still apply, exactly as before (a cost is not true damage).
-
-
-- **The "1 random chip per 25 returned battle cards" pool of the Kanban-musume sign (mimi) is now derived at runtime - previously 20 later-added chips could never drop** (reported by the user on 2026-10-01; merged from the `main` line's `1.3.6`): the pool used to be three **hand-written lists** (13 blue / 16 purple / 12 gold = 41 entries), while **61** chips are actually registered ⇒ **20 were missing** (6 Rare / 8 Epic / 6 Legendary; by archetype: 10 charge / 7 no-archetype / 2 shooting-star / 1 healing), including exactly the ones the player named - the **charge** chips (energy recycler, electric sword, warp engine, current core, advanced peripherals, electric glove, airbag, perpetual motion, railgun, primordial core) and the **shooting stars** (purple / golden). **Fix**: the hand-written tables are gone; the pool is now **derived at runtime by walking the item registry** - every item that extends `BaseChipItem` is bucketed by this mod's rarity tier (blue = Rare 60% / purple = Epic 35% / gold = Legendary 5%) ⇒ **future chips join the pool automatically, with no code change needed here** (the old tables were deleted on all three lines). The semantics are unchanged: `blank_chip` (a plain item, not a `BaseChipItem`) stays out, **upgraded chips stay in** (as before), and Pinnacle / Bizarre chips are excluded per the existing "not in pools" ruling (none exist today; if one is ever added a log line is emitted instead of silently dropping it); the three probabilities and the 25-card threshold are untouched. The first pool build logs an assertable reading, `AP_MIMI_CHIP_POOL: blue=... purple=... gold=... total=...`, so it can be checked in a smoke run.
-
-#### Chips & Resources
-
-- **The Cutter's status indicator kept blinking and appeared without Dice Blessing** (user report 2026-09-26):
-  the indicator is now shown **only while the player actually has Dice Blessing** and is fully hidden otherwise
-  (no icon and no particles); its duration no longer falls inside vanilla's "about to expire" blink window,
-  **removing the constant blinking**.
-
-- **The Flashlight chip had no HUD icon at all** (user request 2026-09-27): a new `flashlight_ready` icon was added for it, with the same condition as the Cutter - the chip is equipped **and** a Dice Blessing is active **and** Starlight has reached 4 (every 4 Starlight gives +1 extra damage; below 4 there is **no bonus and no icon**). The icon reuses the chip's own texture, so no new art assets were added.
-
-- **The Cutter chips' base +2 / +4 was mistakenly counted as Attack Damage and is now back to Attack Power**: when the "Starlight / Star Coin / healing point" bonuses were moved to the separate extra-damage channel on 2026-09-25, the Cutter's **base +2 / +4** was moved along with them - so those 2 / 4 points no longer counted as attack power, making "attack power snapshot" skills (the Teru Sign's Fox Light attack base) under-count them. The two parts are now strictly separated: **base +2 / +4 = Attack Power** (attack-power modifier) and **only the current healing points = Attack Damage** (extra-damage channel) - they are **different damage types** that affect different skills, so they must be resolved separately (wearing both cutter chips stacks the attack power and the healing points independently). Chip tooltips, handbook entries and all three languages have been updated.
-
-- **The Mechanic sign's "Precision Strike" now shows a visible effect FX**: the effect was previously applied to monsters without **particle display** enabled, making it **entirely invisible** in the world - you could not tell whether an orbital bombardment had triggered Precision Strike or how many stacks a target had already accumulated, so it looked as if the effect did not exist (or vanished once the bombardment ended). Hit targets now continuously emit that effect's particles, making higher stacks easier to identify. The effect's duration and its "permanently retained until the target dies" behaviour are unchanged (the effect was in fact always retained correctly; it simply had no visual indicator at all).
-
-- **Unequipping the Oasis Queen sign now clears "Queen's Privilege" and the temporary cards along with it**: previously unequipping the sign only removed the armor granted by its passive, so the **"Queen's Privilege" effect (the HUD timer) and every temporary card stayed on you** for up to the effect's full 3:00 duration - inconsistent with the "clean up on unequip" convention every other sign follows. Unequipping the sign now **removes the "Queen's Privilege" effect** and **purges all temporary cards** (inventory, offhand, those equipped into the dice, and any on an open card-panel or the cursor) at the same instant, matching exactly how natural expiry, external removal and player death already clean up.
-
-    - **The Jasmine Sweep sign lost part of its attack/defense passive on death** (user report 2026-09-30): the death
-      cleanup carried a block that **actively zeroed** `jasmine_atk_bonus` / `jasmine_def_bonus` (added 2026-09-15
-      to mirror the Misaki sign's "lose stacks on death"). Both values live on the sign's own data components, so
-      dropping or keeping the item wiped them along the way. Per the user's ruling this is now **kept on death**
-      (same stance as the ninja's `komachi_damage_bonus`, the investigator's `rin_pages` and the dragon's
-      `mamushi_awakening`): the bonuses ride on the item itself and survive both the death drop and the respawn
-      pickup. The **only** path that clears them is genuinely unequipping the sign
-      (`JasmineSignItem#clearSignData`). The equivalent reset on the Salaryman sign is unchanged.
-
-    - **The Magic Tome's play-count effect showed an 8:20 countdown although it has no timer by design** (user
-      report 2026-09-30): the effect (`magic_tome_count`, amplifier = number of effect cards used so far) is
-      refreshed every tick by the chip and removed when the count returns to zero - it never had countdown
-      semantics - yet it was applied with a hard-coded `10000` ticks, so the HUD and the inventory panel always
-      displayed a huge remaining time. It now uses the vanilla "truly infinite" duration
-      (`MobEffectInstance.INFINITE_DURATION`) and renders as **∞**.
-
-    - **Every "permanent" effect in the mod now uses the vanilla infinite duration (the ∞ symbol)** (user report
-      2026-09-30): only Precision Strike used it before; the other 8 permanent effects (**Charge, Doll Crafting,
-      Doll Complete, Foxfire, True Dragon Form, Misfortune, Reasoning Time, Weakness Reveal**) plus two application
-      sites (Blue Curse, Undercover Investigation) wrote `Integer.MAX_VALUE`, so they rendered as a countdown of
-      several hundred thousand hours rather than ∞. All of them now use `MobEffectInstance.INFINITE_DURATION`.
-      Note the timer guard (`EffectTimerGuard`) had to be widened in the same change: it treats a duration as
-      permanent by comparing it against a high threshold and used to accept only the `Integer.MAX_VALUE` form, so
-      **without that edit `-1` would have been read as "already expired but still present" and the effect would
-      have been cleared immediately** - the most hidden knock-on of this batch. Criteria: the ten effects above
-      show ∞ in the inventory effect panel.
-
-
-#### Loot & World
-
-- **Loot chests were rolling this mod's items twice; the rates are back to their stated values**: every vanilla loot chest rolls both the vanilla table and this mod's added "star plate" table, and the four pools (star coin / blank chip / star plate / glass dice) had been injected into **both** of them, pushing them up across the board (star coin 5% → 9.75%, blank chip 3% → 5.91%, glass dice 2% → 3.96% - about double their stated values - and star plate 5.95% → 6.89%). The added table is no longer injected a second time, so every pool is back to its stated chance: **star coin 5%, blank chip 3%, glass dice 2%, star plate 5.95%** (star plate = 5% from the added table + 1% from the main table); **End City** is star coin 9% / star plate 9.75% / glass dice 5%, and **Buried Treasure** still guarantees the blank chip at 100%).
-
 #### Platform & Compatibility
-
-- **The ActionBar no longer overlaps the item-name tooltip once absorption hearts / armour / mount health push the status bars higher** (2026-10-06, library `1.0.12` ported in by this reverse merge): on both NeoForge lines `client/ActionBarManager` now replicates vanilla's **dynamic yShift** (`Gui#renderOverlayMessage`), so the line moves up with the bars; the two 1.20.1 platforms keep the fixed `guiHeight - 68` (vanilla 1.20.1 has no such mechanism - a registered platform difference). The library this branch uses moves `2.0.0-SNAPSHOT.11` -> **`.12`** (still embedded via JarJar; nothing for players to install).
 
 - **Fixed Forge 1.20.1 being completely unable to start because the library dependency declared no version
   range**: 1.20.1's `mods.toml` had **dropped `versionRange`** for the `starengine_lib` dependency, following
@@ -411,75 +266,15 @@
   a missing texture. It is now a **byte-for-byte copy** of the texture used by the other three lines (sha1
   `d099ddc7e9da`, 224 bytes). The `tools/verify_effect_icons.py` gate therefore goes FAIL → PASS (100% icon coverage
   across 211 effects on four lines).
-- **ActionBar text no longer overlaps the item-name tooltip** (library follow-up carried in by this merge):
-  the library's `client/ActionBarManager` render `y` moved from `guiHeight()-58` to **`-68`** (vanilla pins the
-  hotbar item-name tooltip at `guiHeight-max(yShift,59)`, so the old value sat 1 px away on the same row).
-  Library version `2.0.0-SNAPSHOT.10` -> **`.11`**; affects all four lines.
-
-
 
 #### Text & Handbook
 
-- **Fixed the action bar's text colouring and missing text (player report, 2026-09-29)**:
-  1. **Missing text** - the two success messages of the Secret Detective Sign's "Undercover Operation" and the Astrologer Sign's
-  "Weak Mark" referenced language keys (`msg.astral_dice.bonnie_undercover_applied` / `msg.astral_dice.haiqing_weak_mark_applied`)
-  that were **missing on all three version lines**, so confirming a target showed a raw key instead of a sentence. Both keys are now
-  supplied in Chinese, English and Japanese, worded like their sibling messages.
-  2. **Broken colouring** - 11 action bar messages carried their own `§e…§7` colour codes while the sender coloured the whole line
-  with `withStyle(YELLOW)`, so `§e` was a no-op on a yellow base and the trailing `§7` reset the second half back to grey - a visible
-  **"yellow front half, grey back half"** seam (Hanna / Zhao / Sherry / Teru / Mamushi / Mouse Rescue and others). All embedded colour
-  codes were removed, following the established rule that **a message carries no `§` codes and the whole line takes its colour from
-  the outer style**.
-  3. **Inconsistent palette** - following the standing ruling that **refusal / blocking messages must be red**, 11 such messages that
-  were still yellow are now **red** (the three Komachi "not cast" notices, Nardis temporary-card cap / not enough free slots, Parunan
-  nothing to exchange, Sherry blocked ground / no target, Hanna ender pearl blocked, Teru descent already in effect, Mamushi forced
-  cooldown). "Current Core" changed from **AQUA** to red when charging is insufficient and yellow when the cooldown is finished; the
-  Mamushi forced-cooldown colour also differed per line (cyan on 1.21.1 / 26.1.2, white on 1.20.1) and is now red everywhere.
-  4. **Two parallel channels merged** - airbag trigger, wallet deposit/withdraw feedback, the card inventory's "you need a die equipped"
-  and the client-side "out of plays this round" were drawn through the **vanilla overlay** (white, at `guiHeight-68`, vanilla timing)
-  while roughly 60 other messages went through this mod's own action bar (styled, `guiHeight-58`, configurable duration) - the same piece
-  of UI rendered by two different systems with different colours and positions. All four are now routed through the mod's action bar
-  channel and coloured (yellow for the airbag / wallet, red for "need a die equipped" / "out of plays").
-
-    - **Status effect "notes" (the description text) were never visible in game** (user report 2026-09-30): the
-      language files already carry 21 `effect.astral_dice.<id>.description` entries (Berserk, Concealment, Empower,
-      Reasoning Time, Zhao's Blessing, ...), but there was **no rendering path at all** - only the three effect-card
-      **items** (Berserk / Unwavering / Fight Poison with Poison) read those keys, for their item tooltips, so
-      hovering the **status effect itself** showed nothing but "name + remaining time". Each platform now wires its
-      own channel: the two NeoForge lines use the official `GatherEffectScreenTooltipsEvent`, while 1.20.1 (Forge has
-      no such event) injects the tooltip list built inside vanilla `EffectRenderingInventoryScreen#renderEffects` through a Mixin. All three lines share one rule:
-      a grey description line is appended **only when the matching language key actually exists**, so effects
-      without a description get no blank line.
 - **Fixed the uncolored damage number on the four damage effect cards, plus a permanently-zero "Ranged and Magic Damage Boost" line**
   (2026-10-04): ① the damage value used to be passed through `Component.translatable(key, value)`, which makes the value a
   **sibling component inheriting the parent style** — the inline `§e` never covered it and the number rendered grey; it now
   goes through `tt(...)` (same pattern as Living Page); ② after the four cards lost their damage boost, the
   "Ranged and Magic Damage Boost" summary is always 0 ⇒ the line is now hidden when there is no bonus.
 
-
-#### Tooltip Frames & Third-Party Rendering
-
-> This section was merged from the `main` line's `1.3.6` (2026-10-01); it fixes the family of "the tooltip frame keeps the previous item's colour" defects.
-
-- **An Epic item's tooltip frame showed the colour of the previously hovered item (observed as gold, i.e. the Legendary tier colour); Epic now writes its tier colour explicitly** (reported by the user on 2026-10-01, with screenshots): two symptoms with the same root cause appeared in the modpack - ① one of this mod's **Epic** items ("Game Master Sign"; the item name was already the correct light purple) had a **gold** frame; ② an item belonging to an entirely different mod (`oritech:adamant_block`) also had a **flat gold `#FFC24B`** frame. **Root-cause evidence** (three independent facts): a recursive scan of all **491 jars in the pack (including JarJar-embedded ones)** for the colour value `0xFFC24B` matched **exactly one class - this mod's own embedded `Rarity.class`** ⇒ the colour can only have come from us; and because this mod used to leave **Rare/Epic** frames untouched, **any tooltip that does not write its own colour inherits whatever a third party cached from the previous tooltip** ⇒ every tier we do not paint becomes a victim of that residue. **Fix**: the Epic tier changes from "leave it to vanilla" to **explicitly writing its tier colour** (= the vanilla EPIC colour `#FF55FF`) - as soon as we write the colour ourselves, that tooltip is guaranteed to use our value and is no longer affected by any third-party cache. ⚠️ **The Rare tier is deliberately left untouched this time** (the user asked for Epic only); by the same mechanism it can still be polluted by residue - if you want it painted as well (vanilla RARE colour `#55FFFF`), that needs a separate decision. ⚠️ **Not applicable to the 26.1.2 line**: its tooltip frame is a nine-slice texture and the platform exposes no colour event (`ClientHooks#onRenderTooltipTexture` hands out a texture ID) ⇒ the vanilla texture is kept; this is a registered platform difference.
-
-- **The Epic frame used with Tooltip Overhaul now matches the vanilla EPIC colour too**: in `assets/astral_dice/tooltipoverhaul/custom_frames.json` the Epic frame changed from "that mod's EPIC three-stop gradient" to a **flat `#FF55FF`** (byte-identical across all three lines), keeping it consistent with this mod's own painting path. ⚠️ That file is only consumed where **Tooltip Overhaul** is installed (it is inert data otherwise).
-
-- **The root cause of "frames show the previous item's colour" (Iceberg) is eliminated in this release - a dedicated mitigation was added that adapts to both generations of Iceberg** (appended 2026-10-01): at the moment the bug was reported, the mod actually painting the frame was **not** Tooltip Overhaul (that pack's TO was `.jar.disabled`; ⚠️ that state can be reverted at any time - the log at 15:02 the same day shows TO loaded again - and this mitigation is harmless either way), but **Iceberg** (`[冰山] Iceberg-1.21.1-neoforge-1.3.2`, pulled in by AdvancementPlaques). Iceberg keeps one process-wide static colour cache, `Tooltips.currentColors`: **in the 1.3.2 generation** that field is only written **while drawing** (a colour other than the vanilla default is **cached**; the vanilla default makes Iceberg **draw with the cached colour and cancel the vanilla draw**), with **no per-tooltip reset** ⇒ **any tooltip that keeps the vanilla border colour (this mod's Rare tier, other mods' items, vanilla items) inherits the last custom colour** (the gold `oritech:adamant_block` frame in the user's screenshot is exactly this). **Mitigation**: a new client class `client/IcebergTooltipCacheGuard` (one copy per line) reflectively writes `Tooltips.currentColors` back to **Iceberg's own** `DEFAULT_COLORS` at the very start of every tooltip render, and **skips when Iceberg is already managing that tooltip's colours** (the newer Iceberg generation - 1.4.1.1, the one in the 26.1.2 test pack - already writes this cache itself at the start of each tooltip, and its `DEFAULT_COLORS` is **pure white**; a hard reset there would wipe the colours that mods such as LegendaryTooltips set through `ColorExt`, so it must be skipped) ⇒ the carry-over is fixed while **no third-party mod's behaviour is changed**. Hook point: all three lines go through `RenderTooltipEvent.Pre` (fired by the **first statement** of `GuiGraphics#renderTooltipInternal`, before the colour event and the actual draw). Safety: no hard dependency on Iceberg (the target class is looked up by string name and absent mods are silent), **exactly one field is written** (all other Iceberg flags are read-only for us), and any failure **permanently disables** the mitigation with a single log line (**never throws** - tooltip rendering runs on the render thread). Opt-out: `-Dastral_dice.icebergTooltipGuard=false`. ⚠️ Consequently **this mod's Rare tier still follows vanilla and paints nothing**, no longer needing to paint its own colour for self-defence.
-
-#### Party (Team) Detection
-
-> This section was merged from the `main` line's `1.3.5-hotfix` (2026-10-01): on all three lines the party-detection backend had **never been active at all**.
-
-- **The party-detection fix had only landed on the port line; this batch applies the same defect fix to all three lines (1.21.1 / 1.20.1 / 26.1.2)** (found in a self-review on 2026-10-01): 1.3.5 already fixed party detection for parties that do not live on the scoreboard, but the reflection code that hooks up to party mods **never worked at all** - the four manager accessors it looked up are declared on a **nested interface** (the outer class does not have them, and `Class#getMethod` does not cross into a nested interface), and the client-side entry point **does not exist**; the failure was swallowed by the same `catch`, so the backend **was silently never enabled** and always fell back to the vanilla scoreboard - with exactly the consequences described in 1.3.5: **players in the same party could still damage each other, the railgun still hit allies, and friendly effects still leaked to the whole server**. Every signature is now corrected against the **real published artifacts**: the accessors are resolved from the nested interface; the client side goes through `getKnownPlayer(UUID)` (its accessor has **no `get` prefix**); "same party" is compared by **party id** (not the per-player personal party id, which differs for every player).
-
-- **`hasTeam` now tests "party / team organisation" instead of "a team object exists"**: these mods **create a personal party for every player**, so the old test was always true and completely blocked the "no party means friendly effects hit the whole server" fallback. It now tests party / server team.
-
-- **A startup log line now reports each party backend's status** (`AP_PARTY:`): per backend it prints `back_ftb=on|off` / `back_opac=on|off` plus the failure reason, so "installed but not working" is no longer a guessing game.
-
-- **Prerequisite library synced**: the library line this branch uses (`2.0.0-SNAPSHOT`) has the same fix - the library's `event/EventTargetCollector` depended on the **same** wrong third-party signatures and has been fixed on the library side as well (library `2.0.0-SNAPSHOT.7`, ported from the `main` line's `1.0.6`; the `next` line was byte-identical to the pre-fix revision, so the fix landed wholesale with no hand merging).
-
-> NOTE **Where the in-game verification comes from** (stated honestly): on the `main` line the party mods were **actually installed** in the test environment and a real launch was performed; the startup log shows **both backends connected successfully** (`back_ftb=on back_opac=on`, with no runtime disable) - so the caveat from 1.3.5 ("wired up and will activate once installed, but not verified in game") is retracted. NOTE The **behavioural** check ("do two players in the same party really stop hurting each other?") is still not done (a single process cannot cover it), so the evidence here is at the **backend-connection** level, not at the gameplay level.
 ## 1.3.7-hotfix
 
 > Patch release on top of 1.3.7 (all four lines). Per the release rules a `-hotfix` version lands on the
