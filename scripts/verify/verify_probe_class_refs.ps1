@@ -110,6 +110,7 @@ $script:MaxJarDepth = 3
 # IEnumerable 展平进管道，返回值一多（这里 3 万条 class 条目）语义很难控制，实测踩过坑。
 $script:Entries = New-Object 'System.Collections.Generic.HashSet[string]'
 $script:BadRefs = New-Object 'System.Collections.Generic.List[object]'
+$script:NoProbeDir = $false   # 任一版本无探针目录 ⇒ 无法判定（防「SKIP ⇒ BadRefs 空 ⇒ PASS」的假绿）
 
 function Get-MtNewestFile {
     <#
@@ -318,8 +319,10 @@ function Test-ProbeLine {
     # ── 扫描探针 ──────────────────────────────────────────────────────────
     $srcDir = Join-Path $Root ('scripts/test/resources/kubejs/' + $Ver)
     if (-not (Test-Path -LiteralPath $srcDir -PathType Container)) {
-        Write-Output '   （无探针目录，SKIP）'
+        Write-Output '   [FATAL] 无探针目录 ⇒ 无法判定（ROOT 错或路径约定变化）；不得判 PASS'
+        $script:NoProbeDir = $true
         Write-Output ''
+        return
         return
     }
     $files = @(Get-ChildItem -LiteralPath $srcDir -Recurse -File -Filter '*.js')
@@ -362,6 +365,11 @@ if ($Version -eq 'all') { $vers = @('1.21.1', '1.20.1', '26.1.2') }
 
 foreach ($v in $vers) { Test-ProbeLine -Ver $v }
 
+if ($script:NoProbeDir) {
+    Write-Output 'RESULT: ERROR（无法判定）—— 至少一条线无探针目录，未核到任何类引用'
+    [Console]::Out.Flush()
+    exit 2
+}
 if ($script:BadRefs.Count -eq 0) {
     Write-Output 'RESULT: PASS —— 三线探针的 Java.loadClass 目标全部可在运行时 classpath 解析'
     exit 0

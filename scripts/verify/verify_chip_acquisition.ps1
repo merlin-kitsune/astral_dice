@@ -417,6 +417,10 @@ function Main {
     $subs = @()
     foreach ($d in @('neoforge-1.21.1', 'forge-1.20.1')) {
         if (Get-IsDir ([System.IO.Path]::Combine($ROOT, $d, 'src/main/java'))) { $subs += $d }
+
+    if ($subs.Count -eq 0) {
+        throw '未发现任何目标子项目（ROOT 错或目录结构变化）⇒ 无法判定；不得判 PASS'
+    }
     }
 
     foreach ($sub in $subs) {

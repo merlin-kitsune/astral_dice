@@ -17,6 +17,27 @@ import os
 import re
 import sys
 from collections import defaultdict
+# --- stdout/stderr 编码自愈（统一口径：python 侧强制 UTF-8；勿删）---
+# 背景：Windows 默认代码页 936 下 python 子进程的 sys.stdout.encoding 为 gbk，
+# 本脚本打印的 ⇒/⚠/✅/↔ 等符号 GBK 不可表示 ⇒ 直接 UnicodeEncodeError
+# 退出码 1（“门会红但红的原因是崩溃”）。此块使脚本不依赖调用者环境与宿主编码。
+# ⚠ 块内引用 sys ⇒ 必须位于**所有 import 之后**；也**不得**加 except-pass（会静默失效）。
+def _astral_heal_stdio() -> None:  # pragma: no cover - 环境适配
+    for _stream_name in ("stdout", "stderr"):
+        _stream = getattr(sys, _stream_name, None)
+        _reconf = getattr(_stream, "reconfigure", None)
+        if _reconf is None:
+            continue
+        try:
+            _reconf(encoding="utf-8", errors="replace")
+        except Exception as _exc:  # noqa: BLE001 - 明确告警，绝不静默
+            sys.stderr.write(
+                "[astral-gate] WARN: %s.reconfigure(utf-8) failed: %r\n"
+                % (_stream_name, _exc)
+            )
+
+
+_astral_heal_stdio()
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 A = os.path.join(ROOT, 'neoforge-1.21.1')
