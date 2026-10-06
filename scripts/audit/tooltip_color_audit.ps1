@@ -38,11 +38,19 @@ $ErrorActionPreference = 'Stop'
 $SUBPROJECTS = @('neoforge-1.21.1', 'forge-1.20.1', 'neoforge-26.1.2', 'fabric-1.20.1')
 # --- 覆盖矩阵声明（2026-10-06 校准；勿删）---
 # 线：4 线全覆盖（原只 2 线，漏 neoforge-26.1.2 / fabric-1.20.1）
-# 语：仅 zh_cn / en_us。ja_jp 暂不纳入：宽口径预演显示 ja_jp 侧 R1/R3 命中含
-#     大量规则产物（"★" 被当作数值、日文量词「1 枚」「1 回」等），口径未定；
-#     直接纳入会得到恒红门（另一种失效模式）。纳入前必须先裁定 ja_jp 的 R1/R3 口径。
-#     ⇒ 本门的 verdict 只在上述矩阵内成立，不得外推为「三语已审」。
-$LANGS = @('zh_cn.json', 'en_us.json')
+# 语：zh_cn / en_us / ja_jp 三语全覆盖（2026-10-06 Stage 2 纳入 ja_jp）
+# ja_jp 口径（2026-10-06 逐条裁定；证据 temp/t62-stage2/）——
+#   · R1 在日文上不具判别力：日文正文用「阿拉伯数字 + 量词/助词」计数
+#     （1 回振り / 1 スタック / 2 倍 / ★レベル），与「要着黄的数值」同形。
+#     ⇒ 仅当命中后 1 字为 CJK/假名，且（token 为 ★ 或 token 以空白结尾）时豁免；
+#        数字紧贴 % 或紧贴 CJK 等真数值形态仍会判红（负控见 temp/t62-stage2/）。
+#   · R3 原取「名字捕获串首字符」色码；CJK 无空格时捕获串会越过色码边界、吞到句内
+#     （例 §e+2§7、§9移動速度上昇 (0:10)）⇒ 改取「紧邻 ( 的末字符」色码。
+#   · R2/R0 无需豁免：ja_jp 的 R2 命中 36 处已由 Stage 1 修为 §9；
+#     R0 命中 16 处（4 key × 4 线）为真违规，已同批修为 §r → §7。
+#   · 残余已知局限：R1 对「未着色数字 + 空白 + CJK 词」形态不再报红（与日文散文计数
+#     不可区分）；名字为混合色（首字符违规/末字符合规）时不再报 R3。
+$LANGS = @('zh_cn.json', 'en_us.json', 'ja_jp.json')
 
 # 时间形态：M:SS（两位秒）、N 秒、Ns / N sec / N seconds
 $TIME_RE = '(\d+:\d{2}|\d+\s*秒|\d+\s*(?:seconds?|secs?|s)\b)'
@@ -217,6 +225,8 @@ function Test-ExemptRun {    <#
 function Invoke-AuditLang {
     param([string]$path, $codesByKey, $translatableKeys)
     $problems = New-Object System.Collections.Generic.List[object]
+    # ja_jp 排版差异开关（R1 豁免 / R3 名字取点），见文件头覆盖矩阵声明
+    $isJa = $path.EndsWith('ja_jp.json')
     foreach ($pair in (Get-Pairs $path)) {
         $key = $pair[0]
         $value = $pair[1]
@@ -243,6 +253,13 @@ function Invoke-AuditLang {
                 if (($t.Index -le $m.Index) -and ($m.Index -lt ($t.Index + $t.Length))) { $inTime = $true; break }
             }
             if ($inTime) { continue }
+            # ja_jp 排版豁免（仅 ja 生效）：日文正文用「数字 + 量词」计数，与数值同形
+            if ($isJa) {
+                $nxt = ''
+                if (($m.Index + $m.Length) -lt $text.Length) { $nxt = $text.Substring($m.Index + $m.Length, 1) }
+                $isCjk = ($nxt -cmatch '[\u3005\u3041-\u3096\u30A1-\u30FA\u4E00-\u9FFF\uFF66-\uFF9D]')
+                if ($isCjk -and (($m.Value -ceq ([string][char]0x2605)) -or ($m.Value -match '\s$'))) { continue }
+            }
             $code = $codes[$m.Index]
             if (($code -ceq '§e') -or ($code -ceq '§9')) { continue }
             if (Test-ExemptRun $text $code $m.Index) { continue }
@@ -252,7 +269,8 @@ function Invoke-AuditLang {
         # R3：「名 (时间)」整段同色（排除 "For(2:00)" 这类时长范围前缀）
         foreach ($m in [regex]::Matches($text, '([^\s(（:：]+)\s*[(（](\d+:\d{2})[)）]')) {
             if ($m.Groups[1].Value.ToLowerInvariant() -ceq 'for') { continue }
-            $namePos = $m.Groups[1].Index
+            # 取「紧邻 ( 的末字符」色码：CJK 无空格时捕获串会越过色码边界（原取首字符）
+            $namePos = $m.Groups[1].Index + $m.Groups[1].Length - 1
             $timePos = $m.Groups[2].Index
             if (($codes[$namePos] -cne $codes[$timePos]) -or (-not (@('§9', '§c') -ccontains $codes[$namePos]))) {
                 $problems.Add(@('R3', $key, $codes[$namePos], $m.Value))
@@ -284,14 +302,15 @@ function Invoke-AuditLang {
 # main
 # ---------------------------------------------------------------------------
 $total = 0
-$checked = 0   # 实际审过的 lang 文件数；0 ⇒ 无法判定（防「文件缺 ⇒ 0 违规 ⇒ PASS」的假绿）
+$checked = 0   # 实际审过的 lang 文件数
+$missing = 0   # 不存在的 lang 文件数；>0 ⇒ 覆盖度不足（防「只审到 1/8 也判 PASS」的半坏假绿）
 $ctx = Get-TooltipColorContext $Root
 $codesByKey = $ctx[0]
 $translatableKeys = $ctx[1]
 foreach ($sub in $SUBPROJECTS) {
     foreach ($lang in $LANGS) {
         $path = [System.IO.Path]::Combine($Root, $sub, 'src/main/resources/assets/astral_dice/lang', $lang)
-        if (-not [System.IO.File]::Exists($path)) { continue }
+        if (-not [System.IO.File]::Exists($path)) { $missing++; continue }
         $checked++
         $problems = Invoke-AuditLang $path $codesByKey $translatableKeys
         if ($problems.Count -gt 0) {
@@ -305,6 +324,11 @@ foreach ($sub in $SUBPROJECTS) {
 }
 
 Write-Out ''
+if ($missing -gt 0) {
+    Write-Out ('tooltip 染色审计： ERROR（无法判定）—— 覆盖度不足：{0} 份 lang 文件不存在，实审仅 {1} 份（期望 {2} 线 x {3} 语）' -f $missing, $checked, $SUBPROJECTS.Count, $LANGS.Count)
+    [Console]::Out.Flush()
+    exit 2
+}
 if ($checked -eq 0) {
     Write-Out 'tooltip 染色审计： ERROR（无法判定）—— 未审到任何 lang 文件（ROOT 错或路径约定变化）'
     [Console]::Out.Flush()
