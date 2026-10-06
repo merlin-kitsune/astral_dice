@@ -21,7 +21,8 @@ Tooltip 染色规则审计（规则见 docs/tooltip-color-rules.md）。
 用法：
     pwsh -File scripts/audit/tooltip_color_audit.ps1 [-Root .]
 
-退出码：0 = 无违规；1 = 存在违规。
+退出码：0 = 无违规；1 = 存在违规；2 = 无法判定（被审根下 lang 文件缺失 ⇒ 覆盖度不足，不得当作通过）。
+        ⚠️ 2 由文件末尾的覆盖度守卫给出：$missing -gt 0 的判定先于 $checked -eq 0（两者都 exit 2）。
 
 —— PowerShell 移植版:1:1 对应 scripts/audit/tooltip_color_audit.py（原 .py 已在 92fbeaf 删除；取回：`git show 92fbeaf^:scripts/audit/tooltip_color_audit.py`）。
 #>

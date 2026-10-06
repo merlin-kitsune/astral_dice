@@ -11,7 +11,7 @@
 
 判据
 ----
-遍历三线 `assets/astral_dice/patchouli_books/**/*.json` 的全部字符串值，
+遍历四线 `assets/astral_dice/patchouli_books/**/*.json` 的全部字符串值，
 取出形如 `astral_dice.<分段.分段...>` 的**翻译键**（用 `.` 分级；
 物品/类别 id 用 `:`，两者可据此区分），逐一核对同线三语 lang 是否都有该键。
 
@@ -61,7 +61,7 @@ for _s in (sys.stdout, sys.stderr):
         pass
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
-LINES = ["neoforge-1.21.1", "forge-1.20.1", "neoforge-26.1.2"]
+LINES = ["neoforge-1.21.1", "forge-1.20.1", "neoforge-26.1.2", "fabric-1.20.1"]
 BOOK = "src/main/resources/assets/astral_dice/patchouli_books"
 LANG_DIR = "src/main/resources/assets/astral_dice/lang"
 LANGS = ["zh_cn", "en_us", "ja_jp"]
