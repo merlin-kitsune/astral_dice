@@ -274,6 +274,15 @@
   **sibling component inheriting the parent style** — the inline `§e` never covered it and the number rendered grey; it now
   goes through `tt(...)` (same pattern as Living Page); ② after the four cards lost their damage boost, the
   "Ranged and Magic Damage Boost" summary is always 0 ⇒ the line is now hidden when there is no bonus.
+- **Three damage effect cards' tooltip durations now use the time colour, and the Japanese tooltips no longer
+  reset their line colour after a value** (2026-10-06, all four lines): ① on **Directional Blast / Monster Laser /
+  Orbital Strike**, the "0.5s until detonation" text was drawn in the **value colour (yellow §e)** — the tooltip
+  colour rules reserve yellow for values and **blue §9** for durations — so it is now blue in all three
+  languages; ② in **Japanese**, the tooltips of **Crimson Dice (high roll) / Obsidian Dice (explosion) / Weird
+  Dice (low roll)** and the **"Fight Poison with Poison"** effect description ended their value with a **reset
+  code §r**, which resets to white: Japanese puts the verb after the value, so that trailing text was drawn
+  **white** on the tooltip's own colour — gold / red for the three dice, gray for the effect description. Those
+  values now carry that colour, so the text after them keeps it; for ② only `ja_jp` was affected.
 
 ## 1.3.7-hotfix
 
