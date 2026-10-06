@@ -35,7 +35,13 @@ param(
 $OutputEncoding = [System.Text.Encoding]::UTF8
 $ErrorActionPreference = 'Stop'
 
-$SUBPROJECTS = @('neoforge-1.21.1', 'forge-1.20.1')
+$SUBPROJECTS = @('neoforge-1.21.1', 'forge-1.20.1', 'neoforge-26.1.2', 'fabric-1.20.1')
+# --- 覆盖矩阵声明（2026-10-06 校准；勿删）---
+# 线：4 线全覆盖（原只 2 线，漏 neoforge-26.1.2 / fabric-1.20.1）
+# 语：仅 zh_cn / en_us。ja_jp 暂不纳入：宽口径预演显示 ja_jp 侧 R1/R3 命中含
+#     大量规则产物（"★" 被当作数值、日文量词「1 枚」「1 回」等），口径未定；
+#     直接纳入会得到恒红门（另一种失效模式）。纳入前必须先裁定 ja_jp 的 R1/R3 口径。
+#     ⇒ 本门的 verdict 只在上述矩阵内成立，不得外推为「三语已审」。
 $LANGS = @('zh_cn.json', 'en_us.json')
 
 # 时间形态：M:SS（两位秒）、N 秒、Ns / N sec / N seconds
@@ -299,13 +305,14 @@ foreach ($sub in $SUBPROJECTS) {
 }
 
 Write-Out ''
-$verdict = 'FAIL（' + $total + ' 处违规）'
-if ($total -eq 0) { $verdict = 'PASS（无违规）' }
-Write-Out ('tooltip 染色审计： ' + $verdict)
-[Console]::Out.Flush()
 if ($checked -eq 0) {
     Write-Out 'tooltip 染色审计： ERROR（无法判定）—— 未审到任何 lang 文件（ROOT 错或路径约定变化）'
     [Console]::Out.Flush()
     exit 2
 }
+Write-Out ('覆盖矩阵： ' + ($SUBPROJECTS -join ' / ') + '  x  ' + ($LANGS -join ', ') + '  (实审 lang 文件 ' + $checked + ' 个)')
+$verdict = 'FAIL（' + $total + ' 处违规）'
+if ($total -eq 0) { $verdict = 'PASS（无违规）' }
+Write-Out ('tooltip 染色审计： ' + $verdict)
+[Console]::Out.Flush()
 if ($total -eq 0) { exit 0 } else { exit 1 }

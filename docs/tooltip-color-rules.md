@@ -180,3 +180,8 @@ pwsh -NoProfile -File scripts/audit/tooltip_color_audit.ps1 --root .
 
 审计脚本 `scripts/audit/tooltip_color_audit.ps1`（位置感知，能识别 `§e1§7 秒` 这类跨码形态）
 同时从 `ModTooltipHandler.java` 解析「lang key → 行底色」映射，用于校验规则 0。
+
+**覆盖矩阵（2026-10-06 校准，与门内注释同源）**：本门实际审计 **4 线 × {`zh_cn.json`, `en_us.json`}**（8 个 lang 文件）。
+`ja_jp.json` **暂不纳入**：宽口径只读预演显示 ja_jp 侧 R1/R3 命中含大量规则产物（`★` 被视作数值、
+日文量词「1 枚」「1 回」等），口径未定；直接纳入会得到**恒红门**（另一种失效模式）。
+⇒ 本门 verdict 只在上述矩阵内成立，**不得外推为「三语已审」**；纳入 ja_jp 前必须先裁定其 R1/R3 口径。
