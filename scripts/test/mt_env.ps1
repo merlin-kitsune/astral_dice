@@ -1556,14 +1556,14 @@ function Install-MtRenderStack {
         「旧版本清理」，否则新旧 Sodium 并存会被 FML 判重复模组。
         ⚠️ **2026-10-07 勘误（口径修正；历史记载保留）**：上面「元凶是 Sodium 0.9.2、降到 0.9.1 后正常」的结论
         **作废** —— 当日把 `neoforge-26.1.2/build.gradle` 的 `-Dneoforge.disableGlValidation=true` 临时注释
-        （恢复原版 GL 校验）后实测：Sodium **0.9.2 与 0.9.1 同样**在进世界后立刻崩（`crash-2026-10-07_16.33.43-client.txt`
-        / `crash-2026-10-07_16.47.06-client.txt`，栈逐帧相同、帧上 mixin 全归 Iris、本模组帧 0 个）。真正的开关是
+        （恢复原版 GL 校验）后实测：Sodium **0.9.2 与 0.9.1 同样**在进世界后立刻崩（`crash-2026-10-07_16.33.43-client.txt`（39385 B；已被后续 launch 的崩溃目录清理删除）
+        / `crash-2026-10-07_16.47.06-client.txt`（39380 B），栈逐帧相同（16:33.43 那份现已不可复核）、帧上 mixin 全归 Iris、本模组帧 0 个）。真正的开关是
         原版 **dev-only** 断言 `GlRenderPass.VALIDATION = SharedConstants.IS_RUNNING_IN_IDE && !Boolean.getBoolean("neoforge.disableGlValidation")`
         （`GlRenderPass.java:25`；抛错点 `GlCommandEncoder.java:531`，位于 `:488 if (GlRenderPass.VALIDATION) {` 块内）：
         校验开 ⇒ 0.9.1 / 0.9.2 都崩，校验关 ⇒ 都不崩；生产环境 `IS_RUNNING_IN_IDE=false` ⇒ **永不触发**
         （代价 = 缺失 sampler 被静默跳过，实测无可见缺失）。校验关（本仓 dev 默认）下，2026-10-07 全最新环境 +
         光影开实测：不崩、`TEX` / `DIAG` / `ECON` / `DAMAGE-NUMBER` / `WALLET-GUI` / `TARGETSEL-OVERLAY` 六条用例全
-        PASS、客户端存活 ≥7.5 分钟、`crash-reports` 空、图形无缺失（目标棱柱 ≈18.5k px 照画）⇒ **钉版保持最新
+        PASS（同期 `MODERNUI-26.1.2` 因未装 Modern UI 前置模组 FAIL，属环境依赖）、客户端存活 ≥6 分钟（16:24 轮约 9 分钟、16:38 电池轮 ≥7.5 分钟）、`crash-reports` 为该轮 0 个（现存 1 份来自 16:47 人为校验恢复实验）、图形无缺失（目标棱柱 ≈18.5k px 照画）⇒ **钉版保持最新
         Sodium `mc26.1.2-0.9.2-neoforge`**。换渲染栈版本后仍应复跑 `SHADER-VISION-26.1.2` 作回归守卫；
         完整证据与机制见 `KNOWN-ISSUES.md` KI-D1 的「2026-10-07 复验」段。
     #>
