@@ -4,7 +4,7 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
-## Unreleased (2.0.0-SNAPSHOT.30)
+## Unreleased (2.0.0-SNAPSHOT.31)
 
 ### New Content
 
@@ -266,6 +266,23 @@
   a missing texture. It is now a **byte-for-byte copy** of the texture used by the other three lines (sha1
   `d099ddc7e9da`, 224 bytes). The `tools/verify_effect_icons.py` gate therefore goes FAIL → PASS (100% icon coverage
   across 211 effects on four lines).
+
+- **Fixed the target selector HUD hint text being completely invisible on the 26.1.2 line** (2026-10-07,
+  26.1.2 line only): with a target selected, the centered hint below the crosshair (target name - distance -
+  tag) showed **not a single glyph** on this line, while the log reported nothing at all. The cause is that
+  26.1.2 replaced the vanilla text entry point with `GuiGraphicsExtractor#text(...)`, whose very first
+  statement is `if (ARGB.alpha(color) != 0)` - **an alpha of 0 returns immediately without submitting any
+  text and without any error**; the three highlight colors used by that overlay (friendly green
+  `0x55FF55` / hostile red `0xFF5555` / neutral yellow `0xFFFF55`) are **6-digit RGB without alpha**, so
+  alpha is always `0x00`. 1.20.1 and 1.21.1 have `Font#adjustColor`
+  (`(color & 0xFC000000) == 0 => color | 0xFF000000`, the old alpha-0-means-opaque convention), which this
+  version removed, so the **other three lines do not have this defect**. The colors are now explicit ARGB
+  (`0xFF55FF55` / `0xFFFF5555` / `0xFFFFFF55`) with identical RGB visuals, and the other three lines are
+  **deliberately left unchanged** (a per-version vanilla API semantics difference, registered in
+  `docs/compat-26.1.2-neoforge.md` section 6.4). The box outline of the same feature
+  (`TargetSelectionHighlighter`) only reads the RGB components and is unaffected.
+  Criteria: with a selection session active and the crosshair on a mob, the HUD screenshot shows text
+  pixels matching those color values at that position (zero such pixels in the same scene before the fix).
 
 #### Text & Handbook
 

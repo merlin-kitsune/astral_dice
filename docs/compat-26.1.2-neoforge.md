@@ -227,10 +227,21 @@ src/generated/clientResources/   ← runClientData（assets/…：items 123 + mo
    已改为带管线重载（`RenderPipelines.GUI_TEXTURED, tex, x, y, 0F, 0F, w, h, w, h`）。
 2. `BALANCE_TEXT_COLOR = 0xFFFFFF` ⇒ 余额数字恒不画；已改为 `0xFFFFFFFF`。
 
-**同类待查（尚未修）**：`client/TargetSelectionClient` 的 `COLOR_FRIENDLY/HOSTILE/NEUTRAL`
-（`0x55FF55` / `0xFF5555` / `0xFFFF55`）都是**无 alpha** 的 RGB，被 `client/TargetSelectOverlay`
-直接喂给 `text(...)` ⇒ 该覆盖层的文字在 26.1.2 上同样不可见；
-`client/TargetSelectionHighlighter` 只取 RGB 分量描棱柱，不受影响。
+**同类项已修（2026-10-07）**：`client/TargetSelectionClient` 的 `COLOR_FRIENDLY/HOSTILE/NEUTRAL`
+（`0x55FF55` / `0xFF5555` / `0xFFFF55`）原本都是**无 alpha** 的 RGB，被 `client/TargetSelectOverlay`
+直接喂给 `text(...)` ⇒ 该覆盖层的文字在本线上**恒不可见**（静默不画、不报错）。
+已改为显式 ARGB：`0xFF55FF55` / `0xFFFF5555` / `0xFFFFFF55`。
+**这是本线专属的平台差异**（1.21.1 的 `Font#adjustColor`「alpha 为 0 视为不透明」兜底已被本版本移除，
+另三线无此缺陷且**不加 alpha**）；判据 = 传给 `text(...)` 的 color 其 `ARGB.alpha(color) != 0`。
+`client/TargetSelectionHighlighter` 只取 RGB 分量描棱柱，取值与行为均不受影响。
+
+
+**实机验证（2026-10-07，26.1.2 dev run，`multi-dev-next`）**：新增用例 `scripts/test/cases/TARGETSEL-OVERLAY-26.1.2.json`（40 steps / 11 asserts，
+走真实入口 `/astralprobe megasprep M0 500 0` + `megascast M3 select` 开 ENEMY 会话，靶 = NoAI/NoGravity spider）+ 判据工具
+`tools/verify_targetsel_overlay_color.py`（在 `(640,552,1280,604)` 条带内精确计 `(255,85,85)` 像素）。读数：会话活动 = **720 px**
+（bbox x 834–1083 / y 568–583 = `guiHeight/2+14` 在 guiScale=2 下的 HUD 行）；三常量临时改回无 alpha 后同场景同用例 = **0 px**；
+会话自然到期后 = **0 px**（同构建内负控，条带全清）。⚠️ dev run 加载的是 `<subproject>/build/classes/java/main`（`InDevFolderLocator` +
+`UniqueModListBuilder` 选版本号更高者），**换 `run/26.1.2/mods` 的 jar 对 dev run 无效** —— A/B 必须「改源 → `gradlew :neoforge-26.1.2:classes` → 冷启动」。
 
 ### 6.5 叠加式 GUI 控件的两个陷阱 + 一处迁移遗漏（2026-09-22 实机取证；用户报「切创造模式后钱包栏消失」「存款数不实时」）
 

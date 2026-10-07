@@ -3708,3 +3708,64 @@ brief 内**不喂结论**。结论与处置：
   K2 全仓不得再有 `logPrompt("j", …)` / `cancel("key")` 调用（⚠️ 判据于 2026-10-05 由「扫 DEBUG 字面串」改为「扫**调用形态**」—— 前者是**永真**检查，由独立复核抓出并修正）；K3 hold 四键 × 四线三语不得含按键名 `J`）⇒ `GATE: PASS`；
   **反证测试**：注入 `if (TargetSelectionClient.isActive()) { return; }` ⇒ 精确报 K1 FAIL（rc=1），还原 ⇒ PASS（rc=0）。
 
+
+## 附录 A 续 50. 26.1.2 §6.4「目标选择器中央提示文字恒不可见」修复 + 实机判据建立（2026-10-07）
+
+### 缺陷与修复（**仅 26.1.2 单线**）
+- 根因：`neoforge-26.1.2/src/main/java/com/merlinkitsune/astral_dice/client/TargetSelectionClient.java` 三常量
+  `COLOR_FRIENDLY/COLOR_HOSTILE/COLOR_NEUTRAL` = `0x55FF55 / 0xFF5555 / 0xFFFF55`（无 alpha），经
+  `client/TargetSelectOverlay#render`（`guiGraphics.text(mc.font, line, x, y, color, true)`）直喂 ⇒ 26.1.2 的
+  `net/minecraft/client/gui/GuiGraphicsExtractor#text` 方法体第一步 `if (ARGB.alpha(color) != 0)` 不成立 ⇒ **静默不画、不报错**；
+  1.21.1 的 `Font#adjustColor`「alpha=0 视为不透明」兜底在本版本已移除（`temp/ref/mc-26.1.2-src` 全仓 `adjustColor` 命中 0）。
+- 全仓使用面：三常量每线**只有两个消费点** —— ① `client/TargetSelectionHighlighter#colorOf`（只取 `>>16/>>8/&0xFF`，恒 alpha 1.0F）
+  ⇒ **不受影响**；② `client/TargetSelectOverlay` ⇒ 本缺陷。26.1.2 全 `src/main/java` 其余 6 位色扫查无同类文本路径。
+- 修复：三常量改为显式 ARGB `0xFF55FF55 / 0xFFFF5555 / 0xFFFFFF55`（+ javadoc 记录平台差异与判据）。
+  **只改 26.1.2**：属「MC 版本存废的原版 API 语义」类平台差异；1.21.1 / 1.20.1 / fabric 三线**不加 alpha**（有兜底、视觉零回归）。
+
+### 新增判据资产（本轮建立）
+- 用例 `scripts/test/cases/TARGETSEL-OVERLAY-26.1.2.json`：**40 steps / 11 asserts**。流程 = 固定场景（`/gamemode survival`、
+  `/gamerule spawn_mobs false`、`/gamerule advance_time false`、`/kill @e[type=!player,distance=..128]`、`/tp @s ~ ~ ~ 0 0`）
+  → `/astralprobe megasprep M0 500 0`（装 megas 立牌 + 造 NoAI/NoGravity spider 靶）→ `/astralprobe megascd M1 fresh`
+  → `/astralprobe megasread M2 PRE` → `/astralprobe megascast M3 select`（**真实入口 `BaseSignItemClass.performSkillForCurio`**，
+  ENEMY 会话）→ 截图 `targetsel-hostile` / `-hostile2` → 等 33s 让客户端会话自然到期 → 截图 `targetsel-expired` / `-expired2`
+  → `/astralprobe megasclear MC` + `/gamerule spawn_mobs true` 收尾。所有 `inject_command` 带 `no_esc: true`。
+  断言 = DEBUG 行 `TargetSelectionClient] start token=` / `TargetSelectOverlay] overlay active` / `target=.*hostile=true` /
+  `cancel .expired.` / `TargetSelectOverlay] overlay inactive` + latest 探针行 `AP_M2_MEGAS:phase=PRE:equipped=1:hand=4:` 与
+  `AP_M3_MCAST:.*mode=select` + 命令错误 `absent` 守卫 + `crash` / `mixin` / `vision`。
+- 像素判据工具 `tools/verify_targetsel_overlay_color.py`：在 `(640,552,1280,604)` 条带内**逐像素精确比对**目标色（默认 `(255,85,85)`，
+  `tol=0`，`--min-pixels` 默认 20）；`--tag` 经 `<run>/screenshots/.mt_shots.json` 取**最后一张**同 tag 截图；
+  rc 0 = 命中 ≥ 阈值，1 = 不达标，2 = 无法定位截图。合成夹具自检（黑底 + 涂色）rc 0 / 1 / 2 全过。
+
+### 实机读数（2026-10-07，`multi-dev-next` / `run/26.1.2` / 1920x1080 / guiScale=2）
+
+| 轮次 | 构建 | 场景 | 条带内 `(255,85,85)` | 结论 |
+|---|---|---|---|---|
+| A | 修复版 | 会话活动 | **720 px**（bbox x 834–1083、y 568–583） | 文本已绘出（= `guiHeight/2+14` 的 HUD 行） |
+| A2 | 修复版 | 会话自然到期（同构建内**会话关闭对照**，非缺陷负控） | **0 px**（条带全清） | 判据可证伪 |
+| B | 三常量临时改回无 alpha | 会话活动 | **0 px** | 缺陷可复现、修复必要 |
+| — | 修复版 | 会话活动（世界棱柱描边 `(254,85,85)`） | 精确匹配 0（off-by-one）；近邻 ±1 读数随口径而异（本工具 3119 px、独立复核方 2399 px） | 世界线条不污染判据 |
+- ⚠️ **判据强度（复核后修订）**：独立复核（`temp/review-264-final/REPORT.md`，2026-10-07）把判据升格为「**修复版 720 px 的像素集合在 3 个独立会话、棱柱有 / 无两种场景下对称差 = 0**」，并指出「文本 255 / 棱柱 254」的 1 灰度分离属本场景**巧合属性** ⇒ 正式判据以**像素集合对称差**为准，`--tol 0` 单点读数只作快速门。
+- ⚠️ **用例自身断言不足以判色**：11 条断言**不能**区分修复版与无 alpha 构建（第 1–8 / 10 / 11 条与颜色常量零耦合必然同为 PASS；第 9 条 `vision` 是定性判断，且被忽略的棱柱描边**就在同条带内**）⇒ 颜色回归**必须**跑 `tools/verify_targetsel_overlay_color.py`。
+
+- 用例终态：`MT_CASE_RESULT: TARGETSEL-OVERLAY-26.1.2 = PASS`（40 steps / 11 asserts 全绿，无 crash / 无 mixin 失败）。
+- 证据归档：`temp/takeover/case-fix-A.log`、`case-neg-B.log`、`case-fix-final.log`、`evidence-A/`、`evidence-B/`、`evidence-final/`、
+  条带工具 `temp/takeover/band_probe2.py`、A/B 换号脚本 `temp/takeover/negctl_apply.ps1` / `negctl_restore.ps1`（均在 `temp/`，不入库）。
+
+### 本轮工具链教训（**必须遵守**）
+1. **dev run 加载的是 `<子项目>/build/classes/java/main` + `build/resources/main`，不是 `run/<ver>/mods` 里的 jar**：
+   `run/26.1.2/logs/latest.log` 有 `InDevFolderLocator … Got mod coordinates astral_dice%%…build/classes/java/main…` 与
+   `UniqueModListBuilder: Found 2 mod files for modid astral_dice, selecting main as it is the most recent based on version data`
+   （选版本号更高者）。⇒ **A/B 换 jar 无效**，正确做法 = 改源 → `gradlew :neoforge-26.1.2:classes` → 冷启动客户端；改完必须还原并重建。
+   （同一机制下 `starengine_lib` 由 jarJar 内嵌 jar 提供，`run/mods` 里的旧副本被遮蔽 —— 实测 `.12` 胜 `.7`。）
+2. **目标选择客户端会话只在自身到期（30s）或 Esc / 打开暂停界面时结束**：服务端 `/astralprobe megascast … cancel` 只清服务端会话，
+   **不产生客户端取消事件**（实测 DEBUG：`16:07:32 start token=…` → `16:08:02 cancel (expired) token=…` → `overlay inactive`）
+   ⇒ 不能用它当「同场景负控」；有效负控 = 等 33s 到期，或换构建。
+3. **`/astral_dice targetselect …` 命令在本开发线不存在**（`command/` 仅剩 `AstralPartyCommand`，根字面量 `astralparty`；
+   全四线 `src` 无该命令注册，旧档 2026-09-23 / 2026-09-28 已登记）。26.1.2 上开目标选择会话一律走
+   `/astralprobe signprep|signcast|megasprep|megascast|luluactive|zhaogate` 探针。⇒ 既有死引用用例
+   `cases/ACTIONBAR-DIAG-1.21.1.json:44`、`cases/TARGETSEL-PROMPT-1.21.1.json:48/:81` 仍注入该死命令（旧档已登记「须删或改」，本次未处置）。
+4. `--tag-suffix` **不是** `mt.ps1` 的合法参数（报 `MT_ERROR: 未知参数 --tag-suffix`，用例整轮不执行、日志 0 字节）。
+5. 用例 FAIL 会置 `scripts/test/cases/.mt_keep_alive` ⇒ `--phase stop` 只报 `MT_CLEANUP: SKIP — 失败取证标记存在`；
+   收停前须先把它移开（本次移到 `temp/takeover/hold/mt_keep_alive.<HHmmss>`），随后 `MT_CLEANUP_RESULT: OK`。
+6. `mt_assert` 的窗口标签 `@NB(win=…)` 中 **N = 窗口起点偏移，不是窗口大小**（`mt_assert.ps1:562/617`；`whole` ⇒ 起点 0）
+   ⇒ 断言未命中时 `@0B` 是「真未命中」，不是空窗口 bug。`source: debug` 断言可用；scope 语义见 `mt_case.ps1:586-596`。

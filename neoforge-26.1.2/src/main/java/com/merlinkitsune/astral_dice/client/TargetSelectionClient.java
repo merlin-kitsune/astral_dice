@@ -106,10 +106,17 @@ import com.merlinkitsune.astral_dice.combat.PartyRelations;
 public final class TargetSelectionClient {
     private static final Logger LOGGER = LoggerFactory.getLogger(TargetSelectionClient.class);
 
-    /** 高亮颜色：友方绿 / 敌对红 / 中立黄 */
-    public static final int COLOR_FRIENDLY = 0x55FF55;
-    public static final int COLOR_HOSTILE = 0xFF5555;
-    public static final int COLOR_NEUTRAL = 0xFFFF55;
+    /**
+     * 高亮颜色：友方绿 / 敌对红 / 中立黄。
+     *
+     * <p>必须写成**显式 ARGB**（alpha = 0xFF）：26.1.2 的 {@code GuiGraphicsExtractor#text(Font, …, int, boolean)}
+     * 方法体第一步即 {@code if (ARGB.alpha(color) != 0)}，alpha 为 0 时**静默不提交、不报错**；
+     * 1.21.1 的 {@code Font#adjustColor}（「alpha 为 0 视为不透明」旧口径）在本版本已被移除。
+     * 描边侧（{@code TargetSelectionHighlighter}）只取 RGB 分量，取值不受影响。</p>
+     */
+    public static final int COLOR_FRIENDLY = 0xFF55FF55;
+    public static final int COLOR_HOSTILE = 0xFFFF5555;
+    public static final int COLOR_NEUTRAL = 0xFFFFFF55;
 
     /** actionbar 提示刷新时长（tick）：每 tick 续期 ⇒ 会话期间提示常驻 */
     private static final int ACTIONBAR_TICKS = 40;

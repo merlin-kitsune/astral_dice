@@ -1,0 +1,257 @@
+{
+  "case_id": "TARGETSEL-OVERLAY-26.1.2",
+  "title": "目标选择器中央提示文字可见性（26.1.2 显式 ARGB 修复）：megas 真实入口开会话 + 定点 spider 靶，A/B 判据走像素计数工具",
+  "version": "26.1.2",
+  "target": {
+    "type": "feature",
+    "ref": "target-select-overlay-color"
+  },
+  "on_fail": "keep_game_running",
+  "evidence": [
+    "targetsel-hostile",
+    "targetsel-hostile2",
+    "targetsel-expired",
+    "targetsel-expired2"
+  ],
+  "steps": [
+    {
+      "op": "note",
+      "text": "目的（m00144 第一项 / 26.1.2 §6.4「目标选择器文字不可见」修复的实机取证）：走真实入口 performSkillForCurio 开启目标选择会话（megas 立牌，ENEMY 类），定点靶 spider(NoAI/NoGravity) 位于正前 3 格；覆盖层中央提示行应绘出「目标：<靶名>（3 格） · 敌对生物」。机器判据 = tools/verify_targetsel_overlay_color.py 对截图 tag 在 (640,552,1280,604) 条带内计 (255,85,85) 像素数；本文件的断言只证明「客户端会话 + 目标成立」。"
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamemode survival",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamerule spawn_mobs false",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamerule advance_time false",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "inject_command",
+      "command": "/kill @e[type=!player,distance=..128]",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/tp @s ~ ~ ~ 0 0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 600
+    },
+    {
+      "op": "note",
+      "text": "阶段 1：装配 megas 立牌 + 造定点靶（spider，正前 3 格，NoAI/NoGravity，500 血）"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe megasprep M0 500 0",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "inject_command",
+      "command": "/clear @s",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    },
+    {
+      "op": "inject_command",
+      "command": "/give @s astral_dice:effect_card_hamburger 4",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe megascd M1 fresh",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "note",
+      "text": "俯角 20 度：靶高 0.9 格、视高 1.62 ⇒ 水平视线会越过靶框；3 格处射线高度约 0.53 格（落在靶框内）"
+    },
+    {
+      "op": "inject_command",
+      "command": "/tp @s ~ ~ ~ 0 20",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe megasread M2 PRE",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "note",
+      "text": "阶段 2：真实入口开会话（select = 只开会话、不 confirm；期望 sel=1、手牌 4、冷却 0）"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe megascast M3 select",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 1800
+    },
+    {
+      "op": "screenshot",
+      "tag": "targetsel-hostile",
+      "mode": "f2"
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "screenshot",
+      "tag": "targetsel-hostile2",
+      "mode": "f2"
+    },
+    {
+      "op": "note",
+      "text": "阶段 3：等客户端会话自然到期（客户端会话上限 30s，服务端 cancel 不会关闭它）→ 覆盖层应消失。这是同场景同构建内的真负控：同一条带内 (255,85,85) 像素应回到 0。"
+    },
+    {
+      "op": "wait",
+      "ms": 33000
+    },
+    {
+      "op": "screenshot",
+      "tag": "targetsel-expired",
+      "mode": "f2"
+    },
+    {
+      "op": "wait",
+      "ms": 700
+    },
+    {
+      "op": "screenshot",
+      "tag": "targetsel-expired2",
+      "mode": "f2"
+    },
+    {
+      "op": "inject_command",
+      "command": "/astralprobe megasclear MC",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 800
+    },
+    {
+      "op": "inject_command",
+      "command": "/gamerule spawn_mobs true",
+      "no_esc": true
+    },
+    {
+      "op": "wait",
+      "ms": 500
+    }
+  ],
+  "asserts": [
+    {
+      "type": "log",
+      "source": "debug",
+      "scope": "whole",
+      "pattern": "TargetSelectionClient] start token="
+    },
+    {
+      "type": "log",
+      "source": "debug",
+      "scope": "whole",
+      "pattern": "TargetSelectOverlay] overlay active"
+    },
+    {
+      "type": "log",
+      "source": "debug",
+      "scope": "whole",
+      "pattern": "TargetSelectionClient] target=.*hostile=true"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "scope": "case",
+      "pattern": "AP_M2_MEGAS:phase=PRE:equipped=1:hand=4:"
+    },
+    {
+      "type": "log",
+      "source": "latest",
+      "scope": "case",
+      "pattern": "AP_M3_MCAST:.*mode=select"
+    },
+    {
+      "type": "absent",
+      "source": "latest",
+      "scope": "case",
+      "pattern": "Unknown or incomplete command|Incorrect argument for command|Unknown command|Expected literal|Unclosed quoted string|<--|错误的命令参数|未知或不完整的命令"
+    },
+    {
+      "type": "crash"
+    },
+    {
+      "type": "mixin"
+    },
+    {
+      "type": "vision",
+      "image": "targetsel-hostile",
+      "question": "画面中央偏下（约 y=568 物理像素）是否有一行彩色文本（目标：<名>（3 格） · 敌对生物），颜色是否为红色系？请只看该条带，不要看世界里的红/绿描边。"
+    },
+    {
+      "type": "log",
+      "source": "debug",
+      "scope": "whole",
+      "pattern": "cancel .expired."
+    },
+    {
+      "type": "log",
+      "source": "debug",
+      "scope": "whole",
+      "pattern": "TargetSelectOverlay] overlay inactive"
+    }
+  ]
+}
